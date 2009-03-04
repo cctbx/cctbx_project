@@ -61,6 +61,16 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return faces->is_inside(p);
     }
 
+    //! Tests if num/den belongs to the asymmetric unit
+    /*! This function should be faster than it's rational variant.
+     * It imposes a constrain on the den. Approximately:
+     * den[0]*den[1]*den[2]*4*8 < max_int.
+     */
+    bool is_inside(const scitbx::int3 &num, const scitbx::int3 &den) const
+    {
+      return faces->is_inside(num,den);
+    }
+
     //! Tests if point belongs to the asymmetric unit, disregarding plane subexpressions
     bool is_inside_volume_only(const rvector3_t &point) const
     {
@@ -98,6 +108,16 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
     //! Returns bounding box for the asu. Not in python
     void box_corners(rvector3_t &mn, rvector3_t &mx) const;
+
+    //! Computes boundaries of the box enclosed by the asu.
+    /*! Boundaries are computed for a grid size 'grid'.
+     * The enclosed box will be completely inside the asu,
+     * and will not touch the surfaces of the asu.
+     * Returns true if enclosed box found.
+     * Currently will succeed only for parallelepiped like asu.
+     * This function is not available in python.
+     */
+    bool enclosed_box_corners(scitbx::int3 &mn, scitbx::int3 &mx, const scitbx::int3 &grid) const;
 
     //! As box_corners for python
     rvector3_t box_max() const

@@ -34,6 +34,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return lhs.is_inside(p, rhs);
     }
 
+    bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    {
+      return lhs.is_inside(num,den,rhs);
+    }
+
     cut_expression<TR> operator- () const
     {
       cut_expression<TR> r(*this);
@@ -97,6 +102,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
     bool is_inside(const rvector3_t &p) const
     {
       return lhs.is_inside(p) && rhs.is_inside(p);
+    }
+
+    bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    {
+      return lhs.is_inside(num,den) && rhs.is_inside(num,den);
     }
 
     and_expression(const TL &l, const TR &r) : lhs(l), rhs(r) { }
@@ -240,6 +250,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
     bool is_inside(const rvector3_t &p) const
     {
       return lhs.is_inside(p) || rhs.is_inside(p);
+    }
+
+    bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    {
+      return lhs.is_inside(num,den) || rhs.is_inside(num,den);
     }
 
     or_expression(const TL &l, const TR &r) : lhs(l), rhs(r) { }

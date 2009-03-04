@@ -9,6 +9,7 @@
 #include <cmath>
 
 #include <boost/rational.hpp>
+#include <scitbx/array_family/tiny_types.h>
 #include <scitbx/mat3.h>
 #include <cctbx/sgtbx/space_group.h>
 #include <cctbx/sgtbx/symbols.h>
@@ -102,6 +103,16 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return  n[0]*p[0] + n[1]*p[1] + n[2]*p[2] + c;
     }
 
+    long evaluate_int(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    {
+      return // this limits grid size to about (max(long)/4)^(1/3)
+        // 812 for 32 bit systems, 1,321,122 for 64bit systems
+        static_cast<long>(num[0])*n[0]*static_cast<long>(den[1])*den[2]
+        + static_cast<long>(num[1])*n[1]*static_cast<long>(den[0])*den[2]
+        + static_cast<long>(num[2])*n[2]*static_cast<long>(den[0])*den[1]
+        + static_cast<long>(c)*den[0]*static_cast<long>(den[1])*den[2];
+    }
+
     template<typename TR> bool is_inside(const rvector3_t &p, const TR &expr) const
     {
       rational_t v = evaluate(p);
@@ -112,10 +123,31 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return expr.is_inside(p);
     }
 
+    template<typename TR>
+      bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den, const TR &expr) const
+    {
+      long v = evaluate_int(num,den);
+      if( v>0 )
+        return true;
+      if( v<0 )
+        return false;
+      return expr.is_inside(num,den);
+    }
+
     //! Tests if point is on the inside part of the space
     bool is_inside(const rvector3_t &p) const
     {
       rational_t v = evaluate(p);
+      if( v>0 )
+        return true;
+      if( v<0 )
+        return false;
+      return inclusive;
+    }
+
+    bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    {
+      long v = evaluate_int(num,den);
       if( v>0 )
         return true;
       if( v<0 )

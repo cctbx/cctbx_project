@@ -36,27 +36,27 @@ namespace cctbx { namespace sgtbx { namespace asu {
   {
     result.clear();
     size_type n_facets = this->n_faces();
-    for(size_type i0=0; i0<n_facets-2; ++i0)  // in xrange(0,n_facets-2):
+    for(size_type i0=0; i0<n_facets-2; ++i0)
     {
       cut face0;
       faces->get_nth_plane(i0, face0);
-      for(size_type i1=i0+1; i1<n_facets-1; ++i1)  // in xrange(i0+1,n_facets-1):
+      for(size_type i1=i0+1; i1<n_facets-1; ++i1)
       {
         cut face1;
         faces->get_nth_plane(i1, face1);
-        for( size_type i2=i1+1; i2<n_facets; ++i2)  // in xrange(i1+1,n_facets):
+        for( size_type i2=i1+1; i2<n_facets; ++i2)
         {
           cut face2;
           faces->get_nth_plane(i2, face2);
-          sg_mat3 m; //  = matrix.rec(facets[i0].n+facets[i1].n+facets[i2].n,(3,3))
+          sg_mat3 m;
           m.set_row(0, face0.n);
           m.set_row(1, face1.n);
           m.set_row(2, face2.n);
           int_type d  = m.determinant();
           if( d != 0 )
           {
-            sg_mat3 c(  m.co_factor_matrix_transposed() ); //  / d );
-            sg_vec3 b( -face0.c, -face1.c, -face2.c ); // matrix.col([-facets[i0].c,-facets[i1].c,-facets[i2].c])
+            sg_mat3 c(  m.co_factor_matrix_transposed() );
+            sg_vec3 b( -face0.c, -face1.c, -face2.c );
             sg_vec3 iv = c * b;
             rvector3_t vertex( rvector3_t(iv) / rational_t(d) );
             if( this->is_inside_volume_only(vertex) ) // do not add if planes intersect outside of the asu
@@ -85,6 +85,50 @@ namespace cctbx { namespace sgtbx { namespace asu {
         mx[i] = std::max(mx[i],(*v)[i]);
       }
     }
+  }
+
+
+  bool direct_space_asu::enclosed_box_corners(scitbx::int3 &mn, scitbx::int3 &mx, const scitbx::int3 &grid) const
+  {
+    size_type n_facets = this->n_faces();
+    if( n_facets!=6 )
+      return false;
+    short x, xm, y, ym, z, zm;
+    x = xm = y = ym = z = zm = 0;
+    for(size_type i0=0; i0<n_facets; ++i0)
+    {
+      cut face;
+      faces->get_nth_plane(i0, face);
+      scitbx::int3 n = face.n;
+      int_type g = boost::gcd(n[0], boost::gcd(n[1],n[2]));
+      CCTBX_ASSERT( g>0 );
+      n /= g;
+      if( n == scitbx::int3(1,0,0) )
+        ++x;
+      else if( n == scitbx::int3(-1,0,0) )
+        ++xm;
+      else if( n == scitbx::int3(0,1,0) )
+        ++y;
+      else if( n == scitbx::int3(0,-1,0) )
+        ++ym;
+      else if( n == scitbx::int3(0,0,1) )
+        ++z;
+      else if( n == scitbx::int3(0,0,-1) )
+        ++zm;
+    }
+    if( x==1 && xm==1 && y==1 && ym==1 && z==1 && zm==1 )
+    {
+      rvector3_t rmn, rmx;
+      this->box_corners(rmn, rmx);
+      mul(rmn,grid);
+      mul(rmx,grid);
+      const scitbx::int3 one_(1,1,1);
+      mn = scitbx::ceil(rmn) + one_;
+      mx = scitbx::floor(rmx) - one_;
+      SCITBX_ASSERT( scitbx::le_all(mn,mx) );
+      return true;
+    }
+    return false;
   }
 
 

@@ -123,11 +123,40 @@ namespace scitbx {
     return true;
   }
 
+  template<typename LhsNumType, typename RhsNumType>
+  inline bool lt_all(const scitbx::vec3<LhsNumType> &lhs, const scitbx::vec3<RhsNumType> &rhs)
+  {
+    for(signed char i=0; i<3; ++i)
+      if( !(lhs[i]<rhs[i]) )
+        return false;
+    return true;
+  }
+
+
   template< typename LhsNumType, typename RhsNumType>
   inline bool ge_all(const scitbx::vec3<LhsNumType> &lhs, const scitbx::vec3<RhsNumType> &rhs)
   {
     for(signed char i=0; i<3; ++i)
       if( !(lhs[i]>=rhs[i]) )
+        return false;
+    return true;
+  }
+
+  template< typename LhsNumType, typename RhsNumType>
+  inline bool gt_all(const scitbx::vec3<LhsNumType> &lhs, const scitbx::vec3<RhsNumType> &rhs)
+  {
+    for(signed char i=0; i<3; ++i)
+      if( !(lhs[i]>rhs[i]) )
+        return false;
+    return true;
+  }
+
+
+  template<typename LhsNumType, typename RhsNumType>
+  inline bool eq_all(const scitbx::vec3<LhsNumType> &lhs, const scitbx::vec3<RhsNumType> &rhs)
+  {
+    for(signed char i=0; i<3; ++i)
+      if( lhs[i]!=rhs[i] )
         return false;
     return true;
   }
