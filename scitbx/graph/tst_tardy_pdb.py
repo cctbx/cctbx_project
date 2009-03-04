@@ -6,6 +6,7 @@ class pdb_extract(object):
         tag,
         pdb,
         bonds,
+        collinear_bonds_edge_list=[],
         clusters=None,
         hinge_edges=None,
         loop_edges=None,
@@ -18,6 +19,7 @@ class pdb_extract(object):
       O.labels.append(line[22:26].strip()+"."+line[12:16].strip())
       O.sites.append(matrix.col([float(line[30+i*8:38+i*8]) for i in [0,1,2]]))
     O.bonds = bonds
+    O.collinear_bonds_edge_list = collinear_bonds_edge_list
     O.clusters = clusters
     O.hinge_edges = hinge_edges
     O.loop_edges = loop_edges
@@ -29,11 +31,16 @@ class pdb_extract(object):
   def tardy_tree_construct(O):
     from scitbx.graph import tardy_tree
     tt = tardy_tree.construct(
-      n_vertices=len(O.sites),
+      sites=O.sites,
       edge_list=O.bonds).finalize()
     cm = tt.cluster_manager
     if (O.clusters is None):
       print "tag:", O.tag
+    if (O.collinear_bonds_edge_list is None):
+      print "collinear_bonds_edge_list:", tt.collinear_bonds_edge_list
+    else:
+      assert tt.collinear_bonds_edge_list == O.collinear_bonds_edge_list
+    if (O.clusters is None):
       print "clusters:", cm.clusters
     else:
       assert cm.clusters == O.clusters
@@ -392,8 +399,9 @@ ATOM     14 BR14 LIG A   1      -0.504   0.332   2.810  1.00 20.00      A   BR
   bonds=[
     (0, 1), (0, 9), (1, 2), (2, 3), (3, 4), (3, 10), (4, 5), (5, 6),
     (6, 7), (7, 8), (8, 9), (8, 10), (10, 11), (10, 13), (11, 12)],
-  clusters=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13], [12]],
-  hinge_edges=[(-1, 0), (10, 11)],
+  collinear_bonds_edge_list=[(10, 12)],
+  clusters=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]],
+  hinge_edges=[(-1, 0)],
   loop_edges=[],
   loop_edge_bendings=[]),
 
