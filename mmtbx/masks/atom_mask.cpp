@@ -244,6 +244,9 @@ namespace mmtbx { namespace masks {
     //
     boost::posix_time::ptime tb = boost::posix_time::microsec_clock::local_time(), te;
     boost::posix_time::time_duration tdif;
+    af::const_ref<data_type, grid_t > data_cref = data.const_ref();
+    af::ref<data_type, grid_t > data_ref = data.ref();
+    std::fill(data_ref.begin(), data_ref.end(), 0);
     this->atoms_to_asu(sites_frac, atom_radii); // now this one is the slowest
     te = boost::posix_time::microsec_clock::local_time();
     tdif = te - tb;
@@ -258,7 +261,6 @@ namespace mmtbx { namespace masks {
     size_t n1 = this->get_mask().size() - std::count( this->get_mask().begin(), this->get_mask().end(), 0 );
     MMTBX_ASSERT( n1>0 );
     size_t nn = 0;
-    af::const_ref<data_type, grid_t > data_cref = data.const_ref();
     for(af::const_ref<data_type, grid_t >::const_iterator msk_it=data_cref.begin(); msk_it!=data_cref.end(); ++msk_it)
     {
       if( *msk_it > -mark && *msk_it < mark )
@@ -285,7 +287,6 @@ namespace mmtbx { namespace masks {
     ltdif = tdif.total_milliseconds();
     // std::cout << "\n!!! ::contact_surface time = " << ltdif << std::endl;
     // clear points within shrink_truncation_radius around asu
-    af::ref<data_type, grid_t > data_ref = data.ref();
     for(af::ref<data_type, grid_t >::iterator msk_it=data_ref.begin(); msk_it!=data_ref.end(); ++msk_it)
     {
       if( *msk_it >= mark || *msk_it <= -mark )
