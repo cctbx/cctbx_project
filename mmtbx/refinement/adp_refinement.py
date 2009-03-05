@@ -84,8 +84,6 @@ adp_restraints_master_params = iotbx.phil.parse("""\
       .type = float
     refine_ap_and_dp = False
       .type = bool
-    b_iso_max = None
-      .type = float
   }
 """)
 
