@@ -349,11 +349,12 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
     self.minimum_covering_sphere = minimum_covering_sphere(
       flex.vec3_double([p,q,r,s]))
 
-  def update_map_objects (self) :
+  def update_map_objects (self, redraw=True) :
     self.compute_triangulation()
     # this is done to prevent thread clashes (+ ensuing crashes)
     self.triangles = self._triangle_tmp
-    self.OnRedraw()
+    if redraw :
+      self.OnRedraw()
 
   def set_iso_levels (self, levels) :
     assert len(levels) == len(self.maps)
