@@ -517,7 +517,7 @@ else:
       SHLINK="icpc",
     )
     env_etc.c_link = "icc"
-    env_etc.cxxflags_base = ["-fPIC", "-Wno-deprecated"]
+    env_etc.cxxflags_base = ["-fPIC", "-Wno-deprecated", "-wd161"]
     env_etc.ccflags_base = ["-fPIC"]
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2"]
