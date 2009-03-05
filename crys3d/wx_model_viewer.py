@@ -21,6 +21,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
     if self.initialize_model_viewer_super :
       wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
     self.atomic_bonds            = None # from geometry restraints manager
+    self.bonds                   = shared.stl_set_unsigned()
     self.points                  = flex.vec3_double() # basic 3d data
     self.atom_index              = []   # stores atoms_with_labels data
     self.atoms_visible           = flex.bool()
@@ -74,7 +75,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
       self.setup_lighting()
 
   def DrawGL(self):
-    if self.GL_uninitialised :
+    if self.GL_uninitialised or self.points.size() == 0 :
       return
     if (self.flag_show_points):
       self.draw_points()
