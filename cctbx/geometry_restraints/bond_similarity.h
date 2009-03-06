@@ -123,7 +123,7 @@ namespace cctbx { namespace geometry_restraints {
           = bond_distances_.const_ref();
         result.reserve(deltas_ref.size());
         for(std::size_t i_pair=0;i_pair<deltas_ref.size();i_pair++) {
-          vec3 grad_0 = (-2 * deltas_ref[i_pair]/distances_ref[i_pair])
+          vec3 grad_0 = (2 * deltas_ref[i_pair]/distances_ref[i_pair])
             * (1 - weights_ref[i_pair]/sum_weights_)
             * (sites_array[i_pair][0] - sites_array[i_pair][1]);
           pair_grads[0] = grad_0;
