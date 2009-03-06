@@ -6,6 +6,7 @@ env_bpl.SharedLibrary(
   source=[
     "geometry_restraints_ext.cpp",
     "bond_bpl.cpp",
+    "bond_similarity_bpl.cpp",
     "bond_sorted_bpl.cpp",
     "nonbonded_bpl.cpp",
     "nonbonded_sorted_bpl.cpp",

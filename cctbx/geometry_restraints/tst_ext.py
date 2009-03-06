@@ -11,6 +11,95 @@ from libtbx.utils import null_out
 import math
 import sys
 
+def exercise_bond_similarity():
+  unit_mx = sgtbx.rt_mx()
+  i_seqs=((0,2),
+          (1,3),
+          (4,5))
+  sym_ops=(unit_mx,
+           unit_mx,
+           sgtbx.rt_mx('1+x,y,z'),)
+  weights=(1,2,3)
+  p = geometry_restraints.bond_similarity_proxy(
+    i_seqs=i_seqs,
+    sym_ops=sym_ops,
+    weights=weights)
+  assert tuple(p.i_seqs) == i_seqs
+  assert tuple(p.sym_ops) == sym_ops
+  assert approx_equal(p.weights, weights)
+  #
+  expected_deltas = \
+    (-0.033333333333333, 0.066666666666666, -0.033333333333333)
+  expected_rms_deltas = math.sqrt(
+    sum(delta * delta for delta in expected_deltas)
+    /len(expected_deltas))
+  expected_residual = sum(weights[i] * expected_deltas[i]
+                          * expected_deltas[i]
+                          for i in range(3))
+  expected_gradients = (
+    ((0,0,-0.055555555555), (0,0,0.055555555555)),
+    ((0,0.088888888888,0), (0,-0.088888888888,0)),
+    ((-0.033333333333,0,0), (0.033333333333,0,0)))
+  sites_array=[
+    ((1,2,3),(1,2,4.5)),((2,4,6),(2,5.6,6)),((14,24,29),(15.5,24,29))]
+  b = geometry_restraints.bond_similarity(
+    sites_array=sites_array,
+    weights=weights)
+  assert approx_equal(b.sites_array, sites_array)
+  assert approx_equal(b.weights, weights)
+  assert approx_equal(b.mean_distance(), 1.533333333333333)
+  assert approx_equal(b.deltas(), expected_deltas)
+  assert approx_equal(b.rms_deltas(), expected_rms_deltas)
+  assert approx_equal(b.residual(), expected_residual)
+  assert approx_equal(b.gradients(), expected_gradients)
+  #
+  unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
+  sites_cart = flex.vec3_double(
+    [(1,2,3),(2,4,6),(1,2,4.5),(2,5.6,6),(14,24,29),(0.5,24,29)])
+  b = geometry_restraints.bond_similarity(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=p)
+  assert approx_equal(b.sites_array, sites_array)
+  assert approx_equal(b.weights, weights)
+  assert approx_equal(b.mean_distance(), 1.533333333333333)
+  assert approx_equal(b.deltas(), expected_deltas)
+  assert approx_equal(b.rms_deltas(), expected_rms_deltas)
+  assert approx_equal(b.residual(), expected_residual)
+  assert approx_equal(b.gradients(), expected_gradients)
+  #
+  proxies = geometry_restraints.shared_bond_similarity_proxy([p,p])
+  assert eps_eq(geometry_restraints.bond_similarity_residuals(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies), [expected_residual]*2)
+  assert eps_eq(geometry_restraints.bond_similarity_deltas_rms(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies), [expected_rms_deltas]*2)
+  residual_sum = geometry_restraints.bond_similarity_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=None)
+  assert eps_eq(residual_sum, 2*expected_residual)
+  gradient_array = flex.vec3_double(sites_cart.size(), (0,0,0))
+  residual_sum = geometry_restraints.bond_similarity_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=gradient_array)
+  assert eps_eq(residual_sum, 2*expected_residual)
+  expected_gradients = (
+    (0,0,-0.1111111111111111),
+    (0, 0.1777777777777777,0),
+    (0,0, 0.1111111111111111),
+    (0,-0.1777777777777777,0),
+    (-0.0666666666666666,0,0),
+    (0.0666666666666666,0,0))
+  for g,e in zip(gradient_array, expected_gradients):
+    assert eps_eq(g, matrix.col(e))
+
 def exercise_bond():
   p = geometry_restraints.bond_params(
     distance_ideal=3.5,
@@ -1408,6 +1497,7 @@ def exercise_planarity():
   assert rest.size() == 3
 
 def exercise():
+  exercise_bond_similarity()
   exercise_bond()
   exercise_nonbonded()
   exercise_nonbonded_cos()
