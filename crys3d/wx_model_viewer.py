@@ -195,6 +195,7 @@ class model_viewer_mixin (model_viewer_base) :
     model_viewer_base.__init__(self, *args, **kwds)
     self.pdb_hierarchy           = None
     self.selection_cache         = None # this is used by extract_trace
+    self.processed_pdb_file      = None
     self.atoms                   = None
     self.atom_count              = 0
     self.b_cache                 = None # atoms.extract_b()
@@ -265,11 +266,13 @@ class model_viewer_mixin (model_viewer_base) :
 
   #---------------------------------------------------------------------
   # coordinates, bonds, etc.
-  def update_structure (self, pdb_hierarchy, atomic_bonds, redraw=False) :
+  def update_structure (self, pdb_hierarchy, atomic_bonds,
+      processed_pdb_file=None, redraw=False) :
     self.pdb_hierarchy = pdb_hierarchy
     self.atomic_bonds = atomic_bonds
     self.extract_atom_data()
     self.selection_cache = pdb_hierarchy.atom_selection_cache()
+    self.processed_pdb_file = processed_pdb_file
     self.set_draw_mode(self.draw_mode, redraw=False)
     self._structure_was_updated = True
     if redraw :
@@ -555,16 +558,30 @@ class selection_viewer_mixin (model_viewer_mixin) :
     self.apply_selection(self.selection_string)
 
   def apply_selection (self, selection_string) :
-    if self.selection_cache is None :
+    if self.selection_cache is None  :
       return
-    sel = self.selection_cache.selection
     try :
-      self.atoms_selected = sel(selection_string)
+      if self.processed_pdb_file is not None :
+        self.atoms_selected = self._mmtbx_pdb_selection(selection_string)
+      else :
+        self.atoms_selected = self._iotbx_pdb_selection(selection_string)
     except :
-      self.atoms_selected = sel("none")
+      self.atoms_selected = self.selection_cache.selection("none")
+      self.selection_i_seqs = self.atoms_selected.iselection()
       raise Sorry("The string '%s' is not a valid selection."%selection_string)
-    self.selection_i_seqs = self.atoms_selected.iselection()
-    self.update_view()
+    else :
+      self.selection_i_seqs = self.atoms_selected.iselection()
+      self.update_view()
+
+  # original pdb_hierarchy selection
+  def _iotbx_pdb_selection (self, selection_string) :
+    return self.selection_cache.selection(selection_string)
+
+  # monomer_library.pdb_interpretation "smart" selections
+  def _mmtbx_pdb_selection (self, selection_string) :
+    return self.processed_pdb_file.all_chain_proxies.selection(
+      string=selection_string,
+      cache=self.selection_cache)
 
   def get_selected_atom_count (self) :
     return self.selection_i_seqs.size()
@@ -806,7 +823,8 @@ def run (args) :
       "This is probably due to a missing CRYST1 record in the PDB file.")
   atomic_bonds = grm.shell_sym_tables[0].full_simple_connectivity()
   #a.frame.Show()
-  a.view_objects.update_structure(pdb_hierarchy, atomic_bonds, redraw=True)
+  a.view_objects.update_structure(pdb_hierarchy, atomic_bonds,
+    processed_pdb_file, redraw=True)
   a.frame.Show()
   #a.view_objects.OnUpdate()
   a.MainLoop()
