@@ -281,6 +281,12 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
     self.update_map_objects()
 
   def draw_rotation_center(self):
+    font = gltbx.fonts.ucs_bitmap_10x20
+    font.setup_call_lists()
+    glColor3f(0, 1.0, 0)
+    glRasterPos3f(*self.rotation_center)
+    font.render_string("+")
+    return
     glMatrixMode(GL_MODELVIEW)
     glPushMatrix()
     rc = self.rotation_center

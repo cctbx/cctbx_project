@@ -42,17 +42,23 @@ standard_file_descriptions = {
   'txt'  : "Text"
 }
 
-class any_file (object) :
-  def __init__ (
-      self,
-      file_name,
-      get_processed_file=False,
-      valid_types=["pdb","hkl","cif","pkl","seq","phil", "txt"]) :
+def any_file (file_name,
+              get_processed_file=False,
+              valid_types=["pdb","hkl","cif","pkl","seq","phil", "txt"],
+              allow_directories=False) :
+  if os.path.isdir(file_name) :
+    if not allow_directories :
+      raise Sorry("This application does not support folders as input.")
+    else :
+      return _dir_input(file_name)
+  elif not os.path.isfile(file_name) :
+    raise Sorry("%s is not a valid file.")
+  else :
+    return _any_file(file_name, get_processed_file, valid_types)
 
+class _any_file (object) :
+  def __init__ (self, file_name, get_processed_file, valid_types) :
     self.valid_types = valid_types
-    if not os.path.isfile(file_name) :
-      raise Sorry("%s is not a valid file.")
-
     self.file_name = file_name
     self.file_object = None
     self.file_type = None
@@ -158,5 +164,16 @@ class any_file (object) :
     else :
       return "%s%s" % (standard_file_descriptions[self.file_type],
         file_size_str)
+
+class _dir_input (object) :
+  def __init__ (self, dir_name) :
+    self.file_name = dir_name
+    self.file_object = dircache.listdir(dir_name)
+    self.file_server = None
+    self.file_type = "dir"
+    self.file_size = os.path.getsize(dir_name)
+
+  def file_info (self, show_file_size=False) :
+    return "Folder"
 
 #---end
