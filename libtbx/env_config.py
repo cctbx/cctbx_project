@@ -891,8 +891,6 @@ class environment:
     else:
       action = self.write_bin_sh_dispatcher
       ext = ""
-      try: os.chmod(source_file, 0755)
-      except OSError: pass
     target_file_ext = target_file + ext
     remove_or_rename(target_file_ext)
     try: action(source_file, target_file_ext)
