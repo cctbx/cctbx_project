@@ -160,7 +160,7 @@ namespace cctbx { namespace geometry_restraints {
     }
   };
 
-  //! Residual and gradient calculations for harmonically restraint bonds.
+  //! Residual and gradient calculations for harmonically restrained bonds.
   class bond : public bond_params
   {
     public:
