@@ -31,11 +31,11 @@ def exercise_bond_similarity():
   expected_deltas = \
     (-0.033333333333333, 0.066666666666666, -0.033333333333333)
   expected_rms_deltas = math.sqrt(
-    sum(delta * delta for delta in expected_deltas)
+    sum([delta * delta for delta in expected_deltas])
     /len(expected_deltas))
-  expected_residual = sum(weights[i] * expected_deltas[i]
+  expected_residual = sum([weights[i] * expected_deltas[i]
                           * expected_deltas[i]
-                          for i in range(3))
+                          for i in range(3)])
   expected_gradients = (
     ((0,0,0.055555555555), (0,0,-0.055555555555)),
     ((0,-0.088888888888,0), (0,0.088888888888,0)),
