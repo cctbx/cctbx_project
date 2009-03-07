@@ -26,7 +26,7 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("bond_similarity_proxy", no_init)
         .def(init<
-          af::shared<af::tiny<unsigned, 2> >,
+          af::shared<af::tiny<std::size_t, 2> >,
           af::shared<sgtbx::rt_mx>,
           af::shared<double> const&>((
             arg_("i_seqs"),
