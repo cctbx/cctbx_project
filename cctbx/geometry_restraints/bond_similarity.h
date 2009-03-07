@@ -11,7 +11,7 @@ namespace cctbx { namespace geometry_restraints {
   struct bond_similarity_proxy
   {
     //! Support for shared_proxy_select.
-    typedef af::shared<af::tiny<unsigned, 2> > i_seqs_type;
+    typedef af::shared<af::tiny<std::size_t, 2> > i_seqs_type;
 
     //! Default constructor. Some data members are not initialized!
     bond_similarity_proxy() {}
@@ -141,7 +141,7 @@ namespace cctbx { namespace geometry_restraints {
         af::ref<scitbx::vec3<double> > const& gradient_array,
         bond_similarity_proxy::i_seqs_type const& i_seqs) const
       {
-        af::const_ref<af::tiny<unsigned, 2> > i_seqs_ref
+        af::const_ref<af::tiny<std::size_t, 2> > i_seqs_ref
           = i_seqs.const_ref();
         af::shared<af::tiny<vec3, 2> > grads = gradients();
         af::const_ref<af::tiny<vec3, 2> > grads_ref = grads.const_ref();
