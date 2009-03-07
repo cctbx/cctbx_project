@@ -9,6 +9,8 @@ master_phil_str = """\
     .type = int
   time_step = 0.001
     .type = float
+  e_kin_max = 1.e6
+    .type = float
   minimization_max_iterations = 10
     .type = int
 """
@@ -85,12 +87,19 @@ def run(fmodels, model, target_weights, params, log):
       masses=xs.atomic_weights(),
       cluster_manager=tt.cluster_manager))
   del sites
-  def show_rms(minimizer=None):
-    print >> log, "rms:", xs.sites_cart().rms_difference(sites_cart_start)
+  def show_rms(minimizer=None, e_kin_after_step=None, e_kin_capped=None):
+    print >> log, "rms:", xs.sites_cart().rms_difference(sites_cart_start),
+    if (e_kin_after_step is not None):
+      print >> log, "e_kin_after_step:", e_kin_after_step,
+    if (e_kin_capped is not None and e_kin_capped != e_kin_after_step):
+      print >> log, "e_kin_capped:", e_kin_capped,
+    print >> log
   for i_time_step in xrange(params.number_of_time_steps):
     print >> log, "tardy time step:", i_time_step
     sim.dynamics_step(delta_t=params.time_step)
-    show_rms()
+    e_kin_after_step = sim.e_kin
+    sim.reset_qd(e_kin_max=params.e_kin_max)
+    show_rms(e_kin_after_step=e_kin_after_step, e_kin_capped=sim.e_kin)
   if (params.minimization_max_iterations > 0):
     sim.minimization(
       max_iterations=params.minimization_max_iterations,

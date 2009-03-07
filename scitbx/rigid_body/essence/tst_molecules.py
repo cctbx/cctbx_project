@@ -132,6 +132,15 @@ class simulation(object):
       B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
     O.energies_and_accelerations_update()
 
+  def reset_qd(O, e_kin_max): # XXX quick and crude
+    assert e_kin_max > 0
+    if (O.e_kin < e_kin_max): return None
+    f = e_kin_max / O.e_kin
+    for B,qdd in zip(O.bodies, O.qdd):
+      B.qd *= f
+    O.energies_and_accelerations_update()
+    return f
+
   def d_pot_d_q(O):
     return featherstone.system_model(bodies=O.bodies).d_pot_d_q(
       f_ext=O.f_ext_bf)
@@ -272,15 +281,19 @@ def construct_bodies(sites, masses, cluster_manager):
 
 def exercise_sim(out, n_dynamics_steps, delta_t, sim):
   sim.check_d_pot_d_q()
+  n_reset_qd = 0
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
   for i_step in xrange(n_dynamics_steps):
     sim.dynamics_step(delta_t=delta_t)
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin)
+    if (sim.reset_qd(e_kin_max=1.e6)):
+      n_reset_qd += 1
   e_tots = e_pots + e_kins
   sim.check_d_pot_d_q()
   print >> out, "energy samples:", e_tots.size()
+  print >> out, "n_reset_qd:", n_reset_qd
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
   print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
   print >> out, "e_tot min, max:", min(e_tots), max(e_tots)
