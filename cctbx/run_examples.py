@@ -10,6 +10,7 @@ def run():
   "$D/examples/space_subgroups.py",
   "$D/examples/trigonal_r_vs_tetragonal_i.py",
   "$D/examples/quartz_structure.py",
+  "$D/examples/find_distances_using_cpp_objects.py",
   "$D/examples/analyze_adp.py",
   "$D/examples/g_exp_i_partial_derivatives.py",
   "$D/examples/tst_exp_i_alpha_derivatives.py",
