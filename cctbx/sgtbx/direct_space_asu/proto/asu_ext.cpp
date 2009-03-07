@@ -40,7 +40,7 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
           arg_("x"),arg_("y"),arg_("z"),
           arg_("c"),
           arg_("inclusive") )))
-      .def_readonly("n", &w_t::n)
+      .add_property("n", make_getter(&w_t::n, rbv()))
       .def_readonly("c", &w_t::c)
       .def_readonly("inclusive", &w_t::inclusive)
       .def("__pos__", &w_t::operator+)
