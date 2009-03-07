@@ -40,6 +40,7 @@ cctbx/command_line/version.py -text
 cctbx/crystal_orientation.h -text
 cctbx/crystal_orientation.py -text
 cctbx/eltbx/xray_scattering/form_factor.h -text
+cctbx/examples/find_distances_using_cpp_objects.py svneol=native#text/x-python
 cctbx/examples/maximum_subgroups.py -text
 cctbx/examples/miller_transform.py -text
 cctbx/examples/quartz_structure.py svneol=native#text/x-python
