@@ -3,6 +3,7 @@ import libtbx.load_env
 
 def run():
   tst_list = (
+  "$D/metric_prefixes.py",
   "$D/test_utils.py",
   "$D/utils.py",
   "$D/pbs_utils.py",
