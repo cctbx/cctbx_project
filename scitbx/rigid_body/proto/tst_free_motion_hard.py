@@ -161,6 +161,7 @@ class six_dof_simulation(simulation_mixin):
     #
     O.energies_and_accelerations_update()
 
+plot_prefix = 0
 plot_number = [0]
 
 def run_simulation(
@@ -208,14 +209,14 @@ def run_simulation(
       .replace("(", "_") \
       .replace(")", "_") \
       .replace(",", "_")
-    f = open("tmp%02d_%s.xy" % (plot_number[0], l), "w")
+    f = open("tmp_%02d_%02d_%s.xy" % (plot_prefix, plot_number[0], l), "w")
     for es in [e_pots, e_kins, e_tots]:
       for e in es:
         print >> f, e
       print >> f, "&"
     f.close()
     plot_number[0] += 1
-  return sim, sim_label, sites_moved, relative_range
+  return sim, sim_label, sites_moved, e_tots, relative_range
 
 def run_simulations(
       out,
@@ -225,11 +226,12 @@ def run_simulations(
   mt_state = mersenne_twister.getstate()
   sim_labels = []
   sites_moved_accu = []
+  e_tots_list = []
   relative_ranges = []
   for r_is_qr in [True, False]:
     for six_dof_type in ["euler_params", "euler_angles_xyz"]:
       mersenne_twister.setstate(mt_state)
-      sim, sim_label, sites_moved, relative_range = run_simulation(
+      sim, sim_label, sites_moved, e_tots, relative_range = run_simulation(
         out=out,
         six_dof_type=six_dof_type,
         r_is_qr=r_is_qr,
@@ -237,6 +239,7 @@ def run_simulations(
         n_dynamics_steps=n_dynamics_steps,
         delta_t=delta_t)
       sim_labels.append(sim_label)
+      e_tots_list.append(e_tots)
       sites_moved_accu.append(sites_moved)
       relative_ranges.append(relative_range)
   rms_max_list = flex.double()
@@ -251,15 +254,17 @@ def run_simulations(
     rms_max_list.append(flex.max(rms))
     print >> out
   out.flush()
-  return sim_labels, relative_ranges, rms_max_list
+  return sim_labels, e_tots_list, relative_ranges, rms_max_list
 
-def exercise_simulation(out, n_trials, n_dynamics_steps, delta_t=0.001):
-  mersenne_twister = flex.mersenne_twister(seed=0)
+def exercise_simulation(
+      out, n_trials, n_dynamics_steps, delta_t=0.0001, random_seed=0):
+  mersenne_twister = flex.mersenne_twister(seed=random_seed)
   sim_labels = None
   relative_ranges_accu = None
   rms_max_list_accu = None
-  for i in xrange(n_trials):
-    sim_labels_new, relative_ranges, rms_max_list = run_simulations(
+  for i_trial in xrange(n_trials):
+    sim_labels_new, e_tots_list, \
+    relative_ranges, rms_max_list = run_simulations(
       out=out,
       mersenne_twister=mersenne_twister,
       n_dynamics_steps=n_dynamics_steps,
@@ -280,6 +285,17 @@ def exercise_simulation(out, n_trials, n_dynamics_steps, delta_t=0.001):
       assert len(rms_max_list) == len(rms_max_list_accu)
     for r,a in zip(rms_max_list, rms_max_list_accu):
       a.append(r)
+    if (out is sys.stdout):
+      f = open("tmp_e_tots_%02d_%02d.xy" % (plot_prefix, i_trial), "w")
+      print >> f, "@with g0"
+      for i,l in enumerate(sim_labels):
+        l = l[l.find('"')+1:].replace('"','')[:-1]
+        print >> f, '@ s%d legend "%s"' % (i, l)
+      for es in e_tots_list:
+        for e in es:
+          print >> f, e
+        print >> f, "&"
+      f.close()
   print >> out, "Accumulated results:"
   print >> out
   for sim_label,accu in zip(sim_labels, relative_ranges_accu):
@@ -298,22 +314,27 @@ def exercise_simulation(out, n_trials, n_dynamics_steps, delta_t=0.001):
       assert flex.max(accu) < 1.e-4
 
 def run(args):
-  assert len(args) in [0,2]
+  assert len(args) in [0,3]
   if (len(args) == 0):
     n_trials = 3
     n_dynamics_steps = 30
+    random_seed = 0
     out = null_out()
   else:
     n_trials = max(1, int(args[0]))
     n_dynamics_steps = max(1, int(args[1]))
+    random_seed = int(args[2])
     out = sys.stdout
   show_times_at_exit()
   mersenne_twister = flex.mersenne_twister(seed=0)
   exercise_euler_params_qE_as_euler_angles_xyz_qE(
     mersenne_twister=mersenne_twister)
   exercise_T_as_X(mersenne_twister=mersenne_twister)
+  global plot_prefix
+  plot_prefix = random_seed
   exercise_simulation(
-    out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
+    out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps,
+    random_seed=random_seed)
   print "OK"
 
 if (__name__ == "__main__"):
