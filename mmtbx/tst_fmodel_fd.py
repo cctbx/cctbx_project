@@ -122,12 +122,6 @@ def exercise(space_group_info,
             xray_structure=xrs,
             update_f_calc=True,
             update_f_mask=True)
-          if ((0 or verbose) and fmodel.target_name != "ml_sad"):
-            fmodel.info().show_rfactors_targets_scales_overall()
-            print  f_obs.data().size()
-          if ((0 or verbose) and fmodel.target_name != "ml_sad"):
-            fmodel.show_comprehensive()
-            print  f_obs.data().size()
           xray.set_scatterer_grad_flags(
             scatterers=fmodel.xray_structure.scatterers(),
             site=True)
@@ -145,10 +139,7 @@ def exercise(space_group_info,
             print
           diff = gs - gfd
           diff /= max(1, flex.max(flex.abs(gfd)))
-          if (target == "ml_sad"):
-            tolerance = 1.e-4
-          else:
-            tolerance = 1.e-5
+          tolerance = 1.e-5
           assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
           assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
           assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
