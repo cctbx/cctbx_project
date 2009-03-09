@@ -11,6 +11,34 @@ from libtbx.utils import null_out
 import math
 import sys
 
+def finite_difference_gradients(restraint_type, sites_cart, proxy, unit_cell=None, eps=1.e-8):
+  def residual(restraint_type, sites_cart, proxy, unit_cell):
+    if unit_cell is None:
+      return restraint_type(
+        sites_cart=sites_cart,
+        proxy=proxy).residual()
+    else:
+      return restraint_type(
+        unit_cell=unit_cell,
+        sites_cart=sites_cart,
+        proxy=proxy).residual()
+  result = []
+  for i in xrange(len(sites_cart)):
+    result_i = []
+    for j in xrange(3):
+      h = [0,0,0]
+      h[j] = eps
+      h = matrix.col(h)
+      sites_cart[i]=matrix.col(sites_cart[i]) + h
+      qp = residual(restraint_type,sites_cart,proxy,unit_cell)
+      sites_cart[i]=matrix.col(sites_cart[i]) - 2*h
+      qm = residual(restraint_type,sites_cart,proxy,unit_cell)
+      dq = (qp-qm)/2
+      length_h = math.sqrt(h.norm_sq())
+      result_i.append(dq/(length_h))
+    result.append(result_i)
+  return result
+
 def exercise_bond_similarity():
   unit_mx = sgtbx.rt_mx()
   i_seqs=((0,2),
@@ -35,10 +63,11 @@ def exercise_bond_similarity():
     /len(expected_deltas))
   expected_residual = sum([weights[i] * expected_deltas[i]
                           * expected_deltas[i]
-                          for i in range(3)])
+                          for i in range(3)])\
+                    / sum([w for w in weights])
   expected_gradients = (
-    ((0,0,0.055555555555), (0,0,-0.055555555555)),
-    ((0,-0.088888888888,0), (0,0.088888888888,0)),
+    ((0,0,0.011111111111), (0,0,-0.011111111111)),
+    ((0,-0.044444444444,0), (0,0.044444444444,0)),
     ((0.033333333333,0,0), (-0.033333333333,0,0)))
   sites_array=[
     ((1,2,3),(1,2,4.5)),((2,4,6),(2,5.6,6)),((14,24,29),(15.5,24,29))]
@@ -90,15 +119,13 @@ def exercise_bond_similarity():
     proxies=proxies,
     gradient_array=gradient_array)
   assert eps_eq(residual_sum, 2*expected_residual)
-  expected_gradients = (
-    (0,0,0.1111111111111111),
-    (0,-0.1777777777777777,0),
-    (0,0,-0.1111111111111111),
-    (0, 0.1777777777777777,0),
-    (0.0666666666666666,0,0),
-    (-0.0666666666666666,0,0))
-  for g,e in zip(gradient_array, expected_gradients):
-    assert eps_eq(g, matrix.col(e))
+  fd_grads = finite_difference_gradients(
+    restraint_type=geometry_restraints.bond_similarity,
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=p)
+  for g,e in zip(gradient_array, fd_grads):
+    assert approx_equal(g, matrix.col(e)*2)
 
 def exercise_bond():
   p = geometry_restraints.bond_params(
