@@ -97,7 +97,7 @@ namespace cctbx { namespace geometry_restraints {
         return std::sqrt(af::mean_sq(deltas_.const_ref()));
       }
 
-      //! weight * delta**2 over all pairs.
+      //! sum(weight_i * delta_i**2) / sum(weights).
       double
       residual() const
       {
@@ -106,7 +106,8 @@ namespace cctbx { namespace geometry_restraints {
         af::const_ref<double> deltas_ref = deltas_.const_ref();
         for(std::size_t i_site=0;i_site<deltas_ref.size();i_site++) {
           result += weights_ref[i_site]
-                  * scitbx::fn::pow2(deltas_ref[i_site]);
+                  * scitbx::fn::pow2(deltas_ref[i_site])
+                  / sum_weights_;
         }
         return result;
       }
@@ -123,9 +124,9 @@ namespace cctbx { namespace geometry_restraints {
           = bond_distances_.const_ref();
         result.reserve(deltas_ref.size());
         for(std::size_t i_pair=0;i_pair<deltas_ref.size();i_pair++) {
-          vec3 grad_0 = (2 * deltas_ref[i_pair]/distances_ref[i_pair])
-            * (1 - weights_ref[i_pair]/sum_weights_)
-            * (sites_array[i_pair][0] - sites_array[i_pair][1]);
+          vec3 grad_0 = (2 * weights_ref[i_pair] * deltas_ref[i_pair])
+                      / (distances_ref[i_pair] * sum_weights_)
+                      * (sites_array[i_pair][0] - sites_array[i_pair][1]);
           pair_grads[0] = grad_0;
           pair_grads[1] = -grad_0;
           result.push_back(pair_grads);
