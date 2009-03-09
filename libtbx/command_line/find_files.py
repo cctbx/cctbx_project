@@ -6,6 +6,11 @@ from fnmatch import fnmatch
 import re
 import sys, os
 
+def read_lines_if_possible(file_path):
+  try: f = open(file_path, "r")
+  except IOError: return []
+  return f.read().splitlines()
+
 def run(args, command_name="libtbx.find_files"):
   if (len(args) == 0): args = ["--help"]
   command_line = (option_parser(
@@ -60,7 +65,7 @@ def run(args, command_name="libtbx.find_files"):
             print fp
           else:
             is_binary_file = co.file_names_only
-            for line in open(file_path, "r").read().splitlines():
+            for line in read_lines_if_possible(file_path=file_path):
               if (not is_binary_file):
                 is_binary_file = "\0" in line
               def line_matches_all_grep_patterns():
