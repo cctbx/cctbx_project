@@ -109,23 +109,11 @@ namespace mmtbx {
         // mask_asu();
       }
 
-      //! Clears current if any, and calculates new mask based on atomic data.
+      //! Clears current, and calculates new mask based on atomic data.
       void compute(
         const coord_array_t & sites_frac,
         const double_array_t & atom_radii
       );
-
-      void compute_contact_surface( size_t n_solvent);
-
-      size_t compute_accessible_surface(
-        const coord_array_t & sites_frac,
-        const double_array_t & atom_radii);
-
-      void mask_asu();
-
-      void atoms_to_asu(
-        const coord_array_t & sites_frac,
-        const double_array_t & atom_radii);
 
       const mask_array_t & get_mask() const { return data; }
 
@@ -133,21 +121,34 @@ namespace mmtbx {
       scitbx::af::shared< std::complex<double> > structure_factors(
           const scitbx::af::const_ref< cctbx::miller::index<> > &indices ) const;
 
-      void determine_gridding(cctbx::sg_vec3 &grid, double resolution, double factor = 4.0) const;
-
       mask_array_t data;
       const double solvent_radius;
       const double shrink_truncation_radius;
+
+      //! Solvent volume, if atom radius = vdw_radius + solvent_radius
       double accessible_surface_fraction;
+      
+      //! Solvent volume
       double contact_surface_fraction;
 
+      // execution time in millisecs, DO NOT USE
+      long debug_mask_asu_time, debug_atoms_to_asu_time,
+           debug_accessible_time, debug_contact_time;
+
     private:
+      void compute_contact_surface();
+      void compute_accessible_surface(
+        const coord_array_t & sites_frac,
+        const double_array_t & atom_radii);
+      void mask_asu();
+      void atoms_to_asu(
+        const coord_array_t & sites_frac,
+        const double_array_t & atom_radii);
+      void determine_gridding(cctbx::sg_vec3 &grid, double resolution, double factor = 4.0) const;
 
-
-      const direct_space_asu asu;
-      const cctbx::uctbx::unit_cell cell;
-      const cctbx::sgtbx::space_group group;
-
+      const direct_space_asu asu; // should be some kind of safe reference
+      const cctbx::uctbx::unit_cell cell; // should be some kind of safe reference
+      const cctbx::sgtbx::space_group group; // should be some kind of safe reference
 
       static const bool explicit_distance = false;
       static const bool debug = false;

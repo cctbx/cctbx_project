@@ -106,6 +106,11 @@ namespace {
                &w_t::contact_surface_fraction)
       .def_readonly("accessible_surface_fraction",
                &w_t::accessible_surface_fraction)
+      // DO NOTE USE, these are temporarily here
+      .def_readonly("debug_mask_asu_time", &w_t::debug_mask_asu_time)
+      .def_readonly("debug_atoms_to_asu_time", &w_t::debug_atoms_to_asu_time)
+      .def_readonly("debug_accessible_time", &w_t::debug_accessible_time)
+      .def_readonly("debug_contact_time", &w_t::debug_contact_time)
      ;
   }
 
