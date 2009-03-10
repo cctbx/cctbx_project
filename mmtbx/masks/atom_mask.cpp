@@ -1,5 +1,6 @@
 #include <numeric>
 #include <algorithm>
+#include <sstream>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 
@@ -46,17 +47,6 @@ namespace mmtbx { namespace masks {
           scitbx::math::float_int_conversions<double, int>::ifloor(v[1]),
           scitbx::math::float_int_conversions<double, int>::ifloor(v[2])
           );
-    }
-
-    inline double approx_surface_fraction_under_symmetry(
-      std::size_t n,
-      std::size_t n_solvent,
-      std::size_t space_group_order_z)
-    {
-      std::size_t n_non_solvent = (n - n_solvent)
-                                * space_group_order_z;
-      if (n_non_solvent >= n) return 0.0;
-      return static_cast<double>(n - n_non_solvent) / n;
     }
 
   }
@@ -143,10 +133,18 @@ namespace mmtbx { namespace masks {
     const scitbx::vec3<int> n(n_[0], n_[1], n_[2]);
     cctbx::sgtbx::asu::rvector3_t mn, mx;
     MMTBX_ASSERT( n[0]>0 && n[1]>0 && n[2] >0 );
-    // below is to make sure that is_inside integer
+    // below is to make sure that direct_space_asu::is_inside integer
     // arithmetics will not overflow
-    MMTBX_ASSERT( static_cast<double>(n[0])*static_cast<double>(n[1])*n[2]
-      < static_cast<double>(std::numeric_limits<int>::max())/(4*8) );
+    if( static_cast<double>(n[0])*static_cast<double>(n[1])*n[2]
+      >= static_cast<double>(std::numeric_limits<long>::max())/(4*8) )
+    {
+      std::stringstream str;
+      str << "the mask grid size: " << n[0] << " * " << n[1] << " * " << n[2]
+        << " = " << long(n[0])*long(n[1])*long(n[2]) << " is too big\n"
+        << " maximum allowed size is " << std::numeric_limits<long>::max() / (4*8)
+        << " 64 bit OS and software might be required for such a big mask.";
+      throw mmtbx::error(str.str());
+    }
     // prepare grid adapted integer symmetry operators
     std::vector<cctbx::sgtbx::grid_symop> symops;
     for(size_t i=0; i<order; ++i)
@@ -241,67 +239,47 @@ namespace mmtbx { namespace masks {
     const coord_array_t & sites_frac,
     const double_array_t & atom_radii)
   {
-    //
     boost::posix_time::ptime tb = boost::posix_time::microsec_clock::local_time(), te;
     boost::posix_time::time_duration tdif;
     af::const_ref<data_type, grid_t > data_cref = data.const_ref();
     af::ref<data_type, grid_t > data_ref = data.ref();
     std::fill(data_ref.begin(), data_ref.end(), 0);
-    this->atoms_to_asu(sites_frac, atom_radii); // now this one is the slowest
+    this->atoms_to_asu(sites_frac, atom_radii);
     te = boost::posix_time::microsec_clock::local_time();
     tdif = te - tb;
-    long ltdif = tdif.total_milliseconds();
-    // std::cout << "\n!!! ::atoms_to_asu time = " << ltdif << "    N sym atoms= " << asu_atoms.size() << std::endl;
-    this->mask_asu(); // this is the slowest part of this routine
-    // looks like due to is_inside, not site_symmetry_order
-    te = boost::posix_time::microsec_clock::local_time();
-    tdif = te - tb;
-    ltdif = tdif.total_milliseconds();
-    // std::cout << "\n!!! ::mask_asu time = " << ltdif << std::endl;
-    size_t n1 = this->get_mask().size() - std::count( this->get_mask().begin(), this->get_mask().end(), 0 );
-    MMTBX_ASSERT( n1>0 );
+    debug_atoms_to_asu_time = tdif.total_milliseconds();
+    tb = boost::posix_time::microsec_clock::local_time();
+    this->mask_asu(); // this is the slowest part of this routine, for not optimized asus
     size_t nn = 0;
     for(af::const_ref<data_type, grid_t >::const_iterator msk_it=data_cref.begin(); msk_it!=data_cref.end(); ++msk_it)
     {
-      if( *msk_it > -mark && *msk_it < mark )
+      if( *msk_it != -mark && *msk_it != mark )
         nn += static_cast<size_t>( *msk_it );
     }
     MMTBX_ASSERT( nn > 0 );
-    MMTBX_ASSERT( nn == this->get_mask().size() ); // volume(asu)*group_order == volume(cell)
-    //tb = boost::posix_time::microsec_clock::local_time();
-    size_t n_solvent = this->compute_accessible_surface(asu_atoms, asu_radii);
-    te = boost::posix_time::microsec_clock::local_time();
-    tdif = te - tb;
-    ltdif = tdif.total_milliseconds();
-    // std::cout << "\n!!! ::accessible_surface time = " << ltdif << std::endl;
-    //
-    size_t tmp=0;
-    tmp = std::count( get_mask().begin(), get_mask().end(), 0);
-    tmp = std::count_if( get_mask().begin(), get_mask().end(), std::bind2nd(std::less<data_type>(),0) );
-    size_t nn_solv = 0;
-    nn_solv = std::accumulate( this->get_mask().begin(), this->get_mask().end(), nn_solv );
-    //tb = boost::posix_time::microsec_clock::local_time();
-    this->compute_contact_surface(n_solvent);
-    te = boost::posix_time::microsec_clock::local_time();
-    tdif = te - tb;
-    ltdif = tdif.total_milliseconds();
-    // std::cout << "\n!!! ::contact_surface time = " << ltdif << std::endl;
-    // clear points within shrink_truncation_radius around asu
-    for(af::ref<data_type, grid_t >::iterator msk_it=data_ref.begin(); msk_it!=data_ref.end(); ++msk_it)
+    // currently data is not padded, so data.size is correct here
+    if( nn != this->get_mask().size() ) // volume(asu)*group_order == volume(cell)
     {
-      if( *msk_it >= mark || *msk_it <= -mark )
-        *msk_it = 0;
+      std::stringstream str;
+      grid_t gr = this->get_mask().accessor();
+      scitbx::int3 grid(gr[0], gr[1], gr[2]);
+      str << "The mask grid size: " << grid << " is maybe incompatible with\n"
+        "the space group symmetry";
+      throw mmtbx::error( str.str() );
     }
-    nn_solv = 0U;
-    nn_solv = std::accumulate( this->get_mask().begin(), this->get_mask().end(), nn_solv );
-    contact_surface_fraction = accessible_surface_fraction = double(nn_solv)/nn;
-    tmp = std::count( get_mask().begin(), get_mask().end(), 0);
-    tmp = std::count_if( get_mask().begin(), get_mask().end(), std::bind2nd(std::less<data_type>(),0) );
-    MMTBX_ASSERT( tmp==0 );
     te = boost::posix_time::microsec_clock::local_time();
     tdif = te - tb;
-    ltdif = tdif.total_milliseconds();
-    // std::cout << "\n!!! ::compute time = " << ltdif << std::endl;
+    debug_mask_asu_time = tdif.total_milliseconds();
+    tb = boost::posix_time::microsec_clock::local_time();
+    this->compute_accessible_surface(asu_atoms, asu_radii);
+    te = boost::posix_time::microsec_clock::local_time();
+    tdif = te - tb;
+    debug_accessible_time = tdif.total_milliseconds();
+    tb = boost::posix_time::microsec_clock::local_time();
+    this->compute_contact_surface();
+    te = boost::posix_time::microsec_clock::local_time();
+    tdif = te - tb;
+    debug_contact_time = tdif.total_milliseconds();
   }
 
 
@@ -333,19 +311,22 @@ namespace mmtbx { namespace masks {
     const signed char n_corners = 2;
     rvector3_t asu_box_r[n_corners];
     this->asu.box_corners(asu_box_r[0], asu_box_r[1]);
-    const scitbx::double3 asu_box[n_corners] = { conv_(asu_box_r[0]), conv_(asu_box_r[1])};
+    scitbx::double3 asu_box[n_corners] = { conv_(asu_box_r[0]), conv_(asu_box_r[1])};
     CCTBX_ASSERT( scitbx::ge_all(asu_box[1], asu_box[0]) );
+
+    // expand asu by shrink_truncation_radius
+    scitbx::double3 shrink_box = rp * (shrink_truncation_radius*1.05);
+    asu_box[0] -= shrink_box;
+    asu_box[1] += shrink_box;
 
     for(size_t iat=0; iat<sites_frac.size(); ++iat)
     {
       const scitbx::double3 at = sites_frac[iat];
       const double at_r =  atom_radii[iat];
-      // add atoms within shrink_truncation_radius as well
-      const double radius = at_r + solvent_radius + shrink_truncation_radius*3.0; // 3.0 is good
+      const double radius = at_r + solvent_radius;
 
       MMTBX_ASSERT( radius >= 0.0 );
-      scitbx::double3 box = rp * radius;
-      box *= 1.05;
+      scitbx::double3 box = rp * (radius*1.05);
 
       for(register size_t isym=0; isym<order; ++isym)
       {
@@ -391,8 +372,8 @@ namespace mmtbx { namespace masks {
     scitbx::fftpack::real_to_complex_3d<double> fft(grid);
 
     // m_real : physical dims, n_real - focus dims
-    // assert( n_real <= m_real )
-    const cctbx::sg_vec3 mdim = fft.m_real(), ndim = fft.n_real();
+    const scitbx::int3 mdim = fft.m_real(), ndim = fft.n_real();
+    MMTBX_ASSERT( scitbx::le_all( ndim, mdim ) );
     const padded_grid_t pad( mdim, ndim );
     versa_3d_padded_real_array padded_real(pad, 0.0);
     MMTBX_ASSERT( padded_real.size() >= msk.size() );
@@ -406,7 +387,7 @@ namespace mmtbx { namespace masks {
     const padded_grid_t pad_complex( fft.n_complex(), fft.n_complex() );
     versa_3d_padded_complex_array result(padded_real.handle(), pad_complex );
 
-    double scale = cell.volume() / ( ndim.product() * group.order_z() ) ;
+    const double scale = cell.volume() / ( ndim.product() * group.order_z() ) ;
     // result *= scale;
     for(size_t i=0; i<result.size(); ++i)
       result[i] *= scale;
@@ -417,6 +398,7 @@ namespace mmtbx { namespace masks {
       indices,
       result.const_ref(),
       true); // conjugate_flag
+    // may be it is faster to apply scale to the_from_map.data() ?
     return the_from_map.data();
   }
 
@@ -439,17 +421,15 @@ namespace mmtbx { namespace masks {
   }
 
 
-  size_t atom_mask::compute_accessible_surface(
+  void atom_mask::compute_accessible_surface(
     const coord_array_t & sites_frac,
     const double_array_t & atom_radii)
   {
     MMTBX_ASSERT( sites_frac.size() == atom_radii.size() );
     cctbx::uctbx::unit_cell const& unit_cell = this->cell;
-    const size_t space_group_order_z = this->group.order_z();
 
     // Severe code duplication: cctbx/maptbx/average_densities.h
     af::ref<data_type, af::c_grid<3> > data_ref = data.ref();
-    std::size_t n_solvent = data_ref.size();
     int nx = static_cast<int>(data_ref.accessor()[0]);
     int ny = static_cast<int>(data_ref.accessor()[1]);
     int nz = static_cast<int>(data_ref.accessor()[2]);
@@ -561,10 +541,10 @@ namespace mmtbx { namespace masks {
               }
             }
 
-            if (dist_c < cutoffsq) {
+            if( dist_c < cutoffsq ) {
               data_type& dr = data_mxnymynz[*mzi];
-              if (dr > 0 ) n_solvent--;
-              if (dist_c < radsq) dr =  0;
+              if (dist_c < radsq)
+                dr =  0;
               else if(dr>0)
               {
                 dr = -dr;
@@ -584,9 +564,7 @@ namespace mmtbx { namespace masks {
         s1xz += w3;
       }
     }
-    accessible_surface_fraction = approx_surface_fraction_under_symmetry(
-      data_ref.size(), n_solvent, space_group_order_z);
-    return n_solvent;
+    return;
   }
 
 
@@ -637,42 +615,31 @@ namespace mmtbx { namespace masks {
     dim0 table;
   };
 
-  scitbx::int3 closest_grid_point(const rvector3_t &pos, const scitbx::int3 &grid_size)
-  {
-    rvector3_t tmp(pos);
-    scitbx::mul(tmp, grid_size);
-    scitbx::int3 result = iround( tmp );
-    return result;
-  }
-
-  inline scitbx::int3 closest_grid_point(const scitbx::double3 &pos, const scitbx::int3 &grid_size)
-  {
-    scitbx::double3 tmp(pos);
-    scitbx::mul(tmp, grid_size);
-    return scitbx::vec3_cast<int,double>( scitbx::round( tmp ) );
-  }
-
 
   typedef af::const_ref< cctbx::sgtbx::rt_mx > symop_array;
 
-  void atom_mask::compute_contact_surface( std::size_t n_solvent)
+  void atom_mask::compute_contact_surface()
   {
     typedef double f_t;
-    typedef data_type data_type;
     cctbx::uctbx::unit_cell const& unit_cell = this->cell;
-    const std::size_t space_group_order_z = this->group.order_z();
     // const symop_array sym_ops = group.all_ops().const_ref();
     const af::shared< cctbx::sgtbx::rt_mx > sym_ops_ = group.all_ops();
     const symop_array sym_ops = sym_ops_.const_ref();
     MMTBX_ASSERT( sym_ops.size() == group.order_z() );
 
+    register size_t nsolv = 0;
     af::ref<data_type, af::c_grid<3> > data_ref = data.ref();
     std::size_t data_size = data_ref.size();
     if (shrink_truncation_radius == 0) {
-      for(std::size_t ilxyz=0;ilxyz<data_size;ilxyz++) {
-        if (data_ref[ilxyz] < 0 ) data_ref[ilxyz] = 0;
+      for(std::size_t ilxyz=0;ilxyz<data_size;ilxyz++)
+      {
+        data_type &d = data_ref[ilxyz];
+        if( d < 0 || d == mark )
+          d = 0;
+        nsolv += d;
       }
-      contact_surface_fraction = accessible_surface_fraction;
+      // currently data is not padded, so data.size is correct here
+      contact_surface_fraction = accessible_surface_fraction = static_cast<double>(nsolv) / this->get_mask().size();
       return;
     }
     int nx = static_cast<int>(data_ref.accessor()[0]);
@@ -687,8 +654,15 @@ namespace mmtbx { namespace masks {
       data_ref.accessor(),
       shrink_truncation_radius);
     const data_type* datacopy_ptr = datacopy.begin();
+    size_t n_access=0;
     for(std::size_t ilxyz=0;ilxyz<data_size;ilxyz++,datacopy_ptr++) {
-      if (*datacopy_ptr < 0 ) {
+      data_type d_copy = *datacopy_ptr;
+      if( d_copy == mark || d_copy == -mark )
+        data_ref[ilxyz] = 0;
+      else if( d_copy >0 )
+        n_access += static_cast<size_t>( d_copy );
+      else if( d_copy < 0 )
+      {
         int ly = static_cast<int>(ilxyz / nz);
         int lz = static_cast<int>(ilxyz - ly * nz);
         int lx = ly / ny;
@@ -724,7 +698,6 @@ namespace mmtbx { namespace masks {
               {
                 data_ref[ilxyz] = -data_ref[ilxyz]; // 1;
                 MMTBX_ASSERT( data_ref[ilxyz] > 0 );
-                n_solvent++;
                 goto end_of_neighbors_loop;
               }
             }
@@ -733,9 +706,11 @@ namespace mmtbx { namespace masks {
         data_ref[ilxyz] = 0;
         end_of_neighbors_loop:;
       }
+      nsolv += data_ref[ilxyz];
     }
-    contact_surface_fraction = approx_surface_fraction_under_symmetry(
-      data_ref.size(), n_solvent, space_group_order_z);
+    // currently data is not padded 3-D array, data.size is correct here
+    contact_surface_fraction =  static_cast<double>(nsolv)/this->get_mask().size();
+    accessible_surface_fraction = static_cast<double>(n_access)/this->get_mask().size();
   }
 
 }} // namespace mmtbx::masks
