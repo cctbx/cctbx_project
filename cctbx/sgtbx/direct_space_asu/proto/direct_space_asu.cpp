@@ -125,8 +125,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
       const scitbx::int3 one_(1,1,1);
       mn = scitbx::ceil(rmn) + one_;
       mx = scitbx::floor(rmx) - one_;
-      SCITBX_ASSERT( scitbx::le_all(mn,mx) );
-      return true;
+      if( scitbx::le_all(mn,mx) )
+        return true;
     }
     return false;
   }
