@@ -2,12 +2,34 @@
 #define CCTBX_GEOMETRY_RESTRAINTS_UTILS_H
 
 #include <cctbx/uctbx.h>
+#include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/error.h>
 #include <cctbx/import_scitbx_af.h>
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/shared.h>
 
 namespace cctbx { namespace geometry_restraints {
+
+  /*! \brief Rotation part of rt_mx.inverse() in the cartesian system.
+   */
+  /*! Useful for mapping gradients in cartesian space
+      from the asymmetric unit to the original sites.
+
+      Inefficient implementation, the rotation matrices are NOT cached.
+   */
+  inline
+  scitbx::mat3<double>
+  r_inv_cart(
+    uctbx::unit_cell const& unit_cell,
+    sgtbx::rt_mx const& rt_mx)
+  {
+    typedef scitbx::type_holder<double> t_h;
+    scitbx::mat3<double> o(unit_cell.orthogonalization_matrix());
+    scitbx::mat3<double> f(unit_cell.fractionalization_matrix());
+    scitbx::mat3<double> r_inv_cart_
+      = o*rt_mx.r().inverse().as_floating_point(t_h())*f;
+    return r_inv_cart_;
+  }
 
   /*! \brief Difference between angle_1 and angle_2 (in degrees) taking the
       periodicity into account.
@@ -135,7 +157,7 @@ namespace cctbx { namespace geometry_restraints {
           RestraintType restraint(unit_cell, sites_cart, proxy);
           result += restraint.residual();
           if (gradient_array.size() != 0) {
-            restraint.add_gradients(gradient_array, proxy.i_seqs);
+            restraint.add_gradients(unit_cell, gradient_array, proxy);
           }
         }
         return result;

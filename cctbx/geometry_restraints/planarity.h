@@ -271,6 +271,32 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
+      //! Support for planarity_residual_sum.
+      /*! Not available in Python.
+
+          Inefficient implementation, r_inv_cart is not cached.
+          TODO: use asu_mappings to take advantage of caching of r_inv_cart.
+       */
+      void
+      add_gradients(
+        uctbx::unit_cell const& unit_cell,
+        af::ref<scitbx::vec3<double> > const& gradient_array,
+        planarity_sym_proxy const& proxy) const
+      {
+        af::const_ref<std::size_t> i_seqs_ref = proxy.i_seqs.const_ref();
+        af::shared<sgtbx::rt_mx> const& sym_ops = proxy.sym_ops;
+        af::shared<scitbx::vec3<double> > grads = gradients();
+        af::const_ref<scitbx::vec3<double> > grads_ref = grads.const_ref();
+        for(std::size_t i=0;i<grads_ref.size();i++) {
+          sgtbx::rt_mx const& rt_mx = sym_ops[i];
+          if ( !rt_mx.is_unit_mx() ) {
+            scitbx::mat3<double> r_inv_cart_ = r_inv_cart(unit_cell, rt_mx);
+            gradient_array[i_seqs_ref[i]] += grads_ref[i] * r_inv_cart_;
+          }
+          else { gradient_array[i_seqs_ref[i]] += grads_ref[i]; }
+        }
+      }
+
       /*! The plane normal is identical to the eigenvector corresponding
           to the smallest eigenvalue of the residual_tensor().
        */
