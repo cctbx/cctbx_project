@@ -127,7 +127,7 @@ namespace mmtbx {
 
       //! Solvent volume, if atom radius = vdw_radius + solvent_radius
       double accessible_surface_fraction;
-      
+
       //! Solvent volume
       double contact_surface_fraction;
 
