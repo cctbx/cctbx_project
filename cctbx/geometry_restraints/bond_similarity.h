@@ -134,21 +134,31 @@ namespace cctbx { namespace geometry_restraints {
         return result;
       }
 
-      //! Support for bond_residual_sum.
+      //! Support for bond_similarity_residual_sum.
       /*! Not available in Python.
+
+          Inefficient implementation, r_inv_cart is not cached.
+          TODO: use asu_mappings to take advantage of caching of r_inv_cart.
        */
       void
       add_gradients(
+        uctbx::unit_cell const& unit_cell,
         af::ref<scitbx::vec3<double> > const& gradient_array,
-        bond_similarity_proxy::i_seqs_type const& i_seqs) const
+        bond_similarity_proxy const& proxy) const
       {
         af::const_ref<af::tiny<std::size_t, 2> > i_seqs_ref
-          = i_seqs.const_ref();
+          = proxy.i_seqs.const_ref();
+        af::shared<sgtbx::rt_mx> const& sym_ops = proxy.sym_ops;
         af::shared<af::tiny<vec3, 2> > grads = gradients();
         af::const_ref<af::tiny<vec3, 2> > grads_ref = grads.const_ref();
         for(std::size_t i=0;i<grads_ref.size();i++) {
           gradient_array[i_seqs_ref[i][0]] += grads_ref[i][0];
-          gradient_array[i_seqs_ref[i][1]] += grads_ref[i][1];
+          sgtbx::rt_mx const& rt_mx = sym_ops[i];
+          if ( !rt_mx.is_unit_mx() ) {
+            scitbx::mat3<double> r_inv_cart_ = r_inv_cart(unit_cell, rt_mx);
+            gradient_array[i_seqs_ref[i][1]] += grads_ref[i][1] * r_inv_cart_;
+          }
+          else gradient_array[i_seqs_ref[i][1]] += grads_ref[i][1];
         }
       }
 
@@ -212,7 +222,7 @@ namespace cctbx { namespace geometry_restraints {
   /*! \brief Fast computation of bond_similarity::residual() given an
       array of bond_similarity proxies.
    */
-   inline
+  inline
   af::shared<double>
   bond_similarity_residuals(
     uctbx::unit_cell const& unit_cell,

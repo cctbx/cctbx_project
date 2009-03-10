@@ -279,6 +279,31 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
+      //! Support for dihedral_residual_sum.
+      /*! Not available in Python.
+
+          Inefficient implementation, r_inv_cart is not cached.
+          TODO: use asu_mappings to take advantage of caching of r_inv_cart.
+       */
+      void
+      add_gradients(
+        uctbx::unit_cell const& unit_cell,
+        af::ref<scitbx::vec3<double> > const& gradient_array,
+        dihedral_sym_proxy const& proxy) const
+      {
+        dihedral_sym_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
+        af::shared<sgtbx::rt_mx> const& sym_ops = proxy.sym_ops;
+        af::tiny<scitbx::vec3<double>, 4> grads = gradients();
+        for(int i=0;i<4;i++) {
+          sgtbx::rt_mx const& rt_mx = sym_ops[i];
+          if ( !rt_mx.is_unit_mx() ) {
+            scitbx::mat3<double> r_inv_cart_ = r_inv_cart(unit_cell, rt_mx);
+            gradient_array[i_seqs[i]] += grads[i] * r_inv_cart_;
+          }
+          else { gradient_array[i_seqs[i]] += grads[i]; }
+        }
+      }
+
       //! Cartesian coordinates of the sites defining the dihedral %angle.
       af::tiny<scitbx::vec3<double>, 4> sites;
       //! Parameter (usually as passed to the constructor).

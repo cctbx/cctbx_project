@@ -1030,6 +1030,57 @@ def exercise_angle():
   assert rest[1].i_seqs == (2,3,0)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,False]))
   assert rest.size() == 3
+  #
+  unit_cell = uctbx.unit_cell([15,11.5,16.25,90,99.5,90])
+  sites_cart = flex.vec3_double(
+    [(12.87,0.10,9.04),(12.54,0.44,7.73),(13.47,0.34,6.71)])
+  rt_mx = sgtbx.rt_mx('2-X,-Y,1-Z')
+  u_mx = sgtbx.rt_mx()
+  i_seqs = [2,0,1]
+  a_sym_ops = [u_mx,rt_mx,rt_mx]
+  b_sym_ops = [rt_mx,u_mx,u_mx]
+  a_proxy = geometry_restraints.angle_sym_proxy(
+    i_seqs=i_seqs,
+    sym_ops=a_sym_ops,
+    angle_ideal=120,
+    weight=1)
+  b_proxy = geometry_restraints.angle_sym_proxy(
+    i_seqs=i_seqs,
+    sym_ops=b_sym_ops,
+    angle_ideal=120,
+    weight=1)
+  a_angle = geometry_restraints.angle(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=a_proxy)
+  b_angle = geometry_restraints.angle(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=b_proxy)
+  assert approx_equal(a_angle.delta, b_angle.delta)
+  assert approx_equal(a_angle.residual(), b_angle.residual())
+  assert not_approx_equal(a_angle.gradients(), b_angle.gradients())
+  a_gradient_array = flex.vec3_double(sites_cart.size())
+  a_residual_sum = geometry_restraints.angle_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=geometry_restraints.shared_angle_sym_proxy([a_proxy]),
+    gradient_array=a_gradient_array)
+  b_gradient_array = flex.vec3_double(sites_cart.size())
+  b_residual_sum = geometry_restraints.angle_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=geometry_restraints.shared_angle_sym_proxy([b_proxy]),
+    gradient_array=b_gradient_array)
+  for a,b in zip(a_gradient_array, b_gradient_array):
+    assert approx_equal(a, b)
+  fd_grads = finite_difference_gradients(
+    restraint_type=geometry_restraints.angle,
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=a_proxy)
+  for g,e in zip(a_gradient_array, fd_grads):
+    assert approx_equal(g, e)
 
 def exercise_dihedral():
   p = geometry_restraints.dihedral_params(
@@ -1120,6 +1171,57 @@ def exercise_dihedral():
     proxies=proxies,
     gradient_array=None)
   assert approx_equal(residual_sum, 2*25)
+  #
+  unit_cell = uctbx.unit_cell([15,11.5,16.25,90,99.5,90])
+  sites_cart = flex.vec3_double(
+    [(12.87,0.10,9.04),(12.54,0.44,7.73),(13.47,0.34,6.71)])
+  rt_mx = sgtbx.rt_mx('2-X,-Y,1-Z')
+  u_mx = sgtbx.rt_mx()
+  i_seqs = [2,0,1,2]
+  a_sym_ops = [u_mx,u_mx,u_mx,rt_mx]
+  b_sym_ops = [u_mx,rt_mx,rt_mx,rt_mx]
+  a_proxy = geometry_restraints.dihedral_sym_proxy(
+    i_seqs=i_seqs,
+    sym_ops=a_sym_ops,
+    angle_ideal=0,
+    weight=1)
+  b_proxy = geometry_restraints.dihedral_sym_proxy(
+    i_seqs=i_seqs,
+    sym_ops=b_sym_ops,
+    angle_ideal=0,
+    weight=1)
+  a_dihedral = geometry_restraints.dihedral(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=a_proxy)
+  b_dihedral = geometry_restraints.dihedral(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=b_proxy)
+  assert approx_equal(a_dihedral.delta, b_dihedral.delta)
+  assert approx_equal(a_dihedral.residual(), b_dihedral.residual())
+  assert not_approx_equal(a_dihedral.gradients(), b_dihedral.gradients())
+  a_gradient_array = flex.vec3_double(sites_cart.size())
+  a_residual_sum = geometry_restraints.dihedral_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=geometry_restraints.shared_dihedral_sym_proxy([a_proxy]),
+    gradient_array=a_gradient_array)
+  b_gradient_array = flex.vec3_double(sites_cart.size())
+  b_residual_sum = geometry_restraints.dihedral_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=geometry_restraints.shared_dihedral_sym_proxy([b_proxy]),
+    gradient_array=b_gradient_array)
+  for a,b in zip(a_gradient_array, b_gradient_array):
+    assert approx_equal(a, b)
+  fd_grads = finite_difference_gradients(
+    restraint_type=geometry_restraints.dihedral,
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=a_proxy)
+  for g,e in zip(a_gradient_array, fd_grads):
+    assert approx_equal(g, e)
   #
   p = geometry_restraints.dihedral_proxy(
     i_seqs=[3,2,1,0],
@@ -1522,6 +1624,36 @@ def exercise_planarity():
   assert list(rest[1].i_seqs) == [2,3,0,4]
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,False]))
   assert rest.size() == 3
+  #
+  unit_cell = uctbx.unit_cell([15,11.5,16.25,90,99.5,90])
+  sites_cart = flex.vec3_double(
+    [(12.87,0.10,9.04),(12.54,0.44,7.73),(13.47,0.34,6.71)])
+  rt_mx = sgtbx.rt_mx('2-X,-Y,1-Z')
+  u_mx = sgtbx.rt_mx()
+  i_seqs = flex.size_t([0,1,2,0,1,2])
+  sym_ops = [u_mx,u_mx,u_mx,rt_mx,rt_mx,rt_mx]
+  weights = flex.double([1]*6)
+  p = geometry_restraints.planarity_sym_proxy(
+    i_seqs=i_seqs,
+    sym_ops=sym_ops,
+    weights=weights)
+  planarity = geometry_restraints.planarity(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=p)
+  gradient_array = flex.vec3_double(sites_cart.size())
+  residual_sum = geometry_restraints.planarity_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=geometry_restraints.shared_planarity_sym_proxy([p]),
+    gradient_array=gradient_array)
+  fd_grads = finite_difference_gradients(
+    restraint_type=geometry_restraints.planarity,
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=p)
+  for g,e in zip(gradient_array, fd_grads):
+    assert approx_equal(g, e)
 
 def exercise():
   exercise_bond_similarity()
