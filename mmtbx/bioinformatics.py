@@ -166,6 +166,12 @@ class alignment(object):
     return midline().compare( self.alignments, self.gap )
 
 
+  def sequence_strings(self):
+
+    return [ "".join( [ c for c in seq if c != self.gap ] )
+        for seq in self.alignments ]
+
+
 class fasta_alignment(alignment):
   """
   Fasta alignment
@@ -487,7 +493,7 @@ class clustal_alignment_parser(generic_alignment_parser):
   regex = re.compile(
     r"""
     ^
-    (?P<name> [\w\|:]+ ) \s+
+    (?P<name> [\S]+ ) \s+
     (?P<alignment> [A-Z\-]* )
     (?P<number> \s+ \d+ )? \s* \n
     """,
