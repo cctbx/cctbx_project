@@ -146,7 +146,7 @@ gratefully acknowledge the financial support of NIH/NIGMS.
 
 The cctbx SVN development tree is hosted by
 
-.. image:: http://sourceforge.net/sflogo.php?group_id=24107
+__SOURCEFORGE_LOGO_HERE__
 
 Contact
 =======
