@@ -105,6 +105,7 @@ crys3d/wx_model_viewer.py -text
 dox/cctbx_notations.sty -text
 dox/cctbx_preamble.sty -text
 dox/cctbx_references.bib -text
+dox/rst/insert_sourceforge_logo.py svneol=native#text/x-python
 dox/rst/python_cpp_mix.png -text
 dox/sbgrid2008_update_generated_files.csh -text
 dox/siena2005/cctbx_central_types.pdf -text svneol=unset#application/pdf

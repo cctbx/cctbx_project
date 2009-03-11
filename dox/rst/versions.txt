@@ -94,6 +94,12 @@ Please direct questions to cctbx@cci.lbl.gov or cctbxbb@phenix-online.org .
 
 -----------------------------------------------------------------------------
 
+The cctbx SVN development tree is hosted by
+
+__SOURCEFORGE_LOGO_HERE__
+
+-----------------------------------------------------------------------------
+
 The cctbx `Open Source License <http://cctbx.svn.sourceforge.net/viewvc/cctbx/trunk/cctbx/LICENSE_2_0.txt?view=markup>`_ is inspired by this
 
 Historical Note

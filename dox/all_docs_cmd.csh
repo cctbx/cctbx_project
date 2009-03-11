@@ -47,6 +47,8 @@ endif
 if (1) then
   cd "$root/cctbx_project/dox/rst"
   docutils.buildhtml -stg
+  libtbx.python ./insert_sourceforge_logo.py versions.html
+  libtbx.python ./insert_sourceforge_logo.py introduction.html
   mv *.html "$root/htdocs/current"
   cp *.txt *.css *.png "$root/htdocs/current"
   cd "$root/htdocs/current"
