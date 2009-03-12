@@ -3,62 +3,14 @@
 
 #include <scitbx/error.h>
 #include <scitbx/array_family/ref_reductions.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/matrix/multiply.h>
 #include <boost/scoped_array.hpp>
 
 namespace scitbx {
 
-  /// Row-major accessor
-  class mat_grid : public af::tiny<std::size_t, 2>
-  {
-    public:
-      typedef af::tiny<std::size_t, 2> index_type;
-      typedef index_type::value_type index_value_type;
-
-      mat_grid() : index_type(0,0) {}
-
-      mat_grid(index_type const& n) : index_type(n) {}
-
-      mat_grid(index_value_type const& n0, index_value_type const& n1)
-      : index_type(n0, n1)
-      {}
-
-      std::size_t size_1d() const { return elems[0] * elems[1]; }
-
-      std::size_t
-      operator()(index_value_type const& r, index_value_type const& c) const
-      {
-        return r * elems[1] + c;
-      }
-  };
-
-  /// Column-major accessor
-  class column_major_mat_grid : public af::tiny<std::size_t, 2>
-  {
-    public:
-      typedef af::tiny<std::size_t, 2> index_type;
-      typedef index_type::value_type index_value_type;
-
-      column_major_mat_grid() : index_type(0,0) {}
-
-      column_major_mat_grid(index_type const& n) : index_type(n) {}
-
-      column_major_mat_grid(index_value_type const& n0,
-                            index_value_type const& n1)
-      : index_type(n0, n1)
-      {}
-
-      std::size_t size_1d() const { return elems[0] * elems[1]; }
-
-      std::size_t
-      operator()(index_value_type const& r, index_value_type const& c) const
-      {
-        return r + c*elems[0];
-      }
-  };
-
-  template <typename NumType, typename AccessorType = mat_grid>
+  template <typename NumType, typename AccessorType = af::c_grid<2> >
   class mat_const_ref : public af::const_ref<NumType, AccessorType>
   {
     public:
@@ -75,6 +27,10 @@ namespace scitbx {
       mat_const_ref(const NumType* begin, index_value_type const& n_rows,
                                           index_value_type const& n_columns)
       : base_type(begin, accessor_type(n_rows, n_columns))
+      {}
+
+      mat_const_ref(base_type const &r)
+      : base_type(r)
       {}
 
       accessor_type
@@ -123,7 +79,7 @@ namespace scitbx {
     return true;
   }
 
-  template <typename NumType, typename AccessorType = mat_grid>
+  template <typename NumType, typename AccessorType = af::c_grid<2> >
   class mat_ref : public mat_const_ref<NumType, AccessorType>
   {
     public:
@@ -140,6 +96,10 @@ namespace scitbx {
       mat_ref(NumType* begin, index_value_type n_rows,
                               index_value_type n_columns)
       : base_type(begin, accessor_type(n_rows, n_columns))
+      {}
+
+      mat_ref(af::ref<NumType, AccessorType> const &r)
+      : base_type(r)
       {}
 
       NumType*
