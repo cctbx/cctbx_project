@@ -39,11 +39,11 @@ Then the average $\bar{y}$ is the outcome of the random variable
 \begin{equation}
 \hat{y} = \frac{\sum_{i=1}^n w_i \hat{y}_i}{\sum_{i=1}^n w_i} .
 \end{equation}
-which is obviously an unbiased estimator of $y_{\text{eq}}$ (i.e. $E(\hat{y}) = y_{\text{eq}}$). If we postulates that the measurement and data reduction lead to uncorrelated $\hat{y}_i$, then
+which is obviously an unbiased estimator of $y_{\text{eq}}$ (i.e. $E(\hat{y}) = y_{\text{eq}}$). If we postulate that the measurement and data reduction lead to uncorrelated $\hat{y}_i$, then
 \begin{align}
 V(\hat{y}) &=  \sum_{i=1}^n \omega_i^2 V(\hat{y}_i)\\
 \intertext{where}
-\omega_i = \frac{w_i}{\sum_{i=1}^n w_i}.
+\omega_i &= \frac{w_i}{\sum_{i=1}^n w_i}.
 \label{eqn:externalvariance}
 \end{align}
 This is often called the ``external'' variance. Its lowest possible value is obtained for the weights
@@ -67,7 +67,7 @@ w_i = \begin{cases}
 
 \subsection{Internal variance}
 
-The second way to handle the \eqnref[name=average~]{average} is to consider it at a mere sample mean, but a weighted one, ignoring the special property of the $y_i$. Those data are considered as the outcome of a sample $(Y_1, \ldots, Y_n)$ of a random variable $Y$, and $\bar{y}$ is then the outcome of the unbiased estimator of $E(Y)$,
+The second way to handle the \eqnref[name=average~]{average} is to consider it as a mere sample mean, but a weighted one, ignoring the special property of the $y_i$. Those data are considered as the outcome of a sample $(Y_1, \ldots, Y_n)$ of a random variable $Y$, and $\bar{y}$ is then the outcome of the unbiased estimator of $E(Y)$,
 \begin{equation}
 \bar{Y} = \frac{\sum_{i=1}^n w_i Y_i}{\sum_{i=1}^n w_i}.
 \end{equation}
@@ -80,7 +80,7 @@ S^2_{n-1} &= \frac{S^2}{1-\sum_{i=1}^n \omega_i^2}\\
 & = \frac{\sum_{i=1}^n w_i}{\left(\sum_{i=1}^n w_i\right)^2 - \sum_{i=1}^n w_i^2} \sum_{i=1}^n w_i (Y_i - \bar{Y})^2
 \label{eqn:unbiasedsamplevariance}
 \end{align}
-is therefore preferred. Those variances are called ``internal'' by opposition to the variance we have previously discussed. The \code{cctbx} computes it by using an instance of \code{scitbx::mean\_and\_variance} and calling its member function \code{gsl\_stats\_wvariance} whose implementation and naming follows the function with the same name in the GNU Scientific Library~\cite{GSL}. Since this formula is not that easily found in textbooks, we demonstrate it in appendix~\ref{appendixb}.
+is therefore preferred. Those variances are called ``internal'' as opposed to the variance we have previously discussed. The \code{cctbx} computes it by using an instance of \code{scitbx::mean\_and\_variance} and calling its member function \code{gsl\_stats\_wvariance} whose implementation and naming follows the function with the same name in the GNU Scientific Library~\cite{GSL}. Since this formula is not that easily found in textbooks, we demonstrate it in appendix~\ref{appendixb}.
 
 Finally, it is customary to estimate the variance associated with $\bar{y}$ by taking the greatest of the internal and external variance. That is what the \code{cctbx} does as well as ShelXL.
 
@@ -108,7 +108,7 @@ Thus $L$ reaches its minimum at
 \intertext{and therefore the minimum is reached at}
 \omega_i &= \frac{\frac{1}{V(\hat{y}_i)}}{\sum_{j=1}^n \frac{1}{V(\hat{y}_i)}}.
 \end{align}
-That demonstrates \eqnref{minimalvarianceweights} and since weights differing by a common proportionality factor yields the same $\omega_i$, QED.
+That demonstrates \eqnref{minimalvarianceweights} and since weights differing by a common proportionality factor yield the same $\omega_i$, QED.
 
 \section{Weighted sample variance}
 \label{appendixb}
