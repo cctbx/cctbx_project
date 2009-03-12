@@ -1,11 +1,26 @@
 from cctbx import statistics
 from cctbx import miller
+from cctbx import crystal
+from cctbx.array_family import flex
+from libtbx.test_utils import approx_equal
 from cctbx import adptbx
 from cctbx.development import debug_utils
 from cctbx.development import random_structure
 import sys
 
-def exercise(space_group_info, anomalous_flag,
+def exercise_sys_absent_intensity_distribution():
+  xs = crystal.symmetry((3,4,5), "F222")
+  mi = flex.miller_index(((1,2,3), (1,1,1), (1,2,2), (0,0,4)))
+  ms = miller.set(xs, mi)
+  data = flex.double((-1,-2,3,4))
+  sigmas = flex.double((2,3,4,5))
+  f_obs = miller.array(ms, data=data, sigmas=sigmas).set_observation_type_xray_intensity()
+  dist = statistics.sys_absent_intensity_distribution(f_obs)
+  assert approx_equal(dist.x,(-0.5,0.75))
+  assert approx_equal(dist.y,(-1,3))
+  assert approx_equal(dist.indices,((1,2,3), (1,2,2)))
+
+def exercise_cumulative_intensity_distribution(space_group_info, anomalous_flag,
              d_min=1.0, reflections_per_bin=200, n_bins=10, verbose=0):
   elements = ("N", "C", "C", "O") * 5
   structure_factors = random_structure.xray_structure(
@@ -47,9 +62,10 @@ def exercise(space_group_info, anomalous_flag,
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True):
-    exercise(space_group_info, anomalous_flag, verbose=flags.Verbose)
+    exercise_cumulative_intensity_distribution(space_group_info, anomalous_flag, verbose=flags.Verbose)
 
 def run():
+  exercise_sys_absent_intensity_distribution()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print "OK"
 

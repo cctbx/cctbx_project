@@ -138,3 +138,32 @@ class cumulative_intensity_distribution(object):
     r.xLegend = "z(%)"
     r.yLegend = "N(z)(%)"
     return r
+
+class sys_absent_intensity_distribution(object):
+  # I/sigma(I) vs I
+  
+  def __init__(self, f_obs):
+    self.info = f_obs.info()
+    sys_absences = f_obs.select_sys_absent()
+    if sys_absences.size() == 0:
+      self.x = None
+      self.y = None
+      self.indices = None
+    else:
+      assert sys_absences.sigmas() is not None
+      intensities = sys_absences.as_intensity_array()
+      self.x = (intensities/sys_absences.sigmas()).data()
+      self.y = intensities.data()
+      self.indices = intensities.indices()
+
+  def xy_plot_info(self):
+    r = empty()
+    r.title = "Systematic Absences Intensity Distribution"
+    if (self.info != 0):
+      r.title += ": " + str(self.info)
+    r.x = self.x
+    r.y = self.y
+    r.indices = self.indices
+    r.xLegend = "I/sigma(I)"
+    r.yLegend = "Intensity"
+    return r
