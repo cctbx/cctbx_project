@@ -446,6 +446,9 @@ def exercise_array():
   ae = aa.eliminate_sys_absent()
   assert ae is not aa
   assert tuple(ae.indices()) == ((0,0,-4),)
+  a_s = aa.select_sys_absent()
+  assert a_s is not aa
+  assert tuple(a_s.indices()) == ((1,-2,3),)
   s = StringIO()
   aa.eliminate_sys_absent(log=s, prefix="%^")
   assert not show_diff(s.getvalue(), """\
