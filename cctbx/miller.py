@@ -2339,6 +2339,10 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       print >> log
     return result
 
+  def select_sys_absent(self, integral_only=False):
+    return self.select(selection=self.sys_absent_flags(
+      integral_only=integral_only).data())
+
   def __add__(self, other):
     assert self.indices() is not None
     assert self.data() is not None
