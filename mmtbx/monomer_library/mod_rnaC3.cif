@@ -54,7 +54,7 @@ _chem_mod_tor.new_period
  rnaC3 change beta P O5* C5* C4* 170.0 40.0 1
  rnaC3 change gamma O5* C5* C4* C3* 55.0 15.0 3
  rnaC3 change delta C5* C4* C3* O3* 82.0 8.0 1
- rnaC3 add epsilon P O3* C3* C4* 215.0 40.0 1
+#rnaC3 add epsilon P O3* C3* C4* 215.0 40.0 1
  rnaC3 change nu0 C4* O4* C1* C2* 3.0 8.0 1
  rnaC3 change nu1 O4* C1* C2* C3* 335.0 8.0 1
  rnaC3 add nu2 C1* C2* C3* C4* 36.0 8.0 1
