@@ -131,7 +131,7 @@ master_params = iotbx.phil.parse("""\
     .type=bool
     .optional=False
   rna_sugar_pucker_analysis {
-    use = True
+    use = False
       .type=bool
     include scope mmtbx.monomer_library.rna_sugar_pucker_analysis.master_phil
   }
@@ -521,6 +521,7 @@ class monomer_mapping(object):
 
   def _rna_sugar_pucker_analysis(self, params, prev_mm):
     if (not params.use): return
+    raise RuntimeError("Feature disabled because of known problems.")
     std_resname = getattr(
       self.atom_name_interpretation, "residue_name", None)
     if (    std_resname is not None
