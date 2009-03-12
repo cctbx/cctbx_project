@@ -14,7 +14,7 @@ int main(int /*argc*/, char* /*argv*/[])
 {
   {
     mat_ref<int> va;
-    mat_ref<int> vb(0, mat_grid(0,0));
+    mat_ref<int> vb(0, mat_ref<int>::accessor_type(0,0));
     mat_ref<int> vc(0, 0, 0);
   }
   {

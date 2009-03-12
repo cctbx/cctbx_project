@@ -6,6 +6,7 @@
 #include <scitbx/sym_mat3.h>
 #include <scitbx/mat_ref.h>
 #include <scitbx/array_family/ref.h>
+#include <scitbx/array_family/accessors/f_grid.h>
 #include <scitbx/math/eigensystem.h>
 
 // these includes last to avoid Visual C++ 7.1, 8.0 failures
@@ -143,10 +144,10 @@ class ellipsoid_to_sphere_transform
 
   public:
     typedef scitbx::mat_ref<GLdouble,
-                            scitbx::column_major_mat_grid>
+                            scitbx::af::f_grid<2> >
             mat_ref_type;
     typedef scitbx::mat_const_ref<GLdouble,
-                                  scitbx::column_major_mat_grid>
+                                  scitbx::af::f_grid<2> >
             mat_const_ref_type;
     typedef scitbx::af::const_ref<GLdouble> vec_const_ref_type;
 
