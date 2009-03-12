@@ -3,6 +3,7 @@ import os.path
 from fileinput import input, isfirstline, filename, isstdin
 from libtbx import subversion
 from libtbx.option_parser import option_parser
+import libtbx.command_line.file_clutter
 
 def clean_clutter_in(files, tabsize=8):
   n_empty = 0
@@ -24,16 +25,18 @@ def run():
   opt_parser = (option_parser(
     usage="""
 clean_clutter [-t n | --tabsize==n] file1 file2 ...
-clean_clutter [-t n | --tabsize==n] --committing|-c""",
+clean_clutter [-t n | --tabsize==n] [--committing|-c]""",
     description="""The first form cleans the specified files whereas the second
-form cleans those files which would be committed by running svn commit.""")
+form cleans all files in the hierarchy rooted in the current directory.
+The  -c options restricts cleaning to those files which would be committed
+by running svn commit.""")
     .option("-t", "--tabsize",
       action="store",
       type="int",
       default=8,
       help="the number of spaces a tab is to be replaced by",
       metavar="INT")
-     .option("-c", "--committing",
+    .option("-c", "--committing",
       action="store_true",
       default=False,
       help="whether to clean the files which are to be committed")
@@ -51,8 +54,8 @@ form cleans those files which would be committed by running svn commit.""")
       print err
       exit(1)
   elif not files:
-    opt_parser.show_help()
-    sys.exit(1)
+    files = [ c.path for c in libtbx.command_line.file_clutter.gather(['.'])
+              if c.is_cluttered(flag_x=False) ]
   clean_clutter_in(files, tabsize=co.tabsize)
 
 if (__name__ == "__main__"):
