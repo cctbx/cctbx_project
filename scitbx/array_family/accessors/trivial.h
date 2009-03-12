@@ -17,6 +17,8 @@ namespace scitbx { namespace af {
 
       std::size_t size_1d() const { return size_; }
 
+      std::size_t operator()(std::size_t i) const { return i; }
+
     protected:
       std::size_t size_;
   };
