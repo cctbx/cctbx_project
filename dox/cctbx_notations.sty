@@ -19,4 +19,7 @@
 \newcommand{\partialder}[2]{\frac{\partial #1}{\partial #2}}
 \newcommand{\partialderxx}[2]{\frac{\partial^2 #1}{\partial #2^2}}
 \newcommand{\partialderxy}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
-\newcommand{\grad}[2]{\operatorname{grad}_{#2} {#1}}
+\newcommand{\grad}[2][]{%
+	\ifthenelse{ \equal{#1}{} } { \operatorname{grad} #2 }
+		                              { \operatorname{grad}_{#2} {#1} }
+}
