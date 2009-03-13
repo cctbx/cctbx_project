@@ -1,0 +1,113 @@
+\documentclass[11pt]{article}
+\usepackage{cctbx_preamble}
+\usepackage{amscd}
+
+\title{Restraint Gradients}
+\author{\lucjbourhis \and \rjgildea}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Bond distance restraint}
+
+The distance between a pair of atoms is restrained to a target value $r_o$.
+The weighted least-squares residual is defined as
+\begin{equation}
+R = w(r_c - r_o)^2
+\end{equation}
+where $r_c$ is the calculated distance given the current structure model.
+
+Using the chain rule, the derivative of the residual with respect to the
+distance $r_c$ is
+\begin{equation}
+\partialder{R}{r_c} = 2w(r_c - r_o).
+\end{equation}
+Given that
+\begin{equation*}
+r_c = u^\frac{1}{2},
+\end{equation*}
+where
+\begin{equation*}
+u = (x_a - x_b)^2 + (y_a - y_b)^2 + (z_a - z_b)^2,
+\end{equation*}
+the derivative of $r_c$ with respect to the Cartesian coordinate $x_a$ is then
+\begin{equation}
+\partialder{r_c}{x_a} = \partialder{r_c}{u} \partialder{u}{x_a}= \frac{(x_a - x_b)}{r_c}.
+\label{eqn:r_derivative}
+\end{equation}
+Therefore the derivative of the residual with respect to $x_a$ is
+\begin{equation}
+\partialder{R}{x_a} = \partialder{R}{r_c} \partialder{r_c}{x_a}= \frac{2 w (r_c - r_o)(x_a - x_b)}{r_c}.
+\end{equation}
+
+
+
+\section{Bond similarity restraint}
+
+The distances between two or more atom pairs are restrained to be equal
+by minimising the weighted variance of the distances, where the
+least-squares residual is defined as the population variance biased estimator
+\begin{equation}
+R(r_1,...,r_n) = \frac{\sum_{i = 1}^n {w_i(r_i - \mean{r})^2}}
+                      {\sum_{i = 1}^n {w_i}}.
+\end{equation}
+It is easier to compute the derivatives by using the alternative form
+\begin{align}
+R &= \mean{r^2} - \mean{r}^2 \nonumber\\
+&= \frac{\sum_{i = 1}^n {w_i r_i^2}}{\sum_{i = 1}^n {w_i}} - 
+    \left(\frac{\sum_{i = 1}^n {w_i r_i}}{\sum_{i = 1}^n {w_i}}\right)^2.
+\end{align}
+The derivative of the residual with respect to a distance $r_j$ is then
+\begin{align}
+\partialder{R}{r_j} &=
+  \frac{2 w_j r_j}{\sum_{i=1}^n{w_i}}
+  - \frac{2 w_j \sum_{i=1}^n w_i r_i}{(\sum_{i=1}^n w_i)^2}\nonumber\\
+&= \frac{2 w_j}{\sum_{i=1}^n{w_i}}(r_j - \mean{r}).
+\end{align}
+From \eqnref{r_derivative},  the derivative of the residual with respect to $x_a$ is therefore
+\begin{align}
+\partialder{R}{x_a} &= \partialder{R}{r_j} \partialder{r_j}{x_a}\nonumber\\
+&= \frac{2 w_j (r_j - \mean{r})(x_a - x_b)}{r_j \sum_{i=1}^n {w_i}}.
+\end{align}
+
+\section{Restraints involving symmetry}
+
+Let's consider a restraint involving a site $x$ which is outside the asymmetric unit,
+\begin{equation}
+R(x, \ldots)
+\end{equation}
+where $\ldots$ stands for other sites. There is a symmetry $M$ such that $x=My$
+for some site $y$ in the asymmetric unit. So our restraint residual is the
+composition of two functions, $R$ and $M$,
+\newcommand{\rasu}{R_{\text{asu}}}
+\begin{equation}
+\rasu(y, \ldots) = R(My, \ldots)
+\end{equation}
+and we need to apply the chain rule correctly to get the gradient with respect
+to $y$. The best way to work it out is to go back to the basics: the gradient
+arises from a linear approximation of a function\footnote{The $O$ notation means
+``terms at least quadratic in $\delta x$'' and the superscript $T$ stands for ``transpose''.},
+\begin{equation}
+f(x + \delta x) = f(x) + \grad{f(x)}^T \delta x + O(\delta x^2).
+\end{equation}
+
+So we consider $\rasu(y+\delta y, \ldots)$ for a small $\delta y$.
+\begin{align}
+\rasu(y+\delta y, \ldots) &= r(My + M\delta y, \ldots)\nonumber\\
+& = r(My, \ldots) + \grad[x]{r(My, \ldots)}^T M\delta y +  O(\delta x^2)\nonumber\\
+\intertext{by definition of the gradient of $r$ with respect to $x$.}
+&= r(My, \ldots) + \left(M^T \grad[x]{r(My, \ldots)}\right)^T \delta y
+ +  O(\delta x^2)\nonumber
+\end{align}
+One then reads the gradients with respect to $y$:
+\begin{equation}
+\grad[y]{\rasu(My, \ldots)} = M^T \grad[x]{r(My, \ldots)}
+\end{equation}
+Finally, $M$ is a space group symmetry operation and is therefore an
+orthogonal transformation (i.e. one which preserves distances and angles),
+which means that in Cartesian coordinates, $M^T = M^{-1}$.
+
+\bibliography{cctbx_references}
+
+\end{document}

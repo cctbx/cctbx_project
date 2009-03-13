@@ -1,5 +1,6 @@
 % authors credentials
-\newcommand{\lucjbourhis}{Luc J. Bourhis\\(University of Durham, UK)}
+\newcommand{\lucjbourhis}{Luc J. Bourhis\\(Durham University, UK)}
+\newcommand{\rjgildea}{Richard J. Gildea\\(Durham University, UK)}
 
 % programming
 \newcommand{\code}[1]{\texttt{#1}}
@@ -20,6 +21,6 @@
 \newcommand{\partialderxx}[2]{\frac{\partial^2 #1}{\partial #2^2}}
 \newcommand{\partialderxy}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
 \newcommand{\grad}[2][]{%
-	\ifthenelse{ \equal{#1}{} } { \operatorname{grad} #2 }
-		                              { \operatorname{grad}_{#2} {#1} }
+	\ifthenelse{ \equal{#1}{} } { \nabla #2 }
+		                              { \nabla_{#1} {#2} }
 }
