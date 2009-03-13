@@ -48,6 +48,7 @@ cctbx/examples/space_subgroups.py svneol=native#text/x-python
 cctbx/examples/sub_group_graph.py -text
 cctbx/examples/trigonal_r_vs_tetragonal_i.py svneol=native#text/x-python
 cctbx/examples/tst_space_subgroups.py svneol=native#text/x-python
+cctbx/geometry_restraints/gradients.tex -text
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
 cctbx/maptbx/fft.h -text
 cctbx/miller/equivalent_reflection_merging.tex -text
