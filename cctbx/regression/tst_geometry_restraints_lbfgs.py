@@ -186,7 +186,8 @@ def exercise(verbose=0):
   assert s.getvalue().splitlines()[0] == "][Histogram of bond deltas:"
   assert s.getvalue().splitlines()[5].startswith("][     0.000 -    0.000:")
   s = StringIO()
-  pair_proxies.bond_proxies.show_sorted_by_residual(
+  pair_proxies.bond_proxies.show_sorted(
+    by_value="residual",
     sites_cart=sites_cart,
     max_lines=3,
     f=s,

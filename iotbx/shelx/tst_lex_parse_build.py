@@ -262,7 +262,10 @@ def exercise_restraint_parsing():
   bond_proxies = pair_proxies.bond_proxies
   assert pair_proxies.nonbonded_proxies is None
   s = cStringIO.StringIO()
-  bond_proxies.show_sorted_by_residual(structure.sites_cart(),f=s)
+  bond_proxies.show_sorted(
+    by_value="residual",
+    sites_cart=structure.sites_cart(),
+    f=s)
   assert bond_proxies.n_total() == 5
   for i in range(3,7):
     items = s.getvalue().split('\n')[i].split()

@@ -308,7 +308,8 @@ class distance_and_repulsion_least_squares:
     sites_cart = minimized_structure.sites_cart()
     pair_proxies = geometry_restraints_manager.pair_proxies(
       sites_cart=sites_cart)
-    pair_proxies.bond_proxies.show_sorted_by_residual(
+    pair_proxies.bond_proxies.show_sorted(
+      by_value="residual",
       sites_cart=sites_cart,
       labels=[scatterer.label
         for scatterer in minimized_structure.scatterers()],

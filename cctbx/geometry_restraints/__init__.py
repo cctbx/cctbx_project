@@ -370,6 +370,12 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
       print >> f, "%sWarning: very large bond lengths." % prefix
     return histogram
 
+  def deltas(self, sites_cart):
+    return bond_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
+
+  def residuals(self, sites_cart):
+    return bond_residuals(sites_cart=sites_cart, sorted_asu_proxies=self)
+
   def show_histogram_of_deltas(self,
         sites_cart,
         n_slots=5,
@@ -379,9 +385,7 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
     if (f is None): f = sys.stdout
     print >> f, "%sHistogram of bond deltas:" % prefix
     histogram = flex.histogram(
-      data=flex.abs(bond_deltas(
-        sites_cart=sites_cart,
-        sorted_asu_proxies=self)),
+      data=flex.abs(self.deltas(sites_cart=sites_cart)),
       n_slots=n_slots)
     low_cutoff = histogram.data_min()
     for i,n in enumerate(histogram.slots()):
@@ -391,19 +395,24 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
       low_cutoff = high_cutoff
     return histogram
 
-  def show_sorted_by_residual(self,
+  def show_sorted(self,
+        by_value,
         sites_cart,
         labels=None,
         f=None,
         prefix="",
         max_lines=None):
+    assert by_value in ["residual", "delta"]
     assert labels is None or len(labels) == sites_cart.size()
     if (self.n_total() == 0): return
     if (f is None): f = sys.stdout
-    residuals = bond_residuals(
-      sites_cart=sites_cart,
-      sorted_asu_proxies=self)
-    i_proxies_sorted = flex.sort_permutation(data=residuals, reverse=True)
+    if (by_value == "residual"):
+      data_to_sort = self.residuals(sites_cart=sites_cart)
+    elif (by_value == "delta"):
+      data_to_sort = flex.abs(self.deltas(sites_cart=sites_cart))
+    else:
+      raise RuntimeError("Internal error.")
+    i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
     if (max_lines is not None and i_proxies_sorted.size() > max_lines+1):
       i_proxies_sorted = i_proxies_sorted[:max_lines]
     plf = pair_labels_formatter(
@@ -448,7 +457,7 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
       if (rt_mx is not None):
         print >> f, rt_mx,
       print >> f
-    n_not_shown = residuals.size() - i_proxies_sorted.size()
+    n_not_shown = data_to_sort.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
     return smallest_distance_model
