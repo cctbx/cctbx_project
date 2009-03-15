@@ -141,7 +141,7 @@ class cumulative_intensity_distribution(object):
 
 class sys_absent_intensity_distribution(object):
   # I/sigma(I) vs I
-  
+
   def __init__(self, f_obs):
     self.info = f_obs.info()
     sys_absences = f_obs.select_sys_absent()
