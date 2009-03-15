@@ -77,7 +77,8 @@ def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
   pair_proxies =  geometry_restraints_manager.pair_proxies(
     sites_cart=all_chain_proxies.sites_cart,
     flags=geometry_restraints_flags)
-  pair_proxies.bond_proxies.show_sorted_by_residual(
+  pair_proxies.bond_proxies.show_sorted(
+    by_value="residual",
     sites_cart=sites_cart,
     labels=atom_labels,
     f=log,
@@ -120,7 +121,8 @@ def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
     geometry_restraints_manager.pair_proxies(
       sites_cart=sites_cart,
       flags=geometry_restraints_flags) \
-        .bond_proxies.show_sorted_by_residual(
+        .bond_proxies.show_sorted(
+          by_value="residual",
           sites_cart=sites_cart,
           labels=atom_labels,
           f=log,

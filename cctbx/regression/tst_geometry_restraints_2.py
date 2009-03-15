@@ -142,7 +142,8 @@ nonbonded asu: (7, 4)
   sites_cart = drls.start_structure.sites_cart()
   pair_proxies = drls.geometry_restraints_manager.pair_proxies()
   out = StringIO()
-  pair_proxies.bond_proxies.show_sorted_by_residual(
+  pair_proxies.bond_proxies.show_sorted(
+    by_value="residual",
     sites_cart=sites_cart,
     labels=site_labels,
     f=out)
@@ -151,7 +152,8 @@ nonbonded asu: (7, 4)
   assert len(out.getvalue().splitlines()) == 50
   assert out.getvalue().splitlines()[-1].find("remaining") < 0
   out = StringIO()
-  pair_proxies.bond_proxies.show_sorted_by_residual(
+  pair_proxies.bond_proxies.show_sorted(
+    by_value="residual",
     sites_cart=sites_cart,
     labels=site_labels,
     f=out,
@@ -170,7 +172,8 @@ nonbonded asu: (7, 4)
     selections=[range(3), range(-2,0)])
   site_labels_long = ["abc"+label+"def" for label in site_labels]
   out = StringIO()
-  pair_proxies.bond_proxies.show_sorted_by_residual(
+  pair_proxies.bond_proxies.show_sorted(
+    by_value="residual",
     sites_cart=sites_cart,
     labels=site_labels_long,
     f=out,
@@ -188,7 +191,8 @@ nonbonded asu: (7, 4)
 """,
     selections=[range(3), range(-2,0)])
   out = StringIO()
-  pair_proxies.bond_proxies.show_sorted_by_residual(
+  pair_proxies.bond_proxies.show_sorted(
+    by_value="residual",
     sites_cart=sites_cart,
     f=out,
     prefix=".=",
@@ -205,7 +209,8 @@ nonbonded asu: (7, 4)
 """,
     selections=[range(3), range(-2,0)])
   out = StringIO()
-  pair_proxies.bond_proxies.show_sorted_by_residual(
+  pair_proxies.bond_proxies.show_sorted(
+    by_value="residual",
     sites_cart=sites_cart,
     f=out,
     prefix="-+",
@@ -219,7 +224,8 @@ nonbonded asu: (7, 4)
 -+... (remaining 47 not shown)
 """)
   out = StringIO()
-  pair_proxies.bond_proxies.show_sorted_by_residual(
+  pair_proxies.bond_proxies.show_sorted(
+    by_value="residual",
     sites_cart=sites_cart,
     f=out,
     prefix="=+",

@@ -2911,7 +2911,8 @@ class process(object):
           f=self.log,
           prefix="  ")
         smallest_distance_model = \
-          pair_proxies.bond_proxies.show_sorted_by_residual(
+          pair_proxies.bond_proxies.show_sorted(
+            by_value="residual",
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
             labels=labels,
             f=self.log,
