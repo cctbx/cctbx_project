@@ -89,6 +89,7 @@ if (1) then
   rm -rf sbgrid2008
   mkdir sbgrid2008
   cd sbgrid2008
+  echo 'Options Indexes' > .htaccess
   cp -r "$root/cctbx_project/dox/rst/default.css" .
   "$root/cctbx_project/dox/sbgrid2008_update_generated_files.csh"
 endif
@@ -98,6 +99,7 @@ if (1) then
   rm -rf iucr2008
   mkdir iucr2008
   cd iucr2008
+  echo 'Options Indexes' > .htaccess
   cp -r "$root/cctbx_project/dox/rst/default.css" .
   cp -r "$root/cctbx_project/scitbx/examples/rigid_body_refinement_core.py" .
   cp -r "$root/cctbx_project/scitbx/examples/rigid_body_refinement_core.txt" .
