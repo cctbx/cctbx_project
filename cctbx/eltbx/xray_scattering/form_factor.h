@@ -4,8 +4,12 @@
 #include <scitbx/array_family/shared.h>
 #include <cctbx/import_scitbx_af.h>
 
-namespace cctbx { namespace eltbx { namespace xray_scattering {
+namespace cctbx { namespace eltbx {
 
+//! X-ray scattering tables.
+namespace xray_scattering {
+
+  //! Helper.
   template<class Derived>
   class isotropic_form_factor_mixin
   {
