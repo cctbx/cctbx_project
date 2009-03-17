@@ -1921,14 +1921,30 @@ class phaser_sad_target_functor(object):
     self.r_free_flags = r_free_flags
     self.xray_structure = xray_structure
     self.f_calc = f_calc
-    if (target_memory is None):
-      previous_overall_scale = None
+    if (target_memory is None): # XXX could be more elegant!
+      den = self.f_obs.data()
+      num = flex.abs(self.f_calc.data())
+      denom = flex.sum(num*den)
+      numerator = flex.sum(den*den)
+      if (denom == 0):
+        raise RuntimeError("Zero denominator in scale calculation.")
+      previous_overall_scale = numerator/denom
       previous_variances = None
-    else:
-      assert len(target_memory) == 3
-      assert target_memory[0] == "ml_sad"
-      previous_overall_scale = target_memory[1]
-      previous_variances = target_memory[2]
+      adaptor = phaser.phenix_adaptors.sad_target.data_adaptor(
+        f_obs=f_obs,
+        r_free_flags=r_free_flags,
+        verbose=True)
+      self.refine_sad_object = adaptor.target(
+        xray_structure=xray_structure,
+        previous_overall_scale=previous_overall_scale,
+        previous_variances=previous_variances)
+      self.refine_sad_object.set_f_calc(f_calc=f_calc)
+      target_memory = self.target_memory()
+
+    assert len(target_memory) == 3
+    assert target_memory[0] == "ml_sad"
+    previous_overall_scale = target_memory[1]
+    previous_variances = target_memory[2]
     adaptor = phaser.phenix_adaptors.sad_target.data_adaptor(
       f_obs=f_obs,
       r_free_flags=r_free_flags,
@@ -1938,6 +1954,7 @@ class phaser_sad_target_functor(object):
       previous_overall_scale=previous_overall_scale,
       previous_variances=previous_variances)
     self.refine_sad_object.set_f_calc(f_calc=f_calc)
+    self.refine_sad_object.calc_outliers()
     self.refined_overall_b_iso = None
 
   def prepare_for_minimization(self):
@@ -1949,14 +1966,11 @@ class phaser_sad_target_functor(object):
 
   def target_memory(self):
     rsi = self.refine_sad_object.refine_sad_instance
-    get = getattr( # XXX backward compatibility 2008-10-10
-      rsi, "get_variance_array", None)
-    if (get is None): return None
-    return ("ml_sad", rsi.get_refined_scaleK(), get())
+    return ("ml_sad", rsi.get_refined_scaleK(), rsi.get_variance_array())
 
   def __call__(self, f_calc, compute_gradients):
-    rso = self.refine_sad_object
     self.refine_sad_object.set_f_calc(f_calc=f_calc)
+    rso = self.refine_sad_object
     target_work = rso.functional(use_working_set=True)
     gradients_work = rso.gradients()
     target_test = rso.functional(use_working_set=False)
@@ -1979,7 +1993,7 @@ class target_functor(object):
           "ml_sad target requires phaser extension, which is not available"
           " in this installation.")
       self.core = phaser_sad_target_functor(
-        f_obs=manager.f_obs_scaled_with_k2(),
+        f_obs=manager.f_obs,
         r_free_flags=manager.r_free_flags,
         xray_structure=manager.xray_structure,
         f_calc=manager.f_model(),
@@ -2632,3 +2646,4 @@ def show_histogram(data, n_slots, log):
     hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
     print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
     lc_1 = hc_1
+
