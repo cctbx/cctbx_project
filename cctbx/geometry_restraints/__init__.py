@@ -538,6 +538,58 @@ class _nonbonded_sorted_asu_proxies(boost.python.injector,
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
 
+class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
+
+  def deltas(self, sites_cart):
+    return angle_deltas(sites_cart=sites_cart, proxies=self)
+
+  def residuals(self, sites_cart):
+    return angle_residuals(sites_cart=sites_cart, proxies=self)
+
+  def show_sorted(self,
+        by_value,
+        sites_cart,
+        labels=None,
+        f=None,
+        prefix="",
+        max_show=None):
+    assert by_value in ["residual", "delta"]
+    assert labels is None or len(labels) == sites_cart.size()
+    if (f is None): f = sys.stdout
+    print >> f, "%sAngle restraints:" % prefix, self.size()
+    if (self.size() == 0): return
+    if (max_show is not None and max_show <= 0): return
+    if (by_value == "residual"):
+      data_to_sort = self.residuals(sites_cart=sites_cart)
+    elif (by_value == "delta"):
+      data_to_sort = flex.abs(self.deltas(sites_cart=sites_cart))
+    else:
+      raise AssertionError
+    i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
+    if (max_show is not None):
+      i_proxies_sorted = i_proxies_sorted[:max_show]
+    print >> f, "%sSorted by %s:" % (prefix, by_value)
+    for i_proxy in i_proxies_sorted:
+      proxy = self[i_proxy]
+      restraint = angle(
+        sites_cart=sites_cart,
+        proxy=proxy)
+      for i_seq in proxy.i_seqs:
+        if (labels is None): l = str(i_seq)
+        else:                l = labels[i_seq]
+        print >> f, "%s%s" % (prefix, l)
+      print >> f, "%s    ideal   model   delta" \
+        "    sigma   weight residual" % prefix
+      print >> f, "%s  %7.2f %7.2f %7.2f %6.2e %6.2e %6.2e" % (
+        prefix,
+        restraint.angle_ideal, restraint.angle_model, restraint.delta,
+        weight_as_sigma(weight=restraint.weight),
+        restraint.weight,
+        restraint.residual())
+    n_not_shown = self.size() - i_proxies_sorted.size()
+    if (n_not_shown != 0):
+      print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+
 class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
 
   def show_histogram_of_deltas(self,
