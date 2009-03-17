@@ -578,6 +578,9 @@ class environment:
     module_names = []
     for module_name in command_line.args:
       if (len(module_name) == 0): continue # ignore arguments like ""
+      if (module_name == ".."):
+        raise Sorry('Invalid module name: ".."')
+      if (module_name == "."): module_name = "libtbx"
       if (module_name in self.command_line_redirections):
         del self.command_line_redirections[module_name]
       elif (module_name.count("=") == 1
