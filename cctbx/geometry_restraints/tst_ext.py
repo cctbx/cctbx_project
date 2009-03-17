@@ -6,8 +6,9 @@ from cctbx import uctbx
 from cctbx.crystal import direct_space_asu
 from scitbx import matrix
 from scitbx import stl
-from libtbx.test_utils import approx_equal, not_approx_equal, eps_eq
+from libtbx.test_utils import approx_equal, not_approx_equal, eps_eq, show_diff
 from libtbx.utils import null_out
+from cStringIO import StringIO
 import math
 import sys
 
@@ -1081,6 +1082,74 @@ def exercise_angle():
     proxy=a_proxy)
   for g,e in zip(a_gradient_array, fd_grads):
     assert approx_equal(g, e)
+  #
+  proxies = geometry_restraints.shared_angle_proxy()
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=flex.vec3_double(),
+    f=sio)
+  assert not show_diff(sio.getvalue(), """\
+Angle restraints: 0
+""")
+  proxies = geometry_restraints.shared_angle_proxy([
+    geometry_restraints.angle_proxy(
+      i_seqs=[2,1,0],
+      angle_ideal=59,
+      weight=2),
+    geometry_restraints.angle_proxy(
+      i_seqs=[3,0,1],
+      angle_ideal=99,
+      weight=8)])
+  mt = flex.mersenne_twister(seed=73)
+  sites_cart = flex.vec3_double(mt.random_double(size=12))
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart,
+    f=sio,
+    prefix="+")
+  assert not show_diff(sio.getvalue(), """\
++Angle restraints: 2
++Sorted by residual:
++3
++0
++1
++    ideal   model   delta    sigma   weight residual
++    99.00   99.72   -0.72 3.54e-01 8.00e+00 4.19e+00
++2
++1
++0
++    ideal   model   delta    sigma   weight residual
++    59.00   58.06    0.94 7.07e-01 2.00e+00 1.76e+00
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="delta",
+    sites_cart=sites_cart,
+    labels=["a", "b", "c", "d"],
+    f=sio,
+    prefix="@",
+    max_show=1)
+  assert not show_diff(sio.getvalue(), """\
+@Angle restraints: 2
+@Sorted by delta:
+@c
+@b
+@a
+@    ideal   model   delta    sigma   weight residual
+@    59.00   58.06    0.94 7.07e-01 2.00e+00 1.76e+00
+@... (remaining 1 not shown)
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart,
+    f=sio,
+    max_show=0)
+  assert not show_diff(sio.getvalue(), """\
+Angle restraints: 2
+""")
 
 def exercise_dihedral():
   p = geometry_restraints.dihedral_params(
