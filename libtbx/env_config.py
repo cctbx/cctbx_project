@@ -743,6 +743,8 @@ class environment:
       % show_string(self.under_build("dispatcher_include_template.sh"))
     print >> f, '#'
     print >> f, 'unset PYTHONHOME'
+    print >> f, 'LC_ALL=C'
+    print >> f, 'export LC_ALL'
     print >> f, 'LIBTBX_BUILD="%s"' % self.build_path
     print >> f, 'export LIBTBX_BUILD'
     source_is_py = False
