@@ -1082,74 +1082,6 @@ def exercise_angle():
     proxy=a_proxy)
   for g,e in zip(a_gradient_array, fd_grads):
     assert approx_equal(g, e)
-  #
-  proxies = geometry_restraints.shared_angle_proxy()
-  sio = StringIO()
-  proxies.show_sorted(
-    by_value="residual",
-    sites_cart=flex.vec3_double(),
-    f=sio)
-  assert not show_diff(sio.getvalue(), """\
-Angle restraints: 0
-""")
-  proxies = geometry_restraints.shared_angle_proxy([
-    geometry_restraints.angle_proxy(
-      i_seqs=[2,1,0],
-      angle_ideal=59,
-      weight=2),
-    geometry_restraints.angle_proxy(
-      i_seqs=[3,0,1],
-      angle_ideal=99,
-      weight=8)])
-  mt = flex.mersenne_twister(seed=73)
-  sites_cart = flex.vec3_double(mt.random_double(size=12))
-  sio = StringIO()
-  proxies.show_sorted(
-    by_value="residual",
-    sites_cart=sites_cart,
-    f=sio,
-    prefix="+")
-  assert not show_diff(sio.getvalue(), """\
-+Angle restraints: 2
-+Sorted by residual:
-+3
-+0
-+1
-+    ideal   model   delta    sigma   weight residual
-+    99.00   99.72   -0.72 3.54e-01 8.00e+00 4.19e+00
-+2
-+1
-+0
-+    ideal   model   delta    sigma   weight residual
-+    59.00   58.06    0.94 7.07e-01 2.00e+00 1.76e+00
-""")
-  sio = StringIO()
-  proxies.show_sorted(
-    by_value="delta",
-    sites_cart=sites_cart,
-    labels=["a", "b", "c", "d"],
-    f=sio,
-    prefix="@",
-    max_show=1)
-  assert not show_diff(sio.getvalue(), """\
-@Angle restraints: 2
-@Sorted by delta:
-@c
-@b
-@a
-@    ideal   model   delta    sigma   weight residual
-@    59.00   58.06    0.94 7.07e-01 2.00e+00 1.76e+00
-@... (remaining 1 not shown)
-""")
-  sio = StringIO()
-  proxies.show_sorted(
-    by_value="residual",
-    sites_cart=sites_cart,
-    f=sio,
-    max_show=0)
-  assert not show_diff(sio.getvalue(), """\
-Angle restraints: 2
-""")
 
 def exercise_dihedral():
   p = geometry_restraints.dihedral_params(
@@ -1724,6 +1656,285 @@ def exercise_planarity():
   for g,e in zip(gradient_array, fd_grads):
     assert approx_equal(g, e)
 
+def exercise_proxy_show():
+  mt = flex.mersenne_twister(seed=73)
+  sites_cart = flex.vec3_double(mt.random_double(size=18))
+  labels = ["a", "ba", "c", "dada", "e", "f"]
+  #
+  proxies = geometry_restraints.shared_angle_proxy()
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=flex.vec3_double(),
+    f=sio)
+  assert not show_diff(sio.getvalue(), """\
+Angle restraints: 0
+""")
+  proxies = geometry_restraints.shared_angle_proxy([
+    geometry_restraints.angle_proxy(
+      i_seqs=[2,1,0],
+      angle_ideal=59,
+      weight=2),
+    geometry_restraints.angle_proxy(
+      i_seqs=[3,0,1],
+      angle_ideal=99,
+      weight=8)])
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart,
+    f=sio,
+    prefix="+")
+  assert not show_diff(sio.getvalue(), """\
++Angle restraints: 2
++Sorted by residual:
++3
++0
++1
++    ideal   model   delta    sigma   weight residual
++    99.00   99.72   -0.72 3.54e-01 8.00e+00 4.19e+00
++2
++1
++0
++    ideal   model   delta    sigma   weight residual
++    59.00   58.06    0.94 7.07e-01 2.00e+00 1.76e+00
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="delta",
+    sites_cart=sites_cart,
+    labels=labels,
+    f=sio,
+    prefix="@",
+    max_show=1)
+  assert not show_diff(sio.getvalue(), """\
+@Angle restraints: 2
+@Sorted by delta:
+@c
+@ba
+@a
+@    ideal   model   delta    sigma   weight residual
+@    59.00   58.06    0.94 7.07e-01 2.00e+00 1.76e+00
+@... (remaining 1 not shown)
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart,
+    f=sio,
+    max_show=0)
+  assert not show_diff(sio.getvalue(), """\
+Angle restraints: 2
+""")
+  #
+  proxies = geometry_restraints.shared_dihedral_proxy()
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=flex.vec3_double(),
+    f=sio)
+  assert not show_diff(sio.getvalue(), """\
+Dihedral angle restraints: 0
+""")
+  proxies = geometry_restraints.shared_dihedral_proxy([
+    geometry_restraints.dihedral_proxy(
+      i_seqs=[0,1,3,4],
+      angle_ideal=59,
+      weight=2,
+      periodicity=1),
+    geometry_restraints.dihedral_proxy(
+      i_seqs=[3,2,0,5],
+      angle_ideal=99,
+      weight=8,
+      periodicity=1)])
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart,
+    f=sio,
+    prefix="-")
+  assert not show_diff(sio.getvalue(), """\
+-Dihedral angle restraints: 2
+-Sorted by residual:
+-3
+-2
+-0
+-5
+-    ideal   model   delta periodicty    sigma   weight residual
+-    99.00   16.67   82.33     1      3.54e-01 8.00e+00 5.42e+04
+-0
+-1
+-3
+-4
+-    ideal   model   delta periodicty    sigma   weight residual
+-    59.00 -159.79 -141.21     1      7.07e-01 2.00e+00 3.99e+04
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="delta",
+    sites_cart=sites_cart,
+    labels=labels,
+    f=sio,
+    prefix="^",
+    max_show=1)
+  assert not show_diff(sio.getvalue(), """\
+^Dihedral angle restraints: 2
+^Sorted by delta:
+^a
+^ba
+^dada
+^e
+^    ideal   model   delta periodicty    sigma   weight residual
+^    59.00 -159.79 -141.21     1      7.07e-01 2.00e+00 3.99e+04
+^... (remaining 1 not shown)
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart,
+    f=sio,
+    max_show=0)
+  assert not show_diff(sio.getvalue(), """\
+Dihedral angle restraints: 2
+""")
+  #
+  proxies = geometry_restraints.shared_chirality_proxy()
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=flex.vec3_double(),
+    f=sio)
+  assert not show_diff(sio.getvalue(), """\
+Chirality restraints: 0
+""")
+  proxies = geometry_restraints.shared_chirality_proxy([
+    geometry_restraints.chirality_proxy(
+      i_seqs=[0,1,3,4],
+      volume_ideal=0.09,
+      both_signs=False,
+      weight=2),
+    geometry_restraints.chirality_proxy(
+      i_seqs=[3,2,0,5],
+      volume_ideal=0.16,
+      both_signs=True,
+      weight=8)])
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart,
+    f=sio,
+    prefix="$")
+  assert not show_diff(sio.getvalue(), """\
+$Chirality restraints: 2
+$Sorted by residual:
+$3
+$2
+$0
+$5
+$  both_signs  ideal   model   delta    sigma   weight residual
+$    True       0.16    0.05    0.11 3.54e-01 8.00e+00 9.34e-02
+$0
+$1
+$3
+$4
+$  both_signs  ideal   model   delta    sigma   weight residual
+$    False      0.09   -0.04    0.13 7.07e-01 2.00e+00 3.33e-02
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="delta",
+    sites_cart=sites_cart,
+    labels=labels,
+    f=sio,
+    prefix="*",
+    max_show=1)
+  assert not show_diff(sio.getvalue(), """\
+*Chirality restraints: 2
+*Sorted by delta:
+*a
+*ba
+*dada
+*e
+*  both_signs  ideal   model   delta    sigma   weight residual
+*    False      0.09   -0.04    0.13 7.07e-01 2.00e+00 3.33e-02
+*... (remaining 1 not shown)
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart,
+    f=sio,
+    max_show=0)
+  assert not show_diff(sio.getvalue(), """\
+Chirality restraints: 2
+""")
+  #
+  proxies = geometry_restraints.shared_planarity_proxy()
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=flex.vec3_double(),
+    f=sio)
+  assert not show_diff(sio.getvalue(), """\
+Planarity restraints: 0
+""")
+  proxies = geometry_restraints.shared_planarity_proxy([
+    geometry_restraints.planarity_proxy(
+      i_seqs=[0,2,4,1],
+      weights=[0.31,0.2,0.31,0.4]),
+    geometry_restraints.planarity_proxy(
+      i_seqs=[0,2,3,4,5],
+      weights=[0.01,0.11,0.21,0.31,0.41])])
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart,
+    f=sio,
+    prefix=":")
+  assert not show_diff(sio.getvalue(), """\
+:Planarity restraints: 2
+:Sorted by residual:
+:     delta    sigma   weight rms_deltas residual
+:0    0.004 1.80e+00 3.10e-01   1.46e-01 2.52e-02
+:2   -0.196 2.24e+00 2.00e-01
+:4   -0.115 1.80e+00 3.10e-01
+:1    0.184 1.58e+00 4.00e-01
+:     delta    sigma   weight rms_deltas residual
+:0   -0.332 1.00e+01 1.00e-02   1.78e-01 9.86e-03
+:2    0.152 3.02e+00 1.10e-01
+:3   -0.143 2.18e+00 2.10e-01
+:4   -0.030 1.80e+00 3.10e-01
+:5    0.063 1.56e+00 4.10e-01
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="rms_deltas",
+    sites_cart=sites_cart,
+    labels=labels,
+    f=sio,
+    prefix="<",
+    max_show=1)
+  assert not show_diff(sio.getvalue(), """\
+<Planarity restraints: 2
+<Sorted by rms_deltas:
+<        delta    sigma   weight rms_deltas residual
+<a      -0.332 1.00e+01 1.00e-02   1.78e-01 9.86e-03
+<c       0.152 3.02e+00 1.10e-01
+<dada   -0.143 2.18e+00 2.10e-01
+<e      -0.030 1.80e+00 3.10e-01
+<f       0.063 1.56e+00 4.10e-01
+<... (remaining 1 not shown)
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart,
+    f=sio,
+    max_show=0)
+  assert not show_diff(sio.getvalue(), """\
+Planarity restraints: 2
+""")
+
 def exercise():
   exercise_bond_similarity()
   exercise_bond()
@@ -1733,6 +1944,7 @@ def exercise():
   exercise_dihedral()
   exercise_chirality()
   exercise_planarity()
+  exercise_proxy_show()
   print "OK"
 
 if (__name__ == "__main__"):
