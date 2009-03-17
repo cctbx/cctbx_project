@@ -592,6 +592,12 @@ class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
 
 class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
 
+  def deltas(self, sites_cart):
+    return dihedral_deltas(sites_cart=sites_cart, proxies=self)
+
+  def residuals(self, sites_cart):
+    return dihedral_residuals(sites_cart=sites_cart, proxies=self)
+
   def show_histogram_of_deltas(self,
         sites_cart,
         n_slots=5,
@@ -601,9 +607,7 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
     if (f is None): f = sys.stdout
     print >> f, "%sHistogram of dihedral angle deviations from ideal:" % prefix
     histogram = flex.histogram(
-      data=flex.abs(dihedral_deltas(
-        sites_cart=sites_cart,
-        proxies=self)),
+      data=flex.abs(self.deltas(sites_cart=sites_cart)),
       n_slots=n_slots)
     low_cutoff = histogram.data_min()
     for i,n in enumerate(histogram.slots()):
@@ -613,36 +617,45 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
       low_cutoff = high_cutoff
     return histogram
 
-  def show_sorted_by_residual(self,
+  def show_sorted(self,
+        by_value,
         sites_cart,
         labels=None,
         f=None,
         prefix="",
-        max_lines=None):
+        max_show=None):
+    assert by_value in ["residual", "delta"]
     assert labels is None or len(labels) == sites_cart.size()
-    if (self.size() == 0): return
     if (f is None): f = sys.stdout
-    residuals = dihedral_residuals(
-      sites_cart=sites_cart,
-      proxies=self)
-    i_proxies_sorted = flex.sort_permutation(data=residuals, reverse=True)
-    if (max_lines is not None and i_proxies_sorted.size() > max_lines+1):
-      i_proxies_sorted = i_proxies_sorted[:max_lines]
-    print >> f, "%sDihedral angle restraints sorted by residual:" % prefix
+    print >> f, "%sDihedral angle restraints:" % prefix, self.size()
+    if (self.size() == 0): return
+    if (max_show is not None and max_show <= 0): return
+    if (by_value == "residual"):
+      data_to_sort = self.residuals(sites_cart=sites_cart)
+    elif (by_value == "delta"):
+      data_to_sort = flex.abs(self.deltas(sites_cart=sites_cart))
+    else:
+      raise AssertionError
+    i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
+    if (max_show is not None):
+      i_proxies_sorted = i_proxies_sorted[:max_show]
+    print >> f, "%sSorted by %s:" % (prefix, by_value)
     for i_proxy in i_proxies_sorted:
       proxy = self[i_proxy]
       restraint = dihedral(
         sites_cart=sites_cart,
         proxy=proxy)
-      if (labels is not None):
-        for i_seq in proxy.i_seqs:
-          print >> f, "%s%s" % (prefix, labels[i_seq])
+      for i_seq in proxy.i_seqs:
+        if (labels is None): l = str(i_seq)
+        else:                l = labels[i_seq]
+        print >> f, "%s%s" % (prefix, l)
       print >> f, "%s    ideal   model   delta" \
-        " periodicty    weight residual" % prefix
-      print >> f, "%s  %7.2f %7.2f %7.2f %5d       %6.2e %6.2e" % (
+        " periodicty     sigma weight residual" % prefix
+      print >> f, "%s  %7.2f %7.2f %7.2f %5d       %6.2e %6.2e %6.2e" % (
         prefix,
         restraint.angle_ideal, restraint.angle_model, restraint.delta,
-        restraint.periodicity, restraint.weight, restraint.residual())
+        restraint.periodicity, weight_as_sigma(weight=restraint.weight),
+        restraint.weight, restraint.residual())
     n_not_shown = self.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
