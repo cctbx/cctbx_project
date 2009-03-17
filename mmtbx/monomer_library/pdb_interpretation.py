@@ -2945,12 +2945,13 @@ class process(object):
             f=self.log,
             prefix="  ")
         self._geometry_restraints_manager.dihedral_proxies \
-          .show_sorted_by_residual(
+          .show_sorted(
+            by_value="residual",
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
             labels=labels,
             f=self.log,
             prefix="  ",
-            max_lines=params.show_max_lines
+            max_show=params.show_max_lines
               .dihedral_angle_restraints_sorted_by_residual)
         flush_log(self.log)
         if (show_energies):
