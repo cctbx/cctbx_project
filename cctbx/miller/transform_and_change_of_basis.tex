@@ -57,7 +57,7 @@ F'(h) &= F^{\sym{R}{t}^{-1}}(h) = F(hR^{-1}) e^{i2\pi h(-R^{-1}t)}\nonumber\\
 \intertext{and therefore}
 F'(hR) &= F(h)e^{-i2\pi ht}. \label{eqn:change::basis::F}
 \end{align}
-That is the formula implemented in the \cctbx\ in \code{sym\_equiv.h}, c.f. \code{sym\_equiv\_index\linebreak[0]::phase\_eq} and it's use in \code{change\_basis.h}. It is particularly convenient since a \code{miller\linebreak[0].array} stores $h$ and $F(h)$ in two parallel arrays. By looping over the both of them at the same time, one can compute and immediately store the new miller index $hR$ and the value $F'$ for that new miller index. However it means that the ordering of the original and new data are related as follow
+That is the formula implemented in the \cctbx\ in \code{sym\_equiv.h}, c.f. \code{sym\_equiv\_index\linebreak[0]::phase\_eq} and its use in \code{change\_basis.h}. It is particularly convenient since a \code{miller\linebreak[0].array} stores $h$ and $F(h)$ in two parallel arrays. By looping over the both of them at the same time, one can compute and immediately store the new miller index $hR$ and the value $F'$ for that new miller index. However it means that the ordering of the original and new data are related as follow
 \begin{equation}
 \begin{CD}
 \ldots @. \ldots\\
@@ -114,7 +114,7 @@ F(h)                                  @>{\text{c.b. } \sym{I}{s}}>>   F(h)e^{-i2
 F(hR)e^{-i2\pi hRs}e^{i2\pi ht}e^{i2\pi hs}   @<<{\text{c.b. } \sym{I}{-s}}< F(hR)e^{-i2\pi hRs}e^{i2\pi ht}
 \end{CD}
 \end{equation*}
-So the transformes read
+So the transforms read
 \begin{align}
 \rho^\#(x) &= \rho(\sym{R}{t}^{-1}(x - (I-R)s))\\
 F^\#(h) &= F^{\sym{R}{t}}(h) e^{i2\pi h(I-R)s} \label{eqn:translation::search::F}
