@@ -267,12 +267,12 @@ def exercise_restraint_parsing():
     sites_cart=structure.sites_cart(),
     f=s)
   assert bond_proxies.n_total() == 5
-  for i in range(3,7):
+  for i in range(4,8):
     items = s.getvalue().split('\n')[i].split()
-    if i in (3,4):
+    if i in (4,5):
       ideal_delta = 0.030
       esd=0.02
-    elif i in (5,6):
+    elif i in (6,7):
       ideal_delta = -0.002
       esd=0.03
     assert approx_equal(float(items[2]), ideal_delta)

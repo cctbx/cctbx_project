@@ -401,20 +401,22 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
         labels=None,
         f=None,
         prefix="",
-        max_lines=None):
+        max_items=None):
     assert by_value in ["residual", "delta"]
     assert labels is None or len(labels) == sites_cart.size()
-    if (self.n_total() == 0): return
     if (f is None): f = sys.stdout
+    print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
+    if (self.n_total() == 0): return
+    if (max_items is not None and max_items <= 0): return
     if (by_value == "residual"):
       data_to_sort = self.residuals(sites_cart=sites_cart)
     elif (by_value == "delta"):
       data_to_sort = flex.abs(self.deltas(sites_cart=sites_cart))
     else:
-      raise RuntimeError("Internal error.")
+      raise AssertionError
     i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
-    if (max_lines is not None and i_proxies_sorted.size() > max_lines+1):
-      i_proxies_sorted = i_proxies_sorted[:max_lines]
+    if (max_items is not None):
+      i_proxies_sorted = i_proxies_sorted[:max_items]
     plf = pair_labels_formatter(
       sorted_proxies=self,
       i_proxies_sorted=i_proxies_sorted,
@@ -444,7 +446,7 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
           proxy=proxy)
       if (show_legend):
         show_legend = False
-        print >> f, "%sBond restraints sorted by residual:" % prefix
+        print >> f, "%sSorted by %s:" % (prefix, by_value)
         print >> f, "%s%sideal  model  delta   weight residual%s" % (
           prefix, plf.atom_i_atom_j(), plf.sym_op_j)
       print >> f, "%s%s%5.3f %6.3f %6.3f %6.2e %6.2e" % (
@@ -492,17 +494,22 @@ class _nonbonded_sorted_asu_proxies(boost.python.injector,
         prefix)
     return histogram
 
-  def show_sorted_by_model_distance(self,
+  def show_sorted(self,
+        by_value,
         sites_cart,
         labels=None,
         f=None,
         prefix="",
-        max_lines=None):
+        max_items=None):
+    assert by_value in ["delta"]
     if (f is None): f = sys.stdout
     deltas = nonbonded_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
+    print >> f, "%sNonbonded interactions: %d" % (prefix, deltas.size())
+    if (deltas.size() == 0): return
+    if (max_items is not None and max_items <= 0): return
     i_proxies_sorted = flex.sort_permutation(data=deltas)
-    if (max_lines is not None and i_proxies_sorted.size() > max_lines+1):
-      i_proxies_sorted = i_proxies_sorted[:max_lines]
+    if (max_items is not None):
+      i_proxies_sorted = i_proxies_sorted[:max_items]
     plf = pair_labels_formatter(
       sorted_proxies=self,
       i_proxies_sorted=i_proxies_sorted,
@@ -525,7 +532,7 @@ class _nonbonded_sorted_asu_proxies(boost.python.injector,
       delta = deltas[i_proxy]
       if (show_legend):
         show_legend = False
-        print >> f, "%sNonbonded interactions sorted by model distance:" % (
+        print >> f, "%sSorted by model distance:" % (
           prefix)
         print >> f, "%s%s model   vdw%s" % (
           prefix, plf.atom_i_atom_j(), plf.sym_op_j)
@@ -562,12 +569,12 @@ class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
         labels=None,
         f=None,
         prefix="",
-        max_show=None):
+        max_items=None):
     _show_sorted_impl(O=self,
         proxy_type=angle,
         proxy_label="Angle",
         by_value=by_value, sites_cart=sites_cart, labels=labels,
-        f=f, prefix=prefix, max_show=max_show)
+        f=f, prefix=prefix, max_items=max_items)
 
 class _dihedral(boost.python.injector, dihedral):
 
@@ -612,12 +619,12 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
         labels=None,
         f=None,
         prefix="",
-        max_show=None):
+        max_items=None):
     _show_sorted_impl(O=self,
         proxy_type=dihedral,
         proxy_label="Dihedral angle",
         by_value=by_value, sites_cart=sites_cart, labels=labels,
-        f=f, prefix=prefix, max_show=max_show)
+        f=f, prefix=prefix, max_items=max_items)
 
 class _chirality(boost.python.injector, chirality):
 
@@ -643,12 +650,12 @@ class _shared_chirality_proxy(boost.python.injector, shared_chirality_proxy):
         labels=None,
         f=None,
         prefix="",
-        max_show=None):
+        max_items=None):
     _show_sorted_impl(O=self,
         proxy_type=chirality,
         proxy_label="Chirality",
         by_value=by_value, sites_cart=sites_cart, labels=labels,
-        f=f, prefix=prefix, max_show=max_show)
+        f=f, prefix=prefix, max_items=max_items)
 
 class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
 
@@ -664,13 +671,13 @@ class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
         labels=None,
         f=None,
         prefix="",
-        max_show=None):
+        max_items=None):
     assert by_value in ["residual", "rms_deltas"]
     assert labels is None or len(labels) == sites_cart.size()
     if (f is None): f = sys.stdout
     print >> f, "%sPlanarity restraints: %d" % (prefix, O.size())
     if (O.size() == 0): return
-    if (max_show is not None and max_show <= 0): return
+    if (max_items is not None and max_items <= 0): return
     if (by_value == "residual"):
       data_to_sort = O.residuals(sites_cart=sites_cart)
     elif (by_value == "rms_deltas"):
@@ -678,8 +685,8 @@ class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
     else:
       raise AssertionError
     i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
-    if (max_show is not None):
-      i_proxies_sorted = i_proxies_sorted[:max_show]
+    if (max_items is not None):
+      i_proxies_sorted = i_proxies_sorted[:max_items]
     print >> f, "%sSorted by %s:" % (prefix, by_value)
     for i_proxy in i_proxies_sorted:
       proxy = O[i_proxy]
@@ -715,13 +722,13 @@ def _show_sorted_impl(O,
         labels,
         f,
         prefix,
-        max_show):
+        max_items):
   assert by_value in ["residual", "delta"]
   assert labels is None or len(labels) == sites_cart.size()
   if (f is None): f = sys.stdout
   print >> f, "%s%s restraints: %d" % (prefix, proxy_label, O.size())
   if (O.size() == 0): return
-  if (max_show is not None and max_show <= 0): return
+  if (max_items is not None and max_items <= 0): return
   if (by_value == "residual"):
     data_to_sort = O.residuals(sites_cart=sites_cart)
   elif (by_value == "delta"):
@@ -729,8 +736,8 @@ def _show_sorted_impl(O,
   else:
     raise AssertionError
   i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
-  if (max_show is not None):
-    i_proxies_sorted = i_proxies_sorted[:max_show]
+  if (max_items is not None):
+    i_proxies_sorted = i_proxies_sorted[:max_items]
   print >> f, "%sSorted by %s:" % (prefix, by_value)
   for i_proxy in i_proxies_sorted:
     proxy = O[i_proxy]

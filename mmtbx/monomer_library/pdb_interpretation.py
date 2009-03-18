@@ -2917,7 +2917,7 @@ class process(object):
             labels=labels,
             f=self.log,
             prefix="  ",
-            max_lines=params.show_max_lines.bond_restraints_sorted_by_residual)
+            max_items=params.show_max_lines.bond_restraints_sorted_by_residual)
         if (    smallest_distance_model is not None
             and hard_minimum_bond_distance_model is not None
             and smallest_distance_model < hard_minimum_bond_distance_model):
@@ -2929,12 +2929,13 @@ class process(object):
           n_slots=params.show_histogram_slots.nonbonded_interaction_distances,
           f=self.log,
           prefix="  ")
-        pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
+        pair_proxies.nonbonded_proxies.show_sorted(
+          by_value="delta",
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
           labels=labels,
           f=self.log,
           prefix="  ",
-          max_lines=params.show_max_lines
+          max_items=params.show_max_lines
             .nonbonded_interactions_sorted_by_model_distance)
         self.clash_guard()
         self._geometry_restraints_manager.dihedral_proxies \
@@ -2951,7 +2952,7 @@ class process(object):
             labels=labels,
             f=self.log,
             prefix="  ",
-            max_show=params.show_max_lines
+            max_items=params.show_max_lines
               .dihedral_angle_restraints_sorted_by_residual)
         flush_log(self.log)
         if (show_energies):

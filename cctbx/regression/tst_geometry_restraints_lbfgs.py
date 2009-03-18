@@ -189,11 +189,12 @@ def exercise(verbose=0):
   pair_proxies.bond_proxies.show_sorted(
     by_value="residual",
     sites_cart=sites_cart,
-    max_lines=3,
+    max_items=3,
     f=s,
     prefix=":;")
   l = s.getvalue().splitlines()
-  assert l[:2] == [":;Bond restraints sorted by residual:",
+  assert l[:3] == [":;Bond restraints: 18",
+                   ":;Sorted by residual:",
                    ":;ideal  model  delta   weight residual"]
   assert l[-2].startswith(":;1.800  1.800")
   assert l[-1] == ":;... (remaining 15 not shown)"
@@ -211,20 +212,22 @@ def exercise(verbose=0):
 ]^      5.61 -     6.48: 54
 """)
   s = StringIO()
-  pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
+  pair_proxies.nonbonded_proxies.show_sorted(
+    by_value="delta",
     sites_cart=sites_cart,
-    max_lines=7,
+    max_items=7,
     f=s,
     prefix=">,")
   assert not show_diff(s.getvalue(), """\
->,Nonbonded interactions sorted by model distance:
+>,Nonbonded interactions: 141
+>,Sorted by model distance:
 >, model   vdw sym.op. j
 >, 2.164 3.600 -x+2,-y+1,z
 ...
 >, 3.414 3.600
 >,... (remaining 134 not shown)
 """,
-    selections=[range(3), range(-2,0)])
+    selections=[range(4), range(-2,0)])
   vdw_1_sticks = []
   vdw_2_sticks = []
   for proxy in pair_proxies.nonbonded_proxies.simple:
