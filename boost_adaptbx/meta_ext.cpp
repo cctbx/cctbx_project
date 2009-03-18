@@ -10,7 +10,9 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/list.hpp>
 #include <boost/cstdint.hpp>
+#include <stdexcept>
 
 // for number_of_processors()
 #if !defined(_MSC_VER)
@@ -445,6 +447,9 @@ namespace {
 #if defined(HAVE_WCHAR_H)
     P(wchar_t)
 #endif
+#if defined(Py_USING_UNICODE)
+    result += "Py_USING_UNICODE\n";
+#endif
 #if defined(PY_UNICODE_TYPE)
     P(PY_UNICODE_TYPE)
 #endif
@@ -458,6 +463,33 @@ namespace {
 #endif
     return result;
   }
+
+#if defined(Py_USING_UNICODE)
+  boost::python::list
+  str_or_unicode_as_char_list(
+    boost::python::object const& O)
+  {
+    PyObject* obj = O.ptr();
+    boost::python::ssize_t n;
+    const char* c;
+    if (PyString_Check(obj)) {
+      n = PyString_GET_SIZE(obj);
+      c = PyString_AS_STRING(obj);
+    }
+    else if (PyUnicode_Check(obj)) {
+      n = PyUnicode_GET_DATA_SIZE(obj);
+      c = PyUnicode_AS_DATA(obj);
+    }
+    else {
+      throw std::invalid_argument("str or unicode object expected.");
+    }
+    boost::python::list result;
+    for(boost::python::ssize_t i=0;i<n;i++) {
+      result.append(std::string(c+i, 1u));
+    }
+    return result;
+  }
+#endif
 
   void
   enable_signals_backtrace_if_possible()
@@ -501,6 +533,9 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
   def("boost_adptbx_libc_backtrace", boost_adptbx_libc_backtrace);
   def("libtbx_introspection_show_stack", libtbx_introspection_show_stack);
   def("platform_info", platform_info);
+#if defined(Py_USING_UNICODE)
+  def("str_or_unicode_as_char_list", str_or_unicode_as_char_list);
+#endif
   def("enable_signals_backtrace_if_possible",
        enable_signals_backtrace_if_possible);
   def("trap_exceptions",
