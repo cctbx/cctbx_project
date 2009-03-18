@@ -8,6 +8,10 @@ import math
 from cctbx import miller
 from libtbx import itertbx
 
+import boost.python
+ext = boost.python.import_ext("cctbx_statistics_ext")
+from cctbx_statistics_ext import *
+
 mean_number_of_atoms_per_amino_acid = {'C': 5, 'N': 3, 'O': 1}
 
 class empty: pass
@@ -97,36 +101,19 @@ class cumulative_intensity_distribution(object):
 
   def __init__(self, f_obs):
     self.info = f_obs.info()
-    n_bins_used = f_obs.binner().n_bins_used()
-    data = dict(zip(["%.2f" %(i/float(n_bins_used)) for i in range(0,n_bins_used)], [0]*n_bins_used))
     f_obs_sq = f_obs.f_as_f_sq()
     f_obs_sq.use_binner_of(f_obs)
-    n_reflections = 0
-    self.n_bins = f_obs_sq.binner().n_bins_all()
-    self.mean_f_obs_sq = f_obs_sq.mean(use_binning=True)
-    for intensity, d_spacing, indices in itertbx.izip(f_obs_sq.data(),f_obs_sq.d_spacings().data(),f_obs_sq.indices()):
-      n_reflections += 1
-      i_over_mean_i = intensity/self._get_mean_f_obs_sq(d_spacing)
-      rounded_i_over_mean_i = round(i_over_mean_i, 2)
-      if i_over_mean_i > rounded_i_over_mean_i:
-        rounded_i_over_mean_i += 0.01
-      for i in range(n_bins_used,int(rounded_i_over_mean_i*n_bins_used)-1,-1):
-        key = "%.2f" %(i/n_bins_used)
-        if data.has_key(key):
-          data[key] += 1
-        else:
-          continue
-
-    xy_data = data.items()
-    xy_data.sort()
-    self.x = [float(x) for x, y in xy_data]
-    self.y = [y/n_reflections for x, y in xy_data]
-
-  def _get_mean_f_obs_sq(self, d_spacing):
-    for n_bin in xrange(0,self.n_bins):
-      if d_spacing >= self.mean_f_obs_sq.binner.bin_d_range(n_bin)[1]:
-        break
-    return self.mean_f_obs_sq.data[n_bin]
+    mean_f_obs_sq = f_obs_sq.mean(use_binning=True)
+    mean_data = flex.double(mean_f_obs_sq.data[1:f_obs_sq.binner().n_bins_used()+1])
+    bin_d_max = flex.double([mean_f_obs_sq.binner.bin_d_range(i)[1]
+                   for i in range(1,f_obs_sq.binner().n_bins_used()+1)])
+    result = cumulative_intensity_core(f_obs_sq.data(),
+                                    f_obs_sq.d_spacings().data(),
+                                    mean_data,
+                                    bin_d_max,
+                                    f_obs_sq.indices())
+    self.x = result.x()
+    self.y = result.y()
 
   def xy_plot_info(self):
     r = empty()
@@ -135,8 +122,8 @@ class cumulative_intensity_distribution(object):
       r.title += ": " + str(self.info)
     r.x = self.x
     r.y = self.y
-    r.xLegend = "z(%)"
-    r.yLegend = "N(z)(%)"
+    r.xLegend = "z"
+    r.yLegend = "N(z)"
     return r
 
 class sys_absent_intensity_distribution(object):
