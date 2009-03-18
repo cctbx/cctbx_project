@@ -1706,7 +1706,7 @@ Angle restraints: 0
     labels=labels,
     f=sio,
     prefix="@",
-    max_show=1)
+    max_items=1)
   assert not show_diff(sio.getvalue(), """\
 @Angle restraints: 2
 @Sorted by delta:
@@ -1722,7 +1722,7 @@ Angle restraints: 0
     by_value="residual",
     sites_cart=sites_cart,
     f=sio,
-    max_show=0)
+    max_items=0)
   assert not show_diff(sio.getvalue(), """\
 Angle restraints: 2
 """)
@@ -1776,7 +1776,7 @@ Dihedral angle restraints: 0
     labels=labels,
     f=sio,
     prefix="^",
-    max_show=1)
+    max_items=1)
   assert not show_diff(sio.getvalue(), """\
 ^Dihedral angle restraints: 2
 ^Sorted by delta:
@@ -1793,7 +1793,7 @@ Dihedral angle restraints: 0
     by_value="residual",
     sites_cart=sites_cart,
     f=sio,
-    max_show=0)
+    max_items=0)
   assert not show_diff(sio.getvalue(), """\
 Dihedral angle restraints: 2
 """)
@@ -1847,7 +1847,7 @@ $    False      0.09   -0.04    0.13 7.07e-01 2.00e+00 3.33e-02
     labels=labels,
     f=sio,
     prefix="*",
-    max_show=1)
+    max_items=1)
   assert not show_diff(sio.getvalue(), """\
 *Chirality restraints: 2
 *Sorted by delta:
@@ -1864,7 +1864,7 @@ $    False      0.09   -0.04    0.13 7.07e-01 2.00e+00 3.33e-02
     by_value="residual",
     sites_cart=sites_cart,
     f=sio,
-    max_show=0)
+    max_items=0)
   assert not show_diff(sio.getvalue(), """\
 Chirality restraints: 2
 """)
@@ -1913,7 +1913,7 @@ Planarity restraints: 0
     labels=labels,
     f=sio,
     prefix="<",
-    max_show=1)
+    max_items=1)
   assert not show_diff(sio.getvalue(), """\
 <Planarity restraints: 2
 <Sorted by rms_deltas:
@@ -1930,7 +1930,7 @@ Planarity restraints: 0
     by_value="residual",
     sites_cart=sites_cart,
     f=sio,
-    max_show=0)
+    max_items=0)
   assert not show_diff(sio.getvalue(), """\
 Planarity restraints: 2
 """)

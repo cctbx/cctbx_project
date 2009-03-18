@@ -82,13 +82,14 @@ def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
     sites_cart=sites_cart,
     labels=atom_labels,
     f=log,
-    max_lines=10)
+    max_items=10)
   if (pair_proxies.nonbonded_proxies is not None):
-    pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
+    pair_proxies.nonbonded_proxies.show_sorted(
+      by_value="delta",
       sites_cart=sites_cart,
       labels=atom_labels,
       f=log,
-      max_lines=10)
+      max_items=10)
   del pair_proxies
   print
   log.flush()
@@ -126,7 +127,7 @@ def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
           sites_cart=sites_cart,
           labels=atom_labels,
           f=log,
-          max_lines=10)
+          max_items=10)
     print
   assert geometry_restraints_flags.nonbonded
   return sites_cart

@@ -342,7 +342,7 @@ def exercise_hydrogen_deuterium_aliases():
         1.32 -     1.51: 56
         1.51 -     1.69: 18
         1.69 -     1.88: 1
-  Bond restraints sorted by residual:
+  Bond restraints: 135
 """)
 
 def exercise_corrupt_cif_link():
