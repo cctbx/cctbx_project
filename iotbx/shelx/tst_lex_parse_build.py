@@ -266,8 +266,8 @@ def exercise_restraint_parsing():
   sigmas = [1/bond_proxies.asu[i].weight**0.5 for i in xrange(4)]
   assert approx_equal(sigmas, [0.02, 0.03, 0.02, 0.03])
   for i in xrange(4):
-    assert str(bond_proxies.asu_mappings().get_rt_mx_ji(bond_proxies.asu[i])) \
-        == "-x+1,y,-z+1/2"
+    assert str(bond_proxies.asu_mappings().get_rt_mx_ji(
+             pair=bond_proxies.asu[i])) == "-x+1,y,-z+1/2"
   deltas = bond_proxies.deltas(sites_cart=structure.sites_cart())
   assert approx_equal(deltas, [
     -0.087945096525919864,

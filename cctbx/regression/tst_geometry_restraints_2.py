@@ -171,7 +171,7 @@ nonbonded asu: (7, 4)
 ...
 0^bond SI1
 0^     SI1
-0^  ideal  model  delta    sigma   weight residual sym.op. j
+0^  ideal  model  delta    sigma   weight residual sym.op.
 0^  3.071  3.216 -0.145 2.08e+00 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
 0^... (remaining 20 not shown)
 """,
@@ -196,7 +196,7 @@ nonbonded asu: (7, 4)
 ...
 0^bond O6
 0^     O3
-0^  ideal  model  delta    sigma   weight residual sym.op. j
+0^  ideal  model  delta    sigma   weight residual sym.op.
 0^  2.629  2.565  0.064 1.56e+00 4.10e-01 1.68e-03 -x+1,y,-z
 0^... (remaining 20 not shown)
 """,
@@ -222,7 +222,7 @@ nonbonded asu: (7, 4)
 ...
 ^0bond abcSI1def
 ^0     abcSI1def
-^0  ideal  model  delta    sigma   weight residual sym.op. j
+^0  ideal  model  delta    sigma   weight residual sym.op.
 ^0  3.071  3.216 -0.145 2.08e+00 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
 ^0... (remaining 20 not shown)
 """,
@@ -246,7 +246,7 @@ nonbonded asu: (7, 4)
 ...
 .=bond 0
 .=     0
-.=  ideal  model  delta    sigma   weight residual sym.op. j
+.=  ideal  model  delta    sigma   weight residual sym.op.
 .=  3.071  3.216 -0.145 2.08e+00 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
 .=... (remaining 20 not shown)
 """,
@@ -294,12 +294,17 @@ nonbonded asu: (7, 4)
   assert not show_diff(out.getvalue(), """\
 d%Nonbonded interactions: 52
 d%Sorted by model distance:
-d%  i - j    model   vdw sym.op. j
-d%O3  - O3   3.067 2.000 -x+1/2,-y+1/2,-z
+d%nonbonded O3
+d%          O3
+d%   model   vdw sym.op.
+d%   3.067 2.000 -x+1/2,-y+1/2,-z
 ...
-d%SI2 - O4   3.386 1.000
+d%nonbonded SI2
+d%          O4
+d%   model   vdw
+d%   3.386 1.000
 """,
-    selections=[range(4), range(9,10)])
+    selections=[range(6), range(26,30)])
   out = StringIO()
   pair_proxies.nonbonded_proxies.show_sorted(
     by_value="delta",
@@ -313,13 +318,18 @@ d%SI2 - O4   3.386 1.000
   assert not show_diff(out.getvalue(), """\
 &uNonbonded interactions: 52
 &uSorted by model distance:
-&u   atom i - atom j     model   vdw sym.op. j
-&uabcO3def  - abcO3def   3.067 2.000 -x+1/2,-y+1/2,-z
+&unonbonded abcO3def
+&u          abcO3def
+&u   model   vdw sym.op.
+&u   3.067 2.000 -x+1/2,-y+1/2,-z
 ...
-&uabcSI2def - abcO4def   3.386 1.000
+&unonbonded abcSI2def
+&u          abcO4def
+&u   model   vdw
+&u   3.386 1.000
 &u... (remaining 45 not shown)
 """,
-    selections=[range(4), range(-2,0)])
+    selections=[range(6), range(-5,0)])
   out = StringIO()
   pair_proxies.nonbonded_proxies.show_sorted(
     by_value="delta",
@@ -332,13 +342,18 @@ d%SI2 - O4   3.386 1.000
   assert not show_diff(out.getvalue(), """\
 *jNonbonded interactions: 52
 *jSorted by model distance:
-*j model   vdw sym.op. j
-*j 3.067 2.000 -x+1/2,-y+1/2,-z
+*jnonbonded 4
+*j          4
+*j   model   vdw sym.op.
+*j   3.067 2.000 -x+1/2,-y+1/2,-z
 ...
-*j 3.386 1.000
+*jnonbonded 1
+*j          5
+*j   model   vdw
+*j   3.386 1.000
 *j... (remaining 45 not shown)
 """,
-    selections=[range(4), range(-2,0)])
+    selections=[range(6), range(-5,0)])
   out = StringIO()
   pair_proxies.nonbonded_proxies.show_sorted(
     by_value="delta",

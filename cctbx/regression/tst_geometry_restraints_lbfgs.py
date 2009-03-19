@@ -225,13 +225,18 @@ def exercise(verbose=0):
   assert not show_diff(s.getvalue(), """\
 >,Nonbonded interactions: 141
 >,Sorted by model distance:
->, model   vdw sym.op. j
->, 2.164 3.600 -x+2,-y+1,z
+>,nonbonded 15
+>,          15
+>,   model   vdw sym.op.
+>,   2.164 3.600 -x+2,-y+1,z
 ...
->, 3.414 3.600
+>,nonbonded 4
+>,          8
+>,   model   vdw
+>,   3.414 3.600
 >,... (remaining 134 not shown)
 """,
-    selections=[range(4), range(-2,0)])
+    selections=[range(6), range(-5,0)])
   vdw_1_sticks = []
   vdw_2_sticks = []
   for proxy in pair_proxies.nonbonded_proxies.simple:
