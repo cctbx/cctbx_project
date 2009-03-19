@@ -46,7 +46,9 @@ def any_file (file_name,
               get_processed_file=False,
               valid_types=["pdb","hkl","cif","pkl","seq","phil", "txt"],
               allow_directories=False) :
-  if os.path.isdir(file_name) :
+  if not os.path.exists(file_name) :
+    raise Sorry("Couldn't find the file %s" % file_name)
+  elif os.path.isdir(file_name) :
     if not allow_directories :
       raise Sorry("This application does not support folders as input.")
     else :
