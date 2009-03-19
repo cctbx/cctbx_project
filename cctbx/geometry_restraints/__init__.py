@@ -408,11 +408,18 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
         else:                l = labels[i]
         print >> f, "%s%4s %s" % (prefix, s, l)
         s = ""
-      print >> f, "%s  ideal  model  delta    sigma   weight residual%s" % (
-        prefix, sym_op_j)
-      print >> f, "%s  %5.3f %6.3f %6.3f %6.2e %6.2e %6.2e" % (
+      if (restraint.slack == 0):
+        l = ""
+        v = ""
+      else:
+        l = "  slack"
+        v = " %6.3f" % restraint.slack
+      print >> f, "%s  ideal  model%s  delta    sigma   weight residual%s" % (
+        prefix, l, sym_op_j)
+      print >> f, "%s  %5.3f %6.3f%s %6.3f %6.2e %6.2e %6.2e" % (
         prefix,
-        restraint.distance_ideal, restraint.distance_model, restraint.delta,
+        restraint.distance_ideal, restraint.distance_model, v,
+        restraint.delta,
         weight_as_sigma(weight=restraint.weight), restraint.weight,
         restraint.residual()),
       if (smallest_distance_model is None
