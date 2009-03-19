@@ -4,7 +4,7 @@
 #include <scitbx/array_family/shared.h>
 #include <cctbx/miller.h>
 
-namespace cctbx { 
+namespace cctbx {
 
   template <typename FloatType>
   struct bin
@@ -21,9 +21,11 @@ namespace cctbx {
   };
 
   template <typename FloatType>
-  struct cumulative_intensity
+  class cumulative_intensity
   // As described by  Howells, Phillips and Rogers, Acta Cryst. (1950). 3, 210
   {
+  public:
+    //! Constructor
     cumulative_intensity(
       af::const_ref<FloatType> const &data,
       af::const_ref<FloatType> const &d_spacings,
@@ -39,7 +41,8 @@ namespace cctbx {
                   (data.size() == indices.size())
                   (mean_data.size() == bin_d_max.size());
 
-      n_bins = mean_data.size();
+      const int n_bins = get_bin_count();
+      af::shared<bin<FloatType> > binner;
       // setup binner
       for(int i=0;i<n_bins;) {
         FloatType z_min = i/FloatType(n_bins);
@@ -70,9 +73,14 @@ namespace cctbx {
       }
     }
 
-    inline
-    FloatType get_mean_f_sq(FloatType const &d_spacing) {
-      for(std::size_t i=0;i<n_bins;i++) {
+    inline const af::shared<FloatType>& x() const { return x_; }
+    inline const af::shared<FloatType>& y() const { return y_; }
+
+  private:
+    inline int get_bin_count() const { return mean_data.size(); }
+
+    FloatType get_mean_f_sq(FloatType const &d_spacing) const {
+      for(std::size_t i=0;i<get_bin_count();i++) {
         if (d_spacing >= bin_d_max[i])
           return mean_data[i];
       }
@@ -80,12 +88,12 @@ namespace cctbx {
         "Unexpected d spacing, no bin found");
     }
 
-    int n_bins;
-    af::const_ref<FloatType> mean_data;
-    af::const_ref<FloatType> bin_d_max;
-    af::shared<bin<FloatType> > binner;
+    // result arrays
     af::shared<FloatType> x_;
     af::shared<FloatType> y_;
+
+    af::const_ref<FloatType> mean_data;
+    af::const_ref<FloatType> bin_d_max;
   };
 } // cctbx
 
