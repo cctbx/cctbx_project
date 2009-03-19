@@ -17,7 +17,6 @@ namespace cctbx { namespace boost_python { namespace statistics_ext {
     static void wrap() {
       using namespace boost::python;
       return_value_policy<return_by_value> rbv;
-      typedef return_internal_reference<> rir;
 
       class_<wt>("cumulative_intensity_core", no_init)
         .def(init<af::const_ref<FloatType> const &,
@@ -30,8 +29,8 @@ namespace cctbx { namespace boost_python { namespace statistics_ext {
                arg("mean_data"),
                arg("bin_d_max"),
                arg("indices"))))
-        .def("x", make_getter(&wt::x_, rbv))
-        .def("y", make_getter(&wt::y_, rbv))
+        .def("x", &wt::x, rbv)
+        .def("y", &wt::y, rbv)
         ;
     }
   };

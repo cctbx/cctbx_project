@@ -100,7 +100,7 @@ class cumulative_intensity_distribution(object):
   # As described by  Howells, Phillips and Rogers, Acta Cryst. (1950). 3, 210
 
   def __init__(self, f_obs=None, f_obs_sq=None):
-    assert (f_obs, f_obs_sq).count(None) == 1
+    assert [f_obs, f_obs_sq].count(None) == 1
     if f_obs is not None:
       assert f_obs.binner() is not None
       self.info = f_obs.info()
