@@ -417,22 +417,19 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
     i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
     if (max_items is not None):
       i_proxies_sorted = i_proxies_sorted[:max_items]
-    plf = pair_labels_formatter(
-      sorted_proxies=self,
-      i_proxies_sorted=i_proxies_sorted,
-      labels=labels)
     if (self.asu.size() == 0):
       asu_mappings = None
     else:
       asu_mappings = self.asu_mappings()
     smallest_distance_model = None
     n_simple = self.simple.size()
-    show_legend = True
+    print >> f, "%sSorted by %s:" % (prefix, by_value)
     for i_proxy in i_proxies_sorted:
       if (i_proxy < n_simple):
         proxy = self.simple[i_proxy]
         i_seq,j_seq = proxy.i_seqs
         rt_mx = None
+        sym_op_j = ""
         restraint = bond(
           sites_cart=sites_cart,
           proxy=proxy)
@@ -440,19 +437,24 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
         proxy = self.asu[i_proxy-n_simple]
         i_seq,j_seq = proxy.i_seq,proxy.j_seq
         rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
+        sym_op_j = " sym.op. j"
         restraint = bond(
           sites_cart=sites_cart,
           asu_mappings=asu_mappings,
           proxy=proxy)
-      if (show_legend):
-        show_legend = False
-        print >> f, "%sSorted by %s:" % (prefix, by_value)
-        print >> f, "%s%sideal  model  delta   weight residual%s" % (
-          prefix, plf.atom_i_atom_j(), plf.sym_op_j)
-      print >> f, "%s%s%5.3f %6.3f %6.3f %6.2e %6.2e" % (
-        prefix, plf.label_label(i_seq, j_seq),
+      s = "bond"
+      for i in [i_seq, j_seq]:
+        if (labels is None): l = str(i)
+        else:                l = labels[i]
+        print >> f, "%s%4s %s" % (prefix, s, l)
+        s = ""
+      print >> f, "%s  ideal  model  delta    sigma   weight residual%s" % (
+        prefix, sym_op_j)
+      print >> f, "%s  %5.3f %6.3f %6.3f %6.2e %6.2e %6.2e" % (
+        prefix,
         restraint.distance_ideal, restraint.distance_model, restraint.delta,
-        restraint.weight, restraint.residual()),
+        weight_as_sigma(weight=restraint.weight), restraint.weight,
+        restraint.residual()),
       if (smallest_distance_model is None
           or smallest_distance_model > restraint.distance_model):
         smallest_distance_model = restraint.distance_model

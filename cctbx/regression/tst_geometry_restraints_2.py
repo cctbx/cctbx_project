@@ -149,7 +149,7 @@ nonbonded asu: (7, 4)
     f=out)
   if (verbose):
     sys.stdout.write(out.getvalue())
-  assert len(out.getvalue().splitlines()) == 51
+  assert len(out.getvalue().splitlines()) == 48*4+2
   assert out.getvalue().splitlines()[-1].find("remaining") < 0
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
@@ -164,13 +164,18 @@ nonbonded asu: (7, 4)
   assert not show_diff(out.getvalue().replace("e-00", "e-0"), """\
 0^Bond restraints: 48
 0^Sorted by residual:
-0^  i - j   ideal  model  delta   weight residual sym.op. j
-0^O3  - O4  2.629  2.120  0.509 4.10e-01 1.06e-01
+0^bond O3
+0^     O4
+0^  ideal  model  delta    sigma   weight residual
+0^  2.629  2.120  0.509 1.56e+00 4.10e-01 1.06e-01
 ...
-0^SI1 - SI1 3.071  3.216 -0.145 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
+0^bond SI1
+0^     SI1
+0^  ideal  model  delta    sigma   weight residual sym.op. j
+0^  3.071  3.216 -0.145 2.08e+00 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
 0^... (remaining 20 not shown)
 """,
-    selections=[range(4), range(-2,0)])
+    selections=[range(6), range(-5,0)])
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
     by_value="delta",
@@ -184,13 +189,18 @@ nonbonded asu: (7, 4)
   assert not show_diff(out.getvalue().replace("e-00", "e-0"), """\
 0^Bond restraints: 48
 0^Sorted by delta:
-0^  i - j   ideal  model  delta   weight residual sym.op. j
-0^O3  - O4  2.629  2.120  0.509 4.10e-01 1.06e-01
+0^bond O3
+0^     O4
+0^  ideal  model  delta    sigma   weight residual
+0^  2.629  2.120  0.509 1.56e+00 4.10e-01 1.06e-01
 ...
-0^O6  - O3  2.629  2.565  0.064 4.10e-01 1.68e-03 -x+1,y,-z
+0^bond O6
+0^     O3
+0^  ideal  model  delta    sigma   weight residual sym.op. j
+0^  2.629  2.565  0.064 1.56e+00 4.10e-01 1.68e-03 -x+1,y,-z
 0^... (remaining 20 not shown)
 """,
-    selections=[range(4), range(-2,0)])
+    selections=[range(6), range(-5,0)])
   site_labels_long = ["abc"+label+"def" for label in site_labels]
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
@@ -205,13 +215,18 @@ nonbonded asu: (7, 4)
   assert not show_diff(out.getvalue().replace("e-00", "e-0"), """\
 ^0Bond restraints: 48
 ^0Sorted by residual:
-^0   atom i - atom j    ideal  model  delta   weight residual sym.op. j
-^0abcO3def  - abcO4def  2.629  2.120  0.509 4.10e-01 1.06e-01
+^0bond abcO3def
+^0     abcO4def
+^0  ideal  model  delta    sigma   weight residual
+^0  2.629  2.120  0.509 1.56e+00 4.10e-01 1.06e-01
 ...
-^0abcSI1def - abcSI1def 3.071  3.216 -0.145 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
+^0bond abcSI1def
+^0     abcSI1def
+^0  ideal  model  delta    sigma   weight residual sym.op. j
+^0  3.071  3.216 -0.145 2.08e+00 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
 ^0... (remaining 20 not shown)
 """,
-    selections=[range(4), range(-2,0)])
+    selections=[range(6), range(-5,0)])
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
     by_value="residual",
@@ -224,13 +239,18 @@ nonbonded asu: (7, 4)
   assert not show_diff(out.getvalue().replace("e-00", "e-0"), """\
 .=Bond restraints: 48
 .=Sorted by residual:
-.=ideal  model  delta   weight residual sym.op. j
-.=2.629  2.120  0.509 4.10e-01 1.06e-01
+.=bond 4
+.=     5
+.=  ideal  model  delta    sigma   weight residual
+.=  2.629  2.120  0.509 1.56e+00 4.10e-01 1.06e-01
 ...
-.=3.071  3.216 -0.145 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
+.=bond 0
+.=     0
+.=  ideal  model  delta    sigma   weight residual sym.op. j
+.=  3.071  3.216 -0.145 2.08e+00 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
 .=... (remaining 20 not shown)
 """,
-    selections=[range(4), range(-2,0)])
+    selections=[range(6), range(-5,0)])
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
     by_value="residual",
@@ -243,8 +263,10 @@ nonbonded asu: (7, 4)
   assert not show_diff(out.getvalue().replace("e-00", "e-0"), """\
 -+Bond restraints: 48
 -+Sorted by residual:
--+ideal  model  delta   weight residual
--+2.629  2.120  0.509 4.10e-01 1.06e-01
+-+bond 4
+-+     5
+-+  ideal  model  delta    sigma   weight residual
+-+  2.629  2.120  0.509 1.56e+00 4.10e-01 1.06e-01
 -+... (remaining 47 not shown)
 """)
   out = StringIO()

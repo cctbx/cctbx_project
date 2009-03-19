@@ -193,10 +193,14 @@ def exercise(verbose=0):
     f=s,
     prefix=":;")
   l = s.getvalue().splitlines()
-  assert l[:3] == [":;Bond restraints: 18",
-                   ":;Sorted by residual:",
-                   ":;ideal  model  delta   weight residual"]
-  assert l[-2].startswith(":;1.800  1.800")
+  assert l[:6] == [
+    ':;Bond restraints: 18',
+    ':;Sorted by residual:',
+    ':;bond 6',
+    ':;     7',
+    ':;  ideal  model  delta    sigma   weight residual',
+    ':;  1.800  1.800  0.000 1.00e-01 1.00e+02 1.94e-14']
+  assert l[-2].startswith(":;  1.800  1.800")
   assert l[-1] == ":;... (remaining 15 not shown)"
   s = StringIO()
   pair_proxies.nonbonded_proxies.show_histogram_of_model_distances(
