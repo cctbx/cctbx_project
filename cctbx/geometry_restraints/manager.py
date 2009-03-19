@@ -609,3 +609,37 @@ class manager(object):
             if (deltas is not None):
               print >> f, "  distance_model: %.6g" % deltas[i_proxy]
             print >> f, "  vdw_distance: %.6g" % proxy.vdw_distance
+
+  def show_sorted(self,
+        flags=None,
+        sites_cart=None,
+        site_labels=None,
+        f=None):
+    if (f is None): f = sys.stdout
+    pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
+    if (sites_cart is None):
+      sites_cart = self._sites_cart_used_for_pair_proxies
+    if (pair_proxies.bond_proxies is not None):
+      pair_proxies.bond_proxies.show_sorted(
+        by_value="residual", sites_cart=sites_cart, labels=site_labels, f=f)
+      print >> f
+    if (self.angle_proxies is not None):
+      self.angle_proxies.show_sorted(
+        by_value="residual", sites_cart=sites_cart, labels=site_labels, f=f)
+      print >> f
+    if (self.dihedral_proxies is not None):
+      self.dihedral_proxies.show_sorted(
+        by_value="residual", sites_cart=sites_cart, labels=site_labels, f=f)
+      print >> f
+    if (self.chirality_proxies is not None):
+      self.chirality_proxies.show_sorted(
+        by_value="residual", sites_cart=sites_cart, labels=site_labels, f=f)
+      print >> f
+    if (self.planarity_proxies is not None):
+      self.planarity_proxies.show_sorted(
+        by_value="residual", sites_cart=sites_cart, labels=site_labels, f=f)
+      print >> f
+    if (pair_proxies.nonbonded_proxies is not None):
+      pair_proxies.nonbonded_proxies.show_sorted(
+        by_value="delta", sites_cart=sites_cart, labels=site_labels, f=f)
+      print >> f

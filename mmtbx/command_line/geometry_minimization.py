@@ -70,7 +70,7 @@ def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
       out=log,
       prefix="  ")
   if (co.show_geometry_restraints):
-    geometry_restraints_manager.show_interactions(
+    geometry_restraints_manager.show_sorted(
       flags=geometry_restraints_flags,
       sites_cart=sites_cart,
       site_labels=atom_labels)
