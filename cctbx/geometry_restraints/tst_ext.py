@@ -1668,7 +1668,7 @@ def exercise_proxy_show():
     sites_cart=flex.vec3_double(),
     f=sio)
   assert not show_diff(sio.getvalue(), """\
-Angle restraints: 0
+Bond angle restraints: 0
 """)
   proxies = geometry_restraints.shared_angle_proxy([
     geometry_restraints.angle_proxy(
@@ -1686,7 +1686,7 @@ Angle restraints: 0
     f=sio,
     prefix="+")
   assert not show_diff(sio.getvalue(), """\
-+Angle restraints: 2
++Bond angle restraints: 2
 +Sorted by residual:
 +angle 3
 +      0
@@ -1708,7 +1708,7 @@ Angle restraints: 0
     prefix="@",
     max_items=1)
   assert not show_diff(sio.getvalue(), """\
-@Angle restraints: 2
+@Bond angle restraints: 2
 @Sorted by delta:
 @angle c
 @      ba
@@ -1724,7 +1724,7 @@ Angle restraints: 0
     f=sio,
     max_items=0)
   assert not show_diff(sio.getvalue(), """\
-Angle restraints: 2
+Bond angle restraints: 2
 """)
   #
   proxies = geometry_restraints.shared_dihedral_proxy()

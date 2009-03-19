@@ -523,6 +523,16 @@ class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
   def residuals(self, sites_cart):
     return angle_residuals(sites_cart=sites_cart, proxies=self)
 
+  def show_histogram_of_deltas(self,
+        sites_cart,
+        n_slots=5,
+        f=None,
+        prefix=""):
+    return _show_histogram_of_deltas_impl(O=self,
+      proxy_label="bond angle",
+      format_cutoffs="%8.2f",
+      sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
+
   def show_sorted(self,
         by_value,
         sites_cart,
@@ -532,7 +542,7 @@ class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
         max_items=None):
     _show_sorted_impl(O=self,
         proxy_type=angle,
-        proxy_label="Angle",
+        proxy_label="Bond angle",
         item_label="angle",
         by_value=by_value, sites_cart=sites_cart, labels=labels,
         f=f, prefix=prefix, max_items=max_items)
@@ -560,19 +570,10 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
         n_slots=5,
         f=None,
         prefix=""):
-    if (self.size() == 0): return
-    if (f is None): f = sys.stdout
-    print >> f, "%sHistogram of dihedral angle deviations from ideal:" % prefix
-    histogram = flex.histogram(
-      data=flex.abs(self.deltas(sites_cart=sites_cart)),
-      n_slots=n_slots)
-    low_cutoff = histogram.data_min()
-    for i,n in enumerate(histogram.slots()):
-      high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
-      print >> f, "%s  %8.2f - %8.2f: %d" % (
-        prefix, low_cutoff, high_cutoff, n)
-      low_cutoff = high_cutoff
-    return histogram
+    return _show_histogram_of_deltas_impl(O=self,
+      proxy_label="dihedral angle",
+      format_cutoffs="%8.2f",
+      sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
 
   def show_sorted(self,
         by_value,
@@ -605,6 +606,16 @@ class _shared_chirality_proxy(boost.python.injector, shared_chirality_proxy):
 
   def residuals(self, sites_cart):
     return chirality_residuals(sites_cart=sites_cart, proxies=self)
+
+  def show_histogram_of_deltas(self,
+        sites_cart,
+        n_slots=5,
+        f=None,
+        prefix=""):
+    return _show_histogram_of_deltas_impl(O=self,
+      proxy_label="chiral volume",
+      format_cutoffs="%8.3f",
+      sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
 
   def show_sorted(self,
         by_value,
@@ -679,6 +690,28 @@ class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
     n_not_shown = O.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+
+def _show_histogram_of_deltas_impl(O,
+        proxy_label,
+        format_cutoffs,
+        sites_cart,
+        n_slots,
+        f,
+        prefix):
+    if (O.size() == 0): return
+    if (f is None): f = sys.stdout
+    print >> f, "%sHistogram of %s deviations from ideal:" % (
+      prefix, proxy_label)
+    histogram = flex.histogram(
+      data=flex.abs(O.deltas(sites_cart=sites_cart)),
+      n_slots=n_slots)
+    fmt = "%%s  %s - %s: %%d" % (format_cutoffs, format_cutoffs)
+    low_cutoff = histogram.data_min()
+    for i,n in enumerate(histogram.slots()):
+      high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
+      print >> f, fmt % (prefix, low_cutoff, high_cutoff, n)
+      low_cutoff = high_cutoff
+    return histogram
 
 def _show_sorted_impl(O,
         proxy_type,
