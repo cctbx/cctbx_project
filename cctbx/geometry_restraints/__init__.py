@@ -533,6 +533,7 @@ class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
     _show_sorted_impl(O=self,
         proxy_type=angle,
         proxy_label="Angle",
+        item_label="angle",
         by_value=by_value, sites_cart=sites_cart, labels=labels,
         f=f, prefix=prefix, max_items=max_items)
 
@@ -583,6 +584,7 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
     _show_sorted_impl(O=self,
         proxy_type=dihedral,
         proxy_label="Dihedral angle",
+        item_label="dihedral",
         by_value=by_value, sites_cart=sites_cart, labels=labels,
         f=f, prefix=prefix, max_items=max_items)
 
@@ -614,6 +616,7 @@ class _shared_chirality_proxy(boost.python.injector, shared_chirality_proxy):
     _show_sorted_impl(O=self,
         proxy_type=chirality,
         proxy_label="Chirality",
+        item_label="chirality",
         by_value=by_value, sites_cart=sites_cart, labels=labels,
         f=f, prefix=prefix, max_items=max_items)
 
@@ -657,19 +660,22 @@ class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
         else:                l = labels[i_seq]
         len_max = max(len_max, len(l))
         ls.append(l)
-      print >> f, "%s%s    delta    sigma   weight rms_deltas residual" % (
-        prefix, " "*len_max)
+      print >> f, \
+        "%s      %s    delta    sigma   weight rms_deltas residual" % (
+          prefix, " "*len_max)
       restraint = planarity(sites_cart=sites_cart, proxy=proxy)
+      s = "plane"
       rdr = None
       for i_seq,weight,delta,l in zip(proxy.i_seqs, proxy.weights,
                                       restraint.deltas(), ls):
         if (rdr is None):
           rdr = "   %6.2e %6.2e" % (
             restraint.rms_deltas(), restraint.residual())
-        print >> f, "%s%s  %7.3f %6.2e %6.2e%s" % (
-          prefix, l+" "*(len_max-len(l)),
+        print >> f, "%s%5s %s  %7.3f %6.2e %6.2e%s" % (
+          prefix, s, l+" "*(len_max-len(l)),
           delta, weight_as_sigma(weight=weight), weight, rdr)
         rdr = ""
+        s = ""
     n_not_shown = O.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
@@ -677,6 +683,7 @@ class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
 def _show_sorted_impl(O,
         proxy_type,
         proxy_label,
+        item_label,
         by_value,
         sites_cart,
         labels,
@@ -698,13 +705,16 @@ def _show_sorted_impl(O,
   i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
   if (max_items is not None):
     i_proxies_sorted = i_proxies_sorted[:max_items]
+  item_label_blank = " " * len(item_label)
   print >> f, "%sSorted by %s:" % (prefix, by_value)
   for i_proxy in i_proxies_sorted:
     proxy = O[i_proxy]
+    s = item_label
     for i_seq in proxy.i_seqs:
       if (labels is None): l = str(i_seq)
       else:                l = labels[i_seq]
-      print >> f, "%s%s" % (prefix, l)
+      print >> f, "%s%s %s" % (prefix, s, l)
+      s = item_label_blank
     restraint = proxy_type(
       sites_cart=sites_cart,
       proxy=proxy)
