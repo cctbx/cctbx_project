@@ -24,9 +24,9 @@ namespace cctbx { namespace boost_python { namespace statistics_ext {
                   af::const_ref<FloatType> const &,
                   af::const_ref<FloatType> const &,
                   af::shared<miller::index<> > const &>(
-              (arg("data"),
+              (arg("f_sq"),
                arg("d_spacings"),
-               arg("mean_data"),
+               arg("mean_f_sq"),
                arg("bin_d_max"),
                arg("indices"))))
         .def("x", &wt::x, rbv)
