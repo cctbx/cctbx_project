@@ -45,20 +45,26 @@ def exercise_cumulative_intensity_distribution(space_group_info, anomalous_flag,
       miller_set=f_calc,
       data=f_calc.data()).set_observation_type_xray_amplitude()
     f_obs.use_binner_of(f_calc)
-    dist = statistics.cumulative_intensity_distribution(f_obs)
-    n_bins_used = f_obs.binner().n_bins_used()
-    x_index = {}
-    x_index[0.1] = int(n_bins_used/10)
-    x_index[0.5] = int(n_bins_used/2)
-    x_index[0.9] = int(9*n_bins_used/10)
-    if space_group_info.group().is_centric():
-      assert 0.23 < dist.y[x_index[0.1]] < 0.32
-      assert 0.49 < dist.y[x_index[0.5]] < 0.57
-      assert 0.65 < dist.y[x_index[0.9]] < 0.70
-    else:
-      assert 0.08 < dist.y[x_index[0.1]] < 0.21
-      assert 0.37 < dist.y[x_index[0.5]] < 0.49
-      assert 0.57 < dist.y[x_index[0.9]] < 0.65
+    f_obs_sq = f_obs.f_as_f_sq()
+    f_obs_sq.use_binner_of(f_obs)
+    for ma in (f_obs,f_obs_sq):
+      if ma.is_xray_amplitude_array():
+        dist = statistics.cumulative_intensity_distribution(f_obs=ma)
+      else:
+        dist = statistics.cumulative_intensity_distribution(f_obs_sq=ma)
+      n_bins_used = f_obs.binner().n_bins_used()
+      x_index = {}
+      x_index[0.1] = int(n_bins_used/10)
+      x_index[0.5] = int(n_bins_used/2)
+      x_index[0.9] = int(9*n_bins_used/10)
+      if space_group_info.group().is_centric():
+        assert 0.23 < dist.y[x_index[0.1]] < 0.32
+        assert 0.49 < dist.y[x_index[0.5]] < 0.57
+        assert 0.65 < dist.y[x_index[0.9]] < 0.70
+      else:
+        assert 0.08 < dist.y[x_index[0.1]] < 0.21
+        assert 0.37 < dist.y[x_index[0.5]] < 0.49
+        assert 0.57 < dist.y[x_index[0.9]] < 0.65
 
 class cumulative_intensity_distribution_python(object):
   # Prototype python version, superseded by faster C++ implementation
