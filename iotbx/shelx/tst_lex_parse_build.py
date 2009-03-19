@@ -261,23 +261,18 @@ def exercise_restraint_parsing():
   pair_proxies = geometry_restraints_manager.pair_proxies(sites_cart=structure.sites_cart())
   bond_proxies = pair_proxies.bond_proxies
   assert pair_proxies.nonbonded_proxies is None
-  s = cStringIO.StringIO()
-  bond_proxies.show_sorted(
-    by_value="residual",
-    sites_cart=structure.sites_cart(),
-    f=s)
-  assert bond_proxies.n_total() == 5
-  for i in range(4,8):
-    items = s.getvalue().split('\n')[i].split()
-    if i in (4,5):
-      ideal_delta = 0.030
-      esd=0.02
-    elif i in (6,7):
-      ideal_delta = -0.002
-      esd=0.03
-    assert approx_equal(float(items[2]), ideal_delta)
-    assert approx_equal(float(items[3]), 1/(esd*esd),1.e+1)
-    assert items[5] == '-x+1,y,-z+1/2'
+  assert bond_proxies.simple.size() == 1
+  assert bond_proxies.asu.size() == 4
+  sigmas = [1/bond_proxies.asu[i].weight**0.5 for i in xrange(4)]
+  assert approx_equal(sigmas, [0.02, 0.03, 0.02, 0.03])
+  for i in xrange(4):
+    assert str(bond_proxies.asu_mappings().get_rt_mx_ji(bond_proxies.asu[i])) \
+        == "-x+1,y,-z+1/2"
+  deltas = bond_proxies.deltas(sites_cart=structure.sites_cart())
+  assert approx_equal(deltas, [
+    -0.087945096525919864,
+    0.030023265876452987, -0.0015730739172898911,
+    0.030023265876449656, -0.0015730739172887809])
   #
   builder = shelx.restrained_crystal_structure_builder()
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_flat))
