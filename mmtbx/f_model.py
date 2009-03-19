@@ -1928,7 +1928,8 @@ class phaser_sad_target_functor(object):
       numerator = flex.sum(den*den)
       if (denom == 0):
         raise RuntimeError("Zero denominator in scale calculation.")
-      previous_overall_scale = numerator/denom
+      previous_overall_scaleK = numerator/denom
+      previous_overall_scaleU = 0.
       previous_variances = None
       adaptor = phaser.phenix_adaptors.sad_target.data_adaptor(
         f_obs=f_obs,
@@ -1936,26 +1937,28 @@ class phaser_sad_target_functor(object):
         verbose=True)
       self.refine_sad_object = adaptor.target(
         xray_structure=xray_structure,
-        previous_overall_scale=previous_overall_scale,
+        previous_overall_scaleK=previous_overall_scaleK,
+        previous_overall_scaleU=previous_overall_scaleU,
         previous_variances=previous_variances)
       self.refine_sad_object.set_f_calc(f_calc=f_calc)
       target_memory = self.target_memory()
 
-    assert len(target_memory) == 3
+    assert len(target_memory) == 4
     assert target_memory[0] == "ml_sad"
-    previous_overall_scale = target_memory[1]
-    previous_variances = target_memory[2]
+    previous_overall_scaleK = target_memory[1]
+    previous_overall_scaleU = target_memory[2]
+    previous_variances = target_memory[3]
     adaptor = phaser.phenix_adaptors.sad_target.data_adaptor(
       f_obs=f_obs,
       r_free_flags=r_free_flags,
       verbose=True)
     self.refine_sad_object = adaptor.target(
       xray_structure=xray_structure,
-      previous_overall_scale=previous_overall_scale,
+      previous_overall_scaleK=previous_overall_scaleK,
+      previous_overall_scaleU=previous_overall_scaleU,
       previous_variances=previous_variances)
     self.refine_sad_object.set_f_calc(f_calc=f_calc)
-    self.refine_sad_object.calc_outliers()
-    self.refined_overall_b_iso = None
+    self.refine_sad_object.reject_outliers()
 
   def prepare_for_minimization(self):
     rso = self.refine_sad_object
@@ -1966,7 +1969,8 @@ class phaser_sad_target_functor(object):
 
   def target_memory(self):
     rsi = self.refine_sad_object.refine_sad_instance
-    return ("ml_sad", rsi.get_refined_scaleK(), rsi.get_variance_array())
+    return ("ml_sad", rsi.get_refined_scaleK(),
+                      rsi.get_refined_scaleU(),rsi.get_variance_array())
 
   def __call__(self, f_calc, compute_gradients):
     self.refine_sad_object.set_f_calc(f_calc=f_calc)
