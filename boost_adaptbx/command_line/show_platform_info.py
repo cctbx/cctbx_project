@@ -14,9 +14,11 @@ def run():
   else: print "import thread: OK"
   c = getattr(boost.python.ext, "str_or_unicode_as_char_list", None)
   if (c is not None):
-    print '"hello" = ', c("hello")
-    print 'u"hello" = ', c(u"hello")
-    print 'U"hello" = ', c(U"hello")
+    print '"hello" =', c("hello")
+    print 'u"hello" =', c(u"hello")
+    e = u"\u00C5".encode("utf-8", "strict")
+    print 'u"\u00C5" =', c(u"\u00C5"), 'as utf-8 =', c(e)
+    print "LATIN CAPITAL LETTER A WITH RING ABOVE =", e
 
 if (__name__ == "__main__"):
   run()
