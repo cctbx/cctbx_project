@@ -99,10 +99,15 @@ class wilson_plot(object):
 class cumulative_intensity_distribution(object):
   # As described by  Howells, Phillips and Rogers, Acta Cryst. (1950). 3, 210
 
-  def __init__(self, f_obs):
-    self.info = f_obs.info()
-    f_obs_sq = f_obs.f_as_f_sq()
-    f_obs_sq.use_binner_of(f_obs)
+  def __init__(self, f_obs=None, f_obs_sq=None):
+    assert (f_obs, f_obs_sq).count(None) == 1
+    if f_obs is not None:
+      assert f_obs.binner() is not None
+      self.info = f_obs.info()
+      f_obs_sq = f_obs.f_as_f_sq()
+      f_obs_sq.use_binner_of(f_obs)
+    else:
+      assert f_obs_sq.binner() is not None
     mean_f_obs_sq = f_obs_sq.mean(use_binning=True)
     mean_data = flex.double(mean_f_obs_sq.data[1:f_obs_sq.binner().n_bins_used()+1])
     bin_d_max = flex.double([mean_f_obs_sq.binner.bin_d_range(i)[1]
