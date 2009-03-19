@@ -295,46 +295,6 @@ class planarity_proxy_registry(proxy_registry_base):
         self.counts[i_list] += 1
     return result
 
-class pair_labels_formatter:
-
-  def __init__(self, sorted_proxies, i_proxies_sorted, labels):
-    self.labels = labels
-    n_simple = sorted_proxies.simple.size()
-    n_asu = 0
-    max_label_lengths = [0,0]
-    for i_proxy in i_proxies_sorted:
-      if (i_proxy < n_simple):
-        i_seqs = sorted_proxies.simple[i_proxy].i_seqs
-      else:
-        proxy = sorted_proxies.asu[i_proxy-n_simple]
-        i_seqs = (proxy.i_seq, proxy.j_seq)
-        n_asu += 1
-      if (labels is not None):
-        max_label_lengths = [max(m, len(labels[i_seq]))
-          for m,i_seq in zip(max_label_lengths, i_seqs)]
-    if (max(max_label_lengths) == 0):
-      self.labels = None
-    else:
-      self.label_label_format = \
-        " - ".join(["%%-%ds" % m for m in max_label_lengths]) + " "
-      self.atom_i_atom_j_format = self.label_label_format.replace("-", "", 1)
-    self.max_label_lengths = max_label_lengths
-    if (n_asu > 0):
-      self.sym_op_j = " sym.op. j"
-    else:
-      self.sym_op_j = ""
-
-  def atom_i_atom_j(self):
-    if (min(self.max_label_lengths) >= 6):
-      return self.atom_i_atom_j_format % ("atom i", "atom j")
-    if (min(self.max_label_lengths) >= 1):
-      return self.atom_i_atom_j_format % ("i", "j")
-    return ""
-
-  def label_label(self, i_seq, j_seq):
-    if (self.labels is None): return ""
-    return self.label_label_format % (self.labels[i_seq], self.labels[j_seq])
-
 class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
 
   def show_histogram_of_model_distances(self,
@@ -437,7 +397,7 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
         proxy = self.asu[i_proxy-n_simple]
         i_seq,j_seq = proxy.i_seq,proxy.j_seq
         rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
-        sym_op_j = " sym.op. j"
+        sym_op_j = " sym.op."
         restraint = bond(
           sites_cart=sites_cart,
           asu_mappings=asu_mappings,
@@ -512,34 +472,32 @@ class _nonbonded_sorted_asu_proxies(boost.python.injector,
     i_proxies_sorted = flex.sort_permutation(data=deltas)
     if (max_items is not None):
       i_proxies_sorted = i_proxies_sorted[:max_items]
-    plf = pair_labels_formatter(
-      sorted_proxies=self,
-      i_proxies_sorted=i_proxies_sorted,
-      labels=labels)
     if (self.asu.size() == 0):
       asu_mappings = None
     else:
       asu_mappings = self.asu_mappings()
-    show_legend = True
+    print >> f, "%sSorted by model distance:" % prefix
     n_simple = self.simple.size()
     for i_proxy in i_proxies_sorted:
       if (i_proxy < n_simple):
         proxy = self.simple[i_proxy]
         i_seq,j_seq = proxy.i_seqs
         rt_mx = None
+        sym_op_j = ""
       else:
         proxy = self.asu[i_proxy-n_simple]
         i_seq,j_seq = proxy.i_seq,proxy.j_seq
         rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
-      delta = deltas[i_proxy]
-      if (show_legend):
-        show_legend = False
-        print >> f, "%sSorted by model distance:" % (
-          prefix)
-        print >> f, "%s%s model   vdw%s" % (
-          prefix, plf.atom_i_atom_j(), plf.sym_op_j)
-      print >> f, "%s%s%6.3f %5.3f" % (
-        prefix, plf.label_label(i_seq, j_seq), delta, proxy.vdw_distance),
+        sym_op_j = " sym.op."
+      s = "nonbonded"
+      for i in [i_seq, j_seq]:
+        if (labels is None): l = str(i)
+        else:                l = labels[i]
+        print >> f, "%s%9s %s" % (prefix, s, l)
+        s = ""
+      print >> f, "%s   model   vdw%s" % (prefix, sym_op_j)
+      print >> f, "%s  %6.3f %5.3f" % (
+        prefix, deltas[i_proxy], proxy.vdw_distance),
       if (rt_mx is not None):
         print >> f, rt_mx,
       print >> f
