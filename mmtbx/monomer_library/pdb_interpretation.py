@@ -140,15 +140,25 @@ master_params = iotbx.phil.parse("""\
       .type=int
     nonbonded_interaction_distances = 5
       .type=int
+    bond_angle_deviations_from_ideal = 5
+      .type=int
     dihedral_angle_deviations_from_ideal = 5
       .type=int
+    chiral_volume_deviations_from_ideal = 5
+      .type=int
   }
-  show_max_lines {
+  show_max_items {
     bond_restraints_sorted_by_residual = 5
       .type=int
     nonbonded_interactions_sorted_by_model_distance = 5
       .type=int
+    bond_angle_restraints_sorted_by_residual = 5
+      .type=int
     dihedral_angle_restraints_sorted_by_residual = 3
+      .type=int
+    chirality_restraints_sorted_by_residual = 3
+      .type=int
+    planarity_restraints_sorted_by_residual = 3
       .type=int
   }
   %s
@@ -2899,6 +2909,13 @@ class process(object):
         print >> self.log, \
           "  Time building geometry restraints manager: %.2f seconds" % (
             self.all_chain_proxies.time_building_geometry_restraints_manager)
+        print >> self.log
+        def note_geo():
+          print >> self.log, """\
+  NOTE: a complete listing of the restaints can be found in the
+        .geo file."""
+        note_geo()
+        print >> self.log
         flush_log(self.log)
         labels = [atom.id_str()
           for atom in self.all_chain_proxies.pdb_atoms]
@@ -2917,27 +2934,31 @@ class process(object):
             labels=labels,
             f=self.log,
             prefix="  ",
-            max_items=params.show_max_lines.bond_restraints_sorted_by_residual)
+            max_items=params.show_max_items.bond_restraints_sorted_by_residual)
         if (    smallest_distance_model is not None
             and hard_minimum_bond_distance_model is not None
             and smallest_distance_model < hard_minimum_bond_distance_model):
           raise Sorry("""Bond restraint model distance < %.6g:
   Please inspect the output above and correct the input PDB file.""" % (
             hard_minimum_bond_distance_model))
-        pair_proxies.nonbonded_proxies.show_histogram_of_model_distances(
-          sites_cart=self.all_chain_proxies.sites_cart_exact(),
-          n_slots=params.show_histogram_slots.nonbonded_interaction_distances,
-          f=self.log,
-          prefix="  ")
-        pair_proxies.nonbonded_proxies.show_sorted(
-          by_value="delta",
-          sites_cart=self.all_chain_proxies.sites_cart_exact(),
-          labels=labels,
-          f=self.log,
-          prefix="  ",
-          max_items=params.show_max_lines
-            .nonbonded_interactions_sorted_by_model_distance)
-        self.clash_guard()
+        print >> self.log
+        self._geometry_restraints_manager.angle_proxies \
+          .show_histogram_of_deltas(
+            sites_cart=self.all_chain_proxies.sites_cart_exact(),
+            n_slots=params.show_histogram_slots
+              .bond_angle_deviations_from_ideal,
+            f=self.log,
+            prefix="  ")
+        self._geometry_restraints_manager.angle_proxies \
+          .show_sorted(
+            by_value="residual",
+            sites_cart=self.all_chain_proxies.sites_cart_exact(),
+            labels=labels,
+            f=self.log,
+            prefix="  ",
+            max_items=params.show_max_items
+              .bond_angle_restraints_sorted_by_residual)
+        print >> self.log
         self._geometry_restraints_manager.dihedral_proxies \
           .show_histogram_of_deltas(
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
@@ -2952,10 +2973,54 @@ class process(object):
             labels=labels,
             f=self.log,
             prefix="  ",
-            max_items=params.show_max_lines
+            max_items=params.show_max_items
               .dihedral_angle_restraints_sorted_by_residual)
+        print >> self.log
+        self._geometry_restraints_manager.chirality_proxies \
+          .show_histogram_of_deltas(
+            sites_cart=self.all_chain_proxies.sites_cart_exact(),
+            n_slots=params.show_histogram_slots
+              .chiral_volume_deviations_from_ideal,
+            f=self.log,
+            prefix="  ")
+        self._geometry_restraints_manager.chirality_proxies \
+          .show_sorted(
+            by_value="residual",
+            sites_cart=self.all_chain_proxies.sites_cart_exact(),
+            labels=labels,
+            f=self.log,
+            prefix="  ",
+            max_items=params.show_max_items
+              .chirality_restraints_sorted_by_residual)
+        print >> self.log
+        self._geometry_restraints_manager.planarity_proxies \
+          .show_sorted(
+            by_value="residual",
+            sites_cart=self.all_chain_proxies.sites_cart_exact(),
+            labels=labels,
+            f=self.log,
+            prefix="  ",
+            max_items=params.show_max_items
+              .planarity_restraints_sorted_by_residual)
+        print >> self.log
+        pair_proxies.nonbonded_proxies.show_histogram_of_model_distances(
+          sites_cart=self.all_chain_proxies.sites_cart_exact(),
+          n_slots=params.show_histogram_slots.nonbonded_interaction_distances,
+          f=self.log,
+          prefix="  ")
+        pair_proxies.nonbonded_proxies.show_sorted(
+          by_value="delta",
+          sites_cart=self.all_chain_proxies.sites_cart_exact(),
+          labels=labels,
+          f=self.log,
+          prefix="  ",
+          max_items=params.show_max_items
+            .nonbonded_interactions_sorted_by_model_distance)
+        print >> self.log
+        note_geo()
         flush_log(self.log)
         if (show_energies):
+          print >> self.log
           timer = user_plus_sys_time()
           energies = self._geometry_restraints_manager.energies_sites(
             sites_cart=self.all_chain_proxies.sites_cart_exact())
@@ -2964,6 +3029,7 @@ class process(object):
                              " (mainly nonbonded setup): %.2f" % (
             timer.elapsed())
           flush_log(self.log)
+        self.clash_guard()
     return self._geometry_restraints_manager
 
   def clash_guard(self, hard_minimum_nonbonded_distance=0.001):
