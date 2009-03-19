@@ -1688,14 +1688,14 @@ Angle restraints: 0
   assert not show_diff(sio.getvalue(), """\
 +Angle restraints: 2
 +Sorted by residual:
-+3
-+0
-+1
++angle 3
++      0
++      1
 +    ideal   model   delta    sigma   weight residual
 +    99.00   99.72   -0.72 3.54e-01 8.00e+00 4.19e+00
-+2
-+1
-+0
++angle 2
++      1
++      0
 +    ideal   model   delta    sigma   weight residual
 +    59.00   58.06    0.94 7.07e-01 2.00e+00 1.76e+00
 """)
@@ -1710,9 +1710,9 @@ Angle restraints: 0
   assert not show_diff(sio.getvalue(), """\
 @Angle restraints: 2
 @Sorted by delta:
-@c
-@ba
-@a
+@angle c
+@      ba
+@      a
 @    ideal   model   delta    sigma   weight residual
 @    59.00   58.06    0.94 7.07e-01 2.00e+00 1.76e+00
 @... (remaining 1 not shown)
@@ -1756,16 +1756,16 @@ Dihedral angle restraints: 0
   assert not show_diff(sio.getvalue(), """\
 -Dihedral angle restraints: 2
 -Sorted by residual:
--3
--2
--0
--5
+-dihedral 3
+-         2
+-         0
+-         5
 -    ideal   model   delta periodicty    sigma   weight residual
 -    99.00   16.67   82.33     1      3.54e-01 8.00e+00 5.42e+04
--0
--1
--3
--4
+-dihedral 0
+-         1
+-         3
+-         4
 -    ideal   model   delta periodicty    sigma   weight residual
 -    59.00 -159.79 -141.21     1      7.07e-01 2.00e+00 3.99e+04
 """)
@@ -1780,10 +1780,10 @@ Dihedral angle restraints: 0
   assert not show_diff(sio.getvalue(), """\
 ^Dihedral angle restraints: 2
 ^Sorted by delta:
-^a
-^ba
-^dada
-^e
+^dihedral a
+^         ba
+^         dada
+^         e
 ^    ideal   model   delta periodicty    sigma   weight residual
 ^    59.00 -159.79 -141.21     1      7.07e-01 2.00e+00 3.99e+04
 ^... (remaining 1 not shown)
@@ -1827,16 +1827,16 @@ Chirality restraints: 0
   assert not show_diff(sio.getvalue(), """\
 $Chirality restraints: 2
 $Sorted by residual:
-$3
-$2
-$0
-$5
+$chirality 3
+$          2
+$          0
+$          5
 $  both_signs  ideal   model   delta    sigma   weight residual
 $    True       0.16    0.05    0.11 3.54e-01 8.00e+00 9.34e-02
-$0
-$1
-$3
-$4
+$chirality 0
+$          1
+$          3
+$          4
 $  both_signs  ideal   model   delta    sigma   weight residual
 $    False      0.09   -0.04    0.13 7.07e-01 2.00e+00 3.33e-02
 """)
@@ -1851,10 +1851,10 @@ $    False      0.09   -0.04    0.13 7.07e-01 2.00e+00 3.33e-02
   assert not show_diff(sio.getvalue(), """\
 *Chirality restraints: 2
 *Sorted by delta:
-*a
-*ba
-*dada
-*e
+*chirality a
+*          ba
+*          dada
+*          e
 *  both_signs  ideal   model   delta    sigma   weight residual
 *    False      0.09   -0.04    0.13 7.07e-01 2.00e+00 3.33e-02
 *... (remaining 1 not shown)
@@ -1894,17 +1894,17 @@ Planarity restraints: 0
   assert not show_diff(sio.getvalue(), """\
 :Planarity restraints: 2
 :Sorted by residual:
-:     delta    sigma   weight rms_deltas residual
-:0    0.004 1.80e+00 3.10e-01   1.46e-01 2.52e-02
-:2   -0.196 2.24e+00 2.00e-01
-:4   -0.115 1.80e+00 3.10e-01
-:1    0.184 1.58e+00 4.00e-01
-:     delta    sigma   weight rms_deltas residual
-:0   -0.332 1.00e+01 1.00e-02   1.78e-01 9.86e-03
-:2    0.152 3.02e+00 1.10e-01
-:3   -0.143 2.18e+00 2.10e-01
-:4   -0.030 1.80e+00 3.10e-01
-:5    0.063 1.56e+00 4.10e-01
+:           delta    sigma   weight rms_deltas residual
+:plane 0    0.004 1.80e+00 3.10e-01   1.46e-01 2.52e-02
+:      2   -0.196 2.24e+00 2.00e-01
+:      4   -0.115 1.80e+00 3.10e-01
+:      1    0.184 1.58e+00 4.00e-01
+:           delta    sigma   weight rms_deltas residual
+:plane 0   -0.332 1.00e+01 1.00e-02   1.78e-01 9.86e-03
+:      2    0.152 3.02e+00 1.10e-01
+:      3   -0.143 2.18e+00 2.10e-01
+:      4   -0.030 1.80e+00 3.10e-01
+:      5    0.063 1.56e+00 4.10e-01
 """)
   sio = StringIO()
   proxies.show_sorted(
@@ -1917,12 +1917,12 @@ Planarity restraints: 0
   assert not show_diff(sio.getvalue(), """\
 <Planarity restraints: 2
 <Sorted by rms_deltas:
-<        delta    sigma   weight rms_deltas residual
-<a      -0.332 1.00e+01 1.00e-02   1.78e-01 9.86e-03
-<c       0.152 3.02e+00 1.10e-01
-<dada   -0.143 2.18e+00 2.10e-01
-<e      -0.030 1.80e+00 3.10e-01
-<f       0.063 1.56e+00 4.10e-01
+<              delta    sigma   weight rms_deltas residual
+<plane a      -0.332 1.00e+01 1.00e-02   1.78e-01 9.86e-03
+<      c       0.152 3.02e+00 1.10e-01
+<      dada   -0.143 2.18e+00 2.10e-01
+<      e      -0.030 1.80e+00 3.10e-01
+<      f       0.063 1.56e+00 4.10e-01
 <... (remaining 1 not shown)
 """)
   sio = StringIO()
