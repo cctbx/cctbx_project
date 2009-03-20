@@ -1,13 +1,13 @@
-#ifndef MMTBX_MASKS_MASK_H
-#define MMTBX_MASKS_MASK_H
+#ifndef MMTBX_MASKS_ATOM_MASK_H
+#define MMTBX_MASKS_ATOM_MASK_H
 
 #include <mmtbx/error.h>
 #include <cctbx/uctbx.h>
-#include <scitbx/array_family/versa.h>
-#include <scitbx/array_family/accessors/c_grid.h>
 #include <cctbx/sgtbx/space_group_type.h>
 #include <cctbx/sgtbx/direct_space_asu/proto/direct_space_asu.h>
 #include <cctbx/miller.h>
+#include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 
 namespace mmtbx {
 

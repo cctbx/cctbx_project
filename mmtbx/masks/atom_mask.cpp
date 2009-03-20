@@ -1,18 +1,19 @@
+#include <mmtbx/masks/atom_mask.h>
+#include <mmtbx/masks/grid_symop.h>
+#include <cctbx/maptbx/structure_factors.h>
+#include <cctbx/maptbx/gridding.h>
+#include <cctbx/sgtbx/direct_space_asu/proto/small_vec_math.h>
+#include <scitbx/fftpack/real_to_complex_3d.h>
+#include <scitbx/array_family/flex_types.h>
+#include <scitbx/array_family/tiny_types.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <numeric>
-#include <algorithm>
 #include <sstream>
 
-#include <boost/date_time/posix_time/posix_time.hpp>
-
-#include <scitbx/array_family/flex_types.h>
-#include <cctbx/maptbx/structure_factors.h>
-#include <scitbx/fftpack/real_to_complex_3d.h>
-#include <cctbx/maptbx/gridding.h>
-#include <scitbx/array_family/tiny_types.h>
-#include <cctbx/sgtbx/direct_space_asu/proto/small_vec_math.h>
-
-#include "atom_mask.h"
-#include "grid_symop.h"
+#if defined(_MSC_VER)
+#undef max
+#undef min
+#endif
 
 namespace mmtbx { namespace masks {
 
