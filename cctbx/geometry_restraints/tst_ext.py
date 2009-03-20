@@ -1657,6 +1657,87 @@ def exercise_planarity():
     assert approx_equal(g, e)
 
 def exercise_proxy_show():
+  # zeolite AHT
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=(15.794, 9.206, 8.589, 90, 90, 90),
+    space_group_symbol="C m c m")
+  sites_cart_cry = crystal_symmetry.unit_cell().orthogonalization_matrix() \
+    * flex.vec3_double([(0.1681, 0.6646, 0.4372), (0.0000, 0.6644, 0.5629)])
+  asu_mappings = crystal_symmetry.asu_mappings(buffer_thickness=3.0)
+  asu_mappings.process_sites_cart(original_sites=sites_cart_cry)
+  pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  pair_asu_table.add_all_pairs(distance_cutoff=2.9)
+  sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
+    asu_mappings=asu_mappings)
+  sio = StringIO()
+  sorted_asu_proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart_cry,
+    f=sio)
+  assert not show_diff(sio.getvalue(), """\
+Bond restraints: 0
+""")
+  sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
+    pair_asu_table=pair_asu_table)
+  mt = flex.mersenne_twister(seed=5)
+  for proxy in sorted_asu_proxies.asu:
+    proxy.distance_ideal = 2.9 + (mt.random_double()-0.5)*0.2
+    proxy.weight = 1+mt.random_double()*100
+    if (mt.random_double() > 0.5):
+      proxy.slack = mt.random_double()*0.1
+  sio = StringIO()
+  sorted_asu_proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart_cry,
+    labels=["Si1", "Si2"],
+    f=sio)
+  assert not show_diff(sio.getvalue(), """\
+Bond restraints: 3
+Sorted by residual:
+bond Si1
+     Si2
+  ideal  model  slack  delta    sigma   weight residual sym.op.
+  2.979  2.866  0.004  0.112 1.71e-01 3.42e+01 4.01e-01 x,y,z
+bond Si2
+     Si1
+  ideal  model  slack  delta    sigma   weight residual sym.op.
+  2.822  2.866  0.042 -0.045 1.29e-01 6.05e+01 4.35e-04 x,y,z
+bond Si2
+     Si1
+  ideal  model  delta    sigma   weight residual sym.op.
+  2.867  2.866  0.001 1.26e-01 6.33e+01 6.17e-05 -x,y,z
+""")
+  sio = StringIO()
+  sorted_asu_proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart_cry,
+    f=sio,
+    prefix="&",
+    max_items=2)
+  assert not show_diff(sio.getvalue(), """\
+&Bond restraints: 3
+&Sorted by residual:
+&bond 0
+&     1
+&  ideal  model  slack  delta    sigma   weight residual sym.op.
+&  2.979  2.866  0.004  0.112 1.71e-01 3.42e+01 4.01e-01 x,y,z
+&bond 1
+&     0
+&  ideal  model  slack  delta    sigma   weight residual sym.op.
+&  2.822  2.866  0.042 -0.045 1.29e-01 6.05e+01 4.35e-04 x,y,z
+&... (remaining 1 not shown)
+""")
+  sio = StringIO()
+  sorted_asu_proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart_cry,
+    f=sio,
+    prefix="*",
+    max_items=0)
+  assert not show_diff(sio.getvalue(), """\
+*Bond restraints: 3
+""")
+  #
   mt = flex.mersenne_twister(seed=73)
   sites_cart = flex.vec3_double(mt.random_double(size=18))
   labels = ["a", "ba", "c", "dada", "e", "f"]
