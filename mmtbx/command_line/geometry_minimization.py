@@ -80,14 +80,14 @@ def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
   pair_proxies.bond_proxies.show_sorted(
     by_value="residual",
     sites_cart=sites_cart,
-    labels=atom_labels,
+    site_labels=atom_labels,
     f=log,
     max_items=10)
   if (pair_proxies.nonbonded_proxies is not None):
     pair_proxies.nonbonded_proxies.show_sorted(
       by_value="delta",
       sites_cart=sites_cart,
-      labels=atom_labels,
+      site_labels=atom_labels,
       f=log,
       max_items=10)
   del pair_proxies
@@ -125,7 +125,7 @@ def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
         .bond_proxies.show_sorted(
           by_value="residual",
           sites_cart=sites_cart,
-          labels=atom_labels,
+          site_labels=atom_labels,
           f=log,
           max_items=10)
     print

@@ -311,7 +311,7 @@ class distance_and_repulsion_least_squares:
     pair_proxies.bond_proxies.show_sorted(
       by_value="residual",
       sites_cart=sites_cart,
-      labels=[scatterer.label
+      site_labels=[scatterer.label
         for scatterer in minimized_structure.scatterers()],
       f=out)
     print >> out

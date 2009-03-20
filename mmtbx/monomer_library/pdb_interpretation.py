@@ -2917,7 +2917,7 @@ class process(object):
         note_geo()
         print >> self.log
         flush_log(self.log)
-        labels = [atom.id_str()
+        site_labels = [atom.id_str()
           for atom in self.all_chain_proxies.pdb_atoms]
         pair_proxies = self._geometry_restraints_manager.pair_proxies(
           sites_cart=self.all_chain_proxies.sites_cart_exact())
@@ -2931,7 +2931,7 @@ class process(object):
           pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
-            labels=labels,
+            site_labels=site_labels,
             f=self.log,
             prefix="  ",
             max_items=params.show_max_items.bond_restraints_sorted_by_residual)
@@ -2953,7 +2953,7 @@ class process(object):
           .show_sorted(
             by_value="residual",
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
-            labels=labels,
+            site_labels=site_labels,
             f=self.log,
             prefix="  ",
             max_items=params.show_max_items
@@ -2970,7 +2970,7 @@ class process(object):
           .show_sorted(
             by_value="residual",
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
-            labels=labels,
+            site_labels=site_labels,
             f=self.log,
             prefix="  ",
             max_items=params.show_max_items
@@ -2987,7 +2987,7 @@ class process(object):
           .show_sorted(
             by_value="residual",
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
-            labels=labels,
+            site_labels=site_labels,
             f=self.log,
             prefix="  ",
             max_items=params.show_max_items
@@ -2997,7 +2997,7 @@ class process(object):
           .show_sorted(
             by_value="residual",
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
-            labels=labels,
+            site_labels=site_labels,
             f=self.log,
             prefix="  ",
             max_items=params.show_max_items
@@ -3011,7 +3011,7 @@ class process(object):
         pair_proxies.nonbonded_proxies.show_sorted(
           by_value="delta",
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
-          labels=labels,
+          site_labels=site_labels,
           f=self.log,
           prefix="  ",
           max_items=params.show_max_items

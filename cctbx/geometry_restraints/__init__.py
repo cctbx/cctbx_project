@@ -358,12 +358,12 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
   def show_sorted(self,
         by_value,
         sites_cart,
-        labels=None,
+        site_labels=None,
         f=None,
         prefix="",
         max_items=None):
     assert by_value in ["residual", "delta"]
-    assert labels is None or len(labels) == sites_cart.size()
+    assert site_labels is None or len(site_labels) == sites_cart.size()
     if (f is None): f = sys.stdout
     print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
     if (self.n_total() == 0): return
@@ -404,8 +404,8 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
           proxy=proxy)
       s = "bond"
       for i in [i_seq, j_seq]:
-        if (labels is None): l = str(i)
-        else:                l = labels[i]
+        if (site_labels is None): l = str(i)
+        else:                     l = site_labels[i]
         print >> f, "%s%4s %s" % (prefix, s, l)
         s = ""
       if (restraint.slack == 0):
@@ -466,7 +466,7 @@ class _nonbonded_sorted_asu_proxies(boost.python.injector,
   def show_sorted(self,
         by_value,
         sites_cart,
-        labels=None,
+        site_labels=None,
         f=None,
         prefix="",
         max_items=None):
@@ -498,8 +498,8 @@ class _nonbonded_sorted_asu_proxies(boost.python.injector,
         sym_op_j = " sym.op."
       s = "nonbonded"
       for i in [i_seq, j_seq]:
-        if (labels is None): l = str(i)
-        else:                l = labels[i]
+        if (site_labels is None): l = str(i)
+        else:                     l = site_labels[i]
         print >> f, "%s%9s %s" % (prefix, s, l)
         s = ""
       print >> f, "%s   model   vdw%s" % (prefix, sym_op_j)
@@ -543,7 +543,7 @@ class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
   def show_sorted(self,
         by_value,
         sites_cart,
-        labels=None,
+        site_labels=None,
         f=None,
         prefix="",
         max_items=None):
@@ -551,7 +551,7 @@ class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
         proxy_type=angle,
         proxy_label="Bond angle",
         item_label="angle",
-        by_value=by_value, sites_cart=sites_cart, labels=labels,
+        by_value=by_value, sites_cart=sites_cart, site_labels=site_labels,
         f=f, prefix=prefix, max_items=max_items)
 
 class _dihedral(boost.python.injector, dihedral):
@@ -585,7 +585,7 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
   def show_sorted(self,
         by_value,
         sites_cart,
-        labels=None,
+        site_labels=None,
         f=None,
         prefix="",
         max_items=None):
@@ -593,7 +593,7 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
         proxy_type=dihedral,
         proxy_label="Dihedral angle",
         item_label="dihedral",
-        by_value=by_value, sites_cart=sites_cart, labels=labels,
+        by_value=by_value, sites_cart=sites_cart, site_labels=site_labels,
         f=f, prefix=prefix, max_items=max_items)
 
 class _chirality(boost.python.injector, chirality):
@@ -627,7 +627,7 @@ class _shared_chirality_proxy(boost.python.injector, shared_chirality_proxy):
   def show_sorted(self,
         by_value,
         sites_cart,
-        labels=None,
+        site_labels=None,
         f=None,
         prefix="",
         max_items=None):
@@ -635,7 +635,7 @@ class _shared_chirality_proxy(boost.python.injector, shared_chirality_proxy):
         proxy_type=chirality,
         proxy_label="Chirality",
         item_label="chirality",
-        by_value=by_value, sites_cart=sites_cart, labels=labels,
+        by_value=by_value, sites_cart=sites_cart, site_labels=site_labels,
         f=f, prefix=prefix, max_items=max_items)
 
 class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
@@ -649,12 +649,12 @@ class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
   def show_sorted(O,
         by_value,
         sites_cart,
-        labels=None,
+        site_labels=None,
         f=None,
         prefix="",
         max_items=None):
     assert by_value in ["residual", "rms_deltas"]
-    assert labels is None or len(labels) == sites_cart.size()
+    assert site_labels is None or len(site_labels) == sites_cart.size()
     if (f is None): f = sys.stdout
     print >> f, "%sPlanarity restraints: %d" % (prefix, O.size())
     if (O.size() == 0): return
@@ -674,8 +674,8 @@ class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
       len_max = 0
       ls = []
       for i_seq in proxy.i_seqs:
-        if (labels is None): l = str(i_seq)
-        else:                l = labels[i_seq]
+        if (site_labels is None): l = str(i_seq)
+        else:                     l = site_labels[i_seq]
         len_max = max(len_max, len(l))
         ls.append(l)
       print >> f, \
@@ -726,12 +726,12 @@ def _show_sorted_impl(O,
         item_label,
         by_value,
         sites_cart,
-        labels,
+        site_labels,
         f,
         prefix,
         max_items):
   assert by_value in ["residual", "delta"]
-  assert labels is None or len(labels) == sites_cart.size()
+  assert site_labels is None or len(site_labels) == sites_cart.size()
   if (f is None): f = sys.stdout
   print >> f, "%s%s restraints: %d" % (prefix, proxy_label, O.size())
   if (O.size() == 0): return
@@ -751,8 +751,8 @@ def _show_sorted_impl(O,
     proxy = O[i_proxy]
     s = item_label
     for i_seq in proxy.i_seqs:
-      if (labels is None): l = str(i_seq)
-      else:                l = labels[i_seq]
+      if (site_labels is None): l = str(i_seq)
+      else:                     l = site_labels[i_seq]
       print >> f, "%s%s %s" % (prefix, s, l)
       s = item_label_blank
     restraint = proxy_type(
