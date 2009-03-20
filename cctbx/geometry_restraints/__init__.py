@@ -469,7 +469,9 @@ class _nonbonded_sorted_asu_proxies(boost.python.injector,
         site_labels=None,
         f=None,
         prefix="",
-        max_items=None):
+        max_items=None,
+        suppress_model_minus_vdw_greater_than=0.2,
+        but_show_all_model_up_to=3.5):
     assert by_value in ["delta"]
     if (f is None): f = sys.stdout
     deltas = nonbonded_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
@@ -496,6 +498,14 @@ class _nonbonded_sorted_asu_proxies(boost.python.injector,
         i_seq,j_seq = proxy.i_seq,proxy.j_seq
         rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
         sym_op_j = " sym.op."
+      def suppress():
+        m, v = deltas[i_proxy], proxy.vdw_distance
+        if (suppress_model_minus_vdw_greater_than is None): return False
+        if (m-v <= suppress_model_minus_vdw_greater_than): return False
+        if (but_show_all_model_up_to is None): return True
+        if (m <= but_show_all_model_up_to): return False
+        return True
+      if (suppress()): continue
       s = "nonbonded"
       for i in [i_seq, j_seq]:
         if (site_labels is None): l = str(i)
