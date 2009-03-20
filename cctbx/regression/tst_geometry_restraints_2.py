@@ -145,7 +145,7 @@ nonbonded asu: (7, 4)
   pair_proxies.bond_proxies.show_sorted(
     by_value="residual",
     sites_cart=sites_cart,
-    labels=site_labels,
+    site_labels=site_labels,
     f=out)
   if (verbose):
     sys.stdout.write(out.getvalue())
@@ -155,7 +155,7 @@ nonbonded asu: (7, 4)
   pair_proxies.bond_proxies.show_sorted(
     by_value="residual",
     sites_cart=sites_cart,
-    labels=site_labels,
+    site_labels=site_labels,
     f=out,
     prefix="0^",
     max_items=28)
@@ -180,7 +180,7 @@ nonbonded asu: (7, 4)
   pair_proxies.bond_proxies.show_sorted(
     by_value="delta",
     sites_cart=sites_cart,
-    labels=site_labels,
+    site_labels=site_labels,
     f=out,
     prefix="0^",
     max_items=28)
@@ -206,7 +206,7 @@ nonbonded asu: (7, 4)
   pair_proxies.bond_proxies.show_sorted(
     by_value="residual",
     sites_cart=sites_cart,
-    labels=site_labels_long,
+    site_labels=site_labels_long,
     f=out,
     prefix="^0",
     max_items=28)
@@ -286,7 +286,7 @@ nonbonded asu: (7, 4)
   pair_proxies.nonbonded_proxies.show_sorted(
     by_value="delta",
     sites_cart=sites_cart,
-    labels=site_labels,
+    site_labels=site_labels,
     f=out,
     prefix="d%")
   if (verbose):
@@ -309,7 +309,7 @@ d%   3.386 1.000
   pair_proxies.nonbonded_proxies.show_sorted(
     by_value="delta",
     sites_cart=sites_cart,
-    labels=site_labels_long,
+    site_labels=site_labels_long,
     f=out,
     prefix="&u",
     max_items=7)

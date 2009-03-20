@@ -1689,7 +1689,7 @@ Bond restraints: 0
   sorted_asu_proxies.show_sorted(
     by_value="residual",
     sites_cart=sites_cart_cry,
-    labels=["Si1", "Si2"],
+    site_labels=["Si1", "Si2"],
     f=sio)
   assert not show_diff(sio.getvalue(), """\
 Bond restraints: 3
@@ -1740,7 +1740,7 @@ bond Si2
   #
   mt = flex.mersenne_twister(seed=73)
   sites_cart = flex.vec3_double(mt.random_double(size=18))
-  labels = ["a", "ba", "c", "dada", "e", "f"]
+  site_labels = ["a", "ba", "c", "dada", "e", "f"]
   #
   proxies = geometry_restraints.shared_angle_proxy()
   sio = StringIO()
@@ -1784,7 +1784,7 @@ Bond angle restraints: 0
   proxies.show_sorted(
     by_value="delta",
     sites_cart=sites_cart,
-    labels=labels,
+    site_labels=site_labels,
     f=sio,
     prefix="@",
     max_items=1)
@@ -1854,7 +1854,7 @@ Dihedral angle restraints: 0
   proxies.show_sorted(
     by_value="delta",
     sites_cart=sites_cart,
-    labels=labels,
+    site_labels=site_labels,
     f=sio,
     prefix="^",
     max_items=1)
@@ -1925,7 +1925,7 @@ $    False      0.09   -0.04    0.13 7.07e-01 2.00e+00 3.33e-02
   proxies.show_sorted(
     by_value="delta",
     sites_cart=sites_cart,
-    labels=labels,
+    site_labels=site_labels,
     f=sio,
     prefix="*",
     max_items=1)
@@ -1991,7 +1991,7 @@ Planarity restraints: 0
   proxies.show_sorted(
     by_value="rms_deltas",
     sites_cart=sites_cart,
-    labels=labels,
+    site_labels=site_labels,
     f=sio,
     prefix="<",
     max_items=1)
