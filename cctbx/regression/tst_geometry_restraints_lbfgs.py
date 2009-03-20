@@ -193,12 +193,11 @@ def exercise(verbose=0):
     f=s,
     prefix=":;")
   l = s.getvalue().splitlines()
-  assert l[:5] == [
-    ':;Bond restraints: 18',
-    ':;Sorted by residual:',
-    ':;bond 6',
-    ':;     7',
-    ':;  ideal  model  delta    sigma   weight residual']
+  assert l[0] == ":;Bond restraints: 18"
+  assert l[1] == ":;Sorted by residual:"
+  assert l[2].startswith(":;bond ")
+  assert l[3].startswith(":;     ")
+  assert l[4] == ":;  ideal  model  delta    sigma   weight residual"
   for i in [5,-2]:
     assert l[i].startswith(":;  1.800  1.800 ")
   assert l[-1] == ":;... (remaining 15 not shown)"
