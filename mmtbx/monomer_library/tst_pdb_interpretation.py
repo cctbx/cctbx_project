@@ -363,6 +363,29 @@ def exercise_corrupt_cif_link():
     assert str(e).startswith("Corrupt CIF link definition:")
   else: raise Exception_expected
 
+def exercise_dna_cns_cy5_th6():
+  file_paths = []
+  for file_name in ["dna_cns_cy5_th6.pdb",
+                    "dna_cns_cy5.cif",
+                    "dna_cns_th6.cif"]:
+    file_path = libtbx.env.find_in_repositories(
+      relative_path="phenix_regression/misc/"+file_name,
+      test=os.path.isfile)
+    if (file_path is None):
+      print "Skipping exercise_dna_cns_cy5_th6():", \
+        " input file not available:", file_name
+      return
+    file_paths.append(file_path)
+  log = StringIO()
+  monomer_library.pdb_interpretation.run(args=file_paths, log=log)
+  assert not block_show_diff(
+    log.getvalue(), """\
+        Number of residues, atoms: 12, 244
+          Classifications: {'DNA': 12}
+          Modifications used: {'5*END': 1}
+          Link IDs: {'p': 11}
+""")
+
 def exercise():
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
@@ -371,6 +394,7 @@ def exercise():
   exercise_rna_3p_2p(mon_lib_srv, ener_lib)
   exercise_hydrogen_deuterium_aliases()
   exercise_corrupt_cif_link()
+  exercise_dna_cns_cy5_th6()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
