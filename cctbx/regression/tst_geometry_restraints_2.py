@@ -194,13 +194,9 @@ nonbonded asu: (7, 4)
 0^  ideal  model  delta    sigma   weight residual
 0^  2.629  2.120  0.509 1.56e+00 4.10e-01 1.06e-01
 ...
-0^bond O6
-0^     O3
-0^  ideal  model  delta    sigma   weight residual sym.op.
-0^  2.629  2.565  0.064 1.56e+00 4.10e-01 1.68e-03 -x+1,y,-z
 0^... (remaining 20 not shown)
 """,
-    selections=[range(6), range(-5,0)])
+    selections=[range(6), [-1]])
   site_labels_long = ["abc"+label+"def" for label in site_labels]
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
@@ -421,11 +417,11 @@ END
 """
 
 def exercise_with_pdb(verbose):
-  try: from mmtbx.monomer_library import pdb_interpretation
-  except ImportError:
+  if (not libtbx.env.has_module(name="mmtbx")):
     print "Skipping exercise_with_pdb():", \
       "mmtbx.monomer_library.pdb_interpretation not available"
     return
+  from mmtbx.monomer_library import pdb_interpretation
   if (verbose):
     out = sys.stdout
   else:
