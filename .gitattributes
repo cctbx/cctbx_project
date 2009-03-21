@@ -51,6 +51,7 @@ cctbx/examples/tst_space_subgroups.py svneol=native#text/x-python
 cctbx/geometry_restraints/gradients.tex -text
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
 cctbx/maptbx/fft.h -text
+cctbx/maptbx/grid_indices_around_sites.h svneol=native#text/plain
 cctbx/miller/equivalent_reflection_merging.tex -text
 cctbx/miller/transform_and_change_of_basis.tex -text
 cctbx/regression/random_generator_state.pickle -text
