@@ -3,8 +3,11 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from cctbx import crystal
+from scitbx import matrix
 from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal
+from libtbx.utils import n_dim_index_from_one_dim
+import itertools
 import sys
 import random
 from cPickle import dumps
@@ -707,6 +710,78 @@ def exercise_average_density():
     -0.2644232307692308,
     -0.20403226666666666])
 
+def exercise_grid_indices_around_sites():
+  unit_cell = uctbx.unit_cell((5,5,5))
+  fft_n_real = (5,5,5)
+  fft_m_real = (5,5,5)
+  site_radii = flex.double([0.5*3**0.5+1e-6])
+  def get():
+    grid_indices = maptbx.grid_indices_around_sites(
+      unit_cell=unit_cell, fft_n_real=fft_n_real, fft_m_real=fft_m_real,
+      sites_cart=sites_cart, site_radii=site_radii)
+    return list(grid_indices)
+  sites_cart = flex.vec3_double([(0.5,0.5,0.5)])
+  assert get() == [0, 1, 5, 6, 25, 26, 30, 31]
+  sites_cart = flex.vec3_double([(1.5,1.5,1.5)])
+  assert get() == [31, 32, 36, 37, 56, 57, 61, 62]
+  def sample():
+    for i in xrange(-2,7):
+      for j in xrange(-2,7):
+        for k in xrange(-2,7):
+          sites_cart = flex.vec3_double([(i+.5,j+.5,k+.5)])
+          assert len(get()) == 8
+  sample()
+  #
+  unit_cell = uctbx.unit_cell((5,6,7))
+  fft_n_real = (5,6,7)
+  fft_m_real = (5,6,7)
+  sites_cart = flex.vec3_double([(0.5,0.5,0.5)])
+  assert get() == [0, 1, 7, 8, 42, 43, 49, 50]
+  fft_m_real = (5,6,8)
+  assert get() == [0, 1, 8, 9, 48, 49, 56, 57]
+  fft_m_real = (5,7,8)
+  assert get() == [0, 1, 8, 9, 56, 57, 64, 65]
+  sample()
+  #
+  site_radii = flex.double([2])
+  assert len(get()) == 8 + 6*4
+  site_radii = flex.double([1000])
+  assert len(get()) == 5*6*7
+  #
+  unit_cell = uctbx.unit_cell((18,26,27))
+  fft_n_real = (18,26,27)
+  fft_m_real = (18,27,28)
+  for ish in xrange(5):
+    x = 2*ish+.5
+    sites_cart = flex.vec3_double([[x]*3])
+    sh = 3**0.5*(ish+0.5)
+    site_radii = flex.double([sh-1e-6])
+    s1 = set(get())
+    site_radii = flex.double([sh+1e-6])
+    s2 = set(get())
+    for gi in sorted(s2-s1):
+      i,j,k = n_dim_index_from_one_dim(gi, fft_m_real)
+      assert approx_equal(abs(matrix.col((i-x,j-x,k-x))), sh)
+    assert len(s1) == [0, 56, 304, 912, 1904][ish]
+    assert len(s2) == [8, 88, 360, 968, 2008][ish]
+  #
+  unit_cell = uctbx.unit_cell((8,9,7,80,100,110))
+  fft_n_real = (11,13,15)
+  fft_m_real = (18,26,19)
+  sites_cart = flex.vec3_double([(3,11,5)])
+  ls = []
+  prev = 0
+  for r in itertools.count(1):
+    site_radii = flex.double([r])
+    l = len(get())
+    assert l > prev
+    ls.append(l)
+    if (l == 11*13*15):
+      break
+    assert r < 7
+    prev = l
+  assert ls == [18, 155, 524, 1225, 1940, 2139, 2145]
+
 def run():
   exercise_copy()
   exercise_statistics()
@@ -725,6 +800,7 @@ def run():
   exercise_asu_eight_point_interpolation()
   exercise_real_space_refinement()
   exercise_average_density()
+  exercise_grid_indices_around_sites()
   print "OK"
 
 if (__name__ == "__main__"):
