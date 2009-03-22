@@ -4,12 +4,11 @@
 #include <cctbx/uctbx.h>
 #include <scitbx/math/modulo.h>
 #include <boost/numeric/conversion/cast.hpp>
-#include <boost/noncopyable.hpp>
-#include <set>
 
 namespace cctbx { namespace maptbx {
 
-  std::auto_ptr<std::set<unsigned> >
+  template <typename SetType>
+  std::auto_ptr<SetType>
   grid_indices_around_sites(
     uctbx::unit_cell const& unit_cell,
     af::tiny<int, 3> const& fft_n_real,
@@ -21,7 +20,7 @@ namespace cctbx { namespace maptbx {
     CCTBX_ASSERT(fft_n_real.const_ref().all_gt(0));
     CCTBX_ASSERT(fft_m_real.const_ref().all_ge(fft_n_real.const_ref()));
     CCTBX_ASSERT(site_radii.size() == sites_cart.size());
-    std::auto_ptr<std::set<unsigned> > result(new std::set<unsigned>);
+    std::auto_ptr<SetType> result(new SetType);
     scitbx::vec3<double> fft_n_real_f;
     scitbx::vec3<double> one_over_grid_spacing;
     for(unsigned i=0;i<3;i++) {
