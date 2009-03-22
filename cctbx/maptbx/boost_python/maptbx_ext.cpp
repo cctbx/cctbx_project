@@ -1,7 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/maptbx/fft.h>
-#include <cctbx/maptbx/grid_indices_around_sites.h>
 #include <cctbx/maptbx/average_densities.h>
 #include <cctbx/maptbx/eight_point_interpolation.h>
 #include <scitbx/boost_python/utils.h>
@@ -13,6 +12,7 @@
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
+  void wrap_grid_indices_around_sites();
   void wrap_grid_tags();
   void wrap_gridding();
   void wrap_misc();
@@ -35,6 +35,7 @@ namespace {
   {
     using namespace boost::python;
 
+    wrap_grid_indices_around_sites();
     wrap_grid_tags();
     wrap_gridding();
     wrap_misc();
@@ -175,13 +176,6 @@ namespace {
         (af::const_ref<double, af::flex_grid<> > const&,
          crystal::direct_space_asu::asu_mappings<double> &,
          fractional<double> const&)) asu_eight_point_interpolation);
-
-    def("grid_indices_around_sites", grid_indices_around_sites, (
-      arg_("unit_cell"),
-      arg_("fft_n_real"),
-      arg_("fft_m_real"),
-      arg_("sites_cart"),
-      arg_("site_radii")));
   }
 
 } // namespace <anonymous>

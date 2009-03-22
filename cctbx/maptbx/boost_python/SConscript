@@ -3,6 +3,7 @@ env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx", "omptbx"])
 env.SharedLibrary(target="#lib/cctbx_maptbx_ext", source=[
   "maptbx_ext.cpp",
+  "grid_indices_around_sites.cpp",
   "grid_tags.cpp",
   "gridding.cpp",
   "misc.cpp",

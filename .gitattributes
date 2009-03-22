@@ -50,6 +50,8 @@ cctbx/examples/trigonal_r_vs_tetragonal_i.py svneol=native#text/x-python
 cctbx/examples/tst_space_subgroups.py svneol=native#text/x-python
 cctbx/geometry_restraints/gradients.tex -text
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
+cctbx/maptbx/boost_python/grid_indices_around_sites.cpp svneol=native#text/plain
+cctbx/maptbx/boost_python/time_grid_indices_around_sites.py svneol=native#text/x-python
 cctbx/maptbx/fft.h -text
 cctbx/maptbx/grid_indices_around_sites.h svneol=native#text/plain
 cctbx/miller/equivalent_reflection_merging.tex -text
