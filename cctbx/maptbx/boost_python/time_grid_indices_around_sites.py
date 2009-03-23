@@ -5,7 +5,6 @@ from cctbx.array_family import flex
 from scitbx import fftpack
 from scitbx import matrix
 from libtbx.utils import time_log
-from libtbx import group_args
 import sys
 
 def run(args):
@@ -28,19 +27,14 @@ def run(args):
   fft = fftpack.real_to_complex_3d(crystal_gridding.n_real())
   print "n_real:", fft.n_real()
   print "m_real:", fft.m_real()
-  gias_args = group_args(
+  timer = time_log("grid_indices_around_sites").start()
+  grid_indices = maptbx.grid_indices_around_sites(
     unit_cell=crystal_symmetry.unit_cell(),
     fft_n_real=fft.n_real(),
     fft_m_real=fft.m_real(),
     sites_cart=sites_cart,
-    site_radii=site_radii).__dict__
-  timer = time_log("grid_indices_around_sites").start()
-  grid_indices = maptbx.grid_indices_around_sites(**gias_args)
+    site_radii=site_radii)
   print "grid_indices.size():", grid_indices.size()
-  print timer.log()
-  timer = time_log("grid_indices_around_sites_unordered").start()
-  grid_indices_size = maptbx.grid_indices_around_sites_unordered(**gias_args)
-  print "grid_indices_size:", grid_indices_size
   print timer.log()
   print "grid fraction:", \
     grid_indices.size() / matrix.col(fft.n_real()).product()
