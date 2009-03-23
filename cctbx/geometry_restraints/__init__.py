@@ -548,6 +548,7 @@ class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
     return _show_histogram_of_deltas_impl(O=self,
       proxy_label="bond angle",
       format_cutoffs="%8.2f",
+      unit_cell=None,
       sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
 
   def show_sorted(self,
@@ -561,8 +562,45 @@ class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
         proxy_type=angle,
         proxy_label="Bond angle",
         item_label="angle",
-        by_value=by_value, sites_cart=sites_cart, site_labels=site_labels,
-        f=f, prefix=prefix, max_items=max_items)
+        by_value=by_value, unit_cell=None, sites_cart=sites_cart,
+        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
+
+class _shared_angle_sym_proxy(boost.python.injector, shared_angle_sym_proxy):
+
+  def deltas(self, unit_cell, sites_cart):
+    return angle_deltas(
+      unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
+
+  def residuals(self, unit_cell, sites_cart):
+    return angle_residuals(
+      unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
+
+  def show_histogram_of_deltas(self,
+        unit_cell,
+        sites_cart,
+        n_slots=5,
+        f=None,
+        prefix=""):
+    return _show_histogram_of_deltas_impl(O=self,
+      proxy_label="bond angle",
+      format_cutoffs="%8.2f",
+      unit_cell=unit_cell,
+      sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
+
+  def show_sorted(self,
+        by_value,
+        unit_cell,
+        sites_cart,
+        site_labels=None,
+        f=None,
+        prefix="",
+        max_items=None):
+    _show_sorted_impl(O=self,
+        proxy_type=angle,
+        proxy_label="Bond angle",
+        item_label="angle",
+        by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
+        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
 
 class _dihedral(boost.python.injector, dihedral):
 
@@ -590,6 +628,7 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
     return _show_histogram_of_deltas_impl(O=self,
       proxy_label="dihedral angle",
       format_cutoffs="%8.2f",
+      unit_cell=None,
       sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
 
   def show_sorted(self,
@@ -603,8 +642,45 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
         proxy_type=dihedral,
         proxy_label="Dihedral angle",
         item_label="dihedral",
-        by_value=by_value, sites_cart=sites_cart, site_labels=site_labels,
-        f=f, prefix=prefix, max_items=max_items)
+        by_value=by_value, unit_cell=None, sites_cart=sites_cart,
+        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
+
+class _shared_dihedral_sym_proxy(boost.python.injector, shared_dihedral_sym_proxy):
+
+  def deltas(self, unit_cell, sites_cart):
+    return dihedral_deltas(
+      unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
+
+  def residuals(self, unit_cell, sites_cart):
+    return dihedral_residuals(
+      unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
+
+  def show_histogram_of_deltas(self,
+        unit_cell,
+        sites_cart,
+        n_slots=5,
+        f=None,
+        prefix=""):
+    return _show_histogram_of_deltas_impl(O=self,
+      proxy_label="dihedral angle",
+      format_cutoffs="%8.2f",
+      unit_cell=unit_cell,
+      sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
+
+  def show_sorted(self,
+        by_value,
+        unit_cell,
+        sites_cart,
+        site_labels=None,
+        f=None,
+        prefix="",
+        max_items=None):
+    _show_sorted_impl(O=self,
+        proxy_type=dihedral,
+        proxy_label="Dihedral angle",
+        item_label="dihedral",
+        by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
+        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
 
 class _chirality(boost.python.injector, chirality):
 
@@ -632,6 +708,7 @@ class _shared_chirality_proxy(boost.python.injector, shared_chirality_proxy):
     return _show_histogram_of_deltas_impl(O=self,
       proxy_label="chiral volume",
       format_cutoffs="%8.3f",
+      unit_cell=None,
       sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
 
   def show_sorted(self,
@@ -645,8 +722,8 @@ class _shared_chirality_proxy(boost.python.injector, shared_chirality_proxy):
         proxy_type=chirality,
         proxy_label="Chirality",
         item_label="chirality",
-        by_value=by_value, sites_cart=sites_cart, site_labels=site_labels,
-        f=f, prefix=prefix, max_items=max_items)
+        by_value=by_value, unit_cell=None, sites_cart=sites_cart,
+        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
 
 class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
 
@@ -663,54 +740,107 @@ class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
         f=None,
         prefix="",
         max_items=None):
-    assert by_value in ["residual", "rms_deltas"]
-    assert site_labels is None or len(site_labels) == sites_cart.size()
-    if (f is None): f = sys.stdout
-    print >> f, "%sPlanarity restraints: %d" % (prefix, O.size())
-    if (O.size() == 0): return
-    if (max_items is not None and max_items <= 0): return
-    if (by_value == "residual"):
+    _show_sorted_planarity_impl(O=O,
+        by_value=by_value, unit_cell=None, sites_cart=sites_cart,
+        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
+
+class _shared_planarity_sym_proxy(boost.python.injector, shared_planarity_sym_proxy):
+
+  def deltas_rms(O, unit_cell, sites_cart):
+    return planarity_deltas_rms(unit_cell=unit_cell, sites_cart=sites_cart, proxies=O)
+
+  def residuals(O, unit_cell, sites_cart):
+    return planarity_residuals(unit_cell=unit_cell, sites_cart=sites_cart, proxies=O)
+
+  def show_sorted(O,
+      by_value,
+      unit_cell,
+      sites_cart,
+      site_labels=None,
+      f=None,
+      prefix="",
+      max_items=None):
+    _show_sorted_planarity_impl(O=O,
+        by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
+        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
+
+def _show_sorted_planarity_impl(O,
+      by_value,
+      sites_cart,
+      unit_cell=None,
+      site_labels=None,
+      f=None,
+      prefix="",
+      max_items=None):
+  assert by_value in ["residual", "rms_deltas"]
+  assert site_labels is None or len(site_labels) == sites_cart.size()
+  if (f is None): f = sys.stdout
+  print >> f, "%sPlanarity restraints: %d" % (prefix, O.size())
+  if (O.size() == 0): return
+  if (max_items is not None and max_items <= 0): return
+  if (by_value == "residual"):
+    if unit_cell is None:
       data_to_sort = O.residuals(sites_cart=sites_cart)
-    elif (by_value == "rms_deltas"):
+    else:
+      data_to_sort = O.residuals(unit_cell=unit_cell,sites_cart=sites_cart)
+  elif (by_value == "rms_deltas"):
+    if unit_cell is None:
       data_to_sort = O.deltas_rms(sites_cart=sites_cart)
     else:
-      raise AssertionError
-    i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
-    if (max_items is not None):
-      i_proxies_sorted = i_proxies_sorted[:max_items]
-    print >> f, "%sSorted by %s:" % (prefix, by_value)
-    for i_proxy in i_proxies_sorted:
-      proxy = O[i_proxy]
-      len_max = 0
-      ls = []
-      for i_seq in proxy.i_seqs:
-        if (site_labels is None): l = str(i_seq)
-        else:                     l = site_labels[i_seq]
-        len_max = max(len_max, len(l))
-        ls.append(l)
-      print >> f, \
-        "%s      %s    delta    sigma   weight rms_deltas residual" % (
-          prefix, " "*len_max)
+      data_to_sort = O.deltas_rms(unit_cell=unit_cell, sites_cart=sites_cart)
+  else:
+    raise AssertionError
+  i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
+  if (max_items is not None):
+    i_proxies_sorted = i_proxies_sorted[:max_items]
+  print >> f, "%sSorted by %s:" % (prefix, by_value)
+  for i_proxy in i_proxies_sorted:
+    proxy = O[i_proxy]
+    len_max = 0
+    ls = []
+    for i_seq in proxy.i_seqs:
+      if (site_labels is None): l = str(i_seq)
+      else:                     l = site_labels[i_seq]
+      len_max = max(len_max, len(l))
+      ls.append(l)
+    if unit_cell is None:
       restraint = planarity(sites_cart=sites_cart, proxy=proxy)
-      s = "plane"
-      rdr = None
-      for i_seq,weight,delta,l in zip(proxy.i_seqs, proxy.weights,
-                                      restraint.deltas(), ls):
-        if (rdr is None):
-          rdr = "   %6.2e %6.2e" % (
-            restraint.rms_deltas(), restraint.residual())
-        print >> f, "%s%5s %s  %7.3f %6.2e %6.2e%s" % (
-          prefix, s, l+" "*(len_max-len(l)),
-          delta, weight_as_sigma(weight=weight), weight, rdr)
-        rdr = ""
-        s = ""
-    n_not_shown = O.size() - i_proxies_sorted.size()
-    if (n_not_shown != 0):
-      print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+      sym_op = ""
+      sym_ops = [None]*proxy.i_seqs.size()
+    else:
+      restraint = planarity(unit_cell=unit_cell, sites_cart=sites_cart,
+                            proxy=proxy)
+      sym_op = " sym.op."
+      sym_ops = proxy.sym_ops
+    print >> f, \
+      "%s      %s    delta    sigma   weight rms_deltas residual%s" % (
+        prefix, " "*len_max, sym_op)
+    s = "plane"
+    rdr = None
+    for i_seq,weight,delta,l,rt_mx in zip(proxy.i_seqs, proxy.weights,
+                                    restraint.deltas(), ls, sym_ops):
+      if (rdr is None):
+        rdr = "   %6.2e %6.2e" % (
+          restraint.rms_deltas(), restraint.residual())
+        rdr_spacer = ""
+      if rt_mx is None:
+        sym_op = ""
+      else:
+        sym_op = "%s %s" %(rdr_spacer, rt_mx.as_xyz())
+      print >> f, "%s%5s %s  %7.3f %6.2e %6.2e%s%s" % (
+        prefix, s, l+" "*(len_max-len(l)),
+        delta, weight_as_sigma(weight=weight), weight, rdr, sym_op)
+      rdr = ""
+      rdr_spacer = " "*20
+      s = ""
+  n_not_shown = O.size() - i_proxies_sorted.size()
+  if (n_not_shown != 0):
+    print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
 
 def _show_histogram_of_deltas_impl(O,
         proxy_label,
         format_cutoffs,
+        unit_cell,
         sites_cart,
         n_slots,
         f,
@@ -719,8 +849,13 @@ def _show_histogram_of_deltas_impl(O,
     if (f is None): f = sys.stdout
     print >> f, "%sHistogram of %s deviations from ideal:" % (
       prefix, proxy_label)
+    if unit_cell is None:
+      data = flex.abs(O.deltas(sites_cart=sites_cart))
+    else:
+      data = flex.abs(
+        O.deltas(unit_cell=unit_cell, sites_cart=sites_cart))
     histogram = flex.histogram(
-      data=flex.abs(O.deltas(sites_cart=sites_cart)),
+      data=data,
       n_slots=n_slots)
     fmt = "%%s  %s - %s: %%d" % (format_cutoffs, format_cutoffs)
     low_cutoff = histogram.data_min()
@@ -735,6 +870,7 @@ def _show_sorted_impl(O,
         proxy_label,
         item_label,
         by_value,
+        unit_cell,
         sites_cart,
         site_labels,
         f,
@@ -747,9 +883,16 @@ def _show_sorted_impl(O,
   if (O.size() == 0): return
   if (max_items is not None and max_items <= 0): return
   if (by_value == "residual"):
-    data_to_sort = O.residuals(sites_cart=sites_cart)
+    if unit_cell is None:
+      data_to_sort = O.residuals(sites_cart=sites_cart)
+    else:
+      data_to_sort = O.residuals(unit_cell=unit_cell, sites_cart=sites_cart)
   elif (by_value == "delta"):
-    data_to_sort = flex.abs(O.deltas(sites_cart=sites_cart))
+    if unit_cell is None:
+      data_to_sort = flex.abs(O.deltas(sites_cart=sites_cart))
+    else:
+      data_to_sort = flex.abs(
+        O.deltas(unit_cell=unit_cell, sites_cart=sites_cart))
   else:
     raise AssertionError
   i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
@@ -760,14 +903,23 @@ def _show_sorted_impl(O,
   for i_proxy in i_proxies_sorted:
     proxy = O[i_proxy]
     s = item_label
-    for i_seq in proxy.i_seqs:
+    for n, i_seq in enumerate(proxy.i_seqs):
       if (site_labels is None): l = str(i_seq)
       else:                     l = site_labels[i_seq]
+      if unit_cell is not None:
+        sym_op = proxy.sym_ops[n].as_xyz()
+        l += "   %s" %sym_op
       print >> f, "%s%s %s" % (prefix, s, l)
       s = item_label_blank
-    restraint = proxy_type(
-      sites_cart=sites_cart,
-      proxy=proxy)
+    if unit_cell is None:
+      restraint = proxy_type(
+        sites_cart=sites_cart,
+        proxy=proxy)
+    else:
+      restraint = proxy_type(
+        unit_cell=unit_cell,
+        sites_cart=sites_cart,
+        proxy=proxy)
     restraint._show_sorted_item(f=f, prefix=prefix)
   n_not_shown = O.size() - i_proxies_sorted.size()
   if (n_not_shown != 0):
