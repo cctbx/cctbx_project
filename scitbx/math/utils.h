@@ -110,11 +110,12 @@ namespace scitbx { namespace math {
   {
     // The author (rwgk) is not certain if this implementation works
     // under all circumstances.
+    if (a[0] == 0) return false;
     UnsignedIntType p = a[0];
     for(SizeType i=1;i<n;i++) {
+      if (a[i] == 0) return false;
       UnsignedIntType pp = p;
       p *= a[i];
-      if (p == 0) return false;
       if (p < pp) return true;
       if (p / a[i] != pp) return true;
       if (p - pp != pp * (a[i]-1)) return true;
