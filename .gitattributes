@@ -160,6 +160,7 @@ iotbx/command_line/pdb.join_fragment_files.py svneol=native#text/x-python
 iotbx/command_line/pdb.print_sequence.py -text
 iotbx/command_line/pdb_as_fasta.py svneol=native#text/x-python
 iotbx/detectors/cbf.py -text
+iotbx/detectors/edf.py -text
 iotbx/detectors/pilatus_minicbf.py -text
 iotbx/error.h svneol=native#text/plain
 iotbx/examples/__init__.py svneol=native#text/x-python
