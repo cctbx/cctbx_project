@@ -640,8 +640,9 @@ def exercise_select():
   assert iselection_intersection([2,4], [1,2,3,4]) == [2,4]
   #
   a = flex.double(range(3,12))
-  assert a.select(selection=stl.set.unsigned()).size() == 0
-  assert approx_equal(a.select(selection=stl.set.unsigned([2,3,7])), [5,6,10])
+  for stl_iterable in [stl.vector.unsigned, stl.set.unsigned]:
+    assert a.select(selection=stl_iterable()).size() == 0
+    assert approx_equal(a.select(selection=stl_iterable([2,3,7])), [5,6,10])
   #
   a = flex.int(range(7, 22))
   a.reshape(flex.grid((3,5)).set_focus((3,4)))

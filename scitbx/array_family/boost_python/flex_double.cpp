@@ -5,6 +5,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/make_constructor.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 #include <vector>
 #include <set>
 #include "flex_helpers.h"
@@ -249,18 +250,19 @@ namespace {
     return result;
   }
 
+  template <typename S>
   shared<double>
-  select_stl_set_unsigned(
+  select_stl_iterable(
     versa<double, flex_grid<> > const& self,
-    std::set<unsigned> const& selection)
+    S const& selection)
   {
     shared<double> result(selection.size(), init_functor_null<double>());
-    std::set<unsigned>::const_iterator sel_end = selection.end();
+    typename S::const_iterator sel_end = selection.end();
     double* r = result.begin();
     const double* s = self.begin();
-    unsigned self_size = static_cast<unsigned>(self.size());
-    for(std::set<unsigned>::const_iterator
-          sel=selection.begin();sel!=sel_end;sel++) {
+    typedef typename S::value_type svt;
+    svt self_size = boost::numeric_cast<svt>(self.size());
+    for(typename S::const_iterator sel=selection.begin();sel!=sel_end;sel++) {
       SCITBX_ASSERT(*sel < self_size);
       *r++ = s[*sel];
     }
@@ -322,7 +324,10 @@ namespace boost_python {
       .def("round", round, round_overloads((
         arg_("self"),
         arg_("n_digits")=0)))
-      .def("select", select_stl_set_unsigned, (arg_("selection")))
+      .def("select", select_stl_iterable<std::vector<unsigned> >, (
+        arg_("selection")))
+      .def("select", select_stl_iterable<std::set<unsigned> >, (
+        arg_("selection")))
     ;
     range_wrappers<double, long>::wrap("double_range");
 
