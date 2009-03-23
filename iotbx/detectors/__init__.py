@@ -21,6 +21,7 @@ from iotbx.detectors.macscience import DIPImage
 from iotbx.detectors.saturn import SaturnImage
 from iotbx.detectors.bruker import BrukerImage
 from iotbx.detectors.pilatus_minicbf import PilatusImage
+from iotbx.detectors.edf import EDFImage
 
 
 all_image_types = [SaturnImage,DIPImage,ADSCImage,
@@ -36,7 +37,8 @@ names_and_types = { "ADSC"          : ADSCImage,
                     "NonSquareRAXIS": NonSquareRAXISImage,
                     "Pilatus"       : PilatusImage,
                     "CBF"           : CBFImage,
-                    "Bruker"        : BrukerImage
+                    "Bruker"        : BrukerImage,
+                    "EDF"           : EDFImage
                    }
 
 def ImageFactory(filename):
