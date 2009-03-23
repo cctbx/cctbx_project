@@ -22,6 +22,17 @@ namespace cctbx { namespace maptbx {
     CCTBX_ASSERT(fft_m_real.const_ref().all_ge(fft_n_real.const_ref()));
     CCTBX_ASSERT(site_radii.size() == sites_cart.size());
     typedef typename SetType::value_type svt;
+    {
+      svt m[3];
+      for(unsigned i=0;i<3;i++) {
+        m[i] = boost::numeric_cast<svt>(fft_m_real[i]);
+      }
+      if (scitbx::math::unsigned_product_leads_to_overflow(m, 3U)) {
+        throw std::runtime_error(
+          "product of fft_m_real grid dimensions leads to SetType::value_type"
+          " integer overflow (i.e. the grid is too large).");
+      }
+    }
     std::auto_ptr<SetType> result_ap(new SetType);
     SetType* result = result_ap.get();
     scitbx::vec3<double> fft_n_real_f;
