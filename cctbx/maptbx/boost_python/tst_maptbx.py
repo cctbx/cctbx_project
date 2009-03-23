@@ -781,6 +781,15 @@ def exercise_grid_indices_around_sites():
     assert r < 7
     prev = l
   assert ls == [18, 155, 524, 1225, 1940, 2139, 2145]
+  #
+  fft_m_real = (1073741824, 1073741824, 1073741824)
+  try:
+    maptbx.grid_indices_around_sites(
+      unit_cell=unit_cell, fft_n_real=fft_n_real, fft_m_real=fft_m_real,
+      sites_cart=sites_cart, site_radii=site_radii)
+  except RuntimeError, e:
+    assert str(e).startswith("product of fft_m_real")
+  else: raise Exception_expected
 
 def run():
   exercise_copy()
