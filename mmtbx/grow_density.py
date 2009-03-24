@@ -159,7 +159,7 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
                                twin_law        = twin_law)
                 new_model, new_r_factor, new_rfree = refine_atoms(fmodel, number_of_iterations, number_of_cycles )
                 orth = new_model.unit_cell().orthogonalize
-  #
+                #
                 current_atom = 0
                 for i_scatterer, sc in enumerate(new_model.scatterers()):
                     if sc.occupancy > 1.0 and current_atom > atom_count :
@@ -314,30 +314,6 @@ def frange(start, end=None, inc=None):
         L.append(next)
     return L
 
-
-def refine_all_models(input_pdb, center, radius, step, atom_gap):
-    """Simple refine"""
-    print "Starting simple refine"
-    x_range = frange(center[0],center[0]+atom_gap,step)
-    y_range = frange(center[1],center[1]+atom_gap,step)
-    z_range = frange(center[2],center[2]+atom_gap,step)
-    all_atoms = []
-    print x_range
-    print y_range
-    print z_range
-    exit()
-    for x_start in x_range:
-        for y_start in y_range:
-            for z_start in z_range:
-                new_center = [x_start, y_start, z_start ]
-                print "start_center", new_center
-                atom_grid = make_grid(new_center, radius, atom_gap)
-                add_dummy_atoms = add_atoms(input_pdb, atom_grid, "output.pdb")
-                for atom in atom_grid: all_atoms.append(atom)
-    add_dummy_atoms = add_atoms(input_pdb, all_atoms, "output_all.pdb")
-
-
-###########
 
 
 def reflection_file_server(crystal_symmetry, reflection_files):
