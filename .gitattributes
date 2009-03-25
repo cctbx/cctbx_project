@@ -277,6 +277,7 @@ mmtbx/command_line/pdbtools.py -text
 mmtbx/command_line/real_space_correlation.py -text
 mmtbx/command_line/tls.py -text
 mmtbx/command_line/xmanip.py -text
+mmtbx/dynamics/constants.py svneol=native#text/x-python
 mmtbx/find_peaks.py -text
 mmtbx/grow_density.py -text
 mmtbx/hydrogens/find.py -text

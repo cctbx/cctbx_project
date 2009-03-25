@@ -1,3 +1,4 @@
+from mmtbx.dynamics import constants
 from mmtbx.dynamics import cartesian_dynamics
 import mmtbx.restraints
 import mmtbx.monomer_library.pdb_interpretation
@@ -9,12 +10,13 @@ import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
 
-mon_lib_srv = mmtbx.monomer_library.server.server()
-ener_lib = mmtbx.monomer_library.server.ener_lib()
+def exercise_constants():
+  assert abs(constants.boltzmann_constant_akma-0.001987) < 1e-6
+  assert abs(constants.akma_time_as_pico_seconds-0.04889) < 1e-5
 
 class get_inputs(object):
 
-  def __init__(self, verbose):
+  def __init__(self, mon_lib_srv, ener_lib, verbose):
     pdb_file = libtbx.env.find_in_repositories(
       relative_path="phenix_regression/pdb/phe.pdb", test=os.path.isfile)
     if (pdb_file is None):
@@ -125,7 +127,7 @@ def exercise_02(inputs, verbose=0):
   assert approx_equal(
     structure_.rms_difference(inputs.xray_structure), 0.0, 1e-6)
 
-def exercise_03(verbose=0):
+def exercise_03(mon_lib_srv, ener_lib, verbose=0):
   #
   # normal run with real model
   #
@@ -180,11 +182,15 @@ def exercise_03(verbose=0):
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
-  inputs = get_inputs(verbose=verbose)
+  exercise_constants()
+  mon_lib_srv = mmtbx.monomer_library.server.server()
+  ener_lib = mmtbx.monomer_library.server.ener_lib()
+  inputs = get_inputs(
+    mon_lib_srv=mon_lib_srv, ener_lib=ener_lib, verbose=verbose)
   exercise_00(inputs=inputs, verbose=verbose)
   exercise_01(inputs=inputs, verbose=verbose)
   exercise_02(inputs=inputs, verbose=verbose)
-  exercise_03(verbose=verbose)
+  exercise_03(mon_lib_srv=mon_lib_srv, ener_lib=ener_lib, verbose=verbose)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
