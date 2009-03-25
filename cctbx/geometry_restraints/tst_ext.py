@@ -35,8 +35,7 @@ def finite_difference_gradients(restraint_type, sites_cart, proxy, unit_cell=Non
       sites_cart[i]=matrix.col(sites_cart[i]) - 2*h
       qm = residual(restraint_type,sites_cart,proxy,unit_cell)
       dq = (qp-qm)/2
-      length_h = math.sqrt(h.norm_sq())
-      result_i.append(dq/(length_h))
+      result_i.append(dq/(eps))
     result.append(result_i)
   return result
 
