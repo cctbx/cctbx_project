@@ -1,4 +1,7 @@
 from mmtbx import dynamics
+from mmtbx.dynamics.constants import \
+  boltzmann_constant_akma, \
+  akma_time_as_pico_seconds
 from mmtbx.refinement import print_statistics
 from cctbx import geometry_restraints
 from cctbx import xray
@@ -91,11 +94,11 @@ class cartesian_dynamics(object):
     xray.set_scatterer_grad_flags(scatterers = self.structure.scatterers(),
                                   site       = True)
     self.structure_start = self.structure.deep_copy_scatterers()
-    self.k_boltz = 1.380662e-03
+    self.k_boltz = boltzmann_constant_akma
     self.current_temperature = 0.0
     self.ekin = 0.0
     self.ekcm = 0.0
-    self.timfac = 0.04888821
+    self.timfac = akma_time_as_pico_seconds
     self.weights = self.structure.atomic_weights()
     self.vxyz = flex.vec3_double(self.weights.size(),(0,0,0))
     if(self.time_averaging_data is not None and
@@ -332,7 +335,7 @@ class cartesian_dynamics(object):
     self.residuals()
 
   def print_dynamics_stat(self, text):
-    timfac = 0.04888821
+    timfac = akma_time_as_pico_seconds
     line_len = len("| "+text+"|")
     fill_len = 80 - line_len-1
     print >> self.log, "| "+text+"-"*(fill_len)+"|"
