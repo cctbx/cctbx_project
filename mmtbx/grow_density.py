@@ -127,6 +127,7 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
     cs = xray_structure.crystal_symmetry()
     atom_count = count_atoms(file_name)
     print "Creating grids with atom spacing %s, each grid is %s apart" %(str(atom_gap), str(step))
+    """still not sure this is right for making grid of grids"""
     x_range = frange(center[0],center[0]+atom_gap,step)
     y_range = frange(center[1],center[1]+atom_gap,step)
     z_range = frange(center[2],center[2]+atom_gap,step)
