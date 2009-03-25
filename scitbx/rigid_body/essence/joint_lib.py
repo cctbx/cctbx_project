@@ -11,6 +11,7 @@ class six_dof_alignment(object):
 
 class six_dof(object):
 
+  degrees_of_freedom = 6
   qd_zero = matrix.zeros(n=6)
   qdd_zero = matrix.zeros(n=6)
 
@@ -60,6 +61,7 @@ class spherical_alignment(object):
 
 class spherical(object):
 
+  degrees_of_freedom = 3
   qd_zero = matrix.zeros(n=3)
   qdd_zero = matrix.zeros(n=3)
 
@@ -112,6 +114,7 @@ class revolute_alignment(object):
 
 class revolute(object):
 
+  degrees_of_freedom = 1
   qd_zero = matrix.zeros(n=1)
   qdd_zero = matrix.zeros(n=1)
 
@@ -148,6 +151,7 @@ class translational_alignment(six_dof_alignment): pass
 
 class translational(object):
 
+  degrees_of_freedom = 3
   qd_zero = matrix.zeros(n=3)
   qdd_zero = matrix.zeros(n=3)
 

@@ -1,3 +1,6 @@
+from mmtbx.dynamics.constants import \
+  akma_time_as_pico_seconds, \
+  boltzmann_constant_akma
 from cctbx import xray
 from cctbx.array_family import flex
 from scitbx.rigid_body.essence import tst_molecules
@@ -7,9 +10,9 @@ from scitbx import matrix
 master_phil_str = """\
   number_of_time_steps = 10
     .type = int
-  time_step = 0.001
+  time_step_pico_seconds = 0.004
     .type = float
-  e_kin_max = 1.e6
+  temperature_cap_kelvin = 300
     .type = float
   minimization_max_iterations = 10
     .type = int
@@ -87,20 +90,27 @@ def run(fmodels, model, target_weights, params, log):
       masses=xs.atomic_weights(),
       cluster_manager=tt.cluster_manager))
   del sites
-  def show_rms(minimizer=None, e_kin_after_step=None, e_kin_capped=None):
-    print >> log, "rms:", xs.sites_cart().rms_difference(sites_cart_start),
-    if (e_kin_after_step is not None):
-      print >> log, "e_kin_after_step:", e_kin_after_step,
-    if (e_kin_capped is not None and e_kin_capped != e_kin_after_step):
-      print >> log, "e_kin_capped:", e_kin_capped,
-    print >> log
+  temp_as_e_kin = 0.5 * sim.degrees_of_freedom * boltzmann_constant_akma
+  e_kin_cap = params.temperature_cap_kelvin * temp_as_e_kin
+  time_step_akma = params.time_step_pico_seconds / akma_time_as_pico_seconds
+  print >> log, "tardy dynamics:"
   for i_time_step in xrange(params.number_of_time_steps):
-    print >> log, "tardy time step:", i_time_step
-    sim.dynamics_step(delta_t=params.time_step)
-    e_kin_after_step = sim.e_kin
-    sim.reset_qd(e_kin_max=params.e_kin_max)
-    show_rms(e_kin_after_step=e_kin_after_step, e_kin_capped=sim.e_kin)
+    sim.dynamics_step(delta_t=time_step_akma, e_kin_cap=e_kin_cap)
+    print >> log, "  time step: %3d * %7.5f pico seconds," % (
+      i_time_step+1, params.time_step_pico_seconds),
+    print >> log, "rms: %8.4f, temperature: %7.2f K" % (
+      xs.sites_cart().rms_difference(sites_cart_start),
+      sim.e_kin/temp_as_e_kin),
+    ekbvs = sim.e_kin_before_velocity_scaling
+    if (ekbvs is not None and ekbvs != sim.e_kin):
+      print >> log, "(before velocity scaling: %7.2f K)" % (
+        ekbvs/temp_as_e_kin),
+    print >> log
   if (params.minimization_max_iterations > 0):
+    print >> log, "tardy gradient-driven minimization:"
+    def show_rms(minimizer=None):
+      print >> log, "  rms: %8.4f" % (
+        xs.sites_cart().rms_difference(sites_cart_start))
     sim.minimization(
       max_iterations=params.minimization_max_iterations,
       callback_after_step=show_rms)

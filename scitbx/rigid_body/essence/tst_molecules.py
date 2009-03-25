@@ -66,6 +66,7 @@ class simulation(object):
     O.cluster_manager = cluster_manager
     O.potential_obj = potential_obj
     O.bodies = bodies
+    O.degrees_of_freedom = sum([B.J.degrees_of_freedom for B in O.bodies])
     O.energies_and_accelerations_update()
 
   def AJA_update(O):
@@ -125,21 +126,26 @@ class simulation(object):
         sites_moved=O.sites_moved))
     O.e_tot = O.e_kin + O.e_pot
 
-  def dynamics_step(O, delta_t):
+  def dynamics_step(O, delta_t, e_kin_cap=None):
     delta_t_norm = delta_t / O.e_pot_normalization_factor
     for B,qdd in zip(O.bodies, O.qdd):
       B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t_norm)
+    O.apply_velocity_scaling(e_kin_cap=e_kin_cap)
+    for B,qdd in zip(O.bodies, O.qdd):
       B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
     O.energies_and_accelerations_update()
 
-  def reset_qd(O, e_kin_max): # XXX quick and crude
-    assert e_kin_max > 0
-    if (O.e_kin < e_kin_max): return None
-    f = e_kin_max / O.e_kin
-    for B,qdd in zip(O.bodies, O.qdd):
-      B.qd *= f
-    O.energies_and_accelerations_update()
-    return f
+  def apply_velocity_scaling(O, e_kin_cap):
+    if (e_kin_cap is None):
+      O.e_kin_before_velocity_scaling = None
+      return
+    assert e_kin_cap > 0
+    O.e_kin_before_velocity_scaling = featherstone.system_model(
+      bodies=O.bodies).e_kin()
+    if (O.e_kin_before_velocity_scaling > e_kin_cap):
+      factor = (e_kin_cap / O.e_kin_before_velocity_scaling)**0.5
+      for B in O.bodies:
+        B.qd *= factor
 
   def d_pot_d_q(O):
     return featherstone.system_model(bodies=O.bodies).d_pot_d_q(
@@ -281,19 +287,16 @@ def construct_bodies(sites, masses, cluster_manager):
 
 def exercise_sim(out, n_dynamics_steps, delta_t, sim):
   sim.check_d_pot_d_q()
-  n_reset_qd = 0
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
   for i_step in xrange(n_dynamics_steps):
     sim.dynamics_step(delta_t=delta_t)
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin)
-    if (sim.reset_qd(e_kin_max=1.e6)):
-      n_reset_qd += 1
   e_tots = e_pots + e_kins
   sim.check_d_pot_d_q()
+  print >> out, "degrees of freedom:", sim.degrees_of_freedom
   print >> out, "energy samples:", e_tots.size()
-  print >> out, "n_reset_qd:", n_reset_qd
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
   print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
   print >> out, "e_tot min, max:", min(e_tots), max(e_tots)
@@ -328,6 +331,19 @@ def exercise_minimization_quick(out, sim, max_iterations=3):
     assert e_pot_final < e_pot_start * 0.98
   print >> out
 
+def exercise_apply_velocity_scaling(out, sim):
+  print >> out, "exercise_apply_velocity_scaling():"
+  e_kins = flex.double([sim.e_kin])
+  for i_step in xrange(10):
+    sim.dynamics_step(delta_t=0.1, e_kin_cap=2)
+    e_kins.append(sim.e_kin)
+    print >> out, "e_kin:", sim.e_kin
+  assert approx_equal(e_kins, [
+    0.0, 0.10596967199225664, 0.41471669284176654, 0.90125773606867454,
+    1.5269900929646234, 2.0446638368687799, 2.0528390856843681,
+    2.0592456511353947, 2.0643773120065561, 2.0685121042338253,
+    2.0718756155399802])
+
 def construct_simulation(labels, sites, masses, tardy_tree):
   cm = tardy_tree.cluster_manager
   return simulation(
@@ -361,12 +377,22 @@ def run(args):
     n_dynamics_steps = max(1, int(args[0]))
     out = sys.stdout
   show_times_at_exit()
-  random.seed(0)
-  for i in xrange(n_test_simulations):
-    sim = get_test_simulation_by_index(i=i)
-    exercise_dynamics_quick(
-      out=out, sim=sim, n_dynamics_steps=n_dynamics_steps)
-    exercise_minimization_quick(out=out, sim=sim)
+  #
+  if (1):
+    random.seed(0)
+    for i in xrange(n_test_simulations):
+      print >> out, "test_simulation index:", i
+      sim = get_test_simulation_by_index(i=i)
+      exercise_dynamics_quick(
+        out=out, sim=sim, n_dynamics_steps=n_dynamics_steps)
+      exercise_minimization_quick(out=out, sim=sim)
+  #
+  if (1):
+    random.seed(0)
+    sim = get_test_simulation_by_index(i=13)
+    assert sim.degrees_of_freedom == 12
+    exercise_apply_velocity_scaling(out=out, sim=sim)
+  #
   print "OK"
 
 if (__name__ == "__main__"):
