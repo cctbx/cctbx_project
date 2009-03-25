@@ -632,20 +632,22 @@ class manager(object):
       print >> out, "  min  = %.3f"%flex.min(rbt_array)
 
   def restraints_manager_energies_sites(self,
-                                        geometry_flags    = None,
-                                        compute_gradients = False,
-                                        gradients         = None,
-                                        disable_asu_cache = False):
+        geometry_flags=None,
+        custom_nonbonded_function=None,
+        compute_gradients=False,
+        gradients=None,
+        disable_asu_cache=False):
     sites_cart = self.xray_structure.sites_cart()
     if(self.use_ias and self.ias_selection is not None and
        self.ias_selection.count(True) > 0):
       sites_cart = sites_cart.select(~self.ias_selection)
     return self.restraints_manager.energies_sites(
-      sites_cart        = sites_cart,
-      geometry_flags    = geometry_flags,
-      compute_gradients = compute_gradients,
-      gradients         = gradients,
-      disable_asu_cache = disable_asu_cache)
+      sites_cart=sites_cart,
+      geometry_flags=geometry_flags,
+      custom_nonbonded_function=custom_nonbonded_function,
+      compute_gradients=compute_gradients,
+      gradients=gradients,
+      disable_asu_cache=disable_asu_cache)
 
   def solvent_selection(self):
     result = flex.bool()

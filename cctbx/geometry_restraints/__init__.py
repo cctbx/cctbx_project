@@ -295,6 +295,17 @@ class planarity_proxy_registry(proxy_registry_base):
         self.counts[i_list] += 1
     return result
 
+class _prolsq_repulsion_function(
+        boost.python.injector, prolsq_repulsion_function):
+
+  def customized_copy(O, c_rep=None, k_rep=None, irexp=None, rexp=None):
+    if (c_rep is None): c_rep = O.c_rep
+    if (k_rep is None): k_rep = O.k_rep
+    if (irexp is None): irexp = O.irexp
+    if (rexp is None): rexp = O.rexp
+    return prolsq_repulsion_function(
+      c_rep=c_rep, k_rep=k_rep, irexp=irexp, rexp=rexp)
+
 class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
 
   def show_histogram_of_model_distances(self,
