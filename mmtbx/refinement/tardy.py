@@ -2,6 +2,7 @@ from mmtbx.dynamics.constants import \
   akma_time_as_pico_seconds, \
   boltzmann_constant_akma
 from cctbx import xray
+import cctbx.geometry_restraints
 from cctbx.array_family import flex
 from scitbx.rigid_body.essence import tst_molecules
 from scitbx.graph import tardy_tree
@@ -16,14 +17,31 @@ master_phil_str = """\
     .type = float
   minimization_max_iterations = 10
     .type = int
+  nonbonded_attenuation_factor = 0.5
+    .type = float
 """
 
 class potential_object(object):
 
-  def __init__(O, fmodels, model, target_weights):
+  def __init__(O,
+        nonbonded_attenuation_factor,
+        fmodels,
+        model,
+        target_weights):
     O.fmodels = fmodels
     O.model = model
     O.weights = target_weights.xyz_weights_result
+    if (nonbonded_attenuation_factor is None):
+      O.custom_nonbonded_function = None
+    else:
+      assert nonbonded_attenuation_factor > 0
+      assert nonbonded_attenuation_factor <= 1
+      nonbonded_function = model.restraints_manager.geometry.nonbonded_function
+      assert isinstance(
+        nonbonded_function,
+        cctbx.geometry_restraints.prolsq_repulsion_function)
+      O.custom_nonbonded_function = nonbonded_function.customized_copy(
+        k_rep=nonbonded_attenuation_factor)
     O.fmodels.create_target_functors()
     O.fmodels.prepare_target_functors_for_minimization()
     O.last_sites_moved = None
@@ -48,6 +66,7 @@ class potential_object(object):
       O.g = tg.gradients()
       assert O.g.size() == len(sites_moved) * 3
       stereochemistry_residuals = O.model.restraints_manager_energies_sites(
+        custom_nonbonded_function=O.custom_nonbonded_function,
         compute_gradients=True)
       O.f += stereochemistry_residuals.target * O.weights.w
       xray.minimization.add_gradients(
@@ -78,7 +97,10 @@ def run(fmodels, model, target_weights, params, log):
     print >> log, "tardy collinear bond:", s[i].label
     print >> log, "                     ", s[j].label
   potential_obj = potential_object(
-    fmodels=fmodels, model=model, target_weights=target_weights)
+    nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
+    fmodels=fmodels,
+    model=model,
+    target_weights=target_weights)
   sim = tst_molecules.simulation(
     labels=[sc.label for sc in xs.scatterers()],
     sites=sites,

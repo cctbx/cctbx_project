@@ -414,6 +414,7 @@ class manager(object):
   def energies_sites(self,
         sites_cart,
         flags=None,
+        custom_nonbonded_function=None,
         compute_gradients=False,
         gradients=None,
         disable_asu_cache=False,
@@ -434,7 +435,10 @@ class manager(object):
     if (flags.nonbonded and self.nonbonded_types is not None):
       assert pair_proxies.nonbonded_proxies is not None
       nonbonded_proxies = pair_proxies.nonbonded_proxies
-      nonbonded_function = self.nonbonded_function
+      if (custom_nonbonded_function is None):
+        nonbonded_function = self.nonbonded_function
+      else:
+        nonbonded_function = custom_nonbonded_function
     if (flags.angle):     angle_proxies = self.angle_proxies
     if (flags.dihedral):  dihedral_proxies = self.dihedral_proxies
     if (flags.chirality): chirality_proxies = self.chirality_proxies

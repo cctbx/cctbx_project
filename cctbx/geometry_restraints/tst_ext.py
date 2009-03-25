@@ -895,6 +895,13 @@ def exercise_nonbonded():
   assert sorted_asu_proxies.simple.size() == 4
   sorted_asu_proxies.process(sorted_asu_proxies.asu.deep_copy())
   assert sorted_asu_proxies.asu.size() == 0
+  #
+  f = geometry_restraints.prolsq_repulsion_function()
+  assert approx_equal((f.c_rep, f.k_rep, f.irexp, f.rexp), (16,1,1,4))
+  c = f.customized_copy()
+  assert approx_equal((c.c_rep, c.k_rep, c.irexp, c.rexp), (16,1,1,4))
+  c = f.customized_copy(c_rep=8, k_rep=2, irexp=3, rexp=5)
+  assert approx_equal((c.c_rep, c.k_rep, c.irexp, c.rexp), (8,2,3,5))
 
 def exercise_angle():
   p = geometry_restraints.angle_params(
