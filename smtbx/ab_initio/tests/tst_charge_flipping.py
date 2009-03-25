@@ -15,7 +15,7 @@ from cctbx import euclidean_model_matching as emma
 
 from iotbx import mtz
 
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, is_above_limit
 from libtbx.utils import flat_list
 from libtbx import group_args
 from libtbx.utils import format_cpu_times
@@ -24,6 +24,9 @@ import scitbx.matrix as mat
 
 from smtbx.ab_initio import charge_flipping
 
+if (1): # fixed random seed to avoid rare failures
+  random.seed(0)
+  flex.set_random_seed(0)
 
 def randomly_exercise(flipping_type,
                       space_group_info, elements,
@@ -234,7 +237,7 @@ def exercise_charge_flipping():
   print "\t%i found shifts" % n_found_shift
   print ("\t%i Euclidean matches with correct structure "
          "in original spacegroup" % n_emma_matches)
-  assert n_success/n_tests > 0.7
+  assert is_above_limit(value=n_success/n_tests, limit=0.9)
 
 def run():
   exercise_charge_flipping()
