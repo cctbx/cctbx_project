@@ -1,12 +1,11 @@
 from cctbx.array_family import flex
 import mmtbx.f_model
-from mmtbx import utils
+import mmtbx.utils
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx.pdb import crystal_symmetry_from_pdb
 from cStringIO import StringIO
 from cctbx.xray import ext
-from mmtbx import utils
 from scitbx.array_family import shared
 from cctbx import maptbx
 import iotbx.phil
@@ -19,20 +18,55 @@ from mmtbx import map_tools
 from libtbx import adopt_init_args
 from libtbx import Auto, group_args
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+import sys
 
-master_params_str = """\
+core_params_str = """\
 grid_step = 0.3
   .type = float
   .help = Defines finess of the grid at which the map is computed.
   .expert_level = 2
+use_b_factor = False
+  .type = bool
+  .help = Actual atomic B-factor is used to define a radius around atoms for \
+          map CC calculation
+  .expert_level = 2
+use_radius = True
+  .type = bool
+  .help = Use user specified radius to define a region around atoms for map CC \
+          calculation
+  .expert_level = 2
+atom_radius = 1.5
+  .type = float
+  .help = Atomic radius for map CC calculation (used only if use_radius=True)
+  .expert_level = 2
+ignore_points_with_map_values_less_than = 0.3
+  .type = float
+  .help = Ignore points with denisty values less than above defined (in sigma)
+  .expert_level = 2
+set_cc_to_zero_if_n_grid_points_less_than = 50
+  .type = int
+  .help = Return zero CC if number of grid nodes is less than defined above
+  .expert_level = 2
+poor_cc_threshold = 0.7
+  .type = float
+  .help = Ad hoc definition of poor map CC
+poor_map_value_threshold = 1.0
+  .type = float
+  .help = Ad hoc value (less than) defining a week density (in sigma) for maps \
+          involved in map CC calculation
+  .expert_level = 2
+"""
+
+core_params = iotbx.phil.parse(core_params_str, process_includes=False)
+
+master_params_str = """\
+%s
 scattering_table = *n_gaussian wk1995 it1992 neutron
   .type = choice
   .help = Scattering table for structure factors calculations
 details_level = *atoms residues
   .type = choice(multi=False)
   .help = Level of details to show CC for
-use_hydrogens = False
-    .type = bool
 map_1
   .help = First map to use in map CC calculation
 {
@@ -91,7 +125,7 @@ map_2
     .type = bool
     .expert_level = 2
 }
-"""
+"""%core_params_str
 master_params = iotbx.phil.parse(master_params_str, process_includes=False)
 
 class model_to_map(object):
@@ -140,7 +174,7 @@ class model_to_map(object):
       bss_params.k_sol_step = 0.3
       bss_params.b_sol_step = 20.0
       #
-      self.fmodel = utils.fmodel_simple(
+      self.fmodel = mmtbx.utils.fmodel_simple(
         xray_structures = xray_structures,
         f_obs           = f_obs,
         r_free_flags    = r_free_flags,
@@ -170,7 +204,7 @@ class model_to_map(object):
 
 class pdb_to_xrs(object):
   def __init__(self, pdb_files, crystal_symmetry, scattering_table):
-    processed_pdb_files_srv = utils.process_pdb_file_srv(
+    processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
       crystal_symmetry = crystal_symmetry,
       log = StringIO())
     self.xray_structures = None
@@ -224,7 +258,7 @@ def extract_data_and_flags(params, crystal_symmetry):
       crystal_symmetry = crystal_symmetry,
       force_symmetry   = True,
       reflection_files = [reflection_file])
-    parameters = utils.data_and_flags.extract()
+    parameters = mmtbx.utils.data_and_flags.extract()
     parameters.force_anomalous_flag_to_be_equal_to = False
     if(params.data_labels is not None):
       parameters.labels = [params.data_labels]
@@ -232,7 +266,7 @@ def extract_data_and_flags(params, crystal_symmetry):
       parameters.high_resolution = params.high_resolution
     if(params.low_resolution is not None):
       parameters.low_resolution = params.low_resolution
-    data_and_flags = utils.determine_data_and_flags(
+    data_and_flags = mmtbx.utils.determine_data_and_flags(
       reflection_file_server = reflection_file_server,
       parameters             = parameters,
       data_description       = "X-ray data",
@@ -337,6 +371,34 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   data_and_flags_2 = extract_data_and_flags(
     params           = params.map_2,
     crystal_symmetry = crystal_symmetry)
+  #
+  # get map CC object
+  def get_map_cc_obj(map_1, params, pdb_to_xrs_1, pdb_to_xrs_2, fft_map_1, xrs):
+    pdb_to_xrs_ = None
+    if(params.map_1.use): pdb_to_xrs_ = pdb_to_xrs_1
+    elif(params.map_2.use): pdb_to_xrs_ = pdb_to_xrs_2
+    else: RuntimeError
+    pdb_hierarchy = pdb_to_xrs_.processed_pdb_file.all_chain_proxies.\
+      pdb_hierarchy
+    atom_detail, residue_detail = False, False
+    if(params.details_level == "atoms"): atom_detail = True
+    elif(params.details_level == "residues"): residue_detail = True
+    else:
+      raise RuntimeError(
+        "Wrong parameter: details_level = %s"%str(params.details_level))
+    result = map_cc_funct(
+      map_1          = map_1,
+      xray_structure = xrs[0],
+      fft_map        = fft_map_1,
+      pdb_hierarchy  = pdb_hierarchy,
+      use_b_factor   = params.use_b_factor,
+      use_radius     = params.use_radius,
+      atom_detail    = atom_detail,
+      atom_radius    = params.atom_radius,
+      residue_detail = residue_detail)
+    del map_1
+    return result
+  #
   if([data_and_flags_1, data_and_flags_2].count(None) != 2):
     # compute maps
     if([params.map_1.map_type, params.map_2.map_type].count(None) == 2):
@@ -370,6 +432,13 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       low_resolution    = lr)
     fft_map_1 = model_to_map_obj_1.fft_map
     map_1 = fft_map_1.real_map_unpadded()
+    map_1_focus = map_1.focus()
+    map_1_all = map_1.all()
+    # prepare map CC calculation object
+    map_cc_obj = get_map_cc_obj(map_1 = map_1, params = params,
+      pdb_to_xrs_1 = pdb_to_xrs_1, pdb_to_xrs_2 = pdb_to_xrs_2,
+      fft_map_1 = fft_map_1, xrs = xrs)
+    #
     ### second
     if(xray_structures_2 is not None): xrs = xray_structures_2
     else: xrs = xray_structures_1
@@ -394,6 +463,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       high_resolution   = hr,
       low_resolution    = lr)
     map_2 = model_to_map_obj_2.fft_map.real_map_unpadded()
+
   # compute data if no reflection files provided for both maps
   if([data_and_flags_1, data_and_flags_2].count(None) == 2):
     if(xray_structures_1 is not None): xrs = xray_structures_1
@@ -418,6 +488,13 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       crystal_gridding = None)
     fft_map_1.apply_sigma_scaling()
     map_1 = fft_map_1.real_map_unpadded()
+    map_1_focus = map_1.focus()
+    map_1_all = map_1.all()
+    # prepare map CC calculation object
+    map_cc_obj = get_map_cc_obj(map_1 = map_1, params = params,
+      pdb_to_xrs_1 = pdb_to_xrs_1, pdb_to_xrs_2 = pdb_to_xrs_2,
+      fft_map_1 = fft_map_1, xrs = xrs)
+    #
     if(xray_structures_2 is not None): xrs = xray_structures_2
     else: xrs = xray_structures_1
     if(params.map_2.high_resolution is not None):
@@ -441,59 +518,152 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     fft_map_2.apply_sigma_scaling()
     map_2 = fft_map_2.real_map_unpadded()
   #
-  assert map_1.focus() == map_2.focus()
-  assert map_1.all() == map_2.all()
-  # get sampled points
-  if(params.map_1.use): xrs = xray_structures_1
-  elif(params.map_2.use): xrs = xray_structures_2
-  else: RuntimeError
+  assert map_1_focus == map_2.focus()
+  assert map_1_all == map_2.all()
   if(len(xrs) > 1):
     raise Sorry("Multiple models cannot be used with this option.")
   # get map cc
-  pdb_to_xrs_ = None
-  if(params.map_1.use): pdb_to_xrs_ = pdb_to_xrs_1
-  elif(params.map_2.use): pdb_to_xrs_ = pdb_to_xrs_2
-  else: RuntimeError
-  compute_map_cc_result = compute_map_cc(map_1 = map_1, map_2 = map_2,
-    xray_structure = xrs[0], fft_map = fft_map_1)
-  pdb_hierarchy = pdb_to_xrs_.processed_pdb_file.all_chain_proxies.\
-    pdb_hierarchy
-  if(params.details_level == "atoms"):
-    result = compute_map_cc_result.atoms(pdb_hierarchy = pdb_hierarchy,
-      show = True, show_hydrogens = params.use_hydrogens)
-  elif(params.details_level == "residues"):
-    result = compute_map_cc_result.residues(pdb_hierarchy = pdb_hierarchy, show = True)
-  else:
-    raise RuntimeError(
-      "Wrong parameter: details_level = %s"%str(params.details_level))
-  compute_map_cc_result.overall_correlation_min_max_standard_deviation(
-    show = True)
+  map_cc_obj.map_cc(
+    map_2                                     = map_2,
+    ignore_points_with_map_values_less_than   = params.ignore_points_with_map_values_less_than,
+    set_cc_to_zero_if_n_grid_points_less_than = params.set_cc_to_zero_if_n_grid_points_less_than,
+    poor_cc_threshold                         = params.poor_cc_threshold,
+    poor_map_value_threshold                  = params.poor_map_value_threshold)
+  map_cc_obj.show()
+  map_cc_obj.overall_correlation_min_max_standard_deviation()
 
-class compute_map_cc(object):
+class map_cc_funct(object):
 
-  def __init__(self, map_1, map_2, xray_structure, fft_map):
-    self.map_1 = map_1
-    self.map_2 = map_2
-    assert self.map_1.size() == self.map_1.size()
-    self.xray_structure = xray_structure
+  def __init__(self, map_1,
+                     xray_structure,
+                     fft_map,
+                     use_b_factor,
+                     use_radius,
+                     atom_radius,
+                     atom_detail,
+                     residue_detail,
+                     pdb_hierarchy = None):
     self.fft_map = fft_map
-    self.sampled_density = self.sampled_density_map()
+    self.xray_structure = xray_structure
+    self.atom_detail = atom_detail
+    self.residue_detail = residue_detail
+    self.pdb_hierarchy = pdb_hierarchy
+    self._result = []
+    self.result = []
+    self.map_1_size = map_1.size()
+    self.map_1_stat = maptbx.statistics(map_1)
+    assert [self.atom_detail, self.residue_detail].count(True) == 1
+    assert [use_b_factor, use_radius].count(True) == 1
+    self.atoms_with_labels = None
+    if(pdb_hierarchy is not None and self.atom_detail):
+      self.atoms_with_labels = list(pdb_hierarchy.atoms_with_labels())
+    scatterers = xray_structure.scatterers()
+    if(self.residue_detail):
+      assert pdb_hierarchy is not None
+    if(use_b_factor):
+      self.gifes = self.grid_indices_from_sampled_density_map()
+    else:
+      self.gifes = []
+      real_map_unpadded = self.fft_map.real_map_unpadded()
+      for site_cart in self.xray_structure.sites_cart():
+        sel = maptbx.grid_indices_around_sites(
+          unit_cell  = self.xray_structure.unit_cell(),
+          fft_n_real = real_map_unpadded.focus(),
+          fft_m_real = real_map_unpadded.all(),
+          sites_cart = flex.vec3_double([site_cart]),
+          site_radii = flex.double([atom_radius]))
+        self.gifes.append(sel)
+    if(self.atom_detail):
+      for i_seq, scatterer in enumerate(scatterers):
+        sel = list(self.gifes[i_seq])
+        m1 = map_1.select(sel)
+        ed1 = map_1.eight_point_interpolation(scatterer.site)
+        a = None
+        if(self.atoms_with_labels is not None):
+          a = self.atoms_with_labels[i_seq]
+        self._result.append(group_args(atom = a, m1 = m1, ed1 = ed1))
+    del map_1
 
-  def overall_correlation_min_max_standard_deviation(self, show = False):
-    corr = flex.linear_correlation(
-      x = self.map_1.as_1d(),
-      y = self.map_2.as_1d()).coefficient()
-    st1 = maptbx.statistics(self.map_1)
-    st2 = maptbx.statistics(self.map_2)
-    if(show):
-      print "Overall map correlation: %5.2f"%corr
-      print "Map 1: min, max, mean, standard deviation: %6.3f %6.3f %6.3f %6.3f" % (
-        st1.min(), st1.max(), st1.mean(), st1.sigma())
-      print "Map 2: min, max, mean, standard deviation: %6.3f %6.3f %6.3f %6.3f" % (
-        st2.min(), st2.max(), st2.mean(), st2.sigma())
-    return group_args(correlation = corr, map_stat_1 = st1, map_stat_2 = st2)
+  def map_cc(self, map_2,
+                   ignore_points_with_map_values_less_than,
+                   set_cc_to_zero_if_n_grid_points_less_than,
+                   poor_cc_threshold,
+                   poor_map_value_threshold):
+    assert self.map_1_size == map_2.size()
+    self.map_2_stat = maptbx.statistics(map_2)
+    scatterers = self.xray_structure.scatterers()
+    if(self.atom_detail):
+      for i_seq, scatterer in enumerate(scatterers):
+        sel = list(self.gifes[i_seq])
+        m1 = self._result[i_seq].m1
+        m2 = map_2.select(sel)
+        assert m1.size() == m2.size()
+        sel_flat  = flex.abs(m1) > ignore_points_with_map_values_less_than
+        sel_flat &= flex.abs(m2) > ignore_points_with_map_values_less_than
+        m1 = m1.select(sel_flat)
+        m2 = m2.select(sel_flat)
+        if(m1.size() < set_cc_to_zero_if_n_grid_points_less_than or
+          scatterer.occupancy == 0.0): corr = 0.
+        else: corr = flex.linear_correlation(x = m1, y = m2).coefficient()
+        ed1 = self._result[i_seq].ed1
+        ed2 = map_2.eight_point_interpolation(scatterer.site)
+        poor_flag = False
+        if(((ed2 < poor_map_value_threshold or ed1 < poor_map_value_threshold)
+           or corr < poor_cc_threshold)):
+          poor_flag = True
+        a = None
+        if(self._result[i_seq].atom is not None):
+          assert self._result[i_seq].atom is self.atoms_with_labels[i_seq]
+          a = self._result[i_seq].atom
+        self.result.append(group_args(
+          atom        = a,
+          cc          = corr,
+          map_1_val   = ed1,
+          map_2_val   = ed2,
+          scatterer   = scatterers[i_seq],
+          data_points = m2.size(),
+          i_seq       = i_seq,
+          poor_flag   = poor_flag))
+      del map_2
+    return self.result
 
-  def sampled_density_map(self):
+  def show(self, show_hydrogens = True, log = None):
+    if(log is None): log = sys.stdout
+    if(self.atom_detail):
+      print >> log, "i_seq : chain resseq resname altloc name element   occ      b      CC   map1   map2  No.Points FLAG"
+      fmt = "%5d : %5s %6s %7s %6s %4s %7s %5.2f %6.2f %7.4f %6.2f %6.2f   %d %s"
+      for i_seq, r in enumerate(self.result):
+        w_msg = ""
+        if(r.poor_flag): w_msg = " <<< WEAK DENSITY"
+        print_line = True
+        if(not show_hydrogens and
+           r.scatterer.element_symbol().strip().upper() in ["H","D"]):
+          print_line = False
+        if(print_line):
+          print >> log, fmt % (i_seq,
+                       r.atom.chain_id,
+                       r.atom.resseq,
+                       r.atom.resname,
+                       r.atom.altloc,
+                       r.atom.name,
+                       r.atom.element,
+                       r.atom.occ,
+                       r.atom.b,
+                       r.cc,
+                       r.map_1_val,
+                       r.map_2_val,
+                       r.data_points,
+                       w_msg)
+
+  def overall_correlation_min_max_standard_deviation(self, log = None):
+    if(log is None): log = sys.stdout
+    fmt = "Map %d: min, max, mean, standard deviation: %6.3f %6.3f %6.3f %6.3f"
+    print >> log, fmt%(1, self.map_1_stat.min(), self.map_1_stat.max(),
+      self.map_1_stat.mean(), self.map_1_stat.sigma())
+    print >> log, fmt%(2, self.map_2_stat.min(), self.map_2_stat.max(),
+      self.map_2_stat.mean(), self.map_2_stat.sigma())
+
+  def grid_indices_from_sampled_density_map(self):
     # Very specific code to get the sampling points only.
     # Do not use the actual map.
     assert not self.fft_map.anomalous_flag()
@@ -502,7 +672,7 @@ class compute_map_cc(object):
     u_iso_all = adptbx.b_as_u(30.0)
     xrs.set_u_iso(value = u_iso_all)
     real_map_unpadded = self.fft_map.real_map_unpadded()
-    sampled_density = ext.sampled_model_density(
+    return ext.sampled_model_density(
       unit_cell                             = xrs.unit_cell(),
       scatterers                            = xrs.scatterers(),
       scattering_type_registry              = xrs.scattering_type_registry(),
@@ -515,79 +685,9 @@ class compute_map_cc(object):
       sampled_density_must_be_positive      = False,
       tolerance_positive_definite           = 1.e-5,
       use_u_base_as_u_extra                 = True,
-      store_grid_indices_for_each_scatterer = -1)
-    return sampled_density
+      store_grid_indices_for_each_scatterer = -1).grid_indices_for_each_scatterer()
 
-  def show(self, histogram):
-    h_1 = histogram
-    lc_1 = histogram.data_min()
-    s_1 = enumerate(histogram.slots())
-    for (i_1,n_1) in s_1:
-      hc_1 = h_1.data_min() + h_1.slot_width() * (i_1+1)
-      print "%8.3f - %8.3f: %5d" % (lc_1,hc_1,n_1)
-      lc_1 = hc_1
-
-  def atoms(self, pdb_hierarchy,
-                  show = False,
-                  poor_cc_threshold = 0.7,
-                  poor_map_value_threshold = 1.0,
-                  ignore_points_with_map_values_less_than = 0.1,
-                  set_cc_to_zero_if_n_grid_points_less_than = 50,
-                  show_hydrogens = True):
-    result = []
-    atoms = pdb_hierarchy.atoms_with_labels()
-    gifes = self.sampled_density.grid_indices_for_each_scatterer()
-    scatterers = self.xray_structure.scatterers()
-    for i_seq, a in enumerate(atoms):
-       sel = list(gifes[i_seq])
-       m1 = self.map_1.select(sel)
-       m2 = self.map_2.select(sel)
-       sel_flat  = m1 > ignore_points_with_map_values_less_than
-       sel_flat &= m2 > ignore_points_with_map_values_less_than
-       m1 = m1.select(sel_flat)
-       m2 = m2.select(sel_flat)
-       if(m1.size() < set_cc_to_zero_if_n_grid_points_less_than): corr = 0.
-       else:
-         corr = flex.linear_correlation(
-           x = m1,
-           y = m2).coefficient()
-       ed1 = self.map_1.eight_point_interpolation(scatterers[i_seq].site)
-       ed2 = self.map_2.eight_point_interpolation(scatterers[i_seq].site)
-       poor_flag = False
-       if(corr < poor_cc_threshold or
-          ((ed2 < poor_map_value_threshold or ed1 < poor_map_value_threshold)
-          and corr < poor_cc_threshold) or
-          ed2 < ignore_points_with_map_values_less_than or
-          ed1 < ignore_points_with_map_values_less_than):
-         poor_flag = True
-       result.append(group_args(
-         atom      = a,
-         cc        = corr,
-         map_1_val = ed1,
-         map_2_val = ed2,
-         poor_flag = poor_flag))
-    if(show):
-      print "i_seq : chain resseq resname altloc name element   occ      b      CC   map1   map2  FLAG"
-      fmt = "%5d : %5s %6s %7s %6s %4s %7s %5.2f %6.2f %7.4f %6.2f %6.2f %s"
-      cc_values = flex.double()
-      map_values = flex.double()
-      for i_seq, r in enumerate(result):
-        assert scatterers[i_seq].element_symbol().strip().upper() == \
-          r.atom.element.strip().upper()
-        w_msg = ""
-        if(r.poor_flag): w_msg = " <<< WEAK DENSITY"
-        print_line = True
-        if(not show_hydrogens and r.atom.element.strip().upper() in ["H","D"]):
-          print_line = False
-        if(print_line):
-          cc_values.append(r.cc)
-          map_values.append(r.map_2_val)
-          print fmt % (i_seq, r.atom.chain_id, r.atom.resseq, r.atom.resname,
-            r.atom.altloc, r.atom.name, r.atom.element, r.atom.occ, r.atom.b,
-            r.cc, r.map_1_val, r.map_2_val, w_msg)
-    return result
-
-  def residues(self, pdb_hierarchy, show = False):
+  def residuesXXX(self, pdb_hierarchy, show = False):
     res_group_selections = []
     res_names = []
     res_ids = []
@@ -630,3 +730,66 @@ class compute_map_cc(object):
       print "%-5d %s %s %6.3f" % \
         (i_count,res_ids[i_count],res_names[i_count],corr)
     print
+
+def simple(fmodel,
+           pdb_hierarchy  = None,
+           map_1_name     = "Fc",
+           map_2_name     = "2mFo-DFc",
+           grid_step      = 0.3,
+           use_b_factor   = False,
+           use_radius     = True,
+           atom_detail    = True,
+           atom_radius    = 1.5,
+           residue_detail = False,
+           show           = True,
+           log            = None,
+           ignore_points_with_map_values_less_than   = 0.3,
+           set_cc_to_zero_if_n_grid_points_less_than = 50,
+           poor_cc_threshold                         = 0.7,
+           poor_map_value_threshold                  = 1.0):
+    map_name_obj = mmtbx.map_names(map_name_string = map_1_name)
+    resolution_factor = grid_step/fmodel.f_obs.d_min()
+    if(resolution_factor > 0.5): resolution_factor = 0.5
+    if([map_name_obj.k, map_name_obj.n] == [0,-1] and not map_name_obj.ml_map):
+      complete_set = fmodel.f_obs.complete_set(d_min = fmodel.f_obs.d_min(),
+        d_max=None)
+      f_calc = complete_set.structure_factors_from_scatterers(
+        xray_structure = fmodel.xray_structure).f_calc()
+      fft_map_1 = f_calc.fft_map(
+        resolution_factor = resolution_factor,
+        symmetry_flags    = maptbx.use_space_group_symmetry)
+    else:
+      fft_map_1 = fmodel.electron_density_map().fft_map(
+        resolution_factor = resolution_factor,
+        map_type          = map_1_name,
+        symmetry_flags    = maptbx.use_space_group_symmetry)
+    fft_map_1.apply_sigma_scaling()
+    map_1 = fft_map_1.real_map_unpadded()
+    map_cc_obj = map_cc_funct(
+      map_1          = map_1,
+      xray_structure = fmodel.xray_structure,
+      fft_map        = fft_map_1,
+      pdb_hierarchy  = pdb_hierarchy,
+      use_b_factor   = use_b_factor,
+      use_radius     = use_radius,
+      atom_detail    = atom_detail,
+      atom_radius    = atom_radius,
+      residue_detail = residue_detail)
+    del map_1
+    fft_map_2 = fmodel.electron_density_map().fft_map(
+      other_fft_map  = fft_map_1,
+      map_type       = map_2_name,
+      symmetry_flags = maptbx.use_space_group_symmetry)
+    fft_map_2.apply_sigma_scaling()
+    map_2 = fft_map_2.real_map_unpadded()
+    result = map_cc_obj.map_cc(
+      map_2                                     = map_2,
+      ignore_points_with_map_values_less_than   = ignore_points_with_map_values_less_than,
+      set_cc_to_zero_if_n_grid_points_less_than = set_cc_to_zero_if_n_grid_points_less_than,
+      poor_cc_threshold                         = poor_cc_threshold,
+      poor_map_value_threshold                  = poor_map_value_threshold)
+    del map_2
+    if(show):
+      map_cc_obj.show(log = log)
+      map_cc_obj.overall_correlation_min_max_standard_deviation(log = log)
+    return result
