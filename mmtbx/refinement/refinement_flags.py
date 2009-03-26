@@ -7,6 +7,7 @@ from libtbx.utils import Sorry
 
 class manager(object):
   def __init__(self, individual_sites       = False,
+                     torsion_angles         = False,
                      rigid_body             = False,
                      individual_adp         = False,
                      group_adp              = False,
@@ -14,6 +15,7 @@ class manager(object):
                      occupancies            = False,
                      group_anomalous        = False,
                      sites_individual       = None,
+                     sites_torsion_angles   = None,
                      sites_rigid_body       = None,
                      adp_individual_iso     = None,
                      adp_individual_aniso   = None,
@@ -24,6 +26,7 @@ class manager(object):
                      # XXX group_anomalous should be here
     adopt_init_args(self, locals())
     self.sites_individual       = self._deep_copy(self.sites_individual)
+    self.sites_torsion_angles   = self._deep_copy(self.sites_torsion_angles)
     self.sites_rigid_body       = self._deep_copy(self.sites_rigid_body)
     self.adp_individual_iso     = self._deep_copy(self.adp_individual_iso)
     self.adp_individual_aniso   = self._deep_copy(self.adp_individual_aniso)
@@ -58,6 +61,7 @@ class manager(object):
   def deep_copy(self):
     return manager(
       individual_sites       = self.individual_sites,
+      torsion_angles         = self.torsion_angles,
       rigid_body             = self.rigid_body,
       individual_adp         = self.individual_adp,
       group_adp              = self.group_adp,
@@ -65,6 +69,7 @@ class manager(object):
       occupancies            = self.occupancies,
       group_anomalous        = self.group_anomalous,
       sites_individual       = self._deep_copy(self.sites_individual),
+      sites_torsion_angles   = self._deep_copy(self.sites_torsion_angles),
       sites_rigid_body       = self._deep_copy(self.sites_rigid_body),
       adp_individual_iso     = self._deep_copy(self.adp_individual_iso),
       adp_individual_aniso   = self._deep_copy(self.adp_individual_aniso),
@@ -118,6 +123,9 @@ class manager(object):
     if(self.individual_sites):
       if(not self._count_selected(self.sites_individual)):
         raise Sorry(prefix%"sites_individual.")
+    if(self.torsion_angles):
+      if(not self._count_selected(self.sites_torsion_angles)):
+        raise Sorry(prefix%"sites_torsion_angles.")
     if(self.rigid_body):
       if(not self._count_selected(self.sites_rigid_body)):
         raise Sorry(prefix%"sites_rigid_body.")
@@ -174,6 +182,8 @@ class manager(object):
     print >> log, "Refinement flags and selection counts:"
     print >> log, "  individual_sites       = %5s (%s atoms)"%(
       str(self.individual_sites), self.ca(self.sites_individual))
+    print >> log, "  torsion_angles         = %5s (%s atoms)"%(
+      str(self.torsion_angles), self.ca(self.sites_torsion_angles))
     print >> log, "  rigid_body             = %5s (%s atoms in %s groups)"%(
       str(self.rigid_body), self.ca(self.sites_rigid_body),
       self.szs(self.sites_rigid_body))
@@ -220,6 +230,9 @@ class manager(object):
     assert self.is_bool(selection)
     if(self.sites_individual is not None):
       self.sites_individual = self._select(self.sites_individual, selection)
+    if(self.sites_torsion_angles is not None):
+      self.sites_torsion_angles = self._select(
+        self.sites_torsion_angles, selection)
     if(self.adp_individual_iso is not None):
       self.adp_individual_iso= self._select(self.adp_individual_iso, selection)
     if(self.adp_individual_aniso is not None):
@@ -238,6 +251,7 @@ class manager(object):
     return self
 
   def inflate(self, sites_individual       = None,
+                    sites_torsion_angles   = None,
                     sites_rigid_body       = None,
                     adp_individual_iso     = None,
                     adp_individual_aniso   = None,
@@ -250,6 +264,10 @@ class manager(object):
     if(sites_individual is not None and self.sites_individual is not None):
       assert self.is_bool(sites_individual)
       self.sites_individual.extend(sites_individual)
+    if(    sites_torsion_angles is not None
+       and self.sites_torsion_angles is not None):
+      assert self.is_bool(sites_torsion_angles)
+      self.sites_torsion_angles.extend(sites_torsion_angles)
     if(adp_individual_iso is not None and self.adp_individual_iso is not None):
       assert self.is_bool(adp_individual_iso)
       self.adp_individual_iso.extend(adp_individual_iso)
@@ -353,6 +371,7 @@ class manager(object):
 
   def add(self, next_to_i_seqs,
                 sites_individual     = False,
+                sites_torsion_angles = False,
                 sites_rigid_body     = False,
                 adp_individual_iso   = False,
                 adp_individual_aniso = False,
@@ -370,6 +389,11 @@ class manager(object):
           x             = self.sites_individual,
           next_to_i_seq = next_to_i_seq,
           squeeze_in    = sites_individual)
+      if(self.sites_torsion_angles is not None):
+        self.sites_torsion_angles = self._add(
+          x             = self.sites_torsion_angles,
+          next_to_i_seq = next_to_i_seq,
+          squeeze_in    = sites_torsion_angles)
       if(self.sites_rigid_body is not None):
         self.sites_rigid_body = self._add(
           x             = self.sites_rigid_body,
