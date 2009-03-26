@@ -10,43 +10,47 @@ from cStringIO import StringIO
 expected_result_all = \
   """Refinement flags and selection counts:
   individual_sites       = %s (9 atoms)
+  torsion_angles         = %s (9 atoms)
   rigid_body             = %s (9 atoms in 6 groups)
   individual_adp         = %s (iso = 9 aniso = 9)
   group_adp              = %s (9 atoms in 6 groups)
   tls                    = %s (9 atoms in 6 groups)
   occupancies            = %s (9 atoms)
   group_anomalous        = %s
-""" % tuple(["%5s" % str(True)]*7)
+""" % tuple(["%5s" % str(True)]*8)
 expected_result_none_false = \
   """Refinement flags and selection counts:
   individual_sites       = %s (0 atoms)
+  torsion_angles         = %s (0 atoms)
   rigid_body             = %s (0 atoms in 0 groups)
   individual_adp         = %s (iso = 0 aniso = 0)
   group_adp              = %s (0 atoms in 0 groups)
   tls                    = %s (0 atoms in 0 groups)
   occupancies            = %s (0 atoms)
   group_anomalous        = %s
-""" % tuple(["%5s" % str(False)]*7)
+""" % tuple(["%5s" % str(False)]*8)
 expected_result_none_true = \
   """Refinement flags and selection counts:
   individual_sites       = %s (0 atoms)
+  torsion_angles         = %s (0 atoms)
   rigid_body             = %s (0 atoms in 0 groups)
   individual_adp         = %s (iso = 0 aniso = 0)
   group_adp              = %s (0 atoms in 0 groups)
   tls                    = %s (0 atoms in 0 groups)
   occupancies            = %s (0 atoms)
   group_anomalous        = %s
-""" % tuple(["%5s" % str(True)]*7)
+""" % tuple(["%5s" % str(True)]*8)
 expected_result_mix = \
   """Refinement flags and selection counts:
   individual_sites       = %s (4 atoms)
+  torsion_angles         = %s (4 atoms)
   rigid_body             = %s (4 atoms in 3 groups)
   individual_adp         = %s (iso = 4 aniso = 4)
   group_adp              = %s (4 atoms in 3 groups)
   tls                    = %s (4 atoms in 3 groups)
   occupancies            = %s (4 atoms)
   group_anomalous        = %s
-""" % tuple(["%5s" % str(True)]*7)
+""" % tuple(["%5s" % str(True)]*8)
 
 def all_defined():
   #                 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
@@ -63,6 +67,7 @@ def all_defined():
            [flex.size_t([11,13])] ]
   return refinement_flags.manager(
     individual_sites     = True,
+    torsion_angles       = True,
     rigid_body           = True,
     individual_adp       = True,
     group_adp            = True,
@@ -70,6 +75,7 @@ def all_defined():
     occupancies          = True,
     group_anomalous      = True,
     sites_individual     = barr,
+    sites_torsion_angles = barr,
     sites_rigid_body     = iarr,
     adp_individual_iso   = barr,
     adp_individual_aniso = barr,
@@ -93,6 +99,7 @@ def all_defined_1():
            [flex.size_t([12,13,14]),flex.size_t([15])] ]
   return refinement_flags.manager(
     individual_sites     = True,
+    torsion_angles       = True,
     rigid_body           = True,
     individual_adp       = True,
     group_adp            = True,
@@ -100,6 +107,7 @@ def all_defined_1():
     occupancies          = True,
     group_anomalous      = True,
     sites_individual     = barr,
+    sites_torsion_angles = barr,
     sites_rigid_body     = iarr,
     adp_individual_iso   = barr,
     adp_individual_aniso = barr,
@@ -148,6 +156,7 @@ def exercise_deepcopy_show_select():
   rm = all_defined()
   rm_dc = rm.deep_copy()
   rm_dc.individual_sites     = False
+  rm_dc.torsion_angles       = False
   rm_dc.rigid_body           = False
   rm_dc.individual_adp       = False
   rm_dc.group_adp            = False
@@ -155,6 +164,7 @@ def exercise_deepcopy_show_select():
   rm_dc.occupancies          = False
   rm_dc.group_anomalous      = False
   rm_dc.sites_individual     = None
+  rm_dc.sites_torsion_angles = None
   rm_dc.sites_rigid_body     = None
   rm_dc.adp_individual_iso   = None
   rm_dc.adp_individual_aniso = None
@@ -174,6 +184,7 @@ def exercise_deepcopy_show_select_compare_arrays():
   sel_mix = flex.bool([1,1,0,0,1,1,0,1,0,1,1,0,0,0,1,1])
   rm_sel = rm.select(selection = sel_mix)
   assert rm_sel.individual_sites
+  assert rm_sel.torsion_angles
   assert rm_sel.rigid_body
   assert rm_sel.individual_adp
   assert rm_sel.group_adp
@@ -189,6 +200,7 @@ def exercise_deepcopy_show_select_compare_arrays():
                    [flex.size_t([2,3]),flex.size_t([4])],
                    [flex.size_t([6])]]
   assert approx_equal(rm_sel.sites_individual     , barr_sel_mix)
+  assert approx_equal(rm_sel.sites_torsion_angles , barr_sel_mix)
   assert approx_equal(rm_sel.sites_rigid_body     , iarr_sel_mix)
   assert approx_equal(rm_sel.adp_individual_iso   , barr_sel_mix)
   assert approx_equal(rm_sel.adp_individual_aniso , barr_sel_mix)
@@ -204,6 +216,7 @@ def exercise_inflate():
   oarr = [ [flex.size_t([16]), flex.size_t([18,19])], [flex.size_t([21])]]
   rm = rm.inflate(
     sites_individual     = barr,
+    sites_torsion_angles = barr,
     sites_rigid_body     = iarr,
     adp_individual_iso   = barr,
     adp_individual_aniso = barr,
@@ -216,13 +229,14 @@ def exercise_inflate():
   assert not show_diff(out.getvalue(), """\
 Refinement flags and selection counts:
   individual_sites       = %s (13 atoms)
+  torsion_angles         = %s (13 atoms)
   rigid_body             = %s (13 atoms in 9 groups)
   individual_adp         = %s (iso = 13 aniso = 13)
   group_adp              = %s (13 atoms in 9 groups)
   tls                    = %s (13 atoms in 9 groups)
   occupancies            = %s (13 atoms)
   group_anomalous        = %s
-""" % tuple(["%5s" % str(True)]*7))
+""" % tuple(["%5s" % str(True)]*8))
   #
   barr_result = flex.bool([0,1,1,0,1,1,0,1,1,0,1,1,0,1,0,0,  1,0,1,1,0,1])
   iarr_result = [
@@ -240,6 +254,7 @@ Refinement flags and selection counts:
     [flex.size_t([11,13])],
        [flex.size_t([16]), flex.size_t([18,19])], [flex.size_t([21])] ]
   assert approx_equal(rm.sites_individual      , barr_result)
+  assert approx_equal(rm.sites_torsion_angles  , barr_result)
   assert approx_equal(rm.sites_rigid_body      , iarr_result)
   assert approx_equal(rm.adp_individual_iso    , barr_result)
   assert approx_equal(rm.adp_individual_aniso  , barr_result)
@@ -259,6 +274,7 @@ def exercise_add_1a():
   rm = rm.add(
     next_to_i_seqs = flex.size_t([]),
     sites_individual     = True,
+    sites_torsion_angles = True,
     sites_rigid_body     = True,
     adp_individual_iso   = True,
     adp_individual_aniso = True,
@@ -283,6 +299,7 @@ def exercise_add_1b():
   rm = rm.add(
     next_to_i_seqs       = flex.size_t([4,8,3]),
     sites_individual     = False,
+    sites_torsion_angles = False,
     sites_rigid_body     = False,
     adp_individual_iso   = False,
     adp_individual_aniso = False,
@@ -299,6 +316,7 @@ def exercise_add_1b():
   oarr_result = [[flex.size_t([1]), flex.size_t([2])], [flex.size_t([5,7]),
                  flex.size_t([9,10])], [flex.size_t([13])], [flex.size_t([14,16])]]
   assert approx_equal(rm.sites_individual     , barr_result)
+  assert approx_equal(rm.sites_torsion_angles , barr_result)
   assert approx_equal(rm.sites_rigid_body     , iarr_result)
   assert approx_equal(rm.adp_individual_iso   , barr_result)
   assert approx_equal(rm.adp_individual_aniso , barr_result)
@@ -321,6 +339,7 @@ def exercise_add_1c():
   rm = rm.add(
     next_to_i_seqs       = flex.size_t([4,8,3]),
     sites_individual     = True,
+    sites_torsion_angles = True,
     sites_rigid_body     = True,
     adp_individual_iso   = True,
     adp_individual_aniso = True,
@@ -333,13 +352,14 @@ def exercise_add_1c():
   assert not show_diff(out.getvalue(), """\
 Refinement flags and selection counts:
   individual_sites       = %s (12 atoms)
+  torsion_angles         = %s (12 atoms)
   rigid_body             = %s (12 atoms in 7 groups)
   individual_adp         = %s (iso = 12 aniso = 12)
   group_adp              = %s (12 atoms in 7 groups)
   tls                    = %s (12 atoms in 7 groups)
   occupancies            = %s (12 atoms)
   group_anomalous        = %s
-""" % tuple(["%5s" % str(True)]*7))
+""" % tuple(["%5s" % str(True)]*8))
   barr_result = flex.bool([0,1,1,0,1,1,1,1,0,1,1,1,0, 1, 1, 0, 1, 0, 0])
   iarr_result = [ flex.size_t([1]), flex.size_t([2]),
     flex.size_t([5,6,7]), flex.size_t([9,10,11]), flex.size_t([13]),
@@ -348,6 +368,7 @@ Refinement flags and selection counts:
     flex.size_t([9,10])], [flex.size_t([13])], [flex.size_t([14,16])],
     [flex.size_t([4])], [flex.size_t([6])], [flex.size_t([11])] ]
   assert approx_equal(rm.sites_individual    , barr_result)
+  assert approx_equal(rm.sites_torsion_angles, barr_result)
   assert approx_equal(rm.sites_rigid_body    , iarr_result)
   assert approx_equal(rm.adp_individual_iso  , barr_result)
   assert approx_equal(rm.adp_individual_aniso, barr_result)
@@ -370,6 +391,7 @@ def exercise_add_2b():
   rm = rm.add(
     next_to_i_seqs       = flex.size_t([0,10,14,15]),
     sites_individual     = False,
+    sites_torsion_angles = False,
     sites_rigid_body     = False,
     adp_individual_iso   = False,
     adp_individual_aniso = False,
@@ -382,19 +404,21 @@ def exercise_add_2b():
   assert not show_diff(out.getvalue(), """\
 Refinement flags and selection counts:
   individual_sites       = %s (10 atoms)
+  torsion_angles         = %s (10 atoms)
   rigid_body             = %s (10 atoms in 6 groups)
   individual_adp         = %s (iso = 10 aniso = 10)
   group_adp              = %s (10 atoms in 6 groups)
   tls                    = %s (10 atoms in 6 groups)
   occupancies            = %s (10 atoms)
   group_anomalous        = %s
-""" % tuple(["%5s" % str(True)]*7))
+""" % tuple(["%5s" % str(True)]*8))
   barr_result = flex.bool([1,0,1,1,0,1,1,0,0,1,0,0,0,0,1,1,1,0,1,0])
   iarr_result = [ flex.size_t([0]), flex.size_t([2,3]), flex.size_t([5,6]),
     flex.size_t([9]), flex.size_t([14,15,16]), flex.size_t([18]) ]
   oarr_result = [ [flex.size_t([0]),flex.size_t([2,3])], [flex.size_t([5,6])],
     [flex.size_t([9])], [flex.size_t([14,15,16]),flex.size_t([18])] ]
   assert approx_equal(rm.sites_individual    , barr_result)
+  assert approx_equal(rm.sites_torsion_angles, barr_result)
   assert approx_equal(rm.sites_rigid_body    , iarr_result)
   assert approx_equal(rm.adp_individual_iso  , barr_result)
   assert approx_equal(rm.adp_individual_aniso, barr_result)
@@ -417,6 +441,7 @@ def exercise_add_2c():
   rm = rm.add(
     next_to_i_seqs       = flex.size_t([0,10,14,15]),
     sites_individual     = True,
+    sites_torsion_angles = True,
     sites_rigid_body     = True,
     adp_individual_iso   = True,
     adp_individual_aniso = True,
@@ -429,13 +454,14 @@ def exercise_add_2c():
   assert not show_diff(out.getvalue(), """\
 Refinement flags and selection counts:
   individual_sites       = %s (14 atoms)
+  torsion_angles         = %s (14 atoms)
   rigid_body             = %s (14 atoms in 9 groups)
   individual_adp         = %s (iso = 14 aniso = 14)
   group_adp              = %s (14 atoms in 9 groups)
   tls                    = %s (14 atoms in 9 groups)
   occupancies            = %s (14 atoms)
   group_anomalous        = %s
-""" % tuple(["%5s" % str(True)]*7))
+""" % tuple(["%5s" % str(True)]*8))
   barr_result = flex.bool([1,1,1,1,0,1,1,0,0,1,0,0,1,0,1,1,1,1,1,1])
   iarr_result = [ flex.size_t([0]), flex.size_t([1]), flex.size_t([2,3]),
     flex.size_t([5,6]), flex.size_t([9]), flex.size_t([14,15,16,17]),
@@ -445,6 +471,7 @@ Refinement flags and selection counts:
                   [flex.size_t([1])], [flex.size_t([12])], [flex.size_t([17])],
                   [flex.size_t([19])] ]
   assert approx_equal(rm.sites_individual      , barr_result)
+  assert approx_equal(rm.sites_torsion_angles  , barr_result)
   assert approx_equal(rm.sites_rigid_body      , iarr_result)
   assert approx_equal(rm.adp_individual_iso    , barr_result)
   assert approx_equal(rm.adp_individual_aniso  , barr_result)
