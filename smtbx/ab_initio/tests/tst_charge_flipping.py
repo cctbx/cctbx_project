@@ -237,7 +237,7 @@ def exercise_charge_flipping():
   print "\t%i found shifts" % n_found_shift
   print ("\t%i Euclidean matches with correct structure "
          "in original spacegroup" % n_emma_matches)
-  assert is_above_limit(value=n_success/n_tests, limit=0.9)
+  assert is_above_limit(value=n_success/n_tests, limit=0.875)
 
 def run():
   exercise_charge_flipping()
