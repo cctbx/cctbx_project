@@ -25,6 +25,7 @@ from mmtbx import find_peaks
 from mmtbx.refinement import minimization
 import scitbx.lbfgs
 import mmtbx.utils
+from mmtbx import real_space_correlation
 
 master_params = iotbx.phil.parse("""\
   low_resolution = 2.8
@@ -59,10 +60,15 @@ master_params = iotbx.phil.parse("""\
     .type=str
   primary_map_cutoff = 3.0
     .type=float
-  secondary_map_type = 2mFobs-DFmodel
-    .type=str
-  secondary_map_cutoff = 1.0
-    .type=float
+  secondary_map_and_map_cc_filter
+  {
+    cc_map_1_type = "0*mFo--1*DFc"
+      .type = str
+    cc_map_2_type = 2mFo-DFmodel
+      .type = str
+    %s
+  }
+
   h_bond_min_mac = 1.8
     .type = float
     .short_caption = H-bond minimum for solvent-model
@@ -144,7 +150,7 @@ master_params = iotbx.phil.parse("""\
      number_of_kicks = 100
        .type = int
   }
-""")
+""" % real_space_correlation.core_params_str)
 
 class manager(object):
   def __init__(self, fmodel,
@@ -155,6 +161,7 @@ class manager(object):
                      find_peaks_params = None,
                      log    = None):
     adopt_init_args(self, locals())
+    assert self.fmodel.xray_structure is self.model.xray_structure
     if(self.params is None): self.params = master_params.extract()
     if(self.find_peaks_params is None):
       self.find_peaks_params = find_peaks.master_params.extract()
@@ -164,6 +171,7 @@ class manager(object):
     assert self.model.xray_structure == self.fmodel.xray_structure
     self.sites = None
     self.heights = None
+    assert self.fmodel.xray_structure is self.model.xray_structure
     if(self.find_peaks_params.max_number_of_peaks is None):
       if(self.model.solvent_selection().count(False) > 0):
         self.find_peaks_params.max_number_of_peaks = \
@@ -171,13 +179,16 @@ class manager(object):
       else:
         self.find_peaks_params.max_number_of_peaks = \
           self.model.xray_structure.scatterers().size()
+    assert self.fmodel.xray_structure is self.model.xray_structure
     self.move_solvent_to_the_end_of_atom_list()
     if(not self.is_water_last()):
       raise RuntimeError("Water picking failed: solvent must be last.")
     self.show(message = "Start model:")
+    assert self.fmodel.xray_structure is self.model.xray_structure
     if(self.params.filter_at_start):
       self.filter_solvent()
       self.show(message = "Filtered:")
+    assert self.fmodel.xray_structure is self.model.xray_structure
     if(not self.filter_only):
       assert self.params.primary_map_type is not None
       peaks = self.find_peaks(
@@ -187,28 +198,35 @@ class manager(object):
       if(peaks is not None):
         self.sites, self.heights = peaks.sites, peaks.heights
         self.add_new_solvent()
+        assert self.fmodel.xray_structure is self.model.xray_structure
         self.show(message = "Just added new:")
         if(self.params.filter_at_start):
           self.filter_solvent()
           self.show(message = "Filtered:")
+    assert self.fmodel.xray_structure is self.model.xray_structure
     #
     if([self.sites, self.heights].count(None)==0):
       if(not self.filter_only and self.params.correct_drifted_waters):
-        self.correct_drifted_waters(map_cutoff = self.params.secondary_map_cutoff)
-      #
+        self.correct_drifted_waters(map_cutoff =
+          self.params.secondary_map_and_map_cc_filter.poor_map_value_threshold)
       for i in xrange(self.params.n_cycles):
         self.refine_adp()
         self.refine_occupancies()
-      #
-      if(not self.filter_only):
-        if(self.params.secondary_map_type is not None):
-          self.find_peaks_2fofc()
-          self.show(message = "2Fo-Fc map selection:")
     self.show(message = "Before filtering:")
+    assert self.fmodel.xray_structure is self.model.xray_structure
     self.filter_solvent()
+    assert self.fmodel.xray_structure is self.model.xray_structure
+    ###
+    if(self.params.secondary_map_and_map_cc_filter.cc_map_2_type is not None):
+      self.find_peaks_2fofc()
+      self.show(message = "%s map selection:"%
+        self.params.secondary_map_and_map_cc_filter.cc_map_2_type)
+    ###
+    assert self.fmodel.xray_structure is self.model.xray_structure
     self.show(message = "Final:")
     self.move_solvent_to_the_end_of_atom_list()
     self.convert_water_adp()
+    assert self.fmodel.xray_structure is self.model.xray_structure
 
   def convert_water_adp(self):
     sol_sel = self.model.solvent_selection().iselection()
@@ -221,9 +239,11 @@ class manager(object):
         False)
       selection_iso.set_selected(selection_aniso, False)
       selection_iso.set_selected(self.model.xray_structure.hd_selection(), True)
-      #
       self.model.xray_structure.convert_to_anisotropic(selection = selection_aniso)
       self.model.xray_structure.convert_to_isotropic(selection = selection_iso.iselection())
+    self.fmodel.update_xray_structure(
+      xray_structure = self.model.xray_structure,
+      update_f_calc  = True)
 
   def move_solvent_to_the_end_of_atom_list(self):
     solsel = flex.bool(self.model.solvent_selection().count(False), False)
@@ -234,6 +254,7 @@ class manager(object):
         solvent_selection      = solsel,
         solvent_xray_structure = xrs_sol)
     self.model.renumber_water()
+    self.fmodel.xray_structure = self.model.xray_structure
 
   def is_water_last(self):
     result = True
@@ -288,7 +309,11 @@ class manager(object):
       for ti in xht:
         if(not selection[ti[0]]): selection[ti[1]]=False
         if(selection[ti[0]]): selection[ti[1]]=True
-    self.model = self.model.select(selection)
+    if(selection.size() != selection.count(True)):
+      self.model = self.model.select(selection)
+      self.fmodel.update_xray_structure(
+        xray_structure = self.model.xray_structure,
+        update_f_calc  = True)
 
   def reset_solvent(self, solvent_selection, solvent_xray_structure):
     assert solvent_selection.count(True) == \
@@ -390,19 +415,39 @@ class manager(object):
       update_f_calc  = True)
 
   def find_peaks_2fofc(self):
-    fft_map = self.fmodel.electron_density_map().fft_map(
-        resolution_factor = self.find_peaks_params.resolution_factor,
-        map_type          = self.params.secondary_map_type,
-        symmetry_flags    = maptbx.use_space_group_symmetry)
-    fft_map.apply_sigma_scaling()
-    fft_map_data = fft_map.real_map_unpadded()
+    if(self.fmodel.twin): # XXX Make it possible when someone consolidates fmodels.
+      print >> self.log, "Map CC and map value based filtering is disabled for twin refinement."
+      return
+    print >> self.log, "Before RSCC filtering: ", \
+      self.model.solvent_selection().count(True)
+    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert len(list(self.model.pdb_hierarchy.atoms_with_labels())) == \
+      self.model.xray_structure.scatterers().size()
+    from mmtbx import real_space_correlation
+    par = self.params.secondary_map_and_map_cc_filter
+    rscc_and_map_result = real_space_correlation.simple(
+      fmodel         = self.fmodel,
+      pdb_hierarchy  = self.model.pdb_hierarchy,
+      map_1_name     = par.cc_map_1_type,
+      map_2_name     = par.cc_map_2_type,
+      grid_step      = par.grid_step,
+      use_b_factor   = par.use_b_factor,
+      use_radius     = par.use_radius,
+      atom_radius    = par.atom_radius,
+      atom_detail    = True,
+      residue_detail = False,
+      show           = False,
+      ignore_points_with_map_values_less_than   = par.ignore_points_with_map_values_less_than,
+      set_cc_to_zero_if_n_grid_points_less_than = par.set_cc_to_zero_if_n_grid_points_less_than,
+      poor_cc_threshold                         = par.poor_cc_threshold,
+      poor_map_value_threshold                  = par.poor_map_value_threshold)
     selection = self.model.solvent_selection()
     scatterers = self.model.xray_structure.scatterers()
-    for i_seq, sel_i in enumerate(selection):
-      if(sel_i):
-        ed_val = maptbx.eight_point_interpolation(fft_map_data,
-          scatterers[i_seq].site)
-        if(ed_val < self.params.secondary_map_cutoff):
+    for i_seq, rcc_res in enumerate(rscc_and_map_result):
+      if(selection[i_seq]):
+        if(rcc_res.poor_flag and not
+           rcc_res.scatterer.element_symbol().strip().upper() in ["H","D"]):
+          assert rcc_res.i_seq == i_seq
           selection[i_seq] = False
     sol_sel = self.model.solvent_selection()
     hd_sel = self.model.xray_structure.hd_selection()
@@ -413,7 +458,13 @@ class manager(object):
       for ti in xht:
         if(not selection[ti[0]]): selection[ti[1]]=False
         if(selection[ti[0]]): selection[ti[1]]=True
-    self.model = self.model.select(selection)
+    if(selection.size() != selection.count(True)):
+      self.model = self.model.select(selection)
+      self.fmodel.update_xray_structure(
+        xray_structure = self.model.xray_structure,
+        update_f_calc  = True)
+    print >> self.log, "After RSCC filtering: ", \
+      self.model.solvent_selection().count(True)
 
   def add_new_solvent(self):
     if(self.params.b_iso is None):
@@ -460,6 +511,9 @@ class manager(object):
       chain_id               = self.params.output_chain_id,
       refine_occupancies     = self.params.refine_occupancies,
       refine_adp             = self.params.new_solvent)
+    self.fmodel.update_xray_structure(
+      xray_structure = self.model.xray_structure,
+      update_f_calc  = True)
 
   def refine_adp(self):
     if(not self.filter_only and self.params.refine_adp and
