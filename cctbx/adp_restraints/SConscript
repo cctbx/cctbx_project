@@ -6,4 +6,6 @@ env_bpl.SharedLibrary(
   source=[
     "adp_restraints_ext.cpp",
     "rigid_bond_bpl.cpp",
-    "rigid_bond.cpp"])
+    "rigid_bond.cpp",
+    "adp_similarity_bpl.cpp",
+    "adp_similarity.cpp"])

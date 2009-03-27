@@ -4,12 +4,14 @@
 namespace cctbx { namespace adp_restraints { namespace boost_python {
 
   void wrap_rigid_bond();
+  void wrap_adp_similarity();
 
 namespace {
 
   void init_module()
   {
     wrap_rigid_bond();
+    wrap_adp_similarity();
   }
 
 } // namespace <anonymous>
