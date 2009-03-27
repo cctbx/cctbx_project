@@ -634,6 +634,17 @@ nonbonded asu: (7, 29)
 """,
     selections=[range(5), range(230,236), range(560,568), range(648,656),
       range(689,694), range(717,721), range(-4,0)])
+  #
+  sel0 = geo.simple_edge_list()
+  assert len(sel0) == 46
+  assert sel0[:4] == [(0, 1), (0, 8), (0, 11), (1, 2)]
+  assert sel0[-4:] == [(42, 43), (42, 44), (45, 46), (45, 47)]
+  geo.bond_params_table[13][14].slack = 0.1
+  geo.bond_params_table[28][30].slack = 0.3
+  sel = geo.simple_edge_list()
+  assert sorted(set(sel0) - set(sel)) == [(13, 14), (28, 30)]
+  sel = geo.simple_edge_list(omit_slack_greater_than=0.2)
+  assert sorted(set(sel0) - set(sel)) == [(28, 30)]
 
 def exercise_all(args):
   verbose = "--verbose" in args
