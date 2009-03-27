@@ -19,6 +19,8 @@ master_phil_str = """\
     .type = int
   nonbonded_attenuation_factor = 0.5
     .type = float
+  omit_bonds_with_slack_greater_than = 0
+    .type = float
 """
 
 class potential_object(object):
@@ -88,10 +90,11 @@ def run(fmodels, model, target_weights, params, log):
   xs = fmodels.fmodel_xray().xray_structure
   sites_cart_start = xs.sites_cart()
   sites = matrix.col_list(sites_cart_start)
-  sst = model.restraints_manager.geometry.shell_sym_tables[0]
   tt = tardy_tree.construct(
     sites=sites,
-    edge_list=sst.simple_edge_list()).finalize()
+    edge_list=model.restraints_manager.geometry.simple_edge_list(
+      omit_slack_greater_than=params.omit_bonds_with_slack_greater_than))
+  tt.finalize()
   for i,j in tt.collinear_bonds_edge_list:
     s = xs.scatterers()
     print >> log, "tardy collinear bond:", s[i].label

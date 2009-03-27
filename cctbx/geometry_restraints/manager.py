@@ -48,6 +48,17 @@ class manager(object):
     self.effective_nonbonded_buffer = self.nonbonded_buffer
     self.n_updates_pair_proxies = 0
 
+  def simple_edge_list(self, omit_slack_greater_than=0):
+    assert self.bond_params_table is not None
+    assert self.shell_sym_tables is not None
+    result = []
+    bpt = self.bond_params_table
+    for i,j in self.shell_sym_tables[0].simple_edge_list():
+      assert i < j
+      if (bpt[i][j].slack > omit_slack_greater_than): continue
+      result.append((i,j))
+    return result
+
   def sites_cart_used_for_pair_proxies(self):
     return self._sites_cart_used_for_pair_proxies
 
