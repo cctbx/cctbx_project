@@ -426,11 +426,15 @@ class reflection_file_server(object):
         labels,
         convert_to_amplitudes_if_necessary,
         parameter_scope,
-        parameter_name):
+        parameter_name,
+        return_all_valid_arrays=False,
+        minimum_score=1):
     miller_arrays = self.get_miller_arrays(file_name=file_name)
     data_scores = get_amplitude_scores(miller_arrays=miller_arrays)
     if (parameter_scope is not None):
       parameter_name = parameter_scope + "." + parameter_name
+    if return_all_valid_arrays :
+      return sort_arrays_by_score(miller_arrays, data_scores, minimum_score)
     i = select_array(
       parameter_name=parameter_name,
       labels=labels,
@@ -471,12 +475,16 @@ class reflection_file_server(object):
         convert_to_phases_if_necessary,
         original_phase_units,
         parameter_scope,
-        parameter_name):
+        parameter_name,
+        return_all_valid_arrays=False,
+        minimum_score=1):
     assert original_phase_units in [None, "deg", "rad"]
     miller_arrays = self.get_miller_arrays(file_name=file_name)
     data_scores = get_phase_scores(miller_arrays=miller_arrays)
     if (parameter_scope is not None):
       parameter_name = parameter_scope + "." + parameter_name
+    if return_all_valid_arrays :
+      return sort_arrays_by_score(miller_arrays, data_scores, minimum_score)
     i = select_array(
       parameter_name=parameter_name,
       labels=labels,

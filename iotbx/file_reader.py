@@ -9,9 +9,11 @@ import sys, os, re, string
 from mmtbx.monomer_library import server
 from iotbx.phil import parse as parse_phil
 from iotbx.pdb import is_pdb_file
+from iotbx.pdb import input as pdb_input
 from iotbx.reflection_file_reader import any_reflection_file
 from iotbx.reflection_file_utils import reflection_file_server
 from libtbx.utils import Sorry
+from scitbx.array_family import flex
 import cPickle
 
 standard_file_types = ["hkl", "map", "pdb", "cif", "phil", "seq", "xml", "pkl",
@@ -65,6 +67,7 @@ class _any_file (object) :
     self.file_object = None
     self.file_type = None
     self.file_server = None
+    self.file_description = None
     self.file_size = os.path.getsize(file_name)
     self.get_processed_file = get_processed_file
 
@@ -82,10 +85,16 @@ class _any_file (object) :
           break
     if self.file_type is None :
       self.try_all_types()
+    if self.file_type is not None :
+      self.file_description = standard_file_descriptions[self.file_type]
 
   def try_as_pdb (self) :
     if is_pdb_file(self.file_name) :
+      raw_records = flex.std_string()
+      raw_records.extend(flex.split_lines(open(self.file_name).read()))
+      structure = pdb_input(source_info=None, lines=raw_records)
       self.file_type = "pdb"
+      self.file_object = structure
 
   def try_as_hkl (self) :
     hkl_file = any_reflection_file(self.file_name)
