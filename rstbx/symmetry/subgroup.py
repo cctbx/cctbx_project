@@ -9,6 +9,7 @@ from cctbx import sgtbx
 from rstbx.symmetry.sgtbx_adaptor import get_patterson_group
 from cctbx.sgtbx.lattice_symmetry import metric_supergroup,metric_subgroups as base_subgroups
 from cctbx.sgtbx import bravais_types,change_of_basis_op
+find_max_delta = sgtbx.lattice_symmetry_find_max_delta
 
 #For LABELIT, the derive from the iotbx subgroup list such that the
 #  input cell is NOT reduced to "minimum symmetry".  This allows alignment
@@ -107,7 +108,9 @@ class metric_subgroups(base_subgroups):
                                  'ref_subsym':ref_subsym,
                                  'best_subsym':best_subsym,
                                  'cb_op_inp_best':cb_op_inp_best,
-                                 'max_angular_difference':0
+                                 'max_angular_difference':find_max_delta(
+                                  reduced_cell=self.minimum_symmetry.unit_cell(),
+                                  space_group=acentric_supergroup)
                                 })
 
   def change_of_basis_op_to_best_cell(self,ref_subsym):

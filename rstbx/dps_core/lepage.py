@@ -66,8 +66,13 @@ def iotbx_converter(unit_cell,max_delta,bravais_types_only=True,
     # matrix may be derived from comparison to a previously indexed case;
     # the setting may be non-standard; therefore we do not want to
     # convert to the reduced cell when calculating metric subgroups.
-  input_symmetry = crystal.symmetry(unit_cell=unit_cell,
+  if interest_focus=="metric_symmetry":
+    input_symmetry = crystal.symmetry(unit_cell=unit_cell,
     space_group_symbol=space_group_symbol)
+  elif interest_focus=="input_symmetry":
+    input_symmetry = crystal.symmetry(unit_cell=unit_cell,
+    space_group_symbol=space_group_symbol,
+    force_compatible_unit_cell=False)
 
   M = metric_subgroups(input_symmetry,max_delta,
                        enforce_max_delta_for_generated_two_folds=True,
