@@ -1,9 +1,80 @@
 from libtbx.test_utils import approx_equal
 from iotbx.shelx import from_ins
 from cctbx.array_family import flex
+from cctbx import adptbx
+from cctbx import uctbx
 from cctbx import adp_restraints
+from scitbx import matrix
 import libtbx.load_env
 import math, os
+
+def finite_difference_gradients(restraint_type,
+                                proxy,
+                                sites_cart=None,
+                                u_cart=None,
+                                u_iso=None,
+                                use_u_aniso=None,
+                                eps=1.e-8):
+  def residual(restraint_type, proxy, sites_cart=None,
+               u_cart=None, u_iso=None, use_u_aniso=None):
+    if sites_cart is not None:
+      return restraint_type(
+        sites_cart=sites_cart,
+        u_cart=u_cart,
+        proxy=proxy).residual()
+    else:
+      assert use_u_aniso is not None
+      return restraint_type(
+        u_cart=u_cart,
+        u_iso=u_iso,
+        use_u_aniso=use_u_aniso,
+        proxy=proxy).residual()
+  result_aniso = [(0,0,0,0,0,0)]*len(u_cart)
+  result_iso = [0] * len(u_cart)
+  if sites_cart is not None:
+    assert len(sites_cart) == len(u_cart)
+  for i in xrange(len(u_cart)):
+    if sites_cart is not None:
+      result_aniso_i = []
+      for j in xrange(6):
+        h = [0,0,0,0,0,0]
+        h[j] = eps
+        h = matrix.sym(sym_mat3=h)
+        u_cart[i]=list((matrix.sym(sym_mat3=u_cart[i]) + h).as_sym_mat3())
+        qp = residual(restraint_type, proxy,
+                      sites_cart=sites_cart, u_cart=u_cart)
+        u_cart[i]=list((matrix.sym(sym_mat3=u_cart[i]) - 2*h).as_sym_mat3())
+        qm = residual(restraint_type, proxy,
+                      sites_cart=sites_cart, u_cart=u_cart)
+        dq = (qp-qm)/2
+        result_aniso_i.append(dq/(eps))
+      result_aniso[i] = result_aniso_i
+    else:
+      if use_u_aniso[i]:
+        result_aniso_i = []
+        for j in xrange(6):
+          h = [0,0,0,0,0,0]
+          h[j] = eps
+          h = matrix.sym(sym_mat3=h)
+          u_cart[i]=list((matrix.sym(sym_mat3=u_cart[i]) + h).as_sym_mat3())
+          qp = residual(restraint_type, proxy,
+                        u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso)
+          u_cart[i]=list((matrix.sym(sym_mat3=u_cart[i]) - 2*h).as_sym_mat3())
+          qm = residual(restraint_type, proxy,
+                        u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso)
+          dq = (qp-qm)/2
+          result_aniso_i.append(dq/(eps))
+        result_aniso[i] = result_aniso_i
+      else:
+        u_iso[i] += eps
+        qp = residual(restraint_type, proxy,
+                      u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso)
+        u_iso[i] -= 2*eps
+        qm = residual(restraint_type, proxy,
+                      u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso)
+        dq = (qp-qm)/2
+        result_iso[i] = dq/(eps)
+  return result_aniso, result_iso
 
 result = [
   ['C1',   'C2',   0.0039,  0.0162,  0.0123],
@@ -102,7 +173,141 @@ def exercise_rigid_bond_test():
         j += 1
   assert j == 56
 
+def exercise_rigid_bond():
+  i_seqs = (1,2)
+  weight = 1
+  p = adp_restraints.rigid_bond_proxy(i_seqs=i_seqs,weight=weight)
+  assert p.i_seqs == i_seqs
+  assert p.weight == weight
+  sites = ((1,2,3),(2,3,4))
+  u_cart = ((1,2,3,4,5,6), (3,4,5,6,7,8))
+  expected_gradients = ((-4, -4, -4, -8, -8, -8), (4, 4, 4, 8, 8, 8))
+  r = adp_restraints.rigid_bond(sites=sites, u_cart=u_cart, weight=weight)
+  assert r.weight == weight
+  assert approx_equal(r.delta_z(), 6)
+  assert approx_equal(r.residual(), 36)
+  assert approx_equal(r.gradients(), expected_gradients)
+  assert approx_equal(r.sites, sites)
+  assert approx_equal(r.u_cart, u_cart)
+  sites_cart = flex.vec3_double(((1,2,3),(2,5,4),(3,4,5)))
+  u_cart = flex.sym_mat3_double(((1,2,3,4,5,6),
+                                 (2,3,3,5,7,7),
+                                 (3,4,5,3,7,8)))
+  r = adp_restraints.rigid_bond(sites_cart=sites_cart,
+                                u_cart=u_cart,
+                                proxy=p)
+  assert approx_equal(r.sites, sites_cart[1:3])
+  assert approx_equal(r.u_cart, u_cart[1:3])
+  assert approx_equal(r.weight, weight)
+  unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
+  sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
+  u_star = flex.sym_mat3_double([
+    adptbx.u_cart_as_u_star(unit_cell, u_cart_i)
+    for u_cart_i in u_cart])
+  pair = adp_restraints.rigid_bond_pair(sites_frac[1],
+                                     sites_frac[2],
+                                     u_star[1],
+                                     u_star[2],
+                                     unit_cell)
+  assert approx_equal(pair.delta_z(), r.delta_z())
+  assert approx_equal(pair.z_12(), r.z_12())
+  assert approx_equal(pair.z_21(), r.z_21())
+  #
+  gradients_aniso_cart = flex.sym_mat3_double(sites_cart.size(), (0,0,0,0,0,0))
+  gradients_iso = flex.double(sites_cart.size(), 0)
+  proxies = adp_restraints.shared_rigid_bond_proxy([p])
+  residual_sum = adp_restraints.rigid_bond_residual_sum(
+    sites_cart=sites_cart,
+    u_cart=u_cart,
+    proxies=proxies,
+    gradients_aniso_cart=gradients_aniso_cart)
+  assert approx_equal(r.gradients(), gradients_aniso_cart[1:3])
+  assert approx_equal(r.residual(), residual_sum)
+  fd_grads_aniso, fd_grads_iso = finite_difference_gradients(
+    restraint_type=adp_restraints.rigid_bond,
+    proxy=p,
+    sites_cart=sites_cart,
+    u_cart=u_cart)
+  for g,e in zip(gradients_aniso_cart, fd_grads_aniso):
+    assert approx_equal(g, e)
+
+def exercise_adp_similarity():
+  u_cart = ((1,3,2,4,3,6),(2,4,2,6,5,1))
+  u_iso = (-1,-1)
+  use_u_aniso = (True, True)
+  weight = 1
+  a = adp_restraints.adp_similarity(
+    u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, weight=weight)
+  assert approx_equal(a.u_cart, u_cart)
+  assert approx_equal(a.u_iso, u_iso)
+  assert approx_equal(a.use_u_aniso, use_u_aniso)
+  assert a.weight == weight
+  assert approx_equal(a.residual(), 35)
+  assert approx_equal(a.gradients(),
+    ((-2.0, -2.0, 0.0, -4.0, -4.0, 10.0), (2.0, 2.0, -0.0, 4.0, 4.0, -10.0)))
+  #
+  u_cart = ((1,3,2,4,3,6),(-1,-1,-1,-1,-1,-1))
+  u_iso = (-1,2)
+  use_u_aniso = (True, False)
+  a = adp_restraints.adp_similarity(
+    u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, weight=weight)
+  assert approx_equal(a.u_cart, u_cart)
+  assert approx_equal(a.u_iso, u_iso)
+  assert approx_equal(a.use_u_aniso, use_u_aniso)
+  assert a.weight == weight
+  assert approx_equal(a.residual(), 2)
+  assert approx_equal(a.gradients(),
+    ((-2.0, 2.0, 0.0, 0.0, 0.0, 0.0), (2.0, -2.0, 0.0, 0.0, 0.0, 0.0)))
+  #
+  i_seqs_aa = (1,2) # () - ()
+  i_seqs_ai = (1,0) # () - o
+  i_seqs_ia = (3,2) #  o - ()
+  i_seqs_ii = (0,3) #  o - o
+  p_aa = adp_restraints.adp_similarity_proxy(i_seqs=i_seqs_aa,weight=weight)
+  p_ai = adp_restraints.adp_similarity_proxy(i_seqs=i_seqs_ai,weight=weight)
+  p_ia = adp_restraints.adp_similarity_proxy(i_seqs=i_seqs_ia,weight=weight)
+  p_ii = adp_restraints.adp_similarity_proxy(i_seqs=i_seqs_ii,weight=weight)
+  assert p_aa.i_seqs == i_seqs_aa
+  assert p_aa.weight == weight
+  u_cart = flex.sym_mat3_double(((-1,-1,-1,-1,-1,-1),
+                                 (1,2,2,4,3,6),
+                                 (2,4,2,6,5,1),
+                                 (-1,-1,-1,-1,-1,-1)))
+  u_iso = flex.double((1,-1,-1,2))
+  use_u_aniso = flex.bool((False, True,True,False))
+  for p in (p_aa,p_ai,p_ia,p_ii):
+    a = adp_restraints.adp_similarity(u_cart=u_cart,
+                                      u_iso=u_iso,
+                                      use_u_aniso=use_u_aniso,
+                                      proxy=p)
+    assert approx_equal(
+      a.u_cart, (u_cart[p.i_seqs[0]],u_cart[p.i_seqs[1]]))
+    assert approx_equal(a.weight, weight)
+    #
+    gradients_aniso_cart = flex.sym_mat3_double(u_cart.size(), (0,0,0,0,0,0))
+    gradients_iso = flex.double(u_cart.size(), 0)
+    proxies = adp_restraints.shared_adp_similarity_proxy([p])
+    residual_sum = adp_restraints.adp_similarity_residual_sum(
+      u_cart=u_cart,
+      u_iso=u_iso,
+      use_u_aniso=use_u_aniso,
+      proxies=proxies,
+      gradients_aniso_cart=gradients_aniso_cart,
+      gradients_iso=gradients_iso)
+    fd_grads_aniso, fd_grads_iso = finite_difference_gradients(
+      restraint_type=adp_restraints.adp_similarity,
+      proxy=p,
+      u_cart=u_cart,
+      u_iso=u_iso,
+      use_u_aniso=use_u_aniso)
+    for g,e in zip(gradients_aniso_cart, fd_grads_aniso):
+      assert approx_equal(g, e)
+    for g,e in zip(gradients_iso, fd_grads_iso):
+      assert approx_equal(g, e)
+
 def exercise():
+  exercise_adp_similarity()
+  exercise_rigid_bond()
   exercise_rigid_bond_test()
   print "OK"
 
