@@ -42,6 +42,12 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return obj.is_inside(num,den);
     }
 
+    short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    {
+      return obj.where_is(num,den);
+    }
+
+
     size_type size() const
     {
       return n_faces<T>::value;

@@ -44,6 +44,11 @@ def loop_grid(asu, n, mn, mx, asu2=None):
         b = asu.is_inside((i,j,k))
         if b :
           result += 1
+        if isinstance(asu, new_asu.direct_space_asu):
+          num = (i.numerator(), j.numerator(), k.numerator())
+          den = (i.denominator(), j.denominator(), k.denominator())
+          where = asu.where_is(num,den)
+          assert ( b and (where==1 or where==-1)) or ( (not b) and where==0 )
         if asu2 is not None :
           assert b == asu2.is_inside( (i,j,k) )
         k += step[2]

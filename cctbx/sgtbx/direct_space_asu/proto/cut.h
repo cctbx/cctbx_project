@@ -155,6 +155,29 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return inclusive;
     }
 
+    //! Returns 1 if point is inside, -1 if inside on the face, 0 otherwise
+    short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    {
+      long v = evaluate_int(num,den);
+      if( v>0 )
+        return 1;
+      if( v<0 )
+        return 0;
+      return inclusive?-1:0;
+    }
+
+    template<typename TR>
+      short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den, const TR &expr) const
+    {
+      long v = evaluate_int(num,den);
+      if( v>0 )
+        return 1;
+      if( v<0 )
+        return 0;
+      return expr.is_inside(num,den) ? -1:0;
+    }
+
+
     template<typename TR>
     cut_expression<TR> operator() (const TR &o) const // better:  operator[]
     {

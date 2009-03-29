@@ -21,6 +21,7 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     typedef return_value_policy<return_by_value> rbv;
 
     bool (w_t::*const cut_is_inside1)( const rvector3_t &) const = &w_t::is_inside;
+    short (w_t::*const cut_where_is1)( const scitbx::af::int3 &, const scitbx::af::int3 & ) const = &w_t::where_is;
     // below does not work
     // boost::rational<int> (w_t::*const cut_evaluate_1)( const rvector3_t &) const = &w_t::evaluate;
     long (w_t::*const cut_evaluate_2)( const scitbx::af::int3 &, const scitbx::af::int3 & ) const = &w_t::evaluate_int;
@@ -51,6 +52,7 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       .def("__repr__", &w_t::as_string)
       .def("one", &w_t::one)
       .def("is_inside",cut_is_inside1)
+      .def("where_is", cut_where_is1)
       .def("get_point_in_plane", &w_t::get_point_in_plane)
       .def("change_basis", &w_t::change_basis)
       .def("evaluate", &w_t::evaluate)
@@ -74,6 +76,7 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       .def("is_inside", is_inside1)
       .def("is_inside", is_inside2)
       .def("is_inside_volume_only", &w_t::is_inside_volume_only)
+      .def("where_is", &w_t::where_is)
       .def("change_basis", &w_t::change_basis)
       .def("get_nth_plane", &w_t::get_nth_plane)
       .def("volume_only", &w_t::volume_only)
