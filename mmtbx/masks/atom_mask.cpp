@@ -383,27 +383,29 @@ namespace mmtbx { namespace masks {
     versa_3d_padded_real_array padded_real(pad, 0.0);
     MMTBX_ASSERT( padded_real.size() >= msk.size() );
     // convert non-padded integer mask to padded real array
+    scitbx::af::ref<double, padded_grid_t > prref = padded_real.ref();
+    scitbx::af::const_ref<data_type, grid_t > mskref = msk.const_ref();
     for(size_t i=0; i< ndim[0]; ++i)
       for( size_t j=0; j<ndim[1]; ++j)
         for( size_t k=0; k<ndim[2]; ++k)
-          padded_real(i,j,k) = msk(i,j,k);
+          prref(i,j,k) = mskref(i,j,k);
 
     fft.forward(padded_real); // in-place forward FFT
     const padded_grid_t pad_complex( fft.n_complex(), fft.n_complex() );
     versa_3d_padded_complex_array result(padded_real.handle(), pad_complex );
 
-    const double scale = cell.volume() / ( ndim.product() * group.order_z() ) ;
-    // result *= scale;
-    for(size_t i=0; i<result.size(); ++i)
-      result[i] *= scale;
-
+    const double scale = cell.volume() / ( ndim.product() * group.order_z() );
     const cctbx::maptbx::structure_factors::from_map<double>  the_from_map (
       group,
       false, // anomalous flag
       indices,
       result.const_ref(),
       true); // conjugate_flag
-    // may be it is faster to apply scale to the_from_map.data() ?
+    // result.size() could be approx 1000 * the_from_map.data().size()
+    // this does not work :( the_from_map.data() *= scale;
+    scitbx::af::ref< std::complex<double> > dref = the_from_map.data().ref();
+    for(scitbx::af::ref< std::complex<double> >::iterator i=dref.begin(); i!=dref.end(); ++i)
+      (*i) *= scale;
     return the_from_map.data();
   }
 
