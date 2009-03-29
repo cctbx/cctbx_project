@@ -216,7 +216,10 @@ namespace mmtbx { namespace masks {
           }
           if( nops==0 )
           {
-            if( asu.is_inside(pos, n) )
+            const short ww = asu.where_is(pos,n);
+            if( ww == 1 ) // inside NOT on the face
+              nops = order;
+            else if( ww==-1 ) // inside on the face
             {
               nops = site_symmetry_order(symops, scitbx::int3(i_c,j_c,k_c), n);
               MMTBX_ASSERT( nops>0 );
@@ -259,13 +262,14 @@ namespace mmtbx { namespace masks {
     }
     MMTBX_ASSERT( nn > 0 );
     // currently data is not padded, so data.size is correct here
-    if( nn != this->get_mask().size() ) // volume(asu)*group_order == volume(cell)
+    if( nn != this->get_mask().size() ) // volume(asu)*group_order != volume(cell)
     {
       std::stringstream str;
       grid_t gr = this->get_mask().accessor();
       scitbx::int3 grid(gr[0], gr[1], gr[2]);
-      str << "The mask grid size: " << grid << " is maybe incompatible with\n"
-        "the space group symmetry";
+      str << "volume(asymmetric unit)*group_order != volume(unit cell).\n"
+          << "Maybe because the mask grid size: " << grid << " is incompatible with\n"
+             "the space group symmetry";
       throw mmtbx::error( str.str() );
     }
     te = boost::posix_time::microsec_clock::local_time();

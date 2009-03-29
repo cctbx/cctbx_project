@@ -28,8 +28,9 @@ namespace mmtbx {
   typedef af::shared< scitbx::double3 > coord_array_t;
   typedef af::shared< double > double_array_t;
   typedef af::c_grid<3> grid_t;
-  // typedef signed char data_type;
-  typedef int data_type;
+  //typedef signed char data_type; this is insufficient
+  typedef short data_type;
+  //typedef int data_type;
   namespace {
     BOOST_STATIC_ASSERT( std::numeric_limits<data_type>::is_integer );
   }
@@ -68,7 +69,7 @@ namespace mmtbx {
         cell(unit_cell),
         group(group_)
       {
-        MMTBX_ASSERT( mark > 1000 && -mark < -1000 );
+        MMTBX_ASSERT( mark > group.order_z() && -mark < -group.order_z() );
         MMTBX_ASSERT(solvent_radius >= 0.0);
         MMTBX_ASSERT(shrink_truncation_radius >= 0.0);
         MMTBX_ASSERT(gridding_n_real.const_ref().all_gt(0));
@@ -98,7 +99,7 @@ namespace mmtbx {
         asu_atoms(),
         asu_radii()
       {
-        MMTBX_ASSERT( mark > 1000 && -mark < -1000 );
+        MMTBX_ASSERT( mark > group.order_z() && -mark < -group.order_z() );
         MMTBX_ASSERT(solvent_radius >= 0.0);
         MMTBX_ASSERT(shrink_truncation_radius >= 0.0);
         cctbx::sg_vec3 grid;
@@ -120,6 +121,8 @@ namespace mmtbx {
       //! Computes mask structure factors.
       scitbx::af::shared< std::complex<double> > structure_factors(
           const scitbx::af::const_ref< cctbx::miller::index<> > &indices ) const;
+
+      scitbx::af::int3 grid_size() const { return data.accessor(); }
 
       mask_array_t data;
       const double solvent_radius;

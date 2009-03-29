@@ -157,6 +157,7 @@ def compare_masks(struc, opts):
   cout.truncate(0)
   time_p1 = 0.0
   time_asu = 0.0
+  time_orig = 0.0
   params = masks.mask_master_params.extract()
   params.ignore_hydrogens = False
   params.ignore_zero_occupancy_atoms = False
@@ -181,7 +182,7 @@ def compare_masks(struc, opts):
       shrink_truncation_radius = params.shrink_truncation_radius )
   te = time.time()
   time_asu += (te-tb)
-  grid =  asu_mask.data.focus()
+  grid =  asu_mask.grid_size()
   print >>cout, "asu mask grid = ", grid
   zero_test(asu_mask, fc, tolerance = tolerance)
   radii = get_radii(struc)
@@ -211,9 +212,22 @@ def compare_masks(struc, opts):
   te = time.time()
   time_p1 += (te-tb)
   blk_p1.show_summary(cout)
+  ### original mask
+  tb = time.time()
+  blk_o = masks.bulk_solvent(
+    xray_structure = struc,
+    gridding_n_real = grid,
+    ignore_zero_occupancy_atoms = params.ignore_zero_occupancy_atoms,
+    ignore_hydrogen_atoms = params.ignore_hydrogens,
+    solvent_radius = params.solvent_radius,
+    shrink_truncation_radius = params.shrink_truncation_radius)
+  fm_o = blk_o.structure_factors( miller_set = fc )
+  te = time.time()
+  time_orig += (te-tb)
   print >>cout, "Number of reflections ::: Fm asu = ", fm_asu.data().size(), \
     "Fm P1 = ", fm_p1.data().size()
-  print >>cout, "Time ( ms )    P1 = ", time_p1*1000.0, "    asu = ", time_asu*1000.0
+  print >>cout, "Time ( ms )    P1= ", time_p1*1000.0, "   orig= ", time_orig*1000.0, \
+    "    asu= ", time_asu*1000.0
   print >>cout, "Times ( ms ) mask_asu= ", asu_mask.debug_mask_asu_time, \
       " atoms_to_asu= ", asu_mask.debug_atoms_to_asu_time, \
       " accessible= ", asu_mask.debug_accessible_time, \
@@ -231,8 +245,9 @@ def compare_masks(struc, opts):
 
 
 def standard_tests(groups, options):
-  print "Standard tests, n space groups = ", len(groups), "\n options="
-  print options, "\n"
+  if options.verbose:
+    print "Standard tests, n space groups = ", len(groups), "\n options="
+    print options, "\n"
   solvent_radius = options.solvent_radius
   shrink_radius = options.shrink_radius
   for sg in groups:
