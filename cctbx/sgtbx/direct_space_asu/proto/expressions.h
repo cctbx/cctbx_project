@@ -39,6 +39,12 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return lhs.is_inside(num,den,rhs);
     }
 
+    short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    {
+      return lhs.where_is(num,den,rhs);
+    }
+
+
     cut_expression<TR> operator- () const
     {
       cut_expression<TR> r(*this);
@@ -108,6 +114,18 @@ namespace cctbx { namespace sgtbx { namespace asu {
     {
       return lhs.is_inside(num,den) && rhs.is_inside(num,den);
     }
+
+    short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    {
+      const short l = lhs.where_is(num,den),
+        r = rhs.where_is(num,den);
+      if( r==1 && l==1 ) // fully inside
+        return 1;
+      if( r==0 || l==0 ) // fully outside
+        return 0;
+      return -1; // on the face
+    }
+
 
     and_expression(const TL &l, const TR &r) : lhs(l), rhs(r) { }
 

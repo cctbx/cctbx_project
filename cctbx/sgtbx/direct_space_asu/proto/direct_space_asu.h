@@ -71,6 +71,14 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return faces->is_inside(num,den);
     }
 
+    //! Tests where num/den is: fully inside, fully outside or on the face
+    /*! Returns 1 : inside, 0 : outside, -1 : on the face
+     */
+    short where_is(const scitbx::int3 &num, const scitbx::int3 &den) const
+    {
+      return faces->where_is(num,den);
+    }
+
     //! Tests if point belongs to the asymmetric unit, disregarding plane subexpressions
     bool is_inside_volume_only(const rvector3_t &point) const
     {

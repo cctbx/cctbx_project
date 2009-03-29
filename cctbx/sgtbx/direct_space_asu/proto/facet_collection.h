@@ -17,6 +17,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
     virtual bool is_inside(const rvector3_t &p) const = 0;
     virtual bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const = 0;
+    virtual short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const = 0;
     virtual pointer new_copy() const = 0;
     virtual pointer new_volume_only() const = 0;
     virtual size_type size() const = 0;
