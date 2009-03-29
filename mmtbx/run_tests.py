@@ -41,6 +41,7 @@ def run():
   "$D/hydrogens/build_hydrogens.py",
   "$D/max_lik/tst_maxlik.py",
   "$D/masks/tst_masks.py",
+  "$D/masks/tst_asu_mask.py",
   "$D/max_lik/tst_max_lik.py",
   "$D/dynamics/tst_cartesian_dynamics.py",
   "$D/tls/tst_tls.py",

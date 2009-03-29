@@ -92,10 +92,11 @@ namespace {
               arg_("solvent_radius"),
               arg_("shrink_truncation_radius")
               )))
-      .add_property("data",  make_getter(&w_t::data, rbv()) )
+      //.add_property("data",  make_getter(&w_t::data, rbv()) )
       // .def("get_mask", &w_t::get_mask)
       .def("compute", &w_t::compute)
       .def("structure_factors", &w_t::structure_factors)
+      .def("grid_size", &w_t::grid_size)
       .def_readonly("solvent_radius",
                &w_t::solvent_radius)
       // .def_readonly("n_atom_points",
