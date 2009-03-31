@@ -20,6 +20,7 @@ def run():
   "$D/pdb/tst_atom_name_interpretation.py",
   "$D/pdb/tst_extract_rfactors_resolutions_sigma.py",
   "$D/pdb/tst_pdb.py",
+  "$D/examples/pdb_to_map_simple.py",
   "$D/examples/pdb_truncate_to_ala/tst.py",
   "$D/cns/space_group_symbols.py",
   "$D/cns/tst_cns.py",

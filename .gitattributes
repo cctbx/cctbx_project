@@ -167,6 +167,7 @@ iotbx/examples/__init__.py svneol=native#text/x-python
 iotbx/examples/mtz_convert_free_to_work.py svneol=native#text/x-python
 iotbx/examples/mtz_free_flipper.py svneol=native#text/x-python
 iotbx/examples/pdb_hierarchy.py svneol=native#text/x-python
+iotbx/examples/pdb_to_map_simple.py svneol=native#text/x-python
 iotbx/examples/pdb_truncate_to_ala/crambin_pieces.pdb -text
 iotbx/examples/pdb_truncate_to_ala/resname_mix.pdb -text
 iotbx/examples/pdb_truncate_to_ala/tst.py svneol=native#text/x-python
