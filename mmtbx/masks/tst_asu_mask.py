@@ -15,6 +15,8 @@ from cctbx.sgtbx import space_group_info
 from cctbx.development import random_structure
 from cctbx import crystal
 from cctbx import xray
+from libtbx.test_utils import approx_equal, is_below_limit
+from libtbx.utils import format_cpu_times
 
 # cStringIO does not work
 # cout = cStringIO.StringIO("\n")
@@ -232,12 +234,13 @@ def compare_masks(struc, opts):
       " atoms_to_asu= ", asu_mask.debug_atoms_to_asu_time, \
       " accessible= ", asu_mask.debug_accessible_time, \
       " contact= ", asu_mask.debug_contact_time
-  assert asu_mask.contact_surface_fraction == blk_p1.contact_surface_fraction, \
-      "solvent content = " + str(asu_mask.contact_surface_fraction)
-  assert asu_mask.accessible_surface_fraction == blk_p1.accessible_surface_fraction, \
-      "accessible solvent content:  " + str(asu_mask.accessible_surface_fraction) + \
-      " == " + str(blk_p1.accessible_surface_fraction)
-  assert asu_mask.accessible_surface_fraction <= asu_mask.contact_surface_fraction
+  assert approx_equal(
+    asu_mask.contact_surface_fraction, blk_p1.contact_surface_fraction)
+  assert approx_equal(
+    asu_mask.accessible_surface_fraction, blk_p1.accessible_surface_fraction)
+  assert is_below_limit(
+    value=asu_mask.accessible_surface_fraction,
+    limit=asu_mask.contact_surface_fraction)
   compare_fc(fm_asu, fm_p1, tolerance = tolerance)
   if verbose:
     print cout.getvalue()
@@ -385,7 +388,8 @@ def run():
     compare_masks(struc, opts)
   elif opts.cci == 0 and opts.random == 0 and opts.space_group is None:
     standard_tests(groups, opts)
-  print "Ok"
+
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   try:
