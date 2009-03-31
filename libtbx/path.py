@@ -1,26 +1,34 @@
 from libtbx.str_utils import show_string
 import os
 
+op = os.path
+
 def norm_join(*args):
-  return os.path.normpath(os.path.join(*args))
+  return op.normpath(op.join(*args))
+
+def abs_real_norm(path):
+  return op.normpath(op.realpath(op.abspath(path)))
+
+def abs_norm(path):
+  return op.normpath(op.abspath(path))
 
 def create_target_dir(target_file):
-  target_dir = os.path.split(target_file)[0]
-  if (not os.path.isdir(target_dir)):
+  target_dir = op.split(target_file)[0]
+  if (not op.isdir(target_dir)):
     os.makedirs(target_dir)
 
 def canonical_path(file_name, effective_current_working_directory=None):
-  if (not os.path.isabs(file_name)):
+  if (not op.isabs(file_name)):
     if (effective_current_working_directory is None):
       effective_current_working_directory = os.getcwd()
-    file_name = os.path.join(effective_current_working_directory, file_name)
-  return os.path.normpath(file_name)
+    file_name = op.join(effective_current_working_directory, file_name)
+  return op.normpath(file_name)
 
 def is_same_canoncial_file(file_names):
   assert len(file_names) == 2
   if (file_names[0] == file_names[1]): return True
-  if (hasattr(os.path, "samefile")):
-    return os.path.samefile(file_names[0], file_names[1])
+  if (hasattr(op, "samefile")):
+    return op.samefile(file_names[0], file_names[1])
   return False
 
 def is_same_file(file_names, effective_current_working_directory=None):
@@ -31,9 +39,9 @@ def is_same_file(file_names, effective_current_working_directory=None):
 def full_command_path(command, search_first=[], search_last=[]):
   dirs = search_first + os.environ["PATH"].split(os.pathsep) + search_last
   for path in dirs:
-    path_command = os.path.join(path, command)
-    if (os.path.exists(path_command)):
-      return os.path.normpath(os.path.abspath(path_command))
+    path_command = op.join(path, command)
+    if (op.exists(path_command)):
+      return abs_norm(path=path_command)
   return None
 
 class directory(object):
@@ -43,14 +51,14 @@ class directory(object):
 
   def get(self, name, must_exist=True):
     assert name is not None
-    result = os.path.join(self.path, name)
-    if (must_exist and not os.path.exists(result)):
+    result = op.join(self.path, name)
+    if (must_exist and not op.exists(result)):
       raise RuntimeError("No such file or directory: %s" % show_string(result))
     return result
 
   def sub_directory(self, name, must_exist=True):
     result = directory(self.get(name))
-    if (must_exist and not os.path.isdir(result.path)):
+    if (must_exist and not op.isdir(result.path)):
       raise RuntimeError("Not a directory: %s" % show_string(result.path))
     return result
 
@@ -58,13 +66,13 @@ def walk_source_tree(top, arg=None):
   def visitor(result, dirname, names):
     names_keep = []
     for name in names:
-      path = os.path.join(dirname, name)
-      if (not os.path.isdir(path)):
+      path = op.join(dirname, name)
+      if (not op.isdir(path)):
         if (not name.endswith(".pyc")):
           result.append(path)
         continue
       def is_file_in_subdir(name):
-        return os.path.isfile(os.path.join(path, name))
+        return op.isfile(op.join(path, name))
       if (   (name == "CVS" and is_file_in_subdir("Entries"))
           or (name == ".svn"
                 and (   is_file_in_subdir("README.txt")
@@ -75,5 +83,5 @@ def walk_source_tree(top, arg=None):
       del names[:]
       names.extend(names_keep)
   result = []
-  os.path.walk(top, visitor, result)
+  op.walk(top, visitor, result)
   return result
