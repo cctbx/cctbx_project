@@ -27,7 +27,13 @@ import scitbx.lbfgs
 import mmtbx.utils
 from mmtbx import real_space_correlation
 
-master_params = iotbx.phil.parse("""\
+real_space_correlation_core_params_str = real_space_correlation.core_params_str
+assert real_space_correlation_core_params_str.find("atom_radius = None") >= 0
+real_space_correlation_core_params_str = \
+  real_space_correlation_core_params_str.replace("atom_radius = None",
+  "atom_radius = 1.5")
+
+master_params_str = """\
   low_resolution = 2.8
     .type = float
     .help = Low resolution limit for water picking (at lower resolution water \
@@ -68,7 +74,6 @@ master_params = iotbx.phil.parse("""\
       .type = str
     %s
   }
-
   h_bond_min_mac = 1.8
     .type = float
     .short_caption = H-bond minimum for solvent-model
@@ -150,19 +155,22 @@ master_params = iotbx.phil.parse("""\
      number_of_kicks = 100
        .type = int
   }
-""" % real_space_correlation.core_params_str)
+"""%real_space_correlation_core_params_str
+
+def master_params():
+  return iotbx.phil.parse(master_params_str)
 
 class manager(object):
   def __init__(self, fmodel,
                      fmodels,
                      model,
                      all_params,
-                     params = master_params.extract(),
+                     params = master_params().extract(),
                      find_peaks_params = None,
-                     log    = None):
+                     log = None):
     adopt_init_args(self, locals())
     assert self.fmodel.xray_structure is self.model.xray_structure
-    if(self.params is None): self.params = master_params.extract()
+    if(self.params is None): self.params = master_params().extract()
     if(self.find_peaks_params is None):
       self.find_peaks_params = find_peaks.master_params.extract()
     if(self.params.mode == "filter_only"): self.filter_only = True
@@ -425,29 +433,31 @@ class manager(object):
       self.model.xray_structure.scatterers().size()
     from mmtbx import real_space_correlation
     par = self.params.secondary_map_and_map_cc_filter
+    selection = self.model.solvent_selection()
     rscc_and_map_result = real_space_correlation.simple(
-      fmodel         = self.fmodel,
-      pdb_hierarchy  = self.model.pdb_hierarchy,
-      map_1_name     = par.cc_map_1_type,
-      map_2_name     = par.cc_map_2_type,
-      grid_step      = par.grid_step,
-      use_b_factor   = par.use_b_factor,
-      use_radius     = par.use_radius,
-      atom_radius    = par.atom_radius,
-      atom_detail    = True,
-      residue_detail = False,
-      show           = False,
+      fmodel                = self.fmodel,
+      pdb_hierarchy         = self.model.pdb_hierarchy,
+      map_1_name            = par.cc_map_1_type,
+      map_2_name            = par.cc_map_2_type,
+      number_of_grid_points = par.number_of_grid_points,
+      atom_radius           = par.atom_radius,
+      details_level         = "atom",
+      selection             = selection,
+      show                  = False,
       ignore_points_with_map_values_less_than   = par.ignore_points_with_map_values_less_than,
       set_cc_to_zero_if_n_grid_points_less_than = par.set_cc_to_zero_if_n_grid_points_less_than,
       poor_cc_threshold                         = par.poor_cc_threshold,
       poor_map_value_threshold                  = par.poor_map_value_threshold)
-    selection = self.model.solvent_selection()
     scatterers = self.model.xray_structure.scatterers()
-    for i_seq, rcc_res in enumerate(rscc_and_map_result):
-      if(selection[i_seq]):
+    for rcc_res in rscc_and_map_result:
+      try:
+        i_seqs = [rcc_res.i_seq]
+      except:
+        i_seqs = rcc_res.residue.selection
+      for i_seq in i_seqs:
+        assert selection[i_seq]
         if(rcc_res.poor_flag and not
            rcc_res.scatterer.element_symbol().strip().upper() in ["H","D"]):
-          assert rcc_res.i_seq == i_seq
           selection[i_seq] = False
     sol_sel = self.model.solvent_selection()
     hd_sel = self.model.xray_structure.hd_selection()
