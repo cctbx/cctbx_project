@@ -301,7 +301,8 @@ def add_atoms_with_occ_b(input_pdb_file_name, final_atom_type, dummy_atoms, outp
     final_residue_id  = int(final_line[22:26].replace(' ', '')) + 1
     #
     for dummy_coords in dummy_atoms:
-        dummy_atom = "HETATM %4i  %s   HET X%4i    %8.3f%8.3f%8.3f%6.2f%6.2f           %s"\
+        #dummy_atom = "HETATM %4i  %s   HET X%4i    %8.3f%8.3f%8.3f%6.2f%6.2f           %s"\ #HOH doesn't make ugly lines...
+        dummy_atom = "HETATM %4i  %s   HOH X%4i    %8.3f%8.3f%8.3f%6.2f%6.2f           %s"\
         %(final_atom_id,final_atom_type, final_residue_id, float(dummy_coords[0]), \
         float(dummy_coords[1]),float(dummy_coords[2]), float(dummy_coords[3]), float(dummy_coords[4]), final_atom_type )
         output_file.write(dummy_atom+"\n")
