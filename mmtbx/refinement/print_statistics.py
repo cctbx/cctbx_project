@@ -303,11 +303,17 @@ class refinement_monitor(object):
     self.gs_c_norm       .append(geom.norm_of_gradients           )
     if(target_weights is not None):
        self.wcs             .append(target_weights.wc()              )
+    #
+    hd_sel = None
+    if(not self.neutron_refinement and not self.is_neutron_monitor):
+      hd_sel = model.xray_structure.hd_selection()
     b_isos = model.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
+    if(hd_sel is not None): b_isos = b_isos.select(~hd_sel)
     self.bs_iso_max_a    .append(flex.max_default( b_isos, 0)     )
     self.bs_iso_min_a    .append(flex.min_default( b_isos, 0)     )
     self.bs_iso_ave_a    .append(flex.mean_default(b_isos, 0)     )
     s_sel = model.solvent_selection()
+    if(hd_sel is not None): s_sel = s_sel.select(~hd_sel)
     if(s_sel.count(True) > 0):
        b_isos_s = b_isos.select(s_sel)
        b_isos_p = b_isos.select(~s_sel)
