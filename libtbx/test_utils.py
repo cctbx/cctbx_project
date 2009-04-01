@@ -140,7 +140,8 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
       cmd += python_exe + " " + tst_path
     else:
       if (co.valgrind):
-        cmd = os.environ["LIBTBX_VALGRIND"] + " "
+        cmd = os.environ.get(
+          "LIBTBX_VALGRIND", "valgrind --tool=memcheck") + " "
       cmd += tst_path
     cmd += cmd_args
     yield cmd
