@@ -689,6 +689,10 @@ class manager(manager_mixin):
         for r_shrink in [0.8, 0.9, 1.0, 1.2, 1.4]:
           self.mask_params.solvent_radius = r_solv
           self.mask_params.shrink_truncation_radius = r_shrink
+          self.mask_manager = masks.manager(
+            miller_array   = self.f_obs,
+            xray_structure = self.xray_structure,
+            mask_params    = self.mask_params)
           self.update_xray_structure(
                                 xray_structure           = self.xray_structure,
                                 update_f_calc            = False,
@@ -705,6 +709,10 @@ class manager(manager_mixin):
              r_shrink_ = r_shrink
     self.mask_params.solvent_radius = r_solv_
     self.mask_params.shrink_truncation_radius = r_shrink_
+    self.mask_manager = masks.manager(
+      miller_array   = self.f_obs,
+      xray_structure = self.xray_structure,
+      mask_params    = self.mask_params)
     self.update_xray_structure(xray_structure           = self.xray_structure,
                                update_f_calc            = False,
                                update_f_mask            = True,
@@ -1118,7 +1126,7 @@ class manager(manager_mixin):
         try:
           alpha, beta = maxlik.alpha_beta_est_manager(
             f_obs           = fmodel.f_obs,
-            f_calc          = fmodel.f_model(),
+            f_calc          = fmodel.f_model_scaled_with_k1(),
             free_reflections_per_bin = free_reflections_per_bin,
             flags           = fmodel.r_free_flags.data(),
             interpolation   = True).alpha_beta()
@@ -1130,7 +1138,7 @@ class manager(manager_mixin):
         try:
           alpha, beta = sigmaa_estimator(
             miller_obs=fmodel.f_obs,
-            miller_calc=fmodel.f_model(),
+            miller_calc=fmodel.f_model_scaled_with_k1(),
             r_free_flags=fmodel.r_free_flags,
             kernel_width_free_reflections=p.kernel_width_free_reflections,
             kernel_on_chebyshev_nodes=p.kernel_on_chebyshev_nodes,
@@ -1146,22 +1154,14 @@ class manager(manager_mixin):
         + est_exceptions[0] + "\n"
         + "  " + "-"*77 + "\n"
         + est_exceptions[1])
-    fmodel.update_core()
-    alpha = fmodel.alpha_beta()[0].data()
     omega = flex.double()
-    for ae,ssi in zip(alpha,ss):
+    for ae,ssi in zip(alpha.data(),ss):
       if(ae >  1.0): ae = 1.0
       if(ae <= 0.0): ae = 1.e-6
       coeff = -4./(math.pi**3*ssi)
       omega.append( math.sqrt( math.log(ae) * coeff ) )
-    #omega_ma  = miller.array(miller_set= self.f_obs,data= flex.double(omega))
-    fmodel.update_core()
     omega_mean = flex.mean(omega)
-    #sel = (omega < omega_mean * 3.0) & (omega > omega_mean / 3.0)
-    #if(sel.count(True) > 0):
-    #   omega_mean = flex.mean(omega.select(sel))
     return omega_mean
-    #return flex.mean(omega), flex.max(omega), flex.min(omega)
 
   def _r_factor(self, f_obs, f_model, d_min=None, d_max=None, d_spacings=None,
                                                                selection=None):
@@ -2650,4 +2650,3 @@ def show_histogram(data, n_slots, log):
     hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
     print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
     lc_1 = hc_1
-
