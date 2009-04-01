@@ -156,6 +156,7 @@ class manager(object):
     if(self.mask_params is not None): self.mask_params = mask_params
     else: self.mask_params = mask_master_params.extract()
     self.grid_step = self._get_grid_step()
+    self.atom_radii = None
     if(xray_structure is not None):
       self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
        self.xray_structure)
@@ -220,6 +221,9 @@ class manager(object):
       self._f_mask = bulk_solvent_mask_obj.structure_factors(
         miller_set = self.miller_array)
     else:
+      if(self.atom_radii is None):
+        self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
+          self.xray_structure)
       asu_mask = masks.atom_mask(
         unit_cell                = self.xray_structure.unit_cell(),
         group                    = self.xray_structure.space_group(),
