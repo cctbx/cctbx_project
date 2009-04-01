@@ -163,14 +163,15 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
     hierarchy = pdb_inp.construct_hierarchy()
     cs = xray_structure.crystal_symmetry()
     atom_count = count_atoms(file_name)
-    print "Creating grids with atom spacing %s, each grid is %s apart" %(str(atom_gap), str(step))
     """still not sure this is right for making grid of grids"""
     x_range = frange(center[0],center[0]+atom_gap,step)
     y_range = frange(center[1],center[1]+atom_gap,step)
     z_range = frange(center[2],center[2]+atom_gap,step)
     all_atoms = []
     number_of_grids = len(x_range) * len(y_range) * len(z_range)
-    print "Number of grids to make: ", number_of_grids
+    print "Creating %s grids with atom spacing %s, each grid is %s apart" %(str(number_of_grids),str(atom_gap), str(step))
+    print "Criteria for removing final atoms is b factor above %s, or occupancy below %s" %(str(bfac_cutoff), str(occ_cutoff))
+
     for x_start in x_range:
         for y_start in y_range:
             for z_start in z_range:
