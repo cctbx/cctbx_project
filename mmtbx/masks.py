@@ -13,10 +13,13 @@ import iotbx.phil
 from libtbx import introspection
 from libtbx import adopt_init_args
 from copy import deepcopy
+import masks
 
 number_of_mask_calculations = 0
 
 mask_master_params = iotbx.phil.parse("""\
+  use_asu_masks = False
+    .type = bool
   solvent_radius = 1.11
     .type = float
   shrink_truncation_radius = 0.9
@@ -42,6 +45,21 @@ mask_master_params = iotbx.phil.parse("""\
     .help = Ignore H or D atoms in mask calculation
 """)
 
+def vdw_radii_from_xray_structure(xray_structure):
+  # XXX use scattering dictionary and set_selected
+  # XXX use monomer library definitions for radii
+  unknown = []
+  atom_radii = flex.double()
+  for i_seq, scatterer in enumerate(xray_structure.scatterers()):
+    try:
+      atom_radii.append(
+        van_der_waals_radii.vdw.table[scatterer.element_symbol()])
+    except:
+      unknown.append(scatterer.element_symbol())
+  if(len(unknown) > 0):
+    raise RuntimeError("Atoms with unknown van der Waals radius: ",unknown)
+  return atom_radii
+
 class bulk_solvent(around_atoms):
 
   def __init__(self,
@@ -60,19 +78,9 @@ class bulk_solvent(around_atoms):
        gridding_n_real = maptbx.crystal_gridding(
          unit_cell=xray_structure.unit_cell(),
          step=grid_step).n_real()
-     atom_radii = flex.double()
-     # XXX use scattering dictionary and set_selected
-     # XXX use monomer library definitions for radii
-     unknown = []
-     for i_seq, scatterer in enumerate(xray_structure.scatterers()):
-       try:
-         atom_radii.append(
-           van_der_waals_radii.vdw.table[scatterer.element_symbol()])
-       except:
-         unknown.append(scatterer.element_symbol())
+     atom_radii = vdw_radii_from_xray_structure(xray_structure =
+       self.xray_structure)
      sites_frac = xray_structure.sites_frac()
-     if(len(unknown) > 0):
-        raise RuntimeError("Atoms with unknown van der Waals radius: ",unknown)
      self.n_atoms_excluded = 0
      if(ignore_zero_occupancy_atoms):
        selection = xray_structure.scatterers().extract_occupancies() > 0
@@ -149,6 +157,8 @@ class manager(object):
     else: self.mask_params = mask_master_params.extract()
     self.grid_step = self._get_grid_step()
     if(xray_structure is not None):
+      self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
+       self.xray_structure)
       self.xray_structure = self.xray_structure.deep_copy_scatterers()
       self.sites_cart = self.xray_structure.sites_cart()
       self._f_mask = self.compute_f_mask()
@@ -205,9 +215,21 @@ class manager(object):
     else: return False
 
   def compute_f_mask(self):
-    bulk_solvent_mask_obj = self.bulk_solvent_mask()
-    self._f_mask = bulk_solvent_mask_obj.structure_factors(
-      miller_set = self.miller_array)
+    if(not self.mask_params.use_asu_masks):
+      bulk_solvent_mask_obj = self.bulk_solvent_mask()
+      self._f_mask = bulk_solvent_mask_obj.structure_factors(
+        miller_set = self.miller_array)
+    else:
+      asu_mask = masks.atom_mask(
+        unit_cell                = self.xray_structure.unit_cell(),
+        group                    = self.xray_structure.space_group(),
+        resolution               = self.miller_array.d_min(),
+        grid_step_factor         = self.mask_params.grid_step_factor,
+        solvent_radius           = self.mask_params.solvent_radius,
+        shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
+      asu_mask.compute(self.xray_structure.sites_frac(), self.atom_radii)
+      fm_asu = asu_mask.structure_factors(self.miller_array.indices())
+      self._f_mask = self.miller_array.set().array(data = fm_asu)
     return self._f_mask
 
   def bulk_solvent_mask(self):
