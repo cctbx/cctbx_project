@@ -71,39 +71,77 @@ radius = 10
   .help = X coordinate center of problem density. Determine in Coot by placing a temporary atom in area.
   .expert_level = 2
 
-step_size = 1
+atom_gap = 1.2
   .type = float
-  .help = Grid step size.
+  .help = Thje gap between the atoms in the grid.
   .expert_level = 2
 
-overlap_interval = 0.2
+overlap_interval = 0.4
   .type = float
-  .help = Grid interval size.
+  .help = Grid interval size - the gap between two grids.
   .expert_level = 2
+
+atom_type = N
+    .type = str
+    .help = Atom to use to make grid.  Nitrogen is a good choice
+
 
 scattering_table = *n_gaussian wk1995 it1992 neutron
   .type = choice
   .help = Scattering table for structure factors calculations
+
+cycles = 5
+    .type = int
+    .help = Number of refinement cycles
+
+iterations = 20
+    .type = int
+    .help = Number of refinement iterations
+
+bfac_dummy_atoms = 25
+  .type = float
+  .help = The initial B factor for the dummy atoms. Should be around protein average.
+  .expert_level = 2
+
+bfac_cutoff = 40.0
+  .type = float
+  .help = The value above which to remove atoms for the final model.
+  .expert_level = 2
+
+occ_cutoff = 1.0
+  .type = float
+  .help = The value below which to remove atoms for the final model.
+  .expert_level = 2
+
+
+
 """
 master_params = iotbx.phil.parse(master_params_str, process_includes=False)
 
 def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structures, x_center, y_center, z_center, radius,
-                 step_size=1,
-                 overlap_interval=0.2,
-                 space_group          = "",
-                 d_min                = 2.0,
-                 sf_algorithm         = "fft", # XXX use "fft" in prectice
-                 free_r_fraction      = 0.05,
-                 b_iso_start          = 25.,
-                 target_name          = "ls_wunit_kunit",
-                 number_of_iterations = 20,
-                 number_of_cycles     = 5
+
+                overlap_interval=0.2,
+                step_size=1,
+                atom_type = "N",
+                number_of_iterations = 20,
+                number_of_cycles     = 5,
+
+                bfac_dummy_atoms = 25,
+                bfac_cutoff = 60,
+                occ_cutoff = 1.0,
+
+                sf_algorithm         = "fft", # XXX use "fft" in prectice
+                free_r_fraction      = 0.05,
+                target_name          = "ls_wunit_kunit",
+
                  ):
     """ method to improve local density using dummy atoms """
     """TODO: trying to work out how to add atom correctly to pdb, so can create models /
     need to make new atom group?  Currently adds atoms to last residue (as shown in junk.pdb) /
     which is obviously not correct.  Code below will be able to produce atom grids /
     """
+    step = overlap_interval
+    atom_gap = step_size
 
     kept_atoms = []
     x_start = float(x_center) - (float(radius))
@@ -117,8 +155,7 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
     overlap_list = [0.0]
 
     kept_atoms = []
-    step = overlap_interval
-    atom_gap = step_size
+
     center = [x_center,y_center,z_center]
     xray_structure = xray_structures[0]
     orth = xray_structure.unit_cell().orthogonalize
@@ -140,8 +177,8 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
                 new_center = [x_start, y_start, z_start ]
                 print "Number of grids left: ", number_of_grids
                 number_of_grids = number_of_grids - 1
-                atom_grid = make_grid(new_center, radius, atom_gap,1.0,20)
-                add_dummy_atoms = add_atoms_with_occ_b(file_name, atom_grid, "tmp.pdb")
+                atom_grid = make_grid(new_center, radius, atom_gap,1.0,bfac_dummy_atoms)
+                add_dummy_atoms = add_atoms_with_occ_b(file_name, atom_type, atom_grid, "tmp.pdb")
 
                 processed_pdb_file, pdb_raw_records, pdb_inp = get_processed_pdb_file(
                 pdb_file_name = "tmp.pdb",
@@ -163,7 +200,7 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
                 #
                 current_atom = 0
                 for i_scatterer, sc in enumerate(new_model.scatterers()):
-                    if sc.occupancy > 1.0 and current_atom > atom_count :
+                    if (sc.occupancy > occ_cutoff and adptbx.u_as_b(sc.u_iso)< bfac_cutoff) and current_atom > atom_count :
                         a = iotbx.pdb.hierarchy.atom_with_labels()
                         a.xyz = orth(sc.site)
                         #dummy_atom = "HETATM %s  N   HET X%s    %8.3f%8.3f%8.3f%6.2f%6.2f           N"%(i_scatterer+1000,i_scatterer+1000,a.xyz[0] ,a.xyz[1] ,a.xyz[2] , sc.occupancy, adptbx.u_as_b(sc.u_iso))
@@ -172,7 +209,7 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
                     current_atom = current_atom + 1
 
 
-    add_dummy_atoms = add_atoms_with_occ_b(file_name, kept_atoms, "final.pdb")
+    add_dummy_atoms = add_atoms_with_occ_b(file_name, atom_type, kept_atoms, "final.pdb")
     print "Finished"
 
 
@@ -237,7 +274,7 @@ def count_atoms(input_pdb_file_name):
             count = count +1
     return count
 
-def add_atoms_with_occ_b(input_pdb_file_name, dummy_atoms, output_pdb_file_name):
+def add_atoms_with_occ_b(input_pdb_file_name, final_atom_type, dummy_atoms, output_pdb_file_name):
     """A class menthod to add the atoms - occ and b in array"""
     try:
         input_file = open(input_pdb_file_name)
@@ -263,8 +300,9 @@ def add_atoms_with_occ_b(input_pdb_file_name, dummy_atoms, output_pdb_file_name)
     final_residue_id  = int(final_line[22:26].replace(' ', '')) + 1
     #
     for dummy_coords in dummy_atoms:
-        dummy_atom = "HETATM %4i  N   HET X%4i    %8.3f%8.3f%8.3f%6.2f%6.2f           N"\
-        %(final_atom_id,final_residue_id, float(dummy_coords[0]),float(dummy_coords[1]),float(dummy_coords[2]), float(dummy_coords[3]), float(dummy_coords[4]))
+        dummy_atom = "HETATM %4i  %s   HET X%4i    %8.3f%8.3f%8.3f%6.2f%6.2f           %s"\
+        %(final_atom_id,final_atom_type, final_residue_id, float(dummy_coords[0]), \
+        float(dummy_coords[1]),float(dummy_coords[2]), float(dummy_coords[3]), float(dummy_coords[4]), final_atom_type )
         output_file.write(dummy_atom+"\n")
         final_atom_id  = final_atom_id + 1
         final_residue_id  = final_residue_id + 1
@@ -428,6 +466,24 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     raise Sorry("Need to specify z center.")
   if(params.radius is None):
     raise Sorry("Need to specify radius.")
+  if(params.atom_gap is None):
+    raise Sorry("Need to specify atom_gap.")
+  if(params.overlap_interval is None):
+    raise Sorry("Need to specify overlap_interval.")
+
+  if(params.atom_type is None):
+    raise Sorry("Need to specify atom_type.")
+  if(params.cycles is None):
+    raise Sorry("Need to specify cycles.")
+  if(params.iterations is None):
+    raise Sorry("Need to specify iterations.")
+  if(params.bfac_dummy_atoms is None):
+    raise Sorry("Need to specify bfac_dummy_atoms.")
+  if(params.bfac_cutoff is None):
+    raise Sorry("Need to specify bfac_cutoff.")
+  if(params.occ_cutoff is None):
+    raise Sorry("Need to specify iterations.")
+
   crystal_symmetry = None
   crystal_symmetry_data = None
   crystal_symmetry_model = None
@@ -528,4 +584,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
   #
   grow_density(f_obs, r_free_flags, scattering_table, pdb_file_name, xray_structures,x_center=params.x_center,\
-  y_center=params.y_center, z_center=params.z_center, radius=params.radius, step_size=params.step_size, overlap_interval=params.overlap_interval )
+  y_center=params.y_center, z_center=params.z_center, radius=params.radius, step_size=params.atom_gap, overlap_interval=params.overlap_interval, \
+  atom_type= params.atom_type, number_of_cycles = params.cycles, number_of_iterations = params.iterations, \
+  bfac_dummy_atoms = params.bfac_dummy_atoms, bfac_cutoff = params.bfac_cutoff , occ_cutoff = params.occ_cutoff  )
+
+
