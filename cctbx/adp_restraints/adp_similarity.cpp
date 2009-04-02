@@ -31,6 +31,7 @@ namespace cctbx { namespace adp_restraints {
   void
   adp_similarity::init_deltas()
   {
+    deltas_ = af::tiny<double, 6>(0,0,0,0,0,0);
     //! () - ()
     if (use_u_aniso[0] && use_u_aniso[1]) {
       scitbx::sym_mat3<double> const& u_1 = u_cart[0];
