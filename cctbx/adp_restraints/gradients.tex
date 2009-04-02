@@ -1,0 +1,85 @@
+\documentclass[11pt]{article}
+\usepackage{cctbx_preamble}
+\usepackage{amscd}
+
+\title{Restraint Gradients}
+\author{\rjgildea}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{ADP similarity restraint}
+The anisotropic displacement parameters of two atoms are restrained to have the
+same $U_{ij}$ components.  This is equivalent to a SHELXL SIMU restraint \cite{SHELX:man97}.
+The weighted least-squares residual is
+\begin{equation}
+R = w \sum_{i=1}^3 \sum_{j=1}^i (U_{A,ij} - U_{B,ij})^2,
+\end{equation}
+and the gradient of the residual with respect to the component $U_{A,ij}$ is then
+\begin{equation}
+\partialder{R}{U_{A,ij}} = 2w(U_{A,ij} - U_{B,ij}).
+\end{equation}
+
+\section{Rigid-bond restraint}
+
+In a `rigid-bond' restraint the components of the anisotropic displacement parameters
+of two atoms in the direction of the vector connecting those two atoms are restrained
+to be equal.  This corresponds to Hirshfeld's `rigid-bond' test \cite{Hirshfeld:1976} for testing
+whether anisotropic displacement parameters are physically reasonable (see SHELX
+manual, DELU restraint \cite{SHELX:man97}).  We must therefore minimise the mean square displacement of
+the atom in the direction of the bond.
+
+The weighted least-squares residual is then
+\begin{equation}
+R = w(z^2_{A,B} - z^2_{B,A})^2,
+\end{equation}
+where in the Cartesian coordinate system the mean square displacement of atom A
+along the vector $\overrightarrow{AB}$, $z^2_{A,B}$, is given by
+\begin{equation}
+z^2_{A,B} = \frac{\vec{r}^t\mat{U}_{cart,A}\vec{r}}{\norm{\vec{r}}^2},
+\end{equation}
+where
+\begin{equation}
+\vec{r} = \begin{pmatrix} x_A - x_B\\y_A - y_B\\z_A - z_B \end{pmatrix}
+= \begin{pmatrix} x\\y\\z \end{pmatrix},
+\end{equation}
+$\vec{r}^t$ is the transpose of $\vec{r}$ (\textit{i.e.} a row vector) and
+$\norm{\vec{r}}$ is the length of the vector $\overrightarrow{AB}$.
+
+The derivative of the residual with respect to an element of $\vec{U}_{cart,A}$,
+$U_{A,ij}$ is given by (using the chain rule)
+\begin{align}
+\partialder{R}{U_{A,ij}} &= \partialder{R}{z^2_{A,B}} \partialder{z^2_{A,B}}{U_{A,ij}}\\
+&=2w(z^2_{A,B} - z^2_{B,A}) \partialder{z^2_{A,B}}{U_{A,ij}}\label{eqn:r_derivative}
+\end{align}
+
+The matrix multiplication in obtaining $z^2_{A,B}$ can be evaluated as follows
+(remembering $\vec{U}_{cart}$ is symmetric):
+\begin{align}
+\vec{r}^t\vec{U}_{cart,A}\vec{r} &= 
+\begin{pmatrix} x & y & z \end{pmatrix}
+\begin{pmatrix} U_{11} & U_{12} & U_{13}\\
+                         U_{12} & U_{22} & U_{23}\\
+                         U_{13} & U_{23} & U_{33}\end{pmatrix}
+\begin{pmatrix} x\\y\\z\end{pmatrix}\\
+&= U_{11}\ x^2 + U_{22}\ y^2 + U_{33}\ z^2 + 2U_{12}\ xy + 2U_{13}\ xz + 2U_{23}\ yz
+\end{align}
+It then follows that
+\begin{equation}
+\partialder{z^2_{A,B}}{U_{11}} = \frac{x^2}{\norm{\vec{r}}^2} ,\qquad
+\partialder{z^2_{A,B}}{U_{22}} = \frac{y^2}{\norm{\vec{r}}^2} ,\qquad
+\partialder{z^2_{A,B}}{U_{33}} = \frac{z^2}{\norm{\vec{r}}^2} ,
+\end{equation}
+and
+\begin{equation}
+\partialder{z^2_{A,B}}{U_{12}} = \frac{2xy}{\norm{\vec{r}}^2} ,\qquad
+\partialder{z^2_{A,B}}{U_{13}} = \frac{2xz}{\norm{\vec{r}}^2} ,\qquad
+\partialder{z^2_{A,B}}{U_{23}} = \frac{2yz}{\norm{\vec{r}}^2} .
+\end{equation}
+These can be combined with \eqnref{r_derivative} to give us the derivatives
+with respect to each $U_{ij}$ component.
+
+\bibliography{cctbx_references}
+
+\end{document}

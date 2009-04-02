@@ -35,6 +35,7 @@ cbflib_adaptbx/include/cbflib_adaptbx/cbf_adaptor.h -text
 cbflib_adaptbx/include/cbflib_adaptbx/mar_adaptor.h -text
 cbflib_adaptbx/include/cbflib_adaptbx/sls_pilatus_adaptor.h -text
 cbflib_adaptbx/libtbx_config -text
+cctbx/adp_restraints/gradients.tex -text
 cctbx/boost_python/orientation_ext.cpp -text
 cctbx/command_line/version.py -text
 cctbx/crystal_orientation.h -text
