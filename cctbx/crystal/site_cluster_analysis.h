@@ -43,6 +43,7 @@ namespace cctbx { namespace crystal {
         bool general_positions_only_=false,
         unsigned estimated_reduction_factor_=4,
         FloatType const& asu_mappings_buffer_thickness=-1,
+        FloatType const& min_cubicle_edge=5,
         FloatType const& cubicle_epsilon=-1)
       :
         min_cross_distance(min_cross_distance_),
@@ -68,7 +69,9 @@ namespace cctbx { namespace crystal {
         cubicles_(
           asu_mappings_->asu_buffer().box_min(/*cartesian*/ true),
           asu_mappings_->asu_buffer().box_span(/*cartesian*/ true),
-          std::max(min_cross_distance, min_self_distance),
+          std::max(
+            std::max(min_cross_distance, min_self_distance),
+            min_cubicle_edge),
           cubicle_epsilon_)
       {
         CCTBX_ASSERT(min_cross_distance > 0);

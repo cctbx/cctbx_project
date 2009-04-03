@@ -380,12 +380,14 @@ namespace cctbx { namespace crystal {
       pair_asu_table&
       add_all_pairs(
         FloatType const& distance_cutoff,
+        FloatType const& min_cubicle_edge=5,
         FloatType const& epsilon=1.e-6)
       {
         neighbors::fast_pair_generator<FloatType, IntShiftType> pair_generator(
           asu_mappings_owner_,
           distance_cutoff*(1+epsilon),
-          /*minimal*/ true);
+          /*minimal*/ true,
+          min_cubicle_edge);
         while (!pair_generator.at_end()) {
           add_pair(pair_generator.next());
         }

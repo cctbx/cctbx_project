@@ -39,6 +39,7 @@ namespace {
             bool,
             unsigned,
             double const&,
+            double const&,
             double const&> >((
               arg_("space_group"),
               arg_("asu"),
@@ -47,6 +48,7 @@ namespace {
               arg_("general_positions_only"),
               arg_("estimated_reduction_factor")=4,
               arg_("asu_mappings_buffer_thickness")=-1,
+              arg_("min_cubicle_edge")=5,
               arg_("cubicle_epsilon")=-1)))
         .def_readonly("min_cross_distance",
                  &w_t::min_cross_distance)

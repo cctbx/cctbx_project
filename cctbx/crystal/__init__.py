@@ -463,6 +463,7 @@ class special_position_settings(symmetry):
         estimated_reduction_factor=4,
         asu_is_inside_epsilon=None,
         asu_mappings_buffer_thickness=-1,
+        min_cubicle_edge=5,
         cubicle_epsilon=-1):
     if (min_cross_distance is None): min_cross_distance = min_distance
     if (min_self_distance is None): min_self_distance = min_distance
@@ -478,6 +479,7 @@ class special_position_settings(symmetry):
       general_positions_only=general_positions_only,
       estimated_reduction_factor=estimated_reduction_factor,
       asu_mappings_buffer_thickness=asu_mappings_buffer_thickness,
+      min_cubicle_edge=min_cubicle_edge,
       cubicle_epsilon=cubicle_epsilon)
     result.min_distance_sym_equiv = self._min_distance_sym_equiv
     result.assert_min_distance_sym_equiv = self._assert_min_distance_sym_equiv
