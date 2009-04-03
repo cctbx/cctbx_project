@@ -1,7 +1,8 @@
+from cctbx import geometry_restraints
 from cctbx.geometry_restraints.distance_least_squares \
   import distance_and_repulsion_least_squares
+from cctbx import crystal
 from cctbx.array_family import flex
-from iotbx.kriber import strudat
 from cStringIO import StringIO
 import libtbx.utils
 from libtbx.test_utils import approx_equal, show_diff
@@ -9,6 +10,10 @@ import libtbx.load_env
 import sys, os
 
 def exercise_with_zeolite(verbose):
+  if (not libtbx.env.has_module("iotbx")):
+    print "Skipping exercise_with_zeolite(): iotbx not available"
+    return
+  from iotbx.kriber import strudat
   atlas_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/misc/strudat_zeolite_atlas",
     test=os.path.isfile)
@@ -31,7 +36,7 @@ def exercise_with_zeolite(verbose):
   #
   out = StringIO()
   drls.geometry_restraints_manager.show_interactions(f=out)
-  if (0 or verbose):
+  if (verbose):
     sys.stdout.write(out.getvalue())
   assert not show_diff(out.getvalue(), """\
 bond simple: (0, 1)
@@ -45,6 +50,9 @@ bond asu: (0, 0) -x+1,y,-z+1
   weight: 0.2308
 """,
     selections=[range(4), range(20,24)])
+  nbp = drls.geometry_restraints_manager.pair_proxies().nonbonded_proxies
+  assert nbp.n_total() > 50
+    # expected is 60, but the exact number depends on the minimizer
   #
   site_labels = drls.minimized_structure.scatterers().extract_labels()
   out = StringIO()
@@ -243,6 +251,83 @@ bond asu: (0, 0)
     sys.stdout.write(out.getvalue())
   assert not show_diff(out.getvalue(), """\
 =+Bond restraints: 48
+""")
+  #
+  sites_cart = si_structure.sites_cart()
+  site_labels = [sc.label for sc in si_structure.scatterers()]
+  asu_mappings = si_structure.asu_mappings(buffer_thickness=3.5)
+  for min_cubicle_edge in [0, 5]:
+    pair_generator = crystal.neighbors_fast_pair_generator(
+      asu_mappings=asu_mappings,
+      distance_cutoff=asu_mappings.buffer_thickness(),
+      minimal=False,
+      min_cubicle_edge=min_cubicle_edge)
+    sorted_asu_proxies = geometry_restraints.nonbonded_sorted_asu_proxies(
+      asu_mappings=asu_mappings)
+    while (not pair_generator.at_end()):
+      p = geometry_restraints.nonbonded_asu_proxy(
+        pair=pair_generator.next(),
+        vdw_distance=3)
+      sorted_asu_proxies.process(p)
+    out = StringIO()
+    sorted_asu_proxies.show_sorted(
+      by_value="delta",
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      f=out,
+      prefix="d%")
+    if (verbose):
+      sys.stdout.write(out.getvalue())
+    assert not show_diff(out.getvalue(), """\
+d%Nonbonded interactions: 7
+d%Sorted by model distance:
+...
+d%nonbonded SI2
+d%          SI2
+d%   model   vdw sym.op.
+d%   3.092 3.000 -x+1,y,-z
+...
+d%nonbonded SI1
+d%          SI1
+d%   model   vdw sym.op.
+d%   3.216 3.000 -x+1/2,-y+1/2,-z+1
+""",
+      selections=[range(2), range(10,14), range(26,30)])
+    out = StringIO()
+    sorted_asu_proxies.show_sorted(
+      by_value="delta",
+      sites_cart=sites_cart,
+      f=out,
+      prefix="*j",
+      max_items=5)
+    if (verbose):
+      sys.stdout.write(out.getvalue())
+    assert not show_diff(out.getvalue(), """\
+*jNonbonded interactions: 7
+*jSorted by model distance:
+...
+*jnonbonded 0
+*j          1
+*j   model   vdw
+*j   3.107 3.000
+*jnonbonded 0
+*j          0
+*j   model   vdw sym.op.
+*j   3.130 3.000 -x+1,y,-z+1
+*j... (remaining 2 not shown)
+""",
+      selections=[range(2), range(-9,0)])
+    out = StringIO()
+    sorted_asu_proxies.show_sorted(
+      by_value="delta",
+      sites_cart=sites_cart,
+      f=out,
+      prefix="@r",
+      max_items=0)
+    if (verbose):
+      sys.stdout.write(out.getvalue())
+    assert not show_diff(out.getvalue(), """\
+@rNonbonded interactions: 7
 """)
 
 enk_pdb = """\
