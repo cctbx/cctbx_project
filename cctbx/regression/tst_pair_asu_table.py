@@ -365,7 +365,9 @@ def exercise_angle_pair_asu_table(
   sg_asu_mappings = structure.asu_mappings(
     buffer_thickness=2*distance_cutoff)
   sg_pat = crystal.pair_asu_table(asu_mappings=sg_asu_mappings)
-  sg_pat.add_all_pairs(distance_cutoff=distance_cutoff)
+  sg_pat.add_all_pairs(
+    distance_cutoff=distance_cutoff,
+    min_cubicle_edge=0)
   # compare connectivities with reference
   assert list(sg_pat.pair_counts()) == connectivities
   #
@@ -373,7 +375,9 @@ def exercise_angle_pair_asu_table(
   p1_asu_mappings = p1_structure.asu_mappings(
     buffer_thickness=2*distance_cutoff)
   p1_pat = crystal.pair_asu_table(asu_mappings=p1_asu_mappings)
-  p1_pat.add_all_pairs(distance_cutoff=distance_cutoff)
+  p1_pat.add_all_pairs(
+    distance_cutoff=distance_cutoff,
+    min_cubicle_edge=0)
   sg_labels = structure.scatterers().extract_labels()
   p1_labels = p1_structure.scatterers().extract_labels()
   label_connect = dict(zip(sg_labels, sg_pat.pair_counts()))

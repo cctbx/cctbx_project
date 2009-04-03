@@ -48,17 +48,17 @@ namespace cctbx { namespace crystal { namespace neighbors {
             FloatType, IntShiftType> > const& asu_mappings,
         FloatType const& distance_cutoff,
         bool minimal=false,
+        FloatType const& min_cubicle_edge=5,
         FloatType const& epsilon=1.e-6)
       :
         epsilon_(epsilon),
         cubicles_(
           asu_mappings.get()->mapped_sites_min(),
           asu_mappings.get()->mapped_sites_span(),
-          distance_cutoff,
+          std::max(distance_cutoff, min_cubicle_edge),
           epsilon),
         n_boxes_(cubicles_.ref.accessor())
       {
-        CCTBX_ASSERT(distance_cutoff > 0);
         CCTBX_ASSERT(epsilon > 0);
         CCTBX_ASSERT(epsilon < 0.01);
         this->asu_mappings_owner_ = asu_mappings;

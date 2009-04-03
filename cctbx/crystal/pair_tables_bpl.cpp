@@ -59,7 +59,7 @@ namespace {
       cluster_pivot_selection_overloads, cluster_pivot_selection, 0, 3)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      add_all_pairs_overloads, add_all_pairs, 1, 2)
+      add_all_pairs_overloads, add_all_pairs, 1, 3)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       extract_pair_sym_table_overloads, extract_pair_sym_table, 0, 1)
@@ -94,7 +94,9 @@ namespace {
             arg_("estimated_reduction_factor")=4)))
         .def("add_all_pairs", &w_t::add_all_pairs,
           add_all_pairs_overloads((
-            arg_("distance_cutoff"), arg_("epsilon")=1.e-6))[return_self<>()])
+            arg_("distance_cutoff"),
+            arg_("min_cubicle_edge")=5,
+            arg_("epsilon")=1.e-6))[return_self<>()])
         .def("add_pair_sym_table", &w_t::add_pair_sym_table, (
           arg_("sym_table")), return_self<>())
         .def("add_pair", (pair_asu_table<>&(w_t::*)(

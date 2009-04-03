@@ -68,11 +68,11 @@ namespace cctbx { namespace geometry_restraints {
           CCTBX_ASSERT(shell_asu_tables[i].asu_mappings().get()
                     == shell_asu_tables[0].asu_mappings().get());
         }
-        bool minimal = false;
         crystal::neighbors::fast_pair_generator<> pair_generator(
           shell_asu_tables[0].asu_mappings(),
           nonbonded_distance_cutoff_plus_buffer,
-          minimal);
+          /*minimal*/ false,
+          /*min_cubicle_edge*/ 0); // XXX.XXX.XXX
         while (!pair_generator.at_end()) {
           direct_space_asu::asu_mapping_index_pair_and_diff<>
             pair = pair_generator.next();

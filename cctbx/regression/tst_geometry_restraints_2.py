@@ -31,9 +31,9 @@ def exercise_with_zeolite(verbose):
   #
   out = StringIO()
   drls.geometry_restraints_manager.show_interactions(f=out)
-  if (verbose):
+  if (0 or verbose):
     sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue().replace("(2, 1)","(1, 2)"), """\
+  assert not show_diff(out.getvalue(), """\
 bond simple: (0, 1)
   distance_model: 3.22437
   distance_ideal: 3.07097
@@ -43,16 +43,8 @@ bond asu: (0, 0) -x+1,y,-z+1
   distance_model: 3.4233
   distance_ideal: 3.07097
   weight: 0.2308
-...
-nonbonded simple: (1, 5)
-  distance_model: 3.74919
-  vdw_distance: 1
-...
-nonbonded asu: (1, 2) x,y,z
-  distance_model: 4.08434
-  vdw_distance: 1
 """,
-    selections=[range(4), range(20,24), range(264,267), range(-3,0)])
+    selections=[range(4), range(20,24)])
   #
   site_labels = drls.minimized_structure.scatterers().extract_labels()
   out = StringIO()
@@ -60,7 +52,7 @@ nonbonded asu: (1, 2) x,y,z
     site_labels=site_labels, f=out)
   if (verbose):
     sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue().replace("(2, 1)","(1, 2)"), """\
+  assert not show_diff(out.getvalue(), """\
 bond simple: (0, 1)
   SI1
   SI2
@@ -74,17 +66,8 @@ bond asu: (0, 0)
   distance_model: 3.4233
   distance_ideal: 3.07097
   weight: 0.2308
-...
-nonbonded simple: (1, 5)
-  SI2
-  O4
-  distance_model: 3.74919
-  vdw_distance: 1
-...
-  distance_model: 4.08434
-  vdw_distance: 1
 """,
-    selections=[range(6), range(30,36), range(408,413), range(-2,0)])
+    selections=[range(6), range(30,36)])
   #
   out = StringIO()
   drls.geometry_restraints_manager._sites_cart_used_for_pair_proxies = None
@@ -99,14 +82,8 @@ bond simple: (0, 1)
 bond asu: (0, 0) -x+1,y,-z+1
   distance_ideal: 3.07097
   weight: 0.2308
-...
-nonbonded simple: (1, 5)
-  vdw_distance: 1
-...
-nonbonded asu: (7, 4) x+1/2,-y+1/2,z
-  vdw_distance: 2
 """,
-    selections=[range(3), range(15,18), range(144,146), range(-2,0)])
+    selections=[range(3), range(15,18)])
   #
   site_labels = drls.minimized_structure.scatterers().extract_labels()
   out = StringIO()
@@ -126,18 +103,8 @@ bond asu: (0, 0)
   SI1 -x+1,y,-z+1
   distance_ideal: 3.07097
   weight: 0.2308
-...
-nonbonded simple: (1, 5)
-  SI2
-  O4
-  vdw_distance: 1
-...
-nonbonded asu: (7, 4)
-  O6
-  O3 x+1/2,-y+1/2,z
-  vdw_distance: 2
 """,
-    selections=[range(5), range(25,30), range(240,244), range(-4,0)])
+    selections=[range(5), range(25,30)])
   #
   sites_cart = drls.start_structure.sites_cart()
   pair_proxies = drls.geometry_restraints_manager.pair_proxies()
@@ -276,91 +243,6 @@ nonbonded asu: (7, 4)
     sys.stdout.write(out.getvalue())
   assert not show_diff(out.getvalue(), """\
 =+Bond restraints: 48
-""")
-  #
-  out = StringIO()
-  pair_proxies.nonbonded_proxies.show_sorted(
-    by_value="delta",
-    sites_cart=sites_cart,
-    site_labels=site_labels,
-    f=out,
-    prefix="d%")
-  if (verbose):
-    sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
-d%Nonbonded interactions: 52
-d%Sorted by model distance:
-d%nonbonded O3
-d%          O3
-d%   model   vdw sym.op.
-d%   3.067 2.000 -x+1/2,-y+1/2,-z
-...
-d%nonbonded SI2
-d%          O4
-d%   model   vdw
-d%   3.386 1.000
-""",
-    selections=[range(6), range(26,30)])
-  out = StringIO()
-  pair_proxies.nonbonded_proxies.show_sorted(
-    by_value="delta",
-    sites_cart=sites_cart,
-    site_labels=site_labels_long,
-    f=out,
-    prefix="&u",
-    max_items=7)
-  if (verbose):
-    sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
-&uNonbonded interactions: 52
-&uSorted by model distance:
-&unonbonded abcO3def
-&u          abcO3def
-&u   model   vdw sym.op.
-&u   3.067 2.000 -x+1/2,-y+1/2,-z
-...
-&unonbonded abcSI2def
-&u          abcO4def
-&u   model   vdw
-&u   3.386 1.000
-&u... (remaining 45 not shown)
-""",
-    selections=[range(6), range(-5,0)])
-  out = StringIO()
-  pair_proxies.nonbonded_proxies.show_sorted(
-    by_value="delta",
-    sites_cart=sites_cart,
-    f=out,
-    prefix="*j",
-    max_items=7)
-  if (verbose):
-    sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
-*jNonbonded interactions: 52
-*jSorted by model distance:
-*jnonbonded 4
-*j          4
-*j   model   vdw sym.op.
-*j   3.067 2.000 -x+1/2,-y+1/2,-z
-...
-*jnonbonded 1
-*j          5
-*j   model   vdw
-*j   3.386 1.000
-*j... (remaining 45 not shown)
-""",
-    selections=[range(6), range(-5,0)])
-  out = StringIO()
-  pair_proxies.nonbonded_proxies.show_sorted(
-    by_value="delta",
-    sites_cart=sites_cart,
-    f=out,
-    prefix="@r",
-    max_items=0)
-  if (verbose):
-    sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
-@rNonbonded interactions: 52
 """)
 
 enk_pdb = """\

@@ -221,6 +221,7 @@ def exercise_direct_space_asu():
       asu_mappings=asu_mappings,
       distance_cutoff=100,
       minimal=False,
+      min_cubicle_edge=0,
       epsilon=1.e-6)
     assert approx_equal(fast_pair_generator.distance_cutoff_sq(), 100*100)
     assert approx_equal(fast_pair_generator.epsilon()/1.e-6, 1)
@@ -256,11 +257,20 @@ def exercise_direct_space_asu():
     short_dist_sq = dist_sq.select(distances <= cutoff)
     for pair_generator_type in [crystal.neighbors_simple_pair_generator,
                                 crystal.neighbors_fast_pair_generator]:
-      if (    pair_generator_type is crystal.neighbors_fast_pair_generator
-          and cutoff == 0): continue
-      pair_generator = pair_generator_type(
-        asu_mappings=asu_mappings,
-        distance_cutoff=cutoff)
+      if (pair_generator_type is crystal.neighbors_simple_pair_generator):
+        pair_generator = pair_generator_type(
+          asu_mappings=asu_mappings,
+          distance_cutoff=cutoff)
+      else:
+        if (cutoff == 0):
+          min_cubicle_edge = 1
+        else:
+          min_cubicle_edge = 0
+        pair_generator = pair_generator_type(
+          asu_mappings=asu_mappings,
+          distance_cutoff=cutoff,
+          minimal=False,
+          min_cubicle_edge=min_cubicle_edge)
       index_pairs = []
       dist_sq = flex.double()
       for index_pair in pair_generator:
@@ -441,7 +451,8 @@ def exercise_pair_tables():
     pair_generator = crystal.neighbors_fast_pair_generator(
       asu_mappings,
       distance_cutoff=3.5,
-      minimal=minimal)
+      minimal=minimal,
+      min_cubicle_edge=0)
     for pair in pair_generator:
       asu_table.add_pair(pair=pair)
     asu_table.pair_counts().all_eq(4)
@@ -1112,7 +1123,9 @@ def exercise_neighbors_max_memory():
       sites_cart=sites_cart)
     crystal.neighbors_fast_pair_generator(
       asu_mappings=asu_mappings,
-      distance_cutoff=3)
+      distance_cutoff=3,
+      minimal=False,
+      min_cubicle_edge=0)
   fast_pair_generator_init() # just to make sure it works
   if (1 and mm < 333333*666666*999999):
     sites_cart.append((1.e6,2.e6,3.e6))
