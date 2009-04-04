@@ -63,12 +63,14 @@ namespace {
           nonbonded_params const&,
           af::const_ref<std::string> const&,
           double,
+          double,
           std::vector<crystal::pair_asu_table<> > const&>((
             arg_("model_indices"),
             arg_("conformer_indices"),
             arg_("nonbonded_params"),
             arg_("nonbonded_types"),
             arg_("nonbonded_distance_cutoff_plus_buffer"),
+            arg_("min_cubicle_edge"),
             arg_("shell_asu_tables"))))
         .def_readonly("n_1_3", &w_t::n_1_3)
         .def_readonly("n_1_4", &w_t::n_1_4)

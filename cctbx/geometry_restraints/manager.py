@@ -28,7 +28,8 @@ class manager(object):
         chirality_proxies=None,
         planarity_proxies=None,
         plain_pairs_radius=None,
-        max_reasonable_bond_distance=None):
+        max_reasonable_bond_distance=None,
+        min_cubicle_edge=5):
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
@@ -269,12 +270,14 @@ class manager(object):
         self._pair_proxies = geometry_restraints.pair_proxies(
           flags=flags,
           bond_params_table=self.bond_params_table,
+          min_cubicle_edge=self.min_cubicle_edge,
           shell_asu_tables=shell_asu_tables)
       elif (self._pair_proxies is None):
         self.n_updates_pair_proxies += 1
         self._pair_proxies = geometry_restraints.pair_proxies(
           flags=flags,
-          bond_params_table=self.bond_params_table)
+          bond_params_table=self.bond_params_table,
+          min_cubicle_edge=self.min_cubicle_edge)
     elif (sites_cart is not None
           and (self._sites_cart_used_for_pair_proxies is None
                or flags is not None
@@ -374,7 +377,8 @@ class manager(object):
           nonbonded_params=self.nonbonded_params,
           nonbonded_types=self.nonbonded_types,
           nonbonded_distance_cutoff_plus_buffer
-            =current_nonbonded_distance_cutoff_plus_buffer)
+            =current_nonbonded_distance_cutoff_plus_buffer,
+          min_cubicle_edge=self.min_cubicle_edge)
         introspection.virtual_memory_info().update_max()
         if (self._pair_proxies.nonbonded_proxies is None):
           break

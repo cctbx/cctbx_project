@@ -2417,6 +2417,7 @@ class build_all_chain_proxies(object):
         default_distance=1),
       nonbonded_types=flex.std_string(conformer_indices.size()),
       nonbonded_distance_cutoff_plus_buffer=disulfide_distance_cutoff,
+      min_cubicle_edge=5,
       shell_asu_tables=[pair_asu_table])
     labels = [self.pdb_atoms[i_seq].id_str()
       for i_seq in self.cystein_sulphur_i_seqs]
