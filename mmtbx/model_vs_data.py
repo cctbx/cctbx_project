@@ -24,6 +24,121 @@ from iotbx.pdb import extract_rfactors_resolutions_sigma
 import iotbx.pdb.remark_3_interpretation
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from iotbx.pdb import combine_unique_pdb_files
+from libtbx import group_args
+
+class mvd(object):
+
+  def __init__(self):
+    self.crystal       = None
+    self.models        = None
+    self.data          = None
+    self.model_vs_data = None
+    self.pdb_header    = None
+
+  def collect(self,
+              crystal       = None,
+              models        = None,
+              data          = None,
+              model_vs_data = None,
+              pdb_header    = None):
+    if(crystal       is not None): self.crystal       = crystal
+    if(models        is not None): self.models        = models
+    if(data          is not None): self.data          = data
+    if(model_vs_data is not None): self.model_vs_data = model_vs_data
+    if(pdb_header    is not None): self.pdb_header    = pdb_header
+
+  def show(self, log = None):
+    if(log is None): log = sys.stdout
+    # crystal
+    print >> log, "  Unit cell:       ", self.crystal.uc
+    print >> log, "  Space group:     ", self.crystal.sg, \
+                  "number of symmetry operators:", self.crystal.n_sym_op
+    print >> log, "  Unit cell volume: %-15.4f" % self.crystal.uc_vol
+    # models
+    print >> log, "  Number of models:", len(self.models)
+    for i_seq, i_model in enumerate(self.models):
+      print >> log, "  Model #%s:"%str("%d"%(i_seq+1)).strip()
+      print >> log, "    Number of residues in alternative conformations:", \
+        i_model.overall_counts_i_seq.n_alt_conf_pure + \
+        i_model.overall_counts_i_seq.n_alt_conf_proper + \
+        i_model.overall_counts_i_seq.n_alt_conf_improper
+      rc = i_model.overall_counts_i_seq.resname_classes
+      print >> log, "    Residue content:"
+      len_max = 0
+      for k in rc.keys():
+        k=k.replace("common_","")
+        if(len(k)>len_max): len_max = len(k)
+      fmt = "      %-"+str(len_max)+"s : %d"
+      for k,v in zip(rc.keys(), rc.values()):
+        print >> log, fmt%(k.replace("common_",""), v)
+      x = i_model.xray_structure_stat
+      print "    Atoms:"
+      print "      atom_number_(type:count:occ_sum) : %s (%s)"%(x.n_atoms,x.atom_counts_str)
+      print "      ADP_(min,max,mean)               : %s %s %s"%(x.b_min,x.b_max,x.b_mean)
+      print "      occupancies_(min,max,mean)       : %s %s %s"%(x.o_min,x.o_max,x.o_mean)
+      print "      number_of_anisotropic            : "+format_value("%-7s",x.n_aniso)
+      print "      number_of_non_positive_definite  : %s"%x.n_npd
+      g = i_model.model_statistics_geometry
+      print >> log, "    Stereochemistry statistics (mean, max, count):"
+      print >> log, "      bonds            : %8.4f %8.4f %d" % (g.b_mean, g.b_max, g.b_number)
+      print >> log, "      angles           : %8.4f %8.4f %d" % (g.a_mean, g.a_max, g.a_number)
+      print >> log, "      dihedrals        : %8.4f %8.4f %d" % (g.d_mean, g.d_max, g.d_number)
+      print >> log, "      chirality        : %8.4f %8.4f %d" % (g.c_mean, g.c_max, g.c_number)
+      print >> log, "      planarity        : %8.4f %8.4f %d" % (g.p_mean, g.p_max, g.p_number)
+      print >> log, "      non-bonded (min) : %8.4f" % (g.n_min)
+      if(i_model.ramalyze is not None):
+        outl = i_model.ramalyze.get_outliers_count_and_fraction()
+        allo = i_model.ramalyze.get_allowed_count_and_fraction()
+        favo = i_model.ramalyze.get_favored_count_and_fraction()
+        gene = i_model.ramalyze.get_general_count_and_fraction()
+        glyc = i_model.ramalyze.get_gly_count_and_fraction()
+        prol = i_model.ramalyze.get_pro_count_and_fraction()
+        prep = i_model.ramalyze.get_prepro_count_and_fraction()
+        print >> log, "      Ramachandran plot, number of:"
+        print >> log, "        outliers : %-5d (%-5.2f %s)"%(outl[0],outl[1]*100.,"%")
+        print >> log, "        general  : %-5d (%-5.2f %s)"%(gene[0],gene[1]*100.,"%")
+        print >> log, "        allowed  : %-5d (%-5.2f %s)"%(allo[0],allo[1]*100.,"%")
+        print >> log, "        favored  : %-5d (%-5.2f %s)"%(favo[0],favo[1]*100.,"%")
+        print >> log, "        glycine  : %-5d (%-5.2f %s)"%(glyc[0],glyc[1]*100.,"%")
+        print >> log, "        proline  : %-5d (%-5.2f %s)"%(prol[0],prol[1]*100.,"%")
+        print >> log, "        prepro   : %-5d (%-5.2f %s)"%(prep[0],prep[1]*100.,"%")
+    #
+    print >> log, "  Data:"
+    result = " \n    ".join([
+      "data_label              : %s"%                    self.data.data_label,
+      "high_resolution         : "+format_value("%-5.2f",self.data.high_resolution),
+      "low_resolution          : "+format_value("%-6.2f",self.data.low_resolution),
+      "completeness_in_range   : "+format_value("%-6.2f",self.data.completeness_in_range),
+      "completeness(d_min-inf) : "+format_value("%-6.2f",self.data.completeness_d_min_inf),
+      "completeness(6A-inf)    : "+format_value("%-6.2f",self.data.completeness_6A_inf),
+      "wilson_b                : "+format_value("%-6.1f",self.data.wilson_b),
+      "number_of_reflections   : "+format_value("%-8d",  self.data.number_of_reflections),
+      "test_set_size           : "+format_value("%-8.4f",self.data.test_set_size),
+      "test_flag_value         : "+format_value("%-d",   self.data.test_flag_value),
+      "number_of_Fobs_outliers : "+format_value("%-8d",  self.data.number_of_Fobs_outliers),
+      "anomalous_flag          : "+format_value("%-6s",  self.data.anomalous_flag)
+      ])
+    print >> log, "   ", result
+    #
+    print >> log, "  Model_vs_Data:"
+    b_cart = " ".join([("%8.2f"%v).strip() for v in self.model_vs_data.b_cart])
+    result = " \n    ".join([
+      "r_work(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_work),
+      "r_free(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_free),
+      "bulk_solvent_(k_sol,b_sol)         : %s %s"%(format_value("%-5.2f",self.model_vs_data.k_sol),
+                                                    format_value("%-7.2f",self.model_vs_data.b_sol)),
+      "overall_anisotropic_scale_(b_cart) : %-s"%b_cart])
+    print >> log, "   ", result
+    #
+    if(self.pdb_header is not None):
+      print >> log, "  Information extracted from PDB file header:"
+      print >> log, "    program_name    : %-s"%format_value("%s",self.pdb_header.program_name)
+      print >> log, "    year            : %-s"%format_value("%s",self.pdb_header.year)
+      print >> log, "    r_work          : %-s"%format_value("%s",self.pdb_header.r_work)
+      print >> log, "    r_free          : %-s"%format_value("%s",self.pdb_header.r_free)
+      print >> log, "    high_resolution : %-s"%format_value("%s",self.pdb_header.high_resolution)
+      print >> log, "    low_resolution  : %-s"%format_value("%s",self.pdb_header.low_resolution)
+      print >> log, "    sigma_cutoff    : %-s"%format_value("%s",self.pdb_header.sigma_cutoff)
 
 
 def get_program_name(file_lines):
@@ -37,7 +152,7 @@ def get_program_name(file_lines):
   return result
 
 def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
-                  model_selections, show_geometry_statistics):
+                  model_selections, show_geometry_statistics, mvd_obj):
   xray_structures = processed_pdb_file.xray_structure()
   if(show_geometry_statistics):
     from phenix.command_line.ramalyze import ramalyze
@@ -56,37 +171,18 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
       normalization = True)
   hierarchy = pdb_inp.construct_hierarchy()
   models = hierarchy.models()
-  print "  Number of models:", len(models)
   geometry_statistics = []
   for i_seq, model_selection in enumerate(model_selections):
-    print "  Model #%s:"%str("%d"%(i_seq+1)).strip()
     hierarchy_i_seq = pdb.hierarchy.root()
     hierarchy_i_seq.append_model(models[i_seq].detached_copy())
-    #
     overall_counts_i_seq = hierarchy_i_seq.overall_counts()
-    #
-    print "    Number of residues in alternative conformations:", \
-      overall_counts_i_seq.n_alt_conf_pure + \
-      overall_counts_i_seq.n_alt_conf_proper + \
-      overall_counts_i_seq.n_alt_conf_improper
-    #
-    rc = overall_counts_i_seq.resname_classes
-    print "    Residue content:"
-    len_max = 0
-    for k in rc.keys():
-      k=k.replace("common_","")
-      if(len(k)>len_max): len_max = len(k)
-    fmt = "      %-"+str(len_max)+"s : %d"
-    for k,v in zip(rc.keys(), rc.values()):
-      print fmt%(k.replace("common_",""), v)
-    #
     xray_structure = xray_structures.select(model_selection)
     hd_sel = xray_structure.hd_selection()
     if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
-      show_xray_structure_statistics(xray_structure =
+      xray_structure_stat = show_xray_structure_statistics(xray_structure =
         xray_structure.select(~hd_sel))
     else:
-      show_xray_structure_statistics(xray_structure = xray_structure)
+      xray_structure_stat = show_xray_structure_statistics(xray_structure = xray_structure)
     if(show_geometry_statistics):
       # exclude hydrogens
       if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
@@ -102,47 +198,23 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
         normalization = True)
       restraints_manager.geometry.pair_proxies(sites_cart =
         xray_structure.sites_cart())
-      result = model_statistics.geometry(
+      model_statistics_geometry = model_statistics.geometry(
         sites_cart         = xray_structure.sites_cart(),
         hd_selection       = hd_sel,
         ignore_hd          = False,
         restraints_manager = restraints_manager)
-      geometry_statistics.append(result)
-      print "    Stereochemistry statistics (mean, max, count):"
-      print "      bonds            : %8.4f %8.4f %d" % (result.b_mean, result.b_max, result.b_number)
-      print "      angles           : %8.4f %8.4f %d" % (result.a_mean, result.a_max, result.a_number)
-      print "      dihedrals        : %8.4f %8.4f %d" % (result.d_mean, result.d_max, result.d_number)
-      print "      chirality        : %8.4f %8.4f %d" % (result.c_mean, result.c_max, result.c_number)
-      print "      planarity        : %8.4f %8.4f %d" % (result.p_mean, result.p_max, result.p_number)
-      print "      non-bonded (min) : %8.4f" % (result.n_min)
       need_ramachandran = False
-      rc = overall_counts_i_seq.resname_classes
-      n_residues = 0
-      for k in rc.keys():
-        if(k.count('amino_acid')):
-          need_ramachandran = True
-          n_residues = int(rc[k])
-          break
+      ramalyze_obj = None
       if(need_ramachandran):
         ramalyze_obj = ramalyze()
         output, output_list = ramalyze_obj.analyze_pdb(hierarchy =
           hierarchy_i_seq, outliers_only = False)
-        outl = ramalyze_obj.get_outliers_count_and_fraction()
-        allo = ramalyze_obj.get_allowed_count_and_fraction()
-        favo = ramalyze_obj.get_favored_count_and_fraction()
-        gene = ramalyze_obj.get_general_count_and_fraction()
-        glyc = ramalyze_obj.get_gly_count_and_fraction()
-        prol = ramalyze_obj.get_pro_count_and_fraction()
-        prep = ramalyze_obj.get_prepro_count_and_fraction()
-        assert n_residues != 0
-        print "      Ramachandran plot, number of:"
-        print "        outliers : %-5d (%-5.2f %s)"%(outl[0],outl[1]*100.,"%")
-        print "        general  : %-5d (%-5.2f %s)"%(gene[0],gene[1]*100.,"%")
-        print "        allowed  : %-5d (%-5.2f %s)"%(allo[0],allo[1]*100.,"%")
-        print "        favored  : %-5d (%-5.2f %s)"%(favo[0],favo[1]*100.,"%")
-        print "        glycine  : %-5d (%-5.2f %s)"%(glyc[0],glyc[1]*100.,"%")
-        print "        proline  : %-5d (%-5.2f %s)"%(prol[0],prol[1]*100.,"%")
-        print "        prepro   : %-5d (%-5.2f %s)"%(prep[0],prep[1]*100.,"%")
+      geometry_statistics.append(group_args(
+        overall_counts_i_seq      = overall_counts_i_seq,
+        xray_structure_stat       = xray_structure_stat,
+        model_statistics_geometry = model_statistics_geometry,
+        ramalyze                  = ramalyze_obj))
+  mvd_obj.collect(models = geometry_statistics)
   return geometry_statistics
 
 def show_xray_structure_statistics(xray_structure):
@@ -164,12 +236,16 @@ def show_xray_structure_statistics(xray_structure):
     atom_counts_strs.append("%s:%s:%s"%(ac.scattering_type,str(ac.count),
       str("%10.2f"%ac.occupancy_sum).strip()))
   atom_counts_str = " ".join(atom_counts_strs)
-  print "    Atoms:"
-  print "      atom_number_(type:count:occ_sum) : %s (%s)"%(n_atoms,atom_counts_str)
-  print "      ADP_(min,max,mean)               : %s %s %s"%(b_min,b_max,b_mean)
-  print "      occupancies_(min,max,mean)       : %s %s %s"%(o_min,o_max,o_mean)
-  print "      number_of_anisotropic            : "+format_value("%-7s",n_aniso)
-  print "      number_of_non_positive_definite  : %s"%n_npd
+  return group_args(n_atoms         = n_atoms,
+                    atom_counts_str = atom_counts_str,
+                    b_min           = b_min,
+                    b_max           = b_max,
+                    b_mean          = b_mean,
+                    o_min           = b_min,
+                    o_max           = b_max,
+                    o_mean          = b_mean,
+                    n_aniso         = n_aniso,
+                    n_npd           = n_npd)
 
 def reflection_file_server(crystal_symmetry, reflection_files):
   return reflection_file_utils.reflection_file_server(
@@ -182,23 +258,18 @@ def show_data(fmodel, n_outl, test_flag_value, f_obs_labels):
   info = fmodel.info()
   flags_pc = \
    fmodel.r_free_flags.data().count(True)*1./fmodel.r_free_flags.data().size()
-  print "  Data:"
-  try: f_obs_labels = f_obs_labels[:f_obs_labels.index(",")]
-  except ValueError: pass
-  result = " \n    ".join([
-    "data_label              : %s"%f_obs_labels,
-    "high_resolution         : "+format_value("%-5.2f",info.d_min),
-    "low_resolution          : "+format_value("%-6.2f",info.d_max),
-    "completeness_in_range   : "+format_value("%-6.2f",info.completeness_in_range),
-    "completeness(d_min-inf) : "+format_value("%-6.2f",info.completeness_d_min_inf),
-    "completeness(6A-inf)    : "+format_value("%-6.2f",info.completeness_6_inf),
-    "wilson_b                : "+format_value("%-6.1f",fmodel.wilson_b()),
-    "number_of_reflections   : "+format_value("%-8d",  info.number_of_reflections),
-    "test_set_size           : "+format_value("%-8.4f",flags_pc),
-    "test_flag_value         : "+format_value("%-d",   test_flag_value),
-    "number_of_Fobs_outliers : "+format_value("%-8d",  n_outl),
-    "anomalous_flag          : "+format_value("%-6s",  fmodel.f_obs.anomalous_flag())])
-  print "   ", result
+  return group_args(data_label              = f_obs_labels,
+                    high_resolution         = info.d_min,
+                    low_resolution          = info.d_max,
+                    completeness_in_range   = info.completeness_in_range,
+                    completeness_d_min_inf  = info.completeness_d_min_inf,
+                    completeness_6A_inf     = info.completeness_6_inf,
+                    wilson_b                = fmodel.wilson_b(),
+                    number_of_reflections   = info.number_of_reflections,
+                    test_set_size           = flags_pc,
+                    test_flag_value         = test_flag_value,
+                    number_of_Fobs_outliers = n_outl,
+                    anomalous_flag          = fmodel.f_obs.anomalous_flag())
 
 def show_model_vs_data(fmodel):
   d_max, d_min = fmodel.f_obs.d_max_min()
@@ -206,16 +277,12 @@ def show_model_vs_data(fmodel):
     fmodel.r_free_flags.data().size()
   if(flags_pc == 0): r_free = None
   else: r_free = fmodel.r_free()
-  k_sol = format_value("%-5.2f",fmodel.k_sol())
-  b_sol = format_value("%-7.2f",fmodel.b_sol())
-  b_cart = " ".join([("%8.2f"%v).strip() for v in fmodel.b_cart()])
-  print "  Model_vs_Data:"
-  result = " \n    ".join([
-    "r_work(re-computed)                : "+format_value("%-6.4f",fmodel.r_work()),
-    "r_free(re-computed)                : "+format_value("%-6.4f",r_free),
-    "bulk_solvent_(k_sol,b_sol)         : %s %s"%(k_sol,b_sol),
-    "overall_anisotropic_scale_(b_cart) : "+format_value("%-s",b_cart)])
-  print "   ", result
+  return group_args(
+    r_work = fmodel.r_work(),
+    r_free = r_free,
+    k_sol  = fmodel.k_sol(),
+    b_sol  = fmodel.b_sol(),
+    b_cart = fmodel.b_cart())
 
 def run(args,
         command_name             = "mmtbx.model_vs_data",
@@ -254,6 +321,8 @@ def run(args,
   if(command_line.options.scattering_table not in ["n_gaussian","wk1995",
      "it1992","neutron"]):
     raise Sorry("Incorrect scattering_table.")
+  #
+  mvd_obj = mvd()
   #
   processed_args = utils.process_command_line_args(args = args,
     log = sys.stdout)
@@ -317,19 +386,19 @@ def run(args,
     d_min              = f_obs.d_min())
   xray_structures = xsfppf.xray_structures
   model_selections = xsfppf.model_selections
-  #
-  print "  Unit cell:       ", f_obs.unit_cell()
-  print "  Space group:     ", f_obs.crystal_symmetry().space_group_info().\
-    symbol_and_number(), "number of symmetry operators:",\
-    f_obs.crystal_symmetry().space_group_info().type().group().order_z()
-  print "  Unit cell volume: %-15.4f" % f_obs.unit_cell().volume()
+  mvd_obj.collect(crystal = group_args(
+    uc       = f_obs.unit_cell(),
+    sg       = f_obs.crystal_symmetry().space_group_info().symbol_and_number(),
+    n_sym_op = f_obs.crystal_symmetry().space_group_info().type().group().order_z(),
+    uc_vol   = f_obs.unit_cell().volume()))
   #
   geometry_statistics = show_geometry(
     processed_pdb_file       = processed_pdb_file,
     scattering_table         = command_line.options.scattering_table,
     pdb_inp                  = pdb_inp,
     model_selections         = model_selections,
-    show_geometry_statistics = show_geometry_statistics)
+    show_geometry_statistics = show_geometry_statistics,
+    mvd_obj                  = mvd_obj)
   #
   bss_params = bss.master_params.extract()
   bss_params.k_sol_max = 0.8
@@ -348,11 +417,12 @@ def run(args,
                                twin_law        = command_line.options.twin_law,
                                bss_params      = bss_params)
   n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
-  show_data(fmodel          = fmodel,
-            n_outl          = n_outl,
-            test_flag_value = test_flag_value,
-            f_obs_labels    = f_obs.info().label_string())
-  show_model_vs_data(fmodel)
+  mvd_obj.collect(data =
+    show_data(fmodel          = fmodel,
+              n_outl          = n_outl,
+              test_flag_value = test_flag_value,
+              f_obs_labels    = f_obs.info().label_string()))
+  mvd_obj.collect(model_vs_data = show_model_vs_data(fmodel))
   # Extract information from PDB file header and output (if any)
   published_results = extract_rfactors_resolutions_sigma.extract(
     file_name = pdb_file_names[0])
@@ -371,12 +441,13 @@ def run(args,
                           program_name            ,
                           pdb_inp.extract_header_year()]
     if(len(published_results_result) != published_results_result.count(None)):
-      print "  Information extracted from PDB file header:"
-      print "    program_name    : ", program_name
-      print "    year            : ", published_results_result[6]
-      print "    r_work          : ", published_results.r_work
-      print "    r_free          : ", published_results.r_free
-      print "    high_resolution : ", published_results.high
-      print "    low_resolution  : ", published_results.low
-      print "    sigma_cutoff    : ", published_results.sigma
-  return (processed_pdb_file, geometry_statistics, fmodel)
+      mvd_obj.collect(pdb_header = group_args(
+        program_name    = program_name,
+        year            = published_results_result[6],
+        r_work          = published_results.r_work,
+        r_free          = published_results.r_free,
+        high_resolution = published_results.high,
+        low_resolution  = published_results.low,
+        sigma_cutoff    = published_results.sigma))
+  mvd_obj.show()
+  return mvd_obj
