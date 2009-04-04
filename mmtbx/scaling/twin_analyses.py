@@ -346,6 +346,7 @@ class detect_pseudo_translations(object):
                p_value_cut=0.05,
                completeness_cut=0.75,
                cut_radius=3.5,
+               min_cubicle_edge=5.0,
                out=None,verbose=0):
     if out is None:
       out=sys.stdout
@@ -403,7 +404,8 @@ class detect_pseudo_translations(object):
         min_distance_sym_equiv=1e-4,
         general_positions_only=False,
         effective_resolution=None,
-        min_cross_distance=cut_radius)
+        min_cross_distance=cut_radius,
+        min_cubicle_edge=min_cubicle_edge)
 
       cluster_analysis = patterson_map.peak_search(
         parameters=peak_search_parameters)

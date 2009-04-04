@@ -49,6 +49,11 @@ master_params = iotbx.phil.parse("""\
     min_cross_distance = 1.8
       .type=float
       .short_caption=Minimum cross distance
+    min_cubicle_edge = 5
+      .type=float
+      .short_caption=Minimum edge length of cubicles used for \
+        fast neighbor search
+      .expert_level=2
   }
 """)
 
@@ -110,7 +115,8 @@ class manager(object):
       interpolate            = self.params.peak_search.interpolate,
       min_distance_sym_equiv = min_distance_sym_equiv,
       general_positions_only = self.params.peak_search.general_positions_only,
-      min_cross_distance     = self.params.peak_search.min_cross_distance)
+      min_cross_distance     = self.params.peak_search.min_cross_distance,
+      min_cubicle_edge       = self.params.peak_search.min_cubicle_edge)
     if(self.fmodel.r_work() > 0.00001 and self.fmodel.r_free() > 0.00001):
       cluster_analysis = crystal_gridding_tags.peak_search(
         parameters = peak_search_parameters,

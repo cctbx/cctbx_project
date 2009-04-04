@@ -191,7 +191,8 @@ class crystal_gridding_tags(crystal_gridding):
       significant_height_fraction=parameters.significant_height_fraction(),
       cluster_height_fraction=parameters.cluster_height_fraction(),
       min_cross_distance=parameters.min_cross_distance(),
-      max_clusters=parameters.max_clusters())
+      max_clusters=parameters.max_clusters(),
+      min_cubicle_edge=parameters.min_cubicle_edge())
 
 class peak_search_parameters(object):
 
@@ -205,7 +206,8 @@ class peak_search_parameters(object):
                      significant_height_fraction=None,
                      cluster_height_fraction=None,
                      min_cross_distance=None,
-                     max_clusters=None):
+                     max_clusters=None,
+                     min_cubicle_edge=5):
     adopt_init_args(self, locals(), hide=True)
 
   def _copy_constructor(self, other):
@@ -220,6 +222,7 @@ class peak_search_parameters(object):
     self._cluster_height_fraction = other._cluster_height_fraction
     self._min_cross_distance = other._min_cross_distance
     self._max_clusters = other._max_clusters
+    self._min_cubicle_edge = other._min_cubicle_edge
 
   def peak_search_level(self):
     return self._peak_search_level
@@ -254,6 +257,9 @@ class peak_search_parameters(object):
   def max_clusters(self):
     return self._max_clusters
 
+  def min_cubicle_edge(self):
+    return self._min_cubicle_edge
+
 class cluster_site_info(object):
 
   def __init__(self, peak_list_index, grid_index, grid_height, site, height):
@@ -272,7 +278,8 @@ class peak_cluster_analysis(object):
                      significant_height_fraction=None,
                      cluster_height_fraction=None,
                      min_cross_distance=None,
-                     max_clusters=None):
+                     max_clusters=None,
+                     min_cubicle_edge=5):
     if (effective_resolution is not None):
       if (significant_height_fraction is None):
           significant_height_fraction = 1/5.
@@ -296,7 +303,8 @@ class peak_cluster_analysis(object):
           min_cross_distance=self._min_cross_distance,
           min_self_distance
             =self._special_position_settings.min_distance_sym_equiv(),
-          general_positions_only=self._general_positions_only)
+          general_positions_only=self._general_positions_only,
+          min_cubicle_edge=self._min_cubicle_edge)
     self._peak_list_indices = flex.size_t()
     self._peak_list_index = 0
     self._sites = flex.vec3_double()
