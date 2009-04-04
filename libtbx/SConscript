@@ -496,7 +496,9 @@ else:
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
     opts.append("-DBOOST_ALL_NO_LIB")
-    if not libtbx.env.build_options.enable_boost_threads:
+    if (libtbx.env.build_options.enable_boost_threads):
+      opts.append("-pthread")
+    else:
       opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
