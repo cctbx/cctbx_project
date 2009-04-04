@@ -946,7 +946,8 @@ class pair_proxies(object):
         conformer_indices=None,
         nonbonded_params=None,
         nonbonded_types=None,
-        nonbonded_distance_cutoff_plus_buffer=None):
+        nonbonded_distance_cutoff_plus_buffer=None,
+        min_cubicle_edge=5):
     self.bond_proxies = None
     self.nonbonded_proxies = None
     if (bond_params_table is not None
@@ -972,6 +973,7 @@ class pair_proxies(object):
         nonbonded_types=nonbonded_types,
         nonbonded_distance_cutoff_plus_buffer=\
           nonbonded_distance_cutoff_plus_buffer,
+        min_cubicle_edge=min_cubicle_edge,
         shell_asu_tables=shell_asu_tables)
 
 class _motif(boost.python.injector, ext.motif):

@@ -545,7 +545,7 @@ nonbonded asu: (7, 29) x+1,y,z
   vdw_distance: 3.42
 """,
     selections=[range(3), range(138,141), range(303,307), range(347,351),
-      range(372,377), range(400,402), range(-2,0)])
+      range(372,377), range(434,436), range(-2,0)])
   #
   out = StringIO()
   geo.show_interactions(site_labels=site_labels, f=out)
@@ -600,7 +600,7 @@ nonbonded asu: (7, 29)
   vdw_distance: 3.42
 """,
     selections=[range(5), range(230,236), range(560,568), range(648,656),
-      range(689,694), range(717,721), range(-4,0)])
+      range(689,694), range(785,789), range(-4,0)])
   #
   sel0 = geo.simple_edge_list()
   assert len(sel0) == 46

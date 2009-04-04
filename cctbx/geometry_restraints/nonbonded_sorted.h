@@ -44,6 +44,7 @@ namespace cctbx { namespace geometry_restraints {
         geometry_restraints::nonbonded_params const& nonbonded_params,
         af::const_ref<std::string> const& nonbonded_types,
         double nonbonded_distance_cutoff_plus_buffer,
+        double min_cubicle_edge,
         std::vector<crystal::pair_asu_table<> > const& shell_asu_tables)
       :
         nonbonded_sorted_asu_proxies_base(shell_asu_tables[0].asu_mappings()),
@@ -72,7 +73,7 @@ namespace cctbx { namespace geometry_restraints {
           shell_asu_tables[0].asu_mappings(),
           nonbonded_distance_cutoff_plus_buffer,
           /*minimal*/ false,
-          /*min_cubicle_edge*/ 0); // XXX.XXX.XXX
+          min_cubicle_edge);
         while (!pair_generator.at_end()) {
           direct_space_asu::asu_mapping_index_pair_and_diff<>
             pair = pair_generator.next();
