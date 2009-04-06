@@ -226,7 +226,7 @@ def run():
   assert fftpack.adjust_gridding(13, 5, 6) == 18
   assert fftpack.adjust_gridding_triple((13,22,34), 5) == (15,24,36)
   assert fftpack.adjust_gridding_triple((13,22,34), 5, (6,10,8)) == (18,30,40)
-  f = fftpack.factorization(30, 0)
+  f = fftpack.factorization(30, False)
   assert f.n() == 30
   assert tuple(f.factors()) == (2, 3, 5)
   test_complex_to_complex(flags.Verbose)

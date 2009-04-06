@@ -950,7 +950,7 @@ def run_one(space_group_info, n_elements= 9, volume_per_atom=1000, d_min = 2.0,
     exercise_packed(structure_ideal, f_obs, anomalous_flag)
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in [0,1]:
+  for anomalous_flag in [False,True]:
     run_one(
       space_group_info=space_group_info,
       anomalous_flag=anomalous_flag,

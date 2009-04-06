@@ -139,7 +139,12 @@ def exercise(target_functor, data_type, space_group_info, anomalous_flag,
 
 def run_call_back(flags, space_group_info):
   data_type = ('F', 'F^2')[hasattr(flags, 'F_sq')]
-  options = ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1),(0,1,1,1))
+  options = (
+    ( True,False,False,False),
+    (False, True,False,False),
+    (False,False, True,False),
+    (False,False,False, True),
+    (False, True, True, True))
   for target_functor in xray.target_functors.registry().values():
     for (fsite, fu_iso, foccupancy, fu_aniso) in options:
       gradient_flags = xray.structure_factors.gradient_flags(

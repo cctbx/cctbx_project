@@ -26,7 +26,7 @@ def LATT_SYMM(s, space_group):
   print >> s, "LATT", LATT_N
   # The operator x,y,z is always assumed, so MUST NOT be input.
   for i in xrange(1, space_group.n_smx()):
-    print >> s, "SYMM", space_group(i).as_xyz(0, 0, "XYZ", ",")
+    print >> s, "SYMM", space_group(i).as_xyz(False, False, "XYZ", ",")
 
 def shelxd(s,
       title,

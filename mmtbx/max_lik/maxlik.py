@@ -193,12 +193,12 @@ class alpha_beta_est_manager(object):
     assert self.f_obs.data().size() == self.f_calc.data().size()
     assert self.f_calc.indices().all_eq(self.f_obs.indices()) == 1
     self.f_calc = abs(self.f_calc)
-    if(self.flags.count(1) > 0):
-      if free_reflections_per_bin > flags.count(1):
-         self.free_reflections_per_bin = flags.count(1)
+    if(self.flags.count(True) > 0):
+      if free_reflections_per_bin > flags.count(True):
+         self.free_reflections_per_bin = flags.count(True)
       self.f_obs_test  = self.f_obs.select(self.flags)
       self.f_calc_test = self.f_calc.select(self.flags)
-    if(self.flags.count(1) == 0):
+    if(self.flags.count(True) == 0):
       self.f_obs_test  = self.f_obs.select(~self.flags)
       self.f_calc_test = self.f_calc.select(~self.flags)
     self.f_obs_test.setup_binner_counting_sorted(

@@ -536,8 +536,8 @@ def exercise_array():
     assert approx_equal(tuple(hm.data()), (2,3))
     assert approx_equal(tuple(hm.sigmas()), (0.2,0.4))
   assert approx_equal(ma.anomalous_signal(), 0.5063697)
-  assert tuple(ma.all_selection()) == (1,1,1,1,1)
-  for sa in (ma.select(flex.bool((1,0,0,1,0))),
+  assert tuple(ma.all_selection()) == (True,True,True,True,True)
+  for sa in (ma.select(flex.bool((True,False,False,True,False))),
              ma.select(flex.size_t((0,3)))):
     assert tuple(sa.indices()) == ((1,2,3), (-2,-3,-4))
     assert approx_equal(tuple(sa.data()), (1,3))

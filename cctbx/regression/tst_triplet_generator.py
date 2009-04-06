@@ -74,26 +74,26 @@ def reciprocal_space_squaring(start, selection_fixed, verbose):
 def exercise_truncate(q_large):
   tprs_full = dmtbx.triplet_generator(
     miller_set=q_large,
-    discard_weights=1)
+    discard_weights=True)
   tprs = dmtbx.triplet_generator(
     miller_set=q_large,
     amplitudes=q_large.data(),
     max_relations_per_reflection=0,
-    discard_weights=1)
+    discard_weights=True)
   assert tprs.n_relations().all_eq(tprs_full.n_relations())
   for n in (1,10,100,1000):
     tprs = dmtbx.triplet_generator(
       miller_set=q_large,
       amplitudes=q_large.data(),
       max_relations_per_reflection=n,
-      discard_weights=1)
+      discard_weights=True)
     assert (tprs.n_relations() >= n).all_eq(tprs.n_relations() == n)
   n = 3
   tprs = dmtbx.triplet_generator(
     miller_set=q_large,
     amplitudes=q_large.data(),
     max_relations_per_reflection=n,
-    discard_weights=1)
+    discard_weights=True)
   n_rel_full = tprs_full.n_relations()
   n_rel = tprs.n_relations()
   amp = q_large.data()
@@ -165,10 +165,10 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
       print "mwpe: %.2f" % mwpe, start.space_group_info()
     for i,h in enumerate(direct_space_result.indices()):
       amp_d,phi_d = complex_math.abs_arg(
-        direct_space_result.data()[i], deg=1)
+        direct_space_result.data()[i], deg=True)
       amp_r,phi_r = complex_math.abs_arg(
-        reciprocal_space_result.data()[i],deg=1)
-      phase_err = scitbx.math.phase_error(phi_d, phi_r, deg=1)
+        reciprocal_space_result.data()[i],deg=True)
+      phase_err = scitbx.math.phase_error(phi_d, phi_r, deg=True)
       assert phase_err < 1.0 or abs(from_map_data[i]) < 1.e-6
   exercise_truncate(q_large)
 

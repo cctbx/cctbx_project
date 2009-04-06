@@ -19,8 +19,8 @@ def exercise_flex_grid():
   assert g.origin() == ()
   assert g.all() == ()
   assert g.last() == ()
-  assert g.last(1) == ()
-  assert g.last(0) == ()
+  assert g.last(True) == ()
+  assert g.last(False) == ()
   assert not g.is_padded()
   assert not g.is_trivial_1d()
   g = flex.grid((2,3,5))
@@ -29,8 +29,8 @@ def exercise_flex_grid():
   assert g.origin() == (0,0,0)
   assert g.all() == (2,3,5)
   assert g.last() == (2,3,5)
-  assert g.last(1) == (2,3,5)
-  assert g.last(0) == (1,2,4)
+  assert g.last(True) == (2,3,5)
+  assert g.last(False) == (1,2,4)
   assert g((0,0,0)) == 0
   assert g((1,2,4)) == 29
   assert g.is_0_based()
@@ -55,21 +55,21 @@ def exercise_flex_grid():
   assert g.origin() == (1,2,3)
   assert g.all() == (3,4,5)
   assert g.last() == (4,6,8)
-  assert g.last(1) == (4,6,8)
-  assert g.last(0) == (3,5,7)
+  assert g.last(True) == (4,6,8)
+  assert g.last(False) == (3,5,7)
   assert g((1,2,3)) == 0
   assert g((3,5,7)) == 59
   assert not g.is_valid_index((0,0,0))
   assert not g.is_padded()
   assert not g.is_trivial_1d()
-  g = flex.grid((1,2,3), (4,6,8), 0)
+  g = flex.grid((1,2,3), (4,6,8), False)
   assert g.nd() == 3
   assert g.size_1d() == 120
   assert g.origin() == (1,2,3)
   assert g.all() == (4,5,6)
   assert g.last() == (5,7,9)
-  assert g.last(1) == (5,7,9)
-  assert g.last(0) == (4,6,8)
+  assert g.last(True) == (5,7,9)
+  assert g.last(False) == (4,6,8)
   assert g((1,2,3)) == 0
   assert g((4,6,8)) == 119
   assert not g.is_valid_index((0,0,0))
@@ -93,13 +93,13 @@ def exercise_flex_grid():
   assert g.focus() == l.focus()
   assert g == l
   assert not g != l
-  l = flex.grid((1,2,4), (4,6,8), 0).set_focus((3,-9,5))
+  l = flex.grid((1,2,4), (4,6,8), False).set_focus((3,-9,5))
   assert not g == l
   assert g != l
-  l = flex.grid((1,2,3), (4,7,8), 0).set_focus((3,-9,5))
+  l = flex.grid((1,2,3), (4,7,8), False).set_focus((3,-9,5))
   assert not g == l
   assert g != l
-  l = flex.grid((1,2,3), (4,6,8), 0).set_focus((4,-9,5))
+  l = flex.grid((1,2,3), (4,6,8), False).set_focus((4,-9,5))
   assert not g == l
   assert g != l
   g = flex.grid(1,2)
@@ -157,11 +157,11 @@ def exercise_flex_constructors():
   assert tuple(f.accessor().origin()) == (0,)
   assert tuple(f.accessor().all()) == (0,)
   assert tuple(f.accessor().last()) == (0,)
-  assert tuple(f.accessor().last(1)) == (0,)
-  assert tuple(f.accessor().last(0)) == (-1,)
+  assert tuple(f.accessor().last(True)) == (0,)
+  assert tuple(f.accessor().last(False)) == (-1,)
   assert tuple(f.accessor().focus()) == (0,)
-  assert tuple(f.accessor().focus(1)) == (0,)
-  assert tuple(f.accessor().focus(0)) == (-1,)
+  assert tuple(f.accessor().focus(True)) == (0,)
+  assert tuple(f.accessor().focus(False)) == (-1,)
   assert f.accessor().is_0_based()
   assert not f.accessor().is_padded()
   assert f.accessor().is_trivial_1d()
@@ -170,12 +170,12 @@ def exercise_flex_constructors():
   assert tuple(f.origin()) == (0,)
   assert tuple(f.all()) == (0,)
   assert tuple(f.last()) == (0,)
-  assert tuple(f.last(1)) == (0,)
-  assert tuple(f.last(0)) == (-1,)
+  assert tuple(f.last(True)) == (0,)
+  assert tuple(f.last(False)) == (-1,)
   assert not f.is_padded()
   assert tuple(f.focus()) == (0,)
-  assert tuple(f.focus(1)) == (0,)
-  assert tuple(f.focus(0)) == (-1,)
+  assert tuple(f.focus(True)) == (0,)
+  assert tuple(f.focus(False)) == (-1,)
   assert f.focus_size_1d() == 0
   assert f.is_trivial_1d()
   assert tuple(f) == ()
@@ -308,9 +308,9 @@ def exercise_misc():
   f = flex.double(g)
   assert f.focus_size_1d() == 2*3*4
   assert f.shift_origin().accessor() == g.shift_origin()
-  b = flex.bool([0,0,1,0,1,1,1,0,0,1,1,0,0,0])
+  b = flex.bool([bool(f) for f in [0,0,1,0,1,1,1,0,0,1,1,0,0,0]])
   assert b.md5().hexdigest() == "a3a1ff7423c672e6252003c23ad5420f"
-  b = flex.bool([0,0,1,0,1,0,1,0,0,1,1,0,0,0])
+  b = flex.bool([bool(f) for f in [0,0,1,0,1,0,1,0,0,1,1,0,0,0]])
   assert b.md5().hexdigest() == "bc115dabbd6dc87323302b082152be14"
   #
   class old_style:
@@ -506,7 +506,7 @@ def exercise_select():
   from scitbx import stl
   import scitbx.stl.vector
   a = flex.double((1,2,3,4,5))
-  b = flex.bool((0,1,0,1,1))
+  b = flex.bool([bool(f) for f in [0,1,0,1,1]])
   c = flex.size_t((0,2))
   d = stl.vector.unsigned((1,3))
   assert tuple(a.select(b)) == (2,4,5)
@@ -521,14 +521,15 @@ def exercise_select():
   assert tuple(a.set_selected(b, flex.double((7,8,9)))) == (1,7,3,8,9)
   assert tuple(a.set_selected(c, flex.double((-1,-2)))) == (-1,7,-2,8,9)
   assert tuple(a.set_selected(d, flex.double((-1,-2)))) == (-1,-1,-2,-2,9)
-  assert tuple(a.set_selected(flex.bool(5,0), flex.double()))==(-1,-1,-2,-2,9)
+  assert tuple(a.set_selected(
+    flex.bool(5,False), flex.double()))==(-1,-1,-2,-2,9)
   assert tuple(a.set_selected(flex.size_t(), flex.double()))==(-1,-1,-2,-2,9)
   assert tuple(a.set_selected(stl.vector.unsigned(), flex.double())) \
       == (-1,-1,-2,-2,9)
   assert tuple(a.set_selected(b, -4)) == (-1,-4,-2,-4,-4)
   assert tuple(a.set_selected(c, -3)) == (-3,-4,-3,-4,-4)
   assert tuple(a.set_selected(d, -2)) == (-3,-2,-3,-2,-4)
-  assert tuple(a.set_selected(flex.bool(5, 0), -9)) == (-3,-2,-3,-2,-4)
+  assert tuple(a.set_selected(flex.bool(5, False), -9)) == (-3,-2,-3,-2,-4)
   assert tuple(a.set_selected(flex.size_t(), -9)) == (-3,-2,-3,-2,-4)
   assert tuple(a.set_selected(stl.vector.unsigned(), -9)) == (-3,-2,-3,-2,-4)
   for i,v in enumerate([1,2,3,4]):
@@ -588,13 +589,13 @@ def exercise_select():
   assert [list(a) for a in flex.permutation_generator(size=0)] == [[]]
   assert [list(a) for a in flex.permutation_generator(size=1)] == [[0]]
   assert [list(a) for a in flex.permutation_generator(size=2)] == [[0,1],[1,0]]
-  a = flex.bool((0,1,0,1,1))
+  a = flex.bool([bool(f) for f in [0,1,0,1,1]])
   assert tuple(a.as_int()) == (0,1,0,1,1)
   assert tuple(a.as_double()) == (0,1,0,1,1)
   assert tuple(a.iselection()) == (1,3,4)
   assert tuple(a.iselection(test_value=True)) == (1,3,4)
   assert tuple(a.iselection(test_value=False)) == (0,2)
-  a = flex.bool((0,0,0,0,0))
+  a = flex.bool([False] * 5)
   assert tuple(a.iselection(False)) == (0,1,2,3,4)
   assert tuple(a.iselection(True)) == ()
   isel = stl.vector.unsigned([1,3])
@@ -997,30 +998,30 @@ def exercise_complex_functions():
   d = y[0]
   assert approx_equal(d.real, c.real)
   assert approx_equal(d.imag, c.imag)
-  p = flex.arg(x, 0)
-  y = flex.polar(a, p, 0)
+  p = flex.arg(x, False)
+  y = flex.polar(a, p, False)
   d = y[0]
   assert approx_equal(d.real, c.real)
   assert approx_equal(d.imag, c.imag)
-  p = flex.arg(x, 1)
-  y = flex.polar(a, p, 1)
+  p = flex.arg(x, True)
+  y = flex.polar(a, p, True)
   d = y[0]
   assert approx_equal(d.real, c.real)
   assert approx_equal(d.imag, c.imag)
-  y = flex.polar(a, p, 0)
+  y = flex.polar(a, p, False)
   d = y[0]
   assert not_approx_equal(d.real, c.real)
   assert not_approx_equal(d.imag, c.imag)
-  p = flex.arg(x, 0)
+  p = flex.arg(x, False)
   y = flex.polar(x, p)
   d = y[0]
   assert approx_equal(d.real, c.real)
   assert approx_equal(d.imag, c.imag)
-  y = flex.polar(x, p, 0)
+  y = flex.polar(x, p, False)
   d = y[0]
   assert approx_equal(d.real, c.real)
   assert approx_equal(d.imag, c.imag)
-  y = flex.polar(x, p, 1)
+  y = flex.polar(x, p, True)
   d = y[0]
   assert not_approx_equal(d.real, c.real)
   assert not_approx_equal(d.imag, c.imag)
@@ -2382,11 +2383,11 @@ def exercise_matrix_inversion_in_place():
             assert approx_equal(m_orig*x_i, b_i)
 
 def exercise_pickle_single_buffered():
-  a = flex.bool((1,0,1))
+  a = flex.bool((True,False,True))
   p = pickle.dumps(a)
   b = pickle.loads(p)
   assert b.size() == 3
-  assert tuple(b) == (1,0,1)
+  assert tuple(b) == (True,False,True)
   a = flex.double(())
   p = pickle.dumps(a)
   b = pickle.loads(p)
@@ -2448,7 +2449,7 @@ def pickle_large_arrays(max_exp, verbose):
       for e in xrange(max_exp+1):
         n = 2**e
         if (array_type == flex.bool):
-          val = 1
+          val = True
         elif (array_type == flex.size_t):
           val = 2147483647
         elif (array_type == flex.int):

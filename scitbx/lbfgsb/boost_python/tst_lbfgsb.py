@@ -28,7 +28,7 @@ def exercise_minimizer_interface():
   x = flex.double(n, 0)
   f = 1
   g = flex.double(n, -1)
-  assert minimizer.process(x, f, g, 0)
+  assert minimizer.process(x, f, g, False)
   assert minimizer.task() == "FG_START"
   assert minimizer.f() == 0
   assert minimizer.process(x, f, g)

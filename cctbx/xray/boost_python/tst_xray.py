@@ -473,7 +473,7 @@ def exercise_xray_scatterer():
   x.apply_symmetry(site_symmetry_ops=ss)
   x.apply_symmetry(site_symmetry_ops=ss, u_star_tolerance=0.5)
   ss = x.apply_symmetry(uc, sg.group(), 0.5, 0)
-  ss = x.apply_symmetry(uc, sg.group(), 0.5, 0, 0)
+  ss = x.apply_symmetry(uc, sg.group(), 0.5, 0, False)
   ss = x.apply_symmetry(
     unit_cell=uc,
     space_group=sg.group(),
@@ -858,13 +858,13 @@ def exercise_structure_factors():
   fc = xray.ext.structure_factors_simple(
     uc, sg.group(), mi, scatterers, scattering_type_registry).f_calc()
   assert approx_equal(flex.abs(fc), (10.50871, 9.049631))
-  assert approx_equal(flex.arg(fc, 1), (-36, 72))
+  assert approx_equal(flex.arg(fc, True), (-36, 72))
   assert approx_equal(flex.abs(fc), (10.50871, 9.049631))
-  assert approx_equal(flex.arg(fc, 1), (-36, 72))
+  assert approx_equal(flex.arg(fc, True), (-36, 72))
   fc = xray.ext.structure_factors_direct(
     uc, sg.group(), mi, scatterers, scattering_type_registry).f_calc()
   assert approx_equal(flex.abs(fc), (10.50871, 9.049631))
-  assert approx_equal(flex.arg(fc, 1), (-36, 72))
+  assert approx_equal(flex.arg(fc, True), (-36, 72))
   xray.tidy_us(
     scatterers=scatterers,
     unit_cell=uc,

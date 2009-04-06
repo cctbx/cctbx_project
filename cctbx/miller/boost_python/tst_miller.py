@@ -23,8 +23,8 @@ def exercise_sym_equiv():
   assert i[0].ht() == 0
   assert i[0].t_den() == s.t_den()
   assert i[0].ht_angle() == 0
-  assert i[0].ht_angle(0) == 0
-  assert i[0].ht_angle(1) == 0
+  assert i[0].ht_angle(False) == 0
+  assert i[0].ht_angle(True) == 0
   assert not i[0].friedel_flag()
   m = i[0].mate()
   assert m.h() == tuple([-x for x in h])
@@ -40,10 +40,10 @@ def exercise_sym_equiv():
     assert m.ht() == 8
     assert m.friedel_flag() == (i_mate != 0)
     assert approx_equal(m.phase_in(m.phase_eq(30)), 30)
-    assert approx_equal(m.phase_in(m.phase_eq(30, 0), 0), 30)
-    assert approx_equal(m.phase_in(m.phase_eq(30, 1), 1), 30)
+    assert approx_equal(m.phase_in(m.phase_eq(30, False), False), 30)
+    assert approx_equal(m.phase_in(m.phase_eq(30, True), True), 30)
     assert approx_equal(m.phase_eq(30*math.pi/180),
-                        m.phase_eq(30, 1)*math.pi/180)
+                        m.phase_eq(30, True)*math.pi/180)
     c = m.complex_in(m.complex_eq(1+2j))
     assert approx_equal(c.real, 1)
     assert approx_equal(c.imag, 2)
@@ -54,21 +54,21 @@ def exercise_sym_equiv():
   assert not r.sys_abs_was_tested()
   assert r.ht() < 0
   assert not e.is_centric()
-  assert e.multiplicity(0) == 6
-  assert e.multiplicity(1) == 3
-  assert e.f_mates(0) == 2
-  assert e.f_mates(1) == 1
+  assert e.multiplicity(False) == 6
+  assert e.multiplicity(True) == 3
+  assert e.f_mates(False) == 2
+  assert e.f_mates(True) == 1
   assert e.epsilon() == 1
-  for j in xrange(e.multiplicity(0)):
-    if (j < e.multiplicity(1)):
+  for j in xrange(e.multiplicity(False)):
+    if (j < e.multiplicity(True)):
       assert e(j).h() == e.indices()[j].h()
     else:
       assert e(j).friedel_flag()
   assert e.is_valid_phase(10)
-  assert e.is_valid_phase(10, 0)
-  assert e.is_valid_phase(10, 1)
-  assert e.is_valid_phase(10, 1, 1.e-5)
-  for anomalous_flag in (0,1):
+  assert e.is_valid_phase(10, False)
+  assert e.is_valid_phase(10, True)
+  assert e.is_valid_phase(10, True, 1.e-5)
+  for anomalous_flag in (False,True):
     j = e.p1_listing(anomalous_flag)
     assert len(j) == len(i)
   s = sgtbx.space_group("P 41")
@@ -76,19 +76,19 @@ def exercise_sym_equiv():
   e = miller.sym_equiv_indices(s, h)
   i = e.indices()
   assert e.is_centric()
-  assert e.multiplicity(0) == 4
-  assert e.multiplicity(1) == 4
-  assert e.f_mates(0) == 1
-  assert e.f_mates(1) == 1
+  assert e.multiplicity(False) == 4
+  assert e.multiplicity(True) == 4
+  assert e.f_mates(False) == 1
+  assert e.f_mates(True) == 1
   r = e.phase_restriction()
   assert r.ht() == 0
-  j = e.p1_listing(0)
+  j = e.p1_listing(False)
   assert len(j) == len(i)/2
 
 def exercise_map_to_asu(sg_symbol):
   sg_type = sgtbx.space_group_type(sg_symbol)
   index_abs_range = (4,4,4)
-  for anomalous_flag in (0,1):
+  for anomalous_flag in (False,True):
     m = miller.index_generator(
       sg_type, anomalous_flag, index_abs_range).to_array()
     a = flex.double()
@@ -109,7 +109,7 @@ def exercise_map_to_asu(sg_symbol):
     i_eq = random.randrange(h_eq.multiplicity(anomalous_flag))
     h_i = h_eq(i_eq)
     m_random.append(h_i.h())
-    for deg in (0,1):
+    for deg in (False,True):
       p_random[deg].append(h_i.phase_eq(p[deg][i], deg))
     f_random.append(h_i.complex_eq(f[i]))
     c_random.append(h_i.hendrickson_lattman_eq(c[i]))
@@ -130,7 +130,7 @@ def exercise_map_to_asu(sg_symbol):
     assert h_asym == m_random_copy[i]
   for i,a_asym in enumerate(a):
     assert a_asym == a_random[i]
-  for deg in (0,1):
+  for deg in (False,True):
     m_random_copy = m_random.deep_copy()
     miller.map_to_asu(
       sg_type, anomalous_flag, m_random_copy, p_random[deg], deg)
@@ -152,9 +152,9 @@ def exercise_asu():
   miller_indices = flex.miller_index(((1,2,3), (3,5,0)))
   for h in miller_indices:
     h_eq = miller.sym_equiv_indices(sg_type.group(), h)
-    for i_eq in xrange(h_eq.multiplicity(0)):
+    for i_eq in xrange(h_eq.multiplicity(False)):
       h_i = h_eq(i_eq)
-      for anomalous_flag in (0,1):
+      for anomalous_flag in (False,True):
         a = miller.asym_index(sg_type.group(), asu, h_i.h())
         assert a.h() == h
         o = a.one_column(anomalous_flag)
@@ -164,15 +164,15 @@ def exercise_asu():
         assert (o.h() != h) == (t.i_column() == 1)
         assert not anomalous_flag or (t.i_column() != 0) == h_i.friedel_flag()
         assert anomalous_flag or t.i_column() == 0
-  miller.map_to_asu(sg_type, 0, miller_indices)
+  miller.map_to_asu(sg_type, False, miller_indices)
   data = flex.double((0,0))
-  miller.map_to_asu(sg_type, 0, miller_indices, data)
-  miller.map_to_asu(sg_type, 0, miller_indices, data, 0)
-  miller.map_to_asu(sg_type, 0, miller_indices, data, 1)
+  miller.map_to_asu(sg_type, False, miller_indices, data)
+  miller.map_to_asu(sg_type, False, miller_indices, data, False)
+  miller.map_to_asu(sg_type, False, miller_indices, data, True)
   data = flex.complex_double((0,0))
-  miller.map_to_asu(sg_type, 0, miller_indices, data)
+  miller.map_to_asu(sg_type, False, miller_indices, data)
   data = flex.hendrickson_lattman(((1,2,3,4),(2,3,4,5)))
-  miller.map_to_asu(sg_type, 0, miller_indices, data)
+  miller.map_to_asu(sg_type, False, miller_indices, data)
   for sg_symbol in ("P 41", "P 31 1 2"):
     exercise_map_to_asu(sg_symbol)
   #
@@ -198,7 +198,7 @@ def exercise_asu():
 def exercise_bins():
   uc = uctbx.unit_cell((11,11,13,90,90,120))
   sg_type = sgtbx.space_group_type("P 3 2 1")
-  anomalous_flag = 0
+  anomalous_flag = False
   d_min = 1
   m = miller.index_generator(uc, sg_type, anomalous_flag, d_min).to_array()
   f = flex.double()
@@ -239,7 +239,7 @@ def exercise_bins():
   counts = binner1.counts()
   for i_bin in binner1.range_all():
     assert binner1.count(i_bin) == counts[i_bin]
-    assert binner1.selection(i_bin).count(1) == counts[i_bin]
+    assert binner1.selection(i_bin).count(True) == counts[i_bin]
   assert list(binner1.range_all()) == range(binner1.n_bins_all())
   assert list(binner1.range_used()) == range(1, binner1.n_bins_used()+1)
   binning2 = miller.binning(uc, n_bins - 2,
@@ -349,13 +349,13 @@ def exercise_expand():
     space_group=sg, anomalous_flag=True, indices=h, data=i)
   assert p1.data.all_eq(flex.int([13,13,13,13,17,17,17,17]))
   #
-  assert approx_equal(miller.statistical_mean(sg, 0, h, a), 4/3.)
-  assert approx_equal(miller.statistical_mean(sg, 1, h, a), 3/2.)
+  assert approx_equal(miller.statistical_mean(sg, False, h, a), 4/3.)
+  assert approx_equal(miller.statistical_mean(sg, True, h, a), 3/2.)
 
 def exercise_index_generator():
   uc = uctbx.unit_cell((11,11,13,90,90,120))
   sg_type = sgtbx.space_group_type("P 3 1 2")
-  for anomalous_flag in (0,1):
+  for anomalous_flag in (False,True):
     mig = miller.index_generator(uc, sg_type, anomalous_flag, 8)
     assert mig.unit_cell().is_similar_to(uc)
     assert mig.space_group_type().group() == sg_type.group()
@@ -366,12 +366,12 @@ def exercise_index_generator():
       assert tuple(mig.to_array()) == ((1, 0, 0),)
     else:
       assert tuple(mig.to_array()) == ((1, 0, 0), (-1, 0, 0))
-  assert tuple(miller.index_generator(uc, sg_type, 0, 8)) \
+  assert tuple(miller.index_generator(uc, sg_type, False, 8)) \
          == ((0,0,1), (1, 0, 0))
   index_abs_range = (4,4,4)
   for sg_symbol in ("P 31 1 2", "P 31 2 1"):
     sg_type = sgtbx.space_group_type(sg_symbol)
-    for anomalous_flag in (0,1):
+    for anomalous_flag in (False,True):
       miller_indices = miller.index_generator(
         sg_type, anomalous_flag, index_abs_range)
       miller_dict = {}
@@ -574,11 +574,11 @@ def exercise_phase_transfer():
   p = flex.double((10,20))
   t = miller.phase_transfer(sg, i, a, p, True)
   assert approx_equal(tuple(flex.abs(t)), flex.abs(a))
-  assert approx_equal(tuple(flex.arg(t, 1)), (-170,90))
+  assert approx_equal(tuple(flex.arg(t, True)), (-170,90))
   p = p * (math.pi/180)
   t = miller.phase_transfer(sg, i, a, p, False)
   assert approx_equal(tuple(flex.abs(t)), flex.abs(a))
-  assert approx_equal(tuple(flex.arg(t, 1)), (-170,90))
+  assert approx_equal(tuple(flex.arg(t, True)), (-170,90))
 
 def run():
   exercise_sym_equiv()

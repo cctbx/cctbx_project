@@ -442,7 +442,7 @@ class structure(crystal.special_position_settings):
     neutron_scattering_dict = {}
     reg = self.scattering_type_registry()
     for scattering_type in reg.type_index_pairs_as_dict().keys():
-      scattering_info = neutron_news_1992_table(scattering_type, 1)
+      scattering_info = neutron_news_1992_table(scattering_type, True)
       b = scattering_info.bound_coh_scatt_length()
       if(b.imag != 0.0): return None
       neutron_scattering_dict[scattering_type] = \

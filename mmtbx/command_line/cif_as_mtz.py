@@ -809,7 +809,7 @@ class guess_observation_type(object):
       neutron_scattering_dict = {}
       reg = fmodel_dc.xray_structure.scattering_type_registry()
       for scattering_type in reg.type_index_pairs_as_dict().keys():
-        scattering_info = neutron_news_1992_table(scattering_type, 1)
+        scattering_info = neutron_news_1992_table(scattering_type, True)
         b = scattering_info.bound_coh_scatt_length()
         if(b.imag != 0.0):
           neutron_flag = False

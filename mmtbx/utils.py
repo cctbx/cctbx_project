@@ -413,8 +413,12 @@ class determine_data_and_flags(object):
     print >> self.log
     print >> self.log, "Test (R-free flags) flag value:", test_flag_value
     print >> self.log
-    r_free_flags = r_free_flags.array(
-      data = r_free_flags.data() == test_flag_value)
+    if (isinstance(r_free_flags.data(), flex.bool)):
+      r_free_flags = r_free_flags.array(
+        data = r_free_flags.data() == bool(test_flag_value))
+    else:
+      r_free_flags = r_free_flags.array(
+        data = r_free_flags.data() == test_flag_value)
     r_free_flags_md5_hexdigest = \
       r_free_flags.map_to_asu().sort(by_value="packed_indices").data() \
         .md5().hexdigest()

@@ -440,7 +440,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   selection = flex.bool()
   for sc in scatterers:
     sc.occupancy = random.random()
-    selection.append(random.choice((0,1)))
+    selection.append(random.choice((False,True)))
   xs = xray.structure(sp, scatterers)
   for sel in [None, selection]:
     xs_mod = xs.deep_copy_scatterers()
@@ -535,7 +535,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
             assert approx_equal(sc_dc.u_star[i] / sc.u_star[i], 2.0)
 
 ### shake_sites
-  selection_ = flex.bool([random.choice((0,1)) for i in xrange(500)])
+  selection_ = flex.bool([random.choice((False,True)) for i in xrange(500)])
   xs = random_structure.xray_structure(
     space_group_info = sgtbx.space_group_info("P1"),
     elements         = ["N"]*500,
@@ -574,7 +574,8 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   xs.re_apply_symmetry(i_scatterer=0)
   assert approx_equal(xs.scatterers()[0].weight(), 1.0)
 # apply_rigid_body_shift
-  selection_=flex.bool([random.choice((0,1)) for i in xrange(100)]).iselection()
+  selection_=flex.bool([random.choice((False,True))
+    for i in xrange(100)]).iselection()
   xs = random_structure.xray_structure(
     space_group_info = sgtbx.space_group_info("P1"),
     elements         = ["N"]*100,
@@ -589,7 +590,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
       d = math.sqrt(r[0]**2+r[1]**2+r[2]**2)
       assert approx_equal(
         d, xs.mean_distance(other = xs_mod, selection = selection))
-  selection_=flex.bool([random.choice((0,1)) for i in xrange(100)])
+  selection_=flex.bool([random.choice((False,True)) for i in xrange(100)])
   xs_mod = xs.deep_copy_scatterers()
   xs_mod.apply_rigid_body_shift(
     rot=(0.999,-0.017,0.035,0.019,0.998,-0.052,-0.033,0.052,0.998),
@@ -662,7 +663,8 @@ def exercise_set_occupancies():
   xs.set_occupancies(value = 2)
   occ = xs.scatterers().extract_occupancies()
   assert occ.all_eq(2.0)
-  xs.set_occupancies(value = -1, selection = flex.bool([1,1,0,1,0]))
+  xs.set_occupancies(
+    value = -1, selection = flex.bool([True,True,False,True,False]))
   occ = xs.scatterers().extract_occupancies()
   assert approx_equal(occ, [-1.0, -1.0, 2.0, -1.0, 2.0])
 
