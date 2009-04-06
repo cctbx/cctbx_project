@@ -507,7 +507,7 @@ def exercise_f_model_option_custom(pdb_dir, verbose):
       assert approx_equal(d_min, high_resolution, 0.1)
       assert approx_equal(d_max, low_resolution, 0.1)
       assert "%s"%ma.info() == "%s:FOBS"%(os.path.basename(file_name)+".hkl")
-      sf_calc_params = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+      sf_calc_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
       sf_calc_params.algorithm = algorithm
       fmodel = mmtbx.f_model.manager(
         xray_structure = xray_structure,

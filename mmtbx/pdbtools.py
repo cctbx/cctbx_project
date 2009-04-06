@@ -45,7 +45,7 @@ scale = 1.0
 structure_factors_accuracy
   .style = menu_item auto_align noauto parent_submenu:advanced
 {
-  include scope mmtbx.f_model.sf_and_grads_accuracy_params
+  include scope mmtbx.f_model.sf_and_grads_accuracy_master_params
 }
 mask
   .style = menu_item auto_align noauto parent_submenu:advanced

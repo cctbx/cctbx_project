@@ -46,7 +46,7 @@ def run_call_back(flags, space_group_info):
     group.f_prime = 0
     group.f_double_prime = 0
     group.copy_to_scatterers_in_place(scatterers=structure.scatterers())
-  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   sfg_params.algorithm = "direct"
   fmodel = mmtbx.f_model.manager(
     xray_structure=structure,

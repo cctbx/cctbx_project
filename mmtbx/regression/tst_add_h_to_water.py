@@ -256,7 +256,7 @@ def exercise_02():
     xray_structure = xrs_exact,
     algorithm      = "direct",
     cos_sin_table  = False).f_calc())
-  sf_par = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+  sf_par = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   sf_par.algorithm = "direct"
   sf_par.cos_sin_table = False
   flags = f_obs.array(data=flex.bool(f_obs.data().size(),False))

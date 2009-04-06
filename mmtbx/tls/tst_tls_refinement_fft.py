@@ -105,7 +105,7 @@ def exercise_2(eps = 1.e-6):
   tools.show_tls(tlsos = tlsos, text = "ANSWER")
 
 ###> Set up fmodel
-  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   sfg_params.algorithm = "direct"
   sfg_params.cos_sin_table = False
   dummy = xray_structure.structure_factors(algorithm = sfg_params.algorithm,

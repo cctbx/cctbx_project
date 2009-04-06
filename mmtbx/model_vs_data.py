@@ -304,11 +304,6 @@ def run(args,
       default=None,
       type="string",
       help="Label for free R flags.")
-    .option(None, "--twin_law",
-      action="store",
-      default=None,
-      type="string",
-      help="Provide twin law operator if twinned data used (for example: h,-h-k,-l).")
     .option(None, "--scattering_table",
       action="store",
       default="n_gaussian",
@@ -414,7 +409,6 @@ def run(args,
   fmodel = utils.fmodel_simple(xray_structures = xray_structures,
                                f_obs           = f_obs,
                                r_free_flags    = r_free_flags,
-                               twin_law        = command_line.options.twin_law,
                                bss_params      = bss_params)
   n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
   mvd_obj.collect(data =

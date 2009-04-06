@@ -429,7 +429,6 @@ class xtriage_analyses(object):
 
     d_star_sq_low_limit = default_low_reso_limit_wilson_ratio
     d_star_sq_low_limit = 1.0/((d_star_sq_low_limit+1e-6)**2.0)
-
     self.twin_results = twin_analyses.twin_analyses(
       self.miller_obs,
       d_star_sq_low_limit=d_star_sq_low_limit,
@@ -823,9 +822,9 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     ## Append the CCP4i plots to the log StringIO object if desired
     if params.scaling.input.parameters.reporting.ccp4_style_graphs:
       print >> string_buffer, string_buffer_plots.getvalue()
-
-    output_file = open( params.scaling.input.parameters.reporting.log  ,'w')
-    output_file.write(string_buffer.getvalue())
+    if(params.scaling.input.parameters.reporting.log is not None):
+      output_file = open( params.scaling.input.parameters.reporting.log  ,'w')
+      output_file.write(string_buffer.getvalue())
 
 
 
