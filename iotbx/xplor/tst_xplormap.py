@@ -19,8 +19,8 @@ def exercise_map_gridding():
   g = iotbx.xplor.map.gridding(n=(10,20,30), first=(-3,-4,-5), last=(5,4,3))
   fg = g.as_flex_grid()
   assert fg.origin() == g.first
-  assert fg.last(0) == g.last
-  assert fg.last(1) == (6,5,4)
+  assert fg.last(False) == g.last
+  assert fg.last(True) == (6,5,4)
   assert fg.all() == (9,9,9)
   assert not fg.is_padded()
 
@@ -55,7 +55,7 @@ def read_xplor(file_name):
   assert approx_equal(a.average, -0.5274E-10)
   assert approx_equal(a.standard_deviation, 0.1792E+00)
   assert a.data.origin() == (1,-4,-6)
-  assert a.data.last(0) == (10,0,-3)
+  assert a.data.last(False) == (10,0,-3)
   assert a.data.focus() == (11,1,-2)
   assert approx_equal(a.data[:10],
     [-2.63210E-01, -4.36970E-01, -5.71930E-01, -6.09230E-01, -2.07220E-01,
@@ -133,7 +133,7 @@ def recycle():
     assert eps_eq(read.average, stats.mean(), eps=1.e-4)
     assert eps_eq(read.standard_deviation, stats.sigma(), eps=1.e-4)
     assert read.data.origin() == first
-    assert read.data.last(0) == last
+    assert read.data.last(False) == last
     assert read.data.focus() == data.focus()
     assert eps_eq(read.data, data, eps=1.e-4)
 

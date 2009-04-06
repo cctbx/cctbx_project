@@ -18,7 +18,7 @@ class environment(object):
   def dynamic(self):
     return omp_get_dynamic()
   def set_dynamic(self, flag):
-    omp_set_dynamic(flag)
+    omp_set_dynamic(int(flag))
     return self
   dynamic = property(
     dynamic, set_dynamic,
@@ -27,7 +27,7 @@ class environment(object):
   def nested(self):
     return omp_get_nested()
   def set_nested(self, flag):
-    omp_set_nested(flag)
+    omp_set_nested(int(flag))
     return self
   nested = property(
     nested, set_nested,

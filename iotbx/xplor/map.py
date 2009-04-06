@@ -53,7 +53,7 @@ class gridding(object):
     return result
 
   def as_flex_grid(self):
-    return flex.grid(self.first, self.last, 0)
+    return flex.grid(self.first, self.last, False)
 
   def is_compatible_flex_grid(self, flex_grid, is_p1_cell=False):
     if (flex_grid.nd() != 3): return False

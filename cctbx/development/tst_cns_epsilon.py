@@ -32,7 +32,7 @@ def verify(crystal_symmetry, anomalous_flag, reflection_file):
     m = space_group.multiplicity(h, anomalous_flag)
     e = space_group.epsilon(h)
     c = space_group.is_centric(h)
-    p = space_group.phase_restriction(h).ht_angle(1)
+    p = space_group.phase_restriction(h).ht_angle(True)
 
     if (c or anomalous_flag):
       assert e == space_group.order_p() / m
@@ -59,7 +59,7 @@ def verify(crystal_symmetry, anomalous_flag, reflection_file):
     assert (eq.multiplicity(anomalous_flag) == m)
     assert (eq.epsilon() == e)
     assert (eq.is_centric() == c)
-    assert (eq.phase_restriction().ht_angle(1) == p)
+    assert (eq.phase_restriction().ht_angle(True) == p)
 
 def write_cns_input(crystal_symmetry, anomalous_flag, d_min):
   cns_input = make_cns_input.xray_unit_cell(crystal_symmetry.unit_cell())

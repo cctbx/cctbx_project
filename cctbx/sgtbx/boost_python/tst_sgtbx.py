@@ -509,14 +509,14 @@ def exercise_rt_mx():
   s = rt_mx("y,y-x,z+1/4", "", 3, 8)
   assert str(s) == "y,-x+y,z+1/4"
   assert s.as_xyz() == str(s)
-  assert s.as_xyz(0) == str(s)
-  assert s.as_xyz(1) == "y,-x+y,z+.25"
-  assert s.as_xyz(0, 0) == str(s)
-  assert s.as_xyz(0, 1) == "y,-x+y,1/4+z"
-  assert s.as_xyz(0, 0, "xyz") == str(s)
-  assert s.as_xyz(0, 0, "abc") == "b,-a+b,c+1/4"
-  assert s.as_xyz(0, 0, "xyz", ",") == str(s)
-  assert s.as_xyz(0, 0, "xyz", " ; ") == "y ; -x+y ; z+1/4"
+  assert s.as_xyz(False) == str(s)
+  assert s.as_xyz(True) == "y,-x+y,z+.25"
+  assert s.as_xyz(False, False) == str(s)
+  assert s.as_xyz(False, True) == "y,-x+y,1/4+z"
+  assert s.as_xyz(False, False, "xyz") == str(s)
+  assert s.as_xyz(False, False, "abc") == "b,-a+b,c+1/4"
+  assert s.as_xyz(False, False, "xyz", ",") == str(s)
+  assert s.as_xyz(False, False, "xyz", " ; ") == "y ; -x+y ; z+1/4"
   assert s.as_int_array() == (0,3,0,-3,3,0,0,0,3,0,0,2)
   assert s.as_double_array() == (0,1,0,-1,1,0,0,0,1,0,0,0.25)
   assert s.new_denominators(6).r().den() == 6
@@ -673,8 +673,8 @@ def exercise_change_of_basis_op():
   assert d.c().r().den() == 3
   assert d.c().t().den() == 4
   c = change_of_basis_op("z,x,y")
-  assert c.select(0) == c.c()
-  assert c.select(1) == c.c_inv()
+  assert c.select(False) == c.c()
+  assert c.select(True) == c.c_inv()
   d = c.inverse()
   assert c.c() == d.c_inv()
   assert d.c() == c.c_inv()
@@ -736,20 +736,20 @@ def exercise_space_group():
   p = sgtbx.parse_string("P 1")
   g = space_group(p)
   p = sgtbx.parse_string("P 1")
-  g = space_group(p, 0)
+  g = space_group(p, False)
   p = sgtbx.parse_string("P 1")
-  g = space_group(p, 0, 0)
+  g = space_group(p, False, False)
   p = sgtbx.parse_string("P 1")
-  g = space_group(p, 0, 0, 0)
+  g = space_group(p, False, False, False)
   assert g.t_den() == sgtbx.sg_t_den
   p = sgtbx.parse_string("P 1")
-  g = space_group(p, 0, 0, 0, 2*sgtbx.sg_t_den)
+  g = space_group(p, False, False, False, 2*sgtbx.sg_t_den)
   assert g.t_den() == 2*sgtbx.sg_t_den
   g = space_group("P 1")
-  g = space_group("P 1", 1)
-  g = space_group("1", 0, 1)
-  g = space_group("1", 0, 1, 1)
-  g = space_group("1", 0, 1, 1, 3*sgtbx.sg_t_den)
+  g = space_group("P 1", True)
+  g = space_group("1", False, True)
+  g = space_group("1", False, True, True)
+  g = space_group("1", False, True, True, 3*sgtbx.sg_t_den)
   assert g.t_den() == 3*sgtbx.sg_t_den
   g = space_group(sgtbx.space_group_symbols(1))
   g = space_group(g)
@@ -807,10 +807,10 @@ def exercise_space_group():
   assert len(g) == 4
   assert g.n_equivalent_positions() == 4
   p = sgtbx.parse_string("P 2x")
-  g.parse_hall_symbol(p, 1)
+  g.parse_hall_symbol(p, True)
   assert g.order_z() == 8
   p = sgtbx.parse_string("-1")
-  g.parse_hall_symbol(p, 0, 1)
+  g.parse_hall_symbol(p, False, True)
   assert g.order_z() == 16
   g = space_group("P 4")
   c = sgtbx.change_of_basis_op("x,y,z")
@@ -868,10 +868,10 @@ def exercise_space_group():
   assert not p.sys_abs_was_tested()
   assert p.ht() == 2
   assert g.is_valid_phase((1,0,0), p.ht_angle())
-  assert g.is_valid_phase((1,0,0), p.ht_angle(), 0)
-  assert g.is_valid_phase((1,0,0), p.ht_angle(1), 1)
-  assert not g.is_valid_phase((1,0,0), p.ht_angle()+math.pi/180, 0)
-  assert g.is_valid_phase((1,0,0), p.ht_angle()+math.pi/180, 0, 1.e6)
+  assert g.is_valid_phase((1,0,0), p.ht_angle(), False)
+  assert g.is_valid_phase((1,0,0), p.ht_angle(True), True)
+  assert not g.is_valid_phase((1,0,0), p.ht_angle()+math.pi/180, False)
+  assert g.is_valid_phase((1,0,0), p.ht_angle()+math.pi/180, False, 1.e6)
   assert approx_equal(g.nearest_valid_phases(
     miller_indices=flex.miller_index([(1,2,3),(1,0,0)]),
     phases=flex.double([0.123,0.234])), [0.123, 0.52359877559829882])
@@ -879,10 +879,10 @@ def exercise_space_group():
     miller_indices=flex.miller_index([(1,2,3),(1,0,0)]),
     phases=flex.double([123,234]),
     deg=True), [123, 210])
-  assert g.multiplicity((1,2,3), 0) == 8
-  assert g.multiplicity((1,2,3), 1) == 4
-  assert tuple(g.multiplicity(m, 0)) == (2,2,4)
-  assert tuple(g.multiplicity(m, 1)) == (1,1,4)
+  assert g.multiplicity((1,2,3), False) == 8
+  assert g.multiplicity((1,2,3), True) == 4
+  assert tuple(g.multiplicity(m, False)) == (2,2,4)
+  assert tuple(g.multiplicity(m, True)) == (1,1,4)
   assert g.epsilon((1,2,3)) == 1
   assert tuple(g.epsilon(m)) == (4,4,1)
   u = uctbx.unit_cell((3, 3, 4, 90, 90, 120))
@@ -1018,17 +1018,17 @@ def exercise_space_group_type():
   assert t.hall_symbol() == " P 2y (z,x,y)"
   assert t.universal_hermann_mauguin_symbol() == "P 1 2 1 (c,a,b)"
   t = space_group_type("P 3")
-  assert len(t.addl_generators_of_euclidean_normalizer(0, 0)) == 0
-  assert len(t.addl_generators_of_euclidean_normalizer(1, 0)) == 1
-  assert len(t.addl_generators_of_euclidean_normalizer(0, 1)) == 2
-  assert len(t.addl_generators_of_euclidean_normalizer(1, 1)) == 3
-  g = t.expand_addl_generators_of_euclidean_normalizer(0, 0)
+  assert len(t.addl_generators_of_euclidean_normalizer(False, False)) == 0
+  assert len(t.addl_generators_of_euclidean_normalizer(True, False)) == 1
+  assert len(t.addl_generators_of_euclidean_normalizer(False, True)) == 2
+  assert len(t.addl_generators_of_euclidean_normalizer(True, True)) == 3
+  g = t.expand_addl_generators_of_euclidean_normalizer(False, False)
   assert g == t.group()
-  j = t.expand_addl_generators_of_euclidean_normalizer(1, 0).type()
+  j = t.expand_addl_generators_of_euclidean_normalizer(True, False).type()
   assert j.lookup_symbol() == "P -3"
-  j = t.expand_addl_generators_of_euclidean_normalizer(0, 1).type()
+  j = t.expand_addl_generators_of_euclidean_normalizer(False, True).type()
   assert j.lookup_symbol() == "P 6 m m"
-  j = t.expand_addl_generators_of_euclidean_normalizer(1, 1).type()
+  j = t.expand_addl_generators_of_euclidean_normalizer(True, True).type()
   assert j.lookup_symbol() == "P 6/m m m"
   assert not space_group_type("P 3").is_enantiomorphic()
   assert space_group_type("P 31").is_enantiomorphic()
@@ -1110,9 +1110,9 @@ def exercise_phase_info():
   g = sgtbx.space_group("P 61 (1 2 0)")
   p = phase_info(g, (1,2,3))
   assert p.sys_abs_was_tested()
-  p = phase_info(g, (1,2,3), 0)
+  p = phase_info(g, (1,2,3), False)
   assert p.sys_abs_was_tested()
-  p = phase_info(g, (1,2,3), 1)
+  p = phase_info(g, (1,2,3), True)
   assert not p.sys_abs_was_tested()
   p = phase_info(g, (0,0,6))
   assert not p.is_sys_absent()
@@ -1126,8 +1126,8 @@ def exercise_phase_info():
   assert p.ht() == 2
   assert p.t_den() == g.t_den()
   assert approx_equal(p.ht_angle(), float(p.ht()) / p.t_den() * math.pi)
-  assert p.ht_angle(0) == p.ht_angle()
-  assert approx_equal(p.ht_angle(1), p.ht_angle()*180/math.pi)
+  assert p.ht_angle(False) == p.ht_angle()
+  assert approx_equal(p.ht_angle(True), p.ht_angle()*180/math.pi)
   p = phase_info(sgtbx.space_group("P 2ac 2ab"), (0,10,8))
   assert approx_equal(p.nearest_valid_phase(1.e-15), 0)
   assert approx_equal(p.nearest_valid_phase(-1.e-15), 0)
@@ -1146,24 +1146,24 @@ def exercise_phase_info():
   for i in xrange(-3, 4):
     phi = p.ht_angle() + i * math.pi
     assert p.is_valid_phase(phi)
-    assert p.is_valid_phase(phi*180/math.pi, 1)
-    assert p.is_valid_phase(phi, 0, 1.e-6)
+    assert p.is_valid_phase(phi*180/math.pi, True)
+    assert p.is_valid_phase(phi, False, 1.e-6)
     phi = p.ht_angle() + i * math.pi + math.pi / 180
     assert not p.is_valid_phase(phi)
-    assert not p.is_valid_phase(phi*180/math.pi, 1)
-    assert not p.is_valid_phase(phi, 0, 1.e-6)
-    assert p.is_valid_phase(phi, 0, 1.e6)
+    assert not p.is_valid_phase(phi*180/math.pi, True)
+    assert not p.is_valid_phase(phi, False, 1.e-6)
+    assert p.is_valid_phase(phi, False, 1.e6)
     assert p.is_valid_phase(p.nearest_valid_phase(phi))
-    assert p.is_valid_phase(p.nearest_valid_phase(phi, 0), 0)
-    assert p.is_valid_phase(p.nearest_valid_phase(phi+1.e-15, 0), 0)
-    assert p.is_valid_phase(p.nearest_valid_phase(phi-1.e-15, 0), 0)
-    assert p.is_valid_phase(p.nearest_valid_phase(phi+math.pi+1.e-15, 0), 0)
-    assert p.is_valid_phase(p.nearest_valid_phase(phi+math.pi-1.e-15, 0), 0)
-    assert p.is_valid_phase(p.nearest_valid_phase(phi, 1), 1)
-    assert p.is_valid_phase(p.nearest_valid_phase(phi+1.e-15, 1), 1)
-    assert p.is_valid_phase(p.nearest_valid_phase(phi-1.e-15, 1), 1)
-    assert p.is_valid_phase(p.nearest_valid_phase(phi+180+1.e-15, 1), 1)
-    assert p.is_valid_phase(p.nearest_valid_phase(phi+180-1.e-15, 1), 1)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi, False), False)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi+1.e-15, False), False)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi-1.e-15, False), False)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi+math.pi+1.e-15, False), False)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi+math.pi-1.e-15, False), False)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi, True), True)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi+1.e-15, True), True)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi-1.e-15, True), True)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi+180+1.e-15, True), True)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi+180-1.e-15, True), True)
   for i in xrange(-3, 4):
     phi = p.ht_angle() + i * math.pi
     f = complex_math.polar((1, phi))
@@ -1696,11 +1696,11 @@ def exercise_sym_equiv_sites():
   e = sym_equiv_sites(g, (0.016, 0.895, 0.111), uctbx.unit_cell(()))
   d = sgtbx.min_sym_equiv_distance_info(e, (0.939, 0.128, 0.178))
   assert approx_equal(d.dist()**2, 0.064707)
-  for hall_symbol,shift_flags in (("P 1", (1,1,1)),
-                                  ("P 2", (0,0,1)),
-                                  ("P -2", (1,1,0)),
-                                  ("P 3x", (1,0,0)),
-                                  ("P 3 2", (0,0,0))):
+  for hall_symbol,shift_flags in (("P 1", (True,True,True)),
+                                  ("P 2", (False,False,True)),
+                                  ("P -2", (True,True,False)),
+                                  ("P 3x", (True,False,False)),
+                                  ("P 3 2", (False,False,False))):
     for x in ((1.732, -1.414, 2.236), (0.939, 0.128, 0.178)):
       g = sgtbx.space_group(hall_symbol)
       e = sym_equiv_sites(g, x, uctbx.unit_cell(()))
@@ -1972,7 +1972,7 @@ def exercise_search_symmetry():
   s = sgtbx.search_symmetry(
     flags=sgtbx.search_symmetry_flags(True, 0, False, True, True),
     space_group_type=sg149.type())
-  assert s.flags()==sgtbx.search_symmetry_flags(True, False, False, True, True)
+  assert s.flags() == sgtbx.search_symmetry_flags(True, 0, False, True, True)
   assert s.subgroup().type().lookup_symbol() == "P 6/m m m"
   s = sgtbx.search_symmetry(
     flags=sgtbx.search_symmetry_flags(True, 0, True, True, True),

@@ -177,12 +177,13 @@ def exercise(target_functor, data_type, parameter_name, space_group_info,
       assert abs(target_result.target()) < 1.e-5
 
   gradient_flags=xray.structure_factors.gradient_flags(
-     site=(parameter_name=="site" or random.choice((0,1))),
-     u_iso=(parameter_name=="u_iso" or random.choice((0,1))),
-     u_aniso=(parameter_name=="u_star" or random.choice((0,1))),
-     occupancy=(parameter_name=="occupancy" or random.choice((0,1))),
-     fp=(parameter_name=="fp" or random.choice((0,1))),
-     fdp=(parameter_name=="fdp" or (anomalous_flag and random.choice((0,1)))))
+     site=(parameter_name=="site" or random.choice((False,True))),
+     u_iso=(parameter_name=="u_iso" or random.choice((False,True))),
+     u_aniso=(parameter_name=="u_star" or random.choice((False,True))),
+     occupancy=(parameter_name=="occupancy" or random.choice((False,True))),
+     fp=(parameter_name=="fp" or random.choice((False,True))),
+     fdp=(parameter_name=="fdp" or (anomalous_flag
+                                    and random.choice((False,True)))))
   xray.set_scatterer_grad_flags(scatterers = structure.scatterers(),
                                 site       = gradient_flags.site,
                                 u_iso      = gradient_flags.u_iso,

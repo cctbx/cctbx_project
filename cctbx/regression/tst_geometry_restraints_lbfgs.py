@@ -65,7 +65,7 @@ def exercise(verbose=0):
     for sites_cart_selection in [True, False]:
       sites_cart = sites_cart_manual.deep_copy()
       if sites_cart_selection:
-        sites_cart_selection = flex.bool(sites_cart.size(), 1)
+        sites_cart_selection = flex.bool(sites_cart.size(), True)
         sites_cart_selection[1] = False
       assert bond_proxies.asu.size() == 0
       bond_params_table = geometry_restraints.extract_bond_params(

@@ -93,7 +93,7 @@ def exercise_miller_array_as_cns_hkl():
       crystal_symmetry=crystal_symmetry,
       indices=flex.miller_index([(1,2,3),(-3,5,-7)]),
       anomalous_flag=anomalous_flag)
-    for data in [flex.bool((0,1)),
+    for data in [flex.bool((False,True)),
                  flex.int((-3,4)),
                  flex.double((10,13)),
                  flex.complex_double((10,13))]:

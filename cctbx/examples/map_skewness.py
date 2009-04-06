@@ -11,7 +11,7 @@ from cctbx.array_family import flex
 
 def randomize_phases(f_calc, fudge_factor):
   assert 0 <= fudge_factor <= 1
-  phases = flex.arg(f_calc.data(), 1)
+  phases = flex.arg(f_calc.data(), True)
   centric_flags = f_calc.centric_flags().data()
   acentric_flags = ~centric_flags
   centric_phases = phases.select(centric_flags)

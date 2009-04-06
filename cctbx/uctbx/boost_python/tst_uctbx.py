@@ -23,10 +23,10 @@ def exercise_functions():
     2 * asin(1.5/2*sqrt(d_star_sq)))
   assert approx_equal(
     uctbx.d_star_sq_as_two_theta(d_star_sq, 1.5),
-    uctbx.d_star_sq_as_two_theta(d_star_sq, 1.5, 0))
+    uctbx.d_star_sq_as_two_theta(d_star_sq, 1.5, False))
   assert approx_equal(
     uctbx.d_star_sq_as_two_theta(d_star_sq, 1.5)*180/pi,
-    uctbx.d_star_sq_as_two_theta(d_star_sq, 1.5, 1))
+    uctbx.d_star_sq_as_two_theta(d_star_sq, 1.5, True))
   #
   assert uctbx.fractional_unit_shifts(distance_frac=[0,0,0]) == (0,0,0)
   assert uctbx.fractional_unit_shifts([0.6,7.4,-0.4]) == (1,7,0)
@@ -187,10 +187,10 @@ def exercise_miller_index_methods():
     u.two_theta(h, 1.5), 2 * asin(1.5/2*sqrt(d_star_sq_123)))
   assert approx_equal(
     u.two_theta(h, 1.5),
-    u.two_theta(h, 1.5, 0))
+    u.two_theta(h, 1.5, False))
   assert approx_equal(
     u.two_theta(h, 1.5)*180/pi,
-    u.two_theta(h, 1.5, 1))
+    u.two_theta(h, 1.5, True))
   miller_indices = flex.miller_index(((1,2,3), (-3,4,-5), (2,-3,4)))
   for d_spacing_measure in (u.d_star_sq,
                             u.stol_sq,
@@ -206,7 +206,7 @@ def exercise_miller_index_methods():
   for i,v in enumerate(values):
     assert approx_equal(
       v, u.two_theta(miller_indices[i], wavelength))
-  for deg in (0,1):
+  for deg in (False,True):
     values = u.two_theta(miller_indices, wavelength, deg)
     for i,v in enumerate(values):
       assert approx_equal(

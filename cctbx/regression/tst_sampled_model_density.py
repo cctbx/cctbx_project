@@ -160,7 +160,7 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
     sf_map = rfft.forward(map)
     assert sf_map.all() == rfft.n_complex()
     assert sf_map.focus() == rfft.n_complex()
-    collect_conj = 1
+    collect_conj = True
   else:
     cfft = fftpack.complex_to_complex_3d(rfft.n_real())
     map = sampled_density.complex_map()
@@ -169,7 +169,7 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
     sf_map = cfft.backward(map)
     assert sf_map.all() == cfft.n()
     assert sf_map.focus() == cfft.n()
-    collect_conj = 0
+    collect_conj = False
   f_fft_data = maptbx.structure_factors.from_map(
     space_group=f_direct.space_group(),
     anomalous_flag=sampled_density.anomalous_flag(),
