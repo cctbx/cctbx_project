@@ -611,6 +611,8 @@ class environment:
         write_full_flex_fwd_h=command_line.options.write_full_flex_fwd_h,
         boost_python_no_py_signatures
           =command_line.options.boost_python_no_py_signatures,
+        boost_python_bool_int_strict
+          =command_line.options.boost_python_bool_int_strict,
         enable_boost_threads=command_line.options.enable_boost_threads,
         enable_openmp_if_possible
           =command_line.options.enable_openmp_if_possible)
@@ -1478,6 +1480,7 @@ class build_options:
         write_full_flex_fwd_h=default_write_full_flex_fwd_h,
         build_boost_python_extensions=default_build_boost_python_extensions,
         boost_python_no_py_signatures=False,
+        boost_python_bool_int_strict=True,
         enable_boost_threads=default_enable_boost_threads,
         enable_openmp_if_possible=default_enable_openmp_if_possible):
     adopt_init_args(self, locals())
@@ -1503,6 +1506,8 @@ class build_options:
       self.build_boost_python_extensions
     print >> f, "Define BOOST_PYTHON_NO_PY_SIGNATURES:", \
       self.boost_python_no_py_signatures
+    print >> f, "Define BOOST_PYTHON_BOOL_INT_STRICT:", \
+      self.boost_python_bool_int_strict
     print >> f, "Boost threads enabled:", self.enable_boost_threads
     print >> f, "Enable OpenMP if possible:", self.enable_openmp_if_possible
 
@@ -1654,6 +1659,10 @@ class pre_process_args:
         action="store_true",
         default=False,
         help="disable Boost.Python docstring Python signatures")
+      parser.option(None, "--boost_python_bool_int_strict",
+        action="store_true",
+        default=True,
+        help="disable Boost.Python implicit bool<->int conversions")
     self.command_line = parser.process(args=args)
     if (not hasattr(os.path, "samefile")):
       self.command_line.options.current_working_directory = None
@@ -1735,6 +1744,9 @@ def unpickle():
   if not hasattr(env.build_options, "enable_openmp_if_possible"):
     env.build_options.enable_openmp_if_possible \
       = default_enable_openmp_if_possible
+  # XXX backward compatibility 2009-04-06
+  if (not hasattr(env.build_options, "boost_python_bool_int_strict")):
+    env.build_options.boost_python_bool_int_strict = True
   return env
 
 def warm_start(args):

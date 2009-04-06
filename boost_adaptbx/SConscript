@@ -114,7 +114,9 @@ if (not env_etc.no_boost_python):
   )
   env.Replace(SHCXXFLAGS=env_etc.cxxflags_base)
   env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
-  env.Append(SHCXXFLAGS="-DBOOST_PYTHON_SOURCE")
+  env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_SOURCE"])
+  if (libtbx.env.build_options.boost_python_bool_int_strict):
+    env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_BOOL_INT_STRICT"])
   env.Replace(SHLINKFLAGS=env_etc.shlinkflags)
   env.Replace(CXXFLAGS=env_etc.cxxflags_base)
   env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
