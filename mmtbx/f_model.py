@@ -205,7 +205,7 @@ class manager_mixin(object):
     return self.target_functor()(compute_gradients=True) \
       .gradients_wrt_atomic_parameters(**keyword_args)
 
-sf_and_grads_accuracy_params = iotbx.phil.parse("""\
+sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
   algorithm = *fft direct
     .type = choice
   cos_sin_table = False
@@ -224,7 +224,7 @@ sf_and_grads_accuracy_params = iotbx.phil.parse("""\
     .type = float
 """)
 
-alpha_beta_params = iotbx.phil.parse("""\
+alpha_beta_master_params = iotbx.phil.parse("""\
   include scope mmtbx.max_lik.maxlik.alpha_beta_params
   sigmaa_estimator
     .expert_level=2
@@ -276,10 +276,10 @@ class manager(manager_mixin):
          b_cart                       = [0.,0.,0.,0.,0.,0.],
          k_sol                        = 0.0,
          b_sol                        = 0.0,
-         sf_and_grads_accuracy_params = sf_and_grads_accuracy_params.extract(),
+         sf_and_grads_accuracy_params = None,
          target_name                  = None,
          abcd                         = None,
-         alpha_beta_params            = alpha_beta_params.extract(),
+         alpha_beta_params            = None,
          xray_structure               = None,
          f_mask                       = None,
          f_calc                       = None,
@@ -295,6 +295,10 @@ class manager(manager_mixin):
          max_number_of_bins           = 30,
          filled_f_obs_selection       = None,
          _target_memory               = None):
+    if(sf_and_grads_accuracy_params is None):
+      sf_and_grads_accuracy_params = sf_and_grads_accuracy_master_params.extract()
+    if(alpha_beta_params is None):
+      alpha_beta_params = alpha_beta_master_params.extract()
     self.twin = False
     assert f_obs is not None
     self.filled_f_obs_selection = filled_f_obs_selection
@@ -1711,9 +1715,9 @@ class manager(manager_mixin):
     f_obs_w.setup_binner(reflections_per_bin = reflections_per_bin,
                          n_bins              = n_bins)
     fmodel_dc = self.deep_copy()
-    fft_p = sf_and_grads_accuracy_params.extract()
+    fft_p = sf_and_grads_accuracy_master_params.extract()
     fft_p.algorithm = "fft"
-    dir_p = sf_and_grads_accuracy_params.extract()
+    dir_p = sf_and_grads_accuracy_master_params.extract()
     dir_p.algorithm = "direct"
     if(self.sfg_params.algorithm == "fft"):
        fmodel_dc.update(sf_and_grads_accuracy_params = dir_p)

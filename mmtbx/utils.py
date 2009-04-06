@@ -36,6 +36,7 @@ from mmtbx.solvent import ordered_solvent
 from mmtbx.twinning import twin_f_model
 from cctbx import sgtbx
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+import mmtbx.f_model
 
 import boost.python
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
@@ -1251,57 +1252,112 @@ class xray_structures_from_processed_pdb_file(object):
     if(log is not None):
       print >> log
 
-def fmodel_simple(xray_structures, f_obs, r_free_flags, target_name = "ml",
-                  twin_law = None, no_bss = False, bss_params = None):
-  def get_fmodel_object(xray_structure, f_obs, r_free_flags, twin_law):
-    if(twin_law is None):
-      fmodel = mmtbx.f_model.manager(
-        xray_structure = xray_structure,
-        r_free_flags   = r_free_flags,
-        target_name    = target_name,
-        f_obs          = f_obs)
-    else:
-      twin_law = sgtbx.rt_mx(twin_law)
-      fmodel = twin_f_model.twin_model_manager(
+def fmodel_manager(
+      f_obs,
+      xray_structure                = None,
+      r_free_flags                  = None,
+      f_mask                        = None,
+      f_calc                        = None,
+      ignore_r_free_flags           = False,
+      target_name                   = "ml",
+      hl_coeff                      = None,
+      use_f_model_scaled            = False,
+      twin_law                      = None,
+      detwin_mode                   = None,
+      detwin_map_types              = None,
+      alpha_beta_params             = None,
+      sf_and_grads_accuracy_params  = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract(),
+      mask_parameters               = None,
+      max_number_of_resolution_bins = None,
+      log                           = None):
+  if(r_free_flags is None or ignore_r_free_flags):
+    r_free_flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
+  if(twin_law is None):
+    fmodel = mmtbx.f_model.manager(
+      alpha_beta_params            = alpha_beta_params,
+      xray_structure               = xray_structure,
+      sf_and_grads_accuracy_params = sf_and_grads_accuracy_params,
+      use_f_model_scaled           = use_f_model_scaled,
+      r_free_flags                 = r_free_flags,
+      mask_params                  = mask_parameters,
+      target_name                  = target_name,
+      f_obs                        = f_obs,
+      f_mask                       = f_mask,
+      f_calc                       = f_calc,
+      abcd                         = hl_coeff,
+      max_number_of_bins           = max_number_of_resolution_bins)
+  else:
+    from cctbx import sgtbx
+    twin_law = sgtbx.rt_mx(symbol=twin_law, r_den=12, t_den=144)
+    fmodel = twin_f_model.twin_model_manager(
+      f_obs                        = f_obs,
+      f_mask                       = f_mask,
+      f_calc                       = f_calc,
+      r_free_flags                 = r_free_flags,
+      sf_and_grads_accuracy_params = sf_and_grads_accuracy_params,
+      xray_structure               = xray_structure,
+      twin_law                     = twin_law,
+      out                          = log,
+      detwin_mode                  = detwin_mode,
+      map_types                    = detwin_map_types)
+  return fmodel
+
+def fmodel_simple(f_obs,
+                  xray_structures          = None,
+                  r_free_flags             = None,
+                  target_name              = "ml",
+                  bulk_solvent_and_scaling = True,
+                  bss_params               = None,
+                  twin_switch_tolerance    = 3.0):
+  from mmtbx.scaling import xtriage
+  xtriage_results = xtriage.xtriage_analyses(
+    miller_obs = f_obs,
+    text_out   = StringIO(),
+    plot_out   = StringIO())
+  twin_laws = xtriage_results.twin_results.twin_summary.twin_results.twin_laws
+  twin_laws.append(None)
+  if(len(xray_structures) == 1):
+    fmodels = []
+    for twin_law in twin_laws:
+      fmodel_ = fmodel_manager(
+        xray_structure = xray_structures[0],
         f_obs          = f_obs,
         r_free_flags   = r_free_flags,
-        xray_structure = xray_structure,
         twin_law       = twin_law)
-    fmodel.update_xray_structure(update_f_calc = True, update_f_mask = True)
-    if(not no_bss):
-      fmodel.update_solvent_and_scale(params = bss_params, verbose = -1)
-    return fmodel
-  if(len(xray_structures) == 1):
-    fmodel = get_fmodel_object(
-      xray_structure = xray_structures[0],
-      f_obs          = f_obs,
-      r_free_flags   = r_free_flags,
-      twin_law       = twin_law)
-    if(not no_bss):
-      sel = fmodel.outlier_selection()
-      fmodel = fmodel.select(selection = sel)
-      if(sel is not None and sel.count(False) > 0):
-        fmodel.update_solvent_and_scale(params = bss_params, verbose = -1)
+      if(bulk_solvent_and_scaling):
+        sel = fmodel_.outlier_selection()
+        fmodel_ = fmodel_.select(selection = sel)
+        fmodel_.update_solvent_and_scale(params = bss_params, verbose = -1)
+      fmodels.append(fmodel_.deep_copy())
+    if(len(twin_laws)>1):
+      if(abs(fmodels[0].r_work()-fmodels[1].r_work())*100 > twin_switch_tolerance):
+        if(fmodels[0].r_work()>fmodels[1].r_work()): fmodel = fmodels[1]
+        else: fmodel = fmodels[0]
+      else:
+        for fmodel in fmodels:
+          if(not fmodel.twin): break
+    else: fmodel = fmodels[0]
   else:
+    # XXX Automatic twin detection is not available for multi-model.
     f_model_data = None
     for i_seq, xray_structure in enumerate(xray_structures):
-      fmodel = get_fmodel_object(
+      fmodel = fmodel_manager(
         xray_structure = xray_structure,
         f_obs          = f_obs,
         r_free_flags   = r_free_flags,
-        twin_law       = twin_law)
+        twin_law       = None) # XXX Automatic twin detection is not available for multi-model.
       if(i_seq == 0):
         f_model_data = fmodel.f_model_scaled_with_k1().data()
       else:
         f_model_data += fmodel.f_model_scaled_with_k1().data()
     fmodel_average = fmodel.f_obs.array(data = f_model_data)
-    fmodel_result = mmtbx.f_model.manager(
+    fmodel_result = fmodel_manager(
       r_free_flags = fmodel.r_free_flags,
       target_name  = target_name,
       f_obs        = fmodel.f_obs,
       f_mask       = fmodel.f_mask(),
       f_calc       = fmodel_average)
-    if(not no_bss):
+    if(bulk_solvent_and_scaling):
       params = bss.master_params.extract()
       params.bulk_solvent=False
       fmodel_result.update_solvent_and_scale(params = params, verbose = -1)

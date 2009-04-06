@@ -36,7 +36,7 @@ def finite_differences_site(target_functor, eps=1.e-5):
     sc.site = site_orig
   return gs
 
-sfg_params = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
 sfg_params.algorithm = "direct"
 sfg_params.cos_sin_table = False
 

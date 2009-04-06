@@ -186,16 +186,15 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
                 cryst1 = pdb.format_cryst1_record(crystal_symmetry = cs),
                 show_geometry_statistics = False)
 
-                twin_law = None
                 xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
                 processed_pdb_file = processed_pdb_file,
                 scattering_table   = scattering_table,
                 d_min              = f_obs.d_min())
-                xray_structures = xsfppf.xray_structures
-                fmodel = utils.fmodel_simple(xray_structures = xray_structures,
-                               f_obs           = f_obs,
-                               r_free_flags    = r_free_flags,
-                               twin_law        = twin_law)
+                xray_structures = xsfppf.xray_structures[0]
+                fmodel = utils.fmodel_manager(
+                  xray_structure  = xray_structures,
+                  f_obs           = f_obs,
+                  r_free_flags    = r_free_flags)
                 new_model, new_r_factor, new_rfree = refine_atoms(fmodel, number_of_iterations, number_of_cycles )
                 orth = new_model.unit_cell().orthogonalize
                 #
@@ -578,11 +577,9 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   print "  Unit cell volume: %-15.4f" % f_obs.unit_cell().volume()
   #
   #
-  twin_law = None
-  fmodel = utils.fmodel_simple(xray_structures = xray_structures,
-                               f_obs           = f_obs,
-                               r_free_flags    = r_free_flags,
-                               twin_law        = twin_law)
+  fmodel = utils.fmodel_manager(xray_structure  = xray_structures[0],
+                                f_obs           = f_obs,
+                                r_free_flags    = r_free_flags)
   n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
   #
   grow_density(f_obs, r_free_flags, scattering_table, pdb_file_name, xray_structures,x_center=params.x_center,\

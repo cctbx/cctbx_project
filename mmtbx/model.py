@@ -349,6 +349,9 @@ class manager(object):
     raw_records = [pdb.format_cryst1_record(
       crystal_symmetry=self.xray_structure)]
     raw_records.extend(self.pdb_hierarchy.as_pdb_string().splitlines())
+    if(self.processed_pdb_files_srv.pdb_interpretation_params is not None):
+      self.processed_pdb_files_srv.pdb_interpretation_params.\
+        clash_guard.nonbonded_distance_threshold=None
     processed_pdb_file, pdb_inp = self.processed_pdb_files_srv.\
       process_pdb_files(raw_records = raw_records)
     new_xray_structure = processed_pdb_file.xray_structure(

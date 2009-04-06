@@ -16,7 +16,7 @@ flex.set_random_seed(0)
 
 def test_1(xray_structure):
   # exercise almost all without dealing with particular values
-  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   for d_min in [2.0, 2.5]:
       for algorithm in ["direct", "fft"]:
           sfg_params.algorithm = algorithm
@@ -325,7 +325,7 @@ def exercise_2():
              random_occupancy       = True)
   xray_structure.scattering_type_registry(table="wk1995")
   f_obs = abs(xray_structure.structure_factors(d_min = 2.0).f_calc())
-  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   for algorithm in ["fft", "direct"]:
       sfg_params.algorithm=algorithm
       sfg_params.cos_sin_table = True

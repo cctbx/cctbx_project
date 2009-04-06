@@ -177,8 +177,7 @@ class model_to_map(object):
         xray_structures = xray_structures,
         f_obs           = f_obs,
         r_free_flags    = r_free_flags,
-        bss_params      = bss_params,
-        twin_law        = None) # XXX support twin_law in future
+        bss_params      = bss_params)
       if(not use_kick_map):
         map_obj = self.fmodel.electron_density_map()
         map_coeff = map_obj.map_coefficients(map_type = map_type)
@@ -534,13 +533,13 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   if(len(xrs) > 1):
     raise Sorry("Multiple models cannot be used with this option.")
   # get map cc
-  map_cc_obj.map_cc(
+  result = map_cc_obj.map_cc(
     map_2                                     = map_2,
     ignore_points_with_map_values_less_than   = params.ignore_points_with_map_values_less_than,
     set_cc_to_zero_if_n_grid_points_less_than = params.set_cc_to_zero_if_n_grid_points_less_than,
     poor_cc_threshold                         = params.poor_cc_threshold,
     poor_map_value_threshold                  = params.poor_map_value_threshold)
-  map_cc_obj.show()
+  show_result(result = result, show_hydrogens = True)
   map_cc_obj.overall_correlation_min_max_standard_deviation()
 
 class map_cc_funct(object):
@@ -641,16 +640,17 @@ class map_cc_funct(object):
             assert self._result[i_seq].atom is self.atoms_with_labels[i_seq]
             a = self._result[i_seq].atom
           self.result.append(group_args(
-            atom        = a,
-            b_iso       = adptbx.u_as_b(scatterer.u_iso),
-            occupancy   = scatterer.occupancy,
-            cc          = corr,
-            map_1_val   = ed1,
-            map_2_val   = ed2,
-            scatterer   = scatterers[i_seq],
-            data_points = m2.size(),
-            i_seq       = i_seq,
-            poor_flag   = poor_flag))
+            atom             = a,
+            b_iso            = adptbx.u_as_b(scatterer.u_iso),
+            occupancy        = scatterer.occupancy,
+            cc               = corr,
+            map_1_val        = ed1,
+            map_2_val        = ed2,
+            residual_map_val = None,
+            scatterer        = scatterers[i_seq],
+            data_points      = m2.size(),
+            i_seq            = i_seq,
+            poor_flag        = poor_flag))
     elif(self.residue_detail):
       scatterers = self.xray_structure.scatterers()
       occupancies = scatterers.extract_occupancies()
@@ -689,50 +689,6 @@ class map_cc_funct(object):
     del map_2
     del self._result
     return self.result
-
-  def show(self, show_hydrogens = True, log = None):
-    if(log is None): log = sys.stdout
-    if(self.atom_detail):
-      print >> log, "i_seq : chain resseq resname altloc name element   occ      b      CC   map1   map2  No.Points FLAG"
-      fmt = "%5d : %5s %6s %7s %6s %4s %7s %5.2f %6.2f %7.4f %6.2f %6.2f   %d %s"
-      for i_seq, r in enumerate(self.result):
-        w_msg = ""
-        if(r.poor_flag): w_msg = " <<< WEAK DENSITY"
-        print_line = True
-        if(not show_hydrogens and
-           r.scatterer.element_symbol().strip().upper() in ["H","D"]):
-          print_line = False
-        if(print_line):
-          print >> log, fmt % (
-            i_seq,
-            r.atom.chain_id,
-            r.atom.resseq,
-            r.atom.resname,
-            r.atom.altloc,
-            r.atom.name,
-            r.atom.element,
-            r.occupancy,
-            r.b_iso,
-            r.cc,
-            r.map_1_val,
-            r.map_2_val,
-            r.data_points,
-            w_msg)
-    if(self.residue_detail):
-      print >> log, "i_seq : chain resseq resname occ      b      CC   map1   map2  No.Points"
-      fmt = "%5d : %5s %6s %7s %5.2f %6.2f %7.4f %6.2f %6.2f   %d"
-      for i_seq, r in enumerate(self.result):
-        print >> log, fmt % (
-          i_seq,
-          r.residue.chain_id,
-          r.residue.resid,
-          r.residue.name,
-          r.occupancy,
-          r.b_iso,
-          r.cc,
-          r.map_1_val,
-          r.map_2_val,
-          r.data_points)
 
   def overall_correlation_min_max_standard_deviation(self, log = None):
     if(log is None): log = sys.stdout
@@ -847,7 +803,95 @@ def simple(fmodel,
       poor_cc_threshold                         = poor_cc_threshold,
       poor_map_value_threshold                  = poor_map_value_threshold)
     del map_2
+    if(atom_detail):
+      fft_map_3 = fmodel.electron_density_map().fft_map(
+        other_fft_map  = fft_map_1,
+        map_type       = "mFo-DFc",
+        symmetry_flags = maptbx.use_space_group_symmetry)
+      fft_map_3.apply_sigma_scaling()
+      map_3 = fft_map_3.real_map_unpadded()
+      for i_seq, r in enumerate(result):
+        ed3 = map_3.eight_point_interpolation(r.scatterer.site)
+        r.residual_map_val = ed3
+      del map_3
     if(show):
-      map_cc_obj.show(show_hydrogens = show_hydrogens, log = log)
+      show_result(result = result, show_hydrogens = show_hydrogens, log = log)
       map_cc_obj.overall_correlation_min_max_standard_deviation(log = log)
     return result
+
+def show_result(result, show_hydrogens = False, log = None):
+  if(log is None): log = sys.stdout
+  keys = result[0].__dict__.keys()
+  if("atom" in keys):
+    assert not "residue" in keys
+    if(result[0].residual_map_val is not None):
+      print >> log, "i_seq : chain resseq resname altloc name element   occ      b      CC   map1   map2  mFo-DFc  No.Points  FLAG"
+      fmt = "%5d : %5s %6s %7s %6s %4s %7s %5.2f %6.2f %7.4f %6.2f %6.2f %6.2f       %4d  %s"
+      for i_seq, r in enumerate(result):
+        w_msg = ""
+        if(r.poor_flag): w_msg = " <<< WEAK DENSITY"
+        if(abs(r.residual_map_val) > 1.5): w_msg = " <<< ???? DENSITY"
+        print_line = True
+        if(not show_hydrogens and
+           r.scatterer.element_symbol().strip().upper() in ["H","D"]):
+          print_line = False
+        if(print_line):
+          print >> log, fmt % (
+            i_seq,
+            r.atom.chain_id,
+            r.atom.resseq,
+            r.atom.resname,
+            r.atom.altloc,
+            r.atom.name,
+            r.atom.element,
+            r.occupancy,
+            r.b_iso,
+            r.cc,
+            r.map_1_val,
+            r.map_2_val,
+            r.residual_map_val,
+            r.data_points,
+            w_msg)
+    else:
+      print >> log, "i_seq : chain resseq resname altloc name element   occ      b      CC   map1   map2  No.Points FLAG"
+      fmt = "%5d : %5s %6s %7s %6s %4s %7s %5.2f %6.2f %7.4f %6.2f %6.2f   %d %s"
+      for i_seq, r in enumerate(result):
+        w_msg = ""
+        if(r.poor_flag): w_msg = " <<< WEAK DENSITY"
+        print_line = True
+        if(not show_hydrogens and
+           r.scatterer.element_symbol().strip().upper() in ["H","D"]):
+          print_line = False
+        if(print_line):
+          print >> log, fmt % (
+            i_seq,
+            r.atom.chain_id,
+            r.atom.resseq,
+            r.atom.resname,
+            r.atom.altloc,
+            r.atom.name,
+            r.atom.element,
+            r.occupancy,
+            r.b_iso,
+            r.cc,
+            r.map_1_val,
+            r.map_2_val,
+            r.data_points,
+            w_msg)
+  elif("residue" in keys):
+    assert not "atom" in keys
+    print >> log, "i_seq : chain resseq resname occ      b      CC   map1   map2  No.Points"
+    fmt = "%5d : %5s %6s %7s %5.2f %6.2f %7.4f %6.2f %6.2f   %d"
+    for i_seq, r in enumerate(result):
+      print >> log, fmt % (
+        i_seq,
+        r.residue.chain_id,
+        r.residue.resid,
+        r.residue.name,
+        r.occupancy,
+        r.b_iso,
+        r.cc,
+        r.map_1_val,
+        r.map_2_val,
+        r.data_points)
+  else: raise RuntimeError

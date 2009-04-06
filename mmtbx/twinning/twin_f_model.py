@@ -903,21 +903,26 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
   def __init__(self,
                f_obs              = None,
                f_mask             = None,
-               r_free_flags         = None,
+               f_calc             = None,
+               r_free_flags       = None,
                xray_structure     = None,
                scaling_parameters = None,
                sf_and_grads_accuracy_params =
-                           mmtbx.f_model.sf_and_grads_accuracy_params.extract(),
+                           mmtbx.f_model.sf_and_grads_accuracy_master_params.extract(),
                mask_params        = None,
                out                = None,
                twin_law           = None,
                start_fraction     = 0.1,
                n_refl_bin         = 2000,
                max_bins           = 20,
-               detwin_mode = "auto",
-               map_types = master_params.extract().detwin.map_types,
-               twin_target = master_params.extract().twin_target
-                ):
+               detwin_mode        = None,
+               map_types          = None,
+               twin_target = master_params.extract().twin_target):
+    if(f_calc is not None): raise RuntimeError("Not implemented.")
+    if(map_types is None):
+      map_types = master_params.extract().detwin.map_types
+    if(detwin_mode is None):
+      detwin_mode = "auto"
     self.alpha_beta_params=None
     self.twin = True
     self.sfg_params = sf_and_grads_accuracy_params
@@ -926,7 +931,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     if self.target_name =="pseudo_ml_f":
       self.target_name = "twin_lsq_f"
       self._target_attributes.pseudo_ml=True
-
+    if(out is None): out = sys.stdout
     self.out = out
     self.did_search = 0
 
@@ -1109,15 +1114,19 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       anomalous_flag = self.f_obs.anomalous_flag(),
       twin_law       = self.twin_law.as_double_array()[0:9] )
 
-    self.structure_factor_gradients_w = cctbx.xray.structure_factors.gradients(
-      miller_set                   = self.miller_set,
-      cos_sin_table                = self.sfg_params.cos_sin_table,
-      grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
-      quality_factor               = self.sfg_params.quality_factor,
-      u_base                       = self.sfg_params.u_base,
-      b_base                       = self.sfg_params.b_base,
-      wing_cutoff                  = self.sfg_params.wing_cutoff,
-      exp_table_one_over_step_size = self.sfg_params.exp_table_one_over_step_size)
+    if(self.sfg_params is not None):
+      self.structure_factor_gradients_w = cctbx.xray.structure_factors.gradients(
+        miller_set                   = self.miller_set,
+        cos_sin_table                = self.sfg_params.cos_sin_table,
+        grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
+        quality_factor               = self.sfg_params.quality_factor,
+        u_base                       = self.sfg_params.u_base,
+        b_base                       = self.sfg_params.b_base,
+        wing_cutoff                  = self.sfg_params.wing_cutoff,
+        exp_table_one_over_step_size = self.sfg_params.exp_table_one_over_step_size)
+    else:
+      self.structure_factor_gradients_w = cctbx.xray.structure_factors.gradients(
+        miller_set = self.miller_set)
 
     self.sigmaa_object_cache = None
     self.update_sigmaa_object = True
@@ -1503,18 +1512,22 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     """Get f calc from the xray structure"""
     if self.miller_set is None:
       self.miller_set, self.free_flags_for_f_atoms = self.construct_miller_set(True)
-    tmp = self.miller_set.structure_factors_from_scatterers(
-      xray_structure = self.xray_structure,
-      algorithm                    = self.sfg_params.algorithm,
-      cos_sin_table                = self.sfg_params.cos_sin_table,
-      grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
-      quality_factor               = self.sfg_params.quality_factor,
-      u_base                       = self.sfg_params.u_base,
-      b_base                       = self.sfg_params.b_base,
-      wing_cutoff                  = self.sfg_params.wing_cutoff,
-      exp_table_one_over_step_size =
-                      self.sfg_params.exp_table_one_over_step_size
-    )
+    if(self.sfg_params is not None):
+      tmp = self.miller_set.structure_factors_from_scatterers(
+        xray_structure = self.xray_structure,
+        algorithm                    = self.sfg_params.algorithm,
+        cos_sin_table                = self.sfg_params.cos_sin_table,
+        grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
+        quality_factor               = self.sfg_params.quality_factor,
+        u_base                       = self.sfg_params.u_base,
+        b_base                       = self.sfg_params.b_base,
+        wing_cutoff                  = self.sfg_params.wing_cutoff,
+        exp_table_one_over_step_size =
+                        self.sfg_params.exp_table_one_over_step_size
+      )
+    else:
+      tmp = self.miller_set.structure_factors_from_scatterers(
+        xray_structure = self.xray_structure)
     f_atoms = tmp.f_calc()
     return f_atoms
 
@@ -1603,17 +1616,21 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     if(update_f_calc):
        timer = user_plus_sys_time()
        assert self.xray_structure is not None
-       f_calc = self.miller_set.structure_factors_from_scatterers(
-         xray_structure               = self.xray_structure,
-         algorithm                    = self.sfg_params.algorithm,
-         cos_sin_table                = self.sfg_params.cos_sin_table,
-         grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
-         quality_factor               = self.sfg_params.quality_factor,
-         u_base                       = self.sfg_params.u_base,
-         b_base                       = self.sfg_params.b_base,
-         wing_cutoff                  = self.sfg_params.wing_cutoff,
-         exp_table_one_over_step_size =
-                         self.sfg_params.exp_table_one_over_step_size).f_calc()
+       if(self.sfg_params is not None):
+         f_calc = self.miller_set.structure_factors_from_scatterers(
+           xray_structure               = self.xray_structure,
+           algorithm                    = self.sfg_params.algorithm,
+           cos_sin_table                = self.sfg_params.cos_sin_table,
+           grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
+           quality_factor               = self.sfg_params.quality_factor,
+           u_base                       = self.sfg_params.u_base,
+           b_base                       = self.sfg_params.b_base,
+           wing_cutoff                  = self.sfg_params.wing_cutoff,
+           exp_table_one_over_step_size =
+                           self.sfg_params.exp_table_one_over_step_size).f_calc()
+       else:
+         f_calc = self.miller_set.structure_factors_from_scatterers(
+           xray_structure = self.xray_structure).f_calc()
     f_mask = None
     set_core_flag=True
     if(update_f_mask and consider_mask_update):
@@ -2009,11 +2026,12 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
     # now please detwin the data
     if mode == "proportional":
-      if (tmp_i_obs.sigmas() is None):
-        raise Sorry("Detwinning requires experimental sigmas.")
+      sigmas = tmp_i_obs.sigmas()
+      if (sigmas is None):
+        sigmas = flex.double(tmp_i_obs.data().size(), 1.0)
       dt_iobs, dt_isigma = self.full_detwinner.detwin_with_model_data(
         tmp_i_obs.data(),
-        tmp_i_obs.sigmas(),
+        sigmas,
         self.data_core.f_model(),
         self.twin_fraction_object.twin_fraction )
       tmp_i_obs = tmp_i_obs.customized_copy(
@@ -2021,9 +2039,12 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       dt_f_obs = tmp_i_obs.f_sq_as_f()
 
     if mode == "algebraic":
+      sigmas = tmp_i_obs.sigmas()
+      if (sigmas is None):
+        sigmas = flex.double(tmp_i_obs.data().size(), 1.0)
       dt_iobs, dt_isigma = self.full_detwinner.detwin_with_twin_fraction(
         tmp_i_obs.data(),
-        tmp_i_obs.sigmas(),
+        sigmas,
         self.twin_fraction_object.twin_fraction )
       # find out which intensities are zero or negative, they will be eliminated later on
       zeros = flex.bool( dt_iobs <= 0 )
