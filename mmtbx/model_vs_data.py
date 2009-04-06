@@ -116,6 +116,7 @@ class mvd(object):
       "test_set_size           : "+format_value("%-8.4f",self.data.test_set_size),
       "test_flag_value         : "+format_value("%-d",   self.data.test_flag_value),
       "number_of_Fobs_outliers : "+format_value("%-8d",  self.data.number_of_Fobs_outliers),
+      "twinned                 : "+format_value("%-s",   self.data.twinned),
       "anomalous_flag          : "+format_value("%-6s",  self.data.anomalous_flag)
       ])
     print >> log, "   ", result
@@ -269,6 +270,7 @@ def show_data(fmodel, n_outl, test_flag_value, f_obs_labels):
                     test_set_size           = flags_pc,
                     test_flag_value         = test_flag_value,
                     number_of_Fobs_outliers = n_outl,
+                    twinned                 = str(fmodel.twin),
                     anomalous_flag          = fmodel.f_obs.anomalous_flag())
 
 def show_model_vs_data(fmodel):

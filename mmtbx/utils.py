@@ -1288,7 +1288,7 @@ def fmodel_manager(
       max_number_of_bins           = max_number_of_resolution_bins)
   else:
     from cctbx import sgtbx
-    twin_law = sgtbx.rt_mx(symbol=twin_law, r_den=12, t_den=144)
+    twin_law_xyz = sgtbx.rt_mx(symbol=twin_law, r_den=12, t_den=144)
     fmodel = twin_f_model.twin_model_manager(
       f_obs                        = f_obs,
       f_mask                       = f_mask,
@@ -1296,10 +1296,11 @@ def fmodel_manager(
       r_free_flags                 = r_free_flags,
       sf_and_grads_accuracy_params = sf_and_grads_accuracy_params,
       xray_structure               = xray_structure,
-      twin_law                     = twin_law,
+      twin_law                     = twin_law_xyz,
       out                          = log,
       detwin_mode                  = detwin_mode,
       map_types                    = detwin_map_types)
+    fmodel.twin = twin_law
   return fmodel
 
 def fmodel_simple(f_obs,
@@ -1318,6 +1319,8 @@ def fmodel_simple(f_obs,
   twin_laws.append(None)
   if(len(xray_structures) == 1):
     fmodels = []
+    r_work = 999.
+    twin_law_best = None
     for twin_law in twin_laws:
       fmodel_ = fmodel_manager(
         xray_structure = xray_structures[0],
@@ -1325,10 +1328,27 @@ def fmodel_simple(f_obs,
         r_free_flags   = r_free_flags,
         twin_law       = twin_law)
       if(bulk_solvent_and_scaling):
-        sel = fmodel_.outlier_selection()
-        fmodel_ = fmodel_.select(selection = sel)
-        fmodel_.update_solvent_and_scale(params = bss_params, verbose = -1)
-      fmodels.append(fmodel_.deep_copy())
+        if(twin_law is None):
+          sel = fmodel_.outlier_selection()
+          fmodel_ = fmodel_.select(selection = sel)
+          fmodel_.update_solvent_and_scale(params = bss_params, verbose = -1)
+        else:
+          fmodel_.update_solvent_and_scale(initialise=True)
+      if(twin_law is not None):
+        r_work_ = fmodel_.r_work()
+        if(r_work_ < r_work):
+          r_work = r_work_
+          twin_law_best = twin_law
+      else:
+        fmodels.append(fmodel_.deep_copy())
+    if(twin_law_best is not None):
+      fmodel_ = fmodel_manager(
+        xray_structure = xray_structures[0],
+        f_obs          = f_obs,
+        r_free_flags   = r_free_flags,
+        twin_law       = twin_law_best)
+      fmodel_.update_solvent_and_scale(params = bss_params, verbose = -1)
+      fmodels.append(fmodel_)
     if(len(twin_laws)>1):
       if(abs(fmodels[0].r_work()-fmodels[1].r_work())*100 > twin_switch_tolerance):
         if(fmodels[0].r_work()>fmodels[1].r_work()): fmodel = fmodels[1]
@@ -1346,6 +1366,7 @@ def fmodel_simple(f_obs,
         f_obs          = f_obs,
         r_free_flags   = r_free_flags,
         twin_law       = None) # XXX Automatic twin detection is not available for multi-model.
+      fmodel.update_solvent_and_scale(params = bss_params, verbose = -1)
       if(i_seq == 0):
         f_model_data = fmodel.f_model_scaled_with_k1().data()
       else:

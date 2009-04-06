@@ -1341,7 +1341,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.data_core.ustar( self.scaling_parameters.u_star )
     self.data_core.ksol( self.scaling_parameters.k_sol )
     self.data_core.usol( self.scaling_parameters.u_sol )
-    self.apply_back_b_iso()
+    if(params is not None and params.apply_back_trace_of_b_cart):
+      self.apply_back_b_iso()
     self.update_xray_structure(update_f_calc=True)
 
     if self._target_attributes.pseudo_ml:
