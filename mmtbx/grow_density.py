@@ -186,15 +186,15 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
                 cryst1 = pdb.format_cryst1_record(crystal_symmetry = cs),
                 show_geometry_statistics = False)
 
+                twin_law = None
                 xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
                 processed_pdb_file = processed_pdb_file,
                 scattering_table   = scattering_table,
                 d_min              = f_obs.d_min())
-                xray_structures = xsfppf.xray_structures[0]
-                fmodel = utils.fmodel_manager(
-                  xray_structure  = xray_structures,
-                  f_obs           = f_obs,
-                  r_free_flags    = r_free_flags)
+                xray_structures = xsfppf.xray_structures
+                fmodel = utils.fmodel_simple(xray_structures = xray_structures,
+                               f_obs           = f_obs,
+                               r_free_flags    = r_free_flags)
                 new_model, new_r_factor, new_rfree = refine_atoms(fmodel, number_of_iterations, number_of_cycles )
                 orth = new_model.unit_cell().orthogonalize
                 #
@@ -301,7 +301,7 @@ def add_atoms_with_occ_b(input_pdb_file_name, final_atom_type, dummy_atoms, outp
     #
     for dummy_coords in dummy_atoms:
         #dummy_atom = "HETATM %4i  %s   HET X%4i    %8.3f%8.3f%8.3f%6.2f%6.2f           %s"\ #HOH doesn't make ugly lines...
-        dummy_atom = "HETATM %4i  %s   HOH X%4i    %8.3f%8.3f%8.3f%6.2f%6.2f           %s"\
+        dummy_atom = "HETATM%5i  %s   HOH X%5i   %8.3f%8.3f%8.3f%6.2f%6.2f           %s"\
         %(final_atom_id,final_atom_type, final_residue_id, float(dummy_coords[0]), \
         float(dummy_coords[1]),float(dummy_coords[2]), float(dummy_coords[3]), float(dummy_coords[4]), final_atom_type )
         output_file.write(dummy_atom+"\n")
@@ -577,12 +577,14 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   print "  Unit cell volume: %-15.4f" % f_obs.unit_cell().volume()
   #
   #
-  fmodel = utils.fmodel_manager(xray_structure  = xray_structures[0],
-                                f_obs           = f_obs,
-                                r_free_flags    = r_free_flags)
+  fmodel = utils.fmodel_simple(xray_structures = xray_structures,
+                               f_obs           = f_obs,
+                               r_free_flags    = r_free_flags)
   n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
   #
   grow_density(f_obs, r_free_flags, scattering_table, pdb_file_name, xray_structures,x_center=params.x_center,\
   y_center=params.y_center, z_center=params.z_center, radius=params.radius, step_size=params.atom_gap, overlap_interval=params.overlap_interval, \
   atom_type= params.atom_type, number_of_cycles = params.cycles, number_of_iterations = params.iterations, \
   bfac_dummy_atoms = params.bfac_dummy_atoms, bfac_cutoff = params.bfac_cutoff , occ_cutoff = params.occ_cutoff  )
+
+
