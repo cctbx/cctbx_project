@@ -48,7 +48,7 @@ class HemisphereSamplerBase(SimpleSamplerTool):
     kvals = flex.double([
   hemisphere_solutions[x].kval for x in xrange(len(hemisphere_solutions))])
 
-    perm = flex.sort_permutation(kvals,1)
+    perm = flex.sort_permutation(kvals,True)
 
     #  need to be more clever than just taking the top 30.
     #  one huge cluster around a strong basis direction could dominate the
