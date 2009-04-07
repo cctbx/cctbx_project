@@ -49,6 +49,7 @@ def exercise_complex_to_complex():
       fftpack.complex_to_complex(n).forward(d)
       fftpack.complex_to_complex(n).backward(d)
     print "    fftpack:  %.2f seconds" % (time.time()-t0-overhead)
+    sys.stdout.flush()
 
 def exercise_complex_to_complex_3d():
   print "complex_to_complex_3d"
@@ -81,6 +82,7 @@ def exercise_complex_to_complex_3d():
       fftpack.complex_to_complex_3d(n_complex).forward(d)
       fftpack.complex_to_complex_3d(n_complex).backward(d)
     print "    fftpack:  %.2f seconds" % (time.time()-t0-overhead)
+    sys.stdout.flush()
     rp = d / np
     #
     assert flex.max(flex.abs(rw-rp)) < 1.e-6
@@ -124,6 +126,7 @@ def exercise_real_to_complex():
       c = fftpack.real_to_complex(n).forward(d)
       fftpack.real_to_complex(n).backward(c)
     print "    fftpack:  %.2f seconds" % (time.time()-t0-overhead)
+    sys.stdout.flush()
 
 def exercise_real_to_complex_3d():
   print "real_to_complex_3d"
@@ -173,6 +176,7 @@ def exercise_real_to_complex_3d():
       assert r.focus() == fft.n_real()
       assert r.id() == d.id()
     print "    fftpack:  %.2f seconds" % (time.time()-t0-overhead)
+    sys.stdout.flush()
     if (maptbx is not None):
       maptbx.unpad_in_place(map=d)
       rp = d / np
@@ -186,6 +190,7 @@ def exercise(args):
   else:
     print "fftw_version:", fftw3tbx.fftw_version
     print "### NOTE: Showing wall-clock times. ###"
+    sys.stdout.flush()
     exercise_complex_to_complex()
     exercise_complex_to_complex_3d()
     exercise_real_to_complex()
