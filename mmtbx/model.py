@@ -765,7 +765,7 @@ class manager(object):
        raise Sorry("There are atoms with negative occupancies. Check input "\
                    "PDB file.")
     if(percent_small > 30.0):
-       print >> out, "| *** WARNING: there more than 30 % of atoms with small occupancy (< 0.1) *** |"
+       print >> out, "| *** WARNING: more than 30 % of atoms with small occupancy (< 0.1)       *** |"
     if(n_large > 0):
        print >> out, "| *** WARNING: there are some atoms with large occupancy (> 2.0) ***          |"
     if(abs(occ_max-occ_min) >= 0.01):
