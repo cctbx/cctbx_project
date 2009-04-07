@@ -567,11 +567,11 @@ class map_cc_funct(object):
     scatterers = self.xray_structure.scatterers()
     if(self.selection is None):
       self.selection = flex.bool(scatterers.size(), True)
-    self.gifes = [None,]*scatterers.size()
-    self._result = [None,]*scatterers.size()
     real_map_unpadded = fft_map.real_map_unpadded()
     sites_cart = self.xray_structure.sites_cart()
     if(self.atom_detail):
+      self.gifes = [None,]*scatterers.size()
+      self._result = [None,]*scatterers.size()
       for i_seq, site_cart in enumerate(sites_cart):
         if(self.selection[i_seq]):
           sel = maptbx.grid_indices_around_sites(
@@ -590,20 +590,22 @@ class map_cc_funct(object):
     if(self.residue_detail):
       assert self.pdb_hierarchy is not None
       residues = self.extract_residues()
-      for residue in residues:
+      self.gifes = [None,]*len(residues)
+      self._result = [None,]*len(residues)
+      for i_seq, residue in enumerate(residues):
         sel = maptbx.grid_indices_around_sites(
           unit_cell  = self.xray_structure.unit_cell(),
           fft_n_real = real_map_unpadded.focus(),
           fft_m_real = real_map_unpadded.all(),
           sites_cart = sites_cart.select(residue.selection),
           site_radii = flex.double(residue.selection.size(), atom_radius))
-        self.gifes.append(sel)
+        self.gifes[i_seq] = sel
         m1 = map_1.select(sel)
         ed1 = flex.double()
-        for i_seq in residue.selection:
-          ed1.append(map_1.eight_point_interpolation(scatterers[i_seq].site))
-        self._result.append(
-          group_args(residue = residue, m1 = m1, ed1 = flex.mean(ed1)))
+        for i_seq_r in residue.selection:
+          ed1.append(map_1.eight_point_interpolation(scatterers[i_seq_r].site))
+        self._result[i_seq] = \
+          group_args(residue = residue, m1 = m1, ed1 = flex.mean(ed1))
     del map_1
 
   def map_cc(self, map_2,
@@ -825,8 +827,8 @@ def show_result(result, show_hydrogens = False, log = None):
   if("atom" in keys):
     assert not "residue" in keys
     if(result[0].residual_map_val is not None):
-      print >> log, "i_seq : chain resseq resname altloc name element   occ      b      CC   map1   map2  mFo-DFc  No.Points  FLAG"
-      fmt = "%5d : %5s %6s %7s %6s %4s %7s %5.2f %6.2f %7.4f %6.2f %6.2f %6.2f       %4d  %s"
+      print >> log, "i_seq :   PDB_string      element   occ      b      CC   map1   map2  mFo-DFc  No.Points  FLAG"
+      fmt = "%5d : %s %7s %5.2f %6.2f %7.4f %6.2f %6.2f %6.2f       %4d  %s"
       for i_seq, r in enumerate(result):
         w_msg = ""
         if(r.poor_flag): w_msg = " <<< WEAK DENSITY"
@@ -838,11 +840,7 @@ def show_result(result, show_hydrogens = False, log = None):
         if(print_line):
           print >> log, fmt % (
             i_seq,
-            r.atom.chain_id,
-            r.atom.resseq,
-            r.atom.resname,
-            r.atom.altloc,
-            r.atom.name,
+            r.atom.id_str()[4:],
             r.atom.element,
             r.occupancy,
             r.b_iso,
@@ -853,8 +851,8 @@ def show_result(result, show_hydrogens = False, log = None):
             r.data_points,
             w_msg)
     else:
-      print >> log, "i_seq : chain resseq resname altloc name element   occ      b      CC   map1   map2  No.Points FLAG"
-      fmt = "%5d : %5s %6s %7s %6s %4s %7s %5.2f %6.2f %7.4f %6.2f %6.2f   %d %s"
+      print >> log, "i_seq :   PDB_string      element   occ      b      CC   map1   map2  No.Points FLAG"
+      fmt = "%5d : %s %7s %5.2f %6.2f %7.4f %6.2f %6.2f   %d %s"
       for i_seq, r in enumerate(result):
         w_msg = ""
         if(r.poor_flag): w_msg = " <<< WEAK DENSITY"
@@ -865,11 +863,7 @@ def show_result(result, show_hydrogens = False, log = None):
         if(print_line):
           print >> log, fmt % (
             i_seq,
-            r.atom.chain_id,
-            r.atom.resseq,
-            r.atom.resname,
-            r.atom.altloc,
-            r.atom.name,
+            r.atom.id_str()[4:],
             r.atom.element,
             r.occupancy,
             r.b_iso,
@@ -880,7 +874,7 @@ def show_result(result, show_hydrogens = False, log = None):
             w_msg)
   elif("residue" in keys):
     assert not "atom" in keys
-    print >> log, "i_seq : chain resseq resname occ      b      CC   map1   map2  No.Points"
+    print >> log, "i_seq : chain resseq resname   occ      b      CC   map1   map2  No.Points"
     fmt = "%5d : %5s %6s %7s %5.2f %6.2f %7.4f %6.2f %6.2f   %d"
     for i_seq, r in enumerate(result):
       print >> log, fmt % (
