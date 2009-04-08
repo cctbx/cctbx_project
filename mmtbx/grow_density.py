@@ -586,5 +586,3 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   y_center=params.y_center, z_center=params.z_center, radius=params.radius, step_size=params.atom_gap, overlap_interval=params.overlap_interval, \
   atom_type= params.atom_type, number_of_cycles = params.cycles, number_of_iterations = params.iterations, \
   bfac_dummy_atoms = params.bfac_dummy_atoms, bfac_cutoff = params.bfac_cutoff , occ_cutoff = params.occ_cutoff  )
-
-
