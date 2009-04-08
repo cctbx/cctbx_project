@@ -2,6 +2,7 @@
 #define CCTBX_CRYSTAL_PAIR_TABLES_H
 
 #include <cctbx/crystal/neighbors_fast.h>
+#include <cctbx/eltbx/covalent_radii.h>
 #include <boost/scoped_array.hpp>
 #include <map>
 #include <set>
@@ -390,6 +391,39 @@ namespace cctbx { namespace crystal {
           min_cubicle_edge);
         while (!pair_generator.at_end()) {
           add_pair(pair_generator.next());
+        }
+        return *this;
+      }
+
+      /*! \brief Uses neighbors::fast_pair_generator to add all pairs with
+          distances <= [sum(covalent radii) + tolerance].
+       */
+      /*! All symmetrically equivalent pairs are automatically generated.
+       */
+      pair_asu_table&
+      add_covalent_pairs(
+        af::const_ref<std::string> const& scattering_types,
+        FloatType const& distance_cutoff=3.5,
+        FloatType const& min_cubicle_edge=5,
+        FloatType const& tolerance=0.5,
+        FloatType const& epsilon=1.e-6)
+      {
+        neighbors::fast_pair_generator<FloatType, IntShiftType> pair_generator(
+          asu_mappings_owner_,
+          distance_cutoff*(1+epsilon),
+          /*minimal*/ true,
+          min_cubicle_edge);
+        while (!pair_generator.at_end()) {
+          direct_space_asu::asu_mapping_index_pair_and_diff<FloatType>
+            const& pair = pair_generator.next();
+          eltbx::covalent_radii::table table_i =  eltbx::covalent_radii::table(
+            scattering_types[pair.i_seq]);
+          eltbx::covalent_radii::table table_j =  eltbx::covalent_radii::table(
+            scattering_types[pair.j_seq]);
+          const float max_bond_length
+            = table_i.radius() + table_j.radius() + tolerance;
+          if (std::sqrt(pair.dist_sq) <= max_bond_length)
+            add_pair(pair);
         }
         return *this;
       }

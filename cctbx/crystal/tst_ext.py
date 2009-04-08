@@ -24,6 +24,40 @@ def trial_structure():
         (0.5817,0.6706,0.1254),
         (0.2478,0.0000,0.0000)]]))
 
+def trial_structure_2():
+  from cctbx import xray
+  return xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell="7.9999 9.3718 14.7362 82.625 81.527 81.726",
+      space_group_symbol="P-1"),
+    scatterers=flex.xray_scatterer(
+      [xray.scatterer(label=label, site=site) for label, site in [
+        ('Co', (0.09898,0.20553,0.24456)),
+        ('S1', (0.19330, 0.47441, 0.32339)),
+        ('O1', (0.28318, 0.48776, 0.23127)),
+        ('O2', (0.09062, 0.59941, 0.35911)),
+        ('N1', (-0.05974, 0.10727, 0.34676)),
+        ('N2', (0.10173, 0.33500, 0.33941)),
+        ('C1', (-0.08067, -0.08749,  0.25674)),
+        ('C2', (0.36510, 0.43663, 0.39726)),
+        ('C3', (-0.09941, 0.17783, 0.42309)),
+        ('C4', (-0.02798, 0.31830, 0.42095)),
+        ('C5', (-0.20405, 0.12510, 0.50038)),
+        ('C6', (-0.12493, -0.01760, 0.34439)),
+        ('C7', (-0.22987, -0.07481, 0.41954)),
+        ('C8', (-0.26940, -0.00294, 0.49848)),
+        ('F1', (0.46982, 0.31699, 0.37812)),
+        ('F2', (0.29973, 0.41650, 0.48619)),
+        ('F3', (0.45768, 0.54578, 0.38614)),
+        ('H1', (-0.14014, -0.03270, 0.21285)),
+        ('H2', (-0.10888, -0.18018, 0.26822)),
+        ('H3', (0.03483, -0.08732, 0.23798)),
+        ('H4', (-0.11972, 0.39865, 0.41790)),
+        ('H5', (0.02297, 0.31775, 0.47702)),
+        ('H6', (-0.22897, 0.17412, 0.55193)),
+        ('H7', (-0.27205, -0.16153, 0.41707)),
+        ('H8', (-0.33910, -0.04115, 0.54930))]]))
+
 def exercise_direct_space_asu():
   cp = crystal.direct_space_asu.float_cut_plane(n=[-1,0,0], c=1)
   assert approx_equal(cp.n, [-1,0,0])
@@ -426,6 +460,23 @@ def exercise_pair_tables():
   assert t[1][10][1].size() == 0
   t[1][10][1].insert([4,5,4])
   assert t[1][10][1].size() == 2
+  #
+  structure = trial_structure_2()
+  scattering_types = structure.scatterers().extract_scattering_types()
+  asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
+  covalent_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  assert covalent_asu_table.add_covalent_pairs(
+    scattering_types=scattering_types) is covalent_asu_table
+  # default tolerance is 0.5 Angstrom
+  expected_pair_counts = (2, 4, 1, 1, 3, 3, 4, 4, 3, 4, 3, 3, 3,
+                          3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+  assert approx_equal(covalent_asu_table.pair_counts(), expected_pair_counts)
+  covalent_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  assert covalent_asu_table.add_covalent_pairs(
+    scattering_types=scattering_types, tolerance=0.8) is covalent_asu_table
+  expected_pair_counts = (2, 5, 1, 1, 3, 3, 4, 4, 3, 5, 3, 3, 3,
+                          3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+  assert approx_equal(covalent_asu_table.pair_counts(), expected_pair_counts)
   #
   structure = trial_structure()
   asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
