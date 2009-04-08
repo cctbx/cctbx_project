@@ -19,6 +19,7 @@ def run():
   "$D/eltbx/boost_python/tst_xray_scattering.py",
   "$D/eltbx/boost_python/tst_henke.py",
   "$D/eltbx/boost_python/tst_icsd_radii.py",
+  "$D/eltbx/boost_python/tst_covalent_radii.py",
   "$D/eltbx/boost_python/tst_neutron.py",
   "$D/eltbx/boost_python/tst_sasaki.py",
   "$D/eltbx/boost_python/tst_tiny_pse.py",
