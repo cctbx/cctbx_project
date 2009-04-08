@@ -32,14 +32,14 @@ class file_clutter(object):
             or self.n_trailing_empty_lines > 1
             or self.missing_eol)
 
-  def status(self, flag_x):
+  def status(self, flag_x, flag_dos_format=True):
     status = ""
     if (self.is_executable and flag_x
         and self.path.lower().find("command_line") < 0
         and not self.path.endswith(".csh")
         and not self.path.endswith(".sh")):
       status += "is executable, "
-    if (self.dos_format):
+    if (flag_dos_format and self.dos_format):
       status += "dos format, "
     if (self.n_tabs_or_trailing_whitespace > 0):
       status += "tabs or trailing whitespace=%d, " \
@@ -50,8 +50,8 @@ class file_clutter(object):
       status += "missing end-of-line, "
     return status
 
-  def show(self, flag_x):
-    status = self.status(flag_x)
+  def show(self, flag_x, flag_dos_format=True):
+    status = self.status(flag_x, flag_dos_format)
     if status: print "%s: %s" % (self.path, status)
 
 
