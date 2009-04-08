@@ -42,6 +42,7 @@ lib_cctbx_sources = [
   "eltbx/henke_tables_73_84.cpp",
   "eltbx/henke_tables_85_92.cpp",
   "eltbx/icsd_radii.cpp",
+  "eltbx/covalent_radii.cpp",
   "eltbx/neutron.cpp",
   "eltbx/sasaki.cpp",
   "eltbx/sasaki_tables_01_12.cpp",
