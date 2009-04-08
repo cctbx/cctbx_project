@@ -662,34 +662,60 @@ class rewrite_normalized(object):
 # Based on 46377 PDB files as of Tuesday Oct 02, 2007
 #   noticed in passing: misleading REMARK 400 in 1VSA (1vs9 and 2i1c
 #   don't exist)
+# Updated 2009-04-07, based on 56751 PDB files, using SPLIT records.
 pdb_codes_fragment_files = """\
+1bgl 1bgm
+1crp 1crr
+1f49 1gho
+1gix 1giy
+1j4z 1kpo
+1jgo 1jgp 1jgq
+1jyy 1jyz
+1jz0 1jz1
+1otz 1p0t
 1pns 1pnu
 1pnx 1pny
 1s1h 1s1i
 1ti2 1vld
 1ti4 1vle
 1ti6 1vlf
+1utf 1utv
 1voq 1vor 1vos 1vou 1vov 1vow 1vox 1voy 1voz 1vp0
 1vs5 1vs6 1vs7 1vs8
 1vsa 2ow8
+1vsp 2qnh
+1we3 1wf4
 1yl3 1yl4
 2avy 2aw4 2aw7 2awb
 2b64 2b66
 2b9m 2b9n
 2b9o 2b9p
+2bld 2bvi
 2gy9 2gya
 2gyb 2gyc
 2hgi 2hgj
 2hgp 2hgq
 2hgr 2hgu
 2i2p 2i2t 2i2u 2i2v
+2j00 2j01 2j02 2j03
+2jl5 2jl6 2jl7 2jl8
 2qal 2qam 2qan 2qao
 2qb9 2qba 2qbb 2qbc
 2qbd 2qbe 2qbf 2qbg
 2qbh 2qbi 2qbj 2qbk
 2qou 2qov 2qow 2qox
 2qoy 2qoz 2qp0 2qp1
+2uv9 2uva
+2uvb 2uvc
+2v46 2v47 2v48 2v49
+2vhm 2vhn 2vho 2vhp
 2z4k 2z4l 2z4m 2z4n
+2zkq 2zkr
+2zuo 2zv4 2zv5
+3bz1 3bz2
+3d5a 3d5b 3d5c 3d5d
+3df1 3df2 3df3 3df4
+3f1e 3f1f 3f1g 3f1h
 """
 
 def join_fragment_files(file_names):
