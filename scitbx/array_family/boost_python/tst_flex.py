@@ -308,10 +308,18 @@ def exercise_misc():
   f = flex.double(g)
   assert f.focus_size_1d() == 2*3*4
   assert f.shift_origin().accessor() == g.shift_origin()
-  b = flex.bool([bool(f) for f in [0,0,1,0,1,1,1,0,0,1,1,0,0,0]])
+  b = flex.int([0,0,1,0,1,1,1,0,0,1,1,0,0,0]).as_bool()
   assert b.md5().hexdigest() == "a3a1ff7423c672e6252003c23ad5420f"
-  b = flex.bool([bool(f) for f in [0,0,1,0,1,0,1,0,0,1,1,0,0,0]])
+  b = flex.int([0,0,1,0,1,0,1,0,0,1,1,0,0,0]).as_bool()
   assert b.md5().hexdigest() == "bc115dabbd6dc87323302b082152be14"
+  #
+  try: flex.int([0,0,1,0,2,0,1,0,0,1,1,0,0,0]).as_bool(strict=True)
+  except ValueError, e:
+    assert str(e) == "scitbx.array_family.flex.int.as_bool(strict=True):" \
+      " all array elements must be 0 or 1, but value=2 at array index=4."
+  else: raise Exception_expected
+  assert flex.int([0,0,1,0,2,0,1,0,0,1,1,0,0,0]) \
+    .as_bool(strict=False).count(True) == 5
   #
   class old_style:
     def __init__(self, elems):

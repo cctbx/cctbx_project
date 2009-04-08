@@ -5,15 +5,44 @@
 #include <scitbx/matrix/move.h>
 #include <scitbx/stl/map_fwd.h>
 #include <boost/python/args.hpp>
+#include <boost/python/overloads.hpp>
+#include <boost/format.hpp>
 #include <map>
 
 namespace scitbx { namespace af { namespace boost_python {
+
+  af::shared<bool>
+  as_bool(af::const_ref<int> const& self, bool strict=true)
+  {
+    af::shared<bool> result((af::reserve(self.size())));
+    for(std::size_t i=0;i<self.size();i++) {
+      int v = self[i];
+      if (v == 0) {
+        result.push_back(false);
+      }
+      else if (v == 1 || !strict) {
+        result.push_back(true);
+      }
+      else {
+        throw std::invalid_argument((
+          boost::format(
+            "scitbx.array_family.flex.int.as_bool(strict=True):"
+            " all array elements must be 0 or 1,"
+            " but value=%d at array index=%lu.") % v % i).str());
+      }
+    }
+    return result;
+  }
+
+  BOOST_PYTHON_FUNCTION_OVERLOADS(as_bool_overloads, as_bool, 1, 2)
 
   void wrap_flex_int()
   {
     using namespace boost::python;
     flex_wrapper<int>::signed_integer("int", scope())
       .def_pickle(flex_pickle_single_buffered<int>())
+      .def("as_bool", as_bool,
+        as_bool_overloads((arg_("self"), arg_("strict")=true)))
       .def("counts", counts<int, std::map<long, long> >::unlimited)
       .def("counts", counts<int, std::map<long, long> >::limited, (
         arg_("max_keys")))
