@@ -92,6 +92,12 @@ namespace {
             arg_("general_positions_only")=false,
             arg_("max_clusters")=0,
             arg_("estimated_reduction_factor")=4)))
+        .def("add_covalent_pairs", &w_t::add_covalent_pairs, (
+            arg_("scattering_types"),
+            arg_("distance_cutoff")=3.5,
+            arg_("min_cubicle_edge")=5,
+            arg_("tolerance")=0.5,
+            arg_("epsilon")=1.e-6), return_self<>())
         .def("add_all_pairs", &w_t::add_all_pairs,
           add_all_pairs_overloads((
             arg_("distance_cutoff"),
