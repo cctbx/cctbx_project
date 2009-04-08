@@ -7,9 +7,6 @@ from libtbx.utils import Sorry, format_cpu_times
 from mmtbx.refinement import refinement_flags
 from cStringIO import StringIO
 
-def bool_array(ints):
-  return flex.bool([bool(f) for f in ints])
-
 expected_result_all = \
   """Refinement flags and selection counts:
   individual_sites       = %s (9 atoms)
@@ -57,7 +54,7 @@ expected_result_mix = \
 
 def all_defined():
   #                 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-  barr = bool_array([0,1,1,0,1,1,0,1,1,0, 1, 1, 0, 1, 0, 0])
+  barr = flex.int([0,1,1,0,1,1,0,1,1,0, 1, 1, 0, 1, 0, 0]).as_bool()
   iarr = [ flex.size_t([1]),
            flex.size_t([2]),
            flex.size_t([4,5]),
@@ -89,7 +86,7 @@ def all_defined():
 
 def all_defined_1():
   #                 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-  barr = bool_array([1,1,1,0,1,1,0,0,1,0, 0, 0, 1, 1, 1, 1])
+  barr = flex.int([1,1,1,0,1,1,0,0,1,0, 0, 0, 1, 1, 1, 1]).as_bool()
   iarr = [ flex.size_t([0]),
            flex.size_t([1,2]),
            flex.size_t([4,5]),
@@ -134,11 +131,11 @@ def compare(rm, expected_result, deep_copy=False, selection=None, show=False):
   assert not show_diff(out.getvalue(), expected_result)
 
 def exercise_deepcopy_show_select():
-  sel_all       = bool_array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1])
-  sel_none      = bool_array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
-  sel_all_true  = bool_array([0,1,1,0,1,1,0,1,1,0,1,1,0,1,0,0])
-  sel_all_false = bool_array([1,0,0,1,0,0,1,0,0,1,0,0,1,0,1,1])
-  sel_mix       = bool_array([1,1,0,0,1,1,0,0,0,1,1,0,0,0,1,1])
+  sel_all       = flex.int([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]).as_bool()
+  sel_none      = flex.int([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]).as_bool()
+  sel_all_true  = flex.int([0,1,1,0,1,1,0,1,1,0,1,1,0,1,0,0]).as_bool()
+  sel_all_false = flex.int([1,0,0,1,0,0,1,0,0,1,0,0,1,0,1,1]).as_bool()
+  sel_mix       = flex.int([1,1,0,0,1,1,0,0,0,1,1,0,0,0,1,1]).as_bool()
   #
   compare(rm = all_defined(), expected_result = expected_result_all)
   compare(rm = all_defined(), expected_result = expected_result_all,       deep_copy = True)
@@ -184,7 +181,7 @@ def exercise_deepcopy_show_select():
 
 def exercise_deepcopy_show_select_compare_arrays():
   rm = all_defined()
-  sel_mix = bool_array([1,1,0,0,1,1,0,1,0,1,1,0,0,0,1,1])
+  sel_mix = flex.int([1,1,0,0,1,1,0,1,0,1,1,0,0,0,1,1]).as_bool()
   rm_sel = rm.select(selection = sel_mix)
   assert rm_sel.individual_sites
   assert rm_sel.torsion_angles
@@ -194,7 +191,7 @@ def exercise_deepcopy_show_select_compare_arrays():
   assert rm_sel.tls
   assert rm_sel.occupancies
   assert rm_sel.group_anomalous
-  barr_sel_mix = bool_array([0,1,1,1,1,0,1,  0, 0])
+  barr_sel_mix = flex.int([0,1,1,1,1,0,1,  0, 0]).as_bool()
   iarr_sel_mix = [ flex.size_t([1]),
                    flex.size_t([2,3]),
                    flex.size_t([4]),
@@ -214,7 +211,7 @@ def exercise_deepcopy_show_select_compare_arrays():
 
 def exercise_inflate():
   rm = all_defined()
-  barr = bool_array([1,0,1,1,0,1])
+  barr = flex.int([1,0,1,1,0,1]).as_bool()
   iarr = [flex.size_t([16]), flex.size_t([18,19]), flex.size_t([21])]
   oarr = [ [flex.size_t([16]), flex.size_t([18,19])], [flex.size_t([21])]]
   rm = rm.inflate(
@@ -241,7 +238,8 @@ Refinement flags and selection counts:
   group_anomalous        = %s
 """ % tuple(["%5s" % str(True)]*8))
   #
-  barr_result = bool_array([0,1,1,0,1,1,0,1,1,0,1,1,0,1,0,0,  1,0,1,1,0,1])
+  barr_result = flex.int([0,1,1,0,1,1,0,1,1,0,1,1,0,1,0,0,  1,0,1,1,0,1]) \
+    .as_bool()
   iarr_result = [
     flex.size_t([1]),
     flex.size_t([2]),
@@ -313,7 +311,7 @@ def exercise_add_1b():
   out = StringIO()
   rm.show(log = out)
   assert out.getvalue() == expected_result_all
-  barr_result = bool_array([0,1,1,0,0,1,0,1,0,1,1,0,0,1,1,0,1,0,0])
+  barr_result = flex.int([0,1,1,0,0,1,0,1,0,1,1,0,0,1,1,0,1,0,0]).as_bool()
   iarr_result = [flex.size_t([1]), flex.size_t([2]), flex.size_t([5,7]),
                  flex.size_t([9,10]), flex.size_t([13]), flex.size_t([14,16])]
   oarr_result = [[flex.size_t([1]), flex.size_t([2])], [flex.size_t([5,7]),
@@ -363,7 +361,8 @@ Refinement flags and selection counts:
   occupancies            = %s (12 atoms)
   group_anomalous        = %s
 """ % tuple(["%5s" % str(True)]*8))
-  barr_result = bool_array([0,1,1,0,1,1,1,1,0,1,1,1,0, 1, 1, 0, 1, 0, 0])
+  barr_result = flex.int([0,1,1,0,1,1,1,1,0,1,1,1,0, 1, 1, 0, 1, 0, 0]) \
+    .as_bool()
   iarr_result = [ flex.size_t([1]), flex.size_t([2]),
     flex.size_t([5,6,7]), flex.size_t([9,10,11]), flex.size_t([13]),
     flex.size_t([14,16]), flex.size_t([4]) ]
@@ -415,7 +414,7 @@ Refinement flags and selection counts:
   occupancies            = %s (10 atoms)
   group_anomalous        = %s
 """ % tuple(["%5s" % str(True)]*8))
-  barr_result = bool_array([1,0,1,1,0,1,1,0,0,1,0,0,0,0,1,1,1,0,1,0])
+  barr_result = flex.int([1,0,1,1,0,1,1,0,0,1,0,0,0,0,1,1,1,0,1,0]).as_bool()
   iarr_result = [ flex.size_t([0]), flex.size_t([2,3]), flex.size_t([5,6]),
     flex.size_t([9]), flex.size_t([14,15,16]), flex.size_t([18]) ]
   oarr_result = [ [flex.size_t([0]),flex.size_t([2,3])], [flex.size_t([5,6])],
@@ -465,7 +464,7 @@ Refinement flags and selection counts:
   occupancies            = %s (14 atoms)
   group_anomalous        = %s
 """ % tuple(["%5s" % str(True)]*8))
-  barr_result = bool_array([1,1,1,1,0,1,1,0,0,1,0,0,1,0,1,1,1,1,1,1])
+  barr_result = flex.int([1,1,1,1,0,1,1,0,0,1,0,0,1,0,1,1,1,1,1,1]).as_bool()
   iarr_result = [ flex.size_t([0]), flex.size_t([1]), flex.size_t([2,3]),
     flex.size_t([5,6]), flex.size_t([9]), flex.size_t([14,15,16,17]),
     flex.size_t([18]), flex.size_t([19]), flex.size_t([12])]
