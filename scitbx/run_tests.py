@@ -16,6 +16,8 @@ def run():
   "$B/array_family/tst_accessors",
   "$B/serialization/tst_base_256",
   "$B/math/tests/tst",
+  "$B/matrix/tests/tst_householder",
+  "$B/matrix/tests/tst_svd",
   "$D/error/tst_error.py",
   "$D/stl/tst_map.py",
   "$D/stl/tst_set.py",
