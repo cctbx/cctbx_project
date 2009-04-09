@@ -10,3 +10,5 @@ envlm = env.Copy(
 )
 env.Program(target="tst_householder",
             source="tst_householder.cpp")
+env.Program(target="tst_svd",
+            source="tst_svd.cpp")
