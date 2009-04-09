@@ -34,7 +34,7 @@ from iotbx import mtz
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
-from scitbx.python_utils.misc import user_plus_sys_time, show_total_time
+from libtbx.utils import user_plus_sys_time, show_total_time
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, date_and_time, host_and_user, multi_out
 from libtbx import adopt_init_args
