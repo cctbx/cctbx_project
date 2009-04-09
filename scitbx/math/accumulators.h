@@ -6,7 +6,7 @@
 
 namespace scitbx { namespace math {
 
-///Accumulators to compute statistics.
+///Accumulators to compute partial series. Statistics are the main application.
 /**
 The classes in this namespace are designed to help separating the computation
 of statistics from the iteration over the sequence of values.
@@ -20,7 +20,9 @@ template<typename FloatType>
 class null_accumulator
 {
   public:
+    null_accumulator() {}
     null_accumulator(FloatType x0) {}
+    null_accumulator(FloatType x0, FloatType x1) {}
     void operator()(FloatType x) {}
 };
 
@@ -231,6 +233,37 @@ class mean_absolute_deviation_accumulator : public Previous
     FloatType mean_absolute_deviation_;
 };
 
+/// LAPACK-style norm of a vector: overflow- and underflow-resilient
+/** Reference: DLASSQ (LAPACK) or DNRM2 (BLAS shipped with LAPACK) */
+template <typename FloatType, class Previous=null_accumulator<FloatType> >
+class norm_accumulator : public Previous
+{
+  public:
+    norm_accumulator() : ssq(1), scale(0) {}
+
+    void operator()(FloatType x) {
+      Previous::operator()(x);
+      FloatType absx = std::abs(x);
+      if (scale < absx) {
+        FloatType t = scale/absx;
+        ssq = 1. + ssq*t*t;
+        scale = absx;
+      }
+      else {
+        FloatType t = absx/scale;
+        ssq += t*t;
+      }
+    }
+
+    /// Overflow- and underflow-resilient
+    FloatType norm() { return scale*std::sqrt(ssq); }
+
+    /// Not overflow- or underflow-resilient
+    FloatType sum_sq() { return scale*scale*ssq; }
+
+  private:
+    FloatType ssq, scale;
+};
 
 }}} // namespace scitbx::math::accumulator
 
