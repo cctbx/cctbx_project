@@ -1,8 +1,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_ACCESSORS_F_GRID_H
 #define SCITBX_ARRAY_FAMILY_ACCESSORS_F_GRID_H
 
-#include <scitbx/array_family/accessors/c_index_1d_calculator.h>
-#include <scitbx/math/compile_time.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 
 namespace scitbx { namespace af {
 
