@@ -586,18 +586,20 @@ class map_cc_funct(object):
           a = None
           if(self.atoms_with_labels is not None):
             a = self.atoms_with_labels[i_seq]
-          self._result[i_seq] = group_args(atom = a, m1 = m1, ed1 = ed1)
+          self._result[i_seq] = group_args(atom = a, m1 = m1, ed1 = ed1,
+            xyz=site_cart)
     if(self.residue_detail):
       assert self.pdb_hierarchy is not None
       residues = self.extract_residues()
       self.gifes = [None,]*len(residues)
       self._result = [None,]*len(residues)
       for i_seq, residue in enumerate(residues):
+        residue_sites_cart = sites_cart.select(residue.selection)
         sel = maptbx.grid_indices_around_sites(
           unit_cell  = self.xray_structure.unit_cell(),
           fft_n_real = real_map_unpadded.focus(),
           fft_m_real = real_map_unpadded.all(),
-          sites_cart = sites_cart.select(residue.selection),
+          sites_cart = residue_sites_cart,
           site_radii = flex.double(residue.selection.size(), atom_radius))
         self.gifes[i_seq] = sel
         m1 = map_1.select(sel)
@@ -605,7 +607,8 @@ class map_cc_funct(object):
         for i_seq_r in residue.selection:
           ed1.append(map_1.eight_point_interpolation(scatterers[i_seq_r].site))
         self._result[i_seq] = \
-          group_args(residue = residue, m1 = m1, ed1 = flex.mean(ed1))
+          group_args(residue = residue, m1 = m1, ed1 = flex.mean(ed1),
+            xyz=residue_sites_cart.mean(), n_atoms=residue_sites_cart.size())
     del map_1
 
   def map_cc(self, map_2,
@@ -633,6 +636,7 @@ class map_cc_funct(object):
           else: corr = flex.linear_correlation(x = m1, y = m2).coefficient()
           ed1 = self._result[i_seq].ed1
           ed2 = map_2.eight_point_interpolation(scatterer.site)
+          xyz = self._result[i_seq].xyz
           poor_flag = False
           if(((ed2 < poor_map_value_threshold or ed1 < poor_map_value_threshold)
              or corr < poor_cc_threshold)):
@@ -645,6 +649,7 @@ class map_cc_funct(object):
             atom             = a,
             b_iso            = adptbx.u_as_b(scatterer.u_iso),
             occupancy        = scatterer.occupancy,
+            xyz              = xyz,
             cc               = corr,
             map_1_val        = ed1,
             map_2_val        = ed2,
@@ -671,6 +676,8 @@ class map_cc_funct(object):
         else: corr = flex.linear_correlation(x = m1, y = m2).coefficient()
         ed1 = self._result[i].ed1
         ed2_ = flex.double()
+        xyz = self._result[i].xyz
+        n_atoms = self._result[i].n_atoms
         for i_seq in self._result[i].residue.selection:
           ed2_.append(map_2.eight_point_interpolation(scatterers[i_seq].site))
         ed2 = flex.mean(ed2_)
@@ -681,6 +688,8 @@ class map_cc_funct(object):
         self.result.append(group_args(
           residue     = result.residue,
           occupancy   = flex.mean(occupancies.select(result.residue.selection)),
+          xyz         = xyz,
+          n_atoms     = n_atoms,
           b_iso       = flex.mean(b_isos.select(result.residue.selection)),
           cc          = corr,
           map_1_val   = ed1,
