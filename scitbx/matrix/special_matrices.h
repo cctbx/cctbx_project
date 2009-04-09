@@ -24,8 +24,8 @@ namespace scitbx { namespace matrix {
 
   template <typename NumType>
   af::versa<NumType, af::c_grid<2> > bidiagonal(
-        af::const_ref<NumType> diagonal,
-                af::const_ref<NumType> superdiagonal)
+    af::const_ref<NumType> diagonal,
+    af::const_ref<NumType> superdiagonal)
   {
     std::size_t n = diagonal.size();
     af::versa<NumType, af::c_grid<2> > result(af::c_grid<2>(n,n));
