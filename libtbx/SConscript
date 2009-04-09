@@ -655,7 +655,7 @@ else:
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.debug_symbols):
-      opts.insert(0, ["-g2", "-gdwarf-2"])
+      opts.insert(0, ["-g2", "-gstabs+"])
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = []
