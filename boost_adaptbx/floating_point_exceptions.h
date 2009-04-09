@@ -101,6 +101,33 @@ namespace boost_adaptbx { namespace floating_point {
     #endif
   }
 
+  class exception_trapping
+  {
+    private:
+      bool division_by_zero_, invalid_, overflow_;
+      bool division_by_zero_on_entry, invalid_on_entry, overflow_on_entry;
+
+    public:
+      enum { dont_trap=0, division_by_zero=1, invalid=2, overflow=4 };
+
+      exception_trapping(int flag)
+        : division_by_zero_on_entry(is_division_by_zero_trapped()),
+          invalid_on_entry(is_invalid_trapped()),
+          overflow_on_entry(is_overflow_trapped()),
+          division_by_zero_(flag & division_by_zero),
+          invalid_(flag & invalid),
+          overflow_(flag & overflow)
+      {
+        trap_exceptions(division_by_zero_, invalid_, overflow_);
+      }
+
+      ~exception_trapping() {
+        trap_exceptions(division_by_zero_on_entry,
+                        invalid_on_entry,
+                        overflow_on_entry);
+      }
+  };
+
 }} // boost_adaptbx::floating_point
 
 #endif // GUARD
