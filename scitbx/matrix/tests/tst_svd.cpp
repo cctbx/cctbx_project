@@ -59,8 +59,8 @@ void check_2x2_decomposition(double f, double g, double h,
 void exercise_2x2_decomposition() {
   double tol = 5*std::numeric_limits<double>::epsilon();
 
-  double s_min = std::sqrt(3 - std::sqrt(5));
-  double s_max = std::sqrt(3 + std::sqrt(5));
+  double s_min = std::sqrt(3. - std::sqrt(5.));
+  double s_max = std::sqrt(3. + std::sqrt(5.));
   double sign[2] = { -1., 1. };
   for (int i=0; i<2; ++i)
     for (int j=0; j<2; ++j)
