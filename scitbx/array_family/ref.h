@@ -193,11 +193,11 @@ namespace scitbx { namespace af {
       end() const { return const_cast<ElementType*>(this->end_); }
 
       reverse_iterator rbegin() const {
-        return reverse_iterator(this->end_);
+        return reverse_iterator(this->end());
       }
 
       reverse_iterator rend() const {
-        return reverse_iterator(this->begin_);
+        return reverse_iterator(this->begin());
       }
 
       ElementType&
