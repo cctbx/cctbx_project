@@ -15,7 +15,7 @@ from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import xray_structure
 from iotbx import pdb
 from cStringIO import StringIO
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 from scitbx.math import matrix
 from cctbx import adptbx
 from mmtbx import monomer_library
@@ -25,7 +25,7 @@ from iotbx.option_parser import iotbx_option_parser
 from iotbx.pdb import crystal_symmetry_from_pdb
 from iotbx.pdb import combine_unique_pdb_files
 from iotbx import mtz
-from scitbx.python_utils.misc import user_plus_sys_time, show_total_time
+from libtbx.utils import user_plus_sys_time, show_total_time
 from libtbx.str_utils import show_string
 from libtbx import adopt_init_args
 import random, sys, os, time
