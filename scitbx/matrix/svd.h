@@ -202,7 +202,7 @@ struct bidiagonal_decomposition
     else {
       s_lower = 0;
     }
-    s_lower /= std::sqrt(n);
+    s_lower /= std::sqrt(scalar_t(n));
 
     scalar_t sfmin = math::numeric_limits<scalar_t>::safe_min();
     thresh = std::max(tol*s_lower, n_max_iterations*sfmin);
@@ -399,6 +399,8 @@ struct bidiagonal_decomposition
 
   /// Do one Golub-Kahan iteration chasing nonzeroes from top-left to bottom-right
   void do_implicit_shift_qr_iteration_downward(bool compute_shift=false) {
+    using math::copysign;
+
     if (compute_shift) compute_trailing_wilkinson_shift();
 
     /* Givens rotation zeroing off-diagonal of leading 2x2 block
@@ -442,6 +444,8 @@ struct bidiagonal_decomposition
 
   /// Do one Golub-Kahan iteration chasing nonzeroes from bottom-right to top-left
   void do_implicit_shift_qr_iteration_upward(bool compute_shift=false) {
+    using math::copysign;
+
     if (compute_shift) compute_leading_wilkinson_shift();
 
     /* Givens rotation zeroing off-diagonal of leading 2x2 block
