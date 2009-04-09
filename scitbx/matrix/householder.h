@@ -47,12 +47,12 @@ struct reflection
     zero_vector(x);
   }
 
-  reflection(int m, int n, applied_on_left_tag)
-    : v(m), w(n)
+  reflection(int m, int n, applied_on_left_tag, bool accumulate)
+    : v(m), w(accumulate ? std::max(m,n) : n)
   {}
 
-  reflection(int m, int n, applied_on_right_tag)
-    : v(m), w(n)
+  reflection(int m, int n, applied_on_right_tag, bool accumulate)
+    : v(n), w(accumulate ? std::max(m,n) : m)
   {}
 
   reflection(int m, int n, applied_on_left_and_right_tag)
@@ -195,7 +195,7 @@ struct qr_decomposition
 
   qr_decomposition(mat_ref<scalar_t> const &a,
                    bool accumulate_q=false)
-    : p(a.n_rows(), a.n_columns(), applied_on_left_tag())
+    : p(a.n_rows(), a.n_columns(), applied_on_left_tag(), accumulate_q)
   {
     int m = a.n_rows(), n = a.n_columns();
     SCITBX_ASSERT(m >= n)(m)(n);

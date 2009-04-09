@@ -150,7 +150,9 @@ int main() {
                     61, 62,  3, 64, 65, 66, 67;
 
     matrix_t a = a__.deep_copy();
-    householder::reflection<double> p(m, n, householder::applied_on_left_tag());
+    householder::reflection<double> p(m, n,
+                                      householder::applied_on_left_tag(),
+                                      false);
     p.zero_vector(scitbx::column_below(mat_ref_to(a), 1, 2));
     p.apply_on_left_to_lower_right_block(a.ref(), 1, 3);
     /* Mathematica:
@@ -174,7 +176,9 @@ int main() {
 
     matrix_t a_t = af::matrix_transpose(a__.ref());
 
-    householder::reflection<double> q(n, m, householder::applied_on_right_tag());
+    householder::reflection<double> q(n, m,
+                                      householder::applied_on_right_tag(),
+                                      false);
     q.zero_vector(scitbx::row_right_of(mat_ref_to(a_t), 2, 1));
     q.apply_on_right_to_lower_right_block(a_t.ref(), 3, 1);
     SCITBX_ASSERT(matrix_transpose(expected.ref()).all_approx_equal(a_t, tol));
