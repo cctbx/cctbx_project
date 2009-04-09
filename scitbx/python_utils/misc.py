@@ -1,12 +1,3 @@
-from libtbx import adopt_init_args # XXX backward compatibility 2005_07_29
-from libtbx.utils import plural_s # XXX backward compatibility 2006-10-16
-from libtbx.utils import user_plus_sys_time # XXX backward compatibility 2006-10-16
-from libtbx.utils import time_log # XXX backward compatibility 2006-10-16
-from libtbx.utils import human_readable_time # XXX backward compatibility 2006-10-16
-from libtbx.utils import human_readable_time_as_seconds # XXX backward compatibility 2006-10-16
-from libtbx.utils import show_total_time # XXX backward compatibility 2006-11-08
-from libtbx.utils import input_with_prompt # XXX backward compatibility 2006-11-08
-from libtbx.str_utils import line_feeder # XXX backward compatibility 2006-11-08
 import sys, os
 
 class store(object):

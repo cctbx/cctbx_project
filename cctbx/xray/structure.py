@@ -1207,11 +1207,8 @@ class structure(crystal.special_position_settings):
         remark=None,
         remarks=[],
         fractional_coordinates=False,
-        res_name=None, # XXX backward compatibility 2008-05-13
-        connect=None,
-        resname=None):
-    assert res_name is None or resname is None
-    if (resname is None): resname = res_name
+        resname=None,
+        connect=None):
     import iotbx.pdb.xray_structure
     return iotbx.pdb.xray_structure.as_pdb_file(
       self=self,

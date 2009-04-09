@@ -1728,22 +1728,6 @@ def unpickle():
   env = pickle.load(libtbx_env)
   if (env.python_version_major_minor != sys.version_info[:2]):
     env.raise_python_version_incompatible()
-  # XXX backward compatibility 2007-02-06
-  if (not hasattr(env.build_options, "build_boost_python_extensions")):
-    env.build_options.build_boost_python_extensions = True
-  # XXX backward compatibility 2007-07-28
-  if (not hasattr(env.build_options, "boost_python_no_py_signatures")):
-    env.build_options.boost_python_no_py_signatures = False
-  # XXX backward compatibility 2008-04-30
-  if (not hasattr(env.build_options, "write_full_flex_fwd_h")):
-    env.build_options.write_full_flex_fwd_h = default_write_full_flex_fwd_h
-  # XXX backward compatibility 2008-05-21
-  if not hasattr(env.build_options, "enable_boost_threads"):
-    env.build_options.enable_boost_threads = False
-  # XXX backward compatibility 2008-06-05
-  if not hasattr(env.build_options, "enable_openmp_if_possible"):
-    env.build_options.enable_openmp_if_possible \
-      = default_enable_openmp_if_possible
   # XXX backward compatibility 2009-04-06
   if (not hasattr(env.build_options, "boost_python_bool_int_strict")):
     env.build_options.boost_python_bool_int_strict = True
