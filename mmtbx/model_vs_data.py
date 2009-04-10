@@ -34,18 +34,21 @@ class mvd(object):
     self.data          = None
     self.model_vs_data = None
     self.pdb_header    = None
+    self.misc          = None
 
   def collect(self,
               crystal       = None,
               models        = None,
               data          = None,
               model_vs_data = None,
-              pdb_header    = None):
+              pdb_header    = None,
+              misc          = None):
     if(crystal       is not None): self.crystal       = crystal
     if(models        is not None): self.models        = models
     if(data          is not None): self.data          = data
     if(model_vs_data is not None): self.model_vs_data = model_vs_data
     if(pdb_header    is not None): self.pdb_header    = pdb_header
+    if(misc          is not None): self.misc          = misc
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
@@ -140,7 +143,20 @@ class mvd(object):
       print >> log, "    high_resolution : %-s"%format_value("%s",self.pdb_header.high_resolution)
       print >> log, "    low_resolution  : %-s"%format_value("%s",self.pdb_header.low_resolution)
       print >> log, "    sigma_cutoff    : %-s"%format_value("%s",self.pdb_header.sigma_cutoff)
-
+      print >> log, "    matthews_coeff  : %-s"%format_value("%s",self.pdb_header.matthews_coeff)
+      print >> log, "    solvent_cont    : %-s"%format_value("%s",self.pdb_header.solvent_cont)
+      if(self.pdb_header.tls is not None):
+        print >> log, "    TLS             : %-s"%format_value("%s",
+          " ".join([str(self.pdb_header.tls.pdb_inp_tls.tls_present),
+          "(number of groups: %s)"%
+          str(len(self.pdb_header.tls.tls_selections))]))
+      else:
+        print >> log, "    TLS             : None"
+    #
+    print >> log, "  After applying resolution and sigma cutoffs:"
+    print >> log, "    n_refl_cutoff : %-s"%format_value("%d",self.misc.n_refl_cutoff)
+    print >> log, "    r_work_cutoff : %-s"%format_value("%6.4f",self.misc.r_work_cutoff)
+    print >> log, "    r_free_cutoff : %-s"%format_value("%6.4f",self.misc.r_free_cutoff)
 
 def get_program_name(file_lines):
   result = None
@@ -150,6 +166,48 @@ def get_program_name(file_lines):
     if(result is not None): return result
   if(result is not None):
     result = "_".join(result.split())
+  return result
+
+def get_solvent_content(file_lines):
+  mc = []
+  for remark in file_lines:
+    remark = remark.upper()
+    if(remark.count("SOLVENT")==1 and
+       remark.count("CONTENT")==1 and
+       remark.count("REMARK 280")==1):
+      try:
+        mc.append(remark.split()[6])
+      except:
+        try:
+          mc.append(remark[remark.index(":")+1:])
+        except:
+          mc.append(remark)
+  result = None
+  if(len(mc) == 1):
+    try: result = float(mc[0])
+    except IndexError: pass
+    except ValueError: pass
+  return result
+
+def get_matthews_coeff(file_lines):
+  mc = []
+  for remark in file_lines:
+    remark = remark.upper()
+    if(remark.count("MATTHEWS")==1 and
+       remark.count("COEFFICIENT")==1 and
+       remark.count("REMARK 280")==1):
+      try:
+        mc.append(remark.split()[6])
+      except:
+        try:
+          mc.append(remark[remark.index(":")+1:])
+        except:
+          mc.append(remark)
+  result = None
+  if(len(mc) == 1):
+    try: result = float(mc[0])
+    except IndexError: pass
+    except ValueError: pass
   return result
 
 def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
@@ -206,6 +264,13 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
         restraints_manager = restraints_manager)
       need_ramachandran = False
       ramalyze_obj = None
+      rc = overall_counts_i_seq.resname_classes
+      n_residues = 0
+      for k in rc.keys():
+        if(k.count('amino_acid')):
+          need_ramachandran = True
+          n_residues = int(rc[k])
+          break
       if(need_ramachandran):
         ramalyze_obj = ramalyze()
         output, output_list = ramalyze_obj.analyze_pdb(hierarchy =
@@ -373,6 +438,7 @@ def run(args,
     cryst1         = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
     use_elbow      = show_geometry_statistics,
     log            = sys.stdout)
+  mmtbx_pdb_file.set_ppf()
   processed_pdb_file = mmtbx_pdb_file.processed_pdb_file
   pdb_raw_records = mmtbx_pdb_file.pdb_raw_records
   pdb_inp = mmtbx_pdb_file.pdb_inp
@@ -397,6 +463,15 @@ def run(args,
     show_geometry_statistics = show_geometry_statistics,
     mvd_obj                  = mvd_obj)
   #
+  # Extract TLS
+  pdb_tls = None
+  if(len(xray_structures)==1): # XXX TLS and multiple models ???
+    pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(pdb_inp = mmtbx_pdb_file.pdb_inp)
+    pdb_tls = mmtbx.tls.tools.extract_tls_from_pdb(
+      pdb_inp_tls       = pdb_inp_tls,
+      all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
+      xray_structure    = xray_structures[0]) # XXX TLS and multiple models ???
+  #
   bss_params = bss.master_params.extract()
   bss_params.k_sol_max = 0.8
   bss_params.k_sol_min = 0.0
@@ -419,31 +494,67 @@ def run(args,
               test_flag_value = test_flag_value,
               f_obs_labels    = f_obs.info().label_string()))
   mvd_obj.collect(model_vs_data = show_model_vs_data(fmodel))
+  #
   # Extract information from PDB file header and output (if any)
+  pub_r_work       = None
+  pub_r_free       = None
+  pub_high         = None
+  pub_low          = None
+  pub_sigma        = None
+  pub_program_name = None
+  pub_solv_cont    = None
+  pub_matthews     = None
   published_results = extract_rfactors_resolutions_sigma.extract(
     file_name = pdb_file_names[0])
   if(published_results is not None):
-    published_results_r_work = published_results.r_work
-    published_results_r_free = published_results.r_free
-    published_results_high   = published_results.high
-    published_results_low    = published_results.low
-    published_results_sigma  = published_results.sigma
-    program_name             = get_program_name(file_lines = pdb_raw_records)
-    published_results_result =  [published_results_r_work,
-                          published_results_r_free,
-                          published_results_high  ,
-                          published_results_low   ,
-                          published_results_sigma ,
-                          program_name            ,
-                          pdb_inp.extract_header_year()]
-    if(len(published_results_result) != published_results_result.count(None)):
-      mvd_obj.collect(pdb_header = group_args(
-        program_name    = program_name,
-        year            = published_results_result[6],
-        r_work          = published_results.r_work,
-        r_free          = published_results.r_free,
-        high_resolution = published_results.high,
-        low_resolution  = published_results.low,
-        sigma_cutoff    = published_results.sigma))
+    pub_r_work       = published_results.r_work
+    pub_r_free       = published_results.r_free
+    pub_high         = published_results.high
+    pub_low          = published_results.low
+    pub_sigma        = published_results.sigma
+  pub_program_name = get_program_name(file_lines = pdb_raw_records)
+  pub_solv_cont    = get_solvent_content(file_lines = pdb_raw_records)
+  pub_matthews     = get_matthews_coeff(file_lines = pdb_raw_records)
+  mvd_obj.collect(pdb_header = group_args(
+    program_name    = pub_program_name,
+    year            = pdb_inp.extract_header_year(),
+    r_work          = pub_r_work,
+    r_free          = pub_r_free,
+    high_resolution = pub_high,
+    low_resolution  = pub_low,
+    sigma_cutoff    = pub_sigma,
+    matthews_coeff  = pub_matthews,
+    solvent_cont    = pub_solv_cont,
+    tls             = pdb_tls))
+  #
+  # Recompute R-factors using published cutoffs
+  r_work_cutoff = None
+  r_free_cutoff = None
+  n_refl_cutoff = None
+  sel_cutoff = flex.bool(f_obs.data().size(), True)
+  if(pub_sigma is not None):
+    tmp_sel = f_obs.data() > f_obs.sigmas()*pub_sigma
+    sel_cutoff = sel_cutoff.set_selected(~tmp_sel, False)
+  if(pub_high is not None and abs(pub_high-f_obs.d_min()) > 0.03):
+    tmp_sel = f_obs.d_spacings().data() > pub_high
+    sel_cutoff = sel_cutoff.set_selected(~tmp_sel, False)
+  if(pub_low is not None and abs(pub_high-f_obs.d_max_min()[0]) > 0.03):
+    tmp_sel = f_obs.d_spacings().data() < pub_low
+    sel_cutoff = sel_cutoff.set_selected(~tmp_sel, False)
+  if(sel_cutoff.size() != sel_cutoff.count(True)):
+    f_obs_cut = f_obs.select(sel_cutoff)
+    r_free_flags_cut = r_free_flags.select(sel_cutoff)
+    fmodel_cut = utils.fmodel_simple(
+      xray_structures = xray_structures,
+      f_obs           = f_obs_cut,
+      r_free_flags    = r_free_flags_cut,
+      bss_params      = bss_params)
+    r_work_cutoff = fmodel_cut.r_work()
+    r_free_cutoff = fmodel_cut.r_free()
+    n_refl_cutoff = f_obs_cut.data().size()
+  mvd_obj.collect(misc = group_args(
+    r_work_cutoff = r_work_cutoff,
+    r_free_cutoff = r_free_cutoff,
+    n_refl_cutoff = n_refl_cutoff))
   mvd_obj.show()
   return mvd_obj

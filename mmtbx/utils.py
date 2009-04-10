@@ -608,10 +608,9 @@ def get_atom_selections(all_chain_proxies,
                         selection_strings     = None,
                         iselection            = True,
                         one_group_per_residue = False,
+                        allow_empty_selection = False,
                         hydrogens_only        = False,
-                        one_selection_array   = False,
-                        log                   = None):
-  if(log is None): log = sys.stdout
+                        one_selection_array   = False):
   atoms = all_chain_proxies.pdb_atoms
   scatterers = xray_structure.scatterers()
   assert atoms.size() == scatterers.size()
@@ -662,6 +661,35 @@ def get_atom_selections(all_chain_proxies,
                                        string            = selection_string))
   else:
     raise Sorry('Ambiguous selection.')
+  #
+  if(len(selections)>1):
+    if(not isinstance(selections[0], flex.bool)):
+      if(selections[0].size()==0 and not allow_empty_selection):
+        raise Sorry("Empty selection.")
+      tmp = flex.bool(xray_structure.scatterers().size(), selections[0]).as_int()
+    else:
+      if(selections[0].iselection().size()==0 and not allow_empty_selection):
+        raise Sorry("Empty selection.")
+      tmp = selections[0].deep_copy().as_int()
+    for tmp_s in selections[1:]:
+      if(not isinstance(tmp_s, flex.bool)):
+        if(tmp_s.size()==0 and not allow_empty_selection):
+          raise Sorry("Empty selection.")
+        tmp = tmp + flex.bool(xray_structure.scatterers().size(),tmp_s).as_int()
+      else:
+        if(tmp_s.iselection().size()==0 and not allow_empty_selection):
+          raise Sorry("Empty selection.")
+        tmp = tmp + tmp_s.as_int()
+    if(flex.max(tmp)>1):
+      raise Sorry("Duplicate selections.")
+  else:
+    if(not isinstance(selections[0], flex.bool)):
+      if(selections[0].size()==0 and not allow_empty_selection):
+        raise Sorry("Empty selection.")
+    else:
+      if(selections[0].iselection().size()==0 and not allow_empty_selection):
+        raise Sorry("Empty selection.")
+  #
   if(iselection):
     for i_seq, selection in enumerate(selections):
       if(hasattr(selection, "iselection")):
@@ -1129,17 +1157,17 @@ def occupancy_selections(
         result.append(cg_sel)
   if(add_water):
     water_selection = get_atom_selections(
-      all_chain_proxies   = all_chain_proxies,
-      selection_strings   = ['water'],
-      iselection          = True,
-      xray_structure      = xray_structure,
-      one_selection_array = True)
+      all_chain_proxies     = all_chain_proxies,
+      selection_strings     = ['water'],
+      iselection            = True,
+      xray_structure        = xray_structure,
+      allow_empty_selection = True,
+      one_selection_array   = True)
     result = add_occupancy_selection(
       result     = result,
       size       = xray_structure.scatterers().size(),
       selection  = water_selection,
       hd_special = None)
-
   list_3d_as_bool_selection(
     list_3d=result, size=xray_structure.scatterers().size())
   if(as_flex_arrays):
@@ -1177,16 +1205,16 @@ class xray_structures_from_processed_pdb_file(object):
     self.model_selections = []
     self.neutron_scattering_dict = None
     self.xray_scattering_dict = None
-    xray_structure = processed_pdb_file.xray_structure(show_summary = False)
-    if(xray_structure is None):
+    self.xray_structure_all = processed_pdb_file.xray_structure(show_summary = False)
+    if(self.xray_structure_all is None):
       raise Sorry("Cannot extract xray_structure.")
-    if(xray_structure.scatterers().size()==0):
+    if(self.xray_structure_all.scatterers().size()==0):
       raise Sorry("Empty xray_structure.")
     all_chain_proxies = processed_pdb_file.all_chain_proxies
     self.setup_scattering_dictionaries(
       scattering_table  = scattering_table,
       all_chain_proxies = all_chain_proxies,
-      xray_structure    = xray_structure,
+      xray_structure    = self.xray_structure_all,
       d_min             = d_min,
       log               = log)
     model_indices = all_chain_proxies.pdb_inp.model_indices()
@@ -1201,11 +1229,11 @@ class xray_structures_from_processed_pdb_file(object):
        for ran in ranges:
          sel = flex.size_t(range(ran[0],ran[1]))
          self.model_selections.append(sel)
-         self.xray_structures.append(xray_structure.select(sel))
+         self.xray_structures.append(self.xray_structure_all.select(sel))
     else:
       self.model_selections.append(
-        flex.size_t(xrange(xray_structure.scatterers().size())) )
-      self.xray_structures.append(xray_structure)
+        flex.size_t(xrange(self.xray_structure_all.scatterers().size())) )
+      self.xray_structures.append(self.xray_structure_all)
 
   def setup_scattering_dictionaries(self, scattering_table,
                                           all_chain_proxies,
@@ -1489,9 +1517,19 @@ class process_command_line_args(object):
       self.crystal_symmetry = crystal_symmetries[0]
 
 class pdb_file(object):
-  def __init__(self, pdb_file_names, cryst1=None, cif_objects=[], log=None,
+
+  def __init__(self, pdb_file_names,
+                     cryst1=None,
+                     cif_objects=[],
+                     log=None,
                      use_elbow = False):
     if(log is None): log = sys.stdout
+    self.processed_pdb_files_srv = None
+    self.processed_pdb_file = None
+    self.cif_objects = cif_objects
+    self.use_elbow = use_elbow
+    self.pdb_file_names = pdb_file_names
+
     pdb_combined = combine_unique_pdb_files(file_names = pdb_file_names)
     pdb_combined.report_non_unique(out = log)
     if(len(pdb_combined.unique_file_names) == 0):
@@ -1501,17 +1539,19 @@ class pdb_file(object):
       for rec in self.pdb_raw_records:
         if(rec.startswith("CRYST1 ")): self.pdb_raw_records.remove(rec)
       self.pdb_raw_records.append(cryst1)
+    self.pdb_inp = iotbx.pdb.input(source_info = None,
+      lines = flex.std_string(self.pdb_raw_records))
+
+  def set_ppf(self):
     # XXX do not write a file
-    if(len(cif_objects) == 0 and use_elbow):
+    if(len(self.cif_objects) == 0 and self.use_elbow):
       t = time.ctime().split() # to make it safe to remove files
       time_stamp = "_"+t[4]+"_"+t[1].upper()+"_"+t[2]+"_"+t[3][:-3].replace(":","h")
-      prefix = os.path.basename(pdb_file_names[0])
+      prefix = os.path.basename(self.pdb_file_names[0])
       from elbow.scripts import elbow_on_pdb_file
       from elbow.command_line import join_cif_files
       if len(sys.argv)>1: del sys.argv[1:]
-      rc = elbow_on_pdb_file.run("\n".join(self.pdb_raw_records),
-                                 silent=True,
-                                 )
+      rc = elbow_on_pdb_file.run("\n".join(self.pdb_raw_records), silent=True)
       cif_file = prefix+time_stamp+".cif"
       if rc is not None:
         hierarchy, cifs = rc
@@ -1527,7 +1567,7 @@ class pdb_file(object):
             f.write(rc)
             f.close()
       if(os.path.isfile(cif_file)):
-        cif_objects.append((cif_file,
+        self.cif_objects.append((cif_file,
           mmtbx.monomer_library.server.read_cif(file_name = cif_file)))
     # XXX
     pdb_ip = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
@@ -1535,7 +1575,7 @@ class pdb_file(object):
     pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
     pdb_ip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
     self.processed_pdb_files_srv = process_pdb_file_srv(
-      cif_objects               = cif_objects,
+      cif_objects               = self.cif_objects,
       pdb_interpretation_params = pdb_ip,
       log                       = StringIO())
     self.processed_pdb_file, self.pdb_inp = \
@@ -1597,3 +1637,29 @@ def model_simple(pdb_file_names,
     pdb_hierarchy           = pdb_hierarchy,
     log                     = log)
   return result
+
+def extract_tls_and_u_total_from_pdb(
+      f_obs,
+      r_free_flags,
+      xray_structure,
+      tls_selections):
+  #
+  remark_3_records = pdb_inp.extract_remark_iii_records(3)
+  chain_ids = []
+  for model in pdb_inp.construct_hierarchy().models():
+    for chain in model.chains():
+      chain_ids.append(chain.id)
+  tls_data_obj = iotbx.pdb.remark_3_interpretation.extract_tls_parameters(
+    remark_3_records = remark_3_records,
+    chain_ids        = chain_ids,
+    file_name        = pdb_file)
+  ##
+  tls_selection_strings = []
+  for i_seq, tls_group in enumerate(tls_groups):
+    tls_selections_strings.append(tls_group.selection_string)
+  ##
+  selections = utils.get_atom_selections(
+      all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
+      selection_strings = tls_selections_strings,
+      xray_structure    = xray_structure,
+      log               = log)
