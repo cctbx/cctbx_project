@@ -279,16 +279,14 @@ class modify(object):
           iselection        = False,
           all_chain_proxies = all_chain_proxies,
           selection_strings = [params_remove_selection],
-          xray_structure    = xray_structure,
-          log               = self.log)[0])
+          xray_structure    = xray_structure)[0])
     if(params_keep_selection is not None):
       self.keep_selection = flex.smart_selection(
         flags=utils.get_atom_selections(
           iselection        = False,
           all_chain_proxies = all_chain_proxies,
           selection_strings = [params_keep_selection],
-          xray_structure    = xray_structure,
-          log               = self.log)[0])
+          xray_structure    = xray_structure)[0])
     if(self.remove_selection is not None and self.keep_selection is not None):
       raise Sorry("Ambiguous selection: 'keep' and 'remove' keywords cannot"
         " be used simultaneously:\n  keep=%s\n  remove=%s" % (
@@ -303,8 +301,7 @@ class modify(object):
         iselection        = False,
         all_chain_proxies = all_chain_proxies,
         selection_strings = [self.params.selection],
-        xray_structure    = xray_structure,
-        log               = self.log)[0])
+        xray_structure    = xray_structure)[0])
     self._process_adp()
     self._process_sites()
     self._process_occupancies(selection = self.top_selection)
@@ -333,8 +330,7 @@ class modify(object):
             iselection=False,
             all_chain_proxies=self.all_chain_proxies,
             selection_strings=[adp.atom_selection],
-            xray_structure=self.xray_structure,
-            log = self.log)[0])
+            xray_structure=self.xray_structure)[0])
       if (adp.convert_to_isotropic):
         self._convert_to_isotropic(selection=selection)
       if (adp.convert_to_anisotropic):
@@ -394,8 +390,7 @@ class modify(object):
             iselection=False,
             all_chain_proxies=self.all_chain_proxies,
             selection_strings=[sites.atom_selection],
-            xray_structure=self.xray_structure,
-            log = self.log)[0])
+            xray_structure=self.xray_structure)[0])
       self._shake_sites(selection=selection, rms_difference=sites.shake)
       self._rb_shift(
         selection=selection,

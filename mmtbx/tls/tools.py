@@ -11,6 +11,63 @@ from cctbx import xray
 from libtbx.utils import user_plus_sys_time
 from libtbx.str_utils import line_breaker
 from iotbx.option_parser import iotbx_option_parser
+from libtbx import group_args
+import mmtbx.utils
+import iotbx
+
+def combine_tls_and_u_local(xray_structure, tls_selections, tls_groups):
+  assert len(tls_selections) == len(tls_groups)
+  for sel in tls_selections:
+    xray_structure.convert_to_anisotropic(selection = sel)
+  tlsos = []
+  for tls_group in tls_groups:
+    tlsos.append(tlso(t = tls_group.t,
+                      l = tls_group.l,
+                      s = tls_group.s,
+                      origin = tls_group.origin))
+  u_cart_tls = u_cart_from_tls(
+    sites_cart = xray_structure.sites_cart(),
+    selections = tls_selections,
+    tlsos      = tlsos)
+  unit_cell = xray_structure.unit_cell()
+  for i_seq, sc in enumerate(xray_structure.scatterers()):
+    if(u_cart_tls[i_seq] != (0,0,0,0,0,0)):
+      assert sc.flags.use_u_aniso()
+      u_star_tls = adptbx.u_cart_as_u_star(unit_cell,
+        tuple(u_cart_tls[i_seq]))
+      sc.u_star = tuple(flex.double(sc.u_star) + flex.double(u_star_tls))
+
+def tls_from_pdb_inp(pdb_inp):
+  remark_3_records = pdb_inp.extract_remark_iii_records(3)
+  chain_ids = []
+  for model in pdb_inp.construct_hierarchy().models():
+    for chain in model.chains():
+      chain_ids.append(chain.id)
+  return iotbx.pdb.remark_3_interpretation.extract_tls_parameters(
+    remark_3_records = remark_3_records,
+    chain_ids        = chain_ids)
+
+def extract_tls_from_pdb(pdb_inp_tls, all_chain_proxies, xray_structure):
+  if(len(pdb_inp_tls.tls_params)>0):
+    tls_selection_strings = []
+    for i_seq, tls_group in enumerate(pdb_inp_tls.tls_params):
+      tls_selection_strings.append(tls_group.selection_string)
+    try:
+      selections = mmtbx.utils.get_atom_selections(
+        all_chain_proxies = all_chain_proxies,
+        selection_strings = tls_selection_strings,
+        xray_structure    = xray_structure)
+      return group_args(pdb_inp_tls           = pdb_inp_tls,
+                        tls_selections        = selections,
+                        tls_selection_strings = tls_selection_strings)
+    except:
+      return group_args(pdb_inp_tls           = pdb_inp_tls,
+                        tls_selections        = [],
+                        tls_selection_strings = [])
+  else:
+    return group_args(pdb_inp_tls           = pdb_inp_tls,
+                      tls_selections        = [],
+                      tls_selection_strings = [])
 
 class tls_group(object):
   def __init__(self, tlso, selection_string = None, selection_array = None):
