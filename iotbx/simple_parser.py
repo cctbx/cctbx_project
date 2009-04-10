@@ -5,7 +5,7 @@ class operator_priority_evaluator(object):
 
   def __call__(self, word):
     if (word.quote_token is not None): return 0
-    return self.operator_dict.get(word.value, 0)
+    return self.operator_dict.get(word.value.lower(), 0)
 
 def infix_as_postfix(
       word_iterator,

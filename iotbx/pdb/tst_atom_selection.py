@@ -128,6 +128,9 @@ END
   assert list(isel(r"resname S?4")) == [64,65,66,67,68]
   assert list(isel(r"resname pro and name cg")) == [22]
   assert list(isel(r"resname pro and (name cg or name ca)")) == [18,22]
+  assert list(isel(r"resname pro AND (name cg or name ca)")) == [18,22]
+  assert list(isel(r"resname pro and (name cg OR name ca)")) == [18,22]
+  assert list(isel(r"resname pro AND (name cg OR name ca)")) == [18,22]
   assert list(isel(r"not resname pro and (name cg or name ca)")
               ) == [1,7,11,25,33]
   assert list(isel(r"chain h and name o*")) == [41,42,43,44,47,49,51,58]
