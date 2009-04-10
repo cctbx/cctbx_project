@@ -271,20 +271,20 @@ class cache(object):
           stop_word=stop_word,
           expect_nonmatching_closing_parenthesis
             =expect_nonmatching_closing_parenthesis):
-      if (word.value == "not"):
+      lword = word.value.lower()
+      if (lword == "not"):
         assert len(result_stack) >= 1
         arg = result_stack.pop()
         result_stack.append(~arg)
-      elif (word.value in ["and", "or"]):
+      elif (lword in ["and", "or"]):
         assert len(result_stack) >= 2
         rhs = result_stack.pop()
         lhs = result_stack.pop()
-        if (word.value == "and"):
+        if (lword == "and"):
           result_stack.append(lhs & rhs)
         else:
           result_stack.append(lhs | rhs)
       else:
-        lword = word.value.lower()
         if (lword == "all"):
           result_stack.append(flex.bool(self.n_seq, True))
         elif (lword == "none"):
