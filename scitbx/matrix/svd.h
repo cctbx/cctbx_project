@@ -407,7 +407,7 @@ struct bidiagonal_decomposition
        of S = B^T B - shift I (implicit QR shift)
        For numerical stability, S is scaled by d[r].
     */
-    scalar_t s00 = (std::abs(d[r]) - shift)*(copysign(1, d[r]) + shift/d[r]);
+    scalar_t s00 = (std::abs(d[r]) - shift)*(copysign(1., d[r]) + shift/d[r]);
     scalar_t s01 = f[r];
     givens::rotation<scalar_t> g1(r, r+1);
     g1.zero_x1(s00, s01);
@@ -452,7 +452,7 @@ struct bidiagonal_decomposition
        of S = B^T B - shift I (implicit QR shift)
        For numerical stability, S is scaled by d[r].
     */
-    scalar_t s00 = (std::abs(d[s-1]) - shift)*(copysign(1, d[s-1]) + shift/d[s-1]);
+    scalar_t s00 = (std::abs(d[s-1]) - shift)*(copysign(1., d[s-1]) + shift/d[s-1]);
     scalar_t s01 = f[s-2];
     givens::rotation<scalar_t> g1;
     g1.zero_x1(s00, s01);
