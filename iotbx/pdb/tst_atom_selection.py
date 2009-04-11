@@ -169,6 +169,27 @@ END
   assert list(isel(r"resid '  1K:2'")) == expected
   expected = range(6,40) + [72,73,76,77,78,79,80,81,82,83,87]
   assert list(isel(r"resi '  1K:  1K '")) == expected
+  #
+  expected = [7,18,25,33]
+  assert list(isel(r"resseq 2:4 and name ca")) == expected
+  assert list(isel(r"resseq 2 : 4 and name ca")) == expected
+  assert list(isel(r"resseq 2: 4 and name ca")) == expected
+  assert list(isel(r"resseq 2 :4 and name ca")) == expected
+  expected = [1,7,18]
+  assert list(isel(r"resseq :3 and name ca")) == expected
+  assert list(isel(r"resseq : 3 and name ca")) == expected
+  assert list(isel(r"name ca and resseq :3")) == expected
+  assert list(isel(r"name ca and resseq : 3")) == expected
+  expected = [18,25,33]
+  assert list(isel(r"resseq 3: and name ca")) == expected
+  assert list(isel(r"resseq 3 : and name ca")) == expected
+  assert list(isel(r"name ca and resseq 3:")) == expected
+  assert list(isel(r"name ca and resseq 3 :")) == expected
+  assert list(isel(r"name ca and resseq 3")) == [18]
+  expected = [1,7,18,25,33]
+  assert list(isel(r"resseq : and name ca")) == expected
+  assert list(isel(r"name ca and resseq :")) == expected
+  #
   assert list(isel(r"segid wate")) == [69]
   assert list(isel(r"element o")) == [65,66,67,68]
   assert list(isel(r"charge 4+")) == [64]

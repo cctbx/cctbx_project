@@ -303,8 +303,36 @@ class cache(object):
             self.sel_chain_id(pattern=word_iterator.pop_argument(word.value)))
         elif (lword in ["resseq", "resid", "resi", "model"]):
           arg = word_iterator.pop_argument(word.value)
-          i_colon_or_dash = arg.value.find(":")
-          if (i_colon_or_dash < 0):
+          def try_compose_range():
+            def is_cont():
+              if (len(arg_cont.value) == 0): return False
+              return ("0123456789".find(arg_cont.value[0]) >= 0)
+            i_colon = arg.value.find(":")
+            if (i_colon < 0):
+              arg_cont = word_iterator.try_pop()
+              if (arg_cont is None):
+                return arg.value, -1
+              if (not arg_cont.value.startswith(":")):
+                word_iterator.backup()
+                return arg.value, -1
+              if (len(arg_cont.value) == 1):
+                arg_cont = word_iterator.try_pop()
+                if (arg_cont is None):
+                  return arg.value+":", len(arg.value)
+                if (not is_cont()):
+                  word_iterator.backup()
+                  return arg.value+":", len(arg.value)
+                return arg.value+":"+arg_cont.value, len(arg.value)
+              return arg.value+arg_cont.value, len(arg.value)
+            elif (i_colon+1 == len(arg.value)):
+              arg_cont = word_iterator.try_pop()
+              if (arg_cont is not None):
+                if (is_cont()):
+                  return arg.value+arg_cont.value, i_colon
+                word_iterator.backup()
+            return arg.value, i_colon
+          val, i_colon = try_compose_range()
+          if (i_colon < 0):
             if (lword == "resseq"):
               result_stack.append(self.sel_resseq(pattern=arg))
             elif (lword in ["resid", "resi"]):
@@ -312,8 +340,8 @@ class cache(object):
             else:
               result_stack.append(self.sel_model_id(pattern=arg))
           else:
-            start = arg.value[:i_colon_or_dash]
-            stop = arg.value[i_colon_or_dash+1:]
+            start = val[:i_colon]
+            stop = val[i_colon+1:]
             if (lword == "resseq"):
               result_stack.append(
                 self.sel_resseq_range(start=start, stop=stop))
