@@ -240,13 +240,15 @@ class rb_mat_xyz(object):
      return rm
 
 multiple_zones_params_str = """\
-  min_number_of_reflections = 100
+  min_number_of_reflections = 200
     .type = int
     .help = Number of reflections that defines the first lowest resolution \
-            zone for multiple_zones protocol
+            zone for the multiple_zones protocol. If very large \
+            displacements are expected, decreasing this parameter to 100 \
+            may lead to a larger convergence radius.
   multi_body_factor = 1
     .type = float
-  zone_exponent = 4.0
+  zone_exponent = 3.0
     .type = float
   high_resolution = 3.0
     .type = float
