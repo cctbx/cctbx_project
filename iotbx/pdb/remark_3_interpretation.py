@@ -178,7 +178,7 @@ class extract_tls_parameters(object):
          if(rec.startswith("REMARK   3    RESIDUE RANGE :")):
            ch1,res1,ch2,res2 = rec[32:33], rec[34:40], rec[47:48], rec[49:55]
            r_range.append([ch1,res1,ch2,res2])
-         #
+         # PHENIX selection
          if(rec.startswith("REMARK   3    SELECTION:")):
            sel_str = rec[rec.index(":")+1:]
            if(sel_str.strip().upper() in ["NONE","NULL"]):
@@ -187,13 +187,33 @@ class extract_tls_parameters(object):
            i = i_seq+1
            while ( one[i].startswith("REMARK   3             :") or
                    one[i].startswith("REMARK   3              ") ):
-             try: sel_str += " "+one[i][one[i].index(":")+1:]
-             except: sel_str += " "+one[i][24:]
+             if(one[i].count("ORIGIN")): break
+             sel_str += " "+one[i][24:]
              i += 1
              if(sel_str.strip().upper() in ["NONE","NULL"]):
                self.format_err(msg="Bad TLS selection string.", rec = rec)
                return []
            sel_str = " ".join(sel_str.split())
+           ## 
+           sel_str_spl = sel_str.split()
+           new_str = ""
+           for ie, e in enumerate(sel_str_spl):
+             if(ie==0): new_str = e
+             else:
+               if(new_str[len(new_str)-1]==":"):
+                 if(e[0].isdigit()):
+                   new_str += e
+                 else:
+                   new_str = new_str + " " + e
+               elif(new_str[len(new_str)-1].isdigit()):
+                 if(e[0]==":"):
+                   new_str += e
+                 else:
+                   new_str = new_str + " " + e
+               else:
+                 new_str = new_str + " " + e
+           sel_str = new_str
+           ##
          #
          if(rec.startswith("REMARK   3    ORIGIN FOR THE GROUP (A):")):
             rec = prepocess_line(rec)
@@ -341,11 +361,11 @@ class extract_tls_parameters(object):
            if(len(res1)>0 and len(res2)>0):
              try: res1_ = int(res1)
              except ValueError:
-               self.format_err(msg="Bad TLS selection string.")
+               self.format_err(msg="Bad TLS selection string.", rec = "".join(rr))
                return []
              try: res2_ = int(res2)
              except ValueError:
-               self.format_err(msg="Bad TLS selection string.")
+               self.format_err(msg="Bad TLS selection string.", rec = "".join(rr))
                return []
              if(res1_ > res2_ and ch1 == ch2):
                self.format_err(msg="Bad TLS selection: start index > end index.")
@@ -387,7 +407,7 @@ class extract_tls_parameters(object):
           T.count(None) > 0 or
           L.count(None) > 0 or
           S.count(None) > 0):
-         # replace - with :
+         # Compatibility with previous versions of PHENIX: replace "-" with ":"
          new_c = ""
          for i,c in enumerate(sel_str):
            try: cl = sel_str[i-1]
@@ -397,7 +417,7 @@ class extract_tls_parameters(object):
          sel_str = new_c
          #
          self.tls_params.append(tls(
-           t=T,l=L,s=S,origin=origin,selection_string=sel_str.lower())) # XXX
+           t=T,l=L,s=S,origin=origin,selection_string=sel_str)) 
      if(self.tls_present and len(self.tls_params)==0):
        self.format_err(msg="TLS present but cannot be extracted.")
        return []

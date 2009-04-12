@@ -48,6 +48,18 @@ class get_r_rfree_sigma(object):
             try: self.resolution = float(line[22:28])
             except ValueError: pass
             except TypeError: pass
+    try: self.r_work = float(self.r_work)
+    except: self.r_work = None
+    try: self.r_free = float(self.r_free)
+    except: self.r_free = None
+    try: self.sigma = float(self.sigma)
+    except: self.sigma = None
+    try: self.high = float(self.high)
+    except: self.high = None
+    try: self.low = float(self.low)
+    except: self.low = None
+    try: self.resolution = float(self.resolution)
+    except: self.resolution = None
 
   def get_value(self, line):
     line = line.split()

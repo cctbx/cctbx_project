@@ -37,6 +37,7 @@ from mmtbx.twinning import twin_f_model
 from cctbx import sgtbx
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import mmtbx.f_model
+import mmtbx.tls.tools
 
 import boost.python
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
@@ -1642,24 +1643,31 @@ def extract_tls_and_u_total_from_pdb(
       f_obs,
       r_free_flags,
       xray_structure,
-      tls_selections):
+      tls_selections,
+      tls_groups):
+  xrs_1 = xray_structure.deep_copy_scatterers()
+  xrs_2 = xray_structure.deep_copy_scatterers()
+  mmtbx.tls.tools.combine_tls_and_u_local(xray_structure = xrs_2,
+    tls_selections = tls_selections, tls_groups = tls_groups)
   #
-  remark_3_records = pdb_inp.extract_remark_iii_records(3)
-  chain_ids = []
-  for model in pdb_inp.construct_hierarchy().models():
-    for chain in model.chains():
-      chain_ids.append(chain.id)
-  tls_data_obj = iotbx.pdb.remark_3_interpretation.extract_tls_parameters(
-    remark_3_records = remark_3_records,
-    chain_ids        = chain_ids,
-    file_name        = pdb_file)
-  ##
-  tls_selection_strings = []
-  for i_seq, tls_group in enumerate(tls_groups):
-    tls_selections_strings.append(tls_group.selection_string)
-  ##
-  selections = utils.get_atom_selections(
-      all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
-      selection_strings = tls_selections_strings,
-      xray_structure    = xray_structure,
-      log               = log)
+  selection = flex.random_bool(size=f_obs.data().size(),
+    threshold=500./f_obs.data().size())
+  f_obs = f_obs.select(selection)
+  r_free_flags = r_free_flags.select(selection)
+  bss_params = bss.master_params.extract()
+  bss_params.k_sol_b_sol_grid_search=False
+  bss_params.number_of_macro_cycles=1
+  r_work = 999.
+  i_best = None
+  for i, xrs in enumerate([xrs_1, xrs_2]):
+    fmodel = mmtbx.f_model.manager(xray_structure = xrs,
+                                   f_obs          = f_obs,
+                                   r_free_flags   = r_free_flags,
+                                   target_name    = "ls_wunit_k1")
+    fmodel.update_solvent_and_scale(params = bss_params, verbose = -1)
+    r_work_ = fmodel.r_work()
+    if(r_work_ < r_work):
+      r_work = r_work_
+      i_best = i
+  if(i_best == 0): return xrs_1
+  else: return xrs_2
