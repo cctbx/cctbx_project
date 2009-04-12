@@ -3254,26 +3254,30 @@ group {
   try: parameters.get(path="group.int_true",
     with_substitution=False).objects[0].extract()
   except RuntimeError, e:
-    assert str(e) \
-        == 'Error interpreting "True" as a numeric expression (input line 53)'
+    assert not show_diff(str(e),
+      'Error interpreting group.int_true="True" as a numeric expression'
+      ' (input line 53)')
   else: raise Exception_expected
   try: parameters.get(path="group.int_false",
     with_substitution=False).objects[0].extract()
   except RuntimeError, e:
-    assert str(e) \
-        == 'Error interpreting "False" as a numeric expression (input line 55)'
+    assert not show_diff(str(e),
+      'Error interpreting group.int_false="False" as a numeric expression'
+      ' (input line 55)')
   else: raise Exception_expected
   try: parameters.get(path="group.float_true",
     with_substitution=False).objects[0].extract()
   except RuntimeError, e:
-    assert str(e) \
-        == 'Error interpreting "True" as a numeric expression (input line 57)'
+    assert not show_diff(str(e),
+      'Error interpreting group.float_true="True" as a numeric expression'
+      ' (input line 57)')
   else: raise Exception_expected
   try: parameters.get(path="group.float_false",
     with_substitution=False).objects[0].extract()
   except RuntimeError, e:
-    assert str(e) \
-        == 'Error interpreting "False" as a numeric expression (input line 59)'
+    assert not show_diff(str(e),
+      'Error interpreting group.float_false="False" as a numeric expression'
+      ' (input line 59)')
   else: raise Exception_expected
   parameters = phil.parse(input_string="""\
 group {
