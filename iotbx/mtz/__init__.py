@@ -430,6 +430,7 @@ class _object(boost.python.injector, ext.object):
           if (merge_equivalents
               and isinstance(column_group.data(), flex.double)
               and isinstance(column_group.sigmas(), flex.double)
+              and column_group.sigmas().size() != 0
               and flex.min(column_group.sigmas()) > 0):
             merged_column_group = column_group.merge_equivalents().array()
             if (merged_column_group.indices().size()
