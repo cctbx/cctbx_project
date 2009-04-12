@@ -25,6 +25,9 @@ import iotbx.pdb.remark_3_interpretation
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from iotbx.pdb import combine_unique_pdb_files
 from libtbx import group_args
+from phenix.command_line.ramalyze import ramalyze
+from phenix.command_line.rotalyze import rotalyze
+from phenix.command_line.cbetadev import cbetadev
 
 class mvd(object):
 
@@ -82,13 +85,14 @@ class mvd(object):
       print "      number_of_anisotropic            : "+format_value("%-7s",x.n_aniso)
       print "      number_of_non_positive_definite  : %s"%x.n_npd
       g = i_model.model_statistics_geometry
-      print >> log, "    Stereochemistry statistics (mean, max, count):"
-      print >> log, "      bonds            : %8.4f %8.4f %d" % (g.b_mean, g.b_max, g.b_number)
-      print >> log, "      angles           : %8.4f %8.4f %d" % (g.a_mean, g.a_max, g.a_number)
-      print >> log, "      dihedrals        : %8.4f %8.4f %d" % (g.d_mean, g.d_max, g.d_number)
-      print >> log, "      chirality        : %8.4f %8.4f %d" % (g.c_mean, g.c_max, g.c_number)
-      print >> log, "      planarity        : %8.4f %8.4f %d" % (g.p_mean, g.p_max, g.p_number)
-      print >> log, "      non-bonded (min) : %8.4f" % (g.n_min)
+      if(g is not None):
+        print >> log, "    Stereochemistry statistics (mean, max, count):"
+        print >> log, "      bonds            : %8.4f %8.4f %d" % (g.b_mean, g.b_max, g.b_number)
+        print >> log, "      angles           : %8.4f %8.4f %d" % (g.a_mean, g.a_max, g.a_number)
+        print >> log, "      dihedrals        : %8.4f %8.4f %d" % (g.d_mean, g.d_max, g.d_number)
+        print >> log, "      chirality        : %8.4f %8.4f %d" % (g.c_mean, g.c_max, g.c_number)
+        print >> log, "      planarity        : %8.4f %8.4f %d" % (g.p_mean, g.p_max, g.p_number)
+        print >> log, "      non-bonded (min) : %8.4f" % (g.n_min)
       if(i_model.ramalyze is not None):
         outl = i_model.ramalyze.get_outliers_count_and_fraction()
         allo = i_model.ramalyze.get_allowed_count_and_fraction()
@@ -214,9 +218,6 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
                   model_selections, show_geometry_statistics, mvd_obj):
   xray_structures = processed_pdb_file.xray_structure()
   if(show_geometry_statistics):
-    from phenix.command_line.ramalyze import ramalyze
-    from phenix.command_line.rotalyze import rotalyze
-    from phenix.command_line.cbetadev import cbetadev
     sctr_keys = \
       xray_structures.scattering_type_registry().type_count_dict().keys()
     has_hd = "H" in sctr_keys or "D" in sctr_keys
@@ -242,6 +243,7 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
         xray_structure.select(~hd_sel))
     else:
       xray_structure_stat = show_xray_structure_statistics(xray_structure = xray_structure)
+    model_statistics_geometry = None
     if(show_geometry_statistics):
       # exclude hydrogens
       if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
@@ -262,24 +264,24 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
         hd_selection       = hd_sel,
         ignore_hd          = False,
         restraints_manager = restraints_manager)
-      need_ramachandran = False
-      ramalyze_obj = None
-      rc = overall_counts_i_seq.resname_classes
-      n_residues = 0
-      for k in rc.keys():
-        if(k.count('amino_acid')):
-          need_ramachandran = True
-          n_residues = int(rc[k])
-          break
-      if(need_ramachandran):
-        ramalyze_obj = ramalyze()
-        output, output_list = ramalyze_obj.analyze_pdb(hierarchy =
-          hierarchy_i_seq, outliers_only = False)
-      geometry_statistics.append(group_args(
-        overall_counts_i_seq      = overall_counts_i_seq,
-        xray_structure_stat       = xray_structure_stat,
-        model_statistics_geometry = model_statistics_geometry,
-        ramalyze                  = ramalyze_obj))
+    need_ramachandran = False
+    ramalyze_obj = None
+    rc = overall_counts_i_seq.resname_classes
+    n_residues = 0
+    for k in rc.keys():
+      if(k.count('amino_acid')):
+        need_ramachandran = True
+        n_residues = int(rc[k])
+        break
+    if(need_ramachandran):
+      ramalyze_obj = ramalyze()
+      output, output_list = ramalyze_obj.analyze_pdb(hierarchy =
+        hierarchy_i_seq, outliers_only = False)
+    geometry_statistics.append(group_args(
+      overall_counts_i_seq      = overall_counts_i_seq,
+      xray_structure_stat       = xray_structure_stat,
+      model_statistics_geometry = model_statistics_geometry,
+      ramalyze                  = ramalyze_obj))
   mvd_obj.collect(models = geometry_statistics)
   return geometry_statistics
 
@@ -465,12 +467,20 @@ def run(args,
   #
   # Extract TLS
   pdb_tls = None
-  if(len(xray_structures)==1): # XXX TLS and multiple models ???
-    pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(pdb_inp = mmtbx_pdb_file.pdb_inp)
-    pdb_tls = mmtbx.tls.tools.extract_tls_from_pdb(
-      pdb_inp_tls       = pdb_inp_tls,
-      all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
-      xray_structure    = xray_structures[0]) # XXX TLS and multiple models ???
+  if(len(xray_structures)==1): # XXX no TLS + multiple models
+    pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(pdb_inp =
+      mmtbx_pdb_file.pdb_inp)
+    if(pdb_inp_tls.tls_present):
+      pdb_tls = mmtbx.tls.tools.extract_tls_from_pdb(
+        pdb_inp_tls       = pdb_inp_tls,
+        all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
+        xray_structure    = xsfppf.xray_structure_all)
+      xray_structures = [utils.extract_tls_and_u_total_from_pdb(
+        f_obs          = f_obs,
+        r_free_flags   = r_free_flags,
+        xray_structure = xray_structures[0], # XXX no TLS + multiple models
+        tls_selections = pdb_tls.tls_selections,
+        tls_groups     = pdb_inp_tls.tls_params)]
   #
   bss_params = bss.master_params.extract()
   bss_params.k_sol_max = 0.8
