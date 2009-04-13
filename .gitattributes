@@ -430,6 +430,7 @@ scitbx/iso_surface/__init__.py -text
 scitbx/iso_surface/iso_surface_ext.cpp -text
 scitbx/iso_surface/tst_iso_surface.m -text
 scitbx/iso_surface/tst_iso_surface.py -text
+scitbx/lbfgs/tst_ext.py svneol=native#text/x-python
 scitbx/mat_ref/make.h -text
 scitbx/mat_ref/row_and_column.h -text
 scitbx/math/accumulators.h -text

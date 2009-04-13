@@ -9,3 +9,9 @@ envlm = env.Copy(
   LIBS=env_etc.libm
 )
 envlm.Program(target="tst_lbfgs", source="tst_lbfgs.cpp")
+
+if (not env_etc.no_boost_python):
+  Import("env_scitbx_boost_python_ext")
+  env_scitbx_boost_python_ext.SharedLibrary(
+    target="#lib/scitbx_lbfgs_ext",
+    source=["ext.cpp"])
