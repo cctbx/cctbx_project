@@ -44,6 +44,13 @@ standard_file_descriptions = {
   'txt'  : "Text"
 }
 
+def guess_file_type (file_name) :
+  base, ext = os.path.splitext(file_name)
+  for known_type, known_extensions in standard_file_extensions.iteritems() :
+    if ext[1:] in known_extensions :
+      return known_type
+  return None
+
 def any_file (file_name,
               get_processed_file=False,
               valid_types=["pdb","hkl","cif","pkl","seq","phil", "txt"],

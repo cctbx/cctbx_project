@@ -181,7 +181,12 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
         pipe_output = list(parent_conn.recv())
         if len(pipe_output) == 3 :
           (child_object, is_stdout, is_return) = pipe_output
-          if is_stdout :
+          if (child_object, is_stdout, is_return) == (None, None, None) :
+            child_process.terminate()
+            if self._cb_abort is not None :
+              self._cb_abort()
+            break
+          elif is_stdout :
             if self._cb_stdout is not None :
               self._cb_stdout(child_object)
             else :
