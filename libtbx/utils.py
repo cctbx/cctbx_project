@@ -11,6 +11,7 @@ try:
 except ImportError:
   import md5
   hashlib_md5 = md5.new
+import math
 import glob
 import time
 import atexit
@@ -26,6 +27,22 @@ def escape_sh_double_quoted(s):
   "the result is supposed to be double-quoted when passed to sh"
   if (s is None): return None
   return s.replace('\\','\\\\').replace('"','\\"')
+
+def number_from_string(string):
+  # similar to libtbx.utils.number_from_string
+  # (please review if making changes here)
+  if (string.lower() in ["true", "false"]):
+    raise ValueError(
+      'Error interpreting "%s" as a numeric expression.' % string)
+  try: return int(string)
+  except KeyboardInterrupt: raise
+  except: pass
+  try: return eval(string, math.__dict__, {})
+  except KeyboardInterrupt: raise
+  except:
+    raise ValueError(
+      'Error interpreting "%s" as a numeric expression: %s' % (
+        string, format_exception()))
 
 def gzip_open(file_name, mode):
   assert mode in ["r", "rb", "w", "wb", "a", "ab"]
@@ -737,7 +754,7 @@ def search_for(
   return result
 
 def exercise():
-  from libtbx.test_utils import approx_equal
+  from libtbx.test_utils import approx_equal, Exception_expected
   host_and_user().show(prefix="### ")
   time_in_seconds = 1.1
   for i_trial in xrange(55):
@@ -746,6 +763,21 @@ def exercise():
       time_in_seconds=time_in_seconds)
     assert approx_equal(
       human_readable_time_as_seconds(time_units, time_unit), time_in_seconds)
+  #
+  for string in ["True", "False"]:
+    try: number_from_string(string=string)
+    except ValueError, e:
+      assert str(e) == 'Error interpreting "%s" as a numeric expression.' % (
+        string)
+    else: raise Exception_expected
+  assert number_from_string(string="-42") == -42
+  assert approx_equal(number_from_string(string="3.14"), 3.14)
+  assert approx_equal(number_from_string(string="cos(0)"), 1)
+  try: number_from_string(string="xxx(0)")
+  except ValueError, e:
+    assert str(e).startswith(
+      'Error interpreting "xxx(0)" as a numeric expression: ')
+  else: raise Exception_expected
   #
   for s,i in {"2000000" : 2000000,
               "2k" : 2048,
