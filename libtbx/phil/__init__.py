@@ -164,6 +164,8 @@ class bool_converters(object):
 def number_from_value_string(value_string, words, path):
   if (value_string is None): return None
   if (value_string is Auto): return Auto
+  # similar to libtbx.utils.number_from_string
+  # (please review if making changes here)
   if (value_string.lower() in ["true", "false"]):
     raise RuntimeError(
       'Error interpreting %s="%s" as a numeric expression%s' % (
