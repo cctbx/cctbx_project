@@ -161,6 +161,7 @@ class server(process_cif_mixin):
     if (list_cif is None):
       list_cif = mon_lib_list_cif()
     self.root_path = os.path.dirname(os.path.dirname(list_cif.path))
+    self.geo_path = self.root_path.replace("mon_lib", "geo_std")
     self.deriv_list_dict = {}
     self.comp_synonym_list_dict = {}
     self.comp_synonym_atom_list_dict = dicts.with_default_factory(dict)
@@ -290,6 +291,20 @@ class server(process_cif_mixin):
       for i_pass in [0,1]:
         for trial_comp_id in [std_comp_id, comp_id]:
           if (len(trial_comp_id) == 0): continue
+          dir_name = os.path.join(self.geo_path, trial_comp_id[0].lower())
+          # check the Geo Standard
+          if (os.path.isdir(dir_name)):
+            cif_name = "data_" + trial_comp_id + ".cif"
+            if (i_pass == 0):
+              file_name = os.path.join(dir_name, cif_name)
+              if (os.path.isfile(file_name)):
+                return file_name
+            else:
+              cif_name = cif_name.lower()
+              for node in os.listdir(dir_name):
+                if (node.lower() != cif_name): continue
+                return os.path.join(dir_name, node)
+          # check PHENIX Mon Lib
           dir_name = os.path.join(self.root_path, trial_comp_id[0].lower())
           if (os.path.isdir(dir_name)):
             if (trial_comp_id in windows_device_names):
