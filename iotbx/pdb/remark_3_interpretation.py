@@ -194,7 +194,7 @@ class extract_tls_parameters(object):
                self.format_err(msg="Bad TLS selection string.", rec = rec)
                return []
            sel_str = " ".join(sel_str.split())
-           ## 
+           ##
            sel_str_spl = sel_str.split()
            new_str = ""
            for ie, e in enumerate(sel_str_spl):
@@ -417,7 +417,7 @@ class extract_tls_parameters(object):
          sel_str = new_c
          #
          self.tls_params.append(tls(
-           t=T,l=L,s=S,origin=origin,selection_string=sel_str)) 
+           t=T,l=L,s=S,origin=origin,selection_string=sel_str))
      if(self.tls_present and len(self.tls_params)==0):
        self.format_err(msg="TLS present but cannot be extracted.")
        return []
