@@ -13,6 +13,7 @@
 #include <iostream>
 
 #include <scitbx/matrix/svd.h>
+#include <scitbx/matrix/tests.h>
 
 namespace af = scitbx::af;
 using scitbx::fn::approx_equal;
@@ -264,7 +265,12 @@ struct golub_kahan_iteration_test_case_7 : golub_kahan_iteration_test_case
   }
 };
 
-void exercise_golub_kahan_iterations() {
+template <class grading_func_t>
+void exercise_golub_kahan_iterations(grading_func_t grading_func,
+                                     double superdiagonal_multiplier,
+                                     double ratio_threshold=10) {
+  double thresh = ratio_threshold;
+
   for (int grading=0; grading < 3; ++grading)
   for (int zero_on_diag=0; zero_on_diag<2; ++zero_on_diag)
   for (int n = 3; n < 10; ++n)
@@ -272,11 +278,11 @@ void exercise_golub_kahan_iterations() {
     af::shared<double> diagonal(n);
     af::shared<double> superdiagonal(n-1);
     for (int i=0; i<n; ++i) {
-      diagonal[i] =   grading == 0 ? i+1
-                    : grading == 1 ? n-i
-                    : grading == 2 ? n/2 - i
+      diagonal[i] =   grading == 0 ? grading_func(i+1)
+                    : grading == 1 ? grading_func(n-i)
+                    : grading == 2 ? grading_func(n/2 - i)
                     :                0;
-      if (i < n-1) superdiagonal[i] = 2*diagonal[i];
+      if (i < n-1) superdiagonal[i] = superdiagonal_multiplier*diagonal[i];
     }
     if (zero_on_diag) diagonal[n/2] = 0;
     matrix_t a = bidiagonal(diagonal.ref(), superdiagonal.ref());
@@ -290,23 +296,31 @@ void exercise_golub_kahan_iterations() {
     matrix_t v = identity_n.deep_copy();
     matrix_ref_t v_ = v.ref();
 
-    double eps = 1e-16;
     svd::bidiagonal_decomposition<double> svd(
       diagonal.ref(), superdiagonal.ref(),
       ut.ref(), true,
-      v.ref(), true,
-      eps);
+      v.ref(), true);
     svd.compute();
-    SCITBX_ASSERT(superdiagonal.all_approx_equal(0, eps));
-    SCITBX_ASSERT(af::matrix_multiply(ut_, af::matrix_transpose(ut_).ref())
-                  .all_approx_equal(identity_n, svd.tol));
-    SCITBX_ASSERT(af::matrix_multiply(v_, af::matrix_transpose(v_).ref())
-                  .all_approx_equal(identity_n, svd.tol));
+    SCITBX_ASSERT(superdiagonal.all_eq(0));
+    SCITBX_ASSERT(normality_ratio(mat_ref_to(ut), svd.tol) < thresh);
+    SCITBX_ASSERT(normality_ratio(mat_ref_to(v), svd.tol) < thresh);
 
     matrix_t a1 = svd::reconstruct(ut_, v_, diagonal.const_ref());
-    SCITBX_ASSERT(a.all_approx_equal(a1, n*svd.tol));
+    SCITBX_ASSERT(equality_ratio(mat_ref_to(a), mat_ref_to(a1), svd.tol)
+                    < thresh);
   }
 }
+
+double linear_law(int i) { return i; }
+
+struct power_law
+{
+  double m;
+  power_law(double mult) : m(mult) {}
+  // The absolute value allows for the grading to change direction
+  // in the middle of the diagonal in case 2 above
+  double operator()(int i) { return std::pow(m, std::abs(i)); }
+};
 
 void exercise_golub_kahan_iterations_2() {
   // matrix with all singular values approximately equal
@@ -323,7 +337,11 @@ int main() {
   golub_kahan_iteration_test_case_4().exercise();
   golub_kahan_iteration_test_case_5().exercise();
   golub_kahan_iteration_test_case_7().exercise();
-  exercise_golub_kahan_iterations();
+  exercise_golub_kahan_iterations(linear_law, 2);
+  exercise_golub_kahan_iterations(power_law(10), 2);
+  exercise_golub_kahan_iterations(power_law(0.1), 2);
+  exercise_golub_kahan_iterations(power_law(1.e10), 2);
+  exercise_golub_kahan_iterations(power_law(1.e-10), 2);
   std::cout << "OK\n";
   return 0;
 }

@@ -457,14 +457,17 @@ scitbx/matrix/bidiagonalisation_flops.nb -text
 scitbx/matrix/delta_tensors.h -text
 scitbx/matrix/givens.h -text
 scitbx/matrix/householder.h -text
+scitbx/matrix/norms.h -text
 scitbx/matrix/row_echelon_full_pivoting.h svneol=native#text/plain
 scitbx/matrix/row_echelon_full_pivoting_impl.h svneol=native#text/plain
 scitbx/matrix/row_echelon_full_pivoting_small.h svneol=native#text/plain
 scitbx/matrix/special_matrices.h -text
 scitbx/matrix/svd.h -text
 scitbx/matrix/svd2x2.nb -text
+scitbx/matrix/tests.h -text
 scitbx/matrix/tests/SConscript -text
 scitbx/matrix/tests/tst_householder.cpp -text
+scitbx/matrix/tests/tst_misc.cpp -text
 scitbx/matrix/tests/tst_svd.cpp -text
 scitbx/matrix/tests/tst_svd.nb -text
 scitbx/misc/positive_getitem_index.h svneol=native#text/plain
