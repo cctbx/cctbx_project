@@ -10,7 +10,6 @@
 #include <scitbx/matrix/tensor_rank_2.h>
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/type_holder.h>
-#include <scitbx/mat_ref.h>
 #include <cctbx/error.h>
 
 namespace cctbx {
