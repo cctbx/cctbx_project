@@ -24,7 +24,8 @@ void exercise_norms() {
                 -1, -2, -3;
   SCITBX_ASSERT(norm_1(mat_ref_to(a)) == 21);
   SCITBX_ASSERT(norm_inf(mat_ref_to(a)) == 24);
-  SCITBX_ASSERT(norm_frobenius(mat_ref_to(a)) == std::sqrt(299));
+  SCITBX_ASSERT(approx_equal(norm_frobenius(mat_ref_to(a)), std::sqrt(299.),
+                             1e-12));
 }
 
 int main() {
