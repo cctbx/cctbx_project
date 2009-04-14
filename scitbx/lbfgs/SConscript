@@ -1,3 +1,7 @@
+from libtbx.utils import getenv_bool
+from libtbx.path import full_command_path
+import libtbx.load_env
+
 Import("env_base", "env_etc")
 env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,
@@ -12,6 +16,33 @@ envlm.Program(target="tst_lbfgs", source="tst_lbfgs.cpp")
 
 if (not env_etc.no_boost_python):
   Import("env_scitbx_boost_python_ext")
-  env_scitbx_boost_python_ext.SharedLibrary(
-    target="#lib/scitbx_lbfgs_ext",
-    source=["ext.cpp"])
+  env = env_scitbx_boost_python_ext
+  source = ["ext.cpp"]
+  if (    libtbx.env.is_development_environment()
+      and not getenv_bool("SCITBX_LBFGS_NO_FORTRAN")
+      and full_command_path("gfortran") is not None):
+    if (libtbx.env.build_options.optimization):
+      opts = ["-O"]
+    else:
+      opts = ["-O0"]
+    if (libtbx.env.build_options.debug_symbols):
+      opts.insert(0, "-g")
+    env = env.Copy(tools=["f77"])
+    env.Replace(FORTRAN="gfortran")
+    env.Replace(SHFORTRAN="gfortran")
+    env.Replace(FORTRANFLAGS=opts + [
+      "-fPIC",
+      "-ftrapv",
+      "-fautomatic",
+      "-fno-second-underscore",
+      "-fno-bounds-check"])
+    env.Prepend(CPPFLAGS=["-DSCITBX_LBFGS_HAVE_LBFGS_F"])
+    env.Prepend(LIBS=["gfortran"])
+    source.append("lbfgs.f")
+    build_sdrive_f = True
+  else:
+    build_sdrive_f = False
+  env.SharedLibrary(target="#lib/scitbx_lbfgs_ext", source=source)
+  if (build_sdrive_f):
+    env_exe = env.Copy(LIBS=["gfortranbegin", "gfortran", "m"])
+    env_exe.Program(target="sdrive_f", source=["sdrive.f", "lbfgs.o"])
