@@ -531,7 +531,7 @@ struct bidiagonal_decomposition
     givens::rotation<scalar_t> g1;
     g1.zero_x1(d[s-1], f[s-2]);
 
-    // Apple G1 on the right to B, filling in b(s-1, s-2), so we need...
+    // Apply G1 on the right to B, filling in b(s-1, s-2), so we need...
     scalar_t z;
     g1.apply_assuming_null_x0(z, d[s-2]);
     q_ut.multiply_by(g1);
@@ -558,6 +558,8 @@ struct bidiagonal_decomposition
   }
 };
 
+
+/// Reconstruct a matrix from a SVD decomposition: A = U^T S V
 template <typename T>
 af::versa<T, af::c_grid<2> >
 reconstruct(mat_const_ref<T> const &ut,

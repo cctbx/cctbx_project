@@ -13,6 +13,7 @@
 #include <iostream>
 
 #include <scitbx/matrix/householder.h>
+#include <scitbx/matrix/tests.h>
 
 namespace af = scitbx::af;
 using scitbx::fn::approx_equal;
@@ -28,11 +29,11 @@ double tol = 1e-12;
 
 struct test_case
 {
-  matrix_t a__, identity_m, identity_n;
+  matrix_t a__;
+  double thresh;
 
-  test_case(int m, int n)
-    : a__(dim(m,n)), identity_m(identity<double>(m)),
-                     identity_n(identity<double>(n))
+  test_case(int m, int n, double ratio_threshold=10)
+    : a__(dim(m,n)), thresh(ratio_threshold)
   {}
 
   void check_qr() {
@@ -45,8 +46,7 @@ struct test_case
     matrix_ref_t q_ = qr.q.ref();
 
     // Check Q is orthogonal
-    SCITBX_ASSERT(af::matrix_multiply(q_, af::matrix_transpose(q_).ref())
-                  .all_approx_equal(identity_m, tol));
+    SCITBX_ASSERT(normality_ratio(mat_ref_to(qr.q)) < thresh);
 
     // Get R
     matrix_t r(dim(m,n));
@@ -55,7 +55,8 @@ struct test_case
 
     // Check A = QR
     matrix_t q_r = af::matrix_multiply(q_, r_);
-    SCITBX_ASSERT(a__.all_approx_equal(q_r, tol));
+    double delta_r = equality_ratio(mat_ref_to(a__), mat_ref_to(q_r));
+    SCITBX_ASSERT(delta_r < thresh);
   }
 
   void check_bidiagonalisation(bool debug=false) {
@@ -69,26 +70,19 @@ struct test_case
     matrix_ref_t v_ = bidiag.v.ref();
 
     // Check that U and V are orthogonal
-    SCITBX_ASSERT(af::matrix_multiply(u_, af::matrix_transpose(u_).ref())
-                  .all_approx_equal(identity_m, tol));
-    SCITBX_ASSERT(af::matrix_multiply(v_, af::matrix_transpose(v_).ref())
-                  .all_approx_equal(identity_n, tol));
+    SCITBX_ASSERT(normality_ratio(mat_ref_to(bidiag.u)) < thresh);
+    SCITBX_ASSERT(normality_ratio(mat_ref_to(bidiag.v)) < thresh);
 
     // Get B
     matrix_t b(dim(m,n));
     matrix_ref_t b_ = b.ref();
     for (int i=0; i<n; ++i) for (int j=i; j<i+2 && j<n; ++j) b_(i,j) = a_(i,j);
 
-    // Check that U^T A V = B
-    matrix_t ut = af::matrix_transpose(u_);
-    matrix_t ut_a = af::matrix_multiply(ut.ref(), a__.ref());
-    matrix_t ut_a_v = af::matrix_multiply(ut_a.ref(), v_);
-    if (debug) {
-      std::cout << "U^T A V = " << ut_a_v.as_1d().ref() << std::endl;
-      std::cout << "A (overwritten) = " << a.as_1d().ref() << std::endl;
-      std::cout << "B = " << b.as_1d().ref() << std::endl;
-    }
-    SCITBX_ASSERT(b.all_approx_equal(ut_a_v, tol));
+    // Check that A = U B V^T
+    matrix_t u_b = af::matrix_multiply(u_, b_);
+    matrix_t vt = af::matrix_transpose(v_);
+    matrix_t u_b_vt = af::matrix_multiply(u_b.ref(), vt.ref());
+    SCITBX_ASSERT(equality_ratio(mat_ref_to(a__), mat_ref_to(u_b_vt)) < thresh);
   }
 };
 
