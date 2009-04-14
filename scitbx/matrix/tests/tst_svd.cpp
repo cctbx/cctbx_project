@@ -265,15 +265,17 @@ struct golub_kahan_iteration_test_case_7 : golub_kahan_iteration_test_case
 };
 
 void exercise_golub_kahan_iterations() {
-  // matrix with a clear grading and then same ones with a 0 on diagonal
-  for (int downward_grading=0; downward_grading < 2; ++downward_grading)
+  for (int grading=0; grading < 3; ++grading)
   for (int zero_on_diag=0; zero_on_diag<2; ++zero_on_diag)
   for (int n = 3; n < 10; ++n)
   {
     af::shared<double> diagonal(n);
     af::shared<double> superdiagonal(n-1);
     for (int i=0; i<n; ++i) {
-      diagonal[i] = downward_grading ? i+1 : n-i;
+      diagonal[i] =   grading == 0 ? i+1
+                    : grading == 1 ? n-i
+                    : grading == 2 ? n/2 - i
+                    :                0;
       if (i < n-1) superdiagonal[i] = 2*diagonal[i];
     }
     if (zero_on_diag) diagonal[n/2] = 0;
