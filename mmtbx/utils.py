@@ -326,6 +326,11 @@ class determine_data_and_flags(object):
     return r_free_flags
 
   def data_as_f_obs(self, f_obs):
+    if(not f_obs.sigmas_are_sensible()):
+      f_obs = f_obs.customized_copy(
+        indices=f_obs.indices(),
+        data=f_obs.data(),
+        sigmas=None).set_observation_type(f_obs)
     d_min = f_obs.d_min()
     if(d_min < 0.25): # XXX what is the equivalent for neutrons ???
       raise Sorry("Resolution of data is too high: %-6.4f A"%d_min)
@@ -1344,7 +1349,9 @@ def fmodel_simple(f_obs,
     miller_obs = f_obs,
     text_out   = StringIO(),
     plot_out   = StringIO())
-  twin_laws = xtriage_results.twin_results.twin_summary.twin_results.twin_laws
+  twin_laws = []
+  if(xtriage_results.twin_results is not None):
+    twin_laws = xtriage_results.twin_results.twin_summary.twin_results.twin_laws
   twin_laws.append(None)
   if(len(xray_structures) == 1):
     fmodels = []

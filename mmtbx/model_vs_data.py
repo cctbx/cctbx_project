@@ -25,9 +25,7 @@ import iotbx.pdb.remark_3_interpretation
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from iotbx.pdb import combine_unique_pdb_files
 from libtbx import group_args
-from phenix.command_line.ramalyze import ramalyze
-from phenix.command_line.rotalyze import rotalyze
-from phenix.command_line.cbetadev import cbetadev
+
 
 class mvd(object):
 
@@ -131,8 +129,8 @@ class mvd(object):
     print >> log, "  Model_vs_Data:"
     b_cart = " ".join([("%8.2f"%v).strip() for v in self.model_vs_data.b_cart])
     result = " \n    ".join([
-      "r_work(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_work),
-      "r_free(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_free),
+      "r_work(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_work).strip(),
+      "r_free(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_free).strip(),
       "bulk_solvent_(k_sol,b_sol)         : %s %s"%(format_value("%-5.2f",self.model_vs_data.k_sol),
                                                     format_value("%-7.2f",self.model_vs_data.b_sol)),
       "overall_anisotropic_scale_(b_cart) : %-s"%b_cart])
@@ -158,9 +156,9 @@ class mvd(object):
         print >> log, "    TLS             : None"
     #
     print >> log, "  After applying resolution and sigma cutoffs:"
-    print >> log, "    n_refl_cutoff : %-s"%format_value("%d",self.misc.n_refl_cutoff)
-    print >> log, "    r_work_cutoff : %-s"%format_value("%6.4f",self.misc.r_work_cutoff)
-    print >> log, "    r_free_cutoff : %-s"%format_value("%6.4f",self.misc.r_free_cutoff)
+    print >> log, "    n_refl_cutoff : %-s"%format_value("%d",self.misc.n_refl_cutoff).strip()
+    print >> log, "    r_work_cutoff : %-s"%format_value("%6.4f",self.misc.r_work_cutoff).strip()
+    print >> log, "    r_free_cutoff : %-s"%format_value("%6.4f",self.misc.r_free_cutoff).strip()
 
 def get_program_name(file_lines):
   result = None
@@ -244,6 +242,7 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
     else:
       xray_structure_stat = show_xray_structure_statistics(xray_structure = xray_structure)
     model_statistics_geometry = None
+    ramalyze_obj = None
     if(show_geometry_statistics):
       # exclude hydrogens
       if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
@@ -264,19 +263,23 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
         hd_selection       = hd_sel,
         ignore_hd          = False,
         restraints_manager = restraints_manager)
-    need_ramachandran = False
-    ramalyze_obj = None
-    rc = overall_counts_i_seq.resname_classes
-    n_residues = 0
-    for k in rc.keys():
-      if(k.count('amino_acid')):
-        need_ramachandran = True
-        n_residues = int(rc[k])
-        break
-    if(need_ramachandran):
-      ramalyze_obj = ramalyze()
-      output, output_list = ramalyze_obj.analyze_pdb(hierarchy =
-        hierarchy_i_seq, outliers_only = False)
+      #
+      from phenix.command_line.ramalyze import ramalyze
+      from phenix.command_line.rotalyze import rotalyze
+      from phenix.command_line.cbetadev import cbetadev
+      need_ramachandran = False
+      ramalyze_obj = None
+      rc = overall_counts_i_seq.resname_classes
+      n_residues = 0
+      for k in rc.keys():
+        if(k.count('amino_acid')):
+          need_ramachandran = True
+          n_residues = int(rc[k])
+          break
+      if(need_ramachandran):
+        ramalyze_obj = ramalyze()
+        output, output_list = ramalyze_obj.analyze_pdb(hierarchy =
+          hierarchy_i_seq, outliers_only = False)
     geometry_statistics.append(group_args(
       overall_counts_i_seq      = overall_counts_i_seq,
       xray_structure_stat       = xray_structure_stat,
@@ -309,9 +312,9 @@ def show_xray_structure_statistics(xray_structure):
                     b_min           = b_min,
                     b_max           = b_max,
                     b_mean          = b_mean,
-                    o_min           = b_min,
-                    o_max           = b_max,
-                    o_mean          = b_mean,
+                    o_min           = o_min,
+                    o_max           = o_max,
+                    o_mean          = o_mean,
                     n_aniso         = n_aniso,
                     n_npd           = n_npd)
 
@@ -470,7 +473,10 @@ def run(args,
   if(len(xray_structures)==1): # XXX no TLS + multiple models
     pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(pdb_inp =
       mmtbx_pdb_file.pdb_inp)
-    if(pdb_inp_tls.tls_present):
+    pdb_tls = group_args(pdb_inp_tls           = pdb_inp_tls,
+                         tls_selections        = [],
+                         tls_selection_strings = [])
+    if(pdb_inp_tls.tls_present and pdb_inp_tls.error_string is not None):
       pdb_tls = mmtbx.tls.tools.extract_tls_from_pdb(
         pdb_inp_tls       = pdb_inp_tls,
         all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
@@ -541,19 +547,24 @@ def run(args,
   r_work_cutoff = None
   r_free_cutoff = None
   n_refl_cutoff = None
-  sel_cutoff = flex.bool(f_obs.data().size(), True)
+  f_obs_cut = f_obs.deep_copy()
+  r_free_flags_cut = r_free_flags.deep_copy()
   if(pub_sigma is not None):
     tmp_sel = f_obs.data() > f_obs.sigmas()*pub_sigma
-    sel_cutoff = sel_cutoff.set_selected(~tmp_sel, False)
+    if(tmp_sel.size() != tmp_sel.count(True) and tmp_sel.count(True) > 0):
+      f_obs_cut = f_obs.select(tmp_sel)
+      r_free_flags_cut = r_free_flags.select(tmp_sel)
   if(pub_high is not None and abs(pub_high-f_obs.d_min()) > 0.03):
     tmp_sel = f_obs.d_spacings().data() > pub_high
-    sel_cutoff = sel_cutoff.set_selected(~tmp_sel, False)
+    if(tmp_sel.size() != tmp_sel.count(True) and tmp_sel.count(True) > 0):
+      f_obs_cut = f_obs.select(tmp_sel)
+      r_free_flags_cut = r_free_flags.select(tmp_sel)
   if(pub_low is not None and abs(pub_high-f_obs.d_max_min()[0]) > 0.03):
     tmp_sel = f_obs.d_spacings().data() < pub_low
-    sel_cutoff = sel_cutoff.set_selected(~tmp_sel, False)
-  if(sel_cutoff.size() != sel_cutoff.count(True)):
-    f_obs_cut = f_obs.select(sel_cutoff)
-    r_free_flags_cut = r_free_flags.select(sel_cutoff)
+    if(tmp_sel.size() != tmp_sel.count(True) and tmp_sel.count(True) > 0):
+      f_obs_cut = f_obs.select(tmp_sel)
+      r_free_flags_cut = r_free_flags.select(tmp_sel)
+  if(f_obs_cut.size() != f_obs.size()):
     fmodel_cut = utils.fmodel_simple(
       xray_structures = xray_structures,
       f_obs           = f_obs_cut,
