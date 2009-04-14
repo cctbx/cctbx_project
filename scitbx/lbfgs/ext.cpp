@@ -12,6 +12,66 @@
 
 namespace scitbx { namespace lbfgs { namespace {
 
+  extern "C"
+  int
+  lbfgs_(
+    const int*,
+    const int*,
+    double*,
+    const double*,
+    const double*,
+    const int*,
+    double*,
+    const int*,
+    const double*,
+    const double*,
+    double*,
+    int*);
+
+  int
+  lbfgs_f(
+    int n,
+    int m,
+    af::ref<double> const& x,
+    double f,
+    af::const_ref<double> const& g,
+    bool diagco,
+    af::ref<double> const& diag,
+    af::tiny<int, 2> const& iprint,
+    double eps,
+    double xtol,
+    af::ref<double> const& w,
+    int iflag)
+  {
+    SCITBX_ASSERT(n > 0);
+    SCITBX_ASSERT(m > 0);
+    std::size_t n_ = static_cast<std::size_t>(n);
+    std::size_t m_ = static_cast<std::size_t>(m);
+    SCITBX_ASSERT(x.size() == n_);
+    SCITBX_ASSERT(g.size() == n_);
+    SCITBX_ASSERT(diag.size() == n_);
+    SCITBX_ASSERT(w.size() == n_*(2*m_+1)+2*m_);
+#if defined(SCITBX_LBFGS_HAVE_LBFGS_F)
+    int diagco_int = static_cast<int>(diagco);
+    lbfgs_(
+      &n,
+      &m,
+      x.begin(),
+      &f,
+      g.begin(),
+      &diagco_int,
+      diag.begin(),
+      iprint.begin(),
+      &eps,
+      &xtol,
+      w.begin(),
+      &iflag);
+#else
+    throw std::runtime_error("L-BFGS FORTRAN library is not available.");
+#endif
+    return iflag;
+  }
+
   struct minimizer_wrappers
   {
     typedef minimizer<double> w_t;
@@ -136,6 +196,26 @@ namespace scitbx { namespace lbfgs { namespace {
   void init_module()
   {
     using namespace boost::python;
+
+    scope().attr("have_lbfgs_f") =
+#if defined(SCITBX_LBFGS_HAVE_LBFGS_F)
+      true;
+#else
+      false;
+#endif
+    def("lbfgs_f", lbfgs_f, (
+      arg_("n"),
+      arg_("m"),
+      arg_("x"),
+      arg_("f"),
+      arg_("g"),
+      arg_("diagco"),
+      arg_("diag"),
+      arg_("iprint"),
+      arg_("eps"),
+      arg_("xtol"),
+      arg_("w"),
+      arg_("iflag")));
 
     minimizer_wrappers::wrap();
     traditional_convergence_test_wrappers::wrap();

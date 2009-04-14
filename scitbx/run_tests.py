@@ -46,6 +46,8 @@ def run():
   "$D/math/tst_fit_peak.py",
   "$D/minpack/tst.py",
   ["$D/lbfgs/tst_ext.py"],
+  "$D/lbfgs/tst_lbfgs_f.py",
+  "$B/lbfgs/tst_lbfgs",
   "$D/lbfgsb/boost_python/tst_lbfgsb.py",
   ["$D/fftpack/boost_python/tst_fftpack.py"],
   "$D/examples/flex_grid.py",
