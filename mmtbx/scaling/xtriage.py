@@ -429,15 +429,17 @@ class xtriage_analyses(object):
 
     d_star_sq_low_limit = default_low_reso_limit_wilson_ratio
     d_star_sq_low_limit = 1.0/((d_star_sq_low_limit+1e-6)**2.0)
-    self.twin_results = twin_analyses.twin_analyses(
-      self.miller_obs,
-      d_star_sq_low_limit=d_star_sq_low_limit,
-      d_star_sq_high_limit=d_star_sq_high_limit,
-      normalise=True,
-      out=self.text_out,
-      out_plots=self.plot_out,
-      miller_calc=self.miller_calc,
-      additional_parameters=self.params.scaling.input.parameters.misc_twin_parameters)
+    self.twin_results = None
+    if(self.miller_obs.select_acentric().as_intensity_array().indices().size()>0):
+      self.twin_results = twin_analyses.twin_analyses(
+        self.miller_obs,
+        d_star_sq_low_limit=d_star_sq_low_limit,
+        d_star_sq_high_limit=d_star_sq_high_limit,
+        normalise=True,
+        out=self.text_out,
+        out_plots=self.plot_out,
+        miller_calc=self.miller_calc,
+        additional_parameters=self.params.scaling.input.parameters.misc_twin_parameters)
 
     if miller_ref is not None:
       self.reference_analyses = pair_analyses.reindexing(

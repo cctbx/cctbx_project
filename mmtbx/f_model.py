@@ -2282,7 +2282,10 @@ class info(object):
     self.completeness_d_min_inf = fmodel.f_obs.completeness()
     f_obs_6 = fmodel.f_obs.resolution_filter(d_min = 6)
     self.completeness_6_inf = f_obs_6.completeness()
-    self.min_f_obs_over_sigma = fmodel.f_obs.min_f_over_sigma()
+    try:
+      self.min_f_obs_over_sigma = fmodel.f_obs.min_f_over_sigma()
+    except AssertionError:
+      self.min_f_obs_over_sigma = None
     self.sf_algorithm = fmodel.sfg_params.algorithm
     alpha_w, beta_w = fmodel.alpha_beta_w()
     self.alpha_work_min, self.alpha_work_max, self.alpha_work_mean = \
