@@ -1,0 +1,184 @@
+\documentclass[11pt]{article}
+\usepackage{cctbx_preamble}
+\usepackage{amscd}
+
+\title{Least-squares minimisation}
+\author{\lucjbourhis}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Notations}
+
+Since the both of least-squares on $F$ and on $F^2$ are used in practice, we will use the letter $y$ to refer to either of them. For each Miller indices $h$, we have therefore the observed data $y_o(h)$ and the corresponding calculated $y_c(h)$ and the least-square targets with weights $w(h)$ reads
+\begin{equation}
+L = \sum_h w(h) (y_o(h) - K y_c(h))^2
+\label{eqn:L:def}
+\end{equation}
+where $K$ is an unknown scale factor. The parameters (atomic sites, ADP's, sof's, etc) that each $y_c(h)$ depends upon will be denoted as $x_1, \cdots, x_n$. Our problem is the minimisation of $L$ with respect to all of $K, x_1, \cdots, x_n$.
+
+\section{Minimisation with respect to the scale factor}
+
+There are several methods to find the value of $K$ which minimises $L$ at each minimisation step:
+\begin{description}
+\item[1-step] $L$ is minimised as a function of $K$ and all $x_i$'s in a single step;
+\label{eqn:onestepmini}
+\item[2-step] $L$ is first be minimised with respect to $K$ only and that minimum is then function of the $x_i$'s and a second step minimisation is then be performed for those parameters;
+\item[1$+$1-step] $L$ is first be minimised with respect to $K$ only and the value of $K$ realising that minimum is then use as starting point for a second step minimisation over all parameters (i.e. it starts like the 2-step method but finishes like the 1-step one).
+\label{eqn:twostepmini}
+\end{description}
+The software Crystals~\cite{Crystals:v12} relies on the 1-step method whereas ShelXL~\cite{SHELX:man97} uses the 1$+$1-step.
+
+Let us expound the math necessary for the first step of the 2-step and 1$+$1-step methods. We introduce the following notations,
+\begin{align}
+\|y\|^2 &= \sum_h w(h)y(h)^2,\\
+y \cdot y' &= \sum_h w(h) y(h) y'(h),
+\end{align}
+which come from the well-known geometrical interpretation of least-squares\footnote{mathematically minded people will have recognised scalar products and norms here}. Then $L$ can be rewritten as follow,
+\begin{align}
+L &= \| K y_c - y_o \|^2
+\label{eqn:L:def:geom}\\
+\intertext{which can then be expanded as}
+L &= K^2 \|y_c\|^2 -2K y_c \cdot y_o + \|y_o\|^2
+\label{eqn:L:def:geom:expanded}
+\\
+\intertext{and then partially factored as}
+L &= \left(K \|y_c\| - \frac{y_c \cdot y_o}{\|y_c\|}\right)^2
++  \|y_o\|^2 \left(1 - \left(\frac{y_c \cdot y_o}{\|y_c\| \|y_o\|}\right)^2 \right) \nonumber
+\end{align}
+Thus, the value of $K$ which minimises $L$ is the value which zeroes the first parenthesis, i.e.
+\begin{align}
+\tilde{K} &= \frac{y_c \cdot y_o}{\|y_c\|^2},
+\label{eqn:min:L:wrt:K}\\
+\intertext{whereas that minimum is}
+\left. L \right|_{K=\tilde{K}} &= \|y_o\|^2 - \tilde{K}^2 \|y_c\|^2
+\label{eqn:min:L:wrt:K:val}
+\\
+\intertext{or, as it is coded in ShelXL for the computation of the so-called weighted $R^2$}
+&= \tilde{K}^2 \left(\frac{\|y_o\|^2}{\tilde{K}^2} - \frac{y_c \cdot y_o}{\tilde{K}} \right).
+\end{align}
+The last parenthesis is what gets assigned to the memory location \code{A(128)} in function \code{SX3I} in file \code{xl.f} in the block of code starting at line 9250. The accumulation of $\|y_c\|^2, \|y_o\|^2, y_c \cdot y_o$ is done in function \code{SXFC} in file \code{xlv.f} starting from line 687.
+
+\section{Minimisation with respect to all parameters}
+
+We need the derivatives with respect to each $x_i$. But let us not forget that $y_c$ is either $|F_c|^2$ or $|F_c|$ and that it is more convenient to write the derivatives of $L$ with the derivatives of $F_c$ for the latter are only dependent on the model without the need to know whether they will be used in a refinement against $F$ or $F^2$, and of course without the knowledge that we minimise least-squares eventually. Writing everything with the derivatives of $F_c$ leads to more modular code and we should thrive for that.
+
+First let's introduce the residuals
+\begin{align}
+r(h) &= y_o(h) - K y_c(h),\\
+\intertext{which are such that}
+L &= \sum_h w(h) r(h)^2 = \|r\|^2 \cdot
+\label{eqn:L:vector}
+\end{align}
+with the geometrical notation we used before.
+
+\subsubsection{First-order derivatives}
+\label{lsq:mini:all:firstorder:derivatives}
+
+Mostly straightforward except for two subtleties. The first one is related to the 2-step minimisation procedure. In the 1-step method and the second step of the 1$+$1-step one, $L$ is a function of the independent variables $K, x_1, \cdots, x_n$. Thus one needs to compute the derivatives $\partialder{L}{x_i}$ keeping $K$ constant. But in the 2-step method, after $L$ has been minimised over $K$, one wishes to further minimise $L_{K=|\tilde{K}}$ which is a function of the $x_1, \cdots, x_n$ only whose derivatives with respect to each $x_i$ a priori require differentiating $\tilde{K}$ with respect to each $y_c(h)$ -- c.f. \eqnref{min:L:wrt:K:val}. It is actually not necessary to compute those. Indeed
+\begin{equation}
+\partialder{\left. L \right|_{K=\tilde{K}}}{x_i} = \underbrace{ \left.\partialder{L}{K}\right|_{K=\tilde{K}} }_{\displaystyle = 0} \partialder{\tilde{K}}{x_i} + \left.\partialder{L}{x_i}\right|_{K=\tilde{K}}
+\label{eqn:twostep:firstorder:der}
+\end{equation}
+because $L$ reaches its minimum at $K=\tilde{K}$. Thus even for the 2-step method, we only need the derivatives with respect to $x_i$ keeping $K$ constant -- but with $K=\tilde{K}$ of course. Those $\left.\partialder{L}{x_i}\right|_{K=\tilde{K}}$ are also those needed for the second step of the 1$+$1-step method.
+
+The second subtlety comes from $F_c$ being a complex quantity, which shall be taken into account when applying the chain rule. The clearest method is to take $F_c$ and it's complex conjugate $F_c^*$ as independent variable and write
+\begin{equation}
+\partialder{L}{x_i} = \sum_h \partialder{L}{F_c(h)} \partialder{F_c(h)}{x_i} + \partialder{L}{F_c(h)^*}\partialder{F_c(h)^*}{x_i} \cdot \nonumber
+\end{equation}
+This simplifies because
+\begin{align}
+\partialder{F_c(h)^*}{x_i} = \left( \partialder{F_c(h)}{x_i} \right)\\
+\intertext{which trivially results from $x_i$ being a real variable and}
+\partialder{L}{F_c(h)^*} = \left( \partialder{L}{F_c(h)} \right)^*
+\end{align}
+which comes from $L$ depending on $F_c(h)$ only through $y_c(h)$ which is itself a function of $|F_c(h)|^2$. Before we expound that point, let us conclude with the key formula for the derivatives of $L$,
+\begin{equation}
+\partialder{L}{x_i} = \sum_h 2 \Re \left( \partialder{L}{F_c(h)} \partialder{F_c(h)}{x_i} \right)
+\label{eqn:der:L:wrt:xi}
+\end{equation}
+which is used in one form or another in all crystallographic refinement codes -- $\Re$ denotes the real part.
+
+Going back in more details to the derivative of $L$ with respect to $F_c(h)$,
+\begin{align}
+\partialder{L}{F_c(h)} &=
+\partialder{L}{y_c(h)}
+\partialder{y_c(h)}{|F_c(h)|^2}
+\underbrace{ \partialder{|F_c(h)|^2}{F_c(h)} }_{=F_c(h)^*},
+&
+\partialder{L}{F_c(h)^*} &=
+\partialder{L}{y_c(h)}
+\partialder{y_c(h)}{|F_c(h)|^2}
+\underbrace{ \partialder{|F_c(h)|^2}{F_c(h)^*} }_{=F_c(h)}
+\nonumber
+\end{align}
+which proves the result we announced and gives the useful formulae
+\begin{equation}
+\partialder{L}{F_c(h)} = \partialder{L}{y_c(h)} \times
+\begin{cases}
+F_c(h)^* & \text{for $F^2$ refinement},\\
+\frac{F_c(h)^*}{2|F_c(h)|} & \text{for $F$ refinement.}
+\end{cases}
+\end{equation}
+In the \code{cctbx}, all those computations are performed in namespace \code{cctbx::xray}. The computations related to minimisation targets are done in namespace \code{targets} in either class \code{ls\_with\_scale} or \code{least\_squares\_residual} as far as least-squares are concerned. Those uses a variation of the scheme described here: they actually compute $\partialder{L}{F_c(h)^*}$ which forces the classes in charge of the crystallographic models to compute $\partialder{F_c(h)^*}{x_i}$ instead of $\partialder{F_c(h)}{x_i}$. That trivial substitution results in changing a few signs. Those model derivative computations are done in namespace \code{structure\_factors} in classes \code{gradients\_direct} and \code{fast\_gradients}. The former does the sum over $h$ in \eqnref{der:L:wrt:xi} directly whereas the latter uses FFT.
+
+It should be noted that all the formulae written so far in this section \ref{lsq:mini:all:firstorder:derivatives}, except \eqnref{twostep:firstorder:der}, are actually correct for any minimisation target, not just least-squares since we have not specialised $\partialder{L}{F_c(h)}$ or $\partialder{L}{y_c(h)}$. In the \code{cctbx}, it is therefore used for the log-likelihood target too. We will now write those derivatives for the least-squares only.
+
+The key formula is
+\begin{align}
+\partialder{L}{y_c(h)} &= \sum_h - w(h) 2K y_c(h) r(h)\\
+\intertext{or in vector form}
+\grad{L}{y_c} &= -2K y_c \cdot r
+\end{align}
+which are valid whether $L$ has been minimised over $K$ or not, as discussed in the introduction of this section.
+
+\subsubsection{Second-order derivatives}
+
+Quasi-Newton methods such as LBFGS only need the first-order derivatives but Newton methods require the second-order ones too. In the case of least-squares, those can conveniently be expressed with the first-order derivatives only, in the limit of small residuals, leading to the well-known Gauss-Newton method.
+
+First we need to address the same issue about the 2-step methods that we discussed at the beginning of last section,
+\begin{equation}
+\partialderxy{\left. L \right|_{K=\tilde{K}}}{x_i}{x_j} = \partialder{}{x_i} \left.\partialder{L}{x_j}\right|_{K=\tilde{K}} = \left.\partialderxy{L}{K}{x_j}\right|_{K=\tilde{K}}  \partialder{\tilde{K}}{x_i} +   \left.\partialderxy{L}{x_i}{x_j}\right|_{K=\tilde{K}}
+\label{eqn:der:xi:xj:twostep}
+\end{equation}
+by starting from \eqnref{twostep:firstorder:der}. This time, no such luck, the first term does not vanish. Thus we must compute the very same second-order derivatives that we need for the other two methods, plus the first-order derivatives of $\tilde{K}$.
+
+Let's start with the derivatives with respect to $x_i$. Going back to \eqnref{L:vector},
+\begin{align}
+\partialder{L}{x_i} &= 2 r \cdot \partialder{r}{x_i} = -2K r \cdot \partialder{y_c}{x_i}\\
+\partialderxy{L}{x_i}{x_j} &= 2 \partialder{r}{x_i} \cdot \partialder{r}{x_j} + 2 r \cdot \partialderxy{r}{x_i}{x_j}
+\label{eqn:der:xi:xj}
+\\
+\intertext{In the limit of small residuals, the second term is negligible. This leads to the approximation at the heart of the Gauss-Newton method,}
+\partialderxy{L}{x_i}{x_j} &\approx 2 \partialder{r}{x_i} \cdot \partialder{r}{x_j} = 2K^2 \partialder{y_c}{x_i} \cdot \partialder{y_c}{x_j}
+\end{align}
+On the other hand,
+\begin{align}
+\partialderxy{L}{K}{x_i} &= 2 \partialder{r}{K} \cdot \partialder{r}{x_i} + 2 r \cdot \partialderxy{r}{K}{x_j} ,\\
+\intertext{which becomes in the same approximation}
+\partialderxy{L}{K}{x_i} &\approx 2 \partialder{r}{K} \cdot \partialder{r}{x_i} = 2K y_c \cdot \partialder{y_c}{x_i}
+\label{eqn:der:xi:K}
+\\
+\intertext{Finally, we can get the derivatives with respect to $K$ only from \eqnref{L:def:geom:expanded},}
+\partialder{L}{K} &= -2 r.y_c,\\
+\partialderxx{L}{K} &= 2\|y_c\|^2
+\end{align}
+
+Thus the Newton equations for the shifts $s_K$ and $s_{x_i}$,
+\begin{align}
+\partialderxx{L}{K}\ s_K + \sum_j \partialderxy{L}{K}{x_j}\ s_{x_j} &= -\partialder{L}{K}\\
+\partialderxy{L}{K}{x_i}\ s_K + \sum_j \partialderxy{L}{x_i}{x_j}\ s_{x_j} &= -\partialder{L}{x_i},\ i=0,1,\cdots\\
+\intertext{gives the normal equations}
+\| y_c \|^2\ \dfrac{s_K}{K}
++ \sum_j y_c \cdot \partialder{y_c}{x_j}\ s_{x_j}
+&= \frac{1}{K} r \cdot  y_c\\
+y_c \cdot \partialder{y_c}{x_i}\ \dfrac{s_K}{K}
++ \sum_j \partialder{y_c}{x_i} \cdot \partialder{y_c}{x_j}\ s_{x_j}
+&= \frac{1}{K} r \cdot \partialder{y_c}{x_i},\ i=0,1,\cdots
+\end{align}
+which shows that it is most natural to solve for the relative shift $\frac{s_K}{K}$ of the scale factor.
+
+\bibliography{cctbx_references}
+
+\end{document}
