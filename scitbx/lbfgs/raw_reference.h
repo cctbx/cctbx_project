@@ -15,28 +15,49 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
 
   //! Emulation of 1-dimensional FORTRAN arrays with offset 1.
   template <typename ElementType>
-  class ref1
+  class const_ref1
   {
     protected:
-      ElementType* begin_;
+      const ElementType* begin_;
       int n_;
 
     public:
-      ref1() {}
+      const_ref1() {}
 
-      ref1(ElementType* begin, int n) : begin_(begin), n_(n) {}
+      const_ref1(const ElementType* begin, int n) : begin_(begin), n_(n) {}
 
-      ElementType*
+      const ElementType*
       begin() const { return begin_; }
 
-      ElementType*
+      const ElementType*
       end() const { return begin_+n_; }
 
-      ElementType&
+      const ElementType&
       operator()(int i) const { return begin_[i-1]; }
 
+      const_ref1
+      get1(int i, int n) const { return const_ref1(begin_+i-1, n); }
+  };
+
+  template <typename ElementType>
+  class ref1 : public const_ref1<ElementType>
+  {
+    public:
+      ref1() {}
+
+      ref1(ElementType* begin, int n) : const_ref1<ElementType>(begin, n) {}
+
+      ElementType*
+      begin() const { return const_cast<ElementType*>(this->begin_); }
+
+      ElementType*
+      end() const { return this->begin()+this->n_; }
+
+      ElementType&
+      operator()(int i) const { return this->begin()[i-1]; }
+
       ref1
-      get1(int i, int n) const { return ref1(begin_+i-1, n); }
+      get1(int i, int n) const { return ref1(this->begin()+i-1, n); }
   };
 
   inline
@@ -44,7 +65,7 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
   daxpy(
     int const n,
     double const da,
-    ref1<double> const& dx,
+    const_ref1<double> const& dx,
     int const incx,
     ref1<double> const& dy,
     int const incy)
@@ -98,9 +119,9 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
   double
   ddot(
     int const n,
-    ref1<double> const& dx,
+    const_ref1<double> const& dx,
     int const incx,
-    ref1<double> const& dy,
+    const_ref1<double> const& dy,
     int const incy)
   {
     double ddot; // Return value
@@ -423,8 +444,8 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
     int const n,
     ref1<double> const& x,
     double const f,
-    ref1<double> const& g,
-    ref1<double> const& s,
+    const_ref1<double> const& g,
+    const_ref1<double> const& s,
     double & stp,
     double const ftol,
     double const xtol,
@@ -728,7 +749,7 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
   inline
   void
   lb1_show_vector(
-    ref1<double> const& v,
+    const_ref1<double> const& v,
     int const n)
   {
     for(int i=1;i<=n;i++) {
@@ -740,15 +761,15 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
   inline
   void
   lb1(
-    ref1<int> const& iprint,
+    const_ref1<int> const& iprint,
     int const iter,
     int const nfun,
     double const gnorm,
     int const n,
     int const m,
-    ref1<double> const& x,
+    const_ref1<double> const& x,
     double const f,
-    ref1<double> const& g,
+    const_ref1<double> const& g,
     double const stp,
     bool const finish)
   {
@@ -826,10 +847,10 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
     int const m,
     ref1<double> const& x,
     double const f,
-    ref1<double> const& g,
+    const_ref1<double> const& g,
     int const diagco,
     ref1<double> const& diag,
-    ref1<int> const& iprint,
+    const_ref1<int> const& iprint,
     double const eps,
     double const xtol,
     ref1<double> const& w,
