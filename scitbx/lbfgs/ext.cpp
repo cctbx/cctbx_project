@@ -3,6 +3,7 @@
 #include <scitbx/error.h>
 #include <scitbx/lbfgs.h>
 #include <scitbx/lbfgs/drop_convergence_test.h>
+#include <scitbx/lbfgs/raw_reference.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/boost_python/utils.h>
 #include <boost/python/module.hpp>
@@ -29,7 +30,7 @@ namespace scitbx { namespace lbfgs { namespace {
     int*);
 
   int
-  lbfgs_f(
+  fortran(
     int n,
     int m,
     af::ref<double> const& x,
@@ -69,6 +70,47 @@ namespace scitbx { namespace lbfgs { namespace {
 #else
     throw std::runtime_error("L-BFGS FORTRAN library is not available.");
 #endif
+    return iflag;
+  }
+
+  int
+  raw_reference(
+    int n,
+    int m,
+    af::ref<double> const& x,
+    double f,
+    af::const_ref<double> const& g,
+    bool diagco,
+    af::ref<double> const& diag,
+    af::tiny<int, 2> const& iprint,
+    double eps,
+    double xtol,
+    af::ref<double> const& w,
+    int iflag)
+  {
+    SCITBX_ASSERT(n > 0);
+    SCITBX_ASSERT(m > 0);
+    std::size_t n_ = static_cast<std::size_t>(n);
+    std::size_t m_ = static_cast<std::size_t>(m);
+    SCITBX_ASSERT(x.size() == n_);
+    SCITBX_ASSERT(g.size() == n_);
+    SCITBX_ASSERT(diag.size() == n_);
+    SCITBX_ASSERT(w.size() == n_*(2*m_+1)+2*m_);
+    int diagco_int = static_cast<int>(diagco);
+    using raw_reference::ref1;
+    raw_reference::lbfgs(
+      n,
+      m,
+      ref1<double>(x),
+      f,
+      ref1<double>(const_cast<double*>(g.begin()), n),
+      diagco_int,
+      ref1<double>(diag),
+      ref1<int>(const_cast<int*>(iprint.begin()), 2),
+      eps,
+      xtol,
+      ref1<double>(w),
+      iflag);
     return iflag;
   }
 
@@ -203,7 +245,20 @@ namespace scitbx { namespace lbfgs { namespace {
 #else
       false;
 #endif
-    def("lbfgs_f", lbfgs_f, (
+    def("fortran", fortran, (
+      arg_("n"),
+      arg_("m"),
+      arg_("x"),
+      arg_("f"),
+      arg_("g"),
+      arg_("diagco"),
+      arg_("diag"),
+      arg_("iprint"),
+      arg_("eps"),
+      arg_("xtol"),
+      arg_("w"),
+      arg_("iflag")));
+    def("raw_reference", raw_reference, (
       arg_("n"),
       arg_("m"),
       arg_("x"),
