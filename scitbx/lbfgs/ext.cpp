@@ -97,16 +97,17 @@ namespace scitbx { namespace lbfgs { namespace {
     SCITBX_ASSERT(diag.size() == n_);
     SCITBX_ASSERT(w.size() == n_*(2*m_+1)+2*m_);
     int diagco_int = static_cast<int>(diagco);
+    using raw_reference::const_ref1;
     using raw_reference::ref1;
     raw_reference::lbfgs(
       n,
       m,
       ref1<double>(x.begin(), n),
       f,
-      ref1<double>(const_cast<double*>(g.begin()), n),
+      const_ref1<double>(g.begin(), n),
       diagco_int,
       ref1<double>(diag.begin(), n),
-      ref1<int>(const_cast<int*>(iprint.begin()), 2),
+      const_ref1<int>(iprint.begin(), 2),
       eps,
       xtol,
       ref1<double>(w.begin(), static_cast<int>(w.size())),
