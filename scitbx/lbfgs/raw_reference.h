@@ -752,8 +752,6 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
     double const stp,
     bool const finish)
   {
-    int i;
-
     //     -------------------------------------------------------------
     //     THIS ROUTINE PRINTS MONITORING INFORMATION. THE FREQUENCY AND
     //     AMOUNT OF OUTPUT ARE CONTROLLED BY IPRINT.
