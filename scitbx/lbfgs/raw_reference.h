@@ -7,8 +7,8 @@
 #ifndef SCITBX_LBFGS_RAW_REFERENCE_H
 #define SCITBX_LBFGS_RAW_REFERENCE_H
 
-#include <boost/format.hpp>
-#include <iostream>
+#include <algorithm>
+#include <cstdio>
 #include <cmath>
 
 namespace scitbx { namespace lbfgs { namespace raw_reference {
@@ -581,7 +581,7 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
       dginit += g(j) * s(j);
     }
     if ( dginit >= zero ) {
-      std::cout << "\n  THE SEARCH DIRECTION IS NOT A DESCENT DIRECTION\n";
+      std::printf("\n  THE SEARCH DIRECTION IS NOT A DESCENT DIRECTION\n");
       return;
     }
 
@@ -732,8 +732,8 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
     int const n)
   {
     for(int i=1;i<=n;i++) {
-      std::cout << boost::format("  %10.3E") % v(i);
-      if (i % 6 == 0 || i == n) std::cout << "\n";
+      std::printf("  %10.3E", v(i));
+      if (i % 6 == 0 || i == n) std::printf("\n");
     }
   }
 
@@ -762,32 +762,30 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
     using namespace LB3;
 
     if ( iter == 0 ) {
-      std::cout << "*************************************************\n";
-      std::cout << boost::format(
-        "  N=%5d   NUMBER OF CORRECTIONS=%2d\n       INITIAL VALUES\n" )
-          % n % m;
-      std::cout << boost::format(
-        " F= %10.3E   GNORM= %10.3E\n" ) % f % gnorm;
+      std::printf("*************************************************\n");
+      std::printf(
+        "  N=%5d   NUMBER OF CORRECTIONS=%2d\n       INITIAL VALUES\n", n, m);
+      std::printf(
+        " F= %10.3E   GNORM= %10.3E\n", f, gnorm);
       if ( iprint(2) >= 1 ) {
-        std::cout << " VECTOR X= \n";
+        std::printf(" VECTOR X= \n");
         lb1_show_vector(x, n);
-        std::cout << " GRADIENT VECTOR G= \n";
+        std::printf(" GRADIENT VECTOR G= \n");
         lb1_show_vector(g, n);
       }
-      std::cout << "*************************************************\n";
-      std::cout << "\n   I   NFN    FUNC        GNORM       STEPLENGTH\n\n";
+      std::printf("*************************************************\n");
+      std::printf("\n   I   NFN    FUNC        GNORM       STEPLENGTH\n\n");
     }
     else {
       if ( (iprint(1) == 0) && (iter != 1 && ! finish) ) return;
       if ( iprint(1) != 0 ) {
         if ( (iter - 1) % iprint(1) == 0 || finish ) {
           if ( iprint(2) > 1 && iter > 1 ) {
-            std::cout <<
-              "\n   I   NFN    FUNC        GNORM       STEPLENGTH\n\n";
+            std::printf(
+              "\n   I   NFN    FUNC        GNORM       STEPLENGTH\n\n");
           }
-          std::cout << boost::format(
-            "%4d %4d    %10.3E  %10.3E  %10.3E\n" )
-              % iter % nfun % f % gnorm % stp;
+          std::printf(
+            "%4d %4d    %10.3E  %10.3E  %10.3E\n", iter, nfun, f, gnorm, stp);
         }
         else {
           return;
@@ -795,30 +793,29 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
       }
       else {
         if ( iprint(2) > 1 && finish ) {
-          std::cout <<
-            "\n   I   NFN    FUNC        GNORM       STEPLENGTH\n\n";
+          std::printf(
+            "\n   I   NFN    FUNC        GNORM       STEPLENGTH\n\n");
         }
-        std::cout << boost::format(
-          "%4d %4d    %10.3E  %10.3E  %10.3E\n" )
-            % iter % nfun % f % gnorm % stp;
+        std::printf(
+          "%4d %4d    %10.3E  %10.3E  %10.3E\n", iter, nfun, f, gnorm, stp);
       }
       if ( iprint(2) == 2 || iprint(2) == 3 ) {
         if ( finish ) {
-          std::cout << " FINAL POINT X= \n";
+          std::printf(" FINAL POINT X= \n");
         }
         else {
-          std::cout << " VECTOR X= \n";
+          std::printf(" VECTOR X= \n");
         }
         lb1_show_vector(x, n);
         if ( iprint(2) == 3 ) {
-          std::cout << " GRADIENT VECTOR G= \n";
+          std::printf(" GRADIENT VECTOR G= \n");
           lb1_show_vector(g, n);
         }
       }
       if ( finish ) {
-        std::cout <<
+        std::printf(
           "\n THE MINIMIZATION TERMINATED WITHOUT DETECTING ERRORS.\n"
-          " IFLAG = 0\n";
+          " IFLAG = 0\n");
       }
     }
 
@@ -1083,9 +1080,9 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
     if ( n <= 0 || m <= 0 ) goto L196;
     if ( gtol <= 1.e-04 ) {
       if ( lp > 0 ) {
-        std::cout <<
+        std::printf(
           "\n  GTOL IS LESS THAN OR EQUAL TO 1.e-04\n"
-          " IT HAS BEEN RESET TO 9.e-01";
+          " IT HAS BEEN RESET TO 9.e-01");
       }
       gtol = 9.e-01;
     }
@@ -1096,9 +1093,7 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
       for ( int i = 1, i_end = n; i <= i_end; ++i ) {
         if ( diag(i) <= zero ) {
           iflag = -2;
-          if ( lp > 0 ) {
-            std::cout << boost::format(iflag_minus_2_format) % i;
-          }
+          if ( lp > 0 ) std::printf(iflag_minus_2_format, i);
           return;
         }
       }
@@ -1164,9 +1159,7 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
       for ( int i = 1, i_end = n; i <= i_end; ++i ) {
         if ( diag(i) <= zero ) {
           iflag = -2;
-          if ( lp > 0 ) {
-            std::cout << boost::format(iflag_minus_2_format) % i;
-          }
+          if ( lp > 0 ) std::printf(iflag_minus_2_format, i);
           return;
         }
       }
@@ -1270,20 +1263,20 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
   L190:
     iflag = -1;
     if ( lp > 0 ) {
-      std::cout << boost::format(
+      std::printf(
         "\n IFLAG= -1 \n"
         " LINE SEARCH FAILED. SEE DOCUMENTATION OF ROUTINE MCSRCH\n"
         " ERROR RETURN OF LINE SEARCH: INFO= %2d\n"
         " POSSIBLE CAUSES: FUNCTION OR GRADIENT ARE INCORRECT\n"
-        " OR INCORRECT TOLERANCES\n") % info;
+        " OR INCORRECT TOLERANCES\n", info);
     }
     return;
   L196:
     iflag = -3;
     if ( lp > 0 ) {
-      std::cout <<
+      std::printf(
         "\n IFLAG= -3\n"
-        " IMPROPER INPUT PARAMETERS (N OR M ARE NOT POSITIVE)\n";
+        " IMPROPER INPUT PARAMETERS (N OR M ARE NOT POSITIVE)\n");
     }
   }
 
