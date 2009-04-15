@@ -97,9 +97,9 @@ namespace scitbx { namespace lbfgs { namespace {
     SCITBX_ASSERT(diag.size() == n_);
     SCITBX_ASSERT(w.size() == n_*(2*m_+1)+2*m_);
     int diagco_int = static_cast<int>(diagco);
-    using raw_reference::const_ref1;
-    using raw_reference::ref1;
-    raw_reference::lbfgs(
+    using scitbx::lbfgs::raw_reference::const_ref1; // fully-qualified
+    using scitbx::lbfgs::raw_reference::ref1;       // to work around
+    scitbx::lbfgs::raw_reference::lbfgs(            // gcc 3.2 bug
       n,
       m,
       ref1<double>(x.begin(), n),
