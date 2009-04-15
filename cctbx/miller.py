@@ -2072,15 +2072,18 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     flags = flex.abs(self.data()) >= self.sigmas() * cutoff_factor
     return self.select(flags, negate)
 
-  def min_f_over_sigma(self):
+  def min_f_over_sigma(self, return_none_if_zero_sigmas=False):
     result = None
     sigmas = self.sigmas()
-    if(sigmas is not None):
+    if(sigmas is not None and sigmas.size() != 0):
       if(flex.min(sigmas) == 0.0):
         result = 0.0
       else:
-        assert sigmas.all_ne(0)
-        result = flex.min(self.data() / sigmas)
+        sigmas_all_not_equal_zero = sigmas.all_ne(0)
+        if (not return_none_if_zero_sigmas):
+          assert sigmas_all_not_equal_zero
+        if (sigmas_all_not_equal_zero):
+          result = flex.min(self.data() / sigmas)
     return result
 
   def apply_scaling(self, target_max=None, factor=None):

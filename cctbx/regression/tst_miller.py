@@ -10,7 +10,8 @@ from cctbx.array_family import flex
 import cctbx
 import scitbx.math
 from libtbx import complex_math
-from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
+from libtbx.test_utils import \
+  approx_equal, not_approx_equal, show_diff, Exception_expected
 from cStringIO import StringIO
 import pickle
 import random
@@ -908,6 +909,16 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
   assert ma.min_f_over_sigma() is None
   ma = miller.array(ms, data, sigmas)
   assert approx_equal(ma.min_f_over_sigma(), 2.5)
+  sigmas[1] = 0
+  assert approx_equal(ma.min_f_over_sigma(), 0)
+  sigmas[2] = -1
+  ma = miller.array(ms, data, sigmas)
+  try: ma.min_f_over_sigma()
+  except AssertionError: pass
+  else: raise Exception_expected
+  ma = miller.set(xs, indices=flex.miller_index()).array(
+    data=flex.double(), sigmas=flex.double())
+  assert ma.min_f_over_sigma() is None
   #
   ma = miller.array(ms, data)
   maa = ma.combine(other=ma)
