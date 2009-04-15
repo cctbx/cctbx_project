@@ -7,7 +7,6 @@
 #ifndef SCITBX_LBFGS_RAW_REFERENCE_H
 #define SCITBX_LBFGS_RAW_REFERENCE_H
 
-#include <scitbx/array_family/ref.h>
 #include <boost/format.hpp>
 #include <iostream>
 #include <cmath>
@@ -16,32 +15,28 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
 
   //! Emulation of 1-dimensional FORTRAN arrays with offset 1.
   template <typename ElementType>
-  class ref1 : public af::ref<ElementType>
+  class ref1
   {
+    protected:
+      ElementType* begin_;
+      int n_;
+
     public:
       ref1() {}
 
-      ref1(af::ref<ElementType> const& r)
-      :
-        af::ref<ElementType>(r)
-      {}
+      ref1(ElementType* begin, int n) : begin_(begin), n_(n) {}
 
-      ref1(ElementType* begin, int n)
-      :
-        af::ref<ElementType>(begin, n)
-      {}
+      ElementType*
+      begin() const { return begin_; }
+
+      ElementType*
+      end() const { return begin_+n_; }
 
       ElementType&
-      operator()(int i) const
-      {
-        return this->operator[](i-1);
-      }
+      operator()(int i) const { return begin_[i-1]; }
 
       ref1
-      get1(int i, int n) const
-      {
-        return ref1(&(this->operator()(i)), n);
-      }
+      get1(int i, int n) const { return ref1(begin_+i-1, n); }
   };
 
   inline

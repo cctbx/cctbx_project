@@ -101,15 +101,15 @@ namespace scitbx { namespace lbfgs { namespace {
     raw_reference::lbfgs(
       n,
       m,
-      ref1<double>(x),
+      ref1<double>(x.begin(), n),
       f,
       ref1<double>(const_cast<double*>(g.begin()), n),
       diagco_int,
-      ref1<double>(diag),
+      ref1<double>(diag.begin(), n),
       ref1<int>(const_cast<int*>(iprint.begin()), 2),
       eps,
       xtol,
-      ref1<double>(w),
+      ref1<double>(w.begin(), static_cast<int>(w.size())),
       iflag);
     return iflag;
   }
