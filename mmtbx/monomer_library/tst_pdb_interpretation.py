@@ -381,9 +381,10 @@ def exercise_dna_cns_cy5_th6():
   assert not block_show_diff(
     log.getvalue(), """\
         Number of residues, atoms: 12, 244
-          Classifications: {'DNA': 12}
+          Unusual residues: {'TH6': 1, 'CY5': 1}
+          Classifications: {'undetermined': 2, 'DNA': 10}
           Modifications used: {'5*END': 1}
-          Link IDs: {'p': 11}
+          Link IDs: {None: 4, 'p': 7}
 """)
 
 def exercise():
