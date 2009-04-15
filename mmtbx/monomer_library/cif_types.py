@@ -406,6 +406,12 @@ class comp_comp_id(object):
       c2_o2 = "C2* O2*"
     else:
       return None
+    if (tab_offs == 2 and c2_o2 == "C2* O2*"):
+      sub_classification = ""
+    elif (tab_offs == 0 and c2_o2 == "C2' O2'"):
+      sub_classification = "v3"
+    else:
+      return None
     for required_atom in required_atoms:
       if (not required_atom in atom_dict): return None
     rna_indicator = False
@@ -420,8 +426,8 @@ class comp_comp_id(object):
         rna_indicator = True
     if (len(bonds_matched) != len(required_bonds)):
       return None
-    if (rna_indicator): return "RNA"
-    return "DNA"
+    if (rna_indicator): return "RNA"+sub_classification
+    return "DNA"+sub_classification
 
   def test_for_water(self, atom_dict):
     atom_list = atom_dict.keys()
