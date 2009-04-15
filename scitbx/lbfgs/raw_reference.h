@@ -167,11 +167,11 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
     double & fy,
     double & dy,
     double & stp,
-    double & fp,
-    double & dp,
+    double const fp,
+    double const dp,
     bool & brackt,
-    double & stpmin,
-    double & stpmax,
+    double const stpmin,
+    double const stpmax,
     int & info)
   {
     bool bound;
@@ -420,15 +420,15 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
   inline
   void
   mcsrch(
-    int & n,
+    int const n,
     ref1<double> const& x,
-    double & f,
+    double const f,
     ref1<double> const& g,
     ref1<double> const& s,
     double & stp,
-    double & ftol,
-    double & xtol,
-    int & maxfev,
+    double const ftol,
+    double const xtol,
+    int const maxfev,
     int & info,
     int & nfev,
     ref1<double> const& wa)
@@ -741,16 +741,16 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
   void
   lb1(
     ref1<int> const& iprint,
-    int & iter,
-    int & nfun,
-    double & gnorm,
-    int & n,
-    int & m,
+    int const iter,
+    int const nfun,
+    double const gnorm,
+    int const n,
+    int const m,
     ref1<double> const& x,
-    double & f,
+    double const f,
     ref1<double> const& g,
-    double & stp,
-    bool & finish)
+    double const stp,
+    bool const finish)
   {
     int i;
 
@@ -824,16 +824,16 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
   inline
   void
   lbfgs(
-    int & n,
-    int & m,
+    int const n,
+    int const m,
     ref1<double> const& x,
-    double & f,
+    double const f,
     ref1<double> const& g,
-    int & diagco,
+    int const diagco,
     ref1<double> const& diag,
     ref1<int> const& iprint,
-    double & eps,
-    double & xtol,
+    double const eps,
+    double const xtol,
     ref1<double> const& w,
     int & iflag)
   {
