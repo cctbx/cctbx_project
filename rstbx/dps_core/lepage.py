@@ -61,7 +61,7 @@ def bestcmp(a,b):
 
 def iotbx_converter(unit_cell,max_delta,bravais_types_only=True,
     space_group_symbol="P 1",force_minimum=False,best_monoclinic_beta=True,
-    interest_focus="metric_symmetry"):
+    interest_focus="metric_symmetry",sort=True):
     # with regard to "force_minimum": when autoindexing, the orientation
     # matrix may be derived from comparison to a previously indexed case;
     # the setting may be non-standard; therefore we do not want to
@@ -117,5 +117,6 @@ def iotbx_converter(unit_cell,max_delta,bravais_types_only=True,
       subgroup['subsym'].space_group().build_derived_acentric_group()
     subgroup['constraints']=echelon_constraints(subgroup['reduced_group'])
     M.labelit_style.append(MetricSubgroup().import_iotbx_style(subgroup))
-  M.labelit_style.sort(bestcmp)
+  if (sort):
+    M.labelit_style.sort(bestcmp)
   return M.labelit_style
