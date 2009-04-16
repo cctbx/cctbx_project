@@ -51,20 +51,25 @@ class refinery:
     self.miller_indices = miller_indices
     self.wavelength = wavelength
     #
-    self.number_of_function_evaluations = 0
+    self.number_of_gradient_evaluations = 0
     self.progress = []
     if (mode < 3):
       self.x = flex.double(unit_cell.parameters())
       self.diag_mode = [None, "once", "always"][mode]
       scitbx.lbfgs.run(target_evaluator=self)
       self.plot_legend = "lbfgs_"+str(self.diag_mode)
-    else:
-      assert mode == 3
+    elif (mode == 3):
       m = scitbx.minimizers.newton_more_thuente_1994(
         function=self, x0=flex.double(unit_cell.parameters()))
       m.show_statistics()
       self.x = m.x_star
       self.plot_legend = "newton"
+    elif (mode < 6):
+      self.x = self.run_lbfgs_raw_reference(
+        unit_cell=unit_cell, diagco=(mode==5))
+      self.plot_legend = "lbfgs_raw_ref_"+["None", "always"][mode-4]
+    else:
+      raise AssertionError("bad mode=%d" % mode)
 
   def unit_cell(self):
     return uctbx.unit_cell(iter(self.x))
@@ -75,9 +80,9 @@ class refinery:
       self.two_thetas_obs, self.miller_indices, self.wavelength, unit_cell)
     if (len(self.progress) == 0):
       self.progress.append((0, f))
-    self.number_of_function_evaluations += 1
     g = gradients(
       self.two_thetas_obs, self.miller_indices, self.wavelength, unit_cell)
+    self.number_of_gradient_evaluations += 1
     print "functional: %12.6g" % f, "gradient norm: %12.6g" % g.norm()
     if (not compute_diag):
       return f, g
@@ -96,7 +101,7 @@ class refinery:
     else:
       functional = self.functional(x=x)
       print "STEP newton_more_thuente_1994", functional
-    self.progress.append((self.number_of_function_evaluations, functional))
+    self.progress.append((self.number_of_gradient_evaluations, functional))
 
   def functional(self, x):
     result = residual(
@@ -107,7 +112,7 @@ class refinery:
     return result
 
   def gradients(self, x):
-    self.number_of_function_evaluations += 1
+    self.number_of_gradient_evaluations += 1
     return gradients(
       self.two_thetas_obs, self.miller_indices, self.wavelength,
       unit_cell=uctbx.unit_cell(iter(x)))
@@ -116,6 +121,37 @@ class refinery:
     return hessian(
       self.two_thetas_obs, self.miller_indices, self.wavelength,
       unit_cell=uctbx.unit_cell(iter(x)))
+
+  def run_lbfgs_raw_reference(self, unit_cell, diagco, lbfgs_impl_switch=0):
+    if (lbfgs_impl_switch != 0): assert scitbx.lbfgs.have_lbfgs_f
+    n = 6
+    m = 5
+    x = flex.double(unit_cell.parameters())
+    diag = flex.double(n, 0)
+    iprint = [1, 0]
+    eps = 1.0e-5
+    xtol = 1.0e-16
+    size_w = n*(2*m+1)+2*m
+    w = flex.double(size_w)
+    iflag = 0
+    while True:
+      assert iflag in [0,1,2]
+      if (iflag in [0,1]):
+        f = self.functional(x=x)
+        if (self.number_of_gradient_evaluations != 0):
+          self.progress.append((len(self.progress), f))
+        g = self.gradients(x=x)
+      if (iflag in [0,2] and diagco):
+        h = self.hessian(x)
+        d = h.matrix_diagonal()
+        assert d.all_gt(0)
+        diag = 1/d
+      iflag = [scitbx.lbfgs.raw_reference,
+               scitbx.lbfgs.fortran][lbfgs_impl_switch](
+        n=n, m=m, x=x, f=f, g=g, diagco=diagco, diag=diag,
+        iprint=iprint, eps=eps, xtol=xtol, w=w, iflag=iflag)
+      if (iflag <= 0): break
+    return x
 
 def show_fit(two_thetas_obs, miller_indices, wavelength, unit_cell):
   two_thetas_calc = unit_cell.two_theta(miller_indices, wavelength, deg=True)
@@ -181,7 +217,7 @@ def run():
     two_thetas_obs, miller_indices, wavelength, unit_cell_start)
 
   refined_accu = []
-  for mode in range(4):
+  for mode in range(6):
     refined = refinery(
       two_thetas_obs, miller_indices, wavelength, unit_cell_start, mode=mode)
     refined_accu.append(refined)
