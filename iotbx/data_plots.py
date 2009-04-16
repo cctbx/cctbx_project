@@ -89,7 +89,7 @@ def flip_table (table) :
       assert len(row) == len(new_table)
       for i, elem in enumerate(row) :
         new_table[i].append(elem)
-  return new_table 
+  return new_table
 
 class table_data (object) :
   def __init__ (self,
