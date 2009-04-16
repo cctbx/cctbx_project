@@ -476,7 +476,7 @@ def run(args,
     pdb_tls = group_args(pdb_inp_tls           = pdb_inp_tls,
                          tls_selections        = [],
                          tls_selection_strings = [])
-    if(pdb_inp_tls.tls_present and pdb_inp_tls.error_string is not None):
+    if(pdb_inp_tls.tls_present and pdb_inp_tls.error_string is None):
       pdb_tls = mmtbx.tls.tools.extract_tls_from_pdb(
         pdb_inp_tls       = pdb_inp_tls,
         all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
@@ -549,7 +549,7 @@ def run(args,
   n_refl_cutoff = None
   f_obs_cut = f_obs.deep_copy()
   r_free_flags_cut = r_free_flags.deep_copy()
-  if(pub_sigma is not None):
+  if(pub_sigma is not None and f_obs.sigmas() is not None):
     tmp_sel = f_obs.data() > f_obs.sigmas()*pub_sigma
     if(tmp_sel.size() != tmp_sel.count(True) and tmp_sel.count(True) > 0):
       f_obs_cut = f_obs.select(tmp_sel)
