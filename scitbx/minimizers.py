@@ -115,14 +115,23 @@ class newton_more_thuente_1994:
         stpmax=None,
         eps_1=1.e-16,
         eps_2=1.e-16,
+        matrix_symmetric_relative_epsilon=1.e-12,
         k_max=1000):
     self.function = function
     x = x0.deep_copy()
-    f_x = function.f(x=x)
+    function_f = getattr(function, "f", None)
+    if (function_f is not None):
+      f_x = function_f(x=x)
+      functional = function.functional(f_x=f_x)
+      fp = function.gradients(x=x, f_x=f_x)
+    else:
+      f_x = None
+      functional = function.functional(x=x)
+      fp = function.gradients(x=x)
     number_of_function_evaluations = 1
-    self.f_x0 = f_x
-    fp = function.gradients(x=x, f_x=f_x)
     number_of_gradient_evaluations = 1
+    self.f_x0 = f_x
+    self.functional_x0 = functional
     number_of_hessian_evaluations = 0
     number_of_cholesky_decompositions = 0
     line_search = scitbx.math.line_search_more_thuente_1994()
@@ -137,31 +146,35 @@ class newton_more_thuente_1994:
         break
       fdp = function.hessian(x=x)
       number_of_hessian_evaluations += 1
-      u = fdp.matrix_symmetric_as_packed_u()
+      u = fdp.matrix_symmetric_as_packed_u(
+        relative_epsilon=matrix_symmetric_relative_epsilon)
       gmw = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
       number_of_cholesky_decompositions += 1
       h_dn = gmw.solve(b=-fp)
       line_search.start(
         x=x,
-        functional=function.functional(f_x=f_x),
+        functional=functional,
         gradients=fp,
         search_direction=h_dn,
         initial_estimate_of_satisfactory_step_length=1)
       while (line_search.info_code == -1):
-        f_x = function.f(x=x)
+        if (function_f is not None):
+          f_x = function_f(x=x)
+          functional = function.functional(f_x=f_x)
+          fp = function.gradients(x=x, f_x=f_x)
+        else:
+          functional = function.functional(x=x)
+          fp = function.gradients(x=x)
         number_of_function_evaluations += 1
-        fp = function.gradients(x=x, f_x=f_x)
         number_of_gradient_evaluations += 1
-        line_search.next(
-          x=x,
-          functional=function.functional(f_x=f_x),
-          gradients=fp)
+        line_search.next(x=x, functional=functional, gradients=fp)
       h_dn *= line_search.stp
       k += 1
       if (h_dn.norm() <= eps_2*(eps_2 + x.norm())):
         break
     self.x_star = x
     self.f_x_star = f_x
+    self.functional_x_star = functional
     self.number_of_iterations = k
     self.number_of_function_evaluations = number_of_function_evaluations
     self.number_of_gradient_evaluations = number_of_gradient_evaluations
@@ -173,8 +186,11 @@ class newton_more_thuente_1994:
     print "scitbx.minimizers.newton_more_thuente_1994 results:"
     print "  function:", self.function.label()
     print "  x_star:", list(self.x_star)
-    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
-    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
+    if (self.f_x0 is not None):
+      print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
+      print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
+    print "  functional_x0:", self.functional_x0
+    print "  functional_x_star:", self.functional_x_star
     print "  number_of_iterations:", self.number_of_iterations
     print "  number_of_function_evaluations:", \
         self.number_of_function_evaluations
