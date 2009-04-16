@@ -449,7 +449,7 @@ class xtriage_analyses(object):
       )
 
 
-def run(args, command_name="phenix.xtriage"):
+def run(args, command_name="phenix.xtriage", return_result=False):
   command_line = (option_parser(
     usage=command_name+" [options] reflection_file parameters [...]",
     description="Example: %s data1.mtz" % command_name)
@@ -790,7 +790,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     # make sure we hold on to the 'raw' data for later usage is desired
     raw_data = miller_array.deep_copy()
 
-
+    xtriage_results = None
     if (miller_array.is_real_array()):
       print >> log
       print >> log
@@ -828,9 +828,43 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       output_file = open( params.scaling.input.parameters.reporting.log  ,'w')
       output_file.write(string_buffer.getvalue())
 
+    if return_result :
+      return xtriage_summary(params=params,
+                             xtriage_results=xtriage_results)
 
+#--- Pickle-able results object for the GUI
+class xtriage_summary (object) :
+  def __init__ (self, params, xtriage_results) :
+    self.file_name = params.scaling.input.xray_data.file_name
+    self.file_labels = params.scaling.input.xray_data.obs_labels
 
-
+    basic_results = xtriage_results.basic_results
+    basic_attrs = ["nresidues",
+                   "nbases",
+                   #"iso_scale_and_b",
+                   "iso_p_scale", "iso_b_wilson", # float
+                   #"aniso_scale_and_b",
+                   "aniso_p_scale", # float
+                   "aniso_u_star", "aniso_b_cart"] # [ float ] * 6
+    for attr in basic_attr :
+      setattr(self, attr, getattr(basic_results, attr, None))
+    data_strength = getattr(basic_results, "data_strength")
+    # COMPLETENESS
+    self.completeness_table = getattr(data_strength, "table_for_gui", None)
+    data_stats_attrs = ["suggested_reso_for_hyss"]
+    # WORRISOME SHELLS, MEAN INTENSITY, Z-SCORES/COMPLETENESS,
+    # ANOMALOUS SIGNAL, <I/SIGI> BY SHELL
+    data_table_attrs = ["shell_table", "wilson_table", "zscore_table",
+                        "meas_table", "i_sig_i_table"]
+    for attr in (data_stats_attrs + data_table_attrs) :
+      setattr(self, attr, getattr(basic_results.basic_data_stats, attr, None))
+    # VM/%SOLV
+    self.matthews_table = basic_results.matthews_results[4] # table
+    # ICE RINGS
+    ijsco = getattr(basic_results.basic_data_stats, "ijsco")
+    self.icy_shells = getattr(ijsco, "icy_shells")
+    self.ice_warnings = getattr(ijsco, "warnings")
+    self.ice_comments = getattr(ijsco, "comments")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

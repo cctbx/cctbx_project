@@ -8,6 +8,7 @@ from cctbx import uctbx
 from mmtbx import scaling
 from scitbx.math import chebyshev_polynome
 from libtbx.test_utils import approx_equal
+from iotbx import data_plots
 import random
 import scitbx.math
 import math
@@ -151,7 +152,16 @@ def matthews_rupp(miller_array,
     vm_estimator.n_bases=0.0
     vm_estimator.best_guess = 1
 
+  matthews_table = data_plots.table_data(
+    title="Solvent content analysis",
+    column_labels=["Copies", "Solvent content", "Matthews coeff.",
+                   "P(solvent content)"],
+    graph_names=["Solvent content", "Matthews coeff."],
+    graph_columns=[[0,1], [0,2]],
+    data=vm_estimator.vm_prop)
+
   return( [vm_estimator.n_residues,
            vm_estimator.n_bases,
            vm_estimator.best_guess,
-           vm_estimator.vm_prop[vm_estimator.best_guess-1][1]] )
+           vm_estimator.vm_prop[vm_estimator.best_guess-1][1],
+           matthews_table] )

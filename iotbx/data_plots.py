@@ -78,6 +78,19 @@ def plot_data_loggraph(plot_data,output):
 
 #-----------------------------------------------------------------------
 # Nat's utilities for plottable data
+def flip_table (table) :
+  if len(table) == 0 :
+    return []
+  new_table = []
+  for elem in table[0] :
+    new_table.append([elem])
+  if len(table) > 1 :
+    for row in table[1:] :
+      assert len(row) == len(new_table)
+      for i, elem in enumerate(row) :
+        new_table[i].append(elem)
+  return new_table 
+
 class table_data (object) :
   def __init__ (self,
       title,
@@ -87,7 +100,8 @@ class table_data (object) :
       graph_names=None,
       graph_types=None,
       graph_columns=None,
-      data=None) :
+      data=None,
+      comments=None) :
     self.title = title
     self._is_complete = False
     self.column_names = column_names
@@ -97,6 +111,7 @@ class table_data (object) :
     self.graph_types = graph_types
     self.graph_columns = graph_columns
     self.data = data
+    self.comments = comments
     self._graphs = {}
     self._column_width = 10
 
