@@ -14,7 +14,7 @@ class from_scatterers_fft(managed_calculation_base):
     time_all = user_plus_sys_time()
     managed_calculation_base.__init__(self,
       manager, xray_structure, miller_set, algorithm="fft")
-    assert miller_set.d_min() >= manager.d_min()
+    assert miller_set.d_min() > manager.d_min() * (1-1e-6)
     manager.setup_fft() # before timing
     time_sampling = user_plus_sys_time()
     sampled_density = ext.sampled_model_density(
