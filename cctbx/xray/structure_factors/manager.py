@@ -32,7 +32,7 @@ class manager(crystal.symmetry):
       if (d_min is None):
         d_min = miller_set.d_min()
       else:
-        assert d_min <= miller_set.d_min()
+        assert d_min < miller_set.d_min() * (1+1e-6)
     crystal.symmetry._copy_constructor(self, crystal_symmetry)
     quality_factor = quality_factor_from_any(
       d_min, grid_resolution_factor, quality_factor, u_base, b_base)
