@@ -114,11 +114,19 @@ def run_c_plus_plus(target_evaluator,
       iteration_coefficient
         =termination_params.drop_convergence_test_iteration_coefficient)
   callback_after_step = getattr(target_evaluator, "callback_after_step", None)
+  diag_mode = getattr(target_evaluator, "diag_mode", None)
+  if (diag_mode is not None): assert diag_mode in ["once", "always"]
   f_min, x_min = None, None
   f, g = None, None
   try:
     while 1:
-      f, g = target_evaluator.compute_functional_and_gradients()
+      if (diag_mode is None):
+        f, g = target_evaluator.compute_functional_and_gradients()
+        d = None
+      else:
+        f, g, d = target_evaluator.compute_functional_gradients_diag()
+        if (diag_mode == "once"):
+          diag_mode = None
       if (f_min is None):
         if (not termination_params.traditional_convergence_test):
           is_converged(f)
@@ -129,7 +137,10 @@ def run_c_plus_plus(target_evaluator,
         print >> log, "lbfgs minimizer.run():" \
           " f=%.6g, |g|=%.6g, x_min=%.6g, x_mean=%.6g, x_max=%.6g" % (
           f, g.norm(), flex.min(x), flex.mean(x), flex.max(x))
-      if (minimizer.run(x, f, g)): continue
+      if (d is None):
+        if (minimizer.run(x, f, g)): continue
+      else:
+        if (minimizer.run(x, f, g, d)): continue
       if (log is not None):
         print >> log, "lbfgs minimizer step"
       if (callback_after_step is not None):
@@ -158,7 +169,10 @@ def run_c_plus_plus(target_evaluator,
         if (log is not None):
           print >> log, "lbfgs minimizer stop: max_calls"
         break
-      if (not minimizer.run(x, f, g)): break
+      if (d is None):
+        if (not minimizer.run(x, f, g)): break
+      else:
+        if (not minimizer.run(x, f, g, d)): break
   except RuntimeError, e:
     minimizer.error = str(e)
     if (log is not None):
