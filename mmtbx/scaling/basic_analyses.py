@@ -37,6 +37,10 @@ class basic_analyses(object):
       print >> out, "Matthews coefficient and Solvent content statistics"
 
     n_copies_solc = 1.0
+    self.nres_known = False
+    if (phil_object.scaling.input.asu_contents.n_residues is not None or
+        phil_object.scaling.input.asu_contents.n_bases is not None) :
+      self.nres_known = True
     matthews_results =matthews.matthews_rupp(
       miller_array = miller_array,
       n_residues = phil_object.scaling.input.asu_contents.n_residues,
@@ -45,6 +49,7 @@ class basic_analyses(object):
     phil_object.scaling.input.asu_contents.n_residues = matthews_results[0]
     phil_object.scaling.input.asu_contents.n_bases = matthews_results[1]
     n_copies_solc = matthews_results[2]
+    self.matthews_results = matthews_results
 
     if phil_object.scaling.input.asu_contents.n_copies_per_asu is not None:
       n_copies_solc = phil_object.scaling.input.asu_contents.n_copies_per_asu
@@ -57,12 +62,14 @@ class basic_analyses(object):
 
     # first report on I over sigma
     miller_array_new = miller_array
+    self.data_strength = None
     if miller_array.sigmas() is not None:
       data_strength=data_statistics.i_sigi_completeness_stats(
         miller_array,
         isigi_cut = phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.isigi_cut,
         completeness_cut = phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.completeness_cut)
       data_strength.show(out)
+      self.data_strength = data_strength
       if phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution is None:
         if data_strength.resolution_cut > data_strength.resolution_at_least:
           phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution = data_strength.resolution_at_least
@@ -90,6 +97,7 @@ class basic_analyses(object):
       n_bases=n_bases*
       miller_array.space_group().order_z()*n_copies_solc)
     iso_scale_and_b.show(out=out,verbose=verbose)
+    self.iso_scale_and_b = iso_scale_and_b
     ## Store the b and scale values from isotropic ML scaling
     self.iso_p_scale = iso_scale_and_b.p_scale
     self.iso_b_wilson =  iso_scale_and_b.b_wilson
@@ -106,6 +114,7 @@ class basic_analyses(object):
       n_bases = n_bases*miller_array.space_group().order_z()*n_copies_solc)
     aniso_scale_and_b.show(out=out,verbose=1)
 
+    self.aniso_scale_and_b = aniso_scale_and_b
     self.aniso_p_scale = aniso_scale_and_b.p_scale
     self.aniso_u_star  = aniso_scale_and_b.u_star
     self.aniso_b_cart  = aniso_scale_and_b.b_cart
@@ -173,7 +182,7 @@ class basic_analyses(object):
       iso_scale_and_b.scat_info,
       out=out,
       out_plot=out_plot)
-
+    self.basic_data_stats = basic_data_stats
     self.miller_array = basic_data_stats.new_miller
 
 

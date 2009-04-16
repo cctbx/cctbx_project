@@ -95,9 +95,10 @@ class i_sigi_completeness_stats(object):
                             "I/sigI>5 ",
                             "I/sigI>10",
                             "I/sigI>15" )
-
+    raw_data = []
     for ii in xrange(1,len(self.resolution_bins)-1):
       row = []
+      raw_row = []
       a = self.resolution_bins[ii-1]
       b = self.resolution_bins[ii]
       limsa =("%4.2f"%(a**-0.5)).rjust(5)
@@ -105,16 +106,26 @@ class i_sigi_completeness_stats(object):
 
       lims = limsa+" -"+limsb
       row.append( lims )
+      raw_row.append(limsb)
       for jj in  self.completeness_bins:
+        raw_row.append(100.0*jj[ii])
         tmp="%3.1f%s"%(100.0*jj[ii],"%")
         row.append( tmp )
       table_data.append( row )
+      raw_data.append(raw_row)
 
     self.table = table_utils.format([legend]+table_data,
                                     has_header=True,
                                     separate_rows=False,
                                     prefix='| ',
                                     postfix=' |')
+    # XXX: for GUI
+    self.table_for_gui = data_plots.table_data(
+      title="Commpleteness and data strength",
+      column_labels=["Max. resolution"] + list(legend)[1:],
+      graph_names=["I/sigI by shell"],
+      graph_columns=[[0,1,2,3,4,5,6]],
+      data=raw_data)
 
   def show(self, out=None):
     print >> out
@@ -444,6 +455,7 @@ class ice_ring_checker(object):
     print >> out, "------------------------------------------------"
     print >> out, "| d_spacing | z_score | compl. | Rel. Ice int. |"
     print >> out, "------------------------------------------------"
+    self.icy_shells = []
     for ii in range(10):
       if self.ice_ring_bin_location[ii] is not None:
 
@@ -453,18 +465,22 @@ class ice_ring_checker(object):
           abs(self.value_intensity[ii]),
           abs(self.value_completeness[ii]),
           abs(self.ice_rel_intens[ii]))
+        self.icy_shells.append([ self.ice_d_spacings[ii],
+                                 abs(self.value_intensity[ii]),
+                                 abs(self.value_completeness[ii]),
+                                 abs(self.ice_rel_intens[ii]) ])
     print >> out, "------------------------------------------------"
     print >> out
     print >> out, " Abnormalities in mean intensity or completeness at"
     print >> out, " resolution ranges with a relative ice ring intensity"
     print >> out, " lower than %3.2f will be ignored."%(intensity_level)
     print >> out
-    comments = False
+    self.comments = False
     for ii in range(10):
       if (self.ice_ring_bin_location[ii] is not None) \
        and (self.ice_rel_intens[ii]>intensity_level):
         if (abs(self.abnormality_completeness[ii])>=level):
-          comments = True
+          self.comments = True
           self.warnings+=1
           print >> out, " At %3.2f A there is an lower occupancy"%(
           self.ice_d_spacings[ii])
@@ -479,7 +495,7 @@ class ice_ring_checker(object):
  resolution"
             print >> out
         if (abs(self.abnormality_intensity[ii])>=level):
-          comments=True
+          self.comments=True
           self.warnings+=1
           if (abs(self.abnormality_completeness[ii])<=level):
             print >> out, " At %3.2f A the z-score is more than %3.2f times the standard" \
@@ -487,7 +503,7 @@ class ice_ring_checker(object):
             print >> out, " deviation of all z-scores, while at the same time, "
             print >> out, " the occupancy does not go down."
             print >> out
-    if not comments:
+    if not self.comments:
       print >> out, " No ice ring related problems detected."
       print >> out, " If ice rings were present, the data does not look"
       print >> out, " worse at ice ring related d_spacings as compared"
@@ -865,6 +881,7 @@ class basic_intensity_statistics:
     print >> out, "------------------------------------------------"
     print >> out, "| d_spacing | z_score | compl. | <Iobs>/<Iexp> |"
     print >> out, "------------------------------------------------"
+    worrisome_shells = []
     for ii in range(self.d_star_sq.size()):
       if  worrisome[ii]:
         d_space = self.d_star_sq[ii]**(-0.5)
@@ -873,6 +890,13 @@ class basic_intensity_statistics:
         ratio = self.mean_I_obs_data[ii]/self.mean_I_obs_theory[ii]
         print >> out, "|%9.3f  |%7.2f  |%7.2f |%10.3f     |"%(
           d_space,z_score,comp,ratio)
+        worrisome_shells.append([d_space,z_score,comp,ratio])
+    self.shell_table = data_plots.table_data(
+      title="Mean intensity by shell (outliers)",
+      column_labels=["d_spacing", "z_score", "completeness", "<Iobs>/<Iexp>"],
+      graph_names=["Worrisome resolution shells"],
+      graph_columns=[[0,1,2,3]],
+      data=worrisome_shells)
     if (worrisome).count(True) == 0:
       print >> out, "     None"
     print >> out, "------------------------------------------------"
@@ -923,6 +947,17 @@ class basic_intensity_statistics:
       wilson_plot.add_data(y_data=self.mean_I_obs_theory,
                            y_legend='<I> expected')
       data_plots.plot_data_loggraph(wilson_plot, out_plot)
+      # XXX: Nat's newer table class (for GUI)
+      wilson_data = data_plots.flip_table(
+        [self.d_star_sq, self.mean_I_normalisation, self.mean_I_obs_data,
+         self.mean_I_obs_theory])
+      self.wilson_table = data_plots.table_data(
+        title="Intensity plots",
+        column_labels=["1/resol**2", "<I> smooth approximation",
+                      "<I> via binning", "<I> expected"],
+        graph_names=["Intensity plots"],
+        graph_columns=[[0,1,2,3]],
+        data=wilson_data)
 
       ## z scores and completeness
       z_scores_and_completeness = data_plots.plot_data(
@@ -937,6 +972,16 @@ class basic_intensity_statistics:
         y_data=self.completeness,
         y_legend='Completeness')
       data_plots.plot_data_loggraph(z_scores_and_completeness, out_plot)
+      # XXX: for GUI
+      zscore_data = data_plots.flip_table(
+        [self.d_star_sq, self.z_scores, self.completeness])
+      self.zscore_table = data_plots.table_data(
+        title="Z scores and completeness",
+        column_labels=["1/resol**2", "Z_score or fractional completeness",
+                       "Completeness"],
+        graph_names=["Data sanity and completeness check"],
+        graph_columns=[[0,1,2]],
+        data=zscore_data)
 
       ## measurability data is anomalous
       if self.meas_data is not None:
@@ -952,8 +997,15 @@ class basic_intensity_statistics:
         meas_plots.add_data(y_data=self.meas_smooth,
                             y_legend='smooth approximation')
         data_plots.plot_data_loggraph( meas_plots,   out_plot)
-
-
+        # XXX: for GUI
+        new_meas_data = data_plots.flip_table(
+          [self.d_star_sq_ori, self.meas_data, self.meas_smooth])
+        self.meas_table = data_plots.table_data(
+          title="Measurability of Anomalous signal",
+          column_labels=["1/resol**2", "Measurability", "Smooth approximation"],
+          graph_names=["Anomalous measurability"],
+          graph_columns=[[0,1,2]],
+          data=new_meas_data)
 
       ## I over sigma I
       if self.i_sig_i is not None:
@@ -967,3 +1019,11 @@ class basic_intensity_statistics:
           comments = 'Signal to noise')
         i_sig_i.domain_flag='N'
         data_plots.plot_data_loggraph( i_sig_i,   out_plot)
+        # XXX: for GUI
+        i_sig_i_data = data_plots.flip_table([self.d_star_sq_ori,self.i_sig_i])
+        self.i_sig_i_table = data_plots.table_data(
+          title="Signal to noise (<I/sigma_I>)",
+          column_labels=["1/resol**2", "<I/sigma_I>"],
+          graph_names=["Signal to noise"],
+          graph_columns=[[0,1]],
+          data=i_sig_i_data)
