@@ -41,7 +41,7 @@ def exercise_parameter_map():
   assert indices.fdp == -1
 
 def run():
-
+  exercise_parameter_map()
   print 'OK'
 
 if __name__ == '__main__':
