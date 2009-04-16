@@ -9,77 +9,15 @@ from cctbx import crystal
 from cctbx import miller
 from libtbx.utils import Sorry
 import scitbx
+from scitbx.minimizers import newton_more_thuente_1994
 from scitbx import matrix
 import math
 import sys
 
-class newton_more_thuente_1994:
-
-  def __init__(self,
-        function,
-        x0,
-        xtol=None,
-        gtol=None,
-        ftol=None,
-        stpmin=None,
-        stpmax=None,
-        eps_1=1.e-16,
-        eps_2=1.e-16,
-        k_max=1000):
-    self.function = function
-    x = x0.deep_copy()
-    f = function.functional(x=x) ##
-    number_of_function_evaluations = 1
-    fp = function.gradients(x=x) ##
-    number_of_gradient_evaluations = 1
-    number_of_hessian_evaluations = 0
-    number_of_cholesky_decompositions = 0
-    line_search = scitbx.math.line_search_more_thuente_1994()
-    if (xtol is not None): line_search.xtol = xtol
-    if (ftol is not None): line_search.ftol = ftol
-    if (gtol is not None): line_search.gtol = gtol
-    if (stpmin is not None): line_search.stpmin = stpmin
-    if (stpmax is not None): line_search.stpmax = stpmax
-    callback_after_step = hasattr(function, "callback_after_step")
-    k = 0
-    while (k < k_max):
-      if (flex.max(flex.abs(fp)) <= eps_1):
-        break
-      fdp = function.hessian(x=x)##
-      number_of_hessian_evaluations += 1
-      u = fdp.matrix_symmetric_as_packed_u(relative_epsilon=1.e-6)
-      gmw = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
-      number_of_cholesky_decompositions += 1
-      h_dn = gmw.solve(b=-fp)
-      line_search.start(
-        x=x,
-        functional=function.functional(x=x),
-        gradients=fp,
-        search_direction=h_dn,
-        initial_estimate_of_satisfactory_step_length=1)
-      while (line_search.info_code == -1):
-        f = function.functional(x=x)##
-        number_of_function_evaluations += 1
-        fp = function.gradients(x=x)##
-        number_of_gradient_evaluations += 1
-        line_search.next(
-          x=x,
-          functional=function.functional(x=x),
-          gradients=fp)
-      h_dn *= line_search.stp
-      k += 1
-      if (callback_after_step):
-        function.callback_after_step(k=k, x=x, f=f, fp=fp, fdp=fdp)
-      if (h_dn.norm() <= eps_2*(eps_2 + x.norm())):
-        break
-    self.x_star = x
-    self.f_star = f
-    self.number_of_iterations = k
-    self.number_of_function_evaluations = number_of_function_evaluations
-    self.number_of_gradient_evaluations = number_of_gradient_evaluations
-    self.number_of_hessian_evaluations = number_of_hessian_evaluations
-    self.number_of_cholesky_decompositions = number_of_cholesky_decompositions
-    self.line_search_info = line_search.info_meaning
+# 2009-04-15, cctbx svn rev. 8940:
+#   there are no unit tests for this module, but is is used by these commands:
+#     phenix.model_vs_data, phenix.refine, phenix.real_space_correlation,
+#     phenix.twin_map_utils, phenix.xmanip
 
 class refinery:
 
@@ -202,7 +140,8 @@ class refinery:
       x0 = start_values
 
     minimized = newton_more_thuente_1994(
-      function=self, x0=x0, gtol=0.9e-6, eps_1=1.e-6, eps_2=1.e-6)
+      function=self, x0=x0, gtol=0.9e-6, eps_1=1.e-6, eps_2=1.e-6,
+      matrix_symmetric_relative_epsilon=1.e-6)
 
 
     Vrwgk = math.pow(self.unit_cell.volume(),2.0/3.0)
