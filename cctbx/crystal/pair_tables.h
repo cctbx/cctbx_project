@@ -416,12 +416,11 @@ namespace cctbx { namespace crystal {
         while (!pair_generator.at_end()) {
           direct_space_asu::asu_mapping_index_pair_and_diff<FloatType>
             const& pair = pair_generator.next();
-          eltbx::covalent_radii::table table_i =  eltbx::covalent_radii::table(
-            scattering_types[pair.i_seq]);
-          eltbx::covalent_radii::table table_j =  eltbx::covalent_radii::table(
-            scattering_types[pair.j_seq]);
-          const float max_bond_length
-            = table_i.radius() + table_j.radius() + tolerance;
+          FloatType const& radius_i =  eltbx::covalent_radii::table(
+            scattering_types[pair.i_seq]).radius();
+          FloatType const& radius_j =  eltbx::covalent_radii::table(
+            scattering_types[pair.j_seq]).radius();
+          FloatType const max_bond_length = radius_i + radius_j + tolerance;
           if (std::sqrt(pair.dist_sq) <= max_bond_length)
             add_pair(pair);
         }
