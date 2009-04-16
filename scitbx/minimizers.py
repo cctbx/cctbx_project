@@ -119,7 +119,8 @@ class newton_more_thuente_1994:
         k_max=1000):
     self.function = function
     x = x0.deep_copy()
-    function_f = getattr(function, "f", None)
+    function_f, callback_after_step = [getattr(function, attr, None)
+      for attr in ["f", "callback_after_step"]]
     if (function_f is not None):
       f_x = function_f(x=x)
       functional = function.functional(f_x=f_x)
@@ -170,6 +171,7 @@ class newton_more_thuente_1994:
         line_search.next(x=x, functional=functional, gradients=fp)
       h_dn *= line_search.stp
       k += 1
+      if (callback_after_step): callback_after_step(x=x)
       if (h_dn.norm() <= eps_2*(eps_2 + x.norm())):
         break
     self.x_star = x
@@ -184,7 +186,9 @@ class newton_more_thuente_1994:
 
   def show_statistics(self):
     print "scitbx.minimizers.newton_more_thuente_1994 results:"
-    print "  function:", self.function.label()
+    get_label = getattr(self.function, "label", None)
+    if (get_label is not None):
+      print "  function:", get_label()
     print "  x_star:", list(self.x_star)
     if (self.f_x0 is not None):
       print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
