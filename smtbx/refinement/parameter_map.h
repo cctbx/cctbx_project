@@ -76,4 +76,4 @@ class parameter_map
 
 }} // smtbx::refinement
 
-#endif // GUARD 
+#endif // GUARD
