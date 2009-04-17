@@ -1139,7 +1139,12 @@ namespace scitbx { namespace lbfgs { namespace raw {
       w(ispt+i) = -g(i) * diag(i);
     }
     gnorm = std::sqrt(ddot(n,g,1,g,1));
-    stp1 = one/gnorm;
+    if (diagco == 0) {
+      stp1 = one/gnorm;
+    }
+    else {
+      stp1 = one;
+    }
 
     //     PARAMETERS FOR LINE SEARCH ROUTINE
 
@@ -1179,11 +1184,22 @@ namespace scitbx { namespace lbfgs { namespace raw {
           return;
         }
       }
-      if (diagco == 2) { // CCTBX CHANGE: compute Hk0 = gamma_k * H0 here
-        double yy = ddot(n,w.get1(iypt+npt+1,n),1,w.get1(iypt+npt+1,n),1);
-        double gamma_k = ys/yy;
+      if (diagco != 1) { // CCTBX CHANGE
+        double dscale = 0;
+        if (diagco == 2) {
+          double yy = ddot(n,w.get1(iypt+npt+1,n),1,w.get1(iypt+npt+1,n),1);
+          dscale = ys/yy;
+        }
+        else {
+          double scaled_ys(0.), scaled_yy(0.);
+          for ( int i = 1; i <= n; ++i ) {
+            scaled_ys += w(iypt+npt+i)*w(ispt+npt+i)*diag(i);
+            scaled_yy += w(iypt+npt+i)*w(iypt+npt+i)*std::pow(diag(i),2);
+          }
+          dscale = scaled_ys/scaled_yy;
+        }
         for ( int i = 1, i_end = n; i <= i_end; ++i ) {
-          diag(i) *= gamma_k;
+          diag(i) *= dscale;
         }
       }
     }

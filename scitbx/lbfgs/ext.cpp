@@ -137,7 +137,8 @@ namespace scitbx { namespace lbfgs { namespace {
     std::size_t m_ = static_cast<std::size_t>(m);
     SCITBX_ASSERT(x.size() == n_);
     SCITBX_ASSERT(g.size() == n_);
-    SCITBX_ASSERT(diagco == 0 || diagco == 1 || diagco == 2);
+    SCITBX_ASSERT(diagco >= 0);
+    SCITBX_ASSERT(diagco <= 3);
     SCITBX_ASSERT(diag.size() == n_);
     SCITBX_ASSERT(w.size() == n_*(2*m_+1)+2*m_);
     using scitbx::lbfgs::raw::const_ref1; // fully-qualified

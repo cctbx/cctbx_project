@@ -5,6 +5,8 @@ import scitbx.lbfgs
 import scitbx.minimizers
 import libtbx.utils
 
+class FunctionalException(RuntimeError): pass
+
 def residual(
       two_thetas_obs, miller_indices, wavelength, unit_cell):
   two_thetas_calc = unit_cell.two_theta(miller_indices, wavelength, deg=True)
@@ -59,15 +61,14 @@ class refinery:
         function=self, x0=flex.double(unit_cell.parameters()))
       m.show_statistics()
       self.x = m.x_star
-    elif (mode < 8):
+    elif (mode < 7):
       diagco, use_hessian, lbfgs_impl_switch = [
         (0, 0, 0),
         (0, 0, 1),
-        (2, 0, 1),
+        (1, 1, 0),
+        (1, 1, 1),
         (2, 1, 1),
-        (1, 2, 0),
-        (1, 2, 1),
-        (2, 2, 1)][mode-1]
+        (3, 1, 1)][mode-1]
       self.plot_legend = "%d:lbfgs_d=%d_u=%d_l=%d" % (
         mode, diagco, use_hessian, lbfgs_impl_switch)
       print "plot_legend:", self.plot_legend
@@ -83,9 +84,14 @@ class refinery:
     return uctbx.unit_cell(iter(self.x))
 
   def functional(self, x):
-    result = residual(
-      self.two_thetas_obs, self.miller_indices, self.wavelength,
-      unit_cell=uctbx.unit_cell(iter(x)))
+    try:
+      result = residual(
+        self.two_thetas_obs, self.miller_indices, self.wavelength,
+        unit_cell=uctbx.unit_cell(iter(x)))
+    except KeyboardInterrupt: raise
+    except Exception, e:
+      print "FunctionalException:", str(e)
+      raise FunctionalException
     self.functionals.append(result)
     return result
 
@@ -109,6 +115,7 @@ class refinery:
     n = 6
     m = 5
     x = flex.double(unit_cell.parameters())
+    x_last = x.deep_copy()
     diag = flex.double(n, 0)
     iprint = [1, 0]
     eps = 1.0e-5
@@ -124,7 +131,9 @@ class refinery:
     while True:
       assert iflag in [0,1,2]
       if (iflag in [0,1]):
-        f = self.functional(x=x)
+        try: f = self.functional(x=x)
+        except FunctionalException: return x_last
+        x_last = x.deep_copy()
         g = self.gradients(x=x)
       if (iflag == 0):
         if (diagco == 0):
@@ -213,7 +222,7 @@ def run():
     two_thetas_obs, miller_indices, wavelength, unit_cell_start)
 
   refined_accu = []
-  for mode in range(8):
+  for mode in range(7):
     refined = refinery(
       two_thetas_obs, miller_indices, wavelength, unit_cell_start, mode=mode)
     refined_accu.append(refined)
