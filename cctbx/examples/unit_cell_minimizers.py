@@ -4,6 +4,7 @@ from cctbx.array_family import flex
 import scitbx.lbfgs
 import scitbx.minimizers
 import libtbx.utils
+import platform
 import sys
 
 class FunctionalException(RuntimeError): pass
@@ -233,6 +234,9 @@ def run(args):
 
   p = open("tmp.xy", "w")
   print >> p, "@with g0"
+  print >> p, '@ title "%s"' % "\\n".join([
+    platform.platform(),
+    str(libtbx.utils.host_and_user().hostname)])
   for i,r in enumerate(refined_accu):
     print >> p, '@ s%d legend "%s"' % (i, r.plot_legend)
     print >> p, '@ s%d symbol 1' % i
