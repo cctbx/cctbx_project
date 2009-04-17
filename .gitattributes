@@ -372,6 +372,7 @@ rstbx/dps_core/dps_core.cpp -text
 rstbx/dps_core/dps_core.h -text
 rstbx/dps_core/lepage.py -text
 rstbx/dps_core/sampling.py -text
+rstbx/dps_core/tst_iotbx_converter.py -text
 rstbx/dps_core/zuoreduction.py -text
 rstbx/ext.cpp -text
 rstbx/indexing/__init__.py -text
