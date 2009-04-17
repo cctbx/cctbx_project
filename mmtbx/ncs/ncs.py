@@ -104,6 +104,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
     text="\nnew_ncs_group\n"
     if self._cc is not None: text+="NCS_CC "+str(self._cc)+"\n"
+    if self._ncs_domain_pdb is not None:
+      text+="  NCS_DOMAIN_PDB "+str(ncs_domain_pdb)+"\n"
 
     count=0
     for id,residue_ranges, center,trans_orth,ncs_rota_matr, \
@@ -313,6 +315,8 @@ class ncs:
         self._residues_in_common=self.get_1_value_after_key(line)
       elif key=='source_info':
         self.source_info=self.get_1_char_after_key(line)
+      elif key=='ncs_domain_pdb':
+        self._ncs_domain_pdb=self.get_1_char_after_key(line)
       elif len(spl)==3 and spl[0]=='No' and spl[1]=='NCS' and spl[2]=='found':
         read_something=True
       else:
@@ -384,6 +388,7 @@ class ncs:
      self._rmsd_list=[]
      self._residues_in_common_list=[]
      self._cc=None
+     self._ncs_domain_pdb=None
      self._chain_residue_id=[]
 
      self._list_of_resseq_list=[]
@@ -474,8 +479,8 @@ class ncs:
        ncs_rota_matr=self._ncs_rota_matr,
        center_orth=self._ncs_center_orth,
        trans_orth=self._ncs_trans_orth,
-       source_of_ncs_info=self.source_info,
-       ncs_domain_pdb=self.source_info,
+       source_of_ncs_info=self.source_info,  
+       ncs_domain_pdb=self._ncs_domain_pdb, # 041309
        rmsd_list=self._rmsd_list,
        residues_in_common_list=self._residues_in_common_list,
        chain_residue_id=self._chain_residue_id,
