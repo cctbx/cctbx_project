@@ -71,7 +71,7 @@ class refinery:
       self.plot_legend = "%d:lbfgs_d=%d_u=%d_l=%d" % (
         mode, diagco, use_hessian, lbfgs_impl_switch)
       print "plot_legend:", self.plot_legend
-      self.x = self.run_lbfgs_raw_reference(
+      self.x = self.run_lbfgs_raw(
         unit_cell=unit_cell,
         diagco=diagco,
         use_hessian=use_hessian,
@@ -100,7 +100,7 @@ class refinery:
       self.two_thetas_obs, self.miller_indices, self.wavelength,
       unit_cell=uctbx.unit_cell(iter(x)))
 
-  def run_lbfgs_raw_reference(self,
+  def run_lbfgs_raw(self,
         unit_cell,
         diagco,
         use_hessian,
@@ -142,8 +142,8 @@ class refinery:
           diag = diag0.deep_copy()
         else:
           diag = diag_from_hessian()
-      iflag = [scitbx.lbfgs.fortran,
-               scitbx.lbfgs.raw_reference][lbfgs_impl_switch](
+      iflag = [scitbx.lbfgs.raw_reference,
+               scitbx.lbfgs.raw][lbfgs_impl_switch](
         n=n, m=m, x=x, f=f, g=g, diagco=diagco, diag=diag,
         iprint=iprint, eps=eps, xtol=xtol, w=w, iflag=iflag)
       if (iflag <= 0): break

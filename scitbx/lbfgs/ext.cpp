@@ -3,6 +3,7 @@
 #include <scitbx/error.h>
 #include <scitbx/lbfgs.h>
 #include <scitbx/lbfgs/drop_convergence_test.h>
+#include <scitbx/lbfgs/raw.h>
 #include <scitbx/lbfgs/raw_reference.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/boost_python/utils.h>
@@ -94,12 +95,54 @@ namespace scitbx { namespace lbfgs { namespace {
     std::size_t m_ = static_cast<std::size_t>(m);
     SCITBX_ASSERT(x.size() == n_);
     SCITBX_ASSERT(g.size() == n_);
-    SCITBX_ASSERT(diagco == 0 || diagco == 1 || diagco == 2);
+    SCITBX_ASSERT(diagco == 0 || diagco == 1);
     SCITBX_ASSERT(diag.size() == n_);
     SCITBX_ASSERT(w.size() == n_*(2*m_+1)+2*m_);
     using scitbx::lbfgs::raw_reference::const_ref1; // fully-qualified
     using scitbx::lbfgs::raw_reference::ref1;       // to work around
     scitbx::lbfgs::raw_reference::lbfgs(            // gcc 3.2 bug
+      n,
+      m,
+      ref1<double>(x.begin(), n),
+      f,
+      const_ref1<double>(g.begin(), n),
+      diagco,
+      ref1<double>(diag.begin(), n),
+      const_ref1<int>(iprint.begin(), 2),
+      eps,
+      xtol,
+      ref1<double>(w.begin(), static_cast<int>(w.size())),
+      iflag);
+    return iflag;
+  }
+
+  int
+  raw(
+    int n,
+    int m,
+    af::ref<double> const& x,
+    double f,
+    af::const_ref<double> const& g,
+    int diagco,
+    af::ref<double> const& diag,
+    af::tiny<int, 2> const& iprint,
+    double eps,
+    double xtol,
+    af::ref<double> const& w,
+    int iflag)
+  {
+    SCITBX_ASSERT(n > 0);
+    SCITBX_ASSERT(m > 0);
+    std::size_t n_ = static_cast<std::size_t>(n);
+    std::size_t m_ = static_cast<std::size_t>(m);
+    SCITBX_ASSERT(x.size() == n_);
+    SCITBX_ASSERT(g.size() == n_);
+    SCITBX_ASSERT(diagco == 0 || diagco == 1 || diagco == 2);
+    SCITBX_ASSERT(diag.size() == n_);
+    SCITBX_ASSERT(w.size() == n_*(2*m_+1)+2*m_);
+    using scitbx::lbfgs::raw::const_ref1; // fully-qualified
+    using scitbx::lbfgs::raw::ref1;       // to work around
+    scitbx::lbfgs::raw::lbfgs(            // gcc 3.2 bug
       n,
       m,
       ref1<double>(x.begin(), n),
@@ -260,6 +303,19 @@ namespace scitbx { namespace lbfgs { namespace {
       arg_("w"),
       arg_("iflag")));
     def("raw_reference", raw_reference, (
+      arg_("n"),
+      arg_("m"),
+      arg_("x"),
+      arg_("f"),
+      arg_("g"),
+      arg_("diagco"),
+      arg_("diag"),
+      arg_("iprint"),
+      arg_("eps"),
+      arg_("xtol"),
+      arg_("w"),
+      arg_("iflag")));
+    def("raw", raw, (
       arg_("n"),
       arg_("m"),
       arg_("x"),
