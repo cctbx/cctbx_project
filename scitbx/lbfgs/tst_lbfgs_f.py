@@ -1,5 +1,5 @@
 from scitbx.array_family import flex
-from scitbx.lbfgs import have_lbfgs_f, fortran, raw_reference
+from scitbx.lbfgs import have_lbfgs_f, fortran, raw_reference, raw
 from libtbx.utils import show_times
 from libtbx.test_utils import show_diff
 from libtbx import easy_run
@@ -40,7 +40,7 @@ def exercise(lbfgs_impl, n=100, m=5, iprint=[1, 0]):
 
 def run_and_compare_implementations(this_script, n, m, iprint):
   outputs = []
-  for impl in ["fortran", "raw_reference"]:
+  for impl in ["fortran", "raw_reference", "raw"]:
     if (impl == "fortran" and not have_lbfgs_f):
       continue
     cmd = 'scitbx.python "%s" %s %d %d %d %d' % (
@@ -58,9 +58,11 @@ def run_and_compare_implementations(this_script, n, m, iprint):
     if (impl == "fortran"):
       out = out.replace("D-", "E-").replace("D+", "E+")
     outputs.append(out)
-  if (len(outputs) != 1):
-    f, r = outputs
-    assert not show_diff(f, r) # may fail for other random seeds,
+  assert len(outputs) >= 2
+  a = outputs[0]
+  for i in xrange(1, len(outputs)):
+    b = outputs[i]
+    assert not show_diff(a, b) # may fail for other random seeds,
       # due to rounding errors
 
 def compare_implementations():
@@ -94,6 +96,7 @@ def run(args):
       if (have_lbfgs_f):
         exercise(lbfgs_impl=fortran)
       exercise(lbfgs_impl=raw_reference)
+      exercise(lbfgs_impl=raw)
       if (not endless): break
   else:
     compare_implementations()

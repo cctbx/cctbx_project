@@ -1,17 +1,14 @@
 // The help of Objexx in converting this file is greatly appreciated!
 // http://objexx.com/
 
-// This file is intended to be a reference implementation.
-// Minimal manipulations applied after automatic conversion.
-
-#ifndef SCITBX_LBFGS_RAW_REFERENCE_H
-#define SCITBX_LBFGS_RAW_REFERENCE_H
+#ifndef SCITBX_LBFGS_RAW_H
+#define SCITBX_LBFGS_RAW_H
 
 #include <algorithm>
 #include <cstdio>
 #include <cmath>
 
-namespace scitbx { namespace lbfgs { namespace raw_reference {
+namespace scitbx { namespace lbfgs { namespace raw {
 
   //! Emulation of 1-dimensional FORTRAN arrays with offset 1.
   template <typename ElementType>
@@ -1182,6 +1179,13 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
           return;
         }
       }
+      if (diagco == 2) { // CCTBX CHANGE: compute Hk0 = gamma_k * H0 here
+        double yy = ddot(n,w.get1(iypt+npt+1,n),1,w.get1(iypt+npt+1,n),1);
+        double gamma_k = ys/yy;
+        for ( int i = 1, i_end = n; i <= i_end; ++i ) {
+          diag(i) *= gamma_k;
+        }
+      }
     }
 
     //     COMPUTE -H*G USING THE FORMULA GIVEN IN: Nocedal, J. 1980,
@@ -1299,6 +1303,6 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
     }
   }
 
-}}} // namespace scitbx::lbfgs::raw_reference
+}}} // namespace scitbx::lbfgs::raw
 
 #endif // GUARD
