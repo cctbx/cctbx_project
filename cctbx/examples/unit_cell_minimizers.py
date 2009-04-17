@@ -52,63 +52,41 @@ class refinery:
     self.wavelength = wavelength
     #
     self.number_of_gradient_evaluations = 0
-    self.progress = []
-    if (mode < 3):
-      self.x = flex.double(unit_cell.parameters())
-      self.diag_mode = [None, "once", "always"][mode]
-      scitbx.lbfgs.run(target_evaluator=self)
-      self.plot_legend = "lbfgs_"+str(self.diag_mode)
-    elif (mode == 3):
+    self.functionals = []
+    if (mode == 0):
+      self.plot_legend = "0:newton"
       m = scitbx.minimizers.newton_more_thuente_1994(
         function=self, x0=flex.double(unit_cell.parameters()))
       m.show_statistics()
       self.x = m.x_star
-      self.plot_legend = "newton"
-    elif (mode < 6):
+    elif (mode < 8):
+      diagco, use_hessian, lbfgs_impl_switch = [
+        (0, 0, 0),
+        (0, 0, 1),
+        (2, 0, 1),
+        (2, 1, 1),
+        (1, 2, 0),
+        (1, 2, 1),
+        (2, 2, 1)][mode-1]
+      self.plot_legend = "%d:lbfgs_d=%d_u=%d_l=%d" % (
+        mode, diagco, use_hessian, lbfgs_impl_switch)
+      print "plot_legend:", self.plot_legend
       self.x = self.run_lbfgs_raw_reference(
-        unit_cell=unit_cell, diagco=(mode==5))
-      self.plot_legend = "lbfgs_raw_ref_"+["None", "always"][mode-4]
+        unit_cell=unit_cell,
+        diagco=diagco,
+        use_hessian=use_hessian,
+        lbfgs_impl_switch=lbfgs_impl_switch)
     else:
       raise AssertionError("bad mode=%d" % mode)
 
   def unit_cell(self):
     return uctbx.unit_cell(iter(self.x))
 
-  def compute_functional_gradients_diag(self, compute_diag=True):
-    unit_cell = self.unit_cell()
-    f = residual(
-      self.two_thetas_obs, self.miller_indices, self.wavelength, unit_cell)
-    if (len(self.progress) == 0):
-      self.progress.append((0, f))
-    g = gradients(
-      self.two_thetas_obs, self.miller_indices, self.wavelength, unit_cell)
-    self.number_of_gradient_evaluations += 1
-    print "functional: %12.6g" % f, "gradient norm: %12.6g" % g.norm()
-    if (not compute_diag):
-      return f, g
-    h = hessian(
-      self.two_thetas_obs, self.miller_indices, self.wavelength, unit_cell)
-    d = h.matrix_diagonal()
-    return f, g, 1/d
-
-  def compute_functional_and_gradients(self):
-    return self.compute_functional_gradients_diag(compute_diag=False)
-
-  def callback_after_step(self, minimizer=None, x=None):
-    if (minimizer is not None):
-      functional = self.functional(x=self.x)
-      print "STEP lbfgs", functional
-    else:
-      functional = self.functional(x=x)
-      print "STEP newton_more_thuente_1994", functional
-    self.progress.append((self.number_of_gradient_evaluations, functional))
-
   def functional(self, x):
     result = residual(
       self.two_thetas_obs, self.miller_indices, self.wavelength,
       unit_cell=uctbx.unit_cell(iter(x)))
-    if (len(self.progress) == 0):
-      self.progress.append((0, result))
+    self.functionals.append(result)
     return result
 
   def gradients(self, x):
@@ -122,8 +100,12 @@ class refinery:
       self.two_thetas_obs, self.miller_indices, self.wavelength,
       unit_cell=uctbx.unit_cell(iter(x)))
 
-  def run_lbfgs_raw_reference(self, unit_cell, diagco, lbfgs_impl_switch=0):
-    if (lbfgs_impl_switch != 0): assert scitbx.lbfgs.have_lbfgs_f
+  def run_lbfgs_raw_reference(self,
+        unit_cell,
+        diagco,
+        use_hessian,
+        lbfgs_impl_switch):
+    assert use_hessian in [0,1,2]
     n = 6
     m = 5
     x = flex.double(unit_cell.parameters())
@@ -133,21 +115,35 @@ class refinery:
     xtol = 1.0e-16
     size_w = n*(2*m+1)+2*m
     w = flex.double(size_w)
+    def diag_from_hessian():
+      h = self.hessian(x)
+      d = h.matrix_diagonal()
+      assert d.all_gt(0)
+      return 1/d
     iflag = 0
     while True:
       assert iflag in [0,1,2]
       if (iflag in [0,1]):
         f = self.functional(x=x)
-        if (self.number_of_gradient_evaluations != 0):
-          self.progress.append((len(self.progress), f))
         g = self.gradients(x=x)
-      if (iflag in [0,2] and diagco):
-        h = self.hessian(x)
-        d = h.matrix_diagonal()
-        assert d.all_gt(0)
-        diag = 1/d
-      iflag = [scitbx.lbfgs.raw_reference,
-               scitbx.lbfgs.fortran][lbfgs_impl_switch](
+      if (iflag == 0):
+        if (diagco == 0):
+          diag = flex.double(n, 0)
+        elif (use_hessian == 0):
+          diag = flex.double(n, 1)
+        else:
+          diag = diag_from_hessian()
+          if (use_hessian == 1):
+            diag0 = diag.deep_copy()
+      elif (iflag == 2):
+        if (use_hessian == 0):
+          diag = flex.double(n, 1)
+        elif (use_hessian == 1):
+          diag = diag0.deep_copy()
+        else:
+          diag = diag_from_hessian()
+      iflag = [scitbx.lbfgs.fortran,
+               scitbx.lbfgs.raw_reference][lbfgs_impl_switch](
         n=n, m=m, x=x, f=f, g=g, diagco=diagco, diag=diag,
         iprint=iprint, eps=eps, xtol=xtol, w=w, iflag=iflag)
       if (iflag <= 0): break
@@ -212,12 +208,12 @@ def run():
     miller_indices.append([int(s) for s in fields[1:]])
 
   wavelength = wavelengths.characteristic("CU").as_angstrom()
-  unit_cell_start = uctbx.unit_cell((10,10,10,90,90,90))
+  unit_cell_start = uctbx.unit_cell((10,10,10,80,100,80))
   show_fit(
     two_thetas_obs, miller_indices, wavelength, unit_cell_start)
 
   refined_accu = []
-  for mode in range(6):
+  for mode in range(8):
     refined = refinery(
       two_thetas_obs, miller_indices, wavelength, unit_cell_start, mode=mode)
     refined_accu.append(refined)
@@ -229,7 +225,7 @@ def run():
     print >> p, '@ s%d legend "%s"' % (i, r.plot_legend)
     print >> p, '@ s%d symbol 1' % i
   for refined in refined_accu:
-    for x,y in refined.progress:
+    for x,y in enumerate(refined.functionals):
       if (x > 15): break
       print >> p, x,y
     print >> p, "&"

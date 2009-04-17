@@ -36,7 +36,7 @@ namespace scitbx { namespace lbfgs { namespace {
     af::ref<double> const& x,
     double f,
     af::const_ref<double> const& g,
-    bool diagco,
+    int diagco,
     af::ref<double> const& diag,
     af::tiny<int, 2> const& iprint,
     double eps,
@@ -50,17 +50,17 @@ namespace scitbx { namespace lbfgs { namespace {
     std::size_t m_ = static_cast<std::size_t>(m);
     SCITBX_ASSERT(x.size() == n_);
     SCITBX_ASSERT(g.size() == n_);
+    SCITBX_ASSERT(diagco == 0 || diagco == 1);
     SCITBX_ASSERT(diag.size() == n_);
     SCITBX_ASSERT(w.size() == n_*(2*m_+1)+2*m_);
 #if defined(SCITBX_LBFGS_HAVE_LBFGS_F)
-    int diagco_int = static_cast<int>(diagco);
     lbfgs_(
       &n,
       &m,
       x.begin(),
       &f,
       g.begin(),
-      &diagco_int,
+      &diagco,
       diag.begin(),
       iprint.begin(),
       &eps,
@@ -80,7 +80,7 @@ namespace scitbx { namespace lbfgs { namespace {
     af::ref<double> const& x,
     double f,
     af::const_ref<double> const& g,
-    bool diagco,
+    int diagco,
     af::ref<double> const& diag,
     af::tiny<int, 2> const& iprint,
     double eps,
@@ -94,9 +94,9 @@ namespace scitbx { namespace lbfgs { namespace {
     std::size_t m_ = static_cast<std::size_t>(m);
     SCITBX_ASSERT(x.size() == n_);
     SCITBX_ASSERT(g.size() == n_);
+    SCITBX_ASSERT(diagco == 0 || diagco == 1 || diagco == 2);
     SCITBX_ASSERT(diag.size() == n_);
     SCITBX_ASSERT(w.size() == n_*(2*m_+1)+2*m_);
-    int diagco_int = static_cast<int>(diagco);
     using scitbx::lbfgs::raw_reference::const_ref1; // fully-qualified
     using scitbx::lbfgs::raw_reference::ref1;       // to work around
     scitbx::lbfgs::raw_reference::lbfgs(            // gcc 3.2 bug
@@ -105,7 +105,7 @@ namespace scitbx { namespace lbfgs { namespace {
       ref1<double>(x.begin(), n),
       f,
       const_ref1<double>(g.begin(), n),
-      diagco_int,
+      diagco,
       ref1<double>(diag.begin(), n),
       const_ref1<int>(iprint.begin(), 2),
       eps,
