@@ -53,12 +53,13 @@ class basic_analyses(object):
 
     if phil_object.scaling.input.asu_contents.n_copies_per_asu is not None:
       n_copies_solc = phil_object.scaling.input.asu_contents.n_copies_per_asu
+      self.defined_copies = n_copies_solc
       if verbose>0:
         print >> out,"Number of copies per asyymetric unit provided"
         print >> out," Will use user specified value of ", n_copies_solc
     else:
       phil_object.scaling.input.asu_contents.n_copies_per_asu = n_copies_solc
-
+      self.guessed_copies = n_copies_solc
 
     # first report on I over sigma
     miller_array_new = miller_array

@@ -95,7 +95,12 @@ class i_sigi_completeness_stats(object):
                             "I/sigI>5 ",
                             "I/sigI>10",
                             "I/sigI>15" )
-    raw_data = []
+    # XXX: for GUI
+    self.table_for_gui = data_plots.table_data(
+      title="Commpleteness and data strength",
+      column_labels=["Max. resolution"] + list(legend)[1:],
+      graph_names=["I/sigI by shell"],
+      graph_columns=[[0,1,2,3,4,5,6]])
     for ii in xrange(1,len(self.resolution_bins)-1):
       row = []
       raw_row = []
@@ -106,56 +111,54 @@ class i_sigi_completeness_stats(object):
 
       lims = limsa+" -"+limsb
       row.append( lims )
-      raw_row.append(limsb)
+      raw_row.append(b**-0.5)
       for jj in  self.completeness_bins:
         raw_row.append(100.0*jj[ii])
         tmp="%3.1f%s"%(100.0*jj[ii],"%")
         row.append( tmp )
       table_data.append( row )
-      raw_data.append(raw_row)
+      self.table_for_gui.add_row(raw_row)
 
     self.table = table_utils.format([legend]+table_data,
                                     has_header=True,
                                     separate_rows=False,
                                     prefix='| ',
                                     postfix=' |')
-    # XXX: for GUI
-    self.table_for_gui = data_plots.table_data(
-      title="Commpleteness and data strength",
-      column_labels=["Max. resolution"] + list(legend)[1:],
-      graph_names=["I/sigI by shell"],
-      graph_columns=[[0,1,2,3,4,5,6]],
-      data=raw_data)
 
   def show(self, out=None):
-    print >> out
-    print >> out
-    print >> out, "Completeness and data strength analyses "
-    print >> out
-    print >> out, "  The following table lists the completeness in various resolution"
-    print >> out, "  ranges, after applying a I/sigI cut. Miller indices for which"
-    print >> out, "  individual I/sigI values are larger than the value specified in"
-    print >> out, "  the top row of the table, are retained, while other intensities"
-    print >> out, "  are discarded. The resulting completeness profiles are an indication"
-    print >> out, "  of the strength of the data."
-    print >> out
+    print >> out, "Completeness and data strength analyses"
+    self.completeness_info = """
+  The following table lists the completeness in various resolution
+  ranges, after applying a I/sigI cut. Miller indices for which
+  individual I/sigI values are larger than the value specified in
+  the top row of the table, are retained, while other intensities
+  are discarded. The resulting completeness profiles are an indication
+  of the strength of the data.
+
+"""
+    print >> out, self.completeness_info
     if out is None:
       out = sys.stdout
     print >> out, self.table
     print >> out
+    message = """\
+  The completeness of data for which I/sig(I)>%3.2f, exceeds %3.0f%s
+  for resolution ranges lower than %3.2fA.
+""" % (self.isigi_cut, self.completeness_cut*100, "%", self.resolution_cut)
+
     if self.resolution_cut < self.resolution_at_least:
-      print >> out, "  The completeness of data for which I/sig(I)>%3.2f, exceeds %3.0f%s for"%(
-        self.isigi_cut, self.completeness_cut*100,"%")
-      print >> out, "  for resolution ranges lower than %3.2fA."%(self.resolution_cut)
-      print >> out, "  The data are cut at this resolution for the potential twin tests "
-      print >> out, "  and intensity statistics."
+      message += """\
+  The data are cut at this resolution for the potential twin tests
+  and intensity statistics.
+"""
     else:
-      print >> out, "  The completeness of data for which I/sig(I)>%3.2f, exceeds %3.0f%s for"%(
-        self.isigi_cut, self.completeness_cut*100,"%")
-      print >> out, "  for resolution ranges lower than %3.2fA."%(self.resolution_cut)
-      print >> out, "  As we do not want to throw away too much data, the resolution for analyzing "
-      print >> out, "  the intensity statistics will be limited to %3.2fA"%(self.resolution_at_least)
-      print >> out
+      message += """\
+  As we do not want to throw away too much data, the resolution for
+  analyzing the intensity statistics will be limited to %3.2fA.
+""" % self.resolution_at_least
+    print >> out, message
+    self.completeness_info += "\n" + message
+
 
 class completeness_enforcement(object):
   def __init__(self,
@@ -556,59 +559,71 @@ class analyze_measurability(object):
     print >> out, "Analyses of anomalous differences"
     print >> out
     if self.meas_table is not None:
-      print >> out, "  Table of measurability as a function of resolution"
-      print >> out
-      print >> out, "  The measurability is defined as the fraction of "
-      print >> out, "  Bijvoet related intensity differences for which "
-      print >> out, "  |delta_I|/sigma_delta_I > 3.0"
-      print >> out, "  min[I(+)/sigma_I(+), I(-)/sigma_I(-)] > 3.0 "
-      print >> out, "  holds. "
-      print >> out, "  The measurability provides an intuitive feeling"
-      print >> out, "  of the quality of the data, as it is related to the "
-      print >> out, "  number of reliable Bijvoet differences."
-      print >> out, "  When the data are processed properly and the standard "
-      print >> out, "  deviations have been estimated accurately, values larger"
-      print >> out, "  than 0.05 are encouraging. "
-      print >> out, "  Note that this analyses relies on the correctness of the estimated"
-      print >> out, "  standard deviations of the intensities. "
-      print >> out
+      print >> out, """\
+  Table of measurability as a function of resolution
+
+  The measurability is defined as the fraction of
+  Bijvoet related intensity differences for which
+  |delta_I|/sigma_delta_I > 3.0
+  min[I(+)/sigma_I(+), I(-)/sigma_I(-)] > 3.0
+  holds.
+  The measurability provides an intuitive feeling
+  of the quality of the data, as it is related to the
+  number of reliable Bijvoet differences.
+  When the data are processed properly and the standard
+  deviations have been estimated accurately, values larger
+  than 0.05 are encouraging.
+  Note that this analyses relies on the correctness of the estimated
+  standard deviations of the intensities.
+
+"""
       self.meas_table.show(f=out)
       print >> out
 
-    if ([self.low_d_cut,self.high_d_cut]).count(None)==0:
+    # XXX: refactored for GUI
+    message = None
+    unknown_cutoffs = ([self.low_d_cut,self.high_d_cut]).count(None)
+    if unknown_cutoffs == 0 :
+      message = None
       if self.low_d_cut ==  self.high_d_cut :
-        print >> out, " The full resolution range seems to contain a usefull"
-        print >> out, " ammount of anomalous signal. Depending on your "
-        print >> out, " specific substructure, you could use all the data available"
-        print >> out, " for the location of the heavy atoms, or cut the resolution"
-        print >> out, " to speed up the search."
-      if self.low_d_cut < self.high_d_cut:
-        print >> out," The anomalous signal seems to extend to about %3.1f A"%(self.high_d_cut)
-        print >> out," (or to %3.1f A, from a more optimistic point of view)"%(
-          self.low_d_cut)
-        print >> out, " The quoted resolution limits can be used as a guideline"
-        print >> out, " to decide where to cut the resolution for phenix.hyss"
+        message = """\
+ The full resolution range seems to contain a useful
+ ammount of anomalous signal. Depending on your
+ specific substructure, you could use all the data available
+ for the location of the heavy atoms, or cut the resolution
+ to speed up the search."""
+      elif self.low_d_cut < self.high_d_cut:
+        message = """\
+ The anomalous signal seems to extend to about %3.1f A
+ (or to %3.1f A, from a more optimistic point of view)
+ The quoted resolution limits can be used as a guideline
+ to decide where to cut the resolution for phenix.hyss.""" % \
+          (self.high_d_cut, self.low_d_cut)
         if self.high_d_cut < 3.0:
-          print >> out, " Depending however on the size and nature of your substructure"
-          print >> out, " you could cut the data at an even lower resolution to speed up"
-          print >> out, " the search."
-        if self.high_d_cut > 4.5:
-          print >> out, " As the anomalous signal is not very strong in this dataset"
-          print >> out, " substructure solution via SAD might prove to be a challenge."
-          print >> out, " Especially if only low resolution reflections are used,"
-          print >> out, " the resulting substructures could contain a significant amount"
-          print >> out, " of false positives."
-      if ([self.high_d_cut,self.low_d_cut]).count(None)==2:
-          print >> out, " There seems to be no real significant anomalous differences"
-          print >> out, " in this dataset."
-      if ([self.high_d_cut,self.low_d_cut]).count(None)==1:
-        print >> out, "This should not have happend: please contact software authors"
-      print >> out
-      print >> out
-    else:
-      print >> out, " It looks like there is little to no anomalous signal in this dataset."
-      print >> out
-      print >> out
+          message += """\
+ Depending however on the size and nature of your substructure
+ you could cut the data at an even lower resolution to speed up
+ the search."""
+        elif self.high_d_cut > 4.5:
+          message += """\
+ As the anomalous signal is not very strong in this dataset
+ substructure solution via SAD might prove to be a challenge.
+ Especially if only low resolution reflections are used,
+ the resulting substructures could contain a significant amount
+ of false positives."""
+    elif unknown_cutoffs == 2 :
+      message = """\
+ There seems to be no real significant anomalous differences
+ in this dataset."""
+    else :
+      message = """\
+ This should not have happend: please contact software authors
+ at bugs@phenix-online.org.
+
+"""
+    if message is not None :
+      print >> out, message
+    self.message = message
 
 
 
@@ -881,7 +896,11 @@ class basic_intensity_statistics:
     print >> out, "------------------------------------------------"
     print >> out, "| d_spacing | z_score | compl. | <Iobs>/<Iexp> |"
     print >> out, "------------------------------------------------"
-    worrisome_shells = []
+    self.shell_table = data_plots.table_data(
+      title="Mean intensity by shell (outliers)",
+      column_labels=["d_spacing", "z_score", "completeness", "<Iobs>/<Iexp>"],
+      graph_names=["Worrisome resolution shells"],
+      graph_columns=[[0,1,2,3]])
     for ii in range(self.d_star_sq.size()):
       if  worrisome[ii]:
         d_space = self.d_star_sq[ii]**(-0.5)
@@ -890,36 +909,34 @@ class basic_intensity_statistics:
         ratio = self.mean_I_obs_data[ii]/self.mean_I_obs_theory[ii]
         print >> out, "|%9.3f  |%7.2f  |%7.2f |%10.3f     |"%(
           d_space,z_score,comp,ratio)
-        worrisome_shells.append([d_space,z_score,comp,ratio])
-    self.shell_table = data_plots.table_data(
-      title="Mean intensity by shell (outliers)",
-      column_labels=["d_spacing", "z_score", "completeness", "<Iobs>/<Iexp>"],
-      graph_names=["Worrisome resolution shells"],
-      graph_columns=[[0,1,2,3]],
-      data=worrisome_shells)
+        self.shell_table.add_row([d_space,z_score,comp,ratio])
+
     if (worrisome).count(True) == 0:
       print >> out, "     None"
     print >> out, "------------------------------------------------"
     print >> out
     if (worrisome).count(True) > 0:
-      print >> out, " Possible reasons for the presence of the reported"
-      print >> out, " unexpected low or elevated mean intensity in"
-      print >> out, " a given resolution bin are : "
-      print >> out, " - missing overloaded or weak reflections"
-      print >> out, " - suboptimal data processing"
-      print >> out, " - satellite (ice) crystals"
-      print >> out, " - NCS"
-      print >> out, " - translational pseudo symmetry (detected elsewhere)"
-      print >> out, " - outliers (detected elsewhere)"
-      print >> out, " - ice rings (detected elsewhere)"
-      print >> out, " - other problems"
-      print >> out, " Note that the presence of abnormalities "
-      print >> out, " in a certain region of reciprocal space might"
-      print >> out, " confuse the data validation algorithm throughout"
-      print >> out, " a large region of reciprocal space, even though"
-      print >> out, " the data are acceptable in those areas. "
-      print >> out
-      print >> out
+      self.shell_info = """\
+ Possible reasons for the presence of the reported
+ unexpected low or elevated mean intensity in
+ a given resolution bin are :
+ - missing overloaded or weak reflections
+ - suboptimal data processing
+ - satellite (ice) crystals
+ - NCS
+ - translational pseudo symmetry (detected elsewhere)
+ - outliers (detected elsewhere)
+ - ice rings (detected elsewhere)
+ - other problems
+ Note that the presence of abnormalities
+ in a certain region of reciprocal space might
+ confuse the data validation algorithm throughout
+ a large region of reciprocal space, even though
+ the data are acceptable in those areas. "
+
+
+"""
+      print >> out, self.shell_info
 
     ## outlier analyses
     self.outlier.show(out)
@@ -948,16 +965,14 @@ class basic_intensity_statistics:
                            y_legend='<I> expected')
       data_plots.plot_data_loggraph(wilson_plot, out_plot)
       # XXX: Nat's newer table class (for GUI)
-      wilson_data = data_plots.flip_table(
-        [self.d_star_sq, self.mean_I_normalisation, self.mean_I_obs_data,
-         self.mean_I_obs_theory])
       self.wilson_table = data_plots.table_data(
         title="Intensity plots",
         column_labels=["1/resol**2", "<I> smooth approximation",
                       "<I> via binning", "<I> expected"],
         graph_names=["Intensity plots"],
         graph_columns=[[0,1,2,3]],
-        data=wilson_data)
+        data=[self.d_star_sq, self.mean_I_normalisation, self.mean_I_obs_data,
+              self.mean_I_obs_theory])
 
       ## z scores and completeness
       z_scores_and_completeness = data_plots.plot_data(
@@ -973,15 +988,13 @@ class basic_intensity_statistics:
         y_legend='Completeness')
       data_plots.plot_data_loggraph(z_scores_and_completeness, out_plot)
       # XXX: for GUI
-      zscore_data = data_plots.flip_table(
-        [self.d_star_sq, self.z_scores, self.completeness])
       self.zscore_table = data_plots.table_data(
         title="Z scores and completeness",
         column_labels=["1/resol**2", "Z_score or fractional completeness",
                        "Completeness"],
         graph_names=["Data sanity and completeness check"],
         graph_columns=[[0,1,2]],
-        data=zscore_data)
+        data=[self.d_star_sq, self.z_scores, self.completeness])
 
       ## measurability data is anomalous
       if self.meas_data is not None:
@@ -998,14 +1011,12 @@ class basic_intensity_statistics:
                             y_legend='smooth approximation')
         data_plots.plot_data_loggraph( meas_plots,   out_plot)
         # XXX: for GUI
-        new_meas_data = data_plots.flip_table(
-          [self.d_star_sq_ori, self.meas_data, self.meas_smooth])
         self.meas_table = data_plots.table_data(
           title="Measurability of Anomalous signal",
           column_labels=["1/resol**2", "Measurability", "Smooth approximation"],
           graph_names=["Anomalous measurability"],
           graph_columns=[[0,1,2]],
-          data=new_meas_data)
+          data=[self.d_star_sq_ori, self.meas_data, self.meas_smooth])
 
       ## I over sigma I
       if self.i_sig_i is not None:
@@ -1020,10 +1031,9 @@ class basic_intensity_statistics:
         i_sig_i.domain_flag='N'
         data_plots.plot_data_loggraph( i_sig_i,   out_plot)
         # XXX: for GUI
-        i_sig_i_data = data_plots.flip_table([self.d_star_sq_ori,self.i_sig_i])
         self.i_sig_i_table = data_plots.table_data(
           title="Signal to noise (<I/sigma_I>)",
           column_labels=["1/resol**2", "<I/sigma_I>"],
           graph_names=["Signal to noise"],
           graph_columns=[[0,1]],
-          data=i_sig_i_data)
+          data=[self.d_star_sq_ori,self.i_sig_i])
