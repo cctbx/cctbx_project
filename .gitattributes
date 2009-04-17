@@ -501,6 +501,7 @@ scitbx/rigid_body/proto/utils.py svneol=native#text/x-python
 scitbx/rigid_body/proto/wx_free_motion.py svneol=native#text/x-python
 scitbx/rigid_body/proto/wx_joint_lib.py svneol=native#text/x-python
 scitbx/rigid_body/proto/wx_molecules.py svneol=native#text/x-python
+scitbx/simplex.py -text
 scitbx/source_generators/flex_fwd_h.py -text
 scitbx/sparse/__init__.py -text
 scitbx/sparse/approx_equal.h -text
