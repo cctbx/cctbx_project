@@ -4,6 +4,7 @@ from cctbx.array_family import flex
 import scitbx.lbfgs
 import scitbx.minimizers
 import libtbx.utils
+import sys
 
 class FunctionalException(RuntimeError): pass
 
@@ -207,7 +208,7 @@ two_theta_and_index_list = """\
  32.12   2  2  3
 """.splitlines()
 
-def run():
+def run(args):
   two_thetas_obs = flex.double()
   miller_indices = flex.miller_index()
   for line in two_theta_and_index_list:
@@ -222,7 +223,9 @@ def run():
     two_thetas_obs, miller_indices, wavelength, unit_cell_start)
 
   refined_accu = []
-  for mode in range(7):
+  n_modes = 7
+  if (len(args) > 0): n_modes = int(args[0])
+  for mode in range(n_modes):
     refined = refinery(
       two_thetas_obs, miller_indices, wavelength, unit_cell_start, mode=mode)
     refined_accu.append(refined)
@@ -249,4 +252,4 @@ def run():
   print libtbx.utils.format_cpu_times()
 
 if (__name__ == "__main__"):
-  run()
+  run(args=sys.argv[1:])
