@@ -157,8 +157,9 @@ def matthews_rupp(miller_array,
     column_labels=["Copies", "Solvent content", "Matthews coeff.",
                    "P(solvent content)"],
     graph_names=["Solvent content", "Matthews coeff."],
-    graph_columns=[[0,1], [0,2]],
-    data=vm_estimator.vm_prop)
+    graph_columns=[[0,1], [0,2]])
+  for ii in range( len(vm_estimator.vm_prop) ):
+    matthews_table.add_row(vm_estimator.vm_prop[ii])
 
   return( [vm_estimator.n_residues,
            vm_estimator.n_bases,

@@ -838,6 +838,15 @@ class xtriage_summary (object) :
     self.file_name = params.scaling.input.xray_data.file_name
     self.file_labels = params.scaling.input.xray_data.obs_labels
 
+    #-------------------------------------------------------------------
+    # Part 1: basic analyses:
+    #         - matthews coefficient/solvent content [ only if nres is known ]
+    #         - wilson scaling (isotropic and anisotropic)
+    #         - completeness/data strength [ only if I available ]
+    #         - low-res completeness ???
+    #         - mean intensity [ only if I available ]
+    #         - ice-ring analysis
+    #         - anomalous measurability [ only if Friedel pairs available ]
     basic_results = xtriage_results.basic_results
     basic_attrs = ["nresidues",
                    "nbases",
@@ -846,25 +855,33 @@ class xtriage_summary (object) :
                    #"aniso_scale_and_b",
                    "aniso_p_scale", # float
                    "aniso_u_star", "aniso_b_cart"] # [ float ] * 6
-    for attr in basic_attr :
+    # WILSON SCALING
+    for attr in basic_attrs :
       setattr(self, attr, getattr(basic_results, attr, None))
-    data_strength = getattr(basic_results, "data_strength")
     # COMPLETENESS
+    data_strength = getattr(basic_results, "data_strength")
     self.completeness_table = getattr(data_strength, "table_for_gui", None)
-    data_stats_attrs = ["suggested_reso_for_hyss"]
+    self.completeness_info = getattr(data_strength, "completeness_info", None)
     # WORRISOME SHELLS, MEAN INTENSITY, Z-SCORES/COMPLETENESS,
     # ANOMALOUS SIGNAL, <I/SIGI> BY SHELL
+    data_stats_attrs = ["suggested_reso_for_hyss"]
     data_table_attrs = ["shell_table", "wilson_table", "zscore_table",
                         "meas_table", "i_sig_i_table"]
     for attr in (data_stats_attrs + data_table_attrs) :
       setattr(self, attr, getattr(basic_results.basic_data_stats, attr, None))
+    meas_anal = getattr(basic_results.basic_data_stats, "meas_anal", None)
+    self.meas_info = getattr(meas_anal, "message", None)
+    self.low_d_cut = getattr(meas_anal, "low_d_cut", None)
+    self.high_d_cut = getattr(meas_anal, "high_d_cut", None)
     # VM/%SOLV
     self.matthews_table = basic_results.matthews_results[4] # table
+    for attr in ["defined_copies", "guessed_copies"] :
+      setattr(self, attr, getattr(basic_results, attr, None))
     # ICE RINGS
     ijsco = getattr(basic_results.basic_data_stats, "ijsco")
     self.icy_shells = getattr(ijsco, "icy_shells")
     self.ice_warnings = getattr(ijsco, "warnings")
     self.ice_comments = getattr(ijsco, "comments")
 
-if (__name__ == "__main__"):
+if (__name__ == "__main__") :
   run(sys.argv[1:])
