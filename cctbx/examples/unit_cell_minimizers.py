@@ -236,7 +236,7 @@ def run(args):
   print >> p, "@with g0"
   print >> p, '@ title "%s"' % "\\n".join([
     platform.platform(),
-    str(libtbx.utils.host_and_user().hostname)])
+    platform.node()])
   for i,r in enumerate(refined_accu):
     print >> p, '@ s%d legend "%s"' % (i, r.plot_legend)
     print >> p, '@ s%d symbol 1' % i
