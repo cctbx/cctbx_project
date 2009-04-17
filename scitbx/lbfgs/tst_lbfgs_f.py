@@ -12,7 +12,7 @@ def exercise(lbfgs_impl, n=100, m=5, iprint=[1, 0]):
   x = flex.double(n)
   g = flex.double(n)
   diag = flex.double(n)
-  diagco = False
+  diagco = 0
   eps = 1.0e-5
   xtol = 1.0e-16
   for j in xrange(0, n, 2):

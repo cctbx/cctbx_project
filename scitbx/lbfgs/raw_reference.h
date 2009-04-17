@@ -1070,7 +1070,7 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
     //
     //     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    static double gnorm, stp1, ftol, stp, ys, yy, sq, yr, beta, xnorm;
+    static double gnorm, stp1, ftol, stp, ys, sq, yr, beta, xnorm;
     static int
       iter, nfun, point, ispt, iypt, maxfev, info, bound, npt, cp, nfev,
       inmc, iycn, iscn;
@@ -1164,7 +1164,7 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
 
     ys = ddot(n,w.get1(iypt+npt+1,n),1,w.get1(ispt+npt+1,n),1);
     if ( diagco == 0 ) {
-      yy = ddot(n,w.get1(iypt+npt+1,n),1,w.get1(iypt+npt+1,n),1);
+      double yy = ddot(n,w.get1(iypt+npt+1,n),1,w.get1(iypt+npt+1,n),1);
       for ( int i = 1, i_end = n; i <= i_end; ++i ) {
         diag(i) = ys/yy;
       }
@@ -1180,6 +1180,13 @@ namespace scitbx { namespace lbfgs { namespace raw_reference {
           iflag = -2;
           if ( lp > 0 ) std::printf(iflag_minus_2_format, i);
           return;
+        }
+      }
+      if (diagco == 2) { // CCTBX CHANGE: compute Hk0 = gamma_k * H0 here
+        double yy = ddot(n,w.get1(iypt+npt+1,n),1,w.get1(iypt+npt+1,n),1);
+        double gamma_k = ys/yy;
+        for ( int i = 1, i_end = n; i <= i_end; ++i ) {
+          diag(i) *= gamma_k;
         }
       }
     }
