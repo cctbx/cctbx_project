@@ -1,0 +1,221 @@
+from scitbx.array_family import flex
+class simplex_opt(object):
+  """
+  Python implementaion of Nelder-Mead Simplex method
+  The first publication is By JA Nelder and R. Mead: 
+    A simplex method for function minimization, computer journal 7(1965), 308-313
+  The routine is following the description by Lagarias et al:
+    Convergence properties of the nelder-mead simplex method in low dimensions SIAM J. Optim. Vol 9, No. 1, pp. 112-147
+  And a previous implementation in (c++) by Adam Gurson and Virginia Torczon can be found at:
+    http://www.cs.wm.edu/~va/software/SimplexSearch/AGEssay.html
+
+  User need to specifiy the dimension and an initial 'guessed' simplex (n*(n+1)) matrix
+    where n is the dimension
+
+  A minimum is desired for simplex algorithm to work well, as the searching is not bounded.
+
+  !! Target function should be modified to reflect specific purpose
+
+  Problems should be referred to haiguang.liu@gmail.com
+  """
+
+  def __init__(self,
+               dimension,
+               matrix, # ndm * (ndm+1)
+               evaluator,
+               tolerance=1e-4,
+               max_iter=10000,
+               out=None,
+               show_progress=False,
+               show_progress_nth_cycle=1):
+    self.show_progress=show_progress
+    self.show_progress_nth_cycle=show_progress_nth_cycle
+    self.max_iter = max_iter
+    self.dimension=dimension
+    self.tolerance=tolerance
+    self.evaluator = evaluator
+
+    # check that the starting matrix has right number of points. check that each solution vector has right dimension
+    if((len(matrix) != self.dimension+1) or (matrix[0].size() != self.dimension)):
+       print "The initial simplex matrix does not match dimension, please double check"
+       exit(0)
+    self.initialize(matrix)
+    self.optimize()
+    if self.show_progress:
+       print "Progress"
+
+  def initialize(self,matrix):
+    self.alpha=1.0
+    self.beta=0.5
+    self.gamma=2.0
+    self.sigma=0.5
+
+    self.end=False
+    self.found=False
+    self.monitor_cycle=20
+    self.simplexValue=flex.double()
+    self.matrix=[]
+    for vector in matrix:
+     self.matrix.append(vector.deep_copy())
+     self.simplexValue.append(self.function(vector))
+    self.centroid=flex.double()
+    self.reflectionPt=flex.double()
+    self.expansionPt=flex.double()
+    self.contractionPt=flex.double()
+
+    self.min_indx=0
+    self.second_indx=0
+    self.max_indx=0
+    self.maxPrimePtId=0
+    self.secondHigh=0.0
+
+    self.max=0.0
+    self.min=0.0
+
+  def optimize(self):
+    found = False
+    end = False
+    count = 0
+    monitor_score=0
+    while ((not found ) and (not end)):
+      self.explore()
+      count += 1
+      self.min_score=self.simplexValue[self.min_indx]
+      if count%self.monitor_cycle==0:
+        if abs(monitor_score-self.min_score)  < self.tolerance:
+          found = True
+        else:
+          monitor_score = self.min_score
+
+      if count>=self.max_iter:
+        end =True
+    print list(self.GetResult())
+  def explore(self):
+     self.FindMinMaxIndices()
+     self.FindCentroidPt()
+     self.FindReflectionPt()
+     self.secondHigh=self.simplexValue[self.second_indx]
+     if self.simplexValue[self.min_indx] > self.reflectionPtValue:
+	self.FindExpansionPt()
+	if self.reflectionPtValue > self.expansionPtValue:
+	  self.ReplaceSimplexPoint(self.expansionPt)
+	  self.simplexValue[self.max_indx]=self.expansionPtValue
+	else:
+	  self.ReplaceSimplexPoint(self.reflectionPt)
+	  self.simplexValue[self.max_indx]=self.reflectionPtValue
+     elif (self.secondHigh > self.reflectionPtValue) and (self.reflectionPtValue >= self.simplexValue[self.min_indx]):
+	self.ReplaceSimplexPoint(self.reflectionPt)
+	self.simplexValue[self.max_indx]=self.reflectionPtValue
+     elif self.reflectionPtValue >= self.secondHigh:
+	self.FindContractionPt()
+	if(self.maxPrimePtId == 0):
+	  if(self.contractionPtValue>self.maxPrimePtValue):
+	     self.ShrinkSimplex()
+	  else:
+	     self.ReplaceSimplexPoint(self.contractionPt)
+	     self.simplexValue[self.max_indx] = self.contractionPtValue
+	elif (self.maxPrimePtId == 1):
+	  if(self.contractionPtValue >= self.maxPrimePtValue):
+	     self.ShrinkSimplex()
+	  else:
+	     self.ReplaceSimplexPoint(self.contractionPt)
+	     self.simplexValue[self.max_indx] = self.contractionPtValue
+     return # end of this explore step
+
+  def FindMinMaxIndices(self):
+    self.max=self.min=second_max=self.simplexValue[0]
+    self.max_indx=0
+    self.min_indx=0
+    self.second_indx=0
+    for ii in range(1,self.dimension+1):
+      if(self.simplexValue[ii] > self.max):
+	second_max=self.max
+	self.max=self.simplexValue[ii]
+	self.second_indx=self.max_indx
+	self.max_indx=ii
+      elif(self.simplexValue[ii] > second_max):
+	second_max=self.simplexValue[ii]
+	self.second_indx=ii
+      elif(self.simplexValue[ii] < self.min):
+ 	self.min=self.simplexValue[ii]
+	self.min_indx=ii
+    return
+
+  def FindCentroidPt(self):
+   self.centroid=self.matrix[0]*0
+   for ii in range (self.dimension+1):
+      if(ii != self.max_indx):
+#	print list(self.centroid), list(self.matrix[ii])
+        self.centroid += self.matrix[ii]
+   self.centroid /= self.dimension
+
+  def FindReflectionPt(self):
+    self.reflectionPt=self.centroid*(1.0+self.alpha) -self.alpha*self.matrix[self.max_indx]
+    self.reflectionPtValue=self.function(self.reflectionPt)
+
+  def FindExpansionPt(self):
+    self.expansionPt=self.centroid*(1.0-self.gamma)+self.gamma*self.reflectionPt
+    self.expansionPtValue=self.function(self.expansionPt)
+
+  def FindContractionPt(self):
+    if(self.max <= self.reflectionPtValue):
+      self.maxPrimePtId=1
+      self.maxPrimePtValue=self.max
+      self.contractionPt=self.centroid*(1.0-self.beta)+self.beta*self.matrix[self.max_indx]
+    else:
+      self.maxPrimePtId = 0
+      self.maxPrimePtValue = self.reflectionPtValue
+      self.contractionPt = self.centroid*(1.0-self.beta)+self.beta*self.reflectionPt
+    self.contractionPtValue=self.function(self.contractionPt)
+
+  def ShrinkSimplex(self):
+    for ii in range(self.dimension+1):
+      if(ii != self.min_indx):
+        self.matrix[ii] += self.sigma*(self.matrix[self.min_indx] - self.matrix[ii])
+        self.simplexValue[ii]=self.function(self.matrix[ii])
+
+  def ReplaceSimplexPoint(self,vector):
+    self.matrix[self.max_indx] = vector
+ 
+  def GetResult(self):
+    return self.matrix[self.min_indx]
+
+  def function(self,point):
+    return self.evaluator.target( point )
+
+
+# docs
+# four more test functions, test for solutions
+# move this to scitbx
+# check it in
+
+class test_function(object):
+  def __init__(self,n):
+    self.n = n
+    self.starting_simplex=[]
+    for ii in range(self.n+1):
+      self.starting_simplex.append(flex.random_double(self.n))
+#    self.starting_simplex = [ flex.double([0,0]), flex.double([1,1]), flex.double([1,0]) ]
+    self.optimizer = simplex_opt( dimension=self.n,
+                                  matrix  = self.starting_simplex,
+                                  evaluator = self,
+                                  tolerance=1e-8 )
+    
+  def target(self, vector):
+    result = 0.0
+    for ii in range(self.n):
+      result += (vector[ii]-ii-1)**2.0
+    result +=1.0
+    return result
+
+def run():
+  print "min at : (1,2), found at:"
+  test_function(2)
+  print "min at : (1,2,3), found at:"
+  test_function(3)
+  print "min at : (1,2,3,4), found at:"
+  test_function(4)
+  print "OK"
+
+if __name__ == "__main__":
+  run()
