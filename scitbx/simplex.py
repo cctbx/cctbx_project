@@ -199,7 +199,7 @@ class test_function(object):
                                   tolerance=1e-10)
     self.x = self.optimizer.GetResult()
     for ii in xrange(self.n):
-      assert approx_equal(self.x[ii],ii+1,1e-8)
+      assert approx_equal(self.x[ii],ii+1,1e-5)
 
   def target(self, vector):
     result = 0.0
