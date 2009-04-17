@@ -110,7 +110,7 @@ class metric_subgroups(base_subgroups):
                                  'cb_op_inp_best':cb_op_inp_best,
                                  'max_angular_difference':find_max_delta(
                                   reduced_cell=self.minimum_symmetry.unit_cell(),
-                                  space_group=acentric_supergroup)
+                                  space_group=acentric_subgroup)
                                 })
 
   def change_of_basis_op_to_best_cell(self,ref_subsym):
