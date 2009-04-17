@@ -80,7 +80,9 @@ def run():
   "$D/sparse/tests/tst_lu_factorization.py",
   "$D/iso_surface/tst_iso_surface.py",
   "$B/fortran_io/tests/tst_numeric_manipulators",
-  "$B/fortran_io/tests/tst_numeric_parsers"
+  "$B/fortran_io/tests/tst_numeric_parsers",
+  "$D/simplex.py",
+  "$D/differential_evolution.py"
   )
 
   build_dir = libtbx.env.under_build("scitbx")
