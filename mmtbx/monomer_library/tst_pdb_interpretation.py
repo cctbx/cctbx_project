@@ -378,14 +378,16 @@ def exercise_dna_cns_cy5_th6():
     file_paths.append(file_path)
   log = StringIO()
   monomer_library.pdb_interpretation.run(args=file_paths, log=log)
-  assert not block_show_diff(
-    log.getvalue(), """\
+  assert not block_show_diff(log.getvalue(), """\
         Number of residues, atoms: 12, 244
-          Unusual residues: {'TH6': 1, 'CY5': 1}
-          Classifications: {'undetermined': 2, 'DNA': 10}
+          Unusual residues: %s
+          Classifications: %s
           Modifications used: {'5*END': 1}
-          Link IDs: {None: 4, 'p': 7}
-""")
+          Link IDs: %s
+""" % (
+  str({'TH6': 1, 'CY5': 1}),
+  str({'undetermined': 2, 'DNA': 10}),
+  str({None: 4, 'p': 7})))
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
