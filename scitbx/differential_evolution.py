@@ -190,7 +190,7 @@ class test_function(object):
     self.n = 9
     self.domain = [ (-100,100) ]*self.n
     self.optimizer =  differential_evolution_optimizer(self,population_size=100,n_cross=5)
-    assert flex.sum(self.x*self.x)<1e-9
+    assert flex.sum(self.x*self.x)<1e-5
 
   def target(self, vector):
     tmp = vector.deep_copy()
