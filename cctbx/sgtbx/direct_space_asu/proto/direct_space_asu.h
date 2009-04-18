@@ -2,6 +2,7 @@
 #define CCTBX_SGTBX_DIRECT_SPACE_ASU_H
 
 #include <scitbx/array_family/shared.h>
+#include <cctbx/crystal/direct_space_asu.h>
 
 #include "small_vec_math.h"
 
@@ -147,6 +148,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
     void get_adjacent_cells(std::vector<scitbx::tiny3> &cells) const;
     void get_cells(std::vector<scitbx::tiny3> &cells) const;
     rvector3_t move_inside(const cctbx::sgtbx::space_group &group, const rvector3_t &v) const;
+
+    //! Converts to float_asu
+    cctbx::crystal::direct_space_asu::float_asu<> as_float_asu(
+      const cctbx::uctbx::unit_cell &cell,
+      double epsilon=1.0E-6) const;
 
     direct_space_asu(const direct_space_asu &a) : hall_symbol(a.hall_symbol), faces(a.faces->new_copy()) {}
     direct_space_asu() : hall_symbol(), faces(NULL) {}

@@ -6,7 +6,7 @@ env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,
 )
 env.Append(LIBPATH=["#lib"])
-env.Prepend(LIBS=["cctbx"])
+env.Prepend(LIBS=["cctbx_sgtbx_asu", "cctbx"])
 env.Append(LIBS=env_etc.libm)
 env_etc.include_registry.append(
   env=env,
@@ -15,6 +15,7 @@ for source in ["getting_started",
                "sym_equiv_sites",
                "convert_ccp4_symop_lib",
                "lattice_symmetry",
+               "find_distances",
                "trial"]:
   if (source == "trial"
       and not os.path.isfile(libtbx.env.under_dist(

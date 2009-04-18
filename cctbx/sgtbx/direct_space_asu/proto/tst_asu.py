@@ -4,6 +4,8 @@ from cctbx.sgtbx import space_group_info
 from cctbx.sgtbx.direct_space_asu import proto as new_asu
 import sys
 import boost
+from cctbx.crystal import direct_space_asu_float_asu
+from libtbx.test_utils import approx_equal, is_below_limit
 
 # Usage:
 #   python tst_asu.py [ action ] [ spacegroup [ nsteps] ]
@@ -81,6 +83,16 @@ def compare(spgr, n=NSteps):
   assert mxn2 == mxn
   assert mnn2 == mnn
   loop_grid(asun, n, mnn, mxn, asuo)
+  unit_cell = grp.any_compatible_unit_cell(volume=5000.0)
+  fasun = asun.as_float_asu( unit_cell, 1.0E-6);
+  fasuo = cctbx.crystal.direct_space_asu_float_asu(
+    unit_cell=unit_cell,
+    facets=[facet.as_float_cut_plane() for facet in asuo.facets],
+    is_inside_epsilon=1.e-6)
+  # python sucks big: still (in 2.5) there is no float.epsilon/max/tiny/etc
+  assert approx_equal(fasun.is_inside_epsilon(), fasuo.is_inside_epsilon(), 1.0E-100)
+  assert len(fasun.facets()) == len(fasuo.facets()),  "%d != %d"%(len(fasuo.facets()),len(fasun.facets()))
+  assert ((len(fasun.facets()) < 200) & (len(fasun.facets()) > 3)), len(fasun.facets())
 
 def rank_err(spgr, n=NSteps):
   grp = space_group_info(spgr)
