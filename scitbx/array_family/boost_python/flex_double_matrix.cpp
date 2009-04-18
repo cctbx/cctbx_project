@@ -155,6 +155,11 @@ namespace boost_python {
           ref<double, c_grid<2> > const&,
           double const&)) matrix_diagonal_set_in_place,
             arg_("value"))
+      .def("matrix_diagonal_set_in_place",
+        (void(*)(
+          ref<double, c_grid<2> > const&,
+          const_ref<double> const&)) matrix_diagonal_set_in_place,
+            arg_("diagonal"))
       .def("matrix_diagonal_add_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&,

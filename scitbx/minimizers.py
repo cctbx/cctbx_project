@@ -4,6 +4,8 @@ from scitbx.array_family import flex
 
 floating_point_epsilon_double = scitbx.math.floating_point_epsilon_double_get()
 
+class FunctionalException(RuntimeError): pass
+
 class damped_newton:
 
   def __init__(self,
@@ -129,10 +131,11 @@ class newton_more_thuente_1994:
       f_x = None
       functional = function.functional(x=x)
       fp = function.gradients(x=x)
-    number_of_function_evaluations = 1
-    number_of_gradient_evaluations = 1
     self.f_x0 = f_x
     self.functional_x0 = functional
+    number_of_function_evaluations = 1
+    number_of_functional_exceptions = 0
+    number_of_gradient_evaluations = 1
     number_of_hessian_evaluations = 0
     number_of_cholesky_decompositions = 0
     line_search = scitbx.math.line_search_more_thuente_1994()
@@ -152,23 +155,41 @@ class newton_more_thuente_1994:
       gmw = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
       number_of_cholesky_decompositions += 1
       h_dn = gmw.solve(b=-fp)
-      line_search.start(
-        x=x,
-        functional=functional,
-        gradients=fp,
-        search_direction=h_dn,
-        initial_estimate_of_satisfactory_step_length=1)
-      while (line_search.info_code == -1):
-        if (function_f is not None):
-          f_x = function_f(x=x)
-          functional = function.functional(f_x=f_x)
-          fp = function.gradients(x=x, f_x=f_x)
+      initial_step_length = 1
+      backup_x = x.deep_copy()
+      if (function_f is not None):
+        backup_f_x = f_x.deep_copy()
+      backup_functional = functional
+      backup_fp = fp.deep_copy()
+      while True:
+        try:
+          line_search.start(
+            x=x,
+            functional=functional,
+            gradients=fp,
+            search_direction=h_dn,
+            initial_estimate_of_satisfactory_step_length=initial_step_length)
+          while (line_search.info_code == -1):
+            if (function_f is not None):
+              f_x = function_f(x=x)
+              functional = function.functional(f_x=f_x)
+              fp = function.gradients(x=x, f_x=f_x)
+            else:
+              functional = function.functional(x=x)
+              fp = function.gradients(x=x)
+            number_of_function_evaluations += 1
+            number_of_gradient_evaluations += 1
+            line_search.next(x=x, functional=functional, gradients=fp)
+        except FunctionalException:
+          number_of_functional_exceptions += 1
+          x = backup_x.deep_copy()
+          if (function_f is not None):
+            f_x = backup_f_x.deep_copy()
+          functional = backup_functional
+          fp = backup_fp.deep_copy()
+          initial_step_length *= 0.5
         else:
-          functional = function.functional(x=x)
-          fp = function.gradients(x=x)
-        number_of_function_evaluations += 1
-        number_of_gradient_evaluations += 1
-        line_search.next(x=x, functional=functional, gradients=fp)
+          break
       h_dn *= line_search.stp
       k += 1
       if (callback_after_step): callback_after_step(x=x)
@@ -179,6 +200,7 @@ class newton_more_thuente_1994:
     self.functional_x_star = functional
     self.number_of_iterations = k
     self.number_of_function_evaluations = number_of_function_evaluations
+    self.number_of_functional_exceptions = number_of_functional_exceptions
     self.number_of_gradient_evaluations = number_of_gradient_evaluations
     self.number_of_hessian_evaluations = number_of_hessian_evaluations
     self.number_of_cholesky_decompositions = number_of_cholesky_decompositions
@@ -198,6 +220,8 @@ class newton_more_thuente_1994:
     print "  number_of_iterations:", self.number_of_iterations
     print "  number_of_function_evaluations:", \
         self.number_of_function_evaluations
+    print "  number_of_functional_exceptions:", \
+        self.number_of_functional_exceptions
     print "  number_of_gradient_evaluations:", \
         self.number_of_gradient_evaluations
     print "  number_of_hessian_evaluations:", \
