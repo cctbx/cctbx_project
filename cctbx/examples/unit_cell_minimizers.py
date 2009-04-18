@@ -7,8 +7,6 @@ import libtbx.utils
 import platform
 import sys
 
-class FunctionalException(RuntimeError): pass
-
 def residual(
       two_thetas_obs, miller_indices, wavelength, unit_cell):
   two_thetas_calc = unit_cell.two_theta(miller_indices, wavelength, deg=True)
@@ -55,22 +53,23 @@ class refinery:
     self.miller_indices = miller_indices
     self.wavelength = wavelength
     #
+    self.mode = mode
     self.number_of_gradient_evaluations = 0
     self.functionals = []
-    if (mode == 0):
-      self.plot_legend = "0:newton"
+    if (mode < 2):
+      self.plot_legend = "%d:newton_%s" % (mode, ["full", "diag"][mode])
       m = scitbx.minimizers.newton_more_thuente_1994(
         function=self, x0=flex.double(unit_cell.parameters()))
       m.show_statistics()
       self.x = m.x_star
-    elif (mode < 7):
+    elif (mode < 8):
       diagco, use_hessian, lbfgs_impl_switch = [
         (0, 0, 0),
         (0, 0, 1),
         (1, 1, 0),
         (1, 1, 1),
         (2, 1, 1),
-        (3, 1, 1)][mode-1]
+        (3, 1, 1)][mode-2]
       self.plot_legend = "%d:lbfgs_d=%d_u=%d_l=%d" % (
         mode, diagco, use_hessian, lbfgs_impl_switch)
       print "plot_legend:", self.plot_legend
@@ -86,6 +85,14 @@ class refinery:
     return uctbx.unit_cell(iter(self.x))
 
   def functional(self, x):
+    if (0):
+      print "functional(): x =", list(x)
+    if (flex.min(x[:3]) < 1):
+      print "FunctionalException: small length"
+      raise scitbx.minimizers.FunctionalException
+    if (flex.min(x[3:]) < 50):
+      print "FunctionalException: small angle"
+      raise scitbx.minimizers.FunctionalException
     try:
       result = residual(
         self.two_thetas_obs, self.miller_indices, self.wavelength,
@@ -93,7 +100,12 @@ class refinery:
     except KeyboardInterrupt: raise
     except Exception, e:
       print "FunctionalException:", str(e)
-      raise FunctionalException
+      raise scitbx.minimizers.FunctionalException
+    if (len(self.functionals) != 0 and result > 2 * self.functionals[0]):
+      print "FunctionalException: greater than 2 * initial"
+      raise scitbx.minimizers.FunctionalException
+    if (0):
+      print "functional result:", result
     self.functionals.append(result)
     return result
 
@@ -104,9 +116,18 @@ class refinery:
       unit_cell=uctbx.unit_cell(iter(x)))
 
   def hessian(self, x):
-    return hessian(
+    result = hessian(
       self.two_thetas_obs, self.miller_indices, self.wavelength,
       unit_cell=uctbx.unit_cell(iter(x)))
+    if (self.mode == 1):
+      d = result.matrix_diagonal()
+      result = flex.double(flex.grid(6,6), 0)
+      result.matrix_diagonal_set_in_place(diagonal=d)
+    if (0):
+      from scitbx import matrix
+      print "hessian:"
+      print matrix.sqr(result)
+    return result
 
   def run_lbfgs_raw(self,
         unit_cell,
@@ -134,7 +155,7 @@ class refinery:
       assert iflag in [0,1,2]
       if (iflag in [0,1]):
         try: f = self.functional(x=x)
-        except FunctionalException: return x_last
+        except scitbx.minimizers.FunctionalException: return x_last
         x_last = x.deep_copy()
         g = self.gradients(x=x)
       if (iflag == 0):
@@ -224,9 +245,20 @@ def run(args):
     two_thetas_obs, miller_indices, wavelength, unit_cell_start)
 
   refined_accu = []
-  n_modes = 7
-  if (len(args) > 0): n_modes = int(args[0])
-  for mode in range(n_modes):
+  assert len(args) in [0,1]
+  if (len(args) != 0):
+    arg = args[0]
+    if (arg.find(",") > 0):
+      modes = eval("["+arg+"]")
+    elif (arg.find(":") > 0):
+      modes = eval("range("+arg.replace(":",",")+"+1)")
+    else:
+      modes = [eval(arg)]
+  else:
+    modes = range(8)
+  print "modes:", modes
+  print
+  for mode in modes:
     refined = refinery(
       two_thetas_obs, miller_indices, wavelength, unit_cell_start, mode=mode)
     refined_accu.append(refined)
