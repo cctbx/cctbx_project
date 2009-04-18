@@ -1762,8 +1762,10 @@ def exercise_matrix():
       mc = m.deep_copy()
       mc.matrix_diagonal_set_in_place(value=3)
       assert approx_equal(mc.matrix_diagonal(), [3]*rank)
+      mc.matrix_diagonal_set_in_place(diagonal=flex.double(range(1,1+rank)))
+      assert approx_equal(mc.matrix_diagonal(), range(1,1+rank))
       mc.matrix_diagonal_add_in_place(value=-5)
-      assert approx_equal(mc.matrix_diagonal(), [-2]*rank)
+      assert approx_equal(mc.matrix_diagonal(), range(1-5,1-5+rank))
       assert approx_equal(
         m.matrix_diagonal_sum(), flex.sum(m.matrix_diagonal()))
       assert m.matrix_trace() == m.matrix_diagonal_sum()

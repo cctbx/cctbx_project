@@ -44,6 +44,23 @@ namespace scitbx { namespace af {
     }
   }
 
+  template <typename NumType, typename NumTypeD>
+  void
+  matrix_diagonal_set_in_place(
+    ref<NumType, c_grid<2> > const& a,
+    const_ref<NumTypeD> const& diagonal)
+  {
+    SCITBX_ASSERT(a.accessor().is_square());
+    SCITBX_ASSERT(diagonal.size() == a.accessor()[0]);
+    typedef typename c_grid<2>::index_value_type ivt;
+    ivt n = a.accessor()[0];
+    ivt n_sq = n*n;
+    ivt n_plus_1 = n + 1;
+    for(ivt i=0,j=0;i<n_sq;i+=n_plus_1) {
+      a[i] = diagonal[j++];
+    }
+  }
+
   template <typename NumType>
   void
   matrix_diagonal_add_in_place(
