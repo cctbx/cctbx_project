@@ -100,7 +100,8 @@ class i_sigi_completeness_stats(object):
       title="Commpleteness and data strength",
       column_labels=["Max. resolution"] + list(legend)[1:],
       graph_names=["I/sigI by shell"],
-      graph_columns=[[0,1,2,3,4,5,6]])
+      graph_columns=[[0,1,2,3,4,5,6]],
+      x_is_inverse_d_min=False)
     for ii in xrange(1,len(self.resolution_bins)-1):
       row = []
       raw_row = []
@@ -479,48 +480,56 @@ class ice_ring_checker(object):
     print >> out, " lower than %3.2f will be ignored."%(intensity_level)
     print >> out
     self.comments = False
+    self.message = ""
     for ii in range(10):
       if (self.ice_ring_bin_location[ii] is not None) \
        and (self.ice_rel_intens[ii]>intensity_level):
         if (abs(self.abnormality_completeness[ii])>=level):
           self.comments = True
           self.warnings+=1
-          print >> out, " At %3.2f A there is an lower occupancy"%(
-          self.ice_d_spacings[ii])
-          print >> out, "  than expected from the rest of the data set."
+          self.message += """\
+ At %3.2f A there is an lower occupancy
+ than expected from the rest of the data set.""" % self.ice_d_spacings[ii]
           if (abs(self.abnormality_intensity[ii])>=level):
-            print >> out, "  At the same resolution range, the expected "
-            print >> out, "  mean intensity does not behave as it should. "
-            print >> out
-          if (abs(self.abnormality_intensity[ii])<level):
-            print >> out, "  Even though the completeness is lower as expected,"
-            print >> out, "  the mean intensity is still reasonable at this\
- resolution"
-            print >> out
+            self.message += """\
+ At the same resolution range, the expected
+ mean intensity does not behave as it should.
+"""
+          elif (abs(self.abnormality_intensity[ii])<level):
+            self.message += """\
+ Even though the completeness is lower as expected,
+ the mean intensity is still reasonable at this resolution.
+"""
         if (abs(self.abnormality_intensity[ii])>=level):
           self.comments=True
           self.warnings+=1
           if (abs(self.abnormality_completeness[ii])<=level):
-            print >> out, " At %3.2f A the z-score is more than %3.2f times the standard" \
-               %(self.ice_d_spacings[ii],level)
-            print >> out, " deviation of all z-scores, while at the same time, "
-            print >> out, " the occupancy does not go down."
-            print >> out
+            self.message += """\
+ At %3.2f A the z-score is more than %3.2f times the standard
+ deviation of all z-scores, while at the same time, the
+ occupancy does not go down.
+""" %(self.ice_d_spacings[ii],level)
+
     if not self.comments:
-      print >> out, " No ice ring related problems detected."
-      print >> out, " If ice rings were present, the data does not look"
-      print >> out, " worse at ice ring related d_spacings as compared"
-      print >> out, " to the rest of the data set "
+      self.message += """\
+ No ice ring related problems detected.
+ If ice rings were present, the data does not look
+ worse at ice ring related d_spacings as compared
+ to the rest of the data set."""
     if self.warnings==1:
-      print >> out, " As there was only 1 ice-ring related warning, it is not "
-      print >> out, " whether or not ice ring related features are really present."
-      print >> out
-    if self.warnings>=2:
-      print >> out, " There were %2.0f ice ring related warnings"%(self.warnings)
-      print >> out, " This could indicate the presence of ice rings."
-      print >> out
+      self.message += """\
+ As there was only 1 ice-ring related warning, it is not
+ clear whether or not ice ring related features are
+ really present.
+"""
+    elif self.warnings>=2:
+      self.message += """\
+ There were %2.0f ice ring related warnings
+ This could indicate the presence of ice rings.
+""" % self.warnings
 
-
+    if self.message != "" :
+      print >> out, self.message
     print >> out
     print >> out
     print >> out
@@ -595,7 +604,7 @@ class analyze_measurability(object):
       elif self.low_d_cut < self.high_d_cut:
         message = """\
  The anomalous signal seems to extend to about %3.1f A
- (or to %3.1f A, from a more optimistic point of view)
+ (or to %3.1f A, from a more optimistic point of view).
  The quoted resolution limits can be used as a guideline
  to decide where to cut the resolution for phenix.hyss.""" % \
           (self.high_d_cut, self.low_d_cut)
@@ -932,7 +941,7 @@ class basic_intensity_statistics:
  in a certain region of reciprocal space might
  confuse the data validation algorithm throughout
  a large region of reciprocal space, even though
- the data are acceptable in those areas. "
+ the data are acceptable in those areas.
 
 
 """
@@ -972,7 +981,8 @@ class basic_intensity_statistics:
         graph_names=["Intensity plots"],
         graph_columns=[[0,1,2,3]],
         data=[self.d_star_sq, self.mean_I_normalisation, self.mean_I_obs_data,
-              self.mean_I_obs_theory])
+              self.mean_I_obs_theory],
+        x_is_inverse_d_min=True)
 
       ## z scores and completeness
       z_scores_and_completeness = data_plots.plot_data(
@@ -994,7 +1004,8 @@ class basic_intensity_statistics:
                        "Completeness"],
         graph_names=["Data sanity and completeness check"],
         graph_columns=[[0,1,2]],
-        data=[self.d_star_sq, self.z_scores, self.completeness])
+        data=[self.d_star_sq, self.z_scores, self.completeness],
+        x_is_inverse_d_min=True)
 
       ## measurability data is anomalous
       if self.meas_data is not None:
@@ -1016,7 +1027,8 @@ class basic_intensity_statistics:
           column_labels=["1/resol**2", "Measurability", "Smooth approximation"],
           graph_names=["Anomalous measurability"],
           graph_columns=[[0,1,2]],
-          data=[self.d_star_sq_ori, self.meas_data, self.meas_smooth])
+          data=[self.d_star_sq_ori, self.meas_data, self.meas_smooth],
+          x_is_inverse_d_min=True)
 
       ## I over sigma I
       if self.i_sig_i is not None:
@@ -1036,4 +1048,5 @@ class basic_intensity_statistics:
           column_labels=["1/resol**2", "<I/sigma_I>"],
           graph_names=["Signal to noise"],
           graph_columns=[[0,1]],
-          data=[self.d_star_sq_ori,self.i_sig_i])
+          data=[self.d_star_sq_ori,self.i_sig_i],
+          x_is_inverse_d_min=True)
