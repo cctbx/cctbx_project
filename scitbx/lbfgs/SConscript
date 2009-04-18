@@ -1,6 +1,20 @@
 from libtbx.utils import getenv_bool
 from libtbx.path import full_command_path
 import libtbx.load_env
+import os
+
+def run_fortran_trial(env):
+  test_code = """\
+      PROGRAM TRIAL
+      DOUBLE PRECISION TWO
+      TWO = 2.0
+      WRITE(6, '(F6.4)') SQRT(TWO)
+      END
+"""
+  conf = env.Configure()
+  flag, output = conf.TryRun(test_code, extension='.f')
+  conf.Finish()
+  return (flag and output.strip() == "1.4142")
 
 Import("env_base", "env_etc")
 env = env_base.Copy(
@@ -27,22 +41,28 @@ if (not env_etc.no_boost_python):
       opts = ["-O0"]
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
-    env = env.Copy(tools=["f77"])
-    env.Replace(FORTRAN="gfortran")
-    env.Replace(SHFORTRAN="gfortran")
-    env.Replace(FORTRANFLAGS=opts + [
+    fenv = env.Copy(tools=["f77"])
+    fenv.Replace(FORTRAN="gfortran")
+    fenv.Replace(SHFORTRAN="gfortran")
+    fenv.Replace(FORTRANFLAGS=opts + [
       "-fPIC",
       "-ftrapv",
       "-fautomatic",
       "-fno-second-underscore",
       "-fno-bounds-check"])
-    env.Prepend(CPPFLAGS=["-DSCITBX_LBFGS_HAVE_LBFGS_F"])
-    env.Prepend(LIBS=["gfortran"])
-    source.append("lbfgs.f")
-    build_sdrive_f = True
+    fenv.Prepend(CPPFLAGS=["-DSCITBX_LBFGS_HAVE_LBFGS_F"])
+    fenv.Prepend(LIBS=["gfortran"])
+    fenv_exe = fenv.Copy(LIBS=["gfortranbegin", "gfortran", "m"])
+    if (not run_fortran_trial(env=fenv_exe)):
+      fenv_exe = None
+    else:
+      env = fenv
+      source.append("lbfgs.f")
   else:
-    build_sdrive_f = False
+    fenv_exe = None
   env.SharedLibrary(target="#lib/scitbx_lbfgs_ext", source=source)
-  if (build_sdrive_f):
-    env_exe = env.Copy(LIBS=["gfortranbegin", "gfortran", "m"])
-    env_exe.Program(target="sdrive_f", source=["sdrive.f", "lbfgs.o"])
+  if (fenv_exe is not None):
+    fenv_exe.Program(target="sdrive_f", source=["sdrive.f", "lbfgs.o"])
+  else:
+    path = libtbx.env.under_build(path="scitbx/lbfgs/sdrive_f")
+    if (os.path.isfile(path)): os.remove(path)

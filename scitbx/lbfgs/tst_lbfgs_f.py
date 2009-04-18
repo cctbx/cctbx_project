@@ -5,7 +5,7 @@ from libtbx.test_utils import show_diff
 from libtbx import easy_run
 import libtbx.load_env
 import random
-import sys
+import sys, os
 
 def exercise(lbfgs_impl, n=100, m=5, iprint=[1, 0]):
   assert n % 2 == 0
@@ -38,6 +38,27 @@ def exercise(lbfgs_impl, n=100, m=5, iprint=[1, 0]):
     # We allow at most 2000 evaluations of f and g
     if (icall > 2000): break
 
+def run_cmd(cmd):
+  print cmd
+  sys.stdout.flush()
+  out = easy_run.fully_buffered(command=cmd)
+  err = "\n".join(out.stderr_lines)
+  if (len(err) != 0):
+    print err
+    if (err.find("== ERROR SUMMARY: 0 errors from 0 contexts") < 0):
+      raise AssertionError(
+        "stderr output does not appear to be valgrind output")
+  return "\n".join(out.stdout_lines)
+
+def run_and_compare_sdrive_f(this_script):
+  sdrive_f = libtbx.env.under_build(path="scitbx/lbfgs/sdrive_f")
+  if (not os.path.isfile(sdrive_f)):
+    return
+  outputs = []
+  for cmd in [sdrive_f, 'scitbx.python "%s" fortran 100 5 1 0' % this_script]:
+    outputs.append(run_cmd(cmd=cmd))
+  assert not show_diff(outputs[0], outputs[1])
+
 def run_and_compare_implementations(this_script, n, m, iprint):
   outputs = []
   for impl in ["fortran", "raw_reference", "raw"]:
@@ -45,16 +66,7 @@ def run_and_compare_implementations(this_script, n, m, iprint):
       continue
     cmd = 'scitbx.python "%s" %s %d %d %d %d' % (
       this_script, impl, n, m, iprint[0], iprint[1])
-    print cmd
-    sys.stdout.flush()
-    out = easy_run.fully_buffered(command=cmd)
-    err = "\n".join(out.stderr_lines)
-    if (len(err) != 0):
-      print err
-      if (err.find("== ERROR SUMMARY: 0 errors from 0 contexts") < 0):
-        raise AssertionError(
-          "stderr output does not appear to be valgrind output")
-    out = "\n".join(out.stdout_lines)
+    out = run_cmd(cmd=cmd)
     if (impl == "fortran"):
       out = out.replace("D-", "E-").replace("D+", "E+")
     outputs.append(out)
@@ -69,6 +81,7 @@ def compare_implementations():
   this_script = libtbx.env.under_dist(
     module_name="scitbx", path="lbfgs/tst_lbfgs_f.py")
   assert this_script.find('"') < 0
+  run_and_compare_sdrive_f(this_script=this_script)
   rnd = random.Random(x=0)
   for iprint1 in [-1, 0, 1, 2, 3]:
     for iprint2 in [0, 1, 2, 3]:
@@ -88,7 +101,7 @@ def run(args):
     return
   assert args in [[], ["--once"], ["--endless"]]
   if (not have_lbfgs_f):
-    print "Skipping some tests: lbfgs.f not available."
+    print "Skipping some tests: lbfgs.f not linked into scitbx_lbfgs_ext."
   once = "--once" in args
   endless = "--endless" in args
   if (once or endless):
