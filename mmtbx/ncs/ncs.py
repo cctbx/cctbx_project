@@ -479,7 +479,7 @@ class ncs:
        ncs_rota_matr=self._ncs_rota_matr,
        center_orth=self._ncs_center_orth,
        trans_orth=self._ncs_trans_orth,
-       source_of_ncs_info=self.source_info,  
+       source_of_ncs_info=self.source_info,
        ncs_domain_pdb=self._ncs_domain_pdb, # 041309
        rmsd_list=self._rmsd_list,
        residues_in_common_list=self._residues_in_common_list,
