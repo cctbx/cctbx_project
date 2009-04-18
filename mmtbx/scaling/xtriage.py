@@ -832,10 +832,14 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       return xtriage_summary(params=params,
                              xtriage_results=xtriage_results)
 
+
 #--- Pickle-able results object for the GUI
+# TODO: regression tests
+# This is *exactly* as gross as it looks.
 class xtriage_summary (object) :
   def __init__ (self, params, xtriage_results) :
     self.file_name = params.scaling.input.xray_data.file_name
+    self.log_file = params.scaling.input.parameters.reporting.log
     self.file_labels = params.scaling.input.xray_data.obs_labels
 
     #-------------------------------------------------------------------
@@ -870,9 +874,19 @@ class xtriage_summary (object) :
     for attr in (data_stats_attrs + data_table_attrs) :
       setattr(self, attr, getattr(basic_results.basic_data_stats, attr, None))
     meas_anal = getattr(basic_results.basic_data_stats, "meas_anal", None)
-    self.meas_info = getattr(meas_anal, "message", None)
-    self.low_d_cut = getattr(meas_anal, "low_d_cut", None)
-    self.high_d_cut = getattr(meas_anal, "high_d_cut", None)
+    if meas_anal is not None :
+      table = getattr(meas_anal, "meas_table", None)
+      out = StringIO()
+      table.show(f=out)
+      self.meas_out = out.getvalue()
+      self.meas_info = getattr(meas_anal, "message", None)
+      self.low_d_cut = getattr(meas_anal, "low_d_cut", None)
+      self.high_d_cut = getattr(meas_anal, "high_d_cut", None)
+    else :
+      self.meas_table = None
+      self.meas_info = None
+      self.low_d_cut = None
+      self.high_d_cut = None
     # VM/%SOLV
     self.matthews_table = basic_results.matthews_results[4] # table
     for attr in ["defined_copies", "guessed_copies"] :
@@ -880,8 +894,23 @@ class xtriage_summary (object) :
     # ICE RINGS
     ijsco = getattr(basic_results.basic_data_stats, "ijsco")
     self.icy_shells = getattr(ijsco, "icy_shells")
-    self.ice_warnings = getattr(ijsco, "warnings")
-    self.ice_comments = getattr(ijsco, "comments")
+    #self.ice_warnings = getattr(ijsco, "warnings")
+    self.ice_comments = getattr(ijsco, "message")
+
+    #-------------------------------------------------------------------
+    # Part 2: twinning analyses:
+    #
+
+  def get_plottable_tables (self) :
+    table_names = ["completeness_table",
+                   "wilson_table", "zscore_table", "meas_table",
+                   "i_sig_i_table"]
+    all_tables = []
+    for name in table_names :
+      table = getattr(self, name, None)
+      if table is not None :
+        all_tables.append(table)
+    return all_tables
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

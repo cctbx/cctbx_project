@@ -2,7 +2,7 @@ from cctbx.array_family import flex
 from cStringIO import StringIO
 import sys
 import os
-import string, re
+import string, re, math
 
 class plot_data(object):
   def __init__(self,
@@ -97,23 +97,29 @@ class table_data (object) :
       column_names=None,
       column_types=None,
       column_labels=None,
+      column_formats=None,
       graph_names=None,
       graph_types=None,
+      graph_labels=None,
       graph_columns=None,
       data=None,
-      comments=None) :
+      comments=None,
+      x_is_inverse_d_min=False) :
     self.title = title
     self._is_complete = False
     self.column_names = column_names
     self.column_types = column_types
     self.column_labels = column_labels
+    self.column_formats = column_formats
     self.graph_names = graph_names
     self.graph_types = graph_types
+    self.graph_labels = graph_labels
     self.graph_columns = graph_columns
     self.data = data
     self.comments = comments
     self._graphs = {}
     self._column_width = 10
+    self.x_is_inverse_d_min = x_is_inverse_d_min
 
   def add_graph (self, name, type, columns) :
     if self.graph_names is None :
@@ -191,7 +197,7 @@ class table_data (object) :
 
   def add_column (self, column, column_name=None, column_label=None) :
     if self.data is None or len(self.data) == 0 :
-      self.data = [ column ]
+      self.data = [ list(column) ]
     else :
       assert len(self.data[0]) == len(column)
       self.data.append(column)
@@ -215,7 +221,7 @@ class table_data (object) :
     if row is None : return []
     f1 = "%s-%dg" % (r'%', precision)
     f2 = "%s-%ds" % (r'%', column_width)
-    return [ f2 % fota(x, f1) for x in row ]
+    return [ f2 % ftoa(x, f1) for x in row ]
 
   def _format_labels (self, labels, column_width) :
     if labels is None : return []
@@ -313,6 +319,9 @@ class table_data (object) :
     out += "$$\n"
     return out
 
+  def as_rows (self) :
+    return flip_table(self.data)
+
   def get_graph (self, graph_name=None, column_list=[]) :
     graph_names = self.graph_names
     column_labels = self.column_labels
@@ -329,7 +338,11 @@ class table_data (object) :
           labels = [column_labels[i] for i in graph_columns[n]]
         else :
           labels = []
-        _graphs[graph_name] = graph_data(graph_name, gdata, "plot", labels)
+        y_axis = None
+        if self.graph_labels is not None :
+          y_axis = self.graph_labels[n]
+        _graphs[graph_name] = graph_data(graph_name, gdata, "plot", labels,
+          y_axis)
       return _graphs[graph_name]
     elif len(column_list) > 1 :
       if not column_list in self._graphs :
@@ -357,8 +370,16 @@ class table_data (object) :
   def __str__ (self) :
     return self.format_simple()
 
+  def get_x_as_resolution (self) :
+    assert self.x_is_inverse_d_min
+    oldx = self.data[0]
+    newx = []
+    for x in oldx :
+      newx.append(math.sqrt(1.0/x))
+    return newx
+
 class graph_data (object) :
-  def __init__ (self, name, data, type="plot", data_labels=None) :
+  def __init__ (self, name, data, type="plot", data_labels=None, y_axis=None) :
     self.name = name
     self.data = data
     self.type = type
@@ -368,6 +389,7 @@ class graph_data (object) :
     else :
       self.x_label = data_labels[0]
       self.y_labels = [ data_labels[i] for i in xrange(1, len(data)) ]
+    self.y_axis_label = y_axis
 
   def get_plots (self, fill_in_missing_y=None) :
     plots = []
@@ -404,7 +426,7 @@ def _atoi (istring) :
   return val
 
 # backwards-atof
-def fota (val, format_string='%.6g') :
+def ftoa (val, format_string='%.6g') :
   if val is None :
     return '*'
   else :
