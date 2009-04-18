@@ -199,5 +199,30 @@ namespace cctbx { namespace sgtbx { namespace asu {
     return v;
   }
 
+
+  cctbx::crystal::direct_space_asu::float_asu<> direct_space_asu::as_float_asu(
+      const cctbx::uctbx::unit_cell &cell,
+      double epsilon) const
+  {
+    cctbx::crystal::direct_space_asu::float_asu<>::facets_t ffaces;
+    size_type nf = this->n_faces();
+    for(size_type i=0; i<nf; ++i)
+    {
+      cut face;
+      this->get_nth_plane(i, face);
+      scitbx::vec3<int> n = face.n;
+      int g = boost::gcd(boost::gcd(n[0],n[1]),n[2]); // is that right?
+      fractional<> v(face.n[0], face.n[1], face.n[2]);
+      v /= double(g);
+      cctbx::crystal::direct_space_asu::float_cut_plane<> fface(v, face.c/double(g));
+      // ffaces.push_back(fface);
+      ffaces.insert(ffaces.begin(), fface);
+    }
+    CCTBX_ASSERT( ffaces.size() == nf );
+    cctbx::crystal::direct_space_asu::float_asu<> fasu(cell, ffaces, epsilon);
+    return fasu;
+  }
+
+
 }}}
 
