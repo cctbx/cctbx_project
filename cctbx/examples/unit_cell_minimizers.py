@@ -2,6 +2,7 @@ from cctbx import uctbx
 from cctbx.eltbx import wavelengths
 from cctbx.array_family import flex
 import scitbx.lbfgs
+import scitbx.lbfgsb
 import scitbx.minimizers
 import libtbx.utils
 import platform
@@ -78,6 +79,10 @@ class refinery:
         diagco=diagco,
         use_hessian=use_hessian,
         lbfgs_impl_switch=lbfgs_impl_switch)
+    elif (mode < 9):
+      self.plot_legend = "%d:lbfgsb" % mode
+      print "plot_legend:", self.plot_legend
+      self.x = self.run_lbfgsb(unit_cell=unit_cell)
     else:
       raise AssertionError("bad mode=%d" % mode)
 
@@ -181,6 +186,30 @@ class refinery:
       if (iflag <= 0): break
     return x
 
+  def run_lbfgsb(self, unit_cell, iprint=1):
+    l = flex.double([1,1,1,50,50,50])
+    u = flex.double(6, 0)
+    nbd = flex.int(6, 1) # all x have lower bound
+    minimizer = scitbx.lbfgsb.minimizer(
+      n=6,
+      m=5,
+      l=l,
+      u=u,
+      nbd=nbd,
+      factr=1.0e+7,
+      pgtol=1.0e-5,
+      iprint=iprint)
+    x = flex.double(unit_cell.parameters())
+    f = 0
+    g = flex.double(6, 0)
+    while True:
+      if (minimizer.process(x, f, g)):
+        f = self.functional(x=x)
+        g = self.gradients(x=x)
+      elif (minimizer.is_terminated()):
+        break
+    return x
+
 def show_fit(two_thetas_obs, miller_indices, wavelength, unit_cell):
   two_thetas_calc = unit_cell.two_theta(miller_indices, wavelength, deg=True)
   for h,o,c in zip(miller_indices, two_thetas_obs, two_thetas_calc):
@@ -255,7 +284,7 @@ def run(args):
     else:
       modes = [eval(arg)]
   else:
-    modes = range(8)
+    modes = range(9)
   print "modes:", modes
   print
   for mode in modes:
