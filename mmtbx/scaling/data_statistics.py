@@ -100,7 +100,7 @@ class i_sigi_completeness_stats(object):
       title="Commpleteness and data strength",
       column_labels=["Max. resolution"] + list(legend)[1:],
       graph_names=["I/sigI by shell"],
-      graph_columns=[[0,1,2,3,4,5,6]],
+      graph_columns=[list(range(7))],
       x_is_inverse_d_min=False)
     for ii in xrange(1,len(self.resolution_bins)-1):
       row = []

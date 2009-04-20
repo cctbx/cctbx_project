@@ -29,16 +29,21 @@ master_params = iotbx.phil.parse("""\
 scaling.input {
   asu_contents
     .help = "Defines the ASU contents"
+    .short_caption = ASU contents
+    .style = menu_item auto_align
   {
     n_residues=None
       .type=float
       .help="Number of residues in structural unit"
+      .short_caption = Number of residues in asymmetric unit
     n_bases=None
       .type=float
       .help="Number of nucleotides in structural unit"
+      .short_caption = Number of nucleotides in asymmetric unit
     n_copies_per_asu=None
       .type=float
       .help="Number of copies per ASU. If not specified, Matthews analyses is performed"
+      .short_caption = Number of copies in asymmetric unit
   }
 
   xray_data
@@ -899,7 +904,38 @@ class xtriage_summary (object) :
 
     #-------------------------------------------------------------------
     # Part 2: twinning analyses:
-    #
+    #         - translational pseudosymmetry
+    #         - space group choices
+    #         - nz test
+    #         - l test
+    #         - possible twin laws
+    #         - britton plot, h test, murray-rust plot for each twin law
+    twin_results = xtriage_results.twin_results
+    twin_attrs = ["nz_test_table", "l_test_table", "twin_law_names",
+                  "twin_law_info"]
+    for attr in twin_attrs :
+      setattr(self, attr, getattr(twin_results, attr, None))
+    if self.nz_test_table is not None :
+      for attr in ["max_diff_ac", "max_diff_c", "sign_ac", "sign_c",
+                   "mean_diff_ac", "mean_diff_c"] :
+        setattr(self, "nz_test_"+attr, getattr(twin_results.nz_test,attr,None))
+    if self.l_test_table is not None :
+      for attr in ["parity_h", "parity_k", "parity_l", "mean_l", "mean_l2",
+                   "ml_alpha"] :
+        setattr(self, "l_test_"+attr, getattr(twin_results.l_test, attr, None))
+    other_attrs = []
+    for attr in other_attrs :
+      setattr(self, attr, getattr(twin_results, attr, None))
+    twin_summary = twin_results.twin_summary
+    self.patterson_verdict = twin_summary.patterson_verdict.getvalue()
+    self.twinning_verdict = twin_summary.twinning_verdict.getvalue()
+    self.twin_law_table= getattr(twin_summary.twin_results, "table_data", None)
+    self.possible_twin_laws = getattr(twin_results, "possible_twin_laws", None)
+    self.translation_pseudo_symmetry = getattr(twin_results,
+      "translation_pseudo_symmetry", None)
+    abs_sg_anal = getattr(twin_results, "abs_sg_anal", None)
+    self.absence_info = getattr(abs_sg_anal, "absence_info", None)
+    self.sg_table = getattr(abs_sg_anal, "table_data", None)
 
   def get_plottable_tables (self) :
     table_names = ["completeness_table",
