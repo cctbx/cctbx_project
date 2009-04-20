@@ -207,6 +207,7 @@ For newer versions, please adjust this SConscript.
       "/D_CRT_SECURE_NO_DEPRECATE",
       "/wd4996", # warning C4996: ... was declared deprecated
       "/wd4068", # warning C4068: unknown pragma
+      "/Z7",  # produce program database file containing debugging symbols. Harmless for release builds
       "/Zm800"]
     if (libtbx.env.build_options.debug_symbols):
       if (not env_etc.no_boost_python):
@@ -215,7 +216,10 @@ libtbx.scons: Warning: compiling with /MDd:
                        Boost.Python extensions will work reliably
                        only with a debug build of Python."""
       env_etc.ccflags_base.extend([
-        "/MDd", "/Z7", "/D_HAS_ITERATOR_DEBUGGING=0"])
+        "/MDd",
+        "/D_DEBUG",
+        "/Z7",  # produce program database file containing debugging symbols
+        "/D_HAS_ITERATOR_DEBUGGING=0"]) # speed up memory allocation and deallocation in debug mode
     else:
       env_etc.ccflags_base.append("/MD")
     env_etc.cxxflags_base = env_etc.ccflags_base + [
