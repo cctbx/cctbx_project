@@ -531,7 +531,10 @@ class monomer_mapping(object):
 
   def _rna_sugar_pucker_analysis(self, params, prev_mm):
     if (not params.use): return
-    raise RuntimeError("Feature disabled because of known problems.")
+    raise RuntimeError("""\
+Feature disabled because of known problems. Please set:
+  pdb_interpretation.rna_sugar_pucker_analysis.use=False
+""")
     std_resname = getattr(
       self.atom_name_interpretation, "residue_name", None)
     if (    std_resname is not None
