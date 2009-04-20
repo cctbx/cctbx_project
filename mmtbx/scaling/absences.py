@@ -721,14 +721,18 @@ class protein_space_group_choices(object):
                                      separate_rows=False,
                                      prefix='| ',
                                      postfix=' |')
-    print >> self.out
-    print >> self.out, "Analyses of the absences table indicates a number of likely space group candidates,"
-    print >> self.out, "which are listed below. For each space group, the number of absent violations are listed"
-    print >> self.out, "under the '+++' column. The number of present violations (weak reflections) are listed"
-    print >> self.out, "under '---'. The last column is a likelihood based score for the particular space group."
-    print >> self.out, "Note that enantiomorphic spacegroups will have equal scores. Also, if absences were removed"
-    print >> self.out, "while processing the data, they will be regarded as missing information, rather then as "
-    print >> self.out, "enforcing that absence in the space group choices."
+    self.table_data = legend + rows
+    self.absence_info = """\
+Analyses of the absences table indicates a number of likely space group
+candidates, which are listed below. For each space group, the number of
+absent violations are listed under the '+++' column. The number of present
+violations (weak reflections) are listed under '---'. The last column is a
+likelihood based score for the particular space group.  Note that
+enantiomorphic spacegroups will have equal scores. Also, if absences were
+removed while processing the data, they will be regarded as missing
+information, rather then as enforcing that absence in the space group choices.
+"""
+    print >> self.out, self.absence_info
     print >> self.out
     print >> self.out, self.sorted_table
     print >> self.out

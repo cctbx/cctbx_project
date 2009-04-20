@@ -338,11 +338,12 @@ class table_data (object) :
           labels = [column_labels[i] for i in graph_columns[n]]
         else :
           labels = []
+        x_axis = None
         y_axis = None
         if self.graph_labels is not None :
-          y_axis = self.graph_labels[n]
+          (x_axis, y_axis) = self.graph_labels[n]
         _graphs[graph_name] = graph_data(graph_name, gdata, "plot", labels,
-          y_axis)
+          x_axis, y_axis)
       return _graphs[graph_name]
     elif len(column_list) > 1 :
       if not column_list in self._graphs :
@@ -379,7 +380,8 @@ class table_data (object) :
     return newx
 
 class graph_data (object) :
-  def __init__ (self, name, data, type="plot", data_labels=None, y_axis=None) :
+  def __init__ (self, name, data, type="plot", data_labels=None, x_axis=None,
+      y_axis=None) :
     self.name = name
     self.data = data
     self.type = type
@@ -389,6 +391,7 @@ class graph_data (object) :
     else :
       self.x_label = data_labels[0]
       self.y_labels = [ data_labels[i] for i in xrange(1, len(data)) ]
+    self.x_axis_label = x_axis
     self.y_axis_label = y_axis
 
   def get_plots (self, fill_in_missing_y=None) :

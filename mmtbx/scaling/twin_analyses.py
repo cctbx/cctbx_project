@@ -229,6 +229,7 @@ PM: Pseudomerohedral twin law"""
            str("%5.3f"%(twin_law.delta_lebedev)),
            str(twin_law.operator.r().as_hkl())] )
 
+      self.twin_law_table = [table_labels] + table_rows
       print >> out, table_utils.format([table_labels]+table_rows,
                                        comments=comments,
                                        has_header=True,
@@ -606,27 +607,36 @@ class detect_pseudo_translations(object):
   def show(self,out=None):
     if out is None:
       out = sys.stdout
+    self.peak_info
     print >> out
     print >> out," Patterson analyses"
     print >> out, "------------------"
     print >> out
     print >> out," Largest Patterson peak with length larger than 15 Angstrom "
     print >> out
-    print >> out," Frac. coord.        :%8.3f %8.3f %8.3f" %(self.high_peak_xyz)
-    print >> out," Distance to origin  :%8.3f" %(self.high_peak_distance)
-    print >> out," Height (origin=100) :%8.3f" %(self.high_peak)
-    print >> out," p_value(height)     :%12.3e" %(self.high_p_value)
+    self.peak_info = """\
+ Frac. coord.        :%8.3f %8.3f %8.3f" %(self.high_peak_xyz)
+""" % self.high_peak_xyz
+    self.peak_info += """\
+ Distance to origin  :%8.3f
+ Height (origin=100) :%8.3f
+ p_value(height)     :%12.3e
+""" % (self.high_peak_distance,self.high_peak, self.high_p_value)
+    print >> out, self.peak_info
     print >> out
-    print >> out,"   The reported p_value has the following meaning: "
-    print >> out,"     The probability that a peak of the specified height "
-    print >> out,"     or larger is found in a Patterson function of a "
-    print >> out,"     macro molecule that does not have any translational"
-    print >> out,"     pseudo symmetry is equal to %10.3e "%(self.high_p_value)
-    print >> out,"     p_values smaller than 0.05 might indicate "
-    print >> out,"     weak translational pseudo symmetry, or the self vector of "
-    print >> out,"     a large anomalous scatterer such as Hg, whereas values "
-    print >> out,"     smaller than 1e-3 are a very strong indication for "
-    print >> out,"     the presence of translational pseudo symmetry."
+    self.peak_meaning = """\
+   The reported p_value has the following meaning:
+     The probability that a peak of the specified height
+     or larger is found in a Patterson function of a
+     macro molecule that does not have any translational
+     pseudo symmetry is equal to %10.3e.
+     p_values smaller than 0.05 might indicate
+     weak translational pseudo symmetry, or the self vector of
+     a large anomalous scatterer such as Hg, whereas values
+     smaller than 1e-3 are a very strong indication for
+     the presence of translational pseudo symmetry.
+""" % self.high_p_value
+    print >> out, self.peak_meaning
     print >> out
 
 
@@ -845,14 +855,13 @@ class n_z_test(object):
               self.c_obs[ii],
               self.c_untwinned[ii])
 
-    sign_ac = '+'
+    self.sign_ac = '+'
     if self.mean_diff_ac < 0:
-      sign_ac = '-'
+      self.sign_ac = '-'
 
-    sign_c = '+'
+    self.sign_c = '+'
     if self.mean_diff_c < 0:
-      sign_c = '-'
-
+      self.sign_c = '-'
     print >> out,"-----------------------------------------------"
     print >> out,"| Maximum deviation acentric      :  %4.3f    |" \
           %(self.max_diff_ac)
@@ -860,9 +869,9 @@ class n_z_test(object):
           %(self.max_diff_c)
     print >> out,"|                                             |"
     print >> out,"| <NZ(obs)-NZ(twinned)>_acentric  : %1s%4.3f    |" \
-          %(sign_ac,math.fabs(self.mean_diff_ac))
+          %(self.sign_ac,math.fabs(self.mean_diff_ac))
     print >> out,"| <NZ(obs)-NZ(twinned)>_centric   : %1s%4.3f    |" \
-          %(sign_c,math.fabs(self.mean_diff_c))
+          %(self.sign_c,math.fabs(self.mean_diff_c))
     print >> out,"-----------------------------------------------"
 
 
@@ -1854,7 +1863,7 @@ class twin_results_summary(object):
                                 separate_rows=False,
                                 prefix='| ',
                                 postfix=' |')
-
+    self.table_data = table_data
 
 
 
@@ -2438,7 +2447,7 @@ class twin_analyses(object):
     possible_twin_laws = twin_laws(miller_array,lattice_symmetry_max_delta=self.max_delta)
     possible_twin_laws.show(out=out)
     ##-----------------------------
-
+    self.possible_twin_laws = possible_twin_laws
     self.normalised_intensities = wilson_normalised_intensities(
       miller_array, normalise=normalise, out=out, verbose=verbose)
 
@@ -2513,6 +2522,17 @@ class twin_analyses(object):
         y_data = self.nz_test.c_untwinned,
         y_legend = 'Centric untwinned')
       data_plots.plot_data_loggraph(nz_test_plot,out_plots)
+      # XXX: for GUI
+      self.nz_test_table = data_plots.table_data(
+        title = "NZ test",
+        column_labels=["z", "Acentric observed", "Acentric untwinned",
+          "Centric observed", "Centric untwinned"],
+        graph_names=["NZ test"],
+        graph_labels=[("Z", "P(Z>=z)")],
+        graph_columns=[list(range(5))],
+        data=[self.nz_test.z, self.nz_test.ac_obs, self.nz_test.ac_untwinned,
+              self.nz_test.c_obs, self.nz_test.c_untwinned])
+
       ## L test
       l_test_plot  = data_plots.plot_data(
         plot_title = 'L test,acentric data',
@@ -2528,6 +2548,16 @@ class twin_analyses(object):
       l_test_plot.add_data(self.l_test.l_cumul_perfect_twin,
                            'Acentric theory, perfect twin')
       data_plots.plot_data_loggraph(l_test_plot,out_plots)
+      # XXX: for GUI
+      self.l_test_table = data_plots.table_data(
+        title="L test, acentric data",
+        column_labels=["|l|", "Observed", "Acentric theory",
+                       "Acentric theory, perfect twin"],
+        graph_names=["L test"],
+        graph_labels=[("|l|", "P(L>=l)")],
+        graph_columns=[list(range(4))],
+        data=[self.l_test.l_values, self.l_test.l_cumul,
+              self.l_test.l_cumul_untwinned, self.l_test.l_cumul_perfect_twin])
       ##------------------------
 
     ##--------------------------
@@ -2542,12 +2572,14 @@ class twin_analyses(object):
     self.twin_law_dependent_analyses = []
 
 
-
+    self.twin_law_info = {}
+    self.twin_law_names = []
     for ii in range(self.n_twin_laws):
+      twin_law_name = possible_twin_laws.operators[ii].operator.r().as_hkl()
+      self.twin_law_names.append(twin_law_name)
       print >> out
       print >> out,"---------------------------------------------"
-      print >> out," Analysing possible twin law : ", \
-            possible_twin_laws.operators[ii].operator.r().as_hkl()
+      print >> out," Analysing possible twin law : ", twin_law_name
       print >> out,"---------------------------------------------"
 
       tmp_twin_law_stuff = twin_law_dependend_twin_tests(
@@ -2561,7 +2593,8 @@ class twin_analyses(object):
         n_ncs_bins=n_ncs_bins)
 
       self.twin_law_dependent_analyses.append( tmp_twin_law_stuff )
-
+      (britton_table, britton_frac, h_test_table, h_frac,ml_table, ml_frac) = \
+        (None, None, None, None, None, None)
       if tmp_twin_law_stuff.results_available: # emight phase in a availability test in here
 
         ## Plotting section
@@ -2579,6 +2612,17 @@ class twin_analyses(object):
                             'fit')
         if out_plots is not None:
           data_plots.plot_data_loggraph(britton_plot,out_plots)
+        # XXX: for GUI
+        britton_frac = tmp_twin_law_stuff.britton_test.estimated_alpha
+        britton_table = data_plots.table_data(
+          title = "Britton plot for twin law %s" % twin_law_name,
+          column_labels=["alpha", "percentage negatives", "fit"],
+          graph_names=["Britton plot"],
+          graph_labels=[("alpha", "percentage negatives")],
+          graph_columns=[[0,1,2]],
+          data=[tmp_twin_law_stuff.britton_test.britton_alpha,
+                tmp_twin_law_stuff.britton_test.britton_obs,
+                tmp_twin_law_stuff.britton_test.britton_fit])
         ##    H test
         h_plot = data_plots.plot_data(
           plot_title = 'H test for possible twin law '\
@@ -2592,7 +2636,17 @@ class twin_analyses(object):
         h_plot.add_data(tmp_twin_law_stuff.h_test.cumul_fit, 'Fitted S(H)')
         if out_plots is not None:
           data_plots.plot_data_loggraph(h_plot,out_plots)
-
+        # XXX: for GUI
+        h_frac = tmp_twin_law_stuff.h_test.estimated_alpha
+        h_test_table = data_plots.table_data(
+          title="H test for possible twin law %s" % twin_law_name,
+          column_labels=["H", "Observed S(H)", "Fitted S(H)"],
+          graph_names=["H test for acentric data"],
+          graph_labels=[("H", "S(H)")],
+          graph_columns=[[0,1,2]],
+          data=[tmp_twin_law_stuff.h_test.h_array,
+                tmp_twin_law_stuff.h_test.cumul_obs,
+                tmp_twin_law_stuff.h_test.cumul_fit])
         # plot the likelihood profile fro the ML rees test please
         if tmp_twin_law_stuff.ml_murray_rust is not None:
           ml_murray_rust_plot = data_plots.plot_data(
@@ -2606,7 +2660,20 @@ class twin_analyses(object):
             comments = 'Likelihood based twin fraction estimate')
           if out_plots is not None:
             data_plots.plot_data_loggraph(ml_murray_rust_plot,out_plots)
-        # now we can check for space group related issues
+          # XXX: for GUI
+          ml_frac = tmp_twin_law_stuff.ml_murray_rust.estimated_alpha
+          ml_table = data_plots.table_data(
+            title="Likelihood based twin fraction estimation for twin law %s"%\
+                  twin_law_name,
+            column_labels=["alpha", "-Log[Likelihood]"],
+            graph_names=["Likelihood-based twin fraction estimate"],
+            graph_labels=[("alpha", "-Log[Likelihood]")],
+            graph_columns=[[0,1]],
+            data=[tmp_twin_law_stuff.ml_murray_rust.twin_fraction,
+                  tmp_twin_law_stuff.ml_murray_rust.nll])
+      self.twin_law_info[twin_law_name] = (britton_table, britton_frac,
+                                h_test_table, h_frac,ml_table, ml_frac)
+    # now we can check for space group related issues
     self.check_sg = None
     self.suggested_space_group=None
     if self.n_twin_laws > 0:
