@@ -1,4 +1,5 @@
 from scitbx.array_family import flex
+import random
 class differential_evolution_optimizer(object):
   """
 This is a python implementation of differential evolution
@@ -200,6 +201,8 @@ class test_function(object):
 
 
 def run():
+  random.seed(0)
+  flex.set_random_seed(0)
   test_function()
   print "OK"
 
