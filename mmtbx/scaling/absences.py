@@ -415,28 +415,25 @@ class analyze_absences(object):
     self.present      = []
 
     self.table_text = """
-
-
-Systematic absences
--------------------
-
-The following table gives informaton about systematic absences.
 For each operator, the reflections are split in three classes:
+
   Absent    : Reflections that are absent for this operator.
   Non Absent: Reflection of the same type (i.e. (0,0,l)) as above, but they should be present.
   Complement: All other reflections.
-For each class, the <I/sigI> is reported, as well as the number of 'violations'. A 'violation'
-is designated as a reflection for which a I/sigI criterion is not met. The criteria are
+
+For each class, the <I/sigI> is reported, as well as the number of
+'violations'. A 'violation' is designated as a reflection for which a
+I/sigI criterion is not met. The criteria are
 
   Absent violation     : I/sigI > %2.1f
   Non Absent violation : I/sigI < %2.1f
   Complement violation : I/sigI < %2.1f
 
-Operators with low associated violations for *both* absent and non absent reflections, are likely to
-be true screw axis or glide planes. Both the number of violations and their percentages are given.
-The number of violations within the 'complement' class, can be used as a comparison for the number
-of violations in the non-absent class.
-
+Operators with low associated violations for *both* absent and non absent
+reflections, are likely to be true screw axis or glide planes. Both the
+number of violations and their percentages are given.  The number of
+violations within the 'complement' class, can be used as a comparison for
+the number of violations in the non-absent class.
 """%(self.cut, self.cut, self.cut)
 
     assert self.miller_array.sigmas() is not None
@@ -450,7 +447,14 @@ of violations in the non-absent class.
   def show(self,out=None):
     if out is None:
       out = self.out
+    print >> out
+    print >> out
+    print >> out, "Systematic absences"
+    print >> out, "-------------------"
+    print >> out
+    print >> out, "The following table gives information about systematic absences."
     print >> out, self.table_text
+    print >> out
     print >> out, self.table
     print >> out
     print >> out
@@ -604,7 +608,7 @@ of violations in the non-absent class.
                                        separate_rows=False,
                                        prefix='| ',
                                        postfix=' |')
-
+      self.table_data = [table_labels] + table_rows
 
 
 class sgi_iterator(object):
