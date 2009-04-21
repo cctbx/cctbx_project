@@ -1,4 +1,4 @@
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, host_and_user
 import copy
 import sys, os
 
@@ -70,7 +70,7 @@ class option_parser(OptionParser):
     self.show_defaults_callback.is_enabled = True
     return self
 
-  def enable_chunk(self):
+  def enable_chunk(self, easy_all=False):
     self.add_option(make_option(None, "--chunk",
       action="callback",
       type="string",
@@ -78,6 +78,7 @@ class option_parser(OptionParser):
       help="Number of chunks for parallel execution and index for one process",
       metavar="n,i"))
     self.chunk_callback.is_enabled = True
+    self.chunk_callback.easy_all = easy_all
     return self
 
   def process(self, args=None, nargs=None, min_nargs=None, max_nargs=None):
@@ -120,6 +121,9 @@ class processed_options(object):
     self.chunk_n = chunk_callback.n
     self.chunk_i = chunk_callback.i
     self.queuing_system_info = None
+    if (chunk_callback.easy_all):
+      self.queuing_system_overrides_chunk()
+      self.redirect_chunk_stdout_and_stderr()
 
   def queuing_system_overrides_chunk(self):
     from libtbx import pbs_utils, sge_utils
@@ -135,6 +139,25 @@ class processed_options(object):
       self.queuing_system_info = sge_info
       self.chunk_n = max(self.chunk_n, sge_info.last)
       self.chunk_i = sge_info.id - 1
+    return self
+
+  def redirect_chunk_stdout_and_stderr(self, log_format="log%%0%dd"):
+    if (self.chunk_n == 1): return
+    log_name = None
+    i = self.queuing_system_info
+    if (i is not None and i.have_array()):
+      fmt = log_format % max(3, len("%d" % (self.chunk_n-1)))
+      log_name = fmt % self.chunk_i
+      log = open(log_name, "w")
+      sys.stdout = log
+      sys.stderr = log
+    host_and_user().show()
+    if (i is not None): i.show()
+    print "chunk_n:", self.chunk_n
+    print "chunk_i:", self.chunk_i
+    if (log_name is not None):
+      print "log_name:", log_name
+    print
     return self
 
 class show_defaults_callback(object):
@@ -185,6 +208,7 @@ class chunk_callback(object):
 
   def __init__(self):
     self.is_enabled = False
+    self.easy_all = False
     self.n = 1
     self.i = 0
 
