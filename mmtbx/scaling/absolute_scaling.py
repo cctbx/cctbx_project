@@ -688,10 +688,19 @@ class ml_aniso_absolute_scaling(object):
     if verbose>0:
       print >> out,"ML estimate of overall B_cart value of %s:" \
             % str(self.info)
-      print >> out,"%5.2f," %(self.b_cart[0]), "%5.2f,"\
-            %(self.b_cart[3]),"%5.2f" %(self.b_cart[4])
-      print >> out,"%12.2f," %(self.b_cart[1]),"%5.2f" %(self.b_cart[5])
-      print >> out,"%19.2f"  %(self.b_cart[2])
+      # XXX: for GUI
+      self.overall_b_cart = """\
+%5.2f, %5.2f, %5.2f
+%12.2f, %5.2f
+%19.2f
+""" % (self.b_cart[0], self.b_cart[3], self.b_cart[4],
+                       self.b_cart[1], self.b_cart[5],
+                                       self.b_cart[2])
+      #print >> out,"%5.2f," %(self.b_cart[0]), "%5.2f,"\
+      #      %(self.b_cart[3]),"%5.2f" %(self.b_cart[4])
+      #print >> out,"%12.2f," %(self.b_cart[1]),"%5.2f" %(self.b_cart[5])
+      #print >> out,"%19.2f"  %(self.b_cart[2])
+      print >> out, self.overall_b_cart
 
       print >> out,"Equivalent representation as U_cif: "
       print >> out,"%5.2f," %(self.u_cif[0]), "%5.2f," \

@@ -607,7 +607,6 @@ class detect_pseudo_translations(object):
   def show(self,out=None):
     if out is None:
       out = sys.stdout
-    self.peak_info
     print >> out
     print >> out," Patterson analyses"
     print >> out, "------------------"
@@ -615,12 +614,12 @@ class detect_pseudo_translations(object):
     print >> out," Largest Patterson peak with length larger than 15 Angstrom "
     print >> out
     self.peak_info = """\
- Frac. coord.        :%8.3f %8.3f %8.3f" %(self.high_peak_xyz)
-""" % self.high_peak_xyz
+ Frac. coord.        : %8.3f %8.3f %8.3f
+""" % (self.high_peak_xyz)
     self.peak_info += """\
- Distance to origin  :%8.3f
- Height (origin=100) :%8.3f
- p_value(height)     :%12.3e
+ Distance to origin  : %8.3f
+ Height (origin=100) : %8.3f
+ p_value(height)     : %12.3e
 """ % (self.high_peak_distance,self.high_peak, self.high_p_value)
     print >> out, self.peak_info
     print >> out
@@ -1878,16 +1877,23 @@ class twin_results_summary(object):
     print >> out, "Twinning and intensity statistics summary (acentric data):"
     print >> out
     print >> out, "Statistics independent of twin laws"
-    print >> out, "  - <I^2>/<I>^2 : %5.3f"%(self.i_ratio)
-    print >> out, "  - <F>^2/<F^2> : %5.3f"%(self.f_ratio)
-    print >> out, "  - <|E^2-1|>   : %5.3f"%(self.e_sq_minus_1)
-    print >> out, "  - <|L|>, <L^2>: %5.3f, %4.3f"%(self.l_mean,self.l_sq_mean)
-    print >> out, "       Multivariate Z score L-test: %5.3f "%( self.maha_l )
-    print >> out, "       The multivariate Z score is a quality measure of the given"
-    print >> out, "       spread in intensities. Good to reasonable data are expected"
-    print >> out, "       to have a Z score lower than 3.5. "
-    print >> out, "       Large values can indicate twinning, but small values do not"
-    print >> out, "       necessarily exclude it. "
+    self.independent_stats = """\
+  <I^2>/<I>^2 : %5.3f
+  <F>^2/<F^2> : %5.3f
+  <|E^2-1|>   : %5.3f
+  <|L|>, <L^2>: %5.3f, %4.3f
+  Multivariate Z score L-test: %5.3f
+""" % (self.i_ratio, self.f_ratio, self.e_sq_minus_1, self.l_mean,
+       self.l_sq_mean, self.maha_l)
+    print >> out, self.independent_stats
+    self.z_score_info = """\
+ The multivariate Z score is a quality measure of the given
+ spread in intensities. Good to reasonable data are expected
+ to have a Z score lower than 3.5.
+ Large values can indicate twinning, but small values do not
+ necessarily exclude it.
+"""
+    print >> out, self.z_score_info
     print >> out
     print >> out
     if len(self.twin_laws)>0:

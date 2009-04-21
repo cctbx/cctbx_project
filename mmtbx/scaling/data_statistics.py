@@ -100,6 +100,7 @@ class i_sigi_completeness_stats(object):
       title="Commpleteness and data strength",
       column_labels=["Max. resolution"] + list(legend)[1:],
       graph_names=["I/sigI by shell"],
+      graph_labels=[("High resolution of shell", "% of total")],
       graph_columns=[list(range(7))],
       x_is_inverse_d_min=False)
     for ii in xrange(1,len(self.resolution_bins)-1):
@@ -979,6 +980,7 @@ class basic_intensity_statistics:
         column_labels=["1/resol**2", "<I> smooth approximation",
                       "<I> via binning", "<I> expected"],
         graph_names=["Intensity plots"],
+        graph_labels=[("Resolution", "<I>")],
         graph_columns=[[0,1,2,3]],
         data=[self.d_star_sq, self.mean_I_normalisation, self.mean_I_obs_data,
               self.mean_I_obs_theory],
@@ -1000,9 +1002,9 @@ class basic_intensity_statistics:
       # XXX: for GUI
       self.zscore_table = data_plots.table_data(
         title="Z scores and completeness",
-        column_labels=["1/resol**2", "Z_score or fractional completeness",
-                       "Completeness"],
+        column_labels=["1/resol**2", "Z_score", "Fractional completeness"],
         graph_names=["Data sanity and completeness check"],
+        graph_labels=[("Resolution", "Z score or fractional completeness")],
         graph_columns=[[0,1,2]],
         data=[self.d_star_sq, self.z_scores, self.completeness],
         x_is_inverse_d_min=True)
@@ -1026,6 +1028,7 @@ class basic_intensity_statistics:
           title="Measurability of Anomalous signal",
           column_labels=["1/resol**2", "Measurability", "Smooth approximation"],
           graph_names=["Anomalous measurability"],
+          graph_labels=[("Resolution", "Measurability")],
           graph_columns=[[0,1,2]],
           data=[self.d_star_sq_ori, self.meas_data, self.meas_smooth],
           x_is_inverse_d_min=True)
@@ -1047,6 +1050,7 @@ class basic_intensity_statistics:
           title="Signal to noise (<I/sigma_I>)",
           column_labels=["1/resol**2", "<I/sigma_I>"],
           graph_names=["Signal to noise"],
+          graph_labels=[("Resolution", "<I/sigma_I>")],
           graph_columns=[[0,1]],
           data=[self.d_star_sq_ori,self.i_sig_i],
           x_is_inverse_d_min=True)

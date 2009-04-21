@@ -119,6 +119,8 @@ class basic_analyses(object):
     self.aniso_p_scale = aniso_scale_and_b.p_scale
     self.aniso_u_star  = aniso_scale_and_b.u_star
     self.aniso_b_cart  = aniso_scale_and_b.b_cart
+    # XXX: for GUI
+    self.overall_b_cart = getattr(aniso_scale_and_b, "overall_b_cart", None)
 
     ## Correcting for anisotropicity
     if verbose>0:

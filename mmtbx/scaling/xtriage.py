@@ -400,7 +400,8 @@ class xtriage_analyses(object):
        self.miller_obs,
        self.params,
        out=self.text_out,
-       out_plot=self.plot_out)
+       out_plot=self.plot_out,
+       verbose=1)
     # outliers are removed, make a new copy
     self.miller_obs = self.basic_results.miller_array.deep_copy()
     self.normalised_array = self.basic_results.normalised_miller.deep_copy()
@@ -846,6 +847,8 @@ class xtriage_summary (object) :
     self.file_name = params.scaling.input.xray_data.file_name
     self.log_file = params.scaling.input.parameters.reporting.log
     self.file_labels = params.scaling.input.xray_data.obs_labels
+    self.nresidues = params.scaling.input.asu_contents.n_residues
+    self.nbases = params.scaling.input.asu_contents.n_bases
 
     #-------------------------------------------------------------------
     # Part 1: basic analyses:
@@ -863,7 +866,8 @@ class xtriage_summary (object) :
                    "iso_p_scale", "iso_b_wilson", # float
                    #"aniso_scale_and_b",
                    "aniso_p_scale", # float
-                   "aniso_u_star", "aniso_b_cart"] # [ float ] * 6
+                   "aniso_u_star", "aniso_b_cart", # [ float ] * 6
+                   "overall_b_cart"]
     # WILSON SCALING
     for attr in basic_attrs :
       setattr(self, attr, getattr(basic_results, attr, None))
@@ -878,20 +882,24 @@ class xtriage_summary (object) :
                         "meas_table", "i_sig_i_table"]
     for attr in (data_stats_attrs + data_table_attrs) :
       setattr(self, attr, getattr(basic_results.basic_data_stats, attr, None))
+    self.low_res_info = None
+    low_res_completeness = getattr(basic_results.basic_data_stats,
+                                   "low_resolution_completeness", None)
+    if low_res_completeness is not None :
+      out = StringIO()
+      low_res_completeness.show(f=out)
+      self.low_res_info = out.getvalue()
     meas_anal = getattr(basic_results.basic_data_stats, "meas_anal", None)
     if meas_anal is not None :
       table = getattr(meas_anal, "meas_table", None)
       out = StringIO()
       table.show(f=out)
       self.meas_out = out.getvalue()
-      self.meas_info = getattr(meas_anal, "message", None)
-      self.low_d_cut = getattr(meas_anal, "low_d_cut", None)
-      self.high_d_cut = getattr(meas_anal, "high_d_cut", None)
     else :
-      self.meas_table = None
-      self.meas_info = None
-      self.low_d_cut = None
-      self.high_d_cut = None
+      self.meas_out = None
+    self.meas_info = getattr(meas_anal, "message", None)
+    self.low_d_cut = getattr(meas_anal, "low_d_cut", None)
+    self.high_d_cut = getattr(meas_anal, "high_d_cut", None)
     # VM/%SOLV
     self.matthews_table = basic_results.matthews_results[4] # table
     for attr in ["defined_copies", "guessed_copies"] :
@@ -911,6 +919,14 @@ class xtriage_summary (object) :
     #         - possible twin laws
     #         - britton plot, h test, murray-rust plot for each twin law
     twin_results = xtriage_results.twin_results
+    # SYSTEMATIC ABSENCES AND SPACE GROUP
+    abs_sg_anal = getattr(twin_results, "abs_sg_anal", None)
+    self.sg_info = getattr(abs_sg_anal, "absence_info", None)
+    self.sg_table = getattr(abs_sg_anal, "table_data", None)
+    abs_table = getattr(abs_sg_anal, "absences_table", None)
+    self.absence_info = getattr(abs_table, "table_text", None)
+    self.absence_table = getattr(abs_table, "table_data", None)
+    # TWINNING
     twin_attrs = ["nz_test_table", "l_test_table", "twin_law_names",
                   "twin_law_info"]
     for attr in twin_attrs :
@@ -930,23 +946,12 @@ class xtriage_summary (object) :
     self.patterson_verdict = twin_summary.patterson_verdict.getvalue()
     self.twinning_verdict = twin_summary.twinning_verdict.getvalue()
     self.twin_law_table= getattr(twin_summary.twin_results, "table_data", None)
+    self.z_score_info = getattr(twin_summary.twin_results, "z_score_info",None)
+    self.intensity_stats = getattr(twin_summary.twin_results,
+                                   "independent_stats", None)
     self.possible_twin_laws = getattr(twin_results, "possible_twin_laws", None)
     self.translation_pseudo_symmetry = getattr(twin_results,
       "translation_pseudo_symmetry", None)
-    abs_sg_anal = getattr(twin_results, "abs_sg_anal", None)
-    self.absence_info = getattr(abs_sg_anal, "absence_info", None)
-    self.sg_table = getattr(abs_sg_anal, "table_data", None)
-
-  def get_plottable_tables (self) :
-    table_names = ["completeness_table",
-                   "wilson_table", "zscore_table", "meas_table",
-                   "i_sig_i_table"]
-    all_tables = []
-    for name in table_names :
-      table = getattr(self, name, None)
-      if table is not None :
-        all_tables.append(table)
-    return all_tables
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
