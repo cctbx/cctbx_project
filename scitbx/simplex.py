@@ -209,6 +209,7 @@ class test_function(object):
     return result
 
 def run():
+  flex.set_random_seed(0)
   for ii in xrange(10):
     test_function(2)
     test_function(3)
