@@ -215,6 +215,32 @@ def exercise_4(grid_step,
   assert approx_obj_.gof() < 1.0
   assert approx_obj_.cutoff_radius() < radius
 
+def exercise_5(grid_step,
+               radius,
+               shell,
+               a,
+               b,
+               d_min,
+               site_cart,
+               buffer_layer):
+  xray_structure = xray_structure_of_one_atom(site_cart    = site_cart,
+                                              buffer_layer = buffer_layer,
+                                              a            = a,
+                                              b            = b)
+  miller_set = miller.build_set(
+                          crystal_symmetry = xray_structure.crystal_symmetry(),
+                          anomalous_flag   = False,
+                          d_min            = d_min,
+                          d_max            = None)
+  f_calc = miller_set.structure_factors_from_scatterers(
+                                 xray_structure               = xray_structure,
+                                 algorithm                    = "direct",
+                                 cos_sin_table                = False,
+                                 exp_table_one_over_step_size = False).f_calc()
+  fft_map = f_calc.fft_map(grid_step = grid_step, symmetry_flags = None)
+  fft_map = fft_map.apply_scaling(scale=100.0)
+  assert approx_equal(fft_map.real_map_unpadded()[0],100.0)
+
 def run():
   for site in ([0,0,0], [0.1,0.1,0.1], [6,6,6], [3,3,3], [-0.1,0.1,-0.1],
                                                            [6,-6,6], [3,-3,3]):
@@ -262,6 +288,16 @@ def run():
                  volume_per_atom = 300,
                  use_weights            = use_weights,
                  optimize_cutoff_radius = optimize_cutoff_radius)
+  for site in ([0,0,0], [0.1,0.1,0.1], [6,6,6], [3,3,3], [-0.1,0.1,-0.1],
+                                                           [6,-6,6], [3,-3,3]):
+      exercise_5(grid_step    = 0.1,
+                 radius       = 0.9,
+                 shell        = 0.0,
+                 a            = 6.0,
+                 b            = 3.0,
+                 d_min        = 0.08,
+                 site_cart    = flex.vec3_double([site]),
+                 buffer_layer = 3.)
 
 if (__name__ == "__main__"):
     run()
