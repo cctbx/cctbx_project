@@ -1,6 +1,7 @@
 import scitbx.math as sm
 import math
 from libtbx.test_utils import approx_equal
+from scitbx.array_family import flex
 
 """
 This routine tests the halton sequence that can be used for
@@ -55,10 +56,21 @@ def test_cube():
   square.set_state(0)
   assert approx_equal( start_values, square.next(), eps=1e-4 )
 
+def tst_five_d_cube():
+  hcube = sm.halton(5)
+  result = flex.double( [0,0,0,0,0] )
+  for ii in xrange(5000):
+    vec = flex.double(hcube.nth_all(ii))
+    result += vec
+  result = result/5000.0
+  for ii in result:
+    assert approx_equal(ii, 0.5, 0.01)
+
 def run():
   test_halton_sequence_1(1000,2)
   test_halton_sequence_2(1000,10)
   test_cube()
+  tst_five_d_cube()
 
 if (__name__ == "__main__"):
   run()

@@ -19,6 +19,7 @@ namespace {
       class_<w_t>("halton",no_init)
       .def(init<int const& > (( arg_("dimension")) ))
       .def("nth_given_base", &w_t::nth_given_base)
+      .def("nth_all", &w_t::nth_all)
       ;
     }
   };
