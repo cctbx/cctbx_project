@@ -1782,7 +1782,9 @@ def process_include_scope(
     where_str=object.where_str)
   source_scope = imported.object
   if (isinstance(source_scope, str)):
-    source_scope = parse(input_string=source_scope)
+    source_scope = parse(
+      input_string=source_scope,
+      converter_registry=converter_registry)
   elif (source_scope is None or not isinstance(source_scope, scope)):
     raise RuntimeError(
       'include scope: python object "%s" in module "%s" is not a'
