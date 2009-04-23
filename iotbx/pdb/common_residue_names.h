@@ -115,7 +115,6 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     "OD2",
     "WAT",
     "TIP",
-    "SOL",
     0
   };
 
