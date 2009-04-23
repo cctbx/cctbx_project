@@ -145,7 +145,8 @@ class cartesian_dynamics(object):
        self.ekin = kt.kinetic_energy()
        if(self.verbose >= 1):
          self.print_dynamics_stat(text="set velocities")
-    self.stop_global_motion()
+    if(self.stop_cm_motion):
+      self.stop_global_motion()
     self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
     self.current_temperature = kt.temperature()
@@ -205,7 +206,8 @@ class cartesian_dynamics(object):
         self.xray_gradient = self.xray_grads()
       gradient = self.xray_gradient * self.xray_target_weight + \
                  chem_grads * self.chem_target_weight
-    return gradient * obj.number_of_restraints # XXX BIGGEST MYSTERY !!!
+    self.normalization_factor = obj.number_of_restraints
+    return gradient
 
   def xray_grads(self):
     self.fmodel_copy.update_xray_structure(
@@ -310,8 +312,11 @@ class cartesian_dynamics(object):
         self.center_of_mass_info()
         self.stop_global_motion()
       # calculate velocities at t+dt/2
-      grad = residuals#.gradients
-      dynamics.vxyz_at_t_plus_dt_over_2(self.vxyz, self.weights, grad, self.tstep)
+      grad = residuals
+      TSTEP = self.tstep
+      if(self.normalization_factor is not None and self.normalization_factor > 0):
+        TSTEP = self.tstep / self.normalization_factor
+      dynamics.vxyz_at_t_plus_dt_over_2(self.vxyz, self.weights, grad, TSTEP)
       # calculate the temperature and kinetic energy from new velocities
       kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
       self.current_temperature = kt.temperature()

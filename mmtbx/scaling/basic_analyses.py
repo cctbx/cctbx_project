@@ -116,6 +116,13 @@ class basic_analyses(object):
     aniso_scale_and_b.show(out=out,verbose=1)
 
     self.aniso_scale_and_b = aniso_scale_and_b
+
+    try: b_cart = aniso_scale_and_b.b_cart
+    except AttributeError, e:
+      print >> out, "*** ERROR ***"
+      print >> out, str(e)
+      return
+
     self.aniso_p_scale = aniso_scale_and_b.p_scale
     self.aniso_u_star  = aniso_scale_and_b.u_star
     self.aniso_b_cart  = aniso_scale_and_b.b_cart

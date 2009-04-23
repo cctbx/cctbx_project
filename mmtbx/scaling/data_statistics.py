@@ -363,7 +363,6 @@ class ice_ring_checker(object):
        None, None, None, None, None]
     self.mean_comp=None
     self.mean_z_score=None
-
     tmp_low_d_star_sq=bin_centers[0]
     tmp_high_d_star_sq = bin_centers[bin_centers.size()-1]
     tmp_step = (bin_centers[1]-bin_centers[0])
@@ -875,10 +874,15 @@ class basic_intensity_statistics:
     self.new_miller = self.outlier.remove_outliers(absolute_miller)
 
     self.ijsco = None
-    if flex.min( self.d_star_sq ) > 0.01:
-      self.ijsco = ice_ring_checker(self.d_star_sq,
-                                    self.completeness,
-                                    self.z_scores)
+    if(self.d_star_sq.size()>1):
+      if flex.min( self.d_star_sq ) > 0.01:
+        self.ijsco = ice_ring_checker(self.d_star_sq,
+                                      self.completeness,
+                                      self.z_scores)
+    else:
+      print >> out, " *** WARNING *** "*5
+      print >> out, "   Skip ice_ring_checker"
+      print >> out, " *** WARNING *** "*5
     self.show(out,out_plot)
 
   def show(self,out=None, out_plot=None,z_level=4.5):

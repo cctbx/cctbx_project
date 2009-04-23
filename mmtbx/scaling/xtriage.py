@@ -403,9 +403,14 @@ class xtriage_analyses(object):
        out_plot=self.plot_out,
        verbose=1)
     # outliers are removed, make a new copy
-    self.miller_obs = self.basic_results.miller_array.deep_copy()
-    self.normalised_array = self.basic_results.normalised_miller.deep_copy()
-    self.params =  self.basic_results.phil_object
+    try:
+      ma = self.basic_results.miller_array
+      self.miller_obs = self.basic_results.miller_array.deep_copy()
+      self.normalised_array = self.basic_results.normalised_miller.deep_copy()
+      self.params =  self.basic_results.phil_object
+    except AttributeError, e:
+      print >> self.text_out, "*** ERROR ***"
+      print >> self.text_out, str(e)
 
     print >> self.text_out
     print >> self.text_out,"##----------------------------------------------------##"
