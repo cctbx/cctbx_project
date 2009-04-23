@@ -579,3 +579,266 @@ def run(args,
     n_refl_cutoff = n_refl_cutoff))
   mvd_obj.show()
   return mvd_obj
+
+def read_mvd_output(file_lines, name):
+  unit_cell        = None
+  space_group      = None
+  unit_cell_volume = None
+  number_of_models = None
+  # XXX multiple models are not supported
+  n_altloc = None
+  amino_acid     = None
+  rna_dna        = None
+  water          = None
+  small_molecule = None
+  element        = None
+  other          = None
+  #
+  n_atoms     = None
+  atom_counts = None
+  adp_min     = None
+  adp_max     = None
+  adp_mean    = None
+  occ_min     = None
+  occ_max     = None
+  occ_mean    = None
+  n_aniso     = None
+  n_npd       = None
+  #
+  bonds_rmsd     = None
+  bonds_max      = None
+  bonds_cnt      = None
+  angles_rmsd    = None
+  angles_max     = None
+  angles_cnt     = None
+  dihedrals_rmsd = None
+  dihedrals_max  = None
+  dihedrals_cnt  = None
+  chirality_rmsd = None
+  chirality_max  = None
+  chirality_cnt  = None
+  planarity_rmsd = None
+  planarity_max  = None
+  planarity_cnt  = None
+  non_bonded_min = None
+  #
+  rama_outliers = None
+  rama_general  = None
+  rama_allowed  = None
+  rama_favored  = None
+  rama_glycine  = None
+  rama_proline  = None
+  rama_prepro   = None
+  #
+  data_label      = None
+  d_min           = None
+  d_max           = None
+  cmpl_in_range   = None
+  cmpl_d_min_inf  = None
+  cmpl_6A_inf     = None
+  wilson_b        = None
+  n_refl          = None
+  test_set_size   = None
+  test_flag_value = None
+  n_fobs_outl     = None
+  twinned         = None
+  anom_flag       = None
+  #
+  r_work_re_computed = None
+  r_free_re_computed = None
+  k_sol              = None
+  b_sol              = None
+  b_cart             = None
+  #
+  program_name   = None
+  year           = None
+  r_work_pdb     = None
+  r_free_pdb     = None
+  d_min_pdb      = None
+  d_max_pdb      = None
+  sigma_cutoff   = None
+  matthews_coeff = None
+  solvent_cont   = None
+  tls            = None
+  n_tls_groups   = None
+  #
+  n_refl_cutoff = None
+  r_work_cutoff = None
+  r_free_cutoff = None
+  ###
+  def helper(x):
+    if(x.lower()=="none"): return None
+    if(x.isdigit()): return int(x)
+    if(x.lower()=="true"): return True
+    if(x.lower()=="false"): return False
+    return float(x)
+  for line in file_lines:
+    x = line.strip()
+    xs = x.split()
+    if(x.startswith("Unit cell:        ")): unit_cell        = tuple(xs[2:])
+    if(x.startswith("Space group:      ")): space_group      = xs[2:]
+    if(x.startswith("Unit cell volume: ")): unit_cell_volume = float(xs[3])
+    if(x.startswith("Number of models: ")): number_of_models = int(xs[3])
+    if(number_of_models == 1): # XXX multiple models are not supported
+      if(x.startswith("Number of residues in alternative conformations:")): 2
+      if(x.startswith("amino_acid")):     amino_acid     = int(xs[2])
+      if(x.startswith("rna_dna")):        rna_dna        = int(xs[2])
+      if(x.startswith("water")):          water          = int(xs[2])
+      if(x.startswith("small_molecule")): small_molecule = int(xs[2])
+      if(x.startswith("element")):        element        = int(xs[2])
+      if(x.startswith("other")):          other          = int(xs[2])
+      if(x.startswith("atom_number_(type:count:occ_sum) :")):
+        n_atoms     = int(xs[2])
+        atom_counts = xs[3:]
+      if(x.startswith("ADP_(min,max,mean)               :")):
+        adp_min     = float(xs[2])
+        adp_max     = float(xs[3])
+        adp_mean    = float(xs[4])
+      if(x.startswith("occupancies_(min,max,mean)       :")):
+        occ_min     = float(xs[2])
+        occ_max     = float(xs[3])
+        occ_mean    = float(xs[4])
+      if(x.startswith("number_of_anisotropic            :")): n_aniso = int(xs[2])
+      if(x.startswith("number_of_non_positive_definite  :")): n_npd   = int(xs[2])
+      if(x.startswith("bonds            :")):
+        bonds_rmsd     = float(xs[2])
+        bonds_max      = float(xs[3])
+        bonds_cnt      = int(xs[4])
+      if(x.startswith("angles           :")):
+        angles_rmsd    = float(xs[2])
+        angles_max     = float(xs[3])
+        angles_cnt     = int(xs[4])
+      if(x.startswith("dihedrals        :")):
+        dihedrals_rmsd = float(xs[2])
+        dihedrals_max  = float(xs[3])
+        dihedrals_cnt  = int(xs[4])
+      if(x.startswith("chirality        :")):
+        chirality_rmsd = float(xs[2])
+        chirality_max  = float(xs[3])
+        chirality_cnt  = int(xs[4])
+      if(x.startswith("planarity        :")):
+        planarity_rmsd = float(xs[2])
+        planarity_max  = float(xs[3])
+        planarity_cnt  = int(xs[4])
+      if(x.startswith("non-bonded (min) :")): non_bonded_min = float(xs[3])
+      if(x.startswith("outliers :")): rama_outliers = float(xs[3].replace("(",""))
+      if(x.startswith("general  :")): rama_general  = float(xs[3].replace("(",""))
+      if(x.startswith("allowed  :")): rama_allowed  = float(xs[3].replace("(",""))
+      if(x.startswith("favored  :")): rama_favored  = float(xs[3].replace("(",""))
+      if(x.startswith("glycine  :")): rama_glycine  = float(xs[3].replace("(",""))
+      if(x.startswith("proline  :")): rama_proline  = float(xs[3].replace("(",""))
+      if(x.startswith("prepro   :")): rama_prepro   = float(xs[3].replace("(",""))
+      if(x.startswith("data_label              :")): data_label      = xs[2]
+      if(x.startswith("high_resolution         :")): d_min           = float(xs[2])
+      if(x.startswith("low_resolution          :")): d_max           = float(xs[2])
+      if(x.startswith("completeness_in_range   :")): cmpl_in_range   = float(xs[2])
+      if(x.startswith("completeness(d_min-inf) :")): cmpl_d_min_inf  = float(xs[2])
+      if(x.startswith("completeness(6A-inf)    :")): cmpl_6A_inf     = float(xs[2])
+      if(x.startswith("wilson_b                :")): wilson_b        = helper(xs[2])
+      if(x.startswith("number_of_reflections   :")): n_refl          = float(xs[2])
+      if(x.startswith("test_set_size           :")): test_set_size   = float(xs[2])
+      if(x.startswith("test_flag_value         :")): test_flag_value = helper(xs[2])
+      if(x.startswith("number_of_Fobs_outliers :")): n_fobs_outl     = float(xs[2])
+      if(x.startswith("twinned                 :")):
+        if(xs[2].lower()=="false"): twinned = False
+        else:                       twinned = xs[2]
+      if(x.startswith("anomalous_flag          :")):
+        if(xs[2].lower()=="false"): anom_flag = False
+        else:                       anom_flag = True
+      if(x.startswith("r_work(re-computed)                :")): r_work_re_computed = float(xs[2])
+      if(x.startswith("r_free(re-computed)                :")): r_free_re_computed = helper(xs[2])
+      if(x.startswith("bulk_solvent_(k_sol,b_sol)         :")):
+        k_sol, b_sol = float(xs[2]), float(xs[3])
+      if(x.startswith("overall_anisotropic_scale_(b_cart) :")): b_cart = flex.double([float(i) for i in xs[2:]])
+      if(x.startswith("program_name    :")):
+        if(xs[2].lower()=="none"): program_name = None
+        else:                      program_name = "_".join(xs[2:])
+      if(x.startswith("year            :")): year           = helper(xs[2])
+      if(x.startswith("r_work          :")): r_work_pdb     = helper(xs[2])
+      if(x.startswith("r_free          :")): r_free_pdb     = helper(xs[2])
+      if(x.startswith("high_resolution :")): d_min_pdb      = helper(xs[2])
+      if(x.startswith("low_resolution  :")): d_max_pdb      = helper(xs[2])
+      if(x.startswith("sigma_cutoff    :")): sigma_cutoff   = helper(xs[2])
+      if(x.startswith("matthews_coeff  :")): matthews_coeff = helper(xs[2])
+      if(x.startswith("solvent_cont    :")): solvent_cont   = helper(xs[2])
+      if(x.startswith("TLS             :")):
+        tls          = helper(xs[2])
+        n_tls_groups = int(xs[6].replace(")",""))
+      if(x.startswith("n_refl_cutoff :")): n_refl_cutoff = helper(xs[2])
+      if(x.startswith("r_work_cutoff :")): r_work_cutoff = helper(xs[2])
+      if(x.startswith("r_free_cutoff :")): r_free_cutoff = helper(xs[2])
+
+  ###
+  return group_args(
+    name             = name            ,
+    unit_cell        = unit_cell       ,
+    space_group      = space_group     ,
+    unit_cell_volume = unit_cell_volume,
+    number_of_models = number_of_models,
+    n_altloc = n_altloc,
+    amino_acid     = amino_acid    ,
+    rna_dna        = rna_dna       ,
+    water          = water         ,
+    small_molecule = small_molecule,
+    element        = element       ,
+    other          = other         ,
+    n_atoms     = n_atoms    ,
+    atom_counts = atom_counts,
+    adp_min     = adp_min    ,
+    adp_max     = adp_max    ,
+    adp_mean    = adp_mean   ,
+    occ_min     = occ_min    ,
+    occ_max     = occ_max    ,
+    occ_mean    = occ_mean   ,
+    n_aniso     = n_aniso    ,
+    n_npd       = n_npd      ,
+    bonds_rmsd     = bonds_rmsd    ,
+    bonds_max      = bonds_max     ,
+    angles_rmsd    = angles_rmsd   ,
+    angles_max     = angles_max    ,
+    dihedrals_rmsd = dihedrals_rmsd,
+    dihedrals_max  = dihedrals_max ,
+    chirality_rmsd = chirality_rmsd,
+    chirality_max  = chirality_max ,
+    planarity_rmsd = planarity_rmsd,
+    planarity_max  = planarity_max ,
+    non_bonded_min = non_bonded_min,
+    rama_outliers = rama_outliers,
+    rama_general  = rama_general ,
+    rama_allowed  = rama_allowed ,
+    rama_favored  = rama_favored ,
+    rama_glycine  = rama_glycine ,
+    rama_proline  = rama_proline ,
+    rama_prepro   = rama_prepro  ,
+    data_label      = data_label     ,
+    d_min           = d_min          ,
+    d_max           = d_max          ,
+    cmpl_in_range   = cmpl_in_range  ,
+    cmpl_d_min_inf  = cmpl_d_min_inf ,
+    cmpl_6A_inf     = cmpl_6A_inf    ,
+    wilson_b        = wilson_b       ,
+    n_refl          = n_refl         ,
+    test_set_size   = test_set_size  ,
+    test_flag_value = test_flag_value,
+    n_fobs_outl     = n_fobs_outl    ,
+    twinned         = twinned        ,
+    anom_flag       = anom_flag      ,
+    r_work_re_computed = r_work_re_computed,
+    r_free_re_computed = r_free_re_computed,
+    k_sol              = k_sol             ,
+    b_sol              = b_sol             ,
+    b_cart             = b_cart            ,
+    program_name   = program_name  ,
+    year           = year          ,
+    r_work_pdb     = r_work_pdb    ,
+    r_free_pdb     = r_free_pdb    ,
+    d_min_pdb      = d_min_pdb     ,
+    d_max_pdb      = d_max_pdb     ,
+    sigma_cutoff   = sigma_cutoff  ,
+    matthews_coeff = matthews_coeff,
+    solvent_cont   = solvent_cont  ,
+    tls            = tls           ,
+    n_tls_groups   = n_tls_groups  ,
+    n_refl_cutoff = n_refl_cutoff,
+    r_work_cutoff = r_work_cutoff,
+    r_free_cutoff = r_free_cutoff)

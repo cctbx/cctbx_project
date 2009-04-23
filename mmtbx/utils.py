@@ -1344,14 +1344,18 @@ def fmodel_simple(f_obs,
                   bulk_solvent_and_scaling = True,
                   bss_params               = None,
                   twin_switch_tolerance    = 3.0):
-  from mmtbx.scaling import xtriage
-  xtriage_results = xtriage.xtriage_analyses(
-    miller_obs = f_obs,
-    text_out   = StringIO(),
-    plot_out   = StringIO())
   twin_laws = []
-  if(xtriage_results.twin_results is not None):
-    twin_laws = xtriage_results.twin_results.twin_summary.twin_results.twin_laws
+  try:
+    from mmtbx.scaling import xtriage
+    xtriage_results = xtriage.xtriage_analyses(
+      miller_obs = f_obs,
+      text_out   = StringIO(),
+      plot_out   = StringIO())
+    if(xtriage_results.twin_results is not None):
+      twin_laws = xtriage_results.twin_results.twin_summary.twin_results.twin_laws
+  except Exception, e:
+    print "XTRIAGE error: "
+    print str(e)
   twin_laws.append(None)
   if(len(xray_structures) == 1):
     fmodels = []

@@ -19,6 +19,7 @@ from libtbx import adopt_init_args
 from libtbx import Auto, group_args
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import sys
+from cctbx import crystal
 
 core_params_str = """\
 atom_radius = None
@@ -47,6 +48,12 @@ poor_map_value_threshold = 1.0
   .help = Ad hoc value (less than) defining a week density (in sigma) for maps \
           involved in map CC calculation
   .expert_level = 2
+crystal_symmetry {
+  unit_cell=None
+    .type=unit_cell
+  space_group=None
+    .type=space_group
+}
 """
 
 master_params_str = """\
@@ -219,6 +226,13 @@ class pdb_to_xrs(object):
 def extract_crystal_symmetry(params):
   crystal_symmetries = []
   crystal_symmetry = None
+  #
+  if([params.crystal_symmetry.unit_cell,
+      params.crystal_symmetry.space_group].count(None)==0):
+    return crystal.symmetry(
+        unit_cell=params.crystal_symmetry.unit_cell,
+        space_group_info=params.crystal_symmetry.space_group)
+  #
   for cs_source in [params.map_1.pdb_file_name,
                     params.map_2.pdb_file_name]:
     if(cs_source is not None):
@@ -275,8 +289,10 @@ def extract_data_and_flags(params, crystal_symmetry):
 def compute_map_from_model(high_resolution, low_resolution, xray_structures,
                            grid_resolution_factor, crystal_gridding = None):
   if(len(xray_structures) > 1):
-    raise Sorry("Multiple models cannot be used with this option.")
-  xray_structure = xray_structures[0]
+    xray_structure = xray_structures[0]
+    for xrs in xray_structures[1:]:
+      xray_structure.concatenate(other = xrs)
+  else: xray_structure = xray_structures[0]
   f_calc = xray_structure.structure_factors(d_min = high_resolution).f_calc()
   f_calc = f_calc.resolution_filter(d_max = low_resolution)
   if(crystal_gridding is None):
@@ -290,7 +306,6 @@ def compute_map_from_model(high_resolution, low_resolution, xray_structures,
 def cmd_run(args, command_name):
   msg = """\
 
-Description:
 Tool to compute local map correlation coefficient.
 
 How to use:
@@ -351,10 +366,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   if(params.map_1.use):
     if(xray_structures_1 is None):
       raise Sorry("PDB file for map_1 is not provided.")
-    if(len(xray_structures_1) > 1):
-      raise Sorry("use=true option cannot be used for a PDB file with multiple models.")
-      if(params.map_1.use_kick_map):
-        raise Sorry("kick map cannot be used for a PDB file with multiple models.")
+    if(params.map_1.use_kick_map and len(xray_structures_1) > 1):
+      raise Sorry("kick map cannot be used for a PDB file with multiple models.")
   if(params.map_2.use):
     if(xray_structures_2 is None):
       raise Sorry("PDB file for map_2 is not provided.")
@@ -371,7 +384,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     crystal_symmetry = crystal_symmetry)
   #
   # get map CC object
-  def get_map_cc_obj(map_1, params, pdb_to_xrs_1, pdb_to_xrs_2, fft_map_1, xrs,
+  def get_map_cc_obj(map_1, params, pdb_to_xrs_1, pdb_to_xrs_2, fft_map_1,
                      atom_detail, residue_detail, atom_radius):
     pdb_to_xrs_ = None
     if(params.map_1.use): pdb_to_xrs_ = pdb_to_xrs_1
@@ -381,7 +394,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       pdb_hierarchy
     result = map_cc_funct(
       map_1          = map_1,
-      xray_structure = xrs[0],
+      xray_structure = pdb_to_xrs_.xray_structures,
       fft_map        = fft_map_1,
       pdb_hierarchy  = pdb_hierarchy,
       atom_detail    = atom_detail,
@@ -437,7 +450,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     # prepare map CC calculation object
     map_cc_obj = get_map_cc_obj(map_1 = map_1, params = params,
       pdb_to_xrs_1 = pdb_to_xrs_1, pdb_to_xrs_2 = pdb_to_xrs_2,
-      fft_map_1 = fft_map_1, xrs = xrs, atom_detail = atom_detail,
+      fft_map_1 = fft_map_1, atom_detail = atom_detail,
       residue_detail = residue_detail, atom_radius = atom_radius)
     #
     ### second
@@ -502,7 +515,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     # prepare map CC calculation object
     map_cc_obj = get_map_cc_obj(map_1 = map_1, params = params,
       pdb_to_xrs_1 = pdb_to_xrs_1, pdb_to_xrs_2 = pdb_to_xrs_2,
-      fft_map_1 = fft_map_1, xrs = xrs, atom_detail = atom_detail,
+      fft_map_1 = fft_map_1, atom_detail = atom_detail,
       residue_detail = residue_detail, atom_radius = atom_radius)
     #
     if(xray_structures_2 is not None): xrs = xray_structures_2
@@ -530,8 +543,6 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   #
   assert map_1_focus == map_2.focus()
   assert map_1_all == map_2.all()
-  if(len(xrs) > 1):
-    raise Sorry("Multiple models cannot be used with this option.")
   # get map cc
   result = map_cc_obj.map_cc(
     map_2                                     = map_2,
@@ -552,7 +563,13 @@ class map_cc_funct(object):
                      residue_detail,
                      selection = None,
                      pdb_hierarchy = None):
-    self.xray_structure = xray_structure
+    #
+    if(len(xray_structure) > 1):
+      self.xray_structure = xray_structure[0]
+      for xrs in xray_structure[1:]:
+        self.xray_structure = self.xray_structure.concatenate(other = xrs)
+      print self.xray_structure.scatterers().size()
+    else: self.xray_structure = xray_structure[0]
     self.selection = selection
     self.atom_detail = atom_detail
     self.residue_detail = residue_detail
@@ -595,6 +612,7 @@ class map_cc_funct(object):
       self._result = [None,]*len(residues)
       for i_seq, residue in enumerate(residues):
         residue_sites_cart = sites_cart.select(residue.selection)
+        if 0: print i_seq, list(residue.selection) # DEBUG
         sel = maptbx.grid_indices_around_sites(
           unit_cell  = self.xray_structure.unit_cell(),
           fft_n_real = real_map_unpadded.focus(),
@@ -709,9 +727,10 @@ class map_cc_funct(object):
     print >> log, fmt%(2, self.map_2_stat.min(), self.map_2_stat.max(),
       self.map_2_stat.mean(), self.map_2_stat.sigma())
 
-  def extract_residues(self):
+  def extract_residues(self, combine = True):
     result = []
-    for model in self.pdb_hierarchy.models():
+    for i_model, model in enumerate(self.pdb_hierarchy.models()):
+      rm = []
       for chain in model.chains():
         for rg in chain.residue_groups():
           rg_i_seqs = []
@@ -722,12 +741,25 @@ class map_cc_funct(object):
               if(self.selection[atom.i_seq]):
                 rg_i_seqs.append(atom.i_seq)
           if(len(rg_i_seqs) != 0):
-            result.append(group_args(
+            rm.append(group_args(
               selection = flex.size_t(rg_i_seqs),
               name      = r_name,
+              model_id  = i_model,
               resid     = rg.resid(),
               chain_id  = chain.id))
-    return result
+      result.append(rm)
+    #
+    if(combine):
+      r0 = result[0]
+      for r in result[1:]:
+        for i, ri in enumerate(r):
+          r0[i].selection.extend(ri.selection)
+          assert r0[i].name == ri.name
+    else:
+      r0 = result[0]
+      for r in result[1:]:
+        r0.extend(r)
+    return r0
 
 def set_details_level_and_radius(details_level, d_min, atom_radius):
   assert details_level in ["atom","residue","automatic"]
@@ -793,7 +825,7 @@ def simple(fmodel,
     map_1 = fft_map_1.real_map_unpadded()
     map_cc_obj = map_cc_funct(
       map_1          = map_1,
-      xray_structure = fmodel.xray_structure,
+      xray_structure = [fmodel.xray_structure],
       selection      = selection,
       fft_map        = fft_map_1,
       pdb_hierarchy  = pdb_hierarchy,
@@ -883,11 +915,12 @@ def show_result(result, show_hydrogens = False, log = None):
             w_msg)
   elif("residue" in keys):
     assert not "atom" in keys
-    print >> log, "i_seq : chain resseq resname   occ      b      CC   map1   map2  No.Points"
-    fmt = "%5d : %5s %6s %7s %5.2f %6.2f %7.4f %6.2f %6.2f   %d"
+    print >> log, "i_seq : model chain resseq resname   occ      b      CC   map1   map2  No.Points"
+    fmt = "%5d : %5s %5s %6s %7s %5.2f %6.2f %7.4f %6.2f %6.2f   %d"
     for i_seq, r in enumerate(result):
       print >> log, fmt % (
         i_seq,
+        r.residue.model_id,
         r.residue.chain_id,
         r.residue.resid,
         r.residue.name,

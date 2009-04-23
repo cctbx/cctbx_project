@@ -475,13 +475,11 @@ class extract_data(object):
                 break
               assert result_hkld.count(None) == 0
               if(result_hkld[:3].count(0) != 3 and result_hkld[3] != 0):
-                if(max(max(result_hkld[:3]), abs(min(result_hkld[:3]))) > 10000):
-                  self.reset(message ="Too big Miller index (> 10000).",line=line)
-                  break
-                self.indices.append(result_hkld[:3])
-                self.data.append(result_hkld[3])
-                if(flag_ is not None): self.flags.append(flag_)
-                if(sigma_ is not None): self.sigmas.append(sigma_)
+                if(max(max(result_hkld[:3]), abs(min(result_hkld[:3]))) < 10000):
+                  self.indices.append(result_hkld[:3])
+                  self.data.append(result_hkld[3])
+                  if(flag_ is not None): self.flags.append(flag_)
+                  if(sigma_ is not None): self.sigmas.append(sigma_)
     if(self.indices.size() != self.data.size()):
       self.reset(message = "self.indices.size() != self.data.size()")
     if(len(self.sigmas) > 0):

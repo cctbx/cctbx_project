@@ -15,7 +15,7 @@ from libtbx.utils import Sorry
 import scitbx.lbfgs
 import math
 import sys
-
+from libtbx.str_utils import format_value
 
 
 class gamma_protein:
@@ -327,20 +327,21 @@ class scattering_information(object):
         f0 = gaussians[chemical_type].at_d_star_sq(d_star_sq)
         self.sigma_tot_sq += f0*f0*n_atoms
 
-      ## Protein part
-      gamma_prot = gamma_protein(d_star_sq)
-      self.gamma_prot = gamma_prot.gamma*self.fraction_protein
-      ## Nucleotide part; needs to be completed
-      gamma_nuc = gamma_nucleic(d_star_sq)
-      self.gamma_nuc = gamma_nuc.gamma*self.fraction_nucleic ##
-      ## Totals
-      self.gamma_tot = self.gamma_prot*self.fraction_protein +\
-                       self.gamma_nuc*self.fraction_nucleic
-      self.gamma_tot_sigma = (gamma_prot.sigma_gamma*self.fraction_protein)*\
-                             (gamma_prot.sigma_gamma*self.fraction_protein)+\
-                             (gamma_nuc.sigma_gamma*self.fraction_nucleic)*\
-                             (gamma_nuc.sigma_gamma*self.fraction_nucleic)
-      self.gamma_tot_sigma = flex.sqrt(  self.gamma_tot_sigma )
+      if(d_star_sq.size()>0):
+        ## Protein part
+        gamma_prot = gamma_protein(d_star_sq)
+        self.gamma_prot = gamma_prot.gamma*self.fraction_protein
+        ## Nucleotide part; needs to be completed
+        gamma_nuc = gamma_nucleic(d_star_sq)
+        self.gamma_nuc = gamma_nuc.gamma*self.fraction_nucleic ##
+        ## Totals
+        self.gamma_tot = self.gamma_prot*self.fraction_protein +\
+                         self.gamma_nuc*self.fraction_nucleic
+        self.gamma_tot_sigma = (gamma_prot.sigma_gamma*self.fraction_protein)*\
+                               (gamma_prot.sigma_gamma*self.fraction_protein)+\
+                               (gamma_nuc.sigma_gamma*self.fraction_nucleic)*\
+                               (gamma_nuc.sigma_gamma*self.fraction_nucleic)
+        self.gamma_tot_sigma = flex.sqrt(  self.gamma_tot_sigma )
 
 
 
@@ -433,60 +434,60 @@ class ml_iso_absolute_scaling(object):
         1.0/math.sqrt(  scaling.get_d_star_sq_low_limit() ),
         1.0/math.sqrt( scaling.get_d_star_sq_high_limit() )
         )
-      work_array = work_array.select(work_array.data()>0)
+      if work_array.data().size() > 0:
+        work_array = work_array.select(work_array.data()>0)
 
-      self.d_star_sq = flex.double(work_array.d_spacings().data()*
-                                   work_array.d_spacings().data())
-      self.d_star_sq = 1.0/self.d_star_sq
-
-      self.scat_info =  None
-      if asu_contents is None:
-        self.scat_info= scattering_information(
-                                          n_residues=n_residues,
-                                          n_bases = n_bases,
-                                          fraction_protein = prot_frac,
-                                          fraction_nucleic = nuc_frac)
-      else:
-        self.scat_info = scattering_information(
-                                           asu_contents = asu_contents,
-                                           fraction_protein = prot_frac,
-                                           fraction_nucleic = nuc_frac)
-      if (work_array.size() > 0 ):
-        ## Compute the terms
-        self.scat_info.scat_data(self.d_star_sq)
-        self.f_obs = work_array.data()
-        ## Make sure sigma's are used when available
-        if (work_array.sigmas() is not None):
-          self.sigma_f_obs = work_array.sigmas()
+        self.d_star_sq = flex.double(work_array.d_spacings().data()*
+                                     work_array.d_spacings().data())
+        self.d_star_sq = 1.0/self.d_star_sq
+        self.scat_info =  None
+        if asu_contents is None:
+          self.scat_info= scattering_information(
+                                            n_residues=n_residues,
+                                            n_bases = n_bases,
+                                            fraction_protein = prot_frac,
+                                            fraction_nucleic = nuc_frac)
         else:
-          self.sigma_f_obs = flex.double(self.f_obs.size(),0.0)
-        if (flex.min( self.sigma_f_obs ) < 0):
-          self.sigma_f_obs = self.sigma_f_obs*0.0
-        ## multiplicities and d_star_sq
-        self.epsilon = work_array.epsilons().data().as_double()
-        ## centric flags
-        self.centric = flex.bool(work_array.centric_flags().data())
-        ## Wilson parameters come from scattering_information class
-        self.gamma_prot = self.scat_info.gamma_tot
-        self.sigma_prot_sq = self.scat_info.sigma_tot_sq
-        ## Optimisation stuff
-        self.x = flex.double(2,0.0)
-        self.x[0]=0.0
-        self.x[1]=50.0
-        self.f=0
-        term_parameters = scitbx.lbfgs.termination_parameters( max_iterations = 1e6 ) # just for safety
-        self.minimizer = scitbx.lbfgs.run(target_evaluator=self, termination_params=term_parameters)
-        self.p_scale = self.x[0]
-        self.b_wilson = self.x[1]
-        ## this we do not need anymore
-        del self.x
-        del self.f_obs
-        del self.sigma_f_obs
-        del self.epsilon
-        del self.gamma_prot
-        del self.sigma_prot_sq
-        del self.d_star_sq
-        del self.centric
+          self.scat_info = scattering_information(
+                                             asu_contents = asu_contents,
+                                             fraction_protein = prot_frac,
+                                             fraction_nucleic = nuc_frac)
+        if (work_array.size() > 0 ):
+          ## Compute the terms
+          self.scat_info.scat_data(self.d_star_sq)
+          self.f_obs = work_array.data()
+          ## Make sure sigma's are used when available
+          if (work_array.sigmas() is not None):
+            self.sigma_f_obs = work_array.sigmas()
+          else:
+            self.sigma_f_obs = flex.double(self.f_obs.size(),0.0)
+          if (flex.min( self.sigma_f_obs ) < 0):
+            self.sigma_f_obs = self.sigma_f_obs*0.0
+          ## multiplicities and d_star_sq
+          self.epsilon = work_array.epsilons().data().as_double()
+          ## centric flags
+          self.centric = flex.bool(work_array.centric_flags().data())
+          ## Wilson parameters come from scattering_information class
+          self.gamma_prot = self.scat_info.gamma_tot
+          self.sigma_prot_sq = self.scat_info.sigma_tot_sq
+          ## Optimisation stuff
+          self.x = flex.double(2,0.0)
+          self.x[0]=0.0
+          self.x[1]=50.0
+          self.f=0
+          term_parameters = scitbx.lbfgs.termination_parameters( max_iterations = 1e6 ) # just for safety
+          self.minimizer = scitbx.lbfgs.run(target_evaluator=self, termination_params=term_parameters)
+          self.p_scale = self.x[0]
+          self.b_wilson = self.x[1]
+          ## this we do not need anymore
+          del self.x
+          del self.f_obs
+          del self.sigma_f_obs
+          del self.epsilon
+          del self.gamma_prot
+          del self.sigma_prot_sq
+          del self.d_star_sq
+          del self.centric
 
   def compute_functional_and_gradients(self):
 
@@ -519,10 +520,10 @@ class ml_iso_absolute_scaling(object):
     if verbose>0:
       print >> out, "ML estimate of overall B value of %s:" \
             % str(self.info)
-      print >> out, "%5.2f" %(self.b_wilson), "A**(-2)"
+      print >> out, "%s"%format_value("%5.2f", self.b_wilson), "A**(-2)"
       print >> out, "Estimated -log of scale factor of %s:" \
             % str(self.info)
-      print >> out, "%5.2f" %(self.p_scale)
+      print >> out, "%s"%format_value("%5.2f", self.p_scale)
 
 
 
@@ -684,6 +685,11 @@ class ml_aniso_absolute_scaling(object):
            verbose=1):
     if out is None:
       out = sys.stdout
+    try: b_cart = self.b_cart
+    except AttributeError, e:
+      print >> out, "*** ERROR ***"
+      print >> out, str(e)
+      return
 
     if verbose>0:
       print >> out,"ML estimate of overall B_cart value of %s:" \
