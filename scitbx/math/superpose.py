@@ -72,3 +72,6 @@ class least_squares_fit(object):
              + self.t.elems
     else:
       return self.r.elems * self.other_sites + self.t.elems
+
+  def rt(self):
+    return matrix.rt(tuple_r_t=(self.r, self.t))

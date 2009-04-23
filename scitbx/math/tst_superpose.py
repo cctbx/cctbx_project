@@ -119,6 +119,9 @@ def exercise(method):
       if method == "kearsley": # Kabsch fails in special cases
         assert approx_equal(s.r.determinant(), 1)
       assert approx_equal(reference, s.other_sites_best_fit())
+      assert approx_equal(s.rt().r, s.r)
+      assert approx_equal(s.rt().t, s.t)
+      assert approx_equal(reference, s.rt() * s.other_sites)
 
 if (__name__ == "__main__"):
   exercise_rotation()
