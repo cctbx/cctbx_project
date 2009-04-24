@@ -2877,10 +2877,8 @@ class fft_map(maptbx.crystal_gridding):
 
   def apply_scaling(self,scale=1.0):
     if (not self.anomalous_flag()):
-      scale = scale/self._real_map[0]
       self._real_map *= scale
     else:
-      scale = scale/math.sqrt(complex_math.norm(self._complex_map[0]))
       self._complex_map *= scale
     return self
 

@@ -238,7 +238,7 @@ def exercise_5(grid_step,
                                  cos_sin_table                = False,
                                  exp_table_one_over_step_size = False).f_calc()
   fft_map = f_calc.fft_map(grid_step = grid_step, symmetry_flags = None)
-  fft_map = fft_map.apply_scaling(scale=100.0)
+  fft_map = fft_map.apply_scaling(scale=100.0/fft_map.real_map_unpadded()[0])
   assert approx_equal(fft_map.real_map_unpadded()[0],100.0)
 
 def run():
