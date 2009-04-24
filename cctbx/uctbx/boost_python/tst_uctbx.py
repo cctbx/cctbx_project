@@ -1,3 +1,4 @@
+from __future__ import division
 from math import pi, cos, asin, sqrt
 import pickle
 from cctbx.array_family import flex
@@ -132,6 +133,11 @@ def exercise_frac_orth():
   om = matrix.sqr(u.orthogonalization_matrix())
   assert ",".join(["%.3g" % e for e in om.elems]) \
       == "13,-1.48,-6.81,0,16.9,1.73,0,0,17.7"
+  gm = matrix.sqr(u.grid_index_as_site_cart_matrix(gridding=(11,13,17)))
+  pg = matrix.col((5,-7,23))
+  pf = matrix.col((5/11,-7/13,23/17))
+  assert approx_equal(u.orthogonalize(pf), om*pf)
+  assert approx_equal(gm*pg, om*pf)
   f = flex.vec3_double(flex.random_double(size=12)*2-1)
   c = u.orthogonalize(sites_frac=f)
   assert approx_equal(u.fractionalize(sites_cart=c), f)

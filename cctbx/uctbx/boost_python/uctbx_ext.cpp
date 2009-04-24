@@ -96,6 +96,8 @@ namespace {
             arg_("unimodular_generator_range")=1)))
         .def("fractionalization_matrix", &w_t::fractionalization_matrix, ccr())
         .def("orthogonalization_matrix", &w_t::orthogonalization_matrix, ccr())
+        .def("grid_index_as_site_cart_matrix",
+          &w_t::grid_index_as_site_cart_matrix<int>, (arg_("gridding")))
         .def("fractionalize",
           (scitbx::vec3<double>(w_t::*)(scitbx::vec3<double> const&) const)
           &w_t::fractionalize, (

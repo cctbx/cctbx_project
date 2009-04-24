@@ -2,6 +2,7 @@
 #define CCTBX_UCTBX_H
 
 #include <cmath>
+#include <boost/numeric/conversion/cast.hpp>
 #include <scitbx/constants.h>
 #include <scitbx/sym_mat3.h>
 #include <scitbx/array_family/tiny_types.h>
@@ -196,6 +197,22 @@ namespace cctbx {
       //! Matrix for the conversion of fractional to cartesian coordinates.
       /*! x(cartesian) = matrix * x(fractional). */
       uc_mat3 const& orthogonalization_matrix() const { return orth_; }
+
+      //! Matrix for the conversion of grid indices to cartesian coordinates.
+      /*! x(cartesian) = matrix * grid_index. */
+      template <class IntType>
+      uc_mat3
+      grid_index_as_site_cart_matrix(
+        scitbx::vec3<IntType> const& gridding) const
+      {
+        uc_mat3 result = orth_;
+        for(unsigned i=0;i<3;i++) {
+          CCTBX_ASSERT(gridding[i] > 0);
+          double f = 1. / boost::numeric_cast<double>(gridding[i]);
+          for(unsigned j=0;j<9;j+=3) result[i+j] *= f;
+        }
+        return result;
+      }
 
       //! Conversion of cartesian coordinates to fractional coordinates.
       template <class FloatType>
