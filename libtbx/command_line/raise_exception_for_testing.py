@@ -6,6 +6,8 @@ def run(args):
   assert args in [[], ["silent"]]
   if (len(args) == 0):
     libtbx.env.full_testing = True
+  else:
+    libtbx.env.full_testing = False
   try:
     raise RuntimeError("Just for testing.")
   except RuntimeError:
