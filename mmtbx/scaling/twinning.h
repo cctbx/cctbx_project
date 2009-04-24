@@ -1175,23 +1175,34 @@ namespace twinning {
       FloatType tmp_a,tmp_b,tmp_c,tot=0;
 
       if (it2>=0){
-        tmp_a = -(it2-ito2)*(it2-ito2)/(sito2*sito2)
-                +(sito1*sito1)/(1.0*1.0)
-                -(2.0*(it2+ito1) )/(1.0);
-        tmp_a = std::exp(0.5*tmp_a);
+        FloatType tmp1 = sito2*sito2;
+        if(tmp1 != 0) {
+          tmp_a = -(it2-ito2)*(it2-ito2)/tmp1
+                  +(sito1*sito1)/(1.0*1.0)
+                  -(2.0*(it2+ito1) )/(1.0);
+          if(tmp_a > 300.0) tmp_a=300.0;
+          tmp_a = std::exp(0.5*tmp_a);
 
-        tmp_b =  it2*1.0*(t-1.0)
-                -sito1*sito1*t
-                +ito1*1.0*t;
-        tmp_b = tmp_b / ( std::sqrt(2.0)*sito1*1.0*t  );
-        tmp_b = qerf_.erf( tmp_b );
+          tmp_b =  it2*1.0*(t-1.0)
+                  -sito1*sito1*t
+                  +ito1*1.0*t;
+          FloatType tmp2 = std::sqrt(2.0)*sito1*1.0*t;
+          if(tmp1 != 0) {
+            tmp_b = tmp_b / tmp2;
+            tmp_b = qerf_.erf( tmp_b );
+            if(t != 1.) {
+              tmp_c = -ito1 + sito1*sito1/1.0 +it2*t/(1-t) ;
+              if(sito1 != 0) {
+                tmp_c = tmp_c/( std::sqrt(2.0) * sito1 );
+                tmp_c = qerf_.erf( tmp_c );
 
-        tmp_c = -ito1 + sito1*sito1/1.0 +it2*t/(1-t) ;
-        tmp_c = tmp_c/( std::sqrt(2.0) * sito1 );
-        tmp_c = qerf_.erf( tmp_c );
-
-        tot = tmp_a*(tmp_b+tmp_c);
-        tot/=(2.0*std::sqrt(2.0*scitbx::constants::pi)*sito2*1.0*1.0*(2.0*t-1.0));
+                tot = tmp_a*(tmp_b+tmp_c);
+                FloatType tmp3 = (2.0*std::sqrt(2.0*scitbx::constants::pi)*sito2*1.0*1.0*(2.0*t-1.0));
+                if(tmp3 != 0) tot/=tmp3;
+              }
+            }
+          }
+        }
       }
       return(tot);
     }
@@ -1230,13 +1241,15 @@ namespace twinning {
       FloatType result=0, tmp_it2, p, s2=std::sqrt(2.0);
 
       for (int ii=0 ; ii<4; ii++){
-        tmp_it2 = x_[ii]*sito2*s2+ito2;
-        p=0.0;
-        if (tmp_it2>=0){
-          p = part_1(ito1,sito1,ito2,sito2,tmp_it2,t);
+        if(ii<x_.size()) {
+          tmp_it2 = x_[ii]*sito2*s2+ito2;
+          p=0.0;
+          if (tmp_it2>=0){
+            p = part_1(ito1,sito1,ito2,sito2,tmp_it2,t);
+          }
+          if(ii<wexs_.size()) p*=wexs_[ii];
+          result+=p;
         }
-        p*=wexs_[ii];
-        result+=p;
       }
       return ( result*sito2*s2 );
     }
@@ -1285,22 +1298,24 @@ namespace twinning {
        FloatType result=0, tmp_result, ito1,sito1,ito2,sito2;
        long tmp_index;
        for (long ii=0;ii<z_.size();ii++){
-         tmp_index = twin_mate_index_[ii];
-         if (tmp_index>=0){ // this means twin mate is available
-           ito1 = z_[ii];
-           sito1 = sig_z_[ii];
-           ito2 = z_[tmp_index];
-           sito2 = sig_z_[tmp_index];
-           tmp_result = num_int_hermite(ito1,sito1,ito2,sito2,t);
-           if (tmp_result > 0){
-             result += std::log( tmp_result );
+         if(ii<twin_mate_index_.size()&&ii<sig_z_.size()) {
+           tmp_index = twin_mate_index_[ii];
+           if (tmp_index>=0){ // this means twin mate is available
+             ito1 = z_[ii];
+             sito1 = sig_z_[ii];
+             if(tmp_index<z_.size()&&tmp_index<sig_z_.size()) {
+               ito2 = z_[tmp_index];
+               sito2 = sig_z_[tmp_index];
+               tmp_result = num_int_hermite(ito1,sito1,ito2,sito2,t);
+               if (tmp_result > 0){
+                 result += std::log( tmp_result );
+               }
+               else{
+                 result += std::log( 1e-36 );
+               }
+             }
            }
-           else{
-             result += std::log( 1e-36 );
-           }
-
          }
-
        }
        return(result);
     }
