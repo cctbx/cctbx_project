@@ -233,6 +233,31 @@ def format_exception():
       value += "line %d" % line
   return ("%s: %s" % (type_, value)).rstrip()
 
+def show_exception_info_if_full_testing(prefix="EXCEPTION_INFO: "):
+  import libtbx.load_env
+  if (    not libtbx.env.full_testing
+      and not disable_tracebacklimit):
+    return
+  from libtbx import introspection
+  from cStringIO import StringIO
+  sio = StringIO()
+  introspection.show_stack(out=sio)
+  traceback.print_exc(file=sio)
+  msg = "\n".join([prefix+line for line in sio.getvalue().splitlines()]) + "\n"
+  del sio
+  done = []
+  for out in [sys.stdout, sys.stderr, sys.__stdout__, sys.__stderr__]:
+    def is_done():
+      for o in done:
+        if (o is out): return True
+      return False
+    if (is_done()): continue
+    out.write(msg)
+    flush = getattr(out, "flush", None)
+    if (flush is not None): flush()
+    done.append(out)
+  return msg
+
 def date_and_time():
   seconds_since_epoch = time.time()
   localtime = time.localtime(seconds_since_epoch)
@@ -826,6 +851,16 @@ def exercise():
         for k in xrange(nk):
           i1d = (i*nj+j)*nk+k
           assert n_dim_index_from_one_dim(i1d=i1d, sizes=sizes) == [i,j,k]
+  #
+  from libtbx import easy_run
+  b = easy_run.fully_buffered(
+    command="libtbx.raise_exception_for_testing")
+  for lines in [b.stdout_lines, b.stderr_lines]:
+    assert lines[0].startswith("EXCEPTION_INFO: show_stack(0): ")
+    assert lines[-1] == "EXCEPTION_INFO: RuntimeError: Just for testing."
+  b = easy_run.fully_buffered(
+    command="libtbx.raise_exception_for_testing silent")
+  b.raise_if_errors_or_output()
   #
   print "OK"
 
