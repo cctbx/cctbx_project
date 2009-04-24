@@ -481,12 +481,14 @@ def run(args,
         pdb_inp_tls       = pdb_inp_tls,
         all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
         xray_structure    = xsfppf.xray_structure_all)
-      xray_structures = [utils.extract_tls_and_u_total_from_pdb(
-        f_obs          = f_obs,
-        r_free_flags   = r_free_flags,
-        xray_structure = xray_structures[0], # XXX no TLS + multiple models
-        tls_selections = pdb_tls.tls_selections,
-        tls_groups     = pdb_inp_tls.tls_params)]
+      if(len(pdb_tls.tls_selections)==len(pdb_inp_tls.tls_params) and
+         len(pdb_inp_tls.tls_params) > 0):
+        xray_structures = [utils.extract_tls_and_u_total_from_pdb(
+          f_obs          = f_obs,
+          r_free_flags   = r_free_flags,
+          xray_structure = xray_structures[0], # XXX no TLS + multiple models
+          tls_selections = pdb_tls.tls_selections,
+          tls_groups     = pdb_inp_tls.tls_params)]
   #
   bss_params = bss.master_params.extract()
   bss_params.k_sol_max = 0.8
@@ -559,7 +561,7 @@ def run(args,
     if(tmp_sel.size() != tmp_sel.count(True) and tmp_sel.count(True) > 0):
       f_obs_cut = f_obs.select(tmp_sel)
       r_free_flags_cut = r_free_flags.select(tmp_sel)
-  if(pub_low is not None and abs(pub_high-f_obs.d_max_min()[0]) > 0.03):
+  if(pub_low is not None and abs(pub_low-f_obs.d_max_min()[0]) > 0.03):
     tmp_sel = f_obs.d_spacings().data() < pub_low
     if(tmp_sel.size() != tmp_sel.count(True) and tmp_sel.count(True) > 0):
       f_obs_cut = f_obs.select(tmp_sel)

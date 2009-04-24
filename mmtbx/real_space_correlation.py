@@ -146,8 +146,7 @@ class model_to_map(object):
       assert len(xray_structures) == 1
       assert not use_kick_map
       f_calc = complete_set.structure_factors_from_scatterers(
-        xray_structure = xray_structures[0],
-        grid_resolution_factor = min(0.5,resolution_factor)).f_calc()
+        xray_structure = xray_structures[0]).f_calc()
       if(other_fft_map is not None):
         self.fft_map = miller.fft_map(
           crystal_gridding     = other_fft_map,
@@ -568,7 +567,6 @@ class map_cc_funct(object):
       self.xray_structure = xray_structure[0]
       for xrs in xray_structure[1:]:
         self.xray_structure = self.xray_structure.concatenate(other = xrs)
-      print self.xray_structure.scatterers().size()
     else: self.xray_structure = xray_structure[0]
     self.selection = selection
     self.atom_detail = atom_detail
