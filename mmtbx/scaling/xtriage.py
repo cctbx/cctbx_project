@@ -5,7 +5,8 @@ from cctbx import sgtbx
 import cctbx.sgtbx.lattice_symmetry
 import cctbx.sgtbx.cosets
 from cctbx.array_family import flex
-from libtbx.utils import Sorry, date_and_time, multi_out
+from libtbx.utils import \
+  Sorry, show_exception_info_if_full_testing, date_and_time, multi_out
 import iotbx.phil
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
@@ -411,6 +412,7 @@ class xtriage_analyses(object):
     except AttributeError, e:
       print >> self.text_out, "*** ERROR ***"
       print >> self.text_out, str(e)
+      show_exception_info_if_full_testing()
 
     print >> self.text_out
     print >> self.text_out,"##----------------------------------------------------##"

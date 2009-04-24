@@ -6,7 +6,8 @@ from cctbx import adptbx
 import cctbx.sgtbx.lattice_symmetry
 import cctbx.sgtbx.cosets
 from cctbx.array_family import flex
-from libtbx.utils import Sorry, date_and_time, multi_out
+from libtbx.utils import \
+  Sorry, show_exception_info_if_full_testing, date_and_time, multi_out
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
@@ -121,6 +122,7 @@ class basic_analyses(object):
     except AttributeError, e:
       print >> out, "*** ERROR ***"
       print >> out, str(e)
+      show_exception_info_if_full_testing()
       return
 
     self.aniso_p_scale = aniso_scale_and_b.p_scale
