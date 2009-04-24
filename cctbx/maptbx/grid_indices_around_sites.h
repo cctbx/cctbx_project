@@ -3,7 +3,6 @@
 
 #include <cctbx/uctbx.h>
 #include <scitbx/math/modulo.h>
-#include <boost/numeric/conversion/cast.hpp>
 #include <boost/scoped_array.hpp>
 
 namespace cctbx { namespace maptbx {
