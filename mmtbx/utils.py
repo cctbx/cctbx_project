@@ -6,7 +6,9 @@ from cctbx import xray
 from cctbx import eltbx
 import cctbx.xray.structure_factors
 from cctbx.array_family import flex
-from libtbx.utils import Sorry, date_and_time, host_and_user, multi_out
+from libtbx.utils import \
+  Sorry, show_exception_info_if_full_testing, \
+  date_and_time, host_and_user, multi_out
 import iotbx.phil
 import libtbx.phil.command_line
 from iotbx import reflection_file_reader
@@ -1356,6 +1358,7 @@ def fmodel_simple(f_obs,
   except Exception, e:
     print "XTRIAGE error: "
     print str(e)
+    show_exception_info_if_full_testing()
   twin_laws.append(None)
   if(len(xray_structures) == 1):
     fmodels = []

@@ -11,7 +11,7 @@ from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
 from scitbx.math import matrix
 from scitbx.math import eigensystem
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, show_exception_info_if_full_testing
 import scitbx.lbfgs
 import math
 import sys
@@ -355,6 +355,7 @@ def anisotropic_correction(cache_0,
   work_array = None
   try:
     work_array = cache_0.input.select( cache_0.input.data() > 0 )
+  except KeyboardInterrupt: raise
   except: pass
   if work_array is None:
     work_array = cache_0.select( cache_0.data() > 0 )
@@ -689,6 +690,7 @@ class ml_aniso_absolute_scaling(object):
     except AttributeError, e:
       print >> out, "*** ERROR ***"
       print >> out, str(e)
+      show_exception_info_if_full_testing()
       return
 
     if verbose>0:
