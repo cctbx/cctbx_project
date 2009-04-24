@@ -243,6 +243,7 @@ libtbx/command_line/latex.sh -text
 libtbx/command_line/list_files.py -text
 libtbx/command_line/nequal.py -text
 libtbx/command_line/pdflatex.sh -text
+libtbx/command_line/raise_exception_for_testing.py svneol=native#text/x-python
 libtbx/command_line/sge_qstat_counts.py svneol=native#text/x-python
 libtbx/command_line/sh.sh -text
 libtbx/command_line/show_environ_usage.py svneol=native#text/x-python
