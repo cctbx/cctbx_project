@@ -7,10 +7,10 @@ from mmtbx_dynamics_ext import *
 class kinetic_energy_and_temperature(object):
 
   def __init__(O, velocities, masses):
+    from mmtbx.dynamics.constants import boltzmann_constant_akma
     O.kinetic_energy = kinetic_energy(velocities=velocities, masses=masses)
-    k_boltz = 1.380662e-03 # XXX incorrect
     dof = 3 * velocities.size()
     if (dof == 0):
       O.temperature = 0
     else:
-      O.temperature = 2 * O.kinetic_energy / (dof * k_boltz)
+      O.temperature = 2 * O.kinetic_energy / (dof * boltzmann_constant_akma)
