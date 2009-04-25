@@ -28,6 +28,22 @@ namespace cctbx { namespace sgtbx { namespace asu {
       faces->get_nth_plane(i, face);
     }
 
+    //! Returns 1D tolerance based on 3D
+    double get_tolerance(const scitbx::af::double3 &tol3d) const
+    {
+      if( is_optimized() )
+        throw cctbx::error("Optimized asu may only be used for is_inside/where_is operations on the grid");
+      return faces->get_tolerance(tol3d);
+    }
+
+    void optimize_for_grid(const scitbx::af::int3 &grid_size)
+    {
+      if( is_optimized() )
+        throw cctbx::error("Asymmetric unit can only be optimized once");
+      b_is_optimized = true;
+      faces->optimize_for_grid(grid_size);
+    }
+
     void show_summary(std::ostream &os) const;
 
     std::string as_string() const;
@@ -72,13 +88,21 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return faces->is_inside(num,den);
     }
 
-    //! Tests where num/den is: fully inside, fully outside or on the face
+    //! Tests where num/grid_size is: fully inside, fully outside or on the face
     /*! Returns 1 : inside, 0 : outside, -1 : on the face
+     * Must be used only with asymmetric unit optimized_for_grid grid_size.
      */
+    short where_is(const scitbx::int3 &num) const
+    {
+      return faces->where_is(num);
+    }
+
+    // this should go away?
     short where_is(const scitbx::int3 &num, const scitbx::int3 &den) const
     {
-      return faces->where_is(num,den);
+      return faces->where_is(num, den);
     }
+
 
     //! Tests if point belongs to the asymmetric unit, disregarding plane subexpressions
     bool is_inside_volume_only(const rvector3_t &point) const
@@ -94,6 +118,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return true;
     }
 
+    bool is_inside_volume_only(const scitbx::af::double3 &point, double tol) const
+    {
+      return faces->is_inside_volume_only(point, tol);
+    }
+
     bool is_inside(const rvector3_t &point, bool vol_only) const
     {
       return vol_only ? is_inside_volume_only(point) : is_inside(point);
@@ -105,6 +134,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
     //! Changes space group basis of the asu
     void change_basis(const change_of_basis_op &op)
     {
+      if( is_optimized() )
+        throw cctbx::error("Optimized asu may only be used for is_inside/where_is operations on the grid");
       std::string new_hall;
       if( !hall_symbol.empty() )
         new_hall = space_group(hall_symbol).change_basis(op).type().hall_symbol();
@@ -154,13 +185,17 @@ namespace cctbx { namespace sgtbx { namespace asu {
       const cctbx::uctbx::unit_cell &cell,
       double epsilon=1.0E-6) const;
 
-    direct_space_asu(const direct_space_asu &a) : hall_symbol(a.hall_symbol), faces(a.faces->new_copy()) {}
-    direct_space_asu() : hall_symbol(), faces(NULL) {}
+    bool is_optimized() const { return this->b_is_optimized; }
+
+    direct_space_asu(const direct_space_asu &a) : hall_symbol(a.hall_symbol),
+      faces(a.faces->new_copy()), b_is_optimized(false) {}
+    direct_space_asu() : hall_symbol(), faces(NULL), b_is_optimized(false) {}
 
     //! Creates asymmetric unit from space group type
     explicit direct_space_asu(const space_group_type &group_type)
       : hall_symbol(group_type.hall_symbol()),
-        faces(asu_table[group_type.number()-1]()) // build reference spacegroup asu
+        faces(asu_table[group_type.number()-1]()), // build reference spacegroup asu
+        b_is_optimized(false)
     {
       change_of_basis_op  op(  group_type.cb_op().inverse() );
       CCTBX_ASSERT( faces.get() != NULL );
@@ -169,7 +204,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
     //! Creates asymmetric unit from space group symbol
-    explicit direct_space_asu(const std::string &group_symbol) :  hall_symbol(), faces(NULL)
+    explicit direct_space_asu(const std::string &group_symbol) :  hall_symbol(), faces(NULL),
+      b_is_optimized(false)
     {
       // new(this) direct_space_asu( space_group_type(spgr) );  this fails
       *this =  direct_space_asu( space_group_type(group_symbol) );
@@ -179,6 +215,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
     {
       faces = facet_collection::pointer(a.faces->new_copy());
       hall_symbol = a.hall_symbol;
+      b_is_optimized = a.b_is_optimized;
       return *this;
     }
 
@@ -186,6 +223,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
     // one template expression with all the faces
     facet_collection::pointer faces;
+    bool b_is_optimized;
 
   }; // class direct_space_asu
 

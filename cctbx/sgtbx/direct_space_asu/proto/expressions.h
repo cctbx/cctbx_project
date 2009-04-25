@@ -39,9 +39,25 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return lhs.is_inside(num,den,rhs);
     }
 
+    bool is_inside(const scitbx::af::int3 &num) const
+    {
+      return lhs.is_inside(num,rhs);
+    }
+
     short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
     {
       return lhs.where_is(num,den,rhs);
+    }
+
+    short where_is(const scitbx::af::int3 &num) const
+    {
+      return lhs.where_is(num,rhs);
+    }
+
+
+    bool is_inside_volume_only(const scitbx::af::double3 &p, double tol) const
+    {
+      return lhs.is_inside_volume_only(p,tol);
     }
 
 
@@ -115,6 +131,12 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return lhs.is_inside(num,den) && rhs.is_inside(num,den);
     }
 
+    bool is_inside(const scitbx::af::int3 &num) const
+    {
+      return lhs.is_inside(num) && rhs.is_inside(num);
+    }
+
+
     short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
     {
       const short l = lhs.where_is(num,den),
@@ -124,6 +146,23 @@ namespace cctbx { namespace sgtbx { namespace asu {
       if( r==0 || l==0 ) // fully outside
         return 0;
       return -1; // on the face
+    }
+
+    short where_is(const scitbx::af::int3 &num) const
+    {
+      const short l = lhs.where_is(num),
+        r = rhs.where_is(num);
+      if( r==1 && l==1 ) // fully inside
+        return 1;
+      if( r==0 || l==0 ) // fully outside
+        return 0;
+      return -1; // on the face
+    }
+
+
+    bool is_inside_volume_only(const scitbx::af::double3 &p, double tol) const
+    {
+      return lhs.is_inside_volume_only(p,tol) && rhs.is_inside_volume_only(p,tol);
     }
 
 
@@ -172,6 +211,28 @@ namespace cctbx { namespace sgtbx { namespace asu {
     return  1 + get_nth_plane(expr.lhs, i-1, plane);
   }
 
+  inline double get_tolerance(const cut &c, const scitbx::af::double3 &tol)
+  {
+    return c.get_tolerance(tol);
+  }
+
+  template<typename Expr>
+    inline double get_tolerance(const Expr &expr, const scitbx::af::double3 &tol)
+  {
+    return std::max(get_tolerance(expr.lhs, tol), get_tolerance(expr.rhs, tol));
+  }
+
+  void optimize_for_grid(cut &c, const scitbx::af::int3 &grid_size)
+  {
+    c.optimize_for_grid(grid_size);
+  }
+
+  template<typename Expr>
+    void optimize_for_grid(Expr &expr, const scitbx::af::int3 &grid_size)
+  {
+    optimize_for_grid(expr.lhs, grid_size);
+    optimize_for_grid(expr.rhs, grid_size);
+  }
 
   template< typename T >
     struct strip
@@ -274,6 +335,12 @@ namespace cctbx { namespace sgtbx { namespace asu {
     {
       return lhs.is_inside(num,den) || rhs.is_inside(num,den);
     }
+
+    bool is_inside(const scitbx::af::int3 &num) const
+    {
+      return lhs.is_inside(num) || rhs.is_inside(num);
+    }
+
 
     or_expression(const TL &l, const TR &r) : lhs(l), rhs(r) { }
 

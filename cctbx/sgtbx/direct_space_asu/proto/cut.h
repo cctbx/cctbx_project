@@ -22,18 +22,23 @@ namespace cctbx { namespace sgtbx {
 //! Direct space asymmetric unit classes
 namespace asu {
 
-  typedef sg_vec3::value_type int_type;
+  typedef long int_type;
+  typedef scitbx::af::tiny<int_type,4> int4_t;
+  typedef scitbx::vec3<int_type> int3_t;
+  typedef scitbx::mat3<int_type> mat3_t;
+  // typedef sg_vec3::value_type int_type;
 
   namespace {
     // sanity checks
     BOOST_STATIC_ASSERT( std::numeric_limits< int_type >::is_integer );
     BOOST_STATIC_ASSERT( std::numeric_limits< int_type >::digits >= 31 );
-    BOOST_STATIC_ASSERT( std::numeric_limits< sg_mat3::value_type >::is_integer );
-    BOOST_STATIC_ASSERT( sizeof(sg_mat3::value_type) == sizeof(int_type) );
+    BOOST_STATIC_ASSERT( std::numeric_limits< mat3_t::value_type >::is_integer );
+    BOOST_STATIC_ASSERT( sizeof(mat3_t::value_type) == sizeof(int_type) );
   }
 
   typedef unsigned short size_type;
-  typedef boost::rational<int_type> rational_t;
+  // typedef boost::rational<int_type> rational_t;
+  typedef boost::rational<int> rational_t;
 
   // typedef scitbx::vec3<double> dvector3_t;
   typedef scitbx::vec3< rational_t > rvector3_t;
@@ -77,7 +82,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
   {
   public:
     //! Plane normal
-    sg_vec3 n;
+    int3_t n; // sg_vec3 n;
     //! Plane constant
     int_type c;
     //! Flag indicating if plane points belong to the asymmetric unit
@@ -97,6 +102,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
     //! Applies basis change to the plane
     void change_basis(const change_of_basis_op &cb_op);
 
+    double get_tolerance(const scitbx::af::double3 &tol3) const
+    {
+      return std::fabs(n[0]*tol3[0]) + std::fabs(n[1]*tol3[1]) + std::fabs(n[2]*tol3[2]);
+    }
+
     //! Evaluates plane equation
     rational_t evaluate(const rvector3_t &p) const
     {
@@ -111,6 +121,34 @@ namespace cctbx { namespace sgtbx { namespace asu {
         + static_cast<long>(num[1])*n[1]*static_cast<long>(den[0])*den[2]
         + static_cast<long>(num[2])*n[2]*static_cast<long>(den[0])*den[1]
         + static_cast<long>(c)*den[0]*static_cast<long>(den[1])*den[2];
+    }
+
+    //! Evaluate plane. Use with optimized plane only
+    long evaluate_int(const scitbx::af::int3 &num) const
+    {
+      return
+          static_cast<long>(num[0])*n[0]
+        + static_cast<long>(num[1])*n[1]
+        + static_cast<long>(num[2])*n[2]
+        + static_cast<long>(c);
+    }
+
+    //! Optimize plane for use with grid of size grid_size
+    void optimize_for_grid(const scitbx::af::int3 &grid_size)
+    {
+      BOOST_STATIC_ASSERT( sizeof(int_type) >= sizeof(long) );
+      // this limits grid size to about (max(long)/4)^(1/3)
+      // 812 for 32 bit systems, 1,321,122 for 64bit systems
+      n[0]*= (static_cast<long>(grid_size[1])*grid_size[2]);
+      n[1]*= (static_cast<long>(grid_size[0])*grid_size[2]);
+      n[2]*= (static_cast<long>(grid_size[0])*grid_size[1]);
+      c*= (grid_size[0]*static_cast<long>(grid_size[1])*grid_size[2]);
+      this->normalize(); // this should inrease maximal grid size
+    }
+
+    double evaluate_double(const scitbx::af::double3 &p) const
+    {
+      return n[0]*p[0] + n[1]*p[1] + n[2]*p[2] + c;
     }
 
     template<typename TR> bool is_inside(const rvector3_t &p, const TR &expr) const
@@ -134,6 +172,32 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return expr.is_inside(num,den);
     }
 
+    template<typename TR>
+      bool is_inside(const scitbx::af::int3 &num, const TR &expr) const
+    {
+      long v = evaluate_int(num);
+      if( v>0 )
+        return true;
+      if( v<0 )
+        return false;
+      return expr.is_inside(num);
+    }
+
+
+    /*
+    template<typename TR>
+      bool is_inside(const scitbx::af::double3 &p, double dtol, const TR &expr) const
+    {
+      double v = evaluate_double(p);
+      // double dtol = std::fabs( tol[0]*n[0]+tol[1]*n[1]+tol[2]*n[2] );
+      if( v>dtol )
+        return true;
+      if( v<-dtol )
+        return false;
+      return expr.is_inside(p,dtol);
+    } */
+
+
     //! Tests if point is on the inside part of the space
     bool is_inside(const rvector3_t &p) const
     {
@@ -148,6 +212,16 @@ namespace cctbx { namespace sgtbx { namespace asu {
     bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
     {
       long v = evaluate_int(num,den);
+      if( v>0 )
+        return true;
+      if( v<0 )
+        return false;
+      return inclusive;
+    }
+
+    bool is_inside(const scitbx::af::int3 &num) const
+    {
+      long v = evaluate_int(num);
       if( v>0 )
         return true;
       if( v<0 )
@@ -175,6 +249,33 @@ namespace cctbx { namespace sgtbx { namespace asu {
       if( v<0 )
         return 0;
       return expr.is_inside(num,den) ? -1:0;
+    }
+
+    short where_is(const scitbx::af::int3 &num) const
+    {
+      long v = evaluate_int(num);
+      if( v>0 )
+        return 1;
+      if( v<0 )
+        return 0;
+      return inclusive?-1:0;
+    }
+
+    template<typename TR>
+      short where_is(const scitbx::af::int3 &num, const TR &expr) const
+    {
+      long v = evaluate_int(num);
+      if( v>0 )
+        return 1;
+      if( v<0 )
+        return 0;
+      return expr.is_inside(num) ? -1:0;
+    }
+
+
+    bool is_inside_volume_only(const scitbx::af::double3 &p, double dtol) const
+    {
+      return evaluate_double(p) >= -dtol;
     }
 
 
@@ -227,25 +328,38 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
     //! Constructs a plane from a normal vector and a rational constant
-    cut(const sg_vec3 &n_, rational_t c_, bool inc_=true) : inclusive(inc_)
+    cut(const int3_t &n_, rational_t c_, bool inc_=true) : inclusive(inc_)
     {
       CCTBX_ASSERT( c_.denominator() > 0 );
-      n = n_ * c_.denominator();
+      n = n_ * static_cast<int_type>( c_.denominator() );
       c = c_.numerator();
-      int_type g = boost::gcd(boost::gcd(n[0],n[1]),boost::gcd(n[2],c)); // is that right?
-      CCTBX_ASSERT( g>0 );
-      CCTBX_ASSERT( c%g == 0 && n[0]%g==0 && n[1]%g==0 && n[2]%g==0 );
-      n /= g;
-      c /= g;
+      this->normalize();
     }
 
     //! Constructs a plane from normal coordinates and a rational constant
     cut(int_type x, int_type y, int_type z, rational_t c_, bool inc_ = true)
     {
-      new(this) cut(sg_vec3(x,y,z), c_, inc_);
+      new(this) cut(int3_t(x,y,z), c_, inc_);
+    }
+
+    //! Constructs a plane from a normal vector and a rational constant
+    cut(const scitbx::vec3<int> &n_, rational_t c_, bool inc_=true) : inclusive(inc_)
+    {
+      new(this) cut(int3_t(n_), c_, inc_);
     }
 
     cut() {}
+
+  private:
+
+    void normalize()
+    {
+      const int_type g = boost::gcd(boost::gcd(n[0],n[1]),boost::gcd(n[2],c)); // is that right?
+      CCTBX_ASSERT( g>0 );
+      CCTBX_ASSERT( c%g == 0 && n[0]%g==0 && n[1]%g==0 && n[2]%g==0 );
+      n /= g;
+      c /= g;
+    }
 
   }; // class cut
 

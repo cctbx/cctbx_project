@@ -70,8 +70,8 @@ def compare_fc(obs, other, tolerance = 1.0E-9):
   matching = miller.match_indices(obs.indices(), other.indices())
   data0 = obs.select(matching.pairs().column(0)).data()
   data = other.select(matching.pairs().column(1)).data()
-  assert data0.size() == data.size(), cout.getvalue()
-  assert data.size() > 1, cout.getvalue()
+  assert data0.size() == data.size(), str(data0.size()) + " != " + str(data.size())
+  assert data.size() > 1, str(data.size())
   max_rel_dif = 0.0
   max_dif = 0.0
   max_mx = 0.0
@@ -86,10 +86,9 @@ def compare_fc(obs, other, tolerance = 1.0E-9):
       max_rel_dif = rel_dif
       max_dif = dif
       max_mx = mx
-  if (max_rel_dif > tolerance) & (max_mx > tolerance*1.0E-2) :
-    print >>cout, "max  rel_dif = ", max_rel_dif, "   dif = ",  max_dif, "    mx =", max_mx
-    assert max_rel_dif <= tolerance or max_mx <= tolerance*1.0E-2
-  return max_rel_dif
+  assert ((max_rel_dif <= tolerance) or (max_mx <= tolerance*1.0E-2)), \
+    "max  rel_dif = "+ str(max_rel_dif)+ "   dif = "+str(max_dif)+"    mx ="+str(max_mx)
+  return data.size() # max_rel_dif
 
 
 def get_radii(structure):
@@ -174,6 +173,12 @@ def compare_masks(struc, opts):
       "  shrink radius= ", shrink_radius,  "  Tolerance= ", tolerance, \
       "  Number of reflection= ", fc.data().size()
   struc.show_summary(cout)
+  print >>cout, "Cell volume= ", struc.unit_cell().volume(), \
+    "  Group order= ", struc.space_group().order_z(), " p= ", struc.space_group().order_p()
+  #tmp_str = struc.as_pdb_file()
+  #tmp_file = open("tmp.pdb", "w")
+  #print >>tmp_file, tmp_str
+  #tmp_file.close()
   tb = time.time()
   asu_mask = masks.atom_mask(
       unit_cell = struc.unit_cell(),
@@ -191,18 +196,29 @@ def compare_masks(struc, opts):
   assert len(radii) == len(struc.sites_frac())
   tb = time.time()
   asu_mask.compute( struc.sites_frac(), radii )
+  te = time.time()
+  time_asu += (te-tb)
+  print >>cout, "   n asu atoms= ", asu_mask.n_asu_atoms(), "   has-enclosed= ", asu_mask.debug_has_enclosed_box
+  tb = time.time()
   fm_asu = asu_mask.structure_factors( fc.indices() )
   fm_asu = fc.set().array( data = fm_asu )
   te = time.time()
+  time_asu_sf = te-tb
   time_asu += (te-tb)
   #
   # ========= old mask =============
   #
-  # fc_p1 = struc_p1.structure_factors(d_min = resolution).f_calc()
-  fc_p1 = fc.deep_copy()
-  fc_p1 = fc_p1.expand_to_p1()
   tb = time.time()
   struc_p1 = struc.expand_to_p1()
+  te = time.time()
+  time_p1_exp = (te-tb)
+  time_p1 += (te-tb)
+  # fc_p1 = struc_p1.structure_factors(d_min = resolution).f_calc()
+  fc_p1 = fc.deep_copy()
+  # fc_p1 = fc_p1.customized_copy(anomalous_flag=True)
+  # fc_p1 = fc_p1.expand_to_p1()
+  fc_p1 = fc_p1.customized_copy(crystal_symmetry = struc_p1.crystal_symmetry())
+  tb = time.time()
   blk_p1 = masks.bulk_solvent(
     xray_structure = struc_p1,
     gridding_n_real = grid,
@@ -210,8 +226,13 @@ def compare_masks(struc, opts):
     ignore_hydrogen_atoms = params.ignore_hydrogens,
     solvent_radius = params.solvent_radius,
     shrink_truncation_radius = params.shrink_truncation_radius)
+  te = time.time()
+  time_p1_msk = (te-tb)
+  time_p1 += (te-tb)
+  tb = time.time()
   fm_p1 = blk_p1.structure_factors( miller_set = fc_p1 )
   te = time.time()
+  time_p1_sf = (te-tb)
   time_p1 += (te-tb)
   blk_p1.show_summary(cout)
   ### original mask
@@ -223,8 +244,13 @@ def compare_masks(struc, opts):
     ignore_hydrogen_atoms = params.ignore_hydrogens,
     solvent_radius = params.solvent_radius,
     shrink_truncation_radius = params.shrink_truncation_radius)
+  te = time.time()
+  time_orig_msk = (te-tb)
+  time_orig += (te-tb)
+  tb = time.time()
   fm_o = blk_o.structure_factors( miller_set = fc )
   te = time.time()
+  time_orig_sf = (te-tb)
   time_orig += (te-tb)
   print >>cout, "Number of reflections ::: Fm asu = ", fm_asu.data().size(), \
     "Fm P1 = ", fm_p1.data().size()
@@ -233,7 +259,12 @@ def compare_masks(struc, opts):
   print >>cout, "Times ( ms ) mask_asu= ", asu_mask.debug_mask_asu_time, \
       " atoms_to_asu= ", asu_mask.debug_atoms_to_asu_time, \
       " accessible= ", asu_mask.debug_accessible_time, \
-      " contact= ", asu_mask.debug_contact_time
+      " contact= ", asu_mask.debug_contact_time, \
+      " Fc= ", time_asu_sf*1000.0
+  print >>cout, "Times ( ms ) orig:  mask= ", time_orig_msk*1000.0, "  Fc=", time_orig_sf*1000.0
+  print >>cout, "Times ( ms ) p1 :  expand= ", time_p1_exp*1000.0, "  mask= ", time_p1_msk*1000.0, \
+    "  Fc=", time_p1_sf*1000.0
+  assert fm_asu.data().size() == fm_o.data().size()
   assert approx_equal(
     asu_mask.contact_surface_fraction, blk_p1.contact_surface_fraction)
   assert approx_equal(
@@ -241,7 +272,11 @@ def compare_masks(struc, opts):
   assert is_below_limit(
     value=asu_mask.accessible_surface_fraction,
     limit=asu_mask.contact_surface_fraction)
-  compare_fc(fm_asu, fm_p1, tolerance = tolerance)
+  n_compared = compare_fc(fm_asu, fm_p1, tolerance = tolerance)
+  # the following failed with P3
+  assert n_compared == fm_asu.data().size(), \
+    "N compared refls: "+str(n_compared) + " != " + str(fm_asu.data().size())
+  assert n_compared >0
   if verbose:
     print cout.getvalue()
   cout.truncate(0)
@@ -290,16 +325,24 @@ def random_tests(groups, opts):
         slv_rad = 3.0*random.random()
         shr_rad = 1.33333*slv_rad*random.random()
         res = resolution + random.random()
-      struc = random_structure.xray_structure(
-          space_group_info = group,
-          volume_per_atom = opts.atom_volume,
-          general_positions_only = False, #True,
-          elements = atoms
-          )
-      opts.resolution = res
-      opts.shrink_radius = shr_rad
-      opts.solvent_radius = slv_rad
-      compare_masks( struc, opts)
+      struc = None
+      try:
+        # occationally this fails with groups: P6522, P3112, P4322, P4122, Pma2
+        # and small number of atoms
+        struc = random_structure.xray_structure(
+            space_group_info = group,
+            volume_per_atom = opts.atom_volume,
+            general_positions_only = False, #True,
+            elements = atoms
+            )
+      except:
+        print "Failed to generate random structure:  atom_volume= ", \
+          opts.atom_volume, " group= ", group,  "\n   atoms= ", atoms
+      if not struc is None:
+        opts.resolution = res
+        opts.shrink_radius = shr_rad
+        opts.solvent_radius = slv_rad
+        compare_masks( struc, opts)
 
 def get_resolution(pdb_input, default_resolution):
   strs = pdb_input.extract_remark_iii_records(2)
@@ -318,17 +361,19 @@ def cci_vetted_tests( options) :
   assert not d is None, "Tests on CCI structures requested, but CCI_REFINE_VETTED is not defined"
   assert os.path.isdir( d ), d
   resolution = options.resolution
+  print "Testing files in ", d
   fls = os.listdir( d )
   n = 0
   for f in fls:
-    f = os.path.join(d, f)
-    f = os.path.abspath(f)
-    f = os.path.realpath(f)
-    if os.path.isfile(f):
-      (fn,ext) = os.path.splitext(f)
-      if ext == ".pdb" or ext == ".PDB":
+    ffull = os.path.join(d, f)
+    freal = os.path.abspath(ffull)
+    freal = os.path.realpath(freal)
+    if os.path.isfile(freal):
+      fbase =  os.path.basename(f).lower()
+      if fbase.find("pdb") != -1 :
         n = n + 1
-        pdb_inp = iotbx.pdb.input(source_info = None, file_name = f)
+        print "Processing file: ", f
+        pdb_inp = iotbx.pdb.input(source_info = None, file_name = ffull)
         struc = pdb_inp.xray_structure_simple()
         options.resolution = get_resolution( pdb_inp, resolution)
         compare_masks(struc, options)

@@ -53,32 +53,6 @@ namespace mmtbx { namespace masks {
   }
 
 
-  unsigned short site_symmetry_order(const cctbx::sgtbx::space_group &group, const scitbx::double3 &v, scitbx::double3 &delta)
-  {
-    unsigned short nops = 0;
-    const scitbx::double3 dv = v - scitbx::floor(v);
-    for(size_t i=0; i<group.order_z(); ++i)
-    {
-      const cctbx::sgtbx::rt_mx op = group(i);
-      scitbx::double3 sv0 = op * dv;
-      scitbx::double3 sv1 = sv0 - scitbx::floor(sv0);
-      // scitbx::double3 sv = scitbx::abs(dv - sv1);
-      scitbx::double3 sv( std::fabs(dv[0]-sv1[0]), std::fabs(dv[1]-sv1[1]), std::fabs(dv[2]-sv1[2]) );
-      for(unsigned char j=0; j<3; ++j)
-      {
-        MMTBX_ASSERT( sv[j]<=1.0 );
-        MMTBX_ASSERT( sv[j]>=0.0 );
-        MMTBX_ASSERT( delta[j]>=0.0 );
-        if( sv[j] > 1.0-delta[j] )
-          sv[j] = std::fabs( sv[j]-1.0 );
-      }
-      if( scitbx::le_all(sv , delta) )
-        ++nops;
-    }
-    MMTBX_ASSERT( nops>0U );
-    return nops;
-  }
-
   inline void translate_into_cell(scitbx::int3 &num, const scitbx::int3 &den)
   {
     for(register unsigned char i=0; i<3; ++i)
@@ -130,9 +104,7 @@ namespace mmtbx { namespace masks {
     unsigned short order = group.order_z();
     MMTBX_ASSERT( order>0 );
     const af::ref<data_type, grid_t > data_ref = data.ref();
-    const scitbx::vec3<size_t> n_ = data_ref.accessor();
-    const scitbx::vec3<int> n(n_[0], n_[1], n_[2]);
-    cctbx::sgtbx::asu::rvector3_t mn, mx;
+    const scitbx::int3 n = this->grid_size();
     MMTBX_ASSERT( n[0]>0 && n[1]>0 && n[2] >0 );
     // below is to make sure that direct_space_asu::is_inside integer
     // arithmetics will not overflow
@@ -154,59 +126,37 @@ namespace mmtbx { namespace masks {
       symops.push_back(grsym);
     }
     MMTBX_ASSERT( symops.size() == order );
-    asu.box_corners(mn,mx);
-    mul(mn, n);
-    mul(mx, n);
-    const scitbx::int3 imx = scitbx::ceil(mx), imn = scitbx::floor(mn); // asu boundaries
-    MMTBX_ASSERT( imx[0]>imn[0] && imx[1] > imn[1] && imx[2] > imn[2] );
-    MMTBX_ASSERT( imx[0] <= n[0]+1 && imx[1] <= n[1] + 1 && imx[2] <= n[2] + 1 ); // this should go away
+    scitbx::int3 imn, imx;
+    this->get_asu_boundaries(imn, imx); // [imn, imx)
 
-    scitbx::int3 emn, emx; //  enclosed box boundaries
-    register const bool has_enclosed_box = asu.enclosed_box_corners(emn, emx, n);
-    // std::cout << "\n!!! HAS enclosed box = " << has_enclosed_box << "\n" << std::endl;
+    scitbx::int3 emn, emx; //  enclosed box boundaries [emn, emx]
+    const bool has_enclosed_box = asu.enclosed_box_corners(emn, emx, n);
+    this->debug_has_enclosed_box = has_enclosed_box;
     if( has_enclosed_box )
     {
       MMTBX_ASSERT( scitbx::gt_all( emn, imn ) );
       MMTBX_ASSERT( scitbx::lt_all( emx, imx ) );
     }
 
-    // expand asu by shrink_truncation_radius
-    const scitbx::af::tiny<double,6> rcell = cell.reciprocal_parameters();
-    const scitbx::double3 rp(rcell[0], rcell[1], rcell[2]);
-    scitbx::double3 shrink_box = rp * shrink_truncation_radius;
-    shrink_box *= 1.05;
-    scitbx::mul( shrink_box, n );
-    scitbx::vec3<int> low_shrink, high_shrink;
-    low_shrink = ifloor( -shrink_box );
-    high_shrink = iceil( shrink_box );
-    const scitbx::int3 smn = imn + low_shrink,
-      smx = imx + high_shrink; // expanded asu boundaries
-
-    for(register long i=smn[0]; i<=smx[0]; ++i)
+    cctbx::sgtbx::asu::direct_space_asu opt_asu = this->asu;
+    opt_asu.optimize_for_grid(n);
+    scitbx::int3 smn, smx;
+    this->get_expanded_asu_boundaries(smn,smx); // [smn, smx)
+    data_type *d_ptr = data_ref.begin();
+    for(register long i=smn[0]; i<smx[0]; ++i)
     {
-      register long i_c = i % n[0];
-      if( i_c<0 )
-        i_c += n[0];
-      for(register long j=smn[1]; j<=smx[1]; ++j)
+      for(register long j=smn[1]; j<smx[1]; ++j)
       {
-        register long  j_c = j % n[1];
-        if( j_c<0 )
-          j_c += n[1];
-        for(register long k=smn[2]; k<=smx[2]; ++k)
+        for(register long k=smn[2]; k<smx[2]; ++k, ++d_ptr)
         {
-          register long  k_c = k % n[2];
-          if( k_c<0 )
-            k_c += n[2];
-          MMTBX_ASSERT( i_c<n[0] && j_c<n[1] && k_c<n[2] );
-          MMTBX_ASSERT( i_c>=0 && j_c>=0 && k_c>=0 );
-
           // set points wthin shrink_truncation_radius around asu to
           // an arbitrary unique positive value
-          if( data_ref(i_c,j_c,k_c) == 0 )
-            data_ref(i_c,j_c,k_c) = mark;
-
           const scitbx::int3 pos(i,j,k);
-          if( !(scitbx::ge_all(pos, imn) && scitbx::le_all(pos, imx)) )
+          data_type &dr = *d_ptr; // data_ref(pos);
+          if( dr == 0 )
+            dr = mark;
+
+          if( !(scitbx::ge_all(pos, imn) && scitbx::lt_all(pos, imx)) )
             continue;
           register unsigned short nops = 0;
           if( has_enclosed_box )
@@ -216,12 +166,15 @@ namespace mmtbx { namespace masks {
           }
           if( nops==0 )
           {
-            const short ww = asu.where_is(pos,n);
+            // const short ww = asu.where_is(pos,n);
+            const short ww = opt_asu.where_is(pos);
             if( ww == 1 ) // inside NOT on the face
               nops = order;
             else if( ww==-1 ) // inside on the face
             {
-              nops = site_symmetry_order(symops, scitbx::int3(i_c,j_c,k_c), n);
+              scitbx::int3 pos_in_cell(pos);
+              translate_into_cell(pos_in_cell, n);
+              nops = site_symmetry_order(symops, pos_in_cell, n);
               MMTBX_ASSERT( nops>0 );
               MMTBX_ASSERT( order%nops == 0);
               nops = order / nops;
@@ -229,9 +182,9 @@ namespace mmtbx { namespace masks {
           }
           if( nops!=0 )
           {
-              MMTBX_ASSERT( data_ref(i_c,j_c,k_c)==0 || nops == data_ref(i_c,j_c,k_c)
-                  || data_ref(i_c,j_c,k_c)==mark );
-              data_ref(i_c,j_c,k_c) = nops;
+              MMTBX_ASSERT( dr==0 || nops == dr
+                  || dr==mark );
+              dr = nops;
           }
         }
       }
@@ -258,17 +211,17 @@ namespace mmtbx { namespace masks {
     for(af::const_ref<data_type, grid_t >::const_iterator msk_it=data_cref.begin(); msk_it!=data_cref.end(); ++msk_it)
     {
       if( *msk_it != -mark && *msk_it != mark )
+      {
+        MMTBX_ASSERT( *msk_it >= 0 );
         nn += static_cast<size_t>( *msk_it );
+      }
     }
     MMTBX_ASSERT( nn > 0 );
-    // currently data is not padded, so data.size is correct here
-    if( nn != this->get_mask().size() ) // volume(asu)*group_order != volume(cell)
+    if( nn != this->grid_size_1d() ) // volume(asu)*group_order != volume(cell)
     {
-      std::stringstream str;
-      grid_t gr = this->get_mask().accessor();
-      scitbx::int3 grid(gr[0], gr[1], gr[2]);
+      std::ostringstream str;
       str << "volume(asymmetric unit)*group_order != volume(unit cell).\n"
-          << "Maybe because the mask grid size: " << grid << " is incompatible with\n"
+          << "Maybe because the mask grid size: " << this->grid_size() << " is incompatible with\n"
              "the space group symmetry";
       throw mmtbx::error( str.str() );
     }
@@ -294,6 +247,81 @@ namespace mmtbx { namespace masks {
       boost::rational_cast<double,int>(r[1]), boost::rational_cast<double,int>(r[2]));
   }
 
+  void atom_mask::get_expanded_asu_boundaries(scitbx::double3 &low, scitbx::double3 &high) const
+  {
+    /*
+    const scitbx::int3 n = this->grid_size();
+    const scitbx::double3 dn(n);
+    scitbx::int3 l, h;
+    this->get_expanded_asu_boundaries(l,h);
+    low = scitbx::double3(l);
+    high = scitbx::double3(h);
+    low = low / dn;
+    high = high / dn;
+     */
+    // old method
+    const scitbx::af::tiny<double,6> rcell = cell.reciprocal_parameters();
+    const scitbx::double3 rp(rcell[0], rcell[1], rcell[2]);
+    const signed char n_corners = 2;
+    rvector3_t asu_box_r[n_corners];
+    this->asu.box_corners(asu_box_r[0], asu_box_r[1]);
+    scitbx::double3 asu_box[n_corners] = { conv_(asu_box_r[0]), conv_(asu_box_r[1])};
+    CCTBX_ASSERT( scitbx::ge_all(asu_box[1], asu_box[0]) );
+
+    // expand asu by shrink_truncation_radius
+    scitbx::double3 shrink_box = rp * (shrink_truncation_radius*1.05);
+    asu_box[0] -= shrink_box;
+    asu_box[1] += shrink_box;
+    low = asu_box[0];
+    high = asu_box[1];
+  }
+
+
+  void atom_mask::get_asu_boundaries(scitbx::int3 &low, scitbx::int3 &high) const
+  {
+    low = this->asu_low;
+    high = this->asu_high;
+  }
+
+
+  void atom_mask::get_expanded_asu_boundaries(scitbx::int3 &low, scitbx::int3 &high) const
+  {
+    low = scitbx::int3( this->data.accessor().first() );
+    high = scitbx::int3( this->data.accessor().last() );
+  }
+
+  void atom_mask::determine_boundaries()
+  {
+    const scitbx::int3 n = this->grid_size();
+    MMTBX_ASSERT( n[0]>0 && n[1]>0 && n[2]>0 );
+    cctbx::sgtbx::asu::rvector3_t mn, mx;
+    this->asu.box_corners(mn,mx);
+    scitbx::mul(mn, n);
+    scitbx::mul(mx, n);
+    // inclusive: [imn, imx]
+    this->asu_low = scitbx::floor(mn);
+    this->asu_high = scitbx::ceil(mx); // asu boundaries
+    MMTBX_ASSERT( scitbx::gt_all(this->asu_high, this->asu_low) );
+    this->asu_high += scitbx::int3(1,1,1); // now typical C++: [imn,imx)
+    // this should go away
+    // MMTBX_ASSERT( imx[0] <= n[0]+1 && imx[1] <= n[1] + 1 && imx[2] <= n[2] + 1 );
+
+    // expand asu by shrink_truncation_radius
+    const scitbx::af::tiny<double,6> rcell = cell.reciprocal_parameters();
+    const scitbx::double3 rp(rcell[0], rcell[1], rcell[2]);
+    scitbx::double3 shrink_box = rp * (shrink_truncation_radius*1.05);
+    scitbx::mul( shrink_box, n );
+    // expanded asu boundaries
+    scitbx::int3 emn, emx;
+    emn = this->asu_low + ifloor( -shrink_box );
+    emx = this->asu_high + iceil( shrink_box ) - scitbx::int3(1,1,1);
+    for(short idim=0; idim<3; ++idim)
+      if( emx[idim]<asu_high[idim] )
+        ++emx[idim];
+    MMTBX_ASSERT( scitbx::ge_all(emx, emn) && scitbx::ge_all(emx,this->asu_high)
+      && scitbx::le_all(emn, this->asu_low) );
+    this->data.resize(grid_t(emn,emx));
+  }
 
   void atom_mask::atoms_to_asu(
     const coord_array_t & sites_frac,
@@ -310,20 +338,13 @@ namespace mmtbx { namespace masks {
 
     scitbx::af::shared< cctbx::sgtbx::rt_mx > symops_ = group.all_ops();
     scitbx::af::const_ref< cctbx::sgtbx::rt_mx > symops = symops_.const_ref();
-    MMTBX_ASSERT( symops.size() == group.order_z() );
     const size_t order = symops.size();
+    MMTBX_ASSERT( order == group.order_z() );
 
     const signed char n_corners = 2;
-    rvector3_t asu_box_r[n_corners];
-    this->asu.box_corners(asu_box_r[0], asu_box_r[1]);
-    scitbx::double3 asu_box[n_corners] = { conv_(asu_box_r[0]), conv_(asu_box_r[1])};
-    CCTBX_ASSERT( scitbx::ge_all(asu_box[1], asu_box[0]) );
-
-    // expand asu by shrink_truncation_radius
-    scitbx::double3 shrink_box = rp * (shrink_truncation_radius*1.05);
-    asu_box[0] -= shrink_box;
-    asu_box[1] += shrink_box;
-
+    scitbx::double3 asu_box[n_corners];
+    this->get_expanded_asu_boundaries(asu_box[0], asu_box[1]);
+    const double tol1d = this->asu.get_tolerance(0.0000/scitbx::double3(this->grid_size())); // 1.0e-6;
     for(size_t iat=0; iat<sites_frac.size(); ++iat)
     {
       const scitbx::double3 at = sites_frac[iat];
@@ -332,75 +353,123 @@ namespace mmtbx { namespace masks {
 
       MMTBX_ASSERT( radius >= 0.0 );
       scitbx::double3 box = rp * (radius*1.05);
+      scitbx::vec3<int> ibox = ifloor(box) + 2;
+      for(short idim=0; idim<3; ++idim)
+        if( ibox[idim] < 1 )
+          ibox[idim] = 1;
 
       for(register size_t isym=0; isym<order; ++isym)
       {
         scitbx::double3 sym_at = symops[isym]*at;
         sym_at -= scitbx::floor(sym_at);
-        for(size_t icell=0; icell<cells.size(); ++icell)
+        scitbx::vec3<int> cell;
+        // In previous version there was mapping onto full cell
+        // so only atoms in the adjacent [1,+1] cells needed
+        // to be tested for the intersection with the asu.
+        // Because if the atom in the farther cell [+-n]
+        // is intersecting with the asu then so does the
+        // closer one.
+        // In this version, there is no mapping, so need
+        // to collect all intersecting atoms
+        for(cell[0] = -ibox[0]; cell[0]<=ibox[0]; ++cell[0])
         {
-          const scitbx::double3 sym_at_cell = sym_at + cells[icell];
-          // const cctbx::sgtbx::asu::intersection_kind  intersection = asu.does_intersect(sym_at_cell, box);
-          cctbx::sgtbx::asu::intersection_kind  intersection = cctbx::sgtbx::asu::none;
-          const scitbx::double3 atom_box[n_corners] = { sym_at_cell - box, sym_at_cell + box };
-          CCTBX_ASSERT( scitbx::ge_all(atom_box[1], atom_box[0]) );
-
-          if( scitbx::ge_all(atom_box[1], asu_box[0]) && scitbx::le_all(atom_box[0], asu_box[1]) )
-            intersection =  partially;
-
-          if( intersection != cctbx::sgtbx::asu::none )
+          for(cell[1] = -ibox[1]; cell[1]<=ibox[1]; ++cell[1])
           {
-            this->asu_atoms.push_back(sym_at);
-            this->asu_radii.push_back(at_r);
-            if( intersection == cctbx::sgtbx::asu::fully )
-              goto end_sym_loop; // need to break out of the symmetry loop here
-            break;
-          }
-        }
+            for(cell[2] = -ibox[2]; cell[2]<=ibox[2]; ++cell[2])
+            {
+              const scitbx::double3 sym_at_cell = sym_at + cell;
+              // const cctbx::sgtbx::asu::intersection_kind  intersection = asu.does_intersect(sym_at_cell, box);
+              cctbx::sgtbx::asu::intersection_kind  intersection = cctbx::sgtbx::asu::none;
+              const scitbx::double3 atom_box[n_corners] = { sym_at_cell - box, sym_at_cell + box };
+              CCTBX_ASSERT( scitbx::ge_all(atom_box[1], atom_box[0]) );
+
+              if( scitbx::ge_all(atom_box[1], asu_box[0]) && scitbx::le_all(atom_box[0], asu_box[1]) )
+                intersection =  partially;
+
+              if( intersection != cctbx::sgtbx::asu::none )
+              {
+                this->asu_atoms.push_back(sym_at_cell);
+                this->asu_radii.push_back(at_r);
+                // to test for fully intersecting atom:
+                //   is_inside( every corner of atom box)
+                //   and the atom box needs to be expanded by shrink_truncation_radius
+                //if( intersection == cctbx::sgtbx::asu::fully )
+                  //goto end_sym_loop; // need to break out of the symmetry loop here
+                // due to that there is no mapping onto full cell
+                // all atoms intersecting with the asu are required
+              }
+            } // cell[2] loop
+          } // cel[1] loop
+        } // cell[0]
       }
       end_sym_loop:
-        ;
+       ;
     }
   }
 
 
-  typedef scitbx::af::c_grid_padded<3> padded_grid_t;
-  typedef scitbx::af::versa<double, padded_grid_t > versa_3d_padded_real_array;
-  typedef scitbx::af::versa<std::complex<double>, padded_grid_t > versa_3d_padded_complex_array;
+  namespace {
+    typedef scitbx::af::c_grid_padded<3> padded_grid_t;
+    typedef scitbx::af::versa<double, padded_grid_t > versa_3d_padded_real_array;
+    typedef scitbx::af::versa<std::complex<double>, padded_grid_t > versa_3d_padded_complex_array;
+  }
 
 
   scitbx::af::shared< std::complex<double> > atom_mask::structure_factors(
       const scitbx::af::const_ref< cctbx::miller::index<> > &indices ) const
   {
     const mask_array_t &msk = this->get_mask();
-    const mmtbx::masks::grid_t grid = msk.accessor();
-    scitbx::fftpack::real_to_complex_3d<double> fft(grid);
+    const scitbx::int3 grid_full_cell = this->grid_size();
+    scitbx::fftpack::real_to_complex_3d<double> fft(grid_full_cell);
 
     // m_real : physical dims, n_real - focus dims
     const scitbx::int3 mdim = fft.m_real(), ndim = fft.n_real();
+    MMTBX_ASSERT( ndim == grid_full_cell );
     MMTBX_ASSERT( scitbx::le_all( ndim, mdim ) );
     const padded_grid_t pad( mdim, ndim );
     versa_3d_padded_real_array padded_real(pad, 0.0);
-    MMTBX_ASSERT( padded_real.size() >= msk.size() );
-    // convert non-padded integer mask to padded real array
+    // convert non-padded asu-sized integer mask to padded full-cell sized real array
     scitbx::af::ref<double, padded_grid_t > prref = padded_real.ref();
     scitbx::af::const_ref<data_type, grid_t > mskref = msk.const_ref();
-    for(size_t i=0; i< ndim[0]; ++i)
-      for( size_t j=0; j<ndim[1]; ++j)
-        for( size_t k=0; k<ndim[2]; ++k)
-          prref(i,j,k) = mskref(i,j,k);
+    scitbx::int3 imn, imx;
+    this->get_asu_boundaries(imn, imx); // [imn, imx)
+    // MMTBX_ASSERT( padded_real.size() >= product(mx-imn) );
+    for(long i=imn[0]; i<imx[0]; ++i)
+    {
+      register long i_c = i % ndim[0];
+      if( i_c<0 )
+        i_c += ndim[0];
+      for(long j=imn[1]; j<imx[1]; ++j)
+      {
+        register long j_c = j % ndim[1];
+        if( j_c<0 )
+          j_c += ndim[1];
+        for(long k=imn[2]; k<imx[2]; ++k)
+        {
+          const data_type t = mskref(scitbx::int3(i,j,k));
+          MMTBX_ASSERT( t>=0 && t<mark );
+          if( t>0 )
+          {
+            register long k_c = k % ndim[2];
+            if( k_c<0 )
+              k_c += ndim[2];
+            prref(i_c,j_c,k_c) = t;
+          }
+        }
+      }
+    }
 
     fft.forward(padded_real); // in-place forward FFT
     const padded_grid_t pad_complex( fft.n_complex(), fft.n_complex() );
     versa_3d_padded_complex_array result(padded_real.handle(), pad_complex );
 
-    const double scale = cell.volume() / ( ndim.product() * group.order_z() );
     const cctbx::maptbx::structure_factors::from_map<double>  the_from_map (
       group,
       false, // anomalous flag
       indices,
       result.const_ref(),
       true); // conjugate_flag
+    const double scale = cell.volume() / ( ndim.product() * static_cast<double>(group.order_z()) );
     // result.size() could be approx 1000 * the_from_map.data().size()
     // this does not work :( the_from_map.data() *= scale;
     scitbx::af::ref< std::complex<double> > dref = the_from_map.data().ref();
@@ -434,210 +503,186 @@ namespace mmtbx { namespace masks {
   {
     MMTBX_ASSERT( sites_frac.size() == atom_radii.size() );
     cctbx::uctbx::unit_cell const& unit_cell = this->cell;
-
     // Severe code duplication: cctbx/maptbx/average_densities.h
-    af::ref<data_type, af::c_grid<3> > data_ref = data.ref();
-    int nx = static_cast<int>(data_ref.accessor()[0]);
-    int ny = static_cast<int>(data_ref.accessor()[1]);
-    int nz = static_cast<int>(data_ref.accessor()[2]);
+    af::ref<data_type, grid_t > data_ref = data.ref();
+    scitbx::int3 n_g = this->grid_size();
+    const int nx = n_g[0];
+    const int ny = n_g[1];
+    const int nz = n_g[2];
     MMTBX_ASSERT( nx>0 && ny>0 && nz>0 );
-    f_t mr1= static_cast<f_t>(unit_cell.metrical_matrix()[0]); // a*a
-    f_t mr5= static_cast<f_t>(unit_cell.metrical_matrix()[1]); // b*b
-    f_t mr9= static_cast<f_t>(unit_cell.metrical_matrix()[2]); // c*c
+    const f_t mr1= static_cast<f_t>(unit_cell.metrical_matrix()[0]); // a*a
+    const f_t mr5= static_cast<f_t>(unit_cell.metrical_matrix()[1]); // b*b
+    const f_t mr9= static_cast<f_t>(unit_cell.metrical_matrix()[2]); // c*c
     // a*b*cos(gamma)
-    f_t mr2= static_cast<f_t>(unit_cell.metrical_matrix()[3]);
+    const f_t mr2= static_cast<f_t>(unit_cell.metrical_matrix()[3]);
     // a*c*cos(beta)
-    f_t mr3= static_cast<f_t>(unit_cell.metrical_matrix()[4]);
+    const f_t mr3= static_cast<f_t>(unit_cell.metrical_matrix()[4]);
     // c*b*cos(alpha)
-    f_t mr6= static_cast<f_t>(unit_cell.metrical_matrix()[5]);
-    f_t tmr2 = mr2*2; //2*a*b*cos(gamma);
-    f_t tmr3 = mr3*2; //2*a*c*cos(beta);
-    f_t tmr6 = mr6*2; //2*b*c*cos(alpha);
-    f_t sx = 1/static_cast<f_t>(nx); f_t tsx= sx*2; f_t sxsq=mr1*sx*sx;
-    f_t sy = 1/static_cast<f_t>(ny); f_t tsy= sy*2; f_t sysq=mr5*sy*sy;
-    f_t sz = 1/static_cast<f_t>(nz); f_t tsz= sz*2; f_t szsq=mr9*sz*sz;
-    f_t w1=mr1*sx*tsx; f_t w4=mr5*sy*tsy;
-    f_t w2=mr2*sx*tsy; f_t w5=mr6*sy*tsz;
-    f_t w3=mr3*sx*tsz; f_t w6=mr9*sz*tsz;
-    f_t tsxg1=tsx*mr1; f_t tsyg4=tsy*mr2; f_t tszg3=tsz*mr3;
-    f_t tsxg4=tsx*mr2; f_t tsyg5=tsy*mr5; f_t tszg8=tsz*mr6;
-    f_t tsxg7=tsx*mr3; f_t tsyg8=tsy*mr6; f_t tszg9=tsz*mr9;
+    const f_t mr6= static_cast<f_t>(unit_cell.metrical_matrix()[5]);
+    const f_t tmr2 = mr2*2; //2*a*b*cos(gamma);
+    const f_t tmr3 = mr3*2; //2*a*c*cos(beta);
+    const f_t tmr6 = mr6*2; //2*b*c*cos(alpha);
+    const f_t sx = 1/static_cast<f_t>(nx); const f_t tsx= sx*2; const f_t sxsq=mr1*sx*sx;
+    const f_t sy = 1/static_cast<f_t>(ny); const f_t tsy= sy*2; const f_t sysq=mr5*sy*sy;
+    const f_t sz = 1/static_cast<f_t>(nz); const f_t tsz= sz*2; const f_t szsq=mr9*sz*sz;
+    const f_t w1=mr1*sx*tsx; const f_t w4=mr5*sy*tsy;
+    const f_t w2=mr2*sx*tsy; const f_t w5=mr6*sy*tsz;
+    const f_t w3=mr3*sx*tsz; const f_t w6=mr9*sz*tsz;
+    const f_t tsxg1=tsx*mr1; const f_t tsyg4=tsy*mr2; const f_t tszg3=tsz*mr3;
+    const f_t tsxg4=tsx*mr2; const f_t tsyg5=tsy*mr5; const f_t tszg8=tsz*mr6;
+    const f_t tsxg7=tsx*mr3; const f_t tsyg8=tsy*mr6; const f_t tszg9=tsz*mr9;
     f_t rp[3];
     for(unsigned i=0;i<3;i++) {
       rp[i] = static_cast<f_t>(unit_cell.reciprocal_parameters()[i]);
     }
-    std::vector<int> mys;
-    std::vector<int> mzs;
+    scitbx::int3 asu_min, asu_max;
+    this->get_expanded_asu_boundaries(asu_min, asu_max);
+    const scitbx::vec3<long> sz_asu(data_ref.accessor().size());
+    const long sz_yz = sz_asu[1]*sz_asu[2];
+    const long asu_off = sz_yz* asu_min[0] + sz_asu[2]* asu_min[1] + asu_min[2];
     for(std::size_t i_site=0;i_site<sites_frac.size();i_site++) {
       cctbx::fractional<> const& site = sites_frac[i_site];
-      f_t xfi=static_cast<f_t>(site[0]);
-      f_t yfi=static_cast<f_t>(site[1]);
-      f_t zfi=static_cast<f_t>(site[2]);
+      const f_t xfi=static_cast<f_t>(site[0]);
+      const f_t yfi=static_cast<f_t>(site[1]);
+      const f_t zfi=static_cast<f_t>(site[2]);
       const f_t atmrad = atom_radii[i_site];
       MMTBX_ASSERT( atmrad >= 0.0 );
-      f_t cutoff=static_cast<f_t>(atmrad+solvent_radius);
-      f_t radsq=static_cast<f_t>(atmrad*atmrad);
-      f_t cutoffsq=cutoff*cutoff;
-      f_t coas = cutoff*rp[0];
+      const f_t cutoff=static_cast<f_t>(atmrad+solvent_radius);
+      const f_t radsq=static_cast<f_t>(atmrad*atmrad);
+      const f_t cutoffsq=cutoff*cutoff;
+      const f_t coas = cutoff*rp[0];
       int x1box=ifloor(nx*(xfi-coas));
-      int x2box=iceil(nx*(xfi+coas));
-      f_t cobs = cutoff*rp[1];
+      int x2box=1+iceil(nx*(xfi+coas));
+      const f_t cobs = cutoff*rp[1];
       int y1box=ifloor(ny*(yfi-cobs));
-      int y2box=iceil(ny*(yfi+cobs));
-      f_t cocs = cutoff*rp[2];
+      int y2box=1+iceil(ny*(yfi+cobs));
+      const f_t cocs = cutoff*rp[2];
       int z1box=ifloor(nz*(zfi-cocs));
-      int z2box=iceil(nz*(zfi+cocs));
-      f_t sxbcen=xfi-x1box*sx;
-      f_t sybcen=yfi-y1box*sy;
-      f_t szbcen=zfi-z1box*sz;
-      f_t distsm=mr1*sxbcen*sxbcen+mr5*sybcen*sybcen+mr9*szbcen*szbcen
+      int z2box=1+iceil(nz*(zfi+cocs));
+      x1box = std::max( x1box, static_cast<int>(asu_min[0]));
+      y1box = std::max( y1box, static_cast<int>(asu_min[1]));
+      z1box = std::max( z1box, static_cast<int>(asu_min[2]));
+      x2box = std::min( x2box, static_cast<int>(asu_max[0]));
+      y2box = std::min( y2box, static_cast<int>(asu_max[1]));
+      z2box = std::min( z2box, static_cast<int>(asu_max[2]));
+      const f_t sxbcen=xfi-x1box*sx;
+      const f_t sybcen=yfi-y1box*sy;
+      const f_t szbcen=zfi-z1box*sz;
+      const f_t distsm=mr1*sxbcen*sxbcen+mr5*sybcen*sybcen+mr9*szbcen*szbcen
             +tmr2*sxbcen*sybcen+tmr3*sxbcen*szbcen+tmr6*sybcen*szbcen;
-      f_t w7=tsxg1*sxbcen+tsxg4*sybcen+tsxg7*szbcen;
-      f_t w8=tsyg4*sxbcen+tsyg5*sybcen+tsyg8*szbcen;
-      f_t w9=tszg3*sxbcen+tszg8*sybcen+tszg9*szbcen;
-      mys.clear();
-      mys.reserve(y2box-y1box+1);
-      for (int ky = y1box; ky <= y2box; ky++) {
-        int my = ky % ny;
-        if (my < 0) my += ny;
-        mys.push_back(my);
-      }
-      mzs.clear();
-      mzs.reserve(z2box-z1box+1);
-      for (int kz = z1box; kz <= z2box; kz++) {
-        int mz = kz % nz;
-        if (mz < 0) mz += nz;
-        mzs.push_back(mz);
-      }
-      f_t distsx = distsm;
-      f_t s1xx = sxsq - w7;
-      f_t s1xy = sysq - w8;
-      f_t s1xz = szsq - w9;
-      for (int kx = x1box; kx <= x2box; kx++) {
-        int mx = kx % nx;
-        if (mx < 0) mx += nx;
-        int mxny = mx * ny;
-        f_t s2yz = s1xz;
-        f_t s2_incr = s1xy;
-        f_t s2 = distsx;
-        std::vector<int>::const_iterator mye = mys.end();
-        for (std::vector<int>::const_iterator
-               myi=mys.begin();
-               myi!=mye;
-               myi++) {
-          f_t s3_incr = s2yz;
-          f_t dist = s2;
-          data_type* data_mxnymynz = &data_ref[(mxny + (*myi)) * nz];
-          std::vector<int>::const_iterator mze = mzs.end();
-          for (std::vector<int>::const_iterator
-                 mzi=mzs.begin();
-                 mzi!=mze;
-                 mzi++) {
-            f_t dist_c  = dist;
-            if( explicit_distance ) {
-              // neglect previous stepwise distance calculation
-              // use formula instead
-              const f_t dx = xfi-kx*sx;
-              const f_t dy = yfi-(myi-mys.begin()+y1box)*sy;
-              const f_t dz = zfi-(mzi-mzs.begin()+z1box)*sz;
-              dist_c = mr1*dx*dx+mr5*dy*dy+mr9*dz*dz
-                    +tmr2*dx*dy+tmr3*dx*dz+tmr6*dy*dz;
-              if( debug ) {
-                MMTBX_ASSERT( dist_c>=0.0 );
-                MMTBX_ASSERT( std::fabs(dist-dist_c)<0.001 );
-              }
-            }
-
-            if( dist_c < cutoffsq ) {
-              data_type& dr = data_mxnymynz[*mzi];
+      const f_t w7=tsxg1*sxbcen+tsxg4*sybcen+tsxg7*szbcen;
+      const f_t w8=tsyg4*sxbcen+tsyg5*sybcen+tsyg8*szbcen;
+      const f_t w9=tszg3*sxbcen+tszg8*sybcen+tszg9*szbcen;
+      register f_t distsx = distsm;
+      register f_t s1xx = sxsq - w7;
+      register f_t s1xy = sysq - w8;
+      register f_t s1xz = szsq - w9;
+      const long ind_x_max = sz_yz*x2box - asu_off;
+      const long yba1 = y1box*sz_asu[2], yba2 = y2box*sz_asu[2];
+      for(register long ind_x = x1box*sz_yz - asu_off ; ind_x<ind_x_max; ind_x+=sz_yz)
+      {
+        register f_t s2yz = s1xz;
+        register f_t s2_incr = s1xy;
+        register f_t s2 = distsx;
+        const long ind_y_max = ind_x + yba2;
+        for(register long ind_y=ind_x+yba1; ind_y<ind_y_max; ind_y+=sz_asu[2])
+        {
+          register f_t s3_incr = s2yz;
+          register f_t dist = s2;
+          const long ind_z_max = ind_y+z2box;
+          for(register long ind_z=ind_y+z1box; ind_z<ind_z_max; ++ind_z)
+          {
+            // neglect previous stepwise distance calculation
+            // use formula instead
+            /*
+            const f_t dx = xfi-kx*sx;
+            const f_t dy = yfi-ky*sy;
+            const f_t dz = zfi-kz*sz;
+            const f_t dist_c = mr1*dx*dx+mr5*dy*dy+mr9*dz*dz
+                  +tmr2*dx*dy+tmr3*dx*dz+tmr6*dy*dz;
+                  */
+            const f_t dist_c  = dist;
+            // const f_t dist_c = 0.0;
+            //MMTBX_ASSERT( dist_c>=0.0 );
+            if( dist_c < cutoffsq )
+            {
+              data_type& dr = data_ref[ind_z]; // data_ref(scitbx::int3(kx,ky,kz));
               if (dist_c < radsq)
                 dr =  0;
               else if(dr>0)
               {
                 dr = -dr;
-                MMTBX_ASSERT( dr < 0 );
+                // MMTBX_ASSERT( dr < 0 );
               }
             }
             dist += s3_incr;
             s3_incr += w6;
-          }
+          } // z-box loop
           s2 += s2_incr;
           s2_incr += w4;
           s2yz += w5;
-        }
+        } // y-box loop
         distsx += s1xx;
         s1xx += w1;
         s1xy += w2;
         s1xz += w3;
-      }
-    }
+      } // x-box loop
+    } //atom loop
     return;
   }
 
 
-  struct shrink_neighbors
-  {
-    typedef double f_t;
-    shrink_neighbors() {}
+  typedef af::const_ref< cctbx::sgtbx::rt_mx > symop_array;
 
-    shrink_neighbors(
+  void find_neighbors(
+      std::vector<long> &table,
       cctbx::uctbx::unit_cell const& unit_cell,
       af::c_grid<3>::index_type const& gridding_n_real,
-      f_t const& shrink_truncation_radius)
-    {
-      int low[3];
-      int high[3];
-      for(unsigned i=0;i<3;i++) {
-        double x = shrink_truncation_radius
-                 * unit_cell.reciprocal_parameters()[i]
-                 * gridding_n_real[i];
-        low[i] = ifloor(-x);
-        high[i] = iceil(x);
-      }
-      int n0 = static_cast<int>(gridding_n_real[0]);
-      int n1 = static_cast<int>(gridding_n_real[1]);
-      int n2 = static_cast<int>(gridding_n_real[2]);
-      f_t shrink_truncation_radius_sq = shrink_truncation_radius
-                                      * shrink_truncation_radius;
-      cctbx::fractional<f_t> frac;
-      for(int p0=low[0];p0<=high[0];p0++) {
-        int m0 = scitbx::math::mod_positive(p0, n0);
-        frac[0] = static_cast<f_t>(p0) / n0;
-      for(int p1=low[1];p1<=high[1];p1++) {
-        int m1 = scitbx::math::mod_positive(p1, n1);
-        frac[1] = static_cast<f_t>(p1) / n1;
-      for(int p2=low[2];p2<=high[2];p2++) {
-        frac[2] = static_cast<f_t>(p2) / n2;
-        f_t dist_sq = unit_cell.length_sq(frac);
-        if (dist_sq < shrink_truncation_radius_sq) {
-          int m2 = scitbx::math::mod_positive(p2, n2);
-          table[m0][m1].push_back(m2);
-        }
-      }}}
+      const scitbx::vec3<long> &na,
+      double shrink_truncation_radius)
+  {
+    int low[3];
+    int high[3];
+    for(unsigned i=0;i<3;i++) {
+      double x = shrink_truncation_radius
+               * unit_cell.reciprocal_parameters()[i]
+               * gridding_n_real[i];
+      low[i] = ifloor(-x);
+      high[i] = iceil(x);
     }
+    const int n0 = static_cast<int>(gridding_n_real[0]);
+    const int n1 = static_cast<int>(gridding_n_real[1]);
+    const int n2 = static_cast<int>(gridding_n_real[2]);
+    const f_t shrink_truncation_radius_sq = shrink_truncation_radius
+                                    * shrink_truncation_radius;
+    cctbx::fractional<f_t> frac;
+    for(int p0=low[0];p0<=high[0];p0++)
+    {
+      frac[0] = static_cast<f_t>(p0) / n0;
+      for(int p1=low[1];p1<=high[1];p1++)
+      {
+        frac[1] = static_cast<f_t>(p1) / n1;
+        for(int p2=low[2];p2<=high[2];p2++)
+        {
+          frac[2] = static_cast<f_t>(p2) / n2;
+          f_t dist_sq = unit_cell.length_sq(frac);
+          if (dist_sq < shrink_truncation_radius_sq)
+            table.push_back(p0*(na[1]*na[2]) + p1*na[2]  + p2);
+        } // z
+      } // y
+    } // x
+  }
 
-    typedef std::vector<int> dim2;
-    typedef std::map<int, dim2> dim1;
-    typedef std::map<int, dim1> dim0;
-    dim0 table;
-  };
-
-
-  typedef af::const_ref< cctbx::sgtbx::rt_mx > symop_array;
 
   void atom_mask::compute_contact_surface()
   {
     typedef double f_t;
     cctbx::uctbx::unit_cell const& unit_cell = this->cell;
-    // const symop_array sym_ops = group.all_ops().const_ref();
-    const af::shared< cctbx::sgtbx::rt_mx > sym_ops_ = group.all_ops();
-    const symop_array sym_ops = sym_ops_.const_ref();
-    MMTBX_ASSERT( sym_ops.size() == group.order_z() );
 
     register size_t nsolv = 0;
-    af::ref<data_type, af::c_grid<3> > data_ref = data.ref();
+    af::ref<data_type, asu_grid_t > data_ref = data.ref();
     std::size_t data_size = data_ref.size();
-    if (shrink_truncation_radius == 0) {
+    if(shrink_truncation_radius == 0) {
       for(std::size_t ilxyz=0;ilxyz<data_size;ilxyz++)
       {
         data_type &d = data_ref[ilxyz];
@@ -645,79 +690,47 @@ namespace mmtbx { namespace masks {
           d = 0;
         nsolv += d;
       }
-      // currently data is not padded, so data.size is correct here
-      contact_surface_fraction = accessible_surface_fraction = static_cast<double>(nsolv) / this->get_mask().size();
+      contact_surface_fraction = accessible_surface_fraction = static_cast<double>(nsolv) / this->grid_size_1d();
       return;
     }
-    int nx = static_cast<int>(data_ref.accessor()[0]);
-    int ny = static_cast<int>(data_ref.accessor()[1]);
-    int nz = static_cast<int>(data_ref.accessor()[2]);
-    const scitbx::int3 grid_sz(nx,ny,nz);
-    af::versa<data_type, af::c_grid<3> > datacopy = data.deep_copy();
-    af::const_ref<data_type, af::c_grid<3> >
-      datacopy_ref = datacopy.const_ref();
-    shrink_neighbors neighbors(
-      unit_cell,
-      data_ref.accessor(),
-      shrink_truncation_radius);
-    const data_type* datacopy_ptr = datacopy.begin();
+
+    af::versa<data_type, asu_grid_t > datacopy = data.deep_copy();
+    const af::const_ref<data_type, asu_grid_t > datacopy_ref = datacopy.const_ref();
+    const scitbx::vec3<long> n(datacopy_ref.accessor().size());
+    std::vector<long> neighbors;
+    find_neighbors(neighbors, unit_cell, this->grid_size(), n, shrink_truncation_radius);
+    MMTBX_ASSERT(neighbors.size()>0U);
     size_t n_access=0;
-    for(std::size_t ilxyz=0;ilxyz<data_size;ilxyz++,datacopy_ptr++) {
-      data_type d_copy = *datacopy_ptr;
+    const data_type *datacopy_ptr = datacopy_ref.begin();
+    for(data_type *data_ptr = data_ref.begin(); data_ptr!=data_ref.end(); ++data_ptr, ++datacopy_ptr)
+    {
+      const data_type d_copy = *datacopy_ptr;
+      data_type &dr = *data_ptr;
       if( d_copy == mark || d_copy == -mark )
-        data_ref[ilxyz] = 0;
+        dr = 0;
       else if( d_copy >0 )
         n_access += static_cast<size_t>( d_copy );
       else if( d_copy < 0 )
       {
-        int ly = static_cast<int>(ilxyz / nz);
-        int lz = static_cast<int>(ilxyz - ly * nz);
-        int lx = ly / ny;
-        ly -= lx * ny;
-        shrink_neighbors::dim0::const_iterator
-          tab_i_end = neighbors.table.end();
-        for(shrink_neighbors::dim0::const_iterator
-          tab_i = neighbors.table.begin();
-          tab_i != tab_i_end;
-          tab_i++) {
-          int mx = lx + tab_i->first;
-          while (mx >= nx) mx -= nx;
-          int mxny = mx * ny;
-          shrink_neighbors::dim1::const_iterator
-            tab_j_end = tab_i->second.end();
-          for(shrink_neighbors::dim1::const_iterator
-            tab_j = tab_i->second.begin();
-            tab_j != tab_j_end;
-            tab_j++) {
-            int my = ly + tab_j->first;
-            while (my >= ny) my -= ny;
-            const data_type*
-              datacopy_mxnymynz = &datacopy_ref[(mxny + my) * nz];
-          shrink_neighbors::dim2::const_iterator
-            tab_k_end = tab_j->second.end();
-          for(shrink_neighbors::dim2::const_iterator
-            tab_k = tab_j->second.begin();
-            tab_k != tab_k_end;
-            tab_k++) {
-              int mz = (*tab_k) + lz;
-              while (mz >= nz) mz -= nz;
-              if( datacopy_mxnymynz[mz] > 0)
-              {
-                data_ref[ilxyz] = -data_ref[ilxyz]; // 1;
-                MMTBX_ASSERT( data_ref[ilxyz] > 0 );
-                goto end_of_neighbors_loop;
-              }
-            }
+        for(std::vector<long>::const_iterator neighbor=neighbors.begin(); neighbor!=neighbors.end(); ++neighbor)
+        {
+          // neighbor could be outside the asu, but must be inside the expanded asu
+          if( datacopy_ptr[*neighbor] > 0)
+          {
+            dr = -dr;
+            MMTBX_ASSERT( dr > 0 );
+            goto end_of_neighbors_loop;
           }
         }
-        data_ref[ilxyz] = 0;
+        dr = 0;
         end_of_neighbors_loop:;
       }
-      nsolv += data_ref[ilxyz];
-    }
+      nsolv += dr;
+    } // data_ref array
     // currently data is not padded 3-D array, data.size is correct here
-    contact_surface_fraction =  static_cast<double>(nsolv)/this->get_mask().size();
-    accessible_surface_fraction = static_cast<double>(n_access)/this->get_mask().size();
+    contact_surface_fraction =  static_cast<double>(nsolv)/this->grid_size_1d();
+    accessible_surface_fraction = static_cast<double>(n_access)/this->grid_size_1d();
   }
 
 }} // namespace mmtbx::masks
+

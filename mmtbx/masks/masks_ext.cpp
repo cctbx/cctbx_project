@@ -97,6 +97,7 @@ namespace {
       .def("compute", &w_t::compute)
       .def("structure_factors", &w_t::structure_factors)
       .def("grid_size", &w_t::grid_size)
+      .def("n_asu_atoms", &w_t::n_asu_atoms)
       .def_readonly("solvent_radius",
                &w_t::solvent_radius)
       // .def_readonly("n_atom_points",
@@ -112,6 +113,7 @@ namespace {
       .def_readonly("debug_atoms_to_asu_time", &w_t::debug_atoms_to_asu_time)
       .def_readonly("debug_accessible_time", &w_t::debug_accessible_time)
       .def_readonly("debug_contact_time", &w_t::debug_contact_time)
+      .def_readonly("debug_has_enclosed_box", &w_t::debug_has_enclosed_box)
      ;
   }
 

@@ -7,6 +7,7 @@
 
 namespace cctbx { namespace sgtbx {
 
+  //! Symmetry operator optimized for grid
   class grid_symop : public af::tiny_plain<int, 3*4>
   {
     public:
@@ -21,6 +22,7 @@ namespace cctbx { namespace sgtbx {
       return this->elems[r*4+c];
     }
 
+    //! Construct symmetry operator from symop and grid of size grid
     grid_symop(const cctbx::sgtbx::rt_mx &symop, const scitbx::af::int3 &grid)
     {
       const cctbx::sgtbx::rot_mx &rot = symop.r();
@@ -45,6 +47,7 @@ namespace cctbx { namespace sgtbx {
       }
     }
 
+    //! Apply symmetry operator to poit rhs/grid
     af::int3 apply_to(const af::int3 &rhs) const
     {
       af::int3 result;

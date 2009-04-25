@@ -3,6 +3,8 @@
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/accessors/c_grid_periodic.h>
 #include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
+#include <scitbx/array_family/accessors/c_interval_grid.h>
+#include <scitbx/array_family/tiny_types.h>
 #include <scitbx/math/utils.h> // exercise unsigned_product_leads_to_overflow
 #include <iostream>
 
@@ -410,6 +412,12 @@ int main(int /*argc*/, char* /*argv*/[])
                                 );
     check_true(__LINE__, b(1,3,2) == 2 + 4*(3 + 7*1));
     check_true(__LINE__, b(-2, 7, 4) == b(0, 2, 1));
+  }
+  {
+    af::int3 first(-5,-7,-2), last(12,-3,0), pos(0,-4,-1);
+    af::c_interval_grid<3> a(first, last);
+    check_true( __LINE__, a(pos) == ((0-(-5))*(-3-(-7))
+      + (-4-(-7)))*(0-(-2)) + (-1-(-2)) );
   }
 
   std::cout << "Total OK: " << ok_counter << std::endl;

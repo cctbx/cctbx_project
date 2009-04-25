@@ -7,6 +7,9 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
   void direct_space_asu::show_summary(std::ostream &os) const
   {
+    if( is_optimized() )
+      throw cctbx::error("Optimized asu may only be used for"
+        " is_inside/where_is operations on the grid");
     const size_type sz = this->n_faces();
     os << "Hall symbol: " << hall_symbol
        << "\nNumber of facets: " << sz;
@@ -34,6 +37,9 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
   void direct_space_asu::volume_vertices(set_rvector3_t &result) const
   {
+    if( is_optimized() )
+      throw cctbx::error("Optimized asu may only be used for"
+        " is_inside/where_is operations on the grid");
     result.clear();
     size_type n_facets = this->n_faces();
     for(size_type i0=0; i0<n_facets-2; ++i0)
@@ -48,16 +54,16 @@ namespace cctbx { namespace sgtbx { namespace asu {
         {
           cut face2;
           faces->get_nth_plane(i2, face2);
-          sg_mat3 m;
+          mat3_t m;
           m.set_row(0, face0.n);
           m.set_row(1, face1.n);
           m.set_row(2, face2.n);
           int_type d  = m.determinant();
           if( d != 0 )
           {
-            sg_mat3 c(  m.co_factor_matrix_transposed() );
-            sg_vec3 b( -face0.c, -face1.c, -face2.c );
-            sg_vec3 iv = c * b;
+            mat3_t c(  m.co_factor_matrix_transposed() );
+            int3_t b( -face0.c, -face1.c, -face2.c );
+            int3_t iv = c * b;
             rvector3_t vertex( rvector3_t(iv) / rational_t(d) );
             if( this->is_inside_volume_only(vertex) ) // do not add if planes intersect outside of the asu
               result.insert(vertex);
@@ -99,21 +105,21 @@ namespace cctbx { namespace sgtbx { namespace asu {
     {
       cut face;
       faces->get_nth_plane(i0, face);
-      scitbx::int3 n = face.n;
+      int3_t n = face.n;
       int_type g = boost::gcd(n[0], boost::gcd(n[1],n[2]));
       CCTBX_ASSERT( g>0 );
       n /= g;
-      if( n == scitbx::int3(1,0,0) )
+      if( n == int3_t(1,0,0) )
         ++x;
-      else if( n == scitbx::int3(-1,0,0) )
+      else if( n == int3_t(-1,0,0) )
         ++xm;
-      else if( n == scitbx::int3(0,1,0) )
+      else if( n == int3_t(0,1,0) )
         ++y;
-      else if( n == scitbx::int3(0,-1,0) )
+      else if( n == int3_t(0,-1,0) )
         ++ym;
-      else if( n == scitbx::int3(0,0,1) )
+      else if( n == int3_t(0,0,1) )
         ++z;
-      else if( n == scitbx::int3(0,0,-1) )
+      else if( n == int3_t(0,0,-1) )
         ++zm;
     }
     if( x==1 && xm==1 && y==1 && ym==1 && z==1 && zm==1 )
@@ -180,6 +186,9 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
   rvector3_t direct_space_asu::move_inside(const cctbx::sgtbx::space_group &group, const rvector3_t &v) const
   {
+    if( is_optimized() )
+      throw cctbx::error("Optimized asu may only be used for"
+        " is_inside/where_is operations on the grid");
     std::vector<scitbx::tiny3> cells;
     this->get_cells(cells);
 
@@ -204,13 +213,16 @@ namespace cctbx { namespace sgtbx { namespace asu {
       const cctbx::uctbx::unit_cell &cell,
       double epsilon) const
   {
+    if( is_optimized() )
+      throw cctbx::error("Optimized asu may only be used for"
+        " is_inside/where_is operations on the grid");
     cctbx::crystal::direct_space_asu::float_asu<>::facets_t ffaces;
     size_type nf = this->n_faces();
     for(size_type i=0; i<nf; ++i)
     {
       cut face;
       this->get_nth_plane(i, face);
-      scitbx::vec3<int> n = face.n;
+      int3_t n = face.n;
       int g = boost::gcd(boost::gcd(n[0],n[1]),n[2]); // is that right?
       fractional<> v(face.n[0], face.n[1], face.n[2]);
       v /= double(g);

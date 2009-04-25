@@ -17,12 +17,17 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
     virtual bool is_inside(const rvector3_t &p) const = 0;
     virtual bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const = 0;
+    virtual bool is_inside(const scitbx::af::int3 &num) const = 0;
+    virtual bool is_inside_volume_only(const scitbx::af::double3 &point, double tol) const = 0;
     virtual short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const = 0;
+    virtual short where_is(const scitbx::af::int3 &num) const = 0;
+    virtual void optimize_for_grid(const scitbx::af::int3 &grid_size) = 0;
     virtual pointer new_copy() const = 0;
     virtual pointer new_volume_only() const = 0;
     virtual size_type size() const = 0;
     virtual void change_basis(const change_of_basis_op &) =0;
     virtual void get_nth_plane(size_type i, cut &plane) const = 0;
+    virtual double get_tolerance(const scitbx::af::double3 &tol3d) const = 0;
     virtual void print(std::ostream &os) const = 0;
 
     virtual ~facet_collection() {};
