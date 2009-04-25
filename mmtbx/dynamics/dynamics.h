@@ -1,25 +1,29 @@
 #ifndef MMTBX_DYNAMICS_DYNAMICS_H
 #define MMTBX_DYNAMICS_DYNAMICS_H
 
-#include <cctbx/sgtbx/space_group.h>
-#include <scitbx/array_family/versa.h>
-#include <scitbx/array_family/accessors/c_grid.h>
-#include <vector>
-
-using scitbx::vec3;
-namespace af=scitbx::af;
+#include <mmtbx/import_scitbx_af.h>
+#include <mmtbx/error.h>
+#include <scitbx/array_family/shared.h>
+#include <scitbx/vec3.h>
 
 namespace mmtbx { namespace dynamics {
 
-class kinetic_energy_and_temperature {
-public:
-   kinetic_energy_and_temperature(af::shared<vec3<double> > const& vxyz,
-                                  af::shared<double> const& weights);
-   double kinetic_energy() const { return ekin; }
-   double temperature() const { return temp; }
-private:
-   double ekin, temp;
-};
+using scitbx::vec3;
+
+template <typename FloatType>
+FloatType
+kinetic_energy(
+  af::const_ref<vec3<FloatType> > const& velocities,
+  af::const_ref<FloatType> const& masses)
+{
+  MMTBX_ASSERT(masses.size() == velocities.size());
+  FloatType result = 0;
+  for (std::size_t i=0;i<velocities.size();i++) {
+    result += masses[i] * velocities[i].length_sq();
+  }
+  result *= 0.5;
+  return result;
+}
 
 class center_of_mass_info {
 public:

@@ -1,34 +1,7 @@
-#include <assert.h>
-#include <math.h>
-#include <iostream>
 #include <mmtbx/dynamics/dynamics.h>
-#include <mmtbx/error.h>
+#include <scitbx/mat3.h>
 
-using namespace std;
 namespace mmtbx { namespace dynamics {
-
-namespace af=scitbx::af;
-using scitbx::vec3;
-using scitbx::mat3;
-using scitbx::sym_mat3;
-
-kinetic_energy_and_temperature::kinetic_energy_and_temperature(
-                                  af::shared<vec3<double> > const& vxyz,
-                                  af::shared<double> const& weights)
-{
-    double k_boltz = 1.380662e-03;
-    ekin = 0.0;
-    int ndegf = 0;
-    for (std::size_t i=0; i < vxyz.size(); i++) {
-      ndegf += 3;
-      vec3<double> const& v = vxyz[i];
-      ekin += weights[i] * (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-     }
-    ekin *= 0.5;
-    double denom = ndegf * k_boltz;
-    MMTBX_ASSERT(denom != 0);
-    temp = 2.0 * ekin / denom;
-}
 
 center_of_mass_info::center_of_mass_info(
                        vec3<double> center_of_mass,
@@ -38,7 +11,6 @@ center_of_mass_info::center_of_mass_info(
 {
     MMTBX_ASSERT(sites_cart.size() == velocities.size());
     MMTBX_ASSERT(sites_cart.size() == weights.size());
-    double timfac = 0.04888821;
     double vxcm = 0.0;
     double vycm = 0.0;
     double vzcm = 0.0;
@@ -109,7 +81,7 @@ af::shared<vec3<double> > stop_center_of_mass_motion(
   double yy = 0.0;
   double yz = 0.0;
   double zz = 0.0;
-  mat3<double> tcm_inv;
+  scitbx::mat3<double> tcm_inv;
   af::shared<vec3<double> > result(weights.size()) ;
   for (std::size_t i=0; i < weights.size(); i++) {
     vec3<double> ri = sites_cart[i] - center_of_mass;
@@ -120,7 +92,7 @@ af::shared<vec3<double> > stop_center_of_mass_motion(
     yz += ri[1]*ri[2] * weights[i];
     zz += ri[2]*ri[2] * weights[i];
   }
-  tcm_inv = mat3<double>(yy+zz,-xy,-xz,  -xy,xx+zz,-yz,  -xz,-yz,xx+yy);
+  tcm_inv = scitbx::mat3<double>(yy+zz,-xy,-xz, -xy,xx+zz,-yz, -xz,-yz,xx+yy);
   double det = tcm_inv.determinant();
   if(det > 1.e-4) {
     tcm_inv = tcm_inv.inverse();
