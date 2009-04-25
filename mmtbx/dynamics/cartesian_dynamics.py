@@ -133,32 +133,32 @@ class cartesian_dynamics(object):
   def __call__(self):
     self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
-    self.current_temperature = kt.temperature()
-    self.ekin = kt.kinetic_energy()
+    self.current_temperature = kt.temperature
+    self.ekin = kt.kinetic_energy
     if(self.verbose >= 1):
       self.print_dynamics_stat(text="restrained dynamics start")
     if(self.reset_velocities):
        self.set_velocities()
        self.center_of_mass_info()
        kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
-       self.current_temperature = kt.temperature()
-       self.ekin = kt.kinetic_energy()
+       self.current_temperature = kt.temperature
+       self.ekin = kt.kinetic_energy
        if(self.verbose >= 1):
          self.print_dynamics_stat(text="set velocities")
     if(self.stop_cm_motion):
       self.stop_global_motion()
     self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
-    self.current_temperature = kt.temperature()
-    self.ekin = kt.kinetic_energy()
+    self.current_temperature = kt.temperature
+    self.ekin = kt.kinetic_energy
     if(self.verbose >= 1):
       self.print_dynamics_stat(text="center of mass motion removed")
 
     self.velocity_rescaling()
     self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
-    self.current_temperature = kt.temperature()
-    self.ekin = kt.kinetic_energy()
+    self.current_temperature = kt.temperature
+    self.ekin = kt.kinetic_energy
     if(self.verbose >= 1):
       self.print_dynamics_stat(text="velocities rescaled")
     if(self.verbose >= 1):
@@ -167,8 +167,8 @@ class cartesian_dynamics(object):
 
     self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
-    self.current_temperature = kt.temperature()
-    self.ekin = kt.kinetic_energy()
+    self.current_temperature = kt.temperature
+    self.ekin = kt.kinetic_energy
     if(self.verbose >= 1):
       self.print_dynamics_stat(text="after final integration step")
 
@@ -305,8 +305,8 @@ class cartesian_dynamics(object):
         text = "integration step number = %5d"%cycle
         self.center_of_mass_info()
         kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
-        self.current_temperature = kt.temperature()
-        self.ekin = kt.kinetic_energy()
+        self.current_temperature = kt.temperature
+        self.ekin = kt.kinetic_energy
         self.print_dynamics_stat(text)
       if(self.stop_cm_motion):
         self.center_of_mass_info()
@@ -319,8 +319,8 @@ class cartesian_dynamics(object):
       dynamics.vxyz_at_t_plus_dt_over_2(self.vxyz, self.weights, grad, TSTEP)
       # calculate the temperature and kinetic energy from new velocities
       kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
-      self.current_temperature = kt.temperature()
-      self.ekin = kt.kinetic_energy()
+      self.current_temperature = kt.temperature
+      self.ekin = kt.kinetic_energy
       self.velocity_rescaling()
       if(print_flag == 1 and 0):
         self.center_of_mass_info()
@@ -332,8 +332,8 @@ class cartesian_dynamics(object):
       if (self.interleaved_minimization_flag):
         self.interleaved_minimization()
       kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
-      self.current_temperature = kt.temperature()
-      self.ekin = kt.kinetic_energy()
+      self.current_temperature = kt.temperature
+      self.ekin = kt.kinetic_energy
       if(print_flag == 1 and 0):
         self.center_of_mass_info()
         self.print_dynamics_stat(text)

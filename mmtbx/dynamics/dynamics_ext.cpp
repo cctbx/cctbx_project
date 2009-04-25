@@ -12,14 +12,10 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_;
-    class_<kinetic_energy_and_temperature>("kinetic_energy_and_temperature",
-                                           init<af::shared<vec3<double> > const&,
-                                                af::shared<double> const&>())
 
-      .def("kinetic_energy", &kinetic_energy_and_temperature::kinetic_energy)
-      .def("temperature", &kinetic_energy_and_temperature::temperature)
-    ;
+    def("kinetic_energy", kinetic_energy<double>, (
+      arg_("velocities"), arg_("masses")));
+
     class_<center_of_mass_info>("center_of_mass_info",
                   init<vec3<double>,
                        af::shared<vec3<double> >,
@@ -30,10 +26,9 @@ namespace {
       .def("acm",  &center_of_mass_info::acm)
       .def("vcm",  &center_of_mass_info::vcm)
     ;
-    def("vxyz_at_t_plus_dt_over_2",vxyz_at_t_plus_dt_over_2)
-    ;
-    def("stop_center_of_mass_motion",stop_center_of_mass_motion)
-    ;
+
+    def("vxyz_at_t_plus_dt_over_2",vxyz_at_t_plus_dt_over_2) ;
+    def("stop_center_of_mass_motion",stop_center_of_mass_motion) ;
   }
 
 } // namespace <anonymous>
