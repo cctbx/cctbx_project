@@ -39,11 +39,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
   {
     CCTBX_ASSERT( this->n.length_sq()!= 0 );
     rot_mx r_inv_transpose( cb_op.c_inv().r().transpose() );
-    tr_vec np = r_inv_transpose * tr_vec(this->n, 1);
+    tr_vec np = r_inv_transpose * tr_vec(cctbx::sg_vec3(this->n), 1);
     tr_vec t = cb_op.c().t();
     rational_t cp = rational_t(this->c) - dot(np,t);
     CCTBX_ASSERT( np.den()>0 );
-    new(this) cut(np.num(), cp*np.den(), inclusive);
+    new(this) cut(int3_t(np.num()), cp*np.den(), inclusive);
   }
 
 }}}

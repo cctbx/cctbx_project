@@ -393,6 +393,21 @@ namespace scitbx {
   vec3<NumType>
   operator/(
     vec3<NumType> const& lhs,
+    vec3<NumType> const& rhs)
+  {
+    vec3<NumType> result;
+    for(std::size_t i=0;i<3;i++) {
+      result[i] = lhs[i] / rhs[i];
+    }
+    return result;
+  }
+
+  //! Element-wise division.
+  template <typename NumType>
+  inline
+  vec3<NumType>
+  operator/(
+    vec3<NumType> const& lhs,
     NumType const& rhs)
   {
     vec3<NumType> result;

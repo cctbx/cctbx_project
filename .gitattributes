@@ -391,6 +391,7 @@ rstbx/symmetry/sgtbx_adaptor.py -text
 rstbx/symmetry/subgroup.py -text
 scitbx/array_family/accessors/c_grid_padded_periodic.h -text
 scitbx/array_family/accessors/c_grid_periodic.h -text
+scitbx/array_family/accessors/c_interval_grid.h svneol=native#text/plain
 scitbx/array_family/accessors/f_grid.h -text
 scitbx/array_family/accessors/striding.h -text
 scitbx/array_family/accessors/traits.h -text

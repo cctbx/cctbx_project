@@ -28,7 +28,7 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
 
     class_<w_t>("cut", no_init)
       .def(init<
-        sg_vec3 const&,
+        int3_t const&,
         rational_t ,
         optional< bool > >((
           arg_("n"),
@@ -68,6 +68,10 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
 
     bool (w_t::*const is_inside1)( const rvector3_t &) const = &w_t::is_inside;
     bool (w_t::*const is_inside2)( const rvector3_t &, bool ) const = &w_t::is_inside;
+    bool (w_t::*const is_inside_volume_only1)(const rvector3_t &point) const = &w_t::is_inside_volume_only;
+    bool (w_t::*const is_inside_volume_only2)(const scitbx::af::double3 &point, double tol) const = &w_t::is_inside_volume_only;
+    short (w_t::*const where_is1)(const scitbx::int3 &num, const scitbx::int3 &den) const = &w_t::where_is;
+    short (w_t::*const where_is2)(const scitbx::int3 &num) const = &w_t::where_is;
 
     class_<w_t>("direct_space_asu", no_init)
       .def(init< const std::string& >(( arg_("group_symbol") )))
@@ -75,8 +79,10 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       .def_readonly("hall_symbol", &w_t::hall_symbol)
       .def("is_inside", is_inside1)
       .def("is_inside", is_inside2)
-      .def("is_inside_volume_only", &w_t::is_inside_volume_only)
-      .def("where_is", &w_t::where_is)
+      .def("is_inside_volume_only", is_inside_volume_only1)
+      .def("is_inside_volume_only", is_inside_volume_only2)
+      .def("where_is", where_is1)
+      .def("where_is", where_is2)
       .def("change_basis", &w_t::change_basis)
       .def("get_nth_plane", &w_t::get_nth_plane)
       .def("volume_only", &w_t::volume_only)

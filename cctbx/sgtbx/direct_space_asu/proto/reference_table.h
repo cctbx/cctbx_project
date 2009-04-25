@@ -42,13 +42,33 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return obj.is_inside(num,den);
     }
 
+    bool is_inside(const scitbx::af::int3 &num) const
+    {
+      return obj.is_inside(num);
+    }
+
+    bool is_inside_volume_only(const scitbx::af::double3 &point, double tol) const
+    {
+      return obj.is_inside_volume_only(point,tol);
+    }
+
+
     short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
     {
       return obj.where_is(num,den);
     }
 
+    short where_is(const scitbx::af::int3 &num) const
+    {
+      return obj.where_is(num);
+    }
 
-    size_type size() const
+    void optimize_for_grid(const scitbx::af::int3 &grid_size)
+    {
+      cctbx::sgtbx::asu::optimize_for_grid(obj, grid_size);
+    }
+
+    size_type size() const // virtual
     {
       return n_faces<T>::value;
     }
@@ -56,6 +76,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
     void get_nth_plane(size_type i, cut &plane) const
     {
       cctbx::sgtbx::asu::get_nth_plane(obj, i, plane);  // obj must be and_expression
+    }
+
+    double get_tolerance(const scitbx::af::double3 &tol3d) const
+    {
+      return cctbx::sgtbx::asu::get_tolerance(obj, tol3d);
     }
 
     expression_adaptor(const T &o) : obj(o) { }
