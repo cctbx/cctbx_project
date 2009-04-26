@@ -402,8 +402,8 @@ namespace mmtbx { namespace masks {
           } // cel[1] loop
         } // cell[0]
       }
-      end_sym_loop:
-       ;
+      //end_sym_loop:
+       //;
     }
   }
 
