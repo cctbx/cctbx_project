@@ -1345,20 +1345,22 @@ def fmodel_simple(f_obs,
                   target_name              = "ml",
                   bulk_solvent_and_scaling = True,
                   bss_params               = None,
+                  skip_twin_detection      = False,
                   twin_switch_tolerance    = 3.0):
   twin_laws = []
-  try:
-    from mmtbx.scaling import xtriage
-    xtriage_results = xtriage.xtriage_analyses(
-      miller_obs = f_obs,
-      text_out   = StringIO(),
-      plot_out   = StringIO())
-    if(xtriage_results.twin_results is not None):
-      twin_laws = xtriage_results.twin_results.twin_summary.twin_results.twin_laws
-  except Exception, e:
-    print "XTRIAGE error: "
-    print str(e)
-    show_exception_info_if_full_testing()
+  if(not skip_twin_detection):
+    try:
+      from mmtbx.scaling import xtriage
+      xtriage_results = xtriage.xtriage_analyses(
+        miller_obs = f_obs,
+        text_out   = StringIO(),
+        plot_out   = StringIO())
+      if(xtriage_results.twin_results is not None):
+        twin_laws = xtriage_results.twin_results.twin_summary.twin_results.twin_laws
+    except Exception, e:
+      print "XTRIAGE error: "
+      print str(e)
+      show_exception_info_if_full_testing()
   twin_laws.append(None)
   if(len(xray_structures) == 1):
     fmodels = []
@@ -1617,6 +1619,7 @@ def model_simple(pdb_file_names,
     cryst1         = cryst1,
     use_elbow      = True,
     log            = log)
+  mmtbx_pdb_file.set_ppf()
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = mmtbx_pdb_file.processed_pdb_file,
     scattering_table   = scattering_table,
@@ -1630,6 +1633,7 @@ def model_simple(pdb_file_names,
       self.individual_sites=True
       self.individual_adp = False
       self.sites_individual = flex.bool(size, True)
+      self.sites_torsion_angles = None
   refinement_flags = rf(size = xray_structure.scatterers().size())
   #
   sctr_keys=xray_structure.scattering_type_registry().type_count_dict().keys()

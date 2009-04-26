@@ -371,7 +371,6 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     if(xray_structures_2 is None):
       raise Sorry("PDB file for map_2 is not provided.")
     if(len(xray_structures_2) > 1):
-      raise Sorry("use=true option cannot be used for a PDB file with multiple models.")
       if(params.map_2.use_kick_map):
         raise Sorry("kick map cannot be used for a PDB file with multiple models.")
   # read in F-obs and free-r flags for map_1

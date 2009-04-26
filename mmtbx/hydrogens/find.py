@@ -262,7 +262,7 @@ def rotate_point_about_axis(a1, a2, s, angle_deg):
   z_new = (c*uv+w*(-a*u-b*v+u*x+v*y+w*z)+(-c*uv+w*(a*u+b*v-u*x-v*y)+uv*z)*ct+t1*(-b*u+a*v-v*x+u*y)*st)/t0
   return (x_new, y_new, z_new)
 
-def run_lrss_tyr_hh(fmodel, ref_model, log):
+def run_lrss_tyr_hh(fmodel, ref_model, angular_step, log):
   class tyr_cz_oh_hh(object):
     def __init__(self, cz, oh, hh):
       self.cz = cz
@@ -274,21 +274,28 @@ def run_lrss_tyr_hh(fmodel, ref_model, log):
       for residue_group in chain.residue_groups():
         cz, oh = [None,]*2
         hh = []
+        cz_counter = 0
         for atom in residue_group.atoms():
           atom_name = atom.name.upper().strip()
           if(atom.parent().resname.upper().strip() == "TYR"):
-            if(atom_name == "CZ"): cz = atom.i_seq
+            if(atom_name == "CZ"):
+              cz = atom.i_seq
+              cz_counter += 1
             if(atom_name == "OH"): oh = atom.i_seq
             if(atom_name in ["HH", "DH"]): hh.append(atom.i_seq)
           if(atom.parent().resname.upper().strip() == "SER"):
-            if(atom_name == "CB"): cz = atom.i_seq
+            if(atom_name == "CB"):
+              cz = atom.i_seq
+              cz_counter += 1
             if(atom_name == "OG"): oh = atom.i_seq
             if(atom_name in ["HG", "DG"]): hh.append(atom.i_seq)
           if(atom.parent().resname.upper().strip() == "THR"):
-            if(atom_name == "CB"): cz = atom.i_seq
+            if(atom_name == "CB"):
+              cz = atom.i_seq
+              cz_counter += 1
             if(atom_name == "OG1"): oh = atom.i_seq
             if(atom_name in ["HG1", "DG1"]): hh.append(atom.i_seq)
-        if([cz, oh].count(None) == 0 and len(hh) in [1,2]):
+        if([cz, oh].count(None) == 0 and len(hh) in [1,2] and cz_counter == 1):
           result.append(tyr_cz_oh_hh(cz = cz, oh = oh, hh = hh))
   if(len(result) > 0):
     print >> log, "%d tyrosin residues processed." % (len(result))
@@ -321,8 +328,8 @@ def run_lrss_tyr_hh(fmodel, ref_model, log):
         hh_site = sites_cart[ihh]
         hh_best = None
         ed_val = -1
-        for angle in xrange(0, 720, 1):
-          angle = float(angle)/2.
+        angle = 0.
+        while angle <= 360:
           hh_new = rotate_point_about_axis(a1        = cz_site,
                                            a2        = oh_site,
                                            s         = hh_site,
@@ -333,6 +340,7 @@ def run_lrss_tyr_hh(fmodel, ref_model, log):
           if(ed_val_ > ed_val):
             ed_val = ed_val_
             hh_best = hh_new_frac
+          angle += angular_step
         if(hh_best is not None):
           scatterers[ihh].site = hh_best
     fmodel.update_xray_structure(xray_structure = ref_model.xray_structure,

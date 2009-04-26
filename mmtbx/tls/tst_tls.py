@@ -28,6 +28,7 @@ def uaniso_from_tls_and_back():
   input_tls_data = iotbx.pdb.remark_3_interpretation.extract_tls_parameters(
     remark_3_records=processed_pdb_file.all_chain_proxies.pdb_inp
       .extract_remark_iii_records(iii=3),
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
     chain_ids=[]).tls_params
   tls_params = []
   for item in input_tls_data:
