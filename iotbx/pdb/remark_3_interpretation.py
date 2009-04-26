@@ -107,10 +107,11 @@ def prepocess_line(line):
 
 class extract_tls_parameters(object):
 
-   def __init__(self, remark_3_records, chain_ids, file_name = ""):
+   def __init__(self, remark_3_records, chain_ids, pdb_hierarchy, file_name = ""):
      # T = (T11, T22, T33, T12, T13, T23)
      # L = (L11, L22, L33, L12, L13, L23)
      # S = (S11, S12, S13, S21, S22, S23, S31, S32, S33)
+     self.pdb_hierarchy = pdb_hierarchy
      self.remark_3_records = remark_3_records
      self.chain_ids = chain_ids
      self.file_name = os.path.basename(file_name)
@@ -370,31 +371,11 @@ class extract_tls_parameters(object):
              if(res1_ > res2_ and ch1 == ch2):
                self.format_err(msg="Bad TLS selection: start index > end index.")
                return []
-           if(rr[0]==rr[2]):
-             if(sel_str is None):
-               if(ch1 == ""):
-                 sel_str = "(resid %s:%s)" % (res1,res2)
-               else:
-                 sel_str = "(chain %s and resid %s:%s)" % (ch1,res1,res2)
-             else:
-               if(ch1 == ""):
-                 sel_str += " or (resid %s:%s)" % (res1,res2)
-               else:
-                 sel_str += " or (chain %s and resid %s:%s)" % (ch1,res1,res2)
-           elif(rr[0] != rr[2]):
-             if(sel_str is None):
-               if(ch1 == ""):
-                 sel_str = "(resid %s: ) or (resid :%s)" % (res1,res2)
-               else:
-                 sel_str = "(chain %s and resid %s: ) or (chain %s and resid :%s)"%(
-                   ch1,res1,ch2,res2)
-             else:
-               if(ch1 == ""):
-                 sel_str += " or (resid %s: ) or (resid :%s)" % (res1,res2)
-               else:
-                 sel_str += \
-                   " or (chain %s and resid %s: ) or (chain %s and resid :%s)" %(
-                   ch1,res1,ch2,res2)
+           tmp = refmac_range_to_phenix_string_selection(
+             pdb_hierarchy = self.pdb_hierarchy, chain_start = ch1,
+             resseq_start = res1, chain_end = ch2, resseq_end = res2)
+           if(sel_str is None): sel_str = tmp
+           else: sel_str = sel_str +" or %s"%tmp
        if(sel_str is not None):
          if(sel_str.count("(") != sel_str.count(")")):
            self.format_err(msg="Bad TLS selection: missing ) or (", rec = sel_str)
@@ -476,6 +457,65 @@ def get_program(st):
            program = jones_and_liljas
   if(program == "XPLOR"): program = "X-PLOR"
   return program
+
+def refmac_range_to_phenix_string_selection(pdb_hierarchy, chain_start,
+      resseq_start, chain_end, resseq_end):
+  chain_start  =  chain_start.strip()
+  resseq_start =  resseq_start.strip()
+  chain_end    =  chain_end.strip()
+  resseq_end   =  resseq_end.strip()
+  sel_str = None
+  if(chain_start == chain_end):
+    if(chain_start != ""):
+      if([resseq_start,resseq_end].count("")==0):
+        sel_str = "(chain %s and resseq %s:%s)"%(chain_start,resseq_start,resseq_end)
+      else:
+        sel_str = "(chain %s)"%(chain_start)
+    else:
+      if([resseq_start,resseq_end].count("")==0):
+        sel_str = "(resseq %s:%s)"%(resseq_start,resseq_end)
+  else:
+    sel_str1 = None
+    if(chain_start != ""):
+      if(resseq_start != ""):
+        sel_str1 = "(chain %s and resseq %s:)"%(chain_start,resseq_start)
+      else:
+        sel_str1 = "(chain %s)"%(chain_start)
+    else:
+      if(resseq_start != ""):
+        sel_str1 = "(resseq %s:)"%(resseq_start)
+    sel_str2 = None
+    if(chain_end != ""):
+      if(resseq_end != ""):
+        sel_str2 = "(chain %s and resseq :%s)"%(chain_end,resseq_end)
+      else:
+        sel_str2 = "(chain %s)"%(chain_end)
+    else:
+      if(resseq_end != ""):
+        sel_str2 = "(resseq :%s)"%(resseq_end)
+    if([sel_str1,sel_str2].count(None)==0):
+      sel_str = "%s or %s"%(sel_str1, sel_str2)
+    elif(sel_str1 is not None): sel_str = sel_str1
+    elif(sel_str2 is not None): sel_str = sel_str2
+    if(sel_str is not None):
+      models = pdb_hierarchy.models()
+      if(len(models)>1): return None # XXX one model only
+      start_collecting = False
+      chain_ids = []
+      for chain in models[0].chains():
+        chain_id = chain.id.strip()
+        if(chain_id == chain_end): break
+        if(chain_id == chain_start):
+          start_collecting = True
+          continue
+        if(start_collecting): chain_ids.append(chain_id)
+      if(len(chain_ids)>0):
+        for chain_id in chain_ids:
+          sel_str = sel_str+" or chain %s"%chain_id
+  if(sel_str is not None):
+    return "%s"%sel_str
+  else: return None
+
 
 def format_name(program_names):
   try:
