@@ -40,11 +40,13 @@ def combine_tls_and_u_local(xray_structure, tls_selections, tls_groups):
 def tls_from_pdb_inp(pdb_inp):
   remark_3_records = pdb_inp.extract_remark_iii_records(3)
   chain_ids = []
-  for model in pdb_inp.construct_hierarchy().models():
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  for model in pdb_hierarchy.models():
     for chain in model.chains():
       chain_ids.append(chain.id)
   return iotbx.pdb.remark_3_interpretation.extract_tls_parameters(
     remark_3_records = remark_3_records,
+    pdb_hierarchy    = pdb_hierarchy,
     chain_ids        = chain_ids)
 
 def extract_tls_from_pdb(pdb_inp_tls, all_chain_proxies, xray_structure):
