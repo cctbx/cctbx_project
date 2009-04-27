@@ -221,7 +221,7 @@ coordinates q. Uses ID0().
     return [B.J.tau_as_d_pot_d_q(tau=tau)
       for B,tau in zip(O.bodies, O.ID0(f_ext=f_ext))]
 
-  def FDab(O, tau=None, f_ext=None, grav_accn=None):
+  def FDab(O, tau=None, f_ext=None, grav_accn=None, return_locals=False):
     """RBDA Tab. 7.1, p. 132:
 Forward Dynamics of a kinematic tree via the Articulated-Body Algorithm.
 tau is a vector of force variables.
@@ -290,4 +290,15 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
       else:
         a[i] += B.J.S * qdd[i]
 
+    if (return_locals):
+      return locals()
     return qdd
+
+  def accumulated_spatial_inertia(O):
+    result = [B.I for B in O.bodies]
+    Xup = O.Xup()
+    for i in xrange(len(result)-1,-1,-1):
+      B = O.bodies[i]
+      if (B.parent != -1):
+        result[B.parent] += Xup[i].transpose() * result[i] * Xup[i]
+    return result
