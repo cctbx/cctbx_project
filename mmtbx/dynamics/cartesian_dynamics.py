@@ -145,24 +145,29 @@ class cartesian_dynamics(object):
        self.ekin = kt.kinetic_energy
        if(self.verbose >= 1):
          self.print_dynamics_stat(text="set velocities")
+
     if(self.stop_cm_motion):
       self.stop_global_motion()
     self.center_of_mass_info()
-    kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
-    self.current_temperature = kt.temperature
-    self.ekin = kt.kinetic_energy
-    if(self.verbose >= 1):
-      self.print_dynamics_stat(text="center of mass motion removed")
 
-    self.velocity_rescaling()
+    if(self.time_averaging_data is None):
+      kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
+      self.current_temperature = kt.temperature
+      self.ekin = kt.kinetic_energy
+      if(self.verbose >= 1):
+        self.print_dynamics_stat(text="center of mass motion removed")
+      self.velocity_rescaling()
+
     self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
     self.current_temperature = kt.temperature
     self.ekin = kt.kinetic_energy
     if(self.verbose >= 1):
       self.print_dynamics_stat(text="velocities rescaled")
+
     if(self.verbose >= 1):
       print >> self.log, "integration starts"
+
     self.verlet_leapfrog_integration()
 
     self.center_of_mass_info()
@@ -242,6 +247,8 @@ class cartesian_dynamics(object):
       self.time_averaging_data.f_calc_running_average = fcra
       self.time_averaging_data.r_work_running_average = \
         self.fmodel_copy.r_work()
+      self.time_averaging_data.r_free_running_average = \
+        self.fmodel_copy.r_free()
     sf = self.target_functor(
       compute_gradients=True).gradients_wrt_atomic_parameters(site=True)
     if(self.time_averaging_data is not None):
@@ -272,6 +279,8 @@ class cartesian_dynamics(object):
       self.weights)
 
   def velocity_rescaling(self):
+    if(self.time_averaging_data is not None):
+      self.time_averaging_data.temp.append(self.current_temperature)
     if (self.current_temperature <= 1.e-10):
       factor = 1.0
     else:
@@ -337,7 +346,11 @@ class cartesian_dynamics(object):
       if(print_flag == 1 and 0):
         self.center_of_mass_info()
         self.print_dynamics_stat(text)
-    self.residuals()
+      if(self.time_averaging_data is None):
+        self.residuals()
+      else:
+        self.time_averaging_data.velocities = self.vxyz
+
 
   def print_dynamics_stat(self, text):
     timfac = akma_time_as_pico_seconds
