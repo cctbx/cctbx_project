@@ -1,3 +1,4 @@
+import mmtbx.dynamics
 from mmtbx.dynamics import constants
 from mmtbx.dynamics import cartesian_dynamics
 import mmtbx.restraints
@@ -10,9 +11,13 @@ import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
 
-def exercise_constants():
+def exercise_basic():
   assert abs(constants.boltzmann_constant_akma-0.001987) < 1e-6
   assert abs(constants.akma_time_as_pico_seconds-0.04889) < 1e-5
+  t = mmtbx.dynamics.kinetic_energy_as_temperature(dof=5, e=1.3)
+  assert approx_equal(t, 261.678053105)
+  e = mmtbx.dynamics.temperature_as_kinetic_energy(dof=5, t=t)
+  assert approx_equal(e, 1.3)
 
 class get_inputs(object):
 
@@ -182,7 +187,7 @@ def exercise_03(mon_lib_srv, ener_lib, verbose=0):
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
-  exercise_constants()
+  exercise_basic()
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   inputs = get_inputs(
