@@ -108,19 +108,26 @@ class simulation(object):
         nc += (B.A.T0b * s).cross(force_bf)
       O.f_ext_bf.append(matrix.col((nc, f)).resolve_partitions())
 
-  def energies_and_accelerations_update(O):
+  def e_kin_update(O):
     model = featherstone.system_model(bodies=O.bodies)
     O.e_kin = model.e_kin()
+    return model
+
+  def energies_and_accelerations_update(O):
+    model = O.e_kin_update()
     O.e_pot_and_f_ext_update()
     O.qdd = model.FDab(tau=None, f_ext=O.f_ext_bf)
 
-  def e_pot_and_f_ext_update(O):
+  def e_pot_update(O):
     O.AJA_update()
     O.JAr_update()
     O.sites_moved_update()
     O.e_pot, O.e_pot_normalization_factor = \
       O.potential_obj.e_pot_and_normalization_factor(
         sites_moved=O.sites_moved)
+
+  def e_pot_and_f_ext_update(O):
+    O.e_pot_update()
     O.f_ext_bf_update(
       d_e_pot_d_sites=O.potential_obj.d_e_pot_d_sites(
         sites_moved=O.sites_moved))
@@ -183,6 +190,20 @@ class simulation(object):
     assert approx_equal(ana, fin)
     assert approx_equal(O.qdd, qdd_orig)
 
+  def pack_q(O):
+    result = flex.double()
+    for B in O.bodies:
+      result.extend(flex.double(B.J.get_q()))
+    return result
+
+  def unpack_q(O, packed_q):
+    i = 0
+    for B in O.bodies:
+      n = B.J.q_size
+      B.J = B.J.new_q(q=packed_q[i:i+n])
+      i += n
+    assert i == packed_q.size()
+
   def minimization(O, max_iterations=None, callback_after_step=None):
     refinery(
       sim=O,
@@ -194,9 +215,7 @@ class refinery(object):
   def __init__(O, sim, max_iterations=None, callback_after_step=None):
     O.sim = sim
     O.callback_after_step = callback_after_step
-    O.x = flex.double()
-    for B in sim.bodies:
-      O.x.extend(flex.double(B.J.get_q()))
+    O.x = sim.pack_q()
     import scitbx.lbfgs
     scitbx.lbfgs.run(
       target_evaluator=O,
@@ -206,18 +225,9 @@ class refinery(object):
         ignore_line_search_failed_step_at_lower_bound=True))
     O.sim.energies_and_accelerations_update()
 
-  def unpack_x(O):
-    x = O.x
-    i = 0
-    for B in O.sim.bodies:
-      n = B.J.q_size
-      B.J = B.J.new_q(q=x[i:i+n])
-      i += n
-    assert i == x.size()
-    O.sim.e_pot_and_f_ext_update()
-
   def compute_functional_and_gradients(O):
-    O.unpack_x()
+    O.sim.unpack_q(packed_q=O.x)
+    O.sim.e_pot_and_f_ext_update()
     f = O.sim.e_pot
     g = flex.double()
     for d in O.sim.d_pot_d_q():
@@ -344,7 +354,16 @@ def exercise_apply_velocity_scaling(out, sim):
     2.0592456511353947, 2.0643773120065561, 2.0685121042338253,
     2.0718756155399802])
 
-def construct_simulation(labels, sites, masses, tardy_tree):
+def construct_simulation(
+      labels,
+      sites,
+      masses,
+      tardy_tree,
+      use_random_wells=True):
+  if (use_random_wells):
+    wells = random_wells(sites)
+  else:
+    wells = sites
   cm = tardy_tree.cluster_manager
   return simulation(
     labels=labels,
@@ -353,20 +372,21 @@ def construct_simulation(labels, sites, masses, tardy_tree):
     cluster_manager=cm,
     potential_obj=potential_object(
       sites=sites,
-      wells=random_wells(sites),
+      wells=wells,
       restraint_edges=cm.loop_edges+cm.loop_edge_bendings),
     bodies=construct_bodies(sites=sites, masses=masses, cluster_manager=cm))
 
 n_test_simulations = len(tst_tardy_pdb.test_cases)
 
-def get_test_simulation_by_index(i):
+def get_test_simulation_by_index(i, use_random_wells=True):
   tc = tst_tardy_pdb.test_cases[i]
   tt = tc.tardy_tree_construct()
   return construct_simulation(
     labels=tc.labels,
     sites=tc.sites,
     masses=[1.0]*len(tc.sites),
-    tardy_tree=tt)
+    tardy_tree=tt,
+    use_random_wells=use_random_wells)
 
 def run(args):
   assert len(args) in [0,1]
