@@ -154,6 +154,34 @@ class system_model(object):
       result += kinetic_energy(I_spatial=B.I, v_spatial=v)
     return result
 
+  def accumulated_spatial_inertia(O, Xup=None):
+    result = [B.I for B in O.bodies]
+    if (Xup is None): Xup = O.Xup()
+    for i in xrange(len(result)-1,-1,-1):
+      B = O.bodies[i]
+      if (B.parent != -1):
+        result[B.parent] += Xup[i].transpose() * result[i] * Xup[i]
+    return result
+
+  def qd_e_kin_scales(O, Xup=None, e_kin_epsilon=1.e-12):
+    result = []
+    rap = result.append
+    for B,asi in zip(O.bodies, O.accumulated_spatial_inertia(Xup=Xup)):
+      S = B.J.S
+      j_dof = B.J.degrees_of_freedom
+      qd = [0] * j_dof
+      for i in xrange(j_dof):
+        qd[i] = 1
+        vJ = matrix.col(qd)
+        qd[i] = 0
+        if (S is not None): vJ = S * vJ
+        e_kin = kinetic_energy(I_spatial=asi, v_spatial=vJ)
+        if (e_kin < e_kin_epsilon):
+          rap(1)
+        else:
+          rap(1 / e_kin**0.5)
+    return result
+
   def ID(O, qdd, f_ext=None, grav_accn=None):
     """RBDA Tab. 5.1, p. 96:
 Inverse Dynamics of a kinematic tree via Recursive Newton-Euler Algorithm.
@@ -221,7 +249,7 @@ coordinates q. Uses ID0().
     return [B.J.tau_as_d_pot_d_q(tau=tau)
       for B,tau in zip(O.bodies, O.ID0(f_ext=f_ext))]
 
-  def FDab(O, tau=None, f_ext=None, grav_accn=None, return_locals=False):
+  def FDab(O, tau=None, f_ext=None, grav_accn=None):
     """RBDA Tab. 7.1, p. 132:
 Forward Dynamics of a kinematic tree via the Articulated-Body Algorithm.
 tau is a vector of force variables.
@@ -290,15 +318,4 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
       else:
         a[i] += B.J.S * qdd[i]
 
-    if (return_locals):
-      return locals()
     return qdd
-
-  def accumulated_spatial_inertia(O):
-    result = [B.I for B in O.bodies]
-    Xup = O.Xup()
-    for i in xrange(len(result)-1,-1,-1):
-      B = O.bodies[i]
-      if (B.parent != -1):
-        result[B.parent] += Xup[i].transpose() * result[i] * Xup[i]
-    return result

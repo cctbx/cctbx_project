@@ -112,6 +112,12 @@ def exercise_system_model():
     revolute_body(),
     translational_body()])
   assert approx_equal(model.e_kin(), 5.10688665235)
+  assert approx_equal(model.qd_e_kin_scales(), [
+    0.1036643, 0.1054236, 0.1187526, 0.5773503, 0.5773503, 0.5773503,
+    0.1749883, 0.2830828, 0.2225619,
+    1.334309,
+    1.414214, 1.414214, 1.414214])
+  #
   qdd = matrix.col_list([
     (-0.04,0.05,0.23,-0.01,-0.08,0.04),
     (0.08,-0.08,-0.01),
