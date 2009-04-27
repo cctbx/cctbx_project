@@ -109,8 +109,13 @@ scitbx.python wx_molecules.py [options] sim_index
       .option(None, "--i_seq_labels",
         action="store_true",
         default=False)
+      .option(None, "--random_wells",
+        action="store_true",
+        default=False)
     ).process(args=args, nargs=1)
-    self.i_seq_labels = command_line.options.i_seq_labels
+    co = command_line.options
+    self.i_seq_labels = co.i_seq_labels
+    self.use_random_wells = co.random_wells
     self.simulation_index = int(command_line.args[0])
     assert 0 <= self.simulation_index < n
     super(App, self).__init__(title="wx_molecules")
@@ -118,7 +123,11 @@ scitbx.python wx_molecules.py [options] sim_index
   def init_view_objects(self):
     box = wx.BoxSizer(wx.VERTICAL)
     self.view_objects = viewer(self.frame, size=(600,600))
-    sim = tst_molecules.get_test_simulation_by_index(self.simulation_index)
+    sim = tst_molecules.get_test_simulation_by_index(
+      self.simulation_index,
+      use_random_wells=self.use_random_wells)
+    if (not self.use_random_wells):
+      sim.assign_random_velocities(e_kin_target=sim.degrees_of_freedom)
     if (self.i_seq_labels):
       sim.labels = [str(i) for i in xrange(len(sim.labels))]
     self.view_objects.set_points_and_lines(sim=sim)

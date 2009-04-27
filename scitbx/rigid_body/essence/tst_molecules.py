@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.rigid_body.essence import featherstone
 from scitbx.rigid_body.essence import joint_lib
 from scitbx.rigid_body.essence import utils
@@ -153,6 +154,44 @@ class simulation(object):
       factor = (e_kin_cap / O.e_kin_before_velocity_scaling)**0.5
       for B in O.bodies:
         B.qd *= factor
+
+  def assign_random_velocities(O, e_kin_target):
+    assert O.degrees_of_freedom != 0
+    qd_e_kin_scales = flex.double()
+    for B in O.bodies:
+      BJ0 = B.J
+      qd0 = B.J.qd_zero
+      qd = list(qd0)
+      for iqd in xrange(len(qd)):
+        qd[iqd] = qd0[iqd] + 1
+        B.qd = matrix.col(qd)
+        qd[iqd] = qd0[iqd]
+        B.J = BJ0.time_step_position(qd=B.qd, delta_t=1)
+        O.e_kin_update()
+        assert O.e_kin != 0
+        qd_e_kin_scale = 1 / O.e_kin**0.5
+        qd_e_kin_scales.append(qd_e_kin_scale)
+      B.J = BJ0
+      B.qd = B.J.qd_zero
+    O.e_kin_update()
+    assert O.e_kin == 0
+    assert qd_e_kin_scales.size() == O.degrees_of_freedom
+    qd_e_kin_scales *= (e_kin_target / O.degrees_of_freedom)**0.5
+    rg = random.gauss
+    i_qd = 0
+    for B in O.bodies:
+      qd_new = []
+      for qd in B.J.qd_zero:
+        qd_new.append(qd + rg(mu=0, sigma=qd_e_kin_scales[i_qd]))
+        i_qd += 1
+      B.qd = matrix.col(qd_new)
+    assert i_qd == O.degrees_of_freedom
+    O.e_kin_update()
+    assert O.e_kin != 0
+    factor = (e_kin_target / O.e_kin)**0.5
+    for B in O.bodies:
+      B.qd *= factor
+    O.energies_and_accelerations_update()
 
   def d_pot_d_q(O):
     return featherstone.system_model(bodies=O.bodies).d_pot_d_q(
