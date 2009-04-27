@@ -85,6 +85,10 @@ def show_velocity_scales(args):
     print "e_kin, temp:", sim.e_kin, \
       dynamics.kinetic_energy_as_temperature(dof=dof, e=sim.e_kin)
     print
+    sim.assign_random_velocities(e_kin_target=e_kin_target)
+    print "e_kin, temp:", sim.e_kin, \
+      dynamics.kinetic_energy_as_temperature(dof=dof, e=sim.e_kin)
+    print
 
 def assign_cartesian_velocities(temperature=300):
   masses = flex.double(5, 1)
