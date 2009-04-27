@@ -7,14 +7,6 @@ env = env_base.Copy(
   LIBPATH=["#lib"]
 )
 
-# With recent gcc:
-#    -std=c++98 -Wall -Wextra -Wshorten-64-to-32 -Wconversion -Wcast-align -Wwrite-strings -Wcast-qual -pedantic 
-
-flg = os.environ.get("CXXFLAGS")
-if flg  is not None:
-  flg = flg.split(" ")
-  env.Append( CXXFLAGS=flg )
-
 env_etc.include_registry.append(
   env=env,
   paths=env_etc.cctbx_common_includes)

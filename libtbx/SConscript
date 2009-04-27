@@ -673,6 +673,23 @@ else:
   else:
     sys.tracebacklimit = 0
     raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
+  # user options for any compiler from the environment variables
+  # at the time of configure
+  opts = libtbx.env.build_options
+  if( opts.use_environment_flags ):
+    flg = opts.env_cxxflags.split(" ")
+    if( hasattr(env_etc, "cxxflags_base") ):
+      env_etc.cxxflags_base.extend(flg)
+    else:
+      env_etc.cxxflags_base = flg
+    flg = opts.env_cflags.split(" ")
+    if( hasattr(env_etc, "ccflags_base") ):
+      env_etc.ccflags_base.extend(flg)
+    else:
+      env_etc.ccflags_base = flg
+    flg = opts.env_cppflags.split(" ")
+    env_etc.ccflags_base.extend(flg)
+    env_etc.cxxflags_base.extend(flg)
 
 env_base["SHOBJSUFFIX"] = env_base["OBJSUFFIX"]
 

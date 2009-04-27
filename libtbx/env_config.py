@@ -615,7 +615,9 @@ class environment:
           =command_line.options.boost_python_bool_int_strict,
         enable_boost_threads=command_line.options.enable_boost_threads,
         enable_openmp_if_possible
-          =command_line.options.enable_openmp_if_possible)
+          =command_line.options.enable_openmp_if_possible,
+        use_environment_flags=command_line.options.use_environment_flags)
+      self.build_options.get_flags_from_environment()
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
           command_line.options.command_version_suffix
@@ -1482,16 +1484,36 @@ class build_options:
         boost_python_no_py_signatures=False,
         boost_python_bool_int_strict=True,
         enable_boost_threads=default_enable_boost_threads,
-        enable_openmp_if_possible=default_enable_openmp_if_possible):
+        enable_openmp_if_possible=default_enable_openmp_if_possible,
+        use_environment_flags=False):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
+    assert self.use_environment_flags in [True,False]
     self.optimization = (self.mode in [
       "release", "max_optimized", "debug_optimized"])
     self.max_optimized = (self.mode in ["max_optimized", "debug_optimized"])
     self.debug_symbols = (self.mode in ["debug", "debug_optimized"])
     if (self.static_exe):
       self.static_libraries = True
+
+  def get_flags_from_environment(self):
+    if (self.use_environment_flags ):
+      # get compiler flags from environment vars
+      # they will be stored at configure in the file libtbx_env
+      # and used during build
+      self.env_cxxflags = ""
+      self.env_cflags = ""
+      self.env_cppflags = ""
+      flg = os.environ.get("CXXFLAGS")
+      if flg is not None:
+        self.env_cxxflags = flg
+      flg = os.environ.get("CFLAGS")
+      if flg is not None:
+        self.env_cflags = flg
+      flg = os.environ.get("CPPFLAGS")
+      if flg is not None:
+        self.env_cppflags = flg
 
   def report(self, f=None):
     if (f is None): f = sys.stdout
@@ -1510,6 +1532,7 @@ class build_options:
       self.boost_python_bool_int_strict
     print >> f, "Boost threads enabled:", self.enable_boost_threads
     print >> f, "Enable OpenMP if possible:", self.enable_openmp_if_possible
+    print >> f, "Use environment flags:", self.use_environment_flags
 
 class include_registry:
 
@@ -1636,6 +1659,11 @@ class pre_process_args:
         default=None,
         help="version suffix for commands in bin directory",
         metavar="STRING")
+      parser.option(None, "--use_environment_flags",
+        action="store_true",
+        default=False,
+        help="add compiler flags from environment variables: CXXFLAGS, CFLAGS,"
+             " CPPFLAGS")
     parser.option(None, "--build_boost_python_extensions",
       action="store",
       type="bool",
@@ -1731,6 +1759,12 @@ def unpickle():
   # XXX backward compatibility 2009-04-06
   if (not hasattr(env.build_options, "boost_python_bool_int_strict")):
     env.build_options.boost_python_bool_int_strict = True
+  # XXX backward compatibility 2009-04-27
+  if( not hasattr(env.build_options, "use_environment_flags") ):
+    env.build_options.use_environment_flags = False
+    env.build_options.env_cxxflags = ""
+    env.build_options.env_cflags = ""
+    env.build_options.env_cppflags = ""
   return env
 
 def warm_start(args):
