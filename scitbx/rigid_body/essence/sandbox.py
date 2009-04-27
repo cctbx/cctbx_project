@@ -10,26 +10,6 @@ import sys
 
 if (1): random.seed(0)
 
-def quick_e_kin(sim, spatial_inertia):
-  scales = flex.double()
-  assert len(spatial_inertia) == len(sim.bodies)
-  for B,IA in zip(sim.bodies, spatial_inertia):
-    bdof = B.J.degrees_of_freedom
-    qd = [0] * bdof
-    for i in xrange(bdof):
-      qd[i] = 1
-      vJ = matrix.col(qd)
-      qd[i] = 0
-      if (B.J.S is not None): vJ = B.J.S * vJ
-      e_kin = tst_molecules.featherstone.kinetic_energy(
-        I_spatial=IA, v_spatial=vJ)
-      print "quick e_kin:", e_kin
-      assert e_kin != 0
-      scales.append(1 / e_kin**0.5)
-  assert len(scales) == sim.degrees_of_freedom
-  print
-  return scales
-
 def show_velocity_scales(args):
   assert len(args) > 0
   stage1s = flex.double()
@@ -38,20 +18,6 @@ def show_velocity_scales(args):
     sim = tst_molecules.get_test_simulation_by_index(
       simulation_index,
       use_random_wells=False)
-    #
-    model = tst_molecules.featherstone.system_model(bodies=sim.bodies)
-    unit = []
-    for B in sim.bodies:
-      unit.append(matrix.col([1]*B.J.degrees_of_freedom))
-    tau = model.ID(qdd=unit)
-    for i,v in enumerate(tau):
-      print "tau[%d]:" % i, v.elems
-    print
-    FDab_locals = model.FDab(tau=unit, return_locals=True)
-    qdd = FDab_locals["qdd"]
-    for i,v in enumerate(qdd):
-      print "qdd[%d]:" % i, v.elems
-    print
     #
     print "time step 1"
     qd_e_kin_scales = flex.double()
@@ -84,13 +50,10 @@ def show_velocity_scales(args):
     print "qd_e_kin_scales:", numbers_as_str(values=qd_e_kin_scales)
     print
     #
-    FDab_locals = model.FDab(return_locals=True)
-    FDab_scales = quick_e_kin(sim=sim, spatial_inertia=FDab_locals["IA"])
-    if (0): qd_e_kin_scales = FDab_scales
-    #
-    asi = model.accumulated_spatial_inertia()
-    asi_scales = quick_e_kin(sim=sim, spatial_inertia=asi)
-    if (0): qd_e_kin_scales = asi_scales
+    model = tst_molecules.featherstone.system_model(bodies=sim.bodies)
+    asi_scales = flex.double(model.qd_e_kin_scales())
+    assert len(asi_scales) == sim.degrees_of_freedom
+    if (1): qd_e_kin_scales = asi_scales
     #
     temp_target = 300
     qd_global = (0.5 * temp_target * boltzmann_constant_akma)**0.5

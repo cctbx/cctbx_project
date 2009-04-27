@@ -155,42 +155,39 @@ class simulation(object):
       for B in O.bodies:
         B.qd *= factor
 
-  def assign_random_velocities(O, e_kin_target):
-    assert O.degrees_of_freedom != 0
-    qd_e_kin_scales = flex.double()
+  def assign_zero_velocities(O):
     for B in O.bodies:
-      BJ0 = B.J
-      qd0 = B.J.qd_zero
-      qd = list(qd0)
-      for iqd in xrange(len(qd)):
-        qd[iqd] = qd0[iqd] + 1
-        B.qd = matrix.col(qd)
-        qd[iqd] = qd0[iqd]
-        B.J = BJ0.time_step_position(qd=B.qd, delta_t=1)
-        O.e_kin_update()
-        assert O.e_kin != 0
-        qd_e_kin_scale = 1 / O.e_kin**0.5
-        qd_e_kin_scales.append(qd_e_kin_scale)
-      B.J = BJ0
       B.qd = B.J.qd_zero
-    O.e_kin_update()
-    assert O.e_kin == 0
-    assert qd_e_kin_scales.size() == O.degrees_of_freedom
-    qd_e_kin_scales *= (e_kin_target / O.degrees_of_freedom)**0.5
-    rg = random.gauss
+    O.energies_and_accelerations_update()
+
+  def assign_random_velocities(O,
+        e_kin_target,
+        e_kin_epsilon=1.e-12,
+        random_gauss=None):
+    assert e_kin_target >= 0
+    if (e_kin_target == 0):
+      O.assign_zero_velocities()
+      return
+    qd_e_kin_scales = flex.double(
+      featherstone.system_model(bodies=O.bodies).qd_e_kin_scales(
+        e_kin_epsilon=e_kin_epsilon))
+    if (O.degrees_of_freedom != 0):
+      qd_e_kin_scales *= (e_kin_target / O.degrees_of_freedom)**0.5
+    if (random_gauss is None):
+      random_gauss = random.gauss
     i_qd = 0
     for B in O.bodies:
       qd_new = []
       for qd in B.J.qd_zero:
-        qd_new.append(qd + rg(mu=0, sigma=qd_e_kin_scales[i_qd]))
+        qd_new.append(qd + random_gauss(mu=0, sigma=qd_e_kin_scales[i_qd]))
         i_qd += 1
       B.qd = matrix.col(qd_new)
     assert i_qd == O.degrees_of_freedom
     O.e_kin_update()
-    assert O.e_kin != 0
-    factor = (e_kin_target / O.e_kin)**0.5
-    for B in O.bodies:
-      B.qd *= factor
+    if (O.e_kin >= e_kin_epsilon):
+      factor = (e_kin_target / O.e_kin)**0.5
+      for B in O.bodies:
+        B.qd *= factor
     O.energies_and_accelerations_update()
 
   def d_pot_d_q(O):
@@ -334,6 +331,39 @@ def construct_bodies(sites, masses, cluster_manager):
     result.append(body)
   return result
 
+def exercise_qd_e_kin_scales(sim):
+  def slow():
+    result = flex.double()
+    for B in sim.bodies:
+      BJ0 = B.J
+      qd0 = B.J.qd_zero
+      qd = list(qd0)
+      for iqd in xrange(len(qd)):
+        qd[iqd] = qd0[iqd] + 1
+        B.qd = matrix.col(qd)
+        qd[iqd] = qd0[iqd]
+        B.J = BJ0.time_step_position(qd=B.qd, delta_t=1)
+        sim.e_kin_update()
+        if (sim.e_kin < 1.e-12):
+          result.append(1)
+        else:
+          result.append(1 / sim.e_kin**0.5)
+      B.J = BJ0
+      B.qd = B.J.qd_zero
+    sim.e_kin_update()
+    assert sim.e_kin == 0
+    assert len(result) == sim.degrees_of_freedom
+    return result
+  scales_slow = slow()
+  model = featherstone.system_model(bodies=sim.bodies)
+  scales_fast = model.qd_e_kin_scales()
+  assert approx_equal(scales_fast, scales_slow)
+
+def exercise_random_velocities(sim):
+  for e_kin_target in [1, 1.3, 13, 0]:
+    sim.assign_random_velocities(e_kin_target=e_kin_target)
+    assert approx_equal(sim.e_kin, e_kin_target)
+
 def exercise_sim(out, n_dynamics_steps, delta_t, sim):
   sim.check_d_pot_d_q()
   e_pots = flex.double([sim.e_pot])
@@ -442,6 +472,8 @@ def run(args):
     for i in xrange(n_test_simulations):
       print >> out, "test_simulation index:", i
       sim = get_test_simulation_by_index(i=i)
+      exercise_qd_e_kin_scales(sim=sim)
+      exercise_random_velocities(sim=sim)
       exercise_dynamics_quick(
         out=out, sim=sim, n_dynamics_steps=n_dynamics_steps)
       exercise_minimization_quick(out=out, sim=sim)
