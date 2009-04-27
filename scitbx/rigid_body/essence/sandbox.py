@@ -8,28 +8,51 @@ import random
 import math
 import sys
 
+if (1): random.seed(0)
+
+def quick_e_kin(sim, spatial_inertia):
+  scales = flex.double()
+  assert len(spatial_inertia) == len(sim.bodies)
+  for B,IA in zip(sim.bodies, spatial_inertia):
+    bdof = B.J.degrees_of_freedom
+    qd = [0] * bdof
+    for i in xrange(bdof):
+      qd[i] = 1
+      vJ = matrix.col(qd)
+      qd[i] = 0
+      if (B.J.S is not None): vJ = B.J.S * vJ
+      e_kin = tst_molecules.featherstone.kinetic_energy(
+        I_spatial=IA, v_spatial=vJ)
+      print "quick e_kin:", e_kin
+      assert e_kin != 0
+      scales.append(1 / e_kin**0.5)
+  assert len(scales) == sim.degrees_of_freedom
+  print
+  return scales
+
 def show_velocity_scales(args):
   assert len(args) > 0
+  stage1s = flex.double()
   for arg in args:
     simulation_index = int(arg)
     sim = tst_molecules.get_test_simulation_by_index(
       simulation_index,
       use_random_wells=False)
-    print "q shifts (as used in refinement)"
-    shift = 1
-    packed_q = sim.pack_q()
-    e_pot_0 = sim.e_pot
-    for iq in xrange(len(packed_q)):
-      q_orig = packed_q[iq]
-      packed_q[iq] += shift
-      sim.unpack_q(packed_q=packed_q)
-      sim.e_pot_update()
-      print iq, sim.e_pot
-      packed_q[iq] = q_orig
-    sim.unpack_q(packed_q=packed_q)
-    sim.energies_and_accelerations_update()
-    print "end e_pot:", sim.e_pot, sim.e_kin
+    #
+    model = tst_molecules.featherstone.system_model(bodies=sim.bodies)
+    unit = []
+    for B in sim.bodies:
+      unit.append(matrix.col([1]*B.J.degrees_of_freedom))
+    tau = model.ID(qdd=unit)
+    for i,v in enumerate(tau):
+      print "tau[%d]:" % i, v.elems
     print
+    FDab_locals = model.FDab(tau=unit, return_locals=True)
+    qdd = FDab_locals["qdd"]
+    for i,v in enumerate(qdd):
+      print "qdd[%d]:" % i, v.elems
+    print
+    #
     print "time step 1"
     qd_e_kin_scales = flex.double()
     for B in sim.bodies:
@@ -44,8 +67,8 @@ def show_velocity_scales(args):
           qd[iqd] = qd0[iqd]
           B.J = BJ0.time_step_position(qd=B.qd, delta_t=1)
           sim.e_kin_update()
-          sim.e_pot_update()
-          print len(qd_e_kin_scales), sim.e_pot, sim.e_kin
+          if (i_pass == 0):
+            print len(qd_e_kin_scales), sim.e_kin
           if (sim.e_kin == 0):
             break
           if (i_pass == 0):
@@ -60,35 +83,52 @@ def show_velocity_scales(args):
     print "end e_pot:", sim.e_pot, sim.e_kin
     print "qd_e_kin_scales:", numbers_as_str(values=qd_e_kin_scales)
     print
-    temp = 300
-    qd_global = (0.5 * temp * boltzmann_constant_akma)**0.5
+    #
+    FDab_locals = model.FDab(return_locals=True)
+    FDab_scales = quick_e_kin(sim=sim, spatial_inertia=FDab_locals["IA"])
+    if (0): qd_e_kin_scales = FDab_scales
+    #
+    asi = model.accumulated_spatial_inertia()
+    asi_scales = quick_e_kin(sim=sim, spatial_inertia=asi)
+    if (0): qd_e_kin_scales = asi_scales
+    #
+    temp_target = 300
+    qd_global = (0.5 * temp_target * boltzmann_constant_akma)**0.5
       # simplification of temperature_as_kinetic_energy() / dof
     rg = random.gauss
     i_qd = 0
     for B in sim.bodies:
       qd_new = []
       for qd in B.J.qd_zero:
-        qd_new.append(qd + rg(mu=0, sigma=qd_e_kin_scales[i_qd]*qd_global))
+        if (1):
+          qd_new.append(qd + qd_e_kin_scales[i_qd]*qd_global)
+        else:
+          qd_new.append(qd + rg(mu=0, sigma=qd_e_kin_scales[i_qd]*qd_global))
         i_qd += 1
       B.qd = matrix.col(qd_new)
     assert i_qd == qd_e_kin_scales.size()
     sim.e_kin_update()
     dof = qd_e_kin_scales.size()
-    print "e_kin, temp:", sim.e_kin, \
-      dynamics.kinetic_energy_as_temperature(dof=dof, e=sim.e_kin)
+    sim_temp = dynamics.kinetic_energy_as_temperature(dof=dof, e=sim.e_kin)
+    stage1s.append(sim_temp)
+    print arg, "STAGE1 e_kin, temp:", sim.e_kin, sim_temp
     assert sim.e_kin != 0
-    e_kin_target = dynamics.temperature_as_kinetic_energy(dof=dof, t=temp)
+    e_kin_target = dynamics.temperature_as_kinetic_energy(
+      dof=dof, t=temp_target)
     factor = (e_kin_target / sim.e_kin)**0.5
     for B in sim.bodies:
       B.qd *= factor
     sim.energies_and_accelerations_update()
-    print "e_kin, temp:", sim.e_kin, \
-      dynamics.kinetic_energy_as_temperature(dof=dof, e=sim.e_kin)
+    sim_temp = dynamics.kinetic_energy_as_temperature(dof=dof, e=sim.e_kin)
+    print arg, "STAGE2 e_kin, temp:", sim.e_kin, sim_temp
     print
     sim.assign_random_velocities(e_kin_target=e_kin_target)
-    print "e_kin, temp:", sim.e_kin, \
-      dynamics.kinetic_energy_as_temperature(dof=dof, e=sim.e_kin)
+    sim_temp = dynamics.kinetic_energy_as_temperature(dof=dof, e=sim.e_kin)
+    print "e_kin, temp:", sim.e_kin, sim_temp
     print
+  print "stage1s:"
+  stage1s.min_max_mean().show()
+  print
 
 def assign_cartesian_velocities(temperature=300):
   masses = flex.double(5, 1)
