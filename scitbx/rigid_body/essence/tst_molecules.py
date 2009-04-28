@@ -10,12 +10,6 @@ from libtbx.test_utils import approx_equal
 import random
 import sys
 
-def random_wells(sites):
-  result = []
-  for site in sites:
-    result.append(site+matrix.col.random(n=3, a=-1, b=1))
-  return result
-
 class potential_object(object):
 
   def __init__(O,
@@ -392,7 +386,7 @@ def exercise_sim(out, n_dynamics_steps, delta_t, sim):
   out.flush()
   return relative_range
 
-def exercise_dynamics_quick(out, sim, n_dynamics_steps, delta_t=0.001):
+def exercise_dynamics_quick(out, sim, n_dynamics_steps, delta_t=0.0001):
   relative_range = exercise_sim(
     out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
   if (out is not sys.stdout):
@@ -407,32 +401,32 @@ def exercise_minimization_quick(out, sim, max_iterations=3):
   print >> out, "  final e_pot:", sim.e_pot
   e_pot_final = sim.e_pot
   if (out is not sys.stdout):
-    assert e_pot_final < e_pot_start * 0.98
+    assert e_pot_final < e_pot_start * 0.5
   print >> out
 
 def exercise_apply_velocity_scaling(out, sim):
   print >> out, "exercise_apply_velocity_scaling():"
-  e_kins = flex.double([sim.e_kin])
-  for i_step in xrange(10):
-    sim.dynamics_step(delta_t=0.1, e_kin_cap=2)
-    e_kins.append(sim.e_kin)
-    print >> out, "e_kin:", sim.e_kin
-  assert approx_equal(e_kins, [
-    0.0, 0.10596967199225664, 0.41471669284176654, 0.90125773606867454,
-    1.5269900929646234, 2.0446638368687799, 2.0528390856843681,
-    2.0592456511353947, 2.0643773120065561, 2.0685121042338253,
-    2.0718756155399802])
+  rg = random.Random(x=0).gauss
+  e_kins_accu = []
+  for e_kin_cap in [None, 2]:
+    sim.assign_random_velocities(e_kin_target=3, random_gauss=rg)
+    e_kins = flex.double([sim.e_kin])
+    for i_step in xrange(10):
+      sim.dynamics_step(delta_t=0.1, e_kin_cap=e_kin_cap)
+      e_kins.append(sim.e_kin)
+      print >> out, "e_kin:", sim.e_kin
+    e_kins_accu.append(e_kins)
+  assert approx_equal(e_kins_accu, [
+    [3, 3.000611, 2.883901, 2.658875, 2.343055, 1.961183,
+     1.54329, 1.122324, 0.7315592, 0.4019825, 0.1598842],
+    [3, 2.006837, 2.000705, 1.995196, 1.991805, 1.991156,
+     1.993115, 1.997067, 2.002187, 2.007642, 2.012701]])
 
 def construct_simulation(
       labels,
       sites,
       masses,
-      tardy_tree,
-      use_random_wells=True):
-  if (use_random_wells):
-    wells = random_wells(sites)
-  else:
-    wells = sites
+      tardy_tree):
   cm = tardy_tree.cluster_manager
   return simulation(
     labels=labels,
@@ -441,26 +435,25 @@ def construct_simulation(
     cluster_manager=cm,
     potential_obj=potential_object(
       sites=sites,
-      wells=wells,
+      wells=sites,
       restraint_edges=cm.loop_edges+cm.loop_edge_bendings),
     bodies=construct_bodies(sites=sites, masses=masses, cluster_manager=cm))
 
 n_test_simulations = len(tst_tardy_pdb.test_cases)
 
-def get_test_simulation_by_index(i, use_random_wells=True):
+def get_test_simulation_by_index(i):
   tc = tst_tardy_pdb.test_cases[i]
   tt = tc.tardy_tree_construct()
   return construct_simulation(
     labels=tc.labels,
     sites=tc.sites,
     masses=[1.0]*len(tc.sites),
-    tardy_tree=tt,
-    use_random_wells=use_random_wells)
+    tardy_tree=tt)
 
 def run(args):
   assert len(args) in [0,1]
   if (len(args) == 0):
-    n_dynamics_steps = 30
+    n_dynamics_steps = 100
     out = null_out()
   else:
     n_dynamics_steps = max(1, int(args[0]))
@@ -474,12 +467,13 @@ def run(args):
       sim = get_test_simulation_by_index(i=i)
       exercise_qd_e_kin_scales(sim=sim)
       exercise_random_velocities(sim=sim)
+      sim.assign_random_velocities(e_kin_target=1)
+      assert approx_equal(sim.e_kin, 1)
       exercise_dynamics_quick(
         out=out, sim=sim, n_dynamics_steps=n_dynamics_steps)
       exercise_minimization_quick(out=out, sim=sim)
   #
   if (1):
-    random.seed(0)
     sim = get_test_simulation_by_index(i=13)
     assert sim.degrees_of_freedom == 12
     exercise_apply_velocity_scaling(out=out, sim=sim)
