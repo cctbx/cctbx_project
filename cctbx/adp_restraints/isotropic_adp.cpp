@@ -27,20 +27,24 @@ namespace cctbx { namespace adp_restraints {
   {
     double const u_iso =
       adptbx::u_cart_as_u_iso(u_cart);
-    for (int i=0;i<3;i++)
+    for (int i=0;i<3;i++) {
       deltas_[i] = u_cart[i] - u_iso;
-    for (int i=3;i<6;i++)
+    }
+    for (int i=3;i<6;i++) {
       deltas_[i] = u_cart[i];
+    }
   }
 
   double
   isotropic_adp::residual() const
   {
     double result = 0;
-    for(int i=0;i<3;i++)
+    for(int i=0;i<3;i++) {
       result += weight * scitbx::fn::pow2(deltas_[i]);
-    for(int i=3;i<6;i++)
+    }
+    for(int i=3;i<6;i++) {
       result += 2 * weight * scitbx::fn::pow2(deltas_[i]);
+    }
     return result;
   }
 
@@ -48,10 +52,12 @@ namespace cctbx { namespace adp_restraints {
   isotropic_adp::gradients() const
   {
     scitbx::sym_mat3<double> gradients;
-    for (int i=0;i<3;i++)
+    for (int i=0;i<3;i++) {
       gradients[i] = weight * 2 * deltas_[i];
-    for (int i=3;i<6;i++)
+    }
+    for (int i=3;i<6;i++) {
       gradients[i] = weight * 4 * deltas_[i];
+    }
     return gradients;
   }
 

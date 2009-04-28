@@ -36,24 +36,27 @@ namespace cctbx { namespace adp_restraints {
     if (use_u_aniso[0] && use_u_aniso[1]) {
       scitbx::sym_mat3<double> const& u_1 = u_cart[0];
       scitbx::sym_mat3<double> const& u_2 = u_cart[1];
-      for (int i=0;i<6;i++)
+      for (int i=0;i<6;i++) {
         deltas_[i] = u_1[i] - u_2[i];
+      }
     }
     //! () - o
     else if (use_u_aniso[0] && !use_u_aniso[1]) {
       scitbx::sym_mat3<double> const& u_1 = u_cart[0];
       double const& u_2 = u_iso[1];
       scitbx::sym_mat3<double> const& u_2_cart = adptbx::u_iso_as_u_cart(u_2);
-      for (int i=0;i<3;i++)
+      for (int i=0;i<3;i++) {
         deltas_[i] = u_1[i] - u_2_cart[i];
+      }
     }
     //! o - ()
     else if (!use_u_aniso[0] && use_u_aniso[1]) {
       double const& u_1 = u_iso[0];
       scitbx::sym_mat3<double> const& u_2 = u_cart[1];
       scitbx::sym_mat3<double> const& u_1_cart = adptbx::u_iso_as_u_cart(u_1);
-      for (int i=0;i<3;i++)
+      for (int i=0;i<3;i++) {
         deltas_[i] = u_1_cart[i] - u_2[i];
+      }
     }
     //! o - o
     else if (!use_u_aniso[0] && !use_u_aniso[1]) {
@@ -67,10 +70,12 @@ namespace cctbx { namespace adp_restraints {
   adp_similarity::residual() const
   {
     double result = 0;
-    for(int i=0;i<3;i++)
+    for(int i=0;i<3;i++) {
       result += weight * scitbx::fn::pow2(deltas_[i]);
-    for(int i=3;i<6;i++)
+    }
+    for(int i=3;i<6;i++) {
       result += 2 * weight * scitbx::fn::pow2(deltas_[i]);
+    }
     return result;
   }
 
@@ -79,10 +84,12 @@ namespace cctbx { namespace adp_restraints {
   adp_similarity::gradient_0() const
   {
     scitbx::sym_mat3<double> result;
-    for(int i=0;i<3;i++)
+    for(int i=0;i<3;i++) {
       result[i] = 2 * deltas_[i];
-    for(int i=3;i<6;i++)
+    }
+    for(int i=3;i<6;i++) {
       result[i] = 4 * deltas_[i];
+    }
     return result;
   }
 
