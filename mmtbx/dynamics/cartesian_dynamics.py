@@ -16,6 +16,26 @@ import math
 import sys
 import iotbx.phil
 
+def random_velocities(
+      masses,
+      target_temperature,
+      zero_fraction=0,
+      random_gauss=None,
+      random_random=None):
+  result = flex.vec3_double()
+  result.reserve(masses.size())
+  if (random_gauss is None): random_gauss = random.gauss
+  if (random_random is None): random_random = random.random
+  kt = boltzmann_constant_akma * target_temperature
+  for mass in masses:
+    assert mass > 0
+    if (zero_fraction == 0 or random_random() >= zero_fraction):
+      sigma = (kt / mass)**0.5
+      result.append([random_gauss(0, sigma) for i in (1,2,3)])
+    else:
+      result.append([0,0,0])
+  return result
+
 class interleaved_lbfgs_minimization(object):
 
   def __init__(self,
@@ -178,17 +198,11 @@ class cartesian_dynamics(object):
       self.print_dynamics_stat(text="after final integration step")
 
   def set_velocities(self):
-    ivzf = self.initial_velocities_zero_fraction
-    rg = random.gauss
-    rr = random.random
-    mean = 0.0
-    for j,atom_weight in enumerate(self.weights):
-      if (ivzf == 0 or rr() >= ivzf):
-        factor = math.sqrt(self.k_boltz / atom_weight)
-        sigma = factor * math.sqrt(self.temperature)
-        self.vxyz[j] = [rg(mean,sigma) for i in (1,2,3)]
-      else:
-        self.vxyz[j] = [0, 0, 0]
+    self.vxyz.clear()
+    self.vxyz.extend(random_velocities(
+      masses=self.weights,
+      target_temperature=self.temperature,
+      zero_fraction=self.initial_velocities_zero_fraction))
 
   def residuals(self):
     obj = self.restraints_manager.energies_sites(

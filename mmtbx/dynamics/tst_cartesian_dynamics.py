@@ -11,13 +11,28 @@ import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
 
-def exercise_basic():
+def exercise_basic(verbose):
   assert abs(constants.boltzmann_constant_akma-0.001987) < 1e-6
   assert abs(constants.akma_time_as_pico_seconds-0.04889) < 1e-5
   t = mmtbx.dynamics.kinetic_energy_as_temperature(dof=5, e=1.3)
   assert approx_equal(t, 261.678053105)
   e = mmtbx.dynamics.temperature_as_kinetic_energy(dof=5, t=t)
   assert approx_equal(e, 1.3)
+  #
+  masses = flex.random_double(size=10) * 4 + 1
+  temps = flex.double()
+  for i_pass in xrange(100):
+    for i in xrange(100):
+      velocities = cartesian_dynamics.random_velocities(
+        masses=masses, target_temperature=300)
+      kt = mmtbx.dynamics.kinetic_energy_and_temperature(velocities, masses)
+      temps.append(kt.temperature)
+    mmm = temps.min_max_mean()
+    if (verbose): mmm.show()
+    if (295 < mmm.mean < 305):
+      break
+  else:
+    raise AssertionError("Failure reaching target_temperature.")
 
 class get_inputs(object):
 
@@ -187,7 +202,7 @@ def exercise_03(mon_lib_srv, ener_lib, verbose=0):
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
-  exercise_basic()
+  exercise_basic(verbose=verbose)
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   inputs = get_inputs(
