@@ -71,10 +71,10 @@ namespace tensor_rank_2 {
         initialize(symmetry_matrices, i_first_matrix_to_use, reciprocal_space);
       }
 
-      scitbx::mat_const_ref<int>
+      af::const_ref<int, af::mat_grid>
       row_echelon_form() const
       {
-        return scitbx::mat_const_ref<int>(
+        return af::const_ref<int, af::mat_grid>(
           row_echelon_form_memory.get(), 6-independent_indices.size(), 6);
       }
 
@@ -108,12 +108,12 @@ namespace tensor_rank_2 {
         return result;
       }
 
-      scitbx::mat_const_ref<FloatType>
+      af::const_ref<FloatType, af::mat_grid>
       gradient_sum_matrix() const
       {
         const FloatType* gsm = gradient_sum_matrix_memory.get();
         if (gsm == 0) gsm = initialize_gradient_sum_matrix();
-        return scitbx::mat_const_ref<FloatType>(
+        return af::const_ref<FloatType, af::mat_grid>(
           gsm, independent_indices.size(), 6);
       }
 
@@ -164,7 +164,7 @@ namespace tensor_rank_2 {
     CCTBX_ASSERT(i_first_matrix_to_use <= symmetry_matrices.size());
     unsigned n_rows = (symmetry_matrices.size() - i_first_matrix_to_use) * 6;
     boost::shared_array<int> row_echelon_setup_memory(new int[n_rows*6]);
-    scitbx::mat_ref<int> row_echelon_setup(
+    af::ref<int, af::mat_grid> row_echelon_setup(
       row_echelon_setup_memory.get(), n_rows, 6);
     CCTBX_ASSERT(constraints_raw(
       symmetry_matrices,
@@ -201,7 +201,7 @@ namespace tensor_rank_2 {
     FloatType* row = gradient_sum_matrix_memory.get();
     std::fill_n(
       row, independent_indices.size()*6, static_cast<FloatType>(0));
-    scitbx::mat_const_ref<int> rem = row_echelon_form();
+    af::const_ref<int, af::mat_grid> rem = row_echelon_form();
     for(std::size_t i=0;i<independent_indices.size();i++,row+=6) {
       row[independent_indices[i]] = 1;
       scitbx::matrix::row_echelon::back_substitution_float(
@@ -269,7 +269,7 @@ namespace tensor_rank_2 {
       */
 
       boost::shared_array<T> z_;
-      scitbx::mat_ref<T> z;
+      af::ref<T, af::mat_grid> z;
       unsigned n_independent_params;
 
       // the min absolute value for a pivot value to be considered null
@@ -319,7 +319,7 @@ namespace tensor_rank_2 {
         n_independent_params = r_e.nullity;
         af::small<T, n_all_params> x_N(n_independent_params, 0);
         z_ = boost::shared_array<T>(new T[n_all_params * n_independent_params]);
-        z = scitbx::mat_ref<T>(z_.get(), n_all_params, n_independent_params);
+        z = af::ref<T, af::mat_grid>(z_.get(), n_all_params, n_independent_params);
         for (unsigned j=0; j< n_independent_params; j++) {
           x_N[j] = 1;
           af::tiny<T, n_all_params>

@@ -393,6 +393,8 @@ scitbx/array_family/accessors/c_grid_padded_periodic.h -text
 scitbx/array_family/accessors/c_grid_periodic.h -text
 scitbx/array_family/accessors/c_interval_grid.h svneol=native#text/plain
 scitbx/array_family/accessors/f_grid.h -text
+scitbx/array_family/accessors/mat_grid.h -text
+scitbx/array_family/accessors/row_and_column.h -text
 scitbx/array_family/accessors/striding.h -text
 scitbx/array_family/accessors/traits.h -text
 scitbx/array_family/boost_python/passing_flex_by_reference.h -text
@@ -442,8 +444,6 @@ scitbx/lbfgs/raw.h svneol=native#text/plain
 scitbx/lbfgs/raw_reference.h svneol=native#text/plain
 scitbx/lbfgs/tst_ext.py svneol=native#text/x-python
 scitbx/lbfgs/tst_lbfgs_f.py svneol=native#text/x-python
-scitbx/mat_ref/make.h -text
-scitbx/mat_ref/row_and_column.h -text
 scitbx/math/accumulators.h -text
 scitbx/math/besselk.py -text
 scitbx/math/boost_python/__init__.py -text

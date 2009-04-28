@@ -13,13 +13,13 @@ namespace scitbx { namespace matrix { namespace boost_python {
 namespace {
 
   template <typename ElementType>
-  scitbx::mat_ref<ElementType>
+  af::ref<ElementType, af::mat_grid>
   flex_as_mat_ref(af::versa<ElementType, af::flex_grid<> >& a)
   {
     SCITBX_ASSERT(a.accessor().nd() == 2);
     SCITBX_ASSERT(a.accessor().is_0_based());
     SCITBX_ASSERT(!a.accessor().is_padded());
-    return scitbx::mat_ref<ElementType>(
+    return af::ref<ElementType, af::mat_grid>(
       a.begin(),
       a.accessor().all()[0],
       a.accessor().all()[1]);
@@ -30,8 +30,8 @@ namespace {
     af::versa<int, af::flex_grid<> >& m,
     af::versa<int, af::flex_grid<> >& t)
   {
-    scitbx::mat_ref<int> m_ref = flex_as_mat_ref(m);
-    scitbx::mat_ref<int> t_ref = flex_as_mat_ref(t);
+    af::ref<int, af::mat_grid> m_ref = flex_as_mat_ref(m);
+    af::ref<int, af::mat_grid> t_ref = flex_as_mat_ref(t);
     std::size_t rank = row_echelon::form_t(m_ref, t_ref);
     m.resize(af::flex_grid<>(m_ref.n_rows(), m_ref.n_columns()));
     return rank;
@@ -41,7 +41,7 @@ namespace {
   row_echelon_form(
     af::versa<int, af::flex_grid<> >& m)
   {
-    scitbx::mat_ref<int> m_ref = flex_as_mat_ref(m);
+    af::ref<int, af::mat_grid> m_ref = flex_as_mat_ref(m);
     std::size_t rank = row_echelon::form(m_ref);
     m.resize(af::flex_grid<>(m_ref.n_rows(), m_ref.n_columns()));
     return rank;
@@ -54,7 +54,7 @@ namespace {
     af::ref<int> const& sol,
     af::ref<bool> const& indep)
   {
-    scitbx::mat_ref<int> re_mx_ref = flex_as_mat_ref(re_mx);
+    af::ref<int, af::mat_grid> re_mx_ref = flex_as_mat_ref(re_mx);
     const int* v_ptr = 0;
     int* sol_ptr = 0;
     bool* indep_ptr = 0;
@@ -80,7 +80,7 @@ namespace {
     af::const_ref<double> const& v,
     af::ref<double> const& sol)
   {
-    scitbx::mat_ref<int> re_mx_ref = flex_as_mat_ref(re_mx);
+    af::ref<int, af::mat_grid> re_mx_ref = flex_as_mat_ref(re_mx);
     const double* v_ptr = 0;
     double* sol_ptr = 0;
     if (v.size()) {

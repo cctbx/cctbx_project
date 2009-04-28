@@ -70,7 +70,7 @@ namespace cctbx { namespace sgtbx {
     for(int i=0;i<group.order_z();i++) {
       setup_affine_row_reduced_echelon_form(group(i).r(), m);
     }
-    scitbx::mat_ref<int> m_ref(&*m.begin(), n_rows, 9);
+    af::ref<int, af::mat_grid> m_ref(&*m.begin(), n_rows, 9);
     scitbx::matrix::row_echelon::form(m_ref);
     scitbx::matrix::row_echelon::independent<int, 9> indep(m_ref);
     typedef af::nested_loop<af::small<int, 9> > loop_t;

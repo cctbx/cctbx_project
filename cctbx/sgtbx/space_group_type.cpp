@@ -176,7 +176,7 @@ namespace cctbx { namespace sgtbx {
         ri[0] = r[0].info();
       }
       rot_mx cum_mx = r[0].accumulate(ord[0]);
-      scitbx::mat_ref<int> re_mx(cum_mx.num().begin(), 3, 3);
+      af::ref<int, af::mat_grid> re_mx(cum_mx.num().begin(), 3, 3);
       CCTBX_ASSERT(scitbx::matrix::row_echelon::form(re_mx) == 1);
       af::tiny<sg_vec3, 4> sol = row_echelon::solve::homog_rank_1(re_mx);
       std::size_t n_ix = 1; if (ord[0] == 2) n_ix++;
@@ -317,9 +317,9 @@ namespace cctbx { namespace sgtbx {
 
       int p[maxr * maxr];
       int q[maxc * maxc];
-      scitbx::mat_ref<int> m_ref(m, nr, nc);
-      scitbx::mat_ref<int> p_ref(p, nr, nr);
-      scitbx::mat_ref<int> q_ref(q, nc, nc);
+      af::ref<int, af::mat_grid> m_ref(m, nr, nc);
+      af::ref<int, af::mat_grid> p_ref(p, nr, nr);
+      af::ref<int, af::mat_grid> q_ref(q, nc, nc);
       smith_normal_form(m_ref, p_ref, q_ref);
       CCTBX_ASSERT(m_ref.is_square());
       std::size_t nd = m_ref.n_rows();

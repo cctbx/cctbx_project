@@ -5,8 +5,8 @@
 #include <scitbx/array_family/ref.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
-#include <scitbx/mat_ref.h>
-#include <scitbx/mat_ref/row_and_column.h>
+#include <scitbx/array_family/accessors/mat_grid.h>
+#include <scitbx/array_family/accessors/row_and_column.h>
 #include <scitbx/math/accumulators.h>
 #include <vector>
 #include <algorithm>
@@ -97,7 +97,7 @@ struct reflection
 
   /// Replace A(i:, j:) by PA(i:, j:)
   void apply_on_left_to_lower_right_block(
-    mat_ref<scalar_t> const &a, int i, int j)
+    af::ref<scalar_t, af::mat_grid> const &a, int i, int j)
   {
     int m = a.n_rows(), n=a.n_columns();
     // w = beta A(i:, j:)^T v
@@ -116,7 +116,7 @@ struct reflection
 
   /// Replace A(i:, j:) by A(i:, j:)P
   void apply_on_right_to_lower_right_block(
-    mat_ref<scalar_t> const &a, int i, int j)
+    af::ref<scalar_t, af::mat_grid> const &a, int i, int j)
   {
     int m = a.n_rows(), n=a.n_columns();
     // w = beta A(i:, j) v
@@ -136,8 +136,8 @@ struct reflection
   /// the columns of the matrix \c a given the corresponding beta's
   /** C.f. Golub and Van Loan section 5.1.6 */
   void
-  accumulate_factored_form_in_columns(mat_ref<scalar_t> const &q,
-                                      mat_const_ref<scalar_t> const &a,
+  accumulate_factored_form_in_columns(af::ref<scalar_t, af::mat_grid> const &q,
+                                      af::const_ref<scalar_t, af::mat_grid> const &a,
                                       af::const_ref<scalar_t> const &beta)
   {
     int m = a.n_rows(), n = a.n_columns();
@@ -161,8 +161,8 @@ struct reflection
       C.f. Golub and Van Loan section 5.1.6
   */
   void
-  accumulate_factored_form_in_rows(mat_ref<scalar_t> const &q,
-                                   mat_const_ref<scalar_t> const &a,
+  accumulate_factored_form_in_rows(af::ref<scalar_t, af::mat_grid> const &q,
+                                   af::const_ref<scalar_t, af::mat_grid> const &a,
                                    af::const_ref<scalar_t> const &beta,
                                    int const off_diag=0)
   {
@@ -193,7 +193,7 @@ struct qr_decomposition
   std::vector<scalar_t> beta;
   matrix_t q;
 
-  qr_decomposition(mat_ref<scalar_t> const &a,
+  qr_decomposition(af::ref<scalar_t, af::mat_grid> const &a,
                    bool accumulate_q=false)
     : p(a.n_rows(), a.n_columns(), applied_on_left_tag(), accumulate_q)
   {
@@ -201,7 +201,7 @@ struct qr_decomposition
     SCITBX_ASSERT(m >= n)(m)(n);
     beta.reserve(n);
     for (int j=0; j<n; ++j) {
-      p.zero_vector(column_below(a, j, j));
+      p.zero_vector(af::column_below(a, j, j));
       beta.push_back(p.beta);
       p.apply_on_left_to_lower_right_block(a, j, j+1);
     }
@@ -229,7 +229,7 @@ struct bidiagonalisation
   std::vector<scalar_t> beta_left, beta_right;
   matrix_t u, v;
 
-  bidiagonalisation(mat_ref<scalar_t> const &a,
+  bidiagonalisation(af::ref<scalar_t, af::mat_grid> const &a,
                     bool accumulate_u=false,
                     bool accumulate_v=false)
     : p(a.n_rows(), a.n_columns(), applied_on_left_and_right_tag())
@@ -240,11 +240,11 @@ struct bidiagonalisation
     beta_left.reserve(r_left);
     beta_right.reserve(r_right);
     for (int j=0; j<n; ++j) {
-      p.zero_vector(column_below(a, j, j));
+      p.zero_vector(af::column_below(a, j, j));
       beta_left.push_back(p.beta);
       p.apply_on_left_to_lower_right_block(a, j, j+1);
       if (j < r_right) {
-        p.zero_vector(row_right_of(a, j, j+1));
+        p.zero_vector(af::row_right_of(a, j, j+1));
         beta_right.push_back(p.beta);
         p.apply_on_right_to_lower_right_block(a, j+1, j+1);
       }

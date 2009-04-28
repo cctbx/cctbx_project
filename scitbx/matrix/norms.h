@@ -1,7 +1,7 @@
 #ifndef SCITBX_MATRIX_NORMS_H
 #define SCITBX_MATRIX_NORMS_H
 
-#include <scitbx/mat_ref.h>
+#include <scitbx/array_family/accessors/mat_grid.h>
 #include <cmath>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/ref_reductions.h>
@@ -10,7 +10,7 @@
 namespace scitbx { namespace matrix {
 
 template <typename FloatType>
-FloatType norm_1(mat_const_ref<FloatType> const &a) {
+FloatType norm_1(af::const_ref<FloatType, af::mat_grid> const &a) {
   af::shared<FloatType> sum_col_(a.n_columns(), 0);
   af::ref<FloatType> sum_col = sum_col_.ref();
   for (int i=0; i<a.n_rows(); ++i) for (int j=0; j<a.n_columns(); ++j) {
@@ -20,7 +20,7 @@ FloatType norm_1(mat_const_ref<FloatType> const &a) {
 }
 
 template <typename FloatType>
-FloatType norm_inf(mat_const_ref<FloatType> const &a) {
+FloatType norm_inf(af::const_ref<FloatType, af::mat_grid> const &a) {
   FloatType result = 0;
   for (int i=0; i<a.n_rows(); ++i) {
     FloatType sum_row = 0;
@@ -33,7 +33,7 @@ FloatType norm_inf(mat_const_ref<FloatType> const &a) {
 }
 
 template <typename FloatType>
-FloatType norm_frobenius(mat_const_ref<FloatType> const &a) {
+FloatType norm_frobenius(af::const_ref<FloatType, af::mat_grid> const &a) {
   af::const_ref<FloatType> a_ij = a.as_1d();
   math::accumulator::norm_accumulator<FloatType> norm_accu;
   for (int k=0; k < a_ij.size(); ++k) norm_accu(a_ij[k]);

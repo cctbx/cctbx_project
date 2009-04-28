@@ -4,7 +4,7 @@
 #include <scitbx/constants.h>
 #include <scitbx/vec3.h>
 #include <scitbx/sym_mat3.h>
-#include <scitbx/mat_ref.h>
+#include <scitbx/array_family/accessors/mat_grid.h>
 #include <scitbx/array_family/ref.h>
 #include <scitbx/array_family/accessors/f_grid.h>
 #include <scitbx/math/eigensystem.h>
@@ -143,11 +143,9 @@ class ellipsoid_to_sphere_transform
     bool ndp;
 
   public:
-    typedef scitbx::mat_ref<GLdouble,
-                            scitbx::af::f_grid<2> >
+    typedef scitbx::af::ref<GLdouble, scitbx::af::mat_grid>
             mat_ref_type;
-    typedef scitbx::mat_const_ref<GLdouble,
-                                  scitbx::af::f_grid<2> >
+    typedef scitbx::af::const_ref<GLdouble, scitbx::af::mat_grid>
             mat_const_ref_type;
     typedef scitbx::af::const_ref<GLdouble> vec_const_ref_type;
 

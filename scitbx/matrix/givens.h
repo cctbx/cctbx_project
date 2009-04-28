@@ -1,7 +1,7 @@
 #ifndef SCITBX_MATRIX_GIVENS_H
 #define SCITBX_MATRIX_GIVENS_H
 
-#include <scitbx/mat_ref.h>
+#include <scitbx/array_family/accessors/mat_grid.h>
 #include <boost/type_traits.hpp>
 #include <cmath>
 
@@ -133,12 +133,12 @@ struct rotation
   }
 
   /// Perform u = g u in-place, where g is this rotation
-  void apply_on_left(mat_ref<scalar_t> &u, int k0, int k1) {
+  void apply_on_left(af::ref<scalar_t, af::mat_grid> &u, int k0, int k1) {
     for (int j=0; j < u.n_columns(); ++j) apply(u(k0, j), u(k1, j));
   }
 
   /// Perform v = v g in-place, where g is this rotation
-  void apply_on_right(mat_ref<scalar_t> &v, int k0, int k1) {
+  void apply_on_right(af::ref<scalar_t, af::mat_grid> &v, int k0, int k1) {
     for (int i=0; i < v.n_rows(); ++i) apply(v(i, k0), v(i, k1));
   }
 };
@@ -222,28 +222,28 @@ struct product
   void multiply_by(rotation<scalar_t> const &g) { terms[end++] = g; }
 
   /// \f$ U = G_n G_{n-1} ... G_1 U\f$ in-place
-  void apply_downward_on_left(mat_ref<scalar_t> &u, int r) {
+  void apply_downward_on_left(af::ref<scalar_t, af::mat_grid> &u, int r) {
     if (!effective) return;
     for (int i=0; i<end; ++i) terms[i].apply_on_left(u, r+i, r+i+1);
     end = 0;
   }
 
   /// \f$ V = V G_1 G_2 ... G_n\f$ in-place
-  void apply_downward_on_right(mat_ref<scalar_t> &v, int r) {
+  void apply_downward_on_right(af::ref<scalar_t, af::mat_grid> &v, int r) {
     if (!effective) return;
     for (int i=0; i<end; ++i) terms[i].apply_on_right(v, r+i, r+i+1);
     end = 0;
   }
 
   /// \f$ U = G_n G_{n-1} ... G_1 U\f$ in-place
-  void apply_upward_on_left(mat_ref<scalar_t> &u, int s) {
+  void apply_upward_on_left(af::ref<scalar_t, af::mat_grid> &u, int s) {
     if (!effective) return;
     for (int i=0; i<end; ++i) terms[i].apply_on_left(u, s-i, s-i-1);
     end = 0;
   }
 
   /// \f$ V = V G_1 G_2 ... G_n\f$ in-place
-  void apply_upward_on_right(mat_ref<scalar_t> &v, int s) {
+  void apply_upward_on_right(af::ref<scalar_t, af::mat_grid> &v, int s) {
     if (!effective) return;
     for (int i=0; i<end; ++i) terms[i].apply_on_right(v, s-i, s-i-1);
     end = 0;

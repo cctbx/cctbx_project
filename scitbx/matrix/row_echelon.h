@@ -1,9 +1,10 @@
 #ifndef SCITBX_MATRIX_ROW_ECHELON_H
 #define SCITBX_MATRIX_ROW_ECHELON_H
 
-#include <scitbx/mat_ref.h>
+#include <scitbx/array_family/accessors/mat_grid.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/misc_functions.h>
+#include <scitbx/matrix/multiply.h>
 #include <boost/rational.hpp>
 
 namespace scitbx { namespace matrix { namespace row_echelon {
@@ -21,8 +22,8 @@ namespace scitbx { namespace matrix { namespace row_echelon {
 
   template <typename IntType>
   std::size_t
-  form_t(scitbx::mat_ref<IntType>& m,
-         scitbx::mat_ref<IntType> const& t)
+  form_t(af::ref<IntType, af::mat_grid>& m,
+         af::ref<IntType, af::mat_grid> const& t)
   {
     // C++ version of RowEchelonFormT from the CrystGAP package
     //     (GAP Version 3.4.4).
@@ -69,22 +70,22 @@ namespace scitbx { namespace matrix { namespace row_echelon {
         if (cleared) { i++; j++; }
       }
     }
-    m = scitbx::mat_ref<IntType>(m.begin(), i, mc);
+    m = af::ref<IntType, af::mat_grid>(m.begin(), i, mc);
     return i;
   }
 
   template <typename IntType>
   std::size_t
-  form(scitbx::mat_ref<IntType>& m)
+  form(af::ref<IntType, af::mat_grid>& m)
   {
-    scitbx::mat_ref<IntType> t(0,0,0);
+    af::ref<IntType, af::mat_grid> t(0,0,0);
     return form_t(m, t);
   }
 
   template <typename IntType>
   IntType
   back_substitution_int(
-    scitbx::mat_const_ref<IntType> const& re_mx,
+    af::const_ref<IntType, af::mat_grid> const& re_mx,
     const IntType* v = 0,
     IntType* sol = 0,
     bool* flag_indep = 0)
@@ -137,7 +138,7 @@ namespace scitbx { namespace matrix { namespace row_echelon {
   template <typename IntType, typename FloatType>
   bool
   back_substitution_float(
-    scitbx::mat_const_ref<IntType> const& re_mx,
+    af::const_ref<IntType, af::mat_grid> const& re_mx,
     const FloatType* v,
     FloatType* sol)
   {
@@ -177,7 +178,7 @@ namespace scitbx { namespace matrix { namespace row_echelon {
   {
     independent() {}
 
-    independent(scitbx::mat_const_ref<IntType> const& re_mx)
+    independent(af::const_ref<IntType, af::mat_grid> const& re_mx)
     {
       using std::size_t;
       size_t nc = re_mx.n_columns();

@@ -12,7 +12,6 @@ def run():
   "$B/array_family/tst_unsigned_float_arithmetic",
   "$B/array_family/tst_mat3",
   "$B/array_family/tst_sym_mat3",
-  "$B/array_family/tst_mat_ref",
   "$B/array_family/tst_ref_matrix_facet",
   "$B/array_family/tst_accessors",
   "$B/serialization/tst_base_256",

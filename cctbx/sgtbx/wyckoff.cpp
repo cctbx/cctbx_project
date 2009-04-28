@@ -133,9 +133,9 @@ namespace cctbx { namespace sgtbx { namespace wyckoff {
       b = b.scale(f / b.den());
       rot_mx p(1);
       rot_mx q(1);
-      scitbx::mat_ref<int> m_ref(m.num().begin(), 3, 3);
-      scitbx::mat_ref<int> p_ref(p.num().begin(), 3, 3);
-      scitbx::mat_ref<int> q_ref(q.num().begin(), 3, 3);
+      af::ref<int, af::mat_grid> m_ref(m.num().begin(), 3, 3);
+      af::ref<int, af::mat_grid> p_ref(p.num().begin(), 3, 3);
+      af::ref<int, af::mat_grid> q_ref(q.num().begin(), 3, 3);
       smith_normal_form(m_ref, p_ref, q_ref);
       CCTBX_ASSERT(m_ref.is_square());
       std::size_t nd = m_ref.n_rows();

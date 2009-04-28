@@ -60,7 +60,7 @@ namespace cctbx { namespace sgtbx {
     {
       af::small<ss_vec_mod, 3> result;
       af::tiny<int, 3 * 3 * 3> gen_rmi = construct_gen_rmi(gen, false);
-      scitbx::mat_ref<int> re_mx(gen_rmi.begin(), gen.n_all() * 3, 3);
+      af::ref<int, af::mat_grid> re_mx(gen_rmi.begin(), gen.n_all() * 3, 3);
       CCTBX_ASSERT(scitbx::matrix::row_echelon::form(re_mx) <= 3);
       scitbx::matrix::row_echelon::independent<int> indep(re_mx);
       if (indep.indices.size() != 2) {
@@ -246,9 +246,9 @@ namespace cctbx { namespace sgtbx {
     if (vec_mod_.size() == 3) return; // space group P1
     af::tiny<int, 3 * 3 * 3> snf = construct_gen_rmi(gen, true);
     sg_mat3 q;
-    scitbx::mat_ref<int> m_ref(snf.begin(), gen.n_all() * 3, 3);
-    scitbx::mat_ref<int> p_ref(0, 0, 0);
-    scitbx::mat_ref<int> q_ref(q.begin(), 3, 3);
+    af::ref<int, af::mat_grid> m_ref(snf.begin(), gen.n_all() * 3, 3);
+    af::ref<int, af::mat_grid> p_ref(0, 0, 0);
+    af::ref<int, af::mat_grid> q_ref(q.begin(), 3, 3);
     smith_normal_form(m_ref, p_ref, q_ref);
     CCTBX_ASSERT(m_ref.is_square());
     std::size_t nd = m_ref.n_rows();

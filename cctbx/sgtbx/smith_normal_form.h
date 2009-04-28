@@ -8,9 +8,9 @@ namespace cctbx { namespace sgtbx {
   template <typename IntType>
   void
   smith_normal_form(
-    scitbx::mat_ref<IntType>& m,
-    scitbx::mat_ref<IntType> const& p,
-    scitbx::mat_ref<IntType> const& q)
+    af::ref<IntType, af::mat_grid>& m,
+    af::ref<IntType, af::mat_grid> const& p,
+    af::ref<IntType, af::mat_grid> const& q)
   {
     if (p.begin()) p.set_identity();
     if (q.begin()) q.set_identity();

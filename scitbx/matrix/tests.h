@@ -1,8 +1,7 @@
 #ifndef SCITBX_MATRIX_TESTS_H
 #define SCITBX_MATRIX_TESTS_H
 
-#include <scitbx/mat_ref.h>
-#include <scitbx/mat_ref/make.h>
+#include <scitbx/array_family/accessors/mat_grid.h>
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/array_family/ref_algebra.h>
 #include <scitbx/matrix/norms.h>
@@ -12,7 +11,7 @@
 namespace scitbx { namespace matrix {
 
 template <typename T>
-T normality_ratio(mat_const_ref<T> const &u,
+T normality_ratio(af::const_ref<T, af::mat_grid> const &u,
                   T eps=std::numeric_limits<T>::epsilon())
 {
   SCITBX_ASSERT(u.is_square());
@@ -21,12 +20,12 @@ T normality_ratio(mat_const_ref<T> const &u,
         u, af::matrix_transpose(u).ref());
   af::ref<T, af::c_grid<2> > delta_ = delta.ref();
   for (int i=0; i<n; ++i) delta_(i,i)--;
-  return (norm_1(mat_ref_to(delta))/n)/eps;
+  return (norm_1(delta.const_ref())/n)/eps;
 }
 
 template <typename T>
-T equality_ratio(mat_const_ref<T> const &a,
-                 mat_const_ref<T> const &b,
+T equality_ratio(af::const_ref<T, af::mat_grid> const &a,
+                 af::const_ref<T, af::mat_grid> const &b,
                  T eps=std::numeric_limits<T>::epsilon())
 {
   SCITBX_ASSERT(a.n_rows() == b.n_rows());
@@ -35,7 +34,7 @@ T equality_ratio(mat_const_ref<T> const &a,
   int m=a.n_rows(), n=a.n_columns();
   af::versa<T, dim> delta(dim(m, n));
   for (int i=0; i<m; ++i) for (int j=0; j<n; ++j) delta(i,j) = a(i,j) - b(i,j);
-  return ((norm_1(mat_ref_to(delta))
+  return ((norm_1(delta.const_ref())
            /std::max(a.n_rows(), a.n_columns()))
            /norm_1(a))/eps;
 }
