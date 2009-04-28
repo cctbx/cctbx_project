@@ -13,6 +13,7 @@ def run(args):
     n_dynamics_steps = int(eval(args[1]))
     delta_t = float(eval(args[2]))
   sim = tst_molecules.get_test_simulation_by_index(i=simulation_index)
+  sim.assign_random_velocities(e_kin_target=1)
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
   def show_e_tot():
