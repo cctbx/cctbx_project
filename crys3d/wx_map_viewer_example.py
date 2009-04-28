@@ -17,8 +17,9 @@ def exercise():
                         raw_map=case.map,
                         #iso_level=lambda map_stats: 3,
                         iso_level=lambda map_stats: 0.3,
-                        #from_here=None, to_there=None,
-                        from_here=(-0.5, -0.5, -0.5), to_there=(1.5, 1.5, 1.5),
+                        from_here=None, to_there=None,
+                        #from_here=(-0.5, -0.5, -0.5), to_there=(1.5, 1.5, 1.5),
+                        #periodic=True,
                         wires=False,
                         title="Ellipsoid")
   #a.view_objects.orthographic = True
