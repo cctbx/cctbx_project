@@ -1,21 +1,31 @@
-from mmtbx.dynamics.constants import \
-  akma_time_as_pico_seconds, \
-  boltzmann_constant_akma
+from mmtbx.dynamics import \
+  kinetic_energy_as_temperature, \
+  temperature_as_kinetic_energy
+from mmtbx.dynamics.constants import akma_time_as_pico_seconds
 from cctbx import xray
 import cctbx.geometry_restraints
 from cctbx.array_family import flex
 from scitbx.rigid_body.essence import tst_molecules
 from scitbx.graph import tardy_tree
 from scitbx import matrix
+from libtbx.utils import Sorry
 
 master_phil_str = """\
-  number_of_time_steps = 10
+  start_temperature_kelvin = 5000
+    .type = float
+  final_temperature_kelvin = 300
+    .type = float
+  temperature_cap_factor = 1.5
+    .type = float
+  excessive_temperature_factor = 5
+    .type = float
+  number_of_cooling_steps = 20
+    .type = int
+  number_of_time_steps = 50
     .type = int
   time_step_pico_seconds = 0.004
     .type = float
-  temperature_cap_kelvin = 300
-    .type = float
-  minimization_max_iterations = 10
+  minimization_max_iterations = 25
     .type = int
   nonbonded_attenuation_factor = 0.5
     .type = float
@@ -49,9 +59,8 @@ class potential_object(object):
     O.last_sites_moved = None
     O.f = None
     O.g = None
-    O.e_pot_factor = None
 
-  def e_pot_and_normalization_factor(O, sites_moved):
+  def e_pot(O, sites_moved):
     if (O.last_sites_moved is not sites_moved):
       O.last_sites_moved = sites_moved
       xs = O.fmodels.fmodel_xray().xray_structure
@@ -75,13 +84,15 @@ class potential_object(object):
         scatterers=xs.scatterers(),
         xray_gradients=O.g,
         site_gradients=stereochemistry_residuals.gradients*O.weights.w)
-      O.e_pot_normalization_factor = \
+      e_pot_factor = \
           stereochemistry_residuals.normalization_factor \
         * O.weights.w
-    return O.f, O.e_pot_normalization_factor
+      O.f /= e_pot_factor
+      O.g /= e_pot_factor
+    return O.f
 
   def d_e_pot_d_sites(O, sites_moved):
-    O.e_pot_and_normalization_factor(sites_moved=sites_moved)
+    O.e_pot(sites_moved=sites_moved)
     return matrix.col_list(flex.vec3_double(O.g))
 
 def run(fmodels, model, target_weights, params, log):
@@ -115,22 +126,51 @@ def run(fmodels, model, target_weights, params, log):
       masses=xs.atomic_weights(),
       cluster_manager=tt.cluster_manager))
   del sites
-  temp_as_e_kin = 0.5 * sim.degrees_of_freedom * boltzmann_constant_akma
-  e_kin_cap = params.temperature_cap_kelvin * temp_as_e_kin
+  sim.assign_random_velocities()
   time_step_akma = params.time_step_pico_seconds / akma_time_as_pico_seconds
   print >> log, "tardy dynamics:"
-  for i_time_step in xrange(params.number_of_time_steps):
-    sim.dynamics_step(delta_t=time_step_akma, e_kin_cap=e_kin_cap)
-    print >> log, "  time step: %3d * %7.5f pico seconds," % (
-      i_time_step+1, params.time_step_pico_seconds),
-    print >> log, "rms: %8.4f, temperature: %7.2f K" % (
-      xs.sites_cart().rms_difference(sites_cart_start),
-      sim.e_kin/temp_as_e_kin),
-    ekbvs = sim.e_kin_before_velocity_scaling
-    if (ekbvs is not None and ekbvs != sim.e_kin):
-      print >> log, "(before velocity scaling: %7.2f K)" % (
-        ekbvs/temp_as_e_kin),
-    print >> log
+  n_time_steps = 0
+  for i_cool_step in xrange(params.number_of_cooling_steps+1):
+    t_target = params.start_temperature_kelvin \
+             - i_cool_step * (  params.start_temperature_kelvin
+                              - params.final_temperature_kelvin) \
+                           / params.number_of_cooling_steps
+    e_kin_target = temperature_as_kinetic_energy(
+      dof=sim.degrees_of_freedom, t=t_target)
+    def reset_e_kin():
+      sim.reset_e_kin(e_kin_target=e_kin_target)
+      print >> log, "  resetting temperature: %7.2f K" % (
+        kinetic_energy_as_temperature(dof=sim.degrees_of_freedom, e=sim.e_kin))
+    reset_e_kin()
+    for i_time_step in xrange(params.number_of_time_steps):
+      assert params.temperature_cap_factor > 1.0
+      assert params.excessive_temperature_factor > params.temperature_cap_factor
+      if (sim.e_kin > e_kin_target * params.temperature_cap_factor):
+        print >> log, "  system temperature is too high:"
+        if (sim.e_kin > e_kin_target * params.excessive_temperature_factor):
+          print >> log, "    excessive_temperature_factor: %.6g" % \
+            params.excessive_temperature_factor
+          print >> log, "    excessive temperature limit: %.2f K" % (
+            t_target * params.excessive_temperature_factor)
+          print >> log, "    time_step_pico_seconds: %.6g" % (
+            params.time_step_pico_seconds)
+          raise Sorry(
+            "Excessive system temperature in torsion angle dynamics:\n"
+            "  Please try again with a smaller time_step_pico_seconds.")
+        print >> log, "     temperature_cap_factor: %.6g" % \
+          params.temperature_cap_factor
+        print >> log, "     temperature cap: %.2f K" % (
+          t_target * params.temperature_cap_factor)
+        reset_e_kin()
+      sim.dynamics_step(delta_t=time_step_akma)
+      n_time_steps += 1
+      print >> log, "    time step: %3d * %7.5f pico seconds," % (
+        n_time_steps, params.time_step_pico_seconds),
+      print >> log, "rms: %8.4f, temperature: %7.2f K" % (
+        xs.sites_cart().rms_difference(sites_cart_start),
+        kinetic_energy_as_temperature(
+          dof=sim.degrees_of_freedom, e=sim.e_kin)),
+      print >> log
   if (params.minimization_max_iterations > 0):
     print >> log, "tardy gradient-driven minimization:"
     def show_rms(minimizer=None):
@@ -139,5 +179,5 @@ def run(fmodels, model, target_weights, params, log):
     sim.minimization(
       max_iterations=params.minimization_max_iterations,
       callback_after_step=show_rms)
-  print >> log, "After tardy minimization:"
-  show_rms()
+    print >> log, "After tardy minimization:"
+    show_rms()

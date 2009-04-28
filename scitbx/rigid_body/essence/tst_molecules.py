@@ -25,7 +25,7 @@ class potential_object(object):
       O.restraints.append((edge, abs(s[0]-s[1]), restraint_edge_weight))
     O.epsilon = epsilon
 
-  def e_pot_and_normalization_factor(O, sites_moved):
+  def e_pot(O, sites_moved):
     result = 0
     for s, w in zip(sites_moved, O.wells):
       result += (s - w).dot()
@@ -35,7 +35,7 @@ class potential_object(object):
       if (d_model < O.epsilon): continue
       delta = d_ideal - d_model
       result += w * delta**2
-    return result, 1.0
+    return result
 
   def d_e_pot_d_sites(O, sites_moved):
     result = []
@@ -117,9 +117,7 @@ class simulation(object):
     O.AJA_update()
     O.JAr_update()
     O.sites_moved_update()
-    O.e_pot, O.e_pot_normalization_factor = \
-      O.potential_obj.e_pot_and_normalization_factor(
-        sites_moved=O.sites_moved)
+    O.e_pot = O.potential_obj.e_pot(sites_moved=O.sites_moved)
 
   def e_pot_and_f_ext_update(O):
     O.e_pot_update()
@@ -129,9 +127,8 @@ class simulation(object):
     O.e_tot = O.e_kin + O.e_pot
 
   def dynamics_step(O, delta_t, e_kin_cap=None):
-    delta_t_norm = delta_t / O.e_pot_normalization_factor
     for B,qdd in zip(O.bodies, O.qdd):
-      B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t_norm)
+      B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t)
     O.apply_velocity_scaling(e_kin_cap=e_kin_cap)
     for B,qdd in zip(O.bodies, O.qdd):
       B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
@@ -149,24 +146,37 @@ class simulation(object):
       for B in O.bodies:
         B.qd *= factor
 
+  def reset_e_kin(O, e_kin_target, e_kin_epsilon=1.e-12):
+    assert e_kin_target >= 0
+    O.e_kin_update()
+    if (O.e_kin >= e_kin_epsilon):
+      factor = (e_kin_target / O.e_kin)**0.5
+      for B in O.bodies:
+        B.qd *= factor
+    O.energies_and_accelerations_update()
+
   def assign_zero_velocities(O):
     for B in O.bodies:
       B.qd = B.J.qd_zero
     O.energies_and_accelerations_update()
 
   def assign_random_velocities(O,
-        e_kin_target,
+        e_kin_target=None,
         e_kin_epsilon=1.e-12,
         random_gauss=None):
-    assert e_kin_target >= 0
-    if (e_kin_target == 0):
+    work_e_kin_target = e_kin_target
+    if (e_kin_target is None):
+      work_e_kin_target = 1
+    elif (e_kin_target == 0):
       O.assign_zero_velocities()
       return
+    else:
+      assert e_kin_target >= 0
     qd_e_kin_scales = flex.double(
       featherstone.system_model(bodies=O.bodies).qd_e_kin_scales(
         e_kin_epsilon=e_kin_epsilon))
     if (O.degrees_of_freedom != 0):
-      qd_e_kin_scales *= (e_kin_target / O.degrees_of_freedom)**0.5
+      qd_e_kin_scales *= (work_e_kin_target / O.degrees_of_freedom)**0.5
     if (random_gauss is None):
       random_gauss = random.gauss
     i_qd = 0
@@ -177,12 +187,8 @@ class simulation(object):
         i_qd += 1
       B.qd = matrix.col(qd_new)
     assert i_qd == O.degrees_of_freedom
-    O.e_kin_update()
-    if (O.e_kin >= e_kin_epsilon):
-      factor = (e_kin_target / O.e_kin)**0.5
-      for B in O.bodies:
-        B.qd *= factor
-    O.energies_and_accelerations_update()
+    if (e_kin_target is not None):
+      O.reset_e_kin(e_kin_target=e_kin_target, e_kin_epsilon=e_kin_epsilon)
 
   def d_pot_d_q(O):
     return featherstone.system_model(bodies=O.bodies).d_pot_d_q(
