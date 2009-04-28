@@ -1,10 +1,12 @@
 #ifndef SCITBX_ARRAY_FAMILY_REF_H
 #define SCITBX_ARRAY_FAMILY_REF_H
 
+#include <scitbx/error.h>
 #include <scitbx/array_family/error.h>
 #include <scitbx/array_family/accessors/trivial.h>
 #include <scitbx/array_family/detail/ref_helpers.h>
 #include <algorithm>
+#include <boost/scoped_array.hpp>
 
 namespace scitbx { namespace af {
 
@@ -51,6 +53,16 @@ namespace scitbx { namespace af {
 
       accessor_type const& accessor() const { return accessor_; }
       size_type size() const { return size_; }
+
+      /// Matrix ref interface (only make sense for relevant accessors)
+      //@{
+      bool is_square() const { return accessor_.is_square(); }
+      std::size_t n_rows() const { return accessor_.n_rows(); }
+      std::size_t n_columns() const { return accessor_.n_columns(); }
+
+      bool is_diagonal(bool require_square=true) const;
+      //@}
+
 
       const ElementType* begin() const { return begin_; }
       const ElementType* end() const { return end_; }
@@ -151,6 +163,16 @@ namespace scitbx { namespace af {
       size_type size_;
       const ElementType* end_;
   };
+
+  template<typename ElementType, class AccessorType>
+  bool
+  const_ref<ElementType, AccessorType>::is_diagonal(bool require_square) const {
+    if (require_square && !is_square()) return false;
+    for (index_value_type ir=0;ir<n_rows();ir++)
+      for (index_value_type ic=0;ic<n_columns();ic++)
+        if (ir != ic && (*this)(ir,ic)) return false;
+    return true;
+  }
 
   template <typename ElementType,
             typename AccessorType = trivial_accessor>
@@ -256,7 +278,75 @@ namespace scitbx { namespace af {
       {
         return begin()[this->accessor_(i0, i1, i2)];
       }
+
+      /// Matrix ref interface (only make sense for relevant accessors)
+      //@{
+
+      //! Swaps two rows in place.
+      void
+      swap_rows(index_value_type const& i1, index_value_type const& i2) const
+      {
+        std::swap_ranges(&(*this)(i1,0), &(*this)(i1+1,0), &(*this)(i2,0));
+      }
+
+      //! Swaps two columns in place.
+      void
+      swap_columns(index_value_type const& i1,
+                   index_value_type const& i2) const
+      {
+        for(index_value_type ir=0;ir<this->n_rows();ir++) {
+          std::swap((*this)(ir,i1), (*this)(ir,i2));
+        }
+      }
+
+      //! Sets diagonal matrix.
+      /*! Off-diagonal elements are set to zero.
+       */
+      void set_diagonal(ElementType const& d, bool require_square=true) const {
+        SCITBX_ASSERT(!require_square || this->is_square());
+        this->fill(0);
+        index_value_type m = this->n_rows(), n = this->n_columns();
+        for(index_value_type i=0; i < std::min(m,n); i++) (*this)(i,i) = d;
+      }
+
+      //! Sets identity matrix.
+      /*! Off-diagonal elements are set to zero.
+       */
+      void set_identity(bool require_square=true) const {
+        set_diagonal(1, true);
+      }
+
+      /// Efficiently transpose a square matrix in-place
+      void transpose_square_in_place() const {
+        SCITBX_ASSERT(this->is_square());
+        for (index_value_type ir=0;ir<this->n_rows();ir++)
+          for (index_value_type ic=ir+1;ic<this->n_columns();ic++)
+            std::swap((*this)(ir, ic), (*this)(ic, ir));
+      }
+
+      /// Transpose a matrix in-place.
+      /** It involves a copy if it is not squared. */
+      void transpose_in_place();
+
+      //@}
   };
+
+  template <typename ElementType, class AccessorType>
+  void ref<ElementType, AccessorType>::transpose_in_place() {
+    if (this->is_square()) {
+      this->transpose_square_in_place();
+    }
+    else {
+      boost::scoped_array<ElementType> mt_buffer(new ElementType[this->size()]);
+      ref mt(mt_buffer.get(), this->n_columns(), this->n_rows());
+      for (index_value_type ir=0;ir<this->n_rows();ir++)
+        for (index_value_type ic=0;ic<this->n_columns();ic++)
+          mt(ic, ir) = (*this)(ir, ic);
+      std::copy(mt.begin(), mt.end(), this->begin());
+      this->accessor_ = mt.accessor();
+      this->init();
+    }
+  }
 
   template <typename ArrayType>
   const_ref<typename ArrayType::value_type>

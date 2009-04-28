@@ -113,6 +113,9 @@ namespace scitbx { namespace af {
       bool
       is_square() const { return this->elems[0] == this->elems[1]; }
 
+      std::size_t n_rows() const { return this->elems[0]; }
+      std::size_t n_columns() const { return this->elems[1]; }
+
       index_type
       index_nd(index_value_type const& i_1d)
       {
