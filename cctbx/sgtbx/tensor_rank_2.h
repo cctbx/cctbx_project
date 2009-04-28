@@ -294,7 +294,7 @@ namespace tensor_rank_2 {
         const unsigned max_n_a_rows = symmetries_max_nb * n_all_params;
         boost::shared_array<T> a(new T[n_a_rows*n_all_params] );
         T* pa = a.get();
-        for (int i_s=0; i_s < symmetries.size(); i_s++) {
+        for (unsigned i_s=0; i_s < symmetries.size(); i_s++) {
           scitbx::mat3<T> r_f = symmetries[i_s]
                                   .r()
                                   .as_floating_point(scitbx::type_holder<T>());
@@ -320,11 +320,11 @@ namespace tensor_rank_2 {
         af::small<T, n_all_params> x_N(n_independent_params, 0);
         z_ = boost::shared_array<T>(new T[n_all_params * n_independent_params]);
         z = scitbx::mat_ref<T>(z_.get(), n_all_params, n_independent_params);
-        for (int j=0; j< n_independent_params; j++) {
+        for (unsigned j=0; j< n_independent_params; j++) {
           x_N[j] = 1;
           af::tiny<T, n_all_params>
             x_B = r_e.back_substitution(a_.begin(), x_N);
-          for (int i=0; i < n_all_params; i++) {
+          for (unsigned i=0; i < n_all_params; i++) {
             z(i,j) = x_B[i];
           }
           x_N[j] = 0;

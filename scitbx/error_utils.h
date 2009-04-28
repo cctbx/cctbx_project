@@ -94,6 +94,7 @@ namespace scitbx {
   error_base<DerivedError>
   ::error_base(error_base const& e) throw()
   :
+    std::exception(e),
     SCITBX_ERROR_UTILS_ASSERT_A(derived_this()),
     SCITBX_ERROR_UTILS_ASSERT_B(derived_this())
   {

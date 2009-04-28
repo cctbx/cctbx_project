@@ -8,7 +8,6 @@
 #include <cctbx/sgtbx/direct_space_asu/proto/small_vec_math.h>
 #include <cctbx/miller.h>
 #include <scitbx/array_family/versa.h>
-// #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_interval_grid.h>
 
 namespace mmtbx {
@@ -23,18 +22,15 @@ namespace mmtbx {
   namespace masks {
 
   namespace af = scitbx::af;
-  // using namespace scitbx::af;
 
   using cctbx::sgtbx::asu::direct_space_asu;
 
   typedef af::shared< scitbx::double3 > coord_array_t;
   typedef af::shared< double > double_array_t;
-  // typedef af::c_grid<3> grid_t;
   typedef af::c_interval_grid<3> asu_grid_t;
   typedef af::c_interval_grid<3> grid_t;
   //typedef signed char data_type; this is insufficient
   typedef short data_type;
-  //typedef int data_type;
   namespace {
     BOOST_STATIC_ASSERT( std::numeric_limits<data_type>::is_integer );
   }
@@ -48,7 +44,8 @@ namespace mmtbx {
   //! Flat solvent mask and structure factors.
   /*! \class atom_mask atom_mask.h mmtbx/masks/atom_mask.h
    This mask will have valid values only inside asymmetric unit. Outside
-   they will be zero. Inside the asu 0 - means macromolecule, non-zero - solvent.
+   they will be zero. Inside the asu 0 - means macromolecule,
+   non-zero - solvent.
    */
   class atom_mask
   {
@@ -108,7 +105,8 @@ namespace mmtbx {
         MMTBX_ASSERT( mark > group.order_z() && -mark < -group.order_z() );
         MMTBX_ASSERT(solvent_radius >= 0.0);
         MMTBX_ASSERT(shrink_truncation_radius >= 0.0);
-        this->determine_gridding(this->full_cell_grid_size, resolution, grid_step_factor);
+        this->determine_gridding(this->full_cell_grid_size, resolution,
+          grid_step_factor);
         this->determine_boundaries(); // also allocates memory
         // mask_asu();
       }
@@ -123,12 +121,12 @@ namespace mmtbx {
 
       //! Computes mask structure factors.
       scitbx::af::shared< std::complex<double> > structure_factors(
-          const scitbx::af::const_ref< cctbx::miller::index<> > &indices ) const;
+        const scitbx::af::const_ref< cctbx::miller::index<> > &indices );
 
       scitbx::int3 grid_size() const { return full_cell_grid_size; }
       size_t grid_size_1d() const
       {
-        MMTBX_ASSERT( scitbx::ge_all( this->grid_size(), scitbx::int3(0,0,0) ) );
+        MMTBX_ASSERT( scitbx::ge_all(this->grid_size(), scitbx::int3(0,0,0)) );
         return static_cast<size_t>(this->grid_size()[0])
           * static_cast<size_t>(this->grid_size()[1])
           * static_cast<size_t>(this->grid_size()[2]);
@@ -151,7 +149,7 @@ namespace mmtbx {
 
       // execution time in millisecs, DO NOT USE
       long debug_mask_asu_time, debug_atoms_to_asu_time,
-           debug_accessible_time, debug_contact_time;
+           debug_accessible_time, debug_contact_time, debug_fft_time;
 
       bool debug_has_enclosed_box;
 
@@ -165,20 +163,25 @@ namespace mmtbx {
         const coord_array_t & sites_frac,
         const double_array_t & atom_radii);
 
-      void determine_gridding(cctbx::sg_vec3 &grid, double resolution, double factor = 4.0) const;
+      void determine_gridding(cctbx::sg_vec3 &grid, double resolution,
+        double factor = 4.0) const;
       void get_asu_boundaries(scitbx::int3 &low, scitbx::int3 &high) const;
-      void get_expanded_asu_boundaries(scitbx::double3 &low, scitbx::double3 &high) const;
-      void get_expanded_asu_boundaries(scitbx::int3 &low, scitbx::int3 &high) const;
+      void get_expanded_asu_boundaries(scitbx::double3 &low,
+        scitbx::double3 &high) const;
+      void get_expanded_asu_boundaries(scitbx::int3 &low,
+        scitbx::int3 &high) const;
       void determine_boundaries();
 
-      const direct_space_asu asu; // should be some kind of safe reference
-      const cctbx::uctbx::unit_cell cell; // should be some kind of safe reference
-      const cctbx::sgtbx::space_group group; // should be some kind of safe reference
+      // these 3 should be some kind of safe reference
+      const direct_space_asu asu;
+      const cctbx::uctbx::unit_cell cell;
+      const cctbx::sgtbx::space_group group;
 
       static const bool explicit_distance = false;
       static const bool debug = false;
 
       scitbx::int3 full_cell_grid_size, asu_low, asu_high;
+      scitbx::double3 expanded_box[2];
       coord_array_t asu_atoms;
       double_array_t asu_radii;
       mask_array_t data;

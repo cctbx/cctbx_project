@@ -30,17 +30,15 @@ namespace asu {
 
   namespace {
     // sanity checks
-    BOOST_STATIC_ASSERT( std::numeric_limits< int_type >::is_integer );
-    BOOST_STATIC_ASSERT( std::numeric_limits< int_type >::digits >= 31 );
-    BOOST_STATIC_ASSERT( std::numeric_limits< mat3_t::value_type >::is_integer );
+    BOOST_STATIC_ASSERT( std::numeric_limits<int_type>::is_integer );
+    BOOST_STATIC_ASSERT( std::numeric_limits<int_type>::digits >= 31 );
+    BOOST_STATIC_ASSERT( std::numeric_limits<mat3_t::value_type>::is_integer );
     BOOST_STATIC_ASSERT( sizeof(mat3_t::value_type) == sizeof(int_type) );
   }
 
   typedef unsigned short size_type;
-  // typedef boost::rational<int_type> rational_t;
   typedef boost::rational<int> rational_t;
 
-  // typedef scitbx::vec3<double> dvector3_t;
   typedef scitbx::vec3< rational_t > rvector3_t;
   typedef std::set< rvector3_t > set_rvector3_t;
 
@@ -65,9 +63,11 @@ namespace boost {
 
   // mrt: WHY DO I HAVE TO DEFINE this operator in boost:: { } ?????????????????
   //
-  inline bool operator< (const cctbx::sgtbx::asu::rvector3_t &a, const cctbx::sgtbx::asu::rvector3_t &b)
+  inline bool operator< (const cctbx::sgtbx::asu::rvector3_t &a,
+    const cctbx::sgtbx::asu::rvector3_t &b)
   {
-    return (a[0]<b[0]) || (a[0]==b[0] && a[1]<b[1]) || (a[0]==b[0] && a[1]==b[1] && a[2]<b[2]);
+    return (a[0]<b[0]) || (a[0]==b[0] && a[1]<b[1]) || (a[0]==b[0] && a[1]==b[1]
+      && a[2]<b[2]);
   }
 } // namespace boost
 
@@ -104,7 +104,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
     double get_tolerance(const scitbx::af::double3 &tol3) const
     {
-      return std::fabs(n[0]*tol3[0]) + std::fabs(n[1]*tol3[1]) + std::fabs(n[2]*tol3[2]);
+      return std::fabs(n[0]*tol3[0]) + std::fabs(n[1]*tol3[1])
+        + std::fabs(n[2]*tol3[2]);
     }
 
     //! Evaluates plane equation
@@ -113,7 +114,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return  n[0]*p[0] + n[1]*p[1] + n[2]*p[2] + c;
     }
 
-    long evaluate_int(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    long evaluate_int(const scitbx::af::int3 &num,
+      const scitbx::af::int3 &den) const
     {
       return // this limits grid size to about (max(long)/4)^(1/3)
         // 812 for 32 bit systems, 1,321,122 for 64bit systems
@@ -151,7 +153,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return n[0]*p[0] + n[1]*p[1] + n[2]*p[2] + c;
     }
 
-    template<typename TR> bool is_inside(const rvector3_t &p, const TR &expr) const
+    template<typename TR>
+      bool is_inside(const rvector3_t &p, const TR &expr) const
     {
       rational_t v = evaluate(p);
       if( v>0 )
@@ -162,7 +165,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
     template<typename TR>
-      bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den, const TR &expr) const
+      bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den,
+        const TR &expr) const
     {
       long v = evaluate_int(num,den);
       if( v>0 )
@@ -209,7 +213,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return inclusive;
     }
 
-    bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    bool is_inside(const scitbx::af::int3 &num,
+      const scitbx::af::int3 &den) const
     {
       long v = evaluate_int(num,den);
       if( v>0 )
@@ -230,7 +235,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
     //! Returns 1 if point is inside, -1 if inside on the face, 0 otherwise
-    short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    short where_is(const scitbx::af::int3 &num,
+      const scitbx::af::int3 &den) const
     {
       long v = evaluate_int(num,den);
       if( v>0 )
@@ -241,7 +247,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
     template<typename TR>
-      short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den, const TR &expr) const
+      short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den,
+        const TR &expr) const
     {
       long v = evaluate_int(num,den);
       if( v>0 )
@@ -280,7 +287,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
 
     template<typename TR>
-    cut_expression<TR> operator() (const TR &o) const // better:  operator[]
+    cut_expression<TR> operator() (const TR &o) const
     {
       return cut_expression<TR>(*this, o );
     }
@@ -343,7 +350,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
     //! Constructs a plane from a normal vector and a rational constant
-    cut(const scitbx::vec3<int> &n_, rational_t c_, bool inc_=true) : inclusive(inc_)
+    cut(const scitbx::vec3<int> &n_, rational_t c_, bool inc_=true)
+      : inclusive(inc_)
     {
       new(this) cut(int3_t(n_), c_, inc_);
     }
@@ -354,7 +362,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
     void normalize()
     {
-      const int_type g = boost::gcd(boost::gcd(n[0],n[1]),boost::gcd(n[2],c)); // is that right?
+      // is that right?
+      const int_type g = boost::gcd(boost::gcd(n[0],n[1]),boost::gcd(n[2],c));
       CCTBX_ASSERT( g>0 );
       CCTBX_ASSERT( c%g == 0 && n[0]%g==0 && n[1]%g==0 && n[2]%g==0 );
       n /= g;

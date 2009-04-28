@@ -677,6 +677,10 @@ else:
   # at the time of configure
   opts = libtbx.env.build_options
   if( opts.use_environment_flags ):
+    print "libtbx.scons: using flags from initial environment: " 
+    print "              CXXFLAGS = ", opts.env_cxxflags
+    print "              CFLAGS = ", opts.env_cflags
+    print "              CPPFLAGS = ", opts.env_cppflags
     flg = opts.env_cxxflags.split(" ")
     if( hasattr(env_etc, "cxxflags_base") ):
       env_etc.cxxflags_base.extend(flg)
