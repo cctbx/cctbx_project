@@ -46,13 +46,16 @@ def log_besselk_1_4(x):
 
 
 
-def test():
+def test(debug=False):
   # test various values
   xx = [ 0.01,    0.05,    0.1,       0.5,        5.0   ,  50]
   yy = [ 1.81901, 1.27752, 0.987739, -0.0404925, -5.5961, -51.7321] # from mathematica.
   for x,y in zip(xx,yy):
     f = log_besselk_1_4(x)
-    print x,y,f,100*abs((f-y)/y)
+    if debug: print x,y,f,100*abs((f-y)/y)
     assert abs((f-y)/y)*100.0 < 2.0
+
 if __name__ == "__main__":
-  test()
+  import sys
+  test('-debug' in sys.argv[1:])
+  print 'OK'
