@@ -126,25 +126,12 @@ class simulation(object):
         sites_moved=O.sites_moved))
     O.e_tot = O.e_kin + O.e_pot
 
-  def dynamics_step(O, delta_t, e_kin_cap=None):
+  def dynamics_step(O, delta_t):
     for B,qdd in zip(O.bodies, O.qdd):
       B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t)
-    O.apply_velocity_scaling(e_kin_cap=e_kin_cap)
     for B,qdd in zip(O.bodies, O.qdd):
       B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
     O.energies_and_accelerations_update()
-
-  def apply_velocity_scaling(O, e_kin_cap):
-    if (e_kin_cap is None):
-      O.e_kin_before_velocity_scaling = None
-      return
-    assert e_kin_cap > 0
-    O.e_kin_before_velocity_scaling = featherstone.system_model(
-      bodies=O.bodies).e_kin()
-    if (O.e_kin_before_velocity_scaling > e_kin_cap):
-      factor = (e_kin_cap / O.e_kin_before_velocity_scaling)**0.5
-      for B in O.bodies:
-        B.qd *= factor
 
   def reset_e_kin(O, e_kin_target, e_kin_epsilon=1.e-12):
     assert e_kin_target >= 0
@@ -410,24 +397,6 @@ def exercise_minimization_quick(out, sim, max_iterations=3):
     assert e_pot_final < e_pot_start * 0.5
   print >> out
 
-def exercise_apply_velocity_scaling(out, sim):
-  print >> out, "exercise_apply_velocity_scaling():"
-  rg = random.Random(x=0).gauss
-  e_kins_accu = []
-  for e_kin_cap in [None, 2]:
-    sim.assign_random_velocities(e_kin_target=3, random_gauss=rg)
-    e_kins = flex.double([sim.e_kin])
-    for i_step in xrange(10):
-      sim.dynamics_step(delta_t=0.1, e_kin_cap=e_kin_cap)
-      e_kins.append(sim.e_kin)
-      print >> out, "e_kin:", sim.e_kin
-    e_kins_accu.append(e_kins)
-  assert approx_equal(e_kins_accu, [
-    [3, 3.000611, 2.883901, 2.658875, 2.343055, 1.961183,
-     1.54329, 1.122324, 0.7315592, 0.4019825, 0.1598842],
-    [3, 2.006837, 2.000705, 1.995196, 1.991805, 1.991156,
-     1.993115, 1.997067, 2.002187, 2.007642, 2.012701]])
-
 def construct_simulation(
       labels,
       sites,
@@ -478,11 +447,6 @@ def run(args):
       exercise_dynamics_quick(
         out=out, sim=sim, n_dynamics_steps=n_dynamics_steps)
       exercise_minimization_quick(out=out, sim=sim)
-  #
-  if (1):
-    sim = get_test_simulation_by_index(i=13)
-    assert sim.degrees_of_freedom == 12
-    exercise_apply_velocity_scaling(out=out, sim=sim)
   #
   print "OK"
 
