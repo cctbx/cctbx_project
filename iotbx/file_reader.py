@@ -54,7 +54,8 @@ def guess_file_type (file_name) :
 def any_file (file_name,
               get_processed_file=False,
               valid_types=["pdb","hkl","cif","pkl","seq","phil", "txt"],
-              allow_directories=False) :
+              allow_directories=False,
+              force_type=None) :
   if not os.path.exists(file_name) :
     raise Sorry("Couldn't find the file %s" % file_name)
   elif os.path.isdir(file_name) :
@@ -65,10 +66,10 @@ def any_file (file_name,
   elif not os.path.isfile(file_name) :
     raise Sorry("%s is not a valid file.")
   else :
-    return _any_file(file_name, get_processed_file, valid_types)
+    return _any_file(file_name, get_processed_file, valid_types, force_type)
 
 class _any_file (object) :
-  def __init__ (self, file_name, get_processed_file, valid_types) :
+  def __init__ (self, file_name, get_processed_file, valid_types, force_type) :
     self.valid_types = valid_types
     self.file_name = file_name
     self.file_object = None
@@ -79,19 +80,28 @@ class _any_file (object) :
     self.get_processed_file = get_processed_file
 
     (file_base, file_ext) = os.path.splitext(file_name)
-    for file_type in valid_types :
-      if file_ext[1:] in standard_file_extensions[file_type] :
-        try :
-          read_method = getattr(self, "try_as_%s" % file_type)
-          read_method()
-        except Exception, e :
-          print e
-          self.file_type = None
-          self.file_object = None
-        else :
-          break
-    if self.file_type is None :
-      self.try_all_types()
+    if force_type is not None :
+      try :
+        read_method = getattr(self, "try_as_%s" % force_type)
+      except Exception :
+        raise Sorry("Couldn't force file type to '%s' - unrecognized format." %
+                    force_type)
+      else :
+        read_method()
+    else :
+      for file_type in valid_types :
+        if file_ext[1:] in standard_file_extensions[file_type] :
+          try :
+            read_method = getattr(self, "try_as_%s" % file_type)
+            read_method()
+          except Exception, e :
+            print e
+            self.file_type = None
+            self.file_object = None
+          else :
+            break
+      if self.file_type is None :
+        self.try_all_types()
     if self.file_type is not None :
       self.file_description = standard_file_descriptions[self.file_type]
 
