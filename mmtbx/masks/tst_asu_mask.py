@@ -254,16 +254,18 @@ def compare_masks(struc, opts):
   time_orig += (te-tb)
   print >>cout, "Number of reflections ::: Fm asu = ", fm_asu.data().size(), \
     "Fm P1 = ", fm_p1.data().size()
-  print >>cout, "Time ( ms )    P1= ", time_p1*1000.0, "   orig= ", time_orig*1000.0, \
-    "    asu= ", time_asu*1000.0
+  print >>cout, "Time ( ms )    P1= ", time_p1*1000.0, "   orig= ", \
+      time_orig*1000.0, "    asu= ", time_asu*1000.0
   print >>cout, "Times ( ms ) mask_asu= ", asu_mask.debug_mask_asu_time, \
       " atoms_to_asu= ", asu_mask.debug_atoms_to_asu_time, \
       " accessible= ", asu_mask.debug_accessible_time, \
       " contact= ", asu_mask.debug_contact_time, \
-      " Fc= ", time_asu_sf*1000.0
-  print >>cout, "Times ( ms ) orig:  mask= ", time_orig_msk*1000.0, "  Fc=", time_orig_sf*1000.0
-  print >>cout, "Times ( ms ) p1 :  expand= ", time_p1_exp*1000.0, "  mask= ", time_p1_msk*1000.0, \
-    "  Fc=", time_p1_sf*1000.0
+      " Fc= ", time_asu_sf*1000.0, \
+      " fft= ", asu_mask.debug_fft_time
+  print >>cout, "Times ( ms ) orig:  mask= ", time_orig_msk*1000.0, "  Fc=", \
+      time_orig_sf*1000.0
+  print >>cout, "Times ( ms ) p1 :  expand= ", time_p1_exp*1000.0, "  mask= ", \
+      time_p1_msk*1000.0, "  Fc=", time_p1_sf*1000.0
   assert fm_asu.data().size() == fm_o.data().size()
   assert approx_equal(
     asu_mask.contact_surface_fraction, blk_p1.contact_surface_fraction)
@@ -358,7 +360,8 @@ def cci_vetted_tests( options) :
   n_files = options.cci
   assert n_files > 0
   d = os.environ.get("CCI_REFINE_VETTED")
-  assert not d is None, "Tests on CCI structures requested, but CCI_REFINE_VETTED is not defined"
+  assert not d is None, "Tests on CCI structures requested, but" \
+    " CCI_REFINE_VETTED is not defined"
   assert os.path.isdir( d ), d
   resolution = options.resolution
   print "Testing files in ", d

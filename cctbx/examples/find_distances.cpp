@@ -57,7 +57,7 @@ void find_distances(
   }
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char *[])
 {
   CCTBX_ASSERT( argc==1 );
   scitbx::af::double6 cell(5.01, 5.01, 5.47, 90.0, 90.0, 120.0);

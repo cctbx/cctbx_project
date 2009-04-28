@@ -104,6 +104,8 @@ namespace cctbx { namespace sgtbx { namespace reciprocal_space {
       {
         throw CCTBX_INTERNAL_ERROR();
       }
+
+      virtual ~reference_asu() {}
   };
 
   bool

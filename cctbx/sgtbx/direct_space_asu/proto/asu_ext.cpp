@@ -20,11 +20,10 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     using namespace boost::python;
     typedef return_value_policy<return_by_value> rbv;
 
-    bool (w_t::*const cut_is_inside1)( const rvector3_t &) const = &w_t::is_inside;
-    short (w_t::*const cut_where_is1)( const scitbx::af::int3 &, const scitbx::af::int3 & ) const = &w_t::where_is;
-    // below does not work
-    // boost::rational<int> (w_t::*const cut_evaluate_1)( const rvector3_t &) const = &w_t::evaluate;
-    long (w_t::*const cut_evaluate_2)( const scitbx::af::int3 &, const scitbx::af::int3 & ) const = &w_t::evaluate_int;
+    bool (w_t::*const cut_is_inside1)( const rvector3_t &) const =
+      &w_t::is_inside;
+    short (w_t::*const cut_where_is1)( const scitbx::af::int3 &,
+      const scitbx::af::int3 & ) const = &w_t::where_is;
 
     class_<w_t>("cut", no_init)
       .def(init<
@@ -67,11 +66,16 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     typedef return_value_policy<return_by_value> rbv;
 
     bool (w_t::*const is_inside1)( const rvector3_t &) const = &w_t::is_inside;
-    bool (w_t::*const is_inside2)( const rvector3_t &, bool ) const = &w_t::is_inside;
-    bool (w_t::*const is_inside_volume_only1)(const rvector3_t &point) const = &w_t::is_inside_volume_only;
-    bool (w_t::*const is_inside_volume_only2)(const scitbx::af::double3 &point, double tol) const = &w_t::is_inside_volume_only;
-    short (w_t::*const where_is1)(const scitbx::int3 &num, const scitbx::int3 &den) const = &w_t::where_is;
-    short (w_t::*const where_is2)(const scitbx::int3 &num) const = &w_t::where_is;
+    bool (w_t::*const is_inside2)( const rvector3_t &, bool ) const =
+      &w_t::is_inside;
+    bool (w_t::*const is_inside_volume_only1)(const rvector3_t &point) const =
+      &w_t::is_inside_volume_only;
+    bool (w_t::*const is_inside_volume_only2)(const scitbx::af::double3 &point,
+      double tol) const = &w_t::is_inside_volume_only;
+    short (w_t::*const where_is1)(const scitbx::int3 &num,
+      const scitbx::int3 &den) const = &w_t::where_is;
+    short (w_t::*const where_is2)(const scitbx::int3 &num) const =
+      &w_t::where_is;
 
     class_<w_t>("direct_space_asu", no_init)
       .def(init< const std::string& >(( arg_("group_symbol") )))
@@ -101,7 +105,8 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
   {
     wrap_cut();
     wrap_direct_space_asu();
-    scitbx::boost_python::container_conversions::tuple_mapping_fixed_size< rvector3_t >();
+    scitbx::boost_python::container_conversions::
+      tuple_mapping_fixed_size< rvector3_t >();
     scitbx::af::boost_python::shared_wrapper< cut >::wrap("cut_shared_array");
   }
 

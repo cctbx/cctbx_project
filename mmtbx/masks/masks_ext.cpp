@@ -92,16 +92,12 @@ namespace {
               arg_("solvent_radius"),
               arg_("shrink_truncation_radius")
               )))
-      //.add_property("data",  make_getter(&w_t::data, rbv()) )
-      // .def("get_mask", &w_t::get_mask)
       .def("compute", &w_t::compute)
       .def("structure_factors", &w_t::structure_factors)
       .def("grid_size", &w_t::grid_size)
       .def("n_asu_atoms", &w_t::n_asu_atoms)
       .def_readonly("solvent_radius",
                &w_t::solvent_radius)
-      // .def_readonly("n_atom_points",
-      //         &w_t::n_atom_points)
       .def_readonly("shrink_truncation_radius",
                &w_t::shrink_truncation_radius)
       .def_readonly("contact_surface_fraction",
@@ -113,6 +109,7 @@ namespace {
       .def_readonly("debug_atoms_to_asu_time", &w_t::debug_atoms_to_asu_time)
       .def_readonly("debug_accessible_time", &w_t::debug_accessible_time)
       .def_readonly("debug_contact_time", &w_t::debug_contact_time)
+      .def_readonly("debug_fft_time", &w_t::debug_fft_time)
       .def_readonly("debug_has_enclosed_box", &w_t::debug_has_enclosed_box)
      ;
   }

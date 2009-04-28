@@ -1489,7 +1489,6 @@ class build_options:
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
-    assert self.use_environment_flags in [True,False]
     self.optimization = (self.mode in [
       "release", "max_optimized", "debug_optimized"])
     self.max_optimized = (self.mode in ["max_optimized", "debug_optimized"])
@@ -1533,6 +1532,10 @@ class build_options:
     print >> f, "Boost threads enabled:", self.enable_boost_threads
     print >> f, "Enable OpenMP if possible:", self.enable_openmp_if_possible
     print >> f, "Use environment flags:", self.use_environment_flags
+    if( self.use_environment_flags ):
+      print >>f, "  CXXFLAGS = ", self.env_cxxflags
+      print >>f, "  CFLAGS = ", self.env_cflags
+      print >>f, "  CPPFLAGS = ", self.env_cppflags
 
 class include_registry:
 
