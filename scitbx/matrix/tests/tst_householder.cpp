@@ -5,7 +5,6 @@
 #include <scitbx/array_family/versa_algebra.h>
 #include <scitbx/array_family/ref_algebra.h>
 #include <scitbx/array_family/misc_functions.h>
-#include <scitbx/mat_ref/make.h>
 #include <scitbx/matrix/special_matrices.h>
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/error.h>
@@ -17,7 +16,6 @@
 
 namespace af = scitbx::af;
 using scitbx::fn::approx_equal;
-using scitbx::mat_ref_to;
 using namespace scitbx::matrix;
 
 typedef af::c_grid<2> dim;
@@ -46,7 +44,7 @@ struct test_case
     matrix_ref_t q_ = qr.q.ref();
 
     // Check Q is orthogonal
-    SCITBX_ASSERT(normality_ratio(mat_ref_to(qr.q)) < thresh);
+    SCITBX_ASSERT(normality_ratio(qr.q.const_ref()) < thresh);
 
     // Get R
     matrix_t r(dim(m,n));
@@ -55,7 +53,7 @@ struct test_case
 
     // Check A = QR
     matrix_t q_r = af::matrix_multiply(q_, r_);
-    double delta_r = equality_ratio(mat_ref_to(a__), mat_ref_to(q_r));
+    double delta_r = equality_ratio(a__.const_ref(), q_r.const_ref());
     SCITBX_ASSERT(delta_r < thresh);
   }
 
@@ -70,8 +68,8 @@ struct test_case
     matrix_ref_t v_ = bidiag.v.ref();
 
     // Check that U and V are orthogonal
-    SCITBX_ASSERT(normality_ratio(mat_ref_to(bidiag.u)) < thresh);
-    SCITBX_ASSERT(normality_ratio(mat_ref_to(bidiag.v)) < thresh);
+    SCITBX_ASSERT(normality_ratio(bidiag.u.const_ref()) < thresh);
+    SCITBX_ASSERT(normality_ratio(bidiag.v.const_ref()) < thresh);
 
     // Get B
     matrix_t b(dim(m,n));
@@ -82,7 +80,7 @@ struct test_case
     matrix_t u_b = af::matrix_multiply(u_, b_);
     matrix_t vt = af::matrix_transpose(v_);
     matrix_t u_b_vt = af::matrix_multiply(u_b.ref(), vt.ref());
-    SCITBX_ASSERT(equality_ratio(mat_ref_to(a__), mat_ref_to(u_b_vt)) < thresh);
+    SCITBX_ASSERT(equality_ratio(a__.const_ref(), u_b_vt.const_ref()) < thresh);
   }
 };
 
@@ -147,7 +145,7 @@ int main() {
     householder::reflection<double> p(m, n,
                                       householder::applied_on_left_tag(),
                                       false);
-    p.zero_vector(scitbx::column_below(mat_ref_to(a), 1, 2));
+    p.zero_vector(af::column_below(a.ref(), 1, 2));
     p.apply_on_left_to_lower_right_block(a.ref(), 1, 3);
     /* Mathematica:
       a = Table[10 i + j, {i, 6}, {j, 7}];
@@ -173,7 +171,7 @@ int main() {
     householder::reflection<double> q(n, m,
                                       householder::applied_on_right_tag(),
                                       false);
-    q.zero_vector(scitbx::row_right_of(mat_ref_to(a_t), 2, 1));
+    q.zero_vector(af::row_right_of(a_t.ref(), 2, 1));
     q.apply_on_right_to_lower_right_block(a_t.ref(), 3, 1);
     SCITBX_ASSERT(matrix_transpose(expected.ref()).all_approx_equal(a_t, tol));
   }

@@ -5,11 +5,12 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/array_family/accessors/mat_grid.h>
+#include <scitbx/array_family/ref_matrix.h>
 #include <scitbx/matrix/lu_decomposition.h>
 #include <scitbx/matrix/inversion.h>
 #include <scitbx/matrix/diagonal.h>
 #include <scitbx/matrix/packed.h>
-#include <scitbx/mat_ref.h>
 #include <scitbx/constants.h>
 #include <boost/optional.hpp>
 #include <boost/scoped_array.hpp>
@@ -109,9 +110,12 @@ namespace scitbx { namespace af {
     versa<numtype_ab, c_grid<2> > ab(
       c_grid<2>(a.accessor()[0], b.accessor()[1]),
       init_functor_null<numtype_ab>());
-    mat_const_ref<NumTypeA> a_(a.begin(), a.accessor()[0], a.accessor()[1]);
-    mat_const_ref<NumTypeB> b_(b.begin(), b.accessor()[0], b.accessor()[1]);
-    mat_ref<numtype_ab> ab_(ab.begin(), ab.accessor()[0], ab.accessor()[1]);
+    af::const_ref<NumTypeA, af::mat_grid> a_(a.begin(),
+                                             a.accessor()[0], a.accessor()[1]);
+    af::const_ref<NumTypeB, af::mat_grid> b_(b.begin(),
+                                             b.accessor()[0], b.accessor()[1]);
+    af::ref<numtype_ab, af::mat_grid> ab_(ab.begin(),
+                                          ab.accessor()[0], ab.accessor()[1]);
     multiply(a_, b_, ab_);
     return ab;
   }
@@ -123,9 +127,10 @@ namespace scitbx { namespace af {
     const_ref<NumType> const& b)
   {
     shared<NumType> ab(a.accessor()[0], init_functor_null<NumType>());
-    mat_const_ref<NumType> a_(a.begin(), a.accessor()[0], a.accessor()[1]);
-    mat_const_ref<NumType> b_(b.begin(), b.size(), 1);
-    mat_ref<NumType> ab_(ab.begin(), a.accessor()[0], 1);
+    af::const_ref<NumType, af::mat_grid> a_(a.begin(),
+                                            a.accessor()[0], a.accessor()[1]);
+    af::const_ref<NumType, af::mat_grid> b_(b.begin(), b.size(), 1);
+    af::ref<NumType, af::mat_grid> ab_(ab.begin(), a.accessor()[0], 1);
     multiply(a_, b_, ab_);
     return ab;
   }
@@ -137,9 +142,10 @@ namespace scitbx { namespace af {
     const_ref<NumType, c_grid<2> > const& b)
   {
     shared<NumType> ab(b.accessor()[1], init_functor_null<NumType>());
-    mat_const_ref<NumType> a_(a.begin(), 1, a.size());
-    mat_const_ref<NumType> b_(b.begin(), b.accessor()[0], b.accessor()[1]);
-    mat_ref<NumType> ab_(ab.begin(), 1, b.accessor()[1]);
+    af::const_ref<NumType, af::mat_grid> a_(a.begin(), 1, a.size());
+    af::const_ref<NumType, af::mat_grid> b_(b.begin(),
+                                            b.accessor()[0], b.accessor()[1]);
+    af::ref<NumType, af::mat_grid> ab_(ab.begin(), 1, b.accessor()[1]);
     multiply(a_, b_, ab_);
     return ab;
   }
@@ -151,9 +157,9 @@ namespace scitbx { namespace af {
     const_ref<NumType> const& b)
   {
     NumType ab;
-    mat_const_ref<NumType> a_(a.begin(), 1, a.size());
-    mat_const_ref<NumType> b_(b.begin(), b.size(), 1);
-    mat_ref<NumType> ab_(&ab, 1, 1);
+    af::const_ref<NumType, af::mat_grid> a_(a.begin(), 1, a.size());
+    af::const_ref<NumType, af::mat_grid> b_(b.begin(), b.size(), 1);
+    af::ref<NumType, af::mat_grid> ab_(&ab, 1, 1);
     multiply(a_, b_, ab_);
     return ab;
   }
@@ -262,7 +268,7 @@ namespace scitbx { namespace af {
     typedef typename FlexGridIndexType::value_type index_value_type;
     index_value_type n_rows = a.accessor().all()[0];
     index_value_type n_columns = a.accessor().all()[1];
-    mat_ref<NumType> a_(a.begin(), n_rows, n_columns);
+    af::ref<NumType, af::mat_grid> a_(a.begin(), n_rows, n_columns);
     a_.transpose_in_place();
     a.resize(flex_grid<FlexGridIndexType>(n_columns, n_rows));
   }
@@ -429,7 +435,7 @@ namespace scitbx { namespace af {
   template <typename ElementType>
   versa<ElementType, c_grid<2> >
   mat_const_ref_as_versa(
-    scitbx::mat_const_ref<ElementType> const& m)
+    af::const_ref<ElementType, af::mat_grid> const& m)
   {
     versa<ElementType, c_grid<2> > result(
       c_grid<2>(m.n_rows(), m.n_columns()),

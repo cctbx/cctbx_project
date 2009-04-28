@@ -7,7 +7,6 @@
 #include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/array_family/ref_algebra.h>
 #include <scitbx/array_family/misc_functions.h>
-#include <scitbx/mat_ref/make.h>
 #include <scitbx/matrix/special_matrices.h>
 #include <scitbx/error.h>
 #include <iostream>
@@ -17,7 +16,6 @@
 
 namespace af = scitbx::af;
 using scitbx::fn::approx_equal;
-using scitbx::mat_ref_to;
 using namespace scitbx::matrix;
 
 typedef af::c_grid<2> dim;
@@ -302,11 +300,11 @@ void exercise_golub_kahan_iterations(grading_func_t grading_func,
       v.ref(), true);
     svd.compute();
     SCITBX_ASSERT(superdiagonal.all_eq(0));
-    SCITBX_ASSERT(normality_ratio(mat_ref_to(ut), svd.tol) < thresh);
-    SCITBX_ASSERT(normality_ratio(mat_ref_to(v), svd.tol) < thresh);
+    SCITBX_ASSERT(normality_ratio(ut.const_ref(), svd.tol) < thresh);
+    SCITBX_ASSERT(normality_ratio(v.const_ref(), svd.tol) < thresh);
 
     matrix_t a1 = svd::reconstruct(ut_, v_, diagonal.const_ref());
-    SCITBX_ASSERT(equality_ratio(mat_ref_to(a), mat_ref_to(a1), svd.tol)
+    SCITBX_ASSERT(equality_ratio(a.const_ref(), a1.const_ref(), svd.tol)
                     < thresh);
   }
 }
@@ -326,7 +324,6 @@ void exercise_golub_kahan_iterations_2() {
   // matrix with all singular values approximately equal
 
 }
-
 
 
 int main() {

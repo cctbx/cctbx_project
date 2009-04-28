@@ -42,7 +42,7 @@ namespace cctbx { namespace sgtbx {
     }
     if (proper_order > 1) {
       rot_mx rmi = proper_r.minus_unit_mx();
-      scitbx::mat_ref<int> re_mx(rmi.num().begin(), 3, 3);
+      af::ref<int, af::mat_grid> re_mx(rmi.num().begin(), 3, 3);
       if (scitbx::matrix::row_echelon::form(re_mx) != 2) {
         throw error("Cannot determine Eigenvector of rotation matrix.");
       }

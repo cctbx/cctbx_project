@@ -3,7 +3,7 @@
 
 #include <scitbx/error.h>
 #include <scitbx/array_family/ref.h>
-#include <scitbx/mat_ref.h>
+#include <scitbx/array_family/accessors/mat_grid.h>
 #include <scitbx/math/copysign.h>
 #include <scitbx/math/numeric_limits.h>
 #include <algorithm>
@@ -138,7 +138,7 @@ struct bidiagonal_decomposition
 
   af::ref<scalar_t> d,f;
   scalar_t eps, tol, thresh;
-  mat_ref<scalar_t> ut, v;
+  af::ref<scalar_t, af::mat_grid> ut, v;
   givens::product<scalar_t> q_ut, q_v;
   int n_iterations, n_max_iterations;
   bool has_iteration_converged, has_not_converged;
@@ -165,8 +165,8 @@ struct bidiagonal_decomposition
   */
   bidiagonal_decomposition(af::ref<scalar_t> const &diagonal,
                            af::ref<scalar_t> const &superdiagonal,
-                           mat_ref<scalar_t> const &ut0, bool accumulate_ut,
-                           mat_ref<scalar_t> const &v0,  bool accumulate_v,
+                           af::ref<scalar_t, af::mat_grid> const &ut0, bool accumulate_ut,
+                           af::ref<scalar_t, af::mat_grid> const &v0,  bool accumulate_v,
                            scalar_t epsilon=std::numeric_limits<scalar_t>::epsilon(),
                            int max_iteration_multiplier=6)
     : d(diagonal), f(superdiagonal),
@@ -562,8 +562,8 @@ struct bidiagonal_decomposition
 /// Reconstruct a matrix from a SVD decomposition: A = U^T S V
 template <typename T>
 af::versa<T, af::c_grid<2> >
-reconstruct(mat_const_ref<T> const &ut,
-            mat_const_ref<T> const &v,
+reconstruct(af::const_ref<T, af::mat_grid> const &ut,
+            af::const_ref<T, af::mat_grid> const &v,
             af::const_ref<T> const &sigma)
 {
   SCITBX_ASSERT(ut.n_rows() == v.n_columns());
@@ -580,15 +580,6 @@ reconstruct(mat_const_ref<T> const &ut,
     a(i,j) = a_ij;
   }
   return result;
-}
-
-template <typename T>
-af::versa<T, af::c_grid<2> >
-reconstruct(af::const_ref<T, af::c_grid<2> > const &ut,
-            af::const_ref<T, af::c_grid<2> > const &v,
-            af::const_ref<T> const &sigma)
-{
-  return reconstruct(mat_const_ref<T>(ut), mat_const_ref<T>(v), sigma);
 }
 
 }}} // scitbx::matrix::svd

@@ -63,8 +63,8 @@ namespace cctbx { namespace sgtbx {
             *ret++ = (*n++)*f;
             *ret++ = (*n++)*f;
           }
-          scitbx::mat_ref<int> rem_ref(row_echelon_m.get(), n_rows, 3);
-          scitbx::mat_ref<int> ret_ref(row_echelon_t.get(), n_rows, 1);
+          af::ref<int, af::mat_grid> rem_ref(row_echelon_m.get(), n_rows, 3);
+          af::ref<int, af::mat_grid> ret_ref(row_echelon_t.get(), n_rows, 1);
           n_rows = scitbx::matrix::row_echelon::form_t(rem_ref, ret_ref);
           CCTBX_ASSERT(n_rows <= 3);
           std::copy(
@@ -87,10 +87,10 @@ namespace cctbx { namespace sgtbx {
         }
       }
 
-      scitbx::mat_const_ref<int>
+      af::const_ref<int, af::mat_grid>
       row_echelon_form() const
       {
-        return scitbx::mat_const_ref<int>(
+        return af::const_ref<int, af::mat_grid>(
           row_echelon_form_memory.begin(),
           row_echelon_constants.size(),
           3);
@@ -133,7 +133,7 @@ namespace cctbx { namespace sgtbx {
         FloatType* row = gradient_sum_matrix_memory.begin();
         std::fill_n(
           row, 3*independent_indices.size(), static_cast<FloatType>(0));
-        scitbx::mat_const_ref<int> rem = row_echelon_form();
+        af::const_ref<int, af::mat_grid> rem = row_echelon_form();
         for(std::size_t i=0;i<independent_indices.size();i++,row+=3) {
           row[independent_indices[i]] = 1;
           scitbx::matrix::row_echelon::back_substitution_float(
@@ -143,11 +143,11 @@ namespace cctbx { namespace sgtbx {
       }
 
     public:
-      scitbx::mat_const_ref<FloatType>
+      af::const_ref<FloatType, af::mat_grid>
       gradient_sum_matrix() const
       {
         if (!have_gradient_sum_matrix) initialize_gradient_sum_matrix();
-        return scitbx::mat_const_ref<FloatType>(
+        return af::const_ref<FloatType, af::mat_grid>(
           gradient_sum_matrix_memory.begin(),
           independent_indices.size(),
           3);

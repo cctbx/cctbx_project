@@ -1,10 +1,11 @@
 #ifndef SCITBX_MATH_EIGENSYSTEM_H
 #define SCITBX_MATH_EIGENSYSTEM_H
 
-#include <scitbx/mat_ref.h>
+#include <scitbx/array_family/accessors/mat_grid.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/array_family/ref_matrix.h>
 #include <scitbx/sym_mat3.h>
 #include <scitbx/sym_mat2.h>
 #include <boost/scoped_array.hpp>
@@ -230,17 +231,12 @@ namespace scitbx { namespace math { namespace eigensystem {
           real-symmetric square matrix.
        */
       real_symmetric(
-        mat_const_ref<FloatType> const& m,
+        af::const_ref<FloatType, af::mat_grid> const& m,
         FloatType relative_epsilon=1.e-10,
-        FloatType absolute_epsilon=0);
-
-      /*! \brief Determines the eigenvectors and eigenvalues of the
-          real-symmetric square matrix.
-       */
-      real_symmetric(
-        af::const_ref<FloatType, af::c_grid<2> > const& m,
-        FloatType relative_epsilon=1.e-10,
-        FloatType absolute_epsilon=0);
+        FloatType absolute_epsilon=0)
+      {
+        initialize(m, relative_epsilon, absolute_epsilon);
+      }
 
       /*! \brief Determines the eigenvectors and eigenvalues of the
           real-symmetric square matrix.
@@ -278,38 +274,15 @@ namespace scitbx { namespace math { namespace eigensystem {
 
       void
       initialize(
-        mat_const_ref<FloatType> const& m,
+        af::const_ref<FloatType, af::mat_grid> const& m,
         FloatType relative_epsilon,
         FloatType absolute_epsilon);
   };
 
   template <typename FloatType>
-  real_symmetric<FloatType>::real_symmetric(
-    mat_const_ref<FloatType> const& m,
-    FloatType relative_epsilon,
-    FloatType absolute_epsilon)
-  {
-    initialize(m, relative_epsilon, absolute_epsilon);
-  }
-
-  template <typename FloatType>
-  real_symmetric<FloatType>::real_symmetric(
-    af::const_ref<FloatType, af::c_grid<2> > const& m,
-    FloatType relative_epsilon,
-    FloatType absolute_epsilon)
-  {
-    initialize(mat_const_ref<FloatType>(
-      m.begin(),
-      m.accessor()[0],
-      m.accessor()[1]),
-      relative_epsilon,
-      absolute_epsilon);
-  }
-
-  template <typename FloatType>
   void
   real_symmetric<FloatType>::initialize(
-    mat_const_ref<FloatType> const& m,
+    af::const_ref<FloatType, af::mat_grid> const& m,
     FloatType relative_epsilon,
     FloatType absolute_epsilon)
   {

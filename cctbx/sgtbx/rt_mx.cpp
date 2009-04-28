@@ -327,8 +327,8 @@ namespace cctbx { namespace sgtbx {
   {
     rot_mx rmi = r_.minus_unit_mx();
     rot_mx p(1);
-    scitbx::mat_ref<int> ref_rmi(rmi.num().begin(), 3, 3);
-    scitbx::mat_ref<int> ref_p(p.num().begin(), 3, 3);
+    af::ref<int, af::mat_grid> ref_rmi(rmi.num().begin(), 3, 3);
+    af::ref<int, af::mat_grid> ref_p(p.num().begin(), 3, 3);
     scitbx::matrix::row_echelon::form_t(ref_rmi, ref_p);
     tr_vec pwl = p * wl;
     tr_vec sh(0);

@@ -3,7 +3,7 @@
 namespace cctbx { namespace sgtbx { namespace row_echelon { namespace solve {
 
   af::tiny<sg_vec3, 4>
-  homog_rank_1(scitbx::mat_const_ref<int> const& re_mx,
+  homog_rank_1(af::const_ref<int, af::mat_grid> const& re_mx,
                scitbx::matrix::row_echelon::independent<int> const& indep)
   {
     CCTBX_ASSERT(re_mx.n_rows() == 1);
@@ -28,7 +28,7 @@ namespace cctbx { namespace sgtbx { namespace row_echelon { namespace solve {
   }
 
   af::tiny<sg_vec3, 4>
-  homog_rank_1(scitbx::mat_const_ref<int> const& re_mx)
+  homog_rank_1(af::const_ref<int, af::mat_grid> const& re_mx)
   {
     scitbx::matrix::row_echelon::independent<int> indep(re_mx);
     return homog_rank_1(re_mx, indep);
@@ -53,7 +53,7 @@ namespace cctbx { namespace sgtbx { namespace row_echelon { namespace solve {
   } // namespace <anonymous>
 
   sg_vec3
-  homog_rank_2(scitbx::mat_const_ref<int> const& re_mx)
+  homog_rank_2(af::const_ref<int, af::mat_grid> const& re_mx)
   {
     CCTBX_ASSERT(re_mx.n_rows() == 2);
     scitbx::matrix::row_echelon::independent<int> indep(re_mx);
