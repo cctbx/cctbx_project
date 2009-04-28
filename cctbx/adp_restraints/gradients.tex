@@ -10,15 +10,25 @@
 \maketitle
 
 \section{ADP similarity restraint}
+\label{ADP:similarity}
 The anisotropic displacement parameters of two atoms are restrained to have the
 same $U_{ij}$ components.  This is equivalent to a SHELXL SIMU restraint \cite{SHELX:man97}.
-The weighted least-squares residual is
+The weighted least-squares residual is defined as
 \begin{equation}
-R = w \sum_{i=1}^3 \sum_{j=1}^i (U_{A,ij} - U_{B,ij})^2,
+R = w \sum_{i=1}^3 \sum_{j=1}^3 (U_{A,ij} - U_{B,ij})^2,
 \end{equation}
-and the gradient of the residual with respect to the component $U_{A,ij}$ is then
+which we note is the Frobenius norm of the matrix of deltas.
+But since $\mat{U}$ is symmetric, i.e. $U_{ij} = U_{ji}$, this can be rewritten as
 \begin{equation}
-\partialder{R}{U_{A,ij}} = 2w(U_{A,ij} - U_{B,ij}).
+R = w \left( \sum_{i=1}^3 (U_{A,ii} - U_{B,ii})^2 + 2 \sum_{i < j} (U_{A,ij} - U_{B,ij})^2 \right) .
+\end{equation}
+Therefore the gradient of the residual with respect to the diagonal element $U_{A,ii}$ is then
+\begin{equation}
+\partialder{R}{U_{A,ii}} = 2w(U_{A,ii} - U_{B,ii}).
+\end{equation}
+Similarly the gradient with respect to the off-diagonal element $U_{A,ij}$ is
+\begin{equation}
+\partialder{R}{U_{A,ij}} = 4w(U_{A,ij} - U_{B,ij}).
 \end{equation}
 
 \section{Rigid-bond restraint}
@@ -60,10 +70,10 @@ The matrix multiplication in obtaining $z^2_{A,B}$ can be evaluated as follows
 \vec{r}^t\vec{U}_{cart,A}\vec{r} &= 
 \begin{pmatrix} x & y & z \end{pmatrix}
 \begin{pmatrix} U_{11} & U_{12} & U_{13}\\
-                         U_{12} & U_{22} & U_{23}\\
-                         U_{13} & U_{23} & U_{33}\end{pmatrix}
+  U_{12} & U_{22} & U_{23}\\
+  U_{13} & U_{23} & U_{33}\end{pmatrix}
 \begin{pmatrix} x\\y\\z\end{pmatrix}\\
-&= U_{11}\ x^2 + U_{22}\ y^2 + U_{33}\ z^2 + 2U_{12}\ xy + 2U_{13}\ xz + 2U_{23}\ yz
+&= U_{11}\: x^2 + U_{22}\: y^2 + U_{33}\: z^2 + 2U_{12}\: xy + 2U_{13}\: xz + 2U_{23}\: yz
 \end{align}
 It then follows that
 \begin{equation}
@@ -79,6 +89,47 @@ and
 \end{equation}
 These can be combined with \eqnref{r_derivative} to give us the derivatives
 with respect to each $U_{ij}$ component.
+
+\section{Isotropic ADP restraint}
+Here we minimise the difference between the Cartesian ADPs, $\mat{U}_{cart}$ and
+the isotropic equivalent, $\mat{U}_{eq}$.  As in section \ref{ADP:similarity}, we
+must remember that we are dealing with symmetric matrices, and we can therefore
+define the weighted least-squares residual as
+\begin{equation}
+R = w \left( \sum_{i=1}^3 (U_{ii} - U_{eq,ii})^2 + 2 \sum_{i<j} (U_{ij} - U_{eq,ij})^2 \right) ,
+\end{equation}
+where
+\begin{equation}
+\mat{U}_{eq} = 
+\begin{pmatrix} U_{iso} & 0 & 0\\
+  0 & U_{iso} & 0\\
+  0 & 0 & U_{iso}\end{pmatrix},
+\end{equation}
+and
+\begin{equation}
+U_{iso} = \tfrac{1}{3} \mathrm{tr}(\mat{U}_{cart}).
+\end{equation}
+We expand the summation of the residual as follows
+\begin{equation}
+R = w \left( (U_{11} - U_{iso})^2 + (U_{22} - U_{iso})^2 + (U_{33} - U_{iso})^2 + 2 U_{12}^2 + 2 U_{13}^2 + 2 U_{23}^2 \right) .
+\end{equation}
+We can now see by inspection that the derivatives of the residual with respect to the off-diagonal elements are
+\begin{equation}
+\partialder{R}{U_{ij,i\neq j}} = 4 w U_{ij}.
+\end{equation}
+The derivatives of the residual with respect to the diagonal elements can be obtained as follows
+\begin{align}
+\partialder{R}{U_{11}} =& w \left( 2 (U_{11} - U_{iso})\partialder{(U_{11} - U_{iso})}{U_{11}}\right. \nonumber\\
+                        &+ 2 (U_{22} - U_{iso})\partialder{(U_{22} - U_{iso})}{U_{22}}\nonumber\\
+                        &+ 2 \left. (U_{33} - U_{iso})\partialder{(U_{33} - U_{iso})}{U_{33}} \right) \nonumber\\
+                       =& w \left( 2 (U_{11} - U_{iso})(1 - \tfrac{1}{3}) + 2 (U_{22} - U_{iso})(-\tfrac{1}{3}) + 2 (U_{33} - U_{iso})(-\tfrac{1}{3}) \right) \nonumber\\
+                       =& w \left( \tfrac{4}{3} U_{11} - \tfrac{2}{3} U_{22} - \tfrac{2}{3} U_{33}\right) \nonumber\\
+                       =& 2 w (U_{11} - U_{iso}) .
+\end{align}
+This can be generalised as
+\begin{equation}
+\partialder{R}{U_{ii}} = 2 w (U_{ii} - U_{iso}) .
+\end{equation}
 
 \bibliography{cctbx_references}
 
