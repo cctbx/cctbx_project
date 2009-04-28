@@ -62,7 +62,7 @@ namespace cctbx { namespace adp_restraints {
     af::tiny<double, 6>
     deltas() { return deltas_; }
 
-    //! weight * sum(deltas)**2.
+    //! weight * [[sum_{ii} (deltas)**2] + [2 * sum_{i<j} (deltas)**2]].
     double residual() const;
 
     scitbx::sym_mat3<double>

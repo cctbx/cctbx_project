@@ -22,6 +22,8 @@ def finite_difference_gradients(restraint_type,
         sites_cart=sites_cart,
         u_cart=u_cart,
         proxy=proxy).residual()
+    elif u_iso is None:
+      return restraint_type(u_cart=u_cart,proxy=proxy).residual()
     else:
       assert use_u_aniso is not None
       return restraint_type(
@@ -34,7 +36,7 @@ def finite_difference_gradients(restraint_type,
   if sites_cart is not None:
     assert len(sites_cart) == len(u_cart)
   for i in xrange(len(u_cart)):
-    if sites_cart is not None:
+    if u_iso is None:
       result_aniso_i = []
       for j in xrange(6):
         h = [0,0,0,0,0,0]
@@ -230,6 +232,28 @@ def exercise_rigid_bond():
     u_cart=u_cart)
   for g,e in zip(gradients_aniso_cart, fd_grads_aniso):
     assert approx_equal(g, e)
+  #
+  # check frame invariance of residual
+  #
+  u_cart_1 = matrix.sym(sym_mat3=(0.1,0.2,0.05,0.03,0.02,0.01))
+  u_cart_2 = matrix.sym(sym_mat3=(0.21,0.32,0.11,0.02,0.02,0.07))
+  u_cart = (u_cart_1.as_sym_mat3(),u_cart_2.as_sym_mat3())
+  site_cart_1 = matrix.col((1,2,3))
+  site_cart_2 = matrix.col((3,1,4.2))
+  sites = (tuple(site_cart_1),tuple(site_cart_2))
+  a = adp_restraints.rigid_bond(sites=sites, u_cart=u_cart, weight=1)
+  expected_residual = a.residual()
+  gen = flex.mersenne_twister()
+  for i in range(20):
+    R = matrix.rec(gen.random_double_r3_rotation_matrix(),(3,3))
+    u_cart_1_rot = R * u_cart_1 * R.transpose()
+    u_cart_2_rot = R * u_cart_2 * R.transpose()
+    u_cart = (u_cart_1_rot.as_sym_mat3(),u_cart_2_rot.as_sym_mat3())
+    site_cart_1_rot = R * site_cart_1
+    site_cart_2_rot = R * site_cart_2
+    sites = (tuple(site_cart_1_rot),tuple(site_cart_2_rot))
+    a = adp_restraints.rigid_bond(sites=sites, u_cart=u_cart, weight=1)
+    assert approx_equal(a.residual(), expected_residual)
 
 def exercise_adp_similarity():
   u_cart = ((1,3,2,4,3,6),(2,4,2,6,5,1))
@@ -242,9 +266,9 @@ def exercise_adp_similarity():
   assert approx_equal(a.u_iso, u_iso)
   assert approx_equal(a.use_u_aniso, use_u_aniso)
   assert a.weight == weight
-  assert approx_equal(a.residual(), 35)
+  assert approx_equal(a.residual(), 68)
   assert approx_equal(a.gradients(),
-    ((-2.0, -2.0, 0.0, -4.0, -4.0, 10.0), (2.0, 2.0, -0.0, 4.0, 4.0, -10.0)))
+    ((-2.0, -2.0, 0.0, -8.0, -8.0, 20.0), (2.0, 2.0, -0.0, 8.0, 8.0, -20.0)))
   #
   u_cart = ((1,3,2,4,3,6),(-1,-1,-1,-1,-1,-1))
   u_iso = (-1,2)
@@ -304,6 +328,26 @@ def exercise_adp_similarity():
       assert approx_equal(g, e)
     for g,e in zip(gradients_iso, fd_grads_iso):
       assert approx_equal(g, e)
+  #
+  # check frame invariance of residual
+  #
+  u_cart_1 = matrix.sym(sym_mat3=(0.1,0.2,0.05,0.03,0.02,0.01))
+  u_cart_2 = matrix.sym(sym_mat3=(0.21,0.32,0.11,0.02,0.02,0.07))
+  u_cart = (u_cart_1.as_sym_mat3(),u_cart_2.as_sym_mat3())
+  u_iso = (-1, -1)
+  use_u_aniso = (True, True)
+  a = adp_restraints.adp_similarity(
+    u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, weight=1)
+  expected_residual = a.residual()
+  gen = flex.mersenne_twister()
+  for i in range(20):
+    R = matrix.rec(gen.random_double_r3_rotation_matrix(),(3,3))
+    u_cart_1_rot = R * u_cart_1 * R.transpose()
+    u_cart_2_rot = R * u_cart_2 * R.transpose()
+    u_cart = (u_cart_1_rot.as_sym_mat3(),u_cart_2_rot.as_sym_mat3())
+    a = adp_restraints.adp_similarity(
+      u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, weight=1)
+    assert approx_equal(a.residual(), expected_residual)
 
 def exercise():
   exercise_adp_similarity()
