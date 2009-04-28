@@ -349,6 +349,52 @@ def exercise_adp_similarity():
       u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, weight=1)
     assert approx_equal(a.residual(), expected_residual)
 
+def exercise_isotropic_adp():
+  i_seq = 0
+  weight = 2
+  u_cart = (1,2,3,5,2,8)
+  p = adp_restraints.isotropic_adp_proxy(
+    i_seq=i_seq,
+    weight=weight)
+  assert p.i_seq == i_seq
+  assert approx_equal(p.weight, weight)
+  i = adp_restraints.isotropic_adp(
+    u_cart=u_cart,
+    weight=weight)
+  expected_deltas = (-1, 0, 1, 5, 2, 8)
+  expected_gradients = (-4, 0, 4, 40, 16, 64)
+  assert approx_equal(i.u_cart, u_cart)
+  assert approx_equal(i.weight, weight)
+  assert approx_equal(i.deltas(), expected_deltas)
+  assert approx_equal(i.residual(), 376.0)
+  assert approx_equal(i.gradients(), expected_gradients)
+  gradients_aniso_cart = flex.sym_mat3_double(1, (0,0,0,0,0,0))
+  proxies = adp_restraints.shared_isotropic_adp_proxy([p,p])
+  u_cart = flex.sym_mat3_double((u_cart,))
+  residual_sum = adp_restraints.isotropic_adp_residual_sum(
+    u_cart=u_cart,
+    proxies=proxies,
+    gradients_aniso_cart=gradients_aniso_cart)
+  assert approx_equal(residual_sum, 752.0)
+  fd_grads_aniso, fd_grads_iso = finite_difference_gradients(
+    restraint_type=adp_restraints.isotropic_adp,
+    proxy=p,
+    u_cart=u_cart)
+  for g,e in zip(gradients_aniso_cart, fd_grads_aniso):
+    assert approx_equal(g, matrix.col(e)*2)
+  #
+  # check frame invariance of residual
+  #
+  u_cart = matrix.sym(sym_mat3=(0.1,0.2,0.05,0.03,0.02,0.01))
+  a = adp_restraints.isotropic_adp(u_cart=u_cart.as_sym_mat3(), weight=1)
+  expected_residual = a.residual()
+  gen = flex.mersenne_twister()
+  for i in range(20):
+    R = matrix.rec(gen.random_double_r3_rotation_matrix(),(3,3))
+    u_cart_rot = R * u_cart * R.transpose()
+    a = adp_restraints.isotropic_adp(u_cart=u_cart_rot.as_sym_mat3(), weight=1)
+    assert approx_equal(a.residual(), expected_residual)
+
 def exercise():
   exercise_adp_similarity()
   exercise_rigid_bond()

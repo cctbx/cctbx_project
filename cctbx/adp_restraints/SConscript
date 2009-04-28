@@ -8,4 +8,6 @@ env_bpl.SharedLibrary(
     "rigid_bond_bpl.cpp",
     "rigid_bond.cpp",
     "adp_similarity_bpl.cpp",
-    "adp_similarity.cpp"])
+    "adp_similarity.cpp",
+    "isotropic_adp_bpl.cpp",
+    "isotropic_adp.cpp"])
