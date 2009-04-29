@@ -1,5 +1,5 @@
-#ifndef SCITBX_MAT_REF_ROW_AND_COLUMN_H
-#define SCITBX_MAT_REF_ROW_AND_COLUMN_H
+#ifndef SCITBX_ARRAY_FAMILY_ACCESSORS_ROW_AND_COLUMN_H
+#define SCITBX_ARRAY_FAMILY_ACCESSORS_ROW_AND_COLUMN_H
 
 #include <scitbx/array_family/accessors/mat_grid.h>
 #include <scitbx/array_family/accessors/striding.h>
