@@ -153,11 +153,10 @@ namespace mmtbx { namespace masks {
         {
           // set points wthin shrink_truncation_radius around asu to
           // an arbitrary unique positive value
-          const scitbx::int3 pos(i,j,k);
-          data_type &dr = *d_ptr; // data_ref(pos);
+          data_type &dr = *d_ptr;
           if( dr == 0 )
             dr = mark;
-
+          const scitbx::int3 pos(i,j,k);
           if( !(scitbx::ge_all(pos, imn) && scitbx::lt_all(pos, imx)) )
             continue;
           register unsigned short nops = 0;
@@ -168,7 +167,6 @@ namespace mmtbx { namespace masks {
           }
           if( nops==0 )
           {
-            // const short ww = asu.where_is(pos,n);
             const short ww = opt_asu.where_is(pos);
             if( ww == 1 ) // inside NOT on the face
               nops = order;
@@ -211,6 +209,9 @@ namespace mmtbx { namespace masks {
     tb = boost::posix_time::microsec_clock::local_time();
     // masking is the slowest part of this routine, for not optimized asus
     this->mask_asu();
+    // test asu volume
+    // TODO: optimization? move this test in mask_asu
+    // could save a few millisec
     size_t nn = 0;
     for(af::const_ref<data_type, grid_t >::const_iterator
       msk_it=data_cref.begin(); msk_it!=data_cref.end(); ++msk_it)
@@ -235,7 +236,7 @@ namespace mmtbx { namespace masks {
     tdif = te - tb;
     debug_mask_asu_time = tdif.total_milliseconds();
     tb = boost::posix_time::microsec_clock::local_time();
-    this->compute_accessible_surface(asu_atoms, asu_radii);
+    this->compute_accessible_surface(this->asu_atoms);
     te = boost::posix_time::microsec_clock::local_time();
     tdif = te - tb;
     debug_accessible_time = tdif.total_milliseconds();
@@ -300,6 +301,7 @@ namespace mmtbx { namespace masks {
     // expand asu by shrink_truncation_radius
     const scitbx::af::tiny<double,6> rcell = cell.reciprocal_parameters();
     const scitbx::double3 rp(rcell[0], rcell[1], rcell[2]);
+    // TODO: try different constant 1.005
     scitbx::double3 shrink_box = rp * (shrink_truncation_radius*1.05);
     this->expanded_box[0] -= shrink_box;
     this->expanded_box[1] += shrink_box;
@@ -316,13 +318,13 @@ namespace mmtbx { namespace masks {
     this->data.resize(grid_t(emn,emx));
   }
 
+
   void atom_mask::atoms_to_asu(
     const coord_array_t & sites_frac,
     const double_array_t & atom_radii)
   {
     MMTBX_ASSERT(sites_frac.size() == atom_radii.size());
-    asu_atoms.clear();
-    asu_radii.clear();
+    this->asu_atoms.clear();
     const scitbx::af::tiny<double,6> rcell = cell.reciprocal_parameters();
     const scitbx::double3 rp(rcell[0], rcell[1], rcell[2]);
 
@@ -376,6 +378,8 @@ namespace mmtbx { namespace masks {
                 sym_at_cell + box };
               CCTBX_ASSERT( scitbx::ge_all(atom_box[1], atom_box[0]) );
 
+              // TODO: improve intersection check to minimize
+              // number of intersecting atoms
               if( scitbx::ge_all(atom_box[1], asu_box[0])
                   && scitbx::le_all(atom_box[0], asu_box[1]) )
                 intersection =  partially;
@@ -384,8 +388,7 @@ namespace mmtbx { namespace masks {
               {
                 // due to that there is no mapping onto full cell
                 // all atoms intersecting with the asu are required
-                this->asu_atoms.push_back(sym_at_cell);
-                this->asu_radii.push_back(at_r);
+                this->asu_atoms.push_back(atom_t(sym_at_cell,at_r));
                 // TODO: possible optimization?
                 // test for fully intersecting atom:
                 //   is_inside( every corner of atom box)
@@ -422,6 +425,9 @@ namespace mmtbx { namespace masks {
     MMTBX_ASSERT( ndim == grid_full_cell );
     MMTBX_ASSERT( scitbx::le_all( ndim, mdim ) );
     const padded_grid_t pad( mdim, ndim );
+    // TODO: optimize?
+    // padded_real could be a very huge array; filling it with 0 could be the
+    // slowest part of this routine apart from fft
     versa_3d_padded_real_array padded_real(pad, 0.0);
     // convert non-padded asu-sized integer mask to padded full-cell
     // sized real array
@@ -429,28 +435,47 @@ namespace mmtbx { namespace masks {
     scitbx::af::const_ref<data_type, grid_t > mskref = msk.const_ref();
     scitbx::int3 imn, imx;
     this->get_asu_boundaries(imn, imx); // [imn, imx)
-    for(long i=imn[0]; i<imx[0]; ++i)
+    std::vector<long> kc(imx[2]-imn[2]);
+    long kk = imn[2];
+    for(std::vector<long>::iterator it=kc.begin(); it!=kc.end(); ++it, ++kk)
+    {
+      long k_c = kk % ndim[2];
+      if( k_c <0 )
+        k_c += ndim[2];
+      *it = k_c;
+    }
+    MMTBX_ASSERT( kk==imx[2] );
+    scitbx::vec3<size_t> cn = prref.accessor().all();
+    scitbx::vec3<long> n( mskref.accessor().all() );
+    const long nynz = n[1]*n[2], cnynz = cn[1]*cn[2];
+    long j_c_b = imn[1] % ndim[1];
+    if( j_c_b<0 )
+      j_c_b += ndim[1];
+    j_c_b *= cn[2];
+    const long j_c_e = ndim[1] * cn[2];
+    const data_type *p_asu_x = &mskref(imn);
+    for(long i=imn[0]; i<imx[0]; ++i, p_asu_x += nynz )
     {
       register long i_c = i % ndim[0];
       if( i_c<0 )
         i_c += ndim[0];
-      for(long j=imn[1]; j<imx[1]; ++j)
+      const long ind_c_x = i_c*cnynz;
+      long ind_c_y = ind_c_x + j_c_b;
+      const long ind_c_y_e = ind_c_x + j_c_e;
+      const data_type *const p_asu_y_e = p_asu_x + (imx[1]-imn[1])*n[2];
+      for(const data_type *p_asu_y = p_asu_x; p_asu_y!=p_asu_y_e;
+        p_asu_y += n[2], ind_c_y += cn[2] )
       {
-        register long j_c = j % ndim[1];
-        if( j_c<0 )
-          j_c += ndim[1];
-        for(long k=imn[2]; k<imx[2]; ++k)
+        if( ind_c_y == ind_c_y_e )
+          ind_c_y = ind_c_x;
+        const data_type *p_asu_z = p_asu_y;
+        for(std::vector<long>::const_iterator k_c=kc.begin(); k_c!=kc.end();
+          ++k_c, ++p_asu_z)
         {
-          // TODO: optimize index int3(i,j,k)
-          const data_type t = mskref(scitbx::int3(i,j,k));
+          const data_type t = *p_asu_z;
           MMTBX_ASSERT( t>=0 && t<mark );
           if( t>0 )
-          {
-            register long k_c = k % ndim[2];
-            if( k_c<0 )
-              k_c += ndim[2];
-            prref(i_c,j_c,k_c) = t;
-          }
+            prref[ ind_c_y + *k_c ] = t;
         }
       }
     }
@@ -464,7 +489,7 @@ namespace mmtbx { namespace masks {
       boost::posix_time::microsec_clock::local_time() - tb;
     debug_fft_time = tdif.total_milliseconds();
 
-    const cctbx::maptbx::structure_factors::from_map<double>  the_from_map (
+    const cctbx::maptbx::structure_factors::from_map<double> the_from_map(
       group,
       false, // anomalous flag
       indices,
@@ -475,6 +500,7 @@ namespace mmtbx { namespace masks {
     // result.size() could be approx 1000 * the_from_map.data().size()
     // this does not work :( the_from_map.data() *= scale;
     scitbx::af::ref< std::complex<double> > dref = the_from_map.data().ref();
+    // scaling takes no time
     for(scitbx::af::ref< std::complex<double> >::iterator i=dref.begin();
       i!=dref.end(); ++i)
       (*i) *= scale;
@@ -501,11 +527,8 @@ namespace mmtbx { namespace masks {
   }
 
 
-  void atom_mask::compute_accessible_surface(
-    const coord_array_t & sites_frac,
-    const double_array_t & atom_radii)
+  void atom_mask::compute_accessible_surface(const atom_array_t & atoms)
   {
-    MMTBX_ASSERT( sites_frac.size() == atom_radii.size() );
     cctbx::uctbx::unit_cell const& unit_cell = this->cell;
     // Severe code duplication: cctbx/maptbx/average_densities.h
     af::ref<data_type, grid_t > data_ref = data.ref();
@@ -550,12 +573,12 @@ namespace mmtbx { namespace masks {
     const scitbx::vec3<long> sz_asu(data_ref.accessor().all());
     const long sz_yz = sz_asu[1]*sz_asu[2];
     const long asu_off = sz_yz* asu_min[0] + sz_asu[2]* asu_min[1] + asu_min[2];
-    for(std::size_t i_site=0;i_site<sites_frac.size();i_site++) {
-      cctbx::fractional<> const& site = sites_frac[i_site];
+    for(std::size_t i_site=0;i_site<atoms.size();i_site++) {
+      cctbx::fractional<> const& site = atoms[i_site].first;
       const f_t xfi=static_cast<f_t>(site[0]);
       const f_t yfi=static_cast<f_t>(site[1]);
       const f_t zfi=static_cast<f_t>(site[2]);
-      const f_t atmrad = atom_radii[i_site];
+      const f_t atmrad = atoms[i_site].second;
       MMTBX_ASSERT( atmrad >= 0.0 );
       const f_t cutoff=static_cast<f_t>(atmrad+solvent_radius);
       const f_t radsq=static_cast<f_t>(atmrad*atmrad);
