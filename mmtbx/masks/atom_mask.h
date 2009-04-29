@@ -71,13 +71,13 @@ namespace mmtbx {
         cell(unit_cell),
         group(group_)
       {
-        MMTBX_ASSERT( 1 == 0 ); // broken at the moment
         MMTBX_ASSERT( mark > group.order_z() && -mark < -group.order_z() );
         MMTBX_ASSERT(solvent_radius >= 0.0);
         MMTBX_ASSERT(shrink_truncation_radius >= 0.0);
         MMTBX_ASSERT(gridding_n_real.const_ref().all_gt(0));
-        // data.resize(grid_t(gridding_n_real), 0);
-        // mask_asu();
+        this->full_cell_grid_size = scitbx::int3(gridding_n_real);
+        this->determine_boundaries(); // also allocates memory
+        // TODO: ? put more computation here, eg.: mask_asu
       }
 
       //! Allocates memory for mask calculation.
@@ -99,8 +99,7 @@ namespace mmtbx {
         asu(group_.type()),
         cell(unit_cell),
         group(group_),
-        asu_atoms(),
-        asu_radii()
+        asu_atoms()
       {
         MMTBX_ASSERT( mark > group.order_z() && -mark < -group.order_z() );
         MMTBX_ASSERT(solvent_radius >= 0.0);
@@ -108,7 +107,7 @@ namespace mmtbx {
         this->determine_gridding(this->full_cell_grid_size, resolution,
           grid_step_factor);
         this->determine_boundaries(); // also allocates memory
-        // mask_asu();
+        // TODO: ? put more computation here, eg.: mask_asu
       }
 
       //! Clears current, and calculates new mask based on atomic data.
@@ -134,7 +133,6 @@ namespace mmtbx {
 
       size_t n_asu_atoms() const
       {
-        MMTBX_ASSERT(asu_atoms.size()==asu_radii.size());
         return asu_atoms.size();
       }
 
@@ -154,10 +152,11 @@ namespace mmtbx {
       bool debug_has_enclosed_box;
 
     private:
+
+      typedef std::pair< scitbx::double3, double > atom_t;
+      typedef std::vector< atom_t > atom_array_t;
       void compute_contact_surface();
-      void compute_accessible_surface(
-        const coord_array_t & sites_frac,
-        const double_array_t & atom_radii);
+      void compute_accessible_surface(const atom_array_t &atoms);
       void mask_asu();
       void atoms_to_asu(
         const coord_array_t & sites_frac,
@@ -177,15 +176,10 @@ namespace mmtbx {
       const cctbx::uctbx::unit_cell cell;
       const cctbx::sgtbx::space_group group;
 
-      static const bool explicit_distance = false;
-      static const bool debug = false;
-
       scitbx::int3 full_cell_grid_size, asu_low, asu_high;
       scitbx::double3 expanded_box[2];
-      coord_array_t asu_atoms;
-      double_array_t asu_radii;
+      atom_array_t asu_atoms;
       mask_array_t data;
-
   }; // class atom_mask
 
 }} // namespace mmtbx::masks
