@@ -34,6 +34,7 @@ def show_process_info(out):
   xray.structure_factors.global_counters.show(out=out)
   print >> out, format_cpu_times()
   print >> out, "/\\"*39
+  out.flush()
 
 def make_header(line, out=None):
   if (out is None): out = sys.stdout
@@ -168,6 +169,7 @@ def show_rigid_body_rotations_and_translations(
       " group %4d: %8.3f %8.3f %8.3f %7.2f  %6.2f %6.2f %6.2f %6.2f "
         % tuple([i] + r + [r_total] + list(t) + [t_total])
       + frame).rstrip()
+  out.flush()
 
 class refinement_monitor(object):
   def __init__(self, params,
@@ -683,7 +685,7 @@ class refinement_monitor(object):
 #          for a,b in zip(self.steps,self.tus):
 #              print >> out, format % (a,b)
 #       print >> out, remark + separator
-#    out.flush()
+    out.flush()
     #
     #
     t2 = time.time()

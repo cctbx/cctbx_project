@@ -110,6 +110,7 @@ def run(fmodels, model, target_weights, params, log):
     s = xs.scatterers()
     print >> log, "tardy collinear bond:", s[i].label
     print >> log, "                     ", s[j].label
+  log.flush()
   potential_obj = potential_object(
     nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
     fmodels=fmodels,
@@ -129,6 +130,7 @@ def run(fmodels, model, target_weights, params, log):
   sim.assign_random_velocities()
   time_step_akma = params.time_step_pico_seconds / akma_time_as_pico_seconds
   print >> log, "tardy dynamics:"
+  log.flush()
   n_time_steps = 0
   for i_cool_step in xrange(params.number_of_cooling_steps+1):
     t_target = params.start_temperature_kelvin \
@@ -141,6 +143,7 @@ def run(fmodels, model, target_weights, params, log):
       sim.reset_e_kin(e_kin_target=e_kin_target)
       print >> log, "  resetting temperature: %7.2f K" % (
         kinetic_energy_as_temperature(dof=sim.degrees_of_freedom, e=sim.e_kin))
+      log.flush()
     reset_e_kin()
     for i_time_step in xrange(params.number_of_time_steps):
       assert params.temperature_cap_factor > 1.0
@@ -154,6 +157,7 @@ def run(fmodels, model, target_weights, params, log):
             t_target * params.excessive_temperature_factor)
           print >> log, "    time_step_pico_seconds: %.6g" % (
             params.time_step_pico_seconds)
+          log.flush()
           raise Sorry(
             "Excessive system temperature in torsion angle dynamics:\n"
             "  Please try again with a smaller time_step_pico_seconds.")
@@ -171,11 +175,14 @@ def run(fmodels, model, target_weights, params, log):
         kinetic_energy_as_temperature(
           dof=sim.degrees_of_freedom, e=sim.e_kin)),
       print >> log
+      log.flush()
   if (params.minimization_max_iterations > 0):
     print >> log, "tardy gradient-driven minimization:"
+    log.flush()
     def show_rms(minimizer=None):
       print >> log, "  rms: %8.4f" % (
         xs.sites_cart().rms_difference(sites_cart_start))
+      log.flush()
     sim.minimization(
       max_iterations=params.minimization_max_iterations,
       callback_after_step=show_rms)
