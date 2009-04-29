@@ -86,12 +86,18 @@ def run_simulated_annealing(simulated_annealing_params,
   sa_temp = simulated_annealing_params.start_temperature
   xray_gradient = None
   reset_velocities = True
+  vxyz = None
+  cd_manager = None
   while simulated_annealing_params.final_temperature <= sa_temp:
     print >> out
+    if(sa_temp==simulated_annealing_params.start_temperature):
+      cmremove=True
+    else: cmremove=False
     cd_manager = cartesian_dynamics.cartesian_dynamics(
       structure                   = model.xray_structure,
       restraints_manager          = model.restraints_manager,
       temperature                 = sa_temp,
+      vxyz                        = vxyz,
       n_steps                     = simulated_annealing_params.number_of_steps,
       time_step                   = simulated_annealing_params.time_step,
       initial_velocities_zero_fraction \
@@ -100,6 +106,7 @@ def run_simulated_annealing(simulated_annealing_params,
         = simulated_annealing_params.interleaved_minimization,
       n_print                     = simulated_annealing_params.n_print,
       fmodel                      = fmodel,
+      stop_cm_motion              = cmremove,
       xray_target_weight          = wx,
       chem_target_weight          = wc,
       xray_structure_last_updated = xray_structure_last_updated,
@@ -109,7 +116,6 @@ def run_simulated_annealing(simulated_annealing_params,
       log=out,
       verbose=simulated_annealing_params.verbose)
     reset_velocities = False
-
     xray_structure_last_updated = \
                   cd_manager.xray_structure_last_updated.deep_copy_scatterers()
     xray_gradient = cd_manager.xray_gradient

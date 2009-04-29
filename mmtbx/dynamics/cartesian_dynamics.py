@@ -91,6 +91,7 @@ class cartesian_dynamics(object):
                n_steps                          = 200,
                time_step                        = 0.0005,
                initial_velocities_zero_fraction = 0,
+               vxyz                             = None,
                interleaved_minimization_params  = None,
                n_print                          = 20,
                fmodel                           = None,
@@ -120,7 +121,10 @@ class cartesian_dynamics(object):
     self.ekcm = 0.0
     self.timfac = akma_time_as_pico_seconds
     self.weights = self.structure.atomic_weights()
-    self.vxyz = flex.vec3_double(self.weights.size(),(0,0,0))
+    if(vxyz is None):
+      self.vxyz = flex.vec3_double(self.weights.size(),(0,0,0))
+    else:
+      self.vxyz = vxyz
     if(self.time_averaging_data is not None and
        self.time_averaging_data.velocities is not None):
       self.vxyz = self.time_averaging_data.velocities

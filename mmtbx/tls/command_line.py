@@ -76,7 +76,7 @@ def run(args, command_name = "phenix.tls"):
       help="Do not output to the screen (except errors).")
     .option("--silent",
       action="store_true",
-      help="Show list of default parameters.")
+      help="Suppress output to the screen.")
     .option("--use_elbow",
       action="store_false",
       help="Use eLBOW if there are unknown ligands in PDB file (available in PHENIX only).")
