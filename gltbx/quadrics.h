@@ -143,9 +143,9 @@ class ellipsoid_to_sphere_transform
     bool ndp;
 
   public:
-    typedef scitbx::af::ref<GLdouble, scitbx::af::mat_grid>
+    typedef scitbx::af::ref<GLdouble, scitbx::af::f_grid<2> >
             mat_ref_type;
-    typedef scitbx::af::const_ref<GLdouble, scitbx::af::mat_grid>
+    typedef scitbx::af::const_ref<GLdouble, scitbx::af::f_grid<2> >
             mat_const_ref_type;
     typedef scitbx::af::const_ref<GLdouble> vec_const_ref_type;
 
