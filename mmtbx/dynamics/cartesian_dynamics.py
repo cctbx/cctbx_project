@@ -208,12 +208,11 @@ class cartesian_dynamics(object):
       target_temperature=self.temperature,
       zero_fraction=self.initial_velocities_zero_fraction))
 
-  def residuals(self):
-    obj = self.restraints_manager.energies_sites(
-                               sites_cart        = self.structure.sites_cart(),
-                               compute_gradients = True)
-    chem_grads = obj.gradients
-    gradient = chem_grads
+  def accelerations(self):
+    stereochemistry_residuals = self.restraints_manager.energies_sites(
+      sites_cart=self.structure.sites_cart(),
+      compute_gradients=True)
+    result = stereochemistry_residuals.gradients
     d_max = None
     if(self.xray_structure_last_updated is not None and self.shift_update > 0):
       array_of_distances_between_each_atom = \
@@ -227,10 +226,16 @@ class cartesian_dynamics(object):
           self.xray_gradient = self.xray_grads()
       else:
         self.xray_gradient = self.xray_grads()
-      gradient = self.xray_gradient * self.xray_target_weight + \
-                 chem_grads * self.chem_target_weight
-    self.normalization_factor = obj.number_of_restraints
-    return gradient
+      result = self.xray_gradient * self.xray_target_weight \
+             + stereochemistry_residuals.gradients * self.chem_target_weight
+    factor = 1.0
+    if (self.chem_target_weight is not None):
+      factor *= self.chem_target_weight
+    if (stereochemistry_residuals.normalization_factor is not None):
+      factor *= stereochemistry_residuals.normalization_factor
+    if (factor != 1.0):
+      result *= 1.0 / factor
+    return result
 
   def xray_grads(self):
     self.fmodel_copy.update_xray_structure(
@@ -323,7 +328,7 @@ class cartesian_dynamics(object):
   def verlet_leapfrog_integration(self):
     # start verlet_leapfrog_integration loop
     for cycle in range(1,self.n_steps+1,1):
-      residuals = self.residuals()
+      accelerations = self.accelerations()
       print_flag = 0
       switch = math.modf(float(cycle)/self.n_print)[0]
       if((switch==0 or cycle==1 or cycle==self.n_steps) and self.verbose >= 1):
@@ -339,11 +344,8 @@ class cartesian_dynamics(object):
         self.center_of_mass_info()
         self.stop_global_motion()
       # calculate velocities at t+dt/2
-      grad = residuals
-      TSTEP = self.tstep
-      if(self.normalization_factor is not None and self.normalization_factor > 0):
-        TSTEP = self.tstep / self.normalization_factor
-      dynamics.vxyz_at_t_plus_dt_over_2(self.vxyz, self.weights, grad, TSTEP)
+      dynamics.vxyz_at_t_plus_dt_over_2(
+        self.vxyz, self.weights, accelerations, self.tstep)
       # calculate the temperature and kinetic energy from new velocities
       kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
       self.current_temperature = kt.temperature
@@ -365,7 +367,7 @@ class cartesian_dynamics(object):
         self.center_of_mass_info()
         self.print_dynamics_stat(text)
       if(self.time_averaging_data is None):
-        self.residuals()
+        self.accelerations()
       else:
         self.time_averaging_data.velocities = self.vxyz
 
