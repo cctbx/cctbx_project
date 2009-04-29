@@ -81,9 +81,8 @@ class _any_file (object) :
 
     (file_base, file_ext) = os.path.splitext(file_name)
     if force_type is not None :
-      try :
-        read_method = getattr(self, "try_as_%s" % force_type)
-      except Exception :
+      read_method = getattr(self, "try_as_%s" % force_type, None)
+      if read_method is None :
         raise Sorry("Couldn't force file type to '%s' - unrecognized format." %
                     force_type)
       else :
@@ -91,11 +90,12 @@ class _any_file (object) :
     else :
       for file_type in valid_types :
         if file_ext[1:] in standard_file_extensions[file_type] :
+          read_method = getattr(self, "try_as_%s" % file_type)
           try :
-            read_method = getattr(self, "try_as_%s" % file_type)
             read_method()
+          except KeyboardInterrupt :
+            raise
           except Exception, e :
-            print e
             self.file_type = None
             self.file_object = None
           else :
@@ -165,6 +165,8 @@ class _any_file (object) :
       read_method = getattr(self, "try_as_%s" % filetype)
       try :
         read_method()
+      except KeyboardInterrupt :
+        raise
       except Exception, e :
         self.file_type = None
         self.file_object = None
