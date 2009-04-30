@@ -329,6 +329,9 @@ def set_ias_name_and_predicted_position(iass):
              ias_site = ias_site_position(site_i, site_j, alp)
           else:
              ias_site = ias_site_position(site_j, site_i, alp)
+       else:
+          label = "D4"
+          ias_site = ias_site_position(site_i, site_j, 1.0)
     if(ias_.type == "L"):
        label = "D10"
        ias_sites = ias_position_at_lone_pairs(ias_)
