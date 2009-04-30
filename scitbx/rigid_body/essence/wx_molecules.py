@@ -18,8 +18,19 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.lines_display_list = None
     self.points_display_list = None
 
-  def set_points_and_lines(self, sim, show_loop_edge_bendings=True):
+  def set_points_and_lines(self,
+        sim,
+        velocity_scaling=False,
+        e_kin_per_dof=1,
+        minimum_covering_sphere_view_scale=1.3,
+        show_loop_edge_bendings=True):
     self.sim = sim
+    if (e_kin_per_dof is None):
+      self.e_kin_target = sim.e_kin / max(1, sim.degrees_of_freedom)
+    else:
+      self.e_kin_target = e_kin_per_dof * sim.degrees_of_freedom
+      sim.assign_random_velocities(e_kin_target=self.e_kin_target)
+    self.velocity_scaling = velocity_scaling
     self.labels = self.sim.labels
     self.set_points()
     cm = self.sim.cluster_manager
@@ -48,7 +59,8 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
         self.line_colors[line] = (0.5,0,0.5)
     mcs = minimum_covering_sphere(self.points, epsilon=1.e-2)
     self.minimum_covering_sphere = sphere_3d(
-      center=mcs.center(), radius=mcs.radius()*1.3)
+      center=mcs.center(),
+      radius=mcs.radius()*minimum_covering_sphere_view_scale)
     self.flag_show_minimum_covering_sphere = False
     self.flag_show_rotation_center = False
     self.steps_per_tab = 1
@@ -81,6 +93,10 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       print "Steps per Tab:", self.steps_per_tab
       return
     self.sim.dynamics_step(delta_t=0.05)
+    if (self.velocity_scaling):
+      self.sim.reset_e_kin(e_kin_target=self.e_kin_target)
+    print "e_kin+e_pot: %12.6g + %12.6g = %12.6g" % (
+      self.sim.e_kin, self.sim.e_pot, self.sim.e_tot)
     self.set_points()
     self.OnRedraw()
 
@@ -109,14 +125,23 @@ scitbx.python wx_molecules.py [options] sim_index
       .option(None, "--i_seq_labels",
         action="store_true",
         default=False)
+      .option(None, "--velocity_scaling",
+        action="store_true",
+        default=False)
       .option(None, "--e_kin_per_dof",
         type="float",
-        default=1,
+        default=1.0,
+        metavar="FLOAT")
+      .option(None, "--view_scale",
+        type="float",
+        default=1.3,
         metavar="FLOAT")
     ).process(args=args, nargs=1)
     co = command_line.options
     self.i_seq_labels = co.i_seq_labels
+    self.velocity_scaling = co.velocity_scaling
     self.e_kin_per_dof = co.e_kin_per_dof
+    self.view_scale = co.view_scale
     self.simulation_index = int(command_line.args[0])
     assert 0 <= self.simulation_index < n
     super(App, self).__init__(title="wx_molecules")
@@ -125,11 +150,13 @@ scitbx.python wx_molecules.py [options] sim_index
     box = wx.BoxSizer(wx.VERTICAL)
     self.view_objects = viewer(self.frame, size=(600,600))
     sim = tst_molecules.get_test_simulation_by_index(i=self.simulation_index)
-    sim.assign_random_velocities(
-      e_kin_target=self.e_kin_per_dof*sim.degrees_of_freedom)
     if (self.i_seq_labels):
       sim.labels = [str(i) for i in xrange(len(sim.labels))]
-    self.view_objects.set_points_and_lines(sim=sim)
+    self.view_objects.set_points_and_lines(
+      sim=sim,
+      velocity_scaling=self.velocity_scaling,
+      e_kin_per_dof=self.e_kin_per_dof,
+      minimum_covering_sphere_view_scale=self.view_scale)
     box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
     self.frame.SetSizer(box)
     box.SetSizeHints(self.frame)
