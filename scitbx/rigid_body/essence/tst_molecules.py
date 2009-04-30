@@ -5,7 +5,7 @@ from scitbx.rigid_body.essence import utils
 from scitbx.graph import tst_tardy_pdb
 from scitbx.array_family import flex
 from scitbx import matrix
-from libtbx.utils import null_out, show_times_at_exit
+from libtbx.utils import null_out, show_times_at_exit, time_log
 from libtbx.test_utils import approx_equal
 import random
 import sys
@@ -55,6 +55,24 @@ class simulation(object):
 
   def __init__(O,
         labels, sites, bonds, cluster_manager, potential_obj, bodies):
+    O.timers = {}
+    for mn in ["AJA_update",
+               "JAr_update",
+               "sites_moved_update",
+               "f_ext_bf_update",
+               "e_kin_update",
+               "energies_and_accelerations_update",
+               "e_pot_update",
+               "dynamics_step",
+               "reset_e_kin",
+               "assign_random_velocities",
+               "d_pot_d_q",
+               "d_pot_d_q_via_finite_differences",
+               "check_d_pot_d_q",
+               "unpack_q",
+               "minimization"]:
+      O.timers[mn] = time_log(mn)
+    #
     O.labels = labels
     O.sites = sites
     O.bonds = bonds
@@ -65,22 +83,27 @@ class simulation(object):
     O.energies_and_accelerations_update()
 
   def AJA_update(O):
+    t = O.timers["AJA_update"].start()
     O.AJA = []
     for B in O.bodies:
       AJA = B.A.Tb0 * B.J.Tsp * B.A.T0b
       if (B.parent != -1):
         AJA = O.AJA[B.parent] * AJA
       O.AJA.append(AJA)
+    print t.log()
 
   def JAr_update(O):
+    t = O.timers["JAr_update"].start()
     O.JAr = []
     for B in O.bodies:
       JAr = B.J.Tps.r * B.A.T0b.r
       if (B.parent != -1):
         JAr *= O.AJA[B.parent].r.transpose()
       O.JAr.append(JAr)
+    print t.log()
 
   def sites_moved_update(O):
+    t = O.timers["sites_moved_update"].start()
     O.sites_moved = [None] * len(O.sites)
     n_done = 0
     for iB,B in enumerate(O.bodies):
@@ -90,8 +113,10 @@ class simulation(object):
         O.sites_moved[i_seq] = AJA * O.sites[i_seq]
         n_done += 1
     assert n_done == len(O.sites)
+    print t.log()
 
   def f_ext_bf_update(O, d_e_pot_d_sites):
+    t = O.timers["f_ext_bf_update"].start()
     O.f_ext_bf = []
     for iB,B in enumerate(O.bodies):
       f = matrix.col((0,0,0))
@@ -102,22 +127,31 @@ class simulation(object):
         f += force_bf
         nc += (B.A.T0b * s).cross(force_bf)
       O.f_ext_bf.append(matrix.col((nc, f)).resolve_partitions())
+    print t.log()
 
   def e_kin_update(O):
+    t = O.timers["e_kin_update"].start()
     model = featherstone.system_model(bodies=O.bodies)
     O.e_kin = model.e_kin()
+    print t.log()
     return model
 
   def energies_and_accelerations_update(O):
     model = O.e_kin_update()
     O.e_pot_and_f_ext_update()
+    t = O.timers["energies_and_accelerations_update"].start()
     O.qdd = model.FDab(tau=None, f_ext=O.f_ext_bf)
+    print "e_kin: %.6g" %  O.e_kin
+    print "e_pot: %.6g" %  O.e_pot
+    print t.log()
 
   def e_pot_update(O):
     O.AJA_update()
     O.JAr_update()
     O.sites_moved_update()
+    t = O.timers["e_pot_update"].start()
     O.e_pot = O.potential_obj.e_pot(sites_moved=O.sites_moved)
+    print t.log()
 
   def e_pot_and_f_ext_update(O):
     O.e_pot_update()
@@ -127,19 +161,23 @@ class simulation(object):
     O.e_tot = O.e_kin + O.e_pot
 
   def dynamics_step(O, delta_t):
+    t = O.timers["dynamics_step"].start()
     for B,qdd in zip(O.bodies, O.qdd):
       B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t)
     for B,qdd in zip(O.bodies, O.qdd):
       B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
+    print t.log()
     O.energies_and_accelerations_update()
 
   def reset_e_kin(O, e_kin_target, e_kin_epsilon=1.e-12):
     assert e_kin_target >= 0
     O.e_kin_update()
+    t = O.timers["reset_e_kin"].start()
     if (O.e_kin >= e_kin_epsilon):
       factor = (e_kin_target / O.e_kin)**0.5
       for B in O.bodies:
         B.qd *= factor
+    print t.log()
     O.energies_and_accelerations_update()
 
   def assign_zero_velocities(O):
@@ -151,6 +189,7 @@ class simulation(object):
         e_kin_target=None,
         e_kin_epsilon=1.e-12,
         random_gauss=None):
+    t = O.timers["assign_random_velocities"].start()
     work_e_kin_target = e_kin_target
     if (e_kin_target is None):
       work_e_kin_target = 1
@@ -176,6 +215,7 @@ class simulation(object):
     assert i_qd == O.degrees_of_freedom
     if (e_kin_target is not None):
       O.reset_e_kin(e_kin_target=e_kin_target, e_kin_epsilon=e_kin_epsilon)
+    print t.log()
 
   def d_pot_d_q(O):
     return featherstone.system_model(bodies=O.bodies).d_pot_d_q(
