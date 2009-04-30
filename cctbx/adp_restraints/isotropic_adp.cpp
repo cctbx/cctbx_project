@@ -35,6 +35,10 @@ namespace cctbx { namespace adp_restraints {
     }
   }
 
+  //! This is the square of the Frobenius norm of the matrix of deltas.
+  /*  Since this matrix is symmetric, the off-diagonal elements
+      must be included twice in the summation.
+  */
   double
   isotropic_adp::residual() const
   {
