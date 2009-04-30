@@ -502,11 +502,33 @@ scattering_table = *xray neutron
 def fo_minus_fo_master_params():
   return iotbx.phil.parse(fo_minus_fo_master_params_str, process_includes=False)
 
+def extract_crystal_symmetry(files):
+  crystal_symmetries = []
+  crystal_symmetry = None
+  for cs_source in files:
+    if(cs_source is not None):
+      cs = crystal_symmetry_from_any.extract_from(cs_source)
+      if(cs is not None): crystal_symmetries.append(cs)
+  if(len(crystal_symmetries)==0):
+    raise Sorry("No crystal symmetry is found.")
+  elif(len(crystal_symmetries)>1):
+    cs0 = crystal_symmetries[0]
+    for cs in crystal_symmetries[1:]:
+     if(not cs0.is_similar_symmetry(cs)):
+        raise Sorry("Crystal symmetry mismatch between different files.")
+    crystal_symmetry = crystal_symmetries[0]
+  else:
+    crystal_symmetry = crystal_symmetries[0]
+  assert crystal_symmetry is not None
+  return crystal_symmetry
+
 def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent):
   fmodels = []
   for i_seq, d in enumerate(data_arrays):
     if(not silent):
       print >> log, "Data set: %d"%i_seq
+    if(d.anomalous_flag()):
+      d = d.average_bijvoet_mates()
     r_free_flags = d.array(data = flex.bool(d.data().size(), False))
     fmodel = mmtbx.f_model.manager(
       xray_structure = xray_structure,
@@ -531,7 +553,7 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent):
     f_obss.append(obs)
   # given two Fobs sets, make them one-to-one matching, get phases and map coefficients
   # Note: f_calc below is just f_calc from atoms (no bulk solvent etc applied)
-  fobs_1, f_model = f_obss[0].common_sets(other = fmodels[0].f_model())
+  fobs_1, f_model = f_obss[0].common_sets(other = fmodels[1].f_model())
   fobs_1, fobs_2 = fobs_1.common_sets(other = f_obss[1])
   fobs_1, f_model = fobs_1.common_sets(other = f_model)
   assert fobs_2.indices().all_eq(fobs_1.indices())
@@ -608,11 +630,6 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
   processed_args = utils.process_command_line_args(args = command_line.args,
     master_params = fo_minus_fo_master_params(), log = log)
   crystal_symmetry = processed_args.crystal_symmetry
-  if(crystal_symmetry is None):
-    raise Sorry("No crystal symmetry found.")
-  if(len(processed_args.pdb_file_names) == 0):
-    raise Sorry("No PDB file found.")
-  pdb_file_names = processed_args.pdb_file_names
   params = processed_args.params
   #
   if(not command_line.options.silent):
@@ -620,28 +637,52 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     params.show(out = log)
     print >> log
   params = params.extract()
+  #
+  pdb_file_names = processed_args.pdb_file_names
+  if(len(processed_args.pdb_file_names) == 0):
+    if(params.phase_source is not None):
+      pdb_file_names = [params.phase_source]
+    else:
+      raise Sorry("No PDB file found.")
+  #
+  if(crystal_symmetry is None):
+    crystal_symmetry = extract_crystal_symmetry(files =
+      [params.f_obs_1_file_name, params.f_obs_2_file_name, params.phase_source])
   # Extaract Fobs1, Fobs2
-  if([params.f_obs_1_file_name,params.f_obs_2_file_name].count(None)==2):
-    raise Sorry("No reflection data file found.")
   f_obss = []
-  for file_name, label in zip([params.f_obs_1_file_name,params.f_obs_2_file_name],
-                              [params.f_obs_1_label,params.f_obs_2_label]):
-    reflection_file = reflection_file_reader.any_reflection_file(
-      file_name = file_name, ensure_read_access = False)
-    reflection_file_server = reflection_file_utils.reflection_file_server(
-      crystal_symmetry = crystal_symmetry,
-      force_symmetry   = True,
-      reflection_files = [reflection_file],
-      err              = StringIO())
-    parameters = utils.data_and_flags.extract()
-    if(label is not None):
-      parameters.labels = [label]
-    determine_data_and_flags_result = utils.determine_data_and_flags(
+  if(len(processed_args.reflection_files)==2):
+    for reflection_file in processed_args.reflection_files:
+      reflection_file_server = reflection_file_utils.reflection_file_server(
+        crystal_symmetry = crystal_symmetry,
+        force_symmetry   = True,
+        reflection_files = [reflection_file],
+        err              = StringIO())
+      determine_data_and_flags_result = utils.determine_data_and_flags(
         reflection_file_server  = reflection_file_server,
-        parameters              = parameters,
         keep_going              = True,
         log                     = StringIO())
-    f_obss.append(determine_data_and_flags_result.f_obs)
+      f_obss.append(determine_data_and_flags_result.f_obs)
+  else:
+    if([params.f_obs_1_file_name,params.f_obs_2_file_name].count(None)==2):
+      raise Sorry("No reflection data file found.")
+    for file_name, label in zip([params.f_obs_1_file_name,params.f_obs_2_file_name],
+                                [params.f_obs_1_label,params.f_obs_2_label]):
+      reflection_file = reflection_file_reader.any_reflection_file(
+        file_name = file_name, ensure_read_access = False)
+      reflection_file_server = reflection_file_utils.reflection_file_server(
+        crystal_symmetry = crystal_symmetry,
+        force_symmetry   = True,
+        reflection_files = [reflection_file],
+        err              = StringIO())
+      parameters = utils.data_and_flags.extract()
+      if(label is not None):
+        parameters.labels = [label]
+      determine_data_and_flags_result = utils.determine_data_and_flags(
+          reflection_file_server  = reflection_file_server,
+          parameters              = parameters,
+          keep_going              = True,
+          log                     = StringIO())
+      f_obss.append(determine_data_and_flags_result.f_obs)
   if(len(f_obss)!=2):
     raise Sorry(" ".join(errors))
   if(not command_line.options.silent):
