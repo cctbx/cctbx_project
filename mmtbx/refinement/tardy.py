@@ -61,6 +61,7 @@ class potential_object(object):
     O.last_sites_moved = None
     O.f = None
     O.g = None
+    O.show_gradient_rms = False # XXX debug option
 
   def e_pot(O, sites_moved):
     if (O.last_sites_moved is not sites_moved):
@@ -82,6 +83,9 @@ class potential_object(object):
         custom_nonbonded_function=O.custom_nonbonded_function,
         compute_gradients=True)
       O.f += stereochemistry_residuals.target * O.weights.w
+      if (O.show_gradient_rms):
+        xg = O.g.deep_copy()
+        gg = stereochemistry_residuals.gradients * O.weights.w
       xray.minimization.add_gradients(
         scatterers=xs.scatterers(),
         xray_gradients=O.g,
@@ -91,6 +95,12 @@ class potential_object(object):
         * O.weights.w
       O.f /= e_pot_factor
       O.g /= e_pot_factor
+      if (O.show_gradient_rms):
+        xg *= 1.0 / e_pot_factor
+        gg *= 1.0 / e_pot_factor
+        print "TARDY_GRADIENT_RMS_GEO_XRAY:", \
+          flex.mean_sq(gg.as_double())**0.5, \
+          flex.mean_sq(xg)**0.5
     return O.f
 
   def d_e_pot_d_sites(O, sites_moved):
