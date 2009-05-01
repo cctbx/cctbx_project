@@ -6,6 +6,7 @@ def run():
     "$D/ab_initio/tests/tst_ab_initio_ext.py",
     "$D/ab_initio/tests/tst_charge_flipping.py",
     "$D/refinement/constraints/tests/tst_constraints.py",
+    "$D/refinement/restraints/tests/tst_adp_restraints.py",
     #"$D/refinement/tests/tst_minimization_at_random.py",
     )
   build_dir = libtbx.env.under_build("smtbx")
