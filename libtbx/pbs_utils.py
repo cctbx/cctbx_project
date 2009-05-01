@@ -40,12 +40,17 @@ class chunk_info(object):
     if (not O.have_array()): return 1, 0
     raise_if_none(O.pbs_arrayid_offset, "MY_PBS_ARRAYID_OFFSET")
     raise_if_none(O.pbs_arrayid, "PBS_ARRAYID")
-    raise_if_none(O.mpi_num_procs, "OMPI_MCA_ns_nds_num_procs")
-    raise_if_none(O.mpi_vpid, "OMPI_MCA_ns_nds_vpid")
-    n = O.pbs_array_size * O.mpi_num_procs
-    i = (O.pbs_arrayid-1 + O.pbs_arrayid_offset) * O.mpi_num_procs + O.mpi_vpid
+    if (O.mpi_num_procs is None and O.mpi_vpid is None):
+      n = O.pbs_array_size
+      i = O.pbs_arrayid-1 + O.pbs_arrayid_offset
+    else:
+      raise_if_none(O.mpi_num_procs, "OMPI_MCA_ns_nds_num_procs")
+      raise_if_none(O.mpi_vpid, "OMPI_MCA_ns_nds_vpid")
+      n = O.pbs_array_size * O.mpi_num_procs
+      i = (O.pbs_arrayid-1 + O.pbs_arrayid_offset) * O.mpi_num_procs + O.mpi_vpid
     return n, i
 
 if (__name__ == "__main__"):
-  chunk_info().show(prefix="*** ", even_if_none=True).as_n_i_pair()
+  n,i = chunk_info().show(prefix="*** ", even_if_none=True).as_n_i_pair()
+  print "n,i:", n,i
   print "OK"
