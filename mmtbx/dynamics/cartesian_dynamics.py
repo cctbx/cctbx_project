@@ -151,6 +151,7 @@ class cartesian_dynamics(object):
       self.interleaved_minimization_angles = False
     #
     self.tstep = self.time_step / self.timfac
+    self.show_gradient_rms = False # XXX debug option
     #
     self()
 
@@ -235,6 +236,12 @@ class cartesian_dynamics(object):
       factor *= stereochemistry_residuals.normalization_factor
     if (factor != 1.0):
       result *= 1.0 / factor
+    if (self.show_gradient_rms and self.xray_gradient is not None):
+      gg = stereochemistry_residuals.gradients*(self.chem_target_weight/factor)
+      xg = self.xray_gradient*(self.xray_target_weight/factor)
+      print "CARDY_GRADIENT_RMS_GEO_XRAY:", \
+        flex.mean_sq(gg.as_double())**0.5, \
+        flex.mean_sq(xg.as_double())**0.5
     return result
 
   def xray_grads(self):
