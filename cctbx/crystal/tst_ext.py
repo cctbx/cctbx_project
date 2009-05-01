@@ -477,6 +477,12 @@ def exercise_pair_tables():
   expected_pair_counts = (2, 5, 1, 1, 3, 3, 4, 4, 3, 5, 3, 3, 3,
                           3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
   assert approx_equal(covalent_asu_table.pair_counts(), expected_pair_counts)
+  covalent_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  assert covalent_asu_table.add_covalent_pairs(
+    scattering_types=scattering_types, exclude_hydrogens=True) is covalent_asu_table
+  expected_pair_counts = (2, 4, 1, 1, 3, 3, 1, 4, 3, 2, 2, 3, 2,
+                          2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0)
+  assert approx_equal(covalent_asu_table.pair_counts(), expected_pair_counts)
   #
   structure = trial_structure()
   asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
