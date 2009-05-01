@@ -15,6 +15,8 @@ master_phil_str = """\
     .type = float
   final_temperature_kelvin = 300
     .type = float
+  velocity_scaling = True
+    .type = bool
   temperature_cap_factor = 1.5
     .type = float
   excessive_temperature_factor = 5
@@ -23,7 +25,7 @@ master_phil_str = """\
     .type = int
   number_of_time_steps = 50
     .type = int
-  time_step_pico_seconds = 0.001
+  time_step_pico_seconds = 0.004
     .type = float
   minimization_max_iterations = 25
     .type = int
@@ -175,6 +177,8 @@ def run(fmodels, model, target_weights, params, log):
         kinetic_energy_as_temperature(
           dof=sim.degrees_of_freedom, e=sim.e_kin)),
       print >> log
+      if (params.velocity_scaling):
+        sim.reset_e_kin(e_kin_target=e_kin_target)
       log.flush()
   if (params.minimization_max_iterations > 0):
     print >> log, "tardy gradient-driven minimization:"
