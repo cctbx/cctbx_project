@@ -2,6 +2,7 @@ import iotbx.cns.xray_structure
 import iotbx.cns.miller_array
 import iotbx.cns.reflection_reader
 import iotbx.cns.crystal_symmetry_utils
+import iotbx.cns.crystal_symmetry_from_inp
 from iotbx.cns import sdb_reader
 from cctbx import miller
 from cctbx import crystal
@@ -14,34 +15,67 @@ import re
 import sys
 
 def exercise_crystal_symmetry_utils():
-  sg_uc = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_as_sg_uc(
-    crystal_symmetry=crystal.symmetry(
-      unit_cell=None,
-      space_group_info=None))
+  as_rem = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_as_sg_uc
+  as_inp = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_as_cns_inp_defines
+  crystal_symmetry = crystal.symmetry(unit_cell=None, space_group_info=None)
+  sg_uc = as_rem(crystal_symmetry=crystal_symmetry)
   assert sg_uc == "sg=None a=None b=None c=None alpha=None beta=None gamma=None"
+  sg_uc = as_inp(crystal_symmetry=crystal_symmetry)
+  assert not show_diff("\n".join(sg_uc), """\
+{===>} sg="None";
+{===>} a=None;
+{===>} b=None;
+{===>} c=None;
+{===>} alpha=None;
+{===>} beta=None;
+{===>} gamma=None;""")
   #
-  sg_uc = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_as_sg_uc(
-    crystal_symmetry=crystal.symmetry(
-      unit_cell=(3,4,5,89,87,93),
-      space_group_info=None))
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=(3,4,5,89,87,93),
+    space_group_info=None)
+  sg_uc = as_rem(crystal_symmetry=crystal_symmetry)
   assert sg_uc == "sg=None a=3 b=4 c=5 alpha=89 beta=87 gamma=93"
+  sg_uc = as_inp(crystal_symmetry=crystal_symmetry)
+  assert not show_diff("\n".join(sg_uc), """\
+{===>} sg="None";
+{===>} a=3;
+{===>} b=4;
+{===>} c=5;
+{===>} alpha=89;
+{===>} beta=87;
+{===>} gamma=93;""")
   #
-  sg_uc = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_as_sg_uc(
-    crystal_symmetry=crystal.symmetry(
-      unit_cell=None,
-      space_group_symbol=19))
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=None,
+    space_group_symbol=19)
+  sg_uc = as_rem(crystal_symmetry=crystal_symmetry)
   assert sg_uc == \
     "sg=P2(1)2(1)2(1) a=None b=None c=None alpha=None beta=None gamma=None"
+  sg_uc = as_inp(crystal_symmetry=crystal_symmetry)
+  assert not show_diff("\n".join(sg_uc), """\
+{===>} sg="P2(1)2(1)2(1)";
+{===>} a=None;
+{===>} b=None;
+{===>} c=None;
+{===>} alpha=None;
+{===>} beta=None;
+{===>} gamma=None;""")
   #
   for symbols in sgtbx.space_group_symbol_iterator():
     cs1 = sgtbx.space_group_info(
       group=sgtbx.space_group(symbols)).any_compatible_crystal_symmetry(
         volume=1000)
-    sg_uc = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_as_sg_uc(
-      crystal_symmetry=cs1)
+    sg_uc = as_rem(crystal_symmetry=cs1)
     m = re.match(iotbx.cns.crystal_symmetry_utils.re_sg_uc, sg_uc)
     assert m is not None
     cs2 = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_from_re_match(m=m)
+    assert cs1.is_similar_symmetry(cs2)
+    #
+    sg_uc = as_inp(crystal_symmetry=cs1)
+    sio = StringIO()
+    print >> sio, "\n".join(sg_uc)
+    sio = StringIO(sio.getvalue())
+    cs2 = iotbx.cns.crystal_symmetry_from_inp.extract_from(file=sio)
     assert cs1.is_similar_symmetry(cs2)
 
 def exercise_sdb(verbose=0):
