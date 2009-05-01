@@ -35,21 +35,22 @@ def manager(simulated_annealing_params,
             out = None):
   if(out is None): out = sys.stdout
   print_statistics.make_header("simulated annealing refinement", out = out)
-  print_statistics.make_sub_header(
-                   "lbfgs minimization: before simulated annealing", out = out)
-  model.set_refine_individual_sites()
-  minimized = mmtbx.refinement.minimization.lbfgs(
-    restraints_manager       = model.restraints_manager,
-    refine_xyz               = True,
-    fmodels                  = fmodels,
-    all_params               = all_params,
-    model                    = model,
-    lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
-              max_iterations = refinement_parameters.max_number_of_iterations),
-    target_weights           = target_weights,
-    h_params                 = h_params,
-    verbose                  = 0)
-  minimized.monitor.show(message = "LBFGS minimization", log  = out)
+  if (simulated_annealing_params.max_number_of_iterations >= 0):
+    print_statistics.make_sub_header(
+      "lbfgs minimization: before simulated annealing", out = out)
+    model.set_refine_individual_sites()
+    minimized = mmtbx.refinement.minimization.lbfgs(
+      restraints_manager       = model.restraints_manager,
+      refine_xyz               = True,
+      fmodels                  = fmodels,
+      all_params               = all_params,
+      model                    = model,
+      lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+        max_iterations = simulated_annealing_params.max_number_of_iterations),
+      target_weights           = target_weights,
+      h_params                 = h_params,
+      verbose                  = 0)
+    minimized.monitor.show(message = "LBFGS minimization", log  = out)
   fmodel = fmodels.fmodel_xray() # XXX use only xray data
   model.xray_structure = fmodel.xray_structure # XXX use only xray data
   fmodel.update_xray_structure(xray_structure           = model.xray_structure,
