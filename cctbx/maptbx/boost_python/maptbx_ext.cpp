@@ -2,7 +2,7 @@
 
 #include <cctbx/maptbx/fft.h>
 #include <cctbx/maptbx/average_densities.h>
-#include <cctbx/maptbx/eight_point_interpolation.h>
+#include <cctbx/maptbx/real_space_gradients_simple.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
@@ -176,6 +176,16 @@ namespace {
         (af::const_ref<double, af::flex_grid<> > const&,
          crystal::direct_space_asu::asu_mappings<double> &,
          fractional<double> const&)) asu_eight_point_interpolation);
+    def("real_space_gradients_simple",
+      (af::shared<scitbx::vec3<double> >(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&,
+         double)) real_space_gradients_simple, (
+           arg_("unit_cell"),
+           arg_("density_map"),
+           arg_("sites_cart"),
+           arg_("delta")));
   }
 
 } // namespace <anonymous>
