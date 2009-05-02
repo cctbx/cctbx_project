@@ -103,7 +103,7 @@ namespace cctbx { namespace maptbx {
   MapFloatType
   eight_point_interpolation(
     af::const_ref<MapFloatType, af::c_grid_padded<3> > const& map,
-    fractional<SiteFloatType> const& x_frac)
+    scitbx::vec3<SiteFloatType> const& x_frac)
   {
     typedef af::c_grid_padded<3>::index_type index_t;
     typedef typename index_t::value_type iv_t;
