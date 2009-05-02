@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import maptbx
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -8,6 +9,7 @@ from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal
 from libtbx.utils import n_dim_index_from_one_dim
 import itertools
+import time
 import sys
 import random
 from cPickle import dumps
@@ -167,8 +169,8 @@ def exercise_grid_tags():
     f = sgtbx.search_symmetry_flags(
       use_space_group_symmetry=i_flags % 2 != 0,
       use_space_group_ltr=0,
-      use_seminvariants=(i_flags/4) % 2 != 0,
-      use_normalizer_k2l=(i_flags/2) % 2 != 0,
+      use_seminvariants=(i_flags//4) % 2 != 0,
+      use_normalizer_k2l=(i_flags//2) % 2 != 0,
       use_normalizer_l2n=False)
     t.build(s.type(), f)
     assert t.is_valid()
@@ -358,6 +360,46 @@ def exercise_eight_point_interpolation():
           assert maptbx.closest_grid_point(map.accessor(), x_frac) == tuple(
             [int(i+offs+.5)%n for i,n in zip(index,map.focus())])
         v = 1-v
+
+def exercise_real_space_gradients_simple(timing):
+  uc = uctbx.unit_cell((11,13,17))
+  map0 = flex.double(flex.grid(22,26,36).set_focus(22,26,34))
+  def check():
+    map = map0.deep_copy()
+    site_frac = [i/n for i,n in zip(grid_point, map.focus())]
+    sites_cart = flex.vec3_double([uc.orthogonalize(site_frac)])
+    grads = maptbx.real_space_gradients_simple(
+      unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1)
+    assert approx_equal(grads, [(0,0,0)])
+    grid_point_mod = [i%n for i,n in zip(grid_point, map.focus())]
+    map[grid_point_mod] = 1
+    grads = maptbx.real_space_gradients_simple(
+      unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1)
+    assert approx_equal(grads, [(0,0,0)])
+    i,j,k = grid_point_mod
+    u,v,w = map.focus()
+    map[((i+1)%u,j,k)] = 0.3
+    map[(i,(j+1)%v,k)] = 0.5
+    map[(i,j,(k+1)%w)] = 0.7
+    for delta in [0.1, 0.2]:
+      grads = maptbx.real_space_gradients_simple(
+        unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=delta)
+      assert approx_equal(grads, [(0.3,0.5,0.7)])
+  for grid_point in [(0,0,0), (3,4,5), (-3,15,20)]:
+    check()
+  for i_trial in xrange(10):
+    grid_point = [random.randrange(-100,100) for i in [0,1,2]]
+    check()
+  if (timing): n = 1000000
+  else:        n = 10
+  sites_cart = flex.vec3_double(flex.random_double(size=n*3)*40-20)
+  t0 = time.time()
+  maptbx.real_space_gradients_simple(
+    unit_cell=uc, density_map=map0, sites_cart=sites_cart, delta=0.1)
+  tm = time.time() - t0
+  msg = "real_space_gradients_simple: %.2f s / %d sites" % (tm, n)
+  if (tm >= 0.01): msg += ", %.0f sites / s" % (n / tm)
+  if (timing): print msg
 
 test_map  = flex.double([
   -0.069785, -0.109740, -0.172220, -0.209010, -0.255220, -0.285670,
@@ -791,7 +833,9 @@ def exercise_grid_indices_around_sites():
     assert str(e).startswith("product of fft_m_real")
   else: raise Exception_expected
 
-def run():
+def run(args):
+  assert args in [[], ["--timing"]]
+  timing = len(args) != 0
   exercise_copy()
   exercise_statistics()
   exercise_grid_tags()
@@ -805,6 +849,7 @@ def run():
   exercise_mappers()
   exercise_basic_map()
   exercise_eight_point_interpolation()
+  exercise_real_space_gradients_simple(timing=timing)
   exercise_non_crystallographic_eight_point_interpolation()
   exercise_asu_eight_point_interpolation()
   exercise_real_space_refinement()
@@ -813,4 +858,4 @@ def run():
   print "OK"
 
 if (__name__ == "__main__"):
-  run()
+  run(args=sys.argv[1:])
