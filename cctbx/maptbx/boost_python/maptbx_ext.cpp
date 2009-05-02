@@ -152,7 +152,7 @@ namespace {
     def("eight_point_interpolation",
       (double(*)
         (af::const_ref<double, af::c_grid_padded<3> > const&,
-         fractional<double> const&)) eight_point_interpolation);
+         scitbx::vec3<double> const&)) eight_point_interpolation);
     def("closest_grid_point",
       (af::c_grid_padded<3>::index_type(*)
         (af::flex_grid<> const&,
@@ -176,6 +176,15 @@ namespace {
         (af::const_ref<double, af::flex_grid<> > const&,
          crystal::direct_space_asu::asu_mappings<double> &,
          fractional<double> const&)) asu_eight_point_interpolation);
+    def("real_space_target_simple",
+      (double(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&))
+           real_space_target_simple, (
+             arg_("unit_cell"),
+             arg_("density_map"),
+             arg_("sites_cart")));
     def("real_space_gradients_simple",
       (af::shared<scitbx::vec3<double> >(*)
         (uctbx::unit_cell const&,

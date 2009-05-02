@@ -363,16 +363,21 @@ def exercise_eight_point_interpolation():
 
 def exercise_real_space_gradients_simple(timing):
   uc = uctbx.unit_cell((11,13,17))
-  map0 = flex.double(flex.grid(22,26,36).set_focus(22,26,34))
   def check():
-    map = map0.deep_copy()
+    map = flex.double(flex.grid(22,26,36).set_focus(22,26,34))
     site_frac = [i/n for i,n in zip(grid_point, map.focus())]
     sites_cart = flex.vec3_double([uc.orthogonalize(site_frac)])
+    target = maptbx.real_space_target_simple(
+      unit_cell=uc, density_map=map, sites_cart=sites_cart)
+    assert approx_equal(target, 0)
     grads = maptbx.real_space_gradients_simple(
       unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1)
     assert approx_equal(grads, [(0,0,0)])
     grid_point_mod = [i%n for i,n in zip(grid_point, map.focus())]
     map[grid_point_mod] = 1
+    target = maptbx.real_space_target_simple(
+      unit_cell=uc, density_map=map, sites_cart=sites_cart)
+    assert approx_equal(target, 1)
     grads = maptbx.real_space_gradients_simple(
       unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1)
     assert approx_equal(grads, [(0,0,0)])
@@ -381,6 +386,9 @@ def exercise_real_space_gradients_simple(timing):
     map[((i+1)%u,j,k)] = 0.3
     map[(i,(j+1)%v,k)] = 0.5
     map[(i,j,(k+1)%w)] = 0.7
+    target = maptbx.real_space_target_simple(
+      unit_cell=uc, density_map=map, sites_cart=sites_cart)
+    assert approx_equal(target, 1)
     for delta in [0.1, 0.2]:
       grads = maptbx.real_space_gradients_simple(
         unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=delta)
@@ -393,9 +401,13 @@ def exercise_real_space_gradients_simple(timing):
   if (timing): n = 1000000
   else:        n = 10
   sites_cart = flex.vec3_double(flex.random_double(size=n*3)*40-20)
+  map = flex.double(flex.grid(22,26,36).set_focus(22,26,34), 1)
+  target = maptbx.real_space_target_simple(
+    unit_cell=uc, density_map=map, sites_cart=sites_cart)
+  assert approx_equal(target, n)
   t0 = time.time()
   maptbx.real_space_gradients_simple(
-    unit_cell=uc, density_map=map0, sites_cart=sites_cart, delta=0.1)
+    unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1)
   tm = time.time() - t0
   msg = "real_space_gradients_simple: %.2f s / %d sites" % (tm, n)
   if (tm >= 0.01): msg += ", %.0f sites / s" % (n / tm)
