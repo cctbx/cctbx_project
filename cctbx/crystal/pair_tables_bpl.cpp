@@ -94,7 +94,7 @@ namespace {
             arg_("estimated_reduction_factor")=4)))
         .def("add_covalent_pairs", &w_t::add_covalent_pairs, (
             arg_("scattering_types"),
-            arg_("exclude_hydrogens")=false,
+            arg_("exclude_scattering_types")=boost::python::object(),
             arg_("distance_cutoff")=3.5,
             arg_("min_cubicle_edge")=5,
             arg_("tolerance")=0.5,
