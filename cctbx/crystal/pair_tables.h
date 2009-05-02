@@ -403,7 +403,8 @@ namespace cctbx { namespace crystal {
       pair_asu_table&
       add_covalent_pairs(
         af::const_ref<std::string> const& scattering_types,
-        bool const& exclude_hydrogens=false,
+        af::const_ref<std::string> const& exclude_scattering_types
+          = af::const_ref<std::string>(0,0),
         FloatType const& distance_cutoff=3.5,
         FloatType const& min_cubicle_edge=5,
         FloatType const& tolerance=0.5,
@@ -417,9 +418,13 @@ namespace cctbx { namespace crystal {
         while (!pair_generator.at_end()) {
           direct_space_asu::asu_mapping_index_pair_and_diff<FloatType>
             const& pair = pair_generator.next();
-          if (exclude_hydrogens
-            &&(   scattering_types[pair.i_seq] == "H"
-               || scattering_types[pair.j_seq] == "H")) continue;
+          if (std::find(exclude_scattering_types.begin(),
+              exclude_scattering_types.end(),
+              scattering_types[pair.i_seq]) != exclude_scattering_types.end() ||
+            std::find(
+              exclude_scattering_types.begin(),
+              exclude_scattering_types.end(),
+              scattering_types[pair.j_seq]) != exclude_scattering_types.end()) continue;
           FloatType const& radius_i =  eltbx::covalent_radii::table(
             scattering_types[pair.i_seq]).radius();
           FloatType const& radius_j =  eltbx::covalent_radii::table(
