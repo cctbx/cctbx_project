@@ -1,4 +1,6 @@
+import scitbx.graph.utils as graph_utils
 from scitbx import matrix
+from libtbx.utils import Sorry
 
 class pdb_extract(object):
 
@@ -13,6 +15,7 @@ class pdb_extract(object):
         loop_edge_bendings=None,
         find_cluster_loop_repeats=0,
         merge_clusters_with_multiple_connections_passes=1):
+    O.index = None
     O.tag = tag
     O.labels, O.sites = [], []
     for line in pdb.splitlines():
@@ -27,6 +30,13 @@ class pdb_extract(object):
     O.find_cluster_loop_repeats = find_cluster_loop_repeats
     O.merge_clusters_with_multiple_connections_passes = \
       merge_clusters_with_multiple_connections_passes
+
+  def angles(O):
+    return graph_utils.extract_edge_list(
+      graph_utils.bond_bending_edge_sets(
+        edge_sets=graph_utils.construct_edge_sets(
+          n_vertices=len(O.sites),
+          edge_list=O.bonds)))
 
   def tardy_tree_construct(O):
     from scitbx.graph import tardy_tree
@@ -525,3 +535,29 @@ ATOM     26 H211 LIG A   1      -1.563   1.168   1.254  1.00 20.00      A    H
   merge_clusters_with_multiple_connections_passes=2),
 
 ]
+
+def _set_test_case_indices():
+  for i,test_case in enumerate(test_cases):
+    test_case.index = i
+_set_test_case_indices()
+
+def select_test_cases(tags_or_indices):
+  result = []
+  test_case_dict = dict([(test_case.tag,i)
+    for i,test_case in enumerate(test_cases)])
+  for tag_or_index in tags_or_indices:
+    i = test_case_dict.get(tag_or_index)
+    if (i is None):
+      try: i = int(tag_or_index)
+      except ValueError: i = -1
+      if (i < 0 or i >= len(test_cases)):
+        msg = "No such test case: %s" % tag_or_index
+        print msg
+        print "List of available test cases:"
+        for i,test_case in enumerate(test_cases):
+          print "  %2d: %s" % (i, test_case.tag)
+        raise Sorry(msg)
+    result.append(test_cases[i])
+  if (len(result) == 0):
+    result = test_cases
+  return result
