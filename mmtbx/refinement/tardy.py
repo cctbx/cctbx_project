@@ -9,6 +9,7 @@ from scitbx.rigid_body.essence import tst_molecules
 from scitbx.graph import tardy_tree
 from scitbx import matrix
 from libtbx.utils import Sorry
+from libtbx.str_utils import format_value
 from libtbx import group_args
 
 master_phil_str = """\
@@ -184,27 +185,31 @@ def run(fmodels, model, target_weights, params, log):
         print >> log, "     temperature cap: %.2f K" % (
           t_target * params.temperature_cap_factor)
         show_column_headings = reset_e_kin("resetting")
-      e_kin_before_pos = sim.e_kin()
-      sim.time_step_positions(delta_t=time_step_akma)
-      e_kin_after_pos = sim.e_kin()
-      sim.time_step_velocities(delta_t=time_step_akma)
-      e_kin_after_vel = sim.e_kin()
+      e_kin_before, e_tot_before = sim.e_kin(), sim.e_tot()
+      sim.dynamics_step(delta_t=time_step_akma)
+      e_kin_after, e_tot_after = sim.e_kin(), sim.e_tot()
+      if (e_tot_before > e_tot_after):
+        fluct_e_tot = -e_tot_after / e_tot_before
+      elif (e_tot_after > e_tot_before):
+        fluct_e_tot = e_tot_before / e_tot_after
+      else:
+        fluct_e_tot = None
       if (params.velocity_scaling):
         sim.reset_e_kin(e_kin_target=e_kin_target)
       n_time_steps += 1
       if (show_column_headings):
         show_column_headings = False
         log.write("""\
-          coordinate                  fluctuations           gradient rms
-    step        rmsd temperature  positions velocities     geo    xray   total
+          coordinate                   fluctuations        gradient rms
+    step      rmsd        temp        temp   e_total     geo    xray   total
 """)
-      print >> log, "    %4d  %8.4f A  %8.2f K  %7.2f K  %7.2f K" \
+      print >> log, "    %4d  %8.4f A  %8.2f K  %8.2f K  %s" \
         "  %6.2f  %6.2f  %6.2f" % (
           n_time_steps,
           xs.sites_cart().rms_difference(sites_cart_start),
           e_as_t(e=sim.e_kin()),
-          e_as_t(e=e_kin_after_pos-e_kin_before_pos),
-          e_as_t(e=e_kin_after_vel-e_kin_after_pos),
+          e_as_t(e=e_kin_after-e_kin_before),
+          format_value(format="%6.3f", value=fluct_e_tot),
           sim.potential_obj.last_grms.geo,
           sim.potential_obj.last_grms.xray,
           sim.potential_obj.last_grms.total)

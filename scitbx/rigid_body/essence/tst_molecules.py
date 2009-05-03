@@ -63,7 +63,6 @@ class simulation(object):
     O.bodies = bodies
     O.degrees_of_freedom = sum([B.J.degrees_of_freedom for B in O.bodies])
     O.flag_positions_as_changed()
-    O.flag_velocities_as_changed()
 
   def flag_positions_as_changed(O):
     O.__featherstone_system_model = None
@@ -73,8 +72,7 @@ class simulation(object):
     O.__e_pot = None
     O.__d_e_pot_d_sites = None
     O.__f_ext_bf = None
-    O.__qdd = None
-    O.__e_kin = None
+    O.flag_velocities_as_changed()
 
   def flag_velocities_as_changed(O):
     O.__qdd = None
@@ -208,19 +206,13 @@ class simulation(object):
       O.reset_e_kin(e_kin_target=e_kin_target, e_kin_epsilon=e_kin_epsilon)
     return qd_e_kin_scales
 
-  def time_step_positions(O, delta_t):
+  def dynamics_step(O, delta_t):
+    O_qdd = O.qdd()
     for B in O.bodies:
       B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
-    O.flag_positions_as_changed()
-
-  def time_step_velocities(O, delta_t):
-    for B,qdd in zip(O.bodies, O.qdd()):
+    for B,qdd in zip(O.bodies, O_qdd):
       B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t)
-    O.flag_velocities_as_changed()
-
-  def dynamics_step(O, delta_t):
-    O.time_step_positions(delta_t=delta_t)
-    O.time_step_velocities(delta_t=delta_t)
+    O.flag_positions_as_changed()
 
   def d_pot_d_q(O):
     return O.featherstone_system_model().d_pot_d_q(f_ext=O.f_ext_bf())
