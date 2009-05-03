@@ -221,4 +221,3 @@ def run(fmodels, model, target_weights, params, log):
       callback_after_step=show_rms)
     print >> log, "After tardy minimization:"
     show_rms()
-  import sys; sys.exit(0) # XXX
