@@ -59,6 +59,8 @@ cctbx/maptbx/boost_python/time_grid_indices_around_sites.py svneol=native#text/x
 cctbx/maptbx/fft.h -text
 cctbx/maptbx/grid_indices_around_sites.h svneol=native#text/plain
 cctbx/maptbx/real_space_gradients_simple.h svneol=native#text/plain
+cctbx/maptbx/real_space_refinement_simple.py svneol=native#text/x-python
+cctbx/maptbx/tst_real_space_refinement_simple.py svneol=native#text/x-python
 cctbx/miller/equivalent_reflection_merging.tex -text
 cctbx/miller/transform_and_change_of_basis.tex -text
 cctbx/regression/random_generator_state.pickle -text
