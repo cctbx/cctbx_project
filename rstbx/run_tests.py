@@ -20,6 +20,7 @@ def run():
 def run_standalones():
   tst_list = (
   "$D/dps_core/tst_iotbx_converter.py",
+  "$D/diffraction/tst_predict.py",
   )
 
   build_dir = libtbx.env.under_build("rstbx")

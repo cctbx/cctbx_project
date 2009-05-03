@@ -8,6 +8,7 @@
 
 #include <rstbx/dps_core/dps_core.h>
 #include <rstbx/dps_core/direction.h>
+#include <rstbx/diffraction/ewald_sphere.h>
 
 #include <scitbx/array_family/flex_types.h>
 
@@ -140,6 +141,29 @@ namespace boost_python { namespace {
                              make_setter(&SimpleSamplerTool::angles, dcp()))
       .def("construct_hemisphere_grid",&SimpleSamplerTool::construct_hemisphere_grid)
    ;
+
+    class_<EwaldSphereBaseModel>("EwaldSphereBaseModel",
+      init<const double&, const EwaldSphereBaseModel::matrix&, const double&,
+           const EwaldSphereBaseModel::point&>(
+           (arg_("limiting_resolution"),arg_("orientation"),
+            arg_("wavelength"),arg_("axial_direction"))))
+      .def("setH",(void(EwaldSphereBaseModel::*)
+           (const EwaldSphereBaseModel::point&)) &EwaldSphereBaseModel::setH)
+      .def("setH",(void(EwaldSphereBaseModel::*)
+           (const cctbx::miller::index<>&)) &EwaldSphereBaseModel::setH)
+    ;
+
+    class_<RotationAngles, bases<EwaldSphereBaseModel> >("RotationAngles",
+      init<const double&, const EwaldSphereBaseModel::matrix&, const double&,
+           const EwaldSphereBaseModel::point&>(
+           (arg_("limiting_resolution"),arg_("orientation"),
+            arg_("wavelength"),arg_("axial_direction"))))
+      .def(init<const EwaldSphereBaseModel&>())
+      .def("__call__", &RotationAngles::operator())
+      .def("axis", &RotationAngles::axis)
+      .def("offsetdot", &RotationAngles::offsetdot)
+      .def("get_intersection_angles", &RotationAngles::get_intersection_angles)
+    ;
   }
 
 }}} // namespace omptbx::boost_python::<anonymous>

@@ -30,7 +30,8 @@ builder(
   target="#lib/rstbx",
   source=["dps_core/dps_core.cpp",
           "dps_core/directional_fft.cpp",
-          "dps_core/direction.cpp"
+          "dps_core/direction.cpp",
+          "diffraction/ewald_sphere.cpp"
   ])
 
 if (not env_etc.no_boost_python):
