@@ -136,17 +136,29 @@ def non_crystallographic_unit_cell(
     for unit_cell_length in (sites_span + matrix.col([buffer_layer]*3)*2)])
 
 class non_crystallographic_unit_cell_with_the_sites_in_its_center(object):
-  def __init__(self, sites_cart,
-                     buffer_layer,
-                     min_unit_cell_length = 0):
+
+  def __init__(self,
+        sites_cart,
+        buffer_layer=None,
+        default_buffer_layer=0.5,
+        min_unit_cell_length=0):
     sites_cart_min = sites_cart.min()
     sites_cart_max = sites_cart.max()
     self.unit_cell = non_crystallographic_unit_cell(
-                                   sites_cart           = None,
-                                   sites_cart_min       = sites_cart_min,
-                                   sites_cart_max       = sites_cart_max,
-                                   buffer_layer         = buffer_layer,
-                                   min_unit_cell_length = min_unit_cell_length)
-    unit_cell_center = self.unit_cell.orthogonalize([0.5,0.5,0.5])
-    model_center = (flex.double(sites_cart_max)+flex.double(sites_cart_min))/2
-    self.sites_cart = sites_cart + unit_cell_center - list(model_center)
+      sites_cart=None,
+      sites_cart_min=sites_cart_min,
+      sites_cart_max=sites_cart_max,
+      buffer_layer=buffer_layer,
+      default_buffer_layer=default_buffer_layer,
+      min_unit_cell_length=min_unit_cell_length)
+    unit_cell_center = matrix.col(self.unit_cell.orthogonalize([0.5]*3))
+    model_center = (  matrix.col(sites_cart.max())
+                    + matrix.col(sites_cart.min())) / 2
+    self.sites_cart = sites_cart + (unit_cell_center - model_center)
+
+  def crystal_symmetry(self):
+    from cctbx import crystal
+    from cctbx import sgtbx
+    return crystal.symmetry(
+      unit_cell=self.unit_cell,
+      space_group=sgtbx.space_group())
