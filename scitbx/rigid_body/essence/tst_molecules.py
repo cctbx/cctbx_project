@@ -62,90 +62,119 @@ class simulation(object):
     O.potential_obj = potential_obj
     O.bodies = bodies
     O.degrees_of_freedom = sum([B.J.degrees_of_freedom for B in O.bodies])
-    O.energies_and_accelerations_update()
+    O.flag_positions_as_changed()
+    O.flag_velocities_as_changed()
 
-  def AJA_update(O):
-    O.AJA = []
-    for B in O.bodies:
-      AJA = B.A.Tb0 * B.J.Tsp * B.A.T0b
-      if (B.parent != -1):
-        AJA = O.AJA[B.parent] * AJA
-      O.AJA.append(AJA)
+  def flag_positions_as_changed(O):
+    O.__featherstone_system_model = None
+    O.__AJA = None
+    O.__JAr = None
+    O.__sites_moved = None
+    O.__e_pot = None
+    O.__d_e_pot_d_sites = None
+    O.__f_ext_bf = None
+    O.__qdd = None
+    O.__e_kin = None
 
-  def JAr_update(O):
-    O.JAr = []
-    for B in O.bodies:
-      JAr = B.J.Tps.r * B.A.T0b.r
-      if (B.parent != -1):
-        JAr *= O.AJA[B.parent].r.transpose()
-      O.JAr.append(JAr)
+  def flag_velocities_as_changed(O):
+    O.__qdd = None
+    O.__e_kin = None
 
-  def sites_moved_update(O):
-    O.sites_moved = [None] * len(O.sites)
-    n_done = 0
-    for iB,B in enumerate(O.bodies):
-      AJA = O.AJA[iB]
-      for i_seq in O.cluster_manager.clusters[iB]:
-        assert O.sites_moved[i_seq] is None
-        O.sites_moved[i_seq] = AJA * O.sites[i_seq]
-        n_done += 1
-    assert n_done == len(O.sites)
+  def featherstone_system_model(O):
+    if (O.__featherstone_system_model is None):
+      O.__featherstone_system_model = featherstone.system_model(
+        bodies=O.bodies)
+    return O.__featherstone_system_model
 
-  def f_ext_bf_update(O, d_e_pot_d_sites):
-    O.f_ext_bf = []
+  def AJA(O):
+    if (O.__AJA is None):
+      O.__AJA = []
+      for B in O.bodies:
+        AJA = B.A.Tb0 * B.J.Tsp * B.A.T0b
+        if (B.parent != -1):
+          AJA = O.__AJA[B.parent] * AJA
+        O.__AJA.append(AJA)
+    return O.__AJA
+
+  def JAr(O):
+    if (O.__JAr is None):
+      O_AJA = O.AJA()
+      O.__JAr = []
+      for B in O.bodies:
+        JAr = B.J.Tps.r * B.A.T0b.r
+        if (B.parent != -1):
+          JAr *= O_AJA[B.parent].r.transpose()
+        O.__JAr.append(JAr)
+    return O.__JAr
+
+  def sites_moved(O):
+    if (O.__sites_moved is None):
+      O_AJA = O.AJA()
+      O.__sites_moved = [None] * len(O.sites)
+      n_done = 0
+      for iB,B in enumerate(O.bodies):
+        AJA = O_AJA[iB]
+        for i_seq in O.cluster_manager.clusters[iB]:
+          assert O.__sites_moved[i_seq] is None
+          O.__sites_moved[i_seq] = AJA * O.sites[i_seq]
+          n_done += 1
+      assert n_done == len(O.sites)
+    return O.__sites_moved
+
+  def e_pot(O):
+    if (O.__e_pot is None):
+      O.__e_pot = O.potential_obj.e_pot(
+        sites_moved=O.sites_moved())
+    return O.__e_pot
+
+  def d_e_pot_d_sites(O):
+    if (O.__d_e_pot_d_sites is None):
+      O.__d_e_pot_d_sites = O.potential_obj.d_e_pot_d_sites(
+        sites_moved=O.sites_moved())
+    return O.__d_e_pot_d_sites
+
+  def f_ext_bf(O):
+    O_JAr = O.JAr()
+    O_d_e_pot_d_sites = O.d_e_pot_d_sites()
+    O.__f_ext_bf = []
     for iB,B in enumerate(O.bodies):
       f = matrix.col((0,0,0))
       nc = matrix.col((0,0,0))
       for i_seq in O.cluster_manager.clusters[iB]:
         s = O.sites[i_seq]
-        force_bf = -(O.JAr[iB] * d_e_pot_d_sites[i_seq])
+        force_bf = -(O_JAr[iB] * O_d_e_pot_d_sites[i_seq])
         f += force_bf
         nc += (B.A.T0b * s).cross(force_bf)
-      O.f_ext_bf.append(matrix.col((nc, f)).resolve_partitions())
+      O.__f_ext_bf.append(matrix.col((nc, f)).resolve_partitions())
+    return O.__f_ext_bf
 
-  def e_kin_update(O):
-    model = featherstone.system_model(bodies=O.bodies)
-    O.e_kin = model.e_kin()
-    return model
+  def qdd(O):
+    if (O.__qdd is None):
+      O.__qdd = O.featherstone_system_model().FDab(
+        tau=None, f_ext=O.f_ext_bf())
+    return O.__qdd
 
-  def energies_and_accelerations_update(O):
-    model = O.e_kin_update()
-    O.e_pot_and_f_ext_update()
-    O.qdd = model.FDab(tau=None, f_ext=O.f_ext_bf)
+  def e_kin(O):
+    if (O.__e_kin is None):
+      O.__e_kin = O.featherstone_system_model().e_kin()
+    return O.__e_kin
 
-  def e_pot_update(O):
-    O.AJA_update()
-    O.JAr_update()
-    O.sites_moved_update()
-    O.e_pot = O.potential_obj.e_pot(sites_moved=O.sites_moved)
-
-  def e_pot_and_f_ext_update(O):
-    O.e_pot_update()
-    O.f_ext_bf_update(
-      d_e_pot_d_sites=O.potential_obj.d_e_pot_d_sites(
-        sites_moved=O.sites_moved))
-    O.e_tot = O.e_kin + O.e_pot
-
-  def dynamics_step(O, delta_t):
-    for B,qdd in zip(O.bodies, O.qdd):
-      B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t)
-    for B,qdd in zip(O.bodies, O.qdd):
-      B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
-    O.energies_and_accelerations_update()
+  def e_tot(O):
+    return O.e_kin() + O.e_pot()
 
   def reset_e_kin(O, e_kin_target, e_kin_epsilon=1.e-12):
     assert e_kin_target >= 0
-    O.e_kin_update()
-    if (O.e_kin >= e_kin_epsilon):
-      factor = (e_kin_target / O.e_kin)**0.5
+    O_e_kin = O.e_kin()
+    if (O_e_kin >= e_kin_epsilon):
+      factor = (e_kin_target / O_e_kin)**0.5
       for B in O.bodies:
         B.qd *= factor
-    O.energies_and_accelerations_update()
+    O.flag_velocities_as_changed()
 
   def assign_zero_velocities(O):
     for B in O.bodies:
       B.qd = B.J.qd_zero
-    O.energies_and_accelerations_update()
+    O.flag_velocities_as_changed()
 
   def assign_random_velocities(O,
         e_kin_target=None,
@@ -160,7 +189,7 @@ class simulation(object):
     else:
       assert e_kin_target >= 0
     qd_e_kin_scales = flex.double(
-      featherstone.system_model(bodies=O.bodies).qd_e_kin_scales(
+      O.featherstone_system_model().qd_e_kin_scales(
         e_kin_epsilon=e_kin_epsilon))
     if (O.degrees_of_freedom != 0):
       qd_e_kin_scales *= (work_e_kin_target / O.degrees_of_freedom)**0.5
@@ -174,12 +203,27 @@ class simulation(object):
         i_qd += 1
       B.qd = matrix.col(qd_new)
     assert i_qd == O.degrees_of_freedom
+    O.flag_velocities_as_changed()
     if (e_kin_target is not None):
       O.reset_e_kin(e_kin_target=e_kin_target, e_kin_epsilon=e_kin_epsilon)
+    return qd_e_kin_scales
+
+  def time_step_positions(O, delta_t):
+    for B in O.bodies:
+      B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
+    O.flag_positions_as_changed()
+
+  def time_step_velocities(O, delta_t):
+    for B,qdd in zip(O.bodies, O.qdd()):
+      B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t)
+    O.flag_velocities_as_changed()
+
+  def dynamics_step(O, delta_t):
+    O.time_step_positions(delta_t=delta_t)
+    O.time_step_velocities(delta_t=delta_t)
 
   def d_pot_d_q(O):
-    return featherstone.system_model(bodies=O.bodies).d_pot_d_q(
-      f_ext=O.f_ext_bf)
+    return O.featherstone_system_model().d_pot_d_q(f_ext=O.f_ext_bf())
 
   def d_pot_d_q_via_finite_differences(O, eps=1.e-6):
     result = []
@@ -193,16 +237,16 @@ class simulation(object):
           q_eps = list(q_orig)
           q_eps[iq] += signed_eps
           B.J = J_orig.new_q(q=q_eps)
-          O.e_pot_and_f_ext_update()
-          fs.append(O.e_pot)
+          O.flag_positions_as_changed()
+          fs.append(O.e_pot())
         gs.append((fs[0]-fs[1])/(2*eps))
       B.J = J_orig
+      O.flag_positions_as_changed()
       result.append(matrix.col(gs))
-    O.energies_and_accelerations_update()
     return result
 
   def check_d_pot_d_q(O, verbose=0):
-    qdd_orig = O.qdd
+    qdd_orig = O.qdd()
     ana = O.d_pot_d_q()
     fin = O.d_pot_d_q_via_finite_differences()
     if (verbose):
@@ -211,7 +255,7 @@ class simulation(object):
         print "ana:", a.elems
       print
     assert approx_equal(ana, fin)
-    assert approx_equal(O.qdd, qdd_orig)
+    assert approx_equal(O.qdd(), qdd_orig)
 
   def pack_q(O):
     result = flex.double()
@@ -226,6 +270,7 @@ class simulation(object):
       B.J = B.J.new_q(q=packed_q[i:i+n])
       i += n
     assert i == packed_q.size()
+    O.flag_positions_as_changed()
 
   def minimization(O, max_iterations=None, callback_after_step=None):
     refinery(
@@ -246,12 +291,10 @@ class refinery(object):
         max_iterations=max_iterations),
       exception_handling_params=scitbx.lbfgs.exception_handling_parameters(
         ignore_line_search_failed_step_at_lower_bound=True))
-    O.sim.energies_and_accelerations_update()
 
   def compute_functional_and_gradients(O):
     O.sim.unpack_q(packed_q=O.x)
-    O.sim.e_pot_and_f_ext_update()
-    f = O.sim.e_pot
+    f = O.sim.e_pot()
     g = flex.double()
     for d in O.sim.d_pot_d_q():
       g.extend(flex.double(d))
@@ -329,36 +372,37 @@ def exercise_qd_e_kin_scales(sim):
         qd[iqd] = qd0[iqd] + 1
         B.qd = matrix.col(qd)
         qd[iqd] = qd0[iqd]
+        sim.flag_velocities_as_changed()
         B.J = BJ0.time_step_position(qd=B.qd, delta_t=1)
-        sim.e_kin_update()
-        if (sim.e_kin < 1.e-12):
+        e_kin = sim.e_kin()
+        if (e_kin < 1.e-12):
           result.append(1)
         else:
-          result.append(1 / sim.e_kin**0.5)
+          result.append(1 / e_kin**0.5)
       B.J = BJ0
       B.qd = B.J.qd_zero
-    sim.e_kin_update()
-    assert sim.e_kin == 0
+      sim.flag_positions_as_changed()
+    assert sim.e_kin() == 0
     assert len(result) == sim.degrees_of_freedom
     return result
   scales_slow = slow()
-  model = featherstone.system_model(bodies=sim.bodies)
+  model = sim.featherstone_system_model()
   scales_fast = model.qd_e_kin_scales()
   assert approx_equal(scales_fast, scales_slow)
 
 def exercise_random_velocities(sim):
   for e_kin_target in [1, 1.3, 13, 0]:
     sim.assign_random_velocities(e_kin_target=e_kin_target)
-    assert approx_equal(sim.e_kin, e_kin_target)
+    assert approx_equal(sim.e_kin(), e_kin_target)
 
 def exercise_sim(out, n_dynamics_steps, delta_t, sim):
   sim.check_d_pot_d_q()
-  e_pots = flex.double([sim.e_pot])
-  e_kins = flex.double([sim.e_kin])
+  e_pots = flex.double([sim.e_pot()])
+  e_kins = flex.double([sim.e_kin()])
   for i_step in xrange(n_dynamics_steps):
     sim.dynamics_step(delta_t=delta_t)
-    e_pots.append(sim.e_pot)
-    e_kins.append(sim.e_kin)
+    e_pots.append(sim.e_pot())
+    e_kins.append(sim.e_kin())
   e_tots = e_pots + e_kins
   sim.check_d_pot_d_q()
   print >> out, "degrees of freedom:", sim.degrees_of_freedom
@@ -388,11 +432,11 @@ def exercise_dynamics_quick(out, sim, n_dynamics_steps, delta_t=0.0001):
 
 def exercise_minimization_quick(out, sim, max_iterations=3):
   print >> out, "Minimization:"
-  print >> out, "  start e_pot:", sim.e_pot
-  e_pot_start = sim.e_pot
+  print >> out, "  start e_pot:", sim.e_pot()
+  e_pot_start = sim.e_pot()
   sim.minimization(max_iterations=max_iterations)
-  print >> out, "  final e_pot:", sim.e_pot
-  e_pot_final = sim.e_pot
+  print >> out, "  final e_pot:", sim.e_pot()
+  e_pot_final = sim.e_pot()
   if (out is not sys.stdout):
     assert e_pot_final < e_pot_start * 0.5
   print >> out
@@ -443,7 +487,7 @@ def run(args):
       exercise_qd_e_kin_scales(sim=sim)
       exercise_random_velocities(sim=sim)
       sim.assign_random_velocities(e_kin_target=1)
-      assert approx_equal(sim.e_kin, 1)
+      assert approx_equal(sim.e_kin(), 1)
       exercise_dynamics_quick(
         out=out, sim=sim, n_dynamics_steps=n_dynamics_steps)
       exercise_minimization_quick(out=out, sim=sim)

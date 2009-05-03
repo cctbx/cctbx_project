@@ -9,6 +9,7 @@ from scitbx.rigid_body.essence import tst_molecules
 from scitbx.graph import tardy_tree
 from scitbx import matrix
 from libtbx.utils import Sorry
+from libtbx import group_args
 
 master_phil_str = """\
   start_temperature_kelvin = 5000
@@ -61,7 +62,7 @@ class potential_object(object):
     O.last_sites_moved = None
     O.f = None
     O.g = None
-    O.show_gradient_rms = False # XXX debug option
+    O.last_grms = None
 
   def e_pot(O, sites_moved):
     if (O.last_sites_moved is not sites_moved):
@@ -83,24 +84,20 @@ class potential_object(object):
         custom_nonbonded_function=O.custom_nonbonded_function,
         compute_gradients=True)
       O.f += stereochemistry_residuals.target * O.weights.w
-      if (O.show_gradient_rms):
-        xg = O.g.deep_copy()
-        gg = stereochemistry_residuals.gradients * O.weights.w
+      gg = stereochemistry_residuals.gradients * O.weights.w
+      scale = stereochemistry_residuals.normalization_factor * O.weights.w
+      assert scale != 0
+      scale = 1 / scale
+      O.last_grms = group_args(
+        geo=scale*flex.mean_sq(gg.as_double())**0.5,
+        xray=scale*flex.mean_sq(O.g)**0.5)
       xray.minimization.add_gradients(
         scatterers=xs.scatterers(),
         xray_gradients=O.g,
-        site_gradients=stereochemistry_residuals.gradients*O.weights.w)
-      e_pot_factor = \
-          stereochemistry_residuals.normalization_factor \
-        * O.weights.w
-      O.f /= e_pot_factor
-      O.g /= e_pot_factor
-      if (O.show_gradient_rms):
-        xg *= 1.0 / e_pot_factor
-        gg *= 1.0 / e_pot_factor
-        print "TARDY_GRADIENT_RMS_GEO_XRAY:", \
-          flex.mean_sq(gg.as_double())**0.5, \
-          flex.mean_sq(xg)**0.5
+        site_gradients=gg)
+      O.f *= scale
+      O.g *= scale
+      O.last_grms.total = flex.mean_sq(O.g)**0.5
     return O.f
 
   def d_e_pot_d_sites(O, sites_moved):
@@ -139,9 +136,18 @@ def run(fmodels, model, target_weights, params, log):
       masses=xs.atomic_weights(),
       cluster_manager=tt.cluster_manager))
   del sites
-  sim.assign_random_velocities()
+  qd_e_kin_scales = sim.assign_random_velocities()
+  def e_as_t(e):
+    return kinetic_energy_as_temperature(dof=sim.degrees_of_freedom, e=e)
+  def t_as_e(t):
+    return temperature_as_kinetic_energy(dof=sim.degrees_of_freedom, t=t)
   time_step_akma = params.time_step_pico_seconds / akma_time_as_pico_seconds
   print >> log, "tardy dynamics:"
+  print >> log, "  kinetic energy sensitivity to generalized velocities:"
+  qd_e_kin_scales.min_max_mean().show(out=log, prefix="    ")
+  print >> log, "  time step: %7.5f pico seconds" % (
+    params.time_step_pico_seconds)
+  print >> log, "  velocity scaling:", params.velocity_scaling
   log.flush()
   n_time_steps = 0
   for i_cool_step in xrange(params.number_of_cooling_steps+1):
@@ -149,20 +155,20 @@ def run(fmodels, model, target_weights, params, log):
              - i_cool_step * (  params.start_temperature_kelvin
                               - params.final_temperature_kelvin) \
                            / params.number_of_cooling_steps
-    e_kin_target = temperature_as_kinetic_energy(
-      dof=sim.degrees_of_freedom, t=t_target)
-    def reset_e_kin():
+    e_kin_target = t_as_e(t=t_target)
+    def reset_e_kin(msg):
       sim.reset_e_kin(e_kin_target=e_kin_target)
-      print >> log, "  resetting temperature: %7.2f K" % (
-        kinetic_energy_as_temperature(dof=sim.degrees_of_freedom, e=sim.e_kin))
+      print >> log, "  %s temperature: %8.2f K" % (
+        msg, e_as_t(e=sim.e_kin()))
       log.flush()
-    reset_e_kin()
+      return True
+    show_column_headings = reset_e_kin("new target")
     for i_time_step in xrange(params.number_of_time_steps):
       assert params.temperature_cap_factor > 1.0
       assert params.excessive_temperature_factor > params.temperature_cap_factor
-      if (sim.e_kin > e_kin_target * params.temperature_cap_factor):
+      if (sim.e_kin() > e_kin_target * params.temperature_cap_factor):
         print >> log, "  system temperature is too high:"
-        if (sim.e_kin > e_kin_target * params.excessive_temperature_factor):
+        if (sim.e_kin() > e_kin_target * params.excessive_temperature_factor):
           print >> log, "    excessive_temperature_factor: %.6g" % \
             params.excessive_temperature_factor
           print >> log, "    excessive temperature limit: %.2f K" % (
@@ -177,24 +183,37 @@ def run(fmodels, model, target_weights, params, log):
           params.temperature_cap_factor
         print >> log, "     temperature cap: %.2f K" % (
           t_target * params.temperature_cap_factor)
-        reset_e_kin()
-      sim.dynamics_step(delta_t=time_step_akma)
-      n_time_steps += 1
-      print >> log, "    time step: %3d * %7.5f pico seconds," % (
-        n_time_steps, params.time_step_pico_seconds),
-      print >> log, "rms: %8.4f, temperature: %7.2f K" % (
-        xs.sites_cart().rms_difference(sites_cart_start),
-        kinetic_energy_as_temperature(
-          dof=sim.degrees_of_freedom, e=sim.e_kin)),
-      print >> log
+        show_column_headings = reset_e_kin("resetting")
+      e_kin_before_pos = sim.e_kin()
+      sim.time_step_positions(delta_t=time_step_akma)
+      e_kin_after_pos = sim.e_kin()
+      sim.time_step_velocities(delta_t=time_step_akma)
+      e_kin_after_vel = sim.e_kin()
       if (params.velocity_scaling):
         sim.reset_e_kin(e_kin_target=e_kin_target)
+      n_time_steps += 1
+      if (show_column_headings):
+        show_column_headings = False
+        log.write("""\
+          coordinate                  fluctuations           gradient rms
+    step        rmsd temperature  positions velocities     geo    xray   total
+""")
+      print >> log, "    %4d  %8.4f A  %8.2f K  %7.2f K  %7.2f K" \
+        "  %6.2f  %6.2f  %6.2f" % (
+          n_time_steps,
+          xs.sites_cart().rms_difference(sites_cart_start),
+          e_as_t(e=sim.e_kin()),
+          e_as_t(e=e_kin_after_pos-e_kin_before_pos),
+          e_as_t(e=e_kin_after_vel-e_kin_after_pos),
+          sim.potential_obj.last_grms.geo,
+          sim.potential_obj.last_grms.xray,
+          sim.potential_obj.last_grms.total)
       log.flush()
   if (params.minimization_max_iterations > 0):
     print >> log, "tardy gradient-driven minimization:"
     log.flush()
     def show_rms(minimizer=None):
-      print >> log, "  rms: %8.4f" % (
+      print >> log, "  coor. rmsd: %8.4f" % (
         xs.sites_cart().rms_difference(sites_cart_start))
       log.flush()
     sim.minimization(
@@ -202,3 +221,4 @@ def run(fmodels, model, target_weights, params, log):
       callback_after_step=show_rms)
     print >> log, "After tardy minimization:"
     show_rms()
+  import sys; sys.exit(0) # XXX

@@ -13,7 +13,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     super(viewer, self).__init__(*args, **kwds)
 
   def set_points(self):
-    self.points = flex.vec3_double(self.sim.sites_moved)
+    self.points = flex.vec3_double(self.sim.sites_moved())
     self.labels_display_list = None
     self.lines_display_list = None
     self.points_display_list = None
@@ -26,7 +26,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
         show_loop_edge_bendings=True):
     self.sim = sim
     if (e_kin_per_dof is None):
-      self.e_kin_target = sim.e_kin / max(1, sim.degrees_of_freedom)
+      self.e_kin_target = sim.e_kin() / max(1, sim.degrees_of_freedom)
     else:
       self.e_kin_target = e_kin_per_dof * sim.degrees_of_freedom
       sim.assign_random_velocities(e_kin_target=self.e_kin_target)
@@ -96,20 +96,20 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     if (self.velocity_scaling):
       self.sim.reset_e_kin(e_kin_target=self.e_kin_target)
     print "e_kin+e_pot: %12.6g + %12.6g = %12.6g" % (
-      self.sim.e_kin, self.sim.e_pot, self.sim.e_tot)
+      self.sim.e_kin(), self.sim.e_pot(), self.sim.e_tot())
     self.set_points()
     self.OnRedraw()
 
   def minimization(self):
     print "Minimization:"
-    print "  start e_pot:", self.sim.e_pot
+    print "  start e_pot:", self.sim.e_pot()
     self.sim.minimization(
       max_iterations=10,
       callback_after_step=self.minimization_callback)
-    print "  final e_pot:", self.sim.e_pot
+    print "  final e_pot:", self.sim.e_pot()
 
   def minimization_callback(self, minimizer):
-    print "        e_pot:", self.sim.e_pot
+    print "        e_pot:", self.sim.e_pot()
     self.set_points()
     self.OnRedraw()
 
