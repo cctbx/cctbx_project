@@ -45,6 +45,7 @@ class reindexing(object):
     self.file_name=file_name
 
     ## make deep copy for safety, and make it non-anomalous
+    self.set_b_ori = set_b.deep_copy().set_observation_type( set_b )
     self.set_a = set_a.deep_copy().set_observation_type( set_a ).average_bijvoet_mates()
     self.set_b = set_b.deep_copy().set_observation_type( set_b ).average_bijvoet_mates()
 
@@ -141,10 +142,10 @@ class reindexing(object):
     print >> self.out, "-------------------------------------------------------------------------------"
     ##  change things in primitive setting
 
-    transform_b = self.set_b.change_basis( self.set_b_to_niggli ).change_basis(
+    transform_b = self.set_b_ori.change_basis( self.set_b_to_niggli ).change_basis(
       self.ops_in_niggli_setting[location]  ).change_basis(
       self.set_b_to_niggli.inverse() ).map_to_asu().set_observation_type(
-      self.set_b)
+      self.set_b_ori)
     return ( transform_b )
 
 
