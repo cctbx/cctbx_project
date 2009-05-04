@@ -3124,6 +3124,7 @@ def run(
       args,
       params=None,
       strict_conflict_handling=True,
+      substitute_non_crystallographic_unit_cell_if_necessary=False,
       return_all_processed_pdb_files=False,
       max_atoms=None,
       log=None):
@@ -3155,6 +3156,8 @@ def run(
       params=params,
       file_name=file_name,
       strict_conflict_handling=strict_conflict_handling,
+      substitute_non_crystallographic_unit_cell_if_necessary
+        =substitute_non_crystallographic_unit_cell_if_necessary,
       max_atoms=max_atoms,
       log=log)
     processed_pdb_file.geometry_restraints_manager()
