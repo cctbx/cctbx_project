@@ -32,7 +32,9 @@ from cctbx.development import random_structure
 from cctbx import sgtbx
 import mmtbx.refinement
 import scitbx.lbfgs
-import random
+import random, sys
+from libtbx import group_args
+import iotbx.pdb
 
 
 master_params_str = """\
@@ -118,7 +120,14 @@ occ_cutoff = 1.0
 """
 master_params = iotbx.phil.parse(master_params_str, process_includes=False)
 
-def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structures, x_center, y_center, z_center, radius,
+def grow_density(f_obs,
+                 r_free_flags,
+                 file_name,
+                 xray_structure,
+                 x_center,
+                 y_center,
+                 z_center,
+                 radius,
 
                 overlap_interval=0.2,
                 step_size=1,
@@ -130,7 +139,7 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
                 bfac_cutoff = 60,
                 occ_cutoff = 1.0,
 
-                sf_algorithm         = "fft", # XXX use "fft" in prectice
+                sf_algorithm         = "fft",
                 free_r_fraction      = 0.05,
                 target_name          = "ls_wunit_kunit",
 
@@ -144,12 +153,13 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
     atom_gap = step_size
 
     kept_atoms = []
-    x_start = float(x_center) - (float(radius))
-    x_end = float(x_center) + (float(radius))
-    y_start = float(y_center) - (float(radius))
-    y_end = float(y_center) + (float(radius))
-    z_start = float(z_center) - (float(radius))
-    z_end = float(z_center )+ (float(radius))
+    x_start = float(x_center) - float(radius)
+    x_end   = float(x_center) + float(radius)
+    y_start = float(y_center) - float(radius)
+    y_end   = float(y_center) + float(radius)
+    z_start = float(z_center) - float(radius)
+    z_end   = float(z_center) + float(radius)
+    #
     step_size = step_size
     overlap_interval = overlap_interval
     overlap_list = [0.0]
@@ -157,12 +167,7 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
     kept_atoms = []
 
     center = [x_center,y_center,z_center]
-    xray_structure = xray_structures[0]
-    orth = xray_structure.unit_cell().orthogonalize
-    pdb_inp = iotbx.pdb.input(file_name=file_name)
-    hierarchy = pdb_inp.construct_hierarchy()
-    cs = xray_structure.crystal_symmetry()
-    atom_count = count_atoms(file_name)
+    atom_count = xray_structure.scatterers().size()
     """still not sure this is right for making grid of grids"""
     x_range = frange(center[0],center[0]+atom_gap,step)
     y_range = frange(center[1],center[1]+atom_gap,step)
@@ -171,171 +176,138 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
     number_of_grids = len(x_range) * len(y_range) * len(z_range)
     print "Creating %s grids with atom spacing %s, each grid is %s apart" %(str(number_of_grids),str(atom_gap), str(step))
     print "Criteria for removing final atoms is b factor above %s, or occupancy below %s" %(str(bfac_cutoff), str(occ_cutoff))
-
+    xray_structure_start = xray_structure
+    fmodel = mmtbx.f_model.manager(
+      xray_structure = xray_structure_start,
+      r_free_flags   = r_free_flags,
+      target_name    = "ml",
+      f_obs          = f_obs)
+    fmodel.update_solvent_and_scale()
+    print "Start R-wok and R-free: %6.4f %6.4f"%(fmodel.r_work(), fmodel.r_free())
+    counter = 0
+    all_da_xray_structure = None
     for x_start in x_range:
-        for y_start in y_range:
-            for z_start in z_range:
-                new_center = [x_start, y_start, z_start ]
-                print "Number of grids left: ", number_of_grids
-                number_of_grids = number_of_grids - 1
-                atom_grid = make_grid(new_center, radius, atom_gap,1.0,bfac_dummy_atoms)
-                add_dummy_atoms = add_atoms_with_occ_b(file_name, atom_type, atom_grid, "tmp.pdb")
+      for y_start in y_range:
+        for z_start in z_range:
+          da_file_name = "tmp_%s.pdb"%str(counter)
+          counter += 1
+          new_center = [x_start, y_start, z_start]
+          print "Number of grids left: ", number_of_grids
+          number_of_grids = number_of_grids - 1
+          atom_grid = make_grid(center = new_center, radius = radius,
+            gap = atom_gap, occupancy = 0.1, b_factor = 10.)
+          da_xray_structure = pdb_atoms_as_xray_structure(pdb_atoms = atom_grid,
+            crystal_symmetry = xray_structure_start.crystal_symmetry())
+          closest_distances_result = xray_structure_start.closest_distances(
+            sites_frac      = da_xray_structure.sites_frac(),
+            distance_cutoff = 3)
+          selection = closest_distances_result.smallest_distances > 0
+          selection &= closest_distances_result.smallest_distances < 1.2
+          da_xray_structure = da_xray_structure.select(~selection)
+          #print da_xray_structure.scatterers().size()
+          xray_structure_current = xray_structure_start.concatenate(da_xray_structure)
+          fmodel.update_xray_structure(update_f_calc=True, update_f_mask=True,
+            xray_structure = xray_structure_current)
+          da_sel = flex.bool(xray_structure_start.scatterers().size(), False)
+          da_sel.extend(flex.bool(da_xray_structure.scatterers().size(), True))
+          if 1:
+            refine_atoms(
+              fmodel               = fmodel,
+              number_of_iterations = number_of_iterations,
+              number_of_cycles     = number_of_cycles,
+              selection            = da_sel)
+            xray_structure_current = fmodel.xray_structure
+          assert da_sel.size() == xray_structure_current.scatterers().size()
+          if(all_da_xray_structure is None):
+            all_da_xray_structure = xray_structure_current.select(da_sel)
+          else:
+            all_da_xray_structure = all_da_xray_structure.concatenate(
+              xray_structure_current.select(da_sel))
 
-                processed_pdb_file, pdb_raw_records, pdb_inp = get_processed_pdb_file(
-                pdb_file_name = "tmp.pdb",
-                cryst1 = pdb.format_cryst1_record(crystal_symmetry = cs),
-                show_geometry_statistics = False)
+    #occupancies = all_da_xray_structure.scatterers().extract_occupancies()
+    #b_isos = all_da_xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+    #selection = occupancies > 0.3
+    #selection &= occupancies < 1.5
+    #selection &= b_isos < 60.
+    #selection &= b_isos > 1.0
+    #all_da_xray_structure = all_da_xray_structure.select(selection)
+    #print selection.size(), selection.count(True)
 
-                twin_law = None
-                xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
-                processed_pdb_file = processed_pdb_file,
-                scattering_table   = scattering_table,
-                d_min              = f_obs.d_min())
-                xray_structures = xsfppf.xray_structures
-                fmodel = utils.fmodel_simple(xray_structures = xray_structures,
-                               f_obs           = f_obs,
-                               r_free_flags    = r_free_flags)
-                new_model, new_r_factor, new_rfree = refine_atoms(fmodel, number_of_iterations, number_of_cycles )
-                orth = new_model.unit_cell().orthogonalize
-                #
-                current_atom = 0
-                for i_scatterer, sc in enumerate(new_model.scatterers()):
-                    if (sc.occupancy > occ_cutoff and adptbx.u_as_b(sc.u_iso)< bfac_cutoff) and current_atom > atom_count :
-                        a = iotbx.pdb.hierarchy.atom_with_labels()
-                        a.xyz = orth(sc.site)
-                        #dummy_atom = "HETATM %s  N   HET X%s    %8.3f%8.3f%8.3f%6.2f%6.2f           N"%(i_scatterer+1000,i_scatterer+1000,a.xyz[0] ,a.xyz[1] ,a.xyz[2] , sc.occupancy, adptbx.u_as_b(sc.u_iso))
-                        dummy_atom_tuple = [a.xyz[0] ,a.xyz[1] ,a.xyz[2] , sc.occupancy, adptbx.u_as_b(sc.u_iso)]
-                        kept_atoms.append(dummy_atom_tuple)
-                    current_atom = current_atom + 1
-
-
-    add_dummy_atoms = add_atoms_with_occ_b(file_name, atom_type, kept_atoms, "final.pdb")
+    ###
+    ofn = open("zzz.pdb","w")
+    #xrs_tmp = iotbx.pdb.input(file_name = "1akg.pdb").xray_structure_simple()
+    #print >> ofn, all_da_xray_structure.concatenate(xrs_tmp).as_pdb_file()
+    print >> ofn, all_da_xray_structure.as_pdb_file()
     print "Finished"
 
 
-def refine_atoms(fmodel, number_of_iterations, number_of_cycles):
+def refine_atoms(fmodel, number_of_iterations, number_of_cycles, selection):
   fmodels = mmtbx.fmodels(fmodel_xray = fmodel)
-  size = fmodel.xray_structure.scatterers().size()
-  selection = flex.size_t(xrange(size))
+  selection = selection.iselection()
   lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
     max_iterations = number_of_iterations)
-  # XXX Can we refine occupancy and B-factor sumultaneously ?
   for i in xrange(number_of_cycles):
-    if 1: # XXX refine q and B separately
-      fmodel.xray_structure.scatterers().flags_set_grad_u_iso(
-        iselection = selection)
-      minimized = mmtbx.refinement.minimization.lbfgs(
-        fmodels                  = fmodels,
-        lbfgs_termination_params = lbfgs_termination_params,
-        collect_monitor          = False)
-      print "Refined B-factors     Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(),
-        fmodel.r_free())
-      fmodel.xray_structure.scatterers().flags_set_grad_occupancy(
-        iselection = selection)
-      minimized = mmtbx.refinement.minimization.lbfgs(
-        fmodels                  = fmodels,
-        lbfgs_termination_params = lbfgs_termination_params,
-        collect_monitor          = False)
-      print "Refined occupancies   Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(),
-        fmodel.r_free())
-    if 0: # XXX refine q and B sumultaneously... This might be unstable....
-      for sc in fmodel.xray_structure.scatterers():
-        fl = sc.flags
-        fl.set_grad_u_iso(True)
-        fl.set_grad_occupancy(True)
-      minimized = mmtbx.refinement.minimization.lbfgs(
-        fmodels                  = fmodels,
-        lbfgs_termination_params = lbfgs_termination_params,
-        collect_monitor          = False)
-      print "Refined q and B       Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(),
-        fmodel.r_free())
+    fmodel.xray_structure.scatterers().flags_set_grad_u_iso(
+      iselection = selection)
+    minimized = mmtbx.refinement.minimization.lbfgs(
+      fmodels                  = fmodels,
+      lbfgs_termination_params = lbfgs_termination_params,
+      collect_monitor          = False)
+    print "Refined B-factors     Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(),
+      fmodel.r_free())
+    fmodel.xray_structure.scatterers().flags_set_grad_occupancy(
+      iselection = selection)
+    minimized = mmtbx.refinement.minimization.lbfgs(
+      fmodels                  = fmodels,
+      lbfgs_termination_params = lbfgs_termination_params,
+      collect_monitor          = False)
+    print "Refined occupancies   Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(),
+      fmodel.r_free())
   assert minimized.xray_structure is fmodels.fmodel_xray().xray_structure
   assert minimized.xray_structure is fmodel.xray_structure
-  structure = minimized.xray_structure
-  orth = structure.unit_cell().orthogonalize
-  return structure, fmodel.r_work(), fmodel.r_free()
 
-#########################################
-#########################################
+def pdb_atoms_as_xray_structure(pdb_atoms, crystal_symmetry):
+  xray_structure = xray.structure(crystal_symmetry = crystal_symmetry)
+  unit_cell = xray_structure.unit_cell()
+  for atom in pdb_atoms:
+    scatterer = xray.scatterer(
+      label           = atom.name,
+      site            = unit_cell.fractionalize(atom.xyz),
+      b               = atom.b,
+      scattering_type = atom.element)
+    xray_structure.add_scatterer(scatterer)
+  return xray_structure
 
-def count_atoms(input_pdb_file_name):
-    """A very simple class to count atoms - probably a better was in pdb toolbox or similiar"""
-    count = 0
-    try:
-        input_file = open(input_pdb_file_name)
-    except IOError, (errno, strerror):
-        print "I/O error(%s): %s" % (errno, strerror)
-        print "could not open file - are you sure directory and filename is correct:", input_pdb_file_name
-        exit()
-    #
-    for line in input_file.readlines():
-        #if (line.find("TER") or line.find("END"))== -1 :
-        if ("ATOM" in line or "HETATOM" in line or "HEATOM" in line  ) :
-            count = count +1
-    return count
-
-def add_atoms_with_occ_b(input_pdb_file_name, final_atom_type, dummy_atoms, output_pdb_file_name):
-    """A class menthod to add the atoms - occ and b in array"""
-    try:
-        input_file = open(input_pdb_file_name)
-    except IOError, (errno, strerror):
-        print "I/O error(%s): %s" % (errno, strerror)
-        print "could not open file - are you sure directory and filename is correct:", input_pdb_file_name
-        exit()
-    try:
-        output_file = open(output_pdb_file_name,"w")
-    except IOError, (errno, strerror):
-        print "I/O error(%s): %s" % (errno, strerror)
-        print "could not output file - are the permissions for this folder correct?"
-        exit()
-    #
-    final_line = ""
-    for line in input_file.readlines():
-        #if (line.find("TER") or line.find("END"))== -1 :
-        if not ("TER" in line or "END" in line ) :
-            output_file.write(line)
-            final_line = line
-    #
-    final_atom_id  = int(final_line[7:11].replace(' ', '')) + 1
-    final_residue_id  = int(final_line[22:26].replace(' ', '')) + 1
-    #
-    for dummy_coords in dummy_atoms:
-        #dummy_atom = "HETATM %4i  %s   HET X%4i    %8.3f%8.3f%8.3f%6.2f%6.2f           %s"\ #HOH doesn't make ugly lines...
-        dummy_atom = "HETATM%5i  %s   HOH X%5i   %8.3f%8.3f%8.3f%6.2f%6.2f           %s"\
-        %(final_atom_id,final_atom_type, final_residue_id, float(dummy_coords[0]), \
-        float(dummy_coords[1]),float(dummy_coords[2]), float(dummy_coords[3]), float(dummy_coords[4]), final_atom_type )
-        output_file.write(dummy_atom+"\n")
-        final_atom_id  = final_atom_id + 1
-        final_residue_id  = final_residue_id + 1
-    #
-    output_file.close()
-    input_file.close()
-    print "New file created"
-    return " "
-
-
-def make_grid(center, radius, gap,occ,bfac):
-    """Make the grid of atoms"""
-    print "Making grid"
-    atom_list = []
-    x_start = float(center[0]) - (float(radius))
-    x_end = float(center[0]) + (float(radius))
-    y_start = float(center[1]) - (float(radius))
-    y_end = float(center[1]) + (float(radius))
-    z_start = float(center[2]) - (float(radius))
-    z_end = float(center[2])+ (float(radius))
-    #
-    x_range = frange(x_start,x_end,gap)
-    y_range = frange(y_start,y_end,gap)
-    z_range = frange(z_start,z_end,gap)
-    #
-    for x in x_range:
-        for y in y_range:
-            for z in z_range:
-                atom_list.append([x,y,z,occ,bfac])
-    print "Finished making grid"
-    return atom_list
-
+def make_grid(center, radius, gap, occupancy, b_factor, atom_name = " DA ",
+              scattering_type = "N", resname = "DUM"):
+  x_start = float(center[0]) - (float(radius))
+  x_end   = float(center[0]) + (float(radius))
+  y_start = float(center[1]) - (float(radius))
+  y_end   = float(center[1]) + (float(radius))
+  z_start = float(center[2]) - (float(radius))
+  z_end   = float(center[2]) + (float(radius))
+  x_range = frange(x_start, x_end, gap)
+  y_range = frange(y_start, y_end, gap)
+  z_range = frange(z_start, z_end, gap)
+  result = []
+  counter = 1
+  for x in x_range:
+    for y in y_range:
+      for z in z_range:
+        d = math.sqrt((x-center[0])**2+(y-center[1])**2+(z-center[2])**2)
+        if(d < radius):
+          atom = iotbx.pdb.hierarchy.atom_with_labels()
+          atom.serial  = counter
+          atom.name    = atom_name
+          atom.resname = resname
+          atom.resseq  = counter
+          atom.xyz     = (x,y,z)
+          atom.occ     = occupancy
+          atom.b       = b_factor
+          atom.element = scattering_type
+          result.append(atom)
+          counter += 1
+  return result
 
 def frange(start, end=None, inc=None):
     """A range function, that does accept float increments..."""
@@ -362,57 +334,6 @@ def reflection_file_server(crystal_symmetry, reflection_files):
     force_symmetry=True,
     reflection_files=reflection_files,
     err=StringIO())
-
-def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
-  pdb_raw_records = smart_open.for_reading(
-    file_name=pdb_file_name).read().splitlines()
-  for rec in pdb_raw_records:
-    if(rec.startswith("CRYST1 ")): pdb_raw_records.remove(rec)
-  pdb_raw_records.append(cryst1)
-  #############################################################################
-  cif_objects = None
-  if(show_geometry_statistics):
-    t = time.ctime().split() # to make it safe to remove files
-    time_stamp = "_"+t[4]+"_"+t[1].upper()+"_"+t[2]+"_"+t[3][:-3].replace(":","h")
-    prefix = os.path.basename(pdb_file_name)
-    from elbow.scripts import elbow_on_pdb_file
-    from elbow.command_line import join_cif_files
-    if len(sys.argv)>1: del sys.argv[1:]
-    rc = elbow_on_pdb_file.run("\n".join(pdb_raw_records),
-                               silent=True,
-                               )
-    cif_file = prefix+time_stamp+".cif"
-    if rc is not None:
-      hierarchy, cifs = rc
-      if cifs:
-        cif_lines = []
-        for key in cifs:
-          lines = cifs[key]
-          if lines:
-            cif_lines.append(lines)
-        rc = join_cif_files.run(cif_lines, cif_file, no_file_access=True)
-        if rc:
-          f=file(cif_file, "wb")
-          f.write(rc)
-          f.close()
-
-    cif_objects = None
-    if(os.path.isfile(cif_file)):
-      cif_objects = []
-      cif_objects.append((cif_file,
-        mmtbx.monomer_library.server.read_cif(file_name = cif_file)))
-  #############################################################################
-  pdb_ip = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
-  pdb_ip.clash_guard.nonbonded_distance_threshold = -1.0
-  pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
-  pdb_ip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-    cif_objects               = cif_objects,
-    pdb_interpretation_params = pdb_ip,
-    log                       = StringIO())
-  processed_pdb_file, pdb_inp = \
-    processed_pdb_files_srv.process_pdb_files(raw_records = pdb_raw_records)
-  return processed_pdb_file, pdb_raw_records, pdb_inp
 
 def cmd_run(args, command_name):
   msg = """\
@@ -555,20 +476,21 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=None
   #
-  processed_pdb_file, pdb_raw_records, pdb_inp = get_processed_pdb_file(
-    pdb_file_name = pdb_file_name,
-    cryst1 = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
-    show_geometry_statistics = False)
+  mmtbx_pdb_file = mmtbx.utils.pdb_file(
+    pdb_file_names = [pdb_file_name],
+    cryst1         = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
+    log            = sys.stdout)
+  mmtbx_pdb_file.set_ppf()
+  processed_pdb_file = mmtbx_pdb_file.processed_pdb_file
+  pdb_raw_records = mmtbx_pdb_file.pdb_raw_records
+  pdb_inp = mmtbx_pdb_file.pdb_inp
   #
-  scattering_table   = params.scattering_table
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = processed_pdb_file,
-    scattering_table   = scattering_table,
+    scattering_table   =params.scattering_table,
     d_min              = f_obs.d_min())
-  xray_structures = xsfppf.xray_structures
-  if(not xray_structures[0].crystal_symmetry().is_similar_symmetry(
-     f_obs.crystal_symmetry())):
-    raise Sorry("Inconsistent crystal symmetry.")
+  xray_structure = xsfppf.xray_structures[0]
+  assert len(xsfppf.xray_structures) == 1
   #
   print "  Unit cell:       ", f_obs.unit_cell()
   print "  Space group:     ", f_obs.crystal_symmetry().space_group_info().\
@@ -576,13 +498,19 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     f_obs.crystal_symmetry().space_group_info().type().group().order_z()
   print "  Unit cell volume: %-15.4f" % f_obs.unit_cell().volume()
   #
-  #
-  fmodel = utils.fmodel_simple(xray_structures = xray_structures,
-                               f_obs           = f_obs,
-                               r_free_flags    = r_free_flags)
-  n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
-  #
-  grow_density(f_obs, r_free_flags, scattering_table, pdb_file_name, xray_structures,x_center=params.x_center,\
-  y_center=params.y_center, z_center=params.z_center, radius=params.radius, step_size=params.atom_gap, overlap_interval=params.overlap_interval, \
-  atom_type= params.atom_type, number_of_cycles = params.cycles, number_of_iterations = params.iterations, \
-  bfac_dummy_atoms = params.bfac_dummy_atoms, bfac_cutoff = params.bfac_cutoff , occ_cutoff = params.occ_cutoff  )
+  grow_density(f_obs,
+               r_free_flags,
+               pdb_file_name,
+               xray_structure,
+               x_center=params.x_center,
+               y_center=params.y_center,
+               z_center=params.z_center,
+               radius=params.radius,
+               step_size=params.atom_gap,
+               overlap_interval=params.overlap_interval,
+               atom_type= params.atom_type,
+               number_of_cycles = params.cycles,
+               number_of_iterations = params.iterations,
+               bfac_dummy_atoms = params.bfac_dummy_atoms,
+               bfac_cutoff = params.bfac_cutoff,
+               occ_cutoff = params.occ_cutoff)
