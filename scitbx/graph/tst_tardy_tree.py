@@ -489,7 +489,7 @@ def exercise_external_clusters():
   # GLY A 138 and 139 of pdb entry 10gs, atom names N CA C O N CA C O
   for external_clusters,expected_clusters, expected_count in [
        (None, [[0], [1], [2], [3], [4], [5], [6], [7]], 0),
-       ([(1,2,4,5), (1,2,3,4)], [[1, 2, 3, 4, 5], [0], [6], [7]], 4)]:
+       ([(2,4), (1,2,3,4)], [[1, 2, 3, 4], [0], [5], [6], [7]], 3)]:
     tt = construct(
       n_vertices=8,
       edge_list=[(0, 1), (1, 2), (2, 3), (2, 4), (4, 5), (5, 6), (6, 7)],
