@@ -1,5 +1,6 @@
 from rstbx.diffraction import RotationAngles
 from cctbx.crystal_orientation import crystal_orientation,basis_type
+from libtbx.test_utils import approx_equal
 
 test_results=[
 ((-4, -3, -5),(-2.1644080756068704, 0.82603163906757826)),
@@ -1986,7 +1987,8 @@ def test_ewald_sphere_model():
       for l in xrange(-maxl, maxl+1):
         if RA((h,k,l)):
           assert test_results[ptr][0]==(h,k,l)
-          assert test_results[ptr][1]==RA.get_intersection_angles()
+          assert approx_equal(
+            test_results[ptr][1],RA.get_intersection_angles(),eps = 1.E-13, multiplier=1.e-10)
           ptr+=1
           #print "(%s,%s),"%(str((h,k,l)),RA.get_intersection_angles())
 
