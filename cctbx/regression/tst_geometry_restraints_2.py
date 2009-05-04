@@ -612,6 +612,13 @@ nonbonded asu: (7, 29)
   assert sorted(set(sel0) - set(sel)) == [(13, 14), (28, 30)]
   sel = geo.simple_edge_list(omit_slack_greater_than=0.2)
   assert sorted(set(sel0) - set(sel)) == [(28, 30)]
+  #
+  clusters = geo.rigid_clusters_due_to_dihedrals_and_planes(
+    constrain_dihedrals_with_sigma_less_than=10)
+  assert sorted([tuple(sorted(c)) for c in clusters]) == [
+    (0, 8, 10, 15), (0, 8, 12, 15), (1, 2, 3, 4, 5, 6, 7, 9),
+    (12, 13, 14, 19), (12, 13, 16, 19), (16, 17, 18, 29), (16, 17, 20, 29),
+    (20, 28, 30, 37), (20, 28, 31, 37), (21, 22, 23, 24, 25, 26, 27)]
 
 def exercise_all(args):
   verbose = "--verbose" in args

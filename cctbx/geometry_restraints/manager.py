@@ -60,6 +60,20 @@ class manager(object):
       result.append((i,j))
     return result
 
+  def rigid_clusters_due_to_dihedrals_and_planes(self,
+        constrain_dihedrals_with_sigma_less_than):
+    result = []
+    if (self.dihedral_proxies is not None):
+      assert constrain_dihedrals_with_sigma_less_than > 0
+      weight_limit = 1.0 / constrain_dihedrals_with_sigma_less_than**2
+      for proxy in self.dihedral_proxies:
+        if (proxy.weight > weight_limit):
+          result.append(proxy.i_seqs)
+    if (self.planarity_proxies is not None):
+      for proxy in self.planarity_proxies:
+        result.append(proxy.i_seqs)
+    return result
+
   def sites_cart_used_for_pair_proxies(self):
     return self._sites_cart_used_for_pair_proxies
 
