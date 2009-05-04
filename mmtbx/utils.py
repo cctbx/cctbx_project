@@ -1453,9 +1453,12 @@ class process_command_line_args(object):
     command_line_params = []
     for arg in args:
       arg_is_processed = False
-      if(os.path.isfile(arg)):
+      arg_file = arg
+      if(arg.count("=")==1):
+        arg_file = arg[arg.index("=")+1:]
+      if(os.path.isfile(arg_file)):
         params = None
-        try: params = iotbx.phil.parse(file_name=arg)
+        try: params = iotbx.phil.parse(file_name=arg_file)
         except KeyboardInterrupt: raise
         except RuntimeError: pass
         else:
@@ -1464,22 +1467,22 @@ class process_command_line_args(object):
         if(params is not None):
           parsed_params.append(params)
           arg_is_processed = True
-        elif(pdb.is_pdb_file(file_name=arg)):
-          self.pdb_file_names.append(arg)
+        elif(pdb.is_pdb_file(file_name=arg_file)):
+          self.pdb_file_names.append(arg_file)
           arg_is_processed = True
           try:
             crystal_symmetries.append(
-              crystal_symmetry_from_any.extract_from(arg))
+              crystal_symmetry_from_any.extract_from(arg_file))
           except KeyboardInterrupt: raise
           except RuntimeError: pass
         else:
           try:
-            cif_object = mmtbx.monomer_library.server.read_cif(file_name = arg)
+            cif_object = mmtbx.monomer_library.server.read_cif(file_name = arg_file)
           except KeyboardInterrupt: raise
           except: pass
           else:
             if(len(cif_object) > 0):
-              self.cif_objects.append((arg, cif_object))
+              self.cif_objects.append((arg_file, cif_object))
               arg_is_processed = True
       if(not arg_is_processed):
         reflection_file = reflection_file_reader.any_reflection_file(
@@ -1490,7 +1493,7 @@ class process_command_line_args(object):
           arg_is_processed = True
           try:
             crystal_symmetries.append(
-              crystal_symmetry_from_any.extract_from(arg))
+              crystal_symmetry_from_any.extract_from(arg_file))
           except KeyboardInterrupt: raise
           except RuntimeError: pass
       if(not arg_is_processed and master_params is not None):

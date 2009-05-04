@@ -695,7 +695,7 @@ namespace targets {
     CCTBX_ASSERT(e > 0);
     CCTBX_ASSERT(fo >= 0);
     double fc = std::abs(fc_complex);
-    CCTBX_ASSERT(fc > 0);
+    if(fc == 0) return std::complex<double> (0,0);
     if(k <= 0.0) k = 1.0;
     std::complex<double> d_target_over_fc(0, 0);
     if(a <= 0.0 || b <= 1.e-3) {
