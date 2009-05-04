@@ -485,6 +485,18 @@ def special_case_ZINC03847121():
     (3, 4, 5), (3, 9, 11), (4, 5, 6), (5, 6, 7), (6, 7, 8), (7, 8, 9),
     (8, 9, 10, 11)]
 
+def exercise_external_clusters():
+  # GLY A 138 and 139 of pdb entry 10gs, atom names N CA C O N CA C O
+  for external_clusters,expected_clusters, expected_count in [
+       (None, [[0], [1], [2], [3], [4], [5], [6], [7]], 0),
+       ([(1,2,4,5), (1,2,3,4)], [[1, 2, 3, 4, 5], [0], [6], [7]], 4)]:
+    tt = construct(
+      n_vertices=8,
+      edge_list=[(0, 1), (1, 2), (2, 3), (2, 4), (4, 5), (5, 6), (6, 7)],
+      external_clusters=external_clusters)
+    assert tt.cluster_manager.clusters == expected_clusters
+    assert tt.external_clusters_connect_count == expected_count
+
 def run(args):
   assert args in [[], ["--verbose"]]
   verbose = "--verbose" in args
@@ -546,6 +558,7 @@ def run(args):
     tc.tardy_tree_construct()
   #
   special_case_ZINC03847121()
+  exercise_external_clusters()
   #
   print "OK"
 

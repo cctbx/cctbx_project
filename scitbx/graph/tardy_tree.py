@@ -23,7 +23,7 @@ class cluster_manager(object):
 
   def connect_clusters(O, cii, cij, optimize):
     assert O.hinge_edges is None
-    if (cii == cij): return
+    if (cii == cij): return None
     ci = O.cluster_indices
     ccij = O.clusters[cij]
     ccii = O.clusters[cii]
@@ -278,12 +278,14 @@ class construct(object):
     "collinear_bonds_edge_list",
     "edge_sets",
     "cluster_manager",
+    "external_clusters_connect_count",
     "find_cluster_loop_repeats"]
 
   def __init__(O,
         n_vertices=None,
         sites=None,
         edge_list=None,
+        external_clusters=None,
         collinear_bonds_tolerance_deg=1.0):
     assert [n_vertices, sites].count(None) == 1
     if (sites is not None):
@@ -298,6 +300,7 @@ class construct(object):
       O.find_collinear_bonds(sites=sites)
     O.cluster_manager = cluster_manager(n_vertices=n_vertices)
     O._find_paths()
+    O._process_external_clusters(clusters=external_clusters)
     O.cluster_manager.tidy()
     O.find_cluster_loop_repeats = None
 
@@ -368,6 +371,16 @@ class construct(object):
                       O.cluster_manager.connect_vertices(
                         i=iv, j=kv, optimize=True)
         assert n_l1_l2_l3_lt_10 == 72
+
+  def _process_external_clusters(O, clusters):
+    O.external_clusters_connect_count = 0
+    if (clusters is None): return
+    cv = O.cluster_manager.connect_vertices
+    for c in clusters:
+      i = c[0]
+      for j in c[1:]:
+        if (cv(i=i, j=j, optimize=True) is not None):
+          O.external_clusters_connect_count += 1
 
   def find_cluster_loops(O):
     assert O.find_cluster_loop_repeats is None
