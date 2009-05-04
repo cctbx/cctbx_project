@@ -45,10 +45,12 @@ class potential_object(object):
         nonbonded_attenuation_factor,
         fmodels,
         model,
-        target_weights):
+        target_weights,
+        reduced_geo_manager):
     O.fmodels = fmodels
     O.model = model
     O.weights = target_weights.xyz_weights_result
+    O.reduced_geo_manager = reduced_geo_manager
     if (nonbonded_attenuation_factor is None):
       O.custom_nonbonded_function = None
     else:
@@ -72,7 +74,8 @@ class potential_object(object):
       O.last_sites_moved = sites_moved
       xs = O.fmodels.fmodel_xray().xray_structure
       assert len(sites_moved) == xs.scatterers().size()
-      xs.set_sites_cart(sites_cart=flex.vec3_double(sites_moved))
+      sites_cart = flex.vec3_double(sites_moved)
+      xs.set_sites_cart(sites_cart=sites_cart)
       O.fmodels.update_xray_structure(update_f_calc=True)
       xs.scatterers().flags_set_grads(state=False)
       xs.scatterers().flags_set_grad_site(
@@ -83,14 +86,21 @@ class potential_object(object):
       O.f = tg.target()
       O.g = tg.gradients()
       assert O.g.size() == len(sites_moved) * 3
-      stereochemistry_residuals = O.model.restraints_manager_energies_sites(
+      reduced_geo_energies = O.reduced_geo_manager.energies_sites(
+        sites_cart=sites_cart,
+        compute_gradients=True)
+      other_energies = O.model.restraints_manager.energies_sites(
+        sites_cart=sites_cart,
+        geometry_flags=cctbx.geometry_restraints.flags.flags(nonbonded=True),
         custom_nonbonded_function=O.custom_nonbonded_function,
         compute_gradients=True)
-      O.f += stereochemistry_residuals.target * O.weights.w
-      gg = stereochemistry_residuals.gradients * O.weights.w
-      scale = stereochemistry_residuals.normalization_factor * O.weights.w
-      assert scale != 0
-      scale = 1 / scale
+      nfw = other_energies.normalization_factor * O.weights.w
+      O.f += other_energies.target * O.weights.w
+      O.f += reduced_geo_energies.target * nfw
+      gg = other_energies.gradients * O.weights.w
+      gg += reduced_geo_energies.gradients * nfw
+      assert nfw != 0
+      scale = 1 / nfw
       O.last_grms = group_args(
         geo=scale*flex.mean_sq(gg.as_double())**0.5,
         xray=scale*flex.mean_sq(O.g)**0.5)
@@ -106,6 +116,70 @@ class potential_object(object):
   def d_e_pot_d_sites(O, sites_moved):
     O.e_pot(sites_moved=sites_moved)
     return matrix.col_list(flex.vec3_double(O.g))
+
+# XXX move to geometry_restraints_manager.py
+def reduce_geo_manager(
+      geo_manager,
+      cluster_manager,
+      omit_slack_greater_than=0):
+  from cctbx import crystal
+  from cctbx import sgtbx
+  from scitbx.graph.utils import construct_edge_sets
+  #
+  cluster_indices = cluster_manager.cluster_indices
+  n_vertices = len(cluster_indices)
+  loop_edge_sets = construct_edge_sets(
+    n_vertices=n_vertices,
+    edge_list=cluster_manager.loop_edges)
+  #
+  def get():
+    result = crystal.pair_sym_table(n_vertices)
+    bond_params_table = geo_manager.bond_params_table
+    for i,pair_sym_dict in enumerate(geo_manager.shell_sym_tables[0]):
+      reduced_pair_sym_dict = result[i]
+      for j,sym_ops in pair_sym_dict.items():
+        reduced_sym_ops = sgtbx.stl_vector_rt_mx()
+        for sym_op in sym_ops:
+          if (sym_op.is_unit_mx()):
+            if (bond_params_table[i][j].slack > omit_slack_greater_than):
+              continue
+            if (j not in loop_edge_sets[i]):
+              continue
+          reduced_sym_ops.append(sym_op)
+        if (reduced_sym_ops.size() != 0):
+          reduced_pair_sym_dict[j] = reduced_sym_ops
+    return [result]
+  reduced_shell_sym_tables = get()
+  #
+  def get():
+    result = cctbx.geometry_restraints.shared_angle_proxy()
+    for proxy in geo_manager.angle_proxies:
+      i,j,k = proxy.i_seqs
+      if (   j in loop_edge_sets[i]
+          or j in loop_edge_sets[k]):
+        result.append(proxy)
+    if (result.size() == 0):
+      return None
+    return result
+  reduced_angle_proxies = get()
+  #
+  def get():
+    result = cctbx.geometry_restraints.shared_dihedral_proxy()
+    for proxy in geo_manager.dihedral_proxies:
+      if (len(set([cluster_indices[i] for i in proxy.i_seqs])) != 1):
+        result.append(proxy)
+    if (result.size() == 0):
+      return None
+    return result
+  reduced_dihedral_proxies = get()
+  #
+  return cctbx.geometry_restraints.manager.manager(
+    crystal_symmetry=geo_manager.crystal_symmetry,
+    site_symmetry_table=geo_manager.site_symmetry_table,
+    bond_params_table=geo_manager.bond_params_table,
+    shell_sym_tables=reduced_shell_sym_tables,
+    angle_proxies=reduced_angle_proxies,
+    dihedral_proxies=reduced_dihedral_proxies)
 
 def run(fmodels, model, target_weights, params, log):
   assert fmodels.fmodel_neutron() is None # not implemented
@@ -131,7 +205,10 @@ def run(fmodels, model, target_weights, params, log):
     nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
     fmodels=fmodels,
     model=model,
-    target_weights=target_weights)
+    target_weights=target_weights,
+    reduced_geo_manager=reduce_geo_manager(
+      geo_manager=model.restraints_manager.geometry,
+      cluster_manager=tt.cluster_manager))
   sim = tst_molecules.simulation(
     labels=[sc.label for sc in xs.scatterers()],
     sites=sites,
