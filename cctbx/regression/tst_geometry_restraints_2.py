@@ -616,9 +616,9 @@ nonbonded asu: (7, 29)
   clusters = geo.rigid_clusters_due_to_dihedrals_and_planes(
     constrain_dihedrals_with_sigma_less_than=10)
   assert sorted([tuple(sorted(c)) for c in clusters]) == [
-    (0, 8, 10, 15), (0, 8, 12, 15), (1, 2, 3, 4, 5, 6, 7, 9),
-    (12, 13, 14, 19), (12, 13, 16, 19), (16, 17, 18, 29), (16, 17, 20, 29),
-    (20, 28, 30, 37), (20, 28, 31, 37), (21, 22, 23, 24, 25, 26, 27)]
+    (0, 8, 10, 15), (1, 2, 3, 4, 5, 6, 7, 9), (8, 15),
+    (12, 13, 14, 19), (13, 19), (16, 17, 18, 29), (17, 29),
+    (20, 28, 30, 37), (21, 22, 23, 24, 25, 26, 27), (28, 37)]
 
 def exercise_all(args):
   verbose = "--verbose" in args

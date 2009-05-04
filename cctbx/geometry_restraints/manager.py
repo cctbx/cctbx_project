@@ -68,7 +68,7 @@ class manager(object):
       weight_limit = 1.0 / constrain_dihedrals_with_sigma_less_than**2
       for proxy in self.dihedral_proxies:
         if (proxy.weight > weight_limit):
-          result.append(proxy.i_seqs)
+          result.append(proxy.i_seqs[1:3])
     if (self.planarity_proxies is not None):
       for proxy in self.planarity_proxies:
         result.append(proxy.i_seqs)
