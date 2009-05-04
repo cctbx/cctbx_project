@@ -624,6 +624,16 @@ class analyze_measurability(object):
       message = """\
  There seems to be no real significant anomalous differences
  in this dataset."""
+    elif unknown_cutoffs == 1 :
+      if self.high_d_cut is None:
+        message="""\
+The anomalous signal seems to extend to about %3.1f A, but doesn't seem very strong.
+The quoted resolution limits can be used as a guideline
+to decide where to cut the resolution for phenix.hyss."""%(self.low_d_cut)
+      else:
+         message = """\
+ This should not have happend: please contact software authors
+ at bugs@phenix-online.org."""
     else :
       message = """\
  This should not have happend: please contact software authors
