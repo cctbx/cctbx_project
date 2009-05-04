@@ -409,3 +409,14 @@ class construct(object):
     cm.construct_spanning_trees(edge_sets=O.edge_sets)
     cm.find_loop_edge_bendings(edge_sets=O.edge_sets)
     return O
+
+  def show_summary(O, vertex_labels, out=None, prefix=""):
+    # XXX rudimentary
+    import sys
+    if (out is None): out = sys.stdout
+    if (vertex_labels is None):
+      fmt = "%%0%dd" % len(str(max(0, O.n_vertices-1)))
+      vertex_labels = [fmt % i for i in xrange(O.n_vertices)]
+    for i,j in O.collinear_bonds_edge_list:
+      print >> out, prefix+"tardy collinear bond:", vertex_labels[i]
+      print >> out, prefix+"                     ", vertex_labels[j]

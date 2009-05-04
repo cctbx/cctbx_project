@@ -103,7 +103,8 @@ class potential_object(object):
       scale = 1 / nfw
       O.last_grms = group_args(
         geo=scale*flex.mean_sq(gg.as_double())**0.5,
-        xray=scale*flex.mean_sq(O.g)**0.5)
+        xray=scale*flex.mean_sq(O.g)**0.5,
+        real_or_xray="xray")
       xray.minimization.add_gradients(
         scatterers=xs.scatterers(),
         xray_gradients=O.g,
@@ -111,75 +112,12 @@ class potential_object(object):
       O.f *= scale
       O.g *= scale
       O.last_grms.total = flex.mean_sq(O.g)**0.5
+      O.g = flex.vec3_double(O.g)
     return O.f
 
   def d_e_pot_d_sites(O, sites_moved):
     O.e_pot(sites_moved=sites_moved)
-    return matrix.col_list(flex.vec3_double(O.g))
-
-# XXX move to geometry_restraints_manager.py
-def reduce_geo_manager(
-      geo_manager,
-      cluster_manager,
-      omit_slack_greater_than=0):
-  from cctbx import crystal
-  from cctbx import sgtbx
-  from scitbx.graph.utils import construct_edge_sets
-  #
-  cluster_indices = cluster_manager.cluster_indices
-  n_vertices = len(cluster_indices)
-  loop_edge_sets = construct_edge_sets(
-    n_vertices=n_vertices,
-    edge_list=cluster_manager.loop_edges)
-  #
-  def get():
-    result = crystal.pair_sym_table(n_vertices)
-    bond_params_table = geo_manager.bond_params_table
-    for i,pair_sym_dict in enumerate(geo_manager.shell_sym_tables[0]):
-      reduced_pair_sym_dict = result[i]
-      for j,sym_ops in pair_sym_dict.items():
-        reduced_sym_ops = sgtbx.stl_vector_rt_mx()
-        for sym_op in sym_ops:
-          if (sym_op.is_unit_mx()):
-            if (bond_params_table[i][j].slack > omit_slack_greater_than):
-              continue
-            if (j not in loop_edge_sets[i]):
-              continue
-          reduced_sym_ops.append(sym_op)
-        if (reduced_sym_ops.size() != 0):
-          reduced_pair_sym_dict[j] = reduced_sym_ops
-    return [result]
-  reduced_shell_sym_tables = get()
-  #
-  def get():
-    result = cctbx.geometry_restraints.shared_angle_proxy()
-    for proxy in geo_manager.angle_proxies:
-      i,j,k = proxy.i_seqs
-      if (   j in loop_edge_sets[i]
-          or j in loop_edge_sets[k]):
-        result.append(proxy)
-    if (result.size() == 0):
-      return None
-    return result
-  reduced_angle_proxies = get()
-  #
-  def get():
-    result = cctbx.geometry_restraints.shared_dihedral_proxy()
-    for proxy in geo_manager.dihedral_proxies:
-      if (len(set([cluster_indices[i] for i in proxy.i_seqs])) != 1):
-        result.append(proxy)
-    if (result.size() == 0):
-      return None
-    return result
-  reduced_dihedral_proxies = get()
-  #
-  return cctbx.geometry_restraints.manager.manager(
-    crystal_symmetry=geo_manager.crystal_symmetry,
-    site_symmetry_table=geo_manager.site_symmetry_table,
-    bond_params_table=geo_manager.bond_params_table,
-    shell_sym_tables=reduced_shell_sym_tables,
-    angle_proxies=reduced_angle_proxies,
-    dihedral_proxies=reduced_dihedral_proxies)
+    return matrix.col_list(O.g)
 
 def run(fmodels, model, target_weights, params, log):
   assert fmodels.fmodel_neutron() is None # not implemented
@@ -187,39 +125,47 @@ def run(fmodels, model, target_weights, params, log):
   xs = fmodels.fmodel_xray().xray_structure
   sites_cart_start = xs.sites_cart()
   sites = matrix.col_list(sites_cart_start)
-  tt = tardy_tree.construct(
+  labels = [sc.label for sc in xs.scatterers()]
+  tt = model.restraints_manager.geometry.construct_tardy_tree(
     sites=sites,
-    edge_list=model.restraints_manager.geometry.simple_edge_list(
-      omit_slack_greater_than=params.omit_bonds_with_slack_greater_than),
-    external_clusters=model.restraints_manager.geometry
-      .rigid_clusters_due_to_dihedrals_and_planes(
-        constrain_dihedrals_with_sigma_less_than
-          =params.constrain_dihedrals_with_sigma_less_than))
-  tt.finalize()
-  for i,j in tt.collinear_bonds_edge_list:
-    s = xs.scatterers()
-    print >> log, "tardy collinear bond:", s[i].label
-    print >> log, "                     ", s[j].label
+    omit_bonds_with_slack_greater_than
+      =params.omit_bonds_with_slack_greater_than,
+    constrain_dihedrals_with_sigma_less_than
+      =params.constrain_dihedrals_with_sigma_less_than)
+  tt.show_summary(out=log, vertex_labels=labels)
   log.flush()
   potential_obj = potential_object(
     nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
     fmodels=fmodels,
     model=model,
     target_weights=target_weights,
-    reduced_geo_manager=reduce_geo_manager(
-      geo_manager=model.restraints_manager.geometry,
-      cluster_manager=tt.cluster_manager))
-  sim = tst_molecules.simulation(
-    labels=[sc.label for sc in xs.scatterers()],
+    reduced_geo_manager=model.restraints_manager.geometry
+      .reduce_for_tardy(
+        tardy_tree=tt,
+        omit_bonds_with_slack_greater_than
+          =params.omit_bonds_with_slack_greater_than))
+  action(
+    labels=labels,
     sites=sites,
-    bonds=tt.edge_list,
-    cluster_manager=tt.cluster_manager,
+    masses=xs.atomic_weights(),
+    tardy_tree=tt,
+    potential_obj=potential_obj,
+    params=params,
+    log=log)
+
+def action(
+      labels, sites, masses, tardy_tree, potential_obj, params, log):
+  sites_cart_start = flex.vec3_double(sites)
+  sim = tst_molecules.simulation(
+    labels=labels,
+    sites=sites,
+    bonds=tardy_tree.edge_list,
+    cluster_manager=tardy_tree.cluster_manager,
     potential_obj=potential_obj,
     bodies=tst_molecules.construct_bodies(
       sites=sites,
-      masses=xs.atomic_weights(),
-      cluster_manager=tt.cluster_manager))
-  del sites
+      masses=masses,
+      cluster_manager=tardy_tree.cluster_manager))
   qd_e_kin_scales = sim.assign_random_velocities()
   def e_as_t(e):
     return kinetic_energy_as_temperature(dof=sim.degrees_of_freedom, e=e)
@@ -280,29 +226,30 @@ def run(fmodels, model, target_weights, params, log):
       if (params.velocity_scaling):
         sim.reset_e_kin(e_kin_target=e_kin_target)
       n_time_steps += 1
+      grms = sim.potential_obj.last_grms
       if (show_column_headings):
         show_column_headings = False
         log.write("""\
           coordinate                   fluctuations        gradient rms
-    step      rmsd        temp        temp   e_total     geo    xray   total
-""")
+    step      rmsd        temp        temp   e_total     geo %    7s   total
+""" % grms.real_or_xray)
       print >> log, "    %4d  %8.4f A  %8.2f K  %8.2f K  %s" \
         "  %6.2f  %6.2f  %6.2f" % (
           n_time_steps,
-          xs.sites_cart().rms_difference(sites_cart_start),
+          flex.vec3_double(sim.sites_moved()).rms_difference(sites_cart_start),
           e_as_t(e=sim.e_kin()),
           e_as_t(e=e_kin_after-e_kin_before),
           format_value(format="%6.3f", value=fluct_e_tot),
-          sim.potential_obj.last_grms.geo,
-          sim.potential_obj.last_grms.xray,
-          sim.potential_obj.last_grms.total)
+          grms.geo,
+          getattr(grms, grms.real_or_xray),
+          grms.total)
       log.flush()
   if (params.minimization_max_iterations > 0):
     print >> log, "tardy gradient-driven minimization:"
     log.flush()
     def show_rms(minimizer=None):
       print >> log, "  coor. rmsd: %8.4f" % (
-        xs.sites_cart().rms_difference(sites_cart_start))
+        flex.vec3_double(sim.sites_moved()).rms_difference(sites_cart_start))
       log.flush()
     sim.minimization(
       max_iterations=params.minimization_max_iterations,

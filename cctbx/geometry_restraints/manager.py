@@ -74,6 +74,89 @@ class manager(object):
         result.append(proxy.i_seqs)
     return result
 
+  def construct_tardy_tree(self,
+        sites=None,
+        sites_cart=None,
+        omit_bonds_with_slack_greater_than=0,
+        constrain_dihedrals_with_sigma_less_than=10):
+    assert [sites_cart, sites].count(None) == 1
+    from scitbx.graph import tardy_tree
+    from scitbx import matrix
+    if (sites is None):
+      sites = matrix.col_list(sites_cart)
+    result = tardy_tree.construct(
+      sites=sites,
+      edge_list=self.simple_edge_list(
+        omit_slack_greater_than
+          =omit_bonds_with_slack_greater_than),
+      external_clusters=self.rigid_clusters_due_to_dihedrals_and_planes(
+        constrain_dihedrals_with_sigma_less_than
+          =constrain_dihedrals_with_sigma_less_than))
+    result.finalize()
+    return result
+
+  def reduce_for_tardy(self,
+        tardy_tree,
+        omit_bonds_with_slack_greater_than=0):
+    from cctbx import sgtbx
+    from scitbx.graph.utils import construct_edge_sets
+    #
+    assert tardy_tree.n_vertices == self.bond_params_table.size()
+    loop_edge_sets = construct_edge_sets(
+      n_vertices=tardy_tree.n_vertices,
+      edge_list=tardy_tree.cluster_manager.loop_edges)
+    #
+    def get():
+      result = crystal.pair_sym_table(tardy_tree.n_vertices)
+      bond_params_table = self.bond_params_table
+      for i,pair_sym_dict in enumerate(self.shell_sym_tables[0]):
+        reduced_pair_sym_dict = result[i]
+        for j,sym_ops in pair_sym_dict.items():
+          reduced_sym_ops = sgtbx.stl_vector_rt_mx()
+          for sym_op in sym_ops:
+            if (sym_op.is_unit_mx()):
+              if (  bond_params_table[i][j].slack
+                  > omit_bonds_with_slack_greater_than):
+                continue
+              if (j not in loop_edge_sets[i]):
+                continue
+            reduced_sym_ops.append(sym_op)
+          if (reduced_sym_ops.size() != 0):
+            reduced_pair_sym_dict[j] = reduced_sym_ops
+      return [result]
+    reduced_shell_sym_tables = get()
+    #
+    def get():
+      result = geometry_restraints.shared_angle_proxy()
+      for proxy in self.angle_proxies:
+        i,j,k = proxy.i_seqs
+        if (   j in loop_edge_sets[i]
+            or j in loop_edge_sets[k]):
+          result.append(proxy)
+      if (result.size() == 0):
+        return None
+      return result
+    reduced_angle_proxies = get()
+    #
+    def get():
+      result = geometry_restraints.shared_dihedral_proxy()
+      cluster_indices = tardy_tree.cluster_manager.cluster_indices
+      for proxy in self.dihedral_proxies:
+        if (len(set([cluster_indices[i] for i in proxy.i_seqs[1:3]])) != 1):
+          result.append(proxy)
+      if (result.size() == 0):
+        return None
+      return result
+    reduced_dihedral_proxies = get()
+    #
+    return manager(
+      crystal_symmetry=self.crystal_symmetry,
+      site_symmetry_table=self.site_symmetry_table,
+      bond_params_table=self.bond_params_table,
+      shell_sym_tables=reduced_shell_sym_tables,
+      angle_proxies=reduced_angle_proxies,
+      dihedral_proxies=reduced_dihedral_proxies)
+
   def sites_cart_used_for_pair_proxies(self):
     return self._sites_cart_used_for_pair_proxies
 
