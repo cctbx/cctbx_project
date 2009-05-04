@@ -44,9 +44,9 @@ class reindexing(object):
       self.out = sys.stdout
     self.file_name=file_name
 
-    ## make deep copy for safety
-    self.set_a = set_a.deep_copy().set_observation_type( set_a )
-    self.set_b = set_b.deep_copy().set_observation_type( set_b )
+    ## make deep copy for safety, and make it non-anomalous
+    self.set_a = set_a.deep_copy().set_observation_type( set_a ).average_bijvoet_mates()
+    self.set_b = set_b.deep_copy().set_observation_type( set_b ).average_bijvoet_mates()
 
     self.set_a_xs = crystal.symmetry( unit_cell=self.set_a.unit_cell(),
                                       space_group=self.set_a.space_group() )
@@ -129,11 +129,15 @@ class reindexing(object):
     print >> self.out
     print >> self.out, self.table
     print >> self.out
-    print >> self.out, "If the data is reindexed with operator (%s), the correlation of"%( self.nice_cb_ops[location].as_hkl() )
-    print >> self.out, "the intensities to the reference data is maximized. "
-    if self.file_name is not None:
-      print >> self.out, "This can be done for instance with:"
-      print >> self.out, "  phenix.reflection_file_converter %s --change_of_basis=\"%s\" <output_options> "%(self.file_name, self.nice_cb_ops[location].as_hkl() )
+    if str(self.nice_cb_ops[location].as_hkl()) == "h,k,l":
+      print >> self.out, "The data doesn't need to be reindexed! Indexing is consistent between these datasets."
+    else:
+      print >> self.out, "If the data is reindexed with operator (%s), the correlation of"%( self.nice_cb_ops[location].as_hkl() )
+      print >> self.out, "the intensities to the reference data is maximized. "
+      if self.file_name is not None:
+        print self.file_name
+        print >> self.out, "This can be done for instance with:"
+        print >> self.out, "  phenix.reflection_file_converter %s --change_of_basis=\"%s\" <output_options> "%(self.file_name, self.nice_cb_ops[location].as_hkl() )
     print >> self.out, "-------------------------------------------------------------------------------"
     ##  change things in primitive setting
 
