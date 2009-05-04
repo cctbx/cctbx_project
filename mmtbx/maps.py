@@ -502,26 +502,6 @@ scattering_table = *xray neutron
 def fo_minus_fo_master_params():
   return iotbx.phil.parse(fo_minus_fo_master_params_str, process_includes=False)
 
-def extract_crystal_symmetry(files):
-  crystal_symmetries = []
-  crystal_symmetry = None
-  for cs_source in files:
-    if(cs_source is not None):
-      cs = crystal_symmetry_from_any.extract_from(cs_source)
-      if(cs is not None): crystal_symmetries.append(cs)
-  if(len(crystal_symmetries)==0):
-    raise Sorry("No crystal symmetry is found.")
-  elif(len(crystal_symmetries)>1):
-    cs0 = crystal_symmetries[0]
-    for cs in crystal_symmetries[1:]:
-     if(not cs0.is_similar_symmetry(cs)):
-        raise Sorry("Crystal symmetry mismatch between different files.")
-    crystal_symmetry = crystal_symmetries[0]
-  else:
-    crystal_symmetry = crystal_symmetries[0]
-  assert crystal_symmetry is not None
-  return crystal_symmetry
-
 def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent):
   fmodels = []
   for i_seq, d in enumerate(data_arrays):
@@ -644,10 +624,6 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
       pdb_file_names = [params.phase_source]
     else:
       raise Sorry("No PDB file found.")
-  #
-  if(crystal_symmetry is None):
-    crystal_symmetry = extract_crystal_symmetry(files =
-      [params.f_obs_1_file_name, params.f_obs_2_file_name, params.phase_source])
   # Extaract Fobs1, Fobs2
   f_obss = []
   if(len(processed_args.reflection_files)==2):
