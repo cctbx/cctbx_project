@@ -543,10 +543,30 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent):
   den = flex.sum(flex.abs(fobs_2.data())*flex.abs(fobs_2.data()))
   if(den != 0):
     scale_k1 = flex.sum(flex.abs(fobs_1.data())*flex.abs(fobs_2.data())) / den
+  #
+  fobs_2 = fobs_2.array(data = fobs_2.data()*scale_k1)
+  if(not silent):
+    print >> log, "Fobs1_vs_Fobs2 statistics:"
+    print >> log, "Bin# Resolution range  Compl.  No.of refl. R-factor"
+    fobs_1.setup_binner(reflections_per_bin = 250)
+    fobs_2.use_binning_of(fobs_1)
+    for i_bin in fobs_1.binner().range_used():
+      sel = fobs_1.binner().selection(i_bin)
+      f1  = fobs_1.select(sel)
+      f2  = fobs_2.select(sel)
+      d_max, d_min = fobs_1.d_max_min()
+      compl = fobs_1.completeness(d_max = d_max)
+      n_ref = sel.count(True)
+      r = flex.sum(flex.abs(f1.data()-f2.data())) / \
+        flex.sum(flex.abs(f1.data()+f2.data())/2)
+      d_range = fobs_1.binner().bin_legend(
+                     i_bin = i_bin, show_bin_number = False, show_counts = False)
+      fmt = "%3d: %-17s   %4.2f %6d         %6.4f"
+      print >> log, fmt % (i_bin, d_range, compl, n_ref, r)
   # map coefficients
   diff = miller.array(
     miller_set = f_model,
-    data       = fobs_1.data()-fobs_2.data()*scale_k1)
+    data       = fobs_1.data()-fobs_2.data())
   def phase_transfer(miller_array, phase_source):
     tmp = miller.array(miller_set = miller_array,
       data = flex.double(miller_array.indices().size(), 1)
