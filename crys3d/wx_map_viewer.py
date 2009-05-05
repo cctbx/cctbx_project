@@ -61,11 +61,8 @@ class map_view(wx_viewer.wxGLWindow):
 
     if fft_map is not None:
       unit_cell = fft_map.unit_cell()
-    o = unit_cell.orthogonalization_matrix()
-    self.orthogonaliser = (  o[0:3] + (0,)
-                           + o[3:6] + (0,)
-                           + o[6:9] + (0,)
-                           + (0,0,0,1) )
+    self.orthogonaliser = gltbx.util.augment_3x3(
+      m=unit_cell.orthogonalization_matrix())
     a,b,c = unit_cell.parameters()[0:3]
     if fft_map is not None:
       na, nb, nc = fft_map.n_real()

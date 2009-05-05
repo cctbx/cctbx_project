@@ -82,3 +82,10 @@ def modelview_matrix_as_rt():
   return matrix.rt((
     extract_rotation_from_gl_modelview_matrix(),
     extract_translation_from_gl_modelview_matrix()))
+
+def augment_3x3(m):
+  a,b,c,d,e,f,g,h,i = m
+  return (a,b,c,0,
+          d,e,f,0,
+          g,h,i,0,
+          0,0,0,1)

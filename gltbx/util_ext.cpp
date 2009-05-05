@@ -459,7 +459,7 @@ namespace gltbx { namespace util {
         .def(init<inp_t, inp_t>((
              arg_("vertices"),
              arg_("normals"))))
-        .def("draw_triangles", &wt::draw_triangles)
+        .def("draw_triangles", &wt::draw_triangles, (arg_("triangles")))
       ;
     }
   };
