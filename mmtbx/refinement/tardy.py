@@ -159,13 +159,9 @@ def action(
   sim = tst_molecules.simulation(
     labels=labels,
     sites=sites,
-    bonds=tardy_tree.edge_list,
-    cluster_manager=tardy_tree.cluster_manager,
-    potential_obj=potential_obj,
-    bodies=tst_molecules.construct_bodies(
-      sites=sites,
-      masses=masses,
-      cluster_manager=tardy_tree.cluster_manager))
+    masses=masses,
+    tardy_tree=tardy_tree,
+    potential_obj=potential_obj)
   qd_e_kin_scales = sim.assign_random_velocities()
   def e_as_t(e):
     return kinetic_energy_as_temperature(dof=sim.degrees_of_freedom, e=e)

@@ -420,3 +420,40 @@ class construct(object):
     for i,j in O.collinear_bonds_edge_list:
       print >> out, prefix+"tardy collinear bond:", vertex_labels[i]
       print >> out, prefix+"                     ", vertex_labels[j]
+
+  def viewer_lines_with_colors_legend(O, include_loop_edge_bendings):
+    result = [
+      "Edge colors:",
+      "  turquoise: intra-base-cluster, six degrees of freedom",
+      "  green:     rotatable bond, one degree of freedom",
+      "  blue:      intra-cluster",
+      "  red:       loop edge (restrained only)"]
+    if (include_loop_edge_bendings): result.append(
+      "  purple:    loop bending edge (restrained only)")
+    return result
+
+  def viewer_lines_with_colors(O, include_loop_edge_bendings):
+    result = []
+    cm = O.cluster_manager
+    he = set()
+    for e in cm.hinge_edges:
+      if (e[0] == -1): continue
+      he.add(tuple(sorted(e)))
+    le = set([tuple(sorted(e)) for e in cm.loop_edges])
+    assert len(he.intersection(le)) == 0
+    for line in O.edge_list:
+      if (line in he):
+        color = (0,1,0)
+      elif (line in le):
+        color = (1,0,0)
+      else:
+        cii, cij = [cm.cluster_indices[i] for i in line]
+        if (cii == cij and cm.hinge_edges[cii][0] == -1):
+          color = (0,1,1)
+        else:
+          color = (0,0,1)
+      result.append((line, color))
+    if (include_loop_edge_bendings):
+      for line in cm.loop_edge_bendings:
+        result.append((line, (0.5,0,0.5)))
+    return result
