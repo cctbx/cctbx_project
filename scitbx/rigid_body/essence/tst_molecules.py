@@ -53,14 +53,16 @@ class potential_object(object):
 
 class simulation(object):
 
-  def __init__(O,
-        labels, sites, bonds, cluster_manager, potential_obj, bodies):
+  def __init__(O, labels, sites, masses, tardy_tree, potential_obj):
     O.labels = labels
     O.sites = sites
-    O.bonds = bonds
-    O.cluster_manager = cluster_manager
+    O.masses = masses
+    O.tardy_tree = tardy_tree
     O.potential_obj = potential_obj
-    O.bodies = bodies
+    O.bodies = construct_bodies(
+      sites=sites,
+      masses=masses,
+      cluster_manager=tardy_tree.cluster_manager)
     O.degrees_of_freedom = sum([B.J.degrees_of_freedom for B in O.bodies])
     O.flag_positions_as_changed()
 
@@ -110,9 +112,10 @@ class simulation(object):
       O_AJA = O.AJA()
       O.__sites_moved = [None] * len(O.sites)
       n_done = 0
+      clusters = O.tardy_tree.cluster_manager.clusters
       for iB,B in enumerate(O.bodies):
         AJA = O_AJA[iB]
-        for i_seq in O.cluster_manager.clusters[iB]:
+        for i_seq in clusters[iB]:
           assert O.__sites_moved[i_seq] is None
           O.__sites_moved[i_seq] = AJA * O.sites[i_seq]
           n_done += 1
@@ -135,10 +138,11 @@ class simulation(object):
     O_JAr = O.JAr()
     O_d_e_pot_d_sites = O.d_e_pot_d_sites()
     O.__f_ext_bf = []
+    clusters = O.tardy_tree.cluster_manager.clusters
     for iB,B in enumerate(O.bodies):
       f = matrix.col((0,0,0))
       nc = matrix.col((0,0,0))
-      for i_seq in O.cluster_manager.clusters[iB]:
+      for i_seq in clusters[iB]:
         s = O.sites[i_seq]
         force_bf = -(O_JAr[iB] * O_d_e_pot_d_sites[i_seq])
         f += force_bf
@@ -442,13 +446,12 @@ def construct_simulation(
   return simulation(
     labels=labels,
     sites=sites,
-    bonds=tardy_tree.edge_list,
-    cluster_manager=cm,
+    masses=masses,
+    tardy_tree=tardy_tree,
     potential_obj=potential_object(
       sites=sites,
       wells=sites,
-      restraint_edges=cm.loop_edges+cm.loop_edge_bendings),
-    bodies=construct_bodies(sites=sites, masses=masses, cluster_manager=cm))
+      restraint_edges=cm.loop_edges+cm.loop_edge_bendings))
 
 n_test_simulations = len(tst_tardy_pdb.test_cases)
 

@@ -33,30 +33,12 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.velocity_scaling = velocity_scaling
     self.labels = self.sim.labels
     self.set_points()
-    cm = self.sim.cluster_manager
-    he = set()
-    for e in cm.hinge_edges:
-      if (e[0] == -1): continue
-      he.add(tuple(sorted(e)))
-    le = set([tuple(sorted(e)) for e in cm.loop_edges])
-    assert len(he.intersection(le)) == 0
-    for line in self.sim.bonds:
+    for line,color in sim.tardy_tree.viewer_lines_with_colors(
+          include_loop_edge_bendings=show_loop_edge_bendings):
       self.line_i_seqs.append(line)
-      if (line in he):
-        color = (0,1,0)
-      elif (line in le):
-        color = (1,0,0)
-      else:
-        cii, cij = [cm.cluster_indices[i] for i in line]
-        if (cii == cij and cm.hinge_edges[cii][0] == -1):
-          color = (0,1,1)
-        else:
-          color = (0,0,1)
       self.line_colors[line] = color
-    if (show_loop_edge_bendings):
-      for line in cm.loop_edge_bendings:
-        self.line_i_seqs.append(line)
-        self.line_colors[line] = (0.5,0,0.5)
+    print "\n".join(sim.tardy_tree.viewer_lines_with_colors_legend(
+      include_loop_edge_bendings=show_loop_edge_bendings))
     mcs = minimum_covering_sphere(self.points, epsilon=1.e-2)
     self.minimum_covering_sphere = sphere_3d(
       center=mcs.center(),
@@ -64,12 +46,6 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.flag_show_minimum_covering_sphere = False
     self.flag_show_rotation_center = False
     self.steps_per_tab = 1
-    print "Edge colors:"
-    print "  turquoise: intra-base-cluster, six degrees of freedom"
-    print "  green:     rotatable bond, one degree of freedom"
-    print "  blue:      intra-cluster"
-    print "  red:       loop edge (restrained only)"
-    print "  purple:    loop bending edge (restrained only)"
     self.show_key_stroke_help()
 
   def show_key_stroke_help(self):
