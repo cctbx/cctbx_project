@@ -142,27 +142,27 @@ namespace boost_python { namespace {
       .def("construct_hemisphere_grid",&SimpleSamplerTool::construct_hemisphere_grid)
    ;
 
-    class_<EwaldSphereBaseModel>("EwaldSphereBaseModel",
-      init<const double&, const EwaldSphereBaseModel::matrix&, const double&,
-           const EwaldSphereBaseModel::point&>(
+    class_<ewald_sphere_base_model>("ewald_sphere_base_model",
+      init<const double&, const ewald_sphere_base_model::matrix&, const double&,
+           const ewald_sphere_base_model::point&>(
            (arg_("limiting_resolution"),arg_("orientation"),
             arg_("wavelength"),arg_("axial_direction"))))
-      .def("setH",(void(EwaldSphereBaseModel::*)
-           (const EwaldSphereBaseModel::point&)) &EwaldSphereBaseModel::setH)
-      .def("setH",(void(EwaldSphereBaseModel::*)
-           (const cctbx::miller::index<>&)) &EwaldSphereBaseModel::setH)
+      .def("setH",(void(ewald_sphere_base_model::*)
+           (const ewald_sphere_base_model::point&)) &ewald_sphere_base_model::setH)
+      .def("setH",(void(ewald_sphere_base_model::*)
+           (const cctbx::miller::index<>&)) &ewald_sphere_base_model::setH)
     ;
 
-    class_<RotationAngles, bases<EwaldSphereBaseModel> >("RotationAngles",
-      init<const double&, const EwaldSphereBaseModel::matrix&, const double&,
-           const EwaldSphereBaseModel::point&>(
+    class_<rotation_angles, bases<ewald_sphere_base_model> >("rotation_angles",
+      init<const double&, const ewald_sphere_base_model::matrix&, const double&,
+           const ewald_sphere_base_model::point&>(
            (arg_("limiting_resolution"),arg_("orientation"),
             arg_("wavelength"),arg_("axial_direction"))))
-      .def(init<const EwaldSphereBaseModel&>())
-      .def("__call__", &RotationAngles::operator())
-      .def("axis", &RotationAngles::axis)
-      .def("offsetdot", &RotationAngles::offsetdot)
-      .def("get_intersection_angles", &RotationAngles::get_intersection_angles)
+      .def(init<const ewald_sphere_base_model&>())
+      .def("__call__", &rotation_angles::operator())
+      .def("axis", &rotation_angles::axis)
+      .def("offsetdot", &rotation_angles::offsetdot)
+      .def("get_intersection_angles", &rotation_angles::get_intersection_angles)
     ;
   }
 
