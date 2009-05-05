@@ -151,10 +151,11 @@ def run(fmodels, model, target_weights, params, log):
     tardy_tree=tt,
     potential_obj=potential_obj,
     params=params,
+    callback=None,
     log=log)
 
 def action(
-      labels, sites, masses, tardy_tree, potential_obj, params, log):
+      labels, sites, masses, tardy_tree, potential_obj, params, callback, log):
   sites_cart_start = flex.vec3_double(sites)
   sim = tst_molecules.simulation(
     labels=labels,
@@ -175,6 +176,7 @@ def action(
     params.time_step_pico_seconds)
   print >> log, "  velocity scaling:", params.velocity_scaling
   log.flush()
+  if (callback is not None): callback(sim=sim)
   n_time_steps = 0
   for i_cool_step in xrange(params.number_of_cooling_steps+1):
     t_target = params.start_temperature_kelvin \
@@ -240,6 +242,7 @@ def action(
           getattr(grms, grms.real_or_xray),
           grms.total)
       log.flush()
+      if (callback is not None): callback(sim=sim)
   if (params.minimization_max_iterations > 0):
     print >> log, "tardy gradient-driven minimization:"
     log.flush()
@@ -247,6 +250,7 @@ def action(
       print >> log, "  coor. rmsd: %8.4f" % (
         flex.vec3_double(sim.sites_moved()).rms_difference(sites_cart_start))
       log.flush()
+      if (callback is not None): callback(sim=sim)
     sim.minimization(
       max_iterations=params.minimization_max_iterations,
       callback_after_step=show_rms)

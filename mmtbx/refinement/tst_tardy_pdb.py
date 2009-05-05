@@ -78,7 +78,7 @@ class potential_object(object):
     O.e_pot(sites_moved=sites_moved)
     return matrix.col_list(O.g)
 
-def run(args):
+def run(args, callback=None):
   master_phil = iotbx.phil.parse(
     input_string=mmtbx.refinement.tardy.master_phil_str)
   params = master_phil.extract()
@@ -121,6 +121,7 @@ def run(args):
     tardy_tree=tardy_tree,
     potential_obj=potential_obj,
     params=params,
+    callback=callback,
     log=sys.stdout)
   print
   print format_cpu_times()
