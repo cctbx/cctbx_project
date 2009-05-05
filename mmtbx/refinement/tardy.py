@@ -180,10 +180,16 @@ def action(
     if (callback(sim=sim) == False): return
   n_time_steps = 0
   for i_cool_step in xrange(params.number_of_cooling_steps+1):
-    t_target = params.start_temperature_kelvin \
-             - i_cool_step * (  params.start_temperature_kelvin
-                              - params.final_temperature_kelvin) \
-                           / params.number_of_cooling_steps
+    if (params.number_of_cooling_steps == 0):
+      if (   params.start_temperature_kelvin
+          != params.final_temperature_kelvin):
+        break
+      t_target = params.start_temperature_kelvin
+    else:
+      t_target = params.start_temperature_kelvin \
+               - i_cool_step * (  params.start_temperature_kelvin
+                                - params.final_temperature_kelvin) \
+                             / params.number_of_cooling_steps
     e_kin_target = t_as_e(t=t_target)
     def reset_e_kin(msg):
       sim.reset_e_kin(e_kin_target=e_kin_target)
