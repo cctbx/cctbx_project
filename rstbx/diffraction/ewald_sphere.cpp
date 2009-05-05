@@ -1,6 +1,6 @@
 #include <rstbx/diffraction/ewald_sphere.h>
 
-rstbx::EwaldSphereBaseModel::EwaldSphereBaseModel(const double& R,
+rstbx::ewald_sphere_base_model::ewald_sphere_base_model(const double& R,
                    const matrix& m,
                    const double& w,
                    const point& axial_direction):
@@ -14,12 +14,12 @@ rstbx::EwaldSphereBaseModel::EwaldSphereBaseModel(const double& R,
   }
 
 void
-rstbx::EwaldSphereBaseModel::setH(const point& inH){
+rstbx::ewald_sphere_base_model::setH(const point& inH){
     H = inH;
   }
 
 void
-rstbx::EwaldSphereBaseModel::setH(const cctbx::miller::index<>& inH){
+rstbx::ewald_sphere_base_model::setH(const cctbx::miller::index<>& inH){
     H = point(inH[0],inH[1],inH[2]);
   }
 
@@ -43,8 +43,8 @@ given the sphere S and circle Co in plane P, how about this sequence:
   Not closed form, but easily checked at every step.
 */
 
-rstbx::RotationAngles::RotationAngles(const EwaldSphereBaseModel& ew):
-    EwaldSphereBaseModel(ew){
+rstbx::rotation_angles::rotation_angles(const ewald_sphere_base_model& ew):
+    ewald_sphere_base_model(ew){
 
     Sr = std::sqrt(srsq);
     //make sure that the axial direction is of unit length
@@ -57,18 +57,18 @@ rstbx::RotationAngles::RotationAngles(const EwaldSphereBaseModel& ew):
     // double Sr: radius of Ewald sphere
     // point e_axial_direction: normal to the plane of rotation
 
-rstbx::RotationAngles::RotationAngles(const double& R,
+rstbx::rotation_angles::rotation_angles(const double& R,
                    const matrix& m,
                    const double& w,
                    const point& axial_direction):
-    EwaldSphereBaseModel(R,m,w,axial_direction){
+    ewald_sphere_base_model(R,m,w,axial_direction){
     Sr = std::sqrt(srsq);
     e_axial_direction = e_axial_direction.normalize();
     a_dot_s = e_axial_direction * spherecenter;
 }
 
 bool
-rstbx::RotationAngles::operator()(scitbx::vec3<double>const& H){
+rstbx::rotation_angles::operator()(scitbx::vec3<double>const& H){
   setH(H);
   //these are mandatory criteria~should be factored into the base class later
   point Hxyz = orientation * H; //H coordinates in lab orthonormal frame
