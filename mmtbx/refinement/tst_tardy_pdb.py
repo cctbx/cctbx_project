@@ -1,15 +1,17 @@
 import mmtbx.refinement.tardy
 from mmtbx.monomer_library import pdb_interpretation
 import mmtbx.monomer_library.server as mon_lib_server
+import iotbx.pdb
 import iotbx.phil
 import cctbx.geometry_restraints
 from cctbx import maptbx
 from cctbx.array_family import flex
 from scitbx import matrix
+import libtbx.phil.command_line
 from libtbx.utils import format_cpu_times
 from libtbx.str_utils import format_value
 from libtbx import group_args
-import sys
+import sys, os
 
 class potential_object(object):
 
@@ -78,35 +80,84 @@ class potential_object(object):
     O.e_pot(sites_moved=sites_moved)
     return matrix.col_list(O.g)
 
+master_phil_str_overrides = """\
+start_temperature_kelvin = 1000
+final_temperature_kelvin = 300
+number_of_cooling_steps = 7
+number_of_time_steps = 10
+time_step_pico_seconds = 0.001
+"""
+
 def run(args, callback=None):
   master_phil = iotbx.phil.parse(
     input_string=mmtbx.refinement.tardy.master_phil_str)
-  params = master_phil.extract()
-  params.start_temperature_kelvin = 1000
-  params.final_temperature_kelvin = 300
-  params.number_of_cooling_steps = 7
-  params.number_of_time_steps = 10
-  params.time_step_pico_seconds = 0.001
+  phil_objects = [
+    iotbx.phil.parse(input_string=master_phil_str_overrides)]
+  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
+    master_phil=master_phil)
+  pdb_files = []
+  other_files = []
+  for arg in args:
+    if (os.path.isfile(arg)):
+      if (iotbx.pdb.is_pdb_file(file_name=arg)):
+        pdb_files.append(arg)
+        arg = None
+      else:
+        try: phil_obj = iotbx.phil.parse(file_name=arg)
+        except KeyboardInterrupt: raise
+        except:
+          other_files.append(arg)
+        else:
+          phil_objects.append(phil_obj)
+        arg = None
+    if (arg is not None):
+      try: command_line_params = argument_interpreter.process(arg=arg)
+      except KeyboardInterrupt: raise
+      except: raise Sorry("Command-line argument not recognized: %s" % arg)
+      else: phil_objects.append(command_line_params)
+  params = master_phil.fetch(sources=phil_objects).extract()
   master_phil.format(params).show()
   print
+  if (len(pdb_files) != 0):
+    print "PDB files:"
+    for file_name in pdb_files:
+      print " ", file_name
+    print
+  if (len(other_files) != 0):
+    print "Other files:"
+    for file_name in other_files:
+      print " ", file_name
+    print
+  #
+  assert len(pdb_files) in [1, 2]
   #
   processed_pdb_files = pdb_interpretation.run(
-    args=args,
+    args=pdb_files[-1:]+other_files,
     strict_conflict_handling=False,
     substitute_non_crystallographic_unit_cell_if_necessary=True,
     return_all_processed_pdb_files=True)
   assert len(processed_pdb_files) == 1
   print
+  #
   xs = processed_pdb_files[0].xray_structure()
   geo_manager = processed_pdb_files[0].geometry_restraints_manager()
-  sites = matrix.col_list(xs.sites_cart())
   labels = [sc.label for sc in xs.scatterers()]
+  sites = matrix.col_list(xs.sites_cart())
+  masses = xs.atomic_weights()
   tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
   tardy_tree.show_summary(vertex_labels=labels)
   print
   reduced_geo_manager = geo_manager.reduce_for_tardy(tardy_tree=tardy_tree)
+  #
+  if (len(pdb_files) == 2):
+    ideal_pdb_inp = iotbx.pdb.input(file_name=pdb_files[0])
+    ideal_pdb_hierarchy = ideal_pdb_inp.construct_hierarchy()
+    assert ideal_pdb_hierarchy.is_similar_hierarchy(
+      processed_pdb_files[0].all_chain_proxies.pdb_hierarchy)
+    xs.set_sites_cart(sites_cart=ideal_pdb_hierarchy.atoms().extract_xyz())
   fft_map = xs.structure_factors(d_min=3).f_calc().fft_map()
   fft_map.apply_sigma_scaling()
+  #
   potential_obj = potential_object(
     density_map=fft_map.real_map(),
     geo_manager=geo_manager,
@@ -117,7 +168,7 @@ def run(args, callback=None):
   mmtbx.refinement.tardy.action(
     labels=labels,
     sites=sites,
-    masses=xs.atomic_weights(),
+    masses=masses,
     tardy_tree=tardy_tree,
     potential_obj=potential_obj,
     params=params,
