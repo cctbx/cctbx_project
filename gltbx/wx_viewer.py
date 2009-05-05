@@ -42,7 +42,7 @@ def v3distsq(a, b):
 
 VIEWER_UPDATE_ID = wx.NewId()
 class ViewerUpdateEvent (wx.PyEvent) :
-  def __init__ (self, data, recenter=False) :
+  def __init__ (self, data=None, recenter=False) :
     wx.PyEvent.__init__(self)
     self.data = data
     self.recenter = recenter
@@ -609,6 +609,7 @@ class show_points_and_lines_mixin(wxGLWindow):
     if (self.points_display_list is None):
       self.points_display_list = gltbx.gl_managed.display_list()
       self.points_display_list.compile()
+      glLineWidth(1)
       for point in self.points:
         self.draw_cross_at(point)
       self.points_display_list.end()
