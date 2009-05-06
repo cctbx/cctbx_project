@@ -1,4 +1,4 @@
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, not_approx_equal, eps_eq, show_diff
 from iotbx.shelx import from_ins
 from cctbx.array_family import flex
 from cctbx import adptbx
@@ -7,6 +7,7 @@ from cctbx import adp_restraints
 from scitbx import matrix
 import libtbx.load_env
 import math, os
+from cStringIO import StringIO
 
 def finite_difference_gradients(restraint_type,
                                 proxy,
@@ -217,21 +218,28 @@ def exercise_rigid_bond():
   #
   gradients_aniso_cart = flex.sym_mat3_double(sites_cart.size(), (0,0,0,0,0,0))
   gradients_iso = flex.double(sites_cart.size(), 0)
-  proxies = adp_restraints.shared_rigid_bond_proxy([p])
+  proxies = adp_restraints.shared_rigid_bond_proxy([p,p])
+  residuals = adp_restraints.rigid_bond_residuals(
+    sites_cart=sites_cart, u_cart=u_cart, proxies=proxies)
+  assert approx_equal(residuals, (r.residual(),r.residual()))
+  deltas = adp_restraints.rigid_bond_deltas(
+    sites_cart=sites_cart, u_cart=u_cart, proxies=proxies)
+  assert approx_equal(deltas, (r.delta_z(),r.delta_z()))
   residual_sum = adp_restraints.rigid_bond_residual_sum(
     sites_cart=sites_cart,
     u_cart=u_cart,
     proxies=proxies,
     gradients_aniso_cart=gradients_aniso_cart)
-  assert approx_equal(r.gradients(), gradients_aniso_cart[1:3])
-  assert approx_equal(r.residual(), residual_sum)
+  assert approx_equal(residual_sum, 2 * r.residual())
+  for g,e in zip(gradients_aniso_cart[1:3], r.gradients()):
+    assert approx_equal(g, matrix.col(e)*2)
   fd_grads_aniso, fd_grads_iso = finite_difference_gradients(
     restraint_type=adp_restraints.rigid_bond,
     proxy=p,
     sites_cart=sites_cart,
     u_cart=u_cart)
   for g,e in zip(gradients_aniso_cart, fd_grads_aniso):
-    assert approx_equal(g, e)
+    assert approx_equal(g, matrix.col(e)*2)
   #
   # check frame invariance of residual
   #
@@ -269,6 +277,8 @@ def exercise_adp_similarity():
   assert approx_equal(a.residual(), 68)
   assert approx_equal(a.gradients(),
     ((-2.0, -2.0, 0.0, -8.0, -8.0, 20.0), (2.0, 2.0, -0.0, 8.0, 8.0, -20.0)))
+  assert approx_equal(a.deltas(), (-1.0, -1.0, 0.0, -2.0, -2.0, 5.0))
+  assert approx_equal(a.rms_deltas(), 2.7487370837451071)
   #
   u_cart = ((1,3,2,4,3,6),(-1,-1,-1,-1,-1,-1))
   u_iso = (-1,2)
@@ -282,6 +292,8 @@ def exercise_adp_similarity():
   assert approx_equal(a.residual(), 2)
   assert approx_equal(a.gradients(),
     ((-2.0, 2.0, 0.0, 0.0, 0.0, 0.0), (2.0, -2.0, 0.0, 0.0, 0.0, 0.0)))
+  assert approx_equal(a.deltas(), (-1.0, 1.0, 0.0, 0.0, 0.0, 0.0))
+  assert approx_equal(a.rms_deltas(), 0.47140452079103168)
   #
   i_seqs_aa = (1,2) # () - ()
   i_seqs_ai = (1,0) # () - o
@@ -310,7 +322,13 @@ def exercise_adp_similarity():
     #
     gradients_aniso_cart = flex.sym_mat3_double(u_cart.size(), (0,0,0,0,0,0))
     gradients_iso = flex.double(u_cart.size(), 0)
-    proxies = adp_restraints.shared_adp_similarity_proxy([p])
+    proxies = adp_restraints.shared_adp_similarity_proxy([p,p])
+    residuals = adp_restraints.adp_similarity_residuals(
+      u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, proxies=proxies)
+    assert approx_equal(residuals, (a.residual(),a.residual()))
+    deltas_rms = adp_restraints.adp_similarity_deltas_rms(
+      u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, proxies=proxies)
+    assert approx_equal(deltas_rms, (a.rms_deltas(),a.rms_deltas()))
     residual_sum = adp_restraints.adp_similarity_residual_sum(
       u_cart=u_cart,
       u_iso=u_iso,
@@ -318,6 +336,7 @@ def exercise_adp_similarity():
       proxies=proxies,
       gradients_aniso_cart=gradients_aniso_cart,
       gradients_iso=gradients_iso)
+    assert approx_equal(residual_sum, 2 * a.residual())
     fd_grads_aniso, fd_grads_iso = finite_difference_gradients(
       restraint_type=adp_restraints.adp_similarity,
       proxy=p,
@@ -325,9 +344,9 @@ def exercise_adp_similarity():
       u_iso=u_iso,
       use_u_aniso=use_u_aniso)
     for g,e in zip(gradients_aniso_cart, fd_grads_aniso):
-      assert approx_equal(g, e)
+      assert approx_equal(g,  matrix.col(e)*2)
     for g,e in zip(gradients_iso, fd_grads_iso):
-      assert approx_equal(g, e)
+      assert approx_equal(g, e*2)
   #
   # check frame invariance of residual
   #
@@ -366,11 +385,18 @@ def exercise_isotropic_adp():
   assert approx_equal(i.u_cart, u_cart)
   assert approx_equal(i.weight, weight)
   assert approx_equal(i.deltas(), expected_deltas)
+  assert approx_equal(i.rms_deltas(), 4.5704364002673632)
   assert approx_equal(i.residual(), 376.0)
   assert approx_equal(i.gradients(), expected_gradients)
   gradients_aniso_cart = flex.sym_mat3_double(1, (0,0,0,0,0,0))
   proxies = adp_restraints.shared_isotropic_adp_proxy([p,p])
   u_cart = flex.sym_mat3_double((u_cart,))
+  residuals = adp_restraints.isotropic_adp_residuals(
+    u_cart=u_cart, proxies=proxies)
+  assert approx_equal(residuals, (i.residual(),i.residual()))
+  deltas_rms = adp_restraints.isotropic_adp_deltas_rms(
+    u_cart=u_cart, proxies=proxies)
+  assert approx_equal(deltas_rms, (i.rms_deltas(),i.rms_deltas()))
   residual_sum = adp_restraints.isotropic_adp_residual_sum(
     u_cart=u_cart,
     proxies=proxies,
@@ -395,8 +421,230 @@ def exercise_isotropic_adp():
     a = adp_restraints.isotropic_adp(u_cart=u_cart_rot.as_sym_mat3(), weight=1)
     assert approx_equal(a.residual(), expected_residual)
 
+def exercise_proxy_show():
+  sites_cart = flex.vec3_double((
+    (-3.1739,10.8317,7.5653),(-2.5419,9.7567,6.6306),
+    (-3.3369,8.8794,4.5191),(-3.4640,9.9882,5.3896)))
+  site_labels = ("C1", "C2", "O16", "N8")
+  u_cart = flex.sym_mat3_double((
+    (0.0153,0.0206,0.0234,0.0035,-0.0052,-0.0051),
+    (0.0185,0.0109,0.0206,0.0005,-0.0010,0.0002),
+    (0.0295,0.0203,0.0218,-0.0010,-0.0003,-0.0044),
+    (0.0159,0.0154,0.0206,-0.0003,0.0004,0.0036)))
+  u_iso = flex.double((-1,-1,-1,-1))
+  use_u_aniso = flex.bool((True,True,True,True))
+  #
+  proxies = adp_restraints.shared_adp_similarity_proxy()
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    u_cart=flex.sym_mat3_double(),
+    u_iso=flex.double(),
+    use_u_aniso=flex.bool(),
+    f=sio)
+  assert not show_diff(sio.getvalue(), """\
+ADP similarity restraints: 0
+""")
+  proxies = adp_restraints.shared_adp_similarity_proxy([
+    adp_restraints.adp_similarity_proxy(i_seqs=[0,1],weight=25),
+    adp_restraints.adp_similarity_proxy(i_seqs=[2,3],weight=0.3)])
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    u_cart=u_cart,
+    u_iso=u_iso,
+    use_u_aniso=use_u_aniso,
+    f=sio,
+    prefix=":")
+  assert not show_diff(sio.getvalue(), """\
+:ADP similarity restraints: 2
+:Sorted by residual:
+:scatterers 0
+:           1
+:         delta    sigma   weight rms_deltas residual
+: U11 -3.20e-03 2.00e-01 2.50e+01   4.96e-03 5.54e-03
+: U22  9.70e-03 2.00e-01 2.50e+01
+: U33  2.80e-03 2.00e-01 2.50e+01
+: U12  3.00e-03 2.00e-01 2.50e+01
+: U13 -4.20e-03 2.00e-01 2.50e+01
+: U23 -5.30e-03 2.00e-01 2.50e+01
+:scatterers 2
+:           3
+:         delta    sigma   weight rms_deltas residual
+: U11  1.36e-02 1.83e+00 3.00e-01   6.15e-03 1.02e-04
+: U22  4.90e-03 1.83e+00 3.00e-01
+: U33  1.20e-03 1.83e+00 3.00e-01
+: U12 -7.00e-04 1.83e+00 3.00e-01
+: U13 -7.00e-04 1.83e+00 3.00e-01
+: U23 -8.00e-03 1.83e+00 3.00e-01
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="rms_deltas",
+    site_labels=site_labels,
+    u_cart=u_cart,
+    u_iso=u_iso,
+    use_u_aniso=use_u_aniso,
+    f=sio,
+    prefix="=")
+  assert not show_diff(sio.getvalue(), """\
+=ADP similarity restraints: 2
+=Sorted by rms_deltas:
+=scatterers O16
+=           N8
+=         delta    sigma   weight rms_deltas residual
+= U11  1.36e-02 1.83e+00 3.00e-01   6.15e-03 1.02e-04
+= U22  4.90e-03 1.83e+00 3.00e-01
+= U33  1.20e-03 1.83e+00 3.00e-01
+= U12 -7.00e-04 1.83e+00 3.00e-01
+= U13 -7.00e-04 1.83e+00 3.00e-01
+= U23 -8.00e-03 1.83e+00 3.00e-01
+=scatterers C1
+=           C2
+=         delta    sigma   weight rms_deltas residual
+= U11 -3.20e-03 2.00e-01 2.50e+01   4.96e-03 5.54e-03
+= U22  9.70e-03 2.00e-01 2.50e+01
+= U33  2.80e-03 2.00e-01 2.50e+01
+= U12  3.00e-03 2.00e-01 2.50e+01
+= U13 -4.20e-03 2.00e-01 2.50e+01
+= U23 -5.30e-03 2.00e-01 2.50e+01
+""")
+  #
+  proxies = adp_restraints.shared_isotropic_adp_proxy()
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    u_cart=flex.sym_mat3_double(),
+    f=sio)
+  assert not show_diff(sio.getvalue(), """\
+Isotropic ADP restraints: 0
+""")
+  proxies = adp_restraints.shared_isotropic_adp_proxy([
+    adp_restraints.isotropic_adp_proxy(i_seq=0,weight=25),
+    adp_restraints.isotropic_adp_proxy(i_seq=2,weight=0.3)])
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    site_labels=site_labels,
+    u_cart=u_cart,
+    f=sio,
+    prefix=" ")
+  assert not show_diff(sio.getvalue(), """\
+ Isotropic ADP restraints: 2
+ Sorted by residual:
+ scatterer C1
+          delta    sigma   weight rms_deltas residual
+  U11 -4.47e-03 2.00e-01 2.50e+01   4.27e-03 4.11e-03
+  U22  8.33e-04 2.00e-01 2.50e+01
+  U33  3.63e-03 2.00e-01 2.50e+01
+  U12  3.50e-03 2.00e-01 2.50e+01
+  U13 -5.20e-03 2.00e-01 2.50e+01
+  U23 -5.10e-03 2.00e-01 2.50e+01
+ scatterer O16
+          delta    sigma   weight rms_deltas residual
+  U11  5.63e-03 1.83e+00 3.00e-01   3.16e-03 2.69e-05
+  U22 -3.57e-03 1.83e+00 3.00e-01
+  U33 -2.07e-03 1.83e+00 3.00e-01
+  U12 -1.00e-03 1.83e+00 3.00e-01
+  U13 -3.00e-04 1.83e+00 3.00e-01
+  U23 -4.40e-03 1.83e+00 3.00e-01
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="rms_deltas",
+    u_cart=u_cart,
+    f=sio,
+    prefix="$")
+  assert not show_diff(sio.getvalue(), """\
+$Isotropic ADP restraints: 2
+$Sorted by rms_deltas:
+$scatterer 0
+$         delta    sigma   weight rms_deltas residual
+$ U11 -4.47e-03 2.00e-01 2.50e+01   4.27e-03 4.11e-03
+$ U22  8.33e-04 2.00e-01 2.50e+01
+$ U33  3.63e-03 2.00e-01 2.50e+01
+$ U12  3.50e-03 2.00e-01 2.50e+01
+$ U13 -5.20e-03 2.00e-01 2.50e+01
+$ U23 -5.10e-03 2.00e-01 2.50e+01
+$scatterer 2
+$         delta    sigma   weight rms_deltas residual
+$ U11  5.63e-03 1.83e+00 3.00e-01   3.16e-03 2.69e-05
+$ U22 -3.57e-03 1.83e+00 3.00e-01
+$ U33 -2.07e-03 1.83e+00 3.00e-01
+$ U12 -1.00e-03 1.83e+00 3.00e-01
+$ U13 -3.00e-04 1.83e+00 3.00e-01
+$ U23 -4.40e-03 1.83e+00 3.00e-01
+""")
+  #
+  proxies = adp_restraints.shared_rigid_bond_proxy()
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=flex.vec3_double(),
+    u_cart=flex.sym_mat3_double(),
+    f=sio)
+  assert not show_diff(sio.getvalue(), """\
+Rigid bond restraints: 0
+""")
+  proxies = adp_restraints.shared_rigid_bond_proxy([
+    adp_restraints.rigid_bond_proxy(i_seqs=(0,1),weight=25),
+    adp_restraints.rigid_bond_proxy(i_seqs=(0,2),weight=15),
+    adp_restraints.rigid_bond_proxy(i_seqs=(2,3),weight=25),
+    adp_restraints.rigid_bond_proxy(i_seqs=(3,1),weight=30)])
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    sites_cart=sites_cart,
+    site_labels=site_labels,
+    u_cart=u_cart,
+    f=sio,
+    prefix="*")
+  assert not show_diff(sio.getvalue(), """\
+*Rigid bond restraints: 4
+*Sorted by residual:
+*scatterers O16
+*           N8
+*   delta_z    sigma   weight residual
+*  3.96e-03 2.00e-01 2.50e+01 3.92e-04
+*scatterers C1
+*           C2
+*   delta_z    sigma   weight residual
+*  1.08e-03 2.00e-01 2.50e+01 2.89e-05
+*scatterers C1
+*           O16
+*   delta_z    sigma   weight residual
+*  4.03e-04 2.58e-01 1.50e+01 2.44e-06
+*scatterers N8
+*           C2
+*   delta_z    sigma   weight residual
+*  1.54e-04 1.83e-01 3.00e+01 7.16e-07
+""")
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="delta",
+    sites_cart=sites_cart,
+    u_cart=u_cart,
+    f=sio,
+    prefix="||",
+    max_items=2)
+  assert not show_diff(sio.getvalue(), """\
+||Rigid bond restraints: 4
+||Sorted by delta:
+||scatterers 2
+||           3
+||   delta_z    sigma   weight residual
+||  3.96e-03 2.00e-01 2.50e+01 3.92e-04
+||scatterers 0
+||           1
+||   delta_z    sigma   weight residual
+||  1.08e-03 2.00e-01 2.50e+01 2.89e-05
+||... (remaining 2 not shown)
+""")
+
 def exercise():
+  exercise_proxy_show()
   exercise_adp_similarity()
+  exercise_isotropic_adp()
   exercise_rigid_bond()
   exercise_rigid_bond_test()
   print "OK"

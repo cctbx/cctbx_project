@@ -65,6 +65,7 @@ namespace {
         .add_property("u_cart", make_getter(&w_t::u_cart, rbv()))
         .add_property("weight", make_getter(&w_t::weight, rbv()))
         .def("deltas", &w_t::deltas)
+        .def("rms_deltas", &w_t::rms_deltas)
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
       ;
@@ -77,15 +78,16 @@ namespace {
     using namespace boost::python;
     isotropic_adp_wrappers::wrap();
     isotropic_adp_proxy_wrappers::wrap();
-    def("isotropic_adp_residual_sum",
-      (double(*)(
-        af::const_ref<scitbx::sym_mat3<double> > const&,
-        af::const_ref<isotropic_adp_proxy> const&,
-        af::ref<scitbx::sym_mat3<double> > const&))
-      isotropic_adp_residual_sum,
+    def("isotropic_adp_residual_sum", isotropic_adp_residual_sum,
       (arg_("u_cart"),
        arg_("proxies"),
        arg_("gradients_aniso_cart")));
+    def("isotropic_adp_residuals", isotropic_adp_residuals,
+      (arg_("u_cart"),
+       arg_("proxies")));
+    def("isotropic_adp_deltas_rms", isotropic_adp_deltas_rms,
+      (arg_("u_cart"),
+       arg_("proxies")));
   }
 
 }

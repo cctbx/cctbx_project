@@ -83,6 +83,17 @@ namespace cctbx { namespace adp_restraints {
     return result;
   }
 
+  double
+  adp_similarity::rms_deltas() const {
+    af::tiny<double, 9> all_deltas;
+    for(int i=0;i<6;i++) {
+      all_deltas[i] = deltas_[i];
+      // include off-diagonals twice
+      if (i > 2) { all_deltas[i+3] = deltas_[i]; }
+    }
+    return std::sqrt(af::mean_sq(all_deltas));
+  }
+
   //! Gradient of residual with respect to u_cart[0]
   scitbx::sym_mat3<double>
   adp_similarity::gradient_0() const
@@ -140,12 +151,12 @@ namespace cctbx { namespace adp_restraints {
 
   double
   adp_similarity_residual_sum(
-  af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
-  af::const_ref<double> const& u_iso,
-  af::const_ref<bool> const& use_u_aniso,
-  af::const_ref<adp_similarity_proxy> const& proxies,
-  af::ref<scitbx::sym_mat3<double> > const& gradients_aniso_cart,
-  af::ref<double> const& gradients_iso)
+    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
+    af::const_ref<double> const& u_iso,
+    af::const_ref<bool> const& use_u_aniso,
+    af::const_ref<adp_similarity_proxy> const& proxies,
+    af::ref<scitbx::sym_mat3<double> > const& gradients_aniso_cart,
+    af::ref<double> const& gradients_iso)
   {
     CCTBX_ASSERT(   gradients_aniso_cart.size() == 0
                  || gradients_aniso_cart.size() == u_cart.size());
@@ -158,6 +169,36 @@ namespace cctbx { namespace adp_restraints {
       if (gradients_aniso_cart.size() != 0) {
         restraint.add_gradients(gradients_aniso_cart, gradients_iso, proxy.i_seqs);
       }
+    }
+    return result;
+  }
+
+  af::shared<double>
+  adp_similarity_residuals(
+    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
+    af::const_ref<double> const& u_iso,
+    af::const_ref<bool> const& use_u_aniso,
+    af::const_ref<adp_similarity_proxy> const& proxies)
+  {
+    af::shared<double> result((af::reserve(proxies.size())));
+    for(std::size_t i=0;i<proxies.size();i++) {
+      adp_similarity_proxy const& proxy = proxies[i];
+      adp_similarity restraint(u_cart, u_iso, use_u_aniso, proxy);
+      result.push_back(restraint.residual());
+    }
+    return result;
+  }
+
+  af::shared<double>
+  adp_similarity_deltas_rms(
+    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
+    af::const_ref<double> const& u_iso,
+    af::const_ref<bool> const& use_u_aniso,
+    af::const_ref<adp_similarity_proxy> const& proxies)
+  {
+    af::shared<double> result((af::reserve(proxies.size())));
+    for(std::size_t i=0;i<proxies.size();i++) {
+      result.push_back(adp_similarity(u_cart, u_iso, use_u_aniso, proxies[i]).rms_deltas());
     }
     return result;
   }
