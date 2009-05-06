@@ -269,7 +269,7 @@ class simulation(object):
     O.flag_positions_as_changed()
 
   def minimization(O, max_iterations=None, callback_after_step=None):
-    refinery(
+    return refinery(
       sim=O,
       max_iterations=max_iterations,
       callback_after_step=callback_after_step)
@@ -277,18 +277,37 @@ class simulation(object):
 class refinery(object):
 
   def __init__(O, sim, max_iterations=None, callback_after_step=None):
-    O.sim = sim
-    O.callback_after_step = callback_after_step
-    O.x = sim.pack_q()
     import scitbx.lbfgs
-    scitbx.lbfgs.run(
-      target_evaluator=O,
-      termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=max_iterations),
-      exception_handling_params=scitbx.lbfgs.exception_handling_parameters(
-        ignore_line_search_failed_step_at_lower_bound=True))
+    O.sim = sim
+    O.__callback_after_step = callback_after_step
+    O.x = sim.pack_q()
+    O.function_evaluations_total = 0
+    O.lbfgs_steps_total = 0
+    O.lbfgs_restarts = 0
+    while True:
+      lbfgs_steps_prev = O.lbfgs_steps_total
+      scitbx.lbfgs.run(
+        target_evaluator=O,
+        termination_params=scitbx.lbfgs.termination_parameters(
+          max_iterations=max_iterations),
+        exception_handling_params=scitbx.lbfgs.exception_handling_parameters(
+          ignore_line_search_failed_step_at_lower_bound=True))
+      if (O.lbfgs_steps_total == lbfgs_steps_prev):
+        break
+      if (max_iterations is not None):
+        if (O.lbfgs_steps_total >= max_iterations):
+          break
+        max_iterations -= O.lbfgs_steps_total
+      O.lbfgs_restarts += 1
+    del O.x
+
+  def callback_after_step(O, minimizer):
+    O.lbfgs_steps_total += 1
+    if (O.__callback_after_step is not None):
+      O.__callback_after_step(minimizer=minimizer)
 
   def compute_functional_and_gradients(O):
+    O.function_evaluations_total += 1
     O.sim.unpack_q(packed_q=O.x)
     f = O.sim.e_pot()
     g = flex.double()
