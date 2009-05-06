@@ -21,6 +21,21 @@ class cluster_manager(object):
     O.loop_edges = None
     O.loop_edge_bendings = None
 
+  def show_summary(O, out=None, prefix=""):
+    from libtbx.utils import xlen, plural_s
+    import sys
+    if (out is None): out = sys.stdout
+    print >> out, prefix+"number of clusters:", len(O.clusters)
+    print >> out, prefix+"merge clusters with multiple connections: %d pass%s"\
+      % plural_s(O.merge_clusters_with_multiple_connections_passes, "es")
+    print >> out, prefix+"number of overlapping rigid clusters:", \
+      xlen(O.overlapping_rigid_clusters)
+    print >> out, prefix+"number of hinge edges:", xlen(O.hinge_edges)
+    print >> out, prefix+"number of loop edges:", xlen(O.loop_edges)
+    print >> out, prefix+"number of loop edge bendings:", \
+      xlen(O.loop_edge_bendings)
+    return O
+
   def connect_clusters(O, cii, cij, optimize):
     assert O.hinge_edges is None
     if (cii == cij): return None
@@ -304,6 +319,34 @@ class construct(object):
     O.cluster_manager.tidy()
     O.find_cluster_loop_repeats = None
 
+  def show_summary(O, vertex_labels, out=None, prefix=""):
+    from libtbx.str_utils import format_value
+    from libtbx.utils import xlen, plural_s
+    import sys
+    if (out is None): out = sys.stdout
+    if (vertex_labels is None):
+      fmt = "%%0%dd" % len(str(max(0, O.n_vertices-1)))
+      vertex_labels = [fmt % i for i in xrange(O.n_vertices)]
+    else:
+      assert len(vertex_labels) == O.n_vertices
+    print >> out, prefix+"number of vertices:", O.n_vertices
+    print >> out, prefix+"number of edges:", xlen(O.edge_list)
+    print >> out, prefix+"collinear bonds tolerance: %s deg" % \
+      format_value(format="%.6g", value=O.collinear_bonds_tolerance_deg)
+    if (O.find_cluster_loop_repeats is None):
+      print >> out, prefix+"find cluster loops: None"
+    else:
+      print >> out, prefix+"find cluster loops: %d repeat%s" % \
+        plural_s(O.find_cluster_loop_repeats)
+    print >> out, prefix+"number of collinear bonds:", \
+      xlen(O.collinear_bonds_edge_list)
+    if (O.collinear_bonds_edge_list is not None):
+      for i,j in O.collinear_bonds_edge_list:
+        print >> out, prefix+"tardy collinear bond:", vertex_labels[i]
+        print >> out, prefix+"                     ", vertex_labels[j]
+    O.cluster_manager.show_summary(out=out, prefix=prefix)
+    return O
+
   def extract_edge_list(O):
     return extract_edge_list(edge_sets=O.edge_sets)
 
@@ -409,17 +452,6 @@ class construct(object):
     cm.construct_spanning_trees(edge_sets=O.edge_sets)
     cm.find_loop_edge_bendings(edge_sets=O.edge_sets)
     return O
-
-  def show_summary(O, vertex_labels, out=None, prefix=""):
-    # XXX rudimentary
-    import sys
-    if (out is None): out = sys.stdout
-    if (vertex_labels is None):
-      fmt = "%%0%dd" % len(str(max(0, O.n_vertices-1)))
-      vertex_labels = [fmt % i for i in xrange(O.n_vertices)]
-    for i,j in O.collinear_bonds_edge_list:
-      print >> out, prefix+"tardy collinear bond:", vertex_labels[i]
-      print >> out, prefix+"                     ", vertex_labels[j]
 
   def viewer_lines_with_colors_legend(O, include_loop_edge_bendings):
     result = [
