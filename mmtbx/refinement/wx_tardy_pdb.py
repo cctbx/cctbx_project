@@ -126,16 +126,27 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
 
   def first_action_callback(O, sim):
     O.sim = sim
+    spo = sim.potential_obj
     O.draw_map.set_unit_cell_and_density_map(
-      unit_cell=sim.potential_obj.geo_manager.crystal_symmetry.unit_cell(),
-      density_map=sim.potential_obj.density_map)
+      unit_cell=spo.geo_manager.crystal_symmetry.unit_cell(),
+      density_map=spo.density_map)
     O.points = flex.vec3_double(sim.sites_moved())
+    if (spo.ideal_sites_cart is not None):
+      O.points.extend(spo.ideal_sites_cart)
     if (O.points.size() < 20):
-      O.labels = sim.labels
+      if (spo.ideal_sites_cart is None):
+        O.labels = sim.labels
+      else:
+        O.labels = sim.labels + [""] * len(sim.labels)
     for line,color in sim.tardy_tree.viewer_lines_with_colors(
           include_loop_edge_bendings=False):
       O.line_i_seqs.append(line)
       O.line_colors[line] = color
+      if (spo.ideal_sites_cart is not None):
+        n = sim.tardy_tree.n_vertices
+        ideal_line = tuple([i+n for i in line])
+        O.line_i_seqs.append(ideal_line)
+        O.line_colors[ideal_line] = (0.8,0.8,0.8)
     print "\n".join(sim.tardy_tree.viewer_lines_with_colors_legend(
       include_loop_edge_bendings=False))
     mcs = minimum_covering_sphere(O.points, epsilon=1.e-2)
@@ -169,7 +180,9 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     wx.PostEvent(O, wx_viewer.ViewerUpdateEvent())
 
   def OnUpdate(O, event) :
-    O.points = flex.vec3_double(O.sim.sites_moved())
+    sites_moved = O.sim.sites_moved()
+    for i in xrange(len(sites_moved)):
+      O.points[i] = sites_moved[i]
     O.labels_display_list = None
     O.lines_display_list = None
     O.points_display_list = None
