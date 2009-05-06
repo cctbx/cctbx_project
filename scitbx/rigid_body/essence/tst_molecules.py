@@ -340,7 +340,7 @@ def construct_bodies(sites, masses, cluster_manager):
     body_masses = [masses[i] for i in cluster]
     he = cm.hinge_edges[ic]
     if (he[0] == -1):
-      if (len(sites) == 1):
+      if (len(body_sites) == 1):
         body = translational_body(sites=body_sites, masses=body_masses)
       else:
         body = six_dof_body(sites=body_sites, masses=body_masses)
