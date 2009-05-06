@@ -9,6 +9,9 @@ from cctbx import adptbx
 import scitbx.restraints
 from scitbx import matrix
 
+from cctbx.geometry_restraints import weight_as_sigma
+from cctbx.geometry_restraints import sigma_as_weight
+
 class energies_iso(scitbx.restraints.energies):
 
   def __init__(self,
@@ -194,3 +197,213 @@ class adp_aniso_restraints(object):
     #   assert not fl.use_u_aniso()
     #if(fl.use_u_aniso()):
     #   assert not fl.use_u_iso()
+
+class _adp_similarity(boost.python.injector, adp_similarity):
+
+  def _show_sorted_item(self, f, prefix):
+    adp_labels = ("U11","U22","U33","U12","U13","U23")
+    print >> f, \
+      "%s         delta    sigma   weight rms_deltas residual" % (prefix)
+    rdr = None
+    for adp_label,delta in zip(adp_labels, self.deltas()):
+      if (rdr is None):
+        rdr = "   %6.2e %6.2e" % (self.rms_deltas(), self.residual())
+        rdr_spacer = ""
+        rdr_spacer = " "*13
+      print >> f, "%s %s %9.2e %6.2e %6.2e%s" % (
+        prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
+      rdr = ""
+      rdr_spacer = " "*13
+
+class _shared_adp_similarity_proxy(
+  boost.python.injector, shared_adp_similarity_proxy):
+
+  def deltas_rms(self, u_cart, u_iso, use_u_aniso):
+    return adp_similarity_deltas_rms(
+      u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, proxies=self)
+
+  def residuals(self, u_cart, u_iso, use_u_aniso):
+    return adp_similarity_residuals(
+      u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, proxies=self)
+
+  def show_sorted(self,
+        by_value,
+        u_cart,
+        u_iso,
+        use_u_aniso,
+        site_labels=None,
+        f=None,
+        prefix="",
+        max_items=None):
+    _show_sorted_impl(self=self,
+        proxy_type=adp_similarity,
+        proxy_label="ADP similarity",
+        item_label="scatterers",
+        by_value=by_value, u_cart=u_cart, u_iso=u_iso,
+        use_u_aniso=use_u_aniso, sites_cart=None,
+        site_labels=site_labels, f=f, prefix=prefix,
+        max_items=max_items)
+
+class _isotropic_adp(boost.python.injector, isotropic_adp):
+
+  def _show_sorted_item(self, f, prefix):
+    adp_labels = ("U11","U22","U33","U12","U13","U23")
+    print >> f, \
+      "%s         delta    sigma   weight rms_deltas residual" % (prefix)
+    rdr = None
+    for adp_label,delta in zip(adp_labels, self.deltas()):
+      if (rdr is None):
+        rdr = "   %6.2e %6.2e" % (self.rms_deltas(), self.residual())
+        rdr_spacer = ""
+        rdr_spacer = " "*13
+      print >> f, "%s %s %9.2e %6.2e %6.2e%s" % (
+        prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
+      rdr = ""
+      rdr_spacer = " "*13
+
+class _shared_isotropic_adp_proxy(
+  boost.python.injector, shared_isotropic_adp_proxy):
+
+  def deltas_rms(self, u_cart):
+    return isotropic_adp_deltas_rms(u_cart=u_cart, proxies=self)
+
+  def residuals(self, u_cart):
+    return isotropic_adp_residuals(u_cart=u_cart, proxies=self)
+
+  def show_sorted(self,
+        by_value,
+        u_cart,
+        site_labels=None,
+        f=None,
+        prefix="",
+        max_items=None):
+    _show_sorted_impl(self=self,
+        proxy_type=isotropic_adp,
+        proxy_label="Isotropic ADP",
+        item_label="scatterer",
+        by_value=by_value, u_cart=u_cart, u_iso=None,
+        use_u_aniso=None, sites_cart=None,
+        site_labels=site_labels, f=f, prefix=prefix,
+        max_items=max_items)
+
+class _rigid_bond(boost.python.injector, rigid_bond):
+
+  def _show_sorted_item(self, f, prefix):
+    print >> f, \
+      "%s   delta_z    sigma   weight residual" % (prefix)
+    print >> f, "%s %9.2e %6.2e %6.2e %6.2e" % (
+      prefix, self.delta_z(), weight_as_sigma(weight=self.weight),
+      self.weight, self.residual())
+
+class _shared_rigid_bond_proxy(
+  boost.python.injector, shared_rigid_bond_proxy):
+
+  def deltas(self, sites_cart, u_cart):
+    return rigid_bond_deltas(
+      sites_cart=sites_cart, u_cart=u_cart, proxies=self)
+
+  def residuals(self, sites_cart, u_cart):
+    return rigid_bond_residuals(
+      sites_cart=sites_cart, u_cart=u_cart, proxies=self)
+
+  def show_sorted(self,
+        by_value,
+        sites_cart,
+        u_cart,
+        site_labels=None,
+        f=None,
+        prefix="",
+        max_items=None):
+    _show_sorted_impl(self=self,
+        proxy_type=rigid_bond,
+        proxy_label="Rigid bond",
+        item_label="scatterers",
+        by_value=by_value, u_cart=u_cart, u_iso=None,
+        use_u_aniso=None, sites_cart=sites_cart,
+        site_labels=site_labels, f=f, prefix=prefix,
+        max_items=max_items)
+
+def _show_sorted_impl(self,
+      proxy_type,
+      proxy_label,
+      item_label,
+      by_value,
+      u_cart,
+      u_iso=None,
+      use_u_aniso=None,
+      sites_cart=None,
+      site_labels=None,
+      f=None,
+      prefix="",
+      max_items=None):
+  assert by_value in ["residual", "rms_deltas", "delta"]
+  assert site_labels is None or len(site_labels) == u_cart.size()
+  assert sites_cart is None or len(sites_cart) == u_cart.size()
+  assert [u_iso, use_u_aniso].count(None) in (0,2)
+  if (f is None): f = sys.stdout
+  print >> f, "%s%s restraints: %d" % (prefix, proxy_label, self.size())
+  if (self.size() == 0): return
+  if (max_items is not None and max_items <= 0): return
+  if (by_value == "residual"):
+    if proxy_type is isotropic_adp:
+      data_to_sort = self.residuals(u_cart=u_cart)
+    elif proxy_type is adp_similarity:
+      data_to_sort = self.residuals(u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso)
+    elif proxy_type is rigid_bond:
+      data_to_sort = self.residuals(sites_cart=sites_cart, u_cart=u_cart)
+    else:
+      raise AssertionError
+  elif (by_value == "rms_deltas"):
+    if proxy_type is adp_similarity:
+      data_to_sort = self.deltas_rms(u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso)
+    elif proxy_type is isotropic_adp:
+      data_to_sort = self.deltas_rms(u_cart=u_cart)
+    else:
+      raise AssertionError
+  elif (by_value == "delta"):
+    if proxy_type is rigid_bond:
+      data_to_sort = self.deltas(sites_cart=sites_cart, u_cart=u_cart)
+    else:
+      raise AssertionError
+  else:
+    raise AssertionError
+  i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
+  if (max_items is not None):
+    i_proxies_sorted = i_proxies_sorted[:max_items]
+  item_label_blank = " " * len(item_label)
+  print >> f, "%sSorted by %s:" % (prefix, by_value)
+  for i_proxy in i_proxies_sorted:
+    proxy = self[i_proxy]
+    s = item_label
+    if proxy_type is isotropic_adp:
+      if (site_labels is None): l = str(proxy.i_seq)
+      else:                     l = site_labels[proxy.i_seq]
+      print >> f, "%s%s %s" % (prefix, s, l)
+      s = item_label_blank
+    else:
+      for n, i_seq in enumerate(proxy.i_seqs):
+        if (site_labels is None): l = str(i_seq)
+        else:                     l = site_labels[i_seq]
+        print >> f, "%s%s %s" % (prefix, s, l)
+        s = item_label_blank
+    if proxy_type is adp_similarity:
+      restraint = proxy_type(
+        u_cart=u_cart,
+        u_iso=u_iso,
+        use_u_aniso=use_u_aniso,
+        proxy=proxy)
+    elif proxy_type is isotropic_adp:
+      restraint = proxy_type(
+        u_cart=u_cart,
+        proxy=proxy)
+    elif proxy_type is rigid_bond:
+      restraint = proxy_type(
+        sites_cart=sites_cart,
+        u_cart=u_cart,
+        proxy=proxy)
+    else:
+      raise AssertionError
+    restraint._show_sorted_item(f=f, prefix=prefix)
+  n_not_shown = self.size() - i_proxies_sorted.size()
+  if (n_not_shown != 0):
+    print >> f, prefix + "... (remaining %d not shown)" % n_not_shown

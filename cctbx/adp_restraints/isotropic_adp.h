@@ -58,6 +58,10 @@ namespace cctbx { namespace adp_restraints {
     //! weight * [[sum_{ii} (deltas)**2] + [2 * sum_{i<j} (deltas)**2]].
     double residual() const;
 
+    //! sqrt(mean_sq(deltas))
+    //! The off-diagonal elements are included twice.
+    double rms_deltas() const;
+
     //! This returns gradients_u_star
     scitbx::sym_mat3<double>
     gradients() const;
@@ -94,6 +98,22 @@ namespace cctbx { namespace adp_restraints {
     af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
     af::const_ref<isotropic_adp_proxy> const& proxies,
     af::ref<scitbx::sym_mat3<double> > const& gradients_aniso_cart);
+
+  /*! \brief Fast computation of isotropic_adp::residual() given an array
+      of adp_similarity proxies.
+   */
+  af::shared<double>
+  isotropic_adp_residuals(
+    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
+    af::const_ref<isotropic_adp_proxy> const& proxies);
+
+  /*! \brief Fast computation of isotropic_adp::rms_deltas() given an array
+      of isotropic_adp proxies.
+   */
+  af::shared<double>
+  isotropic_adp_deltas_rms(
+    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
+    af::const_ref<isotropic_adp_proxy> const& proxies);
 
 }} // cctbx::adp_restraints
 

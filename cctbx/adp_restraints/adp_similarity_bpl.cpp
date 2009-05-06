@@ -75,6 +75,7 @@ namespace {
         .add_property("use_u_aniso", make_getter(&w_t::use_u_aniso, rbv()))
         .add_property("weight", make_getter(&w_t::weight, rbv()))
         .def("deltas", &w_t::deltas)
+        .def("rms_deltas", &w_t::rms_deltas)
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
       ;
@@ -91,21 +92,23 @@ namespace {
     using namespace boost::python;
     adp_similarity_wrappers::wrap();
     adp_similarity_proxy_wrappers::wrap();
-    def("adp_similarity_residual_sum",
-      (double(*)(
-        af::const_ref<scitbx::sym_mat3<double> > const&,
-        af::const_ref<double> const&,
-        af::const_ref<bool> const&,
-        af::const_ref<adp_similarity_proxy> const&,
-        af::ref<scitbx::sym_mat3<double> > const&,
-        af::ref<double> const&))
-      adp_similarity_residual_sum,
+    def("adp_similarity_residual_sum", adp_similarity_residual_sum,
       (arg_("u_cart"),
        arg_("u_iso"),
        arg_("use_u_aniso"),
        arg_("proxies"),
        arg_("gradients_aniso_cart"),
        arg_("gradients_iso")));
+    def("adp_similarity_residuals", adp_similarity_residuals,
+      (arg_("u_cart"),
+       arg_("u_iso"),
+       arg_("use_u_aniso"),
+       arg_("proxies")));
+    def("adp_similarity_deltas_rms", adp_similarity_deltas_rms,
+      (arg_("u_cart"),
+       arg_("u_iso"),
+       arg_("use_u_aniso"),
+       arg_("proxies")));
   }
 
 }

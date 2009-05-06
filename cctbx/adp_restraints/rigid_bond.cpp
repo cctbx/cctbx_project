@@ -110,4 +110,34 @@ namespace cctbx { namespace adp_restraints {
     return result;
   }
 
+  af::shared<double>
+  rigid_bond_residuals(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
+    af::const_ref<rigid_bond_proxy> const& proxies)
+  {
+    af::shared<double> result((af::reserve(proxies.size())));
+    for(std::size_t i=0;i<proxies.size();i++) {
+      rigid_bond_proxy const& proxy = proxies[i];
+      rigid_bond restraint(sites_cart, u_cart, proxy);
+      result.push_back(restraint.residual());
+    }
+    return result;
+  }
+
+  af::shared<double>
+  rigid_bond_deltas(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
+    af::const_ref<rigid_bond_proxy> const& proxies)
+  {
+    af::shared<double> result((af::reserve(proxies.size())));
+    for(std::size_t i=0;i<proxies.size();i++) {
+      rigid_bond_proxy const& proxy = proxies[i];
+      rigid_bond restraint(sites_cart, u_cart, proxy);
+      result.push_back(restraint.delta_z());
+    }
+    return result;
+  }
+
 }} // namespace cctbx::apd_restraints

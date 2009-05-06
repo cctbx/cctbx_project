@@ -102,17 +102,19 @@ namespace {
     rigid_bond_pair_wrappers::wrap();
     rigid_bond_wrappers::wrap();
     rigid_bond_proxy_wrappers::wrap();
-    def("rigid_bond_residual_sum",
-      (double(*)(
-        af::const_ref<scitbx::vec3<double> > const&,
-        af::const_ref<scitbx::sym_mat3<double> > const&,
-        af::const_ref<rigid_bond_proxy> const&,
-        af::ref<scitbx::sym_mat3<double> > const&))
-      rigid_bond_residual_sum,
+    def("rigid_bond_residual_sum", rigid_bond_residual_sum,
       (arg_("sites_cart"),
        arg_("u_cart"),
        arg_("proxies"),
        arg_("gradients_aniso_cart")));
+    def("rigid_bond_residuals", rigid_bond_residuals,
+      (arg_("sites_cart"),
+       arg_("u_cart"),
+       arg_("proxies")));
+    def("rigid_bond_deltas", rigid_bond_deltas,
+      (arg_("sites_cart"),
+       arg_("u_cart"),
+       arg_("proxies")));
   }
 
 }

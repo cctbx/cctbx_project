@@ -128,6 +128,24 @@ private:
     af::const_ref<rigid_bond_proxy> const& proxies,
     af::ref<scitbx::sym_mat3<double> > const& gradients_aniso_cart);
 
+  /*! \brief Fast computation of rigid_bond::residual() given an array
+      of adp_similarity proxies.
+   */
+  af::shared<double>
+  rigid_bond_residuals(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
+    af::const_ref<rigid_bond_proxy> const& proxies);
+
+  /*! \brief Fast computation of rigid_bond::delta_z() given an array
+      of adp_similarity proxies.
+   */
+  af::shared<double>
+  rigid_bond_deltas(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
+    af::const_ref<rigid_bond_proxy> const& proxies);
+
 }} // namespace cctbx::apd_restraints
 
 #endif // CCTBX_ADP_RESTRAINTS_RIGID_BOND_H
