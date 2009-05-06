@@ -1,5 +1,6 @@
 from scitbx.graph.tardy_tree import cluster_manager, find_paths, construct
 from scitbx.graph.utils import construct_edge_sets
+from libtbx.test_utils import show_diff
 from StringIO import StringIO
 import sys
 
@@ -63,6 +64,17 @@ def exercise_cluster_manager():
   cm.merge_clusters_with_multiple_connections(edge_sets=es)
   assert cm.clusters == [[0,1,2,3,4,5]]
   assert cm.cluster_indices == [0,0,0,0,0,0]
+  #
+  sio = StringIO()
+  assert cm.show_summary(out=sio, prefix=">") is cm
+  assert not show_diff(sio.getvalue(), """\
+>number of clusters: 1
+>merge clusters with multiple connections: 2 passes
+>number of overlapping rigid clusters: 2
+>number of hinge edges: None
+>number of loop edges: None
+>number of loop edge bendings: None
+""")
 
 class test_case_data(object):
 
@@ -484,6 +496,39 @@ def special_case_ZINC03847121():
     (0, 1, 2), (0, 1, 10), (0, 9, 10), (1, 2, 3), (2, 3, 4, 11),
     (3, 4, 5), (3, 9, 11), (4, 5, 6), (5, 6, 7), (6, 7, 8), (7, 8, 9),
     (8, 9, 10, 11)]
+  #
+  tt = construct(n_vertices=n_vertices, edge_list=edge_list)
+  sio = StringIO()
+  assert tt.show_summary(vertex_labels=None, out=sio, prefix="$") is tt
+  assert not show_diff(sio.getvalue(), """\
+$number of vertices: 12
+$number of edges: 13
+$collinear bonds tolerance: 1 deg
+$find cluster loops: None
+$number of collinear bonds: None
+$number of clusters: 12
+$merge clusters with multiple connections: 0 passes
+$number of overlapping rigid clusters: None
+$number of hinge edges: None
+$number of loop edges: None
+$number of loop edge bendings: None
+""")
+  tt.finalize()
+  sio = StringIO()
+  assert tt.show_summary(vertex_labels=None, out=sio, prefix=">") is tt
+  assert not show_diff(sio.getvalue(), """\
+>number of vertices: 12
+>number of edges: 13
+>collinear bonds tolerance: 1 deg
+>find cluster loops: 0 repeats
+>number of collinear bonds: None
+>number of clusters: 9
+>merge clusters with multiple connections: 1 pass
+>number of overlapping rigid clusters: 12
+>number of hinge edges: 9
+>number of loop edges: 2
+>number of loop edge bendings: 5
+""")
 
 def exercise_external_clusters():
   # GLY A 138 and 139 of pdb entry 10gs, atom names N CA C O N CA C O
@@ -559,6 +604,29 @@ def run(args):
   #
   special_case_ZINC03847121()
   exercise_external_clusters()
+  #
+  tcs = tst_tardy_pdb.select_test_cases(tags_or_indices=["ZINC03847120"])
+  assert len(tcs) == 1
+  tt = tcs[0].tardy_tree_construct()
+  for vl,cb in [(None, ("10", "12")),
+                (list("ABCDEFGHIKLMNO"), ("L", "N"))]:
+    sio = StringIO()
+    assert tt.show_summary(vertex_labels=vl, out=sio, prefix="&") is tt
+    assert not show_diff(sio.getvalue(), """\
+&number of vertices: 14
+&number of edges: 15
+&collinear bonds tolerance: 1 deg
+&find cluster loops: 0 repeats
+&number of collinear bonds: 1
+&tardy collinear bond: %s
+&                      %s
+&number of clusters: 1
+&merge clusters with multiple connections: 1 pass
+&number of overlapping rigid clusters: 2
+&number of hinge edges: 1
+&number of loop edges: 0
+&number of loop edge bendings: 0
+""" % cb)
   #
   print "OK"
 
