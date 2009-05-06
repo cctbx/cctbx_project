@@ -11,6 +11,7 @@ import libtbx.phil.command_line
 from libtbx.utils import format_cpu_times
 from libtbx.str_utils import format_value
 from libtbx import group_args
+import random
 import sys, os
 
 class potential_object(object):
@@ -21,7 +22,8 @@ class potential_object(object):
         reduced_geo_manager,
         nonbonded_attenuation_factor,
         real_space_gradients_delta,
-        real_space_target_weight):
+        real_space_target_weight,
+        ideal_sites_cart):
     O.density_map = density_map
     O.geo_manager = geo_manager
     O.reduced_geo_manager = reduced_geo_manager
@@ -34,6 +36,7 @@ class potential_object(object):
       .customized_copy(k_rep=nonbonded_attenuation_factor)
     O.real_space_gradients_delta = real_space_gradients_delta
     O.real_space_target_weight = real_space_target_weight
+    O.ideal_sites_cart = ideal_sites_cart
     #
     O.last_sites_moved = None
     O.f = None
@@ -90,7 +93,10 @@ time_step_pico_seconds = 0.001
 
 def run(args, callback=None):
   master_phil = iotbx.phil.parse(
-    input_string=mmtbx.refinement.tardy.master_phil_str)
+    input_string=mmtbx.refinement.tardy.master_phil_str + """\
+random_seed = None
+  .type = int
+""")
   phil_objects = [
     iotbx.phil.parse(input_string=master_phil_str_overrides)]
   argument_interpreter = libtbx.phil.command_line.argument_interpreter(
@@ -118,6 +124,11 @@ def run(args, callback=None):
   params = master_phil.fetch(sources=phil_objects).extract()
   master_phil.format(params).show()
   print
+  #
+  if (params.random_seed is not None):
+    random.seed(params.random_seed)
+    flex.set_random_seed(value=params.random_seed)
+  #
   if (len(pdb_files) != 0):
     print "PDB files:"
     for file_name in pdb_files:
@@ -149,12 +160,14 @@ def run(args, callback=None):
   print
   reduced_geo_manager = geo_manager.reduce_for_tardy(tardy_tree=tardy_tree)
   #
+  ideal_sites_cart = None
   if (len(pdb_files) == 2):
     ideal_pdb_inp = iotbx.pdb.input(file_name=pdb_files[0])
     ideal_pdb_hierarchy = ideal_pdb_inp.construct_hierarchy()
     assert ideal_pdb_hierarchy.is_similar_hierarchy(
       processed_pdb_files[0].all_chain_proxies.pdb_hierarchy)
-    xs.set_sites_cart(sites_cart=ideal_pdb_hierarchy.atoms().extract_xyz())
+    ideal_sites_cart = ideal_pdb_hierarchy.atoms().extract_xyz()
+    xs.set_sites_cart(sites_cart=ideal_sites_cart)
   fft_map = xs.structure_factors(d_min=3).f_calc().fft_map()
   fft_map.apply_sigma_scaling()
   #
@@ -164,7 +177,8 @@ def run(args, callback=None):
     reduced_geo_manager=reduced_geo_manager,
     nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
     real_space_gradients_delta=0.5,
-    real_space_target_weight=1)
+    real_space_target_weight=1,
+    ideal_sites_cart=ideal_sites_cart)
   mmtbx.refinement.tardy.action(
     labels=labels,
     sites=sites,
