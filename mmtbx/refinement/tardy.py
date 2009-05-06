@@ -132,7 +132,9 @@ def run(fmodels, model, target_weights, params, log):
       =params.omit_bonds_with_slack_greater_than,
     constrain_dihedrals_with_sigma_less_than
       =params.constrain_dihedrals_with_sigma_less_than)
-  tt.show_summary(out=log, vertex_labels=labels)
+  print >> log, "tardy_tree summary:"
+  tt.show_summary(vertex_labels=labels, out=log, prefix="  ")
+  print >> log
   log.flush()
   potential_obj = potential_object(
     nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
@@ -144,25 +146,16 @@ def run(fmodels, model, target_weights, params, log):
         tardy_tree=tt,
         omit_bonds_with_slack_greater_than
           =params.omit_bonds_with_slack_greater_than))
-  action(
+  sim = tst_molecules.simulation(
     labels=labels,
     sites=sites,
     masses=xs.atomic_weights(),
     tardy_tree=tt,
-    potential_obj=potential_obj,
-    params=params,
-    callback=None,
-    log=log)
-
-def action(
-      labels, sites, masses, tardy_tree, potential_obj, params, callback, log):
-  sites_cart_start = flex.vec3_double(sites)
-  sim = tst_molecules.simulation(
-    labels=labels,
-    sites=sites,
-    masses=masses,
-    tardy_tree=tardy_tree,
     potential_obj=potential_obj)
+  action(sim=sim, params=params, callback=None, log=log)
+
+def action(sim, params, callback, log):
+  sites_cart_start = flex.vec3_double(sim.sites_moved())
   qd_e_kin_scales = sim.assign_random_velocities()
   def e_as_t(e):
     return kinetic_energy_as_temperature(dof=sim.degrees_of_freedom, e=e)
@@ -170,6 +163,8 @@ def action(
     return temperature_as_kinetic_energy(dof=sim.degrees_of_freedom, t=t)
   time_step_akma = params.time_step_pico_seconds / akma_time_as_pico_seconds
   print >> log, "tardy dynamics:"
+  print >> log, "  number of bodies:", len(sim.bodies)
+  print >> log, "  number of degrees of freedom:", sim.degrees_of_freedom
   print >> log, "  kinetic energy sensitivity to generalized velocities:"
   qd_e_kin_scales.min_max_mean().show(out=log, prefix="    ")
   print >> log, "  time step: %7.5f pico seconds" % (
@@ -197,7 +192,9 @@ def action(
         msg, e_as_t(e=sim.e_kin()))
       log.flush()
       return True
-    show_column_headings = reset_e_kin("new target")
+    if (   n_time_steps == 0
+        or params.number_of_time_steps > 1):
+      show_column_headings = reset_e_kin("new target")
     for i_time_step in xrange(params.number_of_time_steps):
       assert params.temperature_cap_factor > 1.0
       assert params.excessive_temperature_factor > params.temperature_cap_factor
@@ -251,7 +248,8 @@ def action(
       log.flush()
       if (callback is not None):
         if (callback() == False): return
-  if (params.minimization_max_iterations > 0):
+  if (   params.minimization_max_iterations is None
+      or params.minimization_max_iterations > 0):
     print >> log, "tardy gradient-driven minimization:"
     log.flush()
     def show_rms(minimizer=None):
@@ -261,10 +259,15 @@ def action(
       if (callback is not None):
         if (callback() == False): raise StopIteration
     try:
-      sim.minimization(
+      refinery = sim.minimization(
         max_iterations=params.minimization_max_iterations,
         callback_after_step=show_rms)
     except StopIteration:
       return
     print >> log, "After tardy minimization:"
     show_rms()
+    print >> log, "  number of function evaluations:", \
+      refinery.function_evaluations_total
+    print >> log, "  number of lbfgs steps:", refinery.lbfgs_steps_total
+    print >> log, "  number of lbfgs restarts:", refinery.lbfgs_restarts
+    print >> log

@@ -6,9 +6,11 @@ import iotbx.phil
 import cctbx.geometry_restraints
 from cctbx import maptbx
 from cctbx.array_family import flex
+from scitbx.rigid_body.essence import tst_molecules
+import scitbx.graph.tardy_tree
 from scitbx import matrix
 import libtbx.phil.command_line
-from libtbx.utils import format_cpu_times
+from libtbx.utils import Sorry, format_cpu_times
 from libtbx.str_utils import format_value
 from libtbx import group_args
 import random
@@ -48,16 +50,23 @@ class potential_object(object):
       O.last_sites_moved = sites_moved
       sites_cart = flex.vec3_double(sites_moved)
       #
+      if (O.reduced_geo_manager is None):
+        flags = None
+      else:
+        flags = cctbx.geometry_restraints.flags.flags(nonbonded=True)
       geo_energies = O.geo_manager.energies_sites(
         sites_cart=sites_cart,
-        flags=cctbx.geometry_restraints.flags.flags(nonbonded=True),
+        flags=flags,
         custom_nonbonded_function=O.custom_nonbonded_function,
         compute_gradients=True)
-      reduced_geo_energies = O.reduced_geo_manager.energies_sites(
-        sites_cart=sites_cart,
-        compute_gradients=True)
-      O.f = geo_energies.target + reduced_geo_energies.target
-      O.g = geo_energies.gradients + reduced_geo_energies.gradients
+      O.f = geo_energies.target
+      O.g = geo_energies.gradients
+      if (O.reduced_geo_manager is not None):
+        reduced_geo_energies = O.reduced_geo_manager.energies_sites(
+          sites_cart=sites_cart,
+          compute_gradients=True)
+        O.f += reduced_geo_energies.target
+        O.g += reduced_geo_energies.gradients
       O.last_grms = group_args(geo=flex.mean_sq(O.g.as_double())**0.5)
       #
       rs_f = maptbx.real_space_target_simple(
@@ -89,13 +98,24 @@ final_temperature_kelvin = 300
 number_of_cooling_steps = 7
 number_of_time_steps = 10
 time_step_pico_seconds = 0.001
+minimization_max_iterations = None
 """
 
 def run(args, callback=None):
   master_phil = iotbx.phil.parse(
     input_string=mmtbx.refinement.tardy.master_phil_str + """\
+structure_factors_high_resolution = 3
+  .type = float
+real_space_target_weight = 100
+  .type = float
+real_space_gradients_delta_resolution_factor = 1/3
+  .type = float
+emulate_cartesian = False
+  .type = bool
 random_seed = None
   .type = int
+tardy_displacements = None
+  .type = floats
 """)
   phil_objects = [
     iotbx.phil.parse(input_string=master_phil_str_overrides)]
@@ -153,14 +173,48 @@ random_seed = None
   xs = processed_pdb_files[0].xray_structure()
   geo_manager = processed_pdb_files[0].geometry_restraints_manager()
   labels = [sc.label for sc in xs.scatterers()]
-  sites = matrix.col_list(xs.sites_cart())
+  ideal_sites_cart = xs.sites_cart()
+  sites = matrix.col_list(ideal_sites_cart)
   masses = xs.atomic_weights()
-  tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
-  tardy_tree.show_summary(vertex_labels=labels)
-  print
-  reduced_geo_manager = geo_manager.reduce_for_tardy(tardy_tree=tardy_tree)
   #
-  ideal_sites_cart = None
+  if (params.tardy_displacements is not None):
+    tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
+    sim = tst_molecules.simulation(
+      labels=labels,
+      sites=sites,
+      masses=masses,
+      tardy_tree=tardy_tree,
+      potential_obj=None)
+    q = sim.pack_q()
+    if (len(params.tardy_displacements) != len(q)):
+      print "tardy_displacements:", params.tardy_displacements
+      hinge_edges = sim.tardy_tree.cluster_manager.hinge_edges
+      assert len(hinge_edges) == len(sim.bodies)
+      for (i,j),B in zip(hinge_edges, sim.bodies):
+        if (i == -1): si = "root"
+        else: si = sim.labels[i]
+        sj = sim.labels[j]
+        print "%21s - %-21s: %d dof, %d q_size" % (
+          si, sj, B.J.degrees_of_freedom, B.J.q_size)
+      print "Zero displacements:"
+      print "  tardy_displacements=%s" % ",".join([str(v) for v in q])
+      raise Sorry("Incompatible tardy_displacements.")
+    sim.unpack_q(packed_q=flex.double(params.tardy_displacements))
+    sites = sim.sites_moved()
+  #
+  if (params.emulate_cartesian):
+    tardy_tree = scitbx.graph.tardy_tree.construct(sites=sites, edge_list=[])
+    tardy_tree.finalize()
+  else:
+    tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
+  print "tardy_tree summary:"
+  tardy_tree.show_summary(vertex_labels=labels, prefix="  ")
+  print
+  if (params.emulate_cartesian):
+    reduced_geo_manager = None
+  else:
+    reduced_geo_manager = geo_manager.reduce_for_tardy(tardy_tree=tardy_tree)
+  #
   if (len(pdb_files) == 2):
     ideal_pdb_inp = iotbx.pdb.input(file_name=pdb_files[0])
     ideal_pdb_hierarchy = ideal_pdb_inp.construct_hierarchy()
@@ -168,23 +222,29 @@ random_seed = None
       processed_pdb_files[0].all_chain_proxies.pdb_hierarchy)
     ideal_sites_cart = ideal_pdb_hierarchy.atoms().extract_xyz()
     xs.set_sites_cart(sites_cart=ideal_sites_cart)
-  fft_map = xs.structure_factors(d_min=3).f_calc().fft_map()
+  fft_map = xs.structure_factors(
+    d_min=params.structure_factors_high_resolution).f_calc().fft_map()
   fft_map.apply_sigma_scaling()
   #
+  real_space_gradients_delta = \
+      params.structure_factors_high_resolution \
+    * params.real_space_gradients_delta_resolution_factor
   potential_obj = potential_object(
     density_map=fft_map.real_map(),
     geo_manager=geo_manager,
     reduced_geo_manager=reduced_geo_manager,
     nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
-    real_space_gradients_delta=0.5,
-    real_space_target_weight=1,
+    real_space_gradients_delta=real_space_gradients_delta,
+    real_space_target_weight=params.real_space_target_weight,
     ideal_sites_cart=ideal_sites_cart)
-  mmtbx.refinement.tardy.action(
+  sim = tst_molecules.simulation(
     labels=labels,
     sites=sites,
     masses=masses,
     tardy_tree=tardy_tree,
-    potential_obj=potential_obj,
+    potential_obj=potential_obj)
+  mmtbx.refinement.tardy.action(
+    sim=sim,
     params=params,
     callback=callback,
     log=sys.stdout)

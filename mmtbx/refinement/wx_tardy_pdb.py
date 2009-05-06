@@ -79,7 +79,7 @@ class draw_map(object):
       periodic=True,
       ascending_normal_direction=False)
     glLineWidth(1)
-    glColor3f(0.2,0.2,0.2)
+    glColor3f(*[0.2]*3)
     vertices = triangulation.vertices
     for triangle in triangulation.triangles:
       glBegin(GL_LINE_LOOP)
@@ -108,6 +108,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
   def __init__(O, *args, **kwds):
     super(viewer, O).__init__(*args, **kwds)
     O.draw_map = draw_map()
+    O.first_first = True
 
   def DrawGL(O):
     super(viewer, O).DrawGL()
@@ -138,17 +139,25 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
         O.labels = sim.labels
       else:
         O.labels = sim.labels + [""] * len(sim.labels)
-    for line,color in sim.tardy_tree.viewer_lines_with_colors(
-          include_loop_edge_bendings=False):
-      O.line_i_seqs.append(line)
-      O.line_colors[line] = color
-      if (spo.ideal_sites_cart is not None):
-        n = sim.tardy_tree.n_vertices
-        ideal_line = tuple([i+n for i in line])
-        O.line_i_seqs.append(ideal_line)
-        O.line_colors[ideal_line] = (0.8,0.8,0.8)
-    print "\n".join(sim.tardy_tree.viewer_lines_with_colors_legend(
-      include_loop_edge_bendings=False))
+    def draw_ideal_line():
+      if (spo.ideal_sites_cart is None): return
+      n = sim.tardy_tree.n_vertices
+      ideal_line = tuple([i+n for i in line])
+      O.line_i_seqs.append(ideal_line)
+      O.line_colors[ideal_line] = [0.6]*3
+    if (sim.potential_obj.reduced_geo_manager is not None):
+      for line,color in sim.tardy_tree.viewer_lines_with_colors(
+            include_loop_edge_bendings=False):
+        O.line_i_seqs.append(line)
+        O.line_colors[line] = color
+        draw_ideal_line()
+      print "\n".join(sim.tardy_tree.viewer_lines_with_colors_legend(
+        include_loop_edge_bendings=False))
+    else:
+      for line in sim.potential_obj.geo_manager.simple_edge_list():
+        O.line_i_seqs.append(line)
+        O.line_colors[line] = (1,0,0)
+        draw_ideal_line()
     mcs = minimum_covering_sphere(O.points, epsilon=1.e-2)
     O.minimum_covering_sphere = sphere_3d(
       center=mcs.center(),
@@ -156,6 +165,8 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     O.flag_show_minimum_covering_sphere = False
     O.flag_show_rotation_center = False
     O.show_key_stroke_help()
+    if (O.first_first): O.first_first = False
+    else:               O.action_callback()
 
   def show_key_stroke_help(O):
     print "Press and hold Tab key to continue execution."
@@ -177,10 +188,10 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     O.OnRedraw()
 
   def action_callback(O):
-    wx.PostEvent(O, wx_viewer.ViewerUpdateEvent())
+    wx.PostEvent(O, wx_viewer.ViewerUpdateEvent(data=O.sim.sites_moved()))
 
   def OnUpdate(O, event) :
-    sites_moved = O.sim.sites_moved()
+    sites_moved = event.data
     for i in xrange(len(sites_moved)):
       O.points[i] = sites_moved[i]
     O.labels_display_list = None
