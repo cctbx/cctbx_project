@@ -28,6 +28,10 @@ def escape_sh_double_quoted(s):
   if (s is None): return None
   return s.replace('\\','\\\\').replace('"','\\"')
 
+def xlen(seq):
+  if (seq is None): return seq
+  return len(seq)
+
 def number_from_string(string):
   # similar to libtbx.phil.number_from_value_string
   # (please review if making changes here)
@@ -155,9 +159,9 @@ def tupleize(x):
   except:
     return (x,)
 
-def plural_s(n):
+def plural_s(n, suffix="s"):
   if (n == 1): return n, ""
-  return n, "s"
+  return n, suffix
 
 def n_dim_index_from_one_dim(i1d, sizes):
   assert len(sizes) > 0
