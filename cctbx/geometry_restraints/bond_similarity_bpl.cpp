@@ -100,7 +100,7 @@ namespace {
         af::const_ref<bond_similarity_proxy> const&))
       bond_similarity_residuals,
       (arg_("unit_cell"), arg_("sites_cart"), arg_("proxies")));
-   def("bond_similarity_residual_sum",
+    def("bond_similarity_residual_sum",
       (double(*)(
         uctbx::unit_cell const&,
         af::const_ref<scitbx::vec3<double> > const&,
