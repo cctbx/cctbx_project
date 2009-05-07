@@ -918,8 +918,9 @@ def _show_sorted_impl(O,
       if (site_labels is None): l = str(i_seq)
       else:                     l = site_labels[i_seq]
       if unit_cell is not None:
-        sym_op = proxy.sym_ops[n].as_xyz()
-        l += "   %s" %sym_op
+        sym_op = proxy.sym_ops[n]
+        if not sym_op.is_unit_mx():
+          l += "  %s" %sym_op.as_xyz()
       print >> f, "%s%s %s" % (prefix, s, l)
       s = item_label_blank
     if unit_cell is None:
