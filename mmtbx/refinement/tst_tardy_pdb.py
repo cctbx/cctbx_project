@@ -12,7 +12,7 @@ from scitbx import matrix
 import libtbx.phil.command_line
 from libtbx.utils import Sorry, format_cpu_times
 from libtbx.str_utils import format_value
-from libtbx import group_args
+from libtbx import Auto, group_args
 import random
 import sys, os
 
@@ -93,10 +93,10 @@ class potential_object(object):
     return matrix.col_list(O.g)
 
 master_phil_str_overrides = """\
-start_temperature_kelvin = 1000
+start_temperature_kelvin = 2500
 final_temperature_kelvin = 300
-number_of_cooling_steps = 7
-number_of_time_steps = 10
+number_of_cooling_steps = 44
+number_of_time_steps = 1
 time_step_pico_seconds = 0.001
 minimization_max_iterations = None
 """
@@ -116,6 +116,16 @@ random_seed = None
   .type = int
 tardy_displacements = None
   .type = floats
+tardy_displacements_auto {
+  rmsd = 1.0
+    .type = float
+  excessive_rmsd_factor = 2
+    .type = float
+  first_delta_t = 0.001
+    .type = float
+  max_steps = 100
+    .type = int
+}
 """)
   phil_objects = [
     iotbx.phil.parse(input_string=master_phil_str_overrides)]
@@ -185,21 +195,44 @@ tardy_displacements = None
       masses=masses,
       tardy_tree=tardy_tree,
       potential_obj=None)
-    q = sim.pack_q()
-    if (len(params.tardy_displacements) != len(q)):
-      print "tardy_displacements:", params.tardy_displacements
-      hinge_edges = sim.tardy_tree.cluster_manager.hinge_edges
-      assert len(hinge_edges) == len(sim.bodies)
-      for (i,j),B in zip(hinge_edges, sim.bodies):
-        if (i == -1): si = "root"
-        else: si = sim.labels[i]
-        sj = sim.labels[j]
-        print "%21s - %-21s: %d dof, %d q_size" % (
-          si, sj, B.J.degrees_of_freedom, B.J.q_size)
-      print "Zero displacements:"
-      print "  tardy_displacements=%s" % ",".join([str(v) for v in q])
-      raise Sorry("Incompatible tardy_displacements.")
-    sim.unpack_q(packed_q=flex.double(params.tardy_displacements))
+    if (params.tardy_displacements is Auto):
+      sites_cart_start = flex.vec3_double(sim.sites_moved())
+      sim.assign_random_velocities()
+      delta_t = params.tardy_displacements_auto.first_delta_t
+      assert params.tardy_displacements_auto.max_steps > 0
+      for i_step in xrange(params.tardy_displacements_auto.max_steps):
+        sim.dynamics_step(delta_t=delta_t)
+        sites_moved = flex.vec3_double(sim.sites_moved())
+        rmsd = sites_moved.rms_difference(sites_cart_start)
+        if (rmsd > params.tardy_displacements_auto.rmsd):
+          assert rmsd <= params.tardy_displacements_auto.rmsd \
+                       * params.tardy_displacements_auto.excessive_rmsd_factor
+          break
+        delta_t *= 2 - rmsd / params.tardy_displacements_auto.rmsd
+      else:
+        raise Sorry(
+          "tardy_displacements_auto.max_steps exceeded: try a larger delta_t.")
+      q = sim.pack_q()
+      print "Random displacements:"
+      print "  tardy_displacements=%s" % ",".join(["%.6g" % v for v in q])
+      print "  rmsd: %.6g" % rmsd
+      print
+    else:
+      q = sim.pack_q()
+      if (len(params.tardy_displacements) != len(q)):
+        print "tardy_displacements:", params.tardy_displacements
+        hinge_edges = sim.tardy_tree.cluster_manager.hinge_edges
+        assert len(hinge_edges) == len(sim.bodies)
+        for (i,j),B in zip(hinge_edges, sim.bodies):
+          if (i == -1): si = "root"
+          else: si = sim.labels[i]
+          sj = sim.labels[j]
+          print "%21s - %-21s: %d dof, %d q_size" % (
+            si, sj, B.J.degrees_of_freedom, B.J.q_size)
+        print "Zero displacements:"
+        print "  tardy_displacements=%s" % ",".join([str(v) for v in q])
+        raise Sorry("Incompatible tardy_displacements.")
+      sim.unpack_q(packed_q=flex.double(params.tardy_displacements))
     sites = sim.sites_moved()
   #
   if (params.emulate_cartesian):

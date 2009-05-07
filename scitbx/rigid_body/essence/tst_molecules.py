@@ -124,14 +124,20 @@ class simulation(object):
 
   def e_pot(O):
     if (O.__e_pot is None):
-      O.__e_pot = O.potential_obj.e_pot(
-        sites_moved=O.sites_moved())
+      if (O.potential_obj is None):
+        O.__e_pot = 0
+      else:
+        O.__e_pot = O.potential_obj.e_pot(
+          sites_moved=O.sites_moved())
     return O.__e_pot
 
   def d_e_pot_d_sites(O):
     if (O.__d_e_pot_d_sites is None):
-      O.__d_e_pot_d_sites = O.potential_obj.d_e_pot_d_sites(
-        sites_moved=O.sites_moved())
+      if (O.potential_obj is None):
+        O.__d_e_pot_d_sites = [matrix.col((0,0,0))] * len(O.sites)
+      else:
+        O.__d_e_pot_d_sites = O.potential_obj.d_e_pot_d_sites(
+          sites_moved=O.sites_moved())
     return O.__d_e_pot_d_sites
 
   def f_ext_bf(O):
