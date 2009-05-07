@@ -2043,14 +2043,14 @@ Planarity restraints: 2
   assert not show_diff(sio.getvalue(), """\
 !Bond angle restraints: 2
 !Sorted by residual:
-!angle 2   x,y,z
-!      0   -x+2,-y,-z+1
-!      1   -x+2,-y,-z+1
+!angle 2
+!      0  -x+2,-y,-z+1
+!      1  -x+2,-y,-z+1
 !    ideal   model   delta    sigma   weight residual
 !   120.00  122.78   -2.78 1.00e+00 1.00e+00 7.73e+00
-!angle 2   x,y,z
-!      0   -x+2,-y,-z+1
-!      1   -x+2,-y,-z+1
+!angle 2
+!      0  -x+2,-y,-z+1
+!      1  -x+2,-y,-z+1
 !    ideal   model   delta    sigma   weight residual
 !   120.00  122.78   -2.78 1.00e+00 1.00e+00 7.73e+00
 """)
@@ -2071,16 +2071,16 @@ Planarity restraints: 2
   assert not show_diff(sio.getvalue(), """\
 %Dihedral angle restraints: 2
 %Sorted by delta:
-%dihedral 2   x,y,z
-%         0   x,y,z
-%         1   x,y,z
-%         2   -x+2,-y,-z+1
+%dihedral 2
+%         0
+%         1
+%         2  -x+2,-y,-z+1
 %    ideal   model   delta periodicty    sigma   weight residual
 %     0.00    5.16   -5.16     0      1.00e+00 1.00e+00 2.67e+01
-%dihedral 2   x,y,z
-%         0   x,y,z
-%         1   x,y,z
-%         2   -x+2,-y,-z+1
+%dihedral 2
+%         0
+%         1
+%         2  -x+2,-y,-z+1
 %    ideal   model   delta periodicty    sigma   weight residual
 %     0.00    5.16   -5.16     0      1.00e+00 1.00e+00 2.67e+01
 """)
