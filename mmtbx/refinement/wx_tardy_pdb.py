@@ -148,16 +148,16 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     if (sim.potential_obj.reduced_geo_manager is not None):
       for line,color in sim.tardy_tree.viewer_lines_with_colors(
             include_loop_edge_bendings=False):
+        draw_ideal_line()
         O.line_i_seqs.append(line)
         O.line_colors[line] = color
-        draw_ideal_line()
       print "\n".join(sim.tardy_tree.viewer_lines_with_colors_legend(
         include_loop_edge_bendings=False))
     else:
       for line in sim.potential_obj.geo_manager.simple_edge_list():
+        draw_ideal_line()
         O.line_i_seqs.append(line)
         O.line_colors[line] = (1,0,0)
-        draw_ideal_line()
     mcs = minimum_covering_sphere(O.points, epsilon=1.e-2)
     O.minimum_covering_sphere = sphere_3d(
       center=mcs.center(),
