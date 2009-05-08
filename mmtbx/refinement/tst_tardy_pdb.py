@@ -92,69 +92,7 @@ class potential_object(object):
     O.e_pot(sites_moved=sites_moved)
     return matrix.col_list(O.g)
 
-master_phil_str_overrides = """\
-start_temperature_kelvin = 2500
-final_temperature_kelvin = 300
-number_of_cooling_steps = 44
-number_of_time_steps = 1
-time_step_pico_seconds = 0.001
-minimization_max_iterations = None
-"""
-
-def run(args, callback=None):
-  master_phil = iotbx.phil.parse(
-    input_string=mmtbx.refinement.tardy.master_phil_str + """\
-structure_factors_high_resolution = 3
-  .type = float
-real_space_target_weight = 100
-  .type = float
-real_space_gradients_delta_resolution_factor = 1/3
-  .type = float
-emulate_cartesian = False
-  .type = bool
-random_seed = None
-  .type = int
-tardy_displacements = None
-  .type = floats
-tardy_displacements_auto {
-  rmsd = 1.0
-    .type = float
-  excessive_rmsd_factor = 2
-    .type = float
-  first_delta_t = 0.001
-    .type = float
-  max_steps = 100
-    .type = int
-}
-""")
-  phil_objects = [
-    iotbx.phil.parse(input_string=master_phil_str_overrides)]
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil)
-  pdb_files = []
-  other_files = []
-  for arg in args:
-    if (os.path.isfile(arg)):
-      if (iotbx.pdb.is_pdb_file(file_name=arg)):
-        pdb_files.append(arg)
-        arg = None
-      else:
-        try: phil_obj = iotbx.phil.parse(file_name=arg)
-        except KeyboardInterrupt: raise
-        except:
-          other_files.append(arg)
-        else:
-          phil_objects.append(phil_obj)
-        arg = None
-    if (arg is not None):
-      try: command_line_params = argument_interpreter.process(arg=arg)
-      except KeyboardInterrupt: raise
-      except: raise Sorry("Command-line argument not recognized: %s" % arg)
-      else: phil_objects.append(command_line_params)
-  params = master_phil.fetch(sources=phil_objects).extract()
-  master_phil.format(params).show()
-  print
-  #
+def run_test(params, pdb_files, other_files, callback=None):
   if (params.random_seed is not None):
     random.seed(params.random_seed)
     flex.set_random_seed(value=params.random_seed)
@@ -282,6 +220,76 @@ tardy_displacements_auto {
     callback=callback,
     log=sys.stdout)
   print
+
+def get_master_phil():
+  return iotbx.phil.parse(
+    input_string=mmtbx.refinement.tardy.master_phil_str + """\
+structure_factors_high_resolution = 3
+  .type = float
+real_space_target_weight = 100
+  .type = float
+real_space_gradients_delta_resolution_factor = 1/3
+  .type = float
+emulate_cartesian = False
+  .type = bool
+random_seed = None
+  .type = int
+tardy_displacements = None
+  .type = floats
+tardy_displacements_auto {
+  rmsd = 1.0
+    .type = float
+  excessive_rmsd_factor = 2
+    .type = float
+  first_delta_t = 0.001
+    .type = float
+  max_steps = 100
+    .type = int
+}
+""")
+
+def run(args, callback=None):
+  master_phil = get_master_phil()
+  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
+    master_phil=master_phil)
+  master_phil_str_overrides = """\
+start_temperature_kelvin = 2500
+final_temperature_kelvin = 300
+number_of_cooling_steps = 44
+number_of_time_steps = 1
+time_step_pico_seconds = 0.001
+minimization_max_iterations = None
+"""
+  phil_objects = [
+    iotbx.phil.parse(input_string=master_phil_str_overrides)]
+  pdb_files = []
+  other_files = []
+  for arg in args:
+    if (os.path.isfile(arg)):
+      if (iotbx.pdb.is_pdb_file(file_name=arg)):
+        pdb_files.append(arg)
+        arg = None
+      else:
+        try: phil_obj = iotbx.phil.parse(file_name=arg)
+        except KeyboardInterrupt: raise
+        except:
+          other_files.append(arg)
+        else:
+          phil_objects.append(phil_obj)
+        arg = None
+    if (arg is not None):
+      try: command_line_params = argument_interpreter.process(arg=arg)
+      except KeyboardInterrupt: raise
+      except: raise Sorry("Command-line argument not recognized: %s" % arg)
+      else: phil_objects.append(command_line_params)
+  params = master_phil.fetch(sources=phil_objects).extract()
+  master_phil.format(params).show()
+  print
+  run_test(
+    params=params,
+    pdb_files=pdb_files,
+    other_files=other_files,
+    callback=callback)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
