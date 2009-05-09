@@ -11,7 +11,7 @@ class chunk_manager(object):
     O.i = i
     O.queuing_system_info = None
 
-  def easy_all(O, log_format=None, out=Auto):
+  def easy_all(O, log_format=Auto, out=Auto):
     O.queuing_system_overrides_chunk()
     O.redirect_chunk_stdout_and_stderr(log_format=log_format, out=out)
     return O
