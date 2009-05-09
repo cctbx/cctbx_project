@@ -263,6 +263,7 @@ libtbx/pbs_utils.py svneol=native#text/x-python
 libtbx/phil/doc.txt svneol=native#text/plain
 libtbx/phil/example.params -text
 libtbx/pythonpath/deep_thought.py svneol=native#text/x-python
+libtbx/queuing_system_utils.py svneol=native#text/x-python
 libtbx/smart_open.py svneol=native#text/x-python
 libtbx/smp_utils.py -text
 libtbx/sourceforge_checkout.py -text
