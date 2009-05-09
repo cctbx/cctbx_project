@@ -323,6 +323,7 @@ mmtbx/refinement/occupancies.py -text
 mmtbx/refinement/refinement_flags.py -text
 mmtbx/refinement/tardy.py svneol=native#text/x-python
 mmtbx/refinement/tst_refinement_flags.py -text
+mmtbx/refinement/tst_tardy_comprehensive.py svneol=native#text/x-python
 mmtbx/refinement/tst_tardy_pdb.py svneol=native#text/x-python
 mmtbx/refinement/wx_tardy_pdb.py svneol=native#text/x-python
 mmtbx/regression/tst_add_h_to_water.py -text

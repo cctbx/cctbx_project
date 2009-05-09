@@ -92,21 +92,22 @@ class potential_object(object):
     O.e_pot(sites_moved=sites_moved)
     return matrix.col_list(O.g)
 
-def run_test(params, pdb_files, other_files, callback=None):
+def run_test(params, pdb_files, other_files, callback=None, log=None):
+  if (log is None): log = sys.stdout
   if (params.random_seed is not None):
     random.seed(params.random_seed)
     flex.set_random_seed(value=params.random_seed)
   #
   if (len(pdb_files) != 0):
-    print "PDB files:"
+    print >> log, "PDB files:"
     for file_name in pdb_files:
-      print " ", file_name
-    print
+      print >> log, " ", file_name
+    print >> log
   if (len(other_files) != 0):
-    print "Other files:"
+    print >> log, "Other files:"
     for file_name in other_files:
-      print " ", file_name
-    print
+      print >> log, " ", file_name
+    print >> log
   #
   assert len(pdb_files) in [1, 2]
   #
@@ -114,9 +115,10 @@ def run_test(params, pdb_files, other_files, callback=None):
     args=pdb_files[-1:]+other_files,
     strict_conflict_handling=False,
     substitute_non_crystallographic_unit_cell_if_necessary=True,
-    return_all_processed_pdb_files=True)
+    return_all_processed_pdb_files=True,
+    log=log)
   assert len(processed_pdb_files) == 1
-  print
+  print >> log
   #
   xs = processed_pdb_files[0].xray_structure()
   geo_manager = processed_pdb_files[0].geometry_restraints_manager()
@@ -151,24 +153,26 @@ def run_test(params, pdb_files, other_files, callback=None):
         raise Sorry(
           "tardy_displacements_auto.max_steps exceeded: try a larger delta_t.")
       q = sim.pack_q()
-      print "Random displacements:"
-      print "  tardy_displacements=%s" % ",".join(["%.6g" % v for v in q])
-      print "  rmsd: %.6g" % rmsd
-      print
+      print >> log, "Random displacements:"
+      print >> log, "  tardy_displacements=%s" % ",".join(
+        ["%.6g" % v for v in q])
+      print >> log, "  rmsd: %.6g" % rmsd
+      print >> log
     else:
       q = sim.pack_q()
       if (len(params.tardy_displacements) != len(q)):
-        print "tardy_displacements:", params.tardy_displacements
+        print >> log, "tardy_displacements:", params.tardy_displacements
         hinge_edges = sim.tardy_tree.cluster_manager.hinge_edges
         assert len(hinge_edges) == len(sim.bodies)
         for (i,j),B in zip(hinge_edges, sim.bodies):
           if (i == -1): si = "root"
           else: si = sim.labels[i]
           sj = sim.labels[j]
-          print "%21s - %-21s: %d dof, %d q_size" % (
+          print >> log, "%21s - %-21s: %d dof, %d q_size" % (
             si, sj, B.J.degrees_of_freedom, B.J.q_size)
-        print "Zero displacements:"
-        print "  tardy_displacements=%s" % ",".join([str(v) for v in q])
+        print >> log, "Zero displacements:"
+        print >> log, "  tardy_displacements=%s" % ",".join(
+          [str(v) for v in q])
         raise Sorry("Incompatible tardy_displacements.")
       sim.unpack_q(packed_q=flex.double(params.tardy_displacements))
     sites = sim.sites_moved()
@@ -178,9 +182,9 @@ def run_test(params, pdb_files, other_files, callback=None):
     tardy_tree.finalize()
   else:
     tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
-  print "tardy_tree summary:"
-  tardy_tree.show_summary(vertex_labels=labels, prefix="  ")
-  print
+  print >> log, "tardy_tree summary:"
+  tardy_tree.show_summary(vertex_labels=labels, out=log, prefix="  ")
+  print >> log
   if (params.emulate_cartesian):
     reduced_geo_manager = None
   else:
@@ -218,8 +222,8 @@ def run_test(params, pdb_files, other_files, callback=None):
     sim=sim,
     params=params,
     callback=callback,
-    log=sys.stdout)
-  print
+    log=log)
+  print >> log
 
 def get_master_phil():
   return iotbx.phil.parse(
