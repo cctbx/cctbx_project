@@ -1,5 +1,6 @@
 from __future__ import division
 from libtbx import sge_utils
+from libtbx import pbs_utils
 from libtbx.str_utils import show_string
 try: import gzip
 except ImportError: gzip = None
@@ -467,6 +468,7 @@ class host_and_user:
     else:
       self.pid = getpid()
     self.sge_info = sge_utils.info()
+    self.pbs_info = pbs_utils.chunk_info()
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
@@ -504,6 +506,7 @@ class host_and_user:
     if (self.pid is not None):
       print >> out, prefix + "PID =", self.pid
     self.sge_info.show(out=out, prefix=prefix)
+    self.pbs_info.show(out=out, prefix=prefix)
 
 def _indentor_write_loop(write_method, indent, incomplete_line, lines):
   for line in lines:

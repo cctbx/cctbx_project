@@ -93,12 +93,11 @@ def run(args):
   for arg in args:
     phil_objects.append(argument_interpreter.process(arg=arg))
   local_params = local_master_phil.fetch(sources=phil_objects).extract()
-  local_master_phil.format(local_params).show()
-  print
-  #
   chunk = chunk_manager(
     n=local_params.chunk[0],
     i=local_params.chunk[1]).easy_all()
+  local_master_phil.format(local_params).show()
+  print
   #
   assert local_params.pdb_file is not None
   assert op.isfile(local_params.pdb_file)
