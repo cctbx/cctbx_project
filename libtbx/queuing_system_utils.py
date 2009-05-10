@@ -37,11 +37,10 @@ class chunk_manager(object):
 
   def redirect_chunk_stdout_and_stderr(O, log_format=Auto, out=Auto):
     if (O.n == 1): return
-    if (log_format is Auto): log_format="log%%0%dd"
-    if (out is Auto): out = sys.stdout
     log_name = None
     i = O.queuing_system_info
     if (i is not None and i.have_array()):
+      if (log_format is Auto): log_format="log%%0%dd"
       fmt = log_format % max(3, len("%d" % (O.n-1)))
       log_name = fmt % O.i
       log = open(log_name, "w")
@@ -51,7 +50,6 @@ class chunk_manager(object):
     if (out is Auto): out = sys.stdout
     if (out is not None):
       host_and_user().show(out=out)
-      if (i is not None): i.show(out=out)
       print >> out, "chunk.n:", O.n
       print >> out, "chunk.i:", O.i
       if (log_name is not None):
