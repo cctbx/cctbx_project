@@ -7,9 +7,7 @@ from iotbx_detectors_bruker_ext import Bruker_base
 
 import exceptions
 class ImageException(exceptions.Exception):
-  def __init__(self,string):
-    self.message = string
-  def __str__(self): return self.message
+  pass
 
 from iotbx.detectors.adsc import ADSCImage
 from iotbx.detectors.mar import MARImage
