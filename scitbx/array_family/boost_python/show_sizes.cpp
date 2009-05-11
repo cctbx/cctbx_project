@@ -4,6 +4,7 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/auto_array.h>
 #include <boost/shared_array.hpp>
 #include <boost/format.hpp>
 #include <vector>
@@ -23,6 +24,7 @@ namespace {
   { \
     boost::python::list result; \
     SCITBX_LOC_T(T) \
+    SCITBX_LOC_T(scitbx::auto_array<T>) \
     SCITBX_LOC_T(boost::shared_array<T>) \
     SCITBX_LOC_T(std::vector<T>) \
     SCITBX_LOC_T(af::shared<T>) \
