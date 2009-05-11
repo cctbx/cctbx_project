@@ -411,6 +411,7 @@ scitbx/array_family/accessors/striding.h -text
 scitbx/array_family/accessors/traits.h -text
 scitbx/array_family/boost_python/passing_flex_by_reference.h -text
 scitbx/array_family/boost_python/selections_wrapper.h svneol=native#text/plain
+scitbx/array_family/boost_python/show_sizes.cpp svneol=native#text/plain
 scitbx/array_family/boost_python/tst_cost_of_m_handle_in_af_shared.py -text
 scitbx/array_family/boost_python/tst_flex_argument_passing.py -text
 scitbx/array_family/boost_python/tst_smart_selection.py svneol=native#text/x-python
@@ -420,6 +421,7 @@ scitbx/array_family/tst_ref_matrix_facet.cpp -text
 scitbx/array_family/tst_unsigned_float_arithmetic.cpp -text
 scitbx/boost_python/cstringio_utils.h svneol=native#text/plain
 scitbx/command_line/generate_error_h.py -text
+scitbx/command_line/show_sizes.py svneol=native#text/x-python
 scitbx/error/SConscript -text
 scitbx/error/tst_error.cpp -text
 scitbx/error/tst_error.py -text

@@ -26,6 +26,7 @@ env_scitbx_boost_python_ext.SharedLibrary(
   "flex_vec3_double.cpp",
   "flex_vec2_double.cpp",
   "loops.cpp",
+  "show_sizes.cpp",
 ])
 
 env_scitbx_boost_python_ext.SharedLibrary(
