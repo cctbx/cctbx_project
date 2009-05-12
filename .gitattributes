@@ -417,6 +417,7 @@ scitbx/array_family/boost_python/tst_flex_argument_passing.py -text
 scitbx/array_family/boost_python/tst_smart_selection.py svneol=native#text/x-python
 scitbx/array_family/initialiser.h -text
 scitbx/array_family/ref_matrix.h -text
+scitbx/array_family/tst_optional_copy.cpp svneol=native#text/plain
 scitbx/array_family/tst_ref_matrix_facet.cpp -text
 scitbx/array_family/tst_unsigned_float_arithmetic.cpp -text
 scitbx/boost_python/cstringio_utils.h svneol=native#text/plain
@@ -495,6 +496,7 @@ scitbx/matrix/tests/tst_misc.cpp -text
 scitbx/matrix/tests/tst_svd.cpp -text
 scitbx/matrix/tests/tst_svd.nb -text
 scitbx/misc/positive_getitem_index.h svneol=native#text/plain
+scitbx/optional_copy.h svneol=native#text/plain
 scitbx/rigid_body/__init__.py svneol=native#text/x-python
 scitbx/rigid_body/essence/__init__.py svneol=native#text/x-python
 scitbx/rigid_body/essence/featherstone.py svneol=native#text/x-python
