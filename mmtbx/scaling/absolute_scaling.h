@@ -51,12 +51,18 @@ namespace absolute_scaling{
     SCITBX_ASSERT (sigma_f_obs>=0);
 
     typedef FloatType f_t;
-    f_t B_wilson, scale;
+    f_t B_wilson, scale=p_scale;
     if (transform){
-      scale = std::exp(-p_scale);
+      if (p_scale < -200.0){
+        scale = -200.0;
+      }
+      if (p_scale > 200.0){
+        scale=200.0;
+      }
+      scale = std::exp(-scale);
       B_wilson = p_B_wilson;
     } else {
-      scale = p_scale;
+      scale = scale;
       B_wilson = p_B_wilson;
     }
 
@@ -64,14 +70,12 @@ namespace absolute_scaling{
     f_t gamma_mult = 1.0+gamma;
 
     SCITBX_ASSERT (gamma_mult > 0); // this would be nonsense
-
-    f_t k = scale*std::exp(B_wilson*d_star_sq/4.0);
-    f_t C = sig_sq*gamma_mult*epsilon + k*k*sigma_f_obs*sigma_f_obs;
-
+    f_t k = std::max(1e-8,scale*std::exp(B_wilson*d_star_sq/4.0));
+    f_t C = std::max(sig_sq*gamma_mult*epsilon + k*k*sigma_f_obs*sigma_f_obs,1e-8);
     if (!centric){
       result = - std::log(2.0)
                - std::log(k)
-               - std::log(f_obs)
+               - std::log(std::max(1e-12,f_obs))
                + std::log(C)
                + k*k*f_obs*f_obs/C;
       return(result);
@@ -79,8 +83,6 @@ namespace absolute_scaling{
     result =  0.5*std::log(scitbx::constants::pi)
             + 0.5*std::log(C)
             + k*k*f_obs*f_obs/(2.0*C);
-
-
     return(result);
   }
 
