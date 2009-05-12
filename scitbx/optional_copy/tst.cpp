@@ -11,8 +11,6 @@ using namespace scitbx;
 
 namespace {
 
-# include "tst_af_helpers.cpp"
-
   template <typename ValueType>
   optional_copy<ValueType> const&
   oc_const_ref(optional_copy<ValueType> const& o)
@@ -30,42 +28,42 @@ namespace {
     typedef optional_copy<ValueType> o;
     {
       o o1;
-      check_true(__LINE__, o1.get() == 0);
+      SCITBX_ASSERT(o1.get() == 0);
       o o2(o1);
-      check_true(__LINE__, o2.get() == 0);
+      SCITBX_ASSERT(o2.get() == 0);
       o2 = o1;
-      check_true(__LINE__, o2.get() == 0);
+      SCITBX_ASSERT(o2.get() == 0);
       o2 = v1;
-      check_true(__LINE__, (*o2.get())[0] == 1);
-      check_true(__LINE__, o2[0] == 1);
+      SCITBX_ASSERT((*o2.get())[0] == 1);
+      SCITBX_ASSERT(o2[0] == 1);
       o1 = o2;
-      check_true(__LINE__, o1[0] == 1);
+      SCITBX_ASSERT(o1[0] == 1);
       o2.release();
-      check_true(__LINE__, o2.get() == 0);
-      check_true(__LINE__, o1[0] == 1);
-      check_true(__LINE__, oc_const_ref(o2).get() == 0);
-      check_true(__LINE__, oc_const_ref(o1)[0] == 1);
+      SCITBX_ASSERT(o2.get() == 0);
+      SCITBX_ASSERT(o1[0] == 1);
+      SCITBX_ASSERT(oc_const_ref(o2).get() == 0);
+      SCITBX_ASSERT(oc_const_ref(o1)[0] == 1);
     }
     {
       o o1(v1);
-      check_true(__LINE__, o1.get() != 0);
-      check_true(__LINE__, o1[0] == 1);
+      SCITBX_ASSERT(o1.get() != 0);
+      SCITBX_ASSERT(o1[0] == 1);
       o o2(o1);
-      check_true(__LINE__, o2.get() != 0);
-      check_true(__LINE__, o2.get() != o1.get());
-      check_true(__LINE__, o2[0] == 1);
+      SCITBX_ASSERT(o2.get() != 0);
+      SCITBX_ASSERT(o2.get() != o1.get());
+      SCITBX_ASSERT(o2[0] == 1);
       o2[0] = 2;
-      check_true(__LINE__, o1[0] == (value_is_shared ? 2 : 1));
-      check_true(__LINE__, o2[0] == 2);
+      SCITBX_ASSERT(o1[0] == (value_is_shared ? 2 : 1));
+      SCITBX_ASSERT(o2[0] == 2);
       o1 = o2;
-      check_true(__LINE__, o1[0] == 2);
-      check_true(__LINE__, o2[0] == 2);
+      SCITBX_ASSERT(o1[0] == 2);
+      SCITBX_ASSERT(o2[0] == 2);
       o1[0] = 3;
-      check_true(__LINE__, o1[0] == 3);
-      check_true(__LINE__, o2[0] == (value_is_shared ? 3 : 2));
+      SCITBX_ASSERT(o1[0] == 3);
+      SCITBX_ASSERT(o2[0] == (value_is_shared ? 3 : 2));
       o2 = v4;
-      check_true(__LINE__, o1[0] == 3);
-      check_true(__LINE__, o2[0] == 4);
+      SCITBX_ASSERT(o1[0] == 3);
+      SCITBX_ASSERT(o2[0] == 4);
     }
   };
 
@@ -110,11 +108,6 @@ int main(int argc, char* argv[])
     }
     if (n_iter != 0) i_iter++;
   }
-
-  std::cout << "Total OK: " << ok_counter << std::endl;
-  if (error_counter || verbose) {
-    std::cout << "Total Errors: " << error_counter << std::endl;
-  }
-
+  std::cout << "OK\n";
   return 0;
 }
