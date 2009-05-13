@@ -180,6 +180,9 @@ occupancies
     .help = Set all or selected occupancies to given value
     .short_caption=Set occupancies to
 }
+truncate_to_polyala = None
+  .type = bool
+  .help = Truncate a model to poly-Ala.
 output
   .help = Write out PDB file with modified model (file name is defined in \
           write_modified)
@@ -600,6 +603,24 @@ class fmodel_from_xray_structure(object):
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = file_name)
 
+def truncate_to_poly_ala(hierarchy):
+  import iotbx.pdb.amino_acid_codes
+  aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
+  ala_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        def have_amino_acid():
+          for ag in rg.atom_groups():
+            if (ag.resname in aa_resnames):
+              return True
+          return False
+        if (have_amino_acid()):
+          for ag in rg.atom_groups():
+            for atom in ag.atoms():
+              if (atom.name not in ala_atom_names):
+                ag.remove_atom(atom=atom)
+
 def run(args, command_name="phenix.pdbtools"):
   log = utils.set_log(args)
   utils.print_programs_start_header(
@@ -608,6 +629,18 @@ def run(args, command_name="phenix.pdbtools"):
   command_line_interpreter = interpreter(command_name  = command_name,
                                          args          = args,
                                          log           = log)
+### Truncate to poly-Ala
+  if(command_line_interpreter.params.modify.truncate_to_polyala):
+    xray_structure = command_line_interpreter.pdb_inp.xray_structure_simple()
+    utils.print_header("Truncating to poly-Ala", out = log)
+    pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
+    truncate_to_poly_ala(hierarchy = pdb_hierarchy)
+    pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
+    pdb_hierarchy.write_pdb_file(file_name = pdbout+"_modified.pdb",
+      crystal_symmetry = xray_structure.crystal_symmetry())
+    return
+###
+  command_line_interpreter.set_ppf()
   all_chain_proxies = \
     command_line_interpreter.processed_pdb_file.all_chain_proxies
   xray_structure = command_line_interpreter.processed_pdb_file.xray_structure(
@@ -740,6 +773,16 @@ class interpreter:
     self.point_group = self.crystal_symmetry.space_group() \
       .build_derived_point_group()
     print >> self.log
+    #
+    pdb_combined = combine_unique_pdb_files(file_names = self.pdb_file_names)
+    pdb_combined.report_non_unique(out = self.log)
+    if(len(pdb_combined.unique_file_names) == 0):
+      raise Sorry("No coordinate file given.")
+    self.pdb_inp = iotbx.pdb.input(source_info = None,
+      lines = flex.std_string(pdb_combined.raw_records))
+    #
+
+  def set_ppf(self):
     processed_pdb_files_srv = utils.process_pdb_file_srv(
       crystal_symmetry          = self.crystal_symmetry,
       pdb_parameters            = self.params.input.pdb,

@@ -125,7 +125,8 @@ def test_quiet(file_name, verbose):
   remove_files("log")
   remove_files(output_file_name)
   cmd= "phenix.pdbtools %s output.file_name=%s shake=0.1 --quiet > log"%(
-                                        file_name, output_file_name)
+    file_name, output_file_name)
+  print cmd
   run_command(command=cmd, verbose=verbose)
   lines = open("log","r").readlines()
   assert len(lines) == 0
@@ -560,6 +561,17 @@ def exercise_02(pdb_dir, verbose):
   run_command(command=cmd, verbose=verbose)
   assert os.path.isfile(log)
 
+def exercise_truncate_to_polyala(pdb_dir, verbose):
+  file_name = os.path.join(pdb_dir, "enk_gbr.pdb")
+  cmd = "phenix.pdbtools %s truncate_to_polyala=true"%file_name
+  run_command(command=cmd, verbose=verbose)
+  ala_atom_names = [" N  ", " CA ", " C  ", " O  ", " CB "]
+  pdb_inp = iotbx.pdb.hierarchy.input(file_name="enk_gbr.pdb_modified.pdb")
+  counter = 0
+  for a in pdb_inp.hierarchy.atoms_with_labels():
+    assert a.name in ala_atom_names
+    counter += 1
+  assert counter == 23
 
 def exercise(args):
   if ("--show-everything" in args):
@@ -584,6 +596,7 @@ def exercise(args):
   exercise_show_number_of_removed(**eargs)
   exercise_01(**eargs)
   exercise_02(**eargs)
+  exercise_truncate_to_polyala(**eargs)
   print "OK"
 
 if (__name__ == "__main__"):
