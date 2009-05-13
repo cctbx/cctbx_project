@@ -140,18 +140,30 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
       sim.assign_random_velocities()
       delta_t = params.tardy_displacements_auto.first_delta_t
       assert params.tardy_displacements_auto.max_steps > 0
+      delta_t_rmsd_history = []
       for i_step in xrange(params.tardy_displacements_auto.max_steps):
+        prev_q = sim.pack_q()
         sim.dynamics_step(delta_t=delta_t)
         sites_moved = flex.vec3_double(sim.sites_moved())
         rmsd = sites_moved.rms_difference(sites_cart_start)
-        if (rmsd > params.tardy_displacements_auto.rmsd):
-          assert rmsd <= params.tardy_displacements_auto.rmsd \
-                       * params.tardy_displacements_auto.excessive_rmsd_factor
-          break
-        delta_t *= 2 - rmsd / params.tardy_displacements_auto.rmsd
+        delta_t_rmsd_history.append((delta_t, rmsd))
+        if (rmsd < params.tardy_displacements_auto.rmsd):
+          delta_t *= 2 - rmsd / params.tardy_displacements_auto.rmsd
+        else:
+          if (rmsd <= params.tardy_displacements_auto.rmsd
+                    * params.tardy_displacements_auto.excessive_rmsd_factor):
+            break
+          sim.unpack_q(packed_q=prev_q)
+          delta_t *= 0.5
+        prev_q = None
       else:
-        raise Sorry(
-          "tardy_displacements_auto.max_steps exceeded: try a larger delta_t.")
+        msg = [
+          "tardy_displacements_auto.max_steps exceeded:",
+          "  delta_t        rmsd"]
+        for delta_t_rmsd in delta_t_rmsd_history:
+          msg.append("  %13.6e  %13.6e" % delta_t_rmsd)
+        raise Sorry("\n".join(msg))
+      del delta_t_rmsd_history
       q = sim.pack_q()
       print >> log, "Random displacements:"
       print >> log, "  tardy_displacements=%s" % ",".join(
