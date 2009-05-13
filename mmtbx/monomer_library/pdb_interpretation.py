@@ -591,7 +591,7 @@ Feature disabled because of known problems. Please set:
         atom_name = self.mon_lib_names[i_atom]
         if (atom_name is None):
           atom_name = atom_name_given
-      if (not atom_dict.has_key(atom_name)):
+      if (len(atom_name) != 0 and not atom_dict.has_key(atom_name)):
         auto_synomyms = []
         if (atom_name[0] in string.digits):
           auto_synomyms.append(atom_name[1:] + atom_name[0])
