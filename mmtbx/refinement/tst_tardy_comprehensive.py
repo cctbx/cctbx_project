@@ -149,9 +149,14 @@ def run(args):
             log=tst_tardy_pdb_log)
         except KeyboardInterrupt: raise
         except:
+          print
+          print "tst_tardy_pdb_params leading to exception:"
+          print
+          tst_tardy_pdb_master_phil.format(tst_tardy_pdb_params).show()
+          print
           if (not local_params.verbose):
             sys.stdout.write(tst_tardy_pdb_log.getvalue())
-            sys.stdout.flush()
+          sys.stdout.flush()
           if (not local_params.keep_going):
             raise
           report_exception(
