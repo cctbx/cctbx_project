@@ -43,7 +43,7 @@ common_parameter_trial_table = [
   ("tardy_displacements_auto.rmsd", (0.5, 0.75, 1.0, 1.25, 1.5)),
   ("structure_factors_high_resolution", (1, 2, 3, 4, 5)),
   ("real_space_target_weight", (1, 10, 100, 1000)),
-  ("real_space_gradients_delta_resolution_factor", (1/2, 1/3, 1/4)),
+  ("real_space_gradients_delta_resolution_factor", (1, 2/3, 1/3)),
   ("emulate_cartesian", (False, True))
 ]
 
