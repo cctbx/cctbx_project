@@ -526,6 +526,26 @@ class set(crystal.symmetry):
       selection=self.resolution_filter_selection(d_max=d_max, d_min=d_min),
       negate=negate)
 
+  def multiscale(self, other, reflections_per_bin = None):
+    if(reflections_per_bin is None):
+      reflections_per_bin = other.indices().size()
+    assert self.indices().all_eq(other.indices())
+    assert self.is_similar_symmetry(other)
+    self.setup_binner(reflections_per_bin = reflections_per_bin)
+    other.use_binning_of(self)
+    scale = flex.double(self.indices().size(),-1)
+    for i_bin in self.binner().range_used():
+      sel = self.binner().selection(i_bin)
+      f1  = self.select(sel)
+      f2  = other.select(sel)
+      scale_ = 1.0
+      den = flex.sum(flex.abs(f2.data())*flex.abs(f2.data()))
+      if(den != 0):
+        scale_ = flex.sum(flex.abs(f1.data())*flex.abs(f2.data())) / den
+      scale.set_selected(sel, scale_)
+    assert (scale > 0).count(True) == scale.size()
+    return other.array(data = other.data()*scale)
+
   def match_indices(self, other, assert_is_similar_symmetry=True):
     if (assert_is_similar_symmetry):
       assert self.is_similar_symmetry(other)

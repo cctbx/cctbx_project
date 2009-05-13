@@ -1452,7 +1452,24 @@ def exercise_difference_map():
   assert ph_restrict.nearest_valid_phase(90, deg=True) == 0
   assert approx_equal(diff.data()[1], -1)
 
+def exercise_multiscale():
+  xrs = random_structure.xray_structure(
+    space_group_info=sgtbx.space_group_info(number=19),
+    elements=["C"]*10)
+  f1 = abs(xrs.structure_factors(d_min=3).f_calc())
+  f2 = abs(f1.deep_copy())
+  assert approx_equal(
+    flex.sum(f1.data()*f2.data())/flex.sum(f2.data()*f2.data()), 1)
+  f2 = f2.array(data = f2.data()*10)
+  assert approx_equal(
+    flex.sum(f1.data()*f2.data())/flex.sum(f2.data()*f2.data()), 0.1)
+  f1 = f2.multiscale(other = f1)
+  assert approx_equal(
+    flex.sum(f1.data()*f2.data())/flex.sum(f2.data()*f2.data()), 1)
+
+
 def run(args):
+  exercise_multiscale()
   exercise_difference_map()
   exercise_concatenate()
   exercise_phased_translation_coeff()
