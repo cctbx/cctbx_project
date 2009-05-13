@@ -177,13 +177,17 @@ class extract_tls_parameters(object):
               self.format_err(msg="Cannot extract number of TLS components.", rec=rec)
               return []
          if(rec.startswith("REMARK   3    RESIDUE RANGE :")):
-           ch1,res1,ch2,res2 = rec[32:33], rec[34:40], rec[47:48], rec[49:55]
+           if(len(rec.split())==9):
+             rec_s = rec.split()
+             ch1,res1,ch2,res2 = rec_s[5],rec_s[6],rec_s[7],rec_s[8]
+           else:
+             ch1,res1,ch2,res2 = rec[31:33], rec[34:40], rec[47:48], rec[49:55]
            r_range.append([ch1,res1,ch2,res2])
          # PHENIX selection
          if(rec.startswith("REMARK   3    SELECTION:")):
            sel_str = rec[rec.index(":")+1:]
            if(sel_str.strip().upper() in ["NONE","NULL"]):
-             self.format_err(msg="Bad TLS selection string.", rec = rec)
+             self.format_err(msg="Bad TLS selection string1.", rec = rec)
              return []
            i = i_seq+1
            while ( one[i].startswith("REMARK   3             :") or
@@ -192,7 +196,7 @@ class extract_tls_parameters(object):
              sel_str += " "+one[i][24:]
              i += 1
              if(sel_str.strip().upper() in ["NONE","NULL"]):
-               self.format_err(msg="Bad TLS selection string.", rec = rec)
+               self.format_err(msg="Bad TLS selection string2.", rec = rec)
                return []
            sel_str = " ".join(sel_str.split())
            ##
@@ -362,11 +366,11 @@ class extract_tls_parameters(object):
            if(len(res1)>0 and len(res2)>0):
              try: res1_ = int(res1)
              except ValueError:
-               self.format_err(msg="Bad TLS selection string.", rec = "".join(rr))
+               self.format_err(msg="Bad TLS selection string3.", rec = "".join(rr))
                return []
              try: res2_ = int(res2)
              except ValueError:
-               self.format_err(msg="Bad TLS selection string.", rec = "".join(rr))
+               self.format_err(msg="Bad TLS selection string4.", rec = "".join(rr))
                return []
              if(res1_ > res2_ and ch1 == ch2):
                self.format_err(msg="Bad TLS selection: start index > end index.")
@@ -382,7 +386,7 @@ class extract_tls_parameters(object):
            return []
          if(sel_str.upper() in ["NONE","NULL"]):
            sel_str = None
-           self.format_err(msg="Bad TLS selection string.", rec = sel_str)
+           self.format_err(msg="Bad TLS selection string5.", rec = sel_str)
            return []
        if(sel_str is not None or
           T.count(None) > 0 or
