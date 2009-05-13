@@ -35,13 +35,10 @@ class plot_grid(object):
                                             - O.top_label_space) / O.grid[1]
     gr.translate(tx, ty)
     O.top_group.add(gr)
-    f = flex.mean(flex.double(data.rmsd_final))
-    n = flex.mean(flex.double(data.rmsd_n))
-    info = "%s: %d=%.2f, %.2f" % (label, data.rmsd_n_n, n, f)
     O.top_group.add(String(
       tx+lp.x+lp.width*0.5,
       ty+lp.y+lp.height*1.05,
-      info,
+      label,
       fontSize=12,
       textAnchor="middle"))
 
@@ -54,7 +51,7 @@ class plot_grid(object):
     lp.y = 40
     lp.height = 120
     lp.width = 120
-    lp.data = [[(0,0),(4,4)], zip(data.rmsd_start, data.rmsd_final)]
+    lp.data = [[(0,0),(4,4)], data]
     lp.lines[0].strokeColor = colors.Color(*[0.8]*3)
     lp.lines[0].strokeWidth = 0.5
     lp.lines[1].strokeColor = colors.white
@@ -126,10 +123,9 @@ def rmsd_start_final_plots(
         plot_data[h][e][d] = {}
         for w in ttd["real_space_target_weight"]:
           plot_data[h][e][d][w] = group_args(
-            rmsd_start=[],
-            rmsd_final=[],
-            rmsd_n=[],
-            rmsd_n_n=rmsd_n_n)
+            rmsd_start=flex.double(),
+            rmsd_final=flex.double(),
+            rmsd_n=flex.double())
   #
   p = tst_tardy_pdb_params
   for cp_i_trial in xrange(cp_n_trials):
@@ -152,19 +148,65 @@ def rmsd_start_final_plots(
     return
   #
   mpp = multi_page_plots(file_name="plots_h_e.pdf")
-  for h in ttd["structure_factors_high_resolution"]:
-    for e in  ttd["emulate_cartesian"]:
+  for e in  ttd["emulate_cartesian"]:
+    w_d_ranks_rn = {}
+    w_d_ranks_rf = {}
+    for d in ttd["real_space_gradients_delta_resolution_factor"]:
+      for w in ttd["real_space_target_weight"]:
+        w_d_ranks_rn[(w,d)] = []
+        w_d_ranks_rf[(w,d)] = []
+    for h in ttd["structure_factors_high_resolution"]:
       top_label = "h%.0f_e%d" % (h, int(e))
       page = plot_grid(grid=(3,4), top_label=top_label)
+      page_rn = []
+      page_rf = []
       for i,d in enumerate(ttd["real_space_gradients_delta_resolution_factor"]):
         for j,w in enumerate(ttd["real_space_target_weight"]):
+          pd = plot_data[h][e][d][w]
+          rn = flex.mean(pd.rmsd_n)
+          rf = flex.mean(pd.rmsd_final)
+          page_rn.append((rn, (w,d)))
+          page_rf.append((rf, (w,d)))
+          label = "w%04.0f_d%.0f: %d=%.2f, %.2f" % (w, d*100, rmsd_n_n, rn, rf)
           page.process(
             grid_ij=(i,j),
-            label="w%04.0f_d%.0f" % (w, d*100),
-            data=plot_data[h][e][d][w])
+            label=label,
+            data=zip(pd.rmsd_start, pd.rmsd_final))
+      def cmp_rx(a, b):
+        result = cmp(a[0], b[0])
+        if (result == 0):
+          result = cmp(a[1], b[1])
+        return result
+      page_rn.sort(cmp_rx)
+      page_rf.sort(cmp_rx)
+      for i,(r,w_d) in enumerate(page_rn):
+        w_d_ranks_rn[w_d].append(i)
+      for i,(r,w_d) in enumerate(page_rf):
+        w_d_ranks_rf[w_d].append(i)
       if (write_separate_pages):
         page.write_to_file(file_name="plot_%s.pdf" % top_label)
       mpp.add_page(page=page)
+    w_d_ranks_rn = w_d_ranks_rn.items()
+    w_d_ranks_rf = w_d_ranks_rf.items()
+    def cmp_w_d_ranks(a, b):
+      result = cmp(sum(a[1]), sum(b[1]))
+      if (result == 0):
+        result = cmp(sorted(a[1]), sorted(b[1]))
+        if (result == 0):
+          result = cmp(a[1], b[1])
+          if (result == 0):
+            result = cmp(a[0], b[0])
+      return result
+    w_d_ranks_rn.sort(cmp_w_d_ranks)
+    w_d_ranks_rf.sort(cmp_w_d_ranks)
+    print "e=%d" % int(e)
+    for prefix,w_d_ranks in [("rn:", w_d_ranks_rn),
+                             ("rf:", w_d_ranks_rf)]:
+      for w_d,ranks in w_d_ranks:
+        print prefix, "%4.0f %4.2f" % w_d, "%2d" % sum(ranks), \
+          "[" + ", ".join(["%2d" % r for r in ranks]) + "]"
+        prefix = "   "
+      print
   mpp.write_to_file()
 
 def run(args):
