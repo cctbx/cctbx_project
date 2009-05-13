@@ -5,30 +5,30 @@ import libtbx, os
 
 params1 = iotbx.phil.parse("""\
 polygon {
-  keys_to_show = *rfact *rfree *bndav *angav *adpav
+  keys_to_show = *r_work_pdb *r_free_pdb *bonds_rmsd *angles_rmsd *adp_mean
   filter
   {
-    key = *dhigh
+    key = *d_min
     value_min = 2
     value_max = 2.5
   }
   filter
   {
-    key = *natoms
+    key = *n_atoms
     value_min = 0
     value_max = 50000
   }
-  filter
-  {
-    key = *data
-    target_value = fobs_x
-  }
+  #filter
+  #{
+  #  key = *data_label
+  #  target_value = fobs_x
+  #}
 }
 """)
 
 params2 = iotbx.phil.parse("""\
 polygon {
-  keys_to_show = *rfact *rfree *bndav *angav *adpav
+  keys_to_show = *r_work_pdb *r_free_pdb *bonds_rmsd *angles_rmsd *adp_mean
 }
 """)
 
@@ -39,10 +39,10 @@ def example_1():
   polygon.polygon(params = pr.extract())
 
 def example_2():
-  # show selected characteristics for the whole database
-  pr, unused_definitions = polygon.master_params.fetch(sources = [params2],
-    track_unused_definitions = True)
-  polygon.polygon(params = pr.extract())
+  #
+  #pr, unused_definitions = polygon.master_params.fetch(sources = [params2],
+  #  track_unused_definitions = True, d_min=1.0)
+  polygon.polygon(d_min=1.0)
 
 def example_3():
   # show selected characteristics, apply default selection

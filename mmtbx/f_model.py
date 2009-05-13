@@ -277,7 +277,7 @@ class manager(manager_mixin):
          k_sol                        = 0.0,
          b_sol                        = 0.0,
          sf_and_grads_accuracy_params = None,
-         target_name                  = None,
+         target_name                  = "ml",
          abcd                         = None,
          alpha_beta_params            = None,
          xray_structure               = None,
@@ -1160,11 +1160,12 @@ class manager(manager_mixin):
         + est_exceptions[1])
     omega = flex.double()
     for ae,ssi in zip(alpha.data(),ss):
-      if(ae >  1.0): ae = 1.0
-      if(ae <= 0.0): ae = 1.e-6
-      coeff = -4./(math.pi**3*ssi)
-      omega.append( math.sqrt( math.log(ae) * coeff ) )
-    omega_mean = flex.mean(omega)
+      if(ae > 0.0):
+        coeff = -4./(math.pi**3*ssi)
+        tmp = math.log(ae) * coeff
+        if(tmp >= 0):
+          omega.append( math.sqrt( tmp ) )
+    omega_mean = flex.mean_default(omega, 0)
     return omega_mean
 
   def _r_factor(self, f_obs, f_model, d_min=None, d_max=None, d_spacings=None,

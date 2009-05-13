@@ -46,7 +46,7 @@ from mmtbx import utils
 from mmtbx import max_lik
 from mmtbx.max_lik import maxlik
 from iotbx.pdb import combine_unique_pdb_files
-
+from cctbx import maptbx
 
 map_params_str ="""\
   map_format = *xplor
@@ -548,7 +548,7 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent):
   if(not silent):
     print >> log, "Fobs1_vs_Fobs2 statistics:"
     print >> log, "Bin# Resolution range  Compl.  No.of refl. R-factor"
-    fobs_1.setup_binner(reflections_per_bin = 250)
+    fobs_1.setup_binner(reflections_per_bin = 500)
     fobs_2.use_binning_of(fobs_1)
     for i_bin in fobs_1.binner().range_used():
       sel = fobs_1.binner().selection(i_bin)

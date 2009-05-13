@@ -1456,6 +1456,11 @@ class process_command_line_args(object):
       arg_file = arg
       if(arg.count("=")==1):
         arg_file = arg[arg.index("=")+1:]
+      try:
+        crystal_symmetries.append(
+          [arg_file, crystal_symmetry_from_any.extract_from(arg_file)])
+      except KeyboardInterrupt: raise
+      except RuntimeError: pass
       if(os.path.isfile(arg_file)):
         params = None
         try: params = iotbx.phil.parse(file_name=arg_file)
@@ -1470,11 +1475,11 @@ class process_command_line_args(object):
         elif(pdb.is_pdb_file(file_name=arg_file)):
           self.pdb_file_names.append(arg_file)
           arg_is_processed = True
-          try:
-            crystal_symmetries.append(
-              crystal_symmetry_from_any.extract_from(arg_file))
-          except KeyboardInterrupt: raise
-          except RuntimeError: pass
+          #try:
+          #  crystal_symmetries.append(
+          #    crystal_symmetry_from_any.extract_from(arg_file))
+          #except KeyboardInterrupt: raise
+          #except RuntimeError: pass
         else:
           try:
             cif_object = mmtbx.monomer_library.server.read_cif(file_name = arg_file)
@@ -1491,11 +1496,11 @@ class process_command_line_args(object):
           self.reflection_files.append(reflection_file)
           self.reflection_file_names.append(arg)
           arg_is_processed = True
-          try:
-            crystal_symmetries.append(
-              crystal_symmetry_from_any.extract_from(arg_file))
-          except KeyboardInterrupt: raise
-          except RuntimeError: pass
+          #try:
+          #  crystal_symmetries.append(
+          #    crystal_symmetry_from_any.extract_from(arg_file))
+          #except KeyboardInterrupt: raise
+          #except RuntimeError: pass
       if(not arg_is_processed and master_params is not None):
         try:
           params = parameter_interpreter.process(arg = arg)
@@ -1524,17 +1529,19 @@ class process_command_line_args(object):
     if(len(crystal_symmetries)>1):
       cs0 = None
       for cs in crystal_symmetries:
-        if(cs is not None):
-          cs0 = cs
+        if(cs[1] is not None):
+          cs0 = cs[1]
           break
-      if(cs0 is not None):
+      if(cs0 is not None and cs0.unit_cell() is not None):
         for cs in crystal_symmetries:
-         if(cs is not None):
-           if(not cs0.is_similar_symmetry(cs)):
+         if(cs[1] is not None and cs[1].unit_cell() is not None):
+           if(not cs0.is_similar_symmetry(cs[1])):
+             for cs in crystal_symmetries:
+               print cs[0], cs[1].unit_cell(), cs[1].space_group_info()
              raise Sorry("Crystal symmetry mismatch between different files.")
         self.crystal_symmetry = cs0
     elif(len(crystal_symmetries) == 1):
-      self.crystal_symmetry = crystal_symmetries[0]
+      self.crystal_symmetry = crystal_symmetries[0][1]
 
 class pdb_file(object):
 
@@ -1549,7 +1556,6 @@ class pdb_file(object):
     self.cif_objects = cif_objects
     self.use_elbow = use_elbow
     self.pdb_file_names = pdb_file_names
-
     pdb_combined = combine_unique_pdb_files(file_names = pdb_file_names)
     pdb_combined.report_non_unique(out = log)
     if(len(pdb_combined.unique_file_names) == 0):
