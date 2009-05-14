@@ -12,6 +12,7 @@ namespace scitbx {
   class histogram
   {
     public:
+      template <typename DataType>
       histogram() {}
 
       //! Computation of the histogram.

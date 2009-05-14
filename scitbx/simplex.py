@@ -174,10 +174,11 @@ class simplex_opt(object):
   def ShrinkSimplex(self):
     for ii in range(self.dimension+1):
       if(ii != self.min_indx):
-        self.matrix[ii] += self.sigma*(self.matrix[self.min_indx] - self.matrix[ii])
+        self.matrix[ii] = self.matrix[self.min_indx]+self.sigma*(self.matrix[ii] - self.matrix[self.min_indx])
         self.simplexValue[ii]=self.function(self.matrix[ii])
 
   def ReplaceSimplexPoint(self,vector):
+    #self.FindCentroidPt()
     self.matrix[self.max_indx] = vector
 
   def GetResult(self):
@@ -211,6 +212,7 @@ class test_function(object):
 def run():
   flex.set_random_seed(0)
   for ii in xrange(10):
+    test_function(1)
     test_function(2)
     test_function(3)
     test_function(4)
