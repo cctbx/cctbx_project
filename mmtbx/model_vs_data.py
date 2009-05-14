@@ -36,6 +36,8 @@ class mvd(object):
     self.model_vs_data = None
     self.pdb_header    = None
     self.misc          = None
+    self.pdb_file      = None
+    self.fmodel        = None
 
   def collect(self,
               crystal       = None,
@@ -361,7 +363,8 @@ def run(args,
         show_geometry_statistics = True,
         model_size_max_atoms     = 80000,
         data_size_max_reflections= 1000000,
-        unit_cell_max_dimension  = 800.):
+        unit_cell_max_dimension  = 800.,
+        return_fmodel_and_pdb    = False):
   if(len(args) == 0): args = ["--help"]
   command_line = (iotbx_option_parser(
     usage="%s reflection_file pdb_file [options]" % command_name,
@@ -580,6 +583,9 @@ def run(args,
     r_free_cutoff = r_free_cutoff,
     n_refl_cutoff = n_refl_cutoff))
   mvd_obj.show()
+  if return_fmodel_and_pdb :
+    mvd_obj.pdb_file = processed_pdb_file
+    mvd_obj.fmodel = fmodel
   return mvd_obj
 
 def read_mvd_output(file_lines, name):
