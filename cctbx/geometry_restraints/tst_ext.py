@@ -1270,6 +1270,40 @@ def exercise_dihedral():
     proxies=proxies,
     gradient_array=None)
   assert approx_equal(residual_sum, 2*25)
+  # check proxies with and without sym_ops are happy side-by-side
+  p_sym = geometry_restraints.dihedral_proxy(
+    i_seqs=[0,1,2,3],
+    sym_ops=sym_ops,
+    angle_ideal=175,
+    weight=1)
+  assert p_sym.sym_ops == sym_ops
+  dihedral_sym = geometry_restraints.dihedral(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=p_sym)
+  p_no_sym = geometry_restraints.dihedral_proxy(
+    i_seqs=[0,1,2,3],
+    angle_ideal=175,
+    weight=1)
+  assert p_no_sym.sym_ops == None
+  dihedral_no_sym = geometry_restraints.dihedral(
+    sites_cart=sites_cart,
+    proxy=p_no_sym)
+  proxies = geometry_restraints.shared_dihedral_proxy([p_sym,p_no_sym])
+  assert approx_equal(geometry_restraints.dihedral_deltas(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies), [dihedral_sym.delta,dihedral_no_sym.delta])
+  assert approx_equal(geometry_restraints.dihedral_residuals(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies), [dihedral_sym.residual(),dihedral_no_sym.residual()])
+  residual_sum = geometry_restraints.dihedral_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=None)
+  assert approx_equal(residual_sum, dihedral_sym.residual() + dihedral_no_sym.residual())
   #
   unit_cell = uctbx.unit_cell([15,11.5,16.25,90,99.5,90])
   sites_cart = flex.vec3_double(
@@ -1730,7 +1764,7 @@ def exercise_planarity():
   rt_mx = sgtbx.rt_mx('2-X,-Y,1-Z')
   u_mx = sgtbx.rt_mx()
   i_seqs = flex.size_t([0,1,2,0,1,2])
-  sym_ops = [u_mx,u_mx,u_mx,rt_mx,rt_mx,rt_mx]
+  sym_ops = (u_mx,u_mx,u_mx,rt_mx,rt_mx,rt_mx)
   weights = flex.double([1]*6)
   p = geometry_restraints.planarity_proxy(
     i_seqs=i_seqs,
@@ -1753,6 +1787,38 @@ def exercise_planarity():
     proxy=p)
   for g,e in zip(gradient_array, fd_grads):
     assert approx_equal(g, e)
+  # check proxies with and without sym_ops are happy side-by-side
+  p_sym = geometry_restraints.planarity_proxy(
+    i_seqs=i_seqs,
+    sym_ops=sym_ops,
+    weights=weights)
+  assert p_sym.sym_ops == sym_ops
+  restraint_sym = geometry_restraints.planarity(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=p_sym)
+  p_no_sym = geometry_restraints.planarity_proxy(
+    i_seqs=i_seqs,
+    weights=weights)
+  assert p_no_sym.sym_ops == None
+  restraint_no_sym = geometry_restraints.planarity(
+    sites_cart=sites_cart,
+    proxy=p_no_sym)
+  proxies = geometry_restraints.shared_planarity_proxy([p_sym,p_no_sym])
+  assert approx_equal(geometry_restraints.planarity_deltas_rms(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies), [restraint_sym.rms_deltas(),restraint_no_sym.rms_deltas()])
+  assert approx_equal(geometry_restraints.planarity_residuals(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies), [restraint_sym.residual(),restraint_no_sym.residual()])
+  residual_sum = geometry_restraints.planarity_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=None)
+  assert approx_equal(residual_sum, restraint_sym.residual() + restraint_no_sym.residual())
 
 def exercise_proxy_show():
   # zeolite AHT
@@ -2116,7 +2182,7 @@ Planarity restraints: 2
   #
   unit_cell = uctbx.unit_cell([15,11.5,16.25,90,99.5,90])
   sites_cart = flex.vec3_double(
-    [(12.87,0.10,9.04),(12.54,0.44,7.73),(13.47,0.34,6.71)])
+    [(12.87,0.10,9.04),(12.54,0.44,7.73),(13.47,0.34,6.71),(1,2,3)])
   rt_mx = sgtbx.rt_mx('2-X,-Y,1-Z')
   u_mx = sgtbx.rt_mx()
   p = geometry_restraints.angle_proxy(
@@ -2145,6 +2211,33 @@ Planarity restraints: 2
 !      1  -x+2,-y,-z+1
 !    ideal   model   delta    sigma   weight residual
 !   120.00  122.78   -2.78 1.00e+00 1.00e+00 7.73e+00
+""")
+  # test proxies with and without proxy.sym_ops side by side
+  p2 = geometry_restraints.angle_proxy(
+    i_seqs=[2,1,0],
+    angle_ideal=59,
+    weight=2)
+  proxies = geometry_restraints.shared_angle_proxy([p,p2])
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="delta",
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    f=sio,
+    prefix='~')
+  assert not show_diff(sio.getvalue(), """\
+~Bond angle restraints: 2
+~Sorted by delta:
+~angle 2
+~      1
+~      0
+~    ideal   model   delta    sigma   weight residual
+~    59.00  121.08  -62.08 7.07e-01 2.00e+00 7.71e+03
+~angle 2
+~      0  -x+2,-y,-z+1
+~      1  -x+2,-y,-z+1
+~    ideal   model   delta    sigma   weight residual
+~   120.00  122.78   -2.78 1.00e+00 1.00e+00 7.73e+00
 """)
   #
   p = geometry_restraints.dihedral_proxy(
@@ -2193,19 +2286,98 @@ Planarity restraints: 2
 >Planarity restraints: 2
 >Sorted by residual:
 >           delta    sigma   weight rms_deltas residual sym.op.
->plane 0    0.017 1.00e+00 1.00e+00   1.60e-02 1.53e-03 x,y,z
->      1   -0.015 1.00e+00 1.00e+00                     x,y,z
->      2    0.016 1.00e+00 1.00e+00                     x,y,z
+>plane 0    0.017 1.00e+00 1.00e+00   1.60e-02 1.53e-03
+>      1   -0.015 1.00e+00 1.00e+00
+>      2    0.016 1.00e+00 1.00e+00
 >      0   -0.017 1.00e+00 1.00e+00                     -x+2,-y,-z+1
 >      1    0.015 1.00e+00 1.00e+00                     -x+2,-y,-z+1
 >      2   -0.016 1.00e+00 1.00e+00                     -x+2,-y,-z+1
 >           delta    sigma   weight rms_deltas residual sym.op.
->plane 0    0.017 1.00e+00 1.00e+00   1.60e-02 1.53e-03 x,y,z
->      1   -0.015 1.00e+00 1.00e+00                     x,y,z
->      2    0.016 1.00e+00 1.00e+00                     x,y,z
+>plane 0    0.017 1.00e+00 1.00e+00   1.60e-02 1.53e-03
+>      1   -0.015 1.00e+00 1.00e+00
+>      2    0.016 1.00e+00 1.00e+00
 >      0   -0.017 1.00e+00 1.00e+00                     -x+2,-y,-z+1
 >      1    0.015 1.00e+00 1.00e+00                     -x+2,-y,-z+1
 >      2   -0.016 1.00e+00 1.00e+00                     -x+2,-y,-z+1
+""")
+  # test proxies with and without proxy.sym_ops side by side
+  p2 = geometry_restraints.planarity_proxy(
+    i_seqs=[0,2,3,1],
+    weights=[0.31,0.2,0.31,0.4])
+  proxies = geometry_restraints.shared_planarity_proxy([p,p2])
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="rms_deltas",
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    f=sio,
+    prefix="#")
+  assert not show_diff(sio.getvalue(), """\
+#Planarity restraints: 2
+#Sorted by rms_deltas:
+#           delta    sigma   weight rms_deltas residual sym.op.
+#plane 0   -0.053 1.80e+00 3.10e-01   6.02e-02 4.53e-03
+#      2   -0.071 2.24e+00 2.00e-01
+#      3   -0.005 1.80e+00 3.10e-01
+#      1    0.081 1.58e+00 4.00e-01
+#           delta    sigma   weight rms_deltas residual sym.op.
+#plane 0    0.017 1.00e+00 1.00e+00   1.60e-02 1.53e-03
+#      1   -0.015 1.00e+00 1.00e+00
+#      2    0.016 1.00e+00 1.00e+00
+#      0   -0.017 1.00e+00 1.00e+00                     -x+2,-y,-z+1
+#      1    0.015 1.00e+00 1.00e+00                     -x+2,-y,-z+1
+#      2   -0.016 1.00e+00 1.00e+00                     -x+2,-y,-z+1
+""")
+  #
+  unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
+  sites_cart = flex.vec3_double(
+    [(1,2,3),(2,4,6),(1,2,4.5),(2,5.6,6),(14,24,29),(0.5,24,29)])
+  p = geometry_restraints.bond_similarity_proxy(
+    i_seqs=[(0,2),(1,3),(4,5)],
+    sym_ops=[u_mx,u_mx,sgtbx.rt_mx('1+x,y,z')],
+    weights=(1,2,3))
+  proxies = geometry_restraints.shared_bond_similarity_proxy([p,p])
+  sio = StringIO()
+  proxies.show_sorted(
+    by_value="residual",
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    f=sio,
+    prefix=">")
+  assert not show_diff(sio.getvalue(), """\
+>Bond similarity restraints: 2
+>Sorted by residual:
+>            delta    sigma   weight rms_deltas residual sym.op.
+>bond 0-2   -0.033 1.00e+00 1.00e+00   4.71e-02 2.22e-03
+>     1-3    0.067 7.07e-01 2.00e+00
+>     4-5   -0.033 5.77e-01 3.00e+00                     x+1,y,z
+>            delta    sigma   weight rms_deltas residual sym.op.
+>bond 0-2   -0.033 1.00e+00 1.00e+00   4.71e-02 2.22e-03
+>     1-3    0.067 7.07e-01 2.00e+00
+>     4-5   -0.033 5.77e-01 3.00e+00                     x+1,y,z
+""")
+  sio = StringIO()
+  p = geometry_restraints.bond_similarity_proxy(
+    i_seqs=[(0,2),(1,3),(4,5)],
+    weights=(1,2,3))
+  proxies = geometry_restraints.shared_bond_similarity_proxy([p,p])
+  proxies.show_sorted(
+    by_value="rms_deltas",
+    sites_cart=sites_cart,
+    site_labels=site_labels,
+    f=sio,
+    prefix=">")
+  assert not show_diff(sio.getvalue(), """\
+>Bond similarity restraints: 2
+>Sorted by rms_deltas:
+>                delta    sigma   weight rms_deltas residual
+>bond a-c       -6.033 1.00e+00 1.00e+00   5.98e+00 3.56e+01
+>     ba-dada   -5.933 7.07e-01 2.00e+00
+>     e-f        5.967 5.77e-01 3.00e+00
+>                delta    sigma   weight rms_deltas residual
+>bond a-c       -6.033 1.00e+00 1.00e+00   5.98e+00 3.56e+01
+>     ba-dada   -5.933 7.07e-01 2.00e+00
+>     e-f        5.967 5.77e-01 3.00e+00
 """)
 
 def exercise():
