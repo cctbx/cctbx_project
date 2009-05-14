@@ -179,10 +179,12 @@ namespace cctbx { namespace geometry_restraints {
           std::size_t i_seq = i_seqs_ref[i];
           CCTBX_ASSERT(i_seq < sites_cart.size());
           sites.push_back(sites_cart[i_seq]);
-          sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
-          if ( !rt_mx.is_unit_mx() ) {
-            sites[i] = unit_cell.orthogonalize(
-              rt_mx * unit_cell.fractionalize(sites[i]));
+          if ( proxy.sym_ops.get() ) {
+            sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
+            if ( !rt_mx.is_unit_mx() ) {
+              sites[i] = unit_cell.orthogonalize(
+                rt_mx * unit_cell.fractionalize(sites[i]));
+            }
           }
         }
         init_deltas();
