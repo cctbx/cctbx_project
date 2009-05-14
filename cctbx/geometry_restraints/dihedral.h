@@ -4,36 +4,12 @@
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
 #include <scitbx/constants.h>
+#include <scitbx/optional_copy.h>
 
 namespace cctbx { namespace geometry_restraints {
 
-  //! Grouping of diherdal parameters angle_ideal, weight and periodicity.
-  struct dihedral_params
-  {
-    //! Default constructor. Some data members are not initialized!
-    dihedral_params() {}
-
-    //! Constructor.
-    dihedral_params(
-      double angle_ideal_,
-      double weight_,
-      int periodicity_=0)
-    :
-      angle_ideal(angle_ideal_),
-      weight(weight_),
-      periodicity(periodicity_)
-    {}
-
-    //! Parameter.
-    double angle_ideal;
-    //! Parameter.
-    double weight;
-    //! Parameter.
-    int periodicity;
-  };
-
   //! Grouping of indices into array of sites (i_seqs) and dihedral_params.
-  struct dihedral_proxy : dihedral_params
+  struct dihedral_proxy
   {
     //! Support for shared_proxy_select.
     typedef af::tiny<unsigned, 4> i_seqs_type;
@@ -48,7 +24,9 @@ namespace cctbx { namespace geometry_restraints {
       double weight_,
       int periodicity_=0)
     :
-      dihedral_params(angle_ideal_, weight_, periodicity_),
+      angle_ideal(angle_ideal_),
+      weight(weight_),
+      periodicity(periodicity_),
       i_seqs(i_seqs_)
     {}
 
@@ -57,9 +35,47 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs_type const& i_seqs_,
       dihedral_proxy const& params)
     :
-      dihedral_params(params),
+      angle_ideal(params.angle_ideal),
+      weight(params.weight),
+      periodicity(params.periodicity),
       i_seqs(i_seqs_)
     {}
+
+    //! Constructor.
+    dihedral_proxy(
+      i_seqs_type const& i_seqs_,
+      af::shared<sgtbx::rt_mx> const& sym_ops_,
+      double angle_ideal_,
+      double weight_,
+      int periodicity_=0)
+    :
+      angle_ideal(angle_ideal_),
+      weight(weight_),
+      periodicity(periodicity_),
+      sym_ops(sym_ops_),
+      i_seqs(i_seqs_)
+    {
+      if ( sym_ops.get() ) {
+        CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
+      }
+    }
+
+    //! Constructor.
+    dihedral_proxy(
+      i_seqs_type const& i_seqs_,
+      af::shared<sgtbx::rt_mx> const& sym_ops_,
+      dihedral_proxy const& params)
+    :
+      angle_ideal(params.angle_ideal),
+      weight(params.weight),
+      periodicity(params.periodicity),
+      sym_ops(sym_ops_),
+      i_seqs(i_seqs_)
+    {
+      if ( sym_ops.get() ) {
+        CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
+      }
+    }
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[3] and i_seq[1] < i_seq[2].
     dihedral_proxy
@@ -68,78 +84,31 @@ namespace cctbx { namespace geometry_restraints {
       dihedral_proxy result(*this);
       if (result.i_seqs[0] > result.i_seqs[3]) {
         std::swap(result.i_seqs[0], result.i_seqs[3]);
+        if ( sym_ops.get() ) {
+          std::swap(result.sym_ops[0], result.sym_ops[3]);
+        }
         result.angle_ideal *= -1;
       }
       if (result.i_seqs[1] > result.i_seqs[2]) {
         std::swap(result.i_seqs[1], result.i_seqs[2]);
+        if ( sym_ops.get() ) {
+          std::swap(result.sym_ops[1], result.sym_ops[2]);
+        }
         result.angle_ideal *= -1;
       }
       return result;
     }
 
+    //! Parameter.
+    double angle_ideal;
+    //! Parameter.
+    double weight;
+    //! Parameter.
+    int periodicity;
     //! Indices into array of sites.
     i_seqs_type i_seqs;
-  };
-
-  //! Grouping of dihedral_proxy and symmetry operations.
-  struct dihedral_sym_proxy : dihedral_params
-  {
-    //! Support for shared_proxy_select.
-    typedef af::tiny<unsigned, 4> i_seqs_type;
-
-    //! Default constructor. Some data members are not initialized!
-    dihedral_sym_proxy() {}
-
-    //! Constructor.
-    dihedral_sym_proxy(
-      i_seqs_type const& i_seqs_,
-      af::shared<sgtbx::rt_mx> const& sym_ops_,
-      double angle_ideal_,
-      double weight_,
-      int periodicity_=0)
-    :
-      dihedral_params(angle_ideal_, weight_, periodicity_),
-      sym_ops(sym_ops_),
-      i_seqs(i_seqs_)
-    {
-      CCTBX_ASSERT(sym_ops.size() == i_seqs.size());
-    }
-
-    //! Constructor.
-    dihedral_sym_proxy(
-      i_seqs_type const& i_seqs_,
-      af::shared<sgtbx::rt_mx> const& sym_ops_,
-      dihedral_proxy const& params)
-    :
-      dihedral_params(params),
-      sym_ops(sym_ops_),
-      i_seqs(i_seqs_)
-    {
-      CCTBX_ASSERT(sym_ops.size() == i_seqs.size());
-    }
-
-    //! Sorts i_seqs such that i_seq[0] < i_seq[3] and i_seq[1] < i_seq[2].
-    dihedral_sym_proxy
-    sort_i_seqs() const
-    {
-      dihedral_sym_proxy result(*this);
-      if (result.i_seqs[0] > result.i_seqs[3]) {
-        std::swap(result.i_seqs[0], result.i_seqs[3]);
-        std::swap(result.sym_ops[0], result.sym_ops[3]);
-        result.angle_ideal *= -1;
-      }
-      if (result.i_seqs[1] > result.i_seqs[2]) {
-        std::swap(result.i_seqs[1], result.i_seqs[2]);
-        std::swap(result.sym_ops[1], result.sym_ops[2]);
-        result.angle_ideal *= -1;
-      }
-      return result;
-    }
-
-    //! Indices into array of sites.
-    i_seqs_type i_seqs;
-    //! Array of symmetry operations.
-    af::shared<sgtbx::rt_mx> sym_ops;
+    //! Optional array of symmetry operations.
+    scitbx::optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
   };
 
   //! Residual and gradient calculations for dihedral %angle restraint.
@@ -203,7 +172,7 @@ namespace cctbx { namespace geometry_restraints {
       dihedral(
         uctbx::unit_cell const& unit_cell,
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
-        dihedral_sym_proxy const& proxy)
+        dihedral_proxy const& proxy)
       :
         angle_ideal(proxy.angle_ideal),
         weight(proxy.weight),
@@ -213,10 +182,12 @@ namespace cctbx { namespace geometry_restraints {
           std::size_t i_seq = proxy.i_seqs[i];
           CCTBX_ASSERT(i_seq < sites_cart.size());
           sites[i] = sites_cart[i_seq];
-          sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
-          if ( !rt_mx.is_unit_mx() ) {
-            sites[i] = unit_cell.orthogonalize(
-              rt_mx * unit_cell.fractionalize(sites[i]));
+          if ( proxy.sym_ops.get() ) {
+            sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
+            if ( !rt_mx.is_unit_mx() ) {
+              sites[i] = unit_cell.orthogonalize(
+                rt_mx * unit_cell.fractionalize(sites[i]));
+            }
           }
         }
         init_angle_model();
@@ -289,15 +260,14 @@ namespace cctbx { namespace geometry_restraints {
       add_gradients(
         uctbx::unit_cell const& unit_cell,
         af::ref<scitbx::vec3<double> > const& gradient_array,
-        dihedral_sym_proxy const& proxy) const
+        dihedral_proxy const& proxy) const
       {
-        dihedral_sym_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
-        af::shared<sgtbx::rt_mx> const& sym_ops = proxy.sym_ops;
+        dihedral_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
+        scitbx::optional_copy<af::shared<sgtbx::rt_mx> > const& sym_ops = proxy.sym_ops;
         af::tiny<scitbx::vec3<double>, 4> grads = gradients();
         for(int i=0;i<4;i++) {
-          sgtbx::rt_mx const& rt_mx = sym_ops[i];
-          if ( !rt_mx.is_unit_mx() ) {
-            scitbx::mat3<double> r_inv_cart_ = r_inv_cart(unit_cell, rt_mx);
+          if ( sym_ops.get() && !sym_ops[i].is_unit_mx() ) {
+            scitbx::mat3<double> r_inv_cart_ = r_inv_cart(unit_cell, sym_ops[i]);
             gradient_array[i_seqs[i]] += grads[i] * r_inv_cart_;
           }
           else { gradient_array[i_seqs[i]] += grads[i]; }
@@ -360,7 +330,9 @@ namespace cctbx { namespace geometry_restraints {
       }
   };
 
-  //! Fast computation of dihedral::delta given an array of dihedral proxies.
+  /*! Fast computation of dihedral::delta given an array of dihedral proxies,
+      ignoring proxy.sym_ops.
+   */
   inline
   af::shared<double>
   dihedral_deltas(
@@ -372,7 +344,7 @@ namespace cctbx { namespace geometry_restraints {
   }
 
   /*! Fast computation of dihedral::residual() given an array of
-      dihedral proxies.
+      dihedral proxies, ignoring proxy.sym_ops.
    */
   inline
   af::shared<double>
@@ -385,7 +357,7 @@ namespace cctbx { namespace geometry_restraints {
   }
 
   /*! Fast computation of sum of dihedral::residual() and gradients
-      given an array of dihedral proxies.
+      given an array of dihedral proxies, ignoring proxy.sym_ops.
    */
   /*! The dihedral::gradients() are added to the gradient_array if
       gradient_array.size() == sites_cart.size().
@@ -404,34 +376,37 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies, gradient_array);
   }
 
-  //! Fast computation of dihedral::delta given an array of dihedral sym proxies.
+  /*! Fast computation of dihedral::delta given an array of dihedral
+      proxies, taking into account proxy.sym_ops.
+   */
   inline
   af::shared<double>
   dihedral_deltas(
     uctbx::unit_cell const& unit_cell,
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<dihedral_sym_proxy> const& proxies)
+    af::const_ref<dihedral_proxy> const& proxies)
   {
-    return detail::generic_deltas<dihedral_sym_proxy, dihedral>::get(
+    return detail::generic_deltas<dihedral_proxy, dihedral>::get(
       unit_cell, sites_cart, proxies);
   }
 
   /*! Fast computation of dihedral::residual() given an array of
-      dihedral sym proxies.
+      dihedral proxies, taking into account proxy.sym_ops.
    */
   inline
   af::shared<double>
   dihedral_residuals(
     uctbx::unit_cell const& unit_cell,
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<dihedral_sym_proxy> const& proxies)
+    af::const_ref<dihedral_proxy> const& proxies)
   {
-    return detail::generic_residuals<dihedral_sym_proxy, dihedral>::get(
+    return detail::generic_residuals<dihedral_proxy, dihedral>::get(
       unit_cell, sites_cart, proxies);
   }
 
   /*! Fast computation of sum of dihedral::residual() and gradients
-      given an array of dihedral sym proxies.
+      given an array of dihedral proxies, taking into account
+      proxy.sym_ops.
    */
   /*! The dihedral::gradients() are added to the gradient_array if
       gradient_array.size() == sites_cart.size().
@@ -444,10 +419,10 @@ namespace cctbx { namespace geometry_restraints {
   dihedral_residual_sum(
     uctbx::unit_cell const& unit_cell,
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<dihedral_sym_proxy> const& proxies,
+    af::const_ref<dihedral_proxy> const& proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array)
   {
-    return detail::generic_residual_sum<dihedral_sym_proxy, dihedral>::get(
+    return detail::generic_residual_sum<dihedral_proxy, dihedral>::get(
       unit_cell, sites_cart, proxies, gradient_array);
   }
 

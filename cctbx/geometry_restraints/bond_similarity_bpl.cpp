@@ -27,6 +27,11 @@ namespace {
       class_<w_t>("bond_similarity_proxy", no_init)
         .def(init<
           af::shared<af::tiny<std::size_t, 2> >,
+          af::shared<double> const&>((
+            arg_("i_seqs"),
+            arg_("weights"))))
+        .def(init<
+          af::shared<af::tiny<std::size_t, 2> >,
           af::shared<sgtbx::rt_mx>,
           af::shared<double> const&>((
             arg_("i_seqs"),
@@ -68,6 +73,9 @@ namespace {
                   af::const_ref<scitbx::vec3<double> > const&,
                   bond_similarity_proxy const&>(
           (arg_("unit_cell"), arg_("sites_cart"), arg_("proxy"))))
+        .def(init<af::const_ref<scitbx::vec3<double> > const&,
+                  bond_similarity_proxy const&>(
+          (arg_("sites_cart"), arg_("proxy"))))
         .add_property("sites_array", make_getter(
           &w_t::sites_array, rbv()))
         .add_property("weights", make_getter(&w_t::weights, rbv()))
@@ -86,6 +94,27 @@ namespace {
     using namespace boost::python;
     bond_similarity_proxy_wrappers::wrap();
     bond_similarity_wrappers::wrap();
+    def("bond_similarity_deltas_rms",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<bond_similarity_proxy> const&))
+      bond_similarity_deltas_rms,
+      (arg_("sites_cart"), arg_("proxies")));
+    def("bond_similarity_residuals",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<bond_similarity_proxy> const&))
+      bond_similarity_residuals,
+      (arg_("sites_cart"), arg_("proxies")));
+    def("bond_similarity_residual_sum",
+      (double(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<bond_similarity_proxy> const&,
+        af::ref<scitbx::vec3<double> > const&))
+      bond_similarity_residual_sum,
+      (arg_("sites_cart"),
+       arg_("proxies"),
+       arg_("gradient_array")));
     def("bond_similarity_deltas_rms",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,
