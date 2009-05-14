@@ -1,3 +1,4 @@
+from libtbx import adopt_init_args
 from cctbx import geometry_restraints
 from cctbx.array_family import flex
 import scitbx.restraints
@@ -7,6 +8,7 @@ import sys
 class energies(scitbx.restraints.energies):
 
   def __init__(self, sites_cart,
+                     unit_cell=None,
                      bond_proxies=None,
                      nonbonded_proxies=None,
                      nonbonded_function=None,
@@ -14,22 +16,12 @@ class energies(scitbx.restraints.energies):
                      dihedral_proxies=None,
                      chirality_proxies=None,
                      planarity_proxies=None,
+                     bond_similarity_proxies=None,
                      compute_gradients=True,
                      gradients=None,
                      disable_asu_cache=False,
                      normalization=False):
-    self.sites_cart = sites_cart
-    self.bond_proxies = bond_proxies
-    self.nonbonded_proxies = nonbonded_proxies
-    self.nonbonded_function = nonbonded_function
-    self.angle_proxies = angle_proxies
-    self.dihedral_proxies = dihedral_proxies
-    self.chirality_proxies = chirality_proxies
-    self.planarity_proxies = planarity_proxies
-    self.compute_gradients = compute_gradients
-    self.gradients = gradients
-    self.disable_asu_cache = disable_asu_cache
-    self.normalization = normalization
+    adopt_init_args(self, locals())
     scitbx.restraints.energies.__init__(self,
       compute_gradients=compute_gradients,
       gradients=gradients,
@@ -72,10 +64,17 @@ class energies(scitbx.restraints.energies):
       self.angle_residual_sum = 0
     else:
       self.n_angle_proxies = len(angle_proxies)
-      self.angle_residual_sum = geometry_restraints.angle_residual_sum(
-        sites_cart=sites_cart,
-        proxies=angle_proxies,
-        gradient_array=self.gradients)
+      if unit_cell is None: # ignore proxy.i_seqs
+        self.angle_residual_sum = geometry_restraints.angle_residual_sum(
+          sites_cart=sites_cart,
+          proxies=angle_proxies,
+          gradient_array=self.gradients)
+      else:
+        self.angle_residual_sum = geometry_restraints.angle_residual_sum(
+          unit_cell=unit_cell,
+          sites_cart=sites_cart,
+          proxies=angle_proxies,
+          gradient_array=self.gradients)
       self.number_of_restraints += self.n_angle_proxies
       self.residual_sum += self.angle_residual_sum
     if (dihedral_proxies is None):
@@ -83,7 +82,14 @@ class energies(scitbx.restraints.energies):
       self.dihedral_residual_sum = 0
     else:
       self.n_dihedral_proxies = len(dihedral_proxies)
-      self.dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
+      if unit_cell is None: # ignore proxy.i_seqs
+        self.dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
+          sites_cart=sites_cart,
+          proxies=dihedral_proxies,
+          gradient_array=self.gradients)
+      else:
+        self.dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
+          unit_cell=unit_cell,
           sites_cart=sites_cart,
           proxies=dihedral_proxies,
           gradient_array=self.gradients)
@@ -105,12 +111,39 @@ class energies(scitbx.restraints.energies):
       self.planarity_residual_sum = 0
     else:
       self.n_planarity_proxies = len(planarity_proxies)
-      self.planarity_residual_sum = geometry_restraints.planarity_residual_sum(
+      if unit_cell is None: # ignore proxy.i_seqs
+        self.planarity_residual_sum = geometry_restraints.planarity_residual_sum(
+          sites_cart=sites_cart,
+          proxies=planarity_proxies,
+          gradient_array=self.gradients)
+      else:
+        self.planarity_residual_sum = geometry_restraints.planarity_residual_sum(
+          unit_cell=unit_cell,
           sites_cart=sites_cart,
           proxies=planarity_proxies,
           gradient_array=self.gradients)
       self.number_of_restraints += self.n_planarity_proxies
       self.residual_sum += self.planarity_residual_sum
+    if (bond_similarity_proxies is None):
+      self.n_bond_similarity_proxies = None
+      self.bond_similarity_residual_sum = 0
+    else:
+      self.n_bond_similarity_proxies = len(bond_similarity_proxies)
+      if unit_cell is None: # ignore proxy.i_seqs
+        self.bond_similarity_residual_sum =\
+            geometry_restraints.bond_similarity_residual_sum(
+              sites_cart=sites_cart,
+              proxies=bond_similarity_proxies,
+              gradient_array=self.gradients)
+      else:
+        self.bond_similarity_residual_sum =\
+            geometry_restraints.bond_similarity_residual_sum(
+              unit_cell=unit_cell,
+              sites_cart=sites_cart,
+              proxies=bond_similarity_proxies,
+              gradient_array=self.gradients)
+      self.number_of_restraints += self.n_bond_similarity_proxies
+      self.residual_sum += self.bond_similarity_residual_sum
     self.finalize_target_and_gradients()
 
   def bond_deviations(self):
@@ -203,5 +236,8 @@ class energies(scitbx.restraints.energies):
     if (self.n_planarity_proxies is not None):
       print >> f, prefix+"  planarity_residual_sum (n=%d): %.6g" % (
         self.n_planarity_proxies, self.planarity_residual_sum)
+    if (self.n_bond_similarity_proxies is not None):
+      print >> f, prefix+"  bond_similarity_residual_sum (n=%d): %.6g" % (
+        self.n_bond_similarity_proxies, self.bond_similarity_residual_sum)
     if (self.gradients is not None):
       print >> f, prefix+"  norm of gradients: %.6g" % self.gradients.norm()

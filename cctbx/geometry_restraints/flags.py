@@ -10,6 +10,7 @@ class flags(object):
         dihedral=None,
         chirality=None,
         planarity=None,
+        bond_similarity=None,
         default=False):
     if (bond is None): bond = default
     if (nonbonded is None): nonbonded = default
@@ -17,6 +18,7 @@ class flags(object):
     if (dihedral is None): dihedral = default
     if (chirality is None): chirality = default
     if (planarity is None): planarity = default
+    if (bond_similarity is None): bond_similarity = default
     adopt_init_args(self, locals())
 
   def show(self, f=None):
@@ -28,3 +30,4 @@ class flags(object):
     print >> f, "  dihedral:", self.dihedral
     print >> f, "  chirality:", self.chirality
     print >> f, "  planarity:", self.planarity
+    print >> f, "  bond similarity:", self.bond_similarity
