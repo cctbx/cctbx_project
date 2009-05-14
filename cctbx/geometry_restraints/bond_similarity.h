@@ -3,6 +3,7 @@
 
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
+#include <scitbx/optional_copy.h>
 
 namespace cctbx { namespace geometry_restraints {
 
@@ -15,6 +16,15 @@ namespace cctbx { namespace geometry_restraints {
 
     //! Default constructor. Some data members are not initialized!
     bond_similarity_proxy() {}
+
+    //! Constructor.
+    bond_similarity_proxy(
+      i_seqs_type const& i_seqs_,
+      af::shared<double> const& weights_)
+    :
+      weights(weights_),
+      i_seqs(i_seqs_)
+    {}
 
     //! Constructor.
     bond_similarity_proxy(
@@ -37,7 +47,7 @@ namespace cctbx { namespace geometry_restraints {
     /*! The bond is between sites_frac[i_seqs[0]] and
         rt_mx_ji * sites_frac[i_seqs[1]].
      */
-    af::shared<sgtbx::rt_mx> sym_ops;
+    scitbx::optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
   };
 
   //! Residual and gradient calculations for harmonically restrained bonds.
@@ -62,6 +72,28 @@ namespace cctbx { namespace geometry_restraints {
         }
 
       /*! \brief Coordinates are copied from sites_cart according to
+          proxy.i_seqs, parameters are copied from proxy.
+       */
+      bond_similarity(
+        af::const_ref<vec3> const& sites_cart,
+        bond_similarity_proxy const& proxy)
+      :
+        weights(proxy.weights)
+      {
+        sites_array.reserve(proxy.i_seqs.size());
+        for(int i=0;i<proxy.i_seqs.size();i++) {
+          af::tiny<vec3, 2> sites;
+          for(int j=0;j<2;j++) {
+            std::size_t i_seq = proxy.i_seqs[i][j];
+            CCTBX_ASSERT(i_seq < sites_cart.size());
+            sites[j] = sites_cart[i_seq];
+          }
+          sites_array.push_back(sites);
+        }
+        init_deltas();
+      }
+
+      /*! \brief Coordinates are copied from sites_cart according to
           proxy.i_seqs and proxy.rt_mx_ji, parameters are copied from
           proxy.
        */
@@ -80,8 +112,13 @@ namespace cctbx { namespace geometry_restraints {
             CCTBX_ASSERT(i_seq < sites_cart.size());
             sites[j] = sites_cart[i_seq];
           }
-          sites[1] = unit_cell.orthogonalize(
-            proxy.sym_ops[i] * unit_cell.fractionalize(sites[1]));
+          if ( proxy.sym_ops.get() ) {
+            sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
+            if ( !rt_mx.is_unit_mx() ) {
+              sites[1] = unit_cell.orthogonalize(
+                rt_mx * unit_cell.fractionalize(sites[1]));
+            }
+          }
           sites_array.push_back(sites);
         }
         init_deltas();
@@ -136,6 +173,23 @@ namespace cctbx { namespace geometry_restraints {
 
       //! Support for bond_similarity_residual_sum.
       /*! Not available in Python.
+       */
+      void
+      add_gradients(
+        af::ref<scitbx::vec3<double> > const& gradient_array,
+        bond_similarity_proxy::i_seqs_type const& i_seqs) const
+      {
+        af::const_ref<af::tiny<std::size_t, 2> > i_seqs_ref = i_seqs.const_ref();
+        af::shared<af::tiny<vec3, 2> > grads = gradients();
+        af::const_ref<af::tiny<vec3, 2> > grads_ref = grads.const_ref();
+        for(std::size_t i=0;i<grads_ref.size();i++) {
+          gradient_array[i_seqs_ref[i][0]] += grads_ref[i][0];
+          gradient_array[i_seqs_ref[i][1]] += grads_ref[i][1];
+        }
+      }
+
+      //! Support for bond_similarity_residual_sum.
+      /*! Not available in Python.
 
           Inefficient implementation, r_inv_cart is not cached.
           TODO: use asu_mappings to take advantage of caching of r_inv_cart.
@@ -148,14 +202,14 @@ namespace cctbx { namespace geometry_restraints {
       {
         af::const_ref<af::tiny<std::size_t, 2> > i_seqs_ref
           = proxy.i_seqs.const_ref();
-        af::shared<sgtbx::rt_mx> const& sym_ops = proxy.sym_ops;
+        scitbx::optional_copy<af::shared<sgtbx::rt_mx> > const& sym_ops = proxy.sym_ops;
         af::shared<af::tiny<vec3, 2> > grads = gradients();
         af::const_ref<af::tiny<vec3, 2> > grads_ref = grads.const_ref();
         for(std::size_t i=0;i<grads_ref.size();i++) {
           gradient_array[i_seqs_ref[i][0]] += grads_ref[i][0];
           sgtbx::rt_mx const& rt_mx = sym_ops[i];
-          if ( !rt_mx.is_unit_mx() ) {
-            scitbx::mat3<double> r_inv_cart_ = r_inv_cart(unit_cell, rt_mx);
+          if ( sym_ops.get() && !sym_ops[i].is_unit_mx() ) {
+            scitbx::mat3<double> r_inv_cart_ = r_inv_cart(unit_cell, sym_ops[i]);
             gradient_array[i_seqs_ref[i][1]] += grads_ref[i][1] * r_inv_cart_;
           }
           else gradient_array[i_seqs_ref[i][1]] += grads_ref[i][1];
@@ -202,7 +256,56 @@ namespace cctbx { namespace geometry_restraints {
   };
 
   /*! \brief Fast computation of bond_similarity::rms_deltas() given an
-      array of bond_similarity proxies.
+      array of bond_similarity proxies, ignoring proxy.sym_ops.
+   */
+  inline
+  af::shared<double>
+  bond_similarity_deltas_rms(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<bond_similarity_proxy> const& proxies)
+  {
+    af::shared<double> result((af::reserve(proxies.size())));
+    for(std::size_t i=0;i<proxies.size();i++) {
+      result.push_back(bond_similarity(sites_cart, proxies[i]).rms_deltas());
+    }
+    return result;
+  }
+
+  /*! \brief Fast computation of bond_similarity::residual() given an
+      array of bond_similarity proxies, ignoring proxy.sym_ops.
+   */
+  inline
+  af::shared<double>
+  bond_similarity_residuals(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<bond_similarity_proxy> const& proxies)
+  {
+    return detail::generic_residuals<bond_similarity_proxy,
+      bond_similarity>::get(sites_cart, proxies);
+  }
+
+  /*! Fast computation of sum of bond_similarity::residual() and gradients given
+      an array of bond_similarity proxies, ignoring proxy.sym_ops.
+   */
+  /*! The bond_similarity::gradients() are added to the gradient_array
+      if gradient_array.size() == sites_cart.size().
+      gradient_array must be initialized before this function
+      is called.
+      No gradient calculations are performed if gradient_array.size() == 0.
+   */
+  inline
+  double
+  bond_similarity_residual_sum(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<bond_similarity_proxy> const& proxies,
+    af::ref<scitbx::vec3<double> > const& gradient_array)
+  {
+    return detail::generic_residual_sum<bond_similarity_proxy,
+      bond_similarity>::get(sites_cart, proxies, gradient_array);
+  }
+
+  /*! \brief Fast computation of bond_similarity::rms_deltas() given an
+      array of bond_similarity proxies, taking account of proxy.sym_ops.
    */
   inline
   af::shared<double>
@@ -220,7 +323,7 @@ namespace cctbx { namespace geometry_restraints {
   }
 
   /*! \brief Fast computation of bond_similarity::residual() given an
-      array of bond_similarity proxies.
+      array of bond_similarity proxies, taking account of proxy.sym_ops.
    */
   inline
   af::shared<double>
@@ -234,8 +337,8 @@ namespace cctbx { namespace geometry_restraints {
       unit_cell, sites_cart, proxies);
   }
 
-  /*! Fast computation of sum of bond_similarity::residual() and
-      gradients given an array of bond_similarity proxies.
+  /*! Fast computation of sum of bond_similarity::residual() and gradients given
+      an array of bond_similarity proxies, taking account of proxy.sym_ops.
    */
   /*! The bond_similarity::gradients() are added to the gradient_array
       if gradient_array.size() == sites_cart.size().

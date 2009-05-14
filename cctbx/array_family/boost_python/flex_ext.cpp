@@ -8,6 +8,8 @@
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/utils.h>
+#include <scitbx/optional_copy/conversion.h>
+#include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/coordinates.h>
 #include <cctbx/miller.h>
 #include <cctbx/hendrickson_lattman.h>
@@ -26,6 +28,12 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_xray_scatterer();
 
 namespace {
+  void register_optional_copy_conversions()
+  {
+    using namespace scitbx::boost_python;
+    // This conversion is used in cctbx/geometry_restraints
+    optional_copy_conversions::to_python<scitbx::af::shared<cctbx::sgtbx::rt_mx> >();
+  }
 
   void register_cctbx_tuple_mappings()
   {
@@ -69,6 +77,7 @@ namespace {
 
     // The flex module will be used from all cctbx extension modules.
     // Therefore it is convenient to register all tuple mappings from here.
+    register_optional_copy_conversions();
     register_cctbx_tuple_mappings();
     register_cctbx_c_grid_conversions();
   }

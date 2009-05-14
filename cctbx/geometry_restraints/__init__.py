@@ -545,50 +545,23 @@ class _angle(boost.python.injector, angle):
 
 class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
 
-  def deltas(self, sites_cart):
-    return angle_deltas(sites_cart=sites_cart, proxies=self)
+  def deltas(self, sites_cart, unit_cell=None):
+    if unit_cell is None:
+      return angle_deltas(sites_cart=sites_cart, proxies=self)
+    else:
+      return angle_deltas(
+        unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
 
-  def residuals(self, sites_cart):
-    return angle_residuals(sites_cart=sites_cart, proxies=self)
-
-  def show_histogram_of_deltas(self,
-        sites_cart,
-        n_slots=5,
-        f=None,
-        prefix=""):
-    return _show_histogram_of_deltas_impl(O=self,
-      proxy_label="bond angle",
-      format_cutoffs="%8.2f",
-      unit_cell=None,
-      sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
-
-  def show_sorted(self,
-        by_value,
-        sites_cart,
-        site_labels=None,
-        f=None,
-        prefix="",
-        max_items=None):
-    _show_sorted_impl(O=self,
-        proxy_type=angle,
-        proxy_label="Bond angle",
-        item_label="angle",
-        by_value=by_value, unit_cell=None, sites_cart=sites_cart,
-        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
-
-class _shared_angle_sym_proxy(boost.python.injector, shared_angle_sym_proxy):
-
-  def deltas(self, unit_cell, sites_cart):
-    return angle_deltas(
-      unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
-
-  def residuals(self, unit_cell, sites_cart):
-    return angle_residuals(
-      unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
+  def residuals(self, sites_cart, unit_cell=None):
+    if unit_cell is None:
+      return angle_residuals(sites_cart=sites_cart, proxies=self)
+    else:
+      return angle_residuals(
+        unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
 
   def show_histogram_of_deltas(self,
-        unit_cell,
         sites_cart,
+        unit_cell=None,
         n_slots=5,
         f=None,
         prefix=""):
@@ -600,9 +573,9 @@ class _shared_angle_sym_proxy(boost.python.injector, shared_angle_sym_proxy):
 
   def show_sorted(self,
         by_value,
-        unit_cell,
         sites_cart,
         site_labels=None,
+        unit_cell=None,
         f=None,
         prefix="",
         max_items=None):
@@ -625,50 +598,23 @@ class _dihedral(boost.python.injector, dihedral):
 
 class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
 
-  def deltas(self, sites_cart):
-    return dihedral_deltas(sites_cart=sites_cart, proxies=self)
+  def deltas(self, sites_cart, unit_cell=None):
+    if unit_cell is None:
+      return dihedral_deltas(sites_cart=sites_cart, proxies=self)
+    else:
+      return dihedral_deltas(
+        unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
 
-  def residuals(self, sites_cart):
-    return dihedral_residuals(sites_cart=sites_cart, proxies=self)
-
-  def show_histogram_of_deltas(self,
-        sites_cart,
-        n_slots=5,
-        f=None,
-        prefix=""):
-    return _show_histogram_of_deltas_impl(O=self,
-      proxy_label="dihedral angle",
-      format_cutoffs="%8.2f",
-      unit_cell=None,
-      sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
-
-  def show_sorted(self,
-        by_value,
-        sites_cart,
-        site_labels=None,
-        f=None,
-        prefix="",
-        max_items=None):
-    _show_sorted_impl(O=self,
-        proxy_type=dihedral,
-        proxy_label="Dihedral angle",
-        item_label="dihedral",
-        by_value=by_value, unit_cell=None, sites_cart=sites_cart,
-        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
-
-class _shared_dihedral_sym_proxy(boost.python.injector, shared_dihedral_sym_proxy):
-
-  def deltas(self, unit_cell, sites_cart):
-    return dihedral_deltas(
-      unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
-
-  def residuals(self, unit_cell, sites_cart):
-    return dihedral_residuals(
-      unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
+  def residuals(self, sites_cart, unit_cell=None):
+    if unit_cell is None:
+      return dihedral_residuals(sites_cart=sites_cart, proxies=self)
+    else:
+      return dihedral_residuals(
+        unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
 
   def show_histogram_of_deltas(self,
-        unit_cell,
         sites_cart,
+        unit_cell=None,
         n_slots=5,
         f=None,
         prefix=""):
@@ -680,9 +626,9 @@ class _shared_dihedral_sym_proxy(boost.python.injector, shared_dihedral_sym_prox
 
   def show_sorted(self,
         by_value,
-        unit_cell,
         sites_cart,
         site_labels=None,
+        unit_cell=None,
         f=None,
         prefix="",
         max_items=None):
@@ -738,39 +684,28 @@ class _shared_chirality_proxy(boost.python.injector, shared_chirality_proxy):
 
 class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
 
-  def deltas_rms(O, sites_cart):
-    return planarity_deltas_rms(sites_cart=sites_cart, proxies=O)
+  def deltas_rms(O, sites_cart, unit_cell=None):
+    if unit_cell is None:
+      return planarity_deltas_rms(sites_cart=sites_cart, proxies=O)
+    else:
+      return planarity_deltas_rms(
+        unit_cell=unit_cell, sites_cart=sites_cart, proxies=O)
 
-  def residuals(O, sites_cart):
-    return planarity_residuals(sites_cart=sites_cart, proxies=O)
+  def residuals(O, sites_cart, unit_cell=None):
+    if unit_cell is None:
+      return planarity_residuals(sites_cart=sites_cart, proxies=O)
+    else:
+      return planarity_residuals(
+        unit_cell=unit_cell, sites_cart=sites_cart, proxies=O)
 
   def show_sorted(O,
         by_value,
         sites_cart,
         site_labels=None,
+        unit_cell=None,
         f=None,
         prefix="",
         max_items=None):
-    _show_sorted_planarity_impl(O=O,
-        by_value=by_value, unit_cell=None, sites_cart=sites_cart,
-        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
-
-class _shared_planarity_sym_proxy(boost.python.injector, shared_planarity_sym_proxy):
-
-  def deltas_rms(O, unit_cell, sites_cart):
-    return planarity_deltas_rms(unit_cell=unit_cell, sites_cart=sites_cart, proxies=O)
-
-  def residuals(O, unit_cell, sites_cart):
-    return planarity_residuals(unit_cell=unit_cell, sites_cart=sites_cart, proxies=O)
-
-  def show_sorted(O,
-      by_value,
-      unit_cell,
-      sites_cart,
-      site_labels=None,
-      f=None,
-      prefix="",
-      max_items=None):
     _show_sorted_planarity_impl(O=O,
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
