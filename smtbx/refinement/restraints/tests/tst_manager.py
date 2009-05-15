@@ -147,22 +147,22 @@ scatterers O7
   6.39e-01 1.00e-02 1.00e+04 4.09e+03
 ... (remaining 59 not shown)
 
-Isotropic ADP restraints: 23
+Isotropic ADP restraints: 22
 Sorted by residual:
-scatterer O7
+scatterer O3
          delta    sigma   weight rms_deltas residual
- U11  0.00e+00 2.00e-01 2.50e+01   8.16e-01 1.50e+02
- U22  0.00e+00 2.00e-01 2.50e+01
- U33  0.00e+00 2.00e-01 2.50e+01
- U12 -1.00e+00 2.00e-01 2.50e+01
- U13 -1.00e+00 2.00e-01 2.50e+01
- U23 -1.00e+00 2.00e-01 2.50e+01
-... (remaining 22 not shown)
+ U11  1.12e-03 2.00e-01 2.50e+01   1.33e-02 4.01e-02
+ U22 -2.44e-02 2.00e-01 2.50e+01
+ U33  2.32e-02 2.00e-01 2.50e+01
+ U12 -8.65e-03 2.00e-01 2.50e+01
+ U13  9.38e-03 2.00e-01 2.50e+01
+ U23 -8.44e-03 2.00e-01 2.50e+01
+... (remaining 21 not shown)
 
-target: 20.3357
+target: 19.7619
   adp_similarity_residual_sum (n=24): 2.54581
   rigid_bond_residual_sum (n=60): 4463.41
-  isotropic_adp_residual_sum (n=23): 150.244
+  isotropic_adp_residual_sum (n=22): 0.243628
 target: 2.21912
   bond_residual_sum (n=3): 0.00152702
   angle_residual_sum (n=3): 15.5322
@@ -173,15 +173,15 @@ target: 2.21912
   assert energies_sites.number_of_restraints == 7
   assert approx_equal(energies_sites.residual_sum, 15.533823616839785)
   assert approx_equal(energies_sites.target, 2.2191176595485405)
-  assert energies_adps.number_of_restraints == 227
-  assert approx_equal(energies_adps.residual_sum, 4616.2004330702503)
-  assert approx_equal(energies_adps.target, 20.335684727181722)
+  assert energies_adps.number_of_restraints == 226
+  assert approx_equal(energies_adps.residual_sum, 4466.2004330702503)
+  assert approx_equal(energies_adps.target, 19.761948818894911)
   assert approx_equal(energies_adps.adp_similarity_deviation(),
     (0.0011807357231092134, 0.016113630010596708, 0.0061866326445807578))
   assert approx_equal(energies_adps.rigid_bond_deviation(),
     (3.3307350961686577e-05, 0.63945903723502284, 0.086249743961269706))
   assert approx_equal(energies_adps.isotropic_adp_deviation(),
-    (0.0015253519360392781, 0.81649658092772603, 0.17032870854540183))
+    (0.0015253519360392781, 0.013343889050210288, 0.0052497588362602453))
   # test flags
   adp_flags = cctbx.adp_restraints.flags.flags(
     adp_similarity=True,
