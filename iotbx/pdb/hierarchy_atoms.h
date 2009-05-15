@@ -115,6 +115,11 @@ namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
   reset_i_seq(
     af::const_ref<atom> const& atoms);
 
+  std::size_t
+  set_chemical_element_simple_if_necessary(
+    af::ref<atom> const& atoms,
+    bool tidy_existing=true);
+
   class atom_tmp_sentinel : boost::noncopyable
   {
     protected:

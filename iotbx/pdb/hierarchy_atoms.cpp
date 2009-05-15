@@ -181,6 +181,20 @@ namespace atoms {
     }
   }
 
+  std::size_t
+  set_chemical_element_simple_if_necessary(
+    af::ref<atom> const& atoms,
+    bool tidy_existing)
+  {
+    std::size_t result = 0;
+    for(atom* a=atoms.begin();a!=atoms.end();a++) {
+      if (a->set_chemical_element_simple_if_necessary(tidy_existing)) {
+        result++;
+      }
+    }
+    return result;
+  }
+
   atom_tmp_sentinel::atom_tmp_sentinel(
     af::const_ref<atom> const& atoms)
   :

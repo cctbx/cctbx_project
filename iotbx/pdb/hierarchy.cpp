@@ -965,7 +965,10 @@ namespace {
   {
     std::set<std::string> const& chemical_elements
       = cctbx::eltbx::chemical_elements::proper_and_isotopes_upper_set();
-    std::string e(data->element.elems);
+    char pad_with = ' ';
+    char erj[2];
+    data->element.copy_right_justified(erj, 2U, pad_with);
+    std::string e(erj, 2);
     std::string l;
     if (e[0] == ' ') {
       l = e[1];
@@ -978,7 +981,7 @@ namespace {
     if (chemical_elements.find(l) != chemical_elements.end()) {
       return boost::optional<std::string>(e);
     }
-    if (e == "  ") {
+    if (e == "  " && data->name.size() >= 2) {
       std::string n(data->name.elems, 2);
       if (isdigit(n[0])) n[0] = ' ';
       if (n[0] == ' ') l = n[1];
@@ -988,6 +991,25 @@ namespace {
       }
     }
     return boost::optional<std::string>();
+  }
+
+  bool
+  atom::set_chemical_element_simple_if_necessary(
+    bool tidy_existing)
+  {
+    if (data->element.stripped_size() != 0 && !tidy_existing) return false;
+    boost::optional<std::string> e = determine_chemical_element_simple();
+    if (!e || *e == data->element.elems) return false;
+    IOTBX_ASSERT(e->size() <= 2);
+    char pad_with = ' ';
+    copy_right_justified(
+      data->element.elems,
+      data->element.capacity(),
+      e->c_str(),
+      static_cast<unsigned>(e->size()),
+      pad_with);
+    data->element.elems[data->element.capacity()] = '\0';
+    return true;
   }
 
   void

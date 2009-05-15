@@ -753,6 +753,10 @@ namespace hierarchy {
 
       boost::optional<std::string>
       determine_chemical_element_simple() const;
+
+      bool
+      set_chemical_element_simple_if_necessary(
+        bool tidy_existing=true);
   };
 
   //! atom_group attributes.

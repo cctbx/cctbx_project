@@ -41,6 +41,11 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       default=None,
       help="write hierarchy as PDB coordinate section to file",
       metavar="FILE")
+    .option(None, "--set_element_simple",
+      action="store_true",
+      default=False,
+      help="sets or tidies ATOM record element columns (77-78) if necessary"
+           " before writing PDB file")
     .option(None, "--reset_serial_first_value",
       action="store",
       type="int",
@@ -80,12 +85,17 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       duplicate_atom_labels_max_show=co.duplicate_atom_labels_max_show,
       level_id=co.details)
     if (co.write_pdb_file is not None):
+      if (co.set_element_simple):
+        pdb_objs.hierarchy.atoms().set_chemical_element_simple_if_necessary()
+      open_append = False
       if (not co.no_cryst):
-        print >> open(co.write_pdb_file, "wb"), \
-          "\n".join(pdb_objs.input.crystallographic_section())
+        s = pdb_objs.input.crystallographic_section()
+        if (s.size() != 0):
+          print >> open(co.write_pdb_file, "wb"), "\n".join(s)
+          open_append = True
       pdb_objs.hierarchy.write_pdb_file(
         file_name=co.write_pdb_file,
-        open_append=(not co.no_cryst),
+        open_append=open_append,
         append_end=True,
         interleaved_conf=co.interleaved_conf,
         atoms_reset_serial_first_value=co.reset_serial_first_value,

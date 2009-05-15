@@ -150,13 +150,15 @@ def exercise_atom():
   assert a.determine_chemical_element_simple() == " N"
   a.element = "CU"
   assert a.determine_chemical_element_simple() == "CU"
-  a.element = "  "
-  assert a.determine_chemical_element_simple() == "NA"
-  a.name = " D"
-  assert a.determine_chemical_element_simple() == " D"
-  for d in "0123456789":
-    a.name = d+"H"
-    assert a.determine_chemical_element_simple() == " H"
+  for e in ["", " ", "  "]:
+    a.element = e
+    a.name = "NA  "
+    assert a.determine_chemical_element_simple() == "NA"
+    a.name = " D"
+    assert a.determine_chemical_element_simple() == " D"
+    for d in "0123456789":
+      a.name = d+"H"
+      assert a.determine_chemical_element_simple() == " H"
   a.set_name(new_name=None)
   a.set_segid(new_segid=None)
   a.set_element(new_element=None)
@@ -167,6 +169,33 @@ def exercise_atom():
   assert a.element == ""
   assert a.charge == ""
   assert a.serial == ""
+  #
+  assert not a.set_chemical_element_simple_if_necessary()
+  assert a.element == ""
+  a.name = " N  "
+  assert a.set_chemical_element_simple_if_necessary()
+  assert a.element == " N"
+  a.name = " X  "
+  a.element = ""
+  assert not a.set_chemical_element_simple_if_necessary()
+  assert a.element == ""
+  a.element = "Na"
+  assert a.set_chemical_element_simple_if_necessary()
+  assert a.element == "NA"
+  a.element = "Na"
+  assert not a.set_chemical_element_simple_if_necessary(tidy_existing=False)
+  assert a.element == "Na"
+  a.element = "N"
+  assert a.set_chemical_element_simple_if_necessary()
+  assert a.element == " N"
+  a.element = "N"
+  assert not a.set_chemical_element_simple_if_necessary(tidy_existing=False)
+  assert a.element == "N"
+  a.element = " N"
+  assert not a.set_chemical_element_simple_if_necessary()
+  assert a.element == " N"
+  a.name = ""
+  a.element = ""
   #
   ag = pdb.hierarchy.atom_group()
   ac = pdb.hierarchy.atom(parent=ag, other=a)
@@ -275,6 +304,15 @@ def exercise_atom():
     assert str(e) == \
       "Another associated atom_tmp_sentinel instance still exists."
   else: raise Exception_expected
+  #
+  for atom,n in zip(atoms, ["", "NA  ", " X  "]): atom.name = n
+  for atom,e in zip(atoms, ["", "", "N"]): atom.element = e
+  assert atoms.set_chemical_element_simple_if_necessary() == 2
+  assert [atom.element for atom in atoms] == ["", "NA", " N"]
+  for atom,e in zip(atoms, ["", "", "N"]): atom.element = e
+  assert atoms.set_chemical_element_simple_if_necessary(
+    tidy_existing=False) == 1
+  assert [atom.element for atom in atoms] == ["", "NA", "N"]
 
 def exercise_atom_group():
   ag = pdb.hierarchy.atom_group()

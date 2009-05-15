@@ -17,6 +17,10 @@ namespace {
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(reset_serial_overloads, reset_serial, 1, 2)
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    set_chemical_element_simple_if_necessary_overloads,
+    set_chemical_element_simple_if_necessary, 1, 2)
+
   BOOST_PYTHON_FUNCTION_OVERLOADS(reset_tmp_overloads, reset_tmp, 1, 3)
 
 } // namespace <anonymous>
@@ -63,6 +67,11 @@ namespace {
       .def("reset_serial", reset_serial, reset_serial_overloads((
         arg_("self"),
         arg_("first_value")=1)))
+      .def("set_chemical_element_simple_if_necessary",
+        set_chemical_element_simple_if_necessary,
+          set_chemical_element_simple_if_necessary_overloads((
+            arg_("self"),
+            arg_("tidy_existing")=true)))
       .def("reset_i_seq", reset_i_seq)
       .def("reset_tmp", reset_tmp, reset_tmp_overloads((
         arg_("self"),
