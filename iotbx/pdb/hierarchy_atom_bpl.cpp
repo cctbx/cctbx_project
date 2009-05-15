@@ -223,6 +223,10 @@ namespace {
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(quote_overloads, quote, 0, 1)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      set_chemical_element_simple_if_necessary_overloads,
+      set_chemical_element_simple_if_necessary, 0, 1)
+
     // not inline to work around bug in
     // g++ (GCC) 3.2.3 20030502 (Red Hat Linux 3.2.3-34) x86_64
     static void
@@ -324,6 +328,10 @@ namespace {
         .def("element_is_hydrogen", &w_t::element_is_hydrogen)
         .def("determine_chemical_element_simple",
           &w_t::determine_chemical_element_simple)
+        .def("set_chemical_element_simple_if_necessary",
+          &w_t::set_chemical_element_simple_if_necessary,
+            set_chemical_element_simple_if_necessary_overloads((
+              arg_("tidy_existing")=true)))
       ;
     }
 
