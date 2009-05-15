@@ -87,6 +87,7 @@ class isotropic_adp_restraints(object):
     if sigma_terminal is None: sigma_terminal = 2 * sigma
     proxies = adp_restraints.shared_isotropic_adp_proxy()
     scattering_types = xray_structure.scatterers().extract_scattering_types()
+    use_u_aniso = xray_structure.scatterers().extract_use_u_aniso()
     if pair_sym_table is None:
       asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
       pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
@@ -98,6 +99,7 @@ class isotropic_adp_restraints(object):
     for i_seq , neighbours in enumerate(connectivity):
       if i_seqs is not None and i_seq not in i_seqs: continue
       elif scattering_types[i_seq] in ('H','D'): continue
+      elif not use_u_aniso[i_seq]: continue
       if neighbours.size() <= 1:
         weight = 1/(sigma_terminal*sigma_terminal)
       else:

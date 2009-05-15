@@ -71,7 +71,7 @@ def exercise_isotropic_adp():
       adp_restraints.isotropic_adp_restraints(
         xray_structure=xray_structure,
         pair_sym_table=table)
-    assert restraints.proxies.size() == 23
+    assert restraints.proxies.size() == 22
     i_seqs = (9,14,28,32,36,38)
     expected_weights = (100,25,100,100,100,100)
     restraints = \
