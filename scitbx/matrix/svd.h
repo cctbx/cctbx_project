@@ -17,12 +17,12 @@ namespace scitbx { namespace matrix { namespace svd {
 /// Special SVD for the 2x2 case
 /** Reference: LAPACK DLASV2 */
 template <typename FloatType>
-struct decomposition_bidiagonal_2x2
+struct bidiagonal_2x2_decomposition
 {
   typedef FloatType scalar_t;
 
   /// singular values:  |s_min| < |s_max|
-  /// U^T S V = [ s_max    0   ]
+  /// U^T A V = [ s_max    0   ]
   ///           [   0    s_min ]
   scalar_t s_min, s_max;
 
@@ -42,7 +42,7 @@ struct decomposition_bidiagonal_2x2
    more or less equivalent to DLAS2 in LAPACK). Otherwise, s_max and s_min have
    respectively the sign of f and g.
    */
-   decomposition_bidiagonal_2x2(scalar_t f, scalar_t g, scalar_t h,
+   bidiagonal_2x2_decomposition(scalar_t f, scalar_t g, scalar_t h,
                                 bool compute_singular_vectors)
    {
     using math::copysign;
@@ -138,8 +138,8 @@ struct bidiagonal_decomposition
 
   af::ref<scalar_t> d,f;
   scalar_t eps, tol, thresh;
-  af::ref<scalar_t, af::mat_grid> ut, v;
-  givens::product<scalar_t> q_ut, q_v;
+  af::ref<scalar_t, af::mat_grid> u, v;
+  givens::product<scalar_t> q_u, q_v;
   int n_iterations, n_max_iterations;
   bool has_iteration_converged, has_not_converged;
 
@@ -161,17 +161,20 @@ struct bidiagonal_decomposition
       Each time a Givens rotation is performed, it may be accumulated into
       either \c u0 and \c v0 to eventually produce the final U and V of the SVD.
       Whether accumulation takes place depends on the arguments
-      \c accumulate_ut and \c accumulate_v.
+      \c accumulate_u and \c accumulate_v.
   */
   bidiagonal_decomposition(af::ref<scalar_t> const &diagonal,
                            af::ref<scalar_t> const &superdiagonal,
-                           af::ref<scalar_t, af::mat_grid> const &ut0, bool accumulate_ut,
-                           af::ref<scalar_t, af::mat_grid> const &v0,  bool accumulate_v,
-                           scalar_t epsilon=std::numeric_limits<scalar_t>::epsilon(),
+                           af::ref<scalar_t, af::mat_grid> const &u0,
+                           bool accumulate_u,
+                           af::ref<scalar_t, af::mat_grid> const &v0,
+                           bool accumulate_v,
+                           scalar_t epsilon
+                             =std::numeric_limits<scalar_t>::epsilon(),
                            int max_iteration_multiplier=6)
     : d(diagonal), f(superdiagonal),
-      ut(ut0), v(v0),
-      q_ut(diagonal.size(), accumulate_ut),
+      u(u0), v(v0),
+      q_u(diagonal.size(), accumulate_u),
       q_v(diagonal.size(), accumulate_v),
       r(0), s(diagonal.size()),
       eps(epsilon),
@@ -223,7 +226,8 @@ struct bidiagonal_decomposition
       - the shift of the leading 2x2 block of B(r:s, r:s)^T B(r:s, r:s)
         is carefully done to avoid overflow and underflow [2, DBDSQR, line 577]
       - when B(r:s, r:s) is a 2x2 matrix, we compute its SVD decomposition
-        analytically with decomposition_2x2 (as in [2, DBDSQR] with DLASV2)
+        analytically with bidiagonal_2x2_decomposition
+        (as in [2, DBDSQR] with DLASV2)
       - we check the direction of grading on B(r:s, r:s) diagonal
         and apply the algorithm from top to bottom or from bottom to top,
         depending on which end is the biggest ([2] and [3, 2.6.4]).
@@ -374,25 +378,25 @@ struct bidiagonal_decomposition
   }
 
   void solve_2x2_case() {
-    decomposition_bidiagonal_2x2<scalar_t> svd(d[r], f[r], d[r+1], true);
+    bidiagonal_2x2_decomposition<scalar_t> svd(d[r], f[r], d[r+1], true);
     d[r]   = svd.s_max;
     d[r+1] = svd.s_min;
     f[r]   = 0;
     // same signs convention for sines in 2x2 decomposition and givens
     givens::rotation<scalar_t> g_u(svd.c_u, svd.s_u),
                                g_v(svd.c_v, svd.s_v);
-    if (q_ut.effective) g_u.apply_on_left(ut, r, r+1);
+    if (q_u.effective) g_u.apply_on_right(u, r, r+1);
     if (q_v.effective) g_v.apply_on_right(v, r, r+1);
   }
 
   void compute_trailing_wilkinson_shift() {
-    decomposition_bidiagonal_2x2<scalar_t> trailing_svd(
+    bidiagonal_2x2_decomposition<scalar_t> trailing_svd(
                 d[s-2], f[s-2], d[s-1], false);
     shift = trailing_svd.s_min;
   }
 
   void compute_leading_wilkinson_shift() {
-    decomposition_bidiagonal_2x2<scalar_t> leading_svd(
+    bidiagonal_2x2_decomposition<scalar_t> leading_svd(
                 d[r], f[r], d[r+1], false);
     shift = leading_svd.s_min;
   }
@@ -421,24 +425,24 @@ struct bidiagonal_decomposition
     // ... to chase non-zeroes down the diagonal
     for (int k=r; k < s-2; ++k) {
       scalar_t t;
-      givens::rotation<scalar_t> g_ut, g_v;
-      g_ut.chase_nonzero_from_x1_to_z0(d[k], f[k]  , t,
-                                       z   , d[k+1], f[k+1]);
+      givens::rotation<scalar_t> g_u, g_v;
+      g_u.chase_nonzero_from_x1_to_z0(d[k], f[k]  , t,
+                                      z   , d[k+1], f[k+1]);
       z = t;
-      q_ut.multiply_by(g_ut);
+      q_u.multiply_by(g_u);
       int l = k+1;
       g_v.chase_nonzero_from_x1_to_z0(f[l-1], d[l], t,
                                       z     , f[l], d[l+1]);
       z = t;
       q_v.multiply_by(g_v);
     }
-    givens::rotation<scalar_t> g_ut;
-    g_ut.chase_nonzero_from_x1_off(d[s-2], f[s-2],
-                                   z     , d[s-1]);
-    q_ut.multiply_by(g_ut);
+    givens::rotation<scalar_t> g_u;
+    g_u.chase_nonzero_from_x1_off(d[s-2], f[s-2],
+                                  z     , d[s-1]);
+    q_u.multiply_by(g_u);
 
     // Accumulate
-    q_ut.apply_downward_on_left(ut, r);
+    q_u.apply_downward_on_right(u, r);
     q_v.apply_downward_on_right(v, r);
   }
 
@@ -461,21 +465,21 @@ struct bidiagonal_decomposition
     scalar_t z;
     g1.apply(d[s-1], f[s-2]);
     g1.apply_assuming_null_x0(z, d[s-2]); // z = b(s-1, s-2)
-    q_ut.multiply_by(g1);
+    q_u.multiply_by(g1);
 
     // ... to chase non-zeroes up the diagonal
     for (int k=s-1; k >= r+2; --k) {
       scalar_t t;
-      givens::rotation<scalar_t> g_v, g_ut;
-      g_v.chase_nonzero_from_x1_to_z0(d[k], f[k-1]  , t,
+      givens::rotation<scalar_t> g_v, g_u;
+      g_v.chase_nonzero_from_x1_to_z0(d[k], f[k-1], t,
                                        z  , d[k-1], f[k-2]);
       z = t;
       q_v.multiply_by(g_v);
       int l = k-1;
-      g_ut.chase_nonzero_from_x1_to_z0(f[l], d[l]  , t,
-                                       z   , f[l-1], d[l-1]);
+      g_u.chase_nonzero_from_x1_to_z0(f[l], d[l]  , t,
+                                      z   , f[l-1], d[l-1]);
       z = t;
-      q_ut.multiply_by(g_ut);
+      q_u.multiply_by(g_u);
     }
     givens::rotation<scalar_t> g_v;
     g_v.chase_nonzero_from_x1_off(d[r+1], f[r],
@@ -483,7 +487,7 @@ struct bidiagonal_decomposition
     q_v.multiply_by(g_v);
 
     // Accumulate
-    q_ut.apply_upward_on_left(ut, s-1);
+    q_u.apply_upward_on_right(u, s-1);
     q_v.apply_upward_on_right(v, s-1);
   }
 
@@ -508,17 +512,17 @@ struct bidiagonal_decomposition
       dk.chase_non_zero_from_z_to_t(d[k], f[k]  ,
                                     z   , d[k+1], f[k+1],
                                           t     , d[k+2]);
-      q_ut.multiply_by(dk.g1);
+      q_u.multiply_by(dk.g1);
       q_v.multiply_by(dk.g2);
       z = t;
     }
-    givens::rotation<scalar_t> g_ut;
-    g_ut.chase_nonzero_from_x1_to_y0(d[s-2], f[s-2],
-                                     z     , d[s-1]);
-    q_ut.multiply_by(g_ut);
+    givens::rotation<scalar_t> g_u;
+    g_u.chase_nonzero_from_x1_to_y0(d[s-2], f[s-2],
+                                    z     , d[s-1]);
+    q_u.multiply_by(g_u);
 
     // Accumulate
-    q_ut.apply_downward_on_left(ut, r);
+    q_u.apply_downward_on_right(u, r);
     q_v.apply_downward_on_right(v, r);
   }
 
@@ -534,17 +538,17 @@ struct bidiagonal_decomposition
     // Apply G1 on the right to B, filling in b(s-1, s-2), so we need...
     scalar_t z;
     g1.apply_assuming_null_x0(z, d[s-2]);
-    q_ut.multiply_by(g1);
+    q_u.multiply_by(g1);
 
     // ... to chase non-zeroes down the diagonal
     for (int k=s-1; k >= r+2; --k) {
       scalar_t t;
       givens::demmel_kahan_rotations<scalar_t> dk;
-      dk.chase_non_zero_from_z_to_t(d[k], f[k-1]  ,
+      dk.chase_non_zero_from_z_to_t(d[k], f[k-1],
                                     z   , d[k-1], f[k-2],
                                           t     , d[k-2]);
       q_v.multiply_by(dk.g1);
-      q_ut.multiply_by(dk.g2);
+      q_u.multiply_by(dk.g2);
       z = t;
     }
     givens::rotation<scalar_t> g_v;
@@ -553,30 +557,38 @@ struct bidiagonal_decomposition
     q_v.multiply_by(g_v);
 
     // Accumulate
-    q_ut.apply_upward_on_left(ut, s-1);
+    q_u.apply_upward_on_right(u, s-1);
     q_v.apply_upward_on_right(v, s-1);
   }
 };
 
 
-/// Reconstruct a matrix from a SVD decomposition: A = U^T S V
+/// Reconstruct a matrix from a thin SVD decomposition: A = U S V^T
+/** The matrices dimensions are respectively:
+
+    - U : m x p
+    - S : p x p
+    - V : n x p
+    - A : m x n
+*/
 template <typename T>
 af::versa<T, af::c_grid<2> >
-reconstruct(af::const_ref<T, af::mat_grid> const &ut,
+reconstruct(af::const_ref<T, af::mat_grid> const &u,
             af::const_ref<T, af::mat_grid> const &v,
             af::const_ref<T> const &sigma)
 {
-  SCITBX_ASSERT(ut.n_rows() == v.n_columns());
+  int m=u.n_rows(), p=sigma.size(), n=v.n_rows();
+  SCITBX_ASSERT(u.n_columns() == p);
+  SCITBX_ASSERT(v.n_columns() == p);
   typedef af::c_grid<2> dim;
   typedef af::versa<T, dim> matrix_t;
   typedef af::ref<T, dim> matrix_ref_t;
-  int m=ut.n_columns(), n=v.n_rows(), p=ut.n_rows();
   matrix_t result(dim(m,n));
   matrix_ref_t a = result.ref();
   for (int i=0; i<m; ++i)
   for (int j=0; j<n; ++j) {
     T a_ij = 0;
-    for (int k=0; k<p; ++k) a_ij += sigma[k]*ut(k,i)*v(j,k);
+    for (int k=0; k<p; ++k) a_ij += sigma[k]*u(i,k)*v(j,k);
     a(i,j) = a_ij;
   }
   return result;
