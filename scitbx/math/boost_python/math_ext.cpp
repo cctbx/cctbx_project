@@ -45,6 +45,7 @@ namespace boost_python {
   void wrap_least_squares_plane();
   void wrap_continued_fraction();
   void wrap_numeric_limits();
+  void wrap_matrix();
 
 namespace {
 
@@ -257,6 +258,7 @@ namespace {
     wrap_least_squares_plane();
     wrap_continued_fraction();
     wrap_numeric_limits();
+    wrap_matrix();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
 

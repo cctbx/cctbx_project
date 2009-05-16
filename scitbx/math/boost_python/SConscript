@@ -25,5 +25,6 @@ env.SharedLibrary(
     "least_squares_plane.cpp",
     "continued_fraction.cpp",
     "numeric_limits.cpp",
+    "matrix.cpp",
     ]
 )
