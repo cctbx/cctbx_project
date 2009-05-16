@@ -2,43 +2,39 @@
 #include <scitbx/array_family/initialiser.h>
 #include <scitbx/array_family/ref_reductions.h>
 #include <scitbx/array_family/tiny_algebra.h>
-#include <scitbx/array_family/versa_algebra.h>
 #include <scitbx/array_family/ref_algebra.h>
 #include <scitbx/array_family/misc_functions.h>
 #include <scitbx/matrix/special_matrices.h>
-#include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/error.h>
 #include <scitbx/array_family/simple_io.h>
 #include <iostream>
 
 #include <scitbx/matrix/householder.h>
 #include <scitbx/matrix/tests.h>
+#include <scitbx/matrix/tests/utils.h>
 
 namespace af = scitbx::af;
 using scitbx::fn::approx_equal;
 using namespace scitbx::matrix;
 
-typedef af::c_grid<2> dim;
-typedef af::versa<double, dim> matrix_t;
-typedef af::ref<double, dim> matrix_ref_t;
-typedef af::const_ref<double, dim> matrix_const_ref_t;
-
 double tol = 1e-12;
 
 struct test_case
 {
-  matrix_t a__;
+  matrix_t a0;
   double thresh;
 
   test_case(int m, int n, double ratio_threshold=10)
-    : a__(dim(m,n)), thresh(ratio_threshold)
+    : a0(dim(m,n)), thresh(ratio_threshold)
   {}
 
   void check_qr(bool thin_q) {
-    matrix_t a = a__.deep_copy();
+    matrix_const_ref_t a0_ = a0.const_ref();
+
+    matrix_t a = a0.deep_copy();
     matrix_ref_t a_ = a.ref();
 
-    int m = a.accessor()[0], n=a.accessor()[1];
+    int m = a_.n_rows(), n=a_.n_columns();
 
     householder::qr_decomposition<double> qr(a_,
                                              true, // accumulate_q
@@ -46,7 +42,7 @@ struct test_case
     matrix_ref_t q_ = qr.q.ref();
 
     // Check Q is orthogonal
-    SCITBX_ASSERT(normality_ratio(qr.q.const_ref()) < thresh);
+    SCITBX_ASSERT( normality_ratio(q_) < thresh );
 
     // Get R
     matrix_t r(dim(thin_q ? std::min(m,n) : m, n));
@@ -58,23 +54,25 @@ struct test_case
 
     // Check A = QR
     matrix_t q_r = af::matrix_multiply(q_, r_);
-    double delta_r = equality_ratio(a__.const_ref(), q_r.const_ref());
-    SCITBX_ASSERT(delta_r < thresh);
+    matrix_const_ref_t q_r_ = q_r.const_ref();
+    SCITBX_ASSERT( equality_ratio(a0_, q_r_) < thresh );
   }
 
   void check_bidiagonalisation(bool debug=false) {
-    matrix_t a = a__.deep_copy();
+    matrix_const_ref_t a0_ = a0.const_ref();
+
+    matrix_t a = a0.deep_copy();
     matrix_ref_t a_ = a.ref();
 
-    int m = a.accessor()[0], n=a.accessor()[1];
+    int m = a_.n_rows(), n=a_.n_columns();
 
     householder::bidiagonalisation<double> bidiag(a_);
     matrix_ref_t u_ = bidiag.u.ref();
     matrix_ref_t v_ = bidiag.v.ref();
 
     // Check that U and V are orthogonal
-    SCITBX_ASSERT(normality_ratio(bidiag.u.const_ref()) < thresh);
-    SCITBX_ASSERT(normality_ratio(bidiag.v.const_ref()) < thresh);
+    SCITBX_ASSERT( normality_ratio(u_) < thresh );
+    SCITBX_ASSERT( normality_ratio(v_) < thresh );
 
     // Get B
     matrix_t b(dim(m,n));
@@ -82,10 +80,9 @@ struct test_case
     for (int i=0; i<n; ++i) for (int j=i; j<i+2 && j<n; ++j) b_(i,j) = a_(i,j);
 
     // Check that A = U B V^T
-    matrix_t u_b = af::matrix_multiply(u_, b_);
-    matrix_t vt = af::matrix_transpose(v_);
-    matrix_t u_b_vt = af::matrix_multiply(u_b.ref(), vt.ref());
-    SCITBX_ASSERT(equality_ratio(a__.const_ref(), u_b_vt.const_ref()) < thresh);
+    matrix_t u_b_vt = product_U_M_VT(u_, b_, v_);
+    matrix_const_ref_t u_b_vt_ = u_b_vt.const_ref();
+    SCITBX_ASSERT( equality_ratio(a0_, u_b_vt_) < thresh );
   }
 };
 
@@ -93,14 +90,14 @@ struct lotkin_test_case : test_case
 {
   lotkin_test_case(int m, int n) : test_case(m,n)
   {
-    matrix_ref_t a_ = this->a__.ref();
+    matrix_ref_t a_ = this->a0.ref();
     for (int i=0; i<m; ++i) for (int j=0; j<n; ++j) {
       a_(i,j) = i > 0 ? 1./(i+j+1) : 1;
     }
   }
 };
 
-int main() {
+void exercise_householder_zeroing_vector() {
   // Householder zeroing vector (1)
   {
     af::tiny<double, 4> x;
@@ -138,15 +135,15 @@ int main() {
   // Householder zeroing matrix columns or rows
   {
     int const m=6, n=7;
-    matrix_t a__(dim(m,n));
-    af::init(a__) = 11, 12, 13, 14, 15, 16, 17,
+    matrix_t a0(dim(m,n));
+    af::init(a0) = 11, 12, 13, 14, 15, 16, 17,
                     21, 22,  1, 24, 25, 26, 27,
                     31, 32, -1, 34, 35, 36, 37,
                     41, 42,  2, 44, 45, 46, 47,
                     51, 52,  1, 54, 55, 56, 57,
                     61, 62,  3, 64, 65, 66, 67;
 
-    matrix_t a = a__.deep_copy();
+    matrix_t a = a0.deep_copy();
     householder::reflection<double> p(m, n,
                                       householder::applied_on_left_tag(),
                                       false);
@@ -171,7 +168,7 @@ int main() {
                           61, 62, -1.  ,   7,  15./2,   8   ,  17./2;
     SCITBX_ASSERT(expected.all_approx_equal(a, tol));
 
-    matrix_t a_t = af::matrix_transpose(a__.ref());
+    matrix_t a_t = af::matrix_transpose(a0.ref());
 
     householder::reflection<double> q(n, m,
                                       householder::applied_on_right_tag(),
@@ -180,7 +177,9 @@ int main() {
     q.apply_on_right_to_lower_right_block(a_t.ref(), 3, 1);
     SCITBX_ASSERT(matrix_transpose(expected.ref()).all_approx_equal(a_t, tol));
   }
+}
 
+void exercise_householder() {
   // Householder QR (Lotkin matrix: ill-conditioned)
   {
     lotkin_test_case t(3,2);
@@ -202,7 +201,9 @@ int main() {
     t.check_qr(false); // full QR
     t.check_qr(true);  // thin QR
   }
+}
 
+void exercise_bidiagonalisation() {
   /* Householder bidiagonalisation (Golub and Van Loan example 5.4.2)
      The last diagonal entry in B is zero which makes it interesting.
      In the book, the authors used higher a precision than available on standard
@@ -210,28 +211,28 @@ int main() {
      here. But the SVD is still correct to machine precision as we assert it is.
   */
   {
-    matrix_t a__(dim(4,3));
-    af::init(a__) =  1,  2,  3,
-                     4,  5,  6,
-                     7,  8,  9,
-                    10, 11, 12;
-    matrix_t a = a__.deep_copy();
+    matrix_t a0(dim(4,3));
+    af::init(a0) =  1,  2,  3,
+                    4,  5,  6,
+                    7,  8,  9,
+                   10, 11, 12;
+    matrix_const_ref_t a0_ = a0.const_ref();
+    matrix_t a = a0.deep_copy();
     householder::bidiagonalisation<double> bidiag(a.ref(), true, true);
     matrix_t b(dim(4,3));
     af::init(b) = 12.8840987267251, 21.876432827428,  0             ,
                    0              ,  2.246235240294, -0.613281332054,
                    0              ,  0             ,  0             ,
                    0              ,  0             ,  0             ;
+    matrix_const_ref_t b_ = b.const_ref();
     matrix_ref_t u_ = bidiag.u.ref();
     matrix_ref_t v_ = bidiag.v.ref();
-    SCITBX_ASSERT(af::matrix_multiply(u_, af::matrix_transpose(u_).ref())
-                  .all_approx_equal(identity<double>(4), tol));
-    SCITBX_ASSERT(af::matrix_multiply(v_, af::matrix_transpose(v_).ref())
-                  .all_approx_equal(identity<double>(3), tol));
-    matrix_t ut = af::matrix_transpose(u_);
-    matrix_t ut_a = af::matrix_multiply(ut.ref(), a__.ref());
-    matrix_t ut_a_v = af::matrix_multiply(ut_a.ref(), v_);
-    SCITBX_ASSERT(b.all_approx_equal(ut_a_v, tol));
+    SCITBX_ASSERT( normality_ratio(u_) < 10 );
+    SCITBX_ASSERT( normality_ratio(v_) < 10 );
+    matrix_t u_b_vt = product_U_M_VT(u_, b_, v_);
+    matrix_const_ref_t u_b_vt_ = u_b_vt.const_ref();
+    double foo = equality_ratio(u_b_vt_, a0_, 1e-13);
+    SCITBX_ASSERT( foo < 10 );
   }
 
   // Householder bidiagonalisation (Lotkin matrix)
@@ -247,6 +248,12 @@ int main() {
     lotkin_test_case t(5,5);
     t.check_bidiagonalisation();
   }
+}
+
+int main() {
+  exercise_householder_zeroing_vector();
+  exercise_householder();
+  exercise_bidiagonalisation();
   std::cout << "OK\n";
   return 0;
 }
