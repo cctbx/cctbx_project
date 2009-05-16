@@ -29,6 +29,36 @@ namespace scitbx { namespace af {
     return result;
   }
 
+  /// The pair (d,f) where d is the diagonal of a and f is the superdiagonal
+  template <typename NumType>
+  std::pair<shared<NumType>, shared<NumType> >
+  matrix_upper_bidiagonal(const_ref<NumType, c_grid<2> > const& a)
+  {
+    int p = std::min(a.n_rows(), a.n_columns());
+    shared<NumType> d(p,   init_functor_null<NumType>()),
+                    f(p-1, init_functor_null<NumType>());
+    for (int i=0; i<p; ++i) {
+      d[i] = a(i, i);
+      if (i < p-1) f[i] = a(i, i + 1);
+    }
+    return std::make_pair(d, f);
+  }
+
+  /// The pair (d,f) where d is the diagonal of a and f is the subdiagonal
+  template <typename NumType>
+  std::pair<shared<NumType>, shared<NumType> >
+  matrix_lower_bidiagonal(const_ref<NumType, c_grid<2> > const& a)
+  {
+    int p = std::min(a.n_rows(), a.n_columns());
+    shared<NumType> d(p,   init_functor_null<NumType>()),
+                    f(p-1, init_functor_null<NumType>());
+    for (int i=0; i<p; ++i) {
+      d[i] = a(i, i);
+      if (i < p-1) f[i] = a(i+1, i);
+    }
+    return std::make_pair(d, f);
+  }
+
   template <typename NumType>
   void
   matrix_diagonal_set_in_place(

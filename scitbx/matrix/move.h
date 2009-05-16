@@ -2,6 +2,7 @@
 #define SCITBX_MATRIX_MOVE_H
 
 #include <scitbx/matrix/packed.h>
+#include <scitbx/array_family/accessors/mat_grid.h>
 
 namespace scitbx { namespace matrix {
 
@@ -108,6 +109,40 @@ namespace scitbx { namespace matrix {
     }
   }
 
+  /// A zero matrix whose upper diagonal part is that of a.
+  /** a must have more rows than columns */
+  template <typename T>
+  inline
+  af::versa<T, af::mat_grid>
+  copy_upper_triangle(af::const_ref<T, af::mat_grid> const &a) {
+    int m=a.n_rows(), n=a.n_columns();
+    SCITBX_ASSERT(m >= n);
+    af::versa<T, af::mat_grid> result(af::mat_grid(n, n),
+                                      af::init_functor_null<T>());
+    for (int i=0; i<n; ++i) {
+      std::fill_n(&result(i,0), i, T(0));
+      std::copy(&a(i,i), &a(i,n), &result(i,i));
+    }
+    return result;
+  }
+
+  /// A zero matrix whose lower diagonal part is that of a.
+  /** a must have less rows than columns */
+  template <typename T>
+  inline
+  af::versa<T, af::mat_grid>
+  copy_lower_triangle(af::const_ref<T, af::mat_grid> const &a) {
+    int m=a.n_rows(), n=a.n_columns();
+    SCITBX_ASSERT(m <= n);
+    af::versa<T, af::mat_grid> result(af::mat_grid(m, m),
+                                      af::init_functor_null<T>());
+    for (int i=0; i<m; ++i) {
+      std::fill(&result(i,i+1), &result(i,m), T(0));
+      std::copy(&a(i,0), &a(i,i+1), &result(i,0));
+    }
+    return result;
+  }
+
   template <typename T>
   void
   swap_rows_in_place(
@@ -205,6 +240,30 @@ namespace scitbx { namespace matrix {
     ik++;
     for(k++;k<n;k++) {
       std::swap(u[++ik], u[++kj]);
+    }
+  }
+
+  /// Copy the diagonal and superdiagonal of matrix src into matrix dst
+  template <typename T1, class A1, typename T2, class A2>
+  void copy_upper_bidiagonal(af::ref<T1, A1>       const &dst,
+                             af::const_ref<T2, A2> const &src)
+  {
+    int p = std::min(src.n_rows(), src.n_columns());
+    for (int i=0; i<p; ++i){
+      dst(i,i) = src(i,i);
+      if (i < p-1) dst(i,i+1) = src(i,i+1);
+    }
+  }
+
+  /// Copy the diagonal and subdiagonal of matrix src into matrix dst
+  template <typename T1, class A1, typename T2, class A2>
+  void copy_lower_bidiagonal(af::ref<T1, A1>       const &dst,
+                             af::const_ref<T2, A2> const &src)
+  {
+    int p = std::min(src.n_rows(), src.n_columns());
+    for (int i=0; i<p; ++i){
+      dst(i,i) = src(i,i);
+      if (i < p-1) dst(i+1,i) = src(i+1,i);
     }
   }
 
