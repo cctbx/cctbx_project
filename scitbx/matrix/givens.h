@@ -2,6 +2,7 @@
 #define SCITBX_MATRIX_GIVENS_H
 
 #include <scitbx/array_family/accessors/mat_grid.h>
+#include <scitbx/array_family/shared.h>
 #include <boost/type_traits.hpp>
 #include <cmath>
 
