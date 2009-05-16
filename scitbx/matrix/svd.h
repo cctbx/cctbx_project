@@ -141,7 +141,7 @@ struct bidiagonal_decomposition
   af::ref<scalar_t, af::mat_grid> u, v;
   givens::product<scalar_t> q_u, q_v;
   int n_iterations, n_max_iterations;
-  bool has_iteration_converged, has_not_converged;
+  bool has_iteration_converged, has_converged;
 
   // the block B(s:, s:) is diagonal
   // the block B(r:s, r:s) has non-zero superdiagonal entries
@@ -328,7 +328,7 @@ struct bidiagonal_decomposition
       s0 = s;
       n_iterations += s - r;
     }
-    has_not_converged = s > 1;
+    has_converged = s <= 1;
   }
 
   void test_downward_iteration_convergence() {
