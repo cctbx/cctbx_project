@@ -498,14 +498,18 @@ class rec(object):
         label="",
         one_row_per_line=False,
         format=None,
-        prefix=""):
-    return self._mathematica_or_matlab_form(
+        prefix="",
+        matrix_form=False):
+    result = self._mathematica_or_matlab_form(
       outer_open="{", outer_close="}",
       inner_open="{", inner_close="}", inner_close_follow=",",
       label=label,
       one_row_per_line=one_row_per_line,
       format=format,
       prefix=prefix)
+    if matrix_form: result += "//MatrixForm"
+    result = result.replace('e', '*^')
+    return result
 
   def matlab_form(self,
         label="",
