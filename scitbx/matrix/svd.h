@@ -122,6 +122,8 @@ struct bidiagonal_2x2_decomposition
 };
 
 
+enum bidiagonal_kind { upper_bidiagonal_kind, lower_bidiagonal_kind };
+
 /// Golub-Kahan decomposition of a bidiagonal matrix B
 /** See [1] for an introduction. Our code is based on [2,3].
     References:
@@ -157,14 +159,17 @@ struct bidiagonal_decomposition
   scalar_t shift;
 
   /// Prepare for the decomposition of the given bidiagonal matrix
-  /** \c u0 and \c v0 shall be the U and V matrices from the bidiagonalisation.
+  /** The argument kind can be either upper_diagonal or lower_diagonal.
+
+      \c u0 and \c v0 shall be the U and V matrices from the bidiagonalisation.
       Each time a Givens rotation is performed, it may be accumulated into
       either \c u0 and \c v0 to eventually produce the final U and V of the SVD.
       Whether accumulation takes place depends on the arguments
       \c accumulate_u and \c accumulate_v.
   */
   bidiagonal_decomposition(af::ref<scalar_t> const &diagonal,
-                           af::ref<scalar_t> const &superdiagonal,
+                           af::ref<scalar_t> const &off_diagonal,
+                           int kind,
                            af::ref<scalar_t, af::mat_grid> const &u0,
                            bool accumulate_u,
                            af::ref<scalar_t, af::mat_grid> const &v0,
@@ -172,7 +177,7 @@ struct bidiagonal_decomposition
                            scalar_t epsilon
                              =std::numeric_limits<scalar_t>::epsilon(),
                            int max_iteration_multiplier=6)
-    : d(diagonal), f(superdiagonal),
+    : d(diagonal), f(off_diagonal),
       u(u0), v(v0),
       q_u(diagonal.size(), accumulate_u),
       q_v(diagonal.size(), accumulate_v),
@@ -182,13 +187,29 @@ struct bidiagonal_decomposition
       n_max_iterations(max_iteration_multiplier*diagonal.size()*diagonal.size())
   {
     SCITBX_ASSERT(diagonal.size() >= 2);
-    SCITBX_ASSERT(superdiagonal.size() == diagonal.size()-1);
+    SCITBX_ASSERT(off_diagonal.size() == diagonal.size()-1);
+    SCITBX_ASSERT(!accumulate_u || u0.n_columns() == diagonal.size());
+    SCITBX_ASSERT(!accumulate_v || v0.n_columns() == diagonal.size());
+    SCITBX_ASSERT(kind == upper_bidiagonal_kind || kind == lower_bidiagonal_kind);
 
     int n = diagonal.size();
 
     // Tolerance
     tol = epsilon;
     tol *= std::max(10., std::min(100., std::pow(epsilon, -1./8)));
+
+    // if the matrix is lower diagonal, make it upper diagonal
+    // with a series of Givens rotation on the left
+    if (kind == lower_bidiagonal_kind) {
+      givens::rotation<scalar_t> g;
+      for (int i=0; i<n-1; ++i) {
+        g.chase_nonzero_from_x1_to_y0(d[i]  , f[i],
+                                      f[i], d[i+1]);
+        q_u.multiply_by(g);
+      }
+      q_u.apply_downward_on_right(u, 0);
+    }
+
 
     // B's singular values are bounded below by s_lower
     // c.f. [3] and [4, eq.(2.4)] and related
