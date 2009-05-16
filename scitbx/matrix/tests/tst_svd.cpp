@@ -85,6 +85,25 @@ void exercise_2x2_decomposition() {
   }
 }
 
+void exercise_lower_bidiagonal_rectification() {
+  int n = 5;
+  af::shared<double> d(n), f(n-1);
+  af::init(d) = -2, 5, 8, -3, 7;
+  af::init(f) = -1, 4, 5, 2;
+  matrix_t a = lower_bidiagonal(d.ref(), f.ref());
+  matrix_const_ref_t a_ = a.const_ref();
+  matrix_t identity_n = identity<double>(d.size());
+  matrix_ref_t u_ = identity_n.ref(), v_;
+  svd::bidiagonal_decomposition<double> svd(
+        d.ref(), f.ref(), svd::lower_bidiagonal_kind, u_, true, v_, false);
+  matrix_t b = upper_bidiagonal(d.ref(), f.ref());
+  matrix_const_ref_t b_ = b.const_ref();
+  matrix_t u_b = af::matrix_multiply(u_, b_);
+  matrix_const_ref_t u_b_ = u_b.const_ref();
+  SCITBX_ASSERT( normality_ratio(u_) < 10 );
+  SCITBX_ASSERT( equality_ratio(a_, u_b_) < 10 );
+}
+
 struct golub_kahan_iteration_test_case
 {
   af::shared<double> diagonal, superdiagonal;
@@ -114,9 +133,8 @@ struct golub_kahan_iteration_test_case
     matrix_ref_t v_ = v.ref();
 
     svd::bidiagonal_decomposition<double> svd(
-      diagonal.ref(), superdiagonal.ref(),
-      u_, true,
-      v_, true);
+      diagonal.ref(), superdiagonal.ref(), svd::upper_bidiagonal_kind,
+      u_, true, v_, true);
 
     svd.r = r; svd.s = s;
     (svd.*tested)(/*compute_shift=*/true);
@@ -283,9 +301,8 @@ void exercise_golub_kahan_iterations(grading_func_t grading_func,
     matrix_ref_t v_ = v.ref();
 
     svd::bidiagonal_decomposition<double> svd(
-      diagonal.ref(), superdiagonal.ref(),
-      u.ref(), true,
-      v.ref(), true);
+      diagonal.ref(), superdiagonal.ref(), svd::upper_bidiagonal_kind,
+      u.ref(), true, v.ref(), true);
     svd.compute();
     SCITBX_ASSERT(superdiagonal.all_eq(0));
     SCITBX_ASSERT(normality_ratio(u.const_ref(), svd.tol) < thresh);
@@ -316,6 +333,7 @@ void exercise_golub_kahan_iterations_2() {
 
 int main() {
   exercise_2x2_decomposition();
+  exercise_lower_bidiagonal_rectification();
   golub_kahan_iteration_test_case_1().exercise();
   golub_kahan_iteration_test_case_2().exercise();
   golub_kahan_iteration_test_case_3().exercise();
