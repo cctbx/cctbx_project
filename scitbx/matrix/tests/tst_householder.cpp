@@ -34,22 +34,27 @@ struct test_case
     : a__(dim(m,n)), thresh(ratio_threshold)
   {}
 
-  void check_qr() {
+  void check_qr(bool thin_q) {
     matrix_t a = a__.deep_copy();
     matrix_ref_t a_ = a.ref();
 
     int m = a.accessor()[0], n=a.accessor()[1];
 
-    householder::qr_decomposition<double> qr(a_, true);
+    householder::qr_decomposition<double> qr(a_,
+                                             true, // accumulate_q
+                                             thin_q);
     matrix_ref_t q_ = qr.q.ref();
 
     // Check Q is orthogonal
     SCITBX_ASSERT(normality_ratio(qr.q.const_ref()) < thresh);
 
     // Get R
-    matrix_t r(dim(m,n));
+    matrix_t r(dim(thin_q ? std::min(m,n) : m, n));
     matrix_ref_t r_ = r.ref();
-    for (int i=0; i<n; ++i) for (int j=i; j<n; ++j) r_(i,j) = a_(i,j);
+    for (int i=0; i<std::min(m,n); ++i)
+    for (int j=i; j<n; ++j) {
+      r_(i,j) = a_(i,j);
+    }
 
     // Check A = QR
     matrix_t q_r = af::matrix_multiply(q_, r_);
@@ -63,7 +68,7 @@ struct test_case
 
     int m = a.accessor()[0], n=a.accessor()[1];
 
-    householder::bidiagonalisation<double> bidiag(a_, true, true);
+    householder::bidiagonalisation<double> bidiag(a_);
     matrix_ref_t u_ = bidiag.u.ref();
     matrix_ref_t v_ = bidiag.v.ref();
 
@@ -179,19 +184,23 @@ int main() {
   // Householder QR (Lotkin matrix: ill-conditioned)
   {
     lotkin_test_case t(3,2);
-    t.check_qr();
+    t.check_qr(false); // full QR
+    t.check_qr(true);  // thin QR
   }
   {
     lotkin_test_case t(3,3);
-    t.check_qr();
+    t.check_qr(false); // full QR
+    t.check_qr(true);  // thin QR
   }
   {
     lotkin_test_case t(4,3);
-    t.check_qr();
+    t.check_qr(false); // full QR
+    t.check_qr(true);  // thin QR
   }
   {
     lotkin_test_case t(5,3);
-    t.check_qr();
+    t.check_qr(false); // full QR
+    t.check_qr(true);  // thin QR
   }
 
   /* Householder bidiagonalisation (Golub and Van Loan example 5.4.2)
