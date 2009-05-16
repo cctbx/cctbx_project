@@ -192,8 +192,8 @@ struct demmel_kahan_rotations
 
 
 /// Product of Given rotations \f$G_1, G_2, ... ,G_n\f$
-/** rotations have contiguous indices (r, r+1), (r+1, r+2), ... (upward case)
-    or (s, s-1), (s-1, s-2), ... (downward case)
+/** rotations have contiguous indices (r, r+1), (r+1, r+2), ... (downward case)
+    or (s, s-1), (s-1, s-2), ... (upward case)
 */
 template <typename FloatType>
 struct product
