@@ -22,6 +22,7 @@ typedef af::c_grid<2> dim;
 typedef af::versa<double, dim> matrix_t;
 typedef af::ref<double, dim> matrix_ref_t;
 typedef af::const_ref<double, dim> matrix_const_ref_t;
+typedef af::shared<double> vec_t;
 
 
 template<class SVD2x2Type>
@@ -42,16 +43,13 @@ void check_2x2_decomposition(double f, double g, double h,
   matrix_t a(dim(2,2));
   af::init(a) = f, g,
                 0, h;
-  matrix_t sigma(dim(2,2));
-  af::init(sigma) = svd.s_max, 0        ,
-                    0        , svd.s_min;
-  matrix_t u_sigma = matrix_multiply(u.ref(), sigma.ref());
-  matrix_t vt = matrix_transpose(v.ref());
-  matrix_t u_sigma_vt = matrix_multiply(u_sigma.ref(), vt.ref());
-  SCITBX_ASSERT(std::abs((u_sigma_vt(0,0) -f)/f) < tol);
-  SCITBX_ASSERT(std::abs((u_sigma_vt(0,1) -g)/g) < tol);
-  SCITBX_ASSERT(std::abs(u_sigma_vt(1,0)) < tol);
-  SCITBX_ASSERT(std::abs((u_sigma_vt(1,1) -h)/h) < tol);
+  vec_t sigma(2);
+  af::init(sigma) = svd.s_max, svd.s_min;
+  matrix_t a1 = svd::reconstruct(u.ref(), v.ref(), sigma.ref());
+  SCITBX_ASSERT(std::abs((a1(0,0) -f)/f) < tol);
+  SCITBX_ASSERT(std::abs((a1(0,1) -g)/g) < tol);
+  SCITBX_ASSERT(std::abs(a1(1,0)) < tol);
+  SCITBX_ASSERT(std::abs((a1(1,1) -h)/h) < tol);
 }
 
 
@@ -67,7 +65,7 @@ void exercise_2x2_decomposition() {
         double f = scitbx::math::copysign(2., sign[i]);
         double g = scitbx::math::copysign(1., sign[j]);
         double h = scitbx::math::copysign(1., sign[k]);
-        svd::decomposition_bidiagonal_2x2<double> svd(f, g, h, true);
+        svd::bidiagonal_2x2_decomposition<double> svd(f, g, h, true);
         check_2x2_decomposition(f, g, h, svd, tol);
         SCITBX_ASSERT(approx_equal(std::abs(svd.s_min), s_min, tol));
         SCITBX_ASSERT(approx_equal(std::abs(svd.s_max), s_max, tol));
@@ -86,7 +84,7 @@ void exercise_2x2_decomposition() {
                            h, f, g,
                            h, g, f  };
         for (int p=0; p<18; p+=3) {
-          svd::decomposition_bidiagonal_2x2<double> svd(
+          svd::bidiagonal_2x2_decomposition<double> svd(
             elt[p], elt[p+1], elt[p+2], true);
           check_2x2_decomposition(elt[p], elt[p+1], elt[p+2], svd, tol);
         }
@@ -116,26 +114,26 @@ struct golub_kahan_iteration_test_case
 
     matrix_t identity_n = identity<double>(diagonal.size());
 
-    matrix_t ut = identity_n.deep_copy();
-    matrix_ref_t ut_ = ut.ref();
+    matrix_t u = identity_n.deep_copy();
+    matrix_ref_t u_ = u.ref();
 
     matrix_t v = identity_n.deep_copy();
     matrix_ref_t v_ = v.ref();
 
     svd::bidiagonal_decomposition<double> svd(
       diagonal.ref(), superdiagonal.ref(),
-      ut.ref(), true,
+      u.ref(), true,
       v.ref(), true);
 
     svd.r = r; svd.s = s;
     (svd.*tested)(/*compute_shift=*/true);
 
-    SCITBX_ASSERT(af::matrix_multiply(ut_, af::matrix_transpose(ut_).ref())
+    SCITBX_ASSERT(af::matrix_multiply(u_, af::matrix_transpose(u_).ref())
                   .all_approx_equal(identity_n, tol));
     SCITBX_ASSERT(af::matrix_multiply(v_, af::matrix_transpose(v_).ref())
                   .all_approx_equal(identity_n, tol));
 
-    matrix_t ut_a = af::matrix_multiply(ut_, a_);
+    matrix_t ut_a = af::matrix_multiply(af::matrix_transpose(u_).ref(), a_);
     matrix_t ut_a_v = af::matrix_multiply(ut_a.ref(), v_);
     matrix_t a1 = bidiagonal(diagonal.ref(), superdiagonal.ref());
     SCITBX_ASSERT(ut_a_v.all_approx_equal(a1, tol));
@@ -288,22 +286,22 @@ void exercise_golub_kahan_iterations(grading_func_t grading_func,
 
     matrix_t identity_n = identity<double>(n);
 
-    matrix_t ut = identity_n.deep_copy();
-    matrix_ref_t ut_ = ut.ref();
+    matrix_t u = identity_n.deep_copy();
+    matrix_ref_t u_ = u.ref();
 
     matrix_t v = identity_n.deep_copy();
     matrix_ref_t v_ = v.ref();
 
     svd::bidiagonal_decomposition<double> svd(
       diagonal.ref(), superdiagonal.ref(),
-      ut.ref(), true,
+      u.ref(), true,
       v.ref(), true);
     svd.compute();
     SCITBX_ASSERT(superdiagonal.all_eq(0));
-    SCITBX_ASSERT(normality_ratio(ut.const_ref(), svd.tol) < thresh);
+    SCITBX_ASSERT(normality_ratio(u.const_ref(), svd.tol) < thresh);
     SCITBX_ASSERT(normality_ratio(v.const_ref(), svd.tol) < thresh);
 
-    matrix_t a1 = svd::reconstruct(ut_, v_, diagonal.const_ref());
+    matrix_t a1 = svd::reconstruct(u_, v_, diagonal.const_ref());
     SCITBX_ASSERT(equality_ratio(a.const_ref(), a1.const_ref(), svd.tol)
                     < thresh);
   }
