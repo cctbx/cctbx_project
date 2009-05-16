@@ -2,6 +2,7 @@
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/matrix/outer_product.h>
 #include <scitbx/matrix/cholesky.h>
+#include <scitbx/matrix/norms.h>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
@@ -174,6 +175,9 @@ namespace boost_python {
       .def("matrix_diagonal_product",
         (double(*)(
           const_ref<double, c_grid<2> > const&)) matrix_diagonal_product)
+      .def("matrix_norm_1", matrix::norm_1<double>)
+      .def("matrix_norm_inf", matrix::norm_inf<double>)
+      .def("matrix_norm_frobenius", matrix::norm_frobenius<double>)
       .def("matrix_multiply", matrix_multiply_real_matrix_real_matrix)
       .def("matrix_multiply", matrix_multiply_real_matrix_complex_matrix)
       .def("matrix_multiply",

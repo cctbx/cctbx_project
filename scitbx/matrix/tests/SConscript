@@ -12,5 +12,3 @@ env.Program(target="tst_householder",
             source="tst_householder.cpp")
 env.Program(target="tst_svd",
             source="tst_svd.cpp")
-env.Program(target="tst_misc",
-            source="tst_misc.cpp")

@@ -19,7 +19,6 @@ def run():
   "$B/math/tests/tst",
   "$B/matrix/tests/tst_householder",
   "$B/matrix/tests/tst_svd",
-  "$B/matrix/tests/tst_misc",
   "$D/error/tst_error.py",
   "$D/stl/tst_map.py",
   "$D/stl/tst_set.py",
