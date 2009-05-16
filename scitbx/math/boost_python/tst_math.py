@@ -1769,7 +1769,23 @@ def exercise_continued_fraction():
   cf = continued_fraction.from_real(0.125)
   assert cf.as_rational() == frac(1,8)
 
+def exercise_numeric_limits():
+  l = scitbx.math.double_numeric_limits
+  print "Floating point type 'double':"
+  print "\tradix: ", l.radix
+  print "\tmantissa digits (base 2):", l.digits
+  print "\tmantissa digits (base 10):", l.digits10
+  print "\tmin exponent (base 2):", l.min_exponent
+  print "\tmin exponent (base 10):", l.min_exponent10
+  print "\tmax exponent (base 2):", l.max_exponent
+  print "\tmax exponent (base 10):", l.max_exponent10
+  print "\tmin:", l.min
+  print "\tmax:", l.max
+  print "\tepsilon:", l.epsilon
+  print "\tsafe min:", l.safe_min
+
 def run():
+  exercise_numeric_limits()
   exercise_continued_fraction()
   exercise_least_squares_plane()
   exercise_div_mod()

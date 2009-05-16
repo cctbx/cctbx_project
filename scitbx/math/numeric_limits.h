@@ -17,7 +17,10 @@ class numeric_limits : public std::numeric_limits<T>
                       std::numeric_limits<T>::min_exponent);
     }
 
-
+    /// Epsilon times radix
+    static T epsilon_x_radix() {
+      return std::numeric_limits<T>::epsilon()*std::numeric_limits<T>::radix;
+    }
 };
 
 
