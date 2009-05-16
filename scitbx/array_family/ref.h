@@ -313,7 +313,7 @@ namespace scitbx { namespace af {
       /*! Off-diagonal elements are set to zero.
        */
       void set_identity(bool require_square=true) const {
-        set_diagonal(1, true);
+        set_diagonal(1, require_square);
       }
 
       /// Efficiently transpose a square matrix in-place
