@@ -493,7 +493,6 @@ scitbx/matrix/svd2x2.nb -text
 scitbx/matrix/tests.h -text
 scitbx/matrix/tests/SConscript -text
 scitbx/matrix/tests/tst_householder.cpp -text
-scitbx/matrix/tests/tst_misc.cpp -text
 scitbx/matrix/tests/tst_svd.cpp -text
 scitbx/matrix/tests/tst_svd.nb -text
 scitbx/misc/positive_getitem_index.h svneol=native#text/plain

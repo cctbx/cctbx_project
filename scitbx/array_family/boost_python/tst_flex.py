@@ -1964,6 +1964,16 @@ def exercise_matrix():
   assert immoptibox_ports.tst_flex_counts == 299
   del immoptibox_ports.tst_flex_counts
 
+def exercise_matrix_norms():
+  a = flex.double((1,  2, -3,
+                   4, -5,  6,
+                   7,  8,  9,
+                  -1, -2, -3 ))
+  a.resize(flex.grid(4,3))
+  assert a.matrix_norm_1() == 21
+  assert a.matrix_norm_inf() == 24
+  assert approx_equal(a.matrix_norm_frobenius(), math.sqrt(299.))
+
 def exercise_cholesky_decomposition(a):
   from scitbx.examples import immoptibox_ports
   c = immoptibox_ports.py_cholesky_decomposition(a)
@@ -2599,6 +2609,7 @@ def run(iterations):
     exercise_extract_attributes()
     exercise_exceptions()
     exercise_matrix()
+    exercise_matrix_norms()
     exercise_matrix_cholesky_gill_murray_wright()
     exercise_matrix_move()
     exercise_matrix_inversion_in_place()
