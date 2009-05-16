@@ -23,7 +23,7 @@ namespace scitbx { namespace matrix {
   }
 
   template <typename NumType>
-  af::versa<NumType, af::c_grid<2> > bidiagonal(
+  af::versa<NumType, af::c_grid<2> > upper_bidiagonal(
     af::const_ref<NumType> diagonal,
     af::const_ref<NumType> superdiagonal)
   {
@@ -33,6 +33,21 @@ namespace scitbx { namespace matrix {
     for (int i=0; i<n; ++i) {
       r(i,i) = diagonal[i];
       if (i < n-1) r(i,i+1) = superdiagonal[i];
+    }
+    return result;
+  }
+
+  template <typename NumType>
+  af::versa<NumType, af::c_grid<2> > lower_bidiagonal(
+    af::const_ref<NumType> diagonal,
+    af::const_ref<NumType> subdiagonal)
+  {
+    std::size_t n = diagonal.size();
+    af::versa<NumType, af::c_grid<2> > result(af::c_grid<2>(n,n));
+    af::ref<NumType, af::c_grid<2> > r = result.ref();
+    for (int i=0; i<n; ++i) {
+      r(i,i) = diagonal[i];
+      if (i < n-1) r(i+1,i) = subdiagonal[i];
     }
     return result;
   }

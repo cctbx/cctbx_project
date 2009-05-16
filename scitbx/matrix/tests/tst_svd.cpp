@@ -102,7 +102,7 @@ struct golub_kahan_iteration_test_case
   {}
 
   void exercise() {
-    matrix_t a = bidiagonal(diagonal.ref(), superdiagonal.ref());
+    matrix_t a = upper_bidiagonal(diagonal.ref(), superdiagonal.ref());
     matrix_ref_t a_ = a.ref();
 
     matrix_t identity_n = identity<double>(diagonal.size());
@@ -125,7 +125,7 @@ struct golub_kahan_iteration_test_case
     SCITBX_ASSERT( normality_ratio(v_) < 10 );
 
     matrix_t ut_a_v = product_UT_M_V(u_, a_, v_);
-    matrix_t a1 = bidiagonal(diagonal.ref(), superdiagonal.ref());
+    matrix_t a1 = upper_bidiagonal(diagonal.ref(), superdiagonal.ref());
     SCITBX_ASSERT( equality_ratio(ut_a_v.ref(), a1.ref()) < 10 );
   }
 };
@@ -271,7 +271,7 @@ void exercise_golub_kahan_iterations(grading_func_t grading_func,
       if (i < n-1) superdiagonal[i] = superdiagonal_multiplier*diagonal[i];
     }
     if (zero_on_diag) diagonal[n/2] = 0;
-    matrix_t a = bidiagonal(diagonal.ref(), superdiagonal.ref());
+    matrix_t a = upper_bidiagonal(diagonal.ref(), superdiagonal.ref());
     matrix_ref_t a_ = a.ref();
 
     matrix_t identity_n = identity<double>(n);

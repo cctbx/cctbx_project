@@ -2316,6 +2316,52 @@ def exercise_matrix_move():
    11,12,8,9,10,
    16,17,13,14,15]
 
+def exercise_copy_upper_or_lower_triangle():
+  for m, n in [ (5,3), (5,4), (5,5), (4,5), (3,5),
+                (4,2), (2,4),
+                (3,2), (2,3), (3,3),
+                (2,2),
+                (2,1), (1,2) ]:
+    a = flex.double(xrange(m*n))
+    a.resize(flex.grid(m,n))
+    try:
+      u = a.matrix_copy_upper_triangle()
+      assert u.focus() == (n,n)
+      for i in xrange(n):
+        for j in xrange(n):
+          if i > j: assert u[i,j] == 0
+          else: assert u[i,j] == a[i,j]
+    except RuntimeError, e:
+      assert m < n and str(e).find('SCITBX_ASSERT(m >= n)') > 0
+    try:
+      l = a.matrix_copy_lower_triangle()
+      assert l.focus() == (m,m)
+      for i in xrange(m):
+        for j in xrange(m):
+          if i < j: assert l[i,j] == 0
+          else: assert l[i,j] == a[i,j]
+    except RuntimeError, e:
+      assert m > n and str(e).find('SCITBX_ASSERT(m <= n)') > 0
+
+def exercise_matrix_bidiagonal():
+  for m, n in [ (5,3), (5,4), (5,5), (4,5), (3,5),
+                (4,2), (2,4),
+                (3,2), (2,3), (3,3),
+                (2,2),
+                (2,1), (1,2) ]:
+    a = flex.double(xrange(m*n))
+    a.resize(flex.grid(m,n))
+    d,f = a.matrix_upper_bidiagonal()
+    assert len(d) == min(m,n)
+    assert len(f) == len(d) - 1
+    assert list(d) == [ a[i,i] for i in xrange(len(d)) ]
+    assert list(f) == [ a[i,i+1] for i in xrange(len(f)) ]
+    d,f = a.matrix_lower_bidiagonal()
+    assert len(d) == min(m,n)
+    assert len(f) == len(d) - 1
+    assert list(d) == [ a[i,i] for i in xrange(len(d)) ]
+    assert list(f) == [ a[i+1,i] for i in xrange(len(f)) ]
+
 def exercise_matrix_inversion_in_place():
   m = flex.double()
   m.resize(flex.grid(0,0))
@@ -2581,6 +2627,8 @@ def exercise_c_grid_flex_conversion():
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_copy_upper_or_lower_triangle()
+    exercise_matrix_bidiagonal()
     exercise_c_grid_flex_conversion()
     exercise_first_index_etc()
     exercise_flex_grid()

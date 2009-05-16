@@ -7,6 +7,7 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <boost_adaptbx/std_pair_conversion.h>
 
 namespace scitbx { namespace af {
 
@@ -146,11 +147,16 @@ namespace boost_python {
 
     using namespace boost::python;
 
+    boost_adaptbx::std_pair_conversions::to_tuple<shared<double>,
+                                                  shared<double> >();
+
     class_f_t
       .def("is_square_matrix", is_square_matrix)
       .def("matrix_diagonal",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&)) matrix_diagonal)
+      .def("matrix_upper_bidiagonal", matrix_upper_bidiagonal<double>)
+      .def("matrix_lower_bidiagonal", matrix_lower_bidiagonal<double>)
       .def("matrix_diagonal_set_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&,
@@ -345,6 +351,8 @@ namespace boost_python {
               arg_("block"),
               arg_("i_row"),
               arg_("i_column")))
+      .def("matrix_copy_upper_triangle", matrix::copy_upper_triangle<double>)
+      .def("matrix_copy_lower_triangle", matrix::copy_lower_triangle<double>)
       .def("matrix_swap_rows_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&, unsigned, unsigned))
