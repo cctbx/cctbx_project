@@ -13,17 +13,11 @@
 
 #include <scitbx/matrix/svd.h>
 #include <scitbx/matrix/tests.h>
+#include <scitbx/matrix/tests/utils.h>
 
 namespace af = scitbx::af;
 using scitbx::fn::approx_equal;
 using namespace scitbx::matrix;
-
-typedef af::c_grid<2> dim;
-typedef af::versa<double, dim> matrix_t;
-typedef af::ref<double, dim> matrix_ref_t;
-typedef af::const_ref<double, dim> matrix_const_ref_t;
-typedef af::shared<double> vec_t;
-
 
 template<class SVD2x2Type>
 void check_2x2_decomposition(double f, double g, double h,
@@ -46,10 +40,10 @@ void check_2x2_decomposition(double f, double g, double h,
   vec_t sigma(2);
   af::init(sigma) = svd.s_max, svd.s_min;
   matrix_t a1 = svd::reconstruct(u.ref(), v.ref(), sigma.ref());
-  SCITBX_ASSERT(std::abs((a1(0,0) -f)/f) < tol);
-  SCITBX_ASSERT(std::abs((a1(0,1) -g)/g) < tol);
-  SCITBX_ASSERT(std::abs(a1(1,0)) < tol);
-  SCITBX_ASSERT(std::abs((a1(1,1) -h)/h) < tol);
+  SCITBX_ASSERT( std::abs((a1(0,0) -f)/f) < tol );
+  SCITBX_ASSERT( std::abs((a1(0,1) -g)/g) < tol );
+  SCITBX_ASSERT( std::abs(a1(1,0)) < tol );
+  SCITBX_ASSERT( std::abs((a1(1,1) -h)/h) < tol );
 }
 
 
@@ -67,8 +61,8 @@ void exercise_2x2_decomposition() {
         double h = scitbx::math::copysign(1., sign[k]);
         svd::bidiagonal_2x2_decomposition<double> svd(f, g, h, true);
         check_2x2_decomposition(f, g, h, svd, tol);
-        SCITBX_ASSERT(approx_equal(std::abs(svd.s_min), s_min, tol));
-        SCITBX_ASSERT(approx_equal(std::abs(svd.s_max), s_max, tol));
+        SCITBX_ASSERT( approx_equal(std::abs(svd.s_min), s_min, tol) );
+        SCITBX_ASSERT( approx_equal(std::abs(svd.s_max), s_max, tol) );
   }
 
   for (int i=0; i<2; ++i)
@@ -108,7 +102,6 @@ struct golub_kahan_iteration_test_case
   {}
 
   void exercise() {
-    double tol = 50*std::numeric_limits<double>::epsilon();
     matrix_t a = bidiagonal(diagonal.ref(), superdiagonal.ref());
     matrix_ref_t a_ = a.ref();
 
@@ -122,21 +115,18 @@ struct golub_kahan_iteration_test_case
 
     svd::bidiagonal_decomposition<double> svd(
       diagonal.ref(), superdiagonal.ref(),
-      u.ref(), true,
-      v.ref(), true);
+      u_, true,
+      v_, true);
 
     svd.r = r; svd.s = s;
     (svd.*tested)(/*compute_shift=*/true);
 
-    SCITBX_ASSERT(af::matrix_multiply(u_, af::matrix_transpose(u_).ref())
-                  .all_approx_equal(identity_n, tol));
-    SCITBX_ASSERT(af::matrix_multiply(v_, af::matrix_transpose(v_).ref())
-                  .all_approx_equal(identity_n, tol));
+    SCITBX_ASSERT( normality_ratio(u_) < 10 );
+    SCITBX_ASSERT( normality_ratio(v_) < 10 );
 
-    matrix_t ut_a = af::matrix_multiply(af::matrix_transpose(u_).ref(), a_);
-    matrix_t ut_a_v = af::matrix_multiply(ut_a.ref(), v_);
+    matrix_t ut_a_v = product_UT_M_V(u_, a_, v_);
     matrix_t a1 = bidiagonal(diagonal.ref(), superdiagonal.ref());
-    SCITBX_ASSERT(ut_a_v.all_approx_equal(a1, tol));
+    SCITBX_ASSERT( equality_ratio(ut_a_v.ref(), a1.ref()) < 10 );
   }
 };
 

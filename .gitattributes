@@ -495,6 +495,7 @@ scitbx/matrix/tests/SConscript -text
 scitbx/matrix/tests/tst_householder.cpp -text
 scitbx/matrix/tests/tst_svd.cpp -text
 scitbx/matrix/tests/tst_svd.nb -text
+scitbx/matrix/tests/utils.h -text
 scitbx/misc/positive_getitem_index.h svneol=native#text/plain
 scitbx/optional_copy.h svneol=native#text/plain
 scitbx/optional_copy/SConscript -text
