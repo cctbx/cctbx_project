@@ -33,6 +33,29 @@ class grid_(boost.python.injector, grid):
     print >> f, "all:", self.all()
     return self
 
+def show(a):
+  import scitbx.matrix
+  print scitbx.matrix.rec(
+    a, a.focus()).mathematica_form(one_row_per_line=True)
+
+def upper_bidiagonal(d, f):
+  n = len(d)
+  a = double(n*n)
+  a.reshape(grid(n,n))
+  for i,x in enumerate(d):
+    a[i,i] = x
+  for i,x in enumerate(f):
+    a[i,i+1] = x
+  return a
+
+def lower_bidiagonal(d, f):
+  n = len(d)
+  a = double(n*n)
+  a.reshape(grid(n,n))
+  for i,x in enumerate(d): a[i,i] = x
+  for i,x in enumerate(f): a[i+1,i] = x
+  return a
+
 def export_to(target_module_name):
   export_list = [
     "to_list",
