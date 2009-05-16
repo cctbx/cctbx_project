@@ -243,6 +243,7 @@ class norm_accumulator : public Previous
 
     void operator()(FloatType x) {
       Previous::operator()(x);
+      if (x == 0) return;
       FloatType absx = std::abs(x);
       if (scale < absx) {
         FloatType t = scale/absx;
