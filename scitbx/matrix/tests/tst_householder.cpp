@@ -5,9 +5,13 @@
 #include <scitbx/array_family/ref_algebra.h>
 #include <scitbx/array_family/misc_functions.h>
 #include <scitbx/matrix/special_matrices.h>
+#include <scitbx/matrix/move.h>
 #include <scitbx/error.h>
 #include <scitbx/array_family/simple_io.h>
 #include <iostream>
+
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int.hpp>
 
 #include <scitbx/matrix/householder.h>
 #include <scitbx/matrix/tests.h>
@@ -36,13 +40,7 @@ struct test_case
 
     int m = a_.n_rows(), n=a_.n_columns();
 
-    householder::qr_decomposition<double> qr(a_,
-                                             true, // accumulate_q
-                                             thin_q);
-    matrix_ref_t q_ = qr.q.ref();
-
-    // Check Q is orthogonal
-    SCITBX_ASSERT( normality_ratio(q_) < thresh );
+    householder::qr_decomposition<double> qr(a_);
 
     // Get R
     matrix_t r(dim(thin_q ? std::min(m,n) : m, n));
@@ -52,10 +50,56 @@ struct test_case
       r_(i,j) = a_(i,j);
     }
 
+    // Accumulate Q out-of-place
+    matrix_t q = qr.q(thin_q);
+    matrix_const_ref_t q_ = q.const_ref();
+    SCITBX_ASSERT( normality_ratio(q_) < thresh );
+
+    // Accumulate Q in-place if it makes sense
+    if (thin_q) {
+      qr.accumulate_q_inplace();
+      SCITBX_ASSERT( equality_ratio(q_, a_) < thresh );
+    }
+
     // Check A = QR
     matrix_t q_r = af::matrix_multiply(q_, r_);
     matrix_const_ref_t q_r_ = q_r.const_ref();
     SCITBX_ASSERT( equality_ratio(a0_, q_r_) < thresh );
+  }
+
+  void check_lq(bool thin_q) {
+    matrix_const_ref_t a0_ = a0.const_ref();
+
+    matrix_t a = a0.deep_copy();
+    matrix_ref_t a_ = a.ref();
+
+    int m = a_.n_rows(), n=a_.n_columns();
+
+    householder::lq_decomposition<double> lq(a_);
+
+    // Get L
+    matrix_t l(dim(m, thin_q ? std::min(m,n) : n));
+    matrix_ref_t l_ = l.ref();
+    for (int j=0; j<std::min(m,n); ++j) {
+    for (int i=j; i<m; ++i)
+      l_(i,j) = a_(i,j);
+    }
+
+    // Accumulate Q out-of-place
+    matrix_t q = lq.q(thin_q);
+    matrix_const_ref_t q_ = q.const_ref();
+    SCITBX_ASSERT( normality_ratio(q_) < thresh );
+
+    // Accumulate Q in-place if it makes sense
+    if (thin_q) {
+      lq.accumulate_q_inplace();
+      SCITBX_ASSERT( equality_ratio(q_, a_) < thresh );
+    }
+
+    // Check A = LQ
+    matrix_t l_q = af::matrix_multiply(l_, q_);
+    matrix_const_ref_t l_q_ = l_q.const_ref();
+    SCITBX_ASSERT( equality_ratio(a0_, l_q_) < thresh );
   }
 
   void check_bidiagonalisation(bool debug=false) {
@@ -67,17 +111,22 @@ struct test_case
     int m = a_.n_rows(), n=a_.n_columns();
 
     householder::bidiagonalisation<double> bidiag(a_);
+
+    // Get B
+    matrix_t b(dim(m,n));
+    matrix_ref_t b_ = b.ref();
+    if (m >=n) copy_upper_bidiagonal(b_, a_);
+    else copy_lower_bidiagonal(b_, a_);
+
+    bidiag.accumulate_u();
     matrix_ref_t u_ = bidiag.u.ref();
+
+    bidiag.accumulate_v();
     matrix_ref_t v_ = bidiag.v.ref();
 
     // Check that U and V are orthogonal
     SCITBX_ASSERT( normality_ratio(u_) < thresh );
     SCITBX_ASSERT( normality_ratio(v_) < thresh );
-
-    // Get B
-    matrix_t b(dim(m,n));
-    matrix_ref_t b_ = b.ref();
-    for (int i=0; i<n; ++i) for (int j=i; j<i+2 && j<n; ++j) b_(i,j) = a_(i,j);
 
     // Check that A = U B V^T
     matrix_t u_b_vt = product_U_M_VT(u_, b_, v_);
@@ -179,27 +228,112 @@ void exercise_householder_zeroing_vector() {
   }
 }
 
+void exercise_householder_accumulation() {
+  boost::mt19937 urng;
+  boost::uniform_int<> gen(0, 64);
+  for (int m=3; m<=6; ++m) for (int n=3; n<=6; ++n) {
+    // set up test case
+    matrix_t a(dim(m,n), -1.);
+    matrix_ref_t a_ = a.ref();
+    vec_t beta(std::min(m-1, n));
+    for (int j=0; j<std::min(m-1, n); ++j) {
+      double v2 = 1;
+      for (int i=j+1; i<m; ++i) {
+        a(i,j) = gen(urng);
+        v2 += a(i,j)*a(i,j);
+      }
+      beta[j] = 2./v2;
+    }
+    matrix_t at = af::matrix_transpose(a.ref());
+    matrix_ref_t at_ = at.ref();
+
+    // test accumulation of the thin Q if m >= n or the full Q otherwise
+
+    // on the right
+    {
+      matrix_t q(dim(m, std::min(m,n)));
+      matrix_ref_t q_ = q.ref();
+      householder::reflection<double> h(m, n,
+                                        householder::applied_on_left_tag(),
+                                        true);
+      h.accumulate_factored_form_in_columns(q_, a_, beta.ref());
+      h.accumulate_inplace_factored_form_in_columns(a_, beta.ref());
+      for (int i=0; i<q_.n_rows(); ++i)
+      for (int j=0; j<q_.n_columns(); ++j) {
+        approx_equal(q_(i,j), a_(i,j), 1e-15);
+      }
+    }
+
+    // on the left
+    {
+      std::swap(m,n);
+      matrix_t q(dim(std::min(m,n), n));
+      matrix_ref_t q_ = q.ref();
+      householder::reflection<double> h(m, n,
+                                        householder::applied_on_right_tag(),
+                                        true);
+      h.accumulate_factored_form_in_rows(
+        q_, at_, beta.ref(), householder::product_in_reverse_row_order);
+      h.accumulate_inplace_factored_form_in_rows(at_, beta.ref());
+      for (int i=0; i<q_.n_rows(); ++i)
+      for (int j=0; j<q_.n_columns(); ++j) {
+        approx_equal(q_(i,j), at_(i,j), 1e-15);
+      }
+    }
+  }
+}
+
 void exercise_householder() {
   // Householder QR (Lotkin matrix: ill-conditioned)
   {
     lotkin_test_case t(3,2);
     t.check_qr(false); // full QR
     t.check_qr(true);  // thin QR
+    t.check_lq(false); // full LQ
+  }
+  {
+    lotkin_test_case t(2,3);
+    t.check_qr(false); // full QR
+    t.check_lq(false); // full LQ
+    t.check_lq(true);  // thin LQ
   }
   {
     lotkin_test_case t(3,3);
     t.check_qr(false); // full QR
     t.check_qr(true);  // thin QR
+    t.check_lq(false); // full LQ
+    t.check_lq(true);  // thin LQ
   }
   {
     lotkin_test_case t(4,3);
     t.check_qr(false); // full QR
     t.check_qr(true);  // thin QR
+    t.check_lq(false); // full LQ
+  }
+  {
+    lotkin_test_case t(3,4);
+    t.check_qr(false); // full QR
+    t.check_lq(false); // full LQ
+    t.check_lq(true);  // thin LQ
+  }
+  {
+    lotkin_test_case t(4,4);
+    t.check_qr(false); // full QR
+    t.check_qr(true);  // thin QR
+    t.check_lq(false); // full LQ
+    t.check_lq(true);  // thin LQ
   }
   {
     lotkin_test_case t(5,3);
     t.check_qr(false); // full QR
     t.check_qr(true);  // thin QR
+    t.check_lq(false); // full LQ
+  }
+  {
+    lotkin_test_case t(3,5);
+    t.check_qr(false); // full QR
+    t.check_lq(false); // full LQ
+    t.check_lq(true);  // thin LQ
   }
 }
 
@@ -218,21 +352,22 @@ void exercise_bidiagonalisation() {
                    10, 11, 12;
     matrix_const_ref_t a0_ = a0.const_ref();
     matrix_t a = a0.deep_copy();
-    householder::bidiagonalisation<double> bidiag(a.ref(), true, true);
+    householder::bidiagonalisation<double> bidiag(a.ref());
     matrix_t b(dim(4,3));
     af::init(b) = 12.8840987267251, 21.876432827428,  0             ,
                    0              ,  2.246235240294, -0.613281332054,
                    0              ,  0             ,  0             ,
                    0              ,  0             ,  0             ;
     matrix_const_ref_t b_ = b.const_ref();
+    bidiag.accumulate_u();
     matrix_ref_t u_ = bidiag.u.ref();
+    bidiag.accumulate_v();
     matrix_ref_t v_ = bidiag.v.ref();
     SCITBX_ASSERT( normality_ratio(u_) < 10 );
     SCITBX_ASSERT( normality_ratio(v_) < 10 );
     matrix_t u_b_vt = product_U_M_VT(u_, b_, v_);
     matrix_const_ref_t u_b_vt_ = u_b_vt.const_ref();
-    double foo = equality_ratio(u_b_vt_, a0_, 1e-13);
-    SCITBX_ASSERT( foo < 10 );
+    SCITBX_ASSERT( equality_ratio(u_b_vt_, a0_, 1e-13) < 10 );
   }
 
   // Householder bidiagonalisation (Lotkin matrix)
@@ -248,10 +383,19 @@ void exercise_bidiagonalisation() {
     lotkin_test_case t(5,5);
     t.check_bidiagonalisation();
   }
+  {
+    lotkin_test_case t(5,7);
+    t.check_bidiagonalisation();
+  }
+  {
+    lotkin_test_case t(5,10);
+    t.check_bidiagonalisation();
+  }
 }
 
 int main() {
   exercise_householder_zeroing_vector();
+  exercise_householder_accumulation();
   exercise_householder();
   exercise_bidiagonalisation();
   std::cout << "OK\n";
