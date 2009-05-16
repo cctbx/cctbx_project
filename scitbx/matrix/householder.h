@@ -136,15 +136,15 @@ struct reflection
   /// the columns of the matrix \c a given the corresponding beta's
   /** C.f. Golub and Van Loan section 5.1.6 */
   void
-  accumulate_factored_form_in_columns(af::ref<scalar_t, af::mat_grid> const &q,
-                                      af::const_ref<scalar_t, af::mat_grid> const &a,
-                                      af::const_ref<scalar_t> const &beta)
+  accumulate_factored_form_in_columns(
+        af::ref<scalar_t, af::mat_grid> const &q,
+                af::const_ref<scalar_t, af::mat_grid> const &a,
+                af::const_ref<scalar_t> const &beta)
   {
     int m = a.n_rows(), n = a.n_columns();
-    SCITBX_ASSERT(q.is_square());
     SCITBX_ASSERT(q.n_rows() == m)(q.n_rows())(m); // A=QR
     SCITBX_ASSERT(beta.size() == n);
-    q.set_identity();
+    q.set_identity(false);
     for (int j=n-1; j >= 0; --j) {
       for (int i=j+1; i < m; ++i) v[i-j-1] = a(i,j);
       this->beta = beta[j];
@@ -161,10 +161,11 @@ struct reflection
       C.f. Golub and Van Loan section 5.1.6
   */
   void
-  accumulate_factored_form_in_rows(af::ref<scalar_t, af::mat_grid> const &q,
-                                   af::const_ref<scalar_t, af::mat_grid> const &a,
-                                   af::const_ref<scalar_t> const &beta,
-                                   int const off_diag=0)
+  accumulate_factored_form_in_rows(
+        af::ref<scalar_t, af::mat_grid> const &q,
+                af::const_ref<scalar_t, af::mat_grid> const &a,
+                af::const_ref<scalar_t> const &beta,
+                int const off_diag=0)
   {
     int m = a.n_rows(), n = a.n_columns();
     SCITBX_ASSERT(q.is_square());
@@ -193,8 +194,14 @@ struct qr_decomposition
   std::vector<scalar_t> beta;
   matrix_t q;
 
+  /// Construct the QR decomposition of A.
+  /** Q is accumulated in the member q only if requested. If A is m x n,
+      normally, Q is m x m and R is m x n. But if m >= n, the thin QR
+      can be computed on request, resulting in Q being m x n and R being n x n.
+  */
   qr_decomposition(af::ref<scalar_t, af::mat_grid> const &a,
-                   bool accumulate_q=false)
+                   bool accumulate_q=true,
+                   bool thin_q=true)
     : p(a.n_rows(), a.n_columns(), applied_on_left_tag(), accumulate_q)
   {
     int m = a.n_rows(), n = a.n_columns();
@@ -208,7 +215,8 @@ struct qr_decomposition
 
     if (accumulate_q) {
       af::const_ref<scalar_t> beta_(&beta[0], n);
-      q = matrix_t(dim(m,m), af::init_functor_null<scalar_t>());
+      q = matrix_t(dim(m, thin_q ? std::min(m,n) : m),
+                   af::init_functor_null<scalar_t>());
       p.accumulate_factored_form_in_columns(q.ref(), a, beta_);
     }
   }
@@ -230,8 +238,8 @@ struct bidiagonalisation
   matrix_t u, v;
 
   bidiagonalisation(af::ref<scalar_t, af::mat_grid> const &a,
-                    bool accumulate_u=false,
-                    bool accumulate_v=false)
+                    bool accumulate_u=true,
+                    bool accumulate_v=true)
     : p(a.n_rows(), a.n_columns(), applied_on_left_and_right_tag())
   {
     int m = a.n_rows(), n = a.n_columns();
