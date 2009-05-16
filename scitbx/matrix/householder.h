@@ -172,7 +172,7 @@ struct reflection
       in the first n columns of \c a
       Reference: LAPACK DORG2R
   */
-  void accumulate_inplace_factored_form_in_columns(
+  void accumulate_in_place_factored_form_in_columns(
     matrix_ref_t const &a,
     af::const_ref<scalar_t> const &beta)
   {
@@ -213,8 +213,13 @@ struct reflection
       \c product_in_row_order or \c product_in_reverse_row_order,
       where H(i) is the Householder reflection stored in the i-th row of \c a.
 
-      q may be rectangular, m x n, in which case q is filled with the
-      first m rows of that product (useful for the thin LQ).
+      q may be rectangular,
+
+        - either m x n, then q is filled with the first m rows
+          of H(k-1) H(k-2) .. H(0)  (used by thin LQ)
+
+        - n x m, then q is filled with the first m columns
+          of H(0) H(1) .. H(k-1)    (used by thin bidiagonalisation)
 
       The argument off_diag is used to handle the both of the LQ and
       the bidiagonalisation algorithms with the same code:
@@ -229,9 +234,18 @@ struct reflection
                                    int const off_diag=0)
   {
     int m = a.n_rows(), n = a.n_columns();
-    SCITBX_ASSERT(q.n_columns() == n)(q.n_columns())(n); // A = .. x Q
     SCITBX_ASSERT(   reflection_order == product_in_row_order
                   || reflection_order == product_in_reverse_row_order);
+    switch (reflection_order) {
+      case product_in_row_order:
+        // the reduction of A is done by A -> A Q
+        SCITBX_ASSERT(q.n_rows() == n)(q.n_rows())(n);
+        break;
+      case product_in_reverse_row_order:
+        // the reduction of A is done by A -> A Q^T
+        SCITBX_ASSERT(q.n_columns() == n)(q.n_columns())(n);
+        break;
+    }
     q.set_identity(false); // Q may be rectangular
     for (int i=beta.size()-1; i >= 0; --i) {
       for (int j=i + off_diag + 1; j < n; ++j) v[j - i - off_diag - 1] = a(i,j);
@@ -252,7 +266,7 @@ struct reflection
   /** The first m rows of the product H(k-1) H(k-2) .. H(0) are stored
       in the first m rows of \c a
   */
-  void accumulate_inplace_factored_form_in_rows(
+  void accumulate_in_place_factored_form_in_rows(
     matrix_ref_t const &a,
     af::const_ref<scalar_t> const &beta)
   {
@@ -330,13 +344,15 @@ struct qr_decomposition
 
         - full Q: Q is m x m and R is m x n
         - thin Q (only if m >= n): Q is m x n and R is n x n
+
+      If \c thin is true, then the thin q is returned if m <= n
+      and the full Q otherwise. If \c thin is false, the full Q is returned.
   */
-  matrix_t q(bool thin) {
+  matrix_t q(bool thin=true) {
     int m = a.n_rows(), n = a.n_columns();
     SCITBX_ASSERT(may_accumulate_q);
-    SCITBX_ASSERT(not thin || m >= n);
     af::const_ref<scalar_t> beta_(&beta[0], beta.size());
-    matrix_t q(dim(m, thin ? n : m),
+    matrix_t q(dim(m, thin ? std::min(m,n) : m),
                af::init_functor_null<scalar_t>());
     p.accumulate_factored_form_in_columns(q.ref(), a, beta_);
     return q;
@@ -344,12 +360,12 @@ struct qr_decomposition
 
   /// Accumulate the thin Q inside A in-place
   /** L is therefore lost */
-  void accumulate_q_inplace() {
+  void accumulate_q_in_place() {
     int m = a.n_rows(), n = a.n_columns();
     SCITBX_ASSERT(may_accumulate_q);
     SCITBX_ASSERT(m >= n);
     af::const_ref<scalar_t> beta_(&beta[0], beta.size());
-    p.accumulate_inplace_factored_form_in_columns(a, beta_);
+    p.accumulate_in_place_factored_form_in_columns(a, beta_);
   }
 };
 
@@ -391,17 +407,19 @@ struct lq_decomposition
   }
 
   /// The Q in LQ
-  /** Either the full Q or only the thin Q in a storage separat from A
+  /** Either the full Q or only the thin Q in a storage separate from A
 
         - full Q: Q is n x n and L is m x n
         - thin Q (only if m <= n): Q is m x n and L is m x m
+
+      If \c thin is true, then the thin q is returned if m <= n
+      and the full Q otherwise. If \c thin is false, the full Q is returned.
   */
-  matrix_t q(bool thin) {
+  matrix_t q(bool thin=true) {
     int m = a.n_rows(), n = a.n_columns();
     SCITBX_ASSERT(may_accumulate_q);
-    SCITBX_ASSERT(not thin || m <= n);
     af::const_ref<scalar_t> beta_(&beta[0], beta.size());
-    matrix_t q(dim(thin ? m : n, n),
+    matrix_t q(dim(thin ? std::min(m, n) : n, n),
                af::init_functor_null<scalar_t>());
     p.accumulate_factored_form_in_rows(q.ref(), a, beta_,
                                        product_in_reverse_row_order);
@@ -410,12 +428,12 @@ struct lq_decomposition
 
   /// Accumulate Q inside A in-place
   /** L is therefore lost */
-  void accumulate_q_inplace() {
+  void accumulate_q_in_place() {
     int m = a.n_rows(), n = a.n_columns();
     SCITBX_ASSERT(may_accumulate_q);
     SCITBX_ASSERT(m <= n);
     af::const_ref<scalar_t> beta_(&beta[0], beta.size());
-    p.accumulate_inplace_factored_form_in_rows(a, beta_);
+    p.accumulate_in_place_factored_form_in_rows(a, beta_);
   }
 };
 
@@ -434,8 +452,11 @@ struct bidiagonalisation
   matrix_ref_t a;
   reflection<FloatType> p;
   std::vector<scalar_t> beta_left, beta_right;
-  matrix_t u, v;
 
+  /// Overwrite a in-place with its bidiagonalisation
+  /** The bidiagonal is that of B whereas the rest of a stores
+      the essential part of the Householder vectors making U and V
+  */
   bidiagonalisation(matrix_ref_t const &a_)
     : a(a_),
       p(a.n_rows(), a.n_columns(), applied_on_left_and_right_tag())
@@ -473,21 +494,27 @@ struct bidiagonalisation
     }
   }
 
-  void accumulate_u() {
+  /// The matrix U, either full or thin (c.f. class \c qr_decomposition)
+  matrix_t u(bool thin=true) {
     int m = a.n_rows(), n = a.n_columns();
     af::const_ref<scalar_t> beta_left_(&beta_left[0], beta_left.size());
-    u = matrix_t(dim(m,m), af::init_functor_null<scalar_t>());
+    matrix_t u(dim(m, thin ? std::min(m, n) : m),
+               af::init_functor_null<scalar_t>());
     p.accumulate_factored_form_in_columns(u.ref(), a, beta_left_,
                                           m >= n ? 0 : 1);
+    return u;
   }
 
-  void accumulate_v() {
+  /// The matrix V, either full or thin (c.f. class \c lq_decomposition)
+  matrix_t v(bool thin=true) {
     int m = a.n_rows(), n = a.n_columns();
     af::const_ref<scalar_t> beta_right_(&beta_right[0], beta_right.size());
-    v = matrix_t(dim(n,n), af::init_functor_null<scalar_t>());
+    matrix_t v(dim(n, thin ? std::min(m,n) : n),
+               af::init_functor_null<scalar_t>());
     p.accumulate_factored_form_in_rows(v.ref(), a, beta_right_,
                                        product_in_row_order,
                                        m >= n ? 1 : 0);
+    return v;
   }
 };
 
