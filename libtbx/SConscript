@@ -130,6 +130,7 @@ supported_compilers = (
   "darwin_gcc-4.2", # tested with the "GCC 4.2 Developer Preview 1"
                     # distributed by Apple
                     # and the GCC 4.2 shipping with XCode 3.1
+  #"darwin_llvm-gcc-4.2" ## under investigation ##
 )
 if (not env_etc.compiler in supported_compilers):
   sys.tracebacklimit = 0
@@ -583,7 +584,7 @@ else:
       static_exe = None
     env_etc.shlinkflags = ["-shared", "-LD_MSG:off=15,84"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc-4.2"]):
+  elif env_etc.compiler.startswith("darwin"):
     env_etc.gcc_version = libtbx.env_config.get_gcc_version()
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
@@ -659,7 +660,17 @@ else:
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.debug_symbols):
-      opts.insert(0, ["-g2", "-gstabs+"])
+      opts.insert(0, "-g2")
+      if env_etc.compiler == "darwin_gcc-4.2":
+        # The gcc 4.2 shipped by Apple with all versions of XCode so far
+        # (the latest one being XCode 3.2.1) is plagued by bug 27574:
+        # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=27574
+        # Workaround till Apple applies the patch that has already landed
+        # on GCC 4.2 branch: use the old stabs debugging info format instead
+        # of the new now native dwarf.
+        # Beware: valgrind does not support stabs on Darwin: just use
+        # gcc 4.0.1 for code to be tested by valgrind
+        opts.insert(0, "-gstabs+")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = []
@@ -677,7 +688,7 @@ else:
   # at the time of configure
   opts = libtbx.env.build_options
   if( opts.use_environment_flags ):
-    print "libtbx.scons: using flags from initial environment: " 
+    print "libtbx.scons: using flags from initial environment: "
     print "              CXXFLAGS = ", opts.env_cxxflags
     print "              CFLAGS = ", opts.env_cflags
     print "              CPPFLAGS = ", opts.env_cppflags
