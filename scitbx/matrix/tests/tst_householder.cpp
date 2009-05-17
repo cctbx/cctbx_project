@@ -267,7 +267,8 @@ void exercise_householder_accumulation() {
     // on the left
     {
       std::swap(m,n);
-      matrix_t q(dim(std::min(m,n), n));
+      int p = std::min(m,n); // <|workaround for gcc 3.3.4 compilation error
+      matrix_t q(dim(p, n)); // <|
       matrix_ref_t q_ = q.ref();
       householder::reflection<double> h(m, n,
                                         householder::applied_on_right_tag(),
