@@ -84,7 +84,7 @@ af::flex_int ReadMAR(const std::string& filename,
 af::flex_int ReadRAXIS(const std::string& characters,
                        const int& /*width*/, const long& size1,
                        const long& size2,
-                       const int& endian_swap_required ) {
+                       const bool& endian_swap_required ) {
   af::flex_int z(af::flex_grid<>(size1,size2));
 
   int* begin = z.begin();
