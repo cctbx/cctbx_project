@@ -163,7 +163,7 @@ namespace scitbx {
       }
 
       //! Test for symmetric matrix.
-      /*! Returns false iff the absolute value of the difference between
+      /*! Returns false if the absolute value of the difference between
           any pair of off-diagonal elements is different from zero.
        */
       bool
@@ -176,7 +176,7 @@ namespace scitbx {
       }
 
       //! Test for symmetric matrix.
-      /*! Returns false iff the absolute value of the difference between
+      /*! Returns false if the absolute value of the difference between
           any pair of off-diagonal elements is larger than
           max_abs()*relative_tolerance.
        */
