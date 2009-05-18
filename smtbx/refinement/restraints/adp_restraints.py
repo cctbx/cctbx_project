@@ -3,11 +3,12 @@ from cctbx import crystal
 from cctbx import adp_restraints
 
 class adp_similarity_restraints(object):
-  def __init__(self, xray_structure=None, pair_sym_table=None, i_seqs=None,
-               sigma=0.04, sigma_terminal=None, buffer_thickness=3.5):
+  def __init__(self, xray_structure=None, pair_sym_table=None, proxies=None,
+               i_seqs=None, sigma=0.04, sigma_terminal=None, buffer_thickness=3.5):
     assert [xray_structure, pair_sym_table].count(None) == 1
     if sigma_terminal is None: sigma_terminal = 2 * sigma
-    proxies = adp_restraints.shared_adp_similarity_proxy()
+    if proxies is None:
+      proxies = adp_restraints.shared_adp_similarity_proxy()
     if pair_sym_table is None:
       asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
       pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
@@ -34,14 +35,15 @@ class adp_similarity_restraints(object):
     self.proxies = proxies
 
 class rigid_bond_restraints(object):
-  def __init__(self, xray_structure=None, pair_sym_table=None, i_seqs=None,
-               sigma_12=0.01, sigma_13=None, buffer_thickness=3.5):
+  def __init__(self, xray_structure=None, pair_sym_table=None, proxies=None,
+               i_seqs=None, sigma_12=0.01, sigma_13=None, buffer_thickness=3.5):
     """ sigma_12 and sigma_13 are the effective standard deviations used for
         1,2- and 1,3-distances respectively
     """
     assert [xray_structure, pair_sym_table].count(None) == 1
     if sigma_13 is None: sigma_13 = sigma_12
-    proxies = adp_restraints.shared_rigid_bond_proxy()
+    if proxies is None:
+      proxies = adp_restraints.shared_rigid_bond_proxy()
     if pair_sym_table is None:
       asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
       pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
@@ -82,10 +84,11 @@ class rigid_bond_restraints(object):
     self.proxies = proxies
 
 class isotropic_adp_restraints(object):
-  def __init__(self, xray_structure, pair_sym_table=None, i_seqs=None,
-               sigma=0.1, sigma_terminal=None, buffer_thickness=3.5):
+  def __init__(self, xray_structure, pair_sym_table=None, proxies=None,
+               i_seqs=None, sigma=0.1, sigma_terminal=None, buffer_thickness=3.5):
     if sigma_terminal is None: sigma_terminal = 2 * sigma
-    proxies = adp_restraints.shared_isotropic_adp_proxy()
+    if proxies is None:
+      proxies = adp_restraints.shared_isotropic_adp_proxy()
     scattering_types = xray_structure.scatterers().extract_scattering_types()
     use_u_aniso = xray_structure.scatterers().extract_use_u_aniso()
     if pair_sym_table is None:

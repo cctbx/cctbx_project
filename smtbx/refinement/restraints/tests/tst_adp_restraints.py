@@ -36,6 +36,22 @@ def exercise_adp_similarity():
     for i in range(proxies.size()):
       assert approx_equal(proxies[i].i_seqs, expected_i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
+    # add more restraints to same shared proxy
+    i_seqs = (3,24,40,42)
+    restraints = \
+      adp_restraints.adp_similarity_restraints(
+        xray_structure=xs,
+        pair_sym_table=table,
+        proxies=proxies,
+        i_seqs=i_seqs)
+    expected_i_seqs = (
+      (9,32),(14,36),(32,36),(36,38),(3,24),(40,42))
+    expected_weights = (625,156.25,625,625,156.25,625)
+    proxies = restraints.proxies
+    assert proxies.size() == len(expected_i_seqs)
+    for i in range(proxies.size()):
+      assert approx_equal(proxies[i].i_seqs, expected_i_seqs[i])
+      assert approx_equal(proxies[i].weight, expected_weights[i])
 
 def exercise_rigid_bond():
   xray_structure = trial_structure()
@@ -56,6 +72,23 @@ def exercise_rigid_bond():
         i_seqs=i_seqs)
     expected_i_seqs = (
       (9,32),(9,36),(14,36),(14,32),(14,38),(32,36),(32,38),(36,38))
+    expected_weights = [10000]*len(expected_i_seqs)
+    proxies = restraints.proxies
+    assert proxies.size() == len(expected_i_seqs)
+    for i in range(proxies.size()):
+      assert approx_equal(proxies[i].i_seqs, expected_i_seqs[i])
+      assert approx_equal(proxies[i].weight, expected_weights[i])
+    # add more restraints to same shared proxy
+    i_seqs = (10,40,42)
+    restraints = \
+      adp_restraints.rigid_bond_restraints(
+        xray_structure=xs,
+        pair_sym_table=table,
+        proxies=proxies,
+        i_seqs=i_seqs)
+    expected_i_seqs = (
+      (9,32),(9,36),(14,36),(14,32),(14,38),(32,36),
+      (32,38),(36,38),(10,42),(10,40),(40,42))
     expected_weights = [10000]*len(expected_i_seqs)
     proxies = restraints.proxies
     assert proxies.size() == len(expected_i_seqs)
@@ -83,6 +116,21 @@ def exercise_isotropic_adp():
     assert proxies.size() == len(i_seqs)
     for i in range(proxies.size()):
       assert approx_equal(proxies[i].i_seq, i_seqs[i])
+      assert approx_equal(proxies[i].weight, expected_weights[i])
+    # add more restraints to same shared proxy
+    i_seqs = (3,5,42)
+    restraints = \
+      adp_restraints.isotropic_adp_restraints(
+        xray_structure=xray_structure,
+        pair_sym_table=table,
+        proxies=proxies,
+        i_seqs=i_seqs)
+    expected_i_seqs = (9,14,28,32,36,38,3,5,42)
+    expected_weights = (100,25,100,100,100,100,25,25,100)
+    proxies = restraints.proxies
+    assert proxies.size() == len(expected_i_seqs)
+    for i in range(proxies.size()):
+      assert approx_equal(proxies[i].i_seq, expected_i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
 
 def run():
