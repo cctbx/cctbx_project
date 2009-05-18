@@ -162,9 +162,9 @@ namespace cctbx { namespace geometry_restraints {
         init_deltas();
       }
 
-      /*! \brief Coordinates are copied from sites_cart according
-          to proxy.i_seqs, proxy.sym_ops and unit_cell.
-          Weights are copied from proxy.
+      /*! \brief Coordinates are obtained from sites_cart according
+          to proxy.i_seqs by applying proxy.sym_ops and unit_cell,
+          weights are copied from proxy.
        */
       planarity(
         uctbx::unit_cell const& unit_cell,

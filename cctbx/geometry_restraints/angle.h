@@ -135,9 +135,9 @@ namespace cctbx { namespace geometry_restraints {
         init_angle_model();
       }
 
-      /*! \brief Coordinates are copied from sites_cart according
-          to proxy.i_seqs, proxy.sym_ops and unit_cell, parameters
-          are copied from proxy.
+      /*! \brief Coordinates are obtained from sites_cart according
+          to proxy.i_seqs by applying proxy.sym_ops and unit_cell,
+          parameters are copied from proxy.
        */
       angle(
         uctbx::unit_cell const& unit_cell,

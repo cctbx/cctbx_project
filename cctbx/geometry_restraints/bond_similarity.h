@@ -93,9 +93,9 @@ namespace cctbx { namespace geometry_restraints {
         init_deltas();
       }
 
-      /*! \brief Coordinates are copied from sites_cart according to
-          proxy.i_seqs and proxy.rt_mx_ji, parameters are copied from
-          proxy.
+      /*! \brief Coordinates are obtained from sites_cart according
+          to proxy.i_seqs by applying proxy.sym_ops and unit_cell,
+          parameters are copied from proxy.
        */
       bond_similarity(
         uctbx::unit_cell const& unit_cell,
