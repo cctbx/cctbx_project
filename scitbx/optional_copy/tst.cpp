@@ -6,6 +6,7 @@
 #include <scitbx/optional_copy.h>
 #include <vector>
 #include <iostream>
+#include <cstdio>
 
 using namespace scitbx;
 
