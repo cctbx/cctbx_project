@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
 from cctbx import crystal
@@ -1506,6 +1507,61 @@ def exercise_dihedral():
   assert rest[1].i_seqs == (2,3,0,4)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,False]))
   assert rest.size() == 3
+  #
+  def get_d(angle_ideal, angle_model, periodicity):
+    a = angle_model * math.pi / 180
+    c, s = math.cos(a), math.sin(a)
+    d = geometry_restraints.dihedral(
+      sites=[(1,0,-1),(0,0,-1),(0,0,0),(c,s,0)],
+      angle_ideal=angle_ideal,
+      weight=1/15**2,
+      periodicity=periodicity)
+    v = math.fmod(d.angle_model-angle_model, 360)
+    if (v < 0): v += 360
+    if (v > 360-1e-8): v -= 360
+    assert approx_equal(v, 0)
+    return d
+  #
+  for periodicity in xrange(1,6):
+    f = open("plot_geo_restr_dihedral_periodicity_%d.xy" % periodicity, "w")
+    for signed_periodicity in [periodicity, -periodicity]:
+      for angle_model in xrange(0, 720+1, 1):
+        d = get_d(
+          angle_ideal=70,
+          angle_model=angle_model,
+          periodicity=signed_periodicity)
+        print >> f, angle_model, d.residual()
+      print >> f, "&"
+    f.close()
+  #
+  intersection_angle = 120
+  for angle_ideal in xrange(0, 720+5, 5):
+    for periodicity in xrange(1,6):
+      for signed_periodicity in [periodicity, -periodicity]:
+        residuals = []
+        for offset in [0, intersection_angle, -intersection_angle]:
+          d = get_d(
+            angle_ideal=angle_ideal,
+            angle_model=angle_ideal + offset / periodicity,
+            periodicity=signed_periodicity)
+          residuals.append(d.residual())
+        assert approx_equal(residuals[0], 0)
+        assert approx_equal(residuals[1], residuals[2])
+        assert approx_equal(residuals[1], d.weight * d.delta**2)
+      #
+      for offset in [intersection_angle, -intersection_angle]:
+        for offset2 in [30, -30]:
+          residuals = []
+          for signed_periodicity in [periodicity, -periodicity]:
+            d = get_d(
+              angle_ideal=angle_ideal,
+              angle_model=angle_ideal + (offset + offset2) / periodicity,
+              periodicity=signed_periodicity)
+            residuals.append(d.residual())
+          if ((offset > 0) == (offset2 < 0)):
+            assert residuals[0] > residuals[1]
+          else:
+            assert residuals[0] < residuals[1]
 
 def exercise_chirality():
   p = geometry_restraints.chirality_proxy(
