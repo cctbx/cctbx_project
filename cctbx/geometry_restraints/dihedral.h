@@ -201,7 +201,7 @@ namespace cctbx { namespace geometry_restraints {
       {
         using scitbx::constants::pi_180;
         double term;
-        if (periodicity < 0) {
+        if (periodicity > 0) {
           term = 9600. / (periodicity * periodicity)
                * (1 - std::cos(periodicity * delta * pi_180));
         }
@@ -236,7 +236,7 @@ namespace cctbx { namespace geometry_restraints {
         else {
           using scitbx::constants::pi_180;
           double grad_factor;
-          if (periodicity < 0) {
+          if (periodicity > 0) {
             grad_factor = 9600. / periodicity * pi_180
                         * std::sin(periodicity * delta * pi_180);
           }

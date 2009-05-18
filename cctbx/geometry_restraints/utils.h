@@ -38,7 +38,7 @@ namespace cctbx { namespace geometry_restraints {
   double
   angle_delta_deg(double angle_1, double angle_2, int periodicity=1)
   {
-    double half_period = 180./std::max(1,periodicity);
+    double half_period = 180./std::max(1,std::abs(periodicity));
     double d = std::fmod(angle_2-angle_1, 2*half_period);
     if      (d < -half_period) d += 2*half_period;
     else if (d >  half_period) d -= 2*half_period;
