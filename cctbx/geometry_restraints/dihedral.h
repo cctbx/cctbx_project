@@ -165,9 +165,9 @@ namespace cctbx { namespace geometry_restraints {
         init_angle_model();
       }
 
-      /*! \brief Coordinates are copied from sites_cart according
-          to proxy.i_seqs, proxy.sym_ops and unit_cell, parameters
-          are copied from proxy.
+      /*! \brief Coordinates are obtained from sites_cart according
+          to proxy.i_seqs by applying proxy.sym_ops and unit_cell,
+          parameters are copied from proxy.
        */
       dihedral(
         uctbx::unit_cell const& unit_cell,
@@ -193,8 +193,27 @@ namespace cctbx { namespace geometry_restraints {
         init_angle_model();
       }
 
-      //! weight * delta**2 or sinusoidal function of delta.
-      /*! See also: Hendrickson, W.A. (1985). Meth. Enzym. 115, 252-270.
+      //! Sinusoidal or harmonic function of delta.
+      /*! With periodicity <= 0, the simple harmonic function
+
+            weight * delta**2
+
+          is used (Hendrickson, W.A. (1985). Meth. Enzym. 115, 252-270).
+          This function has singularities at angle_ideal+-180/periodicity.
+
+          With periodicity > 0, the sinusoidal function
+
+            weight * 120**2 / (1 - cos(120)) / (periodicity * periodicity)
+                   * (1 - cos(periodicity * delta))
+
+          is used, similar to functions used in CHARMM and CNS
+          (www.charmm.org, cns-online.org). This function has no
+          singularities, is a good approximation of the harmonic
+          function around angle_ideal+-120/periodicity, and also
+          approximates results from QM calculations reasonably well.
+
+          Run cctbx/geometry_restraints/tst_ext.py to obtain plot files
+          for visually comparing the sinusoidal or harmonic functions.
        */
       double
       residual() const
@@ -283,11 +302,13 @@ namespace cctbx { namespace geometry_restraints {
         dihedral_proxy const& proxy) const
       {
         dihedral_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
-        scitbx::optional_copy<af::shared<sgtbx::rt_mx> > const& sym_ops = proxy.sym_ops;
+        scitbx::optional_copy<af::shared<sgtbx::rt_mx> > const&
+          sym_ops = proxy.sym_ops;
         af::tiny<scitbx::vec3<double>, 4> grads = gradients();
         for(int i=0;i<4;i++) {
           if ( sym_ops.get() && !sym_ops[i].is_unit_mx() ) {
-            scitbx::mat3<double> r_inv_cart_ = r_inv_cart(unit_cell, sym_ops[i]);
+            scitbx::mat3<double>
+              r_inv_cart_ = r_inv_cart(unit_cell, sym_ops[i]);
             gradient_array[i_seqs[i]] += grads[i] * r_inv_cart_;
           }
           else { gradient_array[i_seqs[i]] += grads[i]; }
