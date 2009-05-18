@@ -3,6 +3,7 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx import xray
+from cctbx import geometry_restraints
 from iotbx import shelx
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
@@ -249,41 +250,75 @@ def exercise_afix_parsing():
 def exercise_restraint_parsing():
   if 'restraint_parser' not in shelx.__dict__:
     print 'Skipped restraint parsing test'
-  builder = shelx.restrained_crystal_structure_builder()
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_dfix_across_symm))
-  l_cs = shelx.crystal_symmetry_parser(stream, builder)
-  l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
-  l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
-  l_restraints = shelx.restraint_parser(l_xs.filtered_commands(), builder)
+  def lex_restraints(ins_name):
+    builder = shelx.restrained_crystal_structure_builder()
+    stream = shelx.command_stream(file=cStringIO.StringIO(ins_name))
+    l_cs = shelx.crystal_symmetry_parser(stream, builder)
+    l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
+    l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
+    return shelx.restraint_parser(l_xs.filtered_commands(), builder)
+  # exercise DFIX, DANG
+  l_restraints = lex_restraints(ins_dfix_across_symm)
   l_restraints.parse()
   structure = l_restraints.builder.structure
-  geometry_restraints_manager = l_restraints.builder.geometry_restraints_manager
-  pair_proxies = geometry_restraints_manager.pair_proxies(sites_cart=structure.sites_cart())
-  bond_proxies = pair_proxies.bond_proxies
-  assert pair_proxies.nonbonded_proxies is None
-  assert bond_proxies.simple.size() == 1
-  assert bond_proxies.asu.size() == 4
-  sigmas = [1/bond_proxies.asu[i].weight**0.5 for i in xrange(4)]
-  assert approx_equal(sigmas, [0.02, 0.03, 0.02, 0.03])
-  for i in xrange(4):
-    assert str(bond_proxies.asu_mappings().get_rt_mx_ji(
-             pair=bond_proxies.asu[i])) == "-x+1,y,-z+1/2"
-  deltas = bond_proxies.deltas(sites_cart=structure.sites_cart())
-  assert approx_equal(deltas, [
-    -0.087945096525919864,
-    0.030023265876452987, -0.0015730739172898911,
-    0.030023265876449656, -0.0015730739172887809])
-  #
-  builder = shelx.restrained_crystal_structure_builder()
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_flat))
-  l_cs = shelx.crystal_symmetry_parser(stream, builder)
-  l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
-  l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
-  l_restraints = shelx.restraint_parser(l_xs.filtered_commands(), builder)
+  proxies = l_restraints.builder.proxies
+  shared_bond_sym_proxy = proxies[geometry_restraints.bond_sym_proxy]
+  assert len(shared_bond_sym_proxy) == 3
+  assert approx_equal(shared_bond_sym_proxy[0].distance_ideal, 1.75)
+  assert approx_equal(shared_bond_sym_proxy[1].distance_ideal, 1.75)
+  assert approx_equal(shared_bond_sym_proxy[2].distance_ideal, 1.75)
+  assert shared_bond_sym_proxy[0].i_seqs == (3,0)
+  assert shared_bond_sym_proxy[1].i_seqs == (3,2)
+  assert shared_bond_sym_proxy[2].i_seqs == (1,3)
+  assert approx_equal(shared_bond_sym_proxy[0].weight, 2500.0)
+  assert approx_equal(shared_bond_sym_proxy[1].weight, 1/(0.03*0.03))
+  assert approx_equal(shared_bond_sym_proxy[2].weight, 2500.0)
+  assert shared_bond_sym_proxy[0].rt_mx_ji == sgtbx.rt_mx('-x+1,y,-z+1/2')
+  assert shared_bond_sym_proxy[1].rt_mx_ji == sgtbx.rt_mx('-x+1,y,-z+1/2')
+  assert shared_bond_sym_proxy[2].rt_mx_ji == sgtbx.rt_mx()
+  # exercise FLAT
+  l_restraints = lex_restraints(ins_flat)
   l_restraints.parse()
   structure = l_restraints.builder.structure
-  geometry_restraints_manager = l_restraints.builder.geometry_restraints_manager
-  assert geometry_restraints_manager.planarity_proxies.size() == 2
+  proxies = l_restraints.builder.proxies
+  shared_planarity_proxy = proxies[geometry_restraints.planarity_proxy]
+  assert shared_planarity_proxy.size() == 2
+  assert approx_equal(shared_planarity_proxy[0].i_seqs,
+                      (0, 1, 2, 3, 4, 5, 6))
+  assert approx_equal(shared_planarity_proxy[1].i_seqs,
+                      (7, 8, 9, 10, 11, 12, 13))
+  assert shared_planarity_proxy[0].sym_ops is None
+  assert shared_planarity_proxy[1].sym_ops is None
+  assert approx_equal(shared_planarity_proxy[0].weights,
+                      (100, 100, 100, 100, 100, 100, 100))
+  assert approx_equal(shared_planarity_proxy[1].weights,
+                      (100, 100, 100, 100, 100, 100, 100))
+  # SADI simple
+  l_restraints = lex_restraints(ins_sadi)
+  l_restraints.parse()
+  proxies = l_restraints.builder.proxies
+  shared_bond_similarity_proxy\
+      = proxies[geometry_restraints.bond_similarity_proxy]
+  assert shared_bond_similarity_proxy.size() == 1
+  assert approx_equal(
+    shared_bond_similarity_proxy[0].i_seqs, ((0,2), (1,3)))
+  assert shared_bond_similarity_proxy[0].sym_ops is None
+  assert approx_equal(
+    shared_bond_similarity_proxy[0].weights, (625.0, 625.0))
+  # SADI with symmetry
+  l_restraints = lex_restraints(ins_sadi_with_sym)
+  l_restraints.parse()
+  structure = l_restraints.builder.structure
+  proxies = l_restraints.builder.proxies
+  shared_bond_similarity_proxy\
+      = proxies[geometry_restraints.bond_similarity_proxy]
+  assert shared_bond_similarity_proxy.size() == 1
+  assert approx_equal(
+    shared_bond_similarity_proxy[0].i_seqs, ((2,0), (1,3)))
+  assert shared_bond_similarity_proxy[0].sym_ops\
+    == (sgtbx.rt_mx('1-X,+Y,0.5-Z'),sgtbx.rt_mx('1-X,+Y,0.5-Z'))
+  assert approx_equal(
+    shared_bond_similarity_proxy[0].weights, (2500.0, 2500.0))
 
 def shelx_u_cif(unit_cell, u_star):
   u_cif = adptbx.u_star_as_u_cif(unit_cell, u_star)
@@ -540,12 +575,34 @@ WGHT 0.1
 EQIV $1 1-X,+Y,0.5-Z
 DFIX 1.75 0.02 CL1_$1 C0AA
 DFIX 1.75 0.03 C0AA CL3_$1
-DFIX 1.75 0.02 CL2 C0AA
+DFIX 1.75 CL2 C0AA
 CL1   3     0.55003  0.45683  0.24917  10.25000  0.05233
 CL2   3     0.54956  0.33497  0.36400  10.25000  0.05483
 CL3   3     0.53790  0.33648  0.30419  10.25000  0.08474
 C0AA  1     0.50786  0.40217  0.27444  10.25000  0.03965
 HKLF 4
+"""
+
+ins_sadi = """
+CELL 0 1 2 3 90 90 90
+SFAC C
+SADI 0.04 C1 C3 C2 C4
+C1    1     0.50000  0.24000  0.25000  11.00000  0.05233
+C2    1     0.50000  0.26000  0.25000  11.00000  0.05233
+C3    1     0.00000  0.25000  0.25000  11.00000  0.05233
+C4    1     0.00000  0.25000  0.25000  11.00000  0.05233
+"""
+
+ins_sadi_with_sym = """
+CELL 0 1 2 3 90 90 90
+SYMM -X,+Y,0.5-Z
+EQIV $1 1-X,+Y,0.5-Z
+SFAC C
+SADI C1_$1 C3 C2 C4_$1
+C1    1     0.50000  0.24000  0.25000  11.00000  0.05233
+C2    1     0.50000  0.26000  0.25000  11.00000  0.05233
+C3    1     0.00000  0.25000  0.25000  11.00000  0.05233
+C4    1     0.00000  0.25000  0.25000  11.00000  0.05233
 """
 
 ins_flat="""
@@ -559,7 +616,7 @@ UNIT 134 142
 FMAP 2.0
 WGHT 0.1
 FLAT 0.1 C31 C32 C33 C34 C35 C36 C37
-FLAT 0.1 C41 C42 C43 C44 C45 C46 C47
+FLAT C41 C42 C43 C44 C45 C46 C47
 FVAR 0.16431
 PART 1
 C31   1     0.28967  0.31613 -0.02773  10.75000  0.05888  0.04514  0.10878 =
