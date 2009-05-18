@@ -1231,30 +1231,46 @@ def exercise_dihedral():
   #
   u_mx = sgtbx.rt_mx() # unit matrix
   sym_ops = (u_mx, u_mx, sgtbx.rt_mx('+X,1+Y,+Z'), sgtbx.rt_mx('+X,1+Y,+Z'))
+  unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
+  sites_cart = flex.vec3_double([(2,24,0),(1,24,0),(1,1,0),(0,1,0)])
+  for periodicity in [0, 1, -1]:
+    p = geometry_restraints.dihedral_proxy(
+      i_seqs=[0,1,2,3],
+      sym_ops=sym_ops,
+      angle_ideal=175,
+      weight=1,
+      periodicity=periodicity)
+    d = geometry_restraints.dihedral(
+      unit_cell=unit_cell,
+      sites_cart=sites_cart,
+      proxy=p)
+    assert approx_equal(d.sites, [(2,24,0),(1,24,0),(1,26,0),(0,26,0)])
+    assert approx_equal(d.angle_ideal, 175)
+    assert approx_equal(d.weight, 1)
+    assert d.have_angle_model
+    assert approx_equal(d.angle_model, 180)
+    assert approx_equal(d.delta, -5)
+    if (periodicity >= 0):
+      assert approx_equal(d.residual(), 25)
+      assert approx_equal(d.gradients(epsilon=1.e-100),
+        ((0, 0, 572.95779513082323),
+         (0, 0, -572.95779513082323),
+         (0, 0, -572.95779513082323),
+         (0, 0, 572.95779513082323)))
+    else:
+      assert approx_equal(d.residual(), 36.5308983192)
+      assert approx_equal(d.gradients(epsilon=1.e-100),
+        ((0.0, 0.0, 836.69513037751835),
+         (0.0, 0.0, -836.69513037751835),
+         (0.0, 0.0, -836.69513037751835),
+         (0.0, 0.0, 836.69513037751835)))
+  #
   p = geometry_restraints.dihedral_proxy(
     i_seqs=[0,1,2,3],
     sym_ops=sym_ops,
     angle_ideal=175,
-    weight=1)
-  unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
-  sites_cart = flex.vec3_double([(2,24,0),(1,24,0),(1,1,0),(0,1,0)])
-  d = geometry_restraints.dihedral(
-    unit_cell=unit_cell,
-    sites_cart=sites_cart,
-    proxy=p)
-  assert approx_equal(d.sites, [(2,24,0),(1,24,0),(1,26,0),(0,26,0)])
-  assert approx_equal(d.angle_ideal, 175)
-  assert approx_equal(d.weight, 1)
-  assert d.have_angle_model
-  assert approx_equal(d.angle_model, 180)
-  assert approx_equal(d.delta, -5)
-  assert approx_equal(d.residual(), 25)
-  assert approx_equal(d.gradients(epsilon=1.e-100),
-    ((0, 0, 572.95779513082323),
-     (0, 0, -572.95779513082323),
-     (0, 0, -572.95779513082323),
-     (0, 0, 572.95779513082323)))
-  #
+    weight=1,
+    periodicity=0)
   proxies = geometry_restraints.shared_dihedral_proxy([p,p])
   assert approx_equal(geometry_restraints.dihedral_deltas(
     unit_cell=unit_cell,
