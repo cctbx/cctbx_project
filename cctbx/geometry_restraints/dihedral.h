@@ -193,11 +193,23 @@ namespace cctbx { namespace geometry_restraints {
         init_angle_model();
       }
 
-      //! weight * delta**2.
+      //! weight * delta**2 or sinusoidal function of delta.
       /*! See also: Hendrickson, W.A. (1985). Meth. Enzym. 115, 252-270.
        */
       double
-      residual() const { return weight * scitbx::fn::pow2(delta); }
+      residual() const
+      {
+        using scitbx::constants::pi_180;
+        double term;
+        if (periodicity < 0) {
+          term = 9600. / (periodicity * periodicity)
+               * (1 - std::cos(periodicity * delta * pi_180));
+        }
+        else {
+          term = delta * delta;
+        }
+        return weight * term;
+      }
 
       //! Gradients with respect to the four sites.
       /*! The formula for the gradients is singular if certain vectors
@@ -222,8 +234,16 @@ namespace cctbx { namespace geometry_restraints {
           result.fill(scitbx::vec3<double>(0,0,0));
         }
         else {
-          double grad_factor = 2 * weight * delta / scitbx::constants::pi_180
-                             * d_21.length();
+          using scitbx::constants::pi_180;
+          double grad_factor;
+          if (periodicity < 0) {
+            grad_factor = 9600. / periodicity * pi_180
+                        * std::sin(periodicity * delta * pi_180);
+          }
+          else {
+            grad_factor = 2 * delta;
+          }
+          grad_factor *= weight * d_21.length() / pi_180;
           result[0] = -grad_factor/n_0121_norm * n_0121;
           result[3] = grad_factor/n_2123_norm * n_2123;
           double d_01_dot_d_21 = d_01 * d_21;
@@ -306,6 +326,7 @@ namespace cctbx { namespace geometry_restraints {
       void
       init_angle_model()
       {
+        using scitbx::constants::pi_180;
         have_angle_model = false;
         angle_model = angle_ideal;
         delta = 0;
@@ -320,8 +341,7 @@ namespace cctbx { namespace geometry_restraints {
         if (n_2123_norm == 0) return;
         double cos_angle_model = std::max(-1.,std::min(1.,
           n_0121 * n_2123 / std::sqrt(n_0121_norm * n_2123_norm)));
-        angle_model = std::acos(cos_angle_model)
-                    / scitbx::constants::pi_180;
+        angle_model = std::acos(cos_angle_model) / pi_180;
         if (d_21 * (n_0121.cross(n_2123)) < 0) {
           angle_model *= -1;
         }

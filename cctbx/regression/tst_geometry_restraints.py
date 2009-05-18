@@ -194,23 +194,25 @@ def random_sites(n_sites, max_coordinate=10, min_distance=0.5,
 
 def exercise_dihedral_core(sites, angle_ideal, angle_esd, periodicity,
                                   angle_model):
-  dih = geometry_restraints.dihedral(
-    sites=sites,
-    angle_ideal=angle_ideal,
-    weight=1./angle_esd**2,
-    periodicity=periodicity)
-  if (angle_model is not None):
-    assert approx_equal(angle_model, dih.angle_model)
-  ag = flex.vec3_double(dih.gradients())
-  residual_obj = residual_functor(
-    restraint_type=geometry_restraints.dihedral,
-    angle_ideal=dih.angle_ideal,
-    weight=dih.weight,
-    periodicity=periodicity)
-  fg = flex.vec3_double(finite_differences(sites, residual_obj)).as_double()
-  ag = ag.as_double()
-  scale = max(1, flex.mean(flex.abs(fg)))
-  assert approx_equal(ag/scale, fg/scale)
+  assert periodicity > 0
+  for signed_periodicity in [periodicity, -periodicity]:
+    dih = geometry_restraints.dihedral(
+      sites=sites,
+      angle_ideal=angle_ideal,
+      weight=1./angle_esd**2,
+      periodicity=signed_periodicity)
+    if (angle_model is not None):
+      assert approx_equal(angle_model, dih.angle_model)
+    ag = flex.vec3_double(dih.gradients())
+    residual_obj = residual_functor(
+      restraint_type=geometry_restraints.dihedral,
+      angle_ideal=dih.angle_ideal,
+      weight=dih.weight,
+      periodicity=signed_periodicity)
+    fg = flex.vec3_double(finite_differences(sites, residual_obj)).as_double()
+    ag = ag.as_double()
+    scale = max(1, flex.mean(flex.abs(fg)))
+    assert approx_equal(ag/scale, fg/scale)
 
 def exercise_dihedral():
   sites = [col(site) for site in [
