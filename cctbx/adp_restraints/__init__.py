@@ -11,6 +11,7 @@ from scitbx import matrix
 
 from cctbx.geometry_restraints import weight_as_sigma
 from cctbx.geometry_restraints import sigma_as_weight
+import sys
 
 class energies_iso(scitbx.restraints.energies):
 
