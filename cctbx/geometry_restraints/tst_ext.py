@@ -1273,6 +1273,7 @@ def exercise_dihedral():
     weight=1,
     periodicity=0)
   proxies = geometry_restraints.shared_dihedral_proxy([p,p])
+  assert proxies.count_harmonic() == 2
   assert approx_equal(geometry_restraints.dihedral_deltas(
     unit_cell=unit_cell,
     sites_cart=sites_cart,
@@ -2072,18 +2073,20 @@ Dihedral angle restraints: 0
     prefix="-")
   assert not show_diff(sio.getvalue(), """\
 -Dihedral angle restraints: 2
+-  sinusoidal: 0
+-    harmonic: 2
 -Sorted by residual:
 -dihedral 3
 -         2
 -         0
 -         5
--    ideal   model   delta periodicty    sigma   weight residual
+-    ideal   model   delta  harmonic     sigma   weight residual
 -    99.00   16.67   82.33    -1      3.54e-01 8.00e+00 5.42e+04
 -dihedral 0
 -         1
 -         3
 -         4
--    ideal   model   delta periodicty    sigma   weight residual
+-    ideal   model   delta  harmonic     sigma   weight residual
 -    59.00 -159.79 -141.21    -1      7.07e-01 2.00e+00 3.99e+04
 """)
   sio = StringIO()
@@ -2096,12 +2099,14 @@ Dihedral angle restraints: 0
     max_items=1)
   assert not show_diff(sio.getvalue(), """\
 ^Dihedral angle restraints: 2
+^  sinusoidal: 0
+^    harmonic: 2
 ^Sorted by delta:
 ^dihedral a
 ^         ba
 ^         dada
 ^         e
-^    ideal   model   delta periodicty    sigma   weight residual
+^    ideal   model   delta  harmonic     sigma   weight residual
 ^    59.00 -159.79 -141.21    -1      7.07e-01 2.00e+00 3.99e+04
 ^... (remaining 1 not shown)
 """)
@@ -2113,6 +2118,8 @@ Dihedral angle restraints: 0
     max_items=0)
   assert not show_diff(sio.getvalue(), """\
 Dihedral angle restraints: 2
+  sinusoidal: 0
+    harmonic: 2
 """)
   #
   proxies = geometry_restraints.shared_chirality_proxy()
@@ -2327,18 +2334,20 @@ Planarity restraints: 2
     prefix='%')
   assert not show_diff(sio.getvalue(), """\
 %Dihedral angle restraints: 2
+%  sinusoidal: 0
+%    harmonic: 2
 %Sorted by delta:
 %dihedral 2
 %         0
 %         1
 %         2  -x+2,-y,-z+1
-%    ideal   model   delta periodicty    sigma   weight residual
+%    ideal   model   delta  harmonic     sigma   weight residual
 %     0.00    5.16   -5.16     0      1.00e+00 1.00e+00 2.67e+01
 %dihedral 2
 %         0
 %         1
 %         2  -x+2,-y,-z+1
-%    ideal   model   delta periodicty    sigma   weight residual
+%    ideal   model   delta  harmonic     sigma   weight residual
 %     0.00    5.16   -5.16     0      1.00e+00 1.00e+00 2.67e+01
 """)
   #
