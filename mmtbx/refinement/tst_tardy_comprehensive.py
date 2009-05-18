@@ -114,7 +114,8 @@ def run(args):
   #
   show_times_at_exit()
   #
-  first_pass = True
+  params_shown_once_already = False
+  tst_tardy_pdb_log_shown_once_already = False
   for cp_i_trial in xrange(cp_n_trials):
     if (chunk.skip_iteration(i=cp_i_trial)): continue
     print "cp_i_trial: %d / %d = %.2f %%" % (
@@ -132,11 +133,11 @@ def run(args):
       tst_tardy_pdb_params.random_seed = random_seed
       tst_tardy_pdb_params.dihedral_function_type \
         = local_params.dihedral_function_type
-      if (local_params.verbose or first_pass):
+      if (local_params.verbose or not params_shown_once_already):
+        params_shown_once_already = True
         tst_tardy_pdb_master_phil.format(tst_tardy_pdb_params).show()
         print
         sys.stdout.flush()
-      first_pass = False
       if (local_params.hot):
         if (local_params.verbose):
           tst_tardy_pdb_log = sys.stdout
@@ -166,9 +167,14 @@ def run(args):
             context_info="cp_i_trial=%d, random_seed=%d" % (
               cp_i_trial, random_seed))
         else:
+          if (    not local_params.verbose
+              and not tst_tardy_pdb_log_shown_once_already):
+            tst_tardy_pdb_log_shown_once_already = True
+            sys.stdout.write(tst_tardy_pdb_log.getvalue())
           print "RESULT_cp_i_trial_random_seed_rmsd:", \
             cp_i_trial, random_seed, list(coll.rmsd)
           sys.stdout.flush()
+      first_pass = False
     if (local_params.hot):
       print
 
