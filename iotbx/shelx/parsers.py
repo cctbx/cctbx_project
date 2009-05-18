@@ -268,14 +268,12 @@ if smtbx is not None:
     """ It must be after an atom parser """
 
     shelx_restraints = {
-      'DFIX': {'class': geometry_restraints.bond_sym_proxy,
-               'kwds': ('i_seqs','distance_ideal','weight','rt_mx_ji')},
-      'DANG': {'class': geometry_restraints.bond_sym_proxy,
-               'kwds': ('i_seqs','distance_ideal','weight','rt_mx_ji')},
-      'FLAT': {'class': geometry_restraints.planarity_proxy,
-               'kwds': ('i_seqs','weights')},
+      'DFIX': geometry_restraints.bond_sym_proxy,
+      'DANG': geometry_restraints.bond_sym_proxy,
+      'FLAT': geometry_restraints.planarity_proxy,
+      'CHIV': geometry_restraints.chirality_proxy,
+      'SADI': geometry_restraints.bond_similarity_proxy,
     }
-
     def filtered_commands(self):
       self.cached_restraints = {}
       self.symmetry_operations = {}
@@ -288,7 +286,6 @@ if smtbx is not None:
         else:
           yield command, line
       self.parse_restraints()
-      self.builder.finish_restraints()
 
     def cache_restraint(self, cmd, args):
       if cmd not in self.cached_restraints.keys():
@@ -297,25 +294,31 @@ if smtbx is not None:
         self.cached_restraints[cmd].append(args)
 
     def parse_restraints(self):
+      def replace_None_with_unit_matrix(sym_ops):
+        for i, sym_op in enumerate(sym_ops):
+          unit_matrix = sgtbx.rt_mx()
+          if sym_op is None:
+            sym_ops[i] = unit_matrix
+        return sym_ops
       for cmd, restraints in self.cached_restraints.items():
-        restraint_dict = self.shelx_restraints.get(cmd)
-        restraint_class = restraint_dict['class']
-        keys = restraint_dict['kwds']
+        restraint_type = self.shelx_restraints.get(cmd)
         for args in restraints:
           if cmd in ('DFIX','DANG'):
+            assert len(args) > 2
             div, mod = divmod(len(args), 2)
             value = args[0]
             if mod == 0:
               esd = args[1]
               atom_pairs = args[2:]
             else:
-              esd = 0.02
+              if cmd == 'DFIX': esd = 0.02
+              else: esd = 0.04
               atom_pairs = args[1:]
-            for i in range(div-1):
+            for i in range(div-(1-mod)):
               kwds = {}
               atom_pair = atom_pairs[i*2:(i+1)*2]
-              kwds['i_seqs'] = [self.scatterer_label_to_index[i[1]] for i in atom_pair]
-              sym_ops = [self.symmetry_operations.get(i[2]) for i in atom_pair]
+              kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atom_pair]
+              sym_ops = [self.symmetry_operations.get(atom[2]) for atom in atom_pair]
               if sym_ops.count(None) == 2:
                 rt_mx_ji = sgtbx.rt_mx() # unit matrix
               elif sym_ops.count(None) == 1:
@@ -332,14 +335,61 @@ if smtbx is not None:
               kwds['rt_mx_ji'] = rt_mx_ji
               kwds['distance_ideal'] = value
               kwds['weight'] = 1/(esd*esd)
-              self.builder.add_restraint(restraint_class, kwds)
-          elif cmd == 'FLAT':
+              self.builder.add_restraint(restraint_type, kwds)
+          if cmd == 'SADI':
+            assert len(args) > 3
+            div, mod = divmod(len(args), 2)
+            value = args[0]
+            if mod == 1:
+              esd = args[0]
+              atom_pairs = args[1:]
+            else:
+              esd = 0.02
+              atom_pairs = args
             kwds = {}
-            assert len(args) > 4
-            esd = args[0]
-            atoms = args[1:]
+            i_seqs = []
+            sym_ops = []
+            weights = []
+            for i in range(div):
+              atom_pair = atom_pairs[i*2:(i+1)*2]
+              i_seqs.append([self.scatterer_label_to_index[atom[1]] for atom in atom_pair])
+              symmetry_operations = [self.symmetry_operations.get(atom[2]) for atom in atom_pair]
+              if symmetry_operations.count(None) == 2:
+                rt_mx_ji = None
+              elif symmetry_operations.count(None) == 1:
+                sym_op = symmetry_operations[1]
+                if sym_op is None:
+                  sym_op = symmetry_operations[0]
+                  i_seqs[i].reverse()
+                rt_mx_ji = sgtbx.rt_mx(sym_op)
+              else:
+                rt_mx_ji_1 = sgtbx.rt_mx(symmetry_operations[0])
+                rt_mx_ji_2 = sgtbx.rt_mx(symmetry_operations[1])
+                rt_mx_ji_inv = rt_mx_ji_1.inverse()
+                rt_mx_ji = rt_mx_ji_inv.multiply(rt_mx_ji_2)
+              sym_ops.append(rt_mx_ji)
+              weights.append(1/(esd*esd))
+            kwds['i_seqs'] = i_seqs
+            if sym_ops.count(None) != len(sym_ops):
+              kwds['sym_ops'] = replace_None_with_unit_matrix(sym_ops)
+            kwds['weights'] = weights
+            self.builder.add_restraint(restraint_type, kwds)
+          elif cmd == 'FLAT':
+            assert len(args) > 3
+            try:
+              esd = float(args[0])
+              atoms = args[1:]
+            except TypeError:
+              esd = 0.1
+              atoms = args
+            kwds = {}
             kwds['i_seqs'] = [self.scatterer_label_to_index[i[1]] for i in atoms]
             kwds['weights'] = [1/(esd*esd)]*len(atoms)
-            self.builder.add_restraint(restraint_class, kwds)
+            sym_ops = [self.symmetry_operations.get(i[2]) for i in atoms]
+            if sym_ops.count(None) != len(sym_ops):
+              kwds['sym_ops'] = replace_None_with_unit_matrix(sym_ops)
+            self.builder.add_restraint(restraint_type, kwds)
+          elif cmd == 'CHIV':
+            pass
           else:
             pass

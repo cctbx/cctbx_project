@@ -1,7 +1,6 @@
 from cctbx import crystal
 from cctbx import xray
 from cctbx import geometry_restraints
-import cctbx.geometry_restraints.manager
 
 from iotbx.shelx import util
 
@@ -71,45 +70,19 @@ class afixed_crystal_structure_builder(crystal_structure_builder):
 
 
 class restrained_crystal_structure_builder(afixed_crystal_structure_builder):
+
   def __init__(self, *args, **kwds):
     super(restrained_crystal_structure_builder, self).__init__(*args, **kwds)
-    self.bond_sym_proxies = []
-    self.angle_proxies = geometry_restraints.shared_angle_proxy()
-    self.planarity_proxies = geometry_restraints.shared_planarity_proxy()
-    self.dihedral_proxies = geometry_restraints.shared_dihedral_proxy()
+    geom = geometry_restraints
+    self.proxies = {
+    geom.bond_sym_proxy: [],
+    geom.angle_proxy: geom.shared_angle_proxy(),
+    geom.dihedral_proxy: geom.shared_dihedral_proxy(),
+    geom.chirality_proxy: geom.shared_chirality_proxy(),
+    geom.planarity_proxy: geom.shared_planarity_proxy(),
+    geom.bond_similarity_proxy: geom.shared_bond_similarity_proxy(),
+    }
 
-  def add_restraint(self, restraint_type, kwds):
-    restraint=restraint_type(**kwds)
-    if 'bond_sym' in restraint_type.__name__:
-      self.bond_sym_proxies.append(restraint)
-    elif 'planarity' in restraint_type.__name__:
-      self.planarity_proxies.append(restraint)
-    elif 'angle' in restraint_type.__name__:
-      self.angle_proxies.append(restraint)
-    elif 'dihedral' in restraint_type.__name__:
-      self.shared_proxies[restraint_type].append(restraint)
-
-  def finish_restraints(self):
-    max_bond_distance = 2
-    bond_params_table = geometry_restraints.bond_params_table(
-      self.structure.scatterers().size())
-    asu_mappings = self.structure.asu_mappings(buffer_thickness=max_bond_distance*3)
-    bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-    for proxy in self.bond_sym_proxies:
-      i_seq, j_seq = proxy.i_seqs
-      bond_params_table.update(
-        i_seq=i_seq,
-        j_seq=j_seq,
-        params=proxy)
-      bond_asu_table.add_pair(
-          i_seq=i_seq,
-          j_seq=j_seq,
-          rt_mx_ji=proxy.rt_mx_ji)
-    self.geometry_restraints_manager = geometry_restraints.manager.manager(
-      crystal_symmetry=self.crystal_symmetry,
-      site_symmetry_table=self.structure.site_symmetry_table(),
-      bond_params_table=bond_params_table,
-      shell_sym_tables=[bond_asu_table.extract_pair_sym_table()],
-      angle_proxies=self.angle_proxies,
-      planarity_proxies= self.planarity_proxies,
-      dihedral_proxies=self.dihedral_proxies)
+  def add_restraint(self, proxy_type, kwds):
+    proxy=proxy_type(**kwds)
+    self.proxies[proxy_type].append(proxy)
