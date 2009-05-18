@@ -1250,7 +1250,7 @@ def exercise_dihedral():
     assert d.have_angle_model
     assert approx_equal(d.angle_model, 180)
     assert approx_equal(d.delta, -5)
-    if (periodicity >= 0):
+    if (periodicity <= 0):
       assert approx_equal(d.residual(), 25)
       assert approx_equal(d.gradients(epsilon=1.e-100),
         ((0, 0, 572.95779513082323),
@@ -1376,13 +1376,13 @@ def exercise_dihedral():
     i_seqs=[3,2,1,0],
     angle_ideal=-40,
     weight=1,
-    periodicity=2)
+    periodicity=-2)
   assert p.i_seqs == (3,2,1,0)
   p = p.sort_i_seqs()
   assert p.i_seqs == (0,1,2,3)
   assert approx_equal(p.angle_ideal, -40)
   assert approx_equal(p.weight, 1)
-  assert p.periodicity == 2
+  assert p.periodicity == -2
   p.angle_ideal = 50
   p.weight = 2
   p.periodicity = 3
@@ -1391,10 +1391,10 @@ def exercise_dihedral():
   assert p.periodicity == 3
   p.angle_ideal = -40
   p.weight = 1
-  p.periodicity = 2
+  p.periodicity = -2
   assert approx_equal(p.angle_ideal, -40)
   assert approx_equal(p.weight, 1)
-  assert p.periodicity == 2
+  assert p.periodicity == -2
   d = geometry_restraints.dihedral(
     sites=[(1,0,0),(0,0,0),(0,1,0),(1,0,1)],
     angle_ideal=-40,
@@ -1418,18 +1418,18 @@ def exercise_dihedral():
   assert approx_equal(d.sites, [(1,0,0),(0,0,0),(0,1,0),(-1,0,-1)])
   assert approx_equal(d.angle_ideal, -40)
   assert approx_equal(d.weight, 1)
-  assert d.periodicity == 2
+  assert d.periodicity == -2
   assert d.have_angle_model
   assert approx_equal(d.angle_model, 135)
   assert approx_equal(d.delta, 5)
   proxies = geometry_restraints.shared_dihedral_proxy([p,p])
   for proxy in proxies:
-    assert proxy.periodicity == 2
+    assert proxy.periodicity == -2
   proxies[1].periodicity = 3
   assert proxies[1].periodicity == 3
-  assert proxies[0].periodicity == 2
-  proxies[1].periodicity = 2
-  assert proxies[1].periodicity == 2
+  assert proxies[0].periodicity == -2
+  proxies[1].periodicity = -2
+  assert proxies[1].periodicity == -2
   assert approx_equal(geometry_restraints.dihedral_deltas(
     sites_cart=sites_cart,
     proxies=proxies), [5]*2)
@@ -2002,12 +2002,12 @@ Dihedral angle restraints: 0
       i_seqs=[0,1,3,4],
       angle_ideal=59,
       weight=2,
-      periodicity=1),
+      periodicity=-1),
     geometry_restraints.dihedral_proxy(
       i_seqs=[3,2,0,5],
       angle_ideal=99,
       weight=8,
-      periodicity=1)])
+      periodicity=-1)])
   sio = StringIO()
   proxies.show_sorted(
     by_value="residual",
@@ -2022,13 +2022,13 @@ Dihedral angle restraints: 0
 -         0
 -         5
 -    ideal   model   delta periodicty    sigma   weight residual
--    99.00   16.67   82.33     1      3.54e-01 8.00e+00 5.42e+04
+-    99.00   16.67   82.33    -1      3.54e-01 8.00e+00 5.42e+04
 -dihedral 0
 -         1
 -         3
 -         4
 -    ideal   model   delta periodicty    sigma   weight residual
--    59.00 -159.79 -141.21     1      7.07e-01 2.00e+00 3.99e+04
+-    59.00 -159.79 -141.21    -1      7.07e-01 2.00e+00 3.99e+04
 """)
   sio = StringIO()
   proxies.show_sorted(
@@ -2046,7 +2046,7 @@ Dihedral angle restraints: 0
 ^         dada
 ^         e
 ^    ideal   model   delta periodicty    sigma   weight residual
-^    59.00 -159.79 -141.21     1      7.07e-01 2.00e+00 3.99e+04
+^    59.00 -159.79 -141.21    -1      7.07e-01 2.00e+00 3.99e+04
 ^... (remaining 1 not shown)
 """)
   sio = StringIO()

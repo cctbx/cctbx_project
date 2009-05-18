@@ -51,17 +51,21 @@ END
 def exercise(args):
   assert len(args) == 0
   open("tmp.pdb", "w").write(pdb1exr_fragment)
-  gm_out = easy_run.fully_buffered(
-    command="phenix.pdbtools tmp.pdb --geometry_regularization") \
-      .raise_if_errors() \
-      .stdout_lines
+  command = " ".join([
+    "phenix.pdbtools",
+    "tmp.pdb",
+    "--geometry_regularization",
+    "geometry_minimization.macro_cycles=2"])
+  gm_out = easy_run.fully_buffered(command=command) \
+    .raise_if_errors() \
+    .stdout_lines
   target_values = []
   for line in gm_out:
     if (line.startswith("target: ")):
       target_values.append(float(line.split()[-1]))
-  assert len(target_values) == 2
+  assert len(target_values) == 4
   assert target_values[0] > 100
-  assert target_values[1] < 1
+  assert target_values[3] < 1
   print "OK"
 
 if (__name__ == "__main__"):
