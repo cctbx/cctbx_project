@@ -56,6 +56,14 @@ class ad_hoc_single_atom_residue(object):
     self.scattering_type = None
     self.energy_type = None
 
+dihedral_function_type_params_str = """\
+  dihedral_function_type = *determined_by_sign_of_periodicity \
+                            all_sinusoidal \
+                            all_harmonic
+    .type=choice
+    .optional=False
+"""
+
 clash_guard_params_str = """\
   clash_guard
     .expert_level=2
@@ -98,6 +106,7 @@ master_params = iotbx.phil.parse("""\
   disulfide_distance_cutoff = 3
     .type=float
     .optional=False
+  %(dihedral_function_type_params_str)s
   chir_volume_esd = 0.2
     .type=float
     .optional=False
@@ -161,8 +170,8 @@ master_params = iotbx.phil.parse("""\
     planarity_restraints_sorted_by_residual = 3
       .type=int
   }
-  %s
-""" % clash_guard_params_str,
+  %(clash_guard_params_str)s
+""" % vars(),
   process_includes=True)
 
 geometry_restraints_edits = iotbx.phil.parse("""\
@@ -838,13 +847,16 @@ Please contact cctbx@cci.lbl.gov for more information.""")
       angle_proxy_registry=angle_proxy_registry,
       special_position_indices=special_position_indices).counters
 
-  def add_dihedral_proxies(self, special_position_indices,
-                                 dihedral_proxy_registry):
+  def add_dihedral_proxies(self,
+        dihedral_function_type,
+        special_position_indices,
+        dihedral_proxy_registry):
     self.dihedral_counters = add_dihedral_proxies(
       counters=counters(label="dihedral"),
       m_i=self,
       m_j=None,
       tor_list=self.monomer.tor_list,
+      dihedral_function_type=dihedral_function_type,
       peptide_link_params=None,
       dihedral_proxy_registry=dihedral_proxy_registry,
       special_position_indices=special_position_indices).counters
@@ -1155,6 +1167,7 @@ class add_dihedral_proxies(object):
         m_i,
         m_j,
         tor_list,
+        dihedral_function_type,
         peptide_link_params,
         dihedral_proxy_registry,
         special_position_indices,
@@ -1210,11 +1223,21 @@ class add_dihedral_proxies(object):
               and peptide_link_params.discard_psi_phi):
           pass
         else:
+          if (dihedral_function_type == "determined_by_sign_of_periodicity"):
+            periodicity = tor.period
+          elif (dihedral_function_type == "all_sinusoidal"):
+            periodicity = max(1, tor.period)
+          elif (dihedral_function_type == "all_harmonic"):
+            periodicity = -abs(tor.period)
+          else:
+            raise RuntimeError(
+              "Unknown dihedral_function_type: %s"
+                % str(dihedral_function_type))
           proxy = geometry_restraints.dihedral_proxy(
             i_seqs=i_seqs,
             angle_ideal=tor.value_angle,
             weight=1/tor.value_angle_esd**2,
-            periodicity=max(1,tor.period))
+            periodicity=periodicity)
           if (sites_cart is not None and tor.id == "omega"):
             assert abs(tor.value_angle - 180) < 1.e-6
             if (peptide_link_params.omega_esd_override_value is not None):
@@ -1433,6 +1456,7 @@ class build_chain_proxies(object):
         apply_cif_modifications,
         apply_cif_links_mm_pdbres_dict,
         link_distance_cutoff,
+        dihedral_function_type,
         chir_volume_esd,
         peptide_link_params,
         pdb_hierarchy,
@@ -1580,6 +1604,7 @@ class build_chain_proxies(object):
               m_i=prev_mm,
               m_j=mm,
               tor_list=prev_mm.lib_link.tor_list,
+              dihedral_function_type=dihedral_function_type,
               peptide_link_params=peptide_link_params,
               dihedral_proxy_registry=geometry_proxy_registries.dihedral,
               special_position_indices=special_position_indices,
@@ -1655,6 +1680,7 @@ class build_chain_proxies(object):
         n_angles_discarded_because_of_special_positions \
           += mm.angle_counters.discarded_because_of_special_positions
         mm.add_dihedral_proxies(
+          dihedral_function_type=dihedral_function_type,
           special_position_indices=special_position_indices,
           dihedral_proxy_registry=geometry_proxy_registries.dihedral)
         if (mm.dihedral_counters.corrupt_monomer_library_definitions > 0):
@@ -2008,6 +2034,7 @@ class build_all_chain_proxies(object):
             apply_cif_modifications=self.apply_cif_modifications,
             apply_cif_links_mm_pdbres_dict=apply_cif_links_mm_pdbres_dict,
             link_distance_cutoff=self.params.link_distance_cutoff,
+            dihedral_function_type=self.params.dihedral_function_type,
             chir_volume_esd=self.params.chir_volume_esd,
             peptide_link_params=self.params.peptide_link,
             pdb_hierarchy=self.pdb_hierarchy,
@@ -2099,6 +2126,7 @@ class build_all_chain_proxies(object):
               m_i=m_i,
               m_j=m_j,
               tor_list=link.tor_list,
+              dihedral_function_type=self.params.dihedral_function_type,
               peptide_link_params=self.params.peptide_link,
               dihedral_proxy_registry=self.geometry_proxy_registries.dihedral,
               special_position_indices=self.special_position_indices,
