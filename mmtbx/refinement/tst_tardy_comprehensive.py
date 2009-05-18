@@ -73,6 +73,7 @@ def get_master_phil():
     input_string="""\
 pdb_file = None
   .type = path
+%(dihedral_function_type_params_str)s
 number_of_random_trials = 2
   .type = int
 hot = False
@@ -83,7 +84,7 @@ keep_going = False
   .type = bool
 chunk = 1 0
   .type = ints(size=2, value_min=0)
-""")
+""" % tst_tardy_pdb.pdb_interpretation.__dict__)
 
 def run(args):
   local_master_phil = get_master_phil()
@@ -129,6 +130,8 @@ def run(args):
     tst_tardy_pdb_params.minimization_max_iterations = None
     for random_seed in xrange(local_params.number_of_random_trials):
       tst_tardy_pdb_params.random_seed = random_seed
+      tst_tardy_pdb_params.dihedral_function_type \
+        = local_params.dihedral_function_type
       if (local_params.verbose or first_pass):
         tst_tardy_pdb_master_phil.format(tst_tardy_pdb_params).show()
         print

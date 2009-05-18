@@ -111,8 +111,12 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
   #
   assert len(pdb_files) in [1, 2]
   #
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.dihedral_function_type \
+    = params.dihedral_function_type
   processed_pdb_files = pdb_interpretation.run(
     args=pdb_files[-1:]+other_files,
+    params=pdb_interpretation_params,
     strict_conflict_handling=False,
     substitute_non_crystallographic_unit_cell_if_necessary=True,
     return_all_processed_pdb_files=True,
@@ -262,7 +266,8 @@ tardy_displacements_auto {
   max_steps = 100
     .type = int
 }
-""")
+%(dihedral_function_type_params_str)s
+""" % pdb_interpretation.__dict__)
 
 def run(args, callback=None):
   master_phil = get_master_phil()
