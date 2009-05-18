@@ -97,7 +97,7 @@ class i_sigi_completeness_stats(object):
                             "I/sigI>15" )
     # XXX: for GUI
     self.table_for_gui = data_plots.table_data(
-      title="Commpleteness and data strength",
+      title="Completeness and data strength",
       column_labels=["Max. resolution"] + list(legend)[1:],
       graph_names=["I/sigI by shell"],
       graph_labels=[("High resolution of shell", "% of total")],
