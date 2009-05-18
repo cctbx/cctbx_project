@@ -371,6 +371,19 @@ namespace cctbx { namespace geometry_restraints {
       }
   };
 
+  //! Number of proxies with periodicity <= 0.
+  inline
+  std::size_t
+  dihedral_count_harmonic(
+    af::const_ref<dihedral_proxy> const& proxies)
+  {
+    std::size_t result = 0;
+    for(std::size_t i=0;i<proxies.size();i++) {
+      if (proxies[i].periodicity <= 0) result++;
+    }
+    return result;
+  }
+
   /*! Fast computation of dihedral::delta given an array of dihedral proxies,
       ignoring proxy.sym_ops.
    */

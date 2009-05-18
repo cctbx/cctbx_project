@@ -590,11 +590,12 @@ class _dihedral(boost.python.injector, dihedral):
 
   def _show_sorted_item(O, f, prefix):
     print >> f, "%s    ideal   model   delta" \
-      " periodicty    sigma   weight residual" % prefix
+      " %        s    sigma   weight residual" % (
+        prefix, {False: "sinusoidal", True: " harmonic "}[O.periodicity <= 0])
     print >> f, "%s  %7.2f %7.2f %7.2f %5d      %6.2e %6.2e %6.2e" % (
       prefix,
-      O.angle_ideal, O.angle_model, O.delta,
-      O.periodicity, weight_as_sigma(weight=O.weight), O.weight, O.residual())
+      O.angle_ideal, O.angle_model, O.delta, O.periodicity,
+      weight_as_sigma(weight=O.weight), O.weight, O.residual())
 
 class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
 
@@ -905,6 +906,11 @@ def _show_sorted_impl(O,
   if (f is None): f = sys.stdout
   print >> f, "%s%s restraints: %d" % (prefix, proxy_label, O.size())
   if (O.size() == 0): return
+  if (proxy_type is dihedral):
+    n_harmonic = O.count_harmonic()
+    n_sinusoidal = O.size() - n_harmonic
+    print >> f, prefix+"  sinusoidal: %d" % n_sinusoidal
+    print >> f, prefix+"    harmonic: %d" % n_harmonic
   if (max_items is not None and max_items <= 0): return
   if (by_value == "residual"):
     if unit_cell is None:

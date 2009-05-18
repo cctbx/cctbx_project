@@ -49,6 +49,7 @@ namespace {
         typedef return_internal_reference<> rir;
         scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
           "shared_dihedral_proxy")
+          .def("count_harmonic", dihedral_count_harmonic)
           .def("proxy_select",
             (af::shared<w_t>(*)(
               af::const_ref<w_t> const&,
