@@ -52,7 +52,7 @@ namespace cctbx { namespace adp_restraints {
       af::const_ref<scitbx::sym_mat3<double> > const& u_cart_,
       isotropic_adp_proxy const& proxy);
 
-    af::tiny<double, 6>
+    scitbx::sym_mat3<double>
     deltas() { return deltas_; }
 
     //! weight * [[sum_{ii} (deltas)**2] + [2 * sum_{i<j} (deltas)**2]].
@@ -80,7 +80,7 @@ namespace cctbx { namespace adp_restraints {
 
   protected:
     void init_deltas();
-    af::tiny<double, 6> deltas_;
+    scitbx::sym_mat3<double> deltas_;
 
   };
 
