@@ -1,4 +1,5 @@
-from scitbx.graph.utils import construct_edge_sets, extract_edge_list
+from scitbx.graph.utils import \
+  construct_edge_sets, extract_edge_list, sub_edge_list
 import math
 
 class cluster_manager(object):
@@ -250,6 +251,30 @@ class cluster_manager(object):
         leb.add(tuple(sorted((i,k))))
     O.loop_edge_bendings = sorted(leb)
 
+  def edge_classifier(O):
+    return edge_classifier(cluster_manager=O)
+
+class edge_classifier(object):
+
+  def __init__(O, cluster_manager):
+    O.cluster_manager = cluster_manager
+    O.hinge_edge_set = set()
+    for e in cluster_manager.hinge_edges:
+      if (e[0] == -1): continue
+      O.hinge_edge_set.add(tuple(sorted(e)))
+    O.loop_edge_set = set([tuple(sorted(e))
+      for e in cluster_manager.loop_edges])
+    assert len(O.hinge_edge_set.intersection(O.loop_edge_set)) == 0
+
+  def __call__(O, edge):
+    edge = tuple(sorted(edge))
+    if (edge in O.hinge_edge_set): return "hinge"
+    if (edge in O.loop_edge_set): return "loop"
+    cm = O.cluster_manager
+    cii, cij = [cm.cluster_indices[i] for i in edge]
+    if (cii == cij and cm.hinge_edges[cii][0] == -1): return "base"
+    return "intra"
+
 class find_paths(object):
 
   def __init__(O, edge_sets):
@@ -419,10 +444,13 @@ class construct(object):
     O.external_clusters_connect_count = 0
     if (clusters is None): return
     cv = O.cluster_manager.connect_vertices
-    for c in clusters:
-      i = c[0]
-      for j in c[1:]:
-        if (cv(i=i, j=j, optimize=True) is not None):
+    for cluster in clusters:
+      sub = sub_edge_list(edge_sets=O.edge_sets, vertex_indices=cluster)
+      sub_edge_sets = sub.edge_sets()
+      for i_sub,j_sub in sub.edge_list:
+        if (len(sub_edge_sets[i_sub]) == 1): continue
+        if (len(sub_edge_sets[j_sub]) == 1): continue
+        if (cv(i=cluster[i_sub], j=cluster[j_sub], optimize=True) is not None):
           O.external_clusters_connect_count += 1
 
   def find_cluster_loops(O):
@@ -466,26 +494,15 @@ class construct(object):
 
   def viewer_lines_with_colors(O, include_loop_edge_bendings):
     result = []
-    cm = O.cluster_manager
-    he = set()
-    for e in cm.hinge_edges:
-      if (e[0] == -1): continue
-      he.add(tuple(sorted(e)))
-    le = set([tuple(sorted(e)) for e in cm.loop_edges])
-    assert len(he.intersection(le)) == 0
+    colors = {
+      "base":  (0,1,1),
+      "hinge": (0,1,0),
+      "intra": (0,0,1),
+      "loop":  (1,0,0)}
+    ec = O.cluster_manager.edge_classifier()
     for line in O.edge_list:
-      if (line in he):
-        color = (0,1,0)
-      elif (line in le):
-        color = (1,0,0)
-      else:
-        cii, cij = [cm.cluster_indices[i] for i in line]
-        if (cii == cij and cm.hinge_edges[cii][0] == -1):
-          color = (0,1,1)
-        else:
-          color = (0,0,1)
-      result.append((line, color))
+      result.append((line, colors[ec(edge=line)]))
     if (include_loop_edge_bendings):
-      for line in cm.loop_edge_bendings:
+      for line in O.cluster_manager.loop_edge_bendings:
         result.append((line, (0.5,0,0.5)))
     return result

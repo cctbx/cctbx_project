@@ -68,7 +68,7 @@ class manager(object):
       weight_limit = 1.0 / constrain_dihedrals_with_sigma_less_than**2
       for proxy in self.dihedral_proxies:
         if (proxy.weight > weight_limit):
-          result.append(proxy.i_seqs[1:3])
+          result.append(proxy.i_seqs)
     if (self.planarity_proxies is not None):
       for proxy in self.planarity_proxies:
         result.append(proxy.i_seqs)
@@ -140,9 +140,9 @@ class manager(object):
     #
     def get():
       result = geometry_restraints.shared_dihedral_proxy()
-      cluster_indices = tardy_tree.cluster_manager.cluster_indices
+      ec = tardy_tree.cluster_manager.edge_classifier()
       for proxy in self.dihedral_proxies:
-        if (len(set([cluster_indices[i] for i in proxy.i_seqs[1:3]])) != 1):
+        if (ec(edge=proxy.i_seqs[1:3]) in ["hinge", "loop"]):
           result.append(proxy)
       if (result.size() == 0):
         return None

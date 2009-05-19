@@ -530,17 +530,61 @@ $number of loop edge bendings: None
 >number of loop edge bendings: 5
 """)
 
-def exercise_external_clusters():
-  # GLY A 138 and 139 of pdb entry 10gs, atom names N CA C O N CA C O
-  for external_clusters,expected_clusters, expected_count in [
-       (None, [[0], [1], [2], [3], [4], [5], [6], [7]], 0),
-       ([(2,4), (1,2,3,4)], [[1, 2, 3, 4], [0], [5], [6], [7]], 3)]:
+def exercise_external_clusters(n_trials=10):
+  # copy of phenix_regression/tardy_action/gly_gly_box.pdb:
+  """
+CRYST1   12.661   12.601   14.403  90.00  90.00  90.00 P 1
+ATOM      0  C   GLY A 138       5.965   6.290   5.906  1.00 35.93           C
+ATOM      1  O   GLY A 138       5.429   5.188   5.784  1.00 40.71           O
+ATOM      2  N   GLY A 138       7.860   7.800   5.206  1.00 34.54           N
+ATOM      3  CA  GLY A 138       6.857   6.828   4.801  1.00 33.64           C
+ATOM      4  N   GLY A 139       5.798   7.062   6.977  1.00 33.49           N
+ATOM      5  CA  GLY A 139       4.960   6.636   8.087  1.00 33.25           C
+ATOM      6  C   GLY A 139       5.536   5.495   8.904  1.00 32.97           C
+ATOM      7  O   GLY A 139       4.801   4.801   9.602  1.00 35.18           O
+ATOM      8  OXT GLY A 139       6.772   5.318   8.862  1.00 34.96           O
+END
+  """
+  edge_list = [(0,1), (0,3), (0,4), (2,3), (4,5), (5,6), (6,7), (6,8)]
+  expected = [
+    (None,
+     [[0], [1], [2], [3], [4], [5], [6], [7], [8]],
+     0),
+    ([[3,0,4,5], [0,1,3,4], [5,6,7,8]], # actual
+     [[0,4], [1], [2], [3], [5], [6], [7], [8]],
+     1),
+    ([[3,0,4,5], [0,1,2,3], [5,6,7,8]], # artificial
+     [[0,3,4], [1], [2], [5], [6], [7], [8]],
+     2),
+    ([[3,0,4,5], [0,1,2,3], [0,4,5,6]], # artificial
+     [[0,3,4,5], [1], [2], [6], [7], [8]],
+     3),
+    ([[3,0,4,5], [0,1,2,3], [0,4,5,6], [4,5,6,8]], # artificial
+     [[0,3,4,5,6], [1], [2], [7], [8]],
+     4),
+    ([[3,0,4,5], [0,1,2,3], [4,5,6,8]], # artificial
+     [[0,3,4], [5,6], [1], [2], [7], [8]],
+     3),
+    ([[0,1,2,3], [4,5,6,8]], # artificial
+     [[0,3], [5,6], [1], [2], [4], [7], [8]],
+     2)]
+  for external_clusters,expected_clusters,expected_count in expected:
     tt = construct(
-      n_vertices=8,
-      edge_list=[(0, 1), (1, 2), (2, 3), (2, 4), (4, 5), (5, 6), (6, 7)],
-      external_clusters=external_clusters)
+      n_vertices=9, edge_list=edge_list, external_clusters=external_clusters)
     assert tt.cluster_manager.clusters == expected_clusters
     assert tt.external_clusters_connect_count == expected_count
+  def random_permutation(s):
+    from scitbx.array_family import flex
+    return flex.select(s, flex.random_permutation(size=len(s)))
+  for external_clusters,expected_clusters,expected_count in expected:
+    if (external_clusters is None): external_clusters = []
+    for i_trial in xrange(n_trials):
+      tt = construct(
+        n_vertices=9,
+        edge_list=random_permutation(edge_list),
+        external_clusters=[random_permutation(c) for c in external_clusters])
+      assert tt.cluster_manager.clusters == expected_clusters
+      assert tt.external_clusters_connect_count == expected_count
 
 def run(args):
   assert args in [[], ["--verbose"]]
