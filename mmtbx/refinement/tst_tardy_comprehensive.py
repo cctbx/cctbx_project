@@ -144,6 +144,8 @@ def run(args):
       tst_tardy_pdb_params.number_of_cooling_steps = 0
       tst_tardy_pdb_params.minimization_max_iterations = None
     elif (local_params.algorithm == "annealing"):
+      tst_tardy_pdb_params.number_of_time_steps = 1
+      tst_tardy_pdb_params.time_step_pico_seconds = 0.001
       tst_tardy_pdb_params.minimization_max_iterations = 0
     else:
       raise AssertionError
