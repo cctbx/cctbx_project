@@ -102,7 +102,13 @@ def exercise_manager(verbose=0):
     normalization=True)
   energies_adps.show(f=sio)
   energies_sites.show(f=sio)
-  assert not show_diff(sio.getvalue(), """\
+  if sys.platform.startswith("win") and sys.version_info[:2] < (2,6):
+    # This appears to be a windows-specific bug with string formatting
+    # for python versions prior to 2.6, where the exponent is printed
+    # with 3 digits rather than 2.
+    pass
+  else:
+    assert not show_diff(sio.getvalue(), """\
 Bond restraints: 3
 Sorted by residual:
 bond O3
