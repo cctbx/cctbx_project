@@ -35,32 +35,20 @@ namespace cctbx { namespace adp_restraints {
     }
   }
 
-  //! This is the square of the Frobenius norm of the matrix of deltas.
-  /*  Since this matrix is symmetric, the off-diagonal elements
-      must be included twice in the summation.
-  */
+  /* This is the square of the Frobenius norm of the matrix of deltas, or
+     alternatively the inner product of the matrix of deltas with itself.
+     This is used since the residual is then rotationally invariant.
+   */
   double
   isotropic_adp::residual() const
   {
-    double result = 0;
-    for(int i=0;i<3;i++) {
-      result += weight * scitbx::fn::pow2(deltas_[i]);
-    }
-    for(int i=3;i<6;i++) {
-      result += 2 * weight * scitbx::fn::pow2(deltas_[i]);
-    }
-    return result;
+    return weight * deltas_.dot(deltas_);
   }
 
   double
-  isotropic_adp::rms_deltas() const {
-    af::tiny<double, 9> all_deltas;
-    for(int i=0;i<6;i++) {
-      all_deltas[i] = deltas_[i];
-      // include off-diagonals twice
-      if (i > 2) { all_deltas[i+3] = deltas_[i]; }
-    }
-    return std::sqrt(af::mean_sq(all_deltas));
+  isotropic_adp::rms_deltas() const
+  {
+    return std::sqrt(deltas_.dot(deltas_)/9);
   }
 
   scitbx::sym_mat3<double>
