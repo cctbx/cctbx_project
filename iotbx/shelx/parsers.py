@@ -7,6 +7,7 @@ from cctbx import eltbx
 from cctbx import adptbx
 
 from cctbx import geometry_restraints
+from cctbx import adp_restraints
 
 import scitbx.math
 
@@ -268,11 +269,17 @@ if smtbx is not None:
     """ It must be after an atom parser """
 
     shelx_restraints = {
-      'DFIX': geometry_restraints.bond_sym_proxy,
-      'DANG': geometry_restraints.bond_sym_proxy,
-      'FLAT': geometry_restraints.planarity_proxy,
-      'CHIV': geometry_restraints.chirality_proxy,
-      'SADI': geometry_restraints.bond_similarity_proxy,
+      'DFIX': {'proxy_type':geometry_restraints.bond_sym_proxy},
+      'DANG': {'proxy_type':geometry_restraints.bond_sym_proxy},
+      'FLAT': {'proxy_type':geometry_restraints.planarity_proxy},
+      'CHIV': {'proxy_type':geometry_restraints.chirality_proxy},
+      'SADI': {'proxy_type':geometry_restraints.bond_similarity_proxy},
+      'SIMU': {'proxy_type':adp_restraints.adp_similarity_proxy,
+               'defaults':{'s1':0.04, 's2':None, 'dmax':1.7}},
+      'DELU': {'proxy_type':adp_restraints.rigid_bond_proxy,
+               'defaults':{'s1':0.01, 's2':None}},
+      'ISOR': {'proxy_type':adp_restraints.isotropic_adp_proxy,
+               'defaults':{'s1':0.1, 's2':None}},
     }
     def filtered_commands(self):
       self.cached_restraints = {}
@@ -301,8 +308,9 @@ if smtbx is not None:
             sym_ops[i] = unit_matrix
         return sym_ops
       for cmd, restraints in self.cached_restraints.items():
-        restraint_type = self.shelx_restraints.get(cmd)
+        proxy_type = self.shelx_restraints[cmd]['proxy_type']
         for args in restraints:
+          kwds = {}
           if cmd in ('DFIX','DANG'):
             assert len(args) > 2
             div, mod = divmod(len(args), 2)
@@ -315,7 +323,6 @@ if smtbx is not None:
               else: esd = 0.04
               atom_pairs = args[1:]
             for i in range(div-(1-mod)):
-              kwds = {}
               atom_pair = atom_pairs[i*2:(i+1)*2]
               kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atom_pair]
               sym_ops = [self.symmetry_operations.get(atom[2]) for atom in atom_pair]
@@ -335,7 +342,7 @@ if smtbx is not None:
               kwds['rt_mx_ji'] = rt_mx_ji
               kwds['distance_ideal'] = value
               kwds['weight'] = 1/(esd*esd)
-              self.builder.add_restraint(restraint_type, kwds)
+              self.builder.add_restraint(proxy_type, kwds)
           if cmd == 'SADI':
             assert len(args) > 3
             div, mod = divmod(len(args), 2)
@@ -346,7 +353,6 @@ if smtbx is not None:
             else:
               esd = 0.02
               atom_pairs = args
-            kwds = {}
             i_seqs = []
             sym_ops = []
             weights = []
@@ -373,7 +379,7 @@ if smtbx is not None:
             if sym_ops.count(None) != len(sym_ops):
               kwds['sym_ops'] = replace_None_with_unit_matrix(sym_ops)
             kwds['weights'] = weights
-            self.builder.add_restraint(restraint_type, kwds)
+            self.builder.add_restraint(proxy_type, kwds)
           elif cmd == 'FLAT':
             assert len(args) > 3
             try:
@@ -382,14 +388,52 @@ if smtbx is not None:
             except TypeError:
               esd = 0.1
               atoms = args
-            kwds = {}
             kwds['i_seqs'] = [self.scatterer_label_to_index[i[1]] for i in atoms]
             kwds['weights'] = [1/(esd*esd)]*len(atoms)
             sym_ops = [self.symmetry_operations.get(i[2]) for i in atoms]
             if sym_ops.count(None) != len(sym_ops):
               kwds['sym_ops'] = replace_None_with_unit_matrix(sym_ops)
-            self.builder.add_restraint(restraint_type, kwds)
+            self.builder.add_restraint(proxy_type, kwds)
           elif cmd == 'CHIV':
             pass
+          elif cmd in ('DELU', 'ISOR', 'SIMU'):
+            atoms = None
+            s1 = self.shelx_restraints[cmd]['defaults'].get('s1')
+            s2 = self.shelx_restraints[cmd]['defaults'].get('s2')
+            dmax = self.shelx_restraints[cmd]['defaults'].get('dmax')
+            if len(args) > 0:
+              try:
+                s1 = float(args[0])
+              except TypeError:
+                atoms = args
+              if not atoms and len(args) > 1:
+                try:
+                  s2 = float(args[1])
+                except TypeError:
+                  atoms = args[1:]
+                if not atoms and len(args) > 2:
+                  if cmd != 'SIMU':
+                    atoms = args[2:]
+                  else:
+                    try:
+                      dmax = float(args[2])
+                    except TypeError:
+                      if not atoms:
+                        atoms = args[2:]
+                    if not atoms and len(args) > 3:
+                      atoms = args[3:]
+            if atoms:
+              kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atoms]
+            if cmd == 'DELU':
+              kwds['sigma_12'] = s1
+              kwds['sigma_13'] = s2
+            elif cmd == 'ISOR':
+              kwds['sigma'] = s1
+              kwds['sigma_terminal'] = s2
+            elif cmd == 'SIMU':
+              kwds['sigma'] = s1
+              kwds['sigma_terminal'] = s2
+              kwds['buffer_thickness'] = dmax
+            self.builder.add_restraint(proxy_type, kwds)
           else:
             pass

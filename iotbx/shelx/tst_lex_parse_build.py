@@ -4,6 +4,7 @@ from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx import xray
 from cctbx import geometry_restraints
+from cctbx import adp_restraints
 from iotbx import shelx
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
@@ -250,18 +251,18 @@ def exercise_afix_parsing():
 def exercise_restraint_parsing():
   if 'restraint_parser' not in shelx.__dict__:
     print 'Skipped restraint parsing test'
-  def lex_restraints(ins_name):
+  def parse_restraints(ins_name):
     builder = shelx.restrained_crystal_structure_builder()
     stream = shelx.command_stream(file=cStringIO.StringIO(ins_name))
     l_cs = shelx.crystal_symmetry_parser(stream, builder)
     l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
     l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
-    return shelx.restraint_parser(l_xs.filtered_commands(), builder)
+    l_restraints = shelx.restraint_parser(
+      l_xs.filtered_commands(), builder)
+    l_restraints.parse()
+    return l_restraints.builder.proxies
   # exercise DFIX, DANG
-  l_restraints = lex_restraints(ins_dfix_across_symm)
-  l_restraints.parse()
-  structure = l_restraints.builder.structure
-  proxies = l_restraints.builder.proxies
+  proxies = parse_restraints(ins_dfix_across_symm)
   shared_bond_sym_proxy = proxies[geometry_restraints.bond_sym_proxy]
   assert len(shared_bond_sym_proxy) == 3
   assert approx_equal(shared_bond_sym_proxy[0].distance_ideal, 1.75)
@@ -277,10 +278,7 @@ def exercise_restraint_parsing():
   assert shared_bond_sym_proxy[1].rt_mx_ji == sgtbx.rt_mx('-x+1,y,-z+1/2')
   assert shared_bond_sym_proxy[2].rt_mx_ji == sgtbx.rt_mx()
   # exercise FLAT
-  l_restraints = lex_restraints(ins_flat)
-  l_restraints.parse()
-  structure = l_restraints.builder.structure
-  proxies = l_restraints.builder.proxies
+  proxies = parse_restraints(ins_flat)
   shared_planarity_proxy = proxies[geometry_restraints.planarity_proxy]
   assert shared_planarity_proxy.size() == 2
   assert approx_equal(shared_planarity_proxy[0].i_seqs,
@@ -294,9 +292,7 @@ def exercise_restraint_parsing():
   assert approx_equal(shared_planarity_proxy[1].weights,
                       (100, 100, 100, 100, 100, 100, 100))
   # SADI simple
-  l_restraints = lex_restraints(ins_sadi)
-  l_restraints.parse()
-  proxies = l_restraints.builder.proxies
+  proxies = parse_restraints(ins_sadi)
   shared_bond_similarity_proxy\
       = proxies[geometry_restraints.bond_similarity_proxy]
   assert shared_bond_similarity_proxy.size() == 1
@@ -306,10 +302,7 @@ def exercise_restraint_parsing():
   assert approx_equal(
     shared_bond_similarity_proxy[0].weights, (625.0, 625.0))
   # SADI with symmetry
-  l_restraints = lex_restraints(ins_sadi_with_sym)
-  l_restraints.parse()
-  structure = l_restraints.builder.structure
-  proxies = l_restraints.builder.proxies
+  proxies = parse_restraints(ins_sadi_with_sym)
   shared_bond_similarity_proxy\
       = proxies[geometry_restraints.bond_similarity_proxy]
   assert shared_bond_similarity_proxy.size() == 1
@@ -319,6 +312,193 @@ def exercise_restraint_parsing():
     == (sgtbx.rt_mx('1-X,+Y,0.5-Z'),sgtbx.rt_mx('1-X,+Y,0.5-Z'))
   assert approx_equal(
     shared_bond_similarity_proxy[0].weights, (2500.0, 2500.0))
+  # SIMU simple
+  proxies = parse_restraints(ins_simu_simple)
+  shared_apd_similarity_proxy \
+      = proxies[adp_restraints.adp_similarity_proxy]
+  assert shared_apd_similarity_proxy.size() == 3
+  assert shared_apd_similarity_proxy[0].i_seqs == (0,1)
+  assert shared_apd_similarity_proxy[1].i_seqs == (1,2)
+  assert shared_apd_similarity_proxy[2].i_seqs == (2,3)
+  assert approx_equal(shared_apd_similarity_proxy[0].weight, 156.25)
+  assert approx_equal(shared_apd_similarity_proxy[1].weight, 625.0)
+  assert approx_equal(shared_apd_similarity_proxy[2].weight, 156.25)
+  # SIMU with sigma given
+  proxies = parse_restraints(ins_simu_s)
+  shared_apd_similarity_proxy \
+      = proxies[adp_restraints.adp_similarity_proxy]
+  assert shared_apd_similarity_proxy.size() == 3
+  assert approx_equal(shared_apd_similarity_proxy[0].weight, 1/(0.06*0.06))
+  assert approx_equal(shared_apd_similarity_proxy[1].weight, 1/(0.03*0.03))
+  assert approx_equal(shared_apd_similarity_proxy[2].weight, 1/(0.06*0.06))
+  # SIMU with sigma and sigma terminal
+  proxies = parse_restraints(ins_simu_s_st)
+  shared_apd_similarity_proxy \
+      = proxies[adp_restraints.adp_similarity_proxy]
+  assert shared_apd_similarity_proxy.size() == 3
+  assert approx_equal(shared_apd_similarity_proxy[0].weight, 1/(0.07*0.07))
+  assert approx_equal(shared_apd_similarity_proxy[1].weight, 1/(0.03*0.03))
+  assert approx_equal(shared_apd_similarity_proxy[2].weight, 1/(0.07*0.07))
+  # SIMU with sigma and sigma terminal and dmax
+  proxies = parse_restraints(ins_simu_s_st_dmax)
+  shared_apd_similarity_proxy \
+      = proxies[adp_restraints.adp_similarity_proxy]
+  assert shared_apd_similarity_proxy.size() == 3
+  assert approx_equal(shared_apd_similarity_proxy[0].weight, 1/(0.07*0.07))
+  assert approx_equal(shared_apd_similarity_proxy[1].weight, 1/(0.03*0.03))
+  assert approx_equal(shared_apd_similarity_proxy[2].weight, 1/(0.07*0.07))
+  # SIMU with just atoms
+  proxies = parse_restraints(ins_simu_atoms)
+  shared_apd_similarity_proxy \
+      = proxies[adp_restraints.adp_similarity_proxy]
+  assert shared_apd_similarity_proxy.size() == 2
+  assert shared_apd_similarity_proxy[0].i_seqs == (0,1)
+  assert shared_apd_similarity_proxy[1].i_seqs == (1,2)
+  assert approx_equal(shared_apd_similarity_proxy[0].weight, 156.25)
+  assert approx_equal(shared_apd_similarity_proxy[1].weight, 625.0)
+  # SIMU with sigma and atoms
+  proxies = parse_restraints(ins_simu_s_atoms)
+  shared_apd_similarity_proxy \
+      = proxies[adp_restraints.adp_similarity_proxy]
+  assert shared_apd_similarity_proxy.size() == 2
+  assert shared_apd_similarity_proxy[0].i_seqs == (0,1)
+  assert shared_apd_similarity_proxy[1].i_seqs == (1,2)
+  assert approx_equal(shared_apd_similarity_proxy[0].weight, 1/(0.06*0.06))
+  assert approx_equal(shared_apd_similarity_proxy[1].weight, 1/(0.03*0.03))
+  # SIMU with sigma, sigma terminal and atoms
+  proxies = parse_restraints(ins_simu_s_st_atoms)
+  shared_apd_similarity_proxy \
+      = proxies[adp_restraints.adp_similarity_proxy]
+  assert shared_apd_similarity_proxy.size() == 2
+  assert shared_apd_similarity_proxy[0].i_seqs == (0,1)
+  assert shared_apd_similarity_proxy[1].i_seqs == (1,2)
+  assert approx_equal(shared_apd_similarity_proxy[0].weight, 1/(0.07*0.07))
+  assert approx_equal(shared_apd_similarity_proxy[1].weight, 1/(0.03*0.03))
+  # SIMU with sigma, sigma terminal dmax and atoms
+  proxies = parse_restraints(ins_simu_s_st_dmax_atoms)
+  shared_apd_similarity_proxy \
+      = proxies[adp_restraints.adp_similarity_proxy]
+  assert shared_apd_similarity_proxy.size() == 2
+  assert shared_apd_similarity_proxy[0].i_seqs == (0,1)
+  assert shared_apd_similarity_proxy[1].i_seqs == (1,2)
+  assert approx_equal(shared_apd_similarity_proxy[0].weight, 1/(0.07*0.07))
+  assert approx_equal(shared_apd_similarity_proxy[1].weight, 1/(0.03*0.03))
+  # DELU simple
+  proxies = parse_restraints(ins_delu_simple)
+  shared_rigid_bond_proxy \
+      = proxies[adp_restraints.rigid_bond_proxy]
+  assert shared_rigid_bond_proxy.size() == 5
+  expected_i_seqs = ((0,1),(0,2),(1,2),(1,3),(2,3))
+  for i in range(5):
+    assert shared_rigid_bond_proxy[i].i_seqs == expected_i_seqs[i]
+    assert approx_equal(shared_rigid_bond_proxy[i].weight, 10000)
+  # DELU with s1
+  proxies = parse_restraints(ins_delu_s1)
+  shared_rigid_bond_proxy \
+      = proxies[adp_restraints.rigid_bond_proxy]
+  assert shared_rigid_bond_proxy.size() == 5
+  for i in range(5):
+    assert shared_rigid_bond_proxy[i].i_seqs == expected_i_seqs[i]
+    assert approx_equal(shared_rigid_bond_proxy[i].weight, 2500)
+  # DELU with s1 and s2
+  proxies = parse_restraints(ins_delu_s1_s2)
+  shared_rigid_bond_proxy \
+      = proxies[adp_restraints.rigid_bond_proxy]
+  assert shared_rigid_bond_proxy.size() == 5
+  expected_weights = (10000,2500,10000,2500,10000)
+  for i in range(5):
+    assert shared_rigid_bond_proxy[i].i_seqs == expected_i_seqs[i]
+    assert approx_equal(shared_rigid_bond_proxy[i].weight,
+                        expected_weights[i])
+  # DELU with atoms
+  proxies = parse_restraints(ins_delu_atoms)
+  shared_rigid_bond_proxy \
+      = proxies[adp_restraints.rigid_bond_proxy]
+  assert shared_rigid_bond_proxy.size() == 3
+  for i in range(3):
+    assert shared_rigid_bond_proxy[i].i_seqs == expected_i_seqs[i]
+    assert approx_equal(shared_rigid_bond_proxy[i].weight,10000)
+  # DELU with s1 and atoms
+  proxies = parse_restraints(ins_delu_s1_atoms)
+  shared_rigid_bond_proxy \
+      = proxies[adp_restraints.rigid_bond_proxy]
+  assert shared_rigid_bond_proxy.size() == 3
+  for i in range(3):
+    assert shared_rigid_bond_proxy[i].i_seqs == expected_i_seqs[i]
+    assert approx_equal(shared_rigid_bond_proxy[i].weight,2500)
+  # DELU with s1, s2 and atoms
+  proxies = parse_restraints(ins_delu_s1_s2_atoms)
+  shared_rigid_bond_proxy \
+      = proxies[adp_restraints.rigid_bond_proxy]
+  assert shared_rigid_bond_proxy.size() == 3
+  for i in range(3):
+    assert shared_rigid_bond_proxy[i].i_seqs == expected_i_seqs[i]
+    assert approx_equal(shared_rigid_bond_proxy[i].weight,
+                        expected_weights[i])
+  # ISOR simple
+  proxies = parse_restraints(ins_isor_simple)
+  shared_isotropic_adp_proxy \
+      = proxies[adp_restraints.isotropic_adp_proxy]
+  assert shared_isotropic_adp_proxy.size() == 4
+  expected_i_seqs = (0,1,2,3)
+  expected_weights = (25,100,100,25)
+  for i in range(4):
+    assert shared_isotropic_adp_proxy[i].i_seq == expected_i_seqs[i]
+    assert approx_equal(shared_isotropic_adp_proxy[i].weight,
+                        expected_weights[i])
+  # ISOR with s
+  proxies = parse_restraints(ins_isor_s)
+  shared_isotropic_adp_proxy \
+      = proxies[adp_restraints.isotropic_adp_proxy]
+  assert shared_isotropic_adp_proxy.size() == 4
+  expected_weights = (6.25,25,25,6.25)
+  for i in range(4):
+    assert shared_isotropic_adp_proxy[i].i_seq == expected_i_seqs[i]
+    assert approx_equal(shared_isotropic_adp_proxy[i].weight,
+                        expected_weights[i])
+  # ISOR with s and st
+  proxies = parse_restraints(ins_isor_s_st)
+  shared_isotropic_adp_proxy \
+      = proxies[adp_restraints.isotropic_adp_proxy]
+  assert shared_isotropic_adp_proxy.size() == 4
+  expected_weights = (1/(0.3*0.3), 25, 25, 1/(0.3*0.3))
+  for i in range(4):
+    assert shared_isotropic_adp_proxy[i].i_seq == expected_i_seqs[i]
+    assert approx_equal(shared_isotropic_adp_proxy[i].weight,
+                        expected_weights[i])
+  # ISOR with atoms
+  proxies = parse_restraints(ins_isor_atoms)
+  shared_isotropic_adp_proxy \
+      = proxies[adp_restraints.isotropic_adp_proxy]
+  assert shared_isotropic_adp_proxy.size() == 3
+  expected_i_seqs = (0,1,2)
+  expected_weights = (25,100,100)
+  for i in range(3):
+    assert shared_isotropic_adp_proxy[i].i_seq == expected_i_seqs[i]
+    assert approx_equal(shared_isotropic_adp_proxy[i].weight,
+                        expected_weights[i])
+  # ISOR with s and atoms
+  proxies = parse_restraints(ins_isor_s_atoms)
+  shared_isotropic_adp_proxy \
+      = proxies[adp_restraints.isotropic_adp_proxy]
+  assert shared_isotropic_adp_proxy.size() == 3
+  expected_i_seqs = (0,1,2)
+  expected_weights = (6.25,25,25)
+  for i in range(3):
+    assert shared_isotropic_adp_proxy[i].i_seq == expected_i_seqs[i]
+    assert approx_equal(shared_isotropic_adp_proxy[i].weight,
+                        expected_weights[i])
+  # ISOR with s, st and atoms
+  proxies = parse_restraints(ins_isor_s_st_atoms)
+  shared_isotropic_adp_proxy \
+      = proxies[adp_restraints.isotropic_adp_proxy]
+  assert shared_isotropic_adp_proxy.size() == 3
+  expected_i_seqs = (0,1,2)
+  expected_weights = (1/(0.3*0.3), 25, 25)
+  for i in range(3):
+    assert shared_isotropic_adp_proxy[i].i_seq == expected_i_seqs[i]
+    assert approx_equal(shared_isotropic_adp_proxy[i].weight,
+                        expected_weights[i])
 
 def shelx_u_cif(unit_cell, u_star):
   u_cif = adptbx.u_star_as_u_cif(unit_cell, u_star)
@@ -650,6 +830,48 @@ C47   1     0.32637  0.52368  0.16222  10.25000  0.03065  0.05189  0.02130 =
  -0.00058  0.00299 -0.00724
 HKLF 4
 """
+
+def template_ins(instruction):
+  return """
+CELL 0 5 10 15 90 90 90
+SFAC C
+%s
+C1    1     0.28967  0.31613 -0.02773  10.75000  0.05888  0.04514  0.10878 =
+ -0.01962 -0.00471 -0.00143
+C2    1     0.30768  0.41649  0.03308  10.75000  0.03521  0.04076  0.05711 =
+ 0.01504  0.01485  0.01552
+C3    1     0.28897  0.41092  0.11289  10.75000  0.06042  0.09876  0.06719 =
+ 0.05095  0.03457  0.04942
+C4    1     0.30734  0.50229  0.16767  10.75000  0.08796  0.14534  0.06011 =
+ 0.03723  0.02945  0.07980
+""" %instruction
+
+ins_simu_simple = template_ins("SIMU")
+ins_simu_s = template_ins("SIMU 0.03")
+ins_simu_s_st = template_ins("SIMU 0.03 0.07")
+ins_simu_s_st_dmax = template_ins("SIMU 0.03 0.07 1.8")
+ins_simu_atoms = template_ins("SIMU C1 C2 C3")
+ins_simu_s_atoms = template_ins("SIMU 0.03 C1 C2 C3")
+ins_simu_s_st_atoms = template_ins(
+  "SIMU 0.03 0.07 C1 C2 C3")
+ins_simu_s_st_dmax_atoms = template_ins(
+  "SIMU 0.03 0.07 1.7 C1 C2 C3")
+
+ins_delu_simple = template_ins("DELU")
+ins_delu_s1 = template_ins("DELU 0.02")
+ins_delu_s1_s2 = template_ins("DELU 0.01 0.02")
+ins_delu_atoms = template_ins("DELU C1 C2 C3")
+ins_delu_s1_atoms = template_ins("DELU 0.02 C1 C2 C3")
+ins_delu_s1_s2_atoms = template_ins(
+  "DELU 0.01 0.02 C1 C2 C3")
+
+ins_isor_simple = template_ins("ISOR")
+ins_isor_s = template_ins("ISOR 0.2")
+ins_isor_s_st = template_ins("ISOR 0.2 0.3")
+ins_isor_atoms = template_ins("ISOR C1 C2 C3")
+ins_isor_s_atoms = template_ins("ISOR 0.2 C1 C2 C3")
+ins_isor_s_st_atoms = template_ins(
+  "ISOR 0.2 0.3 C1 C2 C3")
 
 if __name__ == '__main__':
   run()

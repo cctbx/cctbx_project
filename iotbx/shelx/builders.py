@@ -1,6 +1,9 @@
 from cctbx import crystal
 from cctbx import xray
 from cctbx import geometry_restraints
+from cctbx import adp_restraints
+from smtbx.refinement.restraints\
+     import adp_restraints as smtbx_adp_restraints
 
 from iotbx.shelx import util
 
@@ -74,15 +77,29 @@ class restrained_crystal_structure_builder(afixed_crystal_structure_builder):
   def __init__(self, *args, **kwds):
     super(restrained_crystal_structure_builder, self).__init__(*args, **kwds)
     geom = geometry_restraints
+    adp = adp_restraints
     self.proxies = {
-    geom.bond_sym_proxy: [],
-    geom.angle_proxy: geom.shared_angle_proxy(),
-    geom.dihedral_proxy: geom.shared_dihedral_proxy(),
-    geom.chirality_proxy: geom.shared_chirality_proxy(),
-    geom.planarity_proxy: geom.shared_planarity_proxy(),
-    geom.bond_similarity_proxy: geom.shared_bond_similarity_proxy(),
+      geom.bond_sym_proxy: [],
+      geom.angle_proxy: geom.shared_angle_proxy(),
+      geom.dihedral_proxy: geom.shared_dihedral_proxy(),
+      geom.chirality_proxy: geom.shared_chirality_proxy(),
+      geom.planarity_proxy: geom.shared_planarity_proxy(),
+      geom.bond_similarity_proxy: geom.shared_bond_similarity_proxy(),
+      adp.adp_similarity_proxy: adp.shared_adp_similarity_proxy(),
+      adp.isotropic_adp_proxy: adp.shared_isotropic_adp_proxy(),
+      adp.rigid_bond_proxy: adp.shared_rigid_bond_proxy(),
+    }
+    self.adp_proxy_builders = {
+      adp.adp_similarity_proxy: smtbx_adp_restraints.adp_similarity_restraints,
+      adp.rigid_bond_proxy: smtbx_adp_restraints.rigid_bond_restraints,
+      adp.isotropic_adp_proxy: smtbx_adp_restraints.isotropic_adp_restraints
     }
 
   def add_restraint(self, proxy_type, kwds):
-    proxy=proxy_type(**kwds)
-    self.proxies[proxy_type].append(proxy)
+    if proxy_type in self.adp_proxy_builders:
+      kwds['proxies'] = self.proxies[proxy_type]
+      kwds['xray_structure'] = self.structure
+      self.adp_proxy_builders[proxy_type](**kwds)
+    else:
+      proxy=proxy_type(**kwds)
+      self.proxies[proxy_type].append(proxy)
