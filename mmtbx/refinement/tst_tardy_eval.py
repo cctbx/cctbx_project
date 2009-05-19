@@ -157,6 +157,7 @@ def rmsd_start_final_plots(
         w_d_ranks_rf[(w,d)] = []
     for h in ttd["structure_factors_high_resolution"]:
       top_label = "h%.0f_e%d" % (h, int(e))
+      print top_label
       page = plot_grid(grid=(3,4), top_label=top_label)
       page_rn = []
       page_rf = []
@@ -168,6 +169,7 @@ def rmsd_start_final_plots(
           page_rn.append((rn, (w,d)))
           page_rf.append((rf, (w,d)))
           label = "w%04.0f_d%.0f: %d=%.2f, %.2f" % (w, d*100, rmsd_n_n, rn, rf)
+          print "  ", label
           page.process(
             grid_ij=(i,j),
             label=label,
