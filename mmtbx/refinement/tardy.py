@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.dynamics import \
   kinetic_energy_as_temperature, \
   temperature_as_kinetic_energy
@@ -27,8 +28,11 @@ master_phil_str = """\
     .type = int
   number_of_time_steps = 50
     .type = int
-  time_step_pico_seconds = 0.004
+  time_step_pico_seconds = 0.001
     .type = float
+  temperature_degrees_of_freedom = *cartesian constrained
+    .type = choice
+    .optional = False
   minimization_max_iterations = 25
     .type = int
   nonbonded_attenuation_factor = 0.75
@@ -157,14 +161,30 @@ def run(fmodels, model, target_weights, params, log):
 def action(sim, params, callback, log):
   sites_cart_start = flex.vec3_double(sim.sites_moved())
   qd_e_kin_scales = sim.assign_random_velocities()
+  cartesian_dof = sites_cart_start.size() * 3
+  if   (params.temperature_degrees_of_freedom == "cartesian"):
+    temperature_dof = cartesian_dof
+  elif (params.temperature_degrees_of_freedom == "constrained"):
+    temperature_dof = sim.degrees_of_freedom
+  else:
+    raise RuntimeError(
+      "Unknown temperature_degrees_of_freedom: %s"
+        % params.temperature_degrees_of_freedom)
   def e_as_t(e):
-    return kinetic_energy_as_temperature(dof=sim.degrees_of_freedom, e=e)
+    return kinetic_energy_as_temperature(dof=temperature_dof, e=e)
   def t_as_e(t):
-    return temperature_as_kinetic_energy(dof=sim.degrees_of_freedom, t=t)
+    return temperature_as_kinetic_energy(dof=temperature_dof, t=t)
   time_step_akma = params.time_step_pico_seconds / akma_time_as_pico_seconds
   print >> log, "tardy dynamics:"
   print >> log, "  number of bodies:", len(sim.bodies)
-  print >> log, "  number of degrees of freedom:", sim.degrees_of_freedom
+  fmt = "%%%dd" % len(str(cartesian_dof))
+  print >> log, "  number of degrees of freedom:", fmt % sim.degrees_of_freedom
+  print >> log, "           number of atoms * 3:", fmt % cartesian_dof
+  print >> log, "                         ratio: %.3f = 1/%.2f" % (
+    sim.degrees_of_freedom / max(1, cartesian_dof),
+    cartesian_dof / max(1, sim.degrees_of_freedom))
+  print >> log, "  temperature degrees of freedom: %s (%d)" % (
+    params.temperature_degrees_of_freedom, temperature_dof)
   print >> log, "  kinetic energy sensitivity to generalized velocities:"
   qd_e_kin_scales.min_max_mean().show(out=log, prefix="    ")
   print >> log, "  time step: %7.5f pico seconds" % (
