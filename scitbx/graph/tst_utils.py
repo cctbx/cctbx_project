@@ -94,6 +94,27 @@ def run(args):
   assert piel == [(0,3), (0,6), (1,4), (1,7), (2,5), (4,6), (5,7), (6,7)]
   assert set(bbel).isdisjoint(set(piel))
   #
+  el = [(0,1), (1,2), (2,3), (2,6), (3,4), (3,7), (4,5), (0,5)]
+  n_vertices = 8
+  es = utils.construct_edge_sets(n_vertices=n_vertices, edge_list=el)
+  sub = utils.sub_edge_list(edge_sets=es, vertex_indices=[])
+  assert len(sub.edge_list) == 0
+  assert len(sub.edge_sets()) == 0
+  sub = utils.sub_edge_list(edge_sets=es, vertex_indices=[1])
+  assert len(sub.edge_list) == 0
+  assert len(sub.edge_sets()) == 1
+  sub = utils.sub_edge_list(edge_sets=es, vertex_indices=[1,3])
+  assert len(sub.edge_list) == 0
+  assert len(sub.edge_sets()) == 2
+  sub = utils.sub_edge_list(edge_sets=es, vertex_indices=[1,0])
+  assert sub.edge_list == [(0,1)]
+  assert len(sub.edge_sets()) == 2
+  assert sub.reindexing_dict == {0: 1, 1: 0}
+  sub = utils.sub_edge_list(edge_sets=es, vertex_indices=[6,7,3,2])
+  assert sub.edge_list == [(1,2), (2,3), (0,3)]
+  assert len(sub.edge_sets()) == 4
+  assert sub.reindexing_dict == {2: 3, 3: 2, 6: 0, 7: 1}
+  #
   print "OK"
 
 if (__name__ == "__main__"):
