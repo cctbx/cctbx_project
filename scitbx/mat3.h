@@ -286,7 +286,7 @@ namespace scitbx {
       //! Sum of element-wise products.
       inline
       NumType
-      dot(mat3 const& other)
+      dot(mat3 const& other) const
       {
         mat3 const& m = *this;
         return m[0] * other[0]
