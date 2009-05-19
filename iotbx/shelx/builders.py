@@ -2,8 +2,6 @@ from cctbx import crystal
 from cctbx import xray
 from cctbx import geometry_restraints
 from cctbx import adp_restraints
-from smtbx.refinement.restraints\
-     import adp_restraints as smtbx_adp_restraints
 
 from iotbx.shelx import util
 
@@ -89,6 +87,8 @@ class restrained_crystal_structure_builder(afixed_crystal_structure_builder):
       adp.isotropic_adp_proxy: adp.shared_isotropic_adp_proxy(),
       adp.rigid_bond_proxy: adp.shared_rigid_bond_proxy(),
     }
+    from smtbx.refinement.restraints import \
+      adp_restraints as smtbx_adp_restraints
     self.adp_proxy_builders = {
       adp.adp_similarity_proxy: smtbx_adp_restraints.adp_similarity_restraints,
       adp.rigid_bond_proxy: smtbx_adp_restraints.rigid_bond_restraints,
