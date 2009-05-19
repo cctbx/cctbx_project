@@ -194,7 +194,7 @@ namespace scitbx {
       //! Sum of 9 element-wise products.
       inline
       NumType
-      dot(sym_mat3 const& other)
+      dot(sym_mat3 const& other) const
       {
         sym_mat3 const& m = *this;
         return m[0] * other[0]
