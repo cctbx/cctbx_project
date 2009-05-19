@@ -40,11 +40,15 @@ class collector(object):
       sites_moved))
 
 common_parameter_trial_table = [
-  ("tardy_displacements_auto.rmsd", (0.5, 0.75, 1.0, 1.25, 1.5)),
+  ("tardy_displacements_auto.rmsd", (0.5, 1.0, 1.5)),
   ("structure_factors_high_resolution", (1, 2, 3, 4, 5)),
-  ("real_space_target_weight", (1, 10, 100, 1000)),
-  ("real_space_gradients_delta_resolution_factor", (1, 2/3, 1/3)),
+  ("real_space_target_weight", (10, 50, 100)),
+  ("real_space_gradients_delta_resolution_factor", (1/3,)),
   ("emulate_cartesian", (False, True))
+]
+annealing_parameter_trial_table = common_parameter_trial_table + [
+  ("start_temperature_kelvin", (2500, 5000)),
+  ("number_of_cooling_steps", (500, 1000))
 ]
 
 def number_of_trials(table):
@@ -73,6 +77,9 @@ def get_master_phil():
     input_string="""\
 pdb_file = None
   .type = path
+algorithm = *minimization annealing
+  .type = choice
+  .optional = False
 %(dihedral_function_type_params_str)s
 number_of_random_trials = 2
   .type = int
@@ -106,10 +113,16 @@ def run(args):
   tst_tardy_pdb_master_phil = tst_tardy_pdb.get_master_phil()
   tst_tardy_pdb_params = tst_tardy_pdb_master_phil.extract()
   tst_tardy_pdb_params.tardy_displacements = Auto
-  cp_n_trials = number_of_trials(table=common_parameter_trial_table)
-  print "Number of common parameter trials:", cp_n_trials
-  print "common_parameter_trial_table:"
-  pprint.pprint(common_parameter_trial_table)
+  if (local_params.algorithm == "minimization"):
+    parameter_trial_table = common_parameter_trial_table
+  elif (local_params.algorithm == "annealing"):
+    parameter_trial_table = annealing_parameter_trial_table
+  else:
+    raise AssertionError
+  cp_n_trials = number_of_trials(table=parameter_trial_table)
+  print "Number of parameter trials:", cp_n_trials
+  print "parameter_trial_table:"
+  pprint.pprint(parameter_trial_table)
   print
   #
   show_times_at_exit()
@@ -125,10 +138,15 @@ def run(args):
     sys.stdout.flush()
     set_parameters(
       params=tst_tardy_pdb_params,
-      trial_table=common_parameter_trial_table,
+      trial_table=parameter_trial_table,
       cp_i_trial=cp_i_trial)
-    tst_tardy_pdb_params.number_of_cooling_steps = 0
-    tst_tardy_pdb_params.minimization_max_iterations = None
+    if (local_params.algorithm == "minimization"):
+      tst_tardy_pdb_params.number_of_cooling_steps = 0
+      tst_tardy_pdb_params.minimization_max_iterations = None
+    elif (local_params.algorithm == "annealing"):
+      tst_tardy_pdb_params.minimization_max_iterations = 0
+    else:
+      raise AssertionError
     for random_seed in xrange(local_params.number_of_random_trials):
       tst_tardy_pdb_params.random_seed = random_seed
       tst_tardy_pdb_params.dihedral_function_type \
