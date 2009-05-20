@@ -42,13 +42,13 @@ class collector(object):
 common_parameter_trial_table = [
   ("tardy_displacements_auto.rmsd_vs_high_resolution_factor", (1/3, 2/3, 1)),
   ("structure_factors_high_resolution", (1.25, 2.5, 3.75, 5)),
-  ("real_space_target_weight", (10, 80, 200)),
+  ("real_space_target_weight", (100, 250, 500)),
   ("real_space_gradients_delta_resolution_factor", (1/3,)),
   ("emulate_cartesian", (False, True))
 ]
 annealing_parameter_trial_table = common_parameter_trial_table + [
-  ("start_temperature_kelvin", (2500, 5000)),
-  ("number_of_cooling_steps", (500, 1000))
+  ("start_temperature_kelvin", (5000, 10000)),
+  ("number_of_cooling_steps", (250, 500))
 ]
 
 def number_of_trials(table):
