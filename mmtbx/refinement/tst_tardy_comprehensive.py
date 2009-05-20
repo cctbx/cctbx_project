@@ -80,6 +80,9 @@ pdb_file = None
 algorithm = *minimization annealing
   .type = choice
   .optional = False
+random_displacements_parameterization = *constrained cartesian
+  .type = choice
+  .optional = False
 %(dihedral_function_type_params_str)s
 number_of_random_trials = 2
   .type = int
@@ -113,6 +116,8 @@ def run(args):
   tst_tardy_pdb_master_phil = tst_tardy_pdb.get_master_phil()
   tst_tardy_pdb_params = tst_tardy_pdb_master_phil.extract()
   tst_tardy_pdb_params.tardy_displacements = Auto
+  tst_tardy_pdb_params.tardy_displacements_auto.parameterization \
+    = local_params.random_displacements_parameterization
   if (local_params.algorithm == "minimization"):
     parameter_trial_table = common_parameter_trial_table
   elif (local_params.algorithm == "annealing"):
