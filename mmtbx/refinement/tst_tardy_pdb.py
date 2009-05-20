@@ -203,17 +203,26 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
             sites_cart=ideal_sites_cart,
             target_rmsd=target_rmsd*multiplier))
           sim = get_sim_no_density()
-          sim.minimization(max_iterations=None)
+          sim.minimization(max_iterations=20)
           sites = sim.sites_moved()
           sites_moved = flex.vec3_double(sites)
           rmsd = sites_moved.rms_difference(ideal_sites_cart)
           rmsd_history.append((multiplier, rmsd))
+          print >> log, "    multiplier, rmsd: %13.6e, %13.6e" \
+            % rmsd_history[-1]
+          log.flush()
           if (rmsd < target_rmsd - target_rmsd_tol):
-            multiplier *= 1.1
+            if (rmsd != 0):
+              multiplier = min(
+                multiplier*2, max(
+                  multiplier*1.2,
+                    target_rmsd / rmsd))
+            else:
+              multiplier *= 2
           else:
             if (rmsd <= target_rmsd + target_rmsd_tol):
               break
-            multiplier *= 0.9
+            multiplier *= max(0.5, target_rmsd/rmsd)
         else:
           raise_max_steps_exceeded(
             var_name="multiplier", rmsd_history=rmsd_history)
