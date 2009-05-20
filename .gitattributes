@@ -318,7 +318,9 @@ mmtbx/monomer_library/tst_rna_dna_interpretation.py -text
 mmtbx/monomer_library/tst_rna_sugar_pucker_analysis.py svneol=native#text/x-python
 mmtbx/pdbtools.py -text
 mmtbx/polygon/__init__.py -text
+mmtbx/polygon/gui.py -text
 mmtbx/polygon/tst.py -text
+mmtbx/polygon/tst_gui.py -text
 mmtbx/real_space_correlation.py -text
 mmtbx/refinement/occupancies.py -text
 mmtbx/refinement/refinement_flags.py -text

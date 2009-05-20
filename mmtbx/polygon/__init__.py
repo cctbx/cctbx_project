@@ -209,7 +209,7 @@ def apply_default_filter(database_dict, d_min, max_models_for_default_filter,
   return select_dict(database_dict = database_dict, selection = selection)
 
 def polygon(params = master_params.extract(), d_min = None,
-            show_histograms = True):
+            show_histograms = True, extract_gui_data=False):
   if(params.polygon.database_file_name is None):
     file_name = libtbx.env.find_in_repositories(
       relative_path = "chem_data/polygon_data/phenix_mvd_2009_APR_14_21h23.pickle",
@@ -244,7 +244,12 @@ def polygon(params = master_params.extract(), d_min = None,
       key                 = key_to_show,
       max_reject_fraction = params.polygon.max_reject_fraction)
   histograms = []
-  if(show_histograms):
+  if extract_gui_data :
+    n_slots = params.polygon.number_of_histogram_slots
+    for selected_key in params.polygon.keys_to_show:
+      data = convert_to_numeric(values=result[selected_key])
+      histograms.append([selected_key, data]) # XXX: not really histograms!
+  elif(show_histograms):
     for selected_key in params.polygon.keys_to_show:
       data = convert_to_numeric(values=result[selected_key])
       print "%s data_points=%d" % (selected_key, data.size()), \
@@ -259,5 +264,5 @@ def polygon(params = master_params.extract(), d_min = None,
       if(n_slots == 0):
         raise Sorry("Not enough data selected.")
       h = show_histogram(data = data, n_slots = n_slots)
-      histograms.append([selected_key,h])
+      histograms.append([selected_key,data])
   return histograms
