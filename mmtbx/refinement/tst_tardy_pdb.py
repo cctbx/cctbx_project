@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.refinement.tardy
 from mmtbx.monomer_library import pdb_interpretation
 import mmtbx.monomer_library.server as mon_lib_server
@@ -142,20 +143,28 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
     if (params.tardy_displacements is Auto):
       sites_cart_start = flex.vec3_double(sim.sites_moved())
       sim.assign_random_velocities()
-      delta_t = params.tardy_displacements_auto.first_delta_t
-      assert params.tardy_displacements_auto.max_steps > 0
+      auto_params = params.tardy_displacements_auto
+      delta_t = auto_params.first_delta_t
+      target_rmsd = \
+          params.structure_factors_high_resolution \
+        * auto_params.rmsd_vs_high_resolution_factor
+      target_rmsd_tol = \
+          params.structure_factors_high_resolution \
+        * auto_params.rmsd_tolerance
+      assert target_rmsd > 0
+      assert target_rmsd_tol > 0
+      assert auto_params.max_steps > 0
       delta_t_rmsd_history = []
-      for i_step in xrange(params.tardy_displacements_auto.max_steps):
+      for i_step in xrange(auto_params.max_steps):
         prev_q = sim.pack_q()
         sim.dynamics_step(delta_t=delta_t)
         sites_moved = flex.vec3_double(sim.sites_moved())
         rmsd = sites_moved.rms_difference(sites_cart_start)
         delta_t_rmsd_history.append((delta_t, rmsd))
-        if (rmsd < params.tardy_displacements_auto.rmsd):
-          delta_t *= 2 - rmsd / params.tardy_displacements_auto.rmsd
+        if (rmsd < target_rmsd - target_rmsd_tol):
+          delta_t *= 2 - rmsd / target_rmsd
         else:
-          if (rmsd <= params.tardy_displacements_auto.rmsd
-                    * params.tardy_displacements_auto.excessive_rmsd_factor):
+          if (rmsd <= target_rmsd + target_rmsd_tol):
             break
           sim.unpack_q(packed_q=prev_q)
           delta_t *= 0.5
@@ -173,6 +182,8 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
       print >> log, "  tardy_displacements=%s" % ",".join(
         ["%.6g" % v for v in q])
       print >> log, "  rmsd: %.6g" % rmsd
+      print >> log, "  high resolution: %.6g" \
+        % params.structure_factors_high_resolution
       print >> log
     else:
       q = sim.pack_q()
@@ -257,9 +268,9 @@ random_seed = None
 tardy_displacements = None
   .type = floats
 tardy_displacements_auto {
-  rmsd = 1.0
+  rmsd_vs_high_resolution_factor = 1/3
     .type = float
-  excessive_rmsd_factor = 2
+  rmsd_tolerance = 0.1
     .type = float
   first_delta_t = 0.001
     .type = float
