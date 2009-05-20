@@ -274,6 +274,21 @@ class simulation(object):
     assert i == packed_q.size()
     O.flag_positions_as_changed()
 
+  def pack_qd(O):
+    result = flex.double()
+    for B in O.bodies:
+      result.extend(flex.double(B.qd))
+    return result
+
+  def unpack_qd(O, packed_qd):
+    i = 0
+    for B in O.bodies:
+      n = B.J.degrees_of_freedom
+      B.qd = matrix.col(packed_qd[i:i+n])
+      i += n
+    assert i == packed_qd.size()
+    O.flag_velocities_as_changed()
+
   def minimization(O, max_iterations=None, callback_after_step=None):
     return refinery(
       sim=O,
@@ -412,9 +427,13 @@ def exercise_qd_e_kin_scales(sim):
   assert approx_equal(scales_fast, scales_slow)
 
 def exercise_random_velocities(sim):
-  for e_kin_target in [1, 1.3, 13, 0]:
+  prev_qd = sim.pack_qd()
+  for e_kin_target in [1, 1.3, 0, 13]:
     sim.assign_random_velocities(e_kin_target=e_kin_target)
     assert approx_equal(sim.e_kin(), e_kin_target)
+  assert not approx_equal(sim.pack_qd(), prev_qd, out=None)
+  sim.unpack_qd(packed_qd=prev_qd)
+  assert approx_equal(sim.pack_qd(), prev_qd)
 
 def exercise_sim(out, n_dynamics_steps, delta_t, sim):
   sim.check_d_pot_d_q()
