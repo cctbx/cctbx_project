@@ -40,9 +40,9 @@ class collector(object):
       sites_moved))
 
 common_parameter_trial_table = [
-  ("tardy_displacements_auto.rmsd", (0.5, 1.0, 1.5)),
-  ("structure_factors_high_resolution", (1, 2, 3, 4, 5)),
-  ("real_space_target_weight", (10, 50, 100)),
+  ("tardy_displacements_auto.rmsd_vs_high_resolution_factor", (1/3, 2/3, 1)),
+  ("structure_factors_high_resolution", (1.25, 2.5, 3.75, 5)),
+  ("real_space_target_weight", (10, 80, 200)),
   ("real_space_gradients_delta_resolution_factor", (1/3,)),
   ("emulate_cartesian", (False, True))
 ]
