@@ -70,21 +70,22 @@ class potential_object(object):
         O.g += reduced_geo_energies.gradients
       O.last_grms = group_args(geo=flex.mean_sq(O.g.as_double())**0.5)
       #
-      rs_f = maptbx.real_space_target_simple(
-        unit_cell=O.geo_manager.crystal_symmetry.unit_cell(),
-        density_map=O.density_map,
-        sites_cart=sites_cart)
-      rs_g = maptbx.real_space_gradients_simple(
-        unit_cell=O.geo_manager.crystal_symmetry.unit_cell(),
-        density_map=O.density_map,
-        sites_cart=sites_cart,
-        delta=O.real_space_gradients_delta)
-      rs_f *= -O.real_space_target_weight
-      rs_g *= -O.real_space_target_weight
-      O.f += rs_f
-      O.g += rs_g
-      O.last_grms.real = flex.mean_sq(rs_g.as_double())**0.5
-      O.last_grms.real_or_xray = "real"
+      if (O.density_map is not None):
+        rs_f = maptbx.real_space_target_simple(
+          unit_cell=O.geo_manager.crystal_symmetry.unit_cell(),
+          density_map=O.density_map,
+          sites_cart=sites_cart)
+        rs_g = maptbx.real_space_gradients_simple(
+          unit_cell=O.geo_manager.crystal_symmetry.unit_cell(),
+          density_map=O.density_map,
+          sites_cart=sites_cart,
+          delta=O.real_space_gradients_delta)
+        rs_f *= -O.real_space_target_weight
+        rs_g *= -O.real_space_target_weight
+        O.f += rs_f
+        O.g += rs_g
+        O.last_grms.real = flex.mean_sq(rs_g.as_double())**0.5
+        O.last_grms.real_or_xray = "real"
       #
       O.last_grms.total = flex.mean_sq(O.g.as_double())**0.5
     return O.f
@@ -92,6 +93,18 @@ class potential_object(object):
   def d_e_pot_d_sites(O, sites_moved):
     O.e_pot(sites_moved=sites_moved)
     return matrix.col_list(O.g)
+
+def cartesian_random_displacements(sites_cart, target_rmsd, max_trials=10):
+  assert sites_cart.size() != 0
+  for i in xrange(max_trials):
+    shifts_cart = flex.vec3_double(flex.random_double(
+      size=sites_cart.size()*3, factor=2) - 1)
+    rmsd = (flex.sum(shifts_cart.dot()) / sites_cart.size()) ** 0.5
+    if (rmsd > 1.e-6): break # to avoid numerical problems
+  else:
+    raise RuntimeError
+  shifts_cart *= (target_rmsd / rmsd)
+  return sites_cart + shifts_cart
 
 def run_test(params, pdb_files, other_files, callback=None, log=None):
   if (log is None): log = sys.stdout
@@ -133,18 +146,33 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
   masses = xs.atomic_weights()
   #
   if (params.tardy_displacements is not None):
-    tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
-    sim = tst_molecules.simulation(
-      labels=labels,
-      sites=sites,
-      masses=masses,
-      tardy_tree=tardy_tree,
-      potential_obj=None)
+    def get_sim_no_potential():
+      tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
+      return tst_molecules.simulation(
+        labels=labels,
+        sites=sites,
+        masses=masses,
+        tardy_tree=tardy_tree,
+        potential_obj=None)
+    def get_sim_no_density():
+      tardy_tree = scitbx.graph.tardy_tree.construct(sites=sites, edge_list=[])
+      tardy_tree.finalize()
+      potential_obj = potential_object(
+        density_map=None,
+        geo_manager=geo_manager,
+        reduced_geo_manager=None,
+        nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
+        real_space_gradients_delta=None,
+        real_space_target_weight=None,
+        ideal_sites_cart=None)
+      return tst_molecules.simulation(
+        labels=labels,
+        sites=sites,
+        masses=masses,
+        tardy_tree=tardy_tree,
+        potential_obj=potential_obj)
     if (params.tardy_displacements is Auto):
-      sites_cart_start = flex.vec3_double(sim.sites_moved())
-      sim.assign_random_velocities()
       auto_params = params.tardy_displacements_auto
-      delta_t = auto_params.first_delta_t
       target_rmsd = \
           params.structure_factors_high_resolution \
         * auto_params.rmsd_vs_high_resolution_factor
@@ -153,42 +181,81 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
         * auto_params.rmsd_tolerance
       assert target_rmsd > 0
       assert target_rmsd_tol > 0
-      assert auto_params.max_steps > 0
-      delta_t_rmsd_history = []
-      for i_step in xrange(auto_params.max_steps):
-        prev_q = sim.pack_q()
-        prev_qd = sim.pack_qd()
-        sim.dynamics_step(delta_t=delta_t)
-        sites_moved = flex.vec3_double(sim.sites_moved())
-        rmsd = sites_moved.rms_difference(sites_cart_start)
-        delta_t_rmsd_history.append((delta_t, rmsd))
-        if (rmsd < target_rmsd - target_rmsd_tol):
-          delta_t *= 2 - rmsd / target_rmsd
-        else:
-          if (rmsd <= target_rmsd + target_rmsd_tol):
-            break
-          sim.unpack_q(packed_q=prev_q)
-          sim.unpack_qd(packed_qd=prev_qd)
-          delta_t *= 0.5
-        prev_q = None
-        prev_qd = None
-      else:
-        msg = [
-          "tardy_displacements_auto.max_steps exceeded:",
-          "  delta_t        rmsd"]
-        for delta_t_rmsd in delta_t_rmsd_history:
-          msg.append("  %13.6e  %13.6e" % delta_t_rmsd)
-        raise Sorry("\n".join(msg))
-      del delta_t_rmsd_history
-      q = sim.pack_q()
-      print >> log, "Random displacements:"
-      print >> log, "  tardy_displacements=%s" % ",".join(
-        ["%.6g" % v for v in q])
-      print >> log, "  rmsd: %.6g" % rmsd
+      print >> log, "Random displacements (%s):" \
+        % params.tardy_displacements_auto.parameterization
       print >> log, "  high resolution: %.6g" \
         % params.structure_factors_high_resolution
-      print >> log
+      print >> log, "  target rmsd: %.6g" % target_rmsd
+      print >> log, "  target rmsd tolerance: %.6g" % target_rmsd_tol
+      log.flush()
+      def raise_max_steps_exceeded(var_name, rmsd_history):
+        msg = [
+          "tardy_displacements_auto.max_steps exceeded:",
+          "  %        -13s  rmsd" % var_name]
+        for var_rmsd in rmsd_history:
+          msg.append("  %13.6e  %13.6e" % var_rmsd)
+        raise Sorry("\n".join(msg))
+      if (params.tardy_displacements_auto.parameterization == "cartesian"):
+        multiplier = 1.5
+        rmsd_history = []
+        for i_step in xrange(auto_params.max_steps):
+          sites = matrix.col_list(cartesian_random_displacements(
+            sites_cart=ideal_sites_cart,
+            target_rmsd=target_rmsd*multiplier))
+          sim = get_sim_no_density()
+          sim.minimization(max_iterations=None)
+          sites = sim.sites_moved()
+          sites_moved = flex.vec3_double(sites)
+          rmsd = sites_moved.rms_difference(ideal_sites_cart)
+          rmsd_history.append((multiplier, rmsd))
+          if (rmsd < target_rmsd - target_rmsd_tol):
+            multiplier *= 1.1
+          else:
+            if (rmsd <= target_rmsd + target_rmsd_tol):
+              break
+            multiplier *= 0.9
+        else:
+          raise_max_steps_exceeded(
+            var_name="multiplier", rmsd_history=rmsd_history)
+        del rmsd_history
+        print >> log, "  actual rmsd: %.6g" % rmsd
+        print >> log
+      elif (params.tardy_displacements_auto.parameterization == "constrained"):
+        sim = get_sim_no_potential()
+        sim.assign_random_velocities()
+        delta_t = auto_params.first_delta_t
+        rmsd_history = []
+        assert auto_params.max_steps > 0
+        for i_step in xrange(auto_params.max_steps):
+          prev_q = sim.pack_q()
+          prev_qd = sim.pack_qd()
+          sim.dynamics_step(delta_t=delta_t)
+          sites_moved = flex.vec3_double(sim.sites_moved())
+          rmsd = sites_moved.rms_difference(ideal_sites_cart)
+          rmsd_history.append((delta_t, rmsd))
+          if (rmsd < target_rmsd - target_rmsd_tol):
+            delta_t *= 2 - rmsd / target_rmsd
+          else:
+            if (rmsd <= target_rmsd + target_rmsd_tol):
+              break
+            sim.unpack_q(packed_q=prev_q)
+            sim.unpack_qd(packed_qd=prev_qd)
+            delta_t *= 0.5
+          prev_q = None
+          prev_qd = None
+        else:
+          raise_max_steps_exceeded(
+            var_name="delta_t", rmsd_history=rmsd_history)
+        del rmsd_history
+        print >> log, "  actual rmsd: %.6g" % rmsd
+        print >> log, "  tardy_displacements=%s" % ",".join(
+          ["%.6g" % v for v in sim.pack_q()])
+        print >> log
+        sites = sim.sites_moved()
+      else:
+        raise AssertionError
     else:
+      sim = get_sim_no_potential()
       q = sim.pack_q()
       if (len(params.tardy_displacements) != len(q)):
         print >> log, "tardy_displacements:", params.tardy_displacements
@@ -205,7 +272,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
           [str(v) for v in q])
         raise Sorry("Incompatible tardy_displacements.")
       sim.unpack_q(packed_q=flex.double(params.tardy_displacements))
-    sites = sim.sites_moved()
+      sites = sim.sites_moved()
   #
   if (params.emulate_cartesian):
     tardy_tree = scitbx.graph.tardy_tree.construct(sites=sites, edge_list=[])
@@ -271,6 +338,9 @@ random_seed = None
 tardy_displacements = None
   .type = floats
 tardy_displacements_auto {
+  parameterization = *constrained cartesian
+    .type = choice
+    .optional = False
   rmsd_vs_high_resolution_factor = 1/3
     .type = float
   rmsd_tolerance = 0.1
