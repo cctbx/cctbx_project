@@ -221,6 +221,14 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
               multiplier *= 2
           else:
             if (rmsd <= target_rmsd + target_rmsd_tol):
+              sim.minimization(max_iterations=500)
+              sites = sim.sites_moved()
+              sites_moved = flex.vec3_double(sites)
+              rmsd = sites_moved.rms_difference(ideal_sites_cart)
+              rmsd_history.append((0, rmsd))
+              print >> log, "    multiplier, rmsd: %13.6e, %13.6e" \
+                % rmsd_history[-1]
+              log.flush()
               break
             multiplier *= max(0.5, target_rmsd/rmsd)
         else:
