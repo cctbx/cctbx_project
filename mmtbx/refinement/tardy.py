@@ -14,7 +14,9 @@ from libtbx.str_utils import format_value
 from libtbx import group_args
 
 master_phil_str = """\
-  start_temperature_kelvin = 5000
+  xray_weight_factor = 10
+    .type = float
+  start_temperature_kelvin = 2500
     .type = float
   final_temperature_kelvin = 300
     .type = float
@@ -24,16 +26,16 @@ master_phil_str = """\
     .type = float
   excessive_temperature_factor = 5
     .type = float
-  number_of_cooling_steps = 20
+  number_of_cooling_steps = 500
     .type = int
-  number_of_time_steps = 50
+  number_of_time_steps = 1
     .type = int
   time_step_pico_seconds = 0.001
     .type = float
   temperature_degrees_of_freedom = *cartesian constrained
     .type = choice
     .optional = False
-  minimization_max_iterations = 25
+  minimization_max_iterations = 0
     .type = int
   nonbonded_attenuation_factor = 0.75
     .type = float
@@ -46,11 +48,13 @@ master_phil_str = """\
 class potential_object(object):
 
   def __init__(O,
+        xray_weight_factor,
         nonbonded_attenuation_factor,
         fmodels,
         model,
         target_weights,
         reduced_geo_manager):
+    O.xray_weight_factor = xray_weight_factor
     O.fmodels = fmodels
     O.model = model
     O.weights = target_weights.xyz_weights_result
@@ -87,8 +91,8 @@ class potential_object(object):
       tg = O.fmodels.target_and_gradients(
         weights=O.weights,
         compute_gradients=True)
-      O.f = tg.target()
-      O.g = tg.gradients()
+      O.f = tg.target() * O.xray_weight_factor
+      O.g = tg.gradients() * O.xray_weight_factor
       assert O.g.size() == len(sites_moved) * 3
       reduced_geo_energies = O.reduced_geo_manager.energies_sites(
         sites_cart=sites_cart,
@@ -141,6 +145,7 @@ def run(fmodels, model, target_weights, params, log):
   print >> log
   log.flush()
   potential_obj = potential_object(
+    xray_weight_factor=params.xray_weight_factor,
     nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
     fmodels=fmodels,
     model=model,
