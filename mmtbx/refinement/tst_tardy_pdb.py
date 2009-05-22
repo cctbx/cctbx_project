@@ -299,7 +299,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
   print >> log, "tardy_tree summary:"
   tardy_tree.show_summary(vertex_labels=labels, out=log, prefix="  ")
   print >> log
-  if (params.emulate_cartesian):
+  if (params.emulate_cartesian or params.keep_all_restraints):
     reduced_geo_manager = None
   else:
     reduced_geo_manager = geo_manager.reduce_for_tardy(tardy_tree=tardy_tree)
@@ -349,6 +349,8 @@ real_space_target_weight = 100
 real_space_gradients_delta_resolution_factor = 1/3
   .type = float
 emulate_cartesian = False
+  .type = bool
+keep_all_restraints = False
   .type = bool
 random_seed = None
   .type = int
