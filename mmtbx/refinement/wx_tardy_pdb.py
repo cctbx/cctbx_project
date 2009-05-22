@@ -125,36 +125,36 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       first_callback=O.first_action_callback)
     O.child_thread.start_and_wait_for_first_callback()
 
-  def first_action_callback(O, sim):
-    O.sim = sim
-    spo = sim.potential_obj
+  def first_action_callback(O, tardy_model):
+    O.tardy_model = tardy_model
+    tpo = tardy_model.potential_obj
     O.draw_map.set_unit_cell_and_density_map(
-      unit_cell=spo.geo_manager.crystal_symmetry.unit_cell(),
-      density_map=spo.density_map)
-    O.points = flex.vec3_double(sim.sites_moved())
-    if (spo.ideal_sites_cart is not None):
-      O.points.extend(spo.ideal_sites_cart)
+      unit_cell=tpo.geo_manager.crystal_symmetry.unit_cell(),
+      density_map=tpo.density_map)
+    O.points = flex.vec3_double(tardy_model.sites_moved())
+    if (tpo.ideal_sites_cart is not None):
+      O.points.extend(tpo.ideal_sites_cart)
     if (O.points.size() < 20):
-      if (spo.ideal_sites_cart is None):
-        O.labels = sim.labels
+      if (tpo.ideal_sites_cart is None):
+        O.labels = tardy_model.labels
       else:
-        O.labels = sim.labels + [""] * len(sim.labels)
+        O.labels = tardy_model.labels + [""] * len(tardy_model.labels)
     def draw_ideal_line():
-      if (spo.ideal_sites_cart is None): return
-      n = sim.tardy_tree.n_vertices
+      if (tpo.ideal_sites_cart is None): return
+      n = tardy_model.tardy_tree.n_vertices
       ideal_line = tuple([i+n for i in line])
       O.line_i_seqs.append(ideal_line)
       O.line_colors[ideal_line] = [0.6]*3
-    if (sim.potential_obj.reduced_geo_manager is not None):
-      for line,color in sim.tardy_tree.viewer_lines_with_colors(
+    if (tardy_model.potential_obj.reduced_geo_manager is not None):
+      for line,color in tardy_model.tardy_tree.viewer_lines_with_colors(
             include_loop_edge_bendings=False):
         draw_ideal_line()
         O.line_i_seqs.append(line)
         O.line_colors[line] = color
-      print "\n".join(sim.tardy_tree.viewer_lines_with_colors_legend(
+      print "\n".join(tardy_model.tardy_tree.viewer_lines_with_colors_legend(
         include_loop_edge_bendings=False))
     else:
-      for line in sim.potential_obj.geo_manager.simple_edge_list():
+      for line in tardy_model.potential_obj.geo_manager.simple_edge_list():
         draw_ideal_line()
         O.line_i_seqs.append(line)
         O.line_colors[line] = (1,0,0)
@@ -188,7 +188,8 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     O.OnRedraw()
 
   def action_callback(O):
-    wx.PostEvent(O, wx_viewer.ViewerUpdateEvent(data=O.sim.sites_moved()))
+    wx.PostEvent(O, wx_viewer.ViewerUpdateEvent(
+      data=O.tardy_model.sites_moved()))
 
   def OnUpdate(O, event) :
     sites_moved = event.data
