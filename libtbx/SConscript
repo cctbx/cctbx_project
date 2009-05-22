@@ -54,6 +54,22 @@ def set_python_include_and_libs(env_etc):
     env_etc.python_framework = "/".join(
       env_etc.python_include.split("/")[:-2] + ["Python"])
 
+def determine_pointer_size(env_base, env_etc):
+  test_code = """\
+#include <iostream>
+int main()
+{
+  std::cout << sizeof(void*) << std::endl;
+  return 0;
+}
+"""
+  env = env_base.Copy(CXXFLAGS=env_etc.cxxflags_base)
+  conf = env.Configure()
+  flag, output = conf.TryRun(test_code, extension='.cpp')
+  conf.Finish()
+  if (not flag): return None
+  return int(output)
+
 env_etc = empty()
 env_etc.no_boost_python = ARGUMENTS.get(
   "no_boost_python",
@@ -478,8 +494,6 @@ else:
     env_etc.ccflags_base = [
       "-fPIC",
       "-fno-strict-aliasing"]
-    if (env_etc.gcc_version >= 40102):
-      env_etc.ccflags_base.append("-ftrapv")
     env_etc.cxxflags_base = env_etc.ccflags_base + [
       "-ftemplate-depth-120"]
     if (libtbx.env.build_options.warning_level == 0):
@@ -512,6 +526,13 @@ else:
       static_exe = None
     env_etc.shlinkflags = ["-shared"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
+    if (env_etc.gcc_version >= 40102):
+      pointer_size = determine_pointer_size(env_base=env_base, env_etc=env_etc)
+      if (pointer_size is not None and pointer_size == 4):
+        print "libtbx.scons: 32-bit build detected: -ftrapv not used"
+      else:
+        env_etc.ccflags_base.append("-ftrapv")
+        env_etc.cxxflags_base.append("-ftrapv")
   elif (env_etc.compiler == "unix_icc"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
