@@ -26,17 +26,17 @@ def report_exception(context_info):
 class collector(object):
 
   def __init__(O):
-    O.sim = None
+    O.tardy_model = None
     O.rmsd = flex.double()
 
-  def __call__(O, sim=None):
-    if (sim is not None):
-      assert O.sim is None
-      O.sim = sim
+  def __call__(O, tardy_model=None):
+    if (tardy_model is not None):
+      assert O.tardy_model is None
+      O.tardy_model = tardy_model
     else:
-      assert O.sim is not None
-    sites_moved = flex.vec3_double(O.sim.sites_moved())
-    O.rmsd.append(O.sim.potential_obj.ideal_sites_cart.rms_difference(
+      assert O.tardy_model is not None
+    sites_moved = flex.vec3_double(O.tardy_model.sites_moved())
+    O.rmsd.append(O.tardy_model.potential_obj.ideal_sites_cart.rms_difference(
       sites_moved))
 
 common_parameter_trial_table = [

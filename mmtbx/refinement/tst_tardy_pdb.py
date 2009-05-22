@@ -7,7 +7,7 @@ import iotbx.phil
 import cctbx.geometry_restraints
 from cctbx import maptbx
 from cctbx.array_family import flex
-from scitbx.rigid_body.essence import tst_molecules
+import scitbx.rigid_body.essence.tardy
 import scitbx.graph.tardy_tree
 from scitbx import matrix
 import libtbx.phil.command_line
@@ -146,15 +146,15 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
   masses = xs.atomic_weights()
   #
   if (params.tardy_displacements is not None):
-    def get_sim_no_potential():
+    def get_tardy_model_no_potential():
       tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
-      return tst_molecules.simulation(
+      return scitbx.rigid_body.essence.tardy.model(
         labels=labels,
         sites=sites,
         masses=masses,
         tardy_tree=tardy_tree,
         potential_obj=None)
-    def get_sim_no_density():
+    def get_tardy_model_no_density():
       tardy_tree = scitbx.graph.tardy_tree.construct(sites=sites, edge_list=[])
       tardy_tree.finalize()
       potential_obj = potential_object(
@@ -165,7 +165,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
         real_space_gradients_delta=None,
         real_space_target_weight=None,
         ideal_sites_cart=None)
-      return tst_molecules.simulation(
+      return scitbx.rigid_body.essence.tardy.model(
         labels=labels,
         sites=sites,
         masses=masses,
@@ -202,9 +202,9 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
           sites = matrix.col_list(cartesian_random_displacements(
             sites_cart=ideal_sites_cart,
             target_rmsd=target_rmsd*multiplier))
-          sim = get_sim_no_density()
-          sim.minimization(max_iterations=20)
-          sites = sim.sites_moved()
+          tardy_model = get_tardy_model_no_density()
+          tardy_model.minimization(max_iterations=20)
+          sites = tardy_model.sites_moved()
           sites_moved = flex.vec3_double(sites)
           rmsd = sites_moved.rms_difference(ideal_sites_cart)
           rmsd_history.append((multiplier, rmsd))
@@ -221,8 +221,8 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
               multiplier *= 2
           else:
             if (rmsd <= target_rmsd + target_rmsd_tol):
-              sim.minimization(max_iterations=500)
-              sites = sim.sites_moved()
+              tardy_model.minimization(max_iterations=500)
+              sites = tardy_model.sites_moved()
               sites_moved = flex.vec3_double(sites)
               rmsd = sites_moved.rms_difference(ideal_sites_cart)
               rmsd_history.append((0, rmsd))
@@ -238,16 +238,16 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
         print >> log, "  actual rmsd: %.6g" % rmsd
         print >> log
       elif (params.tardy_displacements_auto.parameterization == "constrained"):
-        sim = get_sim_no_potential()
-        sim.assign_random_velocities()
+        tardy_model = get_tardy_model_no_potential()
+        tardy_model.assign_random_velocities()
         delta_t = auto_params.first_delta_t
         rmsd_history = []
         assert auto_params.max_steps > 0
         for i_step in xrange(auto_params.max_steps):
-          prev_q = sim.pack_q()
-          prev_qd = sim.pack_qd()
-          sim.dynamics_step(delta_t=delta_t)
-          sites_moved = flex.vec3_double(sim.sites_moved())
+          prev_q = tardy_model.pack_q()
+          prev_qd = tardy_model.pack_qd()
+          tardy_model.dynamics_step(delta_t=delta_t)
+          sites_moved = flex.vec3_double(tardy_model.sites_moved())
           rmsd = sites_moved.rms_difference(ideal_sites_cart)
           rmsd_history.append((delta_t, rmsd))
           if (rmsd < target_rmsd - target_rmsd_tol):
@@ -255,8 +255,8 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
           else:
             if (rmsd <= target_rmsd + target_rmsd_tol):
               break
-            sim.unpack_q(packed_q=prev_q)
-            sim.unpack_qd(packed_qd=prev_qd)
+            tardy_model.unpack_q(packed_q=prev_q)
+            tardy_model.unpack_qd(packed_qd=prev_qd)
             delta_t *= 0.5
           prev_q = None
           prev_qd = None
@@ -266,30 +266,30 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
         del rmsd_history
         print >> log, "  actual rmsd: %.6g" % rmsd
         print >> log, "  tardy_displacements=%s" % ",".join(
-          ["%.6g" % v for v in sim.pack_q()])
+          ["%.6g" % v for v in tardy_model.pack_q()])
         print >> log
-        sites = sim.sites_moved()
+        sites = tardy_model.sites_moved()
       else:
         raise AssertionError
     else:
-      sim = get_sim_no_potential()
-      q = sim.pack_q()
+      tardy_model = get_tardy_model_no_potential()
+      q = tardy_model.pack_q()
       if (len(params.tardy_displacements) != len(q)):
         print >> log, "tardy_displacements:", params.tardy_displacements
-        hinge_edges = sim.tardy_tree.cluster_manager.hinge_edges
-        assert len(hinge_edges) == len(sim.bodies)
-        for (i,j),B in zip(hinge_edges, sim.bodies):
+        hinge_edges = tardy_model.tardy_tree.cluster_manager.hinge_edges
+        assert len(hinge_edges) == len(tardy_model.bodies)
+        for (i,j),B in zip(hinge_edges, tardy_model.bodies):
           if (i == -1): si = "root"
-          else: si = sim.labels[i]
-          sj = sim.labels[j]
+          else: si = tardy_model.labels[i]
+          sj = tardy_model.labels[j]
           print >> log, "%21s - %-21s: %d dof, %d q_size" % (
             si, sj, B.J.degrees_of_freedom, B.J.q_size)
         print >> log, "Zero displacements:"
         print >> log, "  tardy_displacements=%s" % ",".join(
           [str(v) for v in q])
         raise Sorry("Incompatible tardy_displacements.")
-      sim.unpack_q(packed_q=flex.double(params.tardy_displacements))
-      sites = sim.sites_moved()
+      tardy_model.unpack_q(packed_q=flex.double(params.tardy_displacements))
+      sites = tardy_model.sites_moved()
   #
   if (params.emulate_cartesian):
     tardy_tree = scitbx.graph.tardy_tree.construct(sites=sites, edge_list=[])
@@ -326,14 +326,14 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
     real_space_gradients_delta=real_space_gradients_delta,
     real_space_target_weight=params.real_space_target_weight,
     ideal_sites_cart=ideal_sites_cart)
-  sim = tst_molecules.simulation(
+  tardy_model = scitbx.rigid_body.essence.tardy.model(
     labels=labels,
     sites=sites,
     masses=masses,
     tardy_tree=tardy_tree,
     potential_obj=potential_obj)
   mmtbx.refinement.tardy.action(
-    sim=sim,
+    tardy_model=tardy_model,
     params=params,
     callback=callback,
     log=log)

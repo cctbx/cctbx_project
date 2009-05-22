@@ -515,6 +515,7 @@ scitbx/rigid_body/essence/__init__.py svneol=native#text/x-python
 scitbx/rigid_body/essence/featherstone.py svneol=native#text/x-python
 scitbx/rigid_body/essence/joint_lib.py svneol=native#text/x-python
 scitbx/rigid_body/essence/make_bundles.py svneol=native#text/x-python
+scitbx/rigid_body/essence/tardy.py svneol=native#text/x-python
 scitbx/rigid_body/essence/tst_basic.py svneol=native#text/x-python
 scitbx/rigid_body/essence/tst_energy_plots.py svneol=native#text/x-python
 scitbx/rigid_body/essence/tst_molecules.py svneol=native#text/x-python

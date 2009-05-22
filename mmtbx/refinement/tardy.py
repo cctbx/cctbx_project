@@ -6,7 +6,7 @@ from mmtbx.dynamics.constants import akma_time_as_pico_seconds
 from cctbx import xray
 import cctbx.geometry_restraints
 from cctbx.array_family import flex
-from scitbx.rigid_body.essence import tst_molecules
+import scitbx.rigid_body.essence.tardy
 from scitbx.graph import tardy_tree
 from scitbx import matrix
 from libtbx.utils import Sorry
@@ -150,22 +150,22 @@ def run(fmodels, model, target_weights, params, log):
         tardy_tree=tt,
         omit_bonds_with_slack_greater_than
           =params.omit_bonds_with_slack_greater_than))
-  sim = tst_molecules.simulation(
+  tardy_model = scitbx.rigid_body.essence.tardy.model(
     labels=labels,
     sites=sites,
     masses=xs.atomic_weights(),
     tardy_tree=tt,
     potential_obj=potential_obj)
-  action(sim=sim, params=params, callback=None, log=log)
+  action(tardy_model=tardy_model, params=params, callback=None, log=log)
 
-def action(sim, params, callback, log):
-  sites_cart_start = flex.vec3_double(sim.sites_moved())
-  qd_e_kin_scales = sim.assign_random_velocities()
+def action(tardy_model, params, callback, log):
+  sites_cart_start = flex.vec3_double(tardy_model.sites_moved())
+  qd_e_kin_scales = tardy_model.assign_random_velocities()
   cartesian_dof = sites_cart_start.size() * 3
   if   (params.temperature_degrees_of_freedom == "cartesian"):
     temperature_dof = cartesian_dof
   elif (params.temperature_degrees_of_freedom == "constrained"):
-    temperature_dof = sim.degrees_of_freedom
+    temperature_dof = tardy_model.degrees_of_freedom
   else:
     raise RuntimeError(
       "Unknown temperature_degrees_of_freedom: %s"
@@ -176,13 +176,14 @@ def action(sim, params, callback, log):
     return temperature_as_kinetic_energy(dof=temperature_dof, t=t)
   time_step_akma = params.time_step_pico_seconds / akma_time_as_pico_seconds
   print >> log, "tardy dynamics:"
-  print >> log, "  number of bodies:", len(sim.bodies)
+  print >> log, "  number of bodies:", len(tardy_model.bodies)
   fmt = "%%%dd" % len(str(cartesian_dof))
-  print >> log, "  number of degrees of freedom:", fmt % sim.degrees_of_freedom
+  print >> log, "  number of degrees of freedom:", \
+    fmt % tardy_model.degrees_of_freedom
   print >> log, "           number of atoms * 3:", fmt % cartesian_dof
   print >> log, "                         ratio: %.3f = 1/%.2f" % (
-    sim.degrees_of_freedom / max(1, cartesian_dof),
-    cartesian_dof / max(1, sim.degrees_of_freedom))
+    tardy_model.degrees_of_freedom / max(1, cartesian_dof),
+    cartesian_dof / max(1, tardy_model.degrees_of_freedom))
   print >> log, "  temperature degrees of freedom: %s (%d)" % (
     params.temperature_degrees_of_freedom, temperature_dof)
   print >> log, "  kinetic energy sensitivity to generalized velocities:"
@@ -192,7 +193,7 @@ def action(sim, params, callback, log):
   print >> log, "  velocity scaling:", params.velocity_scaling
   log.flush()
   if (callback is not None):
-    if (callback(sim=sim) == False): return
+    if (callback(tardy_model=tardy_model) == False): return
   n_time_steps = 0
   for i_cool_step in xrange(params.number_of_cooling_steps+1):
     if (params.number_of_cooling_steps == 0):
@@ -207,9 +208,9 @@ def action(sim, params, callback, log):
                              / params.number_of_cooling_steps
     e_kin_target = t_as_e(t=t_target)
     def reset_e_kin(msg):
-      sim.reset_e_kin(e_kin_target=e_kin_target)
+      tardy_model.reset_e_kin(e_kin_target=e_kin_target)
       print >> log, "  %s temperature: %8.2f K" % (
-        msg, e_as_t(e=sim.e_kin()))
+        msg, e_as_t(e=tardy_model.e_kin()))
       log.flush()
       return True
     if (   n_time_steps == 0
@@ -218,9 +219,10 @@ def action(sim, params, callback, log):
     for i_time_step in xrange(params.number_of_time_steps):
       assert params.temperature_cap_factor > 1.0
       assert params.excessive_temperature_factor > params.temperature_cap_factor
-      if (sim.e_kin() > e_kin_target * params.temperature_cap_factor):
+      if (tardy_model.e_kin() > e_kin_target * params.temperature_cap_factor):
         print >> log, "  system temperature is too high:"
-        if (sim.e_kin() > e_kin_target * params.excessive_temperature_factor):
+        if (tardy_model.e_kin()
+              > e_kin_target * params.excessive_temperature_factor):
           print >> log, "    excessive_temperature_factor: %.6g" % \
             params.excessive_temperature_factor
           print >> log, "    excessive temperature limit: %.2f K" % (
@@ -236,9 +238,9 @@ def action(sim, params, callback, log):
         print >> log, "     temperature cap: %.2f K" % (
           t_target * params.temperature_cap_factor)
         show_column_headings = reset_e_kin("resetting")
-      e_kin_before, e_tot_before = sim.e_kin(), sim.e_tot()
-      sim.dynamics_step(delta_t=time_step_akma)
-      e_kin_after, e_tot_after = sim.e_kin(), sim.e_tot()
+      e_kin_before, e_tot_before = tardy_model.e_kin(), tardy_model.e_tot()
+      tardy_model.dynamics_step(delta_t=time_step_akma)
+      e_kin_after, e_tot_after = tardy_model.e_kin(), tardy_model.e_tot()
       if (e_tot_before > e_tot_after):
         fluct_e_tot = -e_tot_after / e_tot_before
       elif (e_tot_after > e_tot_before):
@@ -246,9 +248,9 @@ def action(sim, params, callback, log):
       else:
         fluct_e_tot = None
       if (params.velocity_scaling):
-        sim.reset_e_kin(e_kin_target=e_kin_target)
+        tardy_model.reset_e_kin(e_kin_target=e_kin_target)
       n_time_steps += 1
-      grms = sim.potential_obj.last_grms
+      grms = tardy_model.potential_obj.last_grms
       if (show_column_headings):
         show_column_headings = False
         log.write("""\
@@ -258,8 +260,9 @@ def action(sim, params, callback, log):
       print >> log, "    %4d  %8.4f A  %8.2f K  %8.2f K  %s" \
         "  %6.2f  %6.2f  %6.2f" % (
           n_time_steps,
-          flex.vec3_double(sim.sites_moved()).rms_difference(sites_cart_start),
-          e_as_t(e=sim.e_kin()),
+          flex.vec3_double(tardy_model.sites_moved()).rms_difference(
+            sites_cart_start),
+          e_as_t(e=tardy_model.e_kin()),
           e_as_t(e=e_kin_after-e_kin_before),
           format_value(format="%6.3f", value=fluct_e_tot),
           grms.geo,
@@ -274,12 +277,13 @@ def action(sim, params, callback, log):
     log.flush()
     def show_rms(minimizer=None):
       print >> log, "  coor. rmsd: %8.4f" % (
-        flex.vec3_double(sim.sites_moved()).rms_difference(sites_cart_start))
+        flex.vec3_double(tardy_model.sites_moved()).rms_difference(
+          sites_cart_start))
       log.flush()
       if (callback is not None):
         if (callback() == False): raise StopIteration
     try:
-      refinery = sim.minimization(
+      refinery = tardy_model.minimization(
         max_iterations=params.minimization_max_iterations,
         callback_after_step=show_rms)
     except StopIteration:
