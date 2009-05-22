@@ -148,6 +148,37 @@ def compose_top_label(pdb_file, random_displacements_parameterization, e):
     "model: %s" % {False: "torsion", True: "cartesian"}[e],
     "random displacements: %s" % random_displacements_parameterization])
 
+class min_mean_stats(object):
+
+  def __init__(O, algorithm, pdb_file):
+    O.algorithm = algorithm
+    O.pdb_file = pdb_file
+    O.data = {"tt": [], "tc": [], "ct": [], "cc": []}
+
+  def collect(O, rmsd_t_c, param_values):
+    mins = [flex.min(a) for a in rmsd_t_c]
+    means = [flex.mean(a) for a in rmsd_t_c]
+    if (mins[0] < mins[1]): a = "t"
+    else:                   a = "c"
+    if (means[0] < means[1]): b = "t"
+    else:                     b = "c"
+    O.data[a+b].append(param_values)
+
+  def finalize(O):
+    O.data = O.data.items()
+    def cmp_data(a, b):
+      result = -cmp(len(a[1]), len(b[1]))
+      if (result == 0):
+        result = cmp(a[0], b[0])
+      return result
+    O.data.sort(cmp_data)
+    return O
+
+  def show(O):
+    for k,v in O.data:
+      print "TAB", O.algorithm, O.pdb_file, k, len(v), v
+    print "TAB", O.algorithm
+
 def rmsd_start_final_plots_minimization(
       pdb_file,
       random_displacements_parameterization,
@@ -256,6 +287,17 @@ def rmsd_start_final_plots_minimization(
         prefix = "   "
       print
   mpp.write_to_file()
+  #
+  mms = min_mean_stats(algorithm="minimization", pdb_file=pdb_file)
+  assert ttd["emulate_cartesian"] == (False, True)
+  assert len(ttd["real_space_gradients_delta_resolution_factor"]) == 1
+  for h in ttd["structure_factors_high_resolution"]:
+    for d in ttd["real_space_gradients_delta_resolution_factor"]:
+      for w in ttd["real_space_target_weight"]:
+        mms.collect(
+          rmsd_t_c=[plot_data[h][e][d][w].rmsd_final for e in (False, True)],
+          param_values=(h,w))
+  mms.finalize().show()
 
 def rmsd_start_final_plots_annealing(
       pdb_file,
@@ -326,6 +368,20 @@ def rmsd_start_final_plots_annealing(
         page.write_to_file(file_name="plot_%s.pdf" % short_label)
       mpp.add_page(page=page)
   mpp.write_to_file()
+  #
+  mms = min_mean_stats(algorithm="annealing", pdb_file=pdb_file)
+  assert ttd["emulate_cartesian"] == (False, True)
+  assert len(ttd["real_space_gradients_delta_resolution_factor"]) == 1
+  for h in ttd["structure_factors_high_resolution"]:
+    for d in ttd["real_space_gradients_delta_resolution_factor"]:
+      for w in ttd["real_space_target_weight"]:
+        for t in ttd["start_temperature_kelvin"]:
+          for c in ttd["number_of_cooling_steps"]:
+            mms.collect(
+              rmsd_t_c=[plot_data[h][e][d][w][t][c].rmsd_final
+                for e in (False, True)],
+              param_values=(h,w,t,c))
+  mms.finalize().show()
 
 def run(args):
   first_file = open(args[0]).read().splitlines()
