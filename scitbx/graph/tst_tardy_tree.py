@@ -478,7 +478,61 @@ test_cases = [
 
   ]
 
-def special_case_ZINC03847121():
+def exercise_test_cases(out):
+  for i_tc,tc in enumerate(test_cases):
+    print >> out, "test_case index:", i_tc
+    print >> out, tc.art
+    tc_c1, tc_he1, tc_r1, tc_tid1, tc_le1, tc_leb1, \
+    tc_c2, tc_he2, tc_le2, tc_leb2 = \
+      tc.clusters1, tc.hinge_edges1, \
+      tc.roots1, tc.tree_ids1, tc.loop_edges1, tc.loop_edge_bendings1, \
+      tc.clusters1, tc.hinge_edges1, tc.loop_edges1, tc.loop_edge_bendings1
+    def assert_same(label, have, expected):
+      print >> out, label, have
+      if (expected is not None):
+        if (have != expected):
+          print >> out, "expected:", expected
+        assert have == expected, "Note: --verbose for details"
+    #
+    tt = construct(n_vertices=tc.n_vertices, edge_list=tc.edge_list)
+    assert tt.collinear_bonds_edge_list is None
+    cm = tt.cluster_manager
+    assert_same("c1:", cm.clusters, tc_c1)
+    cm.construct_spanning_trees(edge_sets=tt.edge_sets)
+    print >> out, "c1t:", cm.clusters
+    assert_same("he1:", cm.hinge_edges, tc_he1)
+    assert_same("le1:", cm.loop_edges, tc_le1)
+    r = cm.roots()
+    assert_same("r1:", r, tc_r1)
+    tid = cm.tree_ids()
+    assert_same("tid1:", tid, tc_tid1)
+    cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
+    assert_same("leb1:", cm.loop_edge_bendings, tc_leb1)
+    #
+    tt = construct(n_vertices=tc.n_vertices, edge_list=tc.edge_list)
+    cm = tt.cluster_manager
+    cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
+    assert_same("c2:", cm.clusters, tc_c2)
+    cm.construct_spanning_trees(edge_sets=tt.edge_sets)
+    print >> out, "c2t:", cm.clusters
+    assert_same("he2:", cm.hinge_edges, tc_he2)
+    assert_same("le2:", cm.loop_edges, tc_le2)
+    cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
+    assert_same("leb2:", cm.loop_edge_bendings, tc_leb2)
+    #
+    fp = find_paths(edge_sets=tt.edge_sets)
+    for iv in xrange(len(tt.edge_sets)):
+      fp.search_from(iv=iv)
+    #
+    print >> out
+
+def exercise_pdb_test_cases(out):
+  from scitbx.graph import tst_tardy_pdb
+  for i_tc,tc in enumerate(tst_tardy_pdb.test_cases):
+    print >> out, "tst_tardy_pdb index:", i_tc
+    tc.tardy_tree_construct()
+
+def exercise_special_case_ZINC03847121():
   # Only case out of 69587 cases with a RIGID_MINUS_TARDY_6 cluster of
   # size different from 3:
   # RIGID_MINUS_TARDY_6: 3 NILE=0 LE=2 NV=13 ZINC03847121
@@ -586,69 +640,8 @@ END
       assert tt.cluster_manager.clusters == expected_clusters
       assert tt.external_clusters_connect_count == expected_count
 
-def run(args):
-  assert args in [[], ["--verbose"]]
-  verbose = "--verbose" in args
-  if (verbose):
-    out = sys.stdout
-  else:
-    out = StringIO()
-  exercise_cluster_manager()
-  for i_tc,tc in enumerate(test_cases):
-    print >> out, "test_case index:", i_tc
-    print >> out, tc.art
-    tc_c1, tc_he1, tc_r1, tc_tid1, tc_le1, tc_leb1, \
-    tc_c2, tc_he2, tc_le2, tc_leb2 = \
-      tc.clusters1, tc.hinge_edges1, \
-      tc.roots1, tc.tree_ids1, tc.loop_edges1, tc.loop_edge_bendings1, \
-      tc.clusters1, tc.hinge_edges1, tc.loop_edges1, tc.loop_edge_bendings1
-    def assert_same(label, have, expected):
-      print >> out, label, have
-      if (expected is not None):
-        if (have != expected):
-          print >> out, "expected:", expected
-        assert have == expected, "Note: --verbose for details"
-    #
-    tt = construct(n_vertices=tc.n_vertices, edge_list=tc.edge_list)
-    assert tt.collinear_bonds_edge_list is None
-    cm = tt.cluster_manager
-    assert_same("c1:", cm.clusters, tc_c1)
-    cm.construct_spanning_trees(edge_sets=tt.edge_sets)
-    print >> out, "c1t:", cm.clusters
-    assert_same("he1:", cm.hinge_edges, tc_he1)
-    assert_same("le1:", cm.loop_edges, tc_le1)
-    r = cm.roots()
-    assert_same("r1:", r, tc_r1)
-    tid = cm.tree_ids()
-    assert_same("tid1:", tid, tc_tid1)
-    cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
-    assert_same("leb1:", cm.loop_edge_bendings, tc_leb1)
-    #
-    tt = construct(n_vertices=tc.n_vertices, edge_list=tc.edge_list)
-    cm = tt.cluster_manager
-    cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
-    assert_same("c2:", cm.clusters, tc_c2)
-    cm.construct_spanning_trees(edge_sets=tt.edge_sets)
-    print >> out, "c2t:", cm.clusters
-    assert_same("he2:", cm.hinge_edges, tc_he2)
-    assert_same("le2:", cm.loop_edges, tc_le2)
-    cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
-    assert_same("leb2:", cm.loop_edge_bendings, tc_leb2)
-    #
-    fp = find_paths(edge_sets=tt.edge_sets)
-    for iv in xrange(len(tt.edge_sets)):
-      fp.search_from(iv=iv)
-    #
-    print >> out
-  #
+def exercise_show_summary():
   from scitbx.graph import tst_tardy_pdb
-  for i_tc,tc in enumerate(tst_tardy_pdb.test_cases):
-    print >> out, "tst_tardy_pdb index:", i_tc
-    tc.tardy_tree_construct()
-  #
-  special_case_ZINC03847121()
-  exercise_external_clusters()
-  #
   tcs = tst_tardy_pdb.select_test_cases(tags_or_indices=["ZINC03847120"])
   assert len(tcs) == 1
   tt = tcs[0].tardy_tree_construct()
@@ -671,6 +664,50 @@ def run(args):
 &number of loop edges: 0
 &number of loop edge bendings: 0
 """ % cb)
+
+def exercise_edge_classifier():
+  from scitbx.graph import tst_tardy_pdb
+  tcs = tst_tardy_pdb.select_test_cases(tags_or_indices=["van_fragment"])
+  assert len(tcs) == 1
+  tt = tcs[0].tardy_tree_construct()
+  ec = tt.cluster_manager.edge_classifier()
+  edge_classes = {
+    "base":  [],
+    "hinge": [],
+    "intra": [],
+    "loop":  []}
+  for e in tt.edge_list:
+    edge_classes[ec(edge=e)].append(e)
+  assert edge_classes == {
+    "base": [
+      (16,17), (16,23), (17,18), (18,19), (18,20), (20,21), (21,22), (21,23)],
+    "hinge": [
+      (0,1), (0,8), (3,17), (8,10), (10,11), (11,12), (15,16), (15,24)],
+    "intra": [
+      (1,2), (1,7), (2,3), (3,4), (4,5), (4,6), (6,7), (8,9), (12,13),
+      (14,15), (24,25), (24,26)],
+    "loop": [(12, 14)]}
+  #
+  for f,i,j in [(False,5,29), (True,6,32)]:
+    vlcl = tt.viewer_lines_with_colors_legend(include_loop_edge_bendings=f)
+    assert len(vlcl) == i
+    vlc = tt.viewer_lines_with_colors(include_loop_edge_bendings=f)
+    assert len(vlc) == j
+
+def run(args):
+  assert args in [[], ["--verbose"]]
+  verbose = "--verbose" in args
+  if (verbose):
+    out = sys.stdout
+  else:
+    out = StringIO()
+  exercise_cluster_manager()
+  exercise_test_cases(out=out)
+  exercise_pdb_test_cases(out=out)
+  exercise_special_case_ZINC03847121()
+  exercise_external_clusters()
+  exercise_show_summary()
+  exercise_edge_classifier()
   #
   print "OK"
 
