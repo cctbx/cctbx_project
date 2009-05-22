@@ -4,7 +4,8 @@ from mmtbx.refinement import tst_tardy_pdb
 from scitbx.array_family import flex
 from libtbx.math_utils import iceil
 from libtbx import dict_with_default_0, group_args
-import sys
+import sys, os
+op = os.path
 
 try: import reportlab
 except ImportError: reportlab = None
@@ -13,7 +14,7 @@ if (reportlab is None):
 
 class plot_grid(object):
 
-  def __init__(O, grid, top_label, margin=20, top_label_space=40):
+  def __init__(O, grid, top_labels, margin=20, top_label_space=80):
     if (reportlab is None): return
     from reportlab.graphics.shapes import Group, String
     from reportlab.lib import pagesizes
@@ -22,12 +23,13 @@ class plot_grid(object):
     O.top_label_space = top_label_space
     O.page_size = pagesizes.letter
     O.top_group = Group()
-    O.top_group.add(String(
-      O.page_size[0] * 0.5,
-      O.page_size[1] - O.margin - O.top_label_space * 0.6,
-      top_label,
-      fontSize=16,
-      textAnchor="middle"))
+    for i,label in enumerate(top_labels):
+      O.top_group.add(String(
+        O.page_size[0] * 0.5,
+        O.page_size[1] - O.margin - O.top_label_space * 0.3 * (i+1),
+        label,
+        fontSize=16,
+        textAnchor="middle"))
 
   def process(O, grid_ij, xy_max, label, data):
     if (reportlab is None): return
@@ -49,6 +51,24 @@ class plot_grid(object):
       label,
       fontSize=12,
       textAnchor="middle"))
+    if (i == 0 and j == 0):
+      O.top_group.add(String(
+        tx+lp.x+lp.width*0.5,
+        ty+lp.y-lp.height*0.25,
+        "RMSD start",
+        fontSize=12,
+        textAnchor="middle"))
+      gr = Group(String(
+        0,
+        0,
+        "RMSD final",
+        fontSize=12,
+        textAnchor="middle"))
+      gr.rotate(90)
+      gr.translate(
+        ty+lp.y+lp.height*0.5,
+        -(tx+lp.x-lp.width*0.15))
+      O.top_group.add(gr)
 
   def line_plot(O, xy_max, data):
     if (reportlab is None): return
@@ -122,7 +142,15 @@ class multi_page_plots(object):
     if (reportlab is None): return
     O.canvas.save()
 
+def compose_top_label(pdb_file, random_displacements_parameterization, e):
+  return ", ".join([
+    pdb_file,
+    "model: %s" % {False: "torsion", True: "cartesian"}[e],
+    "random displacements: %s" % random_displacements_parameterization])
+
 def rmsd_start_final_plots_minimization(
+      pdb_file,
+      random_displacements_parameterization,
       tst_tardy_pdb_params,
       parameter_trial_table,
       cp_n_trials,
@@ -161,9 +189,13 @@ def rmsd_start_final_plots_minimization(
   #
   mpp = multi_page_plots(file_name="plots_h_e.pdf")
   for e in  ttd["emulate_cartesian"]:
-    top_label = "emulate_cartesian = %s" % str(e)
-    print top_label
-    page = plot_grid(grid=(4,3), top_label=top_label)
+    short_label = "e%d" % int(e)
+    print short_label
+    top_labels = [
+      compose_top_label(
+        pdb_file, random_displacements_parameterization, e),
+      "algorithm: minimization"]
+    page = plot_grid(grid=(4,3), top_labels=top_labels)
     w_d_ranks_rn = {}
     w_d_ranks_rf = {}
     for d in ttd["real_space_gradients_delta_resolution_factor"]:
@@ -200,7 +232,7 @@ def rmsd_start_final_plots_minimization(
       for i,(r,w_d) in enumerate(page_rf):
         w_d_ranks_rf[w_d].append(i)
     if (write_separate_pages):
-      page.write_to_file(file_name="plot_%s.pdf" % top_label)
+      page.write_to_file(file_name="plot_%s.pdf" % short_label)
     mpp.add_page(page=page)
     w_d_ranks_rn = w_d_ranks_rn.items()
     w_d_ranks_rf = w_d_ranks_rf.items()
@@ -226,6 +258,8 @@ def rmsd_start_final_plots_minimization(
   mpp.write_to_file()
 
 def rmsd_start_final_plots_annealing(
+      pdb_file,
+      random_displacements_parameterization,
       tst_tardy_pdb_params,
       parameter_trial_table,
       cp_n_trials,
@@ -268,9 +302,12 @@ def rmsd_start_final_plots_annealing(
   mpp = multi_page_plots(file_name="plots_h_e.pdf")
   for h in ttd["structure_factors_high_resolution"]:
     for e in  ttd["emulate_cartesian"]:
-      top_label = "high resol. %.2f, emulate_cartesian = %s" % (h, str(e))
-      print top_label
-      page = plot_grid(grid=(4,3), top_label=top_label)
+      short_label = "h%.2f_e%d" % (h, int(e))
+      print short_label
+      top_labels = [compose_top_label(
+        pdb_file, random_displacements_parameterization, e)]
+      top_labels.append("high resol: %.2f, algorithm: annealing" % h)
+      page = plot_grid(grid=(4,3), top_labels=top_labels)
       plot_xy_max = iceil(h * 1.3)
       for d in ttd["real_space_gradients_delta_resolution_factor"]:
         for i_w,w in enumerate(ttd["real_space_target_weight"]):
@@ -286,13 +323,38 @@ def rmsd_start_final_plots_annealing(
                 label=label,
                 data=zip(pd.rmsd_start, pd.rmsd_final))
       if (write_separate_pages):
-        page.write_to_file(file_name="plot_%s.pdf" % top_label)
+        page.write_to_file(file_name="plot_%s.pdf" % short_label)
       mpp.add_page(page=page)
   mpp.write_to_file()
 
 def run(args):
-  algorithm = None
-  for line in open(args[0]).read().splitlines():
+  first_file = open(args[0]).read().splitlines()
+  #
+  for line in first_file:
+    if (line.startswith("pdb_file = ")):
+      pdb_file = line.split(" ", 2)[2]
+      assert pdb_file[0] == pdb_file[-1]
+      assert pdb_file[0] in ['"', "'"]
+      pdb_file = op.basename(pdb_file[1:-1])
+      break
+  else:
+    raise RuntimeError('pdb_file = "..." not found.')
+  #
+  for line in first_file:
+    if   (line ==
+            "random_displacements_parameterization = *constrained cartesian"):
+      random_displacements_parameterization = "constrained"
+      break
+    elif (line ==
+            "random_displacements_parameterization = constrained *cartesian"):
+      random_displacements_parameterization = "cartesian"
+      break
+  else:
+    raise RuntimeError(
+      "random_displacements_parameterization = constrained or cartesian"
+      " not found.")
+  #
+  for line in first_file:
     if (line == "algorithm = *minimization annealing"):
       algorithm = "minimization"
       break
@@ -301,6 +363,8 @@ def run(args):
       break
   else:
     raise RuntimeError("algorithm = minimization or annealing not found.")
+  #
+  del first_file
   #
   tst_tardy_pdb_master_phil = tst_tardy_pdb.get_master_phil()
   tst_tardy_pdb_params = tst_tardy_pdb_master_phil.extract()
@@ -343,21 +407,28 @@ def run(args):
     rmsds.append([random_seed_rmsd[cp_i_trial][random_seed]
       for random_seed in xrange(len(random_seeds_found))])
   #
+  write_separate_pages = False
   if (algorithm == "minimization"):
     rmsd_start_final_plots_minimization(
+      pdb_file=pdb_file,
+      random_displacements_parameterization
+        =random_displacements_parameterization,
       tst_tardy_pdb_params=tst_tardy_pdb_params,
       parameter_trial_table=parameter_trial_table,
       cp_n_trials=cp_n_trials,
       rmsds=rmsds,
       rmsd_n_n=50,
-      write_separate_pages=False)
+      write_separate_pages=write_separate_pages)
   elif (algorithm == "annealing"):
     rmsd_start_final_plots_annealing(
+      pdb_file=pdb_file,
+      random_displacements_parameterization
+        =random_displacements_parameterization,
       tst_tardy_pdb_params=tst_tardy_pdb_params,
       parameter_trial_table=parameter_trial_table,
       cp_n_trials=cp_n_trials,
       rmsds=rmsds,
-      write_separate_pages=False)
+      write_separate_pages=write_separate_pages)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
