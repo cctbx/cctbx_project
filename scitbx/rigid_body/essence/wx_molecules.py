@@ -25,11 +25,11 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
         minimum_covering_sphere_view_scale=1.3,
         show_loop_edge_bendings=True):
     self.tardy_model = tardy_model
+    temperature_dof = len(tardy_model.sites) * 3
     if (e_kin_per_dof is None):
-      self.e_kin_target = tardy_model.e_kin() \
-                        / max(1, tardy_model.degrees_of_freedom)
+      self.e_kin_target = tardy_model.e_kin() / max(1, temperature_dof)
     else:
-      self.e_kin_target = e_kin_per_dof * tardy_model.degrees_of_freedom
+      self.e_kin_target = e_kin_per_dof * temperature_dof
       tardy_model.assign_random_velocities(e_kin_target=self.e_kin_target)
     self.velocity_scaling = velocity_scaling
     self.labels = self.tardy_model.labels
