@@ -4,6 +4,8 @@ from mmtbx.refinement import tst_tardy_pdb
 from scitbx.array_family import flex
 from libtbx.math_utils import iceil
 from libtbx import dict_with_default_0, group_args
+from libtbx import easy_pickle
+from libtbx import adopt_init_args
 import sys, os
 op = os.path
 
@@ -150,9 +152,8 @@ def compose_top_label(pdb_file, random_displacements_parameterization, e):
 
 class min_mean_stats(object):
 
-  def __init__(O, algorithm, pdb_file):
-    O.algorithm = algorithm
-    O.pdb_file = pdb_file
+  def __init__(O, algorithm, random_displacements_parameterization, pdb_file):
+    adopt_init_args(O, locals())
     O.data = {"tt": [], "tc": [], "ct": [], "cc": []}
 
   def collect(O, rmsd_t_c, param_values):
@@ -176,8 +177,14 @@ class min_mean_stats(object):
 
   def show(O):
     for k,v in O.data:
-      print "TAB", O.algorithm, O.pdb_file, k, len(v), v
-    print "TAB", O.algorithm
+      print "MIN_MEAN_STATS", O.algorithm, O.pdb_file, k, len(v), v
+
+    print "MIN_MEAN_STATS", O.algorithm
+    return O
+
+  def pickle(O):
+    easy_pickle.dump(file_name="min_mean_stats.pickle", obj=O)
+    return O
 
 def rmsd_start_final_plots_minimization(
       pdb_file,
@@ -288,7 +295,10 @@ def rmsd_start_final_plots_minimization(
       print
   mpp.write_to_file()
   #
-  mms = min_mean_stats(algorithm="minimization", pdb_file=pdb_file)
+  mms = min_mean_stats(
+    algorithm="minimization",
+    random_displacements_parameterization=random_displacements_parameterization,
+    pdb_file=pdb_file)
   assert ttd["emulate_cartesian"] == (False, True)
   assert len(ttd["real_space_gradients_delta_resolution_factor"]) == 1
   for h in ttd["structure_factors_high_resolution"]:
@@ -297,7 +307,7 @@ def rmsd_start_final_plots_minimization(
         mms.collect(
           rmsd_t_c=[plot_data[h][e][d][w].rmsd_final for e in (False, True)],
           param_values=(h,w))
-  mms.finalize().show()
+  mms.finalize().show().pickle()
 
 def rmsd_start_final_plots_annealing(
       pdb_file,
@@ -369,7 +379,10 @@ def rmsd_start_final_plots_annealing(
       mpp.add_page(page=page)
   mpp.write_to_file()
   #
-  mms = min_mean_stats(algorithm="annealing", pdb_file=pdb_file)
+  mms = min_mean_stats(
+    algorithm="annealing",
+    random_displacements_parameterization=random_displacements_parameterization,
+    pdb_file=pdb_file)
   assert ttd["emulate_cartesian"] == (False, True)
   assert len(ttd["real_space_gradients_delta_resolution_factor"]) == 1
   for h in ttd["structure_factors_high_resolution"]:
@@ -381,9 +394,9 @@ def rmsd_start_final_plots_annealing(
               rmsd_t_c=[plot_data[h][e][d][w][t][c].rmsd_final
                 for e in (False, True)],
               param_values=(h,w,t,c))
-  mms.finalize().show()
+  mms.finalize().show().pickle()
 
-def run(args):
+def eval_1(args):
   first_file = open(args[0]).read().splitlines()
   #
   for line in first_file:
@@ -485,6 +498,54 @@ def run(args):
       cp_n_trials=cp_n_trials,
       rmsds=rmsds,
       write_separate_pages=write_separate_pages)
+
+def eval_2(args):
+  i_row_by_tc = {
+    "tt": 0,
+    "tc": 1,
+    "ct": 2,
+    "cc": 3}
+  i_col_major = {
+    "gly_gly_box.pdb": 0,
+    "lys_pro_trp_box.pdb": 1,
+    "1yjp_box.pdb": 2,
+    "1yjp_no_water.pdb": 3}
+  i_col_minor = {
+    "constrained": 0,
+    "cartesian": 1}
+  n_cols = len(i_col_major) * len(i_col_minor)
+  i_table = {
+    "minimization": 0,
+    "annealing": 1}
+  def make_table():
+    return [[None] * n_cols for tc in i_row_by_tc]
+  tabs = [make_table(), make_table()]
+  done = set()
+  for file_name in args:
+    mms = easy_pickle.load(file_name=file_name)
+    i_tab = i_table[mms.algorithm]
+    i_col = \
+      i_col_major[mms.pdb_file] * 2 + \
+      i_col_minor[mms.random_displacements_parameterization]
+    for tc,list_of_param_values in mms.data:
+      i_row = i_row_by_tc[tc]
+      key = (i_tab, i_row, i_col)
+      assert key not in done
+      done.add(key)
+      tabs[i_tab][i_row][i_col] = len(list_of_param_values)
+  assert len(done) == len(tabs) * len(i_row_by_tc) * n_cols
+  table_i = dict([tuple(reversed(item)) for item in i_table.items()])
+  for i_tab,tab in enumerate(tabs):
+    print table_i[i_tab]
+    for row in tab:
+      print " ".join([str(v) for v in row])
+    print
+
+def run(args):
+  if (args[0] != "eval_pickles"):
+    eval_1(args=args)
+  else:
+    eval_2(args=args[1:])
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
