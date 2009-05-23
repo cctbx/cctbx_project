@@ -519,24 +519,34 @@ def eval_2(args):
     "annealing": 1}
   def make_table():
     return [[None] * n_cols for tc in i_row_by_tc]
-  tabs = [make_table(), make_table()]
+  tabs = [make_table() for i_tab in xrange(4)]
   done = set()
   for file_name in args:
     mms = easy_pickle.load(file_name=file_name)
     i_tab = i_table[mms.algorithm]
     i_col = \
-      i_col_major[mms.pdb_file] * 2 + \
+      i_col_major[mms.pdb_file] * len(i_col_minor) + \
       i_col_minor[mms.random_displacements_parameterization]
     for tc,list_of_param_values in mms.data:
       i_row = i_row_by_tc[tc]
       key = (i_tab, i_row, i_col)
       assert key not in done
       done.add(key)
-      tabs[i_tab][i_row][i_col] = len(list_of_param_values)
-  assert len(done) == len(tabs) * len(i_row_by_tc) * n_cols
+      tabs[i_tab*2][i_row][i_col] = len(list_of_param_values)
+      n = 0
+      if (mms.algorithm == "minimization"):
+        for h,w in list_of_param_values:
+          if (w == 10): n += 1
+      elif (mms.algorithm == "annealing"):
+        for h,w,t,c in list_of_param_values:
+          if (w == 10): n += 1
+      else:
+        raise AssertionError
+      tabs[i_tab*2+1][i_row][i_col] = len(list_of_param_values) - n
+  assert len(done) == len(tabs)//2 * len(i_row_by_tc) * n_cols
   table_i = dict([tuple(reversed(item)) for item in i_table.items()])
   for i_tab,tab in enumerate(tabs):
-    print table_i[i_tab]
+    print table_i[i_tab//2], "omit_weight_10=%s" % str(bool(i_tab%2))
     for row in tab:
       print " ".join([str(v) for v in row])
     print
