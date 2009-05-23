@@ -28,7 +28,8 @@ else:
       return val
 
 def adopt_init_args(obj, args, exclude=(), hide=False):
-  del args["self"]
+  if ("self" in args): del args["self"]
+  else:                del args["O"]
   for param in exclude:
     del args[param]
   if (hide == False):
@@ -70,6 +71,8 @@ def adopt_optional_init_args(obj, kwds):
 class copy_init_args(object):
 
   def __init__(self, args, exclude=()):
+    if ("self" in args): del args["self"]
+    else:                del args["O"]
     del args["self"]
     for param in exclude:
       del args[param]
