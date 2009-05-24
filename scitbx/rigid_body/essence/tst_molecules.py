@@ -10,6 +10,26 @@ import sys
 
 class tardy_model(tardy.model):
 
+  def d_pot_d_q_via_finite_differences(O, eps=1.e-6):
+    result = []
+    for B in O.bodies:
+      gs = []
+      J_orig = B.J
+      q_orig = list(J_orig.get_q())
+      for iq in xrange(J_orig.q_size):
+        fs = []
+        for signed_eps in [eps, -eps]:
+          q_eps = list(q_orig)
+          q_eps[iq] += signed_eps
+          B.J = J_orig.new_q(q=q_eps)
+          O.flag_positions_as_changed()
+          fs.append(O.e_pot())
+        gs.append((fs[0]-fs[1])/(2*eps))
+      B.J = J_orig
+      O.flag_positions_as_changed()
+      result.append(matrix.col(gs))
+    return result
+
   def check_d_pot_d_q(O, verbose=0):
     qdd_orig = O.qdd()
     ana = O.d_pot_d_q()
