@@ -500,6 +500,7 @@ scitbx/matrix/svd.h -text
 scitbx/matrix/svd2x2.nb -text
 scitbx/matrix/tests.h -text
 scitbx/matrix/tests/SConscript -text
+scitbx/matrix/tests/tst_givens.cpp -text
 scitbx/matrix/tests/tst_householder.cpp -text
 scitbx/matrix/tests/tst_svd.cpp -text
 scitbx/matrix/tests/tst_svd.nb -text
