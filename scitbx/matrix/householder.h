@@ -7,6 +7,8 @@
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/mat_grid.h>
 #include <scitbx/array_family/accessors/row_and_column.h>
+#include <boost/random/variate_generator.hpp>
+#include <boost/random/normal_distribution.hpp>
 #include <scitbx/math/accumulators.h>
 #include <vector>
 #include <algorithm>
@@ -53,6 +55,10 @@ struct reflection
     zero_vector(x);
   }
 
+  reflection(int n)
+    : v(n)
+  {}
+
   reflection(int m, int n, applied_on_left_tag, bool accumulate)
     : v(m), w(accumulate ? std::max(m,n) : n)
   {}
@@ -66,22 +72,23 @@ struct reflection
   {}
 
   /// Construct the Householder reflection P s.t. Px = ||x||_2 e_1
-  /** x(0) is overwritten with the first element of Px
+  /** If requested, x(0) is overwritten with the first element of Px
       whereas x(1:) is overwritten with the essential part of the Householder
       vector. Since operator() is used to access the elements of x, that code
       works even if x is stored with a stride different of 1
+
+      v is filled with the essential part of the Householder vector.
+
       Reference: Algorithm 5.1.1
   */
   template <class AccessorType>
-  void zero_vector(af::ref<scalar_t, AccessorType> const &x) {
+  void zero_vector(af::ref<scalar_t, AccessorType> const &x, bool overwrite=true)
+  {
     using namespace math::accumulator;
-    // compute beta and v
+    // compute beta and v(0)
     int n = x.size();
     norm_accumulator<scalar_t> norm_accu;
-    for (int i=1; i<n; ++i) {
-      norm_accu(x(i));
-      v[i-1] = x(i);
-    }
+    for (int i=1; i<n; ++i) norm_accu(x(i));
     /* If I was a good boy, I would use norm_accu.norm here to get sqrt(sigma)
        and then compute sqrt(x(0)^2 + sqrt(sigma)^2) in a safe manner */
     scalar_t sigma = norm_accu.sum_sq();
@@ -93,12 +100,22 @@ struct reflection
     scalar_t v0 = x(0) <= 0 ? x(0) - mu : -sigma/(x(0) + mu);
     beta = 2*v0*v0/(sigma + v0*v0);
 
-    // overwrite
-    x(0) = norm_x;
-    for (int i=1; i<n; ++i) {
-      v[i-1] /= v0;
-      x(i) = v[i-1];
+    // compute v(1:) and overwrite if requested
+    if (overwrite) {
+      x(0) = norm_x;
+      for (int i=1; i<n; ++i) {
+        x(i) /= v0;
+        v[i-1] = x(i);
+      }
     }
+    else {
+      for (int i=1; i<n; ++i) v[i-1] = x(i)/v0;
+    }
+  }
+
+  /// Overload taking the vector x from v(0:n), i.e. operating in-place on v
+  void zero_vector(int n) {
+    zero_vector(af::ref<scalar_t>(&v[0], n), false);
   }
 
   /// Replace A(i:, j:) by PA(i:, j:)
@@ -298,6 +315,67 @@ struct reflection
     }
   }
 
+  /// Accumulate a normal random matrix.
+  /** Q being m x n,
+      - if m == n, then Q is a random normal matrix;
+      - if m > n, then Q only consists of the first n columns
+        of a random normal matrix;
+      - if m < n, then Q only consists of the first m rows
+        of a random normal matrix.
+
+      The distribution is uniform on the set of normal matrices.
+      (For mathematically minded people, it is the Haar measure).
+
+   Reference:
+    G.W. Stewart,
+    The efficient generation of random orthogonal matrices
+    with an application to condition estimators,
+    SIAM Journal on Numerical Analysis 17 (1980), no. 3, 403-409.
+
+    This is the method used in LAPACK test tool DLAGGE for example.
+  */
+  template <class UniformRandomNumberGenerator>
+  void
+  accumulate_random_normal_matrix(
+    boost::variate_generator<UniformRandomNumberGenerator,
+                             boost::normal_distribution<scalar_t> > &normal,
+    matrix_ref_t const &q)
+  {
+    int m = q.n_rows(), n = q.n_columns();
+    q.set_identity(false);
+    for (int i=std::min(m, n) - 1; i >= 0; --i) {
+      if (i < n-1) {
+        for (int k=0; k<n-i; ++k) v[k] = normal();
+        zero_vector(n-i);
+        apply_on_right_to_lower_right_block(q, i, i);
+      }
+    }
+  }
+
+  /// Accumulate a random matrix with given singular values
+  template <class UniformRandomNumberGenerator>
+  void
+  accumulate_random_matrix_with_singular_values(
+    boost::variate_generator<UniformRandomNumberGenerator,
+                             boost::normal_distribution<scalar_t> > &normal,
+    af::const_ref<scalar_t> const &sigma,
+    matrix_ref_t const &a)
+  {
+    int m = a.n_rows(), n = a.n_columns();
+    a.set_diagonal(sigma, false);
+    for (int i=std::min(m, n) - 1; i >= 0; --i) {
+      if (i < m-1) {
+        for (int k=0; k<m-i; ++k) v[k] = normal();
+        zero_vector(m-i);
+        apply_on_left_to_lower_right_block(a, i, i);
+      }
+      if (i < n-1) {
+        for (int k=0; k<n-i; ++k) v[k] = normal();
+        zero_vector(n-i);
+        apply_on_right_to_lower_right_block(a, i, i);
+      }
+    }
+  }
 };
 
 
@@ -516,6 +594,55 @@ struct bidiagonalisation
                                        m >= n ? 1 : 0);
     return v;
   }
+};
+
+
+template <typename FloatType, class UniformRandomNumberGenerator>
+struct random_normal_matrix_generator
+{
+  typedef FloatType scalar_t;
+  typedef af::c_grid<2> dim;
+  typedef af::versa<scalar_t, dim> matrix_t;
+  typedef af::ref<scalar_t, af::mat_grid> matrix_ref_t;
+
+  UniformRandomNumberGenerator uniform_gen;
+  boost::normal_distribution<scalar_t> normal_dist;
+
+  boost::variate_generator<UniformRandomNumberGenerator,
+                           boost::normal_distribution<scalar_t> > normal_gen;
+
+  int m, n;
+  reflection<scalar_t> p;
+
+  random_normal_matrix_generator(UniformRandomNumberGenerator &uniform,
+                                 int rows, int columns)
+    : uniform_gen(uniform), normal_dist(0, 1),
+      normal_gen(uniform_gen, normal_dist),
+      m(rows), n(columns),
+      p(m, n, applied_on_left_and_right_tag())
+  {}
+
+  random_normal_matrix_generator(int rows, int columns)
+    : normal_dist(0, 1),
+      normal_gen(uniform_gen, normal_dist),
+      m(rows), n(columns),
+      p(m, n, applied_on_left_and_right_tag())
+  {}
+
+  matrix_t normal_matrix() {
+    matrix_t result(dim(m, n), af::init_functor_null<scalar_t>());
+    matrix_ref_t q = result.ref();
+    p.accumulate_random_normal_matrix(normal_gen, q);
+    return result;
+  }
+
+  matrix_t matrix_with_singular_values(af::const_ref<scalar_t> const &sigma) {
+    matrix_t result(dim(m, n), af::init_functor_null<scalar_t>());
+    matrix_ref_t a = result.ref();
+    p.accumulate_random_matrix_with_singular_values(normal_gen, sigma, a);
+    return result;
+  }
+
 };
 
 

@@ -6,7 +6,7 @@
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost_adaptbx/easy_overloads.h>
-
+#include <scitbx/random.h>
 #include <scitbx/matrix/householder.h>
 #include <scitbx/matrix/svd.h>
 #include <scitbx/matrix/tests.h>
@@ -49,6 +49,36 @@ namespace scitbx {
           ;
       }
     };
+
+    template <typename FloatType, class UniformRandomNumberGenerator>
+    struct random_normal_matrix_generator_wrapper
+    {
+      typedef householder::random_normal_matrix_generator<
+                FloatType, UniformRandomNumberGenerator> wt;
+
+      static af::shared<std::size_t> get_state(wt const &self) {
+        return self.normal_gen.engine().getstate();
+      }
+
+      static void set_state(wt &self,
+                            af::const_ref<std::size_t> const &state)
+      {
+        self.normal_gen.engine().setstate(state);
+      }
+
+      static void wrap(char const *name) {
+        using namespace boost::python;
+        class_<wt>(name, no_init)
+          .def(init<int, int>(
+               args("rows", "columns")))
+          .def("normal_matrix", &wt::normal_matrix)
+          .def("matrix_with_singular_values", &wt::matrix_with_singular_values)
+          .add_property("state", get_state, set_state)
+          ;
+        }
+    };
+
+
 
     template <typename FloatType>
     struct bidiagonal_matrix_svd_decomposition_wrapper
@@ -109,9 +139,13 @@ namespace scitbx {
       matrix_normality_ratio_overloads<double>::wrap("matrix_normality_ratio");
       matrix_equality_ratio_overloads<double>::wrap("matrix_equality_ratio");
 
+      random_normal_matrix_generator_wrapper<
+        double,
+        boost_random::mt19937
+      >::wrap("random_normal_matrix_generator");
+
       using namespace boost::python;
       def("reconstruct_svd", matrix::svd::reconstruct<double>);
-
     }
 
   }} // math::boost_python
