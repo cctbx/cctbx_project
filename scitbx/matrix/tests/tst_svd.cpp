@@ -9,6 +9,7 @@
 #include <scitbx/array_family/misc_functions.h>
 #include <scitbx/matrix/special_matrices.h>
 #include <scitbx/error.h>
+#include <scitbx/constants.h>
 #include <iostream>
 
 #include <scitbx/matrix/svd.h>
@@ -275,6 +276,7 @@ void exercise_golub_kahan_iterations(grading_func_t grading_func,
                                      double ratio_threshold=10) {
   double thresh = ratio_threshold;
 
+  for (int sorting=-1; sorting < 2; ++sorting)
   for (int grading=0; grading < 3; ++grading)
   for (int zero_on_diag=0; zero_on_diag<2; ++zero_on_diag)
   for (int n = 3; n < 10; ++n)
@@ -304,13 +306,89 @@ void exercise_golub_kahan_iterations(grading_func_t grading_func,
       diagonal.ref(), superdiagonal.ref(), svd::upper_bidiagonal_kind,
       u.ref(), true, v.ref(), true);
     svd.compute();
+    if      (sorting == +1) svd.sort(false);
+    else if (sorting == -1) svd.sort(true);
+
     SCITBX_ASSERT(superdiagonal.all_eq(0));
     SCITBX_ASSERT(normality_ratio(u.const_ref(), svd.tol) < thresh);
     SCITBX_ASSERT(normality_ratio(v.const_ref(), svd.tol) < thresh);
 
+    SCITBX_ASSERT(diagonal.all_ge(0));
+
     matrix_t a1 = svd::reconstruct(u_, v_, diagonal.const_ref());
     SCITBX_ASSERT(equality_ratio(a.const_ref(), a1.const_ref(), svd.tol)
                     < thresh);
+  }
+}
+
+void exercise_singular_values_accuracy(double x) {
+  int n = 20;
+
+  // Some of the tests suggested in the ref [4]
+  // (c.f. comments for svd::bidiagonal_decomposition)
+  vec_t d0(n), f0(n-1);
+  for (int i=0; i<n; ++i) {
+    d0[i] = std::pow(x, i);
+    if (i < n-1) f0[i] = d0[i];
+  }
+  matrix_ref_t u_, v_;
+
+  {
+    // graded from small at the upper left corner to large at the lower right
+    vec_t d = d0.deep_copy(), f = f0.deep_copy(), sigma=d0;
+    svd::bidiagonal_decomposition<double> svd(d.ref(), f.ref(),
+                                              svd::upper_bidiagonal_kind,
+                                              u_, false, v_, false);
+    svd.compute();
+    svd.sort(false);
+    SCITBX_ASSERT(f.all_eq(0));
+    vec_t delta = af::abs(d - sigma)/sigma;
+    SCITBX_ASSERT( delta.all_lt(svd.tol) );
+  }
+  {
+    // graded from large at the upper left corner to small at the lower right
+    vec_t d = d0.deep_copy(), f = f0.deep_copy(), sigma=d0;
+    std::reverse(d.begin(), d.end());
+    std::reverse(f.begin(), f.end());
+    svd::bidiagonal_decomposition<double> svd(d.ref(), f.ref(),
+                                              svd::upper_bidiagonal_kind,
+                                              u_, false, v_, false);
+    svd.compute();
+    svd.sort(false);
+    SCITBX_ASSERT(f.all_eq(0));
+    vec_t delta = af::abs(d - sigma)/sigma;
+    SCITBX_ASSERT( delta.all_lt(svd.tol) );
+  }
+  {
+    // graded from large at upper left corner to small at center
+    // to large at lower right corner
+    int n = 10;
+    vec_t d0(2*n), f0(2*n-1);
+    for (int i=0; i<2*n; ++i) {
+      d0[i] = std::pow(x, std::abs(n-1-i));
+      if (i < 2*n-1) f0[i] = d0[i];
+    }
+    vec_t sigma(2*n);
+    af::init(sigma) = 1.e100,
+                      1.41421356237309505e90, 1.e90,
+                      1.22474487139158905e80, 1.e80,
+                      1.15470053837925153e70, 1.e70,
+                      1.11803398874989485e60, 1.e60,
+                      1.09544511501033223e50, 1.e50,
+                      1.08012344973464337e40, 1.e40,
+                      1.06904496764969754e30, 1.e30,
+                      1.06066017177982129e20, 1.e20,
+                      1.05409255338945978e10, 1.e10,
+                      0.316227766016837933; // Thanks Mathematica!
+    vec_t d=d0.deep_copy(), f=f0.deep_copy();
+    svd::bidiagonal_decomposition<double> svd(d.ref(), f.ref(),
+                                              svd::upper_bidiagonal_kind,
+                                              u_, false, v_, false);
+    svd.compute();
+    svd.sort();
+    SCITBX_ASSERT(f.all_eq(0));
+    vec_t delta = af::abs(d - sigma)/sigma;
+    SCITBX_ASSERT( delta.all_lt(svd.tol) );
   }
 }
 
@@ -325,10 +403,7 @@ struct power_law
   double operator()(int i) { return std::pow(m, std::abs(i)); }
 };
 
-void exercise_golub_kahan_iterations_2() {
-  // matrix with all singular values approximately equal
 
-}
 
 
 int main() {
@@ -345,6 +420,7 @@ int main() {
   exercise_golub_kahan_iterations(power_law(0.1), 2);
   exercise_golub_kahan_iterations(power_law(1.e10), 2);
   exercise_golub_kahan_iterations(power_law(1.e-10), 2);
+  exercise_singular_values_accuracy(1e10);
   std::cout << "OK\n";
   return 0;
 }

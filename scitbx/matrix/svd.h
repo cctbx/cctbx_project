@@ -258,6 +258,7 @@ struct bidiagonal_decomposition
   void compute() {
     int n = d.size();
 
+    // Main iteration
     while (s > 1 && n_iterations < n_max_iterations) {
       // Find diagonal block B2 to work on
       s_upper = std::abs(d[s-1]);
@@ -349,7 +350,18 @@ struct bidiagonal_decomposition
       s0 = s;
       n_iterations += s - r;
     }
+
     has_converged = s <= 1;
+
+    // Make all singular values non-negative ...
+    for (int j=0; j<n; ++j){
+      if (d[j] >= 0) continue;
+      d[j] = -d[j];
+      if (q_v.effective) {
+        // B = U Sigma V^T: so change sign of i-th row of V^T
+        for (int i=0; i<v.n_rows(); ++i) v(i,j) = -v(i,j);
+      }
+    }
   }
 
   void test_downward_iteration_convergence() {
@@ -580,6 +592,37 @@ struct bidiagonal_decomposition
     // Accumulate
     q_u.apply_upward_on_right(u, s-1);
     q_v.apply_upward_on_right(v, s-1);
+  }
+
+  /// Sort singular values
+  /** Implementation note: we use selection sort if U or V is accumulated.
+
+      Any sort algorithm needs to swap values which are out-of-order.
+      Here it means swapping not only two singular values
+      but also the associated singular vectors. Thus the cost of one swap
+      is 2n ops, compared to the cost of one comparison which is 1 op.
+      Since selection sort reaches the theoretical minimum number of swaps (n)
+      while performing n(n+1)/2 comparisons, it is the algorithm of choice here.
+  */
+  void sort(bool reverse=true) {
+    int n = d.size();
+    if (!q_u.effective && !q_v.effective) {
+      // No accumulation => best sorting algorithm available
+      if (reverse) std::sort(d.begin(), d.end(), std::greater<scalar_t>());
+      else std::sort(d.begin(), d.end());
+    }
+    else {
+      // Accumulation => selection sort
+      for (int i=0; i<n; ++i) {
+        scalar_t *p = reverse ? std::max_element(&d[i], d.end())
+        : std::min_element(&d[i], d.end());
+        if (p > &d[i]) {
+          std::swap(*p, d[i]);
+          if (q_u.effective) u.swap_columns(p - &d[0], i);
+          if (q_v.effective) v.swap_columns(p - &d[0], i);
+        }
+      }
+    }
   }
 };
 
