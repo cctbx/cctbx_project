@@ -41,6 +41,7 @@ def run():
   "$D/math/boost_python/tst_quadrature.py",
   "$D/math/boost_python/tst_halton.py",
   "$D/math/boost_python/tst_matrix.py",
+  "$D/math/boost_python/tst_svd.py",
   "$D/math/tst_euler_angles.py",
   "$D/math/tst_superpose.py",
   "$D/math/sieve_of_eratosthenes.py",
