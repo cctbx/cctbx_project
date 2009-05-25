@@ -13,13 +13,28 @@ namespace scitbx { namespace matrix {
     return result;
   }
 
+  /// m x n matrix whose diagonal is d
+  /** m and n shall not be smaller than the size p of d: if any of them is
+      greater, then the first p elements of the diagonal are taken from d
+      whereas the trailing part of the diagonal is zero
+  */
+  template <typename NumType>
+  af::versa<NumType, af::c_grid<2> > diagonal(af::const_ref<NumType> d,
+                                              int m, int n)
+  {
+    std::size_t p = d.size();
+    SCITBX_ASSERT(m >= p)(m)(p);
+    SCITBX_ASSERT(n >= p)(m)(p);
+    af::versa<NumType, af::mat_grid> result(af::mat_grid(m,n));
+    af::ref<NumType, af::mat_grid> r = result.ref();
+    for (int i=0; i<p; ++i) r(i,i) = d[i];
+    return result;
+  }
+
+  /// Overloaded variant returning a square diagonal matrix
   template <typename NumType>
   af::versa<NumType, af::c_grid<2> > diagonal(af::const_ref<NumType> d) {
-    std::size_t n = d.size();
-    af::versa<NumType, af::c_grid<2> > result(af::c_grid<2>(n,n));
-    af::ref<NumType, af::c_grid<2> > r = result.ref();
-    for (int i=0; i<n; ++i) r(i,i) = d[i];
-    return result;
+    return diagonal(d, d.size(), d.size());
   }
 
   template <typename NumType>

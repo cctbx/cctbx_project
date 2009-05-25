@@ -309,6 +309,20 @@ namespace scitbx { namespace af {
         for(index_value_type i=0; i < std::min(m,n); i++) (*this)(i,i) = d;
       }
 
+      //! Sets diagonal matrix.
+      /*! Off-diagonal elements are set to zero.
+       */
+      void set_diagonal(af::const_ref<ElementType> const& d,
+                        bool require_square=true) const
+      {
+        SCITBX_ASSERT(!require_square || this->is_square());
+        SCITBX_ASSERT(this->n_rows() >= d.size());
+        SCITBX_ASSERT(this->n_columns() >= d.size());
+        this->fill(0);
+        index_value_type m = this->n_rows(), n = this->n_columns();
+        for(index_value_type i=0; i < d.size(); i++) (*this)(i,i) = d[i];
+      }
+
       //! Sets identity matrix.
       /*! Off-diagonal elements are set to zero.
        */
