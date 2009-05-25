@@ -7,7 +7,7 @@ if [ ! -n "$LIBTBX_VALGRIND" ]; then
   echo "### before calling $LIBTBX_DISPATCHER_NAME."
   opt=""
   if [ "`uname`" = Darwin ]; then
-    opt=" --trace-children=yes"
+    opt=" --trace-children=yes --auto-run-dsymutil=yes"
   fi
   LIBTBX_VALGRIND="valgrind --tool=memcheck$opt --suppressions=`libtbx.show_dist_paths libtbx`/valgrind-python24.supp"
   if [ $? -ne 0 ]; then exit 1; fi
