@@ -181,6 +181,21 @@ void exercise_householder_zeroing_vector() {
                  (overwritten);
   }
 
+  // Householder zeroing vector in-place
+  {
+    householder::reflection<double> p(4);
+    af::ref<double> v(&p.v[0], 4);
+    af::init(v) = 3, 1, 5, 1;
+    af::tiny<double, 3> expected;
+    af::init(expected) = -1, -5, -1;
+    expected /= 3.;
+    p.zero_vector(4);
+    af::ref<double> obtained(&p.v[0], 3);
+    SCITBX_ASSERT(approx_equal(p.beta, 0.5, tol))(p.beta);
+    SCITBX_ASSERT(expected.ref().all_approx_equal(obtained, tol))
+    (obtained);
+  }
+
   // Householder zeroing matrix columns or rows
   {
     int const m=6, n=7;

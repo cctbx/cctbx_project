@@ -206,3 +206,10 @@ Returns None if a*x=b has no solution.
     if (x is not None):
       x = ct.matrix_multiply(x)
   return x
+
+
+class random_normal_matrix_generator(ext.random_normal_matrix_generator):
+
+  def __init__(self, m, n):
+    super(random_normal_matrix_generator, self).__init__(m, n)
+    self.state = flex.random_generator.getstate()
