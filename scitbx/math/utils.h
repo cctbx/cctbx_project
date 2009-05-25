@@ -23,6 +23,19 @@ namespace scitbx { namespace math {
     return m;
   }
 
+  /// Overflow-proof sqrt(x*x + y*y)
+  template <typename NumType>
+  inline
+  NumType norm(NumType x, NumType y) {
+    x = std::abs(x);
+    y = std::abs(y);
+    if (x > y) std::swap(x, y);
+    // 0 < x < y from here on
+    if (x == 0) return y;
+    NumType t = x/y;
+    return y*std::sqrt(NumType(1) + t*t);
+  }
+
   template <typename FloatType>
   FloatType
   round(FloatType x, int n_digits=0)
