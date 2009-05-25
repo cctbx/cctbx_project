@@ -7,6 +7,7 @@
 #include <scitbx/matrix/special_matrices.h>
 #include <scitbx/matrix/move.h>
 #include <scitbx/error.h>
+#include <scitbx/random.h>
 #include <scitbx/array_family/simple_io.h>
 #include <iostream>
 
@@ -143,6 +144,29 @@ struct lotkin_test_case : test_case
     for (int i=0; i<m; ++i) for (int j=0; j<n; ++j) {
       a_(i,j) = i > 0 ? 1./(i+j+1) : 1;
     }
+  }
+};
+
+struct graded_test_case : test_case
+{
+  householder::random_normal_matrix_generator<
+    double, scitbx::boost_random::mt19937> gen;
+
+  graded_test_case(int n, double x)
+    : test_case(n,n), gen(n,n)
+  {
+    vec_t d(n), f(n-1);
+    for (int i=0; i<n; ++i) {
+      d[i] = std::pow(x, i);
+      if (i < n-1) f[i] = d[i];
+    }
+    matrix_t u = gen.normal_matrix();
+    matrix_t v = gen.normal_matrix();
+    matrix_ref_t vt_ = v.ref();
+    vt_.transpose_in_place();
+    matrix_t b = upper_bidiagonal(d.ref(), f.ref());
+    a0 = af::matrix_multiply(u.ref(), b.ref());
+    a0 = af::matrix_multiply(a0.ref(), vt_);
   }
 };
 
@@ -321,6 +345,9 @@ void exercise_householder() {
     t.check_lq(false); // full LQ
     t.check_lq(true);  // thin LQ
   }
+
+  graded_test_case t(10, 1.e-10);
+  t.check_qr(true);
 }
 
 void exercise_bidiagonalisation() {
@@ -402,6 +429,10 @@ void exercise_bidiagonalisation() {
   {
     lotkin_test_case t(5,10);
     t.check_bidiagonalisation(true);
+    t.check_bidiagonalisation(false);
+  }
+  {
+    graded_test_case t(10, 1.e10);
     t.check_bidiagonalisation(false);
   }
 }
