@@ -9,6 +9,7 @@
 #include <scitbx/array_family/accessors/row_and_column.h>
 #include <boost/random/variate_generator.hpp>
 #include <boost/random/normal_distribution.hpp>
+#include <scitbx/math/utils.h>
 #include <scitbx/math/accumulators.h>
 #include <vector>
 #include <algorithm>
@@ -79,7 +80,7 @@ struct reflection
 
       v is filled with the essential part of the Householder vector.
 
-      Reference: Algorithm 5.1.1
+      Reference: Algorithm 5.1.1 (with the substitution sigma -> sqrt(sigma))
   */
   template <class AccessorType>
   void zero_vector(af::ref<scalar_t, AccessorType> const &x, bool overwrite=true)
@@ -89,16 +90,15 @@ struct reflection
     int n = x.size();
     norm_accumulator<scalar_t> norm_accu;
     for (int i=1; i<n; ++i) norm_accu(x(i));
-    /* If I was a good boy, I would use norm_accu.norm here to get sqrt(sigma)
-       and then compute sqrt(x(0)^2 + sqrt(sigma)^2) in a safe manner */
-    scalar_t sigma = norm_accu.sum_sq();
+    scalar_t sigma = norm_accu.norm();
     if (sigma == 0) {
       beta = 0;
       return;
     }
-    scalar_t mu = norm_x = std::sqrt(x(0)*x(0) + sigma);
-    scalar_t v0 = x(0) <= 0 ? x(0) - mu : -sigma/(x(0) + mu);
-    beta = 2*v0*v0/(sigma + v0*v0);
+    scalar_t mu = norm_x = math::norm(x(0), sigma);
+    scalar_t v0 = x(0) <= 0 ? x(0) - mu : -sigma/(x(0) + mu) * sigma;
+    scalar_t sigma_1 = sigma/v0;
+    beta = 2/(sigma_1*sigma_1 + 1);
 
     // compute v(1:) and overwrite if requested
     if (overwrite) {
