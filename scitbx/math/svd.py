@@ -1,8 +1,7 @@
 from __future__ import division
 import libtbx
 import scitbx.math
-
-if 1: from scitbx.matrix import *
+from scitbx.array_family import flex
 
 class real(object):
   """ SVD decomposition of a real matrix.
@@ -55,6 +54,8 @@ class real(object):
         u=u, v=v,
         **common_svd_args.__dict__)
       svd.compute()
+      assert svd.has_converged
+      svd.sort()
       if accumulate_u:
         u = q.matrix_multiply(u)
     elif n > self.crossover * m:
@@ -75,6 +76,8 @@ class real(object):
         u=u, v=v,
         **common_svd_args.__dict__)
       svd.compute()
+      assert svd.has_converged
+      svd.sort()
       if accumulate_v:
         v = q.matrix_transpose().matrix_multiply(v)
     else:
@@ -93,8 +96,9 @@ class real(object):
         u=u, v=v,
         **common_svd_args.__dict__)
       svd.compute()
+      assert svd.has_converged
+      svd.sort()
 
-    assert svd.has_converged
     self.u, self.v, self.sigma = u, v, d
 
   def reconstruct(self):
