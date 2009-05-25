@@ -20,7 +20,7 @@ if [ ! -n "$LIBTBX_VALGRIND" ]; then
     echo "### To override, define LIBTBX_VALGRIND"
     echo "### before calling $LIBTBX_DISPATCHER_NAME."
   fi
-  opt="z"
+  opt=""
   if [ "`uname`" = Darwin ]; then
     opt=" --trace-children=yes --auto-run-dsymutil=yes"
   fi
