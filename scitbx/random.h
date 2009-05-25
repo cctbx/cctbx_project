@@ -71,6 +71,12 @@ public:
     return res;
   }
 
+  /// Same as min_value: compatibility with Boost.Random
+  result_type min() const { return min_value(); }
+
+  /// Same as max_value: compatibility with Boost.Random
+  result_type max() const { return max_value(); }
+
   result_type operator()();
 
   af::shared<std::size_t>
