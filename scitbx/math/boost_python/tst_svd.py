@@ -5,6 +5,7 @@ try: import tntbx
 except ImportError: tntbx = None
 import libtbx.utils
 import sys
+import random
 
 from scitbx.array_family import flex
 
@@ -12,8 +13,9 @@ from scitbx.array_family import flex
 class test_case(object):
 
   n_matrices_per_dimension = 1
+  full_coverage = True
   show_progress = False
-  exercise_tntbx=False
+  exercise_tntbx = False
   eps=scitbx.math.double_numeric_limits.epsilon
 
   def __init__(self, **kwds):
@@ -29,6 +31,7 @@ class test_case(object):
               2, 3, 4, 5, 6, 7, 8, 9, 10,
               20, 30, 40, 50, 60, 70, 80, 90, 100):
       for n in (10, 20, 30, 40, 50, 60, 70, 80, 90, 100):
+        if not self.full_coverage and random.random() < 0.9: continue
         m = int(k*n)
         gen = scitbx.math.random_normal_matrix_generator(m, n)
         for p in xrange(self.n_matrices_per_dimension):
@@ -116,10 +119,12 @@ class chunks_of_small_and_big_singular_values_case(test_case):
     return sigma
 
 
-def run(show_progress, exercise_tntbx):
+def run(show_progress, exercise_tntbx, full_coverage):
   t = chunks_of_small_and_big_singular_values_case(
     show_progress=show_progress,
-    exercise_tntbx=exercise_tntbx)
+    exercise_tntbx=exercise_tntbx,
+    full_coverage=full_coverage,
+  )
   t.exercise_increasing_dimensions()
   print libtbx.utils.format_cpu_times()
 
@@ -132,7 +137,9 @@ def time(show_progress, exercise_tntbx):
 if __name__ == '__main__':
   show_progress = '--show-progress' in sys.argv[1:]
   exercise_tntbx = '--exercise-tntbx' in sys.argv[1:]
+  full_coverage = '--full-coverage' in sys.argv[1:]
   if '--time' not in sys.argv[1:]:
-    run(show_progress=show_progress, exercise_tntbx=exercise_tntbx)
+    run(show_progress=show_progress, exercise_tntbx=exercise_tntbx,
+        full_coverage=full_coverage)
   else:
     time(show_progress=show_progress, exercise_tntbx=exercise_tntbx)
