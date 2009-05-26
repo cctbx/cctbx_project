@@ -64,13 +64,13 @@ class plot_grid(object):
       O.top_group.add(String(
         tx+lp.x+lp.width*0.5,
         ty+lp.y-lp.height*0.3,
-        "RMSD start",
+        u"RMSD start (\u00C5)",
         fontSize=label_font_size,
         textAnchor="middle"))
       gr = Group(String(
         0,
         0,
-        "RMSD final",
+        u"RMSD final (\u00C5)",
         fontSize=label_font_size,
         textAnchor="middle"))
       gr.rotate(90)
@@ -358,14 +358,20 @@ def rmsd_start_final_plots_annealing(
       plot.rmsd_start.append(rmsd[0])
       plot.rmsd_final.append(rmsd[-1])
   #
-  if (    pdb_file == "1yjp_box.pdb"
-      and random_displacements_parameterization == "constrained"):
+  extra_type = None
+  if (pdb_file == "1yjp_box.pdb"):
+    if (random_displacements_parameterization == "constrained"):
+      extra_type = 0
+  elif (pdb_file == "1yjp_no_water.pdb"):
+    if (random_displacements_parameterization == "cartesian"):
+      extra_type = 1
+  if (extra_type is not None):
     extra_page = plot_grid(
       grid=(4,3), top_labels=[], more_narrow_shift=30)
   else:
     extra_page = None
   mpp = multi_page_plots(file_name="plots_h_e.pdf")
-  for h in ttd["structure_factors_high_resolution"]:
+  for i_h,h in enumerate(ttd["structure_factors_high_resolution"]):
     for e in  ttd["emulate_cartesian"]:
       short_label = "h%.2f_e%d" % (h, int(e))
       print short_label
@@ -387,7 +393,7 @@ def rmsd_start_final_plots_annealing(
                 xy_max=plot_xy_max,
                 label=label,
                 data=zip(pd.rmsd_start, pd.rmsd_final))
-              if (extra_page is not None
+              if (extra_type == 0
                   and h == 3.75
                   and t == 5000
                   and c == 500):
@@ -398,19 +404,32 @@ def rmsd_start_final_plots_annealing(
                   label=extra_label,
                   data=zip(pd.rmsd_start, pd.rmsd_final),
                   label_font_size=14)
+              elif (extra_type == 1
+                    and w == 100
+                    and (h == 3.75 or h == 5.00)
+                    and c == 500):
+                extra_label = u"resol. = %.2f \u00C5" % h
+                extra_page.process(
+                  grid_ij=(i_h, int(e)),
+                  xy_max=plot_xy_max,
+                  label=extra_label,
+                  data=zip(pd.rmsd_start, pd.rmsd_final),
+                  label_font_size=14)
       if (write_separate_pages):
         page.write_to_file(file_name="plot_%s.pdf" % short_label)
       mpp.add_page(page=page)
   mpp.write_to_file()
   if (extra_page is not None):
     from reportlab.graphics.shapes import String
+    if (extra_type == 0): ty = 540
+    else:                 ty = 372
     extra_page.top_group.add(String(
-      120, 540,
+      120, ty,
       "Torsion-Angle SA",
       fontSize=16,
       textAnchor="middle"))
     extra_page.top_group.add(String(
-      280+2/3, 540,
+      280+2/3, ty,
       "Cartesian SA",
       fontSize=16,
       textAnchor="middle"))
