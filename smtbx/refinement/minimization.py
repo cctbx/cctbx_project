@@ -79,7 +79,7 @@ class lbfgs(object):
       cctbx.xray.structure_factors.gradients(
         miller_set=self.target_functor.f_obs(),
         cos_sin_table=cos_sin_table)
-    xray_structure.tidy_us(u_min=1.e-6)
+    self.xray_structure.tidy_us(u_min=1.e-6)
     self.snap_to_special_position_sites()
     self._d_min = self.target_functor.f_obs().d_min()
     self.first_target_value = None
@@ -101,9 +101,9 @@ class lbfgs(object):
     for s in self.xray_structure.scatterers():
       s.flags.set_grads(False)
       s.flags.set_grad_site(True)
-    self.unconstrained_parameters = xray_structure.n_parameters_XXX()
+    self.unconstrained_parameters = self.xray_structure.n_parameters_XXX()
     self.x = flex.double(self.n_parameters(), 0)
-    self._scatterers_start = xray_structure.scatterers()
+    self._scatterers_start = self.xray_structure.scatterers()
     self.pre_minimiser = scitbx.lbfgs.run(
       target_evaluator=self,
       termination_params=lbfgs_sites_pre_minimisation_termination_params,
@@ -118,9 +118,9 @@ class lbfgs(object):
       s.flags.set_grad_fdp(flags.grad_fdp())
 
     # Main minimisation
-    self.unconstrained_parameters = xray_structure.n_parameters_XXX()
+    self.unconstrained_parameters = self.xray_structure.n_parameters_XXX()
     self.x = flex.double(self.n_parameters(), 0)
-    self._scatterers_start = xray_structure.scatterers()
+    self._scatterers_start = self.xray_structure.scatterers()
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
       termination_params=lbfgs_termination_params,
