@@ -5,6 +5,7 @@ def run():
   tst_list = (
   "$D/rsr/tst.py",
   "$D/polygon/tst.py",
+  "$D/polygon/tst_gui.py",
   "$D/chemical_components/tst.py",
   "$D/regression/tst_add_h_to_water.py",
   "$D/rotamer/rotamer_eval.py",

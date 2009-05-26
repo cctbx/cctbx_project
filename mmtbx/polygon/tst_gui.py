@@ -14,7 +14,7 @@ def exercise () :
   assert len(histograms) == 5
   for stat_key, histogram in histograms.iteritems() :
     bins = [ n for n in histogram.slots() ]
-    print "%-16s : %s" % (stat_key, " ".join([ "%5d" % n for n in bins ]))
+    #print "%-16s : %s" % (stat_key, " ".join([ "%5d" % n for n in bins ]))
   print "OK"
 
 if __name__ == "__main__" :
