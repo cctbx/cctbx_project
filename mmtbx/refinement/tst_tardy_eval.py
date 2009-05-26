@@ -16,13 +16,19 @@ if (reportlab is None):
 
 class plot_grid(object):
 
-  def __init__(O, grid, top_labels, margin=20, top_label_space=80):
+  def __init__(O,
+        grid,
+        top_labels,
+        margin=20,
+        top_label_space=80,
+        more_narrow_shift=0):
     if (reportlab is None): return
     from reportlab.graphics.shapes import Group, String
     from reportlab.lib import pagesizes
     O.grid = grid
     O.margin = margin
     O.top_label_space = top_label_space
+    O.more_narrow_shift = more_narrow_shift
     O.page_size = pagesizes.letter
     O.top_group = Group()
     for i,label in enumerate(top_labels):
@@ -33,16 +39,17 @@ class plot_grid(object):
         fontSize=16,
         textAnchor="middle"))
 
-  def process(O, grid_ij, xy_max, label, data):
+  def process(O, grid_ij, xy_max, label, data, label_font_size=12):
     if (reportlab is None): return
     from reportlab.graphics.shapes import Group, String
-    lp = O.line_plot(xy_max, data=data)
+    lp = O.line_plot(xy_max, data=data, label_font_size=label_font_size)
     gr = Group(lp)
     i,j = grid_ij
     assert 0 <= i < O.grid[0]
     assert 0 <= j < O.grid[1]
     i = O.grid[0] - 1 - i
-    tx, ty = O.margin + j * (O.page_size[0] - 2 * O.margin) / O.grid[1], \
+    tx, ty = O.margin + j * (O.page_size[0] - 2 * O.margin) / O.grid[1] \
+                      - j * O.more_narrow_shift, \
              O.margin + i * (O.page_size[1] - 2 * O.margin
                                             - O.top_label_space) / O.grid[0]
     gr.translate(tx, ty)
@@ -51,20 +58,20 @@ class plot_grid(object):
       tx+lp.x+lp.width*0.5,
       ty+lp.y+lp.height*1.05,
       label,
-      fontSize=12,
+      fontSize=label_font_size,
       textAnchor="middle"))
     if (i == 0 and j == 0):
       O.top_group.add(String(
         tx+lp.x+lp.width*0.5,
-        ty+lp.y-lp.height*0.25,
+        ty+lp.y-lp.height*0.3,
         "RMSD start",
-        fontSize=12,
+        fontSize=label_font_size,
         textAnchor="middle"))
       gr = Group(String(
         0,
         0,
         "RMSD final",
-        fontSize=12,
+        fontSize=label_font_size,
         textAnchor="middle"))
       gr.rotate(90)
       gr.translate(
@@ -72,7 +79,7 @@ class plot_grid(object):
         -(tx+lp.x-lp.width*0.15))
       O.top_group.add(gr)
 
-  def line_plot(O, xy_max, data):
+  def line_plot(O, xy_max, data, label_font_size):
     if (reportlab is None): return
     from reportlab.graphics.charts.lineplots import LinePlot
     from reportlab.graphics.widgets.markers import makeMarker
@@ -97,13 +104,13 @@ class plot_grid(object):
     lp.xValueAxis.valueSteps = range(xy_max+1)
     lp.xValueAxis.strokeWidth = 1
     lp.xValueAxis.tickDown = 3
-    lp.xValueAxis.labels.fontSize = 10
+    lp.xValueAxis.labels.fontSize = label_font_size
     lp.yValueAxis.valueMin = 0
     lp.yValueAxis.valueMax = xy_max
     lp.yValueAxis.valueSteps = range(xy_max+1)
     lp.yValueAxis.strokeWidth = 1
     lp.yValueAxis.tickLeft = 3
-    lp.yValueAxis.labels.fontSize = 10
+    lp.yValueAxis.labels.fontSize = label_font_size
     return lp
 
   def new_canvas(O, file_name):
@@ -351,6 +358,12 @@ def rmsd_start_final_plots_annealing(
       plot.rmsd_start.append(rmsd[0])
       plot.rmsd_final.append(rmsd[-1])
   #
+  if (    pdb_file == "1yjp_box.pdb"
+      and random_displacements_parameterization == "constrained"):
+    extra_page = plot_grid(
+      grid=(4,3), top_labels=[], more_narrow_shift=30)
+  else:
+    extra_page = None
   mpp = multi_page_plots(file_name="plots_h_e.pdf")
   for h in ttd["structure_factors_high_resolution"]:
     for e in  ttd["emulate_cartesian"]:
@@ -374,10 +387,34 @@ def rmsd_start_final_plots_annealing(
                 xy_max=plot_xy_max,
                 label=label,
                 data=zip(pd.rmsd_start, pd.rmsd_final))
+              if (extra_page is not None
+                  and h == 3.75
+                  and t == 5000
+                  and c == 500):
+                extra_label = "w_rs = %.0f" % w
+                extra_page.process(
+                  grid_ij=(i_w+1, int(e)),
+                  xy_max=plot_xy_max,
+                  label=extra_label,
+                  data=zip(pd.rmsd_start, pd.rmsd_final),
+                  label_font_size=14)
       if (write_separate_pages):
         page.write_to_file(file_name="plot_%s.pdf" % short_label)
       mpp.add_page(page=page)
   mpp.write_to_file()
+  if (extra_page is not None):
+    from reportlab.graphics.shapes import String
+    extra_page.top_group.add(String(
+      120, 540,
+      "Torsion-Angle SA",
+      fontSize=16,
+      textAnchor="middle"))
+    extra_page.top_group.add(String(
+      280+2/3, 540,
+      "Cartesian SA",
+      fontSize=16,
+      textAnchor="middle"))
+    extra_page.write_to_file(file_name="plot_extra.pdf")
   #
   mms = min_mean_stats(
     algorithm="annealing",
