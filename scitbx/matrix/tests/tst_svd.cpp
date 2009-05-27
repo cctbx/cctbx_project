@@ -276,7 +276,7 @@ void exercise_golub_kahan_iterations(grading_func_t grading_func,
                                      double ratio_threshold=10) {
   double thresh = ratio_threshold;
 
-  for (int sorting=-1; sorting < 2; ++sorting)
+  for (int sorting=0; sorting < 2; ++sorting)
   for (int grading=0; grading < 3; ++grading)
   for (int zero_on_diag=0; zero_on_diag<2; ++zero_on_diag)
   for (int n = 3; n < 10; ++n)
@@ -306,8 +306,7 @@ void exercise_golub_kahan_iterations(grading_func_t grading_func,
       diagonal.ref(), superdiagonal.ref(), svd::upper_bidiagonal_kind,
       u.ref(), true, v.ref(), true);
     svd.compute();
-    if      (sorting == +1) svd.sort(false);
-    else if (sorting == -1) svd.sort(true);
+    if (sorting) svd.sort();
 
     SCITBX_ASSERT(superdiagonal.all_eq(0));
     SCITBX_ASSERT(normality_ratio(u.const_ref(), svd.tol) < thresh);
@@ -340,8 +339,11 @@ void exercise_singular_values_accuracy(double x) {
                                               svd::upper_bidiagonal_kind,
                                               u_, false, v_, false);
     svd.compute();
-    svd.sort(false);
     SCITBX_ASSERT(f.all_eq(0));
+    svd.sort();
+    SCITBX_ASSERT(svd.numerical_rank((1.+ x)/2) == n-1);
+    SCITBX_ASSERT(svd.numerical_rank((x + x*x)/2) == n-2);
+    std::reverse(d.begin(), d.end());
     vec_t delta = af::abs(d - sigma)/sigma;
     SCITBX_ASSERT( delta.all_lt(svd.tol) );
   }
@@ -354,8 +356,9 @@ void exercise_singular_values_accuracy(double x) {
                                               svd::upper_bidiagonal_kind,
                                               u_, false, v_, false);
     svd.compute();
-    svd.sort(false);
     SCITBX_ASSERT(f.all_eq(0));
+    svd.sort();
+    std::reverse(d.begin(), d.end());
     vec_t delta = af::abs(d - sigma)/sigma;
     SCITBX_ASSERT( delta.all_lt(svd.tol) );
   }
@@ -386,6 +389,9 @@ void exercise_singular_values_accuracy(double x) {
                                               u_, false, v_, false);
     svd.compute();
     svd.sort();
+    SCITBX_ASSERT(svd.numerical_rank(1.) == 2*n-1);
+    SCITBX_ASSERT(svd.numerical_rank(1e95) == 1);
+    SCITBX_ASSERT(svd.numerical_rank(1e85) == 3);
     SCITBX_ASSERT(f.all_eq(0));
     vec_t delta = af::abs(d - sigma)/sigma;
     SCITBX_ASSERT( delta.all_lt(svd.tol) );
