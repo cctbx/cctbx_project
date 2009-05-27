@@ -616,10 +616,11 @@ def column_group(
       crystal_symmetry_from_file=crystal_symmetry_from_file)))
   if (observation_type is not None):
     result.set_observation_type(observation_type)
-  elif (primary_column_type in "FG"):
-    result.set_observation_type_xray_amplitude()
-  elif (primary_column_type in "JK"):
-    result.set_observation_type_xray_intensity()
+  elif (not result.is_complex_array()):
+    if   (primary_column_type in "FG"):
+      result.set_observation_type_xray_amplitude()
+    elif (primary_column_type in "JK"):
+      result.set_observation_type_xray_intensity()
   return result
 
 def mend_non_conforming_anomalous_column_types(all_types, all_labels):
