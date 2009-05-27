@@ -104,7 +104,8 @@ namespace scitbx {
                     arg("epsilon"),
                     arg("max_iteration_multiplier"))))
           .def("compute", &wt::compute)
-          .def("sort", &wt::sort, arg("reverse")=true)
+          .def("sort", &wt::sort)
+          .def("numerical_rank", &wt::numerical_rank)
           .def_readonly("has_converged", &wt::has_converged)
           ;
       }

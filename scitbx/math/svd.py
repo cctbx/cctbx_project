@@ -100,8 +100,12 @@ class real(object):
       svd.compute()
 
     self.u, self.v, self.sigma = u, v, d
+    self._svd = svd
 
   def reconstruct(self):
     """ Reconstruct the matrix A from its singular values and vectors """
     assert self.u and self.v, "Missing singular vectors"
     return scitbx.math.reconstruct_svd(self.u, self.v, self.sigma)
+
+  def numerical_rank(self, delta):
+    return self._svd.numerical_rank(delta)

@@ -149,7 +149,24 @@ def exercise_densely_distributed_singular_values(show_progress, full_coverage):
       assert delta.all_lt(5)
   print "%i done." % n_tests
 
+def exercise_singular_matrix():
+  n = 20
+  m = 3*n
+  tol = 10*scitbx.math.double_numeric_limits.epsilon
+  rows = [ flex.random_double(m) for i in xrange(n-2) ]
+  rows.append(rows[n//2] + rows[n//3])
+  rows.append(rows[n//4] - rows[n//5])
+  random.shuffle(rows)
+  a = flex.double()
+  for r in rows: a.extend(r)
+  a.reshape(flex.grid(n, m))
+  a = a.matrix_transpose()
+  svd = scitbx.math.svd.real(a.deep_copy(),
+                             accumulate_u=True, accumulate_v=True)
+  assert svd.numerical_rank(svd.sigma[0]*tol) == n-2
+
 def run(show_progress, exercise_tntbx, full_coverage):
+  exercise_singular_matrix()
   exercise_densely_distributed_singular_values(show_progress=show_progress,
                                                full_coverage=full_coverage)
   t = chunks_of_small_and_big_singular_values_case(

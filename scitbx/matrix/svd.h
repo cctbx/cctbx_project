@@ -125,7 +125,8 @@ struct bidiagonal_2x2_decomposition
 enum bidiagonal_kind { upper_bidiagonal_kind, lower_bidiagonal_kind };
 
 /// Golub-Kahan decomposition of a bidiagonal matrix B
-/** See [1] for an introduction. Our code is based on [2,3].
+/** See [1] for an introduction. Our code is based on [2,3,4].
+
     References:
     [1] Golub and Van Loan, Matrix Computations, 3rd edition, section 8.6.2
     [2] LAPACK source code (version 3.0)
@@ -144,6 +145,9 @@ struct bidiagonal_decomposition
   givens::product<scalar_t> q_u, q_v;
   int n_iterations, n_max_iterations;
   bool has_iteration_converged, has_converged;
+
+  // Whether the singular values and eventually vectors are sorted
+  bool sorted;
 
   // the block B(s:, s:) is diagonal
   // the block B(r:s, r:s) has non-zero superdiagonal entries
@@ -184,7 +188,8 @@ struct bidiagonal_decomposition
       r(0), s(diagonal.size()),
       eps(epsilon),
       n_iterations(0),
-      n_max_iterations(max_iteration_multiplier*diagonal.size()*diagonal.size())
+      n_max_iterations(max_iteration_multiplier*diagonal.size()*diagonal.size()),
+      sorted(false)
   {
     SCITBX_ASSERT(diagonal.size() >= 2);
     SCITBX_ASSERT(off_diagonal.size() == diagonal.size()-1);
@@ -594,7 +599,7 @@ struct bidiagonal_decomposition
     q_v.apply_upward_on_right(v, s-1);
   }
 
-  /// Sort singular values
+  /// Sort singular values in descending order
   /** Implementation note: we use selection sort if U or V is accumulated.
 
       Any sort algorithm needs to swap values which are out-of-order.
@@ -604,18 +609,17 @@ struct bidiagonal_decomposition
       Since selection sort reaches the theoretical minimum number of swaps (n)
       while performing n(n+1)/2 comparisons, it is the algorithm of choice here.
   */
-  void sort(bool reverse=true) {
+  void sort() {
+    if (sorted) return;
     int n = d.size();
     if (!q_u.effective && !q_v.effective) {
       // No accumulation => best sorting algorithm available
-      if (reverse) std::sort(d.begin(), d.end(), std::greater<scalar_t>());
-      else std::sort(d.begin(), d.end());
+      std::sort(d.begin(), d.end(), std::greater<scalar_t>());
     }
     else {
       // Accumulation => selection sort
       for (int i=0; i<n; ++i) {
-        scalar_t *p = reverse ? std::max_element(&d[i], d.end())
-        : std::min_element(&d[i], d.end());
+        scalar_t *p = std::max_element(&d[i], d.end());
         if (p > &d[i]) {
           std::swap(*p, d[i]);
           if (q_u.effective) u.swap_columns(p - &d[0], i);
@@ -623,6 +627,23 @@ struct bidiagonal_decomposition
         }
       }
     }
+    sorted = true;
+  }
+
+  /// Numerical rank
+  /** A matrix A is said to have numerical delta-rank equal to k if
+
+        k = min { rank(B) | ||A-B||_2 <= delta }
+
+      After ordering the singular values in decreasing order, we can use the
+      following result
+        sigma[1] >= ... >= sigma[k] >= delta >= sigma[k+1] >= ... >= sigma[n]
+  */
+  std::size_t numerical_rank(scalar_t delta) {
+    sort();
+    scalar_t *p = std::upper_bound(d.begin(), d.end(), delta,
+                                   std::greater_equal<scalar_t>());
+    return p - d.begin();
   }
 };
 
