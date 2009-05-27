@@ -1,6 +1,6 @@
 from __future__ import division
 import math
-import scitbx.math
+import scitbx.math.svd
 try: import tntbx
 except ImportError: tntbx = None
 import libtbx.utils
@@ -39,9 +39,12 @@ class test_case(object):
           yield sigma, gen.matrix_with_singular_values(sigma)
 
   def exercise_increasing_dimensions(self):
+    print "Scaling with m and m/n: ",
+    n_tests = 0
     for sigma, a in self.matrices():
       m, n = a.focus()
       if self.show_progress:
+        if not n_tests: print
         print (m,n),
         sys.stdout.flush()
       svd = scitbx.math.svd.real(a, self.accumulate_u, self.accumulate_v)
@@ -51,6 +54,7 @@ class test_case(object):
       sigma = sigma.select(flex.sort_permutation(sigma, reverse=True))
       delta = (svd.sigma - sigma).norm()/sigma.norm()/min(m,n)/self.eps
       assert delta < 10
+      n_tests += 1
 
       if not self.exercise_tntbx:
         if self.show_progress: print
@@ -63,6 +67,8 @@ class test_case(object):
       delta = ((svd.singular_values() - sigma).norm()
                /sigma.norm()/min(m,n)/self.eps)
       assert delta < 10
+    if self.show_progress: print
+    print "%i done" % n_tests
 
   def time(self):
     from libtbx.easy_profile import easy_profile
@@ -119,7 +125,33 @@ class chunks_of_small_and_big_singular_values_case(test_case):
     return sigma
 
 
+def exercise_densely_distributed_singular_values(show_progress, full_coverage):
+  n = 40
+  m = 2*n
+  n_runs = 20
+  tol = 10*scitbx.math.double_numeric_limits.epsilon
+  gen = scitbx.math.random_normal_matrix_generator(m, n)
+  sigmas = []
+  sigmas.append( flex.double([ 10**(-i/n) for i in xrange(n) ]) )
+  sigmas.append( sigmas[0].select(flex.random_permutation(n))   )
+  sigmas.append( sigmas[0].reversed()                           )
+  print "Densely distributed singular values:",
+  n_tests = 0
+  for i in xrange(n_runs):
+    if not full_coverage and random.random() < 0.8: continue
+    n_tests += 1
+    for i_case, sigma in enumerate(sigmas):
+      a = gen.matrix_with_singular_values(sigma)
+      svd = scitbx.math.svd.real(a, accumulate_u=False, accumulate_v=False)
+      if i_case > 0: sigma = sigma.select(
+        flex.sort_permutation(sigma, reverse=True))
+      delta = (svd.sigma - sigma)/sigma/tol
+      assert delta.all_lt(5)
+  print "%i done." % n_tests
+
 def run(show_progress, exercise_tntbx, full_coverage):
+  exercise_densely_distributed_singular_values(show_progress=show_progress,
+                                               full_coverage=full_coverage)
   t = chunks_of_small_and_big_singular_values_case(
     show_progress=show_progress,
     exercise_tntbx=exercise_tntbx,
