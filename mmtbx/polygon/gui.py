@@ -56,6 +56,7 @@ def get_stats_and_histogram_data (mvd_object) :
   return stats, histograms
 
 #-----------------------------------------------------------------------
+# TODO: tests for everything else
 class canvas_layout (object) :
   ratio_cutoffs = [ 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
 
@@ -97,22 +98,30 @@ class canvas_layout (object) :
     assert units > 0
     self.units = units
 
-  def set_color_model (self, model_name) :
+  def set_color_model (self, model_name, relative_scaling=True) :
+    self.relative_scale_colors = relative_scaling
     if model_name == "original" :
       self.colors = original_color_model()
     elif model_name == "rainbow" :
       self.colors = rainbow_color_model()
+    elif model_name == "rmb" :
+      self.colors = rmb_color_model()
 
   def get_color_key (self) :
+    if self.relative_scale_colors :
+      return (self.colors.ratio_gradient, self.colors.ratio_cutoffs)
+    else :
+      levels = [0.0, 0.5, 1.0]
+      cutoffs = [ int(x * self.max) for x in levels ]
+      colors = [ self.colors.get_bin_color(x) for x in levels ]
+      return (colors, cutoffs)
+
+  def draw (self, out) :
     colors = self.colors.get_histogram_colors(
       histograms=self._histograms,
       max=self.max,
       mean=self.slot_avg,
       relative_scaling=self.relative_scale_colors)
-    return (colors, self.colors.ratio_cutoffs)
-
-  def draw (self, out) :
-    colors, cutoffs = self.get_color_key()
     for i, histogram in enumerate(self._histograms) :
       for j, (_start, _end) in enumerate(histogram.lines) :
         start = (_start[0] * self.units, _start[1] * self.units)
@@ -260,20 +269,20 @@ class color_model (object) :
           val = bin / mean
           c = None
           for i, cutoff in enumerate(ratio_cutoffs) :
-            if cutoff > val :
+            if cutoff >= val :
               c = self.ratio_gradient[i]
               break
           if c is None :
             c = self.ratio_gradient[-1]
           bin_colors.append(c)
       else :
-        for bin in bins :
-          val = bin / max
-          bin_colors.append(self.get_bin_color(val, max))
+        for bin in histogram.bins :
+          val = float(bin) / float(max)
+          bin_colors.append(self.get_bin_color(val))
       colors.append(bin_colors)
     return colors
 
-  def get_bin_color (self, value, max) :
+  def get_bin_color (self, value) :
     return (0, 0, 0)
 
 class original_color_model (color_model) :
@@ -294,10 +303,25 @@ class rainbow_color_model (color_model) :
     self.ratio_gradient = [ hsv2rgb(240.0-(240.0*x), 1, 1) for x in
                             [ float(x) / 7.0 for x in range(8) ] ]
 
-  def get_bin_color (self, value, max) :
-    return hsv2rgb(240.0 - (240.0 * (float(value) / float(max))), 1, 1)
+  def get_bin_color (self, value) :
+    color = hsv2rgb(240.0 - (240.0 * value), 1, 1)
+    return color
+
+class rmb_color_model (color_model) :
+  def __init__ (self) :
+    self.ratio_cutoffs = [ 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
+    self.ratio_gradient = [ hsv2rgb(240.0+(120.0*x), 1, 1) for x in
+                            [ float(x) / 7.0 for x in range(8) ] ]
+
+  def get_bin_color (self, value) :
+    print 240.0 + (120.0 * value)
+    color = hsv2rgb(240.0 + (120.0 * value), 1, 1)
+    print value, color
+    return color
 
 def hsv2rgb (h, s, v) :
+  if h >= 360 :
+    h -= 360
   h /= 60
   v *= 255
 
