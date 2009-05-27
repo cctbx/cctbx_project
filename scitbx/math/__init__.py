@@ -1,6 +1,5 @@
 from scitbx.math.ext import *
 import scitbx.math.eigensystem
-import scitbx.math.svd
 import scitbx.math.gaussian
 from scitbx import matrix
 from scitbx.array_family import flex

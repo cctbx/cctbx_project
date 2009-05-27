@@ -1,4 +1,5 @@
 import scitbx.math
+import scitbx.math.svd
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from scitbx.math import matrix_equality_ratio, matrix_normality_ratio

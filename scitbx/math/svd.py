@@ -3,6 +3,14 @@ import libtbx
 import scitbx.math
 from scitbx.array_family import flex
 
+class real_bidiagonal(scitbx.math.svd_decomposition_of_bidiagonal_matrix):
+
+  def compute(self):
+    super(real_bidiagonal, self).compute()
+    assert self.has_converged
+    self.sort()
+
+
 class real(object):
   """ SVD decomposition of a real matrix.
 
@@ -48,14 +56,11 @@ class real(object):
       if accumulate_u: u = bidiag.u()
       if accumulate_v: v = bidiag.v()
       d, f = r.matrix_upper_bidiagonal()
-      svd = scitbx.math.svd_decomposition_of_bidiagonal_matrix(
-        diagonal=d, off_diagonal=f,
-        kind=bidiagonal_matrix_kind.upper_diagonal,
-        u=u, v=v,
-        **common_svd_args.__dict__)
+      svd = real_bidiagonal(diagonal=d, off_diagonal=f,
+                            kind=bidiagonal_matrix_kind.upper_diagonal,
+                            u=u, v=v,
+                            **common_svd_args.__dict__)
       svd.compute()
-      assert svd.has_converged
-      svd.sort()
       if accumulate_u:
         u = q.matrix_multiply(u)
     elif n > self.crossover * m:
@@ -70,14 +75,11 @@ class real(object):
       if accumulate_u: u = bidiag.u()
       if accumulate_v: v = bidiag.v()
       d, f = l.matrix_upper_bidiagonal()
-      svd = scitbx.math.svd_decomposition_of_bidiagonal_matrix(
-        diagonal=d, off_diagonal=f,
-        kind=bidiagonal_matrix_kind.upper_diagonal,
-        u=u, v=v,
-        **common_svd_args.__dict__)
+      svd = real_bidiagonal(diagonal=d, off_diagonal=f,
+                            kind=bidiagonal_matrix_kind.upper_diagonal,
+                            u=u, v=v,
+                            **common_svd_args.__dict__)
       svd.compute()
-      assert svd.has_converged
-      svd.sort()
       if accumulate_v:
         v = q.matrix_transpose().matrix_multiply(v)
     else:
@@ -91,13 +93,11 @@ class real(object):
       else:
         d, f = a.matrix_lower_bidiagonal()
         kind=bidiagonal_matrix_kind.lower_diagonal
-      svd = scitbx.math.svd_decomposition_of_bidiagonal_matrix(
-        diagonal=d, off_diagonal=f, kind=kind,
-        u=u, v=v,
-        **common_svd_args.__dict__)
+      svd = real_bidiagonal(diagonal=d, off_diagonal=f,
+                            kind=kind,
+                            u=u, v=v,
+                            **common_svd_args.__dict__)
       svd.compute()
-      assert svd.has_converged
-      svd.sort()
 
     self.u, self.v, self.sigma = u, v, d
 
