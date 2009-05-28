@@ -2393,6 +2393,9 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     return self
 
   def __mul__(self, other):
+    if isinstance(other, array) :
+      assert self.indices().all_eq(other.indices())
+      return self.customized_copy(data=self.data() * other.data())
     result = self.deep_copy()
     result *= other
     return result
