@@ -157,13 +157,14 @@ class manager(object):
     else: self.mask_params = mask_master_params.extract()
     self.grid_step = self._get_grid_step()
     self.atom_radii = None
+    self._f_mask = None
+    self.solvent_content_via_mask = None
     if(xray_structure is not None):
       self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
        self.xray_structure)
       self.xray_structure = self.xray_structure.deep_copy_scatterers()
       self.sites_cart = self.xray_structure.sites_cart()
       self._f_mask = self.compute_f_mask()
-    else: self._f_mask = None
 
   def deep_copy(self):
     new_manager = manager(miller_array   = self.miller_array.deep_copy(),
@@ -174,6 +175,7 @@ class manager(object):
       new_manager.sites_cart     = new_manager.xray_structure.sites_cart()
     if(self._f_mask is not None):
       new_manager._f_mask = self._f_mask.deep_copy()
+    new_manager.solvent_content_via_mask = self.solvent_content_via_mask
     return new_manager
 
   def select(self, selection):
@@ -220,6 +222,8 @@ class manager(object):
       bulk_solvent_mask_obj = self.bulk_solvent_mask()
       self._f_mask = bulk_solvent_mask_obj.structure_factors(
         miller_set = self.miller_array)
+      self.solvent_content_via_mask = bulk_solvent_mask_obj \
+        .contact_surface_fraction
     else:
       if(self.atom_radii is None):
         self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
@@ -234,6 +238,7 @@ class manager(object):
       asu_mask.compute(self.xray_structure.sites_frac(), self.atom_radii)
       fm_asu = asu_mask.structure_factors(self.miller_array.indices())
       self._f_mask = self.miller_array.set().array(data = fm_asu)
+      self.solvent_content_via_mask = "NOT IMPLEMENTED" # XXX intentional crash
     return self._f_mask
 
   def bulk_solvent_mask(self):
