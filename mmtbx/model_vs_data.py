@@ -58,8 +58,7 @@ class mvd(object):
     # crystal
     print >> log, "  Unit cell:       ", self.crystal.uc
     print >> log, "  Space group:     ", self.crystal.sg, \
-                  "number of symmetry operators:", self.crystal.n_sym_op
-    print >> log, "  Unit cell volume: %-15.4f" % self.crystal.uc_vol
+                  "number of symmetry operations:", self.crystal.n_sym_op
     # models
     print >> log, "  Number of models:", len(self.models)
     for i_seq, i_model in enumerate(self.models):
@@ -130,12 +129,17 @@ class mvd(object):
     #
     print >> log, "  Model_vs_Data:"
     b_cart = " ".join([("%8.2f"%v).strip() for v in self.model_vs_data.b_cart])
-    result = " \n    ".join([
+    result = [
       "r_work(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_work).strip(),
       "r_free(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_free).strip(),
       "bulk_solvent_(k_sol,b_sol)         : %s %s"%(format_value("%-5.2f",self.model_vs_data.k_sol),
                                                     format_value("%-7.2f",self.model_vs_data.b_sol)),
-      "overall_anisotropic_scale_(b_cart) : %-s"%b_cart])
+      "overall_anisotropic_scale_(b_cart) : %-s"%b_cart]
+    sc = self.model_vs_data.solvent_content_via_mask
+    if (sc is not None): sc *= 100
+    result.append("solvent_content_estimated_via_mask : %-s %%"
+      % format_value("%.1f", sc))
+    result = " \n    ".join(result)
     print >> log, "   ", result
     #
     if(self.pdb_header is not None):
@@ -148,7 +152,7 @@ class mvd(object):
       print >> log, "    low_resolution  : %-s"%format_value("%s",self.pdb_header.low_resolution)
       print >> log, "    sigma_cutoff    : %-s"%format_value("%s",self.pdb_header.sigma_cutoff)
       print >> log, "    matthews_coeff  : %-s"%format_value("%s",self.pdb_header.matthews_coeff)
-      print >> log, "    solvent_cont    : %-s"%format_value("%s",self.pdb_header.solvent_cont)
+      print >> log, "    solvent_cont    : %-s %%"%format_value("%s",self.pdb_header.solvent_cont)
       if(self.pdb_header.tls is not None):
         print >> log, "    TLS             : %-s"%format_value("%s",
           " ".join([str(self.pdb_header.tls.pdb_inp_tls.tls_present),
@@ -351,12 +355,17 @@ def show_model_vs_data(fmodel):
     fmodel.r_free_flags.data().size()
   if(flags_pc == 0): r_free = None
   else: r_free = fmodel.r_free()
+  sc = None
+  mm = getattr(fmodel, "mask_manager", None)
+  if (mm is not None):
+    sc = mm.solvent_content_via_mask
   return group_args(
     r_work = fmodel.r_work(),
     r_free = r_free,
     k_sol  = fmodel.k_sol(),
     b_sol  = fmodel.b_sol(),
-    b_cart = fmodel.b_cart())
+    b_cart = fmodel.b_cart(),
+    solvent_content_via_mask=sc)
 
 def run(args,
         command_name             = "mmtbx.model_vs_data",
