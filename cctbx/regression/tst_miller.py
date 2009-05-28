@@ -927,6 +927,11 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
   ma = miller.array(ms, data)
   maa = ma.combine(other=ma)
   assert maa.anomalous_flag()
+  #
+  maa = ma * ma
+  assert approx_equal(maa.data(), [1,4,9,16])
+  maa = ma * ma.data()
+  assert approx_equal(maa.data(), [1,4,9,16])
 
 def exercise_r1_factor():
   cs = crystal.symmetry((1,2,3), "P21/a")
