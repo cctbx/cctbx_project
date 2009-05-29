@@ -427,8 +427,10 @@ def exercise_array():
   assert ac.info() == "Test"
   assert ac.is_xray_intensity_array()
   aa = ac.as_amplitude_array()
+  assert aa.is_xray_amplitude_array()
   assert aa.as_amplitude_array() is aa
   ai = aa.as_intensity_array()
+  assert ai.is_xray_intensity_array()
   assert approx_equal(ai.data(), ac.data())
   assert ai.as_intensity_array() is ai
   assert aa.eliminate_sys_absent() is aa
@@ -935,8 +937,10 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
   #
   ma = ms.array(data=flex.complex_double([1+2j, 2-3j]))
   maa = ma.as_amplitude_array()
+  assert maa.is_xray_amplitude_array()
   assert approx_equal(maa.data(), [5**0.5, 13**0.5])
   mai = ma.as_intensity_array()
+  assert mai.is_xray_intensity_array()
   assert approx_equal(mai.data(), [5, 13])
   assert approx_equal(maa.as_intensity_array().data(), [5, 13])
   assert approx_equal(mai.as_amplitude_array().data(), [5**0.5, 13**0.5])
