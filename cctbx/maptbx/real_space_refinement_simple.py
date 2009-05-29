@@ -25,15 +25,21 @@ class lbfgs(object):
     O.gr = geometry_restraints_manager
     O.rs_weight = real_space_weight
     O.x = sites_cart.as_double()
+    O.number_of_function_evaluations = -1
+    O.f_start, O.g_start = O.compute_functional_and_gradients()
     O.minimizer = scitbx.lbfgs.run(
       target_evaluator=O,
       termination_params=lbfgs_termination_params,
       exception_handling_params=lbfgs_exception_handling_params)
-    O.f, O.g = O.compute_functional_and_gradients()
+    O.f_final, O.g_final = O.compute_functional_and_gradients()
     O.sites_cart = flex.vec3_double(O.x)
     del O.x
 
   def compute_functional_and_gradients(O):
+    if (O.number_of_function_evaluations == 0):
+      O.number_of_function_evaluations += 1
+      return O.f_start, O.g_start
+    O.number_of_function_evaluations += 1
     sites_cart = flex.vec3_double(O.x)
     rs_f = maptbx.real_space_target_simple(
       unit_cell=O.unit_cell,
