@@ -765,3 +765,55 @@ class manager(object):
         by_value="delta",
         sites_cart=sites_cart, site_labels=site_labels, f=f)
       print >> f
+
+def construct_non_crystallographic_conserving_bonds_and_angles(
+      sites_cart,
+      edge_list_bonds,
+      edge_list_angles,
+      bond_weight=100,
+      angle_weight=50,
+      vdw_distance=1.2,
+      non_crystallographic_unit_cell_buffer_layer=5,
+      asu_mappings_buffer_thickness=5,
+      max_reasonable_bond_distance=10):
+  import cctbx.crystal.coordination_sequences
+  from cctbx import uctbx
+  from scitbx import matrix
+  bond_proxies = geometry_restraints.bond_sorted_asu_proxies(
+    asu_mappings=None)
+  for edge_list,weight in [(edge_list_bonds, bond_weight),
+                           (edge_list_angles, angle_weight)]:
+    for i,j in edge_list:
+      distance = abs(matrix.col(sites_cart[i]) - matrix.col(sites_cart[j]))
+      bond_proxies.process(geometry_restraints.bond_simple_proxy(
+        i_seqs=(i,j), distance_ideal=distance, weight=weight))
+  bond_params_table = geometry_restraints.extract_bond_params(
+    n_seq=sites_cart.size(),
+    bond_simple_proxies=bond_proxies.simple)
+  box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+    sites_cart=sites_cart,
+    buffer_layer=non_crystallographic_unit_cell_buffer_layer)
+  asu_mappings = box.crystal_symmetry().special_position_settings() \
+    .asu_mappings(
+      buffer_thickness=asu_mappings_buffer_thickness,
+      sites_cart=box.sites_cart)
+  bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  geometry_restraints.add_pairs(bond_asu_table, bond_proxies.simple)
+  shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
+    pair_asu_table=bond_asu_table,
+    max_shell=3)
+  shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
+    for shell_asu_table in shell_asu_tables]
+  nonbonded_types = flex.std_string(bond_params_table.size(), "Default")
+  nonbonded_params = geometry_restraints.nonbonded_params()
+  nonbonded_params.distance_table.setdefault(
+    "Default")["Default"] = vdw_distance
+  return box.sites_cart, manager(
+    crystal_symmetry=box.crystal_symmetry(),
+    site_symmetry_table=asu_mappings.site_symmetry_table(),
+    bond_params_table=bond_params_table,
+    shell_sym_tables=shell_sym_tables,
+    nonbonded_params=nonbonded_params,
+    nonbonded_types=nonbonded_types,
+    nonbonded_function=geometry_restraints.prolsq_repulsion_function(),
+    max_reasonable_bond_distance=max_reasonable_bond_distance)

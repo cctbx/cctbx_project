@@ -1,6 +1,7 @@
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints.distance_least_squares \
   import distance_and_repulsion_least_squares
+import cctbx.geometry_restraints.manager
 from cctbx import crystal
 from cctbx.array_family import flex
 from cStringIO import StringIO
@@ -620,10 +621,85 @@ nonbonded asu: (7, 29)
     (12, 13, 16, 19), (16, 17, 18, 29), (16, 17, 20, 29), (20, 28, 30, 37),
     (20, 28, 31, 37), (21, 22, 23, 24, 25, 26, 27)]
 
+def exercise_non_crystallographic_conserving_bonds_and_angles():
+  sites_cart, geo = geometry_restraints.manager \
+    .construct_non_crystallographic_conserving_bonds_and_angles(
+      sites_cart=flex.vec3_double([
+        (10.949, 12.815, 15.189),
+        (10.405, 13.954, 15.917),
+        (10.779, 15.262, 15.227),
+        ( 9.916, 16.090, 14.936)]),
+      edge_list_bonds=[(0, 1), (1, 2), (2, 3)],
+      edge_list_angles=[(0, 2), (1, 3)])
+  assert approx_equal(sites_cart, [
+    (6.033, 5.000, 5.253),
+    (5.489, 6.139, 5.981),
+    (5.863, 7.447, 5.291),
+    (5.000, 8.275, 5.000)])
+  assert approx_equal(geo.energies_sites(sites_cart=sites_cart).target, 0)
+  sio = StringIO()
+  geo.show_sorted(f=sio)
+  expected_first_part = """\
+Bond restraints: 5
+Sorted by residual:
+bond 0
+     1
+  ideal  model  delta    sigma   weight residual
+  1.457  1.457  0.000 1.00e-01 1.00e+02 0.00e+00
+bond 0
+     2
+  ideal  model  delta    sigma   weight residual
+  2.453  2.453  0.000 1.41e-01 5.00e+01 0.00e+00
+bond 1
+     2
+  ideal  model  delta    sigma   weight residual
+  1.525  1.525  0.000 1.00e-01 1.00e+02 0.00e+00
+bond 1
+     3
+  ideal  model  delta    sigma   weight residual
+  2.401  2.401  0.000 1.41e-01 5.00e+01 0.00e+00
+bond 2
+     3
+  ideal  model  delta    sigma   weight residual
+  1.231  1.231  0.000 1.00e-01 1.00e+02 0.00e+00
+
+"""
+  assert not show_diff(sio.getvalue(), expected_first_part + """\
+Nonbonded interactions: 0
+
+""")
+  #
+  sites_cart, geo = geometry_restraints.manager \
+    .construct_non_crystallographic_conserving_bonds_and_angles(
+      sites_cart=flex.vec3_double([
+        (10.949, 12.815, 15.189),
+        (10.405, 13.954, 15.917),
+        (10.779, 15.262, 15.227),
+        ( 9.916, 16.090, 14.936),
+        (10.749, 12.615, 15.389)]),
+      edge_list_bonds=[(0, 1), (1, 2), (2, 3)],
+      edge_list_angles=[(0, 2), (1, 3)])
+  sio = StringIO()
+  geo.show_sorted(sites_cart=sites_cart, f=sio)
+  assert not show_diff(sio.getvalue(), expected_first_part + """\
+Nonbonded interactions: 2
+Sorted by model distance:
+nonbonded 0
+          4
+   model   vdw
+   0.346 1.200
+nonbonded 1
+          4
+   model   vdw
+   1.480 1.200
+
+""")
+
 def exercise_all(args):
   verbose = "--verbose" in args
   exercise_with_zeolite(verbose=verbose)
   exercise_with_pdb(verbose=verbose)
+  exercise_non_crystallographic_conserving_bonds_and_angles()
   print libtbx.utils.format_cpu_times()
 
 if (__name__ == "__main__"):
