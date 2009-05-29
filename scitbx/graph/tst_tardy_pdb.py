@@ -36,7 +36,8 @@ class pdb_extract(object):
       graph_utils.bond_bending_edge_sets(
         edge_sets=graph_utils.construct_edge_sets(
           n_vertices=len(O.sites),
-          edge_list=O.bonds)))
+          edge_list=O.bonds),
+        omit_bonds=True))
 
   def tardy_tree_construct(O):
     from scitbx.graph import tardy_tree
