@@ -35,7 +35,7 @@ class lbfgs(object):
 
   def compute_functional_and_gradients(O):
     sites_cart = flex.vec3_double(O.x)
-    rs_f = -maptbx.real_space_target_simple(
+    rs_f = maptbx.real_space_target_simple(
       unit_cell=O.unit_cell,
       density_map=O.density_map,
       sites_cart=sites_cart)
@@ -44,14 +44,15 @@ class lbfgs(object):
       density_map=O.density_map,
       sites_cart=sites_cart,
       delta=O.gradients_delta)
-    rs_g *= -1
     if (O.gr is None):
+      rs_f *= -1
+      rs_g *= -1
       f = rs_f
       g = rs_g
-      print "f:", rs_f
     else:
+      rs_f *= -O.rs_weight
+      rs_g *= -O.rs_weight
       gr_e = O.gr.energies_sites(sites_cart=sites_cart, compute_gradients=True)
-      f = O.rs_weight * rs_f + gr_e.target
-      g = O.rs_weight * rs_g + gr_e.gradients
-      print "f:", O.rs_weight * rs_f, gr_e.target
+      f = rs_f + gr_e.target
+      g = rs_g + gr_e.gradients
     return f, g.as_double()

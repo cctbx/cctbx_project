@@ -14,16 +14,21 @@ def extract_edge_list(edge_sets):
       result.append((i,j))
   return result
 
-def bond_bending_edge_sets(edge_sets):
-  result = [set(edge_set) for edge_set in edge_sets]
+def bond_bending_edge_sets(edge_sets, omit_bonds=False):
+  if (omit_bonds):
+    result = [set() for i in xrange(len(edge_sets))]
+  else:
+    result = [set(edge_set) for edge_set in edge_sets]
   for i,edge_set in enumerate(edge_sets):
     for j in edge_set:
       if (j < i): continue
       for k in edge_sets[j]:
         if (k == i): continue
+        if (omit_bonds and k in edge_sets[i]): continue
         result[i].add(k)
       for k in edge_sets[i]:
         if (k == j): continue
+        if (omit_bonds and k in edge_sets[j]): continue
         result[j].add(k)
   return result
 

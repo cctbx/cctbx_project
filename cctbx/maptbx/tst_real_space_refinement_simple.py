@@ -51,11 +51,11 @@ def construct_geometry_restraints_manager(test_case):
     nonbonded_function=geometry_restraints.prolsq_repulsion_function(),
     max_reasonable_bond_distance=10)
 
-def exercise_lbfgs(test_case, use_geo, d_min=2):
+def exercise_lbfgs(test_case, use_geo, d_min=1):
   sites_cart, geo_manager = construct_geometry_restraints_manager(
     test_case=test_case)
   scatterers = flex.xray_scatterer(
-    sites_cart.size(), xray.scatterer(scattering_type="C"))
+    sites_cart.size(), xray.scatterer(scattering_type="C", b=20))
   for sc,lbl in zip(scatterers, test_case.labels):
     sc.label = lbl
   structure = xray.structure(
@@ -74,17 +74,15 @@ def exercise_lbfgs(test_case, use_geo, d_min=2):
       density_map=fft_map.real_map(),
       gradients_delta=d_min/3,
       geometry_restraints_manager=geo_manager,
-      real_space_weight=0.01)
-    structure.set_sites_cart(sites_cart=minimized.sites_cart)
-    geo_manager.energies_sites(sites_cart=structure.sites_cart()).show()
+      real_space_weight=1.0)
+    geo_manager.energies_sites(sites_cart=minimized.sites_cart).show()
   else:
     minimized = real_space_refinement_simple.lbfgs(
       sites_cart=structure.sites_cart(),
       density_map=fft_map.real_map(),
       gradients_delta=d_min/3,
       unit_cell=structure.unit_cell())
-  print "f, |g|, w:", \
-    minimized.f, flex.mean_sq(minimized.g)**0.5, minimized.rs_weight
+  print "f, |g|:", minimized.f, flex.mean_sq(minimized.g)**0.5
   print
   return minimized
 
@@ -100,8 +98,8 @@ def run(args):
       minimized.append(exercise_lbfgs(test_case, use_geo=use_geo))
     f0 =  minimized[0].f
     f1 =  minimized[1].f / minimized[1].rs_weight
-    assert f1 > f0 * 1.1
-    assert f1 < f0 * 0.7
+    assert f1 > f0
+    assert f1 < f0 * 0.8
   print "OK"
 
 if (__name__ == "__main__"):

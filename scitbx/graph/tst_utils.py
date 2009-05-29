@@ -15,6 +15,8 @@ def run(args):
   piel = utils.potential_implied_edge_list(
     edge_sets=es, bond_bending_edge_sets=bbes)
   assert len(piel) == 0
+  bbesob = utils.bond_bending_edge_sets(edge_sets=es, omit_bonds=True)
+  assert len(bbesob) == 0
   #
   el = [(0,1), (1,2), (2,3)]
   n_vertices = 4
@@ -29,6 +31,10 @@ def run(args):
     edge_sets=es, bond_bending_edge_sets=bbes)
   assert piel == [(0,3)]
   assert set(bbel).isdisjoint(set(piel))
+  bbesob = utils.bond_bending_edge_sets(edge_sets=es, omit_bonds=True)
+  assert len(bbesob) == n_vertices
+  bbelob = utils.extract_edge_list(edge_sets=bbesob)
+  assert bbelob == [(0,2), (1,3)]
   #
   el = [(0,1), (1,2), (2,3), (3,4), (4,5), (5,6), (6,7)]
   n_vertices = 8
@@ -48,6 +54,15 @@ def run(args):
     edge_sets=es, bond_bending_edge_sets=bbes)
   assert piel == [(0,3), (1,4), (2,5), (3,6), (4,7)]
   assert set(bbel).isdisjoint(set(piel))
+  bbesob = utils.bond_bending_edge_sets(edge_sets=es, omit_bonds=True)
+  bbelob = utils.extract_edge_list(edge_sets=bbesob)
+  assert bbelob == [
+    (0, 2),
+    (1, 3),
+    (2, 4),
+    (3, 5),
+    (4, 6),
+    (5, 7)]
   #
   el = [(0,1), (1,2), (2,3), (0,3)]
   n_vertices = 4
@@ -59,6 +74,9 @@ def run(args):
   piel = utils.potential_implied_edge_list(
     edge_sets=es, bond_bending_edge_sets=bbes)
   assert piel == []
+  bbesob = utils.bond_bending_edge_sets(edge_sets=es, omit_bonds=True)
+  bbelob = utils.extract_edge_list(edge_sets=bbesob)
+  assert bbelob == [(0, 2), (1, 3)]
   #
   el = [(0,1), (1,2), (2,3), (3,4), (4,5), (0,5)]
   n_vertices = 6
@@ -76,6 +94,13 @@ def run(args):
     edge_sets=es, bond_bending_edge_sets=bbes)
   assert piel == [(0,3), (1,4), (2,5)]
   assert set(bbel).isdisjoint(set(piel))
+  bbesob = utils.bond_bending_edge_sets(edge_sets=es, omit_bonds=True)
+  bbelob = utils.extract_edge_list(edge_sets=bbesob)
+  assert bbelob == [
+    (0,2), (0,4),
+    (1,3), (1,5),
+    (2,4),
+    (3,5)]
   #
   el = [(0,1), (1,2), (2,3), (2,6), (3,4), (3,7), (4,5), (0,5)]
   n_vertices = 8
@@ -93,6 +118,14 @@ def run(args):
     edge_sets=es, bond_bending_edge_sets=bbes)
   assert piel == [(0,3), (0,6), (1,4), (1,7), (2,5), (4,6), (5,7), (6,7)]
   assert set(bbel).isdisjoint(set(piel))
+  bbesob = utils.bond_bending_edge_sets(edge_sets=es, omit_bonds=True)
+  bbelob = utils.extract_edge_list(edge_sets=bbesob)
+  assert bbelob == [
+    (0,2), (0,4),
+    (1,3), (1,5), (1,6),
+    (2,4), (2,7),
+    (3,5), (3,6),
+    (4,7)]
   #
   el = [(0,1), (1,2), (2,3), (2,6), (3,4), (3,7), (4,5), (0,5)]
   n_vertices = 8
