@@ -8,6 +8,9 @@ import cctbx.crystal.coordination_sequences
 from cctbx import uctbx
 from cctbx.array_family import flex
 from scitbx.graph import tst_tardy_pdb
+import scitbx.math
+from scitbx import matrix
+from libtbx.utils import null_out, format_cpu_times
 import random
 import sys
 
@@ -51,7 +54,7 @@ def construct_geometry_restraints_manager(test_case):
     nonbonded_function=geometry_restraints.prolsq_repulsion_function(),
     max_reasonable_bond_distance=10)
 
-def exercise_lbfgs(test_case, use_geo, d_min=1):
+def exercise_lbfgs(test_case, use_geo, out, d_min=2):
   sites_cart, geo_manager = construct_geometry_restraints_manager(
     test_case=test_case)
   scatterers = flex.xray_scatterer(
@@ -67,40 +70,58 @@ def exercise_lbfgs(test_case, use_geo, d_min=1):
   fft_map = f_calc.fft_map()
   fft_map.apply_sigma_scaling()
   if (use_geo):
-    structure.shake_sites_in_place(rms_difference=0.1)
-    geo_manager.energies_sites(sites_cart=structure.sites_cart()).show()
+    axis = matrix.col(flex.random_double_point_on_sphere())
+    rot = scitbx.math.r3_rotation_axis_and_angle_as_matrix(
+      axis=axis, angle=25, deg=True)
+    trans = matrix.col(flex.random_double_point_on_sphere()) * 1.0
+    structure.apply_rigid_body_shift(rot=rot, trans=trans)
+    geo_manager.energies_sites(sites_cart=structure.sites_cart()).show(f=out)
     minimized = real_space_refinement_simple.lbfgs(
       sites_cart=structure.sites_cart(),
       density_map=fft_map.real_map(),
       gradients_delta=d_min/3,
       geometry_restraints_manager=geo_manager,
-      real_space_weight=1.0)
-    geo_manager.energies_sites(sites_cart=minimized.sites_cart).show()
+      real_space_weight=1)
+    geo_manager.energies_sites(sites_cart=minimized.sites_cart).show(f=out)
   else:
     minimized = real_space_refinement_simple.lbfgs(
       sites_cart=structure.sites_cart(),
       density_map=fft_map.real_map(),
       gradients_delta=d_min/3,
       unit_cell=structure.unit_cell())
-  print "f, |g|:", minimized.f, flex.mean_sq(minimized.g)**0.5
-  print
+  rmsd_start = sites_cart.rms_difference(structure.sites_cart())
+  rmsd_final = sites_cart.rms_difference(minimized.sites_cart)
+  print >> out, "RMSD start, final:", rmsd_start, rmsd_final
+  if (use_geo):
+    assert rmsd_start >= 1-1e-6
+    assert rmsd_final < 0.2
+  def show_f_g(f, g):
+    print >> out, "start f, |g|:", f, flex.mean_sq(g)**0.5
+  show_f_g(f=minimized.f_start, g=minimized.g_start)
+  show_f_g(f=minimized.f_final, g=minimized.g_final)
+  assert minimized.f_final <= minimized.f_start
   return minimized
 
 def run(args):
   if (1):
     random.seed(0)
     flex.set_random_seed(0)
-  test_cases = tst_tardy_pdb.select_test_cases(tags_or_indices=args)
+  out = null_out()
+  remaining_args = []
+  for arg in args:
+    if (arg == "--verbose"): out = sys.stdout
+    else: remaining_args.append(arg)
+  test_cases = tst_tardy_pdb.select_test_cases(tags_or_indices=remaining_args)
   for test_case in test_cases:
-    print "test case %d: %s" % (test_case.index, test_case.tag)
+    print >> out, "test case %d: %s" % (test_case.index, test_case.tag)
     minimized = []
     for use_geo in [False, True]:
-      minimized.append(exercise_lbfgs(test_case, use_geo=use_geo))
-    f0 =  minimized[0].f
-    f1 =  minimized[1].f / minimized[1].rs_weight
-    assert f1 > f0
-    assert f1 < f0 * 0.8
-  print "OK"
+      minimized.append(exercise_lbfgs(test_case, use_geo=use_geo, out=out))
+    m0, m1 = minimized
+    assert m0.rs_weight is None
+    assert m1.rs_weight == 1
+    assert m1.f_final < m0.f_start * 0.99
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
