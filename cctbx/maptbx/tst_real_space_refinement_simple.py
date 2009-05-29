@@ -79,16 +79,16 @@ def exercise_lbfgs(test_case, use_geo, out, d_min=2):
     minimized = real_space_refinement_simple.lbfgs(
       sites_cart=structure.sites_cart(),
       density_map=fft_map.real_map(),
-      gradients_delta=d_min/3,
       geometry_restraints_manager=geo_manager,
-      real_space_weight=1)
+      real_space_target_weight=1,
+      real_space_gradients_delta=d_min/3)
     geo_manager.energies_sites(sites_cart=minimized.sites_cart).show(f=out)
   else:
     minimized = real_space_refinement_simple.lbfgs(
       sites_cart=structure.sites_cart(),
       density_map=fft_map.real_map(),
-      gradients_delta=d_min/3,
-      unit_cell=structure.unit_cell())
+      unit_cell=structure.unit_cell(),
+      real_space_gradients_delta=d_min/3)
   rmsd_start = sites_cart.rms_difference(structure.sites_cart())
   rmsd_final = sites_cart.rms_difference(minimized.sites_cart)
   print >> out, "RMSD start, final:", rmsd_start, rmsd_final
@@ -118,8 +118,8 @@ def run(args):
     for use_geo in [False, True]:
       minimized.append(exercise_lbfgs(test_case, use_geo=use_geo, out=out))
     m0, m1 = minimized
-    assert m0.rs_weight is None
-    assert m1.rs_weight == 1
+    assert m0.real_space_target_weight == 1
+    assert m1.real_space_target_weight == 1
     assert m1.f_final < m0.f_start * 0.99
   print format_cpu_times()
 

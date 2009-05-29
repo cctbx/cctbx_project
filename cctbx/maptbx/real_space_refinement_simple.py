@@ -7,23 +7,21 @@ class lbfgs(object):
   def __init__(O,
         sites_cart,
         density_map,
-        gradients_delta,
         unit_cell=None,
         geometry_restraints_manager=None,
-        real_space_weight=None,
+        real_space_target_weight=1,
+        real_space_gradients_delta=None,
         lbfgs_termination_params=None,
         lbfgs_exception_handling_params=None):
     assert [unit_cell, geometry_restraints_manager].count(None) == 1
-    if (geometry_restraints_manager is None):
-      assert real_space_weight is None
-    else:
-      assert real_space_weight is not None
+    assert real_space_gradients_delta is not None
+    if (geometry_restraints_manager is not None):
       unit_cell = geometry_restraints_manager.crystal_symmetry.unit_cell()
     O.density_map = density_map
-    O.gradients_delta = gradients_delta
+    O.real_space_gradients_delta = real_space_gradients_delta
     O.unit_cell = unit_cell
-    O.gr = geometry_restraints_manager
-    O.rs_weight = real_space_weight
+    O.geometry_restraints_manager = geometry_restraints_manager
+    O.real_space_target_weight = real_space_target_weight
     O.x = sites_cart.as_double()
     O.number_of_function_evaluations = -1
     O.f_start, O.g_start = O.compute_functional_and_gradients()
@@ -49,16 +47,15 @@ class lbfgs(object):
       unit_cell=O.unit_cell,
       density_map=O.density_map,
       sites_cart=sites_cart,
-      delta=O.gradients_delta)
-    if (O.gr is None):
-      rs_f *= -1
-      rs_g *= -1
+      delta=O.real_space_gradients_delta)
+    rs_f *= -O.real_space_target_weight
+    rs_g *= -O.real_space_target_weight
+    if (O.geometry_restraints_manager is None):
       f = rs_f
       g = rs_g
     else:
-      rs_f *= -O.rs_weight
-      rs_g *= -O.rs_weight
-      gr_e = O.gr.energies_sites(sites_cart=sites_cart, compute_gradients=True)
+      gr_e = O.geometry_restraints_manager.energies_sites(
+        sites_cart=sites_cart, compute_gradients=True)
       f = rs_f + gr_e.target
       g = rs_g + gr_e.gradients
     return f, g.as_double()
