@@ -1407,7 +1407,8 @@ class array(set):
   def as_amplitude_array(self):
     if (self.is_complex_array()):
       return array(
-        miller_set=self, data=flex.abs(self.data()), sigmas=self.sigmas())
+        miller_set=self, data=flex.abs(self.data()), sigmas=self.sigmas()) \
+          .set_observation_type_xray_amplitude()
     assert self.is_real_array()
     if (self.is_xray_intensity_array()):
       return self.f_sq_as_f()
