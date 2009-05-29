@@ -920,18 +920,26 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
     data=flex.double(), sigmas=flex.double())
   assert ma.min_f_over_sigma() is None
   #
-  ma = miller.array(ms, data)
+  ma = miller.array(ms, data[:2])
   maa = ma.combine(other=ma)
   assert not maa.anomalous_flag()
   ms = miller.set(xs, mi, anomalous_flag=True)
-  ma = miller.array(ms, data)
+  ma = miller.array(ms, data[:2])
   maa = ma.combine(other=ma)
   assert maa.anomalous_flag()
   #
   maa = ma * ma
-  assert approx_equal(maa.data(), [1,4,9,16])
+  assert approx_equal(maa.data(), [1,4])
   maa = ma * ma.data()
-  assert approx_equal(maa.data(), [1,4,9,16])
+  assert approx_equal(maa.data(), [1,4])
+  #
+  ma = ms.array(data=flex.complex_double([1+2j, 2-3j]))
+  maa = ma.as_amplitude_array()
+  assert approx_equal(maa.data(), [5**0.5, 13**0.5])
+  mai = ma.as_intensity_array()
+  assert approx_equal(mai.data(), [5, 13])
+  assert approx_equal(maa.as_intensity_array().data(), [5, 13])
+  assert approx_equal(mai.as_amplitude_array().data(), [5**0.5, 13**0.5])
 
 def exercise_r1_factor():
   cs = crystal.symmetry((1,2,3), "P21/a")
