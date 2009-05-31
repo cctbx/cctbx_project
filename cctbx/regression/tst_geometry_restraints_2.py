@@ -637,31 +637,36 @@ def exercise_non_crystallographic_conserving_bonds_and_angles():
     (5.863, 7.447, 5.291),
     (5.000, 8.275, 5.000)])
   assert approx_equal(geo.energies_sites(sites_cart=sites_cart).target, 0)
+  sites_cart_noise = flex.vec3_double([ # Just to make all residuals unique,
+    (6.043, 5.030, 5.233),              # so that the sorted bond list below
+    (5.469, 6.119, 5.941),              # has the same order on all platforms.
+    (5.893, 7.487, 5.281),
+    (5.040, 8.225, 5.020)])
   sio = StringIO()
-  geo.show_sorted(f=sio)
+  geo.show_sorted(sites_cart=sites_cart_noise, f=sio)
   expected_first_part = """\
 Bond restraints: 5
 Sorted by residual:
-bond 0
-     1
-  ideal  model  delta    sigma   weight residual
-  1.457  1.457  0.000 1.00e-01 1.00e+02 0.00e+00
-bond 0
-     2
-  ideal  model  delta    sigma   weight residual
-  2.453  2.453  0.000 1.41e-01 5.00e+01 0.00e+00
-bond 1
-     2
-  ideal  model  delta    sigma   weight residual
-  1.525  1.525  0.000 1.00e-01 1.00e+02 0.00e+00
-bond 1
-     3
-  ideal  model  delta    sigma   weight residual
-  2.401  2.401  0.000 1.41e-01 5.00e+01 0.00e+00
 bond 2
      3
   ideal  model  delta    sigma   weight residual
-  1.231  1.231  0.000 1.00e-01 1.00e+02 0.00e+00
+  1.231  1.158  0.073 1.00e-01 1.00e+02 5.35e-01
+bond 1
+     2
+  ideal  model  delta    sigma   weight residual
+  1.525  1.577 -0.052 1.00e-01 1.00e+02 2.66e-01
+bond 1
+     3
+  ideal  model  delta    sigma   weight residual
+  2.401  2.338  0.063 1.41e-01 5.00e+01 1.96e-01
+bond 0
+     1
+  ideal  model  delta    sigma   weight residual
+  1.457  1.420  0.037 1.00e-01 1.00e+02 1.37e-01
+bond 0
+     2
+  ideal  model  delta    sigma   weight residual
+  2.453  2.462 -0.009 1.41e-01 5.00e+01 3.92e-03
 
 """
   assert not show_diff(sio.getvalue(), expected_first_part + """\
@@ -679,19 +684,20 @@ Nonbonded interactions: 0
         (10.749, 12.615, 15.389)]),
       edge_list_bonds=[(0, 1), (1, 2), (2, 3)],
       edge_list_angles=[(0, 2), (1, 3)])
+  sites_cart_noise.append(sites_cart[-1])
   sio = StringIO()
-  geo.show_sorted(sites_cart=sites_cart, f=sio)
+  geo.show_sorted(sites_cart=sites_cart_noise, f=sio)
   assert not show_diff(sio.getvalue(), expected_first_part + """\
 Nonbonded interactions: 2
 Sorted by model distance:
 nonbonded 0
           4
    model   vdw
-   0.346 1.200
+   0.306 1.200
 nonbonded 1
           4
    model   vdw
-   1.480 1.200
+   1.274 1.200
 
 """)
 
