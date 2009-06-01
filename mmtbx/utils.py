@@ -666,7 +666,8 @@ def get_atom_selections(all_chain_proxies,
   elif(ss_size != 1 or n_none == 0 and not one_group_per_residue):
     for selection_string in selection_strings:
       selections.append(atom_selection(all_chain_proxies = all_chain_proxies,
-                                       string            = selection_string))
+                                       string            = selection_string,
+                                       allow_empty_selection = allow_empty_selection))
   else:
     raise Sorry('Ambiguous selection.')
   #
@@ -712,8 +713,14 @@ def get_atom_selections(all_chain_proxies,
     selections = s0
   return selections
 
-def atom_selection(all_chain_proxies, string):
-  try: return all_chain_proxies.selection(string = string)
+def atom_selection(all_chain_proxies, string, allow_empty_selection = False):
+  result = all_chain_proxies.selection(string = string)
+  if(result.size()==0 or (result.size()>0 and result.count(True)==0) and not
+     allow_empty_selection):
+    raise Sorry(
+      "Selection string '%s' results in empty selection (selects no atoms)."%
+      string)
+  try: return result
   except KeyboardInterrupt: raise
   except Exception: raise Sorry("Invalid atom selection: %s" % string)
 
@@ -1475,11 +1482,6 @@ class process_command_line_args(object):
         elif(pdb.is_pdb_file(file_name=arg_file)):
           self.pdb_file_names.append(arg_file)
           arg_is_processed = True
-          #try:
-          #  crystal_symmetries.append(
-          #    crystal_symmetry_from_any.extract_from(arg_file))
-          #except KeyboardInterrupt: raise
-          #except RuntimeError: pass
         else:
           try:
             cif_object = mmtbx.monomer_library.server.read_cif(file_name = arg_file)
@@ -1496,11 +1498,6 @@ class process_command_line_args(object):
           self.reflection_files.append(reflection_file)
           self.reflection_file_names.append(arg)
           arg_is_processed = True
-          #try:
-          #  crystal_symmetries.append(
-          #    crystal_symmetry_from_any.extract_from(arg_file))
-          #except KeyboardInterrupt: raise
-          #except RuntimeError: pass
       if(not arg_is_processed and master_params is not None):
         try:
           params = parameter_interpreter.process(arg = arg)

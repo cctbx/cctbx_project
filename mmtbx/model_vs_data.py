@@ -465,6 +465,12 @@ def run(args,
     scattering_table   = command_line.options.scattering_table,
     d_min              = f_obs.d_min())
   xray_structures = xsfppf.xray_structures
+  if(0): #XXX normalize occupancies if all models have occ=1 so the total=1
+    n_models = len(xray_structures)
+    for xrs in xray_structures:
+      occ = xrs.scatterers().extract_occupancies()
+      occ = occ/n_models
+      xrs.set_occupancies(occ)
   model_selections = xsfppf.model_selections
   mvd_obj.collect(crystal = group_args(
     uc       = f_obs.unit_cell(),

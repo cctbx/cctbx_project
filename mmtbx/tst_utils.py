@@ -552,7 +552,8 @@ def exercise_19(verbose):
       other_constrained_groups = other_constrained_groups,
       as_flex_arrays    = False)
   except Exception, e: pass
-  assert str(e) == "Empty selection."
+  tmp = "chain A and resseq 1 and name XX and altloc A"
+  assert str(e) == "Selection string '%s' results in empty selection (selects no atoms)."%tmp
 
 def exercise_20(verbose):
   pdb_file = libtbx.env.find_in_repositories(

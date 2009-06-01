@@ -204,14 +204,20 @@ class manager(object):
           log                      = log)
     time_adp_refinement_py += timer.elapsed()
 
-def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restraints_params, h_params, log,
-              all_params):
+def refine_adp(model,
+               fmodels,
+               target_weights,
+               individual_adp_params,
+               adp_restraints_params,
+               h_params,
+               log,
+               all_params):
   model.set_refine_individual_adp()
   print_statistics.make_sub_header(text="Individual ADP refinement", out = log)
   lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
     max_iterations = individual_adp_params.iso.max_number_of_iterations)
   assert fmodels.fmodel_xray().xray_structure is model.xray_structure
-  if(target_weights.twp.optimize_wxu):
+  if(target_weights is not None and target_weights.twp.optimize_wxu):
     save_scatterers = fmodels.fmodel_xray().xray_structure.\
       deep_copy_scatterers().scatterers()
     print >> log, "Start r_free = %6.4f"%fmodels.fmodel_xray().r_free()
@@ -220,9 +226,10 @@ def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restra
   else: scaler_values = [1.,]
   r_free = 1.e+9
   cntr = 0
-  w = target_weights.adp_weights_result.w
+  if(target_weights is not None):
+    w = target_weights.adp_weights_result.w
   for scaler in scaler_values:
-    if(target_weights.twp.optimize_wxu):
+    if(target_weights is not None and target_weights.twp.optimize_wxu):
       fmodels.fmodel_xray().xray_structure.replace_scatterers(
         save_scatterers.deep_copy())
       fmodels.update_xray_structure(update_f_calc = True)
@@ -239,7 +246,7 @@ def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restra
       target_weights           = target_weights,
       h_params                 = h_params)
     r_free_ = fmodels.fmodel_xray().r_free()
-    if(target_weights.twp.optimize_wxu):
+    if(target_weights is not None and target_weights.twp.optimize_wxu):
       print >> log, "scale= %8.4f total_weight= %8.4f r_free= %6.4f"%(scaler,
         target_weights.adp_weights_result.wx, r_free_), cntr
     if(r_free_ < r_free):
@@ -253,11 +260,11 @@ def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restra
     assert fmodels.fmodel_xray().xray_structure is model.xray_structure
     assert minimized.xray_structure is model.xray_structure
   #########
-  if(target_weights.twp.optimize_wxu):
+  if(target_weights is not None and target_weights.twp.optimize_wxu):
     scaler_values = [1./1.5,1./2.,1./2.5,1./3.,1./3.5,1./4.,1./4.5,1./5.]
     cntr = 0
     for scaler in scaler_values:
-      if(target_weights.twp.optimize_wxu):
+      if(target_weights is not None and target_weights.twp.optimize_wxu):
         fmodels.fmodel_xray().xray_structure.replace_scatterers(
           save_scatterers.deep_copy())
         fmodels.update_xray_structure(update_f_calc = True)
@@ -288,12 +295,12 @@ def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restra
       assert fmodels.fmodel_xray().xray_structure is model.xray_structure
       assert minimized.xray_structure is model.xray_structure
   #########
-  if(target_weights.twp.optimize_wxu):
+  if(target_weights is not None and target_weights.twp.optimize_wxu):
     print >> log, "Best r_free =  %6.4f"%r_free
     fmodels.fmodel_xray().xray_structure.replace_scatterers(new_scatterers)
     fmodels.update_xray_structure(update_f_calc = True)
     assert approx_equal(fmodels.fmodel_xray().r_free(), r_free)
   else: fmodels.update_xray_structure(update_f_calc = True)
-  if(not target_weights.twp.optimize_wxu):
+  if(target_weights is not None and not target_weights.twp.optimize_wxu):
     minimized.monitor.show(message = "LBFGS minimization", log  = log)
     #monitors.collect(step = str(macro_cycle)+"_adp:") XXX

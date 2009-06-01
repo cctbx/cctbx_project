@@ -545,6 +545,7 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent):
     scale_k1 = flex.sum(flex.abs(fobs_1.data())*flex.abs(fobs_2.data())) / den
   #
   fobs_2 = fobs_2.array(data = fobs_2.data()*scale_k1)
+  if 0: fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=250)
   if(not silent):
     print >> log, "Fobs1_vs_Fobs2 statistics:"
     print >> log, "Bin# Resolution range  Compl.  No.of refl. R-factor"

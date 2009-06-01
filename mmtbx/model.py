@@ -131,6 +131,7 @@ class manager(object):
     return selection
 
   def reset_adp_for_hydrogens(self):
+    if(self.restraints_manager is None): return
     hd_sel = self.xray_structure.hd_selection()
     if(hd_sel.count(True) > 0):
       xh_conn_table = self.xh_connectivity_table()
@@ -152,6 +153,7 @@ class manager(object):
           scatterers[i].site = scatterers[j].site
 
   def idealize_h(self, xh_bond_distance_deviation_limit=0, show=True): # XXX _limit is not used
+    if(self.restraints_manager is None): return
     if(self.xray_structure.hd_selection().count(True) > 0):
       sol_hd = self.solvent_selection().set_selected(
         ~self.xray_structure.hd_selection(), False)
@@ -485,7 +487,8 @@ class manager(object):
 
   def extract_ncs_groups(self):
     result = None
-    if(self.restraints_manager.ncs_groups is not None):
+    if(self.restraints_manager is not None and
+       self.restraints_manager.ncs_groups is not None):
       result = self.restraints_manager.ncs_groups.extract_ncs_groups(
         sites_cart = self.xray_structure.sites_cart())
     return result
@@ -897,6 +900,7 @@ class manager(object):
     self.xray_structure.set_b_iso(values = b_isos)
 
   def geometry_statistics(self, ignore_hd):
+    if(self.restraints_manager is None): return None
     sites_cart = self.xray_structure.sites_cart()
     hd_selection = self.xray_structure.hd_selection()
     if(self.use_ias):
@@ -909,6 +913,7 @@ class manager(object):
       restraints_manager = self.restraints_manager)
 
   def show_geometry_statistics(self, ignore_hd, message = "", out = None):
+    if(self.restraints_manager is None): return None
     global time_model_show
     if(out is None): out = self.log
     timer = user_plus_sys_time()
