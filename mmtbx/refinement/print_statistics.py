@@ -289,20 +289,21 @@ class refinement_monitor(object):
     self.foms            .append(flex.mean_default(fmodel.figures_of_merit(),0))
     self.phers           .append(flex.mean_default(fmodel.phase_errors(),0) )
     geom = model.geometry_statistics(ignore_hd = not self.neutron_refinement)
-    self.as_ave          .append(geom.a_mean                      )
-    self.as_max          .append(geom.a_max                       )
-    self.bs_ave          .append(geom.b_mean                      )
-    self.bs_max          .append(geom.b_max                       )
-    self.cs_ave          .append(geom.c_mean                      )
-    self.cs_max          .append(geom.c_max                       )
-    self.ds_ave          .append(geom.d_mean                      )
-    self.ds_max          .append(geom.d_max                       )
-    self.ps_ave          .append(geom.p_mean                      )
-    self.ps_max          .append(geom.p_max                       )
-    self.rs_ave          .append(geom.n_mean                      )
-    self.rs_min          .append(geom.n_min                       )
-    self.targets_c       .append(geom.target                      )
-    self.gs_c_norm       .append(geom.norm_of_gradients           )
+    if(geom is not None):
+      self.as_ave          .append(geom.a_mean                      )
+      self.as_max          .append(geom.a_max                       )
+      self.bs_ave          .append(geom.b_mean                      )
+      self.bs_max          .append(geom.b_max                       )
+      self.cs_ave          .append(geom.c_mean                      )
+      self.cs_max          .append(geom.c_max                       )
+      self.ds_ave          .append(geom.d_mean                      )
+      self.ds_max          .append(geom.d_max                       )
+      self.ps_ave          .append(geom.p_mean                      )
+      self.ps_max          .append(geom.p_max                       )
+      self.rs_ave          .append(geom.n_mean                      )
+      self.rs_min          .append(geom.n_min                       )
+      self.targets_c       .append(geom.target                      )
+      self.gs_c_norm       .append(geom.norm_of_gradients           )
     if(target_weights is not None):
        self.wcs             .append(target_weights.wc()              )
     #
@@ -370,14 +371,16 @@ class refinement_monitor(object):
     self.scale_ml        .append(scale_ml                         )
     self.n_solv          .append(model.number_of_ordered_solvent_molecules())
     if([self.bond_start,self.angle_start].count(None) == 2):
-       self.bond_start  = self.bs_ave[0]
-       self.angle_start = self.as_ave[0]
+       if(len(self.bs_ave)>0):
+         self.bond_start  = self.bs_ave[0]
+         self.angle_start = self.as_ave[0]
     try:
       self.bond_final  = self.bs_ave[len(self.bs_ave)-1]
       self.angle_final = self.as_ave[len(self.as_ave)-1]
     except:
-      self.bond_final  = self.bs_ave[0]
-      self.angle_final = self.as_ave[0]
+      if(len(self.bs_ave)>0):
+        self.bond_final  = self.bs_ave[0]
+        self.angle_final = self.as_ave[0]
     ###
     xrs = model.xray_structure
     ###
@@ -492,7 +495,7 @@ class refinement_monitor(object):
     print >> out, remark + separator
     #
     #
-    if(not self.short):
+    if(not self.short and len(self.as_ave)>0):
        a,b,c,d,e,f,g,h,i,j = [None,]*10
        if(len(self.wcs) > 0):
           print >> out, remark + \
@@ -525,7 +528,7 @@ class refinement_monitor(object):
        print >> out, remark + separator
     #
     #
-    if(not self.short):
+    if(not self.short and len(self.as_ave)>0):
        a,b,c,d,e,f,g,h,i,j = [None,]*10
        print >> out, remark + "                      Maximal deviations:"
        print >> out, remark + \

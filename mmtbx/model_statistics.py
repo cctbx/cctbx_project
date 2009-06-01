@@ -398,10 +398,12 @@ class model(object):
     if(model.use_ias):
       sites_cart = sites_cart.select(~model.ias_selection)
       hd_selection = hd_selection.select(~model.ias_selection)
-    self.geometry = geometry(sites_cart         = sites_cart,
-                             ignore_hd          = ignore_hd,
-                             hd_selection       = hd_selection,
-                             restraints_manager = model.restraints_manager)
+    self.geometry = None
+    if(model.restraints_manager is not None):
+      self.geometry = geometry(sites_cart         = sites_cart,
+                               ignore_hd          = ignore_hd,
+                               hd_selection       = hd_selection,
+                               restraints_manager = model.restraints_manager)
     self.content = model_content(model)
     self.adp = adp(model)
     self.tls_groups = model.tls_groups
@@ -411,7 +413,8 @@ class model(object):
   def show(self, out=None, prefix="", padded=None, pdb_deposition=False):
     if(out is None): out = sys.stdout
     if(pdb_deposition): prefix="REMARK   3  "
-    self.geometry.show(out=out, prefix=prefix, pdb_deposition=pdb_deposition)
+    if(self.geometry is not None):
+      self.geometry.show(out=out, prefix=prefix, pdb_deposition=pdb_deposition)
     print >> out, prefix
     self.adp.show(out=out, prefix=prefix, padded=padded,
       pdb_deposition=pdb_deposition)
