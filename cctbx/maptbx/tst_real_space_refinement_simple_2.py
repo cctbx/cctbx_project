@@ -1,5 +1,5 @@
 from __future__ import division
-from cctbx.maptbx import real_space_refinement_pavel
+from cctbx.maptbx import real_space_refinement_simple_2
 from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx.array_family import flex
@@ -37,7 +37,7 @@ def run(args):
   steps1.reverse()
   steps2 = [1.0,0.5,0.25,0.1,0.05,0.01,0.001]
   for step in steps1+steps2:
-    minimized = real_space_refinement_pavel.minimization(
+    minimized = real_space_refinement_simple_2.minimization(
       xray_structure   = xrs_sh,
       miller_array     = miller_array,
       crystal_gridding = crystal_gridding,
