@@ -82,7 +82,7 @@ class kick_map(object):
         xray_structure = fmodel.xray_structure.deep_copy_scatterers()
         xray_structure.shake_sites_in_place(mean_distance = kick_size)
         max_kick = fmodel.xray_structure.max_distance(other = xray_structure)
-        print kick_size, max_kick
+        if 0: print kick_size, max_kick
         model_to_map_obj = model_to_map(
           fmodel_tmp                    = fmodel_tmp,
           xray_structure                = xray_structure,
@@ -223,7 +223,6 @@ class electron_density_map(object):
         phase_source = fmodel_match_anom_diff)
     if(self.fill_missing_f_obs):
       self.fmodel = self.fmodel.fill_missing_f_obs(fill_mode = fill_mode)
-      assert filled_f_obs_file_name is not None
       if 0: # XXX make it an option
         self.fmodel.export_filled_f_obs(file_name = filled_f_obs_file_name)
     self.map_helper_obj = self.fmodel.map_calculation_helper()
