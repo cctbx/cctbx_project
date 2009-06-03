@@ -483,6 +483,17 @@ def matrix_mul(a, ar, ac, b, br, bc):
   return result
 
 def exercise_eigensystem():
+  s = eigensystem.real_symmetric(
+    m=flex.double(flex.grid(0,0)),
+    relative_epsilon=1e-6,
+    absolute_epsilon=1e-6)
+  s.values().all() == (0,)
+  assert s.vectors().all() == (0,0)
+  u = s.generalized_inverse_as_packed_u()
+  assert u.all() == (0,)
+  m = u.matrix_packed_u_as_symmetric()
+  assert m.all() == (0,0)
+  #
   for n in xrange(1,10):
     m = flex.double(flex.grid(n,n))
     s = eigensystem.real_symmetric(m)
