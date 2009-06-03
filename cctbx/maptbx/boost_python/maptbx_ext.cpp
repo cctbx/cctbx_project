@@ -3,6 +3,7 @@
 #include <cctbx/maptbx/fft.h>
 #include <cctbx/maptbx/average_densities.h>
 #include <cctbx/maptbx/real_space_gradients_simple.h>
+#include <cctbx/maptbx/real_space_gradients_simple_2.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
@@ -191,6 +192,30 @@ namespace {
          af::const_ref<double, af::c_grid_padded<3> > const&,
          af::const_ref<scitbx::vec3<double> > const&,
          double)) real_space_gradients_simple, (
+           arg_("unit_cell"),
+           arg_("density_map"),
+           arg_("sites_cart"),
+           arg_("delta")));
+    // Pavel
+    def("real_space_target_simple_2",
+      (double(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         double const&,
+         af::const_ref<scitbx::vec3<double> > const&))
+           real_space_target_simple_2, (
+             arg_("unit_cell"),
+             arg_("map_target"),
+             arg_("map_current"),
+             arg_("box_size"),
+             arg_("sites_frac")));
+    def("real_space_gradients_simple_2",
+      (af::shared<scitbx::vec3<double> >(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&,
+         double)) real_space_gradients_simple_2, (
            arg_("unit_cell"),
            arg_("density_map"),
            arg_("sites_cart"),

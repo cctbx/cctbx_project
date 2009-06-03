@@ -1,6 +1,7 @@
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from cctbx import miller
+from cctbx import maptbx
 
 class minimization(object):
   def __init__(self,
@@ -47,6 +48,13 @@ class minimization(object):
     r = self.map_target-self.map_current
     r = r*r
     r = flex.sum(r)
+    #zz = maptbx.real_space_target_simple_2(
+    #  unit_cell   = self.xray_structure.unit_cell(),
+    #  map_target  = self.map_target,
+    #  map_current = self.map_current,
+    #  box_size    = 100,
+    #  sites_frac  = self.xray_structure.sites_frac())
+    #print r, zz
     return r
 
   def gradients(self):
@@ -75,9 +83,13 @@ class minimization(object):
           map_current.eight_point_interpolation(site))
         g.append([gx*s,gy*s,gz*s])
       site_frac = uc.fractionalize(tuple(site_cart))
-      x = (gx*r).eight_point_interpolation(site_frac)
-      y = (gy*r).eight_point_interpolation(site_frac)
-      z = (gz*r).eight_point_interpolation(site_frac)
+      tmp = r.eight_point_interpolation(site_frac)
+      #x = (gx*r).eight_point_interpolation(site_frac)
+      #y = (gy*r).eight_point_interpolation(site_frac)
+      #z = (gz*r).eight_point_interpolation(site_frac)
+      x = gx*tmp
+      y = gy*tmp
+      z = gz*tmp
       g.append([x,y,z])
     return g
 
