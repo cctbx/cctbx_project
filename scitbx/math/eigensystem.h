@@ -26,6 +26,7 @@ namespace scitbx { namespace math { namespace eigensystem {
     {
       SCITBX_ASSERT(relative_epsilon >= 0);
       SCITBX_ASSERT(absolute_epsilon >= 0);
+      if (n == 0) return 0;
       // The matrix that will hold the results is initially = I.
       std::size_t i;
       for (i=0; i< (n*n); i++) {
