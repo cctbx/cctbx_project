@@ -4,7 +4,7 @@ from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx.array_family import flex
 from cctbx.development import random_structure
-import random
+import random, time
 import sys
 
 def run(args):
@@ -54,4 +54,6 @@ def run(args):
   print "OK"
 
 if (__name__ == "__main__"):
+  t0 = time.time()
   run(args=sys.argv[1:])
+  print "Time: %8.3f"%(time.time()-t0)

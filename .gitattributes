@@ -60,6 +60,7 @@ cctbx/maptbx/boost_python/time_grid_indices_around_sites.py svneol=native#text/x
 cctbx/maptbx/fft.h -text
 cctbx/maptbx/grid_indices_around_sites.h svneol=native#text/plain
 cctbx/maptbx/real_space_gradients_simple.h svneol=native#text/plain
+cctbx/maptbx/real_space_gradients_simple_2.h -text
 cctbx/maptbx/real_space_refinement_simple.py svneol=native#text/x-python
 cctbx/maptbx/real_space_refinement_simple_2.py -text
 cctbx/maptbx/tst_real_space_refinement_simple.py svneol=native#text/x-python
