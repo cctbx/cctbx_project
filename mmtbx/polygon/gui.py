@@ -6,9 +6,36 @@ from math import pi, cos, sin, radians, degrees, floor
 
 stat_names = { "r_work_pdb" : "Rwork",
                "r_free_pdb" : "Rfree",
-               "bonds_rmsd" : "RMSbonds",
-               "angles_rmsd" : "RMSangles",
-               "adp_mean" : "avg. B" }
+               "r_work_re_computed" : "Recomputed R-work",
+               "r_free_re_computed" : "Recomputed R-free",
+               "r_work_cutoff" : "R-work with cutoff",
+               "r_free_cutoff" : "R-free with cutoff",
+               "adp_mean" : "Avgerage B",
+               "adp_min" : "Minimum B",
+               "adp_max" : "Maximum B",
+               "cmpl_in_range" : "Completeness in range",
+               "cmpl_d_min_inf" : "Completeness (d_min-inf)",
+               "cmpl_6A_inf" : "Completeness (6A-inf)",
+               "rama_favored" : "Ramachandran favored",
+               "rama_allowed" : "Ramachandran allowed",
+               "rama_general" : "Ramachandran general",
+               "rama_outliers" : "Ramachandran outliers",
+               "k_sol" : "Bulk solvent scale factor",
+               "b_sol" : "Bulk solvent B factor",
+               "solvent_cont" : "Solvent content",
+               "matthews_coeff" : "Matthews coefficient (Vm)",
+               "wilson_b" : "Wilson B",
+               "bonds_rmsd" : "RMSD(bonds)",
+               "bonds_max" : "Max. bond deviation",
+               "angles_rmsd" : "RMSD(angles)",
+               "angles_max" : "Max. angle deviation",
+               "dihedrals_rmsd" : "RMSD(dihedrals)",
+               "dihedrals_max" : "Max. dihedral deviation",
+               "chirality_rmsd" : "RMSD(chirality)",
+               "chirality_max" : "Max. chirality deviation",
+               "planarity_rmsd" : "RMSD(planarity)",
+               "planarity_max" : "Max. planarity deviation",
+             }
 stat_formats = { "r_work_pdb" : "%.4f",
                  "r_free_pdb" : "%.4f",
                  "bonds_rmsd" : "%.3f",
@@ -40,13 +67,18 @@ def convert_histogram_data (polygon_result) :
                                                     n_slots=10)
   return histograms
 
-def get_stats_and_histogram_data (mvd_object) :
+def get_stats_and_histogram_data (mvd_object, stat_keys=None) :
   pdb_file = mvd_object.pdb_file
+  stats = {}
+  #for stat_name in stat_keys :
+  #  stat_value = getattr(mvd_object, stat_name)
+  #  stats[stat_name] = stat_value
   fmodel = mvd_object.fmodel
   d_min = fmodel.info().d_min
   model = mvd_object.models[0]
   x = model.xray_structure_stat
   g = model.model_statistics_geometry
+
   stats = { "r_work_pdb" : fmodel.r_work(),
             "r_free_pdb" : fmodel.r_free(),
             "adp_mean" : float(x.b_mean),
