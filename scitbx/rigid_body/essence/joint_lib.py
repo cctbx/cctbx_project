@@ -12,7 +12,7 @@ class zero_dof_alignment(object):
 class zero_dof(object):
 
   degrees_of_freedom = 0
-  qd_zero = matrix.zeros(n=0)
+  qd_zero = matrix.zeros(n=degrees_of_freedom)
   qdd_zero = qd_zero
 
   def __init__(O):
@@ -48,8 +48,8 @@ class six_dof_alignment(object):
 class six_dof(object):
 
   degrees_of_freedom = 6
-  qd_zero = matrix.zeros(n=6)
-  qdd_zero = matrix.zeros(n=6)
+  qd_zero = matrix.zeros(n=degrees_of_freedom)
+  qdd_zero = qd_zero
 
   def __init__(O, qE, qr):
     O.qE = qE
@@ -98,8 +98,8 @@ class spherical_alignment(object):
 class spherical(object):
 
   degrees_of_freedom = 3
-  qd_zero = matrix.zeros(n=3)
-  qdd_zero = matrix.zeros(n=3)
+  qd_zero = matrix.zeros(n=degrees_of_freedom)
+  qdd_zero = qd_zero
 
   def __init__(O, qE):
     O.qE = qE
@@ -151,8 +151,8 @@ class revolute_alignment(object):
 class revolute(object):
 
   degrees_of_freedom = 1
-  qd_zero = matrix.zeros(n=1)
-  qdd_zero = matrix.zeros(n=1)
+  qd_zero = matrix.zeros(n=degrees_of_freedom)
+  qdd_zero = qd_zero
 
   def __init__(O, qE):
     O.qE = qE
@@ -188,8 +188,8 @@ class translational_alignment(six_dof_alignment): pass
 class translational(object):
 
   degrees_of_freedom = 3
-  qd_zero = matrix.zeros(n=3)
-  qdd_zero = matrix.zeros(n=3)
+  qd_zero = matrix.zeros(n=degrees_of_freedom)
+  qdd_zero = qd_zero
 
   def __init__(O, qr):
     O.qr = qr
