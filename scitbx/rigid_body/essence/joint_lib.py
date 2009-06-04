@@ -4,8 +4,6 @@ import math
 class zero_dof_alignment(object):
 
   def __init__(O):
-    O.pivot = None
-    O.normal = None
     O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), (0,0,0)))
     O.Tb0 = O.T0b
 
@@ -40,10 +38,8 @@ class zero_dof(object):
 class six_dof_alignment(object):
 
   def __init__(O, center_of_mass):
-    O.pivot = center_of_mass
-    O.normal = None
-    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -O.pivot))
-    O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), O.pivot))
+    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -center_of_mass))
+    O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), center_of_mass))
 
 class six_dof(object):
 
@@ -90,10 +86,8 @@ class six_dof(object):
 class spherical_alignment(object):
 
   def __init__(O, center_of_mass):
-    O.pivot = center_of_mass
-    O.normal = None
-    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -O.pivot))
-    O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), O.pivot))
+    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -center_of_mass))
+    O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), center_of_mass))
 
 class spherical(object):
 
@@ -142,8 +136,6 @@ class spherical(object):
 class revolute_alignment(object):
 
   def __init__(O, pivot, normal):
-    O.pivot = pivot
-    O.normal = normal
     r = normal.vector_to_001_rotation()
     O.T0b = matrix.rt((r, -r * pivot))
     O.Tb0 = matrix.rt((r.transpose(), pivot))
