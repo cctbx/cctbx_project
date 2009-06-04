@@ -47,6 +47,15 @@ def exercise_basic():
      10.04129606, 199.7384559, -199.3511949,
      10.09577652, -199.3511949, 206.8314171])
 
+class zero_dof_body(object):
+
+  def __init__(O):
+    O.A = joint_lib.zero_dof_alignment()
+    O.I = matrix.sqr([0]*36)
+    O.J = joint_lib.zero_dof()
+    O.qd = O.J.qd_zero
+    O.parent = -1
+
 class six_dof_body(object):
 
   def __init__(O):
@@ -81,7 +90,7 @@ class spherical_body(object):
 
 class revolute_body(object):
 
-  def __init__(O):
+  def __init__(O, parent):
     pivot = matrix.col((0.779, 5.262, 5.227))
     normal = matrix.col((0.25, 0.86, -0.45)).normalize()
     sites = matrix.col_list([(-0.084, 6.09, 4.936)])
@@ -90,7 +99,7 @@ class revolute_body(object):
     O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
     O.J = joint_lib.revolute(qE=matrix.col([0.26]))
     O.qd = matrix.col([-0.19])
-    O.parent = 1
+    O.parent = parent
 
 class translational_body(object):
 
@@ -109,7 +118,7 @@ def exercise_system_model():
   model = featherstone.system_model(bodies=[
     six_dof_body(),
     spherical_body(),
-    revolute_body(),
+    revolute_body(parent=1),
     translational_body()])
   assert approx_equal(model.e_kin(), 5.10688665235)
   assert approx_equal(model.qd_e_kin_scales(), [
@@ -201,10 +210,76 @@ def exercise_system_model():
     (0.07,),
     (-0.35,0.02,0.2)])
 
+def exercise_system_model_with_zero_dof_body():
+  model = featherstone.system_model(bodies=[
+    zero_dof_body(),
+    revolute_body(parent=0)])
+  assert approx_equal(model.e_kin(), 0.0202765671829)
+  assert approx_equal(model.qd_e_kin_scales(), [1.334309])
+  #
+  qdd = matrix.col_list([
+    (),
+    (0.14,)])
+  f_ext = matrix.col_list([
+    (-0.10, 0.30, -0.01, -0.01, 0.01, 0.06),
+    (-0.11, 0.03, -0.07, -0.11, 0.06, 0.08)])
+  grav_accn = matrix.col((0.02, -0.13, 0.15, 0.26, -0.16, 0.14))
+  #
+  tau = model.ID(qdd=qdd)
+  assert approx_equal(tau, [
+    (),
+    (0.15726977316344815,)])
+  qdd2 = model.FDab(tau=tau)
+  assert approx_equal(qdd2, qdd)
+  #
+  tau = model.ID(qdd=qdd, f_ext=f_ext)
+  assert approx_equal(tau, [
+    (),
+    (0.22726977316344815,)])
+  qdd2 = model.FDab(tau=tau, f_ext=f_ext)
+  assert approx_equal(qdd2, qdd)
+  #
+  tau = model.ID(qdd=qdd, f_ext=f_ext, grav_accn=grav_accn)
+  assert approx_equal(tau, [
+    (),
+    (0.59601742875022201,)])
+  qdd2 = model.FDab(tau=tau, f_ext=f_ext, grav_accn=grav_accn)
+  assert approx_equal(qdd2, qdd)
+  #
+  new_q = [
+    B.J.time_step_position(qd=B.qd, delta_t=0.01).get_q()
+      for B in model.bodies]
+  assert approx_equal(new_q, [
+    (), (0.2581,)])
+  new_qd = [
+    B.J.time_step_velocity(qd=B.qd, qdd=qdd_i, delta_t=0.01)
+      for B,qdd_i in zip(model.bodies, qdd)]
+  assert approx_equal(new_qd, [
+    (),
+    (-0.1886,)])
+  for B,q in zip(model.bodies, [(),(13,)]):
+    assert approx_equal(B.J.new_q(q=q).get_q(), q)
+  #
+  qdd = []
+  for B in model.bodies:
+    B.qd = B.J.qd_zero
+    qdd.append(B.J.qdd_zero)
+  tau = model.ID(qdd=qdd, f_ext=f_ext)
+  assert approx_equal(tau, [
+    (),
+    (0.07,)])
+  tau0 = model.ID0(f_ext=f_ext)
+  assert approx_equal(tau0, tau)
+  d_pot_d_q = model.d_pot_d_q(f_ext=f_ext)
+  assert approx_equal(d_pot_d_q, [
+    (),
+    (0.07,)])
+
 def run(args):
   assert len(args) == 0
   exercise_basic()
   exercise_system_model()
+  exercise_system_model_with_zero_dof_body()
   print "OK"
 
 if (__name__ == "__main__"):

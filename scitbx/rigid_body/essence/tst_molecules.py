@@ -157,7 +157,10 @@ def exercise_dynamics_quick(
     delta_t=delta_t,
     tardy_model=tardy_model)
   if (out is not sys.stdout):
-    assert relative_range < 1.e-4
+    if (len(tardy_model.tardy_tree.cluster_manager.loop_edges) == 0):
+      assert relative_range < 1.e-5
+    else:
+      assert relative_range < 2.e-4
   print >> out
 
 def exercise_minimization_quick(out, tardy_model, max_iterations=3):
@@ -168,7 +171,7 @@ def exercise_minimization_quick(out, tardy_model, max_iterations=3):
   print >> out, "  final e_pot:", tardy_model.e_pot()
   e_pot_final = tardy_model.e_pot()
   if (out is not sys.stdout):
-    assert e_pot_final < e_pot_start * 0.5
+    assert e_pot_final < e_pot_start * 0.6
   print >> out
 
 def construct_tardy_model(
@@ -187,11 +190,21 @@ def construct_tardy_model(
       wells=sites,
       restraint_edges=cm.loop_edges+cm.loop_edge_bendings))
 
+def exercise_with_tardy_model(out, tardy_model, n_dynamics_steps):
+  tardy_model.tardy_tree.show_summary(out=out, vertex_labels=None)
+  exercise_qd_e_kin_scales(tardy_model=tardy_model)
+  exercise_random_velocities(tardy_model=tardy_model)
+  tardy_model.assign_random_velocities(e_kin_target=1)
+  assert approx_equal(tardy_model.e_kin(), 1)
+  exercise_dynamics_quick(
+    out=out, tardy_model=tardy_model, n_dynamics_steps=n_dynamics_steps)
+  exercise_minimization_quick(out=out, tardy_model=tardy_model)
+
 n_test_models = len(tst_tardy_pdb.test_cases)
 
-def get_test_model_by_index(i):
+def get_test_model_by_index(i, fixed_vertices=None):
   tc = tst_tardy_pdb.test_cases[i]
-  tt = tc.tardy_tree_construct()
+  tt = tc.tardy_tree_construct(fixed_vertices=fixed_vertices)
   return construct_tardy_model(
     labels=tc.labels,
     sites=tc.sites,
@@ -213,13 +226,15 @@ def run(args):
     for i in xrange(n_test_models):
       print >> out, "test model index:", i
       tardy_model = get_test_model_by_index(i=i)
-      exercise_qd_e_kin_scales(tardy_model=tardy_model)
-      exercise_random_velocities(tardy_model=tardy_model)
-      tardy_model.assign_random_velocities(e_kin_target=1)
-      assert approx_equal(tardy_model.e_kin(), 1)
-      exercise_dynamics_quick(
+      exercise_with_tardy_model(
         out=out, tardy_model=tardy_model, n_dynamics_steps=n_dynamics_steps)
-      exercise_minimization_quick(out=out, tardy_model=tardy_model)
+      if (i == 5):
+        assert tardy_model.degrees_of_freedom == 11
+        print >> out, "test model index:", i, "fixed_vertices"
+        tardy_model = get_test_model_by_index(i=i, fixed_vertices=[0,16,17])
+        assert tardy_model.degrees_of_freedom == 2
+        exercise_with_tardy_model(
+          out=out, tardy_model=tardy_model, n_dynamics_steps=n_dynamics_steps)
   #
   print "OK"
 

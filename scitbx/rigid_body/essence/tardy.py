@@ -7,6 +7,14 @@ from scitbx.array_family import flex
 from scitbx import matrix
 import random
 
+class zero_dof_body(object):
+
+  def __init__(O):
+    O.A = joint_lib.zero_dof_alignment()
+    O.I = matrix.sqr([0]*36)
+    O.J = joint_lib.zero_dof()
+    O.qd = O.J.qd_zero
+
 class six_dof_body(object):
 
   def __init__(O, sites, masses):
@@ -50,7 +58,10 @@ def construct_bodies(sites, masses, cluster_manager):
     body_sites = [matrix.col(sites[i]) for i in cluster]
     body_masses = [masses[i] for i in cluster]
     he = cm.hinge_edges[ic]
-    if (he[0] == -1):
+    if (ic == 0 and cluster_manager.number_of_fixed_vertices != 0):
+      body = zero_dof_body()
+      body.parent = -1
+    elif (he[0] == -1):
       if (len(body_sites) == 1):
         body = translational_body(sites=body_sites, masses=body_masses)
       else:
