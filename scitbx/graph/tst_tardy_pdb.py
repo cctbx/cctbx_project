@@ -39,11 +39,14 @@ class pdb_extract(object):
           edge_list=O.bonds),
         omit_bonds=True))
 
-  def tardy_tree_construct(O):
+  def tardy_tree_construct(O, fixed_vertices=None):
     from scitbx.graph import tardy_tree
     tt = tardy_tree.construct(
       sites=O.sites,
-      edge_list=O.bonds).finalize()
+      edge_list=O.bonds,
+      fixed_vertices=fixed_vertices).finalize()
+    if (fixed_vertices is not None):
+      return tt
     cm = tt.cluster_manager
     if (O.clusters is None):
       print "tag:", O.tag

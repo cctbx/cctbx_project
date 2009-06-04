@@ -1,6 +1,42 @@
 from featherstone import matrix, T_as_X
 import math
 
+class zero_dof_alignment(object):
+
+  def __init__(O):
+    O.pivot = None
+    O.normal = None
+    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), (0,0,0)))
+    O.Tb0 = O.T0b
+
+class zero_dof(object):
+
+  degrees_of_freedom = 0
+  qd_zero = matrix.zeros(n=0)
+  qdd_zero = qd_zero
+
+  def __init__(O):
+    O.q_size = 0
+    O.Tps = matrix.rt(((1,0,0,0,1,0,0,0,1), (0,0,0)))
+    O.Tsp = O.Tps
+    O.Xj = T_as_X(O.Tps)
+    O.S = matrix.rec(elems=(), n=(6,0))
+
+  def time_step_position(O, qd, delta_t):
+    return zero_dof()
+
+  def time_step_velocity(O, qd, qdd, delta_t):
+    return zero_dof.qd_zero
+
+  def tau_as_d_pot_d_q(O, tau):
+    return zero_dof.qd_zero
+
+  def get_q(O):
+    return ()
+
+  def new_q(O, q):
+    return zero_dof()
+
 class six_dof_alignment(object):
 
   def __init__(O, center_of_mass):

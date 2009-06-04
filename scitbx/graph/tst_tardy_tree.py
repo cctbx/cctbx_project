@@ -68,6 +68,7 @@ def exercise_cluster_manager():
   sio = StringIO()
   assert cm.show_summary(out=sio, prefix=">") is cm
   assert not show_diff(sio.getvalue(), """\
+>number of fixed vertices: 0
 >number of clusters: 1
 >merge clusters with multiple connections: 2 passes
 >number of overlapping rigid clusters: 2
@@ -560,6 +561,7 @@ $number of edges: 13
 $collinear bonds tolerance: 1 deg
 $find cluster loops: None
 $number of collinear bonds: None
+$number of fixed vertices: 0
 $number of clusters: 12
 $merge clusters with multiple connections: 0 passes
 $number of overlapping rigid clusters: None
@@ -576,6 +578,7 @@ $number of loop edge bendings: None
 >collinear bonds tolerance: 1 deg
 >find cluster loops: 0 repeats
 >number of collinear bonds: None
+>number of fixed vertices: 0
 >number of clusters: 9
 >merge clusters with multiple connections: 1 pass
 >number of overlapping rigid clusters: 12
@@ -640,6 +643,51 @@ END
       assert tt.cluster_manager.clusters == expected_clusters
       assert tt.external_clusters_connect_count == expected_count
 
+def exercise_fixed_vertices():
+  cm = cluster_manager(n_vertices=2, fixed_vertices=[0])
+  assert cm.clusters == [[0], [1]]
+  cm = cluster_manager(n_vertices=2, fixed_vertices=[1])
+  assert cm.clusters == [[1], [0]]
+  edge_list = [(0,1),(1,2),(2,3),(1,3)]
+  edge_sets = construct_edge_sets(n_vertices=4, edge_list=edge_list)
+  for fixed_vertex in [0,1]:
+    for optimize in [False, True]:
+      for connects in [[(1,2),(2,3)], [(2,3),(1,2)], [(2,1),(3,2)]]:
+        cm = cluster_manager(n_vertices=4, fixed_vertices=[fixed_vertex])
+        for i,j in connects:
+          cm.connect_vertices(i=i, j=j, optimize=optimize)
+        if (fixed_vertex == 0):
+          if (connects[0] == (2,1)):
+            if (not optimize):
+              assert cm.clusters == [[0], [], [], [3, 2, 1]]
+            else:
+              assert cm.clusters == [[0], [], [2, 1, 3], []]
+          else:
+            if (not optimize or connects[0][0] == 1):
+              assert cm.clusters == [[0], [1,2,3], [], []]
+            else:
+              assert cm.clusters == [[0], [], [2,3,1], []]
+          cm.tidy()
+          assert cm.clusters == [[0], [1,2,3]]
+          assert cm.sort_by_overlapping_rigid_cluster_sizes(
+            edge_sets=edge_sets) == [2, 4]
+          cm.overlapping_rigid_clusters = None
+          cm.construct_spanning_trees(edge_sets=edge_sets)
+          assert cm.clusters == [[0,1], [2,3]]
+          assert cm.hinge_edges == [(-1,0), (0,1)]
+          assert cm.loop_edges == []
+        else:
+          assert cm.clusters == [[1,2,3], [0], [], []]
+          cm.tidy()
+          assert cm.clusters == [[1,2,3], [0]]
+          assert cm.sort_by_overlapping_rigid_cluster_sizes(
+            edge_sets=edge_sets) == [4, 2]
+          cm.overlapping_rigid_clusters = None
+          cm.construct_spanning_trees(edge_sets=edge_sets)
+          assert cm.clusters == [[0,1,2,3]]
+          assert cm.hinge_edges == [(-1,1)]
+          assert cm.loop_edges == []
+
 def exercise_show_summary():
   from scitbx.graph import tst_tardy_pdb
   tcs = tst_tardy_pdb.select_test_cases(tags_or_indices=["ZINC03847120"])
@@ -657,6 +705,7 @@ def exercise_show_summary():
 &number of collinear bonds: 1
 &tardy collinear bond: %s
 &                      %s
+&number of fixed vertices: 0
 &number of clusters: 1
 &merge clusters with multiple connections: 1 pass
 &number of overlapping rigid clusters: 2
@@ -706,6 +755,7 @@ def run(args):
   exercise_pdb_test_cases(out=out)
   exercise_special_case_ZINC03847121()
   exercise_external_clusters()
+  exercise_fixed_vertices()
   exercise_show_summary()
   exercise_edge_classifier()
   #

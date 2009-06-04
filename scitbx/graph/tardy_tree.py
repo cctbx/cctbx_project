@@ -5,17 +5,34 @@ import math
 class cluster_manager(object):
 
   __slots__ = [
-    "cluster_indices", "clusters",
+    "number_of_fixed_vertices",
+    "cluster_indices",
+    "clusters",
     "merge_clusters_with_multiple_connections_passes",
     "overlapping_rigid_clusters",
-    "hinge_edges", "loop_edges",
+    "hinge_edges",
+    "loop_edges",
     "loop_edge_bendings"]
 
-  def __init__(O, n_vertices):
-    O.cluster_indices = range(n_vertices)
-    O.clusters = []
-    for i in xrange(n_vertices):
-      O.clusters.append([i])
+  def __init__(O, n_vertices, fixed_vertices=None):
+    if (fixed_vertices is None):
+      O.number_of_fixed_vertices = 0
+    else:
+      O.number_of_fixed_vertices = len(fixed_vertices)
+    if (O.number_of_fixed_vertices == 0):
+      O.cluster_indices = range(n_vertices)
+      O.clusters = []
+      for i in xrange(n_vertices):
+        O.clusters.append([i])
+    else:
+      O.cluster_indices = [-1] * n_vertices
+      for i in fixed_vertices:
+        O.cluster_indices[i] = 0
+      O.clusters = [list(fixed_vertices)]
+      for i in xrange(n_vertices):
+        if (O.cluster_indices[i] == 0): continue
+        O.cluster_indices[i] = len(O.clusters)
+        O.clusters.append([i])
     O.merge_clusters_with_multiple_connections_passes = 0
     O.overlapping_rigid_clusters = None
     O.hinge_edges = None
@@ -26,6 +43,7 @@ class cluster_manager(object):
     from libtbx.utils import xlen, plural_s
     import sys
     if (out is None): out = sys.stdout
+    print >> out, prefix+"number of fixed vertices:",O.number_of_fixed_vertices
     print >> out, prefix+"number of clusters:", len(O.clusters)
     print >> out, prefix+"merge clusters with multiple connections: %d pass%s"\
       % plural_s(O.merge_clusters_with_multiple_connections_passes, "es")
@@ -43,7 +61,10 @@ class cluster_manager(object):
     ci = O.cluster_indices
     ccij = O.clusters[cij]
     ccii = O.clusters[cii]
-    if (not optimize or len(ccij) <= len(ccii)):
+    if ((not optimize
+         or len(ccij) <= len(ccii)
+         or (cii == 0 and O.number_of_fixed_vertices != 0 and cii == 0))
+        and (cij != 0 or O.number_of_fixed_vertices == 0)):
       for k in ccij: ci[k] = cii
       ccii.extend(ccij)
       del ccij[:]
@@ -68,6 +89,9 @@ class cluster_manager(object):
     assert O.hinge_edges is None
     for c in O.clusters: c.sort()
     def cmp_clusters(a, b):
+      if (O.number_of_fixed_vertices != 0 and len(a) != 0 and len(b) != 0):
+        if (O.cluster_indices[a[0]] == 0): return -1
+        if (O.cluster_indices[b[0]] == 0): return 1
       if (len(a) > len(b)): return -1
       if (len(a) < len(b)): return 1
       if (len(a) != 0): return cmp(a[0], b[0])
@@ -127,6 +151,9 @@ class cluster_manager(object):
       O.overlapping_rigid_clusters.append(tuple(sorted(c)))
     O.overlapping_rigid_clusters.sort()
     def cmp_elems(a, b):
+      if (O.number_of_fixed_vertices != 0):
+        if (a[0] == 0): return -1
+        if (b[0] == 0): return 1
       if (a[1] > b[1]): return -1
       if (a[1] < b[1]): return 1
       return cmp(a[0], b[0])
@@ -145,8 +172,12 @@ class cluster_manager(object):
     n_clusters = len(O.clusters)
     hinge_edges = [(-1,c[0]) for c in O.clusters]
     O.loop_edges = []
-    if (n_clusters == 0): w_max = -1
-    else:                 w_max = orcs[0]
+    if (n_clusters == 0):
+      w_max = -1
+    elif (O.number_of_fixed_vertices == 0 or n_clusters == 1):
+      w_max = orcs[0]
+    else:
+      w_max = max(orcs[0], orcs[1])
     candi = []
     for i in xrange(w_max+1):
       candi.append([])
@@ -326,6 +357,7 @@ class construct(object):
         sites=None,
         edge_list=None,
         external_clusters=None,
+        fixed_vertices=None,
         collinear_bonds_tolerance_deg=1.0):
     assert [n_vertices, sites].count(None) == 1
     if (sites is not None):
@@ -338,7 +370,8 @@ class construct(object):
       n_vertices=n_vertices, edge_list=edge_list)
     if (sites is not None and collinear_bonds_tolerance_deg is not None):
       O.find_collinear_bonds(sites=sites)
-    O.cluster_manager = cluster_manager(n_vertices=n_vertices)
+    O.cluster_manager = cluster_manager(
+      n_vertices=n_vertices, fixed_vertices=fixed_vertices)
     O._find_paths()
     O._process_external_clusters(clusters=external_clusters)
     O.cluster_manager.tidy()
