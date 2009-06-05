@@ -6,6 +6,9 @@ from libtbx.utils import Sorry, date_and_time
 from mmtbx import map_tools
 import mmtbx
 from cctbx import maptbx
+from libtbx import adopt_init_args
+from libtbx.str_utils import show_string
+from libtbx.math_utils import ifloor, iceil
 
 map_params_str ="""\
   map_coefficients
@@ -52,16 +55,13 @@ map_params_str ="""\
       .type = str
       .expert_level=2
       .style = selection
+    scale = *sigma volume
+      .type = choice(multi=False)
+      .expert_level = 1
     atom_selection_buffer = 3
       .type = float
       .expert_level=2
-    apply_sigma_scaling = True
-      .type = bool
-      .expert_level = 1
-    apply_volume_scaling = False
-      .type = bool
-      .expert_level = 2
-    output_file_name = None
+    file_name = None
       .type = str
   }
 """
@@ -84,34 +84,81 @@ class map_coeffs_mtz_label_manager:
     assert anomalous_sign is None or not anomalous_sign
     return self._phases
 
+class write_xplor_map_file(object):
+
+  def __init__(self, params, coeffs, all_chain_proxies, xray_structure):
+    adopt_init_args(self, locals())
+    fft_map = coeffs.fft_map(resolution_factor =
+      self.params.grid_resolution_factor)
+    if(self.params.scale == "volume"): fft_map.apply_volume_scaling()
+    elif(self.params.scale == "sigma"): fft_map.apply_sigma_scaling()
+    else: raise RuntimeError
+    title_lines=["REMARK file: %s" %
+      show_string(os.path.basename(self.params.file_name))]
+    title_lines.append("REMARK directory: %s" %
+      show_string(os.path.dirname(self.params.file_name)))
+    title_lines.append("REMARK %s" % date_and_time())
+    assert self.params.region in ["selection", "cell"]
+    if(self.params.region == "selection"):
+      map_iselection = self.atom_iselection()
+      frac_min, frac_max = self.box_around_selection(
+        iselection = map_iselection,
+        buffer     = self.params.atom_selection_buffer)
+      n_real = fft_map.n_real()
+      gridding_first=[ifloor(f*n) for f,n in zip(frac_min,n_real)]
+      gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
+      title_lines.append('REMARK map around selection')
+      title_lines.append('REMARK   atom_selection=%s' %
+        show_string(self.params.atom_selection))
+      title_lines.append('REMARK   atom_selection_buffer=%.6g' %
+        self.params.atom_selection_buffer)
+      if(map_iselection is None):
+        sel_size = self.xray_structure.scatterers().size()
+      else:
+        sel_size = map_iselection.size()
+      title_lines.append('REMARK   number of atoms selected: %d' % sel_size)
+    else:
+      gridding_first = None
+      gridding_last = None
+      title_lines.append("REMARK map covering the unit cell")
+    fft_map.as_xplor_map(
+      file_name      = self.params.file_name,
+      title_lines    = title_lines,
+      gridding_first = gridding_first,
+      gridding_last  = gridding_last)
+
+  def box_around_selection(self, iselection, buffer):
+    sites_cart = self.xray_structure.sites_cart()
+    if(iselection is not None):
+      sites_cart = sites_cart.select(iselection)
+    return self.xray_structure.unit_cell().box_frac_around_sites(
+      sites_cart = sites_cart, buffer = buffer)
+
+  def atom_iselection(self):
+    if(self.params.region != "selection" or self.params.atom_selection is None):
+      return None
+    try:
+      result = self.all_chain_proxies.selection(string =
+        self.params.atom_selection).iselection()
+    except KeyboardInterrupt: raise
+    except Exception:
+      raise Sorry('Invalid atom selection: %s' % self.params.atom_selection)
+    if(result.size() == 0):
+      raise Sorry('Empty atom selection: %s' % self.params.atom_selection)
+    return result
+
 class compute_maps(object):
 
   def __init__(self,
                fmodel,
                params,
-               mtz_dataset = None):
+               mtz_dataset = None,
+               all_chain_proxies = None):
+    adopt_init_args(self, locals())
     # map coefficients
-    self.mtz_dataset = mtz_dataset
-    self.params = params
     for mcp in params.map_coefficients:
       if(mcp.map_type is not None):
-        e_map_obj = fmodel.electron_density_map(
-          fill_missing_f_obs = mcp.fill_missing_f_obs,
-          fill_mode          = "dfmodel")
-        if(not mcp.kicked):
-          coeffs = e_map_obj.map_coefficients(map_type = mcp.map_type)
-        else:
-          km = map_tools.kick_map(
-            fmodel            = e_map_obj.fmodel,
-            map_type          = mcp.map_type,
-            real_map          = True,
-            real_map_unpadded = False,
-            symmetry_flags    = maptbx.use_space_group_symmetry,
-            average_maps      = False)
-          coeffs = km.map_coeffs
-        if(coeffs.anomalous_flag() and not
-           mmtbx.map_names(mcp.map_type).anomalous):
-          coeffs = coeffs.average_bijvoet_mates()
+        coeffs = self.compute_map_coefficients(map_params = mcp)
         if("mtz" in mcp.format):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):
@@ -128,7 +175,30 @@ class compute_maps(object):
     # xplor maps
     for mp in params.map:
       if(mp.map_type is not None):
-        raise RuntimeError("Not implemented.") # XXX add later
+        assert all_chain_proxies is not None
+        coeffs = self.compute_map_coefficients(map_params = mp)
+        write_xplor_map_file(params = mp, coeffs = coeffs,
+          all_chain_proxies = self.all_chain_proxies,
+          xray_structure = fmodel.xray_structure)
+
+  def compute_map_coefficients(self, map_params):
+    e_map_obj = self.fmodel.electron_density_map(
+      fill_missing_f_obs = map_params.fill_missing_f_obs,
+      fill_mode          = "dfmodel")
+    if(not map_params.kicked):
+      coeffs = e_map_obj.map_coefficients(map_type = map_params.map_type)
+    else:
+      coeffs = map_tools.kick_map(
+        fmodel            = e_map_obj.fmodel,
+        map_type          = map_params.map_type,
+        real_map          = True,
+        real_map_unpadded = False,
+        symmetry_flags    = maptbx.use_space_group_symmetry,
+        average_maps      = False).map_coeffs
+    if(coeffs.anomalous_flag() and not
+       mmtbx.map_names(map_params.map_type).anomalous):
+      coeffs = coeffs.average_bijvoet_mates()
+    return coeffs
 
   def write_mtz_file(self, file_name, mtz_history_buffer = None):
     if(self.mtz_dataset is not None):
