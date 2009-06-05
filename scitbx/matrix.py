@@ -416,6 +416,8 @@ class rec(object):
 
   def co_factor_matrix_transposed(self):
     n = self.n
+    if (n == (0,0)):
+      return rec(elems=(), n=n)
     if (n == (1,1)):
       return rec(elems=(1,), n=n)
     m = self.elems
@@ -978,6 +980,9 @@ def exercise():
   assert gttt.mathematica_form() == "{{33}, {79}, {125}}"
   assert sqr([4]).determinant() == 4
   assert sqr([3,2,-7,15]).determinant() == 59
+  m = rec(elems=(), n=(0,0))
+  mi = m.inverse()
+  assert mi.n == (0,0)
   m = sqr([4])
   mi = m.inverse()
   assert mi.mathematica_form() == "{{0.25}}"
