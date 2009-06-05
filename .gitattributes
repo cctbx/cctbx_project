@@ -238,10 +238,12 @@ iotbx/shelx/util.py -text
 iotbx/tst_data_plots.py -text
 iotbx/tst_file_reader.py -text
 libtbx/assert_utils.py -text
+libtbx/clear_paths.py svneol=native#text/x-python
 libtbx/command_line/assert_line_count.py svneol=native#text/x-python
 libtbx/command_line/bash.sh -text
 libtbx/command_line/bibtex.sh -text
 libtbx/command_line/chunk.py svneol=native#text/x-python
+libtbx/command_line/clear_paths.py svneol=native#text/x-python
 libtbx/command_line/csh.sh -text
 libtbx/command_line/dtrace.py -text
 libtbx/command_line/extract_code_from_txt.py svneol=native#text/x-python
