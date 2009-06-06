@@ -58,7 +58,7 @@ def construct_bodies(sites, masses, cluster_manager):
     body_sites = [matrix.col(sites[i]) for i in cluster]
     body_masses = [masses[i] for i in cluster]
     he = cm.hinge_edges[ic]
-    if (ic == 0 and cluster_manager.number_of_fixed_vertices != 0):
+    if (ic < len(cluster_manager.fixed_vertex_lists)):
       body = zero_dof_body()
       body.parent = -1
     elif (he[0] == -1):

@@ -101,6 +101,7 @@ scitbx.python wx_molecules.py [options] model_index
 """ % (n-1))
       .option(None, "--fixed_vertices",
         type="str",
+        action="append",
         default=None,
         metavar="COMMA-SEPARATED-INTEGERS")
       .option(None, "--i_seq_labels",
@@ -119,10 +120,10 @@ scitbx.python wx_molecules.py [options] model_index
         metavar="FLOAT")
     ).process(args=args, nargs=1)
     co = command_line.options
-    if (co.fixed_vertices is None):
-      self.fixed_vertices = None
-    else:
-      self.fixed_vertices = eval("["+co.fixed_vertices+"]")
+    self.fixed_vertex_lists = []
+    if (co.fixed_vertices is not None):
+      for s in co.fixed_vertices:
+        self.fixed_vertex_lists.append(tuple(eval("["+s+"]")))
     self.i_seq_labels = co.i_seq_labels
     self.velocity_scaling = co.velocity_scaling
     self.e_kin_per_dof = co.e_kin_per_dof
@@ -135,7 +136,7 @@ scitbx.python wx_molecules.py [options] model_index
     box = wx.BoxSizer(wx.VERTICAL)
     self.view_objects = viewer(self.frame, size=(600,600))
     tardy_model = tst_molecules.get_test_model_by_index(
-      i=self.model_index, fixed_vertices=self.fixed_vertices)
+      i=self.model_index, fixed_vertex_lists=self.fixed_vertex_lists)
     if (self.i_seq_labels):
       tardy_model.labels = [str(i) for i in xrange(len(tardy_model.labels))]
     self.view_objects.set_points_and_lines(
