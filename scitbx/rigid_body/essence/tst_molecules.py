@@ -202,9 +202,9 @@ def exercise_with_tardy_model(out, tardy_model, n_dynamics_steps):
 
 n_test_models = len(tst_tardy_pdb.test_cases)
 
-def get_test_model_by_index(i, fixed_vertices=None):
+def get_test_model_by_index(i, fixed_vertex_lists=[]):
   tc = tst_tardy_pdb.test_cases[i]
-  tt = tc.tardy_tree_construct(fixed_vertices=fixed_vertices)
+  tt = tc.tardy_tree_construct(fixed_vertex_lists=fixed_vertex_lists)
   return construct_tardy_model(
     labels=tc.labels,
     sites=tc.sites,
@@ -230,8 +230,9 @@ def run(args):
         out=out, tardy_model=tardy_model, n_dynamics_steps=n_dynamics_steps)
       if (i == 5):
         assert tardy_model.degrees_of_freedom == 11
-        print >> out, "test model index:", i, "fixed_vertices"
-        tardy_model = get_test_model_by_index(i=i, fixed_vertices=[0,16,17])
+        print >> out, "test model index:", i, "with fixed vertices"
+        tardy_model = get_test_model_by_index(
+          i=i, fixed_vertex_lists=[[0,16,17]])
         assert tardy_model.degrees_of_freedom == 2
         exercise_with_tardy_model(
           out=out, tardy_model=tardy_model, n_dynamics_steps=n_dynamics_steps)

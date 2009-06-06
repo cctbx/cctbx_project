@@ -1,8 +1,12 @@
 from scitbx.graph.tardy_tree import cluster_manager, find_paths, construct
 from scitbx.graph.utils import construct_edge_sets
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import Exception_expected, show_diff
 from StringIO import StringIO
 import sys
+
+def random_permutation(s):
+  from scitbx.array_family import flex
+  return flex.select(s, flex.random_permutation(size=len(s)))
 
 def exercise_cluster_manager():
   cm = cluster_manager(n_vertices=0)
@@ -68,6 +72,7 @@ def exercise_cluster_manager():
   sio = StringIO()
   assert cm.show_summary(out=sio, prefix=">") is cm
   assert not show_diff(sio.getvalue(), """\
+>number of fixed vertex lists: 0
 >number of fixed vertices: 0
 >number of clusters: 1
 >merge clusters with multiple connections: 2 passes
@@ -475,7 +480,7 @@ test_cases = [
     clusters1=[[0, 1, 2], [3, 4, 5]],
     hinge_edges1=[(-1, 0), (0, 3)],
     roots1=[0],
-    tree_ids1=[0, 0]),
+    tree_ids1=[0] * 2),
 
   ]
 
@@ -561,6 +566,7 @@ $number of edges: 13
 $collinear bonds tolerance: 1 deg
 $find cluster loops: None
 $number of collinear bonds: None
+$number of fixed vertex lists: 0
 $number of fixed vertices: 0
 $number of clusters: 12
 $merge clusters with multiple connections: 0 passes
@@ -578,6 +584,7 @@ $number of loop edge bendings: None
 >collinear bonds tolerance: 1 deg
 >find cluster loops: 0 repeats
 >number of collinear bonds: None
+>number of fixed vertex lists: 0
 >number of fixed vertices: 0
 >number of clusters: 9
 >merge clusters with multiple connections: 1 pass
@@ -630,9 +637,6 @@ END
       n_vertices=9, edge_list=edge_list, external_clusters=external_clusters)
     assert tt.cluster_manager.clusters == expected_clusters
     assert tt.external_clusters_connect_count == expected_count
-  def random_permutation(s):
-    from scitbx.array_family import flex
-    return flex.select(s, flex.random_permutation(size=len(s)))
   for external_clusters,expected_clusters,expected_count in expected:
     if (external_clusters is None): external_clusters = []
     for i_trial in xrange(n_trials):
@@ -643,17 +647,17 @@ END
       assert tt.cluster_manager.clusters == expected_clusters
       assert tt.external_clusters_connect_count == expected_count
 
-def exercise_fixed_vertices():
-  cm = cluster_manager(n_vertices=2, fixed_vertices=[0])
+def exercise_fixed_vertices(n_trials=10):
+  cm = cluster_manager(n_vertices=2, fixed_vertex_lists=[[0]])
   assert cm.clusters == [[0], [1]]
-  cm = cluster_manager(n_vertices=2, fixed_vertices=[1])
+  cm = cluster_manager(n_vertices=2, fixed_vertex_lists=[[1]])
   assert cm.clusters == [[1], [0]]
   edge_list = [(0,1),(1,2),(2,3),(1,3)]
   edge_sets = construct_edge_sets(n_vertices=4, edge_list=edge_list)
   for fixed_vertex in [0,1]:
     for optimize in [False, True]:
       for connects in [[(1,2),(2,3)], [(2,3),(1,2)], [(2,1),(3,2)]]:
-        cm = cluster_manager(n_vertices=4, fixed_vertices=[fixed_vertex])
+        cm = cluster_manager(n_vertices=4, fixed_vertex_lists=[[fixed_vertex]])
         for i,j in connects:
           cm.connect_vertices(i=i, j=j, optimize=optimize)
         if (fixed_vertex == 0):
@@ -687,6 +691,43 @@ def exercise_fixed_vertices():
           assert cm.clusters == [[0,1,2,3]]
           assert cm.hinge_edges == [(-1,1)]
           assert cm.loop_edges == []
+  #
+  from scitbx.graph import tst_tardy_pdb
+  tc = tst_tardy_pdb.test_cases[5]
+  assert tc.tag == "tyr_with_h"
+  tt = tc.tardy_tree_construct(fixed_vertex_lists=[[0,16,17]])
+  assert tt.cluster_manager.clusters == [
+    [0,1,2,3,4,5,6,7,8,9,10,12,13,14,15,16,17,18,19],
+    [11], [20]]
+  try:
+    tc.tardy_tree_construct(fixed_vertex_lists=[[0],[1]])
+  except RuntimeError, e:
+    assert str(e) == \
+      "connect_clusters(): fixed vertex lists in same connected tree."
+  else: raise Exception_expected
+  try:
+    tc.tardy_tree_construct(fixed_vertex_lists=[[0],[10]])
+  except RuntimeError, e:
+    assert str(e) == \
+      "construct_spanning_trees(): fixed vertex lists in same connected tree."
+  else: raise Exception_expected
+  #
+  for tc in test_cases:
+    if (max(tc.tree_ids1) == 0): continue
+    tt = construct(n_vertices=tc.n_vertices, edge_list=tc.edge_list).finalize()
+    cm = tt.cluster_manager
+    cl = cm.clusters
+    ti = cm.tree_ids()
+    assert ti[0] != ti[-1]
+    for lfvl0 in xrange(1,len(cl[0])+1):
+      for lfvl1 in xrange(1,len(cl[-1])+1):
+        for i_trial in xrange(n_trials):
+          fvl0 = random_permutation(cl[0])[:lfvl0]
+          fvl1 = random_permutation(cl[-1])[:lfvl1]
+          ttf = construct(
+            n_vertices=tc.n_vertices,
+            edge_list=tc.edge_list,
+            fixed_vertex_lists=[fvl0, fvl1]).finalize()
 
 def exercise_show_summary():
   from scitbx.graph import tst_tardy_pdb
@@ -705,6 +746,7 @@ def exercise_show_summary():
 &number of collinear bonds: 1
 &tardy collinear bond: %s
 &                      %s
+&number of fixed vertex lists: 0
 &number of fixed vertices: 0
 &number of clusters: 1
 &merge clusters with multiple connections: 1 pass
