@@ -20,6 +20,7 @@ if (self.env.is_ready_for_build()):
       "378432b5b280c9c0c894f7c80f0dad92", # CVS revision 1.20
       "1fe430a94f330e36dca14ef2a553dba1", # SVN revision 37030 (== CVS 1.20)
       "2d7402043017425df22f5a4f250917fb", # SVN revision 51413
+      "add90ef9b25c154abf5caed7aa82b084", # SVN revision 53699
     ],
     hints=[
       "  Files to review:",
