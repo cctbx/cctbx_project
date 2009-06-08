@@ -367,31 +367,20 @@ class construct(object):
   __slots__ = [
     "n_vertices",
     "edge_list",
-    "collinear_bonds_tolerance_deg",
-    "collinear_bonds_edge_list",
     "edge_sets",
     "cluster_manager",
     "external_clusters_connect_count",
     "find_cluster_loop_repeats"]
 
   def __init__(O,
-        n_vertices=None,
-        sites=None,
-        edge_list=None,
+        n_vertices,
+        edge_list,
         external_clusters=None,
-        fixed_vertex_lists=[],
-        collinear_bonds_tolerance_deg=1.0):
-    assert [n_vertices, sites].count(None) == 1
-    if (sites is not None):
-      n_vertices = len(sites)
+        fixed_vertex_lists=[]):
     O.n_vertices = n_vertices
     O.edge_list = edge_list
-    O.collinear_bonds_tolerance_deg = collinear_bonds_tolerance_deg
-    O.collinear_bonds_edge_list = None
     O.edge_sets = construct_edge_sets(
       n_vertices=n_vertices, edge_list=edge_list)
-    if (sites is not None and collinear_bonds_tolerance_deg is not None):
-      O.find_collinear_bonds(sites=sites)
     O.cluster_manager = cluster_manager(
       n_vertices=n_vertices, fixed_vertex_lists=fixed_vertex_lists)
     O._find_paths()
@@ -411,45 +400,16 @@ class construct(object):
       assert len(vertex_labels) == O.n_vertices
     print >> out, prefix+"number of vertices:", O.n_vertices
     print >> out, prefix+"number of edges:", xlen(O.edge_list)
-    print >> out, prefix+"collinear bonds tolerance: %s deg" % \
-      format_value(format="%.6g", value=O.collinear_bonds_tolerance_deg)
     if (O.find_cluster_loop_repeats is None):
       print >> out, prefix+"find cluster loops: None"
     else:
       print >> out, prefix+"find cluster loops: %d repeat%s" % \
         plural_s(O.find_cluster_loop_repeats)
-    print >> out, prefix+"number of collinear bonds:", \
-      xlen(O.collinear_bonds_edge_list)
-    if (O.collinear_bonds_edge_list is not None):
-      for i,j in O.collinear_bonds_edge_list:
-        print >> out, prefix+"tardy collinear bond:", vertex_labels[i]
-        print >> out, prefix+"                     ", vertex_labels[j]
     O.cluster_manager.show_summary(out=out, prefix=prefix)
     return O
 
   def extract_edge_list(O):
     return extract_edge_list(edge_sets=O.edge_sets)
-
-  def find_collinear_bonds(O, sites, tolerance_deg=1.0):
-    O.collinear_bonds_edge_list = []
-    tol_cos = math.cos(O.collinear_bonds_tolerance_deg * math.pi/180)
-    for i,es in enumerate(O.edge_sets):
-      es = sorted(es)
-      for jj,j in enumerate(es):
-        vij = sites[j] - sites[i]
-        assert abs(vij) > 1.e-6
-        for kk in xrange(jj+1,len(es)):
-          k = es[kk]
-          if (k in O.edge_sets[k]): continue
-          vik = sites[k] - sites[i]
-          assert abs(vik) > 1.e-6
-          ca = vij.cos_angle(vik)
-          assert ca is not None
-          if (abs(ca) > tol_cos):
-            O.collinear_bonds_edge_list.append((j,k))
-    for j,k in O.collinear_bonds_edge_list:
-      O.edge_sets[j].add(k)
-      O.edge_sets[k].add(j)
 
   def _find_paths(O):
     fp = find_paths(edge_sets=O.edge_sets)

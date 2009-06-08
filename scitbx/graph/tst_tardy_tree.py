@@ -1,5 +1,6 @@
 from scitbx.graph.tardy_tree import cluster_manager, find_paths, construct
 from scitbx.graph.utils import construct_edge_sets
+from scitbx import matrix
 from libtbx.test_utils import Exception_expected, show_diff
 from StringIO import StringIO
 import sys
@@ -501,7 +502,6 @@ def exercise_test_cases(out):
         assert have == expected, "Note: --verbose for details"
     #
     tt = construct(n_vertices=tc.n_vertices, edge_list=tc.edge_list)
-    assert tt.collinear_bonds_edge_list is None
     cm = tt.cluster_manager
     assert_same("c1:", cm.clusters, tc_c1)
     cm.construct_spanning_trees(edge_sets=tt.edge_sets)
@@ -563,9 +563,7 @@ def exercise_special_case_ZINC03847121():
   assert not show_diff(sio.getvalue(), """\
 $number of vertices: 12
 $number of edges: 13
-$collinear bonds tolerance: 1 deg
 $find cluster loops: None
-$number of collinear bonds: None
 $number of fixed vertex lists: 0
 $number of fixed vertices: 0
 $number of clusters: 12
@@ -581,9 +579,7 @@ $number of loop edge bendings: None
   assert not show_diff(sio.getvalue(), """\
 >number of vertices: 12
 >number of edges: 13
->collinear bonds tolerance: 1 deg
 >find cluster loops: 0 repeats
->number of collinear bonds: None
 >number of fixed vertex lists: 0
 >number of fixed vertices: 0
 >number of clusters: 9
@@ -734,27 +730,22 @@ def exercise_show_summary():
   tcs = tst_tardy_pdb.select_test_cases(tags_or_indices=["ZINC03847120"])
   assert len(tcs) == 1
   tt = tcs[0].tardy_tree_construct()
-  for vl,cb in [(None, ("10", "12")),
-                (list("ABCDEFGHIKLMNO"), ("L", "N"))]:
+  for vl in [None, list("ABCDEFGHIKLMNO")]:
     sio = StringIO()
     assert tt.show_summary(vertex_labels=vl, out=sio, prefix="&") is tt
     assert not show_diff(sio.getvalue(), """\
 &number of vertices: 14
 &number of edges: 15
-&collinear bonds tolerance: 1 deg
 &find cluster loops: 0 repeats
-&number of collinear bonds: 1
-&tardy collinear bond: %s
-&                      %s
 &number of fixed vertex lists: 0
 &number of fixed vertices: 0
-&number of clusters: 1
+&number of clusters: 2
 &merge clusters with multiple connections: 1 pass
-&number of overlapping rigid clusters: 2
-&number of hinge edges: 1
+&number of overlapping rigid clusters: 4
+&number of hinge edges: 2
 &number of loop edges: 0
 &number of loop edge bendings: 0
-""" % cb)
+""")
 
 def exercise_edge_classifier():
   from scitbx.graph import tst_tardy_pdb

@@ -135,7 +135,6 @@ def run(fmodels, model, target_weights, params, log):
   sites = matrix.col_list(sites_cart_start)
   labels = [sc.label for sc in xs.scatterers()]
   tt = model.restraints_manager.geometry.construct_tardy_tree(
-    sites=sites,
     omit_bonds_with_slack_greater_than
       =params.omit_bonds_with_slack_greater_than,
     constrain_dihedrals_with_sigma_less_than

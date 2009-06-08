@@ -147,7 +147,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
   #
   if (params.tardy_displacements is not None):
     def get_tardy_model_no_potential():
-      tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
+      tardy_tree = geo_manager.construct_tardy_tree()
       return scitbx.rigid_body.essence.tardy.model(
         labels=labels,
         sites=sites,
@@ -155,7 +155,8 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
         tardy_tree=tardy_tree,
         potential_obj=None)
     def get_tardy_model_no_density():
-      tardy_tree = scitbx.graph.tardy_tree.construct(sites=sites, edge_list=[])
+      tardy_tree = scitbx.graph.tardy_tree.construct(
+        n_vertices=len(sites), edge_list=[])
       tardy_tree.finalize()
       potential_obj = potential_object(
         density_map=None,
@@ -292,10 +293,11 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
       sites = tardy_model.sites_moved()
   #
   if (params.emulate_cartesian):
-    tardy_tree = scitbx.graph.tardy_tree.construct(sites=sites, edge_list=[])
+    tardy_tree = scitbx.graph.tardy_tree.construct(
+      n_vertices=len(sites), edge_list=[])
     tardy_tree.finalize()
   else:
-    tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
+    tardy_tree = geo_manager.construct_tardy_tree()
   print >> log, "tardy_tree summary:"
   tardy_tree.show_summary(vertex_labels=labels, out=log, prefix="  ")
   print >> log
