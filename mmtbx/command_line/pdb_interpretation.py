@@ -54,7 +54,7 @@ def run(args):
       if (co.write_tardy_geo_files):
         geo_file_name = op.basename(pdb_file_name) + ".tardy.geo"
         print "Writing file: %s" % show_string(geo_file_name)
-        tardy_tree = geo.construct_tardy_tree(sites_cart=sites_cart)
+        tardy_tree = geo.construct_tardy_tree()
         reduced_geo = geo.reduce_for_tardy(tardy_tree=tardy_tree)
         write_geo(label="tardy ", geo=reduced_geo, geo_file_name=geo_file_name)
         print

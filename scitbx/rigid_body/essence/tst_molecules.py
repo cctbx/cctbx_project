@@ -171,7 +171,7 @@ def exercise_minimization_quick(out, tardy_model, max_iterations=3):
   print >> out, "  final e_pot:", tardy_model.e_pot()
   e_pot_final = tardy_model.e_pot()
   if (out is not sys.stdout):
-    assert e_pot_final < e_pot_start * 0.6
+    assert e_pot_final < e_pot_start * 0.65
   print >> out
 
 def construct_tardy_model(
