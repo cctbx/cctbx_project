@@ -12,7 +12,8 @@ class cluster_manager(object):
     "overlapping_rigid_clusters",
     "hinge_edges",
     "loop_edges",
-    "loop_edge_bendings"]
+    "loop_edge_bendings",
+    "fixed_hinges"]
 
   def __init__(O, n_vertices, fixed_vertex_lists=()):
     O.fixed_vertex_lists = fixed_vertex_lists
@@ -39,6 +40,7 @@ class cluster_manager(object):
     O.hinge_edges = None
     O.loop_edges = None
     O.loop_edge_bendings = None
+    O.fixed_hinges = None
 
   def show_summary(O, out=None, prefix=""):
     from libtbx.utils import xlen, plural_s
@@ -57,6 +59,7 @@ class cluster_manager(object):
     print >> out, prefix+"number of loop edges:", xlen(O.loop_edges)
     print >> out, prefix+"number of loop edge bendings:", \
       xlen(O.loop_edge_bendings)
+    print >> out, prefix+"number of fixed hinges:", xlen(O.fixed_hinges)
     return O
 
   def connect_clusters(O, cii, cij, optimize):
@@ -304,6 +307,32 @@ class cluster_manager(object):
         leb.add(tuple(sorted((i,k))))
     O.loop_edge_bendings = sorted(leb)
 
+  def fix_near_singular_hinges(O, sites, angular_tolerance_deg):
+    assert O.loop_edge_bendings is not None
+    assert O.fixed_hinges is None
+    O.fixed_hinges = []
+    if (sites is None): return
+    for jc in xrange(len(O.clusters)-1, len(O.fixed_vertex_lists)-1,-1):
+      hi,hj = O.hinge_edges[jc]
+      if (hi == -1):
+        continue
+      pivot = sites[hi]
+      axis = sites[hj] - pivot
+      for i in O.clusters[jc]:
+        angle = axis.angle(sites[i] - pivot, value_if_undefined=0, deg=True)
+        if (abs(angle) > angular_tolerance_deg):
+          break
+      else:
+        O.fixed_hinges.append(O.hinge_edges[jc])
+        del O.hinge_edges[jc]
+        ic = O.cluster_indices[hj]
+        O.clusters[ic].extend(O.clusters[jc])
+        O.clusters[ic].sort()
+        for i in O.clusters[jc]:
+          O.cluster_indices[i] = ic
+        del O.clusters[jc]
+    O.fixed_hinges.sort()
+
   def edge_classifier(O):
     return edge_classifier(cluster_manager=O)
 
@@ -405,7 +434,12 @@ class construct(object):
     else:
       print >> out, prefix+"find cluster loops: %d repeat%s" % \
         plural_s(O.find_cluster_loop_repeats)
-    O.cluster_manager.show_summary(out=out, prefix=prefix)
+    cm = O.cluster_manager
+    cm.show_summary(out=out, prefix=prefix)
+    if (cm.fixed_hinges is not None):
+      for i,j in cm.fixed_hinges:
+        print >> out, prefix+"tardy fixed hinge:", vertex_labels[i]
+        print >> out, prefix+"                  ", vertex_labels[j]
     return O
 
   def extract_edge_list(O):
@@ -489,11 +523,16 @@ class construct(object):
       cm.tidy()
     return O
 
-  def finalize(O):
+  def build_tree(O):
     O.find_cluster_loops()
     cm = O.cluster_manager
     cm.construct_spanning_trees(edge_sets=O.edge_sets)
     cm.find_loop_edge_bendings(edge_sets=O.edge_sets)
+    return O
+
+  def fix_near_singular_hinges(O, sites, angular_tolerance_deg=5):
+    O.cluster_manager.fix_near_singular_hinges(
+      sites=sites, angular_tolerance_deg=angular_tolerance_deg)
     return O
 
   def viewer_lines_with_colors_legend(O, include_loop_edge_bendings):

@@ -43,6 +43,8 @@ master_phil_str = """\
     .type = float
   constrain_dihedrals_with_sigma_less_than = 10
     .type = float
+  near_singular_hinges_angular_tolerance_deg = 5
+    .type = float
 """
 
 class potential_object(object):
@@ -135,10 +137,13 @@ def run(fmodels, model, target_weights, params, log):
   sites = matrix.col_list(sites_cart_start)
   labels = [sc.label for sc in xs.scatterers()]
   tt = model.restraints_manager.geometry.construct_tardy_tree(
+    sites=sites,
     omit_bonds_with_slack_greater_than
       =params.omit_bonds_with_slack_greater_than,
     constrain_dihedrals_with_sigma_less_than
-      =params.constrain_dihedrals_with_sigma_less_than)
+      =params.constrain_dihedrals_with_sigma_less_than,
+    near_singular_hinges_angular_tolerance_deg
+      =params.near_singular_hinges_angular_tolerance_deg)
   print >> log, "tardy_tree summary:"
   tt.show_summary(vertex_labels=labels, out=log, prefix="  ")
   print >> log
