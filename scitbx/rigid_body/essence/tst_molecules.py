@@ -123,6 +123,7 @@ def exercise_random_velocities(tardy_model):
   assert approx_equal(tardy_model.pack_qd(), prev_qd)
 
 def exercise_near_singular_hinges():
+  # similar to scitbx/graph/tst_tardy_pdb.py, "collinear" test case
   """
     0                6
     | \             /
@@ -179,7 +180,7 @@ def exercise_near_singular_hinges():
   assert tt.cluster_manager.clusters == [[0,1,2,3,4,5]]
   assert approx_equal(e_kin_1(), 1.00005333167, eps=1e-10)
   #
-  sites.append(matrix.col((3+x,-y,0)))
+  sites.append(matrix.col((3-x,-y,0)))
   assert approx_equal(abs(sites[5] - sites[6]), 1)
   labels.append("6")
   masses.append(1)
@@ -187,11 +188,11 @@ def exercise_near_singular_hinges():
   tt = tardy_tree.construct(n_vertices=len(sites), edge_list=edge_list)
   tt.build_tree()
   assert tt.cluster_manager.clusters == [[0,1,2,3], [4], [5], [6]]
-  assert approx_equal(e_kin_1(), 0.999964589818)
+  assert approx_equal(e_kin_1(), 0.99994375467)
   tt.fix_near_singular_hinges(sites=sites)
   assert tt.cluster_manager.fixed_hinges == [(2,3), (3,4)]
   assert tt.cluster_manager.clusters == [[0,1,2,3,4,5], [6]]
-  assert approx_equal(e_kin_1(), 1.00003673881, eps=1e-10)
+  assert approx_equal(e_kin_1(), 1.0000438095, eps=1e-10)
 
 def exercise_tardy_model(out, n_dynamics_steps, delta_t, tardy_model):
   tardy_model.check_d_pot_d_q()

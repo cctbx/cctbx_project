@@ -756,18 +756,23 @@ def exercise_show_summary():
 """ % cb)
 
 def exercise_edge_classifier():
-  from scitbx.graph import tst_tardy_pdb
-  tcs = tst_tardy_pdb.select_test_cases(tags_or_indices=["van_fragment"])
-  assert len(tcs) == 1
-  tt = tcs[0].tardy_tree_construct()
-  ec = tt.cluster_manager.edge_classifier()
-  edge_classes = {
-    "base":  [],
-    "hinge": [],
-    "intra": [],
-    "loop":  []}
-  for e in tt.edge_list:
-    edge_classes[ec(edge=e)].append(e)
+  def get(tag):
+    from scitbx.graph import tst_tardy_pdb
+    tcs = tst_tardy_pdb.select_test_cases(tags_or_indices=[tag])
+    assert len(tcs) == 1
+    tt = tcs[0].tardy_tree_construct()
+    ec = tt.cluster_manager.edge_classifier()
+    edge_classes = {
+      "base":  [],
+      "hinge": [],
+      "intra": [],
+      "loop":  [],
+      "fixed": []}
+    for e in tt.edge_list:
+      edge_classes[ec(edge=e)].append(e)
+    return tt, edge_classes
+  #
+  tt, edge_classes = get(tag="van_fragment")
   assert edge_classes == {
     "base": [
       (16,17), (16,23), (17,18), (18,19), (18,20), (20,21), (21,22), (21,23)],
@@ -776,13 +781,22 @@ def exercise_edge_classifier():
     "intra": [
       (1,2), (1,7), (2,3), (3,4), (4,5), (4,6), (6,7), (8,9), (12,13),
       (14,15), (24,25), (24,26)],
-    "loop": [(12, 14)]}
+    "loop": [(12, 14)],
+    "fixed": []}
   #
-  for f,i,j in [(False,5,29), (True,6,32)]:
+  for f,i,j in [(False,6,29), (True,7,32)]:
     vlcl = tt.viewer_lines_with_colors_legend(include_loop_edge_bendings=f)
     assert len(vlcl) == i
     vlc = tt.viewer_lines_with_colors(include_loop_edge_bendings=f)
     assert len(vlc) == j
+  #
+  tt, edge_classes = get(tag="collinear")
+  assert edge_classes == {
+    "base": [(0,1), (0,2), (1,2)],
+    "hinge": [(4,5)],
+    "intra": [(5,6)],
+    "loop": [],
+    "fixed": [(2,3), (3,4)]}
 
 def run(args):
   assert args in [[], ["--verbose"]]
