@@ -75,19 +75,28 @@ class manager(object):
     return result
 
   def construct_tardy_tree(self,
+        sites=None,
+        sites_cart=None,
         omit_bonds_with_slack_greater_than=0,
-        constrain_dihedrals_with_sigma_less_than=10):
+        constrain_dihedrals_with_sigma_less_than=10,
+        near_singular_hinges_angular_tolerance_deg=5):
+    assert [sites_cart, sites].count(None) == 1
     from scitbx.graph import tardy_tree
-    assert self.bond_params_table is not None
+    from scitbx import matrix
+    if (sites is None):
+      sites = matrix.col_list(sites_cart)
     result = tardy_tree.construct(
-      n_vertices=self.bond_params_table.size(),
+      n_vertices=len(sites),
       edge_list=self.simple_edge_list(
         omit_slack_greater_than
           =omit_bonds_with_slack_greater_than),
       external_clusters=self.rigid_clusters_due_to_dihedrals_and_planes(
         constrain_dihedrals_with_sigma_less_than
           =constrain_dihedrals_with_sigma_less_than))
-    result.finalize()
+    result.build_tree()
+    result.fix_near_singular_hinges(
+      sites=sites,
+      angular_tolerance_deg=near_singular_hinges_angular_tolerance_deg)
     return result
 
   def reduce_for_tardy(self,

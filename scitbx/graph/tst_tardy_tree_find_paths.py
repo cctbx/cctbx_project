@@ -80,7 +80,7 @@ def exercise_fused_loops(arch_size_max=8):
       assert inferred_is_rigid == is_rigid
       #
       tt = construct(
-        n_vertices=n_vertices, edge_list=edge_list_12).finalize()
+        n_vertices=n_vertices, edge_list=edge_list_12).build_tree()
       inferred_is_rigid = (len(tt.cluster_manager.clusters) == 1)
       assert inferred_is_rigid == is_rigid
 
@@ -110,7 +110,7 @@ def exercise_three_archs(arch_size_max=8):
         assert inferred_is_rigid == is_rigid
         #
         tt = construct(
-          n_vertices=n_vertices, edge_list=edge_list_123).finalize()
+          n_vertices=n_vertices, edge_list=edge_list_123).build_tree()
         inferred_is_rigid = (len(tt.cluster_manager.clusters) == 1)
 
 def run(args):

@@ -1,5 +1,6 @@
 from __future__ import division
 from scitbx.rigid_body.essence import tardy
+from scitbx.graph import tardy_tree
 from scitbx.graph import tst_tardy_pdb
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -121,6 +122,77 @@ def exercise_random_velocities(tardy_model):
   tardy_model.unpack_qd(packed_qd=prev_qd)
   assert approx_equal(tardy_model.pack_qd(), prev_qd)
 
+def exercise_near_singular_hinges():
+  """
+    0                6
+    | \             /
+    |  2---3---4---5
+    | /
+    1
+  """
+  x = -0.5*3**0.5
+  y = 0.5
+  def build_sites(eps):
+    return matrix.col_list([
+      (x,-y,0),
+      (x,y,0),
+      (0,0,0),
+      (1,0,0),
+      (2,0,eps)])
+  edge_list = [(0,1),(0,2),(1,2),(2,3),(3,4)]
+  sites = build_sites(eps=0)
+  for i,j in edge_list:
+    assert approx_equal(abs(sites[i]-sites[j]), 1)
+  sites = build_sites(eps=1e-5)
+  labels = [str(i) for i in xrange(len(sites))]
+  masses = [1] * len(sites)
+  tt = tardy_tree.construct(n_vertices=len(sites), edge_list=edge_list)
+  tt.build_tree()
+  assert tt.cluster_manager.clusters == [[0,1,2,3], [4]]
+  def e_kin_1():
+    tm = construct_tardy_model(
+      labels=labels,
+      sites=sites,
+      masses=masses,
+      tardy_tree=tt)
+    rnd = random.Random(0)
+    tm.assign_random_velocities(e_kin_target=1, random_gauss=rnd.gauss)
+    assert approx_equal(tm.e_kin(), 1, eps=1e-10)
+    tm.dynamics_step(delta_t=0.01)
+    return tm.e_kin()
+  assert approx_equal(e_kin_1(), 60.9875715394)
+  tt.fix_near_singular_hinges(sites=sites)
+  assert tt.cluster_manager.fixed_hinges == [(2,3)]
+  assert tt.cluster_manager.clusters == [[0,1,2,3,4]]
+  assert approx_equal(e_kin_1(), 1.00004830172, eps=1e-10)
+  #
+  sites.append(matrix.col((3,0,0)))
+  labels.append("5")
+  masses.append(1)
+  edge_list.append((4,5))
+  tt = tardy_tree.construct(n_vertices=len(sites), edge_list=edge_list)
+  tt.build_tree()
+  assert tt.cluster_manager.clusters == [[0,1,2,3], [4], [5]]
+  assert approx_equal(e_kin_1(), 9.55508653428)
+  tt.fix_near_singular_hinges(sites=sites)
+  assert tt.cluster_manager.fixed_hinges == [(2,3), (3,4)]
+  assert tt.cluster_manager.clusters == [[0,1,2,3,4,5]]
+  assert approx_equal(e_kin_1(), 1.00005333167, eps=1e-10)
+  #
+  sites.append(matrix.col((3+x,-y,0)))
+  assert approx_equal(abs(sites[5] - sites[6]), 1)
+  labels.append("6")
+  masses.append(1)
+  edge_list.append((5,6))
+  tt = tardy_tree.construct(n_vertices=len(sites), edge_list=edge_list)
+  tt.build_tree()
+  assert tt.cluster_manager.clusters == [[0,1,2,3], [4], [5], [6]]
+  assert approx_equal(e_kin_1(), 0.999964589818)
+  tt.fix_near_singular_hinges(sites=sites)
+  assert tt.cluster_manager.fixed_hinges == [(2,3), (3,4)]
+  assert tt.cluster_manager.clusters == [[0,1,2,3,4,5], [6]]
+  assert approx_equal(e_kin_1(), 1.00003673881, eps=1e-10)
+
 def exercise_tardy_model(out, n_dynamics_steps, delta_t, tardy_model):
   tardy_model.check_d_pot_d_q()
   e_pots = flex.double([tardy_model.e_pot()])
@@ -171,7 +243,7 @@ def exercise_minimization_quick(out, tardy_model, max_iterations=3):
   print >> out, "  final e_pot:", tardy_model.e_pot()
   e_pot_final = tardy_model.e_pot()
   if (out is not sys.stdout):
-    assert e_pot_final < e_pot_start * 0.65
+    assert e_pot_final < e_pot_start * 0.6
   print >> out
 
 def construct_tardy_model(
@@ -220,6 +292,8 @@ def run(args):
     n_dynamics_steps = max(1, int(args[0]))
     out = sys.stdout
   show_times_at_exit()
+  #
+  exercise_near_singular_hinges()
   #
   if (1):
     random.seed(0)

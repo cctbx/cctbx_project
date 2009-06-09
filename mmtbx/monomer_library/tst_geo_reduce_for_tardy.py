@@ -28,7 +28,7 @@ def exercise_geo_reduce_for_tardy(
     log=log)
   geo = processed_pdb_file.geometry_restraints_manager()
   sites_cart = processed_pdb_file.all_chain_proxies.sites_cart_exact()
-  tardy_tree = geo.construct_tardy_tree()
+  tardy_tree = geo.construct_tardy_tree(sites_cart=sites_cart)
   reduced_geo = geo.reduce_for_tardy(tardy_tree=tardy_tree)
   bond_counts = (
     geo.pair_proxies(sites_cart=sites_cart).bond_proxies.n_total(),
