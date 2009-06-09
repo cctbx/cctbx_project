@@ -85,19 +85,16 @@ class manager(object):
     from scitbx import matrix
     if (sites is None):
       sites = matrix.col_list(sites_cart)
-    result = tardy_tree.construct(
-      n_vertices=len(sites),
+    return tardy_tree.construct(
+      sites=sites,
       edge_list=self.simple_edge_list(
         omit_slack_greater_than
           =omit_bonds_with_slack_greater_than),
       external_clusters=self.rigid_clusters_due_to_dihedrals_and_planes(
         constrain_dihedrals_with_sigma_less_than
-          =constrain_dihedrals_with_sigma_less_than))
-    result.build_tree()
-    result.fix_near_singular_hinges(
-      sites=sites,
-      angular_tolerance_deg=near_singular_hinges_angular_tolerance_deg)
-    return result
+          =constrain_dihedrals_with_sigma_less_than),
+      near_singular_hinges_angular_tolerance_deg
+        =near_singular_hinges_angular_tolerance_deg)
 
   def reduce_for_tardy(self,
         tardy_tree,

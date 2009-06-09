@@ -40,10 +40,9 @@ class pdb_extract(object):
   def tardy_tree_construct(O, fixed_vertex_lists=[]):
     from scitbx.graph import tardy_tree
     tt = tardy_tree.construct(
-      n_vertices=len(O.sites),
+      sites=O.sites,
       edge_list=O.bonds,
-      fixed_vertex_lists=fixed_vertex_lists).build_tree()
-    tt.fix_near_singular_hinges(sites=O.sites)
+      fixed_vertex_lists=fixed_vertex_lists)
     if (len(fixed_vertex_lists) != 0):
       return tt
     cm = tt.cluster_manager

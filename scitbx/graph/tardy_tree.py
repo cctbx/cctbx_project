@@ -407,10 +407,16 @@ class construct(object):
     "find_cluster_loop_repeats"]
 
   def __init__(O,
-        n_vertices,
-        edge_list,
+        n_vertices=None,
+        sites=None,
+        edge_list=None,
         external_clusters=None,
-        fixed_vertex_lists=[]):
+        fixed_vertex_lists=[],
+        near_singular_hinges_angular_tolerance_deg=5):
+    assert [n_vertices, sites].count(None) == 1
+    assert edge_list is not None
+    if (sites is not None):
+      n_vertices = len(sites)
     O.n_vertices = n_vertices
     O.edge_list = edge_list
     O.edge_sets = construct_edge_sets(
@@ -421,6 +427,11 @@ class construct(object):
     O._process_external_clusters(clusters=external_clusters)
     O.cluster_manager.tidy()
     O.find_cluster_loop_repeats = None
+    if (sites is not None):
+      O.build_tree()
+      O.fix_near_singular_hinges(
+        sites=sites,
+        angular_tolerance_deg=near_singular_hinges_angular_tolerance_deg)
 
   def show_summary(O, vertex_labels, out=None, prefix=""):
     from libtbx.str_utils import format_value
