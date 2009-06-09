@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.graph.utils import \
   construct_edge_sets, extract_edge_list, sub_edge_list
 import math
@@ -347,9 +348,13 @@ class edge_classifier(object):
     O.loop_edge_set = set([tuple(sorted(e))
       for e in cluster_manager.loop_edges])
     assert len(O.hinge_edge_set.intersection(O.loop_edge_set)) == 0
+    O.fixed_hinge_set = set(cluster_manager.fixed_hinges)
+    assert len(O.hinge_edge_set.intersection(O.fixed_hinge_set)) == 0
+    assert len(O.loop_edge_set.intersection(O.fixed_hinge_set)) == 0
 
   def __call__(O, edge):
     edge = tuple(sorted(edge))
+    if (edge in O.fixed_hinge_set): return "fixed"
     if (edge in O.hinge_edge_set): return "hinge"
     if (edge in O.loop_edge_set): return "loop"
     cm = O.cluster_manager
@@ -541,7 +546,8 @@ class construct(object):
       "  turquoise: intra-base-cluster, six degrees of freedom",
       "  green:     rotatable bond, one degree of freedom",
       "  blue:      intra-cluster",
-      "  red:       loop edge (restrained only)"]
+      "  red:       loop edge (restrained only)",
+      "  pink:      near singular rotatable bond (fixed)"]
     if (include_loop_edge_bendings): result.append(
       "  purple:    loop bending edge (restrained only)")
     return result
@@ -552,7 +558,8 @@ class construct(object):
       "base":  (0,1,1),
       "hinge": (0,1,0),
       "intra": (0,0,1),
-      "loop":  (1,0,0)}
+      "loop":  (1,0,0),
+      "fixed": (1,182/255,193/255)}
     ec = O.cluster_manager.edge_classifier()
     for line in O.edge_list:
       result.append((line, colors[ec(edge=line)]))

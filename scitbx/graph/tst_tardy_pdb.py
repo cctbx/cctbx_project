@@ -532,6 +532,24 @@ ATOM     26 H211 LIG A   1      -1.563   1.168   1.254  1.00 20.00      A    H
   find_cluster_loop_repeats=1,
   merge_clusters_with_multiple_connections_passes=2),
 
+pdb_extract(
+  # scitbx/rigid_body/essence/tst_molecules.py, exercise_near_singular_hinges()
+  tag="collinear",
+  pdb="""\
+ATOM      1  C1  COL     1      -1.334  -0.770   0.000  1.00  0.00
+ATOM      2  C2  COL     1      -1.334   0.770   0.000  1.00  0.00
+ATOM      3  C3  COL     1       0.000   0.000   0.000  1.00  0.00
+ATOM      4  C4  COL     1       1.540   0.000   0.000  1.00  0.00
+ATOM      5  C5  COL     1       3.080   0.000   0.000  1.00  0.00
+ATOM      6  C6  COL     1       4.620   0.000   0.000  1.00  0.00
+ATOM      7  C7  COL     1       5.954  -0.770   0.000  1.00  0.00
+""",
+  bonds=[(0, 1), (0, 2), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
+  clusters=[[0, 1, 2, 3, 4, 5], [6]],
+  hinge_edges=[(-1, 0), (4, 5)],
+  loop_edges=[],
+  loop_edge_bendings=[]),
+
 ]
 
 def _set_test_case_indices():

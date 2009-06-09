@@ -54,10 +54,10 @@ def exercise_lbfgs(test_case, use_geo, out, d_min=2):
   if (use_geo):
     assert rmsd_start >= 1-1e-6
     assert rmsd_final < 0.2
-  def show_f_g(f, g):
-    print >> out, "start f, |g|:", f, flex.mean_sq(g)**0.5
-  show_f_g(f=minimized.f_start, g=minimized.g_start)
-  show_f_g(f=minimized.f_final, g=minimized.g_final)
+  def show_f_g(label, f, g):
+    print >> out, label, "f, |g|:", f, flex.mean_sq(g)**0.5
+  show_f_g(label="start", f=minimized.f_start, g=minimized.g_start)
+  show_f_g(label="final", f=minimized.f_final, g=minimized.g_final)
   assert minimized.f_final <= minimized.f_start
   return minimized
 
@@ -79,7 +79,7 @@ def run(args):
     m0, m1 = minimized
     assert m0.real_space_target_weight == 1
     assert m1.real_space_target_weight == 1
-    assert m1.f_final < m0.f_start * 0.99
+    assert m1.f_final < m0.f_start * 0.98
   print format_cpu_times()
 
 if (__name__ == "__main__"):
