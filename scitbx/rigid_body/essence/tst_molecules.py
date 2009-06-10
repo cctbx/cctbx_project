@@ -244,7 +244,7 @@ def exercise_minimization_quick(out, tardy_model, max_iterations=3):
   print >> out, "  final e_pot:", tardy_model.e_pot()
   e_pot_final = tardy_model.e_pot()
   if (out is not sys.stdout):
-    assert e_pot_final < e_pot_start * 0.6
+    assert e_pot_final < e_pot_start * 0.7
   print >> out
 
 def construct_tardy_model(
@@ -303,14 +303,28 @@ def run(args):
       tardy_model = get_test_model_by_index(i=i)
       exercise_with_tardy_model(
         out=out, tardy_model=tardy_model, n_dynamics_steps=n_dynamics_steps)
-      if (i == 5):
-        assert tardy_model.degrees_of_freedom == 11
-        print >> out, "test model index:", i, "with fixed vertices"
+      if (i == 0):
+        assert tardy_model.degrees_of_freedom == 3
+        fixed_vertices = [0]
+        print >> out, "test model index:", i, \
+          "fixed_vertices:", fixed_vertices
         tardy_model = get_test_model_by_index(
-          i=i, fixed_vertex_lists=[[0,16,17]])
-        assert tardy_model.degrees_of_freedom == 2
-        exercise_with_tardy_model(
-          out=out, tardy_model=tardy_model, n_dynamics_steps=n_dynamics_steps)
+          i=i, fixed_vertex_lists=[fixed_vertices])
+        assert tardy_model.degrees_of_freedom == 0
+      elif (i == 5):
+        assert tardy_model.degrees_of_freedom == 11
+        for fixed_vertices,expected_dof in [([0,16,17], 2),
+                                            ([16,17], 5),
+                                            ([12], 8)]:
+          print >> out, "test model index:", i, \
+            "fixed_vertices:", fixed_vertices
+          tardy_model = get_test_model_by_index(
+            i=i, fixed_vertex_lists=[fixed_vertices])
+          assert tardy_model.degrees_of_freedom == expected_dof
+          exercise_with_tardy_model(
+            out=out,
+            tardy_model=tardy_model,
+            n_dynamics_steps=n_dynamics_steps)
   #
   print "OK"
 

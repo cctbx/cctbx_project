@@ -81,7 +81,7 @@ class spherical_body(object):
       (0.10, -0.15, 0.18)])
     mass_points = utils.mass_points(sites=sites, masses=[1.0, 1.0])
     O.A = joint_lib.spherical_alignment(
-      center_of_mass=mass_points.center_of_mass())
+      pivot=mass_points.center_of_mass())
     O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
     qE = matrix.col((-0.50, -0.33, 0.67, -0.42)).normalize()
     O.J = joint_lib.spherical(qE=qE)

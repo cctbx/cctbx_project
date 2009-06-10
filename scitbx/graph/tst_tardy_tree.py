@@ -728,6 +728,13 @@ def exercise_fixed_vertices(n_trials=10):
             n_vertices=tc.n_vertices,
             edge_list=tc.edge_list,
             fixed_vertex_lists=[fvl0, fvl1]).build_tree()
+          cmf = ttf.cluster_manager
+          cif = cmf.cluster_indices
+          fvgci = cmf.fixed_vertices_given_cluster_index_dict()
+          assert len(fvgci) == len(cmf.fixed_vertex_lists)
+          for fixed_vertices in cmf.fixed_vertex_lists:
+            assert len(set([cif[i] for i in fixed_vertices])) == 1
+            assert fvgci[cif[fixed_vertices[0]]] is fixed_vertices
 
 def exercise_show_summary():
   from scitbx.graph import tst_tardy_pdb

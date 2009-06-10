@@ -28,6 +28,17 @@ class six_dof_body(object):
     O.J = joint_lib.six_dof(qE=qE, qr=qr)
     O.qd = O.J.qd_zero
 
+class spherical_body(object):
+
+  def __init__(O, sites, masses, pivot):
+    mass_points = utils.mass_points(sites=sites, masses=masses)
+    O.A = joint_lib.spherical_alignment(pivot=pivot)
+    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
+    #
+    qE = matrix.col((1,0,0,0))
+    O.J = joint_lib.spherical(qE=qE)
+    O.qd = O.J.qd_zero
+
 class revolute_body(object):
 
   def __init__(O, sites, masses, pivot, normal):
@@ -54,12 +65,30 @@ def construct_bodies(sites, masses, cluster_manager):
   assert len(sites) == len(masses)
   result = []
   cm = cluster_manager
+  fvgci = cm.fixed_vertices_given_cluster_index_dict()
   for ic,cluster in enumerate(cm.clusters):
     body_sites = [matrix.col(sites[i]) for i in cluster]
     body_masses = [masses[i] for i in cluster]
     he = cm.hinge_edges[ic]
-    if (ic < len(cluster_manager.fixed_vertex_lists)):
-      body = zero_dof_body()
+    fixed_vertices = fvgci.get(ic)
+    if (fixed_vertices is not None):
+      if (   len(fixed_vertices) > 2
+          or len(fixed_vertices) == len(cluster)):
+        body = zero_dof_body()
+      elif (len(fixed_vertices) == 1):
+        body = spherical_body(
+          sites=body_sites,
+          masses=body_masses,
+          pivot=sites[fixed_vertices[0]])
+      elif (len(fixed_vertices) == 2):
+        normal_sites = [matrix.col(sites[i]) for i in fixed_vertices]
+        body = revolute_body(
+          sites=body_sites,
+          masses=body_masses,
+          pivot=normal_sites[1],
+          normal=(normal_sites[1]-normal_sites[0]).normalize())
+      else:
+        raise AssertionError
       body.parent = -1
     elif (he[0] == -1):
       if (len(body_sites) == 1):
