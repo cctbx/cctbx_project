@@ -89,6 +89,8 @@ def run():
    "$D/sgtbx/sub_lattice_tools.py",
    "$D/sgtbx/rational_matrices_point_groups.py",
    "$D/sgtbx/cosets.py",
+   "$D/sgtbx/reticular_pg_tools.py",
+   "$D/sgtbx/reticular_twin_laws.py",
    "$D/regression/tst_find_best_cell.py",
    "$D/regression/tst_normalised_amplitudes.py",
    "$D/regression/tst_statistics_graphs.py",
