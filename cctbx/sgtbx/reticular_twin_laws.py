@@ -146,7 +146,7 @@ class reticular_twin_laws(object):
 
 
 
-def exersize():
+def exercise():
   """
   uc = uctbx.unit_cell( "10.079 10.079 48.409 90 90 120" )
   xs = crystal.symmetry( uc, "R32")
@@ -188,5 +188,5 @@ def exersize():
 
 
 if (__name__ == "__main__"):
-  exersize()
+  exercise()
   print "OK"
