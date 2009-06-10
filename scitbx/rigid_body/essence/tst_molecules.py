@@ -194,6 +194,75 @@ def exercise_near_singular_hinges():
   assert tt.cluster_manager.clusters == [[0,1,2,3,4,5], [6]]
   assert approx_equal(e_kin_1(), 1.0000438095, eps=1e-10)
 
+def exercise_fixed_vertices_special_cases():
+  """
+          2
+         /
+    0---1
+  """
+  x = 0.5*3**0.5
+  y = 0.5
+  sites = matrix.col_list([
+    (0,0,0),
+    (1,0,0),
+    (1+x,y,0)])
+  edge_list = [(0,1),(1,2)]
+  for i,j in edge_list:
+    assert approx_equal(abs(sites[i]-sites[j]), 1)
+  labels = [str(i) for i in xrange(len(sites))]
+  masses = [1] * len(sites)
+  #
+  tt = tardy_tree.construct(
+    sites=sites,
+    edge_list=edge_list,
+    fixed_vertex_lists=[])
+  assert tt.cluster_manager.clusters == [[0,1,2]]
+  tm = construct_tardy_model(
+    labels=labels, sites=sites, masses=masses, tardy_tree=tt)
+  assert len(tm.bodies) == 1
+  assert tm.bodies[0].J.degrees_of_freedom == 6
+  #
+  tt = tardy_tree.construct(
+    sites=sites,
+    edge_list=edge_list,
+    fixed_vertex_lists=[[0]])
+  assert tt.cluster_manager.clusters == [[0,1], [2]] # XXX WORK IN PROGRESS
+  tm = construct_tardy_model(
+    labels=labels, sites=sites, masses=masses, tardy_tree=tt)
+  assert len(tm.bodies) == 2
+  assert tm.bodies[0].J.degrees_of_freedom == 3
+  assert tm.bodies[1].J.degrees_of_freedom == 1
+  tt = tardy_tree.construct(
+    sites=sites,
+    edge_list=edge_list,
+    fixed_vertex_lists=[[1]])
+  assert tt.cluster_manager.clusters == [[0,1,2]]
+  tm = construct_tardy_model(
+    labels=labels, sites=sites, masses=masses, tardy_tree=tt)
+  assert len(tm.bodies) == 1
+  assert tm.bodies[0].J.degrees_of_freedom == 3
+  tt = tardy_tree.construct(
+    sites=sites,
+    edge_list=edge_list,
+    fixed_vertex_lists=[[2]])
+  assert tt.cluster_manager.clusters == [[1,2] ,[0]] # XXX WORK IN PROGRESS
+  tm = construct_tardy_model(
+    labels=labels, sites=sites, masses=masses, tardy_tree=tt)
+  assert len(tm.bodies) == 2
+  assert tm.bodies[0].J.degrees_of_freedom == 3
+  assert tm.bodies[1].J.degrees_of_freedom == 1
+  #
+  for fixed_vertices in [[0,1], [0,2], [1,2], [0,1,2]]:
+    tt = tardy_tree.construct(
+      sites=sites,
+      edge_list=edge_list,
+      fixed_vertex_lists=[fixed_vertices])
+    assert tt.cluster_manager.clusters == [[0,1,2]]
+    tm = construct_tardy_model(
+      labels=labels, sites=sites, masses=masses, tardy_tree=tt)
+    assert len(tm.bodies) == 1
+    assert tm.bodies[0].J.degrees_of_freedom == 3 - len(fixed_vertices)
+
 def exercise_tardy_model(out, n_dynamics_steps, delta_t, tardy_model):
   tardy_model.check_d_pot_d_q()
   e_pots = flex.double([tardy_model.e_pot()])
@@ -295,6 +364,7 @@ def run(args):
   show_times_at_exit()
   #
   exercise_near_singular_hinges()
+  exercise_fixed_vertices_special_cases()
   #
   if (1):
     random.seed(0)

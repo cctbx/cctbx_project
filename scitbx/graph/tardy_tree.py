@@ -10,7 +10,6 @@ class cluster_manager(object):
     "cluster_indices",
     "clusters",
     "merge_clusters_with_multiple_connections_passes",
-    "overlapping_rigid_clusters",
     "hinge_edges",
     "loop_edges",
     "loop_edge_bendings",
@@ -37,7 +36,6 @@ class cluster_manager(object):
         O.cluster_indices[i] = len(O.clusters)
         O.clusters.append([i])
     O.merge_clusters_with_multiple_connections_passes = 0
-    O.overlapping_rigid_clusters = None
     O.hinge_edges = None
     O.loop_edges = None
     O.loop_edge_bendings = None
@@ -54,8 +52,6 @@ class cluster_manager(object):
     print >> out, prefix+"number of clusters:", len(O.clusters)
     print >> out, prefix+"merge clusters with multiple connections: %d pass%s"\
       % plural_s(O.merge_clusters_with_multiple_connections_passes, "es")
-    print >> out, prefix+"number of overlapping rigid clusters:", \
-      xlen(O.overlapping_rigid_clusters)
     print >> out, prefix+"number of hinge edges:", xlen(O.hinge_edges)
     print >> out, prefix+"number of loop edges:", xlen(O.loop_edges)
     print >> out, prefix+"number of loop edge bendings:", \
@@ -163,17 +159,23 @@ class cluster_manager(object):
       result[cij].add(cii)
     return result
 
+  def overlapping_rigid_clusters(O, edge_sets):
+    assert O.hinge_edges is None
+    result = []
+    for cii,cluster in enumerate(O.clusters):
+      c = set(cluster)
+      for i in cluster:
+        c.update(edge_sets[i])
+      result.append(tuple(sorted(c)))
+    return result
+
   def sort_by_overlapping_rigid_cluster_sizes(O, edge_sets):
-    assert O.overlapping_rigid_clusters is None
-    O.overlapping_rigid_clusters = []
     cii_orcs = []
     for cii,cluster in enumerate(O.clusters):
       c = set(cluster)
       for i in cluster:
         c.update(edge_sets[i])
       cii_orcs.append((cii, len(c)))
-      O.overlapping_rigid_clusters.append(tuple(sorted(c)))
-    O.overlapping_rigid_clusters.sort()
     def cmp_elems(a, b):
       fa = a[0] < len(O.fixed_vertex_lists)
       fb = b[0] < len(O.fixed_vertex_lists)

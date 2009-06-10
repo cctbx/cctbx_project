@@ -77,7 +77,6 @@ def exercise_cluster_manager():
 >number of fixed vertices: 0
 >number of clusters: 1
 >merge clusters with multiple connections: 2 passes
->number of overlapping rigid clusters: 2
 >number of hinge edges: None
 >number of loop edges: None
 >number of loop edge bendings: None
@@ -552,11 +551,12 @@ def exercise_special_case_ZINC03847121():
     (9, 10), (9, 11), (0, 10), (3, 11)]
   tt = construct(n_vertices=n_vertices, edge_list=edge_list)
   cm = tt.cluster_manager
-  cm.sort_by_overlapping_rigid_cluster_sizes(edge_sets=tt.edge_sets)
-  assert cm.overlapping_rigid_clusters == [
+  assert sorted(cm.overlapping_rigid_clusters(edge_sets=tt.edge_sets)) == [
     (0, 1, 2), (0, 1, 10), (0, 9, 10), (1, 2, 3), (2, 3, 4, 11),
     (3, 4, 5), (3, 9, 11), (4, 5, 6), (5, 6, 7), (6, 7, 8), (7, 8, 9),
     (8, 9, 10, 11)]
+  assert cm.sort_by_overlapping_rigid_cluster_sizes(edge_sets=tt.edge_sets)==[
+    4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
   #
   tt = construct(n_vertices=n_vertices, edge_list=edge_list)
   sio = StringIO()
@@ -569,7 +569,6 @@ $number of fixed vertex lists: 0
 $number of fixed vertices: 0
 $number of clusters: 12
 $merge clusters with multiple connections: 0 passes
-$number of overlapping rigid clusters: None
 $number of hinge edges: None
 $number of loop edges: None
 $number of loop edge bendings: None
@@ -586,7 +585,6 @@ $number of fixed hinges: None
 >number of fixed vertices: 0
 >number of clusters: 9
 >merge clusters with multiple connections: 1 pass
->number of overlapping rigid clusters: 12
 >number of hinge edges: 9
 >number of loop edges: 2
 >number of loop edge bendings: 5
@@ -674,7 +672,6 @@ def exercise_fixed_vertices(n_trials=10):
           assert cm.clusters == [[0], [1,2,3]]
           assert cm.sort_by_overlapping_rigid_cluster_sizes(
             edge_sets=edge_sets) == [2, 4]
-          cm.overlapping_rigid_clusters = None
           cm.construct_spanning_trees(edge_sets=edge_sets)
           assert cm.clusters == [[0,1], [2,3]]
           assert cm.hinge_edges == [(-1,0), (0,1)]
@@ -685,7 +682,6 @@ def exercise_fixed_vertices(n_trials=10):
           assert cm.clusters == [[1,2,3], [0]]
           assert cm.sort_by_overlapping_rigid_cluster_sizes(
             edge_sets=edge_sets) == [4, 2]
-          cm.overlapping_rigid_clusters = None
           cm.construct_spanning_trees(edge_sets=edge_sets)
           assert cm.clusters == [[0,1,2,3]]
           assert cm.hinge_edges == [(-1,1)]
@@ -735,6 +731,20 @@ def exercise_fixed_vertices(n_trials=10):
           for fixed_vertices in cmf.fixed_vertex_lists:
             assert len(set([cif[i] for i in fixed_vertices])) == 1
             assert fvgci[cif[fixed_vertices[0]]] is fixed_vertices
+  #
+  for fixed_vertex in [0,1]:
+    tt = construct(
+      n_vertices=2,
+      edge_list=[(0,1)],
+      fixed_vertex_lists=[[fixed_vertex]]).build_tree()
+    assert tt.cluster_manager.clusters == [[0,1]]
+  #
+  for fixed_vertex in [0,1,2]:
+    tt = construct(
+      n_vertices=3,
+      edge_list=[(0,1),(1,2)],
+      fixed_vertex_lists=[[fixed_vertex]]).build_tree()
+    print tt.cluster_manager.clusters # XXX WORK IN PROGRESS
 
 def exercise_show_summary():
   from scitbx.graph import tst_tardy_pdb
@@ -753,7 +763,6 @@ def exercise_show_summary():
 &number of fixed vertices: 0
 &number of clusters: 1
 &merge clusters with multiple connections: 1 pass
-&number of overlapping rigid clusters: 4
 &number of hinge edges: 1
 &number of loop edges: 0
 &number of loop edge bendings: 0
