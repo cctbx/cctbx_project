@@ -178,6 +178,14 @@ def exersize():
   for ii, jj in zip(tl,dl):
     assert(ii==jj)
 
+  uc = uctbx.unit_cell( "10.079 10.079 48.409 90 90 120" )
+  xs = crystal.symmetry( uc, "R32")
+  rtl = reticular_twin_laws( xs , max_index=8, max_delta=1.5)
+  for tli in rtl.derived_laws:
+    for ttl in tli.twin_laws:
+      assert(ttl.determinant()==1) #check that these twin laws have det equal to 1
+
+
 
 if (__name__ == "__main__"):
   exersize()
