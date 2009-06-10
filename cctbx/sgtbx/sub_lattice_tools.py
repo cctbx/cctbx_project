@@ -525,6 +525,23 @@ def tst_make_bigger_cell():
     det_ref= float(cb_op.c().r().determinant())
     assert approx_equal( ratio/(det/det_ref),1.0, eps=0.001 )
 
+def tst_centered_cells():
+  out = StringIO()
+  uc1 = uctbx.unit_cell( '13,19,23,90,97,90' )
+  xs1 = crystal.symmetry( uc1, "C2" )
+  cb_op = xs1.change_of_basis_op_to_primitive_setting()
+  xs1p = xs1.change_basis( cb_op )
+  xs2 = crystal.symmetry( uc1, "P1" )
+  comp = compare_lattice( xs1, xs2, out=out )
+  assert len( comp.possible_solutions )==1
+
+  uc1 = uctbx.unit_cell( '13,13,23,90,90,120' )
+  xs1 = crystal.symmetry( uc1, "R32:H" )
+  cb_op = xs1.change_of_basis_op_to_primitive_setting()
+  xs1p = xs1.change_basis( cb_op )
+  xs2 = crystal.symmetry( uc1, "P1" )
+  comp = compare_lattice( xs1, xs2, out=out )
+  assert len( comp.possible_solutions )==1
 
 
 
@@ -533,6 +550,7 @@ def exercise():
   tst_sublattice()
   tst_compare()
   tst_make_bigger_cell()
+  tst_centered_cells()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
