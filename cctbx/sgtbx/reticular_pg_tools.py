@@ -213,41 +213,55 @@ def is_reticular_polyholohedral(old_sg, new_sg):
     return True
 
 
+def cosets(g,h):
+  sets = []
+  for gi in g:
+    result = []
+    for hi in h:
+      result.append( gi*hi )
+    sets.append( result )
+
+
+  unique_sets = []
+  for set in sets:
+    is_unique=True
+    for unique_set in unique_sets:
+      found_it_array=[False]*len(set)
+      for op in set:
+        if op in unique_set:
+          is_unique=False
+    if is_unique:
+      unique_sets.append( set )
+  return unique_sets
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def build_reticular_twin_laws(old_sg, new_sg):
-  # get new ops
   new_ops = extra_operators(old_sg,new_sg)
   common_ops = recurring_operators(old_sg,new_sg)
-  # decompose
+  """
+  We are searching for equivalence in the new symmetry operators, given the common operators in this group.
+  """
   if len(new_ops)==0:
     return None
-  grouped_ops = [-9]*len(new_ops)
-  count=1
-  grouped_ops[0]=1
-
-  for ii in range(len(new_ops)):
-    nop=new_ops[ii]
-    added = False
-    tmp_group=rat_rot_group()
-    for oop in common_ops:
-      tmp_group.expand( oop )
-    #expand this grouyp with a single operator
-    tmp_group.expand( nop )
-    this_group=grouped_ops[ii]
-    for jj in range(len(new_ops)):
-      this_op = new_ops[jj]
-      if ((jj != ii) or (grouped_ops[ jj ] != -9)):
-        if tmp_group.is_in_group( this_op ):
-          assert ( (grouped_ops[ jj ] == -9) or (grouped_ops[ jj ] == this_group) )
-          grouped_ops[ jj ] = this_group
-          added=True
-    if added:
-      count +=1
-
-  representative_ops = []
-  max_groups = flex.max( flex.int(grouped_ops) )
-  for ii in range(max_groups):
-    representative_ops.append(  new_ops[grouped_ops.index( ii+1 )] )
-  return representative_ops
+  result = cosets(new_sg.ops, common_ops)
+  repr = []
+  for set in result[1:]:
+    repr.append(set[0])
+  return repr
 
 
 def tst_build_reticular_twin_laws():
@@ -257,6 +271,14 @@ def tst_build_reticular_twin_laws():
   assert len(result)==1
   for ii in result:
     assert as_hkl(ii.transpose() )=="k,-h,l"
+
+  sg1 = construct_rational_point_group( sgtbx.space_group_info( "P 2 2 2" ).group() )
+  sg2 =  construct_rational_point_group( sgtbx.space_group_info( "P 4 2 2").group() )
+  result = build_reticular_twin_laws(sg1, sg2)
+  assert len(result)==1
+  for ii in result:
+    assert as_hkl(ii.transpose() )=="k,-h,l"
+
 
 
 

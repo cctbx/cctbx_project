@@ -140,9 +140,19 @@ class reticular_twin_laws(object):
     else:
       return None
 
-  def show(self):
-    for o in self.derived_laws:
-      o.show()
+
+
+
+
+  def show(self,out=None):
+    if out is None:
+      out=sys.stdout
+
+    if len(self.derived_laws):
+      for o in self.derived_laws:
+        o.show(out=out)
+    else:
+      print >> out, "No reticular twin laws found."
 
 
 
