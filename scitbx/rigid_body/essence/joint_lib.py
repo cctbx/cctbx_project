@@ -85,9 +85,9 @@ class six_dof(object):
 
 class spherical_alignment(object):
 
-  def __init__(O, center_of_mass):
-    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -center_of_mass))
-    O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), center_of_mass))
+  def __init__(O, pivot):
+    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -pivot))
+    O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), pivot))
 
 class spherical(object):
 

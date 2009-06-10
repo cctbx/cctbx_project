@@ -63,6 +63,13 @@ class cluster_manager(object):
     print >> out, prefix+"number of fixed hinges:", xlen(O.fixed_hinges)
     return O
 
+  def fixed_vertices_given_cluster_index_dict(O):
+    result = {}
+    ci = O.cluster_indices
+    for fixed_vertices in O.fixed_vertex_lists:
+      result[ci[fixed_vertices[0]]] = fixed_vertices
+    return result
+
   def connect_clusters(O, cii, cij, optimize):
     assert O.hinge_edges is None
     if (cii == cij): return None
