@@ -555,8 +555,10 @@ def exercise_special_case_ZINC03847121():
     (0, 1, 2), (0, 1, 10), (0, 9, 10), (1, 2, 3), (2, 3, 4, 11),
     (3, 4, 5), (3, 9, 11), (4, 5, 6), (5, 6, 7), (6, 7, 8), (7, 8, 9),
     (8, 9, 10, 11)]
-  assert cm.sort_by_overlapping_rigid_cluster_sizes(edge_sets=tt.edge_sets)==[
-    4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+  orcs, fixed_vertex_info = cm.sort_clusters_for_construct_spanning_tree(
+    edge_sets=tt.edge_sets)
+  assert orcs == [4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+  assert fixed_vertex_info == [0] * len(orcs)
   #
   tt = construct(n_vertices=n_vertices, edge_list=edge_list)
   sio = StringIO()
@@ -670,22 +672,14 @@ def exercise_fixed_vertices(n_trials=10):
               assert cm.clusters == [[0], [], [2,3,1], []]
           cm.tidy()
           assert cm.clusters == [[0], [1,2,3]]
-          assert cm.sort_by_overlapping_rigid_cluster_sizes(
-            edge_sets=edge_sets) == [2, 4]
-          cm.construct_spanning_trees(edge_sets=edge_sets)
-          assert cm.clusters == [[0,1], [2,3]]
-          assert cm.hinge_edges == [(-1,0), (0,1)]
-          assert cm.loop_edges == []
         else:
           assert cm.clusters == [[1,2,3], [0], [], []]
           cm.tidy()
           assert cm.clusters == [[1,2,3], [0]]
-          assert cm.sort_by_overlapping_rigid_cluster_sizes(
-            edge_sets=edge_sets) == [4, 2]
-          cm.construct_spanning_trees(edge_sets=edge_sets)
-          assert cm.clusters == [[0,1,2,3]]
-          assert cm.hinge_edges == [(-1,1)]
-          assert cm.loop_edges == []
+        cm.construct_spanning_trees(edge_sets=edge_sets)
+        assert cm.clusters == [[0,1,2,3]]
+        assert cm.hinge_edges == [(-1,1)]
+        assert cm.loop_edges == []
   #
   from scitbx.graph import tst_tardy_pdb
   tc = tst_tardy_pdb.test_cases[5]
@@ -704,7 +698,15 @@ def exercise_fixed_vertices(n_trials=10):
     tc.tardy_tree_construct(fixed_vertex_lists=[[0],[10]])
   except RuntimeError, e:
     assert str(e) == \
-      "construct_spanning_trees(): fixed vertex lists in same connected tree."
+      "sort_clusters_for_construct_spanning_tree():" \
+      " fixed vertex lists in same connected tree."
+  else: raise Exception_expected
+  try:
+    tc.tardy_tree_construct(fixed_vertex_lists=[[0],[11]])
+  except RuntimeError, e:
+    assert str(e) == \
+      "construct_spanning_trees():" \
+      " fixed vertex lists in same connected tree."
   else: raise Exception_expected
   #
   for tc in test_cases:
@@ -744,7 +746,7 @@ def exercise_fixed_vertices(n_trials=10):
       n_vertices=3,
       edge_list=[(0,1),(1,2)],
       fixed_vertex_lists=[[fixed_vertex]]).build_tree()
-    print tt.cluster_manager.clusters # XXX WORK IN PROGRESS
+    assert tt.cluster_manager.clusters == [[0,1,2]]
 
 def exercise_show_summary():
   from scitbx.graph import tst_tardy_pdb

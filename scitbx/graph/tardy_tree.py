@@ -169,7 +169,23 @@ class cluster_manager(object):
       result.append(tuple(sorted(c)))
     return result
 
-  def sort_by_overlapping_rigid_cluster_sizes(O, edge_sets):
+  def sort_clusters_for_construct_spanning_tree(O, edge_sets):
+    fixed_vertex_info = [0] * len(O.clusters)
+    for fixed_vertices in O.fixed_vertex_lists:
+      lvf = len(fixed_vertices)
+      assert lvf != 0
+      i = fixed_vertices[0]
+      cii = O.cluster_indices[i]
+      fixed_vertex_info[cii] = lvf
+      if (lvf == 1):
+        for j in edge_sets[i]:
+          cij = O.cluster_indices[j]
+          if (cij == cii): continue
+          if (fixed_vertex_info[cij] != 0):
+            raise RuntimeError(
+              "sort_clusters_for_construct_spanning_tree():"
+              " fixed vertex lists in same connected tree.")
+          fixed_vertex_info[cij] = -1
     cii_orcs = []
     for cii,cluster in enumerate(O.clusters):
       c = set(cluster)
@@ -177,12 +193,10 @@ class cluster_manager(object):
         c.update(edge_sets[i])
       cii_orcs.append((cii, len(c)))
     def cmp_elems(a, b):
-      fa = a[0] < len(O.fixed_vertex_lists)
-      fb = b[0] < len(O.fixed_vertex_lists)
-      if (fa):
-        if (not fb): return -1
-      else:
-        if (fb): return 1
+      fa = abs(fixed_vertex_info[a[0]])
+      fb = abs(fixed_vertex_info[b[0]])
+      if (fa > fb): return -1
+      if (fa < fb): return 1
       if (a[1] > b[1]): return -1
       if (a[1] < b[1]): return 1
       return cmp(a[0], b[0])
@@ -193,22 +207,19 @@ class cluster_manager(object):
     del O.clusters[:]
     O.clusters.extend(new_clusters)
     O.refresh_indices()
-    return [orcs for cii,orcs in cii_orcs]
+    return (
+      [orcs for cii,orcs in cii_orcs],
+      [fixed_vertex_info[cii] for cii,orcs in cii_orcs])
 
   def construct_spanning_trees(O, edge_sets):
     assert O.hinge_edges is None
-    orcs = O.sort_by_overlapping_rigid_cluster_sizes(edge_sets=edge_sets)
+    orcs, fixed_vertex_info = O.sort_clusters_for_construct_spanning_tree(
+      edge_sets=edge_sets)
     n_clusters = len(O.clusters)
     hinge_edges = [(-1,c[0]) for c in O.clusters]
     O.loop_edges = []
-    if (n_clusters == 0):
-      w_max = -1
-    else:
-      i = len(O.fixed_vertex_lists)
-      if (i == 0 or i == len(orcs)):
-        w_max = orcs[0]
-      else:
-        w_max = max(orcs[0], orcs[i])
+    if (n_clusters == 0): w_max = -1
+    else:                 w_max = max(orcs)
     candi = []
     for i in xrange(w_max+1):
       candi.append([])
@@ -217,13 +228,16 @@ class cluster_manager(object):
     for ip in xrange(len(O.clusters)):
       he = hinge_edges[ip]
       if (he[0] != -1): continue
+      have_fixed = [(fixed_vertex_info[ip] > 0)]
       done[ip] = 1
       cluster_perm.append(ip)
       def set_loop_or_hinge_edge(w_max):
-        if (cij < len(O.fixed_vertex_lists)):
-          raise RuntimeError(
-            "construct_spanning_trees():"
-            " fixed vertex lists in same connected tree.")
+        if (fixed_vertex_info[cij] > 0):
+          if (have_fixed[0]):
+            raise RuntimeError(
+              "construct_spanning_trees():"
+              " fixed vertex lists in same connected tree.")
+          have_fixed[0] = True
         if (done[cij] != 0):
           O.loop_edges.append((i,j))
         else:
@@ -322,7 +336,7 @@ class cluster_manager(object):
     assert O.fixed_hinges is None
     O.fixed_hinges = []
     if (sites is None): return
-    for jc in xrange(len(O.clusters)-1, len(O.fixed_vertex_lists)-1,-1):
+    for jc in xrange(len(O.clusters)-1,-1,-1):
       hi,hj = O.hinge_edges[jc]
       if (hi == -1):
         continue

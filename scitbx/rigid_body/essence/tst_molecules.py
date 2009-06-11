@@ -222,37 +222,18 @@ def exercise_fixed_vertices_special_cases():
   assert len(tm.bodies) == 1
   assert tm.bodies[0].J.degrees_of_freedom == 6
   #
-  tt = tardy_tree.construct(
-    sites=sites,
-    edge_list=edge_list,
-    fixed_vertex_lists=[[0]])
-  assert tt.cluster_manager.clusters == [[0,1], [2]] # XXX WORK IN PROGRESS
-  tm = construct_tardy_model(
-    labels=labels, sites=sites, masses=masses, tardy_tree=tt)
-  assert len(tm.bodies) == 2
-  assert tm.bodies[0].J.degrees_of_freedom == 3
-  assert tm.bodies[1].J.degrees_of_freedom == 1
-  tt = tardy_tree.construct(
-    sites=sites,
-    edge_list=edge_list,
-    fixed_vertex_lists=[[1]])
-  assert tt.cluster_manager.clusters == [[0,1,2]]
-  tm = construct_tardy_model(
-    labels=labels, sites=sites, masses=masses, tardy_tree=tt)
-  assert len(tm.bodies) == 1
-  assert tm.bodies[0].J.degrees_of_freedom == 3
-  tt = tardy_tree.construct(
-    sites=sites,
-    edge_list=edge_list,
-    fixed_vertex_lists=[[2]])
-  assert tt.cluster_manager.clusters == [[1,2] ,[0]] # XXX WORK IN PROGRESS
-  tm = construct_tardy_model(
-    labels=labels, sites=sites, masses=masses, tardy_tree=tt)
-  assert len(tm.bodies) == 2
-  assert tm.bodies[0].J.degrees_of_freedom == 3
-  assert tm.bodies[1].J.degrees_of_freedom == 1
-  #
-  for fixed_vertices in [[0,1], [0,2], [1,2], [0,1,2]]:
+  expected_e_kin_1 = [
+    1.00009768395,
+    1.00002522865,
+    1.00000107257,
+    1.0,
+    1.0,
+    1.0,
+    0.0]
+  rnd = random.Random(0)
+  for i_fv,fixed_vertices in enumerate([[0], [1], [2],
+                                        [0,1], [0,2], [1,2],
+                                        [0,1,2]]):
     tt = tardy_tree.construct(
       sites=sites,
       edge_list=edge_list,
@@ -261,7 +242,14 @@ def exercise_fixed_vertices_special_cases():
     tm = construct_tardy_model(
       labels=labels, sites=sites, masses=masses, tardy_tree=tt)
     assert len(tm.bodies) == 1
-    assert tm.bodies[0].J.degrees_of_freedom == 3 - len(fixed_vertices)
+    assert tm.bodies[0].J.degrees_of_freedom == [3,1,0][len(fixed_vertices)-1]
+    tm.assign_random_velocities(e_kin_target=1, random_gauss=rnd.gauss)
+    if (len(fixed_vertices) != 3):
+      assert approx_equal(tm.e_kin(), 1, eps=1e-10)
+    else:
+      assert approx_equal(tm.e_kin(), 0, eps=1e-10)
+    tm.dynamics_step(delta_t=0.01)
+    assert approx_equal(tm.e_kin(), expected_e_kin_1[i_fv], eps=1e-10)
 
 def exercise_tardy_model(out, n_dynamics_steps, delta_t, tardy_model):
   tardy_model.check_d_pot_d_q()
