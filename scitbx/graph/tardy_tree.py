@@ -336,6 +336,7 @@ class cluster_manager(object):
     assert O.fixed_hinges is None
     O.fixed_hinges = []
     if (sites is None): return
+    abs_cos_limit = abs(math.cos(math.radians(angular_tolerance_deg)))
     for jc in xrange(len(O.clusters)-1,-1,-1):
       hi,hj = O.hinge_edges[jc]
       if (hi == -1):
@@ -343,8 +344,8 @@ class cluster_manager(object):
       pivot = sites[hi]
       axis = sites[hj] - pivot
       for i in O.clusters[jc]:
-        angle = axis.angle(sites[i] - pivot, value_if_undefined=0, deg=True)
-        if (abs(angle) > angular_tolerance_deg):
+        abs_cos = abs(axis.cos_angle(sites[i] - pivot, value_if_undefined=1))
+        if (abs_cos < abs_cos_limit):
           break
       else:
         O.fixed_hinges.append(O.hinge_edges[jc])

@@ -250,6 +250,19 @@ def exercise_fixed_vertices_special_cases():
       assert approx_equal(tm.e_kin(), 0, eps=1e-10)
     tm.dynamics_step(delta_t=0.01)
     assert approx_equal(tm.e_kin(), expected_e_kin_1[i_fv], eps=1e-10)
+  #
+  sites[2] = matrix.col([2,0,0])
+  assert approx_equal((sites[0]-sites[1]).cos_angle(sites[2]-sites[1]), -1)
+  for fixed_vertices in [[0,1], [0,2], [1,2]]:
+    tt = tardy_tree.construct(
+      sites=sites,
+      edge_list=edge_list,
+      fixed_vertex_lists=[fixed_vertices])
+    assert tt.cluster_manager.clusters == [[0,1,2]]
+    tm = construct_tardy_model(
+      labels=labels, sites=sites, masses=masses, tardy_tree=tt)
+    assert len(tm.bodies) == 1
+    assert tm.bodies[0].J.degrees_of_freedom == 0
 
 def exercise_tardy_model(out, n_dynamics_steps, delta_t, tardy_model):
   tardy_model.check_d_pot_d_q()

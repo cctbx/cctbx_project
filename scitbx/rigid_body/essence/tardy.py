@@ -6,6 +6,7 @@ import scitbx.lbfgs
 from scitbx.array_family import flex
 from scitbx import matrix
 import random
+import math
 
 class zero_dof_body(object):
 
@@ -61,9 +62,15 @@ class translational_body(object):
     O.J = joint_lib.translational(qr=qr)
     O.qd = O.J.qd_zero
 
-def construct_bodies(sites, masses, cluster_manager):
+def construct_bodies(
+      sites,
+      masses,
+      cluster_manager,
+      near_singular_hinges_angular_tolerance_deg=5):
   assert len(sites) == len(masses)
   result = []
+  abs_cos_limit = abs(math.cos(math.radians(
+    near_singular_hinges_angular_tolerance_deg)))
   cm = cluster_manager
   fvgci = cm.fixed_vertices_given_cluster_index_dict()
   for ic,cluster in enumerate(cm.clusters):
@@ -82,11 +89,19 @@ def construct_bodies(sites, masses, cluster_manager):
           pivot=sites[fixed_vertices[0]])
       elif (len(fixed_vertices) == 2):
         normal_sites = [matrix.col(sites[i]) for i in fixed_vertices]
-        body = revolute_body(
-          sites=body_sites,
-          masses=body_masses,
-          pivot=normal_sites[1],
-          normal=(normal_sites[1]-normal_sites[0]).normalize())
+        pivot = normal_sites[1]
+        axis = pivot - normal_sites[0]
+        for site in body_sites:
+          abs_cos = abs(axis.cos_angle(site - pivot, value_if_undefined=1))
+          if (abs_cos < abs_cos_limit):
+            body = revolute_body(
+              sites=body_sites,
+              masses=body_masses,
+              pivot=pivot,
+              normal=axis.normalize())
+            break
+        else:
+          body = zero_dof_body()
       else:
         raise AssertionError
       body.parent = -1
