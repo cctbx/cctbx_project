@@ -19,6 +19,8 @@ import sys, os
 
 class potential_object(object):
 
+  allowed_origin_shifts_need_to_be_suppressed = False
+
   def __init__(O,
         density_map,
         geo_manager,
