@@ -5,12 +5,15 @@ from scitbx.rigid_body.essence import utils
 import scitbx.lbfgs
 from scitbx.array_family import flex
 from scitbx import matrix
+from libtbx import Auto
 import random
 import math
 
 class zero_dof_body(object):
 
-  def __init__(O):
+  def __init__(O, sites, masses):
+    O.number_of_sites = len(sites)
+    O.sum_of_masses = sum(masses)
     O.A = joint_lib.zero_dof_alignment()
     O.I = matrix.sqr([0]*36)
     O.J = joint_lib.zero_dof()
@@ -19,6 +22,8 @@ class zero_dof_body(object):
 class six_dof_body(object):
 
   def __init__(O, sites, masses):
+    O.number_of_sites = len(sites)
+    O.sum_of_masses = sum(masses)
     mass_points = utils.mass_points(sites=sites, masses=masses)
     O.A = joint_lib.six_dof_alignment(
       center_of_mass=mass_points.center_of_mass())
@@ -32,6 +37,8 @@ class six_dof_body(object):
 class spherical_body(object):
 
   def __init__(O, sites, masses, pivot):
+    O.number_of_sites = len(sites)
+    O.sum_of_masses = sum(masses)
     mass_points = utils.mass_points(sites=sites, masses=masses)
     O.A = joint_lib.spherical_alignment(pivot=pivot)
     O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
@@ -43,6 +50,8 @@ class spherical_body(object):
 class revolute_body(object):
 
   def __init__(O, sites, masses, pivot, normal):
+    O.number_of_sites = len(sites)
+    O.sum_of_masses = sum(masses)
     mass_points = utils.mass_points(sites=sites, masses=masses)
     O.A = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
     O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
@@ -53,6 +62,8 @@ class revolute_body(object):
 class translational_body(object):
 
   def __init__(O, sites, masses):
+    O.number_of_sites = len(sites)
+    O.sum_of_masses = sum(masses)
     mass_points = utils.mass_points(sites=sites, masses=masses)
     O.A = joint_lib.translational_alignment(
       center_of_mass=mass_points.center_of_mass())
@@ -81,7 +92,7 @@ def construct_bodies(
     if (fixed_vertices is not None):
       if (   len(fixed_vertices) > 2
           or len(fixed_vertices) == len(cluster)):
-        body = zero_dof_body()
+        body = zero_dof_body(sites=body_sites, masses=body_masses)
       elif (len(fixed_vertices) == 1):
         body = spherical_body(
           sites=body_sites,
@@ -101,7 +112,7 @@ def construct_bodies(
               normal=axis.normalize())
             break
         else:
-          body = zero_dof_body()
+          body = zero_dof_body(sites=body_sites, masses=body_masses)
       else:
         raise AssertionError
       body.parent = -1
@@ -137,6 +148,55 @@ class model(object):
       cluster_manager=tardy_tree.cluster_manager)
     O.degrees_of_freedom = sum([B.J.degrees_of_freedom for B in O.bodies])
     O.flag_positions_as_changed()
+
+  def root_indices(O):
+    result = []
+    for iB,B in enumerate(O.bodies):
+      if (B.parent == -1):
+        result.append(iB)
+    return result
+
+  def _accumulate_in_each_tree(O, attr):
+    result = []
+    accu = [0] * len(O.bodies)
+    for iB in xrange(len(O.bodies)-1,-1,-1):
+      B = O.bodies[iB]
+      accu[iB] += getattr(B, attr)
+      if (B.parent == -1):
+        result.append((iB, accu[iB]))
+      else:
+        accu[B.parent] += accu[iB]
+    return result
+
+  def number_of_sites_in_each_tree(O):
+    return O._accumulate_in_each_tree(attr="number_of_sites")
+
+  def sum_of_masses_in_each_tree(O):
+    return O._accumulate_in_each_tree(attr="sum_of_masses")
+
+  def mean_linear_velocity(O, number_of_sites_in_each_tree):
+    if (number_of_sites_in_each_tree is Auto):
+      number_of_sites_in_each_tree = O.number_of_sites_in_each_tree()
+    sum_v = matrix.col((0,0,0))
+    sum_n = 0
+    for iB,n in number_of_sites_in_each_tree:
+      B = O.bodies[iB]
+      v = B.J.get_linear_velocity(qd=B.qd)
+      if (v is None): continue
+      sum_v += v * n
+      sum_n += n
+    if (sum_n == 0):
+      return None
+    return sum_v / sum_n
+
+  def subtract_from_linear_velocities(O, number_of_sites_in_each_tree, value):
+    if (number_of_sites_in_each_tree is Auto):
+      number_of_sites_in_each_tree = O.number_of_sites_in_each_tree()
+    for iB,n in number_of_sites_in_each_tree:
+      B = O.bodies[iB]
+      v = B.J.get_linear_velocity(qd=B.qd)
+      if (v is None): continue
+      B.qd = B.J.new_linear_velocity(qd=B.qd, value=v-value)
 
   def flag_positions_as_changed(O):
     O.__featherstone_system_model = None
