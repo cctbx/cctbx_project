@@ -9,7 +9,7 @@ from cctbx.array_family import flex
 import scitbx.rigid_body.essence.tardy
 from scitbx.graph import tardy_tree
 from scitbx import matrix
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, numbers_as_str
 from libtbx.str_utils import format_value
 from libtbx import group_args
 
@@ -49,6 +49,8 @@ master_phil_str = """\
 
 class potential_object(object):
 
+  allowed_origin_shifts_need_to_be_suppressed = True
+
   def __init__(O,
         xray_weight_factor,
         nonbonded_attenuation_factor,
@@ -78,6 +80,9 @@ class potential_object(object):
     O.f = None
     O.g = None
     O.last_grms = None
+
+  def crystal_symmetry(O):
+    return O.model.restraints_manager.geometry.crystal_symmetry
 
   def e_pot(O, sites_moved):
     if (O.last_sites_moved is not sites_moved):
@@ -164,7 +169,9 @@ def run(fmodels, model, target_weights, params, log):
     sites=sites,
     masses=xs.atomic_weights(),
     tardy_tree=tt,
-    potential_obj=potential_obj)
+    potential_obj=potential_obj,
+    near_singular_hinges_angular_tolerance_deg=
+      params.near_singular_hinges_angular_tolerance_deg)
   action(tardy_model=tardy_model, params=params, callback=None, log=log)
 
 def action(tardy_model, params, callback, log):
@@ -200,9 +207,35 @@ def action(tardy_model, params, callback, log):
   print >> log, "  time step: %7.5f pico seconds" % (
     params.time_step_pico_seconds)
   print >> log, "  velocity scaling:", params.velocity_scaling
+  allowed_origin_shifts_need_to_be_suppressed = tardy_model.potential_obj \
+    .allowed_origin_shifts_need_to_be_suppressed
+  print >> log, "  suppressing allowed origin shifts:", \
+    allowed_origin_shifts_need_to_be_suppressed
   log.flush()
   if (callback is not None):
     if (callback(tardy_model=tardy_model) == False): return
+  if (allowed_origin_shifts_need_to_be_suppressed):
+    number_of_sites_in_each_tree = tardy_model.number_of_sites_in_each_tree()
+    crystal_symmetry = tardy_model.potential_obj.crystal_symmetry()
+    assert crystal_symmetry is not None
+    allowed_origin_shift_velocity_corrections = flex.double()
+    sum_of_allowed_origin_shift_velocity_corrections = [matrix.col((0,0,0))]
+  def suppress_allowed_origin_shifts(collect_stats):
+    if (not allowed_origin_shifts_need_to_be_suppressed):
+      return
+    mlv = tardy_model.mean_linear_velocity(
+      number_of_sites_in_each_tree=number_of_sites_in_each_tree)
+    mlv_perp = matrix.col(
+      crystal_symmetry.subtract_continuous_allowed_origin_shifts(
+        translation_cart=mlv))
+    correction = mlv - mlv_perp
+    tardy_model.subtract_from_linear_velocities(
+      number_of_sites_in_each_tree=number_of_sites_in_each_tree,
+      value=correction)
+    if (collect_stats):
+      allowed_origin_shift_velocity_corrections.append(abs(correction))
+      sum_of_allowed_origin_shift_velocity_corrections[0] += correction
+  suppress_allowed_origin_shifts(collect_stats=False)
   n_time_steps = 0
   for i_cool_step in xrange(params.number_of_cooling_steps+1):
     if (params.number_of_cooling_steps == 0):
@@ -249,6 +282,7 @@ def action(tardy_model, params, callback, log):
         show_column_headings = reset_e_kin("resetting")
       e_kin_before, e_tot_before = tardy_model.e_kin(), tardy_model.e_tot()
       tardy_model.dynamics_step(delta_t=time_step_akma)
+      suppress_allowed_origin_shifts(collect_stats=True)
       e_kin_after, e_tot_after = tardy_model.e_kin(), tardy_model.e_tot()
       if (e_tot_before > e_tot_after):
         fluct_e_tot = -e_tot_after / e_tot_before
@@ -280,6 +314,15 @@ def action(tardy_model, params, callback, log):
       log.flush()
       if (callback is not None):
         if (callback() == False): return
+  if (allowed_origin_shifts_need_to_be_suppressed):
+    print "  allowed origin shift velocity corrections applied (magnitudes):"
+    allowed_origin_shift_velocity_corrections.min_max_mean().show(
+      out=log, prefix="    ")
+    print "  sum of allowed origin shift velocity corrections (vectors):"
+    print "   ", numbers_as_str(
+      values=sum_of_allowed_origin_shift_velocity_corrections[0].elems,
+      fmt="%.5f",
+      brackets=("(",")"))
   if (   params.minimization_max_iterations is None
       or params.minimization_max_iterations > 0):
     print >> log, "tardy gradient-driven minimization:"
