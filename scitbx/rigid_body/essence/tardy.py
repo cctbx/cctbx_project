@@ -136,7 +136,13 @@ def construct_bodies(
 
 class model(object):
 
-  def __init__(O, labels, sites, masses, tardy_tree, potential_obj):
+  def __init__(O,
+        labels,
+        sites,
+        masses,
+        tardy_tree,
+        potential_obj,
+        near_singular_hinges_angular_tolerance_deg=5):
     O.labels = labels
     O.sites = sites
     O.masses = masses
@@ -145,7 +151,9 @@ class model(object):
     O.bodies = construct_bodies(
       sites=sites,
       masses=masses,
-      cluster_manager=tardy_tree.cluster_manager)
+      cluster_manager=tardy_tree.cluster_manager,
+      near_singular_hinges_angular_tolerance_deg=
+        near_singular_hinges_angular_tolerance_deg)
     O.degrees_of_freedom = sum([B.J.degrees_of_freedom for B in O.bodies])
     O.flag_positions_as_changed()
 
