@@ -161,7 +161,7 @@ class server(process_cif_mixin):
     if (list_cif is None):
       list_cif = mon_lib_list_cif()
     self.root_path = os.path.dirname(os.path.dirname(list_cif.path))
-    self.geo_path = self.root_path.replace("mon_lib", "geo_std")
+    self.geostd_path = os.path.join(os.path.dirname(self.root_path), "geostd")
     self.deriv_list_dict = {}
     self.comp_synonym_list_dict = {}
     self.comp_synonym_atom_list_dict = dicts.with_default_factory(dict)
@@ -291,7 +291,7 @@ class server(process_cif_mixin):
       for i_pass in [0,1]:
         for trial_comp_id in [std_comp_id, comp_id]:
           if (len(trial_comp_id) == 0): continue
-          dir_name = os.path.join(self.geo_path, trial_comp_id[0].lower())
+          dir_name = os.path.join(self.geostd_path, trial_comp_id[0].lower())
           # check the Geo Standard
           if (os.path.isdir(dir_name)):
             cif_name = "data_" + trial_comp_id + ".cif"
