@@ -20,6 +20,12 @@ class zero_dof(object):
     O.Xj = T_as_X(O.Tps)
     O.S = matrix.rec(elems=(), n=(6,0))
 
+  def get_linear_velocity(O, qd):
+    return None
+
+  def new_linear_velocity(O, qd, value):
+    return None
+
   def time_step_position(O, qd, delta_t):
     return zero_dof()
 
@@ -58,6 +64,12 @@ class six_dof(object):
     O.Tsp = matrix.rt((O.E.transpose(), O.r))
     O.Xj = T_as_X(O.Tps)
     O.S = None
+
+  def get_linear_velocity(O, qd):
+    return matrix.col(qd.elems[3:])
+
+  def new_linear_velocity(O, qd, value):
+    return matrix.col((matrix.col(qd.elems[:3]), value)).resolve_partitions()
 
   def time_step_position(O, qd, delta_t):
     w_body_frame, v_body_frame = matrix.col_list([qd.elems[:3], qd.elems[3:]])
@@ -111,6 +123,12 @@ class spherical(object):
       0,0,0,
       0,0,0), n=(6,3))
 
+  def get_linear_velocity(O, qd):
+    return None
+
+  def new_linear_velocity(O, qd, value):
+    return None
+
   def time_step_position(O, qd, delta_t):
     w_body_frame = qd
     d = d_unit_quaternion_d_qE_matrix(q=O.qE)
@@ -159,6 +177,12 @@ class revolute(object):
     O.Xj = T_as_X(O.Tps)
     O.S = matrix.col((0,0,1,0,0,0))
 
+  def get_linear_velocity(O, qd):
+    return None
+
+  def new_linear_velocity(O, qd, value):
+    return None
+
   def time_step_position(O, qd, delta_t):
     new_qE = O.qE + qd * delta_t
     return revolute(qE=new_qE)
@@ -197,6 +221,12 @@ class translational(object):
       1,0,0,
       0,1,0,
       0,0,1), n=(6,3))
+
+  def get_linear_velocity(O, qd):
+    return qd
+
+  def new_linear_velocity(O, qd, value):
+    return value
 
   def time_step_position(O, qd, delta_t):
     new_qr = O.qr + qd * delta_t

@@ -54,6 +54,8 @@ class zero_dof_body(object):
     O.I = matrix.sqr([0]*36)
     O.J = joint_lib.zero_dof()
     O.qd = O.J.qd_zero
+    assert O.J.get_linear_velocity(qd=O.qd) is None
+    assert O.J.new_linear_velocity(qd=None, value=None) is None
     O.parent = -1
 
 class six_dof_body(object):
@@ -70,7 +72,11 @@ class six_dof_body(object):
     qE = matrix.col((0.18, 0.36, 0.54, -0.73)).normalize()
     qr = matrix.col((-0.1,0.3,0.2))
     O.J = joint_lib.six_dof(qE=qE, qr=qr)
-    O.qd = matrix.col((0.18,-0.02,-0.16,-0.05,-0.19,0.29))
+    O.qd = matrix.col((0.18,-0.02,-0.16,0.05,0.19,-0.29))
+    assert O.J.get_linear_velocity(qd=O.qd).elems == (0.05,0.19,-0.29)
+    O.qd = O.J.new_linear_velocity(
+      qd=O.qd, value=matrix.col((-0.05,-0.19,0.29)))
+    assert O.J.get_linear_velocity(qd=O.qd).elems == (-0.05,-0.19,0.29)
     O.parent = -1
 
 class spherical_body(object):
@@ -86,6 +92,8 @@ class spherical_body(object):
     qE = matrix.col((-0.50, -0.33, 0.67, -0.42)).normalize()
     O.J = joint_lib.spherical(qE=qE)
     O.qd = matrix.col((0.12, -0.08, 0.11))
+    assert O.J.get_linear_velocity(qd=O.qd) is None
+    assert O.J.new_linear_velocity(qd=None, value=None) is None
     O.parent = 0
 
 class revolute_body(object):
@@ -99,6 +107,8 @@ class revolute_body(object):
     O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
     O.J = joint_lib.revolute(qE=matrix.col([0.26]))
     O.qd = matrix.col([-0.19])
+    assert O.J.get_linear_velocity(qd=O.qd) is None
+    assert O.J.new_linear_velocity(qd=None, value=None) is None
     O.parent = parent
 
 class translational_body(object):
@@ -111,7 +121,10 @@ class translational_body(object):
     O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
     qr = matrix.col((-0.1,0.3,0.2))
     O.J = joint_lib.translational(qr=qr)
-    O.qd = matrix.col((-0.05,-0.19,0.29))
+    O.qd = matrix.col((0.05,0.19,-0.29))
+    assert O.J.get_linear_velocity(qd=O.qd).elems == O.qd.elems
+    O.qd = O.J.new_linear_velocity(qd=O.qd, value=-O.qd)
+    assert O.J.get_linear_velocity(qd=O.qd).elems == O.qd.elems
     O.parent = -1
 
 def exercise_system_model():

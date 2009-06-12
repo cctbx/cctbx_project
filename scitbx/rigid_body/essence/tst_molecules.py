@@ -5,7 +5,8 @@ from scitbx.graph import tst_tardy_pdb
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.utils import null_out, show_times_at_exit
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, is_above_limit
+from libtbx import Auto
 import random
 import sys
 
@@ -122,6 +123,46 @@ def exercise_random_velocities(tardy_model):
   tardy_model.unpack_qd(packed_qd=prev_qd)
   assert approx_equal(tardy_model.pack_qd(), prev_qd)
 
+def exercise_accumulate_in_each_tree():
+  def check(n_vertices, edge_list, clusters, nosiet, somiet):
+    sites = matrix.col_list([(i,i%2,0) for i in xrange(n_vertices)])
+    labels = [str(i) for i in xrange(n_vertices)]
+    masses = [13, 7, 23, 19, 29, 11, 17][:n_vertices]
+    assert len(masses) == n_vertices
+    tt = tardy_tree.construct(sites=sites, edge_list=edge_list)
+    assert len(tt.cluster_manager.fixed_hinges) == 0
+    assert tt.cluster_manager.clusters == clusters
+    tm = construct_tardy_model(
+      labels=labels, sites=sites, masses=masses, tardy_tree=tt)
+    assert tm.root_indices() == list(reversed([i for i,n in nosiet]))
+    assert tm.number_of_sites_in_each_tree() == nosiet
+    assert tm.sum_of_masses_in_each_tree() == somiet
+  #
+  check(
+    n_vertices=5,
+    edge_list=[],
+    clusters=[[0],[1],[2],[3],[4]],
+    nosiet=[(4, 1), (3, 1), (2, 1), (1, 1), (0, 1)],
+    somiet=[(4, 29), (3, 19), (2, 23), (1, 7), (0, 13)])
+  check(
+    n_vertices=5,
+    edge_list=[(0,1), (1,2), (3,4)],
+    clusters=[[0,1,2], [3,4]],
+    nosiet=[(1, 2), (0, 3)],
+    somiet=[(1, 48), (0, 43)])
+  check(
+    n_vertices=5,
+    edge_list=[(0,1), (1,2), (2,3), (3,4)],
+    clusters=[[0,1,2], [3], [4]],
+    nosiet=[(0, 5)],
+    somiet=[(0, 91)])
+  check(
+    n_vertices=7,
+    edge_list=[(0,1), (1,2), (2,3), (2,5), (3,4), (5,6)],
+    clusters=[[1,2,3,5], [0], [4], [6]],
+    nosiet=[(0, 7)],
+    somiet=[(0, 119)])
+
 def exercise_near_singular_hinges():
   # similar to scitbx/graph/tst_tardy_pdb.py, "collinear" test case
   """
@@ -194,6 +235,25 @@ def exercise_near_singular_hinges():
   assert tt.cluster_manager.clusters == [[0,1,2,3,4,5], [6]]
   assert approx_equal(e_kin_1(), 1.0000438095, eps=1e-10)
 
+def exercise_linear_velocity_manipulations(tardy_model):
+  for nosiet in [Auto, tardy_model.number_of_sites_in_each_tree()]:
+    tardy_model.assign_random_velocities(e_kin_target=17)
+    if (tardy_model.degrees_of_freedom == 0):
+      assert approx_equal(tardy_model.e_kin(), 0)
+      assert tardy_model.mean_linear_velocity(
+        number_of_sites_in_each_tree=Auto) is None
+    else:
+      assert approx_equal(tardy_model.e_kin(), 17)
+      mlv = tardy_model.mean_linear_velocity(
+        number_of_sites_in_each_tree=nosiet)
+      if (mlv is not None):
+        assert is_above_limit(value=abs(mlv), limit=1e-3)
+        tardy_model.subtract_from_linear_velocities(
+          number_of_sites_in_each_tree=nosiet, value=mlv)
+        mlv = tardy_model.mean_linear_velocity(
+          number_of_sites_in_each_tree=nosiet)
+        assert approx_equal(mlv, (0,0,0))
+
 def exercise_fixed_vertices_special_cases():
   """
           2
@@ -221,6 +281,7 @@ def exercise_fixed_vertices_special_cases():
     labels=labels, sites=sites, masses=masses, tardy_tree=tt)
   assert len(tm.bodies) == 1
   assert tm.bodies[0].J.degrees_of_freedom == 6
+  exercise_linear_velocity_manipulations(tardy_model=tm)
   #
   expected_e_kin_1 = [
     1.00009768395,
@@ -250,6 +311,7 @@ def exercise_fixed_vertices_special_cases():
       assert approx_equal(tm.e_kin(), 0, eps=1e-10)
     tm.dynamics_step(delta_t=0.01)
     assert approx_equal(tm.e_kin(), expected_e_kin_1[i_fv], eps=1e-10)
+    exercise_linear_velocity_manipulations(tardy_model=tm)
   #
   sites[2] = matrix.col([2,0,0])
   assert approx_equal((sites[0]-sites[1]).cos_angle(sites[2]-sites[1]), -1)
@@ -263,6 +325,7 @@ def exercise_fixed_vertices_special_cases():
       labels=labels, sites=sites, masses=masses, tardy_tree=tt)
     assert len(tm.bodies) == 1
     assert tm.bodies[0].J.degrees_of_freedom == 0
+    exercise_linear_velocity_manipulations(tardy_model=tm)
 
 def exercise_tardy_model(out, n_dynamics_steps, delta_t, tardy_model):
   tardy_model.check_d_pot_d_q()
@@ -306,7 +369,7 @@ def exercise_dynamics_quick(
       assert relative_range < 2.e-4
   print >> out
 
-def exercise_minimization_quick(out, tardy_model, max_iterations=3):
+def exercise_minimization_quick(out, tardy_model, max_iterations=5):
   print >> out, "Minimization:"
   print >> out, "  start e_pot:", tardy_model.e_pot()
   e_pot_start = tardy_model.e_pot()
@@ -335,8 +398,21 @@ def construct_tardy_model(
 
 def exercise_with_tardy_model(out, tardy_model, n_dynamics_steps):
   tardy_model.tardy_tree.show_summary(out=out, vertex_labels=None)
+  #
+  ri = tardy_model.root_indices()
+  assert len(ri) == 1
+  nosiet = tardy_model.number_of_sites_in_each_tree()
+  assert len(nosiet) == 1
+  assert nosiet[0][0] == ri[0]
+  assert nosiet[0][1] == len(tardy_model.sites)
+  somiet = tardy_model.number_of_sites_in_each_tree()
+  assert len(somiet) == 1
+  assert somiet[0][0] == ri[0]
+  assert somiet[0][1] == len(tardy_model.sites)
+  #
   exercise_qd_e_kin_scales(tardy_model=tardy_model)
   exercise_random_velocities(tardy_model=tardy_model)
+  exercise_linear_velocity_manipulations(tardy_model=tardy_model)
   tardy_model.assign_random_velocities(e_kin_target=1)
   assert approx_equal(tardy_model.e_kin(), 1)
   exercise_dynamics_quick(
@@ -364,6 +440,7 @@ def run(args):
     out = sys.stdout
   show_times_at_exit()
   #
+  exercise_accumulate_in_each_tree()
   exercise_near_singular_hinges()
   exercise_fixed_vertices_special_cases()
   #
