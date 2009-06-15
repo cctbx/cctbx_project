@@ -1932,6 +1932,8 @@ def exercise_matrix():
   else: raise Exception_expected
   p = e.matrix_symmetric_as_packed_l(relative_epsilon=1)
   assert approx_equal(p, [1,2,4,3,7,6])
+  assert not e.matrix_is_symmetric(relative_epsilon=1e-12)
+  assert e.matrix_is_symmetric(relative_epsilon=1)
   p = flex.double(4)
   for method in [p.matrix_packed_u_as_symmetric,
                  p.matrix_packed_l_as_symmetric]:
@@ -1941,6 +1943,7 @@ def exercise_matrix():
         "SCITBX_ASSERT(n*(n+1)/2 == packed_size) failure.")
     else: raise Exception_expected
   #
+  n_not_symmetric = 0
   for n in xrange(10):
     a = mersenne_twister.random_double(size=n*n)*2-1
     a.reshape(flex.grid(n,n))
@@ -1952,6 +1955,10 @@ def exercise_matrix():
       dsq[i*(n+1)] = d[i]
     atda_sym = a.matrix_transpose().matrix_multiply(dsq).matrix_multiply(a)
     assert approx_equal(atda_u.matrix_packed_u_as_symmetric(), atda_sym)
+    assert atda_sym.matrix_is_symmetric(relative_epsilon=1e-12)
+    if (not atda_sym.matrix_is_symmetric(relative_epsilon=1e-30)):
+      n_not_symmetric += 1
+  assert n_not_symmetric > 0 # could fail if random number generator is changed
   #
   from scitbx.examples import immoptibox_ports
   immoptibox_ports.py_cholesky_decomposition \
@@ -2315,6 +2322,12 @@ def exercise_matrix_move():
    6,13,14,15,10,
    11,12,8,9,10,
    16,17,13,14,15]
+  #
+  a = flex.int([1,2,3,4])
+  a.reshape(flex.grid(2,2))
+  assert not a.matrix_is_symmetric()
+  a[2] = 2
+  assert a.matrix_is_symmetric()
 
 def exercise_copy_upper_or_lower_triangle():
   for m, n in [ (5,3), (5,4), (5,5), (4,5), (3,5),
