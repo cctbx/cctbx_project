@@ -477,11 +477,11 @@ class manager(object):
               header = "Start",
               out    = log)
     if (params.number_of_zones == 1 or monitors is None):
-      monitors_call_back_after_collect = None
+      monitors_call_back_handler = None
     else:
-      monitors_call_back_after_collect = monitors.call_back_after_collect
-      if (monitors_call_back_after_collect is not None):
-        monitors_call_back_after_collect(
+      monitors_call_back_handler = monitors.call_back_handler
+      if (monitors_call_back_handler is not None):
+        monitors_call_back_handler(
           monitor=None, model=None, fmodel=fmodel)
     for res,target_name in zip(d_mins, target_names):
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
@@ -557,8 +557,8 @@ class manager(object):
                   t_vec  = self.total_translation,
                   header = "Rigid body refinement",
                   out    = log)
-        if (monitors_call_back_after_collect is not None):
-          monitors_call_back_after_collect(
+        if (monitors_call_back_handler is not None):
+          monitors_call_back_handler(
             monitor=None, model=None, fmodel=fmodel)
     if(bss is not None and params.bulk_solvent_and_scale):
       fmodel.update_solvent_and_scale(out = log, verbose = -1)
