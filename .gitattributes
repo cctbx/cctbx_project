@@ -283,7 +283,10 @@ libtbx/thread_utils.py -text
 libtbx/tst_itertbx.py -text
 libtbx/tst_math_utils.py svneol=native#text/x-python
 libtbx/tst_object_oriented_patterns.py -text
+libtbx/tst_xmlrpc_utils.py -text
 libtbx/windows_dispatcher.exe -text
+libtbx/xmlrpc_server_example.py -text
+libtbx/xmlrpc_utils.py -text
 mmtbx/alignment.h svneol=native#text/plain
 mmtbx/alignment_ext.cpp svneol=native#text/plain
 mmtbx/bioinformatics.py -text
