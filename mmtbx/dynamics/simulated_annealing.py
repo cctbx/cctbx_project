@@ -32,7 +32,8 @@ def manager(simulated_annealing_params,
             h_params,
             fmodels,
             model,
-            out = None):
+            out = None,
+            monitor=None):
   if(out is None): out = sys.stdout
   print_statistics.make_header("simulated annealing refinement", out = out)
   if (simulated_annealing_params.max_number_of_iterations >= 0):
@@ -71,7 +72,8 @@ def manager(simulated_annealing_params,
     alpha_beta_parameters      = alpha_beta_parameters,
     mask_parameters            = mask_parameters,
     wc                         = target_weights.xyz_weights_result.w,
-    out                        = out)
+    out                        = out,
+    monitor                    = monitor)
 
 def run_simulated_annealing(simulated_annealing_params,
                             model,
@@ -82,7 +84,8 @@ def run_simulated_annealing(simulated_annealing_params,
                             bulk_solvent_parameters,
                             alpha_beta_parameters,
                             mask_parameters,
-                            out):
+                            out,
+                            monitor):
   xray_structure_last_updated = model.xray_structure.deep_copy_scatterers()
   sa_temp = simulated_annealing_params.start_temperature
   xray_gradient = None
@@ -131,4 +134,6 @@ def run_simulated_annealing(simulated_annealing_params,
     geom_stat = model.show_geometry_statistics(
       ignore_hd = not neutron_refinement,
       message = "SA temperature = "+str(sa_temp))
+    if monitor is not None :
+      monitor.call_back(model, fmodel, "simulated_annealing")
     sa_temp -= simulated_annealing_params.cool_rate
