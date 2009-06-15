@@ -483,8 +483,7 @@ def blosum62(left, right):
 def exercise_similarity_scores():
   from scitbx.array_family import flex
   for m in [dayhoff_mdm78_similarity_scores, blosum50_similarity_scores]:
-    # exception if not symmetric
-    flex.double(m).matrix_symmetric_as_packed_l(relative_epsilon=0)
+    assert flex.double(m).matrix_is_symmetric(relative_epsilon=1e-15)
 
 def exercise():
   A = "AAAGGTT"

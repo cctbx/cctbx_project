@@ -196,6 +196,53 @@ namespace scitbx { namespace matrix {
   }
 
   template <typename FloatType>
+  bool
+  is_symmetric(
+    af::const_ref<FloatType, af::c_grid<2> > const& a,
+    FloatType const& relative_eps)
+  {
+    SCITBX_ASSERT(relative_eps > 0);
+    SCITBX_ASSERT(a.accessor().is_square());
+    typename af::c_grid<2>::index_value_type n = a.accessor()[0];
+    if (n == 0) return true;
+    FloatType eps = relative_eps * af::max_absolute(a);
+    std::size_t i0 = 0;
+    for(unsigned i=0;i<n;i++,i0+=n) {
+      std::size_t ij = i0;
+      std::size_t jnpi = i;
+      for(unsigned j=0;j<i;j++,jnpi+=n) {
+        FloatType const& a_ij = a[ij++];
+        FloatType ave = (a_ij + a[jnpi]) / 2;
+        if (fn::absolute(a_ij - ave) > eps) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  template <typename NumType>
+  bool
+  is_symmetric(
+    af::const_ref<NumType, af::c_grid<2> > const& a)
+  {
+    SCITBX_ASSERT(a.accessor().is_square());
+    typename af::c_grid<2>::index_value_type n = a.accessor()[0];
+    if (n == 0) return true;
+    std::size_t i0 = 0;
+    for(unsigned i=0;i<n;i++,i0+=n) {
+      std::size_t ij = i0;
+      std::size_t jnpi = i;
+      for(unsigned j=0;j<i;j++,jnpi+=n) {
+        if (a[ij++] != a[jnpi]) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  template <typename FloatType>
   af::versa<FloatType, af::c_grid<2> >
   packed_u_as_symmetric(
     af::const_ref<FloatType> const& a)

@@ -285,6 +285,12 @@ namespace boost_python {
               matrix_symmetric_as_packed_l_overloads((
                 arg_("self"),
                 arg_("relative_epsilon")=1.e-12)))
+      .def("matrix_is_symmetric",
+        (bool(*)(
+          const_ref<double, c_grid<2> > const&, double const&))
+            matrix::is_symmetric, ((
+              arg_("self"),
+              arg_("relative_epsilon"))))
       .def("matrix_packed_u_as_symmetric",
         (versa<double, c_grid<2> >(*)(
           const_ref<double> const&))
