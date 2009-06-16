@@ -6,6 +6,21 @@
 namespace scitbx { namespace matrix {
 
   template <typename FloatType>
+  void
+  outer_product(
+    FloatType* result,
+    af::const_ref<FloatType> const& lhs,
+    af::const_ref<FloatType> const& rhs)
+  {
+    for(unsigned i=0;i<lhs.size();i++) {
+      FloatType li = lhs[i];
+      for(unsigned j=0;j<rhs.size();j++) {
+        *result++ = li * rhs[j];
+      }
+    }
+  }
+
+  template <typename FloatType>
   af::versa<FloatType, af::c_grid<2> >
   outer_product(
     af::const_ref<FloatType> const& lhs,
@@ -15,13 +30,7 @@ namespace scitbx { namespace matrix {
       result(
         af::c_grid<2>(lhs.size(), rhs.size()),
         af::init_functor_null<FloatType>());
-    FloatType* r = result.begin();
-    for(unsigned i=0;i<lhs.size();i++) {
-      FloatType li = lhs[i];
-      for(unsigned j=0;j<rhs.size();j++) {
-        *r++ = li * rhs[j];
-      }
-    }
+    outer_product(result.begin(), lhs, rhs);
     return result;
   }
 

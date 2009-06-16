@@ -97,6 +97,51 @@ namespace tensor_rank_2 {
       +(a[5]*a[7]+a[4]*a[8])*g[5]);
   }
 
+  //! See overload.
+  template <typename NumTypeA>
+  void
+  gradient_transform_matrix(
+    NumTypeA* result,
+    NumTypeA const* a)
+  {
+    *result++ = a[0]*a[0];
+    *result++ = a[3]*a[3];
+    *result++ = a[6]*a[6];
+    *result++ = a[0]*a[3];
+    *result++ = a[0]*a[6];
+    *result++ = a[3]*a[6];
+    *result++ = a[1]*a[1];
+    *result++ = a[4]*a[4];
+    *result++ = a[7]*a[7];
+    *result++ = a[1]*a[4];
+    *result++ = a[1]*a[7];
+    *result++ = a[4]*a[7];
+    *result++ = a[2]*a[2];
+    *result++ = a[5]*a[5];
+    *result++ = a[8]*a[8];
+    *result++ = a[2]*a[5];
+    *result++ = a[2]*a[8];
+    *result++ = a[5]*a[8];
+    *result++ = a[0]*a[1]*2;
+    *result++ = a[3]*a[4]*2;
+    *result++ = a[6]*a[7]*2;
+    *result++ = a[1]*a[3]+a[0]*a[4];
+    *result++ = a[1]*a[6]+a[0]*a[7];
+    *result++ = a[4]*a[6]+a[3]*a[7];
+    *result++ = a[0]*a[2]*2;
+    *result++ = a[3]*a[5]*2;
+    *result++ = a[6]*a[8]*2;
+    *result++ = a[2]*a[3]+a[0]*a[5];
+    *result++ = a[2]*a[6]+a[0]*a[8];
+    *result++ = a[5]*a[6]+a[3]*a[8];
+    *result++ = a[1]*a[2]*2;
+    *result++ = a[4]*a[5]*2;
+    *result++ = a[7]*a[8]*2;
+    *result++ = a[2]*a[4]+a[1]*a[5];
+    *result++ = a[2]*a[7]+a[1]*a[8];
+    *result   = a[5]*a[7]+a[4]*a[8];
+  }
+
   /*! \brief Transformation matrix for gradients (first derivatives)
       w.r.t. the elements of a symmetric tensor.
    */
@@ -112,43 +157,7 @@ namespace tensor_rank_2 {
   {
     af::versa<NumTypeA, af::c_grid<2> > result(
       af::c_grid<2>(6,6), af::init_functor_null<NumTypeA>());
-    NumTypeA* r = result.begin();
-    *r++ = a[0]*a[0];
-    *r++ = a[3]*a[3];
-    *r++ = a[6]*a[6];
-    *r++ = a[0]*a[3];
-    *r++ = a[0]*a[6];
-    *r++ = a[3]*a[6];
-    *r++ = a[1]*a[1];
-    *r++ = a[4]*a[4];
-    *r++ = a[7]*a[7];
-    *r++ = a[1]*a[4];
-    *r++ = a[1]*a[7];
-    *r++ = a[4]*a[7];
-    *r++ = a[2]*a[2];
-    *r++ = a[5]*a[5];
-    *r++ = a[8]*a[8];
-    *r++ = a[2]*a[5];
-    *r++ = a[2]*a[8];
-    *r++ = a[5]*a[8];
-    *r++ = a[0]*a[1]*2;
-    *r++ = a[3]*a[4]*2;
-    *r++ = a[6]*a[7]*2;
-    *r++ = a[1]*a[3]+a[0]*a[4];
-    *r++ = a[1]*a[6]+a[0]*a[7];
-    *r++ = a[4]*a[6]+a[3]*a[7];
-    *r++ = a[0]*a[2]*2;
-    *r++ = a[3]*a[5]*2;
-    *r++ = a[6]*a[8]*2;
-    *r++ = a[2]*a[3]+a[0]*a[5];
-    *r++ = a[2]*a[6]+a[0]*a[8];
-    *r++ = a[5]*a[6]+a[3]*a[8];
-    *r++ = a[1]*a[2]*2;
-    *r++ = a[4]*a[5]*2;
-    *r++ = a[7]*a[8]*2;
-    *r++ = a[2]*a[4]+a[1]*a[5];
-    *r++ = a[2]*a[7]+a[1]*a[8];
-    *r++ = a[5]*a[7]+a[4]*a[8];
+    gradient_transform_matrix(result.begin(), a.begin());
     return result;
   }
 
