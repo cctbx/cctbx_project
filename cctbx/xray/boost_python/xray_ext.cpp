@@ -15,6 +15,7 @@ namespace cctbx { namespace xray { namespace boost_python {
   void wrap_structure_factors_direct();
   void wrap_structure_factors_raw_multithreaded_direct();
   void wrap_structure_factors_simple();
+  void wrap_curvatures_simple();
   void wrap_targets();
   void wrap_f_model_core_data();
   void wrap_twin_targets();
@@ -39,6 +40,7 @@ namespace {
     wrap_structure_factors_raw_multithreaded_direct();
     #endif
     wrap_structure_factors_simple();
+    wrap_curvatures_simple();
     wrap_targets();
     wrap_f_model_core_data();
     wrap_twin_targets();
