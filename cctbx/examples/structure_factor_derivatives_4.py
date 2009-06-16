@@ -392,20 +392,15 @@ class structure_factor:
             .matrix_multiply_packed_u_multiply_lhs_transpose(
               packed_u=d2_u_star_u_star)
       #
-      def mxdiag(m):
-        n = m.focus()[0]
-        assert m.focus()[1] == n
-        result = flex.complex_double([m[(i,i)] for i in xrange(n)])
-        result.reshape(flex.grid(n, 1))
-        return result
-      #
       dpd = flex.complex_double(flex.grid(np,1), 0j)
-      paste = dpd.matrix_paste_block_in_place
-      paste(mxdiag(d2_site_site.matrix_packed_u_as_symmetric()), 0,0)
+      def paste(d, i):
+        d.reshape(flex.grid(d.size(),1))
+        dpd.matrix_paste_block_in_place(d, i,0)
+      paste(d2_site_site.matrix_packed_u_diagonal(), 0)
       if (not scatterer.flags.use_u_aniso()):
         dpd[i_u] = d2_u_iso_u_iso
       else:
-        paste(mxdiag(d2_u_star_u_star.matrix_packed_u_as_symmetric()), i_u,0)
+        paste(d2_u_star_u_star.matrix_packed_u_diagonal(), i_u)
       result.append(dpd)
     return result
 

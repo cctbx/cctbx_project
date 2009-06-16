@@ -75,6 +75,10 @@ namespace {
         (versa<std::complex<double>, c_grid<2> >(*)(
           const_ref<std::complex<double> > const&))
             matrix::packed_u_as_symmetric)
+      .def("matrix_packed_u_diagonal",
+        (shared<std::complex<double> >(*)(
+          const_ref<std::complex<double> > const&))
+            matrix::packed_u_diagonal)
       .def("matrix_copy_block",
         (versa<std::complex<double>, c_grid<2> >(*)(
           const_ref<std::complex<double>, c_grid<2> > const&,

@@ -299,6 +299,10 @@ namespace boost_python {
         (versa<double, c_grid<2> >(*)(
           const_ref<double> const&))
             matrix::packed_l_as_symmetric)
+      .def("matrix_packed_u_diagonal",
+        (shared<double>(*)(
+          const_ref<double> const&))
+            matrix::packed_u_diagonal)
       .def("matrix_cholesky_decomposition",
         (shared<double>(*)(
           const_ref<double> const&, double const&))
