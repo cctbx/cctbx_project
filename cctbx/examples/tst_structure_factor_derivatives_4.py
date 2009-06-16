@@ -109,6 +109,13 @@ def compare_analytical_and_finite(
   print >> out, "curvs_ana:", list(curvs_ana)
   compare_derivatives(curvs_ana, curvs_fin, eps)
   print >> out
+  curvs_diag_ana = sf.d2_target_d_params_diag(
+    f_obs=f_obs, target_type=least_squares)
+  assert curvs_ana.matrix_is_symmetric(relative_epsilon=1e-10)
+  assert curvs_diag_ana.size() == curvs_ana.focus()[0]
+  f = min(1, flex.max(flex.abs(curvs_diag_ana)))
+  assert approx_equal(
+    curvs_ana.matrix_diagonal()*f, curvs_diag_ana*f, eps=1e-12)
   if (gradients_should_be_zero):
     return flex.max(flex.abs(grads_fin))
 

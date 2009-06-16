@@ -318,6 +318,97 @@ class structure_factor:
       dp[i_fdp*np+i_occ] = d2_occ_fdp
       yield dp
 
+  def d2f_d_params_diag(self):
+    result = []
+    tphkl = 2 * math.pi * flex.double(self.hkl)
+    tphkl_outer = tphkl.matrix_outer_product(tphkl) \
+      .matrix_symmetric_as_packed_u()
+    h,k,l = self.hkl
+    d_exp_huh_d_u_star = flex.double([h**2, k**2, l**2, 2*h*k, 2*h*l, 2*k*l])
+    d2_exp_huh_d_u_star_u_star = d_exp_huh_d_u_star.matrix_outer_product(
+      d_exp_huh_d_u_star).matrix_symmetric_as_packed_u()
+    for i_scatterer,scatterer in enumerate(self.scatterers):
+      site_symmetry_ops = None
+      if (self.site_symmetry_table.is_special_position(i_scatterer)):
+        site_symmetry_ops = self.site_symmetry_table.get(i_scatterer)
+        site_constraints = site_symmetry_ops.site_constraints()
+        if (scatterer.flags.use_u_aniso()):
+          adp_constraints = site_symmetry_ops.adp_constraints()
+      w = scatterer.weight()
+      wwo = scatterer.weight_without_occupancy()
+      if (not scatterer.flags.use_u_aniso()):
+        huh = scatterer.u_iso * self.d_star_sq
+        dw = math.exp(mtps * huh)
+      gaussian = self.scattering_type_registry.gaussian_not_optional(
+        scattering_type=scatterer.scattering_type)
+      f0 = gaussian.at_d_star_sq(self.d_star_sq)
+      ffp = f0 + scatterer.fp
+      fdp = scatterer.fdp
+      ff = (ffp + 1j * fdp)
+      d2_site_site = flex.complex_double(3*(3+1)/2, 0j)
+      if (not scatterer.flags.use_u_aniso()):
+        d2_u_iso_u_iso = 0j
+      else:
+        d2_u_star_u_star = flex.complex_double(6*(6+1)/2, 0j)
+      for s in self.space_group:
+        r = s.r().as_rational().as_float()
+        s_site = s * scatterer.site
+        alpha = tphkl.dot(flex.double(s_site))
+        if (scatterer.flags.use_u_aniso()):
+          s_u_star_s = r*matrix.sym(sym_mat3=scatterer.u_star)*r.transpose()
+          huh = (matrix.row(self.hkl) * s_u_star_s).dot(matrix.col(self.hkl))
+          dw = math.exp(mtps * huh)
+        e = cmath.exp(1j*alpha)
+        site_gtmx = flex.double(r.transpose())
+        site_gtmx.reshape(flex.grid(3,3))
+        d2_site_site += (w * dw * ff * e * (-1)) * (
+          site_gtmx.matrix_multiply_packed_u_multiply_lhs_transpose(
+            tphkl_outer))
+        if (not scatterer.flags.use_u_aniso()):
+          d2_u_iso_u_iso += w * dw * ff * e * (mtps * self.d_star_sq)**2
+        else:
+          u_star_gtmx = tensor_rank_2_gradient_transform_matrix(r)
+          d2_u_star_u_star +=(w * dw * ff * e * mtps**2) \
+            * u_star_gtmx.matrix_multiply_packed_u_multiply_lhs_transpose(
+                d2_exp_huh_d_u_star_u_star)
+      if (site_symmetry_ops is None):
+        i_u = 3
+      else:
+        i_u = site_constraints.n_independent_params()
+      if (not scatterer.flags.use_u_aniso()):
+        i_occ = i_u + 1
+      elif (site_symmetry_ops is None):
+        i_occ = i_u + 6
+      else:
+        i_occ = i_u + adp_constraints.n_independent_params()
+      i_fp, i_fdp, np = i_occ+1, i_occ+2, i_occ+3
+      if (site_symmetry_ops is not None):
+        gsm = site_constraints.gradient_sum_matrix()
+        d2_site_site = gsm.matrix_multiply_packed_u_multiply_lhs_transpose(
+          packed_u=d2_site_site)
+        if (scatterer.flags.use_u_aniso()):
+          gsm = adp_constraints.gradient_sum_matrix()
+          d2_u_star_u_star = gsm \
+            .matrix_multiply_packed_u_multiply_lhs_transpose(
+              packed_u=d2_u_star_u_star)
+      #
+      def mxdiag(m):
+        n = m.focus()[0]
+        assert m.focus()[1] == n
+        result = flex.complex_double([m[(i,i)] for i in xrange(n)])
+        result.reshape(flex.grid(n, 1))
+        return result
+      #
+      dpd = flex.complex_double(flex.grid(np,1), 0j)
+      paste = dpd.matrix_paste_block_in_place
+      paste(mxdiag(d2_site_site.matrix_packed_u_as_symmetric()), 0,0)
+      if (not scatterer.flags.use_u_aniso()):
+        dpd[i_u] = d2_u_iso_u_iso
+      else:
+        paste(mxdiag(d2_u_star_u_star.matrix_packed_u_as_symmetric()), i_u,0)
+      result.append(dpd)
+    return result
+
   def d_target_d_params(self, target):
     result = flex.double()
     da, db = target.da(), target.db()
@@ -347,6 +438,21 @@ class structure_factor:
             row.append(sum)
         result.append(row)
     return flex.double(result)
+
+  def d2_target_d_params_diag(self, target):
+    result = flex.double()
+    da, db = target.da(), target.db()
+    daa, dbb, dab = target.daa(), target.dbb(), target.dab()
+    ds = self.df_d_params()
+    d2sd = self.d2f_d_params_diag()
+    for di0,d2id in zip(ds, d2sd):
+      for di,d2ij in zip(scatterer_as_list(di0), d2id):
+        sum = daa * di.real * di.real \
+            + dbb * di.imag * di.imag \
+            + dab * 2 * di.real * di.imag \
+            + da * d2ij.real + db * d2ij.imag
+        result.append(sum)
+    return result
 
 class structure_factors:
 
@@ -381,6 +487,16 @@ class structure_factors:
       sf = structure_factor(xray_structure=self.xray_structure, hkl=hkl)
       target = target_type(obs=obs, calc=sf.f())
       contribution = sf.d2_target_d_params(target=target)
+      if (result is None): result = contribution
+      else:                result += contribution
+    return result
+
+  def d2_target_d_params_diag(self, f_obs, target_type):
+    result = None
+    for hkl,obs in zip(self.miller_indices, f_obs.data()):
+      sf = structure_factor(xray_structure=self.xray_structure, hkl=hkl)
+      target = target_type(obs=obs, calc=sf.f())
+      contribution = sf.d2_target_d_params_diag(target=target)
       if (result is None): result = contribution
       else:                result += contribution
     return result
