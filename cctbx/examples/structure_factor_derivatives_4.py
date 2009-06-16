@@ -319,7 +319,6 @@ class structure_factor:
       yield dp
 
   def d2f_d_params_diag(self):
-    result = []
     tphkl = 2 * math.pi * flex.double(self.hkl)
     tphkl_outer = tphkl.matrix_outer_product(tphkl) \
       .matrix_symmetric_as_packed_u()
@@ -335,7 +334,6 @@ class structure_factor:
         if (scatterer.flags.use_u_aniso()):
           adp_constraints = site_symmetry_ops.adp_constraints()
       w = scatterer.weight()
-      wwo = scatterer.weight_without_occupancy()
       if (not scatterer.flags.use_u_aniso()):
         huh = scatterer.u_iso * self.d_star_sq
         dw = math.exp(mtps * huh)
@@ -381,7 +379,7 @@ class structure_factor:
         i_occ = i_u + 6
       else:
         i_occ = i_u + adp_constraints.n_independent_params()
-      i_fp, i_fdp, np = i_occ+1, i_occ+2, i_occ+3
+      np = i_occ+3
       if (site_symmetry_ops is not None):
         gsm = site_constraints.gradient_sum_matrix()
         d2_site_site = gsm.matrix_multiply_packed_u_multiply_lhs_transpose(
@@ -401,8 +399,7 @@ class structure_factor:
         dpd[i_u] = d2_u_iso_u_iso
       else:
         paste(d2_u_star_u_star.matrix_packed_u_diagonal(), i_u)
-      result.append(dpd)
-    return result
+      yield dpd
 
   def d_target_d_params(self, target):
     result = flex.double()
@@ -434,13 +431,29 @@ class structure_factor:
         result.append(row)
     return flex.double(result)
 
-  def d2_target_d_params_diag(self, target):
+  def d2_target_d_params_diag(self, target, exercise_cpp=True):
     result = flex.double()
     da, db = target.da(), target.db()
     daa, dbb, dab = target.daa(), target.dbb(), target.dab()
     ds = self.df_d_params()
     d2sd = self.d2f_d_params_diag()
-    for di0,d2id in zip(ds, d2sd):
+    if (exercise_cpp):
+      d2sd_cpp = xray.structure_factors_curvatures_simple_d2f_d_params_diag(
+        hkl=self.hkl)
+    for i_scatterer,(di0,d2id) in enumerate(zip(ds, d2sd)):
+      if (exercise_cpp):
+        d2sd_cpp.compute(
+          space_group=self.space_group,
+          hkl=self.hkl,
+          d_star_sq=self.d_star_sq,
+          scatterers=self.scatterers,
+          scattering_type_registry=self.scattering_type_registry,
+          site_symmetry_table=self.site_symmetry_table,
+          i_scatterer=i_scatterer)
+        d2id_cpp = d2sd_cpp.copy_diag()
+        f = 1/min(1, flex.max(flex.abs(d2id)))
+        from libtbx.test_utils import approx_equal
+        assert approx_equal(d2id_cpp*f, d2id*f)
       for di,d2ij in zip(scatterer_as_list(di0), d2id):
         sum = daa * di.real * di.real \
             + dbb * di.imag * di.imag \
