@@ -198,7 +198,7 @@ class external_program_server (object) :
                                              self._port)
 
   def flush_requests (self) :
-    if self.cache_requests :
+    if not self.cache_requests :
       return False
     elif self._server is not None :
       return self._server.flush_requests()
