@@ -118,6 +118,41 @@ namespace scitbx { namespace matrix {
   }
 
   template <typename FloatType>
+  void
+  symmetric_as_packed_u(
+    FloatType* result,
+    FloatType const* a,
+    unsigned n,
+    FloatType const& relative_eps=1.e-12)
+  {
+    bool use_eps;
+    FloatType eps;
+    if (relative_eps <= 0 || n == 0) {
+      eps = 0;
+      use_eps = false;
+    }
+    else {
+      eps = relative_eps * af::max_absolute(af::const_ref<FloatType>(a, n*n));
+      use_eps = true;
+    }
+    std::size_t ij = 0;
+    for(unsigned i=0;i<n;i++) {
+      ij += i;
+      std::size_t jnpi = ij+n;
+      *result++ = a[ij++];
+      for(unsigned j=i+1;j<n;j++,jnpi+=n) {
+        FloatType const& a_ij = a[ij++];
+        FloatType ave = (a_ij + a[jnpi]) / 2;
+        if (use_eps && fn::absolute(a_ij - ave) > eps) {
+          throw std::runtime_error(
+            "symmetric_as_packed_u(): matrix is not symmetric.");
+        }
+        *result++ = ave;
+      }
+    }
+  }
+
+  template <typename FloatType>
   af::shared<FloatType>
   symmetric_as_packed_u(
     af::const_ref<FloatType, af::c_grid<2> > const& a,
@@ -127,32 +162,8 @@ namespace scitbx { namespace matrix {
     typename af::c_grid<2>::index_value_type n = a.accessor()[0];
     af::shared<FloatType> result(
       n*(n+1)/2, af::init_functor_null<FloatType>());
-    bool use_eps;
-    FloatType eps;
-    if (relative_eps <= 0 || n == 0) {
-      eps = 0;
-      use_eps = false;
-    }
-    else {
-      eps = relative_eps * af::max_absolute(a);
-      use_eps = true;
-    }
-    FloatType *r = result.begin();
-    std::size_t ij = 0;
-    for(unsigned i=0;i<n;i++) {
-      ij += i;
-      std::size_t jnpi = ij+n;
-      *r++ = a[ij++];
-      for(unsigned j=i+1;j<n;j++,jnpi+=n) {
-        FloatType const& a_ij = a[ij++];
-        FloatType ave = (a_ij + a[jnpi]) / 2;
-        if (use_eps && fn::absolute(a_ij - ave) > eps) {
-          throw std::runtime_error(
-            "symmetric_as_packed_u(): matrix is not symmetric.");
-        }
-        *r++ = ave;
-      }
-    }
+    symmetric_as_packed_u(
+      result.begin(), a.begin(), static_cast<unsigned>(n), relative_eps);
     return result;
   }
 

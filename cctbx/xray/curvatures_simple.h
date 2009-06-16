@@ -33,28 +33,23 @@ namespace curvatures_simple {
       tphkl(hkl)
     {
       tphkl *= scitbx::constants::two_pi;
-      af::versa<f_t, af::c_grid<2> >
-        outer_full = scitbx::matrix::outer_product(
-          tphkl.const_ref(),
-          tphkl.const_ref());
-      af::shared<f_t>
-        outer_u = scitbx::matrix::symmetric_as_packed_u(
-          outer_full.const_ref());
-      CCTBX_ASSERT(outer_u.size() == tphkl_outer.size());
-      std::copy(
-        outer_u.begin(), outer_u.end(), tphkl_outer.begin());
+      af::tiny<f_t, 36> outer_buffer;
+      scitbx::matrix::outer_product(
+        outer_buffer.begin(),
+        tphkl.const_ref(),
+        tphkl.const_ref());
+      scitbx::matrix::symmetric_as_packed_u(
+        tphkl_outer.begin(), outer_buffer.begin(), 3);
       int h = hkl[0];
       int k = hkl[1];
       int l = hkl[2];
       af::tiny<f_t, 6> d_exp_huh_d_u_star(h*h, k*k, l*l, 2*h*k, 2*h*l, 2*k*l);
-      outer_full = scitbx::matrix::outer_product(
+      scitbx::matrix::outer_product(
+        outer_buffer.begin(),
         d_exp_huh_d_u_star.const_ref(),
         d_exp_huh_d_u_star.const_ref());
-      outer_u = scitbx::matrix::symmetric_as_packed_u(
-        outer_full.const_ref());
-      CCTBX_ASSERT(outer_u.size() == d2_exp_huh_d_u_star_u_star.size());
-      std::copy(
-        outer_u.begin(), outer_u.end(), d2_exp_huh_d_u_star_u_star.begin());
+      scitbx::matrix::symmetric_as_packed_u(
+        d2_exp_huh_d_u_star_u_star.begin(), outer_buffer.begin(), 6);
     }
 
     template <typename ScattererType>
@@ -132,9 +127,9 @@ namespace curvatures_simple {
           d2_u_iso_u_iso += w * dw * ff * e * scitbx::fn::pow2(mtps*d_star_sq);
         }
         else {
-          af::versa<f_t, af::c_grid<2> >
-            u_star_gtmx = scitbx::matrix::tensor_rank_2
-              ::gradient_transform_matrix(r);
+          af::tiny<f_t, 36> u_star_gtmx;
+          scitbx::matrix::tensor_rank_2::gradient_transform_matrix(
+            u_star_gtmx.begin(), r.begin());
           af::tiny<c_t, 36> ab;
           af::tiny<c_t, 21> abat;
           scitbx::matrix::multiply_packed_u_multiply_lhs_transpose(
