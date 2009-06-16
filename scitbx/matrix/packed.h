@@ -286,6 +286,23 @@ namespace scitbx { namespace matrix {
     return result;
   }
 
+  template <typename FloatType>
+  af::shared<FloatType>
+  packed_u_diagonal(
+    af::const_ref<FloatType> const& a)
+  {
+    unsigned n = symmetric_n_from_packed_size(a.size());
+    af::shared<FloatType> result(
+      static_cast<std::size_t>(n), af::init_functor_null<FloatType>());
+    FloatType *r = result.begin();
+    std::size_t ij = 0;
+    for(unsigned i=0;i<n;i++) {
+      *(r++) = a[ij];
+      ij += static_cast<std::size_t>(n-i);
+    }
+    return result;
+  }
+
 }} // namespace scitbx::matrix
 
 #endif // SCITBX_MATRIX_PACKED_H
