@@ -17,17 +17,19 @@ namespace curvatures_simple {
     mtps = -scitbx::constants::two_pi * scitbx::constants::pi;
 
   template <typename FloatType=double>
-  struct d2f_d_params_diag
+  struct grads_and_curvs
   {
     typedef FloatType f_t;
     typedef std::complex<f_t> c_t;
     vec3<f_t> tphkl;
     af::tiny<f_t, 6> tphkl_outer;
+    af::tiny<f_t, 6> d_exp_huh_d_u_star;
     af::tiny<f_t, 21> d2_exp_huh_d_u_star_u_star;
     unsigned n_params;
+    af::tiny<c_t, 12> grad_values;
     af::tiny<c_t, 12> curv_values;
 
-    d2f_d_params_diag(
+    grads_and_curvs(
       miller::index<> const& hkl)
     :
       tphkl(hkl)
@@ -43,7 +45,7 @@ namespace curvatures_simple {
       int h = hkl[0];
       int k = hkl[1];
       int l = hkl[2];
-      af::tiny<f_t, 6> d_exp_huh_d_u_star(h*h, k*k, l*l, 2*h*k, 2*h*l, 2*k*l);
+      d_exp_huh_d_u_star = af::tiny<f_t, 6>(h*h, k*k, l*l, 2*h*k, 2*h*l, 2*k*l);
       scitbx::matrix::outer_product(
         outer_buffer.begin(),
         d_exp_huh_d_u_star.const_ref(),
@@ -76,6 +78,7 @@ namespace curvatures_simple {
         }
       }
       f_t w = scatterer.weight();
+      f_t wwo = scatterer.weight_without_occupancy();
       f_t dw = -1e20; // uninitialized
       if (!scatterer.flags.use_u_aniso()) {
         double huh = scatterer.u_iso * d_star_sq;
@@ -88,18 +91,27 @@ namespace curvatures_simple {
       f_t ffp = f0 + scatterer.fp;
       f_t fdp = scatterer.fdp;
       c_t ff(ffp, fdp);
-      unsigned d2_site_site_n = 3;
+      unsigned n_params_site = 3;
+      af::tiny<c_t, 3> d_site;
       af::tiny<c_t, 6> d2_site_site;
+      d_site.fill(c_t(0,0));
       d2_site_site.fill(c_t(0,0));
+      c_t d_u_iso;
       c_t d2_u_iso_u_iso;
-      unsigned d2_u_star_u_star_n = 6;
+      unsigned n_params_u_star = 6;
+      af::tiny<c_t, 6> d_u_star;
       af::tiny<c_t, 21> d2_u_star_u_star;
       if (!scatterer.flags.use_u_aniso()) {
+        d_u_iso = c_t(0,0);
         d2_u_iso_u_iso = c_t(0,0);
       }
       else {
+        d_u_star.fill(c_t(0,0));
         d2_u_star_u_star.fill(c_t(0,0));
       }
+      c_t d_occ(0,0);
+      c_t d_fp(0,0);
+      c_t d_fdp(0,0);
       for(std::size_t i_smx=0;i_smx<space_group.order_z();i_smx++) {
         sgtbx::rt_mx s = space_group(i_smx);
         mat3<f_t> r = s.r().as_floating_point(scitbx::type_holder<f_t>());
@@ -112,10 +124,13 @@ namespace curvatures_simple {
         }
         c_t e(std::cos(alpha), std::sin(alpha));
         {
+          mat3<f_t> site_gtmx = r.transpose();
+          d_site += af::tiny<c_t, 3>(site_gtmx * tphkl)
+                  * (w * dw * ff * e * c_t(0,1));
           af::tiny<c_t, 9> ab;
           af::tiny<c_t, 6> abat;
           scitbx::matrix::multiply_packed_u_multiply_lhs_transpose(
-            /* site_gtmx */ r.transpose().begin(),
+            site_gtmx.begin(),
             tphkl_outer.begin(),
             3, 3,
             ab.begin(),
@@ -124,24 +139,41 @@ namespace curvatures_simple {
           d2_site_site += abat;
         }
         if (!scatterer.flags.use_u_aniso()) {
+          d_u_iso += w * dw * ff * e * mtps * d_star_sq;
           d2_u_iso_u_iso += w * dw * ff * e * scitbx::fn::pow2(mtps*d_star_sq);
         }
         else {
           af::tiny<f_t, 36> u_star_gtmx;
           scitbx::matrix::tensor_rank_2::gradient_transform_matrix(
             u_star_gtmx.begin(), r.begin());
-          af::tiny<c_t, 36> ab;
-          af::tiny<c_t, 21> abat;
-          scitbx::matrix::multiply_packed_u_multiply_lhs_transpose(
-            u_star_gtmx.begin(),
-            d2_exp_huh_d_u_star_u_star.begin(),
-            6, 6,
-            ab.begin(),
-            abat.begin());
-          abat *= (w * dw * ff * e * mtps*mtps);
-          d2_u_star_u_star += abat;
+          {
+            af::tiny<f_t, 6> ab;
+            scitbx::matrix::multiply(
+              u_star_gtmx.begin(),
+              d_exp_huh_d_u_star.begin(),
+              6, 6, 1,
+              ab.begin());
+            d_u_star += af::tiny<c_t, 6>(ab)
+                      * (w * dw * ff * e * mtps);
+          }
+          {
+            af::tiny<f_t, 36> ab;
+            af::tiny<f_t, 21> abat;
+            scitbx::matrix::multiply_packed_u_multiply_lhs_transpose(
+              u_star_gtmx.begin(),
+              d2_exp_huh_d_u_star_u_star.begin(),
+              6, 6,
+              ab.begin(),
+              abat.begin());
+            d2_u_star_u_star += af::tiny<c_t, 21>(abat)
+                              * (w * dw * ff * e * mtps*mtps);
+          }
         }
+        d_occ += wwo * dw * ff * e;
+        d_fp += w * dw * e;
+        d_fdp += w * dw * e * c_t(0,1);
       }
+      //
       unsigned i_u;
       if (site_constraints == 0) {
         i_u = 3;
@@ -159,62 +191,112 @@ namespace curvatures_simple {
       else {
         i_occ = i_u + adp_constraints->n_independent_params();
       }
-      n_params = i_occ + 3;
+      unsigned i_fp = i_occ + 1;
+      unsigned i_fdp = i_fp + 1;
+      n_params = i_fdp + 1;
+      //
       if (site_constraints != 0) {
         {
           af::const_ref<f_t, af::mat_grid>
             gsm = site_constraints->gradient_sum_matrix();
-          d2_site_site_n = gsm.n_rows();
-          CCTBX_ASSERT(d2_site_site_n <= 2);
-          af::tiny<c_t, 6> ab;
-          af::tiny<c_t, 3> abat;
-          scitbx::matrix::multiply_packed_u_multiply_lhs_transpose(
-            gsm.begin(),
-            d2_site_site.begin(),
-            d2_site_site_n, gsm.n_columns(),
-            ab.begin(),
-            abat.begin());
-          std::copy(
-            abat.begin(),
-            abat.begin()+(d2_site_site_n*(d2_site_site_n+1)/2),
-            d2_site_site.begin());
+          n_params_site = gsm.n_rows();
+          CCTBX_ASSERT(n_params_site <= 2);
+          {
+            af::tiny<c_t, 2> ab;
+            scitbx::matrix::multiply(
+              gsm.begin(),
+              d_site.begin(),
+              n_params_site, 3, 1,
+              ab.begin());
+            std::copy(
+              ab.begin(),
+              ab.begin()+n_params_site,
+              d_site.begin());
+          }
+          {
+            af::tiny<c_t, 6> ab;
+            af::tiny<c_t, 3> abat;
+            scitbx::matrix::multiply_packed_u_multiply_lhs_transpose(
+              gsm.begin(),
+              d2_site_site.begin(),
+              n_params_site, gsm.n_columns(),
+              ab.begin(),
+              abat.begin());
+            std::copy(
+              abat.begin(),
+              abat.begin()+(n_params_site*(n_params_site+1)/2),
+              d2_site_site.begin());
+          }
         }
         if (scatterer.flags.use_u_aniso()) {
           af::const_ref<f_t, af::mat_grid>
             gsm = adp_constraints->gradient_sum_matrix();
-          d2_u_star_u_star_n = gsm.n_rows();
-          CCTBX_ASSERT(d2_u_star_u_star_n <= 4);
-          af::tiny<c_t, 24> ab;
-          af::tiny<c_t, 10> abat;
-          scitbx::matrix::multiply_packed_u_multiply_lhs_transpose(
-            gsm.begin(),
-            d2_u_star_u_star.begin(),
-            d2_u_star_u_star_n, gsm.n_columns(),
-            ab.begin(),
-            abat.begin());
-          std::copy(
-            abat.begin(),
-            abat.begin()+(d2_u_star_u_star_n*(d2_u_star_u_star_n+1)/2),
-            d2_u_star_u_star.begin());
+          n_params_u_star = gsm.n_rows();
+          CCTBX_ASSERT(n_params_u_star <= 4);
+          {
+            af::tiny<c_t, 4> ab;
+            scitbx::matrix::multiply(
+              gsm.begin(),
+              d_u_star.begin(),
+              n_params_u_star, 6, 1,
+              ab.begin());
+            std::copy(
+              ab.begin(),
+              ab.begin()+n_params_u_star,
+              d_u_star.begin());
+          }
+          {
+            af::tiny<c_t, 24> ab;
+            af::tiny<c_t, 10> abat;
+            scitbx::matrix::multiply_packed_u_multiply_lhs_transpose(
+              gsm.begin(),
+              d2_u_star_u_star.begin(),
+              n_params_u_star, gsm.n_columns(),
+              ab.begin(),
+              abat.begin());
+            std::copy(
+              abat.begin(),
+              abat.begin()+(n_params_u_star*(n_params_u_star+1)/2),
+              d2_u_star_u_star.begin());
+          }
         }
       }
+      //
+      std::copy(&d_site[0], &d_site[n_params_site], &grad_values[0]);
+      if (!scatterer.flags.use_u_aniso()) {
+        grad_values[i_u] = d_u_iso;
+      }
+      else {
+        std::copy(&d_u_star[0], &d_u_star[n_params_u_star], &grad_values[i_u]);
+      }
+      grad_values[i_occ] = d_occ;
+      grad_values[i_fp] = d_fp;
+      grad_values[i_fdp] = d_fdp;
+      //
       std::fill_n(curv_values.begin(), n_params, c_t(0,0));
       scitbx::matrix::packed_u_diagonal(
-        &curv_values[0], d2_site_site.begin(), d2_site_site_n);
+        &curv_values[0], d2_site_site.begin(), n_params_site);
       if (!scatterer.flags.use_u_aniso()) {
         curv_values[i_u] = d2_u_iso_u_iso;
       }
       else {
         scitbx::matrix::packed_u_diagonal(
-          &curv_values[i_u], d2_u_star_u_star.begin(), d2_u_star_u_star_n);
+          &curv_values[i_u], d2_u_star_u_star.begin(), n_params_u_star);
       }
+    }
+
+    af::shared<c_t>
+    copy_gradients() const
+    {
+      c_t const* v = grad_values.begin();
+      return af::shared<c_t>(v, v+n_params);
     }
 
     af::shared<c_t>
     copy_curvatures() const
     {
-      c_t const* d = curv_values.begin();
-      return af::shared<c_t>(d, d+n_params);
+      c_t const* v = curv_values.begin();
+      return af::shared<c_t>(v, v+n_params);
     }
   };
 
