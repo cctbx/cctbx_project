@@ -270,9 +270,9 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
         ignore_hd          = False,
         restraints_manager = restraints_manager)
       #
-      from phenix.command_line.ramalyze import ramalyze
-      from phenix.command_line.rotalyze import rotalyze
-      from phenix.command_line.cbetadev import cbetadev
+      from phenix.validation.ramalyze import ramalyze
+      from phenix.validation.rotalyze import rotalyze
+      from phenix.validation.cbetadev import cbetadev
       need_ramachandran = False
       ramalyze_obj = None
       rc = overall_counts_i_seq.resname_classes
