@@ -389,32 +389,38 @@ class structure_factor:
         result.append(row)
     return flex.double(result)
 
-  def d2_target_d_params_diag(self, target, exercise_cpp=True):
+  def d2_target_d_params_diag(self, target):
     result = flex.double()
     da, db = target.da(), target.db()
     daa, dbb, dab = target.daa(), target.dbb(), target.dab()
     ds = self.df_d_params()
     d2sd = self.d2f_d_params_diag()
-    if (exercise_cpp):
-      gac_cpp = xray.structure_factors_curvatures_simple_grads_and_curvs(
-        hkl=self.hkl)
     for i_scatterer,(di0,d2id) in enumerate(zip(ds, d2sd)):
-      if (exercise_cpp):
-        gac_cpp.compute(
-          space_group=self.space_group,
-          hkl=self.hkl,
-          d_star_sq=self.d_star_sq,
-          scatterers=self.scatterers,
-          scattering_type_registry=self.scattering_type_registry,
-          site_symmetry_table=self.site_symmetry_table,
-          i_scatterer=i_scatterer)
-        di0_cpp = gac_cpp.copy_gradients()
-        d2id_cpp = gac_cpp.copy_curvatures()
-        from libtbx.test_utils import approx_equal
-        f = 1/min(1, flex.max(flex.abs(di0)))
-        assert approx_equal(di0_cpp*f, di0*f)
-        f = 1/min(1, flex.max(flex.abs(d2id)))
-        assert approx_equal(d2id_cpp*f, d2id*f)
+      for di,d2ij in zip(di0, d2id):
+        sum = daa * di.real * di.real \
+            + dbb * di.imag * di.imag \
+            + dab * 2 * di.real * di.imag \
+            + da * d2ij.real + db * d2ij.imag
+        result.append(sum)
+    return result
+
+  def d2_target_d_params_diag_cpp(self, target):
+    result = flex.double()
+    da, db = target.da(), target.db()
+    daa, dbb, dab = target.daa(), target.dbb(), target.dab()
+    gac = xray.structure_factors_curvatures_simple_grads_and_curvs(
+      hkl=self.hkl)
+    for i_scatterer in xrange(self.scatterers.size()):
+      gac.compute(
+        space_group=self.space_group,
+        hkl=self.hkl,
+        d_star_sq=self.d_star_sq,
+        scatterers=self.scatterers,
+        scattering_type_registry=self.scattering_type_registry,
+        site_symmetry_table=self.site_symmetry_table,
+        i_scatterer=i_scatterer)
+      di0 = gac.copy_gradients()
+      d2id = gac.copy_curvatures()
       for di,d2ij in zip(di0, d2id):
         sum = daa * di.real * di.real \
             + dbb * di.imag * di.imag \
@@ -466,6 +472,16 @@ class structure_factors:
       sf = structure_factor(xray_structure=self.xray_structure, hkl=hkl)
       target = target_type(obs=obs, calc=sf.f())
       contribution = sf.d2_target_d_params_diag(target=target)
+      if (result is None): result = contribution
+      else:                result += contribution
+    return result
+
+  def d2_target_d_params_diag_cpp(self, f_obs, target_type):
+    result = None
+    for hkl,obs in zip(self.miller_indices, f_obs.data()):
+      sf = structure_factor(xray_structure=self.xray_structure, hkl=hkl)
+      target = target_type(obs=obs, calc=sf.f())
+      contribution = sf.d2_target_d_params_diag_cpp(target=target)
       if (result is None): result = contribution
       else:                result += contribution
     return result
