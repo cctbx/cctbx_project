@@ -1,8 +1,7 @@
 from cctbx import xray
 from cctbx import miller
 from cctbx import crystal
-from cctbx.examples.structure_factor_derivatives_4 \
-  import scatterer_as_list, scatterer_from_list, structure_factors
+from cctbx.examples.structure_factor_derivatives_4 import structure_factors
 from cctbx.examples.exp_i_alpha_derivatives import least_squares
 from cctbx.array_family import flex
 from cctbx.development import random_structure
@@ -17,6 +16,29 @@ import sys, os
 
 random.seed(0)
 flex.set_random_seed(0)
+
+def scatterer_as_list(self):
+  if (not self.anisotropic_flag):
+    return list(self.site) + [self.u_iso, self.occupancy, self.fp, self.fdp]
+  return list(self.site) + list(self.u_star) \
+       + [self.occupancy, self.fp, self.fdp]
+
+def scatterer_from_list(l):
+  if (len(l) == 7):
+    return xray.scatterer(
+      site=l[:3],
+      u=l[3],
+      occupancy=l[4],
+      scattering_type="?",
+      fp=l[5],
+      fdp=l[6])
+  return xray.scatterer(
+    site=l[:3],
+    u=l[3:9],
+    occupancy=l[9],
+    scattering_type="?",
+    fp=l[10],
+    fdp=l[11])
 
 def d_target_d_params_finite(d_order, f_obs, xray_structure, eps=1.e-8):
   assert d_order in [1,2]
