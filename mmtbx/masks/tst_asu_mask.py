@@ -210,6 +210,34 @@ def compare_masks(struc, opts):
   te = time.time()
   time_asu_sf = te-tb
   time_asu += (te-tb)
+  # save files
+  if not opts.save_files is None:
+    tmp_file = open(opts.save_files + ".pdb", "w")
+    print >>tmp_file, struc.as_pdb_file()
+    tmp_file.close()
+    asu_mask.xplor_write_map(opts.save_files + "_mask.map")
+    asu_mask.xplor_write_map(opts.save_files + "_inverted_mask.map", 1, True)
+    # also save structure factors
+    import iotbx.mtz
+    mtzo = iotbx.mtz.object()
+    mtzo.set_title("mask test")
+    mtzo.add_history(line="start")
+    mtzo.set_space_group_info(fm_asu.space_group_info())
+    mtzo.set_hkl_base(fm_asu.unit_cell())
+    crystal = mtzo.add_crystal(
+      name="mask_test_crystal",
+      project_name="mask_test_project",
+      unit_cell=fm_asu.unit_cell())
+    dataset = crystal.add_dataset(
+      name="mask_test_dataset",
+      wavelength=1)
+    assert dataset.add_miller_array(
+      miller_array=fm_asu,
+      column_root_label="F",
+      #column_types=column_types
+      ) is dataset
+    mtzo.add_history(line="done")
+    mtzo.write(opts.save_files + "_sf.mtz")
   #
   # ========= old mask =============
   #
@@ -434,7 +462,9 @@ def run():
   parser.add_option("--shrink_radius", action="store", type="float",
       dest="shrink_radius", default=0.9, help="shrink truncation radius")
   parser.add_option("--save_failed", action="store", type="string",
-      dest="failed_file", help="pdb file to test")
+      dest="failed_file", help="file name for the pdb of the failed structure")
+  parser.add_option("--save_files", action="store", type="string",
+      dest="save_files", help="base file name for pdb/mask/sf files to save")
 
   (opts, args) = parser.parse_args()
 

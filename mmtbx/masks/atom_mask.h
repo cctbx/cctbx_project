@@ -206,6 +206,10 @@ namespace mmtbx {
       //! Returns number of solvent layers for which mask has been computed
       unsigned char n_solvent_layers() { return n_layers; }
 
+      //! Saves asymmetric part of the mask in xplor format
+      void xplor_write_map(std::string const& file_name, unsigned char layer=0,
+          bool invert = false);
+
       const double solvent_radius;
       const double shrink_truncation_radius;
 
