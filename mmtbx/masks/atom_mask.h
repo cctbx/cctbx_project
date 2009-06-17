@@ -29,19 +29,66 @@ namespace mmtbx {
   typedef af::shared< double > double_array_t;
   typedef af::c_interval_grid<3> asu_grid_t;
   typedef af::c_interval_grid<3> grid_t;
-  //typedef signed char data_type; this is insufficient
-  typedef short data_type;
+  //! Maximum number of mask layers
+  const unsigned char max_n_layers = 10;
+
+  // the radial shell mask contains two numbers for each point
+  // shell number and multiplicity of the point
+  class mask_value
+  {
+      static const unsigned char outside_layer = max_n_layers+10;
+      static const unsigned char outside_multiplicity = 255U;
+
+      BOOST_STATIC_ASSERT( (outside_multiplicity >0U)
+          && (outside_multiplicity > 192U)
+          && (outside_layer > 0U)
+          && (outside_layer > (max_n_layers+1)) );
+
+    public:
+
+      mask_value() {}
+      mask_value(unsigned char l, unsigned char v)
+        : layer_(l), multiplicity_(v) {}
+      unsigned char layer() const { return layer_; }
+      unsigned char multiplicity() const { return multiplicity_; }
+      bool is_outside() const { return multiplicity()==outside_multiplicity; }
+      bool is_solvent() const { return layer()>1U; }
+      bool is_contact() const { return  layer()==1; }
+      bool is_atom() const { return multiplicity()==0U; }
+      bool is_zero() const { return multiplicity()==0U && layer()==0U;}
+      void set(unsigned char l, unsigned char v) {layer_=l; multiplicity_=v;}
+      void set_outside() { this->set(outside_layer, outside_multiplicity); }
+      void set_zero() { this->set(0,0); }
+      void set_nearest_solvent() { layer_=2; }
+      bool is_valid_for_fft() const
+      {
+        return multiplicity()<outside_multiplicity && layer()!=1U
+          && layer()<outside_layer;
+      }
+
+      static bool is_group_compatible(unsigned group_order)
+      {
+        return outside_multiplicity > group_order;
+      }
+
+    private:
+      unsigned char layer_;
+      unsigned char multiplicity_;
+  };
+
+  typedef mask_value data_type;
+
   namespace {
-    BOOST_STATIC_ASSERT( std::numeric_limits<data_type>::is_integer );
+    BOOST_STATIC_ASSERT( sizeof(mask_value)==2 );
   }
   typedef af::versa<data_type, grid_t > mask_array_t;
   typedef af::versa<data_type, asu_grid_t > mask_asu_array_t;
-  const data_type  mark = std::min(
-      std::abs(std::numeric_limits<data_type>::max()-1),
-      std::abs(std::numeric_limits<data_type>::min()+1)
-      );
 
-  //! Flat solvent mask and structure factors.
+  typedef std::vector<double> shells_array_t;
+  // TODO: to make the following work need adaptor to python for small_plain
+  // typedef scitbx::af::small_plain<double, max_n_layers-1> shells_array_t;
+
+  //! Radial shell flat solvent mask and structure factors.
   /*! \class atom_mask atom_mask.h mmtbx/masks/atom_mask.h
    This mask will have valid values only inside asymmetric unit. Outside
    they will be zero. Inside the asu 0 - means macromolecule,
@@ -50,6 +97,7 @@ namespace mmtbx {
   class atom_mask
   {
     public:
+
       //! Allocates memory for mask calculation.
       /*! gridding_n_real must be compatible with the space_group.
        * At least the following must be true: every grid point has
@@ -69,9 +117,10 @@ namespace mmtbx {
         contact_surface_fraction(-1.0),
         asu(group_.type()),
         cell(unit_cell),
-        group(group_)
+        group(group_),
+        n_layers(0)
       {
-        MMTBX_ASSERT( mark > group.order_z() && -mark < -group.order_z() );
+        MMTBX_ASSERT( mask_value::is_group_compatible(group.order_z()) );
         MMTBX_ASSERT(solvent_radius >= 0.0);
         MMTBX_ASSERT(shrink_truncation_radius >= 0.0);
         MMTBX_ASSERT(gridding_n_real.const_ref().all_gt(0));
@@ -99,9 +148,10 @@ namespace mmtbx {
         asu(group_.type()),
         cell(unit_cell),
         group(group_),
-        asu_atoms()
+        asu_atoms(),
+        n_layers(0)
       {
-        MMTBX_ASSERT( mark > group.order_z() && -mark < -group.order_z() );
+        MMTBX_ASSERT( mask_value::is_group_compatible(group.order_z()) );
         MMTBX_ASSERT(solvent_radius >= 0.0);
         MMTBX_ASSERT(shrink_truncation_radius >= 0.0);
         this->determine_gridding(this->full_cell_grid_size, resolution,
@@ -111,18 +161,34 @@ namespace mmtbx {
       }
 
       //! Clears current, and calculates new mask based on atomic data.
+      /*!
+          Number of masks produced is equal to shells.size() + 1.
+         \param sites_frac array of atoms coordinates
+         \param atom_radii array of atoms radii
+         \param shells array of widths of radial masks
+       */
       void compute(
         const coord_array_t & sites_frac,
-        const double_array_t & atom_radii
+        const double_array_t & atom_radii,
+        const shells_array_t &shells = shells_array_t()
       );
 
       const mask_array_t & get_mask() const { return data; }
 
       //! Computes mask structure factors.
+      /*!
+         \param indices array of miller indices
+         \param layer mask layer for wich structure factors will be caculated.
+            Range: [1,n_solvent_layers()]. 1 - closest to the atoms;
+            n_solvent_layers() - fartherst from the atoms.
+       */
       scitbx::af::shared< std::complex<double> > structure_factors(
-        const scitbx::af::const_ref< cctbx::miller::index<> > &indices );
+        const scitbx::af::const_ref< cctbx::miller::index<> > &indices,
+        unsigned char layer = 0);
 
+      //! Returns x,y,z dimensions of the full cell grid.
       scitbx::int3 grid_size() const { return full_cell_grid_size; }
+
       size_t grid_size_1d() const
       {
         MMTBX_ASSERT( scitbx::ge_all(this->grid_size(), scitbx::int3(0,0,0)) );
@@ -131,10 +197,14 @@ namespace mmtbx {
           * static_cast<size_t>(this->grid_size()[2]);
       }
 
+      //! Returns estimated number of atoms intersecting with the asu
       size_t n_asu_atoms() const
       {
         return asu_atoms.size();
       }
+
+      //! Returns number of solvent layers for which mask has been computed
+      unsigned char n_solvent_layers() { return n_layers; }
 
       const double solvent_radius;
       const double shrink_truncation_radius;
@@ -156,7 +226,8 @@ namespace mmtbx {
       typedef std::pair< scitbx::double3, double > atom_t;
       typedef std::vector< atom_t > atom_array_t;
       void compute_contact_surface();
-      void compute_accessible_surface(const atom_array_t &atoms);
+      void compute_accessible_surface(const atom_array_t &atoms,
+          const shells_array_t &shells = shells_array_t() );
       void mask_asu();
       void atoms_to_asu(
         const coord_array_t & sites_frac,
@@ -180,6 +251,8 @@ namespace mmtbx {
       scitbx::double3 expanded_box[2];
       atom_array_t asu_atoms;
       mask_array_t data;
+      // n_layers == n_shells + 1
+      unsigned short n_layers;
   }; // class atom_mask
 
 }} // namespace mmtbx::masks

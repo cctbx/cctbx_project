@@ -92,10 +92,13 @@ namespace {
               arg_("solvent_radius"),
               arg_("shrink_truncation_radius")
               )))
-      .def("compute", &w_t::compute)
-      .def("structure_factors", &w_t::structure_factors)
+      .def("compute", &w_t::compute, (arg("sites_frac"), arg("atom_radii"),
+         arg("shells") = shells_array_t() ) )
+      .def("structure_factors", &w_t::structure_factors, (arg("indices"),
+         arg("layer")=0) )
       .def("grid_size", &w_t::grid_size)
       .def("n_asu_atoms", &w_t::n_asu_atoms)
+      .def("n_solvent_layers", &w_t::n_solvent_layers)
       .def_readonly("solvent_radius",
                &w_t::solvent_radius)
       .def_readonly("shrink_truncation_radius",

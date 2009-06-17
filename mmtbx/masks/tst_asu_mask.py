@@ -3,11 +3,7 @@ import iotbx.pdb
 import iotbx.pdb.remark_2_interpretation
 from scitbx.array_family import flex
 import iotbx
-# from iotbx import reflection_file_reader
-# from iotbx import reflection_file_utils
-# from iotbx.shelx import fcf
 import StringIO
-#  import cStringIO
 from mmtbx import masks
 import cctbx
 from cctbx import miller
@@ -19,9 +15,12 @@ from libtbx.test_utils import approx_equal, is_below_limit
 from libtbx.utils import format_cpu_times
 
 # cStringIO does not work
+#  import cStringIO
 # cout = cStringIO.StringIO("\n")
 cout = StringIO.StringIO()
 
+# modified cctbx.sgtbx.space_group_info.any_compatible_unit_cell
+# from cctbx/sgtbx/__init__.py
 def random_compatible_unit_cell(self, volume=None, asu_volume=None):
   import random
   from cctbx import uctbx
@@ -41,7 +40,8 @@ def random_compatible_unit_cell(self, volume=None, asu_volume=None):
     gamma_max = min(min(alpha+beta,175.0),360.0-alpha-beta-6.0)
     assert gamma_max >= gamma_min
     gamma = gamma_min + (gamma_max-gamma_min)*rnd[5]
-    assert alpha>=5.0 and beta>=5.0 and gamma>=5.0 and (alpha+beta+gamma) <= 355.0
+    assert alpha>=5.0 and beta>=5.0 and gamma>=5.0 \
+        and (alpha+beta+gamma) <= 355.0
     params = (1.+rnd[0], 1.+rnd[1], 1.+rnd[2], alpha, beta, gamma)
   elif (sg_number <  16):
     params = (1.0+rnd[0], 1.0+rnd[1], 1.0+rnd[2], 90, 90.5+80.0*rnd[5], 90)
@@ -60,17 +60,21 @@ def random_compatible_unit_cell(self, volume=None, asu_volume=None):
   for i in xrange(3): params[i] *= f
   return uctbx.unit_cell(params)
 
-cctbx.sgtbx.space_group_info.any_compatible_unit_cell_original = cctbx.sgtbx.space_group_info.any_compatible_unit_cell
-cctbx.sgtbx.space_group_info.any_compatible_unit_cell = random_compatible_unit_cell
+# overriding 'any cell' with 'random cell'
+cctbx.sgtbx.space_group_info.any_compatible_unit_cell_original = \
+    cctbx.sgtbx.space_group_info.any_compatible_unit_cell
+cctbx.sgtbx.space_group_info.any_compatible_unit_cell = \
+    random_compatible_unit_cell
 
 
 def compare_fc(obs, other, tolerance = 1.0E-9):
   assert obs.is_complex_array()
-  assert other.is_complex_array()
+  assert other.is_complex_array(), other.__class__
   matching = miller.match_indices(obs.indices(), other.indices())
   data0 = obs.select(matching.pairs().column(0)).data()
   data = other.select(matching.pairs().column(1)).data()
-  assert data0.size() == data.size(), str(data0.size()) + " != " + str(data.size())
+  assert data0.size() == data.size(), str(data0.size()) + " != " \
+      + str(data.size())
   assert data.size() > 1, str(data.size())
   max_rel_dif = 0.0
   max_dif = 0.0
@@ -87,7 +91,8 @@ def compare_fc(obs, other, tolerance = 1.0E-9):
       max_dif = dif
       max_mx = mx
   assert ((max_rel_dif <= tolerance) or (max_mx <= tolerance*1.0E-2)), \
-    "max  rel_dif = "+ str(max_rel_dif)+ "   dif = "+str(max_dif)+"    mx ="+str(max_mx)
+    "max  rel_dif = "+ str(max_rel_dif)+ "   dif = "+str(max_dif)+"    mx =" \
+    +str(max_mx)
   return data.size() # max_rel_dif
 
 
@@ -104,8 +109,10 @@ def get_radii(structure):
   return atom_radii
 
 
-SpaceGroups = ("P 21 21 21", "P 21", "P 1 1 21", "P 21 1 1", "P 21/n", "P1", "Fm3m", "R3", "P61", "I41")
-Elements = ("N", "C", "O", "H", "Ca", "C", "B", "Li", "Ru", "N", "H", "H", "Mg", "Se")
+SpaceGroups = ("P 21 21 21", "P 21", "P 1 1 21", "P 21 1 1", "P 21/n", "P1",
+    "Fm3m", "R3", "P61", "I41")
+Elements = ("N", "C", "O", "H", "Ca", "C", "B", "Li", "Ru", "N", "H", "H",
+    "Mg", "Se")
 def make_atoms(n_atoms):
   assert n_atoms>0
   atoms = []
@@ -169,16 +176,13 @@ def compare_masks(struc, opts):
     resolution /= 1.2
     assert resolution > 1.0E-3
     fc = struc.structure_factors( d_min = resolution).f_calc()
-  print >>cout, "Resolution= ", resolution, "  solvent radius= ", solvent_radius, \
-      "  shrink radius= ", shrink_radius,  "  Tolerance= ", tolerance, \
-      "  Number of reflection= ", fc.data().size()
+  print >>cout, "Resolution= ", resolution, "  solvent radius= ", \
+      solvent_radius, "  shrink radius= ", shrink_radius,  "  Tolerance= ", \
+      tolerance, "  Number of reflection= ", fc.data().size()
   struc.show_summary(cout)
   print >>cout, "Cell volume= ", struc.unit_cell().volume(), \
-    "  Group order= ", struc.space_group().order_z(), " p= ", struc.space_group().order_p()
-  #tmp_str = struc.as_pdb_file()
-  #tmp_file = open("tmp.pdb", "w")
-  #print >>tmp_file, tmp_str
-  #tmp_file.close()
+    "  Group order= ", struc.space_group().order_z(), " p= ", \
+    struc.space_group().order_p()
   tb = time.time()
   asu_mask = masks.atom_mask(
       unit_cell = struc.unit_cell(),
@@ -198,7 +202,8 @@ def compare_masks(struc, opts):
   asu_mask.compute( struc.sites_frac(), radii )
   te = time.time()
   time_asu += (te-tb)
-  print >>cout, "   n asu atoms= ", asu_mask.n_asu_atoms(), "   has-enclosed= ", asu_mask.debug_has_enclosed_box
+  print >>cout, "   n asu atoms= ", asu_mask.n_asu_atoms(), \
+      "   has-enclosed= ", asu_mask.debug_has_enclosed_box
   tb = time.time()
   fm_asu = asu_mask.structure_factors( fc.indices() )
   fm_asu = fc.set().array( data = fm_asu )
@@ -213,10 +218,7 @@ def compare_masks(struc, opts):
   te = time.time()
   time_p1_exp = (te-tb)
   time_p1 += (te-tb)
-  # fc_p1 = struc_p1.structure_factors(d_min = resolution).f_calc()
   fc_p1 = fc.deep_copy()
-  # fc_p1 = fc_p1.customized_copy(anomalous_flag=True)
-  # fc_p1 = fc_p1.expand_to_p1()
   fc_p1 = fc_p1.customized_copy(crystal_symmetry = struc_p1.crystal_symmetry())
   tb = time.time()
   blk_p1 = masks.bulk_solvent(
@@ -267,6 +269,20 @@ def compare_masks(struc, opts):
   print >>cout, "Times ( ms ) p1 :  expand= ", time_p1_exp*1000.0, "  mask= ", \
       time_p1_msk*1000.0, "  Fc=", time_p1_sf*1000.0
   assert fm_asu.data().size() == fm_o.data().size()
+  t_v1 = asu_mask.contact_surface_fraction
+  t_v2 = blk_p1.contact_surface_fraction
+  t_v3 = max( abs(t_v1), abs(t_v2) )
+  if t_v3 > 1.0E-6:
+    t_v4 = abs( t_v1 - t_v2 ) / t_v3
+  else:
+    t_v4 = 0.0
+  if( t_v4>1.0E-6 ):
+    if not opts.failed_file is None:
+      tmp_file = open(opts.failed_file, "w")
+      print >>tmp_file, struc.as_pdb_file()
+      tmp_file.close()
+    raise "Not equal solvent volume"
+
   assert approx_equal(
     asu_mask.contact_surface_fraction, blk_p1.contact_surface_fraction)
   assert approx_equal(
@@ -275,12 +291,18 @@ def compare_masks(struc, opts):
     value=asu_mask.accessible_surface_fraction,
     limit=asu_mask.contact_surface_fraction)
   n_compared = compare_fc(fm_asu, fm_p1, tolerance = tolerance)
-  # the following failed with P3
   assert n_compared == fm_asu.data().size(), \
     "N compared refls: "+str(n_compared) + " != " + str(fm_asu.data().size())
   assert n_compared >0
   if verbose:
     print cout.getvalue()
+  # test that second calculation will produce the same results
+  asu_mask.compute( struc.sites_frac(), radii )
+  fm_asu2 = asu_mask.structure_factors( fc.indices() )
+  fm_asu2 = fc.set().array( data = fm_asu2 )
+  n_compared = compare_fc(fm_asu, fm_asu2, tolerance = tolerance)
+  assert n_compared == fm_asu.data().size(), \
+    "N compared refls: "+str(n_compared) + " != " + str(fm_asu.data().size())
   cout.truncate(0)
 
 
@@ -411,6 +433,8 @@ def run():
       dest="solvent_radius", default=1.1, help="solvent radius")
   parser.add_option("--shrink_radius", action="store", type="float",
       dest="shrink_radius", default=0.9, help="shrink truncation radius")
+  parser.add_option("--save_failed", action="store", type="string",
+      dest="failed_file", help="pdb file to test")
 
   (opts, args) = parser.parse_args()
 
