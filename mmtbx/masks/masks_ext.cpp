@@ -99,6 +99,8 @@ namespace {
       .def("grid_size", &w_t::grid_size)
       .def("n_asu_atoms", &w_t::n_asu_atoms)
       .def("n_solvent_layers", &w_t::n_solvent_layers)
+      .def("xplor_write_map", &w_t::xplor_write_map, (arg("file_name"),
+         arg("layer")=0, arg("invert")=false) )
       .def_readonly("solvent_radius",
                &w_t::solvent_radius)
       .def_readonly("shrink_truncation_radius",

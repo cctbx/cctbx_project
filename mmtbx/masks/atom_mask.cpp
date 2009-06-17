@@ -435,6 +435,7 @@ namespace mmtbx { namespace masks {
       layer = 1;
     if( layer>n_layers )
       throw "Wrong mask solvent layer";
+    ++layer; // solvent layers start from 2 in this->data
     const mask_array_t &msk = this->get_mask();
     const scitbx::int3 grid_full_cell = this->grid_size();
     scitbx::fftpack::real_to_complex_3d<double> fft(grid_full_cell);
@@ -472,7 +473,6 @@ namespace mmtbx { namespace masks {
     j_c_b *= cn[2];
     const long j_c_e = ndim[1] * cn[2];
     const data_type *p_asu_x = &mskref(imn);
-    ++layer;
     for(long i=imn[0]; i<imx[0]; ++i, p_asu_x += nynz )
     {
       register long i_c = i % ndim[0];
@@ -811,6 +811,147 @@ namespace mmtbx { namespace masks {
     accessible_surface_fraction = static_cast<double>(n_access)
       / this->grid_size_1d();
   }
+
+
+  // writing as xplor map is stolen from iotbx/xplor/boost_python/xplor_ext.cpp
+  // which is inaccessible from C++
+  namespace
+  {
+    template <unsigned Width>
+    struct format_e
+    {
+      static void
+      throw_error()
+      {
+        throw scitbx::error("Floating-point value too large for format.");
+      }
+
+      format_e(const char* fmt, double val)
+      {
+#if !defined(BOOST_MSVC)
+        s = buf;
+        std::sprintf(buf, fmt, val);
+        if (*(s + Width)) throw_error();
+#else
+        s = buf + 1;
+        std::sprintf(s, fmt, val);
+        char* p = s + Width;
+        if (*p) {
+          p++;
+          if (*p) throw_error();
+        }
+        else {
+          s--;
+          *s = ' ';
+        }
+        if (*(p-3) != '0') throw_error();
+        *(p-3) = *(p-2);
+        *(p-2) = *(p-1);
+        *(p-1) = '\0';
+#endif
+      }
+
+      char buf[32];
+      char* s;
+    };
+
+
+    FILE*
+    write_head(
+      std::string const& file_name,
+      cctbx::uctbx::unit_cell const& unit_cell,
+      const scitbx::af::int3 &n,
+      const scitbx::af::int3 &first,
+      const scitbx::af::int3 &last)
+    {
+      FILE* fh = fopen(file_name.c_str(), "wb");
+      MMTBX_ASSERT(fh != 0);
+      fprintf(fh, "\n%8d !NTITLE\n", 1);
+      fprintf(fh, "%-264s\n", " REMARKS atom_mask::xplor_write...");
+      fprintf(fh, " %7d %7d %7d %7d %7d %7d %7d %7d %7d\n", n[0], first[0],
+          last[0], n[1], first[1], last[1], n[2], first[2], last[2]);
+      for(std::size_t i=0;i<6;i++) {
+        fprintf(fh, "%s",
+          format_e<12>("%12.5E", unit_cell.parameters()[i]).s);
+      }
+      fprintf(fh, "\n");
+      fprintf(fh, "ZYX\n");
+      return fh;
+    }
+
+    void
+    write_tail(
+      FILE* fh,
+      double average,
+      double standard_deviation)
+    {
+      fprintf(fh, "   -9999\n");
+      fprintf(fh, "%s%s\n",
+        format_e<12>("%12.4E", average).s,
+        format_e<12>("%12.4E", standard_deviation).s);
+      fclose(fh);
+    }
+
+  } // namespace {
+
+  void atom_mask::xplor_write_map(std::string const& file_name,
+      unsigned char layer, bool invert)
+  {
+    if( n_layers == 0 )
+      throw error("Must compute mask before saving it.");
+    const bool has_layers =  n_layers > 1;
+    if( layer==0 && has_layers )
+      throw error("Mask has several layers. "
+          "Must specify non-zero layer to save.");
+    if( layer==0 && !has_layers )
+      layer = 1;
+    if( layer>n_layers )
+      throw "Wrong mask solvent layer";
+    ++layer; // solvent layers start from 2 in this->data
+    const double one = (invert ? 0.0 : 1.0),
+          zero = (invert ? 1.0 : 0.0);
+    const mask_array_t &msk = this->get_mask();
+    scitbx::af::const_ref<data_type, grid_t > mskref = msk.const_ref();
+    scitbx::int3 imn, imx;
+    this->get_asu_boundaries(imn, imx); // [imn, imx)
+    FILE* fh = write_head(file_name, this->cell, this->grid_size(), imn,
+        imx-scitbx::int3(1,1,1));
+    register double mean = 0.0, esd = 0.0;
+    for(long iz=imn[2]; iz<imx[2]; ++iz)
+    {
+      fprintf(fh, "%8lu\n", static_cast<unsigned long>(iz));
+      int i_fld = 0;
+      for(long iy=imn[1]; iy<imx[1]; ++iy)
+      {
+        for(long ix=imn[0]; ix<imx[0]; ++ix)
+        {
+          const scitbx::int3 pos(ix,iy,iz);
+          const data_type t = mskref(pos);
+          const double d = ((t.layer() == layer) ? one : zero);
+          mean += d;
+          esd += d*d;
+          fprintf(fh, "%s", format_e<12>("%12.5E", d).s);
+          i_fld++;
+          if (i_fld == 6)
+          {
+            fprintf(fh, "\n");
+            i_fld = 0;
+          }
+        } // x-loop
+      } // y-loop
+      if (i_fld > 0) {
+        fprintf(fh, "\n");
+      }
+    } // z-loop
+    const double n = this->grid_size_1d();
+    MMTBX_ASSERT(n>=1.0);
+    mean /= n;
+    esd = esd / n - mean*mean;
+    MMTBX_ASSERT(esd>=0.0);
+    esd = std::sqrt(esd);
+    write_tail(fh, mean, esd);
+  }
+
 
 }} // namespace mmtbx::masks
 
