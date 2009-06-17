@@ -104,7 +104,6 @@ namespace mmtbx { namespace masks {
   {
     unsigned short order = group.order_z();
     MMTBX_ASSERT( order>0 );
-    const af::ref<data_type, grid_t > data_ref = data.ref();
     const scitbx::int3 n = this->grid_size();
     MMTBX_ASSERT( n[0]>0 && n[1]>0 && n[2] >0 );
     // below is to make sure that direct_space_asu::is_inside integer
@@ -118,7 +117,7 @@ namespace mmtbx { namespace masks {
         << " maximum allowed size is "
         << std::numeric_limits<long>::max() / (4*8)
         << " 64 bit OS and software might be required for such a big mask.";
-      throw mmtbx::error(str.str());
+      throw error(str.str());
     }
     // prepare grid adapted integer symmetry operators
     std::vector<cctbx::sgtbx::grid_symop> symops;
@@ -144,7 +143,9 @@ namespace mmtbx { namespace masks {
     opt_asu.optimize_for_grid(n);
     scitbx::int3 smn, smx;
     this->get_expanded_asu_boundaries(smn,smx); // [smn, smx)
+    const af::ref<data_type, grid_t > data_ref = data.ref();
     data_type *d_ptr = data_ref.begin();
+    register size_t cell_volume = 0;
     for(register long i=smn[0]; i<smx[0]; ++i)
     {
       for(register long j=smn[1]; j<smx[1]; ++j)
@@ -154,8 +155,7 @@ namespace mmtbx { namespace masks {
           // set points wthin shrink_truncation_radius around asu to
           // an arbitrary unique positive value
           data_type &dr = *d_ptr;
-          if( dr == 0 )
-            dr = mark;
+          dr.set_outside();
           const scitbx::int3 pos(i,j,k);
           if( !(scitbx::ge_all(pos, imn) && scitbx::lt_all(pos, imx)) )
             continue;
@@ -182,26 +182,49 @@ namespace mmtbx { namespace masks {
           }
           if( nops!=0 )
           {
-              MMTBX_ASSERT( dr==0 || nops == dr
-                  || dr==mark );
-              dr = nops;
+            MMTBX_ASSERT( dr.multiplicity()==0 || dr.multiplicity() == nops
+                  || dr.is_outside() );
+            MMTBX_ASSERT( dr.layer()==0 || dr.layer() == n_layers+1
+                  || dr.is_outside());
+            dr.set(n_layers+1, nops);
+            cell_volume += static_cast<size_t>(nops);
           }
-        }
-      }
+        } // z-loop
+      } // y-loop
+    } // x-loop
+
+    MMTBX_ASSERT( cell_volume > 0 );
+    if( cell_volume != this->grid_size_1d() )
+    {
+      // volume(asu)*group_order != volume(cell)
+      std::ostringstream str;
+      str << "volume(asymmetric unit)*group_order != volume(unit cell).\n"
+          << "Maybe because the mask grid size: " << this->grid_size()
+          << " is incompatible with\n"
+             "the space group symmetry";
+      throw error( str.str() );
     }
+
   }
 
 
   void atom_mask::compute(
     const coord_array_t & sites_frac,
-    const double_array_t & atom_radii)
+    const double_array_t & atom_radii,
+    const shells_array_t &shells)
   {
+    if( shells.size() >= max_n_layers )
+    {
+      std::stringstream str;
+      str << "Number of radial shells for the mask must be less than "
+        << max_n_layers << ".  Provided: " << shells.size();
+      throw error(str.str());
+    }
+    this->n_layers = shells.size() + 1U;
     boost::posix_time::ptime
       tb = boost::posix_time::microsec_clock::local_time(), te;
     boost::posix_time::time_duration tdif;
     af::const_ref<data_type, grid_t > data_cref = data.const_ref();
-    af::ref<data_type, grid_t > data_ref = data.ref();
-    std::fill(data_ref.begin(), data_ref.end(), 0);
     this->atoms_to_asu(sites_frac, atom_radii);
     te = boost::posix_time::microsec_clock::local_time();
     tdif = te - tb;
@@ -209,34 +232,11 @@ namespace mmtbx { namespace masks {
     tb = boost::posix_time::microsec_clock::local_time();
     // masking is the slowest part of this routine, for not optimized asus
     this->mask_asu();
-    // test asu volume
-    // TODO: optimization? move this test in mask_asu
-    // could save a few millisec
-    size_t nn = 0;
-    for(af::const_ref<data_type, grid_t >::const_iterator
-      msk_it=data_cref.begin(); msk_it!=data_cref.end(); ++msk_it)
-    {
-      if( *msk_it != -mark && *msk_it != mark )
-      {
-        MMTBX_ASSERT( *msk_it >= 0 );
-        nn += static_cast<size_t>( *msk_it );
-      }
-    }
-    MMTBX_ASSERT( nn > 0 );
-    if( nn != this->grid_size_1d() ) // volume(asu)*group_order != volume(cell)
-    {
-      std::ostringstream str;
-      str << "volume(asymmetric unit)*group_order != volume(unit cell).\n"
-          << "Maybe because the mask grid size: " << this->grid_size()
-          << " is incompatible with\n"
-             "the space group symmetry";
-      throw mmtbx::error( str.str() );
-    }
     te = boost::posix_time::microsec_clock::local_time();
     tdif = te - tb;
     debug_mask_asu_time = tdif.total_milliseconds();
     tb = boost::posix_time::microsec_clock::local_time();
-    this->compute_accessible_surface(this->asu_atoms);
+    this->compute_accessible_surface(this->asu_atoms, shells);
     te = boost::posix_time::microsec_clock::local_time();
     tdif = te - tb;
     debug_accessible_time = tdif.total_milliseconds();
@@ -323,7 +323,14 @@ namespace mmtbx { namespace masks {
     const coord_array_t & sites_frac,
     const double_array_t & atom_radii)
   {
-    MMTBX_ASSERT(sites_frac.size() == atom_radii.size());
+    if( sites_frac.size() != atom_radii.size() )
+    {
+      std::stringstream str;
+      str << "Mask calculation: number of atomic coordinates and radii"
+        " must be the same. Provided: coordinates= " << sites_frac.size()
+        << "  radii= " << atom_radii.size();
+      throw error(str.str());
+    }
     this->asu_atoms.clear();
     const scitbx::af::tiny<double,6> rcell = cell.reciprocal_parameters();
     const scitbx::double3 rp(rcell[0], rcell[1], rcell[2]);
@@ -414,20 +421,31 @@ namespace mmtbx { namespace masks {
 
 
   scitbx::af::shared< std::complex<double> > atom_mask::structure_factors(
-    const scitbx::af::const_ref< cctbx::miller::index<> > &indices )
+    const scitbx::af::const_ref< cctbx::miller::index<> > &indices,
+    unsigned char layer)
   {
+    if( n_layers == 0 )
+      throw error("Must compute mask before calculating structure "
+          "factors");
+    const bool has_layers =  n_layers > 1;
+    if( layer==0 && has_layers )
+      throw error("Mask has several layers. "
+          "Must specify non-zero layer for structure factors.");
+    if( layer==0 && !has_layers )
+      layer = 1;
+    if( layer>n_layers )
+      throw "Wrong mask solvent layer";
     const mask_array_t &msk = this->get_mask();
     const scitbx::int3 grid_full_cell = this->grid_size();
     scitbx::fftpack::real_to_complex_3d<double> fft(grid_full_cell);
 
-    // m_real : physical dims, n_real - focus dims
+    // m_real : physical dims, n_real - focus dims, m_real >= n_real
     const scitbx::int3 mdim = fft.m_real(), ndim = fft.n_real();
     MMTBX_ASSERT( ndim == grid_full_cell );
     MMTBX_ASSERT( scitbx::le_all( ndim, mdim ) );
     const padded_grid_t pad( mdim, ndim );
-    // TODO: optimize?
-    // padded_real could be a very huge array; filling it with 0 could be the
-    // slowest part of this routine apart from fft
+    // TODO: optimize?  padded_real could be a very huge array; filling it with
+    // 0 could be the slowest part of this routine apart from fft
     versa_3d_padded_real_array padded_real(pad, 0.0);
     // convert non-padded asu-sized integer mask to padded full-cell
     // sized real array
@@ -454,6 +472,7 @@ namespace mmtbx { namespace masks {
     j_c_b *= cn[2];
     const long j_c_e = ndim[1] * cn[2];
     const data_type *p_asu_x = &mskref(imn);
+    ++layer;
     for(long i=imn[0]; i<imx[0]; ++i, p_asu_x += nynz )
     {
       register long i_c = i % ndim[0];
@@ -473,9 +492,12 @@ namespace mmtbx { namespace masks {
           ++k_c, ++p_asu_z)
         {
           const data_type t = *p_asu_z;
-          MMTBX_ASSERT( t>=0 && t<mark );
-          if( t>0 )
-            prref[ ind_c_y + *k_c ] = t;
+          MMTBX_ASSERT( t.is_valid_for_fft() );
+          if( t.layer() == layer )
+          {
+            MMTBX_ASSERT( t.multiplicity() > 0 && !t.is_outside() );
+            prref[ ind_c_y + *k_c ] = t.multiplicity();
+          }
         }
       }
     }
@@ -527,7 +549,8 @@ namespace mmtbx { namespace masks {
   }
 
 
-  void atom_mask::compute_accessible_surface(const atom_array_t & atoms)
+  void atom_mask::compute_accessible_surface(const atom_array_t & atoms,
+      const shells_array_t  &shells)
   {
     cctbx::uctbx::unit_cell const& unit_cell = this->cell;
     // Severe code duplication: cctbx/maptbx/average_densities.h
@@ -573,6 +596,20 @@ namespace mmtbx { namespace masks {
     const scitbx::vec3<long> sz_asu(data_ref.accessor().all());
     const long sz_yz = sz_asu[1]*sz_asu[2];
     const long asu_off = sz_yz* asu_min[0] + sz_asu[2]* asu_min[1] + asu_min[2];
+    f_t shells_rad = 0.0;
+    for(shells_array_t::const_iterator sh=shells.begin(); sh!=shells.end();
+        ++sh)
+    {
+      if( *sh < 0.0 || (*sh)>=std::numeric_limits<double>::max() )
+      {
+        std::stringstream str;
+        str << "Mask calculation: inapropriate radial shell width = " << *sh;
+        throw error(str.str());
+      }
+      shells_rad += *sh;
+    }
+    MMTBX_ASSERT( shells_rad>=0.0 );
+    shells_array_t layers_sq(shells.size()+2);
     for(std::size_t i_site=0;i_site<atoms.size();i_site++) {
       cctbx::fractional<> const& site = atoms[i_site].first;
       const f_t xfi=static_cast<f_t>(site[0]);
@@ -580,9 +617,21 @@ namespace mmtbx { namespace masks {
       const f_t zfi=static_cast<f_t>(site[2]);
       const f_t atmrad = atoms[i_site].second;
       MMTBX_ASSERT( atmrad >= 0.0 );
-      const f_t cutoff=static_cast<f_t>(atmrad+solvent_radius);
       const f_t radsq=static_cast<f_t>(atmrad*atmrad);
-      const f_t cutoffsq=cutoff*cutoff;
+      const f_t prot_cutoff=static_cast<f_t>(atmrad+solvent_radius);
+      const f_t shell_cutoff = prot_cutoff + shells_rad;
+      MMTBX_ASSERT( layers_sq.size() == shells.size()+2 );
+      MMTBX_ASSERT( layers_sq.size() == n_layers+1 );
+      layers_sq[0] = radsq;
+      layers_sq[1] = prot_cutoff*prot_cutoff;
+      f_t csq = prot_cutoff;
+      for(unsigned ii=0; ii<shells.size(); ++ii)
+      {
+        MMTBX_ASSERT( shells[ii]>=0.0 );
+        csq += shells[ii];
+        layers_sq[2+ii] = csq*csq;
+      }
+      const f_t cutoff=shell_cutoff;
       const f_t coas = cutoff*rp[0];
       int x1box=ifloor(nx*(xfi-coas));
       int x2box=1+iceil(nx*(xfi+coas));
@@ -627,15 +676,14 @@ namespace mmtbx { namespace masks {
           for(register long ind_z=ind_y+z1box; ind_z<ind_z_max; ++ind_z)
           {
             const f_t dist_c  = dist;
-            if( dist_c < cutoffsq )
+            for(unsigned ii=0; ii<layers_sq.size(); ++ii)
             {
-              // ind_z equals scitbx::int3(kx,ky,kz)
-              data_type& dr = data_ref[ind_z];
-              if (dist_c < radsq)
-                dr =  0;
-              else if(dr>0)
+              if( dist_c < layers_sq[ii] )
               {
-                dr = -dr;
+                data_type& dr = data_ref[ind_z];
+                if( dr.layer() > ii )
+                  dr.set(ii, ii==0?0:dr.multiplicity());
+                break;
               }
             }
             dist += s3_incr;
@@ -709,9 +757,9 @@ namespace mmtbx { namespace masks {
       for(std::size_t ilxyz=0;ilxyz<data_size;ilxyz++)
       {
         data_type &d = data_ref[ilxyz];
-        if( d < 0 || d == mark )
-          d = 0;
-        nsolv += d;
+        if( d.is_contact() || d.is_outside() )
+          d.set_zero();
+        nsolv += static_cast<size_t>(d.multiplicity());
       }
       contact_surface_fraction = accessible_surface_fraction
         = static_cast<double>(nsolv) / this->grid_size_1d();
@@ -733,28 +781,30 @@ namespace mmtbx { namespace masks {
     {
       const data_type d_copy = *datacopy_ptr;
       data_type &dr = *data_ptr;
-      if( d_copy == mark || d_copy == -mark )
-        dr = 0;
-      else if( d_copy >0 )
-        n_access += static_cast<size_t>( d_copy );
-      else if( d_copy < 0 )
+      if( d_copy.is_outside() )
+        dr.set_zero();
+      else if( d_copy.is_solvent() )
+        n_access += static_cast<size_t>( d_copy.multiplicity() );
+      else if( d_copy.is_contact() )
       {
         for(std::vector<long>::const_iterator neighbor=neighbors.begin();
           neighbor!=neighbors.end(); ++neighbor)
         {
           // neighbor could be outside the asu, but must be inside the
           // expanded asu
-          if( datacopy_ptr[*neighbor] > 0)
+          if( datacopy_ptr[*neighbor].is_solvent() )
           {
-            dr = -dr;
-            MMTBX_ASSERT( dr > 0 );
+            MMTBX_ASSERT( dr.is_contact() );
+            dr.set_nearest_solvent();
+            MMTBX_ASSERT( dr.multiplicity() > 0 );
+            MMTBX_ASSERT( dr.is_solvent() );
             goto end_of_neighbors_loop;
           }
         }
-        dr = 0;
+        dr.set_zero();
         end_of_neighbors_loop:;
       }
-      nsolv += dr;
+      nsolv += dr.multiplicity();
     } // data_ref array
     // currently data is not padded 3-D array, data.size is correct here
     contact_surface_fraction =  static_cast<double>(nsolv)/this->grid_size_1d();
