@@ -405,7 +405,7 @@ class structure_factor:
           scattering_type_registry=self.scattering_type_registry,
           site_symmetry_table=self.site_symmetry_table,
           i_scatterer=i_scatterer)
-        d2id_cpp = d2sd_cpp.copy_diag()
+        d2id_cpp = d2sd_cpp.copy_curvatures()
         f = 1/min(1, flex.max(flex.abs(d2id)))
         from libtbx.test_utils import approx_equal
         assert approx_equal(d2id_cpp*f, d2id*f)

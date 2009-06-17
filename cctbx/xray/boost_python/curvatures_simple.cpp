@@ -29,7 +29,7 @@ namespace {
           arg_("scattering_type_registry"),
           arg_("site_symmetry_table"),
           arg_("i_scatterer")))
-        .def("copy_diag", &w_t::copy_diag)
+        .def("copy_curvatures", &w_t::copy_curvatures)
       ;
     }
   };
