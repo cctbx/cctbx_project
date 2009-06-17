@@ -5,46 +5,6 @@ from scitbx.array_family import flex
 import cmath
 import math
 
-def scatterer_as_list(self):
-  if (not self.anisotropic_flag):
-    return list(self.site) + [self.u_iso, self.occupancy, self.fp, self.fdp]
-  return list(self.site) + list(self.u_star) \
-       + [self.occupancy, self.fp, self.fdp]
-
-def scatterer_from_list(l):
-  if (len(l) == 7):
-    return xray.scatterer(
-      site=l[:3],
-      u=l[3],
-      occupancy=l[4],
-      scattering_type="?",
-      fp=l[5],
-      fdp=l[6])
-  return xray.scatterer(
-    site=l[:3],
-    u=l[3:9],
-    occupancy=l[9],
-    scattering_type="?",
-    fp=l[10],
-    fdp=l[11])
-
-class gradients:
-
-  def __init__(self, site, u_iso, u_star, occupancy, fp, fdp):
-    self.site = site
-    self.u_iso = u_iso
-    self.u_star = u_star
-    self.anisotropic_flag = (self.u_star is not None)
-    self.occupancy = occupancy
-    self.fp = fp
-    self.fdp = fdp
-
-def pack_gradients(grads):
-  result = []
-  for g in grads:
-    result.extend(scatterer_as_list(g))
-  return result
-
 mtps = -2 * math.pi**2
 
 class structure_factor:
@@ -85,7 +45,6 @@ class structure_factor:
     return result
 
   def df_d_params(self):
-    result = []
     tphkl = 2 * math.pi * matrix.col(self.hkl)
     h,k,l = self.hkl
     d_exp_huh_d_u_star = matrix.col([h**2, k**2, l**2, 2*h*k, 2*h*l, 2*k*l])
@@ -146,14 +105,10 @@ class structure_factor:
           gsm = adp_constraints.gradient_sum_matrix()
           gsm = matrix.rec(elems=gsm, n=gsm.focus())
           d_u_star = gsm * d_u_star
-      result.append(gradients(
-        site=d_site,
-        u_iso=d_u_iso,
-        u_star=d_u_star,
-        occupancy=d_occ,
-        fp=d_fp,
-        fdp=d_fdp))
-    return result
+      if (not scatterer.flags.use_u_aniso()):
+        yield list(d_site) + [d_u_iso, d_occ, d_fp, d_fdp]
+      else:
+        yield list(d_site) + list(d_u_star) + [d_occ, d_fp, d_fdp]
 
   def d2f_d_params(self):
     tphkl = 2 * math.pi * flex.double(self.hkl)
@@ -406,21 +361,21 @@ class structure_factor:
     da, db = target.da(), target.db()
     for d_scatterer in self.df_d_params():
       result.extend(flex.double([da * d.real + db * d.imag
-        for d in scatterer_as_list(d_scatterer)]))
+        for d in d_scatterer]))
     return result
 
   def d2_target_d_params(self, target):
     result = []
     da, db = target.da(), target.db()
     daa, dbb, dab = target.daa(), target.dbb(), target.dab()
-    ds = self.df_d_params()
+    ds = list(self.df_d_params())
     d2s = self.d2f_d_params()
     for di0,d2i in zip(ds, d2s):
       d2ij_iter = iter(d2i)
-      for di in scatterer_as_list(di0):
+      for di in di0:
         row = []
         for dj0 in ds:
-          for dj in scatterer_as_list(dj0):
+          for dj in dj0:
             sum = daa * di.real * dj.real \
                 + dbb * di.imag * dj.imag \
                 + dab * (di.real * dj.imag + di.imag * dj.real)
@@ -454,7 +409,7 @@ class structure_factor:
         f = 1/min(1, flex.max(flex.abs(d2id)))
         from libtbx.test_utils import approx_equal
         assert approx_equal(d2id_cpp*f, d2id*f)
-      for di,d2ij in zip(scatterer_as_list(di0), d2id):
+      for di,d2ij in zip(di0, d2id):
         sum = daa * di.real * di.real \
             + dbb * di.imag * di.imag \
             + dab * 2 * di.real * di.imag \
