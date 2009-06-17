@@ -24,8 +24,8 @@ namespace curvatures_simple {
     vec3<f_t> tphkl;
     af::tiny<f_t, 6> tphkl_outer;
     af::tiny<f_t, 21> d2_exp_huh_d_u_star_u_star;
-    af::tiny<c_t, 12> diag_values;
-    unsigned diag_size;
+    unsigned n_params;
+    af::tiny<c_t, 12> curv_values;
 
     d2f_d_params_diag(
       miller::index<> const& hkl)
@@ -159,7 +159,7 @@ namespace curvatures_simple {
       else {
         i_occ = i_u + adp_constraints->n_independent_params();
       }
-      diag_size = i_occ + 3;
+      n_params = i_occ + 3;
       if (site_constraints != 0) {
         {
           af::const_ref<f_t, af::mat_grid>
@@ -198,23 +198,23 @@ namespace curvatures_simple {
             d2_u_star_u_star.begin());
         }
       }
-      std::fill_n(diag_values.begin(), diag_size, c_t(0,0));
+      std::fill_n(curv_values.begin(), n_params, c_t(0,0));
       scitbx::matrix::packed_u_diagonal(
-        &diag_values[0], d2_site_site.begin(), d2_site_site_n);
+        &curv_values[0], d2_site_site.begin(), d2_site_site_n);
       if (!scatterer.flags.use_u_aniso()) {
-        diag_values[i_u] = d2_u_iso_u_iso;
+        curv_values[i_u] = d2_u_iso_u_iso;
       }
       else {
         scitbx::matrix::packed_u_diagonal(
-          &diag_values[i_u], d2_u_star_u_star.begin(), d2_u_star_u_star_n);
+          &curv_values[i_u], d2_u_star_u_star.begin(), d2_u_star_u_star_n);
       }
     }
 
     af::shared<c_t>
-    copy_diag() const
+    copy_curvatures() const
     {
-      c_t const* d = diag_values.begin();
-      return af::shared<c_t>(d, d+diag_size);
+      c_t const* d = curv_values.begin();
+      return af::shared<c_t>(d, d+n_params);
     }
   };
 
