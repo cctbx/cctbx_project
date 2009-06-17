@@ -105,10 +105,13 @@ class structure_factor:
           gsm = adp_constraints.gradient_sum_matrix()
           gsm = matrix.rec(elems=gsm, n=gsm.focus())
           d_u_star = gsm * d_u_star
+      result = flex.complex_double(d_site)
       if (not scatterer.flags.use_u_aniso()):
-        yield list(d_site) + [d_u_iso, d_occ, d_fp, d_fdp]
+        result.append(d_u_iso)
       else:
-        yield list(d_site) + list(d_u_star) + [d_occ, d_fp, d_fdp]
+        result.extend(flex.complex_double(d_u_star))
+      result.extend(flex.complex_double([d_occ, d_fp, d_fdp]))
+      yield result
 
   def d2f_d_params(self):
     tphkl = 2 * math.pi * flex.double(self.hkl)
@@ -393,11 +396,11 @@ class structure_factor:
     ds = self.df_d_params()
     d2sd = self.d2f_d_params_diag()
     if (exercise_cpp):
-      d2sd_cpp = xray.structure_factors_curvatures_simple_d2f_d_params_diag(
+      gac_cpp = xray.structure_factors_curvatures_simple_grads_and_curvs(
         hkl=self.hkl)
     for i_scatterer,(di0,d2id) in enumerate(zip(ds, d2sd)):
       if (exercise_cpp):
-        d2sd_cpp.compute(
+        gac_cpp.compute(
           space_group=self.space_group,
           hkl=self.hkl,
           d_star_sq=self.d_star_sq,
@@ -405,9 +408,12 @@ class structure_factor:
           scattering_type_registry=self.scattering_type_registry,
           site_symmetry_table=self.site_symmetry_table,
           i_scatterer=i_scatterer)
-        d2id_cpp = d2sd_cpp.copy_curvatures()
-        f = 1/min(1, flex.max(flex.abs(d2id)))
+        di0_cpp = gac_cpp.copy_gradients()
+        d2id_cpp = gac_cpp.copy_curvatures()
         from libtbx.test_utils import approx_equal
+        f = 1/min(1, flex.max(flex.abs(di0)))
+        assert approx_equal(di0_cpp*f, di0*f)
+        f = 1/min(1, flex.max(flex.abs(d2id)))
         assert approx_equal(d2id_cpp*f, d2id*f)
       for di,d2ij in zip(di0, d2id):
         sum = daa * di.real * di.real \
