@@ -3,6 +3,8 @@
 #include <cctbx/xray/curvatures_simple.h>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
 
 namespace cctbx { namespace xray { namespace structure_factors {
 namespace curvatures_simple {
@@ -10,27 +12,41 @@ namespace boost_python {
 
 namespace {
 
-  struct grads_and_curvs_wrappers
+  struct grads_and_curvs_target_wrappers
   {
-    typedef grads_and_curvs<> w_t;
+    typedef grads_and_curvs_target<> w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
       class_<w_t>(
-          "structure_factors_curvatures_simple_grads_and_curvs", no_init)
-        .def(init<cctbx::miller::index<> const&>((arg_("hkl"))))
-        .def("compute", &w_t::compute<scatterer<> >, (
-          arg_("space_group"),
-          arg_("hkl"),
-          arg_("d_star_sq"),
-          arg_("scatterers"),
-          arg_("scattering_type_registry"),
-          arg_("site_symmetry_table"),
-          arg_("i_scatterer")))
-        .def("copy_gradients", &w_t::copy_gradients)
-        .def("copy_curvatures", &w_t::copy_curvatures)
+          "structure_factors_curvatures_simple_grads_and_curvs_target",
+          no_init)
+        .def(init<
+          uctbx::unit_cell const&,
+          sgtbx::space_group const&,
+          af::const_ref<scatterer<> > const&,
+          xray::scattering_type_registry const&,
+          sgtbx::site_symmetry_table const&,
+          af::const_ref<miller::index<> > const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&>((
+            arg_("unit_cell"),
+            arg_("space_group"),
+            arg_("scatterers"),
+            arg_("scattering_type_registry"),
+            arg_("site_symmetry_table"),
+            arg_("miller_indices"),
+            arg_("da_db"),
+            arg_("daa"),
+            arg_("dbb"),
+            arg_("dab"))))
+        .add_property("grads", make_getter(&w_t::grads, rbv()))
+        .add_property("curvs", make_getter(&w_t::curvs, rbv()))
       ;
     }
   };
@@ -44,7 +60,7 @@ namespace boost_python {
   void wrap_curvatures_simple()
   {
     structure_factors::curvatures_simple::boost_python
-      ::grads_and_curvs_wrappers::wrap();
+      ::grads_and_curvs_target_wrappers::wrap();
   }
 
 }}} // namespace cctbx::xray::boost_python
