@@ -323,14 +323,10 @@ namespace curvatures_simple {
       sgtbx::site_symmetry_table const& site_symmetry_table,
       af::const_ref<miller::index<> > const& miller_indices,
       af::const_ref<c_t> const& da_db,
-      af::const_ref<f_t> const& daa,
-      af::const_ref<f_t> const& dbb,
-      af::const_ref<f_t> const& dab)
+      af::const_ref<scitbx::vec3<f_t> > const& daa_dbb_dab)
     {
       CCTBX_ASSERT(da_db.size() == miller_indices.size());
-      CCTBX_ASSERT(daa.size() == miller_indices.size());
-      CCTBX_ASSERT(dbb.size() == miller_indices.size());
-      CCTBX_ASSERT(dab.size() == miller_indices.size());
+      CCTBX_ASSERT(daa_dbb_dab.size() == miller_indices.size());
       unsigned n_scatterers = boost::numeric_cast<unsigned>(scatterers.size());
       //
       unsigned n_params_total = 0;
@@ -370,9 +366,9 @@ namespace curvatures_simple {
         f_t d_star_sq = unit_cell.d_star_sq(hkl);
         f_t dah = da_db[ih].real();
         f_t dbh = da_db[ih].imag();
-        f_t daah = daa[ih];
-        f_t dbbh = dbb[ih];
-        f_t dabh = dab[ih];
+        f_t daah = daa_dbb_dab[ih][0];
+        f_t dbbh = daa_dbb_dab[ih][1];
+        f_t dabh = daa_dbb_dab[ih][2];
         grads_and_curvs_hkl_scatterer<FloatType> gachs(hkl);
         unsigned i_param_total = 0;
         for(unsigned i_scatterer=0;i_scatterer<n_scatterers;i_scatterer++) {

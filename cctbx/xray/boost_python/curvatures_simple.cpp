@@ -32,9 +32,7 @@ namespace {
           sgtbx::site_symmetry_table const&,
           af::const_ref<miller::index<> > const&,
           af::const_ref<std::complex<double> > const&,
-          af::const_ref<double> const&,
-          af::const_ref<double> const&,
-          af::const_ref<double> const&>((
+          af::const_ref<scitbx::vec3<double> > const&>((
             arg_("unit_cell"),
             arg_("space_group"),
             arg_("scatterers"),
@@ -42,9 +40,7 @@ namespace {
             arg_("site_symmetry_table"),
             arg_("miller_indices"),
             arg_("da_db"),
-            arg_("daa"),
-            arg_("dbb"),
-            arg_("dab"))))
+            arg_("daa_dbb_dab"))))
         .add_property("grads", make_getter(&w_t::grads, rbv()))
         .add_property("curvs", make_getter(&w_t::curvs, rbv()))
       ;
