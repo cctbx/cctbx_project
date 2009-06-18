@@ -453,16 +453,11 @@ class structure_factors:
 
   def d2_target_d_params_diag_cpp(self, f_obs, target_type):
     da_db = flex.complex_double()
-    daa = flex.double()
-    dbb = flex.double()
-    dab = flex.double()
+    daa_dbb_dab = flex.vec3_double()
     for hkl,obs in zip(self.miller_indices, f_obs.data()):
       sf = structure_factor(xray_structure=self.xray_structure, hkl=hkl)
       target = target_type(obs=obs, calc=sf.f())
       da_db.append(complex(target.da(), target.db()))
-      daa.append(target.daa())
-      dbb.append(target.dbb())
-      dab.append(target.dab())
+      daa_dbb_dab.append((target.daa(), target.dbb(), target.dab()))
     return self.xray_structure.grads_and_curvs_target_simple(
-      miller_indices=f_obs.indices(),
-      da_db=da_db, daa=daa, dbb=dbb, dab=dab)
+      miller_indices=f_obs.indices(), da_db=da_db, daa_dbb_dab=daa_dbb_dab)
