@@ -3,6 +3,13 @@ import sys, os
 
 manual_date_stamp = 20080811
 
+def _STOP(exit_status=0):
+  import sys
+  f = sys._getframe(1)
+  print "STOP: %s(%d)" % (f.f_code.co_filename, f.f_lineno)
+  sys.exit(exit_status)
+__builtins__["STOP"] = _STOP
+
 class AutoType(object):
 
   def __str__(self): return "Auto"
