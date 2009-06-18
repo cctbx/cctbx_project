@@ -17,10 +17,11 @@ namespace curvatures_simple {
     mtps = -scitbx::constants::two_pi * scitbx::constants::pi;
 
   template <typename FloatType=double>
-  struct grads_and_curvs
+  struct grads_and_curvs_hkl_scatterer
   {
     typedef FloatType f_t;
     typedef std::complex<f_t> c_t;
+
     vec3<f_t> tphkl;
     af::tiny<f_t, 6> tphkl_outer;
     af::tiny<f_t, 6> d_exp_huh_d_u_star;
@@ -29,7 +30,7 @@ namespace curvatures_simple {
     af::tiny<c_t, 12> grad_values;
     af::tiny<c_t, 12> curv_values;
 
-    grads_and_curvs(
+    grads_and_curvs_hkl_scatterer(
       miller::index<> const& hkl)
     :
       tphkl(hkl)
@@ -66,7 +67,8 @@ namespace curvatures_simple {
       unsigned i_scatterer)
     {
       ScattererType const& scatterer = scatterers[i_scatterer];
-      CCTBX_ASSERT(scatterer.flags.use_u_iso()!=scatterer.flags.use_u_aniso());
+      CCTBX_ASSERT(
+        scatterer.flags.use_u_iso() != scatterer.flags.use_u_aniso());
       sgtbx::site_constraints<> const* site_constraints = 0;
       sgtbx::tensor_rank_2::constraints<> const* adp_constraints = 0;
       if (site_symmetry_table.is_special_position(i_scatterer)) {
@@ -297,6 +299,100 @@ namespace curvatures_simple {
     {
       c_t const* v = curv_values.begin();
       return af::shared<c_t>(v, v+n_params);
+    }
+  };
+
+  template <typename FloatType=double>
+  struct grads_and_curvs_target
+  {
+    typedef FloatType f_t;
+    typedef std::complex<f_t> c_t;
+
+    af::shared<f_t> grads;
+    af::shared<f_t> curvs;
+
+    template <typename ScattererType>
+    grads_and_curvs_target(
+      uctbx::unit_cell const& unit_cell,
+      sgtbx::space_group const& space_group,
+      af::const_ref<ScattererType> const& scatterers,
+      xray::scattering_type_registry const& scattering_type_registry,
+      sgtbx::site_symmetry_table const& site_symmetry_table,
+      af::const_ref<miller::index<> > const& miller_indices,
+      af::const_ref<c_t> const& da_db,
+      af::const_ref<f_t> const& daa,
+      af::const_ref<f_t> const& dbb,
+      af::const_ref<f_t> const& dab)
+    {
+      CCTBX_ASSERT(da_db.size() == miller_indices.size());
+      CCTBX_ASSERT(daa.size() == miller_indices.size());
+      CCTBX_ASSERT(dbb.size() == miller_indices.size());
+      CCTBX_ASSERT(dab.size() == miller_indices.size());
+      unsigned n_scatterers = boost::numeric_cast<unsigned>(scatterers.size());
+      //
+      unsigned n_params_total = 0;
+      for(unsigned i_scatterer=0;i_scatterer<n_scatterers;i_scatterer++) {
+        ScattererType const& scatterer = scatterers[i_scatterer];
+        CCTBX_ASSERT(
+          scatterer.flags.use_u_iso() != scatterer.flags.use_u_aniso());
+        if (!site_symmetry_table.is_special_position(i_scatterer)) {
+          n_params_total += 3;
+          if (!scatterer.flags.use_u_aniso()) {
+            n_params_total += 1;
+          }
+          else {
+            n_params_total += 6;
+          }
+        }
+        else {
+          sgtbx::site_symmetry_ops const&
+            site_symmetry_ops = site_symmetry_table.get(i_scatterer);
+          n_params_total += site_symmetry_ops.site_constraints()
+            .n_independent_params();
+          if (!scatterer.flags.use_u_aniso()) {
+            n_params_total += 1;
+          }
+          else {
+            n_params_total += site_symmetry_ops.adp_constraints()
+              .n_independent_params();
+          }
+        }
+        n_params_total += 3; // occ, fp, fdp
+      }
+      grads.resize(n_params_total, 0);
+      curvs.resize(n_params_total, 0);
+      //
+      for(std::size_t ih=0;ih<miller_indices.size();ih++) {
+        miller::index<> const& hkl = miller_indices[ih];
+        f_t d_star_sq = unit_cell.d_star_sq(hkl);
+        f_t dah = da_db[ih].real();
+        f_t dbh = da_db[ih].imag();
+        f_t daah = daa[ih];
+        f_t dbbh = dbb[ih];
+        f_t dabh = dab[ih];
+        grads_and_curvs_hkl_scatterer<FloatType> gachs(hkl);
+        unsigned i_param_total = 0;
+        for(unsigned i_scatterer=0;i_scatterer<n_scatterers;i_scatterer++) {
+          gachs.compute(
+            space_group, hkl, d_star_sq,
+            scatterers, scattering_type_registry, site_symmetry_table,
+            i_scatterer);
+          for(unsigned ip=0;ip<gachs.n_params;ip++) {
+            c_t const& g = gachs.grad_values[ip];
+            c_t const& c = gachs.curv_values[ip];
+            grads[i_param_total]
+              += dah * g.real() + dbh * g.imag();
+            curvs[i_param_total]
+              += daah * g.real() * g.real()
+              +  dbbh * g.imag() * g.imag()
+              +  dabh * 2 * g.real() * g.imag()
+              +  dah * c.real()
+              +  dbh * c.imag();
+            i_param_total++;
+          }
+        }
+        CCTBX_ASSERT(i_param_total == n_params_total);
+      }
     }
   };
 

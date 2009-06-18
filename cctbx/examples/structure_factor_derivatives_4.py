@@ -404,31 +404,6 @@ class structure_factor:
         result.append(sum)
     return result
 
-  def d2_target_d_params_diag_cpp(self, target):
-    result = flex.double()
-    da, db = target.da(), target.db()
-    daa, dbb, dab = target.daa(), target.dbb(), target.dab()
-    gac = xray.structure_factors_curvatures_simple_grads_and_curvs(
-      hkl=self.hkl)
-    for i_scatterer in xrange(self.scatterers.size()):
-      gac.compute(
-        space_group=self.space_group,
-        hkl=self.hkl,
-        d_star_sq=self.d_star_sq,
-        scatterers=self.scatterers,
-        scattering_type_registry=self.scattering_type_registry,
-        site_symmetry_table=self.site_symmetry_table,
-        i_scatterer=i_scatterer)
-      di0 = gac.copy_gradients()
-      d2id = gac.copy_curvatures()
-      for di,d2ij in zip(di0, d2id):
-        sum = daa * di.real * di.real \
-            + dbb * di.imag * di.imag \
-            + dab * 2 * di.real * di.imag \
-            + da * d2ij.real + db * d2ij.imag
-        result.append(sum)
-    return result
-
 class structure_factors:
 
   def __init__(self, xray_structure, miller_set):
@@ -477,11 +452,27 @@ class structure_factors:
     return result
 
   def d2_target_d_params_diag_cpp(self, f_obs, target_type):
-    result = None
+    da_db = flex.complex_double()
+    daa = flex.double()
+    dbb = flex.double()
+    dab = flex.double()
     for hkl,obs in zip(self.miller_indices, f_obs.data()):
       sf = structure_factor(xray_structure=self.xray_structure, hkl=hkl)
       target = target_type(obs=obs, calc=sf.f())
-      contribution = sf.d2_target_d_params_diag_cpp(target=target)
-      if (result is None): result = contribution
-      else:                result += contribution
-    return result
+      da_db.append(complex(target.da(), target.db()))
+      daa.append(target.daa())
+      dbb.append(target.dbb())
+      dab.append(target.dab())
+    xs = self.xray_structure
+    return xray \
+      .structure_factors_curvatures_simple_grads_and_curvs_target(
+        unit_cell=xs.unit_cell(),
+        space_group=xs.space_group(),
+        scatterers=xs.scatterers(),
+        scattering_type_registry=xs.scattering_type_registry(),
+        site_symmetry_table=xs.site_symmetry_table(),
+        miller_indices=f_obs.indices(),
+        da_db=da_db,
+        daa=daa,
+        dbb=dbb,
+        dab=dab)
