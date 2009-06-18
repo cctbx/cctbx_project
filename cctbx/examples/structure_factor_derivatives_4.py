@@ -463,16 +463,6 @@ class structure_factors:
       daa.append(target.daa())
       dbb.append(target.dbb())
       dab.append(target.dab())
-    xs = self.xray_structure
-    return xray \
-      .structure_factors_curvatures_simple_grads_and_curvs_target(
-        unit_cell=xs.unit_cell(),
-        space_group=xs.space_group(),
-        scatterers=xs.scatterers(),
-        scattering_type_registry=xs.scattering_type_registry(),
-        site_symmetry_table=xs.site_symmetry_table(),
-        miller_indices=f_obs.indices(),
-        da_db=da_db,
-        daa=daa,
-        dbb=dbb,
-        dab=dab)
+    return self.xray_structure.grads_and_curvs_target_simple(
+      miller_indices=f_obs.indices(),
+      da_db=da_db, daa=daa, dbb=dbb, dab=dab)

@@ -1057,6 +1057,20 @@ class structure(crystal.special_position_settings):
         if(sc.flags.grad_fdp()      ): result_ +=1
     return result_
 
+  def grads_and_curvs_target_simple(self,
+        miller_indices, da_db, daa, dbb, dab):
+    return ext.structure_factors_curvatures_simple_grads_and_curvs_target(
+      unit_cell=self.unit_cell(),
+      space_group=self.space_group(),
+      scatterers=self.scatterers(),
+      scattering_type_registry=self.scattering_type_registry(),
+      site_symmetry_table=self.site_symmetry_table(),
+      miller_indices=miller_indices,
+      da_db=da_db,
+      daa=daa,
+      dbb=dbb,
+      dab=dab)
+
   def asu_mappings(self, buffer_thickness, asu_is_inside_epsilon=None):
     result = crystal.symmetry.asu_mappings(self,
       buffer_thickness=buffer_thickness,
