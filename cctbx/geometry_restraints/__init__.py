@@ -366,19 +366,16 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
       low_cutoff = high_cutoff
     return histogram
 
-  def show_sorted(self,
+  # XXX: Nat was here - I need this data for the GUI
+  def get_sorted(self,
         by_value,
         sites_cart,
         site_labels=None,
-        f=None,
-        prefix="",
         max_items=None):
     assert by_value in ["residual", "delta"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
-    if (f is None): f = sys.stdout
-    print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
-    if (self.n_total() == 0): return
-    if (max_items is not None and max_items <= 0): return
+    if (self.n_total() == 0): return None, None, None
+    if (max_items is not None and max_items <= 0): return None, None, None
     if (by_value == "residual"):
       data_to_sort = self.residuals(sites_cart=sites_cart)
     elif (by_value == "delta"):
@@ -394,7 +391,7 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
       asu_mappings = self.asu_mappings()
     smallest_distance_model = None
     n_simple = self.simple.size()
-    print >> f, "%sSorted by %s:" % (prefix, by_value)
+    sorted_table = []
     for i_proxy in i_proxies_sorted:
       if (i_proxy < n_simple):
         proxy = self.simple[i_proxy]
@@ -413,36 +410,63 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
           sites_cart=sites_cart,
           asu_mappings=asu_mappings,
           proxy=proxy)
-      s = "bond"
+      labels = []
       for i in [i_seq, j_seq]:
         if (site_labels is None): l = str(i)
         else:                     l = site_labels[i]
-        print >> f, "%s%4s %s" % (prefix, s, l)
+        labels.append(l)
+      sorted_table.append(
+        (labels, restraint.distance_ideal, restraint.distance_model,
+         restraint.slack, restraint.delta,
+         weight_as_sigma(weight=restraint.weight), restraint.weight,
+         restraint.residual(), sym_op_j, rt_mx))
+      if (smallest_distance_model is None
+          or smallest_distance_model > restraint.distance_model):
+        smallest_distance_model = restraint.distance_model
+    n_not_shown = data_to_sort.size() - i_proxies_sorted.size()
+    return sorted_table, smallest_distance_model, n_not_shown
+
+  # XXX: This now outputs the results of get_sorted(...)
+  def show_sorted(self,
+        by_value,
+        sites_cart,
+        site_labels=None,
+        f=None,
+        prefix="",
+        max_items=None) :
+    sorted_table, smallest_distance_model, n_not_shown = self.get_sorted(
+        by_value=by_value,
+        sites_cart=sites_cart,
+        site_labels=site_labels,
+        max_items=max_items)
+    print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
+    if sorted_table is None :
+      return
+    if (f is None): f = sys.stdout
+    print >> f, "%sSorted by %s:" % (prefix, by_value)
+    for restraint_info in sorted_table :
+      (labels, distance_ideal, distance_model, slack, delta, sigma, weight,
+       residual, sym_op_j, rt_mx) = restraint_info
+      s = "bond"
+      for label in labels :
+        print >> f, "%s%4s %s" % (prefix, s, label)
         s = ""
-      if (restraint.slack == 0):
+      if (slack == 0):
         l = ""
         v = ""
       else:
         l = "  slack"
-        v = " %6.3f" % restraint.slack
+        v = " %6.3f" % slack
       print >> f, "%s  ideal  model%s  delta    sigma   weight residual%s" % (
         prefix, l, sym_op_j)
       print >> f, "%s  %5.3f %6.3f%s %6.3f %6.2e %6.2e %6.2e" % (
-        prefix,
-        restraint.distance_ideal, restraint.distance_model, v,
-        restraint.delta,
-        weight_as_sigma(weight=restraint.weight), restraint.weight,
-        restraint.residual()),
-      if (smallest_distance_model is None
-          or smallest_distance_model > restraint.distance_model):
-        smallest_distance_model = restraint.distance_model
+        prefix, distance_ideal, distance_model, v, delta,
+        sigma, weight, residual),
       if (rt_mx is not None):
         print >> f, rt_mx,
       print >> f
-    n_not_shown = data_to_sort.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
-    return smallest_distance_model
 
 class _nonbonded_sorted_asu_proxies(boost.python.injector,
         nonbonded_sorted_asu_proxies):
@@ -543,6 +567,10 @@ class _angle(boost.python.injector, angle):
       O.angle_ideal, O.angle_model, O.delta,
       weight_as_sigma(weight=O.weight), O.weight, O.residual())
 
+  def _get_sorted_item (O) :
+    return [O.angle_ideal, O.angle_model, O.delta,
+            weight_as_sigma(weight=O.weight), O.weight, O.residual()]
+
 class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
 
   def deltas(self, sites_cart, unit_cell=None):
@@ -585,6 +613,18 @@ class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
         item_label="angle",
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
+
+  def get_sorted (self,
+        by_value,
+        sites_cart,
+        site_labels=None,
+        unit_cell=None,
+        max_items=None):
+    return _get_sorted_impl(O=self,
+        proxy_type=angle,
+        by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
+        site_labels=site_labels, max_items=max_items,
+        get_restraints_only=False)
 
 class _dihedral(boost.python.injector, dihedral):
 
@@ -890,28 +930,18 @@ def _show_histogram_of_deltas_impl(O,
       low_cutoff = high_cutoff
     return histogram
 
-def _show_sorted_impl(O,
+def _get_sorted_impl(O,
         proxy_type,
-        proxy_label,
-        item_label,
         by_value,
         unit_cell,
         sites_cart,
         site_labels,
-        f,
-        prefix,
-        max_items):
+        max_items,
+        get_restraints_only=True):
   assert by_value in ["residual", "delta"]
   assert site_labels is None or len(site_labels) == sites_cart.size()
-  if (f is None): f = sys.stdout
-  print >> f, "%s%s restraints: %d" % (prefix, proxy_label, O.size())
-  if (O.size() == 0): return
-  if (proxy_type is dihedral):
-    n_harmonic = O.count_harmonic()
-    n_sinusoidal = O.size() - n_harmonic
-    print >> f, prefix+"  sinusoidal: %d" % n_sinusoidal
-    print >> f, prefix+"    harmonic: %d" % n_harmonic
-  if (max_items is not None and max_items <= 0): return
+  if (O.size() == 0): return None, None
+  if (max_items is not None and max_items <= 0): return None, None
   if (by_value == "residual"):
     if unit_cell is None:
       data_to_sort = O.residuals(sites_cart=sites_cart)
@@ -928,11 +958,10 @@ def _show_sorted_impl(O,
   i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
   if (max_items is not None):
     i_proxies_sorted = i_proxies_sorted[:max_items]
-  item_label_blank = " " * len(item_label)
-  print >> f, "%sSorted by %s:" % (prefix, by_value)
+  sorted_table = []
   for i_proxy in i_proxies_sorted:
     proxy = O[i_proxy]
-    s = item_label
+    labels = []
     for n, i_seq in enumerate(proxy.i_seqs):
       if (site_labels is None): l = str(i_seq)
       else:                     l = site_labels[i_seq]
@@ -940,8 +969,7 @@ def _show_sorted_impl(O,
         sym_op = proxy.sym_ops[n]
         if not sym_op.is_unit_mx():
           l += "  %s" %sym_op.as_xyz()
-      print >> f, "%s%s %s" % (prefix, s, l)
-      s = item_label_blank
+      labels.append(l)
     if unit_cell is None:
       restraint = proxy_type(
         sites_cart=sites_cart,
@@ -951,8 +979,50 @@ def _show_sorted_impl(O,
         unit_cell=unit_cell,
         sites_cart=sites_cart,
         proxy=proxy)
-    restraint._show_sorted_item(f=f, prefix=prefix)
+    if get_restraints_only :
+      sorted_table.append((labels, restraint))
+    else :
+      restraint_info = restraint._get_sorted_item()
+      sorted_table.append([labels] + restraint_info)
   n_not_shown = O.size() - i_proxies_sorted.size()
+  return sorted_table, n_not_shown
+
+def _show_sorted_impl(O,
+        proxy_type,
+        proxy_label,
+        item_label,
+        by_value,
+        unit_cell,
+        sites_cart,
+        site_labels,
+        f,
+        prefix,
+        max_items):
+  if (f is None): f = sys.stdout
+  sorted_table, n_not_shown = _get_sorted_impl(O,
+        proxy_type=proxy_type,
+        by_value=by_value,
+        unit_cell=unit_cell,
+        sites_cart=sites_cart,
+        site_labels=site_labels,
+        max_items=max_items,
+        get_restraints_only=True)
+  print >> f, "%s%s restraints: %d" % (prefix, proxy_label, O.size())
+  if (O.size() == 0): return
+  if (proxy_type is dihedral):
+    n_harmonic = O.count_harmonic()
+    n_sinusoidal = O.size() - n_harmonic
+    print >> f, prefix+"  sinusoidal: %d" % n_sinusoidal
+    print >> f, prefix+"    harmonic: %d" % n_harmonic
+  if (max_items is not None and max_items <= 0): return
+  item_label_blank = " " * len(item_label)
+  print >> f, "%sSorted by %s:" % (prefix, by_value)
+  for (labels, restraint) in sorted_table :
+    s = item_label
+    for l in labels :
+      print >> f, "%s%s %s" % (prefix, s, l)
+      s = item_label_blank
+    restraint._show_sorted_item(f=f, prefix=prefix)
   if (n_not_shown != 0):
     print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
 
