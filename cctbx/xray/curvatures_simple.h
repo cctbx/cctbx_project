@@ -125,29 +125,33 @@ namespace curvatures_simple {
           dw = std::exp(mtps * huh);
         }
         c_t e(std::cos(alpha), std::sin(alpha));
+        c_t w_dw_e = w * dw * e;
+        c_t w_dw_ff_e = w_dw_e * ff;
         {
           mat3<f_t> site_gtmx = r.transpose();
           d_site += af::tiny<c_t, 3>(site_gtmx * tphkl)
-                  * (w * dw * ff * e * c_t(0,1));
-          af::tiny<c_t, 9> ab;
-          af::tiny<c_t, 6> abat;
+                  * (w_dw_ff_e * c_t(0,1));
+          af::tiny<f_t, 9> ab;
+          af::tiny<f_t, 6> abat;
           scitbx::matrix::multiply_packed_u_multiply_lhs_transpose(
             site_gtmx.begin(),
             tphkl_outer.begin(),
             3, 3,
             ab.begin(),
             abat.begin());
-          abat *= (w * dw * ff * e * c_t(-1,0));
-          d2_site_site += abat;
+          d2_site_site += af::tiny<c_t, 6>(abat) * (w_dw_ff_e * c_t(-1,0));
         }
         if (!scatterer.flags.use_u_aniso()) {
-          d_u_iso += w * dw * ff * e * mtps * d_star_sq;
-          d2_u_iso_u_iso += w * dw * ff * e * scitbx::fn::pow2(mtps*d_star_sq);
+          f_t mtps_d_star_sq = mtps * d_star_sq;
+          c_t term = w_dw_ff_e * mtps_d_star_sq;
+          d_u_iso += term;
+          d2_u_iso_u_iso += term * mtps_d_star_sq;
         }
         else {
           af::tiny<f_t, 36> u_star_gtmx;
           scitbx::matrix::tensor_rank_2::gradient_transform_matrix(
             u_star_gtmx.begin(), r.begin());
+          c_t w_dw_ff_e_mtps = w_dw_ff_e * mtps;
           {
             af::tiny<f_t, 6> ab;
             scitbx::matrix::multiply(
@@ -155,8 +159,7 @@ namespace curvatures_simple {
               d_exp_huh_d_u_star.begin(),
               6, 6, 1,
               ab.begin());
-            d_u_star += af::tiny<c_t, 6>(ab)
-                      * (w * dw * ff * e * mtps);
+            d_u_star += af::tiny<c_t, 6>(ab) * w_dw_ff_e_mtps;
           }
           {
             af::tiny<f_t, 36> ab;
@@ -168,12 +171,12 @@ namespace curvatures_simple {
               ab.begin(),
               abat.begin());
             d2_u_star_u_star += af::tiny<c_t, 21>(abat)
-                              * (w * dw * ff * e * mtps*mtps);
+                              * (w_dw_ff_e_mtps*mtps);
           }
         }
         d_occ += wwo * dw * ff * e;
-        d_fp += w * dw * e;
-        d_fdp += w * dw * e * c_t(0,1);
+        d_fp += w_dw_e;
+        d_fdp += w_dw_e * c_t(0,1);
       }
       //
       unsigned i_u;
