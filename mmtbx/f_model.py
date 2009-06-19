@@ -1981,13 +1981,14 @@ class phaser_sad_target_functor(object):
     self.refine_sad_object.set_f_calc(f_calc=f_calc)
     rso = self.refine_sad_object
     target_work = rso.functional(use_working_set=True)
-    gradients_work = rso.gradients()
+    da_db, daa_dbb_dab = rso.derivatives(curvs=True)
     target_test = rso.functional(use_working_set=False)
     return xray.targets_common_results(
       target_per_reflection=flex.double(),
       target_work=target_work,
       target_test=target_test,
-      gradients_work=gradients_work.data())
+      gradients_work=da_db.data(),
+      curvatures_work=daa_dbb_dab.data())
 
 class target_functor(object):
 

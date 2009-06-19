@@ -30,10 +30,22 @@ namespace {
             arg_("target_work"),
             arg_("target_test"),
             arg_("gradients_work"))))
+        .def(init<
+          af::shared<double> const&,
+          double,
+          boost::optional<double> const&,
+          af::shared<std::complex<double> > const&,
+          af::shared<scitbx::vec3<double> > const&>((
+            arg_("target_per_reflection"),
+            arg_("target_work"),
+            arg_("target_test"),
+            arg_("gradients_work"),
+            arg_("curvatures_work"))))
         .def("target_per_reflection", &w_t::target_per_reflection, ccr())
         .def("target_work", &w_t::target_work)
         .def("target_test", &w_t::target_test)
         .def("gradients_work", &w_t::gradients_work, ccr())
+        .def("curvatures_work", &w_t::curvatures_work, ccr())
       ;
     }
   };
