@@ -27,7 +27,7 @@ class least_squares(object):
       weights=self.weights,
       r_free_flags=self.r_free_flags.data(),
       f_calc=f_calc.data(),
-      compute_gradients=compute_gradients,
+      compute_derivatives=int(compute_gradients),
       scale_factor=self.scale_factor)
 
 class max_like(object):

@@ -67,7 +67,7 @@ namespace {
           af::const_ref<double> const&,
           af::const_ref<bool> const&,
           af::const_ref< std::complex<double> > const&,
-          bool const&,
+          int,
           double>((
             arg_("apply_scale_to_f_calc"),
             arg_("compute_scale_using_all_data"),
@@ -75,7 +75,7 @@ namespace {
             arg_("weights"),
             arg_("r_free_flags"),
             arg_("f_calc"),
-            arg_("compute_gradients"),
+            arg_("compute_derivatives"),
             arg_("scale_factor"))))
         .def("apply_scale_to_f_calc", &w_t::apply_scale_to_f_calc)
         .def("compute_scale_using_all_data",&w_t::compute_scale_using_all_data)
