@@ -1565,7 +1565,7 @@ def exercise_targets_ls_with_scale():
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_gradients=False,
+    compute_derivatives=0,
     scale_factor=0)
   assert ls.apply_scale_to_f_calc()
   assert approx_equal(ls.scale_factor(), 1)
@@ -1581,7 +1581,7 @@ def exercise_targets_ls_with_scale():
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_gradients=False,
+    compute_derivatives=0,
     scale_factor=2.0)
   assert approx_equal(ls.scale_factor(), 2.0)
   assert approx_equal(ls.target_per_reflection(), [1,4,9,16,25])
@@ -1599,7 +1599,7 @@ def exercise_targets_ls_with_scale():
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_gradients=True,
+    compute_derivatives=1,
     scale_factor=0)
   assert approx_equal(ls.scale_factor(), 50./134.)
   assert approx_equal(ls.target_work(), 0.0671641791)
@@ -1613,7 +1613,7 @@ def exercise_targets_ls_with_scale():
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_gradients=True,
+    compute_derivatives=1,
     scale_factor=2.0)
   assert approx_equal(ls.scale_factor(), 2.0)
   assert approx_equal(ls.target_work(),17.8)
@@ -1630,7 +1630,7 @@ def exercise_targets_ls_with_scale():
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_gradients=True,
+    compute_derivatives=1,
     scale_factor=0)
   assert approx_equal(ls.scale_factor(), 0.4773772552)
   assert approx_equal(ls.target_work(), 0.2023883467)
@@ -1650,8 +1650,8 @@ def exercise_targets_ls_with_scale():
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_gradients=False,
-    scale_factor           = 0)
+    compute_derivatives=0,
+    scale_factor=0)
   assert not ls.apply_scale_to_f_calc()
   assert ls.compute_scale_using_all_data()
   assert approx_equal(ls.scale_factor(), 1)
@@ -1665,7 +1665,7 @@ def exercise_targets_ls_with_scale():
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_gradients=False,
+    compute_derivatives=0,
     scale_factor=2.0)
   assert approx_equal(ls.scale_factor(), 2.0)
   assert approx_equal(ls.target_work(),1.0)
@@ -1682,7 +1682,7 @@ def exercise_targets_ls_with_scale():
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_gradients=True,
+    compute_derivatives=1,
     scale_factor=0)
   assert approx_equal(ls.scale_factor(), 50./20.)
   assert approx_equal(ls.target_work(), 0.45)
@@ -1696,7 +1696,7 @@ def exercise_targets_ls_with_scale():
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_gradients =True,
+    compute_derivatives=1,
     scale_factor=2.0)
   assert approx_equal(ls.scale_factor(), 2.0)
   assert approx_equal(ls.target_work(),0.7)
@@ -1713,7 +1713,7 @@ def exercise_targets_ls_with_scale():
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_gradients=True,
+    compute_derivatives=1,
     scale_factor=0)
   scale = flex.sum(w*flex.abs(f_calc)*f_obs)/flex.sum(w*f_obs*f_obs)
   assert approx_equal(ls.scale_factor(), 1.6708203932)
@@ -1734,7 +1734,7 @@ def exercise_targets_ls_with_scale():
     weights=w,
     r_free_flags=r_free_flags,
     f_calc=f_calc,
-    compute_gradients=True,
+    compute_derivatives=1,
     scale_factor=0)
   assert not ls.compute_scale_using_all_data()
   assert approx_equal(ls.scale_factor(), 0.785714285714)
@@ -1752,7 +1752,7 @@ def exercise_targets_ls_with_scale():
     weights=w,
     r_free_flags=r_free_flags,
     f_calc=flex.complex_double(5), # all f_calc 0
-    compute_gradients=True,
+    compute_derivatives=1,
     scale_factor=1)
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target_work(), 1)

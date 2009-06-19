@@ -28,8 +28,8 @@ namespace targets {
 
       common_results(std::size_t n_refl)
       :
-        target_work_(0),
-        target_per_reflection_(n_refl, af::init_functor_null<double>())
+        target_per_reflection_(n_refl, af::init_functor_null<double>()),
+        target_work_(0)
       {}
 
       common_results(
@@ -113,7 +113,7 @@ namespace targets {
         af::const_ref<double> const& weights,
         af::const_ref<bool> const& r_free_flags,
         af::const_ref<std::complex<double> > const& f_calc,
-        bool compute_gradients,
+        int compute_derivatives,
         double scale_factor)
       :
         common_results(f_obs.size()),
@@ -124,6 +124,7 @@ namespace targets {
         CCTBX_ASSERT(r_free_flags.size() == 0
                   || r_free_flags.size() == f_obs.size());
         CCTBX_ASSERT(f_calc.size() == f_obs.size());
+        CCTBX_ASSERT(compute_derivatives >= 0 && compute_derivatives <= 2);
         CCTBX_ASSERT(scale_factor >= 0);
         const bool* rff = r_free_flags.begin();
         if (!rff) compute_scale_using_all_data = true;
@@ -161,13 +162,17 @@ namespace targets {
           scale_factor_ = scale_factor;
         }
         CCTBX_ASSERT(sum_w_fo_sq_work > 0);
-        if (compute_gradients) {
+        if (compute_derivatives != 0) {
           if (compute_scale_using_all_data && n_work != f_obs.size()) {
             throw std::runtime_error(
               "Sorry: cctbx::xray::targets::ls_with_scale:"
-              " gradients for compute_scale_using_all_data not implemented.");
+              " derivatives for compute_scale_using_all_data"
+              " not implemented.");
           }
           gradients_work_.reserve(n_work);
+          if (compute_derivatives == 2) {
+            curvatures_work_.reserve(n_work);
+          }
         }
         double target_test = 0;
         double grad_factor = -2;
@@ -184,20 +189,48 @@ namespace targets {
           double wd =  weights[i] * delta;
           double t = wd * delta;
           target_per_reflection_[i] = t;
-          if (!rff || !rff[i]) {
+          if (rff && rff[i]) {
+            target_test += t;
+          }
+          else {
             target_work_ += t;
-            if (compute_gradients) {
-              if (fc_abs == 0) {
+            if (compute_derivatives != 0) {
+              double fc_abs_cub = fc_abs * fc_abs * fc_abs;
+              if (fc_abs == 0 || fc_abs_cub == 0) {
                 gradients_work_.push_back(std::complex<double>(0,0));
+                if (compute_derivatives == 2) {
+                  curvatures_work_.push_back(scitbx::vec3<double>(1,1,1));
+                }
               }
               else {
                 gradients_work_.push_back(
                   grad_factor * wd / (sum_w_fo_sq_work * fc_abs) * f_calc[i]);
+                if (compute_derivatives == 2) {
+                  double s = scale_factor_;
+                  double o = f_obs[i];
+                  double w = weights[i] / sum_w_fo_sq_work;
+                  double a = f_calc[i].real();
+                  double b = f_calc[i].imag();
+                  double oofcac = o / fc_abs_cub;
+                  double daa, dbb, dab;
+                  if (apply_scale_to_f_calc_) {
+                    double tsw = 2 * s * w;
+                    daa = tsw * (s - b * b * oofcac);
+                    dbb = tsw * (s - a * a * oofcac);
+                    dab = tsw * a * b * oofcac;
+                  }
+                  else {
+                    double tw = 2 * w;
+                    double tswo = tw * s * oofcac;
+                    daa = tw - tswo * b * b;
+                    dbb = tw - tswo * a * a;
+                    dab = tswo * a * b;
+                  }
+                  curvatures_work_.push_back(scitbx::vec3<double>(
+                    daa, dbb, dab));
+                }
               }
             }
-          }
-          else {
-            target_test += t;
           }
         }
         target_work_ /= sum_w_fo_sq_work;
