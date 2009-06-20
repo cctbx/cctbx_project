@@ -18,6 +18,9 @@ class ls_refinement(object):
   def __init__(O,
         f_obs,
         xray_structure,
+        use_lbfgs_raw,
+        diagco,
+        lbfgs_impl_switch,
         lbfgs_termination_params=None,
         lbfgs_exception_handling_params=None,
         reference_structure=None):
@@ -30,10 +33,14 @@ class ls_refinement(object):
     O.number_of_lbfgs_iterations = -1
     O.f_start, O.g_start = O.compute_functional_and_gradients()
     O.callback_after_step(minimizer=None)
-    O.minimizer = scitbx.lbfgs.run(
-      target_evaluator=O,
-      termination_params=lbfgs_termination_params,
-      exception_handling_params=lbfgs_exception_handling_params)
+    if (use_lbfgs_raw):
+      O.run_lbfgs_raw(diagco=diagco, lbfgs_impl_switch=lbfgs_impl_switch)
+      O.callback_after_step(minimizer=None)
+    else:
+      O.minimizer = scitbx.lbfgs.run(
+        target_evaluator=O,
+        termination_params=lbfgs_termination_params,
+        exception_handling_params=lbfgs_exception_handling_params)
     O.f_final, O.g_final = O.compute_functional_and_gradients()
 
   def pack_parameters(O):
@@ -186,7 +193,39 @@ class ls_refinement(object):
     print s
     sys.stdout.flush()
 
-def run_call_back(flags, space_group_info):
+  def run_lbfgs_raw(O, diagco, lbfgs_impl_switch):
+    assert diagco in [0,1]
+    n = O.x.size()
+    m = 5
+    iprint = [1, 0]
+    eps = 1.0e-5
+    xtol = 1.0e-16
+    size_w = n*(2*m+1)+2*m
+    w = flex.double(size_w)
+    diag = None
+    diag0 = None
+    iflag = 0
+    while True:
+      if (iflag in [0,1]):
+        f, g = O.compute_functional_and_gradients()
+        if (iflag == 0):
+          if (diagco == 0):
+            diag = flex.double(n, -1e20)
+          else:
+            assert O.c_last.all_gt(0)
+            diag0 = 1 / O.c_last
+            diag = diag0.deep_copy()
+      else:
+        assert iflag == 2
+        diag.clear()
+        diag.extend(diag0)
+      iflag = [scitbx.lbfgs.raw_reference,
+               scitbx.lbfgs.raw][lbfgs_impl_switch](
+        n=n, m=m, x=O.x, f=f, g=g, diagco=diagco, diag=diag,
+        iprint=iprint, eps=eps, xtol=xtol, w=w, iflag=iflag)
+      if (iflag <= 0): break
+
+def run_call_back(flags, space_group_info, params):
   structure_shake = random_structure.xray_structure(
     space_group_info,
     elements=("N", "C", "O", "S", "Yb"),
@@ -213,11 +252,19 @@ def run_call_back(flags, space_group_info):
   ls_refinement(
     f_obs=f_obs,
     xray_structure=structure_shake,
+    use_lbfgs_raw=params.use_lbfgs_raw,
+    diagco=params.diagco,
+    lbfgs_impl_switch=params.lbfgs_impl_switch,
     reference_structure=structure_ideal)
 
 def run(args):
+  from libtbx import group_args
+  params = group_args(
+    use_lbfgs_raw=True,
+    diagco=0,
+    lbfgs_impl_switch=1)
   debug_utils.parse_options_loop_space_groups(
-    args, run_call_back)
+    argv=args, call_back=run_call_back, params=params)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
