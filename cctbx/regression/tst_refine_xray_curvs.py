@@ -88,11 +88,12 @@ class ls_refinement(object):
       miller_indices=O.f_obs.indices(),
       da_db=ls.gradients_work(),
       daa_dbb_dab=ls.curvatures_work())
-    #
     g_all = gact.grads
     c_all = gact.curvs
-    g_active = flex.double()
-    c_active = flex.double()
+    assert g_all.size() == c_all.size()
+    #
+    c_active_site = flex.double()
+    c_active_u_iso = flex.double()
     i_all = 0
     sstab = O.xray_structure.site_symmetry_table()
     for i_sc,sc in enumerate(O.xray_structure.scatterers()):
@@ -103,13 +104,47 @@ class ls_refinement(object):
         np = 3
       else:
         np = site_symmetry.site_constraints().n_independent_params()
-      np += 1 # for u_iso
-      g_active.extend(g_all[i_all:i_all+np])
-      c_active.extend(c_all[i_all:i_all+np])
-      np += 3 # skip occ, fp, fdp
+      c_active_site.extend(g_all[i_all:i_all+np])
+      c_active_u_iso.append(g_all[i_all+np])
+      np += 4 # u_iso, occ, fp, fdp
       i_all += np
     assert i_all == g_all.size()
-    assert i_all == c_all.size()
+    #
+    class curv_filter(object):
+      def __init__(O, curvs, lim_eps=1e-6):
+        c_abs_max = flex.max(flex.abs(curvs))
+        O.c_lim = c_abs_max * lim_eps
+        if (O.c_lim == 0):
+          O.c_lim = 1
+          O.c_rms = 1
+        else:
+          O.c_rms = flex.mean_sq(curvs)**0.5
+      def apply(O, some_curvs):
+        result = flex.double()
+        for c in some_curvs:
+          if (c < O.c_lim): c = O.c_rms
+          result.append(c)
+        return result
+    cf_site = curv_filter(curvs=c_active_site)
+    cf_u_iso = curv_filter(curvs=c_active_u_iso)
+    #
+    g_active = flex.double()
+    c_active = flex.double()
+    i_all = 0
+    for i_sc,sc in enumerate(O.xray_structure.scatterers()):
+      assert sc.flags.use_u_iso()
+      assert not sc.flags.use_u_aniso()
+      site_symmetry = sstab.get(i_sc)
+      if (site_symmetry.is_point_group_1()):
+        np = 3
+      else:
+        np = site_symmetry.site_constraints().n_independent_params()
+      g_active.extend(g_all[i_all:i_all+np+1])
+      c_active.extend(cf_site.apply(c_all[i_all:i_all+np]))
+      c_active.extend(cf_u_iso.apply(c_all[i_all+np:i_all+np+1]))
+      np += 4 # u_iso, occ, fp, fdp
+      i_all += np
+    assert i_all == g_all.size()
     assert g_active.size() == O.x.size()
     assert c_active.size() == O.x.size()
     #
