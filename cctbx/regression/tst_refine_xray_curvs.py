@@ -5,6 +5,7 @@ from cctbx.development import debug_utils
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from scitbx import matrix
+import libtbx.phil.command_line
 from libtbx.test_utils import approx_equal
 import random
 import sys
@@ -18,6 +19,7 @@ class ls_refinement(object):
   def __init__(O,
         f_obs,
         xray_structure,
+        curv_filter_lim_eps,
         use_lbfgs_raw,
         diagco,
         lbfgs_impl_switch,
@@ -27,6 +29,7 @@ class ls_refinement(object):
     O.f_obs = f_obs
     O.weights = flex.double(f_obs.data().size(), 1)
     O.xray_structure = xray_structure
+    O.curv_filter_lim_eps = curv_filter_lim_eps
     O.reference_structure = reference_structure
     O.pack_parameters()
     O.number_of_function_evaluations = -1
@@ -78,29 +81,86 @@ class ls_refinement(object):
   def compute_functional_and_gradients(O):
     O.number_of_function_evaluations += 1
     O.unpack_parameters()
-    f_calc = O.f_obs.structure_factors_from_scatterers(
-      xray_structure=O.xray_structure,
-      algorithm="direct",
-      cos_sin_table=False).f_calc()
-    ls = xray.targets_ls_with_scale(
-      apply_scale_to_f_calc=True,
-      compute_scale_using_all_data=False,
-      f_obs=O.f_obs.data(),
-      weights=O.weights,
-      r_free_flags=None,
-      f_calc=f_calc.data(),
-      compute_derivatives=2,
-      scale_factor=1)
-    gact = O.xray_structure.grads_and_curvs_target_simple(
-      miller_indices=O.f_obs.indices(),
-      da_db=ls.gradients_work(),
-      daa_dbb_dab=ls.curvatures_work())
-    g_all = gact.grads
-    c_all = gact.curvs
-    assert g_all.size() == c_all.size()
+    try:
+      f_calc = O.f_obs.structure_factors_from_scatterers(
+        xray_structure=O.xray_structure,
+        algorithm="direct",
+        cos_sin_table=False).f_calc()
+    except RuntimeError, e:
+      print "RuntimeError f_calc:", e
+      sys.stdout.flush()
+      raise RuntimeError("f_calc")
     #
-    c_active_site = flex.double()
-    c_active_u_iso = flex.double()
+    def get_ls(f_obs):
+      ls = xray.targets_ls_with_scale(
+        apply_scale_to_f_calc=True,
+        compute_scale_using_all_data=False,
+        f_obs=f_obs.data(),
+        weights=O.weights,
+        r_free_flags=None,
+        f_calc=f_calc.data(),
+        compute_derivatives=2,
+        scale_factor=1)
+      gact = O.xray_structure.grads_and_curvs_target_simple(
+        miller_indices=O.f_obs.indices(),
+        da_db=ls.gradients_work(),
+        daa_dbb_dab=ls.curvatures_work())
+      return ls, gact
+    if (O.number_of_function_evaluations == 0):
+      ls, gact = get_ls(f_obs=abs(f_calc))
+      c_all = gact.curvs
+    else:
+      c_all = None
+    ls, gact = get_ls(f_obs=O.f_obs)
+    g_all = gact.grads
+    #
+    if (c_all is not None):
+      c_active_site = flex.double()
+      c_active_u_iso = flex.double()
+      i_all = 0
+      sstab = O.xray_structure.site_symmetry_table()
+      for i_sc,sc in enumerate(O.xray_structure.scatterers()):
+        assert sc.flags.use_u_iso()
+        assert not sc.flags.use_u_aniso()
+        site_symmetry = sstab.get(i_sc)
+        if (site_symmetry.is_point_group_1()):
+          np = 3
+        else:
+          np = site_symmetry.site_constraints().n_independent_params()
+        c_active_site.extend(g_all[i_all:i_all+np])
+        c_active_u_iso.append(g_all[i_all+np])
+        np += 4 # u_iso, occ, fp, fdp
+        i_all += np
+      assert i_all == g_all.size()
+      #
+      class curv_filter(object):
+        def __init__(O, curvs, lim_eps=O.curv_filter_lim_eps):
+          c_abs_max = flex.max(flex.abs(curvs))
+          O.c_lim = c_abs_max * lim_eps
+          if (O.c_lim == 0):
+            O.c_lim = 1
+            O.c_rms = 1
+          else:
+            O.c_rms = flex.mean_sq(curvs)**0.5
+          O.n_below_limit = 0
+          O.n_above_limit = 0
+        def apply(O, some_curvs):
+          result = flex.double()
+          for c in some_curvs:
+            if (c < O.c_lim):
+              c = O.c_rms
+              O.n_below_limit += 1
+            else:
+              O.n_above_limit += 1
+            result.append(c)
+          return result
+      cf_site = curv_filter(curvs=c_active_site)
+      cf_u_iso = curv_filter(curvs=c_active_u_iso)
+      c_active = flex.double()
+    else:
+      c_active = None
+    #
+    g_active = flex.double()
     i_all = 0
     sstab = O.xray_structure.site_symmetry_table()
     for i_sc,sc in enumerate(O.xray_structure.scatterers()):
@@ -111,49 +171,24 @@ class ls_refinement(object):
         np = 3
       else:
         np = site_symmetry.site_constraints().n_independent_params()
-      c_active_site.extend(g_all[i_all:i_all+np])
-      c_active_u_iso.append(g_all[i_all+np])
-      np += 4 # u_iso, occ, fp, fdp
-      i_all += np
-    assert i_all == g_all.size()
-    #
-    class curv_filter(object):
-      def __init__(O, curvs, lim_eps=1e-6):
-        c_abs_max = flex.max(flex.abs(curvs))
-        O.c_lim = c_abs_max * lim_eps
-        if (O.c_lim == 0):
-          O.c_lim = 1
-          O.c_rms = 1
-        else:
-          O.c_rms = flex.mean_sq(curvs)**0.5
-      def apply(O, some_curvs):
-        result = flex.double()
-        for c in some_curvs:
-          if (c < O.c_lim): c = O.c_rms
-          result.append(c)
-        return result
-    cf_site = curv_filter(curvs=c_active_site)
-    cf_u_iso = curv_filter(curvs=c_active_u_iso)
-    #
-    g_active = flex.double()
-    c_active = flex.double()
-    i_all = 0
-    for i_sc,sc in enumerate(O.xray_structure.scatterers()):
-      assert sc.flags.use_u_iso()
-      assert not sc.flags.use_u_aniso()
-      site_symmetry = sstab.get(i_sc)
-      if (site_symmetry.is_point_group_1()):
-        np = 3
-      else:
-        np = site_symmetry.site_constraints().n_independent_params()
       g_active.extend(g_all[i_all:i_all+np+1])
-      c_active.extend(cf_site.apply(c_all[i_all:i_all+np]))
-      c_active.extend(cf_u_iso.apply(c_all[i_all+np:i_all+np+1]))
+      if (c_active is not None):
+        c_active.extend(cf_site.apply(c_all[i_all:i_all+np]))
+        c_active.extend(cf_u_iso.apply(c_all[i_all+np:i_all+np+1]))
       np += 4 # u_iso, occ, fp, fdp
       i_all += np
     assert i_all == g_all.size()
     assert g_active.size() == O.x.size()
-    assert c_active.size() == O.x.size()
+    if (c_active is not None):
+      assert c_active.size() == O.x.size()
+      O.c_init = c_active
+      print "curv site below limit: %d of %d" % (
+        cf_site.n_below_limit,
+        cf_site.n_below_limit + cf_site.n_above_limit)
+      print "curv u_iso below limit: %d of %d" % (
+        cf_u_iso.n_below_limit,
+        cf_u_iso.n_below_limit + cf_u_iso.n_above_limit)
+      sys.stdout.flush()
     #
     O.f_last = ls.target_work()
     O.g_last = g_active
@@ -167,11 +202,15 @@ class ls_refinement(object):
       if (O.reference_structure is not None):
         s += "    cRMSD aRMSD uRMSD"
       print s
-    c = O.c_last.min_max_mean()
-    s = "%4d %4d %9.2e %9.2e %9.2e %9.2e %9.2e" % (
+    s = "%4d %4d %9.2e %9.2e" % (
       O.number_of_lbfgs_iterations,
       O.number_of_function_evaluations,
-      O.f_last, O.g_last.norm(), c.min, c.max, c.mean)
+      O.f_last, O.g_last.norm())
+    if (O.c_last is not None):
+      c = O.c_last.min_max_mean()
+      s += " %9.2e %9.2e %9.2e" % (c.min, c.max, c.mean)
+    else:
+      s += " %9s %9s %9s" % ("","","")
     if (O.reference_structure is not None):
       xs = O.xray_structure
       rs = O.reference_structure
@@ -212,8 +251,8 @@ class ls_refinement(object):
           if (diagco == 0):
             diag = flex.double(n, -1e20)
           else:
-            assert O.c_last.all_gt(0)
-            diag0 = 1 / O.c_last
+            assert O.c_init.all_gt(0)
+            diag0 = 1 / O.c_init
             diag = diag0.deep_copy()
       else:
         assert iflag == 2
@@ -249,22 +288,45 @@ def run_call_back(flags, space_group_info, params):
   print "rms difference:", \
     structure_ideal.rms_difference(other=structure_shake)
   print
-  ls_refinement(
-    f_obs=f_obs,
-    xray_structure=structure_shake,
-    use_lbfgs_raw=params.use_lbfgs_raw,
-    diagco=params.diagco,
-    lbfgs_impl_switch=params.lbfgs_impl_switch,
-    reference_structure=structure_ideal)
+  try:
+    ls_refinement(
+      f_obs=f_obs,
+      xray_structure=structure_shake,
+      curv_filter_lim_eps=params.curv_filter_lim_eps,
+      use_lbfgs_raw=params.use_lbfgs_raw,
+      diagco=params.diagco,
+      lbfgs_impl_switch=params.lbfgs_impl_switch,
+      reference_structure=structure_ideal)
+  except RuntimeError, e:
+    if (str(e) != "f_calc"):
+      raise
 
 def run(args):
-  from libtbx import group_args
-  params = group_args(
-    use_lbfgs_raw=True,
-    diagco=0,
-    lbfgs_impl_switch=1)
+  master_phil = libtbx.phil.parse("""
+    use_lbfgs_raw = False
+      .type = bool
+    diagco = 0
+      .type = int
+    lbfgs_impl_switch = 1
+      .type = int
+    curv_filter_lim_eps = 1e-3
+      .type = float
+""")
+  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
+    master_phil=master_phil)
+  phil_objects = []
+  remaining_args = []
+  for arg in args:
+    if (arg.find("=") >= 0):
+      phil_objects.append(argument_interpreter.process(arg=arg))
+    else:
+      remaining_args.append(arg)
+  work_phil = master_phil.fetch(sources=phil_objects)
+  work_phil.show()
+  print
+  params = work_phil.extract()
   debug_utils.parse_options_loop_space_groups(
-    argv=args, call_back=run_call_back, params=params)
+    argv=remaining_args, call_back=run_call_back, params=params)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
