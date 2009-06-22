@@ -374,8 +374,8 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
         max_items=None):
     assert by_value in ["residual", "delta"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
-    if (self.n_total() == 0): return None, None, None
-    if (max_items is not None and max_items <= 0): return None, None, None
+    if (self.n_total() == 0): return None, None
+    if (max_items is not None and max_items <= 0): return None, None
     if (by_value == "residual"):
       data_to_sort = self.residuals(sites_cart=sites_cart)
     elif (by_value == "delta"):
@@ -424,7 +424,7 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
           or smallest_distance_model > restraint.distance_model):
         smallest_distance_model = restraint.distance_model
     n_not_shown = data_to_sort.size() - i_proxies_sorted.size()
-    return sorted_table, smallest_distance_model, n_not_shown
+    return sorted_table, n_not_shown
 
   # XXX: This now outputs the results of get_sorted(...)
   def show_sorted(self,
@@ -434,7 +434,7 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
         f=None,
         prefix="",
         max_items=None) :
-    sorted_table, smallest_distance_model, n_not_shown = self.get_sorted(
+    sorted_table, n_not_shown = self.get_sorted(
         by_value=by_value,
         sites_cart=sites_cart,
         site_labels=site_labels,
@@ -637,6 +637,10 @@ class _dihedral(boost.python.injector, dihedral):
       O.angle_ideal, O.angle_model, O.delta, O.periodicity,
       weight_as_sigma(weight=O.weight), O.weight, O.residual())
 
+  def _get_sorted_item (O) :
+    return [O.angle_ideal, O.angle_model, O.delta, O.periodicity,
+            weight_as_sigma(weight=O.weight), O.weight, O.residual()]
+
 class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
 
   def deltas(self, sites_cart, unit_cell=None):
@@ -680,6 +684,18 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
 
+  def get_sorted (self,
+        by_value,
+        sites_cart,
+        site_labels=None,
+        unit_cell=None,
+        max_items=None):
+    return _get_sorted_impl(O=self,
+        proxy_type=dihedral,
+        by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
+        site_labels=site_labels, max_items=max_items,
+        get_restraints_only=False)
+
 class _chirality(boost.python.injector, chirality):
 
   def _show_sorted_item(O, f, prefix):
@@ -689,6 +705,10 @@ class _chirality(boost.python.injector, chirality):
       prefix,
       str(O.both_signs), O.volume_ideal, O.volume_model, O.delta,
       weight_as_sigma(weight=O.weight), O.weight, O.residual())
+
+  def _get_sorted_item (O) :
+    return [str(O.both_signs), O.volume_ideal, O.volume_model, O.delta,
+      weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
 class _shared_chirality_proxy(boost.python.injector, shared_chirality_proxy):
 
@@ -723,6 +743,17 @@ class _shared_chirality_proxy(boost.python.injector, shared_chirality_proxy):
         by_value=by_value, unit_cell=None, sites_cart=sites_cart,
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
 
+  def get_sorted (self,
+        by_value,
+        sites_cart,
+        site_labels=None,
+        max_items=None):
+    return _get_sorted_impl(O=self,
+        proxy_type=chirality,
+        by_value=by_value, unit_cell=None, sites_cart=sites_cart,
+        site_labels=site_labels, max_items=max_items,
+        get_restraints_only=False)
+
 class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
 
   def deltas_rms(O, sites_cart, unit_cell=None):
@@ -739,6 +770,62 @@ class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
       return planarity_residuals(
         unit_cell=unit_cell, sites_cart=sites_cart, proxies=O)
 
+  def get_sorted (O,
+        by_value,
+        sites_cart,
+        site_labels=None,
+        unit_cell=None,
+        max_items=None):
+    assert by_value in ["residual", "rms_deltas"]
+    assert site_labels is None or len(site_labels) == sites_cart.size()
+    if (O.size() == 0): return None, None
+    if (max_items is not None and max_items <= 0): return None, None
+    if (by_value == "residual"):
+      if unit_cell is None:
+        data_to_sort = O.residuals(sites_cart=sites_cart)
+      else:
+        data_to_sort = O.residuals(unit_cell=unit_cell,sites_cart=sites_cart)
+    elif (by_value == "rms_deltas"):
+      if unit_cell is None:
+        data_to_sort = O.deltas_rms(sites_cart=sites_cart)
+      else:
+        data_to_sort = O.deltas_rms(unit_cell=unit_cell, sites_cart=sites_cart)
+    else:
+      raise AssertionError
+    i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
+    if (max_items is not None):
+      i_proxies_sorted = i_proxies_sorted[:max_items]
+    sorted_table = []
+    for i_proxy in i_proxies_sorted:
+      proxy = O[i_proxy]
+      len_max = 0
+      labels = []
+      for i_seq in proxy.i_seqs:
+        if (site_labels is None): l = str(i_seq)
+        else:                     l = site_labels[i_seq]
+        len_max = max(len_max, len(l))
+        labels.append(l)
+      if unit_cell is None:
+        restraint = planarity(sites_cart=sites_cart, proxy=proxy)
+      else:
+        restraint = planarity(unit_cell=unit_cell, sites_cart=sites_cart,
+                              proxy=proxy)
+      restraint_atoms = []
+      for i, (i_seq,weight,delta,l) in enumerate(zip(proxy.i_seqs, proxy.weights,
+                                      restraint.deltas(), labels)):
+        sym_op = ""
+        if proxy.sym_ops:
+          rt_mx = proxy.sym_ops[i]
+          if not rt_mx.is_unit_mx():
+            sym_op = "%s %s" %(rdr_spacer, rt_mx.as_xyz())
+        restraint_atoms.append((l, delta, weight_as_sigma(weight=weight),
+          weight, sym_op))
+      sorted_table.append((restraint_atoms, restraint.rms_deltas(),
+        restraint.residual()))
+    n_not_shown = O.size() - i_proxies_sorted.size()
+    return sorted_table, n_not_shown
+
+  # TODO: convert this to use get_sorted
   def show_sorted(O,
         by_value,
         sites_cart,
