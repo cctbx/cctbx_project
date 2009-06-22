@@ -20,25 +20,22 @@ class ls_refinement(object):
   def __init__(O,
         f_obs,
         xray_structure,
-        curv_filter_lim_eps,
-        use_lbfgs_raw,
-        diagco,
-        lbfgs_impl_switch,
+        params,
         lbfgs_termination_params=None,
         lbfgs_exception_handling_params=None,
         reference_structure=None):
     O.f_obs = f_obs
     O.weights = flex.double(f_obs.data().size(), 1)
     O.xray_structure = xray_structure
-    O.curv_filter_lim_eps = curv_filter_lim_eps
+    O.params = params
     O.reference_structure = reference_structure
     O.pack_parameters()
     O.number_of_function_evaluations = -1
     O.number_of_lbfgs_iterations = -1
     O.f_start, O.g_start = O.compute_functional_and_gradients()
     O.callback_after_step(minimizer=None)
-    if (use_lbfgs_raw):
-      O.run_lbfgs_raw(diagco=diagco, lbfgs_impl_switch=lbfgs_impl_switch)
+    if (params.use_lbfgs_raw):
+      O.run_lbfgs_raw()
       O.callback_after_step(minimizer=None)
     else:
       O.minimizer = scitbx.lbfgs.run(
@@ -135,7 +132,7 @@ class ls_refinement(object):
       assert i_all == g_all.size()
       #
       class curv_filter(object):
-        def __init__(O, curvs, lim_eps=O.curv_filter_lim_eps):
+        def __init__(O, curvs, lim_eps=O.params.curv_filter_lim_eps):
           c_abs_max = flex.max(flex.abs(curvs))
           O.c_lim = c_abs_max * lim_eps
           if (O.c_lim == 0):
@@ -212,6 +209,12 @@ class ls_refinement(object):
       s += " %9.2e %9.2e %9.2e" % (c.min, c.max, c.mean)
     else:
       s += " %9s %9s %9s" % ("","","")
+    s += O.format_rms_info()
+    print s
+    sys.stdout.flush()
+
+  def format_rms_info(O):
+    s = ""
     if (O.reference_structure is not None):
       xs = O.xray_structure
       rs = O.reference_structure
@@ -230,14 +233,21 @@ class ls_refinement(object):
       s += " %5.3f" % (flex.mean_sq(
           xs.scatterers().extract_u_iso()
         - rs.scatterers().extract_u_iso())**0.5)
-    print s
-    sys.stdout.flush()
+    return s
 
-  def run_lbfgs_raw(O, diagco, lbfgs_impl_switch):
+  def show_rms_info(O):
+    s = O.format_rms_info()
+    if (len(s) != 0):
+       print "cRMSD aRMSD uRMSD"
+       print s
+       sys.stdout.flush()
+
+  def run_lbfgs_raw(O):
+    diagco = O.params.diagco
     assert diagco in [0,1]
     n = O.x.size()
     m = 5
-    iprint = [1, 0]
+    iprint = O.params.iprint
     eps = 1.0e-5
     xtol = 1.0e-16
     size_w = n*(2*m+1)+2*m
@@ -259,13 +269,14 @@ class ls_refinement(object):
         assert iflag == 2
         diag.clear()
         diag.extend(diag0)
+      O.show_rms_info()
       iflag = [scitbx.lbfgs.raw_reference,
-               scitbx.lbfgs.raw][lbfgs_impl_switch](
+               scitbx.lbfgs.raw][O.params.lbfgs_impl_switch](
         n=n, m=m, x=O.x, f=f, g=g, diagco=diagco, diag=diag,
         iprint=iprint, eps=eps, xtol=xtol, w=w, iflag=iflag)
       if (iflag <= 0): break
 
-def run_refinement(structure_ideal, structure_shake, params):
+def run_refinement(structure_ideal, structure_shake, params, pickle_file_name):
   print "Ideal structure:"
   structure_ideal.show_summary().show_scatterers()
   print
@@ -287,12 +298,11 @@ def run_refinement(structure_ideal, structure_shake, params):
     ls_refinement(
       f_obs=f_obs,
       xray_structure=structure_shake,
-      curv_filter_lim_eps=params.curv_filter_lim_eps,
-      use_lbfgs_raw=params.use_lbfgs_raw,
-      diagco=params.diagco,
-      lbfgs_impl_switch=params.lbfgs_impl_switch,
+      params=params,
       reference_structure=structure_ideal)
   except RuntimeError, e:
+    print "RuntimeError pickle_file_name:", pickle_file_name
+    sys.stdout.flush()
     if (str(e) != "f_calc"):
       raise
 
@@ -307,13 +317,13 @@ def run_call_back(flags, space_group_info, params):
   structure_shake.shake_sites_in_place(rms_difference=0.2)
   structure_shake.shake_adp()
   #
+  pickle_file_name = "%s_%s.pickle" % (
+    params.pickle_root_name,
+    str(space_group_info).replace(" ","").replace("/","_"))
   if (params.pickle_root_name is not None):
-    file_name = "%s_%s.pickle" % (
-      params.pickle_root_name,
-      str(space_group_info).replace(" ","").replace("/","_"))
-    print "writing file:", file_name
+    print "writing file:", pickle_file_name
     easy_pickle.dump(
-      file_name=file_name,
+      file_name=pickle_file_name,
       obj=(structure_ideal, structure_shake))
     print
     sys.stdout.flush()
@@ -321,7 +331,8 @@ def run_call_back(flags, space_group_info, params):
   run_refinement(
     structure_ideal=structure_ideal,
     structure_shake=structure_shake,
-    params=params)
+    params=params,
+    pickle_file_name=pickle_file_name)
 
 def run(args):
   master_phil = libtbx.phil.parse("""
@@ -331,6 +342,8 @@ def run(args):
       .type = int
     lbfgs_impl_switch = 1
       .type = int
+    iprint = 1, 0
+      .type = ints(size=2)
     curv_filter_lim_eps = 1e-3
       .type = float
     pickle_root_name = None
@@ -360,7 +373,8 @@ def run(args):
     run_refinement(
       structure_ideal=structure_ideal,
       structure_shake=structure_shake,
-      params=params)
+      params=params,
+      pickle_file_name=params.unpickle)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
