@@ -1139,7 +1139,7 @@ namespace scitbx { namespace lbfgs { namespace raw {
       w(ispt+i) = -g(i) * diag(i);
     }
     gnorm = std::sqrt(ddot(n,g,1,g,1));
-    if (diagco == 0) {
+    if (diagco == 0 || diagco == 1) {
       stp1 = one/gnorm;
     }
     else {
@@ -1182,24 +1182,6 @@ namespace scitbx { namespace lbfgs { namespace raw {
           iflag = -2;
           if ( lp > 0 ) std::printf(iflag_minus_2_format, i);
           return;
-        }
-      }
-      if (diagco != 1) { // CCTBX CHANGE
-        double dscale = 0;
-        if (diagco == 2) {
-          double yy = ddot(n,w.get1(iypt+npt+1,n),1,w.get1(iypt+npt+1,n),1);
-          dscale = ys/yy;
-        }
-        else {
-          double scaled_ys(0.), scaled_yy(0.);
-          for ( int i = 1; i <= n; ++i ) {
-            scaled_ys += w(iypt+npt+i)*w(ispt+npt+i)*diag(i);
-            scaled_yy += w(iypt+npt+i)*w(iypt+npt+i)*std::pow(diag(i),2);
-          }
-          dscale = scaled_ys/scaled_yy;
-        }
-        for ( int i = 1, i_end = n; i <= i_end; ++i ) {
-          diag(i) *= dscale;
         }
       }
     }

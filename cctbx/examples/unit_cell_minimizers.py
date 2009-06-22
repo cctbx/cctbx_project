@@ -63,14 +63,13 @@ class refinery:
         function=self, x0=flex.double(unit_cell.parameters()))
       m.show_statistics()
       self.x = m.x_star
-    elif (mode < 8):
+    elif (mode < 7):
       diagco, use_hessian, lbfgs_impl_switch = [
         (0, 0, 0),
         (0, 0, 1),
         (1, 1, 0),
         (1, 1, 1),
-        (2, 1, 1),
-        (3, 1, 1)][mode-2]
+        (2, 1, 1)][mode-2]
       self.plot_legend = "%d:lbfgs_d=%d_u=%d_l=%d" % (
         mode, diagco, use_hessian, lbfgs_impl_switch)
       print "plot_legend:", self.plot_legend
@@ -79,7 +78,7 @@ class refinery:
         diagco=diagco,
         use_hessian=use_hessian,
         lbfgs_impl_switch=lbfgs_impl_switch)
-    elif (mode < 9):
+    elif (mode < 8):
       self.plot_legend = "%d:lbfgsb" % mode
       print "plot_legend:", self.plot_legend
       self.x = self.run_lbfgsb(unit_cell=unit_cell)
@@ -284,7 +283,7 @@ def run(args):
     else:
       modes = [eval(arg)]
   else:
-    modes = range(9)
+    modes = range(8)
   print "modes:", modes
   print
   for mode in modes:
