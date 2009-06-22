@@ -49,6 +49,33 @@ def prefix_each_line(prefix, lines_as_one_string, rstrip=True):
     suffix="",
     rstrip=rstrip)
 
+def reformat_terminal_text (text) :
+  text.strip()
+  lines = text.splitlines()
+  newtext = ""
+  lastline = ""
+  for i, line in enumerate(lines) :
+    if line == "" and i != 0 :
+      newtext += "\n"
+    else :
+      if lastline != "" :
+        newtext += " "
+      newtext += line.strip()
+    lastline = line
+  return newtext
+
+def rstrip_lines (text) :
+  new = []
+  for line in text.splitlines() :
+    new.append(line.rstrip())
+  return "\n".join(new)
+
+def strip_lines (text) :
+  new = []
+  for line in text.splitlines() :
+    new.append(line.strip())
+  return "\n".join(new)
+
 def show_sorted_by_counts(
       label_count_pairs,
       reverse=True,
@@ -207,6 +234,26 @@ world""", suffix=" ", rstrip=False) == """\
   print >> out2, "Hello world!"
   out3 = cPickle.loads(cPickle.dumps(out2))
   assert out3.getvalue() == out1.getvalue() == out2.getvalue()
+  txt1 = """
+This is some
+terminal-formatted
+text which needs
+to be reset.
+"""
+  assert (reformat_terminal_text(txt1) ==
+          "This is some terminal-formatted text which needs to be reset.")
+  txt2 = """
+  This is more
+  terminal-formatted
+  text which needs
+  to be reset.
+"""
+  lines = ["  This is more ", "  terminal-formatted ", "  text "]
+  assert (strip_lines(txt2) ==
+    "\nThis is more\nterminal-formatted\ntext which needs\nto be reset.")
+  assert (rstrip_lines(txt2) ==
+    "\n  This is more\n  terminal-formatted\n  text which needs\n  to be reset."
+  )
   print "OK"
 
 if (__name__ == "__main__"):
