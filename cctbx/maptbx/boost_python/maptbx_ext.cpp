@@ -3,6 +3,7 @@
 #include <cctbx/maptbx/fft.h>
 #include <cctbx/maptbx/average_densities.h>
 #include <cctbx/maptbx/real_space_gradients_simple.h>
+#include <cctbx/maptbx/real_space_gradients_simple_ls.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
@@ -48,6 +49,23 @@ namespace {
     wrap_basic_map();
     wrap_real_space_refinement();
 
+    {
+      typedef target_and_gradients w_t;
+      class_<w_t>("target_and_gradients", no_init)
+        .def(init<uctbx::unit_cell const&,
+                  af::const_ref<double, af::c_grid_padded<3> > const&,
+                  af::const_ref<double, af::c_grid_padded<3> > const&,
+                  double const&,
+                  af::const_ref<scitbx::vec3<double> > const& >((
+                                    arg_("unit_cell"),
+                                    arg_("map_target"),
+                                    arg_("map_current"),
+                                    arg_("step"),
+                                    arg_("sites_frac"))))
+        .def("target", &w_t::target)
+        .def("gradients", &w_t::gradients)
+      ;
+    }
     {
       typedef grid_points_in_sphere_around_atom_and_distances w_t;
 
