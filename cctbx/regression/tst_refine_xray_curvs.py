@@ -7,6 +7,7 @@ import scitbx.lbfgs
 from scitbx import matrix
 import libtbx.phil.command_line
 from libtbx.test_utils import approx_equal
+from libtbx import easy_pickle
 import random
 import sys
 
@@ -264,30 +265,24 @@ class ls_refinement(object):
         iprint=iprint, eps=eps, xtol=xtol, w=w, iflag=iflag)
       if (iflag <= 0): break
 
-def run_call_back(flags, space_group_info, params):
-  structure_shake = random_structure.xray_structure(
-    space_group_info,
-    elements=("N", "C", "O", "S", "Yb"),
-    volume_per_atom=200,
-    min_distance=2.0,
-    random_u_iso=True)
-  structure_ideal = structure_shake.deep_copy_scatterers()
+def run_refinement(structure_ideal, structure_shake, params):
   print "Ideal structure:"
   structure_ideal.show_summary().show_scatterers()
   print
-  f_obs = abs(structure_ideal.structure_factors(
-    anomalous_flag=False,
-    d_min=1,
-    algorithm="direct",
-    cos_sin_table=False).f_calc())
-  structure_shake.shake_sites_in_place(rms_difference=0.2)
-  structure_shake.shake_adp()
   print "Modified structure:"
   structure_shake.show_summary().show_scatterers()
   print
   print "rms difference:", \
     structure_ideal.rms_difference(other=structure_shake)
   print
+  print "structure_shake inter-atomic distances:"
+  structure_shake.show_distances(distance_cutoff=4)
+  print
+  f_obs = abs(structure_ideal.structure_factors(
+    anomalous_flag=False,
+    d_min=1,
+    algorithm="direct",
+    cos_sin_table=False).f_calc())
   try:
     ls_refinement(
       f_obs=f_obs,
@@ -301,6 +296,33 @@ def run_call_back(flags, space_group_info, params):
     if (str(e) != "f_calc"):
       raise
 
+def run_call_back(flags, space_group_info, params):
+  structure_shake = random_structure.xray_structure(
+    space_group_info,
+    elements=("N", "C", "O", "S", "Yb"),
+    volume_per_atom=200,
+    min_distance=2.0,
+    random_u_iso=True)
+  structure_ideal = structure_shake.deep_copy_scatterers()
+  structure_shake.shake_sites_in_place(rms_difference=0.2)
+  structure_shake.shake_adp()
+  #
+  if (params.pickle_root_name is not None):
+    file_name = "%s_%s.pickle" % (
+      params.pickle_root_name,
+      str(space_group_info).replace(" ","").replace("/","_"))
+    print "writing file:", file_name
+    easy_pickle.dump(
+      file_name=file_name,
+      obj=(structure_ideal, structure_shake))
+    print
+    sys.stdout.flush()
+  #
+  run_refinement(
+    structure_ideal=structure_ideal,
+    structure_shake=structure_shake,
+    params=params)
+
 def run(args):
   master_phil = libtbx.phil.parse("""
     use_lbfgs_raw = False
@@ -311,6 +333,10 @@ def run(args):
       .type = int
     curv_filter_lim_eps = 1e-3
       .type = float
+    pickle_root_name = None
+      .type = str
+    unpickle = None
+      .type = path
 """)
   argument_interpreter = libtbx.phil.command_line.argument_interpreter(
     master_phil=master_phil)
@@ -325,8 +351,16 @@ def run(args):
   work_phil.show()
   print
   params = work_phil.extract()
-  debug_utils.parse_options_loop_space_groups(
-    argv=remaining_args, call_back=run_call_back, params=params)
+  if (params.unpickle is None):
+    debug_utils.parse_options_loop_space_groups(
+      argv=remaining_args, call_back=run_call_back, params=params)
+  else:
+    structure_ideal, structure_shake = easy_pickle.load(
+      file_name=params.unpickle)
+    run_refinement(
+      structure_ideal=structure_ideal,
+      structure_shake=structure_shake,
+      params=params)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
