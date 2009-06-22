@@ -837,9 +837,26 @@ namespace scitbx { namespace lbfgs { namespace raw {
 
   }
 
-  inline
+struct lbfgs {
+
+  double gnorm, stp1, ftol, stp, ys, sq, yr, beta, xnorm;
+  int
+    iter, nfun, point, ispt, iypt, maxfev, info, bound, npt, cp, nfev,
+    inmc, iycn, iscn;
+  bool finish;
+
+  lbfgs()
+  :
+    gnorm(-1e20), stp1(-1e20), ftol(-1e20), stp(-1e20), ys(-1e20), sq(-1e20),
+    yr(-1e20), beta(-1e20), xnorm(-1e20),
+    iter(-9999), nfun(-9999), point(-9999), ispt(-9999), iypt(-9999),
+    maxfev(-9999), info(-9999), bound(-9999), npt(-9999), cp(-9999),
+    nfev(-9999), inmc(-9999), iycn(-9999), iscn(-9999),
+    finish(true)
+  {}
+
   void
-  lbfgs(
+  operator()(
     int const n,
     int const m,
     ref1<double> const& x,
@@ -1067,13 +1084,8 @@ namespace scitbx { namespace lbfgs { namespace raw {
     //
     //     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    static double gnorm, stp1, ftol, stp, ys, sq, yr, beta, xnorm;
-    static int
-      iter, nfun, point, ispt, iypt, maxfev, info, bound, npt, cp, nfev,
-      inmc, iycn, iscn;
-    static bool finish;
-    static double one = 1.0;
-    static double zero = 0.0;
+    const static double one = 1.0;
+    const static double zero = 0.0;
 
     static const char* iflag_minus_2_format =
       "\n IFLAG= -2\n THE%5d-TH DIAGONAL ELEMENT OF THE\n"
@@ -1300,6 +1312,7 @@ namespace scitbx { namespace lbfgs { namespace raw {
         " IMPROPER INPUT PARAMETERS (N OR M ARE NOT POSITIVE)\n");
     }
   }
+};
 
 }}} // namespace scitbx::lbfgs::raw
 

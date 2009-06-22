@@ -6,6 +6,8 @@ from scitbx_lbfgs_ext import *
 
 from libtbx import adopt_init_args
 
+raw = raw_lbfgs()
+
 class core_parameters(object):
 
   def __init__(self, m=5,
