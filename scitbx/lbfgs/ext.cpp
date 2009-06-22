@@ -12,7 +12,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 
-namespace scitbx { namespace lbfgs { namespace {
+namespace scitbx { namespace lbfgs { namespace ext {
 
   extern "C"
   int
@@ -116,8 +116,12 @@ namespace scitbx { namespace lbfgs { namespace {
     return iflag;
   }
 
+struct raw_lbfgs : boost::noncopyable {
+
+  scitbx::lbfgs::raw::lbfgs lbfgs_obj;
+
   int
-  raw(
+  operator()(
     int n,
     int m,
     af::ref<double> const& x,
@@ -143,7 +147,7 @@ namespace scitbx { namespace lbfgs { namespace {
     SCITBX_ASSERT(w.size() == n_*(2*m_+1)+2*m_);
     using scitbx::lbfgs::raw::const_ref1; // fully-qualified
     using scitbx::lbfgs::raw::ref1;       // to work around
-    scitbx::lbfgs::raw::lbfgs(            // gcc 3.2 bug
+    lbfgs_obj(                            // gcc 3.2 bug
       n,
       m,
       ref1<double>(x.begin(), n),
@@ -158,6 +162,35 @@ namespace scitbx { namespace lbfgs { namespace {
       iflag);
     return iflag;
   }
+};
+
+struct raw_lbfgs_wrappers
+{
+  typedef raw_lbfgs w_t;
+
+  static
+  void
+  wrap()
+  {
+    using namespace boost::python;
+    class_<w_t, boost::noncopyable>("raw_lbfgs", no_init)
+      .def(init<>())
+      .def("__call__", &w_t::operator(), (
+        arg_("n"),
+        arg_("m"),
+        arg_("x"),
+        arg_("f"),
+        arg_("g"),
+        arg_("diagco"),
+        arg_("diag"),
+        arg_("iprint"),
+        arg_("eps"),
+        arg_("xtol"),
+        arg_("w"),
+        arg_("iflag")))
+    ;
+  }
+};
 
   struct minimizer_wrappers
   {
@@ -316,28 +349,16 @@ namespace scitbx { namespace lbfgs { namespace {
       arg_("xtol"),
       arg_("w"),
       arg_("iflag")));
-    def("raw", raw, (
-      arg_("n"),
-      arg_("m"),
-      arg_("x"),
-      arg_("f"),
-      arg_("g"),
-      arg_("diagco"),
-      arg_("diag"),
-      arg_("iprint"),
-      arg_("eps"),
-      arg_("xtol"),
-      arg_("w"),
-      arg_("iflag")));
+    raw_lbfgs_wrappers::wrap();
 
     minimizer_wrappers::wrap();
     traditional_convergence_test_wrappers::wrap();
     drop_convergence_test_wrappers::wrap();
   }
 
-}}} // namespace scitbx::lbfgs::<anonymous>
+}}} // namespace scitbx::lbfgs::ext
 
 BOOST_PYTHON_MODULE(scitbx_lbfgs_ext)
 {
-  scitbx::lbfgs::init_module();
+  scitbx::lbfgs::ext::init_module();
 }
