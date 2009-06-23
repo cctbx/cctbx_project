@@ -1110,7 +1110,7 @@ struct lbfgs {
     case 2 :
       goto L100;
     case 100 :
-      goto L172_iflag_100_return;
+      goto L_iflag_100_return;
     default :
       throw std::runtime_error("lbfgs: invalid iflag value.");
       break;
@@ -1264,16 +1264,16 @@ struct lbfgs {
     for ( int i = 1, i_end = n; i <= i_end; ++i ) {
       w(i) = g(i);
     }
-  L172:
     prev_iflag = iflag;
     current_search_direction = w.get1(ispt + point*n + 1, n);
     if (diagco == 2) {
       iflag = 100;
       return;
     }
-  L172_iflag_100_return:
+  L_iflag_100_return:
     iflag = prev_iflag;
     current_search_direction = ref1<double>(0,0);
+  L172:
     mcsrch(
       n,x,f,g,w.get1(ispt + point*n + 1, n),
       stp,ftol,xtol,maxfev,info,nfev,diag);

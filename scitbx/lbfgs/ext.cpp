@@ -163,6 +163,12 @@ struct raw_lbfgs : boost::noncopyable {
     return iflag;
   }
 
+  int
+  nfun() const { return lbfgs_obj.nfun; }
+
+  int
+  iter() const { return lbfgs_obj.iter; }
+
   double
   stp() const { return lbfgs_obj.stp; }
 
@@ -202,6 +208,8 @@ struct raw_lbfgs_wrappers
         arg_("xtol"),
         arg_("w"),
         arg_("iflag")))
+      .def("nfun", &w_t::nfun)
+      .def("iter", &w_t::iter)
       .def("stp", &w_t::stp)
       .def("set_stp", &w_t::set_stp, (arg_("value")))
       .def("current_search_direction", &w_t::current_search_direction)
