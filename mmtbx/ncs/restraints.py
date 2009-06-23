@@ -161,10 +161,8 @@ def match_atoms(
         i_seq_j = o_atom.i_seq
         if (i_seq_i == i_seq_j):
           raise Sorry("NCS selections restrain atom to itself:\n"
-            + "  Reference selection: %s\n" % show_string(
-              selection_strings[0]),
-            + "      Other selection: %s\n" % show_string(
-              selection_strings[j_ncw]),
+            + "  Reference selection: %s\n" % show_string(selection_strings[0])
+            + "      Other selection: %s\n" % show_string(selection_strings[j_ncs])
             + '    %s' % r_atom.quote())
         stat, i_diag = registry.enter(
           i_seq=i_seq_i, j_seq=i_seq_j, j_ncs=j_ncs)
