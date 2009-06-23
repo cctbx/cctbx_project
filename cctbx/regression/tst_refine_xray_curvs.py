@@ -2,6 +2,7 @@ from __future__ import division
 from cctbx import xray
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
+from cctbx.adptbx import b_as_u
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from scitbx import matrix
@@ -36,7 +37,7 @@ class ls_refinement(object):
     O.callback_after_step(minimizer=None)
     if (params.use_lbfgs_raw):
       O.run_lbfgs_raw()
-      O.callback_after_step(minimizer=None)
+      O.callback_after_step(minimizer=None, suffix=" FINAL")
     else:
       O.minimizer = scitbx.lbfgs.run(
         target_evaluator=O,
@@ -75,6 +76,56 @@ class ls_refinement(object):
       sc.u_iso = O.x[ix]
       ix += 1
     assert ix == O.x.size()
+
+  def adjust_stp(O, stp, s,
+        large_shift_site=0.1,
+        large_shift_u_iso_factor=0.5,
+        min_large_shift_u_iso=b_as_u(1)):
+    print "adjust_stp", stp
+    assert O.x.size() == s.size()
+    max_stp = 100
+    ix = 0
+    uc = O.xray_structure.unit_cell()
+    sstab = O.xray_structure.site_symmetry_table()
+    for i_sc,sc in enumerate(O.xray_structure.scatterers()):
+      site_symmetry = sstab.get(i_sc)
+      if (site_symmetry.is_point_group_1()):
+        constr = None
+        np = 3
+        site = matrix.col(O.x[ix:ix+np])
+        site_stp = site + stp * matrix.col(s[ix:ix+np])
+      else:
+        constr = site_symmetry.site_constraints()
+        np = constr.n_independent_params()
+        xi = matrix.col(O.x[ix:ix+np])
+        si = matrix.col(s[ix:ix+np])
+        site = constr.all_params(independent_params=xi.elems)
+        site_stp = constr.all_params(independent_params=(xi+stp*si).elems)
+      d = uc.distance(site, site_stp)
+      ann = ("", "LARGE SHIFT")[d > large_shift_site]
+      print "  site", sc.label, d, ann
+      if (constr is None):
+        for i,ucp in enumerate(uc.parameters()[:3]):
+          ls = large_shift_site / ucp
+          if (0 and abs(stp*s[ix+i]) > ls):
+            max_stp = min(max_stp, abs(ls/s[ix]))
+      else:
+        raise RuntimeError("SPECIAL POSITION LARGE SHIFT NOT IMPLEMENTED.")
+      ix += np
+      u_iso = O.x[ix]
+      u_iso_stp = u_iso + stp * s[ix]
+      lu = max(min_large_shift_u_iso, abs(u_iso) * large_shift_u_iso_factor)
+      ann = ("", "LARGE SHIFT")[abs(u_iso_stp-u_iso) > lu]
+      print "  u_iso", sc.label, u_iso, u_iso_stp, ann
+      if (abs(stp*s[ix]) > lu):
+        max_stp = min(max_stp, abs(lu/s[ix]))
+      ix += 1
+    assert ix == O.x.size()
+    print "max_stp:", max_stp
+    sys.stdout.flush()
+    if (O.params.use_max_stp):
+      return min(max_stp, stp)
+    return stp
 
   def compute_functional_and_gradients(O):
     O.number_of_function_evaluations += 1
@@ -193,7 +244,7 @@ class ls_refinement(object):
     O.c_last = c_active
     return O.f_last, O.g_last
 
-  def callback_after_step(O, minimizer):
+  def callback_after_step(O, minimizer, suffix=""):
     O.number_of_lbfgs_iterations += 1
     if (O.number_of_lbfgs_iterations % 10 == 0):
       s = "step  fun    f        |g|      curv min    max      mean"
@@ -210,7 +261,7 @@ class ls_refinement(object):
     else:
       s += " %9s %9s %9s" % ("","","")
     s += O.format_rms_info()
-    print s
+    print s+suffix
     sys.stdout.flush()
 
   def format_rms_info(O):
@@ -238,7 +289,7 @@ class ls_refinement(object):
   def show_rms_info(O):
     s = O.format_rms_info()
     if (len(s) != 0):
-       print "cRMSD aRMSD uRMSD"
+       print " cRMSD aRMSD uRMSD"
        print s
        sys.stdout.flush()
 
@@ -272,23 +323,22 @@ class ls_refinement(object):
         diag.clear()
         diag.extend(diag0)
       elif (iflag == 100):
-        new_stp = adjust_stp(
-          x=O.x,
+        new_stp = O.adjust_stp(
           stp=lbfgs_impl.stp(),
           s=lbfgs_impl.current_search_direction())
         lbfgs_impl.set_stp(value=new_stp)
       else:
         raise RuntimeError("invalid iflag value: %d" % iflag)
-      O.show_rms_info()
+      if (iflag in [0,1]):
+        O.show_rms_info()
       iflag = lbfgs_impl(
         n=n, m=m, x=O.x, f=f, g=g, diagco=diagco, diag=diag,
         iprint=iprint, eps=eps, xtol=xtol, w=w, iflag=iflag)
       if (iflag <= 0): break
-
-def adjust_stp(x, stp, s):
-  assert x.size() == s.size()
-  print "ADJUST STP HERE", stp
-  return stp
+    if (O.params.lbfgs_impl_switch == 1):
+      print "iter, nfun:", lbfgs_impl.iter(), lbfgs_impl.nfun()
+      assert O.number_of_function_evaluations == lbfgs_impl.nfun()
+      O.number_of_lbfgs_iterations = lbfgs_impl.iter()-1
 
 def run_refinement(structure_ideal, structure_shake, params, pickle_file_name):
   print "Ideal structure:"
@@ -326,6 +376,7 @@ def run_call_back(flags, space_group_info, params):
     elements=("N", "C", "O", "S", "Yb"),
     volume_per_atom=200,
     min_distance=2.0,
+    general_positions_only=params.general_positions_only,
     random_u_iso=True)
   structure_ideal = structure_shake.deep_copy_scatterers()
   structure_shake.shake_sites_in_place(rms_difference=0.2)
@@ -350,6 +401,8 @@ def run_call_back(flags, space_group_info, params):
 
 def run(args):
   master_phil = libtbx.phil.parse("""
+    general_positions_only = True
+      .type = bool
     use_lbfgs_raw = False
       .type = bool
     diagco = 0
@@ -360,6 +413,8 @@ def run(args):
       .type = ints(size=2)
     curv_filter_lim_eps = 1e-3
       .type = float
+    use_max_stp = True
+      .type = bool
     pickle_root_name = None
       .type = str
     unpickle = None
