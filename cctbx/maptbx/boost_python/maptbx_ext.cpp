@@ -3,7 +3,7 @@
 #include <cctbx/maptbx/fft.h>
 #include <cctbx/maptbx/average_densities.h>
 #include <cctbx/maptbx/real_space_gradients_simple.h>
-#include <cctbx/maptbx/real_space_gradients_simple_ls.h>
+#include <cctbx/maptbx/real_space_target_and_gradients.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
