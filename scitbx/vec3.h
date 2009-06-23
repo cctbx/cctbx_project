@@ -111,6 +111,22 @@ namespace scitbx {
           a[0] * b[1] - b[0] * a[1]);
       }
 
+      //! Element-wise multiplication.
+      template <typename NumTypeRhs>
+      vec3<
+        typename af::binary_operator_traits<NumType, NumTypeRhs>::arithmetic>
+      each_mul(
+        vec3<NumTypeRhs> const& rhs) const
+      {
+        vec3<
+          typename af::binary_operator_traits<NumType, NumTypeRhs>::arithmetic>
+            result;
+        for(std::size_t i=0;i<3;i++) {
+          result[i] = (*this)[i] * rhs[i];
+        }
+        return result;
+      }
+
       //! Return the length squared of the vector.
       NumType length_sq() const
       {

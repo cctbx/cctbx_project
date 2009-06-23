@@ -124,6 +124,12 @@ int main(int /*argc*/, char* /*argv*/[])
        - vec3<double>(1.33,-1.79196,1.064)).length()) < 1.e-4);
   }
   {
+    vec3<int> a(2, 3, 4);
+    vec3<int> b(5, 8, 7);
+    vec3<int> c = a.each_mul(b);
+    check_true(__LINE__, c == vec3<int>(10,24,28));
+  }
+  {
     vec3<double> a(0.,0.,0.);
     verify(__LINE__, a, a.ortho());
     vec3<double> z(0.,0.,1.);
