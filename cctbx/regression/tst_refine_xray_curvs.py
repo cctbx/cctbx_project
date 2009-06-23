@@ -70,7 +70,7 @@ class ls_refinement(object):
       else:
         constr = site_symmetry.site_constraints()
         np = constr.n_independent_params()
-        constr.all_params(independent_params=tuple(O.x[ix:ix+np]))
+        sc.site = constr.all_params(independent_params=tuple(O.x[ix:ix+np]))
         ix += np
       sc.u_iso = O.x[ix]
       ix += 1
