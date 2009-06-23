@@ -162,6 +162,20 @@ struct raw_lbfgs : boost::noncopyable {
       iflag);
     return iflag;
   }
+
+  double
+  stp() const { return lbfgs_obj.stp; }
+
+  void
+  set_stp(double value) { lbfgs_obj.stp = value; }
+
+  af::shared<double>
+  current_search_direction() const
+  {
+    return af::shared<double>(
+      lbfgs_obj.current_search_direction.begin(),
+      lbfgs_obj.current_search_direction.end());
+  }
 };
 
 struct raw_lbfgs_wrappers
@@ -188,6 +202,9 @@ struct raw_lbfgs_wrappers
         arg_("xtol"),
         arg_("w"),
         arg_("iflag")))
+      .def("stp", &w_t::stp)
+      .def("set_stp", &w_t::set_stp, (arg_("value")))
+      .def("current_search_direction", &w_t::current_search_direction)
     ;
   }
 };

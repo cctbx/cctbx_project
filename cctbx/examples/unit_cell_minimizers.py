@@ -156,7 +156,7 @@ class refinery:
       return 1/d
     iflag = 0
     while True:
-      assert iflag in [0,1,2]
+      assert iflag in [0,1,2,100]
       if (iflag in [0,1]):
         try: f = self.functional(x=x)
         except scitbx.minimizers.FunctionalException: return x_last

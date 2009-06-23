@@ -5,6 +5,7 @@
 #define SCITBX_LBFGS_RAW_H
 
 #include <algorithm>
+#include <stdexcept>
 #include <cstdio>
 #include <cmath>
 
@@ -844,6 +845,8 @@ struct lbfgs {
     iter, nfun, point, ispt, iypt, maxfev, info, bound, npt, cp, nfev,
     inmc, iycn, iscn;
   bool finish;
+  int prev_iflag;
+  ref1<double> current_search_direction;
 
   lbfgs()
   :
@@ -852,7 +855,9 @@ struct lbfgs {
     iter(-9999), nfun(-9999), point(-9999), ispt(-9999), iypt(-9999),
     maxfev(-9999), info(-9999), bound(-9999), npt(-9999), cp(-9999),
     nfev(-9999), inmc(-9999), iycn(-9999), iscn(-9999),
-    finish(true)
+    finish(true),
+    prev_iflag(-9999),
+    current_search_direction(0,0)
   {}
 
   void
@@ -1087,6 +1092,10 @@ struct lbfgs {
     const static double one = 1.0;
     const static double zero = 0.0;
 
+    if (diagco < 0 || diagco > 2) {
+      throw std::runtime_error("raw::lbfgs: invalid diagco value.");
+    }
+
     static const char* iflag_minus_2_format =
       "\n IFLAG= -2\n THE%5d-TH DIAGONAL ELEMENT OF THE\n"
       " INVERSE HESSIAN APPROXIMATION IS NOT POSITIVE\n";
@@ -1100,7 +1109,10 @@ struct lbfgs {
       goto L172;
     case 2 :
       goto L100;
+    case 100 :
+      goto L172_iflag_100_return;
     default :
+      throw std::runtime_error("lbfgs: invalid iflag value.");
       break;
     }
   L10:
@@ -1253,6 +1265,15 @@ struct lbfgs {
       w(i) = g(i);
     }
   L172:
+    prev_iflag = iflag;
+    current_search_direction = w.get1(ispt + point*n + 1, n);
+    if (diagco == 2) {
+      iflag = 100;
+      return;
+    }
+  L172_iflag_100_return:
+    iflag = prev_iflag;
+    current_search_direction = ref1<double>(0,0);
     mcsrch(
       n,x,f,g,w.get1(ispt + point*n + 1, n),
       stp,ftol,xtol,maxfev,info,nfev,diag);

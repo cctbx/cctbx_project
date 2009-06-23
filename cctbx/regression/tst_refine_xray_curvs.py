@@ -243,8 +243,11 @@ class ls_refinement(object):
        sys.stdout.flush()
 
   def run_lbfgs_raw(O):
+    lbfgs_impl = [
+      scitbx.lbfgs.raw_reference,
+      scitbx.lbfgs.raw][O.params.lbfgs_impl_switch]
     diagco = O.params.diagco
-    assert diagco in [0,1]
+    assert diagco in [0,1,2]
     n = O.x.size()
     m = 5
     iprint = O.params.iprint
@@ -265,16 +268,27 @@ class ls_refinement(object):
             assert O.c_init.all_gt(0)
             diag0 = 1 / O.c_init
             diag = diag0.deep_copy()
-      else:
-        assert iflag == 2
+      elif (iflag == 2):
         diag.clear()
         diag.extend(diag0)
+      elif (iflag == 100):
+        new_stp = adjust_stp(
+          x=O.x,
+          stp=lbfgs_impl.stp(),
+          s=lbfgs_impl.current_search_direction())
+        lbfgs_impl.set_stp(value=new_stp)
+      else:
+        raise RuntimeError("invalid iflag value: %d" % iflag)
       O.show_rms_info()
-      iflag = [scitbx.lbfgs.raw_reference,
-               scitbx.lbfgs.raw][O.params.lbfgs_impl_switch](
+      iflag = lbfgs_impl(
         n=n, m=m, x=O.x, f=f, g=g, diagco=diagco, diag=diag,
         iprint=iprint, eps=eps, xtol=xtol, w=w, iflag=iflag)
       if (iflag <= 0): break
+
+def adjust_stp(x, stp, s):
+  assert x.size() == s.size()
+  print "ADJUST STP HERE", stp
+  return stp
 
 def run_refinement(structure_ideal, structure_shake, params, pickle_file_name):
   print "Ideal structure:"
