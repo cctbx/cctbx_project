@@ -49,7 +49,7 @@ class minimization(object):
       map_target  = self.map_target,
       map_current = self.map_current,
       step        = self.step,
-      sites_frac  = self.xray_structure.sites_frac()) 
+      sites_frac  = self.xray_structure.sites_frac())
     rs_f = self.mngr.target()
     rs_g = self.mngr.gradients()
     if(self.geometry_restraints_manager):
