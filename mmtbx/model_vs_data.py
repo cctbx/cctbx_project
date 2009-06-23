@@ -96,18 +96,20 @@ class mvd(object):
         outl = i_model.ramalyze.get_outliers_count_and_fraction()
         allo = i_model.ramalyze.get_allowed_count_and_fraction()
         favo = i_model.ramalyze.get_favored_count_and_fraction()
-        gene = i_model.ramalyze.get_general_count_and_fraction()
-        glyc = i_model.ramalyze.get_gly_count_and_fraction()
-        prol = i_model.ramalyze.get_pro_count_and_fraction()
-        prep = i_model.ramalyze.get_prepro_count_and_fraction()
         print >> log, "      Ramachandran plot, number of:"
         print >> log, "        outliers : %-5d (%-5.2f %s)"%(outl[0],outl[1]*100.,"%")
-        print >> log, "        general  : %-5d (%-5.2f %s)"%(gene[0],gene[1]*100.,"%")
         print >> log, "        allowed  : %-5d (%-5.2f %s)"%(allo[0],allo[1]*100.,"%")
         print >> log, "        favored  : %-5d (%-5.2f %s)"%(favo[0],favo[1]*100.,"%")
-        print >> log, "        glycine  : %-5d (%-5.2f %s)"%(glyc[0],glyc[1]*100.,"%")
-        print >> log, "        proline  : %-5d (%-5.2f %s)"%(prol[0],prol[1]*100.,"%")
-        print >> log, "        prepro   : %-5d (%-5.2f %s)"%(prep[0],prep[1]*100.,"%")
+      if(i_model.rotalyze is not None):
+        print >> log, "      Rotamer outliers        : %d (%s %s) goal: %s" %(
+          i_model.rotalyze.get_outliers_count_and_fraction()[0],
+          str("%6.2f"%(i_model.rotalyze.get_outliers_count_and_fraction()[1]*100.)).strip(),
+          "%", i_model.rotalyze.get_outliers_goal())
+      if(i_model.cbetadev is not None):
+        print >> log, "      Cbeta deviations >0.25A : %d"%i_model.cbetadev.get_outlier_count()
+      if(i_model.clashscore is not None):
+        print >> log, "      All-atom clashscore     : %.2f (steric overlaps >0.4A per 1000 atoms)"% \
+          i_model.clashscore.get_clashscore()
     #
     print >> log, "  Data:"
     result = " \n    ".join([
@@ -152,7 +154,10 @@ class mvd(object):
       print >> log, "    low_resolution  : %-s"%format_value("%s",self.pdb_header.low_resolution)
       print >> log, "    sigma_cutoff    : %-s"%format_value("%s",self.pdb_header.sigma_cutoff)
       print >> log, "    matthews_coeff  : %-s"%format_value("%s",self.pdb_header.matthews_coeff)
-      print >> log, "    solvent_cont    : %-s %%"%format_value("%s",self.pdb_header.solvent_cont)
+      if(self.pdb_header.solvent_cont is not None):
+        print >> log, "    solvent_cont    : %-s %%"%format_value("%s",self.pdb_header.solvent_cont)
+      else:
+        print >> log, "    solvent_cont    : %-s"%format_value("%s",self.pdb_header.solvent_cont)
       if(self.pdb_header.tls is not None):
         print >> log, "    TLS             : %-s"%format_value("%s",
           " ".join([str(self.pdb_header.tls.pdb_inp_tls.tls_present),
@@ -221,6 +226,7 @@ def get_matthews_coeff(file_lines):
 def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
                   model_selections, show_geometry_statistics, mvd_obj):
   xray_structures = processed_pdb_file.xray_structure()
+  hd_sel_all = xray_structures.hd_selection()
   if(show_geometry_statistics):
     sctr_keys = \
       xray_structures.scattering_type_registry().type_count_dict().keys()
@@ -243,18 +249,23 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
     xray_structure = xray_structures.select(model_selection)
     hd_sel = xray_structure.hd_selection()
     if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
-      xray_structure_stat = show_xray_structure_statistics(xray_structure =
-        xray_structure.select(~hd_sel))
+      xray_structure_stat = show_xray_structure_statistics(
+        xray_structure = xray_structure,
+        hd_sel = ~hd_sel)
     else:
-      xray_structure_stat = show_xray_structure_statistics(xray_structure = xray_structure)
+      xray_structure_stat = show_xray_structure_statistics(
+        xray_structure = xray_structure)
     model_statistics_geometry = None
     ramalyze_obj = None
+    rotalyze_obj = None
+    cbetadev_obj = None
+    clashscore_obj = None
     if(show_geometry_statistics):
       # exclude hydrogens
       if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
         xray_structure = xray_structure.select(~hd_sel)
         model_selection = model_selection.select(~hd_sel)
-        geometry = restraints_manager_all.geometry.select(selection = ~hd_sel)
+        geometry = restraints_manager_all.geometry.select(selection = ~hd_sel_all)
       model_selection_as_bool = flex.bool(xray_structures.scatterers().size(),
         model_selection)
       geometry = restraints_manager_all.geometry.select(selection =
@@ -273,8 +284,12 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
       from phenix.validation.ramalyze import ramalyze
       from phenix.validation.rotalyze import rotalyze
       from phenix.validation.cbetadev import cbetadev
+      from phenix.validation.clashscore import clashscore
       need_ramachandran = False
       ramalyze_obj = None
+      rotalyze_obj = None
+      cbetadev_obj = None
+      clashscore_obj = None
       rc = overall_counts_i_seq.resname_classes
       n_residues = 0
       for k in rc.keys():
@@ -286,15 +301,36 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
         ramalyze_obj = ramalyze()
         output, output_list = ramalyze_obj.analyze_pdb(hierarchy =
           hierarchy_i_seq, outliers_only = False)
+        rotalyze_obj = rotalyze()
+        output_rotalyze, output_list_rotalyze = rotalyze_obj.analyze_pdb(
+          hierarchy = hierarchy_i_seq, outliers_only = False)
+        cbetadev_obj = cbetadev()
+        output_cbetadev, sum_cbtadev, output_list_cbetadev = \
+          cbetadev_obj.analyze_pdb(hierarchy = hierarchy_i_seq,
+          outliers_only = False)
+        clashscore_obj = clashscore()
+        output_clashscore, bad_clashes = clashscore_obj.analyze_clashes(
+          hierarchy = hierarchy_i_seq)
     geometry_statistics.append(group_args(
       overall_counts_i_seq      = overall_counts_i_seq,
       xray_structure_stat       = xray_structure_stat,
       model_statistics_geometry = model_statistics_geometry,
-      ramalyze                  = ramalyze_obj))
+      ramalyze                  = ramalyze_obj,
+      rotalyze                  = rotalyze_obj,
+      cbetadev                  = cbetadev_obj,
+      clashscore                = clashscore_obj))
   mvd_obj.collect(models = geometry_statistics)
   return geometry_statistics
 
-def show_xray_structure_statistics(xray_structure):
+def show_xray_structure_statistics(xray_structure, hd_sel = None):
+  atom_counts = xray_structure.scattering_types_counts_and_occupancy_sums()
+  atom_counts_strs = []
+  for ac in atom_counts:
+    atom_counts_strs.append("%s:%s:%s"%(ac.scattering_type,str(ac.count),
+      str("%10.2f"%ac.occupancy_sum).strip()))
+  atom_counts_str = " ".join(atom_counts_strs)
+  if(hd_sel is not None):
+    xray_structure = xray_structure.select(~hd_sel)
   b_isos = xray_structure.extract_u_iso_or_u_equiv()
   n_aniso = xray_structure.use_u_aniso().count(True)
   n_not_positive_definite = xray_structure.is_positive_definite_u().count(False)
@@ -307,12 +343,6 @@ def show_xray_structure_statistics(xray_structure):
   o_mean = format_value("%-6.2f",flex.mean(occ)).strip()
   o_min = format_value("%-6.2f",flex.min(occ)).strip()
   o_max = format_value("%-6.2f",flex.max(occ)).strip()
-  atom_counts = xray_structure.scattering_types_counts_and_occupancy_sums()
-  atom_counts_strs = []
-  for ac in atom_counts:
-    atom_counts_strs.append("%s:%s:%s"%(ac.scattering_type,str(ac.count),
-      str("%10.2f"%ac.occupancy_sum).strip()))
-  atom_counts_str = " ".join(atom_counts_strs)
   return group_args(n_atoms         = n_atoms,
                     atom_counts_str = atom_counts_str,
                     b_min           = b_min,
@@ -646,12 +676,12 @@ def read_mvd_output(file_lines, name):
   non_bonded_min = None
   #
   rama_outliers = None
-  rama_general  = None
   rama_allowed  = None
   rama_favored  = None
-  rama_glycine  = None
-  rama_proline  = None
-  rama_prepro   = None
+  #
+  rota_outl  = None
+  cbeta_dev  = None
+  clashscore = None
   #
   data_label      = None
   d_min           = None
@@ -745,12 +775,11 @@ def read_mvd_output(file_lines, name):
         planarity_cnt  = int(xs[4])
       if(x.startswith("non-bonded (min) :")): non_bonded_min = float(xs[3])
       if(x.startswith("outliers :")): rama_outliers = float(xs[3].replace("(",""))
-      if(x.startswith("general  :")): rama_general  = float(xs[3].replace("(",""))
       if(x.startswith("allowed  :")): rama_allowed  = float(xs[3].replace("(",""))
       if(x.startswith("favored  :")): rama_favored  = float(xs[3].replace("(",""))
-      if(x.startswith("glycine  :")): rama_glycine  = float(xs[3].replace("(",""))
-      if(x.startswith("proline  :")): rama_proline  = float(xs[3].replace("(",""))
-      if(x.startswith("prepro   :")): rama_prepro   = float(xs[3].replace("(",""))
+      if(x.startswith("Rotamer outliers :")):        rota_outl = float(xs[3].replace("(",""))
+      if(x.startswith("Cbeta deviations >0.25A :")): cbeta_dev = float(xs[4].replace("(",""))
+      if(x.startswith("All-atom clashscore     :")): cbeta_dev = float(xs[3].replace("(",""))
       if(x.startswith("data_label              :")): data_label      = xs[2]
       if(x.startswith("high_resolution         :")): d_min           = float(xs[2])
       if(x.startswith("low_resolution          :")): d_max           = float(xs[2])
@@ -827,12 +856,8 @@ def read_mvd_output(file_lines, name):
     planarity_max  = planarity_max ,
     non_bonded_min = non_bonded_min,
     rama_outliers = rama_outliers,
-    rama_general  = rama_general ,
     rama_allowed  = rama_allowed ,
     rama_favored  = rama_favored ,
-    rama_glycine  = rama_glycine ,
-    rama_proline  = rama_proline ,
-    rama_prepro   = rama_prepro  ,
     data_label      = data_label     ,
     d_min           = d_min          ,
     d_max           = d_max          ,

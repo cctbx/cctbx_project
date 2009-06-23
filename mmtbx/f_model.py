@@ -357,8 +357,6 @@ class manager(manager_mixin):
            miller_array   = self.f_obs,
            xray_structure = self.xray_structure,
            mask_params    = self.mask_params)
-       if(not trust_xray_structure):
-          assert [f_calc, f_mask].count(None) == 2
        if(update_xray_structure):
           self.update_xray_structure(xray_structure   = self.xray_structure,
                                      update_f_calc    = True,
@@ -367,6 +365,23 @@ class manager(manager_mixin):
                                      b_sol            = b_sol,
                                      b_cart           = b_cart)
        else:
+          if(f_calc is None):
+            f_calc = self.f_obs.structure_factors_from_scatterers(
+              xray_structure = self.xray_structure,
+              algorithm                    = self.sfg_params.algorithm,
+              cos_sin_table                = self.sfg_params.cos_sin_table,
+              grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
+              quality_factor               = self.sfg_params.quality_factor,
+              u_base                       = self.sfg_params.u_base,
+              b_base                       = self.sfg_params.b_base,
+              wing_cutoff                  = self.sfg_params.wing_cutoff,
+              exp_table_one_over_step_size =
+                              self.sfg_params.exp_table_one_over_step_size
+                              ).f_calc()
+          if(f_mask is None):
+            f_mask = self.mask_manager.f_mask(
+              xray_structure_new = self.xray_structure,
+              force_update       = True)
           self.update_core(f_calc      = f_calc,
                            f_mask      = f_mask,
                            b_cart      = b_cart,

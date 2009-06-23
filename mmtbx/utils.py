@@ -1305,6 +1305,7 @@ def fmodel_manager(
       target_name                   = "ml",
       hl_coeff                      = None,
       use_f_model_scaled            = False,
+      update_xray_structure         = True,
       twin_law                      = None,
       detwin_mode                   = None,
       detwin_map_types              = None,
@@ -1323,6 +1324,7 @@ def fmodel_manager(
       use_f_model_scaled           = use_f_model_scaled,
       r_free_flags                 = r_free_flags,
       mask_params                  = mask_parameters,
+      update_xray_structure        = update_xray_structure,
       target_name                  = target_name,
       f_obs                        = f_obs,
       f_mask                       = f_mask,
@@ -1412,28 +1414,39 @@ def fmodel_simple(f_obs,
   else:
     # XXX Automatic twin detection is not available for multi-model.
     f_model_data = None
+    xrs_as_one_structure = xray_structures[0]
+    f_mask_data = None
     for i_seq, xray_structure in enumerate(xray_structures):
       fmodel = fmodel_manager(
         xray_structure = xray_structure,
         f_obs          = f_obs,
         r_free_flags   = r_free_flags,
         twin_law       = None) # XXX Automatic twin detection is not available for multi-model.
-      fmodel.update_solvent_and_scale(params = bss_params, verbose = -1)
+      if(i_seq != 0):
+        xrs_as_one_structure = xrs_as_one_structure.concatenate(xray_structure)
       if(i_seq == 0):
-        f_model_data = fmodel.f_model_scaled_with_k1().data()
+        f_model_data = fmodel.f_calc().data()
+        f_mask_data = fmodel.f_mask().data()
       else:
-        f_model_data += fmodel.f_model_scaled_with_k1().data()
+        f_model_data += fmodel.f_calc().data()
+        f_mask_data += fmodel.f_mask().data()
     fmodel_average = fmodel.f_obs.array(data = f_model_data)
+    f_mask_data_average = fmodel.f_obs.array(data = f_mask_data/len(xray_structures))
     fmodel_result = fmodel_manager(
-      r_free_flags = fmodel.r_free_flags,
-      target_name  = target_name,
-      f_obs        = fmodel.f_obs,
-      f_mask       = fmodel.f_mask(),
-      f_calc       = fmodel_average)
+      f_obs        = f_obs,
+      r_free_flags = r_free_flags,
+      f_calc       = fmodel_average,
+      f_mask       = f_mask_data_average,
+      twin_law     = None)
+    if 0:
+      # XXX this makes test perfect when fobs are computed with pdbtools
+      fmodel_result = fmodel_manager(
+          xray_structure = xrs_as_one_structure,
+          f_obs          = f_obs,
+          r_free_flags   = r_free_flags,
+          twin_law       = None)
     if(bulk_solvent_and_scaling):
-      params = bss.master_params.extract()
-      params.bulk_solvent=False
-      fmodel_result.update_solvent_and_scale(params = params, verbose = -1)
+      fmodel_result.update_solvent_and_scale(verbose = -1)
       sel = fmodel_result.outlier_selection()
       fmodel_result = fmodel_result.select(selection = sel)
       if(sel is not None and sel.count(False) > 0):
@@ -1623,7 +1636,7 @@ def model_simple(pdb_file_names,
     pdb_file_names = pdb_file_names,
     cif_objects    = cif_objects,
     cryst1         = cryst1,
-    use_elbow      = True,
+    use_elbow      = use_elbow,
     log            = log)
   mmtbx_pdb_file.set_ppf()
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
