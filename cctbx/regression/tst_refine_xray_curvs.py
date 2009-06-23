@@ -107,7 +107,7 @@ class ls_refinement(object):
       if (constr is None):
         for i,ucp in enumerate(uc.parameters()[:3]):
           ls = large_shift_site / ucp
-          if (0 and abs(stp*s[ix+i]) > ls):
+          if (abs(stp*s[ix+i]) > ls):
             max_stp = min(max_stp, abs(ls/s[ix]))
       else:
         raise RuntimeError("SPECIAL POSITION LARGE SHIFT NOT IMPLEMENTED.")
@@ -184,13 +184,13 @@ class ls_refinement(object):
       #
       class curv_filter(object):
         def __init__(O, curvs, lim_eps=O.params.curv_filter_lim_eps):
-          c_abs_max = flex.max(flex.abs(curvs))
-          O.c_lim = c_abs_max * lim_eps
+          c_pos = curvs.select(curvs > 0)
+          O.c_lim = flex.max_default(c_pos, default=0) * lim_eps
           if (O.c_lim == 0):
             O.c_lim = 1
             O.c_rms = 1
           else:
-            O.c_rms = flex.mean_sq(curvs)**0.5
+            O.c_rms = flex.mean_sq(c_pos)**0.5
           O.n_below_limit = 0
           O.n_above_limit = 0
         def apply(O, some_curvs):
