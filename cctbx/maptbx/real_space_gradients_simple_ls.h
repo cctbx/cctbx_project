@@ -4,7 +4,7 @@
 #include <cctbx/maptbx/eight_point_interpolation.h>
 
 namespace cctbx { namespace maptbx {
-  
+
 class target_and_gradients {
 public:
   target_and_gradients(
@@ -42,7 +42,7 @@ public:
       }
     }
     // gradients
-    af::const_ref<double, af::c_grid_padded<3> > diffd = 
+    af::const_ref<double, af::c_grid_padded<3> > diffd =
       diff_density_array.const_ref();
     cctbx::cartesian<> step_x = cctbx::cartesian<>(step,0,0);
     cctbx::cartesian<> step_y = cctbx::cartesian<>(0,step,0);
@@ -51,26 +51,26 @@ public:
     gradients_.resize(sites_frac.size(), scitbx::vec3<double>(0,0,0));
     for(std::size_t i_site=0;i_site<sites_frac.size();i_site++) {
       cctbx::fractional<> const& site_frac = sites_frac[i_site];
-      cctbx::cartesian<> site_cart = unit_cell.orthogonalize(site_frac);      
+      cctbx::cartesian<> site_cart = unit_cell.orthogonalize(site_frac);
       cctbx::fractional<> sxp = unit_cell.fractionalize(site_cart+step_x);
       cctbx::fractional<> sxm = unit_cell.fractionalize(site_cart-step_x);
       cctbx::fractional<> syp = unit_cell.fractionalize(site_cart+step_y);
       cctbx::fractional<> sym = unit_cell.fractionalize(site_cart-step_y);
       cctbx::fractional<> szp = unit_cell.fractionalize(site_cart+step_z);
-      cctbx::fractional<> szm = unit_cell.fractionalize(site_cart-step_z);      
+      cctbx::fractional<> szm = unit_cell.fractionalize(site_cart-step_z);
       double gx = (eight_point_interpolation(diffd, sxp) -
                    eight_point_interpolation(diffd, sxm)) / two_step;
       double gy = (eight_point_interpolation(diffd, syp) -
                    eight_point_interpolation(diffd, sym)) / two_step;
       double gz = (eight_point_interpolation(diffd, szp) -
-                   eight_point_interpolation(diffd, szm)) / two_step;                   
+                   eight_point_interpolation(diffd, szm)) / two_step;
       gradients_[i_site] = scitbx::vec3<double>(gx,gy,gz);
     }
   }
-  
+
   double target() { return target_; }
   af::shared<scitbx::vec3<double> > gradients() { return gradients_; }
-  
+
 protected:
   double target_;
   af::shared<scitbx::vec3<double> > gradients_;

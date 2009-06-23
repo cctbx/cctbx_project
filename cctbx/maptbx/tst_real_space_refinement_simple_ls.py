@@ -20,12 +20,12 @@ def run():
     fft_map = fc.fft_map(resolution_factor=resolution_factor)
     fft_map.apply_sigma_scaling()
     result = fft_map.real_map_unpadded()
-    return result, fc, fft_map  
+    return result, fc, fft_map
   pdbfn = libtbx.env.find_in_repositories(
         relative_path="phenix_regression/pdb/1akg.pdb", test=os.path.isfile)
   xrs = iotbx.pdb.input(file_name = pdbfn).xray_structure_simple()
   model = mmtbx.utils.model_simple(pdb_file_names = [pdbfn],
-    scattering_table="wk1995", use_elbow = False)     
+    scattering_table="wk1995", use_elbow = False)
   map_target,tmp,tmp = compute_map(xray_structure = xrs)
   xrs_sh = xrs.deep_copy_scatterers()
   xrs_sh.shake_sites_in_place(mean_distance=0.5)
@@ -60,7 +60,7 @@ def run():
         real_space_gradients_delta=step)
       xrs_sh = xrs_sh.replace_sites_cart(minimized.sites_cart)
       final_error = flex.mean(xrs.distances(other = xrs_sh))
-    
+
     print "Final:", final_error
   assert start_error >= 0.5
   assert final_error < 0.00035
