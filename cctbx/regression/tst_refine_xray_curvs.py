@@ -176,8 +176,8 @@ class ls_refinement(object):
           np = 3
         else:
           np = site_symmetry.site_constraints().n_independent_params()
-        c_active_site.extend(g_all[i_all:i_all+np])
-        c_active_u_iso.append(g_all[i_all+np])
+        c_active_site.extend(c_all[i_all:i_all+np])
+        c_active_u_iso.append(c_all[i_all+np])
         np += 4 # u_iso, occ, fp, fdp
         i_all += np
       assert i_all == g_all.size()
