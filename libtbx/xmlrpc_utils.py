@@ -111,7 +111,8 @@ class ServerProxy (object) :
       except KeyboardInterrupt :
         raise
       except Exception, e :
-        if str(e).startswith("[Errno 61]") :
+        msg = str(e)
+        if msg.startswith("[Errno 61]") or msg.startswith("[Errno 111]") :
           self._pending.insert(0, (methodname, params))
           break
         elif str(e).startswith("<ProtocolError ") :
