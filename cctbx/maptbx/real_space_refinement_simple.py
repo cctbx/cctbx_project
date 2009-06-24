@@ -15,7 +15,7 @@ class lbfgs(object):
         lbfgs_exception_handling_params=None):
     assert [unit_cell, geometry_restraints_manager].count(None) == 1
     assert real_space_gradients_delta is not None
-    if(unit_cell is None and geometry_restraints_manager is not None):
+    if (unit_cell is None):
       unit_cell = geometry_restraints_manager.crystal_symmetry.unit_cell()
     O.density_map = density_map
     O.real_space_gradients_delta = real_space_gradients_delta
