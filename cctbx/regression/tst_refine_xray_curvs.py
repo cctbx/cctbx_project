@@ -5,6 +5,7 @@ from cctbx.development import debug_utils
 from cctbx.adptbx import b_as_u
 from cctbx.array_family import flex
 import scitbx.lbfgs
+import scitbx.lbfgsb
 from scitbx import matrix
 import libtbx.phil.command_line
 from libtbx.test_utils import approx_equal
@@ -133,22 +134,27 @@ class ls_refinement(object):
     O.number_of_lbfgs_iterations = -1
     O.f_start, O.g_start = O.compute_functional_and_gradients()
     O.callback_after_step(minimizer=None)
-    if (params.use_lbfgs_raw):
-      O.run_lbfgs_raw()
-      O.callback_after_step(minimizer=None, suffix=" FINAL")
-    else:
+    if (params.minimizer == "lbfgs"):
       O.minimizer = scitbx.lbfgs.run(
         target_evaluator=O,
         termination_params=lbfgs_termination_params,
         exception_handling_params=lbfgs_exception_handling_params)
+    elif (params.minimizer == "lbfgs_raw"):
+      O.run_lbfgs_raw()
+    elif (params.minimizer == "lbfgsb"):
+      O.run_lbfgsb()
     O.f_final, O.g_final = O.compute_functional_and_gradients()
 
   def pack_parameters(O):
     O.x = flex.double()
+    O.l = flex.double()
+    O.u = flex.double()
+    O.nbd = flex.int()
     sstab = O.xray_structure.site_symmetry_table()
     for i_sc,sc in enumerate(O.xray_structure.scatterers()):
       assert sc.flags.use_u_iso()
       assert not sc.flags.use_u_aniso()
+      #
       site_symmetry = sstab.get(i_sc)
       if (site_symmetry.is_point_group_1()):
         p = sc.site
@@ -156,7 +162,14 @@ class ls_refinement(object):
         p = site_symmetry.site_constraints().independent_params(
           all_params=sc.site)
       O.x.extend(flex.double(p))
+      O.l.resize(O.x.size(), 0)
+      O.u.resize(O.x.size(), 0)
+      O.nbd.resize(O.x.size(), 0)
+      #
       O.x.append(sc.u_iso)
+      O.l.append(0)
+      O.u.append(0)
+      O.nbd.append(1)
     O.x *= O.p_as_x
 
   def unpack_parameters(O):
@@ -262,6 +275,9 @@ class ls_refinement(object):
 
   def callback_after_step(O, minimizer, suffix=""):
     O.number_of_lbfgs_iterations += 1
+    O.callback_after_step_no_counting(suffix=suffix)
+
+  def callback_after_step_no_counting(O, suffix=""):
     if (O.number_of_lbfgs_iterations % 10 == 0):
       s = "step  fun    f        |g|"
       if (O.reference_structure is not None):
@@ -353,7 +369,29 @@ class ls_refinement(object):
     if (O.params.lbfgs_impl_switch == 1):
       print "iter, nfun:", lbfgs_impl.iter(), lbfgs_impl.nfun()
       assert O.number_of_function_evaluations == lbfgs_impl.nfun()
-      O.number_of_lbfgs_iterations = lbfgs_impl.iter()-1
+      O.number_of_lbfgs_iterations = lbfgs_impl.iter()
+    O.callback_after_step_no_counting(suffix=" FINAL")
+
+  def run_lbfgsb(O, iprint=1):
+    n = O.x.size()
+    minimizer = scitbx.lbfgsb.minimizer(
+      n=n,
+      m=5,
+      l=O.l,
+      u=O.u,
+      nbd=O.nbd,
+      factr=1.0e+7,
+      pgtol=1.0e-5,
+      iprint=iprint)
+    f, g = -1e20, flex.double(n, -1e20)
+    while True:
+      if (minimizer.process(O.x, f, g)):
+        f, g = O.compute_functional_and_gradients()
+      elif (minimizer.is_terminated()):
+        O.callback_after_step_no_counting(suffix=" FINAL")
+        break
+      else:
+        O.callback_after_step(minimizer=None)
 
 def run_refinement(structure_ideal, structure_shake, params, pickle_file_name):
   print "Ideal structure:"
@@ -420,8 +458,9 @@ def run(args):
       .type = bool
     curvature_rescaling = True
       .type = bool
-    use_lbfgs_raw = False
-      .type = bool
+    minimizer = *lbfgs lbfgs_raw lbfgsb
+      .type = choice
+      .optional = False
     diagco = 0
       .type = int
     lbfgs_impl_switch = 1
