@@ -173,7 +173,7 @@ namespace cctbx { namespace geometry_restraints {
           and delta = 180. However, the gradients converge to zero
           near these singularities. To avoid numerical problems, the
           gradients are set to zero exactly if the intermediate
-          result 1/(1-cos(angle_model)**2) < epsilon.
+          result sqrt(1-cos(angle_model)**2) < epsilon.
 
           See also:
             http://salilab.org/modeller/manual/manual.html,
@@ -188,18 +188,69 @@ namespace cctbx { namespace geometry_restraints {
         }
         else {
           double
-          one_over_grad_acos = std::sqrt(1-scitbx::fn::pow2(cos_angle_model));
-          if (one_over_grad_acos < epsilon) {
+          sin_angle_model = std::sqrt(1-scitbx::fn::pow2(cos_angle_model));
+          if (sin_angle_model < epsilon) {
             result.fill(scitbx::vec3<double>(0,0,0));
           }
           else {
-            double grad_factor = -2 * weight * delta/scitbx::constants::pi_180
-                               / one_over_grad_acos;
-            result[0] = grad_factor / d_01_abs
-                      * (d_01_unit * cos_angle_model - d_21_unit);
-            result[2] = grad_factor / d_21_abs
-                      * (d_21_unit * cos_angle_model - d_01_unit);
+            using scitbx::constants::pi_180;
+            scitbx::vec3<double>
+                d_angle_d_site0, d_angle_d_site1, d_angle_d_site2;
+            double grad_factor = -2 * weight * delta / pi_180;
+            d_angle_d_site0 = (d_01_unit * cos_angle_model - d_21_unit) /
+                              (sin_angle_model * d_01_abs);
+            result[0] = grad_factor * d_angle_d_site0;
+            d_angle_d_site2 = (d_21_unit * cos_angle_model - d_01_unit) /
+                              (sin_angle_model * d_21_abs);
+            result[2] = grad_factor * d_angle_d_site2;
             result[1] = -(result[0] + result[2]);
+            bool do_curv(false);
+            if (do_curv)
+            {
+              af::tiny<scitbx::vec3<double>, 3> curvatures;
+              d_angle_d_site1 = result[1] / grad_factor;
+              scitbx::vec3<double> v111(1,1,1);
+              double sinsqr = scitbx::fn::pow2(sin_angle_model);
+
+              scitbx::vec3<double> d2_angle_d_site00 =
+                 (2. * d_21_unit.each_mul(d_01_unit) +
+                 cos_angle_model * (v111 * sinsqr - d_21_unit.each_mul(d_21_unit)
+                 - (1. + 2. * sinsqr) * d_01_unit.each_mul(d_01_unit))) /
+                 (scitbx::fn::pow2(d_01_abs)*sin_angle_model*sinsqr);
+
+              scitbx::vec3<double> d2_angle_d_site22 =
+                 (2. * d_01_unit.each_mul(d_21_unit) +
+                 cos_angle_model * (v111 * sinsqr - d_01_unit.each_mul(d_01_unit)
+                 - (1. + 2. * sinsqr) * d_21_unit.each_mul(d_21_unit))) /
+                 (scitbx::fn::pow2(d_21_abs)*sin_angle_model*sinsqr);
+
+               double d01sqr = scitbx::fn::pow2(d_01_abs);
+               double d21sqr = scitbx::fn::pow2(d_21_abs);
+               scitbx::vec3<double> term1 = d_angle_d_site1 / sin_angle_model;
+               scitbx::vec3<double> tvec1 = d_01_abs * d_21_unit;
+               scitbx::vec3<double> tvec2 = d_21_abs * d_01_unit;
+               scitbx::vec3<double> sumvec = d_01 + d_21;
+               scitbx::vec3<double> d2_angle_d_site11 =
+                 (-2. * cos_angle_model *
+                 (tvec1.each_mul(tvec1) + tvec2.each_mul(tvec2)) +
+                 (tvec1+tvec2).each_mul(sumvec) +
+                 (d01sqr + d21sqr) * v111 * cos_angle_model +
+                 (d01sqr * d_21 + d21sqr * d_01).each_mul(term1) -
+                 d_01_abs * d_21_abs *
+                 (2. * v111 + cos_angle_model * term1.each_mul(sumvec))) /
+                 (sin_angle_model * d01sqr * d21sqr);
+
+               double curvfac = 2. * weight / pi_180;
+               curvatures[0] = curvfac *
+                 (d_angle_d_site0.each_mul(d_angle_d_site0) / pi_180 -
+                 delta * d2_angle_d_site00);
+               curvatures[1] = curvfac *
+                 (d_angle_d_site1.each_mul(d_angle_d_site1) / pi_180 -
+                 delta * d2_angle_d_site11);
+               curvatures[2] = curvfac *
+                 (d_angle_d_site2.each_mul(d_angle_d_site2) / pi_180 -
+                 delta * d2_angle_d_site22);
+            }
           }
         }
         return result;
@@ -254,6 +305,8 @@ namespace cctbx { namespace geometry_restraints {
     protected:
       double d_01_abs;
       double d_21_abs;
+      scitbx::vec3<double> d_01;
+      scitbx::vec3<double> d_21;
       scitbx::vec3<double> d_01_unit;
       scitbx::vec3<double> d_21_unit;
       double cos_angle_model;
@@ -274,15 +327,17 @@ namespace cctbx { namespace geometry_restraints {
         have_angle_model = false;
         d_01_abs = 0;
         d_21_abs = 0;
+        d_01.fill(0);
+        d_21.fill(0);
         d_01_unit.fill(0);
         d_21_unit.fill(0);
         cos_angle_model = -9;
         angle_model = angle_ideal;
         delta = 0;
-        scitbx::vec3<double> d_01 = sites[0] - sites[1];
+        d_01 = sites[0] - sites[1];
         d_01_abs = d_01.length();
         if (d_01_abs > 0) {
-          scitbx::vec3<double> d_21 = sites[2] - sites[1];
+          d_21 = sites[2] - sites[1];
           d_21_abs = d_21.length();
           if (d_21_abs > 0) {
             d_01_unit = d_01 / d_01_abs;
