@@ -71,6 +71,9 @@ namespace {
     typedef angle w_t;
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      grads_and_curvs_overloads, grads_and_curvs, 0, 1)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       gradients_overloads, gradients, 0, 1)
 
     static void
@@ -95,8 +98,12 @@ namespace {
         .def_readonly("angle_model", &w_t::angle_model)
         .def_readonly("delta", &w_t::delta)
         .def("residual", &w_t::residual)
-        .def("gradients", &w_t::gradients, gradients_overloads(
-          (arg_("epsilon"))))
+        .def("grads_and_curvs", &w_t::grads_and_curvs,
+          grads_and_curvs_overloads((
+            arg_("epsilon"))))
+        .def("gradients", &w_t::gradients,
+          gradients_overloads((
+            arg_("epsilon"))))
       ;
     }
   };

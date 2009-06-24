@@ -1178,6 +1178,13 @@ def exercise_angle():
   assert approx_equal(a_angle.delta, b_angle.delta)
   assert approx_equal(a_angle.residual(), b_angle.residual())
   assert not_approx_equal(a_angle.gradients(), b_angle.gradients())
+  assert approx_equal(a_angle.grads_and_curvs(), [
+    (82.47780595428577, 9.9176398449691465, -275.30239023150972),
+    (-287.7152475786869, 62.177141285587624, 345.71504772803047),
+    (205.23744162440113, -72.094781130556768, -70.412657496520751),
+    (548.64354849364315, -141.3499058192476, 4777.1475618734567),
+    (5313.4607140709404, -424.64322327702632, 7689.6945986452274),
+    (2641.6450110035271, 222.22748382126554, 413.72502597622014)])
   a_gradient_array = flex.vec3_double(sites_cart.size())
   a_residual_sum = geometry_restraints.angle_residual_sum(
     unit_cell=unit_cell,
