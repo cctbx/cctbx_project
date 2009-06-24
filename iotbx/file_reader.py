@@ -80,6 +80,10 @@ class _any_file (object) :
     self.get_processed_file = get_processed_file
 
     (file_base, file_ext) = os.path.splitext(file_name)
+    if file_ext in [".gz"] : # XXX: does this work for anything other than pdb?
+      (base2, ext2) = os.path.splitext(file_base)
+      if ext2 != "" :
+        file_ext = ext2
     if force_type is not None :
       read_method = getattr(self, "try_as_%s" % force_type, None)
       if read_method is None :
