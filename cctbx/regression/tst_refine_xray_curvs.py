@@ -124,6 +124,10 @@ class ls_refinement(object):
       weights=O.weights,
       xray_structure=O.xray_structure,
       lim_eps=O.params.curv_filter_lim_eps)
+    if (O.params.curvature_rescaling):
+      O.p_as_x = flex.sqrt(O.curvs_work)
+    else:
+      O.p_as_x = flex.double(O.curvs_work.size(), 1)
     O.pack_parameters()
     O.number_of_function_evaluations = -1
     O.number_of_lbfgs_iterations = -1
@@ -153,30 +157,32 @@ class ls_refinement(object):
           all_params=sc.site)
       O.x.extend(flex.double(p))
       O.x.append(sc.u_iso)
+    O.x *= O.p_as_x
 
   def unpack_parameters(O):
+    p = O.x / O.p_as_x
     ix = 0
     sstab = O.xray_structure.site_symmetry_table()
     for i_sc,sc in enumerate(O.xray_structure.scatterers()):
       site_symmetry = sstab.get(i_sc)
       if (site_symmetry.is_point_group_1()):
-        sc.site = tuple(O.x[ix:ix+3])
+        sc.site = tuple(p[ix:ix+3])
         ix += 3
       else:
         constr = site_symmetry.site_constraints()
         np = constr.n_independent_params()
-        sc.site = constr.all_params(independent_params=tuple(O.x[ix:ix+np]))
+        sc.site = constr.all_params(independent_params=tuple(p[ix:ix+np]))
         ix += np
-      sc.u_iso = O.x[ix]
+      sc.u_iso = p[ix]
       ix += 1
     assert ix == O.x.size()
 
-  def adjust_stp(O, stp, s,
+  def adjust_stp(O, stp, csd,
         large_shift_site=0.1,
         large_shift_u_iso_factor=0.5,
         min_large_shift_u_iso=b_as_u(1)):
     print "adjust_stp", stp
-    assert O.x.size() == s.size()
+    assert csd.size() == O.x.size()
     max_stp = 100
     ix = 0
     uc = O.xray_structure.unit_cell()
@@ -184,35 +190,22 @@ class ls_refinement(object):
     for i_sc,sc in enumerate(O.xray_structure.scatterers()):
       site_symmetry = sstab.get(i_sc)
       if (site_symmetry.is_point_group_1()):
-        constr = None
         np = 3
-        site = matrix.col(O.x[ix:ix+np])
-        site_stp = site + stp * matrix.col(s[ix:ix+np])
+        for i,ucp in enumerate(uc.parameters()[:3]):
+          lsx = large_shift_site / ucp \
+              * O.p_as_x[ix+i]
+          if (abs(stp*csd[ix+i]) > lsx):
+            max_stp = min(max_stp, abs(lsx/csd[ix]))
       else:
         constr = site_symmetry.site_constraints()
         np = constr.n_independent_params()
-        xi = matrix.col(O.x[ix:ix+np])
-        si = matrix.col(s[ix:ix+np])
-        site = constr.all_params(independent_params=xi.elems)
-        site_stp = constr.all_params(independent_params=(xi+stp*si).elems)
-      d = uc.distance(site, site_stp)
-      ann = ("", "LARGE SHIFT")[d > large_shift_site]
-      print "  site", sc.label, d, ann
-      if (constr is None):
-        for i,ucp in enumerate(uc.parameters()[:3]):
-          ls = large_shift_site / ucp
-          if (abs(stp*s[ix+i]) > ls):
-            max_stp = min(max_stp, abs(ls/s[ix]))
-      else:
         raise RuntimeError("SPECIAL POSITION LARGE SHIFT NOT IMPLEMENTED.")
       ix += np
-      u_iso = O.x[ix]
-      u_iso_stp = u_iso + stp * s[ix]
-      lu = max(min_large_shift_u_iso, abs(u_iso) * large_shift_u_iso_factor)
-      ann = ("", "LARGE SHIFT")[abs(u_iso_stp-u_iso) > lu]
-      print "  u_iso", sc.label, u_iso, u_iso_stp, ann
-      if (abs(stp*s[ix]) > lu):
-        max_stp = min(max_stp, abs(lu/s[ix]))
+      u_iso = O.x[ix]/O.p_as_x[ix]
+      lux = max(min_large_shift_u_iso, abs(u_iso) * large_shift_u_iso_factor) \
+          * O.p_as_x[ix]
+      if (abs(stp*csd[ix]) > lux):
+        max_stp = min(max_stp, abs(lux/csd[ix]))
       ix += 1
     assert ix == O.x.size()
     print "max_stp:", max_stp
@@ -264,7 +257,7 @@ class ls_refinement(object):
     assert i_all == g_all.size()
     assert g_active.size() == O.x.size()
     O.f_last = ls.target_work()
-    O.g_last = g_active
+    O.g_last = g_active / O.p_as_x
     return O.f_last, O.g_last
 
   def callback_after_step(O, minimizer, suffix=""):
@@ -336,7 +329,10 @@ class ls_refinement(object):
           else:
             assert O.curvs_work.size() == O.x.size()
             assert O.curvs_work.all_gt(0)
-            diag0 = 1 / O.curvs_work
+            if (O.params.curvature_rescaling):
+              diag0 = flex.double(n, 1)
+            else:
+              diag0 = 1 / O.curvs_work
             diag = diag0.deep_copy()
       elif (iflag == 2):
         diag.clear()
@@ -344,7 +340,7 @@ class ls_refinement(object):
       elif (iflag == 100):
         new_stp = O.adjust_stp(
           stp=lbfgs_impl.stp(),
-          s=lbfgs_impl.current_search_direction())
+          csd=lbfgs_impl.current_search_direction())
         lbfgs_impl.set_stp(value=new_stp)
       else:
         raise RuntimeError("invalid iflag value: %d" % iflag)
@@ -421,6 +417,8 @@ def run_call_back(flags, space_group_info, params):
 def run(args):
   master_phil = libtbx.phil.parse("""
     general_positions_only = True
+      .type = bool
+    curvature_rescaling = True
       .type = bool
     use_lbfgs_raw = False
       .type = bool
