@@ -13,24 +13,28 @@ from libtbx.math_utils import ifloor, iceil
 map_params_str ="""\
   map_coefficients
     .multiple = True
+    .style = auto_align
   {
     format = *mtz phs
       .type = choice(multi=True)
+      .style = noauto
     mtz_label_amplitudes = None
       .type = str
-      .expert_level=1
+      .short_caption = MTZ label for amplitudes
+      .style = bold
     mtz_label_phases = None
       .type = str
-      .expert_level=1
+      .short_caption = MTZ label for phases
+      .style = bold
     map_type = None
       .type = str
-      .expert_level=1
+      .style = bold renderer:draw_map_type_widget
     kicked = False
       .type = bool
-      .expert_level=1
+      .short_caption = Kicked map
     fill_missing_f_obs = False
       .type = bool
-      .expert_level=1
+      .short_caption = Fill missing F(obs) with F(calc)
   }
   map
     .multiple = True
@@ -65,6 +69,7 @@ map_params_str ="""\
       .type = str
   }
 """
+master_params = iotbx.phil.parse(map_params_str, process_includes=False)
 
 def map_master_params():
   return iotbx.phil.parse(map_params_str, process_includes=False)
