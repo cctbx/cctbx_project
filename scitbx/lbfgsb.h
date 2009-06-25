@@ -24,7 +24,7 @@ namespace lbfgsb {
 
   //! High-level interface to L-BFGS-B Version 2.1.
   /*! An example driver can be found in the file
-      $SCITBX_DIST/lbfgsb/boost_python/tst_lbfgsb.py,
+      scitbx/lbfgsb/boost_python/tst_lbfgsb.py,
       function driver1().
    */
   template <typename FloatType=double>
@@ -89,6 +89,7 @@ namespace lbfgsb {
         af::shared<FloatType> l,
         af::shared<FloatType> u,
         af::shared<int> nbd,
+        bool enable_stp_init,
         FloatType const& factr,
         FloatType const& pgtol,
         int const& iprint)
@@ -98,6 +99,7 @@ namespace lbfgsb {
         l_(l),
         u_(u),
         nbd_(nbd),
+        enable_stp_init_(enable_stp_init),
         f_(0),
         factr_(factr),
         pgtol_(pgtol),
@@ -110,6 +112,7 @@ namespace lbfgsb {
         isave_(44, int(0)),
         dsave_(29, FloatType(0)),
         requests_f_and_g_(false),
+        requests_stp_init_(false),
         is_terminated_(false)
       {
         SCITBX_ASSERT(l.size() == n);
@@ -154,12 +157,14 @@ namespace lbfgsb {
             csave_,
             raw::ref1<bool>(lsave_.ref()),
             raw::ref1<int>(isave_.ref()),
-            raw::ref1<FloatType>(dsave_.ref()));
+            raw::ref1<FloatType>(dsave_.ref()),
+            enable_stp_init_);
         }
         else {
 #if !defined(SCITBX_LBFGSB_HAVE_FORTRAN_LIB)
           throw error("L-BFGS-B FORTRAN library is not available.");
 #else
+          SCITBX_ASSERT(!enable_stp_init());
           fortran_interface::setulb(
             n_,
             m_,
@@ -182,12 +187,16 @@ namespace lbfgsb {
 #endif
         }
         requests_f_and_g_ = false;
+        requests_stp_init_ = false;
         int t0 = task_[0];
         if (t0 == 'N') { // "NEW_X"
           f_list_.push_back(f_);
         }
         else if (t0 == 'F') { // "FG"
           requests_f_and_g_ = true;
+        }
+        else if (task_.substr(0,9) == "STP_INIT:") {
+          requests_stp_init_ = true;
         }
         else {
           is_terminated_ = true;
@@ -203,6 +212,16 @@ namespace lbfgsb {
        */
       bool
       requests_f_and_g() const { return requests_f_and_g_; }
+
+      //! Request to call process() again after optionally resetting stp.
+      /*! Equivalent to task().substr(0,9) == "STP_INIT:".
+       */
+      bool
+      requests_stp_init() const
+      {
+        SCITBX_ASSERT(enable_stp_init());
+        return requests_stp_init_;
+      }
 
       //! The minimization was terminated.
       /*! Use task() to obtain detailed information.
@@ -276,6 +295,7 @@ namespace lbfgsb {
       {
         task_ = "START";
         requests_f_and_g_ = false;
+        requests_stp_init_ = false;
         is_terminated_ = false;
         f_list_ = af::shared<FloatType>();
       }
@@ -312,6 +332,10 @@ namespace lbfgsb {
       //! Array of type of bounds as passed to the constructor.
       af::shared<int>
       nbd() const { return nbd_; }
+
+      //! Value as passed to the constructor.
+      bool
+      enable_stp_init() const { return enable_stp_init_; }
 
       //! Value as passed to the constructor.
       FloatType
@@ -510,11 +534,30 @@ namespace lbfgsb {
       FloatType
       relative_step_length_line_search() { return dsave_[14-1]; }
 
+      //! Sets relative step length in the line search.
+      /*! Should only be called if task()[:9] == "STP_INIT:"
+          but this is not enforced.
+       */
+      void
+      set_relative_step_length_line_search(FloatType const& value)
+      {
+        dsave_[14-1] = value;
+      }
+
       //! Infinity norm of the projected gradient.
       /*! Should only be called if task() == "NEW_X" but this is not enforced.
        */
       FloatType
       infinity_norm_projected_gradient() { return dsave_[13-1]; }
+
+      //! Copy of current search direction.
+      af::shared<double>
+      current_search_direction() // not const only b/o missing const_ref1
+      {
+        int ld = isave_[14-1];
+        raw::ref1<FloatType> d = raw::ref1<FloatType>(wa_.ref()).get1(ld, n_);
+        return af::shared<double>(d.begin(), d.end());
+      }
 
     protected:
       int n_;
@@ -522,6 +565,7 @@ namespace lbfgsb {
       af::shared<FloatType> l_;
       af::shared<FloatType> u_;
       af::shared<int> nbd_;
+      bool enable_stp_init_;
       FloatType f_;
       FloatType factr_;
       FloatType pgtol_;
@@ -534,6 +578,7 @@ namespace lbfgsb {
       af::shared<int> isave_;
       af::shared<FloatType> dsave_;
       bool requests_f_and_g_;
+      bool requests_stp_init_;
       bool is_terminated_;
       af::shared<FloatType> f_list_;
   };

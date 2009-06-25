@@ -13,6 +13,7 @@ class minimizer(ext.minimizer):
                      l=None,
                      u=None,
                      nbd=None,
+                     enable_stp_init=False,
                      factr=None,
                      pgtol=None,
                      iprint=None):
@@ -29,4 +30,5 @@ class minimizer(ext.minimizer):
     if (factr is None): factr = 1.0e+7
     if (pgtol is None): pgtol = 1.0e-5
     if (iprint is None): iprint = -1
-    ext.minimizer.__init__(self, n, m, l, u, nbd, factr, pgtol, iprint)
+    ext.minimizer.__init__(self,
+      n, m, l, u, nbd, enable_stp_init, factr, pgtol, iprint)

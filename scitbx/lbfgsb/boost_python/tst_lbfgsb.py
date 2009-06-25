@@ -1,7 +1,7 @@
 from scitbx import lbfgsb
 from scitbx.array_family import flex
 import scitbx.math
-from libtbx.test_utils import eps_eq
+from libtbx.test_utils import approx_equal, eps_eq, Exception_expected
 import sys
 
 def exercise_minimizer_interface():
@@ -13,42 +13,62 @@ def exercise_minimizer_interface():
   factr=1.0e+7
   pgtol=1.0e-5
   iprint = -1
-  minimizer = lbfgsb.ext.minimizer(n, m, l, u, nbd, factr, pgtol, iprint)
-  assert minimizer.n() == n
-  assert minimizer.m() == m
-  assert minimizer.l().id() == l.id()
-  assert minimizer.u().id() == u.id()
-  assert minimizer.nbd().id() == nbd.id()
-  assert eps_eq(minimizer.factr(), factr)
-  assert eps_eq(minimizer.pgtol(), pgtol)
-  assert eps_eq(minimizer.iprint(), iprint)
-  assert not minimizer.requests_f_and_g()
-  assert not minimizer.is_terminated()
-  assert minimizer.task() == "START"
-  x = flex.double(n, 0)
-  f = 1
-  g = flex.double(n, -1)
-  assert minimizer.process(x, f, g, False)
-  assert minimizer.task() == "FG_START"
-  assert minimizer.f() == 0
-  assert minimizer.process(x, f, g)
-  assert minimizer.f() == 1
-  assert minimizer.task() == "FG_LNSRCH"
-  assert not minimizer.is_terminated()
-  minimizer.request_stop()
-  assert not minimizer.process(x, f, g)
-  assert minimizer.task() == "STOP: NO RESTORE"
-  minimizer.request_stop_with_restore()
-  assert minimizer.task() == "STOP: CPU"
-  minimizer.request_restart()
-  assert not minimizer.requests_f_and_g()
-  assert not minimizer.is_terminated()
-  assert minimizer.task() == "START"
-  minimizer = lbfgsb.minimizer(n=n)
-  assert minimizer.l().size() == n
-  assert minimizer.u().size() == n
-  assert minimizer.nbd().size() == n
-  assert minimizer.nbd().all_eq(0)
+  for enable_stp_init in [False, True]:
+    minimizer = lbfgsb.ext.minimizer(
+      n, m, l, u, nbd, enable_stp_init, factr, pgtol, iprint)
+    assert minimizer.n() == n
+    assert minimizer.m() == m
+    assert minimizer.l().id() == l.id()
+    assert minimizer.u().id() == u.id()
+    assert minimizer.nbd().id() == nbd.id()
+    assert minimizer.enable_stp_init() == enable_stp_init
+    assert eps_eq(minimizer.factr(), factr)
+    assert eps_eq(minimizer.pgtol(), pgtol)
+    assert eps_eq(minimizer.iprint(), iprint)
+    assert not minimizer.requests_f_and_g()
+    assert not minimizer.is_terminated()
+    assert minimizer.task() == "START"
+    x = flex.double(n, 0)
+    f = 1
+    g = flex.double(n, -1)
+    assert minimizer.process(x, f, g, False)
+    assert minimizer.task() == "FG_START"
+    assert minimizer.f() == 0
+    if (not enable_stp_init):
+      try:
+        minimizer.requests_stp_init()
+      except RuntimeError, e:
+        assert str(e).endswith(": SCITBX_ASSERT(enable_stp_init()) failure.")
+      else: raise Exception_expected
+    else:
+      assert not minimizer.process(x, f, g)
+      assert minimizer.requests_stp_init()
+      assert approx_equal(minimizer.relative_step_length_line_search(), 0.2)
+      assert approx_equal(minimizer.current_search_direction(), [1]*n)
+      minimizer.set_relative_step_length_line_search(value=0.3)
+      assert approx_equal(minimizer.relative_step_length_line_search(), 0.3)
+    assert minimizer.process(x, f, g)
+    assert minimizer.f() == 1
+    assert minimizer.task() == "FG_LNSRCH"
+    assert not minimizer.is_terminated()
+    if (not enable_stp_init):
+      assert approx_equal(x, [0.2]*n)
+    else:
+      assert approx_equal(x, [0.3]*n)
+    minimizer.request_stop()
+    assert not minimizer.process(x, f, g)
+    assert minimizer.task() == "STOP: NO RESTORE"
+    minimizer.request_stop_with_restore()
+    assert minimizer.task() == "STOP: CPU"
+    minimizer.request_restart()
+    assert not minimizer.requests_f_and_g()
+    assert not minimizer.is_terminated()
+    assert minimizer.task() == "START"
+    minimizer = lbfgsb.minimizer(n=n)
+    assert minimizer.l().size() == n
+    assert minimizer.u().size() == n
+    assert minimizer.nbd().size() == n
+    assert minimizer.nbd().all_eq(0)
 
 def driver1(use_fortran_library=False):
   n = 25
