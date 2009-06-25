@@ -3189,7 +3189,8 @@ namespace raw {
     bool const& cnstnd,
     std::string& csave,
     ref1<int> const& isave,
-    ref1<FloatType> const& dsave)
+    ref1<FloatType> const& dsave,
+    bool enable_stp_init)
   {
 #if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(d.size() == n);
@@ -3206,6 +3207,7 @@ namespace raw {
     FloatType gtol=0.9e0;
     FloatType xtol=0.1e0;
     if (task.substr(0,5) == "FG_LN") goto lbl_556;
+    if (task.substr(0,9) == "STP_INIT:") goto lbl_after_initial_stp;
     dtd = lbfgs::detail::ddot(n,d.begin(),d.begin());
     dnorm = std::sqrt(dtd);
     // Determine the maximum step length.
@@ -3245,6 +3247,14 @@ namespace raw {
     }
     else {
       stp = one;
+    }
+    if (enable_stp_init) {
+      task = "STP_INIT:" + task;
+      return;
+    }
+    lbl_after_initial_stp:
+    if (enable_stp_init) {
+      task = task.substr(9,task.size());
     }
     dcopy(n,x,1,t,1);
     dcopy(n,g,1,r,1);
@@ -3655,7 +3665,8 @@ namespace raw {
     std::string& csave,
     ref1<bool> const& lsave,
     ref1<int> const& isave,
-    ref1<FloatType> const& dsave)
+    ref1<FloatType> const& dsave,
+    bool enable_stp_init)
   {
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(l.size() == n);
@@ -3824,6 +3835,7 @@ namespace raw {
       dtd    = dsave(16);
       // After returning from the driver go to the point where execution
       // is to resume.
+      if (task.substr(0,9) == "STP_INIT:") goto lbl_666;
       if (task.substr(0,5) == "FG_LN") goto lbl_666;
       if (task.substr(0,5) == "NEW_X") goto lbl_777;
       if (task.substr(0,5) == "FG_ST") goto lbl_111;
@@ -3983,7 +3995,8 @@ namespace raw {
     lbl_666:
     lnsrlb(n,l,u,nbd,x,f,fold,gd,gdold,g,d,r,t,z,stp,dnorm,
            dtd,xstep,stpmx,iter,ifun,iback,nfgv,info,task,
-           boxed,cnstnd,csave,isave.get1(22,2),dsave.get1(17,13));
+           boxed,cnstnd,csave,isave.get1(22,2),dsave.get1(17,13),
+           enable_stp_init);
     if (info != 0 || iback >= 20) {
       // restore the previous iterate.
       dcopy(n,t,1,x,1);
@@ -4024,6 +4037,9 @@ namespace raw {
     }
     else if (task.substr(0,5) == "FG_LN") {
       // return to the driver for calculating f and g; reenter at 666.
+      goto lbl_1000;
+    }
+    else if (task.substr(0,9) == "STP_INIT:") {
       goto lbl_1000;
     }
     else {
@@ -4362,7 +4378,8 @@ namespace raw {
     std::string& csave,
     ref1<bool> const& lsave,
     ref1<int> const& isave,
-    ref1<FloatType> const& dsave)
+    ref1<FloatType> const& dsave,
+    bool enable_stp_init=false)
   {
 #if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(wa.size() == 2*m*n+4*n+12*m*m+12*m);
@@ -4436,7 +4453,8 @@ namespace raw {
       iwa.get1(2*n+1, n),
       task,iprint,csave,lsave,
       ref1<int>(&isave(22), 23),
-      dsave);
+      dsave,
+      enable_stp_init);
   }
 
 }}} // namspace scitbx::lbfgsb::raw

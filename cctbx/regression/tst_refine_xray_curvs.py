@@ -380,6 +380,7 @@ class ls_refinement(object):
       l=O.l,
       u=O.u,
       nbd=O.nbd,
+      enable_stp_init=True,
       factr=1.0e+7,
       pgtol=1.0e-5,
       iprint=iprint)
@@ -387,6 +388,11 @@ class ls_refinement(object):
     while True:
       if (minimizer.process(O.x, f, g)):
         f, g = O.compute_functional_and_gradients()
+      elif (minimizer.requests_stp_init()):
+        new_stp = O.adjust_stp(
+          stp=minimizer.relative_step_length_line_search(),
+          csd=minimizer.current_search_direction())
+        minimizer.set_relative_step_length_line_search(value=new_stp)
       elif (minimizer.is_terminated()):
         O.callback_after_step_no_counting(suffix=" FINAL")
         break
