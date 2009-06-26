@@ -9,6 +9,7 @@ import sys, os
 import iotbx.pdb
 import libtbx.load_env
 from cctbx.maptbx import real_space_refinement_simple
+from libtbx.test_utils import approx_equal
 
 def run():
   if (1):
@@ -56,7 +57,7 @@ def run():
       final_error = flex.mean(xrs.distances(other = xrs_sh))
 
     print "Final:", final_error
-  assert start_error >= 0.8
+  assert approx_equal(start_error, 0.8, 1.e-3)
   assert final_error < 1.e-4
   print "OK"
 
