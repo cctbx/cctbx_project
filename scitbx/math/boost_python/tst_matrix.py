@@ -22,7 +22,13 @@ def exercise_random_normal_matrix():
     assert approx_equal(list(eig_u.values()), [9, 4, 1] + [0,]*(m-3))
     assert approx_equal(list(eig_v.values()), [9, 4, 1] + [0,]*(n-3))
 
-
+  lambda_ = flex.double((-1, 0, 1, 2))
+  gen = scitbx.math.random_normal_matrix_generator(4,4)
+  for i in xrange(5):
+    a_upper_diag = gen.symmetric_matrix_with_eigenvalues(lambda_)
+    a = a_upper_diag.matrix_packed_u_as_symmetric()
+    eig = scitbx.math.eigensystem.real_symmetric(a)
+    assert approx_equal(list(eig.values()), [2, 1, 0, -1])
 
 def exercise_svd():
   a = flex.double(xrange(1,19))

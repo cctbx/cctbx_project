@@ -55,6 +55,8 @@ namespace scitbx {
     {
       typedef householder::random_normal_matrix_generator<
                 FloatType, UniformRandomNumberGenerator> wt;
+      typedef typename wt::symmetric_matrix_packed_u_t
+              symmetric_matrix_packed_u_t;
 
       static af::shared<std::size_t> get_state(wt const &self) {
         return self.normal_gen.engine().getstate();
@@ -66,6 +68,14 @@ namespace scitbx {
         self.normal_gen.engine().setstate(state);
       }
 
+      static af::shared<FloatType>
+      symmetric_matrix_with_eigenvalues(wt &self,
+                                        af::const_ref<FloatType> const &lambda) {
+        symmetric_matrix_packed_u_t a
+          = self.symmetric_matrix_with_eigenvalues(lambda);
+        return af::shared<FloatType>(a.handle());
+      }
+
       static void wrap(char const *name) {
         using namespace boost::python;
         class_<wt>(name, no_init)
@@ -73,6 +83,8 @@ namespace scitbx {
                args("rows", "columns")))
           .def("normal_matrix", &wt::normal_matrix)
           .def("matrix_with_singular_values", &wt::matrix_with_singular_values)
+          .def("symmetric_matrix_with_eigenvalues",
+               symmetric_matrix_with_eigenvalues)
           .add_property("state", get_state, set_state)
           ;
         }
