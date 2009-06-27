@@ -138,6 +138,8 @@ namespace boost_python {
     matrix_cholesky_decomposition_overloads,
     matrix::cholesky::decomposition, 1, 2)
 
+  double (*matrix_norm_1)(const_ref<double, mat_grid> const &) = matrix::norm_1;
+
   void
   wrap_flex_double_matrix(
     flex_wrapper<double>::class_f_t& class_f_t)
@@ -181,7 +183,7 @@ namespace boost_python {
       .def("matrix_diagonal_product",
         (double(*)(
           const_ref<double, c_grid<2> > const&)) matrix_diagonal_product)
-      .def("matrix_norm_1", matrix::norm_1<double>)
+      .def("matrix_norm_1", matrix_norm_1)
       .def("matrix_norm_inf", matrix::norm_inf<double>)
       .def("matrix_norm_frobenius", matrix::norm_frobenius<double>)
       .def("matrix_multiply", matrix_multiply_real_matrix_real_matrix)

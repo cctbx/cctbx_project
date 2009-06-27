@@ -20,6 +20,13 @@ FloatType norm_1(af::const_ref<FloatType, af::mat_grid> const &a) {
 }
 
 template <typename FloatType>
+FloatType norm_1(af::const_ref<FloatType> const &x) {
+  FloatType result = 0;
+  for (int i=0; i<x.size(); ++i) result += std::abs(x[i]);
+  return result;
+}
+
+template <typename FloatType>
 FloatType norm_inf(af::const_ref<FloatType, af::mat_grid> const &a) {
   FloatType result = 0;
   for (int i=0; i<a.n_rows(); ++i) {
