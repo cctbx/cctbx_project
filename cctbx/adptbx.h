@@ -6,7 +6,7 @@
 #define CCTBX_ADPTBX_H
 
 #include <cctbx/uctbx.h>
-#include <scitbx/math/eigensystem.h>
+#include <scitbx/matrix/eigensystem.h>
 #include <scitbx/matrix/tensor_rank_2.h>
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/type_holder.h>
@@ -667,11 +667,11 @@ namespace cctbx {
           orthonormal.
 
           This class is implemented as a thin wrapper around:
-            scitbx::math::eigensystem::real_symmetric<>
+            scitbx::matrix::eigensystem::real_symmetric<>
        */
       eigensystem(sym_mat3<FloatType> const& adp)
       {
-        scitbx::math::eigensystem::real_symmetric<FloatType> es(adp);
+        scitbx::matrix::eigensystem::real_symmetric<FloatType> es(adp);
         for(std::size_t i=0;i<3;i++) {
           vectors_[i] = vec3<FloatType>(&es.vectors()[i*3]);
         }
@@ -792,7 +792,7 @@ namespace cctbx {
     FloatType const& u_min=0,
     FloatType const& u_max=0)
   {
-    scitbx::math::eigensystem::real_symmetric<FloatType> es(u_cart);
+    scitbx::matrix::eigensystem::real_symmetric<FloatType> es(u_cart);
     scitbx::vec3<FloatType> es_val(es.values().begin());
     for(std::size_t i=0;i<3;i++) if (es_val[i] < u_min) es_val[i] = u_min;
     if (u_max > 0) {

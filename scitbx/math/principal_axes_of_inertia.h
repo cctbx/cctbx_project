@@ -1,7 +1,7 @@
 #ifndef SCITBX_MATH_PRINCIPAL_AXES_OF_INERTIA_H
 #define SCITBX_MATH_PRINCIPAL_AXES_OF_INERTIA_H
 
-#include <scitbx/math/eigensystem.h>
+#include <scitbx/matrix/eigensystem.h>
 #include <scitbx/math/inertia_tensor.h>
 #include <cstdio>
 
@@ -34,7 +34,7 @@ namespace scitbx { namespace math {
     private:
       vec3<FloatType> center_of_mass_;
       sym_mat3<FloatType> inertia_tensor_;
-      eigensystem::real_symmetric<FloatType> eigensystem_;
+      matrix::eigensystem::real_symmetric<FloatType> eigensystem_;
 
     public:
       //! Default constructor. Some data members are not initialized!
@@ -55,7 +55,7 @@ namespace scitbx { namespace math {
           math::inertia_tensor(
             points, center_of_mass_, inertia_tensor_);
         }
-        eigensystem_ = math::eigensystem::real_symmetric<FloatType>(
+        eigensystem_ = matrix::eigensystem::real_symmetric<FloatType>(
           inertia_tensor_);
       }
 
@@ -83,7 +83,7 @@ namespace scitbx { namespace math {
           math::inertia_tensor(
             points, weights, center_of_mass_, inertia_tensor_);
         }
-        eigensystem_ = math::eigensystem::real_symmetric<FloatType>(
+        eigensystem_ = matrix::eigensystem::real_symmetric<FloatType>(
           inertia_tensor_);
       }
 
@@ -103,7 +103,7 @@ namespace scitbx { namespace math {
       inertia_tensor() const { return inertia_tensor_; }
 
       //! Eigenvectors and eigenvalues of inertia_tensor().
-      math::eigensystem::real_symmetric<FloatType> const&
+      matrix::eigensystem::real_symmetric<FloatType> const&
       eigensystem() const { return eigensystem_; }
 
       //! Change-of-basis matrix to system of principal of axes.
@@ -147,7 +147,7 @@ namespace scitbx { namespace math {
     private:
       vec2<FloatType> center_of_mass_;
       sym_mat2<FloatType> inertia_tensor_;
-      eigensystem::real_symmetric<FloatType> eigensystem_;
+      matrix::eigensystem::real_symmetric<FloatType> eigensystem_;
 
     public:
       //! Default constructor. Some data members are not initialized!
@@ -173,7 +173,7 @@ namespace scitbx { namespace math {
             inertia_tensor_(0,1) -= p[0] * p[1];
           }
         }
-        eigensystem_ = math::eigensystem::real_symmetric<FloatType>(
+        eigensystem_ = matrix::eigensystem::real_symmetric<FloatType>(
           inertia_tensor_);
       }
 
@@ -208,7 +208,7 @@ namespace scitbx { namespace math {
 
           }
         }
-        eigensystem_ = math::eigensystem::real_symmetric<FloatType>(
+        eigensystem_ = matrix::eigensystem::real_symmetric<FloatType>(
           inertia_tensor_);
       }
 
@@ -228,7 +228,7 @@ namespace scitbx { namespace math {
       inertia_tensor() const { return inertia_tensor_; }
 
       //! Eigenvectors and eigenvalues of inertia_tensor().
-      math::eigensystem::real_symmetric<FloatType> const&
+      matrix::eigensystem::real_symmetric<FloatType> const&
       eigensystem() const { return eigensystem_; }
 
       //! Distance from center of inertia tensor ellipsoid to its surface.

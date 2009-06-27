@@ -1039,7 +1039,7 @@ def exercise_row_echelon_full_pivoting():
 
 def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
   def girs(a, relative_min_abs_pivot=1e-12, absolute_min_abs_pivot=0):
-    es = scitbx.math.eigensystem.real_symmetric(
+    es = scitbx.linalg.eigensystem.real_symmetric(
       m=a,
       relative_epsilon=relative_min_abs_pivot,
       absolute_epsilon=absolute_min_abs_pivot)

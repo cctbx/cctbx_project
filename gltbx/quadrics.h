@@ -7,7 +7,7 @@
 #include <scitbx/array_family/accessors/mat_grid.h>
 #include <scitbx/array_family/ref.h>
 #include <scitbx/array_family/accessors/f_grid.h>
-#include <scitbx/math/eigensystem.h>
+#include <scitbx/matrix/eigensystem.h>
 
 // these includes last to avoid Visual C++ 7.1, 8.0 failures
 #include <gltbx/util.h>
@@ -133,7 +133,7 @@ class proto_cylinder : public prototype<proto_cylinder>
    coordinates are \f$y\f$, is \f$M = R \Delta^{1/2}\f$. Moreover, \f$R\f$ is
    the matrix whose columns are the eigenvectors of \f$U\f$ and \f$\Delta\f$
    has the corresponding eigenvalues. Hence we can use
-   \c scitbx::math::eigensystem::real_symmetric to get those matrices.
+   \c scitbx::matrix::eigensystem::real_symmetric to get those matrices.
 */
 class ellipsoid_to_sphere_transform
 {
@@ -156,7 +156,7 @@ class ellipsoid_to_sphere_transform
       : ndp(false)
     {
       mat_ref_type trs(m, 4, 4);
-      scitbx::math::eigensystem::real_symmetric<GLdouble> es(metrics);
+      scitbx::matrix::eigensystem::real_symmetric<GLdouble> es(metrics);
       mat_const_ref_type eigenvec(es.vectors().begin(), 3, 3);
       vec_const_ref_type eigenval(es.values().begin(), 3);
       for(int j=0; j<3; ++j) {

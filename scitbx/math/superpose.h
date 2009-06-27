@@ -1,7 +1,7 @@
 #ifndef SCITBX_MATH_SUPERPOSE_H
 #define SCITBX_MATH_SUPERPOSE_H
 
-#include <scitbx/math/eigensystem.h>
+#include <scitbx/matrix/eigensystem.h>
 #include <scitbx/math/r3_rotation.h>
 #include <scitbx/array_family/shared_reductions.h>
 #include <scitbx/array_family/shared_algebra.h>
@@ -163,7 +163,7 @@ superposition<FloatType>::kearsley_rotation(
   matrix( 3, 2 ) = matrix( 2, 3 );
 
   // Solve characteristic equation
-  math::eigensystem::real_symmetric< FloatType > eigensystem( matrix );
+  matrix::eigensystem::real_symmetric< FloatType > eigensystem( matrix );
 
   // The eigenvectors corresponding to the lowest four eigenvalues form
   // a unit quaternion

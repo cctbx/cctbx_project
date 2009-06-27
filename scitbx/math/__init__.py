@@ -1,5 +1,5 @@
 from scitbx.math.ext import *
-import scitbx.math.eigensystem
+import scitbx.linalg.eigensystem
 import scitbx.math.gaussian
 from scitbx import matrix
 from scitbx.array_family import flex
@@ -192,7 +192,7 @@ Returns None if a*x=b has no solution.
   else:
     assert a.is_square_matrix()
     aw = a.deep_copy()
-    es = scitbx.math.eigensystem.real_symmetric(aw)
+    es = scitbx.linalg.eigensystem.real_symmetric(aw)
     c = es.vectors() # may be left-handed, but that's OK here
     ct = c.matrix_transpose()
     aw = c.matrix_multiply(aw).matrix_multiply(ct)
