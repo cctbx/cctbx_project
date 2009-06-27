@@ -9,6 +9,8 @@
 #include <scitbx/array_family/accessors/row_and_column.h>
 #include <boost/random/variate_generator.hpp>
 #include <boost/random/normal_distribution.hpp>
+#include <scitbx/matrix/packed.h>
+#include <scitbx/matrix/matrix_vector_operations.h>
 #include <scitbx/math/utils.h>
 #include <scitbx/math/accumulators.h>
 #include <vector>
@@ -36,6 +38,8 @@ struct reflection
   typedef af::versa<scalar_t, dim> matrix_t;
   typedef af::ref<scalar_t, af::mat_grid> matrix_ref_t;
   typedef af::const_ref<scalar_t, af::mat_grid> matrix_const_ref_t;
+  typedef af::versa<double, packed_u_accessor> symmetric_matrix_packed_u_t;
+  typedef af::ref<double, packed_u_accessor> symmetric_matrix_packed_u_ref_t;
 
   /// Normalisation of the Householder vector
   scalar_t beta;
@@ -49,9 +53,17 @@ struct reflection
   /// Working vector for applying the Householder reflection to a matrix
   std::vector<scalar_t> w;
 
+  /** @name Constructors
+      One may think that the working array v should be of size n-1 for a problem
+      of size n since the real vector v is actually [ 1 v[0] v[1] ... ]
+      but we actually use transformations in place in several places where
+      v is loaded with [ x[0] x[1] ... ] and then transformed to
+      [ 1 v[0] v[1] ... ]. Hence the need for one more element.
+   */
+  //@{
   template <class AccessorType>
   reflection(af::ref<scalar_t, AccessorType> const &x)
-    : v(x.size()-1)
+    : v(x.size())
   {
     zero_vector(x);
   }
@@ -71,6 +83,8 @@ struct reflection
   reflection(int m, int n, applied_on_left_and_right_tag)
     : v(std::max(m,n)), w(std::max(m,n))
   {}
+
+  //@}
 
   /// Construct the Householder reflection P s.t. Px = ||x||_2 e_1
   /** If requested, x(0) is overwritten with the first element of Px
@@ -129,7 +143,7 @@ struct reflection
         w[jj-j] += a(ii,jj)*v[ii-i-1];
     }
     for (int k=0; k < n-j; ++k) w[k] *= beta;
-    // A(i:, j:) = PA(i:, j:)
+    // A(i:, j:) -= v(i:) w(j:)^T
     for (int jj=j; jj < n; ++jj) a(i,jj) -= w[jj-j];
     for (int ii=i+1; ii < m; ++ii) {
       for (int jj=j; jj < n; ++jj) a(ii,jj) -= v[ii-i-1]*w[jj-j];
@@ -146,10 +160,55 @@ struct reflection
       for (int jj=j+1; jj < n; ++jj) w[ii-i] += a(ii,jj)*v[jj-j-1];
       w[ii-i] *= beta;
     }
-    // A(i:, j:) = A(i:, j:)P
+    // A(i:, j:) -= w(i:) v(j:)^T
     for (int ii=i; ii < m; ++ii) {
       a(ii,j) -= w[ii-i];
       for (int jj=j+1; jj < n; ++jj) a(ii,jj) -= w[ii-i]*v[jj-j-1];
+    }
+  }
+
+  /// Replace A(i:, i:) by PA(i:,i:)P for a symmetric matrix A
+  void
+  apply_to_lower_right_block(symmetric_matrix_packed_u_ref_t const &a_, int i0)
+  {
+    int n = a_.accessor().n;
+    scalar_t *a0 = &a_(i0,i0);
+
+    // w = beta A(i:,i:) v
+    scalar_t *a = a0;
+    w[0] = *a++;
+    for (int k=i0+1; k<n; ++k) {
+      scalar_t a_i0_k = *a++, &a_k_i0 = a_i0_k;
+      w[0] += a_i0_k * v[k-i0-1];
+      w[k-i0] = a_k_i0;
+    }
+    symmetric_packed_u_vector(n-i0-1, a, &v[0], &w[1], 1., 1.);
+    for (int k=0; k < n-i0; ++k) w[k] *= beta;
+
+    // nu = v^T w
+    scalar_t nu = w[0];
+    for (int i=i0+1; i<n; ++i) nu += v[i-i0-1]*w[i-i0];
+    scalar_t beta_nu = beta * nu;
+
+    // PA(i:, i:)P = A(i:,i:) - (v w^T + w v^T) + beta nu v v^T
+    a = a0;
+    scalar_t a_i0_i0 = *a;
+    a_i0_i0 -= 2*w[0];
+    a_i0_i0 += beta_nu;
+    *a++ = a_i0_i0;
+    for (int j=i0+1; j<n; ++j) {
+      scalar_t a_i0_j = *a;
+      a_i0_j -= w[j-i0];
+      a_i0_j -= w[0]*v[j-i0-1];
+      a_i0_j += beta_nu * v[j-i0-1];
+      *a++ = a_i0_j;
+    }
+    for (int i=i0+1; i<n; ++i) for (int j=i; j<n; ++j) {
+      scalar_t a_ij = *a;
+      a_ij -= v[i-i0-1]*w[j-i0];
+      a_ij -= w[i-i0]*v[j-i0-1];
+      a_ij += beta_nu * v[i-i0-1]*v[j-i0-1];
+      *a++ = a_ij;
     }
   }
 
@@ -376,6 +435,25 @@ struct reflection
       }
     }
   }
+
+  /// Accumulate a random symmetric matrix with given eigenvalues
+  template <class UniformRandomNumberGenerator>
+  void
+  accumulate_random_symmetric_matrix_with_eigenvalues(
+    boost::variate_generator<UniformRandomNumberGenerator,
+                             boost::normal_distribution<scalar_t> > &normal,
+    af::const_ref<scalar_t> const &lambda,
+    symmetric_matrix_packed_u_ref_t const &a)
+  {
+    int n = a.n_columns();
+    a.set_diagonal(lambda);
+    for (int i=n-2; i>=0; --i) {
+      for (int k=0; k<n-i; ++k) v[k] = normal();
+      zero_vector(n-i);
+      apply_to_lower_right_block(a, i);
+    }
+  }
+
 };
 
 
@@ -604,6 +682,8 @@ struct random_normal_matrix_generator
   typedef af::c_grid<2> dim;
   typedef af::versa<scalar_t, dim> matrix_t;
   typedef af::ref<scalar_t, af::mat_grid> matrix_ref_t;
+  typedef af::versa<double, packed_u_accessor> symmetric_matrix_packed_u_t;
+  typedef af::ref<double, packed_u_accessor> symmetric_matrix_packed_u_ref_t;
 
   UniformRandomNumberGenerator uniform_gen;
   boost::normal_distribution<scalar_t> normal_dist;
@@ -640,6 +720,15 @@ struct random_normal_matrix_generator
     matrix_t result(dim(m, n), af::init_functor_null<scalar_t>());
     matrix_ref_t a = result.ref();
     p.accumulate_random_matrix_with_singular_values(normal_gen, sigma, a);
+    return result;
+  }
+
+  symmetric_matrix_packed_u_t
+  symmetric_matrix_with_eigenvalues(af::const_ref<scalar_t> const& lambda) {
+    SCITBX_ASSERT(m == n)(m)(n);
+    symmetric_matrix_packed_u_t result(n, af::init_functor_null<scalar_t>());
+    symmetric_matrix_packed_u_ref_t a = result.ref();
+    p.accumulate_random_symmetric_matrix_with_eigenvalues(normal_gen, lambda, a);
     return result;
   }
 

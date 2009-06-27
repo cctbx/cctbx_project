@@ -267,6 +267,32 @@ void exercise_householder_zeroing_vector() {
   }
 }
 
+void exercise_householder_applied_to_symmetric_matrix() {
+  double tol = 1e-12;
+  scitbx::random::mersenne_twister rnd;
+  for (int n=2; n<10; ++n) {
+    vec_t x = rnd.random_double(n);
+    householder::reflection<double> p(
+      n, n, householder::applied_on_left_and_right_tag());
+    p.zero_vector(x.ref(), false);
+    matrix_t id_n = identity<double>(n);
+    matrix_ref_t pp = id_n.ref();
+    p.apply_on_left_to_lower_right_block(pp, 0, 0);
+
+    symmetric_matrix_packed_u_t a(n);
+    double *a_ = a.begin();
+    for (int i=0; i<n; ++i) for (int j=i; j<n; ++j) *a_++ = rnd.random_double();
+    af::const_ref<double> r(a.begin(), a.size());
+    matrix_t a1 = packed_u_as_symmetric(r);
+
+    matrix_t b1 = product_U_M_VT(pp, a1.const_ref(), pp);
+    symmetric_matrix_packed_u_t b(symmetric_as_packed_u(b1.ref(), tol), n);
+
+    p.apply_to_lower_right_block(a.ref(), 0);
+    SCITBX_ASSERT(a.all_approx_equal(b, tol));
+  }
+}
+
 void exercise_householder_accumulation() {
   boost::mt19937 urng;
   boost::uniform_int<> gen(0, 64);
@@ -439,6 +465,7 @@ void exercise_bidiagonalisation() {
 
 int main() {
   exercise_householder_zeroing_vector();
+  exercise_householder_applied_to_symmetric_matrix();
   exercise_householder_accumulation();
   exercise_householder();
   exercise_bidiagonalisation();
