@@ -2645,9 +2645,34 @@ def exercise_c_grid_flex_conversion():
   a.resize(flex.grid((2,3,4)))
   assert flex.tst_c_grid_flex_conversion(a, -1,4,-2) == a[1,1,2]
 
+def exercise_triangular_systems():
+  for n in xrange(1,5):
+    a = flex.random_double(n*(n+1)/2)
+    isinstance(a, flex.double)
+    b = flex.random_double(n)
+
+    x = a.matrix_forward_substitution(b)
+    y = a.matrix_packed_l_as_lower_triangle().matrix_multiply(x)
+    assert approx_equal(y, b)
+
+    x = a.matrix_back_substitution(b)
+    y = a.matrix_packed_u_as_upper_triangle().matrix_multiply(x)
+    assert approx_equal(y, b)
+
+    x = a.matrix_forward_substitution_given_transpose(b)
+    lt = a.matrix_packed_u_as_upper_triangle().matrix_transpose()
+    y = lt.matrix_multiply(x)
+    assert approx_equal(y, b)
+
+    x = a.matrix_back_substitution_given_transpose(b)
+    ut = a.matrix_packed_l_as_lower_triangle().matrix_transpose()
+    y = ut.matrix_multiply(x)
+    assert approx_equal(y, b)
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_triangular_systems()
     exercise_copy_upper_or_lower_triangle()
     exercise_matrix_bidiagonal()
     exercise_c_grid_flex_conversion()

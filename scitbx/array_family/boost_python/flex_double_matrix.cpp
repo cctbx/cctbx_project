@@ -240,6 +240,16 @@ namespace boost_python {
           const_ref<std::size_t> const&,
           const_ref<double> const&)) matrix_lu_back_substitution, (
         arg_("pivot_indices"), arg_("b")))
+      .def("matrix_forward_substitution", matrix_forward_substitution<double>,
+           (arg_("l"), arg_("b"), arg_("unit_diag")=false))
+      .def("matrix_back_substitution", matrix_back_substitution<double>,
+           (arg_("u"), arg_("b"), arg_("unit_diag")=false))
+      .def("matrix_forward_substitution_given_transpose",
+           matrix_forward_substitution_given_transpose<double>,
+           (arg_("u"), arg_("b"), arg_("unit_diag")=false))
+      .def("matrix_back_substitution_given_transpose",
+           matrix_back_substitution_given_transpose<double>,
+           (arg_("l"), arg_("b"), arg_("unit_diag")=false))
       .def("matrix_determinant_via_lu",
         (double(*)(
           const_ref<double, c_grid<2> > const&,
