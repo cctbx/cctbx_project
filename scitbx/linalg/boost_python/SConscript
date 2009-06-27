@@ -1,0 +1,13 @@
+Import("env_scitbx_boost_python_ext")
+
+env = env_scitbx_boost_python_ext.Copy()
+env.SharedLibrary(
+  target="#lib/scitbx_linalg_ext",
+  source=[
+    "linalg_ext.cpp",
+    "matrix.cpp",
+    "householder.cpp",
+    "svd.cpp",
+    "eigensystem.cpp",
+  ]
+)

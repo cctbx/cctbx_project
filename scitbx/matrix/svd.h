@@ -2,6 +2,7 @@
 #define SCITBX_MATRIX_SVD_H
 
 #include <scitbx/error.h>
+#include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/ref.h>
 #include <scitbx/array_family/accessors/mat_grid.h>
 #include <scitbx/math/copysign.h>

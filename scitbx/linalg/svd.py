@@ -1,9 +1,9 @@
 from __future__ import division
 import libtbx
-import scitbx.math
+import scitbx.linalg
 from scitbx.array_family import flex
 
-class real_bidiagonal(scitbx.math.svd_decomposition_of_bidiagonal_matrix):
+class real_bidiagonal(scitbx.linalg.svd_decomposition_of_bidiagonal_matrix):
 
   def compute(self):
     super(real_bidiagonal, self).compute()
@@ -33,7 +33,7 @@ class real(object):
         The argument epsilon is the "precision" to compute the singular
         values with, in the sense of the epsilon machine.
     """
-    from scitbx.math import bidiagonal_matrix_kind
+    from scitbx.linalg import bidiagonal_matrix_kind
     m, n = a.focus()
     u = flex.double()
     u.reshape(flex.grid(0,0))
@@ -46,13 +46,13 @@ class real(object):
 
     if m > self.crossover * n:
       # many more rows than columns
-      qr = scitbx.math.householder_qr_decomposition(
+      qr = scitbx.linalg.householder_qr_decomposition(
         a, may_accumulate_q=accumulate_u)
       r = a.matrix_copy_upper_triangle()
       if accumulate_u:
         qr.accumulate_q_in_place()
         q = a
-      bidiag = scitbx.math.householder_bidiagonalisation(r)
+      bidiag = scitbx.linalg.householder_bidiagonalisation(r)
       if accumulate_u: u = bidiag.u()
       if accumulate_v: v = bidiag.v()
       d, f = r.matrix_upper_bidiagonal()
@@ -65,13 +65,13 @@ class real(object):
         u = q.matrix_multiply(u)
     elif n > self.crossover * m:
       # many more columns than rows
-      lq = scitbx.math.householder_lq_decomposition(
+      lq = scitbx.linalg.householder_lq_decomposition(
         a, may_accumulate_q=accumulate_u)
       l = a.matrix_copy_lower_triangle()
       if accumulate_v:
         lq.accumulate_q_in_place()
         q = a
-      bidiag = scitbx.math.householder_bidiagonalisation(l)
+      bidiag = scitbx.linalg.householder_bidiagonalisation(l)
       if accumulate_u: u = bidiag.u()
       if accumulate_v: v = bidiag.v()
       d, f = l.matrix_upper_bidiagonal()
@@ -84,7 +84,7 @@ class real(object):
         v = q.matrix_transpose().matrix_multiply(v)
     else:
       # balanced number of rows and columns
-      bidiag = scitbx.math.householder_bidiagonalisation(a)
+      bidiag = scitbx.linalg.householder_bidiagonalisation(a)
       if accumulate_u: u = bidiag.u()
       if accumulate_v: v = bidiag.v()
       if m >= n:
@@ -105,7 +105,7 @@ class real(object):
   def reconstruct(self):
     """ Reconstruct the matrix A from its singular values and vectors """
     assert self.u and self.v, "Missing singular vectors"
-    return scitbx.math.reconstruct_svd(self.u, self.v, self.sigma)
+    return scitbx.linalg.reconstruct_svd(self.u, self.v, self.sigma)
 
   def numerical_rank(self, delta):
     return self._svd.numerical_rank(delta)
