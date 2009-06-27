@@ -1,13 +1,74 @@
 from __future__ import division
 import math
-import scitbx.math.svd
+import scitbx.math
+import scitbx.linalg.svd
+from scitbx.linalg import matrix_equality_ratio, matrix_normality_ratio
 try: import tntbx
 except ImportError: tntbx = None
 import libtbx.utils
 import sys
 import random
+from libtbx.test_utils import approx_equal
 
 from scitbx.array_family import flex
+
+def exercise_svd_basic():
+  a = flex.double(xrange(1,19))
+  sigma = [ 45.8945322027251, 1.6407053035305987, 0 ]
+  a.resize(flex.grid(6,3))
+  svd = scitbx.linalg.svd.real(
+    a.deep_copy(),
+    accumulate_u=True,
+    accumulate_v=True)
+  assert approx_equal(svd.sigma, sigma)
+  a1 = svd.reconstruct()
+  assert matrix_equality_ratio(a, a1) < 10
+  assert matrix_normality_ratio(svd.u) < 10
+  assert matrix_normality_ratio(svd.v) < 10
+  svd = scitbx.linalg.svd.real(a.deep_copy(),
+                             accumulate_u=False, accumulate_v=False)
+  assert approx_equal(svd.sigma, sigma)
+  assert not svd.u and not svd.v
+  try:
+    svd.reconstruct()
+    raise Exception_expected
+  except AssertionError:
+    pass
+
+  a = a.matrix_transpose()
+  svd = scitbx.linalg.svd.real(
+    a.deep_copy(),
+    accumulate_u=True,
+    accumulate_v=True)
+  assert approx_equal(svd.sigma, sigma)
+  a1 = svd.reconstruct()
+  assert matrix_equality_ratio(a, a1) < 10
+  assert matrix_normality_ratio(svd.u) < 10
+  assert matrix_normality_ratio(svd.v) < 10
+
+  a = flex.double(xrange(1,13))
+  sigma = [25.436835633480246818, 1.7226122475210637387, 0]
+  a.reshape(flex.grid(3,4))
+  svd = scitbx.linalg.svd.real(
+    a.deep_copy(),
+    accumulate_u=True,
+    accumulate_v=True)
+  assert approx_equal(svd.sigma, sigma)
+  a1 = svd.reconstruct()
+  assert matrix_equality_ratio(a, a1) < 10
+  assert matrix_normality_ratio(svd.u) < 10
+  assert matrix_normality_ratio(svd.v) < 10
+
+  a = a.matrix_transpose()
+  svd = scitbx.linalg.svd.real(
+    a.deep_copy(),
+    accumulate_u=True,
+    accumulate_v=True)
+  assert approx_equal(svd.sigma, sigma)
+  a1 = svd.reconstruct()
+  assert matrix_equality_ratio(a, a1) < 10
+  assert matrix_normality_ratio(svd.u) < 10
+  assert matrix_normality_ratio(svd.v) < 10
 
 
 class test_case(object):
@@ -33,7 +94,7 @@ class test_case(object):
       for n in (10, 20, 30, 40, 50, 60, 70, 80, 90, 100):
         if not self.full_coverage and random.random() < 0.9: continue
         m = int(k*n)
-        gen = scitbx.math.random_normal_matrix_generator(m, n)
+        gen = scitbx.linalg.random_normal_matrix_generator(m, n)
         for p in xrange(self.n_matrices_per_dimension):
           sigma = self.sigma(m,n)
           yield sigma, gen.matrix_with_singular_values(sigma)
@@ -47,7 +108,7 @@ class test_case(object):
         if not n_tests: print
         print (m,n),
         sys.stdout.flush()
-      svd = scitbx.math.svd.real(a, self.accumulate_u, self.accumulate_v)
+      svd = scitbx.linalg.svd.real(a, self.accumulate_u, self.accumulate_v)
       if self.show_progress:
         print '!',
         sys.stdout.flush()
@@ -130,7 +191,7 @@ def exercise_densely_distributed_singular_values(show_progress, full_coverage):
   m = 2*n
   n_runs = 20
   tol = 10*scitbx.math.double_numeric_limits.epsilon
-  gen = scitbx.math.random_normal_matrix_generator(m, n)
+  gen = scitbx.linalg.random_normal_matrix_generator(m, n)
   sigmas = []
   sigmas.append( flex.double([ 10**(-i/n) for i in xrange(n) ]) )
   sigmas.append( sigmas[0].select(flex.random_permutation(n))   )
@@ -142,7 +203,7 @@ def exercise_densely_distributed_singular_values(show_progress, full_coverage):
     n_tests += 1
     for i_case, sigma in enumerate(sigmas):
       a = gen.matrix_with_singular_values(sigma)
-      svd = scitbx.math.svd.real(a, accumulate_u=False, accumulate_v=False)
+      svd = scitbx.linalg.svd.real(a, accumulate_u=False, accumulate_v=False)
       if i_case > 0: sigma = sigma.select(
         flex.sort_permutation(sigma, reverse=True))
       delta = (svd.sigma - sigma)/sigma/tol
@@ -161,11 +222,12 @@ def exercise_singular_matrix():
   for r in rows: a.extend(r)
   a.reshape(flex.grid(n, m))
   a = a.matrix_transpose()
-  svd = scitbx.math.svd.real(a.deep_copy(),
+  svd = scitbx.linalg.svd.real(a.deep_copy(),
                              accumulate_u=True, accumulate_v=True)
   assert svd.numerical_rank(svd.sigma[0]*tol) == n-2
 
 def run(show_progress, exercise_tntbx, full_coverage):
+  exercise_svd_basic()
   exercise_singular_matrix()
   exercise_densely_distributed_singular_values(show_progress=show_progress,
                                                full_coverage=full_coverage)

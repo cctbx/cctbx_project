@@ -6,7 +6,6 @@
 #include <scitbx/math/gamma.h>
 #include <scitbx/math/chebyshev.h>
 #include <scitbx/math/lambertw.h>
-#include <scitbx/math/eigensystem.h>
 #include <scitbx/math/superpose.h>
 #include <scitbx/math/phase_error.h>
 #include <scitbx/math/resample.h>
@@ -45,52 +44,8 @@ namespace boost_python {
   void wrap_least_squares_plane();
   void wrap_continued_fraction();
   void wrap_numeric_limits();
-  void wrap_matrix();
 
 namespace {
-
-  struct eigensystem_real_symmetric_wrappers
-  {
-    typedef eigensystem::real_symmetric<> w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      class_<w_t>("eigensystem_real_symmetric", no_init)
-        .def(init<
-          af::const_ref<double, af::c_grid<2> > const&, double, double>((
-            arg_("m"),
-            arg_("relative_epsilon")=1.e-10,
-            arg_("absolute_epsilon")=0)))
-        .def(init<
-          scitbx::sym_mat3<double> const&, double, double>((
-            arg_("m"),
-            arg_("relative_epsilon")=1.e-10,
-            arg_("absolute_epsilon")=0)))
-        .def("min_abs_pivot", &w_t::min_abs_pivot)
-        .def("vectors", &w_t::vectors)
-        .def("values", &w_t::values)
-        .def("generalized_inverse_as_packed_u",
-          &w_t::generalized_inverse_as_packed_u)
-      ;
-    }
-  };
-
-  vec3<double>
-  time_eigensystem_real_symmetric(
-    sym_mat3<double> const& m, std::size_t n_repetitions)
-  {
-    SCITBX_ASSERT(n_repetitions % 2 == 0);
-    vec3<double> result(0,0,0);
-    for(std::size_t i=0;i<n_repetitions/2;i++) {
-      result += vec3<double>(
-        eigensystem::real_symmetric<>(m).values().begin());
-      result -= vec3<double>(
-        eigensystem::real_symmetric<>(m).values().begin());
-    }
-    return result / static_cast<double>(n_repetitions);
-  }
 
   mat3<double>
   superpose_kearsley_rotation(
@@ -234,8 +189,6 @@ namespace {
       lambertw_overloads(
         (arg_("x"), arg_("max_iterations")=100)));
 
-    eigensystem_real_symmetric_wrappers::wrap();
-
     wrap_basic_statistics();
     wrap_gaussian();
     wrap_golay();
@@ -258,9 +211,6 @@ namespace {
     wrap_least_squares_plane();
     wrap_continued_fraction();
     wrap_numeric_limits();
-    wrap_matrix();
-
-    def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
 
     def("superpose_kearsley_rotation", superpose_kearsley_rotation, (
       arg_("reference_sites"), arg_("other_sites")));

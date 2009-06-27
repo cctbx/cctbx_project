@@ -483,6 +483,19 @@ scitbx/lbfgs/raw.h svneol=native#text/plain
 scitbx/lbfgs/raw_reference.h svneol=native#text/plain
 scitbx/lbfgs/tst_ext.py svneol=native#text/x-python
 scitbx/lbfgs/tst_lbfgs_f.py svneol=native#text/x-python
+scitbx/linalg/__init__.py -text
+scitbx/linalg/boost_python/SConscript -text
+scitbx/linalg/boost_python/eigensystem.cpp -text
+scitbx/linalg/boost_python/householder.cpp -text
+scitbx/linalg/boost_python/linalg_ext.cpp -text
+scitbx/linalg/boost_python/matrix.cpp -text
+scitbx/linalg/boost_python/svd.cpp -text
+scitbx/linalg/eigensystem.py -text
+scitbx/linalg/ext.py -text
+scitbx/linalg/svd.py -text
+scitbx/linalg/tests/tst_eigensystem.py -text
+scitbx/linalg/tests/tst_matrix.py -text
+scitbx/linalg/tests/tst_svd.py -text
 scitbx/math/accumulators.h -text
 scitbx/math/besselk.py -text
 scitbx/math/boost_python/__init__.py -text
@@ -490,8 +503,6 @@ scitbx/math/boost_python/continued_fraction.cpp -text
 scitbx/math/boost_python/least_squares_plane.cpp -text
 scitbx/math/boost_python/matrix.cpp -text
 scitbx/math/boost_python/numeric_limits.cpp -text
-scitbx/math/boost_python/tst_matrix.py -text
-scitbx/math/boost_python/tst_svd.py -text
 scitbx/math/continued_fraction.h -text
 scitbx/math/copysign.h -text
 scitbx/math/euler_angles.h -text
@@ -503,7 +514,6 @@ scitbx/math/numeric_limits.h -text
 scitbx/math/scale_curves.py -text
 scitbx/math/sphere_sphere_intersection.py svneol=native#text/x-python
 scitbx/math/superpose.h -text
-scitbx/math/svd.py -text
 scitbx/math/tests/SConscript -text
 scitbx/math/tests/tst.cpp -text
 scitbx/math/tst_fit_peak.py -text
