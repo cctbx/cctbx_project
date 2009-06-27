@@ -16,6 +16,7 @@ typedef af::ref<double, packed_u_accessor> symmetric_matrix_packed_u_ref_t;
 typedef af::versa<double, packed_l_accessor> symmetric_matrix_packed_l_t;
 typedef af::ref<double, packed_l_accessor> symmetric_matrix_packed_l_ref_t;
 typedef af::shared<double> vec_t;
+typedef af::ref<double> vec_ref_t;
 
 matrix_t product_U_M_VT(matrix_const_ref_t const &u,
                         matrix_const_ref_t const &m,

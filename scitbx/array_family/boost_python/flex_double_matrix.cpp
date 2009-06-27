@@ -1,8 +1,8 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/matrix/outer_product.h>
-#include <scitbx/matrix/cholesky.h>
 #include <scitbx/matrix/norms.h>
+#include <scitbx/matrix/move.h>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
@@ -33,40 +33,6 @@ namespace {
       }
     }
   }
-
-  struct matrix_cholesky_gill_murray_wright_decomposition_in_place_wrappers
-  {
-    typedef matrix::cholesky::gill_murray_wright_decomposition_in_place<> w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>(
-        "matrix_cholesky_gill_murray_wright_decomposition_in_place", no_init)
-        .def_readonly("epsilon", &w_t::epsilon)
-        .add_property("packed_u", make_getter(&w_t::packed_u, rbv()))
-        .add_property("e", make_getter(&w_t::e, rbv()))
-        .add_property("pivots", make_getter(&w_t::pivots, rbv()))
-        .def("solve", &w_t::solve, (arg_("b")))
-      ;
-    }
-
-    static w_t
-    factory_0(
-      shared<double> const& packed_u)
-    {
-      return w_t(packed_u);
-    }
-
-    static w_t
-    factory_1(
-      shared<double> const& packed_u, double epsilon)
-    {
-      return w_t(packed_u, epsilon);
-    }
-  };
 
   bool
   is_square_matrix(
@@ -134,10 +100,6 @@ namespace boost_python {
     matrix_symmetric_as_packed_l_overloads,
     matrix::symmetric_as_packed_l, 1, 2)
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    matrix_cholesky_decomposition_overloads,
-    matrix::cholesky::decomposition, 1, 2)
-
   double (*matrix_norm_1)(const_ref<double, mat_grid> const &) = matrix::norm_1;
 
   void
@@ -145,7 +107,6 @@ namespace boost_python {
     flex_wrapper<double>::class_f_t& class_f_t)
   {
     exercise_packed_u_accessor();
-    matrix_cholesky_gill_murray_wright_decomposition_in_place_wrappers::wrap();
 
     using namespace boost::python;
 
@@ -315,32 +276,6 @@ namespace boost_python {
         (shared<double>(*)(
           const_ref<double> const&))
             matrix::packed_u_diagonal)
-      .def("matrix_cholesky_decomposition",
-        (shared<double>(*)(
-          const_ref<double> const&, double const&))
-            matrix::cholesky::decomposition,
-              matrix_cholesky_decomposition_overloads((
-                arg_("self"),
-                arg_("relative_epsilon")=1.e-15)))
-      .def("matrix_cholesky_solve_packed_u",
-        (shared<double>(*)(
-          const_ref<double> const&,
-          const_ref<double> const&))
-            matrix::cholesky::solve_packed_u,
-              (arg_("self"), arg_("b")))
-      .def("matrix_cholesky_solve_packed_u",
-        (shared<double>(*)(
-          const_ref<double> const&,
-          const_ref<double> const&,
-          const_ref<std::size_t> const&))
-            matrix::cholesky::solve_packed_u,
-              (arg_("self"), arg_("b"), arg_("pivots")))
-      .def("matrix_cholesky_gill_murray_wright_decomposition_in_place",
-        matrix_cholesky_gill_murray_wright_decomposition_in_place_wrappers
-          ::factory_0)
-      .def("matrix_cholesky_gill_murray_wright_decomposition_in_place",
-        matrix_cholesky_gill_murray_wright_decomposition_in_place_wrappers
-          ::factory_1, (arg_("self"), arg_("epsilon")))
       .def("matrix_copy_upper_to_lower_triangle_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&))

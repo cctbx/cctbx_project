@@ -9,5 +9,7 @@ env.Program(target="tst_householder",
             source="tst_householder.cpp")
 env.Program(target="tst_svd",
             source="tst_svd.cpp")
+env.Program(target="tst_cholesky",
+            source="tst_cholesky.cpp")
 env.Program(target="tst_givens",
             source="tst_givens.cpp")

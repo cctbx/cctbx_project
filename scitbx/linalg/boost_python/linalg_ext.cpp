@@ -6,6 +6,7 @@ namespace scitbx { namespace matrix { namespace boost_python {
   void wrap_householder();
   void wrap_svd();
   void wrap_eigensystem();
+  void wrap_cholesky();
 
   namespace {
     void init_module() {
@@ -13,6 +14,7 @@ namespace scitbx { namespace matrix { namespace boost_python {
       wrap_householder();
       wrap_svd();
       wrap_eigensystem();
+      wrap_cholesky();
     }
   }
 }}}

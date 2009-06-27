@@ -485,6 +485,7 @@ scitbx/lbfgs/tst_ext.py svneol=native#text/x-python
 scitbx/lbfgs/tst_lbfgs_f.py svneol=native#text/x-python
 scitbx/linalg/__init__.py -text
 scitbx/linalg/boost_python/SConscript -text
+scitbx/linalg/boost_python/cholesky.cpp -text
 scitbx/linalg/boost_python/eigensystem.cpp -text
 scitbx/linalg/boost_python/householder.cpp -text
 scitbx/linalg/boost_python/linalg_ext.cpp -text
@@ -493,6 +494,7 @@ scitbx/linalg/boost_python/svd.cpp -text
 scitbx/linalg/eigensystem.py -text
 scitbx/linalg/ext.py -text
 scitbx/linalg/svd.py -text
+scitbx/linalg/tests/tst_cholesky.py -text
 scitbx/linalg/tests/tst_eigensystem.py -text
 scitbx/linalg/tests/tst_matrix.py -text
 scitbx/linalg/tests/tst_svd.py -text
@@ -531,6 +533,7 @@ scitbx/matrix/svd.h -text
 scitbx/matrix/svd2x2.nb -text
 scitbx/matrix/tests.h -text
 scitbx/matrix/tests/SConscript -text
+scitbx/matrix/tests/tst_cholesky.cpp -text
 scitbx/matrix/tests/tst_givens.cpp -text
 scitbx/matrix/tests/tst_householder.cpp -text
 scitbx/matrix/tests/tst_svd.cpp -text

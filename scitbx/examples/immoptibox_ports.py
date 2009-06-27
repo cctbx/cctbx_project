@@ -4,6 +4,7 @@ http://www2.imm.dtu.dk/~hbn/immoptibox/
 
 from __future__ import division
 import scitbx.math
+import scitbx.linalg
 from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
@@ -92,7 +93,7 @@ class levenberg_marquardt:
       if (mu > mu_min):
         a_plus_mu.matrix_diagonal_add_in_place(value=mu)
       u = a_plus_mu.matrix_symmetric_as_packed_u()
-      gmw = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
+      gmw = scitbx.linalg.gill_murray_wright_cholesky_decomposition_in_place(u)
       number_of_cholesky_decompositions += 1
       h_lm = gmw.solve(b=-g)
       if (h_lm.norm() <= eps_2 * (x.norm() + eps_2)):

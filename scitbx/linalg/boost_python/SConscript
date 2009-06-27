@@ -6,6 +6,7 @@ env.SharedLibrary(
   source=[
     "linalg_ext.cpp",
     "matrix.cpp",
+    "cholesky.cpp",
     "householder.cpp",
     "svd.cpp",
     "eigensystem.cpp",
