@@ -499,6 +499,9 @@ scitbx/linalg/tests/tst_cholesky.py -text
 scitbx/linalg/tests/tst_eigensystem.py -text
 scitbx/linalg/tests/tst_matrix.py -text
 scitbx/linalg/tests/tst_svd.py -text
+scitbx/lstbx/SConscript -text
+scitbx/lstbx/normal_equations.h -text
+scitbx/lstbx/tests/tst_normal_equations.cpp -text
 scitbx/math/accumulators.h -text
 scitbx/math/besselk.py -text
 scitbx/math/boost_python/__init__.py -text
