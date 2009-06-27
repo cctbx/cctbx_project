@@ -11,6 +11,7 @@
 #include <scitbx/matrix/inversion.h>
 #include <scitbx/matrix/diagonal.h>
 #include <scitbx/matrix/packed.h>
+#include <scitbx/matrix/triangular_systems.h>
 #include <scitbx/constants.h>
 #include <boost/optional.hpp>
 #include <boost/scoped_array.hpp>
@@ -314,6 +315,56 @@ namespace scitbx { namespace af {
     matrix::lu_decomposition_in_place(
       a.begin(), a.accessor()[0], pivot_indices.begin());
     return pivot_indices;
+  }
+
+  template <typename FloatType>
+  af::shared<FloatType>
+  matrix_forward_substitution(const_ref<FloatType> const &l,
+                              ref<FloatType> const &b,
+                              bool unit_diag=false)
+  {
+    SCITBX_ASSERT(matrix::symmetric_n_from_packed_size(l.size()) == b.size());
+    af::shared<FloatType> x(b.begin(), b.end());
+    matrix::forward_substitution(b.size(), l.begin(), x.begin(), unit_diag);
+    return x;
+  }
+
+  template <typename FloatType>
+  af::shared<FloatType>
+  matrix_back_substitution(const_ref<FloatType> const &u,
+                           ref<FloatType> const &b,
+                           bool unit_diag=false)
+  {
+    SCITBX_ASSERT(matrix::symmetric_n_from_packed_size(u.size()) == b.size());
+    af::shared<FloatType> x(b.begin(), b.end());
+    matrix::back_substitution(b.size(), u.begin(), x.begin(), unit_diag);
+    return x;
+  }
+
+  template <typename FloatType>
+  af::shared<FloatType>
+  matrix_forward_substitution_given_transpose(const_ref<FloatType> const &u,
+                                              ref<FloatType> const &b,
+                                              bool unit_diag=false)
+  {
+    SCITBX_ASSERT(matrix::symmetric_n_from_packed_size(u.size()) == b.size());
+    af::shared<FloatType> x(b.begin(), b.end());
+    matrix::forward_substitution_given_transpose(b.size(), u.begin(), x.begin(),
+                                                 unit_diag);
+    return x;
+  }
+
+  template <typename FloatType>
+  af::shared<FloatType>
+  matrix_back_substitution_given_transpose(const_ref<FloatType> const &l,
+                                           ref<FloatType> const &b,
+                                           bool unit_diag=false)
+  {
+    SCITBX_ASSERT(matrix::symmetric_n_from_packed_size(l.size()) == b.size());
+    af::shared<FloatType> x(b.begin(), b.end());
+    matrix::back_substitution_given_transpose(b.size(), l.begin(), x.begin(),
+                                              unit_diag);
+    return x;
   }
 
   template <typename FloatType>
