@@ -2,124 +2,195 @@
 #define SCITBX_MATRIX_CHOLESKY_H
 
 #include <scitbx/matrix/move.h>
+#include <scitbx/matrix/triangular_systems.h>
+#include <scitbx/matrix/matrix_vector_operations.h>
 #include <scitbx/math/floating_point_epsilon.h>
 #include <scitbx/array_family/shared.h>
 #include <vector>
 
 namespace scitbx { namespace matrix { namespace cholesky {
 
+  /** @name Cholesky decomposition in place
+      Those classes use the same techniques as LAPACK routine DPPTRF.
+     The L L^T and U^T U cases are reversed since we use
+     a packing of symmetric matrices by rows (whereas LAPACK assumes a packing
+     by columns of course).
+   */
+  //@{
+
+  /// Info about a failure during a Cholesky process
   template <typename FloatType>
-  af::shared<FloatType>
-  decomposition(
-    af::const_ref<FloatType> const& a,
-    FloatType const& relative_eps=1.e-15)
+  struct failure_info
   {
-    unsigned n = symmetric_n_from_packed_size(a.size());
-    FloatType eps;
-    if (relative_eps <= 0 || a.size() == 0) {
-      eps = 0;
+    failure_info() : failed(false) {}
+    failure_info(int i, FloatType v) : failed(true), index(i), value(v) {}
+    operator bool() {
+      return failed;
     }
-    else {
-      eps = relative_eps * af::max_absolute(a);
+    int index;
+    FloatType value;
+    bool failed;
+  };
+
+
+  /// Umbrella for A x = b solvers in place
+  struct solve_in_place
+  {
+    /// Solve using A = L L^T
+    template <typename FloatType>
+    static
+    void using_l_l_transpose(af::const_ref<FloatType,
+                                           matrix::packed_l_accessor> const &l,
+                             af::ref<FloatType> const &b)
+    {
+      SCITBX_ASSERT(l.n_columns() == b.size());
+      // x = L^{-T} L^{-1} b
+      forward_substitution(b.size(), l.begin(), b.begin());
+      back_substitution_given_transpose(b.size(), l.begin(), b.begin());
     }
-    af::shared<FloatType> result(a.size(), af::init_functor_null<FloatType>());
-    FloatType *c = result.begin();
-    std::size_t i_a = 0;
-    std::size_t k0 = 0;
-    for(unsigned k=0;k<n;k++,k0+=k) {
-      std::size_t kj = k0;
-      FloatType sum = 0;
-      for(unsigned j=0;j<k;j++) {
-        FloatType const& c_kj = c[kj++];
-        sum += c_kj * c_kj;
-      }
-      FloatType d = a[i_a++] - sum;
-      if (d <= eps) return af::shared<FloatType>();
-      d = std::sqrt(d);
-      c[kj++] = d;
-      std::size_t i0 = kj;
-      for(unsigned i=k+1;i<n;i++,i0+=i) {
-        std::size_t ij = i0;
-        kj = k0;
-        sum = 0;
-        for(unsigned j=0;j<k;j++) {
-          sum += c[ij++] * c[kj++];
+
+    /// Solve using A = U^T U
+    template <typename FloatType>
+    static
+    void using_u_transpose_u(af::const_ref<FloatType,
+                                           matrix::packed_u_accessor> const &u,
+                             af::ref<FloatType> const &b)
+    {
+      SCITBX_ASSERT(u.n_columns() == b.size());
+      // x = U^{-1} U^{-T} b
+      forward_substitution_given_transpose(b.size(), u.begin(), b.begin());
+      back_substitution(b.size(), u.begin(), b.begin());
+    }
+  };
+
+
+  /// Cholesky decomposition A = L L^T in place
+  template <typename FloatType>
+  struct l_l_transpose_decomposition_in_place
+  {
+    typedef FloatType scalar_t;
+    typedef matrix::packed_l_accessor accessor_type;
+    typedef af::ref<scalar_t, accessor_type> matrix_l_ref;
+
+    /// Information on failure
+    failure_info<scalar_t> failure;
+
+    /// L
+    matrix_l_ref l;
+
+    /// Compute the decomposition of the matrix A stored at a
+    /**
+     On entry, a refers to the lower diagonal of the symmetric matrix A
+     packed by rows.
+     On exit, it refers to the lower diagonal matrix L packed by rows.
+    */
+    l_l_transpose_decomposition_in_place(matrix_l_ref const &a_)
+      : l(a_)
+    {
+      scalar_t *a = a_.begin();
+      int n = a_.n_rows();
+      scalar_t *ll = a; // L(:i, :i) throughout
+      for (int i=0; i<n; ++i, ++a) {
+        // Solve L(:i,:i)  L(i, :i)^T = A(i, :i)^T in place
+        if (i > 0) forward_substitution(i, ll, a);
+
+        // Compute L(i,i), checking for positive-definitiveness
+        scalar_t *l = a; // L(i, :i)
+        a += i;
+        scalar_t a_ii = *a;
+        scalar_t l_sq = af::sum_sq(af::ref<scalar_t>(l, i)); // ||L(i, :i)||^2
+        scalar_t l_ii_sq = a_ii - l_sq;
+        if (l_ii_sq <= 0) {
+          failure = failure_info<scalar_t>(i, l_ii_sq);
+          return;
         }
-        c[ij] = (a[i_a++] - sum) / d;
+        scalar_t l_ii = std::sqrt(l_ii_sq);
+        *a = l_ii;
       }
     }
-    return result;
-  }
 
+    /// Solve A x = b in place
+    void solve_in_place(af::ref<scalar_t> const &b) {
+      solve_in_place::using_l_l_transpose(l, b);
+    }
+
+    /// Solve A x = b without overwriting b
+    af::shared<scalar_t> solve(af::ref<scalar_t> const &b) {
+      af::shared<scalar_t> result(b.begin(), b.end());
+      solve_in_place(result.ref());
+      return result;
+    }
+  };
+
+
+  /// Cholesky decomposition A = U^T U in place
+  /** Reference: algorithm 4.2.2 in Golub and Van Loan */
   template <typename FloatType>
-  af::shared<FloatType>
-  solve_packed_u(
-    af::const_ref<FloatType> const& u,
-    af::const_ref<FloatType> const& b)
+  struct u_transpose_u_decomposition_in_place
   {
-    unsigned n = symmetric_n_from_packed_size(u.size());
-    SCITBX_ASSERT(b.size() == n);
-    af::shared<FloatType> result(n, af::init_functor_null<FloatType>());
-    std::vector<FloatType> z;
-    z.reserve(n);
-    for(unsigned k=0;k<n;k++) {
-      FloatType sum = 0;
-      unsigned jk = k;
-      for(unsigned j=0;j<k;j++,jk+=(n-j)) {
-        sum += u[jk] * z[j];
-      }
-      z.push_back((b[k] - sum) / u[jk]);
-    }
-    FloatType* x = result.begin();
-    unsigned i_u = static_cast<unsigned>(u.size());
-    for(unsigned k=n;(k--)>0;) {
-      FloatType sum = 0;
-      for(unsigned j=n;--j>k;) {
-        sum += u[--i_u] * x[j];
-      }
-      x[k] = (z[k] - sum) / u[--i_u];
-    }
-    return result;
-  }
+    typedef FloatType scalar_t;
+    typedef matrix::packed_u_accessor accessor_type;
+    typedef af::ref<scalar_t, accessor_type> matrix_u_ref;
 
-  template <typename FloatType, typename PivotType>
-  af::shared<FloatType>
-  solve_packed_u(
-    af::const_ref<FloatType> const& u,
-    af::const_ref<FloatType> const& b,
-    af::const_ref<PivotType> const& pivots)
-  {
-    unsigned n = symmetric_n_from_packed_size(u.size());
-    SCITBX_ASSERT(b.size() == n);
-    SCITBX_ASSERT(pivots.size() == n);
-    af::shared<FloatType> z_(n, af::init_functor_null<FloatType>());
-    FloatType* z = z_.begin();
-    for(unsigned k=0;k<n;k++) {
-      FloatType sum = 0;
-      unsigned jk = k;
-      for(unsigned j=0;j<k;j++,jk+=(n-j)) {
-        sum += u[jk] * z[j];
-      }
-      SCITBX_ASSERT(pivots[k] < n);
-      z[k] = (b[pivots[k]] - sum) / u[jk];
-    }
-    af::shared<FloatType> x_(n, af::init_functor_null<FloatType>());
-    FloatType* x = x_.begin();
-    unsigned i_u = static_cast<unsigned>(u.size());
-    for(unsigned k=n;(k--)>0;) {
-      FloatType sum = 0;
-      for(unsigned j=n;--j>k;) {
-        sum += u[--i_u] * x[j];
-      }
-      x[k] = (z[k] - sum) / u[--i_u];
-    }
-    for(unsigned k=0;k<n;k++) {
-      z_[pivots[k]] = x_[k];
-    }
-    return z_;
-  }
+    /// Information on failure
+    failure_info<scalar_t> failure;
 
-  //! Computes P^{T}AP + E = LDL^{T}
+    /// U
+    matrix_u_ref u;
+
+    /// Compute the decomposition of the matrix A stored at a
+    /**
+     On entry, a refers to the upper diagonal of the symmetric matrix A
+     packed by rows.
+     On exit, it refers to the upper diagonal matrix U packed by rows.
+     */
+    u_transpose_u_decomposition_in_place(matrix_u_ref const &a_)
+      : u(a_)
+    {
+      scalar_t *a = a_.begin();
+      int n = a_.n_columns();
+      for (int i=0; i<n; ++i) {
+        /// Compute U(i,i) while checking positive-definiteness
+        scalar_t a_ii = *a;
+        if (a_ii <= 0) {
+          failure = failure_info<scalar_t>(i, a_ii);
+          return;
+        }
+        a_ii = std::sqrt(a_ii);
+        *a++ = a_ii;
+
+        /// Compute U(i, i+1:)
+        scalar_t *u = a;
+        for (int j=i+1; j<n; ++j) {
+          scalar_t &a_ij = *a;
+          *a++ = a_ij / a_ii;
+        }
+
+        symmetric_packed_u_rank_1_update(n-i-1, a, u, -1.);
+      }
+    }
+
+    /// Solve A x = b in place
+    void solve_in_place(af::ref<scalar_t> const &b) {
+      solve_in_place::using_u_transpose_u(u, b);
+    }
+
+    /// Solve A x = b without overwriting b
+    af::shared<scalar_t> solve(af::ref<scalar_t> const &b) {
+      af::shared<scalar_t> result(b.begin(), b.end());
+      solve_in_place(result.ref());
+      return result;
+    }
+  };
+
+  //@}
+
+
+  //! Computes PAP^{T} + E = LDL^{T}
+  /** P is classically represented as a product E_{n-1} ... E_2 E_1
+      where E_k swaps rows k and pivots[k]. Thus pivots[k] is the index
+      of the chosen pivot in column k at the k-th step of the algorithm.
+   */
   /*! P. E. Gill, W. Murray, and M. H. Wright:
       Practical Optimization.
       New York: Academic Press, 1981.
@@ -145,7 +216,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
 
     gill_murray_wright_decomposition_in_place(
       af::shared<FloatType> const& packed_u_,
-      FloatType const& epsilon_=0)
+      FloatType epsilon_=0)
     :
       epsilon(epsilon_),
       packed_u(packed_u_)
@@ -157,10 +228,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
       af::ref<f_t> u = packed_u.ref();
       unsigned n = symmetric_n_from_packed_size(u.size());
       e.resize(n);
-      pivots.reserve(n);
-      for(unsigned i=0;i<n;i++) {
-        pivots.push_back(i);
-      }
+      pivots.resize(n);
       f_t gamma = 0;
       f_t chi = 0;
       unsigned ij = 0;
@@ -192,8 +260,8 @@ namespace scitbx { namespace matrix { namespace cholesky {
           }
           if (jmax != j) {
             packed_u_swap_rows_and_columns_in_place(u, j, jmax);
-            std::swap(pivots[j], pivots[jmax]);
           }
+          pivots[j] = jmax;
         }
         // compute j-th column of L^{T}
         {
@@ -260,7 +328,14 @@ namespace scitbx { namespace matrix { namespace cholesky {
     af::shared<FloatType>
     solve(af::const_ref<FloatType> const& b) const
     {
-      return solve_packed_u(packed_u.const_ref(), b, pivots.const_ref());
+      int n = pivots.size();
+      af::const_ref<FloatType, matrix::packed_u_accessor> u(packed_u.begin(), n);
+      // x = P^T A^{-1} P b
+      af::shared<FloatType> result(b.begin(), b.end());
+      permutation_vector(n, result.begin(), pivots.begin());
+      solve_in_place::using_u_transpose_u(u, result.ref());
+      permutation_transposed_vector(n, result.begin(), pivots.begin());
+      return result;
     }
   };
 

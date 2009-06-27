@@ -21,6 +21,7 @@ def run():
   "$B/matrix/tests/tst_householder",
   "$B/matrix/tests/tst_svd",
   "$D/linalg/tests/tst_matrix.py",
+  "$D/linalg/tests/tst_cholesky.py",
   "$D/linalg/tests/tst_svd.py",
   "$D/linalg/tests/tst_eigensystem.py",
   "$D/error/tst_error.py",
