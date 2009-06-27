@@ -117,6 +117,28 @@ namespace scitbx { namespace matrix {
     return s;
   }
 
+  /// x := P x where P is a permutation matrix
+  /** P = E_{r-1} ... E_0
+      where each E_k is the identity with row k and p[k] interchanged.
+   */
+  template <typename T, typename IndexType>
+  void permutation_vector(int n, T *x, IndexType const *p) {
+    for (int i=0; i<n; ++i) {
+      if (p[i] != i) std::swap(x[i], x[ p[i] ]);
+    }
+  }
+
+  /// x := P^T x where P is a permutation matrix
+  /** P = E_{r-1} ... E_0
+   where each E_k is the identity with row k and p[k] interchanged.
+   Note: P^T = P^{-1}
+   */
+  template <typename T, typename IndexType>
+  void permutation_transposed_vector(int n, T *x, IndexType const *p) {
+    for (int i=n-1; i>=0; --i) {
+      if (p[i] != i) std::swap(x[i], x[ p[i] ]);
+    }
+  }
 }}
 
 #endif // GUARD
