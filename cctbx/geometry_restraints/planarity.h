@@ -3,7 +3,7 @@
 
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
-#include <scitbx/math/eigensystem.h>
+#include <scitbx/matrix/eigensystem.h>
 #include <scitbx/array_family/sort.h>
 #include <scitbx/sym_mat3.h>
 #include <scitbx/optional_copy.h>
@@ -301,13 +301,13 @@ namespace cctbx { namespace geometry_restraints {
       residual_tensor() const { return residual_tensor_; }
 
       //! Eigenvectors and eigenvalues of residual_tensor().
-      scitbx::math::eigensystem::real_symmetric<double> const&
+      scitbx::matrix::eigensystem::real_symmetric<double> const&
       eigensystem() const { return eigensystem_; }
 
     protected:
       scitbx::vec3<double> center_of_mass_;
       scitbx::sym_mat3<double> residual_tensor_;
-      scitbx::math::eigensystem::real_symmetric<double> eigensystem_;
+      scitbx::matrix::eigensystem::real_symmetric<double> eigensystem_;
       af::shared<double> deltas_;
 
       void
@@ -336,7 +336,7 @@ namespace cctbx { namespace geometry_restraints {
           residual_tensor_(0,2) += w*x[0]*x[2];
           residual_tensor_(1,2) += w*x[1]*x[2];
         }
-        eigensystem_ = scitbx::math::eigensystem::real_symmetric<double>(
+        eigensystem_ = scitbx::matrix::eigensystem::real_symmetric<double>(
           residual_tensor_);
         scitbx::vec3<double> n_min = normal();
         deltas_.reserve(sites_ref.size());

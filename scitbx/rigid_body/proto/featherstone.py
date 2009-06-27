@@ -31,7 +31,7 @@ if (scitbx is not None):
   def generalized_inverse(m):
     # assumption to achieve stability: order of magnitude of masses is around 1
     return matrix.sqr(
-      scitbx.math.eigensystem.real_symmetric(
+      scitbx.linalg.eigensystem.real_symmetric(
         m=m.as_flex_double_matrix(),
         relative_epsilon=1e-12,
         absolute_epsilon=1e-12)

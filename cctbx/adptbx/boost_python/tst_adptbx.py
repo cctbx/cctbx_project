@@ -1,7 +1,7 @@
 from cctbx import uctbx
 from cctbx import adptbx
 from cctbx.array_family import flex
-import scitbx.math.eigensystem
+import scitbx.linalg.eigensystem
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, approx_equal
 import math
@@ -108,9 +108,9 @@ def exercise_interface():
   assert approx_equal(uf, (2.7430890, 1.0378360, 2.1559895,
                            0.6193215, -0.3921632, 1.2846854))
   uf = adptbx.eigenvalue_filtering(u_cart=u, u_min=0, u_max=3)
-  assert approx_equal(scitbx.math.eigensystem.real_symmetric(u).values(),
+  assert approx_equal(scitbx.linalg.eigensystem.real_symmetric(u).values(),
                       (14.2792015, 2.9369144, -1.2161159))
-  assert approx_equal(scitbx.math.eigensystem.real_symmetric(uf).values(),
+  assert approx_equal(scitbx.linalg.eigensystem.real_symmetric(uf).values(),
                       (3, 2.9369144, 0))
   uf = adptbx.eigenvalue_filtering(up)
   assert approx_equal(uf, up)
