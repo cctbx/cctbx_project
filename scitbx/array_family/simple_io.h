@@ -6,9 +6,9 @@
 
 namespace scitbx { namespace af {
 
-  template <typename ElementType>
+  template <typename ElementType, typename AccessorType>
   std::ostream&
-  operator<<(std::ostream& os, const_ref<ElementType> const& a) {
+  operator<<(std::ostream& os, const_ref<ElementType, AccessorType> const& a) {
     os << "{";
     if (a.size() > 0) {
       for (std::size_t i = 0;;) {
