@@ -8,6 +8,9 @@
 namespace scitbx { namespace af {
 
   /// Like af::ref but it owns the versa array it refers to
+  /** This array shall never be resized after its creation. Otherwise the
+      ref would get stale.
+   */
   template <typename T, class AccessorType>
   class ref_owning_versa : public af::ref<T, AccessorType>
   {
@@ -79,10 +82,10 @@ namespace scitbx { namespace af {
     versa<T, AccessorType> array() { return a; }
 
     /// The mere ref equal to this
-    ref<T, AccessorType> ref() { return *this; }
+    af::ref<T, AccessorType> ref() { return *this; }
 
     /// A const ref to the owned array
-    const_ref<T, AccessorType> const_ref() { return *this; }
+    af::const_ref<T, AccessorType> const_ref() { return *this; }
 
   private:
     versa<T, AccessorType> a;
@@ -94,6 +97,9 @@ namespace scitbx { namespace af {
 
 
   /// Like af::ref but it owns the shared array it refers to
+  /** This array shall never be resized after its creation. Otherwise the
+   ref would get stale.
+   */
   template <typename T>
   class ref_owning_shared : public af::ref<T>
   {
@@ -154,7 +160,7 @@ namespace scitbx { namespace af {
     af::ref<T> ref() { return *this; }
 
     /// A const ref to the owned array
-    const_ref<T> const_ref() { return *this; }
+    af::const_ref<T> const_ref() { return *this; }
 
   private:
     shared<T> a;
