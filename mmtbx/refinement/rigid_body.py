@@ -482,7 +482,7 @@ class manager(object):
       monitors_call_back_handler = monitors.call_back_handler
       if (monitors_call_back_handler is not None):
         monitors_call_back_handler(
-          monitor=None, model=None, fmodel=fmodel)
+          monitor=None, model=None, fmodel=fmodel, method="rigid_body")
     for res,target_name in zip(d_mins, target_names):
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
         fmodel_copy = fmodel.resolution_filter(d_min = res)
@@ -559,7 +559,7 @@ class manager(object):
                   out    = log)
         if (monitors_call_back_handler is not None):
           monitors_call_back_handler(
-            monitor=None, model=None, fmodel=fmodel)
+            monitor=None, model=None, fmodel=fmodel, method="rigid_body")
     if(bss is not None and params.bulk_solvent_and_scale):
       fmodel.update_solvent_and_scale(out = log, verbose = -1)
     print >> log
