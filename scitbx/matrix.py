@@ -135,6 +135,10 @@ class rec(object):
   def as_float(self):
     return rec([float(e) for e in self.elems], self.n)
 
+  def as_boost_rational(self):
+    from boost import rational
+    return rec([rational.int(e) for e in self.elems], self.n)
+
   def as_int(self, rounding=True):
     if rounding:
       return rec([int(round(e)) for e in self.elems], self.n)
@@ -1368,6 +1372,11 @@ def exercise():
   v = col((1.1, -2.2, 2.3))
   assert approx_equal(v % 2, col((1.1, 1.8, 0.3)))
   #
+  rational1 = sqr((2,1,1,0,1,0,0,0,1))
+  assert str(rational1.inverse().elems)==\
+    "(0.5, -0.5, -0.5, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)"
+  assert str(rational1.as_boost_rational().inverse().elems)==\
+    "(1/2, -1/2, -1/2, 0, 1, 0, 0, 0, 1)"
   print "OK"
 
 if (__name__ == "__main__"):
