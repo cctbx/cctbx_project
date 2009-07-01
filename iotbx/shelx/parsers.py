@@ -269,171 +269,118 @@ if smtbx is not None:
     """ It must be after an atom parser """
 
     shelx_restraints = {
-      'DFIX': {'proxy_type':geometry_restraints.bond_sym_proxy},
-      'DANG': {'proxy_type':geometry_restraints.bond_sym_proxy},
-      'FLAT': {'proxy_type':geometry_restraints.planarity_proxy},
-      'CHIV': {'proxy_type':geometry_restraints.chirality_proxy},
-      'SADI': {'proxy_type':geometry_restraints.bond_similarity_proxy},
-      'SIMU': {'proxy_type':adp_restraints.adp_similarity_proxy,
-               'defaults':{'s1':0.04, 's2':None, 'dmax':1.7}},
-      'DELU': {'proxy_type':adp_restraints.rigid_bond_proxy,
-               'defaults':{'s1':0.01, 's2':None}},
-      'ISOR': {'proxy_type':adp_restraints.isotropic_adp_proxy,
-               'defaults':{'s1':0.1, 's2':None}},
+      'DFIX': {'d': None, 's': 0.02, 'i_seqs': None, 'sym ops': None},
+      'DANG': {'d': None, 's': 0.04, 'i_seqs': None, 'sym ops': None},
+      'FLAT': {'s': 0.1, 'atoms': None, 'sym ops': None},
+      'CHIV': {'V': 0, 's': 0.1, 'atoms': None, 'sym ops': None},
+      'SADI': {'s': 0.02, 'i_seqs': None, 'sym ops': None},
+      'SIMU': {'sigma': 0.04, 'sigma_terminal': None, 'i_seqs': None},
+      'DELU': {'sigma_12': 0.01, 'sigma_13': None, 'i_seqs': None},
+      'ISOR': {'sigma': 0.1, 'sigma_terminal': None, 'i_seqs': None},
     }
+
     def filtered_commands(self):
       self.cached_restraints = {}
       self.symmetry_operations = {}
       for command, line in self.command_stream:
         cmd, args = command[0], command[-1]
         if cmd in self.shelx_restraints.keys():
-          self.cache_restraint(cmd, args)
+          self.cache_restraint(cmd, line, args)
         elif cmd == 'EQIV':
           self.symmetry_operations.setdefault(args[0], args[1])
         else:
           yield command, line
       self.parse_restraints()
 
-    def cache_restraint(self, cmd, args):
+    def cache_restraint(self, cmd, line, args):
       if cmd not in self.cached_restraints.keys():
-        self.cached_restraints.setdefault(cmd, [args])
-      else:
-        self.cached_restraints[cmd].append(args)
+        self.cached_restraints.setdefault(cmd, {})
+      self.cached_restraints[cmd].setdefault(line, args)
 
     def parse_restraints(self):
-      def replace_None_with_unit_matrix(sym_ops):
-        for i, sym_op in enumerate(sym_ops):
-          unit_matrix = sgtbx.rt_mx()
-          if sym_op is None:
-            sym_ops[i] = unit_matrix
-        return sym_ops
       for cmd, restraints in self.cached_restraints.items():
-        proxy_type = self.shelx_restraints[cmd]['proxy_type']
-        for args in restraints:
-          kwds = {}
-          if cmd in ('DFIX','DANG'):
-            assert len(args) > 2
-            div, mod = divmod(len(args), 2)
-            value = args[0]
-            if mod == 0:
-              esd = args[1]
-              atom_pairs = args[2:]
-            else:
-              if cmd == 'DFIX': esd = 0.02
-              else: esd = 0.04
-              atom_pairs = args[1:]
-            for i in range(div-(1-mod)):
-              atom_pair = atom_pairs[i*2:(i+1)*2]
-              kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atom_pair]
-              sym_ops = [self.symmetry_operations.get(atom[2]) for atom in atom_pair]
-              if sym_ops.count(None) == 2:
-                rt_mx_ji = sgtbx.rt_mx() # unit matrix
-              elif sym_ops.count(None) == 1:
-                sym_op = sym_ops[1]
-                if sym_op is None:
-                  sym_op = sym_ops[0]
-                  kwds['i_seqs'].reverse()
-                rt_mx_ji = sgtbx.rt_mx(sym_op)
+        for line, args in restraints.iteritems():
+          try:
+            kwds = self.shelx_restraints[cmd].copy()
+            if cmd in ('DFIX','DANG'):
+              div, mod = divmod(len(args), 2)
+              kwds['d'] = float(args[0])
+              if mod == 0:
+                kwds['s'] = float(args[1])
+                atoms = args[2:]
               else:
-                rt_mx_ji_1 = sgtbx.rt_mx(sym_ops[0])
-                rt_mx_ji_2 = sgtbx.rt_mx(sym_ops[1])
-                rt_mx_ji_inv = rt_mx_ji_1.inverse()
-                rt_mx_ji = rt_mx_ji_inv.multiply(rt_mx_ji_2)
-              kwds['rt_mx_ji'] = rt_mx_ji
-              kwds['distance_ideal'] = value
-              kwds['weight'] = 1/(esd*esd)
-              self.builder.add_restraint(proxy_type, kwds)
-          if cmd == 'SADI':
-            assert len(args) > 3
-            div, mod = divmod(len(args), 2)
-            value = args[0]
-            if mod == 1:
-              esd = args[0]
-              atom_pairs = args[1:]
-            else:
-              esd = 0.02
-              atom_pairs = args
-            i_seqs = []
-            sym_ops = []
-            weights = []
-            for i in range(div):
-              atom_pair = atom_pairs[i*2:(i+1)*2]
-              i_seqs.append([self.scatterer_label_to_index[atom[1]] for atom in atom_pair])
-              symmetry_operations = [self.symmetry_operations.get(atom[2]) for atom in atom_pair]
-              if symmetry_operations.count(None) == 2:
-                rt_mx_ji = None
-              elif symmetry_operations.count(None) == 1:
-                sym_op = symmetry_operations[1]
-                if sym_op is None:
-                  sym_op = symmetry_operations[0]
-                  i_seqs[i].reverse()
-                rt_mx_ji = sgtbx.rt_mx(sym_op)
+                atoms = args[1:]
+              assert len(atoms) > 1
+              for i in range(div-(1-mod)):
+                atom_pair = atoms[i*2:(i+1)*2]
+                kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atom_pair]
+                kwds['sym ops'] = [self.symmetry_operations.get(atom[2]) for atom in atom_pair]
+              self.builder.process_restraint(cmd, kwds)
+            if cmd == 'SADI':
+              assert len(args) > 3
+              div, mod = divmod(len(args), 2)
+              value = args[0]
+              if mod == 1:
+                kwds['s'] = args[0]
+                atom_pairs = args[1:]
               else:
-                rt_mx_ji_1 = sgtbx.rt_mx(symmetry_operations[0])
-                rt_mx_ji_2 = sgtbx.rt_mx(symmetry_operations[1])
-                rt_mx_ji_inv = rt_mx_ji_1.inverse()
-                rt_mx_ji = rt_mx_ji_inv.multiply(rt_mx_ji_2)
-              sym_ops.append(rt_mx_ji)
-              weights.append(1/(esd*esd))
-            kwds['i_seqs'] = i_seqs
-            if sym_ops.count(None) != len(sym_ops):
-              kwds['sym_ops'] = replace_None_with_unit_matrix(sym_ops)
-            kwds['weights'] = weights
-            self.builder.add_restraint(proxy_type, kwds)
-          elif cmd == 'FLAT':
-            assert len(args) > 3
-            try:
-              esd = float(args[0])
-              atoms = args[1:]
-            except TypeError:
-              esd = 0.1
-              atoms = args
-            kwds['i_seqs'] = [self.scatterer_label_to_index[i[1]] for i in atoms]
-            kwds['weights'] = [1/(esd*esd)]*len(atoms)
-            sym_ops = [self.symmetry_operations.get(i[2]) for i in atoms]
-            if sym_ops.count(None) != len(sym_ops):
-              kwds['sym_ops'] = replace_None_with_unit_matrix(sym_ops)
-            self.builder.add_restraint(proxy_type, kwds)
-          elif cmd == 'CHIV':
-            pass
-          elif cmd in ('DELU', 'ISOR', 'SIMU'):
-            atoms = None
-            s1 = self.shelx_restraints[cmd]['defaults'].get('s1')
-            s2 = self.shelx_restraints[cmd]['defaults'].get('s2')
-            dmax = self.shelx_restraints[cmd]['defaults'].get('dmax')
-            if len(args) > 0:
+                atom_pairs = args
+              i_seqs = []
+              sym_ops = []
+              weights = []
+              for i in range(div):
+                atom_pair = atom_pairs[i*2:(i+1)*2]
+                i_seqs.append([self.scatterer_label_to_index[atom[1]] for atom in atom_pair])
+                sym_ops.append([self.symmetry_operations.get(atom[2]) for atom in atom_pair])
+              kwds['i_seqs'] = i_seqs
+              kwds['sym ops'] = sym_ops
+              self.builder.process_restraint(cmd, kwds)
+            elif cmd == 'FLAT':
               try:
-                s1 = float(args[0])
+                kwds['s'] = float(args[0])
+                atoms = args[1:]
               except TypeError:
                 atoms = args
-              if not atoms and len(args) > 1:
+              assert len(atoms) > 3
+              kwds['i_seqs'] = [self.scatterer_label_to_index[i[1]] for i in atoms]
+              self.builder.process_restraint(cmd, kwds)
+            elif cmd == 'CHIV':
+              pass
+            elif cmd in ('DELU', 'ISOR', 'SIMU'):
+              atoms = None
+              s1 = s2 = dmax = None
+              if len(args) > 0:
                 try:
-                  s2 = float(args[1])
+                  s1 = float(args[0])
                 except TypeError:
-                  atoms = args[1:]
-                if not atoms and len(args) > 2:
-                  if cmd != 'SIMU':
-                    atoms = args[2:]
-                  else:
-                    try:
-                      dmax = float(args[2])
-                    except TypeError:
-                      if not atoms:
-                        atoms = args[2:]
-                    if not atoms and len(args) > 3:
-                      atoms = args[3:]
-            if atoms:
-              kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atoms]
-            if cmd == 'DELU':
-              kwds['sigma_12'] = s1
-              kwds['sigma_13'] = s2
-            elif cmd == 'ISOR':
-              kwds['sigma'] = s1
-              kwds['sigma_terminal'] = s2
-            elif cmd == 'SIMU':
-              kwds['sigma'] = s1
-              kwds['sigma_terminal'] = s2
-              kwds['buffer_thickness'] = dmax
-            self.builder.add_restraint(proxy_type, kwds)
-          else:
-            pass
+                  atoms = args
+                if not atoms and len(args) > 1:
+                  try:
+                    s2 = float(args[1])
+                  except TypeError:
+                    atoms = args[1:]
+                  if not atoms and len(args) > 2:
+                    if cmd != 'SIMU':
+                      atoms = args[2:]
+                    else:
+                      try:
+                        dmax = float(args[2])
+                      except TypeError:
+                        if not atoms:
+                          atoms = args[2:]
+                      if not atoms and len(args) > 3:
+                        atoms = args[3:]
+              if atoms:
+                kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atoms]
+              if s1 is not None:
+                if cmd == 'DELU':
+                  kwds['sigma_12'] = s1
+                  kwds['sigma_13'] = s2
+                else:
+                  kwds['sigma'] = s1
+                  kwds['sigma_terminal'] = s2
+              self.builder.process_restraint(cmd, kwds)
+            else:
+              pass
+          except (TypeError, AssertionError):
+            raise shelx_error("Invalid %s instruction" %cmd, line)
