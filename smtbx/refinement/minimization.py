@@ -97,6 +97,7 @@ class lbfgs(object):
       self.log = None
 
     # Pre-minimisation of sites
+    self.pre_minimisation = True
     flags = self.xray_structure.scatterer_flags()
     for s in self.xray_structure.scatterers():
       s.flags.set_grads(False)
@@ -118,6 +119,7 @@ class lbfgs(object):
       s.flags.set_grad_fdp(flags.grad_fdp())
 
     # Main minimisation
+    self.pre_minimisation = False
     self.unconstrained_parameters = self.xray_structure.n_parameters_XXX()
     self.x = flex.double(self.n_parameters(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
@@ -133,6 +135,7 @@ class lbfgs(object):
     del self._d_min
     self.compute_target(compute_gradients=False)
     self.final_target_value = self.target_result.target()
+    if self.verbose: print "Final L.S. residual: %f" % self.f
 
   def n_parameters(self):
     n = self.xray_structure.n_parameters_XXX()
@@ -158,6 +161,7 @@ class lbfgs(object):
         tolerance=self.correct_special_position_tolerance)
 
   def apply_shifts(self):
+    self.xray_structure_pre_cycle = self.xray_structure.deep_copy_scatterers()
     apply_shifts_result = smtbx.refinement.ext.\
                         apply_special_position_constrained_shifts(
       unit_cell=self.xray_structure.unit_cell(),
@@ -177,21 +181,64 @@ class lbfgs(object):
       print >> self.log, "\n**************************************\n"
     return apply_shifts_result.u_iso_refinable_params
 
+  def iter_shifts_sites(self, max_items=None):
+    scatterers = self.xray_structure.scatterers()
+    sites_shifts = self.xray_structure.sites_cart() - self.xray_structure_pre_cycle.sites_cart()
+    distances = sites_shifts.norms()
+    i_distances_sorted = flex.sort_permutation(data=distances, reverse=True)
+    mean = flex.mean(distances)
+    if max_items is not None:
+      i_distances_sorted = i_distances_sorted[:max_items]
+    for i_seq in iter(i_distances_sorted):
+      yield distances[i_seq], scatterers[i_seq]
+
+  def iter_shifts_u(self, max_items=None):
+    scatterers = self.xray_structure.scatterers()
+    adp_shifts = self.xray_structure.extract_u_cart_plus_u_iso() \
+               - self.xray_structure_pre_cycle.extract_u_cart_plus_u_iso()
+    norms = adp_shifts.norms()
+    mean = flex.mean(norms)
+    i_adp_shifts_sorted = flex.sort_permutation(data=norms, reverse=True)
+    if max_items is not None:
+      i_adp_shifts_sorted = i_adp_shifts_sorted[:max_items]
+    for i_seq in iter(i_adp_shifts_sorted):
+      i_seq = i_adp_shifts_sorted[0]
+      yield norms[i_seq], scatterers[i_seq]
+
   def show_log(self, f=None):
     import sys
     if self.log is sys.stdout: return
     if f is None: f = sys.stdout
     print >> f, self.log.getvalue()
 
+  def show_sorted_shifts(self, max_items=None, log=None):
+    import sys
+    if log is None: log = sys.stdout
+    if max_items is not None:
+      n_not_shown = self.xray_structure.scatterers().size() - max_items
+    else: n_not_shown = 0
+    print >> log, "Sorted site shifts in Angstrom:"
+    print >> log, "shift scatterer"
+    for distance, scatterer in self.iter_shifts_sites(max_items=max_items):
+      print >> log, "%5.3f %s" %(distance, scatterer.label)
+    if n_not_shown != 0:
+      print >> log, "... (remaining %d not shown)" % n_not_shown
+    #
+    if not self.pre_minimisation:
+      print >> log, "Sorted adp shift norms:"
+      print >> log, "dU scatterer"
+      for norm, scatterer in self.iter_shifts_u(max_items=max_items):
+        print >> log, "%5.3f %s" %(norm, scatterer.label)
+      if n_not_shown != 0:
+        print >> log, "... (remaining %d not shown)" % n_not_shown
+
   def show_shifts(self, log=None):
     import sys
     if log is None: log = sys.stdout
     site_symmetry_table = self.xray_structure.site_symmetry_table()
     i=0
-    i_sc = 0
-    for sc in self.xray_structure.scatterers():
+    for i_sc, sc in enumerate(self.xray_structure.scatterers()):
       op = site_symmetry_table.get(i_sc)
-      i_sc += 1
       print >> log, "%-4s" % sc.label
       if sc.flags.grad_site():
         n = op.site_constraints().n_independent_params()
@@ -236,7 +283,7 @@ class lbfgs(object):
             % self.target_result.scale_factor()
     if (self.first_target_value is None):
       self.first_target_value = self.f
-      if self.verbose: print "initial f: %f" % self.f
+      if self.verbose: print "Initial L.S. residual: %f" % self.f
     if (self.occupancy_penalty is not None
         and self.grad_flags_counts != 0):
       occupancies = self.xray_structure.scatterers().extract_occupancies()
