@@ -12,7 +12,6 @@ class EDFImage:
    self.parameters = {}
    self.header = []
    self.linearintdata = None
-   print self.header
 
  def readHeader(self,external_keys=None):
    ptr = 0
@@ -60,23 +59,21 @@ class EDFImage:
    assert self.parameters['DataType'] == 'SignedInteger'
    # if it is unsigned, a flex.int() will exceed type limits
 
-   self.linearintdata = flex.int(
-               flex.grid((self.parameters['Dim_2'],self.parameters['Dim_1'])))
-   for x in xrange(self.parameters['Dim_2']*self.parameters['Dim_1']):
-     rawdata = self.obj.read(self.type_size)
-     uncoded_data = struct.unpack(endian_code+type_code,rawdata)[0]
-     self.linearintdata[x] = uncoded_data
-
+   rawdata = self.obj.read(self.parameters['Size'])
+   uncoded_data = struct.unpack(endian_code+type_code*(self.parameters['Dim_2']*self.parameters['Dim_1']),rawdata)
+   self.linearintdata = flex.int(uncoded_data)
+   self.linearintdata.reshape(flex.grid((self.parameters['Dim_2'],self.parameters['Dim_1'])))
 
 if __name__=="__main__":
  import sys
  P = EDFImage(sys.argv[1])
  P.readHeader()
- P.read_data()
- print P.header
+ P.read()
+ print "".join(P.header)
+ print P.parameters
  count=0
- for ii in xrange( P.header["Dim_2"] ):
-   for jj in xrange( P.header["Dim_1"] ):
-      print ii,jj, P.data[count]
+ for ii in xrange( P.parameters["Dim_2"] ):
+   for jj in xrange( P.parameters["Dim_1"] ):
+      print P.linearintdata[count]
       count += 1
    print
