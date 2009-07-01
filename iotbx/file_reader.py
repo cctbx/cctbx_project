@@ -199,6 +199,13 @@ class _any_file (object) :
       return "%s%s" % (standard_file_descriptions[self.file_type],
         file_size_str)
 
+  def assert_file_type (self, expected_type) :
+    if self.file_type == expected_type :
+      return True
+    else :
+      raise ("Expected file type '%s', got '%s'.  This is almost " +
+        "certainly a bug; please contact the developers.")
+
 class _dir_input (object) :
   def __init__ (self, dir_name) :
     self.file_name = dir_name
