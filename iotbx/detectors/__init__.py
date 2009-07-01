@@ -20,9 +20,22 @@ from iotbx.detectors.saturn import SaturnImage
 from iotbx.detectors.bruker import BrukerImage
 from iotbx.detectors.pilatus_minicbf import PilatusImage
 from iotbx.detectors.edf import EDFImage
+from iotbx.detectors.detectorbase import DetectorImageBase
 
+class EDFWrapper(EDFImage, DetectorImageBase):
+  def __init__(self,filename):
+    EDFImage.__init__(self,filename)
+    self.vendortype = "Pilatus Single Module"
+  def readHeader(self):
+    EDFImage.readHeader(self)
+    self.parameters['PIXEL_SIZE']=0.172
+    self.parameters['SIZE1']=self.parameters['Dim_1']
+    self.parameters['SIZE2']=self.parameters['Dim_2']
+    self.parameters['BEAM_CENTER_X']=0.0 #Dummy argument
+    self.parameters['BEAM_CENTER_Y']=0.0 #Dummy argument
+    self.parameters['DISTANCE']=100.0 #Dummy argument
 
-all_image_types = [SaturnImage,DIPImage,ADSCImage,
+all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,
                   MARImage,MARIPImage,RAXISImage,
                   NonSquareRAXISImage,PilatusImage,CBFImage,BrukerImage]
 
@@ -36,7 +49,7 @@ names_and_types = { "ADSC"          : ADSCImage,
                     "Pilatus"       : PilatusImage,
                     "CBF"           : CBFImage,
                     "Bruker"        : BrukerImage,
-                    "EDF"           : EDFImage
+                    "EDF"           : EDFWrapper
                    }
 
 def ImageFactory(filename):
