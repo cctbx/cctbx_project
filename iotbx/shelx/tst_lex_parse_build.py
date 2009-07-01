@@ -277,6 +277,15 @@ def exercise_restraint_parsing():
   assert shared_bond_sym_proxy[0].rt_mx_ji == sgtbx.rt_mx('-x+1,y,-z+1/2')
   assert shared_bond_sym_proxy[1].rt_mx_ji == sgtbx.rt_mx('-x+1,y,-z+1/2')
   assert shared_bond_sym_proxy[2].rt_mx_ji == sgtbx.rt_mx()
+  # invalid DFIX instructions
+  try:
+    proxies = parse_restraints(ins_invalid_dfix)
+  except RuntimeError, e:
+    assert str(e) == "ShelX: Invalid DFIX instruction at line 3"
+  try:
+    proxies = parse_restraints(ins_invalid_dfix_2)
+  except RuntimeError, e:
+    assert str(e) == "ShelX: Invalid DFIX instruction at line 3"
   # exercise FLAT
   proxies = parse_restraints(ins_flat)
   shared_planarity_proxy = proxies[geometry_restraints.planarity_proxy]
@@ -291,6 +300,11 @@ def exercise_restraint_parsing():
                       (100, 100, 100, 100, 100, 100, 100))
   assert approx_equal(shared_planarity_proxy[1].weights,
                       (100, 100, 100, 100, 100, 100, 100))
+  # invalid FLAT
+  try:
+    proxies = parse_restraints(ins_invalid_flat)
+  except RuntimeError, e:
+    assert str(e) == "ShelX: Invalid FLAT instruction at line 3"
   # SADI simple
   proxies = parse_restraints(ins_sadi)
   shared_bond_similarity_proxy\
@@ -872,6 +886,10 @@ ins_isor_atoms = template_ins("ISOR C1 C2 C3")
 ins_isor_s_atoms = template_ins("ISOR 0.2 C1 C2 C3")
 ins_isor_s_st_atoms = template_ins(
   "ISOR 0.2 0.3 C1 C2 C3")
+
+ins_invalid_dfix = template_ins("DFIX C1 C2")
+ins_invalid_dfix_2 = template_ins("DFIX 1.7 C1 C2 C3")
+ins_invalid_flat = template_ins("FLAT C1 C2 C3")
 
 if __name__ == '__main__':
   run()
