@@ -220,6 +220,17 @@ namespace {
     return result;
   }
 
+  af::shared<double>
+  norms_(
+    af::const_ref<vec3<double> > const& lhs)
+  {
+    af::shared<double> result((af::reserve(lhs.size())));
+    for(std::size_t i=0;i<lhs.size();i++) {
+      result.push_back(std::sqrt(lhs[i] * lhs[i]));
+    }
+    return result;
+  }
+
   double
   sum_sq_(
     af::const_ref<vec3<double> > const& self)
@@ -327,6 +338,7 @@ namespace boost_python {
       .def("dot", dot_a_s)
       .def("dot", dot_a_a)
       .def("dot", dot_a)
+      .def("norms", norms_)
       .def("transpose_multiply",
         (mat3<double>(*)(
           af::const_ref<vec3<double> > const&,

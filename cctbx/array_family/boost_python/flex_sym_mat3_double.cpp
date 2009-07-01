@@ -83,6 +83,17 @@ namespace scitbx { namespace af { namespace boost_python {
       for(std::size_t i=0;i<a.size();i++) a[i] *= f;
     }
 
+    flex_double
+    norms(const_ref<sym_mat3<double> > const& a)
+    {
+      flex_double result(a.size(), init_functor_null<double>());
+      double* r = result.begin();
+      for(std::size_t i=0;i<a.size();i++) {
+        *r++ = std::sqrt(a[i].dot(a[i]));
+      }
+      return result;
+    }
+
   } // namespace <anonymous>
 
   void wrap_flex_sym_mat3_double()
@@ -94,6 +105,7 @@ namespace scitbx { namespace af { namespace boost_python {
         6*pickle_size_per_element<double>::value>())
       .def("__init__", boost::python::make_constructor(from_double))
       .def("as_double", as_double)
+      .def("norms", norms)
       .def("__add__", f_w::add_a_a)
       .def("__sub__", f_w::sub_a_a)
       .def("__imul__", imul_a_scalar, return_self<>())
