@@ -18,6 +18,7 @@ def exercise_flex_sym_mat3_double():
   a = flex.sym_mat3_double(((1,2,3,4,5,6), (2,3,4,5,6,7)))
   assert a.size() == 2
   assert tuple(a) == ((1,2,3,4,5,6), (2,3,4,5,6,7))
+  assert approx_equal(a.norms(), (12.961481396815721, 15.779733838059499))
   p = pickle.dumps(a)
   b = pickle.loads(p)
   assert tuple(a) == tuple(b)
