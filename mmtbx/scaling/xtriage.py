@@ -55,18 +55,17 @@ scaling.input {
       .type=path
       .help="File name with data"
       .short_caption = Reflections
-      .style = bold noauto OnUpdate:extract_xtriage_xray_params file_type:hkl
+      .style = bold noauto file_type:hkl OnUpdate:extract_xtriage_xray_params
     obs_labels=None
       .type=strings
       .help="Labels for observed data"
       .short_caption = Fobs labels
-      .style = bold renderer:draw_hkl_label_widget \
+      .style = bold renderer:draw_xtriage_hkl_label_widget \
         OnChange:update_resolution_limits
     calc_labels=None
       .type=strings
       .help="Lables for calculated data"
       .short_caption = Fcalc labels
-      .style = renderer:draw_hkl_label_widget
     unit_cell=None
       .type=unit_cell
       .help="Unit cell parameters"
@@ -97,6 +96,7 @@ scaling.input {
           .type = path
           .help = "File name"
           .short_caption = Reference x-ray file
+          .style = bold file_type:hkl
         labels=None
           .type=strings
           .help="Labels"
