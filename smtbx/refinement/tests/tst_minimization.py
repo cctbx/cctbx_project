@@ -16,13 +16,15 @@ def exercise_parameter_map():
     grad_site, grad_u_iso, grad_u_aniso, grad_occupancy, grad_fp, grad_fdp):
     f = sc.flags
     f.set_grad_site(site)
+    f.set_use_u_iso(u_iso)
     f.set_grad_u_iso(u_iso)
+    f.set_use_u_aniso(u_aniso)
     f.set_grad_u_aniso(u_aniso)
     f.set_grad_occupancy(occ)
     f.set_grad_fp(fp)
     f.set_grad_fdp(fdp)
   m = xs.parameter_map()
-  assert m.n_parameters == xs.n_parameters()
+  assert m.n_parameters() == xs.n_parameters_XXX()
 
   indices = m[0]
   assert indices.site == 0
