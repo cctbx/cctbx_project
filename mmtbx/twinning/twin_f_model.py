@@ -2340,10 +2340,12 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                                  fill_missing_f_obs = True, # XXX not used since not available for twin case.
                                  symmetry_flags = None,
                                  filled_f_obs_file_name = None,
-                                 fill_mode = None):
+                                 fill_mode = None,
+                                 reverse_scale = True # XXX Dummy parameter, not used here.
+                                 ):                   # XXX Added for compatibility.
     # XXX work-around to support new developments in non-twin fmodel. PA.
     class result(object):
-      def __init__(self, resolution_factor, symmetry_flags, fmodel):
+      def __init__(self, resolution_factor, symmetry_flags, fmodel, reverse_scale):
         self.resolution_factor = resolution_factor
         self.symmetry_flags = symmetry_flags
         self.fmodel = fmodel
@@ -2381,7 +2383,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
           symmetry_flags    = symmetry_flags)
     return result(resolution_factor= resolution_factor,
                   symmetry_flags   = symmetry_flags,
-                  fmodel           = self)
+                  fmodel           = self,
+                  reverse_scale    = reverse_scale)
 
   def u_star(self):
     return self.data_core.ustar()

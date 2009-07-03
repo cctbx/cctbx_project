@@ -548,7 +548,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     set_cc_to_zero_if_n_grid_points_less_than = params.set_cc_to_zero_if_n_grid_points_less_than,
     poor_cc_threshold                         = params.poor_cc_threshold,
     poor_map_value_threshold                  = params.poor_map_value_threshold)
-  show_result(result = result, show_hydrogens = True)
+  show_result(result = result, show_hydrogens = False)
   map_cc_obj.overall_correlation_min_max_standard_deviation()
 
 class map_cc_funct(object):

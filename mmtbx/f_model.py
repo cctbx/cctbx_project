@@ -1630,20 +1630,25 @@ class manager(manager_mixin):
     else:
       return pher
 
-  def map_calculation_helper(self, free_reflections_per_bin = 100,
-                             interpolation = True, need_alpha_and_fom = True):
+  def map_calculation_helper(self,
+                             free_reflections_per_bin = 100,
+                             interpolation = True,
+                             need_alpha_and_fom = True,
+                             reverse_scale = True):
     class result(object):
       def __init__(self, fmodel, free_reflections_per_bin, interpolation,
-                   need_alpha_and_fom):
-        ss = fmodel.ss
-        fb_cart  = fmodel.fb_cart()
-        scale_k1 = fmodel.scale_k1()
-        f_obs_scale   = 1.0 / (fb_cart * scale_k1)
-        f_model_scale = 1.0 / fb_cart
-        f_obs_data_scaled = fmodel.f_obs.data() * f_obs_scale
-        f_model_data_scaled = fmodel.f_model().data() * f_model_scale
-        self.f_obs_scaled = fmodel.f_obs.array(data = f_obs_data_scaled)
-        self.f_model_scaled = fmodel.f_obs.array(data = f_model_data_scaled)
+                   need_alpha_and_fom, reverse_scale):
+        self.f_obs_scaled = fmodel.f_obs
+        self.f_model_scaled = fmodel.f_model_scaled_with_k1()
+        if(reverse_scale):
+          fb_cart  = fmodel.fb_cart()
+          scale_k1 = fmodel.scale_k1()
+          f_obs_scale   = 1.0 / (fb_cart * scale_k1)
+          f_model_scale = 1.0 / fb_cart
+          f_obs_data_scaled = fmodel.f_obs.data() * f_obs_scale
+          f_model_data_scaled = fmodel.f_model().data() * f_model_scale
+          self.f_obs_scaled = fmodel.f_obs.array(data = f_obs_data_scaled)
+          self.f_model_scaled = fmodel.f_obs.array(data = f_model_data_scaled)
         self.alpha, self.beta, self.fom = None, None, None
         if(need_alpha_and_fom):
           self.alpha, self.beta = maxlik.alpha_beta_est_manager(
@@ -1653,8 +1658,8 @@ class manager(manager_mixin):
             flags                    = fmodel.r_free_flags.data(),
             interpolation            = interpolation).alpha_beta()
           self.fom = max_lik.fom_and_phase_error(
-            f_obs          = f_obs_data_scaled,
-            f_model        = flex.abs(f_model_data_scaled),
+            f_obs          = self.f_obs_scaled.data(),
+            f_model        = flex.abs(self.f_model_scaled.data()),
             alpha          = self.alpha.data(),
             beta           = self.beta.data(),
             space_group    = fmodel.r_free_flags.space_group(),
@@ -1663,7 +1668,8 @@ class manager(manager_mixin):
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
       interpolation            = interpolation,
-      need_alpha_and_fom       = need_alpha_and_fom)
+      need_alpha_and_fom       = need_alpha_and_fom,
+      reverse_scale            = reverse_scale)
 
   def f_model_phases_as_hl_coefficients(self):
     f_model_phases = self.f_model().phases().data()
@@ -1705,13 +1711,17 @@ class manager(manager_mixin):
       result = tmp(phase_source = phase_source)
     return result
 
-  def electron_density_map(self, fill_missing_f_obs = False,
-                                 filled_f_obs_file_name = None,
-                                 fill_mode = None):
-    return map_tools.electron_density_map(fmodel = self,
-      fill_missing_f_obs = fill_missing_f_obs,
+  def electron_density_map(self,
+                           fill_missing_f_obs = False,
+                           filled_f_obs_file_name = None,
+                           fill_mode = None,
+                           reverse_scale = True):
+    return map_tools.electron_density_map(
+      fmodel                 = self,
+      fill_missing_f_obs     = fill_missing_f_obs,
       filled_f_obs_file_name = filled_f_obs_file_name,
-      fill_mode = fill_mode)
+      fill_mode              = fill_mode,
+      reverse_scale          = reverse_scale)
 
   def info(self, free_reflections_per_bin = None, max_number_of_bins = None):
     if(free_reflections_per_bin is None):
