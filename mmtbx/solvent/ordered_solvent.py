@@ -68,7 +68,7 @@ master_params_str = """\
     .type=float
   secondary_map_and_map_cc_filter
   {
-    cc_map_1_type = "0*mFo--1*DFc"
+    cc_map_1_type = "Fc"
       .type = str
     cc_map_2_type = 2mFo-DFmodel
       .type = str

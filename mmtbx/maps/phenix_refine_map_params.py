@@ -57,22 +57,13 @@ map_params_str ="""\
     obs_factor = 1
     calc_factor = 1
     kicked = False
-    fill_missing_f_obs_with_weighted_f_model = True
+    fill_missing_f_obs_with_weighted_f_model = False
   }
   map {
     mtz_label_amplitudes = 2FOFCWT_no_fill
     mtz_label_phases = PH2FOFCWT_no_fill
     likelihood_weighted = True
     obs_factor = 2
-    calc_factor = 1
-    kicked = False
-    fill_missing_f_obs_with_weighted_f_model = False
-  }
-  map {
-    mtz_label_amplitudes = FOFCWT_no_fill
-    mtz_label_phases = PHFOFCWT_no_fill
-    likelihood_weighted = True
-    obs_factor = 1
     calc_factor = 1
     kicked = False
     fill_missing_f_obs_with_weighted_f_model = False
@@ -88,7 +79,10 @@ map_params_str ="""\
       .type = str
       .short_caption=Phase label
   }
-
+  reverse_scale = True
+    .type = bool
+    .expert_level = 2
+    .help = Apply scales to Fobs and remove them from Fmodel (for maps only).
   grid_resolution_factor = 1/4
     .type = float
     .expert_level=1

@@ -208,7 +208,12 @@ class model_to_map(object):
 
 class electron_density_map(object):
 
-  def __init__(self, fmodel, fill_missing_f_obs = False, filled_f_obs_file_name = None, fill_mode = None):
+  def __init__(self,
+               fmodel,
+               fill_missing_f_obs = False,
+               filled_f_obs_file_name = None,
+               fill_mode = None,
+               reverse_scale = True):
     self.fmodel = fmodel.deep_copy()
     self.fill_missing_f_obs = fill_missing_f_obs
     self.anom_diff = None
@@ -225,7 +230,8 @@ class electron_density_map(object):
       self.fmodel = self.fmodel.fill_missing_f_obs(fill_mode = fill_mode)
       if 0: # XXX make it an option
         self.fmodel.export_filled_f_obs(file_name = filled_f_obs_file_name)
-    self.map_helper_obj = self.fmodel.map_calculation_helper()
+    self.map_helper_obj = self.fmodel.map_calculation_helper(
+      reverse_scale = reverse_scale)
     #del self.fmodel # XXX
 
   def map_coefficients(self, map_type, alpha_fom_source = None):
