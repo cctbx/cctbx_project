@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.geometry_restraints import angle, angle_delta_deg
 from cctbx.array_family import flex
 from scitbx import matrix
@@ -49,6 +50,54 @@ def check_derivs(out, a, expect_failure=False):
   c_fd = derivs_fd(a=a, order=2)
   compare_derivs(out=out, ana=gc[3:], fin=c_fd, expect_failure=expect_failure)
   print >> out
+
+def write_plots(method, rot_scale=2, rot_step=1, c_truncate_at=-2e4):
+  assert method in ["ana", "fin"]
+  plot_file_names = []
+  site0 = (-1,0,0)
+  site1 = (0,0,0)
+  axis = matrix.col((0,0,1))
+  for angle_ideal in [180, 120]:
+    def init_plots():
+      result = []
+      for j in xrange(3):
+        result.append([])
+      return result
+    g_plots = init_plots()
+    c_plots = init_plots()
+    for rot_deg_sc in xrange(90*rot_scale, 270*rot_scale+rot_step, rot_step):
+      rot_deg = rot_deg_sc / rot_scale
+      r = axis.axis_and_angle_as_r3_rotation_matrix(angle=rot_deg, deg=True)
+      a = angle(
+        sites=[site0, site1, r*site0],
+        angle_ideal=angle_ideal,
+        weight=1)
+      if (method == "ana"):
+        gc = a.grads_and_curvs()
+      else:
+        gc = derivs_fd(a=a, order=1)
+        gc.extend(derivs_fd(a=a, order=2))
+      for j in xrange(3):
+        g_plots[j].append((rot_deg, gc[2][j]))
+      for j in xrange(3):
+        c_plots[j].append((rot_deg, gc[5][j]))
+    def write(deriv, plots):
+      file_name = "angle_%d_%s_%s.xy" % (angle_ideal, deriv, method)
+      plot_file_names.append(file_name)
+      f = open(file_name, "w")
+      print >> f, "@with g0"
+      print >> f, '@ title "%s ideal=%d method=%s"' % (
+        deriv, angle_ideal, method)
+      for j in xrange(3):
+        print >> f, '@ s%d legend "%s"' % (j, "xyz"[j])
+      for plot in plots:
+        for x,y in plot:
+          if (deriv == "curv" and y < c_truncate_at): y = c_truncate_at
+          print >> f, x,y
+        print >> f, "&"
+    write(deriv="grad", plots=g_plots)
+    write(deriv="curv", plots=c_plots)
+  return plot_file_names
 
 def run(args):
   assert args in [[], ["--verbose"]]
@@ -103,6 +152,14 @@ def run(args):
       check_derivs(out=out, a=a, expect_failure=True)
       if (not perm.next_permutation()):
         break
+  #
+  plot_file_names = []
+  for method in ["ana", "fin"]:
+    plot_file_names.extend(write_plots(method=method))
+  f = open("angle_xy_as_pdf_commands", "w")
+  for file_name in plot_file_names:
+    print >> f, "ppdf %s > %s" % (file_name, file_name.replace(".xy", ".pdf"))
+  f.close()
   #
   print "OK"
 
