@@ -25,6 +25,7 @@ import iotbx.pdb.remark_3_interpretation
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from iotbx.pdb import combine_unique_pdb_files
 from libtbx import group_args
+from mmtbx import masks
 
 
 class mvd(object):
@@ -549,9 +550,12 @@ def run(args,
   bss_params.b_sol_grid_search_min = 20.0
   bss_params.k_sol_step = 0.3
   bss_params.b_sol_step = 30.0
+  mp = masks.mask_master_params.extract() # XXX remove once Marat adds a fix.
+  mp.use_asu_masks = False                # XXX remove once Marat adds a fix.
   fmodel = utils.fmodel_simple(xray_structures = xray_structures,
                                f_obs           = f_obs,
                                r_free_flags    = r_free_flags,
+                               mask_params     = mp, # XXX remove once Marat adds a fix.
                                bss_params      = bss_params)
   n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
   mvd_obj.collect(data =

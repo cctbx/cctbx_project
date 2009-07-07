@@ -759,13 +759,17 @@ class manager(manager_mixin):
   def update_solvent_and_scale(self, params = None, out = None, verbose=None):
     global time_bulk_solvent_and_scale
     timer = user_plus_sys_time()
-    if(abs(flex.max(flex.abs(self.f_mask().data()))) > 0.001):
-      if(out is None): out = sys.stdout
-      if(params is None):
-         params = bss.master_params.extract()
-      if(verbose is not None): params.verbose=verbose
-      bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
-      self.update_core()
+    if(params is None):
+      params = bss.master_params.extract()
+    if(verbose is not None): params.verbose=verbose
+    save_params_bulk_solvent = params.bulk_solvent
+    if(abs(flex.max(flex.abs(self.f_mask().data()))) < 0.001):
+      params.bulk_solvent = False
+    if(out is None): out = sys.stdout
+    bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
+    self.update_core()
+    if(abs(flex.max(flex.abs(self.f_mask().data()))) < 0.001):
+      params.bulk_solvent = save_params_bulk_solvent
     time_bulk_solvent_and_scale += timer.elapsed()
 
   def _get_target_name(self): return self._target_name
@@ -1346,7 +1350,8 @@ class manager(manager_mixin):
     f_calc_atoms_lone = f_calc_atoms.lone_set(other = f_model)
     n_refl_lone = f_calc_atoms_lone.data().size()
     f_mask = masks.manager(
-      miller_array = f_calc_atoms,
+      miller_array   = f_calc_atoms,
+      mask_params    = self.mask_params,
       xray_structure = self.xray_structure).f_mask()
     f_mask_lone = f_mask.lone_set(other = f_model)
     ss = 1./flex.pow2(f_mask_lone.d_spacings().data())/4.
@@ -1385,6 +1390,7 @@ class manager(manager_mixin):
       target_name    = "ls_wunit_k1",
       f_obs          = new_f_obs,
       abcd           = new_abcd,
+      mask_params    = self.mask_params,
       k_sol          = self.k_sol(),
       b_sol          = self.b_sol(),
       b_cart         = self.b_cart())
@@ -1536,6 +1542,7 @@ class manager(manager_mixin):
       k_sol                  = self.k_sol(),
       b_sol                  = self.b_sol(),
       b_cart                 = self.b_cart(),
+      mask_params            = self.mask_params,
       filled_f_obs_selection = filled_f_obs_selection)
     fmodel_result.update_solvent_and_scale(params = bss_params)
     return fmodel_result
@@ -1644,7 +1651,7 @@ class manager(manager_mixin):
           fb_cart  = fmodel.fb_cart()
           scale_k1 = fmodel.scale_k1()
           f_obs_scale   = 1.0 / (fb_cart * scale_k1)
-          f_model_scale = 1.0 / fb_cart
+          f_model_scale = 1.0 / fb_cart # XXX scale_k1 ?
           f_obs_data_scaled = fmodel.f_obs.data() * f_obs_scale
           f_model_data_scaled = fmodel.f_model().data() * f_model_scale
           self.f_obs_scaled = fmodel.f_obs.array(data = f_obs_data_scaled)

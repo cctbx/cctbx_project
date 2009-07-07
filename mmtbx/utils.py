@@ -1311,7 +1311,7 @@ def fmodel_manager(
       detwin_map_types              = None,
       alpha_beta_params             = None,
       sf_and_grads_accuracy_params  = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract(),
-      mask_parameters               = None,
+      mask_params                   = None,
       max_number_of_resolution_bins = None,
       log                           = None):
   if(r_free_flags is None or ignore_r_free_flags):
@@ -1323,7 +1323,7 @@ def fmodel_manager(
       sf_and_grads_accuracy_params = sf_and_grads_accuracy_params,
       use_f_model_scaled           = use_f_model_scaled,
       r_free_flags                 = r_free_flags,
-      mask_params                  = mask_parameters,
+      mask_params                  = mask_params,
       update_xray_structure        = update_xray_structure,
       target_name                  = target_name,
       f_obs                        = f_obs,
@@ -1342,6 +1342,7 @@ def fmodel_manager(
       sf_and_grads_accuracy_params = sf_and_grads_accuracy_params,
       xray_structure               = xray_structure,
       twin_law                     = twin_law_xyz,
+      mask_params                  = mask_params,
       out                          = log,
       detwin_mode                  = detwin_mode,
       map_types                    = detwin_map_types)
@@ -1354,6 +1355,7 @@ def fmodel_simple(f_obs,
                   target_name              = "ml",
                   bulk_solvent_and_scaling = True,
                   bss_params               = None,
+                  mask_params              = None,
                   skip_twin_detection      = False,
                   twin_switch_tolerance    = 3.0):
   twin_laws = []
@@ -1380,6 +1382,7 @@ def fmodel_simple(f_obs,
         xray_structure = xray_structures[0],
         f_obs          = f_obs,
         r_free_flags   = r_free_flags,
+        mask_params    = mask_params,
         twin_law       = twin_law)
       if(bulk_solvent_and_scaling):
         if(twin_law is None):
@@ -1400,6 +1403,7 @@ def fmodel_simple(f_obs,
         xray_structure = xray_structures[0],
         f_obs          = f_obs,
         r_free_flags   = r_free_flags,
+        mask_params    = mask_params,
         twin_law       = twin_law_best)
       fmodel_.update_solvent_and_scale(params = bss_params, verbose = -1)
       fmodels.append(fmodel_)
@@ -1421,6 +1425,7 @@ def fmodel_simple(f_obs,
         xray_structure = xray_structure,
         f_obs          = f_obs,
         r_free_flags   = r_free_flags,
+        mask_params    = mask_params,
         twin_law       = None) # XXX Automatic twin detection is not available for multi-model.
       if(i_seq != 0):
         xrs_as_one_structure = xrs_as_one_structure.concatenate(xray_structure)
@@ -1436,6 +1441,7 @@ def fmodel_simple(f_obs,
       f_obs        = f_obs,
       r_free_flags = r_free_flags,
       f_calc       = fmodel_average,
+      mask_params  = mask_params,
       f_mask       = f_mask_data_average,
       twin_law     = None)
     if 0:
@@ -1444,6 +1450,7 @@ def fmodel_simple(f_obs,
           xray_structure = xrs_as_one_structure,
           f_obs          = f_obs,
           r_free_flags   = r_free_flags,
+          mask_params    = mask_params,
           twin_law       = None)
     if(bulk_solvent_and_scaling):
       fmodel_result.update_solvent_and_scale(verbose = -1)

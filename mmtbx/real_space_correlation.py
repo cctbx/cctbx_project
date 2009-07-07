@@ -183,6 +183,7 @@ class model_to_map(object):
         xray_structures = xray_structures,
         f_obs           = f_obs,
         r_free_flags    = r_free_flags,
+        skip_twin_detection = True, # XXX remove once Peter supports map type strings
         bss_params      = bss_params)
       if(not use_kick_map):
         map_obj = self.fmodel.electron_density_map()

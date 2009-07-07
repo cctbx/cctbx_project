@@ -1663,7 +1663,6 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     mask = self.bulk_solvent_mask()
     self.f_mask_array = mask.structure_factors( self.miller_set )
 
-
   def r_values(self, table=True, rows=False, d_min=None, d_max=None, again=False,
     free_reflections_per_bin = 140, max_number_of_bins = 20):
     if rows:
