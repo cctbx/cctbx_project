@@ -2,7 +2,7 @@ from cctbx.eltbx.development.format_gaussian_fits import read_pickled_fits
 from cctbx.eltbx import xray_scattering
 import cctbx.eltbx.gaussian_fit
 import scitbx.math.gaussian_fit
-import md5
+from libtbx.utils import hashlib_md5
 import time
 import sys, os
 
@@ -12,7 +12,7 @@ def write_module_info(f, module_object):
     file_name = file_name[:-1]
   assert file_name.endswith(".py")
   file_content = open(file_name, "rb").read()
-  m = md5.new()
+  m = hashlib_md5()
   m.update(file_content)
   print >> f, "// Module:", module_object.__name__
   print >> f, "//   size:", len(file_content)
