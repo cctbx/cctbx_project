@@ -7,6 +7,7 @@ from libtbx import easy_run
 import libtbx.load_env
 import platform
 import random
+import re
 import sys, os
 
 def exercise(lbfgs_impl, n=100, m=5, iprint=[1, 0]):
@@ -61,8 +62,19 @@ def run_and_compare_sdrive_f(this_script):
     outputs.append(run_cmd(cmd=cmd))
   assert not show_diff(outputs[0], outputs[1])
 
-n_same = 0
-n_diff = 0
+def truncate_floats(out):
+  match_objects = re.finditer("[ -][0-9]\\.[0-9][0-9][0-9]E[-+]", out)
+  fragments = []
+  k = 0
+  for match_obj in match_objects:
+    i = match_obj.start()
+    j = match_obj.end()-2
+    v = float(out[i:j])
+    fmt = "%%%d.1f" % (j-i)
+    fragments.append(out[k:i] + fmt % v)
+    k = j
+  fragments.append(out[k:])
+  return "".join(fragments)
 
 def run_and_compare_implementations(this_script, n, m, iprint):
   outputs = []
@@ -74,26 +86,13 @@ def run_and_compare_implementations(this_script, n, m, iprint):
     out = run_cmd(cmd=cmd)
     if (impl == "fortran"):
       out = out.replace("D-", "E-").replace("D+", "E+")
+    out = truncate_floats(out=out)
     outputs.append(out)
   assert len(outputs) >= 2
-  if (    platform.dist() == ('redhat', '3', 'Heidelberg')
-      and platform.architecture() == ('32bit', 'ELF')):
-    global n_same
-    global n_diff
-    a = outputs[0]
-    for i in xrange(1, len(outputs)):
-      b = outputs[i]
-      if (a == b):
-        n_same += 1
-      else:
-        n_diff += 1
-        print "DIFF (tolerated on this platform)"
-  else:
-    a = outputs[0]
-    for i in xrange(1, len(outputs)):
-      b = outputs[i]
-      assert not show_diff(a, b) # may fail for other random seeds,
-        # due to rounding errors
+  a = outputs[0]
+  for i in xrange(1, len(outputs)):
+    b = outputs[i]
+    assert not show_diff(a, b)
 
 def compare_implementations():
   this_script = libtbx.env.under_dist(
@@ -131,9 +130,6 @@ def run(args):
       if (not endless): break
   else:
     compare_implementations()
-    if (n_diff != 0):
-      print "n_diff, n_same:", n_diff, n_same
-      assert n_diff / (n_same+n_diff) < 0.16
   timer()
   print "OK"
 
