@@ -26,7 +26,7 @@ class minimize_mixin(object):
 
   def apply_shifts(self):
     self.gaussian_fit_shifted = self.gaussian_fit.apply_shifts(
-      self.x, self.shift_sqrt_b)
+      self.x, self.shift_sqrt_b!=0)
     min_b = min(self.gaussian_fit_shifted.array_of_b())
     if (min_b < self.hard_b_min):
       raise LargeNegativeB("gaussian_fit error: large negative b")
