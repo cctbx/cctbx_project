@@ -1691,7 +1691,7 @@ class pre_process_args:
         default=False,
         help="disable Boost.Python docstring Python signatures")
       parser.option(None, "--boost_python_bool_int_strict",
-        action="store_true",
+        action="store_false",
         default=True,
         help="disable Boost.Python implicit bool<->int conversions")
     self.command_line = parser.process(args=args)
