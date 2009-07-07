@@ -18,7 +18,7 @@ import masks
 number_of_mask_calculations = 0
 
 mask_master_params = iotbx.phil.parse("""\
-  use_asu_masks = False
+  use_asu_masks = True
     .type = bool
   solvent_radius = 1.11
     .type = float
@@ -225,9 +225,8 @@ class manager(object):
       self.solvent_content_via_mask = bulk_solvent_mask_obj \
         .contact_surface_fraction
     else:
-      if(self.atom_radii is None):
-        self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
-          self.xray_structure)
+      self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
+        self.xray_structure)
       asu_mask = masks.atom_mask(
         unit_cell                = self.xray_structure.unit_cell(),
         group                    = self.xray_structure.space_group(),

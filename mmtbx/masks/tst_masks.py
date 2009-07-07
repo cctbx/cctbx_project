@@ -197,6 +197,7 @@ def exercise_3():
   #
   xs.set_occupancies(value = 0)
   mp.ignore_zero_occupancy_atoms = False
+  mp.use_asu_masks = False
   mm2 = masks.manager(miller_array   = f_calc,
                       xray_structure = xs,
                       mask_params    = mp)
@@ -204,8 +205,11 @@ def exercise_3():
   assert flex.mean( flex.abs(mm1.compute_f_mask().data()) ) == \
          flex.mean( flex.abs(mm2.compute_f_mask().data()) )
   #
+  mp.ignore_zero_occupancy_atoms = True
+  mp.use_asu_masks = False
   mm3 = masks.manager(miller_array   = f_calc,
-                      xray_structure = xs)
+                      xray_structure = xs,
+                      mask_params    = mp)
   assert list(xs.scatterers().extract_occupancies()) == [0.0, 0.0]
   assert approx_equal(
     flex.abs(mm3.compute_f_mask().data()).min_max_mean().as_tuple(),
