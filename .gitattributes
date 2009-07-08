@@ -43,6 +43,7 @@ cctbx/command_line/version.py -text
 cctbx/crystal_orientation.h -text
 cctbx/crystal_orientation.py -text
 cctbx/eltbx/xray_scattering/form_factor.h -text
+cctbx/eltbx/xray_scattering/hydrogen_plots.py svneol=native#text/x-python
 cctbx/examples/find_distances.cpp svneol=native#text/plain
 cctbx/examples/find_distances_using_cpp_objects.py svneol=native#text/x-python
 cctbx/examples/maximum_subgroups.py -text
