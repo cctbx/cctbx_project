@@ -10,6 +10,21 @@ def format_value(format, value, null_value=0):
     return format_none(format=format, null_value=null_value)
   return format % value
 
+def split_keeping_spaces(s):
+  result = []
+  field = []
+  prev = " "
+  for c in s:
+    if ((prev == " ") != (c == " ")):
+      if (len(field) != 0):
+        result.append("".join(field))
+        field = []
+    field.append(c)
+    prev = c
+  if (len(field) != 0):
+    result.append("".join(field))
+  return result
+
 def size_as_string_with_commas(sz):
   if (sz is None): return "unknown"
   if (sz < 0):
@@ -173,6 +188,24 @@ class StringIO (object) :
 def exercise():
   from libtbx.test_utils import show_diff
   import cPickle
+  #
+  assert split_keeping_spaces(s="") == []
+  assert split_keeping_spaces(s=" ") == [" "]
+  assert split_keeping_spaces(s="a") == ["a"]
+  assert split_keeping_spaces(s="abc") == ["abc"]
+  assert split_keeping_spaces(s=" a") == [" ", "a"]
+  assert split_keeping_spaces(s="  a") == ["  ", "a"]
+  assert split_keeping_spaces(s="  abc") == ["  ", "abc"]
+  assert split_keeping_spaces(s="  abc ") == ["  ", "abc", " "]
+  assert split_keeping_spaces(s="  abc  ") == ["  ", "abc", "  "]
+  assert split_keeping_spaces(s="a ") == ["a", " "]
+  assert split_keeping_spaces(s="a  ") == ["a", "  "]
+  assert split_keeping_spaces(s="abc  ") == ["abc", "  "]
+  assert split_keeping_spaces(s="a b") == ["a", " ", "b"]
+  assert split_keeping_spaces(s="a  b") == ["a", "  ", "b"]
+  assert split_keeping_spaces(s="  a  b c   d ") == [
+    "  ", "a", "  ", "b", " ", "c", "   ", "d", " "]
+  #
   assert size_as_string_with_commas(0) == "0"
   assert size_as_string_with_commas(1) == "1"
   assert size_as_string_with_commas(-1) == "-1"
