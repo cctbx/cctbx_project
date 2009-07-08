@@ -330,7 +330,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
     {
       int n = pivots.size();
       af::const_ref<FloatType, matrix::packed_u_accessor> u(packed_u.begin(), n);
-      // x = P^T A^{-1} P b
+      // x = P^T (U^T U)^{-1} P b
       af::shared<FloatType> result(b.begin(), b.end());
       permutation_vector(n, result.begin(), pivots.begin());
       solve_in_place::using_u_transpose_u(u, result.ref());
