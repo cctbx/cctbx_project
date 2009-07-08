@@ -61,15 +61,28 @@ def exercise_gill_murray_wright_cholesky_decomposition():
     assert gwm.packed_u.id() == u.id()
     p, e = gwm.pivots, gwm.e
     r = matrix.sqr(u.matrix_packed_u_as_upper_triangle())
-    rtr = r.transpose() * r
-    pm = p_as_mx(p)
-    papt = pm * a * pm.transpose()
-    paept = papt + matrix.diag(e)
-    assert approx_equal(paept, rtr)
-    b = flex.random_double(size=a.n[0], factor=2)-1
-    x = gwm.solve(b=b)
-    ae = pm.transpose() * paept * pm
-    assert approx_equal(ae*matrix.col(x), b)
+    if a.n != (0,0):
+      rtr = r.transpose() * r
+      pm = p_as_mx(p)
+      papt = pm * a * pm.transpose()
+      paept = papt + matrix.diag(e)
+      delta_decomposition = scitbx.linalg.matrix_equality_ratio(paept, rtr)
+      assert delta_decomposition < 10, delta_decomposition
+      b = flex.random_double(size=a.n[0], factor=2)-1
+      x = gwm.solve(b=b)
+      px = pm * matrix.col(x)
+      pb = pm * matrix.col(b)
+      if 0:
+        eigen = scitbx.linalg.eigensystem.real_symmetric(
+          paept.as_flex_double_matrix())
+        lambda_ = eigen.values()
+        print "condition number: ", lambda_[0]/lambda_[-1]
+      delta_solve = scitbx.linalg.matrix_cholesky_test_ratio(
+        a=paept.as_flex_double_matrix(),
+        x=flex.double(px),
+        b=flex.double(pb),
+        epsilon=gwm.epsilon)
+      assert delta_solve < 10, delta_solve
     return p, e, r
   # empty matrix
   a = matrix.sqr([])
