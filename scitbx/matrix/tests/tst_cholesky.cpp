@@ -58,11 +58,8 @@ struct test_case
       vec_t x = gen.random_double(n);
       vec_t b = x.deep_copy();
       cholesky::solve_in_place::using_l_l_transpose(l_, x.ref());
-      vec_t y = af::matrix_multiply(a1.ref(), x.ref());
-      vec_t delta = y - b;
-      double e = norm_1(delta.ref())/(norm_1(a1.ref()) * norm_1(x.ref())
-                                      *std::numeric_limits<double>::epsilon());
-      SCITBX_ASSERT( e < thresh );
+      double e = cholesky_test_ratio(a1.ref(), x.ref(), b.ref());
+      SCITBX_ASSERT( e < thresh )(e);
     }
   }
 
@@ -93,10 +90,8 @@ struct test_case
       vec_t x = gen.random_double(n);
       vec_t b = x.deep_copy();
       cholesky::solve_in_place::using_u_transpose_u(u_, x.ref());
-      vec_t y = af::matrix_multiply(a1.ref(), x.ref());
-      vec_t delta = y - b;
-      double e = norm_1(delta.ref())/(norm_1(a1.ref()) * norm_1(x.ref())
-                                      *std::numeric_limits<double>::epsilon());
+      double e = cholesky_test_ratio(a1.ref(), x.ref(), b.ref());
+      SCITBX_ASSERT( e < thresh )(e);
       SCITBX_ASSERT( e < thresh );
     }
   }

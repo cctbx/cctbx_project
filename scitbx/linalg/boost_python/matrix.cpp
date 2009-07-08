@@ -17,10 +17,18 @@ namespace scitbx { namespace matrix { namespace boost_python {
                                      equality_ratio<FloatType>, 2, 3,
                                      boost::python::args("a", "b", "epsilon"));
 
+    template <typename FloatType>
+    BOOST_ADAPTBX_FUNCTION_OVERLOADS(matrix_cholesky_test_ratio_overloads,
+                                     cholesky_test_ratio<FloatType>, 3, 4,
+                                     boost::python::args("a", "x", "b",
+                                                         "epsilon"));
+
     void wrap_matrix() {
       using namespace matrix::boost_python;
       matrix_normality_ratio_overloads<double>::wrap("matrix_normality_ratio");
       matrix_equality_ratio_overloads<double>::wrap("matrix_equality_ratio");
+      matrix_cholesky_test_ratio_overloads<double>::wrap(
+        "matrix_cholesky_test_ratio");
     }
 
 }}}
