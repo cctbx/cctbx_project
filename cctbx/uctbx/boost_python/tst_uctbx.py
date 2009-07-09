@@ -116,6 +116,22 @@ def exercise_frac_orth():
   assert approx_equal(
     u.distance((7/2.,8/3.,9/5.), (3,2,1))**2, 1**2 + 2**2 + 4**2)
   assert approx_equal(
+    u.angle((0,0,0),(1/2.,0,0),(1,0,0)), 180.)
+  assert approx_equal(
+    u.angle((0,0,0),(1/2.,0,0),(1/2.,1/3.,0)), 90.)
+  assert approx_equal(
+    u.angle((1/2.,0,0),(1/2.,1/3.,0),(0,0,0)), 45.)
+  assert u.angle((0,0,0),(0,0,0),(1,0,0)) is None
+  assert approx_equal(
+    u.dihedral((0,0,0),(1/2.,0,0),(1/2.,0,1/5.),(1,0,1/5.)), 180.)
+  assert approx_equal(
+    u.dihedral((0,0,0),(1/2.,0,0),(1/2.,0,1/5.),(1/2.,-1/3.,1/5.)), 90.)
+  assert approx_equal(
+    u.dihedral((0,0,0),(1/2.,0,0),(1/2.,0,1/5.),(1,-1/3.,1/5.)), 135.)
+  assert approx_equal(
+    u.dihedral((0,0,0),(1/2.,0,0),(1/2.,0,1/5.),(1,1/3.,1/5.)), -135.)
+  assert u.dihedral((0,0,0),(1/2.,0,0),(1/2.,0,0),(1,0,1/5.)) is None
+  assert approx_equal(
     u.mod_short_length((1/4.,2/3.,4/5.)),
     u.length((1/4.,-1/3.,-1/5.)))
   assert approx_equal(
