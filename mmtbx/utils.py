@@ -97,7 +97,7 @@ data_and_flags = iotbx.phil.parse("""\
     .style = bold file_type:hkl OnUpdate:extract_xray_neutron_params noauto
   labels = None
     .type=strings
-    .style = bold renderer:draw_hkl_label_widget \
+    .style = bold renderer:draw_fobs_label_widget \
       OnChange:update_resolution_limits
   high_resolution = None
     .type=float
@@ -111,12 +111,15 @@ data_and_flags = iotbx.phil.parse("""\
     .expert_level = 1
   sigma_fobs_rejection_criterion = 0.0
     .type=float
+    .short_caption = Sigma(Fobs) rejection criterion
     .expert_level = 1
   sigma_iobs_rejection_criterion = 0.0
     .type=float
+    .short_caption = Sigma(Iobs) rejection criterion
     .expert_level = 1
   ignore_all_zeros = True
     .type=bool
+    .short_caption = Ignore all-zero arrays
     .expert_level = 1
   force_anomalous_flag_to_be_equal_to = None
     .type=bool
@@ -126,6 +129,10 @@ data_and_flags = iotbx.phil.parse("""\
   r_free_flags
     .expert_level=0
     .style = box auto_align
+    .caption = This information will be extracted automatically if possible. \
+      If no test set is present in the reflections file, one can be generated \
+      automatically, or you can use the reflection file editor to combine an \
+      existing set with your X-ray or neutron data.
   {
     file_name = None
       .type=path
@@ -133,11 +140,11 @@ data_and_flags = iotbx.phil.parse("""\
       .help = This is normally the same as the file containing Fobs and is \
         usually selected automatically.
       .input_size = 200
-      .style = file_type:hkl,any OnUpdate:extract_rfree_params
+      .style = noauto file_type:hkl,any OnUpdate:extract_rfree_params
     label = None
       .type=str
       .short_caption = Column label
-      .style = renderer:draw_hkl_label_widget OnChange:update_rfree_flag_value
+      .style = renderer:draw_rfree_label_widget OnChange:update_rfree_flag_value
     test_flag_value = None
       .type=int
       .help = This value is usually selected automatically - do not change \
@@ -147,28 +154,34 @@ data_and_flags = iotbx.phil.parse("""\
       .expert_level = 2
     ignore_pdb_hexdigest = False
       .type=bool
+      .short_caption = Ignore PDB hexdigest sanity check
       .help=If True, disables safety check based on MD5 hexdigests stored in \
             PDB files produced by previous runs.
       .expert_level=2
     ignore_r_free_flags = False
       .type=bool
+      .short_caption = Ignore R-free flags
       .help = Use all reflections in refinement (work and test)
       .expert_level=2
     generate = False
       .type=bool
+      .short_caption = Generate new test set if none present
       .help = Generate R-free flags (if not available in input files)
       .expert_level=1
     fraction = 0.1
       .type=float
+      .short_caption = Fraction of reflections in test set
       .expert_level=1
     max_free = 2000
       .type=int
+      .short_caption = Maximum number of reflections in test set
       .expert_level=2
     lattice_symmetry_max_delta = 5
       .type=float
       .expert_level=2
     use_lattice_symmetry = True
       .type=bool
+      .short_caption = Use lattice symmetry to generate test set
       .expert_level=2
   }
 """)
@@ -555,7 +568,7 @@ experimental_phases_params = iotbx.phil.parse("""\
     .style = file_type:hkl,any OnUpdate:extract_phi_from_hkl_file
   labels=None
     .type=strings
-    .style = renderer:draw_hkl_label_widget
+    .style = renderer:draw_hl_label_widget
 """)
 
 def determine_experimental_phases(reflection_file_server,
