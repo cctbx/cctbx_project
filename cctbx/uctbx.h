@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <boost/numeric/conversion/cast.hpp>
+#include <boost/optional.hpp>
 #include <scitbx/constants.h>
 #include <scitbx/sym_mat3.h>
 #include <scitbx/array_family/tiny_types.h>
@@ -371,6 +372,54 @@ namespace cctbx {
                fractional<FloatType> const& site_frac_2) const
       {
         return length(fractional<FloatType>(site_frac_1 - site_frac_2));
+      }
+
+      //! Angle in degrees formed by sites 1, 2 and 3 for fractional coordinates.
+      template <class FloatType>
+      boost::optional<FloatType>
+      angle(fractional<FloatType> const& site_frac_1,
+            fractional<FloatType> const& site_frac_2,
+            fractional<FloatType> const& site_frac_3) const
+      {
+        cartesian<FloatType> vec_12 = orthogonalize(site_frac_1 - site_frac_2);
+        cartesian<FloatType> vec_32 = orthogonalize(site_frac_3 - site_frac_2);
+        FloatType length_12 = vec_12.length();
+        FloatType length_32 = vec_32.length();
+        if (length_12 == 0 || length_32 == 0) {
+          return boost::optional<FloatType>();
+        }
+        const FloatType cos_angle = (vec_12 * vec_32)/(length_12 * length_32);
+        return boost::optional<FloatType>(
+          std::acos(cos_angle) / scitbx::constants::pi_180);
+      }
+
+      //! Dihedral angle in degrees formed by sites 1, 2, 3 and 4 for fractional coordinates.
+      /*! angle = acos[(u x v).(v x w)/(|u x v||v x w|)]
+          The sign of the angle is the sign of (u x v).w
+       */
+      template <class FloatType>
+      boost::optional<FloatType>
+      dihedral(fractional<FloatType> const& site_frac_1,
+               fractional<FloatType> const& site_frac_2,
+               fractional<FloatType> const& site_frac_3,
+               fractional<FloatType> const& site_frac_4) const
+      {
+        cartesian<FloatType> u = orthogonalize(site_frac_1 - site_frac_2);
+        cartesian<FloatType> v = orthogonalize(site_frac_3 - site_frac_2);
+        cartesian<FloatType> w = orthogonalize(site_frac_3 - site_frac_4);
+        cartesian<FloatType> u_cross_v = u.cross(v);
+        cartesian<FloatType> v_cross_w = v.cross(w);
+        FloatType norm_u_cross_v = u_cross_v.length_sq();
+        if (norm_u_cross_v == 0) return boost::optional<FloatType>();
+        FloatType norm_v_cross_w = v_cross_w.length_sq();
+        if (norm_v_cross_w == 0) return boost::optional<FloatType>();
+        FloatType cos_angle = u_cross_v * v_cross_w
+          / std::sqrt(norm_u_cross_v * norm_v_cross_w);
+        FloatType angle = std::acos(cos_angle) / scitbx::constants::pi_180;
+        if (u_cross_v * w < 0) {
+          angle *= -1;
+        }
+        return boost::optional<FloatType>(angle);
       }
 
       /*! \brief Shortest length^2 of a vector of fractional coordinates

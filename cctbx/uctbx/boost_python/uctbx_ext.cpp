@@ -126,6 +126,17 @@ namespace {
           (double(w_t::*)(frac_t const&, frac_t const&) const)
           &w_t::distance, (
             arg_("site_frac_1"), arg_("site_frac_2")))
+        .def("angle",
+          (boost::optional<double>(w_t::*)(
+            frac_t const&, frac_t const&, frac_t const&) const)
+          &w_t::angle, (
+            arg_("site_frac_1"), arg_("site_frac_2"), arg_("site_frac_3")))
+        .def("dihedral",
+          (boost::optional<double>(w_t::*)(
+            frac_t const&, frac_t const&, frac_t const&, frac_t const&) const)
+          &w_t::dihedral, (
+            arg_("site_frac_1"), arg_("site_frac_2"),
+            arg_("site_frac_3"), arg_("site_frac_4")))
         .def("mod_short_length",
           (double(w_t::*)(frac_t const&) const)
           &w_t::mod_short_length, (
