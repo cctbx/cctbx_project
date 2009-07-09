@@ -388,7 +388,8 @@ namespace cctbx {
         if (length_12 == 0 || length_32 == 0) {
           return boost::optional<FloatType>();
         }
-        const FloatType cos_angle = (vec_12 * vec_32)/(length_12 * length_32);
+        const FloatType cos_angle = std::max(-1.,std::min(1.,
+          (vec_12 * vec_32)/(length_12 * length_32)));
         return boost::optional<FloatType>(
           std::acos(cos_angle) / scitbx::constants::pi_180);
       }
@@ -413,8 +414,8 @@ namespace cctbx {
         if (norm_u_cross_v == 0) return boost::optional<FloatType>();
         FloatType norm_v_cross_w = v_cross_w.length_sq();
         if (norm_v_cross_w == 0) return boost::optional<FloatType>();
-        FloatType cos_angle = u_cross_v * v_cross_w
-          / std::sqrt(norm_u_cross_v * norm_v_cross_w);
+        FloatType cos_angle = std::max(-1.,std::min(1.,
+          u_cross_v * v_cross_w / std::sqrt(norm_u_cross_v * norm_v_cross_w)));
         FloatType angle = std::acos(cos_angle) / scitbx::constants::pi_180;
         if (u_cross_v * w < 0) {
           angle *= -1;
