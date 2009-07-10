@@ -124,6 +124,61 @@ def convert_list_block(
       if (obj_outer is not None):
         yield obj_outer
 
+def convert_comp_list(source_info, cif_object):
+  for comp_comp_id in convert_list_block(
+                        source_info=source_info,
+                        cif_object=cif_object,
+                        list_name="comp_list",
+                        list_item_name="chem_comp",
+                        data_prefix="comp_",
+                        cif_type_inner=cif_types.chem_comp,
+                        cif_type_outer=cif_types.comp_comp_id,
+                        outer_mappings=[
+                         ("chem_comp_atom","atom_list"),
+                         ("chem_comp_tree","tree_list"),
+                         ("chem_comp_bond","bond_list"),
+                         ("chem_comp_angle","angle_list"),
+                         ("chem_comp_tor","tor_list"),
+                         ("chem_comp_chir","chir_list"),
+                         ("chem_comp_plane_atom","plane_atom_list")]):
+    yield comp_comp_id
+
+def convert_link_list(source_info, cif_object):
+  for link_link_id in convert_list_block(
+                        source_info=source_info,
+                        cif_object=cif_object,
+                        list_name="link_list",
+                        list_item_name="chem_link",
+                        data_prefix="link_",
+                        cif_type_inner=cif_types.chem_link,
+                        cif_type_outer=cif_types.link_link_id,
+                        outer_mappings=[
+                         ("chem_link_bond","bond_list"),
+                         ("chem_link_angle","angle_list"),
+                         ("chem_link_tor","tor_list"),
+                         ("chem_link_chir","chir_list"),
+                         ("chem_link_plane","plane_list")]):
+    yield link_link_id
+
+def convert_mod_list(source_info, cif_object):
+  for mod_mod_id in convert_list_block(
+                      source_info=source_info,
+                      cif_object=cif_object,
+                      list_name="mod_list",
+                      list_item_name="chem_mod",
+                      data_prefix="mod_",
+                      cif_type_inner=cif_types.chem_mod,
+                      cif_type_outer=cif_types.mod_mod_id,
+                      outer_mappings=[
+                        ("chem_mod_atom","atom_list"),
+                        ("chem_mod_tree","tree_list"),
+                        ("chem_mod_bond","bond_list"),
+                        ("chem_mod_angle","angle_list"),
+                        ("chem_mod_tor","tor_list"),
+                        ("chem_mod_chir","chir_list"),
+                        ("chem_mod_plane_atom","plane_atom_list")]):
+    yield mod_mod_id
+
 def get_rows(cif_object, data_name, table_name):
   cif_data = cif_object.get(data_name)
   if (cif_data is None): return []
@@ -210,22 +265,8 @@ class server(process_cif_mixin):
         d[synonym.atom_alternative_id] = synonym.atom_id
 
   def convert_comp_list(self, source_info, cif_object):
-    for comp_comp_id in convert_list_block(
-                          source_info=source_info,
-                          cif_object=cif_object,
-                          list_name="comp_list",
-                          list_item_name="chem_comp",
-                          data_prefix="comp_",
-                          cif_type_inner=cif_types.chem_comp,
-                          cif_type_outer=cif_types.comp_comp_id,
-                          outer_mappings=[
-                           ("chem_comp_atom","atom_list"),
-                           ("chem_comp_tree","tree_list"),
-                           ("chem_comp_bond","bond_list"),
-                           ("chem_comp_angle","angle_list"),
-                           ("chem_comp_tor","tor_list"),
-                           ("chem_comp_chir","chir_list"),
-                           ("chem_comp_plane_atom","plane_atom_list")]):
+    for comp_comp_id in convert_comp_list(
+                          source_info=source_info, cif_object=cif_object):
       chem_comp = comp_comp_id.chem_comp
       self.comp_comp_id_dict[chem_comp.id.strip().upper()] = comp_comp_id
       tlc = chem_comp.three_letter_code
@@ -235,40 +276,14 @@ class server(process_cif_mixin):
           self.comp_comp_id_dict[tlc.upper()] = comp_comp_id
 
   def convert_link_list(self, source_info, cif_object):
-    for link_link_id in convert_list_block(
-                          source_info=source_info,
-                          cif_object=cif_object,
-                          list_name="link_list",
-                          list_item_name="chem_link",
-                          data_prefix="link_",
-                          cif_type_inner=cif_types.chem_link,
-                          cif_type_outer=cif_types.link_link_id,
-                          outer_mappings=[
-                           ("chem_link_bond","bond_list"),
-                           ("chem_link_angle","angle_list"),
-                           ("chem_link_tor","tor_list"),
-                           ("chem_link_chir","chir_list"),
-                           ("chem_link_plane","plane_list")]):
+    for link_link_id in convert_link_list(
+                          source_info=source_info, cif_object=cif_object):
       self.link_link_id_list.append(link_link_id)
       self.link_link_id_dict[link_link_id.chem_link.id] = link_link_id
 
   def convert_mod_list(self, source_info, cif_object):
-    for mod_mod_id in convert_list_block(
-                        source_info=source_info,
-                        cif_object=cif_object,
-                        list_name="mod_list",
-                        list_item_name="chem_mod",
-                        data_prefix="mod_",
-                        cif_type_inner=cif_types.chem_mod,
-                        cif_type_outer=cif_types.mod_mod_id,
-                        outer_mappings=[
-                          ("chem_mod_atom","atom_list"),
-                          ("chem_mod_tree","tree_list"),
-                          ("chem_mod_bond","bond_list"),
-                          ("chem_mod_angle","angle_list"),
-                          ("chem_mod_tor","tor_list"),
-                          ("chem_mod_chir","chir_list"),
-                          ("chem_mod_plane_atom","plane_atom_list")]):
+    for mod_mod_id in convert_mod_list(
+                        source_info=source_info, cif_object=cif_object):
       self.mod_mod_id_list.append(mod_mod_id)
       self.mod_mod_id_dict[mod_mod_id.chem_mod.id] = mod_mod_id
 
