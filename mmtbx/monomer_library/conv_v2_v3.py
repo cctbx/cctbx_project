@@ -20,17 +20,22 @@ def trans_field(flds, i):
 
 def iter_until_loop(lines):
   for line in lines:
-    if (line == "loop_"):
+    if (   line.startswith("#")
+        or line == "loop_"):
       print line
       return
     yield line
 
-def rename_atom(lines):
+def rename_generic(lines, len_flds, i_list):
   for line in iter_until_loop(lines):
     flds = split_keeping_spaces(line)
-    assert len(flds) == 10
-    trans_field(flds, 3)
+    assert len(flds) == len_flds
+    for i in i_list:
+      trans_field(flds, i)
     print "".join(flds)
+
+def rename_atom(lines):
+  rename_generic(lines, 10, [3])
 
 def rename_tree(lines):
   for line in iter_until_loop(lines):
@@ -42,43 +47,28 @@ def rename_tree(lines):
     print "".join(flds)
 
 def rename_bond(lines):
-  for line in iter_until_loop(lines):
-    flds = split_keeping_spaces(line)
-    assert len(flds) == 12
-    for i in [3, 5]:
-      trans_field(flds, i)
-    print "".join(flds)
+  rename_generic(lines, 12, [3, 5])
 
 def rename_angle(lines):
-  for line in iter_until_loop(lines):
-    flds = split_keeping_spaces(line)
-    assert len(flds) == 12
-    for i in [3, 5, 7]:
-      trans_field(flds, i)
-    print "".join(flds)
+  rename_generic(lines, 12, [3, 5, 7])
 
 def rename_tor(lines):
-  for line in iter_until_loop(lines):
-    flds = split_keeping_spaces(line)
-    assert len(flds) == 18
-    for i in [5, 7, 9, 11]:
-      trans_field(flds, i)
-    print "".join(flds)
+  rename_generic(lines, 18, [5, 7, 9, 11])
 
 def rename_chir(lines):
-  for line in iter_until_loop(lines):
-    flds = split_keeping_spaces(line)
-    assert len(flds) == 14
-    for i in [5, 7, 9, 11]:
-      trans_field(flds, i)
-    print "".join(flds)
+  rename_generic(lines, 14, [5, 7, 9, 11])
 
 def rename_plan(lines):
-  for line in iter_until_loop(lines):
-    flds = split_keeping_spaces(line)
-    assert len(flds) == 8
-    trans_field(flds, 5)
-    print "".join(flds)
+  rename_generic(lines, 8, [5])
+
+def rename_link_bond(lines):
+  rename_generic(lines, 16, [5, 9])
+
+def rename_link_angle(lines):
+  rename_generic(lines, 18, [5, 9, 13])
+
+def rename_link_tor(lines):
+  rename_generic(lines, 26, [7, 11, 15, 19])
 
 def run(args):
   assert len(args) == 1
@@ -99,6 +89,17 @@ def run(args):
       rename_chir(lines)
     elif (line == "_chem_comp_plane_atom.dist_esd"):
       rename_plan(lines)
+    #
+    elif (line == "_chem_link_bond.value_dist_esd"):
+      rename_link_bond(lines)
+    elif (line == "_chem_link_angle.value_angle_esd"):
+      rename_link_angle(lines)
+    elif (line == "_chem_link_tor.period"):
+      rename_link_tor(lines)
+    elif (line == "_chem_link_chir.volume_sign"):
+      raise RuntimeError("Not implemented.")
+    elif (line == "_chem_link_plane.dist_esd"):
+      raise RuntimeError("Not implemented.")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
