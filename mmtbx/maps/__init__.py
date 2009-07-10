@@ -13,6 +13,7 @@ from libtbx.math_utils import ifloor, iceil
 map_params_str ="""\
   map_coefficients
     .multiple = True
+    .short_caption = Map coefficients
     .style = auto_align
   {
     format = *mtz phs
@@ -37,6 +38,7 @@ map_params_str ="""\
       .short_caption = Fill missing F(obs) with F(calc)
   }
   map
+    .short_caption = XPLOR map
     .multiple = True
   {
     map_type = None
