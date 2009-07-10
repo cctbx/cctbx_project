@@ -105,6 +105,7 @@ class cartesian_dynamics(object):
                update_f_calc                    = True,
                time_averaging_data              = None,
                log                              = None,
+               stop_at_diff                     = None,
                verbose                          = -1):
     adopt_init_args(self, locals())
     assert self.n_print > 0
@@ -335,6 +336,9 @@ class cartesian_dynamics(object):
   def verlet_leapfrog_integration(self):
     # start verlet_leapfrog_integration loop
     for cycle in range(1,self.n_steps+1,1):
+      if(self.stop_at_diff is not None):
+        diff = flex.mean(self.structure_start.distances(other = self.structure))
+        if(diff >= self.stop_at_diff): return
       accelerations = self.accelerations()
       print_flag = 0
       switch = math.modf(float(cycle)/self.n_print)[0]
@@ -377,7 +381,6 @@ class cartesian_dynamics(object):
         self.accelerations()
       else:
         self.time_averaging_data.velocities = self.vxyz
-
 
   def print_dynamics_stat(self, text):
     timfac = akma_time_as_pico_seconds
