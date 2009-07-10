@@ -42,7 +42,8 @@ def run():
         max_iterations              = 500,
         min_iterations              = 25,
         step                        = step,
-        geometry_restraints_manager = None)
+        geometry_restraints_manager = None,
+        target_type                 = "diff_map")
       xrs_sh = minimized.xray_structure
       map_current = minimized.map_current
       final_error = flex.mean(xrs.distances(other = minimized.xray_structure))
@@ -65,4 +66,3 @@ if (__name__ == "__main__"):
   t0 = time.time()
   run()
   print "Time: %8.3f"%(time.time()-t0)
-  print "fft time: ", real_space_target_and_gradients.FFT_TIME
