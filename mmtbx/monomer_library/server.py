@@ -230,6 +230,7 @@ class server(process_cif_mixin):
       cif_object=list_cif.cif, skip_comp_list=True)
     self.comp_comp_id_mod_dict = {}
     self.process_rna_sugar_pucker_modifications()
+    self.process_geostd_rna_dna()
 
   def convert_all(self, source_info, cif_object, skip_comp_list=False):
     self.convert_deriv_list_dict(cif_object=cif_object)
@@ -295,6 +296,12 @@ class server(process_cif_mixin):
     assert dir_name is not None
     for mod_id in ["rnaC2", "rnaC3", "rnaEsd"]:
       self.process_cif(file_name=os.path.join(dir_name, "mod_"+mod_id+".cif"))
+
+  def process_geostd_rna_dna(self):
+    if (not os.path.isdir(self.geostd_path)): return
+    for file_name in ["chain_link_rna2p.cif", "chain_link_rna3p.cif"]:
+      self.process_cif(
+        file_name=os.path.join(self.geostd_path, "rna_dna", file_name))
 
   def get_comp_comp_id_direct(self, comp_id, return_file_name_only=False):
     comp_id = comp_id.strip().upper()

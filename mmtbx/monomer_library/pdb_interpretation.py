@@ -1,5 +1,6 @@
 from __future__ import division
 from iotbx import pdb
+from iotbx.pdb import rna_2p_residue_names, rna_3p_residue_names
 import iotbx.phil
 from mmtbx.monomer_library import server
 from mmtbx.monomer_library import cif_types
@@ -896,18 +897,18 @@ class link_match_one(object):
             and comp_id.lower() == chem_link_comp_id.lower())):
       self.is_comp_id_match = True
       if (chem_link_comp_id is None):
-        self.len_comp_id_match = 1
+        self.len_comp_id_match = 0
       else:
         self.len_comp_id_match = len(chem_link_comp_id)
     else:
       self.is_comp_id_match = False
-      self.len_comp_id_match = 0
+      self.len_comp_id_match = -1
     if (   chem_link_group_comp in [None, ""]
         or (comp_group is not None
             and comp_group.lower() == chem_link_group_comp.lower())):
       self.is_group_match = True
       if (chem_link_group_comp is None):
-        self.len_group_match = 1
+        self.len_group_match = 0
       else:
         self.len_group_match = len(chem_link_group_comp)
     else:
@@ -937,6 +938,13 @@ class link_match(object):
     self.len_comp_id_match_2 = match_2.len_comp_id_match
     self.len_group_match_2 = match_2.len_group_match
 
+  def is_proper_match(self):
+    return (
+         self.len_comp_id_match_1 > 0
+      or self.len_group_match_1 > 0
+      or self.len_comp_id_match_2 > 0
+      or self.len_group_match_2 > 0)
+
   def __cmp__(self, other):
     if (self.n_unresolved_bonds < other.n_unresolved_bonds): return -1
     if (self.n_unresolved_bonds > other.n_unresolved_bonds): return  1
@@ -964,6 +972,11 @@ def get_lib_link(mon_lib_srv, m_i, m_j):
   if (m_i.monomer.is_peptide() and m_j.monomer.is_peptide()):
     return get_lib_link_peptide(mon_lib_srv, m_i, m_j)
   elif (m_i.monomer.is_rna_dna() and m_j.monomer.is_rna_dna()):
+    id = m_i.monomer.chem_comp.id
+    if (id in rna_2p_residue_names):
+      return mon_lib_srv.link_link_id_dict["rna2p"]
+    if (id in rna_3p_residue_names):
+      return mon_lib_srv.link_link_id_dict["rna3p"]
     return mon_lib_srv.link_link_id_dict["p"]
   if (m_i.monomer.is_water() or m_j.monomer.is_water()): return None
   comp_id_1 = m_i.monomer.chem_comp.id
@@ -1023,7 +1036,10 @@ Corrupt CIF link definition:
   for m in matches:
     if (cmp(m, matches[0]) != 0): break
     best_matches.append(m)
-  return best_matches[0].link_link_id
+  match = best_matches[0]
+  if (not match.is_proper_match()):
+    return None
+  return match.link_link_id
 
 def evaluate_registry_process_result(
       proxy_label,
