@@ -224,6 +224,39 @@ END
     mode="==",
     lines=log.getvalue().splitlines())
   assert len(lines) == 1
+  #
+  raw_records = """\
+CRYST1  109.350  109.350  190.680  90.00  90.00 120.00 H 3 2        18
+HETATM 2316 MG    MG   401      85.173  71.732  16.992  1.00 77.96          MG
+HETATM 2317 MG    MG   402      79.003  69.700  14.150  1.00 73.20          MG
+HETATM 2318 MG    MG   403       9.596  62.411  13.402  1.00 62.56          MG
+HETATM 2319 MG    MG   404      48.026  73.068  26.732  1.00 72.59          MG
+HETATM 2320 MG    MG   405      63.623  79.773  28.694  1.00 86.62          MG
+HETATM 2321 MG    MG   406      25.463  68.205   2.775  1.00 67.84          MG
+HETATM 2322 MG    MG   407      64.693  59.956   7.476  1.00 81.20          MG
+HETATM 2323 MG    MG   408      58.001  61.900  13.126  1.00 76.59          MG
+HETATM 2324 MG    MG   409      79.965  84.253  23.275  1.00 73.36          MG
+HETATM 2325 MG    MG   410      22.587  66.575  19.552  1.00 62.10          MG
+HETATM 2326 MG    MG   411      53.007  73.668  38.880  1.00 89.72          MG
+HETATM 2327 MG    MG   412      51.568  77.963   9.128  1.00 87.46          MG
+HETATM 2328  O   HOH   301      32.853  56.507   0.571  1.00 41.94           O
+HETATM 2329  O   HOH   302      27.055  59.115  12.335  1.00 46.41           O
+HETATM 2330  O   HOH   303      21.956  61.533  10.963  1.00 42.68           O
+END
+""".splitlines()
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    log=log)
+  lines = search_for(
+    pattern="""\
+          Link IDs: {None: 14}""",
+    mode="==",
+    lines=log.getvalue().splitlines())
+  assert len(lines) == 1
 
 def exercise_rna(
       mon_lib_srv,
