@@ -1,5 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
+#include <scitbx/array_family/boost_python/byte_str.h>
 #include <scitbx/array_family/boost_python/range_wrappers.h>
 #include <scitbx/array_family/counts.h>
 #include <scitbx/matrix/packed.h>
@@ -12,10 +13,10 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  af::shared<bool>
-  as_bool(af::const_ref<int> const& self, bool strict=true)
+  shared<bool>
+  as_bool(const_ref<int> const& self, bool strict=true)
   {
-    af::shared<bool> result((af::reserve(self.size())));
+    shared<bool> result((reserve(self.size())));
     for(std::size_t i=0;i<self.size();i++) {
       int v = self[i];
       if (v == 0) {
@@ -42,6 +43,7 @@ namespace scitbx { namespace af { namespace boost_python {
     using namespace boost::python;
     flex_wrapper<int>::signed_integer("int", scope())
       .def_pickle(flex_pickle_single_buffered<int>())
+      .def("copy_to_byte_str", copy_to_byte_str<versa<int, flex_grid<> > >)
       .def("as_bool", as_bool,
         as_bool_overloads((arg_("self"), arg_("strict")=true)))
       .def("counts", counts<int, std::map<long, long> >::unlimited)
@@ -70,6 +72,10 @@ namespace scitbx { namespace af { namespace boost_python {
               arg_("i_row"),
               arg_("i_column")))
     ;
+    def(
+      "int_from_byte_str",
+      shared_from_byte_str<int>,
+      (arg_("byte_str")));
     range_wrappers<int, int>::wrap("int_range");
   }
 

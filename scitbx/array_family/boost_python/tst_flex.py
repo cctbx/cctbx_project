@@ -353,6 +353,21 @@ def exercise_misc():
   except RuntimeError, e:
     assert str(e).find("SCITBX_ASSERT(grid.size_1d() == a.size())") > 0
   else: raise Exception_expected
+  #
+  for l in [[], [12], [2,3], [4,6,7], range(-123,2345)]:
+    for flex_type,flex_from_byte_str in [
+          (flex.int, flex.int_from_byte_str),
+          (flex.double, flex.double_from_byte_str)]:
+      a = flex_type(l)
+      b = a.copy_to_byte_str()
+      if (len(l) == 0):
+        assert len(b) == 0
+      else:
+        assert len(b) != 0
+        assert len(b) % len(l) == 0
+      f = flex_from_byte_str(byte_str=b)
+      assert f.size() == len(l)
+      assert list(f) == l
 
 def exercise_1d_slicing_core(a):
   if (tuple(a[:]) != ()):
