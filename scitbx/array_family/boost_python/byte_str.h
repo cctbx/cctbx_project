@@ -16,6 +16,17 @@ namespace scitbx { namespace af { namespace boost_python {
       reinterpret_cast<const char*>(a.end()));
   }
 
+  template <typename ArrayType>
+  boost::python::str
+  slice_to_byte_str(
+    ArrayType const& a,
+    std::size_t const& offset_begin, std::size_t const& offset_end)
+  {
+    return boost::python::str(
+      reinterpret_cast<const char*>(a.begin() + offset_begin),
+      reinterpret_cast<const char*>(a.begin() + offset_end));
+  }
+
   template <typename ElementType>
   shared<ElementType>
   shared_from_byte_str(
