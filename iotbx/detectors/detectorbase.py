@@ -46,6 +46,12 @@ class DetectorImageBase(object):
       from iotbx.detectors import Bin2_by_2
       self.linearintdata = Bin2_by_2(self.linearintdata)
 
+  data_types = dict( SIZE1=int, SIZE2=int, PIXEL_SIZE=float,
+                     DISTANCE=float, TWOTHETA=float, OSC_RANGE=float,
+                     OSC_START=float, PHI=float, WAVELENGTH=float,
+                     BEAM_CENTER_X=float, BEAM_CENTER_Y=float,
+                     CCD_IMAGE_SATURATION=int, DETECTOR_SN=str )
+
   def debug_write(self,fileout,mod_data=None):
     if not self.parameters.has_key("TWOTHETA"):
       self.parameters["TWOTHETA"]=0.0
