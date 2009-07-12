@@ -1,3 +1,4 @@
+import os
 from scitbx.array_family import flex
 
 import boost.python
@@ -21,6 +22,8 @@ from iotbx.detectors.bruker import BrukerImage
 from iotbx.detectors.pilatus_minicbf import PilatusImage
 from iotbx.detectors.edf import EDFImage
 from iotbx.detectors.detectorbase import DetectorImageBase
+from iotbx.detectors.pilatus_slice import pilatus_slice_from_file_url
+from iotbx.detectors.pilatus_slice import pilatus_slice_from_http_url
 
 class EDFWrapper(EDFImage, DetectorImageBase):
   def __init__(self,filename):
@@ -39,6 +42,8 @@ all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,
                   MARImage,MARIPImage,RAXISImage,
                   NonSquareRAXISImage,PilatusImage,CBFImage,BrukerImage]
 
+all_url_types = [pilatus_slice_from_file_url,pilatus_slice_from_http_url]
+
 names_and_types = { "ADSC"          : ADSCImage,
                     "Saturn"        : SaturnImage,
                     "DIP"           : DIPImage,
@@ -53,20 +58,32 @@ names_and_types = { "ADSC"          : ADSCImage,
                    }
 
 def ImageFactory(filename):
-  for itype in all_image_types:
-    try:
-      I = itype(filename)
-      I.readHeader()
-      if itype==RAXISImage:
-        assert I.head['sizeFast']==I.head['sizeSlow']
-        assert 0.4 < I.head['wavelength'] < 10.0 #needed to disambiguate from Bruker
-      if itype==ADSCImage:
-        assert I.parameters.has_key('DETECTOR_SN')
-      if itype==BrukerImage:
-        assert I.distance > 0.0 #needed to disambiguate from RAXIS
-      return I
-    except:
-      pass
+  from iotbx.detectors import url_support
+  if os.path.isfile(filename):
+    for itype in all_image_types:
+      try:
+        I = itype(filename)
+        I.readHeader()
+        if itype==RAXISImage:
+          assert I.head['sizeFast']==I.head['sizeSlow']
+          assert 0.4 < I.head['wavelength'] < 10.0 #needed to disambiguate from Bruker
+        if itype==ADSCImage:
+          assert I.parameters.has_key('DETECTOR_SN')
+        if itype==BrukerImage:
+          assert I.distance > 0.0 #needed to disambiguate from RAXIS
+        return I
+      except:
+        pass
+  A = url_support.potential_url_request(filename)
+  if A.is_url_request():
+    for utype in all_url_types:
+      try:
+        I = utype(filename)
+        I.readHeader()
+        return I
+      except:
+        pass
+    raise ImageException(filename+" does not work as a functioning image URL")
   raise ImageException(filename+" not recognized as any known detector image type")
 
 def TrySingleImageType(filename,image_type):

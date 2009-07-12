@@ -8,6 +8,12 @@ class PilatusImage(DetectorImageBase):
     DetectorImageBase.__init__(self,filename)
     self.vendortype = "Pilatus"
 
+  mandatory_keys = ['PIXEL_SIZE_UNITS', 'DISTANCE', 'PHI', 'WAVELENGTH', 'SIZE1',
+    'SIZE2', 'TWOTHETA', 'DISTANCE_UNITS', 'OSC_RANGE',
+    'BEAM_CENTER_X', 'BEAM_CENTER_Y',
+    'CCD_IMAGE_SATURATION', 'OSC_START', 'DETECTOR_SN', 'PIXEL_SIZE',
+    'AXIS']
+
   def fileLength(self):
     raise ImageException("file length not computed for miniCBF")
 
@@ -19,6 +25,10 @@ class PilatusImage(DetectorImageBase):
 
   def read(self):
     self.readHeader()
+    if self.linearintdata != None and\
+      self.linearintdata.size()==self.size1*self.size2:
+      #data has already been read
+      return
     try:
       from cbflib_ext import MiniCBFAdaptor # optional package
       self.adaptor = MiniCBFAdaptor(self.filename)
