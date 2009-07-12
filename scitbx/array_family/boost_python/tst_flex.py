@@ -369,6 +369,21 @@ def exercise_misc():
       assert f.size() == len(l)
       assert list(f) == l
 
+      #Now look at direct slicing to byte string
+      start_index = int( 0.25 * a.size() )
+      stop_index = min(a.size(), int(0.50 * a.size()) + 1)
+      a_slice = a[start_index:stop_index]
+      b = a.slice_to_byte_str(start_index, stop_index)
+      if (len(l) == 0):
+        assert len(b) == 0
+      else:
+        assert len(b) != 0
+        assert len(b) % a_slice.size() == 0
+      f = flex_from_byte_str(byte_str=b)
+      assert f.size() == a_slice.size()
+      assert list(f) == list(a_slice)
+
+
 def exercise_1d_slicing_core(a):
   if (tuple(a[:]) != ()):
     assert tuple(a[:]) == (1,2,3,4,5)

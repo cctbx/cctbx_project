@@ -44,6 +44,8 @@ namespace scitbx { namespace af { namespace boost_python {
     flex_wrapper<int>::signed_integer("int", scope())
       .def_pickle(flex_pickle_single_buffered<int>())
       .def("copy_to_byte_str", copy_to_byte_str<versa<int, flex_grid<> > >)
+      .def("slice_to_byte_str",
+        slice_to_byte_str<versa<int, flex_grid<> > >)
       .def("as_bool", as_bool,
         as_bool_overloads((arg_("self"), arg_("strict")=true)))
       .def("counts", counts<int, std::map<long, long> >::unlimited)

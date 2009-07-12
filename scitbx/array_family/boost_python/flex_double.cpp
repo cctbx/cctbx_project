@@ -295,6 +295,8 @@ namespace boost_python {
     class_f_t
       .def_pickle(flex_pickle_single_buffered<double>())
       .def("copy_to_byte_str", copy_to_byte_str<versa<double, flex_grid<> > >)
+      .def("slice_to_byte_str",
+        slice_to_byte_str<versa<double,flex_grid<> > >)
       .def("__init__", make_constructor(
         from_stl_vector_double, default_call_policies()))
       .def("__init__", make_constructor(
