@@ -20,8 +20,11 @@ namespace scitbx { namespace af { namespace boost_python {
   boost::python::str
   slice_to_byte_str(
     ArrayType const& a,
-    std::size_t const& offset_begin, std::size_t const& offset_end)
+    std::size_t const& offset_begin,
+    std::size_t const& offset_end)
   {
+    SCITBX_ASSERT(offset_end <= a.size());
+    SCITBX_ASSERT(offset_begin <= offset_end);
     return boost::python::str(
       reinterpret_cast<const char*>(a.begin() + offset_begin),
       reinterpret_cast<const char*>(a.begin() + offset_end));
