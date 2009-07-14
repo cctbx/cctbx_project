@@ -1,5 +1,6 @@
 import copy,re,cPickle
 from iotbx.detectors.pilatus_minicbf import PilatusImage
+from iotbx.detectors import ImageException
 from scitbx.array_family import flex
 
 def pilatus_slice_from_http_url(url):
@@ -86,7 +87,13 @@ class PilatusSlice(PilatusImage):
   def slice_callback_with_high_performance_http_data(self):
     BYU = self.object.read()
     linearintdata = flex.int_from_byte_str(BYU)
-    linearintdata.reshape(flex.grid((195,2463)))
+    provisional_size = linearintdata.size()
+    if provisional_size==480285:
+      linearintdata.reshape(flex.grid((195,2463)))
+    elif provisional_size==6224001:
+      linearintdata.reshape(flex.grid((2527,2463)))
+    else:
+      raise ImageException("wrong number of pixels for Pilatus image")
     del self.object #once the data are copied, close the stream
     return linearintdata
 
