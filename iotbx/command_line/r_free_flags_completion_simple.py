@@ -80,7 +80,7 @@ def run(args):
   if (i >= 0):
     output_file_name = output_file_name[:i] + "_" + output_file_name[i+1:]
   output_file_name += "_extended_r_free_flags.mtz"
-  print "Writing file:", output_file_name
+  print "Writing file: %s" % show_string(output_file_name)
   mtz_dataset.mtz_object().write(file_name=output_file_name)
   print
   print """\
