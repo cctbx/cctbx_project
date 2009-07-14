@@ -27,7 +27,8 @@ import sys, os
 
 
 master_params = iotbx.phil.parse("""\
-scaling.input {
+scaling {
+input {
   asu_contents
     .help = "Defines the ASU contents"
     .short_caption = ASU contents
@@ -66,6 +67,7 @@ scaling.input {
       .type=strings
       .help="Lables for calculated data"
       .short_caption = Fcalc labels
+      .style = bold renderer:draw_xtriage_hkl_label_widget
     unit_cell=None
       .type=unit_cell
       .help="Unit cell parameters"
@@ -199,6 +201,14 @@ scaling.input {
    .type=int
    .expert_level=10
    .help="Expert level"
+}
+gui
+  .help = GUI-specific parameters, not applicable to command-line version.
+{
+  result_file = None
+    .type = path
+    .help = Pickled result file for Phenix GUI
+}
 }
 """, process_includes=True)
 
