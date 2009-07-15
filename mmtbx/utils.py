@@ -97,13 +97,17 @@ data_and_flags = iotbx.phil.parse("""\
     .style = bold file_type:hkl OnUpdate:extract_xray_neutron_params noauto
   labels = None
     .type=strings
+    .input_size = 160
+    .short_caption = Data labels
     .style = bold renderer:draw_fobs_label_widget \
       OnChange:update_resolution_limits
   high_resolution = None
     .type=float
+    .input_size = 80
     .style = bold renderer:draw_resolution_widget
   low_resolution = None
     .type=float
+    .input_size = 80
     .style = bold renderer:draw_resolution_widget
   outliers_rejection = True
     .type=bool
@@ -143,12 +147,15 @@ data_and_flags = iotbx.phil.parse("""\
       .style = noauto file_type:hkl,any OnUpdate:extract_rfree_params
     label = None
       .type=str
-      .short_caption = Column label
-      .style = renderer:draw_rfree_label_widget OnChange:update_rfree_flag_value
+      .short_caption = R-free label
+      .input_size = 160
+      .style = bold renderer:draw_rfree_label_widget \
+               OnChange:update_rfree_flag_value
     test_flag_value = None
       .type=int
       .help = This value is usually selected automatically - do not change \
         unless you really know what you're doing!
+      .style = bold
     disable_suitability_test = False
       .type=bool
       .expert_level = 2
@@ -568,7 +575,9 @@ experimental_phases_params = iotbx.phil.parse("""\
     .style = file_type:hkl,any OnUpdate:extract_phi_from_hkl_file
   labels=None
     .type=strings
-    .style = renderer:draw_hl_label_widget
+    .input_size = 160
+    .short_caption = Phase labels
+    .style = renderer:draw_hl_label_widget bold
 """)
 
 def determine_experimental_phases(reflection_file_server,
