@@ -532,7 +532,7 @@ ATOM     26 H211 LIG A   1      -1.563   1.168   1.254  1.00 20.00      A    H
   merge_clusters_with_multiple_connections_passes=2),
 
 pdb_extract(
-  # scitbx/rigid_body/essence/tst_molecules.py, exercise_near_singular_hinges()
+  # scitbx/rigid_body/essence/tst_tardy.py, exercise_near_singular_hinges()
   tag="collinear",
   pdb="""\
 ATOM      1  C1  COL     1      -1.334  -0.770   0.000  1.00  0.00

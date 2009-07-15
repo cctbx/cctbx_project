@@ -1,4 +1,4 @@
-from scitbx.rigid_body.essence import tst_molecules
+from scitbx.rigid_body.essence import tst_tardy
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex
 from gltbx import wx_viewer
@@ -93,10 +93,10 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
 class App(wx_viewer.App):
 
   def __init__(self, args):
-    n = tst_molecules.n_test_models
+    n = tst_tardy.n_test_models
     command_line = (libtbx_option_parser(
       usage="""\
-scitbx.python wx_molecules.py [options] model_index
+scitbx.python wx_tardy.py [options] model_index
   model_index range: 0 ... %d\
 """ % (n-1))
       .option(None, "--fixed_vertices",
@@ -130,12 +130,12 @@ scitbx.python wx_molecules.py [options] model_index
     self.view_scale = co.view_scale
     self.model_index = int(command_line.args[0])
     assert 0 <= self.model_index < n
-    super(App, self).__init__(title="wx_molecules")
+    super(App, self).__init__(title="wx_tardy")
 
   def init_view_objects(self):
     box = wx.BoxSizer(wx.VERTICAL)
     self.view_objects = viewer(self.frame, size=(600,600))
-    tardy_model = tst_molecules.get_test_model_by_index(
+    tardy_model = tst_tardy.get_test_model_by_index(
       i=self.model_index, fixed_vertex_lists=self.fixed_vertex_lists)
     if (self.i_seq_labels):
       tardy_model.labels = [str(i) for i in xrange(len(tardy_model.labels))]

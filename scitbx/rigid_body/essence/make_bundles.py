@@ -80,7 +80,7 @@ Matlab code can be found here:
 
   - http://cctbx.svn.sourceforge.net/viewvc/cctbx/trunk/scitbx/rigid_body/proto/
 
-The file ``wx_molecules.py`` is a simple 3D graphical viewer displaying
+The file ``wx_tardy.py`` is a simple 3D graphical viewer displaying
 trajectories. It requires ``wxPython`` and the ``gltbx`` module of
 the cctbx project. An easy way to get everything in one file and
 install with a single command, is to download the phenix package from:

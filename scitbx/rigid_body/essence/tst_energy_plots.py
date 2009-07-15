@@ -1,4 +1,4 @@
-from scitbx.rigid_body.essence import tst_molecules
+from scitbx.rigid_body.essence import tst_tardy
 from scitbx.array_family import flex
 import sys
 
@@ -12,7 +12,7 @@ def run(args):
     model_index = int(eval(args[0]))
     n_dynamics_steps = int(eval(args[1]))
     delta_t = float(eval(args[2]))
-  tardy_model = tst_molecules.get_test_model_by_index(i=model_index)
+  tardy_model = tst_tardy.get_test_model_by_index(i=model_index)
   tardy_model.assign_random_velocities(e_kin_target=1)
   e_pots = flex.double([tardy_model.e_pot()])
   e_kins = flex.double([tardy_model.e_kin()])
