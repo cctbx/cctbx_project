@@ -10,6 +10,10 @@ from libtbx import Auto
 import random
 import sys
 
+if (1):
+  random.seed(0)
+  flex.set_random_seed(0)
+
 class tardy_model(tardy.model):
 
   def d_pot_d_q_via_finite_differences(O, eps=1.e-6):
@@ -445,7 +449,6 @@ def run(args):
   exercise_fixed_vertices_special_cases()
   #
   if (1):
-    random.seed(0)
     for i in xrange(n_test_models):
       print >> out, "test model index:", i
       tardy_model = get_test_model_by_index(i=i)
