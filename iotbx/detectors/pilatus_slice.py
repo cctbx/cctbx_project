@@ -62,7 +62,7 @@ class PilatusSlice(PilatusImage):
     self.already_read_data = False
 
   data_types = copy.copy(PilatusImage.data_types)
-  data_types.update(PIXEL_SIZE_UNITS=str, DISTANCE_UNITS=str, AXIS=str)
+  data_types.update({"PIXEL_SIZE_UNITS":str, "DISTANCE_UNITS":str, "AXIS":str})
 
   def slice_parameters(self,param):
     #unchanged parameters first:
