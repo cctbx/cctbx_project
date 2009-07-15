@@ -169,7 +169,7 @@ class cluster_manager(object):
       result.append(tuple(sorted(c)))
     return result
 
-  def sort_clusters_for_construct_spanning_tree(O, edge_sets):
+  def determine_weighted_order_for_construct_spanning_tree(O, edge_sets):
     fixed_vertex_info = [0] * len(O.clusters)
     for fixed_vertices in O.fixed_vertex_lists:
       lvf = len(fixed_vertices)
@@ -183,7 +183,7 @@ class cluster_manager(object):
           if (cij == cii): continue
           if (fixed_vertex_info[cij] != 0):
             raise RuntimeError(
-              "sort_clusters_for_construct_spanning_tree():"
+              "determine_weighted_order_for_construct_spanning_tree():"
               " fixed vertex lists in same connected tree.")
           fixed_vertex_info[cij] = -1
     cii_orcs = []
@@ -201,31 +201,29 @@ class cluster_manager(object):
       if (a[1] < b[1]): return 1
       return cmp(a[0], b[0])
     cii_orcs.sort(cmp_elems)
-    new_clusters = []
-    for cii,orcs in cii_orcs:
-      new_clusters.append(O.clusters[cii])
-    del O.clusters[:]
-    O.clusters.extend(new_clusters)
-    O.refresh_indices()
-    return (
-      [orcs for cii,orcs in cii_orcs],
-      [fixed_vertex_info[cii] for cii,orcs in cii_orcs])
+    return cii_orcs, fixed_vertex_info
 
   def construct_spanning_trees(O, edge_sets):
     assert O.hinge_edges is None
-    orcs, fixed_vertex_info = O.sort_clusters_for_construct_spanning_tree(
-      edge_sets=edge_sets)
+    cii_orcs, fixed_vertex_info = \
+      O.determine_weighted_order_for_construct_spanning_tree(
+        edge_sets=edge_sets)
     n_clusters = len(O.clusters)
     hinge_edges = [(-1,c[0]) for c in O.clusters]
     O.loop_edges = []
     if (n_clusters == 0): w_max = -1
-    else:                 w_max = max(orcs)
+    else:                 w_max = max([orcs for cii,orcs in cii_orcs])
     candi = []
     for i in xrange(w_max+1):
       candi.append([])
+    cii_wo_given_cii = [n_clusters] * n_clusters
+    for ip_wo in xrange(n_clusters):
+      ip = cii_orcs[ip_wo][0]
+      cii_wo_given_cii[ip] = ip_wo
     done = [0] * n_clusters
     cluster_perm = []
-    for ip in xrange(len(O.clusters)):
+    for ip_wo in xrange(n_clusters):
+      ip = cii_orcs[ip_wo][0]
       he = hinge_edges[ip]
       if (he[0] != -1): continue
       have_fixed = [(fixed_vertex_info[ip] > 0)]
@@ -242,8 +240,9 @@ class cluster_manager(object):
           O.loop_edges.append((i,j))
         else:
           done[cij] = -1
-          w = orcs[cij]
-          candi[w].append(cij)
+          cij_wo = cii_wo_given_cii[cij]
+          w = cii_orcs[cij_wo][1]
+          candi[w].append(cij_wo)
           hinge_edges[cij] = (i,j)
           if (w_max < w): w_max = w
         return w_max
@@ -255,15 +254,16 @@ class cluster_manager(object):
           w_max = set_loop_or_hinge_edge(w_max=w_max)
       while True:
         kp = None
-        ip = n_clusters
+        ip_wo = n_clusters
         cw = candi[w_max]
         for k in xrange(len(cw)):
-          if (ip > cw[k]):
+          if (ip_wo > cw[k]):
             kp = k
-            ip = cw[k]
+            ip_wo = cw[k]
         if (kp is None):
           break
         del cw[kp]
+        ip = cii_orcs[ip_wo][0]
         for i in O.clusters[ip]:
           for j in edge_sets[i]:
             cij = O.cluster_indices[j]
