@@ -555,10 +555,13 @@ def exercise_special_case_ZINC03847121():
     (0, 1, 2), (0, 1, 10), (0, 9, 10), (1, 2, 3), (2, 3, 4, 11),
     (3, 4, 5), (3, 9, 11), (4, 5, 6), (5, 6, 7), (6, 7, 8), (7, 8, 9),
     (8, 9, 10, 11)]
-  orcs, fixed_vertex_info = cm.sort_clusters_for_construct_spanning_tree(
-    edge_sets=tt.edge_sets)
-  assert orcs == [4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
-  assert fixed_vertex_info == [0] * len(orcs)
+  cii_orcs, fixed_vertex_info = \
+    cm.determine_weighted_order_for_construct_spanning_tree(
+      edge_sets=tt.edge_sets)
+  assert cii_orcs == [
+    (3, 4), (9, 4), (0, 3), (1, 3), (2, 3), (4, 3),
+    (5, 3), (6, 3), (7, 3), (8, 3), (10, 3), (11, 3)]
+  assert fixed_vertex_info == [0] * len(cii_orcs)
   #
   tt = construct(n_vertices=n_vertices, edge_list=edge_list)
   sio = StringIO()
@@ -698,7 +701,7 @@ def exercise_fixed_vertices(n_trials=10):
     tc.tardy_tree_construct(fixed_vertex_lists=[[0],[10]])
   except RuntimeError, e:
     assert str(e) == \
-      "sort_clusters_for_construct_spanning_tree():" \
+      "determine_weighted_order_for_construct_spanning_tree():" \
       " fixed vertex lists in same connected tree."
   else: raise Exception_expected
   try:
