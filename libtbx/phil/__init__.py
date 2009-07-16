@@ -225,39 +225,81 @@ def float_from_words(words, path):
     return result
   return float_from_number(number=result, words=words, path=path)
 
-class int_converters(object):
+class _check_value_base(object):
+
+  def _check_value(self, value, path_producer, words=None):
+    def where_str():
+      if (words is None): return ""
+      return words[0].where_str()
+    if (self.value_min is not None and value < self.value_min):
+      raise RuntimeError(
+        "%s element is less than the minimum allowed value:"
+        " %s < %s%s"
+          % (path_producer(), self._value_as_str(value=value),
+             self._value_as_str(value=self.value_min), where_str()))
+    if (self.value_max is not None and value > self.value_max):
+      raise RuntimeError(
+        "%s element is greater than the maximum allowed value:"
+        " %s > %s%s"
+          % (path_producer(), self._value_as_str(value=value),
+             self._value_as_str(value=self.value_max), where_str()))
+
+class number_converters_base(_check_value_base):
+
+  def __init__(self,
+      value_min=None,
+      value_max=None):
+    if (value_min is not None and value_max is not None):
+      assert value_min <= value_max
+    self.value_min = value_min
+    self.value_max = value_max
+
+  def __str__(self):
+    kwds = []
+    if (self.value_min is not None):
+      kwds.append("value_min=" + self._value_as_str(value=self.value_min))
+    if (self.value_max is not None):
+      kwds.append("value_max=" + self._value_as_str(value=self.value_max))
+    if (len(kwds) != 0):
+      return self.phil_type + "(" + ", ".join(kwds) + ")"
+    return self.phil_type
+
+  def from_words(self, words, master):
+    path = master.full_path()
+    value = self._value_from_words(words=words, path=master.full_path())
+    if (value is None or value is Auto): return value
+    self._check_value(
+      value=value, path_producer=master.full_path, words=words)
+    return value
+
+  def as_words(self, python_object, master):
+    if (python_object is None):
+      return [tokenizer.word(value="None")]
+    if (python_object is Auto):
+      return [tokenizer.word(value="Auto")]
+    return [tokenizer.word(value=self._value_as_str(value=python_object))]
+
+class int_converters(number_converters_base):
 
   phil_type = "int"
 
-  def __str__(self): return self.phil_type
+  def _value_from_words(self, words, path):
+    return int_from_words(words=words, path=path)
 
-  def from_words(self, words, master):
-    return int_from_words(words=words, path=master.full_path())
+  def _value_as_str(self, value):
+    return "%d" % value
 
-  def as_words(self, python_object, master):
-    if (python_object is None):
-      return [tokenizer.word(value="None")]
-    if (python_object is Auto):
-      return [tokenizer.word(value="Auto")]
-    return [tokenizer.word(value=str(python_object))]
-
-class float_converters(object):
+class float_converters(number_converters_base):
 
   phil_type = "float"
 
-  def __str__(self): return self.phil_type
+  def _value_from_words(self, words, path):
+    return float_from_words(words=words, path=path)
 
-  def from_words(self, words, master):
-    return float_from_words(words=words, path=master.full_path())
+  def _value_as_str(self, value):
+    return "%.10g" % value
 
-  def as_words(self, python_object, master):
-    if (python_object is None):
-      return [tokenizer.word(value="None")]
-    if (python_object is Auto):
-      return [tokenizer.word(value="Auto")]
-    return [tokenizer.word(value="%.10g" % python_object)]
-
-class numbers_converters_base(object):
+class numbers_converters_base(_check_value_base):
 
   def __init__(self,
       size=None,
@@ -322,23 +364,6 @@ class numbers_converters_base(object):
       raise RuntimeError(
         "Not enough values for %s: %d given, %s %d required%s"
           % (path_producer(), size, precise, self.size_min, where_str()))
-
-  def _check_value(self, value, path_producer, words=None):
-    def where_str():
-      if (words is None): return ""
-      return words[0].where_str()
-    if (self.value_min is not None and value < self.value_min):
-      raise RuntimeError(
-        "%s element is less than the minimum allowed value:"
-        " %s < %s%s"
-          % (path_producer(), self._value_as_str(value=value),
-             self._value_as_str(value=self.value_min), where_str()))
-    if (self.value_max is not None and value > self.value_max):
-      raise RuntimeError(
-        "%s element is greater than the maximum allowed value:"
-        " %s > %s%s"
-          % (path_producer(), self._value_as_str(value=value),
-             self._value_as_str(value=self.value_max), where_str()))
 
   def from_words(self, words, master):
     path = master.full_path()
