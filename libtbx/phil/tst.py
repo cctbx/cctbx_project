@@ -4639,6 +4639,90 @@ astrings = Auto
 awords = Auto
 """)
 
+def exercise_int_and_float():
+  master_phil = phil.parse(input_string="""\
+a=None
+  .type=float
+b=1.0
+  .type=int
+c=1.5
+  .type=float(value_min=1.0)
+d=4.5
+  .type=float(value_max=5.0)
+e=6.2
+  .type=float(value_min=3.2, value_max=7.6)
+f = 5
+  .type = int(value_min=0)
+g = 3
+  .type = int(value_max=4)
+h = 10
+  .type = int(value_min=4, value_max=12)
+""")
+  work_params = master_phil.extract()
+  work_phil = master_phil.format(python_object=work_params)
+  assert not show_diff(work_phil.as_str(attributes_level=2),"""\
+a = None
+  .type = float
+b = 1
+  .type = int
+c = 1.5
+  .type = float(value_min=1)
+d = 4.5
+  .type = float(value_max=5)
+e = 6.2
+  .type = float(value_min=3.2, value_max=7.6)
+f = 5
+  .type = int(value_min=0)
+g = 3
+  .type = int(value_max=4)
+h = 10
+  .type = int(value_min=4, value_max=12)
+""")
+  #
+  master_phil = phil.parse(input_string="""\
+a=-1.5
+  .type=float(value_min=1.0)
+""")
+  try: master_phil.extract()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "a element is less than the minimum allowed value:"
+      " -1.5 < 1 (input line 1)")
+  else: raise Exception_expected
+  #
+  master_phil = phil.parse(input_string="""\
+b=5.1
+  .type=float(value_min=0.0, value_max=5.0)
+""")
+  try: master_phil.extract()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "b element is greater than the maximum allowed value:"
+      " 5.1 > 5 (input line 1)")
+  else: raise Exception_expected
+  #
+  master_phil = phil.parse(input_string="""\
+c=7
+  .type=int(value_max=6)
+""")
+  try: master_phil.extract()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "c element is greater than the maximum allowed value:"
+      " 7 > 6 (input line 1)")
+  else: raise Exception_expected
+  #
+  master_phil = phil.parse(input_string="""\
+d=-6
+  .type=int(value_min=3, value_max=25)
+""")
+  try: master_phil.extract()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "d element is less than the minimum allowed value:"
+      " -6 < 3 (input line 1)")
+  else: raise Exception_expected
+
 def exercise_ints_and_floats():
   master_phil = phil.parse(input_string="""\
 a=None
@@ -5205,6 +5289,7 @@ def exercise():
   exercise_choice()
   exercise_scope_call()
   exercise_auto()
+  exercise_int_and_float()
   exercise_ints_and_floats()
   exercise_definition_validate_etc()
   exercise_command_line()
