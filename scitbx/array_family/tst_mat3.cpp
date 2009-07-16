@@ -21,6 +21,16 @@ int main(int /*argc*/, char* /*argv*/[])
     mat3<int> vd(id);
   }
   {
+    mat3<double> diag9(1,0,0,0,1,0,0,0,1);
+    mat3<double> diag1(1.0);
+    mat3<double> diag3(1,1,1);
+    check_true(__LINE__, diag1 == diag9);
+    check_true(__LINE__, diag3 == diag9);
+    mat3<double> diag234(2,3,-4);
+    mat3<double> diag2349(2,0,0,0,3,0,0,0,-4);
+    check_true(__LINE__, diag234 == diag2349);
+  }
+  {
     mat3<int> a; a.fill(0);
     mat3<int> b; b.fill(0);
     mat3<int> c; c.fill(1);
