@@ -48,6 +48,11 @@ namespace scitbx {
       {}
       //! Constructor for diagonal matrix.
       explicit
+      mat2(NumType const& diag0, NumType const& diag1)
+        : base_type(diag0,0,0,diag1)
+      {}
+      //! Constructor for diagonal matrix.
+      explicit
       mat2(af::tiny_plain<NumType,2> const& diag)
         : base_type(diag[0],0,0,diag[1])
       {}
