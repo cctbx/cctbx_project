@@ -139,7 +139,7 @@ def exercise(space_group_info,
             print
           diff = gs - gfd
           diff /= max(1, flex.max(flex.abs(gfd)))
-          tolerance = 1.e-5
+          tolerance = 1.2e-5
           assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
           assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
           assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
