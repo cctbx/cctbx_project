@@ -19,11 +19,12 @@
 \newcommand{\image}{\operatorname{Im}}
 \newcommand{\dimension}{\operatorname{dim}}
 \newcommand{\scalarprod}[2]{#1 \cdot #2}
-\newcommand{\argmin}{\mathop{\mathrm{argmin}}\displaylimits}
+\newcommand{\argmax}{\operatornamewithlimits{argmax}}
+\newcommand{\argmin}{\operatornamewithlimits{argmin}}
 \newcommand{\partialder}[2]{\frac{\partial #1}{\partial #2}}
 \newcommand{\partialderxx}[2]{\frac{\partial^2 #1}{\partial #2^2}}
 \newcommand{\partialderxy}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
 \newcommand{\grad}[2][]{%
-	\ifthenelse{ \equal{#1}{} } { \nabla #2 }
-		                              { \nabla_{#1} {#2} }
+        \ifthenelse{ \equal{#1}{} } { \nabla #2 }
+                                              { \nabla_{#1} {#2} }
 }
