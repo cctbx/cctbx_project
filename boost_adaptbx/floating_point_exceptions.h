@@ -104,8 +104,8 @@ namespace boost_adaptbx { namespace floating_point {
   class exception_trapping
   {
     private:
-      bool division_by_zero_, invalid_, overflow_;
       bool division_by_zero_on_entry, invalid_on_entry, overflow_on_entry;
+      bool division_by_zero_, invalid_, overflow_;
 
     public:
       enum { dont_trap=0, division_by_zero=1, invalid=2, overflow=4 };
