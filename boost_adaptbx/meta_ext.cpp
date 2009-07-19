@@ -47,7 +47,7 @@
 
 #if defined(__linux)
 #include <gnu/libc-version.h>
-#define BOOST_ADAPTBX_META_EXT_HAVE_GNU_LIBC-VERSION_H
+#define BOOST_ADAPTBX_META_EXT_HAVE_GNU_LIBC_VERSION_H
 #endif
 
 #include <boost_adaptbx/floating_point_exceptions.h>
@@ -457,7 +457,7 @@ namespace {
 #if defined(_OPENMP)
     result += "_OPENMP = " + to_str(_OPENMP) + nl;
 #endif
-#if defined(BOOST_ADAPTBX_META_EXT_HAVE_GNU_LIBC)
+#if defined(BOOST_ADAPTBX_META_EXT_HAVE_GNU_LIBC_VERSION_H)
     result += "gnu libc version: ";
     result += gnu_get_libc_version() + nl;
 #endif
