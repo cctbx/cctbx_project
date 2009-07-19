@@ -526,6 +526,10 @@ else:
       static_exe = None
     env_etc.shlinkflags = ["-shared"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
+    if (libtbx.env.build_options.debug_symbols):
+      env_base.Append(LINKFLAGS=["-rdynamic"])
+      env_etc.shlinkflags.append("-rdynamic")
+      env_etc.shlinkflags_bpl.append("-rdynamic")
     if (env_etc.gcc_version >= 40102):
       pointer_size = determine_pointer_size(env_base=env_base, env_etc=env_etc)
       if (pointer_size is not None and pointer_size == 4):
