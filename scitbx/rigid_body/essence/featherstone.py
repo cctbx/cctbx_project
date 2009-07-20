@@ -37,7 +37,7 @@ else:
   def generalized_inverse(m):
     return m.inverse()
 
-def Xrot(E):
+def xrot(E):
   """RBDA Tab. 2.2, p. 23:
 Spatial coordinate transform (rotation around origin).
 Calculates the coordinate transform matrix from A to B coordinates
@@ -53,7 +53,7 @@ frame A.
      0,  0,  0,  d,  e,  f,
      0,  0,  0,  g,  h,  i))
 
-def Xtrans(r):
+def xtrans(r):
   """RBDA Tab. 2.2, p. 23:
 Spatial coordinate transform (translation of origin).
 Calculates the coordinate transform matrix from A to B coordinates
@@ -69,11 +69,11 @@ amount r (3D vector) relative to frame A.
     -r3,   0,  r1, 0, 1, 0,
      r2, -r1,   0, 0, 0, 1))
 
-def T_as_X(T):
+def cb_as_spatial_transform(cb):
   """RBDA Eq. 2.28, p. 22:
-Conversion of matrix.rt object T to spatial transform X.
+Conversion of matrix.rt object cb to spatial transform.
 """
-  return Xrot(T.r) * Xtrans(-T.r.transpose() * T.t)
+  return xrot(cb.r) * xtrans(-cb.r.transpose() * cb.t)
 
 def crm(v):
   """RBDA Eq. 2.31, p. 25:
@@ -115,9 +115,9 @@ about its centre of mass.
     I + m*C*C.transpose(), m*C,
     m*C.transpose(), m*matrix.identity(3))).resolve_partitions()
 
-def kinetic_energy(I_spatial, v_spatial):
+def kinetic_energy(i_spatial, v_spatial):
   "RBDA Eq. 2.67, p. 35"
-  return 0.5 * v_spatial.dot(I_spatial * v_spatial)
+  return 0.5 * v_spatial.dot(i_spatial * v_spatial)
 
 class system_model(object):
   "RBDA Tab. 4.3, p. 87"
@@ -125,57 +125,75 @@ class system_model(object):
   def __init__(O, bodies):
     "Stores bodies and computes Xtree (RBDA Fig. 4.7, p. 74)"
     O.bodies = bodies
-    for B in bodies:
-      if (B.parent == -1):
-        Ttree = B.A.T0b
+    for body in bodies:
+      if (body.parent == -1):
+        cb_tree = body.alignment.cb_0b
       else:
-        Ttree = B.A.T0b * bodies[B.parent].A.Tb0
-      B.Xtree = T_as_X(Ttree)
+        cb_tree = body.alignment.cb_0b * bodies[body.parent].alignment.cb_b0
+      body.cb_tree = cb_tree
+    O.__cb_up_array = None
+    O.__xup_array = None
 
-  def Xup(O):
+  def cb_up_array(O):
     "RBDA Example 4.4, p. 80"
-    return [B.J.Xj * B.Xtree for B in O.bodies]
+    if (O.__cb_up_array is None):
+      O.__cb_up_array = [body.joint.cb_ps * body.cb_tree for body in O.bodies]
+    return O.__cb_up_array
 
-  def spatial_velocities(O, Xup):
+  def xup_array(O):
+    if (O.__xup_array is None):
+      O.__xup_array = [cb_as_spatial_transform(cb) for cb in O.cb_up_array()]
+    return O.__xup_array
+
+  def spatial_velocities(O):
     "RBDA Example 4.4, p. 80"
     result = []
-    if (Xup is None): Xup = O.Xup()
-    for B,Xup_i in zip(O.bodies, O.Xup()):
-      if (B.J.S is None): vJ = B.qd
-      else:               vJ = B.J.S * B.qd
-      if (B.parent == -1): result.append(vJ)
-      else:                result.append(Xup_i * result[B.parent] + vJ)
+    cb_up_array = O.cb_up_array()
+    for i,body in enumerate(O.bodies):
+      if (body.joint.S is None): vJ = body.qd
+      else:                      vJ = body.joint.S * body.qd
+      if (body.parent == -1): result.append(vJ)
+      else:
+        cb_up = cb_up_array[i]
+        vp = result[body.parent].elems
+        r_va = cb_up.r * matrix.col(vp[:3])
+        vp = matrix.col((
+          r_va,
+          cb_up.r * matrix.col(vp[3:]) + cb_up.t.cross(r_va))) \
+            .resolve_partitions()
+        result.append(vp + vJ)
     return result
 
-  def e_kin(O, Xup=None):
+  def e_kin(O):
     "RBDA Eq. 2.67, p. 35"
     result = 0
-    for B,v in zip(O.bodies, O.spatial_velocities(Xup=Xup)):
-      result += kinetic_energy(I_spatial=B.I, v_spatial=v)
+    for body,v in zip(O.bodies, O.spatial_velocities()):
+      result += kinetic_energy(i_spatial=body.i_spatial, v_spatial=v)
     return result
 
-  def accumulated_spatial_inertia(O, Xup=None):
-    result = [B.I for B in O.bodies]
-    if (Xup is None): Xup = O.Xup()
+  def accumulated_spatial_inertia(O):
+    result = [body.i_spatial for body in O.bodies]
+    xup_array = O.xup_array()
     for i in xrange(len(result)-1,-1,-1):
-      B = O.bodies[i]
-      if (B.parent != -1):
-        result[B.parent] += Xup[i].transpose() * result[i] * Xup[i]
+      body = O.bodies[i]
+      if (body.parent != -1):
+        result[body.parent] \
+          += xup_array[i].transpose() * result[i] * xup_array[i]
     return result
 
-  def qd_e_kin_scales(O, Xup=None, e_kin_epsilon=1.e-12):
+  def qd_e_kin_scales(O, e_kin_epsilon=1.e-12):
     result = []
     rap = result.append
-    for B,asi in zip(O.bodies, O.accumulated_spatial_inertia(Xup=Xup)):
-      S = B.J.S
-      j_dof = B.J.degrees_of_freedom
+    for body,asi in zip(O.bodies, O.accumulated_spatial_inertia()):
+      S = body.joint.S
+      j_dof = body.joint.degrees_of_freedom
       qd = [0] * j_dof
       for i in xrange(j_dof):
         qd[i] = 1
         vJ = matrix.col(qd)
         qd[i] = 0
         if (S is not None): vJ = S * vJ
-        e_kin = kinetic_energy(I_spatial=asi, v_spatial=vJ)
+        e_kin = kinetic_energy(i_spatial=asi, v_spatial=vJ)
         if (e_kin < e_kin_epsilon):
           rap(1)
         else:
@@ -193,35 +211,36 @@ vector giving the force acting on body i, expressed in body i coordinates.
 grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     """
 
-    Xup = O.Xup()
-    v = O.spatial_velocities(Xup=Xup)
-    a = [None] * len(Xup)
-    f = [None] * len(Xup)
-    for i in xrange(len(O.bodies)):
-      B = O.bodies[i]
-      if (B.J.S is None):
-        vJ = B.qd
+    nb = len(O.bodies)
+    xup_array = O.xup_array()
+    v = O.spatial_velocities()
+    a = [None] * nb
+    f = [None] * nb
+    for i in xrange(nb):
+      body = O.bodies[i]
+      if (body.joint.S is None):
+        vJ = body.qd
         aJ = qdd[i]
       else:
-        vJ = B.J.S * B.qd
-        aJ = B.J.S * qdd[i]
-      if (B.parent == -1):
+        vJ = body.joint.S * body.qd
+        aJ = body.joint.S * qdd[i]
+      if (body.parent == -1):
         a[i] = aJ
         if (grav_accn is not None):
-          a[i] += Xup[i] * (-grav_accn)
+          a[i] += xup_array[i] * (-grav_accn)
       else:
-        a[i] = Xup[i] * a[B.parent] + aJ + crm(v[i]) * vJ
-      f[i] = B.I * a[i] + crf(v[i]) * B.I * v[i]
+        a[i] = xup_array[i] * a[body.parent] + aJ + crm(v[i]) * vJ
+      f[i] = body.i_spatial * a[i] + crf(v[i]) * body.i_spatial * v[i]
       if (f_ext is not None and f_ext[i] is not None):
         f[i] -= f_ext[i]
 
-    tau = [None] * len(Xup)
-    for i in xrange(len(Xup)-1,-1,-1):
-      B = O.bodies[i]
-      if (B.J.S is None): tau[i] = f[i]
-      else:               tau[i] = B.J.S.transpose() * f[i]
-      if (B.parent != -1):
-        f[B.parent] += Xup[i].transpose() * f[i]
+    tau = [None] * nb
+    for i in xrange(nb-1,-1,-1):
+      body = O.bodies[i]
+      if (body.joint.S is None): tau[i] = f[i]
+      else:               tau[i] = body.joint.S.transpose() * f[i]
+      if (body.parent != -1):
+        f[body.parent] += xup_array[i].transpose() * f[i]
 
     return tau
 
@@ -230,15 +249,16 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
 Simplified version of Inverse Dynamics via Recursive Newton-Euler Algorithm,
 with all qd, qdd zero, but non-zero external forces.
     """
-    Xup = O.Xup()
+    nb = len(O.bodies)
+    xup_array = O.xup_array()
     f = [-e for e in f_ext]
-    tau = [None] * len(f)
-    for i in xrange(len(f)-1,-1,-1):
-      B = O.bodies[i]
-      if (B.J.S is None): tau[i] = f[i]
-      else:               tau[i] = B.J.S.transpose() * f[i]
-      if (B.parent != -1):
-        f[B.parent] += Xup[i].transpose() * f[i]
+    tau = [None] * nb
+    for i in xrange(nb-1,-1,-1):
+      body = O.bodies[i]
+      if (body.joint.S is None): tau[i] = f[i]
+      else:                      tau[i] = body.joint.S.transpose() * f[i]
+      if (body.parent != -1):
+        f[body.parent] += xup_array[i].transpose() * f[i]
     return tau
 
   def d_pot_d_q(O, f_ext):
@@ -246,8 +266,8 @@ with all qd, qdd zero, but non-zero external forces.
 Gradients of potential energy (defined via f_ext) w.r.t. positional
 coordinates q. Uses ID0().
     """
-    return [B.J.tau_as_d_pot_d_q(tau=tau)
-      for B,tau in zip(O.bodies, O.ID0(f_ext=f_ext))]
+    return [body.joint.tau_as_d_pot_d_q(tau=tau)
+      for body,tau in zip(O.bodies, O.ID0(f_ext=f_ext))]
 
   def FDab(O, tau=None, f_ext=None, grav_accn=None):
     """RBDA Tab. 7.1, p. 132:
@@ -260,28 +280,29 @@ vector giving the force acting on body i, expressed in body i coordinates.
 grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     """
 
-    Xup = O.Xup()
-    v = O.spatial_velocities(Xup=Xup)
-    c = [None] * len(Xup)
-    IA = [None] * len(Xup)
-    pA = [None] * len(Xup)
-    for i in xrange(len(O.bodies)):
-      B = O.bodies[i]
-      if (B.J.S is None): vJ = B.qd
-      else:               vJ = B.J.S * B.qd
-      if (B.parent == -1): c[i] = matrix.col([0,0,0,0,0,0])
+    nb = len(O.bodies)
+    xup_array = O.xup_array()
+    v = O.spatial_velocities()
+    c = [None] * nb
+    IA = [None] * nb
+    pA = [None] * nb
+    for i in xrange(nb):
+      body = O.bodies[i]
+      if (body.joint.S is None): vJ = body.qd
+      else:                      vJ = body.joint.S * body.qd
+      if (body.parent == -1): c[i] = matrix.col([0,0,0,0,0,0])
       else:                c[i] = crm(v[i]) * vJ
-      IA[i] = B.I
-      pA[i] = crf(v[i]) * B.I * v[i]
+      IA[i] = body.i_spatial
+      pA[i] = crf(v[i]) * body.i_spatial * v[i]
       if (f_ext is not None and f_ext[i] is not None):
         pA[i] -= f_ext[i]
 
-    U = [None] * len(Xup)
-    d_inv = [None] * len(Xup)
-    u = [None] * len(Xup)
-    for i in xrange(len(Xup)-1,-1,-1):
-      B = O.bodies[i]
-      if (B.J.S is None):
+    U = [None] * nb
+    d_inv = [None] * nb
+    u = [None] * nb
+    for i in xrange(nb-1,-1,-1):
+      body = O.bodies[i]
+      if (body.joint.S is None):
         U[i] = IA[i]
         d = U[i]
         if (tau is None or tau[i] is None):
@@ -289,33 +310,33 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
         else:
           u[i] = tau[i] - pA[i]
       else:
-        U[i] = IA[i] * B.J.S
-        d = B.J.S.transpose() * U[i]
+        U[i] = IA[i] * body.joint.S
+        d = body.joint.S.transpose() * U[i]
         if (tau is None or tau[i] is None):
-          u[i] =        - B.J.S.transpose() * pA[i]
+          u[i] =        - body.joint.S.transpose() * pA[i]
         else:
-          u[i] = tau[i] - B.J.S.transpose() * pA[i]
+          u[i] = tau[i] - body.joint.S.transpose() * pA[i]
       d_inv[i] = generalized_inverse(d)
-      if (B.parent != -1):
+      if (body.parent != -1):
         Ia = IA[i] - U[i] * d_inv[i] * U[i].transpose()
         pa = pA[i] + Ia*c[i] + U[i] * d_inv[i] * u[i]
-        IA[B.parent] += Xup[i].transpose() * Ia * Xup[i]
-        pA[B.parent] += Xup[i].transpose() * pa
+        IA[body.parent] += xup_array[i].transpose() * Ia * xup_array[i]
+        pA[body.parent] += xup_array[i].transpose() * pa
 
-    a = [None] * len(Xup)
-    qdd = [None] * len(Xup)
-    for i in xrange(len(O.bodies)):
-      B = O.bodies[i]
-      if (B.parent == -1):
+    a = [None] * nb
+    qdd = [None] * nb
+    for i in xrange(nb):
+      body = O.bodies[i]
+      if (body.parent == -1):
         a[i] = c[i]
         if (grav_accn is not None):
-          a[i] += Xup[i] * (-grav_accn)
+          a[i] += xup_array[i] * (-grav_accn)
       else:
-        a[i] = Xup[i] * a[B.parent] + c[i]
+        a[i] = xup_array[i] * a[body.parent] + c[i]
       qdd[i] = d_inv[i] * (u[i] - U[i].transpose()*a[i])
-      if (B.J.S is None):
+      if (body.joint.S is None):
         a[i] += qdd[i]
       else:
-        a[i] += B.J.S * qdd[i]
+        a[i] += body.joint.S * qdd[i]
 
     return qdd

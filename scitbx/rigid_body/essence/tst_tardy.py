@@ -18,20 +18,20 @@ class tardy_model(tardy.model):
 
   def d_pot_d_q_via_finite_differences(O, eps=1.e-6):
     result = []
-    for B in O.bodies:
+    for body in O.bodies:
       gs = []
-      J_orig = B.J
-      q_orig = list(J_orig.get_q())
-      for iq in xrange(J_orig.q_size):
+      j_orig = body.joint
+      q_orig = list(j_orig.get_q())
+      for iq in xrange(j_orig.q_size):
         fs = []
         for signed_eps in [eps, -eps]:
           q_eps = list(q_orig)
           q_eps[iq] += signed_eps
-          B.J = J_orig.new_q(q=q_eps)
+          body.joint = j_orig.new_q(q=q_eps)
           O.flag_positions_as_changed()
           fs.append(O.e_pot())
         gs.append((fs[0]-fs[1])/(2*eps))
-      B.J = J_orig
+      body.joint = j_orig
       O.flag_positions_as_changed()
       result.append(matrix.col(gs))
     return result
@@ -92,23 +92,23 @@ class potential_object(object):
 def exercise_qd_e_kin_scales(tardy_model):
   def slow():
     result = flex.double()
-    for B in tardy_model.bodies:
-      BJ0 = B.J
-      qd0 = B.J.qd_zero
+    for body in tardy_model.bodies:
+      bj0 = body.joint
+      qd0 = body.joint.qd_zero
       qd = list(qd0)
       for iqd in xrange(len(qd)):
         qd[iqd] = qd0[iqd] + 1
-        B.qd = matrix.col(qd)
+        body.qd = matrix.col(qd)
         qd[iqd] = qd0[iqd]
         tardy_model.flag_velocities_as_changed()
-        B.J = BJ0.time_step_position(qd=B.qd, delta_t=1)
+        body.joint = bj0.time_step_position(qd=body.qd, delta_t=1)
         e_kin = tardy_model.e_kin()
         if (e_kin < 1.e-12):
           result.append(1)
         else:
           result.append(1 / e_kin**0.5)
-      B.J = BJ0
-      B.qd = B.J.qd_zero
+      body.joint = bj0
+      body.qd = body.joint.qd_zero
       tardy_model.flag_positions_as_changed()
     assert tardy_model.e_kin() == 0
     assert len(result) == tardy_model.degrees_of_freedom
@@ -284,7 +284,7 @@ def exercise_fixed_vertices_special_cases():
   tm = construct_tardy_model(
     labels=labels, sites=sites, masses=masses, tardy_tree=tt)
   assert len(tm.bodies) == 1
-  assert tm.bodies[0].J.degrees_of_freedom == 6
+  assert tm.bodies[0].joint.degrees_of_freedom == 6
   exercise_linear_velocity_manipulations(tardy_model=tm)
   #
   expected_e_kin_1 = [
@@ -307,7 +307,8 @@ def exercise_fixed_vertices_special_cases():
     tm = construct_tardy_model(
       labels=labels, sites=sites, masses=masses, tardy_tree=tt)
     assert len(tm.bodies) == 1
-    assert tm.bodies[0].J.degrees_of_freedom == [3,1,0][len(fixed_vertices)-1]
+    assert tm.bodies[0].joint.degrees_of_freedom \
+        == [3,1,0][len(fixed_vertices)-1]
     tm.assign_random_velocities(e_kin_target=1, random_gauss=rnd.gauss)
     if (len(fixed_vertices) != 3):
       assert approx_equal(tm.e_kin(), 1, eps=1e-10)
@@ -328,7 +329,7 @@ def exercise_fixed_vertices_special_cases():
     tm = construct_tardy_model(
       labels=labels, sites=sites, masses=masses, tardy_tree=tt)
     assert len(tm.bodies) == 1
-    assert tm.bodies[0].J.degrees_of_freedom == 0
+    assert tm.bodies[0].joint.degrees_of_freedom == 0
     exercise_linear_velocity_manipulations(tardy_model=tm)
 
 def exercise_tardy_model(out, n_dynamics_steps, delta_t, tardy_model):

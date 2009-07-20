@@ -17,19 +17,20 @@ import sys
 
 def exercise_basic():
   fs = featherstone
-  assert approx_equal(sum(fs.Xrot((1,2,3,4,5,6,7,8,9))), 90)
-  assert approx_equal(sum(fs.Xtrans((1,2,3))), 6)
+  assert approx_equal(sum(fs.xrot((1,2,3,4,5,6,7,8,9))), 90)
+  assert approx_equal(sum(fs.xtrans((1,2,3))), 6)
   assert approx_equal(
-    sum(fs.T_as_X(T=matrix.rt(((1,2,3,4,5,6,7,8,9), (1,2,3))))), 90)
+    sum(fs.cb_as_spatial_transform(
+      cb=matrix.rt(((1,2,3,4,5,6,7,8,9), (1,2,3))))), 90)
   assert approx_equal(sum(fs.crm((1,2,3,4,5,6))), 0)
   assert approx_equal(sum(fs.crf((1,2,3,4,5,6))), 0)
-  I_spatial = fs.mcI(
+  i_spatial = fs.mcI(
     m=1.234,
     c=matrix.col((1,2,3)),
     I=matrix.sym(sym_mat3=(2,3,4,0.1,0.2,0.3)))
-  assert approx_equal(sum(I_spatial), 21.306)
+  assert approx_equal(sum(i_spatial), 21.306)
   assert approx_equal(fs.kinetic_energy(
-    I_spatial=I_spatial, v_spatial=matrix.col((1,2,3,4,5,6))), 75.109)
+    i_spatial=i_spatial, v_spatial=matrix.col((1,2,3,4,5,6))), 75.109)
   #
   mass_points = utils.mass_points(
     masses=[2.34, 3.56, 1.58],
@@ -50,12 +51,12 @@ def exercise_basic():
 class zero_dof_body(object):
 
   def __init__(O):
-    O.A = joint_lib.zero_dof_alignment()
-    O.I = matrix.sqr([0]*36)
-    O.J = joint_lib.zero_dof()
-    O.qd = O.J.qd_zero
-    assert O.J.get_linear_velocity(qd=O.qd) is None
-    assert O.J.new_linear_velocity(qd=None, value=None) is None
+    O.alignment = joint_lib.zero_dof_alignment()
+    O.i_spatial = matrix.sqr([0]*36)
+    O.joint = joint_lib.zero_dof()
+    O.qd = O.joint.qd_zero
+    assert O.joint.get_linear_velocity(qd=O.qd) is None
+    assert O.joint.new_linear_velocity(qd=None, value=None) is None
     O.parent = -1
 
 class six_dof_body(object):
@@ -66,17 +67,17 @@ class six_dof_body(object):
       (0.405, 3.954, 5.917),
       (0.779, 5.262, 5.227)])
     mass_points = utils.mass_points(sites=sites, masses=[1.0, 1.0, 1.0])
-    O.A = joint_lib.six_dof_alignment(
+    O.alignment = joint_lib.six_dof_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
+    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
     qE = matrix.col((0.18, 0.36, 0.54, -0.73)).normalize()
     qr = matrix.col((-0.1,0.3,0.2))
-    O.J = joint_lib.six_dof(qE=qE, qr=qr)
+    O.joint = joint_lib.six_dof(qE=qE, qr=qr)
     O.qd = matrix.col((0.18,-0.02,-0.16,0.05,0.19,-0.29))
-    assert O.J.get_linear_velocity(qd=O.qd).elems == (0.05,0.19,-0.29)
-    O.qd = O.J.new_linear_velocity(
+    assert O.joint.get_linear_velocity(qd=O.qd).elems == (0.05,0.19,-0.29)
+    O.qd = O.joint.new_linear_velocity(
       qd=O.qd, value=matrix.col((-0.05,-0.19,0.29)))
-    assert O.J.get_linear_velocity(qd=O.qd).elems == (-0.05,-0.19,0.29)
+    assert O.joint.get_linear_velocity(qd=O.qd).elems == (-0.05,-0.19,0.29)
     O.parent = -1
 
 class spherical_body(object):
@@ -86,14 +87,14 @@ class spherical_body(object):
       (0.04, -0.16, 0.19),
       (0.10, -0.15, 0.18)])
     mass_points = utils.mass_points(sites=sites, masses=[1.0, 1.0])
-    O.A = joint_lib.spherical_alignment(
+    O.alignment = joint_lib.spherical_alignment(
       pivot=mass_points.center_of_mass())
-    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
+    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
     qE = matrix.col((-0.50, -0.33, 0.67, -0.42)).normalize()
-    O.J = joint_lib.spherical(qE=qE)
+    O.joint = joint_lib.spherical(qE=qE)
     O.qd = matrix.col((0.12, -0.08, 0.11))
-    assert O.J.get_linear_velocity(qd=O.qd) is None
-    assert O.J.new_linear_velocity(qd=None, value=None) is None
+    assert O.joint.get_linear_velocity(qd=O.qd) is None
+    assert O.joint.new_linear_velocity(qd=None, value=None) is None
     O.parent = 0
 
 class revolute_body(object):
@@ -103,12 +104,12 @@ class revolute_body(object):
     normal = matrix.col((0.25, 0.86, -0.45)).normalize()
     sites = matrix.col_list([(-0.084, 6.09, 4.936)])
     mass_points = utils.mass_points(sites=sites, masses=[1.0])
-    O.A = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
-    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
-    O.J = joint_lib.revolute(qE=matrix.col([0.26]))
+    O.alignment = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
+    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
+    O.joint = joint_lib.revolute(qE=matrix.col([0.26]))
     O.qd = matrix.col([-0.19])
-    assert O.J.get_linear_velocity(qd=O.qd) is None
-    assert O.J.new_linear_velocity(qd=None, value=None) is None
+    assert O.joint.get_linear_velocity(qd=O.qd) is None
+    assert O.joint.new_linear_velocity(qd=None, value=None) is None
     O.parent = parent
 
 class translational_body(object):
@@ -116,15 +117,15 @@ class translational_body(object):
   def __init__(O):
     sites = [matrix.col((0.949, 2.815, 5.189))]
     mass_points = utils.mass_points(sites=sites, masses=[1.0])
-    O.A = joint_lib.translational_alignment(
+    O.alignment = joint_lib.translational_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
+    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
     qr = matrix.col((-0.1,0.3,0.2))
-    O.J = joint_lib.translational(qr=qr)
+    O.joint = joint_lib.translational(qr=qr)
     O.qd = matrix.col((0.05,0.19,-0.29))
-    assert O.J.get_linear_velocity(qd=O.qd).elems == O.qd.elems
-    O.qd = O.J.new_linear_velocity(qd=O.qd, value=-O.qd)
-    assert O.J.get_linear_velocity(qd=O.qd).elems == O.qd.elems
+    assert O.joint.get_linear_velocity(qd=O.qd).elems == O.qd.elems
+    O.qd = O.joint.new_linear_velocity(qd=O.qd, value=-O.qd)
+    assert O.joint.get_linear_velocity(qd=O.qd).elems == O.qd.elems
     O.parent = -1
 
 def exercise_system_model():
@@ -183,8 +184,8 @@ def exercise_system_model():
   assert approx_equal(qdd2, qdd)
   #
   new_q = [
-    B.J.time_step_position(qd=B.qd, delta_t=0.01).get_q()
-      for B in model.bodies]
+    body.joint.time_step_position(qd=body.qd, delta_t=0.01).get_q()
+      for body in model.bodies]
   assert approx_equal(new_q, [
     (0.18036749, 0.36210928, 0.54329229, -0.7356480,
      -0.10189282, 0.29788946, 0.2020574),
@@ -192,20 +193,20 @@ def exercise_system_model():
     (0.2581,),
     (-0.1005, 0.2981, 0.2029)])
   new_qd = [
-    B.J.time_step_velocity(qd=B.qd, qdd=qdd_i, delta_t=0.01)
-      for B,qdd_i in zip(model.bodies, qdd)]
+    body.joint.time_step_velocity(qd=body.qd, qdd=qdd_i, delta_t=0.01)
+      for body,qdd_i in zip(model.bodies, qdd)]
   assert approx_equal(new_qd, [
     (0.1796, -0.0195, -0.1577, -0.0501, -0.1908, 0.2904),
     (0.1208, -0.0808, 0.1099),
     (-0.1886,),
     (-0.0501, -0.1934, 0.2928)])
-  for B,q in zip(model.bodies, [(1,2,3,4,5,6,7),(8,9,10,11),(12,)]):
-    assert approx_equal(B.J.new_q(q=q).get_q(), q)
+  for body,q in zip(model.bodies, [(1,2,3,4,5,6,7),(8,9,10,11),(12,)]):
+    assert approx_equal(body.joint.new_q(q=q).get_q(), q)
   #
   qdd = []
-  for B in model.bodies:
-    B.qd = B.J.qd_zero
-    qdd.append(B.J.qdd_zero)
+  for body in model.bodies:
+    body.qd = body.joint.qd_zero
+    qdd.append(body.joint.qdd_zero)
   tau = model.ID(qdd=qdd, f_ext=f_ext)
   assert approx_equal(tau, [
     (0.286606889188, -0.220046556736, 1.14581449056,
@@ -260,23 +261,23 @@ def exercise_system_model_with_zero_dof_body():
   assert approx_equal(qdd2, qdd)
   #
   new_q = [
-    B.J.time_step_position(qd=B.qd, delta_t=0.01).get_q()
-      for B in model.bodies]
+    body.joint.time_step_position(qd=body.qd, delta_t=0.01).get_q()
+      for body in model.bodies]
   assert approx_equal(new_q, [
     (), (0.2581,)])
   new_qd = [
-    B.J.time_step_velocity(qd=B.qd, qdd=qdd_i, delta_t=0.01)
-      for B,qdd_i in zip(model.bodies, qdd)]
+    body.joint.time_step_velocity(qd=body.qd, qdd=qdd_i, delta_t=0.01)
+      for body,qdd_i in zip(model.bodies, qdd)]
   assert approx_equal(new_qd, [
     (),
     (-0.1886,)])
-  for B,q in zip(model.bodies, [(),(13,)]):
-    assert approx_equal(B.J.new_q(q=q).get_q(), q)
+  for body,q in zip(model.bodies, [(),(13,)]):
+    assert approx_equal(body.joint.new_q(q=q).get_q(), q)
   #
   qdd = []
-  for B in model.bodies:
-    B.qd = B.J.qd_zero
-    qdd.append(B.J.qdd_zero)
+  for body in model.bodies:
+    body.qd = body.joint.qd_zero
+    qdd.append(body.joint.qdd_zero)
   tau = model.ID(qdd=qdd, f_ext=f_ext)
   assert approx_equal(tau, [
     (),
