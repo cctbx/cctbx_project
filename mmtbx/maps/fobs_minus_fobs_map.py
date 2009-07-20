@@ -11,6 +11,7 @@ from cctbx import miller
 import libtbx.load_env
 from mmtbx import utils
 from iotbx.pdb import combine_unique_pdb_files
+import iotbx.pdb
 
 
 fo_minus_fo_master_params_str = """\
@@ -170,6 +171,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     .option("--silent",
       action="store_true",
       help="Suppress output to the screen.")
+    .enable_symmetry_comprehensive()
     ).process(args=args)
   #
   log = sys.stdout
@@ -180,7 +182,8 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     print >> log
   #
   processed_args = utils.process_command_line_args(args = command_line.args,
-    master_params = fo_minus_fo_master_params(), log = log)
+    cmd_cs = command_line.symmetry, master_params = fo_minus_fo_master_params(),
+    log = log)
   crystal_symmetry = processed_args.crystal_symmetry
   params = processed_args.params
   #
@@ -242,8 +245,16 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
   pdb_combined.report_non_unique(out = log)
   if(len(pdb_combined.unique_file_names) == 0):
     raise Sorry("No coordinate file given.")
+  #
+  raw_recs = flex.std_string()
+  for rec in pdb_combined.raw_records:
+    if(rec.upper().count("CRYST1")==0):
+      raw_recs.append(rec)
+  raw_recs.append(iotbx.pdb.format_cryst1_record(
+    crystal_symmetry = crystal_symmetry))
+  #
   xray_structure = iotbx.pdb.input(source_info = None, lines =
-    pdb_combined.raw_records).xray_structure_simple()
+    raw_recs).xray_structure_simple()
   if(not command_line.options.silent):
     print >> log, "*** Model summary:"
     xray_structure.show_summary(f = log)

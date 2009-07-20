@@ -308,7 +308,8 @@ class electron_density_map(object):
               other_fft_map = None,
               map_type = None,
               alpha_fom_source = None,
-              force_anomalous_flag_false = None):
+              force_anomalous_flag_false = None,
+              use_all_data = True):
     if(map_coefficients is None):
       map_coefficients = self.map_coefficients(
         map_type         = map_type,
@@ -317,6 +318,8 @@ class electron_density_map(object):
         map_coefficients = map_coefficients.average_bijvoet_mates()
     if(force_anomalous_flag_false):
       map_coefficients = map_coefficients.average_bijvoet_mates()
+    if(not use_all_data):
+      map_coefficients = map_coefficients.select(self.fmodel.work)
     if(other_fft_map is None):
       return map_coefficients.fft_map(
         resolution_factor = resolution_factor,

@@ -147,11 +147,12 @@ class run(object):
     model.xray_structure = fmodel.xray_structure
     self.show(prefix = "Final")
 
-  def compute_map(self, map_type=None):
+  def compute_map(self, map_type=None, use_all_data=False):
     e_map_manager = self.fmodel.electron_density_map() # XXX pass in map filling options
     fft_map = e_map_manager.fft_map(
       resolution_factor = self.params.grid_resolution_factor,
-      map_type          = map_type)
+      map_type          = map_type,
+      use_all_data      = use_all_data)
     fft_map.apply_sigma_scaling()
     return fft_map
 
