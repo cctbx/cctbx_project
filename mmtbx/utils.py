@@ -1484,7 +1484,8 @@ def fmodel_simple(f_obs,
   return fmodel
 
 class process_command_line_args(object):
-  def __init__(self, args, master_params=None, log=None, home_scope=None):
+  def __init__(self, args, cmd_cs=None, master_params=None, log=None,
+               home_scope=None):
     self.log = log
     self.pdb_file_names   = []
     self.cif_objects      = []
@@ -1492,6 +1493,7 @@ class process_command_line_args(object):
     self.reflection_file_names = []
     self.params           = None
     self.crystal_symmetry = None
+    self.cmd_cs = cmd_cs
     crystal_symmetries = []
     if(master_params is not None):
       assert home_scope is None
@@ -1568,7 +1570,7 @@ class process_command_line_args(object):
     if(len(crystal_symmetries)>1):
       cs0 = None
       for cs in crystal_symmetries:
-        if(cs[1] is not None):
+        if(cs[1] is not None and cs[1].unit_cell() is not None):
           cs0 = cs[1]
           break
       if(cs0 is not None and cs0.unit_cell() is not None):
@@ -1576,11 +1578,20 @@ class process_command_line_args(object):
          if(cs[1] is not None and cs[1].unit_cell() is not None):
            if(not cs0.is_similar_symmetry(cs[1])):
              for cs in crystal_symmetries:
-               print cs[0], cs[1].unit_cell(), cs[1].space_group_info()
-             raise Sorry("Crystal symmetry mismatch between different files.")
+               if(cs[1] is not None):
+                 print >> self.log, cs[0], cs[1].unit_cell(), cs[1].space_group_info()
+             if(self.cmd_cs is None or self.cmd_cs.unit_cell() is None):
+               m1 = "Crystal symmetry mismatch between different files."
+               m2 = "Use --symmetry=SYMMETRY_SOURCE option to specify symmetry from the command line."
+               raise Sorry("%s\n%s"%(m1,m2))
+             else:
+               cs0 = self.cmd_cs
+               break
         self.crystal_symmetry = cs0
     elif(len(crystal_symmetries) == 1):
       self.crystal_symmetry = crystal_symmetries[0][1]
+    if(self.cmd_cs is not None and self.cmd_cs.unit_cell() is not None):
+      self.crystal_symmetry = self.cmd_cs
 
 class pdb_file(object):
 
