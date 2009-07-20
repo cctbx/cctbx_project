@@ -158,6 +158,8 @@ if (env_etc.compiler == "unix_icpc"):
 
 static_exe = libtbx.env.build_options.static_exe
 
+gcc_common_warn_options = ["-Wall", "-Wno-sign-compare", "-Winit-self"]
+
 def enable_more_warnings(env):
   if (env_etc._enable_more_warnings == "gcc"):
     for flags in ["CCFLAGS", "SHCCFLAGS", "CXXFLAGS", "SHCXXFLAGS"]:
@@ -165,7 +167,7 @@ def enable_more_warnings(env):
       patched_flags = []
       for item in env[flags]:
         if (item == "-w"):
-          patched_flags.extend(["-Wall", "-Wno-sign-compare"])
+          patched_flags.extend(gcc_common_warn_options)
           have_change = True
         else:
           patched_flags.append(item)
@@ -500,9 +502,9 @@ else:
       warn_options = ["-w"]
       env_etc._enable_more_warnings = "gcc"
     elif (libtbx.env.build_options.warning_level == 1):
-      warn_options = ["-Wall", "-Wno-sign-compare"]
+      warn_options = gcc_common_warn_options
     else:
-      warn_options = ["-Wall", "-Wno-sign-compare", "-Werror"]
+      warn_options = gcc_common_warn_options + ["-Werror"]
     env_etc.ccflags_base.extend(warn_options)
     env_etc.cxxflags_base.extend(warn_options)
     if (libtbx.env.build_options.optimization):
@@ -658,9 +660,9 @@ else:
       warn_options = ["-w"]
       env_etc._enable_more_warnings = "gcc"
     elif (libtbx.env.build_options.warning_level == 1):
-      warn_options = ["-Wall", "-Wno-sign-compare"]
+      warn_options = gcc_common_warn_options
     else:
-      warn_options = ["-Wall", "-Wno-sign-compare", "-Werror"]
+      warn_options = gcc_common_warn_options + ["-Werror"]
     env_etc.ccflags_base.extend(warn_options)
     if (cxx == "c++"):
       env_etc.ccflags_base.extend(["-no-cpp-precomp", "-Wno-long-double"])
