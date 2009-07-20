@@ -99,16 +99,16 @@ data_and_flags = iotbx.phil.parse("""\
     .type=strings
     .input_size = 160
     .short_caption = Data labels
-    .style = bold renderer:draw_fobs_label_widget \
+    .style = bold renderer:draw_fobs_label_widget noauto \
       OnChange:update_resolution_limits
   high_resolution = None
     .type=float
     .input_size = 80
-    .style = bold renderer:draw_resolution_widget
+    .style = bold renderer:draw_resolution_widget noauto
   low_resolution = None
     .type=float
     .input_size = 80
-    .style = bold renderer:draw_resolution_widget
+    .style = bold renderer:draw_resolution_widget noauto
   outliers_rejection = True
     .type=bool
     .short_caption = Reject outliers
@@ -149,13 +149,13 @@ data_and_flags = iotbx.phil.parse("""\
       .type=str
       .short_caption = R-free label
       .input_size = 160
-      .style = bold renderer:draw_rfree_label_widget \
+      .style = bold renderer:draw_rfree_label_widget noauto \
                OnChange:update_rfree_flag_value
     test_flag_value = None
       .type=int
       .help = This value is usually selected automatically - do not change \
         unless you really know what you're doing!
-      .style = bold
+      .style = bold noauto
     disable_suitability_test = False
       .type=bool
       .expert_level = 2
