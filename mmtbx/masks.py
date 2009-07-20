@@ -237,7 +237,7 @@ class manager(object):
       asu_mask.compute(self.xray_structure.sites_frac(), self.atom_radii)
       fm_asu = asu_mask.structure_factors(self.miller_array.indices())
       self._f_mask = self.miller_array.set().array(data = fm_asu)
-      self.solvent_content_via_mask = "NOT IMPLEMENTED" # XXX intentional crash
+      self.solvent_content_via_mask = asu_mask.contact_surface_fraction
     return self._f_mask
 
   def bulk_solvent_mask(self):
