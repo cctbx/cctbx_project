@@ -1,11 +1,11 @@
-from featherstone import matrix, T_as_X
+from featherstone import matrix, cb_as_spatial_transform
 import math
 
 class zero_dof_alignment(object):
 
   def __init__(O):
-    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), (0,0,0)))
-    O.Tb0 = O.T0b
+    O.cb_0b = matrix.rt(((1,0,0,0,1,0,0,0,1), (0,0,0)))
+    O.cb_b0 = O.cb_0b
 
 class zero_dof(object):
 
@@ -15,9 +15,9 @@ class zero_dof(object):
 
   def __init__(O):
     O.q_size = 0
-    O.Tps = matrix.rt(((1,0,0,0,1,0,0,0,1), (0,0,0)))
-    O.Tsp = O.Tps
-    O.Xj = T_as_X(O.Tps)
+    O.cb_ps = matrix.rt(((1,0,0,0,1,0,0,0,1), (0,0,0)))
+    O.cb_sp = O.cb_ps
+    O.Xj = cb_as_spatial_transform(O.cb_ps)
     O.S = matrix.rec(elems=(), n=(6,0))
 
   def get_linear_velocity(O, qd):
@@ -44,8 +44,8 @@ class zero_dof(object):
 class six_dof_alignment(object):
 
   def __init__(O, center_of_mass):
-    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -center_of_mass))
-    O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), center_of_mass))
+    O.cb_0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -center_of_mass))
+    O.cb_b0 = matrix.rt(((1,0,0,0,1,0,0,0,1), center_of_mass))
 
 class six_dof(object):
 
@@ -60,9 +60,9 @@ class six_dof(object):
     O.unit_quaternion = qE.normalize() # RBDA, bottom of p. 86
     O.E = RBDA_Eq_4_12(q=O.unit_quaternion)
     O.r = qr
-    O.Tps = matrix.rt((O.E, -O.E * O.r)) # RBDA Eq. 2.28
-    O.Tsp = matrix.rt((O.E.transpose(), O.r))
-    O.Xj = T_as_X(O.Tps)
+    O.cb_ps = matrix.rt((O.E, -O.E * O.r)) # RBDA Eq. 2.28
+    O.cb_sp = matrix.rt((O.E.transpose(), O.r))
+    O.Xj = cb_as_spatial_transform(O.cb_ps)
     O.S = None
 
   def get_linear_velocity(O, qd):
@@ -98,8 +98,8 @@ class six_dof(object):
 class spherical_alignment(object):
 
   def __init__(O, pivot):
-    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -pivot))
-    O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), pivot))
+    O.cb_0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -pivot))
+    O.cb_b0 = matrix.rt(((1,0,0,0,1,0,0,0,1), pivot))
 
 class spherical(object):
 
@@ -112,9 +112,9 @@ class spherical(object):
     O.q_size = 4
     O.unit_quaternion = qE.normalize() # RBDA, bottom of p. 86
     O.E = RBDA_Eq_4_12(q=O.unit_quaternion)
-    O.Tps = matrix.rt((O.E, (0,0,0)))
-    O.Tsp = matrix.rt((O.E.transpose(), (0,0,0)))
-    O.Xj = T_as_X(O.Tps)
+    O.cb_ps = matrix.rt((O.E, (0,0,0)))
+    O.cb_sp = matrix.rt((O.E.transpose(), (0,0,0)))
+    O.Xj = cb_as_spatial_transform(O.cb_ps)
     O.S = matrix.rec((
       1,0,0,
       0,1,0,
@@ -155,8 +155,8 @@ class revolute_alignment(object):
 
   def __init__(O, pivot, normal):
     r = normal.vector_to_001_rotation()
-    O.T0b = matrix.rt((r, -r * pivot))
-    O.Tb0 = matrix.rt((r.transpose(), pivot))
+    O.cb_0b = matrix.rt((r, -r * pivot))
+    O.cb_b0 = matrix.rt((r.transpose(), pivot))
 
 class revolute(object):
 
@@ -172,9 +172,9 @@ class revolute(object):
     O.E = matrix.sqr((c, s, 0, -s, c, 0, 0, 0, 1)) # RBDA Tab. 2.2
     O.r = matrix.col((0,0,0))
     #
-    O.Tps = matrix.rt((O.E, (0,0,0)))
-    O.Tsp = matrix.rt((O.E.transpose(), (0,0,0)))
-    O.Xj = T_as_X(O.Tps)
+    O.cb_ps = matrix.rt((O.E, (0,0,0)))
+    O.cb_sp = matrix.rt((O.E.transpose(), (0,0,0)))
+    O.Xj = cb_as_spatial_transform(O.cb_ps)
     O.S = matrix.col((0,0,1,0,0,0))
 
   def get_linear_velocity(O, qd):
@@ -211,9 +211,9 @@ class translational(object):
     O.qr = qr
     O.q_size = 3
     O.r = qr
-    O.Tps = matrix.rt(((1,0,0,0,1,0,0,0,1), -O.r))
-    O.Tsp = matrix.rt(((1,0,0,0,1,0,0,0,1), O.r))
-    O.Xj = T_as_X(O.Tps)
+    O.cb_ps = matrix.rt(((1,0,0,0,1,0,0,0,1), -O.r))
+    O.cb_sp = matrix.rt(((1,0,0,0,1,0,0,0,1), O.r))
+    O.Xj = cb_as_spatial_transform(O.cb_ps)
     O.S = matrix.rec((
       0,0,0,
       0,0,0,

@@ -14,10 +14,10 @@ class zero_dof_body(object):
   def __init__(O, sites, masses):
     O.number_of_sites = len(sites)
     O.sum_of_masses = sum(masses)
-    O.A = joint_lib.zero_dof_alignment()
-    O.I = matrix.sqr([0]*36)
-    O.J = joint_lib.zero_dof()
-    O.qd = O.J.qd_zero
+    O.alignment = joint_lib.zero_dof_alignment()
+    O.i_spatial = matrix.sqr([0]*36)
+    O.joint = joint_lib.zero_dof()
+    O.qd = O.joint.qd_zero
 
 class six_dof_body(object):
 
@@ -25,14 +25,14 @@ class six_dof_body(object):
     O.number_of_sites = len(sites)
     O.sum_of_masses = sum(masses)
     mass_points = utils.mass_points(sites=sites, masses=masses)
-    O.A = joint_lib.six_dof_alignment(
+    O.alignment = joint_lib.six_dof_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
+    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
     #
     qE = matrix.col((1,0,0,0))
     qr = matrix.col((0,0,0))
-    O.J = joint_lib.six_dof(qE=qE, qr=qr)
-    O.qd = O.J.qd_zero
+    O.joint = joint_lib.six_dof(qE=qE, qr=qr)
+    O.qd = O.joint.qd_zero
 
 class spherical_body(object):
 
@@ -40,12 +40,12 @@ class spherical_body(object):
     O.number_of_sites = len(sites)
     O.sum_of_masses = sum(masses)
     mass_points = utils.mass_points(sites=sites, masses=masses)
-    O.A = joint_lib.spherical_alignment(pivot=pivot)
-    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
+    O.alignment = joint_lib.spherical_alignment(pivot=pivot)
+    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
     #
     qE = matrix.col((1,0,0,0))
-    O.J = joint_lib.spherical(qE=qE)
-    O.qd = O.J.qd_zero
+    O.joint = joint_lib.spherical(qE=qE)
+    O.qd = O.joint.qd_zero
 
 class revolute_body(object):
 
@@ -53,11 +53,11 @@ class revolute_body(object):
     O.number_of_sites = len(sites)
     O.sum_of_masses = sum(masses)
     mass_points = utils.mass_points(sites=sites, masses=masses)
-    O.A = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
-    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
+    O.alignment = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
+    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
     #
-    O.J = joint_lib.revolute(qE=matrix.col([0]))
-    O.qd = O.J.qd_zero
+    O.joint = joint_lib.revolute(qE=matrix.col([0]))
+    O.qd = O.joint.qd_zero
 
 class translational_body(object):
 
@@ -65,13 +65,13 @@ class translational_body(object):
     O.number_of_sites = len(sites)
     O.sum_of_masses = sum(masses)
     mass_points = utils.mass_points(sites=sites, masses=masses)
-    O.A = joint_lib.translational_alignment(
+    O.alignment = joint_lib.translational_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
+    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
     #
     qr = matrix.col((0,0,0))
-    O.J = joint_lib.translational(qr=qr)
-    O.qd = O.J.qd_zero
+    O.joint = joint_lib.translational(qr=qr)
+    O.qd = O.joint.qd_zero
 
 def construct_bodies(
       sites,
@@ -154,26 +154,27 @@ class model(object):
       cluster_manager=tardy_tree.cluster_manager,
       near_singular_hinges_angular_tolerance_deg=
         near_singular_hinges_angular_tolerance_deg)
-    O.degrees_of_freedom = sum([B.J.degrees_of_freedom for B in O.bodies])
+    O.degrees_of_freedom = sum([body.joint.degrees_of_freedom
+      for body in O.bodies])
     O.flag_positions_as_changed()
 
   def root_indices(O):
     result = []
-    for iB,B in enumerate(O.bodies):
-      if (B.parent == -1):
-        result.append(iB)
+    for ib,body in enumerate(O.bodies):
+      if (body.parent == -1):
+        result.append(ib)
     return result
 
   def _accumulate_in_each_tree(O, attr):
     result = []
     accu = [0] * len(O.bodies)
-    for iB in xrange(len(O.bodies)-1,-1,-1):
-      B = O.bodies[iB]
-      accu[iB] += getattr(B, attr)
-      if (B.parent == -1):
-        result.append((iB, accu[iB]))
+    for ib in xrange(len(O.bodies)-1,-1,-1):
+      body = O.bodies[ib]
+      accu[ib] += getattr(body, attr)
+      if (body.parent == -1):
+        result.append((ib, accu[ib]))
       else:
-        accu[B.parent] += accu[iB]
+        accu[body.parent] += accu[ib]
     return result
 
   def number_of_sites_in_each_tree(O):
@@ -187,9 +188,9 @@ class model(object):
       number_of_sites_in_each_tree = O.number_of_sites_in_each_tree()
     sum_v = matrix.col((0,0,0))
     sum_n = 0
-    for iB,n in number_of_sites_in_each_tree:
-      B = O.bodies[iB]
-      v = B.J.get_linear_velocity(qd=B.qd)
+    for ib,n in number_of_sites_in_each_tree:
+      body = O.bodies[ib]
+      v = body.joint.get_linear_velocity(qd=body.qd)
       if (v is None): continue
       sum_v += v * n
       sum_n += n
@@ -200,11 +201,11 @@ class model(object):
   def subtract_from_linear_velocities(O, number_of_sites_in_each_tree, value):
     if (number_of_sites_in_each_tree is Auto):
       number_of_sites_in_each_tree = O.number_of_sites_in_each_tree()
-    for iB,n in number_of_sites_in_each_tree:
-      B = O.bodies[iB]
-      v = B.J.get_linear_velocity(qd=B.qd)
+    for ib,n in number_of_sites_in_each_tree:
+      body = O.bodies[ib]
+      v = body.joint.get_linear_velocity(qd=body.qd)
       if (v is None): continue
-      B.qd = B.J.new_linear_velocity(qd=B.qd, value=v-value)
+      body.qd = body.joint.new_linear_velocity(qd=body.qd, value=v-value)
 
   def flag_positions_as_changed(O):
     O.__featherstone_system_model = None
@@ -229,10 +230,10 @@ class model(object):
   def AJA(O):
     if (O.__AJA is None):
       O.__AJA = []
-      for B in O.bodies:
-        AJA = B.A.Tb0 * B.J.Tsp * B.A.T0b
-        if (B.parent != -1):
-          AJA = O.__AJA[B.parent] * AJA
+      for body in O.bodies:
+        AJA = body.alignment.cb_b0 * body.joint.cb_sp * body.alignment.cb_0b
+        if (body.parent != -1):
+          AJA = O.__AJA[body.parent] * AJA
         O.__AJA.append(AJA)
     return O.__AJA
 
@@ -240,10 +241,10 @@ class model(object):
     if (O.__JAr is None):
       O_AJA = O.AJA()
       O.__JAr = []
-      for B in O.bodies:
-        JAr = B.J.Tps.r * B.A.T0b.r
-        if (B.parent != -1):
-          JAr *= O_AJA[B.parent].r.transpose()
+      for body in O.bodies:
+        JAr = body.joint.cb_ps.r * body.alignment.cb_0b.r
+        if (body.parent != -1):
+          JAr *= O_AJA[body.parent].r.transpose()
         O.__JAr.append(JAr)
     return O.__JAr
 
@@ -253,9 +254,9 @@ class model(object):
       O.__sites_moved = [None] * len(O.sites)
       n_done = 0
       clusters = O.tardy_tree.cluster_manager.clusters
-      for iB,B in enumerate(O.bodies):
-        AJA = O_AJA[iB]
-        for i_seq in clusters[iB]:
+      for ib,body in enumerate(O.bodies):
+        AJA = O_AJA[ib]
+        for i_seq in clusters[ib]:
           assert O.__sites_moved[i_seq] is None
           O.__sites_moved[i_seq] = AJA * O.sites[i_seq]
           n_done += 1
@@ -285,14 +286,14 @@ class model(object):
     O_d_e_pot_d_sites = O.d_e_pot_d_sites()
     O.__f_ext_bf = []
     clusters = O.tardy_tree.cluster_manager.clusters
-    for iB,B in enumerate(O.bodies):
+    for ib,body in enumerate(O.bodies):
       f = matrix.col((0,0,0))
       nc = matrix.col((0,0,0))
-      for i_seq in clusters[iB]:
+      for i_seq in clusters[ib]:
         s = O.sites[i_seq]
-        force_bf = -(O_JAr[iB] * O_d_e_pot_d_sites[i_seq])
+        force_bf = -(O_JAr[ib] * O_d_e_pot_d_sites[i_seq])
         f += force_bf
-        nc += (B.A.T0b * s).cross(force_bf)
+        nc += (body.alignment.cb_0b * s).cross(force_bf)
       O.__f_ext_bf.append(matrix.col((nc, f)).resolve_partitions())
     return O.__f_ext_bf
 
@@ -315,13 +316,13 @@ class model(object):
     O_e_kin = O.e_kin()
     if (O_e_kin >= e_kin_epsilon):
       factor = (e_kin_target / O_e_kin)**0.5
-      for B in O.bodies:
-        B.qd *= factor
+      for body in O.bodies:
+        body.qd *= factor
     O.flag_velocities_as_changed()
 
   def assign_zero_velocities(O):
-    for B in O.bodies:
-      B.qd = B.J.qd_zero
+    for body in O.bodies:
+      body.qd = body.joint.qd_zero
     O.flag_velocities_as_changed()
 
   def assign_random_velocities(O,
@@ -344,12 +345,12 @@ class model(object):
     if (random_gauss is None):
       random_gauss = random.gauss
     i_qd = 0
-    for B in O.bodies:
+    for body in O.bodies:
       qd_new = []
-      for qd in B.J.qd_zero:
+      for qd in body.joint.qd_zero:
         qd_new.append(qd + random_gauss(mu=0, sigma=qd_e_kin_scales[i_qd]))
         i_qd += 1
-      B.qd = matrix.col(qd_new)
+      body.qd = matrix.col(qd_new)
     assert i_qd == O.degrees_of_freedom
     O.flag_velocities_as_changed()
     if (e_kin_target is not None):
@@ -358,10 +359,12 @@ class model(object):
 
   def dynamics_step(O, delta_t):
     O_qdd = O.qdd()
-    for B in O.bodies:
-      B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
-    for B,qdd in zip(O.bodies, O_qdd):
-      B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t)
+    for body in O.bodies:
+      body.joint = body.joint.time_step_position(
+        qd=body.qd, delta_t=delta_t)
+    for body,qdd in zip(O.bodies, O_qdd):
+      body.qd = body.joint.time_step_velocity(
+        qd=body.qd, qdd=qdd, delta_t=delta_t)
     O.flag_positions_as_changed()
 
   def d_pot_d_q(O):
@@ -369,30 +372,30 @@ class model(object):
 
   def pack_q(O):
     result = flex.double()
-    for B in O.bodies:
-      result.extend(flex.double(B.J.get_q()))
+    for body in O.bodies:
+      result.extend(flex.double(body.joint.get_q()))
     return result
 
   def unpack_q(O, packed_q):
     i = 0
-    for B in O.bodies:
-      n = B.J.q_size
-      B.J = B.J.new_q(q=packed_q[i:i+n])
+    for body in O.bodies:
+      n = body.joint.q_size
+      body.joint = body.joint.new_q(q=packed_q[i:i+n])
       i += n
     assert i == packed_q.size()
     O.flag_positions_as_changed()
 
   def pack_qd(O):
     result = flex.double()
-    for B in O.bodies:
-      result.extend(flex.double(B.qd))
+    for body in O.bodies:
+      result.extend(flex.double(body.qd))
     return result
 
   def unpack_qd(O, packed_qd):
     i = 0
-    for B in O.bodies:
-      n = B.J.degrees_of_freedom
-      B.qd = matrix.col(packed_qd[i:i+n])
+    for body in O.bodies:
+      n = body.joint.degrees_of_freedom
+      body.qd = matrix.col(packed_qd[i:i+n])
       i += n
     assert i == packed_qd.size()
     O.flag_velocities_as_changed()
