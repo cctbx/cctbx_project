@@ -3,7 +3,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 
-#include <scitbx/rigid_body/joint_lib.h>
+#include <scitbx/rigid_body/featherstone.h>
 
 namespace scitbx { namespace rigid_body { namespace ext {
 
@@ -29,9 +29,19 @@ namespace scitbx { namespace rigid_body { namespace ext {
     six_dof.tau_as_d_pot_d_q(af::const_ref<double>(0, 6));
     six_dof.get_q();
     six_dof.new_q(af::const_ref<double>(0, 7));
+    af::shared<boost::shared_ptr<featherstone::body_t<double> > > bodies;
+    featherstone::xrot(mat3<double>());
+    featherstone::xtrans(vec3<double>());
+    featherstone::cb_as_spatial_transform(rotr3<double>());
+    featherstone::system_model<> system_model(bodies);
+    system_model.bodies_size();
+    system_model.cb_up_array();
+    system_model.xup_array();
+    system_model.spatial_velocities();
+    system_model.e_kin();
   }
 
-}}} // namespace scitbx::lbfgs::ext
+}}} // namespace scitbx::rigid_body::ext
 
 BOOST_PYTHON_MODULE(scitbx_rigid_body_ext)
 {

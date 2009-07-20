@@ -1,59 +1,12 @@
 #ifndef SCITBX_RIGID_BODY_JOINT_LIB_H
 #define SCITBX_RIGID_BODY_JOINT_LIB_H
 
+#include <scitbx/rigid_body/matrix_helpers.h>
 #include <scitbx/rotr3.h>
-#include <scitbx/array_family/small.h>
-#include <scitbx/array_family/tiny_algebra.h>
-#include <scitbx/array_family/accessors/mat_grid.h>
-#include <scitbx/matrix/multiply.h>
 #include <boost/shared_ptr.hpp>
 #include <boost/optional.hpp>
 
 namespace scitbx { namespace rigid_body { namespace joint_lib {
-
-  template <typename FloatType>
-  af::tiny<FloatType, 4>
-  vec4_normalize(
-    af::tiny<FloatType, 4> const& v)
-  {
-    FloatType den = std::sqrt(af::sum_sq(v));
-    SCITBX_ASSERT(den != 0);
-    return v / den;
-  }
-
-  template <typename FloatType>
-  af::tiny<FloatType, 4>
-  mat4x3_mul_vec3(
-    af::tiny<FloatType, 4*3> const& m,
-    vec3<FloatType> const& v)
-  {
-    af::tiny<FloatType, 4> result;
-    matrix::multiply(
-      m.begin(),
-      v.begin(),
-      /*ar*/ 4,
-      /*ac*/ 3,
-      /*bc*/ 1,
-      result.begin());
-    return result;
-  }
-
-  template <typename FloatType>
-  af::tiny<FloatType, 4*3>
-  mat4x4_mul_mat4x3(
-    af::tiny<FloatType, 4*4> const& a,
-    af::tiny<FloatType, 4*3> const& b)
-  {
-    af::tiny<FloatType, 4*3> result;
-    matrix::multiply(
-      a.begin(),
-      b.begin(),
-      /*ar*/ 4,
-      /*ac*/ 4,
-      /*bc*/ 3,
-      result.begin());
-    return result;
-  }
 
   template <typename FloatType>
   mat3<FloatType>
@@ -126,18 +79,18 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
   struct alignment_base
   {
     //! global frame -> body frame
-    rotr3<FloatType> gb;
+    rotr3<FloatType> cb_0b;
     //! body frame -> global frame
-    rotr3<FloatType> bg;
+    rotr3<FloatType> cb_b0;
 
     alignment_base() {}
 
     alignment_base(
-      rotr3<FloatType> const& gb_,
-      rotr3<FloatType> const& bg_)
+      rotr3<FloatType> const& cb_0b_,
+      rotr3<FloatType> const& cb_b0_)
     :
-      gb(gb_),
-      bg(bg_)
+      cb_0b(cb_0b_),
+      cb_b0(cb_b0_)
     {}
   };
 
@@ -149,7 +102,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     unsigned degrees_of_freedom;
     unsigned q_size;
 
-    //! Xj = T_as_X(cb_ps)
+    //! Xj = cb_as_spatial_transform(cb_ps)
     rotr3<ft> cb_ps;
     rotr3<ft> cb_sp;
 
@@ -166,53 +119,54 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
 
     virtual
     af::const_ref<ft>
-    qd_zero() = 0;
+    qd_zero() const = 0;
 
     virtual
     af::const_ref<ft>
-    qdd_zero() = 0;
+    qdd_zero() const = 0;
 
     //! S in RBDA Tab. 4.1, p. 79.
     virtual
     af::const_ref<ft, af::mat_grid>
-    motion_subspace() = 0;
+    motion_subspace() const = 0;
 
     virtual
     boost::optional<vec3<ft> >
     get_linear_velocity(
-      af::const_ref<ft> const& qd) = 0;
+      af::const_ref<ft> const& qd) const = 0;
 
     virtual
     af::small<ft, 6>
     new_linear_velocity(
       af::const_ref<ft> const& qd,
-      af::const_ref<ft> const& value) = 0;
+      af::const_ref<ft> const& value) const = 0;
 
     virtual
     boost::shared_ptr<joint_base>
     time_step_position(
       af::const_ref<ft> const& qd,
-      ft delta_t) = 0;
+      ft delta_t) const = 0;
 
     virtual
     af::small<ft, 6>
     time_step_velocity(
       af::const_ref<ft> const& qd,
       af::const_ref<ft> const& qdd,
-      ft delta_t) = 0;
+      ft delta_t) const = 0;
 
     virtual
     af::small<ft, 7>
-    tau_as_d_pot_d_q(af::const_ref<ft> const& tau) = 0;
+    tau_as_d_pot_d_q(
+      af::const_ref<ft> const& tau) const = 0;
 
     virtual
     af::small<ft, 7>
-    get_q() = 0;
+    get_q() const = 0;
 
     virtual
     boost::shared_ptr<joint_base>
     new_q(
-      af::const_ref<ft> const& q) = 0;
+      af::const_ref<ft> const& q) const = 0;
   };
 
   template <typename FloatType=double>
@@ -241,15 +195,15 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
 
     virtual
     af::const_ref<ft>
-    qd_zero() { return af::const_ref<ft>(0, 0); }
+    qd_zero() const { return af::const_ref<ft>(0, 0); }
 
     virtual
     af::const_ref<ft>
-    qdd_zero() { return af::const_ref<ft>(0, 0); }
+    qdd_zero() const { return af::const_ref<ft>(0, 0); }
 
     virtual
     af::const_ref<ft, af::mat_grid>
-    motion_subspace()
+    motion_subspace() const
     {
       return af::const_ref<ft, af::mat_grid>(0, af::mat_grid(6, 0));
     }
@@ -257,7 +211,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     virtual
     boost::optional<vec3<ft> >
     get_linear_velocity(
-      af::const_ref<ft> const& qd)
+      af::const_ref<ft> const& qd) const
     {
       return boost::optional<vec3<ft> >();
     }
@@ -266,7 +220,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     af::small<ft, 6>
     new_linear_velocity(
       af::const_ref<ft> const& qd,
-      af::const_ref<ft> const& value)
+      af::const_ref<ft> const& value) const
     {
       return af::small<ft, 6>(0);
     }
@@ -275,7 +229,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     boost::shared_ptr<joint_base<ft> >
     time_step_position(
       af::const_ref<ft> const& qd,
-      ft delta_t)
+      ft delta_t) const
     {
       return boost::shared_ptr<joint_base<ft> >(new zero_dof());
     }
@@ -285,7 +239,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     time_step_velocity(
       af::const_ref<ft> const& qd,
       af::const_ref<ft> const& qdd,
-      ft delta_t)
+      ft delta_t) const
     {
       SCITBX_ASSERT(qd.size() == 0);
       SCITBX_ASSERT(qdd.size() == 0);
@@ -294,14 +248,15 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
 
     virtual
     af::small<ft, 7>
-    tau_as_d_pot_d_q(af::const_ref<ft> const& tau)
+    tau_as_d_pot_d_q(
+      af::const_ref<ft> const& tau) const
     {
       return af::small<ft, 7>(0);
     }
 
     virtual
     af::small<ft, 7>
-    get_q()
+    get_q() const
     {
       return af::small<ft, 7>(0);
     }
@@ -309,7 +264,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     virtual
     boost::shared_ptr<joint_base<ft> >
     new_q(
-      af::const_ref<ft> const& q)
+      af::const_ref<ft> const& q) const
     {
       return boost::shared_ptr<joint_base<ft> >(new zero_dof());
     }
@@ -355,7 +310,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
 
     virtual
     af::const_ref<ft>
-    qd_zero()
+    qd_zero() const
     {
       static af::tiny<ft, 6> zeros(0,0,0,0,0,0);
       return af::const_ref<ft>(zeros.begin(), 6);
@@ -363,11 +318,11 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
 
     virtual
     af::const_ref<ft>
-    qdd_zero() { return qd_zero(); }
+    qdd_zero() const { return qd_zero(); }
 
     virtual
     af::const_ref<ft, af::mat_grid>
-    motion_subspace()
+    motion_subspace() const
     {
       return af::const_ref<ft, af::mat_grid>(0, af::mat_grid(6, 6));
     }
@@ -375,7 +330,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     virtual
     boost::optional<vec3<ft> >
     get_linear_velocity(
-      af::const_ref<ft> const& qd)
+      af::const_ref<ft> const& qd) const
     {
       SCITBX_ASSERT(qd.size() == 6);
       return boost::optional<vec3<ft> >(vec3<ft>(&qd[3]));
@@ -385,7 +340,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     af::small<ft, 6>
     new_linear_velocity(
       af::const_ref<ft> const& qd,
-      af::const_ref<ft> const& value)
+      af::const_ref<ft> const& value) const
     {
       SCITBX_ASSERT(qd.size() == 6);
       SCITBX_ASSERT(value.size() == 3);
@@ -398,7 +353,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     boost::shared_ptr<joint_base<ft> >
     time_step_position(
       af::const_ref<ft> const& qd,
-      ft delta_t)
+      ft delta_t) const
     {
       SCITBX_ASSERT(qd.size() == 6);
       vec3<ft> w_body_frame(&qd[0]);
@@ -426,7 +381,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     time_step_velocity(
       af::const_ref<ft> const& qd,
       af::const_ref<ft> const& qdd,
-      ft delta_t)
+      ft delta_t) const
     {
       SCITBX_ASSERT(qd.size() == 6);
       SCITBX_ASSERT(qdd.size() == 6);
@@ -438,7 +393,8 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
 
     virtual
     af::small<ft, 7>
-    tau_as_d_pot_d_q(af::const_ref<ft> const& tau)
+    tau_as_d_pot_d_q(
+      af::const_ref<ft> const& tau) const
     {
       SCITBX_ASSERT(tau.size() == 6);
       af::tiny<ft, 4*4> d = d_unit_quaternion_d_qe_matrix(qe);
@@ -455,7 +411,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
 
     virtual
     af::small<ft, 7>
-    get_q()
+    get_q() const
     {
       af::small<ft, 7> result(qe.begin(), qe.end());
       for(unsigned i=0;i<3;i++) result.push_back(qr[i]);
@@ -465,7 +421,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     virtual
     boost::shared_ptr<joint_base<ft> >
     new_q(
-      af::const_ref<ft> const& q)
+      af::const_ref<ft> const& q) const
     {
       SCITBX_ASSERT(q.size() == 7);
       return boost::shared_ptr<joint_base<ft> >(new six_dof(
