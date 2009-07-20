@@ -18,6 +18,18 @@
 
 namespace scitbx { namespace af {
 
+  template <typename ElementType>
+  versa<ElementType, mat_grid>
+  versa_mat_grid(
+    ElementType const* values,
+    unsigned n_rows,
+    unsigned n_columns)
+  {
+    return versa<ElementType, mat_grid>(
+      shared_plain<ElementType>(values, values+n_rows*n_columns),
+      mat_grid(n_rows, n_columns));
+  }
+
   template <typename NumType>
   shared<NumType>
   matrix_diagonal(
