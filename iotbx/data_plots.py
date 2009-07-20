@@ -45,7 +45,7 @@ def plot_data_loggraph(plot_data,output):
   print >> output
   print >> output, '$TABLE: %s:'%(plot_data.plot_title)
   print >> output, '$GRAPHS'
-  print >> output, ':%s ' %(plot_data.comments)
+  print >> output, ':%s' %(plot_data.comments),
   index_string = ''
   for ii in range(len(plot_data.y_data)+1):
     index_string += '%d,'%(ii+1)
