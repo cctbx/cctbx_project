@@ -27,6 +27,13 @@ namespace scitbx {
     {
       return rotr3(mat3<FloatType>(1,1,1), vec3<FloatType>(0,0,0));
     }
+
+    rotr3
+    operator*(
+      rotr3 const& rhs) const
+    {
+      return rotr3(r * rhs.r, r * rhs.t + t);
+    }
   };
 
 } // namespace scitbx
