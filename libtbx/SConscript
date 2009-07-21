@@ -673,7 +673,6 @@ else:
     env_etc.cxxflags_base = list(env_etc.ccflags_base)
     if (need_fcoalesce_templates):
       env_etc.cxxflags_base.append("-fcoalesce-templates")
-    env_etc.cxxflags_base.append("-ftemplate-depth-130")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
     if not libtbx.env.build_options.enable_boost_threads:
       env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
