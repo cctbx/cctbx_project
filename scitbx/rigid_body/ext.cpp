@@ -39,6 +39,12 @@ namespace scitbx { namespace rigid_body { namespace ext {
     system_model.xup_array();
     system_model.spatial_velocities();
     system_model.e_kin();
+    system_model.accumulated_spatial_inertia();
+    system_model.qd_e_kin_scales();
+    system_model.inverse_dynamics(
+      af::const_ref<af::small<double, 6> >(0, 0),
+      af::const_ref<af::tiny<double, 6> >(0, 0),
+      af::const_ref<double>(0,0));
   }
 
 }}} // namespace scitbx::rigid_body::ext

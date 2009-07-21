@@ -150,9 +150,10 @@ class system_model(object):
     result = []
     cb_up_array = O.cb_up_array()
     for i,body in enumerate(O.bodies):
-      if (body.joint.S is None): vJ = body.qd
-      else:                      vJ = body.joint.S * body.qd
-      if (body.parent == -1): result.append(vJ)
+      s = body.joint.S
+      if (s is None): vj = body.qd
+      else:           vj = s * body.qd
+      if (body.parent == -1): result.append(vj)
       else:
         cb_up = cb_up_array[i]
         vp = result[body.parent].elems
@@ -161,7 +162,7 @@ class system_model(object):
           r_va,
           cb_up.r * matrix.col(vp[3:]) + cb_up.t.cross(r_va))) \
             .resolve_partitions()
-        result.append(vp + vJ)
+        result.append(vp + vj)
     return result
 
   def e_kin(O):
@@ -185,29 +186,30 @@ class system_model(object):
     result = []
     rap = result.append
     for body,asi in zip(O.bodies, O.accumulated_spatial_inertia()):
-      S = body.joint.S
+      s = body.joint.S
       j_dof = body.joint.degrees_of_freedom
       qd = [0] * j_dof
       for i in xrange(j_dof):
         qd[i] = 1
-        vJ = matrix.col(qd)
+        vj = matrix.col(qd)
         qd[i] = 0
-        if (S is not None): vJ = S * vJ
-        e_kin = kinetic_energy(i_spatial=asi, v_spatial=vJ)
+        if (s is not None): vj = s * vj
+        e_kin = kinetic_energy(i_spatial=asi, v_spatial=vj)
         if (e_kin < e_kin_epsilon):
           rap(1)
         else:
           rap(1 / e_kin**0.5)
     return result
 
-  def ID(O, qdd, f_ext=None, grav_accn=None):
+  def inverse_dynamics(O, qdd_array, f_ext_array=None, grav_accn=None):
     """RBDA Tab. 5.1, p. 96:
 Inverse Dynamics of a kinematic tree via Recursive Newton-Euler Algorithm.
-qdd is a vector of joint acceleration variables.
+qdd_array is a vector of joint acceleration variables.
 The return value (tau) is a vector of joint force variables.
-f_ext specifies external forces acting on the bodies. If f_ext is None
-then there are no external forces; otherwise, f_ext[i] is a spatial force
-vector giving the force acting on body i, expressed in body i coordinates.
+f_ext_array specifies external forces acting on the bodies. If f_ext_array
+is None then there are no external forces; otherwise, f_ext[i] is a spatial
+force vector giving the force acting on body i, expressed in body i
+coordinates.
 grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     """
 
@@ -216,33 +218,37 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     v = O.spatial_velocities()
     a = [None] * nb
     f = [None] * nb
-    for i in xrange(nb):
-      body = O.bodies[i]
-      if (body.joint.S is None):
-        vJ = body.qd
-        aJ = qdd[i]
+    for ib in xrange(nb):
+      body = O.bodies[ib]
+      s = body.joint.S
+      if (s is None):
+        vj = body.qd
+        aj = qdd_array[ib]
       else:
-        vJ = body.joint.S * body.qd
-        aJ = body.joint.S * qdd[i]
+        vj = s * body.qd
+        aj = s * qdd_array[ib]
       if (body.parent == -1):
-        a[i] = aJ
+        a[ib] = aj
         if (grav_accn is not None):
-          a[i] += xup_array[i] * (-grav_accn)
+          a[ib] += xup_array[ib] * (-grav_accn)
       else:
-        a[i] = xup_array[i] * a[body.parent] + aJ + crm(v[i]) * vJ
-      f[i] = body.i_spatial * a[i] + crf(v[i]) * body.i_spatial * v[i]
-      if (f_ext is not None and f_ext[i] is not None):
-        f[i] -= f_ext[i]
+        a[ib] = xup_array[ib] * a[body.parent] + aj + crm(v[ib]) * vj
+      f[ib] = body.i_spatial * a[ib] + crf(v[ib]) * (body.i_spatial * v[ib])
+      if (f_ext_array is not None and f_ext_array[ib] is not None):
+        f[ib] -= f_ext_array[ib]
 
-    tau = [None] * nb
-    for i in xrange(nb-1,-1,-1):
-      body = O.bodies[i]
-      if (body.joint.S is None): tau[i] = f[i]
-      else:               tau[i] = body.joint.S.transpose() * f[i]
+    tau_array = [None] * nb
+    for ib in xrange(nb-1,-1,-1):
+      body = O.bodies[ib]
+      s = body.joint.S
+      if (s is None):
+        tau_array[ib] = f[ib]
+      else:
+        tau_array[ib] = s.transpose() * f[ib]
       if (body.parent != -1):
-        f[body.parent] += xup_array[i].transpose() * f[i]
+        f[body.parent] += xup_array[ib].transpose() * f[ib]
 
-    return tau
+    return tau_array
 
   def ID0(O, f_ext):
     """
