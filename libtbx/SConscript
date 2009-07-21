@@ -501,8 +501,7 @@ else:
     env_etc.ccflags_base = [
       "-fPIC",
       "-fno-strict-aliasing"]
-    env_etc.cxxflags_base = env_etc.ccflags_base + [
-      "-ftemplate-depth-120"]
+    env_etc.cxxflags_base = list(env_etc.ccflags_base)
     if (libtbx.env.build_options.warning_level == 0):
       warn_options = ["-w"]
       env_etc._enable_more_warnings = "gcc"
