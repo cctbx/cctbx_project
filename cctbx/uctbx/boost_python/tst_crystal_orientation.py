@@ -53,13 +53,34 @@ def exercise_change_basis():
      0.0031790372319626674, 0.0025876279220667518, 0.0023669727051432361),basis_type.reciprocal)
   # Find a similarity transform that maps the two cells onto each other
   c_inv_r_best = rhombohedral_test.best_similarity_transformation(
-      other = rhombohedral_reference, unimodular_generator_range=1)
+      other = rhombohedral_reference, fractional_length_tolerance = 0.05,
+      unimodular_generator_range=1)
   c_inv_r_int = tuple([int(round(ij,0)) for ij in c_inv_r_best])
   assert c_inv_r_int == (-1, 0, 0, 1, -1, 0, 0, 0, 1)
   c_inv = sgtbx.rt_mx(sgtbx.rot_mx(c_inv_r_int))
   cb_op = sgtbx.change_of_basis_op(c_inv)
   rhombohedral_reindex = rhombohedral_test.change_basis(cb_op)
+  assert rhombohedral_reindex.normalized_mean_square_difference(rhombohedral_reference) < 0.01
   assert rhombohedral_reindex.direct_mean_square_difference(rhombohedral_reference) < 0.1
+
+  #an alternative test from ana that should fail (gives high msd~0.22; cell axes don't match):
+  ana_reference = crystal_orientation((
+    0.0023650364919947241, 0.012819317075171401, 0.003042762222847376,
+    0.0081242553464681254, 0.0050052660206998077, -0.01472465697193685,
+   -0.01373896574061278, 0.0083781530252581681, -0.0035301340829149005),basis_type.reciprocal)
+  ana_current = crystal_orientation((
+   -0.014470153848927263, 0.0095185368147633793, 0.00087746490483763798,
+   -0.0049989006573928716, -0.0079714727432991222, 0.014778692772530192,
+    0.0051268914129933571, 0.010264066188909109, 0.0044244589492769002),basis_type.reciprocal)
+  c_inv_r_best = ana_current.best_similarity_transformation(
+      other = ana_reference,
+      fractional_length_tolerance = 0.30,
+      unimodular_generator_range=1)
+  c_inv_r_int = tuple([int(round(ij,0)) for ij in c_inv_r_best])
+  c_inv = sgtbx.rt_mx(sgtbx.rot_mx(c_inv_r_int))
+  cb_op = sgtbx.change_of_basis_op(c_inv)
+  ana_reindex = ana_reference.change_basis(cb_op.inverse())
+  assert 0.30 > ana_reindex.normalized_mean_square_difference(ana_current) > 0.05
 
   u = uctbx.unit_cell((10., 10., 10., 90., 90., 90.))
   CO = crystal_orientation(u.fractionalization_matrix(),True)

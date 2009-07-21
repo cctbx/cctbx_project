@@ -47,22 +47,27 @@ cctbx::crystal_orientation::change_basis(oc_mat3 const& rot) const {
 
 cctbx::oc_mat3
 cctbx::crystal_orientation::best_similarity_transformation(
-  crystal_orientation const& other, int unimodular_generator_range) const{
+  crystal_orientation const& other,
+  double const& fractional_length_tolerance,
+  int unimodular_generator_range) const{
 
   scitbx::mat3<double> orientation_similarity(1); //initially the identity
-  double minimum_orientation_bases_msd = direct_mean_square_difference(other);
+  double minimum_orientation_bases_msd = normalized_mean_square_difference(other);
 
   scitbx::math::unimodular_generator<double>
       unimodular_generator(unimodular_generator_range);
   while (!unimodular_generator.at_end()) {
       oc_mat3 c_inv_r = unimodular_generator.next();
       crystal_orientation mod_copy = other.change_basis(c_inv_r.inverse());
-      double R = direct_mean_square_difference(mod_copy);
+      double R = normalized_mean_square_difference(mod_copy);
       if (R < minimum_orientation_bases_msd){
         minimum_orientation_bases_msd = R;
         orientation_similarity = c_inv_r;
       }
   }
+  SCITBX_ASSERT(
+  normalized_mean_square_difference(
+  other.change_basis(orientation_similarity.inverse())) < fractional_length_tolerance);
   return orientation_similarity;
 }
 
