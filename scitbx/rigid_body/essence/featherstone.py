@@ -250,39 +250,41 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
 
     return tau_array
 
-  def ID0(O, f_ext):
+  def f_ext_as_tau(O, f_ext_array):
     """
 Simplified version of Inverse Dynamics via Recursive Newton-Euler Algorithm,
 with all qd, qdd zero, but non-zero external forces.
     """
     nb = len(O.bodies)
     xup_array = O.xup_array()
-    f = [-e for e in f_ext]
-    tau = [None] * nb
-    for i in xrange(nb-1,-1,-1):
-      body = O.bodies[i]
-      if (body.joint.S is None): tau[i] = f[i]
-      else:                      tau[i] = body.joint.S.transpose() * f[i]
+    f = [-e for e in f_ext_array]
+    tau_array = [None] * nb
+    for ib in xrange(nb-1,-1,-1):
+      body = O.bodies[ib]
+      s = body.joint.S
+      if (s is None): tau_array[ib] = f[ib]
+      else:           tau_array[ib] = s.transpose() * f[ib]
       if (body.parent != -1):
-        f[body.parent] += xup_array[i].transpose() * f[i]
-    return tau
+        f[body.parent] += xup_array[ib].transpose() * f[ib]
+    return tau_array
 
-  def d_pot_d_q(O, f_ext):
+  def d_pot_d_q(O, f_ext_array):
     """
-Gradients of potential energy (defined via f_ext) w.r.t. positional
-coordinates q. Uses ID0().
+Gradients of potential energy (defined via f_ext_array) w.r.t. positional
+coordinates q. Uses f_ext_as_tau().
     """
     return [body.joint.tau_as_d_pot_d_q(tau=tau)
-      for body,tau in zip(O.bodies, O.ID0(f_ext=f_ext))]
+      for body,tau in zip(O.bodies, O.f_ext_as_tau(f_ext_array=f_ext_array))]
 
-  def FDab(O, tau=None, f_ext=None, grav_accn=None):
+  def forward_dynamics_ab(O, tau_array=None, f_ext_array=None, grav_accn=None):
     """RBDA Tab. 7.1, p. 132:
 Forward Dynamics of a kinematic tree via the Articulated-Body Algorithm.
-tau is a vector of force variables.
+tau_array is a vector of force variables.
 The return value (qdd) is a vector of joint acceleration variables.
-f_ext specifies external forces acting on the bodies. If f_ext is None
-then there are no external forces; otherwise, f_ext[i] is a spatial force
-vector giving the force acting on body i, expressed in body i coordinates.
+f_ext_array specifies external forces acting on the bodies. If f_ext_array
+is None then there are no external forces; otherwise, f_ext_array[i] is a
+spatial force vector giving the force acting on body i, expressed in body i
+coordinates.
 grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     """
 
@@ -290,59 +292,62 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     xup_array = O.xup_array()
     v = O.spatial_velocities()
     c = [None] * nb
-    IA = [None] * nb
-    pA = [None] * nb
-    for i in xrange(nb):
-      body = O.bodies[i]
-      if (body.joint.S is None): vJ = body.qd
-      else:                      vJ = body.joint.S * body.qd
-      if (body.parent == -1): c[i] = matrix.col([0,0,0,0,0,0])
-      else:                c[i] = crm(v[i]) * vJ
-      IA[i] = body.i_spatial
-      pA[i] = crf(v[i]) * body.i_spatial * v[i]
-      if (f_ext is not None and f_ext[i] is not None):
-        pA[i] -= f_ext[i]
+    ia = [None] * nb
+    pa = [None] * nb
+    for ib in xrange(nb):
+      body = O.bodies[ib]
+      s = body.joint.S
+      if (s is None): vj = body.qd
+      else:           vj = s * body.qd
+      if (body.parent == -1): c[ib] = matrix.col([0,0,0,0,0,0])
+      else:                   c[ib] = crm(v[ib]) * vj
+      ia[ib] = body.i_spatial
+      pa[ib] = crf(v[ib]) * body.i_spatial * v[ib]
+      if (f_ext_array is not None and f_ext_array[ib] is not None):
+        pa[ib] -= f_ext_array[ib]
 
-    U = [None] * nb
-    d_inv = [None] * nb
     u = [None] * nb
-    for i in xrange(nb-1,-1,-1):
-      body = O.bodies[i]
-      if (body.joint.S is None):
-        U[i] = IA[i]
-        d = U[i]
-        if (tau is None or tau[i] is None):
-          u[i] =        - pA[i]
+    d_inv = [None] * nb
+    u_ = [None] * nb
+    for ib in xrange(nb-1,-1,-1):
+      body = O.bodies[ib]
+      s = body.joint.S
+      if (s is None):
+        u[ib] = ia[ib]
+        d = u[ib]
+        if (tau_array is None or tau_array[ib] is None):
+          u_[ib] =               - pa[ib]
         else:
-          u[i] = tau[i] - pA[i]
+          u_[ib] = tau_array[ib] - pa[ib]
       else:
-        U[i] = IA[i] * body.joint.S
-        d = body.joint.S.transpose() * U[i]
-        if (tau is None or tau[i] is None):
-          u[i] =        - body.joint.S.transpose() * pA[i]
+        u[ib] = ia[ib] * s
+        d = s.transpose() * u[ib]
+        if (tau_array is None or tau_array[ib] is None):
+          u_[ib] =               - s.transpose() * pa[ib]
         else:
-          u[i] = tau[i] - body.joint.S.transpose() * pA[i]
-      d_inv[i] = generalized_inverse(d)
+          u_[ib] = tau_array[ib] - s.transpose() * pa[ib]
+      d_inv[ib] = generalized_inverse(d)
       if (body.parent != -1):
-        Ia = IA[i] - U[i] * d_inv[i] * U[i].transpose()
-        pa = pA[i] + Ia*c[i] + U[i] * d_inv[i] * u[i]
-        IA[body.parent] += xup_array[i].transpose() * Ia * xup_array[i]
-        pA[body.parent] += xup_array[i].transpose() * pa
+        ia_ = ia[ib] - u[ib] * d_inv[ib] * u[ib].transpose()
+        pa_ = pa[ib] + ia_*c[ib] + u[ib] * d_inv[ib] * u_[ib]
+        ia[body.parent] += xup_array[ib].transpose() * ia_ * xup_array[ib]
+        pa[body.parent] += xup_array[ib].transpose() * pa_
 
     a = [None] * nb
-    qdd = [None] * nb
-    for i in xrange(nb):
-      body = O.bodies[i]
+    qdd_array = [None] * nb
+    for ib in xrange(nb):
+      body = O.bodies[ib]
+      s = body.joint.S
       if (body.parent == -1):
-        a[i] = c[i]
+        a[ib] = c[ib]
         if (grav_accn is not None):
-          a[i] += xup_array[i] * (-grav_accn)
+          a[ib] += xup_array[ib] * (-grav_accn)
       else:
-        a[i] = xup_array[i] * a[body.parent] + c[i]
-      qdd[i] = d_inv[i] * (u[i] - U[i].transpose()*a[i])
-      if (body.joint.S is None):
-        a[i] += qdd[i]
+        a[ib] = xup_array[ib] * a[body.parent] + c[ib]
+      qdd_array[ib] = d_inv[ib] * (u_[ib] - u[ib].transpose()*a[ib])
+      if (s is None):
+        a[ib] += qdd_array[ib]
       else:
-        a[i] += body.joint.S * qdd[i]
+        a[ib] += s * qdd_array[ib]
 
-    return qdd
+    return qdd_array
