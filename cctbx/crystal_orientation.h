@@ -134,6 +134,7 @@ namespace cctbx {
       //! Simple measure for the similarity of two orientatons.
       /*! The result is the mean of the squared differences between
           basis vectors. The basis vectors are taken in direct space.
+          DEPRECATED 7/19/2009.
        */
       inline double
       direct_mean_square_difference(crystal_orientation const& other) const
@@ -142,12 +143,34 @@ namespace cctbx {
                  direct_matrix(),other.direct_matrix())/3;
       }
 
+      //! Simple measure for the similarity of two orientatons.
+      /*! The result is the mean squared fractional difference
+          of all basis vector projections.
+          The basis vectors are taken in direct space.
+          Introduced 7/19/2009.
+       */
+      inline double
+      normalized_mean_square_difference(crystal_orientation const& other) const
+      {
+        oc_mat3 direct_self = direct_matrix();
+        oc_mat3 direct_other = other.direct_matrix();
+        double result = 0.0;
+        for (std::size_t idx = 0; idx < 9; ++idx){
+          if (direct_self[idx]+direct_other[idx] != 0.0){
+            result += scitbx::fn::pow2(2.*(direct_self[idx]-direct_other[idx])/
+                                          (direct_self[idx]+direct_other[idx]));
+          }
+        }
+        return result/9.;
+      }
+
       //! Best change of basis for superimposing onto another orientation.
       /*! Used for aligning two orientations determined independently from the same
           crystal sample. The rotation part of an inverse cb_op is returned.
        */
       oc_mat3
       best_similarity_transformation(crystal_orientation const& other,
+       double const& fractional_length_tolerance,
        int unimodular_generator_range=1) const;
 
     protected:
