@@ -1677,6 +1677,9 @@ def exercise_matrix():
     c = a.matrix_multiply(b)
     assert c.focus() == (ag[0],bg[1])
     assert c.all_eq(0)
+    c = a.matrix_transpose().matrix_transpose_multiply(b)
+    assert c.focus() == (ag[0],bg[1])
+    assert c.all_eq(0)
     for m in [a,b]:
       mtm = m.matrix_transpose_multiply_as_packed_u()
       n = m.focus()[1]
@@ -1686,25 +1689,28 @@ def exercise_matrix():
   a.resize(flex.grid(3,2))
   b = flex.double(range(1,7))
   b.resize(flex.grid(2,3))
-  c = a.matrix_multiply(b)
-  assert c.focus() == (3,3)
-  assert list(c) == [9, 12, 15, 19, 26, 33, 29, 40, 51]
+  for c in [a.matrix_multiply(b),
+            a.matrix_transpose().matrix_transpose_multiply(b)]:
+    assert c.focus() == (3,3)
+    assert list(c) == [9, 12, 15, 19, 26, 33, 29, 40, 51]
   for a_n_rows in xrange(1,4):
     for a_n_columns in xrange(1,4):
       a = flex.random_double(size=a_n_rows*a_n_columns)
       b = flex.random_double(size=a_n_rows*a_n_columns)
       c = a.matrix_multiply(b)
       d = matrix.row(a) * matrix.col(b)
+      assert d.n == (1,1)
       assert approx_equal(c, d[0])
       assert approx_equal(a.dot(b), matrix.row(a).dot(matrix.col(b)))
-      a.resize(flex.grid(a_n_rows, a_n_columns))
+      a.reshape(flex.grid(a_n_rows, a_n_columns))
       for b_n_columns in xrange(1,4):
         b = flex.random_double(size=a_n_columns*b_n_columns)
-        b.resize(flex.grid(a_n_columns, b_n_columns))
-        c = a.matrix_multiply(b)
+        b.reshape(flex.grid(a_n_columns, b_n_columns))
         d = matrix.rec(a, a.focus()) * matrix.rec(b, b.focus())
-        assert c.focus() == d.n
-        assert approx_equal(c, d)
+        for c in [a.matrix_multiply(b),
+                  a.matrix_transpose().matrix_transpose_multiply(b)]:
+          assert c.focus() == d.n
+          assert approx_equal(c, d)
         ata = a.matrix_transpose_multiply_as_packed_u() \
           .matrix_packed_u_as_symmetric()
         assert approx_equal(ata, a.matrix_transpose().matrix_multiply(a))

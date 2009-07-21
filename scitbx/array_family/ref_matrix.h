@@ -27,6 +27,26 @@ namespace scitbx { namespace af {
                      ab.begin());
   }
 
+  //! Matrix transpose multiplication: a.transpose() * b
+  template <typename NumTypeA,  typename AccessorTypeA,
+            typename NumTypeB,  typename AccessorTypeB,
+            typename NumTypeAtB, typename AccessorTypeAtB>
+  inline
+  void
+  transpose_multiply(
+    const_ref<NumTypeA, AccessorTypeA> const& a,
+    const_ref<NumTypeB, AccessorTypeB> const& b,
+    ref<NumTypeAtB, AccessorTypeAtB> const& atb)
+  {
+    SCITBX_ASSERT(a.n_rows() == b.n_rows());
+    SCITBX_ASSERT(atb.n_rows() == a.n_columns());
+    SCITBX_ASSERT(atb.n_columns() == b.n_columns());
+    matrix::transpose_multiply(
+      a.begin(), b.begin(),
+      a.n_rows(), a.n_columns(), b.n_columns(),
+      atb.begin());
+  }
+
 }}
 
 #endif // GUARD
