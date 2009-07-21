@@ -2,6 +2,7 @@
 #define SCITBX_RIGID_BODY_MATRIX_HELPERS_H
 
 #include <scitbx/vec3.h>
+#include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/array_family/tiny_reductions.h>
@@ -54,6 +55,66 @@ namespace scitbx { namespace rigid_body {
     return result;
   }
 
+  template <typename FloatType>
+  af::tiny<FloatType, 6>
+  mat6x6_mul_vec6(
+    af::const_ref<FloatType, af::mat_grid> const& a,
+    af::const_ref<FloatType> const& b)
+  {
+    SCITBX_ASSERT(a.accessor().n_rows() == 6);
+    SCITBX_ASSERT(a.accessor().n_columns() == 6);
+    SCITBX_ASSERT(b.size() == 6);
+    af::tiny<FloatType, 6> result;
+    matrix::multiply(
+      a.begin(),
+      b.begin(),
+      /*ar*/ 6,
+      /*ac*/ 6,
+      /*bc*/ 1,
+      result.begin());
+    return result;
+  }
+
+  template <typename FloatType>
+  af::tiny<FloatType, 6>
+  mat6x6_transpose_mul_vec6(
+    af::const_ref<FloatType, af::mat_grid> const& a,
+    af::const_ref<FloatType> const& b)
+  {
+    SCITBX_ASSERT(a.accessor().n_rows() == 6);
+    SCITBX_ASSERT(a.accessor().n_columns() == 6);
+    SCITBX_ASSERT(b.size() == 6);
+    af::tiny<FloatType, 6> result;
+    matrix::transpose_multiply(
+      a.begin(),
+      b.begin(),
+      /*ar*/ 6,
+      /*ac*/ 6,
+      /*bc*/ 1,
+      result.begin());
+    return result;
+  }
+
+  template <typename FloatType>
+  af::small<FloatType, 6>
+  mat6xm_transpose_mul_vec6(
+    af::const_ref<FloatType, af::mat_grid> const& a,
+    af::const_ref<FloatType> const& b)
+  {
+    SCITBX_ASSERT(a.accessor().n_rows() == 6);
+    SCITBX_ASSERT(b.size() == 6);
+    unsigned ac = a.accessor().n_columns();
+    af::small<FloatType, 6> result(ac);
+    matrix::transpose_multiply(
+      a.begin(),
+      b.begin(),
+      /*ar*/ 6,
+      ac,
+      /*bc*/ 1,
+      result.begin());
+    return result;
+  }
+
   template <typename ElementType, std::size_t N>
   ElementType
   dot_product(
@@ -83,6 +144,17 @@ namespace scitbx { namespace rigid_body {
       /*ac*/ lhs.n_columns(),
       /*bc*/ 1,
       result.begin());
+  }
+
+  template <typename FloatType>
+  af::versa<FloatType, af::mat_grid>
+  a_transpose_mul_b_mul_a(
+    af::const_ref<FloatType, af::mat_grid> const& a,
+    af::const_ref<FloatType, af::mat_grid> const& b)
+  {
+    return af::matrix_multiply(
+      af::matrix_multiply(af::matrix_transpose(a).const_ref(), b).const_ref(),
+      a);
   }
 
 }} // namespace scitbx::rigid_body

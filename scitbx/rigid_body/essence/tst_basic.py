@@ -153,7 +153,7 @@ def exercise_system_model():
     (-0.16, 0.14, -0.33, 0.35, -0.02, -0.20)])
   grav_accn = matrix.col((0.02, -0.13, 0.15, 0.26, -0.16, 0.14))
   #
-  tau = model.ID(qdd=qdd)
+  tau = model.inverse_dynamics(qdd_array=qdd)
   assert approx_equal(tau, [
     (-28.4935967396, -13.9449610757, 37.119813341,
      3.09036984758, -3.29209848977, 1.51871803584),
@@ -163,7 +163,7 @@ def exercise_system_model():
   qdd2 = model.FDab(tau=tau)
   assert approx_equal(qdd2, qdd)
   #
-  tau = model.ID(qdd=qdd, f_ext=f_ext)
+  tau = model.inverse_dynamics(qdd_array=qdd, f_ext_array=f_ext)
   assert approx_equal(tau, [
     (-28.2069898504, -14.1650076325, 38.2656278316,
      3.24402886492, -3.30833610224, 1.36344785723),
@@ -173,7 +173,8 @@ def exercise_system_model():
   qdd2 = model.FDab(tau=tau, f_ext=f_ext)
   assert approx_equal(qdd2, qdd)
   #
-  tau = model.ID(qdd=qdd, f_ext=f_ext, grav_accn=grav_accn)
+  tau = model.inverse_dynamics(
+    qdd_array=qdd, f_ext_array=f_ext, grav_accn=grav_accn)
   assert approx_equal(tau, [
     (29.0716177639, 1.548329665, -9.90799285557,
      -2.51132634591, 5.78686348626, -3.77518591503),
@@ -207,7 +208,7 @@ def exercise_system_model():
   for body in model.bodies:
     body.qd = body.joint.qd_zero
     qdd.append(body.joint.qdd_zero)
-  tau = model.ID(qdd=qdd, f_ext=f_ext)
+  tau = model.inverse_dynamics(qdd_array=qdd, f_ext_array=f_ext)
   assert approx_equal(tau, [
     (0.286606889188, -0.220046556736, 1.14581449056,
      0.153659017347, -0.0162376124727, -0.155270178613),
@@ -239,21 +240,22 @@ def exercise_system_model_with_zero_dof_body():
     (-0.11, 0.03, -0.07, -0.11, 0.06, 0.08)])
   grav_accn = matrix.col((0.02, -0.13, 0.15, 0.26, -0.16, 0.14))
   #
-  tau = model.ID(qdd=qdd)
+  tau = model.inverse_dynamics(qdd_array=qdd)
   assert approx_equal(tau, [
     (),
     (0.15726977316344815,)])
   qdd2 = model.FDab(tau=tau)
   assert approx_equal(qdd2, qdd)
   #
-  tau = model.ID(qdd=qdd, f_ext=f_ext)
+  tau = model.inverse_dynamics(qdd_array=qdd, f_ext_array=f_ext)
   assert approx_equal(tau, [
     (),
     (0.22726977316344815,)])
   qdd2 = model.FDab(tau=tau, f_ext=f_ext)
   assert approx_equal(qdd2, qdd)
   #
-  tau = model.ID(qdd=qdd, f_ext=f_ext, grav_accn=grav_accn)
+  tau = model.inverse_dynamics(
+    qdd_array=qdd, f_ext_array=f_ext, grav_accn=grav_accn)
   assert approx_equal(tau, [
     (),
     (0.59601742875022201,)])
@@ -278,7 +280,7 @@ def exercise_system_model_with_zero_dof_body():
   for body in model.bodies:
     body.qd = body.joint.qd_zero
     qdd.append(body.joint.qdd_zero)
-  tau = model.ID(qdd=qdd, f_ext=f_ext)
+  tau = model.inverse_dynamics(qdd_array=qdd, f_ext_array=f_ext)
   assert approx_equal(tau, [
     (),
     (0.07,)])

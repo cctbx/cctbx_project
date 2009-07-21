@@ -2,7 +2,7 @@
 #define SCITBX_RIGID_BODY_FEATHERSTONE_H
 
 #include <scitbx/rigid_body/joint_lib.h>
-#include <scitbx/array_family/versa_matrix.h>
+#include <scitbx/array_family/versa_algebra.h>
 #include <scitbx/array_family/shared.h>
 #include <boost/numeric/conversion/cast.hpp>
 
@@ -59,6 +59,40 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
     return af::matrix_multiply(
       xrot(cb.r).const_ref(),
       xtrans(-cb.r.transpose() * cb.t).const_ref());
+  }
+
+  //! RBDA Eq. 2.31, p. 25.
+  /*! Spatial cross-product operator (motion).
+      Calculates the 6x6 matrix such that the expression crm(v)*m is the
+      cross product of the spatial motion vectors v and m.
+   */
+  template <typename FloatType>
+  af::versa<FloatType, af::mat_grid>
+  crm(
+    af::tiny<FloatType, 6> const& v)
+  {
+    FloatType coeffs[] = {
+          0, -v[2],  v[1],     0,     0,     0,
+       v[2],     0, -v[0],     0,     0,     0,
+      -v[1],  v[0],     0,     0,     0,     0,
+          0, -v[5],  v[4],     0, -v[2],  v[1],
+       v[5],     0, -v[3],  v[2],     0, -v[0],
+      -v[4],  v[3],     0, -v[1],  v[0],     0};
+    return af::versa_mat_grid(coeffs, 6, 6);
+  }
+
+  //! RBDA Eq. 2.32, p. 25.
+  /*! Spatial cross-product operator (force).
+      Calculates the 6x6 matrix such that the expression crf(v)*f is the
+      cross product of the spatial motion vector v with the spatial force
+      vector f.
+   */
+  template <typename FloatType>
+  af::versa<FloatType, af::mat_grid>
+  crf(
+    af::tiny<FloatType, 6> const& v)
+  {
+    return -af::matrix_transpose(crm(v).const_ref());
   }
 
   template <typename FloatType>
@@ -212,6 +246,158 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         result += kinetic_energy(body->i_spatial.const_ref(), sv[ib]);
       }
       return result;
+    }
+
+    af::shared<af::versa<ft, af::mat_grid> >
+    accumulated_spatial_inertia() const
+    {
+      af::shared<af::versa<ft, af::mat_grid> >
+        result(af::reserve(bodies.size()));
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft> const* body = bodies[ib].get();
+        result.push_back(body->i_spatial);
+      }
+      af::shared<af::versa<ft, af::mat_grid> > xup_array = this->xup_array();
+      for(unsigned ib=nb;ib!=0;) {
+        ib--;
+        body_t<ft> const* body = bodies[ib].get();
+        if (body->parent != -1) {
+          result[body->parent] += a_transpose_mul_b_mul_a(
+            xup_array[ib].const_ref(),
+            result[ib].const_ref());
+        }
+      }
+      return result;
+    }
+
+    af::shared<ft>
+    qd_e_kin_scales(
+      ft e_kin_epsilon=1e-12) const
+    {
+      af::shared<ft> result(af::reserve(bodies.size()));
+      af::shared<af::versa<ft, af::mat_grid> >
+        accumulated_spatial_inertia = this->accumulated_spatial_inertia();
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft> const* body = bodies[ib].get();
+        af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
+        unsigned j_dof = body->joint->degrees_of_freedom;
+        af::small<ft, 6> qd(j_dof, 0);
+        for(unsigned i=0;i<j_dof;i++) {
+          qd[i] = 1;
+          af::tiny<ft, 6> vj;
+          if (s.begin() == 0) {
+            SCITBX_ASSERT(j_dof == 6);
+            std::copy(qd.begin(), qd.end(), vj.begin()); // vj = qd
+          }
+          else {
+            matrix_mul(vj, s, qd.const_ref()); // vj = s * qd
+          }
+          qd[i] = 0;
+          ft e_kin = kinetic_energy(
+            accumulated_spatial_inertia[ib].const_ref(), vj);
+          if (e_kin < e_kin_epsilon) {
+            result.push_back(1);
+          }
+          else {
+            result.push_back(1 / std::sqrt(e_kin));
+          }
+        }
+      }
+      return result;
+    }
+
+    //! RBDA Tab. 5.1, p. 96.
+    /*! Inverse Dynamics of a kinematic tree via
+        Recursive Newton-Euler Algorithm.
+        qdd_array is a vector of joint acceleration variables.
+        The return value (tau) is a vector of joint force variables.
+        f_ext_array specifies external forces acting on the bodies.
+        If f_ext_array is None then there are no external forces; otherwise,
+        f_ext_array[i] is a spatial force vector giving the force acting on
+        body i, expressed in body i coordinates.
+        grav_accn is a 6D vector expressing the linear acceleration
+        due to gravity.
+     */
+    af::shared<af::small<ft, 6> >
+    inverse_dynamics(
+      af::const_ref<af::small<ft, 6> > const& qdd_array,
+      af::const_ref<af::tiny<ft, 6> > const& f_ext_array,
+      af::const_ref<ft> const& grav_accn)
+    {
+      SCITBX_ASSERT(qdd_array.size() == bodies.size());
+      SCITBX_ASSERT(
+        f_ext_array.size() == (f_ext_array.begin() == 0 ? 0 : bodies.size()));
+      SCITBX_ASSERT(grav_accn.size() == (grav_accn.begin() == 0 ? 0 : 6));
+      unsigned nb = bodies_size();
+      af::shared<af::versa<ft, af::mat_grid> > xup_array = this->xup_array();
+      af::shared<af::tiny<ft, 6> > v = spatial_velocities();
+      boost::scoped_array<af::tiny<ft, 6> > a(new af::tiny<ft, 6>[nb]);
+      boost::scoped_array<af::tiny<ft, 6> > f(new af::tiny<ft, 6>[nb]);
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft> const* body = bodies[ib].get();
+        af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
+        af::const_ref<ft> qd = body->qd();
+        af::const_ref<ft> qdd = qdd_array[ib].const_ref();
+        af::tiny<ft, 6> vj;
+        af::tiny<ft, 6> aj;
+        if (s.begin() == 0) {
+          SCITBX_ASSERT(qd.size() == 6);
+          SCITBX_ASSERT(qdd.size() == 6);
+          std::copy(qd.begin(), qd.end(), vj.begin()); // vj = qd
+          std::copy(qdd.begin(), qdd.end(), aj.begin()); // aj = qdd
+        }
+        else {
+          matrix_mul(vj, s, qd); // vj = s * qd
+          matrix_mul(aj, s, qdd); // aj = s * qdd
+        }
+        if (body->parent == -1) {
+          a[ib] = aj;
+          if (grav_accn.begin() != 0) {
+            a[ib] -= mat6x6_mul_vec6(xup_array[ib].const_ref(), grav_accn);
+          }
+        }
+        else {
+          a[ib] =
+              mat6x6_mul_vec6(
+                xup_array[ib].const_ref(),
+                a[body->parent].const_ref())
+            + aj
+            + mat6x6_mul_vec6(
+                crm(v[ib]).const_ref(),
+                vj.const_ref());
+        }
+        f[ib] =
+            mat6x6_mul_vec6(
+              body->i_spatial.const_ref(),
+              a[ib].const_ref())
+          + mat6x6_mul_vec6(
+              crf(v[ib]).const_ref(),
+              mat6x6_mul_vec6(
+                body->i_spatial.const_ref(),
+                v[ib].const_ref()).const_ref());
+        if (f_ext_array.begin() != 0) {
+          f[ib] -= f_ext_array[ib];
+        }
+      }
+      af::shared<af::small<ft, 6> > tau_array(nb);
+      for(unsigned ib=nb;ib!=0;) {
+        ib--;
+        body_t<ft> const* body = bodies[ib].get();
+        af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
+        if (s.begin() == 0) {
+          tau_array[ib] = af::small<ft, 6>(f[ib].begin(), f[ib].end());
+        }
+        else {
+          tau_array[ib] = mat6xm_transpose_mul_vec6(s, f[ib].const_ref());
+        }
+        if (body->parent != -1) {
+          f[body->parent] += mat6x6_transpose_mul_vec6(
+            xup_array[ib].const_ref(), f[ib].const_ref());
+        }
+      }
+      return tau_array;
     }
   };
 
