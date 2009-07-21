@@ -1,5 +1,6 @@
 import os, sys
 import libtbx.load_env
+from libtbx.utils import Sorry
 from iotbx.file_reader import any_file
 from cctbx import miller
 from cctbx import crystal
@@ -68,7 +69,7 @@ _chem_comp_angle.value_angle_esd
   f.write(cif_data)
   f.close()
   cif = any_file("tmp1.cif")
-  assert cif.file_type == "cif"
+  cif.assert_file_type("cif")
   os.remove("tmp1.cif")
 
   #--- PDB
@@ -84,7 +85,13 @@ END
   f.write(pdb_data)
   f.close()
   pdb = any_file("tmp1.pdb")
-  assert pdb.file_type == "pdb"
+  try :
+    pdb.assert_file_type("txt")
+  except Sorry :
+    pass
+  else :
+    raise Sorry("Expected exception for 'pdb.assert_file_type(\"txt\")'.")
+  pdb.assert_file_type("pdb")
   os.remove("tmp1.pdb")
 
   #--- PHIL
