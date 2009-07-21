@@ -60,7 +60,7 @@ def get_gcc_version(command_name="gcc"):
   if (len(flds) < 3 or flds[1] != "(GCC)"):
     return None
   major_minor_patchlevel = flds[2].split(".")
-  if (len(major_minor_patchlevel) != 3):
+  if (len(major_minor_patchlevel) not in [2,3]):
     return None
   num = []
   for fld in major_minor_patchlevel:
@@ -68,6 +68,7 @@ def get_gcc_version(command_name="gcc"):
     except ValueError:
       return None
     num.append(i)
+  if (len(num) == 2): num.append(0) # substitute missing patchlevel
   return ((num[0]*100)+num[1])*100+num[2]
 
 def get_hostname():
