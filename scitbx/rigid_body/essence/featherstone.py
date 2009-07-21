@@ -150,7 +150,7 @@ class system_model(object):
     result = []
     cb_up_array = O.cb_up_array()
     for i,body in enumerate(O.bodies):
-      s = body.joint.S
+      s = body.joint.motion_subspace
       if (s is None): vj = body.qd
       else:           vj = s * body.qd
       if (body.parent == -1): result.append(vj)
@@ -186,7 +186,7 @@ class system_model(object):
     result = []
     rap = result.append
     for body,asi in zip(O.bodies, O.accumulated_spatial_inertia()):
-      s = body.joint.S
+      s = body.joint.motion_subspace
       j_dof = body.joint.degrees_of_freedom
       qd = [0] * j_dof
       for i in xrange(j_dof):
@@ -220,7 +220,7 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     f = [None] * nb
     for ib in xrange(nb):
       body = O.bodies[ib]
-      s = body.joint.S
+      s = body.joint.motion_subspace
       if (s is None):
         vj = body.qd
         aj = qdd_array[ib]
@@ -240,7 +240,7 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     tau_array = [None] * nb
     for ib in xrange(nb-1,-1,-1):
       body = O.bodies[ib]
-      s = body.joint.S
+      s = body.joint.motion_subspace
       if (s is None):
         tau_array[ib] = f[ib]
       else:
@@ -261,7 +261,7 @@ with all qd, qdd zero, but non-zero external forces.
     tau_array = [None] * nb
     for ib in xrange(nb-1,-1,-1):
       body = O.bodies[ib]
-      s = body.joint.S
+      s = body.joint.motion_subspace
       if (s is None): tau_array[ib] = f[ib]
       else:           tau_array[ib] = s.transpose() * f[ib]
       if (body.parent != -1):
@@ -296,7 +296,7 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     pa = [None] * nb
     for ib in xrange(nb):
       body = O.bodies[ib]
-      s = body.joint.S
+      s = body.joint.motion_subspace
       if (s is None): vj = body.qd
       else:           vj = s * body.qd
       if (body.parent == -1): c[ib] = matrix.col([0,0,0,0,0,0])
@@ -311,7 +311,7 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     u_ = [None] * nb
     for ib in xrange(nb-1,-1,-1):
       body = O.bodies[ib]
-      s = body.joint.S
+      s = body.joint.motion_subspace
       if (s is None):
         u[ib] = ia[ib]
         d = u[ib]
@@ -337,7 +337,7 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     qdd_array = [None] * nb
     for ib in xrange(nb):
       body = O.bodies[ib]
-      s = body.joint.S
+      s = body.joint.motion_subspace
       if (body.parent == -1):
         a[ib] = c[ib]
         if (grav_accn is not None):

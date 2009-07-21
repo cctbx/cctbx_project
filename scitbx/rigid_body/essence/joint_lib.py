@@ -1,4 +1,4 @@
-from featherstone import matrix, cb_as_spatial_transform
+from featherstone import matrix
 import math
 
 class zero_dof_alignment(object):
@@ -17,8 +17,7 @@ class zero_dof(object):
     O.q_size = 0
     O.cb_ps = matrix.rt(((1,0,0,0,1,0,0,0,1), (0,0,0)))
     O.cb_sp = O.cb_ps
-    O.Xj = cb_as_spatial_transform(O.cb_ps)
-    O.S = matrix.rec(elems=(), n=(6,0))
+    O.motion_subspace = matrix.rec(elems=(), n=(6,0))
 
   def get_linear_velocity(O, qd):
     return None
@@ -62,8 +61,7 @@ class six_dof(object):
     O.r = qr
     O.cb_ps = matrix.rt((O.E, -O.E * O.r)) # RBDA Eq. 2.28
     O.cb_sp = matrix.rt((O.E.transpose(), O.r))
-    O.Xj = cb_as_spatial_transform(O.cb_ps)
-    O.S = None
+    O.motion_subspace = None
 
   def get_linear_velocity(O, qd):
     return matrix.col(qd.elems[3:])
@@ -114,8 +112,7 @@ class spherical(object):
     O.E = RBDA_Eq_4_12(q=O.unit_quaternion)
     O.cb_ps = matrix.rt((O.E, (0,0,0)))
     O.cb_sp = matrix.rt((O.E.transpose(), (0,0,0)))
-    O.Xj = cb_as_spatial_transform(O.cb_ps)
-    O.S = matrix.rec((
+    O.motion_subspace = matrix.rec((
       1,0,0,
       0,1,0,
       0,0,1,
@@ -174,8 +171,7 @@ class revolute(object):
     #
     O.cb_ps = matrix.rt((O.E, (0,0,0)))
     O.cb_sp = matrix.rt((O.E.transpose(), (0,0,0)))
-    O.Xj = cb_as_spatial_transform(O.cb_ps)
-    O.S = matrix.col((0,0,1,0,0,0))
+    O.motion_subspace = matrix.col((0,0,1,0,0,0))
 
   def get_linear_velocity(O, qd):
     return None
@@ -213,8 +209,7 @@ class translational(object):
     O.r = qr
     O.cb_ps = matrix.rt(((1,0,0,0,1,0,0,0,1), -O.r))
     O.cb_sp = matrix.rt(((1,0,0,0,1,0,0,0,1), O.r))
-    O.Xj = cb_as_spatial_transform(O.cb_ps)
-    O.S = matrix.rec((
+    O.motion_subspace = matrix.rec((
       0,0,0,
       0,0,0,
       0,0,0,
