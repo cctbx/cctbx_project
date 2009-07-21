@@ -299,8 +299,8 @@ class model(object):
 
   def qdd(O):
     if (O.__qdd is None):
-      O.__qdd = O.featherstone_system_model().FDab(
-        tau=None, f_ext=O.f_ext_bf())
+      O.__qdd = O.featherstone_system_model().forward_dynamics_ab(
+        tau_array=None, f_ext_array=O.f_ext_bf())
     return O.__qdd
 
   def e_kin(O):
@@ -368,7 +368,7 @@ class model(object):
     O.flag_positions_as_changed()
 
   def d_pot_d_q(O):
-    return O.featherstone_system_model().d_pot_d_q(f_ext=O.f_ext_bf())
+    return O.featherstone_system_model().d_pot_d_q(f_ext_array=O.f_ext_bf())
 
   def pack_q(O):
     result = flex.double()
