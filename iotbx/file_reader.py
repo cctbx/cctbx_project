@@ -203,8 +203,9 @@ class _any_file (object) :
     if self.file_type == expected_type :
       return True
     else :
-      raise ("Expected file type '%s', got '%s'.  This is almost " +
-        "certainly a bug; please contact the developers.")
+      raise Sorry(("Expected file type '%s' for %s, got '%s'.  This is " +
+        "almost certainly a bug; please contact the developers.") %
+        (str(self.file_name), expected_type, str(self.file_type)))
 
 class _dir_input (object) :
   def __init__ (self, dir_name) :
