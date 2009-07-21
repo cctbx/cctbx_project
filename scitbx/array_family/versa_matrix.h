@@ -163,6 +163,30 @@ namespace scitbx { namespace af {
     return ab;
   }
 
+  template <typename NumTypeA, typename NumTypeB>
+  versa<
+    typename binary_operator_traits<NumTypeA, NumTypeB>::arithmetic,
+    c_grid<2> >
+  matrix_transpose_multiply(
+    const_ref<NumTypeA, c_grid<2> > const& a,
+    const_ref<NumTypeB, c_grid<2> > const& b)
+  {
+    typedef typename
+      binary_operator_traits<NumTypeA, NumTypeB>::arithmetic
+        numtype_atb;
+    versa<numtype_atb, c_grid<2> > atb(
+      c_grid<2>(a.accessor()[1], b.accessor()[1]),
+      init_functor_null<numtype_atb>());
+    af::const_ref<NumTypeA, af::mat_grid> a_(
+      a.begin(), a.accessor()[0], a.accessor()[1]);
+    af::const_ref<NumTypeB, af::mat_grid> b_(
+      b.begin(), b.accessor()[0], b.accessor()[1]);
+    af::ref<numtype_atb, af::mat_grid> atb_(
+      atb.begin(), atb.accessor()[0], atb.accessor()[1]);
+    transpose_multiply(a_, b_, atb_);
+    return atb;
+  }
+
   template <typename NumType>
   shared<NumType>
   matrix_multiply(
