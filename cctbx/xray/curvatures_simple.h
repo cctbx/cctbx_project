@@ -86,7 +86,7 @@ namespace curvatures_simple {
         double huh = scatterer.u_iso * d_star_sq;
         dw = std::exp(mtps * huh);
       }
-      typename xray::scattering_type_registry::form_factor_t const&
+      typename xray::scattering_type_registry::gaussian_t const&
         gaussian = scattering_type_registry.gaussian_not_optional(
           scatterer.scattering_type);
       f_t f0 = gaussian.at_d_star_sq(d_star_sq);
