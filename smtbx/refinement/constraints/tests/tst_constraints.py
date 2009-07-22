@@ -3,7 +3,7 @@ from __future__ import division
 import math
 
 from cctbx import crystal, xray
-import smtbx.util
+import smtbx.development
 from smtbx import refinement
 from smtbx.refinement import constraints
 
@@ -13,7 +13,7 @@ from libtbx.test_utils import approx_equal
 import random
 
 
-class test_case(smtbx.util.test_case):
+class test_case(smtbx.development.test_case):
 
   def f(self):
     result = 0

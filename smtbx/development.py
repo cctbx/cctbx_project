@@ -1,7 +1,7 @@
 import os, sys
 import libtbx.option_parser
 from libtbx import group_args
-from cctbx.development import debug_utils
+from cctbx.development import debug_utils, random_structure
 from cctbx import sgtbx
 
 
@@ -52,6 +52,16 @@ class space_group_option_parser(libtbx.option_parser.option_parser):
         delattr(command_line.options, attr)
     command_line.args = ()
     return command_line
+
+
+class random_xray_structure(random_structure.xray_structure):
+
+  def __init__(self, space_group_info, u_iso_xor_u_aniso=True, **kwds):
+    super(random_xray_structure, self).__init__(space_group_info, **kwds)
+    if u_iso_xor_u_aniso: return
+    if kwds['use_u_iso'] and kwds['use_u_aniso']:
+      for sc in self.scatterers():
+        sc.flags.set_use_u_iso(True).set_use_u_aniso(True)
 
 
 class test_case(object):

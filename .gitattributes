@@ -632,6 +632,7 @@ smtbx/ab_initio/tests/tst_charge_flipping.py -text
 smtbx/array_family/SConscript -text
 smtbx/array_family/__init__.py -text
 smtbx/array_family/af_ext.cpp -text
+smtbx/development.py -text
 smtbx/error.h -text
 smtbx/import_cctbx.h -text
 smtbx/import_scitbx_af.h -text
@@ -667,4 +668,3 @@ smtbx/stl/SConscript -text
 smtbx/stl/__init__.py -text
 smtbx/stl/map.py -text
 smtbx/stl/map_ext.cpp -text
-smtbx/util.py -text
