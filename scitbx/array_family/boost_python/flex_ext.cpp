@@ -8,6 +8,7 @@
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
+#include <scitbx/array_family/boost_python/owning_ref_conversions.h>
 #include <scitbx/array_family/boost_python/passing_flex_by_reference.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/slice.h>
@@ -445,6 +446,9 @@ namespace {
     default_c_grid_flex_conversions<double>();
     default_c_grid_flex_conversions<std::complex<double> >();
     def("tst_c_grid_flex_conversion", tst_c_grid_flex_conversion);
+
+    ref_owning_shared_conversions<double>();
+    ref_owning_shared_conversions< std::complex<double> >();
 
     boost_adaptbx::optional_conversions::to_and_from_python<
       af::shared<double> >();
