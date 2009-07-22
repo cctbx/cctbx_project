@@ -1,6 +1,5 @@
 import cctbx.xray.structure_factors
 import cctbx.xray.ext
-import smtbx.refinement.ext
 from cctbx import crystal
 from cctbx import xray
 from cctbx.xray.minimization import add_gradients as cctbx_add_gradients
@@ -11,6 +10,7 @@ from libtbx import adopt_init_args
 from stdlib import math
 from cctbx import adptbx
 from libtbx import itertbx as itertools
+import smtbx.refinement
 
 
 class lbfgs(object):
@@ -32,7 +32,6 @@ class lbfgs(object):
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None,
                      correct_special_position_tolerance=1.e-2,
-                     use_special_position_constraints=False,
                      cos_sin_table=True,
                      structure_factor_algorithm=None,
                      verbose=0,
@@ -162,12 +161,12 @@ class lbfgs(object):
 
   def apply_shifts(self):
     self.xray_structure_pre_cycle = self.xray_structure.deep_copy_scatterers()
-    apply_shifts_result = smtbx.refinement.ext.\
-                        apply_special_position_constrained_shifts(
-      unit_cell=self.xray_structure.unit_cell(),
-      site_symmetry_table=self.xray_structure.site_symmetry_table(),
-      scatterers=self._scatterers_start,
-      shifts=self.x)
+    apply_shifts_result = (
+      smtbx.refinement.apply_special_position_constrained_shifts(
+        unit_cell=self.xray_structure.unit_cell(),
+        site_symmetry_table=self.xray_structure.site_symmetry_table(),
+        scatterers=self._scatterers_start,
+        shifts=self.x))
     shifted_scatterers = apply_shifts_result.shifted_scatterers
     if self.log is not None:
       print >> self.log, "\n******* Before applying shifts *******"
@@ -252,7 +251,8 @@ class lbfgs(object):
           i += 1
       if sc.flags.grad_u_aniso() and sc.flags.use_u_aniso():
         n = op.adp_constraints().n_independent_params()
-        print >> log, ("u_aniso:" + "%6.3f, "*(n-1) + "%6.3f") % tuple(self.x[i:i+n])
+        print >> log, (("u_aniso:" + "%6.3f, "*(n-1) + "%6.3f")
+                       % tuple(self.x[i:i+n]))
         i += n
       if sc.flags.grad_occupancy():
         print >> log, "occ: %4.2f" % self.x[i]
@@ -307,7 +307,7 @@ class lbfgs(object):
         xray_gradients=self.g,
         occupancy_gradients=g)
       del g
-    reduction = smtbx.refinement.ext.special_position_constrained_gradients(
+    reduction = smtbx.refinement.special_position_constrained_gradients(
                 unit_cell=self.xray_structure.unit_cell(),
                 site_symmetry_table=self.xray_structure.site_symmetry_table(),
                 scatterers=self.xray_structure.scatterers(),
