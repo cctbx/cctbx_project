@@ -36,10 +36,13 @@ namespace {
         .def(init<uctbx::unit_cell const&,
                   sgtbx::space_group_type const&,
                   bool,
-                  double>())
+                  double>(
+             args("unit_cell", "space_group_type", "anomalous_flag",
+                  "resolution_limit")))
         .def(init<sgtbx::space_group_type const&,
                   bool,
-                  index<> const&>())
+                  index<> const&>(
+             args("space_group_type", "anomalous_flag", "max_index")))
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("space_group_type", &w_t::space_group_type, rir())
         .def("anomalous_flag", &w_t::anomalous_flag)
