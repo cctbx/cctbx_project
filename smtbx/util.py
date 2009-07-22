@@ -4,21 +4,34 @@ from libtbx import group_args
 from cctbx.development import debug_utils
 from cctbx import sgtbx
 
+
+class space_group_processed_options(libtbx.option_parser.processed_options):
+
+  def loop_over_space_groups(self, f):
+    for sgi in self.space_group_info_list:
+      f(sgi, **self.options.__dict__)
+
+
 class space_group_option_parser(libtbx.option_parser.option_parser):
 
   space_group_sets = ['all', 'chiral', 'all_settings', 'unusual_settings']
+  processed_options_type = space_group_processed_options
 
-  def __init__(self, cmd, usage_insertion, description_extension):
-    cmd = os.path.basename(cmd)
+  def __init__(self, cmd=None, usage_insertion='', description_extension=''):
+    if cmd is None:
+      frame = sys._getframe(1)
+      cmd = frame.f_code.co_filename
+      root, ext = os.path.splitext(os.path.basename(cmd))
+      cmd = root
     libtbx.option_parser.option_parser.__init__(self,
-      usage="   %s %s --space_group_set=SET"
-            "or %s %s SPACE_GROUP_SYMBOL"
-            "or %s %s" % ((cmd, usage_insertion, )*3),
+      usage="\n\t%s %s --space_group_set=SET"
+            "\n\t%s %s SPACE_GROUP_SYMBOL"
+            "\n\t%s %s" % ((cmd, usage_insertion, )*3),
       description="The 3rd form selects a predefined set of representative "
                   "spacegroups (c.f. module cctbx.development.debug_utils)"
                   + description_extension
     )
-    self.option('-v', '--verbose')
+    self.option('-v', '--verbose', default=0)
     self.option('--space_group_set',
                 metavar=' ' + ' | '.join(self.space_group_sets))
 
@@ -39,12 +52,6 @@ class space_group_option_parser(libtbx.option_parser.option_parser):
         delattr(command_line.options, attr)
     command_line.args = ()
     return command_line
-
-  def exercise(self, exercise_type, args):
-    command_line = self.process(args)
-    for sgi in command_line.space_group_info_list:
-      e = exercise_type(space_group_info=sgi, options=command_line.options)
-      e.run()
 
 
 class test_case(object):

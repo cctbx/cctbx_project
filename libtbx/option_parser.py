@@ -22,7 +22,21 @@ class Option(DefaultOption):
 
 make_option = Option
 
+class processed_options(object):
+
+  def __init__(self, parser, options, args,
+        show_defaults_callback,
+        chunk_callback):
+    self.parser = parser
+    self.options = options
+    self.args = args
+    self.expert_level = show_defaults_callback.expert_level
+    self.attributes_level = show_defaults_callback.attributes_level
+    self.chunk = chunk_callback.chunk_manager()
+
 class option_parser(OptionParser):
+
+  processed_options_type = processed_options
 
   def __init__(self, usage=None, description=None, more_help=None):
     OptionParser.__init__(self, usage=usage, description=description)
@@ -103,23 +117,11 @@ class option_parser(OptionParser):
       if (len(args) > max_nargs):
         self.error("Too many arguments (at most %d allowed, %d given)." % (
           max_nargs, len(args)))
-    return processed_options(self, options, args,
+    return self.processed_options_type(self, options, args,
       show_defaults_callback=self.show_defaults_callback,
       chunk_callback=self.chunk_callback)
 
 libtbx_option_parser = option_parser
-
-class processed_options(object):
-
-  def __init__(self, parser, options, args,
-        show_defaults_callback,
-        chunk_callback):
-    self.parser = parser
-    self.options = options
-    self.args = args
-    self.expert_level = show_defaults_callback.expert_level
-    self.attributes_level = show_defaults_callback.attributes_level
-    self.chunk = chunk_callback.chunk_manager()
 
 class show_defaults_callback(object):
 
