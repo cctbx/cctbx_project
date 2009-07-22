@@ -79,13 +79,13 @@ namespace scitbx { namespace af {
     }
 
     /// The owned array, returned by value for transfer of ownership
-    versa<T, AccessorType> array() { return a; }
+    versa<T, AccessorType> array() const { return a; }
 
     /// The mere ref equal to this
-    af::ref<T, AccessorType> ref() { return *this; }
+    af::ref<T, AccessorType> ref() const { return *this; }
 
     /// A const ref to the owned array
-    af::const_ref<T, AccessorType> const_ref() { return *this; }
+    af::const_ref<T, AccessorType> const_ref() const { return *this; }
 
   private:
     versa<T, AccessorType> a;
@@ -154,13 +154,13 @@ namespace scitbx { namespace af {
     }
 
     /// The owned array, returned by value for transfer of ownership
-    shared<T> array() { return a; }
+    shared<T> array() const { return a; }
 
     /// The mere ref equal to this
-    af::ref<T> ref() { return *this; }
+    af::ref<T> ref() const { return *this; }
 
     /// A const ref to the owned array
-    af::const_ref<T> const_ref() { return *this; }
+    af::const_ref<T> const_ref() const { return *this; }
 
   private:
     shared<T> a;
