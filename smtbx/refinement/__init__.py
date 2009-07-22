@@ -1,4 +1,6 @@
-import smtbx.refinement.ext
+import boost.python
+boost.python.import_ext("smtbx_refinement_ext")
+from smtbx_refinement_ext import *
 import smtbx.refinement.tests
 import smtbx.refinement.minimization
 import smtbx.refinement.barriers
@@ -9,4 +11,4 @@ import cctbx.xray
 class smtbx_structure_enhancements(oop.injector, cctbx.xray.structure):
 
   def parameter_map(self):
-    return smtbx.refinement.ext.parameter_map(self.scatterers())
+    return smtbx.refinement.parameter_map(self.scatterers())
