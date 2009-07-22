@@ -524,6 +524,7 @@ scitbx/math/continued_fraction.h -text
 scitbx/math/copysign.h -text
 scitbx/math/euler_angles.h -text
 scitbx/math/fit_peak.py -text
+scitbx/math/imaginary.h -text
 scitbx/math/inertia_tensor.h svneol=native#text/plain
 scitbx/math/least_squares_plane.h -text
 scitbx/math/modulo.h -text
