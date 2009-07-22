@@ -280,7 +280,7 @@ coordinates q. Uses f_ext_as_tau().
     """RBDA Tab. 7.1, p. 132:
 Forward Dynamics of a kinematic tree via the Articulated-Body Algorithm.
 tau_array is a vector of force variables.
-The return value (qdd) is a vector of joint acceleration variables.
+The return value (qdd_array) is a vector of joint acceleration variables.
 f_ext_array specifies external forces acting on the bodies. If f_ext_array
 is None then there are no external forces; otherwise, f_ext_array[i] is a
 spatial force vector giving the force acting on body i, expressed in body i
@@ -302,7 +302,7 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
       if (body.parent == -1): c[ib] = matrix.col([0,0,0,0,0,0])
       else:                   c[ib] = crm(v[ib]) * vj
       ia[ib] = body.i_spatial
-      pa[ib] = crf(v[ib]) * body.i_spatial * v[ib]
+      pa[ib] = crf(v[ib]) * (body.i_spatial * v[ib])
       if (f_ext_array is not None and f_ext_array[ib] is not None):
         pa[ib] -= f_ext_array[ib]
 
@@ -328,8 +328,9 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
           u_[ib] = tau_array[ib] - s.transpose() * pa[ib]
       d_inv[ib] = generalized_inverse(d)
       if (body.parent != -1):
-        ia_ = ia[ib] - u[ib] * d_inv[ib] * u[ib].transpose()
-        pa_ = pa[ib] + ia_*c[ib] + u[ib] * d_inv[ib] * u_[ib]
+        u_d_inv = u[ib] * d_inv[ib];
+        ia_ = ia[ib] - u_d_inv * u[ib].transpose()
+        pa_ = pa[ib] + ia_*c[ib] + u_d_inv * u_[ib]
         ia[body.parent] += xup_array[ib].transpose() * ia_ * xup_array[ib]
         pa[body.parent] += xup_array[ib].transpose() * pa_
 

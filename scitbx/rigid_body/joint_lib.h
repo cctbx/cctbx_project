@@ -157,7 +157,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     virtual
     af::small<ft, 7>
     tau_as_d_pot_d_q(
-      af::const_ref<ft> const& tau) const = 0;
+      af::small<ft, 6> const& tau) const = 0;
 
     virtual
     af::small<ft, 7>
@@ -249,7 +249,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     virtual
     af::small<ft, 7>
     tau_as_d_pot_d_q(
-      af::const_ref<ft> const& tau) const
+      af::small<ft, 6> const& tau) const
     {
       return af::small<ft, 7>(0);
     }
@@ -394,7 +394,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     virtual
     af::small<ft, 7>
     tau_as_d_pot_d_q(
-      af::const_ref<ft> const& tau) const
+      af::small<ft, 6> const& tau) const
     {
       SCITBX_ASSERT(tau.size() == 6);
       af::tiny<ft, 4*4> d = d_unit_quaternion_d_qe_matrix(qe);
