@@ -1,6 +1,17 @@
 #ifndef SCITBX_MATH_COPY_SIGN_H
 #define SCITBX_MATH_COPY_SIGN_H
 
+namespace scitbx { namespace math {
+
+  /** \fn double copysign(double x, double y)
+       \brief  Return x with its sign changed to match the sign of y.
+
+       \fn float copysign(float x, float y)
+       \copydoc double copysign(double x, double y)
+  */
+
+}}
+
 #if defined(__GNUC__) && __GNUC__ == 4
   #include <math.h>
   namespace scitbx { namespace math {
