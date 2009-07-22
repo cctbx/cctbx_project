@@ -20,6 +20,8 @@ from libtbx import Auto, group_args
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import sys
 from cctbx import crystal
+import iotbx.pdb
+from iotbx.pdb import combine_unique_pdb_files
 
 core_params_str = """\
 atom_radius = None
@@ -135,7 +137,7 @@ def compute_grid_step_from_atom_radius_and_number_of_grid_points(
   return result
 
 class model_to_map(object):
-  def __init__(self, xray_structures, f_obs, map_type,
+  def __init__(self, xray_structure, f_obs, map_type,
                      resolution_factor, high_resolution, low_resolution,
                      use_kick_map,
                      other_fft_map = None):
@@ -143,10 +145,9 @@ class model_to_map(object):
     map_name_obj = mmtbx.map_names(map_name_string = map_type)
     if(map_name_obj.k == 0 and map_name_obj.n == -1 and not map_name_obj.ml_map):
       complete_set = f_obs.complete_set(d_min = f_obs.d_min(), d_max=None)
-      assert len(xray_structures) == 1
       assert not use_kick_map
       f_calc = complete_set.structure_factors_from_scatterers(
-        xray_structure = xray_structures[0]).f_calc()
+        xray_structure = xray_structure).f_calc()
       if(other_fft_map is not None):
         self.fft_map = miller.fft_map(
           crystal_gridding     = other_fft_map,
@@ -180,7 +181,7 @@ class model_to_map(object):
       bss_params.b_sol_step = 20.0
       #
       self.fmodel = mmtbx.utils.fmodel_simple(
-        xray_structures = xray_structures,
+        xray_structures = [xray_structure],
         f_obs           = f_obs,
         r_free_flags    = r_free_flags,
         skip_twin_detection = True, # XXX remove once Peter supports map type strings
@@ -209,19 +210,23 @@ class model_to_map(object):
 
 class pdb_to_xrs(object):
   def __init__(self, pdb_files, crystal_symmetry, scattering_table):
-    processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
-      crystal_symmetry = crystal_symmetry,
-      log = StringIO())
-    self.xray_structures = None
-    self.processed_pdb_file = None
+    self.xray_structure = None
     if(pdb_files != []):
-      self.processed_pdb_file, pdb_inp = \
-        processed_pdb_files_srv.process_pdb_files(pdb_file_names = pdb_files)
-      xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
-        processed_pdb_file = self.processed_pdb_file,
-        scattering_table   = scattering_table,
-        d_min              = None)
-      self.xray_structures = xsfppf.xray_structures
+      pdb_combined = combine_unique_pdb_files(file_names = pdb_files)
+      raw_recs = flex.std_string()
+      for rec in pdb_combined.raw_records:
+        if(rec.upper().count("CRYST1")==0):
+          raw_recs.append(rec)
+      raw_recs.append(iotbx.pdb.format_cryst1_record(
+        crystal_symmetry = crystal_symmetry))
+      pdb_inp = iotbx.pdb.input(source_info = None, lines = raw_recs)
+      self.xray_structure = pdb_inp.xray_structure_simple()
+      self.pdb_hierarchy = pdb_inp.construct_hierarchy()
+      self.pdb_hierarchy.atoms().reset_i_seq() # VERY important to do.
+      mmtbx.utils.setup_scattering_dictionaries(
+        scattering_table = scattering_table,
+        xray_structure = self.xray_structure,
+        d_min = None)
 
 def extract_crystal_symmetry(params):
   crystal_symmetries = []
@@ -286,13 +291,8 @@ def extract_data_and_flags(params, crystal_symmetry):
       log                    = StringIO())
   return data_and_flags
 
-def compute_map_from_model(high_resolution, low_resolution, xray_structures,
+def compute_map_from_model(high_resolution, low_resolution, xray_structure,
                            grid_resolution_factor, crystal_gridding = None):
-  if(len(xray_structures) > 1):
-    xray_structure = xray_structures[0]
-    for xrs in xray_structures[1:]:
-      xray_structure.concatenate(other = xrs)
-  else: xray_structure = xray_structures[0]
   f_calc = xray_structure.structure_factors(d_min = high_resolution).f_calc()
   f_calc = f_calc.resolution_filter(d_max = low_resolution)
   if(crystal_gridding is None):
@@ -352,11 +352,11 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   pdb_to_xrs_1 = pdb_to_xrs(pdb_files        = params.map_1.pdb_file_name,
                             crystal_symmetry = crystal_symmetry,
                             scattering_table = params.scattering_table)
-  xray_structures_1 = pdb_to_xrs_1.xray_structures
+  xray_structure_1 = pdb_to_xrs_1.xray_structure
   pdb_to_xrs_2 = pdb_to_xrs(pdb_files        = params.map_2.pdb_file_name,
                             crystal_symmetry = crystal_symmetry,
                             scattering_table = params.scattering_table)
-  xray_structures_2 = pdb_to_xrs_2.xray_structures
+  xray_structure_2 = pdb_to_xrs_2.xray_structure
   # assert correct combination of options
   if([params.map_1.use, params.map_2.use].count(True) == 0):
     raise Sorry("No model selected to compute local density correlation.")
@@ -364,16 +364,11 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     raise Sorry(
       "Select one model to compute local density correlation (two selected).")
   if(params.map_1.use):
-    if(xray_structures_1 is None):
+    if(xray_structure_1 is None):
       raise Sorry("PDB file for map_1 is not provided.")
-    if(params.map_1.use_kick_map and len(xray_structures_1) > 1):
-      raise Sorry("kick map cannot be used for a PDB file with multiple models.")
   if(params.map_2.use):
-    if(xray_structures_2 is None):
+    if(xray_structure_2 is None):
       raise Sorry("PDB file for map_2 is not provided.")
-    if(len(xray_structures_2) > 1):
-      if(params.map_2.use_kick_map):
-        raise Sorry("kick map cannot be used for a PDB file with multiple models.")
   # read in F-obs and free-r flags for map_1
   data_and_flags_1 = extract_data_and_flags(
     params           = params.map_1,
@@ -389,11 +384,10 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     if(params.map_1.use): pdb_to_xrs_ = pdb_to_xrs_1
     elif(params.map_2.use): pdb_to_xrs_ = pdb_to_xrs_2
     else: RuntimeError
-    pdb_hierarchy = pdb_to_xrs_.processed_pdb_file.all_chain_proxies.\
-      pdb_hierarchy
+    pdb_hierarchy = pdb_to_xrs_.pdb_hierarchy
     result = map_cc_funct(
       map_1          = map_1,
-      xray_structure = pdb_to_xrs_.xray_structures,
+      xray_structure = pdb_to_xrs_.xray_structure,
       fft_map        = fft_map_1,
       pdb_hierarchy  = pdb_hierarchy,
       atom_detail    = atom_detail,
@@ -412,8 +406,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     if(params.map_2.map_type is None):
       params.map_2.map_type = params.map_1.map_type
     ### first
-    if(xray_structures_1 is not None): xrs = xray_structures_1
-    else: xrs = xray_structures_2
+    if(xray_structure_1 is not None): xrs = xray_structure_1
+    else: xrs = xray_structure_2
     if(data_and_flags_1 is not None): data_and_flags = data_and_flags_1
     else: data_and_flags = data_and_flags_2
     hr, lr = None, None
@@ -435,7 +429,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       d_min = data_and_flags.f_obs.d_min())
     #
     model_to_map_obj_1 = model_to_map(
-      xray_structures   = xrs,
+      xray_structure    = xrs,
       f_obs             = data_and_flags.f_obs,
       map_type          = params.map_1.map_type,
       resolution_factor = grid_step/data_and_flags.f_obs.d_min(),
@@ -453,8 +447,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       residue_detail = residue_detail, atom_radius = atom_radius)
     #
     ### second
-    if(xray_structures_2 is not None): xrs = xray_structures_2
-    else: xrs = xray_structures_1
+    if(xray_structure_2 is not None): xrs = xray_structure_2
+    else: xrs = xray_structure_1
     if(data_and_flags_2 is not None): data_and_flags = data_and_flags_2
     else: data_and_flags = data_and_flags_1
     hr, lr = None, None
@@ -467,7 +461,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     elif(params.map_1.low_resolution is not None):
       lr = params.map_1.low_resolution
     model_to_map_obj_2 = model_to_map(
-      xray_structures   = xrs,
+      xray_structure    = xrs,
       f_obs             = data_and_flags.f_obs,
       map_type          = params.map_2.map_type,
       resolution_factor = grid_step/data_and_flags.f_obs.d_min(),
@@ -479,8 +473,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
 
   # compute data if no reflection files provided for both maps
   if([data_and_flags_1, data_and_flags_2].count(None) == 2):
-    if(xray_structures_1 is not None): xrs = xray_structures_1
-    else: xrs = xray_structures_2
+    if(xray_structure_1 is not None): xrs = xray_structure_1
+    else: xrs = xray_structure_2
     if(params.map_1.high_resolution is not None):
       hr = params.map_1.high_resolution
     elif(params.map_2.high_resolution is not None):
@@ -504,7 +498,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     fft_map_1 = compute_map_from_model(
       high_resolution        = hr,
       low_resolution         = lr,
-      xray_structures        = xrs,
+      xray_structure         = xrs,
       grid_resolution_factor = grid_step/hr,
       crystal_gridding = None)
     fft_map_1.apply_sigma_scaling()
@@ -517,8 +511,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       fft_map_1 = fft_map_1, atom_detail = atom_detail,
       residue_detail = residue_detail, atom_radius = atom_radius)
     #
-    if(xray_structures_2 is not None): xrs = xray_structures_2
-    else: xrs = xray_structures_1
+    if(xray_structure_2 is not None): xrs = xray_structure_2
+    else: xrs = xray_structure_1
     if(params.map_2.high_resolution is not None):
       hr = params.map_2.high_resolution
     elif(params.map_1.high_resolution is not None):
@@ -534,7 +528,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     fft_map_2 = compute_map_from_model(
       high_resolution        = hr,
       low_resolution         = lr,
-      xray_structures        = xrs,
+      xray_structure         = xrs,
       grid_resolution_factor = grid_step/hr,
       crystal_gridding       = fft_map_1)
     fft_map_2.apply_sigma_scaling()
@@ -562,12 +556,7 @@ class map_cc_funct(object):
                      residue_detail,
                      selection = None,
                      pdb_hierarchy = None):
-    #
-    if(len(xray_structure) > 1):
-      self.xray_structure = xray_structure[0]
-      for xrs in xray_structure[1:]:
-        self.xray_structure = self.xray_structure.concatenate(other = xrs)
-    else: self.xray_structure = xray_structure[0]
+    self.xray_structure = xray_structure
     self.selection = selection
     self.atom_detail = atom_detail
     self.residue_detail = residue_detail
@@ -823,7 +812,7 @@ def simple(fmodel,
     map_1 = fft_map_1.real_map_unpadded()
     map_cc_obj = map_cc_funct(
       map_1          = map_1,
-      xray_structure = [fmodel.xray_structure],
+      xray_structure = fmodel.xray_structure,
       selection      = selection,
       fft_map        = fft_map_1,
       pdb_hierarchy  = pdb_hierarchy,
