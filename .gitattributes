@@ -668,3 +668,10 @@ smtbx/stl/SConscript -text
 smtbx/stl/__init__.py -text
 smtbx/stl/map.py -text
 smtbx/stl/map_ext.cpp -text
+smtbx/structure_factors/__init__.py -text
+smtbx/structure_factors/direct/__init__.py -text
+smtbx/structure_factors/direct/boost_python/SConscript -text
+smtbx/structure_factors/direct/boost_python/ext.cpp -text
+smtbx/structure_factors/direct/boost_python/standard_xray.cpp -text
+smtbx/structure_factors/direct/standard_xray.h -text
+smtbx/structure_factors/direct/tests/tst_standard_xray.py -text
