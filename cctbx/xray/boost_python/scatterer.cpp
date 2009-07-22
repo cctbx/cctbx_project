@@ -2,6 +2,8 @@
 
 #include <cctbx/xray/scatterer_utils.h>
 #include <cctbx/crystal/direct_space_asu.h>
+#include <cctbx/eltbx/henke.h>
+#include <cctbx/eltbx/sasaki.h>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/overloads.hpp>
@@ -338,6 +340,12 @@ namespace {
                              &apply_rigid_body_shift<>::center_of_mass, rbv()))
     ;
 
+    def("set_inelastic_form_factors_from_henke",
+        set_inelastic_form_factors< scatterer<>, eltbx::henke::table >,
+        (arg("scatterers"), arg("photon"), arg("set_use_fp_fdp")=true));
+    def("set_inelastic_form_factors_from_sasaki",
+        set_inelastic_form_factors< scatterer<>, eltbx::sasaki::table >,
+        (arg("scatterers"), arg("photon"), arg("set_use_fp_fdp")=true));
   }
 
 }}} // namespace cctbx::xray::boost_python

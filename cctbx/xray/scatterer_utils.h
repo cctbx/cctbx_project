@@ -2,6 +2,8 @@
 #define CCTBX_XRAY_SCATTERER_UTILS_H
 
 #include <cctbx/xray/scatterer.h>
+#include <cctbx/eltbx/fp_fdp.h>
+#include <cctbx/eltbx/wavelengths.h>
 #include <cctbx/sgtbx/sym_equiv_sites.h>
 #include <cctbx/sgtbx/site_symmetry_table.h>
 #include <scitbx/array_family/versa.h>
@@ -397,6 +399,23 @@ class apply_rigid_body_shift
       }
     }
 };
+
+  template <class ScattererType, class TableType>
+  void set_inelastic_form_factors(af::ref<ScattererType> const &scatterers,
+                                  eltbx::wavelengths::characteristic photon,
+                                  bool set_use_fp_fdp)
+  {
+    float ev = photon.as_ev();
+    for (int i=0; i < scatterers.size(); ++i) {
+      ScattererType &sc = scatterers[i];
+      TableType tb(sc.label);
+      CCTBX_ASSERT(tb.is_valid());
+      eltbx::fp_fdp ff_inel = tb.at_ev(ev);
+      sc.fp = ff_inel.fp();
+      sc.fdp = ff_inel.fdp();
+      if (set_use_fp_fdp) sc.flags.set_use_fp_fdp(true);
+    }
+  }
 
 }} // namespace cctbx::xray
 
