@@ -730,7 +730,7 @@ def exercise_scattering_type_registry():
       unique_indices=unique_indices)
     for i, dilated_ff in enumerate(all_dilated_ffs):
       j = unique_indices[i]
-      ref_ff = reg.unique_form_factors_as_list()[j].at_d_star_sq(0.1/(i+1))
+      ref_ff = reg.unique_gaussians_as_list()[j].at_d_star_sq(0.1/(i+1))
       assert approx_equal(dilated_ff, ref_ff)
     reg.assign(scattering_type="custom", gaussian=None)
     assert reg.gaussian(scattering_type="custom") is None
