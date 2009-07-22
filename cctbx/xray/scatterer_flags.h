@@ -41,6 +41,7 @@ namespace cctbx { namespace xray {
     static const unsigned curv_fp_fdp_bit =              0x10000000U;
     static const unsigned curv_fdp_fdp_bit =             0x20000000U;
     static const unsigned tan_u_iso_bit =                0x40000000U;
+    static const unsigned use_fp_fdp_bit =               0x80000000U;
 
     unsigned bits;
     int param;
@@ -85,6 +86,7 @@ namespace cctbx { namespace xray {
       bool curv_fp_fdp=false,
       bool curv_fdp_fdp=false,
       bool tan_u_iso=false,
+      bool use_fp_fdp=false,
       int  param_=0)
     :
       bits(0),
@@ -121,6 +123,7 @@ namespace cctbx { namespace xray {
       set_curv_fp_fdp(curv_fp_fdp);
       set_curv_fdp_fdp(curv_fdp_fdp);
       set_tan_u_iso(tan_u_iso);
+      set_use_fp_fdp(use_fp_fdp);
     }
 
     /// Whether for each corresponding pair of bits a and b from bits
@@ -172,6 +175,7 @@ namespace cctbx { namespace xray {
     CCTBX_XRAY_SCATTERER_FLAGS_GET_SET(curv_fp_fdp)
     CCTBX_XRAY_SCATTERER_FLAGS_GET_SET(curv_fdp_fdp)
     CCTBX_XRAY_SCATTERER_FLAGS_GET_SET(tan_u_iso)
+    CCTBX_XRAY_SCATTERER_FLAGS_GET_SET(use_fp_fdp)
 
     void set_use_u(bool iso, bool aniso)
     {
@@ -209,6 +213,7 @@ namespace cctbx { namespace xray {
       unsigned tan_u_iso;
       unsigned use_u_iso;
       unsigned use_u_aniso;
+      unsigned use_fp_fdp;
 
       grad_flags_counts_core()
         : site(0),
@@ -219,7 +224,8 @@ namespace cctbx { namespace xray {
           fdp(0),
           tan_u_iso(0),
           use_u_iso(0),
-          use_u_aniso(0)
+          use_u_aniso(0),
+          use_fp_fdp(0)
       {}
 
       void process(scatterer_flags const &f)
@@ -234,6 +240,7 @@ namespace cctbx { namespace xray {
           if (f.tan_u_iso()) tan_u_iso++;
           if (f.use_u_iso()) use_u_iso++;
           if (f.use_u_aniso()) use_u_aniso++;
+          if (f.use_fp_fdp()) use_fp_fdp++;
         }
       }
 
@@ -267,7 +274,18 @@ namespace cctbx { namespace xray {
       }
   };
 
+  /// Set the flags of each given scatterers to the given values
+  /** The logic is as follow:
+        -# if a scatterer is not used (the 'use' flag is false), no flag is set;
+        -# the grad_u_iso flag (as well as the tan_u_iso flag)
+             -# is set to the specified value only if the use_u_iso flag is set;
+             -# otherwise it is set to false;
+        -# the same logic applies for grad_u_aniso and use_u_aniso;
+        -# the use_fp_fdp flag
+             -# is set iff either grad_fp or grad_fdp is set;
+             -# otherwise it is left unchanged.
 
+   */
   template <typename ScattererType>
   void
   set_scatterer_grad_flags(
@@ -301,6 +319,7 @@ namespace cctbx { namespace xray {
               sc.flags.set_grad_u_aniso(false);
            }
            sc.flags.set_grad_occupancy(occupancy);
+           sc.flags.set_use_fp_fdp(fp || fdp);
            sc.flags.set_grad_fp(fp);
            sc.flags.set_grad_fdp(fdp);
            if(sc.flags.use_u_iso()) sc.flags.set_tan_u_iso(tan_u_iso);
