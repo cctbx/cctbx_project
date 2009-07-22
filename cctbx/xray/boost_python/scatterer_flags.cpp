@@ -113,6 +113,7 @@ namespace {
                               default_call_policies(),
                               arg("scatterers")))
         .def("n_parameters", n_parameters)
+        .def("assign_to", assign_to, return_self<>())
         ;
     }
 
@@ -129,6 +130,15 @@ namespace {
 
     static std::size_t n_parameters(wt const &self) {
       return grad_flags_counts(self.const_ref()).n_parameters();
+    }
+
+    static
+    wt const &assign_to(wt const &self, af::ref<scatterer<> > const &scatterers) {
+      CCTBX_ASSERT(self.size() == scatterers.size());
+      for (std::size_t i=0; i < self.size(); ++i) {
+        scatterers[i].flags = self[i];
+      }
+      return self;
     }
   };
 
@@ -157,9 +167,6 @@ namespace {
     }
   };
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(set_scatterer_grad_flags_overloads,
-    set_scatterer_grad_flags,1,9)
-
 } // namespace <anoymous>
 
   void wrap_scatterer_flags()
@@ -168,16 +175,8 @@ namespace {
     scatterer_flags_wrappers::wrap();
     scatterer_flags_array_wrappers::wrap();
     scatterer_grad_flags_counts_wrappers::wrap();
-    def("set_scatterer_grad_flags",(void
-      (*)(scitbx::af::ref<scatterer<> > const&,
-                           bool,
-                           bool,
-                           bool,
-                           bool,
-                           bool,
-                           bool,
-                           bool,
-                           int)) set_scatterer_grad_flags<scatterer<> >,
+    def("set_scatterer_grad_flags",
+        set_scatterer_grad_flags<scatterer<> >,
          (arg_("scatterers"),
           arg_("site")=false,
           arg_("u_iso")=false,

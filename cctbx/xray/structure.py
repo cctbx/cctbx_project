@@ -1036,6 +1036,9 @@ class structure(crystal.special_position_settings):
   def scatterer_flags(self):
     return ext.shared_scatterer_flags(self.scatterers())
 
+  def set_scatterer_flags(self, scatterer_flags):
+    scatterer_flags.assign_to(self.scatterers())
+
   def n_parameters(self):
     #XXX move to C++ (after anisotropic_flag is gone)
     result_ = 0
