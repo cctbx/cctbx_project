@@ -490,12 +490,26 @@ namespace cctbx {
   //! Coefficients for gradients of Debye-Waller factor w.r.t. u_star.
   /*! Formula for the gradients:
         -2*pi**2 * debye_waller_factor_u_star(h, u_star) * result
+
+      It should be noted that passing a 2nd argument, e.g.
+      \code
+        debye_waller_factor_u_star_gradient_coefficients(
+          h, scitbx::type_holder<double>());
+      \endcode
+      to select the version returning sym_mat3<double>, is deprecated.
+      All the platform supported by the cctbx have C++ compiler which accepts
+      the simpler syntax
+      \code
+        debye_waller_factor_u_star_gradient_coefficients<double>(h)
+      \endcode
+      The last one which failed to support such function template
+      specialisation, VC++ 7.1, has been dropped in early 2009.
    */
   template <typename NumType>
   inline sym_mat3<NumType>
   debye_waller_factor_u_star_gradient_coefficients(
     miller::index<> const& h,
-    scitbx::type_holder<NumType>)
+    scitbx::type_holder<NumType> holder=scitbx::type_holder<NumType>())
   {
     return sym_mat3<NumType>(
         (h[0] * h[0]),
