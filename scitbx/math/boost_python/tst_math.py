@@ -1395,6 +1395,43 @@ def exercise_basic_statistics():
       (flex.sum(d*d*d*d)/s.n) / (flex.sum(d*d)/s.n)**2)
     assert approx_equal(s.kurtosis_excess, s.kurtosis-3)
 
+def exercise_median():
+  from scitbx.math import median_statistics
+
+  try:
+    median_statistics(flex.double())
+    raise Exception_expected
+  except RuntimeError:
+    pass
+
+  stats = median_statistics(flex.double((1,)))
+  assert stats.median == 1
+  assert stats.median_absolute_deviation == 0
+
+  for i in xrange(5):
+    stats = median_statistics(flex.double((5, 1)))
+    assert stats.median == 3
+    assert stats.median_absolute_deviation == 2
+
+  for i in xrange(5):
+    stats = median_statistics(flex.double((5, 1, 2)))
+    assert stats.median == 2
+    assert stats.median_absolute_deviation == 1
+
+  data = flex.double((1, 1, 2, 2, 4, 6, 9))
+  for i in xrange(10):
+    data_ = data.select(flex.random_permutation(len(data)))
+    stats = median_statistics(data_)
+    assert stats.median == 2
+    assert stats.median_absolute_deviation == 1
+
+  data = flex.double((1, 1, 2, 4, 6, 9))
+  for i in xrange(10):
+    data_ = data.select(flex.random_permutation(len(data)))
+    stats = median_statistics(data_)
+    assert stats.median == 3
+    assert stats.median_absolute_deviation == 2
+
 def exercise_slatec_dlngam():
   def cmp(a, b):
     if (abs(a) < 1):
@@ -1711,6 +1748,7 @@ def exercise_numeric_limits():
   print "\tsafe min:", l.safe_min
 
 def run():
+  exercise_median()
   exercise_numeric_limits()
   exercise_continued_fraction()
   exercise_least_squares_plane()

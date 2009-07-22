@@ -4,6 +4,8 @@
 #include <scitbx/array_family/misc_functions.h>
 #include <scitbx/array_family/ref.h>
 #include <scitbx/math/accumulators.h>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int.hpp>
 #include <cmath>
 #include <cstddef>
 
@@ -123,6 +125,109 @@ namespace scitbx { namespace math {
       FloatType kurtosis;
       //! (sum((value-mean)**4)/n) / (sum((value-mean)**2)/n)**2 - 3
       FloatType kurtosis_excess;
+  };
+
+  /// Median and median absolute deviation
+  /** The algorithm is Quickselect, with a random choice of a pivot
+      and a tweak for the case when the number of data is even,
+      so as to find the both of the central values during the same search,
+      the median being then the average of that pair.
+  */
+  template <typename FloatType = double>
+  class median_statistics
+  {
+  public:
+    typedef FloatType float_type;
+
+    /// Construct statistics, overwriting the referenced array.
+    /** It is overwritten with the absolute deviations from the median,
+        but those are not stored in the same order as the original array.
+    */
+    median_statistics(af::ref<float_type> const &data)
+      : data(data)
+    {
+      SCITBX_ASSERT(data.size());
+      std::size_t n = data.size();
+
+      if (n == 1) {
+        median = data[0];
+        median_absolute_deviation = 0;
+        return;
+      }
+
+      k = data.begin() + n / 2;
+      odd = n % 2;
+      km1 = k-1;
+
+      median = get_median();
+
+      for (int i=0; i < n; ++i) {
+        data[i] = std::abs(data[i] - median);
+      }
+      median_absolute_deviation = get_median();
+    }
+
+    /// Median of the data passed to the constructor
+    float_type median;
+
+    /// Median absolute deviation of the data passed to the constructor
+    float_type median_absolute_deviation;
+
+  private:
+    af::ref<float_type> const &data;
+    boost::mt19937 rnd;
+    float_type *k, *km1;
+    bool odd;
+
+    float_type get_median() {
+      float_type *l=data.begin(), *r=data.end()-1;
+
+      float_type *p; // pivot
+      if (odd) {
+        for(;;) {
+          boost::uniform_int<std::size_t> gen(0, r - l);
+          p = partition(l, r, l + gen(rnd));
+          if      (k < p) r = p - 1;
+          else if (p < k) l = p + 1;
+          else return *k;
+        }
+      }
+      else {
+        bool already_found_one_central_value = false;
+        float_type central_value, other_central_value;
+        for(;;) {
+          boost::uniform_int<std::size_t> gen(0, r - l);
+          p = partition(l, r, l + gen(rnd));
+          if      (k < p)   r = p - 1;
+          else if (p < km1) l = p + 1;
+          else if (already_found_one_central_value) {
+            other_central_value = *p;
+            break;
+          }
+          else {
+            central_value = *p;
+            if   (p == k)        r = p - 1;
+            else /* p == k-1 */  l = p + 1;
+            already_found_one_central_value = true;
+          }
+        }
+        return (central_value + other_central_value)/2;
+      }
+    }
+
+    float_type *partition(float_type *l, float_type *r, float_type *p) {
+      float_type pv = *p;
+      std::swap(*p, *r);
+      float_type *s = l;
+      for (float_type *q=l; q < r; ++q) {
+        if (*q < pv) {
+          std::swap(*s, *q);
+          ++s;
+        }
+      }
+      std::swap(*r, *s);
+      return s;
+    }
   };
 
 }} // namespace scitbx::math

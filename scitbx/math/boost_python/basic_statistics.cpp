@@ -37,6 +37,22 @@ namespace scitbx { namespace math { namespace {
     }
   };
 
+  struct median_statistics_wrapper
+  {
+    typedef median_statistics<double> wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt>("median_statistics", no_init)
+        .def(init<af::ref<double> const &>((arg_("values"))))
+        .def_readonly("median", &wt::median)
+        .def_readonly("median_absolute_deviation",
+                      &wt::median_absolute_deviation)
+        ;
+    }
+  };
+
+
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -44,6 +60,7 @@ namespace boost_python {
   void wrap_basic_statistics()
   {
     basic_statistics_wrappers::wrap();
+    median_statistics_wrapper::wrap();
   }
 
 }}} // namespace scitbx::math::boost_python
