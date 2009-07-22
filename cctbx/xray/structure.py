@@ -629,6 +629,15 @@ class structure(crystal.special_position_settings):
       self._scattering_type_registry_is_out_of_date = False
     return self._scattering_type_registry
 
+  def set_inelastic_form_factors(self, photon, table, set_use_fp_fdp=True):
+    if table == "sasaki":
+      set_inelastic_ff = ext.set_inelastic_form_factors_from_sasaki
+    elif table == "henke":
+      set_inelastic_ff = ext.set_inelastic_form_factors_from_henke
+    else:
+      raise RuntimeError("Unknown inelastic form factors table: %s" % table)
+    set_inelastic_ff(self.scatterers(), photon, set_use_fp_fdp)
+
   def __getitem__(self, slice_object):
     assert type(slice_object) == types.SliceType
     assert self.scatterers() is not None
