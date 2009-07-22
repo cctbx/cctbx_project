@@ -1242,18 +1242,20 @@ class xray_structures_from_processed_pdb_file(object):
     self.model_selections = []
     self.neutron_scattering_dict = None
     self.xray_scattering_dict = None
-    self.xray_structure_all = processed_pdb_file.xray_structure(show_summary = False)
+    self.xray_structure_all = \
+     processed_pdb_file.xray_structure(show_summary = False)
     if(self.xray_structure_all is None):
       raise Sorry("Cannot extract xray_structure.")
     if(self.xray_structure_all.scatterers().size()==0):
       raise Sorry("Empty xray_structure.")
     all_chain_proxies = processed_pdb_file.all_chain_proxies
-    self.setup_scattering_dictionaries(
-      scattering_table  = scattering_table,
-      all_chain_proxies = all_chain_proxies,
-      xray_structure    = self.xray_structure_all,
-      d_min             = d_min,
-      log               = log)
+    self.xray_scattering_dict, self.neutron_scattering_dict = \
+      setup_scattering_dictionaries(
+        scattering_table  = scattering_table,
+        all_chain_proxies = all_chain_proxies,
+        xray_structure    = self.xray_structure_all,
+        d_min             = d_min,
+        log               = log)
     model_indices = all_chain_proxies.pdb_inp.model_indices()
     if(len(model_indices)>1):
        model_indices_padded = flex.size_t([0])
@@ -1272,36 +1274,38 @@ class xray_structures_from_processed_pdb_file(object):
         flex.size_t(xrange(self.xray_structure_all.scatterers().size())) )
       self.xray_structures.append(self.xray_structure_all)
 
-  def setup_scattering_dictionaries(self, scattering_table,
-                                          all_chain_proxies,
-                                          xray_structure,
-                                          d_min,
-                                          log):
+def setup_scattering_dictionaries(scattering_table,
+                                  xray_structure,
+                                  d_min,
+                                  log = None,
+                                  all_chain_proxies = None):
+  xray_scattering_dict, neutron_scattering_dict = [None,]*2
+  if(log is not None):
+    print_statistics.make_header("Scattering factors", out = log)
+  known_scattering_tables = ["n_gaussian","wk1995","it1992","neutron"]
+  if(not (scattering_table in known_scattering_tables)):
+    raise Sorry("Unknown scattering_table: %s\n%s"%
+      (show_string(scattering_table),
+      "Possible choices are: %s"%" ".join(known_scattering_tables)))
+  if(scattering_table in ["n_gaussian", "wk1995", "it1992"]):
+    xray_structure.scattering_type_registry(
+      table = scattering_table,
+      d_min = d_min,
+      types_without_a_scattering_contribution=["?"])
+    xray_scattering_dict = \
+      xray_structure.scattering_type_registry().as_type_gaussian_dict()
     if(log is not None):
-      print_statistics.make_header("Scattering factors", out = log)
-    known_scattering_tables = ["n_gaussian","wk1995","it1992","neutron"]
-    if(not (scattering_table in known_scattering_tables)):
-      raise Sorry("Unknown scattering_table: %s\n%s"%
-        (show_string(scattering_table),
-        "Possible choices are: %s"%" ".join(known_scattering_tables)))
-    if(scattering_table in ["n_gaussian", "wk1995", "it1992"]):
-      xray_structure.scattering_type_registry(
-        table = scattering_table,
-        d_min = d_min,
-        types_without_a_scattering_contribution=["?"])
-      self.xray_scattering_dict = \
-        xray_structure.scattering_type_registry().as_type_gaussian_dict()
-      if(log is not None):
-        print_statistics.make_sub_header("X-ray scattering dictionary",out=log)
-        xray_structure.scattering_type_registry().show(out = log)
-    if(scattering_table == "neutron"):
-      self.neutron_scattering_dict = \
-        xray_structure.switch_to_neutron_scattering_dictionary()
-      if(log is not None):
-        print_statistics.make_sub_header(
-          "Neutron scattering dictionary", out = log)
-        xray_structure.scattering_type_registry().show(out = log)
-      xray_structure.scattering_type_registry_params.table = "neutron"
+      print_statistics.make_sub_header("X-ray scattering dictionary",out=log)
+      xray_structure.scattering_type_registry().show(out = log)
+  if(scattering_table == "neutron"):
+    neutron_scattering_dict = \
+      xray_structure.switch_to_neutron_scattering_dictionary()
+    if(log is not None):
+      print_statistics.make_sub_header(
+        "Neutron scattering dictionary", out = log)
+      xray_structure.scattering_type_registry().show(out = log)
+    xray_structure.scattering_type_registry_params.table = "neutron"
+  if(all_chain_proxies is not None):
     scattering_type_registry = all_chain_proxies.scattering_type_registry
     if(scattering_type_registry.n_unknown_type_symbols() > 0):
       scattering_type_registry.report(
@@ -1316,6 +1320,7 @@ class xray_structures_from_processed_pdb_file(object):
         "    - Provide custom monomer definitions for the affected residues.")
     if(log is not None):
       print >> log
+  return xray_scattering_dict, neutron_scattering_dict
 
 def fmodel_manager(
       f_obs,
