@@ -149,13 +149,14 @@ class system_model(object):
     "RBDA Example 4.4, p. 80"
     result = []
     cb_up_array = O.cb_up_array()
-    for i,body in enumerate(O.bodies):
+    for ib in xrange(len(O.bodies)):
+      body = O.bodies[ib]
       s = body.joint.motion_subspace
       if (s is None): vj = body.qd
       else:           vj = s * body.qd
       if (body.parent == -1): result.append(vj)
       else:
-        cb_up = cb_up_array[i]
+        cb_up = cb_up_array[ib]
         vp = result[body.parent].elems
         r_va = cb_up.r * matrix.col(vp[:3])
         vp = matrix.col((
