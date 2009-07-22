@@ -324,7 +324,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
     inverse_dynamics(
       af::const_ref<af::small<ft, 6> > const& qdd_array,
       af::const_ref<af::tiny<ft, 6> > const& f_ext_array,
-      af::const_ref<ft> const& grav_accn)
+      af::const_ref<ft> const& grav_accn) const
     {
       SCITBX_ASSERT(qdd_array.size() == bodies.size());
       SCITBX_ASSERT(
@@ -398,6 +398,187 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         }
       }
       return tau_array;
+    }
+
+    /*! Simplified version of Inverse Dynamics via Recursive Newton-Euler
+        Algorithm, with all qd, qdd zero, but non-zero external forces.
+     */
+    af::shared<af::small<ft, 6> >
+    f_ext_as_tau(
+      af::const_ref<af::tiny<ft, 6> > const& f_ext_array) const
+    {
+      SCITBX_ASSERT(f_ext_array.size() == bodies.size());
+      unsigned nb = bodies_size();
+      af::shared<af::versa<ft, af::mat_grid> > xup_array = this->xup_array();
+      boost::scoped_array<af::tiny<ft, 6> > f(new af::tiny<ft, 6>[nb]);
+      for(unsigned ib=0;ib<nb;ib++) {
+        f[ib] = -f_ext_array[ib];
+      }
+      af::shared<af::small<ft, 6> > tau_array(nb);
+      for(unsigned ib=nb;ib!=0;) {
+        ib--;
+        body_t<ft> const* body = bodies[ib].get();
+        af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
+        if (s.begin() == 0) {
+          tau_array[ib] = af::small<ft, 6>(f[ib].begin(), f[ib].end());
+        }
+        else {
+          tau_array[ib] = mat6xm_transpose_mul_vec6(s, f[ib].const_ref());
+        }
+        if (body->parent != -1) {
+          f[body->parent] += mat6x6_transpose_mul_vec6(
+            xup_array[ib].const_ref(), f[ib].const_ref());
+        }
+      }
+      return tau_array;
+    }
+
+    /*! Gradients of potential energy (defined via f_ext_array) w.r.t.
+        positional coordinates q. Uses f_ext_as_tau().
+     */
+    af::shared<af::small<ft, 7> >
+    d_pot_d_q(
+      af::const_ref<af::tiny<ft, 6> > const& f_ext_array) const
+    {
+      af::shared<af::small<ft, 7> > result(af::reserve(bodies.size()));
+      af::shared<af::small<ft, 6> >
+        tau_array = this->f_ext_as_tau(f_ext_array);
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        result.push_back(bodies[ib]->joint->tau_as_d_pot_d_q(tau_array[ib]));
+      }
+      return result;
+    }
+
+    //! RBDA Tab. 7.1, p. 132.
+    /*! Forward Dynamics of a kinematic tree via the Articulated-Body
+        Algorithm.
+        tau_array is a vector of force variables.
+        The return value (qdd_array) is a vector of joint acceleration
+        variables.
+        f_ext_array specifies external forces acting on the bodies. If
+        f_ext_array is None then there are no external forces;
+        otherwise, f_ext_array[i] is a spatial force vector giving
+        the force acting on body i, expressed in body i coordinates.
+        grav_accn is a 6D vector expressing the linear acceleration due
+        to gravity.
+     */
+    af::shared<af::small<ft, 6> >
+    forward_dynamics_ab(
+      af::const_ref<af::small<ft, 6> > const& tau_array,
+      af::const_ref<af::tiny<ft, 6> > const& f_ext_array,
+      af::const_ref<ft> const& grav_accn) const
+    {
+      typedef af::tiny<ft, 6> t6;
+      typedef af::versa<ft, af::mat_grid> vmg;
+      SCITBX_ASSERT(
+        tau_array.size() == (tau_array.begin() == 0 ? 0 : bodies.size()));
+      SCITBX_ASSERT(
+        f_ext_array.size() == (f_ext_array.begin() == 0 ? 0 : bodies.size()));
+      SCITBX_ASSERT(grav_accn.size() == (grav_accn.begin() == 0 ? 0 : 6));
+      unsigned nb = bodies_size();
+      af::shared<vmg> xup_array = this->xup_array();
+      af::shared<t6> v = spatial_velocities();
+      boost::scoped_array<t6> c(new t6[nb]);
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft> const* body = bodies[ib].get();
+        af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
+        af::const_ref<ft> qd = body->qd();
+        t6 vj;
+        if (s.begin() == 0) {
+          SCITBX_ASSERT(qd.size() == 6);
+          std::copy(qd.begin(), qd.end(), vj.begin()); // vj = qd
+        }
+        else {
+          matrix_mul(vj, s, qd); // vj = s * qd
+        }
+        if (body->parent == -1) {
+          c[ib].fill(0);
+        }
+        else {
+          c[ib] = mat6x6_mul_vec6(crm(v[ib]).const_ref(), vj.const_ref());
+        }
+      }
+      boost::scoped_array<vmg> ia(new vmg[nb]);
+      for(unsigned ib=0;ib<nb;ib++) {
+        ia[ib] = bodies[ib]->i_spatial.deep_copy();
+      }
+      boost::scoped_array<t6> pa(new t6[nb]);
+      for(unsigned ib=0;ib<nb;ib++) {
+        pa[ib] = mat6x6_mul_vec6(
+          crf(v[ib]).const_ref(),
+          mat6x6_mul_vec6(
+            bodies[ib]->i_spatial.const_ref(),
+            v[ib].const_ref()).const_ref());
+        if (f_ext_array.begin() != 0) {
+          pa[ib] -= f_ext_array[ib];
+        }
+      }
+      boost::scoped_array<vmg> u(new vmg[nb]);
+      boost::scoped_array<vmg> d_inv(new vmg[nb]);
+      boost::scoped_array<t6 > u_(new t6[nb]);
+      for(unsigned ib=nb;ib!=0;) {
+        ib--;
+        body_t<ft> const* body = bodies[ib].get();
+        af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
+        vmg d;
+        if (s.begin() == 0) {
+          u[ib] = ia[ib].deep_copy(); // XXX deep_copy needed?
+          d = u[ib];
+          u_[ib] = -pa[ib];
+        }
+        else {
+          u[ib] = af::matrix_multiply(ia[ib].const_ref(), s);
+          d = af::matrix_transpose_multiply(s, u[ib].const_ref());
+          u_[ib] = -mat6x6_transpose_mul_vec6(s, pa[ib].const_ref());
+        }
+        if (tau_array.begin() != 0) {
+          SCITBX_ASSERT(tau_array[ib].size() == 6);
+          for(unsigned i=0;i<6;i++) {
+            u_[ib][i] += tau_array[ib][i];
+          }
+        }
+        // XXX XXX TODO d_inv[ib] = generalized_inverse(d)
+        if (body->parent != -1) {
+          vmg u_d_inv = af::matrix_multiply(
+            u[ib].const_ref(),
+            d_inv[ib].const_ref());
+          vmg ia_ = ia[ib] - af::matrix_multiply(
+            u_d_inv.const_ref(),
+            af::matrix_transpose(u[ib].const_ref()).const_ref());
+          t6 pa_ = pa[ib]
+            + mat6x6_mul_vec6(ia_.const_ref(), c[ib].const_ref())
+            + mat6x6_mul_vec6(u_d_inv.const_ref(), u_[ib].const_ref());
+          ia[body->parent] += af::matrix_transpose_multiply(
+            xup_array[ib].const_ref(),
+            af::matrix_multiply(
+              ia_.const_ref(),
+              xup_array[ib].const_ref()).const_ref());
+          pa[body->parent] += mat6x6_transpose_mul_vec6(
+            xup_array[ib].const_ref(), pa_.const_ref());
+        }
+      }
+#ifdef JUNK
+      a = [None] * nb
+      qdd_array = [None] * nb
+      for ib in xrange(nb):
+        body = O.bodies[ib]
+        s = body.joint.motion_subspace
+        if (body.parent == -1):
+          a[ib] = c[ib]
+          if (grav_accn is not None):
+            a[ib] += xup_array[ib] * (-grav_accn)
+        else:
+          a[ib] = xup_array[ib] * a[body.parent] + c[ib]
+        qdd_array[ib] = d_inv[ib] * (u_[ib] - u[ib].transpose()*a[ib])
+        if (s is None):
+          a[ib] += qdd_array[ib]
+        else:
+          a[ib] += s * qdd_array[ib]
+
+      return qdd_array
+#endif
+      return af::shared<af::small<ft, 6> >();
     }
   };
 

@@ -10,9 +10,10 @@ namespace scitbx { namespace rigid_body { namespace ext {
   void init_module()
   {
     using namespace boost::python;
-    joint_lib::zero_dof_alignment<> zero_dof_alignment;
+    joint_lib::zero_dof_alignment<>();
     joint_lib::zero_dof<> zero_dof;
     joint_lib::six_dof_alignment<> six_dof_alignment(vec3<double>(0,0,0));
+    six_dof_alignment.cb_0b * six_dof_alignment.cb_b0;
     joint_lib::six_dof<> six_dof(
       af::tiny<double, 4>(1,0,0,0), vec3<double>(0,0,0));
     six_dof.qd_zero();
@@ -26,7 +27,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
     six_dof.time_step_velocity(
       af::const_ref<double>(0, 6),
       af::const_ref<double>(0, 6), 1e-6);
-    six_dof.tau_as_d_pot_d_q(af::const_ref<double>(0, 6));
+    six_dof.tau_as_d_pot_d_q(af::small<double, 6>(6));
     six_dof.get_q();
     six_dof.new_q(af::const_ref<double>(0, 7));
     af::shared<boost::shared_ptr<featherstone::body_t<double> > > bodies;
@@ -45,6 +46,14 @@ namespace scitbx { namespace rigid_body { namespace ext {
       af::const_ref<af::small<double, 6> >(0, 0),
       af::const_ref<af::tiny<double, 6> >(0, 0),
       af::const_ref<double>(0,0));
+    system_model.f_ext_as_tau(
+      af::const_ref<af::tiny<double, 6> >(0, 0));
+    system_model.d_pot_d_q(
+      af::const_ref<af::tiny<double, 6> >(0, 0));
+    system_model.forward_dynamics_ab(
+      af::const_ref<af::small<double, 6> >(0, 0),
+      af::const_ref<af::tiny<double, 6> >(0, 0),
+      af::const_ref<double>(0, 0));
   }
 
 }}} // namespace scitbx::rigid_body::ext
