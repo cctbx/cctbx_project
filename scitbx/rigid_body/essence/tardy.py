@@ -23,8 +23,8 @@ class six_dof_body(object):
 
   def __init__(O, sites, masses):
     O.number_of_sites = len(sites)
-    O.sum_of_masses = sum(masses)
     mass_points = utils.mass_points(sites=sites, masses=masses)
+    O.sum_of_masses = mass_points.sum_of_masses()
     O.alignment = joint_lib.six_dof_alignment(
       center_of_mass=mass_points.center_of_mass())
     O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
@@ -38,8 +38,8 @@ class spherical_body(object):
 
   def __init__(O, sites, masses, pivot):
     O.number_of_sites = len(sites)
-    O.sum_of_masses = sum(masses)
     mass_points = utils.mass_points(sites=sites, masses=masses)
+    O.sum_of_masses = mass_points.sum_of_masses()
     O.alignment = joint_lib.spherical_alignment(pivot=pivot)
     O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
     #
@@ -51,8 +51,8 @@ class revolute_body(object):
 
   def __init__(O, sites, masses, pivot, normal):
     O.number_of_sites = len(sites)
-    O.sum_of_masses = sum(masses)
     mass_points = utils.mass_points(sites=sites, masses=masses)
+    O.sum_of_masses = mass_points.sum_of_masses()
     O.alignment = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
     O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
     #
@@ -63,8 +63,8 @@ class translational_body(object):
 
   def __init__(O, sites, masses):
     O.number_of_sites = len(sites)
-    O.sum_of_masses = sum(masses)
     mass_points = utils.mass_points(sites=sites, masses=masses)
+    O.sum_of_masses = mass_points.sum_of_masses()
     O.alignment = joint_lib.translational_alignment(
       center_of_mass=mass_points.center_of_mass())
     O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)

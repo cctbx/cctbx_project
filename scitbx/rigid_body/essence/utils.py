@@ -7,16 +7,16 @@ class mass_points(object):
     assert len(masses) == len(sites)
     O.masses = masses
     O.sites = sites
-    O._sum_masses = None
+    O._sum_of_masses = None
     O._center_of_mass = None
 
-  def sum_masses(O):
-    if (O._sum_masses is None):
+  def sum_of_masses(O):
+    if (O._sum_of_masses is None):
       sm = 0
       for mass in O.masses:
         sm += mass
-      O._sum_masses = sm
-    return O._sum_masses
+      O._sum_of_masses = sm
+    return O._sum_of_masses
 
   def center_of_mass(O):
     if (O._center_of_mass is None):
@@ -26,8 +26,8 @@ class mass_points(object):
       for mass,site in zip(O.masses, O.sites):
         sm += mass
         sms += mass * site
-      O._sum_masses = sm
-      assert O._sum_masses != 0
+      O._sum_of_masses = sm
+      assert O._sum_of_masses != 0
       O._center_of_mass = sms / sm
     return O._center_of_mass
 
@@ -52,4 +52,4 @@ class mass_points(object):
     if (alignment_T is not None):
       center_of_mass = alignment_T * center_of_mass
       inertia = alignment_T.r * inertia * alignment_T.r.transpose()
-    return featherstone.mcI(m=O._sum_masses, c=center_of_mass, I=inertia)
+    return featherstone.mcI(m=O._sum_of_masses, c=center_of_mass, I=inertia)
