@@ -13,20 +13,17 @@ namespace cctbx { namespace xray { namespace structure_factors {
   namespace details {
 
     template <class CosSinType,
-              class ScattererType=scatterer<>,
-              class FormFactorType=eltbx::xray_scattering::gaussian>
+              class ScattererType=scatterer<> >
     struct delayed_direct
     {
-      typedef direct<ScattererType, FormFactorType> direct_t;
-      typedef typename direct_t::scattering_type_registry_t
-              scattering_type_registry_t;
+      typedef direct<ScattererType> direct_t;
 
       CosSinType const *cos_sin;
       uctbx::unit_cell const *unit_cell;
       sgtbx::space_group const *space_group;
       af::const_ref<miller::index<> > miller_indices;
       af::const_ref<ScattererType> const *scatterers;
-      scattering_type_registry_t const *scattering_type_registry;
+      xray::scattering_type_registry const *scattering_type_registry;
 
       boost::shared_ptr<
         boost::shared_ptr<direct_t> > handle;
@@ -37,7 +34,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group_,
         af::const_ref<miller::index<> > const& miller_indices_,
         af::const_ref<ScattererType> const& scatterers_,
-        scattering_type_registry_t const& scattering_type_registry_)
+        xray::scattering_type_registry const& scattering_type_registry_)
       : cos_sin(&cos_sin_),
         unit_cell(&unit_cell_),
         space_group(&space_group_),
@@ -62,15 +59,12 @@ namespace cctbx { namespace xray { namespace structure_factors {
   } // namespace details
 
 
-  template <class ScattererType=scatterer<>,
-            class FormFactorType=eltbx::xray_scattering::gaussian>
+  template <class ScattererType=scatterer<> >
   class raw_multithreaded_direct
   {
     public:
       typedef ScattererType scatterer_type;
       typedef typename ScattererType::float_type float_type;
-      typedef xray::generic_scattering_type_registry<FormFactorType>
-              scattering_type_registry_t;
 
       af::shared<std::complex<float_type> > const&
       f_calc() const { return f_calc_; }
@@ -82,7 +76,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers,
-        scattering_type_registry_t const& scattering_type_registry,
+        xray::scattering_type_registry const& scattering_type_registry,
         unsigned n_threads)
       {
         math::cos_sin_exact<float_type> cos_sin;
@@ -97,7 +91,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers,
-        scattering_type_registry_t const& scattering_type_registry,
+        xray::scattering_type_registry const& scattering_type_registry,
         unsigned n_threads)
       {
         compute(cos_sin, unit_cell, space_group, miller_indices,
@@ -111,13 +105,13 @@ namespace cctbx { namespace xray { namespace structure_factors {
                    sgtbx::space_group const& space_group,
                    af::const_ref<miller::index<> > const& miller_indices,
                    af::const_ref<ScattererType> const& scatterers,
-                   scattering_type_registry_t const& scattering_type_registry,
+                   xray::scattering_type_registry const
+                   & scattering_type_registry,
                    unsigned n_threads)
       {
         CCTBX_ASSERT(n_threads > 0);
         typedef details::delayed_direct<CosSinType,
-                                        ScattererType,
-                                        FormFactorType> direct_t;
+                                        ScattererType> direct_t;
         std::size_t normal_chunk_size = miller_indices.size()/n_threads;
         std::size_t last_chunk_size = miller_indices.size()
                                         - (n_threads - 1)*normal_chunk_size;
