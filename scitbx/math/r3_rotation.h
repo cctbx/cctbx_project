@@ -12,8 +12,15 @@ namespace scitbx { namespace math {
 
   namespace detail {
 
-    static const char* very_short_axis_message =
-      "Very short rotation axis vector may lead to numerical instabilities.";
+    // hiding static const char* in a function to avoid gcc 3.2 -Wall warning
+    inline
+    const char*
+    very_short_axis_message()
+    {
+      static const char* result =
+        "Very short rotation axis vector may lead to numerical instabilities.";
+      return result;
+    }
 
   } // namespace detail
 
@@ -34,7 +41,7 @@ namespace scitbx { namespace math {
     FloatType w = axis[2];
     FloatType l = std::sqrt(u*u+v*v+w*w);
     if (l < min_axis_length) {
-      throw std::runtime_error(detail::very_short_axis_message);
+      throw std::runtime_error(detail::very_short_axis_message());
     }
     u /= l;
     v /= l;
@@ -86,7 +93,7 @@ namespace scitbx { namespace math {
     SCITBX_ASSERT(min_axis_length > 0);
     FloatType l = axis.length();
     if (l < min_axis_length) {
-      throw std::runtime_error(detail::very_short_axis_message);
+      throw std::runtime_error(detail::very_short_axis_message());
     }
     if (deg) angle *= constants::pi_180;
     return normalized_axis_and_angle_rad_as_unit_quaternion(
