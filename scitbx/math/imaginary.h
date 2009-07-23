@@ -1,5 +1,5 @@
 #ifndef SCITBX_MATH_IMAGINARY_UNIT_H
-#define SCITBX_MATH_  IMAGINARY_UNIT_H
+#define SCITBX_MATH_IMAGINARY_UNIT_H
 
 #include <complex>
 #include <boost/operators.hpp>
