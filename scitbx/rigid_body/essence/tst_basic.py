@@ -69,10 +69,11 @@ class six_dof_body(object):
     mass_points = utils.mass_points(sites=sites, masses=[1.0, 1.0, 1.0])
     O.alignment = joint_lib.six_dof_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
-    qE = matrix.col((0.18, 0.36, 0.54, -0.73)).normalize()
+    O.i_spatial = mass_points.spatial_inertia(
+      alignment_cb_0b=O.alignment.cb_0b)
+    qe = matrix.col((0.18, 0.36, 0.54, -0.73)).normalize()
     qr = matrix.col((-0.1,0.3,0.2))
-    O.joint = joint_lib.six_dof(qE=qE, qr=qr)
+    O.joint = joint_lib.six_dof(qe=qe, qr=qr)
     O.qd = matrix.col((0.18,-0.02,-0.16,0.05,0.19,-0.29))
     assert O.joint.get_linear_velocity(qd=O.qd).elems == (0.05,0.19,-0.29)
     O.qd = O.joint.new_linear_velocity(
@@ -89,9 +90,10 @@ class spherical_body(object):
     mass_points = utils.mass_points(sites=sites, masses=[1.0, 1.0])
     O.alignment = joint_lib.spherical_alignment(
       pivot=mass_points.center_of_mass())
-    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
-    qE = matrix.col((-0.50, -0.33, 0.67, -0.42)).normalize()
-    O.joint = joint_lib.spherical(qE=qE)
+    O.i_spatial = mass_points.spatial_inertia(
+      alignment_cb_0b=O.alignment.cb_0b)
+    qe = matrix.col((-0.50, -0.33, 0.67, -0.42)).normalize()
+    O.joint = joint_lib.spherical(qe=qe)
     O.qd = matrix.col((0.12, -0.08, 0.11))
     assert O.joint.get_linear_velocity(qd=O.qd) is None
     assert O.joint.new_linear_velocity(qd=None, value=None) is None
@@ -105,8 +107,9 @@ class revolute_body(object):
     sites = matrix.col_list([(-0.084, 6.09, 4.936)])
     mass_points = utils.mass_points(sites=sites, masses=[1.0])
     O.alignment = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
-    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
-    O.joint = joint_lib.revolute(qE=matrix.col([0.26]))
+    O.i_spatial = mass_points.spatial_inertia(
+      alignment_cb_0b=O.alignment.cb_0b)
+    O.joint = joint_lib.revolute(qe=matrix.col([0.26]))
     O.qd = matrix.col([-0.19])
     assert O.joint.get_linear_velocity(qd=O.qd) is None
     assert O.joint.new_linear_velocity(qd=None, value=None) is None
@@ -119,7 +122,8 @@ class translational_body(object):
     mass_points = utils.mass_points(sites=sites, masses=[1.0])
     O.alignment = joint_lib.translational_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
+    O.i_spatial = mass_points.spatial_inertia(
+      alignment_cb_0b=O.alignment.cb_0b)
     qr = matrix.col((-0.1,0.3,0.2))
     O.joint = joint_lib.translational(qr=qr)
     O.qd = matrix.col((0.05,0.19,-0.29))

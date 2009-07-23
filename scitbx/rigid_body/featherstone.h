@@ -102,9 +102,9 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
 
     unsigned number_of_sites;
     ft sum_of_masses;
-    boost::shared_ptr<joint_lib::alignment_base<ft> > alignment;
+    boost::shared_ptr<joint_lib::alignment_t<ft> > alignment;
     af::versa<ft, af::mat_grid> i_spatial;
-    boost::shared_ptr<joint_lib::joint_base<ft> > joint;
+    boost::shared_ptr<joint_lib::joint_t<ft> > joint;
     rotr3<ft> cb_tree;
     int parent;
 

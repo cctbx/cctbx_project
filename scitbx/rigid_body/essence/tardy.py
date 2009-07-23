@@ -27,11 +27,12 @@ class six_dof_body(object):
     O.sum_of_masses = mass_points.sum_of_masses()
     O.alignment = joint_lib.six_dof_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
+    O.i_spatial = mass_points.spatial_inertia(
+      alignment_cb_0b=O.alignment.cb_0b)
     #
-    qE = matrix.col((1,0,0,0))
+    qe = matrix.col((1,0,0,0))
     qr = matrix.col((0,0,0))
-    O.joint = joint_lib.six_dof(qE=qE, qr=qr)
+    O.joint = joint_lib.six_dof(qe=qe, qr=qr)
     O.qd = O.joint.qd_zero
 
 class spherical_body(object):
@@ -41,10 +42,11 @@ class spherical_body(object):
     mass_points = utils.mass_points(sites=sites, masses=masses)
     O.sum_of_masses = mass_points.sum_of_masses()
     O.alignment = joint_lib.spherical_alignment(pivot=pivot)
-    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
+    O.i_spatial = mass_points.spatial_inertia(
+      alignment_cb_0b=O.alignment.cb_0b)
     #
-    qE = matrix.col((1,0,0,0))
-    O.joint = joint_lib.spherical(qE=qE)
+    qe = matrix.col((1,0,0,0))
+    O.joint = joint_lib.spherical(qe=qe)
     O.qd = O.joint.qd_zero
 
 class revolute_body(object):
@@ -54,9 +56,10 @@ class revolute_body(object):
     mass_points = utils.mass_points(sites=sites, masses=masses)
     O.sum_of_masses = mass_points.sum_of_masses()
     O.alignment = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
-    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
+    O.i_spatial = mass_points.spatial_inertia(
+      alignment_cb_0b=O.alignment.cb_0b)
     #
-    O.joint = joint_lib.revolute(qE=matrix.col([0]))
+    O.joint = joint_lib.revolute(qe=matrix.col([0]))
     O.qd = O.joint.qd_zero
 
 class translational_body(object):
@@ -67,7 +70,8 @@ class translational_body(object):
     O.sum_of_masses = mass_points.sum_of_masses()
     O.alignment = joint_lib.translational_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.i_spatial = mass_points.spatial_inertia(alignment_T=O.alignment.cb_0b)
+    O.i_spatial = mass_points.spatial_inertia(
+      alignment_cb_0b=O.alignment.cb_0b)
     #
     qr = matrix.col((0,0,0))
     O.joint = joint_lib.translational(qr=qr)

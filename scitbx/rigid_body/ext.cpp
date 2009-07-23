@@ -30,6 +30,59 @@ namespace scitbx { namespace rigid_body { namespace ext {
     six_dof.tau_as_d_pot_d_q(af::small<double, 6>(6));
     six_dof.get_q();
     six_dof.new_q(af::const_ref<double>(0, 7));
+    joint_lib::spherical_alignment<> spherical_alignment(vec3<double>(0,0,0));
+    spherical_alignment.cb_0b * spherical_alignment.cb_b0;
+    joint_lib::spherical<> spherical(af::tiny<double, 4>(1,0,0,0));
+    spherical.qd_zero();
+    spherical.qdd_zero();
+    spherical.motion_subspace();
+    spherical.get_linear_velocity(af::const_ref<double>(0, 3));
+    spherical.new_linear_velocity(
+      af::const_ref<double>(0, 3),
+      af::const_ref<double>(0, 3));
+    spherical.time_step_position(af::const_ref<double>(0, 3), 1e-6);
+    spherical.time_step_velocity(
+      af::const_ref<double>(0, 3),
+      af::const_ref<double>(0, 3), 1e-6);
+    spherical.tau_as_d_pot_d_q(af::small<double, 6>(3));
+    spherical.get_q();
+    spherical.new_q(af::const_ref<double>(0, 4));
+    joint_lib::revolute_alignment<> revolute_alignment(
+      vec3<double>(0,0,0), vec3<double>(1,0,0));
+    revolute_alignment.cb_0b * revolute_alignment.cb_b0;
+    joint_lib::revolute<> revolute(af::tiny<double, 1>(0));
+    revolute.qd_zero();
+    revolute.qdd_zero();
+    revolute.motion_subspace();
+    revolute.get_linear_velocity(af::const_ref<double>(0, 1));
+    revolute.new_linear_velocity(
+      af::const_ref<double>(0, 1),
+      af::const_ref<double>(0, 1));
+    revolute.time_step_position(af::const_ref<double>(0, 1), 1e-6);
+    revolute.time_step_velocity(
+      af::const_ref<double>(0, 1),
+      af::const_ref<double>(0, 1), 1e-6);
+    revolute.tau_as_d_pot_d_q(af::small<double, 6>(1));
+    revolute.get_q();
+    revolute.new_q(af::const_ref<double>(0, 1));
+    joint_lib::translational_alignment<> translational_alignment(
+      vec3<double>(0,0,0));
+    translational_alignment.cb_0b * translational_alignment.cb_b0;
+    joint_lib::translational<> translational(vec3<double>(0,0,0));
+    translational.qd_zero();
+    translational.qdd_zero();
+    translational.motion_subspace();
+    translational.get_linear_velocity(af::const_ref<double>(0, 3));
+    translational.new_linear_velocity(
+      af::const_ref<double>(0, 3),
+      af::const_ref<double>(0, 3));
+    translational.time_step_position(af::const_ref<double>(0, 3), 1e-6);
+    translational.time_step_velocity(
+      af::const_ref<double>(0, 3),
+      af::const_ref<double>(0, 3), 1e-6);
+    translational.tau_as_d_pot_d_q(af::small<double, 6>(3));
+    translational.get_q();
+    translational.new_q(af::const_ref<double>(0, 3));
     af::shared<boost::shared_ptr<featherstone::body_t<double> > > bodies;
     featherstone::xrot(mat3<double>());
     featherstone::xtrans(vec3<double>());

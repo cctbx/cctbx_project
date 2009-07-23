@@ -46,10 +46,10 @@ class mass_points(object):
     m[7] = m[5]
     return matrix.sqr(m)
 
-  def spatial_inertia(O, alignment_T=None):
+  def spatial_inertia(O, alignment_cb_0b=None):
     center_of_mass = O.center_of_mass()
     inertia = O.inertia(pivot=center_of_mass)
-    if (alignment_T is not None):
-      center_of_mass = alignment_T * center_of_mass
-      inertia = alignment_T.r * inertia * alignment_T.r.transpose()
+    if (alignment_cb_0b is not None):
+      center_of_mass = alignment_cb_0b * center_of_mass
+      inertia = alignment_cb_0b.r * inertia * alignment_cb_0b.r.transpose()
     return featherstone.mcI(m=O._sum_of_masses, c=center_of_mass, I=inertia)

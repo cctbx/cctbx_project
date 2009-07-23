@@ -52,15 +52,15 @@ class six_dof(object):
   qd_zero = matrix.zeros(n=degrees_of_freedom)
   qdd_zero = qd_zero
 
-  def __init__(O, qE, qr):
-    O.qE = qE
+  def __init__(O, qe, qr):
+    O.qe = qe
     O.qr = qr
     O.q_size = 7
-    O.unit_quaternion = qE.normalize() # RBDA, bottom of p. 86
-    O.E = RBDA_Eq_4_12(q=O.unit_quaternion)
+    O.unit_quaternion = qe.normalize() # RBDA, bottom of p. 86
+    O.e = rbda_eq_4_12(q=O.unit_quaternion)
     O.r = qr
-    O.cb_ps = matrix.rt((O.E, -O.E * O.r)) # RBDA Eq. 2.28
-    O.cb_sp = matrix.rt((O.E.transpose(), O.r))
+    O.cb_ps = matrix.rt((O.e, -O.e * O.r)) # RBDA Eq. 2.28
+    O.cb_sp = matrix.rt((O.e.transpose(), O.r))
     O.motion_subspace = None
 
   def get_linear_velocity(O, qd):
@@ -71,27 +71,27 @@ class six_dof(object):
 
   def time_step_position(O, qd, delta_t):
     w_body_frame, v_body_frame = matrix.col_list([qd.elems[:3], qd.elems[3:]])
-    qEd = RBDA_Eq_4_13(q=O.unit_quaternion) * w_body_frame
-    new_qE = (O.qE + qEd * delta_t).normalize()
-    qrd = O.E.transpose() * v_body_frame
+    qed = rbda_eq_4_13(q=O.unit_quaternion) * w_body_frame
+    new_qe = (O.qe + qed * delta_t).normalize()
+    qrd = O.e.transpose() * v_body_frame
     new_qr = O.qr + qrd * delta_t
-    return six_dof(qE=new_qE, qr=new_qr)
+    return six_dof(qe=new_qe, qr=new_qr)
 
   def time_step_velocity(O, qd, qdd, delta_t):
     return qd + qdd * delta_t
 
   def tau_as_d_pot_d_q(O, tau):
-    d = d_unit_quaternion_d_qE_matrix(q=O.qE)
-    c = d * 4 * RBDA_Eq_4_13(q=O.unit_quaternion)
+    d = d_unit_quaternion_d_qe_matrix(q=O.qe)
+    c = d * 4 * rbda_eq_4_13(q=O.unit_quaternion)
     n, f = matrix.col_list([tau.elems[:3], tau.elems[3:]])
-    return matrix.col((c * n, O.E.transpose() * f)).resolve_partitions()
+    return matrix.col((c * n, O.e.transpose() * f)).resolve_partitions()
 
   def get_q(O):
-    return O.qE.elems + O.qr.elems
+    return O.qe.elems + O.qr.elems
 
   def new_q(O, q):
-    new_qE, new_qr = matrix.col_list((q[:4], q[4:]))
-    return six_dof(qE=new_qE, qr=new_qr)
+    new_qe, new_qr = matrix.col_list((q[:4], q[4:]))
+    return six_dof(qe=new_qe, qr=new_qr)
 
 class spherical_alignment(object):
 
@@ -105,13 +105,13 @@ class spherical(object):
   qd_zero = matrix.zeros(n=degrees_of_freedom)
   qdd_zero = qd_zero
 
-  def __init__(O, qE):
-    O.qE = qE
+  def __init__(O, qe):
+    O.qe = qe
     O.q_size = 4
-    O.unit_quaternion = qE.normalize() # RBDA, bottom of p. 86
-    O.E = RBDA_Eq_4_12(q=O.unit_quaternion)
-    O.cb_ps = matrix.rt((O.E, (0,0,0)))
-    O.cb_sp = matrix.rt((O.E.transpose(), (0,0,0)))
+    O.unit_quaternion = qe.normalize() # RBDA, bottom of p. 86
+    e = rbda_eq_4_12(q=O.unit_quaternion)
+    O.cb_ps = matrix.rt((e, (0,0,0)))
+    O.cb_sp = matrix.rt((e.transpose(), (0,0,0)))
     O.motion_subspace = matrix.rec((
       1,0,0,
       0,1,0,
@@ -128,25 +128,25 @@ class spherical(object):
 
   def time_step_position(O, qd, delta_t):
     w_body_frame = qd
-    d = d_unit_quaternion_d_qE_matrix(q=O.qE)
-    qEd = d * RBDA_Eq_4_13(q=O.unit_quaternion) * w_body_frame
-    new_qE = O.qE + qEd * delta_t
-    return spherical(qE=new_qE)
+    d = d_unit_quaternion_d_qe_matrix(q=O.qe)
+    qed = d * rbda_eq_4_13(q=O.unit_quaternion) * w_body_frame
+    new_qe = O.qe + qed * delta_t
+    return spherical(qe=new_qe)
 
   def time_step_velocity(O, qd, qdd, delta_t):
     return qd + qdd * delta_t
 
   def tau_as_d_pot_d_q(O, tau):
-    d = d_unit_quaternion_d_qE_matrix(q=O.qE)
-    c = d * 4 * RBDA_Eq_4_13(q=O.unit_quaternion)
+    d = d_unit_quaternion_d_qe_matrix(q=O.qe)
+    c = d * 4 * rbda_eq_4_13(q=O.unit_quaternion)
     n = tau
     return c * n
 
   def get_q(O):
-    return O.qE.elems
+    return O.qe.elems
 
   def new_q(O, q):
-    return spherical(qE=matrix.col(q))
+    return spherical(qe=matrix.col(q))
 
 class revolute_alignment(object):
 
@@ -161,16 +161,15 @@ class revolute(object):
   qd_zero = matrix.zeros(n=degrees_of_freedom)
   qdd_zero = qd_zero
 
-  def __init__(O, qE):
-    O.qE = qE
-    O.q_size = len(qE)
+  def __init__(O, qe):
+    O.qe = qe
+    O.q_size = len(qe)
     #
-    c, s = math.cos(qE[0]), math.sin(qE[0])
-    O.E = matrix.sqr((c, s, 0, -s, c, 0, 0, 0, 1)) # RBDA Tab. 2.2
-    O.r = matrix.col((0,0,0))
+    c, s = math.cos(qe[0]), math.sin(qe[0])
+    e = matrix.sqr((c, s, 0, -s, c, 0, 0, 0, 1)) # RBDA Tab. 2.2
     #
-    O.cb_ps = matrix.rt((O.E, (0,0,0)))
-    O.cb_sp = matrix.rt((O.E.transpose(), (0,0,0)))
+    O.cb_ps = matrix.rt((e, (0,0,0)))
+    O.cb_sp = matrix.rt((e.transpose(), (0,0,0)))
     O.motion_subspace = matrix.col((0,0,1,0,0,0))
 
   def get_linear_velocity(O, qd):
@@ -180,8 +179,8 @@ class revolute(object):
     return None
 
   def time_step_position(O, qd, delta_t):
-    new_qE = O.qE + qd * delta_t
-    return revolute(qE=new_qE)
+    new_qe = O.qe + qd * delta_t
+    return revolute(qe=new_qe)
 
   def time_step_velocity(O, qd, qdd, delta_t):
     return qd + qdd * delta_t
@@ -190,10 +189,10 @@ class revolute(object):
     return tau
 
   def get_q(O):
-    return O.qE.elems
+    return O.qe.elems
 
   def new_q(O, q):
-    return revolute(qE=matrix.col(q))
+    return revolute(qe=matrix.col(q))
 
 class translational_alignment(six_dof_alignment): pass
 
@@ -206,9 +205,8 @@ class translational(object):
   def __init__(O, qr):
     O.qr = qr
     O.q_size = 3
-    O.r = qr
-    O.cb_ps = matrix.rt(((1,0,0,0,1,0,0,0,1), -O.r))
-    O.cb_sp = matrix.rt(((1,0,0,0,1,0,0,0,1), O.r))
+    O.cb_ps = matrix.rt(((1,0,0,0,1,0,0,0,1), -qr))
+    O.cb_sp = matrix.rt(((1,0,0,0,1,0,0,0,1), qr))
     O.motion_subspace = matrix.rec((
       0,0,0,
       0,0,0,
@@ -239,14 +237,14 @@ class translational(object):
   def new_q(O, q):
     return translational(qr=matrix.col(q))
 
-def RBDA_Eq_4_12(q):
+def rbda_eq_4_12(q):
   p0, p1, p2, p3 = q
   return matrix.sqr((
     p0**2+p1**2-0.5,   p1*p2+p0*p3,     p1*p3-p0*p2,
       p1*p2-p0*p3,   p0**2+p2**2-0.5,   p2*p3+p0*p1,
       p1*p3+p0*p2,     p2*p3-p0*p1,   p0**2+p3**2-0.5)) * 2
 
-def RBDA_Eq_4_13(q):
+def rbda_eq_4_13(q):
   p0, p1, p2, p3 = q
   return matrix.rec((
     -p1, -p2, -p3,
@@ -254,7 +252,7 @@ def RBDA_Eq_4_13(q):
     p3, p0, -p1,
     -p2, p1, p0), n=(4,3)) * 0.5
 
-def d_unit_quaternion_d_qE_matrix(q):
+def d_unit_quaternion_d_qe_matrix(q):
   """
   Coefficent matrix for converting gradients w.r.t. normalized Euler
   parameters to gradients w.r.t. non-normalized parameters, as produced
