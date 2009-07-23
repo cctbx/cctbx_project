@@ -516,6 +516,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
           pa[ib] -= f_ext_array[ib];
         }
       }
+      v = af::shared<t6>();
       boost::scoped_array<vmg> u(new vmg[nb]);
       boost::scoped_array<vmg> d_inv(new vmg[nb]);
       boost::scoped_array<s6> u_(new s6[nb]);
@@ -559,6 +560,8 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
             xup_array[ib].const_ref(), pa_.const_ref());
         }
       }
+      pa.reset();
+      ia.reset();
       boost::scoped_array<t6> a(new t6[nb]);
       for(unsigned ib=0;ib<nb;ib++) {
         body_t<ft> const* body = bodies[ib].get();
