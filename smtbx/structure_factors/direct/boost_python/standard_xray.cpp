@@ -1,3 +1,5 @@
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <smtbx/structure_factors/direct/standard_xray.h>
 
 #include <boost/python/class.hpp>
