@@ -355,26 +355,26 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         if (body->parent == -1) {
           a[ib] = aj;
           if (grav_accn.begin() != 0) {
-            a[ib] -= mat6x6_mul_vec6(xup_array[ib].const_ref(), grav_accn);
+            a[ib] -= mat_6xn_mul_vec_n(xup_array[ib].const_ref(), grav_accn);
           }
         }
         else {
           a[ib] =
-              mat6x6_mul_vec6(
+              mat_6xn_mul_vec_n(
                 xup_array[ib].const_ref(),
                 a[body->parent].const_ref())
             + aj
-            + mat6x6_mul_vec6(
+            + mat_6xn_mul_vec_n(
                 crm(v[ib]).const_ref(),
                 vj.const_ref());
         }
         f[ib] =
-            mat6x6_mul_vec6(
+            mat_6xn_mul_vec_n(
               body->i_spatial.const_ref(),
               a[ib].const_ref())
-          + mat6x6_mul_vec6(
+          + mat_6xn_mul_vec_n(
               crf(v[ib]).const_ref(),
-              mat6x6_mul_vec6(
+              mat_6xn_mul_vec_n(
                 body->i_spatial.const_ref(),
                 v[ib].const_ref()).const_ref());
         if (f_ext_array.begin() != 0) {
@@ -390,10 +390,10 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
           tau_array[ib] = af::small<ft, 6>(f[ib].begin(), f[ib].end());
         }
         else {
-          tau_array[ib] = mat6xm_transpose_mul_vec6(s, f[ib].const_ref());
+          tau_array[ib] = mat_mxn_transpose_mul_vec_n(s, f[ib].const_ref());
         }
         if (body->parent != -1) {
-          f[body->parent] += mat6x6_transpose_mul_vec6(
+          f[body->parent] += mat_6x6_transpose_mul_vec6(
             xup_array[ib].const_ref(), f[ib].const_ref());
         }
       }
@@ -423,10 +423,10 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
           tau_array[ib] = af::small<ft, 6>(f[ib].begin(), f[ib].end());
         }
         else {
-          tau_array[ib] = mat6xm_transpose_mul_vec6(s, f[ib].const_ref());
+          tau_array[ib] = mat_mxn_transpose_mul_vec_n(s, f[ib].const_ref());
         }
         if (body->parent != -1) {
-          f[body->parent] += mat6x6_transpose_mul_vec6(
+          f[body->parent] += mat_6x6_transpose_mul_vec6(
             xup_array[ib].const_ref(), f[ib].const_ref());
         }
       }
@@ -470,6 +470,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       af::const_ref<ft> const& grav_accn) const
     {
       typedef af::tiny<ft, 6> t6;
+      typedef af::small<ft, 6> s6;
       typedef af::versa<ft, af::mat_grid> vmg;
       SCITBX_ASSERT(
         tau_array.size() == (tau_array.begin() == 0 ? 0 : bodies.size()));
@@ -477,6 +478,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         f_ext_array.size() == (f_ext_array.begin() == 0 ? 0 : bodies.size()));
       SCITBX_ASSERT(grav_accn.size() == (grav_accn.begin() == 0 ? 0 : 6));
       unsigned nb = bodies_size();
+      af::shared<s6> qdd_array(nb); // result
       af::shared<vmg> xup_array = this->xup_array();
       af::shared<t6> v = spatial_velocities();
       boost::scoped_array<t6> c(new t6[nb]);
@@ -496,7 +498,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
           c[ib].fill(0);
         }
         else {
-          c[ib] = mat6x6_mul_vec6(crm(v[ib]).const_ref(), vj.const_ref());
+          c[ib] = mat_6xn_mul_vec_n(crm(v[ib]).const_ref(), vj.const_ref());
         }
       }
       boost::scoped_array<vmg> ia(new vmg[nb]);
@@ -505,9 +507,9 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       }
       boost::scoped_array<t6> pa(new t6[nb]);
       for(unsigned ib=0;ib<nb;ib++) {
-        pa[ib] = mat6x6_mul_vec6(
+        pa[ib] = mat_6xn_mul_vec_n(
           crf(v[ib]).const_ref(),
-          mat6x6_mul_vec6(
+          mat_6xn_mul_vec_n(
             bodies[ib]->i_spatial.const_ref(),
             v[ib].const_ref()).const_ref());
         if (f_ext_array.begin() != 0) {
@@ -516,7 +518,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       }
       boost::scoped_array<vmg> u(new vmg[nb]);
       boost::scoped_array<vmg> d_inv(new vmg[nb]);
-      boost::scoped_array<t6 > u_(new t6[nb]);
+      boost::scoped_array<s6> u_(new s6[nb]);
       for(unsigned ib=nb;ib!=0;) {
         ib--;
         body_t<ft> const* body = bodies[ib].get();
@@ -525,18 +527,17 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         if (s.begin() == 0) {
           u[ib] = ia[ib].deep_copy(); // XXX deep_copy needed?
           d = u[ib];
-          u_[ib] = -pa[ib];
+          for(unsigned i=0;i<6;i++) {
+            u_[ib][i] = -pa[ib][i];
+          }
         }
         else {
           u[ib] = af::matrix_multiply(ia[ib].const_ref(), s);
           d = af::matrix_transpose_multiply(s, u[ib].const_ref());
-          u_[ib] = -mat6x6_transpose_mul_vec6(s, pa[ib].const_ref());
+          u_[ib] = -mat_mxn_transpose_mul_vec_n(s, pa[ib].const_ref());
         }
         if (tau_array.begin() != 0) {
-          SCITBX_ASSERT(tau_array[ib].size() == 6);
-          for(unsigned i=0;i<6;i++) {
-            u_[ib][i] += tau_array[ib][i];
-          }
+          u_[ib] += tau_array[ib];
         }
         // XXX XXX TODO d_inv[ib] = generalized_inverse(d)
         if (body->parent != -1) {
@@ -547,38 +548,47 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
             u_d_inv.const_ref(),
             af::matrix_transpose(u[ib].const_ref()).const_ref());
           t6 pa_ = pa[ib]
-            + mat6x6_mul_vec6(ia_.const_ref(), c[ib].const_ref())
-            + mat6x6_mul_vec6(u_d_inv.const_ref(), u_[ib].const_ref());
+            + mat_6xn_mul_vec_n(ia_.const_ref(), c[ib].const_ref())
+            + mat_6xn_mul_vec_n(u_d_inv.const_ref(), u_[ib].const_ref());
           ia[body->parent] += af::matrix_transpose_multiply(
             xup_array[ib].const_ref(),
             af::matrix_multiply(
               ia_.const_ref(),
               xup_array[ib].const_ref()).const_ref());
-          pa[body->parent] += mat6x6_transpose_mul_vec6(
+          pa[body->parent] += mat_6x6_transpose_mul_vec6(
             xup_array[ib].const_ref(), pa_.const_ref());
         }
       }
-#ifdef JUNK
-      a = [None] * nb
-      qdd_array = [None] * nb
-      for ib in xrange(nb):
-        body = O.bodies[ib]
-        s = body.joint.motion_subspace
-        if (body.parent == -1):
-          a[ib] = c[ib]
-          if (grav_accn is not None):
-            a[ib] += xup_array[ib] * (-grav_accn)
-        else:
-          a[ib] = xup_array[ib] * a[body.parent] + c[ib]
-        qdd_array[ib] = d_inv[ib] * (u_[ib] - u[ib].transpose()*a[ib])
-        if (s is None):
-          a[ib] += qdd_array[ib]
-        else:
-          a[ib] += s * qdd_array[ib]
-
-      return qdd_array
-#endif
-      return af::shared<af::small<ft, 6> >();
+      boost::scoped_array<t6> a(new t6[nb]);
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft> const* body = bodies[ib].get();
+        af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
+        a[ib] = c[ib];
+        if (body->parent == -1) {
+          if (grav_accn.begin() != 0) {
+            a[ib] -= mat_6xn_mul_vec_n(xup_array[ib].const_ref(), grav_accn);
+          }
+        }
+        else {
+          a[ib] += mat_6xn_mul_vec_n(
+            xup_array[ib].const_ref(), a[body->parent].const_ref());
+        }
+        qdd_array[ib] = mat_mxn_mul_vec_n(
+          d_inv[ib].const_ref(),
+          (u_[ib] - mat_mxn_transpose_mul_vec_n(
+                      u[ib].const_ref(),
+                      a[ib].const_ref())).const_ref());
+        if (s.begin() == 0) {
+          SCITBX_ASSERT(qdd_array.size() == 6);
+          for(unsigned i=0;i<6;i++) {
+            a[ib][i] += qdd_array[ib][i];
+          }
+        }
+        else {
+          a[ib] += mat_6xn_mul_vec_n(s, qdd_array[ib].const_ref());
+        }
+      }
+      return qdd_array;
     }
   };
 

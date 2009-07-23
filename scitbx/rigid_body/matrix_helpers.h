@@ -57,19 +57,19 @@ namespace scitbx { namespace rigid_body {
 
   template <typename FloatType>
   af::tiny<FloatType, 6>
-  mat6x6_mul_vec6(
+  mat_6xn_mul_vec_n(
     af::const_ref<FloatType, af::mat_grid> const& a,
     af::const_ref<FloatType> const& b)
   {
     SCITBX_ASSERT(a.accessor().n_rows() == 6);
-    SCITBX_ASSERT(a.accessor().n_columns() == 6);
-    SCITBX_ASSERT(b.size() == 6);
+    unsigned ac = a.accessor().n_columns();
+    SCITBX_ASSERT(b.size() == ac);
     af::tiny<FloatType, 6> result;
     matrix::multiply(
       a.begin(),
       b.begin(),
       /*ar*/ 6,
-      /*ac*/ 6,
+      ac,
       /*bc*/ 1,
       result.begin());
     return result;
@@ -77,7 +77,7 @@ namespace scitbx { namespace rigid_body {
 
   template <typename FloatType>
   af::tiny<FloatType, 6>
-  mat6x6_transpose_mul_vec6(
+  mat_6x6_transpose_mul_vec6(
     af::const_ref<FloatType, af::mat_grid> const& a,
     af::const_ref<FloatType> const& b)
   {
@@ -97,18 +97,40 @@ namespace scitbx { namespace rigid_body {
 
   template <typename FloatType>
   af::small<FloatType, 6>
-  mat6xm_transpose_mul_vec6(
+  mat_mxn_mul_vec_n(
     af::const_ref<FloatType, af::mat_grid> const& a,
     af::const_ref<FloatType> const& b)
   {
-    SCITBX_ASSERT(a.accessor().n_rows() == 6);
-    SCITBX_ASSERT(b.size() == 6);
+    unsigned ar = a.accessor().n_rows();
     unsigned ac = a.accessor().n_columns();
+    SCITBX_ASSERT(ar <= 6);
+    SCITBX_ASSERT(b.size() == ac);
+    af::small<FloatType, 6> result(ar);
+    matrix::multiply(
+      a.begin(),
+      b.begin(),
+      ar,
+      ac,
+      /*bc*/ 1,
+      result.begin());
+    return result;
+  }
+
+  template <typename FloatType>
+  af::small<FloatType, 6>
+  mat_mxn_transpose_mul_vec_n(
+    af::const_ref<FloatType, af::mat_grid> const& a,
+    af::const_ref<FloatType> const& b)
+  {
+    unsigned ar = a.accessor().n_rows();
+    unsigned ac = a.accessor().n_columns();
+    SCITBX_ASSERT(ac <= 6);
+    SCITBX_ASSERT(b.size() == ar);
     af::small<FloatType, 6> result(ac);
     matrix::transpose_multiply(
       a.begin(),
       b.begin(),
-      /*ar*/ 6,
+      ar,
       ac,
       /*bc*/ 1,
       result.begin());
