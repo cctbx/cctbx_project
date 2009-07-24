@@ -2,6 +2,7 @@
 #define SCITBX_RIGID_BODY_BODY_LIB_H
 
 #include <scitbx/rigid_body/joint_lib.h>
+#include <scitbx/rigid_body/spatial_lib.h>
 
 namespace scitbx { namespace rigid_body { namespace body_lib {
 
@@ -26,6 +27,6 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     qd() const = 0;
   };
 
-}}} // namespace scitbx::rigid_body::tardy
+}}} // namespace scitbx::rigid_body::body_lib
 
 #endif // GUARD
