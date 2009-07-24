@@ -1,22 +1,24 @@
 from cctbx import sgtbx
 import libtbx.load_env
-import os
+import os.path as op
 
 if (libtbx.env.has_module("ccp4io")):
   ccp4io_dist = libtbx.env.dist_path("ccp4io")
+  ccp4io_symop_lib_path = op.normpath(op.join(
+    ccp4io_dist, "lib/data/symop.lib"))
 else:
   ccp4io_dist = None
 
 def ccp4_symbol(space_group_info):
-  symop_lib_paths = [os.path.expandvars("$CCP4_LIB/data/symop.lib")]
+  symop_lib_paths = []
   if (ccp4io_dist is not None):
-    symop_lib_paths.append(os.path.normpath(os.path.join(
-      ccp4io_dist, "lib/data/symop.lib")))
+    symop_lib_paths.append(ccp4io_symop_lib_path)
+  symop_lib_paths.append(op.expandvars("$CCP4_LIB/data/symop.lib"))
   found_at_least_one_symop_lib = False
   for symop_lib_path in symop_lib_paths:
-    if (os.path.isfile(symop_lib_path)):
+    if (op.isfile(symop_lib_path)):
       found_at_least_one_symop_lib = True
-      file_iter = iter(open(symop_lib_path, "r"))
+      file_iter = open(symop_lib_path)
       symbol = search_for_ccp4_symbol(space_group_info, file_iter)
       if (symbol is not None):
         return symbol
@@ -25,40 +27,23 @@ def ccp4_symbol(space_group_info):
 
 def search_for_ccp4_symbol(space_group_info, file_iter):
   given_space_group_number = space_group_info.type().number()
-  while 1:
-    try: line = file_iter.next()
-    except StopIteration: break
+  for line in file_iter:
     flds = line.split(None, 4)
-    space_group_number = int(flds[0])
+    space_group_number = int(flds[0][-3:])
     order_z = int(flds[1])
     if (space_group_number != given_space_group_number):
       for i in xrange(order_z):
         file_iter.next()
     else:
-      space_group_symbol = flds[3]
-      group = sgtbx.space_group()
-      for i in xrange(order_z):
-        line = file_iter.next().strip()
-        group.expand_smx(sgtbx.rt_mx(line))
+      result = flds[3]
+      group = collect_symops(file_iter=file_iter, order_z=order_z)
       if (space_group_info.group() == group):
-        return space_group_symbol
+        return result
   return None
 
-def exercise():
-  if (ccp4io_dist is None):
-    print "Skipping iotbx/mtz/extract_from_symop_lib.py: ccp4io not available"
-    return
-  for space_group_number in xrange(1,231):
-    space_group_info = sgtbx.space_group_info(
-      number=space_group_number,
-      table_id="A1983")
-    symbol = ccp4_symbol(space_group_info=space_group_info)
-    if (symbol[0] == "H"):
-      symbol = "R" + symbol[1:] + ":H"
-    assert sgtbx.space_group_info(
-      symbol=symbol,
-      table_id="A1983").group() == space_group_info.group()
-
-if (__name__ == "__main__"):
-  exercise()
-  print "OK"
+def collect_symops(file_iter, order_z):
+  result = sgtbx.space_group()
+  for i in xrange(order_z):
+    line = file_iter.next().strip()
+    result.expand_smx(sgtbx.rt_mx(line))
+  return result
