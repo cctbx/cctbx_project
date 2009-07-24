@@ -1,6 +1,7 @@
 import featherstone
+import body_lib
 import joint_lib
-import utils
+import spatial_lib
 
 matrix = featherstone.matrix
 if (featherstone.scitbx is not None):
@@ -16,23 +17,22 @@ else:
 import sys
 
 def exercise_basic():
-  fs = featherstone
-  assert approx_equal(sum(fs.xrot((1,2,3,4,5,6,7,8,9))), 90)
-  assert approx_equal(sum(fs.xtrans((1,2,3))), 6)
+  assert approx_equal(sum(spatial_lib.xrot((1,2,3,4,5,6,7,8,9))), 90)
+  assert approx_equal(sum(spatial_lib.xtrans((1,2,3))), 6)
   assert approx_equal(
-    sum(fs.cb_as_spatial_transform(
+    sum(spatial_lib.cb_as_spatial_transform(
       cb=matrix.rt(((1,2,3,4,5,6,7,8,9), (1,2,3))))), 90)
-  assert approx_equal(sum(fs.crm((1,2,3,4,5,6))), 0)
-  assert approx_equal(sum(fs.crf((1,2,3,4,5,6))), 0)
-  i_spatial = fs.mcI(
+  assert approx_equal(sum(spatial_lib.crm((1,2,3,4,5,6))), 0)
+  assert approx_equal(sum(spatial_lib.crf((1,2,3,4,5,6))), 0)
+  i_spatial = spatial_lib.mcI(
     m=1.234,
     c=matrix.col((1,2,3)),
     I=matrix.sym(sym_mat3=(2,3,4,0.1,0.2,0.3)))
   assert approx_equal(sum(i_spatial), 21.306)
-  assert approx_equal(fs.kinetic_energy(
+  assert approx_equal(spatial_lib.kinetic_energy(
     i_spatial=i_spatial, v_spatial=matrix.col((1,2,3,4,5,6))), 75.109)
   #
-  mass_points = utils.mass_points(
+  mass_points = body_lib.mass_points(
     masses=[2.34, 3.56, 1.58],
     sites=matrix.col_list([
       (0.949, 2.815, 5.189),
@@ -66,7 +66,7 @@ class six_dof_body(object):
       (0.949, 2.815, 5.189),
       (0.405, 3.954, 5.917),
       (0.779, 5.262, 5.227)])
-    mass_points = utils.mass_points(sites=sites, masses=[1.0, 1.0, 1.0])
+    mass_points = body_lib.mass_points(sites=sites, masses=[1.0, 1.0, 1.0])
     O.alignment = joint_lib.six_dof_alignment(
       center_of_mass=mass_points.center_of_mass())
     O.i_spatial = mass_points.spatial_inertia(
@@ -87,7 +87,7 @@ class spherical_body(object):
     sites = matrix.col_list([
       (0.04, -0.16, 0.19),
       (0.10, -0.15, 0.18)])
-    mass_points = utils.mass_points(sites=sites, masses=[1.0, 1.0])
+    mass_points = body_lib.mass_points(sites=sites, masses=[1.0, 1.0])
     O.alignment = joint_lib.spherical_alignment(
       pivot=mass_points.center_of_mass())
     O.i_spatial = mass_points.spatial_inertia(
@@ -105,7 +105,7 @@ class revolute_body(object):
     pivot = matrix.col((0.779, 5.262, 5.227))
     normal = matrix.col((0.25, 0.86, -0.45)).normalize()
     sites = matrix.col_list([(-0.084, 6.09, 4.936)])
-    mass_points = utils.mass_points(sites=sites, masses=[1.0])
+    mass_points = body_lib.mass_points(sites=sites, masses=[1.0])
     O.alignment = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
     O.i_spatial = mass_points.spatial_inertia(
       alignment_cb_0b=O.alignment.cb_0b)
@@ -119,7 +119,7 @@ class translational_body(object):
 
   def __init__(O):
     sites = [matrix.col((0.949, 2.815, 5.189))]
-    mass_points = utils.mass_points(sites=sites, masses=[1.0])
+    mass_points = body_lib.mass_points(sites=sites, masses=[1.0])
     O.alignment = joint_lib.translational_alignment(
       center_of_mass=mass_points.center_of_mass())
     O.i_spatial = mass_points.spatial_inertia(

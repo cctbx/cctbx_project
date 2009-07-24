@@ -1,7 +1,7 @@
 #ifndef SCITBX_RIGID_BODY_FEATHERSTONE_H
 #define SCITBX_RIGID_BODY_FEATHERSTONE_H
 
-#include <scitbx/rigid_body/joint_lib.h>
+#include <scitbx/rigid_body/body_lib.h>
 #include <scitbx/array_family/versa_algebra.h>
 #include <scitbx/array_family/shared.h>
 #include <boost/numeric/conversion/cast.hpp>
@@ -95,27 +95,6 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
     return -af::matrix_transpose(crm(v).const_ref());
   }
 
-  template <typename FloatType>
-  struct body_t
-  {
-    typedef FloatType ft;
-
-    unsigned number_of_sites;
-    ft sum_of_masses;
-    boost::shared_ptr<joint_lib::alignment_t<ft> > alignment;
-    af::versa<ft, af::mat_grid> i_spatial;
-    boost::shared_ptr<joint_lib::joint_t<ft> > joint;
-    rotr3<ft> cb_tree;
-    int parent;
-
-    virtual
-    ~body_t() {}
-
-    virtual
-    af::const_ref<ft>
-    qd() const = 0;
-  };
-
   //! RBDA Eq. 2.67, p. 35.
   template <typename FloatType>
   FloatType
@@ -134,7 +113,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
   {
     typedef FloatType ft;
 
-    af::shared<boost::shared_ptr<body_t<ft> > > bodies;
+    af::shared<boost::shared_ptr<body_lib::body_t<ft> > > bodies;
     af::shared<rotr3<ft> > cb_up_array_;
     af::shared<af::versa<ft, af::mat_grid> > xup_array_;
 
@@ -150,14 +129,14 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         for all bodies.
      */
     system_model(
-      af::shared<boost::shared_ptr<body_t<ft> > > const& bodies_)
+      af::shared<boost::shared_ptr<body_lib::body_t<ft> > > const& bodies_)
     :
       bodies(bodies_)
     {
       unsigned nb = bodies_size();
       // XXX TODO move out computation of cb_tree
       for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft>* body = bodies[ib].get();
+        body_lib::body_t<ft>* body = bodies[ib].get();
         int p = body->parent;
         if (p == -1) {
           body->cb_tree = body->alignment->cb_0b;
@@ -176,7 +155,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         af::shared<rotr3<ft> > cb_up_array_(af::reserve(bodies.size()));
         unsigned nb = bodies_size();
         for(unsigned ib=0;ib<nb;ib++) {
-          body_t<ft> const* body = bodies[ib].get();
+          body_lib::body_t<ft> const* body = bodies[ib].get();
           cb_up_array_.push_back(body->joint->cb_ps * body->cb_tree);
         }
       }
@@ -207,7 +186,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       unsigned nb = bodies_size();
       af::shared<rotr3<ft> > cb_up_array = this->cb_up_array();
       for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft> const* body = bodies[ib].get();
+        body_lib::body_t<ft> const* body = bodies[ib].get();
         af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
         af::const_ref<ft> qd = body->qd();
         af::tiny<ft, 6>& res_ib = result[ib];
@@ -242,7 +221,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       af::shared<af::tiny<ft, 6> > sv = spatial_velocities();
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft> const* body = bodies[ib].get();
+        body_lib::body_t<ft> const* body = bodies[ib].get();
         result += kinetic_energy(body->i_spatial.const_ref(), sv[ib]);
       }
       return result;
@@ -255,13 +234,13 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         result(af::reserve(bodies.size()));
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft> const* body = bodies[ib].get();
+        body_lib::body_t<ft> const* body = bodies[ib].get();
         result.push_back(body->i_spatial);
       }
       af::shared<af::versa<ft, af::mat_grid> > xup_array = this->xup_array();
       for(unsigned ib=nb;ib!=0;) {
         ib--;
-        body_t<ft> const* body = bodies[ib].get();
+        body_lib::body_t<ft> const* body = bodies[ib].get();
         if (body->parent != -1) {
           result[body->parent] += a_transpose_mul_b_mul_a(
             xup_array[ib].const_ref(),
@@ -280,7 +259,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         accumulated_spatial_inertia = this->accumulated_spatial_inertia();
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft> const* body = bodies[ib].get();
+        body_lib::body_t<ft> const* body = bodies[ib].get();
         af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
         unsigned j_dof = body->joint->degrees_of_freedom;
         af::small<ft, 6> qd(j_dof, 0);
@@ -336,7 +315,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       boost::scoped_array<af::tiny<ft, 6> > a(new af::tiny<ft, 6>[nb]);
       boost::scoped_array<af::tiny<ft, 6> > f(new af::tiny<ft, 6>[nb]);
       for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft> const* body = bodies[ib].get();
+        body_lib::body_t<ft> const* body = bodies[ib].get();
         af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
         af::const_ref<ft> qd = body->qd();
         af::const_ref<ft> qdd = qdd_array[ib].const_ref();
@@ -384,7 +363,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       af::shared<af::small<ft, 6> > tau_array(nb);
       for(unsigned ib=nb;ib!=0;) {
         ib--;
-        body_t<ft> const* body = bodies[ib].get();
+        body_lib::body_t<ft> const* body = bodies[ib].get();
         af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
         if (s.begin() == 0) {
           tau_array[ib] = af::small<ft, 6>(f[ib].begin(), f[ib].end());
@@ -417,7 +396,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       af::shared<af::small<ft, 6> > tau_array(nb);
       for(unsigned ib=nb;ib!=0;) {
         ib--;
-        body_t<ft> const* body = bodies[ib].get();
+        body_lib::body_t<ft> const* body = bodies[ib].get();
         af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
         if (s.begin() == 0) {
           tau_array[ib] = af::small<ft, 6>(f[ib].begin(), f[ib].end());
@@ -483,7 +462,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       af::shared<t6> v = spatial_velocities();
       boost::scoped_array<t6> c(new t6[nb]);
       for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft> const* body = bodies[ib].get();
+        body_lib::body_t<ft> const* body = bodies[ib].get();
         af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
         af::const_ref<ft> qd = body->qd();
         t6 vj;
@@ -522,7 +501,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       boost::scoped_array<s6> u_(new s6[nb]);
       for(unsigned ib=nb;ib!=0;) {
         ib--;
-        body_t<ft> const* body = bodies[ib].get();
+        body_lib::body_t<ft> const* body = bodies[ib].get();
         af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
         vmg d;
         if (s.begin() == 0) {
@@ -564,7 +543,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       ia.reset();
       boost::scoped_array<t6> a(new t6[nb]);
       for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft> const* body = bodies[ib].get();
+        body_lib::body_t<ft> const* body = bodies[ib].get();
         af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
         a[ib] = c[ib];
         if (body->parent == -1) {
