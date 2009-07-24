@@ -1,81 +1,13 @@
 from __future__ import division
 from scitbx.rigid_body.essence import featherstone
+from scitbx.rigid_body.essence import body_lib
 from scitbx.rigid_body.essence import joint_lib
-from scitbx.rigid_body.essence import utils
 import scitbx.lbfgs
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx import Auto
 import random
 import math
-
-class zero_dof_body(object):
-
-  def __init__(O, sites, masses):
-    O.number_of_sites = len(sites)
-    O.sum_of_masses = sum(masses)
-    O.alignment = joint_lib.zero_dof_alignment()
-    O.i_spatial = matrix.sqr([0]*36)
-    O.joint = joint_lib.zero_dof()
-    O.qd = O.joint.qd_zero
-
-class six_dof_body(object):
-
-  def __init__(O, sites, masses):
-    O.number_of_sites = len(sites)
-    mass_points = utils.mass_points(sites=sites, masses=masses)
-    O.sum_of_masses = mass_points.sum_of_masses()
-    O.alignment = joint_lib.six_dof_alignment(
-      center_of_mass=mass_points.center_of_mass())
-    O.i_spatial = mass_points.spatial_inertia(
-      alignment_cb_0b=O.alignment.cb_0b)
-    #
-    qe = matrix.col((1,0,0,0))
-    qr = matrix.col((0,0,0))
-    O.joint = joint_lib.six_dof(qe=qe, qr=qr)
-    O.qd = O.joint.qd_zero
-
-class spherical_body(object):
-
-  def __init__(O, sites, masses, pivot):
-    O.number_of_sites = len(sites)
-    mass_points = utils.mass_points(sites=sites, masses=masses)
-    O.sum_of_masses = mass_points.sum_of_masses()
-    O.alignment = joint_lib.spherical_alignment(pivot=pivot)
-    O.i_spatial = mass_points.spatial_inertia(
-      alignment_cb_0b=O.alignment.cb_0b)
-    #
-    qe = matrix.col((1,0,0,0))
-    O.joint = joint_lib.spherical(qe=qe)
-    O.qd = O.joint.qd_zero
-
-class revolute_body(object):
-
-  def __init__(O, sites, masses, pivot, normal):
-    O.number_of_sites = len(sites)
-    mass_points = utils.mass_points(sites=sites, masses=masses)
-    O.sum_of_masses = mass_points.sum_of_masses()
-    O.alignment = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
-    O.i_spatial = mass_points.spatial_inertia(
-      alignment_cb_0b=O.alignment.cb_0b)
-    #
-    O.joint = joint_lib.revolute(qe=matrix.col([0]))
-    O.qd = O.joint.qd_zero
-
-class translational_body(object):
-
-  def __init__(O, sites, masses):
-    O.number_of_sites = len(sites)
-    mass_points = utils.mass_points(sites=sites, masses=masses)
-    O.sum_of_masses = mass_points.sum_of_masses()
-    O.alignment = joint_lib.translational_alignment(
-      center_of_mass=mass_points.center_of_mass())
-    O.i_spatial = mass_points.spatial_inertia(
-      alignment_cb_0b=O.alignment.cb_0b)
-    #
-    qr = matrix.col((0,0,0))
-    O.joint = joint_lib.translational(qr=qr)
-    O.qd = O.joint.qd_zero
 
 def construct_bodies(
       sites,
@@ -96,9 +28,9 @@ def construct_bodies(
     if (fixed_vertices is not None):
       if (   len(fixed_vertices) > 2
           or len(fixed_vertices) == len(cluster)):
-        body = zero_dof_body(sites=body_sites, masses=body_masses)
+        body = body_lib.zero_dof_body(sites=body_sites, masses=body_masses)
       elif (len(fixed_vertices) == 1):
-        body = spherical_body(
+        body = body_lib.spherical_body(
           sites=body_sites,
           masses=body_masses,
           pivot=sites[fixed_vertices[0]])
@@ -109,26 +41,27 @@ def construct_bodies(
         for site in body_sites:
           abs_cos = abs(axis.cos_angle(site - pivot, value_if_undefined=1))
           if (abs_cos < abs_cos_limit):
-            body = revolute_body(
+            body = body_lib.revolute_body(
               sites=body_sites,
               masses=body_masses,
               pivot=pivot,
               normal=axis.normalize())
             break
         else:
-          body = zero_dof_body(sites=body_sites, masses=body_masses)
+          body = body_lib.zero_dof_body(sites=body_sites, masses=body_masses)
       else:
         raise AssertionError
       body.parent = -1
     elif (he[0] == -1):
       if (len(body_sites) == 1):
-        body = translational_body(sites=body_sites, masses=body_masses)
+        body = body_lib.translational_body(
+          sites=body_sites, masses=body_masses)
       else:
-        body = six_dof_body(sites=body_sites, masses=body_masses)
+        body = body_lib.six_dof_body(sites=body_sites, masses=body_masses)
       body.parent = -1
     else:
       normal_sites = [matrix.col(sites[i]) for i in he]
-      body = revolute_body(
+      body = body_lib.revolute_body(
         sites=body_sites,
         masses=body_masses,
         pivot=normal_sites[1],

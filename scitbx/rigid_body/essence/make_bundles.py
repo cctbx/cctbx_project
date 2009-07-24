@@ -42,9 +42,10 @@ Details
 
 Files::
 
-  featherstone.py:   dynamics algorithms, based on Roy Featherstone's Matlab code
+  featherstone.py:   dynamics algorithms, based on Roy Featherstone's Matlab library
+  spatial_lib.py:    spatial algebra, also based on Roy Featherstone's library
   joint_lib.py:      some joint models
-  utils.py:          simple utility functions
+  body_lib.py:       corresponding body objects
   scitbx_matrix.py:  general matrix algorithm (copy of scitbx/matrix.py)
   tst_basic.py:      unit tests compatible with Python 2.2 or higher
 
@@ -106,8 +107,9 @@ def run(args):
     copy_file(os.path.join(scitbx_dist, file_name), target)
   cp("matrix.py", "scitbx_matrix.py")
   cp("rigid_body/essence/featherstone.py")
+  cp("rigid_body/essence/spatial_lib.py")
   cp("rigid_body/essence/joint_lib.py")
-  cp("rigid_body/essence/utils.py")
+  cp("rigid_body/essence/body_lib.py")
   cp("rigid_body/essence/tst_basic.py")
   open("README.txt", "w").write(__doc__)
   os.chdir("..")

@@ -1,4 +1,6 @@
-from featherstone import matrix
+try: import scitbx
+except ImportError: import scitbx_matrix as matrix
+else: from scitbx import matrix
 import math
 
 class zero_dof_alignment(object):

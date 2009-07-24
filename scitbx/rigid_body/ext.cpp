@@ -83,7 +83,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
     translational.tau_as_d_pot_d_q(af::small<double, 6>(3));
     translational.get_q();
     translational.new_q(af::const_ref<double>(0, 3));
-    af::shared<boost::shared_ptr<featherstone::body_t<double> > > bodies;
+    af::shared<boost::shared_ptr<body_lib::body_t<double> > > bodies;
     featherstone::xrot(mat3<double>());
     featherstone::xtrans(vec3<double>());
     featherstone::cb_as_spatial_transform(rotr3<double>());
