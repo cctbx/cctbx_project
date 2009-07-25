@@ -159,7 +159,6 @@ if (env_etc.compiler == "unix_icpc"):
 static_exe = libtbx.env.build_options.static_exe
 
 def gcc_common_warn_options():
-  assert env_etc.gcc_version is not None
   result = ["-Wall", "-Wno-sign-compare"]
   if (env_etc.gcc_version >= 40000):
     result.append("-Winit-self")
