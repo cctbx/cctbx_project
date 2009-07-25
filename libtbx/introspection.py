@@ -269,6 +269,51 @@ def number_of_processors(return_value_if_unknown=None):
     return _number_of_processors
   return return_value_if_unknown
 
+class method_debug_log (object) :
+  """For Python 2.4 or greater.  Use an instance of this class as a
+  decorator for class methods, and it will print the call signature and
+  call location before the method is executed.
+
+  Example:
+  debug = libtbx.introspection.method_debug_log()
+  class a (object) :
+    @debug
+    def foo (self, x) :
+      print x
+
+  def main () :
+    my_object = a()
+    a.foo(1)
+  main()
+
+  Running this results in the following output when LIBTBX_DEBUG_LOG is set:
+a.foo(1) @ test.py(13) main
+1
+  """
+  def __init__ (self) :
+    self.debug = False
+    if os.environ.get("LIBTBX_DEBUG_LOG") is not None :
+      self.debug = True
+
+  def __call__ (self, f) :
+    def log_wrapper (O, *args, **kwds) :
+      if self.debug :
+        _args = list(args)
+        _kwds = dict(kwds)
+        str_args = ", ".join([ str(arg) for arg in _args ])
+        str_kwds = ", ".join([ "%s=%s" % (kwd, str(val))
+                               for kwd, val in _kwds.iteritems() ])
+        call_signature = []
+        if str_args != "" : call_signature.append(str_args)
+        if str_kwds != "" : call_signature.append(str_kwds)
+        caller = sys._getframe(1)
+        print "%s.%s(%s) @ %s(%d) %s" % (O.__class__.__name__, f.__name__,
+          ", ".join(call_signature), caller.f_code.co_filename,
+          caller.f_lineno, caller.f_code.co_name)
+        sys.stdout.flush()
+      return f(O, *args, **kwds)
+    return log_wrapper
+
 if (__name__ == "__main__"):
   def exercise_varnames(a, b, c):
     d = 0
