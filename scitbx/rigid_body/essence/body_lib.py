@@ -4,10 +4,10 @@ matrix = spatial_lib.matrix
 
 class mass_points(object):
 
-  def __init__(O, masses, sites):
+  def __init__(O, sites, masses):
     assert len(masses) == len(sites)
-    O.masses = masses
     O.sites = sites
+    O.masses = masses
     O._sum_of_masses = None
     O._center_of_mass = None
 
@@ -22,14 +22,11 @@ class mass_points(object):
   def center_of_mass(O):
     if (O._center_of_mass is None):
       assert len(O.masses) != 0
-      sm = 0
+      assert O.sum_of_masses() != 0
       sms = matrix.col((0,0,0))
       for mass,site in zip(O.masses, O.sites):
-        sm += mass
         sms += mass * site
-      O._sum_of_masses = sm
-      assert O._sum_of_masses != 0
-      O._center_of_mass = sms / sm
+      O._center_of_mass = sms / O.sum_of_masses()
     return O._center_of_mass
 
   def inertia(O, pivot):
@@ -53,9 +50,9 @@ class mass_points(object):
     if (alignment_cb_0b is not None):
       center_of_mass = alignment_cb_0b * center_of_mass
       inertia = alignment_cb_0b.r * inertia * alignment_cb_0b.r.transpose()
-    return spatial_lib.mcI(m=O._sum_of_masses, c=center_of_mass, I=inertia)
+    return spatial_lib.mci(m=O._sum_of_masses, c=center_of_mass, i=inertia)
 
-class zero_dof_body(object):
+class zero_dof(object):
 
   def __init__(O, sites, masses):
     O.number_of_sites = len(sites)
@@ -65,7 +62,7 @@ class zero_dof_body(object):
     O.joint = joint_lib.zero_dof()
     O.qd = O.joint.qd_zero
 
-class six_dof_body(object):
+class six_dof(object):
 
   def __init__(O, sites, masses):
     O.number_of_sites = len(sites)
@@ -80,7 +77,7 @@ class six_dof_body(object):
     O.joint = joint_lib.six_dof(qe=qe, qr=qr)
     O.qd = O.joint.qd_zero
 
-class spherical_body(object):
+class spherical(object):
 
   def __init__(O, sites, masses, pivot):
     O.number_of_sites = len(sites)
@@ -93,7 +90,7 @@ class spherical_body(object):
     O.joint = joint_lib.spherical(qe=qe)
     O.qd = O.joint.qd_zero
 
-class revolute_body(object):
+class revolute(object):
 
   def __init__(O, sites, masses, pivot, normal):
     O.number_of_sites = len(sites)
@@ -105,7 +102,7 @@ class revolute_body(object):
     O.joint = joint_lib.revolute(qe=matrix.col([0]))
     O.qd = O.joint.qd_zero
 
-class translational_body(object):
+class translational(object):
 
   def __init__(O, sites, masses):
     O.number_of_sites = len(sites)

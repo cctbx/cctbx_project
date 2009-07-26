@@ -2,8 +2,7 @@
 #define SCITBX_RIGID_BODY_SPATIAL_LIB_H
 
 #include <scitbx/rotr3.h>
-#include <scitbx/array_family/versa.h>
-#include <scitbx/array_family/accessors/mat_grid.h>
+#include <scitbx/array_family/versa_matrix.h>
 
 namespace scitbx { namespace rigid_body { namespace spatial_lib {
 
@@ -18,7 +17,7 @@ namespace scitbx { namespace rigid_body { namespace spatial_lib {
   xrot(
     mat3<FloatType> const& e)
   {
-    FloatType coeffs[] = {
+    FloatType const coeffs[] = {
       e[0], e[1], e[2], 0, 0, 0,
       e[3], e[4], e[5], 0, 0, 0,
       e[6], e[7], e[8], 0, 0, 0,
@@ -39,7 +38,7 @@ namespace scitbx { namespace rigid_body { namespace spatial_lib {
   xtrans(
     vec3<FloatType> const& r)
   {
-    FloatType coeffs[] = {
+    FloatType const coeffs[] = {
           1,     0,     0, 0, 0, 0,
           0,     1,     0, 0, 0, 0,
           0,     0,     1, 0, 0, 0,
@@ -70,7 +69,7 @@ namespace scitbx { namespace rigid_body { namespace spatial_lib {
   crm(
     af::tiny<FloatType, 6> const& v)
   {
-    FloatType coeffs[] = {
+    FloatType const coeffs[] = {
           0, -v[2],  v[1],     0,     0,     0,
        v[2],     0, -v[0],     0,     0,     0,
       -v[1],  v[0],     0,     0,     0,     0,
@@ -92,6 +91,32 @@ namespace scitbx { namespace rigid_body { namespace spatial_lib {
     af::tiny<FloatType, 6> const& v)
   {
     return -af::matrix_transpose(crm(v).const_ref());
+  }
+
+  //! RBDA Eq. 2.63, p. 33.
+  /*! Spatial rigid-body inertia from mass, CoM and rotational inertia.
+      Calculates the spatial inertia matrix of a rigid body from its
+      mass, centre of mass (3D vector) and rotational inertia (3x3 matrix)
+      about its centre of mass.
+   */
+  template <typename FloatType>
+  af::versa<FloatType, af::mat_grid>
+  mci(
+    FloatType const& m,
+    vec3<FloatType> const& c,
+    sym_mat3<FloatType> const& i)
+  {
+    typedef FloatType ft;
+    mat3<ft> cx = mat3<ft>::cross_product_matrix(c);
+    sym_mat3<ft> imcc = i + m * cx.self_times_self_transpose();
+    ft const coeffs[] = {
+      imcc[0], imcc[3], imcc[4],  m*cx[0], m*cx[1], m*cx[2],
+      imcc[3], imcc[1], imcc[5],  m*cx[3], m*cx[4], m*cx[5],
+      imcc[4], imcc[5], imcc[2],  m*cx[6], m*cx[7], m*cx[8],
+      m*cx[0], m*cx[3], m*cx[6],  m, 0, 0,
+      m*cx[1], m*cx[4], m*cx[7],  0, m, 0,
+      m*cx[2], m*cx[5], m*cx[8],  0, 0, m};
+    return af::versa_mat_grid(coeffs, 6, 6);
   }
 
   //! RBDA Eq. 2.67, p. 35.

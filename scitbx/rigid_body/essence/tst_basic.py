@@ -24,20 +24,20 @@ def exercise_basic():
       cb=matrix.rt(((1,2,3,4,5,6,7,8,9), (1,2,3))))), 90)
   assert approx_equal(sum(spatial_lib.crm((1,2,3,4,5,6))), 0)
   assert approx_equal(sum(spatial_lib.crf((1,2,3,4,5,6))), 0)
-  i_spatial = spatial_lib.mcI(
+  i_spatial = spatial_lib.mci(
     m=1.234,
     c=matrix.col((1,2,3)),
-    I=matrix.sym(sym_mat3=(2,3,4,0.1,0.2,0.3)))
+    i=matrix.sym(sym_mat3=(2,3,4,0.1,0.2,0.3)))
   assert approx_equal(sum(i_spatial), 21.306)
   assert approx_equal(spatial_lib.kinetic_energy(
     i_spatial=i_spatial, v_spatial=matrix.col((1,2,3,4,5,6))), 75.109)
   #
   mass_points = body_lib.mass_points(
-    masses=[2.34, 3.56, 1.58],
     sites=matrix.col_list([
       (0.949, 2.815, 5.189),
       (0.405, 3.954, 5.917),
-      (0.779, 5.262, 5.227)]))
+      (0.779, 5.262, 5.227)]),
+    masses=[2.34, 3.56, 1.58])
   assert approx_equal(mass_points.sum_of_masses(), 7.48)
   assert approx_equal(mass_points.center_of_mass(),
     [0.654181818182, 3.87397058824, 5.54350802139])

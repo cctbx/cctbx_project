@@ -4,6 +4,7 @@
 #include <boost/python/def.hpp>
 
 #include <scitbx/rigid_body/featherstone.h>
+#include <scitbx/rigid_body/body_lib.h>
 
 namespace scitbx { namespace rigid_body { namespace ext {
 
@@ -83,7 +84,15 @@ namespace scitbx { namespace rigid_body { namespace ext {
     translational.tau_as_d_pot_d_q(af::small<double, 6>(3));
     translational.get_q();
     translational.new_q(af::const_ref<double>(0, 3));
-    af::shared<boost::shared_ptr<body_lib::body_t<double> > > bodies;
+    af::shared<boost::shared_ptr<body_t<double> > > bodies;
+    af::const_ref<vec3<double> > sites(0, 0);
+    af::const_ref<double> masses(0, 0);
+    body_lib::mass_points_cache<double> mp(sites, masses);
+    mp.sum_of_masses();
+    mp.center_of_mass();
+    mp.inertia(vec3<double>(0,0,0));
+    mp.spatial_inertia();
+    mp.spatial_inertia(rotr3<double>());
     spatial_lib::xrot(mat3<double>());
     spatial_lib::xtrans(vec3<double>());
     spatial_lib::cb_as_spatial_transform(rotr3<double>());
@@ -107,6 +116,12 @@ namespace scitbx { namespace rigid_body { namespace ext {
       af::const_ref<af::small<double, 6> >(0, 0),
       af::const_ref<af::tiny<double, 6> >(0, 0),
       af::const_ref<double>(0, 0));
+    body_lib::zero_dof<>().qd();
+    body_lib::six_dof<>(sites, masses).qd();
+    body_lib::spherical<>(sites, masses, vec3<double>(0,0,0)).qd();
+    body_lib::revolute<>(
+      sites, masses, vec3<double>(0,0,0), vec3<double>(0,0,0)).qd();
+    body_lib::translational<>(sites, masses).qd();
   }
 
 }}} // namespace scitbx::rigid_body::ext
