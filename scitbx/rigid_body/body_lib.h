@@ -1,6 +1,7 @@
 #ifndef SCITBX_RIGID_BODY_BODY_LIB_H
 #define SCITBX_RIGID_BODY_BODY_LIB_H
 
+#include <scitbx/rigid_body/body_t.h>
 #include <scitbx/rigid_body/joint_lib.h>
 #include <scitbx/rigid_body/spatial_lib.h>
 #include <scitbx/math/inertia_tensor.h>

@@ -7,7 +7,6 @@
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/array_family/tiny_reductions.h>
 #include <scitbx/array_family/accessors/mat_grid.h>
-#include <scitbx/matrix/multiply.h>
 
 namespace scitbx { namespace rigid_body {
 
