@@ -4,7 +4,6 @@
 #include <scitbx/rigid_body/body_t.h>
 #include <scitbx/rigid_body/spatial_lib.h>
 #include <scitbx/array_family/versa_algebra.h>
-#include <scitbx/array_family/shared.h>
 #include <boost/numeric/conversion/cast.hpp>
 
 namespace scitbx { namespace rigid_body { namespace featherstone {
