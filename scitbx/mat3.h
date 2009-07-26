@@ -304,6 +304,22 @@ namespace scitbx {
              + m[7] * other[7]
              + m[8] * other[8];
       }
+
+      //! Matrix associated with vector cross product.
+      /*! a.cross(b) is equivalent to cross_product_matrix(a) * b.
+          Useful for simplification of equations. Used frequently in
+          robotics and classical mechanics literature.
+       */
+      static
+      mat3
+      cross_product_matrix(
+        vec3<NumType> const& v)
+      {
+        return mat3(
+              0, -v[2],  v[1],
+           v[2],     0, -v[0],
+          -v[1],  v[0],     0);
+      }
   };
 
   // non-inline member function
