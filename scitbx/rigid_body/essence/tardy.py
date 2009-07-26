@@ -28,9 +28,9 @@ def construct_bodies(
     if (fixed_vertices is not None):
       if (   len(fixed_vertices) > 2
           or len(fixed_vertices) == len(cluster)):
-        body = body_lib.zero_dof_body(sites=body_sites, masses=body_masses)
+        body = body_lib.zero_dof(sites=body_sites, masses=body_masses)
       elif (len(fixed_vertices) == 1):
-        body = body_lib.spherical_body(
+        body = body_lib.spherical(
           sites=body_sites,
           masses=body_masses,
           pivot=sites[fixed_vertices[0]])
@@ -41,27 +41,27 @@ def construct_bodies(
         for site in body_sites:
           abs_cos = abs(axis.cos_angle(site - pivot, value_if_undefined=1))
           if (abs_cos < abs_cos_limit):
-            body = body_lib.revolute_body(
+            body = body_lib.revolute(
               sites=body_sites,
               masses=body_masses,
               pivot=pivot,
               normal=axis.normalize())
             break
         else:
-          body = body_lib.zero_dof_body(sites=body_sites, masses=body_masses)
+          body = body_lib.zero_dof(sites=body_sites, masses=body_masses)
       else:
         raise AssertionError
       body.parent = -1
     elif (he[0] == -1):
       if (len(body_sites) == 1):
-        body = body_lib.translational_body(
+        body = body_lib.translational(
           sites=body_sites, masses=body_masses)
       else:
-        body = body_lib.six_dof_body(sites=body_sites, masses=body_masses)
+        body = body_lib.six_dof(sites=body_sites, masses=body_masses)
       body.parent = -1
     else:
       normal_sites = [matrix.col(sites[i]) for i in he]
-      body = body_lib.revolute_body(
+      body = body_lib.revolute(
         sites=body_sites,
         masses=body_masses,
         pivot=normal_sites[1],

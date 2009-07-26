@@ -78,21 +78,17 @@ vector f.
   """
   return -crm(v).transpose()
 
-def mcI(m, c, I):
+def mci(m, c, i):
   """RBDA Eq. 2.63, p. 33:
 Spatial rigid-body inertia from mass, CoM and rotational inertia.
 Calculates the spatial inertia matrix of a rigid body from its
 mass, centre of mass (3D vector) and rotational inertia (3x3 matrix)
 about its centre of mass.
   """
-  c1,c2,c3 = c
-  C = matrix.sqr((
-      0, -c3,  c2,
-     c3,   0, -c1,
-    -c2,  c1,  0))
+  cx = matrix.cross_product_matrix(c)
   return matrix.sqr((
-    I + m*C*C.transpose(), m*C,
-    m*C.transpose(), m*matrix.identity(3))).resolve_partitions()
+    i + m*cx*cx.transpose(), m*cx,
+    m*cx.transpose(), m*matrix.identity(3))).resolve_partitions()
 
 def kinetic_energy(i_spatial, v_spatial):
   "RBDA Eq. 2.67, p. 35"
