@@ -201,6 +201,20 @@ int main(int /*argc*/, char* /*argv*/[])
     check_true(__LINE__, std::fabs(af::max((d.second - vec3<double>(
       7.071067812,  2.996664813,  1.368594617)).ref())) < 1.e-6);
   }
+  {
+    vec3<int> a(2,5,11);
+    vec3<int> b(-3,13,17);
+    mat3<int> ax(mat3<int>::cross_product_matrix(a));
+    mat3<int> bx(mat3<int>::cross_product_matrix(b));
+    check_true(__LINE__, ax * b == a.cross(b));
+    check_true(__LINE__, bx * a == b.cross(a));
+    check_true(__LINE__, ax * a == a.cross(a));
+    check_true(__LINE__, bx * b == b.cross(b));
+    check_true(__LINE__, ax * a != a.cross(b));
+    check_true(__LINE__, bx * b != b.cross(a));
+    check_true(__LINE__, ax * b != a.cross(a));
+    check_true(__LINE__, bx * a != b.cross(b));
+  }
 
   std::cout << "Total OK: " << ok_counter << std::endl;
   if (error_counter || verbose) {
