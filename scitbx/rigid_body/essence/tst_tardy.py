@@ -37,7 +37,7 @@ class tardy_model(tardy.model):
     return result
 
   def check_d_pot_d_q(O, verbose=0):
-    qdd_orig = O.qdd()
+    qdd_orig = O.qdd_array()
     ana = O.d_pot_d_q()
     fin = O.d_pot_d_q_via_finite_differences()
     if (verbose):
@@ -46,7 +46,7 @@ class tardy_model(tardy.model):
         print "ana:", a.elems
       print
     assert approx_equal(ana, fin)
-    assert approx_equal(O.qdd(), qdd_orig)
+    assert approx_equal(O.qdd_array(), qdd_orig)
 
 class potential_object(object):
 
