@@ -125,6 +125,12 @@ namespace scitbx { namespace rigid_body { namespace ext {
       af::const_ref<vec3<double> >(),
       af::const_ref<double>(),
       boost::python::object());
+    tardy::model<> tardy_model(
+      /*labels*/ af::shared<std::string>(),
+      /*sites*/ af::shared<vec3<double> >(),
+      /*masses*/ af::shared<double>(),
+      /*tardy_tree*/ boost::python::object(),
+      /*potential_obj*/ boost::python::object());
   }
 
 }}} // namespace scitbx::rigid_body::ext

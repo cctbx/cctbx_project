@@ -7,6 +7,7 @@
 #include <scitbx/rigid_body/body_lib.h>
 #include <scitbx/rigid_body/featherstone.h>
 #include <scitbx/array_family/selections.h>
+#include <vector>
 
 namespace scitbx { namespace rigid_body { namespace tardy {
 
@@ -172,6 +173,87 @@ namespace scitbx { namespace rigid_body { namespace tardy {
     }
     return result;
   }
+
+  template <typename FloatType=double>
+  struct model : boost::noncopyable
+  {
+    typedef FloatType ft;
+
+    // constructor arguments
+    af::shared<std::string> labels;
+    af::shared<vec3<ft> > sites;
+    af::shared<ft> masses;
+    boost::python::object tardy_tree;
+    boost::python::object potential_obj;
+
+    // set in constructor
+    af::shared<shared_ptr<body_t<FloatType> > > bodies;
+    unsigned degrees_of_freedom;
+
+    // dynamically maintained
+    protected:
+      boost::optional<featherstone::system_model<ft> >
+        featherstone_system_model_;
+      boost::optional<std::vector<rotr3<ft> > > aja_array_;
+      boost::optional<std::vector<mat3<ft> > > jar_array_;
+      boost::optional<af::shared<vec3<ft> > > sites_moved_;
+      boost::optional<ft> e_pot_;
+      boost::optional<std::vector<vec3<ft> > > d_e_pot_d_sites_;
+      boost::optional<std::vector<af::tiny<ft, 6> > > f_ext_array_;
+      boost::optional<std::vector<af::small<ft, 6> > > qdd_array_;
+      boost::optional<ft> e_kin_;
+    public:
+
+    model() {}
+
+    model(
+      af::shared<std::string> const& labels_,
+      af::shared<vec3<ft> > const& sites_,
+      af::shared<ft> const& masses_,
+      boost::python::object const& tardy_tree_,
+      boost::python::object const& potential_obj_,
+      ft const& near_singular_hinges_angular_tolerance_deg=5)
+    :
+      labels(labels_),
+      sites(sites_),
+      masses(masses_),
+      tardy_tree(tardy_tree_),
+      potential_obj(potential_obj_),
+      bodies(construct_bodies(
+        sites.const_ref(),
+        masses.const_ref(),
+        tardy_tree.attr("cluster_manager"),
+        near_singular_hinges_angular_tolerance_deg)),
+      degrees_of_freedom(0)
+    {
+      unsigned nb = boost::numeric_cast<unsigned>(bodies.size());
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft> const* body = bodies[ib].get();
+        degrees_of_freedom += body->joint->degrees_of_freedom;
+      }
+      flag_positions_as_changed();
+    }
+
+    void
+    flag_positions_as_changed()
+    {
+      featherstone_system_model_.reset();
+      aja_array_.reset();
+      jar_array_.reset();
+      sites_moved_.reset();
+      e_pot_.reset();
+      d_e_pot_d_sites_.reset();
+      f_ext_array_.reset();
+      flag_velocities_as_changed();
+    }
+
+    void
+    flag_velocities_as_changed()
+    {
+      qdd_array_.reset();
+      e_kin_.reset();
+    }
+  };
 
 }}} // namespace scitbx::rigid_body::tardy
 

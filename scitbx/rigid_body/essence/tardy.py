@@ -94,6 +94,20 @@ class model(object):
       for body in O.bodies])
     O.flag_positions_as_changed()
 
+  def flag_positions_as_changed(O):
+    O.__featherstone_system_model = None
+    O.__aja_array = None
+    O.__jar_array = None
+    O.__sites_moved = None
+    O.__e_pot = None
+    O.__d_e_pot_d_sites = None
+    O.__f_ext_array = None
+    O.flag_velocities_as_changed()
+
+  def flag_velocities_as_changed(O):
+    O.__qdd_array = None
+    O.__e_kin = None
+
   def root_indices(O):
     result = []
     for ib,body in enumerate(O.bodies):
@@ -143,58 +157,44 @@ class model(object):
       if (v is None): continue
       body.qd = body.joint.new_linear_velocity(qd=body.qd, value=v-value)
 
-  def flag_positions_as_changed(O):
-    O.__featherstone_system_model = None
-    O.__AJA = None
-    O.__JAr = None
-    O.__sites_moved = None
-    O.__e_pot = None
-    O.__d_e_pot_d_sites = None
-    O.__f_ext_bf = None
-    O.flag_velocities_as_changed()
-
-  def flag_velocities_as_changed(O):
-    O.__qdd = None
-    O.__e_kin = None
-
   def featherstone_system_model(O):
     if (O.__featherstone_system_model is None):
       O.__featherstone_system_model = featherstone.system_model(
         bodies=O.bodies)
     return O.__featherstone_system_model
 
-  def AJA(O):
-    if (O.__AJA is None):
-      O.__AJA = []
+  def aja_array(O):
+    if (O.__aja_array is None):
+      O.__aja_array = []
       for body in O.bodies:
-        AJA = body.alignment.cb_b0 * body.joint.cb_sp * body.alignment.cb_0b
+        aja = body.alignment.cb_b0 * body.joint.cb_sp * body.alignment.cb_0b
         if (body.parent != -1):
-          AJA = O.__AJA[body.parent] * AJA
-        O.__AJA.append(AJA)
-    return O.__AJA
+          aja = O.__aja_array[body.parent] * aja
+        O.__aja_array.append(aja)
+    return O.__aja_array
 
-  def JAr(O):
-    if (O.__JAr is None):
-      O_AJA = O.AJA()
-      O.__JAr = []
+  def jar_array(O):
+    if (O.__jar_array is None):
+      O_aja = O.aja_array()
+      O.__jar_array = []
       for body in O.bodies:
-        JAr = body.joint.cb_ps.r * body.alignment.cb_0b.r
+        jar = body.joint.cb_ps.r * body.alignment.cb_0b.r
         if (body.parent != -1):
-          JAr *= O_AJA[body.parent].r.transpose()
-        O.__JAr.append(JAr)
-    return O.__JAr
+          jar *= O_aja[body.parent].r.transpose()
+        O.__jar_array.append(jar)
+    return O.__jar_array
 
   def sites_moved(O):
     if (O.__sites_moved is None):
-      O_AJA = O.AJA()
+      O_aja = O.aja_array()
       O.__sites_moved = [None] * len(O.sites)
       n_done = 0
       clusters = O.tardy_tree.cluster_manager.clusters
       for ib,body in enumerate(O.bodies):
-        AJA = O_AJA[ib]
+        aja = O_aja[ib]
         for i_seq in clusters[ib]:
           assert O.__sites_moved[i_seq] is None
-          O.__sites_moved[i_seq] = AJA * O.sites[i_seq]
+          O.__sites_moved[i_seq] = aja * O.sites[i_seq]
           n_done += 1
       assert n_done == len(O.sites)
     return O.__sites_moved
@@ -217,27 +217,27 @@ class model(object):
           sites_moved=O.sites_moved())
     return O.__d_e_pot_d_sites
 
-  def f_ext_bf(O):
-    O_JAr = O.JAr()
+  def f_ext_array(O):
+    O_jar = O.jar_array()
     O_d_e_pot_d_sites = O.d_e_pot_d_sites()
-    O.__f_ext_bf = []
+    O.__f_ext_array = []
     clusters = O.tardy_tree.cluster_manager.clusters
     for ib,body in enumerate(O.bodies):
       f = matrix.col((0,0,0))
       nc = matrix.col((0,0,0))
       for i_seq in clusters[ib]:
         s = O.sites[i_seq]
-        force_bf = -(O_JAr[ib] * O_d_e_pot_d_sites[i_seq])
+        force_bf = -(O_jar[ib] * O_d_e_pot_d_sites[i_seq])
         f += force_bf
         nc += (body.alignment.cb_0b * s).cross(force_bf)
-      O.__f_ext_bf.append(matrix.col((nc, f)).resolve_partitions())
-    return O.__f_ext_bf
+      O.__f_ext_array.append(matrix.col((nc, f)).resolve_partitions())
+    return O.__f_ext_array
 
-  def qdd(O):
-    if (O.__qdd is None):
-      O.__qdd = O.featherstone_system_model().forward_dynamics_ab(
-        tau_array=None, f_ext_array=O.f_ext_bf())
-    return O.__qdd
+  def qdd_array(O):
+    if (O.__qdd_array is None):
+      O.__qdd_array = O.featherstone_system_model().forward_dynamics_ab(
+        tau_array=None, f_ext_array=O.f_ext_array())
+    return O.__qdd_array
 
   def e_kin(O):
     if (O.__e_kin is None):
@@ -294,17 +294,18 @@ class model(object):
     return qd_e_kin_scales
 
   def dynamics_step(O, delta_t):
-    O_qdd = O.qdd()
+    O_qdd_array = O.qdd_array()
     for body in O.bodies:
       body.joint = body.joint.time_step_position(
         qd=body.qd, delta_t=delta_t)
-    for body,qdd in zip(O.bodies, O_qdd):
+    for body,qdd in zip(O.bodies, O_qdd_array):
       body.qd = body.joint.time_step_velocity(
         qd=body.qd, qdd=qdd, delta_t=delta_t)
     O.flag_positions_as_changed()
 
   def d_pot_d_q(O):
-    return O.featherstone_system_model().d_pot_d_q(f_ext_array=O.f_ext_bf())
+    return O.featherstone_system_model().d_pot_d_q(
+      f_ext_array=O.f_ext_array())
 
   def pack_q(O):
     result = flex.double()
