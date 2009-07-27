@@ -19,6 +19,10 @@ LIBTBX_NATIVE_TAR
 
 LIBTBX_FULL_TESTING
   If set, forces libtbx.env.full_testing = True.
+
+LIBTBX_DEBUG_LOG
+  If set, enables libtbx.introspection.method_debug_log.
+  See method_debug_log documentation for details.
 """
 
 if (__name__ == "__main__"):
