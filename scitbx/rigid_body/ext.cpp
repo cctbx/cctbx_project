@@ -3,8 +3,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 
-#include <scitbx/rigid_body/featherstone.h>
-#include <scitbx/rigid_body/body_lib.h>
+#include <scitbx/rigid_body/tardy.h>
 
 namespace scitbx { namespace rigid_body { namespace ext {
 
@@ -116,12 +115,16 @@ namespace scitbx { namespace rigid_body { namespace ext {
       af::const_ref<af::small<double, 6> >(0, 0),
       af::const_ref<af::tiny<double, 6> >(0, 0),
       af::const_ref<double>(0, 0));
-    body_lib::zero_dof<>().qd();
+    body_lib::zero_dof<>(sites, masses).qd();
     body_lib::six_dof<>(sites, masses).qd();
     body_lib::spherical<>(sites, masses, vec3<double>(0,0,0)).qd();
     body_lib::revolute<>(
       sites, masses, vec3<double>(0,0,0), vec3<double>(0,0,0)).qd();
     body_lib::translational<>(sites, masses).qd();
+    tardy::construct_bodies(
+      af::const_ref<vec3<double> >(),
+      af::const_ref<double>(),
+      boost::python::object());
   }
 
 }}} // namespace scitbx::rigid_body::ext

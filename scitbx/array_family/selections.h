@@ -6,27 +6,13 @@
 
 namespace scitbx { namespace af {
 
-  template <typename ElementType>
+  template <
+    typename ElementType,
+    typename UnsignedType>
   shared<ElementType>
   select(
     const_ref<ElementType> const& self,
-    const_ref<bool> const& flags)
-  {
-    SCITBX_ASSERT(flags.size() == self.size());
-    std::size_t n = 0;
-    for(std::size_t i=0;i<flags.size();i++) if (flags[i]) n++;
-    shared<ElementType> result((reserve(n)));
-    for(std::size_t i=0;i<flags.size();i++) {
-      if (flags[i]) result.push_back(self[i]);
-    }
-    return result;
-  }
-
-  template <typename ElementType>
-  shared<ElementType>
-  select(
-    const_ref<ElementType> const& self,
-    const_ref<std::size_t> const& indices,
+    const_ref<UnsignedType> const& indices,
     bool reverse=false)
   {
     if (!reverse) {
@@ -45,6 +31,22 @@ namespace scitbx { namespace af {
         SCITBX_ASSERT(indices[i] < self.size());
         result[indices[i]] = self[i];
       }
+    }
+    return result;
+  }
+
+  template <typename ElementType>
+  shared<ElementType>
+  select(
+    const_ref<ElementType> const& self,
+    const_ref<bool> const& flags)
+  {
+    SCITBX_ASSERT(flags.size() == self.size());
+    std::size_t n = 0;
+    for(std::size_t i=0;i<flags.size();i++) if (flags[i]) n++;
+    shared<ElementType> result((reserve(n)));
+    for(std::size_t i=0;i<flags.size();i++) {
+      if (flags[i]) result.push_back(self[i]);
     }
     return result;
   }

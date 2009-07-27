@@ -99,10 +99,12 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     {
       SCITBX_ASSERT(masses.size() == sites.size());
       this->number_of_sites = boost::numeric_cast<unsigned>(sites.size());
-      this->sum_of_masses = af::sum(masses.const_ref());
-      this->alignment = joint_lib::zero_dof_alignment<ft>();
+      this->sum_of_masses = af::sum(masses);
+      this->alignment = shared_ptr<alignment_t<ft> >(
+        new joint_lib::zero_dof_alignment<ft>());
       this->i_spatial = af::versa<ft, af::mat_grid>(af::mat_grid(6,6), 0);
-      this->joint = joint_lib::zero_dof<ft>();
+      this->joint = shared_ptr<joint_t<ft> >(
+        new joint_lib::zero_dof<ft>());
       qd_ = af::const_ref<ft>(0, 0);
     }
 
@@ -130,7 +132,7 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
       this->alignment = shared_ptr<alignment_t<ft> >(
         new joint_lib::six_dof_alignment<ft>(mp.center_of_mass()));
       this->i_spatial = mp.spatial_inertia(this->alignment->cb_0b);
-      this->joint = shared_ptr<joint_lib::six_dof<ft> >(
+      this->joint = shared_ptr<joint_t<ft> >(
         new joint_lib::six_dof<ft>(
           af::tiny<ft, 4>(1,0,0,0),
           vec3<ft>(0,0,0)));
@@ -163,7 +165,7 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
       this->alignment = shared_ptr<alignment_t<ft> >(
         new joint_lib::spherical_alignment<ft>(pivot));
       this->i_spatial = mp.spatial_inertia(this->alignment->cb_0b);
-      this->joint = shared_ptr<joint_lib::spherical<ft> >(
+      this->joint = shared_ptr<joint_t<ft> >(
         new joint_lib::spherical<ft>(
           af::tiny<ft, 4>(1,0,0,0)));
       af::const_ref<ft> qd0 = this->joint->qd_zero();
@@ -196,7 +198,7 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
       this->alignment = shared_ptr<alignment_t<ft> >(
         new joint_lib::revolute_alignment<ft>(pivot, normal));
       this->i_spatial = mp.spatial_inertia(this->alignment->cb_0b);
-      this->joint = shared_ptr<joint_lib::revolute<ft> >(
+      this->joint = shared_ptr<joint_t<ft> >(
         new joint_lib::revolute<ft>(af::tiny<ft, 1>(qd_)));
       qd_ = this->joint->qd_zero()[0];
     }
@@ -225,7 +227,7 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
       this->alignment = shared_ptr<alignment_t<ft> >(
         new joint_lib::translational_alignment<ft>(mp.center_of_mass()));
       this->i_spatial = mp.spatial_inertia(this->alignment->cb_0b);
-      this->joint = shared_ptr<joint_lib::translational<ft> >(
+      this->joint = shared_ptr<joint_t<ft> >(
         new joint_lib::translational<ft>(
           vec3<ft>(0,0,0)));
       af::const_ref<ft> qd0 = this->joint->qd_zero();

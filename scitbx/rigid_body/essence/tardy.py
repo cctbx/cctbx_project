@@ -14,16 +14,15 @@ def construct_bodies(
       masses,
       cluster_manager,
       near_singular_hinges_angular_tolerance_deg=5):
-  assert len(sites) == len(masses)
+  assert len(masses) == len(sites)
   result = []
   abs_cos_limit = abs(math.cos(math.radians(
     near_singular_hinges_angular_tolerance_deg)))
-  cm = cluster_manager
-  fvgci = cm.fixed_vertices_given_cluster_index_dict()
-  for ic,cluster in enumerate(cm.clusters):
+  fvgci = cluster_manager.fixed_vertices_given_cluster_index_dict()
+  for ic,cluster in enumerate(cluster_manager.clusters):
     body_sites = [matrix.col(sites[i]) for i in cluster]
     body_masses = [masses[i] for i in cluster]
-    he = cm.hinge_edges[ic]
+    he = cluster_manager.hinge_edges[ic]
     fixed_vertices = fvgci.get(ic)
     if (fixed_vertices is not None):
       if (   len(fixed_vertices) > 2
@@ -66,7 +65,7 @@ def construct_bodies(
         masses=body_masses,
         pivot=normal_sites[1],
         normal=(normal_sites[1]-normal_sites[0]).normalize())
-      body.parent = cm.cluster_indices[he[1]]
+      body.parent = cluster_manager.cluster_indices[he[1]]
     body.i_seqs = cluster
     result.append(body)
   return result
