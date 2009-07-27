@@ -1,20 +1,52 @@
 
-from string import strip
-from libtbx.utils import Sorry
+# XXX: To keep these classes as clean as possible, selections are handled
+# entirely in wx_selection_editor.py.
+
+import iotbx.phil
+from cctbx import uctbx
 import gltbx.util
 from gltbx import wx_viewer, viewer_utils, quadrics
 from gltbx.gl import *
 from gltbx.glu import *
 from scitbx.array_family import flex, shared
 from scitbx.math import minimum_covering_sphere
-from mmtbx.monomer_library import pdb_interpretation
-from cctbx import uctbx
 from libtbx.introspection import method_debug_log
+from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import wx
-import sys
+import sys, os
 
 debug = method_debug_log()
+
+opengl_phil = iotbx.phil.parse("""
+opengl {
+  line_width = 2
+    .type = int
+    .style = spinner min:1 max:10
+  nonbonded_line_width = 2
+    .type = int
+    .style = spinner min:1 max:10
+  map_radius = 10
+    .type = int
+    .style = spinner min:1 max:40
+  base_atom_color = 1.0 1.0 0.0
+    .type = floats
+    .style = color
+  background_color = 0.0 0.0 0.0
+    .type = floats
+    .style = color
+  show_hydrogens = False
+    .type = bool
+  label_clicked_atom = True
+    .type = bool
+  use_atom_color_for_labels = True
+    .type = bool
+  use_fog = True
+    .type = bool
+  orthographic = False
+    .type = bool
+}
+""")
 
 #-----------------------------------------------------------------------
 # XXX: None of the data in this class is used directly in OpenGL calls;
@@ -22,36 +54,36 @@ debug = method_debug_log()
 # required for immediate display.
 class model_data (object) :
   def __init__ (self, object_id, pdb_hierarchy, atomic_bonds,
-      initial_color=(0.0,1.0,1.0)) :
+      base_color=(0.0,1.0,1.0)) :
     self.object_id = object_id
+    self.base_color = base_color
+    self.draw_mode = None
+    self.color_mode = "rainbow"
     self.update_structure(pdb_hierarchy, atomic_bonds)
     self.flag_object_visible = True
-    self.flag_allow_selection = True
     self.use_u_aniso = flex.bool(self.atoms.size())
-    self.trace_bonds = shared.stl_set_unsigned()
     self.current_bonds = self.atomic_bonds
-    self.atom_colors = flex.vec3_double(self.atoms.size(), initial_color)
+    #self.atom_colors = flex.vec3_double(self.atoms.size(), base_color)
     self._color_cache = {}
-    self.recalculate_visibility(False, True)
-
-    # XXX: selections
-    self.selection_string = "None"
-    self.selection_covering_sphere = None
-    self.selection_i_seqs = None
-    self.selection_cache = None
-    self.selected_points = []
-    self.selection_display_list = None
-    self.selection_colors = flex.vec3_double()
-    self.atoms_selected = None
+    self.flag_show_hydrogens = True
+    self.flag_show_points = True
+    self.flag_show_ellipsoids = False
+    self.set_draw_mode("all_atoms")
+    #self.recalculate_visibility()
 
   def reset (self) :
     self.is_changed = False
 
   @debug
   def get_scene_data (self) :
-    return model_scene(self.current_bonds, self.atoms.extract_xyz(),
-      self.atoms.extract_b(), self.atoms.extract_uij(), self.atom_colors,
-      self.visibility)
+    return model_scene(bonds=self.current_bonds,
+      points=self.atoms.extract_xyz(),
+      b_iso=self.atoms.extract_b(),
+      b_aniso=self.atoms.extract_uij(),
+      atom_colors=self.atom_colors,
+      atom_labels=self.atom_labels,
+      atom_radii=self.atom_radii,
+      visibility=self.visibility)
 
   def update_scene_data (self, scene) :
     scene.update_bonds(self.current_bonds)
@@ -104,10 +136,13 @@ class model_data (object) :
     self.atom_count = self.atoms.size()
     self.selection_cache = pdb_hierarchy.atom_selection_cache()
     atom_index = []
+    atom_labels = flex.std_string()
     for atom in self.pdb_hierarchy.atoms_with_labels() :
       atom_index.append(atom)
+      atom_labels.append(format_atom_label(atom))
     self.atom_index = atom_index
-    self.extract_trace()
+    self.atom_labels = atom_labels
+    self.trace_bonds = extract_trace(pdb_hierarchy) #, self.selection_cache)
     assert len(self.atom_index) == self.atom_count
     atom_radii = flex.double(self.atoms.size(), 1.5)
     hydrogen_flag = flex.bool(self.atoms.size(), False)
@@ -117,66 +152,77 @@ class model_data (object) :
         hydrogen_flag[i_seq] = True
     self.atom_radii = atom_radii
     self.hydrogen_flag = hydrogen_flag
-    self.minimum_covering_sphere = minimum_covering_sphere(
-      points=self.atoms.extract_xyz(),
-      epsilon=0.1)
     self._color_cache = {}
     self.is_changed = True
 
   @debug
-  def extract_trace (self) :
-    if self.selection_cache is None : return
-    last_atom     = None
-    isel = self.selection_cache.iselection
-    selection_i_seqs = list(
-      isel("(name ' CA ' or name ' P  ') and (altloc 'A' or altloc ' ')"))
-    last_atom = None
-    bonds = shared.stl_set_unsigned(self.atoms.size())
-    for atom in self.atom_index :
-      if atom.i_seq in selection_i_seqs :
-        if last_atom is not None :
-          if atom.chain_id        == last_atom.chain_id and \
-             atom.model_id        == last_atom.model_id and \
-             atom.resseq_as_int() == (last_atom.resseq_as_int() + 1) and \
-             compare_conformers(atom.altloc, last_atom.altloc) == True :
-            bonds[last_atom.i_seq].append(atom.i_seq)
-            bonds[atom.i_seq].append(last_atom.i_seq)
-        last_atom = atom
-    self.trace_bonds = bonds
-
-  @debug
-  def toggle_trace_mode (self, show_trace=True) :
-    if show_trace :
-      self.current_bonds = self.atomic_bonds
-    else :
-      self.current_bonds = self.trace_bonds
-
-  @debug
-  def recalculate_visibility (self, show_hydrogens=True, show_points=False) :
+  def recalculate_visibility (self) :
     c = 0
     atoms = self.atom_index
-    if show_hydrogens :
+    if self.flag_show_hydrogens :
       atoms_drawable = flex.bool(self.atom_count, True)
     else :
       atoms_drawable = flex.bool([ (atom.element != ' H') for atom in atoms ])
     self.visibility = viewer_utils.atom_visibility(
       bonds             = self.current_bonds,
       atoms_drawable    = atoms_drawable,
-      flag_show_points  = show_points
+      flag_show_points  = self.flag_show_points
     )
     self.visible_atom_count = self.visibility.visible_atoms_count
+
+  def toggle_hydrogens (self, show_hydrogens) :
+    self.flag_show_hydrogens = show_hydrogens
+
+  def toggle_ellipsoids (self, show_ellipsoids) :
+    self.flag_show_ellipsoids = show_ellipsoids
+
+  def set_draw_mode (self, draw_mode) :
+    if draw_mode == self.draw_mode and not self.is_changed :
+      pass
+    else :
+      self.draw_mode = draw_mode
+      show_points = True
+      if draw_mode in ["trace", "trace_and_nb"] :
+        self.current_bonds = self.trace_bonds
+      else :
+        self.current_bonds = self.atomic_bonds
+      if draw_mode in ["trace", "bonded_only"] :
+        self.flag_show_points = False
+      else :
+        self.flag_show_points = True
+      self.recalculate_visibility()
+      self.set_color_mode(self.color_mode) # force re-coloring
 
   #---------------------------------------------------------------------
   # XXX: COLORING
   #
+  def set_base_color (self, color) :
+    self.base_color = color
+
+  def set_color_mode (self, color_mode) :
+    if color_mode == self.color_mode and not self.is_changed :
+      pass
+    else :
+      self.color_mode = color_mode
+      if color_mode == "mono" :
+        self.color_mono()
+      elif color_mode == "rainbow" :
+        self.color_rainbow()
+      elif color_mode == "b" :
+        self.color_b()
+      elif color_mode == "chain" :
+        self.color_by_chain()
+      elif color_mode == "element" :
+        self.color_by_element()
+
   @debug
-  def color_mono (self, base_atom_color=(0.0,1.0,1.0)) :
+  def color_mono (self) :
     cached = self._color_cache.get("mono")
     if cached is not None :
       self.atom_colors = cached
     else :
       self.atom_colors = flex.vec3_double(
-        [ self.base_atom_color for i in xrange(0, self.points.size()) ]
+        [ self.base_color for i in xrange(0, self.atoms.size()) ]
       )
       self._color_cache["mono"] = self.atom_colors
 
@@ -193,7 +239,7 @@ class model_data (object) :
       self._color_cache["rainbow"] = self.atom_colors
 
   @debug
-  def color_b (self, scale_b_to_visible=True) :
+  def color_b (self) :
     cached = self._color_cache.get("b")
     if cached is not None :
       self.atom_colors = cached
@@ -201,7 +247,7 @@ class model_data (object) :
       self.atom_colors = viewer_utils.color_by_property(
         atom_properties       = self.atoms.extract_b(),
         atoms_visible         = self.visibility.atoms_visible,
-        color_invisible_atoms = not scale_b_to_visible,
+        color_invisible_atoms = False,
         use_rb_color_gradient = False
       )
       self._color_cache["b"] = self.atom_colors
@@ -227,14 +273,14 @@ class model_data (object) :
       self._color_cache["chain"] = atom_colors
 
   @debug
-  def color_by_element (self, carbon_atom_color=(1.0,1.0,0.0)) :
+  def color_by_element (self) :
     cached = self._color_cache.get("element")
     if cached is not None :
       self.atom_colors = cached
     else :
       # these are approximations based on my (probably faulty) memory.
       # feel free to change to something more reasonable.
-      element_shades = {' C' : carbon_atom_color, # usually yellow or grey
+      element_shades = {' C' : self.base_color, # usually yellow or grey
                         ' H' : (0.95, 0.95, 0.95), # very light grey
                         ' N' : (0.0, 0.0, 1.0),    # blue
                         ' O' : (1.0, 0.0, 0.0),    # red
@@ -265,12 +311,13 @@ class model_data (object) :
 # XXX: this class contains only the information needed for OpenGL commands,
 # which are also implemented as methods here.
 class model_scene (object) :
-  def __init__ (self, bonds, points, b_iso, b_aniso, atom_colors, visibility) :
+  def __init__ (self, bonds, points, b_iso, b_aniso, atom_colors, atom_labels,
+      atom_radii, visibility) :
     adopt_init_args(self, locals())
     self.clear_lists()
+    self.clear_labels()
     self.update_visibility(visibility)
-    self.minimum_covering_sphere = minimum_covering_sphere(points=points,
-                                                           epsilon=0.1)
+
   @debug
   def clear_lists (self) :
     self.points_display_list = None
@@ -278,6 +325,17 @@ class model_scene (object) :
     self.spheres_display_list = None
     self.ellipsoid_display_list = None
     self.selection_display_list = None
+    self.labels_display_list = None
+
+  @debug
+  def clear_labels (self) :
+    self.show_labels = flex.bool(self.points.size(), False)
+    self.labels_display_list = None
+
+  @debug
+  def add_label (self, i_seq) :
+    self.show_labels[i_seq] = True
+    self.labels_display_list = None
 
   @debug
   def update_colors (self, atom_colors) :
@@ -328,10 +386,11 @@ class model_scene (object) :
       self.spheres_display_list.compile()
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
       atom_radii = self.atom_radii
+      atom_colors = self.atom_colors
       spheres_visible = self.spheres_visible
       for i_seq, point in enumerate(points) :
         if self.spheres_visible[i_seq] :
-          #glColor3f(*atom_colors[i_seq])
+          glColor3f(*atom_colors[i_seq])
           glPushMatrix()
           glTranslated(*point)
           gltbx.util.SolidSphere(radius=atom_radii[i_seq],
@@ -357,8 +416,26 @@ class model_scene (object) :
       self.ellipsoid_display_list.end()
     self.ellipsoid_display_list.call()
 
+  def draw_labels (self, font, use_atom_color=False) :
+    glDisable(GL_LIGHTING)
+    if (self.labels_display_list is None) :
+      self.labels_display_list = gltbx.gl_managed.display_list()
+      self.labels_display_list.compile()
+      points = self.points
+      atoms_visible = self.atoms_visible
+      atom_colors = self.atom_colors
+      atom_labels = self.atom_labels
+      for i_seq, show_label in enumerate(self.show_labels) :
+        if atoms_visible[i_seq] and show_label :
+          if use_atom_color :
+            glColor3f(*atom_colors[i_seq])
+          glRasterPos3f(*points[i_seq])
+          font.render_string(atom_labels[i_seq])
+      self.labels_display_list.end()
+    self.labels_display_list.call()
+
 ########################################################################
-# BASE CLASS FOR DISPLAYING STRUCTURES
+# VIEWER CLASS
 #
 class model_viewer_mixin (wx_viewer.wxGLWindow) :
   initialize_model_viewer_super = True
@@ -370,19 +447,11 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     self.model_objects = []
     self.model_ids = []
     self.scene_objects = {}
+    self.model_colors = {}
+    self.model_reps = {}
     self.update_scene = False
-    # various settings; override these in subclasses and/or provide
-    # a mechanism for changing their values
-    self.buffer_factor           = 2
-    self.line_width              = 2
-    self.nonbonded_line_width    = 2
-    self.base_atom_color         = (0.6, 0.6, 0.6) # grey
-    self.orthographic            = False
-    self.draw_mode               = "all_atoms"
-    self.color_mode              = "b_factors"
-    self.recolor                 = self.color_b
-    self.scale_b_to_visible      = True
-    self.carbon_atom_color       = (1.0, 1.0, 0.0) # yellow
+    self.buffer_factor = 2 # see gltbx.wx_viewer
+    self.settings = opengl_phil.extract()
     self.closest_point_i_seq     = None
     self.closest_point_model_id  = None
     # toggles for viewable objects
@@ -392,13 +461,11 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     self.flag_show_spheres                 = False
     self.flag_show_ellipsoids              = False
     self.flag_use_lights                   = True
+    self.flag_show_labels                  = True
     self.flag_show_trace                   = False
     self.flag_show_hydrogens               = False
     self.flag_show_ellipsoids              = False
-
-  def iter_models (self) :
-    for model_id, model_object in zip(self.model_ids, self.model_objects) :
-      yield (model_id, model_object)
+    self.flag_smooth_lines                 = True
 
   @debug
   def InitGL(self):
@@ -409,12 +476,11 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     glEnable(GL_ALPHA_TEST)
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_BLEND)
-    vendor = glGetString(GL_VENDOR)
-    if sys.platform == "darwin" and vendor.startswith("NVIDIA") :
-      glDisable(GL_LINE_SMOOTH)
-    else :
-      glEnable(GL_LINE_SMOOTH)
-      glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+    # XXX: line smoothing is pretty essential for wireframe representation;
+    # the problem with nvidia cards is really only a problem for the isomesh
+    # in wx_map_viewer.py.
+    glEnable(GL_LINE_SMOOTH)
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     self.initialize_modelview()
     if self.flag_use_lights :
       glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
@@ -433,18 +499,6 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     else :
       self.setup_lighting()
 
-  def DrawGL(self):
-    if self.GL_uninitialised or len(self.scene_objects) == 0 :
-      return
-    if (self.flag_show_points):
-      self.draw_points()
-    if (self.flag_show_lines):
-      self.draw_lines()
-    if (self.flag_show_spheres):
-      self.draw_spheres()
-    if self.flag_show_ellipsoids :
-      self.draw_ellipsoids()
-
   def OnRedrawGL (self, event=None) :
     if self.update_scene :
       self.update_scene_objects()
@@ -459,174 +513,23 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     else :
       wx_viewer.wxGLWindow.OnRedrawGL(self, event)
 
-  @debug
-  def add_model (self, model_id, pdb_hierarchy, atomic_bonds=None) :
-    model = model_data(model_id, pdb_hierarchy, atomic_bonds)
-    self.model_ids.append(model_id)
-    self.model_objects.append(model)
-    self.show_object[model_id] = True
-    self.recolor()
-    self.update_scene = True
-
-  @debug
-  def unzoom (self, event=None) :
-    if len(self.scene_objects) > 0 :
-      points = flex.vec3_double()
-      for scene in self.scene_objects :
-        points.extend(scene.points)
-      self.minimum_covering_sphere = minimum_covering_sphere(
-                                       points=points,
-                                       epsilon=0.1)
-      self.move_rotation_center_to_mcs_center()
-      self.fit_into_viewport()
-
-  @debug
-  def recenter_on_atom (self, object_id, i_seq) :
-    assert object_id is not None and i_seq >= 0
-    scene = self.scene_objects.get(object_id)
-    if scene is not None and i_seq < scene.points.size() :
-      self.rotation_center = scene.points[i_seq]
-      self.move_to_center_of_viewport(self.rotation_center)
-
-  @debug
-  def process_key_stroke (self, key) :
-    if key == ord('u') :
-      self.unzoom()
-    elif key == ord('h') :
-      self.flag_show_hydrogens = not self.flag_show_hydrogens
-      self.update_scene = True
-    elif key == ord('e') :
-      self.flag_show_ellipsoids = not self.flag_show_ellipsoids
-      self.update_scene = True
-    elif key == ord('p') :
-      self.flag_show_points = not self.flag_show_points
-      self.update_scene = True
-    elif key == ord('b') :
-      if self.color_mode == "b_factors" :
-        self.set_color_mode("element")
-      else :
-        self.set_color_mode("b_factors")
-      self.update_scene = True
-    if self.update_scene :
-      self.OnRedrawGL()
-
-  @debug
-  def process_pick_points (self) :
-    if self.pick_points is not None and len(self.scene_objects) > 0 :
-      for object_id in self.model_ids :
-        if self.show_object[object_id] :
-          scene = self.scene_objects.get(object_id)
-          if scene is None :
-            continue
-          self.closest_point_object_id = object_id
-          self.closest_point_i_seq = viewer_utils.closest_visible_point(
-            points = scene.points,
-            atoms_visible = scene.atoms_visible,
-            point0 = self.pick_points[0],
-            point1 = self.pick_points[1]
-          )
-          break
-
-  @debug
-  def OnUpdate (self, event) :
-    self.update_scene_objects()
-    if (event is not None and hasattr(event, "recenter") and
-        event.recenter == True) or recenter == True :
-      self.move_rotation_center_to_mcs_center()
-      self.fit_into_viewport()
-
-  @debug
-  def update_scene_objects (self) :
-    points = flex.vec3_double()
-    for object_id, model in self.iter_models() :
-      current_scene = self.scene_objects.get(object_id)
-      if current_scene is None or model.is_changed :
-        current_scene = model.get_scene_data()
-        self.scene_objects[object_id] = current_scene
-        model.reset()
-      else :
-        model.update_scene_data(current_scene)
-      points.extend(current_scene.points)
-    if points.size() == 0 :
-      points.append((0,0,0))
-    self.minimum_covering_sphere = minimum_covering_sphere(points=points,
-                                                           epsilon=0.1)
-
-  @debug
-  def update_model_objects (self) :
-    for object_id, model in self.iter_models() :
-      model.recalculate_visibility(self.flag_show_hydrogens,
-        self.flag_show_points)
-    self.recolor()
-
-  @debug
-  def set_draw_mode (self, draw_mode, redraw=False) :
-    if not self.minimum_covering_sphere :
+  def DrawGL(self):
+    if self.GL_uninitialised or len(self.scene_objects) == 0 :
       return
-    self.draw_mode = draw_mode
-    if draw_mode == "trace" :
-      self.flag_show_points = False
-      for object in self.model_objects :
-        object.toggle_trace_mode(True)
-    elif self.draw_mode == "bonded_only" :
-      self.flag_show_points = False
-      for object in self.model_objects :
-        object.toggle_trace_mode(False)
-    else :
-      self.flag_show_points = True
-      for object in self.model_objects :
-        object.toggle_trace_mode(False)
-    self.update_model_objects()
-    self.set_color_mode(self.color_mode, redraw=redraw)
+    if (self.flag_show_points):
+      self.draw_points()
+    if (self.flag_show_lines):
+      self.draw_lines()
+    if (self.flag_show_spheres):
+      self.draw_spheres()
+    if self.flag_show_ellipsoids :
+      self.draw_ellipsoids()
+    if self.flag_show_labels :
+      self.draw_labels()
 
-  #---------------------------------------------------------------------
-  # coloring
-  @debug
-  def set_bg_color (self) :
-    (r,g,b) = self.bg_color
-    glClearColor(r, g, b, 0.0)
-
-  @debug
-  def set_color_mode (self, color_mode) :
-    self.color_mode = color_mode
-    if color_mode == "rainbow" :
-      self.recolor = self.color_rainbow
-    elif color_mode == "element" :
-      self.recolor = self.color_by_element
-    elif color_mode == "b_factors" :
-      self.recolor = self.color_b
-    elif color_mode == "chain" :
-      self.recolor = self.color_by_chain
-    elif color_mode == "single_color" :
-      self.recolor = self.color_mono
-    else :
-      pass
-
-  def color_mono (self) :
-    for object in self.model_objects :
-      object.color_mono(self.base_atom_color)
-
-  def color_rainbow (self) :
-    for object in self.model_objects :
-      object.color_rainbow()
-
-  def color_b (self) :
-    for object in self.model_objects :
-      object.color_b(self.scale_b_to_visible)
-
-  def color_by_chain (self) :
-    for object in self.model_objects :
-      object.color_by_chain()
-
-  def color_by_element (self) :
-    for object in self.model_objects :
-      object.color_by_element(self.carbon_atom_color)
-
-  #---------------------------------------------------------------------
-  # DRAWING ROUTINES
   def draw_points (self) :
     glDisable(GL_LIGHTING)
-    glLineWidth(self.nonbonded_line_width)
+    glLineWidth(self.settings.opengl.nonbonded_line_width)
     for object_id, scene in self.scene_objects.iteritems() :
       if self.show_object[object_id] :
         scene.draw_points()
@@ -646,11 +549,15 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
         scene.draw_spheres()
 
   def draw_lines (self) :
+    glEnable(GL_LINE_SMOOTH)
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     glDisable(GL_LIGHTING)
-    glLineWidth(self.line_width)
+    glLineWidth(self.settings.opengl.line_width)
     for object_id, scene in self.scene_objects.iteritems() :
       if self.show_object[object_id] :
         scene.draw_lines()
+    if not self.flag_smooth_lines :
+      glDisable(GL_LINE_SMOOTH)
 
   def draw_ellipsoids (self) :
     glMatrixMode(GL_MODELVIEW)
@@ -669,59 +576,227 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       if self.show_object[object_id] :
         scene.draw_ellipsoids(proto_ellipsoid)
 
-########################################################################
-# UTILITY FUNCTIONS
-#
-def compare_conformers (altloc1, altloc2) :
-  if altloc1 == altloc2 :
-    return True
-  elif altloc1 == "A" and altloc2 == "" :
-    return True
-  elif altloc2 == "A" and altloc1 == "" :
-    return True
-  else :
-    return False
+  def draw_labels (self) :
+    glDisable(GL_LIGHTING)
+    use_atom_color = self.settings.opengl.use_atom_color_for_labels
+    if not use_atom_color :
+      glColor3f(1.0, 1.0, 1.0)
+    for object_id, scene in self.scene_objects.iteritems() :
+      if self.show_object[object_id] :
+        font = gltbx.fonts.ucs_bitmap_8x13
+        font.setup_call_lists()
+        scene.draw_labels(font, use_atom_color)
 
-########################################################################
-# CLASSES AND METHODS FOR STANDALONE VIEWER
-#
-class App (wx.App) :
-  def __init__ (self, title="crys3d.wx_model_viewer", default_size=(800,600)) :
-    self.title = title
-    self.default_size = default_size
-    wx.App.__init__(self, 0)
+  @debug
+  def refresh_bg_color (self) :
+    (r, g, b) = tuple(self.settings.opengl.background_color)
+    glClearColor(r, g, b, 0.0)
 
-  def OnInit (self) :
-    self.frame = wx.Frame(None, -1, self.title, pos=wx.DefaultPosition,
-      size=self.default_size)
-    self.frame.CreateStatusBar()
-    box = wx.BoxSizer(wx.VERTICAL)
-    self.view_objects = model_viewer_mixin(self.frame, size=(800,600))
-    box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
-    self.frame.SetSizer(box)
-    box.SetSizeHints(self.frame)
-    return True
+  #---------------------------------------------------------------------
+  # Non-OpenGL code below here
+  #
+  def update_settings (self, params, redraw=False) :
+    assert (len(params.opengl.base_atom_color) ==
+            len(params.opengl.background_color) ==
+            len(params.opengl.selection_color) == 3)
+    self.settings = params
+    if redraw :
+      self.update_scene = True
 
-def run (args) :
-  if len(args) == 0 :
-    print "Please specify a PDB file (and optional CIFs) on the command line."
-    return
-  a = App()
-  processed_pdb_file = pdb_interpretation.run(args=args)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  pdb_hierarchy.atoms().reset_i_seq()
-  grm = processed_pdb_file.geometry_restraints_manager()
-  if grm is None or grm.shell_sym_tables is None :
-    raise Sorry("Atomic bonds could not be calculated for this model. "+
-      "This is probably due to a missing CRYST1 record in the PDB file.")
-  atomic_bonds = grm.shell_sym_tables[0].full_simple_connectivity()
-  #a.frame.Show()
-  a.view_objects.add_model("1", pdb_hierarchy, atomic_bonds)
-  a.frame.Show()
-  a.view_objects.force_update(recenter=True)
-  #a.view_objects.OnUpdate()
-  a.MainLoop()
+  def iter_models (self) :
+    for model_id, model_object in zip(self.model_ids, self.model_objects) :
+      yield (model_id, model_object)
 
-if __name__ == "__main__" :
-  import sys
-  run(sys.argv[1:])
+  @debug
+  def add_model (self, model_id, pdb_hierarchy, atomic_bonds=None) :
+    assert isinstance(model_id, str)
+    model = model_data(model_id, pdb_hierarchy, atomic_bonds,
+      base_color=self.settings.opengl.base_atom_color)
+    self.model_ids.append(model_id)
+    self.model_objects.append(model)
+    self.show_object[model_id] = True
+    self.update_scene = True
+
+  def update_mcs (self, points, recenter_and_zoom=True) :
+    self.minimum_covering_sphere = minimum_covering_sphere(
+                                       points=points,
+                                       epsilon=0.1)
+    if recenter_and_zoom :
+      self.move_rotation_center_to_mcs_center()
+      self.fit_into_viewport()
+
+  def zoom_object (self, object_id) :
+    assert object_id in self.scene_objects
+    self.update_mcs(self.scene_objects[object_id].points)
+
+  @debug
+  def unzoom (self, event=None) :
+    if len(self.scene_objects) > 0 :
+      points = flex.vec3_double()
+      for object_id, scene in self.scene_objects.iteritems() :
+        points.extend(scene.points)
+      self.update_mcs(points)
+
+  @debug
+  def recenter_on_atom (self, object_id, i_seq) :
+    assert object_id is not None and i_seq >= 0
+    scene = self.scene_objects.get(object_id)
+    if scene is not None and i_seq < scene.points.size() :
+      self.rotation_center = scene.points[i_seq]
+      self.move_to_center_of_viewport(self.rotation_center)
+
+  @debug
+  def process_pick_points (self) :
+    self.closest_point_object_id = None
+    self.closest_point_i_seq = None
+    if self.pick_points is not None and len(self.scene_objects) > 0 :
+      for object_id in self.model_ids :
+        if self.show_object[object_id] :
+          scene = self.scene_objects.get(object_id)
+          if scene is None :
+            continue
+          self.closest_point_object_id = object_id
+          self.closest_point_i_seq = viewer_utils.closest_visible_point(
+            points = scene.points,
+            atoms_visible = scene.atoms_visible,
+            point0 = self.pick_points[0],
+            point1 = self.pick_points[1]
+          )
+          break
+    if self.closest_point_i_seq is not None :
+      clicked_scene = self.scene_objects.get(self.closest_point_object_id)
+      clicked_scene.add_label(self.closest_point_i_seq)
+
+  @debug
+  def update_scene_objects (self) :
+    points = flex.vec3_double()
+    for object_id, model in self.iter_models() :
+      current_scene = self.scene_objects.get(object_id)
+      if current_scene is None or model.is_changed :
+        current_scene = model.get_scene_data()
+        self.scene_objects[object_id] = current_scene
+        model.reset()
+      else :
+        model.update_scene_data(current_scene)
+      points.extend(current_scene.points)
+    if points.size() == 0 :
+      points.append((0,0,0))
+    self.update_mcs(points, recenter_and_zoom=False)
+
+  @debug
+  def process_key_stroke (self, key) :
+    if key == ord('u') :
+      self.unzoom()
+    elif key == ord('h') :
+      self.flag_show_hydrogens = not self.flag_show_hydrogens
+      self.toggle_hydrogens(self.flag_show_hydrogens)
+      self.update_scene = True
+    elif key == ord('e') :
+      self.flag_show_ellipsoids = not self.flag_show_ellipsoids
+      self.toggle_ellipsoids(self.flag_show_ellipsoids)
+      self.update_scene = True
+    elif key == ord('l') :
+      self.flag_show_labels = not self.flag_show_labels
+      self.update_scene = True
+    elif key == ord('t') :
+      self.flag_show_trace = not self.flag_show_trace
+      if self.flag_show_trace :
+        self.set_draw_mode("trace")
+      else :
+        self.set_draw_mode("all_atoms")
+      self.update_scene = True
+    elif key == ord('b') :
+      self.set_color_mode("b")
+    elif key == ord('r') :
+      self.set_color_mode("rainbow")
+    elif key == ord('y') :
+      self.set_color_mode("element")
+    elif key == 8 : # delete, at least on Mac
+      self.clear_all_labels()
+      self.update_scene = True
+    elif key == ord('q') :
+      app = wx.GetApp()
+      app.Exit()
+    else :
+      print key
+    if self.update_scene :
+      self.OnRedrawGL()
+
+  def hide_others (self, object_id=None) :
+    for model_id in self.model_ids :
+      if model_id != object_id :
+        self.show_objects[model_id] = False
+
+  def show_all (self) :
+    for model_id in self.model_ids :
+      self.show_objects[model_id] = True
+
+  @debug
+  def set_draw_mode (self, draw_mode, object_id=None) :
+    for model_id, model in self.iter_models() :
+      if object_id is None or object_id == model_id :
+        model.set_draw_mode(draw_mode)
+    self.update_scene = True
+
+  @debug
+  def set_color_mode (self, color_mode, object_id=None) :
+    for model_id, model in self.iter_models() :
+      if object_id is None or object_id == model_id :
+        model.set_color_mode(color_mode)
+    self.update_scene = True
+
+  def toggle_ellipsoids (self, show_ellipsoids, object_id=None) :
+    for model_id, model in self.iter_models() :
+      if object_id is None or object_id == model_id :
+        model.toggle_ellipsoids(show_ellipsoids)
+
+  def toggle_hydrogens (self, show_hydrogens, object_id=None) :
+    for model_id, model in self.iter_models() :
+      if object_id is None or object_id == model_id :
+        model.toggle_hydrogens(show_hydrogens)
+
+  def toggle_labels (self, show_labels) :
+    self.flag_show_labels = show_labels
+
+  def clear_all_labels (self) :
+    for object_id, scene in self.scene_objects.iteritems() :
+      scene.clear_labels()
+
+  #---------------------------------------------------------------------
+  # EVENTS
+  @debug
+  def OnUpdate (self, event) :
+    self.update_scene_objects()
+    if (event is not None and hasattr(event, "recenter") and
+        event.recenter == True) or recenter == True :
+      self.move_rotation_center_to_mcs_center()
+      self.fit_into_viewport()
+
+#-----------------------------------------------------------------------
+# Utility functions
+def extract_trace (pdb_hierarchy, selection_cache=None) :
+  if selection_cache is None :
+    selection_cache = pdb_hierarchy.atom_selection_cache()
+  last_atom     = None
+  isel = selection_cache.iselection
+  selection_i_seqs = list(
+    isel("(name ' CA ' or name ' P  ') and (altloc 'A' or altloc ' ')"))
+  last_atom = None
+  bonds = shared.stl_set_unsigned(pdb_hierarchy.atoms().size())
+  for atom in pdb_hierarchy.atoms_with_labels() :
+    if atom.i_seq in selection_i_seqs :
+      if last_atom is not None :
+        if (atom.chain_id        == last_atom.chain_id and
+            atom.model_id        == last_atom.model_id and
+            atom.resseq_as_int() == (last_atom.resseq_as_int() + 1) and
+            ((atom.altloc == last_atom.altloc) or
+             (atom.altloc == "A" and last_atom.altloc == "") or
+             (atom.altloc == ""  and last_atom.altloc == "A"))) :
+          bonds[last_atom.i_seq].append(atom.i_seq)
+          bonds[atom.i_seq].append(last_atom.i_seq)
+      last_atom = atom
+  return bonds
+
+def format_atom_label (atom_info) :
+  return ("%s %s%s %s %s" % (atom_info.name, atom_info.altloc,
+        atom_info.resname, atom_info.chain_id, atom_info.resid())).strip()
