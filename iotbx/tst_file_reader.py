@@ -1,6 +1,7 @@
 import os, sys
 import libtbx.load_env
 from libtbx.utils import Sorry
+ from libtbx.test_utils import Exception_expected
 from iotbx.file_reader import any_file
 from cctbx import miller
 from cctbx import crystal
@@ -90,7 +91,8 @@ END
   except Sorry :
     pass
   else :
-    raise Sorry("Expected exception for 'pdb.assert_file_type(\"txt\")'.")
+    raise Exception_expected(
+      "Expected exception for 'pdb.assert_file_type(\"txt\")'.")
   pdb.assert_file_type("pdb")
   os.remove("tmp1.pdb")
 
