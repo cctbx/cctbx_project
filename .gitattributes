@@ -399,6 +399,7 @@ omptbx/omp_or_stubs.h svneol=native#text/plain
 omptbx/stubs.cpp svneol=native#text/plain
 omptbx/stubs.h svneol=native#text/plain
 omptbx/tst.py svneol=native#text/x-python
+rpmbuild/SPECS/cctbx.spec -text
 rstbx/README -text
 rstbx/SConscript -text
 rstbx/__init__.py -text
