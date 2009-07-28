@@ -37,6 +37,12 @@ def exercise_symop_lib_recycling():
       space_group_info=space_group_info)
     assert retrieved_ccp4_symbol == given_ccp4_symbol
     assert space_group_info.type().number() == space_group_number
+    if (1):
+      from iotbx.pdb import format_cryst1_sgroup
+      sgroup = format_cryst1_sgroup(space_group_info=space_group_info)
+      if (len(sgroup) > 11):
+        print "ccp4 symop.lib setting leads to pdb CRYST1 overflow:",\
+          ccp4_id, given_ccp4_symbol, sgroup
   for ccp4_id,count in ccp4_id_counts.items():
     if (count != 1):
       raise RuntimeError(
