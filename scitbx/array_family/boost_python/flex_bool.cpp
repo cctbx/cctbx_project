@@ -171,6 +171,20 @@ namespace {
     return lhs ? !rhs : rhs;
   }
 
+  bool
+  is_super_set (flex_bool const& a1, flex_bool const& a2)
+  {
+    SCITBX_ASSERT(a2.size() == a1.size());
+    bool result = true;
+    for (std::size_t i = 0; i < a1.size(); i++) {
+      if (! (a2[i] == false || a1[i] == a2[i])) {
+        result = false;
+        break;
+      }
+    }
+    return result;
+  }
+
   static flex_bool
   exclusive_or_a_a(flex_bool const& a1, flex_bool const& a2)
   {
@@ -366,6 +380,7 @@ namespace {
       .def("__iand__", iand_a_s)
       .def("__ior__", ior_a_s)
       .def("exclusive_or", exclusive_or_a_a)
+      .def("is_super_set", is_super_set)
       .def("count", f_w::count)
       .def("as_int", as_int)
       .def("as_double", as_double)

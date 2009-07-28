@@ -834,6 +834,10 @@ def exercise_bool():
   a = flex.bool([True,False,False,True,True])
   b = flex.size_t([0,1,2,3])
   assert list(a.filter_indices(b)) == [0,3]
+  #
+  a = flex.bool([False, True, True, True, True])
+  b = flex.bool([False, False, True, False, True])
+  assert a.is_super_set(b) and not b.is_super_set(a)
 
 def exercise_arith_inplace_operators():
   a = flex.int((4, 9))

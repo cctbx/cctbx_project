@@ -2,7 +2,7 @@
 import sys, os
 import cStringIO
 from crys3d.wx_model_viewer_multi_scene import model_viewer_mixin
-from crys3d.wx_selection_editor import selection_viewer_mixin
+from crys3d.wx_selection_editor import selection_editor_mixin
 from mmtbx.monomer_library import pdb_interpretation
 import iotbx.pdb
 import wx
@@ -21,7 +21,7 @@ class App (wx.App) :
       size=self.default_size)
     self.frame.CreateStatusBar()
     box = wx.BoxSizer(wx.VERTICAL)
-    self.view_objects = selection_viewer_mixin(self.frame, size=(800,600))
+    self.view_objects = selection_editor_mixin(self.frame, size=(800,600))
     box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
     self.frame.SetSizer(box)
     box.SetSizeHints(self.frame)

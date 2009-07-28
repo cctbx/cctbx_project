@@ -8,6 +8,7 @@ import gltbx.util
 from gltbx import wx_viewer, viewer_utils, quadrics
 from gltbx.gl import *
 from gltbx.glu import *
+import gltbx
 from scitbx.array_family import flex, shared
 from scitbx.math import minimum_covering_sphere
 from libtbx.introspection import method_debug_log
@@ -58,16 +59,15 @@ class model_data (object) :
     self.object_id = object_id
     self.base_color = base_color
     self.draw_mode = None
+    self.current_bonds = None
     self.color_mode = "rainbow"
-    self.update_structure(pdb_hierarchy, atomic_bonds)
     self.flag_object_visible = True
-    self.use_u_aniso = flex.bool(self.atoms.size())
-    self.current_bonds = self.atomic_bonds
-    #self.atom_colors = flex.vec3_double(self.atoms.size(), base_color)
     self._color_cache = {}
-    self.flag_show_hydrogens = True
+    self.flag_show_hydrogens = False
     self.flag_show_points = True
     self.flag_show_ellipsoids = False
+    self.update_structure(pdb_hierarchy, atomic_bonds)
+    self.use_u_aniso = flex.bool(self.atoms.size())
     self.set_draw_mode("all_atoms")
     #self.recalculate_visibility()
 
@@ -143,6 +143,8 @@ class model_data (object) :
     self.atom_index = atom_index
     self.atom_labels = atom_labels
     self.trace_bonds = extract_trace(pdb_hierarchy) #, self.selection_cache)
+    if self.current_bonds is None :
+      self.current_bonds = self.atomic_bonds
     assert len(self.atom_index) == self.atom_count
     atom_radii = flex.double(self.atoms.size(), 1.5)
     hydrogen_flag = flex.bool(self.atoms.size(), False)
@@ -170,8 +172,15 @@ class model_data (object) :
     )
     self.visible_atom_count = self.visibility.visible_atoms_count
 
+  def refresh (self) :
+    self.is_changed = True
+    self._color_cache = {}
+    self.set_draw_mode(self.draw_mode)
+    self.is_changed = False
+
   def toggle_hydrogens (self, show_hydrogens) :
     self.flag_show_hydrogens = show_hydrogens
+    self.refresh()
 
   def toggle_ellipsoids (self, show_ellipsoids) :
     self.flag_show_ellipsoids = show_ellipsoids
@@ -444,6 +453,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
     self.minimum_covering_sphere = None
     self.show_object = {}
+    self.pick_object = {}
     self.model_objects = []
     self.model_ids = []
     self.scene_objects = {}
@@ -550,6 +560,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
 
   def draw_lines (self) :
     glEnable(GL_LINE_SMOOTH)
+    #glDisable(GL_LINE_SMOOTH)
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     glDisable(GL_LIGHTING)
     glLineWidth(self.settings.opengl.line_width)
@@ -607,14 +618,24 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     for model_id, model_object in zip(self.model_ids, self.model_objects) :
       yield (model_id, model_object)
 
+  def get_model (self, object_id) :
+    for model in self.model_objects :
+      if model.object_id == object_id :
+        return model
+    return None
+
   @debug
   def add_model (self, model_id, pdb_hierarchy, atomic_bonds=None) :
     assert isinstance(model_id, str)
     model = model_data(model_id, pdb_hierarchy, atomic_bonds,
       base_color=self.settings.opengl.base_atom_color)
+    self._add_model(model_id, model)
+
+  def _add_model (self, model_id, model) :
     self.model_ids.append(model_id)
     self.model_objects.append(model)
     self.show_object[model_id] = True
+    self.pick_object[model_id] = True
     self.update_scene = True
 
   def update_mcs (self, points, recenter_and_zoom=True) :
@@ -651,18 +672,20 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     self.closest_point_i_seq = None
     if self.pick_points is not None and len(self.scene_objects) > 0 :
       for object_id in self.model_ids :
-        if self.show_object[object_id] :
+        if self.show_object[object_id] and self.pick_object[object_id] :
           scene = self.scene_objects.get(object_id)
           if scene is None :
             continue
-          self.closest_point_object_id = object_id
-          self.closest_point_i_seq = viewer_utils.closest_visible_point(
+          closest_point_i_seq = viewer_utils.closest_visible_point(
             points = scene.points,
             atoms_visible = scene.atoms_visible,
             point0 = self.pick_points[0],
             point1 = self.pick_points[1]
           )
-          break
+          if closest_point_i_seq is not None :
+            self.closest_point_i_seq = closest_point_i_seq
+            self.closest_point_object_id = object_id
+            break
     if self.closest_point_i_seq is not None :
       clicked_scene = self.scene_objects.get(self.closest_point_object_id)
       clicked_scene.add_label(self.closest_point_i_seq)
@@ -718,7 +741,8 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       app = wx.GetApp()
       app.Exit()
     else :
-      print key
+      pass
+      #print key
     if self.update_scene :
       self.OnRedrawGL()
 
