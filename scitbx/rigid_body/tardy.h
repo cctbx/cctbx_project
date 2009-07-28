@@ -7,6 +7,7 @@
 #include <scitbx/rigid_body/body_lib.h>
 #include <scitbx/rigid_body/featherstone.h>
 #include <scitbx/array_family/selections.h>
+#include <scitbx/optional_copy.h>
 #include <vector>
 
 namespace scitbx { namespace rigid_body { namespace tardy {
@@ -204,6 +205,12 @@ namespace scitbx { namespace rigid_body { namespace tardy {
       boost::optional<ft> e_kin_;
     public:
 
+    unsigned
+    bodies_size() const
+    {
+      return boost::numeric_cast<unsigned>(bodies.size());
+    }
+
     model() {}
 
     model(
@@ -226,7 +233,7 @@ namespace scitbx { namespace rigid_body { namespace tardy {
         near_singular_hinges_angular_tolerance_deg)),
       degrees_of_freedom(0)
     {
-      unsigned nb = boost::numeric_cast<unsigned>(bodies.size());
+      unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
         body_t<ft> const* body = bodies[ib].get();
         degrees_of_freedom += body->joint->degrees_of_freedom;
@@ -252,6 +259,152 @@ namespace scitbx { namespace rigid_body { namespace tardy {
     {
       qdd_array_.reset();
       e_kin_.reset();
+    }
+
+    af::shared<std::size_t>
+    root_indices() const
+    {
+      af::shared<std::size_t> result;
+      std::size_t nb = bodies.size();
+      for(std::size_t ib=0;ib<nb;ib++) {
+        body_t<ft> const* body = bodies[ib].get();
+        if (body->parent == -1) {
+          result.push_back(ib);
+        }
+      }
+      return result;
+    }
+
+#define SCITBX_LOC(A, T) \
+    af::shared<std::pair<unsigned, T> > \
+    A##_in_each_tree() const \
+    { \
+      af::shared<std::pair<unsigned, T> > result; \
+      unsigned nb = bodies_size(); \
+      boost::scoped_array<T> accu(new T[nb]); \
+      std::fill_n(accu.get(), nb, T(0)); \
+      for(unsigned ib=nb;ib!=0;) { \
+        ib--; \
+        body_t<ft> const* body = bodies[ib].get(); \
+        accu[ib] += body->A; \
+        if (body->parent == -1) { \
+          result.push_back(std::pair<unsigned, T>(ib, accu[ib])); \
+        } \
+        else { \
+          accu[body->parent] += accu[ib]; \
+        } \
+      } \
+      return result; \
+    }
+
+    SCITBX_LOC(number_of_sites, unsigned)
+    SCITBX_LOC(sum_of_masses, ft)
+#undef SCITBX_LOC
+
+    boost::optional<vec3<ft> >
+    mean_linear_velocity(
+      af::const_ref<std::pair<unsigned, unsigned> >
+        number_of_sites_in_each_tree) const
+    {
+      vec3<ft> sum_v(0,0,0);
+      unsigned sum_n = 0;
+#define SCITBX_LOC \
+      optional_copy<af::shared<std::pair<unsigned, unsigned> > > nosiet; \
+      if (number_of_sites_in_each_tree.begin() == 0) { \
+        nosiet = this->number_of_sites_in_each_tree(); \
+        number_of_sites_in_each_tree = nosiet->const_ref(); \
+      } \
+      SCITBX_ASSERT(number_of_sites_in_each_tree.size() == bodies.size()); \
+      unsigned nb = bodies_size(); \
+      for( \
+        std::pair<unsigned, unsigned> const* nosiet_it=nosiet->begin(); \
+        nosiet_it!=nosiet->end(); \
+        nosiet_it++) \
+      { \
+        unsigned ib = nosiet_it->first; \
+        SCITBX_ASSERT(ib < nb);
+SCITBX_LOC
+        body_t<ft> const* body = bodies[ib].get();
+        boost::optional<vec3<ft> >
+          v = body->joint->get_linear_velocity(body->qd());
+        if (!v) continue;
+        unsigned n = nosiet_it->second;
+        sum_v += (*v) * boost::numeric_cast<ft>(n);
+        sum_n += n;
+      }
+      if (sum_n == 0) {
+        return boost::optional<vec3<ft> >();
+      }
+      return boost::optional<vec3<ft> >(
+        sum_v / boost::numeric_cast<ft>(sum_n));
+    }
+
+    void
+    subtract_from_linear_velocities(
+      af::const_ref<std::pair<unsigned, unsigned> >
+        number_of_sites_in_each_tree,
+      vec3<ft> const& value)
+    {
+SCITBX_LOC
+#undef SCITBX_LOC
+        body_t<ft>* body = bodies[ib].get();
+        boost::optional<vec3<ft> >
+          v = body->joint->get_linear_velocity(body->qd());
+        if (!v) continue;
+        body->set_qd(
+          body->joint->new_linear_velocity(body->qd(), (*v)-value));
+      }
+    }
+
+    featherstone::system_model<ft>&
+    featherstone_system_model()
+    {
+      if (!featherstone_system_model_) {
+        featherstone_system_model_ = featherstone::system_model<ft>(bodies);
+      }
+      return *featherstone_system_model_;
+    }
+
+    std::vector<rotr3<ft> > const&
+    aja_array()
+    {
+      if (!aja_array_) {
+        unsigned nb = bodies_size();
+        aja_array_ = std::vector<rotr3<ft> >();
+        aja_array_->reserve(nb);
+        for(std::size_t ib=0;ib<nb;ib++) {
+          body_t<ft> const* body = bodies[ib].get();
+          rotr3<ft>
+            aja = body->alignment->cb_b0
+                * body->joint->cb_sp
+                * body->alignment->cb_0b;
+          if (body->parent != -1) {
+            aja = (*aja_array_)[body->parent] * aja;
+          }
+          aja_array_->push_back(aja);
+        }
+      }
+      return *aja_array_;
+    }
+
+    std::vector<mat3<ft> > const&
+    jar_array()
+    {
+      if (!jar_array_) {
+        aja_array();
+        unsigned nb = bodies_size();
+        jar_array_ = std::vector<mat3<ft> >();
+        jar_array_->reserve(nb);
+        for(std::size_t ib=0;ib<nb;ib++) {
+          body_t<ft> const* body = bodies[ib].get();
+          mat3<ft> jar = body->joint->cb_ps.r * body->alignment->cb_0b.r;
+          if (body->parent != -1) {
+            jar = jar * (*aja_array_)[body->parent].r.transpose();
+          }
+          jar_array_->push_back(jar);
+        }
+      }
+      return *jar_array_;
     }
   };
 

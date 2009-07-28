@@ -22,7 +22,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
     six_dof.get_linear_velocity(af::const_ref<double>(0, 6));
     six_dof.new_linear_velocity(
       af::const_ref<double>(0, 6),
-      af::const_ref<double>(0, 3));
+      vec3<double>(0,0,0));
     six_dof.time_step_position(af::const_ref<double>(0, 6), 1e-6);
     six_dof.time_step_velocity(
       af::const_ref<double>(0, 6),
@@ -39,7 +39,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
     spherical.get_linear_velocity(af::const_ref<double>(0, 3));
     spherical.new_linear_velocity(
       af::const_ref<double>(0, 3),
-      af::const_ref<double>(0, 3));
+      vec3<double>(0,0,0));
     spherical.time_step_position(af::const_ref<double>(0, 3), 1e-6);
     spherical.time_step_velocity(
       af::const_ref<double>(0, 3),
@@ -57,7 +57,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
     revolute.get_linear_velocity(af::const_ref<double>(0, 1));
     revolute.new_linear_velocity(
       af::const_ref<double>(0, 1),
-      af::const_ref<double>(0, 1));
+      vec3<double>(0,0,0));
     revolute.time_step_position(af::const_ref<double>(0, 1), 1e-6);
     revolute.time_step_velocity(
       af::const_ref<double>(0, 1),
@@ -75,7 +75,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
     translational.get_linear_velocity(af::const_ref<double>(0, 3));
     translational.new_linear_velocity(
       af::const_ref<double>(0, 3),
-      af::const_ref<double>(0, 3));
+      vec3<double>(0,0,0));
     translational.time_step_position(af::const_ref<double>(0, 3), 1e-6);
     translational.time_step_velocity(
       af::const_ref<double>(0, 3),
@@ -125,12 +125,28 @@ namespace scitbx { namespace rigid_body { namespace ext {
       af::const_ref<vec3<double> >(),
       af::const_ref<double>(),
       boost::python::object());
-    tardy::model<> tardy_model(
-      /*labels*/ af::shared<std::string>(),
-      /*sites*/ af::shared<vec3<double> >(),
-      /*masses*/ af::shared<double>(),
-      /*tardy_tree*/ boost::python::object(),
-      /*potential_obj*/ boost::python::object());
+    {
+      af::shared<std::string> labels;
+      af::shared<vec3<double> > sites;
+      af::shared<double> masses;
+      tardy::model<> tardy_model(
+        labels,
+        sites,
+        masses,
+        /*tardy_tree*/ boost::python::object(),
+        /*potential_obj*/ boost::python::object());
+      tardy_model.root_indices();
+      tardy_model.number_of_sites_in_each_tree();
+      tardy_model.sum_of_masses_in_each_tree();
+      tardy_model.mean_linear_velocity(
+        af::const_ref<std::pair<unsigned, unsigned> >(0, 0));
+      tardy_model.subtract_from_linear_velocities(
+        af::const_ref<std::pair<unsigned, unsigned> >(0, 0),
+        vec3<double>(0,0,0));
+      tardy_model.featherstone_system_model();
+      tardy_model.aja_array();
+      tardy_model.jar_array();
+    }
   }
 
 }}} // namespace scitbx::rigid_body::ext

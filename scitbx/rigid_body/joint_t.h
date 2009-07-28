@@ -75,7 +75,7 @@ namespace scitbx { namespace rigid_body {
     af::small<ft, 6>
     new_linear_velocity(
       af::const_ref<ft> const& qd,
-      af::const_ref<ft> const& value) const = 0;
+      vec3<ft> const& value) const = 0;
 
     virtual
     shared_ptr<joint_t>

@@ -127,10 +127,9 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     af::small<ft, 6>
     new_linear_velocity(
       af::const_ref<ft> const& qd,
-      af::const_ref<ft> const& value) const
+      vec3<ft> const& value) const
     {
       SCITBX_ASSERT(qd.size() == 0);
-      SCITBX_ASSERT(value.size() == 0);
       return af::small<ft, 6>(0);
     }
 
@@ -249,10 +248,9 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     af::small<ft, 6>
     new_linear_velocity(
       af::const_ref<ft> const& qd,
-      af::const_ref<ft> const& value) const
+      vec3<ft> const& value) const
     {
       SCITBX_ASSERT(qd.size() == 6);
-      SCITBX_ASSERT(value.size() == 3);
       af::small<ft, 6> result(&qd[0], &qd[3]);
       for(unsigned i=0;i<3;i++) result.push_back(value[i]);
       return result;
@@ -412,10 +410,9 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     af::small<ft, 6>
     new_linear_velocity(
       af::const_ref<ft> const& qd,
-      af::const_ref<ft> const& value) const
+      vec3<ft> const& value) const
     {
       SCITBX_ASSERT(qd.size() == 0);
-      SCITBX_ASSERT(value.size() == 0);
       return af::small<ft, 6>(0);
     }
 
@@ -557,10 +554,9 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     af::small<ft, 6>
     new_linear_velocity(
       af::const_ref<ft> const& qd,
-      af::const_ref<ft> const& value) const
+      vec3<ft> const& value) const
     {
       SCITBX_ASSERT(qd.size() == 1);
-      SCITBX_ASSERT(value.size() == 0);
       return af::small<ft, 6>(0);
     }
 
@@ -685,10 +681,9 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     af::small<ft, 6>
     new_linear_velocity(
       af::const_ref<ft> const& qd,
-      af::const_ref<ft> const& value) const
+      vec3<ft> const& value) const
     {
       SCITBX_ASSERT(qd.size() == 3);
-      SCITBX_ASSERT(value.size() == 3);
       return af::small<ft, 6>(&value[0], &value[3]);
     }
 
