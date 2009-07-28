@@ -499,7 +499,6 @@ class _input(boost.python.injector, ext.input):
     if (cryst1_z is Auto):
       cryst1_z = self.extract_cryst1_z_columns()
     if (crystal_symmetry is not None or cryst1_z is not None):
-      from iotbx.pdb import format_cryst1_and_scale_records
       print >> cstringio, format_cryst1_and_scale_records(
         crystal_symmetry=crystal_symmetry,
         cryst1_z=cryst1_z,
@@ -531,7 +530,6 @@ class _input(boost.python.injector, ext.input):
     if (cryst1_z is Auto):
       cryst1_z = self.extract_cryst1_z_columns()
     if (crystal_symmetry is not None or cryst1_z is not None):
-      from iotbx.pdb import format_cryst1_and_scale_records
       if (open_append): mode = "ab"
       else:             mode = "wb"
       print >> open(file_name, mode), format_cryst1_and_scale_records(
