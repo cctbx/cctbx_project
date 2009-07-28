@@ -36,6 +36,7 @@ namespace {
       SCITBX_ASSERT(o2.get() == 0);
       o2 = v1;
       SCITBX_ASSERT((*o2.get())[0] == 1);
+      SCITBX_ASSERT(o2->begin() == o2.get()->begin());
       SCITBX_ASSERT(o2[0] == 1);
       o1 = o2;
       SCITBX_ASSERT(o1[0] == 1);
@@ -43,6 +44,7 @@ namespace {
       SCITBX_ASSERT(o2.get() == 0);
       SCITBX_ASSERT(o1[0] == 1);
       SCITBX_ASSERT(oc_const_ref(o2).get() == 0);
+      SCITBX_ASSERT(o1->begin() == oc_const_ref(o1).get()->begin());
       SCITBX_ASSERT(oc_const_ref(o1)[0] == 1);
     }
     {

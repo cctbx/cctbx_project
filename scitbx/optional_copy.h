@@ -58,6 +58,12 @@ namespace scitbx {
       ValueType const*
       get() const { return ptr_; }
 
+      ValueType*
+      operator->()       { return ptr_; }
+
+      ValueType const*
+      operator->() const { return ptr_; }
+
       typename ValueType::value_type&
       operator[](typename ValueType::size_type const& i)
       {
