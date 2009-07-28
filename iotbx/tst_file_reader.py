@@ -1,7 +1,7 @@
 import os, sys
 import libtbx.load_env
 from libtbx.utils import Sorry
- from libtbx.test_utils import Exception_expected
+from libtbx.test_utils import Exception_expected
 from iotbx.file_reader import any_file
 from cctbx import miller
 from cctbx import crystal
