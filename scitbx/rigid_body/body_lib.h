@@ -111,6 +111,14 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     virtual
     af::const_ref<ft>
     qd() const { return qd_; }
+
+    virtual
+    void
+    set_qd(
+      af::small<ft, 6> const& value)
+    {
+      SCITBX_ASSERT(value.size() == 0);
+    }
   };
 
   template <typename FloatType=double>
@@ -118,7 +126,7 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
   {
     typedef FloatType ft;
 
-    af::tiny<ft, 7> qd_;
+    af::tiny<ft, 6> qd_;
 
     six_dof() {}
 
@@ -143,6 +151,15 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     virtual
     af::const_ref<ft>
     qd() const { return qd_.const_ref(); }
+
+    virtual
+    void
+    set_qd(
+      af::small<ft, 6> const& value)
+    {
+      SCITBX_ASSERT(value.size() == 6);
+      std::copy(value.begin(), value.end(), qd_.begin());
+    }
   };
 
   template <typename FloatType=double>
@@ -175,6 +192,15 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     virtual
     af::const_ref<ft>
     qd() const { return qd_.const_ref(); }
+
+    virtual
+    void
+    set_qd(
+      af::small<ft, 6> const& value)
+    {
+      SCITBX_ASSERT(value.size() == 3);
+      std::copy(value.begin(), value.end(), qd_.begin());
+    }
   };
 
   template <typename FloatType=double>
@@ -206,6 +232,15 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     virtual
     af::const_ref<ft>
     qd() const { return af::const_ref<ft>(&qd_, 1); }
+
+    virtual
+    void
+    set_qd(
+      af::small<ft, 6> const& value)
+    {
+      SCITBX_ASSERT(value.size() == 1);
+      qd_ = value[0];
+    }
   };
 
   template <typename FloatType=double>
@@ -237,6 +272,15 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     virtual
     af::const_ref<ft>
     qd() const { return qd_.const_ref(); }
+
+    virtual
+    void
+    set_qd(
+      af::small<ft, 6> const& value)
+    {
+      SCITBX_ASSERT(value.size() == 3);
+      std::copy(value.begin(), value.end(), qd_.begin());
+    }
   };
 
 }}} // namespace scitbx::rigid_body::body_lib
