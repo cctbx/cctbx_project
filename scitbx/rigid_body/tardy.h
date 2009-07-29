@@ -13,12 +13,13 @@
 
 namespace scitbx { namespace rigid_body { namespace tardy {
 
+  namespace bp = boost::python;
+
   template <typename ElementType>
   af::shared<ElementType>
   python_sequence_as_af_shared(
-    boost::python::object const& seq)
+    bp::object const& seq)
   {
-    namespace bp = boost::python;
     bp::ssize_t n = bp::len(seq);
     af::shared<ElementType>
       result((af::reserve(boost::numeric_cast<std::size_t>(n))));
@@ -71,11 +72,10 @@ namespace scitbx { namespace rigid_body { namespace tardy {
   construct_bodies(
     af::const_ref<vec3<FloatType> > const& sites,
     af::const_ref<FloatType> const& masses,
-    boost::python::object const& cluster_manager,
+    bp::object const& cluster_manager,
     FloatType const& near_singular_hinges_angular_tolerance_deg=5)
   {
     SCITBX_ASSERT(masses.size() == sites.size());
-    namespace bp = boost::python;
     bp::object none;
     typedef FloatType ft;
     af::shared<shared_ptr<body_t<ft> > > result;
@@ -182,11 +182,11 @@ namespace scitbx { namespace rigid_body { namespace tardy {
     typedef FloatType ft;
 
     // constructor arguments
-    af::shared<std::string> labels;
+    bp::object labels;
     af::shared<vec3<ft> > sites;
     af::shared<ft> masses;
-    boost::python::object tardy_tree;
-    boost::python::object potential_obj;
+    bp::object tardy_tree;
+    bp::object potential_obj;
 
     // set in constructor
     af::shared<shared_ptr<body_t<FloatType> > > bodies;
@@ -215,11 +215,11 @@ namespace scitbx { namespace rigid_body { namespace tardy {
     model() {}
 
     model(
-      af::shared<std::string> const& labels_,
+      bp::object const& labels_,
       af::shared<vec3<ft> > const& sites_,
       af::shared<ft> const& masses_,
-      boost::python::object const& tardy_tree_,
-      boost::python::object const& potential_obj_,
+      bp::object const& tardy_tree_,
+      bp::object const& potential_obj_,
       ft const& near_singular_hinges_angular_tolerance_deg=5)
     :
       labels(labels_),
@@ -276,60 +276,78 @@ namespace scitbx { namespace rigid_body { namespace tardy {
       return result;
     }
 
-#define SCITBX_LOC(A, T) \
-    af::shared<std::pair<unsigned, T> > \
-    A##_in_each_tree() const \
-    { \
-      af::shared<std::pair<unsigned, T> > result; \
-      unsigned nb = bodies_size(); \
-      boost::scoped_array<T> accu(new T[nb]); \
-      std::fill_n(accu.get(), nb, T(0)); \
-      for(unsigned ib=nb;ib!=0;) { \
-        ib--; \
-        body_t<ft> const* body = bodies[ib].get(); \
-        accu[ib] += body->A; \
-        if (body->parent == -1) { \
-          result.push_back(std::pair<unsigned, T>(ib, accu[ib])); \
-        } \
-        else { \
-          accu[body->parent] += accu[ib]; \
-        } \
-      } \
-      return result; \
+    af::shared<af::tiny<std::size_t, 2> >
+    number_of_sites_in_each_tree() const
+    {
+      af::shared<af::tiny<std::size_t, 2> > result;
+      unsigned nb = bodies_size();
+      boost::scoped_array<unsigned> accu(new unsigned[nb]);
+      std::fill_n(accu.get(), nb, unsigned(0));
+      for(unsigned ib=nb;ib!=0;) {
+        ib--;
+        body_t<ft> const* body = bodies[ib].get();
+        accu[ib] += body->number_of_sites;
+        if (body->parent == -1) {
+          result.push_back(af::tiny<std::size_t, 2>(ib, accu[ib]));
+        }
+        else {
+          accu[body->parent] += accu[ib];
+        }
+      }
+      return result;
     }
 
-    SCITBX_LOC(number_of_sites, unsigned)
-    SCITBX_LOC(sum_of_masses, ft)
-#undef SCITBX_LOC
+    af::shared<std::pair<int, double> >
+    sum_of_masses_in_each_tree() const
+    {
+      af::shared<std::pair<int, double> > result;
+      unsigned nb = bodies_size();
+      boost::scoped_array<ft> accu(new ft[nb]);
+      std::fill_n(accu.get(), nb, ft(0));
+      for(unsigned ib=nb;ib!=0;) {
+        ib--;
+        body_t<ft> const* body = bodies[ib].get();
+        accu[ib] += body->sum_of_masses;
+        if (body->parent == -1) {
+          result.push_back(std::pair<int, double>(
+            boost::numeric_cast<int>(ib),
+            boost::numeric_cast<double>(accu[ib])));
+        }
+        else {
+          accu[body->parent] += accu[ib];
+        }
+      }
+      return result;
+    }
 
     boost::optional<vec3<ft> >
     mean_linear_velocity(
-      af::const_ref<std::pair<unsigned, unsigned> >
+      af::const_ref<af::tiny<std::size_t, 2> >
         number_of_sites_in_each_tree) const
     {
       vec3<ft> sum_v(0,0,0);
       unsigned sum_n = 0;
 #define SCITBX_LOC \
-      optional_copy<af::shared<std::pair<unsigned, unsigned> > > nosiet; \
+      optional_copy<af::shared<af::tiny<std::size_t, 2> > > nosiet; \
       if (number_of_sites_in_each_tree.begin() == 0) { \
         nosiet = this->number_of_sites_in_each_tree(); \
         number_of_sites_in_each_tree = nosiet->const_ref(); \
       } \
       SCITBX_ASSERT(number_of_sites_in_each_tree.size() == bodies.size()); \
-      unsigned nb = bodies_size(); \
+      std::size_t nb = bodies.size(); \
       for( \
-        std::pair<unsigned, unsigned> const* nosiet_it=nosiet->begin(); \
+        af::tiny<std::size_t, 2> const* nosiet_it=nosiet->begin(); \
         nosiet_it!=nosiet->end(); \
         nosiet_it++) \
       { \
-        unsigned ib = nosiet_it->first; \
+        std::size_t ib = (*nosiet_it)[0]; \
         SCITBX_ASSERT(ib < nb);
 SCITBX_LOC
         body_t<ft> const* body = bodies[ib].get();
         boost::optional<vec3<ft> >
           v = body->joint->get_linear_velocity(body->qd());
         if (!v) continue;
-        unsigned n = nosiet_it->second;
+        unsigned n = boost::numeric_cast<unsigned>((*nosiet_it)[1]);
         sum_v += (*v) * boost::numeric_cast<ft>(n);
         sum_n += n;
       }
@@ -342,7 +360,7 @@ SCITBX_LOC
 
     void
     subtract_from_linear_velocities(
-      af::const_ref<std::pair<unsigned, unsigned> >
+      af::const_ref<af::tiny<std::size_t, 2> >
         number_of_sites_in_each_tree,
       vec3<ft> const& value)
     {
@@ -357,6 +375,7 @@ SCITBX_LOC // {
       }
     }
 
+    //! Not available in Python.
     featherstone::system_model<ft>&
     featherstone_system_model()
     {
@@ -366,6 +385,7 @@ SCITBX_LOC // {
       return *featherstone_system_model_;
     }
 
+    //! Not available in Python.
     af::shared<rotr3<ft> > const&
     aja_array()
     {
@@ -388,6 +408,7 @@ SCITBX_LOC // {
       return *aja_array_;
     }
 
+    //! Not available in Python.
     af::shared<mat3<ft> > const&
     jar_array()
     {
@@ -411,7 +432,6 @@ SCITBX_LOC // {
     af::shared<vec3<ft> > const&
     sites_moved()
     {
-      namespace bp = boost::python;
       if (!sites_moved_) {
         aja_array();
         sites_moved_ = af::shared<vec3<ft> >(sites.size());
@@ -438,7 +458,6 @@ SCITBX_LOC // {
     ft const&
     e_pot()
     {
-      namespace bp = boost::python;
       if (!e_pot_) {
         bp::object none;
         if (potential_obj.ptr() == none.ptr()) {
@@ -455,7 +474,6 @@ SCITBX_LOC // {
     af::shared<vec3<ft> > const&
     d_e_pot_d_sites()
     {
-      namespace bp = boost::python;
       if (!d_e_pot_d_sites_) {
         bp::object none;
         if (potential_obj.ptr() == none.ptr()) {
@@ -471,10 +489,10 @@ SCITBX_LOC // {
       return *d_e_pot_d_sites_;
     }
 
+    //! Not available in Python.
     af::shared<af::tiny<ft, 6> > const&
     f_ext_array()
     {
-      namespace bp = boost::python;
       if (!f_ext_array_) {
         jar_array();
         d_e_pot_d_sites();
@@ -503,6 +521,7 @@ SCITBX_LOC // {
       return *f_ext_array_;
     }
 
+    //! Not available in Python.
     af::shared<af::small<ft, 6> > const&
     qdd_array()
     {
@@ -570,9 +589,8 @@ SCITBX_LOC // {
     assign_random_velocities(
       boost::optional<ft> const& e_kin_target=boost::optional<ft>(),
       ft const& e_kin_epsilon=1e-12,
-      boost::python::object random_gauss=boost::python::object())
+      bp::object random_gauss=bp::object())
     {
-      namespace bp = boost::python;
       ft work_e_kin_target;
       if (!e_kin_target) {
         work_e_kin_target = 1;
@@ -637,6 +655,7 @@ SCITBX_LOC // {
       flag_positions_as_changed();
     }
 
+    //! Not available in Python.
     af::shared<af::small<ft, 7> >
     d_pot_d_q()
     {
