@@ -92,6 +92,9 @@ class model(object):
       cluster_manager=tardy_tree.cluster_manager,
       near_singular_hinges_angular_tolerance_deg=
         near_singular_hinges_angular_tolerance_deg)
+    O.number_of_trees = 0
+    for body in O.bodies:
+      if (body.parent == -1): O.number_of_trees += 1
     O.degrees_of_freedom = sum([body.joint.degrees_of_freedom
       for body in O.bodies])
     O.flag_positions_as_changed()

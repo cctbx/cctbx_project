@@ -92,7 +92,7 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
   {
     typedef FloatType ft;
 
-    af::const_ref<ft> qd_;
+    af::ref<ft> qd_;
 
     zero_dof() {}
 
@@ -108,12 +108,12 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
       this->i_spatial = af::versa<ft, af::mat_grid>(af::mat_grid(6,6), 0);
       this->joint = shared_ptr<joint_t<ft> >(
         new joint_lib::zero_dof<ft>());
-      qd_ = af::const_ref<ft>(0, 0);
+      qd_ = af::ref<ft>(0, 0);
     }
 
     virtual
-    af::const_ref<ft>
-    qd() const { return qd_; }
+    af::ref<ft>
+    qd() { return qd_; }
 
     virtual
     void
@@ -152,8 +152,8 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     }
 
     virtual
-    af::const_ref<ft>
-    qd() const { return qd_.const_ref(); }
+    af::ref<ft>
+    qd() { return qd_.ref(); }
 
     virtual
     void
@@ -193,8 +193,8 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     }
 
     virtual
-    af::const_ref<ft>
-    qd() const { return qd_.const_ref(); }
+    af::ref<ft>
+    qd() { return qd_.ref(); }
 
     virtual
     void
@@ -233,8 +233,8 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     }
 
     virtual
-    af::const_ref<ft>
-    qd() const { return af::const_ref<ft>(&qd_, 1); }
+    af::ref<ft>
+    qd() { return af::ref<ft>(&qd_, 1); }
 
     virtual
     void
@@ -273,8 +273,8 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     }
 
     virtual
-    af::const_ref<ft>
-    qd() const { return qd_.const_ref(); }
+    af::ref<ft>
+    qd() { return qd_.ref(); }
 
     virtual
     void

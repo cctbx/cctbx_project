@@ -23,15 +23,14 @@ namespace scitbx { namespace rigid_body {
     ~body_t() {}
 
     virtual
-    af::const_ref<ft>
-    qd() const = 0;
+    af::ref<ft>
+    qd() = 0;
 
     virtual
-    af::ref<ft>
-    qd()
+    af::const_ref<ft>
+    qd() const
     {
-      af::const_ref<ft> cr = qd();
-      return af::ref<ft>(const_cast<ft*>(cr.begin()), cr.size());
+      return const_cast<body_t*>(this)->qd();
     }
 
     virtual
