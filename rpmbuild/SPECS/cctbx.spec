@@ -61,7 +61,7 @@ cd /usr/local/%{name}/%{version}/cctbx_build
 		fftw3tbx rstbx smtbx mmtbx clipper
 cd /usr/local/%{name}/%{version}
 find . -iname "*.pyc" -exec /bin/rm "{}" \;
-/usr/local/cctbx/2009_02_15_2320/cctbx_build/bin/libtbx.py_compile_all 
+/usr/local/%{name}/%{version}/cctbx_build/bin/libtbx.py_compile_all 
 
 %preun
 
