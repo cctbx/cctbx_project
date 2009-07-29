@@ -446,11 +446,25 @@ class model_scene (object) :
 ########################################################################
 # VIEWER CLASS
 #
+UPDATE_MODEL_ID = wx.NewId()
+ADD_MODEL_ID = wx.NewId()
+class AddModelEvent (wx.PyEvent) :
+  event_id = ADD_MODEL_ID
+  recenter = True
+  def __init__ (self, model_id, pdb_hierarchy, atomic_bonds) :
+    wx.PyEvent.__init__(self)
+    self.data = (model_id, pdb_hierarchy, atomic_bonds)
+    self.SetEventType(self.event_id)
+
+class UpdateModelEvent (AddModelEvent) :
+  event_id = UPDATE_MODEL_ID
+  recenter = False
+
 class model_viewer_mixin (wx_viewer.wxGLWindow) :
-  initialize_model_viewer_super = True
   def __init__ (self, *args, **kwds) :
-    if self.initialize_model_viewer_super :
-      wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
+    wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
+    self.Connect(-1, -1, UPDATE_MODEL_ID, self.OnUpdateModel)
+    self.Connect(-1, -1, ADD_MODEL_ID, self.OnAddModel)
     self.minimum_covering_sphere = None
     self.show_object = {}
     self.pick_object = {}
@@ -638,6 +652,11 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     self.pick_object[model_id] = True
     self.update_scene = True
 
+  def update_model (self, model_id, pdb_hierarchy, atomic_bonds) :
+    model = self.get_model(model_id)
+    model.update_structure(pdb_hierarchy, atomic_bonds)
+    self.update_scene = True
+
   def update_mcs (self, points, recenter_and_zoom=True) :
     self.minimum_covering_sphere = minimum_covering_sphere(
                                        points=points,
@@ -795,6 +814,22 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
         event.recenter == True) or recenter == True :
       self.move_rotation_center_to_mcs_center()
       self.fit_into_viewport()
+
+  def OnUpdateModel (self, event) :
+    (model_id, pdb_hierarchy, atomic_bonds) = event.data
+    self.update_model(model_id, pdb_hierarchy, atomic_bonds)
+    self.OnRedrawGL()
+
+  def OnAddModel (self, event) :
+    (model_id, pdb_hierarchy, atomic_bonds) = event.data
+    self.add_model(model_id, pdb_hierarchy, atomic_bonds)
+    self.OnRedrawGL()
+
+  def thread_safe_add_model (self, model_id, pdb_hierarchy, atomic_bonds) :
+    wx.PostEvent(self, AddModelEvent(model_id, pdb_hierarchy, atomic_bonds))
+
+  def thead_safe_update_model (self, model_id, pdb_hierarchy, atomic_bonds) :
+    wx.PostEvent(self, UpdateModelEvent(model_id, pdb_hierarchy, atomic_bonds))
 
 #-----------------------------------------------------------------------
 # Utility functions
