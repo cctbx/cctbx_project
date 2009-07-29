@@ -190,7 +190,7 @@ class model(object):
       O.__sites_moved = [None] * len(O.sites)
       n_done = 0
       clusters = O.tardy_tree.cluster_manager.clusters
-      for ib,body in enumerate(O.bodies):
+      for ib in xrange(len(O.bodies)):
         aja = O_aja[ib]
         for i_seq in clusters[ib]:
           assert O.__sites_moved[i_seq] is None
@@ -218,19 +218,22 @@ class model(object):
     return O.__d_e_pot_d_sites
 
   def f_ext_array(O):
-    O_jar = O.jar_array()
-    O_d_e_pot_d_sites = O.d_e_pot_d_sites()
-    O.__f_ext_array = []
-    clusters = O.tardy_tree.cluster_manager.clusters
-    for ib,body in enumerate(O.bodies):
-      f = matrix.col((0,0,0))
-      nc = matrix.col((0,0,0))
-      for i_seq in clusters[ib]:
-        s = O.sites[i_seq]
-        force_bf = -(O_jar[ib] * O_d_e_pot_d_sites[i_seq])
-        f += force_bf
-        nc += (body.alignment.cb_0b * s).cross(force_bf)
-      O.__f_ext_array.append(matrix.col((nc, f)).resolve_partitions())
+    if (O.__f_ext_array is None):
+      O_jar_array = O.jar_array()
+      O_d_e_pot_d_sites = O.d_e_pot_d_sites()
+      O.__f_ext_array = []
+      clusters = O.tardy_tree.cluster_manager.clusters
+      for ib,body in enumerate(O.bodies):
+        cb_0b = body.alignment.cb_0b
+        jar = O_jar_array[ib]
+        f = matrix.col((0,0,0))
+        nc = matrix.col((0,0,0))
+        for i_seq in clusters[ib]:
+          s = O.sites[i_seq]
+          force_bf = -(jar * O_d_e_pot_d_sites[i_seq])
+          f += force_bf
+          nc += (cb_0b * s).cross(force_bf)
+        O.__f_ext_array.append(matrix.col((nc, f)).resolve_partitions())
     return O.__f_ext_array
 
   def qdd_array(O):
@@ -247,8 +250,9 @@ class model(object):
   def e_tot(O):
     return O.e_kin() + O.e_pot()
 
-  def reset_e_kin(O, e_kin_target, e_kin_epsilon=1.e-12):
+  def reset_e_kin(O, e_kin_target, e_kin_epsilon=1e-12):
     assert e_kin_target >= 0
+    assert e_kin_epsilon > 0
     O_e_kin = O.e_kin()
     if (O_e_kin >= e_kin_epsilon):
       factor = (e_kin_target / O_e_kin)**0.5
@@ -263,9 +267,8 @@ class model(object):
 
   def assign_random_velocities(O,
         e_kin_target=None,
-        e_kin_epsilon=1.e-12,
+        e_kin_epsilon=1e-12,
         random_gauss=None):
-    work_e_kin_target = e_kin_target
     if (e_kin_target is None):
       work_e_kin_target = 1
     elif (e_kin_target == 0):
@@ -273,6 +276,7 @@ class model(object):
       return
     else:
       assert e_kin_target >= 0
+      work_e_kin_target = e_kin_target
     qd_e_kin_scales = flex.double(
       O.featherstone_system_model().qd_e_kin_scales(
         e_kin_epsilon=e_kin_epsilon))

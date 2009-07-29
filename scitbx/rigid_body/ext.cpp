@@ -146,6 +146,22 @@ namespace scitbx { namespace rigid_body { namespace ext {
       tardy_model.featherstone_system_model();
       tardy_model.aja_array();
       tardy_model.jar_array();
+      tardy_model.sites_moved();
+      tardy_model.e_pot();
+      tardy_model.d_e_pot_d_sites();
+      tardy_model.f_ext_array();
+      tardy_model.qdd_array();
+      tardy_model.e_kin();
+      tardy_model.e_tot();
+      tardy_model.reset_e_kin(1);
+      tardy_model.assign_zero_velocities();
+      tardy_model.assign_random_velocities();
+      tardy_model.dynamics_step(0);
+      tardy_model.d_pot_d_q();
+      tardy_model.pack_q();
+      tardy_model.unpack_q(af::const_ref<double>(0, 0));
+      tardy_model.pack_qd();
+      tardy_model.unpack_qd(af::const_ref<double>(0, 0));
     }
   }
 

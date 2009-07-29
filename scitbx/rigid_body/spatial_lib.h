@@ -6,6 +6,18 @@
 
 namespace scitbx { namespace rigid_body { namespace spatial_lib {
 
+  template <typename ElementType>
+  af::tiny<ElementType, 6>
+  as_tiny_6(
+    vec3<ElementType> const& a,
+    vec3<ElementType> const& l)
+  {
+    af::tiny<ElementType, 6> result;
+    for(unsigned i=0;i<3;i++) result[i] = a[i];
+    for(unsigned i=0;i<3;i++) result[i+3] = l[i];
+    return result;
+  }
+
   //! RBDA Tab. 2.2, p. 23.
   /*! Spatial coordinate transform (rotation around origin).
       Calculates the coordinate transform matrix from A to B coordinates
