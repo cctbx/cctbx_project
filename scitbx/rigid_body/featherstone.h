@@ -15,8 +15,8 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
     typedef FloatType ft;
 
     af::shared<shared_ptr<body_t<ft> > > bodies;
-    af::shared<rotr3<ft> > cb_up_array_;
-    af::shared<af::versa<ft, af::mat_grid> > xup_array_;
+    mutable af::shared<rotr3<ft> > cb_up_array_;
+    mutable af::shared<af::versa<ft, af::mat_grid> > xup_array_;
 
     unsigned
     bodies_size() const
@@ -53,7 +53,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
     cb_up_array() const
     {
       if (cb_up_array_.size() == 0) {
-        af::shared<rotr3<ft> > cb_up_array_(af::reserve(bodies.size()));
+        cb_up_array_.reserve(bodies.size());
         unsigned nb = bodies_size();
         for(unsigned ib=0;ib<nb;ib++) {
           body_t<ft> const* body = bodies[ib].get();
@@ -69,8 +69,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
     {
       if (xup_array_.size() == 0) {
         af::shared<rotr3<ft> > cb_up_array = this->cb_up_array();
-        af::shared<af::versa<ft, af::mat_grid> >
-          xup_array_(af::reserve(bodies.size()));
+        xup_array_.reserve(bodies.size());
         unsigned nb = bodies_size();
         for(unsigned ib=0;ib<nb;ib++) {
           xup_array_.push_back(
