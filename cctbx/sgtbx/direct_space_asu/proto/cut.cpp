@@ -31,7 +31,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
   namespace {
     inline rational_t dot(const tr_vec &lhs, const tr_vec &rhs)
     {
-      return rational_t( lhs.num()*rhs.num(), lhs.den()*lhs.den() );
+      return rational_t( lhs.num()*rhs.num(), lhs.den()*rhs.den() );
     }
   }
 
