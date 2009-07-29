@@ -82,7 +82,6 @@ cctbx/regression/tst_structure_factors_multithread.py -text
 cctbx/regression/tst_weighting_schemes.py -text
 cctbx/regression/tst_xray_minimization_failure.py -text
 cctbx/sgtbx/boost_python/select_generators.cpp -text
-cctbx/sgtbx/direct_space_asu/check_asu_redundancies.py svneol=native#text/x-python
 cctbx/sgtbx/direct_space_asu/proto/SConscript -text
 cctbx/sgtbx/direct_space_asu/proto/__init__.py svneol=native#text/x-python
 cctbx/sgtbx/direct_space_asu/proto/asu_ext.cpp svneol=native#text/plain
