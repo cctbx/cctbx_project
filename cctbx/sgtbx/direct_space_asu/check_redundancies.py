@@ -64,12 +64,26 @@ def sample_asu(asu, n=(12,12,12), volume=False, is_stripped_asu=False):
     r_grid.append(b)
   return u_grid, r_grid, colored_grid_points, n_redundancies
 
+def check_compatibility_with_sampling_grid(asu):
+  print "Volume vertices:"
+  n_outside_sampling_grid = 0
+  for vertex in asu.volume_vertices():
+    s = ""
+    for v in vertex:
+      if (v < -rational.int(1,2) or v > 1):
+        s = " outside sampling grid"
+        n_outside_sampling_grid += 1
+        break
+    print "  %s%s" % (str(vertex), s)
+  assert n_outside_sampling_grid == 0
+
 def check_asu(space_group_number, asu, n, is_stripped_asu, soft_mode):
   sg_info = sgtbx.space_group_info("Hall: " + asu.hall_symbol)
   sg_info.show_summary()
   assert sg_info.type().number() == space_group_number
   print "Gridding:", n
   ops = sg_info.group()
+  check_compatibility_with_sampling_grid(asu=asu)
   sys.stdout.flush()
   u_grid, r_grid, colored_grid_points, sampling_n_redundancies = sample_asu(
     asu, n, is_stripped_asu=is_stripped_asu)
