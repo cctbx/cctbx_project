@@ -3,6 +3,7 @@
 
 from crys3d.wx_model_viewer_multi_scene import model_data, model_scene, \
     model_viewer_mixin
+from crys3d.reverse_selection import mouse_selection_manager
 import gltbx.gl_managed
 from gltbx.gl import *
 from gltbx.glu import *
@@ -26,87 +27,12 @@ selections {
 }
 """, process_includes=True)
 
-class chain_selection_info (object) :
-  def __init__ (self, chain_id) :
-    adopt_init_args(self, locals())
-    self.ranges = []
-    self.remove_ranges = []
-
-  def add_range (self, start, end, altloc=None) :
-    if len(self.remove_ranges) > 0 :
-      pass
-    else :
-      self.ranges.append((start, end, altloc))
-      self.ranges.sort(lambda x, y: cmp(x[0], y[0]))
-
-  def remove_range (self, start, end, altloc=None) :
-    if len(self.ranges) > 0 :
-      pass
-    else :
-      self.remove_ranges.append((start, end, altloc))
-      self.ranges.sort(lambda x, y: cmp(x[0], y[0]))
-
-  def __str__ (self) :
-    sele_str = "chain '%s'" % self.chain_id
-    if len(self.ranges) > 0 :
-      clauses = []
-      for (start, end, altloc) in self.ranges :
-        if altloc is None :
-          clauses.append("resseq %d:%d" % (start, end))
-        else :
-          clauses.append("resseq %d:%d and altloc '%s'" % (start,end,altloc))
-      sele_str += " and ((" + ") or (".join(clauses) + "))"
-    if len(self.remove_ranges) > 0 :
-      clauses = []
-      for (start, end, altloc) in self.remove_ranges :
-        if altloc is None :
-          clauses.append("resseq %d:%d" % (start, end))
-        else :
-          clauses.append("resseq %d:%d and altloc '%s'" % (start, end, altloc))
-      sele_str +=" and not ((" + ") or (".join(clauses) + "))"
-    return sele_str
-
-class residue_selection_info (object) :
-  def __init__ (self, chain_id, resid, altloc=None) :
-    adopt_init_args(self, locals())
-
-  def __str__ (self) :
-    if self.altloc is None :
-      return "chain '%s' and resid '%s'" % (self.chain_id, self.resid)
-    else :
-      return "chain '%s' and resid '%s' and altloc '%s'" % (self.chain_id,
-        self.resid, self.altloc)
-
-class atom_selection_info (object) :
-  def __init__ (self, i_seq, atom) : #chain_id, resid, atom_name, altloc) :
-    adopt_init_args(self, locals())
-
-  def __str__ (self) :
-    atom = self.atom
-    altloc = atom.altloc
-    if altloc == "" :
-      altloc = " "
-    return ("chain '%s' and resid '%s' and name '%s' and altloc '%s'" %
-      (atom.chain_id, atom.resid(), atom.name, altloc))
-
-class model_data_with_selection (model_data) :
+class model_data_with_selection (model_data, mouse_selection_manager) :
   def __init__ (self, *args, **kwds) :
-    self.mmtbx_handler = None
     self.flag_show_selection = True
     self.flag_allow_selection = True
-    self.selection_string = "none"
-    self.saved_selection = "none" # for recovery later
-    self.selection_i_seqs = None
-    self.selection_callback = None
-    self.start_i_seq = None
-    self.end_i_seq = None
+    mouse_selection_manager.__init__(self)
     model_data.__init__(self, *args, **kwds)
-
-  def set_mmtbx_selection_handler (self, mmtbx_handler) :
-    self.mmtbx_handler = mmtbx_handler
-
-  def set_selection_callback (self, callback) :
-    self.selection_callback = callback
 
   def get_scene_data (self) :
     scene = model_scene_with_selection(bonds=self.current_bonds,
@@ -125,12 +51,10 @@ class model_data_with_selection (model_data) :
     model_data.update_scene_data(self, scene)
 
   def update_structure (self, pdb_hierarchy, atomic_bonds,
-      mmtbx_handler=None) :
+      mmtbx_selection_function=None) :
     model_data.update_structure(self, pdb_hierarchy, atomic_bonds)
-    self.selection_cache = pdb_hierarchy.atom_selection_cache()
-    self.mmtbx_handler = mmtbx_handler
-    self.clear_selection()
-    #self.apply_selection(self.saved_selection)
+    mouse_selection_manager.update_selection_handlers(self, pdb_hierarchy,
+      mmtbx_selection_function)
 
   def recalculate_visibility (self) :
     model_data.recalculate_visibility(self)
@@ -138,171 +62,9 @@ class model_data_with_selection (model_data) :
       bonds          = self.current_bonds,
       atoms_selected = self.atom_selection)
 
-  #---------------------------------------------------------------------
-  #
-  def clear_selection (self) :
-    self.selected_chains = {}
-    self.deselected_chains = {}
-    self.selected_atoms = []
-    self.deselected_atoms = []
-    self.selected_residues = []
-    self.deselected_residues = []
-    self._cached_selections = {}
-    self._cached_deselections = {}
-    self.apply_selection(self.saved_selection)
-
-  def selection_size (self) :
-    return self.selection_i_seqs.size()
-
-  def apply_selection (self, selection_string) :
-    atom_selection = self.get_atom_selection(selection_string)
-    if atom_selection is None :
-      self.selection_string = "none"
-      atoms_selection = self.selection_cache.selection("none")
-    else :
-      self.selection_string = selection_string
-    self.atom_selection = atom_selection
-    self.selection_i_seqs = atom_selection.iselection()
+  def selection_callback (self, *args, **kwds) :
     self.recalculate_visibility()
-    if self.selection_callback is not None :
-      self.selection_callback(self.selection_string, self.atom_selection)
-    if atom_selection is None :
-      raise Sorry("Invalid selection '%s'."%selection_string)
-
-  def get_atom_selection (self, selection_string) :
-    try :
-      if self.mmtbx_handler is not None :
-        atom_selection = self.mmtbx_handler.selection(
-          string=selection_string,
-          cache=self.selection_cache)
-      else :
-        atom_selection = self.selection_cache.selection(selection_string)
-    except KeyboardInterrupt :
-      raise
-    except Exception, e :
-      atom_selection =None
-    return atom_selection
-
-  def revert_selection (self) :
-    self.apply_selection(self.saved_selection)
-
-  def set_initial_selection (self, selection_string) :
-    self.saved_selection = selection_string
-    self.apply_selection(selection_string)
-
-  def start_selection (self, i_seq) :
-    self.start_i_seq = i_seq
-
-  def end_range_selection (self, i_seq, deselect=False) :
-    pass
-
-  def toggle_chain_selection (self, i_seq) :
-    atom = self.atom_index[i_seq]
-    chain_id = atom.chain_id
-    if chain_id in self.selected_chains :
-      chain_info = self.selected_chains.pop(chain_id)
-      chain_sel = self.selection_cache.selection(str(chain_info))
-      self.remove_redundant_residues(chain_sel, self.deselected_residues)
-      self.remove_redundant_atoms(chain_sel, self.deselected_atoms)
-    else :
-      chain_info = chain_selection_info(chain_id)
-      self.selected_chains[chain_id] = chain_info
-      chain_sel = self.selection_cache.selection(str(chain_info))
-      self.remove_redundant_residues(chain_sel, self.selected_residues)
-      self.remove_redundant_atoms(chain_sel, self.selected_atoms)
-    self.construct_selection()
-
-  def remove_redundant_residues (self, main_selection, residue_list) :
-    i = 0
-    while i < len(residue_list) :
-      residue_info = residue_list[i]
-      resi_sel = self.selection_cache.selection(str(residue_info))
-      if main_selection.is_super_set(resi_sel) :
-        residue_list.pop(i)
-      else :
-        i += 1
-
-  def remove_redundant_atoms (self, main_selection, atom_list) :
-    i = 0
-    while i < len(atom_list) :
-      i_seq = atom_list[i]
-      if main_selection[i_seq] :
-        atom_list.pop(i)
-      else :
-        i += 1
-
-  def toggle_residue_selection (self, i_seq, ignore_altloc=True) :
-    atom = self.atom_index[i_seq]
-    if ignore_altloc :
-      resi_info = residue_selection_info(atom.chain_id, atom.resid())
-    else :
-      resi_info = residue_selection_info(atom.chain_id, atom.resid(),
-        atom.altloc)
-    resi_sel = self.selection_cache.selection(str(resi_info))
-    if self.atom_selection.is_super_set(resi_sel) :
-      self.deselected_residues.append(resi_info)
-      self.remove_redundant_residues(resi_sel, self.selected_residues)
-    else :
-      self.selected_residues.append(resi_info)
-      self.remove_redundant_residues(resi_sel, self.deselected_residues)
-    self.remove_redundant_atoms(resi_sel, self.selected_atoms)
-    self.remove_redundant_atoms(resi_sel, self.deselected_atoms)
-    self.construct_selection()
-
-  def toggle_atom_selection (self, i_seq) :
-    atom = self.atom_index[i_seq]
-    if self.atom_selection[i_seq] : #and not i_seq in self.deselected_atoms :
-      self.deselected_atoms.append(i_seq)
-      if i_seq in self.selected_atoms :
-        self.selected_atoms.remove(i_seq)
-    elif not i_seq in self.selected_atoms :
-      self.selected_atoms.append(i_seq)
-      if i_seq in self.deselected_atoms :
-        self.deselected_atoms.remove(i_seq)
-    self.construct_selection()
-
-  def construct_selection (self) :
-    final_selection = ""
-    # Part 1: stuff we want
-    clauses = []
-    for chain_id, chain_info in self.selected_chains.iteritems() :
-      clauses.append(str(chain_info))
-    chains_selection_str = assemble_selection_clauses(clauses)
-    selection1 = self.get_atom_selection(chains_selection_str)
-    deselection1 = selection1.__invert__()
-    self.remove_redundant_residues(selection1, self.selected_residues)
-    self.remove_redundant_residues(deselection1, self.deselected_residues)
-    for residue_info in self.selected_residues :
-      residue_selection_str = str(residue_info)
-      clauses.append(residue_selection_str)
-    chains_and_resi_sel_str = assemble_selection_clauses(clauses)
-    selection2 = self.get_atom_selection(chains_and_resi_sel_str)
-    deselection2 = selection2.__invert__()
-    self.remove_redundant_atoms(selection2, self.selected_atoms)
-    self.remove_redundant_atoms(deselection2, self.deselected_atoms)
-    for i_seq in self.selected_atoms :
-      atom_info = atom_selection_info(i_seq, self.atom_index[i_seq])
-      clauses.append(str(atom_info))
-    positive_selection = assemble_selection_clauses(clauses)
-    # Part 2: stuff we don't want
-    clauses = []
-    for residue_info in self.deselected_residues :
-      residue_selection_str = str(residue_info)
-      clauses.append(residue_selection_str)
-    for i_seq in self.deselected_atoms :
-      atom_info = atom_selection_info(i_seq, self.atom_index[i_seq])
-      clauses.append(str(atom_info))
-    negative_selection = assemble_selection_clauses(clauses)
-    # assemble final selection
-    if positive_selection != "" :
-      if negative_selection != "" :
-        final_selection = "(%s) and not (%s)" % (positive_selection,
-                                                 negative_selection)
-      else :
-        final_selection = positive_selection
-    else :
-      final_selection = "none"
-    self.apply_selection(final_selection)
+    mouse_selection_manager.selection_callback(self, *args, **kwds)
 
 #-----------------------------------------------------------------------
 class model_scene_with_selection (model_scene) :
@@ -388,6 +150,7 @@ class selection_editor_mixin (model_viewer_mixin) :
     self.flag_enable_mouse_selection = True
     self.current_atom_i_seq = None
     self.current_object_id = None
+    self._in_range_selection = False
     model_viewer_mixin.__init__(self, *args,**kwds)
     self.settings = viewer_phil.extract()
 
@@ -428,11 +191,11 @@ class selection_editor_mixin (model_viewer_mixin) :
       model.clear_selection()
 
   def add_model (self, model_id, pdb_hierarchy, atomic_bonds,
-      mmtbx_handler=None) :
+      mmtbx_selection_function=None) :
     assert isinstance(model_id, str)
     model = model_data_with_selection(model_id, pdb_hierarchy, atomic_bonds,
       base_color=self.settings.opengl.base_atom_color)
-    model.set_mmtbx_selection_handler(mmtbx_handler)
+    model.set_mmtbx_selection_function(mmtbx_selection_function)
     model.set_selection_callback(print_cb)
     self._add_model(model_id, model)
 
@@ -443,11 +206,15 @@ class selection_editor_mixin (model_viewer_mixin) :
     elif key == ord('z') :
       self.zoom_selections()
     elif key >= 49 and key <= 54 :
-      self.left_button_mode = key - 49
+      self.set_left_button_mode(key - 49)
     elif key == 27 : # escape
       self.clear_selections()
       self.update_scene = True
     model_viewer_mixin.process_key_stroke(self,key)
+
+  def set_left_button_mode (self, mode) :
+    self.left_button_mode = mode
+    self._in_range_selection = False
 
   #---------------------------------------------------------------------
   def pick_selection_object (self, object_id) :
@@ -481,11 +248,20 @@ class selection_editor_mixin (model_viewer_mixin) :
       model.toggle_atom_selection(self.current_atom_i_seq)
       self.update_scene = True
 
-  def process_range_selection (self) :
-    pass
-
-  def process_range_deselection (self) :
-    pass
+  def process_range_selection (self, deselect=False) :
+    model = self.get_model(self.current_object_id)
+    if model is not None :
+      if self._in_range_selection :
+        try :
+          model.end_range_selection(self.current_atom_i_seq, deselect,
+            ignore_altloc=self.flag_select_all_conformers)
+        finally :
+          self._in_range_selection = False
+      else :
+        model.start_range_selection(self.current_atom_i_seq, deselect,
+          ignore_altloc=self.flag_select_all_conformers)
+        self._in_range_selection = True
+      self.update_scene = True
 
   def context_selection_menu (self) :
     menu = wx.Menu()
@@ -513,7 +289,7 @@ class selection_editor_mixin (model_viewer_mixin) :
         elif self.left_button_mode == 5 : # select range
           self.process_range_selection()
         else :                            # deselect range
-          self.process_range_deselection()
+          self.process_range_selection(deselect=True)
 
   def OnToggleChain (self, event) :
     pass
@@ -523,13 +299,5 @@ class selection_editor_mixin (model_viewer_mixin) :
 
 def print_cb (selection_string, atom_selection) :
   print "%s (%s)" % (selection_string, atom_selection.iselection().size())
-
-def assemble_selection_clauses (clauses) :
-  if len(clauses) == 0 :
-    return ""
-  elif len(clauses) == 1 : # not necessary, but looks nicer
-    return clauses[0]
-  else :
-    return "(" + ") or (".join(clauses) + ")"
 
 #---end

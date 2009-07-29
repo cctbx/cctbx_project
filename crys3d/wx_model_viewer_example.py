@@ -51,11 +51,13 @@ def run (args) :
     pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
     pdb_hierarchy.atoms().reset_i_seq()
     grm = processed_pdb_file.geometry_restraints_manager()
+    acp_selection = processed_pdb_file.all_chain_proxies.selection
     if grm is None or grm.shell_sym_tables is None :
       raise Sorry("Atomic bonds could not be calculated for this model. "+
         "This is probably due to a missing CRYST1 record in the PDB file.")
     atomic_bonds = grm.shell_sym_tables[0].full_simple_connectivity()
-    a.view_objects.add_model(file_name, pdb_hierarchy, atomic_bonds)
+    a.view_objects.add_model(file_name, pdb_hierarchy, atomic_bonds,
+      mmtbx_selection_function=acp_selection)
   a.frame.Show()
   a.view_objects.force_update(recenter=True)
   a.MainLoop()
