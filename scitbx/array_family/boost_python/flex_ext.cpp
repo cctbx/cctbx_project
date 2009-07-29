@@ -454,8 +454,11 @@ namespace {
     ref_owning_shared_conversions<double>();
     ref_owning_shared_conversions< std::complex<double> >();
 
-    boost_adaptbx::optional_conversions::to_and_from_python<
-      af::shared<double> >();
+    {
+      namespace oc = boost_adaptbx::optional_conversions;
+      oc::to_and_from_python<vec3<double> >();
+      oc::to_and_from_python<af::shared<double> >();
+    }
 
     wrap_flex_random();
     wrap_flex_sort();
