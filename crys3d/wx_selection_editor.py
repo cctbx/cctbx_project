@@ -1,4 +1,6 @@
 
+# TODO: move selection logic to separate module
+
 from crys3d.wx_model_viewer_multi_scene import model_data, model_scene, \
     model_viewer_mixin
 import gltbx.gl_managed
@@ -8,6 +10,7 @@ from gltbx import viewer_utils
 from scitbx.array_family import flex
 import iotbx.phil
 from libtbx.utils import Sorry
+from libtbx import adopt_init_args
 import wx
 
 viewer_phil = iotbx.phil.parse("""
@@ -18,7 +21,7 @@ selections {
     .style = color
   use_global_selection_color = True
     .type = bool
-  line_padding = 4
+  line_padding = 2
     .type = int
 }
 """, process_includes=True)
@@ -26,38 +29,65 @@ selections {
 class chain_selection_info (object) :
   def __init__ (self, chain_id) :
     adopt_init_args(self, locals())
+    self.ranges = []
+    self.remove_ranges = []
 
-  def contains (self, selection_info) :
-    if selection_info.chain_id == self.chain_id :
-      return True
-    return False
+  def add_range (self, start, end, altloc=None) :
+    if len(self.remove_ranges) > 0 :
+      pass
+    else :
+      self.ranges.append((start, end, altloc))
+      self.ranges.sort(lambda x, y: cmp(x[0], y[0]))
+
+  def remove_range (self, start, end, altloc=None) :
+    if len(self.ranges) > 0 :
+      pass
+    else :
+      self.remove_ranges.append((start, end, altloc))
+      self.ranges.sort(lambda x, y: cmp(x[0], y[0]))
 
   def __str__ (self) :
-    return "chain '%s'" % self.chain_id
+    sele_str = "chain '%s'" % self.chain_id
+    if len(self.ranges) > 0 :
+      clauses = []
+      for (start, end, altloc) in self.ranges :
+        if altloc is None :
+          clauses.append("resseq %d:%d" % (start, end))
+        else :
+          clauses.append("resseq %d:%d and altloc '%s'" % (start,end,altloc))
+      sele_str += " and ((" + ") or (".join(clauses) + "))"
+    if len(self.remove_ranges) > 0 :
+      clauses = []
+      for (start, end, altloc) in self.remove_ranges :
+        if altloc is None :
+          clauses.append("resseq %d:%d" % (start, end))
+        else :
+          clauses.append("resseq %d:%d and altloc '%s'" % (start, end, altloc))
+      sele_str +=" and not ((" + ") or (".join(clauses) + "))"
+    return sele_str
 
 class residue_selection_info (object) :
   def __init__ (self, chain_id, resid, altloc=None) :
     adopt_init_args(self, locals())
 
-  def contains (self, selection_info) :
-    if (selection_info.chain_id == self.chain_id and
-        selection_info.resid == self.resid) :
-      return True
-    return False
-
   def __str__ (self) :
     if self.altloc is None :
-      return "(chain '%s' and resid '%s')" % (self.chain_id, self.resid)
+      return "chain '%s' and resid '%s'" % (self.chain_id, self.resid)
     else :
-      return "(chain '%s' and resid '%s' and altloc '%s')" % (self.chain_id,
+      return "chain '%s' and resid '%s' and altloc '%s'" % (self.chain_id,
         self.resid, self.altloc)
 
 class atom_selection_info (object) :
-  def __init__ (self, chain_id, resid, atom_name, altloc) :
+  def __init__ (self, i_seq, atom) : #chain_id, resid, atom_name, altloc) :
     adopt_init_args(self, locals())
 
   def __str__ (self) :
-    return "(chain '%s' and resid '%s' and name '%s' and altloc '%s')"
+    atom = self.atom
+    altloc = atom.altloc
+    if altloc == "" :
+      altloc = " "
+    return ("chain '%s' and resid '%s' and name '%s' and altloc '%s'" %
+      (atom.chain_id, atom.resid(), atom.name, altloc))
 
 class model_data_with_selection (model_data) :
   def __init__ (self, *args, **kwds) :
@@ -91,7 +121,7 @@ class model_data_with_selection (model_data) :
     return scene
 
   def update_scene_data (self, scene) :
-    scene.update_selection(self.atoms_selected)
+    scene.update_selection(self.atom_selection)
     model_data.update_scene_data(self, scene)
 
   def update_structure (self, pdb_hierarchy, atomic_bonds,
@@ -106,7 +136,7 @@ class model_data_with_selection (model_data) :
     model_data.recalculate_visibility(self)
     self.visibility.get_selection_visibility(
       bonds          = self.current_bonds,
-      atoms_selected = self.atoms_selected)
+      atoms_selected = self.atom_selection)
 
   #---------------------------------------------------------------------
   #
@@ -125,32 +155,33 @@ class model_data_with_selection (model_data) :
     return self.selection_i_seqs.size()
 
   def apply_selection (self, selection_string) :
-    atoms_selected = self.get_atom_selection(selection_string)
-    if atoms_selected is None :
+    atom_selection = self.get_atom_selection(selection_string)
+    if atom_selection is None :
       self.selection_string = "none"
-      atoms_selected = self.selection_cache.selection("none")
-      raise Sorry("Invalid selection '%s'."%selection_string)
+      atoms_selection = self.selection_cache.selection("none")
     else :
       self.selection_string = selection_string
-    self.atoms_selected = atoms_selected
-    self.selection_i_seqs = atoms_selected.iselection()
+    self.atom_selection = atom_selection
+    self.selection_i_seqs = atom_selection.iselection()
     self.recalculate_visibility()
     if self.selection_callback is not None :
-      self.selection_callback(self.selection_string, self.atoms_selected)
+      self.selection_callback(self.selection_string, self.atom_selection)
+    if atom_selection is None :
+      raise Sorry("Invalid selection '%s'."%selection_string)
 
   def get_atom_selection (self, selection_string) :
     try :
       if self.mmtbx_handler is not None :
-        atoms_selected = self.mmtbx_handler.selection(
+        atom_selection = self.mmtbx_handler.selection(
           string=selection_string,
           cache=self.selection_cache)
       else :
-        atoms_selected = self.selection_cache.selection(selection_string)
+        atom_selection = self.selection_cache.selection(selection_string)
     except KeyboardInterrupt :
       raise
     except Exception, e :
-      atoms_selected =None
-    return atoms_selected
+      atom_selection =None
+    return atom_selection
 
   def revert_selection (self) :
     self.apply_selection(self.saved_selection)
@@ -169,51 +200,99 @@ class model_data_with_selection (model_data) :
     atom = self.atom_index[i_seq]
     chain_id = atom.chain_id
     if chain_id in self.selected_chains :
-      self.selected_chains.pop(chain_id)
+      chain_info = self.selected_chains.pop(chain_id)
+      chain_sel = self.selection_cache.selection(str(chain_info))
+      self.remove_redundant_residues(chain_sel, self.deselected_residues)
+      self.remove_redundant_atoms(chain_sel, self.deselected_atoms)
     else :
-      self.selected_chains[chain_id] = True
+      chain_info = chain_selection_info(chain_id)
+      self.selected_chains[chain_id] = chain_info
+      chain_sel = self.selection_cache.selection(str(chain_info))
+      self.remove_redundant_residues(chain_sel, self.selected_residues)
+      self.remove_redundant_atoms(chain_sel, self.selected_atoms)
     self.construct_selection()
 
-  def toggle_residue_selection (self, i_seq) :
+  def remove_redundant_residues (self, main_selection, residue_list) :
+    i = 0
+    while i < len(residue_list) :
+      residue_info = residue_list[i]
+      resi_sel = self.selection_cache.selection(str(residue_info))
+      if main_selection.is_super_set(resi_sel) :
+        residue_list.pop(i)
+      else :
+        i += 1
+
+  def remove_redundant_atoms (self, main_selection, atom_list) :
+    i = 0
+    while i < len(atom_list) :
+      i_seq = atom_list[i]
+      if main_selection[i_seq] :
+        atom_list.pop(i)
+      else :
+        i += 1
+
+  def toggle_residue_selection (self, i_seq, ignore_altloc=True) :
     atom = self.atom_index[i_seq]
-    resi_sel_str = "chain '%s' and resid '%s'" % (atom.chain_id, atom.resid())
-    resi_sel = self.selection_cache.selection(resi_sel_str)
-    if self.atoms_selected.is_super_set(resi_sel) :
-      self.deselected_residues.append(resi_sel_str)
+    if ignore_altloc :
+      resi_info = residue_selection_info(atom.chain_id, atom.resid())
     else :
-      self.selected_residues.append(resi_sel_str)
+      resi_info = residue_selection_info(atom.chain_id, atom.resid(),
+        atom.altloc)
+    resi_sel = self.selection_cache.selection(str(resi_info))
+    if self.atom_selection.is_super_set(resi_sel) :
+      self.deselected_residues.append(resi_info)
+      self.remove_redundant_residues(resi_sel, self.selected_residues)
+    else :
+      self.selected_residues.append(resi_info)
+      self.remove_redundant_residues(resi_sel, self.deselected_residues)
+    self.remove_redundant_atoms(resi_sel, self.selected_atoms)
+    self.remove_redundant_atoms(resi_sel, self.deselected_atoms)
     self.construct_selection()
 
-  def toggle_atom_selection (self, i_seq, deselect=False) :
-    pass
+  def toggle_atom_selection (self, i_seq) :
+    atom = self.atom_index[i_seq]
+    if self.atom_selection[i_seq] : #and not i_seq in self.deselected_atoms :
+      self.deselected_atoms.append(i_seq)
+      if i_seq in self.selected_atoms :
+        self.selected_atoms.remove(i_seq)
+    elif not i_seq in self.selected_atoms :
+      self.selected_atoms.append(i_seq)
+      if i_seq in self.deselected_atoms :
+        self.deselected_atoms.remove(i_seq)
+    self.construct_selection()
 
   def construct_selection (self) :
     final_selection = ""
     # Part 1: stuff we want
-    positive_selection = ""
     clauses = []
-    for chain in sorted(self.selected_chains.keys()) :
-      chain_selection = "chain '%s'" % chain
-      clauses.append(chain_selection)
-    for residue in self.selected_residues :
-      clauses.append(residue)
-    for atom in self.selected_atoms :
-      clauses.append(atom)
-    if len(clauses) == 1 : # not necessary, but looks nicer
-      positive_selection = clauses[0]
-    elif len(clauses) > 1 :
-      positive_selection = "(" + ") or (".join(clauses) + ")"
+    for chain_id, chain_info in self.selected_chains.iteritems() :
+      clauses.append(str(chain_info))
+    chains_selection_str = assemble_selection_clauses(clauses)
+    selection1 = self.get_atom_selection(chains_selection_str)
+    deselection1 = selection1.__invert__()
+    self.remove_redundant_residues(selection1, self.selected_residues)
+    self.remove_redundant_residues(deselection1, self.deselected_residues)
+    for residue_info in self.selected_residues :
+      residue_selection_str = str(residue_info)
+      clauses.append(residue_selection_str)
+    chains_and_resi_sel_str = assemble_selection_clauses(clauses)
+    selection2 = self.get_atom_selection(chains_and_resi_sel_str)
+    deselection2 = selection2.__invert__()
+    self.remove_redundant_atoms(selection2, self.selected_atoms)
+    self.remove_redundant_atoms(deselection2, self.deselected_atoms)
+    for i_seq in self.selected_atoms :
+      atom_info = atom_selection_info(i_seq, self.atom_index[i_seq])
+      clauses.append(str(atom_info))
+    positive_selection = assemble_selection_clauses(clauses)
     # Part 2: stuff we don't want
-    negative_selection = ""
     clauses = []
-    for residue in self.deselected_residues :
-      clauses.append(residue)
-    for atom in self.deselected_atoms :
-      clauses.append(atom)
-    if len(clauses) == 1 :
-      negative_selection = clauses[0]
-    elif len(clauses) > 1 :
-      negative_selection = "(" + ") or (".join(clauses) + ")"
+    for residue_info in self.deselected_residues :
+      residue_selection_str = str(residue_info)
+      clauses.append(residue_selection_str)
+    for i_seq in self.deselected_atoms :
+      atom_info = atom_selection_info(i_seq, self.atom_index[i_seq])
+      clauses.append(str(atom_info))
+    negative_selection = assemble_selection_clauses(clauses)
     # assemble final selection
     if positive_selection != "" :
       if negative_selection != "" :
@@ -221,8 +300,6 @@ class model_data_with_selection (model_data) :
                                                  negative_selection)
       else :
         final_selection = positive_selection
-    #elif negative_selection != "" :
-    #  final_selection = "not (%s)" % negative_selection
     else :
       final_selection = "none"
     self.apply_selection(final_selection)
@@ -238,9 +315,9 @@ class model_scene_with_selection (model_scene) :
     self.selection_display_list = None
     model_scene.clear_lists(self)
 
-  def update_selection (self, atoms_selected) :
-    self.atoms_selected = atoms_selected
-    self.selected_atom_count = atoms_selected.iselection().size()
+  def update_selection (self, atom_selection) :
+    self.atom_selection = atom_selection
+    self.selected_atom_count = atom_selection.iselection().size()
     self.selection_display_list = None
 
   def update_visibility (self, visibility) :
@@ -282,14 +359,14 @@ class model_scene_with_selection (model_scene) :
         viewer_utils.draw_points(
           points         = self.points,
           atom_colors    = selection_colors,
-          points_visible = self.atoms_selected,
+          points_visible = self.atom_selection,
           cross_radius   = 0.4)
       elif draw_mode == "spheres" :
-        atoms_selected = self.atoms_selected
+        atom_selection = self.atom_selection
         atom_radii = self.atom_radii
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         for i_seq, point in enumerate(self.points) :
-          if atoms_selected[i_seq] :
+          if atom_selection[i_seq] :
             glColor3f(*selection_colors[i_seq])
             glPushMatrix()
             glTranslated(*point)
@@ -301,9 +378,8 @@ class model_scene_with_selection (model_scene) :
 
 ########################################################################
 # VIEWER CLASS
-mouse_modes = ["Rotate view", "Show selection menu", "Toggle chain selection",
-               "Select residue", "Select atom", "Select range",
-                "Deselect range"]
+mouse_modes = ["Rotate view", "Show selection menu", "Toggle chain",
+  "Toggle residue", "Toggle atom", "Select range", "Deselect range"]
 class selection_editor_mixin (model_viewer_mixin) :
   def __init__ (self, *args, **kwds) :
     self.left_button_mode = 0
@@ -322,7 +398,7 @@ class selection_editor_mixin (model_viewer_mixin) :
 
   def draw_selections (self) :
     line_width = (self.settings.opengl.line_width +
-                  self.settings.selections.line_padding)
+                  (2 * self.settings.selections.line_padding))
     glLineWidth(line_width)
     glEnable(GL_LINE_SMOOTH)
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
@@ -395,10 +471,20 @@ class selection_editor_mixin (model_viewer_mixin) :
   def toggle_residue_selection (self) :
     model = self.get_model(self.current_object_id)
     if model is not None :
-      model.toggle_residue_selection(self.current_atom_i_seq)
+      model.toggle_residue_selection(self.current_atom_i_seq,
+        ignore_altloc=self.flag_select_all_conformers)
+      self.update_scene = True
+
+  def toggle_atom_selection (self) :
+    model = self.get_model(self.current_object_id)
+    if model is not None :
+      model.toggle_atom_selection(self.current_atom_i_seq)
       self.update_scene = True
 
   def process_range_selection (self) :
+    pass
+
+  def process_range_deselection (self) :
     pass
 
   def context_selection_menu (self) :
@@ -435,11 +521,15 @@ class selection_editor_mixin (model_viewer_mixin) :
   def OnToggleResidue (self, event) :
     pass
 
-def print_cb (selection_string, atoms_selected) :
-  print "%s (%s)" % (selection_string, atoms_selected.iselection().size())
+def print_cb (selection_string, atom_selection) :
+  print "%s (%s)" % (selection_string, atom_selection.iselection().size())
 
-def is_subset (selection1, selection2) :
-  union = selection1 & selection2
-  return union.count(True) == selection2.count(True)
+def assemble_selection_clauses (clauses) :
+  if len(clauses) == 0 :
+    return ""
+  elif len(clauses) == 1 : # not necessary, but looks nicer
+    return clauses[0]
+  else :
+    return "(" + ") or (".join(clauses) + ")"
 
 #---end
