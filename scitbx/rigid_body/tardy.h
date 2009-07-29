@@ -187,6 +187,7 @@ namespace scitbx { namespace rigid_body { namespace tardy {
     af::shared<ft> masses;
     bp::object tardy_tree;
     bp::object potential_obj;
+    ft near_singular_hinges_angular_tolerance_deg;
 
     // set in constructor
     af::shared<shared_ptr<body_t<FloatType> > > bodies;
@@ -220,13 +221,15 @@ namespace scitbx { namespace rigid_body { namespace tardy {
       af::shared<ft> const& masses_,
       bp::object const& tardy_tree_,
       bp::object const& potential_obj_,
-      ft const& near_singular_hinges_angular_tolerance_deg=5)
+      ft const& near_singular_hinges_angular_tolerance_deg_=5)
     :
       labels(labels_),
       sites(sites_),
       masses(masses_),
       tardy_tree(tardy_tree_),
       potential_obj(potential_obj_),
+      near_singular_hinges_angular_tolerance_deg(
+        near_singular_hinges_angular_tolerance_deg_),
       bodies(construct_bodies(
         sites.const_ref(),
         masses.const_ref(),

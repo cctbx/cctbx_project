@@ -76,6 +76,7 @@ def run():
   "$D/rigid_body/essence/tst_basic.py",
   "$D/rigid_body/essence/tst_tardy.py",
   "$D/rigid_body/essence/tst_energy_plots.py",
+  "$D/rigid_body/tst.py",
   "$D/rigid_body/proto/free_motion_reference_impl.py",
   "$D/rigid_body/proto/tst_featherstone.py",
   "$D/rigid_body/proto/tst_free_motion.py",
