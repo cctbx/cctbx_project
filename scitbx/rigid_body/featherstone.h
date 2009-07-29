@@ -108,8 +108,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
           af::tiny<ft, 6> const& vp = result[body->parent];
           vec3<ft> r_va = cb_up.r * vec3<ft>(&vp[0]);
           vec3<ft> vl = cb_up.r * vec3<ft>(&vp[3]) + cb_up.t.cross(r_va);
-          for(unsigned i=0;i<3;i++) res_ib[i] += r_va[i];
-          for(unsigned i=0;i<3;i++) res_ib[i+3] += vl[i];
+          res_ib = spatial_lib::as_tiny_6(r_va, vl);
         }
       }
       return result;

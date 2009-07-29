@@ -1,14 +1,15 @@
 #ifndef SCITBX_RIGID_BODY_TARDY_H
 #define SCITBX_RIGID_BODY_TARDY_H
 
-#include <boost/python/object.hpp>
+#include <boost/python/import.hpp>
 #include <boost/python/extract.hpp>
+#include <boost/python/object.hpp>
 
 #include <scitbx/rigid_body/body_lib.h>
 #include <scitbx/rigid_body/featherstone.h>
+#include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/array_family/selections.h>
 #include <scitbx/optional_copy.h>
-#include <vector>
 
 namespace scitbx { namespace rigid_body { namespace tardy {
 
@@ -195,13 +196,13 @@ namespace scitbx { namespace rigid_body { namespace tardy {
     protected:
       boost::optional<featherstone::system_model<ft> >
         featherstone_system_model_;
-      boost::optional<std::vector<rotr3<ft> > > aja_array_;
-      boost::optional<std::vector<mat3<ft> > > jar_array_;
+      boost::optional<af::shared<rotr3<ft> > > aja_array_;
+      boost::optional<af::shared<mat3<ft> > > jar_array_;
       boost::optional<af::shared<vec3<ft> > > sites_moved_;
       boost::optional<ft> e_pot_;
-      boost::optional<std::vector<vec3<ft> > > d_e_pot_d_sites_;
-      boost::optional<std::vector<af::tiny<ft, 6> > > f_ext_array_;
-      boost::optional<std::vector<af::small<ft, 6> > > qdd_array_;
+      boost::optional<af::shared<vec3<ft> > > d_e_pot_d_sites_;
+      boost::optional<af::shared<af::tiny<ft, 6> > > f_ext_array_;
+      boost::optional<af::shared<af::small<ft, 6> > > qdd_array_;
       boost::optional<ft> e_kin_;
     public:
 
@@ -345,7 +346,7 @@ SCITBX_LOC
         number_of_sites_in_each_tree,
       vec3<ft> const& value)
     {
-SCITBX_LOC
+SCITBX_LOC // {
 #undef SCITBX_LOC
         body_t<ft>* body = bodies[ib].get();
         boost::optional<vec3<ft> >
@@ -365,14 +366,14 @@ SCITBX_LOC
       return *featherstone_system_model_;
     }
 
-    std::vector<rotr3<ft> > const&
+    af::shared<rotr3<ft> > const&
     aja_array()
     {
       if (!aja_array_) {
         unsigned nb = bodies_size();
-        aja_array_ = std::vector<rotr3<ft> >();
+        aja_array_ = af::shared<rotr3<ft> >();
         aja_array_->reserve(nb);
-        for(std::size_t ib=0;ib<nb;ib++) {
+        for(unsigned ib=0;ib<nb;ib++) {
           body_t<ft> const* body = bodies[ib].get();
           rotr3<ft>
             aja = body->alignment->cb_b0
@@ -387,15 +388,15 @@ SCITBX_LOC
       return *aja_array_;
     }
 
-    std::vector<mat3<ft> > const&
+    af::shared<mat3<ft> > const&
     jar_array()
     {
       if (!jar_array_) {
         aja_array();
         unsigned nb = bodies_size();
-        jar_array_ = std::vector<mat3<ft> >();
+        jar_array_ = af::shared<mat3<ft> >();
         jar_array_->reserve(nb);
-        for(std::size_t ib=0;ib<nb;ib++) {
+        for(unsigned ib=0;ib<nb;ib++) {
           body_t<ft> const* body = bodies[ib].get();
           mat3<ft> jar = body->joint->cb_ps.r * body->alignment->cb_0b.r;
           if (body->parent != -1) {
@@ -405,6 +406,298 @@ SCITBX_LOC
         }
       }
       return *jar_array_;
+    }
+
+    af::shared<vec3<ft> > const&
+    sites_moved()
+    {
+      namespace bp = boost::python;
+      if (!sites_moved_) {
+        aja_array();
+        sites_moved_ = af::shared<vec3<ft> >(sites.size());
+        unsigned n_done = 0;
+        bp::object
+          clusters = tardy_tree.attr("cluster_manager").attr("clusters");
+        unsigned nb = bodies_size();
+        for(unsigned ib=0;ib<nb;ib++) {
+          rotr3<ft> const& aja = (*aja_array_)[ib];
+          af::shared<unsigned>
+            cluster = python_sequence_as_af_shared<unsigned>(clusters[ib]);
+          unsigned n = boost::numeric_cast<unsigned>(cluster.size());
+          for(unsigned i=0;i<n;i++) {
+            unsigned i_seq = cluster[i];
+            (*sites_moved_)[i_seq] = aja * sites[i_seq];
+            n_done++;
+          }
+        }
+        SCITBX_ASSERT(n_done == sites.size());
+      }
+      return *sites_moved_;
+    }
+
+    ft const&
+    e_pot()
+    {
+      namespace bp = boost::python;
+      if (!e_pot_) {
+        bp::object none;
+        if (potential_obj.ptr() == none.ptr()) {
+          e_pot_ = 0;
+        }
+        else {
+          e_pot_ = bp::extract<ft>(potential_obj.attr("e_pot")(
+            sites_moved()))();
+        }
+      }
+      return *e_pot_;
+    }
+
+    af::shared<vec3<ft> > const&
+    d_e_pot_d_sites()
+    {
+      namespace bp = boost::python;
+      if (!d_e_pot_d_sites_) {
+        bp::object none;
+        if (potential_obj.ptr() == none.ptr()) {
+          d_e_pot_d_sites_ = af::shared<vec3<ft> >(
+            sites.size(), vec3<ft>(0,0,0));
+        }
+        else {
+          d_e_pot_d_sites_ = bp::extract<af::shared<vec3<ft> > >(
+            potential_obj.attr("d_e_pot_d_sites")(
+              sites_moved()))();
+        }
+      }
+      return *d_e_pot_d_sites_;
+    }
+
+    af::shared<af::tiny<ft, 6> > const&
+    f_ext_array()
+    {
+      namespace bp = boost::python;
+      if (!f_ext_array_) {
+        jar_array();
+        d_e_pot_d_sites();
+        f_ext_array_ = af::shared<af::tiny<ft, 6> >();
+        bp::object
+          clusters = tardy_tree.attr("cluster_manager").attr("clusters");
+        unsigned nb = bodies_size();
+        for(unsigned ib=0;ib<nb;ib++) {
+          rotr3<ft> const& cb_0b = bodies[ib]->alignment->cb_0b;
+          mat3<ft> const& jar = (*jar_array_)[ib];
+          vec3<ft> f(0,0,0);
+          vec3<ft> nc(0,0,0);
+          af::shared<unsigned>
+            cluster = python_sequence_as_af_shared<unsigned>(clusters[ib]);
+          unsigned n = boost::numeric_cast<unsigned>(cluster.size());
+          for(unsigned i=0;i<n;i++) {
+            unsigned i_seq = cluster[i];
+            vec3<ft> const& s = sites[i_seq];
+            vec3<ft> force_bf = -(jar * (*d_e_pot_d_sites_)[i_seq]);
+            f += force_bf;
+            nc += (cb_0b * s).cross(force_bf);
+          }
+          f_ext_array_->push_back(spatial_lib::as_tiny_6(nc, f));
+        }
+      }
+      return *f_ext_array_;
+    }
+
+    af::shared<af::small<ft, 6> > const&
+    qdd_array()
+    {
+      if (!qdd_array_) {
+        qdd_array_ = featherstone_system_model().forward_dynamics_ab(
+          /*tau_array*/ af::const_ref<af::small<ft, 6> >(0, 0),
+          f_ext_array().const_ref(),
+          /*grav_accn*/ af::const_ref<ft>(0, 0));
+      }
+      return *qdd_array_;
+    }
+
+    ft const&
+    e_kin()
+    {
+      if (!e_kin_) {
+        e_kin_ = featherstone_system_model().e_kin();
+      }
+      return *e_kin_;
+    }
+
+    ft
+    e_tot()
+    {
+      return e_kin() + e_pot();
+    }
+
+    void
+    reset_e_kin(
+      ft const& e_kin_target,
+      ft const& e_kin_epsilon=1e-12)
+    {
+      SCITBX_ASSERT(e_kin_target >= 0);
+      SCITBX_ASSERT(e_kin_epsilon > 0);
+      ft e_kin = this->e_kin();
+      if (e_kin >= e_kin_epsilon) {
+        ft factor = std::sqrt(e_kin_target / e_kin);
+        unsigned nb = bodies_size();
+        for(unsigned ib=0;ib<nb;ib++) {
+          body_t<ft>* body = bodies[ib].get();
+          af::ref<ft> body_qd = body->qd();
+          for(std::size_t i=0;i<body_qd.size();i++) {
+            body_qd[i] *= factor;
+          }
+        }
+      }
+      flag_velocities_as_changed();
+    }
+
+    void
+    assign_zero_velocities()
+    {
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft>* body = bodies[ib].get();
+        af::ref<ft> body_qd = body->qd();
+        af::const_ref<ft> joint_qd_zero = body->joint->qd_zero();
+        SCITBX_ASSERT(joint_qd_zero.size() == body_qd.size());
+        std::copy(joint_qd_zero.begin(), joint_qd_zero.end(), body_qd.begin());
+      }
+      flag_velocities_as_changed();
+    }
+
+    boost::optional<af::shared<ft> >
+    assign_random_velocities(
+      boost::optional<ft> const& e_kin_target=boost::optional<ft>(),
+      ft const& e_kin_epsilon=1e-12,
+      boost::python::object random_gauss=boost::python::object())
+    {
+      namespace bp = boost::python;
+      ft work_e_kin_target;
+      if (!e_kin_target) {
+        work_e_kin_target = 1;
+      }
+      else if (*e_kin_target == 0) {
+        assign_zero_velocities();
+        return boost::optional<af::shared<ft> >();
+      }
+      else {
+        SCITBX_ASSERT(*e_kin_target >= 0);
+        work_e_kin_target = *e_kin_target;
+      }
+      af::shared<ft> qd_e_kin_scales =
+        featherstone_system_model().qd_e_kin_scales(e_kin_epsilon);
+      if (degrees_of_freedom != 0) {
+        qd_e_kin_scales *= boost::numeric_cast<ft>(
+          std::sqrt(
+              work_e_kin_target
+            / boost::numeric_cast<ft>(degrees_of_freedom)));
+      }
+      bp::object none;
+      if (random_gauss.ptr() == none.ptr()) {
+        random_gauss = bp::import("random").attr("gauss");
+      }
+      unsigned i_qd = 0;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft>* body = bodies[ib].get();
+        af::small<ft, 6> qd_new(af::adapt(body->joint->qd_zero()));
+        unsigned n = boost::numeric_cast<unsigned>(qd_new.size());
+        for(unsigned i=0;i<n;i++) {
+          qd_new[i] += bp::extract<ft>(
+            random_gauss(/*mu*/ 0, /*sigma*/ qd_e_kin_scales[i_qd]))();
+        }
+        i_qd += n;
+        body->set_qd(qd_new);
+      }
+      SCITBX_ASSERT(i_qd == degrees_of_freedom);
+      flag_velocities_as_changed();
+      if (e_kin_target) {
+        reset_e_kin(*e_kin_target, e_kin_epsilon);
+      }
+      return boost::optional<af::shared<ft> >(qd_e_kin_scales);
+    }
+
+    void
+    dynamics_step(
+      ft const& delta_t)
+    {
+      qdd_array();
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft>* body = bodies[ib].get();
+        body->joint = body->joint->time_step_position(
+          body->qd(), delta_t);
+      }
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft>* body = bodies[ib].get();
+        body->set_qd(body->joint->time_step_velocity(
+          body->qd(), (*qdd_array_)[ib].const_ref(), delta_t));
+      }
+      flag_positions_as_changed();
+    }
+
+    af::shared<af::small<ft, 7> >
+    d_pot_d_q()
+    {
+      return featherstone_system_model().d_pot_d_q(f_ext_array().const_ref());
+    }
+
+    af::shared<ft>
+    pack_q()
+    {
+      af::shared<ft> result;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        af::small<ft, 7> q = bodies[ib]->joint->get_q();
+        result.extend(q.begin(), q.end());
+      }
+      return result;
+    }
+
+    void
+    unpack_q(
+      af::const_ref<ft> const& packed_q)
+    {
+      unsigned i = 0;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft>* body = bodies[ib].get();
+        unsigned n = body->joint->q_size;
+        body->joint = body->joint->new_q(af::const_ref<ft>(&packed_q[i], n));
+        i += n;
+      }
+      SCITBX_ASSERT(i == packed_q.size());
+      flag_positions_as_changed();
+    }
+
+    af::shared<ft>
+    pack_qd()
+    {
+      af::shared<ft> result;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        af::const_ref<ft> qd = bodies[ib]->qd();
+        result.extend(qd.begin(), qd.end());
+      }
+      return result;
+    }
+
+    void
+    unpack_qd(
+      af::const_ref<ft> const& packed_qd)
+    {
+      unsigned i = 0;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft>* body = bodies[ib].get();
+        unsigned n = body->joint->degrees_of_freedom;
+        body->set_qd(af::small<ft, 6>(af::adapt(
+          af::const_ref<ft>(&packed_qd[i], n))));
+        i += n;
+      }
+      SCITBX_ASSERT(i == packed_qd.size());
+      flag_velocities_as_changed();
     }
   };
 

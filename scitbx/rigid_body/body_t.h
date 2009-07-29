@@ -27,6 +27,14 @@ namespace scitbx { namespace rigid_body {
     qd() const = 0;
 
     virtual
+    af::ref<ft>
+    qd()
+    {
+      af::const_ref<ft> cr = qd();
+      return af::ref<ft>(const_cast<ft*>(cr.begin()), cr.size());
+    }
+
+    virtual
     void
     set_qd(
       af::small<ft, 6> const& value) = 0;
