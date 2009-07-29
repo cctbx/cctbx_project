@@ -37,6 +37,18 @@ def compare_essence_and_fast_tardy_models(etm):
   ftm.subtract_from_linear_velocities(
     number_of_sites_in_each_tree=fnosiet,
     value=(0,0,0))
+  e = etm.sites_moved()
+  f = ftm.sites_moved()
+  assert approx_equal(f, e)
+  e = etm.e_pot()
+  f = ftm.e_pot()
+  assert approx_equal(f, e)
+  e = etm.d_e_pot_d_sites()
+  f = ftm.d_e_pot_d_sites()
+  assert approx_equal(f, e)
+  e = etm.e_kin()
+  f = ftm.e_kin()
+  assert approx_equal(f, e)
 
 def run(args):
   assert len(args) == 0
