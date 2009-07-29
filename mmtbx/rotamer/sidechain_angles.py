@@ -37,7 +37,8 @@ class SidechainAngles:
   chisPerAA = {}
   anglesForAA = {}
   atomsForAngle = {}
-  #rotamersForAA = {}
+  rotamersForAA = {}
+  anglesForRot = {}
 
   def __init__(self, show_errs):
     self.show_errors = show_errs
@@ -50,12 +51,18 @@ class SidechainAngles:
       self.chisPerAA[aa] = f.properties[aa+".chis"] #gives aaName -> # of chis
       #print f.properties[aa+".angles"].split(",")
       anglelist = f.properties[aa+".angles"].split(",")
+      rotamerlist = f.properties[aa+".rotamers"].split(",")
       #print anglelist.count('')
       self.anglesForAA[aa] = anglelist #aaName -> [mobile angles]
       for angle in anglelist:
         if angle != '':
           key = aa+"."+angle
           self.atomsForAngle[key] = f.properties[key].split(",") #aaName.angle -> atoms
+      self.rotamersForAA[aa] = rotamerlist
+      for rotamer in rotamerlist:
+        if rotamer != '':
+          key = aa+"."+rotamer
+          self.anglesForRot[key] = f.properties[key]
 
   def measureChiAngles(self, res, atom_dict = None):
     resName = res.resname.lower().strip()
