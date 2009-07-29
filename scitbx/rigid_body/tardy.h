@@ -191,6 +191,7 @@ namespace scitbx { namespace rigid_body { namespace tardy {
 
     // set in constructor
     af::shared<shared_ptr<body_t<FloatType> > > bodies;
+    unsigned number_of_trees;
     unsigned degrees_of_freedom;
 
     // dynamically maintained
@@ -235,11 +236,13 @@ namespace scitbx { namespace rigid_body { namespace tardy {
         masses.const_ref(),
         tardy_tree.attr("cluster_manager"),
         near_singular_hinges_angular_tolerance_deg)),
+      number_of_trees(0),
       degrees_of_freedom(0)
     {
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
         body_t<ft> const* body = bodies[ib].get();
+        if (body->parent == -1) number_of_trees++;
         degrees_of_freedom += body->joint->degrees_of_freedom;
       }
       flag_positions_as_changed();
@@ -268,7 +271,7 @@ namespace scitbx { namespace rigid_body { namespace tardy {
     af::shared<std::size_t>
     root_indices() const
     {
-      af::shared<std::size_t> result;
+      af::shared<std::size_t> result((af::reserve(number_of_trees)));
       std::size_t nb = bodies.size();
       for(std::size_t ib=0;ib<nb;ib++) {
         body_t<ft> const* body = bodies[ib].get();
@@ -276,13 +279,15 @@ namespace scitbx { namespace rigid_body { namespace tardy {
           result.push_back(ib);
         }
       }
+      SCITBX_ASSERT(result.size() == number_of_trees);
       return result;
     }
 
     af::shared<af::tiny<std::size_t, 2> >
     number_of_sites_in_each_tree() const
     {
-      af::shared<af::tiny<std::size_t, 2> > result;
+      af::shared<af::tiny<std::size_t, 2> >
+        result((af::reserve(number_of_trees)));
       unsigned nb = bodies_size();
       boost::scoped_array<unsigned> accu(new unsigned[nb]);
       std::fill_n(accu.get(), nb, unsigned(0));
@@ -297,13 +302,15 @@ namespace scitbx { namespace rigid_body { namespace tardy {
           accu[body->parent] += accu[ib];
         }
       }
+      SCITBX_ASSERT(result.size() == number_of_trees);
       return result;
     }
 
     af::shared<std::pair<int, double> >
     sum_of_masses_in_each_tree() const
     {
-      af::shared<std::pair<int, double> > result;
+      af::shared<std::pair<int, double> >
+        result((af::reserve(number_of_trees)));
       unsigned nb = bodies_size();
       boost::scoped_array<ft> accu(new ft[nb]);
       std::fill_n(accu.get(), nb, ft(0));
@@ -320,6 +327,7 @@ namespace scitbx { namespace rigid_body { namespace tardy {
           accu[body->parent] += accu[ib];
         }
       }
+      SCITBX_ASSERT(result.size() == number_of_trees);
       return result;
     }
 
@@ -336,11 +344,12 @@ namespace scitbx { namespace rigid_body { namespace tardy {
         nosiet = this->number_of_sites_in_each_tree(); \
         number_of_sites_in_each_tree = nosiet->const_ref(); \
       } \
-      SCITBX_ASSERT(number_of_sites_in_each_tree.size() == bodies.size()); \
+      SCITBX_ASSERT(number_of_sites_in_each_tree.size() == number_of_trees); \
       std::size_t nb = bodies.size(); \
       for( \
-        af::tiny<std::size_t, 2> const* nosiet_it=nosiet->begin(); \
-        nosiet_it!=nosiet->end(); \
+        af::tiny<std::size_t, 2> const* \
+          nosiet_it=number_of_sites_in_each_tree.begin(); \
+        nosiet_it!=number_of_sites_in_each_tree.end(); \
         nosiet_it++) \
       { \
         std::size_t ib = (*nosiet_it)[0]; \
