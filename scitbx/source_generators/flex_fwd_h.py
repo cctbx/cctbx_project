@@ -106,6 +106,8 @@ namespace scitbx { namespace af { namespace boost_python {
     flex_fwd<std::complex<double> >();
     flex_fwd<std::string>();
     flex_fwd<vec3<double> >();
+    flex_fwd<tiny<std::size_t, 2> >();
+    flex_fwd<sym_mat3<double> >();
 
     // for shared_ext.cpp
     flex_fwd<std::vector<std::size_t> >();
