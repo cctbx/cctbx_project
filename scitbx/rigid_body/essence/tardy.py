@@ -84,6 +84,8 @@ class model(object):
     O.masses = masses
     O.tardy_tree = tardy_tree
     O.potential_obj = potential_obj
+    O.near_singular_hinges_angular_tolerance_deg = \
+      near_singular_hinges_angular_tolerance_deg
     O.bodies = construct_bodies(
       sites=sites,
       masses=masses,

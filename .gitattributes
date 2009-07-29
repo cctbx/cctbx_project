@@ -609,6 +609,7 @@ scitbx/rigid_body/proto/wx_joint_lib.py svneol=native#text/x-python
 scitbx/rigid_body/proto/wx_molecules.py svneol=native#text/x-python
 scitbx/rigid_body/spatial_lib.h svneol=native#text/plain
 scitbx/rigid_body/tardy.h svneol=native#text/plain
+scitbx/rigid_body/tst.py svneol=native#text/x-python
 scitbx/rotr3.h svneol=native#text/plain
 scitbx/simplex.py -text
 scitbx/source_generators/flex_fwd_h.py -text

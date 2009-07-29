@@ -25,6 +25,9 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     mass_points_cache(
       af::const_ref<vec3<ft> > const& sites_,
       af::const_ref<ft> const& masses_)
+    :
+      sites(sites_),
+      masses(masses_)
     {
       SCITBX_ASSERT(masses.size() == sites.size());
     }
@@ -225,7 +228,7 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
         new joint_lib::revolute_alignment<ft>(pivot, normal));
       this->i_spatial = mp.spatial_inertia(this->alignment->cb_0b);
       this->joint = shared_ptr<joint_t<ft> >(
-        new joint_lib::revolute<ft>(af::tiny<ft, 1>(qd_)));
+        new joint_lib::revolute<ft>(af::tiny<ft, 1>(0)));
       qd_ = this->joint->qd_zero()[0];
     }
 
