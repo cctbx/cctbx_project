@@ -1348,6 +1348,40 @@ def exercise_flex_vec2_double():
   assert a.add_selected(indices=i, values=v) is a
   assert approx_equal(a, [(7,4,-3), (-2,3,4), (-1,13,5)])
 
+def exercise_flex_sym_mat3_double():
+  a = flex.sym_mat3_double()
+  assert a.size() == 0
+  a = flex.sym_mat3_double(132)
+  for x in a:
+    assert x == (0,0,0,0,0,0)
+  a = flex.sym_mat3_double(((1,2,3,4,5,6), (2,3,4,5,6,7)))
+  assert a.size() == 2
+  assert tuple(a) == ((1,2,3,4,5,6), (2,3,4,5,6,7))
+  assert approx_equal(a.norms(), (12.961481396815721, 15.779733838059499))
+  p = pickle.dumps(a)
+  b = pickle.loads(p)
+  assert tuple(a) == tuple(b)
+  assert approx_equal(tuple(a.as_double()), (1,2,3,4,5,6,2,3,4,5,6,7))
+  b = flex.sym_mat3_double(a.as_double())
+  assert tuple(a) == tuple(b)
+  b = flex.sym_mat3_double([(7,4,-8,2,4,3), (6,2,0,3,5,1)])
+  assert approx_equal(a+b, [(8,6,-5,6,9,9), (8,5,4,8,11,8)])
+  assert approx_equal(a-b, [(-6,-2,11,2,1,3), (-4,1,4,2,1,6)])
+  b *= 3
+  assert approx_equal(b, [(21,12,-24,6,12,9), (18,6,0,9,15,3)])
+
+def exercise_flex_tiny_size_t_2():
+  a = flex.tiny_size_t_2()
+  assert a.size() == 0
+  a = flex.tiny_size_t_2(132)
+  for x in a:
+    assert x == (0,0)
+  a = flex.tiny_size_t_2(((1,2), (2,3), (3,4)))
+  assert a.size() == 3
+  assert tuple(a) == ((1,2), (2,3), (3,4))
+  assert tuple(a.column(0)) == (1,2,3)
+  assert tuple(a.column(1)) == (2,3,4)
+
 def exercise_histogram():
   x = flex.double(xrange(20))
   h = flex.histogram(data=x)
@@ -2594,6 +2628,8 @@ def run(iterations):
     exercise_sort()
     exercise_flex_vec3_double()
     exercise_flex_vec2_double()
+    exercise_flex_sym_mat3_double()
+    exercise_flex_tiny_size_t_2()
     exercise_histogram()
     exercise_linear_regression()
     exercise_linear_correlation()
