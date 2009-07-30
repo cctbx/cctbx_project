@@ -136,7 +136,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
         body_t<ft> const* body = bodies[ib].get();
-        result.push_back(body->i_spatial);
+        result.push_back(body->i_spatial.deep_copy());
       }
       af::shared<af::versa<ft, af::mat_grid> > xup_array = this->xup_array();
       for(unsigned ib=nb;ib!=0;) {
