@@ -674,7 +674,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
       af::const_ref<ft> const& qd) const
     {
       SCITBX_ASSERT(qd.size() == 3);
-      return boost::optional<vec3<ft> >(qr);
+      return boost::optional<vec3<ft> >(&qd[0]);
     }
 
     virtual
