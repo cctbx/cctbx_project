@@ -142,8 +142,8 @@ namespace scitbx { namespace rigid_body {
     af::tiny<ElementType, N> const& a,
     af::tiny<ElementType, N> const& b)
   {
-    ElementType result = a[0] * a[0];
-    for(std::size_t i=1;i<N;i++) result += a[i] * a[i];
+    ElementType result = a[0] * b[0];
+    for(std::size_t i=1;i<N;i++) result += a[i] * b[i];
     return result;
   }
 
