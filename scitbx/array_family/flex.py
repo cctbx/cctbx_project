@@ -195,6 +195,9 @@ random_double_unit_quaternion = random_generator.random_double_unit_quaternion
 random_double_r3_rotation_matrix \
   = random_generator.random_double_r3_rotation_matrix
 
+median = ext.median_functor(seed=get_random_seed())
+
+
 class py_object(object):
 
   def __init__(self, accessor, value=None, values=None, value_factory=None):
