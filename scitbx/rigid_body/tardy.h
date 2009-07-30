@@ -205,8 +205,8 @@ namespace scitbx { namespace rigid_body { namespace tardy {
       boost::optional<ft> e_pot_;
       boost::optional<af::shared<vec3<ft> > > d_e_pot_d_sites_;
       boost::optional<af::shared<af::tiny<ft, 6> > > f_ext_array_;
-      boost::optional<af::shared<af::small<ft, 6> > > qdd_array_;
       boost::optional<ft> e_kin_;
+      boost::optional<af::shared<af::small<ft, 6> > > qdd_array_;
     public:
 
     unsigned
@@ -267,8 +267,8 @@ namespace scitbx { namespace rigid_body { namespace tardy {
     void
     flag_velocities_as_changed()
     {
-      qdd_array_.reset();
       e_kin_.reset();
+      qdd_array_.reset();
     }
 
     af::shared<std::size_t>
@@ -617,19 +617,6 @@ SCITBX_LOC // {
       return result;
     }
 
-    //! Not available in Python.
-    af::shared<af::small<ft, 6> > const&
-    qdd_array()
-    {
-      if (!qdd_array_) {
-        qdd_array_ = featherstone_system_model().forward_dynamics_ab(
-          /*tau_array*/ af::const_ref<af::small<ft, 6> >(0, 0),
-          f_ext_array().const_ref(),
-          /*grav_accn*/ af::const_ref<ft>(0, 0));
-      }
-      return *qdd_array_;
-    }
-
     ft const&
     e_kin()
     {
@@ -676,7 +663,9 @@ SCITBX_LOC // {
         af::ref<ft> body_qd = body->qd();
         af::const_ref<ft> joint_qd_zero = body->joint->qd_zero();
         SCITBX_ASSERT(joint_qd_zero.size() == body_qd.size());
-        std::copy(joint_qd_zero.begin(), joint_qd_zero.end(), body_qd.begin());
+        std::copy(
+          joint_qd_zero.begin(),
+          joint_qd_zero.end(), body_qd.begin());
       }
       flag_velocities_as_changed();
     }
@@ -729,6 +718,67 @@ SCITBX_LOC // {
         reset_e_kin(*e_kin_target, e_kin_epsilon);
       }
       return boost::optional<af::shared<ft> >(qd_e_kin_scales);
+    }
+
+    //! Returns a packed array of joint force variables (tau_packed).
+    af::shared<ft>
+    inverse_dynamics(
+      af::const_ref<ft> const& qdd_packed,
+      af::const_ref<ft> const& f_ext_packed=af::const_ref<ft>(0,0),
+      af::const_ref<ft> const& grav_accn=af::const_ref<ft>(0,0))
+    {
+      SCITBX_ASSERT(qdd_packed.size() == degrees_of_freedom);
+      SCITBX_ASSERT(
+        f_ext_packed.size() == (
+          f_ext_packed.begin() == 0 ? 0 : bodies.size() * 6));
+      af::shared<ft> tau_packed((af::reserve(degrees_of_freedom)));
+      unsigned nb = bodies_size();
+      af::shared<af::small<ft, 6> > qdd_array((af::reserve(bodies.size())));
+      {
+        unsigned i = 0;
+        for(unsigned ib=0;ib<nb;ib++) {
+          body_t<ft> const* body = bodies[ib].get();
+          unsigned n = body->joint->degrees_of_freedom;
+          qdd_array.push_back(
+            af::small<ft, 6>(af::adapt(
+              af::const_ref<ft>(&qdd_packed[i], n))));
+          i += n;
+        }
+        SCITBX_ASSERT(i == degrees_of_freedom);
+      }
+      af::shared<af::tiny<ft, 6> > f_ext_array;
+      if (f_ext_packed.begin() != 0) {
+        f_ext_array.resize(bodies.size());
+        unsigned i = 0;
+        for(unsigned ib=0;ib<nb;ib++,i+=6) {
+          std::copy(
+            &f_ext_packed[i],
+            &f_ext_packed[i+6], f_ext_array[ib].begin());
+        }
+      }
+      af::shared<af::small<ft, 6> >
+        tau_array = featherstone_system_model().inverse_dynamics(
+          qdd_array.const_ref(),
+          f_ext_array.const_ref(),
+          grav_accn);
+      for(unsigned ib=0;ib<nb;ib++) {
+        tau_packed.extend(tau_array[ib].begin(), tau_array[ib].end());
+      }
+      SCITBX_ASSERT(tau_packed.size() == degrees_of_freedom);
+      return tau_packed;
+    }
+
+    //! Not available in Python.
+    af::shared<af::small<ft, 6> > const&
+    qdd_array()
+    {
+      if (!qdd_array_) {
+        qdd_array_ = featherstone_system_model().forward_dynamics_ab(
+          /*tau_array*/ af::const_ref<af::small<ft, 6> >(0, 0),
+          f_ext_array().const_ref(),
+          /*grav_accn*/ af::const_ref<ft>(0, 0));
+      }
+      return *qdd_array_;
     }
 
     void

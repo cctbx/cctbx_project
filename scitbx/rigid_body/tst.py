@@ -138,6 +138,65 @@ def compare_essence_and_fast_tardy_models(etm):
   xxx_check_spatial_inertia()
   assert approx_equal(e, f)
   #
+  mt = flex.mersenne_twister(seed=0)
+  qdd_rand_array = []
+  for body in etm.bodies:
+    qdd_rand_array.append(matrix.col(
+      mt.random_double(size=body.joint.degrees_of_freedom)*2-1))
+  f_ext_rand_array = []
+  for ib in xrange(len(etm.bodies)):
+    f_ext_rand_array.append(matrix.col(
+      mt.random_double(size=6)*2-1))
+  grav_accn_rand = matrix.col(mt.random_double(size=6)*2-1)
+  def pack_array(array, packed_size=None):
+    result = flex.double()
+    if (packed_size is not None):
+      result.reserve(packed_size)
+    for sub in array:
+      result.extend(flex.double(sub))
+    if (packed_size is not None):
+      assert result.size() == packed_size
+    return result
+  qdd_rand_packed = pack_array(
+    array=qdd_rand_array, packed_size=etm.degrees_of_freedom)
+  f_ext_rand_packed = pack_array(
+    array=f_ext_rand_array, packed_size=len(etm.bodies)*6)
+  def etm_inverse_dynamics(qdd_array, f_ext_array=None, grav_accn=None):
+    return pack_array(
+      array=etm.featherstone_system_model().inverse_dynamics(
+        qdd_array=qdd_array,
+        f_ext_array=f_ext_array,
+        grav_accn=grav_accn),
+      packed_size=etm.degrees_of_freedom)
+  e = etm_inverse_dynamics(
+    qdd_array=qdd_rand_array)
+  f = ftm.inverse_dynamics(
+    qdd_packed=qdd_rand_packed)
+  assert approx_equal(e, f)
+  e = etm_inverse_dynamics(
+    qdd_array=qdd_rand_array,
+    f_ext_array=f_ext_rand_array)
+  f = ftm.inverse_dynamics(
+    qdd_packed=qdd_rand_packed,
+    f_ext_packed=f_ext_rand_packed)
+  assert approx_equal(e, f)
+  e = etm_inverse_dynamics(
+    qdd_array=qdd_rand_array,
+    grav_accn=grav_accn_rand)
+  f = ftm.inverse_dynamics(
+    qdd_packed=qdd_rand_packed,
+    grav_accn=flex.double(grav_accn_rand))
+  assert approx_equal(e, f)
+  e = etm_inverse_dynamics(
+    qdd_array=qdd_rand_array,
+    f_ext_array=f_ext_rand_array,
+    grav_accn=grav_accn_rand)
+  f = ftm.inverse_dynamics(
+    qdd_packed=qdd_rand_packed,
+    f_ext_packed=f_ext_rand_packed,
+    grav_accn=flex.double(grav_accn_rand))
+  assert approx_equal(e, f)
+  #
   etm.unpack_q(q_packed=q_packed_orig)
   etm.unpack_qd(qd_packed=qd_packed_orig)
 
