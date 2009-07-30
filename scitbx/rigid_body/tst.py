@@ -20,15 +20,14 @@ def compare_essence_and_fast_tardy_models(etm):
   assert ftm.bodies_size() == len(etm.bodies)
   assert ftm.number_of_trees == etm.number_of_trees
   assert ftm.degrees_of_freedom == etm.degrees_of_freedom
-  assert ftm.packed_q_size == etm.packed_q_size
-  assert ftm.packed_qd_size == etm.packed_qd_size
+  assert ftm.q_packed_size == etm.q_packed_size
   ftm.flag_positions_as_changed()
   ftm.flag_velocities_as_changed()
   #
   assert list(ftm.root_indices()) == etm.root_indices()
   #
-  packed_q_orig = etm.pack_q()
-  packed_qd_orig = etm.pack_qd()
+  q_packed_orig = etm.pack_q()
+  qd_packed_orig = etm.pack_qd()
   #
   def check_packed():
     e = etm.pack_q()
@@ -39,19 +38,19 @@ def compare_essence_and_fast_tardy_models(etm):
     assert approx_equal(e, f)
   check_packed()
   mt = flex.mersenne_twister(seed=0)
-  packed_q_rand = mt.random_double(size=packed_q_orig.size())*2-1
-  packed_qd_rand = mt.random_double(size=packed_qd_orig.size())*2-1
-  for tm in [etm, ftm]: tm.unpack_q(packed_q=packed_q_rand)
+  q_packed_rand = mt.random_double(size=q_packed_orig.size())*2-1
+  qd_packed_rand = mt.random_double(size=qd_packed_orig.size())*2-1
+  for tm in [etm, ftm]: tm.unpack_q(q_packed=q_packed_rand)
   check_packed()
-  for tm in [etm, ftm]: tm.unpack_q(packed_q=packed_q_orig)
+  for tm in [etm, ftm]: tm.unpack_q(q_packed=q_packed_orig)
   check_packed()
-  for tm in [etm, ftm]: tm.unpack_qd(packed_qd=packed_qd_rand)
+  for tm in [etm, ftm]: tm.unpack_qd(qd_packed=qd_packed_rand)
   check_packed()
-  for tm in [etm, ftm]: tm.unpack_qd(packed_qd=packed_qd_orig)
+  for tm in [etm, ftm]: tm.unpack_qd(qd_packed=qd_packed_orig)
   check_packed()
-  for tm in [etm, ftm]: tm.unpack_q(packed_q=packed_q_rand)
+  for tm in [etm, ftm]: tm.unpack_q(q_packed=q_packed_rand)
   check_packed()
-  for tm in [etm, ftm]: tm.unpack_qd(packed_qd=packed_qd_rand)
+  for tm in [etm, ftm]: tm.unpack_qd(qd_packed=qd_packed_rand)
   check_packed()
   #
   fnosiet = ftm.number_of_sites_in_each_tree()
@@ -139,8 +138,8 @@ def compare_essence_and_fast_tardy_models(etm):
   xxx_check_spatial_inertia()
   assert approx_equal(e, f)
   #
-  etm.unpack_q(packed_q=packed_q_orig)
-  etm.unpack_qd(packed_qd=packed_qd_orig)
+  etm.unpack_q(q_packed=q_packed_orig)
+  etm.unpack_qd(qd_packed=qd_packed_orig)
 
 def run(args):
   assert len(args) == 0

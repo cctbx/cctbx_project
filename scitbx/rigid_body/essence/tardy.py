@@ -93,13 +93,11 @@ class model(object):
         near_singular_hinges_angular_tolerance_deg)
     O.number_of_trees = 0
     O.degrees_of_freedom = 0
-    O.packed_q_size = 0
-    O.packed_qd_size = 0
+    O.q_packed_size = 0
     for body in O.bodies:
       if (body.parent == -1): O.number_of_trees += 1
       O.degrees_of_freedom += body.joint.degrees_of_freedom
-      O.packed_q_size += body.joint.q_size
-    O.packed_qd_size = O.degrees_of_freedom
+      O.q_packed_size += body.joint.q_size
     O.flag_positions_as_changed()
 
   def flag_positions_as_changed(O):
@@ -125,38 +123,38 @@ class model(object):
 
   def pack_q(O):
     result = flex.double()
-    result.reserve(O.packed_q_size)
+    result.reserve(O.q_packed_size)
     for body in O.bodies:
       result.extend(flex.double(body.joint.get_q()))
-    assert result.size() == O.packed_q_size
+    assert result.size() == O.q_packed_size
     return result
 
-  def unpack_q(O, packed_q):
-    assert packed_q.size() == O.packed_q_size
+  def unpack_q(O, q_packed):
+    assert q_packed.size() == O.q_packed_size
     i = 0
     for body in O.bodies:
       n = body.joint.q_size
-      body.joint = body.joint.new_q(q=packed_q[i:i+n])
+      body.joint = body.joint.new_q(q=q_packed[i:i+n])
       i += n
-    assert i == O.packed_q_size
+    assert i == O.q_packed_size
     O.flag_positions_as_changed()
 
   def pack_qd(O):
     result = flex.double()
-    result.reserve(O.packed_qd_size)
+    result.reserve(O.degrees_of_freedom)
     for body in O.bodies:
       result.extend(flex.double(body.qd))
-    assert result.size() == O.packed_qd_size
+    assert result.size() == O.degrees_of_freedom
     return result
 
-  def unpack_qd(O, packed_qd):
-    assert packed_qd.size() == O.packed_qd_size
+  def unpack_qd(O, qd_packed):
+    assert qd_packed.size() == O.degrees_of_freedom
     i = 0
     for body in O.bodies:
       n = body.joint.degrees_of_freedom
-      body.qd = matrix.col(packed_qd[i:i+n])
+      body.qd = matrix.col(qd_packed[i:i+n])
       i += n
-    assert i == O.packed_qd_size
+    assert i == O.degrees_of_freedom
     O.flag_velocities_as_changed()
 
   def _accumulate_in_each_tree(O, attr):
@@ -401,7 +399,7 @@ class refinery(object):
 
   def compute_functional_and_gradients(O):
     O.function_evaluations_total += 1
-    O.tardy_model.unpack_q(packed_q=O.x)
+    O.tardy_model.unpack_q(q_packed=O.x)
     f = O.tardy_model.e_pot()
     g = O.tardy_model.d_e_pot_d_q_packed()
     return f, g

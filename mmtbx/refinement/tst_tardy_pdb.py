@@ -258,8 +258,8 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
           else:
             if (rmsd <= target_rmsd + target_rmsd_tol):
               break
-            tardy_model.unpack_q(packed_q=prev_q)
-            tardy_model.unpack_qd(packed_qd=prev_qd)
+            tardy_model.unpack_q(q_packed=prev_q)
+            tardy_model.unpack_qd(qd_packed=prev_qd)
             delta_t *= 0.5
           prev_q = None
           prev_qd = None
@@ -291,7 +291,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
         print >> log, "  tardy_displacements=%s" % ",".join(
           [str(v) for v in q])
         raise Sorry("Incompatible tardy_displacements.")
-      tardy_model.unpack_q(packed_q=flex.double(params.tardy_displacements))
+      tardy_model.unpack_q(q_packed=flex.double(params.tardy_displacements))
       sites = tardy_model.sites_moved()
   #
   if (params.emulate_cartesian):

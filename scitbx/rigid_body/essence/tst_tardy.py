@@ -130,7 +130,7 @@ def exercise_random_velocities(tardy_model):
     tardy_model.assign_random_velocities(e_kin_target=e_kin_target)
     assert approx_equal(tardy_model.e_kin(), e_kin_target)
   assert not approx_equal(tardy_model.pack_qd(), prev_qd, out=None)
-  tardy_model.unpack_qd(packed_qd=prev_qd)
+  tardy_model.unpack_qd(qd_packed=prev_qd)
   assert approx_equal(tardy_model.pack_qd(), prev_qd)
 
 def exercise_accumulate_in_each_tree():

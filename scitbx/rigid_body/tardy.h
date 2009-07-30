@@ -193,8 +193,7 @@ namespace scitbx { namespace rigid_body { namespace tardy {
     af::shared<shared_ptr<body_t<FloatType> > > bodies;
     unsigned number_of_trees;
     unsigned degrees_of_freedom;
-    unsigned packed_q_size;
-    unsigned packed_qd_size;
+    unsigned q_packed_size;
 
     // dynamically maintained
     protected:
@@ -240,17 +239,15 @@ namespace scitbx { namespace rigid_body { namespace tardy {
         near_singular_hinges_angular_tolerance_deg)),
       number_of_trees(0),
       degrees_of_freedom(0),
-      packed_q_size(0),
-      packed_qd_size(0)
+      q_packed_size(0)
     {
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
         body_t<ft> const* body = bodies[ib].get();
         if (body->parent == -1) number_of_trees++;
         degrees_of_freedom += body->joint->degrees_of_freedom;
-        packed_q_size += body->joint->q_size;
+        q_packed_size += body->joint->q_size;
       }
-      packed_qd_size = degrees_of_freedom;
       flag_positions_as_changed();
     }
 
@@ -298,24 +295,24 @@ namespace scitbx { namespace rigid_body { namespace tardy {
         af::small<ft, 7> q = bodies[ib]->joint->get_q();
         result.extend(q.begin(), q.end());
       }
-      SCITBX_ASSERT(result.size() == packed_q_size);
+      SCITBX_ASSERT(result.size() == q_packed_size);
       return result;
     }
 
     void
     unpack_q(
-      af::const_ref<ft> const& packed_q)
+      af::const_ref<ft> const& q_packed)
     {
-      SCITBX_ASSERT(packed_q.size() == packed_q_size);
+      SCITBX_ASSERT(q_packed.size() == q_packed_size);
       unsigned i = 0;
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
         body_t<ft>* body = bodies[ib].get();
         unsigned n = body->joint->q_size;
-        body->joint = body->joint->new_q(af::const_ref<ft>(&packed_q[i], n));
+        body->joint = body->joint->new_q(af::const_ref<ft>(&q_packed[i], n));
         i += n;
       }
-      SCITBX_ASSERT(i == packed_q_size);
+      SCITBX_ASSERT(i == q_packed_size);
       flag_positions_as_changed();
     }
 
@@ -328,25 +325,25 @@ namespace scitbx { namespace rigid_body { namespace tardy {
         af::const_ref<ft> qd = bodies[ib]->qd();
         result.extend(qd.begin(), qd.end());
       }
-      SCITBX_ASSERT(result.size() == packed_qd_size);
+      SCITBX_ASSERT(result.size() == degrees_of_freedom);
       return result;
     }
 
     void
     unpack_qd(
-      af::const_ref<ft> const& packed_qd)
+      af::const_ref<ft> const& qd_packed)
     {
-      SCITBX_ASSERT(packed_qd.size() == packed_qd_size);
+      SCITBX_ASSERT(qd_packed.size() == degrees_of_freedom);
       unsigned i = 0;
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
         body_t<ft>* body = bodies[ib].get();
         unsigned n = body->joint->degrees_of_freedom;
         body->set_qd(af::small<ft, 6>(af::adapt(
-          af::const_ref<ft>(&packed_qd[i], n))));
+          af::const_ref<ft>(&qd_packed[i], n))));
         i += n;
       }
-      SCITBX_ASSERT(i == packed_qd_size);
+      SCITBX_ASSERT(i == degrees_of_freedom);
       flag_velocities_as_changed();
     }
 
@@ -609,14 +606,14 @@ SCITBX_LOC // {
     af::shared<ft>
     d_e_pot_d_q_packed()
     {
-      af::shared<ft> result((af::reserve(packed_q_size)));
+      af::shared<ft> result((af::reserve(q_packed_size)));
       af::shared<af::small<ft, 7> > unpacked = d_e_pot_d_q();
       SCITBX_ASSERT(unpacked.size() == bodies.size());
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
         result.extend(unpacked[ib].begin(), unpacked[ib].end());
       }
-      SCITBX_ASSERT(result.size() == packed_q_size);
+      SCITBX_ASSERT(result.size() == q_packed_size);
       return result;
     }
 
