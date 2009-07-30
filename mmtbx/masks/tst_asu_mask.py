@@ -109,8 +109,8 @@ def get_radii(structure):
   return atom_radii
 
 
-SpaceGroups = ("P 21 21 21", "P 21", "P 1 1 21", "P 21 1 1", "P 21/n", "P1",
-    "Fm3m", "R3", "P61", "I41")
+SpaceGroups = ("P 21 21 21", "P 21", "P 1 1 21", "P 21/n", "P1",
+    "Fm3m", "R3", "P61", "I41", "I 1 m 1")
 Elements = ("N", "C", "O", "H", "Ca", "C", "B", "Li", "Ru", "N", "H", "H",
     "Mg", "Se")
 def make_atoms(n_atoms):
@@ -183,6 +183,7 @@ def compare_masks(struc, opts):
   print >>cout, "Cell volume= ", struc.unit_cell().volume(), \
     "  Group order= ", struc.space_group().order_z(), " p= ", \
     struc.space_group().order_p()
+  print >>cout, "Hall  symbol: ", struc.space_group().type().hall_symbol()
   tb = time.time()
   asu_mask = masks.atom_mask(
       unit_cell = struc.unit_cell(),
@@ -359,7 +360,10 @@ def random_tests(groups, opts):
   print "Number of random tests per space group: ", opts.random, "\n"
   for sg in groups:
     print "Space group= ", sg, "  n tests= ", opts.random
-    group = space_group_info(sg)
+    try:
+      group = space_group_info(sg)
+    except:
+      group = space_group_info(sg, "Hall")
     for i in xrange(opts.random):
       if i==0 :
         slv_rad = 1.1
@@ -435,6 +439,47 @@ def cci_vetted_tests( options) :
   print "Number of structures tested: ", n
   assert n>0, "No CCI files have been tested"
 
+def generate_cb(grp, ncb):
+  import random
+  import scitbx.matrix
+  sg_def = cctbx.sgtbx.space_group_info(grp)
+  n = 0
+  na = 0
+  nf = 0
+  halls = []
+  while( True ):
+    l9 = []
+    l3 = []
+    n = n + 1
+    for i in xrange(9):
+      l9.append( random.randint(-5,5) )
+    for i in xrange(3):
+      l3.append( random.randint(-7,7) )
+    m = scitbx.matrix.sqr(l9)
+    rot_mx = cctbx.sgtbx.rot_mx(l9)
+    tr = cctbx.sgtbx.tr_vec( l3 )
+    if (rot_mx.determinant()!= 0) & rot_mx.is_valid():
+      rt_mx = cctbx.sgtbx.rt_mx( rot_mx, tr)
+      if( rt_mx.is_valid() ):
+        try:
+          cb = cctbx.sgtbx.change_of_basis_op(rt_mx)
+          if( cb.is_valid() & (not cb.is_identity_op()) ):
+            sg = sg_def.change_basis(cb)
+            g = sg.group()
+            t = g.type()
+            h = t.hall_symbol()
+            h = "Hall: " + h
+            halls.append( h )
+            na = na + 1
+        except RuntimeError:
+          nf = nf+1;
+    if( na>ncb ):
+      break
+    if( n>1000 ):
+      break
+  #print "Number of cbs: ", len(cbs)
+  #print "na = ", na, "  nf= ", nf,   "  n= ", n
+  return halls
 
 def run():
   import optparse
@@ -465,6 +510,8 @@ def run():
       dest="failed_file", help="file name for the pdb of the failed structure")
   parser.add_option("--save_files", action="store", type="string",
       dest="save_files", help="base file name for pdb/mask/sf files to save")
+  parser.add_option("--change_basis", action="store", type="int",
+      dest="change_basis", default=0, help="number of basis")
 
   (opts, args) = parser.parse_args()
 
@@ -476,8 +523,27 @@ def run():
   elif opts.space_group == "all" :
     for isg in xrange(1,231):
       groups.append(str(isg))
+  elif opts.space_group == "all530":
+    it = cctbx.sgtbx.space_group_symbol_iterator()
+    while( True ):
+      symbol = it.next()
+      # TODO: the following  does not work
+      #if( symbol.number()==0 ):
+      #  break
+      groups.append(symbol.hermann_mauguin())
+      if( symbol.number()==230 ):
+        break
   else:
     groups.append(opts.space_group)
+
+  if opts.change_basis != 0:
+    cb_groups = []
+    for grp in groups:
+      cb_groups.append(grp)
+      halls = generate_cb(grp, opts.change_basis)
+      for hall in halls:
+        cb_groups.append( hall )
+    groups = cb_groups
 
   if opts.random > 0:
     random_tests(groups, opts)
