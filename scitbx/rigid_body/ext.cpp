@@ -18,6 +18,36 @@ namespace scitbx { namespace rigid_body { namespace ext {
     typedef wt::ft ft;
 
     static
+    boost::python::list
+    xxx_spatial_inertia(
+      wt const& O)
+    {
+      boost::python::list result;
+      unsigned nb = O.bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        result.append(O.bodies[ib]->i_spatial);
+      }
+      return result;
+    }
+
+    static
+    boost::python::list
+    xxx_spatial_velocities(
+      wt& O)
+    {
+      boost::python::list result;
+      af::shared<af::tiny<ft, 6> >
+        sv = O.featherstone_system_model().spatial_velocities();
+      SCITBX_ASSERT(sv.size() == O.bodies_size());
+      unsigned nb = O.bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        result.append(boost_python::array_as_list(
+          sv[ib].begin(), sv[ib].size()));
+      }
+      return result;
+    }
+
+    static
     boost::python::object
     sum_of_masses_in_each_tree(
       wt const& O)
@@ -86,6 +116,8 @@ namespace scitbx { namespace rigid_body { namespace ext {
         .def("unpack_q", &wt::unpack_q, (arg_("packed_q")))
         .def("pack_qd", &wt::pack_qd)
         .def("unpack_qd", &wt::unpack_qd, (arg_("packed_qd")))
+        .def("xxx_spatial_inertia", xxx_spatial_inertia)
+        .def("xxx_spatial_velocities", xxx_spatial_velocities)
       ;
     };
   };

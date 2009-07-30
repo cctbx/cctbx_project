@@ -1,9 +1,10 @@
 import scitbx.rigid_body.essence.tardy
 from scitbx.graph import tst_tardy_pdb
 from scitbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import format_cpu_times
 from libtbx import Auto
+import random
 import sys
 
 def compare_essence_and_fast_tardy_models(etm):
@@ -26,11 +27,21 @@ def compare_essence_and_fast_tardy_models(etm):
   assert approx_equal(
     ftm.sum_of_masses_in_each_tree(),
     etm.sum_of_masses_in_each_tree())
-  emlv = etm.mean_linear_velocity(number_of_sites_in_each_tree=Auto)
+  #
+  def xxx_check_spatial_inertia():
+    e = [body.i_spatial for body in etm.bodies]
+    #print "e:", [sum(ei) for ei in e]
+    f = ftm.xxx_spatial_inertia()
+    #print "f:", [sum(fi) for fi in f]
+    for ei,fi in zip(e, f):
+      assert approx_equal(fi, ei)
+  xxx_check_spatial_inertia()
+  #
+  e = etm.mean_linear_velocity(number_of_sites_in_each_tree=Auto)
   assert approx_equal(
-    ftm.mean_linear_velocity(number_of_sites_in_each_tree=None), emlv)
+    ftm.mean_linear_velocity(number_of_sites_in_each_tree=None), e)
   assert approx_equal(
-    ftm.mean_linear_velocity(number_of_sites_in_each_tree=fnosiet), emlv)
+    ftm.mean_linear_velocity(number_of_sites_in_each_tree=fnosiet), e)
   ftm.subtract_from_linear_velocities(
     number_of_sites_in_each_tree=None,
     value=(0,0,0))
@@ -48,6 +59,38 @@ def compare_essence_and_fast_tardy_models(etm):
   assert approx_equal(f, e)
   e = etm.e_kin()
   f = ftm.e_kin()
+  assert approx_equal(f, e)
+  e = etm.e_tot()
+  f = ftm.e_tot()
+  assert approx_equal(f, e)
+  etm.reset_e_kin(e_kin_target=1)
+  ftm.reset_e_kin(e_kin_target=1)
+  try:
+    ftm.reset_e_kin(e_kin_target=1, e_kin_epsilon=0)
+  except RuntimeError, e:
+    assert str(e).find("e_kin_epsilon > 0") > 0
+  else: raise Exception_expected
+  etm.assign_zero_velocities()
+  ftm.assign_zero_velocities()
+  assert etm.e_kin() == 0
+  assert ftm.e_kin() == 0
+  random.seed(0)
+  etm.assign_random_velocities()
+  random.seed(0)
+  ftm.assign_random_velocities()
+  e = etm.pack_q()
+  f = ftm.pack_q()
+  assert approx_equal(f, e)
+  e = etm.pack_qd()
+  f = ftm.pack_qd()
+  assert approx_equal(f, e)
+  assert len(e) == len(f)
+  e = etm.featherstone_system_model().spatial_velocities()
+  f = ftm.xxx_spatial_velocities()
+  assert approx_equal(f, e)
+  e = etm.e_kin()
+  f = ftm.e_kin()
+  xxx_check_spatial_inertia()
   assert approx_equal(f, e)
 
 def run(args):
