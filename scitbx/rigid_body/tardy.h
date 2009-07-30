@@ -633,11 +633,10 @@ SCITBX_LOC // {
         body_t<ft>* body = bodies[ib].get();
         af::small<ft, 6> qd_new(af::adapt(body->joint->qd_zero()));
         unsigned n = boost::numeric_cast<unsigned>(qd_new.size());
-        for(unsigned i=0;i<n;i++) {
+        for(unsigned i=0;i<n;i++,i_qd++) {
           qd_new[i] += bp::extract<ft>(
             random_gauss(/*mu*/ 0, /*sigma*/ qd_e_kin_scales[i_qd]))();
         }
-        i_qd += n;
         body->set_qd(qd_new);
       }
       SCITBX_ASSERT(i_qd == degrees_of_freedom);
