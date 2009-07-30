@@ -19,6 +19,8 @@ def compare_essence_and_fast_tardy_models(etm):
   assert ftm.bodies_size() == len(etm.bodies)
   assert ftm.number_of_trees == etm.number_of_trees
   assert ftm.degrees_of_freedom == etm.degrees_of_freedom
+  assert ftm.packed_q_size == etm.packed_q_size
+  assert ftm.packed_qd_size == etm.packed_qd_size
   ftm.flag_positions_as_changed()
   ftm.flag_velocities_as_changed()
   #
