@@ -156,7 +156,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
 
     virtual
     af::small<ft, 7>
-    tau_as_d_pot_d_q(
+    tau_as_d_e_pot_d_q(
       af::small<ft, 6> const& tau) const
     {
       return af::small<ft, 7>(0);
@@ -300,7 +300,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
 
     virtual
     af::small<ft, 7>
-    tau_as_d_pot_d_q(
+    tau_as_d_e_pot_d_q(
       af::small<ft, 6> const& tau) const
     {
       SCITBX_ASSERT(tau.size() == 6);
@@ -456,7 +456,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
 
     virtual
     af::small<ft, 7>
-    tau_as_d_pot_d_q(
+    tau_as_d_e_pot_d_q(
       af::small<ft, 6> const& tau) const
     {
       SCITBX_ASSERT(tau.size() == 3);
@@ -588,7 +588,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
 
     virtual
     af::small<ft, 7>
-    tau_as_d_pot_d_q(
+    tau_as_d_e_pot_d_q(
       af::small<ft, 6> const& tau) const
     {
       SCITBX_ASSERT(tau.size() == 1);
@@ -717,7 +717,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
 
     virtual
     af::small<ft, 7>
-    tau_as_d_pot_d_q(
+    tau_as_d_e_pot_d_q(
       af::small<ft, 6> const& tau) const
     {
       SCITBX_ASSERT(tau.size() == 3);

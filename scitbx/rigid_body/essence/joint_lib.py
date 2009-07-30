@@ -33,7 +33,7 @@ class zero_dof(object):
   def time_step_velocity(O, qd, qdd, delta_t):
     return zero_dof.qd_zero
 
-  def tau_as_d_pot_d_q(O, tau):
+  def tau_as_d_e_pot_d_q(O, tau):
     return zero_dof.qd_zero
 
   def get_q(O):
@@ -82,7 +82,7 @@ class six_dof(object):
   def time_step_velocity(O, qd, qdd, delta_t):
     return qd + qdd * delta_t
 
-  def tau_as_d_pot_d_q(O, tau):
+  def tau_as_d_e_pot_d_q(O, tau):
     d = d_unit_quaternion_d_qe_matrix(q=O.qe)
     c = d * 4 * rbda_eq_4_13(q=O.unit_quaternion)
     n, f = matrix.col_list([tau.elems[:3], tau.elems[3:]])
@@ -138,7 +138,7 @@ class spherical(object):
   def time_step_velocity(O, qd, qdd, delta_t):
     return qd + qdd * delta_t
 
-  def tau_as_d_pot_d_q(O, tau):
+  def tau_as_d_e_pot_d_q(O, tau):
     d = d_unit_quaternion_d_qe_matrix(q=O.qe)
     c = d * 4 * rbda_eq_4_13(q=O.unit_quaternion)
     n = tau
@@ -187,7 +187,7 @@ class revolute(object):
   def time_step_velocity(O, qd, qdd, delta_t):
     return qd + qdd * delta_t
 
-  def tau_as_d_pot_d_q(O, tau):
+  def tau_as_d_e_pot_d_q(O, tau):
     return tau
 
   def get_q(O):
@@ -230,7 +230,7 @@ class translational(object):
   def time_step_velocity(O, qd, qdd, delta_t):
     return qd + qdd * delta_t
 
-  def tau_as_d_pot_d_q(O, tau):
+  def tau_as_d_e_pot_d_q(O, tau):
     return tau
 
   def get_q(O):
