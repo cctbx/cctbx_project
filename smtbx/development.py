@@ -9,7 +9,7 @@ class space_group_processed_options(libtbx.option_parser.processed_options):
 
   def loop_over_space_groups(self, f):
     for sgi in self.space_group_info_list:
-      f(sgi, **self.options.__dict__)
+      f(space_group_info=sgi, **self.options.__dict__)
 
 
 class space_group_option_parser(libtbx.option_parser.option_parser):
