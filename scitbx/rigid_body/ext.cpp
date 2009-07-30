@@ -72,6 +72,8 @@ namespace scitbx { namespace rigid_body { namespace ext {
         .def("bodies_size", &wt::bodies_size)
         .def_readonly("number_of_trees", &wt::number_of_trees)
         .def_readonly("degrees_of_freedom", &wt::degrees_of_freedom)
+        .def_readonly("packed_q_size", &wt::packed_q_size)
+        .def_readonly("packed_qd_size", &wt::packed_qd_size)
         .def(init<
           object const&,
           af::shared<vec3<ft> > const&,
