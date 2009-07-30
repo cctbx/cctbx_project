@@ -56,14 +56,18 @@ class potential_object(object):
         restraint_edges,
         restraint_edge_weight=1/0.1**2,
         epsilon=1.e-100):
+    if (isinstance(wells, flex.vec3_double)):
+      wells = [matrix.col(w) for w in wells]
     O.wells = wells
     O.restraints = []
     for edge in restraint_edges:
-      s = [sites[i] for i in edge]
+      s = [matrix.col(sites[i]) for i in edge]
       O.restraints.append((edge, abs(s[0]-s[1]), restraint_edge_weight))
     O.epsilon = epsilon
 
   def e_pot(O, sites_moved):
+    if (isinstance(sites_moved, flex.vec3_double)):
+      sites_moved = [matrix.col(s) for s in sites_moved]
     result = 0
     for s, w in zip(sites_moved, O.wells):
       result += (s - w).dot()
@@ -76,6 +80,8 @@ class potential_object(object):
     return result
 
   def d_e_pot_d_sites(O, sites_moved):
+    if (isinstance(sites_moved, flex.vec3_double)):
+      sites_moved = [matrix.col(s) for s in sites_moved]
     result = []
     for s, w in zip(sites_moved, O.wells):
       result.append(2 * (s - w))
