@@ -1,8 +1,9 @@
-import scitbx.rigid_body.essence.tardy
+import scitbx.rigid_body.essence.tst_tardy
 from scitbx.graph import tst_tardy_pdb
 from scitbx.array_family import flex
 from scitbx import matrix
-from libtbx.test_utils import approx_equal, Exception_expected
+from libtbx.test_utils import \
+  approx_equal, is_above_limit, is_below_limit, Exception_expected
 from libtbx.utils import format_cpu_times
 import random
 import sys
@@ -98,7 +99,12 @@ def compare_essence_and_fast_tardy_models(etm):
   assert approx_equal(e, f)
   e = etm.d_e_pot_d_q_packed()
   f = ftm.d_e_pot_d_q_packed()
-  assert approx_equal(e, f) # XXX need a potential_obj
+  e_max_abs = flex.max(flex.abs(e))
+  if (etm.potential_obj is None):
+    assert is_below_limit(value=e_max_abs, limit=1e-10)
+  else:
+    assert is_above_limit(value=e_max_abs, limit=1) # random generator dependent
+  assert approx_equal(e, f)
   #
   e = etm.e_kin()
   f = ftm.e_kin()
@@ -147,6 +153,13 @@ def run(args):
       masses=masses,
       tardy_tree=tt,
       potential_obj=None)
+    compare_essence_and_fast_tardy_models(etm=etm)
+    etm = scitbx.rigid_body.essence.tst_tardy.construct_tardy_model(
+      labels=tc.labels,
+      sites=tc.sites,
+      masses=masses,
+      tardy_tree=tt)
+    assert etm.potential_obj is not None
     compare_essence_and_fast_tardy_models(etm=etm)
   print format_cpu_times()
 
