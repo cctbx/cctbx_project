@@ -7,6 +7,7 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int.hpp>
 #include <cmath>
+#include <algorithm>
 #include <cstddef>
 
 namespace scitbx { namespace math {
@@ -127,99 +128,107 @@ namespace scitbx { namespace math {
       FloatType kurtosis_excess;
   };
 
-  /// Median and median absolute deviation
-  /** The algorithm is Quickselect, with a random choice of a pivot
-      and a tweak for the case when the number of data is even,
-      so as to find the both of the central values during the same search,
-      the median being then the average of that pair.
-  */
-  template <typename FloatType = double>
-  class median_statistics
+
+  /// Median and dispersion around it
+  template <typename FloatType>
+  struct median_statistics
   {
-  public:
     typedef FloatType float_type;
 
-    /// Construct statistics, overwriting the referenced array.
-    /** It is overwritten with the absolute deviations from the median,
-        but those are not stored in the same order as the original array.
-    */
-    median_statistics(af::ref<float_type> const &data)
-      : data(data)
-    {
+    float_type median;
+
+    /// The median of the absolute deviations from the median
+    float_type median_absolute_deviation;
+
+    median_statistics(float_type median, float_type median_absolute_deviation)
+      : median(median), median_absolute_deviation(median_absolute_deviation)
+    {}
+  };
+
+
+  /// functor returning a given quantile of a list of data
+  /**
+   For an odd number of data, the median is the central value after sorting
+   the data. For an even number of data, we used the definition favoured
+   by statisticians, i.e. the mean of the two central values after sorting.
+
+   The algorithm used is Quickselect with randomisation of pivots.
+   As a result, a random number generator is necessary which is part of the
+   private state of instances.
+   */
+  class median_functor
+  {
+  public:
+    typedef boost::mt19937 random_number_engine_t;
+
+    /// initialise the randon number engine with a default seed
+    median_functor() : rnd() {}
+
+    /// initialise the randon number engine with the given seed
+    median_functor(random_number_engine_t::result_type seed) : rnd(seed) {}
+
+    /// the median of the given data
+    template <typename FloatType>
+    FloatType operator()(af::ref<FloatType> const &data) {
       SCITBX_ASSERT(data.size());
       std::size_t n = data.size();
 
-      if (n == 1) {
-        median = data[0];
-        median_absolute_deviation = 0;
-        return;
+      // early return
+      if      (n == 1) return data[0];
+      else if (n == 2) return (data[0] + data[1])/2;
+
+      // hard work
+      FloatType *p; // pivot
+
+      /* for odd n, k points will point at the central value
+         for even n, k will points at the farther of the two central values
+       */
+      FloatType * const k = data.begin() + n/2;
+      FloatType *l = data.begin(), *r = data.end() - 1;
+      for(;;) {
+        boost::uniform_int<std::size_t> gen(0, r - l);
+        p = partition(l, r, l + gen(rnd));
+        if      (k < p) r = p - 1;
+        else if (p < k) l = p + 1;
+        else break;
       }
 
-      k = data.begin() + n / 2;
-      odd = n % 2;
-      km1 = k-1;
+      // odd number of data: done
+      if (n % 2) return *k;
 
-      median = get_median();
+      /* even number of data:
+         the other central value is the smallest element in [data.begin(), k)
+       */
+      FloatType *k1 = std::max_element(data.begin(), k);
+      return (*k + *k1)/2;
+    }
 
-      for (int i=0; i < n; ++i) {
+    template <typename FloatType>
+    median_statistics<FloatType>
+    dispersion(af::ref<FloatType> const &data) {
+      FloatType median = operator()(data);
+      for (int i=0; i < data.size(); ++i) {
         data[i] = std::abs(data[i] - median);
       }
-      median_absolute_deviation = get_median();
+      FloatType median_absolute_deviation = operator()(data);
+      return median_statistics<FloatType>(median, median_absolute_deviation);
     }
-
-    /// Median of the data passed to the constructor
-    float_type median;
-
-    /// Median absolute deviation of the data passed to the constructor
-    float_type median_absolute_deviation;
 
   private:
-    af::ref<float_type> const &data;
-    boost::mt19937 rnd;
-    float_type *k, *km1;
-    bool odd;
+    random_number_engine_t rnd;
 
-    float_type get_median() {
-      float_type *l=data.begin(), *r=data.end()-1;
-
-      float_type *p; // pivot
-      if (odd) {
-        for(;;) {
-          boost::uniform_int<std::size_t> gen(0, r - l);
-          p = partition(l, r, l + gen(rnd));
-          if      (k < p) r = p - 1;
-          else if (p < k) l = p + 1;
-          else return *k;
-        }
-      }
-      else {
-        bool already_found_one_central_value = false;
-        float_type central_value, other_central_value;
-        for(;;) {
-          boost::uniform_int<std::size_t> gen(0, r - l);
-          p = partition(l, r, l + gen(rnd));
-          if      (k < p)   r = p - 1;
-          else if (p < km1) l = p + 1;
-          else if (already_found_one_central_value) {
-            other_central_value = *p;
-            break;
-          }
-          else {
-            central_value = *p;
-            if   (p == k)        r = p - 1;
-            else /* p == k-1 */  l = p + 1;
-            already_found_one_central_value = true;
-          }
-        }
-        return (central_value + other_central_value)/2;
-      }
-    }
-
-    float_type *partition(float_type *l, float_type *r, float_type *p) {
-      float_type pv = *p;
+    /** The returned value s is obtained by re-arranging the range [l, r]
+        containing p so that
+        for any element x of [l, s) and for any element y of (s, r],
+        *x < *s = *p < *y
+     */
+    template <typename FloatType>
+    static
+    FloatType *partition(FloatType *l, FloatType *r, FloatType *p) {
+      FloatType pv = *p;
       std::swap(*p, *r);
-      float_type *s = l;
-      for (float_type *q=l; q < r; ++q) {
+      FloatType *s = l;
+      for (FloatType *q=l; q < r; ++q) {
         if (*q < pv) {
           std::swap(*s, *q);
           ++s;

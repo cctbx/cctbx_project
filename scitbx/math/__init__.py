@@ -5,6 +5,9 @@ from scitbx import matrix
 from scitbx.array_family import flex
 from stdlib import math
 
+def median_statistics(data):
+  return flex.median.dispersion(data)
+
 class line_given_points(object):
 
   def __init__(self, points):

@@ -449,6 +449,7 @@ scitbx/array_family/accessors/row_and_column.h -text
 scitbx/array_family/accessors/striding.h -text
 scitbx/array_family/accessors/traits.h -text
 scitbx/array_family/boost_python/byte_str.h svneol=native#text/plain
+scitbx/array_family/boost_python/flex_median.cpp -text
 scitbx/array_family/boost_python/owning_ref_conversions.h -text
 scitbx/array_family/boost_python/passing_flex_by_reference.h -text
 scitbx/array_family/boost_python/selections_wrapper.h svneol=native#text/plain
