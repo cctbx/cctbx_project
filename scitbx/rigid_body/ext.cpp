@@ -72,8 +72,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
         .def("bodies_size", &wt::bodies_size)
         .def_readonly("number_of_trees", &wt::number_of_trees)
         .def_readonly("degrees_of_freedom", &wt::degrees_of_freedom)
-        .def_readonly("packed_q_size", &wt::packed_q_size)
-        .def_readonly("packed_qd_size", &wt::packed_qd_size)
+        .def_readonly("q_packed_size", &wt::q_packed_size)
         .def(init<
           object const&,
           af::shared<vec3<ft> > const&,
@@ -91,9 +90,9 @@ namespace scitbx { namespace rigid_body { namespace ext {
         .def("flag_velocities_as_changed", &wt::flag_velocities_as_changed)
         .def("root_indices", &wt::root_indices)
         .def("pack_q", &wt::pack_q)
-        .def("unpack_q", &wt::unpack_q, (arg_("packed_q")))
+        .def("unpack_q", &wt::unpack_q, (arg_("q_packed")))
         .def("pack_qd", &wt::pack_qd)
-        .def("unpack_qd", &wt::unpack_qd, (arg_("packed_qd")))
+        .def("unpack_qd", &wt::unpack_qd, (arg_("qd_packed")))
         .def("number_of_sites_in_each_tree",
           &wt::number_of_sites_in_each_tree)
         .def("sum_of_masses_in_each_tree", sum_of_masses_in_each_tree)
