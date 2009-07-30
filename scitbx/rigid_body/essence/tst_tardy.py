@@ -16,7 +16,7 @@ if (1):
 
 class tardy_model(tardy.model):
 
-  def d_pot_d_q_via_finite_differences(O, eps=1.e-6):
+  def d_e_pot_d_q_via_finite_differences(O, eps=1.e-6):
     result = []
     for body in O.bodies:
       gs = []
@@ -36,10 +36,10 @@ class tardy_model(tardy.model):
       result.append(matrix.col(gs))
     return result
 
-  def check_d_pot_d_q(O, verbose=0):
+  def check_d_e_pot_d_q(O, verbose=0):
     qdd_orig = O.qdd_array()
-    ana = O.d_pot_d_q()
-    fin = O.d_pot_d_q_via_finite_differences()
+    ana = O.d_e_pot_d_q()
+    fin = O.d_e_pot_d_q_via_finite_differences()
     if (verbose):
       for a,f in zip(ana, fin):
         print "fin:", f.elems
@@ -240,12 +240,12 @@ def exercise_near_singular_hinges():
   assert approx_equal(e_kin_1(), 1.0000438095, eps=1e-10)
 
 def exercise_linear_velocity_manipulations(tardy_model):
-  for nosiet in [Auto, tardy_model.number_of_sites_in_each_tree()]:
+  for nosiet in [None, tardy_model.number_of_sites_in_each_tree()]:
     tardy_model.assign_random_velocities(e_kin_target=17)
     if (tardy_model.degrees_of_freedom == 0):
       assert approx_equal(tardy_model.e_kin(), 0)
       assert tardy_model.mean_linear_velocity(
-        number_of_sites_in_each_tree=Auto) is None
+        number_of_sites_in_each_tree=None) is None
     else:
       assert approx_equal(tardy_model.e_kin(), 17)
       mlv = tardy_model.mean_linear_velocity(
@@ -333,7 +333,7 @@ def exercise_fixed_vertices_special_cases():
     exercise_linear_velocity_manipulations(tardy_model=tm)
 
 def exercise_tardy_model(out, n_dynamics_steps, delta_t, tardy_model):
-  tardy_model.check_d_pot_d_q()
+  tardy_model.check_d_e_pot_d_q()
   e_pots = flex.double([tardy_model.e_pot()])
   e_kins = flex.double([tardy_model.e_kin()])
   for i_step in xrange(n_dynamics_steps):
@@ -341,7 +341,7 @@ def exercise_tardy_model(out, n_dynamics_steps, delta_t, tardy_model):
     e_pots.append(tardy_model.e_pot())
     e_kins.append(tardy_model.e_kin())
   e_tots = e_pots + e_kins
-  tardy_model.check_d_pot_d_q()
+  tardy_model.check_d_e_pot_d_q()
   print >> out, "degrees of freedom:", tardy_model.degrees_of_freedom
   print >> out, "energy samples:", e_tots.size()
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)

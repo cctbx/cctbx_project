@@ -88,6 +88,10 @@ namespace scitbx { namespace rigid_body { namespace ext {
         .def("flag_positions_as_changed", &wt::flag_positions_as_changed)
         .def("flag_velocities_as_changed", &wt::flag_velocities_as_changed)
         .def("root_indices", &wt::root_indices)
+        .def("pack_q", &wt::pack_q)
+        .def("unpack_q", &wt::unpack_q, (arg_("packed_q")))
+        .def("pack_qd", &wt::pack_qd)
+        .def("unpack_qd", &wt::unpack_qd, (arg_("packed_qd")))
         .def("number_of_sites_in_each_tree",
           &wt::number_of_sites_in_each_tree)
         .def("sum_of_masses_in_each_tree", sum_of_masses_in_each_tree)
@@ -100,6 +104,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
         .def("sites_moved", &wt::sites_moved, ccr())
         .def("e_pot", &wt::e_pot, ccr())
         .def("d_e_pot_d_sites", &wt::d_e_pot_d_sites, ccr())
+        .def("d_e_pot_d_q_packed", &wt::d_e_pot_d_q_packed)
         .def("e_kin", &wt::e_kin, ccr())
         .def("e_tot", &wt::e_tot)
         .def("reset_e_kin", &wt::reset_e_kin, reset_e_kin_overloads((
@@ -112,10 +117,6 @@ namespace scitbx { namespace rigid_body { namespace ext {
              arg_("e_kin_epsilon")=1e-12,
              arg_("random_gauss")=object())))
         .def("dynamics_step", &wt::dynamics_step, (arg_("delta_t")))
-        .def("pack_q", &wt::pack_q)
-        .def("unpack_q", &wt::unpack_q, (arg_("packed_q")))
-        .def("pack_qd", &wt::pack_qd)
-        .def("unpack_qd", &wt::unpack_qd, (arg_("packed_qd")))
         .def("xxx_spatial_inertia", xxx_spatial_inertia)
         .def("xxx_spatial_velocities", xxx_spatial_velocities)
       ;

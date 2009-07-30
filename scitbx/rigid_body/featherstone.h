@@ -317,7 +317,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         positional coordinates q. Uses f_ext_as_tau().
      */
     af::shared<af::small<ft, 7> >
-    d_pot_d_q(
+    d_e_pot_d_q(
       af::const_ref<af::tiny<ft, 6> > const& f_ext_array) const
     {
       af::shared<af::small<ft, 7> > result(af::reserve(bodies.size()));
@@ -325,7 +325,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         tau_array = this->f_ext_as_tau(f_ext_array);
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
-        result.push_back(bodies[ib]->joint->tau_as_d_pot_d_q(tau_array[ib]));
+        result.push_back(bodies[ib]->joint->tau_as_d_e_pot_d_q(tau_array[ib]));
       }
       return result;
     }

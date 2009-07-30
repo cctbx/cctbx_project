@@ -92,7 +92,7 @@ namespace scitbx { namespace rigid_body {
 
     virtual
     af::small<ft, 7>
-    tau_as_d_pot_d_q(
+    tau_as_d_e_pot_d_q(
       af::small<ft, 6> const& tau) const = 0;
 
     virtual

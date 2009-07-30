@@ -283,6 +283,63 @@ namespace scitbx { namespace rigid_body { namespace tardy {
       return result;
     }
 
+    af::shared<ft>
+    pack_q()
+    {
+      af::shared<ft> result;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        af::small<ft, 7> q = bodies[ib]->joint->get_q();
+        result.extend(q.begin(), q.end());
+      }
+      return result;
+    }
+
+    void
+    unpack_q(
+      af::const_ref<ft> const& packed_q)
+    {
+      unsigned i = 0;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft>* body = bodies[ib].get();
+        unsigned n = body->joint->q_size;
+        body->joint = body->joint->new_q(af::const_ref<ft>(&packed_q[i], n));
+        i += n;
+      }
+      SCITBX_ASSERT(i == packed_q.size());
+      flag_positions_as_changed();
+    }
+
+    af::shared<ft>
+    pack_qd()
+    {
+      af::shared<ft> result;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        af::const_ref<ft> qd = bodies[ib]->qd();
+        result.extend(qd.begin(), qd.end());
+      }
+      return result;
+    }
+
+    void
+    unpack_qd(
+      af::const_ref<ft> const& packed_qd)
+    {
+      unsigned i = 0;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft>* body = bodies[ib].get();
+        unsigned n = body->joint->degrees_of_freedom;
+        body->set_qd(af::small<ft, 6>(af::adapt(
+          af::const_ref<ft>(&packed_qd[i], n))));
+        i += n;
+      }
+      SCITBX_ASSERT(i == packed_qd.size());
+      flag_velocities_as_changed();
+    }
+
     af::shared<af::tiny<std::size_t, 2> >
     number_of_sites_in_each_tree() const
     {
@@ -534,6 +591,27 @@ SCITBX_LOC // {
     }
 
     //! Not available in Python.
+    af::shared<af::small<ft, 7> >
+    d_e_pot_d_q()
+    {
+      return featherstone_system_model()
+        .d_e_pot_d_q(f_ext_array().const_ref());
+    }
+
+    af::shared<ft>
+    d_e_pot_d_q_packed()
+    {
+      af::shared<ft> result; // XXX TODO reserve this->packed_q_size
+      af::shared<af::small<ft, 7> > unpacked = d_e_pot_d_q();
+      SCITBX_ASSERT(unpacked.size() == bodies.size());
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        result.extend(unpacked[ib].begin(), unpacked[ib].end());
+      }
+      return result;
+    }
+
+    //! Not available in Python.
     af::shared<af::small<ft, 6> > const&
     qdd_array()
     {
@@ -664,70 +742,6 @@ SCITBX_LOC // {
           body->qd(), (*qdd_array_)[ib].const_ref(), delta_t));
       }
       flag_positions_as_changed();
-    }
-
-    //! Not available in Python.
-    af::shared<af::small<ft, 7> >
-    d_pot_d_q()
-    {
-      return featherstone_system_model().d_pot_d_q(f_ext_array().const_ref());
-    }
-
-    af::shared<ft>
-    pack_q()
-    {
-      af::shared<ft> result;
-      unsigned nb = bodies_size();
-      for(unsigned ib=0;ib<nb;ib++) {
-        af::small<ft, 7> q = bodies[ib]->joint->get_q();
-        result.extend(q.begin(), q.end());
-      }
-      return result;
-    }
-
-    void
-    unpack_q(
-      af::const_ref<ft> const& packed_q)
-    {
-      unsigned i = 0;
-      unsigned nb = bodies_size();
-      for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft>* body = bodies[ib].get();
-        unsigned n = body->joint->q_size;
-        body->joint = body->joint->new_q(af::const_ref<ft>(&packed_q[i], n));
-        i += n;
-      }
-      SCITBX_ASSERT(i == packed_q.size());
-      flag_positions_as_changed();
-    }
-
-    af::shared<ft>
-    pack_qd()
-    {
-      af::shared<ft> result;
-      unsigned nb = bodies_size();
-      for(unsigned ib=0;ib<nb;ib++) {
-        af::const_ref<ft> qd = bodies[ib]->qd();
-        result.extend(qd.begin(), qd.end());
-      }
-      return result;
-    }
-
-    void
-    unpack_qd(
-      af::const_ref<ft> const& packed_qd)
-    {
-      unsigned i = 0;
-      unsigned nb = bodies_size();
-      for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft>* body = bodies[ib].get();
-        unsigned n = body->joint->degrees_of_freedom;
-        body->set_qd(af::small<ft, 6>(af::adapt(
-          af::const_ref<ft>(&packed_qd[i], n))));
-        i += n;
-      }
-      SCITBX_ASSERT(i == packed_qd.size());
-      flag_velocities_as_changed();
     }
   };
 

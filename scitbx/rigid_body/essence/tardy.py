@@ -5,7 +5,6 @@ from scitbx.rigid_body.essence import joint_lib
 import scitbx.lbfgs
 from scitbx.array_family import flex
 from scitbx import matrix
-from libtbx import Auto
 import random
 import math
 
@@ -120,6 +119,36 @@ class model(object):
         result.append(ib)
     return result
 
+  def pack_q(O):
+    result = flex.double()
+    for body in O.bodies:
+      result.extend(flex.double(body.joint.get_q()))
+    return result
+
+  def unpack_q(O, packed_q):
+    i = 0
+    for body in O.bodies:
+      n = body.joint.q_size
+      body.joint = body.joint.new_q(q=packed_q[i:i+n])
+      i += n
+    assert i == packed_q.size()
+    O.flag_positions_as_changed()
+
+  def pack_qd(O):
+    result = flex.double()
+    for body in O.bodies:
+      result.extend(flex.double(body.qd))
+    return result
+
+  def unpack_qd(O, packed_qd):
+    i = 0
+    for body in O.bodies:
+      n = body.joint.degrees_of_freedom
+      body.qd = matrix.col(packed_qd[i:i+n])
+      i += n
+    assert i == packed_qd.size()
+    O.flag_velocities_as_changed()
+
   def _accumulate_in_each_tree(O, attr):
     result = []
     accu = [0] * len(O.bodies)
@@ -139,7 +168,7 @@ class model(object):
     return O._accumulate_in_each_tree(attr="sum_of_masses")
 
   def mean_linear_velocity(O, number_of_sites_in_each_tree):
-    if (number_of_sites_in_each_tree is Auto):
+    if (number_of_sites_in_each_tree is None):
       number_of_sites_in_each_tree = O.number_of_sites_in_each_tree()
     sum_v = matrix.col((0,0,0))
     sum_n = 0
@@ -154,7 +183,7 @@ class model(object):
     return sum_v / sum_n
 
   def subtract_from_linear_velocities(O, number_of_sites_in_each_tree, value):
-    if (number_of_sites_in_each_tree is Auto):
+    if (number_of_sites_in_each_tree is None):
       number_of_sites_in_each_tree = O.number_of_sites_in_each_tree()
     for ib,n in number_of_sites_in_each_tree:
       body = O.bodies[ib]
@@ -241,6 +270,17 @@ class model(object):
         O.__f_ext_array.append(matrix.col((nc, f)).resolve_partitions())
     return O.__f_ext_array
 
+  def d_e_pot_d_q(O):
+    return O.featherstone_system_model().d_e_pot_d_q(
+      f_ext_array=O.f_ext_array())
+
+  def d_e_pot_d_q_packed(O):
+    result = flex.double()
+    for v in O.featherstone_system_model().d_e_pot_d_q(
+               f_ext_array=O.f_ext_array()):
+      result.extend(flex.double(v))
+    return result
+
   def qdd_array(O):
     if (O.__qdd_array is None):
       O.__qdd_array = O.featherstone_system_model().forward_dynamics_ab(
@@ -312,40 +352,6 @@ class model(object):
         qd=body.qd, qdd=qdd, delta_t=delta_t)
     O.flag_positions_as_changed()
 
-  def d_pot_d_q(O):
-    return O.featherstone_system_model().d_pot_d_q(
-      f_ext_array=O.f_ext_array())
-
-  def pack_q(O):
-    result = flex.double()
-    for body in O.bodies:
-      result.extend(flex.double(body.joint.get_q()))
-    return result
-
-  def unpack_q(O, packed_q):
-    i = 0
-    for body in O.bodies:
-      n = body.joint.q_size
-      body.joint = body.joint.new_q(q=packed_q[i:i+n])
-      i += n
-    assert i == packed_q.size()
-    O.flag_positions_as_changed()
-
-  def pack_qd(O):
-    result = flex.double()
-    for body in O.bodies:
-      result.extend(flex.double(body.qd))
-    return result
-
-  def unpack_qd(O, packed_qd):
-    i = 0
-    for body in O.bodies:
-      n = body.joint.degrees_of_freedom
-      body.qd = matrix.col(packed_qd[i:i+n])
-      i += n
-    assert i == packed_qd.size()
-    O.flag_velocities_as_changed()
-
   def minimization(O, max_iterations=None, callback_after_step=None):
     return refinery(
       tardy_model=O,
@@ -387,7 +393,5 @@ class refinery(object):
     O.function_evaluations_total += 1
     O.tardy_model.unpack_q(packed_q=O.x)
     f = O.tardy_model.e_pot()
-    g = flex.double()
-    for d in O.tardy_model.d_pot_d_q():
-      g.extend(flex.double(d))
+    g = O.tardy_model.d_e_pot_d_q_packed()
     return f, g
