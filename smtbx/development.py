@@ -31,7 +31,7 @@ class space_group_option_parser(libtbx.option_parser.option_parser):
                   "spacegroups (c.f. module cctbx.development.debug_utils)"
                   + description_extension
     )
-    self.option('-v', '--verbose', default=0)
+    self.option('-v', '--verbose', type="int", default=0)
     self.option('--space_group_set',
                 metavar=' ' + ' | '.join(self.space_group_sets))
 
