@@ -51,6 +51,14 @@ class test_case(object):
       anomalous_flag=True,
       max_index=(10, 10, 10)))
 
+  def exercise(self, xray_structure=None, space_group_info=None,
+               verbose=False):
+    assert [xray_structure, space_group_info].count(None) == 1
+    if xray_structure is None:
+      self.xs = self.random_structure(space_group_info, set_grads=True)
+    else:
+      self.xs = xray_structure
+
 
 class consistency_test_cases(test_case):
 
@@ -79,12 +87,15 @@ class consistency_test_cases(test_case):
       yield direction
   structures_forward = classmethod(structures_forward)
 
-  def exercise(self, space_group_info, verbose=False):
-    sg = space_group_info.group()
+  def exercise(self, xray_structure=None, space_group_info=None,
+               verbose=False):
+    test_case.exercise(self, xray_structure, space_group_info, verbose)
+    xs = self.xs
+    sg = xs.space_group_info().group()
     origin_centric_case = sg.is_origin_centric()
 
-    xs = self.random_structure(space_group_info, set_grads=True)
-    indices = self.miller_indices(space_group_info)
+
+    indices = self.miller_indices(xs.space_group_info())
     f_calc_linearisation = (
       structure_factors.linearisation_of_f_calc_modulus_squared(xs))
 
@@ -118,14 +129,17 @@ class consistency_test_cases(test_case):
 
 class smtbx_against_cctbx_test_case(test_case):
 
-  def exercise(self, space_group_info, verbose=False):
-    xs = self.random_structure(space_group_info, set_grads=False)
-    indices = self.miller_indices(space_group_info)
+  def exercise(self, xray_structure=None, space_group_info=None,
+               verbose=False):
+    test_case.exercise(self, xray_structure, space_group_info, verbose)
+    xs = self.xs
+    indices = self.miller_indices(xs.space_group_info())
     cctbx_structure_factors = xray.structure_factors.from_scatterers_direct(
       xray_structure=xs,
-      miller_set=miller.set(crystal.symmetry(unit_cell=xs.unit_cell(),
-                                             space_group_info=space_group_info),
-                                             indices))
+      miller_set=miller.set(
+        crystal.symmetry(unit_cell=xs.unit_cell(),
+                         space_group_info=xs.space_group_info()),
+        indices))
     f_calc_linearisation = (
       structure_factors.linearisation_of_f_calc_modulus_squared(xs))
     for h, fc in cctbx_structure_factors.f_calc():
@@ -139,17 +153,27 @@ class smtbx_against_cctbx_test_case(test_case):
 def run(args):
   libtbx.utils.show_times_at_exit()
   parser = smtbx.development.space_group_option_parser()
-  options = parser.process(args)
-
-  t = smtbx_against_cctbx_test_case(inelastic_scattering=False)
-  options.loop_over_space_groups(t.exercise)
+  parser.option('-x', '--xray_structure_pickle', default=None)
+  commands = parser.process(args)
 
   n_directions = 2
-  t = consistency_test_cases(n_directions, inelastic_scattering=False)
-  options.loop_over_space_groups(t.exercise)
 
-  t = consistency_test_cases(n_directions, inelastic_scattering=True)
-  options.loop_over_space_groups(t.exercise)
+  if hasattr(commands.options, 'xray_structure_pickle'):
+    from libtbx import easy_pickle
+    xs = easy_pickle.load(commands.options.xray_structure_pickle)
+
+    t = consistency_test_cases(n_directions, inelastic_scattering=False)
+    t.exercise(xray_structure=xs)
+
+  else:
+    t = smtbx_against_cctbx_test_case(inelastic_scattering=False)
+    commands.loop_over_space_groups(t.exercise)
+
+    t = consistency_test_cases(n_directions, inelastic_scattering=False)
+    commands.loop_over_space_groups(t.exercise)
+
+    t = consistency_test_cases(n_directions, inelastic_scattering=True)
+    commands.loop_over_space_groups(t.exercise)
 
 if __name__ == '__main__':
   import sys
