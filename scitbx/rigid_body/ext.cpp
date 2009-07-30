@@ -4,7 +4,6 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 
@@ -57,17 +56,12 @@ namespace scitbx { namespace rigid_body { namespace ext {
       return boost_python::array_as_list(somiet.begin(), somiet.size());
     }
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      reset_e_kin_overloads, reset_e_kin, 1, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      assign_random_velocities_overloads, assign_random_velocities, 0, 3)
-
     static void
     wrap()
     {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
+      object none;
       class_<wt, boost::noncopyable>("tardy_model", no_init)
         .def("bodies_size", &wt::bodies_size)
         .def_readonly("number_of_trees", &wt::number_of_trees)
@@ -108,15 +102,18 @@ namespace scitbx { namespace rigid_body { namespace ext {
         .def("d_e_pot_d_q_packed", &wt::d_e_pot_d_q_packed)
         .def("e_kin", &wt::e_kin, ccr())
         .def("e_tot", &wt::e_tot)
-        .def("reset_e_kin", &wt::reset_e_kin, reset_e_kin_overloads((
+        .def("reset_e_kin", &wt::reset_e_kin, (
            arg_("e_kin_target"),
-           arg_("e_kin_epsilon")=1e-12)))
+           arg_("e_kin_epsilon")=1e-12))
         .def("assign_zero_velocities", &wt::assign_zero_velocities)
-        .def("assign_random_velocities", &wt::assign_random_velocities,
-          assign_random_velocities_overloads((
-             arg_("e_kin_target")=object(),
-             arg_("e_kin_epsilon")=1e-12,
-             arg_("random_gauss")=object())))
+        .def("assign_random_velocities", &wt::assign_random_velocities, (
+           arg_("e_kin_target")=none,
+           arg_("e_kin_epsilon")=1e-12,
+           arg_("random_gauss")=none))
+        .def("inverse_dynamics", &wt::inverse_dynamics, (
+          arg_("qdd_packed"),
+          arg_("f_ext_packed")=none,
+          arg_("grav_accn")=none))
         .def("dynamics_step", &wt::dynamics_step, (arg_("delta_t")))
         .def("xxx_spatial_inertia", xxx_spatial_inertia)
         .def("xxx_spatial_velocities", xxx_spatial_velocities)
