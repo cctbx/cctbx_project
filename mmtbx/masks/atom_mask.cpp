@@ -295,8 +295,8 @@ namespace mmtbx { namespace masks {
     MMTBX_ASSERT( scitbx::gt_all(this->asu_high, this->asu_low) );
     this->asu_high += scitbx::int3(1,1,1); // now typical C++: [imn,imx)
     // the following is only assumed in atoms_to_asu
-    MMTBX_ASSERT( scitbx::le_all(this->asu_high, n+1) );
-    MMTBX_ASSERT( scitbx::ge_all(this->asu_low, -n-1) );
+    // MMTBX_ASSERT( scitbx::le_all(this->asu_high, n+1) );
+    // MMTBX_ASSERT( scitbx::ge_all(this->asu_low, -n-1) );
 
     // expand asu by shrink_truncation_radius
     const scitbx::af::tiny<double,6> rcell = cell.reciprocal_parameters();
@@ -335,9 +335,6 @@ namespace mmtbx { namespace masks {
     const scitbx::af::tiny<double,6> rcell = cell.reciprocal_parameters();
     const scitbx::double3 rp(rcell[0], rcell[1], rcell[2]);
 
-    std::vector< scitbx::tiny3 > cells;
-    this->asu.get_adjacent_cells(cells);
-
     scitbx::af::shared< cctbx::sgtbx::rt_mx > symops_ = group.all_ops();
     scitbx::af::const_ref< cctbx::sgtbx::rt_mx > symops = symops_.const_ref();
     const size_t order = symops.size();
@@ -346,6 +343,13 @@ namespace mmtbx { namespace masks {
     const signed char n_corners = 2;
     scitbx::double3 asu_box[n_corners];
     this->get_expanded_asu_boundaries(asu_box[0], asu_box[1]);
+    // TODO: the assumption that asu is within [-1,1] has been removed. The
+    // asu can span multiple cells, that is not very good. It might lead to
+    // asu enclosing box being bigger than the unit cell, and require more
+    // atoms to be tested for intersection. Maybe need to create a
+    // transformation to bring asu into [-1,1]
+    const scitbx::vec3<int> cell_min = ifloor(asu_box[0]),
+      cell_max = iceil(asu_box[1]);
     for(size_t iat=0; iat<sites_frac.size(); ++iat)
     {
       const scitbx::double3 at = sites_frac[iat];
@@ -358,6 +362,8 @@ namespace mmtbx { namespace masks {
       for(short idim=0; idim<3; ++idim)
         if( ibox[idim] < 1 )
           ibox[idim] = 1;
+      const scitbx::vec3<int> cmin = cell_min - ibox,
+        cmax = cell_max + ibox;
 
       for(register size_t isym=0; isym<order; ++isym)
       {
@@ -372,11 +378,11 @@ namespace mmtbx { namespace masks {
         // closer one.
         // In this version, there is no mapping, so need
         // to collect all intersecting atoms
-        for(cell[0] = -ibox[0]; cell[0]<=ibox[0]; ++cell[0])
+        for(cell[0] = cmin[0]; cell[0]<=cmax[0]; ++cell[0])
         {
-          for(cell[1] = -ibox[1]; cell[1]<=ibox[1]; ++cell[1])
+          for(cell[1] = cmin[1]; cell[1]<=cmax[1]; ++cell[1])
           {
-            for(cell[2] = -ibox[2]; cell[2]<=ibox[2]; ++cell[2])
+            for(cell[2] = cmin[2]; cell[2]<=cmax[2]; ++cell[2])
             {
               const scitbx::double3 sym_at_cell = sym_at + cell;
               cctbx::sgtbx::asu::intersection_kind  intersection
