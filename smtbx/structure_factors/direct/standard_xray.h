@@ -203,7 +203,21 @@ namespace smtbx { namespace structure_factors { namespace direct {
             }
           }
         }
+
+        #if (   defined(__linux__) && defined(__GNUC__) \
+             && __GNUC__ == 4 && __GNUC_MINOR__ == 0 && __GNUC_PATCHLEVEL__ == 0)
+        /** Careful analysis with valgrind showed that the compiler seems to generate
+            undefined bits in the array grad_site in this member function.
+            We hypothesised that an overzealous optimiser was at fault, hence the
+            idea of the volatile member. That it solves the problem seems to vindicate
+            our intuition.
+        */
+        foo = grad_site.begin();
       }
+      complex_type volatile *foo;
+        #else
+      }
+        #endif
 
       /** The isotropic factor ff * occupancy * isotropic debye-waller
           is factored out of the sum over equivalent reflections
