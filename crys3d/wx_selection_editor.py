@@ -140,8 +140,8 @@ class model_scene_with_selection (model_scene) :
 
 ########################################################################
 # VIEWER CLASS
-mouse_modes = ["Rotate view", "Show selection menu", "Toggle chain",
-  "Toggle residue", "Toggle atom", "Select range", "Deselect range"]
+mouse_modes = ["Rotate view", "Toggle chain", "Toggle residue", "Toggle atom",
+  "Select range", "Deselect range", "Show selection menu"]
 class selection_editor_mixin (model_viewer_mixin) :
   def __init__ (self, *args, **kwds) :
     self.left_button_mode = 0
@@ -205,7 +205,7 @@ class selection_editor_mixin (model_viewer_mixin) :
       self.update_scene = True
     elif key == ord('z') :
       self.zoom_selections()
-    elif key >= 49 and key <= 54 :
+    elif key >= 49 and key <= 55 : # 1-7
       self.set_left_button_mode(key - 49)
     elif key == 27 : # escape
       self.clear_selections()
@@ -214,6 +214,7 @@ class selection_editor_mixin (model_viewer_mixin) :
 
   def set_left_button_mode (self, mode) :
     self.left_button_mode = mode
+    print "left button mode is %s" % mouse_modes[mode]
     self._in_range_selection = False
 
   #---------------------------------------------------------------------
@@ -258,8 +259,7 @@ class selection_editor_mixin (model_viewer_mixin) :
         finally :
           self._in_range_selection = False
       else :
-        model.start_range_selection(self.current_atom_i_seq, deselect,
-          ignore_altloc=self.flag_select_all_conformers)
+        model.start_range_selection(self.current_atom_i_seq)
         self._in_range_selection = True
       self.update_scene = True
 
@@ -278,18 +278,18 @@ class selection_editor_mixin (model_viewer_mixin) :
       if (self.closest_point_i_seq is not None and
           self.flag_enable_mouse_selection) :
         self.save_selected_atom()
-        if self.left_button_mode == 1 :   # Selection menu
-          self.context_selection_menu()
-        elif self.left_button_mode == 2 : # (de)select chain
+        if self.left_button_mode == 1 :   # (de)select chain
           self.toggle_chain_selection()
-        elif self.left_button_mode == 3 : # (de)select residue
+        elif self.left_button_mode == 2 : # (de)select residue
           self.toggle_residue_selection()
-        elif self.left_button_mode == 4 : # (de)select atom
+        elif self.left_button_mode == 3 : # (de)select atom
           self.toggle_atom_selection()
-        elif self.left_button_mode == 5 : # select range
+        elif self.left_button_mode == 4 : # select range
           self.process_range_selection()
-        else :                            # deselect range
+        elif self.left_button_mode == 5 : # deselect range
           self.process_range_selection(deselect=True)
+        else:                             # Selection menu
+          self.context_selection_menu()
 
   def OnToggleChain (self, event) :
     pass
