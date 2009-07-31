@@ -3,10 +3,25 @@
 
 #include <scitbx/rigid_body/body_t.h>
 #include <scitbx/rigid_body/spatial_lib.h>
+#include <scitbx/matrix/eigensystem.h>
 #include <scitbx/array_family/versa_algebra.h>
 #include <boost/numeric/conversion/cast.hpp>
 
 namespace scitbx { namespace rigid_body { namespace featherstone {
+
+  template <typename FloatType>
+  af::versa<FloatType, af::mat_grid>
+  generalized_inverse(
+    af::const_ref<FloatType, af::mat_grid> const& m)
+  {
+    // assumption to achieve stability: order of magnitude of masses is around 1
+    return matrix::packed_u_as_symmetric(
+      scitbx::matrix::eigensystem::real_symmetric<FloatType>(
+        m,
+        /*relative_epsilon*/ 1e-6,
+        /*absolute_epsilon*/ 1e-6)
+          .generalized_inverse_as_packed_u().const_ref());
+  }
 
   //! RBDA Tab. 4.3, p. 87.
   template <typename FloatType=double>
@@ -408,10 +423,10 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
         vmg d;
         if (s.begin() == 0) {
-          u[ib] = ia[ib].deep_copy(); // XXX deep_copy needed?
+          u[ib] = ia[ib];
           d = u[ib];
           for(unsigned i=0;i<6;i++) {
-            u_[ib][i] = -pa[ib][i];
+            u_[ib].push_back(-pa[ib][i]);
           }
         }
         else {
@@ -422,7 +437,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         if (tau_array.begin() != 0) {
           u_[ib] += tau_array[ib];
         }
-        // XXX XXX TODO d_inv[ib] = generalized_inverse(d)
+        d_inv[ib] = generalized_inverse(d.const_ref());
         if (body->parent != -1) {
           vmg u_d_inv = af::matrix_multiply(
             u[ib].const_ref(),
@@ -464,7 +479,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
                       u[ib].const_ref(),
                       a[ib].const_ref())).const_ref());
         if (s.begin() == 0) {
-          SCITBX_ASSERT(qdd_array.size() == 6);
+          SCITBX_ASSERT(qdd_array[ib].size() == 6);
           for(unsigned i=0;i<6;i++) {
             a[ib][i] += qdd_array[ib][i];
           }

@@ -143,6 +143,10 @@ def compare_essence_and_fast_tardy_models(etm):
   for body in etm.bodies:
     qdd_rand_array.append(matrix.col(
       mt.random_double(size=body.joint.degrees_of_freedom)*2-1))
+  tau_rand_array = []
+  for body in etm.bodies:
+    tau_rand_array.append(matrix.col(
+      mt.random_double(size=body.joint.degrees_of_freedom)*2-1))
   f_ext_rand_array = []
   for ib in xrange(len(etm.bodies)):
     f_ext_rand_array.append(matrix.col(
@@ -159,43 +163,91 @@ def compare_essence_and_fast_tardy_models(etm):
     return result
   qdd_rand_packed = pack_array(
     array=qdd_rand_array, packed_size=etm.degrees_of_freedom)
+  tau_rand_packed = pack_array(
+    array=tau_rand_array, packed_size=etm.degrees_of_freedom)
   f_ext_rand_packed = pack_array(
     array=f_ext_rand_array, packed_size=len(etm.bodies)*6)
-  def etm_inverse_dynamics(qdd_array, f_ext_array=None, grav_accn=None):
+  def etm_inverse_dynamics_packed(
+        qdd_array, f_ext_array=None, grav_accn=None):
     return pack_array(
       array=etm.featherstone_system_model().inverse_dynamics(
         qdd_array=qdd_array,
         f_ext_array=f_ext_array,
         grav_accn=grav_accn),
       packed_size=etm.degrees_of_freedom)
-  e = etm_inverse_dynamics(
+  def etm_forward_dynamics_ab_packed(
+        tau_array=None, f_ext_array=None, grav_accn=None):
+    return pack_array(
+      array=etm.featherstone_system_model().forward_dynamics_ab(
+        tau_array=tau_array,
+        f_ext_array=f_ext_array,
+        grav_accn=grav_accn),
+      packed_size=etm.degrees_of_freedom)
+  #
+  e = etm_inverse_dynamics_packed(
     qdd_array=qdd_rand_array)
-  f = ftm.inverse_dynamics(
+  f = ftm.inverse_dynamics_packed(
     qdd_packed=qdd_rand_packed)
   assert approx_equal(e, f)
-  e = etm_inverse_dynamics(
+  e = etm_inverse_dynamics_packed(
     qdd_array=qdd_rand_array,
     f_ext_array=f_ext_rand_array)
-  f = ftm.inverse_dynamics(
+  f = ftm.inverse_dynamics_packed(
     qdd_packed=qdd_rand_packed,
     f_ext_packed=f_ext_rand_packed)
   assert approx_equal(e, f)
-  e = etm_inverse_dynamics(
+  e = etm_inverse_dynamics_packed(
     qdd_array=qdd_rand_array,
     grav_accn=grav_accn_rand)
-  f = ftm.inverse_dynamics(
+  f = ftm.inverse_dynamics_packed(
     qdd_packed=qdd_rand_packed,
     grav_accn=flex.double(grav_accn_rand))
   assert approx_equal(e, f)
-  e = etm_inverse_dynamics(
+  e = etm_inverse_dynamics_packed(
     qdd_array=qdd_rand_array,
     f_ext_array=f_ext_rand_array,
     grav_accn=grav_accn_rand)
-  f = ftm.inverse_dynamics(
+  f = ftm.inverse_dynamics_packed(
     qdd_packed=qdd_rand_packed,
     f_ext_packed=f_ext_rand_packed,
     grav_accn=flex.double(grav_accn_rand))
   assert approx_equal(e, f)
+  #
+  e = etm_forward_dynamics_ab_packed()
+  f = ftm.forward_dynamics_ab_packed()
+  assert approx_equal(e, f)
+  e = etm_forward_dynamics_ab_packed(
+    tau_array=tau_rand_array)
+  f = ftm.forward_dynamics_ab_packed(
+    tau_packed=tau_rand_packed)
+  assert approx_equal(e, f)
+  e = etm_forward_dynamics_ab_packed(
+    f_ext_array=f_ext_rand_array)
+  f = ftm.forward_dynamics_ab_packed(
+    f_ext_packed=f_ext_rand_packed)
+  assert approx_equal(e, f)
+  e = etm_forward_dynamics_ab_packed(
+    grav_accn=grav_accn_rand)
+  f = ftm.forward_dynamics_ab_packed(
+    grav_accn=flex.double(grav_accn_rand))
+  assert approx_equal(e, f)
+  for tau_array,tau_packed in [(None,None),
+                               (tau_rand_array,tau_rand_packed)]:
+    for f_ext_array,f_ext_packed in [(None,None),
+                                     (f_ext_rand_array,f_ext_rand_packed)]:
+      for grav_accn in [None, grav_accn_rand]:
+        if ([tau_array,f_ext_array,grav_accn].count(None) >= 2):
+          continue # exercised above already
+        e = etm_forward_dynamics_ab_packed(
+          tau_array=tau_array,
+          f_ext_array=f_ext_array,
+          grav_accn=grav_accn)
+        if (grav_accn is not None): grav_accn=flex.double(grav_accn)
+        f = ftm.forward_dynamics_ab_packed(
+          tau_packed=tau_packed,
+          f_ext_packed=f_ext_packed,
+          grav_accn=grav_accn)
+        assert approx_equal(e, f)
   #
   etm.unpack_q(q_packed=q_packed_orig)
   etm.unpack_qd(qd_packed=qd_packed_orig)
