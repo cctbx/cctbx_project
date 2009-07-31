@@ -5,48 +5,80 @@ from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 
 class chain_selection_info (object) :
-  def __init__ (self, chain_id, resseq_start, resseq_end) :
+  def __init__ (self, chain_id) :
     adopt_init_args(self, locals())
-    self.ranges = set()
-    self.ranges_by_altloc = {}
-    self.remove_ranges = set()
-    self.remove_ranges_by_altloc = {}
+    self.resseqs = set()
+    self.resseqs_by_altloc = {}
+    self.remove_resseqs = set()
+    self.remove_resseqs_by_altloc = {}
 
   def add_range (self, start, end, altloc=None) :
-    assert start >= self.resseq_start and start <= self.resseq_end
-    assert end >= self.resseq_start and end <= self.resseq_end
+    resseqs = set([ x for x in range(start, end+1)])
     if altloc is None :
-      self.ranges |= set([ x for x in range(start, end+1)])
+      if len(self.remove_resseqs) != 0 :
+        self.remove_resseqs -= resseqs
+      else :
+        self.resseqs |= resseqs
     else :
-      ranges = self.ranges_by_altloc.get(altloc, set())
-      ranges |= set([ x for x in range(start, end+1)])
-      remove_ranges = self.remove_ranges_by_altloc.get(altloc, set())
-      remove_ranges -= ranges
-      self.remove_ranges_by_altloc[altloc] = remove_ranges
-      self.ranges_by_altloc[altloc] = ranges
+      remove_resseqs = self.remove_resseqs_by_altloc.get(altloc, set())
+      if len(remove_resseqs) != 0 :
+        remove_resseqs -= resseqs
+        if len(remove_resseqs) == 0 :
+          self.remove_resseqs_by_altloc.pop(altloc)
+        else :
+          self.remove_resseqs_by_altloc[altloc] = remove_resseqs
+      else :
+        old_resseqs = self.resseqs_by_altloc.get(altloc, set())
+        old_resseqs |= resseqs
+        self.resseqs_by_altloc[altloc] = old_resseqs
 
   def remove_range (self, start, end, altloc=None) :
-    assert start >= self.resseq_start and start <= self.resseq_end
-    assert end >= self.resseq_start and end <= self.resseq_end
+    resseqs = set([ x for x in range(start, end+1)])
     if altloc is None :
-      self.remove_ranges |= set([ x for x in range(start, end+1)])
-      self.ranges -= self.remove_ranges
-    else :
-      remove_ranges = self.remove_ranges_by_altloc.get(altloc, set())
-      remove_ranges |= set([ x for x in range(start, end+1)])
-      ranges = self.ranges_by_altloc.get(altloc, set())
-      ranges -= remove_ranges
-      self.remove_ranges_by_altloc[altloc] = remove_ranges
-      if len(ranges) == 0 :
-        self.ranges_by_altloc.pop(altloc)
+      if len(self.resseqs) != 0 :
+        self.resseqs -= resseqs
       else :
-        self.ranges_by_altloc[altloc] = ranges
-    if len(self.ranges) == 0 and len(self.ranges_by_altloc) == 0 :
+        self.remove_resseqs |= resseqs
+    else :
+      selected_resseqs = self.resseqs_by_altloc.get(altloc, set())
+      if len(selected_resseqs) > 0 :
+        selected_resseqs -= resseqs
+        if len(selected_resseqs) == 0 :
+          self.resseqs_by_altloc.pop(altloc)
+        else :
+          self.resseqs_by_altloc[altloc] = selected_resseqs
+      else :
+        old_resseqs = self.remove_resseqs_by_altloc.get(altloc, set())
+        old_resseqs |= resseqs
+        self.remove_resseqs_by_altloc[altloc] = old_resseqs
+    if (len(self.resseqs) == 0 and len(self.remove_resseqs) == 0 and
+        len(self.resseqs_by_altloc) == 0 and
+        len(self.remove_resseqs_by_altloc) == 0) :
       return True
+    return False
 
   def __str__ (self) :
     sele_str = "chain '%s'" % self.chain_id
-    #if len(self.ranges) > 0 :
+    clauses = []
+    if len(self.resseqs) > 0 :
+      ranges = get_set_ranges(self.resseqs)
+      clauses.extend(assemble_resseq_ranges(ranges))
+    if len(self.resseqs_by_altloc) > 0 :
+      for altloc in self.resseqs_by_altloc :
+        ranges = get_set_ranges(self.resseqs_by_altloc[altloc])
+        clauses.extend(assemble_resseq_ranges_with_altloc(ranges, altloc))
+    if len(clauses) > 0 :
+      sele_str += " and ((" + ") or (".join(clauses) + "))"
+    clauses = []
+    if len(self.remove_resseqs) > 0 :
+      ranges = get_set_ranges(self.remove_resseqs)
+      clauses.extend(assemble_resseq_ranges(ranges))
+    if len(self.remove_resseqs_by_altloc) > 0 :
+      for altloc in self.remove_resseqs_by_altloc :
+        ranges = get_set_ranges(self.remove_resseqs_by_altloc[altloc])
+        clauses.extend(assemble_resseq_ranges_with_altloc(ranges, altloc))
+    if len(clauses) > 0 :
+      sele_str += " and not ((" + ") or (".join(clauses) + "))"
     return sele_str
 
 class residue_selection_info (object) :
@@ -72,6 +104,7 @@ class atom_selection_info (object) :
     return ("chain '%s' and resid '%s' and name '%s' and altloc '%s'" %
       (atom.chain_id, atom.resid(), atom.name, altloc))
 
+#-----------------------------------------------------------------------
 class mouse_selection_manager (object) :
   def __init__ (self) :
     self.saved_selection = "none"
@@ -104,22 +137,6 @@ class mouse_selection_manager (object) :
     if not hasattr(self, "pdb_hierarchy") :
       self.pdb_hierarchy = pdb_hierarchy
     #---
-    self._chain_ends = {}
-    for chain in pdb_hierarchy.chains() :
-      if len(chain.conformers()) == 1 :
-        residues = chain.residues()
-        resseq_start = residues[0].resseq_as_int()
-        resseq_end = residues[-1].resseq_as_int()
-      else :
-        resseq_start = 100000
-        resseq_end = -100000
-        for conf in chain.conformers() :
-          residues = conf.residues()
-          if residues[0].resseq_as_int() < resseq_start :
-            resseq_start = residues[0].resseq_as_int()
-          if residues[-1].resseq_as_int() > resseq_end :
-            resseq_end = residues[-1].resseq_as_int()
-      self._chain_ends[chain.id] = (resseq_start, resseq_end)
     self.clear_selection()
 
   def clear_selection (self) :
@@ -159,7 +176,6 @@ class mouse_selection_manager (object) :
     except KeyboardInterrupt :
       raise
     except Exception, e :
-      print e
       atom_selection =None
     return atom_selection
 
@@ -170,7 +186,7 @@ class mouse_selection_manager (object) :
     self.saved_selection = selection_string
     self.apply_selection(selection_string)
 
-  def reset_range_selection (self, i_seq) :
+  def reset_range_selection (self) :
     self.start_i_seq = None
 
   def start_range_selection (self, i_seq) :
@@ -178,18 +194,12 @@ class mouse_selection_manager (object) :
 
   def end_range_selection (self, i_seq, deselect, ignore_altloc) :
     success = False
-    print i_seq
     if self.start_i_seq is not None :
       start_atom = self.atom_index[self.start_i_seq]
       end_atom = self.atom_index[i_seq]
       if (start_atom.chain_id == end_atom.chain_id and
           (ignore_altloc or start_atom.altloc == end_atom.altloc)) :
         chain_id = start_atom.chain_id
-        if chain_id in self.selected_chains :
-          chain_info = self.selected_chains[chain_id]
-        else :
-          (resseq_start, resseq_end) = self._chain_ends[chain_id]
-          chain_info = chain_selection_info(chain_id, resseq_start, resseq_end)
         altloc = None
         if not ignore_altloc :
           altloc = start_atom.altloc
@@ -198,15 +208,34 @@ class mouse_selection_manager (object) :
         if start_range > end_range :
           start_range = end_atom.resseq_as_int()
           end_range = start_atom.resseq_as_int()
+        chain_info = self.selected_chains.get(chain_id)
         if deselect :
-          remove_chain = chain_info.remove_range(start_range, end_range,
-            altloc)
-          if remove_chain :
-            self.selection_chains.pop(chain_id)
+          deselect_str = "chain '%s' and resseq %d:%d" % (chain_id,
+            start_range, end_range)
+          if altloc is not None :
+            deselect_str += " and altloc '%s'" % altloc
+          if chain_info is not None :
+            remove_chain = chain_info.remove_range(start_range, end_range,
+              altloc)
+            if remove_chain :
+              self.selected_chains.pop(chain_id)
+            success = True
+          deselection = self.get_atom_selection(deselect_str)
+          self.remove_redundant_residues(deselection, self.selected_residues)
+          self.remove_redundant_atoms(deselection, self.selected_atoms)
+          self.remove_redundant_residues(deselection.__invert__(),
+            self.deselected_residues)
+          self.remove_redundant_atoms(deselection.__invert__(),
+            self.deselected_atoms)
         else :
+          if chain_info is None :
+            chain_info = chain_selection_info(chain_id)
           chain_info.add_range(start_range, end_range, altloc)
           self.selected_chains[chain_id] = chain_info
-        success = True
+          chain_sel = self.selection_cache.selection(str(chain_info))
+          self.remove_redundant_residues(chain_sel, self.selected_residues)
+          self.remove_redundant_atoms(chain_sel, self.selected_atoms)
+          success = True
         self.construct_selection()
     self.reset_range_selection()
     return success
@@ -220,8 +249,7 @@ class mouse_selection_manager (object) :
       self.remove_redundant_residues(chain_sel, self.deselected_residues)
       self.remove_redundant_atoms(chain_sel, self.deselected_atoms)
     else :
-      (resseq_start, resseq_end) = self._chain_ends[chain_id]
-      chain_info = chain_selection_info(chain_id, resseq_start, resseq_end)
+      chain_info = chain_selection_info(chain_id)
       self.selected_chains[chain_id] = chain_info
       chain_sel = self.selection_cache.selection(str(chain_info))
       self.remove_redundant_residues(chain_sel, self.selected_residues)
@@ -328,6 +356,37 @@ def assemble_selection_clauses (clauses) :
   else :
     return "(" + ") or (".join(clauses) + ")"
 
+def get_set_ranges (residue_set) :
+  resseqs = sorted(residue_set)
+  previous_resseq = resseqs[0]
+  ranges = []
+  current_start = resseqs[0]
+  for resseq in resseqs[1:-1] :
+    if resseq > (previous_resseq + 1) :
+      ranges.append((current_start, previous_resseq))
+      current_start = resseq
+    previous_resseq = resseq
+  ranges.append((current_start, resseqs[-1]))
+  return ranges
+
+def assemble_resseq_ranges (ranges) :
+  clauses = []
+  for (start, end) in ranges :
+    if start == end :
+      clauses.append("resseq %d" % start)
+    else :
+      clauses.append("resseq %d:%d" % (start, end))
+  return clauses
+
+def assemble_resseq_ranges_with_altloc (ranges, altloc) :
+  clauses = []
+  for (start, end) in ranges :
+    if start == end :
+      clauses.append("resseq %d and altloc '%s'" % (start, altloc))
+    else :
+      clauses.append("resseq %d:%d and altloc '%s'" % (start,end,altloc))
+  return clauses
+
 ########################################################################
 def exercise () :
   from mmtbx.monomer_library import pdb_interpretation
@@ -413,9 +472,12 @@ HETATM 4052  O   HOH W   4       6.281  34.000   7.684  1.00 39.58           O
 HETATM 4053  O   HOH W   5      16.004   9.039  10.335  1.00 37.31           O
 HETATM 4054  O   HOH W   6       2.144   5.718  20.447  1.00 49.77           O
 HETATM 4055  O   HOH W   7      -1.180  10.517  14.630  1.00 32.95           O
-HETATM 4056  O   HOH W   8       9.227   8.636  12.535  1.00 32.52           O
-HETATM 4057  O   HOH W   9      11.070  -0.570  15.047  1.00 30.24           O
-HETATM 4058  O   HOH W  10      15.630  -6.169  12.853  1.00 31.08           O
+HETATM 4056  O  AHOH W   8       9.227   8.636  12.535  1.00 32.52           O
+HETATM 4056  O  BHOH W   8       9.227   8.636  12.535  1.00 32.52           O
+HETATM 4057  O  AHOH W   9      11.070  -0.570  15.047  1.00 30.24           O
+HETATM 4057  O  BHOH W   9      11.070  -0.570  15.047  1.00 30.24           O
+HETATM 4058  O  AHOH W  10      15.630  -6.169  12.853  1.00 31.08           O
+HETATM 4058  O  BHOH W  10      15.630  -6.169  12.853  1.00 31.08           O
 HETATM 4059  O   HOH W  11      14.854  -8.299  16.887  1.00 32.65           O
 HETATM 4060  O   HOH W  12      27.586   0.391  24.184  1.00 31.29           O
 HETATM 4061  O   HOH W  13       3.240   7.801  38.401  1.00 32.09           O
@@ -426,7 +488,19 @@ END""")).construct_hierarchy()
     mmtbx_selection_function=None)
   assert m.selection_size() == 0
   m.apply_selection("chain W")
-  assert m.selection_size() == 13
+  assert m.selection_size() == 16
+  m.start_range_selection(5)
+  m.end_range_selection(15, deselect=False, ignore_altloc=True)
+  assert m.selection_size() == 11
+  m.start_range_selection(6)
+  m.end_range_selection(10, deselect=False, ignore_altloc=True)
+  assert m.selection_size() == 11 # no change because of deselect=False
+  m.start_range_selection(6)
+  m.end_range_selection(9, deselect=True, ignore_altloc=True)
+  assert m.selection_size() == 6
+  m.start_range_selection(10)
+  m.end_range_selection(12, deselect=True, ignore_altloc=False)
+  assert m.selection_size() == 5
   print "OK"
 
 if __name__ == "__main__" :
