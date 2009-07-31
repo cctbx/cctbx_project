@@ -230,17 +230,13 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
       if (s is None):
         u[ib] = ia[ib]
         d = u[ib]
-        if (tau_array is None or tau_array[ib] is None):
-          u_[ib] =               - pa[ib]
-        else:
-          u_[ib] = tau_array[ib] - pa[ib]
+        u_[ib] = -pa[ib]
       else:
         u[ib] = ia[ib] * s
         d = s.transpose() * u[ib]
-        if (tau_array is None or tau_array[ib] is None):
-          u_[ib] =               - s.transpose() * pa[ib]
-        else:
-          u_[ib] = tau_array[ib] - s.transpose() * pa[ib]
+        u_[ib] = -s.transpose() * pa[ib]
+      if (tau_array is not None and tau_array[ib] is not None):
+        u_[ib] += tau_array[ib]
       d_inv[ib] = generalized_inverse(d)
       if (body.parent != -1):
         u_d_inv = u[ib] * d_inv[ib];

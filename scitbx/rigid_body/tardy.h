@@ -13,6 +13,27 @@
 
 namespace scitbx { namespace rigid_body { namespace tardy {
 
+  template <typename ElementType, std::size_t N>
+  af::shared<af::tiny<ElementType, N> >
+  unpack_ref_tiny(
+    af::const_ref<ElementType> const& packed,
+    std::size_t result_size)
+  {
+    SCITBX_ASSERT(
+      packed.size() == (packed.begin() == 0 ? 0 : result_size * N));
+    af::shared<af::tiny<ElementType, N> > result;
+    if (packed.begin() != 0) {
+      result.resize(result_size);
+      unsigned j = 0;
+      for(std::size_t i=0;i<result_size;i++,j+=N) {
+        std::copy(
+          &packed[j],
+          &packed[j+N], result[i].begin());
+      }
+    }
+    return result;
+  }
+
   namespace bp = boost::python;
 
   template <typename ElementType>
@@ -720,52 +741,70 @@ SCITBX_LOC // {
       return boost::optional<af::shared<ft> >(qd_e_kin_scales);
     }
 
+    af::shared<af::small<ft, 6> >
+    unpack_ref_small_degrees_of_freedom(
+      af::const_ref<ft> const& packed) const
+    {
+      SCITBX_ASSERT(
+        packed.size() == (packed.begin() == 0 ? 0 : degrees_of_freedom));
+      af::shared<af::small<ft, 6> > result;
+      if (packed.begin() != 0) {
+        unsigned nb = bodies_size();
+        result.reserve(nb);
+        unsigned j = 0;
+        for(unsigned ib=0;ib<nb;ib++) {
+          body_t<ft> const* body = bodies[ib].get();
+          unsigned n = body->joint->degrees_of_freedom;
+          result.push_back(
+            af::small<ft, 6>(af::adapt(
+              af::const_ref<ft>(&packed[j], n))));
+          j += n;
+        }
+        SCITBX_ASSERT(j == degrees_of_freedom);
+      }
+      return result;
+    }
+
     //! Returns a packed array of joint force variables (tau_packed).
     af::shared<ft>
-    inverse_dynamics(
+    inverse_dynamics_packed(
       af::const_ref<ft> const& qdd_packed,
       af::const_ref<ft> const& f_ext_packed=af::const_ref<ft>(0,0),
       af::const_ref<ft> const& grav_accn=af::const_ref<ft>(0,0))
     {
-      SCITBX_ASSERT(qdd_packed.size() == degrees_of_freedom);
-      SCITBX_ASSERT(
-        f_ext_packed.size() == (
-          f_ext_packed.begin() == 0 ? 0 : bodies.size() * 6));
       af::shared<ft> tau_packed((af::reserve(degrees_of_freedom)));
-      unsigned nb = bodies_size();
-      af::shared<af::small<ft, 6> > qdd_array((af::reserve(bodies.size())));
-      {
-        unsigned i = 0;
-        for(unsigned ib=0;ib<nb;ib++) {
-          body_t<ft> const* body = bodies[ib].get();
-          unsigned n = body->joint->degrees_of_freedom;
-          qdd_array.push_back(
-            af::small<ft, 6>(af::adapt(
-              af::const_ref<ft>(&qdd_packed[i], n))));
-          i += n;
-        }
-        SCITBX_ASSERT(i == degrees_of_freedom);
-      }
-      af::shared<af::tiny<ft, 6> > f_ext_array;
-      if (f_ext_packed.begin() != 0) {
-        f_ext_array.resize(bodies.size());
-        unsigned i = 0;
-        for(unsigned ib=0;ib<nb;ib++,i+=6) {
-          std::copy(
-            &f_ext_packed[i],
-            &f_ext_packed[i+6], f_ext_array[ib].begin());
-        }
-      }
       af::shared<af::small<ft, 6> >
         tau_array = featherstone_system_model().inverse_dynamics(
-          qdd_array.const_ref(),
-          f_ext_array.const_ref(),
+          unpack_ref_small_degrees_of_freedom(qdd_packed).const_ref(),
+          unpack_ref_tiny<ft, 6>(f_ext_packed, bodies.size()).const_ref(),
           grav_accn);
+      unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
         tau_packed.extend(tau_array[ib].begin(), tau_array[ib].end());
       }
       SCITBX_ASSERT(tau_packed.size() == degrees_of_freedom);
       return tau_packed;
+    }
+
+    //! Returns a packed array of joint acceleration variables (qdd_packed).
+    af::shared<ft>
+    forward_dynamics_ab_packed(
+      af::const_ref<ft> const& tau_packed=af::const_ref<ft>(0,0),
+      af::const_ref<ft> const& f_ext_packed=af::const_ref<ft>(0,0),
+      af::const_ref<ft> const& grav_accn=af::const_ref<ft>(0,0))
+    {
+      af::shared<ft> qdd_packed((af::reserve(degrees_of_freedom)));
+      af::shared<af::small<ft, 6> >
+        qdd_array = featherstone_system_model().forward_dynamics_ab(
+          unpack_ref_small_degrees_of_freedom(tau_packed).const_ref(),
+          unpack_ref_tiny<ft, 6>(f_ext_packed, bodies.size()).const_ref(),
+          grav_accn);
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        qdd_packed.extend(qdd_array[ib].begin(), qdd_array[ib].end());
+      }
+      SCITBX_ASSERT(qdd_packed.size() == degrees_of_freedom);
+      return qdd_packed;
     }
 
     //! Not available in Python.

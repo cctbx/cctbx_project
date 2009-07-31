@@ -110,8 +110,12 @@ namespace scitbx { namespace rigid_body { namespace ext {
            arg_("e_kin_target")=none,
            arg_("e_kin_epsilon")=1e-12,
            arg_("random_gauss")=none))
-        .def("inverse_dynamics", &wt::inverse_dynamics, (
+        .def("inverse_dynamics_packed", &wt::inverse_dynamics_packed, (
           arg_("qdd_packed"),
+          arg_("f_ext_packed")=none,
+          arg_("grav_accn")=none))
+        .def("forward_dynamics_ab_packed", &wt::forward_dynamics_ab_packed, (
+          arg_("tau_packed")=none,
           arg_("f_ext_packed")=none,
           arg_("grav_accn")=none))
         .def("dynamics_step", &wt::dynamics_step, (arg_("delta_t")))
