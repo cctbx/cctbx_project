@@ -490,6 +490,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     self.flag_show_hydrogens               = False
     self.flag_show_ellipsoids              = False
     self.flag_smooth_lines                 = True
+    self.flag_recenter_on_click            = False
 
   @debug
   def InitGL(self):
@@ -524,9 +525,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       self.setup_lighting()
 
   def OnRedrawGL (self, event=None) :
-    if self.update_scene :
-      self.update_scene_objects()
-      self.update_scene = False
+    self.check_and_update_model_scenes()
     if self.minimum_covering_sphere is None :
       gltbx.util.handle_error()
       glClear(GL_COLOR_BUFFER_BIT)
@@ -536,6 +535,11 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       gltbx.util.handle_error()
     else :
       wx_viewer.wxGLWindow.OnRedrawGL(self, event)
+
+  def check_and_update_model_scenes (self) :
+    if self.update_scene :
+      self.update_scene_objects()
+      self.update_scene = False
 
   def DrawGL(self):
     if self.GL_uninitialised or len(self.scene_objects) == 0 :
@@ -708,6 +712,9 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     if self.closest_point_i_seq is not None :
       clicked_scene = self.scene_objects.get(self.closest_point_object_id)
       clicked_scene.add_label(self.closest_point_i_seq)
+      if self.flag_recenter_on_click :
+        self.recenter_on_atom(self.closest_point_object_id,
+          self.closest_point_i_seq)
 
   @debug
   def update_scene_objects (self) :
