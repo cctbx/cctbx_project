@@ -262,6 +262,16 @@ def compare_essence_and_fast_tardy_models(etm):
         else:
           assert approx_equal(tau2_packed, tau_packed, eps=1e-5)
   #
+  delta_t = 0.1234
+  etm.dynamics_step(delta_t=delta_t)
+  ftm.dynamics_step(delta_t=delta_t)
+  e = etm.pack_q()
+  f = etm.pack_q()
+  assert approx_equal(e, f)
+  e = etm.pack_qd()
+  f = etm.pack_qd()
+  assert approx_equal(e, f)
+  #
   etm.assign_zero_velocities()
   ftm.assign_zero_velocities()
   e = etm_inverse_dynamics_packed(
