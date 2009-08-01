@@ -265,6 +265,7 @@ def exercise_linear_velocity_manipulations(tardy_model):
         assert approx_equal(mlv, (0,0,0))
 
 def exercise_fixed_vertices_special_cases():
+  tardy_models = []
   """
           2
          /
@@ -289,6 +290,7 @@ def exercise_fixed_vertices_special_cases():
   assert tt.cluster_manager.clusters == [[0,1,2]]
   tm = construct_tardy_model(
     labels=labels, sites=sites, masses=masses, tardy_tree=tt)
+  tardy_models.append(tm)
   assert len(tm.bodies) == 1
   assert tm.bodies[0].joint.degrees_of_freedom == 6
   exercise_linear_velocity_manipulations(tardy_model=tm)
@@ -312,6 +314,7 @@ def exercise_fixed_vertices_special_cases():
     assert tt.cluster_manager.clusters == [[0,1,2]]
     tm = construct_tardy_model(
       labels=labels, sites=sites, masses=masses, tardy_tree=tt)
+    tardy_models.append(tm)
     assert len(tm.bodies) == 1
     assert tm.bodies[0].joint.degrees_of_freedom \
         == [3,1,0][len(fixed_vertices)-1]
@@ -334,9 +337,11 @@ def exercise_fixed_vertices_special_cases():
     assert tt.cluster_manager.clusters == [[0,1,2]]
     tm = construct_tardy_model(
       labels=labels, sites=sites, masses=masses, tardy_tree=tt)
+    tardy_models.append(tm)
     assert len(tm.bodies) == 1
     assert tm.bodies[0].joint.degrees_of_freedom == 0
     exercise_linear_velocity_manipulations(tardy_model=tm)
+  return tardy_models
 
 def exercise_tardy_model(out, n_dynamics_steps, delta_t, tardy_model):
   tardy_model.check_d_e_pot_d_q()
@@ -441,6 +446,11 @@ def get_test_model_by_index(i, fixed_vertex_lists=[]):
     masses=[1.0]*len(tc.sites),
     tardy_tree=tt)
 
+test_case_5_fixed_vertices_expected_dof = [
+  ([0,16,17], 2),
+  ([16,17], 5),
+  ([12], 8)]
+
 def run(args):
   assert len(args) in [0,1]
   if (len(args) == 0):
@@ -471,9 +481,8 @@ def run(args):
         assert tardy_model.degrees_of_freedom == 0
       elif (i == 5):
         assert tardy_model.degrees_of_freedom == 11
-        for fixed_vertices,expected_dof in [([0,16,17], 2),
-                                            ([16,17], 5),
-                                            ([12], 8)]:
+        for fixed_vertices,expected_dof in \
+              test_case_5_fixed_vertices_expected_dof:
           print >> out, "test model index:", i, \
             "fixed_vertices:", fixed_vertices
           tardy_model = get_test_model_by_index(
