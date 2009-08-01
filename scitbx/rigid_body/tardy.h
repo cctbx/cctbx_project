@@ -768,7 +768,7 @@ SCITBX_LOC // {
     //! Returns a packed array of joint force variables (tau_packed).
     af::shared<ft>
     inverse_dynamics_packed(
-      af::const_ref<ft> const& qdd_packed,
+      af::const_ref<ft> const& qdd_packed=af::const_ref<ft>(0,0),
       af::const_ref<ft> const& f_ext_packed=af::const_ref<ft>(0,0),
       af::const_ref<ft> const& grav_accn=af::const_ref<ft>(0,0))
     {
@@ -778,6 +778,26 @@ SCITBX_LOC // {
           unpack_ref_small_degrees_of_freedom(qdd_packed).const_ref(),
           unpack_ref_tiny<ft, 6>(f_ext_packed, bodies.size()).const_ref(),
           grav_accn);
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        tau_packed.extend(tau_array[ib].begin(), tau_array[ib].end());
+      }
+      SCITBX_ASSERT(tau_packed.size() == degrees_of_freedom);
+      return tau_packed;
+    }
+
+    /*! Simplified version of Inverse Dynamics via Recursive Newton-Euler
+        Algorithm, with all qd, qdd zero, but non-zero external forces.
+     */
+    af::shared<ft>
+    f_ext_as_tau_packed(
+      af::const_ref<ft> const& f_ext_packed)
+    {
+      SCITBX_ASSERT(f_ext_packed.begin() != 0);
+      af::shared<ft> tau_packed((af::reserve(degrees_of_freedom)));
+      af::shared<af::small<ft, 6> >
+        tau_array = featherstone_system_model().f_ext_as_tau(
+          unpack_ref_tiny<ft, 6>(f_ext_packed, bodies.size()).const_ref());
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
         tau_packed.extend(tau_array[ib].begin(), tau_array[ib].end());

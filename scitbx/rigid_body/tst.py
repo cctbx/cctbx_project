@@ -168,7 +168,7 @@ def compare_essence_and_fast_tardy_models(etm):
   f_ext_rand_packed = pack_array(
     array=f_ext_rand_array, packed_size=len(etm.bodies)*6)
   def etm_inverse_dynamics_packed(
-        qdd_array, f_ext_array=None, grav_accn=None):
+        qdd_array=None, f_ext_array=None, grav_accn=None):
     return pack_array(
       array=etm.featherstone_system_model().inverse_dynamics(
         qdd_array=qdd_array,
@@ -190,28 +190,31 @@ def compare_essence_and_fast_tardy_models(etm):
     qdd_packed=qdd_rand_packed)
   assert approx_equal(e, f)
   e = etm_inverse_dynamics_packed(
-    qdd_array=qdd_rand_array,
     f_ext_array=f_ext_rand_array)
   f = ftm.inverse_dynamics_packed(
-    qdd_packed=qdd_rand_packed,
     f_ext_packed=f_ext_rand_packed)
   assert approx_equal(e, f)
   e = etm_inverse_dynamics_packed(
-    qdd_array=qdd_rand_array,
     grav_accn=grav_accn_rand)
   f = ftm.inverse_dynamics_packed(
-    qdd_packed=qdd_rand_packed,
     grav_accn=flex.double(grav_accn_rand))
   assert approx_equal(e, f)
-  e = etm_inverse_dynamics_packed(
-    qdd_array=qdd_rand_array,
-    f_ext_array=f_ext_rand_array,
-    grav_accn=grav_accn_rand)
-  f = ftm.inverse_dynamics_packed(
-    qdd_packed=qdd_rand_packed,
-    f_ext_packed=f_ext_rand_packed,
-    grav_accn=flex.double(grav_accn_rand))
-  assert approx_equal(e, f)
+  for qdd_array,qdd_packed in [(None,None),
+                               (qdd_rand_array,qdd_rand_packed)]:
+    for f_ext_array,f_ext_packed in [(None,None),
+                                     (f_ext_rand_array,f_ext_rand_packed)]:
+      for grav_accn in [None, grav_accn_rand]:
+        if ([qdd_array,f_ext_array,grav_accn].count(None) >= 2):
+          continue # exercised above already
+        e = etm_inverse_dynamics_packed(
+          qdd_array=qdd_rand_array,
+          f_ext_array=f_ext_rand_array,
+          grav_accn=grav_accn_rand)
+        f = ftm.inverse_dynamics_packed(
+          qdd_packed=qdd_rand_packed,
+          f_ext_packed=f_ext_rand_packed,
+          grav_accn=flex.double(grav_accn_rand))
+        assert approx_equal(e, f)
   #
   e = etm_forward_dynamics_ab_packed()
   f = ftm.forward_dynamics_ab_packed()
@@ -237,17 +240,43 @@ def compare_essence_and_fast_tardy_models(etm):
                                      (f_ext_rand_array,f_ext_rand_packed)]:
       for grav_accn in [None, grav_accn_rand]:
         if ([tau_array,f_ext_array,grav_accn].count(None) >= 2):
-          continue # exercised above already
-        e = etm_forward_dynamics_ab_packed(
-          tau_array=tau_array,
-          f_ext_array=f_ext_array,
-          grav_accn=grav_accn)
+          e = etm_forward_dynamics_ab_packed(
+            tau_array=tau_array,
+            f_ext_array=f_ext_array,
+            grav_accn=grav_accn)
+        else:
+          e = None
         if (grav_accn is not None): grav_accn=flex.double(grav_accn)
         f = ftm.forward_dynamics_ab_packed(
           tau_packed=tau_packed,
           f_ext_packed=f_ext_packed,
           grav_accn=grav_accn)
-        assert approx_equal(e, f)
+        if (e is not None):
+          assert approx_equal(e, f)
+        tau2_packed = ftm.inverse_dynamics_packed(
+          qdd_packed=f,
+          f_ext_packed=f_ext_packed,
+          grav_accn=grav_accn)
+        if (tau_packed is None):
+          assert is_below_limit(flex.max(flex.abs(tau2_packed)), 0, eps=1e-5)
+        else:
+          assert approx_equal(tau2_packed, tau_packed, eps=1e-5)
+  #
+  etm.assign_zero_velocities()
+  ftm.assign_zero_velocities()
+  e = etm_inverse_dynamics_packed(
+    f_ext_array=f_ext_rand_array)
+  f = ftm.inverse_dynamics_packed(
+    f_ext_packed=f_ext_rand_packed)
+  assert approx_equal(e, f)
+  e_ref = e
+  e = pack_array(
+    array=etm.featherstone_system_model().f_ext_as_tau(
+      f_ext_array=f_ext_array),
+    packed_size=etm.degrees_of_freedom)
+  assert approx_equal(e_ref, e)
+  f = ftm.f_ext_as_tau_packed(f_ext_packed=f_ext_packed)
+  assert approx_equal(e_ref, f)
   #
   etm.unpack_q(q_packed=q_packed_orig)
   etm.unpack_qd(qd_packed=qd_packed_orig)
