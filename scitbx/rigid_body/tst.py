@@ -1,4 +1,5 @@
-import scitbx.rigid_body.essence.tst_tardy
+import scitbx.rigid_body.essence
+from scitbx.rigid_body.essence import tst_tardy
 from scitbx.graph import tst_tardy_pdb
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -291,25 +292,48 @@ def compare_essence_and_fast_tardy_models(etm):
   etm.unpack_q(q_packed=q_packed_orig)
   etm.unpack_qd(qd_packed=qd_packed_orig)
 
+def exercise_fixed_vertices():
+  etm = tst_tardy.get_test_model_by_index(
+    i=0, fixed_vertex_lists=[[0]])
+  assert etm.degrees_of_freedom == 0
+  if (0): compare_essence_and_fast_tardy_models(etm=etm) # XXX
+  #
+  for etm in tst_tardy.exercise_fixed_vertices_special_cases():
+    assert etm.potential_obj is not None
+    if (0): compare_essence_and_fast_tardy_models(etm=etm) # XXX
+  #
+  for fixed_vertices,expected_dof in \
+        tst_tardy.test_case_5_fixed_vertices_expected_dof:
+    etm = tst_tardy.get_test_model_by_index(
+      i=5, fixed_vertex_lists=[fixed_vertices])
+    assert etm.degrees_of_freedom == expected_dof
+    if (0): compare_essence_and_fast_tardy_models(etm=etm) # XXX
+
 def run(args):
   assert len(args) == 0
+  n_tested = 0
   for tc in tst_tardy_pdb.test_cases:
     tt = tc.tardy_tree_construct()
     masses = [1.0]*len(tc.sites)
-    etm = scitbx.rigid_body.essence.tardy.model(
-      labels=tc.labels,
-      sites=tc.sites,
-      masses=masses,
-      tardy_tree=tt,
-      potential_obj=None)
-    compare_essence_and_fast_tardy_models(etm=etm)
-    etm = scitbx.rigid_body.essence.tst_tardy.construct_tardy_model(
+    if (n_tested < 2):
+      etm = scitbx.rigid_body.essence.tardy.model(
+        labels=tc.labels,
+        sites=tc.sites,
+        masses=masses,
+        tardy_tree=tt,
+        potential_obj=None)
+      compare_essence_and_fast_tardy_models(etm=etm)
+    etm = tst_tardy.construct_tardy_model(
       labels=tc.labels,
       sites=tc.sites,
       masses=masses,
       tardy_tree=tt)
     assert etm.potential_obj is not None
     compare_essence_and_fast_tardy_models(etm=etm)
+    n_tested += 1
+  #
+  exercise_fixed_vertices()
+  #
   print format_cpu_times()
 
 if (__name__ == "__main__"):
