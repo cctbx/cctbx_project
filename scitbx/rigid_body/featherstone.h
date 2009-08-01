@@ -221,7 +221,8 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       af::const_ref<af::tiny<ft, 6> > const& f_ext_array,
       af::const_ref<ft> const& grav_accn) const
     {
-      SCITBX_ASSERT(qdd_array.size() == bodies.size());
+      SCITBX_ASSERT(
+        qdd_array.size() == (qdd_array.begin() == 0 ? 0 : bodies.size()));
       SCITBX_ASSERT(
         f_ext_array.size() == (f_ext_array.begin() == 0 ? 0 : bodies.size()));
       SCITBX_ASSERT(grav_accn.size() == (grav_accn.begin() == 0 ? 0 : 6));
@@ -234,18 +235,28 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         body_t<ft> const* body = bodies[ib].get();
         af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
         af::const_ref<ft> qd = body->qd();
-        af::const_ref<ft> qdd = qdd_array[ib].const_ref();
         af::tiny<ft, 6> vj;
         af::tiny<ft, 6> aj;
         if (s.begin() == 0) {
           SCITBX_ASSERT(qd.size() == 6);
-          SCITBX_ASSERT(qdd.size() == 6);
           std::copy(qd.begin(), qd.end(), vj.begin()); // vj = qd
-          std::copy(qdd.begin(), qdd.end(), aj.begin()); // aj = qdd
+          if (qdd_array.begin() == 0) {
+            aj.fill(0);
+          }
+          else {
+            SCITBX_ASSERT(qdd_array[ib].size() == 6);
+            ft const* qdd = qdd_array[ib].begin();
+            std::copy(qdd, qdd+6, aj.begin()); // aj = qdd
+          }
         }
         else {
           matrix_mul(vj, s, qd); // vj = s * qd
-          matrix_mul(aj, s, qdd); // aj = s * qdd
+          if (qdd_array.begin() == 0) {
+            aj.fill(0);
+          }
+          else {
+            matrix_mul(aj, s, qdd_array[ib].const_ref()); // aj = s * qdd
+          }
         }
         if (body->parent == -1) {
           a[ib] = aj;

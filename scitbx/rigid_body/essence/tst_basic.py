@@ -157,6 +157,22 @@ def exercise_system_model():
     (-0.16, 0.14, -0.33, 0.35, -0.02, -0.20)])
   grav_accn = matrix.col((0.02, -0.13, 0.15, 0.26, -0.16, 0.14))
   #
+  qdd0 = [
+    (0,0,0,0,0,0),
+    (0,0,0),
+    (0,),
+    (0,0,0)]
+  for qdd_array in [None, qdd0]:
+    tau = model.inverse_dynamics(qdd_array=qdd_array)
+    assert approx_equal(tau, [
+      (3.0067673409496019, -1.9747070164103167, -0.96510418705493095,
+       0.62119145987365987, 0.79528549692226591, 0.50582706679253908),
+      (-3.5089966946778439, 0.85280077414986188, -1.1466929846982585),
+      (-0.68035016279655447,),
+      (0.0, 0.0, 0.0)])
+  qdd2 = model.forward_dynamics_ab(tau_array=tau)
+  assert approx_equal(qdd2, qdd0)
+  #
   tau = model.inverse_dynamics(qdd_array=qdd)
   assert approx_equal(tau, [
     (-28.4935967396, -13.9449610757, 37.119813341,
