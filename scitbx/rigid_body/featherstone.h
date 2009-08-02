@@ -41,27 +41,12 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
 
     system_model() {}
 
-    /*! \brief Stores bodies and computes body.cb_tree (RBDA Fig. 4.7, p. 74)
-        for all bodies.
-     */
+    //! Stores bodies and caches transformation matrices.
     system_model(
       af::shared<shared_ptr<body_t<ft> > > const& bodies_)
     :
       bodies(bodies_)
-    {
-      unsigned nb = bodies_size();
-      // XXX TODO move out computation of cb_tree
-      for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft>* body = bodies[ib].get();
-        int p = body->parent;
-        if (p == -1) {
-          body->cb_tree = body->alignment->cb_0b;
-        }
-        else {
-          body->cb_tree = body->alignment->cb_0b * bodies[p]->alignment->cb_b0;
-        }
-      }
-    }
+    {}
 
     //! RBDA Example 4.4, p. 80.
     af::shared<rotr3<ft> >

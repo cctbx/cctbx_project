@@ -52,6 +52,14 @@ class mass_points(object):
       inertia = alignment_cb_0b.r * inertia * alignment_cb_0b.r.transpose()
     return spatial_lib.mci(m=O._sum_of_masses, c=center_of_mass, i=inertia)
 
+def set_cb_tree(bodies):
+  "Computes Xtree (RBDA Fig. 4.7, p. 74) for all bodies."
+  for body in bodies:
+    if (body.parent == -1):
+      body.cb_tree = body.alignment.cb_0b
+    else:
+      body.cb_tree = body.alignment.cb_0b * bodies[body.parent].alignment.cb_b0
+
 class zero_dof(object):
 
   def __init__(O, sites, masses):

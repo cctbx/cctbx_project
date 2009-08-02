@@ -87,6 +87,25 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     }
   };
 
+  //! Computes Xtree (RBDA Fig. 4.7, p. 74) for all bodies.
+  template <typename FloatType>
+  void
+  set_cb_tree(
+    af::ref<shared_ptr<body_t<FloatType> > > const& bodies)
+  {
+    unsigned nb = boost::numeric_cast<unsigned>(bodies.size());
+    for(unsigned ib=0;ib<nb;ib++) {
+      body_t<FloatType>* body = bodies[ib].get();
+      int p = body->parent;
+      if (p == -1) {
+        body->cb_tree = body->alignment->cb_0b;
+      }
+      else {
+        body->cb_tree = body->alignment->cb_0b * bodies[p]->alignment->cb_b0;
+      }
+    }
+  }
+
   template <typename FloatType=double>
   struct zero_dof : body_t<FloatType>
   {

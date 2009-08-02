@@ -133,11 +133,13 @@ class translational_body(object):
     O.parent = -1
 
 def exercise_system_model():
-  model = featherstone.system_model(bodies=[
+  bodies = [
     six_dof_body(),
     spherical_body(),
     revolute_body(parent=1),
-    translational_body()])
+    translational_body()]
+  body_lib.set_cb_tree(bodies=bodies)
+  model = featherstone.system_model(bodies=bodies)
   assert approx_equal(model.e_kin(), 5.10688665235)
   assert approx_equal(model.qd_e_kin_scales(), [
     0.1036643, 0.1054236, 0.1187526, 0.5773503, 0.5773503, 0.5773503,
@@ -247,9 +249,11 @@ def exercise_system_model():
     (-0.35,0.02,0.2)])
 
 def exercise_system_model_with_zero_dof_body():
-  model = featherstone.system_model(bodies=[
+  bodies = [
     zero_dof_body(),
-    revolute_body(parent=0)])
+    revolute_body(parent=0)]
+  body_lib.set_cb_tree(bodies=bodies)
+  model = featherstone.system_model(bodies=bodies)
   assert approx_equal(model.e_kin(), 0.0202765671829)
   assert approx_equal(model.qd_e_kin_scales(), [1.334309])
   #
