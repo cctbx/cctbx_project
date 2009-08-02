@@ -9,7 +9,15 @@ from libtbx.utils import format_cpu_times
 import random
 import sys
 
-def compare_essence_and_fast_tardy_models(etm):
+def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
+  etm = scitbx.rigid_body.essence.tardy.model( # new instance to reset q, qd
+    labels=etm.labels,
+    sites=etm.sites,
+    masses=etm.masses,
+    tardy_tree=etm.tardy_tree,
+    potential_obj=etm.potential_obj,
+    near_singular_hinges_angular_tolerance_deg=
+      etm.near_singular_hinges_angular_tolerance_deg)
   ftm = scitbx.rigid_body.tardy_model(
     labels=etm.labels,
     sites=flex.vec3_double(etm.sites),
@@ -27,8 +35,8 @@ def compare_essence_and_fast_tardy_models(etm):
   #
   assert list(ftm.root_indices()) == etm.root_indices()
   #
-  q_packed_orig = etm.pack_q()
-  qd_packed_orig = etm.pack_qd()
+  q_packed_zero = etm.pack_q()
+  qd_packed_zero = etm.pack_qd()
   #
   def check_packed():
     e = etm.pack_q()
@@ -39,15 +47,15 @@ def compare_essence_and_fast_tardy_models(etm):
     assert approx_equal(e, f)
   check_packed()
   mt = flex.mersenne_twister(seed=0)
-  q_packed_rand = mt.random_double(size=q_packed_orig.size())*2-1
-  qd_packed_rand = mt.random_double(size=qd_packed_orig.size())*2-1
+  q_packed_rand = mt.random_double(size=q_packed_zero.size())*2-1
+  qd_packed_rand = mt.random_double(size=qd_packed_zero.size())*2-1
   for tm in [etm, ftm]: tm.unpack_q(q_packed=q_packed_rand)
   check_packed()
-  for tm in [etm, ftm]: tm.unpack_q(q_packed=q_packed_orig)
+  for tm in [etm, ftm]: tm.unpack_q(q_packed=q_packed_zero)
   check_packed()
   for tm in [etm, ftm]: tm.unpack_qd(qd_packed=qd_packed_rand)
   check_packed()
-  for tm in [etm, ftm]: tm.unpack_qd(qd_packed=qd_packed_orig)
+  for tm in [etm, ftm]: tm.unpack_qd(qd_packed=qd_packed_zero)
   check_packed()
   for tm in [etm, ftm]: tm.unpack_q(q_packed=q_packed_rand)
   check_packed()
@@ -71,10 +79,10 @@ def compare_essence_and_fast_tardy_models(etm):
   #
   def check_mean_linear_velocity():
     e = etm.mean_linear_velocity(number_of_sites_in_each_tree=None)
-    f = ftm.mean_linear_velocity(number_of_sites_in_each_tree=None)
-    assert approx_equal(e, f)
-    f = ftm.mean_linear_velocity(number_of_sites_in_each_tree=fnosiet)
-    assert approx_equal(e, f)
+    for f in [ftm.mean_linear_velocity(number_of_sites_in_each_tree=None),
+              ftm.mean_linear_velocity(number_of_sites_in_each_tree=fnosiet)]:
+      if (e is None): assert f is None
+      else:           assert approx_equal(e, f)
   check_mean_linear_velocity()
   value = matrix.col(mt.random_double(size=3)*2-1)
   for tm in [etm, ftm]:
@@ -99,12 +107,17 @@ def compare_essence_and_fast_tardy_models(etm):
   assert approx_equal(e, f)
   e = etm.d_e_pot_d_q_packed()
   f = ftm.d_e_pot_d_q_packed()
-  e_max_abs = flex.max(flex.abs(e))
-  if (etm.potential_obj is None):
-    assert is_below_limit(value=e_max_abs, limit=1e-10)
+  if (e.size() == 0):
+    assert f.size() == 0
   else:
-    assert is_above_limit(value=e_max_abs, limit=1) # random generator dependent
-  assert approx_equal(e, f)
+    e_max_abs = flex.max(flex.abs(e))
+    if (etm.potential_obj is None):
+      assert is_below_limit(value=e_max_abs, limit=1e-10)
+    else:
+      # note: e_max_abs is random generator dependent
+      # by change much smaller e_max_abs are possible
+      assert is_above_limit(value=e_max_abs, limit=0.1)
+    assert approx_equal(e, f)
   #
   e = etm.e_kin()
   f = ftm.e_kin()
@@ -115,7 +128,10 @@ def compare_essence_and_fast_tardy_models(etm):
   etm.reset_e_kin(e_kin_target=1.234)
   ftm.reset_e_kin(e_kin_target=1.234)
   e = etm.e_kin()
-  assert approx_equal(e, 1.234)
+  if (etm.degrees_of_freedom == 0):
+    assert approx_equal(e, 0)
+  else:
+    assert approx_equal(e, 1.234)
   f = ftm.e_kin()
   assert approx_equal(e, f)
   try:
@@ -240,28 +256,55 @@ def compare_essence_and_fast_tardy_models(etm):
     for f_ext_array,f_ext_packed in [(None,None),
                                      (f_ext_rand_array,f_ext_rand_packed)]:
       for grav_accn in [None, grav_accn_rand]:
-        if ([tau_array,f_ext_array,grav_accn].count(None) >= 2):
-          e = etm_forward_dynamics_ab_packed(
-            tau_array=tau_array,
-            f_ext_array=f_ext_array,
-            grav_accn=grav_accn)
+        if (grav_accn is None):
+          grav_accn_f = None
         else:
-          e = None
-        if (grav_accn is not None): grav_accn=flex.double(grav_accn)
-        f = ftm.forward_dynamics_ab_packed(
+          grav_accn_f = flex.double(grav_accn)
+        qdd_array_e = etm.featherstone_system_model().forward_dynamics_ab(
+          tau_array=tau_array,
+          f_ext_array=f_ext_array,
+          grav_accn=grav_accn)
+        qdd_packed_e = pack_array(
+          array=qdd_array_e,
+          packed_size=etm.degrees_of_freedom)
+        qdd_packed_f = ftm.forward_dynamics_ab_packed(
           tau_packed=tau_packed,
           f_ext_packed=f_ext_packed,
+          grav_accn=grav_accn_f)
+        assert approx_equal(qdd_packed_e, qdd_packed_f)
+        tau2_array_e = etm.featherstone_system_model().inverse_dynamics(
+          qdd_array=qdd_array_e,
+          f_ext_array=f_ext_array,
           grav_accn=grav_accn)
-        if (e is not None):
-          assert approx_equal(e, f)
-        tau2_packed = ftm.inverse_dynamics_packed(
-          qdd_packed=f,
+        tau2_packed_e = pack_array(
+          array=tau2_array_e,
+          packed_size=etm.degrees_of_freedom)
+        tau2_packed_f = ftm.inverse_dynamics_packed(
+          qdd_packed=qdd_packed_f,
           f_ext_packed=f_ext_packed,
+          grav_accn=grav_accn_f)
+        assert approx_equal(tau2_packed_e, tau2_packed_f)
+        if (etm.degrees_of_freedom == 0):
+          assert tau2_packed_e.size() == 0
+        elif (not have_singularity):
+          if (tau_packed is None):
+            assert is_below_limit(
+              flex.max(flex.abs(tau2_packed_e)), 0, eps=1e-5)
+          else:
+            assert approx_equal(tau2_packed_e, tau_packed, eps=1e-5)
+        qdd2_array_e = etm.featherstone_system_model().forward_dynamics_ab(
+          tau_array=tau2_array_e,
+          f_ext_array=f_ext_array,
           grav_accn=grav_accn)
-        if (tau_packed is None):
-          assert is_below_limit(flex.max(flex.abs(tau2_packed)), 0, eps=1e-5)
-        else:
-          assert approx_equal(tau2_packed, tau_packed, eps=1e-5)
+        qdd2_packed_e = pack_array(
+          array=qdd2_array_e,
+          packed_size=etm.degrees_of_freedom)
+        qdd2_packed_f = ftm.forward_dynamics_ab_packed(
+          tau_packed=tau2_packed_f,
+          f_ext_packed=f_ext_packed,
+          grav_accn=grav_accn_f)
+        assert approx_equal(qdd2_packed_e, qdd2_packed_f)
+        assert approx_equal(qdd2_packed_e, qdd_packed_e, eps=1e-4)
   #
   delta_t = 0.1234
   etm.dynamics_step(delta_t=delta_t)
@@ -288,26 +331,26 @@ def compare_essence_and_fast_tardy_models(etm):
   assert approx_equal(e_ref, e)
   f = ftm.f_ext_as_tau_packed(f_ext_packed=f_ext_packed)
   assert approx_equal(e_ref, f)
-  #
-  etm.unpack_q(q_packed=q_packed_orig)
-  etm.unpack_qd(qd_packed=qd_packed_orig)
 
 def exercise_fixed_vertices():
   etm = tst_tardy.get_test_model_by_index(
     i=0, fixed_vertex_lists=[[0]])
   assert etm.degrees_of_freedom == 0
-  if (0): compare_essence_and_fast_tardy_models(etm=etm) # XXX
+  compare_essence_and_fast_tardy_models(etm=etm)
   #
-  for etm in tst_tardy.exercise_fixed_vertices_special_cases():
+  for i_case,etm in enumerate(
+                      tst_tardy.exercise_fixed_vertices_special_cases()):
     assert etm.potential_obj is not None
-    if (0): compare_essence_and_fast_tardy_models(etm=etm) # XXX
+    compare_essence_and_fast_tardy_models(
+      etm=etm,
+      have_singularity=(i_case < 4))
   #
   for fixed_vertices,expected_dof in \
         tst_tardy.test_case_5_fixed_vertices_expected_dof:
     etm = tst_tardy.get_test_model_by_index(
       i=5, fixed_vertex_lists=[fixed_vertices])
     assert etm.degrees_of_freedom == expected_dof
-    if (0): compare_essence_and_fast_tardy_models(etm=etm) # XXX
+    compare_essence_and_fast_tardy_models(etm=etm)
 
 def run(args):
   assert len(args) == 0
