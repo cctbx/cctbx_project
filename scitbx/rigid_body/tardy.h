@@ -77,7 +77,7 @@ namespace scitbx { namespace rigid_body { namespace tardy {
           ft diff_length = diff.length();
           if (diff_length != 0) {
             diff /= diff_length;
-            ft abs_cos = axis * diff;
+            ft abs_cos = fn::absolute(axis * diff);
             if (abs_cos < abs_cos_limit) {
               is_singular = false;
               return;

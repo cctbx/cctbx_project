@@ -111,7 +111,8 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     af::const_ref<ft, af::mat_grid>
     motion_subspace() const
     {
-      return af::const_ref<ft, af::mat_grid>(0, af::mat_grid(6, 0));
+      static ft const coeffs[] = {};
+      return af::const_ref<ft, af::mat_grid>(coeffs, af::mat_grid(6, 0));
     }
 
     virtual
@@ -402,7 +403,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     get_linear_velocity(
       af::const_ref<ft> const& qd) const
     {
-      SCITBX_ASSERT(qd.size() == 0);
+      SCITBX_ASSERT(qd.size() == 3);
       return boost::optional<vec3<ft> >();
     }
 
