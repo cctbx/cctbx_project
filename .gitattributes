@@ -575,6 +575,7 @@ scitbx/optional_copy/tst.cpp svneol=native#text/plain
 scitbx/optional_copy/tst.py -text
 scitbx/rigid_body/SConscript -text
 scitbx/rigid_body/__init__.py svneol=native#text/x-python
+scitbx/rigid_body/array_packing.h svneol=native#text/plain
 scitbx/rigid_body/body_lib.h svneol=native#text/plain
 scitbx/rigid_body/body_t.h svneol=native#text/plain
 scitbx/rigid_body/essence/__init__.py svneol=native#text/x-python
