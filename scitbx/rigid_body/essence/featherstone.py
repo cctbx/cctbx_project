@@ -37,14 +37,8 @@ class system_model(object):
   "RBDA Tab. 4.3, p. 87"
 
   def __init__(O, bodies):
-    "Stores bodies and computes Xtree (RBDA Fig. 4.7, p. 74)"
+    "Stores bodies and caches transformation matrices."
     O.bodies = bodies
-    for body in bodies:
-      if (body.parent == -1):
-        cb_tree = body.alignment.cb_0b
-      else:
-        cb_tree = body.alignment.cb_0b * bodies[body.parent].alignment.cb_b0
-      body.cb_tree = cb_tree
     O.__cb_up_array = None
     O.__xup_array = None
 

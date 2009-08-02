@@ -67,6 +67,7 @@ def construct_bodies(
       body.parent = cluster_manager.cluster_indices[he[1]]
     body.i_seqs = cluster
     result.append(body)
+  body_lib.set_cb_tree(bodies=result)
   return result
 
 class model(object):

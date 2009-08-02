@@ -194,6 +194,7 @@ namespace scitbx { namespace rigid_body { namespace tardy {
       }
       result.push_back(body);
     }
+    body_lib::set_cb_tree(result.ref());
     return result;
   }
 
