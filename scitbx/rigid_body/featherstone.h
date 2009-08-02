@@ -1,7 +1,7 @@
 #ifndef SCITBX_RIGID_BODY_FEATHERSTONE_H
 #define SCITBX_RIGID_BODY_FEATHERSTONE_H
 
-#include <scitbx/rigid_body/body_t.h>
+#include <scitbx/rigid_body/array_packing.h>
 #include <scitbx/rigid_body/spatial_lib.h>
 #include <scitbx/matrix/eigensystem.h>
 #include <scitbx/array_family/versa_algebra.h>
@@ -30,6 +30,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
     typedef FloatType ft;
 
     af::shared<shared_ptr<body_t<ft> > > bodies;
+    unsigned degrees_of_freedom;
     mutable af::shared<rotr3<ft> > cb_up_array_;
     mutable af::shared<af::versa<ft, af::mat_grid> > xup_array_;
 
@@ -43,9 +44,11 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
 
     //! Stores bodies and caches transformation matrices.
     system_model(
-      af::shared<shared_ptr<body_t<ft> > > const& bodies_)
+      af::shared<shared_ptr<body_t<ft> > > const& bodies_,
+      unsigned degrees_of_freedom_)
     :
-      bodies(bodies_)
+      bodies(bodies_),
+      degrees_of_freedom(degrees_of_freedom_)
     {}
 
     //! RBDA Example 4.4, p. 80.
@@ -291,6 +294,29 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       return tau_array;
     }
 
+    //! Returns a packed array of joint force variables (tau_packed).
+    af::shared<ft>
+    inverse_dynamics_packed(
+      af::const_ref<ft> const& qdd_packed=af::const_ref<ft>(0,0),
+      af::const_ref<ft> const& f_ext_packed=af::const_ref<ft>(0,0),
+      af::const_ref<ft> const& grav_accn=af::const_ref<ft>(0,0)) const
+    {
+      af::shared<ft> tau_packed((af::reserve(degrees_of_freedom)));
+      af::shared<af::small<ft, 6> >
+        tau_array = inverse_dynamics(
+          array_packing::unpack_ref_small_6(
+            bodies.const_ref(), degrees_of_freedom, qdd_packed).const_ref(),
+          array_packing::unpack_ref_tiny<ft, 6>(
+            f_ext_packed, bodies.size()).const_ref(),
+          grav_accn);
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        tau_packed.extend(tau_array[ib].begin(), tau_array[ib].end());
+      }
+      SCITBX_ASSERT(tau_packed.size() == degrees_of_freedom);
+      return tau_packed;
+    }
+
     /*! Simplified version of Inverse Dynamics via Recursive Newton-Euler
         Algorithm, with all qd, qdd zero, but non-zero external forces.
      */
@@ -322,6 +348,27 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         }
       }
       return tau_array;
+    }
+
+    /*! Simplified version of Inverse Dynamics via Recursive Newton-Euler
+        Algorithm, with all qd, qdd zero, but non-zero external forces.
+     */
+    af::shared<ft>
+    f_ext_as_tau_packed(
+      af::const_ref<ft> const& f_ext_packed) const
+    {
+      SCITBX_ASSERT(f_ext_packed.begin() != 0);
+      af::shared<ft> tau_packed((af::reserve(degrees_of_freedom)));
+      af::shared<af::small<ft, 6> >
+        tau_array = f_ext_as_tau(
+          array_packing::unpack_ref_tiny<ft, 6>(
+            f_ext_packed, bodies.size()).const_ref());
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        tau_packed.extend(tau_array[ib].begin(), tau_array[ib].end());
+      }
+      SCITBX_ASSERT(tau_packed.size() == degrees_of_freedom);
+      return tau_packed;
     }
 
     /*! Gradients of potential energy (defined via f_ext_array) w.r.t.
@@ -485,6 +532,29 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
         }
       }
       return qdd_array;
+    }
+
+    //! Returns a packed array of joint acceleration variables (qdd_packed).
+    af::shared<ft>
+    forward_dynamics_ab_packed(
+      af::const_ref<ft> const& tau_packed=af::const_ref<ft>(0,0),
+      af::const_ref<ft> const& f_ext_packed=af::const_ref<ft>(0,0),
+      af::const_ref<ft> const& grav_accn=af::const_ref<ft>(0,0)) const
+    {
+      af::shared<ft> qdd_packed((af::reserve(degrees_of_freedom)));
+      af::shared<af::small<ft, 6> >
+        qdd_array = forward_dynamics_ab(
+          array_packing::unpack_ref_small_6(
+            bodies.const_ref(), degrees_of_freedom, tau_packed).const_ref(),
+          array_packing::unpack_ref_tiny<ft, 6>(
+            f_ext_packed, bodies.size()).const_ref(),
+          grav_accn);
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        qdd_packed.extend(qdd_array[ib].begin(), qdd_array[ib].end());
+      }
+      SCITBX_ASSERT(qdd_packed.size() == degrees_of_freedom);
+      return qdd_packed;
     }
   };
 

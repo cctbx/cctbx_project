@@ -11,6 +11,31 @@
 
 namespace scitbx { namespace rigid_body { namespace ext {
 
+  struct featherstone_system_model_wrappers
+  {
+    typedef featherstone::system_model<> wt;
+    typedef wt::ft ft;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      object none;
+      class_<wt>("featherstone_system_model", no_init)
+        .def("inverse_dynamics_packed", &wt::inverse_dynamics_packed, (
+          arg_("qdd_packed")=none,
+          arg_("f_ext_packed")=none,
+          arg_("grav_accn")=none))
+        .def("f_ext_as_tau_packed", &wt::f_ext_as_tau_packed, (
+          arg_("f_ext_packed")))
+        .def("forward_dynamics_ab_packed", &wt::forward_dynamics_ab_packed, (
+          arg_("tau_packed")=none,
+          arg_("f_ext_packed")=none,
+          arg_("grav_accn")=none))
+      ;
+    }
+  };
+
   struct tardy_model_wrappers
   {
     typedef tardy::model<> wt;
@@ -96,6 +121,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
           &wt::subtract_from_linear_velocities, (
             arg_("number_of_sites_in_each_tree"),
             arg_("value")))
+        .def("featherstone_system_model", &wt::featherstone_system_model,ccr())
         .def("sites_moved", &wt::sites_moved, ccr())
         .def("e_pot", &wt::e_pot, ccr())
         .def("d_e_pot_d_sites", &wt::d_e_pot_d_sites, ccr())
@@ -110,25 +136,16 @@ namespace scitbx { namespace rigid_body { namespace ext {
            arg_("e_kin_target")=none,
            arg_("e_kin_epsilon")=1e-12,
            arg_("random_gauss")=none))
-        .def("inverse_dynamics_packed", &wt::inverse_dynamics_packed, (
-          arg_("qdd_packed")=none,
-          arg_("f_ext_packed")=none,
-          arg_("grav_accn")=none))
-        .def("f_ext_as_tau_packed", &wt::f_ext_as_tau_packed, (
-          arg_("f_ext_packed")))
-        .def("forward_dynamics_ab_packed", &wt::forward_dynamics_ab_packed, (
-          arg_("tau_packed")=none,
-          arg_("f_ext_packed")=none,
-          arg_("grav_accn")=none))
         .def("dynamics_step", &wt::dynamics_step, (arg_("delta_t")))
         .def("xxx_spatial_inertia", xxx_spatial_inertia)
         .def("xxx_spatial_velocities", xxx_spatial_velocities)
       ;
-    };
+    }
   };
 
   void init_module()
   {
+    featherstone_system_model_wrappers::wrap();
     tardy_model_wrappers::wrap();
   }
 

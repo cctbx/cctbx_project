@@ -201,19 +201,20 @@ def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
         grav_accn=grav_accn),
       packed_size=etm.degrees_of_freedom)
   #
+  ffsm = ftm.featherstone_system_model()
   e = etm_inverse_dynamics_packed(
     qdd_array=qdd_rand_array)
-  f = ftm.inverse_dynamics_packed(
+  f = ffsm.inverse_dynamics_packed(
     qdd_packed=qdd_rand_packed)
   assert approx_equal(e, f)
   e = etm_inverse_dynamics_packed(
     f_ext_array=f_ext_rand_array)
-  f = ftm.inverse_dynamics_packed(
+  f = ffsm.inverse_dynamics_packed(
     f_ext_packed=f_ext_rand_packed)
   assert approx_equal(e, f)
   e = etm_inverse_dynamics_packed(
     grav_accn=grav_accn_rand)
-  f = ftm.inverse_dynamics_packed(
+  f = ffsm.inverse_dynamics_packed(
     grav_accn=flex.double(grav_accn_rand))
   assert approx_equal(e, f)
   for qdd_array,qdd_packed in [(None,None),
@@ -227,28 +228,28 @@ def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
           qdd_array=qdd_rand_array,
           f_ext_array=f_ext_rand_array,
           grav_accn=grav_accn_rand)
-        f = ftm.inverse_dynamics_packed(
+        f = ffsm.inverse_dynamics_packed(
           qdd_packed=qdd_rand_packed,
           f_ext_packed=f_ext_rand_packed,
           grav_accn=flex.double(grav_accn_rand))
         assert approx_equal(e, f)
   #
   e = etm_forward_dynamics_ab_packed()
-  f = ftm.forward_dynamics_ab_packed()
+  f = ffsm.forward_dynamics_ab_packed()
   assert approx_equal(e, f)
   e = etm_forward_dynamics_ab_packed(
     tau_array=tau_rand_array)
-  f = ftm.forward_dynamics_ab_packed(
+  f = ffsm.forward_dynamics_ab_packed(
     tau_packed=tau_rand_packed)
   assert approx_equal(e, f)
   e = etm_forward_dynamics_ab_packed(
     f_ext_array=f_ext_rand_array)
-  f = ftm.forward_dynamics_ab_packed(
+  f = ffsm.forward_dynamics_ab_packed(
     f_ext_packed=f_ext_rand_packed)
   assert approx_equal(e, f)
   e = etm_forward_dynamics_ab_packed(
     grav_accn=grav_accn_rand)
-  f = ftm.forward_dynamics_ab_packed(
+  f = ffsm.forward_dynamics_ab_packed(
     grav_accn=flex.double(grav_accn_rand))
   assert approx_equal(e, f)
   for tau_array,tau_packed in [(None,None),
@@ -267,7 +268,7 @@ def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
         qdd_packed_e = pack_array(
           array=qdd_array_e,
           packed_size=etm.degrees_of_freedom)
-        qdd_packed_f = ftm.forward_dynamics_ab_packed(
+        qdd_packed_f = ffsm.forward_dynamics_ab_packed(
           tau_packed=tau_packed,
           f_ext_packed=f_ext_packed,
           grav_accn=grav_accn_f)
@@ -279,7 +280,7 @@ def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
         tau2_packed_e = pack_array(
           array=tau2_array_e,
           packed_size=etm.degrees_of_freedom)
-        tau2_packed_f = ftm.inverse_dynamics_packed(
+        tau2_packed_f = ffsm.inverse_dynamics_packed(
           qdd_packed=qdd_packed_f,
           f_ext_packed=f_ext_packed,
           grav_accn=grav_accn_f)
@@ -299,7 +300,7 @@ def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
         qdd2_packed_e = pack_array(
           array=qdd2_array_e,
           packed_size=etm.degrees_of_freedom)
-        qdd2_packed_f = ftm.forward_dynamics_ab_packed(
+        qdd2_packed_f = ffsm.forward_dynamics_ab_packed(
           tau_packed=tau2_packed_f,
           f_ext_packed=f_ext_packed,
           grav_accn=grav_accn_f)
@@ -320,7 +321,7 @@ def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
   ftm.assign_zero_velocities()
   e = etm_inverse_dynamics_packed(
     f_ext_array=f_ext_rand_array)
-  f = ftm.inverse_dynamics_packed(
+  f = ftm.featherstone_system_model().inverse_dynamics_packed(
     f_ext_packed=f_ext_rand_packed)
   assert approx_equal(e, f)
   e_ref = e
@@ -329,7 +330,8 @@ def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
       f_ext_array=f_ext_array),
     packed_size=etm.degrees_of_freedom)
   assert approx_equal(e_ref, e)
-  f = ftm.f_ext_as_tau_packed(f_ext_packed=f_ext_packed)
+  f = ftm.featherstone_system_model().f_ext_as_tau_packed(
+    f_ext_packed=f_ext_packed)
   assert approx_equal(e_ref, f)
 
 def exercise_fixed_vertices():
