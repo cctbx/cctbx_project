@@ -128,7 +128,7 @@ namespace tardy {
           }
         }
         else {
-          throw SCITBX_INTERNAL_ERROR(); // unreachable
+          throw SCITBX_UNREACHABLE_ERROR();
         }
         body->parent = -1;
       }
