@@ -60,6 +60,35 @@ namespace scitbx { namespace matrix {
     }
   }
 
+  //! Generic matrix multiplication function: a * b.transpose()
+  /*! ab[ar, br] = a[ar, ac] * b[br, ac].transpose()
+   */
+  template <typename NumTypeA,
+            typename NumTypeB,
+            typename NumTypeAB>
+  void
+  multiply_transpose(
+    const NumTypeA *a,
+    const NumTypeB *b,
+    unsigned ar,
+    unsigned ac,
+    unsigned br,
+    NumTypeAB *ab)
+  {
+    unsigned i0 = 0;
+    for (unsigned i=0; i<ar; i++, i0+=ac) {
+      unsigned kj = 0;
+      for (unsigned k=0;k<br;k++) {
+        NumTypeAB s = 0;
+        unsigned ij = i0;
+        for (unsigned j=0;j<ac;j++) {
+          s += a[ij++] * b[kj++];
+        }
+        *ab++ = s;
+      }
+    }
+  }
+
   //! Generic matrix multiplication function: a * b, with b in packed_u format.
   /*! ab[ar, ac] = a[ar, ac] * b[ac, ac]
    */
