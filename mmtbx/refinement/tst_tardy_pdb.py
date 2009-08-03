@@ -281,12 +281,12 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
         print >> log, "tardy_displacements:", params.tardy_displacements
         hinge_edges = tardy_model.tardy_tree.cluster_manager.hinge_edges
         assert len(hinge_edges) == len(tardy_model.bodies)
-        for (i,j),B in zip(hinge_edges, tardy_model.bodies):
+        for (i,j),body in zip(hinge_edges, tardy_model.bodies):
           if (i == -1): si = "root"
           else: si = tardy_model.labels[i]
           sj = tardy_model.labels[j]
           print >> log, "%21s - %-21s: %d dof, %d q_size" % (
-            si, sj, B.J.degrees_of_freedom, B.J.q_size)
+            si, sj, body.joint.degrees_of_freedom, body.joint.q_size)
         print >> log, "Zero displacements:"
         print >> log, "  tardy_displacements=%s" % ",".join(
           [str(v) for v in q])
