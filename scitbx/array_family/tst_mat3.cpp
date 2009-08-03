@@ -74,6 +74,18 @@ int main(int /*argc*/, char* /*argv*/[])
     check_true(__LINE__, c - b == a);
     check_true(__LINE__, a * b == mat3<int>(
       48,54,60,111,126,141,174,198,222));
+    check_true(__LINE__, transpose_mul(a, b) == mat3<int>(
+      102,114,126,123,138,153,144,162,180));
+    check_true(__LINE__, mul_transpose(a, b) == mat3<int>(
+      32,50,68,77,122,167,122,194,266));
+    check_true(__LINE__, transpose_mul(a.transpose(), b) == mat3<int>(
+      48,54,60,111,126,141,174,198,222));
+    check_true(__LINE__, mul_transpose(a, b.transpose()) == mat3<int>(
+      48,54,60,111,126,141,174,198,222));
+    check_true(__LINE__, transpose_mul(a, b.transpose()) == mat3<int>(
+      66,102,138,81,126,171,96,150,204));
+    check_true(__LINE__, mul_transpose(a.transpose(), b) == mat3<int>(
+      66,102,138,81,126,171,96,150,204));
     check_true(__LINE__, a * vec3<int>(1,2,3) == vec3<int>(
       14,32,50));
     check_true(__LINE__, std::fabs(af::max(
