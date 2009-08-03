@@ -6,7 +6,10 @@
 #include <scitbx/math/r3_rotation.h>
 #include <boost/numeric/conversion/cast.hpp>
 
-namespace scitbx { namespace rigid_body { namespace joint_lib {
+namespace scitbx { namespace rigid_body {
+
+//! See essence/joint_lib.py
+namespace joint_lib {
 
   template <typename FloatType>
   mat3<FloatType>
@@ -42,6 +45,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     return af::tiny<ft, 4*3>(coeffs, coeffs+4*3) * ft(0.5);
   }
 
+  //! See essence/joint_lib.py
   template <typename FloatType>
   af::tiny<FloatType, 4*4>
   d_unit_quaternion_d_qe_matrix(
@@ -75,6 +79,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     return af::tiny<FloatType, 4*4>(coeffs, coeffs+4*4) / n3;
   }
 
+  //! See code.
   template <typename FloatType=double>
   struct zero_dof_alignment : alignment_t<FloatType>
   {
@@ -86,6 +91,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     {}
   };
 
+  //! Zero degree-of-freedom joint model.
   template <typename FloatType=double>
   struct zero_dof : joint_t<FloatType>
   {
@@ -179,6 +185,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     }
   };
 
+  //! See code.
   template <typename FloatType=double>
   struct six_dof_alignment : alignment_t<FloatType>
   {
@@ -193,6 +200,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     {}
   };
 
+  //! Six degree-of-freedom joint model (see Featherstone RBDA 2007).
   template <typename FloatType=double>
   struct six_dof : joint_t<FloatType>
   {
@@ -338,6 +346,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     }
   };
 
+  //! See code.
   template <typename FloatType=double>
   struct spherical_alignment : alignment_t<FloatType>
   {
@@ -352,6 +361,9 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     {}
   };
 
+  /*! \brief Spherical (three degrees of freedom) joint model
+      (see Featherstone RBDA 2007).
+   */
   template <typename FloatType=double>
   struct spherical : joint_t<FloatType>
   {
@@ -487,6 +499,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     }
   };
 
+  //! See code.
   template <typename FloatType=double>
   struct revolute_alignment : alignment_t<FloatType>
   {
@@ -502,6 +515,9 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     }
   };
 
+  /*! \brief Revolute (one degree of freedom) joint model
+      (see Featherstone RBDA 2007).
+   */
   template <typename FloatType=double>
   struct revolute : joint_t<FloatType>
   {
@@ -614,6 +630,7 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     }
   };
 
+  //! See code.
   template <typename FloatType=double>
   struct translational_alignment : six_dof_alignment<FloatType>
   {
@@ -626,6 +643,9 @@ namespace scitbx { namespace rigid_body { namespace joint_lib {
     {}
   };
 
+  /*! \brief Translational (three degrees of freedom) joint model
+      (see Featherstone RBDA 2007).
+   */
   template <typename FloatType=double>
   struct translational : joint_t<FloatType>
   {

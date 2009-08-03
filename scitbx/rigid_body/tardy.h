@@ -7,10 +7,14 @@
 #include <scitbx/rigid_body/body_lib.h>
 #include <scitbx/array_family/selections.h>
 
-namespace scitbx { namespace rigid_body { namespace tardy {
+namespace scitbx { namespace rigid_body {
+
+//! See essence/tardy.py
+namespace tardy {
 
   namespace bp = boost::python;
 
+  //! Helper.
   template <typename FloatType>
   struct is_singular_revolute
   {
@@ -49,6 +53,7 @@ namespace scitbx { namespace rigid_body { namespace tardy {
     }
   };
 
+  //! Helper.
   template <typename FloatType>
   af::shared<shared_ptr<body_t<FloatType> > >
   construct_bodies(
@@ -160,6 +165,7 @@ namespace scitbx { namespace rigid_body { namespace tardy {
     return result;
   }
 
+  //! Torsion-angle refinement and dynamics model.
   template <typename FloatType=double>
   struct model : featherstone::system_model<FloatType>
   {
