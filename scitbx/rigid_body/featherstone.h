@@ -1,20 +1,29 @@
 #ifndef SCITBX_RIGID_BODY_FEATHERSTONE_H
 #define SCITBX_RIGID_BODY_FEATHERSTONE_H
 
-#include <boost/python/import.hpp>
-#include <boost/python/extract.hpp>
-#include <boost/python/object.hpp>
-
-#include <scitbx/rigid_body/array_packing.h>
 #include <scitbx/rigid_body/spatial_lib.h>
 #include <scitbx/rigid_body/matrix_helpers.h>
+#include <scitbx/rigid_body/array_packing.h>
 #include <scitbx/matrix/eigensystem.h>
 #include <scitbx/array_family/versa_algebra.h>
 #include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/optional_copy.h>
-#include <boost/numeric/conversion/cast.hpp>
+#include <boost/noncopyable.hpp>
 
 namespace scitbx { namespace rigid_body { namespace featherstone {
+
+  template <typename FloatType>
+  struct random_gauss_adaptor
+  {
+    virtual
+    ~random_gauss_adaptor() {}
+
+    virtual
+    FloatType
+    operator()(
+      FloatType const& mu,
+      FloatType const& sigma) = 0;
+  };
 
   template <typename FloatType>
   af::versa<FloatType, af::mat_grid>
@@ -495,9 +504,9 @@ SCITBX_LOC // {
 
     boost::optional<af::shared<ft> >
     assign_random_velocities(
+      random_gauss_adaptor<ft>& random_gauss,
       boost::optional<ft> const& e_kin_target=boost::optional<ft>(),
-      ft const& e_kin_epsilon=1e-12,
-      boost::python::object random_gauss=boost::python::object())
+      ft const& e_kin_epsilon=1e-12)
     {
       ft work_e_kin_target;
       if (!e_kin_target) {
@@ -518,10 +527,6 @@ SCITBX_LOC // {
               work_e_kin_target
             / boost::numeric_cast<ft>(degrees_of_freedom)));
       }
-      boost::python::object none;
-      if (random_gauss.ptr() == none.ptr()) {
-        random_gauss = boost::python::import("random").attr("gauss");
-      }
       unsigned i_qd = 0;
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
@@ -529,8 +534,7 @@ SCITBX_LOC // {
         af::small<ft, 6> qd_new(af::adapt(body->joint->qd_zero()));
         unsigned n = boost::numeric_cast<unsigned>(qd_new.size());
         for(unsigned i=0;i<n;i++,i_qd++) {
-          qd_new[i] += boost::python::extract<ft>(
-            random_gauss(/*mu*/ 0, /*sigma*/ qd_e_kin_scales[i_qd]))();
+          qd_new[i] += random_gauss(/*mu*/ 0, /*sigma*/ qd_e_kin_scales[i_qd]);
         }
         body->set_qd(qd_new);
       }
