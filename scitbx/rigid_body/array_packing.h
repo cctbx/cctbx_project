@@ -5,7 +5,10 @@
 #include <scitbx/array_family/shared.h>
 #include <boost/numeric/conversion/cast.hpp>
 
-namespace scitbx { namespace rigid_body { namespace array_packing {
+namespace scitbx { namespace rigid_body {
+
+//! Array packing and unpacking, mainly to aid Python interfaces.
+namespace array_packing {
 
   template <typename ElementType, std::size_t N>
   af::shared<af::tiny<ElementType, N> >

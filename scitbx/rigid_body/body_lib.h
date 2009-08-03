@@ -6,8 +6,12 @@
 #include <scitbx/rigid_body/spatial_lib.h>
 #include <scitbx/math/inertia_tensor.h>
 
-namespace scitbx { namespace rigid_body { namespace body_lib {
+namespace scitbx { namespace rigid_body {
 
+//! Body models and associated utilities.
+namespace body_lib {
+
+  //! Helper.
   template <typename FloatType>
   struct mass_points_cache
   {
@@ -106,6 +110,7 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     }
   }
 
+  //! Zero degree-of-freedom body model.
   template <typename FloatType=double>
   struct zero_dof : body_t<FloatType>
   {
@@ -143,6 +148,7 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     }
   };
 
+  //! Six degree-of-freedom body model (see Featherstone RBDA 2007).
   template <typename FloatType=double>
   struct six_dof : body_t<FloatType>
   {
@@ -184,6 +190,9 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     }
   };
 
+  /*! \brief Spherical (three degrees of freedom) body model
+      (see Featherstone RBDA 2007).
+   */
   template <typename FloatType=double>
   struct spherical : body_t<FloatType>
   {
@@ -225,6 +234,9 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     }
   };
 
+  /*! \brief Revolute (one degree of freedom) body model
+      (see Featherstone RBDA 2007).
+   */
   template <typename FloatType=double>
   struct revolute : body_t<FloatType>
   {
@@ -265,6 +277,9 @@ namespace scitbx { namespace rigid_body { namespace body_lib {
     }
   };
 
+  /*! \brief Translational (three degrees of freedom) body model
+      (see Featherstone RBDA 2007).
+   */
   template <typename FloatType=double>
   struct translational : body_t<FloatType>
   {

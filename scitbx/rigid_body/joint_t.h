@@ -11,6 +11,7 @@ namespace scitbx { namespace rigid_body {
 
   using boost::shared_ptr;
 
+  //! Change-of-basis ("cb") matrix for joint alignment and its inverse.
   template <typename FloatType>
   struct alignment_t
   {
@@ -30,6 +31,7 @@ namespace scitbx { namespace rigid_body {
     {}
   };
 
+  //! Abstract joint model.
   template <typename FloatType>
   struct joint_t
   {

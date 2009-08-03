@@ -10,8 +10,12 @@
 #include <scitbx/optional_copy.h>
 #include <boost/noncopyable.hpp>
 
-namespace scitbx { namespace rigid_body { namespace featherstone {
+namespace scitbx { namespace rigid_body {
 
+//! See essence/featherstone.py
+namespace featherstone {
+
+  //! Helper.
   template <typename FloatType>
   struct random_gauss_adaptor
   {

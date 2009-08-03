@@ -4,7 +4,10 @@
 #include <scitbx/rotr3.h>
 #include <scitbx/array_family/versa_matrix.h>
 
-namespace scitbx { namespace rigid_body { namespace spatial_lib {
+namespace scitbx { namespace rigid_body {
+
+//! See essence/spatial_lib.py
+namespace spatial_lib {
 
   template <typename ElementType>
   af::tiny<ElementType, 6>

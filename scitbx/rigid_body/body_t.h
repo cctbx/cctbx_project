@@ -6,6 +6,7 @@
 
 namespace scitbx { namespace rigid_body {
 
+  //! Abstract body type.
   template <typename FloatType>
   struct body_t
   {
