@@ -6,6 +6,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/python/import.hpp>
 
 #include <scitbx/rigid_body/tardy.h>
 
@@ -24,6 +25,46 @@ namespace scitbx { namespace rigid_body { namespace ext {
       af::shared<std::pair<int, double> >
         somiet = O.sum_of_masses_in_each_tree();
       return boost_python::array_as_list(somiet.begin(), somiet.size());
+    }
+
+    template <typename FloatType>
+    struct random_gauss_adaptor_python
+      : featherstone::random_gauss_adaptor<FloatType>
+    {
+      boost::python::object callable;
+
+      random_gauss_adaptor_python(
+        boost::python::object const& callable_)
+      :
+        callable(callable_)
+      {
+        namespace bp = boost::python;
+        bp::object none;
+        if (callable.ptr() == none.ptr()) {
+          callable = bp::import("random").attr("gauss");
+        }
+      }
+
+      virtual
+      FloatType
+      operator()(
+        FloatType const& mu,
+        FloatType const& sigma)
+      {
+        return boost::python::extract<FloatType>(callable(mu, sigma))();
+      }
+    };
+
+    static
+    boost::optional<af::shared<ft> >
+    assign_random_velocities(
+      wt& O,
+      boost::optional<ft> const& e_kin_target,
+      ft const& e_kin_epsilon,
+      boost::python::object const& random_gauss)
+    {
+      random_gauss_adaptor_python<ft> rga(random_gauss);
+      return O.assign_random_velocities(rga, e_kin_target, e_kin_epsilon);
     }
 
     static void
@@ -56,7 +97,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
            arg_("e_kin_target"),
            arg_("e_kin_epsilon")=1e-12))
         .def("assign_zero_velocities", &wt::assign_zero_velocities)
-        .def("assign_random_velocities", &wt::assign_random_velocities, (
+        .def("assign_random_velocities", assign_random_velocities, (
            arg_("e_kin_target")=none,
            arg_("e_kin_epsilon")=1e-12,
            arg_("random_gauss")=none))
