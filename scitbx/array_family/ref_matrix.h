@@ -8,7 +8,7 @@
 
 namespace scitbx { namespace af {
 
-  //! Matrix multiplication.
+  //! Matrix multiplication: a * b
   template <typename NumTypeA,  typename AccessorTypeA,
             typename NumTypeB,  typename AccessorTypeB,
             typename NumTypeAB, typename AccessorTypeAB>
@@ -44,6 +44,26 @@ namespace scitbx { namespace af {
     matrix::transpose_multiply(
       a.begin(), b.begin(),
       a.n_rows(), a.n_columns(), b.n_columns(),
+      atb.begin());
+  }
+
+  //! Matrix multiplication with transpose: a * b.transpose()
+  template <typename NumTypeA,  typename AccessorTypeA,
+            typename NumTypeB,  typename AccessorTypeB,
+            typename NumTypeAtB, typename AccessorTypeAtB>
+  inline
+  void
+  multiply_transpose(
+    const_ref<NumTypeA, AccessorTypeA> const& a,
+    const_ref<NumTypeB, AccessorTypeB> const& b,
+    ref<NumTypeAtB, AccessorTypeAtB> const& atb)
+  {
+    SCITBX_ASSERT(a.n_columns() == b.n_columns());
+    SCITBX_ASSERT(atb.n_rows() == a.n_rows());
+    SCITBX_ASSERT(atb.n_columns() == b.n_rows());
+    matrix::multiply_transpose(
+      a.begin(), b.begin(),
+      a.n_rows(), a.n_columns(), b.n_rows(),
       atb.begin());
   }
 

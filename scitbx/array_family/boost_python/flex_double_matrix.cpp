@@ -70,6 +70,14 @@ namespace boost_python {
   }
 
   versa<double, c_grid<2> >
+  matrix_multiply_transpose_real_matrix_real_matrix(
+    const_ref<double, c_grid<2> > const& a,
+    const_ref<double, c_grid<2> > const& b)
+  {
+    return matrix_multiply_transpose(a, b);
+  }
+
+  versa<double, c_grid<2> >
   matrix_multiply_packed_u_real_matrix_real_u(
     const_ref<double, c_grid<2> > const& a,
     const_ref<double> const& b)
@@ -159,6 +167,8 @@ namespace boost_python {
       .def("matrix_multiply", matrix_multiply_real_matrix_complex_matrix)
       .def("matrix_transpose_multiply",
         matrix_transpose_multiply_real_matrix_real_matrix)
+      .def("matrix_multiply_transpose",
+        matrix_multiply_transpose_real_matrix_real_matrix)
       .def("matrix_multiply",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&,

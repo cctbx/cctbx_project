@@ -139,51 +139,60 @@ namespace scitbx { namespace af {
     return matrix::diagonal_product(a.begin(), a.accessor()[0]);
   }
 
+  //! a * b
   template <typename NumTypeA, typename NumTypeB>
   versa<
     typename binary_operator_traits<NumTypeA, NumTypeB>::arithmetic,
-    c_grid<2> >
+    mat_grid>
   matrix_multiply(
-    const_ref<NumTypeA, c_grid<2> > const& a,
-    const_ref<NumTypeB, c_grid<2> > const& b)
+    const_ref<NumTypeA, mat_grid> const& a,
+    const_ref<NumTypeB, mat_grid> const& b)
   {
     typedef typename
       binary_operator_traits<NumTypeA, NumTypeB>::arithmetic
         numtype_ab;
-    versa<numtype_ab, c_grid<2> > ab(
+    versa<numtype_ab, mat_grid> ab(
       c_grid<2>(a.accessor()[0], b.accessor()[1]),
       init_functor_null<numtype_ab>());
-    af::const_ref<NumTypeA, af::mat_grid> a_(a.begin(),
-                                             a.accessor()[0], a.accessor()[1]);
-    af::const_ref<NumTypeB, af::mat_grid> b_(b.begin(),
-                                             b.accessor()[0], b.accessor()[1]);
-    af::ref<numtype_ab, af::mat_grid> ab_(ab.begin(),
-                                          ab.accessor()[0], ab.accessor()[1]);
-    multiply(a_, b_, ab_);
+    multiply(a, b, ab.ref());
     return ab;
   }
 
+  //! a.transpose() * b
   template <typename NumTypeA, typename NumTypeB>
   versa<
     typename binary_operator_traits<NumTypeA, NumTypeB>::arithmetic,
-    c_grid<2> >
+    mat_grid>
   matrix_transpose_multiply(
-    const_ref<NumTypeA, c_grid<2> > const& a,
-    const_ref<NumTypeB, c_grid<2> > const& b)
+    const_ref<NumTypeA, mat_grid> const& a,
+    const_ref<NumTypeB, mat_grid> const& b)
   {
     typedef typename
       binary_operator_traits<NumTypeA, NumTypeB>::arithmetic
         numtype_atb;
-    versa<numtype_atb, c_grid<2> > atb(
+    versa<numtype_atb, mat_grid> atb(
       c_grid<2>(a.accessor()[1], b.accessor()[1]),
       init_functor_null<numtype_atb>());
-    af::const_ref<NumTypeA, af::mat_grid> a_(
-      a.begin(), a.accessor()[0], a.accessor()[1]);
-    af::const_ref<NumTypeB, af::mat_grid> b_(
-      b.begin(), b.accessor()[0], b.accessor()[1]);
-    af::ref<numtype_atb, af::mat_grid> atb_(
-      atb.begin(), atb.accessor()[0], atb.accessor()[1]);
-    transpose_multiply(a_, b_, atb_);
+    transpose_multiply(a, b, atb.ref());
+    return atb;
+  }
+
+  //! a * b.transpose()
+  template <typename NumTypeA, typename NumTypeB>
+  versa<
+    typename binary_operator_traits<NumTypeA, NumTypeB>::arithmetic,
+    mat_grid>
+  matrix_multiply_transpose(
+    const_ref<NumTypeA, mat_grid> const& a,
+    const_ref<NumTypeB, mat_grid> const& b)
+  {
+    typedef typename
+      binary_operator_traits<NumTypeA, NumTypeB>::arithmetic
+        numtype_atb;
+    versa<numtype_atb, mat_grid> atb(
+      c_grid<2>(a.accessor()[0], b.accessor()[0]),
+      init_functor_null<numtype_atb>());
+    multiply_transpose(a, b, atb.ref());
     return atb;
   }
 
