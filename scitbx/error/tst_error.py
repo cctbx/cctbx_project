@@ -13,7 +13,10 @@ def run(args):
   command_out = libtbx.easy_run.fully_buffered(
     command=command).raise_if_errors().stdout_lines
   assert command_out[0].startswith("scitbx InternalError: ")
-  assert command_out[1:] == ["  x = 1.1", "  n = 1", "  j = 2"]
+  assert command_out[1:4] == ["  x = 1.1", "  n = 1", "  j = 2"]
+  assert command_out[4].startswith(
+    "Control flow passes through branch that should be unreachable: ")
+  assert len(command_out) == 5
   print "OK"
 
 if (__name__ == "__main__"):

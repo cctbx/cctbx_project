@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <exception>
+#include <stdexcept>
 
 #ifdef _MSC_VER
 # pragma warning(disable:4355)
@@ -164,5 +165,25 @@ Here is an example of use:
 #define SCITBX_ERROR_UTILS_ASSERT(error_class, assert_macro, assertion) \
   if (!(assertion)) throw error_class(__FILE__, __LINE__, \
     #assert_macro"(" # assertion ") failure.").SCITBX_ERROR_UTILS_ASSERT_A
+
+namespace scitbx { namespace error_utils {
+
+  inline
+  std::string
+  file_and_line_as_string(
+    const char* file,
+    long line)
+  {
+    std::ostringstream o;
+    o << file << "(" << line << ")";
+    return o.str();
+  }
+
+}} // scitbx::error_utils
+
+#define SCITBX_UNREACHABLE_ERROR() \
+  std::runtime_error( \
+    "Control flow passes through branch that should be unreachable: " \
+    + scitbx::error_utils::file_and_line_as_string(__FILE__, __LINE__))
 
 #endif // SCITBX_ERROR_UTILS_H
