@@ -174,7 +174,7 @@ namespace scitbx { namespace rigid_body {
     af::const_ref<FloatType, af::mat_grid> const& b)
   {
     return af::matrix_multiply(
-      af::matrix_multiply(af::matrix_transpose(a).const_ref(), b).const_ref(),
+      af::matrix_transpose_multiply(a, b).const_ref(),
       a);
   }
 

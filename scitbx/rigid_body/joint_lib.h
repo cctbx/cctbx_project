@@ -287,7 +287,7 @@ namespace joint_lib {
           " zero norm.");
       }
       new_qe /= den;
-      vec3<ft> new_qr = e.transpose() * v_body_frame;
+      vec3<ft> new_qr = v_body_frame * e;
       new_qr *= delta_t;
       new_qr += qr;
       return shared_ptr<joint_t<ft> >(new six_dof(new_qe, new_qr));
@@ -320,7 +320,7 @@ namespace joint_lib {
       vec3<ft> n(&tau[0]);
       vec3<ft> f(&tau[3]);
       af::tiny<ft, 4> cn = mat4x3_mul_vec3(c, n);
-      vec3<ft> etf = e.transpose() * f;
+      vec3<ft> etf = f * e;
       af::small<ft, 7> result(cn.begin(), cn.end());
       for(unsigned i=0;i<3;i++) result.push_back(etf[i]);
       return result;

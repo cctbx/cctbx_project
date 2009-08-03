@@ -316,7 +316,7 @@ SCITBX_LOC // {
           body_t<ft> const* body = bodies[ib].get();
           mat3<ft> jar = body->joint->cb_ps.r * body->alignment->cb_0b.r;
           if (body->parent != -1) {
-            jar = jar * (*aja_array_)[body->parent].r.transpose();
+            jar = mul_transpose(jar, (*aja_array_)[body->parent].r);
           }
           jar_array_->push_back(jar);
         }
@@ -827,9 +827,9 @@ SCITBX_LOC // {
           vmg u_d_inv = af::matrix_multiply(
             u[ib].const_ref(),
             d_inv[ib].const_ref());
-          vmg ia_ = ia[ib] - af::matrix_multiply(
+          vmg ia_ = ia[ib] - af::matrix_multiply_transpose(
             u_d_inv.const_ref(),
-            af::matrix_transpose(u[ib].const_ref()).const_ref());
+            u[ib].const_ref());
           t6 pa_ = pa[ib]
             + mat_6xn_mul_vec_n(ia_.const_ref(), c[ib].const_ref())
             + mat_6xn_mul_vec_n(u_d_inv.const_ref(), u_[ib].const_ref());
