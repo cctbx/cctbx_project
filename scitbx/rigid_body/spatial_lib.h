@@ -71,7 +71,7 @@ namespace spatial_lib {
   {
     return af::matrix_multiply(
       xrot(cb.r).const_ref(),
-      xtrans(-cb.r.transpose() * cb.t).const_ref());
+      xtrans(-cb.t * cb.r).const_ref());
   }
 
   //! RBDA Eq. 2.31, p. 25.
