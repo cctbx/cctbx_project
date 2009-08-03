@@ -39,6 +39,7 @@ class SidechainAngles:
   atomsForAngle = {}
   rotamersForAA = {}
   anglesForRot = {}
+  atomsMoveWithAngle = {}
 
   def __init__(self, show_errs):
     self.show_errors = show_errs
@@ -54,10 +55,19 @@ class SidechainAngles:
       rotamerlist = f.properties[aa+".rotamers"].split(",")
       #print anglelist.count('')
       self.anglesForAA[aa] = anglelist #aaName -> [mobile angles]
+      chi_ctr = 0
       for angle in anglelist:
         if angle != '':
           key = aa+"."+angle
+          #print key
           self.atomsForAngle[key] = f.properties[key].split(",") #aaName.angle -> atoms
+          if aa == 'leu' or aa == 'val' or aa == 'thr' or aa == 'arg':
+            if chi_ctr < int(f.properties[aa+".chis"]):
+              key2 = key + "_atoms"
+              #print f.properties[aa+".chis"]
+              #print chi_ctr
+              self.atomsMoveWithAngle[key] = f.properties[key2].split(",")
+        chi_ctr+=1
       self.rotamersForAA[aa] = rotamerlist
       for rotamer in rotamerlist:
         if rotamer != '':
