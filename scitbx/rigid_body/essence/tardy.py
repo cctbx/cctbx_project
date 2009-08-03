@@ -70,7 +70,7 @@ def construct_bodies(
   body_lib.set_cb_tree(bodies=result)
   return result
 
-class model(object):
+class model(featherstone.system_model):
 
   def __init__(O,
         labels,
@@ -79,6 +79,12 @@ class model(object):
         tardy_tree,
         potential_obj,
         near_singular_hinges_angular_tolerance_deg=5):
+    super(model, O).__init__(bodies=construct_bodies(
+      sites=sites,
+      masses=masses,
+      cluster_manager=tardy_tree.cluster_manager,
+      near_singular_hinges_angular_tolerance_deg=
+        near_singular_hinges_angular_tolerance_deg))
     O.labels = labels
     O.sites = sites
     O.masses = masses
@@ -86,25 +92,10 @@ class model(object):
     O.potential_obj = potential_obj
     O.near_singular_hinges_angular_tolerance_deg = \
       near_singular_hinges_angular_tolerance_deg
-    O.bodies = construct_bodies(
-      sites=sites,
-      masses=masses,
-      cluster_manager=tardy_tree.cluster_manager,
-      near_singular_hinges_angular_tolerance_deg=
-        near_singular_hinges_angular_tolerance_deg)
-    O.number_of_trees = 0
-    O.degrees_of_freedom = 0
-    O.q_packed_size = 0
-    for body in O.bodies:
-      if (body.parent == -1): O.number_of_trees += 1
-      O.degrees_of_freedom += body.joint.degrees_of_freedom
-      O.q_packed_size += body.joint.q_size
     O.flag_positions_as_changed()
 
   def flag_positions_as_changed(O):
-    O.__featherstone_system_model = None
-    O.__aja_array = None
-    O.__jar_array = None
+    super(model, O).flag_positions_as_changed()
     O.__sites_moved = None
     O.__e_pot = None
     O.__d_e_pot_d_sites = None
@@ -112,120 +103,8 @@ class model(object):
     O.flag_velocities_as_changed()
 
   def flag_velocities_as_changed(O):
+    super(model, O).flag_velocities_as_changed()
     O.__qdd_array = None
-    O.__e_kin = None
-
-  def root_indices(O):
-    result = []
-    for ib,body in enumerate(O.bodies):
-      if (body.parent == -1):
-        result.append(ib)
-    return result
-
-  def pack_q(O):
-    result = flex.double()
-    result.reserve(O.q_packed_size)
-    for body in O.bodies:
-      result.extend(flex.double(body.joint.get_q()))
-    assert result.size() == O.q_packed_size
-    return result
-
-  def unpack_q(O, q_packed):
-    assert q_packed.size() == O.q_packed_size
-    i = 0
-    for body in O.bodies:
-      n = body.joint.q_size
-      body.joint = body.joint.new_q(q=q_packed[i:i+n])
-      i += n
-    assert i == O.q_packed_size
-    O.flag_positions_as_changed()
-
-  def pack_qd(O):
-    result = flex.double()
-    result.reserve(O.degrees_of_freedom)
-    for body in O.bodies:
-      result.extend(flex.double(body.qd))
-    assert result.size() == O.degrees_of_freedom
-    return result
-
-  def unpack_qd(O, qd_packed):
-    assert qd_packed.size() == O.degrees_of_freedom
-    i = 0
-    for body in O.bodies:
-      n = body.joint.degrees_of_freedom
-      body.qd = matrix.col(qd_packed[i:i+n])
-      i += n
-    assert i == O.degrees_of_freedom
-    O.flag_velocities_as_changed()
-
-  def _accumulate_in_each_tree(O, attr):
-    result = []
-    accu = [0] * len(O.bodies)
-    for ib in xrange(len(O.bodies)-1,-1,-1):
-      body = O.bodies[ib]
-      accu[ib] += getattr(body, attr)
-      if (body.parent == -1):
-        result.append((ib, accu[ib]))
-      else:
-        accu[body.parent] += accu[ib]
-    return result
-
-  def number_of_sites_in_each_tree(O):
-    return O._accumulate_in_each_tree(attr="number_of_sites")
-
-  def sum_of_masses_in_each_tree(O):
-    return O._accumulate_in_each_tree(attr="sum_of_masses")
-
-  def mean_linear_velocity(O, number_of_sites_in_each_tree):
-    if (number_of_sites_in_each_tree is None):
-      number_of_sites_in_each_tree = O.number_of_sites_in_each_tree()
-    sum_v = matrix.col((0,0,0))
-    sum_n = 0
-    for ib,n in number_of_sites_in_each_tree:
-      body = O.bodies[ib]
-      v = body.joint.get_linear_velocity(qd=body.qd)
-      if (v is None): continue
-      sum_v += v * n
-      sum_n += n
-    if (sum_n == 0):
-      return None
-    return sum_v / sum_n
-
-  def subtract_from_linear_velocities(O, number_of_sites_in_each_tree, value):
-    if (number_of_sites_in_each_tree is None):
-      number_of_sites_in_each_tree = O.number_of_sites_in_each_tree()
-    for ib,n in number_of_sites_in_each_tree:
-      body = O.bodies[ib]
-      v = body.joint.get_linear_velocity(qd=body.qd)
-      if (v is None): continue
-      body.qd = body.joint.new_linear_velocity(qd=body.qd, value=v-value)
-
-  def featherstone_system_model(O):
-    if (O.__featherstone_system_model is None):
-      O.__featherstone_system_model = featherstone.system_model(
-        bodies=O.bodies)
-    return O.__featherstone_system_model
-
-  def aja_array(O):
-    if (O.__aja_array is None):
-      O.__aja_array = []
-      for body in O.bodies:
-        aja = body.alignment.cb_b0 * body.joint.cb_sp * body.alignment.cb_0b
-        if (body.parent != -1):
-          aja = O.__aja_array[body.parent] * aja
-        O.__aja_array.append(aja)
-    return O.__aja_array
-
-  def jar_array(O):
-    if (O.__jar_array is None):
-      O_aja = O.aja_array()
-      O.__jar_array = []
-      for body in O.bodies:
-        jar = body.joint.cb_ps.r * body.alignment.cb_0b.r
-        if (body.parent != -1):
-          jar *= O_aja[body.parent].r.transpose()
-        O.__jar_array.append(jar)
-    return O.__jar_array
 
   def sites_moved(O):
     if (O.__sites_moved is None):
@@ -280,76 +159,22 @@ class model(object):
     return O.__f_ext_array
 
   def d_e_pot_d_q(O):
-    return O.featherstone_system_model().d_e_pot_d_q(
-      f_ext_array=O.f_ext_array())
+    return super(model, O).d_e_pot_d_q(f_ext_array=O.f_ext_array())
 
   def d_e_pot_d_q_packed(O):
     result = flex.double()
-    for v in O.featherstone_system_model().d_e_pot_d_q(
-               f_ext_array=O.f_ext_array()):
+    for v in O.d_e_pot_d_q():
       result.extend(flex.double(v))
     return result
 
   def qdd_array(O):
     if (O.__qdd_array is None):
-      O.__qdd_array = O.featherstone_system_model().forward_dynamics_ab(
+      O.__qdd_array = O.forward_dynamics_ab(
         tau_array=None, f_ext_array=O.f_ext_array())
     return O.__qdd_array
 
-  def e_kin(O):
-    if (O.__e_kin is None):
-      O.__e_kin = O.featherstone_system_model().e_kin()
-    return O.__e_kin
-
   def e_tot(O):
     return O.e_kin() + O.e_pot()
-
-  def reset_e_kin(O, e_kin_target, e_kin_epsilon=1e-12):
-    assert e_kin_target >= 0
-    assert e_kin_epsilon > 0
-    O_e_kin = O.e_kin()
-    if (O_e_kin >= e_kin_epsilon):
-      factor = (e_kin_target / O_e_kin)**0.5
-      for body in O.bodies:
-        body.qd *= factor
-    O.flag_velocities_as_changed()
-
-  def assign_zero_velocities(O):
-    for body in O.bodies:
-      body.qd = body.joint.qd_zero
-    O.flag_velocities_as_changed()
-
-  def assign_random_velocities(O,
-        e_kin_target=None,
-        e_kin_epsilon=1e-12,
-        random_gauss=None):
-    if (e_kin_target is None):
-      work_e_kin_target = 1
-    elif (e_kin_target == 0):
-      O.assign_zero_velocities()
-      return
-    else:
-      assert e_kin_target >= 0
-      work_e_kin_target = e_kin_target
-    qd_e_kin_scales = flex.double(
-      O.featherstone_system_model().qd_e_kin_scales(
-        e_kin_epsilon=e_kin_epsilon))
-    if (O.degrees_of_freedom != 0):
-      qd_e_kin_scales *= (work_e_kin_target / O.degrees_of_freedom)**0.5
-    if (random_gauss is None):
-      random_gauss = random.gauss
-    i_qd = 0
-    for body in O.bodies:
-      qd_new = []
-      for qd in body.joint.qd_zero:
-        qd_new.append(qd + random_gauss(mu=0, sigma=qd_e_kin_scales[i_qd]))
-        i_qd += 1
-      body.qd = matrix.col(qd_new)
-    assert i_qd == O.degrees_of_freedom
-    O.flag_velocities_as_changed()
-    if (e_kin_target is not None):
-      O.reset_e_kin(e_kin_target=e_kin_target, e_kin_epsilon=e_kin_epsilon)
-    return qd_e_kin_scales
 
   def dynamics_step(O, delta_t):
     O_qdd_array = O.qdd_array()

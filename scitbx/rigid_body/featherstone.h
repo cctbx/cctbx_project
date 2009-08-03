@@ -1,10 +1,17 @@
 #ifndef SCITBX_RIGID_BODY_FEATHERSTONE_H
 #define SCITBX_RIGID_BODY_FEATHERSTONE_H
 
+#include <boost/python/import.hpp>
+#include <boost/python/extract.hpp>
+#include <boost/python/object.hpp>
+
 #include <scitbx/rigid_body/array_packing.h>
 #include <scitbx/rigid_body/spatial_lib.h>
+#include <scitbx/rigid_body/matrix_helpers.h>
 #include <scitbx/matrix/eigensystem.h>
 #include <scitbx/array_family/versa_algebra.h>
+#include <scitbx/array_family/shared_algebra.h>
+#include <scitbx/optional_copy.h>
 #include <boost/numeric/conversion/cast.hpp>
 
 namespace scitbx { namespace rigid_body { namespace featherstone {
@@ -25,14 +32,41 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
 
   //! RBDA Tab. 4.3, p. 87.
   template <typename FloatType=double>
-  struct system_model
+  struct system_model : boost::noncopyable
   {
     typedef FloatType ft;
 
     af::shared<shared_ptr<body_t<ft> > > bodies;
+    unsigned number_of_trees;
     unsigned degrees_of_freedom;
-    mutable af::shared<rotr3<ft> > cb_up_array_;
-    mutable af::shared<af::versa<ft, af::mat_grid> > xup_array_;
+    unsigned q_packed_size;
+
+    protected:
+      boost::optional<af::shared<rotr3<ft> > > aja_array_;
+      boost::optional<af::shared<mat3<ft> > > jar_array_;
+      boost::optional<af::shared<rotr3<ft> > > cb_up_array_;
+      boost::optional<af::shared<af::versa<ft, af::mat_grid> > > xup_array_;
+      boost::optional<ft> e_kin_;
+    public:
+
+    system_model() {}
+
+    system_model(
+      af::shared<shared_ptr<body_t<ft> > > const& bodies_)
+    :
+      bodies(bodies_),
+      number_of_trees(0),
+      degrees_of_freedom(0),
+      q_packed_size(0)
+    {
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft> const* body = bodies[ib].get();
+        if (body->parent == -1) number_of_trees++;
+        degrees_of_freedom += body->joint->degrees_of_freedom;
+        q_packed_size += body->joint->q_size;
+      }
+    }
 
     unsigned
     bodies_size() const
@@ -40,51 +74,278 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       return boost::numeric_cast<unsigned>(bodies.size());
     }
 
-    system_model() {}
+    void
+    flag_positions_as_changed()
+    {
+      aja_array_.reset();
+      jar_array_.reset();
+      cb_up_array_.reset();
+      xup_array_.reset();
+    }
 
-    //! Stores bodies and caches transformation matrices.
-    system_model(
-      af::shared<shared_ptr<body_t<ft> > > const& bodies_,
-      unsigned degrees_of_freedom_)
-    :
-      bodies(bodies_),
-      degrees_of_freedom(degrees_of_freedom_)
-    {}
+    void
+    flag_velocities_as_changed()
+    {
+      e_kin_.reset();
+    }
+
+    af::shared<std::size_t>
+    root_indices() const
+    {
+      af::shared<std::size_t> result((af::reserve(number_of_trees)));
+      std::size_t nb = bodies.size();
+      for(std::size_t ib=0;ib<nb;ib++) {
+        body_t<ft> const* body = bodies[ib].get();
+        if (body->parent == -1) {
+          result.push_back(ib);
+        }
+      }
+      SCITBX_ASSERT(result.size() == number_of_trees);
+      return result;
+    }
+
+    af::shared<ft>
+    pack_q()
+    {
+      af::shared<ft> result;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        af::small<ft, 7> q = bodies[ib]->joint->get_q();
+        result.extend(q.begin(), q.end());
+      }
+      SCITBX_ASSERT(result.size() == q_packed_size);
+      return result;
+    }
+
+    void
+    unpack_q(
+      af::const_ref<ft> const& q_packed)
+    {
+      SCITBX_ASSERT(q_packed.size() == q_packed_size);
+      unsigned i = 0;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft>* body = bodies[ib].get();
+        unsigned n = body->joint->q_size;
+        body->joint = body->joint->new_q(af::const_ref<ft>(&q_packed[i], n));
+        i += n;
+      }
+      SCITBX_ASSERT(i == q_packed_size);
+      flag_positions_as_changed();
+    }
+
+    af::shared<ft>
+    pack_qd()
+    {
+      af::shared<ft> result;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        af::const_ref<ft> qd = bodies[ib]->qd();
+        result.extend(qd.begin(), qd.end());
+      }
+      SCITBX_ASSERT(result.size() == degrees_of_freedom);
+      return result;
+    }
+
+    void
+    unpack_qd(
+      af::const_ref<ft> const& qd_packed)
+    {
+      SCITBX_ASSERT(qd_packed.size() == degrees_of_freedom);
+      unsigned i = 0;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft>* body = bodies[ib].get();
+        unsigned n = body->joint->degrees_of_freedom;
+        body->set_qd(af::small<ft, 6>(af::adapt(
+          af::const_ref<ft>(&qd_packed[i], n))));
+        i += n;
+      }
+      SCITBX_ASSERT(i == degrees_of_freedom);
+      flag_velocities_as_changed();
+    }
+
+    af::shared<af::tiny<std::size_t, 2> >
+    number_of_sites_in_each_tree() const
+    {
+      af::shared<af::tiny<std::size_t, 2> >
+        result((af::reserve(number_of_trees)));
+      unsigned nb = bodies_size();
+      boost::scoped_array<unsigned> accu(new unsigned[nb]);
+      std::fill_n(accu.get(), nb, unsigned(0));
+      for(unsigned ib=nb;ib!=0;) {
+        ib--;
+        body_t<ft> const* body = bodies[ib].get();
+        accu[ib] += body->number_of_sites;
+        if (body->parent == -1) {
+          result.push_back(af::tiny<std::size_t, 2>(ib, accu[ib]));
+        }
+        else {
+          accu[body->parent] += accu[ib];
+        }
+      }
+      SCITBX_ASSERT(result.size() == number_of_trees);
+      return result;
+    }
+
+    af::shared<std::pair<int, double> >
+    sum_of_masses_in_each_tree() const
+    {
+      af::shared<std::pair<int, double> >
+        result((af::reserve(number_of_trees)));
+      unsigned nb = bodies_size();
+      boost::scoped_array<ft> accu(new ft[nb]);
+      std::fill_n(accu.get(), nb, ft(0));
+      for(unsigned ib=nb;ib!=0;) {
+        ib--;
+        body_t<ft> const* body = bodies[ib].get();
+        accu[ib] += body->sum_of_masses;
+        if (body->parent == -1) {
+          result.push_back(std::pair<int, double>(
+            boost::numeric_cast<int>(ib),
+            boost::numeric_cast<double>(accu[ib])));
+        }
+        else {
+          accu[body->parent] += accu[ib];
+        }
+      }
+      SCITBX_ASSERT(result.size() == number_of_trees);
+      return result;
+    }
+
+    boost::optional<vec3<ft> >
+    mean_linear_velocity(
+      af::const_ref<af::tiny<std::size_t, 2> >
+        number_of_sites_in_each_tree) const
+    {
+      vec3<ft> sum_v(0,0,0);
+      unsigned sum_n = 0;
+#define SCITBX_LOC \
+      optional_copy<af::shared<af::tiny<std::size_t, 2> > > nosiet; \
+      if (number_of_sites_in_each_tree.begin() == 0) { \
+        nosiet = this->number_of_sites_in_each_tree(); \
+        number_of_sites_in_each_tree = nosiet->const_ref(); \
+      } \
+      SCITBX_ASSERT(number_of_sites_in_each_tree.size() == number_of_trees); \
+      std::size_t nb = bodies.size(); \
+      for( \
+        af::tiny<std::size_t, 2> const* \
+          nosiet_it=number_of_sites_in_each_tree.begin(); \
+        nosiet_it!=number_of_sites_in_each_tree.end(); \
+        nosiet_it++) \
+      { \
+        std::size_t ib = (*nosiet_it)[0]; \
+        SCITBX_ASSERT(ib < nb);
+SCITBX_LOC
+        body_t<ft> const* body = bodies[ib].get();
+        boost::optional<vec3<ft> >
+          v = body->joint->get_linear_velocity(body->qd());
+        if (!v) continue;
+        unsigned n = boost::numeric_cast<unsigned>((*nosiet_it)[1]);
+        sum_v += (*v) * boost::numeric_cast<ft>(n);
+        sum_n += n;
+      }
+      if (sum_n == 0) {
+        return boost::optional<vec3<ft> >();
+      }
+      return boost::optional<vec3<ft> >(
+        sum_v / boost::numeric_cast<ft>(sum_n));
+    }
+
+    void
+    subtract_from_linear_velocities(
+      af::const_ref<af::tiny<std::size_t, 2> >
+        number_of_sites_in_each_tree,
+      vec3<ft> const& value)
+    {
+SCITBX_LOC // {
+#undef SCITBX_LOC
+        body_t<ft>* body = bodies[ib].get();
+        boost::optional<vec3<ft> >
+          v = body->joint->get_linear_velocity(body->qd());
+        if (!v) continue;
+        body->set_qd(
+          body->joint->new_linear_velocity(body->qd(), (*v)-value));
+      }
+    }
+
+    //! Not available in Python.
+    af::shared<rotr3<ft> > const&
+    aja_array()
+    {
+      if (!aja_array_) {
+        unsigned nb = bodies_size();
+        aja_array_ = af::shared<rotr3<ft> >(af::reserve(nb));
+        for(unsigned ib=0;ib<nb;ib++) {
+          body_t<ft> const* body = bodies[ib].get();
+          rotr3<ft>
+            aja = body->alignment->cb_b0
+                * body->joint->cb_sp
+                * body->alignment->cb_0b;
+          if (body->parent != -1) {
+            aja = (*aja_array_)[body->parent] * aja;
+          }
+          aja_array_->push_back(aja);
+        }
+      }
+      return *aja_array_;
+    }
+
+    //! Not available in Python.
+    af::shared<mat3<ft> > const&
+    jar_array()
+    {
+      if (!jar_array_) {
+        aja_array();
+        unsigned nb = bodies_size();
+        jar_array_ = af::shared<mat3<ft> >(af::reserve(nb));
+        for(unsigned ib=0;ib<nb;ib++) {
+          body_t<ft> const* body = bodies[ib].get();
+          mat3<ft> jar = body->joint->cb_ps.r * body->alignment->cb_0b.r;
+          if (body->parent != -1) {
+            jar = jar * (*aja_array_)[body->parent].r.transpose();
+          }
+          jar_array_->push_back(jar);
+        }
+      }
+      return *jar_array_;
+    }
 
     //! RBDA Example 4.4, p. 80.
     af::shared<rotr3<ft> >
-    cb_up_array() const
+    cb_up_array()
     {
-      if (cb_up_array_.size() == 0) {
-        cb_up_array_.reserve(bodies.size());
+      if (!cb_up_array_) {
         unsigned nb = bodies_size();
+        cb_up_array_ = af::shared<rotr3<ft> >(af::reserve(nb));
         for(unsigned ib=0;ib<nb;ib++) {
           body_t<ft> const* body = bodies[ib].get();
-          cb_up_array_.push_back(body->joint->cb_ps * body->cb_tree);
+          cb_up_array_->push_back(body->joint->cb_ps * body->cb_tree);
         }
       }
-      return cb_up_array_;
+      return *cb_up_array_;
     }
 
     //! RBDA Example 4.4, p. 80.
     af::shared<af::versa<ft, af::mat_grid> >
-    xup_array() const
+    xup_array()
     {
-      if (xup_array_.size() == 0) {
-        af::shared<rotr3<ft> > cb_up_array = this->cb_up_array();
-        xup_array_.reserve(bodies.size());
+      if (!xup_array_) {
+        cb_up_array();
         unsigned nb = bodies_size();
+        xup_array_ = af::shared<af::versa<ft, af::mat_grid> >(
+          af::reserve(nb));
         for(unsigned ib=0;ib<nb;ib++) {
-          xup_array_.push_back(
-            spatial_lib::cb_as_spatial_transform(cb_up_array[ib]));
+          xup_array_->push_back(
+            spatial_lib::cb_as_spatial_transform((*cb_up_array_)[ib]));
         }
       }
-      return xup_array_;
+      return *xup_array_;
     }
 
     //! RBDA Example 4.4, p. 80.
     af::shared<af::tiny<ft, 6> >
-    spatial_velocities() const
+    spatial_velocities()
     {
       af::shared<af::tiny<ft, 6> > result(bodies.size());
       unsigned nb = bodies_size();
@@ -117,22 +378,63 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
     }
 
     //! RBDA Eq. 2.67, p. 35.
-    ft
-    e_kin() const
+    ft const&
+    e_kin()
     {
-      ft result = 0;
-      af::shared<af::tiny<ft, 6> > sv = spatial_velocities();
+      if (!e_kin_) {
+        ft result = 0;
+        af::shared<af::tiny<ft, 6> > sv = spatial_velocities();
+        unsigned nb = bodies_size();
+        for(unsigned ib=0;ib<nb;ib++) {
+          body_t<ft> const* body = bodies[ib].get();
+          result += spatial_lib::kinetic_energy(
+            body->i_spatial.const_ref(), sv[ib]);
+        }
+        e_kin_ = result;
+      }
+      return *e_kin_;
+    }
+
+    void
+    reset_e_kin(
+      ft const& e_kin_target,
+      ft const& e_kin_epsilon=1e-12)
+    {
+      SCITBX_ASSERT(e_kin_target >= 0);
+      SCITBX_ASSERT(e_kin_epsilon > 0);
+      ft e_kin = this->e_kin();
+      if (e_kin >= e_kin_epsilon) {
+        ft factor = std::sqrt(e_kin_target / e_kin);
+        unsigned nb = bodies_size();
+        for(unsigned ib=0;ib<nb;ib++) {
+          body_t<ft>* body = bodies[ib].get();
+          af::ref<ft> body_qd = body->qd();
+          for(std::size_t i=0;i<body_qd.size();i++) {
+            body_qd[i] *= factor;
+          }
+        }
+      }
+      flag_velocities_as_changed();
+    }
+
+    void
+    assign_zero_velocities()
+    {
       unsigned nb = bodies_size();
       for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft> const* body = bodies[ib].get();
-        result += spatial_lib::kinetic_energy(
-          body->i_spatial.const_ref(), sv[ib]);
+        body_t<ft>* body = bodies[ib].get();
+        af::ref<ft> body_qd = body->qd();
+        af::const_ref<ft> joint_qd_zero = body->joint->qd_zero();
+        SCITBX_ASSERT(joint_qd_zero.size() == body_qd.size());
+        std::copy(
+          joint_qd_zero.begin(),
+          joint_qd_zero.end(), body_qd.begin());
       }
-      return result;
+      flag_velocities_as_changed();
     }
 
     af::shared<af::versa<ft, af::mat_grid> >
-    accumulated_spatial_inertia() const
+    accumulated_spatial_inertia()
     {
       af::shared<af::versa<ft, af::mat_grid> >
         result(af::reserve(bodies.size()));
@@ -156,7 +458,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
 
     af::shared<ft>
     qd_e_kin_scales(
-      ft e_kin_epsilon=1e-12) const
+      ft e_kin_epsilon=1e-12)
     {
       af::shared<ft> result(af::reserve(bodies.size()));
       af::shared<af::versa<ft, af::mat_grid> >
@@ -191,6 +493,55 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       return result;
     }
 
+    boost::optional<af::shared<ft> >
+    assign_random_velocities(
+      boost::optional<ft> const& e_kin_target=boost::optional<ft>(),
+      ft const& e_kin_epsilon=1e-12,
+      boost::python::object random_gauss=boost::python::object())
+    {
+      ft work_e_kin_target;
+      if (!e_kin_target) {
+        work_e_kin_target = 1;
+      }
+      else if (*e_kin_target == 0) {
+        assign_zero_velocities();
+        return boost::optional<af::shared<ft> >();
+      }
+      else {
+        SCITBX_ASSERT(*e_kin_target >= 0);
+        work_e_kin_target = *e_kin_target;
+      }
+      af::shared<ft> qd_e_kin_scales = this->qd_e_kin_scales(e_kin_epsilon);
+      if (degrees_of_freedom != 0) {
+        qd_e_kin_scales *= boost::numeric_cast<ft>(
+          std::sqrt(
+              work_e_kin_target
+            / boost::numeric_cast<ft>(degrees_of_freedom)));
+      }
+      boost::python::object none;
+      if (random_gauss.ptr() == none.ptr()) {
+        random_gauss = boost::python::import("random").attr("gauss");
+      }
+      unsigned i_qd = 0;
+      unsigned nb = bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        body_t<ft>* body = bodies[ib].get();
+        af::small<ft, 6> qd_new(af::adapt(body->joint->qd_zero()));
+        unsigned n = boost::numeric_cast<unsigned>(qd_new.size());
+        for(unsigned i=0;i<n;i++,i_qd++) {
+          qd_new[i] += boost::python::extract<ft>(
+            random_gauss(/*mu*/ 0, /*sigma*/ qd_e_kin_scales[i_qd]))();
+        }
+        body->set_qd(qd_new);
+      }
+      SCITBX_ASSERT(i_qd == degrees_of_freedom);
+      flag_velocities_as_changed();
+      if (e_kin_target) {
+        reset_e_kin(*e_kin_target, e_kin_epsilon);
+      }
+      return boost::optional<af::shared<ft> >(qd_e_kin_scales);
+    }
+
     //! RBDA Tab. 5.1, p. 96.
     /*! Inverse Dynamics of a kinematic tree via
         Recursive Newton-Euler Algorithm.
@@ -207,7 +558,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
     inverse_dynamics(
       af::const_ref<af::small<ft, 6> > const& qdd_array,
       af::const_ref<af::tiny<ft, 6> > const& f_ext_array,
-      af::const_ref<ft> const& grav_accn) const
+      af::const_ref<ft> const& grav_accn)
     {
       SCITBX_ASSERT(
         qdd_array.size() == (qdd_array.begin() == 0 ? 0 : bodies.size()));
@@ -299,7 +650,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
     inverse_dynamics_packed(
       af::const_ref<ft> const& qdd_packed=af::const_ref<ft>(0,0),
       af::const_ref<ft> const& f_ext_packed=af::const_ref<ft>(0,0),
-      af::const_ref<ft> const& grav_accn=af::const_ref<ft>(0,0)) const
+      af::const_ref<ft> const& grav_accn=af::const_ref<ft>(0,0))
     {
       af::shared<ft> tau_packed((af::reserve(degrees_of_freedom)));
       af::shared<af::small<ft, 6> >
@@ -322,7 +673,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
      */
     af::shared<af::small<ft, 6> >
     f_ext_as_tau(
-      af::const_ref<af::tiny<ft, 6> > const& f_ext_array) const
+      af::const_ref<af::tiny<ft, 6> > const& f_ext_array)
     {
       SCITBX_ASSERT(f_ext_array.size() == bodies.size());
       unsigned nb = bodies_size();
@@ -355,7 +706,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
      */
     af::shared<ft>
     f_ext_as_tau_packed(
-      af::const_ref<ft> const& f_ext_packed) const
+      af::const_ref<ft> const& f_ext_packed)
     {
       SCITBX_ASSERT(f_ext_packed.begin() != 0);
       af::shared<ft> tau_packed((af::reserve(degrees_of_freedom)));
@@ -369,23 +720,6 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
       }
       SCITBX_ASSERT(tau_packed.size() == degrees_of_freedom);
       return tau_packed;
-    }
-
-    /*! Gradients of potential energy (defined via f_ext_array) w.r.t.
-        positional coordinates q. Uses f_ext_as_tau().
-     */
-    af::shared<af::small<ft, 7> >
-    d_e_pot_d_q(
-      af::const_ref<af::tiny<ft, 6> > const& f_ext_array) const
-    {
-      af::shared<af::small<ft, 7> > result(af::reserve(bodies.size()));
-      af::shared<af::small<ft, 6> >
-        tau_array = this->f_ext_as_tau(f_ext_array);
-      unsigned nb = bodies_size();
-      for(unsigned ib=0;ib<nb;ib++) {
-        result.push_back(bodies[ib]->joint->tau_as_d_e_pot_d_q(tau_array[ib]));
-      }
-      return result;
     }
 
     //! RBDA Tab. 7.1, p. 132.
@@ -405,7 +739,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
     forward_dynamics_ab(
       af::const_ref<af::small<ft, 6> > const& tau_array,
       af::const_ref<af::tiny<ft, 6> > const& f_ext_array,
-      af::const_ref<ft> const& grav_accn) const
+      af::const_ref<ft> const& grav_accn)
     {
       typedef af::tiny<ft, 6> t6;
       typedef af::small<ft, 6> s6;
@@ -539,7 +873,7 @@ namespace scitbx { namespace rigid_body { namespace featherstone {
     forward_dynamics_ab_packed(
       af::const_ref<ft> const& tau_packed=af::const_ref<ft>(0,0),
       af::const_ref<ft> const& f_ext_packed=af::const_ref<ft>(0,0),
-      af::const_ref<ft> const& grav_accn=af::const_ref<ft>(0,0)) const
+      af::const_ref<ft> const& grav_accn=af::const_ref<ft>(0,0))
     {
       af::shared<ft> qdd_packed((af::reserve(degrees_of_freedom)));
       af::shared<af::small<ft, 6> >

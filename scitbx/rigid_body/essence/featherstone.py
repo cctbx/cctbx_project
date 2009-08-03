@@ -12,6 +12,7 @@ See also: RBDA:
   ISBN-10: 0387743146
 """
 
+from __future__ import division
 from spatial_lib import \
   matrix, cb_as_spatial_transform, crm, crf, kinetic_energy
 
@@ -37,10 +38,133 @@ class system_model(object):
   "RBDA Tab. 4.3, p. 87"
 
   def __init__(O, bodies):
-    "Stores bodies and caches transformation matrices."
     O.bodies = bodies
+    O.number_of_trees = 0
+    O.degrees_of_freedom = 0
+    O.q_packed_size = 0
+    for body in O.bodies:
+      if (body.parent == -1): O.number_of_trees += 1
+      O.degrees_of_freedom += body.joint.degrees_of_freedom
+      O.q_packed_size += body.joint.q_size
+    O.flag_positions_as_changed()
+
+  def flag_positions_as_changed(O):
+    O.__aja_array = None
+    O.__jar_array = None
     O.__cb_up_array = None
     O.__xup_array = None
+    O.flag_velocities_as_changed()
+
+  def flag_velocities_as_changed(O):
+    O.__e_kin = None
+
+  def root_indices(O):
+    result = []
+    for ib,body in enumerate(O.bodies):
+      if (body.parent == -1):
+        result.append(ib)
+    return result
+
+  def pack_q(O):
+    from scitbx.array_family import flex
+    result = flex.double()
+    result.reserve(O.q_packed_size)
+    for body in O.bodies:
+      result.extend(flex.double(body.joint.get_q()))
+    assert result.size() == O.q_packed_size
+    return result
+
+  def unpack_q(O, q_packed):
+    assert q_packed.size() == O.q_packed_size
+    i = 0
+    for body in O.bodies:
+      n = body.joint.q_size
+      body.joint = body.joint.new_q(q=q_packed[i:i+n])
+      i += n
+    assert i == O.q_packed_size
+    O.flag_positions_as_changed()
+
+  def pack_qd(O):
+    from scitbx.array_family import flex
+    result = flex.double()
+    result.reserve(O.degrees_of_freedom)
+    for body in O.bodies:
+      result.extend(flex.double(body.qd))
+    assert result.size() == O.degrees_of_freedom
+    return result
+
+  def unpack_qd(O, qd_packed):
+    assert qd_packed.size() == O.degrees_of_freedom
+    i = 0
+    for body in O.bodies:
+      n = body.joint.degrees_of_freedom
+      body.qd = matrix.col(qd_packed[i:i+n])
+      i += n
+    assert i == O.degrees_of_freedom
+    O.flag_velocities_as_changed()
+
+  def _accumulate_in_each_tree(O, attr):
+    result = []
+    accu = [0] * len(O.bodies)
+    for ib in xrange(len(O.bodies)-1,-1,-1):
+      body = O.bodies[ib]
+      accu[ib] += getattr(body, attr)
+      if (body.parent == -1):
+        result.append((ib, accu[ib]))
+      else:
+        accu[body.parent] += accu[ib]
+    return result
+
+  def number_of_sites_in_each_tree(O):
+    return O._accumulate_in_each_tree(attr="number_of_sites")
+
+  def sum_of_masses_in_each_tree(O):
+    return O._accumulate_in_each_tree(attr="sum_of_masses")
+
+  def mean_linear_velocity(O, number_of_sites_in_each_tree):
+    if (number_of_sites_in_each_tree is None):
+      number_of_sites_in_each_tree = O.number_of_sites_in_each_tree()
+    sum_v = matrix.col((0,0,0))
+    sum_n = 0
+    for ib,n in number_of_sites_in_each_tree:
+      body = O.bodies[ib]
+      v = body.joint.get_linear_velocity(qd=body.qd)
+      if (v is None): continue
+      sum_v += v * n
+      sum_n += n
+    if (sum_n == 0):
+      return None
+    return sum_v / sum_n
+
+  def subtract_from_linear_velocities(O, number_of_sites_in_each_tree, value):
+    if (number_of_sites_in_each_tree is None):
+      number_of_sites_in_each_tree = O.number_of_sites_in_each_tree()
+    for ib,n in number_of_sites_in_each_tree:
+      body = O.bodies[ib]
+      v = body.joint.get_linear_velocity(qd=body.qd)
+      if (v is None): continue
+      body.qd = body.joint.new_linear_velocity(qd=body.qd, value=v-value)
+
+  def aja_array(O):
+    if (O.__aja_array is None):
+      O.__aja_array = []
+      for body in O.bodies:
+        aja = body.alignment.cb_b0 * body.joint.cb_sp * body.alignment.cb_0b
+        if (body.parent != -1):
+          aja = O.__aja_array[body.parent] * aja
+        O.__aja_array.append(aja)
+    return O.__aja_array
+
+  def jar_array(O):
+    if (O.__jar_array is None):
+      O_aja = O.aja_array()
+      O.__jar_array = []
+      for body in O.bodies:
+        jar = body.joint.cb_ps.r * body.alignment.cb_0b.r
+        if (body.parent != -1):
+          jar *= O_aja[body.parent].r.transpose()
+        O.__jar_array.append(jar)
+    return O.__jar_array
 
   def cb_up_array(O):
     "RBDA Example 4.4, p. 80"
@@ -76,10 +200,27 @@ class system_model(object):
 
   def e_kin(O):
     "RBDA Eq. 2.67, p. 35"
-    result = 0
-    for body,v in zip(O.bodies, O.spatial_velocities()):
-      result += kinetic_energy(i_spatial=body.i_spatial, v_spatial=v)
-    return result
+    if (O.__e_kin is None):
+      result = 0
+      for body,v in zip(O.bodies, O.spatial_velocities()):
+        result += kinetic_energy(i_spatial=body.i_spatial, v_spatial=v)
+      O.__e_kin = result
+    return O.__e_kin
+
+  def reset_e_kin(O, e_kin_target, e_kin_epsilon=1e-12):
+    assert e_kin_target >= 0
+    assert e_kin_epsilon > 0
+    O_e_kin = O.e_kin()
+    if (O_e_kin >= e_kin_epsilon):
+      factor = (e_kin_target / O_e_kin)**0.5
+      for body in O.bodies:
+        body.qd *= factor
+    O.flag_velocities_as_changed()
+
+  def assign_zero_velocities(O):
+    for body in O.bodies:
+      body.qd = body.joint.qd_zero
+    O.flag_velocities_as_changed()
 
   def accumulated_spatial_inertia(O):
     result = [body.i_spatial for body in O.bodies]
@@ -109,6 +250,39 @@ class system_model(object):
         else:
           rap(1 / e_kin**0.5)
     return result
+
+  def assign_random_velocities(O,
+        e_kin_target=None,
+        e_kin_epsilon=1e-12,
+        random_gauss=None):
+    if (e_kin_target is None):
+      work_e_kin_target = 1
+    elif (e_kin_target == 0):
+      O.assign_zero_velocities()
+      return
+    else:
+      assert e_kin_target >= 0
+      work_e_kin_target = e_kin_target
+    from scitbx.array_family import flex
+    qd_e_kin_scales = flex.double(
+      O.qd_e_kin_scales(e_kin_epsilon=e_kin_epsilon))
+    if (O.degrees_of_freedom != 0):
+      qd_e_kin_scales *= (work_e_kin_target / O.degrees_of_freedom)**0.5
+    if (random_gauss is None):
+      import random
+      random_gauss = random.gauss
+    i_qd = 0
+    for body in O.bodies:
+      qd_new = []
+      for qd in body.joint.qd_zero:
+        qd_new.append(qd + random_gauss(mu=0, sigma=qd_e_kin_scales[i_qd]))
+        i_qd += 1
+      body.qd = matrix.col(qd_new)
+    assert i_qd == O.degrees_of_freedom
+    O.flag_velocities_as_changed()
+    if (e_kin_target is not None):
+      O.reset_e_kin(e_kin_target=e_kin_target, e_kin_epsilon=e_kin_epsilon)
+    return qd_e_kin_scales
 
   def inverse_dynamics(O, qdd_array=None, f_ext_array=None, grav_accn=None):
     """RBDA Tab. 5.1, p. 96:

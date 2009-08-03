@@ -120,8 +120,7 @@ def exercise_qd_e_kin_scales(tardy_model):
     assert len(result) == tardy_model.degrees_of_freedom
     return result
   scales_slow = slow()
-  model = tardy_model.featherstone_system_model()
-  scales_fast = model.qd_e_kin_scales()
+  scales_fast = tardy_model.qd_e_kin_scales()
   assert approx_equal(scales_fast, scales_slow)
 
 def exercise_random_velocities(tardy_model):
