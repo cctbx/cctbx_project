@@ -59,7 +59,9 @@ def bestcmp(a,b):
   if a['max_angular_difference'] > b['max_angular_difference']: return -1
   return 1
 
-def iotbx_converter(unit_cell,max_delta,bravais_types_only=True,
+class iotbx_converter(metric_subgroups,list):
+
+ def __init__(self,unit_cell,max_delta,bravais_types_only=True,
     space_group_symbol="P 1",force_minimum=False,best_monoclinic_beta=True,
     interest_focus="metric_symmetry",sort=True):
     # with regard to "force_minimum": when autoindexing, the orientation
@@ -74,14 +76,14 @@ def iotbx_converter(unit_cell,max_delta,bravais_types_only=True,
     space_group_symbol=space_group_symbol,
     force_compatible_unit_cell=False)
 
-  M = metric_subgroups(input_symmetry,max_delta,
+  metric_subgroups.__init__(self,input_symmetry,max_delta,
                        enforce_max_delta_for_generated_two_folds=True,
                        bravais_types_only=bravais_types_only,
                        force_minimum=force_minimum,
                        best_monoclinic_beta=best_monoclinic_beta,
                        interest_focus=interest_focus)
-  M.labelit_style = []
-  for subgroup in M.result_groups:
+
+  for subgroup in self.result_groups:
     # required keys for subgroup:
     #   max_angular_difference
     #   subsym: the centrosymmetric group, referred to the input_cell basis
@@ -116,7 +118,6 @@ def iotbx_converter(unit_cell,max_delta,bravais_types_only=True,
     subgroup['reduced_group']=\
       subgroup['subsym'].space_group().build_derived_acentric_group()
     subgroup['constraints']=echelon_constraints(subgroup['reduced_group'])
-    M.labelit_style.append(MetricSubgroup().import_iotbx_style(subgroup))
+    self.append(MetricSubgroup().import_iotbx_style(subgroup))
   if (sort):
-    M.labelit_style.sort(bestcmp)
-  return M.labelit_style
+    self.sort(bestcmp)
