@@ -1,6 +1,8 @@
 #ifndef SCITBX_RIGID_BODY_TARDY_H
 #define SCITBX_RIGID_BODY_TARDY_H
 
+#include <scitbx/boost_python/sequence_as_array.h>
+
 #include <scitbx/rigid_body/featherstone.h>
 #include <scitbx/rigid_body/body_lib.h>
 #include <scitbx/array_family/selections.h>
@@ -8,20 +10,6 @@
 namespace scitbx { namespace rigid_body { namespace tardy {
 
   namespace bp = boost::python;
-
-  template <typename ElementType>
-  af::shared<ElementType>
-  python_sequence_as_af_shared(
-    bp::object const& seq)
-  {
-    bp::ssize_t n = bp::len(seq);
-    af::shared<ElementType>
-      result((af::reserve(boost::numeric_cast<std::size_t>(n))));
-    for(bp::ssize_t i=0;i<n;i++) {
-      result.push_back(bp::extract<ElementType>(seq[i])());
-    }
-    return result;
-  }
 
   template <typename FloatType>
   struct is_singular_revolute
@@ -81,7 +69,8 @@ namespace scitbx { namespace rigid_body { namespace tardy {
     unsigned nc = boost::numeric_cast<unsigned>(bp::len(clusters));
     for(unsigned ic=0;ic<nc;ic++) {
       af::shared<unsigned>
-        cluster = python_sequence_as_af_shared<unsigned>(clusters[ic]);
+        cluster = boost_python::sequence_as<af::shared<unsigned> >(
+          clusters[ic]);
       af::shared<vec3<ft> >
         body_sites = af::select(sites, cluster.const_ref());
       af::shared<ft>
@@ -96,7 +85,7 @@ namespace scitbx { namespace rigid_body { namespace tardy {
       shared_ptr<body_t<ft> > body;
       if (fixed_vertices_.ptr() != none.ptr()) {
         af::shared<unsigned>
-          fixed_vertices = python_sequence_as_af_shared<unsigned>(
+          fixed_vertices = boost_python::sequence_as<af::shared<unsigned> >(
             fixed_vertices_);
         if (   fixed_vertices.size() > 2
             || fixed_vertices.size() == cluster.size()) {
@@ -247,7 +236,8 @@ namespace scitbx { namespace rigid_body { namespace tardy {
         for(unsigned ib=0;ib<nb;ib++) {
           rotr3<ft> const& aja = (*this->aja_array_)[ib];
           af::shared<unsigned>
-            cluster = python_sequence_as_af_shared<unsigned>(clusters[ib]);
+            cluster = boost_python::sequence_as<af::shared<unsigned> >(
+              clusters[ib]);
           unsigned n = boost::numeric_cast<unsigned>(cluster.size());
           for(unsigned i=0;i<n;i++) {
             unsigned i_seq = cluster[i];
@@ -311,7 +301,8 @@ namespace scitbx { namespace rigid_body { namespace tardy {
           vec3<ft> f(0,0,0);
           vec3<ft> nc(0,0,0);
           af::shared<unsigned>
-            cluster = python_sequence_as_af_shared<unsigned>(clusters[ib]);
+            cluster = boost_python::sequence_as<af::shared<unsigned> >(
+              clusters[ib]);
           unsigned n = boost::numeric_cast<unsigned>(cluster.size());
           for(unsigned i=0;i<n;i++) {
             unsigned i_seq = cluster[i];
