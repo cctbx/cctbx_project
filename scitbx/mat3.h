@@ -555,6 +555,54 @@ namespace scitbx {
           lhs[6]*rhs[2]+lhs[7]*rhs[5]+lhs[8]*rhs[8]);
   }
 
+  //! lhs.transpose() * rhs
+  template <typename NumTypeLhs, typename NumTypeRhs>
+  inline
+  mat3<
+    typename af::binary_operator_traits<
+      NumTypeLhs, NumTypeRhs>::arithmetic>
+  transpose_mul(
+    mat3<NumTypeLhs> const& lhs,
+    mat3<NumTypeRhs> const& rhs)
+  {
+    return mat3<
+      typename af::binary_operator_traits<
+        NumTypeLhs, NumTypeRhs>::arithmetic>(
+          lhs[0]*rhs[0]+lhs[3]*rhs[3]+lhs[6]*rhs[6],
+          lhs[0]*rhs[1]+lhs[3]*rhs[4]+lhs[6]*rhs[7],
+          lhs[0]*rhs[2]+lhs[3]*rhs[5]+lhs[6]*rhs[8],
+          lhs[1]*rhs[0]+lhs[4]*rhs[3]+lhs[7]*rhs[6],
+          lhs[1]*rhs[1]+lhs[4]*rhs[4]+lhs[7]*rhs[7],
+          lhs[1]*rhs[2]+lhs[4]*rhs[5]+lhs[7]*rhs[8],
+          lhs[2]*rhs[0]+lhs[5]*rhs[3]+lhs[8]*rhs[6],
+          lhs[2]*rhs[1]+lhs[5]*rhs[4]+lhs[8]*rhs[7],
+          lhs[2]*rhs[2]+lhs[5]*rhs[5]+lhs[8]*rhs[8]);
+  }
+
+  //! lhs * rhs.transpose()
+  template <typename NumTypeLhs, typename NumTypeRhs>
+  inline
+  mat3<
+    typename af::binary_operator_traits<
+      NumTypeLhs, NumTypeRhs>::arithmetic>
+  mul_transpose(
+    mat3<NumTypeLhs> const& lhs,
+    mat3<NumTypeRhs> const& rhs)
+  {
+    return mat3<
+      typename af::binary_operator_traits<
+        NumTypeLhs, NumTypeRhs>::arithmetic>(
+          lhs[0]*rhs[0]+lhs[1]*rhs[1]+lhs[2]*rhs[2],
+          lhs[0]*rhs[3]+lhs[1]*rhs[4]+lhs[2]*rhs[5],
+          lhs[0]*rhs[6]+lhs[1]*rhs[7]+lhs[2]*rhs[8],
+          lhs[3]*rhs[0]+lhs[4]*rhs[1]+lhs[5]*rhs[2],
+          lhs[3]*rhs[3]+lhs[4]*rhs[4]+lhs[5]*rhs[5],
+          lhs[3]*rhs[6]+lhs[4]*rhs[7]+lhs[5]*rhs[8],
+          lhs[6]*rhs[0]+lhs[7]*rhs[1]+lhs[8]*rhs[2],
+          lhs[6]*rhs[3]+lhs[7]*rhs[4]+lhs[8]*rhs[5],
+          lhs[6]*rhs[6]+lhs[7]*rhs[7]+lhs[8]*rhs[8]);
+  }
+
   //! Matrix * vector product.
   template <typename NumTypeMatrix,
             typename NumTypeVector>
