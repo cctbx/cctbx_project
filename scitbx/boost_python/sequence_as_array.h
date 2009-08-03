@@ -1,6 +1,7 @@
 #ifndef SCITBX_BOOST_PYTHON_SEQUENCE_AS_ARRAY_H
 #define SCITBX_BOOST_PYTHON_SEQUENCE_AS_ARRAY_H
 
+#include <boost/python/extract.hpp>
 #include <boost/python/object.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 
