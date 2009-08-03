@@ -127,21 +127,21 @@ class metric_subgroups(base_subgroups):
     #  conforms to the one that has already been determined for a reference
     #  dataset collected on the same cystal.  This option is only
     #  executed if the reference information is present in a pickled file.
-    try:
-      assert self.reference_subgroups != None #subsequent code only for reindexing cases
+    if self.reference_subgroups != None: #subsequent code only for reindexing cases
       import inspect
+        #admittedly this is a private interface.  Rely on having this method always
+        #  called by derive_result_group_*.  Otherwise this breaks.
         #do not save any frame references, thus avoiding reference circles:
       current_supersym = inspect.currentframe().f_back.f_locals['supersym']
-      current_bravais = group_classification[sgtbx.space_group_info(
-          group=current_supersym.space_group()).type().number()]['bravais']
+      current_bravais = str(bravais_types.bravais_lattice(sgtbx.space_group_info(
+          group=current_supersym.space_group()).type().number()))
       current_cb_op_minimum_ref = inspect.currentframe().f_back.f_locals['cb_op_minimum_ref']
       guess1_cb_op_inp_best = subgroup_cb_op_best_cell * current_cb_op_minimum_ref *\
                               self.cb_op_inp_minimum
         #assume this frame is called in a very specific way such that four frames
         # back gives the lepage module, class character.  It's the only way to
         # pull out the current triclinic orientation.
-      current_orientation = inspect.currentframe().f_back.f_back.f_back.f_back.f_locals['orientation']
-      guess1_orient = current_orientation.change_basis(matrix.sqr(
+      guess1_orient = self.current_orientation.change_basis(matrix.sqr(
         guess1_cb_op_inp_best.c().as_double_array()[0:9]).transpose().elems)
 
       for j,refitem in enumerate(self.reference_subgroups):
@@ -155,15 +155,12 @@ class metric_subgroups(base_subgroups):
         #second guess.  use the cb_op_best_cell from the reference indexing solution
         guess2_cb_op_inp_best = refitem['cb_op_best_cell'] * current_cb_op_minimum_ref *\
                               self.cb_op_inp_minimum
-        guess2_orient = current_orientation.change_basis(matrix.sqr(
+        guess2_orient = self.current_orientation.change_basis(matrix.sqr(
           guess2_cb_op_inp_best.c().as_double_array()[0:9]).transpose().elems)
         dmsd = guess2_orient.direct_mean_square_difference(refitem['orient'])
         if dmsd < self.reasonable_cutoff:
           subgroup_cb_op_best_cell = refitem['cb_op_best_cell']
           break
-
-    except:
-      pass # do nothing; use the plain algorithm
 
     self.cb_op_best_cell_vector.append(subgroup_cb_op_best_cell)
     return subgroup_cb_op_best_cell
