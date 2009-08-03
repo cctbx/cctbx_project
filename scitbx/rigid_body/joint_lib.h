@@ -117,7 +117,8 @@ namespace joint_lib {
     af::const_ref<ft, af::mat_grid>
     motion_subspace() const
     {
-      static ft const coeffs[] = {};
+      // empty list does not work with some compilers (e.g. Visual C++ 8.0)
+      static ft const coeffs[] = { -1e20 };
       return af::const_ref<ft, af::mat_grid>(coeffs, af::mat_grid(6, 0));
     }
 
