@@ -316,11 +316,13 @@ def action(tardy_model, params, callback, log):
       if (callback is not None):
         if (callback() == False): return
   if (allowed_origin_shifts_need_to_be_suppressed):
-    print "  allowed origin shift velocity corrections applied (magnitudes):"
+    print >> log, \
+      "  allowed origin shift velocity corrections applied (magnitudes):"
     allowed_origin_shift_velocity_corrections.min_max_mean().show(
       out=log, prefix="    ")
-    print "  sum of allowed origin shift velocity corrections (vectors):"
-    print "   ", numbers_as_str(
+    print >> log, \
+      "  sum of allowed origin shift velocity corrections (vectors):"
+    print >> log, "   ", numbers_as_str(
       values=sum_of_allowed_origin_shift_velocity_corrections[0].elems,
       fmt="%.5f",
       brackets=("(",")"))
