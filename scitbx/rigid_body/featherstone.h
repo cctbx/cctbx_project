@@ -59,6 +59,7 @@ namespace featherstone {
       boost::optional<af::shared<mat3<ft> > > jar_array_;
       boost::optional<af::shared<rotr3<ft> > > cb_up_array_;
       boost::optional<af::shared<af::versa<ft, af::mat_grid> > > xup_array_;
+      boost::optional<af::shared<af::tiny<ft, 6> > > spatial_velocities_;
       boost::optional<ft> e_kin_;
     public:
 
@@ -128,6 +129,7 @@ namespace featherstone {
     void
     flag_velocities_as_changed()
     {
+      spatial_velocities_.reset();
       e_kin_.reset();
     }
 
@@ -354,7 +356,9 @@ SCITBX_LOC // {
     }
 
     //! RBDA Example 4.4, p. 80.
-    af::shared<rotr3<ft> >
+    /*! Not available in Python.
+     */
+    af::shared<rotr3<ft> > const&
     cb_up_array()
     {
       if (!cb_up_array_) {
@@ -369,7 +373,9 @@ SCITBX_LOC // {
     }
 
     //! RBDA Example 4.4, p. 80.
-    af::shared<af::versa<ft, af::mat_grid> >
+    /*! Not available in Python.
+     */
+    af::shared<af::versa<ft, af::mat_grid> > const&
     xup_array()
     {
       if (!xup_array_) {
@@ -386,37 +392,41 @@ SCITBX_LOC // {
     }
 
     //! RBDA Example 4.4, p. 80.
-    af::shared<af::tiny<ft, 6> >
+    /*! Not available in Python.
+     */
+    af::shared<af::tiny<ft, 6> > const&
     spatial_velocities()
     {
-      af::shared<af::tiny<ft, 6> > result(bodies.size());
-      unsigned nb = bodies_size();
-      af::shared<rotr3<ft> > cb_up_array = this->cb_up_array();
-      for(unsigned ib=0;ib<nb;ib++) {
-        body_t<ft> const* body = bodies[ib].get();
-        af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
-        af::const_ref<ft> qd = body->qd();
-        af::tiny<ft, 6>& res_ib = result[ib];
-        if (s.begin() == 0) {
-          SCITBX_ASSERT(qd.size() == 6);
-          std::copy(qd.begin(), qd.end(), res_ib.begin()); // vj = qd
-        }
-        else {
-          matrix_mul(res_ib, s, qd); // vj = s * qd
-        }
-        if (body->parent == -1) {
-          // result[ib] = vj, already set
-        }
-        else {
-          // result[ib] = xup_array[i] * result[body->parent] + vj
-          rotr3<ft> const& cb_up = cb_up_array[ib];
-          af::tiny<ft, 6> const& vp = result[body->parent];
-          vec3<ft> r_va = cb_up.r * vec3<ft>(&vp[0]);
-          vec3<ft> vl = cb_up.r * vec3<ft>(&vp[3]) + cb_up.t.cross(r_va);
-          res_ib += spatial_lib::as_tiny_6(r_va, vl);
+      if (!spatial_velocities_) {
+        unsigned nb = bodies_size();
+        spatial_velocities_ = af::shared<af::tiny<ft, 6> >((nb));
+        af::shared<rotr3<ft> > cb_up_array = this->cb_up_array();
+        for(unsigned ib=0;ib<nb;ib++) {
+          body_t<ft> const* body = bodies[ib].get();
+          af::const_ref<ft, af::mat_grid> s = body->joint->motion_subspace();
+          af::const_ref<ft> qd = body->qd();
+          af::tiny<ft, 6>& res_ib = (*spatial_velocities_)[ib];
+          if (s.begin() == 0) {
+            SCITBX_ASSERT(qd.size() == 6);
+            std::copy(qd.begin(), qd.end(), res_ib.begin()); // vj = qd
+          }
+          else {
+            matrix_mul(res_ib, s, qd); // vj = s * qd
+          }
+          if (body->parent == -1) {
+            // result[ib] = vj, already set
+          }
+          else {
+            // result[ib] = xup_array[i] * result[body->parent] + vj
+            rotr3<ft> const& cb_up = cb_up_array[ib];
+            af::tiny<ft, 6> const& vp = (*spatial_velocities_)[body->parent];
+            vec3<ft> r_va = cb_up.r * vec3<ft>(&vp[0]);
+            vec3<ft> vl = cb_up.r * vec3<ft>(&vp[3]) + cb_up.t.cross(r_va);
+            res_ib += spatial_lib::as_tiny_6(r_va, vl);
+          }
         }
       }
-      return result;
+      return *spatial_velocities_;
     }
 
     //! RBDA Eq. 2.67, p. 35.
