@@ -159,18 +159,26 @@ class model(featherstone.system_model):
     return O.__f_ext_array
 
   def d_e_pot_d_q(O):
-    return super(model, O).d_e_pot_d_q(f_ext_array=O.f_ext_array())
+    """
+Gradients of potential energy (defined via f_ext_array) w.r.t. positional
+coordinates q.
+    """
+    return [body.joint.tau_as_d_e_pot_d_q(tau=tau)
+      for body,tau in zip(O.bodies,
+                          O.f_ext_as_tau(f_ext_array=O.f_ext_array()))]
 
   def d_e_pot_d_q_packed(O):
     result = flex.double()
+    result.reserve(O.q_packed_size)
     for v in O.d_e_pot_d_q():
       result.extend(flex.double(v))
+    assert result.size() == O.q_packed_size
     return result
 
   def qdd_array(O):
     if (O.__qdd_array is None):
       O.__qdd_array = O.forward_dynamics_ab(
-        tau_array=None, f_ext_array=O.f_ext_array())
+        tau_array=None, f_ext_array=O.f_ext_array(), grav_accn=None)
     return O.__qdd_array
 
   def e_tot(O):

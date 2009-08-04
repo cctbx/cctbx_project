@@ -359,14 +359,6 @@ with all qd, qdd zero, but non-zero external forces.
         f[body.parent] += xup_array[ib].transpose() * f[ib]
     return tau_array
 
-  def d_e_pot_d_q(O, f_ext_array):
-    """
-Gradients of potential energy (defined via f_ext_array) w.r.t. positional
-coordinates q. Uses f_ext_as_tau().
-    """
-    return [body.joint.tau_as_d_e_pot_d_q(tau=tau)
-      for body,tau in zip(O.bodies, O.f_ext_as_tau(f_ext_array=f_ext_array))]
-
   def forward_dynamics_ab(O, tau_array=None, f_ext_array=None, grav_accn=None):
     """RBDA Tab. 7.1, p. 132:
 Forward Dynamics of a kinematic tree via the Articulated-Body Algorithm.

@@ -240,13 +240,6 @@ def exercise_system_model():
     (-0.35,0.02,0.2)])
   tau0 = model.f_ext_as_tau(f_ext_array=f_ext)
   assert approx_equal(tau0, tau)
-  d_e_pot_d_q = model.d_e_pot_d_q(f_ext_array=f_ext)
-  assert approx_equal(d_e_pot_d_q, [
-    (1.71580350518, 1.02634150274, -1.33166855821, -0.0558540404302,
-     -0.0617881846156, 0.169686256436, -0.123985388881),
-    (-0.87738271052, -1.30081275182, -1.40884161215, -0.1808674209),
-    (0.07,),
-    (-0.35,0.02,0.2)])
 
 def exercise_system_model_with_zero_dof_body():
   bodies = [
@@ -312,10 +305,6 @@ def exercise_system_model_with_zero_dof_body():
     (0.07,)])
   tau0 = model.f_ext_as_tau(f_ext_array=f_ext)
   assert approx_equal(tau0, tau)
-  d_e_pot_d_q = model.d_e_pot_d_q(f_ext_array=f_ext)
-  assert approx_equal(d_e_pot_d_q, [
-    (),
-    (0.07,)])
 
 def run(args):
   assert len(args) == 0
