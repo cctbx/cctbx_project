@@ -6,7 +6,7 @@ from mmtbx.dynamics.constants import akma_time_as_pico_seconds
 from cctbx import xray
 import cctbx.geometry_restraints
 from cctbx.array_family import flex
-import scitbx.rigid_body.essence.tardy
+import scitbx.rigid_body
 from scitbx.graph import tardy_tree
 from scitbx import matrix
 from libtbx.utils import Sorry, numbers_as_str
@@ -85,11 +85,12 @@ class potential_object(object):
     return O.model.restraints_manager.geometry.crystal_symmetry
 
   def e_pot(O, sites_moved):
-    if (O.last_sites_moved is not sites_moved):
+    if (   O.last_sites_moved is None
+        or O.last_sites_moved.id() != sites_moved.id()):
       O.last_sites_moved = sites_moved
       xs = O.fmodels.fmodel_xray().xray_structure
       assert len(sites_moved) == xs.scatterers().size()
-      sites_cart = flex.vec3_double(sites_moved)
+      sites_cart = sites_moved
       xs.set_sites_cart(sites_cart=sites_cart)
       O.fmodels.update_xray_structure(update_f_calc=True)
       xs.scatterers().flags_set_grads(state=False)
@@ -132,14 +133,14 @@ class potential_object(object):
 
   def d_e_pot_d_sites(O, sites_moved):
     O.e_pot(sites_moved=sites_moved)
-    return matrix.col_list(O.g)
+    return O.g
 
 def run(fmodels, model, target_weights, params, log):
   assert fmodels.fmodel_neutron() is None # not implemented
   assert model.ias_selection is None # tardy+ias is not a useful combination
   xs = fmodels.fmodel_xray().xray_structure
   sites_cart_start = xs.sites_cart()
-  sites = matrix.col_list(sites_cart_start)
+  sites = sites_cart_start
   labels = [sc.label for sc in xs.scatterers()]
   tt = model.restraints_manager.geometry.construct_tardy_tree(
     sites=sites,
@@ -164,7 +165,7 @@ def run(fmodels, model, target_weights, params, log):
         tardy_tree=tt,
         omit_bonds_with_slack_greater_than
           =params.omit_bonds_with_slack_greater_than))
-  tardy_model = scitbx.rigid_body.essence.tardy.model(
+  tardy_model = scitbx.rigid_body.tardy_model(
     labels=labels,
     sites=sites,
     masses=xs.atomic_weights(),
@@ -175,7 +176,7 @@ def run(fmodels, model, target_weights, params, log):
   action(tardy_model=tardy_model, params=params, callback=None, log=log)
 
 def action(tardy_model, params, callback, log):
-  sites_cart_start = flex.vec3_double(tardy_model.sites_moved())
+  sites_cart_start = tardy_model.sites_moved()
   qd_e_kin_scales = tardy_model.assign_random_velocities()
   cartesian_dof = sites_cart_start.size() * 3
   if   (params.temperature_degrees_of_freedom == "cartesian"):
@@ -192,7 +193,7 @@ def action(tardy_model, params, callback, log):
     return temperature_as_kinetic_energy(dof=temperature_dof, t=t)
   time_step_akma = params.time_step_pico_seconds / akma_time_as_pico_seconds
   print >> log, "tardy dynamics:"
-  print >> log, "  number of bodies:", len(tardy_model.bodies)
+  print >> log, "  number of bodies:", tardy_model.bodies_size()
   fmt = "%%%dd" % len(str(cartesian_dof))
   print >> log, "  number of degrees of freedom:", \
     fmt % tardy_model.degrees_of_freedom
@@ -223,8 +224,8 @@ def action(tardy_model, params, callback, log):
   def suppress_allowed_origin_shifts(collect_stats):
     if (not allowed_origin_shifts_need_to_be_suppressed):
       return
-    mlv = tardy_model.mean_linear_velocity(
-      number_of_sites_in_each_tree=number_of_sites_in_each_tree)
+    mlv = matrix.col(tardy_model.mean_linear_velocity(
+      number_of_sites_in_each_tree=number_of_sites_in_each_tree))
     mlv_perp = matrix.col(
       crystal_symmetry.subtract_continuous_allowed_origin_shifts(
         translation_cart=mlv))
@@ -303,7 +304,7 @@ def action(tardy_model, params, callback, log):
       print >> log, "    %4d  %8.4f A  %8.2f K  %8.2f K  %s" \
         "  %6.2f  %6.2f  %6.2f" % (
           n_time_steps,
-          flex.vec3_double(tardy_model.sites_moved()).rms_difference(
+          tardy_model.sites_moved().rms_difference(
             sites_cart_start),
           e_as_t(e=tardy_model.e_kin()),
           e_as_t(e=e_kin_after-e_kin_before),
@@ -329,7 +330,7 @@ def action(tardy_model, params, callback, log):
     log.flush()
     def show_rms(minimizer=None):
       print >> log, "  coor. rmsd: %8.4f" % (
-        flex.vec3_double(tardy_model.sites_moved()).rms_difference(
+        tardy_model.sites_moved().rms_difference(
           sites_cart_start))
       log.flush()
       if (callback is not None):
