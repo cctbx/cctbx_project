@@ -1,4 +1,5 @@
 #include <mmtbx/masks/atom_mask.h>
+#include <mmtbx/masks/util.h>
 #include <mmtbx/masks/grid_symop.h>
 #include <cctbx/maptbx/structure_factors.h>
 #include <cctbx/maptbx/gridding.h>
@@ -7,6 +8,7 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/random.hpp>
 #include <numeric>
 #include <sstream>
 
@@ -958,6 +960,96 @@ namespace mmtbx { namespace masks {
     write_tail(fh, mean, esd);
   }
 
+
+  bool is_nice(const cctbx::sgtbx::rot_mx &rot_mx)
+  {
+    int den = rot_mx.den();
+    CCTBX_ASSERT( den!=0 );
+    const std::size_t sz = rot_mx.num().size();
+    CCTBX_ASSERT( sz==9 );
+    for(int j=0; j<sz; ++j)
+    {
+      const int e = rot_mx[j];
+      if( e != den && e!=-den && e!=0 )
+        return false;
+    }
+    return true;
+  }
+
+  inline bool is_nice(const cctbx::sgtbx::rt_mx &rt_mx)
+  {
+    return is_nice(rt_mx.r());
+  }
+
+  bool is_nice(const cctbx::sgtbx::space_group &g)
+  {
+    for(int i=0; i<g.n_smx(); ++i)
+    {
+      if( !is_nice(g.smx(i)) )
+        return false;
+    }
+    return true;
+  }
+
+
+  void generate_groups(std::set<std::string> &halls,
+      const std::string &group_symbol, int ncb)
+  {
+    halls.clear();
+    cctbx::sgtbx::space_group_symbols symbol(group_symbol);
+    const cctbx::sgtbx::space_group sg_def(symbol);
+    CCTBX_ASSERT( is_nice(sg_def) );
+    halls.insert("Hall: "+sg_def.type().hall_symbol());
+    int n = 0;
+    int na = 0;
+    int nf = 0;
+    boost::mt19937 rng; // produces randomness out of thin air
+    const int i_max = 2;
+    boost::uniform_int<> six(-i_max,i_max);  // distribution
+    const double n_max = 1.5*std::pow(2.0*i_max+1.0,9.0);
+    boost::variate_generator<boost::mt19937&, boost::uniform_int<> >
+             die(rng, six);  // glues randomness with mapping
+    while( true )
+    {
+      n = n + 1;
+      if( n>ncb*100000 || static_cast<double>(n)>n_max )
+        break;
+      cctbx::sgtbx::rot_mx rot_mx;
+      for(int i=0; i<rot_mx.num().size(); ++i)
+        rot_mx[i] = die();
+      cctbx::sgtbx::tr_vec tr;
+      for(int i=0; i<tr.num().size(); ++i)
+        tr[i] = die();
+      if( !((rot_mx.determinant()== 1) && rot_mx.is_valid()) )
+        continue;
+      const cctbx::sgtbx::rt_mx rt_mx( rot_mx ); //,  tr)
+      if( !rt_mx.is_valid() )
+        continue;
+      std::string h("Hall: ");
+      cctbx::sgtbx::space_group g;
+      try
+      {
+        const cctbx::sgtbx::change_of_basis_op cb(rt_mx);
+        if( (!cb.is_valid()) || cb.is_identity_op() )
+          continue;
+        g = sg_def.change_basis(cb);
+        const cctbx::sgtbx::space_group_type t = g.type();
+        h += t.hall_symbol();
+      }
+      catch( const std::exception &)
+      {
+        nf = nf+1;
+        continue;
+      }
+      if( !is_nice(g) )
+        continue;
+      halls.insert(h);
+      na = na + 1;
+      if( halls.size()>=ncb+1 )
+        break;
+    } // while(true)
+    return;
+  }
 
 }} // namespace mmtbx::masks
 

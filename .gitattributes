@@ -336,6 +336,7 @@ mmtbx/masks/atom_mask.h svneol=native#text/plain
 mmtbx/masks/grid_symop.h svneol=native#text/plain
 mmtbx/masks/tst_asu_mask.py svneol=native#text/x-python
 mmtbx/masks/tst_mask.cpp svneol=native#text/plain
+mmtbx/masks/util.h svneol=native#text/plain
 mmtbx/model_statistics.py -text
 mmtbx/model_vs_data.py -text
 mmtbx/monomer_library/apply_mod_rna.py svneol=native#text/x-python

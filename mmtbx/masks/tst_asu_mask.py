@@ -155,6 +155,20 @@ def zero_test(asu_mask, fc, tolerance = 1.0E-9):
   assert isinstance(max_zero, float), max_zero.__class__
   assert max_zero < tolerance, "Maximum deviation from zero = "+str(max_zero)
 
+def check_group(group):
+  ops = group.smx()
+  ltrs = group.ltr()
+  print "NNN = ", ltrs.__class__
+  cb = group.type().cb_op()
+  print "CB r= ", cb.c().r().as_double()
+  print "CB t= ", cb.c().t()
+  ident = cctbx.sgtbx.rt_mx()
+  for ltr in ltrs:
+    print "LTR= ", ltr
+  for op in ops:
+    print "Op: ", op, " Order=", op.r().order(), "  r.den= ", op.r().den(), \
+        " tr.den= ", op.t().den()
+
 
 def compare_masks(struc, opts):
   tolerance = opts.tolerance
@@ -180,10 +194,12 @@ def compare_masks(struc, opts):
       solvent_radius, "  shrink radius= ", shrink_radius,  "  Tolerance= ", \
       tolerance, "  Number of reflection= ", fc.data().size()
   struc.show_summary(cout)
+  group = struc.space_group()
   print >>cout, "Cell volume= ", struc.unit_cell().volume(), \
-    "  Group order= ", struc.space_group().order_z(), " p= ", \
-    struc.space_group().order_p()
-  print >>cout, "Hall  symbol: ", struc.space_group().type().hall_symbol()
+    "  Group order= ", group.order_z(), " p= ", group.order_p()
+  print >>cout, "Hall  symbol: ", group.type().hall_symbol()
+  #check_group(group)
+
   tb = time.time()
   asu_mask = masks.atom_mask(
       unit_cell = struc.unit_cell(),
@@ -360,10 +376,10 @@ def random_tests(groups, opts):
   print "Number of random tests per space group: ", opts.random, "\n"
   for sg in groups:
     print "Space group= ", sg, "  n tests= ", opts.random
-    try:
-      group = space_group_info(sg)
-    except:
-      group = space_group_info(sg, "Hall")
+    group = space_group_info(sg)
+    print "       HM= ", group.type().universal_hermann_mauguin_symbol(), \
+        "  LOOKUP= ", group.type().lookup_symbol(), "  HALL= ", \
+        group.type().hall_symbol()
     for i in xrange(opts.random):
       if i==0 :
         slv_rad = 1.1
@@ -440,46 +456,10 @@ def cci_vetted_tests( options) :
   assert n>0, "No CCI files have been tested"
 
 def generate_cb(grp, ncb):
-  import random
-  import scitbx.matrix
-  sg_def = cctbx.sgtbx.space_group_info(grp)
-  n = 0
-  na = 0
-  nf = 0
-  halls = []
-  while( True ):
-    l9 = []
-    l3 = []
-    n = n + 1
-    for i in xrange(9):
-      l9.append( random.randint(-5,5) )
-    for i in xrange(3):
-      l3.append( random.randint(-7,7) )
-    m = scitbx.matrix.sqr(l9)
-    rot_mx = cctbx.sgtbx.rot_mx(l9)
-    tr = cctbx.sgtbx.tr_vec( l3 )
-    if (rot_mx.determinant()!= 0) & rot_mx.is_valid():
-      rt_mx = cctbx.sgtbx.rt_mx( rot_mx, tr)
-      if( rt_mx.is_valid() ):
-        try:
-          cb = cctbx.sgtbx.change_of_basis_op(rt_mx)
-          if( cb.is_valid() & (not cb.is_identity_op()) ):
-            sg = sg_def.change_basis(cb)
-            g = sg.group()
-            t = g.type()
-            h = t.hall_symbol()
-            h = "Hall: " + h
-            halls.append( h )
-            na = na + 1
-        except RuntimeError:
-          nf = nf+1;
-    if( na>ncb ):
-      break
-    if( n>1000 ):
-      break
-  #print "Number of cbs: ", len(cbs)
-  #print "na = ", na, "  nf= ", nf,   "  n= ", n
-  return halls
+  halls = masks.generate_groups(grp,ncb)
+  for h in halls:
+    print "Generated: ", h
+  return halls 
 
 def run():
   import optparse
@@ -512,14 +492,22 @@ def run():
       dest="save_files", help="base file name for pdb/mask/sf files to save")
   parser.add_option("--change_basis", action="store", type="int",
       dest="change_basis", default=0, help="number of basis")
+  parser.add_option("--groups_file", action="store", type="string",
+      dest="groups_file", help="file containing space group, one per line")
 
   (opts, args) = parser.parse_args()
 
   groups = []
-  if (not opts.space_group is None) and (opts.random == 0):
+  if (not ((opts.space_group is None) and (opts.groups_file is None))) \
+      and (opts.random == 0):
     opts.random = 1
-  if opts.space_group is None:
-    groups = SpaceGroups
+  if not opts.groups_file is None:
+    tmp_file = open(opts.groups_file, "r")
+    for line in tmp_file.readlines(): # newlines retained
+      groups.append( line.strip() ) # removes whitespace in the begining and end
+    tmp_file.close()
+  if (opts.space_group is None) & (len(groups)==0) :
+    groups.extend(SpaceGroups)
   elif opts.space_group == "all" :
     for isg in xrange(1,231):
       groups.append(str(isg))
@@ -533,16 +521,19 @@ def run():
       groups.append(symbol.hermann_mauguin())
       if( symbol.number()==230 ):
         break
-  else:
+  elif not opts.space_group is None:
     groups.append(opts.space_group)
 
   if opts.change_basis != 0:
     cb_groups = []
     for grp in groups:
-      cb_groups.append(grp)
       halls = generate_cb(grp, opts.change_basis)
       for hall in halls:
         cb_groups.append( hall )
+    tmp_file = open("generated_groups.txt", "w")
+    for g in cb_groups:
+      print >>tmp_file, g
+    tmp_file.close()
     groups = cb_groups
 
   if opts.random > 0:

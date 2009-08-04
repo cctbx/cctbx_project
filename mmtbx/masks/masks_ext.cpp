@@ -5,8 +5,10 @@
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <boost/python/def.hpp>
 #include <mmtbx/masks/around_atoms.h>
 #include "atom_mask.h"
+#include "util.h"
 
 namespace mmtbx { namespace masks {
 namespace {
@@ -55,6 +57,16 @@ namespace {
       ;
     }
   };
+
+  scitbx::af::shared<std::string> generate_groups_p(const std::string &s, int n)
+  {
+    std::set<std::string> g;
+    generate_groups(g, s,n);
+    scitbx::af::shared<std::string> result;
+    for(std::set<std::string>::const_iterator it=g.begin(); it!=g.end(); ++it)
+      result.push_back(*it);
+    return result;
+  }
 
   void wrap_atom_mask()
   {
@@ -117,6 +129,9 @@ namespace {
       .def_readonly("debug_fft_time", &w_t::debug_fft_time)
       .def_readonly("debug_has_enclosed_box", &w_t::debug_has_enclosed_box)
      ;
+
+    // DO NOT USE
+    boost::python::def("generate_groups", generate_groups_p);
   }
 
   void init_module()
