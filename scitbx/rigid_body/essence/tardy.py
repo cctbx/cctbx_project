@@ -95,16 +95,15 @@ class model(featherstone.system_model):
     O.flag_positions_as_changed()
 
   def flag_positions_as_changed(O):
-    super(model, O).flag_positions_as_changed()
     O.__sites_moved = None
     O.__e_pot = None
     O.__d_e_pot_d_sites = None
     O.__f_ext_array = None
-    O.flag_velocities_as_changed()
+    super(model, O).flag_positions_as_changed()
 
   def flag_velocities_as_changed(O):
-    super(model, O).flag_velocities_as_changed()
     O.__qdd_array = None
+    super(model, O).flag_velocities_as_changed()
 
   def sites_moved(O):
     if (O.__sites_moved is None):

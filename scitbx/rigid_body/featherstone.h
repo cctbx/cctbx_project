@@ -81,12 +81,16 @@ namespace featherstone {
       }
     }
 
+    virtual
+    ~system_model() {}
+
     unsigned
     bodies_size() const
     {
       return boost::numeric_cast<unsigned>(bodies.size());
     }
 
+    virtual
     void
     flag_positions_as_changed()
     {
@@ -94,8 +98,10 @@ namespace featherstone {
       jar_array_.reset();
       cb_up_array_.reset();
       xup_array_.reset();
+      flag_velocities_as_changed();
     }
 
+    virtual
     void
     flag_velocities_as_changed()
     {

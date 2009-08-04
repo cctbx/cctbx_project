@@ -211,23 +211,32 @@ namespace tardy {
         near_singular_hinges_angular_tolerance_deg_)
     {}
 
+    virtual
     void
     flag_positions_as_changed()
     {
-      featherstone::system_model<ft>::flag_positions_as_changed();
       sites_moved_.reset();
       e_pot_.reset();
       d_e_pot_d_sites_.reset();
       f_ext_array_.reset();
-      flag_velocities_as_changed();
+      featherstone::system_model<ft>::flag_positions_as_changed();
     }
 
+    virtual
     void
     flag_velocities_as_changed()
     {
-      featherstone::system_model<ft>::flag_velocities_as_changed();
       qdd_array_.reset();
+      featherstone::system_model<ft>::flag_velocities_as_changed();
     }
+
+    //! For testing.
+    bool
+    sites_moved_is_cached() const { return sites_moved_; }
+
+    //! For testing.
+    bool
+    qdd_array_is_cached() const { return qdd_array_; }
 
     af::shared<vec3<ft> > const&
     sites_moved()
@@ -373,6 +382,21 @@ namespace tardy {
           /*grav_accn*/ af::const_ref<ft>(0, 0));
       }
       return *qdd_array_;
+    }
+
+    //! For testing.
+    af::shared<ft>
+    qdd_packed()
+    {
+      af::shared<ft> result((af::reserve(this->degrees_of_freedom)));
+      qdd_array();
+      unsigned nb = this->bodies_size();
+      for(unsigned ib=0;ib<nb;ib++) {
+        af::small<ft, 6> const& qdd = (*qdd_array_)[ib];
+        result.extend(qdd.begin(), qdd.end());
+      }
+      SCITBX_ASSERT(result.size() == this->degrees_of_freedom);
+      return result;
     }
 
     void

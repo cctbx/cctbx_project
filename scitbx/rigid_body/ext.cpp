@@ -145,11 +145,14 @@ namespace scitbx { namespace rigid_body { namespace ext {
             arg_("near_singular_hinges_angular_tolerance_deg")=5)))
         .def("flag_positions_as_changed", &wt::flag_positions_as_changed)
         .def("flag_velocities_as_changed", &wt::flag_velocities_as_changed)
+        .def("sites_moved_is_cached", &wt::sites_moved_is_cached)
+        .def("qdd_array_is_cached", &wt::qdd_array_is_cached)
         .def("sites_moved", &wt::sites_moved, ccr())
         .def("e_pot", &wt::e_pot, ccr())
         .def("d_e_pot_d_sites", &wt::d_e_pot_d_sites, ccr())
         .def("d_e_pot_d_q_packed", &wt::d_e_pot_d_q_packed)
         .def("e_tot", &wt::e_tot)
+        .def("qdd_packed", &wt::qdd_packed)
         .def("dynamics_step", &wt::dynamics_step, (arg_("delta_t")))
       ;
     }
