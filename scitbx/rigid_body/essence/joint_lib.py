@@ -130,9 +130,8 @@ class spherical(object):
 
   def time_step_position(O, qd, delta_t):
     w_body_frame = qd
-    d = d_unit_quaternion_d_qe_matrix(q=O.qe)
-    qed = d * rbda_eq_4_13(q=O.unit_quaternion) * w_body_frame
-    new_qe = O.qe + qed * delta_t
+    qed = rbda_eq_4_13(q=O.unit_quaternion) * w_body_frame
+    new_qe = (O.qe + qed * delta_t).normalize()
     return spherical(qe=new_qe)
 
   def time_step_velocity(O, qd, qdd, delta_t):

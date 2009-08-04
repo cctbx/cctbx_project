@@ -134,11 +134,11 @@ class spherical(object):
   def time_step_position(O, qd, delta_t):
     w_body_frame = qd
     if (O.type == "euler_params"):
-      d = d_unit_quaternion_d_qE_matrix(q=O.qE)
-      qEd = d * RBDA_Eq_4_13(q=O.unit_quaternion) * w_body_frame
+      qEd = RBDA_Eq_4_13(q=O.unit_quaternion) * w_body_frame
+      new_qE = (O.qE + qEd * delta_t).normalize()
     else:
       qEd = RBDA_Eq_4_8_inv(q=O.qE.elems) * w_body_frame
-    new_qE = O.qE + qEd * delta_t
+      new_qE = O.qE + qEd * delta_t
     return spherical(type=O.type, qE=new_qE)
 
   def time_step_velocity(O, qd, qdd, delta_t):
