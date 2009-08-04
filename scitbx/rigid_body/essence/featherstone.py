@@ -56,6 +56,7 @@ class system_model(object):
     O.flag_velocities_as_changed()
 
   def flag_velocities_as_changed(O):
+    O.__spatial_velocities = None
     O.__e_kin = None
 
   def root_indices(O):
@@ -179,24 +180,26 @@ class system_model(object):
 
   def spatial_velocities(O):
     "RBDA Example 4.4, p. 80"
-    result = []
-    cb_up_array = O.cb_up_array()
-    for ib in xrange(len(O.bodies)):
-      body = O.bodies[ib]
-      s = body.joint.motion_subspace
-      if (s is None): vj = body.qd
-      else:           vj = s * body.qd
-      if (body.parent == -1): result.append(vj)
-      else:
-        cb_up = cb_up_array[ib]
-        vp = result[body.parent].elems
-        r_va = cb_up.r * matrix.col(vp[:3])
-        vp = matrix.col((
-          r_va,
-          cb_up.r * matrix.col(vp[3:]) + cb_up.t.cross(r_va))) \
-            .resolve_partitions()
-        result.append(vp + vj)
-    return result
+    if (O.__spatial_velocities is None):
+      O.__spatial_velocities = []
+      cb_up_array = O.cb_up_array()
+      for ib in xrange(len(O.bodies)):
+        body = O.bodies[ib]
+        s = body.joint.motion_subspace
+        if (s is None): vj = body.qd
+        else:           vj = s * body.qd
+        if (body.parent == -1):
+          O.__spatial_velocities.append(vj)
+        else:
+          cb_up = cb_up_array[ib]
+          vp = O.__spatial_velocities[body.parent].elems
+          r_va = cb_up.r * matrix.col(vp[:3])
+          vp = matrix.col((
+            r_va,
+            cb_up.r * matrix.col(vp[3:]) + cb_up.t.cross(r_va))) \
+              .resolve_partitions()
+          O.__spatial_velocities.append(vp + vj)
+    return O.__spatial_velocities
 
   def e_kin(O):
     "RBDA Eq. 2.67, p. 35"
