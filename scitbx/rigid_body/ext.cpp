@@ -6,6 +6,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/python/return_by_value.hpp>
 #include <boost/python/import.hpp>
 
 #include <scitbx/rigid_body/tardy.h>
@@ -78,6 +79,9 @@ namespace scitbx { namespace rigid_body { namespace ext {
         .def_readonly("degrees_of_freedom", &wt::degrees_of_freedom)
         .def_readonly("q_packed_size", &wt::q_packed_size)
         .def("bodies_size", &wt::bodies_size)
+        .def("degrees_of_freedom_each_joint",
+          &wt::degrees_of_freedom_each_joint)
+        .def("q_size_each_joint", &wt::q_size_each_joint)
         .def("root_indices", &wt::root_indices)
         .def("pack_q", &wt::pack_q)
         .def("unpack_q", &wt::unpack_q, (arg_("q_packed")))
@@ -125,6 +129,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
     {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
+      typedef return_value_policy<return_by_value> rbv;
       object none;
       class_<wt,
              bases<featherstone::system_model<ft> >,
@@ -143,6 +148,13 @@ namespace scitbx { namespace rigid_body { namespace ext {
             arg_("tardy_tree"),
             arg_("potential_obj"),
             arg_("near_singular_hinges_angular_tolerance_deg")=5)))
+        .def_readonly("labels", &wt::labels)
+        .add_property("sites", make_getter(&wt::sites, rbv()))
+        .add_property("masses", make_getter(&wt::masses, rbv()))
+        .def_readonly("tardy_tree", &wt::tardy_tree)
+        .def_readonly("potential_obj", &wt::potential_obj)
+        .def_readonly("near_singular_hinges_angular_tolerance_deg",
+          &wt::near_singular_hinges_angular_tolerance_deg)
         .def("flag_positions_as_changed", &wt::flag_positions_as_changed)
         .def("flag_velocities_as_changed", &wt::flag_velocities_as_changed)
         .def("sites_moved_is_cached", &wt::sites_moved_is_cached)

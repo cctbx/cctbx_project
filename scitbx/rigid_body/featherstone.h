@@ -90,6 +90,29 @@ namespace featherstone {
       return boost::numeric_cast<unsigned>(bodies.size());
     }
 
+    //! For reporting in Python.
+    af::shared<std::size_t>
+    degrees_of_freedom_each_joint() const
+    {
+#define SCITBX_LOC(ATTR) \
+      unsigned nb = bodies_size(); \
+      af::shared<std::size_t> result((af::reserve(nb))); \
+      for(unsigned ib=0;ib<nb;ib++) { \
+        body_t<ft> const* body = bodies[ib].get(); \
+        result.push_back(boost::numeric_cast<std::size_t>(body->joint->ATTR));\
+      } \
+      return result;
+      SCITBX_LOC(degrees_of_freedom)
+    }
+
+    //! For reporting in Python.
+    af::shared<std::size_t>
+    q_size_each_joint() const
+    {
+      SCITBX_LOC(q_size)
+#undef SCITBX_LOC
+    }
+
     virtual
     void
     flag_positions_as_changed()
