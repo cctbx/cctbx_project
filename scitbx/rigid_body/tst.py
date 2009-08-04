@@ -9,7 +9,10 @@ from libtbx.utils import format_cpu_times
 import random
 import sys
 
-def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
+def compare_essence_and_fast_tardy_models(
+      etm,
+      have_singularity=False,
+      run_minimization=False):
   etm = scitbx.rigid_body.essence.tardy.model( # new instance to reset q, qd
     labels=etm.labels,
     sites=etm.sites,
@@ -30,8 +33,20 @@ def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
   assert ftm.number_of_trees == etm.number_of_trees
   assert ftm.degrees_of_freedom == etm.degrees_of_freedom
   assert ftm.q_packed_size == etm.q_packed_size
+  assert list(ftm.degrees_of_freedom_each_joint()) \
+      == [body.joint.degrees_of_freedom for body in etm.bodies]
+  assert list(ftm.q_size_each_joint()) \
+      == [body.joint.q_size for body in etm.bodies]
   ftm.flag_positions_as_changed()
   ftm.flag_velocities_as_changed()
+  assert ftm.labels is etm.labels
+  assert ftm.sites.size() == len(etm.sites)
+  assert ftm.masses.size() == len(etm.masses)
+  assert ftm.tardy_tree is etm.tardy_tree
+  assert ftm.potential_obj is etm.potential_obj
+  assert approx_equal(
+    ftm.near_singular_hinges_angular_tolerance_deg,
+    etm.near_singular_hinges_angular_tolerance_deg)
   #
   assert list(ftm.root_indices()) == etm.root_indices()
   #
@@ -311,7 +326,7 @@ def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
   assert not ftm.sites_moved_is_cached()
   assert not ftm.qdd_array_is_cached()
   ftm.qdd_packed()
-  if (etm.potential_obj is None): # XXX use ftm.potential_object
+  if (ftm.potential_obj is None):
     assert not ftm.sites_moved_is_cached()
     ftm.sites_moved()
   assert ftm.sites_moved_is_cached()
@@ -350,6 +365,12 @@ def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
   f = ftm.f_ext_as_tau_packed(
     f_ext_packed=f_ext_packed)
   assert approx_equal(e_ref, f)
+  #
+  if (run_minimization):
+    check_packed()
+    etm.minimization(max_iterations=3)
+    ftm.minimization(max_iterations=3)
+    check_packed()
 
 def exercise_fixed_vertices():
   etm = tst_tardy.get_test_model_by_index(
@@ -391,7 +412,9 @@ def run(args):
       masses=masses,
       tardy_tree=tt)
     assert etm.potential_obj is not None
-    compare_essence_and_fast_tardy_models(etm=etm)
+    compare_essence_and_fast_tardy_models(
+      etm=etm,
+      run_minimization=(tc.tag == "tyr_with_h"))
     n_tested += 1
   #
   exercise_fixed_vertices()
