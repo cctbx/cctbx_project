@@ -336,6 +336,9 @@ class cluster_manager(object):
     assert O.fixed_hinges is None
     O.fixed_hinges = []
     if (sites is None): return
+    if (hasattr(sites, "accessor")):
+      from scitbx import matrix
+      sites = matrix.col_list(sites)
     abs_cos_limit = abs(math.cos(math.radians(angular_tolerance_deg)))
     for jc in xrange(len(O.clusters)-1,-1,-1):
       hi,hj = O.hinge_edges[jc]
