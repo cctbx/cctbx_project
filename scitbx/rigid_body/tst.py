@@ -297,10 +297,10 @@ def compare_essence_and_fast_tardy_models(etm, have_singularity=False):
   etm.dynamics_step(delta_t=delta_t)
   ftm.dynamics_step(delta_t=delta_t)
   e = etm.pack_q()
-  f = etm.pack_q()
+  f = ftm.pack_q()
   assert approx_equal(e, f)
   e = etm.pack_qd()
-  f = etm.pack_qd()
+  f = ftm.pack_qd()
   assert approx_equal(e, f)
   #
   etm.assign_zero_velocities()
