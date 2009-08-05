@@ -2,6 +2,7 @@ from scitbx.graph.tardy_tree import cluster_manager, find_paths, construct
 from scitbx.graph.utils import construct_edge_sets
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, show_diff
+import pickle, cPickle
 from StringIO import StringIO
 import sys
 
@@ -819,6 +820,25 @@ def exercise_edge_classifier():
     "loop": [],
     "fixed": [(2,3), (3,4)]}
 
+def exercise_pickle():
+  from scitbx.graph import tst_tardy_pdb
+  tcs = tst_tardy_pdb.select_test_cases(tags_or_indices=["ZINC03847120"])
+  assert len(tcs) == 1
+  tt = tcs[0].tardy_tree_construct()
+  try:
+    tt.arbitrary = 0
+  except AttributeError: pass # make sure __slots__ work
+  else: raise Exception_expected
+  ts = StringIO()
+  tt.show_summary(vertex_labels=None, out=ts)
+  for pickle_module in [pickle, cPickle]:
+    for protocol in xrange(pickle.HIGHEST_PROTOCOL):
+      s = pickle_module.dumps(tt, protocol)
+      l = pickle_module.loads(s)
+      ls = StringIO()
+      l.show_summary(vertex_labels=None, out=ls)
+      assert not show_diff(ls.getvalue(), ts.getvalue())
+
 def run(args):
   assert args in [[], ["--verbose"]]
   verbose = "--verbose" in args
@@ -834,6 +854,7 @@ def run(args):
   exercise_fixed_vertices()
   exercise_show_summary()
   exercise_edge_classifier()
+  exercise_pickle()
   #
   print "OK"
 
