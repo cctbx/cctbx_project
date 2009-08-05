@@ -566,6 +566,7 @@ class choice_converters(object):
       if (flags[value]): value = "*" + value
       words.append(tokenizer.word(
         value=value,
+        quote_token=word.quote_token,
         line_number=word.line_number,
         source_info=word.source_info))
     return master.customized_copy(words=words)
