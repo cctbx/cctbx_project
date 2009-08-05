@@ -324,6 +324,13 @@ class rec(object):
     uq = self.axis_and_angle_as_unit_quaternion(angle=angle, deg=deg)
     return uq.unit_quaternion_as_r3_rotation_matrix()
 
+  def rt_for_rotation_around_axis_through(self, point, angle, deg=False):
+    assert self.n in ((3,1), (1,3))
+    assert point.n in ((3,1), (1,3))
+    r = (point - self).axis_and_angle_as_r3_rotation_matrix(
+      angle=angle, deg=deg)
+    return rt((r, self-r*self))
+
   def ortho(self):
     assert self.n in ((3,1), (1,3))
     x, y, z = self.elems
@@ -1220,6 +1227,14 @@ def exercise():
   assert approx_equal(r*x, y)
   assert approx_equal(
     a.axis_and_angle_as_r3_rotation_matrix(angle=37, deg=True), r)
+  #
+  pivot = col((29.278,-48.061,72.641))
+  raa = pivot.rt_for_rotation_around_axis_through(
+    point=col((28.09,-48.047,71.684)),
+    angle=190.811940444, deg=True)
+  assert approx_equal(
+    raa * col((28.097,-47.559,70.248)),
+    (26.639170440424856,-48.299377845438173,72.046888429403481))
   #
   assert col((0,0,1)).vector_to_001_rotation().elems == (1,0,0,0,1,0,0,0,1)
   assert col((0,0,-1)).vector_to_001_rotation().elems == (1,0,0,0,-1,0,0,0,-1)
