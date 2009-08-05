@@ -58,6 +58,22 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     ;
   }
 
+  direct_space_asu asu_copy(const direct_space_asu &a)
+  {
+    return direct_space_asu(a);
+  }
+
+  scitbx::af::shared<rvector3_t> asu_volume_vertices(const direct_space_asu &a)
+  {
+    set_rvector3_t v;
+    a.volume_vertices(v);
+    scitbx::af::shared<rvector3_t> result;
+    for(set_rvector3_t::const_iterator it=v.begin(); it!=v.end(); ++it)
+      result.push_back(*it);
+    return result;
+  }
+
+
   void wrap_direct_space_asu()
   {
     typedef direct_space_asu w_t;
@@ -93,11 +109,14 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       .def("in_which_planes", &w_t::in_which_planes)
       .def("in_which_facets", &w_t::in_which_facets, rbv())
       .def("n_faces", &w_t::n_faces)
-      .def("volume_vertices", &w_t::volume_vertices)
+      .def("volume_vertices", asu_volume_vertices)
       .def("box_max", &w_t::box_max)
       .def("box_min", &w_t::box_min)
       .def("as_string", &w_t::as_string)
       .def("as_float_asu", &w_t::as_float_asu)
+      .def("__copy__", asu_copy)
+      .def("optimize_for_grid", &w_t::optimize_for_grid)
+      .def("is_optimized", &w_t::is_optimized)
     ;
   }
 
@@ -108,6 +127,8 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     scitbx::boost_python::container_conversions::
       tuple_mapping_fixed_size< rvector3_t >();
     scitbx::af::boost_python::shared_wrapper< cut >::wrap("cut_shared_array");
+    scitbx::af::boost_python::shared_wrapper< rvector3_t >::wrap(
+        "rational3_shared_array");
   }
 
 }}}} // namespace cctbx::sgtbx::asu
