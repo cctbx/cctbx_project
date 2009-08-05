@@ -4453,6 +4453,18 @@ x=*a b
   except RuntimeError, e:
     assert str(e) == "Invalid choice: x=None"
   else: raise Exception_expected
+  master_phil = phil.parse("""\
+multiwordchoice = 'a b' 'b c'
+  .type = choice
+""")
+  other = phil.parse("""
+multiwordchoice = 'a b'
+""")
+  s = StringIO()
+  master_phil.fetch_diff(source=other).show(out=s)
+  diff_phil = phil.parse(input_string=s.getvalue())
+  working_phil = master_phil.fetch(source=diff_phil)
+  assert not show_diff(working_phil.as_str(),"multiwordchoice = '*a b' 'b c'\n")
 
 def exercise_type_constructors():
   params = phil.parse(
