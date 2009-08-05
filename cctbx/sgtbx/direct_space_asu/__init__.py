@@ -28,7 +28,7 @@ class direct_space_asu(object):
     if (f == None): f = sys.stdout
     self.show_summary(f)
     for facet in self.facets:
-      print "    &", facet
+      print >> f, "    &", facet
     return self
 
   def is_inside(self, point, volume_only=False):

@@ -1,23 +1,22 @@
+import sys
+import StringIO
+import boost
 import cctbx
 from boost.rational import int as rint
 from cctbx.sgtbx import space_group_info
 from cctbx.sgtbx.direct_space_asu import proto as new_asu
-import sys
-import boost
 from cctbx.crystal import direct_space_asu_float_asu
 from libtbx.test_utils import approx_equal, is_below_limit
+from libtbx.utils import format_cpu_times
 
-# Usage:
-#   python tst_asu.py [ action ] [ spacegroup [ nsteps] ]
-#          action =
-#                    none - silently compares asus of a few selected spacegroups
-#                    all  -  silently compares asus of all 230 space groups
-#                    print_asu - tests one asu
-#                    print_original_asu - tests one original asu
-#                    print_inconsistent - prints 5 most inconsistent asus
-# test groups
-Groups = ('P 1', 'P 1 21 1', 'P 1 1 21', 'P 21 1 1', 'P 21 21 21')
+# For usage type:
+#   cctbx.python tst_asu.py -h
+
+# test groups, tests are very slow, so keep very few groups here
+SpaceGroups = ('P 1 1 21',  'P 21 21 21', 'I 1 m 1')
 NSteps = 11 # number of grid points in one dimenssion
+
+cout = StringIO.StringIO()
 
 def step_v(n, mn, mx):
   step = ()
@@ -29,49 +28,100 @@ def step_v(n, mn, mx):
   return step, v
 
 def loop_grid(asu, n, mn, mx, asu2=None):
+  assert (asu2 is None) or isinstance(asu, new_asu.direct_space_asu)
+  first_is_new = False
   step, vv = step_v(n, mn, mx)
-  result = 0
+  grid = ()
+  for s in step:
+    g = rint(1) / s
+    g = g.numerator()/g.denominator() + 1
+    assert g > 0, "Step = "+str(step)
+    grid += tuple([g])
   mna = list(mn)
   mxa = list(mx)
   for i in xrange(3):
-    mna[i] -= step[i]
-    mxa[i] += step[i]
+    mna[i] -= 5*step[i]
+    mna[i] *= grid[i]
+    mna[i] = mna[i].numerator()/mna[i].denominator()-1
+    mxa[i] += 5*step[i]
+    mxa[i] *= grid[i]
+    mxa[i] = mxa[i].numerator()/mxa[i].denominator()+1
+  print >>cout, "grid test  step= ", step, "  min= ", mna, "  max= ", mxa, \
+      "   grid=", grid
+  if isinstance(asu, new_asu.direct_space_asu):
+    import copy
+    asu_opt = copy.copy(asu)
+    asu_opt.optimize_for_grid(grid)
+    assert asu_opt.is_optimized() and (not asu.is_optimized())
+    first_is_new = True
+  result = 0
 
   i = mna[0]
   while i <= mxa[0] :
+    ii = rint(i,grid[0])
     j = mna[1]
     while j <= mxa[1] :
+      jj = rint(j,grid[1])
       k = mna[2]
       while k <= mxa[2] :
-        b = asu.is_inside((i,j,k))
+        kk = rint(k,grid[2])
+        b = asu.is_inside((ii,jj,kk)) # rational test
         if b :
           result += 1
-        if isinstance(asu, new_asu.direct_space_asu):
-          num = (i.numerator(), j.numerator(), k.numerator())
-          den = (i.denominator(), j.denominator(), k.denominator())
-          where = asu.where_is(num,den)
+        if first_is_new:
+          num = (i, j, k)
+          den = grid
+          where = asu.where_is(num,den) # integer test
+          #TODO: implement? assert b == asu.is_inside(num,den)
           assert ( b and (where==1 or where==-1)) or ( (not b) and where==0 )
+          where_opt = asu_opt.where_is( num ) # optimized test
+          assert where_opt == where
+          #TODO: implement? assert b == asu_opt.is_inside(num)
         if asu2 is not None :
-          assert b == asu2.is_inside( (i,j,k) )
-        k += step[2]
-      j += step[1]
-    i += step[0]
+          assert b == asu2.is_inside( (ii,jj,kk) ) # rational test
+        k += 1
+      j += 1
+    i += 1
 
   volume = result / vv
   return (result,volume)
 
-def compare(spgr, n=NSteps):
+def compare(spgr, n=NSteps, verbose=False):
+  if verbose:
+    print cout.getvalue()
+  cout.truncate(0)
   grp = space_group_info(spgr)
+  print >>cout, "Comparing asus for group: ", spgr, "  n-steps= ", n
   asuo = grp.direct_space_asu()
-  asun = new_asu.direct_space_asu(spgr)
+  print >>cout, "=== Original python asu ==="
+  asuo.show_comprehensive_summary(cout)
+  print >>cout, ":: raw facets"
+  as_raw_asu(asuo, cout)
   mxo = tuple( asuo.box_max() )
   mno = tuple( asuo.box_min() )
+  print >>cout, "box  min= ", mno, "   max= ", mxo
+  ### NEW C++ ASU
+  asun = new_asu.direct_space_asu(grp.type())
+  print >>cout, "=== New C++ asu ==="
+  asun.show_comprehensive_summary(cout)
   mnn = asun.box_min()
   mxn = asun.box_max()
+  print >>cout, "box  min= ", mnn, "   max= ", mxn
   assert mnn == mno
   assert mxn == mxo
-  v = rint(1,grp.group().order_z())
-  loop_grid(asun, n, mnn, mxn, asuo)
+  old_vertices = asuo.volume_vertices()
+  new_vertices = asun.volume_vertices() # C++  sorted list
+  assert len(old_vertices) == len(new_vertices)
+  # TODO: the following seems to use the same ordering operation
+  # as mine in C++
+  old_vertices = sorted(old_vertices)
+  for a,b in zip(old_vertices,new_vertices):
+    print >>cout, a, " == ", b
+    assert a == b, str(a)+" != "+str(b)
+  ins,v = loop_grid(asun, n, mnn, mxn, asuo)
+  print >>cout, "N inside = ", ins, "   volume = ", v,  \
+      "   expected volume = ", rint(1,grp.group().order_z())
+  ### VOLUME ONLY
   asun.volume_only()
   asuo = asuo.volume_only()
   mxo2 = tuple( asuo.box_max() )
@@ -90,98 +140,94 @@ def compare(spgr, n=NSteps):
     facets=[facet.as_float_cut_plane() for facet in asuo.facets],
     is_inside_epsilon=1.e-6)
   # python sucks big: still (in 2.5) there is no float.epsilon/max/tiny/etc
-  assert approx_equal(fasun.is_inside_epsilon(), fasuo.is_inside_epsilon(), 1.0E-100)
-  assert len(fasun.facets()) == len(fasuo.facets()),  "%d != %d"%(len(fasuo.facets()),len(fasun.facets()))
-  assert ((len(fasun.facets()) < 200) & (len(fasun.facets()) > 3)), len(fasun.facets())
+  assert approx_equal(fasun.is_inside_epsilon(), fasuo.is_inside_epsilon(),
+      1.0E-100)
+  assert len(fasun.facets()) == len(fasuo.facets()), \
+    "%d != %d"%(len(fasuo.facets()),len(fasun.facets()))
+  assert ((len(fasun.facets()) < 200) & (len(fasun.facets()) > 3)), \
+    len(fasun.facets())
+  if verbose:
+    print cout.getvalue()
+  cout.truncate(0)
 
-def rank_err(spgr, n=NSteps):
-  grp = space_group_info(spgr)
-  asun = new_asu.direct_space_asu(spgr)
-  mnn = asun.box_min()
-  mxn = asun.box_max()
-  v = rint(1,grp.group().order_z())
-  nn,vn = loop_grid(asun, n, mnn, mxn)
-  step,nexp = step_v(n,mnn,mxn)
-  nexp *= v
-  ern = abs(nn-nexp)
-  nermx = 6*n*n
-  return float(ern)/float(nermx)
-
-def sort_by_value(d):
-    """ Returns the keys of dictionary d sorted by their values """
-    items=d.items()
-    backitems=[ [v[1],v[0]] for v in items]
-    backitems.sort()
-    return [ backitems[i][1] for i in range(0,len(backitems))]
-
-def test_1(n=NSteps):
-  for sg in Groups:
-    compare(sg, n)
-
-def test_2(n=NSteps):
-  for i in xrange(1,231):
-    compare(str(i), n)
-
-def test_3(n=NSteps):
-  errs = dict()
-  for i in xrange(1,231):
-    errs[i] = rank_err(str(i), n)
-  sorted = sort_by_value( errs )
-  ns = len(sorted)
-  assert ns > 0
-  ns -= 1
-  print "Most disagreable space groups\nGroup     relative error"
-  for i in xrange(5):
-    sg = sorted[ns-i]
-    print sg, "  ==  ", errs[ sg ]
+def compare_groups(groups=SpaceGroups, n=NSteps, verbose=False):
+  for sg in groups:
+    compare(sg, n, verbose)
 
 
-def test_4(spgr, n, original=False):
-  print "space group= ", spgr,  "  nsteps= ", n
-  grp = space_group_info(spgr)
-  if original:
-    asu = grp.direct_space_asu()
+def as_raw(c ):
+  result = ""
+  if isinstance(c, cctbx.sgtbx.direct_space_asu.cut_plane.cut):
+    if not c.inclusive:
+      result = "+"
+    result = result + "cut(" + str(c.n)+ ", " + str(c.c) +")"
+    if c.has_cuts():
+      result = result + " [ " + as_raw(c.cut_expr) + " ]"
+  elif isinstance(c, cctbx.sgtbx.direct_space_asu.cut_plane.cut_expression):
+    result = "(" + as_raw(c.lhs) + str(c.op) + as_raw(c.rhs) + ")"
   else:
-    asu = new_asu.direct_space_asu(grp.type())
-  asu.show_comprehensive_summary()
-  mn = asu.box_min()
-  mx = asu.box_max()
-  print "asu box = ", mn, " : ", mx
-  ins,v = loop_grid(asu, n, mn, mx)
-  print "N inside = ", ins, "   volume = ", v,  "   expected volume = ", rint(1,grp.group().order_z())
-  print "\n ---------- volume_only ----------------\n"
-  if original:
-    asu = asu.volume_only()
-  else:
-    asu.volume_only()
-  asu.show_comprehensive_summary()
-  mn = asu.box_min()
-  mx = asu.box_max()
-  print "asu box = ", mn, " : ", mx
-  ins,v = loop_grid(asu, n, mn, mx)
-  print "N inside = ", ins, "   volume = ", v,  "   expected volume = ", rint(1,grp.group().order_z())
+    assert False, c.__class_
+  return result
 
+def as_raw_asu(asu, f=None):
+  if (f == None): f = sys.stdout
+  for facet in asu.facets:
+    print >>f, "  & ", as_raw(facet)
 
 
 def run():
-  key = ""
-  if len(sys.argv)>1 :
-    key = sys.argv[1]
-  if key in ("print_asu", "print_original_asu") :
-    spgr = "P 21 21 21"
-    n = NSteps
-    if len(sys.argv)>2 :
-      spgr = sys.argv[2]
-    if len(sys.argv)>3 :
-      n = int(sys.argv[3])
-    test_4(spgr, n, key=="print_original_asu" )
-  elif key == "print_inconsistent" :
-    test_3()
-  elif key == "all" :
-    test_2()
-  else :
-    test_1()
+  import optparse
+  parser = optparse.OptionParser()
+  parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
+      default=False, help="be verbose")
+  parser.add_option("-g", "--space_group", action="store", type="string",
+      dest="space_group", help="space group symbol or number or all or all530")
+  parser.add_option("-n", "--n_steps", action="store", type="int",
+      dest="n_steps", default=NSteps, help="number of grid points in one"
+      +" dimension of the asu box")
+  parser.add_option("--groups_file", action="store", type="string",
+      dest="groups_file", help="file containing space groups, one per line")
+
+  (opts, args) = parser.parse_args()
+
+  groups = []
+  if not opts.groups_file is None:
+    tmp_file = open(opts.groups_file, "r")
+    for line in tmp_file.readlines(): # newlines retained
+      groups.append( line.strip() ) # removes whitespace in the begining and end
+    tmp_file.close()
+  if (opts.space_group is None) & (len(groups)==0) :
+    groups.extend(SpaceGroups)
+  elif opts.space_group == "all" :
+    for isg in xrange(1,231):
+      groups.append(str(isg))
+  elif opts.space_group == "all530":
+    it = cctbx.sgtbx.space_group_symbol_iterator()
+    while( True ):
+      symbol = it.next()
+      # TODO: the following  does not work
+      #if( symbol.number()==0 ):
+      #  break
+      groups.append(symbol.hermann_mauguin())
+      if( symbol.number()==230 ):
+        break
+  elif not opts.space_group is None:
+    groups.append(opts.space_group)
+
+  print >>cout, "Number of groups: ", len(groups)
+  print >>cout, "Options= ", opts
+  compare_groups(groups, opts.n_steps, opts.verbose)
+  print format_cpu_times()
+
 
 if (__name__ == "__main__"):
-  run()
+  try:
+    run()
+  except :
+    log = cout.getvalue()
+    if len(log) != 0:
+      print "<<<<<<<< Start Log:"
+      print log
+      print ">>>>>>>> End Log"
+    raise
 
