@@ -459,7 +459,7 @@ def generate_cb(grp, ncb):
   halls = masks.generate_groups(grp,ncb)
   for h in halls:
     print "Generated: ", h
-  return halls 
+  return halls
 
 def run():
   import optparse
