@@ -6,21 +6,11 @@ from scitbx import matrix
 from libtbx.test_utils import \
   approx_equal, is_above_limit, is_below_limit, Exception_expected
 from libtbx.utils import format_cpu_times
+import pickle, cPickle
 import random
 import sys
 
-def compare_essence_and_fast_tardy_models(
-      etm,
-      have_singularity=False,
-      run_minimization=False):
-  etm = scitbx.rigid_body.essence.tardy.model( # new instance to reset q, qd
-    labels=etm.labels,
-    sites=etm.sites,
-    masses=etm.masses,
-    tardy_tree=etm.tardy_tree,
-    potential_obj=etm.potential_obj,
-    near_singular_hinges_angular_tolerance_deg=
-      etm.near_singular_hinges_angular_tolerance_deg)
+def etm_as_ftm(etm):
   ftm = scitbx.rigid_body.tardy_model(
     labels=etm.labels,
     sites=flex.vec3_double(etm.sites),
@@ -47,6 +37,21 @@ def compare_essence_and_fast_tardy_models(
   assert approx_equal(
     ftm.near_singular_hinges_angular_tolerance_deg,
     etm.near_singular_hinges_angular_tolerance_deg)
+  return ftm
+
+def compare_essence_and_fast_tardy_models(
+      etm,
+      have_singularity=False,
+      run_minimization=False):
+  etm = scitbx.rigid_body.essence.tardy.model( # new instance to reset q, qd
+    labels=etm.labels,
+    sites=etm.sites,
+    masses=etm.masses,
+    tardy_tree=etm.tardy_tree,
+    potential_obj=etm.potential_obj,
+    near_singular_hinges_angular_tolerance_deg=
+      etm.near_singular_hinges_angular_tolerance_deg)
+  ftm = etm_as_ftm(etm=etm)
   #
   assert list(ftm.root_indices()) == etm.root_indices()
   #
@@ -341,12 +346,7 @@ def compare_essence_and_fast_tardy_models(
   ftm.dynamics_step(delta_t=delta_t)
   assert not ftm.sites_moved_is_cached()
   assert not ftm.qdd_array_is_cached()
-  e = etm.pack_q()
-  f = ftm.pack_q()
-  assert approx_equal(e, f)
-  e = etm.pack_qd()
-  f = ftm.pack_qd()
-  assert approx_equal(e, f)
+  check_packed()
   check_qdd()
   #
   etm.assign_zero_velocities()
@@ -372,28 +372,7 @@ def compare_essence_and_fast_tardy_models(
     ftm.minimization(max_iterations=3)
     check_packed()
 
-def exercise_fixed_vertices():
-  etm = tst_tardy.get_test_model_by_index(
-    i=0, fixed_vertex_lists=[[0]])
-  assert etm.degrees_of_freedom == 0
-  compare_essence_and_fast_tardy_models(etm=etm)
-  #
-  for i_case,etm in enumerate(
-                      tst_tardy.exercise_fixed_vertices_special_cases()):
-    assert etm.potential_obj is not None
-    compare_essence_and_fast_tardy_models(
-      etm=etm,
-      have_singularity=(i_case < 4))
-  #
-  for fixed_vertices,expected_dof in \
-        tst_tardy.test_case_5_fixed_vertices_expected_dof:
-    etm = tst_tardy.get_test_model_by_index(
-      i=5, fixed_vertex_lists=[fixed_vertices])
-    assert etm.degrees_of_freedom == expected_dof
-    compare_essence_and_fast_tardy_models(etm=etm)
-
-def run(args):
-  assert len(args) == 0
+def exercise_with_tst_tardy_pdb_test_cases():
   n_tested = 0
   for tc in tst_tardy_pdb.test_cases:
     tt = tc.tardy_tree_construct()
@@ -416,9 +395,57 @@ def run(args):
       etm=etm,
       run_minimization=(tc.tag == "tyr_with_h"))
     n_tested += 1
+
+def exercise_fixed_vertices():
+  etm = tst_tardy.get_test_model_by_index(
+    i=0, fixed_vertex_lists=[[0]])
+  assert etm.degrees_of_freedom == 0
+  compare_essence_and_fast_tardy_models(etm=etm)
   #
+  for i_case,etm in enumerate(
+                      tst_tardy.exercise_fixed_vertices_special_cases()):
+    assert etm.potential_obj is not None
+    compare_essence_and_fast_tardy_models(
+      etm=etm,
+      have_singularity=(i_case < 4))
+  #
+  for fixed_vertices,expected_dof in \
+        tst_tardy.test_case_5_fixed_vertices_expected_dof:
+    etm = tst_tardy.get_test_model_by_index(
+      i=5, fixed_vertex_lists=[fixed_vertices])
+    assert etm.degrees_of_freedom == expected_dof
+    compare_essence_and_fast_tardy_models(etm=etm)
+
+def exercise_pickle():
+  etm = tst_tardy.get_test_model_by_index(i=5)
+  assert [body.joint.degrees_of_freedom for body in etm.bodies] \
+      == [6, 1, 1, 1, 1, 1]
+  assert etm.potential_obj is not None
+  etm.assign_random_velocities(e_kin_target=2.34)
+  etm.dynamics_step(delta_t=0.937)
+  def etm_as_ftm_with_q_qd():
+    result = etm_as_ftm(etm=etm)
+    result.unpack_q(etm.pack_q())
+    result.unpack_qd(etm.pack_qd())
+    return result
+  for pickle_module in [pickle, cPickle]:
+    for protocol in xrange(pickle.HIGHEST_PROTOCOL):
+      ftm1 = etm_as_ftm_with_q_qd()
+      s = pickle_module.dumps(etm_as_ftm_with_q_qd(), protocol)
+      ftm2 = cPickle.loads(s)
+      assert approx_equal(ftm2.pack_q(), ftm1.pack_q())
+      assert approx_equal(ftm2.pack_qd(), ftm1.pack_qd())
+      for delta_t in [0.538, 0.393]:
+        ftm1.dynamics_step(delta_t=delta_t)
+        ftm2.dynamics_step(delta_t=delta_t)
+        assert approx_equal(ftm2.pack_q(), ftm1.pack_q())
+        assert approx_equal(ftm2.pack_qd(), ftm1.pack_qd())
+
+def run(args):
+  assert len(args) == 0
+  exercise_with_tst_tardy_pdb_test_cases()
   exercise_fixed_vertices()
-  #
+  exercise_pickle()
   print format_cpu_times()
 
 if (__name__ == "__main__"):

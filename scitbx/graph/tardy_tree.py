@@ -1,9 +1,10 @@
 from __future__ import division
 from scitbx.graph.utils import \
   construct_edge_sets, extract_edge_list, sub_edge_list
+from libtbx import slots_getstate_setstate
 import math
 
-class cluster_manager(object):
+class cluster_manager(slots_getstate_setstate):
 
   __slots__ = [
     "fixed_vertex_lists",
@@ -423,7 +424,7 @@ class find_paths(object):
       depth_first_search(jv=iv, kv=jv)
     return loops, dendrites
 
-class construct(object):
+class construct(slots_getstate_setstate):
 
   __slots__ = [
     "n_vertices",

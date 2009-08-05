@@ -5,7 +5,7 @@ from libtbx.phil import tokenizer
 from libtbx.str_utils import line_breaker
 from libtbx.utils import Sorry, format_exception, import_python_object
 from itertools import count
-from libtbx import Auto
+from libtbx import Auto, slots_getstate_setstate
 from cStringIO import StringIO
 import tokenize as python_tokenize
 import math
@@ -743,8 +743,6 @@ class object_locator(object):
 #  -1: template but there are other copies
 #   1: template and there are no copies
 
-_need_getstate = (getattr(sys, "hexversion", 0) < 33751280) # i.e. < Python 2.3
-
 class try_tokenize_proxy(object):
 
   def __init__(self, error_message, tokenized):
@@ -763,7 +761,7 @@ class try_format_proxy(object):
     self.error_message = error_message
     self.formatted = formatted
 
-class definition(object):
+class definition(slots_getstate_setstate):
 
   is_definition = True
   is_scope = False
@@ -817,13 +815,6 @@ class definition(object):
     self.input_size = input_size
     self.style = style
     self.expert_level = expert_level
-
-  if (_need_getstate):
-    def __getstate__(self):
-      return dict([(name, getattr(self, name)) for name in self.__slots__])
-
-    def __setstate__(self, state):
-      for name,value in state.items(): setattr(self, name, value)
 
   def copy(self):
     keyword_args = {}
@@ -1236,7 +1227,7 @@ class scope_extract(object):
         self.__phil_path__(), call_proxy.expression, format_exception(),
         call_proxy.where_str))
 
-class scope(object):
+class scope(slots_getstate_setstate):
 
   is_definition = False
   is_scope = True
@@ -1311,13 +1302,6 @@ class scope(object):
       raise RuntimeError('Reserved identifier: "include"%s' % where_str)
     if (sequential_format is not None):
       assert isinstance(sequential_format % 0, str)
-
-  if (_need_getstate):
-    def __getstate__(self):
-      return dict([(name, getattr(self, name)) for name in self.__slots__])
-
-    def __setstate__(self, state):
-      for name,value in state.items(): setattr(self, name, value)
 
   def copy(self):
     keyword_args = {}

@@ -135,6 +135,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
              bases<featherstone::system_model<ft> >,
              boost::noncopyable
             >("tardy_model", no_init)
+        .enable_pickling()
         .def(init<
           object const&,
           af::shared<vec3<ft> > const&,
