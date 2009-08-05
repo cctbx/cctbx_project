@@ -231,6 +231,7 @@ def exercise_system_model():
   for body in model.bodies:
     body.qd = body.joint.qd_zero
     qdd.append(body.joint.qdd_zero)
+  model.flag_velocities_as_changed()
   tau = model.inverse_dynamics(qdd_array=qdd, f_ext_array=f_ext)
   assert approx_equal(tau, [
     (0.286606889188, -0.220046556736, 1.14581449056,
@@ -299,6 +300,7 @@ def exercise_system_model_with_zero_dof_body():
   for body in model.bodies:
     body.qd = body.joint.qd_zero
     qdd.append(body.joint.qdd_zero)
+  model.flag_velocities_as_changed()
   tau = model.inverse_dynamics(qdd_array=qdd, f_ext_array=f_ext)
   assert approx_equal(tau, [
     (),
