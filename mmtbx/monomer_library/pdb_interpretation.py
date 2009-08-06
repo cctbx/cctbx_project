@@ -175,7 +175,7 @@ master_params = iotbx.phil.parse("""\
 """ % vars(),
   process_includes=True)
 
-geometry_restraints_edits = iotbx.phil.parse("""\
+geometry_restraints_edits_str = """\
 excessive_bond_distance_limit = 10
   .type = float
 bond
@@ -221,7 +221,30 @@ angle
   sigma = None
     .type = float
 }
-""")
+"""
+
+geometry_restraints_remove_str = """\
+angles=None
+  .optional=True
+  .type=str
+  .multiple=True
+  .input_size=400
+dihedrals=None
+  .optional=True
+  .type=str
+  .multiple=True
+  .input_size=400
+chiralities=None
+  .optional=True
+  .type=str
+  .multiple=True
+  .input_size=400
+planarities=None
+  .optional=True
+  .type=str
+  .multiple=True
+  .input_size=400
+"""
 
 def flush_log(log):
   if (log is not None):
@@ -1917,6 +1940,7 @@ class build_all_chain_proxies(object):
         params=None,
         file_name=None,
         raw_records=None,
+        pdb_inp=None,
         special_position_settings=None,
         crystal_symmetry=None,
         force_symmetry=False,
@@ -1932,7 +1956,11 @@ class build_all_chain_proxies(object):
     self.time_building_chain_proxies = None
     if (log is not None and file_name is not None):
       print >> log, file_name
-    if (file_name is not None):
+    if (pdb_inp is not None):
+      assert raw_records is None
+      self.pdb_inp = pdb_inp
+    elif (file_name is not None):
+      assert raw_records is None
       self.pdb_inp = pdb.input(file_name=file_name)
     else:
       if (isinstance(raw_records, str)):
@@ -2508,6 +2536,15 @@ class build_all_chain_proxies(object):
         print >> log
     return pair_sym_table, max_distance_model
 
+  def atom_selection(self, parameter_name, string, cache=None):
+    try:
+      return self.selection(string=string, cache=cache)
+    except KeyboardInterrupt: raise
+    except Exception:
+      fe = format_exception()
+      raise Sorry('Invalid atom selection:\n  %s="%s"\n  (%s)' % (
+        parameter_name, string, fe))
+
   def phil_atom_selection(self,
         cache,
         scope_extract,
@@ -2546,10 +2583,29 @@ class build_all_chain_proxies(object):
       result.append(iselection[0])
     return result
 
-  def process_geometry_restraints_edits_bond(self, sel_cache, edits, log):
+  def process_geometry_restraints_remove(self,
+        params,
+        geometry_restraints_manager):
+    path = params.__phil_path__() + "."
+    grm = geometry_restraints_manager
+    cache = self.pdb_hierarchy.atom_selection_cache()
+    for atom_selection in params.angles:
+      grm.remove_angles_in_place(selection=self.atom_selection(
+        parameter_name=path+"angles", string=atom_selection, cache=cache))
+    for atom_selection in params.dihedrals:
+      grm.remove_dihedrals_in_place(selection=self.atom_selection(
+        parameter_name=path+"dihedrals", string=atom_selection, cache=cache))
+    for atom_selection in params.chiralities:
+      grm.remove_chiralities_in_place(selection=self.atom_selection(
+        parameter_name=path+"chiralities", string=atom_selection, cache=cache))
+    for atom_selection in params.planarities:
+      grm.remove_planarities_in_place(selection=self.atom_selection(
+        parameter_name=path+"planarities", string=atom_selection, cache=cache))
+
+  def process_geometry_restraints_edits_bond(self, sel_cache, params, log):
     bond_sym_proxies = []
     bond_distance_model_max = 0
-    if (len(edits.bond) == 0):
+    if (len(params.bond) == 0):
       return group_args(
         bond_sym_proxies=bond_sym_proxies,
         bond_distance_model_max=bond_distance_model_max)
@@ -2559,12 +2615,12 @@ class build_all_chain_proxies(object):
     space_group = self.special_position_settings.space_group()
     uc_shortest_vector = unit_cell.shortest_vector_sq()**0.5
     max_bond_length = uc_shortest_vector
-    ebdl = edits.excessive_bond_distance_limit
+    ebdl = params.excessive_bond_distance_limit
     if (ebdl not in [None, Auto] and ebdl > 0 and ebdl < max_bond_length):
       max_bond_length = ebdl
     n_excessive = 0
     sel_attrs = ["atom_selection_"+n for n in ["1", "2"]]
-    for bond in edits.bond:
+    for bond in params.bond:
       def show_atom_selections():
         for attr in sel_attrs:
           print >> log, "      %s = %s" % (
@@ -2641,7 +2697,7 @@ class build_all_chain_proxies(object):
             % uc_shortest_vector
       else:
         print >> log, "  %s.excessive_bond_distance_limit = %.6g" % (
-          edits.__phil_path__(), edits.excessive_bond_distance_limit)
+          params.__phil_path__(), params.excessive_bond_distance_limit)
         print >> log, \
           "    Please assign a larger value to this parameter if necessary."
       raise Sorry(
@@ -2652,9 +2708,9 @@ class build_all_chain_proxies(object):
       bond_sym_proxies=bond_sym_proxies,
       bond_distance_model_max=bond_distance_model_max)
 
-  def process_geometry_restraints_edits_angle(self, sel_cache, edits, log):
+  def process_geometry_restraints_edits_angle(self, sel_cache, params, log):
     result = []
-    if (len(edits.angle) == 0): return result
+    if (len(params.angle) == 0): return result
     if (self.special_position_indices is None):
       special_position_indices = []
     else:
@@ -2662,7 +2718,7 @@ class build_all_chain_proxies(object):
     print >> log, "  Custom angles:"
     atoms = self.pdb_atoms
     sel_attrs = ["atom_selection_"+n for n in ["1", "2", "3"]]
-    for angle in edits.angle:
+    for angle in params.angle:
       def show_atom_selections():
         for attr in sel_attrs:
           print >> log, "      %s = %s" % (
@@ -2714,19 +2770,20 @@ class build_all_chain_proxies(object):
     print >> log, "    Total number of custom angles:", len(result)
     return result
 
-  def process_geometry_restraints_edits(self, edits, log):
+  def process_geometry_restraints_edits(self, params, log):
     sel_cache = self.pdb_hierarchy.atom_selection_cache()
     result = self.process_geometry_restraints_edits_bond(
-        sel_cache=sel_cache, edits=edits, log=log)
+        sel_cache=sel_cache, params=params, log=log)
     result.angle_proxies=self.process_geometry_restraints_edits_angle(
-        sel_cache=sel_cache, edits=edits, log=log)
+        sel_cache=sel_cache, params=params, log=log)
     return result
 
   def construct_geometry_restraints_manager(self,
         ener_lib,
         disulfide_link,
         plain_pairs_radius=None,
-        edits=None,
+        params_edits=None,
+        params_remove=None,
         assume_hydrogens_all_missing=True,
         log=None):
     assert self.special_position_settings is not None
@@ -2763,11 +2820,11 @@ class build_all_chain_proxies(object):
     if (bond_distances_model.size() > 0):
       max_bond_distance = max(max_bond_distance,
         flex.max(bond_distances_model))
-    if (edits is None):
+    if (params_edits is None):
       processed_edits = None
     else:
       processed_edits = self.process_geometry_restraints_edits(
-        edits=edits, log=log)
+        params=params_edits, log=log)
       max_bond_distance = max(max_bond_distance,
         processed_edits.bond_distance_model_max)
     asu_mappings = self.special_position_settings.asu_mappings(
@@ -2841,6 +2898,9 @@ class build_all_chain_proxies(object):
       chirality_proxies=self.geometry_proxy_registries.chirality.proxies,
       planarity_proxies=self.geometry_proxy_registries.planarity.proxies,
       plain_pairs_radius=plain_pairs_radius)
+    if (params_remove is not None):
+      self.process_geometry_restraints_remove(
+        params=params_remove, geometry_restraints_manager=result)
     self.time_building_geometry_restraints_manager = timer.elapsed()
     return result
 
@@ -2900,6 +2960,7 @@ class process(object):
         params=None,
         file_name=None,
         raw_records=None,
+        pdb_inp=None,
         strict_conflict_handling=False,
         special_position_settings=None,
         crystal_symmetry=None,
@@ -2917,6 +2978,7 @@ class process(object):
       params=params,
       file_name=file_name,
       raw_records=raw_records,
+      pdb_inp=pdb_inp,
       special_position_settings=special_position_settings,
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
@@ -2938,7 +3000,8 @@ class process(object):
 
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,
-        edits=None,
+        params_edits=None,
+        params_remove=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
         hard_minimum_bond_distance_model=0.001):
@@ -2950,7 +3013,8 @@ class process(object):
             ener_lib=self.ener_lib,
             disulfide_link=self.mon_lib_srv.link_link_id_dict["SS"],
             plain_pairs_radius=plain_pairs_radius,
-            edits=edits,
+            params_edits=params_edits,
+            params_remove=params_remove,
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             log=self.log)
       if (self.log is not None):

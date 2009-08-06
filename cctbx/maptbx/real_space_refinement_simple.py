@@ -41,9 +41,9 @@ class lbfgs(object):
     if (unit_cell is None):
       unit_cell = geometry_restraints_manager.crystal_symmetry.unit_cell()
     O.density_map = density_map
-    O.real_space_gradients_delta = real_space_gradients_delta
     O.unit_cell = unit_cell
     O.geometry_restraints_manager = geometry_restraints_manager
+    O.real_space_gradients_delta = real_space_gradients_delta
     O.real_space_target_weight = real_space_target_weight
     O.x = sites_cart.as_double()
     O.number_of_function_evaluations = -1
