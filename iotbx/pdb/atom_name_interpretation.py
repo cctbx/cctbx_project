@@ -177,13 +177,17 @@ gly_interpreter = interpreter(
     "1hA", "2hA", "3hA"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hA", "2hA", "3hA")])
+    ("1hA", "2hA", "3hA")],
+  non_hydrogens=("N","CA","C","O"),
+  hydrogens=("H","HA1","HA2"))
 
 ala_interpreter = interpreter(
   peptide_expected_patterns + [
     "hA",
     "CB", "1hB", "2hB", "3hB"],
-  peptide_synonym_patterns)
+  peptide_synonym_patterns,
+  non_hydrogens=("N","CA","C","O","CB"),
+  hydrogens=("H","HA","HB1","HB2","HB3"))
 
 val_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -191,7 +195,9 @@ val_interpreter = interpreter(
     "CB", "hB",
     "CG1", "1hG1", "2hG1", "3hG1",
     "CG2", "1hG2", "2hG2", "3hG2"],
-  peptide_synonym_patterns)
+  peptide_synonym_patterns,
+  non_hydrogens=("N","CA","C","O","CB","CG1","CG2"),
+  hydrogens=("H","HA","HB","HG11","HG12","HG13","HG21","HG22","HG23"))
 
 leu_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -202,7 +208,9 @@ leu_interpreter = interpreter(
     "CD2", "1hD2", "2hD2", "3hD2"],
   peptide_synonym_patterns + {"1hG": "hG"},
   mutually_exclusive_pairs=[
-    ("1hB", "2hB", "3hB")])
+    ("1hB", "2hB", "3hB")],
+  non_hydrogens=("N","CA","C","O","CB","CG","CD1","CD2"),
+  hydrogens=("H","HA","HB1","HB2","HD11","HD12","HD13","HD21","HD22","HD23"))
 
 ile_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -217,7 +225,10 @@ ile_interpreter = interpreter(
     "2hD": "2hD1",
     "3hD": "3hD1"},
   mutually_exclusive_pairs=[
-    ("1hG1", "2hG1", "3hG1")])
+    ("1hG1", "2hG1", "3hG1")],
+  non_hydrogens=("N","CA","C","O","CB","CG1","CD1","CG2"),
+  hydrogens=("H","HA","HB","HG11","HG12","HD11","HD12","HD13","HG21","HG22",
+    "HG23"))
 
 met_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -229,7 +240,9 @@ met_interpreter = interpreter(
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
     ("1hB", "2hB", "3hB"),
-    ("1hG", "2hG", "3hG")])
+    ("1hG", "2hG", "3hG")],
+  non_hydrogens=("N","CA","C","O","CB","CG","SD","CE"),
+  hydrogens=("H","HA","HB1","HB2","HG1","HG2","HE1","HE2","HE3"))
 
 mse_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -241,7 +254,9 @@ mse_interpreter = interpreter(
   peptide_synonym_patterns + {"SED": "SE"},
   mutually_exclusive_pairs=[
     ("1hB", "2hB", "3hB"),
-    ("1hG", "2hG", "3hG")])
+    ("1hG", "2hG", "3hG")],
+  non_hydrogens=("N","CA","C","O","CB","CG","SE","CE"),
+  hydrogens=("H","HA","HB1","HB2","HG1","HG2","HE1","HE2","HE3"))
 
 pro_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -253,7 +268,9 @@ pro_interpreter = interpreter(
   mutually_exclusive_pairs=[
     ("1hB", "2hB", "3hB"),
     ("1hG", "2hG", "3hG"),
-    ("1hD", "2hD", "3hD")])
+    ("1hD", "2hD", "3hD")],
+  non_hydrogens=("N","CA","C","O","CB","CG","CD"),
+  hydrogens=("HA","HB1","HB2","HG1","HG2","HD1","HD2"))
 
 phe_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -267,7 +284,9 @@ phe_interpreter = interpreter(
     "CZ", "hZ"],
   peptide_synonym_patterns + {"1hZ": "hZ"},
   mutually_exclusive_pairs=[
-    ("1hB", "2hB", "3hB")])
+    ("1hB", "2hB", "3hB")],
+  non_hydrogens=("N","CA","C","O","CB","CG","CD1","CE1","CZ","CE2","CD2"),
+  hydrogens=("H","HA","HB1","HB2","HD1","HE1","HZ","HE2","HD2"))
 
 trp_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -284,7 +303,10 @@ trp_interpreter = interpreter(
     "CH2", "hH2"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "2hB", "3hB")])
+    ("1hB", "2hB", "3hB")],
+  non_hydrogens=("N","CA","C","O","CB","CG","CD1","CD2","NE1","CE2","CE3","CZ2",
+    "CZ3","CH2"),
+  hydrogens=("H","HA","HB2","HB3","HD1","HE1","HE3","HZ2","HZ3","HH2"))
 
 ser_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -293,7 +315,9 @@ ser_interpreter = interpreter(
     "OG", "hG"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "2hB", "3hB")])
+    ("1hB", "2hB", "3hB")],
+  non_hydrogens=("N","CA","C","O","CB","OG"),
+  hydrogens=("H","HA","HB1","HB2","HG"))
 
 thr_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -301,7 +325,9 @@ thr_interpreter = interpreter(
     "CB", "hB",
     "OG1", "hG1",
     "CG2", "1hG2", "2hG2", "3hG2"],
-  peptide_synonym_patterns)
+  peptide_synonym_patterns,
+  non_hydrogens=("N","CA","C","O","CB","OG1","CG2"),
+  hydrogens=("H","HA","HB","HG1","HG21","HG22","HG23"))
 
 asn_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -312,7 +338,9 @@ asn_interpreter = interpreter(
     "ND2", "1hD2", "2hD2"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "2hB", "3hB")])
+    ("1hB", "2hB", "3hB")],
+  non_hydrogens=("N","CA","C","O","CB","CG","OD1","ND2"),
+  hydrogens=("H","HA","HB1","HB2","HD21","HD22"))
 
 gln_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -325,7 +353,9 @@ gln_interpreter = interpreter(
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
     ("1hB", "2hB", "3hB"),
-    ("1hG", "2hG", "3hG")])
+    ("1hG", "2hG", "3hG")],
+  non_hydrogens=("N","CA","C","O","CB","CG","CD","OE1","NE2"),
+  hydrogens=("H","HA","HB1","HB2","HG1","HG2","HE21","HE22"))
 
 tyr_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -340,7 +370,9 @@ tyr_interpreter = interpreter(
     "OH", "hH"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "2hB", "3hB")])
+    ("1hB", "2hB", "3hB")],
+  non_hydrogens=("N","CA","C","O","CB","CG","CD1","CE1","CZ","OH","CE2","CD2"),
+  hydrogens=("H","HA","HB1","HB2","HD1","HE1","HH","HE2","HD2"))
 
 cys_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -349,7 +381,9 @@ cys_interpreter = interpreter(
     "SG", "hG"],
   peptide_synonym_patterns + {"1hG": "hG"},
   mutually_exclusive_pairs=[
-    ("1hB", "2hB", "3hB")])
+    ("1hB", "2hB", "3hB")],
+  non_hydrogens=("N","CA","C","O","CB","SG"),
+  hydrogens=("H","HA","HB1","HB2","HG"))
 
 lys_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -364,7 +398,10 @@ lys_interpreter = interpreter(
     ("1hB", "2hB", "3hB"),
     ("1hG", "2hG", "3hG"),
     ("1hD", "2hD", "3hD"),
-    ("1hE", "2hE", "3hE")])
+    ("1hE", "2hE", "3hE")],
+  non_hydrogens=("N","CA","C","O","CB","CG","CD","CE","NZ"),
+  hydrogens=("H","HA","HB1","HB2","HG1","HG2","HD1","HD2","HE1","HE2","HZ1",
+    "HZ2","HZ3"))
 
 arg_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -381,7 +418,10 @@ arg_interpreter = interpreter(
   mutually_exclusive_pairs=[
     ("1hB", "2hB", "3hB"),
     ("1hG", "2hG", "3hG"),
-    ("1hD", "2hD", "3hD")])
+    ("1hD", "2hD", "3hD")],
+  non_hydrogens=("N","CA","C","O","CB","CG","CD","NE","CZ","NH1","NH2"),
+  hydrogens=("H","HA","HB1","HB2","HG1","HG2","HD1","HD2","HE","HH11","HH12",
+    "HH21","HH22"))
 
 his_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -394,7 +434,9 @@ his_interpreter = interpreter(
     "NE2", "hE2"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "2hB", "3hB")])
+    ("1hB", "2hB", "3hB")],
+  non_hydrogens=("N","CA","C","O","CB","CG","ND1","CE1","NE2","CD2"),
+  hydrogens=("H","HA","HB1","HB2","HD1","HE1","HE2","HD2"))
 
 asp_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -406,7 +448,9 @@ asp_interpreter = interpreter(
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
     ("1hB", "2hB", "3hB"),
-    ("hD1", "hD2", "hD2")])
+    ("hD1", "hD2", "hD2")],
+  non_hydrogens=("N","CA","C","O","CB","CG","OD1","OD2"),
+  hydrogens=("H","HA","HB1","HB2"))
 
 glu_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -419,7 +463,9 @@ glu_interpreter = interpreter(
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
     ("1hB", "2hB", "3hB"),
-    ("1hG", "2hG", "3hG")])
+    ("1hG", "2hG", "3hG")],
+  non_hydrogens=("N","CA","C","O","CB","CG","CD","OE1","OE2"),
+  hydrogens=("H","HA","HB1","HB2","HG1","HG2"))
 
 interpreters = {
   "GLY": gly_interpreter,
