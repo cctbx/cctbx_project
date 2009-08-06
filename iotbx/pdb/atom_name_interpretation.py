@@ -18,7 +18,7 @@ class interpreter(object):
 
   def __init__(self,
         expected_patterns,
-        synonym_patterns, non_hydrogens, hydrogens, 
+        synonym_patterns, non_hydrogens, hydrogens,
         mutually_exclusive_pairs=[]):
     expected_patterns_set = set()
     for expected_pattern in expected_patterns:
@@ -151,7 +151,7 @@ class matched_atom_names(object):
         for i in name_indices[name]:
           result[i] = mon_lib_name
     return result
-  
+
   def missing_atom_names(self, ignore_hydrogen=False):
     if ignore_hydrogen:
       return set(self.interpreter.non_hydrogens).difference(
@@ -160,7 +160,7 @@ class matched_atom_names(object):
       return set(self.interpreter.non_hydrogens +
         self.interpreter.hydrogens).difference(
         set(self.mon_lib_names()))
-      
+
 peptide_expected_patterns = [
   "N", "h", "1h", "2h", "3h",
   "CA",
