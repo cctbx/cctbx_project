@@ -377,9 +377,9 @@ class manager(object):
     geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = self.restraints_manager.geometry.plain_pairs_radius,
-      edits              = None, #self.params.geometry_restraints.edits, XXX
+      params_edits       = None, # XXX
+      params_remove      = None, # XXX this is lost too
       assume_hydrogens_all_missing = not has_hd)
-    # self.remove_selected_geometry_restraints(manager = geometry) XXX this is lost too
     new_restraints_manager = mmtbx.restraints.manager(
       geometry      = geometry,
       normalization = self.restraints_manager.normalization)

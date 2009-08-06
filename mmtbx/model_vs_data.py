@@ -235,7 +235,6 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
     geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies                = False,
       plain_pairs_radius           = 5.0,
-      edits                        = None,
       assume_hydrogens_all_missing = not has_hd)
     restraints_manager_all = mmtbx.restraints.manager(
       geometry      = geometry,

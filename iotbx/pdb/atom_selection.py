@@ -4,9 +4,8 @@ from scitbx.array_family import flex
 from scitbx import stl
 import scitbx.stl.map
 from libtbx.phil import tokenizer
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, format_exception
 from cStringIO import StringIO
-import traceback
 
 def _character_case_id(strings):
   have_upper = False
@@ -389,9 +388,7 @@ class cache(object):
         callback=callback)
     except (AtomSelectionError, KeyboardInterrupt): raise
     except:
-      s = StringIO()
-      traceback.print_exc(file=s)
-      msg = s.getvalue().splitlines()
+      msg = format_exception().splitlines()
       msg.extend([
         "Atom selection string leading to error:",
         "  " + string])
