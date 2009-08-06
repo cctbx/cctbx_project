@@ -5,6 +5,7 @@ import math
 from cctbx.uctbx import unit_cell
 from cctbx import matrix
 from rstbx.diffraction import rotation_angles
+from libtbx.test_utils import approx_equal
 
 # This script (provided by Graeme WInter) will take the quartz structure and simulate a rotation
 # around the 0 0 1 reflection and  1 0 1 reflection. If there is a problem
@@ -47,7 +48,32 @@ if __name__ == '__main__':
     resolution = 1.5
 
     uc = unit_cell([5.01, 5.01, 5.47, 90.0, 90.0, 120.0])
-    bmat = matrix.sqr(uc.orthogonalization_matrix()).inverse()
+
+    bmat = matrix.sqr(uc.orthogonalization_matrix()).inverse().transpose()
+
+    #----------------------------
+    # prove that the matrix bmat is consistent with the ewald_sphere class requirements:
+    #               / A*x B*x C*x \
+    #  Matrix A* =  | A*y B*y C*y |
+    #               \ A*z B*z C*z /
+
+    uc_reciprocal = uc.reciprocal()
+    astar,bstar,cstar,alphastar,betastar,gammastar = uc_reciprocal.parameters()
+    astar_vec = matrix.col([bmat[0],bmat[3],bmat[6]])
+    bstar_vec = matrix.col([bmat[1],bmat[4],bmat[7]])
+    cstar_vec = matrix.col([bmat[2],bmat[5],bmat[8]])
+
+    assert approx_equal(astar, math.sqrt(astar_vec.dot(astar_vec)))
+    assert approx_equal(bstar, math.sqrt(bstar_vec.dot(bstar_vec)))
+    assert approx_equal(cstar, math.sqrt(cstar_vec.dot(cstar_vec)))
+    assert approx_equal(bstar*cstar*math.cos(math.pi*alphastar/180),
+                        bstar_vec.dot(cstar_vec))
+    assert approx_equal(cstar*astar*math.cos(math.pi*betastar/180),
+                        cstar_vec.dot(astar_vec))
+    assert approx_equal(astar*bstar*math.cos(math.pi*gammastar/180),
+                        astar_vec.dot(bstar_vec))
+    # proof complete, bmat == A*
+    #----------------------------
 
     first_rotation_vector = matrix.col([1, 0, 0])
     second_rotation_vector = matrix.col([1, 0, 1])
