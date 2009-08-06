@@ -313,6 +313,7 @@ mmtbx/chemical_components/tst.py -text
 mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/fobs_minus_fobs_map.py -text
 mmtbx/command_line/grow_density.py -text
+mmtbx/command_line/lockit.py svneol=native#text/x-python
 mmtbx/command_line/maps.py -text
 mmtbx/command_line/model_vs_data.py -text
 mmtbx/command_line/mon_lib_cif_triage.py svneol=native#text/x-python
