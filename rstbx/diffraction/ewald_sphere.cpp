@@ -90,7 +90,8 @@ rstbx::rotation_angles::operator()(scitbx::vec3<double>const& H){
   // D =  e_axial_direction . X0 + DplaneH
   // In this case we are interested in the distance of the center of the
   // Ewald sphere (this distance can be positive or negative)
-  double D = a_dot_s + DplaneH;
+  //  Correct sign for a_dot_s provided by Graeme Winter 8/6/2009:
+  double D = DplaneH - a_dot_s;
 
   //Remove this assertion for the Pringle_Shen gonio; spindle not perpendicular to beam
   //SCITBX_ASSERT(DplaneH * D >= 0.); //sphere centers Co and Cn must be on same side of origin
