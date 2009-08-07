@@ -5,13 +5,42 @@ import iotbx.mtz
 import iotbx.phil, libtbx.phil
 from cctbx import maptbx
 import cctbx.maptbx.real_space_refinement_simple
+import cctbx.geometry_restraints
 from cctbx.array_family import flex
 import scitbx.lbfgs
+from scitbx import matrix
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
 import libtbx
 import sys, os
 op = os.path
+
+def next_rotamer(residue):
+  from mmtbx.rotamer.sidechain_angles import SidechainAngles
+  sa = SidechainAngles(False)
+  resname = residue.resname.lower()
+  for rot in sa.rotamersForAA[resname]:
+    rot_key = resname+"."+rot
+    chi_counter=0
+    for angle in sa.anglesForAA[resname]:
+      current_hash = {}
+      for atom in residue.atoms():
+        current_hash[atom.name] = atom.xyz
+      a_key = resname+"."+angle
+      a = sa.atomsForAngle[a_key]
+      a1,a2,a3,a4 = [current_hash[a[i]] for i in [0,1,2,3]]
+      d = cctbx.geometry_restraints.dihedral(
+        sites=[a1,a2,a3,a4], angle_ideal=0, weight=1)
+      startAngle = d.angle_model
+      endAngle = float(sa.anglesForRot[rot_key][chi_counter])
+      dTheta = endAngle - startAngle
+      rt = matrix.col(a2).rt_for_rotation_around_axis_through(
+        point=matrix.col(a3), angle=dTheta, deg=True)
+      for atom in residue.atoms():
+        if atom.name in sa.atomsMoveWithAngle[a_key]:
+          atom.xyz = rt * matrix.col(atom.xyz)
+      chi_counter+=1
+    yield rot
 
 def residue_is_suitable_for_scoring(residue):
   matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
@@ -27,27 +56,20 @@ def residue_is_suitable_for_scoring(residue):
     return False
   return True
 
-def score_residue(
-      density_map,
-      pdb_hierarchy,
-      geometry_restraints_manager,
-      sites_cart,
-      residue):
-  rs_f = maptbx.real_space_target_simple(
-    unit_cell=geometry_restraints_manager.crystal_symmetry.unit_cell(),
-    density_map=density_map,
-    sites_cart=sites_cart.select(indices=residue.atoms().extract_i_seq()))
-  print residue.id_str(), "score: %.6g" % rs_f
-
 def rotamer_scoring(
       density_map,
       pdb_hierarchy,
-      geometry_restraints_manager,
-      sites_cart):
+      geometry_restraints_manager):
   n_other_residues = 0
   n_amino_acids_ignored = 0
   n_amino_acids_scored = 0
   get_class = iotbx.pdb.common_residue_names_get_class
+  def score_residue():
+    rs_f = maptbx.real_space_target_simple(
+      unit_cell=geometry_restraints_manager.crystal_symmetry.unit_cell(),
+      density_map=density_map,
+      sites_cart=residue.atoms().extract_xyz())
+    print residue.id_str(), "score(%s): %.6g" % (rotamer_name, rs_f)
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       for residue in chain.only_conformer().residues():
@@ -56,13 +78,15 @@ def rotamer_scoring(
         elif (not residue_is_suitable_for_scoring(residue=residue)):
           n_amino_acids_ignored += 1
         else:
-          score_residue(
-            density_map=density_map,
-            pdb_hierarchy=pdb_hierarchy,
-            geometry_restraints_manager=geometry_restraints_manager,
-            sites_cart=sites_cart,
-            residue=residue)
+          rotamer_name = "as_given"
+          score_residue()
           n_amino_acids_scored += 1
+          try:
+            for rotamer_name in next_rotamer(residue=residue):
+              score_residue()
+          except KeyboardInterrupt: raise
+          except Exception, e:
+            print "EXCEPTION next_rotamer():", e
   if (n_amino_acids_scored != 0): print
   print "number of amino acid residues scored:", n_amino_acids_scored
   print "number of amino acid residues ignored:", n_amino_acids_ignored
@@ -248,19 +272,18 @@ def run(args):
   print
   sys.stdout.flush()
   #
-  sites_cart = processed_pdb_file.all_chain_proxies.sites_cart_exact()
-  #
   if (work_params.lbfgs_max_iterations != 0):
+    pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
     refined = maptbx.real_space_refinement_simple.lbfgs(
-      sites_cart=sites_cart,
+      sites_cart=pdb_atoms.extract_xyz(),
       density_map=density_map,
       geometry_restraints_manager=grm,
       real_space_target_weight=work_params.real_space_target_weight,
       real_space_gradients_delta=real_space_gradients_delta,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=work_params.lbfgs_max_iterations))
-    sites_cart = refined.sites_cart
-    grm.energies_sites(sites_cart=sites_cart).show()
+    grm.energies_sites(sites_cart=refined.sites_cart).show()
+    pdb_atoms.set_xyz(new_xyz=refined.sites_cart)
     print
     print "number_of_function_evaluations:", \
       refined.number_of_function_evaluations
@@ -271,8 +294,7 @@ def run(args):
     rotamer_scoring(
       density_map=density_map,
       pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-      geometry_restraints_manager=grm,
-      sites_cart=sites_cart)
+      geometry_restraints_manager=grm)
   show_times()
   sys.stdout.flush()
 
