@@ -4,6 +4,7 @@ import iotbx.pdb.atom_name_interpretation
 import iotbx.mtz
 import iotbx.phil, libtbx.phil
 from cctbx import maptbx
+import cctbx.maptbx.real_space_refinement_simple
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from libtbx.str_utils import show_string
