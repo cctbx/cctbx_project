@@ -1,6 +1,7 @@
 
 # XXX: To keep these classes as clean as possible, selections are handled
 # entirely in wx_selection_editor.py.
+# TODO: hide nonbonded point for any atom that has an ellipsoid drawn
 
 import iotbx.phil
 from cctbx import uctbx
@@ -64,7 +65,10 @@ class model_data (object) :
     self.flag_object_visible = True
     self._color_cache = {}
     self.flag_show_hydrogens = False
+    self.flag_show_lines = True
+    self.flag_show_labels = True
     self.flag_show_points = True
+    self.flag_show_spheres = False
     self.flag_show_ellipsoids = False
     self.update_structure(pdb_hierarchy, atomic_bonds)
     self.use_u_aniso = flex.bool(self.atoms.size())
@@ -131,9 +135,11 @@ class model_data (object) :
   @debug
   def update_structure (self, pdb_hierarchy, atomic_bonds) :
     self.pdb_hierarchy = pdb_hierarchy
-    self.atomic_bonds = atomic_bonds
     self.atoms = pdb_hierarchy.atoms()
     self.atom_count = self.atoms.size()
+    if atomic_bonds is None :
+      atomic_bonds = flex.stl_set_unsigned(self.atom_count)
+    self.atomic_bonds = atomic_bonds
     self.selection_cache = pdb_hierarchy.atom_selection_cache()
     atom_index = []
     atom_labels = flex.std_string()
@@ -161,6 +167,10 @@ class model_data (object) :
   def recalculate_visibility (self) :
     c = 0
     atoms = self.atom_index
+    if self.draw_mode == "spheres" :
+      show_points = True
+    else :
+      show_points = self.flag_show_points
     if self.flag_show_hydrogens :
       atoms_drawable = flex.bool(self.atom_count, True)
     else :
@@ -168,7 +178,7 @@ class model_data (object) :
     self.visibility = viewer_utils.atom_visibility(
       bonds             = self.current_bonds,
       atoms_drawable    = atoms_drawable,
-      flag_show_points  = self.flag_show_points
+      flag_show_points  = show_points
     )
     self.visible_atom_count = self.visibility.visible_atoms_count
 
@@ -191,14 +201,17 @@ class model_data (object) :
     else :
       self.draw_mode = draw_mode
       show_points = True
-      if draw_mode in ["trace", "trace_and_nb"] :
-        self.current_bonds = self.trace_bonds
+      if draw_mode == "spheres" :
+        self.flag_show_spheres = True
       else :
-        self.current_bonds = self.atomic_bonds
-      if draw_mode in ["trace", "bonded_only"] :
-        self.flag_show_points = False
-      else :
-        self.flag_show_points = True
+        if draw_mode in ["trace", "trace_and_nb"] :
+          self.current_bonds = self.trace_bonds
+        else :
+          self.current_bonds = self.atomic_bonds
+        if draw_mode in ["trace", "bonded_only"] :
+          self.flag_show_points = False
+        else :
+          self.flag_show_points = True
       self.recalculate_visibility()
       self.set_color_mode(self.color_mode) # force re-coloring
 
@@ -483,12 +496,11 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     self.flag_show_lines                   = True
     self.flag_show_points                  = True
     self.flag_show_spheres                 = False
-    self.flag_show_ellipsoids              = False
     self.flag_use_lights                   = True
     self.flag_show_labels                  = True
     self.flag_show_trace                   = False
     self.flag_show_hydrogens               = False
-    self.flag_show_ellipsoids              = False
+    self.flag_show_ellipsoids              = True
     self.flag_smooth_lines                 = True
     self.flag_recenter_on_click            = False
 
@@ -544,11 +556,11 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
   def DrawGL(self):
     if self.GL_uninitialised or len(self.scene_objects) == 0 :
       return
-    if (self.flag_show_points):
+    if self.flag_show_points :
       self.draw_points()
-    if (self.flag_show_lines):
+    if self.flag_show_lines :
       self.draw_lines()
-    if (self.flag_show_spheres):
+    if self.flag_show_spheres :
       self.draw_spheres()
     if self.flag_show_ellipsoids :
       self.draw_ellipsoids()
@@ -558,9 +570,9 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
   def draw_points (self) :
     glDisable(GL_LIGHTING)
     glLineWidth(self.settings.opengl.nonbonded_line_width)
-    for object_id, scene in self.scene_objects.iteritems() :
-      if self.show_object[object_id] :
-        scene.draw_points()
+    for model_id, model in self.iter_models() :
+      if self.show_object[model_id] and model.flag_show_points :
+        self.scene_objects[model_id].draw_points()
 
   def draw_spheres (self) :
     glMatrixMode(GL_MODELVIEW)
@@ -572,9 +584,9 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [1.0,1.0,1.0,1.0])
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.1, 0.1, 0.1, 1.0])
-    for object_id, scene in self.scene_objects.iteritems() :
-      if self.show_object[object_id] :
-        scene.draw_spheres()
+    for model_id, model in self.iter_models() :
+      if self.show_object[model_id] and model.flag_show_spheres :
+        self.scene_objects[model_id].draw_spheres()
 
   def draw_lines (self) :
     glEnable(GL_LINE_SMOOTH)
@@ -582,9 +594,9 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     glDisable(GL_LIGHTING)
     glLineWidth(self.settings.opengl.line_width)
-    for object_id, scene in self.scene_objects.iteritems() :
-      if self.show_object[object_id] :
-        scene.draw_lines()
+    for model_id, model in self.iter_models() :
+      if self.show_object[model_id] and model.flag_show_lines :
+        self.scene_objects[model_id].draw_lines()
     if not self.flag_smooth_lines :
       glDisable(GL_LINE_SMOOTH)
 
@@ -601,20 +613,21 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       glLightModelfv(GL_LIGHT_MODEL_AMBIENT, [0.5, 0.5, 0.5, 1.0])
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
     proto_ellipsoid = self.proto_ellipsoid
-    for object_id, scene in self.scene_objects.iteritems() :
-      if self.show_object[object_id] :
-        scene.draw_ellipsoids(proto_ellipsoid)
+    for model_id, model in self.iter_models() :
+      if self.show_object[model_id] and model.flag_show_ellipsoids :
+        self.scene_objects[model_id].draw_ellipsoids(proto_ellipsoid)
 
   def draw_labels (self) :
     glDisable(GL_LIGHTING)
     use_atom_color = self.settings.opengl.use_atom_color_for_labels
     if not use_atom_color :
+      print "using global label color"
       glColor3f(1.0, 1.0, 1.0)
-    for object_id, scene in self.scene_objects.iteritems() :
-      if self.show_object[object_id] :
-        font = gltbx.fonts.ucs_bitmap_8x13
-        font.setup_call_lists()
-        scene.draw_labels(font, use_atom_color)
+    font = gltbx.fonts.ucs_bitmap_8x13
+    font.setup_call_lists()
+    for model_id, model in self.iter_models() :
+      if self.show_object[model_id] and model.flag_show_labels :
+        self.scene_objects[model_id].draw_labels(font, use_atom_color)
 
   @debug
   def refresh_bg_color (self) :
@@ -626,9 +639,9 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
   #
   def update_settings (self, params, redraw=False) :
     assert (len(params.opengl.base_atom_color) ==
-            len(params.opengl.background_color) ==
-            len(params.opengl.selection_color) == 3)
+            len(params.opengl.background_color) == 3)
     self.settings = params
+    self.toggle_hydrogens(params.opengl.show_hydrogens)
     if redraw :
       self.update_scene = True
 
@@ -641,6 +654,26 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       if model.object_id == object_id :
         return model
     return None
+
+  def get_model_state (self, object_id) :
+    model = self.get_model(object_id)
+    model_attr = dir(model)
+    state = {}
+    for name in model_attr :
+      if name.startswith("flag_") :
+        state_var = name[5:] #re.sub("flag_", "", name)
+        state[state_var] = getattr(model, name)
+    state["draw_mode"] = model.draw_mode
+    state["color_mode"] = model.color_mode
+    return state
+
+  def set_model_state (self, object_id, model_state) :
+    model = self.get_model(object_id)
+    for name in model_state :
+      setattr(model, name, model_state[name])
+    model.set_draw_mode(model_state["draw_mode"])
+    #model.recalculate_visibility()
+    self.update_scene = True
 
   @debug
   def add_model (self, model_id, pdb_hierarchy, atomic_bonds=None) :
@@ -658,8 +691,17 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
 
   def update_model (self, model_id, pdb_hierarchy, atomic_bonds) :
     model = self.get_model(model_id)
-    model.update_structure(pdb_hierarchy, atomic_bonds)
-    self.update_scene = True
+    if model is not None :
+      model.update_structure(pdb_hierarchy, atomic_bonds)
+      self.update_scene = True
+    else :
+      self.add_model(model_id, pdb_hierarchy, atomic_bonds)
+
+  def update_model_from_xray_structure (self, model_id, xray_structure) :
+    model = self.get_model(model_id)
+    if model is not None :
+      model.update_from_xray_structure(xray_structure)
+      self.update_scene = True
 
   def update_mcs (self, points, recenter_and_zoom=True) :
     self.minimum_covering_sphere = minimum_covering_sphere(
@@ -711,7 +753,8 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
             break
     if self.closest_point_i_seq is not None :
       clicked_scene = self.scene_objects.get(self.closest_point_object_id)
-      clicked_scene.add_label(self.closest_point_i_seq)
+      if self.settings.opengl.label_clicked_atom :
+        clicked_scene.add_label(self.closest_point_i_seq)
       if self.flag_recenter_on_click :
         self.recenter_on_atom(self.closest_point_object_id,
           self.closest_point_i_seq)
@@ -817,8 +860,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
   @debug
   def OnUpdate (self, event) :
     self.update_scene_objects()
-    if (event is not None and hasattr(event, "recenter") and
-        event.recenter == True) or recenter == True :
+    if getattr(event, "recenter", False) :
       self.move_rotation_center_to_mcs_center()
       self.fit_into_viewport()
 

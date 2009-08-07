@@ -1,6 +1,7 @@
 
 import sys, os
 from crys3d.wx_selection_editor import selection_editor_mixin
+import iotbx.phil
 from gltbx import wx_viewer
 import gltbx.util
 from gltbx.gl import *
@@ -11,6 +12,10 @@ from scitbx.array_family import flex
 from scitbx import iso_surface
 from libtbx import adopt_init_args
 import wx
+
+viewer_phil = iotbx.phil.parse("""
+  include scope crys3d.wx_selection_editor.viewer_phil
+""", process_includes=True)
 
 class map_data (object) :
   def __init__ (self, map) :
@@ -187,6 +192,7 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
       self.fog_end_offset -= scale
     else :
       self.clip_far -= scale
+    self.OnRedrawGL()
 
   def process_key_stroke (self, key) :
     if key == wx.WXK_UP :
@@ -248,7 +254,7 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
       scene.draw_mesh()
 
 class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
-  initialize_map_viewer_super = True
+  initialize_map_viewer_super = False
   def __init__ (self, *args, **kwds) :
     selection_editor_mixin.__init__(self, *args, **kwds)
     map_viewer_mixin.__init__(self, *args, **kwds)

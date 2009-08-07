@@ -152,8 +152,12 @@ class mouse_selection_manager (object) :
     return self.selection_i_seqs.size()
 
   def apply_selection (self, selection_string) :
+    if selection_string is None or selection_string == "" :
+      selection_string = "none"
     atom_selection = self.get_atom_selection(selection_string)
+    error = False
     if atom_selection is None :
+      error = True
       self.selection_string = "none"
       atom_selection = self.selection_cache.selection("none")
     else :
@@ -162,7 +166,7 @@ class mouse_selection_manager (object) :
     self.selection_i_seqs = atom_selection.iselection()
     if self.selection_callback is not None :
       self.selection_callback(self.selection_string, self.atom_selection)
-    if atom_selection is None :
+    if error : # wait until the end to do this
       raise Sorry("Invalid selection '%s'."%selection_string)
 
   def get_atom_selection (self, selection_string) :
