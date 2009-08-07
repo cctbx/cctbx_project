@@ -1,15 +1,73 @@
 from __future__ import division
 import mmtbx.monomer_library.pdb_interpretation
-import iotbx.pdb
+import iotbx.pdb.atom_name_interpretation
 import iotbx.mtz
 import iotbx.phil, libtbx.phil
-from cctbx.maptbx import real_space_refinement_simple
+from cctbx import maptbx
+from cctbx.array_family import flex
 import scitbx.lbfgs
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
 import libtbx
 import sys, os
 op = os.path
+
+def residue_is_suitable_for_scoring(residue):
+  matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
+    residue.resname].match_atom_names(
+      atom_names=residue.atoms().extract_name())
+  names = matched_atom_names.unexpected
+  if (len(names) != 0):
+    print residue.id_str(), "unexpected atoms:", " ".join(sorted(names))
+    return False
+  names = matched_atom_names.missing_atom_names(ignore_hydrogen=True)
+  if (len(names) != 0):
+    print residue.id_str(), "missing atoms:", " ".join(sorted(names))
+    return False
+  return True
+
+def score_residue(
+      density_map,
+      pdb_hierarchy,
+      geometry_restraints_manager,
+      sites_cart,
+      residue):
+  rs_f = maptbx.real_space_target_simple(
+    unit_cell=geometry_restraints_manager.crystal_symmetry.unit_cell(),
+    density_map=density_map,
+    sites_cart=sites_cart.select(indices=residue.atoms().extract_i_seq()))
+  print residue.id_str(), "score: %.6g" % rs_f
+
+def rotamer_scoring(
+      density_map,
+      pdb_hierarchy,
+      geometry_restraints_manager,
+      sites_cart):
+  n_other_residues = 0
+  n_amino_acids_ignored = 0
+  n_amino_acids_scored = 0
+  get_class = iotbx.pdb.common_residue_names_get_class
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for residue in chain.only_conformer().residues():
+        if (get_class(residue.resname) != "common_amino_acid"):
+          n_other_residues += 1
+        elif (not residue_is_suitable_for_scoring(residue=residue)):
+          n_amino_acids_ignored += 1
+        else:
+          score_residue(
+            density_map=density_map,
+            pdb_hierarchy=pdb_hierarchy,
+            geometry_restraints_manager=geometry_restraints_manager,
+            sites_cart=sites_cart,
+            residue=residue)
+          n_amino_acids_scored += 1
+  if (n_amino_acids_scored != 0): print
+  print "number of amino acid residues scored:", n_amino_acids_scored
+  print "number of amino acid residues ignored:", n_amino_acids_ignored
+  print "number of other residues:", n_other_residues
+  print
+  sys.stdout.flush()
 
 class try_read_file(object):
 
@@ -74,12 +132,15 @@ map_coeff_labels = 2FOFCWT PH2FOFCWT
 map_resolution_factor = 1/3
   .type = float
 
+lbfgs_max_iterations = 0
+  .type = int
 real_space_target_weight = 1
   .type = float
 real_space_gradients_delta_resolution_factor = 1/3
   .type = float
-lbfgs_max_iterations = 500
-  .type = int
+
+rotamer_scoring = False
+  .type = bool
 
 pdb_interpretation {
   include scope mmtbx.monomer_library.pdb_interpretation.master_params
@@ -168,7 +229,7 @@ def run(args):
     substitute_non_crystallographic_unit_cell_if_necessary=True,
     log=sys.stdout)
   #
-  geo_manager = processed_pdb_file.geometry_restraints_manager(
+  grm = processed_pdb_file.geometry_restraints_manager(
     params_edits=work_params.geometry_restraints.edits,
     params_remove=work_params.geometry_restraints.remove)
   print
@@ -185,21 +246,32 @@ def run(args):
   print "real_space_gradients_delta: %.6g" % real_space_gradients_delta
   print
   sys.stdout.flush()
-  refined = real_space_refinement_simple.lbfgs(
-    sites_cart=processed_pdb_file.all_chain_proxies.sites_cart_exact(),
-    density_map=density_map,
-    geometry_restraints_manager=geo_manager,
-    real_space_target_weight=work_params.real_space_target_weight,
-    real_space_gradients_delta=real_space_gradients_delta,
-    lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-      max_iterations=work_params.lbfgs_max_iterations))
-  geo_manager.energies_sites(sites_cart=refined.sites_cart).show()
-  print
-  print "number_of_function_evaluations:", \
-    refined.number_of_function_evaluations
-  print "real+geo target start: %.6g" % refined.f_start
-  print "real+geo target final: %.6g" % refined.f_final
-  print
+  #
+  sites_cart = processed_pdb_file.all_chain_proxies.sites_cart_exact()
+  #
+  if (work_params.lbfgs_max_iterations != 0):
+    refined = maptbx.real_space_refinement_simple.lbfgs(
+      sites_cart=sites_cart,
+      density_map=density_map,
+      geometry_restraints_manager=grm,
+      real_space_target_weight=work_params.real_space_target_weight,
+      real_space_gradients_delta=real_space_gradients_delta,
+      lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+        max_iterations=work_params.lbfgs_max_iterations))
+    sites_cart = refined.sites_cart
+    grm.energies_sites(sites_cart=sites_cart).show()
+    print
+    print "number_of_function_evaluations:", \
+      refined.number_of_function_evaluations
+    print "real+geo target start: %.6g" % refined.f_start
+    print "real+geo target final: %.6g" % refined.f_final
+    print
+  if (work_params.rotamer_scoring):
+    rotamer_scoring(
+      density_map=density_map,
+      pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+      geometry_restraints_manager=grm,
+      sites_cart=sites_cart)
   show_times()
   sys.stdout.flush()
 
