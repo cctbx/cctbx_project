@@ -79,7 +79,8 @@ class model_scene_with_selection (model_scene) :
 
   def update_selection (self, atom_selection) :
     self.atom_selection = atom_selection
-    self.selected_atom_count = atom_selection.iselection().size()
+    self.selection_i_seqs = atom_selection.iselection()
+    self.selected_atom_count = self.selection_i_seqs.size()
     self.selection_display_list = None
 
   def update_visibility (self, visibility) :
@@ -140,9 +141,9 @@ class model_scene_with_selection (model_scene) :
 
 ########################################################################
 # VIEWER CLASS
-mouse_modes = ["Rotate view", "Toggle chain", "Toggle residue", "Toggle atom",
-  "Select range", "Deselect range", "Show selection menu"]
 class selection_editor_mixin (model_viewer_mixin) :
+  mouse_modes = ["Rotate view", "Toggle chain", "Toggle residue",
+    "Toggle atom", "Select range", "Deselect range"] #, "Show selection menu"]
   def __init__ (self, *args, **kwds) :
     self.left_button_mode = 0
     self.flag_select_all_conformers = True
@@ -150,6 +151,7 @@ class selection_editor_mixin (model_viewer_mixin) :
     self.flag_enable_mouse_selection = True
     self.current_atom_i_seq = None
     self.current_object_id = None
+    self._callback = print_cb
     self._in_range_selection = False
     model_viewer_mixin.__init__(self, *args,**kwds)
     self.settings = viewer_phil.extract()
@@ -177,18 +179,23 @@ class selection_editor_mixin (model_viewer_mixin) :
       if self.show_object[object_id] :
         for point in scene.get_selected_xyz() :
           points.append(point)
+    if points.size() == 0 :
+      for object_id, scene in self.scene_objects.iteritems() :
+        if self.show_object[object_id] :
+          points.extend(scene.points)
     if points.size() != 0 :
       self.update_mcs(points)
 
   def set_selection (self, object_id, selection_string) :
     for model_id, model in self.iter_models() :
-      if model_id == object_id :
+      if object_id is None or model_id == object_id :
         model.apply_selection(selection_string)
         self.update_scene = True
 
   def clear_selections (self) :
     for model_id, model in self.iter_models() :
       model.clear_selection()
+    self.update_scene = True
 
   def add_model (self, model_id, pdb_hierarchy, atomic_bonds,
       mmtbx_selection_function=None) :
@@ -196,7 +203,7 @@ class selection_editor_mixin (model_viewer_mixin) :
     model = model_data_with_selection(model_id, pdb_hierarchy, atomic_bonds,
       base_color=self.settings.opengl.base_atom_color)
     model.set_mmtbx_selection_function(mmtbx_selection_function)
-    model.set_selection_callback(print_cb)
+    model.set_selection_callback(self._callback)
     self._add_model(model_id, model)
 
   def process_key_stroke (self, key) :
@@ -214,10 +221,13 @@ class selection_editor_mixin (model_viewer_mixin) :
 
   def set_left_button_mode (self, mode) :
     self.left_button_mode = mode
-    print "left button mode is %s" % mouse_modes[mode]
     self._in_range_selection = False
 
   #---------------------------------------------------------------------
+  def set_selection_callback (self, callback) :
+    assert hasattr(callback, "__call__")
+    self._callback = callback
+
   def pick_selection_object (self, object_id) :
     for model_id in self.pick_object :
       if model_id == object_id :
@@ -263,6 +273,7 @@ class selection_editor_mixin (model_viewer_mixin) :
         self._in_range_selection = True
       self.update_scene = True
 
+  # TODO: finish this?
   def context_selection_menu (self) :
     menu = wx.Menu()
     toggle_chain = menu.Append(-1, "Toggle chain selection")
@@ -291,6 +302,7 @@ class selection_editor_mixin (model_viewer_mixin) :
         else:                             # Selection menu
           self.context_selection_menu()
 
+  # Handlers for selection menu events
   def OnToggleChain (self, event) :
     pass
 
