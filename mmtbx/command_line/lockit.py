@@ -56,20 +56,93 @@ def residue_is_suitable_for_scoring(residue):
     return False
   return True
 
+class residue_refine_restrained(object):
+
+  def __init__(O,
+        pdb_hierarchy,
+        residue,
+        density_map,
+        geometry_restraints_manager,
+        real_space_target_weight,
+        real_space_gradients_delta,
+        lbfgs_termination_params):
+    O.pdb_hierarchy = pdb_hierarchy
+    O.residue = residue
+    O.density_map = density_map
+    O.geometry_restraints_manager = geometry_restraints_manager
+    O.real_space_gradients_delta = real_space_gradients_delta
+    O.real_space_target_weight = real_space_target_weight
+    #
+    O.unit_cell = geometry_restraints_manager.crystal_symmetry.unit_cell()
+    O.sites_cart_all = pdb_hierarchy.atoms().extract_xyz()
+    O.residue_i_seqs = residue.atoms().extract_i_seq()
+    O.x = O.sites_cart_all.select(indices=O.residue_i_seqs).as_double()
+    #
+    O.number_of_function_evaluations = -1
+    O.f_start, O.g_start = O.compute_functional_and_gradients()
+    O.rs_f_start = O.rs_f
+    O.minimizer = scitbx.lbfgs.run(
+      target_evaluator=O,
+      termination_params=lbfgs_termination_params)
+    O.f_final, O.g_final = O.compute_functional_and_gradients()
+    O.rs_f_final = O.rs_f
+    del O.rs_f
+    del O.x
+    del O.residue_i_seqs
+    del O.sites_cart_all
+    del O.unit_cell
+
+  def compute_functional_and_gradients(O):
+    if (O.number_of_function_evaluations == 0):
+      O.number_of_function_evaluations += 1
+      return O.f_start, O.g_start
+    O.number_of_function_evaluations += 1
+    O.sites_cart_residue = flex.vec3_double(O.x)
+    O.sites_cart_all.set_selected(O.residue_i_seqs, O.sites_cart_residue)
+    rs_f = maptbx.real_space_target_simple(
+      unit_cell=O.unit_cell,
+      density_map=O.density_map,
+      sites_cart=O.sites_cart_residue)
+    rs_g = maptbx.real_space_gradients_simple(
+      unit_cell=O.unit_cell,
+      density_map=O.density_map,
+      sites_cart=O.sites_cart_residue,
+      delta=O.real_space_gradients_delta)
+    O.rs_f = rs_f
+    rs_f *= -O.real_space_target_weight
+    rs_g *= -O.real_space_target_weight
+    if (O.geometry_restraints_manager is None):
+      f = rs_f
+      g = rs_g
+    else:
+      gr_e = O.geometry_restraints_manager.energies_sites(
+        sites_cart=O.sites_cart_all, compute_gradients=True)
+      f = rs_f + gr_e.target
+      g = rs_g + gr_e.gradients.select(indices=O.residue_i_seqs)
+    return f, g.as_double()
+
 def rotamer_scoring(
       density_map,
       pdb_hierarchy,
-      geometry_restraints_manager):
+      geometry_restraints_manager,
+      real_space_target_weight,
+      real_space_gradients_delta,
+      lbfgs_termination_params):
   n_other_residues = 0
   n_amino_acids_ignored = 0
   n_amino_acids_scored = 0
   get_class = iotbx.pdb.common_residue_names_get_class
-  def score_residue():
-    rs_f = maptbx.real_space_target_simple(
-      unit_cell=geometry_restraints_manager.crystal_symmetry.unit_cell(),
+  def refine_restrained():
+    refined = residue_refine_restrained(
+      pdb_hierarchy=pdb_hierarchy,
+      residue=residue,
       density_map=density_map,
-      sites_cart=residue.atoms().extract_xyz())
-    print residue.id_str(), "score(%s): %.6g" % (rotamer_name, rs_f)
+      geometry_restraints_manager=geometry_restraints_manager,
+      real_space_target_weight=real_space_target_weight,
+      real_space_gradients_delta=real_space_gradients_delta,
+      lbfgs_termination_params=lbfgs_termination_params)
+    print residue.id_str(), "refined(%s): %.6g -> %.6g" % (
+      rotamer_name, refined.rs_f_start, refined.rs_f_final)
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       for residue in chain.only_conformer().residues():
@@ -79,11 +152,11 @@ def rotamer_scoring(
           n_amino_acids_ignored += 1
         else:
           rotamer_name = "as_given"
-          score_residue()
+          refine_restrained()
           n_amino_acids_scored += 1
           try:
             for rotamer_name in next_rotamer(residue=residue):
-              score_residue()
+              refine_restrained()
           except KeyboardInterrupt: raise
           except Exception, e:
             print "EXCEPTION next_rotamer():", e
@@ -157,15 +230,24 @@ map_coeff_labels = 2FOFCWT PH2FOFCWT
 map_resolution_factor = 1/3
   .type = float
 
-lbfgs_max_iterations = 0
-  .type = int
 real_space_target_weight = 1
   .type = float
 real_space_gradients_delta_resolution_factor = 1/3
   .type = float
 
-rotamer_scoring = False
-  .type = bool
+all_coordinate_refinement {
+  run = False
+    .type = bool
+  lbfgs_max_iterations = 500
+    .type = int
+}
+
+rotamer_scoring {
+  run = False
+    .type = bool
+  lbfgs_max_iterations = 50
+    .type = int
+}
 
 pdb_interpretation {
   include scope mmtbx.monomer_library.pdb_interpretation.master_params
@@ -272,7 +354,7 @@ def run(args):
   print
   sys.stdout.flush()
   #
-  if (work_params.lbfgs_max_iterations != 0):
+  if (work_params.all_coordinate_refinement.run != 0):
     pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
     refined = maptbx.real_space_refinement_simple.lbfgs(
       sites_cart=pdb_atoms.extract_xyz(),
@@ -281,7 +363,8 @@ def run(args):
       real_space_target_weight=work_params.real_space_target_weight,
       real_space_gradients_delta=real_space_gradients_delta,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=work_params.lbfgs_max_iterations))
+        max_iterations=work_params.all_coordinate_refinement
+          .lbfgs_max_iterations))
     grm.energies_sites(sites_cart=refined.sites_cart).show()
     pdb_atoms.set_xyz(new_xyz=refined.sites_cart)
     print
@@ -290,11 +373,15 @@ def run(args):
     print "real+geo target start: %.6g" % refined.f_start
     print "real+geo target final: %.6g" % refined.f_final
     print
-  if (work_params.rotamer_scoring):
+  if (work_params.rotamer_scoring.run):
     rotamer_scoring(
       density_map=density_map,
       pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-      geometry_restraints_manager=grm)
+      geometry_restraints_manager=grm,
+      real_space_target_weight=work_params.real_space_target_weight,
+      real_space_gradients_delta=real_space_gradients_delta,
+      lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+        max_iterations=work_params.rotamer_scoring.lbfgs_max_iterations))
   show_times()
   sys.stdout.flush()
 
