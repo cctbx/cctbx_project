@@ -10,6 +10,34 @@ import pickle, cPickle
 import random
 import sys
 
+def exercise_joint_lib_six_dof_aja_simplified():
+  tc = tst_tardy_pdb.test_cases[9]
+  tt = tc.tardy_tree_construct()
+  masses = [1.0]*len(tc.sites)
+  # arbitrary transformation so that the center of mass is not at the origin
+  rt_arbitrary = matrix.col((-0.21,-0.51,0.64)) \
+    .rt_for_rotation_around_axis_through(
+      point=matrix.col((-0.80, 0.28, -0.89)), angle=-37, deg=True)
+  sites = [rt_arbitrary * site for site in tc.sites]
+  tm = scitbx.rigid_body.essence.tardy.model(
+    labels=tc.labels,
+    sites=sites,
+    masses=masses,
+    tardy_tree=tt,
+    potential_obj=None)
+  assert len(tm.bodies) == 1
+  assert tm.q_packed_size == 7
+  mt = flex.mersenne_twister(seed=0)
+  for i_trial in xrange(3):
+    q = mt.random_double(size=tm.q_packed_size)*2-1
+    tm.unpack_q(q_packed=q)
+    sm = tm.sites_moved()
+    aja = matrix.rt(scitbx.rigid_body.joint_lib_six_dof_aja_simplified(
+      center_of_mass=tuple(flex.vec3_double(sites).mean()),
+      q=q))
+    sm2 = [aja * site for site in sites]
+    assert approx_equal(sm2, sm)
+
 def etm_as_ftm(etm):
   ftm = scitbx.rigid_body.tardy_model(
     labels=etm.labels,
@@ -443,6 +471,7 @@ def exercise_pickle():
 
 def run(args):
   assert len(args) == 0
+  exercise_joint_lib_six_dof_aja_simplified()
   exercise_with_tst_tardy_pdb_test_cases()
   exercise_fixed_vertices()
   exercise_pickle()
