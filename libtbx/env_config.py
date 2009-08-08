@@ -1695,6 +1695,10 @@ class pre_process_args:
         default=True,
         help="disable Boost.Python implicit bool<->int conversions")
     self.command_line = parser.process(args=args)
+    if (len(self.command_line.args) == 0):
+      raise Sorry(
+        "At least one module name is required"
+        " (use --help to obtain more information).")
     if (not hasattr(os.path, "samefile")):
       self.command_line.options.current_working_directory = None
     if (default_repositories is not None):
