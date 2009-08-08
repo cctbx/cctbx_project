@@ -176,7 +176,7 @@ def as_raw_asu(asu, f=None):
 
 
 def run():
-  import optparse
+  import libtbx.option_parser as optparse
   parser = optparse.OptionParser()
   parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
       default=False, help="be verbose")
