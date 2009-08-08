@@ -347,6 +347,24 @@ namespace joint_lib {
     }
   };
 
+  /*! \brief Simplification of aja (featherstone.h) for
+      six_dof_alignment and six_dof above.
+   */
+  template <typename FloatType>
+  rotr3<FloatType>
+  six_dof_aja_simplified(
+    vec3<FloatType> const& center_of_mass,
+    af::const_ref<FloatType> const& q)
+  {
+    SCITBX_ASSERT(q.size() == 7);
+    typedef FloatType ft;
+    af::tiny<ft, 4> qe(&q[0], &q[4]);
+    vec3<ft> qr(&q[4]);
+    af::tiny<ft, 4> unit_quaternion(vec4_normalize(qe));
+    mat3<ft> et(rbda_eq_4_12(unit_quaternion).transpose());
+    return rotr3<ft>(et, center_of_mass + qr - et * center_of_mass);
+  }
+
   //! See code.
   template <typename FloatType=double>
   struct spherical_alignment : alignment_t<FloatType>

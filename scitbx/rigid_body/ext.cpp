@@ -3,15 +3,27 @@
 #include <scitbx/boost_python/array_as_list.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/import.hpp>
+#include <boost/python/tuple.hpp>
 
 #include <scitbx/rigid_body/tardy.h>
 
 namespace scitbx { namespace rigid_body { namespace ext {
+
+  boost::python::tuple
+  joint_lib_six_dof_aja_simplified_wrapper(
+    vec3<double> const& center_of_mass,
+    af::const_ref<double> const& q)
+  {
+    rotr3<double>
+      result = joint_lib::six_dof_aja_simplified(center_of_mass, q);
+    return boost::python::make_tuple(result.r, result.t);
+  }
 
   struct featherstone_system_model_wrappers
   {
@@ -173,6 +185,12 @@ namespace scitbx { namespace rigid_body { namespace ext {
 
   void init_module()
   {
+    using namespace boost::python;
+    def("joint_lib_six_dof_aja_simplified",
+      joint_lib_six_dof_aja_simplified_wrapper, (
+        arg_("center_of_mass"),
+        arg_("q")));
+
     featherstone_system_model_wrappers::wrap();
     tardy_model_wrappers::wrap();
   }
