@@ -217,7 +217,7 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
   def update_map (self, map_id, map) :
     assert map_id in self.map_ids
     map_object = self.get_map(map_id)
-    map_object.update_map(map)
+    map_object.update_map_data(map)
     self.update_maps = True
 
   def iter_maps (self) :
@@ -280,5 +280,13 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
   def process_key_stroke (self, key) :
     selection_editor_mixin.process_key_stroke(self, key)
     map_viewer_mixin.process_key_stroke(self, key)
+
+  def update_mcs (self, *args, **kwds) :
+    self.update_maps = True
+    selection_editor_mixin.update_mcs(self, *args, **kwds)
+
+  def recenter_on_atom (self, *args, **kwds) :
+    self.update_maps = True
+    selection_editor_mixin.recenter_on_atom(self, *args, **kwds)
 
 #---end
