@@ -37,6 +37,10 @@ opengl {
   background_color = 0.0 0.0 0.0
     .type = floats
     .style = color
+  default_coloring = *rainbow element b chain
+    .type = choice
+  default_representation = *all_atoms trace bonded_only
+    .type  = choice
   show_hydrogens = False
     .type = bool
   label_clicked_atom = True
@@ -46,6 +50,9 @@ opengl {
   use_fog = True
     .type = bool
   orthographic = False
+    .type = bool
+    .style = noauto
+  animate_zoom = False
     .type = bool
 }
 """)
@@ -61,7 +68,7 @@ class model_data (object) :
     self.base_color = base_color
     self.draw_mode = None
     self.current_bonds = None
-    self.color_mode = "rainbow"
+    self.color_mode = None #"rainbow"
     self.flag_object_visible = True
     self._color_cache = {}
     self.flag_show_hydrogens = False
@@ -72,7 +79,6 @@ class model_data (object) :
     self.flag_show_ellipsoids = False
     self.update_structure(pdb_hierarchy, atomic_bonds)
     self.use_u_aniso = flex.bool(self.atoms.size())
-    self.set_draw_mode("all_atoms")
     #self.recalculate_visibility()
 
   def reset (self) :
@@ -121,7 +127,7 @@ class model_data (object) :
     sites_cart = xray_structure.sites_cart()
     u_iso = xray_structure.extract_u_iso_or_u_equiv()
     u_aniso = xray_structure.extract_u_cart_plus_u_iso()
-    occ = xray_structure.scatterrers().extract_occupancies()
+    occ = xray_structure.scatterers().extract_occupancies()
     assert sites_cart.size() == self.atoms.size()
     for i_seq, atom in enumerate(self.atoms) :
       atom.xyz = sites_cart[i_seq]
@@ -141,6 +147,7 @@ class model_data (object) :
       atomic_bonds = flex.stl_set_unsigned(self.atom_count)
     self.atomic_bonds = atomic_bonds
     self.selection_cache = pdb_hierarchy.atom_selection_cache()
+    #self.index_atoms()
     atom_index = []
     atom_labels = flex.std_string()
     for atom in self.pdb_hierarchy.atoms_with_labels() :
@@ -151,11 +158,11 @@ class model_data (object) :
     self.trace_bonds = extract_trace(pdb_hierarchy) #, self.selection_cache)
     if self.current_bonds is None :
       self.current_bonds = self.atomic_bonds
-    assert len(self.atom_index) == self.atom_count
     atom_radii = flex.double(self.atoms.size(), 1.5)
     hydrogen_flag = flex.bool(self.atoms.size(), False)
     for i_seq, atom in enumerate(self.atom_index) :
-      if atom.element == ' H' :
+      name = atom.name.strip()
+      if name[0] == 'H' :
         atom_radii[i_seq] = 0.75
         hydrogen_flag[i_seq] = True
     self.atom_radii = atom_radii
@@ -166,7 +173,6 @@ class model_data (object) :
   @debug
   def recalculate_visibility (self) :
     c = 0
-    atoms = self.atom_index
     if self.draw_mode == "spheres" :
       show_points = True
     else :
@@ -174,7 +180,8 @@ class model_data (object) :
     if self.flag_show_hydrogens :
       atoms_drawable = flex.bool(self.atom_count, True)
     else :
-      atoms_drawable = flex.bool([ (atom.element != ' H') for atom in atoms ])
+      atoms_drawable = self.hydrogen_flag.__invert__()
+      #atoms_drawable = flex.bool([ (atom.element != ' H') for atom in atoms ])
     self.visibility = viewer_utils.atom_visibility(
       bonds             = self.current_bonds,
       atoms_drawable    = atoms_drawable,
@@ -195,7 +202,7 @@ class model_data (object) :
   def toggle_ellipsoids (self, show_ellipsoids) :
     self.flag_show_ellipsoids = show_ellipsoids
 
-  def set_draw_mode (self, draw_mode) :
+  def set_draw_mode (self, draw_mode, color_mode=None) :
     if draw_mode == self.draw_mode and not self.is_changed :
       pass
     else :
@@ -213,6 +220,8 @@ class model_data (object) :
         else :
           self.flag_show_points = True
       self.recalculate_visibility()
+      if color_mode is not None :
+        self.color_mode = color_mode
       self.set_color_mode(self.color_mode) # force re-coloring
 
   #---------------------------------------------------------------------
@@ -289,8 +298,8 @@ class model_data (object) :
       for chain in self.pdb_hierarchy.chains() :
         chain_shades[chain.id] = rainbow[j]
       atom_colors = flex.vec3_double()
-      for i_seq, atom_object in enumerate(self.atom_index) :
-        atom_colors.append(chain_shades[atom_object.chain_id])
+      for atom in self.pdb_hierarchy.atoms_with_labels() :
+        atom_colors.append(chain_shades[atom.chain_id])
       self.atom_colors = atom_colors
       self._color_cache["chain"] = atom_colors
 
@@ -320,9 +329,8 @@ class model_data (object) :
                         'Cu' : (0.0, 0.8, 0.7),    # blue-green
                         'Co' : (0.0, 0.5, 0.6) }   # marine
       atom_colors = flex.vec3_double()
-      for i_seq, atom_object in enumerate(self.atom_index) :
-        element = atom_object.element
-        color = element_shades.get(element)
+      for atom in self.pdb_hierarchy.atoms_with_labels() :
+        color = element_shades.get(atom.element)
         if color is None :
           color = (0.0, 1.0, 1.0)
         atom_colors.append(color)
@@ -476,6 +484,7 @@ class UpdateModelEvent (AddModelEvent) :
 class model_viewer_mixin (wx_viewer.wxGLWindow) :
   def __init__ (self, *args, **kwds) :
     wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
+    self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
     self.Connect(-1, -1, UPDATE_MODEL_ID, self.OnUpdateModel)
     self.Connect(-1, -1, ADD_MODEL_ID, self.OnAddModel)
     self.minimum_covering_sphere = None
@@ -488,7 +497,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     self.model_reps = {}
     self.update_scene = False
     self.buffer_factor = 2 # see gltbx.wx_viewer
-    self.settings = opengl_phil.extract()
+    self.update_settings(opengl_phil.extract())
     self.closest_point_i_seq     = None
     self.closest_point_model_id  = None
     # toggles for viewable objects
@@ -641,6 +650,10 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     assert (len(params.opengl.base_atom_color) ==
             len(params.opengl.background_color) == 3)
     self.settings = params
+    if params.opengl.animate_zoom :
+      self.animation_time = 1
+    else :
+      self.animation_time = 0
     self.toggle_hydrogens(params.opengl.show_hydrogens)
     if redraw :
       self.update_scene = True
@@ -683,6 +696,8 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     self._add_model(model_id, model)
 
   def _add_model (self, model_id, model) :
+    model.set_draw_mode(draw_mode=self.settings.opengl.default_representation,
+      color_mode=self.settings.opengl.default_coloring)
     self.model_ids.append(model_id)
     self.model_objects.append(model)
     self.show_object[model_id] = True
@@ -818,11 +833,11 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
   def hide_others (self, object_id=None) :
     for model_id in self.model_ids :
       if model_id != object_id :
-        self.show_objects[model_id] = False
+        self.show_object[model_id] = False
 
   def show_all (self) :
     for model_id in self.model_ids :
-      self.show_objects[model_id] = True
+      self.show_object[model_id] = True
 
   @debug
   def set_draw_mode (self, draw_mode, object_id=None) :
@@ -873,6 +888,13 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     (model_id, pdb_hierarchy, atomic_bonds) = event.data
     self.add_model(model_id, pdb_hierarchy, atomic_bonds)
     self.OnRedrawGL()
+
+  def OnDoubleClick (self, event) :
+    self.get_pick_points((event.GetX(), event.GetY()))
+    self.process_pick_points()
+    if self.closest_point_i_seq is not None :
+      self.recenter_on_atom(self.closest_point_object_id,
+        self.closest_point_i_seq)
 
   def thread_safe_add_model (self, model_id, pdb_hierarchy, atomic_bonds) :
     wx.PostEvent(self, AddModelEvent(model_id, pdb_hierarchy, atomic_bonds))
