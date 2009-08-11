@@ -84,10 +84,12 @@ def ignore_this_residue(residue, atom_selection_bool):
   names = matched_atom_names.unexpected
   if (len(names) != 0):
     print residue.id_str(), "unexpected atoms:", " ".join(sorted(names))
+    print
     return True
   names = matched_atom_names.missing_atom_names(ignore_hydrogen=True)
   if (len(names) != 0):
     print residue.id_str(), "missing atoms:", " ".join(sorted(names))
+    print
     return True
   return False
 
@@ -293,7 +295,6 @@ def rotamer_score_and_choose_best(
                 atom_selection_bool=atom_selection_bool,
                 residue=residue)):
           n_amino_acids_ignored += 1
-          print
         else:
           rotamer_id = "as_given"
           best = group_args(rotamer_id=rotamer_id, refined=refine())
@@ -506,25 +507,6 @@ def run(args):
   print
   sys.stdout.flush()
   #
-  if (work_params.all_coordinate_refinement.run != 0):
-    pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
-    refined = maptbx.real_space_refinement_simple.lbfgs(
-      sites_cart=pdb_atoms.extract_xyz(),
-      density_map=density_map,
-      geometry_restraints_manager=grm,
-      real_space_target_weight=work_params.real_space_target_weight,
-      real_space_gradients_delta=real_space_gradients_delta,
-      lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=work_params.all_coordinate_refinement
-          .lbfgs_max_iterations))
-    grm.energies_sites(sites_cart=refined.sites_cart).show()
-    pdb_atoms.set_xyz(new_xyz=refined.sites_cart)
-    print
-    print "number_of_function_evaluations:", \
-      refined.number_of_function_evaluations
-    print "real+geo target start: %.6g" % refined.f_start
-    print "real+geo target final: %.6g" % refined.f_final
-    print
   if (work_params.rotamer_score_and_choose_best.run):
     if (work_params.atom_selection is None):
       atom_selection_bool = None
@@ -544,6 +526,32 @@ def run(args):
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=work_params
           .rotamer_score_and_choose_best.lbfgs_max_iterations))
+  #
+  if (work_params.all_coordinate_refinement.run != 0):
+    pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
+    sites_cart = pdb_atoms.extract_xyz()
+    print "Before all coordinate refinement:"
+    grm.energies_sites(sites_cart=sites_cart).show()
+    print
+    sys.stdout.flush()
+    refined = maptbx.real_space_refinement_simple.lbfgs(
+      sites_cart=sites_cart,
+      density_map=density_map,
+      geometry_restraints_manager=grm,
+      real_space_target_weight=work_params.real_space_target_weight,
+      real_space_gradients_delta=real_space_gradients_delta,
+      lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+        max_iterations=work_params.all_coordinate_refinement
+          .lbfgs_max_iterations))
+    print "After all coordinate refinement:"
+    grm.energies_sites(sites_cart=refined.sites_cart).show()
+    pdb_atoms.set_xyz(new_xyz=refined.sites_cart)
+    print
+    print "number_of_function_evaluations:", \
+      refined.number_of_function_evaluations
+    print "real+geo target start: %.6g" % refined.f_start
+    print "real+geo target final: %.6g" % refined.f_final
+    print
   #
   file_name = op.basename(input_pdb_file_name)
   if (   file_name.endswith(".pdb")
