@@ -670,7 +670,10 @@ class protein_space_group_choices(object):
 
       if these_absent_millers.data().size() > 0:
         tmp_mean_i = flex.mean( these_absent_millers.data() )
-        tmp_mean_isigi = flex.mean( these_absent_millers.data() / these_absent_millers.sigmas() )
+        zero_sel = these_absent_millers.sigmas()==0
+        these_absent_millers = these_absent_millers.select(~zero_sel)
+        tmp_mean_isigi = flex.mean(
+          these_absent_millers.data() / these_absent_millers.sigmas() )
         tmp_n = these_absent_millers.data().size()
         tmp_violations = flex.bool( these_absent_millers.data() / these_absent_millers.sigmas() > self.threshold ).count( True )
       else:

@@ -36,9 +36,7 @@ def exercise(d_min            = 3.5,
                           volume_per_atom        = 100,
                           min_distance           = 1.5,
                           general_positions_only = True,
-                          random_u_iso           = True,
-                          #u_iso                  = adptbx.b_as_u(30.0)
-                          )
+                          random_u_iso           = True)
       xray_structure.scattering_type_registry(table = scattering_table)
       ### Get FOBS
       for scale in [0.0001, 1.0, 1000.0]:
@@ -68,9 +66,6 @@ def exercise(d_min            = 3.5,
           tmp1 = om.basic_wilson_outliers()
           tmp2 = om.extreme_wilson_outliers()
           tmp3 = om.beamstop_shadow_outliers()
-          #print "basic_wilson_outliers    = ", tmp1.data().count(True), tmp1.data().count(False)
-          #print "extreme_wilson_outliers  = ", tmp2.data().count(True), tmp2.data().count(False)
-          #print "beamstop_shadow_outliers = ", tmp3.data().count(True), tmp3.data().count(False)
 
           # start loop over distorted models
           for error in [0.0,  0.8]:
@@ -90,14 +85,10 @@ def exercise(d_min            = 3.5,
                 for k_sol in [0.10, 0.30, 0.50]:
                   for b_sol in [60, 80]:
                      fmodel.update(k_sol = k_sol, b_sol = b_sol)
-                     #print "   scale = %12.6f mean_error = %3.1f deleted = %3.1f r_work = %6.4f "% \
-                     #   (scale, error, fraction, fmodel.r_work()), k_sol, b_sol
                      a,b = fmodel.alpha_beta()
-                     o_sel =  om.model_based_outliers(fmodel_manager = fmodel)
+                     o_sel =  om.model_based_outliers(f_model = fmodel.f_model())
                      n_out = o_sel.data().count(False)
-                     assert (n_out < 50) # some would be outliers are always expected, but not too much though
-                     #print "model_based_outliers = ", o_sel.data().count(True), o_sel.data().count(False)
-
+                     assert (n_out < 50)
 
 def run_call_back(flags, space_group_info):
   exercise(space_group_info=space_group_info)

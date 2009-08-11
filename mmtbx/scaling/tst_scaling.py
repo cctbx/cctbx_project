@@ -409,8 +409,8 @@ def finite_diffs_aniso(p_scale,
   du12=(nll_norm-nll_u12)/-h
   du13=(nll_norm-nll_u13)/-h
   du23=(nll_norm-nll_u23)/-h
-  assert approx_equal(ds,g[0])
-  assert approx_equal(du11,g[1])
+  assert approx_equal(ds,g[0]), (ds,g[0])
+  assert approx_equal(du11,g[1]), (du11,g[1])
   assert approx_equal(du22,g[2])
   assert approx_equal(du33,g[3])
   assert approx_equal(du12,g[4])

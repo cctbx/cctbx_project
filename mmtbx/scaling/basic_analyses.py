@@ -175,6 +175,13 @@ class basic_analyses(object):
 
 
     ## Make normalised structure factors please
+
+    sel_big = self.no_aniso_array.data() > 1.e+50
+    self.no_aniso_array = self.no_aniso_array.array(
+      data = self.no_aniso_array.data().set_selected(sel_big, 0))
+    self.no_aniso_array = self.no_aniso_array.set_observation_type(
+      miller_array )
+
     normalistion = absolute_scaling.kernel_normalisation(
       self.no_aniso_array,auto_kernel=True)
     self.normalised_miller = normalistion.normalised_miller.deep_copy()
