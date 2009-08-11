@@ -461,6 +461,7 @@ def run(args):
   #
   assert len(file_objects["pdb"]) == 1 # TODO not implemented
   file_obj = file_objects["pdb"][0]
+  input_pdb_file_name = file_obj.file_name
   processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
@@ -517,6 +518,20 @@ def run(args):
       real_space_gradients_delta=real_space_gradients_delta,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=work_params.rotamer_scoring.lbfgs_max_iterations))
+  #
+  file_name = op.basename(input_pdb_file_name)
+  if (   file_name.endswith(".pdb")
+      or file_name.endswith(".ent")):
+    file_name = file_name[:-4]
+  file_name += "_lockit.pdb"
+  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  print "Writing file: %s" % show_string(file_name)
+  sys.stdout.flush()
+  pdb_hierarchy.write_pdb_file(
+    file_name=file_name,
+    crystal_symmetry=grm.crystal_symmetry)
+  print
+  #
   show_times()
   sys.stdout.flush()
 
