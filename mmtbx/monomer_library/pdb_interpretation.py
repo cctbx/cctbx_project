@@ -2540,7 +2540,7 @@ class build_all_chain_proxies(object):
     try:
       return self.selection(string=string, cache=cache)
     except KeyboardInterrupt: raise
-    except Exception:
+    except Exception, e: # keep e alive to avoid traceback
       fe = format_exception()
       raise Sorry('Invalid atom selection:\n  %s="%s"\n  (%s)' % (
         parameter_name, string, fe))
@@ -2551,11 +2551,13 @@ class build_all_chain_proxies(object):
         attr,
         raise_if_empty_selection=True):
     def parameter_name():
-      return ".".join([scope_extract.__phil_path__(), attr])
+      result = ".".join([scope_extract.__phil_path__(), attr])
+      if (result.startswith(".")): return result[1:]
+      return result
     string = getattr(scope_extract, attr)
     try: result = self.selection(string=string, cache=cache)
     except KeyboardInterrupt: raise
-    except Exception:
+    except Exception, e: # keep e alive to avoid traceback
       fe = format_exception()
       raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
         parameter_name(), show_string(string), fe))
