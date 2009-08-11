@@ -16,14 +16,22 @@ class cluster_manager(slots_getstate_setstate):
     "loop_edge_bendings",
     "fixed_hinges"]
 
-  def __init__(O, n_vertices, fixed_vertex_lists=()):
+  def __init__(O,
+        n_vertices,
+        all_in_one_rigid_body=False,
+        fixed_vertex_lists=()):
     O.fixed_vertex_lists = fixed_vertex_lists
     if (len(O.fixed_vertex_lists) == 0):
-      O.cluster_indices = range(n_vertices)
-      O.clusters = []
-      for i in xrange(n_vertices):
-        O.clusters.append([i])
+      if (all_in_one_rigid_body):
+        O.cluster_indices = [0] * n_vertices
+        O.clusters = [range(n_vertices)]
+      else:
+        O.cluster_indices = range(n_vertices)
+        O.clusters = []
+        for i in xrange(n_vertices):
+          O.clusters.append([i])
     else:
+      assert not all_in_one_rigid_body # not implemented
       O.cluster_indices = [-1] * n_vertices
       O.clusters = []
       for fixed_vertices in O.fixed_vertex_lists:
@@ -41,6 +49,9 @@ class cluster_manager(slots_getstate_setstate):
     O.loop_edges = None
     O.loop_edge_bendings = None
     O.fixed_hinges = None
+
+  def all_in_one_rigid_body(O):
+    return len(O.clusters) == 1
 
   def show_summary(O, out=None, prefix=""):
     from libtbx.utils import xlen, plural_s
@@ -206,6 +217,11 @@ class cluster_manager(slots_getstate_setstate):
 
   def construct_spanning_trees(O, edge_sets):
     assert O.hinge_edges is None
+    if (edge_sets is None):
+      assert O.all_in_one_rigid_body()
+      O.hinge_edges = [(-1,0)]
+      O.loop_edges = []
+      return
     cii_orcs, fixed_vertex_info = \
       O.determine_weighted_order_for_construct_spanning_tree(
         edge_sets=edge_sets)
@@ -320,6 +336,10 @@ class cluster_manager(slots_getstate_setstate):
   def find_loop_edge_bendings(O, edge_sets):
     assert O.loop_edges is not None
     assert O.loop_edge_bendings is None
+    if (edge_sets is None):
+      assert O.all_in_one_rigid_body()
+      O.loop_edge_bendings = []
+      return
     leb = set()
     for i,j in O.loop_edges:
       for k in edge_sets[i]:
@@ -336,6 +356,7 @@ class cluster_manager(slots_getstate_setstate):
     assert O.loop_edge_bendings is not None
     assert O.fixed_hinges is None
     O.fixed_hinges = []
+    if (O.all_in_one_rigid_body()): return
     if (sites is None): return
     if (hasattr(sites, "accessor")):
       from scitbx import matrix
@@ -446,13 +467,22 @@ class construct(slots_getstate_setstate):
     if (sites is not None):
       n_vertices = len(sites)
     O.n_vertices = n_vertices
-    O.edge_list = edge_list
-    O.edge_sets = construct_edge_sets(
-      n_vertices=n_vertices, edge_list=edge_list)
+    all_in_one_rigid_body = (edge_list == "all_in_one_rigid_body")
+    if (all_in_one_rigid_body):
+      assert external_clusters is None
+      O.edge_list = None
+      O.edge_sets = None
+    else:
+      O.edge_list = edge_list
+      O.edge_sets = construct_edge_sets(
+        n_vertices=n_vertices, edge_list=edge_list)
     O.cluster_manager = cluster_manager(
-      n_vertices=n_vertices, fixed_vertex_lists=fixed_vertex_lists)
-    O._find_paths()
-    O._process_external_clusters(clusters=external_clusters)
+      n_vertices=n_vertices,
+      all_in_one_rigid_body=all_in_one_rigid_body,
+      fixed_vertex_lists=fixed_vertex_lists)
+    if (not all_in_one_rigid_body):
+      O._find_paths()
+      O._process_external_clusters(clusters=external_clusters)
     O.cluster_manager.tidy()
     O.find_cluster_loop_repeats = None
     if (sites is not None):
@@ -548,6 +578,9 @@ class construct(slots_getstate_setstate):
 
   def find_cluster_loops(O):
     assert O.find_cluster_loop_repeats is None
+    if (O.edge_sets is None):
+      O.find_cluster_loop_repeats = 0
+      return
     O.find_cluster_loop_repeats = -1
     cm = O.cluster_manager
     while True:
