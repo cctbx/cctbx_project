@@ -18,6 +18,8 @@ import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from iotbx.pdb import crystal_symmetry_from_pdb
 from libtbx import smart_open
 from libtbx.str_utils import show_string
+import mmtbx.utils
+import iotbx.pdb
 
 """
 Notes on CIF (source: http://www.ccp4.ac.uk/html/mtz2various.html)
@@ -612,262 +614,6 @@ def create_mtz_object(pre_miller_arrays,
   mtz_object = mtz_dataset.mtz_object()
   return mtz_object
 
-class guess_observation_type(object):
-  def __init__(self, file_name, pdb_raw_records, mtz_object, show_log):
-    self.file_name = file_name
-    self.mtz_object = mtz_object
-    self.pdb_raw_records = pdb_raw_records
-    xray_structure = self.get_xray_structure_from_pdb_file()
-    if(xray_structure is not None):
-      miller_arrays = self.mtz_object.as_miller_arrays()
-      if(len(miller_arrays) == 1):
-        f_obs = miller_arrays[0]
-        r_free_flags = f_obs.array(data = flex.bool(f_obs.data().size(),False))
-        r_free_flags_orig = None
-      else:
-        assert len(miller_arrays) == 2
-        for miller_array in miller_arrays:
-          if(miller_array.observation_type() is not None):
-            f_obs = miller_array
-          else:
-            r_free_flags = miller_array
-            r_free_flags_orig = r_free_flags.deep_copy()
-            r_free_flags = r_free_flags.array(data = r_free_flags.data()==1)
-      f_obs = f_obs.common_set(r_free_flags)
-      r_free_flags = r_free_flags.common_set(f_obs)
-      if(r_free_flags_orig is not None):
-        f_obs = f_obs.common_set(r_free_flags_orig)
-        r_free_flags_orig = r_free_flags_orig.common_set(f_obs)
-      observation_type = f_obs.observation_type()
-      if(str(observation_type) == "xray.amplitude"):
-        observation_type = "F"
-      elif(str(observation_type) == "xray.intensity"):
-        observation_type = "I"
-      else:
-        assert observation_type is not None
-      fmodel = self.get_fmodel_object(
-        xray_structure = xray_structure,
-        f_obs          = f_obs,
-        r_free_flags   = r_free_flags)
-      if(fmodel is not None):
-        result, r_free_is_ok = self.get_observation_type(fmodel = fmodel,
-          show_log = show_log)
-        if([result, r_free_is_ok].count(None) == 0):
-          observation_type = result
-          # XXX do it optimally
-          if(observation_type.startswith("F")):
-            f_obs.set_observation_type_xray_amplitude()
-          elif(observation_type.startswith("I")):
-            f_obs.set_observation_type_xray_intensity()
-          else:
-            f_obs = f_obs.set_observation_type(observation_type = None)
-          assert r_free_flags.indices().all_eq(f_obs.indices())
-          if(r_free_flags_orig is not None):
-            assert r_free_flags_orig.indices().all_eq(f_obs.indices())
-          mtz_dataset=f_obs.as_mtz_dataset(column_root_label=observation_type)
-          if(r_free_flags_orig is not None and r_free_is_ok):
-            mtz_dataset.add_miller_array(
-              miller_array      = r_free_flags_orig,
-              column_root_label = "R-free-flags")
-          self.mtz_object = mtz_dataset.mtz_object()
-
-  def get_xray_structure_from_pdb_file(self):
-    mon_lib_srv = monomer_library.server.server()
-    ener_lib = monomer_library.server.ener_lib()
-    xray_structure = None
-    try:
-      processed_pdb_file = monomer_library.pdb_interpretation.process(
-        mon_lib_srv = mon_lib_srv,
-        ener_lib    = ener_lib,
-        raw_records = self.pdb_raw_records)
-      xray_structure = processed_pdb_file.xray_structure()
-    except Exception, e:
-      print "INFO: Cannot extract xray structure:",self.file_name,str(e)
-      return None
-    if(xray_structure.scatterers().size()==0):
-      print "INFO: Empty xray_structure:", self.file_name
-      return None
-    occ = xray_structure.scatterers().extract_occupancies()
-    beq = xray_structure.extract_u_iso_or_u_equiv()
-    sca = xray_structure.scatterers().extract_scattering_types()
-    sel = (occ > 0.) & (occ < 50.) & (beq > 0.) & (beq < 999.) & (sca != "?")
-    if(sel.size() > 0 and sel.count(True) > 0):
-      xray_structure = xray_structure.select(selection = sel)
-      xray_structure.tidy_us()
-    else: return None
-    return xray_structure
-
-  def get_fmodel_object(self, xray_structure, f_obs, r_free_flags):
-    fmodel = None
-    selection = f_obs.d_spacings().data() > 0.25
-    f_obs = f_obs.select(selection)
-    r_free_flags = r_free_flags.select(selection)
-    try:
-      fmodel = mmtbx.f_model.manager(
-        xray_structure   = xray_structure,
-        r_free_flags     = r_free_flags,
-        target_name      = "ls_wunit_k1",
-        f_obs            = f_obs)
-    except Exception, e:
-      print "INFO: Cannot setup fmodel:", self.file_name, str(e)
-      return None
-    try:
-      fmodel.update_xray_structure(
-        xray_structure = xray_structure,
-        update_f_calc  = True,
-        update_f_mask  = True)
-    except Exception, e:
-      print "INFO: fmodel.update_xray_structure() failed:",\
-        self.file_name,str(e)
-      return None
-    return fmodel
-
-  def update_solvent_and_scale_helper(self, fmodel, params):
-    try:
-      fmodel.update_solvent_and_scale(params = params, verbose = -1)
-      r_work = fmodel.r_work()*100
-      r_free = fmodel.r_free()*100
-    except Exception, e:
-      print "INFO: fmodel.update_solvent_and_scale() failed:",\
-        self.file_name,str(e)
-      return None, None, None
-    return fmodel, r_work, r_free
-
-  def f_or_i_or_n(self,
-                  fmodel,
-                  observation_type,
-                  params,
-                  results):
-    fmodel_dc = fmodel.deep_copy()
-    observation_type_dc = observation_type
-    f_obs = fmodel_dc.f_obs
-    f_obs = f_obs.set_observation_type(observation_type = None)
-    f_obs = f_obs.f_sq_as_f()
-    fmodel_dc.update(f_obs = f_obs)
-    fmodel_, r_work_, r_free_ = self.update_solvent_and_scale_helper(
-      fmodel = fmodel_dc, params = params)
-    if(fmodel_ is not None):
-      observation_type_dc = "I"+observation_type_dc[1:]
-      results.append([r_work_, observation_type_dc, r_free_])
-    #
-    fmodel_dc = fmodel.deep_copy()
-    observation_type_dc = observation_type
-    f_obs = fmodel_dc.f_obs
-    f_obs = f_obs.set_observation_type(observation_type = None)
-    f_obs = f_obs.f_as_f_sq()
-    fmodel_dc.update(f_obs = f_obs)
-    fmodel_, r_work_, r_free_ = self.update_solvent_and_scale_helper(
-      fmodel = fmodel_dc, params = params)
-    if(fmodel_ is not None):
-      observation_type_dc = "F"+observation_type_dc[1:]
-      results.append([r_work_, observation_type_dc, r_free_])
-    return results
-
-  def get_observation_type(self, fmodel, show_log):
-    params = bss.master_params.extract()
-    params.k_sol_max = 0.6
-    params.k_sol_min = 0.0
-    params.b_sol_max = 500.0
-    params.b_sol_min = 0.0
-    neutron_flag = True
-    observation_type = str(fmodel.f_obs.observation_type())
-    assert observation_type in ["xray.amplitude","xray.intensity"]
-    if(observation_type == "xray.amplitude"): observation_type = "FOBS_X"
-    if(observation_type == "xray.intensity"): observation_type = "IOBS_X"
-    observation_type_from_file = observation_type
-    d_max, d_min = fmodel.f_obs.d_max_min()
-    selection = fmodel.f_obs.all_selection()
-    if(d_min < 3.0):
-      selection &= fmodel.f_obs.d_spacings().data() <= 6.0
-    selection &= fmodel.f_obs.d_spacings().data() >= 2.0
-    sigmas = fmodel.f_obs.sigmas()
-    if(abs(flex.mean(sigmas) - 1.0) > 0.001):
-      selection &= (fmodel.f_obs.data() > fmodel.f_obs.sigmas()*2.0)
-    selection &= (fmodel.f_obs.d_star_sq().data() > 0)
-    ssize = selection.size()
-    if(ssize > 0 and selection.count(True) > 100):
-      fmodel = fmodel.select(selection = selection)
-    try:
-      fmodel = fmodel.remove_outliers()
-    except Exception, e:
-      print "INFO: fmodel.remove_outliers() failed:",self.file_name,str(e)
-    results = []
-    #
-    fmodel_dc = fmodel.deep_copy()
-    fmodel_dc, r_work, r_free = self.update_solvent_and_scale_helper(
-      fmodel = fmodel_dc, params = params)
-    if(fmodel_dc is not None):
-      results.append([r_work, observation_type, r_free])
-    if(r_work > 30.0):
-      results = self.f_or_i_or_n(fmodel = fmodel_dc, params = params,
-        observation_type = observation_type, results = results)
-      #
-      fmodel_dc = fmodel.deep_copy()
-      # XXX push to xray_structure ?
-      neutron_scattering_dict = {}
-      reg = fmodel_dc.xray_structure.scattering_type_registry()
-      for scattering_type in reg.type_index_pairs_as_dict().keys():
-        scattering_info = neutron_news_1992_table(scattering_type, True)
-        b = scattering_info.bound_coh_scatt_length()
-        if(b.imag != 0.0):
-          neutron_flag = False
-          break
-        neutron_scattering_dict[scattering_type] = \
-          eltbx.xray_scattering.gaussian(b.real)
-      if(neutron_flag):
-        fmodel_dc.mask_params.ignore_hydrogens=False
-        fmodel_dc.xray_structure.scattering_type_registry(
-          custom_dict = neutron_scattering_dict)
-        fmodel_dc.update_xray_structure(update_f_calc=True, update_f_mask=True)
-        fmodel_dc, r_work, r_free = self.update_solvent_and_scale_helper(
-          fmodel = fmodel_dc, params = params)
-        observation_type = observation_type[:-2] + "_N"
-        results.append([r_work, observation_type, r_free])
-        results = self.f_or_i_or_n(fmodel = fmodel_dc, params = params,
-          observation_type = observation_type, results = results)
-    try:
-      result_best = observation_type
-      r_free_is_ok = False
-      if show_log: print "Scores:"
-      if show_log:
-        print "  observation type from input file:", observation_type_from_file
-      if(len(results) == 1):
-        if(results[0][0] < 30.):
-          observation_type = "F"+observation_type[1:]
-          r_free_is_ok = (results[0][0] < results[0][2]) and \
-            (abs(results[0][0] - results[0][2]) > 1.0)
-      elif(len(results) > 1):
-        r = results[0][0]
-        for res in results:
-          if show_log: print "    if it is %s: r_work= %6.2f"%(res[1], res[0])
-          if(res[0] <= r):
-            result_best = res
-            r = res[0]
-        delta = 100.
-        for res in results:
-          if(res[0] > result_best[0] and abs(res[0]-result_best[0]) < delta):
-            delta = abs(res[0]-result_best[0])
-        if show_log:
-          print "  selected %s with r_work %6.2f"%(result_best[1],result_best[0])
-        r_free_is_ok = (result_best[0] < result_best[2]) and \
-          (abs(result_best[0] - result_best[2]) > 1.0)
-        if((delta < 3. and result_best[0] > 30.) or result_best[0] > 40.):
-          observation_type = "OBS"
-        else: observation_type = result_best[1]
-        if(observation_type != "OBS"):
-          if(neutron_flag and results[3][0] == result_best[0]):
-            observation_type = "F"+observation_type[1:]
-          if(results[0][0] == result_best[0]):
-            observation_type = "F"+observation_type[1:]
-      if show_log: print "  final observation type:", observation_type
-      if(len(results) == 1):
-        if show_log: print "  final r_work= %6.2f"%results[0][0]
-    except Exception, e:
-      print "INFO: Cannot score results to select observation type:", \
-        self.file_name,str(e)
-      return None, None
-    return observation_type, r_free_is_ok
-
 def run(args, command_name = "phenix.cif_as_mtz"):
   if (len(args) == 0): args = ["--help"]
   try:
@@ -936,11 +682,33 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     if(pdb_file_name):
       pdb_raw_records = smart_open.for_reading(
         file_name=pdb_file_name).read().splitlines()
-      mtz_object = guess_observation_type(
-        file_name       = pdb_file_name,
-        pdb_raw_records = pdb_raw_records,
-        mtz_object      = mtz_object,
-        show_log        = command_line.options.show_log).mtz_object
+      xray_structure = None
+      try:
+        xray_structure = iotbx.pdb.input(file_name =
+          pdb_file_name).xray_structure_simple()
+      except Exception, e:
+        print "Cannot extract xray_structure: ", str(e)
+      if(xray_structure is not None):
+        miller_arrays = mtz_object.as_miller_arrays()
+        if(len(miller_arrays) == 1):
+          f_obs = miller_arrays[0]
+          r_free_flags = None
+        else:
+          assert len(miller_arrays) == 2
+          r_free_flags = None
+          for miller_array in miller_arrays:
+            if(miller_array.observation_type() is not None):
+              f_obs = miller_array
+            else:
+              r_free_flags = miller_array
+              assert isinstance(r_free_flags.data(), flex.int)
+        if(r_free_flags is not None):
+          f_obs = f_obs.common_set(r_free_flags)
+          r_free_flags = r_free_flags.common_set(f_obs)
+        mtz_object = mmtbx.utils.guess_observation_type(
+          f_obs          = f_obs,
+          xray_structure = xray_structure,
+          r_free_flags   = r_free_flags).mtz_object()
     if(command_line.options.output_file_name):
       output_file_name = command_line.options.output_file_name
     else:
