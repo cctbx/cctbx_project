@@ -42,6 +42,8 @@ from mmtbx.scaling import outlier_rejection
 from mmtbx.scaling import absolute_scaling
 import mmtbx.scaling.twin_analyses
 from libtbx import Auto
+import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+from libtbx.test_utils import approx_equal
 
 master_params =  iotbx.phil.parse("""
   twin_law = None
@@ -163,7 +165,8 @@ class scaling_parameters_object(object):
     self.u_star = self.xs.space_group().average_u_star( self.u_star )
 
   def ref_to_k_overall(self,x):
-    self.k_overall = math.exp( x )
+    if(x > 500.): self.k_overall=math.exp(500.)
+    else: self.k_overall = math.exp( x )
 
   def ref_to_k_sol(self,x):
     if x>10:
@@ -287,301 +290,6 @@ def get_initial_scale(miller_obs,
                flex.sum( tmp_calc.data()*tmp_calc.data() )
   return init_scale
 
-class de_bulk_solvent_scaler(object):
-  def __init__(self,
-               scaling_parameters,
-               twin_fraction_obj,
-               target_evaluator,
-               f_model_core_data,
-               fix_sol      = False,
-               fix_aniso    = False,
-               fix_twin     = False,
-               fix_scale    = False,
-               best_sol     = None,
-               best_aniso   = None,
-               best_twin    = None,
-               best_scale   = None,
-               twin_domain  = (-1,1),
-               scale_domain = (-4,4),
-               sol_domain   = [(-2,0),(-2,0)],
-               aniso_domain = (-1,1) ,
-               out          = None):
-    self.out = out
-    if self.out is None:
-      self.out = sys.stdout
-
-    self.fix_sol = fix_sol
-    self.fix_aniso = fix_aniso
-    self.fix_twin = fix_twin
-
-    self.scaling_parameters=scaling_parameters
-    self.target_evaluator=target_evaluator
-    self.f_model_core_data=f_model_core_data
-    self.twin_fraction_object = twin_fraction_obj
-    self.best_score = None
-    #first determin the number of parameters please
-    self.n = 1+2+1+self.scaling_parameters.n_u_indep
-    # parameter map
-    # 0  : twin fraction
-    # 1  : scale factor
-    # 2  : ksol
-    # 3  : usol
-    # 4-N: ustar
-
-    if fix_sol:
-      assert len(best_sol)==2
-      # this should be a list [ksol,usol]
-    if fix_scale:
-      best_scale >= 0
-
-    if self.fix_aniso:
-      assert len(self.best_aniso) == self.scaling_parameters.n_u_indep
-      # these should be independent parameters for aniso u star!
-
-    if self.fix_twin:
-      assert self.best_twin >= 0.0
-      assert self.best_twin <= 1.0
-
-    if best_scale is not None:
-      scale_domain = (math.log(best_scale)+scale_domain[0], math.log(best_scale)+scale_domain[1])
-    x = 0
-    if best_twin is not None:
-      x = self.twin_fraction_to_ref( best_twin )
-      twin_domain = ( x+twin_domain[0] , x+twin_domain[1] )
-
-    if best_aniso is not None:
-      tmp_aniso_domain = []
-      for ii in xrange( self.scaling_parameters.n_u_indep ):
-        tmp_aniso_domain.append( (best_aniso[ii]+aniso_domain[0], best_aniso[ii]+aniso_domain[1]) )
-      aniso_domain = tmp_aniso_domain
-    else:
-      tmp_aniso_domain = []
-      for ii in xrange( self.scaling_parameters.n_u_indep ):
-        tmp_aniso_domain.append( (aniso_domain[0],aniso_domain[1]) )
-      aniso_domain = tmp_aniso_domain
-
-    if best_sol is not None:
-      sol_domain = [ (math.log(best_sol[0]+1e-12)+sol_domain[0][0], math.log(best_sol[0]+1e-12)+sol_domain[0][1] ),
-                     (math.log(best_sol[1]+1e-12)+sol_domain[1][0], math.log(best_sol[1]+1e-12)+sol_domain[1][1]) ]
-
-    self.domain = [twin_domain]  + [scale_domain] + sol_domain + aniso_domain
-    self.x = flex.double([0]*self.n)
-
-    # amke a default solution vector
-    solution_vector = [ 0, 0, math.log( 0.30), math.log(46.0/80.0) ]
-    for ii in xrange(self.scaling_parameters.n_u_indep):
-      solution_vector.append( 0 )
-    if best_twin is not None:
-      solution_vector[0]=x
-    if best_scale is not None:
-      solution_vector[1]=math.log(best_scale+1e-12)
-    if best_sol is not None:
-      solution_vector[2]=math.log(best_sol[0]+1e-12)
-      solution_vector[3]=math.log(best_sol[1]+1e-12)
-    if best_aniso is not None:
-      for ii in xrange(self.scaling_parameters.n_u_indep):
-        solution_vector[ii+4]=best_aniso[ii]
-
-    self.de = differential_evolution.differential_evolution_optimizer(
-     self,
-     population_size=min(self.n+2,8),
-     f=0.8,
-     cr=0.7,
-     n_cross=2,
-     eps=1e-8,
-     show_progress=False,
-     max_iter = 500,
-     insert_solution_vector = flex.double(solution_vector )
-    )
-
-  def twin_fraction_to_ref( self, tf ):
-    tmp = tf - 0.001
-    tmp = (0.999-0.001)/tmp -1.0
-    if tmp < 1e-70:
-      tmp = 1e-70
-    tmp = -math.log( tmp )
-    return tmp
-
-
-
-  def update_parameters(self, vector):
-    self.scaling_parameters.ref_to_k_overall( vector[1] )
-    if self.fix_sol is not False:
-      self.scaling_parameters.k_sol = self.fix_sol[0]
-      self.scaling_parameters.u_sol = self.fix_sol[1]
-    else:
-      self.scaling_parameters.ref_to_k_sol( vector[2] )
-      self.scaling_parameters.ref_to_u_sol( vector[3] )
-
-    if self.fix_aniso is not False:
-      self.scaling_parameters.u_star = list( self.fix_aniso)
-    else:
-      self.scaling_parameters.ref_to_u_star(   list(vector[4:])   )
-
-    if self.fix_twin is not False:
-      self.twin_fraction_object.twin_fraction = self.fix_twin
-    else:
-      self.twin_fraction_object.ref_to_twin_fraction( vector[0] )
-
-  def target(self, vector):
-    #first make sure our place holder for scaling parameters is up to date!
-    self.update_parameters(vector)
-    #self.scaling_parameters.show()
-    #self.twin_fraction_object.show()
-
-    #make the core data summat aware of the changes
-    self.f_model_core_data.koverall(
-      self.scaling_parameters.k_overall )
-    self.f_model_core_data.ustar(
-      self.scaling_parameters.u_star)
-    self.f_model_core_data.ksol(
-      self.scaling_parameters.k_sol )
-    self.f_model_core_data.usol(
-      self.scaling_parameters.u_sol )
-    #do the same thing for the twin fraction please
-    self.target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
-
-    # we can get the target value!
-    f = self.target_evaluator.target( self.f_model_core_data.f_model() )
-    if self.best_score is None:
-      self.best_score = f
-    else:
-      if self.best_score > f:
-        self.best_score = f
-
-    return f
-
-  def print_status(self,
-                   best_score,
-                   mean_score,
-                   vector,
-                   count=None):
-    self.update_parameters(vector)
-    b_cart = adptbx.u_star_as_u_cart(self.scaling_parameters.xs.unit_cell(),
-                                     self.scaling_parameters.u_star)
-    b_cart = adptbx.u_as_b( b_cart )
-    print >> self.out, "#--------------------------------------------#"
-    if count is not None:
-      print >> self.out, "| Generation   :     %8s                |"%(count)
-    print >> self.out, "| best score   :     %8.6e            |"%(best_score)
-    print >> self.out, "| mean score   :     %8.6e            |"%(mean_score)
-    print >> self.out, "| k_overall    :     %8.6e            |"%(
-      self.scaling_parameters.k_overall)
-    print >> self.out, "| b_cart(ii)   : %8s %8s %8s  |"%("%5.2f"%(b_cart[0]),
-                                                       "%5.2f"%(b_cart[1]),
-                                                       "%5.2f"%(b_cart[2]) )
-    print >> self.out, "| b_cart(ij)   : %8s %8s %8s  |"%("%5.2f"%(b_cart[3]),
-                                                       "%5.2f"%(b_cart[4]),
-                                                       "%5.2f"%(b_cart[5]) )
-    print >> self.out, "| k_sol, b_sol :     %4.3f  %5.2f            |"%( self.scaling_parameters.k_sol,
-                                                            adptbx.u_as_b(self.scaling_parameters.u_sol)
-                                                            )
-    print >> self.out, "| twin fraction:     %4.3f                   |"%(
-      self.twin_fraction_object.twin_fraction)
-    print >> self.out, "#--------------------------------------------#"
-
-
-class bulk_solvent_scaler(object):
-  def __init__(self,
-               scaling_parameters,
-               twin_fraction_obj,
-               target_evaluator,
-               f_model_core_data,
-               parameter_mask):
-    self.parameter_mask = parameter_mask
-    self.scaling_parameters=scaling_parameters
-    self.target_evaluator=target_evaluator
-    self.f_model_core_data=f_model_core_data
-    self.twin_fraction_object = twin_fraction_obj
-
-    #first determin the number of parameters please
-    self.n = 1+2+1+self.scaling_parameters.n_u_indep
-    self.x = flex.double([0]*self.n)
-    self.f = None
-    self.update_x()
-    self.compute_functional_and_gradients()
-    term_parameters = scitbx.lbfgs.termination_parameters(
-      max_iterations = 30)
-    exception_handling_parameters = scitbx.lbfgs.exception_handling_parameters(
-      ignore_line_search_failed_step_at_lower_bound=True,
-      ignore_line_search_failed_step_at_upper_bound=True)
-    self.minimizer = scitbx.lbfgs.run(
-      target_evaluator=self,
-      termination_params=term_parameters,
-      exception_handling_params=exception_handling_parameters)
-
-  def update_x(self):
-    # this is only need when starting,
-    # all other updates are done by the minimizer
-    self.x[0] = self.twin_fraction_object.twin_fraction_to_ref()
-    self.x[1] = self.scaling_parameters.k_overall_to_ref()
-    self.x[2] = self.scaling_parameters.k_sol_to_ref()
-    self.x[3] = self.scaling_parameters.u_sol_to_ref()
-    tmp       = self.scaling_parameters.u_star_to_ref()
-    for item,ii in zip(tmp,xrange(4,self.n)) :
-      self.x[ii]=item
-
-  def update_parameter_objects(self):
-    """ from refinebale parameters to physical meaning full params"""
-    self.scaling_parameters.ref_to_k_overall( self.x[1] )
-    self.scaling_parameters.ref_to_k_sol( self.x[2] )
-    self.scaling_parameters.ref_to_u_sol( self.x[3] )
-    self.scaling_parameters.ref_to_u_star(   list(self.x[4:])   )
-    self.twin_fraction_object.ref_to_twin_fraction( self.x[0] )
-
-  def update_core_data(self):
-    #make the core data summat aware of the changes
-    self.f_model_core_data.koverall(
-      self.scaling_parameters.k_overall )
-    self.f_model_core_data.ustar(
-      self.scaling_parameters.u_star)
-    self.f_model_core_data.ksol(
-      self.scaling_parameters.k_sol )
-    self.f_model_core_data.usol(
-      self.scaling_parameters.u_sol )
-    #do the same thing for the twin fraction please
-    self.target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
-
-  def update_parameters(self):
-    self.update_parameter_objects()
-    self.update_core_data()
-
-  def compute_functional_and_gradients(self):
-    #first make sure our place holder for scaling parameters is up to date!
-    self.update_parameters()
-
-    f = self.compute_functional()
-    g = flex.double(self.compute_gradients())
-    #gfd = self.compute_gradients_fin_diff()
-    self.f = f
-    return f, g
-
-  def compute_functional(self):
-    target = self.target_evaluator.target( self.f_model_core_data.f_model() )
-    return target
-
-  def compute_gradients(self):
-    dtdab =  self.target_evaluator.d_target_d_ab(
-      self.f_model_core_data.f_model() )
-    gradient_flags = [True,True,True,False,True,False]
-    gradient_object =  self.f_model_core_data.d_target_d_all(
-      dtdab[0], dtdab[0], flex.bool(gradient_flags) )
-    dtdalpha = self.target_evaluator.d_target_d_alpha(
-      self.f_model_core_data.f_model())
-    g = [0,0,0,0]
-    g[0] = self.twin_fraction_object.d_t_d_twin_fraction_ref( dtdalpha )*self.parameter_mask.twin_fraction
-    g[1] = self.scaling_parameters.d_t_d_k_overall_ref(
-      gradient_object.koverall() )*self.parameter_mask.k_overall
-    g[2] = self.scaling_parameters.d_t_d_k_sol_ref(
-      gradient_object.ksol() )*self.parameter_mask.k_sol
-    g[3] = self.scaling_parameters.d_t_d_u_sol_ref(
-      gradient_object.usol() )*self.parameter_mask.u_sol
-    tmp = self.scaling_parameters.d_t_d_u_star_ref(
-      gradient_object.ustar() )
-    for aa in tmp:
-      g.append(aa*self.parameter_mask.u_star)
-    return g
-
 class scaling_parameter_mask(object):
   def __init__(self,
                twin_fraction=True,
@@ -605,293 +313,6 @@ class scaling_parameter_mask(object):
     if u_sol:
       self.u_sol         = 1.0
 
-
-
-class bulk_solvent_scaling_manager(object):
-  def __init__(self,
-               target_evaluator,
-               f_model_core_data,
-               crystal_symmetry,
-               scaling_parameters=None,
-               twin_fraction=None,
-               k_sol_limits=(0.1, 0.8),
-               u_sol_limits=(10.0/80.0,80.0/80.0),
-               n_trials=100,
-               out=None):
-
-    self.out = out
-    if out is None:
-      self.out = sys.stdout
-    self.crystal_symmetry = crystal_symmetry
-
-    # value used currently by minimizers
-    self.scaling_parameters = scaling_parameters
-    self.twin_fraction = twin_fraction_object( twin_fraction.twin_fraction )
-
-    # cached best values
-    self.best_scaling_parameters = scaling_parameters
-    self.best_twin_fraction = twin_fraction_object( twin_fraction.twin_fraction )
-    self.best_score_until_now = None # will be filled in later
-
-    self.target_evaluator = target_evaluator
-    self.f_model_core_data = f_model_core_data
-    self.n_trials = n_trials
-
-    # setting up a grid for sampling
-    self.k_u_grid = sm.square_halton_sampling(
-      k_sol_limits[0], k_sol_limits[1],
-      u_sol_limits[0], u_sol_limits[1] )
-
-  def print_it(self,
-               score,
-               scaling_params,
-               twin_fractions):
-    b_cart = adptbx.u_star_as_u_cart(scaling_params.xs.unit_cell(),
-                                     scaling_params.u_star)
-    b_cart = adptbx.u_as_b( b_cart )
-
-    print >> self.out
-    print >> self.out, "#--------------------------------------------#"
-    if score is not None:
-      print >> self.out, "| score        :     %8.6e            |"%(score)
-    print >> self.out, "| k_overall    :     %8.6e            |"%(
-      scaling_params.k_overall)
-    print >> self.out, "| b_cart(ii)   : %8s %8s %8s  |"%("%5.2f"%(b_cart[0]),
-                                                       "%5.2f"%(b_cart[1]),
-                                                       "%5.2f"%(b_cart[2]) )
-    print >> self.out, "| b_cart(ij)   : %8s %8s %8s  |"%("%5.2f"%(b_cart[3]),
-                                                       "%5.2f"%(b_cart[4]),
-                                                       "%5.2f"%(b_cart[5]) )
-    print >> self.out, "| k_sol, b_sol :     %4.3f  %5.2f            |"%( scaling_params.k_sol,
-                                                            adptbx.u_as_b(scaling_params.u_sol)
-                                                            )
-    print >> self.out, "| twin fraction:     %4.3f                   |"%(
-      twin_fractions.twin_fraction)
-    print >> self.out, "#--------------------------------------------#"
-    print >> self.out
-
-  def print_best(self):
-    self.print_it( self.best_score_until_now, self.best_scaling_parameters, self.best_twin_fraction)
-
-
-  def initial_scale_and_twin_fraction(self):
-    # ksol and usol are fixed
-    scaling_parameters = scaling_parameters_object(
-      xs    = self.crystal_symmetry,
-      k_sol = 0.40,
-      u_sol = 50.0/80.0)
-    twin_fraction = twin_fraction_object(twin_fraction=0.10)
-    # first refine the scale fcator
-    parameter_mask = scaling_parameter_mask(twin_fraction=False,
-                                            k_overall=True,
-                                            u_star=False,
-                                            k_sol=False,
-                                            u_sol=False)
-    scaler = bulk_solvent_scaler(
-      scaling_parameters,
-      twin_fraction,
-      self.target_evaluator,
-      self.f_model_core_data,
-      parameter_mask)
-    # now please refine the twin fraction
-    parameter_mask = scaling_parameter_mask(twin_fraction=True,
-                                            k_overall=False,
-                                            u_star=False,
-                                            k_sol=False,
-                                            u_sol=False)
-    scaler = bulk_solvent_scaler(
-      scaling_parameters,
-      twin_fraction,
-      self.target_evaluator,
-      self.f_model_core_data,
-      parameter_mask)
-    # refine twin and scale factor simulataneously
-    parameter_mask = scaling_parameter_mask(twin_fraction=True,
-                                            k_overall=True,
-                                            u_star=False,
-                                            k_sol=False,
-                                            u_sol=False)
-    scaler = bulk_solvent_scaler(
-      scaling_parameters,
-      twin_fraction,
-      self.target_evaluator,
-      self.f_model_core_data,
-      parameter_mask)
-
-    # set the scaling parameters please
-    self.scaling_parameters.k_overall = scaling_parameters.k_overall
-    self.twin_fraction.twin_fraction = twin_fraction.twin_fraction
-
-    #check if a 'best score' is allready in place
-    if self.best_score_until_now is None:
-      self.best_score_until_now = scaler.f
-      self.best_scaling_parameters.k_overall = scaling_parameters.k_overall
-      self.best_twin_fraction.twin_fraction = twin_fraction.twin_fraction
-    else:
-      if self.best_score_until_now < scaler.f:
-        self.best_score_until_now = scaler.f
-        self.best_scaling_parameters.k_overall = scaling_parameters.k_overall
-        self.best_twin_fraction.twin_fraction = twin_fraction.twin_fraction
-
-  def update_best(self):
-    self.best_scaling_parameters = scaling_parameters_object( object = self.scaling_parameters )
-    self.best_twin_fraction.twin_fraction = float(self.twin_fraction.twin_fraction)
-
-  def grid_search(self,n_cycle="Auto"):
-
-    converged=False
-    cycle_count=0
-    last_score = None
-    while not converged:
-      self.setup_next_trial(reset=True)
-      score = self.target_evaluator.target(
-        self.f_model_core_data.f_model() )
-      min_score = score
-      k_b = (self.scaling_parameters.k_sol,
-             self.scaling_parameters.u_sol)
-      for ii in xrange(self.n_trials-1):
-        self.setup_next_trial()
-        score = self.target_evaluator.target(
-          self.f_model_core_data.f_model() )
-        if score < min_score:
-          min_score = score
-          k_b = (self.scaling_parameters.k_sol,
-                 self.scaling_parameters.u_sol)
-          if min_score < self.best_score_until_now:
-            #self.print_it(score,
-            #              self.scaling_parameters,
-            #              self.twin_fraction)
-            self.best_score_until_now = score
-            self.update_best()
-      self.scale_it()
-      cycle_count += 1
-
-      if n_cycle is not "Auto":
-        if cycle_count == n_cycle:
-          converged=True
-      else:
-        if last_score is not None:
-          if self.best_score_until_now <= last_score:
-            converged = True
-          else:
-            last_score = self.best_score_until_now
-        else:
-          last_score = self.best_score_until_now
-
-
-
-    #finsih up
-    self.scale_it()
-    score = self.target_evaluator.target(
-      self.f_model_core_data.f_model() )
-    if score < self.best_score_until_now:
-      # a new global minimum is found
-      self.print_it(score,
-                    self.scaling_parameters,
-                    self.twin_fraction)
-      # update the best parameters please
-
-
-  def de_search(self):
-    best_sol = None
-    if min(self.scaling_parameters.k_sol, self.scaling_parameters.u_sol)<=1E-5:
-      best_sol = None
-    else:
-      best_sol = (self.scaling_parameters.k_sol, self.scaling_parameters.u_sol)
-    de = de_bulk_solvent_scaler(
-               self.scaling_parameters,
-               self.twin_fraction,
-               self.target_evaluator,
-               self.f_model_core_data,
-               out = self.out,
-               best_twin = self.twin_fraction.twin_fraction,
-               best_scale = self.scaling_parameters.k_overall,
-               best_aniso = self.scaling_parameters.u_star_to_ref(),
-               best_sol   = best_sol,
-               scale_domain=(-0.1, 0.1 ),
-               sol_domain = [ (-0.2, 0.2), (-0.1,0.1) ],
-               aniso_domain = (-0.01, 0.01 ),
-               #fix_twin=0.05,
-               #fix_sol=[0.2,50/80.0]
-               )
-    self.scaling_parameters = de.scaling_parameters
-    self.twin_fraction = de.twin_fraction_object
-    if (de.best_score < self.best_score_until_now) or (self.best_score_until_now is None):
-      self.update_best()
-
-  def scale_it(self):
-    parameter_mask = scaling_parameter_mask(twin_fraction=True,
-                                            k_overall=True,
-                                            u_star=False,
-                                            k_sol=False,
-                                            u_sol=False)
-    scaler = bulk_solvent_scaler(
-      self.scaling_parameters,
-      self.twin_fraction,
-      self.target_evaluator,
-      self.f_model_core_data,
-      parameter_mask)
-    self.scaling_parameters=scaler.scaling_parameters
-    self.twin_fraction=scaler.twin_fraction_object
-
-    parameter_mask = scaling_parameter_mask(twin_fraction=False,
-                                            k_overall=False,
-                                            u_star=True,
-                                            k_sol=False,
-                                            u_sol=False)
-    scaler = bulk_solvent_scaler(
-      self.scaling_parameters,
-      self.twin_fraction,
-      self.target_evaluator,
-      self.f_model_core_data,
-      parameter_mask)
-    self.scaling_parameters=scaler.scaling_parameters
-    self.twin_fraction=scaler.twin_fraction_object
-
-    parameter_mask = scaling_parameter_mask(twin_fraction=True,
-                                            k_overall=True,
-                                            u_star=True,
-                                            k_sol=True,
-                                            u_sol=True)
-    scaler = bulk_solvent_scaler(
-      self.scaling_parameters,
-      self.twin_fraction,
-      self.target_evaluator,
-      self.f_model_core_data,
-      parameter_mask)
-    self.scaling_parameters=scaler.scaling_parameters
-    self.twin_fraction=scaler.twin_fraction_object
-
-
-
-  def setup_next_trial(self,reset=False):
-    # 1a. set the overall scale factors from the best guess we have until now
-    self.f_model_core_data.koverall(
-      self.best_scaling_parameters.k_overall )
-    self.f_model_core_data.ustar(
-      self.best_scaling_parameters.u_star)
-    # 1b. same goes for the twin fraction
-    self.target_evaluator.alpha(self.best_twin_fraction.twin_fraction)
-
-
-    # 2. get the values for k_sol and u_sol from the halton grid
-    k_sol = None
-    u_sol = None
-    if not reset:
-      k_sol, u_sol = self.k_u_grid.next()
-    else:
-      k_sol, u_sol = self.k_u_grid.start()
-
-    self.f_model_core_data.ksol( k_sol )
-    self.f_model_core_data.usol( u_sol )
-
-    # some copying is needed unfortunately
-    self.scaling_parameters.k_overall = self.best_scaling_parameters.k_overall
-    self.scaling_parameters.u_star    = self.best_scaling_parameters.u_star
-    self.scaling_parameters.k_sol     = k_sol
-    self.scaling_parameters.u_sol     = u_sol
-    self.twin_fraction.twin_fraction  = self.best_twin_fraction.twin_fraction
-
 class target_attributes(mmtbx.f_model.target_attributes):
 
   def __init__(self):
@@ -912,6 +333,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                mask_params        = None,
                out                = None,
                twin_law           = None,
+               twin_law_str       = None,
                start_fraction     = 0.1,
                n_refl_bin         = 2000,
                max_bins           = 20,
@@ -925,6 +347,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       detwin_mode = "auto"
     self.alpha_beta_params=None
     self.twin = True
+    self.twin_law_str = twin_law_str
     self.sfg_params = sf_and_grads_accuracy_params
     self.target_name=twin_target
     self._target_attributes = target_attributes()
@@ -965,6 +388,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       self.f_obs_f = self.f_obs.select( self.r_free_flags.data() )
     else:
       self.f_obs_f = self.f_obs_w.deep_copy()
+    if(self.f_obs_w.data().size()==0 and self.f_obs_f.data().size()>0):
+      self.f_obs_w = self.f_obs_f
 
     #setup the binners if this has not been done yet
     self.max_bins = max_bins
@@ -1032,8 +457,6 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       f_part=None,
       k_part=self.scaling_parameters.k_part,
       u_part=self.scaling_parameters.u_part )
-
-
     self.target_evaluator = xray.least_squares_hemihedral_twinning_on_f(
       hkl_obs       = self.f_obs_w.indices(),
       f_obs         = self.f_obs_w.data(),
@@ -1056,18 +479,6 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
         anomalous_flag = self.f_obs.anomalous_flag(),
         alpha          = self.twin_fraction,
         twin_law       = self.twin_law.as_double_array()[0:9] )
-
-    self.bss=bulk_solvent_scaling_manager(
-      self.target_evaluator,
-      self.data_core,
-      self.xs,
-      self.scaling_parameters,
-      self.twin_fraction_object,
-      n_trials=1000,
-      out=self.out)
-    self.scaling_parameters = self.bss.best_scaling_parameters
-    self.twin_fraction_object = self.bss.best_twin_fraction
-    ###
 
     self.r_all_object = xray.hemihedral_r_values(
       hkl_obs        = self.f_obs.indices(),
@@ -1242,12 +653,14 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     return new_object
 
   def select(self, selection):
+    self.update_f_mask()
     dc = self.deep_copy()
+    # XXX BUG assert self.f_mask.data().size() == self.f_obs.data().size()
     if(selection is None): return dc
     new_object = twin_model_manager(
-      f_obs        = dc.f_obs.select(selection) ,
-      f_mask             = dc.f_mask_array.select(selection),
-      r_free_flags         = dc.r_free_flags.select(selection),
+      f_obs              = dc.f_obs.select(selection) ,
+      f_mask             = dc.f_mask_array.select(selection), # XXX BUG, see commented assert above
+      r_free_flags       = dc.r_free_flags.select(selection),
       xray_structure     = dc.xray_structure,
       scaling_parameters = dc.scaling_parameters.deep_copy(),
       mask_params        = dc.mask_params,
@@ -1296,59 +709,34 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
 
   def update_solvent_and_scale(self,
                                params=None,
-                               bulk_solvent_parameters=None,
-                               twin_fraction_parameters=None,
-                               refine=False,
-                               grid_search=False,
-                               initialise=False,
-                               de_search=True,
                                out=None,
-                               verbose=None
-                               ):
-    if self._target_attributes.pseudo_ml:
-      self.set_pseudo_ml_weights()
-    if initialise:
-      self.bss.initial_scale_and_twin_fraction()
-      self.scaling_parameters = self.bss.best_scaling_parameters
-      self.twin_fraction_object = self.bss.best_twin_fraction
-    if bulk_solvent_parameters is not None:
-      self.scaling_parameters = bulk_solvent_parameters
-      self.bss.best_scaling_parameters = self.scaling_parameters
-    if twin_fraction_parameters is not None:
-      self.bss.best_twin_fraction = self.twin_fraction_object
-      self.twin_fraction_object = twin_fraction_parameters
-    if de_search:
-      self.did_search += 1
-      self.bss.de_search()
-
-      self.twin_fraction_object = self.bss.best_twin_fraction
-      self.scaling_parameters = self.bss.best_scaling_parameters
-      refine = True
-
-    if grid_search:
-      self.bss.grid_search(n_cycle=40)
-      self.twin_fraction_object = self.bss.best_twin_fraction
-      self.scaling_parameters = self.bss.best_scaling_parameters
-    if refine:
-      self.bss.scale_it()
-      self.twin_fraction_object = self.bss.best_twin_fraction
-      self.scaling_parameters = self.bss.best_scaling_parameters
-
-    self.twin_fraction = self.twin_fraction_object.twin_fraction
-    self.target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
-    self.free_target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
-    self.data_core.koverall( self.scaling_parameters.k_overall )
-    self.data_core.ustar( self.scaling_parameters.u_star )
-    self.data_core.ksol( self.scaling_parameters.k_sol )
-    self.data_core.usol( self.scaling_parameters.u_sol )
-    if(params is not None and params.apply_back_trace_of_b_cart):
-      self.apply_back_b_iso()
-    self.update_xray_structure(update_f_calc=True)
-
-    if self._target_attributes.pseudo_ml:
-      self.set_pseudo_ml_weights()
-
-
+                               verbose=-1,
+                               initialise=False):
+    fmodel = mmtbx.f_model.manager(
+      f_obs          = self.f_obs,
+      r_free_flags   = self.r_free_flags,
+      xray_structure = self.xray_structure,
+      twin_law       = self.twin_law_str,
+      k_sol          = self.k_sol(),
+      b_sol          = self.b_sol(),
+      b_cart         = self.b_cart())
+    if(params is None):
+      params = bss.master_params.extract()
+    params.k_sol_b_sol_grid_search = False # XXX too slow otherwise
+    params.number_of_macro_cycles=1 # XXX too slow otherwise, let's see may be ok
+    if(not initialise):
+      fmodel.update_solvent_and_scale(params = params, out=out, verbose=verbose)
+      fmodel.apply_back_b_iso()
+    else:
+      fmodel.update_twin_fraction()
+    self.update_core(
+      k_sol = fmodel.k_sol(),
+      b_sol = fmodel.b_sol(),
+      twin_fraction = fmodel.twin_fraction,
+      b_cart = fmodel.b_cart(),
+      k_overall = fmodel.scale_k1_w())
+    # XXX this fails: assert approx_equal(self.r_work(), fmodel.r_work())
+    # XXX this fails: assert approx_equal(self.r_free(), fmodel.r_free())
 
   def update_core(self,
                   f_calc        = None,
@@ -1381,8 +769,6 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       if self.f_partial_array is not None:
         self.data_core.renew_fpart( self.f_partial_array.data() )
 
-    assert ([u_sol,b_sol]).count(None)>1
-
     if b_sol is not None:
       u_sol = adptbx.b_as_u( b_sol )
     if u_sol is not None:
@@ -1413,6 +799,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       self.target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
       self.free_target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
     else:
+      self.twin_fraction_object.twin_fraction = twin_fraction
       self.twin_fraction = twin_fraction
       self.target_evaluator.alpha( twin_fraction )
       self.free_target_evaluator.alpha( twin_fraction )
@@ -2058,8 +1445,18 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       untouched = untouched.select( ~zeros )
 
     #we can now quickly scale the two and see what hapens.
-    abs_tmp_f_model = abs( self.f_model() ).common_set( dt_f_obs ).set_observation_type( dt_f_obs )
-    tmp_f_model = self.f_model().common_set( dt_f_obs )
+    fmodel = self.f_model()
+    # XXX Pavel: avoid floating-point crashes
+    re = flex.abs(flex.real(fmodel.data()))
+    im = flex.abs(flex.imag(fmodel.data()))
+    sel  = re > 1.e+50
+    sel |= im > 1.e+50
+    d = fmodel.data().set_selected(sel, 0+0j)
+    fmodel = fmodel.array(data = d)
+    #
+    abs_tmp_f_model = abs( fmodel ).common_set(
+      dt_f_obs ).set_observation_type( dt_f_obs )
+    tmp_f_model = fmodel.common_set( dt_f_obs )
     scaler = relative_scaling.ls_rel_scale_driver(
       miller_native = abs_tmp_f_model,
       miller_derivative = dt_f_obs,
@@ -2599,9 +1996,6 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       free_reflections_per_bin = free_reflections_per_bin, max_number_of_bins =
       max_number_of_bins)
     return results
-    # first detemine number of bins please
-    # self.twin_fraction_scan(n=15)
-    # self.sigmaa_object().show(out=self.out)
 
   def r_factors_in_resolution_bins(self,
                                    free_reflections_per_bin = 140,
@@ -2609,8 +2003,6 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                                    out=None):
     results = self.r_values(table=True, rows=True)
     return results
-    #self.twin_fraction_scan(n=15)
-
 
   def r_work_scale_k1_completeness_in_bins(self, reflections_per_bin = 500,
                                                  n_bins              = 0,
