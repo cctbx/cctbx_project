@@ -13,6 +13,7 @@ import scitbx.lbfgs
 from scitbx import matrix
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
+from libtbx import group_args
 import libtbx
 import sys, os
 op = os.path
@@ -244,7 +245,7 @@ class residue_refine_restrained(object):
       g = rs_g + gr_e.gradients.select(indices=O.residue_i_seqs)
     return f, g.as_double()
 
-def rotamer_scoring(
+def rotamer_score_and_choose_best(
       density_map,
       pdb_hierarchy,
       geometry_restraints_manager,
@@ -266,8 +267,8 @@ def rotamer_scoring(
       real_space_gradients_delta=real_space_gradients_delta,
       lbfgs_termination_params=lbfgs_termination_params)
     print residue.id_str(), "constr. refined(%s): %.6g -> %.6g" % (
-      rotamer_name, refined.rs_f_start, refined.rs_f_final)
-    residue.atoms().set_xyz(new_xyz=refined.sites_cart_residue)
+      rotamer_id, refined.rs_f_start, refined.rs_f_final)
+    return refined
   def refine_restrained():
     refined = residue_refine_restrained(
       pdb_hierarchy=pdb_hierarchy,
@@ -278,11 +279,11 @@ def rotamer_scoring(
       real_space_gradients_delta=real_space_gradients_delta,
       lbfgs_termination_params=lbfgs_termination_params)
     print residue.id_str(), "restr. refined(%s): %.6g -> %.6g" % (
-      rotamer_name, refined.rs_f_start, refined.rs_f_final)
-    residue.atoms().set_xyz(new_xyz=refined.sites_cart_residue)
+      rotamer_id, refined.rs_f_start, refined.rs_f_final)
+    return refined
   def refine():
     refine_constrained()
-    refine_restrained()
+    return refine_restrained()
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       for residue in chain.only_conformer().residues():
@@ -292,17 +293,22 @@ def rotamer_scoring(
                 atom_selection_bool=atom_selection_bool,
                 residue=residue)):
           n_amino_acids_ignored += 1
+          print
         else:
-          rotamer_name = "as_given"
-          refine()
+          rotamer_id = "as_given"
+          best = group_args(rotamer_id=rotamer_id, refined=refine())
           n_amino_acids_scored += 1
           try:
-            for rotamer_name in next_rotamer(residue=residue):
-              refine()
+            for rotamer_id in next_rotamer(residue=residue):
+              trial = group_args(rotamer_id=rotamer_id, refined=refine())
+              if (trial.refined.rs_f_final > best.refined.rs_f_final):
+                best = trial
           except KeyboardInterrupt: raise
           except Exception, e:
             print "EXCEPTION next_rotamer():", e
-  if (n_amino_acids_scored != 0): print
+          print residue.id_str(), "best rotamer:", best.rotamer_id
+          residue.atoms().set_xyz(new_xyz=best.refined.sites_cart_residue)
+          print
   print "number of amino acid residues scored:", n_amino_acids_scored
   print "number of amino acid residues ignored:", n_amino_acids_ignored
   print "number of other residues:", n_other_residues
@@ -387,7 +393,7 @@ all_coordinate_refinement {
     .type = int
 }
 
-rotamer_scoring {
+rotamer_score_and_choose_best {
   run = False
     .type = bool
   lbfgs_max_iterations = 50
@@ -519,7 +525,7 @@ def run(args):
     print "real+geo target start: %.6g" % refined.f_start
     print "real+geo target final: %.6g" % refined.f_final
     print
-  if (work_params.rotamer_scoring.run):
+  if (work_params.rotamer_score_and_choose_best.run):
     if (work_params.atom_selection is None):
       atom_selection_bool = None
     else:
@@ -528,7 +534,7 @@ def run(args):
           cache=None,
           scope_extract=work_params,
           attr="atom_selection")
-    rotamer_scoring(
+    rotamer_score_and_choose_best(
       density_map=density_map,
       pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
       geometry_restraints_manager=grm,
@@ -536,7 +542,8 @@ def run(args):
       real_space_target_weight=work_params.real_space_target_weight,
       real_space_gradients_delta=real_space_gradients_delta,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=work_params.rotamer_scoring.lbfgs_max_iterations))
+        max_iterations=work_params
+          .rotamer_score_and_choose_best.lbfgs_max_iterations))
   #
   file_name = op.basename(input_pdb_file_name)
   if (   file_name.endswith(".pdb")
