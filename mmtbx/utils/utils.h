@@ -140,6 +140,52 @@ af::shared<std::size_t>
   return result_selection;
 }
 
+template <typename FloatType>
+af::shared<cctbx::miller::index<> >
+  create_twin_mate(
+    af::const_ref<cctbx::miller::index<> > const& miller_indices,
+    scitbx::mat3<FloatType> twin_law_matrix)
+{
+  af::shared<cctbx::miller::index<> > result;
+  for(std::size_t i=0; i<miller_indices.size(); i+=1) {
+    int h = scitbx::math::iround(
+      twin_law_matrix[0]*miller_indices[i][0] +
+      twin_law_matrix[3]*miller_indices[i][1] +
+      twin_law_matrix[6]*miller_indices[i][2]);
+    int k = scitbx::math::iround(
+      twin_law_matrix[1]*miller_indices[i][0] +
+      twin_law_matrix[4]*miller_indices[i][1] +
+      twin_law_matrix[7]*miller_indices[i][2]);
+    int l = scitbx::math::iround(
+      twin_law_matrix[2]*miller_indices[i][0] +
+      twin_law_matrix[5]*miller_indices[i][1] +
+      twin_law_matrix[8]*miller_indices[i][2]);
+    result.push_back( cctbx::miller::index<> (h,k,l) );
+  }
+  return result;
+}
+
+template <typename FloatType>
+af::shared<FloatType>
+  apply_twin_fraction(
+    af::const_ref<FloatType> const& amplitude_data_part_one,
+    af::const_ref<FloatType> const& amplitude_data_part_two,
+    FloatType const& twin_fraction)
+{
+  MMTBX_ASSERT(amplitude_data_part_one.size()==amplitude_data_part_one.size());
+  af::shared<FloatType> result;
+  for(std::size_t i=0; i<amplitude_data_part_one.size(); i+=1) {
+    FloatType d_twin = std::sqrt((1-twin_fraction)*
+                       amplitude_data_part_one[i]*
+                       amplitude_data_part_one[i]+
+                       twin_fraction*
+                       amplitude_data_part_two[i]*
+                       amplitude_data_part_two[i]);
+    result.push_back(d_twin);
+  }
+  return result;
+}
+
 ///
 template <typename FloatType>
 void correct_drifted_waters(af::ref<vec3<FloatType> > const& sites_frac_all,

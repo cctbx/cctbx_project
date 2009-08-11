@@ -68,6 +68,24 @@ namespace {
                                                            arg_("unit_cell")))
    ;
 
+   def("create_twin_mate",
+         (af::shared<cctbx::miller::index<> >(*)
+               (af::const_ref<cctbx::miller::index<> > const&,
+                scitbx::mat3<double>)) create_twin_mate,
+                  (arg_("miller_indices"),
+                   arg_("twin_law_matrix")))
+   ;
+
+   def("apply_twin_fraction",
+         (af::shared<double>(*)
+               (af::const_ref<double> const&,
+                af::const_ref<double> const&,
+                double const&)) apply_twin_fraction,
+                  (arg_("amplitude_data_part_one"),
+                   arg_("amplitude_data_part_two"),
+                   arg_("twin_fraction")))
+   ;
+
   }
 
 } // namespace <anonymous>
