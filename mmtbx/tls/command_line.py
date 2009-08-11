@@ -109,12 +109,11 @@ def run(args, command_name = "phenix.tls"):
      processed_args.crystal_symmetry.space_group() is None):
     raise Sorry("No CRYST1 record found.")
   mmtbx_pdb_file = utils.pdb_file(
-    pdb_file_names = processed_args.pdb_file_names,
-    cif_objects    = processed_args.cif_objects,
-    cryst1         = pdb.format_cryst1_record(crystal_symmetry =
-                                              processed_args.crystal_symmetry),
-    use_elbow      = command_line.options.use_elbow,
-    log            = log)
+    pdb_file_names   = processed_args.pdb_file_names,
+    cif_objects      = processed_args.cif_objects,
+    crystal_symmetry = processed_args.crystal_symmetry,
+    use_elbow        = command_line.options.use_elbow,
+    log              = log)
   #
   if(not command_line.options.silent):
     utils.print_header("TLS groups from PDB file header", out = log)
