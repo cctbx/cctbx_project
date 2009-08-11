@@ -49,8 +49,8 @@ class chebyshev_lsq_fit(object):
     self.x = flex.double(n_terms, 0)
     if randomise:
       self.x = (flex.random_double(n_terms)-0.5)*10.0
-    self.low_limit = flex.min(self.x_obs)
-    self.high_limit = flex.max(self.x_obs)
+    self.low_limit = flex.min_default(self.x_obs, 0)
+    self.high_limit = flex.max_default(self.x_obs, 0)
     self.f = None
     if low_limit is not None:
       self.low_limit = low_limit
@@ -60,7 +60,7 @@ class chebyshev_lsq_fit(object):
     ## Set the first term equal to twice mean of the data points.
     ## Although not really needed, seems like a good idea anyway.
     ## It should speed up convergence.
-    self.x[0] = flex.mean(self.y_obs)*2.0
+    self.x[0] = flex.mean_default(self.y_obs, 0)*2.0
     self.lsq_object = chebyshev_lsq(n_terms,
                                     self.low_limit,
                                     self.high_limit,
