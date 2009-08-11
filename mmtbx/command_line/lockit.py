@@ -72,19 +72,23 @@ def next_rotamer(residue):
       chi_counter+=1
     yield rot
 
-def residue_is_suitable_for_scoring(residue):
+def ignore_this_residue(residue, atom_selection_bool):
+  atoms = residue.atoms()
+  if (atom_selection_bool is not None):
+    if (atom_selection_bool.select(
+          indices=atoms.extract_i_seq()).all_eq(False)):
+      return True
   matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
-    residue.resname].match_atom_names(
-      atom_names=residue.atoms().extract_name())
+    residue.resname].match_atom_names(atom_names=atoms.extract_name())
   names = matched_atom_names.unexpected
   if (len(names) != 0):
     print residue.id_str(), "unexpected atoms:", " ".join(sorted(names))
-    return False
+    return True
   names = matched_atom_names.missing_atom_names(ignore_hydrogen=True)
   if (len(names) != 0):
     print residue.id_str(), "missing atoms:", " ".join(sorted(names))
-    return False
-  return True
+    return True
+  return False
 
 class residue_refine_constrained(object):
 
@@ -244,6 +248,7 @@ def rotamer_scoring(
       density_map,
       pdb_hierarchy,
       geometry_restraints_manager,
+      atom_selection_bool,
       real_space_target_weight,
       real_space_gradients_delta,
       lbfgs_termination_params):
@@ -283,7 +288,9 @@ def rotamer_scoring(
       for residue in chain.only_conformer().residues():
         if (get_class(residue.resname) != "common_amino_acid"):
           n_other_residues += 1
-        elif (not residue_is_suitable_for_scoring(residue=residue)):
+        elif (ignore_this_residue(
+                atom_selection_bool=atom_selection_bool,
+                residue=residue)):
           n_amino_acids_ignored += 1
         else:
           rotamer_name = "as_given"
@@ -352,6 +359,9 @@ class try_read_file(object):
 def get_master_phil():
   return iotbx.phil.parse(
     input_string="""\
+atom_selection = None
+  .type = str
+
 symmetry_from_file = None
   .type = path
   .multiple = True
@@ -510,10 +520,19 @@ def run(args):
     print "real+geo target final: %.6g" % refined.f_final
     print
   if (work_params.rotamer_scoring.run):
+    if (work_params.atom_selection is None):
+      atom_selection_bool = None
+    else:
+      atom_selection_bool = processed_pdb_file.all_chain_proxies \
+        .phil_atom_selection(
+          cache=None,
+          scope_extract=work_params,
+          attr="atom_selection")
     rotamer_scoring(
       density_map=density_map,
       pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
       geometry_restraints_manager=grm,
+      atom_selection_bool=atom_selection_bool,
       real_space_target_weight=work_params.real_space_target_weight,
       real_space_gradients_delta=real_space_gradients_delta,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
