@@ -307,11 +307,9 @@ def run(args, command_name="phenix.twin_map_utils"):
 
 
       print >> log, "--- bulk solvent scaling ---"
-      twin_model.update_solvent_and_scale(de_search=True,
-                                          refine=False)
+      twin_model.update_solvent_and_scale()
       twin_model.r_values()
       twin_model.target()
-      twin_model.twin_fraction_scan()
       twin_model.show_k_sol_b_sol_b_cart_target()
       twin_model.show_essential()
 
