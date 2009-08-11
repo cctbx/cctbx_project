@@ -131,8 +131,10 @@ namespace chebyshev{
     f_t epsilon;
     epsilon = 1.0E-12;
     f_t result=0;
-    result = (x_in - (low_limit_ + high_limit_)*0.5)
-      / (0.5*(high_limit_ - low_limit_));
+    if(high_limit_ - low_limit_ != 0) {
+      result = (x_in - (low_limit_ + high_limit_)*0.5)
+        / (0.5*(high_limit_ - low_limit_));
+    }
     SCITBX_ASSERT (result<=1+epsilon);
     SCITBX_ASSERT (result>=-1.0-epsilon);
     return(result);
@@ -684,8 +686,10 @@ namespace chebyshev{
     FloatType result=0.0,tmp;
     for (unsigned ii=0;ii<x_obs_.size();ii++){
       if (!free_flags_[ii]){
-        tmp = (y_obs_[ii]- cheby_.f(x_obs_[ii]))/w_obs_[ii];
-        result += tmp*tmp;
+        if(w_obs_[ii]!=0) {
+          tmp = (y_obs_[ii]- cheby_.f(x_obs_[ii]))/w_obs_[ii];
+          result += tmp*tmp;
+        }
       }
     }
     return (result);
@@ -699,13 +703,15 @@ namespace chebyshev{
 
     scitbx::af::shared<FloatType> result(n_terms_,0);
     scitbx::af::shared<FloatType> tmp_grad;
-    FloatType tmp;
+    FloatType tmp=0.;
     for (unsigned ii=0; ii<x_obs_.size(); ii++){
       if (free_flags_[ii]){
-        tmp = (y_obs_[ii] - cheby_.f(x_obs_[ii]))/(w_obs_[ii]*w_obs_[ii]);
-        tmp_grad = cheby_.dfdcoefs(x_obs_[ii]);
-        for (unsigned jj=0;jj<n_terms_;jj++){
-          result[jj] += tmp_grad[jj]*tmp*(-2.0);
+        if(w_obs_[ii]!=0) {
+          tmp = (y_obs_[ii] - cheby_.f(x_obs_[ii]))/(w_obs_[ii]*w_obs_[ii]);
+          tmp_grad = cheby_.dfdcoefs(x_obs_[ii]);
+          for (unsigned jj=0;jj<n_terms_;jj++){
+            result[jj] += tmp_grad[jj]*tmp*(-2.0);
+          }
         }
       }
     }
