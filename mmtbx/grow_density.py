@@ -349,9 +349,9 @@ def run(processed_args, params):
     test_flag_value=None
   #
   mmtbx_pdb_file = mmtbx.utils.pdb_file(
-    pdb_file_names = [params.pdb_file_name],
-    cryst1         = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
-    log            = sys.stdout)
+    pdb_file_names   = [params.pdb_file_name],
+    crystal_symmetry = crystal_symmetry,
+    log              = sys.stdout)
   mmtbx_pdb_file.set_ppf()
   processed_pdb_file = mmtbx_pdb_file.processed_pdb_file
   pdb_raw_records = mmtbx_pdb_file.pdb_raw_records

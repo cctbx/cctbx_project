@@ -140,6 +140,8 @@ master_params = iotbx.phil.parse("""\
   translate_cns_dna_rna_residue_names = None
     .type=bool
     .optional=False
+  proceed_with_excessive_length_bonds = False
+    .type=bool
   rna_sugar_pucker_analysis {
     use = False
       .type=bool
@@ -2800,7 +2802,8 @@ class build_all_chain_proxies(object):
       excessive_bonds = (
         bond_distances_model > self.special_position_settings.unit_cell()
           .shortest_vector_sq()**.5).iselection()
-      if (excessive_bonds.size() > 0):
+      if (excessive_bonds.size() > 0 and not
+          self.params.proceed_with_excessive_length_bonds):
         atoms = self.pdb_atoms
         proxies = self.geometry_proxy_registries.bond_simple.proxies
         print >> log, "  Bonds with excessive lengths:"

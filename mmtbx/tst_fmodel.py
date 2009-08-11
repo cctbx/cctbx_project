@@ -60,7 +60,7 @@ def test_1(xray_structure):
                       assert approx_equal(fmodel.r_free(), 0, 1.e-9)
                       assert approx_equal(fmodel.r_all(), 0, 1.e-9)
                       assert fmodel.fb_cart().all_eq(1.0)
-                      assert fmodel.fb_cart_w().all_eq(1.0)
+                      assert fmodel.fb_cart_work().all_eq(1.0)
                       assert fmodel.fb_cart_t().all_eq(1.0)
                       assert abs(fmodel.target_w()) < 1.e-9
                       assert abs(fmodel.target_t()) < 1.e-9
@@ -75,9 +75,9 @@ def test_1(xray_structure):
                                                 f_obs.select(~flags.data()).data())
                       assert abs(fmodel.f_calc_t()).data().all_eq(
                                                  f_obs.select(flags.data()).data())
-                      assert abs(fmodel.f_model_w()).data().all_eq(
+                      assert abs(fmodel.f_model_work()).data().all_eq(
                                                 f_obs.select(~flags.data()).data())
-                      assert abs(fmodel.f_model_t()).data().all_eq(
+                      assert abs(fmodel.f_model_free()).data().all_eq(
                                                  f_obs.select(flags.data()).data())
                       assert abs(fmodel.f_bulk_w()).data().all_eq(0)
                       assert abs(fmodel.f_bulk_t()).data().all_eq(0)
@@ -101,9 +101,6 @@ def test_1(xray_structure):
                       a,b = fmodel.alpha_beta_t()
                       assert a.data().all_approx_equal(1.0, 1.e-9)
                       assert b.data().all_approx_equal(0.0, 1.e-9)
-                      assert fmodel.f_ordered_solvent.data().all_eq(0)
-                      assert fmodel.f_ordered_solvent_w().data().all_eq(0)
-                      assert fmodel.f_ordered_solvent_t().data().all_eq(0)
                       fmodel.model_error_ml()
                       ###
                       ### instantiate fmodel only + update ksol & bsol
@@ -127,7 +124,7 @@ def test_1(xray_structure):
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
                       assert fmodel.fb_cart().all_eq(1.0)
-                      assert fmodel.fb_cart_w().all_eq(1.0)
+                      assert fmodel.fb_cart_work().all_eq(1.0)
                       assert fmodel.fb_cart_t().all_eq(1.0)
                       assert fmodel.k_sol_b_sol() == (0.5,35.0)
                       assert approx_equal(fmodel.b_cart(),[0,0,0,0,0,0])
@@ -140,9 +137,6 @@ def test_1(xray_structure):
                                                 f_obs.select(~flags.data()).data())
                       assert abs(fmodel.f_calc_t()).data().all_eq(
                                                  f_obs.select(flags.data()).data())
-                      assert fmodel.f_ordered_solvent.data().all_eq(0)
-                      assert fmodel.f_ordered_solvent_w().data().all_eq(0)
-                      assert fmodel.f_ordered_solvent_t().data().all_eq(0)
                       fmodel.model_error_ml()
                       #
                       p = pickle.dumps(fmodel, 1)
@@ -173,7 +167,7 @@ def test_1(xray_structure):
                       assert approx_equal(fmodel.r_free(), 0, 1.e-9)
                       assert approx_equal(fmodel.r_all(), 0, 1.e-9)
                       assert fmodel.fb_cart().all_eq(1.0)
-                      assert fmodel.fb_cart_w().all_eq(1.0)
+                      assert fmodel.fb_cart_work().all_eq(1.0)
                       assert fmodel.fb_cart_t().all_eq(1.0)
                       assert abs(fmodel.target_w()) < 1.e-9
                       assert abs(fmodel.target_t()) < 1.e-9
@@ -188,9 +182,9 @@ def test_1(xray_structure):
                                                 f_obs.select(~flags.data()).data())
                       assert abs(fmodel.f_calc_t()).data().all_eq(
                                                  f_obs.select(flags.data()).data())
-                      assert abs(fmodel.f_model_w()).data().all_eq(
+                      assert abs(fmodel.f_model_work()).data().all_eq(
                                                 f_obs.select(~flags.data()).data())
-                      assert abs(fmodel.f_model_t()).data().all_eq(
+                      assert abs(fmodel.f_model_free()).data().all_eq(
                                                  f_obs.select(flags.data()).data())
                       assert abs(fmodel.f_bulk_w()).data().all_eq(0)
                       assert abs(fmodel.f_bulk_t()).data().all_eq(0)
@@ -214,9 +208,6 @@ def test_1(xray_structure):
                       a,b = fmodel.alpha_beta_t()
                       assert a.data().all_approx_equal(1.0, 1.e-9)
                       assert b.data().all_approx_equal(0.0, 1.e-9)
-                      assert fmodel.f_ordered_solvent.data().all_eq(0)
-                      assert fmodel.f_ordered_solvent_w().data().all_eq(0)
-                      assert fmodel.f_ordered_solvent_t().data().all_eq(0)
                       fmodel.model_error_ml()
                       ###
                       ### instantiate fmodel only, then use resolution_filter
@@ -260,7 +251,7 @@ def test_1(xray_structure):
                       assert abs(fmodel_1.f_calc()).data().all_eq(abs(fmodel_2.f_calc()).data())
                       assert abs(fmodel_1.f_model()).data().all_eq(abs(fmodel_2.f_model()).data())
                       assert fmodel_1.fb_cart().all_eq(fmodel_2.fb_cart())
-                      assert fmodel_1.fb_cart_w().all_eq(fmodel_2.fb_cart_w())
+                      assert fmodel_1.fb_cart_work().all_eq(fmodel_2.fb_cart_work())
                       assert fmodel_1.fb_cart_t().all_eq(fmodel_2.fb_cart_t())
                       assert fmodel_1.f_obs_w.data().all_eq(
                                                      fmodel_2.f_obs_w.data())
@@ -270,10 +261,10 @@ def test_1(xray_structure):
                                                abs(fmodel_2.f_calc_w()).data())
                       assert abs(fmodel_1.f_calc_t()).data().all_eq(
                                                abs(fmodel_2.f_calc_t()).data())
-                      assert abs(fmodel_1.f_model_w()).data().all_eq(
-                                              abs(fmodel_2.f_model_w()).data())
-                      assert abs(fmodel_1.f_model_t()).data().all_eq(
-                                              abs(fmodel_2.f_model_t()).data())
+                      assert abs(fmodel_1.f_model_work()).data().all_eq(
+                                              abs(fmodel_2.f_model_work()).data())
+                      assert abs(fmodel_1.f_model_free()).data().all_eq(
+                                              abs(fmodel_2.f_model_free()).data())
                       assert abs(fmodel_1.f_bulk_w()).data().all_eq(abs(fmodel_2.f_bulk_w()).data())
                       assert abs(fmodel_1.f_bulk_t()).data().all_eq(abs(fmodel_2.f_bulk_t()).data())
                       assert fmodel_1.figures_of_merit() .all_approx_equal(fmodel_2.figures_of_merit() )
@@ -292,9 +283,6 @@ def test_1(xray_structure):
                       a2,b2 = fmodel_2.alpha_beta_t()
                       assert a1.data().all_approx_equal(a2.data())
                       assert b1.data().all_approx_equal(b2.data())
-                      assert fmodel_1.f_ordered_solvent.data()    .all_eq(fmodel_2.f_ordered_solvent.data()    )
-                      assert fmodel_1.f_ordered_solvent_w().data().all_eq(fmodel_2.f_ordered_solvent_w().data())
-                      assert fmodel_1.f_ordered_solvent_t().data().all_eq(fmodel_2.f_ordered_solvent_t().data())
                       fmodel_1.model_error_ml()
                       fmodel_2.model_error_ml()
 

@@ -18,7 +18,10 @@ class manager(object):
     if (self.geometry is None):
       geometry = None
     else:
-      geometry = self.geometry.select(selection=selection)
+      if(isinstance(selection, flex.size_t)):
+        geometry = self.geometry.select(iselection=selection)
+      else:
+        geometry = self.geometry.select(selection=selection)
     if (self.ncs_groups is None):
       ncs_groups = None
     else:

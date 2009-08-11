@@ -679,8 +679,12 @@ class manager(object):
       new_refinement_flags = self.refinement_flags.select(selection)
     new_restraints_manager = None
     if(self.restraints_manager is not None):
-      new_restraints_manager = self.restraints_manager.select(
-        selection = selection)
+      if(isinstance(selection, flex.bool)):
+        new_restraints_manager = self.restraints_manager.select(
+          selection = selection)
+      elif(isinstance(selection, flex.size_t)):
+        new_restraints_manager = self.restraints_manager.select(
+          selection = selection)
       new_restraints_manager.geometry.pair_proxies(sites_cart =
         self.xray_structure.sites_cart().select(selection)) # XXX is it necessary ?
     new = manager(

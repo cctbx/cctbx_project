@@ -1,4 +1,4 @@
-import sys, os, time
+import sys, os, time, random
 from cctbx.array_family import flex
 from iotbx import pdb
 from cctbx import adptbx
@@ -27,6 +27,9 @@ from iotbx.pdb import combine_unique_pdb_files
 from libtbx import group_args
 from mmtbx import masks
 
+if (1):
+  random.seed(0)
+  flex.set_random_seed(0)
 
 class mvd(object):
 
@@ -361,10 +364,13 @@ def reflection_file_server(crystal_symmetry, reflection_files):
     reflection_files=reflection_files,
     err=StringIO())
 
-def show_data(fmodel, n_outl, test_flag_value, f_obs_labels):
+def show_data(fmodel, n_outl, test_flag_value, f_obs_labels, fmodel_cut):
   info = fmodel.info()
   flags_pc = \
    fmodel.r_free_flags.data().count(True)*1./fmodel.r_free_flags.data().size()
+  twinned = str(fmodel_cut.twin)
+  if(fmodel_cut.twin != fmodel.twin):
+    twinned = "May be, %s or %s"%(str(fmodel_cut.twin), str(fmodel.twin))
   return group_args(data_label              = f_obs_labels,
                     high_resolution         = info.d_min,
                     low_resolution          = info.d_max,
@@ -376,7 +382,7 @@ def show_data(fmodel, n_outl, test_flag_value, f_obs_labels):
                     test_set_size           = flags_pc,
                     test_flag_value         = test_flag_value,
                     number_of_Fobs_outliers = n_outl,
-                    twinned                 = str(fmodel.twin),
+                    twinned                 = twinned,
                     anomalous_flag          = fmodel.f_obs.anomalous_flag())
 
 def show_model_vs_data(fmodel):
@@ -480,11 +486,11 @@ def run(args,
     test_flag_value=None
   #
   mmtbx_pdb_file = mmtbx.utils.pdb_file(
-    pdb_file_names = pdb_file_names,
-    cif_objects    = processed_args.cif_objects,
-    cryst1         = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
-    use_elbow      = show_geometry_statistics,
-    log            = sys.stdout)
+    pdb_file_names   = pdb_file_names,
+    cif_objects      = processed_args.cif_objects,
+    crystal_symmetry = crystal_symmetry,
+    use_elbow        = show_geometry_statistics,
+    log              = sys.stdout)
   mmtbx_pdb_file.set_ppf()
   processed_pdb_file = mmtbx_pdb_file.processed_pdb_file
   pdb_raw_records = mmtbx_pdb_file.pdb_raw_records
@@ -554,11 +560,6 @@ def run(args,
                                r_free_flags    = r_free_flags,
                                bss_params      = bss_params)
   n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
-  mvd_obj.collect(data =
-    show_data(fmodel          = fmodel,
-              n_outl          = n_outl,
-              test_flag_value = test_flag_value,
-              f_obs_labels    = f_obs.info().label_string()))
   mvd_obj.collect(model_vs_data = show_model_vs_data(fmodel))
   #
   # Extract information from PDB file header and output (if any)
@@ -594,39 +595,30 @@ def run(args,
     tls             = pdb_tls))
   #
   # Recompute R-factors using published cutoffs
-  r_work_cutoff = None
-  r_free_cutoff = None
-  n_refl_cutoff = None
-  f_obs_cut = f_obs.deep_copy()
-  r_free_flags_cut = r_free_flags.deep_copy()
-  if(pub_sigma is not None and f_obs.sigmas() is not None):
-    tmp_sel = f_obs.data() > f_obs.sigmas()*pub_sigma
-    if(tmp_sel.size() != tmp_sel.count(True) and tmp_sel.count(True) > 0):
-      f_obs_cut = f_obs.select(tmp_sel)
-      r_free_flags_cut = r_free_flags.select(tmp_sel)
-  if(pub_high is not None and abs(pub_high-f_obs.d_min()) > 0.03):
-    tmp_sel = f_obs.d_spacings().data() > pub_high
-    if(tmp_sel.size() != tmp_sel.count(True) and tmp_sel.count(True) > 0):
-      f_obs_cut = f_obs.select(tmp_sel)
-      r_free_flags_cut = r_free_flags.select(tmp_sel)
-  if(pub_low is not None and abs(pub_low-f_obs.d_max_min()[0]) > 0.03):
-    tmp_sel = f_obs.d_spacings().data() < pub_low
-    if(tmp_sel.size() != tmp_sel.count(True) and tmp_sel.count(True) > 0):
-      f_obs_cut = f_obs.select(tmp_sel)
-      r_free_flags_cut = r_free_flags.select(tmp_sel)
-  if(f_obs_cut.size() != f_obs.size()):
+  fmodel_cut = fmodel
+  tmp_sel = flex.bool(fmodel.f_obs.data().size(), True)
+  if(pub_sigma is not None and fmodel.f_obs.sigmas() is not None):
+    tmp_sel &= fmodel.f_obs.data() > fmodel.f_obs.sigmas()*pub_sigma
+  if(pub_high is not None and abs(pub_high-fmodel.f_obs.d_min()) > 0.03):
+    tmp_sel &= fmodel.f_obs.d_spacings().data() > pub_high
+  if(pub_low is not None and abs(pub_low-fmodel.f_obs.d_max_min()[0]) > 0.03):
+    tmp_sel &= fmodel.f_obs.d_spacings().data() < pub_low
+  if(tmp_sel.count(True) != tmp_sel.size() and tmp_sel.count(True) > 0):
     fmodel_cut = utils.fmodel_simple(
       xray_structures = xray_structures,
-      f_obs           = f_obs_cut,
-      r_free_flags    = r_free_flags_cut,
+      f_obs           = fmodel.f_obs.select(tmp_sel),
+      r_free_flags    = fmodel.r_free_flags.select(tmp_sel),
       bss_params      = bss_params)
-    r_work_cutoff = fmodel_cut.r_work()
-    r_free_cutoff = fmodel_cut.r_free()
-    n_refl_cutoff = f_obs_cut.data().size()
   mvd_obj.collect(misc = group_args(
-    r_work_cutoff = r_work_cutoff,
-    r_free_cutoff = r_free_cutoff,
-    n_refl_cutoff = n_refl_cutoff))
+    r_work_cutoff = fmodel_cut.r_work(),
+    r_free_cutoff = fmodel_cut.r_free(),
+    n_refl_cutoff = fmodel_cut.f_obs.data().size()))
+  mvd_obj.collect(data =
+    show_data(fmodel          = fmodel,
+              n_outl          = n_outl,
+              test_flag_value = test_flag_value,
+              f_obs_labels    = f_obs.info().label_string(),
+              fmodel_cut      = fmodel_cut))
   mvd_obj.show()
   if return_fmodel_and_pdb :
     mvd_obj.pdb_file = processed_pdb_file
