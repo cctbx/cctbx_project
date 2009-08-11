@@ -83,6 +83,20 @@ def exercise_cluster_manager():
 >number of loop edge bendings: None
 >number of fixed hinges: None
 """)
+  #
+  cm = cluster_manager(n_vertices=3, all_in_one_rigid_body=True)
+  assert cm.clusters == [[0,1,2]]
+  assert cm.cluster_indices == [0,0,0]
+  cm.tidy()
+  cm.construct_spanning_trees(edge_sets=None)
+  assert cm.clusters == [[0,1,2]]
+  assert cm.cluster_indices == [0,0,0]
+  assert cm.hinge_edges == [(-1,0)]
+  assert cm.loop_edges == []
+  assert cm.roots() == [0]
+  assert cm.tree_ids() == [0]
+  cm.find_loop_edge_bendings(edge_sets=None)
+  assert cm.loop_edge_bendings == []
 
 class test_case_data(object):
 
@@ -820,6 +834,26 @@ def exercise_edge_classifier():
     "loop": [],
     "fixed": [(2,3), (3,4)]}
 
+def exercise_all_in_one_rigid_body():
+  tt = construct(
+    sites=matrix.col_list([(0,0,0), (0,0,1), (0,0,2)]),
+    edge_list="all_in_one_rigid_body")
+  sio = StringIO()
+  tt.show_summary(vertex_labels=None, out=sio)
+  assert not show_diff(sio.getvalue(), """\
+number of vertices: 3
+number of edges: None
+find cluster loops: 0 repeats
+number of fixed vertex lists: 0
+number of fixed vertices: 0
+number of clusters: 1
+merge clusters with multiple connections: 0 passes
+number of hinge edges: 1
+number of loop edges: 0
+number of loop edge bendings: 0
+number of fixed hinges: 0
+""")
+
 def exercise_pickle():
   from scitbx.graph import tst_tardy_pdb
   tcs = tst_tardy_pdb.select_test_cases(tags_or_indices=["ZINC03847120"])
@@ -854,6 +888,7 @@ def run(args):
   exercise_fixed_vertices()
   exercise_show_summary()
   exercise_edge_classifier()
+  exercise_all_in_one_rigid_body()
   exercise_pickle()
   #
   print "OK"

@@ -7,6 +7,8 @@ from cctbx import maptbx
 import cctbx.maptbx.real_space_refinement_simple
 import cctbx.geometry_restraints
 from cctbx.array_family import flex
+import scitbx.rigid_body
+import scitbx.graph.tardy_tree
 import scitbx.lbfgs
 from scitbx import matrix
 from libtbx.str_utils import show_string
@@ -14,6 +16,34 @@ from libtbx.utils import Sorry
 import libtbx
 import sys, os
 op = os.path
+
+def real_space_rigid_body_gradients_simple(
+      unit_cell,
+      density_map,
+      sites_cart_0,
+      center_of_mass,
+      q,
+      unit_quaternion_delta=0.01,
+      translation_delta=0.3):
+  result = flex.double()
+  q_delta = q.deep_copy()
+  def get(i, delta):
+    fs = []
+    for signed_delta in [delta, -delta]:
+      q_delta[i] = q[i] + signed_delta
+      aja = matrix.rt(scitbx.rigid_body.joint_lib_six_dof_aja_simplified(
+        center_of_mass=center_of_mass,
+        q=q_delta))
+      sites_cart_delta = aja * sites_cart_0
+      rs_f = maptbx.real_space_target_simple(
+        unit_cell=unit_cell,
+        density_map=density_map,
+        sites_cart=sites_cart_delta)
+      fs.append(rs_f)
+    result.append((fs[0]-fs[1])/(2*delta))
+  for i in xrange(4): get(i=i, delta=unit_quaternion_delta)
+  for i in xrange(3): get(i=i+4, delta=translation_delta)
+  return result
 
 def next_rotamer(residue):
   from mmtbx.rotamer.sidechain_angles import SidechainAngles
@@ -55,6 +85,95 @@ def residue_is_suitable_for_scoring(residue):
     print residue.id_str(), "missing atoms:", " ".join(sorted(names))
     return False
   return True
+
+class residue_refine_constrained(object):
+
+  def __init__(O,
+        pdb_hierarchy,
+        residue,
+        density_map,
+        geometry_restraints_manager,
+        real_space_target_weight,
+        real_space_gradients_delta,
+        lbfgs_termination_params):
+    O.pdb_hierarchy = pdb_hierarchy
+    O.residue = residue
+    O.density_map = density_map
+    O.geometry_restraints_manager = geometry_restraints_manager
+    O.real_space_gradients_delta = real_space_gradients_delta
+    O.real_space_target_weight = real_space_target_weight
+    #
+    O.unit_cell = geometry_restraints_manager.crystal_symmetry.unit_cell()
+    O.sites_cart_all = pdb_hierarchy.atoms().extract_xyz()
+    O.residue_i_seqs = residue.atoms().extract_i_seq()
+    O.sites_cart_residue_0 = O.sites_cart_all.select(indices=O.residue_i_seqs)
+    O.residue_center_of_mass = O.sites_cart_residue_0.mean()
+    residue_tardy_tree = scitbx.graph.tardy_tree.construct(
+      n_vertices=O.sites_cart_residue_0.size(),
+      edge_list="all_in_one_rigid_body") \
+        .build_tree() \
+        .fix_near_singular_hinges(sites=None)
+    O.residue_tardy_model = scitbx.rigid_body.tardy_model(
+      labels=None,
+      sites=O.sites_cart_residue_0,
+      masses=flex.double(O.sites_cart_residue_0.size(), 1),
+      tardy_tree=residue_tardy_tree,
+      potential_obj=O)
+    O.x = O.residue_tardy_model.pack_q()
+    assert O.x.size() == 7 # other cases not implemented
+    #
+    O.number_of_function_evaluations = -1
+    O.f_start, O.g_start = O.compute_functional_and_gradients()
+    O.rs_f_start = O.rs_f
+    O.minimizer = scitbx.lbfgs.run(
+      target_evaluator=O,
+      termination_params=lbfgs_termination_params)
+    O.f_final, O.g_final = O.compute_functional_and_gradients()
+    O.rs_f_final = O.rs_f
+    del O.rs_f
+    del O.x
+    del O.residue_center_of_mass
+    del O.sites_cart_residue_0
+    del O.residue_i_seqs
+    del O.sites_cart_all
+    del O.unit_cell
+
+  def compute_functional_and_gradients(O):
+    if (O.number_of_function_evaluations == 0):
+      O.number_of_function_evaluations += 1
+      return O.f_start, O.g_start
+    O.number_of_function_evaluations += 1
+    O.residue_tardy_model.unpack_q(q_packed=O.x)
+    O.sites_cart_residue = O.residue_tardy_model.sites_moved()
+    rs_f = maptbx.real_space_target_simple(
+      unit_cell=O.unit_cell,
+      density_map=O.density_map,
+      sites_cart=O.sites_cart_residue)
+    rs_g = real_space_rigid_body_gradients_simple(
+      unit_cell=O.unit_cell,
+      density_map=O.density_map,
+      sites_cart_0=O.sites_cart_residue_0,
+      center_of_mass=O.residue_center_of_mass,
+      q=O.x)
+    O.rs_f = rs_f
+    rs_f *= -O.real_space_target_weight
+    rs_g *= -O.real_space_target_weight
+    if (O.geometry_restraints_manager is None):
+      f = rs_f
+      g = rs_g
+    else:
+      O.sites_cart_all.set_selected(O.residue_i_seqs, O.sites_cart_residue)
+      gr_e = O.geometry_restraints_manager.energies_sites(
+        sites_cart=O.sites_cart_all, compute_gradients=True)
+      O.__d_e_pot_d_sites = gr_e.gradients.select(indices=O.residue_i_seqs)
+      f = rs_f + gr_e.target
+      g = rs_g + O.residue_tardy_model.d_e_pot_d_q_packed()
+    return f, g.as_double()
+
+  def d_e_pot_d_sites(O, sites_moved):
+    result = O.__d_e_pot_d_sites
+    del O.__d_e_pot_d_sites
+    return result
 
 class residue_refine_restrained(object):
 
@@ -98,7 +217,6 @@ class residue_refine_restrained(object):
       return O.f_start, O.g_start
     O.number_of_function_evaluations += 1
     O.sites_cart_residue = flex.vec3_double(O.x)
-    O.sites_cart_all.set_selected(O.residue_i_seqs, O.sites_cart_residue)
     rs_f = maptbx.real_space_target_simple(
       unit_cell=O.unit_cell,
       density_map=O.density_map,
@@ -115,6 +233,7 @@ class residue_refine_restrained(object):
       f = rs_f
       g = rs_g
     else:
+      O.sites_cart_all.set_selected(O.residue_i_seqs, O.sites_cart_residue)
       gr_e = O.geometry_restraints_manager.energies_sites(
         sites_cart=O.sites_cart_all, compute_gradients=True)
       f = rs_f + gr_e.target
@@ -132,6 +251,18 @@ def rotamer_scoring(
   n_amino_acids_ignored = 0
   n_amino_acids_scored = 0
   get_class = iotbx.pdb.common_residue_names_get_class
+  def refine_constrained():
+    refined = residue_refine_constrained(
+      pdb_hierarchy=pdb_hierarchy,
+      residue=residue,
+      density_map=density_map,
+      geometry_restraints_manager=geometry_restraints_manager,
+      real_space_target_weight=real_space_target_weight,
+      real_space_gradients_delta=real_space_gradients_delta,
+      lbfgs_termination_params=lbfgs_termination_params)
+    print residue.id_str(), "constr. refined(%s): %.6g -> %.6g" % (
+      rotamer_name, refined.rs_f_start, refined.rs_f_final)
+    residue.atoms().set_xyz(new_xyz=refined.sites_cart_residue)
   def refine_restrained():
     refined = residue_refine_restrained(
       pdb_hierarchy=pdb_hierarchy,
@@ -141,8 +272,12 @@ def rotamer_scoring(
       real_space_target_weight=real_space_target_weight,
       real_space_gradients_delta=real_space_gradients_delta,
       lbfgs_termination_params=lbfgs_termination_params)
-    print residue.id_str(), "refined(%s): %.6g -> %.6g" % (
+    print residue.id_str(), "restr. refined(%s): %.6g -> %.6g" % (
       rotamer_name, refined.rs_f_start, refined.rs_f_final)
+    residue.atoms().set_xyz(new_xyz=refined.sites_cart_residue)
+  def refine():
+    refine_constrained()
+    refine_restrained()
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       for residue in chain.only_conformer().residues():
@@ -152,11 +287,11 @@ def rotamer_scoring(
           n_amino_acids_ignored += 1
         else:
           rotamer_name = "as_given"
-          refine_restrained()
+          refine()
           n_amino_acids_scored += 1
           try:
             for rotamer_name in next_rotamer(residue=residue):
-              refine_restrained()
+              refine()
           except KeyboardInterrupt: raise
           except Exception, e:
             print "EXCEPTION next_rotamer():", e
