@@ -258,15 +258,18 @@ the shadow of the beamstop.
 
 
   def model_based_outliers(self,
-                           fmodel_manager,
+                           f_model,
                            level=.01,
                            return_data=False,
                            plot_out=None):
 
     assert  self.r_free_flags is not None
+    if(self.r_free_flags.data().count(True)==0):
+      self.r_free_flags = self.r_free_flags.array(
+        data = ~self.r_free_flags.data())
     sigmaa_estimator = sigmaa_estimation.sigmaa_estimator(
       miller_obs   = self.miller_obs,
-      miller_calc  = fmodel_manager.f_model(),
+      miller_calc  = f_model,
       r_free_flags = self.r_free_flags,
       kernel_width_free_reflections = 200,
       n_sampling_points = 20,

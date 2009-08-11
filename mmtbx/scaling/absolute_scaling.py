@@ -601,10 +601,16 @@ class ml_aniso_absolute_scaling(object):
         assert self.dim_u()<=6
         ## Optimisation stuff
         self.x = flex.double(self.dim_u()+1, 0.0) ## B-values and scale factor!
-        term_parameters = scitbx.lbfgs.termination_parameters( max_iterations = 1000 )
+        exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
+          ignore_line_search_failed_step_at_lower_bound = False,
+          ignore_line_search_failed_step_at_upper_bound = False,
+          ignore_line_search_failed_maxfev              = False)
+        term_parameters = scitbx.lbfgs.termination_parameters(
+          max_iterations = 50)
 
-
-        self.minimizer = scitbx.lbfgs.run(target_evaluator=self, termination_params=term_parameters )
+        self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
+          termination_params=term_parameters,
+          exception_handling_params=exception_handling_params)
 
         ## Done refining
         Vrwgk = math.pow(self.unit_cell.volume(),2.0/3.0)
@@ -820,6 +826,7 @@ class kernel_normalisation(object):
     ## Now get the average intensity please
     ##
     ## This step can be reasonably time consuming
+
     self.mean_I_array = scaling.kernel_normalisation(
       d_star_sq_hkl = d_star_sq_hkl,
       I_hkl = I_obs,
@@ -827,7 +834,11 @@ class kernel_normalisation(object):
       d_star_sq_array = self.d_star_sq_array,
       kernel_width = self.kernel_width
       )
-    assert flex.min( self.mean_I_array ) > 0
+    #assert flex.min( self.mean_I_array ) > 0
+    sel_pos = self.mean_I_array > 0
+    self.mean_I_array = self.mean_I_array.select(sel_pos)
+    self.d_star_sq_array = self.d_star_sq_array.select(sel_pos)
+
     self.mean_I_array = flex.log( self.mean_I_array )
     ## Fit a chebyshev polynome please
     normalizer_fit_lsq = chebyshev_lsq_fit.chebyshev_lsq_fit(

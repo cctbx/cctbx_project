@@ -194,14 +194,20 @@ namespace absolute_scaling{
                + exp_bp_ds_over_2*i_obs*d_star_sq*kp*kp/4.*c_scale
                + exp_bp_ds_over_2*d_star_sq*kp*kp*sigd/4.0*c_scale;
     } else {
-      grad_scale = -1.0/kp
-        - 2.0*exp_bp_ds*i_obs*kp*kp*kp*sigd*c_scale_sq
-        + 2.0*exp_bp_ds_over_2*i_obs*kp*c_scale
-        + 2.0*exp_bp_ds_over_2*kp*sigd*c_scale;
-      grad_B = -d_star_sq/4.0
-        - exp_bp_ds*i_obs*d_star_sq*kp*kp*kp*kp*sigd/2.0*c_scale_sq
-        + exp_bp_ds_over_2*i_obs*d_star_sq*kp*kp/2.0*c_scale
-        + exp_bp_ds_over_2*d_star_sq*kp*kp*sigd/2.0*c_scale;
+      if(kp>1.e-9) {
+        grad_scale = -1.0/kp
+          - 2.0*exp_bp_ds*i_obs*kp*kp*kp*sigd*c_scale_sq
+          + 2.0*exp_bp_ds_over_2*i_obs*kp*c_scale
+          + 2.0*exp_bp_ds_over_2*kp*sigd*c_scale;
+        grad_B = -d_star_sq/4.0
+          - exp_bp_ds*i_obs*d_star_sq*kp*kp*kp*kp*sigd/2.0*c_scale_sq
+          + exp_bp_ds_over_2*i_obs*d_star_sq*kp*kp/2.0*c_scale
+          + exp_bp_ds_over_2*d_star_sq*kp*kp*sigd/2.0*c_scale;
+      }
+      else {
+        grad_scale = 0.;
+        grad_B = 0.;
+      }
     }
     grad_scale = -grad_scale*kp;
     gradients[0] = grad_scale;
@@ -358,7 +364,8 @@ namespace absolute_scaling{
     result = result*scitbx::constants::pi
       *scitbx::constants::pi
       *2.0*V_star-p_scale;
-    result = std::exp(result);
+      if(result>500) result=std::exp(500.);
+      else result = std::exp(result);
     return (result);
   }
 
@@ -402,13 +409,15 @@ namespace absolute_scaling{
     f_t k;
     f_t V_star_sq = pow( 1.0/(uc.volume()), 2.0/3.0);//RWGK's magic scalar
 
-
     k = wilson_get_aniso_scale(H,
                                p_scale,
                                V_star_sq,
                                U);
-    f_t C = epsilon*sig_sq*(1+gamma)+k*k*sigma_f_obs*sigma_f_obs;
-
+    f_t C=0;
+    if(k<1.e+50 && sigma_f_obs<1.e+50) {
+      C = epsilon*sig_sq*(1+gamma)+k*k*sigma_f_obs*sigma_f_obs;
+    }
+    if(k==0 || C==0 || C>1.e+50 || k>1.e+50) return 0;
     if (centric){
       result = 0.5*std::log(scitbx::constants::pi)
         + std::log(C)/2.0
@@ -515,17 +524,21 @@ namespace absolute_scaling{
                                  V_star,
                                  U);
       f_t C = epsilon*sig_sq*(1+gamma)+k*k*sigma_f_obs*sigma_f_obs;
+      if(k>1.e+50 || C>1.e+50 || C<1.e-50 || k<1.e-50) { // XXX Pavel: a quick fix to avoid overflow
+        grad_k=0;                           // XXX Pavel: may want to look for the problem's root
+      }
+      else {
+        if (centric){
+          grad_k = -f_obs*f_obs*k*k*k*sigma_f_obs*sigma_f_obs/(C*C)
+                   +f_obs*f_obs*k/C
+                   +k*sigma_f_obs*sigma_f_obs/C;
 
-      if (centric){
-        grad_k = -f_obs*f_obs*k*k*k*sigma_f_obs*sigma_f_obs/(C*C)
-                 +f_obs*f_obs*k/C
-                 +k*sigma_f_obs*sigma_f_obs/C;
-
-      } else {
-      grad_k = -(1.0)/(k)
-               -2.0*f_obs*f_obs*k*k*k*sigma_f_obs*sigma_f_obs/(C*C)
-               +2.0*f_obs*f_obs*k/C
-               +2.0*k*sigma_f_obs*sigma_f_obs/C;
+        } else {
+        grad_k = -(1.0)/(k)
+                 -2.0*f_obs*f_obs*k*k*k*sigma_f_obs*sigma_f_obs/(C*C)
+                 +2.0*f_obs*f_obs*k/C
+                 +2.0*k*sigma_f_obs*sigma_f_obs/C;
+        }
       }
       gradient[0] = -grad_k*k;
       f_t tmp = scitbx::constants::pi*scitbx::constants::pi*V_star;
@@ -535,7 +548,6 @@ namespace absolute_scaling{
       gradient[4]=4.0*tmp*hkl[0]*hkl[1]*k*grad_k;
       gradient[5]=4.0*tmp*hkl[0]*hkl[2]*k*grad_k;
       gradient[6]=4.0*tmp*hkl[1]*hkl[2]*k*grad_k;
-
       return(gradient);
     }
 
