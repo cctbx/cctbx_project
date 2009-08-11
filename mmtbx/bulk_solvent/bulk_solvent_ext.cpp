@@ -5,6 +5,7 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <mmtbx/bulk_solvent/bulk_solvent.h>
+#include <mmtbx/f_model/f_model.h>
 
 namespace mmtbx { namespace bulk_solvent {
 namespace {
@@ -13,24 +14,6 @@ namespace {
   {
     using namespace boost::python;
     typedef boost::python::arg arg_;
-    class_<target_gradients_aniso>("target_gradients_aniso",
-                             init<af::const_ref<double> const&,
-                               af::const_ref< std::complex<double> > const&,
-                               af::const_ref< std::complex<double> > const&,
-                               sym_mat3<double> const&,
-                               double const&,
-                               double const&,
-                               af::const_ref<cctbx::miller::index<> > const&,
-                               cctbx::uctbx::unit_cell const&,
-                               bool const&,
-                               bool const&,
-                               bool const&>())
-      .def("target", &target_gradients_aniso::target)
-      .def("grad_b_cart", &target_gradients_aniso::grad_b_cart)
-      .def("scale_target", &target_gradients_aniso::scale_target)
-      .def("grad_ksol", &target_gradients_aniso::grad_ksol)
-      .def("grad_bsol", &target_gradients_aniso::grad_bsol)
-    ;
     class_<target_gradients_aniso_ml>("target_gradients_aniso_ml",
                              init<af::const_ref<double> const&,
                                   af::const_ref< std::complex<double> > const&,
@@ -51,15 +34,85 @@ namespace {
       .def("grad_bsol", &target_gradients_aniso_ml::grad_bsol)
       .def("grad_k", &target_gradients_aniso_ml::grad_k)
     ;
-    def("r_factor",r_factor)
+    //
+    class_<bulk_solvent_and_aniso_scale_target_and_grads_ls<> >(
+      "bulk_solvent_and_aniso_scale_target_and_grads_ls")
+      .def(init<
+           f_model::core<double, std::complex<double> > const&,
+           f_model::core<double, std::complex<double> > const&,
+           double const&,
+           af::const_ref<double> const&,
+           bool const&,
+           bool const&,
+           bool const& >(
+             (arg_("fm1"),
+              arg_("fm2"),
+              arg_("twin_fraction"),
+              arg_("fo"),
+              arg_("compute_k_sol_grad"),
+              arg_("compute_b_sol_grad"),
+              arg_("compute_u_star_grad"))))
+      .def(init<
+           f_model::core<double, std::complex<double> > const&,
+           af::const_ref<double> const&,
+           bool const&,
+           bool const&,
+           bool const& >(
+             (arg_("fm"),
+              arg_("fo"),
+              arg_("compute_k_sol_grad"),
+              arg_("compute_b_sol_grad"),
+              arg_("compute_u_star_grad"))))
+      .def("target", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::target)
+      .def("grad_u_star", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_u_star)
+      .def("grad_k_sol", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_k_sol)
+      .def("grad_b_sol", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_b_sol)
    ;
-    def("scale",scale)
+    def("r_factor",
+      (double(*)
+        (af::const_ref<double> const&,
+         af::const_ref< std::complex<double> > const&)) r_factor);
+   ;
+   def("r_factor",
+      (double(*)
+        (af::const_ref<double> const&,
+         af::const_ref< std::complex<double> > const&,
+         af::const_ref< std::complex<double> > const&,
+         double const&)) r_factor);
+   ;
+   def("scale",
+      (double(*)
+        (af::const_ref<double> const&,
+         af::const_ref< std::complex<double> > const&)) scale);
    ;
     def("fb_cart",fb_cart)
    ;
-    def("r_factor_aniso_fast",r_factor_aniso_fast)
+   def("ksol_bsol_grid_search",
+      (vec3<double>(*)
+        (af::const_ref<double> const&,
+         af::const_ref<std::complex<double> > const&,
+         af::const_ref<std::complex<double> > const&,
+         sym_mat3<double> const&,
+         af::const_ref<double> const&,
+         af::const_ref<double> const&,
+         double const&,
+         af::const_ref<cctbx::miller::index<> > const&,
+         cctbx::uctbx::unit_cell const&)) ksol_bsol_grid_search);
    ;
-    def("ksol_bsol_grid_search",ksol_bsol_grid_search)
+   def("ksol_bsol_grid_search",
+      (vec3<double>(*)
+        (af::const_ref<double> const&,
+         af::const_ref<std::complex<double> > const&,
+         af::const_ref<std::complex<double> > const&,
+         af::const_ref<std::complex<double> > const&,
+         af::const_ref<std::complex<double> > const&,
+         sym_mat3<double> const&,
+         af::const_ref<double> const&,
+         af::const_ref<double> const&,
+         double const&,
+         af::const_ref<cctbx::miller::index<> > const&,
+         cctbx::uctbx::unit_cell const&,
+         double const&)) ksol_bsol_grid_search);
    ;
    def("symmetrize_mask",
       (void(*)
