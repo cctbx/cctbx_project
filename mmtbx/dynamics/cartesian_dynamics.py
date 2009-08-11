@@ -247,10 +247,9 @@ class cartesian_dynamics(object):
 
   def xray_grads(self):
     self.fmodel_copy.update_xray_structure(
-      xray_structure           = self.structure,
-      update_f_calc            = True,
-      update_f_mask            = False,
-      update_f_ordered_solvent = False)
+      xray_structure = self.structure,
+      update_f_calc  = True,
+      update_f_mask  = False)
     if(self.time_averaging_data is not None):
       self.time_averaging_data.xray_structures.append(
         self.structure.deep_copy_scatterers())
