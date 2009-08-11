@@ -39,11 +39,17 @@ from mmtbx.twinning import twin_f_model
 from cctbx import sgtbx
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import mmtbx.f_model
+from mmtbx import masks
 import mmtbx.tls.tools
+from mmtbx.scaling import outlier_rejection
 
 import boost.python
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
 from mmtbx_utils_ext import *
+
+import boost.python
+from mmtbx import bulk_solvent
+ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 def miller_array_symmetry_safety_check(miller_array,
                                        data_description,
@@ -1369,12 +1375,31 @@ def fmodel_manager(
       sf_and_grads_accuracy_params = sf_and_grads_accuracy_params,
       xray_structure               = xray_structure,
       twin_law                     = twin_law_xyz,
+      twin_law_str                 = twin_law,
       mask_params                  = mask_params,
       out                          = log,
       detwin_mode                  = detwin_mode,
       map_types                    = detwin_map_types)
     fmodel.twin = twin_law
   return fmodel
+
+def xtriage(f_obs):
+  from mmtbx.scaling import xtriage
+  twin_laws = []
+  try:
+    from mmtbx.scaling import xtriage
+    xtriage_results = xtriage.xtriage_analyses(
+      miller_obs = f_obs,
+      text_out   = StringIO(),
+      plot_out   = StringIO())
+    if(xtriage_results.twin_results is not None):
+      twin_laws = xtriage_results.twin_results.twin_summary.twin_results.twin_laws
+  except Exception, e:
+    print "XTRIAGE error: "
+    print str(e)
+    show_exception_info_if_full_testing()
+    twin_laws.append(None)
+  return twin_laws
 
 def fmodel_simple(f_obs,
                   xray_structures          = None,
@@ -1383,32 +1408,22 @@ def fmodel_simple(f_obs,
                   bulk_solvent_and_scaling = True,
                   bss_params               = None,
                   mask_params              = None,
+                  twin_laws                = None,
                   skip_twin_detection      = False,
                   twin_switch_tolerance    = 3.0):
-  twin_laws = []
-  if(not skip_twin_detection):
-    try:
-      from mmtbx.scaling import xtriage
-      xtriage_results = xtriage.xtriage_analyses(
-        miller_obs = f_obs,
-        text_out   = StringIO(),
-        plot_out   = StringIO())
-      if(xtriage_results.twin_results is not None):
-        twin_laws = xtriage_results.twin_results.twin_summary.twin_results.twin_laws
-    except Exception, e:
-      print "XTRIAGE error: "
-      print str(e)
-      show_exception_info_if_full_testing()
-  twin_laws.append(None)
+  if(twin_laws is None and not skip_twin_detection):
+    twin_laws = xtriage(f_obs = f_obs.deep_copy())
   if(len(xray_structures) == 1):
     fmodels = []
-    r_work = 999.
+    r_work = 1.e+9
     twin_law_best = None
+    if(twin_laws is None): twin_laws = [None]
+    if(twin_laws.count(None)==0): twin_laws.append(None)
     for twin_law in twin_laws:
       fmodel_ = fmodel_manager(
-        xray_structure = xray_structures[0],
-        f_obs          = f_obs,
-        r_free_flags   = r_free_flags,
+        xray_structure = xray_structures[0].deep_copy_scatterers(),
+        f_obs          = f_obs.deep_copy(),
+        r_free_flags   = r_free_flags.deep_copy(),
         mask_params    = mask_params,
         twin_law       = twin_law)
       if(bulk_solvent_and_scaling):
@@ -1427,9 +1442,9 @@ def fmodel_simple(f_obs,
         fmodels.append(fmodel_.deep_copy())
     if(twin_law_best is not None):
       fmodel_ = fmodel_manager(
-        xray_structure = xray_structures[0],
-        f_obs          = f_obs,
-        r_free_flags   = r_free_flags,
+        xray_structure = xray_structures[0].deep_copy_scatterers(),
+        f_obs          = f_obs.deep_copy(),
+        r_free_flags   = r_free_flags.deep_copy(),
         mask_params    = mask_params,
         twin_law       = twin_law_best)
       fmodel_.update_solvent_and_scale(params = bss_params, verbose = -1)
@@ -1445,13 +1460,13 @@ def fmodel_simple(f_obs,
   else:
     # XXX Automatic twin detection is not available for multi-model.
     f_model_data = None
-    xrs_as_one_structure = xray_structures[0]
+    xrs_as_one_structure = xray_structures[0].deep_copy_scatterers()
     f_mask_data = None
     for i_seq, xray_structure in enumerate(xray_structures):
       fmodel = fmodel_manager(
         xray_structure = xray_structure,
-        f_obs          = f_obs,
-        r_free_flags   = r_free_flags,
+        f_obs          = f_obs.deep_copy(),
+        r_free_flags   = r_free_flags.deep_copy(),
         mask_params    = mask_params,
         twin_law       = None) # XXX Automatic twin detection is not available for multi-model.
       if(i_seq != 0):
@@ -1465,8 +1480,8 @@ def fmodel_simple(f_obs,
     fmodel_average = fmodel.f_obs.array(data = f_model_data)
     f_mask_data_average = fmodel.f_obs.array(data = f_mask_data/len(xray_structures))
     fmodel_result = fmodel_manager(
-      f_obs        = f_obs,
-      r_free_flags = r_free_flags,
+      f_obs        = f_obs.deep_copy(),
+      r_free_flags = r_free_flags.deep_copy(),
       f_calc       = fmodel_average,
       mask_params  = mask_params,
       f_mask       = f_mask_data_average,
@@ -1601,7 +1616,7 @@ class process_command_line_args(object):
 class pdb_file(object):
 
   def __init__(self, pdb_file_names,
-                     cryst1=None,
+                     crystal_symmetry=None,
                      cif_objects=[],
                      log=None,
                      use_elbow = False):
@@ -1609,6 +1624,7 @@ class pdb_file(object):
     self.processed_pdb_files_srv = None
     self.processed_pdb_file = None
     self.cif_objects = cif_objects
+    self.crystal_symmetry = crystal_symmetry
     self.use_elbow = use_elbow
     self.pdb_file_names = pdb_file_names
     pdb_combined = combine_unique_pdb_files(file_names = pdb_file_names)
@@ -1616,12 +1632,10 @@ class pdb_file(object):
     if(len(pdb_combined.unique_file_names) == 0):
       raise Sorry("No coordinate file given.")
     self.pdb_raw_records = pdb_combined.raw_records
-    if(cryst1 is not None):
-      for rec in self.pdb_raw_records:
-        if(rec.startswith("CRYST1 ")): self.pdb_raw_records.remove(rec)
-      self.pdb_raw_records.append(cryst1)
     self.pdb_inp = iotbx.pdb.input(source_info = None,
       lines = flex.std_string(self.pdb_raw_records))
+    if(crystal_symmetry is not None and crystal_symmetry.unit_cell() is not None):
+      self.pdb_inp.crystal_symmetry(crystal_symmetry = crystal_symmetry)
 
   def set_ppf(self):
     # XXX do not write a file
@@ -1655,9 +1669,11 @@ class pdb_file(object):
     pdb_ip.clash_guard.nonbonded_distance_threshold = -1.0
     pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
     pdb_ip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
+    pdb_ip.proceed_with_excessive_length_bonds=True
     self.processed_pdb_files_srv = process_pdb_file_srv(
       cif_objects               = self.cif_objects,
       pdb_interpretation_params = pdb_ip,
+      crystal_symmetry          = self.crystal_symmetry,
       log                       = StringIO())
     self.processed_pdb_file, self.pdb_inp = \
       self.processed_pdb_files_srv.process_pdb_files(raw_records =
@@ -1675,14 +1691,12 @@ def model_simple(pdb_file_names,
                  d_min = None):
   #
   cryst1 = None
-  if(crystal_symmetry is not None):
-    cryst1 = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
   mmtbx_pdb_file = pdb_file(
-    pdb_file_names = pdb_file_names,
-    cif_objects    = cif_objects,
-    cryst1         = cryst1,
-    use_elbow      = use_elbow,
-    log            = log)
+    pdb_file_names   = pdb_file_names,
+    cif_objects      = cif_objects,
+    crystal_symmetry = crystal_symmetry,
+    use_elbow        = use_elbow,
+    log              = log)
   mmtbx_pdb_file.set_ppf()
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = mmtbx_pdb_file.processed_pdb_file,
@@ -1753,3 +1767,128 @@ def extract_tls_and_u_total_from_pdb(
       i_best = i
   if(i_best == 0): return xrs_1
   else: return xrs_2
+
+
+class guess_observation_type(object):
+
+  data_size = 500
+
+  def __init__(self, f_obs, xray_structure, r_free_flags=None):
+    self.f_obs_original = f_obs.deep_copy()
+    self.r_free_flags_original = None
+    if(r_free_flags is not None):
+      self.r_free_flags_original = r_free_flags.deep_copy()
+    f_obs = f_obs.set_observation_type(observation_type = None)
+    #
+    sigmas = f_obs.sigmas()
+    if(sigmas is not None and abs(flex.max(sigmas)-flex.min(sigmas)) > 1.e-3
+       and sigmas.size() >= self.data_size):
+      for sig_cut in [3.0,2.0,1.0,0.0]:
+        f_obs_ = f_obs.sigma_filter(cutoff_factor = sig_cut)
+        if(f_obs_.data().size() >= self.data_size): break
+      if(f_obs_.size() >= self.data_size): f_obs = f_obs_
+    #
+    d_max, d_min = f_obs.d_max_min()
+    if(d_min<=0.25):
+      f_obs = f_obs.resolution_filter(d_min = 0.25)
+      if(r_free_flags is not None):
+        r_free_flags = r_free_flags.resolution_filter(d_min = 0.25)
+    if(d_min < 2.0): d_min = 2.0
+    if(d_max > 5.0 and d_max-d_min > 1.0): d_max = 5.0
+    f_obs_ = f_obs.resolution_filter(d_min = d_min, d_max = d_max)
+    if(f_obs_.size() >= self.data_size): f_obs = f_obs_
+    #
+    results = []
+    for dtype in ["X","N"]:
+      xrs = xray_structure.deep_copy_scatterers()
+      if(dtype=="N"):
+        xrs.switch_to_neutron_scattering_dictionary()
+      f_calc = f_obs.structure_factors_from_scatterers(
+        xray_structure = xrs).f_calc()
+      for ftype in ["F","FFORCE","IFORCE"]:
+        f = f_obs.deep_copy()
+        if(ftype=="FFORCE"):
+          f = f_obs.f_sq_as_f()
+        elif(ftype=="IFORCE"):
+          f = f_obs.f_as_f_sq()
+        f.set_observation_type_xray_amplitude()
+        fmodel = self.get_r_factor(
+          f_obs  = f.deep_copy(),
+          f_calc = f_calc.deep_copy(),
+          xray_structure = xrs.deep_copy_scatterers())
+        results.append([dtype,ftype,fmodel.twin,fmodel.r_work()])
+    r_best = abs(results[0][3])
+    self.result = results[0]
+    for r in results:
+      st_r = " ".join(["%6s"%str(r_) for r_ in r])
+      print st_r
+      if(abs(r[3]) < abs(r_best)):
+        r_best = abs(r[3])
+        self.result = r
+    print "Answer: %s"%" ".join(["%6s"%str(r_) for r_ in self.result])
+
+  def mtz_object(self):
+    r = self.result
+    label = "OBS_%s"%r[0]
+    if(r[1]=="F"):
+      self.f_obs_original.set_observation_type_xray_amplitude()
+      label = "F"+label
+    elif(r[1]=="FFORCE"):
+      self.f_obs_original.set_observation_type_xray_intensity()
+      label = "I"+label
+    elif(r[1]=="IFORCE"):
+      self.f_obs_original = self.f_obs_original.f_as_f_sq()
+      self.f_obs_original.set_observation_type_xray_amplitude()
+      label = "F"+label
+    mtz_dataset = self.f_obs_original.as_mtz_dataset(column_root_label = label)
+    if(self.r_free_flags_original is not None):
+      mtz_dataset.add_miller_array(
+        miller_array      = self.r_free_flags_original,
+        column_root_label = "R-free-flags")
+    return mtz_dataset.mtz_object()
+
+  def get_r_factor(self, f_obs, f_calc, xray_structure):
+    r_free_flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
+    for trial in xrange(3):
+      result = outlier_rejection.outlier_manager(
+        miller_obs   = f_obs,
+        r_free_flags = r_free_flags,
+        out          = "silent")
+      s1 = result.basic_wilson_outliers().data()
+      s2 = result.extreme_wilson_outliers().data()
+      s3 = result.beamstop_shadow_outliers().data()
+      s4 = result.model_based_outliers(f_model = f_calc).data()
+      sel_out = s1 & s2 & s3 & s4
+      f_obs = f_obs.select(sel_out)
+      f_calc = f_calc.select(sel_out)
+      r_free_flags = r_free_flags.select(sel_out)
+    twin_laws = xtriage(f_obs = f_obs)
+    twin_laws.append(None)
+    #
+    if 0:#(f_obs.data() > self.data_size): #XXX not reliable ?
+      random.seed(0)
+      flex.set_random_seed(0)
+      selection = flex.random_bool(size=f_obs.data().size(),
+        threshold=float(self.data_size)/f_obs.data().size())
+      f_obs = f_obs.select(selection)
+      f_calc = f_calc.select(selection)
+      r_free_flags = r_free_flags.select(selection)
+    #
+    params = bss.master_params.extract()
+    params.k_sol_grid_search_min = 0.0
+    params.k_sol_grid_search_max = 0.35
+    params.k_sol_step = 0.35
+    params.b_sol_grid_search_min = 0.0
+    params.b_sol_grid_search_max = 91.
+    params.b_sol_step = 45.
+    params.target = "ls_wunit_k1"
+    fmodel = fmodel_simple(
+      f_obs                    = f_obs,
+      xray_structures          = [xray_structure],
+      r_free_flags             = r_free_flags,
+      target_name              = "ls_wunit_k1",
+      bulk_solvent_and_scaling = True,
+      bss_params               = params,
+      twin_laws                = twin_laws,
+      twin_switch_tolerance    = 3.0)
+    return fmodel
