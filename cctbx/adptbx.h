@@ -416,7 +416,7 @@ namespace cctbx {
 
   //! std::exp with upper limit for argument value.
   inline double
-  debye_waller_factor_exp(const char* u_type, double arg, double max_arg=30)
+  debye_waller_factor_exp(const char* u_type, double arg, double max_arg=50)
   {
     if (arg > max_arg) {
       char buf[256];
