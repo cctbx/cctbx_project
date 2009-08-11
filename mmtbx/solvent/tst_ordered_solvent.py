@@ -55,8 +55,8 @@ def exercise_1(pdb_file):
   sys.stdout.flush()
   easy_run.call(cmd)
   evaluate(pdb_file = output_file_prefix+"_001.pdb",
-           rw_tol   = 0.007,
-           rf_tol   = 0.0095,
+           rw_tol   = 0.01,
+           rf_tol   = 0.01,
            n_water  = 186,
            n_water_tol = 0)
   easy_run.call("rm -rf %s"%new_pdb)
