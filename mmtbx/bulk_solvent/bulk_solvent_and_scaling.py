@@ -16,6 +16,8 @@ from mmtbx.max_lik import max_like_non_uniform
 import iotbx.phil
 from libtbx.utils import Sorry
 
+import boost.python
+ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 master_params = iotbx.phil.parse("""\
   bulk_solvent = True
@@ -109,61 +111,21 @@ master_params = iotbx.phil.parse("""\
     .expert_level = 3
 """)
 
-def k_sol_b_sol_b_cart_minimizer(fmodel,
-                                 params,
-                                 refine_k_sol = False,
-                                 refine_b_sol = False,
-                                 refine_b_cart = False):
-  if(fmodel.target_name == "ml"):
-    alpha, beta = fmodel.alpha_beta_w()
-    alpha_data, beta_data = alpha.data(), beta.data()
-  elif(fmodel.target_name == "ls_wunit_k1"):
-    alpha_data, beta_data = None, None
-  else:
-    raise RuntimeError("requested target for aniso scaling is not available")
-  if(refine_b_cart): symm_constr = params.symmetry_constraints_on_b_cart
-  else: symm_constr = False
-  return uaniso_ksol_bsol_scaling_minimizer(
-         fc            = fmodel.f_calc_w(),
-         fo            = fmodel.f_obs_w,
-         fm            = fmodel.f_mask_w(),
-         k_initial     = fmodel.k_sol(),
-         b_initial     = fmodel.b_sol(),
-         u_initial     = fmodel.b_cart(),
-         scale_initial = 1.0,
-         refine_k      = refine_k_sol,
-         refine_b      = refine_b_sol,
-         refine_u      = refine_b_cart,
-         refine_scale  = False,
-         alpha         = alpha_data,
-         beta          = beta_data,
-         max_iterations= params.max_iterations,
-         min_iterations= params.min_iterations,
-         lbfgs_exception_handling_params = lbfgs.exception_handling_parameters(
-                         ignore_line_search_failed_step_at_lower_bound = True,
-                         ignore_line_search_failed_step_at_upper_bound = True,
-                         ignore_line_search_failed_maxfev              = True),
-         symmetry_constraints_on_b_cart = symm_constr)
-
-class uaniso_ksol_bsol_scaling_minimizer(object):
+class kbu_minimizer(object):
   def __init__(self,
-               fc,
-               fo,
-               fm,
+               fmodel_core_data,
+               f_obs,
                k_initial,
                b_initial,
                u_initial,
-               scale_initial,
                refine_k,
                refine_b,
                refine_u,
-               refine_scale,
                min_iterations,
                max_iterations,
-               alpha = None,
-               beta = None,
-               lbfgs_exception_handling_params = None,
-               symmetry_constraints_on_b_cart = False,
+               fmodel_core_data1 = None,
+               twin_fraction = None,
+               symmetry_constraints_on_b_cart = True,
                u_min_max = 500.,
                u_min_min =-500.,
                k_sol_max = 10.,
@@ -171,88 +133,65 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
                b_sol_max = 500.,
                b_sol_min =-500.):
     adopt_init_args(self, locals())
-    self.xxx = 0
-    assert self.fc.indices().all_eq(self.fm.indices()) == 1
-    assert self.fc.indices().all_eq(self.fo.indices()) == 1
-    self.gradient_flags = [self.refine_k,self.refine_b,self.refine_u]
-    self.sg = fc.space_group()
-    self.fc = fc.data()
-    self.fo = fo.data()
-    self.fm = fm.data()
-    self.uc = fo.unit_cell()
-    self.hkl = fo.indices()
+    assert [fmodel_core_data1,twin_fraction].count(None) in [0,2]
     self.k_min = self.k_initial
     self.b_min = self.b_initial
     self.u_min = self.u_initial
-    self.scale_min = self.scale_initial
-    self.flag = (self.alpha is not None and self.beta is not None)
-    if(self.flag):
-      self.eps = fc.epsilons().data()
-      self.cs  = fc.centric_flags().data()
-    ################################
-    if(self.symmetry_constraints_on_b_cart == True):
-       self.adp_constraints = self.sg.adp_constraints()
-       u_star = adptbx.u_cart_as_u_star(
-         self.uc, self.sg.average_u_star(u_star= self.u_min))
-       self.dim_u = self.adp_constraints.n_independent_params()
-       assert self.dim_u <= 6
-       independent_params = self.adp_constraints.independent_params(u_star)
-       self.u_factor = self.uc.volume()**(2/3.)
-       self.x = self.pack(
-         u=independent_params,
-         k=self.k_min,
-         b=self.b_min,
-         scale=self.scale_min,
-         u_factor=self.u_factor)
+    self.u_factor = self.fmodel_core_data.uc.volume()**(2/3.)
+    if(self.symmetry_constraints_on_b_cart):
+      self.adp_constraints = self.f_obs.space_group().adp_constraints()
+      u_star = self.f_obs.space_group().average_u_star(u_star = self.u_initial)
+      self.dim_u = self.adp_constraints.n_independent_params()
+      assert self.dim_u <= 6
+      independent_params = self.adp_constraints.independent_params(u_star)
+      self.x = self.pack(
+        u=independent_params,
+        k=self.k_min,
+        b=self.b_min,
+        u_factor=self.u_factor)
     else:
-       self.u_factor = 1.0
-       self.dim_u = len(self.u_initial)
-       assert self.dim_u == 6
-       self.x = self.pack(
-         u=flex.double(self.u_min),
-         k=self.k_min,
-         b=self.b_min,
-         scale=self.scale_min,
-         u_factor=self.u_factor)
-    ################################
+      self.dim_u = len(self.u_initial)
+      assert self.dim_u == 6
+      self.x = self.pack(
+        u=flex.double(self.u_min),
+        k=self.k_min,
+        b=self.b_min,
+        u_factor=self.u_factor)
+    lbfgs_exception_handling_params = lbfgs.exception_handling_parameters(
+      ignore_line_search_failed_step_at_lower_bound = True,
+      ignore_line_search_failed_step_at_upper_bound = True,
+      ignore_line_search_failed_maxfev              = True)
     self.minimizer = lbfgs.run(
-                             target_evaluator = self,
-                             core_params = lbfgs.core_parameters(),
-                             termination_params = lbfgs.termination_parameters(
-                                  min_iterations = min_iterations,
-                                  max_iterations = max_iterations),
-                                  exception_handling_params =
-                                   self.lbfgs_exception_handling_params
-                              )
+      target_evaluator = self,
+      core_params = lbfgs.core_parameters(),
+      termination_params = lbfgs.termination_parameters(
+        min_iterations            = min_iterations,
+        max_iterations            = max_iterations),
+        exception_handling_params = lbfgs_exception_handling_params)
     self.compute_functional_and_gradients()
     del self.x
 
-  def pack(self, u, k, b, scale, u_factor):
+  def pack(self, u, k, b, u_factor):
     v = []
     if (self.refine_u): v += [ui*u_factor for ui in u]
     if (self.refine_k): v.append(k)
     if (self.refine_b): v.append(b)
-    if (self.refine_scale): v.append(scale)
     return flex.double(v)
 
   def unpack_x(self):
     i = 0
-    if (self.refine_u):
-      if(self.symmetry_constraints_on_b_cart == True):
-         self.u_min = adptbx.u_star_as_u_cart(self.uc,
-           list(self.adp_constraints.all_params(
-             iter(self.x[i:self.dim_u]/self.u_factor))))
+    if(self.refine_u):
+      if(self.symmetry_constraints_on_b_cart):
+        self.u_min = list(self.adp_constraints.all_params(
+          iter(self.x[i:self.dim_u]/self.u_factor)))
       else:
-         self.u_min = tuple(self.x)[i:self.dim_u]
+        self.u_min = list(iter(self.x[i:self.dim_u]/self.u_factor))
       i = self.dim_u
-    if (self.refine_k):
+    if(self.refine_k):
       self.k_min = self.x[i]
       i += 1
-    if (self.refine_b):
+    if(self.refine_b):
       self.b_min = self.x[i]
-      i += 1
-    if (self.refine_scale):
-      self.scale_min = self.x[i]
 
   def compute_functional_and_gradients(self):
     self.unpack_x()
@@ -260,58 +199,70 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
       for v in self.u_min])
     if(self.b_min > self.b_sol_max): self.b_min = self.b_sol_max
     if(self.b_min < self.b_sol_min): self.b_min = self.b_sol_min
-    if(self.k_min > self.k_sol_max): self.b_min = self.k_sol_max
-    if(self.k_min < self.k_sol_min): self.b_min = self.k_sol_min
-    if(self.flag):
-      manager = bulk_solvent.target_gradients_aniso_ml(
-               self.fo,
-               self.fc,
-               self.fm,
-               self.u_min,
-               self.k_min,
-               self.b_min,
-               self.hkl,
-               self.uc,
-               self.sg,
-               flex.bool(self.gradient_flags),
-               self.alpha,
-               self.beta,
-               self.scale_min)
+    if(self.k_min > self.k_sol_max): self.k_min = self.k_sol_max
+    if(self.k_min < self.k_sol_min): self.k_min = self.k_sol_min
+    if(self.twin_fraction is None):
+      self.fmodel_core_data.update(k_sol = self.k_min, b_sol = self.b_min,
+        u_star = self.u_min)
+      tg = bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
+        fm                  = self.fmodel_core_data.data,
+        fo                  = self.f_obs.data(),
+        compute_k_sol_grad  = self.refine_k,
+        compute_b_sol_grad  = self.refine_b,
+        compute_u_star_grad = self.refine_u)
     else:
-      manager = bulk_solvent.target_gradients_aniso(
-                                       self.fo,
-                                       self.fc,
-                                       self.fm,
-                                       self.u_min,
-                                       self.k_min,
-                                       self.b_min,
-                                       self.hkl,
-                                       self.uc,
-                                       self.refine_u,
-                                       self.refine_k,
-                                       self.refine_b)
-    self.f = manager.target()
-    gk = manager.grad_ksol()
-    gb = manager.grad_bsol()
-    try: gscale = manager.grad_k()
-    except KeyboardInterrupt: pass
-    except: gscale = 0.0
-    if(self.symmetry_constraints_on_b_cart == True):
-       gu = adptbx.grad_u_cart_as_u_star(self.uc, list(manager.grad_b_cart()))
-       independent_params = flex.double(
-         self.adp_constraints.independent_gradients(all_gradients=gu))
-       self.g = self.pack(
-         u=independent_params,
-         k=gk,
-         b=gb,
-         scale=gscale,
-         u_factor=1/self.u_factor)
+      self.fmodel_core_data.update(k_sol = self.k_min, b_sol = self.b_min,
+        u_star = self.u_min)
+      self.fmodel_core_data1.update(k_sol = self.k_min, b_sol = self.b_min,
+        u_star = self.u_min)
+      tg = bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
+        fm1                 = self.fmodel_core_data.data,
+        fm2                 = self.fmodel_core_data1.data,
+        twin_fraction       = self.twin_fraction,
+        fo                  = self.f_obs.data(),
+        compute_k_sol_grad  = self.refine_k,
+        compute_b_sol_grad  = self.refine_b,
+        compute_u_star_grad = self.refine_u)
+    self.f = tg.target()
+    gk=0
+    gb=0
+    gu=[0,0,0,0,0,0]
+    if(self.refine_k or self.refine_b):
+      gk = tg.grad_k_sol()
+      gb = tg.grad_b_sol()
+    if(self.refine_u): gu = list(tg.grad_u_star())
+    if(self.symmetry_constraints_on_b_cart and self.refine_u):
+      independent_params = flex.double(
+        self.adp_constraints.independent_gradients(all_gradients=gu))
+      self.g = self.pack(
+        u=independent_params,
+        k=gk,
+        b=gb,
+        u_factor=1/self.u_factor)
     else:
-       gu = manager.grad_b_cart()
-       self.g = self.pack(u=gu, k=gk, b=gb, scale=gscale, u_factor=1.0)
+      self.g = self.pack(u=gu, k=gk, b=gb, u_factor=1/self.u_factor)
     return self.f, self.g
 
-################################################################################
+def k_sol_b_sol_b_cart_minimizer(
+      fmodel,
+      params        = None,
+      refine_k_sol  = False,
+      refine_b_sol  = False,
+      refine_u_star = False):
+  if(params is None): params = master_params.extract()
+  fmodel_core_data_work = fmodel.core_data_work()
+  return kbu_minimizer(
+    fmodel_core_data = fmodel_core_data_work,
+    f_obs            = fmodel.f_obs_w,
+    k_initial        = fmodel_core_data_work.k_sol,
+    b_initial        = fmodel_core_data_work.b_sol,
+    u_initial        = fmodel_core_data_work.u_star,
+    refine_k         = refine_k_sol,
+    refine_b         = refine_b_sol,
+    refine_u         = refine_u_star,
+    max_iterations   = params.max_iterations,
+    min_iterations   = params.min_iterations,
+    symmetry_constraints_on_b_cart = params.symmetry_constraints_on_b_cart)
 
 def _approx_le(x,y):
   x = float("%.4f"%x)
@@ -414,10 +365,6 @@ class bulk_solvent_and_scales(object):
         header = message, out = self.log)
 
   def _ksol_bsol_grid_search(self, fmodel):
-    save_target = None
-    if(fmodel.target_name != "ls_wunit_k1"):
-      save_target = fmodel.target_name
-      fmodel.update(target_name = "ls_wunit_k1")
     start_r_work = fmodel.r_work()
     final_ksol = fmodel.k_sol()
     final_bsol = fmodel.b_sol()
@@ -435,7 +382,6 @@ class bulk_solvent_and_scales(object):
           if(abs(bc) > 300.):
             fmodel.update(b_cart = [0,0,0,0,0,0])
             break
-        #fmodel.update(b_cart = [0,0,0,0,0,0])
         fmodel.update(k_sol = ksol, b_sol = bsol)
         if(self.params.minimization_k_sol_b_sol):
           ksol_, bsol_, dummy = self._ksol_bsol_cart_minimizer(fmodel = fmodel)
@@ -455,19 +401,13 @@ class bulk_solvent_and_scales(object):
                   b_cart = final_b_cart)
     self.ERROR_MESSAGE(status=approx_equal(fmodel.r_work(), final_r_work))
     self.ERROR_MESSAGE(status=_approx_le(fmodel.r_work(), start_r_work))
-    if(save_target is not None): fmodel.update(target_name = save_target)
     return final_ksol, final_bsol, final_b_cart, final_r_work
 
   def _ksol_bsol_cart_minimizer(self, fmodel):
-    original_target = fmodel.target_name
     start_r_work = fmodel.r_work()
-    save_target = None
     final_ksol = fmodel.k_sol()
     final_bsol = fmodel.b_sol()
     final_r_work = fmodel.r_work()
-    if(fmodel.target_name != "ls_wunit_k1"):
-      save_target = "ml"
-      fmodel.update(target_name = "ls_wunit_k1")
     ksol, bsol = self._k_sol_b_sol_minimization_helper(fmodel = fmodel)
     fmodel.update(k_sol = ksol, b_sol = bsol)
     r_work = fmodel.r_work()
@@ -475,52 +415,30 @@ class bulk_solvent_and_scales(object):
       final_ksol = ksol
       final_bsol = bsol
       final_r_work = r_work
-    if(save_target is not None):
-      fmodel.update(target_name = save_target)
-      ksol, bsol = self._k_sol_b_sol_minimization_helper(fmodel = fmodel)
-      fmodel.update(k_sol = ksol, b_sol = bsol)
-      r_work = fmodel.r_work()
-      if(r_work < final_r_work):
-        final_ksol = ksol
-        final_bsol = bsol
-        final_r_work = r_work
     self.ERROR_MESSAGE(status=_approx_le(final_r_work, start_r_work))
-    fmodel.update(target_name = original_target)
     return final_ksol, final_bsol, final_r_work
 
   def _b_cart_minimizer(self, fmodel):
-    original_target = fmodel.target_name
     start_r_work = fmodel.r_work()
-    save_target = None
     final_b_cart = fmodel.b_cart()
     final_r_work = fmodel.r_work()
-    if(fmodel.target_name != "ls_wunit_k1"):
-      save_target = "ml"
-      fmodel.update(target_name = "ls_wunit_k1")
     b_cart = self._b_cart_minimizer_helper(fmodel = fmodel)
     fmodel.update(b_cart = b_cart)
     r_work = fmodel.r_work()
     if(r_work < final_r_work):
       final_b_cart = b_cart
       final_r_work = r_work
-    if(save_target is not None):
-      fmodel.update(target_name = save_target)
-      b_cart = self._b_cart_minimizer_helper(fmodel = fmodel)
-      fmodel.update(b_cart = b_cart)
-      r_work = fmodel.r_work()
-      if(r_work < final_r_work):
-        final_b_cart = b_cart
-        final_r_work = r_work
     self.ERROR_MESSAGE(status=_approx_le(final_r_work, start_r_work))
-    fmodel.update(target_name = original_target)
     return final_b_cart, final_r_work
 
   def _b_cart_minimizer_helper(self, fmodel, n_macro_cycles = 2):
     r_start = fmodel.r_work()
     b_start = fmodel.b_cart()
     for u_cycle in xrange(n_macro_cycles):
-      b_cart = k_sol_b_sol_b_cart_minimizer(fmodel = fmodel,
-        params = self.params, refine_b_cart = True).u_min
+      u_min = k_sol_b_sol_b_cart_minimizer(fmodel = fmodel,
+        params = self.params, refine_u_star = True).u_min
+      b_cart = adptbx.u_as_b(
+        adptbx.u_star_as_u_cart(fmodel.f_obs_w.unit_cell(),u_min))
       fmodel.update(b_cart = b_cart)
     r_final = fmodel.r_work()
     if(r_final >= r_start):
