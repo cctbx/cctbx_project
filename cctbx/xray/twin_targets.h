@@ -390,7 +390,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       FloatType target(scitbx::af::const_ref<std::complex<FloatType> >
                        const& f_model) const
       {
-        FloatType result=0,aa,ba,ab,bb,obs,calc;
+        FloatType result=0,aa=0,ba=0,ab=0,bb=0,obs=0,calc=0;
         for (std::size_t ii=0;ii<f_obs_.size();ii++){
           long calc_index_a = calc_ori_lookup_table_[ ii ];
           long calc_index_b = calc_twin_lookup_table_[ ii ];
@@ -398,10 +398,18 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           ba = f_model[calc_index_a].imag();
           ab = f_model[calc_index_b].real();
           bb = f_model[calc_index_b].imag();
-          calc = std::sqrt((1-alpha_)*(aa*aa + ba*ba) + alpha_*(ab*ab + bb*bb));
+          FloatType sqrt_arg = 0.;
+          if(std::abs(aa)<1.e+10 &&
+             std::abs(bb)<1.e+10 &&
+             std::abs(ab)<1.e+10 &&
+             std::abs(ba)<1.e+10) {
+            sqrt_arg = (1-alpha_)*(aa*aa + ba*ba) + alpha_*(ab*ab + bb*bb);
+          }
           obs = f_obs_[ii];
-          //std::cout << ii << " " << calc << " " << obs <<  " " << std::endl;
-          result += w_obs_[ii]*(obs-calc)*(obs-calc);
+          if(sqrt_arg>0) {
+            calc = std::sqrt(sqrt_arg);
+            result += w_obs_[ii]*(obs-calc)*(obs-calc);
+          }
         }
         return( result );
       }
@@ -411,9 +419,9 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
         {
           scitbx::af::shared<FloatType> dtda(f_model.size(), 0 );
           scitbx::af::shared<FloatType> dtdb(f_model.size(), 0 );
-          FloatType aa,ba,ab,bb,obs,calc;
-          FloatType t1,dqdaa,dqdba,dqdab,dqdbb;
-          FloatType dt1daa,dt1dba,dt1dab,dt1dbb;
+          FloatType aa=0,ba=0,ab=0,bb=0,obs=0,calc=0;
+          FloatType t1=0,dqdaa=0,dqdba=0,dqdab=0,dqdbb=0;
+          FloatType dt1daa=0,dt1dba=0,dt1dab=0,dt1dbb=0;
 
           for (std::size_t ii=0;ii<f_obs_.size();ii++){
             long calc_index_a = calc_ori_lookup_table_[ ii ]; // we try to find calculated indices. They are complete.
@@ -425,10 +433,20 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
             ba = f_model[calc_index_a].imag();
             ab = f_model[calc_index_b].real();
             bb = f_model[calc_index_b].imag();
-            calc = std::sqrt( (1-alpha_)*(aa*aa + ba*ba) + alpha_*(ab*ab + bb*bb) );
+            FloatType sqrt_arg = 0.;
+            if(std::abs(aa)<1.e+50 &&
+               std::abs(ba)<1.e+50 &&
+               std::abs(ab)<1.e+50 &&
+               std::abs(bb)<1.e+50) {
+              sqrt_arg = (1-alpha_)*(aa*aa + ba*ba) + alpha_*(ab*ab + bb*bb);
+            }
+            calc = 0;
+            if(sqrt_arg>0) calc = std::sqrt(sqrt_arg);
             obs = f_obs_[ii];
             t1 = (obs-calc);
+
             if (calc>eps_){
+              calc = std::sqrt(sqrt_arg);
               dt1daa = -aa*(1-alpha_)/calc;
               dt1dba = -ba*(1-alpha_)/calc;
               dt1dab = -ab*(alpha_)/calc;
@@ -470,7 +488,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       FloatType d_target_d_alpha
       (scitbx::af::const_ref<std::complex<FloatType> > const& f_model) const
       {
-        FloatType result=0,aa,ba,ab,bb,obs,ia,ib,t1,dtda,calc;
+        FloatType result=0,aa=0,ba=0,ab=0,bb=0,obs=0,ia=0,ib=0,t1=0,dtda=0,calc=0;
         for (std::size_t ii=0;ii<f_obs_.size();ii++){
           long calc_index_a = calc_ori_lookup_table_[ ii ];
           long calc_index_b = calc_twin_lookup_table_[ ii ];
@@ -478,16 +496,22 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           ba = f_model[calc_index_a].imag();
           ab = f_model[calc_index_b].real();
           bb = f_model[calc_index_b].imag();
-          ia=aa*aa+ba*ba;
-          ib=ab*ab+bb*bb;
-          obs = f_obs_[ii];
-          calc= std::sqrt( (1-alpha_)*ia + alpha_*ib );
-          t1 = obs-calc;
-          dtda=0;
-          if (calc>eps_){
-            dtda = -0.5*(ia-ib)/calc;
+          if(std::abs(aa)<1.e+50 &&
+             std::abs(ba)<1.e+50 &&
+             std::abs(ab)<1.e+50 &&
+             std::abs(bb)<1.e+50) {
+            ia=aa*aa+ba*ba;
+            ib=ab*ab+bb*bb;
           }
-          result += -2.0*t1*dtda*w_obs_[ii];
+          obs = f_obs_[ii];
+          FloatType sqrt_arg = (1-alpha_)*ia + alpha_*ib;
+          dtda=0;
+          if (sqrt_arg>0){
+            calc= std::sqrt(sqrt_arg);
+            t1 = obs-calc;
+            dtda = -0.5*(ia-ib)/calc;
+            result += -2.0*t1*dtda*w_obs_[ii];
+          }
         }
         return result;
       }
@@ -650,7 +674,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
      CCTBX_ASSERT( calc_size_ == f_model.size() );
      CCTBX_ASSERT( (obs_size_ == selection.size()) || (selection.size()==0)  );
 
-     FloatType top=0,bottom=0,tmp_a,tmp_b, f_calc;
+     FloatType top=0,bottom=0,tmp_a,tmp_b=0, f_calc=0;
      bool use;
      for (long ii=0;ii<obs_size_;ii++){
        use = true;
@@ -662,15 +686,19 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
          CCTBX_ASSERT( tmp_location>=0 );
          tmp_a  = f_model[ tmp_location ].real();
          tmp_b  = f_model[ tmp_location ].imag();
-         f_calc = (tmp_a*tmp_a + tmp_b*tmp_b)*(1.0-twin_fraction);
-
+         if(std::abs(tmp_a)<1.e+50 && std::abs(tmp_b)<1.e+50) {
+           f_calc = (tmp_a*tmp_a + tmp_b*tmp_b)*(1.0-twin_fraction);
+         }
          tmp_location = twin_related_obs_in_calc_lookup_[ii];
          CCTBX_ASSERT( tmp_location>=0 );
          tmp_a  = f_model[ tmp_location ].real();
          tmp_b  = f_model[ tmp_location ].imag();
-         f_calc+= (tmp_a*tmp_a + tmp_b*tmp_b)*twin_fraction;
-
-         top+= std::fabs( std::sqrt(f_calc)-f_obs[ii] );
+         if(std::abs(tmp_a)<1.e+50 && std::abs(tmp_b)<1.e+50) {
+           f_calc+= (tmp_a*tmp_a + tmp_b*tmp_b)*twin_fraction;
+         }
+         if(f_calc >= 0) {
+           top+= std::fabs( std::sqrt(f_calc)-f_obs[ii] );
+         }
          bottom+= f_obs[ii]; // allways positive anyway
        }
      }
@@ -680,7 +708,6 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
      if (bottom>0){
        result = top/bottom;
      }
-
      return (result);
    }
 
