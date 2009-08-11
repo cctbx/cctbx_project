@@ -59,40 +59,6 @@ REMARK   3   FREE R VALUE TEST SET COUNT      : 520
 REMARK   3
 """
 
-example_tnt = """
-REMARK   2
-REMARK   2 RESOLUTION. 1.34 ANGSTROMS.
-REMARK   3
-REMARK   3 REFINEMENT.
-REMARK   3   PROGRAM     : TNT 5.13.1.0
-REMARK   3   AUTHORS     : TRONRUD,TEN EYCK,MATTHEWS
-REMARK   3
-REMARK   3  DATA USED IN REFINEMENT.
-REMARK   3   RESOLUTION RANGE HIGH (ANGSTROMS) : 1.34
-REMARK   3   RESOLUTION RANGE LOW  (ANGSTROMS) : 1.44
-REMARK   3   DATA CUTOFF            (SIGMA(F)) : 0
-REMARK   3   COMPLETENESS (WORKING+TEST)   (%) : 99
-REMARK   3   NUMBER OF REFLECTIONS             : 11863
-REMARK   3
-REMARK   3  USING DATA ABOVE SIGMA CUTOFF.
-REMARK   3   CROSS-VALIDATION METHOD          : THROUGHOUT
-REMARK   3   FREE R VALUE TEST SET SELECTION  : RANDOM
-REMARK   3   R VALUE     (WORKING + TEST SET) : 0.207
-REMARK   3   R VALUE            (WORKING SET) : 0.206
-REMARK   3   FREE R VALUE                     : 0.227
-REMARK   3   FREE R VALUE TEST SET SIZE   (%) : 5.0
-REMARK   3   FREE R VALUE TEST SET COUNT      : 593
-REMARK   3
-REMARK   3  USING ALL DATA, NO SIGMA CUTOFF.
-REMARK   3   R VALUE   (WORKING + TEST SET, NO CUTOFF) : 0.207
-REMARK   3   R VALUE          (WORKING SET, NO CUTOFF) : 0.206
-REMARK   3   FREE R VALUE                  (NO CUTOFF) : 0.227
-REMARK   3   FREE R VALUE TEST SET SIZE (%, NO CUTOFF) : 5
-REMARK   3   FREE R VALUE TEST SET COUNT   (NO CUTOFF) : 593
-REMARK   3   TOTAL NUMBER OF REFLECTIONS   (NO CUTOFF) : 11863
-REMARK   3
-"""
-
 example_shelx = """
 REMARK   2
 REMARK   2 RESOLUTION. 1.05 ANGSTROMS.
@@ -144,15 +110,6 @@ def run():
   assert approx_equal(result.high        , 1.55  )
   assert approx_equal(result.low         , 18.0  )
   assert approx_equal(result.resolution  , 1.55  )
-  assert approx_equal(result.sigma       , 0.0   )
-  #
-  result = extract_rfactors_resolutions_sigma.get_r_rfree_sigma(
-    remark_2_and_3_records = example_tnt.splitlines(), file_name = None)
-  assert approx_equal(result.r_work      , 0.206 )
-  assert approx_equal(result.r_free      , 0.227 )
-  assert approx_equal(result.high        , 1.34  )
-  assert approx_equal(result.low         , 1.44  )
-  assert approx_equal(result.resolution  , 1.34  )
   assert approx_equal(result.sigma       , 0.0   )
   #
   result = extract_rfactors_resolutions_sigma.get_r_rfree_sigma(

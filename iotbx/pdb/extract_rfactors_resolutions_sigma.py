@@ -6,7 +6,7 @@ class get_r_rfree_sigma(object):
   def __init__(self, remark_2_and_3_records, file_name):
     self.file_name = file_name
     self.r_work,self.r_free,self.sigma,self.high,self.low,self.resolution \
-      = [None]*6
+      = [],[],[],[],[],[]
     start_DataUsedInRefinement = False
     start_FitToDataUsedInRefinement = False
     for line in remark_2_and_3_records:
@@ -20,23 +20,36 @@ class get_r_rfree_sigma(object):
         try: return float(flds[i])
         except ValueError: return None
       if(start_DataUsedInRefinement and self.is_ResolutionRangeHigh(line)):
-        self.high = get_value_at(i=7)
+        self.high.append(get_value_at(i=7))
       if(start_DataUsedInRefinement and self.is_ResolutionRangeLow(line)):
-        self.low = get_value_at(i=7)
+        self.low.append(get_value_at(i=7))
       if(start_DataUsedInRefinement and self.is_DataCutoffSigma(line)):
-        self.sigma = get_value_at(i=6)
+        self.sigma.append(get_value_at(i=6))
       if(not start_FitToDataUsedInRefinement):
         start_FitToDataUsedInRefinement = \
           self.is_FitToDataUsedInRefinement(line)
       if(start_FitToDataUsedInRefinement and self.is_RValueWorkingSet(line)):
-        self.r_work = self.get_value(flds=flds)
+        self.r_work.append(self.get_value(flds=flds))
       if(start_FitToDataUsedInRefinement and self.is_FreeRValue(line)):
-        self.r_free = self.get_value(flds=flds)
+        self.r_free.append(self.get_value(flds=flds))
       if(self.is_Resolution(line)):
-        self.resolution = get_value_at(i=3)
+        tmp = get_value_at(i=3)
         if (self.resolution is None):
-          try: self.resolution = float(line[22:28])
+          try: tmp = float(line[22:28])
           except ValueError: pass
+        self.resolution.append(tmp)
+    if(len(self.r_work)>1 or len(self.r_work)==0): self.r_work = None
+    else: self.r_work = self.r_work[0]
+    if(len(self.r_free)>1 or len(self.r_free)==0): self.r_free = None
+    else: self.r_free = self.r_free[0]
+    if(len(self.sigma)>1 or len(self.sigma)==0): self.sigma = None
+    else: self.sigma = self.sigma[0]
+    if(len(self.high)>1 or len(self.high)==0): self.high = None
+    else: self.high = self.high[0]
+    if(len(self.low)>1 or len(self.low)==0): self.low = None
+    else: self.low = self.low[0]
+    if(len(self.resolution)>1 or len(self.resolution)==0): self.resolution = None
+    else: self.resolution = self.resolution[0]
 
   def get_value(self, flds):
     last = flds[-1]
