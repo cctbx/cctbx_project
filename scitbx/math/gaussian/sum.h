@@ -212,7 +212,7 @@ namespace scitbx { namespace math { namespace gaussian {
       FloatType
       integral_dx_at_x(
         FloatType const& x,
-        FloatType const& b_min_for_erf_based_algorithm=1.e-3)
+        FloatType const& b_min_for_erf_based_algorithm=1e-3)
       {
         FloatType result = c_ * x;
         for(std::size_t i=0;i<terms_.size();i++) {
