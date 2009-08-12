@@ -7,7 +7,6 @@
 #include <scitbx/matrix/move.h>
 #include <scitbx/stl/map_fwd.h>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/format.hpp>
 #include <map>
 
@@ -36,8 +35,6 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(as_bool_overloads, as_bool, 1, 2)
-
   void wrap_flex_int()
   {
     using namespace boost::python;
@@ -46,8 +43,7 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("copy_to_byte_str", copy_to_byte_str<versa<int, flex_grid<> > >)
       .def("slice_to_byte_str",
         slice_to_byte_str<versa<int, flex_grid<> > >)
-      .def("as_bool", as_bool,
-        as_bool_overloads((arg_("self"), arg_("strict")=true)))
+      .def("as_bool", as_bool, (arg_("strict")=true))
       .def("counts", counts<int, std::map<long, long> >::unlimited)
       .def("counts", counts<int, std::map<long, long> >::limited, (
         arg_("max_keys")))

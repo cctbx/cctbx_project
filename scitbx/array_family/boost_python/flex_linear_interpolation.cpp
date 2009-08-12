@@ -2,47 +2,45 @@
 
 #include <scitbx/array_family/linear_interpolation.h>
 #include <boost/python/def.hpp>
-#include <boost/python/overloads.hpp>
+#include <boost/python/args.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
 
 namespace {
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    linear_interpolation_overloads, linear_interpolation, 3, 4)
-}
+
+  template <typename ElementType>
+  void
+  linear_interpolation_wrapper()
+  {
+    using namespace boost::python;
+    def("linear_interpolation",
+      (ElementType(*)(
+        const_ref<ElementType> const&,
+        const_ref<ElementType> const&,
+        ElementType const&,
+        ElementType const&)) linear_interpolation, (
+          arg_("table_x"),
+          arg_("table_y"),
+          arg_("x"),
+          arg_("tolerance")=1e-6));
+    def("linear_interpolation",
+      (shared<ElementType>(*)(
+        const_ref<ElementType> const&,
+        const_ref<ElementType> const&,
+        const_ref<ElementType> const&,
+        ElementType const&)) linear_interpolation, (
+          arg_("table_x"),
+          arg_("table_y"),
+          arg_("x"),
+          arg_("tolerance")=1e-6));
+  }
+
+} // namespace <anonymous>
 
   void wrap_flex_linear_interpolation()
   {
-    using namespace boost::python;
-
-    def("linear_interpolation",
-      (float(*)(
-        const_ref<float> const&,
-        const_ref<float> const&,
-        float const&,
-        float const&))
-      linear_interpolation, linear_interpolation_overloads());
-    def("linear_interpolation",
-      (double(*)(
-        const_ref<double> const&,
-        const_ref<double> const&,
-        double const&,
-        double const&))
-      linear_interpolation, linear_interpolation_overloads());
-    def("linear_interpolation",
-      (shared<float>(*)(
-        const_ref<float> const&,
-        const_ref<float> const&,
-        const_ref<float> const&,
-        float const&))
-      linear_interpolation, linear_interpolation_overloads());
-    def("linear_interpolation",
-      (shared<double>(*)(
-        const_ref<double> const&,
-        const_ref<double> const&,
-        const_ref<double> const&,
-        double const&))
-      linear_interpolation, linear_interpolation_overloads());
+    linear_interpolation_wrapper<float>();
+    linear_interpolation_wrapper<double>();
   }
 
 }}} // namespace scitbx::af::boost_python
