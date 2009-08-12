@@ -17,7 +17,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 
 namespace scitbx { namespace math {
 namespace boost_python {
@@ -68,7 +67,7 @@ namespace {
   vec3< double >
   euler_angles_xyz_angles(
       const mat3< double >& m,
-      const double& eps = 1.0e-12 )
+      const double& eps = 1e-12 )
   {
     return euler_angles::xyz_angles( m, eps );
   }
@@ -85,7 +84,7 @@ namespace {
   vec3< double >
   euler_angles_yzx_angles(
       const mat3< double >& m,
-      const double& eps = 1.0e-12 )
+      const double& eps = 1e-12 )
   {
     return euler_angles::yzx_angles( m, eps );
   }
@@ -102,36 +101,10 @@ namespace {
   vec3< double >
   euler_angles_zyz_angles(
       const mat3< double >& m,
-      const double& eps = 1.0e-12 )
+      const double& eps = 1e-12 )
   {
     return euler_angles::zyz_angles( m, eps );
   }
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    euler_angles_xyz_angles_overloads, euler_angles_xyz_angles, 1, 2)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    euler_angles_yzx_angles_overloads, euler_angles_yzx_angles, 1, 2)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    euler_angles_zyz_angles_overloads, euler_angles_zyz_angles, 1, 2)
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    gamma_complete_overloads,
-    gamma::complete, 1, 2)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    gamma_incomplete_overloads,
-    gamma::incomplete, 2, 3)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    gamma_incomplete_complement_overloads,
-    gamma::incomplete_complement, 2, 3)
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(lambertw_overloads, lambertw, 1, 2)
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    signed_phase_error_overloads, signed_phase_error, 2, 3)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    phase_error_overloads, phase_error, 2, 3)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    nearest_phase_overloads, nearest_phase, 2, 3)
 
   void init_module()
   {
@@ -163,31 +136,31 @@ namespace {
 
 
     def("gamma_complete", (double(*)(double const&, bool))
-        gamma::complete,
-        gamma_complete_overloads( (arg_("x"),
-                                   arg_("minimax")=true)));
+      gamma::complete, (
+        arg_("x"),
+        arg_("minimax")=true));
     def("gamma_incomplete", (double(*)(double const&,
                                        double const&,
                                        unsigned))
-        gamma::incomplete,
-        gamma_incomplete_overloads( (arg_("a"),
-                                     arg_("x"),
-                                     arg_("max_iterations")=500 )));
+      gamma::incomplete, (arg_("a"),
+        arg_("x"),
+        arg_("max_iterations")=500));
     def("gamma_incomplete_complement",(double(*)(double const&,
                                                  double const&,
                                                  unsigned))
-        gamma::incomplete_complement,
-        gamma_incomplete_complement_overloads( (arg_("a"),
-                                                arg_("x"),
-                                                arg_("max_iterations")=500 )));
+      gamma::incomplete_complement, (
+        arg_("a"),
+        arg_("x"),
+        arg_("max_iterations")=500));
     def("exponential_integral_e1z", (double(*)(double const&))
          gamma::exponential_integral_e1z );
 
 
 
-    def("lambertw", (double(*)(double const&, unsigned)) lambertw,
-      lambertw_overloads(
-        (arg_("x"), arg_("max_iterations")=100)));
+    def("lambertw", (double(*)(double const&, unsigned))
+      lambertw, (
+        arg_("x"),
+        arg_("max_iterations")=100));
 
     wrap_basic_statistics();
     wrap_gaussian();
@@ -217,58 +190,49 @@ namespace {
 
     def( "euler_angles_xyz_matrix", euler_angles_xyz_matrix, (
       arg_("ax"), arg_("ay"), arg_("az")));
-    def( "euler_angles_xyz_angles", euler_angles_xyz_angles,
-      euler_angles_xyz_angles_overloads((
-        arg_("m"), arg_("eps")=1.e-12)));
+    def( "euler_angles_xyz_angles", euler_angles_xyz_angles, (
+      arg_("m"), arg_("eps")=1e-12));
 
     def( "euler_angles_yzx_matrix", euler_angles_yzx_matrix, (
       arg_("ay"), arg_("az"), arg_("ax")));
-    def( "euler_angles_yzx_angles", euler_angles_yzx_angles,
-      euler_angles_yzx_angles_overloads((
-        arg_("m"), arg_("eps")=1.e-12)));
+    def( "euler_angles_yzx_angles", euler_angles_yzx_angles, (
+      arg_("m"), arg_("eps")=1e-12));
 
     def( "euler_angles_zyz_matrix", euler_angles_zyz_matrix, (
       arg_("az1"), arg_("ay"), arg_("az3")));
-    def( "euler_angles_zyz_angles", euler_angles_zyz_angles,
-      euler_angles_zyz_angles_overloads((
-        arg_("m"), arg_("eps")=1.e-12)));
+    def( "euler_angles_zyz_angles", euler_angles_zyz_angles, (
+      arg_("m"), arg_("eps")=1e-12));
 
     def("signed_phase_error",
       (double(*)(
         double const&, double const&, bool))
-          math::signed_phase_error,
-      signed_phase_error_overloads(
-        (arg_("phi1"), arg_("phi2"), arg_("deg")=false)));
+          math::signed_phase_error, (
+            arg_("phi1"), arg_("phi2"), arg_("deg")=false));
     def("signed_phase_error",
       (af::shared<double>(*)(
         af::const_ref<double> const&, af::const_ref<double> const&, bool))
-          math::signed_phase_error,
-      signed_phase_error_overloads(
-        (arg_("phi1"), arg_("phi2"), arg_("deg")=false)));
+          math::signed_phase_error, (
+            arg_("phi1"), arg_("phi2"), arg_("deg")=false));
     def("phase_error",
       (double(*)(
         double const&, double const&, bool))
-          math::phase_error,
-      phase_error_overloads(
-        (arg_("phi1"), arg_("phi2"), arg_("deg")=false)));
+          math::phase_error, (
+            arg_("phi1"), arg_("phi2"), arg_("deg")=false));
     def("phase_error",
       (af::shared<double>(*)(
         af::const_ref<double> const&, af::const_ref<double> const&, bool))
-          math::phase_error,
-      phase_error_overloads(
-        (arg_("phi1"), arg_("phi2"), arg_("deg")=false)));
+          math::phase_error, (
+            arg_("phi1"), arg_("phi2"), arg_("deg")=false));
     def("nearest_phase",
       (double(*)(
         double const&, double const&, bool))
-          math::nearest_phase,
-      nearest_phase_overloads(
-        (arg_("reference"), arg_("other"), arg_("deg")=false)));
+          math::nearest_phase, (
+            arg_("reference"), arg_("other"), arg_("deg")=false));
     def("nearest_phase",
       (af::shared<double>(*)(
         af::const_ref<double> const&, af::const_ref<double> const&, bool))
-          math::nearest_phase,
-      nearest_phase_overloads(
-        (arg_("reference"), arg_("other"), arg_("deg")=false)));
+          math::nearest_phase, (
+            arg_("reference"), arg_("other"), arg_("deg")=false));
     def("divmod", math::divmod);
   }
 
