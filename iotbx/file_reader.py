@@ -143,7 +143,8 @@ class _any_file (object) :
     self.try_as_txt()
     assert len(self.file_object) != 0
     for _line in self.file_object.splitlines() :
-      line = _line.rstrip()
+      assert not _line.startswith(" ")
+      line = re.sub(" ", "", _line)
       assert (len(line) == 0 or
               line[0] == ">" or
               (line[-1] == '*' and line[:-1].isalpha()) or
