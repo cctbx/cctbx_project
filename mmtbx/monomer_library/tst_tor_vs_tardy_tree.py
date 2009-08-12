@@ -45,7 +45,7 @@ def process(mon_lib_srv, rotamer_info_master_phil, resname):
       tor.value_angle_esd
   for tors in tor_dict.values():
     if (len(tors) != 1):
-      print "Warning: multiple tors:", ", ".join([tor.id for tor in tors])
+      print "Info: redundant tors:", ", ".join([tor.id for tor in tors])
   tardy_tree = scitbx.graph.tardy_tree.construct(
     n_vertices=len(comp.atom_list),
     edge_list=edge_list,
