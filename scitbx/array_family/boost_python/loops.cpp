@@ -33,9 +33,9 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("nested_loop", no_init)
-        .def(init<array_t const&, optional<bool> >(
+        .def(init<array_t const&, bool>(
           (arg_("end"), arg_("open_range")=true)))
-        .def(init<array_t const&, array_t const&, optional<bool> >(
+        .def(init<array_t const&, array_t const&, bool>(
           (arg_("begin"), arg_("end"), arg_("open_range")=true)))
         .def("incr", &w_t::incr)
         .def("begin", &w_t::begin, ccr())

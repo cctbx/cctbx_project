@@ -2,7 +2,6 @@
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <boost/python/args.hpp>
 #include <boost/python/scope.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/make_constructor.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
@@ -232,8 +231,6 @@ namespace {
     return result;
   }
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(iselection_overloads, iselection, 1, 2)
-
   template <typename UnsignedType>
   struct union_core
   {
@@ -368,10 +365,10 @@ namespace {
       .def("__ne__", ne)
       .def("__eq__", eq)
       .def("__ne__", ne)
-      .def("all_eq", all_eq)
-      .def("all_ne", all_ne)
-      .def("all_eq", all_eq)
-      .def("all_ne", all_ne)
+      .def("all_eq", all_eq, (arg_("other")))
+      .def("all_ne", all_ne, (arg_("other")))
+      .def("all_eq", all_eq, (arg_("other")))
+      .def("all_ne", all_ne, (arg_("other")))
       .def("__invert__", invert_a)
       .def("__and__", and_a_a)
       .def("__or__", or_a_a)
@@ -379,24 +376,23 @@ namespace {
       .def("__ior__", ior_a_a)
       .def("__iand__", iand_a_s)
       .def("__ior__", ior_a_s)
-      .def("exclusive_or", exclusive_or_a_a)
-      .def("is_super_set", is_super_set)
-      .def("count", f_w::count)
+      .def("exclusive_or", exclusive_or_a_a, (arg_("other")))
+      .def("is_super_set", is_super_set, (arg_("other")))
+      .def("count", f_w::count, (arg_("value")))
       .def("as_int", as_int)
       .def("as_double", as_double)
-      .def("iselection", iselection,
-        iselection_overloads((arg_("self"), arg_("test_value")=true)))
+      .def("iselection", iselection, (arg_("test_value")=true))
       .def("filter_indices",
         (af::shared<std::size_t>(*)(
            af::const_ref<bool> const&,
-           af::const_ref<std::size_t> const&)) filter_indices,
-        (arg_("self"), arg_("indices")))
+           af::const_ref<std::size_t> const&)) filter_indices, (
+             arg_("indices")))
     ;
-    def("order", f_w::order_a_a);
+    def("order", f_w::order_a_a, (arg_("other")));
     def("union", union_, (arg_("size"), arg_("iselections")));
     def("intersection", intersection, (arg_("size"), arg_("iselections")));
-    def("first_index", f_w::first_index_a_s);
-    def("last_index", f_w::last_index_a_s);
+    def("first_index", f_w::first_index_a_s, (arg_("value")));
+    def("last_index", f_w::last_index_a_s, (arg_("value")));
   }
 
 }}} // namespace scitbx::af::boost_python

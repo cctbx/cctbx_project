@@ -3,7 +3,6 @@
 #include <scitbx/lbfgsb.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/args.hpp>
 
 namespace scitbx { namespace lbfgsb { namespace {
@@ -12,9 +11,6 @@ namespace scitbx { namespace lbfgsb { namespace {
   struct minimizer_wrappers
   {
     typedef minimizer<FloatType> w_t;
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      process_overloads, process, 3, 4)
 
     static void
     wrap()
@@ -30,7 +26,11 @@ namespace scitbx { namespace lbfgsb { namespace {
                   FloatType const&,
                   FloatType const&,
                   int const&>())
-        .def("process", &w_t::process, process_overloads())
+        .def("process", &w_t::process, (
+          arg_("x"),
+          arg_("f"),
+          arg_("g"),
+          arg_("use_fortran_library")=false))
         .def("requests_f_and_g", &w_t::requests_f_and_g)
         .def("requests_stp_init", &w_t::requests_stp_init)
         .def("is_terminated", &w_t::is_terminated)

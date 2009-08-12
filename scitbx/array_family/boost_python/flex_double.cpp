@@ -4,7 +4,6 @@
 #include <scitbx/array_family/boost_python/range_wrappers.h>
 #include <scitbx/math/utils.h>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/make_constructor.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 #include <vector>
@@ -225,7 +224,7 @@ namespace {
   all_approx_equal_a_a(
     const_ref<double> const& self,
     const_ref<double> const& other,
-    double tolerance=1.e-6)
+    double tolerance=1e-6)
   {
     return self.all_approx_equal(other, tolerance);
   }
@@ -234,7 +233,7 @@ namespace {
   all_approx_equal_a_s(
     const_ref<double> const& self,
     double other,
-    double tolerance=1.e-6)
+    double tolerance=1e-6)
   {
     return self.all_approx_equal(other, tolerance);
   }
@@ -275,13 +274,6 @@ namespace {
 
 namespace boost_python {
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    all_approx_equal_a_a_overloads, all_approx_equal_a_a, 2, 3)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    all_approx_equal_a_s_overloads, all_approx_equal_a_s, 2, 3)
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(round_overloads, round, 1, 2)
-
   void
   wrap_flex_double_matrix(
     flex_wrapper<double>::class_f_t& class_f_t);
@@ -311,23 +303,17 @@ namespace boost_python {
         (object(*)(
           object const&,
           const_ref<std::size_t> const&,
-          const_ref<double> const&)) add_selected_unsigned_a,
-        (arg_("self"), arg_("indices"), arg_("values")))
+          const_ref<double> const&)) add_selected_unsigned_a, (
+            arg_("indices"), arg_("values")))
       .def("all_approx_equal",
-        all_approx_equal_a_a,
-        all_approx_equal_a_a_overloads((
-          arg_("self"),
+        all_approx_equal_a_a, (
           arg_("other"),
-          arg_("tolerance")=1.e-6)))
+          arg_("tolerance")=1e-6))
       .def("all_approx_equal",
-        all_approx_equal_a_s,
-        all_approx_equal_a_s_overloads((
-          arg_("self"),
+        all_approx_equal_a_s, (
           arg_("other"),
-          arg_("tolerance")=1.e-6)))
-      .def("round", round, round_overloads((
-        arg_("self"),
-        arg_("n_digits")=0)))
+          arg_("tolerance")=1e-6))
+      .def("round", round, (arg_("n_digits")=0))
       .def("select", select_stl_iterable<std::vector<unsigned> >, (
         arg_("selection")))
       .def("select", select_stl_iterable<std::set<unsigned> >, (

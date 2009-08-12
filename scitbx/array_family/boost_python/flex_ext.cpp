@@ -173,19 +173,19 @@ namespace {
         .def(init<
           af::const_ref<float_t> const&,
           af::const_ref<float_t> const&,
-          optional<float_t const&> >(
-            (arg_("x"),
-             arg_("y"),
-             arg_("epsilon")=1.e-15)))
+          float_t const&>((
+            arg_("x"),
+            arg_("y"),
+            arg_("epsilon")=1e-15)))
         .def(init<
           af::const_ref<float_t> const&,
           af::const_ref<float_t> const&,
           af::const_ref<float_t> const&,
-          float_t const&>(
-            (arg_("x"),
-             arg_("y"),
-             arg_("weights"),
-             arg_("epsilon")=1.e-15)))
+          float_t const&>((
+            arg_("x"),
+            arg_("y"),
+            arg_("weights"),
+            arg_("epsilon")=1e-15)))
       ;
     }
   };
@@ -203,7 +203,7 @@ namespace {
         .def(init<
           af::const_ref<float_t> const&,
           af::const_ref<float_t> const&,
-          optional<float_t const&> >(
+          float_t const&>(
             (arg_("x"),
              arg_("y"),
              arg_("epsilon")=1.e-15)))

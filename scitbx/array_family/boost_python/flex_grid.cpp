@@ -1,5 +1,6 @@
 #include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -17,16 +18,7 @@ namespace {
     typedef boost::python::class_<w_t> c_w_t;
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      set_focus_tuple_overloads, set_focus, 1, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       set_focus_convenience_overloads, set_focus, 1, 6)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      last_overloads, last, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      focus_overloads, focus, 0, 1)
 
     static boost::python::tuple
     getinitargs(w_t const& fg)
@@ -56,13 +48,18 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> copy_const_reference;
       c_w_t("grid")
-        .def(init<df_i_t const&>())
+        .def(init<df_i_t const&>((arg_("all"))))
         .def(init<ivt const&, optional<ivt const&, ivt const&,
-                  ivt const&, ivt const&, ivt const&> >())
-        .def(init<df_i_t const&, df_i_t const&, optional<bool> >())
+                  ivt const&, ivt const&, ivt const&> >((
+          arg_("all_0"), arg_("all_1"), arg_("all_2"),
+          arg_("all_3"), arg_("all_4"), arg_("all_5"))))
+        .def(init<df_i_t const&, df_i_t const&, bool>((
+          arg_("origin"),
+          arg_("last"),
+          arg_("open_range")=true)))
         .def("set_focus",
-          (w_t(w_t::*)(df_i_t const&, bool)) 0,
-            set_focus_tuple_overloads())
+          (w_t(w_t::*)(df_i_t const&, bool)) &w_t::set_focus, (
+            arg_("focus"), arg_("open_range")=true))
         .def("set_focus",
           (w_t(w_t::*)(ivt const&, ivt const&, ivt const&,
                        ivt const&, ivt const&, ivt const&)) 0,
@@ -72,15 +69,18 @@ namespace {
         .def("is_0_based", &w_t::is_0_based)
         .def("origin", &w_t::origin)
         .def("all", &w_t::all, copy_const_reference())
-        .def("last", (df_i_t(w_t::*)(bool)) 0, last_overloads())
+        .def("last", (df_i_t(w_t::*)(bool)) &w_t::last, (
+          arg_("open_range")=true))
         .def("is_padded", &w_t::is_padded)
-        .def("focus", (df_i_t(w_t::*)(bool)) 0, focus_overloads())
+        .def("focus", (df_i_t(w_t::*)(bool)) &w_t::focus, (
+          arg_("open_range")=true))
         .def("focus_size_1d", &w_t::focus_size_1d)
         .def("is_trivial_1d", &w_t::is_trivial_1d)
         .def("shift_origin", &w_t::shift_origin)
-        .def("is_valid_index", &w_t::is_valid_index)
+        .def("is_valid_index", &w_t::is_valid_index, (arg_("index")))
         .def("__call__",
-          (std::size_t(w_t::*)(df_i_t const&) const) &w_t::operator())
+          (std::size_t(w_t::*)(df_i_t const&) const) &w_t::operator(), (
+            arg_("index")))
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
         .def_pickle(flex_grid_wrappers())

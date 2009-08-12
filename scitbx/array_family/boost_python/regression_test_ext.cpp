@@ -11,7 +11,6 @@
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
-#include <boost/python/overloads.hpp>
 
 namespace scitbx { namespace {
 
@@ -126,9 +125,6 @@ namespace scitbx { namespace {
     return result;
   }
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    make_boost_int_2_stubs, make_boost_int_2, 0, 2)
-
   void init_module()
   {
     using namespace boost::python;
@@ -148,8 +144,7 @@ namespace scitbx { namespace {
     def("use_const_ref_c_grid_3", use_const_ref_c_grid_3);
     def("use_const_ref_c_grid_padded_2", use_const_ref_c_grid_padded_2);
     def("use_const_ref_c_grid_padded_3", use_const_ref_c_grid_padded_3);
-    def("make_boost_int_2", (boost::array<int, 2>(*)(int, int)) 0,
-      make_boost_int_2_stubs());
+    def("make_boost_int_2", make_boost_int_2, (arg_("x0")=7, arg_("x1")=2));
 
     boost::python::to_python_converter<
       boost::array<int, 2>,

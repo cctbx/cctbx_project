@@ -4,7 +4,6 @@
 #include <scitbx/matrix/norms.h>
 #include <scitbx/matrix/move.h>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost_adaptbx/std_pair_conversion.h>
@@ -108,13 +107,6 @@ namespace boost_python {
   {
     return matrix_multiply_packed_u_multiply_lhs_transpose(a, b);
   }
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    matrix_symmetric_as_packed_u_overloads,
-    matrix::symmetric_as_packed_u, 1, 2)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    matrix_symmetric_as_packed_l_overloads,
-    matrix::symmetric_as_packed_l, 1, 2)
 
   double (*matrix_norm_1)(const_ref<double, mat_grid> const &) = matrix::norm_1;
 
@@ -267,22 +259,17 @@ namespace boost_python {
       .def("matrix_symmetric_as_packed_u",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&, double const&))
-            matrix::symmetric_as_packed_u,
-              matrix_symmetric_as_packed_u_overloads((
-                arg_("self"),
-                arg_("relative_epsilon")=1.e-12)))
+            matrix::symmetric_as_packed_u, (
+              arg_("relative_epsilon")=1e-12))
       .def("matrix_symmetric_as_packed_l",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&, double const&))
-            matrix::symmetric_as_packed_l,
-              matrix_symmetric_as_packed_l_overloads((
-                arg_("self"),
-                arg_("relative_epsilon")=1.e-12)))
+            matrix::symmetric_as_packed_l, (
+              arg_("relative_epsilon")=1e-12))
       .def("matrix_is_symmetric",
         (bool(*)(
           const_ref<double, c_grid<2> > const&, double const&))
             matrix::is_symmetric, ((
-              arg_("self"),
               arg_("relative_epsilon"))))
       .def("matrix_packed_u_as_symmetric",
         (versa<double, c_grid<2> >(*)(
@@ -334,30 +321,26 @@ namespace boost_python {
         (void(*)(
           ref<double, c_grid<2> > const&, unsigned, unsigned))
             matrix::swap_rows_in_place, (
-                arg_("self"),
-                arg_("i"),
-                arg_("j")))
+              arg_("i"),
+              arg_("j")))
       .def("matrix_swap_columns_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&, unsigned, unsigned))
             matrix::swap_columns_in_place, (
-                arg_("self"),
-                arg_("i"),
-                arg_("j")))
+              arg_("i"),
+              arg_("j")))
       .def("matrix_symmetric_upper_triangle_swap_rows_and_columns_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&, unsigned, unsigned))
             matrix::symmetric_upper_triangle_swap_rows_and_columns_in_place, (
-                arg_("self"),
-                arg_("i"),
-                arg_("j")))
+              arg_("i"),
+              arg_("j")))
       .def("matrix_packed_u_swap_rows_and_columns_in_place",
         (void(*)(
           ref<double> const&, unsigned, unsigned))
             matrix::packed_u_swap_rows_and_columns_in_place, (
-                arg_("self"),
-                arg_("i"),
-                arg_("j")))
+              arg_("i"),
+              arg_("j")))
       .def("cos_angle",
         (boost::optional<double>(*)(
           const_ref<double> const&,
