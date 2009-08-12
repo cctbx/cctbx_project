@@ -695,6 +695,15 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       base_color=self.settings.opengl.base_atom_color)
     self._add_model(model_id, model)
 
+  def delete_model (self, model_id) :
+    if model_id in self.model_ids :
+      i = self.model_ids.index(model_id)
+      self.model_ids.pop(i)
+      self.model_objects.pop(i)
+      if model_id in self.scene_objects :
+        self.scene_objects.pop(model_id)
+    self.update_scene = True
+
   def _add_model (self, model_id, model) :
     model.set_draw_mode(draw_mode=self.settings.opengl.default_representation,
       color_mode=self.settings.opengl.default_coloring)
@@ -727,11 +736,13 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       self.fit_into_viewport()
 
   def zoom_object (self, object_id) :
+    self.update_scene_objects()
     assert object_id in self.scene_objects
     self.update_mcs(self.scene_objects[object_id].points)
 
   @debug
   def unzoom (self, event=None) :
+    self.update_scene_objects()
     if len(self.scene_objects) > 0 :
       points = flex.vec3_double()
       for object_id, scene in self.scene_objects.iteritems() :
