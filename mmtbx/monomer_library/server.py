@@ -141,7 +141,8 @@ def convert_comp_list(source_info, cif_object):
                          ("chem_comp_angle","angle_list"),
                          ("chem_comp_tor","tor_list"),
                          ("chem_comp_chir","chir_list"),
-                         ("chem_comp_plane_atom","plane_atom_list")]):
+                         ("chem_comp_plane_atom","plane_atom_list"),
+                         ("chem_comp_rotamer_info","rotamer_info")]):
     yield comp_comp_id
 
 def convert_link_list(source_info, cif_object):

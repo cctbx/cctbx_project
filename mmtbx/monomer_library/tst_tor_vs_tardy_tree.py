@@ -1,9 +1,25 @@
 import mmtbx.monomer_library.server
 import iotbx.pdb.amino_acid_codes
 import scitbx.graph.tardy_tree
+import libtbx.phil
 import sys
 
-def process(mon_lib_srv, resname):
+rotamer_info_master_phil_str = """\
+tor_ids = None
+  .type = strings
+rotamer
+  .multiple = True
+{
+ id = None
+   .type = str
+ frequency = None
+   .type = float
+ angles = None
+   .type = floats
+}
+"""
+
+def process(mon_lib_srv, rotamer_info_master_phil, resname):
   print "resname:", resname
   comp = mon_lib_srv.get_comp_comp_id_direct(comp_id=resname)
   backbone_atom_names = set(["N", "CA", "C", "O"])
@@ -63,15 +79,47 @@ def process(mon_lib_srv, resname):
   tors_not_hinge = non_const_tor_ids.difference(tor_hinge_matches)
   if (len(tors_not_hinge) != 0):
     print "tors_not_hinge:", ", ".join(sorted(tors_not_hinge))
+  assert len(comp.rotamer_info) < 2
+  if (len(comp.rotamer_info) == 0):
+    print "No rotamer_info."
+  else:
+    rotamer_info_phil = rotamer_info_master_phil.fetch(
+      source=libtbx.phil.parse(
+        input_string=comp.rotamer_info[0].phil_str))
+    rotamer_info_phil.show()
+    rotamer_info = rotamer_info_phil.extract()
+    for tor_id in rotamer_info.tor_ids:
+      assert tor_id is not None
+      if (tor_id not in tor_hinge_matches):
+        print "Warning: unexpected rotamer_info tor_id:", tor_id
+    n_missing_frequencies = 0
+    for rotamer in rotamer_info.rotamer:
+      assert rotamer.id is not None
+      assert len(rotamer.id.strip()) == len(rotamer.id)
+      assert len(rotamer.id.split()) == 1
+      if (rotamer.frequency is None):
+        n_missing_frequencies += 1
+      else:
+        assert rotamer.frequency > 0
+        assert rotamer.frequency < 1
+      assert rotamer.angles is not None
+      assert len(rotamer.angles) == len(rotamer_info.tor_ids)
+    if (n_missing_frequencies != 0):
+      print "Warning: number of missing frequencies:", n_missing_frequencies
   print
 
 def run(args):
   assert len(args) == 0
   mon_lib_srv = mmtbx.monomer_library.server.server()
+  rotamer_info_master_phil = libtbx.phil.parse(
+    input_string=rotamer_info_master_phil_str)
   amino_acid_resnames = sorted(
     iotbx.pdb.amino_acid_codes.three_letter_given_one_letter.values())
   for resname in amino_acid_resnames:
-    process(mon_lib_srv=mon_lib_srv, resname=resname)
+    process(
+      mon_lib_srv=mon_lib_srv,
+      rotamer_info_master_phil=rotamer_info_master_phil,
+      resname=resname)
   print "OK"
 
 if (__name__ == "__main__"):
