@@ -174,6 +174,7 @@ class comp_comp_id(object):
     self.tor_list = []
     self.chir_list = []
     self.plane_atom_list = []
+    self.rotamer_info = []
     self.classification = None
 
   def __copy__(self):
@@ -185,6 +186,7 @@ class comp_comp_id(object):
     result.tor_list = [copy.copy(e) for e in self.tor_list]
     result.chir_list = [copy.copy(e) for e in self.chir_list]
     result.plane_atom_list = [copy.copy(e) for e in self.plane_atom_list]
+    result.rotamer_info = [copy.copy(e) for e in self.rotamer_info]
     result.classification = None
     return result
 
@@ -496,6 +498,7 @@ class comp_comp_id(object):
     show_loop(data_list=self.tor_list, f=f)
     show_loop(data_list=self.chir_list, f=f)
     show_loop(data_list=self.plane_atom_list, f=f)
+    show_loop(data_list=self.rotamer_info, f=f)
     return self
 
   def as_geometry_restraints_motif(self):
@@ -637,6 +640,11 @@ class chem_comp_plane_atom(looped_data):
 _chem_comp_plane_atom.plane_id
 _chem_comp_plane_atom.atom_id
 _chem_comp_plane_atom.dist_esd:float
+  """
+
+class chem_comp_rotamer_info(looped_data):
+  """
+_chem_comp_rotamer_info.phil_str
   """
 
 class chem_comp_deriv(looped_data):
