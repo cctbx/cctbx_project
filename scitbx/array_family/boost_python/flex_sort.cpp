@@ -13,8 +13,11 @@ namespace {
   sort_permutation_wrapper()
   {
     using namespace boost::python;
-    def("sort_permutation", sort_permutation<ElementType>, (
-      arg_("data"), arg_("reverse")=false));
+    def("sort_permutation",
+      // cast needed for Intel C++ 9.1
+      (shared<std::size_t>(*)(const_ref<ElementType> const&, bool))
+        af::sort_permutation, (
+          arg_("data"), arg_("reverse")=false));
   }
 
 } // namespace <anonymous>
