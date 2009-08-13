@@ -302,6 +302,10 @@ class selection_editor_mixin (model_viewer_mixin) :
         else:                             # Selection menu
           self.context_selection_menu()
 
+  def OnDoubleClick (self, event) :
+    if self.left_button_mode == 0 :
+      model_viewer_mixin.OnDoubleClick(self, event)
+
   # Handlers for selection menu events
   def OnToggleChain (self, event) :
     pass

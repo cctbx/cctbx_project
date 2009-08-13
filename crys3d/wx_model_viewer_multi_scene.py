@@ -841,6 +841,12 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     if self.update_scene :
       self.OnRedrawGL()
 
+  def toggle_visibility (self, show_object, object_id=None) :
+    for model_id, model in self.iter_models() :
+      if object_id is None or object_id == model_id :
+        self.show_object[model_id] = show_object
+    self.update_scene = True
+
   def hide_others (self, object_id=None) :
     for model_id in self.model_ids :
       if model_id != object_id :
@@ -873,6 +879,16 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     for model_id, model in self.iter_models() :
       if object_id is None or object_id == model_id :
         model.toggle_hydrogens(show_hydrogens)
+
+  # TODO: something smarter - temporary toggle for draw_mode?
+  def toggle_trace (self, show_trace, object_id=None) :
+    for model_id, model in self.iter_models() :
+      if object_id is None or object_id == model_id :
+        if show_trace :
+          model.set_draw_mode("trace")
+        else :
+          model.set_draw_mode("all_atoms")
+    self.update_scene = True
 
   def toggle_labels (self, show_labels) :
     self.flag_show_labels = show_labels
