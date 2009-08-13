@@ -14,6 +14,8 @@ rotamer
    .type = str
  frequency = None
    .type = float
+ frequency_annotation = None
+   .type = str
  angles = None
    .type = floats
 }
@@ -98,7 +100,8 @@ def process(mon_lib_srv, rotamer_info_master_phil, resname):
       assert len(rotamer.id.strip()) == len(rotamer.id)
       assert len(rotamer.id.split()) == 1
       if (rotamer.frequency is None):
-        n_missing_frequencies += 1
+        if (rotamer.frequency_annotation != "for more uniform sampling"):
+          n_missing_frequencies += 1
       else:
         assert rotamer.frequency > 0
         assert rotamer.frequency < 1
