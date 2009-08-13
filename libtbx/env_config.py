@@ -305,7 +305,10 @@ class environment:
       self.python_exe = self.abs_path_clean(os.path.join(
         sys.prefix, "python.exe"))
     else:
+      assert os.path.isfile(sys.executable) # sanity check
+      assert os.access(sys.executable, os.X_OK) # sanity check
       self.python_exe = sys.executable
+    assert os.path.isfile(self.python_exe)
     self.read_command_version_suffix()
     self.build_options = None
     self.repository_paths = []
