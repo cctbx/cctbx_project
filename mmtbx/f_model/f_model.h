@@ -69,6 +69,7 @@ af::shared<ComplexType> f_model(
     result[i] = f_model_one_h(f_calc[i], f_mask[i], k_sol, b_sol, ss[i], hkl[i],
       u_star);
   }
+  return result;
 }
 
 template <typename FloatType=double,

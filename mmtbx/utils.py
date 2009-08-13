@@ -1410,53 +1410,40 @@ def fmodel_simple(f_obs,
                   mask_params              = None,
                   twin_laws                = None,
                   skip_twin_detection      = False,
-                  twin_switch_tolerance    = 3.0):
-  if(twin_laws is None and not skip_twin_detection):
+                  twin_switch_tolerance    = 3):
+  def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp):
+    fmodel = fmodel_manager(
+      xray_structure = xrs.deep_copy_scatterers(),
+      f_obs          = f_obs.deep_copy(),
+      r_free_flags   = flags.deep_copy(),
+      mask_params    = mp,
+      twin_law       = tl)
+    if(bssf):
+      if(tl is None):
+        sel = fmodel.outlier_selection()
+        fmodel = fmodel.select(selection = sel)
+      fmodel.update_solvent_and_scale(params = bssp, verbose = -1)
+    return fmodel
+  if((twin_laws is None or twin_laws==[None]) and not skip_twin_detection):
     twin_laws = xtriage(f_obs = f_obs.deep_copy())
+  # DEBUG twin_laws=None
   if(len(xray_structures) == 1):
-    fmodels = []
-    r_work = 1.e+9
-    twin_law_best = None
     if(twin_laws is None): twin_laws = [None]
     if(twin_laws.count(None)==0): twin_laws.append(None)
+    fmodel = get_fmodel(f_obs=f_obs, xrs=xray_structures[0], flags=r_free_flags,
+      mp=mask_params, tl=None, bssf=bulk_solvent_and_scaling, bssp=bss_params)
+    r_work = fmodel.r_work()
     for twin_law in twin_laws:
-      fmodel_ = fmodel_manager(
-        xray_structure = xray_structures[0].deep_copy_scatterers(),
-        f_obs          = f_obs.deep_copy(),
-        r_free_flags   = r_free_flags.deep_copy(),
-        mask_params    = mask_params,
-        twin_law       = twin_law)
-      if(bulk_solvent_and_scaling):
-        if(twin_law is None):
-          sel = fmodel_.outlier_selection()
-          fmodel_ = fmodel_.select(selection = sel)
-          fmodel_.update_solvent_and_scale(params = bss_params, verbose = -1)
-        else:
-          fmodel_.update_solvent_and_scale(initialise=True)
       if(twin_law is not None):
+        fmodel_ = get_fmodel(f_obs=f_obs, xrs=xray_structures[0],
+          flags=r_free_flags, mp=mask_params, tl=twin_law,
+          bssf=bulk_solvent_and_scaling, bssp=bss_params)
         r_work_ = fmodel_.r_work()
-        if(r_work_ < r_work):
+        if(abs(r_work-r_work_)*100 > twin_switch_tolerance and r_work_<r_work):
           r_work = r_work_
-          twin_law_best = twin_law
-      else:
-        fmodels.append(fmodel_.deep_copy())
-    if(twin_law_best is not None):
-      fmodel_ = fmodel_manager(
-        xray_structure = xray_structures[0].deep_copy_scatterers(),
-        f_obs          = f_obs.deep_copy(),
-        r_free_flags   = r_free_flags.deep_copy(),
-        mask_params    = mask_params,
-        twin_law       = twin_law_best)
-      fmodel_.update_solvent_and_scale(params = bss_params, verbose = -1)
-      fmodels.append(fmodel_)
-    if(len(twin_laws)>1):
-      if(abs(fmodels[0].r_work()-fmodels[1].r_work())*100 > twin_switch_tolerance):
-        if(fmodels[0].r_work()>fmodels[1].r_work()): fmodel = fmodels[1]
-        else: fmodel = fmodels[0]
-      else:
-        for fmodel in fmodels:
-          if(not fmodel.twin): break
-    else: fmodel = fmodels[0]
+          fmodel = fmodel_.deep_copy()
+          fmodel.twin = twin_law
+          twin_switch_tolerance = 0
   else:
     # XXX Automatic twin detection is not available for multi-model.
     f_model_data = None
@@ -1786,15 +1773,15 @@ class guess_observation_type(object):
       for sig_cut in [3.0,2.0,1.0,0.0]:
         f_obs_ = f_obs.sigma_filter(cutoff_factor = sig_cut)
         if(f_obs_.data().size() >= self.data_size): break
-      if(f_obs_.size() >= self.data_size): f_obs = f_obs_
+      if(f_obs_.size() >= self.data_size): f_obs = f_obs_.deep_copy()
     #
     d_max, d_min = f_obs.d_max_min()
     if(d_min<=0.25):
       f_obs = f_obs.resolution_filter(d_min = 0.25)
       if(r_free_flags is not None):
         r_free_flags = r_free_flags.resolution_filter(d_min = 0.25)
-    if(d_min < 2.0): d_min = 2.0
-    if(d_max > 5.0 and d_max-d_min > 1.0): d_max = 5.0
+    if(d_min < 1.5): d_min = 1.5
+    if(d_max > 6.0 and d_max-d_min > 1.0): d_max = 6.0
     f_obs_ = f_obs.resolution_filter(d_min = d_min, d_max = d_max)
     if(f_obs_.size() >= self.data_size): f_obs = f_obs_
     #
@@ -1813,19 +1800,65 @@ class guess_observation_type(object):
           f = f_obs.f_as_f_sq()
         f.set_observation_type_xray_amplitude()
         fmodel = self.get_r_factor(
-          f_obs  = f.deep_copy(),
-          f_calc = f_calc.deep_copy(),
-          xray_structure = xrs.deep_copy_scatterers())
+          f_obs               = f.deep_copy(),
+          f_calc              = f_calc.deep_copy(),
+          xray_structure      = xrs.deep_copy_scatterers(),
+          skip_twin_detection = True)
         results.append([dtype,ftype,fmodel.twin,fmodel.r_work()])
-    r_best = abs(results[0][3])
-    self.result = results[0]
+    #
+    print "All scores (stage 1):"
     for r in results:
       st_r = " ".join(["%6s"%str(r_) for r_ in r])
       print st_r
+    #
+    results_x = []
+    results_n = []
+    for r in results:
+      if(r[0]=="X"): results_x.append(r)
+      elif(r[0]=="N"): results_n.append(r)
+      else: raise RuntimeError
+    #
+    result_best_x = self.find_best(results = results_x)
+    result_best_n = self.find_best(results = results_n)
+    #
+    options = []
+    if(result_best_x[3]<result_best_n[3]): options = [result_best_x]
+    else: options = [result_best_n]
+    results = []
+    for r in options:
+      dtype,ftype = r[0],r[1]
+      xrs = xray_structure.deep_copy_scatterers()
+      if(dtype=="N"):
+        xrs.switch_to_neutron_scattering_dictionary()
+      f_calc = f_obs.structure_factors_from_scatterers(
+        xray_structure = xrs).f_calc()
+      f = f_obs.deep_copy()
+      if(ftype=="FFORCE"):
+        f = f_obs.f_sq_as_f()
+      elif(ftype=="IFORCE"):
+        f = f_obs.f_as_f_sq()
+      f.set_observation_type_xray_amplitude()
+      fmodel = self.get_r_factor(
+        f_obs               = f.deep_copy(),
+        f_calc              = f_calc.deep_copy(),
+        xray_structure      = xrs.deep_copy_scatterers(),
+        skip_twin_detection = False)
+      results.append([dtype,ftype,fmodel.twin,fmodel.r_work()])
+    print "All scores (stage 2):"
+    for r in results:
+      st_r = " ".join(["%6s"%str(r_) for r_ in r])
+      print st_r
+    self.result = self.find_best(results = results)
+
+  def find_best(self, results):
+    r_best = 1.e+9
+    answer = None
+    for r in results:
       if(abs(r[3]) < abs(r_best)):
         r_best = abs(r[3])
-        self.result = r
-    print "Answer: %s"%" ".join(["%6s"%str(r_) for r_ in self.result])
+        answer = r
+    print "Answer: %s"%" ".join(["%6s"%str(r_) for r_ in answer])
+    return answer
 
   def mtz_object(self):
     r = self.result
@@ -1847,7 +1880,7 @@ class guess_observation_type(object):
         column_root_label = "R-free-flags")
     return mtz_dataset.mtz_object()
 
-  def get_r_factor(self, f_obs, f_calc, xray_structure):
+  def get_r_factor(self, f_obs, f_calc, xray_structure, skip_twin_detection):
     r_free_flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
     for trial in xrange(3):
       result = outlier_rejection.outlier_manager(
@@ -1862,17 +1895,19 @@ class guess_observation_type(object):
       f_obs = f_obs.select(sel_out)
       f_calc = f_calc.select(sel_out)
       r_free_flags = r_free_flags.select(sel_out)
-    twin_laws = xtriage(f_obs = f_obs)
-    twin_laws.append(None)
+    twin_laws = None
+    if(not skip_twin_detection):
+      twin_laws = xtriage(f_obs = f_obs)
+      twin_laws.append(None)
     #
-    if 0:#(f_obs.data() > self.data_size): #XXX not reliable ?
-      random.seed(0)
-      flex.set_random_seed(0)
-      selection = flex.random_bool(size=f_obs.data().size(),
-        threshold=float(self.data_size)/f_obs.data().size())
-      f_obs = f_obs.select(selection)
-      f_calc = f_calc.select(selection)
-      r_free_flags = r_free_flags.select(selection)
+    #if(f_obs.data() > self.data_size): #XXX not reliable ?
+    #  random.seed(0)
+    #  flex.set_random_seed(0)
+    #  selection = flex.random_bool(size=f_obs.data().size(),
+    #    threshold=float(self.data_size)/f_obs.data().size())
+    #  f_obs = f_obs.select(selection)
+    #  f_calc = f_calc.select(selection)
+    #  r_free_flags = r_free_flags.select(selection)
     #
     params = bss.master_params.extract()
     params.k_sol_grid_search_min = 0.0
@@ -1889,6 +1924,6 @@ class guess_observation_type(object):
       target_name              = "ls_wunit_k1",
       bulk_solvent_and_scaling = True,
       bss_params               = params,
-      twin_laws                = twin_laws,
-      twin_switch_tolerance    = 3.0)
+      skip_twin_detection      = skip_twin_detection,
+      twin_laws                = twin_laws)
     return fmodel

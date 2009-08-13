@@ -548,7 +548,7 @@ def run(args,
   bss_params.k_sol_max = 0.8
   bss_params.k_sol_min = 0.0
   bss_params.b_sol_max = 500.0
-  bss_params.b_sol_min = 0.0
+  bss_params.b_sol_min = 10.0
   bss_params.k_sol_grid_search_max = 0.6
   bss_params.k_sol_grid_search_min = 0.0
   bss_params.b_sol_grid_search_max = 80.0

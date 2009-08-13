@@ -340,6 +340,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                detwin_mode        = None,
                map_types          = None,
                twin_target = master_params.extract().twin_target):
+    self.fmodel_ts1 = None
     if(f_calc is not None): raise RuntimeError("Not implemented.")
     if(map_types is None):
       map_types = master_params.extract().detwin.map_types
@@ -623,6 +624,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     new_object.twin_fraction = float(self.twin_fraction_object.twin_fraction)
     new_object.update()
     new_object.did_search = self.did_search
+    new_object.fmodel_ts1 = self.fmodel_ts1.deep_copy()
     return new_object
 
   def resolution_filter(self,d_max=None,d_min=None):
@@ -712,7 +714,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                                out=None,
                                verbose=-1,
                                initialise=False):
-    fmodel = mmtbx.f_model.manager(
+    self.fmodel_ts1 = mmtbx.f_model.manager(
       f_obs          = self.f_obs,
       r_free_flags   = self.r_free_flags,
       xray_structure = self.xray_structure,
@@ -725,18 +727,16 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     params.k_sol_b_sol_grid_search = False # XXX too slow otherwise
     params.number_of_macro_cycles=1 # XXX too slow otherwise, let's see may be ok
     if(not initialise):
-      fmodel.update_solvent_and_scale(params = params, out=out, verbose=verbose)
-      fmodel.apply_back_b_iso()
+      self.fmodel_ts1.update_solvent_and_scale(params = params, out=out, verbose=verbose)
+      self.fmodel_ts1.apply_back_b_iso()
     else:
-      fmodel.update_twin_fraction()
+      self.fmodel_ts1.update_twin_fraction()
     self.update_core(
-      k_sol = fmodel.k_sol(),
-      b_sol = fmodel.b_sol(),
-      twin_fraction = fmodel.twin_fraction,
-      b_cart = fmodel.b_cart(),
-      k_overall = fmodel.scale_k1_w())
-    # XXX this fails: assert approx_equal(self.r_work(), fmodel.r_work())
-    # XXX this fails: assert approx_equal(self.r_free(), fmodel.r_free())
+      k_sol = self.fmodel_ts1.k_sol(),
+      b_sol = self.fmodel_ts1.b_sol(),
+      twin_fraction = self.fmodel_ts1.twin_fraction,
+      b_cart = self.fmodel_ts1.b_cart(),
+      k_overall = self.fmodel_ts1.scale_k1_w())
 
   def update_core(self,
                   f_calc        = None,
@@ -1238,12 +1238,22 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       return r_abs_work_f_overall, r_abs_free_f_overall
 
   def r_work(self):
-    w,f = self.r_values(False)
-    return w
+    if(self.fmodel_ts1 is not None): # XXX BAD
+      self.fmodel_ts1.update_xray_structure(xray_structure = self.xray_structure,
+        update_f_calc = True, update_f_mask=True)
+      return self.fmodel_ts1.r_work()
+    else:
+      w,f = self.r_values(False)
+      return w
 
   def r_free(self):
-    w,f = self.r_values(False)
-    return f
+    if(self.fmodel_ts1 is not None): # XXX BAD
+      self.fmodel_ts1.update_xray_structure(xray_structure = self.xray_structure,
+        update_f_calc = True, update_f_mask = True)
+      return self.fmodel_ts1.r_free()
+    else:
+      w,f = self.r_values(False)
+      return f
 
   def r_all(self):
     selection = flex.bool( self.f_obs.data().size(), True )

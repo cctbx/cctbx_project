@@ -294,6 +294,7 @@ class manager(manager_mixin):
     self.core = None
     self.core_twin_mate = None
     self.twin_law = twin_law
+    self.twin_law_str = twin_law
     self.twin_fraction = twin_fraction
     self.f_obs = f_obs
     if(r_free_flags is not None):
@@ -602,11 +603,14 @@ class manager(manager_mixin):
       f_mask                       = self.f_mask().select(selection=selection),
       mask_params                  = deepcopy(self.mask_params),
       mask_manager                 = new_mask_manager,
+      twin_law                     = self.twin_law,
+      twin_fraction                = self.twin_fraction,
       trust_xray_structure         = True,
       update_xray_structure        = update_xray_structure,
       max_number_of_bins           = self.max_number_of_bins,
       filled_f_obs_selection       = new_filled_f_obs_selection,
       _target_memory               = self._target_memory)
+    result.twin = self.twin
     return result
 
   def resolution_filter(self,
