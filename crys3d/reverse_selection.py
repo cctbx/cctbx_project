@@ -146,7 +146,7 @@ class mouse_selection_manager (object) :
     self.deselected_atoms = []
     self.selected_residues = []
     self.deselected_residues = []
-    #self.apply_selection(self.saved_selection)
+    self.apply_selection("none") #self.saved_selection)
 
   def selection_size (self) :
     return self.selection_i_seqs.size()
