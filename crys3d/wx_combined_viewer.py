@@ -237,7 +237,7 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
       resolution_factor=0.33) :
     assert map_coeffs.is_complex_array()
     fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
-    fft_map.apply_sigma_scaling(resolution_factor=resolution_factor)
+    fft_map.apply_sigma_scaling()
     self.update_map(map_id, fft_map)
 
   def hide_others (self, object_id=None) :
