@@ -144,24 +144,23 @@ namespace cctbx {
       }
 
       //! Simple measure for the similarity of two orientatons.
-      /*! The result is the mean squared fractional difference
-          of all basis vector projections.
-          The basis vectors are taken in direct space.
-          Introduced 7/19/2009.
+      /*! The result is a sum of mock Z-scores for the three basis vectors of
+          the other orientation.  It assumes that the direct space vectors
+          of this crystal orientation are distributed normally with a standard
+          deviation of 1% of the basis vector length.
+          Introduced 8/13/2009.
        */
       inline double
-      normalized_mean_square_difference(crystal_orientation const& other) const
+      difference_Z_score(crystal_orientation const& other) const
       {
-        oc_mat3 direct_self = direct_matrix();
-        oc_mat3 direct_other = other.direct_matrix();
-        double result = 0.0;
-        for (std::size_t idx = 0; idx < 9; ++idx){
-          if (direct_self[idx]+direct_other[idx] != 0.0){
-            result += scitbx::fn::pow2(2.*(direct_self[idx]-direct_other[idx])/
-                                          (direct_self[idx]+direct_other[idx]));
-          }
+        oc_mat3 diff = (direct_matrix() - other.direct_matrix());
+        double Z = 0.0;
+        for (int idx = 0; idx<3; ++idx){
+          oc_vec3 this_basis_vector(direct_matrix().get_row(idx));
+          oc_vec3 diff_vector(diff.get_row(idx));
+          Z += diff_vector.length()/(0.01*this_basis_vector.length());
         }
-        return result/9.;
+        return Z;
       }
 
       //! Best change of basis for superimposing onto another orientation.
