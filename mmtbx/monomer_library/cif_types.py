@@ -604,6 +604,9 @@ _chem_comp_bond.value_dist:float
 _chem_comp_bond.value_dist_esd:float
   """
 
+  def atom_ids(O):
+    return (O.atom_id_1, O.atom_id_2)
+
 class chem_comp_angle(looped_data):
   """
 _chem_comp_angle.atom_id_1
@@ -624,6 +627,9 @@ _chem_comp_tor.value_angle:float
 _chem_comp_tor.value_angle_esd:float
 _chem_comp_tor.period:int
   """
+
+  def atom_ids(O):
+    return (O.atom_id_1, O.atom_id_2, O.atom_id_3, O.atom_id_4)
 
 class chem_comp_chir(looped_data):
   """
