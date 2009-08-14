@@ -240,9 +240,9 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
     fft_map.apply_sigma_scaling()
     self.update_map(map_id, fft_map)
 
-  def hide_others (self, object_id=None) :
-    for map_id in self.model_ids :
-      if map_id != object_id :
+  def hide_maps (self, object_id=None) :
+    for map_id in self.map_ids :
+      if object_id is None or map_id == object_id :
         self.show_object[map_id] = False
 
   def iter_maps (self) :
@@ -315,8 +315,22 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
     self.update_maps = True
     selection_editor_mixin.recenter_on_atom(self, *args, **kwds)
 
-  def hide_others (self, *args, **kwds) :
-    selection_editor_mixin.hide_others(self, *args, **kwds)
-    map_viewer_mixin.hide_others(self, *args, **kwds)
+  def hide_all (self, *args, **kwds) :
+    self.hide_models(*args, **kwds)
+    self.hide_maps(*args, **kwds)
+
+  def hide_others (self, object_id=None) :
+    if object_id is None :
+      self.hide_models()
+      self.hide_maps()
+    else :
+      for current_object_id in self.model_ids+self.map_ids :
+        if current_object_id != object_id :
+          self.show_object[current_object_id] = False
+
+  def toggle_visibility (self, show_object, object_id=None) :
+    for current_object_id in self.model_ids+self.map_ids :
+      if current_object_id == object_id :
+        self.show_object[current_object_id] = show_object
 
 #---end

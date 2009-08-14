@@ -1,8 +1,7 @@
 
 # TODO: move selection logic to separate module
 
-from crys3d.wx_model_viewer_multi_scene import model_data, model_scene, \
-    model_viewer_mixin
+from crys3d.wx_model_viewer import model_data, model_scene, model_viewer_mixin
 from crys3d.reverse_selection import mouse_selection_manager
 import gltbx.gl_managed
 from gltbx.gl import *
@@ -15,7 +14,7 @@ from libtbx import adopt_init_args
 import wx
 
 viewer_phil = iotbx.phil.parse("""
-include scope crys3d.wx_model_viewer_multi_scene.opengl_phil
+include scope crys3d.wx_model_viewer.opengl_phil
 selections {
   selection_color = 1.0 1.0 1.0
     .type = floats
