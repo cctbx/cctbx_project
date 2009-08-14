@@ -305,6 +305,7 @@ class environment:
       self.python_exe = self.abs_path_clean(os.path.join(
         sys.prefix, "python.exe"))
     else:
+      assert os.path.isabs(sys.executable) # sanity check
       assert os.path.isfile(sys.executable) # sanity check
       assert os.access(sys.executable, os.X_OK) # sanity check
       self.python_exe = sys.executable
