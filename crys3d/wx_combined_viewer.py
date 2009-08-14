@@ -102,6 +102,7 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
     self.map_ids     = []
     self.map_objects = []
     self.map_scenes  = {}
+    self.show_object = {}
     # user settings
     self.mesh_line_width = 0.25 # very buggy on OS X + NVidia (and ???)
     self.buffer_factor = 2
@@ -212,13 +213,37 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
     map_object = map_data(map)
     self.map_ids.append(map_id)
     self.map_objects.append(map_object)
+    self.show_object[map_id] = True
+    self.update_maps = True
+
+  def delete_map (self, map_id) :
+    if map_id in self.map_ids :
+      i = self.map_ids.index(map_id)
+      self.map_ids.pop(i)
+      self.map_objects.pop(i)
+      if map_id in self.scene_objects :
+        self.scene_objects.pop(map_id)
     self.update_maps = True
 
   def update_map (self, map_id, map) :
-    assert map_id in self.map_ids
-    map_object = self.get_map(map_id)
-    map_object.update_map_data(map)
-    self.update_maps = True
+    if not map_id in self.map_ids :
+      self.add_map(map_id, map)
+    else :
+      map_object = self.get_map(map_id)
+      map_object.update_map_data(map)
+      self.update_maps = True
+
+  def update_map_from_miller_array (self, map_id, map_coeffs,
+      resolution_factor=0.33) :
+    assert map_coeffs.is_complex_array()
+    fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
+    fft_map.apply_sigma_scaling(resolution_factor=resolution_factor)
+    self.update_map(map_id, fft_map)
+
+  def hide_others (self, object_id=None) :
+    for map_id in self.model_ids :
+      if map_id != object_id :
+        self.show_object[map_id] = False
 
   def iter_maps (self) :
     for (map_id, map_object) in zip(self.map_ids, self.map_objects) :
@@ -251,7 +276,8 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
     if not self.flag_smooth_lines :
       glDisable(GL_LINE_SMOOTH)
     for map_id, scene in self.map_scenes.iteritems() :
-      scene.draw_mesh()
+      if self.show_object[map_id] :
+        scene.draw_mesh()
 
 class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
   initialize_map_viewer_super = False
@@ -288,5 +314,9 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
   def recenter_on_atom (self, *args, **kwds) :
     self.update_maps = True
     selection_editor_mixin.recenter_on_atom(self, *args, **kwds)
+
+  def hide_others (self, *args, **kwds) :
+    selection_editor_mixin.hide_others(self, *args, **kwds)
+    map_viewer_mixin.hide_others(self, *args, **kwds)
 
 #---end
