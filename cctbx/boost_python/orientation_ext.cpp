@@ -42,8 +42,8 @@ namespace cctbx { namespace boost_python { namespace {
         .def("direct_mean_square_difference",
           &crystal_orientation::direct_mean_square_difference,
             (arg_("other")))
-        .def("normalized_mean_square_difference",
-          &crystal_orientation::normalized_mean_square_difference,
+        .def("difference_Z_score",
+          &crystal_orientation::difference_Z_score,
             (arg_("other")))
         .def("best_similarity_transformation",
           &crystal_orientation::best_similarity_transformation,
