@@ -4465,6 +4465,22 @@ multiwordchoice = 'a b'
   diff_phil = phil.parse(input_string=s.getvalue())
   working_phil = master_phil.fetch(source=diff_phil)
   assert not show_diff(working_phil.as_str(),"multiwordchoice = '*a b' 'b c'\n")
+  master_phil = phil.parse("""\
+x = a b
+  .type = choice
+y = *a B
+  .type = choice
+""")
+  other = phil.parse("""\
+x = A
+y = b
+""")
+  params = master_phil.extract()
+  assert params.x is None
+  assert params.y == 'a'
+  params = master_phil.fetch(source=other).extract()
+  assert params.x == 'a'
+  assert params.y == 'B'
 
 def exercise_type_constructors():
   params = phil.parse(
@@ -5072,6 +5088,7 @@ def exercise_choice_multi_plus_support():
         ("u=+a + b +c", "u = *a *b *c"),
         ("u=+a ++ b +c", "u = a b c"),
         ("u=a + b + *c", "u = a b *c"),
+        ("u=a + b + *C", "u = a b *c"),
         ("u=a + b + 'c'", "u = a b c")]:
     work_params = master_phil.fetch(source=cai.process(arg=arg))
     assert not show_diff(work_params.as_str(), expected_result+"\n")
