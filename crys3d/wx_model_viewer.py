@@ -1,4 +1,6 @@
 
+# XXX: deprecated!
+
 from string import strip
 from libtbx.utils import Sorry
 import gltbx.util

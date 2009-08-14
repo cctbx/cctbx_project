@@ -1,7 +1,6 @@
 
 import sys, os
 import cStringIO
-from crys3d.wx_model_viewer_multi_scene import model_viewer_mixin
 from crys3d.wx_selection_editor import selection_editor_mixin
 from mmtbx.monomer_library import pdb_interpretation
 import iotbx.pdb

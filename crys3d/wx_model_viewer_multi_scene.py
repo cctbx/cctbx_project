@@ -870,6 +870,13 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
         model.set_color_mode(color_mode)
     self.update_scene = True
 
+  def set_model_base_color (self, color, object_id=None) :
+    assert len(color) == 3
+    for model_id, model in self.iter_models() :
+      if object_id is None or object_id == model_id :
+        model.set_base_color(color)
+    self.update_scene = True
+
   def toggle_ellipsoids (self, show_ellipsoids, object_id=None) :
     for model_id, model in self.iter_models() :
       if object_id is None or object_id == model_id :
