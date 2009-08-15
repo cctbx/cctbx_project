@@ -357,13 +357,18 @@ namespace cctbx { namespace sgtbx {
     FloatType const& minimum_distance_sq,
     FloatType const& tolerance_sq)
   {
+    CCTBX_ASSERT((tolerance_sq == 0) == (minimum_distance_sq == 0));
+    CCTBX_ASSERT(tolerance_sq == 0 || tolerance_sq < minimum_distance_sq);
     push_back(0, original_site_);
     for(std::size_t i=1;i<space_group_.order_z();i++) {
       frac_t sx = space_group_(i) * original_site_;
       FloatType
         dist_sq = unit_cell_.min_mod_short_distance_sq(
           coordinates_.const_ref(), sx);
-      if (dist_sq >= tolerance_sq) {
+      if (tolerance_sq == 0) {
+        push_back(i, sx);
+      }
+      else if (dist_sq >= tolerance_sq) {
         if (dist_sq < minimum_distance_sq) {
           throw error(
             "Special position not well defined: use class site_symmetry.");

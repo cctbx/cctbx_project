@@ -1396,6 +1396,19 @@ def exercise_site_symmetry():
   #
   u = uctbx.unit_cell((3,4,5,80,100,110))
   g = sgtbx.space_group("P 2")
+  #
+  ss = site_symmetry(
+    unit_cell=u,
+    space_group=g,
+    original_site=(0,0,0))
+  assert str(ss.special_op()) == "0,0,z"
+  ss = site_symmetry(
+    unit_cell=u,
+    space_group=g,
+    original_site=(0,0,0),
+    min_distance_sym_equiv=0)
+  assert str(ss.special_op()) == "x,y,z"
+  #
   ss = site_symmetry(
     unit_cell=u,
     space_group=g,
@@ -1729,6 +1742,18 @@ def exercise_sym_equiv_sites():
   d = sgtbx.min_sym_equiv_distance_info(e, (0.2,0.4,0.1))
   assert approx_equal(d.diff(), (-0.1,-0.2,0.2))
   assert approx_equal(d.dist(), u.length((-0.1,-0.2,0.2)))
+  #
+  u = uctbx.unit_cell((3,4,5,80,100,110))
+  g = sgtbx.space_group("P 2")
+  e = sym_equiv_sites(unit_cell=u, space_group=g, original_site=(0,0,0))
+  assert e.coordinates().size() == 1
+  e = sym_equiv_sites(
+    unit_cell=u,
+    space_group=g,
+    original_site=(0,0,0),
+    minimum_distance=0,
+    tolerance=0)
+  assert e.coordinates().size() == 2
 
 def exercise_seminvariant():
   space_group = sgtbx.space_group
