@@ -207,6 +207,12 @@ def exercise_special_position_settings():
   assert approx_equal(
     t.apply_symmetry_sites(unit_cell=xs.unit_cell(), sites_cart=sites_cart),
     sites_cart)
+  #
+  for min_distance_sym_equiv,special_op in [(1e-6, "0,0,0"), (0, "x,y,z")]:
+    sp = crystal.special_position_settings(
+      crystal_symmetry=xs,
+      min_distance_sym_equiv=min_distance_sym_equiv)
+    assert str(sp.sym_equiv_sites((0,0,0)).special_op()) == special_op
 
 def exercise_site_symmetry(space_group_info):
   special_position_settings = crystal.special_position_settings(

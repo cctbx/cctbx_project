@@ -356,9 +356,12 @@ namespace cctbx { namespace sgtbx {
       shortest_distance() const { return std::sqrt(shortest_distance_sq_); }
 
       //! Tests if shortest_distance() > min_distance_sym_equiv().
+      /*! As a special case, always true if min_distance_sym_equiv() is zero.
+       */
       bool
       check_min_distance_sym_equiv() const
       {
+        if (min_distance_sym_equiv_sq_ == 0) return true;
         return shortest_distance_sq_ > min_distance_sym_equiv_sq_;
       }
 

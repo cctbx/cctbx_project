@@ -139,7 +139,8 @@ namespace cctbx { namespace sgtbx {
           fractional<> delta = delta0 + u_shifts.as_double();
           double cart_delta_sq = unit_cell_.length_sq(delta);
           scitbx::math::update_max(new_shortest_distance_sq, cart_delta_sq);
-          if (cart_delta_sq <= min_distance_sym_equiv_sq_) {
+          if (   min_distance_sym_equiv_sq_ != 0
+              && cart_delta_sq <= min_distance_sym_equiv_sq_) {
             tr_vec stu = st + u_shifts;
             tr_vec intrinsic_part = cum_r * stu;
             if (intrinsic_part.num().is_zero()) {
