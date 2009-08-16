@@ -17,6 +17,8 @@ tor_ids = None
 tree_generation_without_bond = None
   .type = strings
   .multiple = True
+constrain_dihedrals_with_sigma_less_than_or_equal_to = 10
+  .type=float
 rotamer
   .multiple = True
 {
@@ -125,9 +127,25 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit):
       ai = [atom_indices.get(atom_id) for atom_id in bond_atom_ids]
       if (ai.count(None) == 0):
         edge_list.append(tuple(sorted(ai)))
+  external_clusters = []
+  if (rotamer_info is not None):
+    for tor in comp.tor_list:
+      if (   tor.value_angle_esd
+          <= rotamer_info.constrain_dihedrals_with_sigma_less_than_or_equal_to):
+        ai = [atom_indices.get(atom_id) for atom_id in tor.atom_ids()]
+        if (ai.count(None) == 0):
+          external_clusters.append(sorted(ai))
+    for plane in comp.get_planes():
+      ai = []
+      for atom_id in plane.plane_atoms:
+        i = atom_indices.get(atom_id)
+        if (i is not None):
+          ai.append(i)
+      external_clusters.append(sorted(ai))
   tardy_tree = scitbx.graph.tardy_tree.construct(
     n_vertices=pdb_atoms.size(),
     edge_list=edge_list,
+    external_clusters=external_clusters,
     fixed_vertex_lists=[fixed_vertices]).build_tree()
   assert len(tardy_tree.cluster_manager.loop_edges) == 0
   tardy_model_start = scitbx.rigid_body.tardy_model(
@@ -201,28 +219,28 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit):
   print "tardy_tree tors:", ", ".join(sorted(tor_i_q_packed_matches.keys()))
   print "rotamer tors:", ", ".join([tor.id for tor in rotamer_tor])
   if (len(rotamer_tor) != len(tor_i_q_packed_matches)):
-    print "PROBLEM: some tardy_tree tors not determined by rotamer info"
-  else:
-    if (not os.path.isdir("rotamers")):
-      os.mkdir("rotamers")
-    rotamer_angle_i_q_packed = [tor_i_q_packed_matches[tor.id]
-      for tor in rotamer_tor]
-    for rotamer in rotamer_info.rotamer:
-      uninitialized = -1e20
-      q_packed = flex.double(tardy_model_work.q_packed_size, uninitialized)
-      for tor,angle in zip(rotamer_tor, rotamer.angles):
-        i_q_packed = tor_i_q_packed_matches[tor.id]
-        q_packed[i_q_packed] = math.radians(angle)
-      assert q_packed.all_ne(uninitialized)
-      tardy_model_work.unpack_q(q_packed=q_packed)
-      rotamer_sites = tardy_model_work.sites_moved()
-      pdb_atoms.set_xyz(new_xyz=rotamer_sites)
-      file_name = "rotamers/%s_%s.pdb" % (pdb_residue.resname, rotamer.id)
-      print "Writing:", file_name
-      f = open(file_name, "w")
-      print >> f, "REMARK %s %s" % (pdb_residue.resname, rotamer.id)
-      print >> f, pdb_hierarchy.as_pdb_string(append_end=True)
-      del f
+    raise RuntimeError(
+      "Some tardy_tree tors not determined by rotamer info.")
+  if (not os.path.isdir("rotamers")):
+    os.mkdir("rotamers")
+  rotamer_angle_i_q_packed = [tor_i_q_packed_matches[tor.id]
+    for tor in rotamer_tor]
+  for rotamer in rotamer_info.rotamer:
+    uninitialized = -1e20
+    q_packed = flex.double(tardy_model_work.q_packed_size, uninitialized)
+    for tor,angle in zip(rotamer_tor, rotamer.angles):
+      i_q_packed = tor_i_q_packed_matches[tor.id]
+      q_packed[i_q_packed] = math.radians(angle)
+    assert q_packed.all_ne(uninitialized)
+    tardy_model_work.unpack_q(q_packed=q_packed)
+    rotamer_sites = tardy_model_work.sites_moved()
+    pdb_atoms.set_xyz(new_xyz=rotamer_sites)
+    file_name = "rotamers/%s_%s.pdb" % (pdb_residue.resname, rotamer.id)
+    print "Writing:", file_name
+    f = open(file_name, "w")
+    print >> f, "REMARK %s %s" % (pdb_residue.resname, rotamer.id)
+    print >> f, pdb_hierarchy.as_pdb_string(append_end=True)
+    del f
 
 def process_rotamer_info(rotamer_info_master_phil, comp):
   assert len(comp.rotamer_info) < 2
