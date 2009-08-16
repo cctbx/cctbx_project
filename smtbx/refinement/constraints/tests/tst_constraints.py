@@ -183,7 +183,7 @@ class special_position_test_case(test_case):
     cts.place_constrained_scatterers()
     xs = xray.structure(
       crystal.special_position_settings(crystal_symmetry=self.cs,
-                                        min_distance_sym_equiv=0,
+                                        min_distance_sym_equiv=1e-12,
                                         u_star_tolerance=0,
                                         assert_min_distance_sym_equiv=True))
     xs.add_scatterers(self.xs.scatterers())
