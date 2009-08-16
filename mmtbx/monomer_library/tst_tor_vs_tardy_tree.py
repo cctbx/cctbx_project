@@ -5,9 +5,11 @@ import cctbx.geometry_restraints
 import scitbx.rigid_body
 import scitbx.graph.tardy_tree
 from scitbx.array_family import flex
+from scitbx import matrix
 import libtbx.phil
 import libtbx.load_env
 import math
+import string
 import sys, os
 op = os.path
 
@@ -97,10 +99,8 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit):
     permutation=pdb_atoms.extract_i_seq())
   assert len(matched_mon_lib_atom_names) == comp.chem_comp.number_atoms_nh
   pdb_atoms.reset_i_seq()
-  pdb_atoms.reset_serial()
   pdb_atoms.set_occ(new_occ=flex.double(pdb_atoms.size(), 1))
   pdb_atoms.set_b(new_b=flex.double(pdb_atoms.size(), 0))
-  pdb_hierarchy.only_chain().id = "A"
   rg = pdb_hierarchy.only_residue_group()
   rg.resseq = 1
   rg.icode = " "
@@ -225,7 +225,10 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit):
     os.mkdir("rotamers")
   rotamer_angle_i_q_packed = [tor_i_q_packed_matches[tor.id]
     for tor in rotamer_tor]
-  for rotamer in rotamer_info.rotamer:
+  remark_strings = []
+  atom_strings = []
+  atom_serial_first_value = 1
+  for i_rotamer,rotamer in enumerate(rotamer_info.rotamer):
     uninitialized = -1e20
     q_packed = flex.double(tardy_model_work.q_packed_size, uninitialized)
     for tor,angle in zip(rotamer_tor, rotamer.angles):
@@ -234,13 +237,24 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit):
     assert q_packed.all_ne(uninitialized)
     tardy_model_work.unpack_q(q_packed=q_packed)
     rotamer_sites = tardy_model_work.sites_moved()
+    rotamer_sites += matrix.col((3,3,3)) * i_rotamer
     pdb_atoms.set_xyz(new_xyz=rotamer_sites)
-    file_name = "rotamers/%s_%s.pdb" % (pdb_residue.resname, rotamer.id)
-    print "Writing:", file_name
-    f = open(file_name, "w")
-    print >> f, "REMARK %s %s" % (pdb_residue.resname, rotamer.id)
-    print >> f, pdb_hierarchy.as_pdb_string(append_end=True)
-    del f
+    pdb_atoms.reset_serial(first_value=atom_serial_first_value)
+    atom_serial_first_value += pdb_atoms.size()
+    chain_id = (string.uppercase + string.lowercase)[i_rotamer]
+    pdb_hierarchy.only_chain().id = chain_id
+    remark_strings.append(
+      "REMARK %s %s = chain %s" % (pdb_residue.resname, rotamer.id, chain_id))
+    atom_strings.append(pdb_hierarchy.as_pdb_string(append_end=False))
+  file_name = "rotamers/%s.pdb" % pdb_residue.resname
+  print "Writing file:", file_name
+  f = open(file_name, "w")
+  for s in remark_strings:
+    print >> f, s
+  for s in atom_strings:
+    f.write(s)
+  print >> f, "END"
+  del f
 
 def process_rotamer_info(rotamer_info_master_phil, comp):
   assert len(comp.rotamer_info) < 2
