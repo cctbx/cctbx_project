@@ -232,9 +232,30 @@ ali_1hml = "-KQFTKCELSQLLK--DIDGYGGIALPELICTMFHTSGYDTQAIVENN--ESTEYGLFQISNKLWCKS
 ali_1hfy = "-EQLTKCEVFQKLK--DLKDYGGVSLPEWVCTAFHTSGYDTQAIVQNN--DSTEYGLFQINNKIWCKDDQNPHSR"
 ali_1ghl = "GKVYGRCELAAAMKRMGLDNYRGYSLGNWVCAAKFESNFNTGATNRNT-DGSTDYGILQINSRWWCNDGRTPGSK"
 ali_1lz3 = "-KVYGRCELAAAMKRLGLDNYRGYSLGNWVCAAKFESNFDTHATNRNT-DGSTDYGILQINSRWWCNDGRTPGSK"
+ali_empt = "---------------------------------------------------------------------------"
 
 
 class test_alignment(unittest.TestCase):
+    
+  def setUp(self):
+      
+    self.alignment1 = bioinformatics.alignment(
+      alignments = [ ali_1hml, ali_1hfy ],
+      names = [ "1hml", "1hfy" ]
+      )
+    self.alignment2 = bioinformatics.alignment(
+      alignments = [ ali_1hml, ali_1hfy, ali_1ghl, ali_1lz3 ],
+      names = [ "1hml", "1hfya", "1ghla", "1lz3" ]
+      )
+    self.alignment3 = bioinformatics.alignment(
+      alignments = [],
+      names = []
+      )
+    self.alignment4 = bioinformatics.alignment(
+      alignments = [ ali_1hfy, ali_1ghl, ali_empt ],
+      names = [ "1hfya", "1ghla", "empty" ]
+      )
+    
 
   def testError(self):
 
@@ -250,26 +271,22 @@ class test_alignment(unittest.TestCase):
       [ ali_1hml, ali_1hml ],
       [ "1hml", "1hfy", "1ghla" ]
       )
+    
 
   def testIdentityCount(self):
 
-    alignment1 = bioinformatics.alignment(
-      alignments = [ ali_1hml, ali_1hfy ],
-      names = [ "1hml", "1hfy" ]
-      )
-    self.assertEqual( alignment1.identity_count(), 49 )
-
-    alignment2 = bioinformatics.alignment(
-      alignments = [ ali_1hml, ali_1hfy, ali_1ghl, ali_1lz3 ],
-      names = [ "1hml", "1hfya", "1ghla", "1lz3" ]
-      )
-    self.assertEqual( alignment2.identity_count(), 21 )
-
-    alignment3 = bioinformatics.alignment(
-      alignments = [],
-      names = []
-      )
-    self.assertEqual( alignment3.identity_count(), 0 )
+    self.assertEqual( self.alignment1.identity_count(), 49 )
+    self.assertEqual( self.alignment2.identity_count(), 21 )
+    self.assertEqual( self.alignment3.identity_count(), 0 )
+    self.assertEqual( self.alignment4.identity_count(), 0 )
+    
+    
+  def testIdentityFraction(self):
+      
+    self.assertAlmostEqual( self.alignment1.identity_fraction(), 0.700, 3 )
+    self.assertAlmostEqual( self.alignment2.identity_fraction(), 0.300, 3 )
+    self.assertAlmostEqual( self.alignment3.identity_fraction(), 1.000, 3 )
+    self.assertAlmostEqual( self.alignment4.identity_fraction(), 1.000, 3 )
 
 
 class test_fasta_alignment(unittest.TestCase):
