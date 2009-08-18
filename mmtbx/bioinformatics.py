@@ -162,18 +162,18 @@ class alignment(object):
 
 
   def identity_fraction(self):
-    
+
     if not self.alignments:
       return 1.0
-    
-    alignment_length = len( self.alignments[0] ) 
+
+    alignment_length = len( self.alignments[0] )
     shortest_sequence_length = min(
       [ alignment_length - seq.count( self.gap ) for seq in self.alignments ]
       )
-    
+
     if shortest_sequence_length == 0:
       return 1.0
-    
+
     return float( self.identity_count() ) / shortest_sequence_length
 
 
