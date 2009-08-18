@@ -256,6 +256,8 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
 """ % disabled)
     Import("env_boost_python_ext")
     test_dir = libtbx.env.under_dist("boost", "libs/python/test")
+    prefix = "#"+os.path.join(
+      os.path.basename(env_etc.boost_dist), "libs", "python", "test")
     all_tst = []
     for bpl_test in bpl_tests:
       if (bpl_test[0] == "#"):
@@ -273,8 +275,6 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
         tst = flds[2]
       env = env_pure_boost_python_ext.Copy()
       env.Repository(os.path.dirname(env_etc.boost_dist))
-      prefix = "#"+os.path.join(
-        os.path.basename(env_etc.boost_dist), "libs", "python", "test")
       ok = True
       source = []
       for s in src.split(";"):
@@ -291,6 +291,25 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
         env.SharedLibrary(target="#lib/%s" % pyd, source=source)
     all_tst = [os.path.join(test_dir, tst+".py") for tst in all_tst]
     #
+    if (sys.platform == "linux2"):
+      base_lib = libtbx.env.under_build(path="base/lib")
+      if (os.path.isdir(base_lib)):
+        env_prog = env.Copy()
+        env_prog.Append(LIBPATH=[base_lib])
+        env_prog.Append(LIBS=[
+          "-lpython%d.%d" % sys.version_info[:2],
+          "-lpthread",
+          "-lutil",
+          "-ldl"])
+        exe = env_prog.Program(
+          target="boost/libs/python/test/exec_dynamic",
+          source=[os.path.join(prefix, "exec.cpp")])
+        libtbx.env.write_dispatcher_in_bin(
+          source_file=exe[0].get_abspath(),
+          target_file="boost_libs_python_test_exec_dynamic")
+        all_tst.append("$ boost_libs_python_test_exec_dynamic %s"
+          % show_string(os.path.join(test_dir, "exec.py")))
+    #
     if (sys.platform != "win32"):
       env.SharedLibrary(
         target="#lib/boost_adaptbx_char_array_ext",
@@ -303,7 +322,10 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
         "%s\\boost_python_run_tests.bat" % libtbx.env.build_path
       f = open(boost_python_run_tests, "w")
       for tst in all_tst:
-        print >> f, 'call libtbx.python "%s"' % tst
+        if (tst.startswith("$ ")):
+          print >> f, 'call %s' % tst[2:]
+        else:
+          print >> f, 'call libtbx.python %s' % show_string(tst)
       f.close()
     else:
       boost_python_run_tests = \
@@ -312,7 +334,10 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
       print >> f, "#! /bin/csh -f"
       print >> f, "set verbose"
       for tst in all_tst:
-        print >> f, 'libtbx.python "%s"' % tst
+        if (tst.startswith("$ ")):
+          print >> f, tst[2:]
+        else:
+          print >> f, 'libtbx.python "%s"' % show_string(tst)
       f.close()
       os.chmod(boost_python_run_tests, 0755)
 
