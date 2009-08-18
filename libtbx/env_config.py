@@ -110,7 +110,7 @@ def python_include_path(must_exist=True):
   if (sys.platform == "win32"):
     include_path = sys.prefix + r"\include"
   else:
-    include_path = sys.prefix + "/include/python" + sys.version[0:3]
+    include_path = sys.prefix + "/include/python%d.%d" % sys.version_info[:2]
   include_path = libtbx.path.norm_join(include_path)
   if (must_exist and not os.path.isdir(include_path)):
     raise RuntimeError("Cannot locate Python's include directory: %s"
