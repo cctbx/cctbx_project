@@ -236,9 +236,9 @@ ali_empt = "--------------------------------------------------------------------
 
 
 class test_alignment(unittest.TestCase):
-    
+
   def setUp(self):
-      
+
     self.alignment1 = bioinformatics.alignment(
       alignments = [ ali_1hml, ali_1hfy ],
       names = [ "1hml", "1hfy" ]
@@ -255,7 +255,7 @@ class test_alignment(unittest.TestCase):
       alignments = [ ali_1hfy, ali_1ghl, ali_empt ],
       names = [ "1hfya", "1ghla", "empty" ]
       )
-    
+
 
   def testError(self):
 
@@ -271,7 +271,7 @@ class test_alignment(unittest.TestCase):
       [ ali_1hml, ali_1hml ],
       [ "1hml", "1hfy", "1ghla" ]
       )
-    
+
 
   def testIdentityCount(self):
 
@@ -279,10 +279,10 @@ class test_alignment(unittest.TestCase):
     self.assertEqual( self.alignment2.identity_count(), 21 )
     self.assertEqual( self.alignment3.identity_count(), 0 )
     self.assertEqual( self.alignment4.identity_count(), 0 )
-    
-    
+
+
   def testIdentityFraction(self):
-      
+
     self.assertAlmostEqual( self.alignment1.identity_fraction(), 0.700, 3 )
     self.assertAlmostEqual( self.alignment2.identity_fraction(), 0.300, 3 )
     self.assertAlmostEqual( self.alignment3.identity_fraction(), 1.000, 3 )
