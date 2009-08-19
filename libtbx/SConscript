@@ -44,9 +44,6 @@ def set_python_include_and_libs(env_etc):
   if (sys.platform == "win32"):
     env_etc.libs_python = ["python" + sys.version[0] + sys.version[2]]
     env_etc.libpath_python = [sys.prefix + r"\libs"]
-  elif (env_etc.compiler == "tru64_cxx"):
-    env_etc.libs_python = ["pthread"]
-    env_etc.libpath_python = []
   else:
     env_etc.libs_python = []
     env_etc.libpath_python = []
@@ -91,30 +88,6 @@ if (sys.platform == "win32"):
   else:
     env_etc.compiler = "win32_"+compiler
     compiler = None
-elif (sys.platform.startswith("sunos")):
-  if (compiler == "default"):
-    env_etc.compiler = "sunos_CC"
-  else:
-    env_etc.compiler = "unix_"+compiler
-    compiler = None
-elif (sys.platform.startswith("osf")):
-  if (compiler == "default"):
-    env_etc.compiler = "tru64_cxx"
-  else:
-    env_etc.compiler = "unix_"+compiler
-    compiler = None
-elif (sys.platform.startswith("hp-ux11")):
-  if (compiler == "default"):
-    env_etc.compiler = "hp_ux11_aCC"
-  else:
-    env_etc.compiler = "unix_"+compiler
-    compiler = None
-elif (sys.platform.startswith("irix")):
-  if (compiler == "default"):
-    env_etc.compiler = "irix_CC"
-  else:
-    env_etc.compiler = "unix_"+compiler
-    compiler = None
 elif (sys.platform.startswith("darwin")):
   if (compiler == "default"):
     env_etc.compiler = "darwin_c++"
@@ -133,14 +106,10 @@ if (compiler not in ("default", None)):
 supported_compilers = (
   "win32_cl",
   "win32_icc",
-  "sunos_CC",
   "unix_gcc",
   "unix_gcc4",
   "unix_icc",
   "unix_icpc",
-  "tru64_cxx",
-  "hp_ux11_aCC",
-  "irix_CC",
   "darwin_c++",
   "darwin_gcc",
   "darwin_gcc-4.2", # tested with the "GCC 4.2 Developer Preview 1"
@@ -354,134 +323,11 @@ else:
     env_etc.shlibsuffix = ".dylib"
     env_etc.extension_module_suffix = ".so"
     env_base.Append(LIBSUFFIXES=[".dylib"])
-  elif (sys.platform.startswith("hp-ux11")):
-    env_etc.shlibsuffix = ".sl"
-    env_etc.extension_module_suffix = ".sl"
   else:
     env_etc.shlibsuffix = ".so"
     env_etc.extension_module_suffix = ".so"
   env_etc.libm = ["m"]
-  if (env_etc.compiler == "tru64_cxx"):
-    env_etc.static_libraries = 0
-    env_etc.static_bpl = 0
-    cxx = "cxx"# -model ansi"
-    env_base.Replace(
-      CC="cc",
-      SHCC="cc",
-      CXX=cxx,
-      LINK=cxx,
-      SHCXX=cxx,
-      SHLINK=cxx,
-    )
-    env_etc.c_link = "cc"
-    env_etc.cxxflags_base = [
-      "-std", "strict_ansi",
-      "-msg_display_number", "-msg_disable", "186,450,768,1115,1133,1168,1169",
-      "-tlocal"]
-    env_etc.ccflags_base = [
-      "-std1"]
-    if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O2", "-fast"]
-    else:
-      opts = ["-O0"]
-    if (libtbx.env.build_options.debug_symbols):
-      opts.insert(0, "-g")
-    opts.append("-DBOOST_ALL_NO_LIB")
-    if not libtbx.env.build_options.enable_boost_threads:
-      opts.append('-DBOOST_DISABLE_THREADS')
-    env_etc.cxxflags_base.extend(opts)
-    env_etc.ccflags_base.extend(opts)
-    if (static_exe):
-      env_base.Prepend(LINKFLAGS=["-non_shared"])
-      static_exe = None
-    env_etc.shlinkflags = [
-      "-shared",
-      "-expect_unresolved", "'Py*'",
-      "-expect_unresolved", "'_Py*'"]
-    for line in easy_run.fully_buffered(command="strings /usr/bin/ld") \
-                  .raise_if_errors() \
-                  .stdout_lines:
-      if (line == "lock_registry"):
-        env_etc.shlinkflags.append("-Wl,-lock_registry")
-        break
-    env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler == "hp_ux11_aCC"):
-    hp_ux_acc_version = libtbx.env_config.get_hp_ux_acc_version() # not used
-    if (libtbx.env_config.get_ldd_output().find("hpux64/libc") >= 0):
-      abi = " +DD64"
-    else:
-      abi = ""
-    env_etc.static_libraries = 0
-    env_etc.static_bpl = 0
-    env_base.Replace(
-      CC="cc"+abi,
-      SHCC="cc"+abi,
-      CXX="aCC"+abi,
-      LINK="aCC"+abi,
-      SHCXX="aCC"+abi,
-      SHLINK="aCC"+abi,
-    )
-    env_etc.c_link = "cc"+abi
-    env_etc.cxxflags_base = [
-      "-AA",
-      "-mt",
-      "+W2001,2021,2047,2061,2063,2068,2111,2161,2167,2177,2185,2186,2191,"
-      "2236,2334,2340,2414,2461,2549,2550,2761,2811,2837,2940,2997,4067,"
-      "4189,4257"]
-    env_etc.ccflags_base = [
-      "-Ae",
-      "-mt"]
-    if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O"]
-    else:
-      opts = ["-DNDEBUG", "+O0"]
-    if (libtbx.env.build_options.debug_symbols):
-      opts.insert(0, "-g")
-    opts.append("-DBOOST_ALL_NO_LIB")
-    if not libtbx.env.build_options.enable_boost_threads:
-      opts.append('-DBOOST_DISABLE_THREADS')
-    env_etc.cxxflags_base.extend(opts)
-    env_etc.ccflags_base.extend(opts)
-    if (static_exe):
-      raise RuntimeError("Please customize...")
-      env_base.Prepend(LINKFLAGS=[])
-      static_exe = None
-    env_etc.shlinkflags = ["-b", "-Wl,-E"]
-    env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler == "sunos_CC"):
-    env_etc.static_libraries = 0
-    env_etc.static_bpl = 0
-    # boost compilation fails under Sun compilers (M.D. Winn, 2005 Oct)
-    env_etc.no_boost_python = True
-    cxx = "CC"
-    env_base.Replace(
-      CC="cc",
-      SHCC="cc",
-      CXX=cxx,
-      LINK=cxx,
-      SHCXX=cxx,
-      SHLINK=cxx,
-    )
-    env_etc.c_link = "cc"
-    env_etc.cxxflags_base = []
-    env_etc.ccflags_base = []
-    if (libtbx.env.build_options.optimization):
-      opts = ["-O"]
-    else:
-      opts = ["-O0"]
-    if (libtbx.env.build_options.debug_symbols):
-      opts.insert(0, "-g")
-    env_etc.cxxflags_base.extend(opts)
-    env_etc.ccflags_base.extend(opts)
-    if (static_exe):
-      env_base.Prepend(LINKFLAGS=[""])
-      static_exe = None
-    env_etc.shlinkflags = [
-      "-shared",
-      "-expect_unresolved", "'Py*'",
-      "-expect_unresolved", "'_Py*'"]
-    env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler in ["unix_gcc", "unix_gcc4"]):
+  if (env_etc.compiler in ["unix_gcc", "unix_gcc4"]):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
     cc = env_etc.compiler.replace("unix_", "")
@@ -568,51 +414,6 @@ else:
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = ["-shared"]
-    env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler == "irix_CC"):
-    env_etc.mipspro_version = libtbx.env_config.get_mipspro_version()
-    env_etc.static_libraries = 0
-    env_etc.static_bpl = 0
-    cxx = "CC -n32 -mips4 -LANG:std"
-    cxx += " -LANG:pch=OFF -no_prelink -ptused"
-    env_base.Replace(
-      CC="cc",
-      SHCC="cc",
-      CXX=cxx,
-      LINK=cxx+" -LD_MSG:off=15,84",
-      SHCXX=cxx,
-      SHLINK=cxx,
-    )
-    env_etc.c_link = "cc"
-    if (env_etc.mipspro_version == "73"):
-      env_etc.cxxflags_base = [
-        "-woff", "1001,1183,1188,1234,1311,1682,3439"]
-    else:
-      env_etc.cxxflags_base = [
-        "-woff",
-        "1001,1174,1183,1188,1234,1311,1682,1685,"
-        "3321,3439,3506,3896,3968,3970"]
-    if (    env_etc.mipspro_version == "73"
-        and libtbx.env.module_dict.has_key("boost")):
-      env_etc.cxxflags_base.insert(0,
-        "-I%s/boost/compatibility/cpp_c_headers"
-        % libtbx.env.dist_path("boost"))
-    env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
-    if not libtbx.env.build_options.enable_boost_threads:
-      env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
-    env_etc.ccflags_base = ["-woff", "1035"]
-    if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O2", "-OPT:Olimit=0"]
-    else:
-      opts = ["-O0"]
-    if (libtbx.env.build_options.debug_symbols):
-      opts.insert(0, "-g")
-    env_etc.cxxflags_base.extend(opts)
-    env_etc.ccflags_base.extend(opts)
-    if (static_exe):
-      env_base.Prepend(LINKFLAGS=["-non_shared"])
-      static_exe = None
-    env_etc.shlinkflags = ["-shared", "-LD_MSG:off=15,84"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif env_etc.compiler.startswith("darwin"):
     env_etc.gcc_version = libtbx.env_config.get_gcc_version()
@@ -802,7 +603,6 @@ int main() {
       ('^win32_cl$',  [['/openmp'], []]),
       ('^win32_icc$', [['/Qopenmp']]*2),
       ('^unix_icc$',  [['-openmp']]*2),
-      ('^tru64_cxx$', [['-omp']]*2),
       ('gcc',         [['-fopenmp']]*2),
     ],
     default=[None]*2)
