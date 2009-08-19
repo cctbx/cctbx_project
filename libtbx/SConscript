@@ -63,7 +63,7 @@ int main()
   return 0;
 }
 """
-  env = env_base.Copy(CXXFLAGS=env_etc.cxxflags_base)
+  env = env_base.Clone(CXXFLAGS=env_etc.cxxflags_base)
   conf = env.Configure()
   flag, output = conf.TryRun(test_code, extension='.cpp')
   conf.Finish()
@@ -809,7 +809,7 @@ int main() {
   if (compiler_options is None):
     print "libtbx.scons: OpenMP is not supported."
     return
-  env = env_base.Copy(CXXFLAGS=env_etc.cxxflags_base+compiler_options)
+  env = env_base.Clone(CXXFLAGS=env_etc.cxxflags_base+compiler_options)
   env.Append(LINKFLAGS=linker_options)
   conf = env.Configure()
   flag, output = conf.TryRun(test_code, extension='.cpp')

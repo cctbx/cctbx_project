@@ -1,6 +1,6 @@
 Import("env_base", "env_etc")
 
-env = env_base.Copy(
+env = env_base.Clone(
   CXXFLAGS=env_etc.cxxflags_base,
   SHCXXFLAGS=env_etc.cxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags,
@@ -15,7 +15,7 @@ builder(target='#lib/scitbx_minpack', source=["raw.cpp"])
 
 if (not env_etc.no_boost_python):
   Import("env_scitbx_boost_python_ext")
-  env = env_scitbx_boost_python_ext.Copy()
+  env = env_scitbx_boost_python_ext.Clone()
   env.Prepend(LIBS="scitbx_minpack")
   env.SharedLibrary(
     target="#lib/scitbx_minpack_ext",

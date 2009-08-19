@@ -1,5 +1,5 @@
 Import("env_cctbx_boost_python_ext")
-env = env_cctbx_boost_python_ext.Copy()
+env = env_cctbx_boost_python_ext.Clone()
 env.Prepend(LIBS=["cctbx", "omptbx"])
 env.SharedLibrary(target="#lib/cctbx_translation_search_ext", source=[
   "translation_search_ext.cpp",

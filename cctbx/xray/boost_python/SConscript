@@ -1,6 +1,6 @@
 import libtbx.load_env
 Import('env_etc', "env_cctbx_boost_python_ext")
-env = env_cctbx_boost_python_ext.Copy()
+env = env_cctbx_boost_python_ext.Clone()
 
 libs = ["cctbx", "omptbx"]
 sources = [

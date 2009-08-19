@@ -1,6 +1,6 @@
 Import("env_base", "env_etc")
 
-env = env_base.Copy(
+env = env_base.Clone(
   CCFLAGS=env_etc.ccflags_base,
   SHCCFLAGS=env_etc.ccflags_base,
   CXXFLAGS=env_etc.cxxflags_base,
@@ -32,7 +32,7 @@ builder(
 
 if (not env_etc.no_boost_python):
   Import("env_iotbx_boost_python_ext")
-  env = env_iotbx_boost_python_ext.Copy()
+  env = env_iotbx_boost_python_ext.Clone()
   env.Append(LIBPATH=["#lib"])
   env.Prepend(LIBS=["iotbx_pdb", "cctbx", "scitbx_boost_python"])
   env_etc.enable_more_warnings(env=env)

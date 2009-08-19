@@ -5,7 +5,7 @@ Import("env_base", "env_etc")
 env_etc.omptbx_dist = libtbx.env.dist_path("omptbx")
 env_etc.omptbx_include = os.path.dirname(env_etc.omptbx_dist)
 
-env = env_base.Copy(
+env = env_base.Clone(
   CXXFLAGS=env_etc.cxxflags_base,
   SHCXXFLAGS=env_etc.cxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags,
@@ -21,7 +21,7 @@ builder(
 
 if (not env_etc.no_boost_python):
   Import("env_boost_python_ext")
-  env = env_boost_python_ext.Copy()
+  env = env_boost_python_ext.Clone()
   env.Prepend(LIBS=["omptbx"])
   env.SharedLibrary(target="#lib/omptbx_ext", source="ext.cpp")
   env_etc.include_registry.append(

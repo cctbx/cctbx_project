@@ -17,7 +17,7 @@ env_etc.iotbx_common_includes = [
 if (libtbx.env.has_module("ccp4io")):
   env_etc.iotbx_common_includes.append(env_etc.ccp4io_include)
 
-  iotbx_mtz_env = env_base.Copy(
+  iotbx_mtz_env = env_base.Clone(
     CXXFLAGS=env_etc.cxxflags_base,
     SHCXXFLAGS=env_etc.cxxflags_base,
     SHLINKFLAGS=env_etc.shlinkflags,
@@ -30,13 +30,13 @@ if (libtbx.env.has_module("ccp4io")):
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
-  env_iotbx_boost_python_ext = env_no_includes_boost_python_ext.Copy()
+  env_iotbx_boost_python_ext = env_no_includes_boost_python_ext.Clone()
   env_etc.include_registry.append(
     env=env_iotbx_boost_python_ext,
     paths=env_etc.iotbx_common_includes + [env_etc.python_include])
   Export("env_iotbx_boost_python_ext")
   #
-  env = env_no_includes_boost_python_ext.Copy()
+  env = env_no_includes_boost_python_ext.Clone()
   env_etc.include_registry.append(
     env=env,
     paths=[env_etc.libtbx_include,
