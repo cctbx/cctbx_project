@@ -69,6 +69,32 @@ def __init_reference_pdb_file_name_lookup():
   return result
 reference_pdb_file_name_lookup = __init_reference_pdb_file_name_lookup()
 
+def report_tors(comp, residue_sites, matched_mon_lib_atom_names, targets):
+  lookup = {}
+  for j,atom_id in enumerate(matched_mon_lib_atom_names):
+    lookup[atom_id] = j
+  for tor in comp.tor_list:
+    atom_ids = tor.atom_ids()
+    js = [lookup.get(ai) for ai in atom_ids]
+    if (js.count(None) != 0):
+      angle_model = None
+    else:
+      d_sites = [residue_sites[j] for j in js]
+      d = cctbx.geometry_restraints.dihedral(
+        sites=d_sites, angle_ideal=0, weight=1)
+      angle_model = d.angle_model
+    target = targets.get(tor.id)
+    if (target is not None):
+      if (cctbx.geometry_restraints.angle_delta_deg(
+            angle_1=angle_model,
+            angle_2=target) > 1.e-5):
+        annotation = "MISMATCH"
+      else:
+        annotation = "OK_target"
+    else:
+      annotation = "no_target"
+    print tor.id, atom_ids, angle_model, annotation
+
 def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
   resname = comp.chem_comp.id
   comp_atom_names = set([atom.atom_id for atom in comp.atom_list])
@@ -224,6 +250,7 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
   def get_q_packed_for_zero_dihedrals(tardy_model):
     uninitialized = -1e20
     result = flex.double(tardy_model.q_packed_size, uninitialized)
+    rotamer_tor_id = set([tor.id for tor in rotamer_tor])
     for tor in comp.tor_list:
       i_q_packed = tor_id_i_q_packed_matches.get(tor.id)
       if (i_q_packed is not None):
@@ -231,7 +258,7 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
         d_sites = [tardy_model.sites[i] for i in ai]
         d = cctbx.geometry_restraints.dihedral(
           sites=d_sites, angle_ideal=0, weight=1)
-        if (tor.id in rotamer_tor):
+        if (tor.id in rotamer_tor_id):
           result[i_q_packed] = -math.radians(d.angle_model)
         else:
           result[i_q_packed] = 0 # keep fixed
@@ -267,8 +294,13 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
       q_packed[i_q_packed] = math.radians(angle)
     tardy_model_work.unpack_q(q_packed=q_packed)
     rotamer_sites = tardy_model_work.sites_moved()
-    rotamer_sites += matrix.col((5,5,5)) * i_rotamer
+    rotamer_sites += matrix.col((4,4,4)) * i_rotamer
     pdb_atoms.set_xyz(new_xyz=rotamer_sites)
+    report_tors(
+      comp=comp,
+      residue_sites=rotamer_sites,
+      matched_mon_lib_atom_names=matched_mon_lib_atom_names,
+      targets=dict(zip(rotamer_info.tor_ids, rotamer.angles)))
     pdb_atoms.reset_serial(first_value=atom_serial_first_value)
     atom_serial_first_value += pdb_atoms.size()
     chain_id = (string.uppercase + string.lowercase)[i_rotamer]
