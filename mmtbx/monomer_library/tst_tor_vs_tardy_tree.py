@@ -55,7 +55,7 @@ lys_chain_all_h_1o8t_v3.ent
 met_chain_all_h_1ozo_v3.ent
 mse_chain_all_h_1ozo_v3.ent
 phe_chain_all_h_1hdj_v3.ent
-pro_chain_all_h_1hdp_v3.ent
+pro_chain_all_h_1a03_v3.ent
 ser_chain_all_h_1o8t_v3.ent
 thr_chain_all_h_1o8t_v3.ent
 trp_chain_all_h_1cx1_v3.ent
