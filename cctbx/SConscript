@@ -13,7 +13,7 @@ env_etc.cctbx_common_includes = [
   env_etc.boost_include,
 ]
 
-env = env_base.Copy(
+env = env_base.Clone(
   CXXFLAGS=env_etc.cxxflags_base,
   SHCXXFLAGS=env_etc.cxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags,
@@ -21,7 +21,7 @@ env = env_base.Copy(
 env_etc.include_registry.append(
   env=env,
   paths=env_etc.cctbx_common_includes)
-envlm = env.Copy(
+envlm = env.Clone(
   LIBS=env_etc.libm
 )
 
@@ -108,7 +108,7 @@ SConscript("examples/SConscript")
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
 
-  env_cctbx_boost_python_ext = env_no_includes_boost_python_ext.Copy()
+  env_cctbx_boost_python_ext = env_no_includes_boost_python_ext.Clone()
   env_cctbx_boost_python_ext.Prepend(LIBS=["scitbx_boost_python"])
   env_etc.include_registry.append(
     env=env_cctbx_boost_python_ext,

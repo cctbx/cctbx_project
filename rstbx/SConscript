@@ -14,7 +14,7 @@ env_etc.rstbx_common_includes = [
   env_etc.boost_include,
 ]
 
-env = env_base.Copy(
+env = env_base.Clone(
   CXXFLAGS=env_etc.cxxflags_base,
   SHCXXFLAGS=env_etc.cxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags,
@@ -36,7 +36,7 @@ builder(
 
 if (not env_etc.no_boost_python):
   Import("env_boost_python_ext")
-  env = env_boost_python_ext.Copy()
+  env = env_boost_python_ext.Clone()
   env.Prepend(LIBS=["rstbx", "cctbx", "scitbx_boost_python"])
   env.SharedLibrary(target="#lib/rstbx_ext", source="ext.cpp")
   env.SharedLibrary(

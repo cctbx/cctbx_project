@@ -17,13 +17,13 @@ def run_fortran_trial(env):
   return (flag and output.strip() == "1.4142")
 
 Import("env_base", "env_etc")
-env = env_base.Copy(
+env = env_base.Clone(
   CXXFLAGS=env_etc.cxxflags_base,
 )
 env_etc.include_registry.append(
   env=env,
   paths=env_etc.scitbx_common_includes)
-envlm = env.Copy(
+envlm = env.Clone(
   LIBS=env_etc.libm
 )
 envlm.Program(target="tst_lbfgs", source="tst_lbfgs.cpp")
@@ -41,7 +41,7 @@ if (not env_etc.no_boost_python):
       opts = ["-O0"]
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
-    fenv = env.Copy(tools=["f77"])
+    fenv = env.Clone(tools=["f77"])
     fenv.Replace(FORTRAN="gfortran")
     fenv.Replace(SHFORTRAN="gfortran")
     fenv.Replace(FORTRANFLAGS=opts + [
@@ -52,7 +52,7 @@ if (not env_etc.no_boost_python):
       "-fno-bounds-check"])
     fenv.Prepend(CPPFLAGS=["-DSCITBX_LBFGS_HAVE_LBFGS_F"])
     fenv.Prepend(LIBS=["gfortran"])
-    fenv_exe = fenv.Copy(LIBS=["gfortranbegin", "gfortran", "m"])
+    fenv_exe = fenv.Clone(LIBS=["gfortranbegin", "gfortran", "m"])
     if (not run_fortran_trial(env=fenv_exe)):
       fenv_exe = None
     else:

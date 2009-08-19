@@ -1,6 +1,6 @@
 import os
 Import("env_scitbx_boost_python_ext", "env_etc")
-env = env_scitbx_boost_python_ext.Copy()
+env = env_scitbx_boost_python_ext.Clone()
 if (os.path.isfile(os.path.join(env_etc.libtbx_lib, "liblbfgsb_fortran.a"))):
   env.Prepend(LIBS=["lbfgsb_fortran"])
   if (env_etc.compiler == "tru64_cxx"):

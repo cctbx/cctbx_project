@@ -1,6 +1,6 @@
 Import("iotbx_mtz_env", "env_etc")
 
-env = iotbx_mtz_env.Copy()
+env = iotbx_mtz_env.Clone()
 ccp4io_lib = getattr(env_etc, "ccp4io_lib", "cmtz")
   # XXX backward compatibility 2008-09-10
 env.Prepend(LIBS=["cctbx", ccp4io_lib]+env_etc.libm)
@@ -20,7 +20,7 @@ builder(
 
 if (not env_etc.no_boost_python):
   Import("env_iotbx_boost_python_ext")
-  env = env_iotbx_boost_python_ext.Copy()
+  env = env_iotbx_boost_python_ext.Clone()
   env.Append(CXXFLAGS=env_etc.ccp4io_defines)
   env.Append(SHCXXFLAGS=env_etc.ccp4io_defines)
   env.Prepend(LIBS=["iotbx_mtz", "cctbx", ccp4io_lib, "scitbx_boost_python"])

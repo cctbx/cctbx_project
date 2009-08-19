@@ -4,7 +4,7 @@ Import("env_base", "env_etc")
 env_etc.clipper_dist = libtbx.env.dist_path("clipper")
 env_etc.clipper_include = env_etc.clipper_dist
 
-env = env_base.Copy(
+env = env_base.Clone(
   CXXFLAGS=env_etc.cxxflags_base,
   SHCXXFLAGS=env_etc.cxxflags_base,
   CCFLAGS=env_etc.ccflags_base,
@@ -54,7 +54,7 @@ builder(target='#lib/clipper',
 # fftmap_sparse.cpp
 # fftmap.cpp
 
-env_exe = env.Copy(
+env_exe = env.Clone(
   LIBPATH=["#lib"],
 )
 env_exe.Prepend(LIBS=["clipper"])
@@ -79,7 +79,7 @@ libtbx.env.write_dispatcher_in_bin(
 if (hasattr(env_etc, "cctbx_include")):
   if (not env_etc.no_boost_python):
     Import("env_no_includes_boost_python_ext")
-    env_clipper_boost_python_ext = env_no_includes_boost_python_ext.Copy()
+    env_clipper_boost_python_ext = env_no_includes_boost_python_ext.Clone()
     env_etc.include_registry.append(
       env=env_clipper_boost_python_ext,
       paths=[

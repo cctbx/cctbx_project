@@ -1,5 +1,5 @@
 Import("env_clipper_boost_python_ext")
-env = env_clipper_boost_python_ext.Copy()
+env = env_clipper_boost_python_ext.Clone()
 env.Prepend(LIBS=["clipper", "cctbx"])
 env.SharedLibrary(
   target="#lib/clipper_ext",

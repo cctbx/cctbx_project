@@ -22,7 +22,7 @@ def build_boost_thread():
   for node in sorted(os.listdir(join(env_etc.boost_dist, src))):
     if (not node.lower().endswith(".cpp")): continue
     source.append(join(prefix, node))
-  env = env_base.Copy(
+  env = env_base.Clone(
     SHCXXFLAGS=env_etc.cxxflags_base + [
       "-DBOOST_THREAD_BUILD_DLL"],
     SHLINKFLAGS=env_etc.shlinkflags)
@@ -45,7 +45,7 @@ if (not env_etc.no_boost_python):
   if (libtbx.env.build_options.boost_python_no_py_signatures):
     env_etc.cxxflags_bpl_defines_base.append(
       "-DBOOST_PYTHON_NO_PY_SIGNATURES")
-  env_no_includes_boost_python_ext = env_base.Copy(
+  env_no_includes_boost_python_ext = env_base.Clone(
     CXXFLAGS=env_etc.cxxflags_base,
     CCFLAGS=env_etc.ccflags_base,
     SHCXXFLAGS=env_etc.cxxflags_base,
@@ -64,13 +64,13 @@ if (not env_etc.no_boost_python):
         'mt /nologo /outputresource:"${TARGET};#2"'
         ' /manifest ${TARGET}.manifest'])
   Export("env_no_includes_boost_python_ext")
-  env_pure_boost_python_ext = env_no_includes_boost_python_ext.Copy()
+  env_pure_boost_python_ext = env_no_includes_boost_python_ext.Clone()
   env_etc.include_registry.set_boost_dir_name(env_etc.boost_dist)
   env_etc.include_registry.append(
     env=env_pure_boost_python_ext,
     paths=[env_etc.boost_include,
            env_etc.python_include])
-  env_boost_python_ext = env_pure_boost_python_ext.Copy()
+  env_boost_python_ext = env_pure_boost_python_ext.Clone()
   env_etc.include_registry.prepend(
     env=env_boost_python_ext,
     paths=[env_etc.libtbx_include])
@@ -84,7 +84,7 @@ if (not env_etc.no_boost_python):
     target="#lib/boost_rational_ext",
     source="rational_ext.cpp")
 
-  env = env_pure_boost_python_ext.Copy()
+  env = env_pure_boost_python_ext.Clone()
   env_etc.include_registry.prepend(
     env=env,
     paths=[os.path.dirname(libtbx.env.dist_path("boost_adaptbx"))])
@@ -108,7 +108,7 @@ if (not env_etc.no_boost_python):
     source="file_test_ext.cpp")
 
   import os, os.path
-  env = env_base.Copy(
+  env = env_base.Clone(
     LIBS=env_etc.libs_python,
     LIBPATH=env_etc.libpath_python,
   )
@@ -273,7 +273,7 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
         src = flds[0]
         pyd = flds[1]
         tst = flds[2]
-      env = env_pure_boost_python_ext.Copy()
+      env = env_pure_boost_python_ext.Clone()
       env.Repository(os.path.dirname(env_etc.boost_dist))
       ok = True
       source = []
@@ -294,7 +294,7 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
     if (sys.platform == "linux2"):
       base_lib = libtbx.env.under_build(path="base/lib")
       if (os.path.isdir(base_lib)):
-        env_prog = env.Copy()
+        env_prog = env.Clone()
         env_prog.Append(LIBPATH=[base_lib])
         env_prog.Append(LIBS=[
           "-lpython%d.%d" % sys.version_info[:2],
@@ -351,14 +351,14 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
     #   make
     #   cp _example.so example.py $LIBTBX_BUILD/lib
     #   ar r $LIBTBX_BUILD/lib/libswig_class_example.a example.o
-    env = env_pure_boost_python_ext.Copy()
+    env = env_pure_boost_python_ext.Clone()
     env.Prepend(LIBS=["swig_class_example"])
     env.SharedLibrary(
       target="#lib/boost_python_swig_args_ext",
       source="swig_args_ext.cpp")
 
   if (os.path.isfile(libtbx.env.under_dist("boost_adaptbx", "demo.cpp"))):
-    env = env_pure_boost_python_ext.Copy()
+    env = env_pure_boost_python_ext.Clone()
     env.SharedLibrary(
       target="#lib/demo",
       source="demo.cpp")

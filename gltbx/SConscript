@@ -12,7 +12,7 @@ env_etc.gltbx_common_includes = [
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
-  env = env_no_includes_boost_python_ext.Copy()
+  env = env_no_includes_boost_python_ext.Clone()
   if (env_etc.compiler == "win32_cl"):
     env.Append(LIBS=["glu32", "opengl32"])
   elif (env_etc.compiler.startswith("darwin_")):
