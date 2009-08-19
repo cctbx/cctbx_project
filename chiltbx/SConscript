@@ -8,9 +8,7 @@ env_etc.chiltbx_common_includes = [
   env_etc.chiltbx_include,
 ]
 
-env = env_base.Clone(
-  CXXFLAGS=env_etc.cxxflags_base,
-)
+env = env_base.Clone()
 env_etc.include_registry.append(
   env=env,
   paths=env_etc.chiltbx_common_includes)

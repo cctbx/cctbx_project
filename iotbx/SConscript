@@ -18,10 +18,7 @@ if (libtbx.env.has_module("ccp4io")):
   env_etc.iotbx_common_includes.append(env_etc.ccp4io_include)
 
   iotbx_mtz_env = env_base.Clone(
-    CXXFLAGS=env_etc.cxxflags_base,
-    SHCXXFLAGS=env_etc.cxxflags_base,
-    SHLINKFLAGS=env_etc.shlinkflags,
-  )
+    SHLINKFLAGS=env_etc.shlinkflags)
   env_etc.include_registry.append(
     env=iotbx_mtz_env,
     paths=env_etc.iotbx_common_includes)

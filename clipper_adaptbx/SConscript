@@ -5,13 +5,8 @@ env_etc.clipper_dist = libtbx.env.dist_path("clipper")
 env_etc.clipper_include = env_etc.clipper_dist
 
 env = env_base.Clone(
-  CXXFLAGS=env_etc.cxxflags_base,
-  SHCXXFLAGS=env_etc.cxxflags_base,
-  CCFLAGS=env_etc.ccflags_base,
-  SHCCFLAGS=env_etc.ccflags_base,
   SHLINKFLAGS=env_etc.shlinkflags,
-  LIBS=env_etc.libm,
-)
+  LIBS=env_etc.libm)
 env.Prepend(CPPPATH=[env_etc.clipper_include])
 
 if (env_etc.static_libraries): builder = env.StaticLibrary

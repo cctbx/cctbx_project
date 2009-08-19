@@ -11,10 +11,7 @@ env_etc.smtbx_common_includes = [
 ]
 
 env = env_base.Clone(
-  CXXFLAGS=env_etc.cxxflags_base,
-  SHCXXFLAGS=env_etc.cxxflags_base,
-  SHLINKFLAGS=env_etc.shlinkflags,
-)
+  SHLINKFLAGS=env_etc.shlinkflags)
 
 envlm = env.Clone(
   LIBS=env_etc.libm

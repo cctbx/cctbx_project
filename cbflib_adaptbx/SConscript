@@ -21,11 +21,7 @@ env_etc.cbflib_common_includes = [
 ]
 
 env = env_base.Clone(
-  CCFLAGS=env_etc.ccflags_base,
-  CXXFLAGS=env_etc.cxxflags_base,
-  SHCXXFLAGS=env_etc.cxxflags_base,
-  SHLINKFLAGS=env_etc.shlinkflags,
-)
+  SHLINKFLAGS=env_etc.shlinkflags)
 
 prefix = "#"+os.path.basename(env_etc.cbflib_dist)
 env.StaticLibrary(target='#lib/cbf',

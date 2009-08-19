@@ -17,9 +17,7 @@ def run_fortran_trial(env):
   return (flag and output.strip() == "1.4142")
 
 Import("env_base", "env_etc")
-env = env_base.Clone(
-  CXXFLAGS=env_etc.cxxflags_base,
-)
+env = env_base.Clone()
 env_etc.include_registry.append(
   env=env,
   paths=env_etc.scitbx_common_includes)

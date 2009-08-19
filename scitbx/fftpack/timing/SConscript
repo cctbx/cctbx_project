@@ -1,7 +1,6 @@
 import os, os.path
 Import("env_base", "env_etc")
 env = env_base.Clone(
-  CXXFLAGS=env_etc.cxxflags_base,
   LIBPATH=["#lib"],
   LIBS=["omptbx"])
 env_etc.include_registry.append(

@@ -15,8 +15,6 @@ env_etc.rstbx_common_includes = [
 ]
 
 env = env_base.Clone(
-  CXXFLAGS=env_etc.cxxflags_base,
-  SHCXXFLAGS=env_etc.cxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags,
   LIBPATH="#lib",
 )

@@ -60,7 +60,9 @@ int main()
   return 0;
 }
 """
-  env = env_base.Clone(CXXFLAGS=env_etc.cxxflags_base)
+  env = env_base.Clone(
+    CCFLAGS=env_etc.ccflags_base,
+    CXXFLAGS=env_etc.cxxflags_base)
   conf = env.Configure()
   flag, output = conf.TryRun(test_code, extension='.cpp')
   conf.Finish()
@@ -214,7 +216,7 @@ libtbx.scons: Warning: compiling with /MDd:
         "/D_HAS_ITERATOR_DEBUGGING=0"]) # speed up memory allocation and deallocation in debug mode
     else:
       env_etc.ccflags_base.append("/MD")
-    env_etc.cxxflags_base = env_etc.ccflags_base + [
+    env_etc.cxxflags_base = [
       "/GR",
       "/EHsc"]
     if (libtbx.env.build_options.optimization):
@@ -226,7 +228,6 @@ libtbx.scons: Warning: compiling with /MDd:
     opts.append("/DBOOST_ALL_NO_LIB")
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('/DBOOST_DISABLE_THREADS')
-    env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = ["/nologo", "/incremental:no", "/dll"]
     if (libtbx.env.build_options.debug_symbols):
@@ -264,7 +265,7 @@ libtbx.scons: Warning: compiling with /MDd:
       /wd4996
       /Zm800
     """.split()
-    env_etc.cxxflags_base = env_etc.ccflags_base + """
+    env_etc.cxxflags_base = """
       /GR
       /EHsc
       /DBOOST_ALL_NO_LIB
@@ -276,7 +277,6 @@ libtbx.scons: Warning: compiling with /MDd:
       opts = ["/Od"]
     if (libtbx.env.build_options.debug_symbols):
       raise RuntimeError("Debug build not supported.")
-    env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "/nologo /incremental:no /dll"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
@@ -346,7 +346,7 @@ else:
     env_etc.ccflags_base = [
       "-fPIC",
       "-fno-strict-aliasing"]
-    env_etc.cxxflags_base = list(env_etc.ccflags_base)
+    env_etc.cxxflags_base = []
     if (libtbx.env.build_options.warning_level == 0):
       warn_options = ["-w"]
       env_etc._enable_more_warnings = "gcc"
@@ -355,7 +355,6 @@ else:
     else:
       warn_options = gcc_common_warn_options() + ["-Werror"]
     env_etc.ccflags_base.extend(warn_options)
-    env_etc.cxxflags_base.extend(warn_options)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
       if (env_etc.gcc_version >= 40300):
@@ -370,7 +369,6 @@ else:
       opts.append("-pthread")
     else:
       opts.append('-DBOOST_DISABLE_THREADS')
-    env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     if (static_exe):
       env_base.Prepend(LINKFLAGS=["-static"])
@@ -387,7 +385,6 @@ else:
         print "libtbx.scons: 32-bit build detected: -ftrapv not used"
       else:
         env_etc.ccflags_base.append("-ftrapv")
-        env_etc.cxxflags_base.append("-ftrapv")
   elif (env_etc.compiler == "unix_icc"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
@@ -400,8 +397,8 @@ else:
       SHLINK="icpc",
     )
     env_etc.c_link = "icc"
-    env_etc.cxxflags_base = ["-fPIC", "-Wno-deprecated", "-wd161,167"]
-    env_etc.ccflags_base = ["-fPIC"]
+    env_etc.ccflags_base = ["-fPIC", "-wd161,167"]
+    env_etc.cxxflags_base = ["-Wno-deprecated"]
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2"]
     else:
@@ -411,7 +408,6 @@ else:
     opts.append("-DBOOST_ALL_NO_LIB")
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('-DBOOST_DISABLE_THREADS')
-    env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = ["-shared"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
@@ -470,7 +466,7 @@ else:
     env_etc.ccflags_base.extend(warn_options)
     if (cxx == "c++"):
       env_etc.ccflags_base.extend(["-no-cpp-precomp", "-Wno-long-double"])
-    env_etc.cxxflags_base = list(env_etc.ccflags_base)
+    env_etc.cxxflags_base = []
     if (need_fcoalesce_templates):
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
@@ -501,7 +497,6 @@ else:
         # Beware: valgrind does not support stabs on Darwin: just use
         # gcc 4.0.1 for code to be tested by valgrind
         opts.insert(0, "-gstabs+")
-    env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = []
     env_etc.shlinkflags_bpl = [
@@ -534,8 +529,12 @@ else:
       env_etc.ccflags_base = flg
     flg = opts.env_cppflags.split(" ")
     env_etc.ccflags_base.extend(flg)
-    env_etc.cxxflags_base.extend(flg)
 
+env_base.Replace(
+  CCFLAGS=env_etc.ccflags_base,
+  CXXFLAGS=env_etc.cxxflags_base,
+  SHCCFLAGS=env_etc.ccflags_base,
+  SHCXXFLAGS=env_etc.cxxflags_base)
 env_base["SHOBJSUFFIX"] = env_base["OBJSUFFIX"]
 
 if (static_exe):
@@ -609,7 +608,8 @@ int main() {
   if (compiler_options is None):
     print "libtbx.scons: OpenMP is not supported."
     return
-  env = env_base.Clone(CXXFLAGS=env_etc.cxxflags_base+compiler_options)
+  env = env_base.Clone()
+  env.Append(CCFLAGS=compiler_options)
   env.Append(LINKFLAGS=linker_options)
   conf = env.Configure()
   flag, output = conf.TryRun(test_code, extension='.cpp')
@@ -628,7 +628,6 @@ int main() {
   print "libtbx.scons: OpenMP is available."
   env_etc.have_openmp = True
   env_etc.ccflags_base.extend(compiler_options)
-  env_etc.cxxflags_base.extend(compiler_options)
   env_base.Append(LINKFLAGS=linker_options)
   env_etc.shlinkflags.extend(linker_options)
   env_etc.shlinkflags_bpl.extend(linker_options)

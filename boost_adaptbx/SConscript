@@ -23,9 +23,8 @@ def build_boost_thread():
     if (not node.lower().endswith(".cpp")): continue
     source.append(join(prefix, node))
   env = env_base.Clone(
-    SHCXXFLAGS=env_etc.cxxflags_base + [
-      "-DBOOST_THREAD_BUILD_DLL"],
     SHLINKFLAGS=env_etc.shlinkflags)
+  env.Append(SHCXXFLAGS=["-DBOOST_THREAD_BUILD_DLL"])
   env_etc.include_registry.append(
     env=env,
     paths=[env_etc.boost_include])
@@ -46,9 +45,6 @@ if (not env_etc.no_boost_python):
     env_etc.cxxflags_bpl_defines_base.append(
       "-DBOOST_PYTHON_NO_PY_SIGNATURES")
   env_no_includes_boost_python_ext = env_base.Clone(
-    CXXFLAGS=env_etc.cxxflags_base,
-    CCFLAGS=env_etc.ccflags_base,
-    SHCXXFLAGS=env_etc.cxxflags_base,
     SHLINKFLAGS=env_etc.shlinkflags_bpl,
     SHLIBPREFIX="",
     LIBPATH=["#lib"] + env_etc.libpath_python,
@@ -112,13 +108,11 @@ if (not env_etc.no_boost_python):
     LIBS=env_etc.libs_python,
     LIBPATH=env_etc.libpath_python,
   )
-  env.Replace(SHCXXFLAGS=env_etc.cxxflags_base)
   env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
   env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_SOURCE"])
   if (libtbx.env.build_options.boost_python_bool_int_strict):
     env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_BOOL_INT_STRICT"])
   env.Replace(SHLINKFLAGS=env_etc.shlinkflags)
-  env.Replace(CXXFLAGS=env_etc.cxxflags_base)
   env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
   env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
   env.Replace(LINKFLAGS=env_etc.shlinkflags)
