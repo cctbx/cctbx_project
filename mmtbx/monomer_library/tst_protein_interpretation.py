@@ -204,7 +204,7 @@ expected_results = {
   ['SER%NH3', 13, [], 'peptide', True, None],
 "gln_nterm_all_h_1fmy_v2":
   ['GLN%NH3', 19, [], 'peptide', True, None],
-"pro_chain_all_h_1hdp_v2":
+"pro_chain_all_h_1a03_v2":
   ['PRO', 14, [], 'peptide', None, None],
 "ala_nterm_all_h_1dgn_v3":
   ['ALA%NH3', 12, [], 'peptide', True, None],
@@ -398,7 +398,7 @@ expected_results = {
   ['ILE%COOH', 21, [], 'peptide', True, None],
 "phe_chain_all_h_1hdp_v2":
   ['PHE', 20, [], 'peptide', None, None],
-"pro_chain_all_h_1hdp_v3":
+"pro_chain_all_h_1a03_v3":
   ['PRO', 14, [], 'peptide', None, None],
 "ile_chain_all_h_1ozo_v2":
   ['ILE', 19, [], 'peptide', None, None],
