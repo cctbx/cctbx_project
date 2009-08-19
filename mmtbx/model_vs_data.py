@@ -491,7 +491,7 @@ def run(args,
     crystal_symmetry = crystal_symmetry,
     use_elbow        = show_geometry_statistics,
     log              = sys.stdout)
-  mmtbx_pdb_file.set_ppf()
+  mmtbx_pdb_file.set_ppf(stop_if_duplicate_labels = False)
   processed_pdb_file = mmtbx_pdb_file.processed_pdb_file
   pdb_raw_records = mmtbx_pdb_file.pdb_raw_records
   pdb_inp = mmtbx_pdb_file.pdb_inp
@@ -524,25 +524,26 @@ def run(args,
   #
   # Extract TLS
   pdb_tls = None
-  if(len(xray_structures)==1): # XXX no TLS + multiple models
-    pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(pdb_inp =
-      mmtbx_pdb_file.pdb_inp)
-    pdb_tls = group_args(pdb_inp_tls           = pdb_inp_tls,
-                         tls_selections        = [],
-                         tls_selection_strings = [])
-    if(pdb_inp_tls.tls_present and pdb_inp_tls.error_string is None):
-      pdb_tls = mmtbx.tls.tools.extract_tls_from_pdb(
-        pdb_inp_tls       = pdb_inp_tls,
-        all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
-        xray_structure    = xsfppf.xray_structure_all)
-      if(len(pdb_tls.tls_selections)==len(pdb_inp_tls.tls_params) and
-         len(pdb_inp_tls.tls_params) > 0):
-        xray_structures = [utils.extract_tls_and_u_total_from_pdb(
-          f_obs          = f_obs,
-          r_free_flags   = r_free_flags,
-          xray_structure = xray_structures[0], # XXX no TLS + multiple models
-          tls_selections = pdb_tls.tls_selections,
-          tls_groups     = pdb_inp_tls.tls_params)]
+  pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(pdb_inp =
+    mmtbx_pdb_file.pdb_inp)
+  pdb_tls = group_args(pdb_inp_tls           = pdb_inp_tls,
+                       tls_selections        = [],
+                       tls_selection_strings = [])
+  # XXX no TLS + multiple models
+  if(pdb_inp_tls.tls_present and pdb_inp_tls.error_string is None and
+     len(xray_structures)==1):
+    pdb_tls = mmtbx.tls.tools.extract_tls_from_pdb(
+      pdb_inp_tls       = pdb_inp_tls,
+      all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
+      xray_structure    = xsfppf.xray_structure_all)
+    if(len(pdb_tls.tls_selections)==len(pdb_inp_tls.tls_params) and
+       len(pdb_inp_tls.tls_params) > 0):
+      xray_structures = [utils.extract_tls_and_u_total_from_pdb(
+        f_obs          = f_obs,
+        r_free_flags   = r_free_flags,
+        xray_structure = xray_structures[0], # XXX no TLS + multiple models
+        tls_selections = pdb_tls.tls_selections,
+        tls_groups     = pdb_inp_tls.tls_params)]
   #
   bss_params = bss.master_params.extract()
   bss_params.k_sol_max = 0.8
