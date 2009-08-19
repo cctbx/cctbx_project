@@ -896,14 +896,18 @@ class process_pdb_file_srv(object):
     if(self.log is None): self.log = sys.stdout
     if(self.log == False): self.log = None
 
-  def process_pdb_files(self, pdb_file_names = None, raw_records = None):
+  def process_pdb_files(self, pdb_file_names = None, raw_records = None,
+                        stop_if_duplicate_labels = True):
     assert [pdb_file_names, raw_records].count(None) == 1
     if(self.cif_objects is not None):
       self._process_monomer_cif_files()
-    return self._process_pdb_file(pdb_file_names = pdb_file_names,
-                                  raw_records    = raw_records)
+    return self._process_pdb_file(
+      pdb_file_names           = pdb_file_names,
+      raw_records              = raw_records,
+      stop_if_duplicate_labels = stop_if_duplicate_labels)
 
-  def _process_pdb_file(self, pdb_file_names, raw_records):
+  def _process_pdb_file(self, pdb_file_names, raw_records,
+                        stop_if_duplicate_labels):
     if(raw_records is None):
       pdb_combined = combine_unique_pdb_files(file_names=pdb_file_names)
       pdb_combined.report_non_unique(out=self.log)
@@ -922,8 +926,9 @@ class process_pdb_file_srv(object):
         for file_name in pdb_file_names:
           msg.append("  %s" % show_string(file_name))
       raise Sorry("\n".join(msg))
-    pdb_inp.construct_hierarchy().overall_counts() \
-      .raise_duplicate_atom_labels_if_necessary()
+    if(stop_if_duplicate_labels):
+      pdb_inp.construct_hierarchy().overall_counts() \
+        .raise_duplicate_atom_labels_if_necessary()
     processed_pdb_file = monomer_library.pdb_interpretation.process(
       mon_lib_srv              = self.mon_lib_srv,
       ener_lib                 = self.ener_lib,
@@ -1624,7 +1629,7 @@ class pdb_file(object):
     if(crystal_symmetry is not None and crystal_symmetry.unit_cell() is not None):
       self.pdb_inp.crystal_symmetry(crystal_symmetry = crystal_symmetry)
 
-  def set_ppf(self):
+  def set_ppf(self, stop_if_duplicate_labels=True):
     # XXX do not write a file
     if(len(self.cif_objects) == 0 and self.use_elbow):
       t = time.ctime().split() # to make it safe to remove files
@@ -1664,7 +1669,7 @@ class pdb_file(object):
       log                       = StringIO())
     self.processed_pdb_file, self.pdb_inp = \
       self.processed_pdb_files_srv.process_pdb_files(raw_records =
-        self.pdb_raw_records)
+        self.pdb_raw_records, stop_if_duplicate_labels = stop_if_duplicate_labels)
 
 def model_simple(pdb_file_names,
                  log = None,

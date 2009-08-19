@@ -17,17 +17,21 @@ public:
   d_f_model_d_k_sol_and_d_b_sol_one_h(
     f_model::core<FloatType,ComplexType> const& fm, std::size_t i)
   {
+    grad_k_sol = 0;
+    grad_b_sol = 0;
     FloatType f_model_abs = std::abs(fm.f_model[i]);
-    ComplexType f_c = fm.f_calc[i];
-    ComplexType f_m = fm.f_mask[i];
-    FloatType f_b = fm.f_b_sol[i];
-    FloatType f_b_k = f_b * fm.k_sol;
-    FloatType uvs_plus_usv = std::real(f_c*std::conj(f_m)+f_m*std::conj(f_c));
-    FloatType mod_v_sq = std::abs(f_m) * std::abs(f_m);
-    FloatType theta = (uvs_plus_usv+2*f_b_k*mod_v_sq)/(f_model_abs*2);
-    FloatType coeff = theta * fm.f_aniso[i];
-    grad_k_sol =  coeff * f_b;
-    grad_b_sol = -coeff * f_b_k * fm.ss[i];
+    if(f_model_abs > 0){
+      ComplexType f_c = fm.f_calc[i];
+      ComplexType f_m = fm.f_mask[i];
+      FloatType f_b = fm.f_b_sol[i];
+      FloatType f_b_k = f_b * fm.k_sol;
+      FloatType uvs_plus_usv = std::real(f_c*std::conj(f_m)+f_m*std::conj(f_c));
+      FloatType mod_v_sq = std::abs(f_m) * std::abs(f_m);
+      FloatType theta = (uvs_plus_usv+2*f_b_k*mod_v_sq)/(f_model_abs*2);
+      FloatType coeff = theta * fm.f_aniso[i];
+      grad_k_sol =  coeff * f_b;
+      grad_b_sol = -coeff * f_b_k * fm.ss[i];
+    }
   }
   FloatType grad_k_sol, grad_b_sol;
 };
