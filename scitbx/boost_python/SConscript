@@ -2,10 +2,7 @@ Import("env_base", "env_etc")
 Import("env_scitbx_boost_python_ext")
 
 env = env_base.Clone(
-  CXXFLAGS=env_etc.cxxflags_base,
-  SHCXXFLAGS=env_etc.cxxflags_base,
-  SHLINKFLAGS=env_etc.shlinkflags,
-)
+  SHLINKFLAGS=env_etc.shlinkflags)
 env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env.Append(LIBPATH=["#lib"])
