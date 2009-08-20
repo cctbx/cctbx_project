@@ -11,10 +11,12 @@ import libtbx.load_env
 from cctbx.maptbx import real_space_refinement_simple
 from libtbx.test_utils import approx_equal
 
+if (1):
+  random.seed(0)
+  flex.set_random_seed(0)
+
+
 def run():
-  if (1):
-    random.seed(0)
-    flex.set_random_seed(0)
   def compute_map(xray_structure, d_min=1.5, resolution_factor=1./4):
     fc = xray_structure.structure_factors(d_min = d_min).f_calc()
     fft_map = fc.fft_map(resolution_factor=resolution_factor)
