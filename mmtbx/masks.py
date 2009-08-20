@@ -14,6 +14,7 @@ from libtbx import introspection
 from libtbx import adopt_init_args
 from copy import deepcopy
 import masks
+from libtbx.test_utils import approx_equal
 
 number_of_mask_calculations = 0
 
@@ -151,6 +152,7 @@ class bulk_solvent(around_atoms):
 class manager(object):
   def __init__(self, miller_array,
                      xray_structure,
+                     miller_array_twin = None,
                      mask_params = None):
     adopt_init_args(self, locals())
     if(self.mask_params is not None): self.mask_params = mask_params
@@ -158,31 +160,35 @@ class manager(object):
     self.grid_step = self._get_grid_step()
     self.atom_radii = None
     self._f_mask = None
+    self._f_mask_twin = None
     self.solvent_content_via_mask = None
+    self.sites_cart = None
     if(xray_structure is not None):
       self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
        self.xray_structure)
       self.xray_structure = self.xray_structure.deep_copy_scatterers()
       self.sites_cart = self.xray_structure.sites_cart()
-      self._f_mask = self.compute_f_mask()
+      twin=False
+      if(self.miller_array_twin is not None): twin=True
+      self.compute_f_mask(twin = twin)
 
   def deep_copy(self):
-    new_manager = manager(miller_array   = self.miller_array.deep_copy(),
-                          xray_structure = None,
-                          mask_params    = deepcopy(self.mask_params))
-    if(self.xray_structure is not None):
-      new_manager.xray_structure = self.xray_structure.deep_copy_scatterers()
-      new_manager.sites_cart     = new_manager.xray_structure.sites_cart()
-    if(self._f_mask is not None):
-      new_manager._f_mask = self._f_mask.deep_copy()
-    new_manager.solvent_content_via_mask = self.solvent_content_via_mask
-    return new_manager
+    return self.select(flex.bool(self.miller_array.indices().size(),True))
 
   def select(self, selection):
-    new_manager = self.deep_copy()
-    new_manager.miller_array = self.miller_array.select(selection = selection)
+    miller_array_twin = None
+    if(self.miller_array_twin is not None):
+      miller_array_twin = self.miller_array_twin.select(selection)
+    new_manager = manager(
+      miller_array      = self.miller_array.select(selection),
+      miller_array_twin = miller_array_twin,
+      xray_structure    = None,
+      mask_params       = deepcopy(self.mask_params))
     if(self._f_mask is not None):
       new_manager._f_mask = self._f_mask.select(selection = selection)
+    if(self._f_mask_twin is not None):
+      new_manager._f_mask_twin = self._f_mask_twin.select(selection = selection)
+    new_manager.solvent_content_via_mask = self.solvent_content_via_mask
     return new_manager
 
   def _get_grid_step(self):
@@ -192,10 +198,13 @@ class manager(object):
     step = min(0.8, step)
     return step
 
-  def f_mask(self, xray_structure_new = None, force_update = False):
-    if(xray_structure_new is None): return self._f_mask
+  def f_mask(self, xray_structure_new = None, force_update = False,
+             twin = False):
+    if(twin): f_mask = self._f_mask_twin
+    else: f_mask = self._f_mask
+    if(xray_structure_new is None): return f_mask
     else:
-      if(force_update or self._f_mask is None):
+      if(force_update or f_mask is None):
         self.xray_structure = xray_structure_new.deep_copy_scatterers()
         self.sites_cart = xray_structure_new.sites_cart()
         return self.compute_f_mask()
@@ -205,23 +214,29 @@ class manager(object):
         if(flag):
           self.xray_structure = xray_structure_new.deep_copy_scatterers()
           self.sites_cart = xray_structure_new.sites_cart()
-          return self.compute_f_mask()
+          return self.compute_f_mask(twin=twin)
         else:
-          return self._f_mask
+          return f_mask
 
   def _need_update_mask(self, sites_cart_new):
-    if(self.sites_cart.size() != sites_cart_new.size()): return True
-    atom_atom_distances = flex.sqrt((sites_cart_new - self.sites_cart).dot())
-    mean_shift = flex.mean(atom_atom_distances)
-    if(mean_shift > self.mask_params.mean_shift_for_mask_update):
-      return True
-    else: return False
+    if(self.sites_cart is not None and
+       self.sites_cart.size() != sites_cart_new.size()): return True
+    if(self.sites_cart is not None):
+      atom_atom_distances = flex.sqrt((sites_cart_new - self.sites_cart).dot())
+      mean_shift = flex.mean(atom_atom_distances)
+      if(mean_shift > self.mask_params.mean_shift_for_mask_update):
+        return True
+      else: return False
+    else: return True
 
-  def compute_f_mask(self):
+  def compute_f_mask(self, twin=False):
     if(not self.mask_params.use_asu_masks):
       bulk_solvent_mask_obj = self.bulk_solvent_mask()
       self._f_mask = bulk_solvent_mask_obj.structure_factors(
         miller_set = self.miller_array)
+      if(self.miller_array_twin is not None):
+        self._f_mask_twin = bulk_solvent_mask_obj.structure_factors(
+          miller_set = self.miller_array_twin)
       self.solvent_content_via_mask = bulk_solvent_mask_obj \
         .contact_surface_fraction
     else:
@@ -237,8 +252,14 @@ class manager(object):
       asu_mask.compute(self.xray_structure.sites_frac(), self.atom_radii)
       fm_asu = asu_mask.structure_factors(self.miller_array.indices())
       self._f_mask = self.miller_array.set().array(data = fm_asu)
+      if(self.miller_array_twin is not None):
+        assert self.miller_array.indices().size() == \
+               self.miller_array_twin.indices().size()
+        fm_asu = asu_mask.structure_factors(self.miller_array_twin.indices())
+        self._f_mask_twin = self.miller_array_twin.set().array(data = fm_asu)
       self.solvent_content_via_mask = asu_mask.contact_surface_fraction
-    return self._f_mask
+    if(twin): return self._f_mask_twin
+    else: return self._f_mask
 
   def bulk_solvent_mask(self):
     mp = self.mask_params
