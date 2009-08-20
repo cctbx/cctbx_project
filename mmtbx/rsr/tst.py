@@ -7,6 +7,11 @@ from libtbx.test_utils import approx_equal
 from cctbx.development import random_structure
 from cctbx import sgtbx, adptbx
 
+if (1):
+  random.seed(0)
+  flex.set_random_seed(0)
+
+
 def exercise_01(grid_step = 0.03, d_min = 1.0, wing_cutoff = 1.e-9):
   xrs = random_structure.xray_structure(
     space_group_info       = sgtbx.space_group_info("P 1"),
