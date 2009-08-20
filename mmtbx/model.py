@@ -817,6 +817,9 @@ class manager(object):
     if(self.refinement_flags.individual_sites):
       ssites = flex.bool(solvent_xray_structure.scatterers().size(), True)
     else: ssites = None
+    if(self.refinement_flags.torsion_angles):
+      ssites_tors = flex.bool(solvent_xray_structure.scatterers().size(), True)
+    else: ssites_tors = None
     if(self.refinement_flags.adp_individual_iso):
       sadp_iso = solvent_xray_structure.use_u_iso()
     else: sadp_iso = None
@@ -825,9 +828,10 @@ class manager(object):
     else: sadp_aniso = None
     self.refinement_flags.inflate(
       sites_individual       = ssites,
+      sites_torsion_angles   = ssites_tors,
       adp_individual_iso     = sadp_iso,
       adp_individual_aniso   = sadp_aniso,
-      s_occupancies          = occupancy_flags)
+      s_occupancies          = occupancy_flags)#torsion_angles
     new_atom_name = atom_name.strip()
     if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
     while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
