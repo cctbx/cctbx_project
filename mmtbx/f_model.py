@@ -297,6 +297,16 @@ class manager(manager_mixin):
     self.twin_law_str = twin_law
     self.twin_fraction = twin_fraction
     self.f_obs = f_obs
+    self.twin_set = None
+    if(self.twin_law is not None):
+      twin_law_xyz = sgtbx.rt_mx(symbol=self.twin_law, r_den=12, t_den=144)
+      twin_law_matrix = twin_law_xyz.as_double_array()[0:9]
+      twin_mi = mmtbx.utils.create_twin_mate(
+        miller_indices  = self.f_obs.indices(),
+        twin_law_matrix = twin_law_matrix)
+      self.twin_set = self.f_obs.customized_copy(
+        indices = twin_mi,
+        crystal_symmetry = self.f_obs.crystal_symmetry())
     if(r_free_flags is not None):
       self.update_r_free_flags(r_free_flags)
     self.d_spacings = self.f_obs.d_spacings().data()
@@ -345,9 +355,10 @@ class manager(manager_mixin):
     else:
        if(self.mask_manager is None):
          self.mask_manager = masks.manager(
-           miller_array   = self.f_obs,
-           xray_structure = self.xray_structure,
-           mask_params    = self.mask_params)
+           miller_array      = self.f_obs,
+           miller_array_twin = self.twin_set,
+           xray_structure    = self.xray_structure,
+           mask_params       = self.mask_params)
        if(update_xray_structure):
           self.update_xray_structure(xray_structure   = self.xray_structure,
                                      update_f_calc    = True,
@@ -448,11 +459,13 @@ class manager(manager_mixin):
       self.update_core(k_sol = ks_best, b_sol = bs_best)
 
 
-  def update_core(self, f_calc = None,
-                        f_mask = None,
-                        b_cart = None,
-                        k_sol  = None,
-                        b_sol  = None):
+  def update_core(self, f_calc      = None,
+                        f_mask      = None,
+                        f_calc_twin = None,
+                        f_mask_twin = None,
+                        b_cart      = None,
+                        k_sol       = None,
+                        b_sol       = None):
     u_star = None # XXX
     if(b_cart is not None):# XXX
       u_star = adptbx.u_cart_as_u_star(
@@ -476,20 +489,10 @@ class manager(manager_mixin):
     self._f_model_free = self.core.f_model.select(self.test)
     self._fb_cart_work = self.core.data.f_aniso.select(self.work)
     if(self.twin_law is not None):
-      twin_law_xyz = sgtbx.rt_mx(symbol=self.twin_law, r_den=12, t_den=144)
-      twin_law_matrix = twin_law_xyz.as_double_array()[0:9]
-      twin_mi = mmtbx.utils.create_twin_mate( # XXX may be do it up-front
-        miller_indices  = self.f_obs.indices(),
-        twin_law_matrix = twin_law_matrix)
-      twin_set = self.f_obs.customized_copy(
-        indices = twin_mi,
-        crystal_symmetry = self.f_obs.crystal_symmetry())
-      f_calc_twin_mate = self.compute_f_calc(miller_array = twin_set)
-      f_mask_twin_mate = masks.manager( # XXX re-use existing mask_manager
-        miller_array   = f_calc_twin_mate,
-        xray_structure = self.xray_structure).f_mask()
       if(self.core_twin_mate is None):
-        self.core_twin_mate = core( # XXX use .update to avoid mask re-calculation
+        f_calc_twin_mate = self.compute_f_calc(miller_array = self.twin_set)
+        f_mask_twin_mate = self.mask_manager.f_mask(twin=True)
+        self.core_twin_mate = core(
           f_calc = f_calc_twin_mate,
           f_mask = f_mask_twin_mate,
           u_star = u_star,
@@ -497,9 +500,9 @@ class manager(manager_mixin):
           b_sol  = b_sol,
           ss     = self.ss)
       else:
-        self.core_twin_mate.update( # XXX use .update to avoid mask re-calculation
-          f_calc = f_calc_twin_mate,
-          f_mask = f_mask_twin_mate,
+        self.core_twin_mate.update(
+          f_calc = f_calc_twin,
+          f_mask = f_mask_twin,
           u_star = u_star,
           k_sol  = k_sol,
           b_sol  = b_sol)
@@ -611,6 +614,7 @@ class manager(manager_mixin):
       filled_f_obs_selection       = new_filled_f_obs_selection,
       _target_memory               = self._target_memory)
     result.twin = self.twin
+    result.twin_law_str = self.twin_law_str
     return result
 
   def resolution_filter(self,
