@@ -84,7 +84,7 @@ def report_tors(comp, residue_sites, matched_mon_lib_atom_names, targets):
         sites=d_sites, angle_ideal=0, weight=1)
       angle_model = d.angle_model
     target = targets.get(tor.id)
-    if (target is not None):
+    if (angle_model is not None and target is not None):
       if (cctbx.geometry_restraints.angle_delta_deg(
             angle_1=angle_model,
             angle_2=target) > 1.e-5):
@@ -222,8 +222,15 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
     hinge_atom_names = [tardy_model_start.labels[i].strip() for i in he]
     atom_names = tuple(sorted(hinge_atom_names))
     tors = tor_dict.get(atom_names)
-    assert len(tors) == 1
-    tor = tors[0]
+    if (len(tors) == 1):
+      tor = tors[0]
+    else:
+      used_tors = []
+      for tor in tors:
+        if (tor.id in rotamer_info.tor_ids):
+          used_tors.append(tor)
+      assert len(used_tors) == 1
+      tor = used_tors[0]
     tor_id_i_q_packed_matches[tor.id] = i_body - 1
   assert number_of_trees == 1
   #
@@ -241,9 +248,9 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
   print "tardy_tree tors:", ", ".join(sorted(tor_id_i_q_packed_matches.keys()))
   print "rotamer tors:", ", ".join([tor.id for tor in rotamer_tor])
   if (len(rotamer_tor) != len(tor_id_i_q_packed_matches)):
-    msg = "Some tardy_tree tors not determined by rotamer info: %s" \
+    msg = "tardy_tree tor vs. rotamer info differences: %s" \
       % pdb_residue.resname
-    if (strip_hydrogens):
+    if (strip_hydrogens and pdb_residue.resname != "PRO"):
       raise RuntimeError(msg)
     print "Info:", msg
   #
@@ -282,16 +289,15 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
     rotamers_sub_dir = "rotamers_with_h"
   if (not os.path.isdir(rotamers_sub_dir)):
     os.mkdir(rotamers_sub_dir)
-  rotamer_angle_i_q_packed = [tor_id_i_q_packed_matches[tor.id]
-    for tor in rotamer_tor]
   remark_strings = []
   atom_strings = []
   atom_serial_first_value = 1
   for i_rotamer,rotamer in enumerate(rotamer_info.rotamer):
     q_packed = flex.double(tardy_model_work.q_packed_size, 0)
     for tor,angle in zip(rotamer_tor, rotamer.angles):
-      i_q_packed = tor_id_i_q_packed_matches[tor.id]
-      q_packed[i_q_packed] = math.radians(angle)
+      i_q_packed = tor_id_i_q_packed_matches.get(tor.id)
+      if (i_q_packed is not None):
+        q_packed[i_q_packed] = math.radians(angle)
     tardy_model_work.unpack_q(q_packed=q_packed)
     rotamer_sites = tardy_model_work.sites_moved()
     rotamer_sites += matrix.col((4,4,4)) * i_rotamer
@@ -363,9 +369,7 @@ def process(mon_lib_srv, rotamer_info_master_phil, resname):
         raise RuntimeError(
           "Duplicate tree_generation_without_bond definition: %s" % str(bond))
       bonds_to_omit[bond] = False
-  tree_root_atom_names = set(["CA", "C", "O"])
-  if (("N", "CA") not in bonds_to_omit):
-    tree_root_atom_names.add("N")
+  tree_root_atom_names = set(["N", "CA", "C", "O"])
   fixed_vertices = []
   atom_indices = {}
   for i,atom in enumerate(comp.atom_list):
@@ -395,7 +399,7 @@ def process(mon_lib_srv, rotamer_info_master_phil, resname):
     print tor.id, ", ".join([
       tor.atom_id_1, tor.atom_id_2, tor.atom_id_3, tor.atom_id_4]), \
       tor.value_angle_esd
-  for tors in tor_dict.values():
+  for atom_ids,tors in tor_dict.items():
     if (len(tors) != 1):
       print "Info: redundant tors:", ", ".join([tor.id for tor in tors])
   tardy_tree = scitbx.graph.tardy_tree.construct(
@@ -419,7 +423,7 @@ def process(mon_lib_srv, rotamer_info_master_phil, resname):
         tor_hinge_matches.add(tor.id)
       s = ", ".join([tor.id for tor in tors])
       if (len(tors) != 1):
-        s = "Warning: multiple tors: " + s
+        s = "Info: multiple tors: " + s
     print "hinge edge:", ", ".join(hinge_atom_names), s
   assert number_of_trees == 1
   #
