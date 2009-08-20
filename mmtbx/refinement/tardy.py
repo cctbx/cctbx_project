@@ -135,7 +135,8 @@ class potential_object(object):
     O.e_pot(sites_moved=sites_moved)
     return O.g
 
-def run(fmodels, model, target_weights, params, log):
+def run(fmodels, model, target_weights, params, log,
+        format_for_phenix_refine=False):
   assert fmodels.fmodel_neutron() is None # not implemented
   assert model.ias_selection is None # tardy+ias is not a useful combination
   xs = fmodels.fmodel_xray().xray_structure
@@ -173,9 +174,11 @@ def run(fmodels, model, target_weights, params, log):
     potential_obj=potential_obj,
     near_singular_hinges_angular_tolerance_deg=
       params.near_singular_hinges_angular_tolerance_deg)
-  action(tardy_model=tardy_model, params=params, callback=None, log=log)
+  action(fmodel=fmodels.fmodel_xray(), tardy_model=tardy_model, params=params,
+    callback=None, log=log, format_for_phenix_refine=format_for_phenix_refine) # XXX neutron
 
-def action(tardy_model, params, callback, log):
+def action(tardy_model, params, callback, log, fmodel=None,
+           format_for_phenix_refine=False):
   sites_cart_start = tardy_model.sites_moved()
   qd_e_kin_scales = tardy_model.assign_random_velocities()
   cartesian_dof = sites_cart_start.size() * 3
@@ -295,23 +298,34 @@ def action(tardy_model, params, callback, log):
         tardy_model.reset_e_kin(e_kin_target=e_kin_target)
       n_time_steps += 1
       grms = tardy_model.potential_obj.last_grms
-      if (show_column_headings):
-        show_column_headings = False
-        log.write("""\
-          coordinate                   fluctuations        gradient rms
+      if(format_for_phenix_refine):
+        if(n_time_steps==1 or not n_time_steps%25):
+          fmtr = "   step=%s temperature=%s rmsd=%s r_work=%s r_free=%s"
+          rmsddiff = tardy_model.sites_moved().rms_difference(sites_cart_start)
+          print >> log, fmtr%(
+            format_value("%5d", n_time_steps),
+            format_value("%7.1f", e_as_t(e=tardy_model.e_kin())),
+            format_value("%6.4f", rmsddiff),
+            format_value("%6.4f", fmodel.r_work()),
+            format_value("%6.4f", fmodel.r_free()))
+      else:
+        if (show_column_headings):
+          show_column_headings = False
+          log.write("""\
+            coordinate                   fluctuations        gradient rms
     step      rmsd        temp        temp   e_total     geo %    7s   total
 """ % grms.real_or_xray)
-      print >> log, "    %4d  %8.4f A  %8.2f K  %8.2f K  %s" \
-        "  %6.2f  %6.2f  %6.2f" % (
-          n_time_steps,
-          tardy_model.sites_moved().rms_difference(
-            sites_cart_start),
-          e_as_t(e=tardy_model.e_kin()),
-          e_as_t(e=e_kin_after-e_kin_before),
-          format_value(format="%6.3f", value=fluct_e_tot),
-          grms.geo,
-          getattr(grms, grms.real_or_xray),
-          grms.total)
+        print >> log, "    %4d  %8.4f A  %8.2f K  %8.2f K  %s" \
+          "  %6.2f  %6.2f  %6.2f" % (
+            n_time_steps,
+            tardy_model.sites_moved().rms_difference(
+              sites_cart_start),
+            e_as_t(e=tardy_model.e_kin()),
+            e_as_t(e=e_kin_after-e_kin_before),
+            format_value(format="%6.3f", value=fluct_e_tot),
+            grms.geo,
+            getattr(grms, grms.real_or_xray),
+            grms.total)
       log.flush()
       if (callback is not None):
         if (callback() == False): return
