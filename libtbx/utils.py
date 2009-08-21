@@ -33,6 +33,13 @@ def xlen(seq):
   if (seq is None): return seq
   return len(seq)
 
+def sequence_index_dict(seq, must_be_unique=True):
+  result = {}
+  for i,elem in enumerate(seq):
+    if (must_be_unique): assert elem not in result
+    result[elem] = i
+  return result
+
 def number_from_string(string):
   # similar to libtbx.phil.number_from_value_string
   # (please review if making changes here)
