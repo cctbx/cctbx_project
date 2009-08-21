@@ -530,12 +530,17 @@ else:
     flg = opts.env_cppflags.split(" ")
     env_etc.ccflags_base.extend(flg)
 
-env_base.Replace(
-  CCFLAGS=env_etc.ccflags_base,
-  CXXFLAGS=env_etc.cxxflags_base,
-  SHCCFLAGS=env_etc.ccflags_base,
-  SHCXXFLAGS=env_etc.cxxflags_base)
 env_base["SHOBJSUFFIX"] = env_base["OBJSUFFIX"]
+
+# XXX backward compatibility 2009-08-21
+# future: remove ccflags_base, cxxflags_base from env_etc
+def env_base_sync_with_env_etc():
+  env_base.Replace(
+    CCFLAGS=env_etc.ccflags_base,
+    CXXFLAGS=env_etc.cxxflags_base,
+    SHCCFLAGS=env_etc.ccflags_base,
+    SHCXXFLAGS=env_etc.cxxflags_base)
+env_base_sync_with_env_etc()
 
 if (static_exe):
   sys.tracebacklimit = 0
@@ -631,6 +636,7 @@ int main() {
   env_base.Append(LINKFLAGS=linker_options)
   env_etc.shlinkflags.extend(linker_options)
   env_etc.shlinkflags_bpl.extend(linker_options)
+  env_base_sync_with_env_etc()
 
 enable_openmp_if_possible()
 
