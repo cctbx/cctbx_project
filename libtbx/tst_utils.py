@@ -66,6 +66,7 @@ def exercise_approx_equal():
                       [ 2.4+0.1j, 3.5+5.9j, 7.90], eps=0.2)
 
 def exercise():
+  assert utils.sequence_index_dict(["a", "b"]) == {"a": 0, "b": 1}
   assert utils.flat_list(0) == [0]
   assert utils.flat_list([1,2,3]) == [1,2,3]
   assert utils.flat_list([1,[2,3,4],3]) == [1,2,3,4,3]
