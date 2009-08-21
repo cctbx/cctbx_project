@@ -4812,6 +4812,8 @@ e=7 8 9
   .type=floats(size_max=4, size_min=2)
 f=10 20
   .type=floats(value_max=20, value_min=10)
+g=nOnE aUtO
+  .type=floats(allow_none_elements=True, allow_auto_elements=True)
 """)
   work_params = master_phil.extract()
   work_phil = master_phil.format(python_object=work_params)
@@ -4828,6 +4830,8 @@ e = 7 8 9
   .type = floats(size_min=2, size_max=4)
 f = 10 20
   .type = floats(value_min=10, value_max=20)
+g = None Auto
+  .type = floats(allow_none_elements=True, allow_auto_elements=True)
 """)
   #
   user_phil = phil.parse(input_string="""\
@@ -4941,6 +4945,24 @@ a=1 2 3
     assert not show_diff(str(e),
       "Too many values for a: 3 given, exactly 2 required")
   else: raise Exception_expected
+  #
+  for value in ["None", "Auto"]:
+    user_phil = phil.parse(input_string="""\
+a=1 %s
+""" % value.lower())
+    work_phil = master_phil.fetch(source=user_phil)
+    try: work_phil.extract()
+    except RuntimeError, e:
+      assert not show_diff(str(e),
+        "a element cannot be %s (input line 1)" % value)
+    else: raise Exception_expected
+    work_params = master_phil.extract()
+    work_params.a = [1, eval(value)]
+    try: master_phil.format(python_object=work_params)
+    except RuntimeError, e:
+      assert not show_diff(str(e),
+        "a element cannot be %s" % value)
+    else: raise Exception_expected
 
 def exercise_definition_validate_etc():
   working_phil = phil.parse(input_string="""\
