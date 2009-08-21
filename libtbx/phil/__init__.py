@@ -164,12 +164,16 @@ class bool_converters(object):
 def number_from_value_string(value_string, words, path):
   if (value_string is None): return None
   if (value_string is Auto): return Auto
+  value_string_lower = value_string.lower()
   # similar to libtbx.utils.number_from_string
   # (please review if making changes here)
-  if (value_string.lower() in ["true", "false"]):
+  value_string_lower_strip = value_string.lower().strip()
+  if (value_string_lower_strip in ["true", "false"]):
     raise RuntimeError(
       'Error interpreting %s="%s" as a numeric expression%s' % (
         path, value_string, words[0].where_str()))
+  if (value_string_lower_strip == "none"): return None
+  if (value_string_lower_strip == "auto"): return Auto
   try: return int(value_string)
   except KeyboardInterrupt: raise
   except: pass
@@ -306,7 +310,9 @@ class numbers_converters_base(_check_value_base):
       size_min=None,
       size_max=None,
       value_min=None,
-      value_max=None):
+      value_max=None,
+      allow_none_elements=False,
+      allow_auto_elements=False):
     assert size is None or (size_min is None and size_max is None)
     if (size is not None):
       assert size > 0
@@ -325,6 +331,8 @@ class numbers_converters_base(_check_value_base):
     self.size_max = size_max
     self.value_min = value_min
     self.value_max = value_max
+    self.allow_none_elements = allow_none_elements
+    self.allow_auto_elements = allow_auto_elements
 
   def __str__(self):
     kwds = []
@@ -340,6 +348,10 @@ class numbers_converters_base(_check_value_base):
       kwds.append("value_min=" + self._value_as_str(value=self.value_min))
     if (self.value_max is not None):
       kwds.append("value_max=" + self._value_as_str(value=self.value_max))
+    if (self.allow_none_elements):
+      kwds.append("allow_none_elements=True")
+    if (self.allow_auto_elements):
+      kwds.append("allow_auto_elements=True")
     if (len(kwds) != 0):
       return self.phil_type + "(" + ", ".join(kwds) + ")"
     return self.phil_type
@@ -371,11 +383,27 @@ class numbers_converters_base(_check_value_base):
     if (numbers is None or numbers is Auto): return numbers
     self._check_size(
       size=len(numbers), path_producer=master.full_path, words=words)
+    def where_str():
+      if (words is None): return ""
+      return words[0].where_str()
     result = []
     for number in numbers:
-      value = self._value_from_number(number=number, words=words, path=path)
-      self._check_value(
-        value=value, path_producer=master.full_path, words=words)
+      if   (number is None):
+        if (self.allow_none_elements):
+          value = number
+        else:
+          raise RuntimeError(
+            "%s element cannot be None%s" % (path, where_str()))
+      elif (number is Auto):
+        if (self.allow_auto_elements):
+          value = number
+        else:
+          raise RuntimeError(
+            "%s element cannot be Auto%s" % (path, where_str()))
+      else:
+        value = self._value_from_number(number=number, words=words, path=path)
+        self._check_value(
+          value=value, path_producer=master.full_path, words=words)
       result.append(value)
     return result
 
@@ -389,7 +417,20 @@ class numbers_converters_base(_check_value_base):
     result = []
     for value in python_object:
       self._check_value(value=value, path_producer=master.full_path)
-      result.append(tokenizer.word(value=self._value_as_str(value=value)))
+      if (value is None):
+        if (self.allow_none_elements):
+          result.append(tokenizer.word(value="None"))
+        else:
+          raise RuntimeError(
+            "%s element cannot be None" % master.full_path())
+      elif (value is Auto):
+        if (self.allow_auto_elements):
+          result.append(tokenizer.word(value="Auto"))
+        else:
+          raise RuntimeError(
+            "%s element cannot be Auto" % master.full_path())
+      else:
+        result.append(tokenizer.word(value=self._value_as_str(value=value)))
     return result
 
 class ints_converters(numbers_converters_base):
