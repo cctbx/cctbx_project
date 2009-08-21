@@ -2,6 +2,7 @@
 # XXX: To keep these classes as clean as possible, selections are handled
 # entirely in wx_selection_editor.py.
 # TODO: hide nonbonded point for any atom that has an ellipsoid drawn
+# TODO: clean up handling of changes in atom count
 
 import iotbx.phil
 from cctbx import uctbx
@@ -86,6 +87,8 @@ class model_data (object) :
 
   @debug
   def get_scene_data (self) :
+    if self.atoms.size() != self.visibility.atoms_visible.size() :
+      self.recalculate_visibility()
     return model_scene(bonds=self.current_bonds,
       points=self.atoms.extract_xyz(),
       b_iso=self.atoms.extract_b(),
@@ -156,7 +159,9 @@ class model_data (object) :
     self.atom_index = atom_index
     self.atom_labels = atom_labels
     self.trace_bonds = extract_trace(pdb_hierarchy) #, self.selection_cache)
-    if self.current_bonds is None :
+    if self.draw_mode is None or self.draw_mode.startswith("trace") :
+      self.current_bonds = self.trace_bonds
+    else :
       self.current_bonds = self.atomic_bonds
     atom_radii = flex.double(self.atoms.size(), 1.5)
     hydrogen_flag = flex.bool(self.atoms.size(), False)
@@ -718,6 +723,9 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     model = self.get_model(model_id)
     if model is not None :
       model.update_structure(pdb_hierarchy, atomic_bonds)
+      model.set_draw_mode(model.draw_mode)
+      if model_id in self.scene_objects :
+        self.scene_objects.pop(model_id)
       self.update_scene = True
     else :
       self.add_model(model_id, pdb_hierarchy, atomic_bonds)

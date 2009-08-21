@@ -34,6 +34,9 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
     model_data.__init__(self, *args, **kwds)
 
   def get_scene_data (self) :
+    if self.atoms.size() != self.visibility.atoms_visible.size() :
+      self.recalculate_visibility()
+      print 123456789
     scene = model_scene_with_selection(bonds=self.current_bonds,
       points=self.atoms.extract_xyz(),
       b_iso=self.atoms.extract_b(),
