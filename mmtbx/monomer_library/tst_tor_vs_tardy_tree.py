@@ -268,8 +268,11 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
     rotamers_sub_dir = "rotamers_no_h"
   else:
     rotamers_sub_dir = "rotamers_with_h"
+  rotamers_sep_sub_dir = rotamers_sub_dir + "_sep"
   if (not os.path.isdir(rotamers_sub_dir)):
     os.mkdir(rotamers_sub_dir)
+  if (not os.path.isdir(rotamers_sep_sub_dir)):
+    os.mkdir(rotamers_sep_sub_dir)
   remark_strings = []
   atom_strings = []
   atom_serial_first_value = 1
@@ -288,6 +291,16 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
       residue_sites=rotamer_sites,
       matched_mon_lib_atom_names=matched_mon_lib_atom_names,
       targets=dict(zip(rotamer_info.tor_ids, rotamer.angles)))
+    #
+    file_name = "%s/%s_%s.pdb" % (
+      rotamers_sep_sub_dir, pdb_residue.resname, rotamer.id)
+    print "Writing file:", file_name
+    f = open(file_name, "w")
+    print >> f, "REMARK %s %s" % (pdb_residue.resname, rotamer.id)
+    pdb_atoms.reset_serial(first_value=1)
+    f.write(pdb_hierarchy.as_pdb_string(append_end=True))
+    del f
+    #
     pdb_atoms.reset_serial(first_value=atom_serial_first_value)
     atom_serial_first_value += pdb_atoms.size()
     chain_id = (string.uppercase + string.lowercase)[i_rotamer]
