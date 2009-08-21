@@ -31,7 +31,7 @@ rotamer
  frequency_annotation = None
    .type = str
  angles = None
-   .type = floats
+   .type = floats(allow_none_elements=True)
 }
 """
 
@@ -250,7 +250,7 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
   if (len(rotamer_tor) != len(tor_id_i_q_packed_matches)):
     msg = "tardy_tree tor vs. rotamer info differences: %s" \
       % pdb_residue.resname
-    if (strip_hydrogens and pdb_residue.resname != "PRO"):
+    if (not strip_hydrogens):
       raise RuntimeError(msg)
     print "Info:", msg
   #
@@ -296,7 +296,7 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
     q_packed = flex.double(tardy_model_work.q_packed_size, 0)
     for tor,angle in zip(rotamer_tor, rotamer.angles):
       i_q_packed = tor_id_i_q_packed_matches.get(tor.id)
-      if (i_q_packed is not None):
+      if (i_q_packed is not None and angle is not None):
         q_packed[i_q_packed] = math.radians(angle)
     tardy_model_work.unpack_q(q_packed=q_packed)
     rotamer_sites = tardy_model_work.sites_moved()
@@ -349,7 +349,7 @@ def process_rotamer_info(rotamer_info_master_phil, comp):
       assert rotamer.angles is not None
       assert len(rotamer.angles) == len(rotamer_info.tor_ids)
       for angle in rotamer.angles:
-        assert -180 < angle <= 180
+        assert angle is None or -180 < angle <= 180
     if (n_missing_frequencies != 0):
       print "Warning: number of missing frequencies:", n_missing_frequencies
   return rotamer_info
@@ -455,7 +455,7 @@ def run(args):
   rotamer_info_master_phil = libtbx.phil.parse(
     input_string=rotamer_info_master_phil_str)
   amino_acid_resnames = sorted(
-    iotbx.pdb.amino_acid_codes.three_letter_given_one_letter.values())
+    iotbx.pdb.amino_acid_codes.one_letter_given_three_letter.keys())
   for resname in amino_acid_resnames:
     process(
       mon_lib_srv=mon_lib_srv,
