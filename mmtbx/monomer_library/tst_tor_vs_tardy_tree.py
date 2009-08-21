@@ -192,13 +192,13 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
     external_clusters=external_clusters,
     fixed_vertex_lists=[fixed_vertices]).build_tree()
   assert len(tardy_tree.cluster_manager.loop_edges) == 0
-  tardy_model_start = scitbx.rigid_body.tardy_model(
+  tardy_model = scitbx.rigid_body.tardy_model(
     labels=pdb_atoms.extract_name(),
     sites=pdb_atoms.extract_xyz(),
     masses=flex.double(pdb_atoms.size(), 1),
     tardy_tree=tardy_tree,
     potential_obj=None)
-  joint_dofs = tardy_model_start.degrees_of_freedom_each_joint()
+  joint_dofs = tardy_model.degrees_of_freedom_each_joint()
   for ib in xrange(len(joint_dofs)):
     c = tardy_tree.cluster_manager.clusters[ib]
     print "cluster:", joint_dofs[ib], [pdb_atoms[i].name for i in c]
@@ -219,7 +219,7 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
     if (he[0] == -1):
       number_of_trees += 1
       continue
-    hinge_atom_names = [tardy_model_start.labels[i].strip() for i in he]
+    hinge_atom_names = [tardy_model.labels[i].strip() for i in he]
     atom_names = tuple(sorted(hinge_atom_names))
     tors = tor_dict.get(atom_names)
     if (len(tors) == 1):
@@ -254,34 +254,15 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
       raise RuntimeError(msg)
     print "Info:", msg
   #
-  def get_q_packed_for_zero_dihedrals(tardy_model):
-    uninitialized = -1e20
-    result = flex.double(tardy_model.q_packed_size, uninitialized)
-    rotamer_tor_id = set([tor.id for tor in rotamer_tor])
-    for tor in comp.tor_list:
-      i_q_packed = tor_id_i_q_packed_matches.get(tor.id)
-      if (i_q_packed is not None):
-        ai = [atom_indices[atom_id] for atom_id in tor.atom_ids()]
-        d_sites = [tardy_model.sites[i] for i in ai]
-        d = cctbx.geometry_restraints.dihedral(
-          sites=d_sites, angle_ideal=0, weight=1)
-        if (tor.id in rotamer_tor_id):
-          result[i_q_packed] = -math.radians(d.angle_model)
-        else:
-          result[i_q_packed] = 0 # keep fixed
-    assert result.all_ne(uninitialized)
-    return result
-  tardy_model_start.unpack_q(
-    q_packed=get_q_packed_for_zero_dihedrals(tardy_model=tardy_model_start))
-  tardy_model_work = scitbx.rigid_body.tardy_model(
-    labels=tardy_model_start.labels,
-    sites=tardy_model_start.sites_moved(),
-    masses=tardy_model_start.masses,
-    tardy_tree=tardy_tree,
-    potential_obj=None)
-  q_packed_zero = get_q_packed_for_zero_dihedrals(
-    tardy_model=tardy_model_work)
-  assert flex.abs(q_packed_zero).all_lt(1e-6)
+  tors_start = {}
+  for tor in comp.tor_list:
+    ai = [atom_indices.get(atom_id) for atom_id in tor.atom_ids()]
+    if (ai.count(None) != 0): continue
+    d_sites = [tardy_model.sites[i] for i in ai]
+    d = cctbx.geometry_restraints.dihedral(
+      sites=d_sites, angle_ideal=0, weight=1)
+    assert tor.id not in tors_start
+    tors_start[tor.id] = d.angle_model
   #
   if (strip_hydrogens):
     rotamers_sub_dir = "rotamers_no_h"
@@ -293,13 +274,13 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
   atom_strings = []
   atom_serial_first_value = 1
   for i_rotamer,rotamer in enumerate(rotamer_info.rotamer):
-    q_packed = flex.double(tardy_model_work.q_packed_size, 0)
+    q_packed_work = flex.double(tardy_model.q_packed_size, 0)
     for tor,angle in zip(rotamer_tor, rotamer.angles):
       i_q_packed = tor_id_i_q_packed_matches.get(tor.id)
       if (i_q_packed is not None and angle is not None):
-        q_packed[i_q_packed] = math.radians(angle)
-    tardy_model_work.unpack_q(q_packed=q_packed)
-    rotamer_sites = tardy_model_work.sites_moved()
+        q_packed_work[i_q_packed] = math.radians(angle - tors_start[tor.id])
+    tardy_model.unpack_q(q_packed=q_packed_work)
+    rotamer_sites = tardy_model.sites_moved()
     rotamer_sites += matrix.col((4,4,4)) * i_rotamer
     pdb_atoms.set_xyz(new_xyz=rotamer_sites)
     report_tors(
