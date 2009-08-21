@@ -14,7 +14,6 @@ from libtbx import introspection
 from libtbx import adopt_init_args
 from copy import deepcopy
 import masks
-from libtbx.test_utils import approx_equal
 
 number_of_mask_calculations = 0
 
