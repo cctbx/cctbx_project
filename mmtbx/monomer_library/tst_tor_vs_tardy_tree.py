@@ -7,6 +7,7 @@ import scitbx.graph.tardy_tree
 from scitbx.array_family import flex
 from scitbx import matrix
 import libtbx.phil
+from libtbx.str_utils import show_string
 import libtbx.load_env
 import math
 import string
@@ -16,6 +17,9 @@ op = os.path
 rotamer_info_master_phil_str = """\
 tor_ids = None
   .type = strings
+tor_atom_ids = None
+  .type = strings
+  .multiple = True
 tree_generation_without_bond = None
   .type = strings
   .multiple = True
@@ -208,10 +212,36 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
   if (rotamer_info is None):
     return None
   #
-  tor_dict = {}
+  comp_tor_by_id = {}
   for tor in comp.tor_list:
-    atom_names = tuple(sorted([tor.atom_id_2, tor.atom_id_3]))
-    tor_dict.setdefault(atom_names, []).append(tor)
+    assert tor.id not in comp_tor_by_id
+    comp_tor_by_id[tor.id] = tor
+  rotmer_info_tor_ids = set(rotamer_info.tor_ids)
+  rotamer_tor_by_id = {}
+  for tor_atom_ids in rotamer_info.tor_atom_ids:
+    assert len(tor_atom_ids) == 5
+    tor_id = tor_atom_ids[0]
+    assert tor_id in rotmer_info_tor_ids
+    assert tor_id not in comp_tor_by_id
+    assert tor_id not in rotamer_tor_by_id
+    rotamer_tor_by_id[tor_id] = tuple(tor_atom_ids[1:])
+  rotamer_tor_atom_ids_by_tor_id = {}
+  for tor_id in rotamer_info.tor_ids:
+    comp_tor = comp_tor_by_id.get(tor_id)
+    if (comp_tor is not None):
+      rotamer_tor_atom_ids_by_tor_id[tor_id] = comp_tor.atom_ids()
+    else:
+      atom_ids = rotamer_tor_by_id.get(tor_id)
+      if (atom_ids is None):
+        raise RuntimeError(
+          "rotamer_info.tor_id %s is unknown." % show_string(tor_id))
+      rotamer_tor_atom_ids_by_tor_id[tor_id] = atom_ids
+  #
+  tor_id_by_rotatable_bond_atom_names = {}
+  for tor_id,atom_ids in rotamer_tor_atom_ids_by_tor_id.items():
+    atom_names = tuple(sorted(atom_ids[1:3]))
+    assert atom_names not in tor_id_by_rotatable_bond_atom_names
+    tor_id_by_rotatable_bond_atom_names[atom_names] = tor_id
   #
   tor_id_i_q_packed_matches = {}
   number_of_trees = 0
@@ -221,48 +251,33 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
       continue
     hinge_atom_names = [tardy_model.labels[i].strip() for i in he]
     atom_names = tuple(sorted(hinge_atom_names))
-    tors = tor_dict.get(atom_names)
-    if (len(tors) == 1):
-      tor = tors[0]
-    else:
-      used_tors = []
-      for tor in tors:
-        if (tor.id in rotamer_info.tor_ids):
-          used_tors.append(tor)
-      assert len(used_tors) == 1
-      tor = used_tors[0]
-    tor_id_i_q_packed_matches[tor.id] = i_body - 1
+    tor_id = tor_id_by_rotatable_bond_atom_names.get(atom_names)
+    if (tor_id is None):
+      raise RuntimeError(
+        "rotatable bond atoms %s - %s (as defined by tardy_tree):"
+        " no match in rotamer_info.tor_ids" % tuple(hinge_atom_names))
+    tor_id_i_q_packed_matches[tor_id] = i_body - 1
   assert number_of_trees == 1
   #
-  rotamer_tor = [None] * len(rotamer_info.tor_ids)
-  lookup = {}
-  for i,tor_id in enumerate(rotamer_info.tor_ids):
-    lookup[tor_id] = i
-  for tor in comp.tor_list:
-    i = lookup.get(tor.id)
-    if (i is not None):
-      assert rotamer_tor[i] is None
-      rotamer_tor[i] = tor
-  assert rotamer_tor.count(None) == 0
-  #
-  print "tardy_tree tors:", ", ".join(sorted(tor_id_i_q_packed_matches.keys()))
-  print "rotamer tors:", ", ".join([tor.id for tor in rotamer_tor])
-  if (len(rotamer_tor) != len(tor_id_i_q_packed_matches)):
-    msg = "tardy_tree tor vs. rotamer info differences: %s" \
-      % pdb_residue.resname
-    if (not strip_hydrogens):
-      raise RuntimeError(msg)
-    print "Info:", msg
+  unused_rotamer_info_tor_ids = []
+  for tor_id in rotamer_info.tor_ids:
+    if (tor_id not in tor_id_i_q_packed_matches):
+      unused_rotamer_info_tor_ids.append(tor_id)
+  if (len(unused_rotamer_info_tor_ids) != 0):
+    print "Info: unused rotamer_info.tor_ids:", \
+      " ".join(unused_rotamer_info_tor_ids)
+    assert strip_hydrogens
   #
   tors_start = {}
-  for tor in comp.tor_list:
-    ai = [atom_indices.get(atom_id) for atom_id in tor.atom_ids()]
-    if (ai.count(None) != 0): continue
+  for tor_id in tor_id_i_q_packed_matches.keys():
+    tor_atom_ids = rotamer_tor_atom_ids_by_tor_id[tor_id]
+    ai = [atom_indices.get(atom_id) for atom_id in tor_atom_ids]
+    assert ai.count(None) == 0
     d_sites = [tardy_model.sites[i] for i in ai]
     d = cctbx.geometry_restraints.dihedral(
       sites=d_sites, angle_ideal=0, weight=1)
-    assert tor.id not in tors_start
-    tors_start[tor.id] = d.angle_model
+    assert tor_id not in tors_start
+    tors_start[tor_id] = d.angle_model
   #
   if (strip_hydrogens):
     rotamers_sub_dir = "rotamers_no_h"
@@ -278,10 +293,10 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
   atom_serial_first_value = 1
   for i_rotamer,rotamer in enumerate(rotamer_info.rotamer):
     q_packed_work = flex.double(tardy_model.q_packed_size, 0)
-    for tor,angle in zip(rotamer_tor, rotamer.angles):
-      i_q_packed = tor_id_i_q_packed_matches.get(tor.id)
+    for tor_id,angle in zip(rotamer_info.tor_ids, rotamer.angles):
+      i_q_packed = tor_id_i_q_packed_matches.get(tor_id)
       if (i_q_packed is not None and angle is not None):
-        q_packed_work[i_q_packed] = math.radians(angle - tors_start[tor.id])
+        q_packed_work[i_q_packed] = math.radians(angle - tors_start[tor_id])
     tardy_model.unpack_q(q_packed=q_packed_work)
     rotamer_sites = tardy_model.sites_moved()
     rotamer_sites += matrix.col((4,4,4)) * i_rotamer
@@ -430,11 +445,6 @@ def process(mon_lib_srv, rotamer_info_master_phil, resname):
   tors_not_hinge = non_const_tor_ids.difference(tor_hinge_matches)
   if (len(tors_not_hinge) != 0):
     print "tors_not_hinge:", ", ".join(sorted(tors_not_hinge))
-  if (rotamer_info is not None):
-    for tor_id in rotamer_info.tor_ids:
-      assert tor_id is not None
-      if (tor_id not in tor_hinge_matches):
-        print "Warning: unexpected rotamer_info tor_id:", tor_id
   for strip_hydrogens in [True, False]:
     generate_rotamers(
       comp=comp,
