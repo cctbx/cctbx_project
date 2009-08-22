@@ -7,6 +7,7 @@ class DetectorImageBase(object):
     self.linearintdata=None
     self.bin=1
     self.vendortype = "baseclass"
+    self.beam_center_reference_frame = "instrument"#cf beam_center_convention.py
 
   def setBin(self,bin): #software binning.
                         # the only bin values supported are 1 & 2
