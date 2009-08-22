@@ -20,6 +20,8 @@ tor_ids = None
 tor_atom_ids = None
   .type = strings
   .multiple = True
+atom_ids_not_handled = None
+  .type = strings
 tree_generation_without_bond = None
   .type = strings
   .multiple = True
@@ -123,15 +125,15 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
     for atom in ag.atoms():
       if (atom.element == " H"):
         ag.remove_atom(atom=atom)
+  elif (    rotamer_info is not None
+        and rotamer_info.atom_ids_not_handled is not None):
     pdb_residue = pdb_hierarchy.only_residue()
-  else:
-    pdb_residue = pdb_hierarchy.only_residue()
-    remove_name = {"ASP": " HD2", "GLU": " HE2"}.get(pdb_residue.resname)
-    if (remove_name is not None):
+    atom_ids_not_handled = set(rotamer_info.atom_ids_not_handled)
+    if (len(atom_ids_not_handled) != 0):
       for atom in ag.atoms():
-        if (atom.name == remove_name):
+        if (atom.name.strip() in atom_ids_not_handled):
           ag.remove_atom(atom=atom)
-      pdb_residue = pdb_hierarchy.only_residue()
+  pdb_residue = pdb_hierarchy.only_residue()
   pdb_atoms = pdb_residue.atoms()
   matched_mon_lib_atom_names = flex.select(
     sequence=matched_atom_names.mon_lib_names(),
