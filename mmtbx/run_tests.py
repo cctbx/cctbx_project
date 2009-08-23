@@ -33,7 +33,7 @@ def run():
   "$D/monomer_library/tst_rna_sugar_pucker_analysis.py",
   "$D/monomer_library/tst_cif_types.py",
   "$D/monomer_library/tst_motif.py",
-  "$D/monomer_library/tst_tor_vs_tardy_tree.py",
+  #"$D/monomer_library/tst_tor_vs_tardy_tree.py",
   "$D/monomer_library/tst_selection.py",
   "$D/monomer_library/tst_tyr_from_gly_and_bnz.py",
   "$D/monomer_library/tst_pdb_interpretation.py",
