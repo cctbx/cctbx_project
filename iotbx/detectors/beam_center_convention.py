@@ -77,34 +77,27 @@ def convert_beam_instrument_to_imageblock(imageobject,beam_center_convention,for
   imageobject.beam_center_reference_frame = "imageblock"
   imageobject.beam_center_convention = beam_center_convention
 
-def convert_beam_instrument_to_module(input_parameters,image_divider,moduleindex,beam_center_convention):
+def convert_beam_instrument_to_module(input_image,image_divider,moduleindex,
+                                       beam_center_convention):
+    # caller assures input is in instrument reference frame; uses return value in image reference frame
+    input_parameters = input_image.parameters
     C = beam_center_convention_definitions(beam_center_convention)
 
     input_beam_mm = (input_parameters['BEAM_CENTER_X'],input_parameters['BEAM_CENTER_Y'])
+    converter = instrument_to_imageblock_relation(input_image)
+    input_imageblock_beam_mm = converter.select(beam_center_convention)
 
-    width_in_pixels = (input_parameters['SIZE1'],input_parameters['SIZE2'])
+    input_imageblock_beam_pixels = [
+      a/input_parameters["PIXEL_SIZE"] for a in input_imageblock_beam_mm]
 
-    output_beam_mm = []
-    for outidx in [0,1]:
-      srcidx = int((not bool(outidx)) != (not C.ar_flag)) # is xor(outidx, ar_flag)
-      direction_reverse = [C.xr_flag,C.yr_flag][outidx]
+    #correct for the origin of the slice
+    module_beam_pixels = [
+      input_imageblock_beam_pixels[0] - image_divider.tile_slow_interval(moduleindex).first,
+      input_imageblock_beam_pixels[1] - image_divider.tile_fast_interval(moduleindex).first
+    ]
 
-      #convert instrument beam_mm back to instrument pixels
-      instrument_pixels = input_beam_mm[srcidx]/input_parameters['PIXEL_SIZE']
-      if direction_reverse:
-        instrument_pixels = width_in_pixels[srcidx] - instrument_pixels
-
-      #translate to module_pixels
-      module_tile = [image_divider.tile_slow_interval(moduleindex),
-                     image_divider.tile_fast_interval(moduleindex)][srcidx]
-      module_pixels = instrument_pixels - module_tile.first
-
-      #convert module pixels to output_beam_mm
-      if direction_reverse:
-        module_pixels = module_tile.size() - module_pixels
-      beam_mm = module_pixels * input_parameters['PIXEL_SIZE']
-      output_beam_mm.append(beam_mm)
-    return tuple(output_beam_mm)
+    module_beam_mm = [a * input_parameters["PIXEL_SIZE"] for a in module_beam_pixels]
+    return tuple(module_beam_mm)
 
 if __name__=="__main__":
   from libtbx import adopt_init_args
@@ -125,21 +118,24 @@ if __name__=="__main__":
       if idx in [2,5,8]:  return test_tile(4100,6139)
   input_parameters = {'BEAM_CENTER_X':154.9,'BEAM_CENTER_Y':148.7,
                       'SIZE1':6144,'SIZE2':6144,'PIXEL_SIZE':0.051294}
+  from iotbx.detectors.detectorbase import DetectorImageBase
+  input_object = DetectorImageBase("no file")
+  input_object.parameters = input_parameters
   ID = test_divider()
   S = StringIO.StringIO()
   for convention in xrange(8):
     for moduleidx in xrange(9):
-      B = convert_beam_instrument_to_module(input_parameters,ID,moduleidx,convention)
+      B = convert_beam_instrument_to_module(input_object,ID,moduleidx,convention)
       print >>S,"(%.1f,%.1f)"%(B[0],B[1]),
     print >>S
   assert not show_diff(S.getvalue(),
 """(154.7,148.5) (154.7,43.4) (154.7,-61.6) (49.6,148.5) (49.6,43.4) (49.6,-61.6) (-55.4,148.5) (-55.4,43.4) (-55.4,-61.6)
-(148.5,154.7) (43.4,154.7) (-61.6,154.7) (148.5,49.6) (43.4,49.6) (-61.6,49.6) (148.5,-55.4) (43.4,-55.4) (-61.6,-55.4)
-(154.7,-61.6) (154.7,43.4) (154.7,148.5) (49.6,-61.6) (49.6,43.4) (49.6,148.5) (-55.4,-61.6) (-55.4,43.4) (-55.4,148.5)
-(148.5,-55.4) (43.4,-55.4) (-61.6,-55.4) (148.5,49.6) (43.4,49.6) (-61.6,49.6) (148.5,154.7) (43.4,154.7) (-61.6,154.7)
-(-55.4,148.5) (-55.4,43.4) (-55.4,-61.6) (49.6,148.5) (49.6,43.4) (49.6,-61.6) (154.7,148.5) (154.7,43.4) (154.7,-61.6)
-(-61.6,154.7) (43.4,154.7) (148.5,154.7) (-61.6,49.6) (43.4,49.6) (148.5,49.6) (-61.6,-55.4) (43.4,-55.4) (148.5,-55.4)
-(-55.4,-61.6) (-55.4,43.4) (-55.4,148.5) (49.6,-61.6) (49.6,43.4) (49.6,148.5) (154.7,-61.6) (154.7,43.4) (154.7,148.5)
-(-61.6,-55.4) (43.4,-55.4) (148.5,-55.4) (-61.6,49.6) (43.4,49.6) (148.5,49.6) (-61.6,154.7) (43.4,154.7) (148.5,154.7)
+(148.5,154.7) (148.5,49.6) (148.5,-55.4) (43.4,154.7) (43.4,49.6) (43.4,-55.4) (-61.6,154.7) (-61.6,49.6) (-61.6,-55.4)
+(154.7,166.2) (154.7,61.2) (154.7,-43.9) (49.6,166.2) (49.6,61.2) (49.6,-43.9) (-55.4,166.2) (-55.4,61.2) (-55.4,-43.9)
+(148.5,160.0) (148.5,55.0) (148.5,-50.1) (43.4,160.0) (43.4,55.0) (43.4,-50.1) (-61.6,160.0) (-61.6,55.0) (-61.6,-50.1)
+(160.0,148.5) (160.0,43.4) (160.0,-61.6) (55.0,148.5) (55.0,43.4) (55.0,-61.6) (-50.1,148.5) (-50.1,43.4) (-50.1,-61.6)
+(166.2,154.7) (166.2,49.6) (166.2,-55.4) (61.2,154.7) (61.2,49.6) (61.2,-55.4) (-43.9,154.7) (-43.9,49.6) (-43.9,-55.4)
+(160.0,166.2) (160.0,61.2) (160.0,-43.9) (55.0,166.2) (55.0,61.2) (55.0,-43.9) (-50.1,166.2) (-50.1,61.2) (-50.1,-43.9)
+(166.2,160.0) (166.2,55.0) (166.2,-50.1) (61.2,160.0) (61.2,55.0) (61.2,-50.1) (-43.9,160.0) (-43.9,55.0) (-43.9,-50.1)
 """)
   print "OK"
