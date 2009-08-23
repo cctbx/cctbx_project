@@ -75,6 +75,7 @@ def convert_beam_instrument_to_imageblock(imageobject,beam_center_convention,for
   imageobject.parameters['BEAM_CENTER_X'],\
   imageobject.parameters['BEAM_CENTER_Y']= converter.select(beam_center_convention)
   imageobject.beam_center_reference_frame = "imageblock"
+  imageobject.beam_center_convention = beam_center_convention
 
 def convert_beam_instrument_to_module(input_parameters,image_divider,moduleindex,beam_center_convention):
     C = beam_center_convention_definitions(beam_center_convention)
