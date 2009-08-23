@@ -1,3 +1,4 @@
+import copy
 from iotbx.detectors import ReadADSC
 
 class DetectorImageBase(object):
