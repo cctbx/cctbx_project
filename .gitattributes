@@ -347,6 +347,7 @@ mmtbx/monomer_library/mod_rnaC2.cif -text
 mmtbx/monomer_library/mod_rnaC3.cif -text
 mmtbx/monomer_library/mod_rnaEsd.cif -text
 mmtbx/monomer_library/rna_sugar_pucker_analysis.py svneol=native#text/x-python
+mmtbx/monomer_library/rotamer_utils.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_conformation_dependent_restraints.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_geo_reduce_for_tardy.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_protein_interpretation.py -text
