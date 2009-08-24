@@ -105,7 +105,7 @@ class PilatusSlice(PilatusImage):
 
   def read(self):
     if self.already_read_data: return
-    self.linearintdata = self.slice_callback()
+    self.bin_safe_set_data( self.slice_callback() )
     self.already_read_data = True
 
 if __name__=='__main__':

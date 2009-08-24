@@ -69,5 +69,6 @@ class DIPImage(DetectorImageBase):
     return struct.unpack('i',self.rawheader[4:8])[0]!=self.deduce_size
 
   def read(self):
-    self.linearintdata = ReadDIP(self.filename,
+    self.bin_safe_set_data( ReadDIP(self.filename,
          self.size1*self.bin,self.size2*self.bin,self.endian_swap_required())
+         )

@@ -30,6 +30,7 @@ class DetectorImageBase(object):
       self.parameters['CCD_IMAGE_SATURATION']=self.parameters['CCD_IMAGE_SATURATION']*bin*bin
     self.parameters['PIXEL_SIZE']=self.parameters['PIXEL_SIZE']*bin
     self.bin = bin
+    self.bin_safe_set_data(self.linearintdata)
 
   def fileLength(self):
     self.readHeader()
@@ -52,11 +53,24 @@ class DetectorImageBase(object):
 
   def read(self):
     self.fileLength()
-    self.linearintdata = ReadADSC(self.filename,self.dataoffset(),
+    self.bin_safe_set_data(
+         ReadADSC(self.filename,self.dataoffset(),
          self.size1*self.bin,self.size2*self.bin,self.getEndian())
-    if self.bin==2:
+         )
+
+  def bin_safe_set_data(self, new_data_array):
+    #private interface for software binning 2 X 2.
+    #  Any setting of linearintdata must be through this function
+    #  self.bin==2: when data are read lazily, they must be binned
+    #  new_data_array.bin2by2==True: the data have been binned
+    if self.bin==2 and \
+       new_data_array != None and\
+       new_data_array.__dict__.get("bin2by2")!=True:
       from iotbx.detectors import Bin2_by_2
-      self.linearintdata = Bin2_by_2(self.linearintdata)
+      self.linearintdata = Bin2_by_2(new_data_array)
+      self.linearintdata.bin2by2 = True
+    else:
+      self.linearintdata = new_data_array
 
   data_types = dict( SIZE1=int, SIZE2=int, PIXEL_SIZE=float,
                      DISTANCE=float, TWOTHETA=float, OSC_RANGE=float,

@@ -6,8 +6,8 @@ class BrukerImage (DetectorImageBase):
   def __init__(self,filename):
     self.filename=filename
     self.bruker = Bruker_base(filename)
-    self.linearintdata=self.bruker.linearintdata()
     self.bin=1
+    self.bin_safe_set_data(self.bruker.linearintdata())
     self.vendortype = "Bruker Proteus CCD"
     self.readHeader()
 

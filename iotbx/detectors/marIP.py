@@ -51,10 +51,7 @@ class MARIPImage(DetectorImageBase):
     return 0
 
   def read(self):
-    self.linearintdata = self.adaptor.rawdata()
-    if self.bin==2:
-      from iotbx.detectors import Bin2_by_2
-      self.linearintdata = Bin2_by_2(self.linearintdata)
+    self.bin_safe_set_data( self.adaptor.rawdata() )
 
   def dataoffset(self):
     return 0

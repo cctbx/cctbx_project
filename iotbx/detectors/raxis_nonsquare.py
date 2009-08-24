@@ -47,11 +47,8 @@ class NonSquareRAXISImage(RAXISImage):
          self.head['nFast']*self.bin,
          self.getEndian())
 
-    self.linearintdata = MakeSquareRAXIS(self.np,self.extra,
+    self.bin_safe_set_data( MakeSquareRAXIS(self.np,self.extra,
                                          self.head['nSlow'],
                                          self.rawlinearintdata)
-
-    if self.bin==2:
-      from iotbx.detectors import Bin2_by_2
-      self.linearintdata = Bin2_by_2(self.linearintdata)
+    )
     del self.rawlinearintdata
