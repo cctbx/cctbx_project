@@ -1,7 +1,11 @@
+import cctbx.geometry_restraints
 import scitbx.rigid_body
 import scitbx.graph.tardy_tree
 from scitbx.array_family import flex
+import libtbx.phil
+from libtbx.str_utils import show_string
 from libtbx.utils import sequence_index_dict
+import math
 
 rotamer_info_master_phil_str = """\
 tor_ids = None
@@ -29,6 +33,14 @@ rotamer
    .type = floats(allow_none_elements=True)
 }
 """
+
+__rotamer_info_master_phil = None
+def rotamer_info_master_phil():
+  global __rotamer_info_master_phil
+  if (__rotamer_info_master_phil is None):
+    __rotamer_info_master_phil = libtbx.phil.parse(
+      input_string=rotamer_info_master_phil_str)
+  return __rotamer_info_master_phil
 
 def extract_bonds_to_omit(rotamer_info):
   result = set()
@@ -104,3 +116,151 @@ def tardy_model(
   assert joint_dofs[0] == 0
   assert joint_dofs[1:].all_eq(1)
   return tardy_model
+
+def build_rotamer_tor_atom_ids_by_tor_id(comp_comp_id, rotamer_info):
+  comp_tor_by_id = {}
+  for tor in comp_comp_id.tor_list:
+    assert tor.id not in comp_tor_by_id
+    comp_tor_by_id[tor.id] = tor
+  rotmer_info_tor_ids = set(rotamer_info.tor_ids)
+  rotamer_tor_by_id = {}
+  for tor_atom_ids in rotamer_info.tor_atom_ids:
+    assert len(tor_atom_ids) == 5
+    tor_id = tor_atom_ids[0]
+    assert tor_id in rotmer_info_tor_ids
+    assert tor_id not in rotamer_tor_by_id
+    rotamer_tor_by_id[tor_id] = tuple(tor_atom_ids[1:])
+  result = {}
+  for tor_id in rotamer_info.tor_ids:
+    atom_ids = rotamer_tor_by_id.get(tor_id)
+    if (atom_ids is not None):
+      result[tor_id] = atom_ids
+    else:
+      comp_tor = comp_tor_by_id.get(tor_id)
+      if (comp_tor is not None):
+        result[tor_id] = comp_tor.atom_ids()
+      else:
+        raise RuntimeError(
+          "rotamer_info.tor_id %s is unknown." % show_string(tor_id))
+  return result
+
+def build_i_q_packed_by_tor_id(rotamer_tor_atom_ids_by_tor_id, tardy_model):
+  tor_id_by_rotatable_bond_atom_names = {}
+  for tor_id,atom_ids in rotamer_tor_atom_ids_by_tor_id.items():
+    atom_names = tuple(sorted(atom_ids[1:3]))
+    assert atom_names not in tor_id_by_rotatable_bond_atom_names
+    tor_id_by_rotatable_bond_atom_names[atom_names] = tor_id
+  result = {}
+  number_of_trees = 0
+  for i_body,he in enumerate(
+                     tardy_model.tardy_tree.cluster_manager.hinge_edges):
+    if (he[0] == -1):
+      number_of_trees += 1
+      continue
+    hinge_atom_names = [tardy_model.labels[i].strip() for i in he]
+    atom_names = tuple(sorted(hinge_atom_names))
+    tor_id = tor_id_by_rotatable_bond_atom_names.get(atom_names)
+    if (tor_id is None):
+      raise RuntimeError(
+        "rotatable bond atoms %s - %s (as defined by tardy_tree):"
+        " no match in rotamer_info.tor_ids" % tuple(hinge_atom_names))
+    result[tor_id] = i_body - 1
+  assert number_of_trees == 1
+  return result
+
+def build_angle_start_by_tor_id(
+      mon_lib_atom_names,
+      sites_cart,
+      rotamer_tor_atom_ids_by_tor_id,
+      i_q_packed_by_tor_id):
+  result = {}
+  atom_indices = sequence_index_dict(seq=mon_lib_atom_names)
+  for tor_id in i_q_packed_by_tor_id.keys():
+    tor_atom_ids = rotamer_tor_atom_ids_by_tor_id[tor_id]
+    ai = [atom_indices.get(atom_id) for atom_id in tor_atom_ids]
+    assert ai.count(None) == 0
+    d_sites = [sites_cart[i] for i in ai]
+    d = cctbx.geometry_restraints.dihedral(
+      sites=d_sites, angle_ideal=0, weight=1)
+    assert tor_id not in result
+    result[tor_id] = d.angle_model
+  return result
+
+class rotamer_iterator(object):
+
+  def __init__(O, comp_comp_id, atom_names, sites_cart):
+    assert sites_cart.size() == len(atom_names)
+    O.problem_message = None
+    if (len(comp_comp_id.rotamer_info) == 0):
+      O.rotamer_info = None
+      return
+    assert len(comp_comp_id.rotamer_info) == 1
+    resname = comp_comp_id.chem_comp.id
+    O.rotamer_info = rotamer_info_master_phil().fetch(
+      source=libtbx.phil.parse(
+        input_string=comp_comp_id.rotamer_info[0].phil_str)).extract()
+    if (O.rotamer_info is None):
+      return
+    import iotbx.pdb.atom_name_interpretation
+    matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
+      resname].match_atom_names(atom_names=atom_names)
+    names = matched_atom_names.unexpected
+    if (len(names) != 0):
+      O.problem_message = "resname=%s: unexpected atoms: %s" % (
+        resname, " ".join(sorted(names)))
+      return
+    names = matched_atom_names.missing_atom_names(ignore_hydrogen=True)
+    if (len(names) != 0):
+      O.problem_message = "resname=%s: missing atoms: %s" % (
+        resname, " ".join(sorted(names)))
+      return
+    O.mon_lib_atom_names = matched_atom_names.mon_lib_names()
+    if (O.rotamer_info.atom_ids_not_handled is not None):
+      atom_ids_not_handled = set(O.rotamer_info.atom_ids_not_handled)
+      not_handled = []
+      for atom_name, mon_lib_atom_name in zip(atom_names, O.mon_lib_atom_names):
+        if (mon_lib_atom_name in atom_ids_not_handled):
+          not_handled.append(atom_name.strip())
+      if (len(not_handled) != 0):
+        O.problem_message = \
+          "%s: rotamer_info does not handle these atoms: %s" % (
+            resname, " ".join(not_handled))
+        return
+    O.bonds_to_omit = extract_bonds_to_omit(rotamer_info=O.rotamer_info)
+    O.tardy_model = tardy_model(
+      comp_comp_id=comp_comp_id,
+      input_atom_names=atom_names,
+      mon_lib_atom_names=O.mon_lib_atom_names,
+      sites_cart=sites_cart,
+      bonds_to_omit=O.bonds_to_omit,
+      constrain_dihedrals_with_sigma_less_than_or_equal_to
+        =O.rotamer_info.constrain_dihedrals_with_sigma_less_than_or_equal_to)
+    O.rotamer_tor_atom_ids_by_tor_id = build_rotamer_tor_atom_ids_by_tor_id(
+      comp_comp_id=comp_comp_id,
+      rotamer_info=O.rotamer_info)
+    O.i_q_packed_by_tor_id = build_i_q_packed_by_tor_id(
+      rotamer_tor_atom_ids_by_tor_id=O.rotamer_tor_atom_ids_by_tor_id,
+      tardy_model=O.tardy_model)
+    O.angle_start_by_tor_id = build_angle_start_by_tor_id(
+      mon_lib_atom_names=O.mon_lib_atom_names,
+      sites_cart=sites_cart,
+      rotamer_tor_atom_ids_by_tor_id=O.rotamer_tor_atom_ids_by_tor_id,
+      i_q_packed_by_tor_id=O.i_q_packed_by_tor_id)
+    O.reset()
+
+  def reset(O):
+    O.__iterates = iter(O.rotamer_info.rotamer)
+
+  def __iter__(O):
+    return O
+
+  def next(O):
+    rotamer = O.__iterates.next()
+    q_packed_work = flex.double(O.tardy_model.q_packed_size, 0)
+    for tor_id,angle in zip(O.rotamer_info.tor_ids, rotamer.angles):
+      i_q_packed = O.i_q_packed_by_tor_id.get(tor_id)
+      if (i_q_packed is not None and angle is not None):
+        q_packed_work[i_q_packed] = math.radians(
+          angle - O.angle_start_by_tor_id[tor_id])
+    O.tardy_model.unpack_q(q_packed=q_packed_work)
+    return rotamer, O.tardy_model.sites_moved()
