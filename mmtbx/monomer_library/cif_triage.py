@@ -1,4 +1,6 @@
 import mmtbx.monomer_library.server
+import mmtbx.monomer_library.rotamer_utils
+import libtbx.phil
 from libtbx.str_utils import show_string, show_sorted_by_counts
 from libtbx import dict_with_default_0
 
@@ -63,6 +65,13 @@ def check_comp(file_name):
             for s in atom_ids]))
       tor_atom_ids.add(atom_ids)
     print "  number of tors:", len(tor_atom_ids)
+    tor_atom_ids = {}
+    for tor in comp_comp_id.tor_list:
+      atom_ids = tuple(sorted([tor.atom_id_2, tor.atom_id_3]))
+      tor_atom_ids.setdefault(atom_ids, []).append(tor)
+    for atom_ids,tors in tor_atom_ids.items():
+      if (len(tors) != 1):
+        print "    redundant tors:", ", ".join([tor.id for tor in tors])
     #
     chir_atom_ids = set()
     for chir in comp_comp_id.chir_list:
@@ -92,4 +101,51 @@ def check_comp(file_name):
         label_count_pairs=plane_atom_counts.items(),
         prefix="    ")
       assert min(plane_atom_counts.values()) >= 3
+    #
+    assert len(comp_comp_id.rotamer_info) < 2
+    if (len(comp_comp_id.rotamer_info) == 1):
+      rotamer_info_phil = mmtbx.monomer_library.rotamer_utils \
+        .rotamer_info_master_phil().fetch(
+          source=libtbx.phil.parse(
+            input_string=comp_comp_id.rotamer_info[0].phil_str))
+      rotamer_info = rotamer_info_phil.extract()
+      print "  rotamer_info.tor_ids:", rotamer_info.tor_ids
+      for tor_id in rotamer_info.tor_ids:
+        assert tor_id.strip() == tor_id
+        assert tor_id.split() == [tor_id]
+      for tor_atom_ids in rotamer_info.tor_atom_ids:
+        assert len(tor_atom_ids) == 5
+        assert tor_atom_ids[0] in rotamer_info.tor_ids
+        for atom_id in tor_atom_ids[1:]:
+          assert atom_id.strip() == atom_id
+          assert atom_id.split() == [atom_id]
+      atom_ids = rotamer_info.atom_ids_not_handled
+      if (atom_ids is not None):
+        for atom_id in atom_ids:
+          assert atom_id.strip() == atom_id
+          assert atom_id.split() == [atom_id]
+      assert (
+           rotamer_info.constrain_dihedrals_with_sigma_less_than_or_equal_to
+             is None
+        or rotamer_info.constrain_dihedrals_with_sigma_less_than_or_equal_to
+             > 0)
+      print "  number of rotamers:", len(rotamer_info.rotamer)
+      n_missing_frequencies = 0
+      for rotamer in rotamer_info.rotamer:
+        assert rotamer.id is not None
+        assert len(rotamer.id.strip()) == len(rotamer.id)
+        assert len(rotamer.id.split()) == 1
+        if (rotamer.frequency is None):
+          if (rotamer.frequency_annotation != "for more uniform sampling"):
+            n_missing_frequencies += 1
+        else:
+          assert rotamer.frequency > 0
+          assert rotamer.frequency < 1
+        assert rotamer.angles is not None
+        assert len(rotamer.angles) == len(rotamer_info.tor_ids)
+        for angle in rotamer.angles:
+          assert angle is None or -180 < angle <= 180
+      if (n_missing_frequencies != 0):
+        print "  WARNING: number of missing frequencies:", \
+          n_missing_frequencies
   return result

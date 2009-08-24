@@ -1,11 +1,9 @@
 from mmtbx.monomer_library import cif_types
 from mmtbx.monomer_library import mmCIF
-from mmtbx.monomer_library import rotamer_utils
 from iotbx.pdb import residue_name_plus_atom_names_interpreter
 from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, format_exception, windows_device_names
-import libtbx.phil
 import libtbx.load_env
 import libtbx.path
 import copy
@@ -221,7 +219,6 @@ class server(process_cif_mixin):
       list_cif = mon_lib_list_cif()
     self.root_path = os.path.dirname(os.path.dirname(list_cif.path))
     self.geostd_path = os.path.join(os.path.dirname(self.root_path), "geostd")
-    self.__rotamer_info_master_phil = None
     self.deriv_list_dict = {}
     self.comp_synonym_list_dict = {}
     self.comp_synonym_atom_list_dict = dicts.with_default_factory(dict)
@@ -236,12 +233,6 @@ class server(process_cif_mixin):
     self.comp_comp_id_mod_dict = {}
     self.process_rna_sugar_pucker_modifications()
     self.process_geostd_rna_dna()
-
-  def rotamer_info_master_phil(self):
-    if (self.__rotamer_info_master_phil is None):
-      self.__rotamer_info_master_phil = libtbx.phil.parse(
-        input_string=rotamer_utils.rotamer_info_master_phil_str)
-    return self.__rotamer_info_master_phil
 
   def convert_all(self, source_info, cif_object, skip_comp_list=False):
     self.convert_deriv_list_dict(cif_object=cif_object)
@@ -411,48 +402,12 @@ class server(process_cif_mixin):
       self.comp_comp_id_mod_dict[key] = result
     return result
 
-  def rotamer_iterator(self,
-        comp_comp_id,
-        atom_names,
-        sites_cart,
-        skip_if_atom_name_problems):
-    assert sites_cart.size() == len(atom_names)
-    assert len(comp_comp_id.rotamer_info) == 1
-    resname = comp_comp_id.chem_comp.id
-    rotamer_info = self.rotamer_info_master_phil().fetch(
-      source=libtbx.phil.parse(
-        input_string=comp_comp_id.rotamer_info[0].phil_str)).extract()
-    if (rotamer_info is None):
-      return None
-    import iotbx.pdb.atom_name_interpretation
-    matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
-      resname].match_atom_names(atom_names=atom_names)
-    names = matched_atom_names.unexpected
-    if (len(names) != 0):
-      if (skip_if_atom_name_problems): return None
-      raise RuntimeError("resname=%s: unexpected atoms: %s" % (
-        resname, " ".join(sorted(names))))
-    names = matched_atom_names.missing_atom_names(ignore_hydrogen=True)
-    if (len(names) != 0):
-      if (skip_if_atom_name_problems): return None
-      raise RuntimeError("resname=%s: missing atoms: %s" % (
-        resname, " ".join(sorted(names))))
-    mon_lib_atom_names = matched_atom_names.mon_lib_names()
-    if (rotamer_info.atom_ids_not_handled is not None):
-      atom_ids_not_handled = set(rotamer_info.atom_ids_not_handled)
-      not_handled = []
-      for atom_name, mon_lib_atom_name in zip(atom_names, mon_lib_atom_names):
-        if (mon_lib_atom_name in atom_ids_not_handled):
-          not_handled.append(atom_name.strip())
-      if (len(not_handled) != 0):
-        if (skip_if_atom_name_problems): return None
-        raise RuntimeError(
-          "%s: rotamer_info does not handle these atoms: %s" % (
-            resname, " ".join(not_handled)))
-    def iterator():
-      for rotamer in rotamer_info.rotamer:
-        yield rotamer.id
-    return iterator
+  def rotamer_iterator(self, comp_comp_id, atom_names, sites_cart):
+    from mmtbx.monomer_library import rotamer_utils
+    return rotamer_utils.rotamer_iterator(
+      comp_comp_id=comp_comp_id,
+      atom_names=atom_names,
+      sites_cart=sites_cart)
 
 class ener_lib(process_cif_mixin):
 
