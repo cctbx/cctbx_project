@@ -46,32 +46,19 @@ def real_space_rigid_body_gradients_simple(
   for i in xrange(3): get(i=i+4, delta=translation_delta)
   return result
 
-def next_rotamer(residue):
-  from mmtbx.rotamer.sidechain_angles import SidechainAngles
-  sa = SidechainAngles(False)
-  resname = residue.resname.lower()
-  for rot in sa.rotamersForAA[resname]:
-    rot_key = resname+"."+rot
-    chi_counter=0
-    for angle in sa.anglesForAA[resname]:
-      current_hash = {}
-      for atom in residue.atoms():
-        current_hash[atom.name] = atom.xyz
-      a_key = resname+"."+angle
-      a = sa.atomsForAngle[a_key]
-      a1,a2,a3,a4 = [current_hash[a[i]] for i in [0,1,2,3]]
-      d = cctbx.geometry_restraints.dihedral(
-        sites=[a1,a2,a3,a4], angle_ideal=0, weight=1)
-      startAngle = d.angle_model
-      endAngle = float(sa.anglesForRot[rot_key][chi_counter])
-      dTheta = endAngle - startAngle
-      rt = matrix.col(a2).rt_for_rotation_around_axis_through(
-        point=matrix.col(a3), angle=dTheta, deg=True)
-      for atom in residue.atoms():
-        if atom.name in sa.atomsMoveWithAngle[a_key]:
-          atom.xyz = rt * matrix.col(atom.xyz)
-      chi_counter+=1
-    yield rot
+def next_rotamer(mon_lib_srv, residue):
+  comp_comp_id = mon_lib_srv.get_comp_comp_id_direct(comp_id=residue.resname)
+  rotamer_iterator = mon_lib_srv.rotamer_iterator(
+    comp_comp_id=comp_comp_id,
+    atom_names=residue.atoms().extract_name(),
+    sites_cart=residue.atoms().extract_xyz())
+  if (rotamer_iterator.problem_message is not None):
+    return
+  if (rotamer_iterator.rotamer_info is None):
+    return
+  for rotamer,rotamer_sites_cart in rotamer_iterator:
+    residue.atoms().set_xyz(new_xyz=rotamer_sites_cart)
+    yield rotamer.id
 
 def ignore_this_residue(residue, atom_selection_bool):
   atoms = residue.atoms()
@@ -248,6 +235,7 @@ class residue_refine_restrained(object):
     return f, g.as_double()
 
 def rotamer_score_and_choose_best(
+      mon_lib_srv,
       density_map,
       pdb_hierarchy,
       geometry_restraints_manager,
@@ -299,14 +287,11 @@ def rotamer_score_and_choose_best(
           rotamer_id = "as_given"
           best = group_args(rotamer_id=rotamer_id, refined=refine())
           n_amino_acids_scored += 1
-          try:
-            for rotamer_id in next_rotamer(residue=residue):
-              trial = group_args(rotamer_id=rotamer_id, refined=refine())
-              if (trial.refined.rs_f_final > best.refined.rs_f_final):
-                best = trial
-          except KeyboardInterrupt: raise
-          except Exception, e:
-            print "EXCEPTION next_rotamer():", e
+          for rotamer_id in next_rotamer(mon_lib_srv=mon_lib_srv,
+                                         residue=residue):
+            trial = group_args(rotamer_id=rotamer_id, refined=refine())
+            if (trial.refined.rs_f_final > best.refined.rs_f_final):
+              best = trial
           print residue.id_str(), "best rotamer:", best.rotamer_id
           residue.atoms().set_xyz(new_xyz=best.refined.sites_cart_residue)
           print
@@ -517,6 +502,7 @@ def run(args):
           scope_extract=work_params,
           attr="atom_selection")
     rotamer_score_and_choose_best(
+      mon_lib_srv=mon_lib_srv,
       density_map=density_map,
       pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
       geometry_restraints_manager=grm,
