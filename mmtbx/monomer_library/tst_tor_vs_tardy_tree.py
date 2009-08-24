@@ -1,4 +1,5 @@
 import mmtbx.monomer_library.server
+import mmtbx.monomer_library.rotamer_utils
 import iotbx.pdb.atom_name_interpretation
 import iotbx.pdb.amino_acid_codes
 import cctbx.geometry_restraints
@@ -7,39 +8,14 @@ import scitbx.graph.tardy_tree
 from scitbx.array_family import flex
 from scitbx import matrix
 import libtbx.phil
+from libtbx.test_utils import Exception_expected, show_diff
 from libtbx.str_utils import show_string
+from libtbx.utils import sequence_index_dict
 import libtbx.load_env
 import math
 import string
 import sys, os
 op = os.path
-
-rotamer_info_master_phil_str = """\
-tor_ids = None
-  .type = strings
-tor_atom_ids = None
-  .type = strings
-  .multiple = True
-atom_ids_not_handled = None
-  .type = strings
-tree_generation_without_bond = None
-  .type = strings
-  .multiple = True
-constrain_dihedrals_with_sigma_less_than_or_equal_to = 10
-  .type=float
-rotamer
-  .multiple = True
-{
- id = None
-   .type = str
- frequency = None
-   .type = float
- frequency_annotation = None
-   .type = str
- angles = None
-   .type = floats(allow_none_elements=True)
-}
-"""
 
 protein_pdb_files = libtbx.env.find_in_repositories(
   relative_path="phenix_regression/protein_pdb_files",
@@ -113,11 +89,11 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
     resname].match_atom_names(atom_names=pdb_atoms.extract_name())
   names = matched_atom_names.unexpected
   if (len(names) != 0):
-    raise RuntimeError("%: unexpected atoms: %s" % (
+    raise RuntimeError("%s: unexpected atoms: %s" % (
       resname, " ".join(sorted(names))))
   names = matched_atom_names.missing_atom_names(ignore_hydrogen=True)
   if (len(names) != 0):
-    raise RuntimeError("%: missing atoms: %s" % (
+    raise RuntimeError("%s: missing atoms: %s" % (
       resname, " ".join(sorted(names))))
   pdb_hierarchy = pdb_inp.construct_hierarchy()
   ag = pdb_hierarchy.only_atom_group()
@@ -156,61 +132,17 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
   rg.icode = " "
   assert pdb_hierarchy.only_atom_group().altloc == ""
   #
-  # XXX severe duplication of source code
-  tree_root_atom_names = set(["CA", "C", "O"])
-  if (("N", "CA") not in bonds_to_omit):
-    tree_root_atom_names.add("N")
-  fixed_vertices = []
-  atom_indices = {}
-  for i,matched_atom_name in enumerate(matched_mon_lib_atom_names):
-    atom_id = matched_atom_name
-    assert atom_id not in atom_indices
-    atom_indices[atom_id] = i
-    if (atom_id in tree_root_atom_names):
-      fixed_vertices.append(i)
-  assert len(atom_indices) == len(matched_mon_lib_atom_names)
-  assert len(fixed_vertices) == len(tree_root_atom_names)
-  edge_list = []
-  for bond in comp.bond_list:
-    bond_atom_ids = bond.atom_ids()
-    if (bond_atom_ids not in bonds_to_omit):
-      ai = [atom_indices.get(atom_id) for atom_id in bond_atom_ids]
-      if (ai.count(None) == 0):
-        edge_list.append(tuple(sorted(ai)))
-  external_clusters = []
-  if (rotamer_info is not None):
-    for tor in comp.tor_list:
-      if (   tor.value_angle_esd
-          <= rotamer_info.constrain_dihedrals_with_sigma_less_than_or_equal_to):
-        ai = [atom_indices.get(atom_id) for atom_id in tor.atom_ids()]
-        if (ai.count(None) == 0):
-          external_clusters.append(sorted(ai))
-    for plane in comp.get_planes():
-      ai = []
-      for atom_id in plane.plane_atoms:
-        i = atom_indices.get(atom_id)
-        if (i is not None):
-          ai.append(i)
-      external_clusters.append(sorted(ai))
-  tardy_tree = scitbx.graph.tardy_tree.construct(
-    n_vertices=pdb_atoms.size(),
-    edge_list=edge_list,
-    external_clusters=external_clusters,
-    fixed_vertex_lists=[fixed_vertices]).build_tree()
-  assert len(tardy_tree.cluster_manager.loop_edges) == 0
-  tardy_model = scitbx.rigid_body.tardy_model(
-    labels=pdb_atoms.extract_name(),
-    sites=pdb_atoms.extract_xyz(),
-    masses=flex.double(pdb_atoms.size(), 1),
-    tardy_tree=tardy_tree,
-    potential_obj=None)
-  joint_dofs = tardy_model.degrees_of_freedom_each_joint()
-  for ib in xrange(len(joint_dofs)):
-    c = tardy_tree.cluster_manager.clusters[ib]
-    print "cluster:", joint_dofs[ib], [pdb_atoms[i].name for i in c]
-  assert joint_dofs[0] == 0
-  assert joint_dofs[1:].all_eq(1)
-  #
+  if (rotamer_info is None):
+    c = None
+  else:
+    c = rotamer_info.constrain_dihedrals_with_sigma_less_than_or_equal_to
+  tardy_model = mmtbx.monomer_library.rotamer_utils.tardy_model(
+    comp_comp_id=comp,
+    input_atom_names=pdb_atoms.extract_name(),
+    mon_lib_atom_names=matched_mon_lib_atom_names,
+    sites_cart=pdb_atoms.extract_xyz(),
+    bonds_to_omit=bonds_to_omit,
+    constrain_dihedrals_with_sigma_less_than_or_equal_to=c)
   if (rotamer_info is None):
     return None
   #
@@ -224,20 +156,20 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
     assert len(tor_atom_ids) == 5
     tor_id = tor_atom_ids[0]
     assert tor_id in rotmer_info_tor_ids
-    assert tor_id not in comp_tor_by_id
     assert tor_id not in rotamer_tor_by_id
     rotamer_tor_by_id[tor_id] = tuple(tor_atom_ids[1:])
   rotamer_tor_atom_ids_by_tor_id = {}
   for tor_id in rotamer_info.tor_ids:
-    comp_tor = comp_tor_by_id.get(tor_id)
-    if (comp_tor is not None):
-      rotamer_tor_atom_ids_by_tor_id[tor_id] = comp_tor.atom_ids()
+    atom_ids = rotamer_tor_by_id.get(tor_id)
+    if (atom_ids is not None):
+      rotamer_tor_atom_ids_by_tor_id[tor_id] = atom_ids
     else:
-      atom_ids = rotamer_tor_by_id.get(tor_id)
-      if (atom_ids is None):
+      comp_tor = comp_tor_by_id.get(tor_id)
+      if (comp_tor is not None):
+        rotamer_tor_atom_ids_by_tor_id[tor_id] = comp_tor.atom_ids()
+      else:
         raise RuntimeError(
           "rotamer_info.tor_id %s is unknown." % show_string(tor_id))
-      rotamer_tor_atom_ids_by_tor_id[tor_id] = atom_ids
   #
   tor_id_by_rotatable_bond_atom_names = {}
   for tor_id,atom_ids in rotamer_tor_atom_ids_by_tor_id.items():
@@ -247,7 +179,8 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
   #
   tor_id_i_q_packed_matches = {}
   number_of_trees = 0
-  for i_body,he in enumerate(tardy_tree.cluster_manager.hinge_edges):
+  for i_body,he in enumerate(
+                     tardy_model.tardy_tree.cluster_manager.hinge_edges):
     if (he[0] == -1):
       number_of_trees += 1
       continue
@@ -271,6 +204,7 @@ def generate_rotamers(comp, rotamer_info, bonds_to_omit, strip_hydrogens):
     assert strip_hydrogens
   #
   tors_start = {}
+  atom_indices = sequence_index_dict(seq=matched_mon_lib_atom_names)
   for tor_id in tor_id_i_q_packed_matches.keys():
     tor_atom_ids = rotamer_tor_atom_ids_by_tor_id[tor_id]
     ai = [atom_indices.get(atom_id) for atom_id in tor_atom_ids]
@@ -365,44 +299,50 @@ def process_rotamer_info(rotamer_info_master_phil, comp):
       print "Warning: number of missing frequencies:", n_missing_frequencies
   return rotamer_info
 
-def process(mon_lib_srv, rotamer_info_master_phil, resname):
+def exercise_server_rotamer_iterator(mon_lib_srv, comp_comp_id):
+  resname = comp_comp_id.chem_comp.id
+  pdb_inp = iotbx.pdb.input(
+    file_name=op.join(
+      protein_pdb_files, reference_pdb_file_name_lookup[resname]))
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  atom_ids_not_handled = {
+    "ASP": ["HD2"],
+    "GLU": ["HE2"]}.get(comp_comp_id.chem_comp.id)
+  pdb_atoms = pdb_hierarchy.only_residue().atoms()
+  if (atom_ids_not_handled is not None):
+    try:
+      mon_lib_srv.rotamer_iterator(
+        comp_comp_id=comp_comp_id,
+        atom_names=pdb_atoms.extract_name(),
+        sites_cart=pdb_atoms.extract_xyz(),
+        skip_if_atom_name_problems=False)
+    except RuntimeError, e:
+      assert not show_diff(str(e)[3:-3],
+        ": rotamer_info does not handle these atoms: ")
+    else: raise Exception_expected
+    rotamer_iterator = mon_lib_srv.rotamer_iterator(
+      comp_comp_id=comp_comp_id,
+      atom_names=pdb_atoms.extract_name(),
+      sites_cart=pdb_atoms.extract_xyz(),
+      skip_if_atom_name_problems=True)
+    assert rotamer_iterator is None
+    ag = pdb_hierarchy.only_atom_group()
+    for atom in ag.atoms():
+      if (atom.name.strip() in atom_ids_not_handled):
+        ag.remove_atom(atom=atom)
+    pdb_atoms = pdb_hierarchy.only_residue().atoms()
+  rotamer_iterator = mon_lib_srv.rotamer_iterator(
+    comp_comp_id=comp_comp_id,
+    atom_names=pdb_atoms.extract_name(),
+    sites_cart=pdb_atoms.extract_xyz(),
+    skip_if_atom_name_problems=False)
+  if (rotamer_iterator is not None):
+    for obj in rotamer_iterator():
+      print obj
+
+def process(mon_lib_srv, resname):
   print "resname:", resname
   comp = mon_lib_srv.get_comp_comp_id_direct(comp_id=resname)
-  rotamer_info = process_rotamer_info(
-    rotamer_info_master_phil=rotamer_info_master_phil,
-    comp=comp)
-  bonds_to_omit = {}
-  if (rotamer_info is not None):
-    for bond in rotamer_info.tree_generation_without_bond:
-      assert len(bond) == 2
-      bond = tuple(bond)
-      if (bond in bonds_to_omit):
-        raise RuntimeError(
-          "Duplicate tree_generation_without_bond definition: %s" % str(bond))
-      bonds_to_omit[bond] = False
-  tree_root_atom_names = set(["N", "CA", "C", "O"])
-  fixed_vertices = []
-  atom_indices = {}
-  for i,atom in enumerate(comp.atom_list):
-    atom_id = atom.atom_id
-    assert atom_id not in atom_indices
-    atom_indices[atom_id] = i
-    if (atom_id in tree_root_atom_names):
-      fixed_vertices.append(i)
-  assert len(fixed_vertices) == len(tree_root_atom_names)
-  edge_list = []
-  for bond in comp.bond_list:
-    bond_atom_ids = bond.atom_ids()
-    if (bond_atom_ids in bonds_to_omit):
-      bonds_to_omit[bond_atom_ids] = True
-    else:
-      edge_list.append(tuple(sorted([atom_indices[atom_id]
-        for atom_id in bond_atom_ids])))
-  for bond_atom_ids,was_used in bonds_to_omit.items():
-    if (not was_used):
-      raise RuntimeError(
-        "tree_generation_without_bond does not match any bonds: %s"
-          % str(bond_atom_ids))
   tor_dict = {}
   for tor in comp.tor_list:
     atom_names = tuple(sorted([tor.atom_id_2, tor.atom_id_3]))
@@ -413,59 +353,31 @@ def process(mon_lib_srv, rotamer_info_master_phil, resname):
   for atom_ids,tors in tor_dict.items():
     if (len(tors) != 1):
       print "Info: redundant tors:", ", ".join([tor.id for tor in tors])
-  tardy_tree = scitbx.graph.tardy_tree.construct(
-    n_vertices=len(comp.atom_list),
-    edge_list=edge_list,
-    fixed_vertex_lists=[fixed_vertices]).build_tree()
-  assert len(tardy_tree.cluster_manager.loop_edges) == 0
-  tor_hinge_matches = set()
-  number_of_trees = 0
-  for ib,he in enumerate(tardy_tree.cluster_manager.hinge_edges):
-    if (he[0] == -1):
-      number_of_trees += 1
-      continue
-    hinge_atom_names = [comp.atom_list[i].atom_id for i in he]
-    atom_names = tuple(sorted(hinge_atom_names))
-    tors = tor_dict.get(atom_names)
-    if (tors is None):
-      s = "Warning: no tor"
-    else:
-      for tor in tors:
-        tor_hinge_matches.add(tor.id)
-      s = ", ".join([tor.id for tor in tors])
-      if (len(tors) != 1):
-        s = "Info: multiple tors: " + s
-    print "hinge edge:", ", ".join(hinge_atom_names), s
-  assert number_of_trees == 1
   #
-  non_const_tor_ids = set()
-  for tor in comp.tor_list:
-    if (tor.value_angle_esd == 0):
-      assert tor.id.startswith("CONST_")
-    else:
-      non_const_tor_ids.add(tor.id)
-  tors_not_hinge = non_const_tor_ids.difference(tor_hinge_matches)
-  if (len(tors_not_hinge) != 0):
-    print "tors_not_hinge:", ", ".join(sorted(tors_not_hinge))
+  rotamer_info = process_rotamer_info(
+    rotamer_info_master_phil=mon_lib_srv.rotamer_info_master_phil(),
+    comp=comp)
+  bonds_to_omit = mmtbx.monomer_library.rotamer_utils.extract_bonds_to_omit(
+    rotamer_info=rotamer_info)
   for strip_hydrogens in [True, False]:
     generate_rotamers(
       comp=comp,
       rotamer_info=rotamer_info,
       bonds_to_omit=bonds_to_omit,
       strip_hydrogens=strip_hydrogens)
+  if (len(comp.rotamer_info) != 0):
+    exercise_server_rotamer_iterator(
+      mon_lib_srv=mon_lib_srv, comp_comp_id=comp)
   print
 
 def run(args):
   assert len(args) == 0
   mon_lib_srv = mmtbx.monomer_library.server.server()
-  rotamer_info_master_phil = libtbx.phil.parse(
-    input_string=rotamer_info_master_phil_str)
   amino_acid_resnames = sorted(
     iotbx.pdb.amino_acid_codes.one_letter_given_three_letter.keys())
   for resname in amino_acid_resnames:
     process(
       mon_lib_srv=mon_lib_srv,
-      rotamer_info_master_phil=rotamer_info_master_phil,
       resname=resname)
   print "OK"
 
