@@ -42,11 +42,9 @@ class RAXISImage(DetectorImageBase,Raxis):
   def read(self):
     self.fileLength()
     self.data()
-    self.linearintdata = ReadRAXIS(self.CharTemp,self.integerdepth(),
+    self.bin_safe_set_data( ReadRAXIS(self.CharTemp,self.integerdepth(),
          self.size1*self.bin,self.size2*self.bin,self.endian_swap_required())
-    if self.bin==2:
-      from iotbx.detectors import Bin2_by_2
-      self.linearintdata = Bin2_by_2(self.linearintdata)
+    )
 
 if __name__=='__main__':
   import sys

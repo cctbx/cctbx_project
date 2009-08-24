@@ -29,14 +29,14 @@ class PilatusImage(DetectorImageBase):
       self.linearintdata.size()==self.size1*self.size2:
       #data has already been read
       return
+    if self.bin==2:
+      raise ImageException("2-by-2 binning not supported for miniCBF")
     try:
       from cbflib_ext import MiniCBFAdaptor # optional package
       self.adaptor = MiniCBFAdaptor(self.filename)
-      self.linearintdata = self.adaptor.read_data(self.size1,self.size2)
+      self.bin_safe_set_data( self.adaptor.read_data(self.size1,self.size2) )
     except:
       raise ImageException("unable to read miniCBF data; contact authors")
-    if self.bin==2:
-      raise ImageException("2-by-2 binning not supported for miniCBF")
 
   def readHeader(self,maxlength=12288): # usually 1024 is OK; require 12288 for ID19
     if not self.parameters:
