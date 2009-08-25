@@ -46,40 +46,6 @@ def real_space_rigid_body_gradients_simple(
   for i in xrange(3): get(i=i+4, delta=translation_delta)
   return result
 
-def next_rotamer(mon_lib_srv, residue):
-  comp_comp_id = mon_lib_srv.get_comp_comp_id_direct(comp_id=residue.resname)
-  rotamer_iterator = mon_lib_srv.rotamer_iterator(
-    comp_comp_id=comp_comp_id,
-    atom_names=residue.atoms().extract_name(),
-    sites_cart=residue.atoms().extract_xyz())
-  if (rotamer_iterator.problem_message is not None):
-    return
-  if (rotamer_iterator.rotamer_info is None):
-    return
-  for rotamer,rotamer_sites_cart in rotamer_iterator:
-    residue.atoms().set_xyz(new_xyz=rotamer_sites_cart)
-    yield rotamer.id
-
-def ignore_this_residue(residue, atom_selection_bool):
-  atoms = residue.atoms()
-  if (atom_selection_bool is not None):
-    if (atom_selection_bool.select(
-          indices=atoms.extract_i_seq()).all_eq(False)):
-      return True
-  matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
-    residue.resname].match_atom_names(atom_names=atoms.extract_name())
-  names = matched_atom_names.unexpected
-  if (len(names) != 0):
-    print residue.id_str(), "unexpected atoms:", " ".join(sorted(names))
-    print
-    return True
-  names = matched_atom_names.missing_atom_names(ignore_hydrogen=True)
-  if (len(names) != 0):
-    print residue.id_str(), "missing atoms:", " ".join(sorted(names))
-    print
-    return True
-  return False
-
 class residue_refine_constrained(object):
 
   def __init__(O,
@@ -234,6 +200,22 @@ class residue_refine_restrained(object):
       g = rs_g + gr_e.gradients.select(indices=O.residue_i_seqs)
     return f, g.as_double()
 
+def get_rotamer_iterator(mon_lib_srv, residue, atom_selection_bool):
+  atoms = residue.atoms()
+  if (atom_selection_bool is not None):
+    if (atom_selection_bool.select(
+          indices=residue.atoms().extract_i_seq()).all_eq(False)):
+      return None
+  rotamer_iterator = mon_lib_srv.rotamer_iterator(
+    comp_id=residue.resname,
+    atom_names=residue.atoms().extract_name(),
+    sites_cart=residue.atoms().extract_xyz())
+  if (rotamer_iterator.problem_message is not None):
+    return None
+  if (rotamer_iterator.rotamer_info is None):
+    return None
+  return rotamer_iterator
+
 def rotamer_score_and_choose_best(
       mon_lib_srv,
       density_map,
@@ -279,22 +261,25 @@ def rotamer_score_and_choose_best(
       for residue in chain.only_conformer().residues():
         if (get_class(residue.resname) != "common_amino_acid"):
           n_other_residues += 1
-        elif (ignore_this_residue(
-                atom_selection_bool=atom_selection_bool,
-                residue=residue)):
-          n_amino_acids_ignored += 1
         else:
-          rotamer_id = "as_given"
-          best = group_args(rotamer_id=rotamer_id, refined=refine())
-          n_amino_acids_scored += 1
-          for rotamer_id in next_rotamer(mon_lib_srv=mon_lib_srv,
-                                         residue=residue):
-            trial = group_args(rotamer_id=rotamer_id, refined=refine())
-            if (trial.refined.rs_f_final > best.refined.rs_f_final):
-              best = trial
-          print residue.id_str(), "best rotamer:", best.rotamer_id
-          residue.atoms().set_xyz(new_xyz=best.refined.sites_cart_residue)
-          print
+          rotamer_iterator = get_rotamer_iterator(
+            mon_lib_srv=mon_lib_srv,
+            residue=residue,
+            atom_selection_bool=atom_selection_bool)
+          if (rotamer_iterator is None):
+            n_amino_acids_ignored += 1
+          else:
+            rotamer_id = "as_given"
+            best = group_args(rotamer_id=rotamer_id, refined=refine())
+            n_amino_acids_scored += 1
+            for rotamer,rotamer_sites_cart in rotamer_iterator:
+              residue.atoms().set_xyz(new_xyz=rotamer_sites_cart)
+              trial = group_args(rotamer_id=rotamer.id, refined=refine())
+              if (trial.refined.rs_f_final > best.refined.rs_f_final):
+                best = trial
+            print residue.id_str(), "best rotamer:", best.rotamer_id
+            residue.atoms().set_xyz(new_xyz=best.refined.sites_cart_residue)
+            print
   print "number of amino acid residues scored:", n_amino_acids_scored
   print "number of amino acid residues ignored:", n_amino_acids_ignored
   print "number of other residues:", n_other_residues

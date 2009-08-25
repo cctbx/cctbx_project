@@ -174,7 +174,8 @@ class comp_comp_id(object):
     self.tor_list = []
     self.chir_list = []
     self.plane_atom_list = []
-    self.rotamer_info = []
+    self.rotamer_info_phil_str_list = []
+    self.__rotamer_info = None
     self.classification = None
 
   def __copy__(self):
@@ -186,7 +187,9 @@ class comp_comp_id(object):
     result.tor_list = [copy.copy(e) for e in self.tor_list]
     result.chir_list = [copy.copy(e) for e in self.chir_list]
     result.plane_atom_list = [copy.copy(e) for e in self.plane_atom_list]
-    result.rotamer_info = [copy.copy(e) for e in self.rotamer_info]
+    result.rotamer_info_phil_str_list = [
+      copy.copy(e) for e in self.rotamer_info_phil_str_list]
+    result.__rotamer_info = copy.deepcopy(self.__rotamer_info)
     result.classification = None
     return result
 
@@ -498,7 +501,7 @@ class comp_comp_id(object):
     show_loop(data_list=self.tor_list, f=f)
     show_loop(data_list=self.chir_list, f=f)
     show_loop(data_list=self.plane_atom_list, f=f)
-    show_loop(data_list=self.rotamer_info, f=f)
+    show_loop(data_list=self.rotamer_info_phil_str_list, f=f)
     return self
 
   def as_geometry_restraints_motif(self):
@@ -567,6 +570,25 @@ class comp_comp_id(object):
           id=plane.plane_id))
     result.set_planarities(planarities)
     return result
+
+  def rotamer_info(self):
+    if (self.__rotamer_info is None):
+      if (len(self.rotamer_info_phil_str_list) == 0):
+        return None
+      assert len(self.rotamer_info_phil_str_list) == 1
+      from mmtbx.monomer_library.rotamer_utils import rotamer_info_master_phil
+      import libtbx.phil
+      self.__rotamer_info = rotamer_info_master_phil().fetch(
+        source=libtbx.phil.parse(
+          input_string=self.rotamer_info_phil_str_list[0].phil_str)).extract()
+    return self.__rotamer_info
+
+  def rotamer_iterator(self, atom_names, sites_cart):
+    from mmtbx.monomer_library.rotamer_utils import rotamer_iterator
+    return rotamer_iterator(
+      comp_comp_id=self,
+      atom_names=atom_names,
+      sites_cart=sites_cart)
 
 class chem_comp(looped_data):
   """
