@@ -1,6 +1,4 @@
 import mmtbx.monomer_library.server
-import mmtbx.monomer_library.rotamer_utils
-import libtbx.phil
 from libtbx.str_utils import show_string, show_sorted_by_counts
 from libtbx import dict_with_default_0
 
@@ -102,13 +100,8 @@ def check_comp(file_name):
         prefix="    ")
       assert min(plane_atom_counts.values()) >= 3
     #
-    assert len(comp_comp_id.rotamer_info) < 2
-    if (len(comp_comp_id.rotamer_info) == 1):
-      rotamer_info_phil = mmtbx.monomer_library.rotamer_utils \
-        .rotamer_info_master_phil().fetch(
-          source=libtbx.phil.parse(
-            input_string=comp_comp_id.rotamer_info[0].phil_str))
-      rotamer_info = rotamer_info_phil.extract()
+    rotamer_info = comp_comp_id.rotamer_info()
+    if (rotamer_info is not None):
       print "  rotamer_info.tor_ids:", rotamer_info.tor_ids
       for tor_id in rotamer_info.tor_ids:
         assert tor_id.strip() == tor_id

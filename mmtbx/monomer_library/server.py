@@ -142,7 +142,8 @@ def convert_comp_list(source_info, cif_object):
                          ("chem_comp_tor","tor_list"),
                          ("chem_comp_chir","chir_list"),
                          ("chem_comp_plane_atom","plane_atom_list"),
-                         ("chem_comp_rotamer_info","rotamer_info")]):
+                         ("chem_comp_rotamer_info",
+                          "rotamer_info_phil_str_list")]):
     yield comp_comp_id
 
 def convert_link_list(source_info, cif_object):
@@ -388,6 +389,11 @@ class server(process_cif_mixin):
         return_file_name_only=return_file_name_only),
       rnpani.atom_name_interpretation)
 
+  def rotamer_iterator(self, comp_id, atom_names, sites_cart):
+    return self.get_comp_comp_id_direct(comp_id=comp_id).rotamer_iterator(
+      atom_names=atom_names,
+      sites_cart=sites_cart)
+
   def get_comp_comp_id_mod(self, comp_comp_id, mod_ids):
     key = "%".join((comp_comp_id.chem_comp.id,) + mod_ids)
     result = self.comp_comp_id_mod_dict.get(key)
@@ -401,13 +407,6 @@ class server(process_cif_mixin):
       result = (mod_comp_comp_id, chem_mod_ids)
       self.comp_comp_id_mod_dict[key] = result
     return result
-
-  def rotamer_iterator(self, comp_comp_id, atom_names, sites_cart):
-    from mmtbx.monomer_library import rotamer_utils
-    return rotamer_utils.rotamer_iterator(
-      comp_comp_id=comp_comp_id,
-      atom_names=atom_names,
-      sites_cart=sites_cart)
 
 class ener_lib(process_cif_mixin):
 

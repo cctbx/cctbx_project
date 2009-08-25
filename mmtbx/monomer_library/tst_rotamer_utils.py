@@ -86,8 +86,7 @@ def exercise_server_rotamer_iterator(mon_lib_srv, resname, verbose):
   pdb_atoms = pdb_hierarchy.only_residue().atoms()
   comp_comp_id = mon_lib_srv.get_comp_comp_id_direct(comp_id=resname)
   if (atom_ids_not_handled is not None):
-    rotamer_iterator = mon_lib_srv.rotamer_iterator(
-      comp_comp_id=comp_comp_id,
+    rotamer_iterator = comp_comp_id.rotamer_iterator(
       atom_names=pdb_atoms.extract_name(),
       sites_cart=pdb_atoms.extract_xyz())
     assert not show_diff(str(rotamer_iterator.problem_message)[3:-3],
@@ -113,8 +112,7 @@ def exercise_server_rotamer_iterator(mon_lib_srv, resname, verbose):
           ag.remove_atom(atom=atom)
       pdb_atoms = pdb_hierarchy.only_residue().atoms()
     pdb_atoms.reset_i_seq()
-    rotamer_iterator = mon_lib_srv.rotamer_iterator(
-      comp_comp_id=comp_comp_id,
+    rotamer_iterator = comp_comp_id.rotamer_iterator(
       atom_names=pdb_atoms.extract_name(),
       sites_cart=pdb_atoms.extract_xyz())
     if (rotamer_iterator.problem_message):

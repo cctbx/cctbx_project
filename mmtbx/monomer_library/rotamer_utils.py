@@ -2,7 +2,6 @@ import cctbx.geometry_restraints
 import scitbx.rigid_body
 import scitbx.graph.tardy_tree
 from scitbx.array_family import flex
-import libtbx.phil
 from libtbx.str_utils import show_string
 from libtbx.utils import sequence_index_dict
 import math
@@ -38,6 +37,7 @@ __rotamer_info_master_phil = None
 def rotamer_info_master_phil():
   global __rotamer_info_master_phil
   if (__rotamer_info_master_phil is None):
+    import libtbx.phil
     __rotamer_info_master_phil = libtbx.phil.parse(
       input_string=rotamer_info_master_phil_str)
   return __rotamer_info_master_phil
@@ -191,16 +191,10 @@ class rotamer_iterator(object):
   def __init__(O, comp_comp_id, atom_names, sites_cart):
     assert sites_cart.size() == len(atom_names)
     O.problem_message = None
-    if (len(comp_comp_id.rotamer_info) == 0):
-      O.rotamer_info = None
-      return
-    assert len(comp_comp_id.rotamer_info) == 1
-    resname = comp_comp_id.chem_comp.id
-    O.rotamer_info = rotamer_info_master_phil().fetch(
-      source=libtbx.phil.parse(
-        input_string=comp_comp_id.rotamer_info[0].phil_str)).extract()
+    O.rotamer_info = comp_comp_id.rotamer_info()
     if (O.rotamer_info is None):
       return
+    resname = comp_comp_id.chem_comp.id
     import iotbx.pdb.atom_name_interpretation
     matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
       resname].match_atom_names(atom_names=atom_names)
