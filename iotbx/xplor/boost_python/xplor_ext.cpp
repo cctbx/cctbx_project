@@ -27,6 +27,7 @@ namespace iotbx { namespace boost_python { namespace xplor_ext {
 
     format_e(const char* fmt, double val)
     {
+      if(std::fabs(val)<1e-99) val=0.;
 #if !defined(BOOST_MSVC)
       s = buf;
       std::sprintf(buf, fmt, val);
