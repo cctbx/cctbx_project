@@ -710,11 +710,16 @@ spotfinder/applications/signal_strength.py -text
 spotfinder/applications/wrappers.py -text
 spotfinder/command_line/__init__.py -text
 spotfinder/command_line/signal_strength.py -text
+spotfinder/core_toolbox/boost_python/singlemask.h -text
+spotfinder/core_toolbox/distl.h -text
+spotfinder/core_toolbox/hough.h -text
 spotfinder/core_toolbox/libdistl.cpp -text
 spotfinder/core_toolbox/libdistl.h -text
 spotfinder/core_toolbox/spot.cpp -text
 spotfinder/core_toolbox/spot_shapes.h -text
 spotfinder/core_toolbox/spot_types.h -text
+spotfinder/core_toolbox/spotfilter.h -text
 spotfinder/distl_license -text
 spotfinder/doc/distl_svn_history -text
+spotfinder/doc/labelit_svn_history -text
 spotfinder/libtbx_config -text
