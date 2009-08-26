@@ -136,7 +136,7 @@ class potential_object(object):
     return O.g
 
 def run(fmodels, model, target_weights, params, log,
-        format_for_phenix_refine=False):
+        format_for_phenix_refine=False, monitor=None):
   assert fmodels.fmodel_neutron() is None # not implemented
   assert model.ias_selection is None # tardy+ias is not a useful combination
   xs = fmodels.fmodel_xray().xray_structure
@@ -174,11 +174,15 @@ def run(fmodels, model, target_weights, params, log,
     potential_obj=potential_obj,
     near_singular_hinges_angular_tolerance_deg=
       params.near_singular_hinges_angular_tolerance_deg)
+  def refinement_callback (fmodel) :
+    if monitor is not None :
+      monitor.call_back(model, fmodel, "torsion_dynamics")
   action(fmodel=fmodels.fmodel_xray(), tardy_model=tardy_model, params=params,
-    callback=None, log=log, format_for_phenix_refine=format_for_phenix_refine) # XXX neutron
+    callback=None, log=log, format_for_phenix_refine=format_for_phenix_refine,
+    refinement_callback=refinement_callback) # XXX neutron
 
 def action(tardy_model, params, callback, log, fmodel=None,
-           format_for_phenix_refine=False):
+           format_for_phenix_refine=False, refinement_callback=None):
   sites_cart_start = tardy_model.sites_moved()
   qd_e_kin_scales = tardy_model.assign_random_velocities()
   cartesian_dof = sites_cart_start.size() * 3
@@ -308,6 +312,9 @@ def action(tardy_model, params, callback, log, fmodel=None,
             format_value("%6.4f", rmsddiff),
             format_value("%6.4f", fmodel.r_work()),
             format_value("%6.4f", fmodel.r_free()))
+          if hasattr(refinement_callback, "__call__") :
+            # XXX: for phenix.refine GUI
+            refinement_callback(fmodel)
       else:
         if (show_column_headings):
           show_column_headings = False
