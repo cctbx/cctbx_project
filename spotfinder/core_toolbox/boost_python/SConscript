@@ -1,0 +1,10 @@
+Import("env_spotfinder_boost_python_ext")
+env = env_spotfinder_boost_python_ext.Clone()
+
+env.Prepend(LIBS=["spotfinder","omptbx"])
+pyd = env.SharedLibrary(
+  target="#lib/spotfinder_distltbx_ext",
+  source=["distltbx_ext.cpp", "../../diffraction/geometry.cpp"])
+env.SharedLibrary(
+  target="#lib/spotfinder_hough_ext",
+  source=["hough_ext.cpp"])

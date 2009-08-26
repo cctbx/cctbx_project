@@ -1,4 +1,4 @@
-from labelit.array_family import flex
+from spotfinder.array_family import flex
 from spotfinder.applications.wrappers import DistlOrganizer
 from labelit.preferences import procedure_preferences
 from labelit.command_line.screen import Empty

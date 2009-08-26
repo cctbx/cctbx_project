@@ -40,6 +40,9 @@ boost_libs = "#"+os.path.join(os.path.basename(env_etc.boost_dist), "libs")
 lib_spotfinder_sources = [
   "core_toolbox/spot.cpp",
   "core_toolbox/libdistl.cpp",
+  "core_toolbox/hough.cpp",
+  "core_toolbox/distl.cpp",
+  "core_toolbox/spotfilter.cpp",
 ]
 
 if (env_etc.static_libraries): builder = envlm.StaticLibrary
@@ -57,6 +60,8 @@ if (not env_etc.no_boost_python):
     env=env_spotfinder_boost_python_ext,
     paths=env_etc.spotfinder_common_includes + [env_etc.python_include])
   Export("env_spotfinder_boost_python_ext")
+  SConscript("core_toolbox/boost_python/SConscript")
+  SConscript("array_family/SConscript")
 
 #Note regarding the libtbx_config file:
 # rule of thumb for classifying dependencies.  If the package has
