@@ -1,0 +1,10 @@
+Import("env_spotfinder_boost_python_ext")
+
+env = env_spotfinder_boost_python_ext.Clone()
+env.Prepend(LIBS=["spotfinder","omptbx"])
+env.SharedLibrary(
+  target="#lib/spotfinder_array_family_flex_ext",
+  source=[
+  "flex_ext.cpp",
+  "flex_distl_spot.cpp",
+])
