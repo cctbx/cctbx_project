@@ -1,0 +1,491 @@
+------------------------------------------------------------------------
+r59 | sauter | 2009-07-13 20:30:20 -0700 (Mon, 13 Jul 2009) | 1 line
+Changed paths:
+   M /trunk/spot_analysis/signal_strength.py
+
+Introspection of spotfinder object through API.
+------------------------------------------------------------------------
+r58 | sauter | 2009-07-13 09:26:12 -0700 (Mon, 13 Jul 2009) | 1 line
+Changed paths:
+   M /trunk/spot_analysis/signal_strength.py
+
+Spot signal analysis should not raise error if the number of spots is zero.
+------------------------------------------------------------------------
+r57 | sauter | 2009-07-09 19:59:21 -0700 (Thu, 09 Jul 2009) | 1 line
+Changed paths:
+   M /trunk/libdistl.cc
+
+Protect against use of nth_element() for zero-length arrays:  cases with either no pixels in the resolution shell, or no diffraction spots.
+------------------------------------------------------------------------
+r56 | sauter | 2009-07-09 19:48:45 -0700 (Thu, 09 Jul 2009) | 1 line
+Changed paths:
+   M /trunk/scanbox.h
+
+Without need for any outside input, generate scanbox tiling whether or not the image is a full Pilatus frame or a single horizontal slice.
+------------------------------------------------------------------------
+r55 | sauter | 2009-07-02 17:05:47 -0700 (Thu, 02 Jul 2009) | 1 line
+Changed paths:
+   M /trunk/libdistl.cc
+   M /trunk/libdistl.h
+
+Expose spotfinder submethods individually to Python for fine-grained profiling and testing.
+------------------------------------------------------------------------
+r54 | sauter | 2009-07-02 14:18:47 -0700 (Thu, 02 Jul 2009) | 1 line
+Changed paths:
+   M /trunk/libdistl.cc
+
+For very lightly exposed Pilatus datasets such as the insulin test, it is crucial that pixel values of zero not be treated as underloads.  Zero values need to be included in the background plane calculation, to avoid spotfinder identifying numerous false peaks.
+------------------------------------------------------------------------
+r53 | sauter | 2009-05-08 15:18:52 -0700 (Fri, 08 May 2009) | 1 line
+Changed paths:
+   M /trunk/libdistl.cc
+   M /trunk/libdistl.h
+   A /trunk/scanbox.h
+
+scanbox tiling now covers the entire requested window; also the Pilatus tiling covers only the active pixels
+------------------------------------------------------------------------
+r52 | sauter | 2009-05-07 15:31:33 -0700 (Thu, 07 May 2009) | 1 line
+Changed paths:
+   M /trunk/libdistl.cc
+
+Reorganization for future compatibility with OpenMP
+------------------------------------------------------------------------
+r51 | sauter | 2008-09-09 15:21:01 -0700 (Tue, 09 Sep 2008) | 1 line
+Changed paths:
+   M /trunk/spot_shapes.h
+
+enforce const correctness
+------------------------------------------------------------------------
+r50 | sauter | 2008-06-12 16:42:53 -0700 (Thu, 12 Jun 2008) | 1 line
+Changed paths:
+   A /trunk/__init__.py
+   A /trunk/command_line
+   A /trunk/command_line/__init__.py
+   A /trunk/command_line/signal_strength.py
+   M /trunk/libdistl.h
+   M /trunk/spot.cc
+   A /trunk/spot_analysis
+   A /trunk/spot_analysis/__init__.py
+   A /trunk/spot_analysis/signal_strength.py
+   A /trunk/spot_analysis/wrappers.py
+
+Signal strength characterization for raw images
+------------------------------------------------------------------------
+r49 | sauter | 2006-12-14 20:32:13 -0800 (Thu, 14 Dec 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+Expose distl pixel maxima so they can be rendered in the WebIce picture.
+
+------------------------------------------------------------------------
+r48 | sauter | 2006-12-01 13:41:22 -0800 (Fri, 01 Dec 2006) | 2 lines
+Changed paths:
+   M /trunk/background_plane.cpp
+   M /trunk/background_plane.h
+   M /trunk/libdistl.cc
+   M /trunk/libdistl.h
+
+Satisfy -Wall warnings for unix gcc 4.1
+
+------------------------------------------------------------------------
+r47 | sauter | 2006-11-13 23:22:05 -0800 (Mon, 13 Nov 2006) | 4 lines
+Changed paths:
+   M /trunk/libdistl.h
+   M /trunk/spot_shapes.h
+
+A general indication of skewness, not a rigorous calculation
+Formula gives max-pixel to center-of-mass distance as fraction of semi-major axis
+Important:integer truncation prevents overestimation due to discrete image sampling
+
+------------------------------------------------------------------------
+r46 | sauter | 2006-11-13 22:44:46 -0800 (Mon, 13 Nov 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.h
+
+Remove the eccentricity function as it has now been replaced with model_eccentricity.
+
+------------------------------------------------------------------------
+r45 | sauter | 2006-10-27 23:38:46 -0700 (Fri, 27 Oct 2006) | 3 lines
+Changed paths:
+   M /trunk/spot.cc
+   M /trunk/spot_shapes.h
+
+Bragg spots now modelled by an intrinsically 2-dimensional model of the
+inertia tensor.
+
+------------------------------------------------------------------------
+r44 | sauter | 2006-10-27 23:08:38 -0700 (Fri, 27 Oct 2006) | 3 lines
+Changed paths:
+   M /trunk/spot_shapes.h
+
+development step, demonstrating the equivalence of principal axis 2D and
+3D treatments, prior to switching over to the 2D treatment exclusively.
+
+------------------------------------------------------------------------
+r43 | sauter | 2006-10-26 14:04:21 -0700 (Thu, 26 Oct 2006) | 4 lines
+Changed paths:
+   M /trunk/libdistl.h
+   M /trunk/spot.cc
+   M /trunk/spot_shapes.h
+
+Pickling interface for spotlists (version 2) now records a) the total
+        pixel sum (background subtracted), b) center of mass x,y, c) inertia
+        tensor eigenvalues, and d) principle axes.
+
+------------------------------------------------------------------------
+r42 | sauter | 2006-10-23 17:11:39 -0700 (Mon, 23 Oct 2006) | 6 lines
+Changed paths:
+   M /trunk/libdistl.h
+
+in the spot interface, functions x() and y() are changed to
+maxpxl_x() and maxpxl_y().  This emphasizes that these are
+integer pixel positions of the spot's local maximum, as opposed to other
+kinds of position like center of mass.  More descriptive names easier
+for code maintenance.
+
+------------------------------------------------------------------------
+r41 | sauter | 2006-10-23 16:50:40 -0700 (Mon, 23 Oct 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.h
+   M /trunk/spot.cc
+   A /trunk/spot_shapes.h
+
+Add DISTL code to fit an ellipse model to the inertia tensor for each spot
+
+------------------------------------------------------------------------
+r40 | sauter | 2006-07-26 15:14:39 -0700 (Wed, 26 Jul 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+Consistency with SSRL CVS code base.
+
+------------------------------------------------------------------------
+r39 | sauter | 2006-07-26 12:26:47 -0700 (Wed, 26 Jul 2006) | 6 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+it appears that beam_x/y must be assigned as integers to support
+array indexing in subsequent steps.  However, it is dangerous
+to use static_cast<int> because it truncates, instead of
+rounding to the nearest integer. Introduce the iround() function
+to correct this.
+
+------------------------------------------------------------------------
+r38 | sauter | 2006-06-16 00:16:01 -0700 (Fri, 16 Jun 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+Bugfix: Avoid a divide-by-zero if the signal is flat
+
+------------------------------------------------------------------------
+r37 | sauter | 2006-05-28 22:40:16 -0700 (Sun, 28 May 2006) | 7 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+1) Replace the problematic background_plane_stats, along with the clumsy
+macros, with the new corrected_backplane class; in parallel with the
+SSRL implementation.
+2) Use a speedup factor of 2; sampling 1 in 4 points to give a reasonably
+good background plane correction.  A factor of 3 is too sparse and seems
+to degrade the regression results.
+
+------------------------------------------------------------------------
+r36 | sauter | 2006-05-28 20:23:56 -0700 (Sun, 28 May 2006) | 3 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+A much more efficient way to implement separate algorithms for circular
+and square images.
+
+------------------------------------------------------------------------
+r35 | sauter | 2006-05-25 17:00:23 -0700 (Thu, 25 May 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+slight correction
+
+------------------------------------------------------------------------
+r34 | sauter | 2006-05-25 16:36:31 -0700 (Thu, 25 May 2006) | 10 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+Rollback two changes from recent days:
+
+get_underload(): in the safety fallback, there is now a separate procedure
+for circular images wherein the pixel analysis is confined to the inscribed
+circle.
+
+pxlclassify(): the box size and untouched margin width parameters are no
+longer dynamically calculated.  However, adjacent boxes are still forced to
+be non-overlapping.
+
+------------------------------------------------------------------------
+r33 | sauter | 2006-05-24 11:11:14 -0700 (Wed, 24 May 2006) | 3 lines
+Changed paths:
+   M /trunk/libdistl.cc
+   M /trunk/libdistl.h
+
+Detect whether the image is circular, and if so, do not attempt to
+classify pixels on the inactive periphery.
+
+------------------------------------------------------------------------
+r32 | sauter | 2006-05-24 11:07:39 -0700 (Wed, 24 May 2006) | 3 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+change the pxlclassify algorithm so that 1) boxes do not overlap and
+2) pxlclassify_scanbox is called exactly once.
+
+------------------------------------------------------------------------
+r31 | sauter | 2006-05-19 16:29:44 -0700 (Fri, 19 May 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.cc
+   M /trunk/libdistl.h
+
+revisions to get_underload leading to compatibility with SSRL
+
+------------------------------------------------------------------------
+r30 | sauter | 2006-05-18 16:03:55 -0700 (Thu, 18 May 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.cc
+   M /trunk/libdistl.h
+
+Reorganization leading to SSRL compatibility
+
+------------------------------------------------------------------------
+r29 | sauter | 2006-05-18 15:34:31 -0700 (Thu, 18 May 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.cc
+   M /trunk/libdistl.h
+   A /trunk/spot.cc
+   A /trunk/spot_types.h
+
+Reorganization leading toward SSRL compatibility.
+
+------------------------------------------------------------------------
+r28 | sauter | 2006-05-17 13:28:49 -0700 (Wed, 17 May 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+More efficient way to call boxmean(); half as many calls.
+
+------------------------------------------------------------------------
+r27 | sauter | 2006-05-17 13:27:16 -0700 (Wed, 17 May 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.h
+
+Useful macros for code development
+
+------------------------------------------------------------------------
+r26 | sauter | 2006-04-07 13:54:02 -0700 (Fri, 07 Apr 2006) | 8 lines
+Changed paths:
+   M /trunk/libdistl.cc
+   M /trunk/libdistl.h
+
+A new preferences option "distl_report_overloads" allows distl to report
+candidate Bragg spots that contain saturation overloads.  LABELIT takes
+the DISTL candidates, performs the usual ice ring and resolution filters,
+and then counts the number of remaining overloaded spots (and reports them
+in stats_distl).  The overloaded spots are then removed prior to auto-
+indexing.  Previously "distl_report_overloads" was always False; now
+it is True by default.
+
+------------------------------------------------------------------------
+r25 | sauter | 2006-04-07 13:40:59 -0700 (Fri, 07 Apr 2006) | 3 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+throw an exception if the distl scanbox increases too much; want to
+      trap such cases & possibly revise code accordingly in the future.
+
+------------------------------------------------------------------------
+r24 | sauter | 2006-03-16 17:31:50 -0800 (Thu, 16 Mar 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.h
+
+Fix a syntax error flagged by the Windows compiler
+
+------------------------------------------------------------------------
+r23 | sauter | 2006-03-16 17:09:12 -0800 (Thu, 16 Mar 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+Unused code removed
+
+------------------------------------------------------------------------
+r22 | sauter | 2006-03-06 11:40:11 -0800 (Mon, 06 Mar 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+Simple bug fix
+
+------------------------------------------------------------------------
+r21 | sauter | 2006-03-06 11:00:35 -0800 (Mon, 06 Mar 2006) | 4 lines
+Changed paths:
+   M /trunk/libdistl.cc
+   M /trunk/libdistl.h
+
+pixel values are now contained in the Distl::constmat<int> container.  The
+memory is managed by the image reader, in this case iotbx/detectors.  Distl
+no longer has a second copy of the image data.
+
+------------------------------------------------------------------------
+r20 | sauter | 2006-03-03 21:17:57 -0800 (Fri, 03 Mar 2006) | 5 lines
+Changed paths:
+   M /trunk/libdistl.cc
+   M /trunk/libdistl.h
+
+a. wrapper of SSRL's spot type has been moved to the Distl namespace.
+b. list<point> pattern to be changed to vector<point> semantics, for
+compatibility with LBNL's array_family.  Change push_front to push_back.
+c. To encapsulate this change, use a typedef for Distl::spot::point_list_t.
+
+------------------------------------------------------------------------
+r19 | sauter | 2006-03-02 19:55:53 -0800 (Thu, 02 Mar 2006) | 4 lines
+Changed paths:
+   M /trunk/libdistl.cc
+
+Migration to current SSRL Distl.  Take away unused calculations in summary()
+Change the dependency on centerresol to peakresol.  This should have a small
+but unimportant effect on the Method 1 resolution calculation.
+
+------------------------------------------------------------------------
+r18 | sauter | 2006-03-02 19:40:11 -0800 (Thu, 02 Mar 2006) | 2 lines
+Changed paths:
+   M /trunk/libdistl.h
+
+Migration to present SSRL Distl namespace.  Implement Distl::point.  This change adds member variables and should have no effect.
+
+------------------------------------------------------------------------
+r17 | sauter | 2006-03-02 18:07:22 -0800 (Thu, 02 Mar 2006) | 3 lines
+Changed paths:
+   M /trunk/background_plane.cpp
+   M /trunk/background_plane.h
+   D /trunk/libdiffspot.cc
+   D /trunk/libdiffspot.h
+   A /trunk/libdistl.cc
+   A /trunk/libdistl.h
+
+For forward compatibility, migrate from the libdiffspot/Diffspot namespace
+to the newly-introduced libdistl/Distl namespace.
+
+------------------------------------------------------------------------
+r16 | sauter | 2006-03-02 16:52:18 -0800 (Thu, 02 Mar 2006) | 2 lines
+Changed paths:
+   M /trunk/libdiffspot.cc
+
+change the way debugging messages are displayed.
+
+------------------------------------------------------------------------
+r15 | sauter | 2006-02-19 13:16:39 -0800 (Sun, 19 Feb 2006) | 5 lines
+Changed paths:
+   M /trunk/libdiffspot.cc
+
+Important bugfix.  With the introduction of the background plane correction,
+the pixelintensity (corrected & normalized) can be positive even if the
+raw pixel value is zero.  This led to a divide-by-zero error for one case on
+the tru64 platform.
+
+------------------------------------------------------------------------
+r14 | sauter | 2006-02-17 19:22:23 -0800 (Fri, 17 Feb 2006) | 2 lines
+Changed paths:
+   M /trunk/background_plane.h
+
+Compatibility with more pedantic compilers
+
+------------------------------------------------------------------------
+r13 | sauter | 2006-02-17 16:25:00 -0800 (Fri, 17 Feb 2006) | 5 lines
+Changed paths:
+   A /trunk/background_plane.cpp
+   A /trunk/background_plane.h
+   M /trunk/libdiffspot.cc
+   M /trunk/libdiffspot.h
+
+Add background plane correction, used in all cases.  In the future, possibly
+use the evaluate_plane() function to determine whether the correction is
+really necessary.  The correction doubles the amount of time spent classifying
+pixels.
+
+------------------------------------------------------------------------
+r12 | sauter | 2006-02-14 11:42:35 -0800 (Tue, 14 Feb 2006) | 8 lines
+Changed paths:
+   M /trunk/libdiffspot.cc
+
+Add sanity check to make sure that no more than 10% of pixels
+are masked out. The most straightforward way is to copy the data to a new
+container and use the nth_element algorithm. Unfortunately the necessity
+for copying the data makes this solution inefficient in terms of memory;
+and the process takes 0.25 seconds for an 18-megabyte image test case.
+However, this is the only way to insure that true background pixels are
+not masked out as underloads.
+
+------------------------------------------------------------------------
+r11 | sauter | 2005-12-20 10:47:13 -0800 (Tue, 20 Dec 2005) | 4 lines
+Changed paths:
+   M /trunk/libdiffspot.cc
+   M /trunk/libdiffspot.h
+
+Consolidate the functions search_border_overload and search_border_spot.  However,
+this is a commit of work done six weeks ago and there was the complication of
+a parallel commit to the SSRL cvs tree.  So the status of this code is not quite clear.
+
+------------------------------------------------------------------------
+r10 | sauter | 2005-11-03 15:40:56 -0800 (Thu, 03 Nov 2005) | 5 lines
+Changed paths:
+   M /trunk/libdiffspot.cc
+
+Fix a bug that previously caused a segmentation fault whenever the wavelength
+was above 2.0 Angstroms.  Also, the formulae for converting radius to resolution
+(and vice versa) do not appear to be correct.  They may be useful approximations.
+Put in a comment pending further investigation.
+
+------------------------------------------------------------------------
+r9 | rwgk | 2005-07-08 16:53:40 -0700 (Fri, 08 Jul 2005) | 2 lines
+Changed paths:
+   M /trunk/libdiffspot.cc
+
+unused variables removed (MIPSpro 7.3.1.3 diagnostics)
+
+------------------------------------------------------------------------
+r8 | sauter | 2004-11-22 10:33:55 -0800 (Mon, 22 Nov 2004) | 4 lines
+Changed paths:
+   M /trunk/libdiffspot.cc
+
+As per comment in code, calculation of the deprecated "angular anomaly"
+gives a division-by-zero error if beam is off the detector.  So take this
+code out.
+
+------------------------------------------------------------------------
+r7 | sauter | 2004-08-06 14:59:22 -0700 (Fri, 06 Aug 2004) | 4 lines
+Changed paths:
+   M /trunk/libdiffspot.cc
+
+Change pixel search implementation so as to abolish  excessive recursion, which
+caused stack overflows under Linux when stacksize was set to 8 Mb.  New
+implementation uses std::stack.
+
+------------------------------------------------------------------------
+r6 | sauter | 2004-03-11 12:18:49 -0800 (Thu, 11 Mar 2004) | 2 lines
+Changed paths:
+   M /trunk/libdiffspot.cc
+   M /trunk/libdiffspot.h
+
+take away the cvadjpow and put in option for timing.
+
+------------------------------------------------------------------------
+r2 | ttleese | 2003-11-17 15:44:12 -0800 (Mon, 17 Nov 2003) | 2 lines
+Changed paths:
+   A /trunk/libdiffspot.cc
+   A /trunk/libdiffspot.h
+
+Initial revision
+
+------------------------------------------------------------------------
+r1 | (no author) | 2003-11-17 15:44:12 -0800 (Mon, 17 Nov 2003) | 1 line
+Changed paths:
+   A /branches
+   A /tags
+   A /trunk
+
+New repository initialized by cvs2svn.
+------------------------------------------------------------------------
