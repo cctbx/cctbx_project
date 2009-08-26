@@ -1,8 +1,9 @@
-"""
+r"""
 Intended use:
   /usr/bin/python try_hello_world_c.py
   if ($status != 0) then
-    echo "Problems with file access permissions, or broken compiler/linker."
+    echo "Problems with file access permissions, or broken compiler/linker" \
+      "(status=$status)."
   endif
 """
 
@@ -24,27 +25,27 @@ main(
 """
   except: return 1
   if (not os.path.exists("libtbx_hello_world.c")):
-    return 1
+    return 2
   if (os.path.exists("a.out")):
     try: os.remove("a.out")
-    except: return 1
+    except: return 3
   if (os.path.exists("a.out")):
-    return 1
+    return 4
   if (sys.platform in ["linux2", "darwin"]):
     try: os.system("gcc libtbx_hello_world.c")
-    except: return 1
+    except: return 5
   else:
-    return 1
+    return 6
   if (not os.path.exists("a.out")):
-    return 1
+    return 7
   try: os.remove("a.out")
-  except: return 1
+  except: return 8
   if (os.path.exists("a.out")):
-    return 1
+    return 9
   try: os.remove("libtbx_hello_world.c")
-  except: return 1
+  except: return 10
   if (os.path.exists("libtbx_hello_world.c")):
-    return 1
+    return 11
   return 0
 
 if (__name__ == "__main__"):
