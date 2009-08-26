@@ -254,7 +254,7 @@ def rotamer_score_and_choose_best(
       rotamer_id, refined.rs_f_start, refined.rs_f_final)
     return refined
   def refine():
-    refine_constrained()
+    residue.atoms().set_xyz(new_xyz=refine_constrained().sites_cart_residue)
     return refine_restrained()
   for model in pdb_hierarchy.models():
     for chain in model.chains():
