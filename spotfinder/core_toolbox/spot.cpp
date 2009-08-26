@@ -34,9 +34,9 @@ spot::show_summary(image_rawdata_t const& pixelvalue,
                    double_array_t const& pixellocalmean) {
   std::cout<<"This spot: peakx "<<peak.x<<" peaky "<<peak.y<<std::endl;
   for (spot::point_list_t::const_iterator q=bodypixels.begin();
-		     q!=bodypixels.end(); q++) {
+                     q!=bodypixels.end(); q++) {
     std::cout<<"  body x "<<q->x<<" y "<<q->y<<" height "<<
     (double)pixelvalue[q->x][q->y] - pixellocalmean[q->x][q->y]<<std::endl;
   }
-  show_axes();   
+  show_axes();
 }
