@@ -1,0 +1,590 @@
+------------------------------------------------------------------------
+r1593 | sauter | 2009-08-26 11:22:26 -0700 (Wed, 26 Aug 2009) | 1 line
+Changed paths:
+   M /trunk/SConscript
+   M /trunk/distltbx/boost_python/singlemask.h
+   M /trunk/distltbx/distl.h
+   M /trunk/distltbx/ll.h
+   M /trunk/distltbx/spotfilter.h
+   M /trunk/dptbx/latticescorer.h
+   M /trunk/libtbx_config
+
+distl package now moved to sourceforge repository spotfinder
+------------------------------------------------------------------------
+r1559 | bkpoon | 2009-07-08 00:25:38 -0700 (Wed, 08 Jul 2009) | 1 line
+Changed paths:
+   M /trunk/distltbx/hough.cpp
+   M /trunk/distltbx/hough.h
+
+Updated comments
+------------------------------------------------------------------------
+r1557 | sauter | 2009-07-02 17:09:44 -0700 (Thu, 02 Jul 2009) | 1 line
+Changed paths:
+   M /trunk/distltbx/__init__.py
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/distltbx/distl.h
+
+Expose spotfinder submethods individually to Python for fine-grained profiling and testing.
+------------------------------------------------------------------------
+r1501 | sauter | 2009-05-08 15:27:29 -0700 (Fri, 08 May 2009) | 1 line
+Changed paths:
+   M /trunk/distltbx/__init__.py
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.h
+
+Distl scanbox tiling now permits special Pilatus definition so that inactive areas are not tiled.
+------------------------------------------------------------------------
+r1352 | sauter | 2009-02-19 16:02:04 -0800 (Thu, 19 Feb 2009) | 1 line
+Changed paths:
+   D /trunk/array_family/boost_python/distl.h
+   M /trunk/detectors/boost_python/detectors_ext.cpp
+   A /trunk/detectors/detectors.h (from /trunk/include/labelit/detectors.h:1350)
+   M /trunk/detectors/detectorsquick.cpp
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/boost_python/hough_ext.cpp
+   A /trunk/distltbx/boost_python/singlemask.h (from /trunk/include/labelit/singlemask.h:1350)
+   M /trunk/distltbx/distl.cpp
+   A /trunk/distltbx/distl.h (from /trunk/array_family/boost_python/distl.h:1351)
+   M /trunk/distltbx/hough.cpp
+   A /trunk/distltbx/hough.h (from /trunk/include/labelit/hough.h:1350)
+   A /trunk/distltbx/ll.h (from /trunk/include/labelit/ll.h:1350)
+   M /trunk/distltbx/spotfilter.cpp
+   A /trunk/distltbx/spotfilter.h (from /trunk/include/labelit/spotfilter.h:1350)
+   M /trunk/dptbx/basis_refine.cpp
+   A /trunk/dptbx/basis_refine.h (from /trunk/include/labelit/basis_refine.h:1350)
+   M /trunk/dptbx/beamplotter.cpp
+   A /trunk/dptbx/beamplotter.h (from /trunk/include/labelit/beamplotter.h:1350)
+   M /trunk/dptbx/boost_python/dptbx_ext.cpp
+   M /trunk/dptbx/boost_python/resolution_ext.cpp
+   A /trunk/dptbx/directional_fft.h (from /trunk/include/labelit/directional_fft.h:1350)
+   M /trunk/dptbx/dptbx.cpp
+   A /trunk/dptbx/dptbx.h (from /trunk/include/labelit/dptbx.h:1350)
+   A /trunk/dptbx/dptbx_debug.h (from /trunk/include/labelit/dptbx_debug.h:1350)
+   A /trunk/dptbx/latticescorer.h (from /trunk/include/labelit/latticescorer.h:1350)
+   M /trunk/dptbx/model_details.cpp
+   A /trunk/dptbx/model_details.h (from /trunk/include/labelit/model_details.h:1350)
+   M /trunk/dptbx/modelcalculator.cpp
+   A /trunk/dptbx/modelcalculator.h (from /trunk/include/labelit/modelcalculator.h:1350)
+   M /trunk/dptbx/mosaicity.cpp
+   A /trunk/dptbx/mosaicity.h (from /trunk/include/labelit/mosaicity.h:1350)
+   M /trunk/dptbx/orientation.cpp
+   M /trunk/dptbx/possible_reflections.cpp
+   A /trunk/dptbx/possible_reflections.h (from /trunk/include/labelit/possible_reflections.h:1350)
+   M /trunk/dptbx/resolution.cpp
+   A /trunk/dptbx/resolution.h (from /trunk/include/labelit/resolution.h:1350)
+   M /trunk/dptbx/sublatticescorer.cpp
+   D /trunk/include/labelit/basis_refine.h
+   D /trunk/include/labelit/beamplotter.h
+   D /trunk/include/labelit/detectors.h
+   D /trunk/include/labelit/directional_fft.h
+   D /trunk/include/labelit/dptbx.h
+   D /trunk/include/labelit/dptbx_debug.h
+   D /trunk/include/labelit/hough.h
+   D /trunk/include/labelit/latticescorer.h
+   D /trunk/include/labelit/ll.h
+   D /trunk/include/labelit/model_details.h
+   D /trunk/include/labelit/modelcalculator.h
+   D /trunk/include/labelit/mosaicity.h
+   D /trunk/include/labelit/possible_reflections.h
+   D /trunk/include/labelit/resolution.h
+   D /trunk/include/labelit/rmerge.h
+   D /trunk/include/labelit/singlemask.h
+   D /trunk/include/labelit/spotfilter.h
+   D /trunk/include/labelit/strategy.h
+   D /trunk/include/labelit/symmetry.h
+   M /trunk/strategy/boost_python/strategy_ext.cpp
+   M /trunk/strategy/strategy.cpp
+   A /trunk/strategy/strategy.h (from /trunk/include/labelit/strategy.h:1350)
+   M /trunk/symmetry/boost_python/symmetry_ext.cpp
+   M /trunk/symmetry/mark3.cpp
+   M /trunk/symmetry/rmerge.cpp
+   A /trunk/symmetry/rmerge.h (from /trunk/include/labelit/rmerge.h:1350)
+   A /trunk/symmetry/symmetry.h (from /trunk/include/labelit/symmetry.h:1350)
+
+Migration path, reorganized labelit directory structure
+------------------------------------------------------------------------
+r1351 | sauter | 2009-02-19 14:41:01 -0800 (Thu, 19 Feb 2009) | 1 line
+Changed paths:
+   A /trunk/array_family/boost_python/distl.h (from /trunk/include/labelit/distl.h:1350)
+   M /trunk/array_family/boost_python/flex_distl_spot.cpp
+   D /trunk/include/labelit/distl.h
+
+migration path, labelit directory structure
+------------------------------------------------------------------------
+r1213 | bkpoon | 2008-04-01 13:35:17 -0700 (Tue, 01 Apr 2008) | 1 line
+Changed paths:
+   M /trunk/distltbx/hough.cpp
+   M /trunk/include/labelit/hough.h
+   M /trunk/labelit/distltbx/ice_nztt.py
+
+Fixed compatibility issue in Hough Transform with IRIX
+------------------------------------------------------------------------
+r1177 | bkpoon | 2008-02-20 01:24:41 -0800 (Wed, 20 Feb 2008) | 1 line
+Changed paths:
+   M /trunk/distltbx/hough.cpp
+   M /trunk/include/labelit/hough.h
+
+Fixed namespace issue for Tru64 compilers
+------------------------------------------------------------------------
+r1172 | bkpoon | 2008-02-14 15:22:46 -0800 (Thu, 14 Feb 2008) | 1 line
+Changed paths:
+   M /trunk/SConscript
+   M /trunk/distltbx/boost_python/SConscript
+   A /trunk/distltbx/boost_python/hough_ext.cpp
+   A /trunk/distltbx/hough.cpp
+   A /trunk/include/labelit/hough.h
+   M /trunk/labelit/distltbx/__init__.py
+   A /trunk/labelit/distltbx/ice_nztt.py
+   M /trunk/labelit/tnear2.py
+
+For non-zero two theta cases, ice ring detection is performed using the Hough transform through the RingFinder_nztt class
+------------------------------------------------------------------------
+r1098 | sauter | 2007-09-18 23:21:41 -0700 (Tue, 18 Sep 2007) | 1 line
+Changed paths:
+   M /trunk/distltbx/spotfilter.cpp
+   M /trunk/include/labelit/spotfilter.h
+   M /trunk/labelit/tnear2.py
+
+clean up unused code related to two-theta implementation
+------------------------------------------------------------------------
+r1097 | sauter | 2007-09-18 22:55:30 -0700 (Tue, 18 Sep 2007) | 1 line
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/spotfilter.cpp
+   M /trunk/dptbx/boost_python/dptbx_ext.cpp
+   M /trunk/dptbx/dptbx.cpp
+   M /trunk/dptbx/modelcalculator.cpp
+   M /trunk/dptbx/mosaicity.cpp
+   M /trunk/include/labelit/dptbx.h
+   M /trunk/include/labelit/model_details.h
+   M /trunk/include/labelit/modelcalculator.h
+   M /trunk/include/labelit/mosaicity.h
+   M /trunk/include/labelit/spotfilter.h
+   M /trunk/labelit/command_line/imagefiles.py
+   M /trunk/labelit/command_line/mosflm_script.py
+   M /trunk/labelit/command_line/overlay_distl.py
+   M /trunk/labelit/command_line/overlay_mosflm.py
+   M /trunk/labelit/command_line/stats_index.py
+   M /trunk/labelit/dptbx/__init__.py
+   M /trunk/labelit/dptbx/autoindex.py
+   M /trunk/labelit/dptbx/refinement.py
+   A /trunk/labelit/dptbx/refinement_mode.py
+   A /trunk/labelit/dptbx/test_two_theta.py
+   M /trunk/labelit/interface.py
+   M /trunk/labelit/procedure.py
+   M /trunk/labelit/symmetry/metricsym/constrained.py
+   M /trunk/labelit/tnear2.py
+
+Initial support for non-zero two theta. Infrastructure for two-theta refinement, but this refinement is turned off.
+------------------------------------------------------------------------
+r1091 | sauter | 2007-08-10 15:41:03 -0700 (Fri, 10 Aug 2007) | 1 line
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/include/labelit/distl.h
+
+An integer array of zeroes, for any user-defined purpose, intended as a scratchpad for overlap detection in the sublattice procedure
+------------------------------------------------------------------------
+r1090 | sauter | 2007-08-10 15:34:06 -0700 (Fri, 10 Aug 2007) | 1 line
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/include/labelit/distl.h
+   M /trunk/labelit/tnear2.py
+
+To support sublattice detection, make DISTL's pixel-wise Z-score persistent
+------------------------------------------------------------------------
+r1089 | sauter | 2007-08-10 15:16:53 -0700 (Fri, 10 Aug 2007) | 1 line
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   A /trunk/include/labelit/singlemask.h
+   M /trunk/labelit/tnear2.py
+
+To support sublattice detection, singlemask estimates a conservative rectangular spot box for one image
+------------------------------------------------------------------------
+r1028 | sauter | 2006-12-14 20:30:05 -0800 (Thu, 14 Dec 2006) | 3 lines
+Changed paths:
+   M /trunk/include/labelit/distl.h
+   M /trunk/labelit/distltbx/ice2.py
+   M /trunk/labelit/tnear2.py
+
+Add ice-ring_bounds data item to Spotfinder so WebIce can render a picture
+of the ice-ring locations.
+
+------------------------------------------------------------------------
+r1001 | sauter | 2006-10-25 14:18:03 -0700 (Wed, 25 Oct 2006) | 2 lines
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/include/labelit/distl.h
+
+remove dead code from distltbx for N^2 nearest neighbor calculation
+
+------------------------------------------------------------------------
+r882 | sauter | 2006-04-07 13:58:02 -0700 (Fri, 07 Apr 2006) | 8 lines
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/include/labelit/distl.h
+   M /trunk/labelit/command_line/stats_distl.py
+   M /trunk/labelit/distltbx/__init__.py
+   M /trunk/labelit/preferences.py
+   M /trunk/labelit/tnear2.py
+
+New preferences option "distl_report_overloads" causes distl to report
+      candidate Bragg spots containing saturation overloads.  LABELIT takes
+      the DISTL candidates, performs the usual ice ring and resolution filters,
+      then counts the number of remaining overloaded spots (and reports them
+      in stats_distl).  Overloaded spots are then removed prior to auto-
+      indexing.  Previously "distl_report_overloads" was always False; now
+      it is True by default.
+
+------------------------------------------------------------------------
+r848 | sauter | 2006-03-03 21:12:32 -0800 (Fri, 03 Mar 2006) | 5 lines
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/distltbx/spotfilter.cpp
+   M /trunk/include/labelit/distl.h
+   M /trunk/include/labelit/spotfilter.h
+   M /trunk/labelit/tnear2.py
+
+Reorganize code so that the spot type is declared and defined within the
+Distl namespace and file structure.  Boost.python directly wraps this; the
+intermediate wrapper is merged into the Distl code and removed from the
+labelit file tree.
+
+------------------------------------------------------------------------
+r846 | sauter | 2006-03-02 18:16:31 -0800 (Thu, 02 Mar 2006) | 3 lines
+Changed paths:
+   M /trunk/SConscript
+   M /trunk/array_family/boost_python/flex_distl_spot.cpp
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/distltbx/spotfilter.cpp
+   M /trunk/include/labelit/distl.h
+   M /trunk/include/labelit/spotfilter.h
+
+For forward compatibility, migrate from the Diffspot namespace to the
+newly-implemented Distl namespace (from SSRL).
+
+------------------------------------------------------------------------
+r839 | sauter | 2006-02-22 12:13:11 -0800 (Wed, 22 Feb 2006) | 6 lines
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/spotfilter.cpp
+   M /trunk/include/labelit/spotfilter.h
+   M /trunk/labelit/tnear2.py
+
+The brute force nearest neighbor search is replaced by a k-d tree search.
+This is a reference implementation showing that the two methods give the same
+nearest neighbor distance (but not always the exact same neighbor), however
+it is not fully functional in the spotpicking context.  The next version
+will remove the dependency on the brute force approach.
+
+------------------------------------------------------------------------
+r831 | sauter | 2006-02-15 12:14:42 -0800 (Wed, 15 Feb 2006) | 5 lines
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/include/labelit/distl.h
+   M /trunk/labelit/tnear2.py
+
+While introducing ListManager mechanism for maintaining a single C++ spotlist
+that can be efficiently subsetted; also maintain backward compatibility so
+that results previously pickled can still be viewed, and bright spots viewed
+with labelit.overlay_distl.
+
+------------------------------------------------------------------------
+r829 | sauter | 2006-02-15 10:53:14 -0800 (Wed, 15 Feb 2006) | 2 lines
+Changed paths:
+   M /trunk/distltbx/spotfilter.cpp
+   M /trunk/include/labelit/spotfilter.h
+
+Fix EDG compiler Info messages
+
+------------------------------------------------------------------------
+r826 | sauter | 2006-02-14 17:40:25 -0800 (Tue, 14 Feb 2006) | 4 lines
+Changed paths:
+   M /trunk/array_family/boost_python/flex_distl_spot.cpp
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/include/labelit/distl.h
+   M /trunk/labelit/distltbx/__init__.py
+
+Ability to pickle flex_distl_spot, flex_icering, and SpotFilterAgent.
+This will make it much easier to maintain a single master list of
+spots, with subset nodes containing pointers to the master list.
+
+------------------------------------------------------------------------
+r825 | sauter | 2006-02-14 17:29:35 -0800 (Tue, 14 Feb 2006) | 4 lines
+Changed paths:
+   M /trunk/distltbx/spotfilter.cpp
+   M /trunk/include/labelit/spotfilter.h
+
+Bugfix in filter agent; also, the minimum radius is no longer passed to the
+constructor since it is only used in one test; instead, minradius is given
+with the generalized "arguments" mechanism (function set_arguments()).
+
+------------------------------------------------------------------------
+r824 | sauter | 2006-02-14 11:49:01 -0800 (Tue, 14 Feb 2006) | 3 lines
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/spotfilter.cpp
+   M /trunk/include/labelit/spotfilter.h
+
+Provisional code to rank a subset of chosen spots by peak intensity.
+Code will be tested and generalized later.
+
+------------------------------------------------------------------------
+r823 | sauter | 2006-02-14 11:46:48 -0800 (Tue, 14 Feb 2006) | 6 lines
+Changed paths:
+   M /trunk/distltbx/distl.cpp
+   M /trunk/include/labelit/distl.h
+
+Special method to reconstruct
+the spot from a flex int.  Meant to be used for unpickling.
+The const_iterator is intentionally meant to be incremented by
+this constructor, so it can be used by the calling code to unpickle
+the next spot.
+
+------------------------------------------------------------------------
+r820 | sauter | 2006-02-10 16:14:09 -0800 (Fri, 10 Feb 2006) | 9 lines
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/spotfilter.cpp
+   M /trunk/include/labelit/distl.h
+   M /trunk/include/labelit/spotfilter.h
+   M /trunk/labelit/distltbx/ice2.py
+   M /trunk/labelit/distltbx/method2.py
+   M /trunk/labelit/procedure.py
+   M /trunk/labelit/tnear2.py
+
+A partially working improvement on the long-standing DISTL wrapper.  The
+main improvements include a) push most of the array-intensive work down
+below the Boost.Python boundary; b) reorganize process of subsetting the
+spotlists; more indirection allows i) inserting and deleting tests,
+ii) modular introduction of tests at C++ level, iii) en-bloc handling
+of subsets, instead of instantiating separate code for each, iv) each
+subset is now represented by pointers to the master list, which will be
+separately pickled in the future.
+
+------------------------------------------------------------------------
+r818 | sauter | 2006-02-09 10:08:25 -0800 (Thu, 09 Feb 2006) | 5 lines
+Changed paths:
+   M /trunk/SConscript
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   A /trunk/distltbx/spotfilter.cpp
+   A /trunk/include/labelit/spotfilter.h
+
+Push many of the spot-filtering logic down into the C++ layer in an attempt
+to improve performance of tnear2.  The underlying problem is that boost
+python function calls were very numerous: many for each spot, and this
+becomes prohibitive for large unit cells.
+
+------------------------------------------------------------------------
+r817 | sauter | 2006-02-08 20:31:13 -0800 (Wed, 08 Feb 2006) | 7 lines
+Changed paths:
+   M /trunk/distltbx/distl.cpp
+   M /trunk/include/labelit/distl.h
+
+w_Distl::mod_data() is an example function showing how the caller can
+introspect the function of libdistl.  A modified data set is reported in
+this case to show which pixels are being considered as candidate
+background pixels.  This is a necessary tool for determining why the
+background determination is failing. (Answer: too many pixels were being
+excluded as underloads.)
+
+------------------------------------------------------------------------
+r798 | sauter | 2005-11-14 11:57:53 -0800 (Mon, 14 Nov 2005) | 4 lines
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/include/labelit/distl.h
+
+Remove dead code pertaining to DISTL's radial and angular anomalies.  This code
+was in fact never used, and must be taken out before converging my DISTL cvs tree
+to SSRL's current version.
+
+------------------------------------------------------------------------
+r692 | sauter | 2005-06-03 13:26:31 -0700 (Fri, 03 Jun 2005) | 5 lines
+Changed paths:
+   M /trunk/distltbx/distl.cpp
+   M /trunk/include/labelit/distl.h
+   M /trunk/labelit/distltbx/__init__.py
+
+We can do much better during DISTL analysis of the Mar345 if we take into account
+the true saturation value, which is much higher than 64K.  For one particular
+test case provided by Ana Gonzalez, this makes the difference between yes or no
+being able to index the dataset.
+
+------------------------------------------------------------------------
+r564 | sauter | 2004-11-18 17:54:09 -0800 (Thu, 18 Nov 2004) | 6 lines
+Changed paths:
+   M /trunk/array_family/boost_python/flex_distl_spot.cpp
+   M /trunk/array_family/boost_python/flex_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/include/labelit/distl.h
+
+Supporting C++ code for new close-spot heuristics.  For cases where
+candidate Bragg spots are close to each other on the image, cache a list
+of xy vectors connecting a spot to its nearest neighbor.  This list
+will then be analyzed to see if separation vectors are the same, indicating
+a candidate cell vector.
+
+------------------------------------------------------------------------
+r474 | sauter | 2004-08-19 13:03:36 -0700 (Thu, 19 Aug 2004) | 2 lines
+Changed paths:
+   M /trunk/array_family/boost_python/flex_distl_spot.cpp
+   M /trunk/array_family/boost_python/flex_labelit_arrays.cpp
+   M /trunk/detectors/detectors.cpp
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/dptbx/dptbx.cpp
+   M /trunk/include/labelit/basis_refine.h
+   M /trunk/include/labelit/beamplotter.h
+   M /trunk/include/labelit/distl.h
+   M /trunk/labelit/command_line/scala_symmetry.py
+   M /trunk/labelit/command_line/test2_harker.py
+   M /trunk/labelit/diffraction/limits.py
+   M /trunk/labelit/dptbx/__init__.py
+   M /trunk/labelit/dptbx/tools.py
+
+clean the whitespace clutter
+
+------------------------------------------------------------------------
+r437 | sauter | 2004-06-18 14:29:47 -0700 (Fri, 18 Jun 2004) | 5 lines
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/include/labelit/distl.h
+   M /trunk/labelit/command_line/runprinter.py
+   M /trunk/labelit/tnear2.py
+
+In the event that there are too few spots for parameter refinement, make extra
+effort to make a very detailed inspection of the border pixels of each spot
+so that more non-overlapping spot candidates can be included in the calculation.
+This is the only way to index Bart Hazes' low resolution image.
+
+------------------------------------------------------------------------
+r293 | ttleese | 2003-11-04 13:31:22 -0800 (Tue, 04 Nov 2003) | 2 lines
+Changed paths:
+   M /trunk/distltbx/distl.cpp
+   M /trunk/dptbx/beamplotter.cpp
+   M /trunk/dptbx/dptbx.cpp
+   M /trunk/include/labelit/distl.h
+
+*** empty log message ***
+
+------------------------------------------------------------------------
+r232 | sauter | 2003-09-08 22:19:55 -0700 (Mon, 08 Sep 2003) | 2 lines
+Changed paths:
+   M /trunk/LICENSE.txt
+   M /trunk/SConscript
+   M /trunk/array_family/boost_python/SConscript
+   M /trunk/array_family/boost_python/flex_distl_spot.cpp
+   M /trunk/array_family/boost_python/flex_labelit_ext.cpp
+   M /trunk/detectors/boost_python/SConscript
+   M /trunk/detectors/boost_python/detectorsmodule.cpp
+   M /trunk/detectors/detectors.cpp
+   M /trunk/detectors/detectorsquick.cpp
+   M /trunk/distltbx/boost_python/SConscript
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/dptbx/beamplotter.cpp
+   M /trunk/dptbx/boost_python/SConscript
+   M /trunk/dptbx/boost_python/dptbx_ext.cpp
+   M /trunk/dptbx/dptbx.cpp
+   M /trunk/include/labelit/beamplotter.h
+   M /trunk/include/labelit/detectors.h
+   M /trunk/include/labelit/distl.h
+   M /trunk/include/labelit/dptbx.h
+   M /trunk/labelit/array_family/flex.py
+   M /trunk/labelit/command_line/runprinter.py
+   M /trunk/labelit/command_line/screen.py
+   M /trunk/labelit/detectors/__init__.py
+   M /trunk/labelit/detectors/jpeg.py
+   M /trunk/labelit/diffraction/limits.py
+   M /trunk/labelit/distltbx/__init__.py
+   M /trunk/labelit/dps.py
+   M /trunk/labelit/dptbx/__init__.py
+   M /trunk/labelit/dptbx/autoindex.py
+   M /trunk/labelit/dptbx/character.py
+   M /trunk/labelit/dptbx/graphics_procedure.py
+   M /trunk/labelit/dptbx/graphics_support.py
+   M /trunk/labelit/dptbx/status.py
+   M /trunk/labelit/dptbx/tools.py
+   M /trunk/labelit/dptbx/zuoreduction.py
+   M /trunk/labelit/interface.py
+   M /trunk/labelit/procedure.py
+   M /trunk/labelit/tnear.py
+   M /trunk/labelit/tnear2.py
+
+First pass converting pipeline references to labelit references
+
+------------------------------------------------------------------------
+r199 | sauter | 2003-07-29 17:08:31 -0700 (Tue, 29 Jul 2003) | 2 lines
+Changed paths:
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/include/labelit/distl.h
+
+Zepu's resolution determination is now run automatically every time.
+
+------------------------------------------------------------------------
+r180 | sauter | 2003-07-21 14:46:32 -0700 (Mon, 21 Jul 2003) | 2 lines
+Changed paths:
+   M /trunk/include/labelit/distl.h
+
+depracate ngoodspots; use size method of flex.spot instead.
+
+------------------------------------------------------------------------
+r168 | sauter | 2003-07-16 17:42:30 -0700 (Wed, 16 Jul 2003) | 4 lines
+Changed paths:
+   M /trunk/array_family/boost_python/flex_distl_spot.cpp
+   M /trunk/array_family/boost_python/flex_labelit_ext.cpp
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/include/labelit/distl.h
+
+An initial implementation of a wrapper for the May 28 DISTL from Zepu.
+This compiles, runs and gives apparently reasonable results, but probably
+needs some fine-tuning.
+
+------------------------------------------------------------------------
+r123 | sauter | 2003-06-10 14:48:26 -0700 (Tue, 10 Jun 2003) | 3 lines
+Changed paths:
+   M /trunk/SConscript
+   M /trunk/include/labelit/distl.h
+
+distltbx is dead code until further notice; need to examine Zepu's latest code
+before migrating from spotfinder to distltbx.
+
+------------------------------------------------------------------------
+r80 | sauter | 2003-05-02 21:41:09 -0700 (Fri, 02 May 2003) | 3 lines
+Changed paths:
+   M /trunk/SConscript
+   M /trunk/distltbx/boost_python/SConscript
+   M /trunk/distltbx/boost_python/distltbx_ext.cpp
+   M /trunk/distltbx/distl.cpp
+   M /trunk/include/labelit/distl.h
+   M /trunk/labelit/distltbx/__init__.py
+
+Further support for Ashley Deacon's Mar 20 version of DISTL.  However,
+things are still not completely working.
+
+------------------------------------------------------------------------
+r77 | sauter | 2003-05-01 22:55:58 -0700 (Thu, 01 May 2003) | 3 lines
+Changed paths:
+   M /trunk/SConscript
+   A /trunk/distltbx
+   A /trunk/distltbx/boost_python
+   A /trunk/distltbx/boost_python/SConscript
+   A /trunk/distltbx/boost_python/distltbx_ext.cpp
+   A /trunk/distltbx/distl.cpp
+   A /trunk/include/labelit/distl.h
+   A /trunk/labelit/distltbx
+   A /trunk/labelit/distltbx/__init__.py
+
+First version of support wrapper for Ashley Deacon's new DISTL version
+as of March 20, 2003.  This doesn't fully work yet.
+
+------------------------------------------------------------------------
