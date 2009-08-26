@@ -11,14 +11,14 @@ class DetectorImageBase(object):
     self.beam_center_reference_frame = "instrument"#cf beam_center_convention.py
     self.beam_center_convention = None
 
-  def copy_common_attributes_to_derived_instance(self, derivedobject):
-    derivedobject.filename = copy.copy(self.filename)
-    derivedobject.bin = copy.copy(self.bin)
-    derivedobject.vendortype = copy.copy(self.vendortype)
-    derivedobject.beam_center_reference_frame = copy.copy(self.beam_center_reference_frame)
-    derivedobject.beam_center_convention = copy.copy(self.beam_center_convention)
-    derivedobject.header = copy.copy(self.header)
-    derivedobject.headerlines = copy.copy(self.headerlines)
+  def copy_common_attributes_from_parent_instance(self, parentobject):
+    self.filename = copy.copy(parentobject.filename)
+    self.bin = copy.copy(parentobject.bin)
+    self.vendortype = copy.copy(parentobject.vendortype)
+    self.beam_center_reference_frame = copy.copy(parentobject.beam_center_reference_frame)
+    self.beam_center_convention = copy.copy(parentobject.beam_center_convention)
+    self.header = copy.copy(parentobject.header)
+    self.headerlines = copy.copy(parentobject.headerlines)
 
   def setBin(self,bin): #software binning.
                         # the only bin values supported are 1 & 2

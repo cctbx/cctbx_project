@@ -48,7 +48,7 @@ def pilatus_slice_from_object_and_slicenumber(object,sliceindex):
   assert 0 <= sliceindex <= 11 # slow slice section, possible index range
   P.sliceindex = sliceindex
   P.object = object
-  object.copy_common_attributes_to_derived_instance(P)
+  P.copy_common_attributes_from_parent_instance(P.object)
   P.vendortype = "Pilatus-6M" # overrides the default copy
   P.parameters = P.slice_parameters(object.parameters)
   P.slice_callback = P.slice_callback_with_object_data
