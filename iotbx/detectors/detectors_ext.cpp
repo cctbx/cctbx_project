@@ -8,6 +8,7 @@
 #include <exception>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/math/utils.h>
+#include <iotbx/detectors/image_divider.h>
 
 namespace af = scitbx::af;
 
@@ -315,4 +316,23 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
    def("unpad_raxis", unpad_raxis);
    def("MakeSquareRAXIS", MakeSquareRAXIS);
    def("Bin2_by_2", Bin2_by_2);
+
+  class_<Distl::interval>("interval", no_init)
+     .def_readonly("first",&Distl::interval::first)
+     .def_readonly("last",&Distl::interval::last)
+     .def("size",&Distl::interval::size)
+  ;
+
+  class_<Distl::image_divider>("image_divider", no_init)
+     .def(init<scitbx::af::flex_int, const int&>(
+           (
+           arg_("data"),
+           arg_("nullvalue")
+           )
+         ))
+     .def("module_count", &Distl::image_divider::module_count)
+     .def("tile_data", &Distl::image_divider::tile_data)
+     .def("tile_slow_interval", &Distl::image_divider::tile_slow_interval)
+     .def("tile_fast_interval", &Distl::image_divider::tile_fast_interval)
+  ;
 }

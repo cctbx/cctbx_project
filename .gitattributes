@@ -188,6 +188,8 @@ iotbx/command_line/r_free_flags_completion_simple.py svneol=native#text/x-python
 iotbx/detectors/beam_center_convention.py -text
 iotbx/detectors/cbf.py -text
 iotbx/detectors/edf.py -text
+iotbx/detectors/image_divider.cpp -text
+iotbx/detectors/image_divider.h -text
 iotbx/detectors/pilatus_minicbf.py -text
 iotbx/detectors/pilatus_slice.py -text
 iotbx/detectors/scanbox.h -text
