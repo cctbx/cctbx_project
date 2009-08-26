@@ -190,6 +190,7 @@ iotbx/detectors/cbf.py -text
 iotbx/detectors/edf.py -text
 iotbx/detectors/pilatus_minicbf.py -text
 iotbx/detectors/pilatus_slice.py -text
+iotbx/detectors/scanbox.h -text
 iotbx/detectors/url_support.py -text
 iotbx/error.h svneol=native#text/plain
 iotbx/examples/__init__.py svneol=native#text/x-python
