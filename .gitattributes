@@ -720,10 +720,12 @@ spotfinder/array_family/flex_distl_spot.cpp -text
 spotfinder/array_family/flex_ext.cpp -text
 spotfinder/command_line/__init__.py -text
 spotfinder/command_line/signal_strength.py -text
+spotfinder/core_toolbox/__init__.py -text
 spotfinder/core_toolbox/boost_python/SConscript -text
 spotfinder/core_toolbox/boost_python/distltbx_ext.cpp -text
 spotfinder/core_toolbox/boost_python/hough_ext.cpp -text
 spotfinder/core_toolbox/boost_python/singlemask.h -text
+spotfinder/core_toolbox/close_spots_detail.py -text
 spotfinder/core_toolbox/distl.cpp -text
 spotfinder/core_toolbox/distl.h -text
 spotfinder/core_toolbox/hough.cpp -text
