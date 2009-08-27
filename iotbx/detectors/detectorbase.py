@@ -32,6 +32,10 @@ class DetectorImageBase(object):
     self.bin = bin
     self.bin_safe_set_data(self.linearintdata)
 
+  def set_beam_center_convention(self,beam_center_convention):
+    from iotbx.detectors.beam_center_convention import convert_beam_instrument_to_imageblock
+    convert_beam_instrument_to_imageblock(self,beam_center_convention)
+
   def fileLength(self):
     self.readHeader()
     return self.dataoffset()+self.size1*self.size2*self.integerdepth()

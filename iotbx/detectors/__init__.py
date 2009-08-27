@@ -24,6 +24,7 @@ from iotbx.detectors.edf import EDFImage
 from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors.pilatus_slice import pilatus_slice_from_file_url
 from iotbx.detectors.pilatus_slice import pilatus_slice_from_http_url
+from iotbx.detectors.adsc_module import ADSC_module_from_file_url
 
 class EDFWrapper(EDFImage, DetectorImageBase):
   def __init__(self,filename):
@@ -42,7 +43,9 @@ all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,
                   MARImage,MARIPImage,RAXISImage,
                   NonSquareRAXISImage,PilatusImage,CBFImage,BrukerImage]
 
-all_url_types = [pilatus_slice_from_file_url,pilatus_slice_from_http_url]
+all_url_types = [pilatus_slice_from_file_url,pilatus_slice_from_http_url,
+                 ADSC_module_from_file_url
+]
 
 names_and_types = { "ADSC"          : ADSCImage,
                     "Saturn"        : SaturnImage,
