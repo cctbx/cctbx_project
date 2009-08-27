@@ -282,6 +282,7 @@ libtbx/command_line/show_full_command_path.py -text
 libtbx/command_line/show_include_paths.py svneol=native#text/x-python
 libtbx/command_line/show_number_of_processors.py svneol=native#text/x-python
 libtbx/command_line/tcsh.sh -text
+libtbx/development/__init__.py -text
 libtbx/development/timers.py -text
 libtbx/dtrace/profile.d -text
 libtbx/easy_profile.py -text
