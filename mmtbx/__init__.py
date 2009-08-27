@@ -226,118 +226,155 @@ class fmodels(object):
     return result
 
 class map_names(object):
+
+  FC = ['fcalc','fcal','fc', 'fmodel','fmod','fm']
+  DFC = ['dfcalc','dfcal','dfc', 'dfmodel','dfmod','dfm']
+  FO = ['fobs','fob','fo']
+  MFO = ['mfobs','mfob','mfo']
+  KICK = ["-kicked","+kicked","kicked","-kick","+kick","kick"]
+  FILLED = ['+filled','-filled','filled','+fill','-fill','fill']
+
   def __init__(self, map_name_string):
-    k,n = None,None
-    ml_map = False
     s = map_name_string.lower()
-    self.k = k
-    self.n = n
-    self.ml_map = ml_map
+    self.k = None
+    self.n = None
+    self.ml_map = None
     self.anomalous = False
     self.kicked = False
     self.f_obs_filled = False
-    s = s.replace(" ","")
-    s = s.replace("*","")
-    if(s.count('kicked')==1 or s.count('kick')==1):
-      self.kicked = True
-      for tmp in ["kicked", "kick"]:
+    for sym in ["~","!","@","#","$","%","^","&","*","(",")","=","<",">","?","/",
+                ":",";","|","[","]","{","}",",","_"," "]:
+      s = s.replace(sym,"")
+    for tmp in self.KICK:
+      if tmp in s:
         s = s.replace(tmp,"")
-    if(s.count('filled')==1 or
-       s.count('filed')==1 or
-       s.count('fill')==1 or
-       s.count('fil')==1):
-      self.f_obs_filled = True
-      for tmp in ['filled', 'filed', 'fill', 'fil']:
+        self.kicked = True
+    for tmp in self.FILLED:
+      if tmp in s:
         s = s.replace(tmp,"")
-    while s.count("_") > 0: s = s.replace("_","")
-    if(s.count('anom')):
+        self.f_obs_filled = True
+    if(s.count('ano')):
       self.anomalous = True
-    elif(s in ['fcalc','fcal','fc', 'fmodel','fmod','fm']):
-      self.k = float(0)
-      self.n = float(-1)
+    elif(s in self.FC):
+      self.k = 0
+      self.n = 1
       self.ml_map = False
-    elif(s in ['dfcalc','dfcal','dfc', 'dfmodel','dfmod','dfm']):
-      self.k = float(0)
-      self.n = float(-1)
+    elif(s in self.DFC):
+      self.k = 0
+      self.n = 1
       self.ml_map = True
-    elif(s in ['fobs','fob','fo']):
-      self.k = float(1)
-      self.n = float(0)
+    elif(s in self.FO):
+      self.k = 1
+      self.n = 0
       self.ml_map = False
-    elif(s in ['mfobs','mfob','mfo']):
-      self.k = float(1)
-      self.n = float(0)
+    elif(s in self.MFO):
+      self.k = 1
+      self.n = 0
       self.ml_map = True
     else:
-      found = False
-      for item in ['fobs','fob','fo']:
-        if(s.count(item)==1):
-          s = s.replace(item,"_")
-          found = True
-      if(not found): self.error(map_name_string)
-      found = False
-      for item in ['fcalc','fcal','fc', 'fmodel','fmod','fm']:
-        if(s.count(item)==1):
-          if(not s.endswith(item)): self.error(map_name_string)
-          s = s.replace(item,"_")
-          found = True
-      if(not found): self.error(map_name_string)
-      if(s.count('m')==1):
-        if(s.count('d')==0): self.error(map_name_string)
-        s = s.replace('m',"_")
-        s = s.replace('d',"_")
-        ml_map = True
-      if(s.count('d')==1): self.error(map_name_string)
-      # at this point we can only have numbers or eventually "-"
-      if(s.count('-')==1 and not s.startswith('-')):
-        if(len(s)==1): self.error(map_name_string)
-        if(s.endswith('-')):
-          n = 1
-        else:
-          n = s[s.index('-')+1:]
-        k = s[:s.index('-')]
-        s = s.replace('-',"_")
-      if(len(s) == s.count('_')):
-        k, n = 1, 1
-        s = s.replace('_','')
-      if(len(s) > 0):
-        first = []
-        second = []
-        start_first = True
-        start_second = False
-        for item in s:
-          if(item != '_' and start_first): first.append(item)
-          if(item == '_' and len(first) > 0): start_first = False
-          if(item != '_' and not start_first): second.append(item)
-        tmp_result = "".join(first)
-        if(tmp_result == '-'): tmp_result = -1
-        else: tmp_result = "".join(first)
-        try: k = float(tmp_result)
-        except: self.error(map_name_string)
-        if(len(second)==0): n = 1
-        else:
-          tmp_result = "".join(second)
-          if(tmp_result.startswith('--')): tmp_result = tmp_result[1:]
-          try: n = float(tmp_result)
-          except: self.error(map_name_string)
-      if([k,n].count(None) > 0): self.error(map_name_string)
-      assert ml_map is not None
-      self.k = float(k)
-      self.n = float(n)
-      self.ml_map = ml_map
+      #
+      found_D = False
+      for tmp in self.DFC:
+        if(tmp in s):
+          found_D = True
+          s = s.replace(tmp,"C")
+      found_M = False
+      for tmp in self.MFO:
+        if(tmp in s):
+          found_M = True
+          s = s.replace(tmp,"O")
+      if(not ([found_D,found_M].count(True) in [0,2])):
+        self.error(map_name_string)
+      if([found_D,found_M].count(True)==2): self.ml_map=True
+      elif([found_D,found_M].count(True)==0): self.ml_map=False
+      else: self.error(map_name_string)
+      #
+      if(not self.ml_map):
+        for tmp in self.FC:
+          if(tmp in s): s = s.replace(tmp,"C")
+        for tmp in self.FO:
+          if(tmp in s): s = s.replace(tmp,"O")
+      #
+      if(s.count("O")+s.count("C")!=2):
+        self.error(map_name_string)
+      for tmp in s:
+        if(not (tmp in ["C","O"])):
+          if(tmp.isalpha()): self.error(map_name_string)
+      if(s.index("O")<s.index("C")):
+        tmp = s[s.index("O")+1:s.index("C")]
+        sign = None
+        if(tmp.count("+")==1): sign="+"
+        elif(tmp.count("-")==1): sign="-"
+        else: self.error(map_name_string)
+        po = s[:s.index("O")+tmp.index(sign)+1]
+        pc = s[s.index("O")+tmp.index(sign)+1:]
+        po = po.replace("O","")
+        pc = pc.replace("C","")
+        if(len(po)==0): self.k = 1.
+        elif(len(po)==1 and po in ["+","-"]): self.k = float("%s1"%po)
+        else: self.k = float(po)
+        if(len(pc)==0): self.n = 1.
+        elif(len(pc)==1 and pc in ["+","-"]): self.n = float("%s1"%pc)
+        else: self.n = float(pc)
+      elif(s.index("O")>s.index("C")):
+        tmp = s[s.index("C")+1:s.index("O")]
+        sign = None
+        if(tmp.count("+")==1): sign="+"
+        elif(tmp.count("-")==1): sign="-"
+        else: self.error(map_name_string)
+        po = s[:s.index("C")+tmp.index(sign)+1]
+        pc = s[s.index("C")+tmp.index(sign)+1:]
+        po = po.replace("C","")
+        pc = pc.replace("O","")
+        if(len(po)==0): self.n = 1.
+        elif(len(po)==1 and po in ["+","-"]): self.n = float("%s1"%po)
+        else: self.n = float(po)
+        if(len(pc)==0): self.k = 1.
+        elif(len(pc)==1 and pc in ["+","-"]): self.k = float("%s1"%pc)
+        else: self.k = float(pc)
+      else: raise RuntimeError
+    if(self.k is not None):
+      self.k = float(self.k)
+      self.n = float(self.n)
+      #if self.n < 0: self.n *= -1
 
   def error(self, s):
-    raise RuntimeError("Wrong map type requested: "+s)
+    msg="""\n
+Wrong map type requested: %s
+  Allowed format is: %s
+    where [p] and [q] are any numbers (optional),
+          [m] and [D] indicate if the requested map is sigmaa (optional),
+          Fo and Fc are Fobs and Fcalc,
+          [kick] is for Average Kick Map (optional),
+          [filled] is for missing Fobs filled map.
+  Examples: 2mFo-DFc, 3.2Fo-2.3Fc, mFobs-DFcalc_kick, 2mFobs-DFcalc_filled, Fc,
+            2mFobs-DFcalc_kick_fill, anom, anom_diff, anomalous_difference, Fo
+"""
+    format = "[p][m]Fo+[q][D]Fc[kick][filled]"
+    raise RuntimeError(msg%(s,format))
 
   def format(self):
-    if(self.ml_map):
-      if(self.n >= 0.):
-        result = str(self.k)+"mFobs"+"-"+str(self.n)+"DFmodel"
+    if(not self.anomalous):
+      if(abs(int(self.k)-self.k)<1.e-6): k = str(int(self.k))
+      else: k = str(self.k)
+      if(abs(int(self.n)-self.n)<1.e-6):
+        sign = ""
+        if(self.n>0): sign = "+"
+        if(self.n==0): sign = "-"
+        n = sign+str(int(self.n))
+      else: n = str(self.n)
+      if(k=="1" or k=="+1"): k = ""
+      if(n=="1" or n=="+1"): n = "+"
+      if(k=="-1"): k = "-"
+      if(n=="-1"): n = "-"
+      if(self.ml_map):
+        result = k+"mFobs"+n+"DFmodel"
       else:
-        result = str(self.k)+"mFobs"+"-("+str(self.n)+")DFmodel"
+        result = k+"Fobs"+n+"Fmodel"
+      if(self.kicked): result += "_kick"
+      if(self.f_obs_filled): result += "_filled"
+      return result
     else:
-      if(self.n >= 0.):
-        result = str(self.k)+"Fobs"+"-"+str(self.n)+"Fmodel"
-      else:
-        result = str(self.k)+"Fobs"+"-("+str(self.n)+")Fmodel"
-    return result
+      assert [self.k,self.n,self.ml_map].count(None) == 3
+      assert [self.kicked,self.f_obs_filled].count(False)==2
+      return "anomalous_difference"

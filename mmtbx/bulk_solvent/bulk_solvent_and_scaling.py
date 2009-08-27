@@ -306,12 +306,14 @@ class bulk_solvent_and_scales(object):
          assert abs(flex.max(flex.abs(fmodel.f_mask().data()))) > 1.e-3
        macro_cycles = range(1, params.number_of_macro_cycles+1)
        self.show(fmodel = fmodel, message = m+str(0)+" (start)")
-       if(params.fix_k_sol is not None):
+       mask_ok = abs(flex.max(flex.abs(fmodel.f_mask().data()))) > 0.001
+       if(params.fix_k_sol is not None and mask_ok):
+         print params.bulk_solvent
          assert params.bulk_solvent
          assert not params.k_sol_b_sol_grid_search
          assert not params.minimization_k_sol_b_sol
          fmodel.update(k_sol = params.fix_k_sol)
-       if(params.fix_b_sol is not None):
+       if(params.fix_b_sol is not None and mask_ok):
          assert params.bulk_solvent
          assert not params.k_sol_b_sol_grid_search
          assert not params.minimization_k_sol_b_sol

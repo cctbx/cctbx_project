@@ -392,6 +392,7 @@ mmtbx/scaling/absences.py -text
 mmtbx/tls/command_line.py -text
 mmtbx/tst_alignment.py -text
 mmtbx/tst_bioinformatics.py -text
+mmtbx/tst_map_type_parser.py -text
 mmtbx/tst_pdbtools.py -text
 mmtbx/tst_utils.py -text
 mmtbx/utils.py -text

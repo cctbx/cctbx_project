@@ -247,7 +247,7 @@ class electron_density_map(object):
     cf_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
     acf_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
     fo_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
-    if(map_name_manager.k != map_name_manager.n and
+    if(map_name_manager.k != abs(map_name_manager.n) and
        abs(map_name_manager.k*map_name_manager.n) > 1.e-6):
       cf_scale = (~centric_flags).as_double()
       fo_scale.set_selected(~centric_flags, map_name_manager.k)
@@ -281,7 +281,7 @@ class electron_density_map(object):
           map_name_manager.n*alpha*cf_scale*acf_scale
         return miller.array(
           miller_set = self.fmodel.f_calc(),
-          data       = fo_all_scales - fc_all_scales)
+          data       = fo_all_scales + fc_all_scales)
 
   def _phase_transfer(self, miller_array, phase_source):
     # XXX could be a method in miller.py under a better name in future
@@ -298,7 +298,7 @@ class electron_density_map(object):
       phase_source = f_model)
     result = miller.array(
       miller_set = obs_phi_calc,
-      data       = obs_phi_calc.data()-f_model.data()*f_model_scale)
+      data       = obs_phi_calc.data()+f_model.data()*f_model_scale)
     return result
 
   def fft_map(self,

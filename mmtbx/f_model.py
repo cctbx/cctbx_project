@@ -285,9 +285,7 @@ class manager(manager_mixin):
          use_f_model_scaled           = False,
          mask_manager                 = None,
          twin_law                     = None,
-         twin_fraction                = None,
-         n_ordered_water              = 0,
-         b_ordered_water              = 0.0,
+         twin_fraction                = 0,
          max_number_of_bins           = 30,
          filled_f_obs_selection       = None,
          _target_memory               = None):
@@ -307,8 +305,7 @@ class manager(manager_mixin):
       self.twin_set = self.f_obs.customized_copy(
         indices = twin_mi,
         crystal_symmetry = self.f_obs.crystal_symmetry())
-    if(r_free_flags is not None):
-      self.update_r_free_flags(r_free_flags)
+    self.update_r_free_flags(r_free_flags)
     self.d_spacings = self.f_obs.d_spacings().data()
     self.d_spacings_w = self.d_spacings.select(self.work)
     self.d_spacings_t = self.d_spacings.select(self.test)
@@ -426,24 +423,27 @@ class manager(manager_mixin):
       exp_table_one_over_step_size = p.exp_table_one_over_step_size).f_calc()
 
   def update_twin_fraction(self): # XXX
-    tf_best = None
-    r_work = 1.e+9
-    twin_fraction = 0.0
-    while twin_fraction <= 1.0:
-      r_work_= abs(bulk_solvent.r_factor(self.f_obs_w.data(),
-        self.f_model_work().data(), self.f_model_work_twin_mate().data(),
-        twin_fraction))
-      if(r_work_ < r_work):
-        r_work = r_work_
-        tf_best = twin_fraction
-      twin_fraction += 0.001
-    self.update(twin_fraction = tf_best)
+    if(self.twin_law is None): return
+    tfb = self.twin_fraction
     r_work = self.r_work()
     ks_best = self.k_sol()
     bs_best = self.b_sol()
     if(ks_best == 0.0):
-      for ks in [0,0.3,0.6]:
-        for bs in [0,50.,80.]:
+      for ks in [max(0,self.k_sol()),0.3,0.5]:
+        for bs in [max(0,self.b_sol()),50.,80.]:
+          #
+          twin_fraction = 0.0
+          tf_best = tfb
+          while twin_fraction <= 1.0:
+            r_work_= abs(bulk_solvent.r_factor(self.f_obs_w.data(),
+              self.f_model_work().data(), self.f_model_work_twin_mate().data(),
+              twin_fraction))
+            if(r_work_ < r_work):
+              r_work = r_work_
+              tf_best = twin_fraction
+            twin_fraction += 0.01
+          self.update(twin_fraction = tf_best)
+          #
           self.core.update(k_sol=ks, b_sol=bs)
           self.core_twin_mate.update(k_sol=ks, b_sol=bs)
           r_work_= abs(bulk_solvent.r_factor(self.f_obs_w.data(),
@@ -454,9 +454,22 @@ class manager(manager_mixin):
             r_work = r_work_
             ks_best = ks
             bs_best = bs
+            tfb = tf_best
       if(ks_best == 0.0): bs_best = 0.0
       if(bs_best == 0.0): ks_best = 0.0
-      self.update_core(k_sol = ks_best, b_sol = bs_best)
+      self.update(k_sol = ks_best, b_sol = bs_best, twin_fraction = tfb)
+    r_work = self.r_work()
+    twin_fraction = 0.0
+    tf_best = self.twin_fraction
+    while twin_fraction <= 1.0:
+      r_work_= abs(bulk_solvent.r_factor(self.f_obs_w.data(),
+        self.f_model_work().data(), self.f_model_work_twin_mate().data(),
+        twin_fraction))
+      if(r_work_ < r_work):
+        r_work = r_work_
+        tf_best = twin_fraction
+      twin_fraction += 0.001
+    self.update(twin_fraction = tf_best)
 
 
   def update_core(self, f_calc      = None,
@@ -464,9 +477,9 @@ class manager(manager_mixin):
                         f_calc_twin = None,
                         f_mask_twin = None,
                         b_cart      = None,
+                        u_star      = None,
                         k_sol       = None,
                         b_sol       = None):
-    u_star = None # XXX
     if(b_cart is not None):# XXX
       u_star = adptbx.u_cart_as_u_star(
         self.f_obs.unit_cell(),adptbx.b_as_u(b_cart))
@@ -591,9 +604,12 @@ class manager(manager_mixin):
       xrs = None
     else:
       xrs = self.xray_structure.deep_copy_scatterers()
+    r_free_flags = self.r_free_flags
+    if(r_free_flags is not None):
+      r_free_flags = self.r_free_flags.select(selection=selection)
     result = manager(
       f_obs                        = self.f_obs.select(selection=selection),
-      r_free_flags                 = self.r_free_flags.select(selection=selection),
+      r_free_flags                 = r_free_flags,
       b_cart                       = tuple(self.b_cart()),
       k_sol                        = self.k_sol(),
       b_sol                        = self.b_sol(),
@@ -786,6 +802,9 @@ class manager(manager_mixin):
     self._target_name = target_name
 
   def update_r_free_flags(self, r_free_flags):
+    if(r_free_flags is None):
+      r_free_flags = self.f_obs.array(
+        data=flex.bool(self.f_obs.indices().size(), False))
     assert r_free_flags.indices().size() == self.f_obs.indices().size()
     self.r_free_flags = r_free_flags
     self.work = ~r_free_flags.data()
@@ -1194,7 +1213,7 @@ class manager(manager_mixin):
       f_obs   = f_obs.select(selection)
       f_model = f_model.select(selection)
     if(self.twin_law is not None):
-      assert [self.core_twin_mate, self.twin_fraction].count(None)==0
+      assert self.core_twin_mate is not None
       result = abs(bulk_solvent.r_factor(f_obs, f_model, f_model_twin_mate,
         self.twin_fraction))
     else:
@@ -1229,7 +1248,7 @@ class manager(manager_mixin):
       selection=selection)
 
   def scale_k1_w(self, selection = None):
-    if(self.twin_fraction is None):
+    if(self.twin_fraction == 0):
       return _scale_helper(
         num=self.f_obs_w.data(),
         den=flex.abs(self.f_model_work().data()),

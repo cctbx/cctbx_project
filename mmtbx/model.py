@@ -227,13 +227,17 @@ class manager(object):
                 + "  %s\n" % first_water.quote()
                 + "  %s" % first_other.quote())
             result.append(rg)
-    # check result
-    for r in result:
-      elements = r.atoms().extract_element()
-      o_found = 0
-      for e in elements:
-        if(e.strip().upper() == 'O'): o_found += 1
-      assert o_found == 1
+            for r in result:
+              elements = r.atoms().extract_element()
+              o_found = 0
+              for e in elements:
+                if(e.strip().upper() == 'O'): o_found += 1
+              if(o_found != 1):
+                print >> self.log
+                for a in r.atoms():
+                  print >> self.log, a.format_atom_record()
+                raise Sorry(
+                  "The above waters in input PDB file do not have O atom.")
     return result
 
   def renumber_water(self):
@@ -352,6 +356,11 @@ class manager(object):
       crystal_symmetry=self.xray_structure)]
     raw_records.extend(self.pdb_hierarchy.as_pdb_string().splitlines())
     if(self.processed_pdb_files_srv.pdb_interpretation_params is not None):
+      pip = self.processed_pdb_files_srv.pdb_interpretation_params
+      pip.clash_guard.nonbonded_distance_threshold = -1.0
+      pip.clash_guard.max_number_of_distances_below_threshold = 100000000
+      pip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
+      pip.proceed_with_excessive_length_bonds=True
       self.processed_pdb_files_srv.pdb_interpretation_params.\
         clash_guard.nonbonded_distance_threshold=None
     processed_pdb_file, pdb_inp = self.processed_pdb_files_srv.\

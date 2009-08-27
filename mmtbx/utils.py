@@ -1415,7 +1415,7 @@ def fmodel_simple(f_obs,
                   mask_params              = None,
                   twin_laws                = None,
                   skip_twin_detection      = False,
-                  twin_switch_tolerance    = 3):
+                  twin_switch_tolerance    = 2.0):
   def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp):
     fmodel = fmodel_manager(
       xray_structure = xrs.deep_copy_scatterers(),
