@@ -289,7 +289,6 @@ distl_minimum_number_spots_for_indexing = %%d"""%(self.NspotMin)
     # The only way to get pixel size & pixel dimensions (currently) is from header
     pimage = image
     pimage.read()
-    pimage.show_header()
     pd['vendortype'] = pimage.vendortype
     pd['binning']      = "%d"%pimage.bin
     pd['pixel_size'] = "%f"%pimage.pixel_size
