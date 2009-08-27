@@ -166,8 +166,7 @@ class model_data (object) :
     atom_radii = flex.double(self.atoms.size(), 1.5)
     hydrogen_flag = flex.bool(self.atoms.size(), False)
     for i_seq, atom in enumerate(self.atom_index) :
-      name = atom.name.strip()
-      if name[0] == 'H' and name[0:2] != "HG" :
+      if atom.element.strip() in ["H", "D"] :
         atom_radii[i_seq] = 0.75
         hydrogen_flag[i_seq] = True
     self.atom_radii = atom_radii
