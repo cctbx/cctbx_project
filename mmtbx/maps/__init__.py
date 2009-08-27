@@ -10,7 +10,7 @@ from libtbx import adopt_init_args
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor, iceil
 
-map_params_str ="""\
+map_coeff_params_str = """\
   map_coefficients
     .multiple = True
     .short_caption = Map coefficients
@@ -37,6 +37,10 @@ map_params_str ="""\
       .type = bool
       .short_caption = Fill missing F(obs) with F(calc)
   }
+"""
+
+map_params_str ="""\
+%s
   map
     .short_caption = XPLOR map
     .multiple = True
@@ -70,11 +74,27 @@ map_params_str ="""\
     file_name = None
       .type = str
   }
-"""
+"""%map_coeff_params_str
 master_params = iotbx.phil.parse(map_params_str, process_includes=False)
 
 def map_master_params():
   return iotbx.phil.parse(map_params_str, process_includes=False)
+
+def cast_map_coeff_params(map_type_obj):
+  map_coeff_params_str = """\
+    map_coefficients
+    {
+      format = *mtz phs
+      mtz_label_amplitudes = %s
+      mtz_label_phases = P%s
+      map_type = %s
+      kicked = %s
+      fill_missing_f_obs = %s
+    }
+"""%(map_type_obj.format(), map_type_obj.format(), map_type_obj.format(),
+     map_type_obj.kicked, map_type_obj.f_obs_filled)
+  return iotbx.phil.parse(map_coeff_params_str, process_includes=False)
+
 
 class map_coeffs_mtz_label_manager:
 
@@ -166,7 +186,7 @@ class compute_maps(object):
     for mcp in params.map_coefficients:
       if(mcp.map_type is not None):
         coeffs = self.compute_map_coefficients(map_params = mcp)
-        if("mtz" in mcp.format):
+        if("mtz" in mcp.format and coeffs is not None):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):
             self.mtz_dataset = coeffs.as_mtz_dataset(
@@ -202,7 +222,7 @@ class compute_maps(object):
         real_map_unpadded = False,
         symmetry_flags    = maptbx.use_space_group_symmetry,
         average_maps      = False).map_coeffs
-    if(coeffs.anomalous_flag() and not
+    if(coeffs is not None and coeffs.anomalous_flag() and not
        mmtbx.map_names(map_params.map_type).anomalous):
       coeffs = coeffs.average_bijvoet_mates()
     return coeffs

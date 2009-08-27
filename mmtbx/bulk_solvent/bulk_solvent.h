@@ -107,22 +107,26 @@ public:
     if(compute_k_sol_grad || compute_b_sol_grad || compute_u_star_grad) {
       mtsd = -2. * scale * diff / (2 * f_model_abs);
     }
+    FloatType fmi1 = 2.*std::abs(fm1.f_model[i]);
+    FloatType fmi2 = 2.*std::abs(fm2.f_model[i]);
     if(compute_k_sol_grad || compute_b_sol_grad) {
       d_f_model_d_k_sol_and_d_b_sol_one_h<FloatType,ComplexType> kbsol_grads1 =
         d_f_model_d_k_sol_and_d_b_sol_one_h<FloatType,ComplexType> (fm1,i);
       d_f_model_d_k_sol_and_d_b_sol_one_h<FloatType,ComplexType> kbsol_grads2 =
         d_f_model_d_k_sol_and_d_b_sol_one_h<FloatType,ComplexType> (fm2,i);
-      grad_k_sol = mtsd * ((1-twin_fraction)*kbsol_grads1.grad_k_sol+
-                              twin_fraction *kbsol_grads2.grad_k_sol);
-      grad_b_sol = mtsd * ((1-twin_fraction)*kbsol_grads1.grad_b_sol+
-                              twin_fraction *kbsol_grads2.grad_b_sol);
+      grad_k_sol = mtsd *
+        ((1-twin_fraction)*kbsol_grads1.grad_k_sol*fmi1+
+            twin_fraction *kbsol_grads2.grad_k_sol*fmi2);
+      grad_b_sol = mtsd *
+        ((1-twin_fraction)*kbsol_grads1.grad_b_sol*fmi1+
+            twin_fraction *kbsol_grads2.grad_b_sol*fmi2);
     }
     if(compute_u_star_grad) {
       scitbx::af::tiny<FloatType, 6> usg1 = d_f_model_d_u_star_one_h(fm1,i);
       scitbx::af::tiny<FloatType, 6> usg2 = d_f_model_d_u_star_one_h(fm2,i);
       for(std::size_t j=0; j<6; j++) {
-        grad_u_star[j] = mtsd * ((1-twin_fraction)*usg1[j]+
-                                    twin_fraction *usg2[j]);
+        grad_u_star[j] = mtsd * ((1-twin_fraction)*usg1[j]*fmi1+
+                                    twin_fraction *usg2[j]*fmi2);
       }
     }
   }

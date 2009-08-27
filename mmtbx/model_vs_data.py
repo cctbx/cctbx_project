@@ -26,6 +26,7 @@ import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from iotbx.pdb import combine_unique_pdb_files
 from libtbx import group_args
 from mmtbx import masks
+from mmtbx import maps
 
 if (1):
   random.seed(0)
@@ -429,6 +430,11 @@ def run(args,
       default="n_gaussian",
       type="string",
       help="Choice for scattering table: n_gaussian (default) or wk1995 or it1992 or neutron.")
+    .option(None, "--map",
+      action="store",
+      default="None",
+      type="string",
+      help="Map type string: [p][m]Fo+[q][D]Fc[kick][filled]. Examples: 2mFo-DFc, 3.2Fo-2.3Fc, Fc, anom, fo-fc_kick.")
     .option("--ignore_giant_models_and_datasets",
       action="store_true",
       help="Ignore too big models and data files to avoid potential memory problems.")
@@ -438,6 +444,10 @@ def run(args,
     raise Sorry("Incorrect scattering_table.")
   #
   mvd_obj = mvd()
+  #
+  map_type_obj = None
+  if(command_line.options.map != str(None)):
+    map_type_obj = mmtbx.map_names(map_name_string = command_line.options.map)
   #
   processed_args = utils.process_command_line_args(args = args,
     log = sys.stdout)
@@ -624,6 +634,16 @@ def run(args,
   if return_fmodel_and_pdb :
     mvd_obj.pdb_file = processed_pdb_file
     mvd_obj.fmodel = fmodel
+  if(map_type_obj is not None):
+    map_params = maps.map_master_params().fetch(
+      maps.cast_map_coeff_params(map_type_obj)).extract()
+    maps_obj = maps.compute_maps(fmodel = fmodel_cut, params = map_params)
+    fn = os.path.basename(processed_args.reflection_file_names[0])
+    if(fn.count(".")):
+      prefix = fn[:fn.index(".")]
+    else: prefix= fn
+    file_name = prefix+"_%s_map_coeffs.mtz"%map_type_obj.format()
+    maps_obj.write_mtz_file(file_name = file_name)
   return mvd_obj
 
 def read_mvd_output(file_lines, name):
