@@ -735,4 +735,6 @@ spotfinder/diffraction/geometry.cpp -text
 spotfinder/distl_license -text
 spotfinder/doc/distl_svn_history -text
 spotfinder/doc/labelit_svn_history -text
+spotfinder/exception.py -text
 spotfinder/libtbx_config -text
+spotfinder/math_support/__init__.py -text
