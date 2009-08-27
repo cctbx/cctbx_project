@@ -711,7 +711,10 @@ smtbx/structure_factors/direct/tests/tst_standard_xray.py -text
 spotfinder/SConscript -text
 spotfinder/__init__.py -text
 spotfinder/applications/__init__.py -text
+spotfinder/applications/overall_procedure.py -text
+spotfinder/applications/practical_heuristics.py -text
 spotfinder/applications/signal_strength.py -text
+spotfinder/applications/stats_distl.py -text
 spotfinder/applications/wrappers.py -text
 spotfinder/array_family/SConscript -text
 spotfinder/array_family/__init__.py -text
@@ -737,7 +740,9 @@ spotfinder/core_toolbox/spot_shapes.h -text
 spotfinder/core_toolbox/spot_types.h -text
 spotfinder/core_toolbox/spotfilter.cpp -text
 spotfinder/core_toolbox/spotfilter.h -text
+spotfinder/diffraction/__init__.py -text
 spotfinder/diffraction/geometry.cpp -text
+spotfinder/diffraction/imagefiles.py -text
 spotfinder/distl_license -text
 spotfinder/doc/distl_svn_history -text
 spotfinder/doc/labelit_svn_history -text
