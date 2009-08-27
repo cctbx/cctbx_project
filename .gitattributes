@@ -749,3 +749,7 @@ spotfinder/doc/labelit_svn_history -text
 spotfinder/exception.py -text
 spotfinder/libtbx_config -text
 spotfinder/math_support/__init__.py -text
+spotfinder/servers/__init__.py -text
+spotfinder/servers/adsc_client.py -text
+spotfinder/servers/adsc_server.py -text
+spotfinder/servers/multipart_encoder.py -text
