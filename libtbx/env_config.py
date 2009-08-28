@@ -1499,7 +1499,12 @@ class module:
 class build_options:
 
   supported_modes = [
-    "release", "max_optimized", "quick", "debug", "debug_optimized"]
+    "release",
+    "max_optimized",
+    "quick",
+    "debug",
+    "debug_optimized",
+    "profile"]
 
   def __init__(self,
         compiler,
@@ -1519,9 +1524,11 @@ class build_options:
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
     self.optimization = (self.mode in [
-      "release", "max_optimized", "debug_optimized"])
-    self.max_optimized = (self.mode in ["max_optimized", "debug_optimized"])
-    self.debug_symbols = (self.mode in ["debug", "debug_optimized"])
+      "release", "max_optimized", "debug_optimized", "profile"])
+    self.max_optimized = (self.mode in [
+      "max_optimized", "debug_optimized", "profile"])
+    self.debug_symbols = (self.mode in [
+      "debug", "debug_optimized", "profile"])
     if (self.static_exe):
       self.static_libraries = True
 
