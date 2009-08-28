@@ -17,7 +17,7 @@ def run(args, residue_type, expected_results):
   mon_lib_srv = server.server()
   ener_lib = server.ener_lib()
   for file_name in os.listdir(pdb_files):
-    if (not file_name.endswith(".ent")): continue
+    if (file_name[-4:] not in [".ent", ".pdb"]): continue
     if (verbose):
       log = sys.stdout
     else:
@@ -83,6 +83,7 @@ expected_results = {
 "g_v3": ['  G', 34, [], 'RNA', None, None],
 "u_v2": ['  U', 30, [], 'RNA', None, None],
 "u_v3": ['  U', 30, [], 'RNA', None, None],
+"thy_cns_dna_rna_top": ['THY', 20, [], 'DNA', None, None],
 }
 
 if (__name__ == "__main__"):
