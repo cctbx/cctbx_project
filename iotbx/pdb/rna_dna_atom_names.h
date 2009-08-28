@@ -299,7 +299,8 @@ namespace rna_dna_atom_names {
                 }
                 break;
               }
-              if (atom_name[2] == 'M' || atom_name[2] == 'm') {
+              if (   atom_name[2] == 'M' || atom_name[2] == 'm'
+                  || atom_name[2] == 'A' || atom_name[2] == 'a') {
                 if (rest_is_whitespace(&atom_name[3])) {
                   reference_name = " C7 ";
                   flags |= dt;
