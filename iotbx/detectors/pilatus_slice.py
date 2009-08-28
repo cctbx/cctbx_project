@@ -4,7 +4,11 @@ from iotbx.detectors import ImageException
 from scitbx.array_family import flex
 
 def pilatus_slice_from_http_url(url):
-  from urlparse import urlparse, parse_qs, urlunparse
+  #backward compatibility with Python 2.5
+  try: from urlparse import parse_qs
+  except: from cgi import parse_qs
+
+  from urlparse import urlparse, urlunparse
   parsed = urlparse(url)
   assert parsed.scheme in ["http","https"]
   from urllib2 import urlopen
@@ -31,7 +35,11 @@ def pilatus_slice_from_http_url(url):
   return P
 
 def pilatus_slice_from_file_url(url):
-  from urlparse import urlparse, parse_qs, urlunparse
+  #backward compatibility with Python 2.5
+  try: from urlparse import parse_qs
+  except: from cgi import parse_qs
+
+  from urlparse import urlparse, urlunparse
   parsed = urlparse(url)
   assert parsed.scheme == "file"
   file = parsed.path.split("?")[0]

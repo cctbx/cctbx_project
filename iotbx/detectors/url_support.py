@@ -3,7 +3,11 @@ class potential_url_request:
     self.text = text
 
   def is_url_request(self):
-    from urlparse import urlparse, parse_qs, urlunparse
+    #backward compatibility with Python 2.5
+    try: from urlparse import parse_qs
+    except: from cgi import parse_qs
+
+    from urlparse import urlparse, urlunparse
     try:
       self.parsed = urlparse(self.text)
     except:

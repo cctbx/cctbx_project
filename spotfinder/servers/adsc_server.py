@@ -5,13 +5,15 @@ from scitbx.array_family import flex
 from libtbx.development.timers import Timer,Profiler
 import StringIO, cgi, sys
 
-portable = False
+from urlparse import urlparse
+#backward compatibility with Python 2.5
+try: from urlparse import parse_qs
+except: from cgi import parse_qs
 
 class image_request_handler(BaseHTTPRequestHandler):
 
   def do_POST(self):
     T = Timer("do_POST")
-    from urlparse import urlparse, parse_qs
     parsed = urlparse(self.path)
     qs = parse_qs(parsed.query)
 
