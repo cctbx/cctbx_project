@@ -10,26 +10,21 @@ env_etc.include_registry.append(
   env=env,
   paths=env_etc.cctbx_common_includes)
 
-envlm = env.Clone(
-  LIBS=env_etc.libm)
-
 lib_asu_sources = [
   "cut.cpp",
   "reference_table.cpp",
   "direct_space_asu.cpp"
 ]
 
-if (env_etc.static_libraries): builder = envlm.StaticLibrary
-else:                          builder = envlm.SharedLibrary
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
 
 builder(
   target="#lib/cctbx_sgtbx_asu",
   source=lib_asu_sources)
 
-
 env.Prepend(LIBS=["cctbx_sgtbx_asu"])
 env.Program( target = "tst_asu",  source="tst_asu.cpp")
-
 
 if (not env_etc.no_boost_python):
   Import("env_cctbx_boost_python_ext")
@@ -41,4 +36,3 @@ if (not env_etc.no_boost_python):
   env_bpl.SharedLibrary(
     target="#lib/cctbx_sgtbx_asu_ext",
     source=["asu_ext.cpp"])
-
