@@ -49,7 +49,11 @@ def adsc_module_from_http_request(request):
   return P
 
 def ADSC_module_from_file_url(url):
-  from urlparse import urlparse, parse_qs, urlunparse
+  #backward compatibility with Python 2.5
+  try: from urlparse import parse_qs
+  except: from cgi import parse_qs
+
+  from urlparse import urlparse, urlunparse
   parsed = urlparse(url)
   assert parsed.scheme == "file"
   file = parsed.path.split("?")[0]
