@@ -325,7 +325,7 @@ def exercise_mon_lib_names():
     for inp,out in zip(mon_names_without_phosphate, interp_mon_names):
       assert out == inp
 
-cns_rna_dna_names = {
+cns_names_dna_rna_allatom_top = {
   "GUA": """
     P O1P O2P O5' C5' H5' H5'' C4' H4' O4' C1' H1' N9 C4 N3 C2 N2 H21 H22
     N1 H1 C6 O6 C5 N7 C8 H8 C2' H2' O2' HO2' C3' H3' O3'""".split(),
@@ -343,34 +343,56 @@ cns_rna_dna_names = {
     O4 C5 H5 C2' H2' O2' HO2' C3' H3' O3'""".split()
 }
 
-def apply_cns_deox(atom_names):
+cns_names_dna_rna_top = {
+  "GUA": """
+    P O1P O2P O5' C5' C4' O4' C1' N9 C4 N3 C2 N2 H21 H22 N1 H1 C6 O6 C5
+    N7 C8 C2' O2' H2' C3' O3'""".split(),
+  "ADE": """
+    P O1P O2P O5' C5' C4' O4' C1' N9 C4 N3 C2 N1 C6 N6 H61 H62 C5 N7 C8
+    C2' O2' H2' C3' O3'""".split(),
+  "CYT": """
+    P O1P O2P O5' C5' C4' O4' C1' N1 C6 C2 O2 N3 C4 N4 H41 H42 C5 C2' O2'
+    H2' C3' O3'""".split(),
+  "THY": """
+    P O1P O2P O5' C5' C4' O4' C1' N1 C6 C2 O2 N3 H3 C4 O4 C5 C5A C2' O2'
+    H2' C3' O3'""".split(),
+  "URI": """
+    P O1P O2P O5' C5' C4' O4' C1' N1 C6 C2 O2 N3 H3 C4 O4 C5 C2' O2' H2'
+    C3' O3'""".split()
+}
+
+def apply_cns_deox(atom_names, have_hydrogens):
   result = list(atom_names)
   result.remove("O2'")
-  result.remove("HO2'")
-  result.append("H2''")
+  if (have_hydrogens):
+    result.remove("HO2'")
+    result.append("H2''")
   return result
 
-def apply_cns_5pho(atom_names): # 5-terminus (with phosphate)
+def apply_cns_5pho(atom_names, have_hydrogens): # 5-terminus (with phosphate)
   result = list(atom_names)
-  result.append("H5T") # bond O5T
+  if (have_hydrogens):
+    result.append("H5T") # bond O5T
   result.append("O5T") # bond P
   return result
 
-def apply_cns_5ter(atom_names): # 5-terminus (without phosphate)
+def apply_cns_5ter(atom_names, have_hydrogens): # 5-terminus (without phosphate)
   result = list(atom_names)
   result.remove("P")
   result.remove("O1P")
   result.remove("O2P")
-  result.append("H5T") # bond O5'
+  if (have_hydrogens):
+    result.append("H5T") # bond O5'
   return result
 
-def apply_cns_3ter(atom_names): # 3-terminus (without phosphate)
+def apply_cns_3ter(atom_names, have_hydrogens): # 3-terminus (without phosphate)
   result = list(atom_names)
-  result.append("H3T") # bond O3'
+  if (have_hydrogens):
+    result.append("H3T") # bond O3'
   return result
 
-def exercise_cns_names():
-  for residue_name,atom_names_base in cns_rna_dna_names.items():
+def exercise_cns_names(cns_names, have_hydrogens):
+  for residue_name,atom_names_base in cns_names.items():
     for deox in [False, True]:
       q = ""
       if (residue_name == "URI"):
@@ -380,21 +402,27 @@ def exercise_cns_names():
       else:
         q = "?"
       if (deox):
-        atom_names_base = apply_cns_deox(atom_names=atom_names_base)
-      def do_nothing(atom_names): return atom_names
+        atom_names_base = apply_cns_deox(
+          atom_names=atom_names_base, have_hydrogens=have_hydrogens)
+      def do_nothing(atom_names, have_hydrogens): return atom_names
       for apply3 in [do_nothing, apply_cns_3ter]:
-        atom_names = apply3(atom_names=atom_names_base)
+        atom_names = apply3(
+          atom_names=atom_names_base, have_hydrogens=have_hydrogens)
         for apply5 in [do_nothing, apply_cns_5pho, apply_cns_5ter]:
           interpreted = iotbx.pdb.rna_dna_atom_names_interpretation(
             residue_name=q+residue_name[0],
-            atom_names=apply5(atom_names=atom_names))
+            atom_names=apply5(
+              atom_names=atom_names, have_hydrogens=have_hydrogens))
           if (not deox):
             assert interpreted.residue_name == residue_name[0]
           else:
             assert interpreted.residue_name == "D"+residue_name[0]
           assert interpreted.have_phosphate == (apply5 != apply_cns_5ter)
           assert interpreted.have_op3_or_hop3 == (apply5 == apply_cns_5pho)
-          assert interpreted.have_ho3prime == (apply3 == apply_cns_3ter)
+          if (have_hydrogens):
+            assert interpreted.have_ho3prime == (apply3 == apply_cns_3ter)
+          else:
+            assert not interpreted.have_ho3prime
           assert interpreted.n_unexpected == 0
           assert interpreted.n_expected == len(interpreted.atom_names)
           for atom_name,info in zip(interpreted.atom_names, interpreted.infos):
@@ -415,7 +443,10 @@ def exercise_cns_names():
 def exercise():
   exercise_rna_dna_atom_names()
   exercise_mon_lib_names()
-  exercise_cns_names()
+  exercise_cns_names(
+    cns_names=cns_names_dna_rna_allatom_top, have_hydrogens=True)
+  exercise_cns_names(
+    cns_names=cns_names_dna_rna_top, have_hydrogens=False)
   print "OK"
 
 if (__name__ == "__main__"):
