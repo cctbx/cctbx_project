@@ -23,6 +23,7 @@ builder(
   target="#lib/cctbx_sgtbx_asu",
   source=lib_asu_sources)
 
+env = env.Clone()
 env.Prepend(LIBS=["cctbx_sgtbx_asu"])
 env.Program( target = "tst_asu",  source="tst_asu.cpp")
 
@@ -32,7 +33,7 @@ if (not env_etc.no_boost_python):
   env_etc.include_registry.append(
     env=env_bpl,
     paths=env_etc.cctbx_common_includes)
-  env_bpl.Prepend(LIBS=["cctbx", "cctbx_sgtbx_asu"])
+  env_bpl.Prepend(LIBS=["cctbx_sgtbx_asu", "cctbx"])
   env_bpl.SharedLibrary(
     target="#lib/cctbx_sgtbx_asu_ext",
     source=["asu_ext.cpp"])
