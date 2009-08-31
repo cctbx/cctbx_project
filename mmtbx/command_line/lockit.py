@@ -157,6 +157,7 @@ class residue_refine_restrained(object):
     O.residue_i_seqs = residue.atoms().extract_i_seq()
     O.x = O.sites_cart_all.select(indices=O.residue_i_seqs).as_double()
     #
+    O.rf_only = None
     O.number_of_function_evaluations = -1
     O.f_start, O.g_start = O.compute_functional_and_gradients()
     O.rs_f_start = O.rs_f
@@ -181,6 +182,7 @@ class residue_refine_restrained(object):
       unit_cell=O.unit_cell,
       density_map=O.density_map,
       sites_cart=O.sites_cart_residue)
+    O.rf_only = rs_f
     rs_g = maptbx.real_space_gradients_simple(
       unit_cell=O.unit_cell,
       density_map=O.density_map,

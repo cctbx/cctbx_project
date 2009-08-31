@@ -58,6 +58,7 @@ class run(object):
     adopt_init_args(self, locals())
     if(params is None):
       params = master_params().extract()
+      params = params.real_space_refinement
       self.params = params
     if(log is None): log = sys.stdout
     if(params.verbose):
