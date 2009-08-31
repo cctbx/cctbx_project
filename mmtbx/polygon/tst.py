@@ -55,7 +55,7 @@ def example_3():
 
 if (__name__ == "__main__"):
   file_name = libtbx.env.find_in_repositories(
-      relative_path = "chem_data/polygon_data/pdb_2009-01-14_ord.txt",
+      relative_path = "chem_data/polygon_data/phenix_mvd_2009_APR_14_21h23.pickle",
       test = os.path.isfile)
   if(file_name is None):
     print "Skip POLYGON test: database file is not available."
