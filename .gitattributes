@@ -368,6 +368,7 @@ mmtbx/polygon/gui.py -text
 mmtbx/polygon/tst.py -text
 mmtbx/polygon/tst_gui.py -text
 mmtbx/real_space_correlation.py -text
+mmtbx/refinement/fit_rotomers.py -text
 mmtbx/refinement/occupancies.py -text
 mmtbx/refinement/real_space.py -text
 mmtbx/refinement/refinement_flags.py -text
