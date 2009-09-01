@@ -6,31 +6,43 @@ from libtbx.utils import Sorry
 from libtbx import easy_pickle
 
 
-master_params = iotbx.phil.parse("""\
-polygon {
+polygon_params_str = """\
   database_file_name = None
     .type = str
-  keys_to_show = rama_favored *adp_mean cmpl_in_range cmpl_d_min_inf \
-                 rama_allowed *r_work_pdb rama_outliers *k_sol *chirality_rmsd \
-                 rama_general *angles_rmsd *r_free_cutoff r_free_re_computed \
-                 *dihedrals_rmsd cmpl_6A_inf *r_free_pdb *b_sol matthews_coeff \
-                 solvent_cont wilson_b r_work_re_computed angles_max \
-                 dihedrals_max adp_min chirality_max *planarity_rmsd adp_max \
-                 bonds_max *bonds_rmsd planarity_max *r_work_cutoff
-
+    .style = noauto
+  keys_to_show = *r_work_re_computed *r_free_re_computed r_work_pdb r_free_pdb\
+        r_work_cutoff r_free_cutoff cmpl_in_range cmpl_d_min_inf cmpl_6A_inf \
+        *adp_mean adp_min adp_max wilson_b *b_sol *k_sol solvent_cont \
+        matthews_coeff *bonds_rmsd bonds_max *angles_rmsd angles_max \
+        *dihedrals_rmsd dihedrals_max *planarity_rmsd planarity_max \
+        *chirality_rmsd chirality_max rama_favored rama_allowed rama_general \
+        rama_outliers
     .type = choice(multi=True)
+    .short_caption = Statistics to display
+    .caption = R-work R-free R-work_(PDB) R-free_(PDB) R-work_(cutoff) \
+        R-free_(cutoff) Completeness_in_range Completeness Completeness_to_6A \
+        Average_B Minimum_B Maximum_B Wilson_B B(solvent) K(solvent) \
+        Solvent_content Matthews_coeff. RMSD(bonds) Bonds_max. RMSD(angles) \
+        Angles_max. RMSD(dihedrals) Dihedrals_max. RMSD(planarity) \
+        Planarity_max RMSD(chirality) Chirality_max. Ramachandran_favored \
+        Ramachandran_allowed Ramachandran_generous Ramachandran_outliers
+    .style = bold hide_label
   number_of_histogram_slots = None
     .type = int
-    .help = Number of histogram slots for the final histrogram to be used to \
-            draw the POLYGON's rays.
+    .help = Number of histogram slots for the final histogram to be used to \
+            draw the POLYGON's rays.  Not used in GUI.
+    .style = hidden
   max_reject_fraction = 0.1
     .type = float
     .help = Fraction of models allowed to be rejected as outliers.
+    .style = bold
   max_models_for_default_filter = 1000
     .type = int
+    .style = bold
   filter
     .multiple = True
     .help = Selection keys.
+    .style = noauto
   {
     key = twinned rama_proline n_fobs_outl rama_favored adp_mean rna_dna \
           cmpl_in_range cmpl_d_min_inf n_npd unit_cell n_aniso space_group \
@@ -53,8 +65,12 @@ polygon {
     target_value= None
       .type = str
   }
-}
-""")
+"""
+
+master_params = iotbx.phil.parse("""
+polygon {
+  %s
+}""" % polygon_params_str)
 
 def select_database_dict_by_keys(select_keys, database_dict):
   result = {}
@@ -245,7 +261,6 @@ def polygon(params = master_params.extract(), d_min = None,
       max_reject_fraction = params.polygon.max_reject_fraction)
   histograms = []
   if extract_gui_data :
-    n_slots = params.polygon.number_of_histogram_slots
     for selected_key in params.polygon.keys_to_show:
       data = convert_to_numeric(values=result[selected_key])
       histograms.append([selected_key, data]) # XXX: not really histograms!
