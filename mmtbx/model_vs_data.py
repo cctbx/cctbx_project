@@ -82,12 +82,12 @@ class mvd(object):
       for k,v in zip(rc.keys(), rc.values()):
         print >> log, fmt%(k.replace("common_",""), v)
       x = i_model.xray_structure_stat
-      print "    Atoms:"
-      print "      atom_number_(type:count:occ_sum) : %s (%s)"%(x.n_atoms,x.atom_counts_str)
-      print "      ADP_(min,max,mean)               : %s %s %s"%(x.b_min,x.b_max,x.b_mean)
-      print "      occupancies_(min,max,mean)       : %s %s %s"%(x.o_min,x.o_max,x.o_mean)
-      print "      number_of_anisotropic            : "+format_value("%-7s",x.n_aniso)
-      print "      number_of_non_positive_definite  : %s"%x.n_npd
+      print >> log, "    Atoms:"
+      print >> log, "      atom_number_(type:count:occ_sum) : %s (%s)"%(x.n_atoms,x.atom_counts_str)
+      print >> log, "      ADP_(min,max,mean)               : %s %s %s"%(x.b_min,x.b_max,x.b_mean)
+      print >> log, "      occupancies_(min,max,mean)       : %s %s %s"%(x.o_min,x.o_max,x.o_mean)
+      print >> log, "      number_of_anisotropic            : "+format_value("%-7s",x.n_aniso)
+      print >> log, "      number_of_non_positive_definite  : %s"%x.n_npd
       g = i_model.model_statistics_geometry
       if(g is not None):
         print >> log, "    Stereochemistry statistics (mean, max, count):"

@@ -3,14 +3,15 @@ import sys, os
 from mmtbx import polygon, model_vs_data
 import iotbx.phil
 from math import pi, cos, sin, radians, degrees, floor
+import cStringIO
 
-stat_names = { "r_work_pdb" : "Rwork",
-               "r_free_pdb" : "Rfree",
-               "r_work_re_computed" : "Recomputed R-work",
-               "r_free_re_computed" : "Recomputed R-free",
+stat_names = { "r_work_pdb" : "R-work(PDB)",
+               "r_free_pdb" : "R-free(PDB)",
+               "r_work_re_computed" : "R-work",
+               "r_free_re_computed" : "R-free",
                "r_work_cutoff" : "R-work with cutoff",
                "r_free_cutoff" : "R-free with cutoff",
-               "adp_mean" : "Avgerage B",
+               "adp_mean" : "Average B",
                "adp_min" : "Minimum B",
                "adp_max" : "Maximum B",
                "cmpl_in_range" : "Completeness in range",
@@ -20,8 +21,8 @@ stat_names = { "r_work_pdb" : "Rwork",
                "rama_allowed" : "Ramachandran allowed",
                "rama_general" : "Ramachandran general",
                "rama_outliers" : "Ramachandran outliers",
-               "k_sol" : "Bulk solvent scale factor",
-               "b_sol" : "Bulk solvent B factor",
+               "k_sol" : "K(sol)",
+               "b_sol" : "B(sol)",
                "solvent_cont" : "Solvent content",
                "matthews_coeff" : "Matthews coefficient (Vm)",
                "wilson_b" : "Wilson B",
@@ -42,23 +43,6 @@ stat_formats = { "r_work_pdb" : "%.4f",
                  "angles_rmsd" : "%.2f",
                  "adp_mean" : "%.1f" }
 
-def get_histogram_data (d_min) :
-  polygon_params = iotbx.phil.parse("""\
-polygon {
-  keys_to_show = *r_work_pdb *r_free_pdb *bonds_rmsd *angles_rmsd *adp_mean
-  number_of_histogram_slots = 10
-  filter {
-    key = *d_min
-    value_min = %.1f
-    value_max = %.1f
-  }
-}""" % (d_min - 0.1, d_min + 0.1))
-  params = polygon.master_params.fetch(sources=[polygon_params])
-  return polygon.polygon(params=params.extract(),
-                         d_min=d_min,
-                         show_histograms=False,
-                         extract_gui_data=True)
-
 # XXX: not pickle-able - run this in GUI thread
 def convert_histogram_data (polygon_result) :
   histograms = {}
@@ -67,24 +51,33 @@ def convert_histogram_data (polygon_result) :
                                                     n_slots=10)
   return histograms
 
-def get_stats_and_histogram_data (mvd_object, stat_keys=None) :
+def get_stats_and_histogram_data (mvd_object, params, debug=False) :
   pdb_file = mvd_object.pdb_file
-  stats = {}
-  #for stat_name in stat_keys :
-  #  stat_value = getattr(mvd_object, stat_name)
-  #  stats[stat_name] = stat_value
+  mvd_log = cStringIO.StringIO()
+  mvd_object.show(log=mvd_log)
+  mvd_lines = mvd_log.getvalue().splitlines()
+  mvd_results = model_vs_data.read_mvd_output(mvd_lines, None)
+  if debug :
+    print mvd_log.getvalue()
   fmodel = mvd_object.fmodel
   d_min = fmodel.info().d_min
-  model = mvd_object.models[0]
-  x = model.xray_structure_stat
-  g = model.model_statistics_geometry
 
-  stats = { "r_work_pdb" : fmodel.r_work(),
-            "r_free_pdb" : fmodel.r_free(),
-            "adp_mean" : float(x.b_mean),
-            "bonds_rmsd" : g.b_mean,
-            "angles_rmsd" : g.a_mean }
-  histograms = get_histogram_data(d_min=d_min)
+  stats = {}
+  invalid_stats = []
+  for stat_name in params.polygon.keys_to_show :
+    value = getattr(mvd_results, stat_name, None)
+    if value is not None :
+      print stat_name, value
+      stats[stat_name] = value
+    else :
+      print "Error: got 'None' for %s" % stat_name
+      invalid_stats.append(stat_name)
+  for stat_name in invalid_stats :
+    params.polygon.keys_to_show.remove(stat_name)
+  histograms = polygon.polygon(params=params,
+                               d_min=d_min,
+                               show_histograms=debug,
+                               extract_gui_data=True)
   return stats, histograms
 
 #-----------------------------------------------------------------------
@@ -92,8 +85,8 @@ def get_stats_and_histogram_data (mvd_object, stat_keys=None) :
 class canvas_layout (object) :
   ratio_cutoffs = [ 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
 
-  def __init__ (self, histogram_data, structure_stats, histogram_length=0.35,
-      center=(0.5, 0.5), center_offset=0.05) :
+  def __init__ (self, histogram_data, structure_stats, histogram_length=0.30,
+      center=(0.5, 0.5), center_offset=0.025) :
     self.units = 1
     histograms = convert_histogram_data(histogram_data)
     self.stats = structure_stats
@@ -125,10 +118,9 @@ class canvas_layout (object) :
     self.set_color_model("original")
     self.relative_scale_colors = True
 
-  def resize (self, units) :
-    assert isinstance(units, int) or isinstance(units, float)
-    assert units > 0
-    self.units = units
+  def resize (self, size) :
+    self.w, self.h = size
+    self.units = min([self.w, self.h])
 
   def set_color_model (self, model_name, relative_scaling=True) :
     self.relative_scale_colors = relative_scaling
