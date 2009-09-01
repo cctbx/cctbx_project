@@ -514,14 +514,17 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     wx.ClientDC(self)
     self.OnRedrawGL(event)
 
-  def OnRedrawGL(self, event=None):
-    gltbx.util.handle_error()
+  def setup_distances (self) :
     s = self.minimum_covering_sphere
     r = self.buffer_factor*s.radius()
     #z = -gltbx.util.object_as_eye_coordinates(s.center())[2]
     z = -gltbx.util.object_as_eye_coordinates(self.rotation_center)[2]
     self.near = max(self.min_near, z-r)
     self.far = max(self.near*(1.e-6), z+r)
+
+  def OnRedrawGL(self, event=None):
+    gltbx.util.handle_error()
+    self.setup_distances()
     self.setup_viewing_volume()
     gltbx.util.handle_error()
     glClear(GL_COLOR_BUFFER_BIT)
