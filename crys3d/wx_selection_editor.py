@@ -1,3 +1,4 @@
+from __future__ import division
 
 # TODO: move selection logic to separate module
 

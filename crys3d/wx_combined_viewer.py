@@ -1,8 +1,9 @@
+from __future__ import division
 
 import sys, os
+from crys3d import wx_viewer_zoom
 from crys3d.wx_selection_editor import selection_editor_mixin
 import iotbx.phil
-from gltbx import wx_viewer
 import gltbx.util
 from gltbx.gl import *
 from gltbx.glu import *
@@ -93,11 +94,11 @@ class map_scene (object) :
     glPopMatrix()
 
 
-class map_viewer_mixin (wx_viewer.wxGLWindow) :
+class map_viewer_mixin (wx_viewer_zoom.viewer_with_automatic_zoom) :
   initialize_map_viewer_super = True
   def __init__ (self, *args, **kwds) :
     if self.initialize_map_viewer_super :
-      wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
+      wx_viewer_zoom.viewer_with_automatic_zoom.__init__(self, *args, **kwds)
     # various data objects
     self.map_ids     = []
     self.map_objects = []
@@ -128,7 +129,7 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
 
   def OnRedrawGL (self, event=None) :
     self.check_and_update_map_scenes()
-    wx_viewer.wxGLWindow.OnRedrawGL(self, event)
+    wx_viewer_zoom.viewer_with_automatic_zoom.OnRedrawGL(self, event)
 
   def check_and_update_map_scenes (self) :
     if self.update_maps :
@@ -144,7 +145,7 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
       self.draw_rotation_center()
 
   def OnTranslate (self, event) :
-    wx_viewer.wxGLWindow.OnTranslate(self, event)
+    wx_viewer_zoom.viewer_with_automatic_zoom.OnTranslate(self, event)
     self.update_map_scenes()
 
   def draw_rotation_center(self):
@@ -172,21 +173,6 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
     glEnd()
     glPopMatrix()
 
-  def setup_fog (self) :
-    if self.flag_show_fog :
-      near, far = self.get_clipping_distances()
-      # TODO: this needs work.
-      fog_start = 0.25*(far - near) + near + self.fog_start_offset
-      fog_end = self.far - self.fog_end_offset
-      glMatrixMode(GL_MODELVIEW)
-      glEnable(GL_FOG)
-      glFogi(GL_FOG_MODE, GL_LINEAR)
-      glFogf(GL_FOG_START, fog_start)
-      glFogf(GL_FOG_END, fog_end)
-      glFogfv(GL_FOG_COLOR, [self.r_back, self.g_back, self.b_back, 1.0])
-    else :
-      glDisable(GL_FOG)
-
   def OnMouseWheel (self, event) :
     scale = event.GetWheelRotation()
     if event.ShiftDown() :
@@ -196,17 +182,7 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
     self.OnRedrawGL()
 
   def process_key_stroke (self, key) :
-    if key == wx.WXK_UP :
-      self.fog_start_offset += 1
-    elif key == wx.WXK_DOWN :
-      self.fog_start_offset -= 1
-    elif key == wx.WXK_LEFT :
-      self.fog_end_offset -= 1
-    elif key == wx.WXK_RIGHT :
-      self.fog_end_offset += 1
-    else :
-      return
-    self.OnRedrawGL()
+    pass
 
   def add_map (self, map_id, map) :
     assert not map_id in self.map_ids
@@ -306,6 +282,15 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
   def process_key_stroke (self, key) :
     selection_editor_mixin.process_key_stroke(self, key)
     map_viewer_mixin.process_key_stroke(self, key)
+    if key == wx.WXK_UP :
+      self.fog_start_offset += 1
+    elif key == wx.WXK_DOWN :
+      self.fog_start_offset -= 1
+    elif key == wx.WXK_LEFT :
+      self.clip_near -= 1
+    elif key == wx.WXK_RIGHT :
+      self.clip_near += 1
+    self.OnRedrawGL()
 
   def update_mcs (self, *args, **kwds) :
     self.update_maps = True
