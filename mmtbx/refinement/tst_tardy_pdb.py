@@ -49,9 +49,10 @@ class potential_object(object):
     O.last_grms = None
 
   def e_pot(O, sites_moved):
-    if (O.last_sites_moved is not sites_moved):
+    if (   O.last_sites_moved is None
+        or O.last_sites_moved.id() is not sites_moved.id()):
       O.last_sites_moved = sites_moved
-      sites_cart = flex.vec3_double(sites_moved)
+      sites_cart = sites_moved
       #
       if (O.reduced_geo_manager is None):
         flags = None
@@ -226,7 +227,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
             if (rmsd <= target_rmsd + target_rmsd_tol):
               tardy_model.minimization(max_iterations=500)
               sites = tardy_model.sites_moved()
-              sites_moved = flex.vec3_double(sites)
+              sites_moved = sites
               rmsd = sites_moved.rms_difference(ideal_sites_cart)
               rmsd_history.append((0, rmsd))
               print >> log, "    multiplier, rmsd: %13.6e, %13.6e" \
@@ -250,7 +251,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
           prev_q = tardy_model.pack_q()
           prev_qd = tardy_model.pack_qd()
           tardy_model.dynamics_step(delta_t=delta_t)
-          sites_moved = flex.vec3_double(tardy_model.sites_moved())
+          sites_moved = tardy_model.sites_moved()
           rmsd = sites_moved.rms_difference(ideal_sites_cart)
           rmsd_history.append((delta_t, rmsd))
           if (rmsd < target_rmsd - target_rmsd_tol):

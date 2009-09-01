@@ -131,7 +131,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     O.draw_map.set_unit_cell_and_density_map(
       unit_cell=tpo.geo_manager.crystal_symmetry.unit_cell(),
       density_map=tpo.density_map)
-    O.points = flex.vec3_double(tardy_model.sites_moved())
+    O.points = tardy_model.sites_moved().deep_copy()
     if (tpo.ideal_sites_cart is not None):
       O.points.extend(tpo.ideal_sites_cart)
     if (O.points.size() < 20):
