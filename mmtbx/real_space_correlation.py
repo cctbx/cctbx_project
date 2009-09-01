@@ -50,7 +50,9 @@ poor_map_value_threshold = 1.0
   .help = Ad hoc value (less than) defining a week density (in sigma) for maps \
           involved in map CC calculation
   .expert_level = 2
-crystal_symmetry {
+crystal_symmetry
+  .style = noauto
+{
   unit_cell=None
     .type=unit_cell
   space_group=None
