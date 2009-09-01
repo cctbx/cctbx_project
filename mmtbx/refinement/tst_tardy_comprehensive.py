@@ -35,9 +35,8 @@ class collector(object):
       O.tardy_model = tardy_model
     else:
       assert O.tardy_model is not None
-    sites_moved = flex.vec3_double(O.tardy_model.sites_moved())
     O.rmsd.append(O.tardy_model.potential_obj.ideal_sites_cart.rms_difference(
-      sites_moved))
+      O.tardy_model.sites_moved()))
 
 common_parameter_trial_table = [
   ("tardy_displacements_auto.rmsd_vs_high_resolution_factor", (1/3, 2/3, 1)),
