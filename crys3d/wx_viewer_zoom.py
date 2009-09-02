@@ -3,6 +3,7 @@ from gltbx import wx_viewer
 import gltbx.util
 from gltbx.gl import *
 from gltbx.glu import *
+import wx
 
 class viewer_with_automatic_zoom (wx_viewer.wxGLWindow) :
   def process_key_stroke (self, key) :
