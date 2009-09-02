@@ -132,7 +132,8 @@ def iterate_rotamers(pdb_hierarchy,
               n_amino_acids_ignored += 1
             else:
               n_amino_acids_scored += 1
-              t_start = rsr_manager.refine_restrained(residue = residue).rf_only
+              t_start = rsr_manager.refine_restrained(
+                residue = residue).real_space_target
               t_best = t_start
               rotamer_id_best = None
               residue_sites_best = None
@@ -157,7 +158,7 @@ def iterate_rotamers(pdb_hierarchy,
                   refined = rsr_manager.refine_restrained(residue = residue)
                   rotamer_sites_cart_refined = \
                     refined.sites_cart_residue.deep_copy()
-                  if(refined.rf_only > t_best):
+                  if(refined.real_space_target > t_best):
                     t_best = refined.rs_f_final
                     rotamer_id_best = rotamer.id
                     residue_sites_best = rotamer_sites_cart_refined.deep_copy()
