@@ -225,9 +225,13 @@ def compare_dihedrals(
         if (cctbx.geometry_restraints.angle_delta_deg(
               angle_1=angle_tab,
               angle_2=angle_pdb) > 0.5):
-          print "Mismatch", resname, rotamer.id, tor_id, \
-            "pdb: %.0f" % angle_pdb, \
-            "tab: %.0f" % angle_tab
+          if (verbose
+              or resname not in ["ARG", "ASN", "GLN"]):
+            # Keeping all hydrogen dihedrals in ARG, ASN, GLN at 180
+            # after discussions.
+            print "Mismatch", resname, rotamer.id, tor_id, \
+              "pdb: %.0f" % angle_pdb, \
+              "tab: %.0f" % angle_tab
       if (verbose): print
 
 def run(args):
