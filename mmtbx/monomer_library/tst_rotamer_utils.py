@@ -75,11 +75,8 @@ def report_tors(
     if (verbose): print tor_id, atom_ids, angle_model, annotation
   assert n_mismatches == 0, n_mismatches
 
-def exercise_server_rotamer_iterator(mon_lib_srv, resname, verbose):
-  pdb_inp = iotbx.pdb.input(
-    file_name=op.join(
-      protein_pdb_files, reference_pdb_file_name_lookup[resname]))
-  pdb_hierarchy = pdb_inp.construct_hierarchy()
+def exercise_server_rotamer_iterator(mon_lib_srv, pdb_hierarchy, verbose):
+  resname = pdb_hierarchy.only_residue().resname
   atom_ids_not_handled = {
     "ASP": ["HD2"],
     "GLU": ["HE2"]}.get(resname)
@@ -189,19 +186,87 @@ def exercise_server_rotamer_iterator(mon_lib_srv, resname, verbose):
       print >> f, "END"
       del f
 
+def compare_dihedrals(
+      mon_lib_srv,
+      amino_acid_resnames,
+      pdb_dir,
+      file_name_extension,
+      verbose):
+  for resname in amino_acid_resnames:
+    if (resname == "PRO"):
+      # compatible semi emp files not available (not important enough to
+      # warrant extra effort)
+      continue
+    rotamer_info = mon_lib_srv.get_comp_comp_id_direct(
+      comp_id=resname).rotamer_info()
+    if (rotamer_info is None): continue
+    for rotamer in rotamer_info.rotamer:
+      file_name = "%s_%s%s" % (resname, rotamer.id, file_name_extension)
+      if (verbose): print file_name
+      path = op.join(pdb_dir, file_name)
+      pdb_inp = iotbx.pdb.input(file_name=path)
+      pdb_hierarchy = pdb_inp.construct_hierarchy()
+      ag = pdb_hierarchy.only_atom_group()
+      for atom in ag.atoms():
+        if (   atom.name in [" H2 ",  " HC1"]
+            or (resname == "ASP" and atom.name == "HD21")
+            or (resname == "GLU" and atom.name == "HE21")):
+          ag.remove_atom(atom=atom)
+      comp_comp_id = mon_lib_srv.get_comp_comp_id_direct(comp_id=resname)
+      pdb_atoms = pdb_hierarchy.only_residue().atoms()
+      rotamer_iterator = comp_comp_id.rotamer_iterator(
+        atom_names=pdb_atoms.extract_name(),
+        sites_cart=pdb_atoms.extract_xyz())
+      assert rotamer_iterator.problem_message is None
+      angle_start_by_tor_id = rotamer_iterator.angle_start_by_tor_id
+      for tor_id,angle_tab in zip(rotamer_info.tor_ids, rotamer.angles):
+        angle_pdb = angle_start_by_tor_id[tor_id]
+        if (verbose): print tor_id, angle_tab, angle_pdb
+        if (cctbx.geometry_restraints.angle_delta_deg(
+              angle_1=angle_tab,
+              angle_2=angle_pdb) > 0.5):
+          print "Mismatch", resname, rotamer.id, tor_id, \
+            "pdb: %.0f" % angle_pdb, \
+            "tab: %.0f" % angle_tab
+      if (verbose): print
+
 def run(args):
-  assert args in [[], ["--verbose"]]
-  verbose = "--verbose" in args
+  verbose = False
+  semi_emp_rotamer_pdb_dirs = []
+  for arg in args:
+    if (arg == "--verbose"):
+      verbose = True
+    else:
+      assert op.isdir(arg)
+      semi_emp_rotamer_pdb_dirs.append(arg)
   mon_lib_srv = mmtbx.monomer_library.server.server()
   amino_acid_resnames = sorted(
     iotbx.pdb.amino_acid_codes.one_letter_given_three_letter.keys())
   for resname in amino_acid_resnames:
     if (verbose): print "resname:", resname
+    pdb_inp = iotbx.pdb.input(
+      file_name=op.join(
+        protein_pdb_files, reference_pdb_file_name_lookup[resname]))
+    pdb_hierarchy = pdb_inp.construct_hierarchy()
     exercise_server_rotamer_iterator(
       mon_lib_srv=mon_lib_srv,
-      resname=resname,
+      pdb_hierarchy=pdb_hierarchy,
       verbose=verbose)
     if (verbose): print
+  if (len(semi_emp_rotamer_pdb_dirs) == 0):
+    pdb_dir = libtbx.env.find_in_repositories(
+      relative_path="phenix_regression/semi_emp_rotamer_pdb")
+    if (pdb_dir is None):
+      print "Skipping compare_dihedrals(): semi_emp_rotamer_pdb not available."
+    else:
+      semi_emp_rotamer_pdb_dirs.append(pdb_dir)
+  for pdb_dir in semi_emp_rotamer_pdb_dirs:
+    compare_dihedrals(
+      mon_lib_srv=mon_lib_srv,
+      amino_acid_resnames=amino_acid_resnames,
+      pdb_dir=pdb_dir,
+      file_name_extension=".uhf_631dp.pdb",
+      verbose=verbose)
   print "OK"
 
 if (__name__ == "__main__"):
