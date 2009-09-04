@@ -560,6 +560,22 @@ def exercise_array():
   ma = ma.d_spacings()
   ma = miller.array(ma, ma.data(), ma.data().deep_copy())
   assert ma.indices().size() == 48
+  #
+  sa = ma.indices_filter(index=(5,1,1))
+  assert sa.indices().size() == 48
+  sa = ma.indices_filter(index=(1,1,1))
+  assert sa.indices().size() == 47
+  assert (1,1,1) not in sa.indices()
+  indices = flex.miller_index(((3,0,0),(2,2,1),(0,3,3)))
+  sa = ma.indices_filter(indices=indices)
+  assert sa.indices().size() == 45
+  for index in indices:
+    assert index not in sa.indices()
+  sa = ma.indices_filter(index=(1,1,1), indices=indices, negate=True).sort(
+    by_value="packed_indices")
+  assert sa.indices().size() == 4
+  assert approx_equal(sa.indices(), ((0, 3, 3), (1, 1, 1), (2, 2, 1), (3, 0, 0)))
+  #
   sa = ma.sigma_filter(0.5)
   assert sa.indices().size() == 48
   sa = ma.sigma_filter(2)

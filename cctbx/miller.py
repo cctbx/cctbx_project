@@ -2096,6 +2096,15 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     if (self.sigmas() is not None): s = self.sigmas().select(selection)
     return array(set(self, i, anomalous_flag), d, s).set_observation_type(self)
 
+  def indices_filter(self, index=None, indices=None, negate=False):
+    if indices is None:
+      indices = flex.miller_index()
+    if index is not None:
+      indices.append(index)
+    map_to_asu(self.space_group().type(), True, indices)
+    matched_indices = match_indices(self.map_to_asu().indices(), indices)
+    return self.select(matched_indices.single_selection(0), negate=negate)
+
   def sigma_filter(self, cutoff_factor, negate=False):
     assert self.data() is not None
     assert self.sigmas() is not None
