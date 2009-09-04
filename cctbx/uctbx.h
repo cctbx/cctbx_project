@@ -58,14 +58,69 @@ namespace cctbx {
   }
 
   //! Conversion of d-spacing measures.
-  inline double d_star_sq_as_two_theta(double d_star_sq, double wavelength,
-                                       bool deg=false)
+  inline double d_star_sq_as_two_theta(
+    double d_star_sq, double wavelength, bool deg=false)
   {
     double sin_theta = d_star_sq_as_stol(d_star_sq) * wavelength;
     CCTBX_ASSERT(sin_theta <= 1.0);
     double result = 2. * std::asin(sin_theta);
     if (deg) return scitbx::rad_as_deg(result);
     return result;
+  }
+
+  //! Conversion of d-spacing measures.
+  inline af::shared<double> d_star_sq_as_two_theta(
+    af::shared<double> d_star_sq, double wavelength, bool deg=false)
+  {
+    af::shared<double> result(
+      d_star_sq.size(), af::init_functor_null<double>());
+    for(std::size_t i=0;i<d_star_sq.size();i++) {
+      result[i] = d_star_sq_as_two_theta(d_star_sq[i], wavelength, deg);
+    }
+    return result;
+  }
+
+  //! Conversion of d-spacing measures.
+  inline double stol_sq_as_d_star_sq(double stol_sq)
+  {
+    return stol_sq * 4;
+  }
+
+  //! Conversion of d-spacing measures.
+  inline double two_stol_as_d_star_sq(double two_stol)
+  {
+    return std::pow(two_stol, 2);
+  }
+
+  //! Conversion of d-spacing measures.
+  inline double stol_as_d_star_sq(double stol)
+  {
+    return std::pow(stol * 2, 2);
+  }
+
+  //! Conversion of d-spacing measures.
+  inline double d_as_d_star_sq(double d)
+  {
+    if (d == 0.) return -1.;
+    return 1. / std::pow(d, 2);
+  }
+
+  //! Conversion of d-spacing measures.
+  inline double two_theta_as_d_star_sq(
+    double two_theta, double wavelength, bool deg=false)
+  {
+    double theta = .5 * two_theta;
+    if (deg) theta = scitbx::deg_as_rad(theta);
+    double sin_theta = std::sin(theta);
+    return stol_as_d_star_sq(sin_theta/wavelength);
+  }
+
+  //! Conversion of d-spacing measures.
+  inline double two_theta_as_d(
+    double two_theta, double wavelength, bool deg=false)
+  {
+    return d_star_sq_as_d(
+      two_theta_as_d_star_sq(two_theta, wavelength, deg));
   }
 
   template <typename FloatType>

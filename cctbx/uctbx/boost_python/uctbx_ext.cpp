@@ -18,9 +18,6 @@ namespace cctbx { namespace uctbx { namespace boost_python {
 
 namespace {
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    d_star_sq_as_two_theta_overloads, d_star_sq_as_two_theta, 2, 3)
-
   struct unit_cell_wrappers : boost::python::pickle_suite
   {
     typedef unit_cell w_t;
@@ -252,13 +249,29 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-
+    //! Forward conversions
     def("d_star_sq_as_stol_sq", d_star_sq_as_stol_sq);
     def("d_star_sq_as_two_stol", d_star_sq_as_two_stol);
     def("d_star_sq_as_stol", d_star_sq_as_stol);
-    def("d_star_sq_as_two_theta", d_star_sq_as_two_theta,
-      d_star_sq_as_two_theta_overloads());
     def("d_star_sq_as_d", d_star_sq_as_d);
+    def("d_star_sq_as_two_theta", (
+      double(*)(double, double, bool)) d_star_sq_as_two_theta,
+      (arg("d_star_sq"), arg("wavelength"), arg("deg")=false));
+    def("d_star_sq_as_two_theta", (
+      af::shared<double>(*)(af::shared<double>, double, bool))
+      d_star_sq_as_two_theta,
+      (arg("d_star_sq"), arg("wavelength"), arg("deg")=false));
+    //! Reverse conversions
+    def("stol_sq_as_d_star_sq", stol_sq_as_d_star_sq);
+    def("two_stol_as_d_star_sq", two_stol_as_d_star_sq);
+    def("stol_as_d_star_sq", stol_as_d_star_sq);
+    def("d_as_d_star_sq", d_as_d_star_sq);
+    def("two_theta_as_d_star_sq", (
+      double(*)(double, double, bool)) two_theta_as_d_star_sq,
+      (arg("two_theta"), arg("wavelength"), arg("deg")=false));
+    def("two_theta_as_d", (
+      double(*)(double, double, bool)) two_theta_as_d,
+      (arg("two_theta"), arg("wavelength"), arg("deg")=false));
 
     unit_cell_wrappers::wrap();
     wrap_fast_minimum_reduction();

@@ -11,6 +11,8 @@ import sys
 
 def exercise_functions():
   d_star_sq = 1.2345
+  two_theta = 0.61725
+  # forward conversions
   assert approx_equal(
     uctbx.d_star_sq_as_stol_sq(d_star_sq), d_star_sq / 4)
   assert approx_equal(
@@ -28,6 +30,34 @@ def exercise_functions():
   assert approx_equal(
     uctbx.d_star_sq_as_two_theta(d_star_sq, 1.5)*180/pi,
     uctbx.d_star_sq_as_two_theta(d_star_sq, 1.5, True))
+  # reverse conversions
+  assert approx_equal(
+    uctbx.stol_sq_as_d_star_sq(
+      uctbx.d_star_sq_as_stol_sq(d_star_sq)), d_star_sq)
+  assert approx_equal(
+    uctbx.two_stol_as_d_star_sq(
+      uctbx.d_star_sq_as_two_stol(d_star_sq)), d_star_sq)
+  assert approx_equal(
+    uctbx.stol_as_d_star_sq(
+      uctbx.d_star_sq_as_stol(d_star_sq)), d_star_sq)
+  assert approx_equal(
+    uctbx.d_as_d_star_sq(
+      uctbx.d_star_sq_as_d(d_star_sq)), d_star_sq)
+  assert approx_equal(
+    uctbx.two_theta_as_d_star_sq(
+      uctbx.d_star_sq_as_two_theta(d_star_sq, 1.5), 1.5), d_star_sq)
+  assert approx_equal(
+    uctbx.two_theta_as_d_star_sq(two_theta, 1.5),
+    uctbx.two_theta_as_d_star_sq(two_theta, 1.5, False))
+  assert approx_equal(
+    uctbx.two_theta_as_d_star_sq(two_theta, 1.5),
+    uctbx.two_theta_as_d_star_sq(two_theta*180/pi, 1.5, True))
+  assert approx_equal(
+    uctbx.two_theta_as_d(two_theta, 1.5),
+    uctbx.d_star_sq_as_d(uctbx.two_theta_as_d_star_sq(two_theta, 1.5)))
+  assert approx_equal(
+    uctbx.two_theta_as_d(two_theta, 1.5, True),
+    uctbx.d_star_sq_as_d(uctbx.two_theta_as_d_star_sq(two_theta, 1.5, True)))
   #
   assert uctbx.fractional_unit_shifts(distance_frac=[0,0,0]) == (0,0,0)
   assert uctbx.fractional_unit_shifts([0.6,7.4,-0.4]) == (1,7,0)
