@@ -1,4 +1,5 @@
-import os
+from __future__ import generators
+import sys, os
 if not hasattr(os.path, "devnull"):
   # Python 2.3 compatibility
   if os.name == "nt":
@@ -31,12 +32,13 @@ if ("reversed" not in __builtins__):
       yield seq[i]
   __builtins__["reversed"] = reversed
 
-if ("set" not in __builtins__):
+vers_info = sys.version_info[:2]
+if (vers_info == (2,3) and "set" not in __builtins__):
   # Python 2.3 compatibility
   import sets
   __builtins__["set"] = sets.Set
   __builtins__["frozenset"] = sets.ImmutableSet
-if (not hasattr(frozenset, "isdisjoint")):
+if (vers_info in [(2,3),(2,4),(2,5)] and not hasattr(frozenset, "isdisjoint")):
   # Python 2.3, 2.4, 2.5 compatibility
   class forward_compatibility_set_mixin(object):
     def isdisjoint(self, other):
