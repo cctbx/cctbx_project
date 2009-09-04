@@ -569,6 +569,20 @@ class _pair_asu_table(boost.python.injector, pair_asu_table):
       keep_pair_asu_table=keep_pair_asu_table,
       out=out)
 
+  def show_angles(self,
+        site_labels=None,
+        sites_frac=None,
+        sites_cart=None,
+        keep_pair_asu_table=False,
+        out=None):
+    return show_angles(
+      pair_asu_table=self,
+      site_labels=site_labels,
+      sites_frac=sites_frac,
+      sites_cart=sites_cart,
+      keep_pair_asu_table=keep_pair_asu_table,
+      out=out)
+
 class show_distances(object):
 
   def __init__(self,
@@ -657,6 +671,93 @@ class show_distances(object):
       if (pair_count == 0):
         print >> out, "  no neighbors"
       self.pair_counts.append(pair_count)
+
+class show_angles(object):
+
+  def __init__(self,
+        pair_asu_table,
+        site_labels=None,
+        sites_frac=None,
+        sites_cart=None,
+        show_cartesian=False,
+        keep_pair_asu_table=False,
+        out=None):
+    assert [sites_frac, sites_cart].count(None) == 1
+    if (out is None): out = sys.stdout
+    if (keep_pair_asu_table):
+      self.pair_asu_table = pair_asu_table
+    else:
+      self.pair_asu_table = None
+    self.distances = flex.double()
+    self.angles = flex.double()
+    rt_mxs = []
+    self.pair_counts = flex.size_t()
+    asu_mappings = pair_asu_table.asu_mappings()
+    unit_cell = asu_mappings.unit_cell()
+    if (sites_frac is None):
+      sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
+    if (site_labels is None):
+      label_len = len("%d" % (sites_frac.size()+1))
+      label_fmt = "site_%%0%dd" % label_len
+      label_len += 5
+    else:
+      label_len = 1
+      for label in site_labels:
+        label_len = max(label_len, len(label))
+      label_fmt = "%%-%ds" % (label_len+4)
+      label_fmt *= 3
+    ## angle is formed by j_seq-i_seq-k_seq
+    for i_seq,asu_dict in enumerate(pair_asu_table.table()):
+      rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
+      site_frac_i = sites_frac[i_seq]
+      angles = flex.double()
+      for j_seq,j_sym_groups in asu_dict.items():
+        site_frac_j = sites_frac[j_seq]
+        for j_sym_group in j_sym_groups:
+          for i_j_sym,j_sym in enumerate(j_sym_group):
+            rt_mx_ji = rt_mx_i_inv.multiply(
+              asu_mappings.get_rt_mx(j_seq, j_sym))
+            site_frac_ji = rt_mx_ji * site_frac_j
+            for k_seq, k_sym_groups in asu_dict.items():
+              if k_seq == j_seq and j_sym_group.size() <= 1: continue
+              if k_seq > j_seq: continue
+              site_frac_k = sites_frac[k_seq]
+              for k_sym_group in k_sym_groups:
+                for i_k_sym,k_sym in enumerate(k_sym_group):
+                  if j_seq == k_seq and i_j_sym <= i_k_sym: continue
+                  if i_seq == k_seq and i_k_sym == 0: continue
+                  rt_mx_ki = rt_mx_i_inv.multiply(
+                    asu_mappings.get_rt_mx(k_seq, k_sym))
+                  site_frac_ki = rt_mx_ki * site_frac_k
+                  angle = unit_cell.angle(site_frac_ji, site_frac_i, site_frac_ki)
+                  if angle is None: continue
+                  self.angles.append(angle)
+                  if (site_labels is None):
+                    s = label_fmt % (j_seq+1) + ":"
+                  else:
+                    i_label = site_labels[i_seq]
+                    j_label = site_labels[j_seq]
+                    k_label = site_labels[k_seq]
+                    if i_j_sym != 0:
+                      if rt_mx_ji in rt_mxs:
+                        j = rt_mxs.index(rt_mx_ji) + 1
+                      else:
+                        rt_mxs.append(rt_mx_ji)
+                        j = len(rt_mxs)
+                      j_label += "*%s" %j
+                    if i_k_sym != 0:
+                      if rt_mx_ki in rt_mxs:
+                        k = rt_mxs.index(rt_mx_ki) + 1
+                      else:
+                        rt_mxs.append(rt_mx_ki)
+                        k = len(rt_mxs)
+                      k_label += "*%s" %k
+                    s = label_fmt % (j_label, i_label, k_label)
+                  s += " %6.2f" % angle
+                  print >> out, s
+    for i, rt_mx in enumerate(rt_mxs):
+      print >> out, "*%s" %(i+1),
+      print >> out, rt_mx
 
 class sym_pair(object):
 

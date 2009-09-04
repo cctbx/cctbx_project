@@ -1127,6 +1127,25 @@ class structure(crystal.special_position_settings):
       keep_pair_asu_table=keep_pair_asu_table,
       out=out)
 
+  def show_angles(self,
+        distance_cutoff=None,
+        asu_mappings_buffer_thickness=None,
+        asu_is_inside_epsilon=None,
+        pair_asu_table=None,
+        keep_pair_asu_table=False,
+        out=None):
+    assert [distance_cutoff, pair_asu_table].count(None) == 1
+    if (pair_asu_table is None):
+      pair_asu_table = self.pair_asu_table(
+        distance_cutoff=distance_cutoff,
+        asu_mappings_buffer_thickness=asu_mappings_buffer_thickness,
+        asu_is_inside_epsilon=asu_is_inside_epsilon)
+    return pair_asu_table.show_angles(
+      site_labels=self.scatterers().extract_labels(),
+      sites_frac=self.sites_frac(),
+      keep_pair_asu_table=keep_pair_asu_table,
+      out=out)
+
   def conservative_pair_proxies(self, bond_sym_table, conserve_angles):
     return conservative_pair_proxies(
       structure=self,
