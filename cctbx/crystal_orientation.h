@@ -108,8 +108,10 @@ namespace cctbx {
        */
       template <typename FloatType>
       crystal_orientation
-      rotate_thru(oc_vec3 const& unit_axis, FloatType const& angle){
-
+      rotate_thru(
+        oc_vec3 const& unit_axis,
+        FloatType const& angle) const
+      {
         //
         //still need to add an assertion that unit is a unit vector
         //
