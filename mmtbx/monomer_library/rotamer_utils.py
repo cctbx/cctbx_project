@@ -70,6 +70,10 @@ def tardy_model(
     if (atom_name in tree_root_atom_names):
       fixed_vertices.append(i)
   assert len(fixed_vertices) == len(tree_root_atom_names)
+  terminal_backbone_atom_names = set(["OXT", "HXT", "H1", "H2", "H3"])
+  for i,atom_name in enumerate(mon_lib_atom_names):
+    if (atom_name in terminal_backbone_atom_names):
+      fixed_vertices.append(i)
   bonds_omitted = set()
   edge_list = []
   for bond in comp_comp_id.bond_list:
@@ -113,8 +117,11 @@ def tardy_model(
     tardy_tree=tardy_tree,
     potential_obj=None)
   joint_dofs = tardy_model.degrees_of_freedom_each_joint()
-  assert joint_dofs[0] == 0
-  assert joint_dofs[1:].all_eq(1)
+  if (joint_dofs[0] != 0 or not joint_dofs[1:].all_eq(1)):
+    msg = ["Unexpected degrees of freedom:"]
+    for dof,cluster in zip(joint_dofs,tardy_tree.cluster_manager.clusters):
+      msg.append("  %s: %s" % (dof, [input_atom_names[i] for i in cluster]))
+    raise RuntimeError("\n".join(msg))
   return tardy_model
 
 def build_rotamer_tor_atom_ids_by_tor_id(comp_comp_id, rotamer_info):
