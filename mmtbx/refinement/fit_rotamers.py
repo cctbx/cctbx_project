@@ -78,7 +78,7 @@ def iterate_rotamers(pdb_hierarchy,
                      log):
   assert map_data_1.focus() == map_data_2.focus()
   assert map_data_1.all() == map_data_2.all()
-  fmt="  %s %s %s: cc_start=%6.4f score: start=%6.2f final=%6.2f diff=%6.2f best_rotomer_id: %5s"
+  fmt="  %s %s %s: cc_start=%6.4f score: start=%6.2f final=%6.2f diff=%6.2f best_rotamer_id: %5s"
   map_selector = select_map(
     unit_cell  = xray_structure.unit_cell(),
     map_data_1 = map_data_1,
