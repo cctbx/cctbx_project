@@ -4,7 +4,7 @@ import cctbx.geometry_restraints
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import show_diff
-from libtbx.utils import sequence_index_dict
+from libtbx.utils import sequence_index_dict, format_cpu_times
 import libtbx.load_env
 import string
 import sys, os
@@ -75,6 +75,13 @@ def report_tors(
     if (verbose): print tor_id, atom_ids, angle_model, annotation
   assert n_mismatches == 0, n_mismatches
 
+def remove_atom_ids_not_handled(pdb_hierarchy, atom_ids_not_handled):
+  if (atom_ids_not_handled is None): return
+  ag = pdb_hierarchy.only_atom_group()
+  for atom in ag.atoms():
+    if (atom.name.strip() in atom_ids_not_handled):
+      ag.remove_atom(atom=atom)
+
 def exercise_server_rotamer_iterator(mon_lib_srv, pdb_hierarchy, verbose):
   resname = pdb_hierarchy.only_residue().resname
   atom_ids_not_handled = {
@@ -88,10 +95,9 @@ def exercise_server_rotamer_iterator(mon_lib_srv, pdb_hierarchy, verbose):
       sites_cart=pdb_atoms.extract_xyz())
     assert not show_diff(str(rotamer_iterator.problem_message)[3:-3],
       ": rotamer_info does not handle these atoms: ")
-    ag = pdb_hierarchy.only_atom_group()
-    for atom in ag.atoms():
-      if (atom.name.strip() in atom_ids_not_handled):
-        ag.remove_atom(atom=atom)
+    remove_atom_ids_not_handled(
+      pdb_hierarchy=pdb_hierarchy,
+      atom_ids_not_handled=atom_ids_not_handled)
     pdb_atoms = pdb_hierarchy.only_residue().atoms()
   #
   pdb_atoms.set_occ(new_occ=flex.double(pdb_atoms.size(), 1))
@@ -234,6 +240,25 @@ def compare_dihedrals(
               "tab: %.0f" % angle_tab
       if (verbose): print
 
+def exercise_termini(mon_lib_srv, pdb_file_name):
+  pdb_inp = iotbx.pdb.input(file_name=pdb_file_name)
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  resname = pdb_hierarchy.only_residue().resname
+  atom_ids_not_handled_by_resname = {
+    "ASP": ["HD1", "HD2", "2HD"],
+    "GLU": ["HE1", "HE2", "2HE"]}
+  remove_atom_ids_not_handled(
+    pdb_hierarchy=pdb_hierarchy,
+    atom_ids_not_handled=atom_ids_not_handled_by_resname.get(resname))
+  pdb_atoms = pdb_hierarchy.only_residue().atoms()
+  comp_comp_id = mon_lib_srv.get_comp_comp_id_direct(comp_id=resname)
+  rotamer_iterator = comp_comp_id.rotamer_iterator(
+    atom_names=pdb_atoms.extract_name(),
+    sites_cart=pdb_atoms.extract_xyz())
+  msg = rotamer_iterator.problem_message
+  if (msg is not None):
+    raise RuntimeError("rotamer_iterator.problem_message: %s" % msg)
+
 def run(args):
   verbose = False
   semi_emp_rotamer_pdb_dirs = []
@@ -271,7 +296,14 @@ def run(args):
       pdb_dir=pdb_dir,
       file_name_extension=".uhf_631dp.pdb",
       verbose=verbose)
-  print "OK"
+  for file_name in os.listdir(protein_pdb_files):
+    if (not file_name.endswith(".ent")): continue
+    if (verbose): print file_name
+    exercise_termini(
+      mon_lib_srv=mon_lib_srv,
+      pdb_file_name=op.join(protein_pdb_files, file_name))
+    if (verbose): print
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
