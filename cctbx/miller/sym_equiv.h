@@ -305,7 +305,7 @@ namespace cctbx { namespace miller {
       bool
       is_valid_phase(double phi,
                      bool deg=false,
-                     double tolerance=1.e-5) const
+                     double tolerance=1e-5) const
       {
         return phase_restriction().is_valid_phase(phi, deg, tolerance);
       }
