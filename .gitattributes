@@ -10,7 +10,6 @@ boost_adaptbx/command_line/int_overflow.py svneol=native#text/x-python
 boost_adaptbx/command_line/lcm.py svneol=native#text/x-python
 boost_adaptbx/command_line/segmentation_fault.py svneol=native#text/x-python
 boost_adaptbx/command_line/show_environ_usage.py svneol=native#text/x-python
-boost_adaptbx/easy_overloads.h -text
 boost_adaptbx/file_ext.cpp -text
 boost_adaptbx/file_test_ext.cpp -text
 boost_adaptbx/floating_point_exceptions.h -text
