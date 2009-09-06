@@ -757,4 +757,5 @@ spotfinder/math_support/__init__.py -text
 spotfinder/servers/__init__.py -text
 spotfinder/servers/adsc_client.py -text
 spotfinder/servers/multipart_encoder.py -text
+spotfinder/servers/pilatus_client.py -text
 spotfinder/servers/spotfinder_server_client_push.py -text
