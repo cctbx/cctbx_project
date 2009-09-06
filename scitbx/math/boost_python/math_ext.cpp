@@ -12,6 +12,8 @@
 #include <scitbx/math/halton.h>
 #include <scitbx/math/utils.h>
 #include <scitbx/math/euler_angles.h>
+#include <scitbx/math/gcd.h>
+#include <boost/rational.hpp> // for boost::gcd
 
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
@@ -45,6 +47,50 @@ namespace boost_python {
   void wrap_numeric_limits();
 
 namespace {
+
+  int
+  time_gcd_int_boost_math(
+    int n)
+  {
+    int result = 0;
+    for(int a=0;a<n;a++) {
+      for(int b=0;b<n;b++) {
+        int c = boost::gcd(a, b);
+        if (result < c) result = c;
+      }
+    }
+    return result;
+  }
+
+  int
+  time_gcd_int_simple(
+    int n)
+  {
+    int result = 0;
+    for(int a=0;a<n;a++) {
+      for(int b=0;b<n;b++) {
+        int c = gcd_int_simple(a, b);
+        if (result < c) result = c;
+      }
+    }
+    return result;
+  }
+
+#if defined(SCITBX_MATH_GCD_USING_ASM)
+  int
+  time_gcd_int_asm(
+    int n)
+  {
+    int result = 0;
+    for(int a=0;a<n;a++) {
+      for(int b=0;b<n;b++) {
+        int c = gcd_int_asm(a, b);
+        if (result < c) result = c;
+      }
+    }
+    return result;
+  }
+#endif
 
   mat3<double>
   superpose_kearsley_rotation(
@@ -109,6 +155,14 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
+
+    def("time_gcd_int_boost_math", time_gcd_int_boost_math);
+    def("gcd_int_simple", gcd_int_simple, (arg("a"), arg("b")));
+    def("time_gcd_int_simple", time_gcd_int_simple);
+#if defined(SCITBX_MATH_GCD_USING_ASM)
+    def("gcd_int_asm", gcd_int_asm, (arg("a"), arg("b")));
+    def("time_gcd_int_asm", time_gcd_int_asm);
+#endif
 
     def("floating_point_epsilon_float_get",
       &floating_point_epsilon<float>::get);

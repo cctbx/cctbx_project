@@ -545,10 +545,12 @@ scitbx/math/boost_python/__init__.py -text
 scitbx/math/boost_python/continued_fraction.cpp -text
 scitbx/math/boost_python/least_squares_plane.cpp -text
 scitbx/math/boost_python/numeric_limits.cpp -text
+scitbx/math/boost_python/tst_gcd.py svneol=native#text/x-python
 scitbx/math/continued_fraction.h -text
 scitbx/math/copysign.h -text
 scitbx/math/euler_angles.h -text
 scitbx/math/fit_peak.py -text
+scitbx/math/gcd.h svneol=native#text/plain
 scitbx/math/imaginary.h -text
 scitbx/math/inertia_tensor.h svneol=native#text/plain
 scitbx/math/least_squares_plane.h -text
