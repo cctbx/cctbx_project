@@ -48,8 +48,8 @@ class image_request_handler(BaseHTTPRequestHandler):
       print item, len(parts[item][0])
     print "*****************************"
 
-    from iotbx.detectors.adsc_module import adsc_module_from_http_request
-    imgobj = adsc_module_from_http_request(parts)
+    from iotbx.detectors.image_from_http_request import module_or_slice_from_http_request
+    imgobj = module_or_slice_from_http_request(parts)
     imgobj.read()
     print "Final image object:"
     imgobj.show_header()
@@ -89,6 +89,10 @@ class image_request_handler(BaseHTTPRequestHandler):
     self.send_header("Content-length",len(log))
     self.end_headers()
     self.wfile.write(log)
+    self.opt_logging()
+
+  def opt_logging(self):
+    pass
 
 if __name__=="__main__":
   import sys
