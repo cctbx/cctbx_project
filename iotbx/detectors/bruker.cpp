@@ -187,7 +187,7 @@ if (debug) {
 
 if (lendata==1) { for (k=0; k<nrows; k++)
   {   n = fread(ccbyte , lendata, (size_t) ncols, fi);
-      if (n != ncols) printf(" short data %d  row %d\n",n,k);
+      //if (n != ncols) printf(" short data %d  row %d\n",n,k);
       for (j=0; j<ncols; j++) { /* ccdata[k][j] = uc = ccbyte[j]; */
         /* make indices consistent with Bruker pixel numbering */
         jx = j; ky = 1023 - k;
@@ -196,7 +196,7 @@ if (lendata==1) { for (k=0; k<nrows; k++)
   } /* for (k) */  }  /* if (lendata==1) */
  else if (lendata==2) { for (k=0; k<nrows; k++)
   {   n = fread(ccshort , lendata, (size_t) ncols, fi);
-      if (n != ncols) printf(" short data %d  row %d\n",n,k);
+      //if (n != ncols) printf(" short data %d  row %d\n",n,k);
       for (j=0; j<ncols; j++) { /* ccdata[k][j] = bs = ccshort[j];  */
         /* make indices consistent with Bruker pixel numbering */
         jx = j; ky = 1023 - k;
@@ -206,11 +206,11 @@ if (lendata==1) { for (k=0; k<nrows; k++)
   } /* for (k) */  }  /* if (lendata==2) */
  else  printf("input not implemented for data length %d\n",lendata);
 
-         u.s = 4; printf("bytes of 4: (0) %d (1) %d\n",u.b[0],u.b[1]);
+         u.s = 4; //printf("bytes of 4: (0) %d (1) %d\n",u.b[0],u.b[1]);
        if (u.b[1]) swab = 1; else swab = 0;
        if (swab) printf("swapping bytes\n");
 
- printf(" %d byte data read under %d over %d\n",lendata,ku,ko);
+ //printf(" %d byte data read under %d over %d\n",lendata,ku,ko);
 
 
 /*********** may need to swap bytes for short data **************/
