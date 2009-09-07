@@ -5,7 +5,7 @@
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/misc_functions.h>
 #include <scitbx/matrix/multiply.h>
-#include <boost/rational.hpp>
+#include <scitbx/math/gcd.h>
 
 namespace scitbx { namespace matrix { namespace row_echelon {
 
@@ -122,7 +122,7 @@ namespace scitbx { namespace matrix { namespace row_echelon {
         }
         if (v) sol[ic] += d * v[ir];
                                 IntType mrc = re_mx(ir,ic);
-        IntType f = boost::gcd(sol[ic], mrc);
+        IntType f = math::gcd_int(sol[ic], mrc);
         if (mrc < 0) f *= -1;
         sol[ic] /= f;
         f = mrc / f;

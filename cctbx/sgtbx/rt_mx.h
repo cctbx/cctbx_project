@@ -5,6 +5,7 @@
 #include <cctbx/sgtbx/parse_string.h>
 #include <cctbx/coordinates.h>
 #include <scitbx/sym_mat3.h>
+#include <scitbx/math/gcd.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <cctbx/import_scitbx_af.h>
 
@@ -489,7 +490,7 @@ namespace cctbx { namespace sgtbx {
   IntType
   norm_denominator(IntType numerator, IntType denominator)
   {
-    return denominator / boost::gcd(numerator, denominator);
+    return denominator / scitbx::math::gcd_int(numerator, denominator);
   }
 
   template <typename GridTupleType>
