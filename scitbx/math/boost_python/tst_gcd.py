@@ -39,9 +39,6 @@ def run(args):
   #
   impls = [getattr(scitbx.math, "time_%s" % label, None)
     for label in labels]
-  for impl in impls:
-    if (impl is None): continue
-    impl(10)
   for label,impl in zip(labels,impls):
     if (impl is None): continue
     w0 = time.time()
