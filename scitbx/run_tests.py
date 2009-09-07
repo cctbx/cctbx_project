@@ -39,6 +39,7 @@ def run():
   "$D/matrix.py",
   "$D/python_utils/tst_random_transform.py",
   "$D/python_utils/tst_graph.py",
+  "$D/math/boost_python/tst_gcd.py",
   "$D/math/boost_python/tst_math.py",
   "$D/math/boost_python/tst_r3_rotation.py",
   "$D/math/boost_python/tst_resample.py",

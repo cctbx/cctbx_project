@@ -15,9 +15,23 @@ namespace scitbx { namespace math {
   {
     for(;;) {
       if (b == 0) return (a < 0 ? -a : a);
-      int edx = a % b;
+      int next_b = a % b;
       a = b;
-      b = edx;
+      b = next_b;
+    }
+  }
+
+  inline
+  long
+  gcd_long_simple(
+    long a,
+    long b)
+  {
+    for(;;) {
+      if (b == 0) return (a < 0 ? -a : a);
+      long next_b = a % b;
+      a = b;
+      b = next_b;
     }
   }
 
@@ -29,7 +43,7 @@ namespace scitbx { namespace math {
   */
   inline
   int
-  gcd_int_asm(
+  gcd_int32_asm(
     int a,
     int b)
   {
@@ -42,9 +56,9 @@ namespace scitbx { namespace math {
       "  je .L_return_a_or_minus_a_%=\n"
       "  movl %%eax, %%edx\n"
       "  sarl $31, %%edx\n"
-      "  idivl %%ecx\n" // edx = a % b
+      "  idivl %%ecx\n" // next_b = a % b
       "  movl %%ecx, %%eax\n" // a = b
-      "  movl %%edx, %%ecx\n" // b = edx
+      "  movl %%edx, %%ecx\n" // b = next_b
       "  jmp .L_for_%=\n"
       ".L_return_a_or_minus_a_%=:\n"
          // next five lines: slightly faster than compare & jump
@@ -53,12 +67,100 @@ namespace scitbx { namespace math {
       "  xorl %%edx, %%ecx\n"
       "  subl %%edx, %%ecx\n"
       "  movl %%ecx, %%eax\n"
-        : "=a"(result) /* output */
+        : "=&a"(result) /* output */
         : "r"(a), "r"(b) /* input */
         : "%ecx", "%edx"); /* clobbered registers */
     return result;
   }
 #endif
+
+#if defined(SCITBX_MATH_GCD_USING_ASM) && defined(__x86_64__)
+  inline
+  long
+  gcd_int64_asm(
+    long a,
+    long b)
+  {
+    long result;
+    __asm__(
+      "  movq %1, %%rax\n"
+      "  movq %2, %%rcx\n"
+      ".L_for_%=:\n"
+      "  cmpq $0, %%rcx\n" // if b == 0
+      "  je .L_return_a_or_minus_a_%=\n"
+      "  movq %%rax, %%rdx\n"
+      "  sarq $63, %%rdx\n"
+      "  idivq %%rcx\n" // rdx = a % b
+      "  movq %%rcx, %%rax\n" // a = b
+      "  movq %%rdx, %%rcx\n" // b = rdx
+      "  jmp .L_for_%=\n"
+      ".L_return_a_or_minus_a_%=:\n"
+         // next five lines: slightly faster than compare & jump
+      "  movq %%rax, %%rcx\n"
+      "  cqto\n"
+      "  xorq %%rdx, %%rcx\n"
+      "  subq %%rdx, %%rcx\n"
+      "  movq %%rcx, %%rax\n"
+        : "=&a"(result) /* output */
+        : "r"(a), "r"(b) /* input */
+        : "%rcx", "%rdx"); /* clobbered registers */
+    return result;
+  }
+#endif
+
+  // from boost/math/common_factor_rt.hpp, svn trunk rev. 47847
+  inline
+  unsigned long
+  gcd_unsigned_long_binary(
+    unsigned long u,
+    unsigned long v)
+  {
+    if ( u && v ) {
+      // Shift out common factors of 2
+      unsigned shifts = 0;
+      while ( !(u & 1u) && !(v & 1u) ) {
+        ++shifts;
+        u >>= 1;
+        v >>= 1;
+      }
+      // Start with the still-even one, if any
+      unsigned long r[] = { u, v };
+      unsigned which = static_cast<bool>( u & 1u );
+      // Whittle down the values via their differences
+      do {
+        // Remove factors of two from the even one
+        while ( !(r[ which ] & 1u) ) {
+          r[ which ] >>= 1;
+        }
+        // Replace the larger of the two with their difference
+        if ( r[!which] > r[which] ) {
+          which ^= 1u;
+        }
+        r[ which ] -= r[ !which ];
+      }
+      while ( r[which] );
+      // Shift-in the common factor of 2 to the residues' GCD
+      return r[ !which ] << shifts;
+    }
+    else {
+      // At least one input is zero, return the other
+      // (adding since zero is the additive identity)
+      // or zero if both are zero.
+      return u + v;
+    }
+  }
+
+  inline
+  long
+  gcd_long_binary(
+    long u,
+    long v)
+  {
+    return static_cast<long>(
+      gcd_unsigned_long_binary(
+        u < 0 ? -u : u,
+        v < 0 ? -v : v));
+  }
 
   inline
   int
@@ -67,9 +169,26 @@ namespace scitbx { namespace math {
     int b)
   {
 #if defined(SCITBX_MATH_GCD_USING_ASM)
-    return gcd_int_asm(a, b);
+    return gcd_int32_asm(a, b);
 #else
     return gcd_int_simple(a, b);
+#endif
+  }
+
+  inline
+  long
+  gcd_long(
+    long a,
+    long b)
+  {
+#if defined(SCITBX_MATH_GCD_USING_ASM)
+# if defined(__x86_64__)
+    return gcd_int64_asm(a, b);
+# else
+    return gcd_int32_asm(a, b);
+# endif
+#else
+    return gcd_long_simple(a, b);
 #endif
   }
 
