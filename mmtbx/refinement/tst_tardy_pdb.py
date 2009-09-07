@@ -303,6 +303,17 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
     tardy_tree.build_tree()
   else:
     tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
+    if (params.cut_revolute):
+      print >> log, "Cutting all resolute joints."
+      cm = tardy_tree.cluster_manager
+      hes = cm.hinge_edges
+      print >> log, "Clusters:", cm.clusters
+      print >> log, "Original hinge edges:", hes
+      for ihe,he in enumerate(hes):
+        if (he[0] != -1):
+          hes[ihe] = (-1,cm.clusters[ihe][0])
+      print >> log, "After cuts:", hes
+      print >> log
   print >> log, "tardy_tree summary:"
   tardy_tree.show_summary(vertex_labels=labels, out=log, prefix="  ")
   print >> log
@@ -333,6 +344,10 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
     real_space_gradients_delta=real_space_gradients_delta,
     real_space_target_weight=params.real_space_target_weight,
     ideal_sites_cart=ideal_sites_cart)
+  print "LOOK"
+  print len(labels)
+  print len(sites)
+  print len(ideal_sites_cart)
   tardy_model = scitbx.rigid_body.tardy_model(
     labels=labels,
     sites=sites,
@@ -356,6 +371,8 @@ real_space_target_weight = 100
 real_space_gradients_delta_resolution_factor = 1/3
   .type = float
 emulate_cartesian = False
+  .type = bool
+cut_revolute = False
   .type = bool
 keep_all_restraints = False
   .type = bool
