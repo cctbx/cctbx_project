@@ -3,10 +3,15 @@ import boost.rational
 import time
 import sys, os
 
-def compare_with_boost_rational_gcd(other_gcd):
+def compare_with_boost_rational_gcd(label):
+  other_gcd = getattr(scitbx.math, label, None)
   if (other_gcd is None): return
-  for a in xrange(-100,101):
-    for b in xrange(-100,101):
+  print "compare_with_boost_rational_gcd(%s)" % label
+  samples = range(-100,101) \
+          + range(-100000-10,-100000+11) \
+          + range( 100000-10, 100000+11)
+  for a in samples:
+    for b in samples:
       r = boost.rational.gcd(a, b)
       o = other_gcd(a=a, b=b)
       if (o != r):
@@ -14,16 +19,24 @@ def compare_with_boost_rational_gcd(other_gcd):
 
 def run(args):
   if (len(args) == 0):
-    n = 4400
+    n = 1000
   else:
     assert len(args) == 1
     n = int(args[0])
   #
-  for label in ["gcd_int_simple", "gcd_int_asm"]:
-    compare_with_boost_rational_gcd(
-      other_gcd=getattr(scitbx.math, label, None))
+  labels = [
+    "gcd_int_boost",
+    "gcd_int_simple",
+    "gcd_int32_asm",
+    "gcd_long_boost",
+    "gcd_long_simple",
+    "gcd_unsigned_long_binary",
+    "gcd_long_binary",
+    "gcd_int64_asm"]
   #
-  labels = ["gcd_int_boost_math", "gcd_int_simple", "gcd_int_asm"]
+  for label in labels:
+    compare_with_boost_rational_gcd(label=label)
+  #
   impls = [getattr(scitbx.math, "time_%s" % label, None)
     for label in labels]
   for impl in impls:
@@ -34,7 +47,7 @@ def run(args):
     w0 = time.time()
     us0 = sum(os.times()[:2])
     result = impl(n)
-    print "%-18s %d w=%.2f u+s=%.2f" % (
+    print "%-24s %d w=%.2f u+s=%.2f" % (
       label,
       result,
       time.time()-w0,

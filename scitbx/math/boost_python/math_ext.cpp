@@ -49,13 +49,27 @@ namespace boost_python {
 namespace {
 
   int
-  time_gcd_int_boost_math(
+  time_gcd_int_boost(
     int n)
   {
     int result = 0;
     for(int a=0;a<n;a++) {
       for(int b=0;b<n;b++) {
         int c = boost::gcd(a, b);
+        if (result < c) result = c;
+      }
+    }
+    return result;
+  }
+
+  long
+  time_gcd_long_boost(
+    long n)
+  {
+    long result = 0;
+    for(long a=0;a<n;a++) {
+      for(long b=0;b<n;b++) {
+        long c = boost::gcd(a, b);
         if (result < c) result = c;
       }
     }
@@ -76,20 +90,78 @@ namespace {
     return result;
   }
 
-#if defined(SCITBX_MATH_GCD_USING_ASM)
-  int
-  time_gcd_int_asm(
-    int n)
+  long
+  time_gcd_long_simple(
+    long n)
   {
-    int result = 0;
-    for(int a=0;a<n;a++) {
-      for(int b=0;b<n;b++) {
-        int c = gcd_int_asm(a, b);
+    long result = 0;
+    for(long a=0;a<n;a++) {
+      for(long b=0;b<n;b++) {
+        long c = gcd_long_simple(a, b);
         if (result < c) result = c;
       }
     }
     return result;
   }
+
+  long
+  time_gcd_unsigned_long_binary(
+    unsigned long n)
+  {
+    unsigned long result = 0;
+    for(unsigned long a=0;a<n;a++) {
+      for(unsigned long b=0;b<n;b++) {
+        unsigned long c = gcd_unsigned_long_binary(a, b);
+        if (result < c) result = c;
+      }
+    }
+    return result;
+  }
+
+  long
+  time_gcd_long_binary(
+    long n)
+  {
+    long result = 0;
+    for(long a=0;a<n;a++) {
+      for(long b=0;b<n;b++) {
+        long c = gcd_long_binary(a, b);
+        if (result < c) result = c;
+      }
+    }
+    return result;
+  }
+
+#if defined(SCITBX_MATH_GCD_USING_ASM)
+  int
+  time_gcd_int32_asm(
+    int n)
+  {
+    int result = 0;
+    for(int a=0;a<n;a++) {
+      for(int b=0;b<n;b++) {
+        int c = gcd_int32_asm(a, b);
+        if (result < c) result = c;
+      }
+    }
+    return result;
+  }
+
+# if defined(__x86_64__)
+  long
+  time_gcd_int64_asm(
+    long n)
+  {
+    long result = 0;
+    for(long a=0;a<n;a++) {
+      for(long b=0;b<n;b++) {
+        long c = gcd_int64_asm(a, b);
+        if (result < c) result = c;
+      }
+    }
+    return result;
+  }
+# endif
 #endif
 
   mat3<double>
@@ -156,12 +228,22 @@ namespace {
   {
     using namespace boost::python;
 
-    def("time_gcd_int_boost_math", time_gcd_int_boost_math);
+    def("time_gcd_int_boost", time_gcd_int_boost);
+    def("time_gcd_long_boost", time_gcd_long_boost);
     def("gcd_int_simple", gcd_int_simple, (arg("a"), arg("b")));
     def("time_gcd_int_simple", time_gcd_int_simple);
+    def("gcd_long_simple", gcd_long_simple, (arg("a"), arg("b")));
+    def("time_gcd_long_simple", time_gcd_long_simple);
+    def("time_gcd_unsigned_long_binary", time_gcd_unsigned_long_binary);
+    def("gcd_long_binary", gcd_long_binary, (arg("a"), arg("b")));
+    def("time_gcd_long_binary", time_gcd_long_binary);
 #if defined(SCITBX_MATH_GCD_USING_ASM)
-    def("gcd_int_asm", gcd_int_asm, (arg("a"), arg("b")));
-    def("time_gcd_int_asm", time_gcd_int_asm);
+    def("gcd_int32_asm", gcd_int32_asm, (arg("a"), arg("b")));
+    def("time_gcd_int32_asm", time_gcd_int32_asm);
+# if defined(__x86_64__)
+    def("gcd_int64_asm", gcd_int64_asm, (arg("a"), arg("b")));
+    def("time_gcd_int64_asm", time_gcd_int64_asm);
+# endif
 #endif
 
     def("floating_point_epsilon_float_get",
