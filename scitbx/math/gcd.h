@@ -47,30 +47,28 @@ namespace scitbx { namespace math {
     int a,
     int b)
   {
-    int result;
     __asm__(
-      "  movl %1, %%eax\n"
       "  movl %2, %%ecx\n"
       ".L_for_%=:\n"
       "  cmpl $0, %%ecx\n" // if b == 0
       "  je .L_return_a_or_minus_a_%=\n"
-      "  movl %%eax, %%edx\n"
+      "  movl %0, %%edx\n"
       "  sarl $31, %%edx\n"
       "  idivl %%ecx\n" // next_b = a % b
-      "  movl %%ecx, %%eax\n" // a = b
+      "  movl %%ecx, %0\n" // a = b
       "  movl %%edx, %%ecx\n" // b = next_b
       "  jmp .L_for_%=\n"
       ".L_return_a_or_minus_a_%=:\n"
          // next five lines: slightly faster than compare & jump
-      "  movl %%eax, %%ecx\n"
+      "  movl %0, %%ecx\n"
       "  cltd\n"
       "  xorl %%edx, %%ecx\n"
       "  subl %%edx, %%ecx\n"
-      "  movl %%ecx, %%eax\n"
-        : "=&a"(result) /* output */
-        : "r"(a), "r"(b) /* input */
-        : "%ecx", "%edx"); /* clobbered registers */
-    return result;
+      "  movl %%ecx, %0\n"
+        : "=a"(a) /* output */
+        : "0"(a), "r"(b) /* input */
+        : "cc", "%ecx", "%edx"); /* clobbered registers */
+    return a;
   }
 #endif
 
@@ -81,30 +79,28 @@ namespace scitbx { namespace math {
     long a,
     long b)
   {
-    long result;
     __asm__(
-      "  movq %1, %%rax\n"
       "  movq %2, %%rcx\n"
       ".L_for_%=:\n"
       "  cmpq $0, %%rcx\n" // if b == 0
       "  je .L_return_a_or_minus_a_%=\n"
-      "  movq %%rax, %%rdx\n"
+      "  movq %0, %%rdx\n"
       "  sarq $63, %%rdx\n"
-      "  idivq %%rcx\n" // rdx = a % b
-      "  movq %%rcx, %%rax\n" // a = b
-      "  movq %%rdx, %%rcx\n" // b = rdx
+      "  idivq %%rcx\n" // next_b = a % b
+      "  movq %%rcx, %0\n" // a = b
+      "  movq %%rdx, %%rcx\n" // b = next_b
       "  jmp .L_for_%=\n"
       ".L_return_a_or_minus_a_%=:\n"
          // next five lines: slightly faster than compare & jump
-      "  movq %%rax, %%rcx\n"
+      "  movq %0, %%rcx\n"
       "  cqto\n"
       "  xorq %%rdx, %%rcx\n"
       "  subq %%rdx, %%rcx\n"
-      "  movq %%rcx, %%rax\n"
-        : "=&a"(result) /* output */
-        : "r"(a), "r"(b) /* input */
-        : "%rcx", "%rdx"); /* clobbered registers */
-    return result;
+      "  movq %%rcx, %0\n"
+        : "=a"(a) /* output */
+        : "0"(a), "r"(b) /* input */
+        : "cc", "%rcx", "%rdx"); /* clobbered registers */
+    return a;
   }
 #endif
 
