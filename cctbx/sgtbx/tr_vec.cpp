@@ -1,6 +1,7 @@
 #include <cctbx/sgtbx/tr_vec.h>
 #include <cctbx/sgtbx/utils.h>
 #include <scitbx/rational.h>
+#include <scitbx/math/gcd.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -34,7 +35,7 @@ namespace cctbx { namespace sgtbx {
   tr_vec tr_vec::cancel() const
   {
     int g = den();
-    for(std::size_t i=0;i<3;i++) g = boost::gcd(g, num_[i]);
+    for(std::size_t i=0;i<3;i++) g = scitbx::math::gcd_int(g, num_[i]);
     if (g == 0) return *this;
     return tr_vec(num_ / g, den() / g);
   }

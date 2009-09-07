@@ -122,14 +122,14 @@ namespace cctbx { namespace sgtbx {
       for(std::size_t i_dl=1;i_dl<discr_z.size();i_dl++) {
         int den = discr_z[i_dl].den();
         for(std::size_t i=0;i<3;i++) {
-          int g = boost::gcd(discr_z[i_dl][i], den);
+          int g = scitbx::math::gcd_int(discr_z[i_dl][i], den);
           lt_den = boost::lcm(lt_den, den / g);
         }
       }
       for(std::size_t i_ltr=1;i_ltr<sg.n_ltr();i_ltr++) {
         int den = sg.ltr(i_ltr).den();
         for(std::size_t i=0;i<3;i++) {
-          int g = boost::gcd(sg.ltr(i_ltr)[i], den);
+          int g = scitbx::math::gcd_int(sg.ltr(i_ltr)[i], den);
           lt_den = boost::lcm(lt_den, den / g);
         }
       }

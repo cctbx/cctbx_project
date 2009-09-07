@@ -1,6 +1,7 @@
 #include <boost/rational.hpp>
 #include <cctbx/sgtbx/rot_mx.h>
 #include <cctbx/sgtbx/utils.h>
+#include <scitbx/math/gcd.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -42,7 +43,7 @@ namespace cctbx { namespace sgtbx {
   rot_mx rot_mx::cancel() const
   {
     int g = den();
-    for(std::size_t i=0;i<9;i++) g = boost::gcd(g, num_[i]);
+    for(std::size_t i=0;i<9;i++) g = scitbx::math::gcd_int(g, num_[i]);
     if (g == 0) return *this;
     return rot_mx(num_ / g, den() / g);
   }
