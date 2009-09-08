@@ -23,6 +23,10 @@ class wrapper_of_byte_decompression {
     SCITBX_ASSERT(elsize==4);
     SCITBX_ASSERT(cbf_h != NULL);
     SCITBX_ASSERT( CHAR_BIT == 8 );
+    int data_bits = elsize * CHAR_BIT;
+    SCITBX_ASSERT( data_bits == 32 );
+    int numints = (data_bits + CHAR_BIT*sizeof (int)-1)/(CHAR_BIT*sizeof (int));
+    SCITBX_ASSERT( numints == 1 );
   }
 
   void set_file_position(){
@@ -75,6 +79,7 @@ class wrapper_of_byte_decompression {
   void decompress_byte_offset_optimized(void *value){
     size_t nelem_read;
     /* Read the binary data */
+    SCITBX_ASSERT(!file->temporary);
     cbf_decompress_byte_offset_optimized(
              value,
              elsize,

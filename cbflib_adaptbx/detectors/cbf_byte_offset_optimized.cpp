@@ -249,6 +249,22 @@ extern "C" {
 #include "cbf_byte_offset.h"
 #include <cbflib_adaptbx/cbf_byte_offset_optimized.h>
 
+/* Changes made in the byte-offset algorithm
+
+Baseline performance for one cbf decompression                 0.26 sec
+Eliminated all code that tests numints, since it is always==1  0.23 sec
+Remove dependency on data_bits                                 0.23 sec
+Remove dependency on realarray -- it is always 0               0.23 sec
+Remove cbf_failnez macro resolution overhead                   0.23 sec
+Eliminate function call overhead to cbf_get_bits(*,*,8)        0.18 sec
+When bitcount==8 also omit variable count==0; while loop once  0.14 sec
+Remove dependency on elsize--always 4 bytes                    0.13 sec
+Eliminate cases where sizeof(int) != 4                         0.13 sec
+file->characters_used == 0 for bitcount==8                     0.13 sec
+double buffering--substitute fread for getc                    0.09 sec
+
+*/
+
   /* Decompress an array with the byte-offset algorithm */
 
 int cbf_decompress_byte_offset_optimized (void         *destination,
@@ -267,7 +283,7 @@ int cbf_decompress_byte_offset_optimized (void         *destination,
 
   unsigned char *unsigned_char_data;
 
-  int errorcode, overflow, numints, iint, carry;
+  int errorcode, overflow, iint, carry;
 
   int delta[4];
 
@@ -277,38 +293,22 @@ int cbf_decompress_byte_offset_optimized (void         *destination,
 
   size_t numread;
 
+  /* home-brewed buffered I/O */
+      unsigned char dbuf[128];
+      static int dbuf_size = 128;
+      size_t ifile_still_buffered;
+      long cbf_file_position;
+
+  /* ported from cbf_get_bits */
+  int get_bits_bitcode, get_bits_m, get_bits_maxbits, get_bits_bitcount;
+  get_bits_maxbits = sizeof (int) * CHAR_BIT; /* is always 32 */
+
+  ifile_still_buffered = 0;
+
+
     /* prepare the errorcode */
 
   errorcode = 0;
-
-    /* Is the element size valid? */
-
-  if (elsize != sizeof (int) &&
-      elsize != 2* sizeof (int) &&
-      elsize != 4* sizeof (int) &&
-      elsize != sizeof (short) &&
-      elsize != sizeof (char))
-
-    return CBF_ARGUMENT;
-
-    /* check for compatible real format */
-
-  if ( realarray ) {
-
-    cbf_failnez (cbf_get_local_real_format(&rformat) )
-
-    if ( strncmp(rformat,"ieee",4) ) return CBF_ARGUMENT;
-
-  }
-
-    /* Check the stored element size */
-
-  if (data_bits < 1 || data_bits > 64)
-
-    return CBF_ARGUMENT;
-
-  numints = (data_bits + CHAR_BIT*sizeof (int) -1)/(CHAR_BIT*sizeof (int));
-
 
     /* Initialise the pointer */
 
@@ -317,23 +317,9 @@ int cbf_decompress_byte_offset_optimized (void         *destination,
 
     /* Maximum limits */
 
-  sign = 1 << ((elsize-(numints-1)*sizeof(int))* CHAR_BIT - 1);
+  sign = 1 << (elsize - 1);
 
-  if (elsize == sizeof (int) || elsize == numints*sizeof(int))
-
-    limit = ~0;
-
-  else
-
-    if (numints == 1 ) {
-
-      limit = ~(-(1 << (elsize * CHAR_BIT)));
-
-    } else {
-
-      limit = ~(-(1 << ((elsize-(numints-1)*sizeof(int)) * CHAR_BIT)));
-
-    }
+  limit = ~0;
 
 
     /* Offsets to make the value unsigned */
@@ -356,22 +342,14 @@ int cbf_decompress_byte_offset_optimized (void         *destination,
 
     /* Get the local byte order */
 
-  if (realarray) {
-
-    cbf_get_local_real_byte_order(&border);
-
-  } else {
-
-    cbf_get_local_integer_byte_order(&border);
-
-  }
+  cbf_get_local_integer_byte_order(&border);
 
 
     /* Set up the previous element for increments */
 
   prevelement[0] = prevelement[1] = prevelement[2] = prevelement[3] = 0;
 
-  prevelement[numints-1] = data_unsign;
+  prevelement[0] = data_unsign;
 
 
     /* Read the elements */
@@ -383,56 +361,90 @@ int cbf_decompress_byte_offset_optimized (void         *destination,
   while (numread < nelem)
   {
 
-    for (iint=0; iint < numints; iint++){
+    {
 
-      element[iint] = prevelement[iint];
+      element[0] = prevelement[0];
 
-      delta[iint] = 0;
+      delta[0] = 0;
 
     }
 
     carry = 0;
 
-    cbf_failnez(cbf_get_bits(file,delta,8))
+
+
+
+  get_bits_bitcount = 8;
+        /* Read the bits into an int */
+
+  get_bits_bitcode = file->bits [1] & 0x0ff;
+
+  /*file->bits [1] = getc (file->stream);*/
+  if (!ifile_still_buffered) {
+    cbf_file_position = ftell(file->stream);
+    ifile_still_buffered = fread(dbuf, 1, dbuf_size, file->stream);
+  }
+
+  file->bits[1] = (int)(dbuf[dbuf_size-ifile_still_buffered]);
+  ifile_still_buffered--;
+  cbf_file_position++;
+
+
+    if (file->bits [1] == EOF)
+
+      return CBF_FILEREAD;
+
+    get_bits_bitcode |= (file->bits [1] << 0) & -(1 << 0);
+
+
+  file->bits [1] =(file->bits [1] >> (8 + get_bits_bitcount));
+
+  file->bits [0] = 0;
+
+
+    /* Sign-extend */
+
+  get_bits_m = 1 << (get_bits_bitcount - 1);
+
+  if (get_bits_bitcode & get_bits_m)
+
+    *delta = get_bits_bitcode | -get_bits_m;
+
+  else
+
+    *delta = get_bits_bitcode & ~-get_bits_m;
+
+
+
+
+
 
     if ((delta[0]&0xFF) == 0x80) {
 
-
-      cbf_failnez(cbf_get_bits(file,delta,16))
-
+      ifile_still_buffered = 0;
+      fseek(file->stream, cbf_file_position, SEEK_SET);
+      cbf_get_bits(file,delta,16);
+      cbf_file_position = ftell(file->stream);
 
       if ( (delta[0]& 0xFFFF) == 0x8000)  {
 
-        cbf_failnez(cbf_get_bits(file,delta,32))
+        ifile_still_buffered = 0;
+        fseek(file->stream, cbf_file_position, SEEK_SET);
+        cbf_get_bits(file,delta,32);
+        cbf_file_position = ftell(file->stream);
 
-        if ( (sizeof(int)==2 && delta[0] == 0 && delta[1] == 0x8000)
-           || (sizeof(int)> 3 && (delta[0]&0xFFFFFFFF)==0x80000000) )  {
+        if ( (delta[0]&0xFFFFFFFF)==0x80000000 )  {
 
-          cbf_failnez(cbf_get_bits(file,delta,64))
+          ifile_still_buffered = 0;
+          fseek(file->stream, cbf_file_position, SEEK_SET);
+          cbf_get_bits(file,delta,64);
+          cbf_file_position = ftell(file->stream);
 
         } else {
 
-          if (sizeof(int) == 2) {
-
-            if (delta[1] & 0x8000)  {
-
-              for (iint = 2; iint < numints; iint++) delta[iint] = ~0;
-
-            }
-
-          } else  {
-
-            if (delta[0] & 0x80000000) {
+          if (delta[0] & 0x80000000) {
 
               delta[0] |= ~0xFFFFFFFF;
-
-              for (iint = 1; iint < numints; iint++) {
-
-                delta[iint] = ~0;
-
-              }
-
-            }
 
           }
 
@@ -445,11 +457,6 @@ int cbf_decompress_byte_offset_optimized (void         *destination,
 
           delta[0] |= ~0xFFFF;
 
-          for (iint = 1; iint < numints; iint++) {
-
-            delta[iint] = ~0;
-
-          }
         }
 
       }
@@ -461,85 +468,32 @@ int cbf_decompress_byte_offset_optimized (void         *destination,
       {
         delta[0] |= ~0xFF;
 
-        for (iint = 1; iint < numints; iint++) {
-
-          delta[iint] = ~0;
-
-        }
       }
 
     }
 
 
-    if (numints > 1) {
 
-      for (iint = 0; iint < numints; iint++) element[iint] = prevelement[iint];
+    element[0] = prevelement[0] + delta[0];
 
-      cbf_failnez(cbf_mpint_add_acc(element,numints, (unsigned int *)delta,numints))
+    element[0] &= limit;
 
-    } else {
 
-      element[0] = prevelement[0] + delta[0];
 
-      element[0] &= limit;
-
-    }
-
-    for (iint = 0; iint < numints; iint++)   {
-
-      prevelement[iint] = element[iint];
+    {
+      prevelement[0] = element[0];
 
     }
 
 
       /* Make the element signed? */
 
-    element[numints-1] -= unsign;
+    element[0] -= unsign;
 
 
       /* Save the element */
-
-    if (numints > 1) {
-
-      if (border[0] == 'b') {
-
-        for (iint = numints; iint; iint--) {
-
-            *((unsigned int *) unsigned_char_data) = element[iint-1];
-
-            unsigned_char_data += sizeof (int);
-
-        }
-
-      } else {
-
-        for (iint = 0; iint < numints; iint++) {
-
-            *((unsigned int *) unsigned_char_data) = element[iint];
-
-            unsigned_char_data += sizeof (int);
-        }
-      }
-
-    } else {
-
-      if (elsize == sizeof (int))
-
-        *((unsigned int *) unsigned_char_data) = element[0];
-
-      else
-
-        if (elsize == sizeof (short))
-
-          *((unsigned short *) unsigned_char_data) = element[0];
-
-        else
-
-          *unsigned_char_data = element[0];
-
-      unsigned_char_data += elsize;
-
-    }
+    *((unsigned int *) unsigned_char_data) = element[0];
+    unsigned_char_data += elsize;
 
     numread++;
   }
