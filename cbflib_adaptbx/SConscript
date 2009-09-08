@@ -4,7 +4,8 @@ Import("env_base","env_etc")
 
 env_etc.cbflib_dist = libtbx.env.dist_path("cbflib")
 env_etc.cbflib_include = [env_etc.norm_join(env_etc.cbflib_dist,"examples"),
-                          env_etc.norm_join(env_etc.cbflib_dist,"include")]
+                          env_etc.norm_join(env_etc.cbflib_dist,"include"),
+                          ]
 env_etc.cbflib_adaptbx_dist = libtbx.env.dist_path("cbflib_adaptbx")
 env_etc.cbflib_adaptbx_include = env_etc.norm_join(
                   env_etc.cbflib_adaptbx_dist,"include")
@@ -53,6 +54,7 @@ env.StaticLibrary(target='#lib/cbf',
   ]] + [
     "detectors/mar_adaptor.cpp",
     "detectors/cbf_adaptor.cpp",
+    "detectors/cbf_byte_offset_optimized.cpp",
   ],
   CPPPATH=env_etc.cbflib_common_includes )
 
