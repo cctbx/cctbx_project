@@ -58,7 +58,7 @@ namespace cctbx { namespace miller {
       typename DataElementType,
       typename FloatType>
     void
-    compute_r_fractors(
+    compute_r_factors(
       DerivedType& self,
       const DataElementType* data_group,
       std::size_t n,
@@ -189,7 +189,7 @@ namespace cctbx { namespace miller {
       FloatType result = data_group[0];
       for(std::size_t i=1;i<n;i++) result += data_group[i];
       result /= static_cast<FloatType>(n);
-      merge_equivalents::compute_r_fractors(*this, data_group, n, result);
+      merge_equivalents::compute_r_factors(*this, data_group, n, result);
       return result;
     }
 
@@ -309,7 +309,7 @@ namespace cctbx { namespace miller {
                 1/mv.sum_weights())));
         }
         redundancies.push_back(n);
-        merge_equivalents::compute_r_fractors(
+        merge_equivalents::compute_r_factors(
           *this, &unmerged_data[group_begin], n, data.back());
       }
   };
