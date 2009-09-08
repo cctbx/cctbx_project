@@ -11,6 +11,19 @@ struct dummy {}; // work around gcc-3.3-darwin bug
 using namespace boost::python;
 using namespace iotbx::detectors;
 
+namespace iotbx{
+namespace detectors{
+
+bool assert_equal(scitbx::af::flex_int read1, scitbx::af::flex_int read2){
+  SCITBX_ASSERT(read1.size()==read2.size());
+  int N = read1.size();
+  int* begin1 = read1.begin();
+  int* begin2 = read2.begin();
+  for (int n = 0; n<N; ++n){ SCITBX_ASSERT(*begin1++ == *begin2++); }
+  return true;
+}
+}}
+
 BOOST_PYTHON_MODULE(cbflib_ext)
 {
 #if defined(__APPLE__) && defined(__MACH__) \
@@ -54,5 +67,8 @@ BOOST_PYTHON_MODULE(cbflib_ext)
    ;
    class_<MiniCBFAdaptor, bases<CBFAdaptor> >("MiniCBFAdaptor",init<std::string>())
      .def("read_data",&MiniCBFAdaptor::read_data)
+     .def("optimized_read_data",&MiniCBFAdaptor::optimized_read_data)
    ;
+   def("assert_equal",&assert_equal);
+
 }
