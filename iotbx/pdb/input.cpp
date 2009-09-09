@@ -102,8 +102,8 @@ namespace iotbx { namespace pdb {
         else                i_begin++;
       }
       else {
-        if (c == 'x' || c == 'X') {
-          // suppress conversion of hexadecimal literals
+        if (c == 'x' || c == 'X' || c == 'n' || c == 'N') {
+          // suppress conversion of hexadecimal literals and "nan"
           c = '?'; // any character that triggers an error in strtod()
         }
         *b++ = c;
