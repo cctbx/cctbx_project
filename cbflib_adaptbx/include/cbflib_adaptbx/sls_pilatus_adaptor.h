@@ -14,6 +14,15 @@ class wrapper_of_byte_decompression {
   int elsign;
   cbf_file *file;
 
+  //variables required by cbf_get_bintext
+  void *file_text;
+  int id_text, checked_digest_text, bits_text, sign_text, realarray_text;
+  unsigned long start_text, size_text;
+  unsigned long dimover_text, dimfast_text, dimmid_text, dimslow_text, padding_text;
+  char digest_text [25];
+  char byteorder_text [14];
+  unsigned int compression_text;
+
  public:
   wrapper_of_byte_decompression(cbf_handle* handle,const std::size_t &nelem):
     cbf_h(handle),
@@ -33,20 +42,11 @@ class wrapper_of_byte_decompression {
     /* adapted from the cbf_get_binary() function */
     cbf_node *column = (*cbf_h)->node;
     unsigned int row = (*cbf_h)->row;
-    int *id;
-    long start;
+
     int eltype_file, elsigned_file, elunsigned_file,
-                   minelem_file, maxelem_file, bits, sign;
-    unsigned int compression;
+                   minelem_file, maxelem_file;
+
     std::size_t nelem_file;
-    std::size_t text_dimover;
-    int *realarray;
-    const char **byteorder;
-    size_t *dimfast;
-    size_t *dimslow;
-    size_t *padding;
-    size_t *dimmid;
-    size_t *dimover;
 
     /* Check the digest (this will also decode it if necessary) */
     cbf_failnez (cbf_check_digest (column, row))
@@ -55,25 +55,64 @@ class wrapper_of_byte_decompression {
     SCITBX_ASSERT(!cbf_is_mimebinary (column, row));
 
     /* Parse the value */
-    cbf_failnez (cbf_get_bintext (column, row, NULL,
-                                id, &file, &start, NULL,
-                                 NULL, NULL, &bits, &sign, realarray,
-                                 byteorder, &text_dimover, dimfast, dimmid,
-                                 dimslow, padding,
-                                 &compression))
-
-    if (dimover) {*dimover = text_dimover;}
+    get_bintext(column, row);
+    //show_bintext();
 
     /* Position the file at the start of the binary section */
-    cbf_failnez (cbf_set_fileposition (file, start, SEEK_SET))
+    cbf_failnez (cbf_set_fileposition (file, start_text, SEEK_SET))
 
     /* Get the parameters and position the file */
     cbf_failnez (cbf_decompress_parameters (&eltype_file, NULL,
                                           &elsigned_file, &elunsigned_file,
                                           &nelem_file,
                                           &minelem_file, &maxelem_file,
-                                          compression,
+                                          compression_text,
                                           file))
+  }
+
+  void get_bintext(cbf_node* & column, unsigned int & row){
+    SCITBX_ASSERT(cbf_is_binary (column, row));
+    const char *text;
+    /* Get the value */
+    cbf_get_columnrow (&text, column, row);
+
+    sscanf (text + 1, " %x %p %lx %lx %d %24s %x %d %d %14s %lu %lu %lu %lu %lu %u",
+                      (unsigned int *)&id_text,
+                      &file_text,
+                      (unsigned long *)&start_text,
+                      (unsigned long *)&size_text,
+                      &checked_digest_text,
+                       digest_text,
+                      (unsigned int *)&bits_text,
+                      &sign_text,
+                      &realarray_text,
+                      byteorder_text,
+                      (unsigned long *)&dimover_text,
+                      (unsigned long *)&dimfast_text,
+                      (unsigned long *)&dimmid_text,
+                      (unsigned long *)&dimslow_text,
+                      (unsigned long *)&padding_text,
+                      &compression_text);
+    file = (cbf_file *)file_text;
+
+  }
+
+  void show_bintext(){
+    SCITBX_EXAMINE(id_text);
+    SCITBX_EXAMINE(checked_digest_text);
+    SCITBX_EXAMINE(bits_text);
+    SCITBX_EXAMINE(sign_text);
+    SCITBX_EXAMINE(realarray_text);
+    SCITBX_EXAMINE(start_text);
+    SCITBX_EXAMINE(size_text);
+    SCITBX_EXAMINE(dimover_text);
+    SCITBX_EXAMINE(dimfast_text);
+    SCITBX_EXAMINE(dimmid_text);
+    SCITBX_EXAMINE(dimslow_text);
+    SCITBX_EXAMINE(padding_text);
+    SCITBX_EXAMINE(digest_text);
+    SCITBX_EXAMINE(byteorder_text);
+    SCITBX_EXAMINE(compression_text);
   }
 
   void decompress_byte_offset_optimized(void *value){
