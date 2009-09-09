@@ -535,6 +535,7 @@ scitbx/linalg/boost_python/matrix.cpp -text
 scitbx/linalg/boost_python/svd.cpp -text
 scitbx/linalg/eigensystem.py -text
 scitbx/linalg/ext.py -text
+scitbx/linalg/householder.py -text
 scitbx/linalg/svd.py -text
 scitbx/linalg/tests/tst_cholesky.py -text
 scitbx/linalg/tests/tst_eigensystem.py -text
