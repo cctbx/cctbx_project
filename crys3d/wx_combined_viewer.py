@@ -185,7 +185,8 @@ class map_viewer_mixin (wx_viewer_zoom.viewer_with_automatic_zoom) :
     pass
 
   def add_map (self, map_id, map) :
-    assert not map_id in self.map_ids
+    if map_id in self.map_ids :
+      self.delete_map(map_id)
     map_object = map_data(map)
     self.map_ids.append(map_id)
     self.map_objects.append(map_object)
