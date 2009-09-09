@@ -205,6 +205,18 @@ some.pdb, line 1:
     pdb.input(
       source_info="some.pdb",
       lines=flex.std_string([
+        "HETATM 4160  O   HOH S 272         nan   0.000   0.000  1.00 54.72"]))
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+some.pdb, line 1:
+  HETATM 4160  O   HOH S 272         nan   0.000   0.000  1.00 54.72
+  -----------------------------------^
+  not a floating-point number.""")
+  else: raise Exception_expected
+  try:
+    pdb.input(
+      source_info="some.pdb",
+      lines=flex.std_string([
         "ATOM   1045  O   HOH    30       0x530  42.610  45.267  1.00 33.84"]))
   except RuntimeError, e:
     assert not show_diff(str(e), """\
