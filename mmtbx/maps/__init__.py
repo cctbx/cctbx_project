@@ -183,9 +183,11 @@ class compute_maps(object):
                all_chain_proxies = None):
     adopt_init_args(self, locals())
     # map coefficients
+    self.all_coeffs = []
     for mcp in params.map_coefficients:
       if(mcp.map_type is not None):
         coeffs = self.compute_map_coefficients(map_params = mcp)
+        self.all_coeffs.append(coeffs)
         if("mtz" in mcp.format and coeffs is not None):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):
@@ -236,3 +238,22 @@ class compute_maps(object):
       mtz_object = self.mtz_dataset.mtz_object()
       mtz_object.add_history(mtz_history_buffer)
       mtz_object.write(file_name = file_name)
+
+  def save_map_coeffs_as_xplor_maps (self, file_base) :
+    map_files = []
+    for mcp, coeffs in zip(self.params.map_coefficients, self.all_coeffs) :
+      file_name = "%s_%s.map" % (file_base, mcp.map_type)
+      map_phil = iotbx.phil.parse("""
+map {
+  file_name = "%s"
+  region = *selection cell
+  atom_selection = None
+  scale = *sigma volume
+}""" % file_name)
+      params = master_params.fetch(source=map_phil).extract()
+      write_xplor_map_file(params=params.map[0],
+                           coeffs=coeffs,
+                           all_chain_proxies=self.all_chain_proxies,
+                           xray_structure=self.fmodel.xray_structure)
+      map_files.append(file_name)
+    return map_files
