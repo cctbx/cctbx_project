@@ -183,20 +183,21 @@ class compute_maps(object):
                all_chain_proxies = None):
     adopt_init_args(self, locals())
     # map coefficients
+    self.coeffs = None
     self.all_coeffs = []
     for mcp in params.map_coefficients:
       if(mcp.map_type is not None):
-        coeffs = self.compute_map_coefficients(map_params = mcp)
-        self.all_coeffs.append(coeffs)
-        if("mtz" in mcp.format and coeffs is not None):
+        self.all_coeffs.append(self.coeffs)
+        self.coeffs = self.compute_map_coefficients(map_params = mcp)
+        if("mtz" in mcp.format and self.coeffs is not None):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):
-            self.mtz_dataset = coeffs.as_mtz_dataset(
+            self.mtz_dataset = self.coeffs.as_mtz_dataset(
               column_root_label = lbl_mgr.amplitudes(),
               label_decorator   = lbl_mgr)
           else:
             self.mtz_dataset.add_miller_array(
-              miller_array      = coeffs,
+              miller_array      = self.coeffs,
               column_root_label = lbl_mgr.amplitudes(),
               label_decorator   = lbl_mgr)
         if("phs" in mcp.format):
@@ -205,8 +206,8 @@ class compute_maps(object):
     for mp in params.map:
       if(mp.map_type is not None):
         assert all_chain_proxies is not None
-        coeffs = self.compute_map_coefficients(map_params = mp)
-        write_xplor_map_file(params = mp, coeffs = coeffs,
+        self.coeffs = self.compute_map_coefficients(map_params = mp)
+        write_xplor_map_file(params = mp, coeffs = self.coeffs,
           all_chain_proxies = self.all_chain_proxies,
           xray_structure = fmodel.xray_structure)
 

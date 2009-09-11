@@ -58,6 +58,7 @@ class kick_map(object):
 
   def __init__(self, fmodel,
                      map_type,
+                     kick_sizes=None,
                      number_of_kicks = 50,
                      update_bulk_solvent_and_scale = False,
                      resolution_factor = 1./4,
@@ -76,7 +77,9 @@ class kick_map(object):
     map_coeff_data = None
     assert number_of_kicks > 0
     counter = 0
-    for kick_size in [0,0.1,0.3,0.5,0.7]:
+    if(kick_sizes is None): kick_sizes = [0,0.1,0.3,0.5,0.7]
+    for kick_size in kick_sizes:
+      print kick_size
       b_sharp = None # 8 * math.pi**2 * kick_size**2 #XXX needs testing
       for trial in xrange(number_of_kicks):
         xray_structure = fmodel.xray_structure.deep_copy_scatterers()
