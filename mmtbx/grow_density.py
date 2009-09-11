@@ -16,6 +16,8 @@ from libtbx.str_utils import format_value
 from cctbx import xray
 import mmtbx.refinement
 import scitbx.lbfgs
+from mmtbx import maps
+
 
 master_params_str = """\
 pdb_file_name = None
@@ -32,15 +34,18 @@ high_resolution = None
   .type = float
 low_resolution = None
   .type = float
-center = None None None
+sphere
+  .multiple=True
+  {
+    center = None
+      .type = floats
+      .help = Approximate coordinates of the center of problem density.
+    radius = None
+      .type = float
+      .help = Sphere radius of where the dummy atoms will be placed.
+  }
+output_file_name_prefix = None
   .type = str
-  .help = Approximate coordinates of the center of problem density.
-radius = 10
-  .type = float
-  .help = Sphere radius of where the dummy atoms will be placed.
-output_pdb_file_name = None
-  .type = str
-  .help = PDB output file name. this file will contain all refined dummy atoms.
 mode = build *build_and_refine filter
   .type = choice(multi=False)
 initial_occupancy = 0.1
@@ -75,36 +80,102 @@ number_of_refinement_cycles = 3
 number_of_minimization_iterations = 25
   .type = int
   .help = Number of refinement iterations
-b_iso_min = 1.0
-  .type = float
-  .help = Min B-factor value to remove DA.
-b_iso_max = 100.0
-  .type = float
-  .help = Max B-factor value to remove DA.
-occupancy_min = 0.1
-  .type = float
-  .help = Min occupancy value to remove DA.
-occupancy_max = 1.2
-  .type = float
-  .help = Max occupancy value to remove DA.
+filter
+  .multiple=True
+  {
+    pdb_file_name = None
+      .type = str
+    b_iso_min = 1.0
+      .type = float
+      .help = Min B-factor value to remove DA.
+    b_iso_max = 100.0
+      .type = float
+      .help = Max B-factor value to remove DA.
+    occupancy_min = 0.1
+      .type = float
+      .help = Min occupancy value to remove DA.
+    occupancy_max = 1.2
+      .type = float
+      .help = Max occupancy value to remove DA.
+  }
 """
 
 def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
 
+def create_da_xray_structures(xray_structure, params):
+  def grid(sphere, gap, overlap):
+    c = flex.double(sphere.center)
+    x_start, y_start, z_start = c - float(sphere.radius)
+    x_end, y_end, z_end       = c + float(sphere.radius)
+    x_range = frange(c[0], c[0]+gap, overlap)
+    y_range = frange(c[1], c[1]+gap, overlap)
+    z_range = frange(c[2], c[2]+gap, overlap)
+    return group_args(x_range = x_range, y_range = y_range, z_range = z_range)
+  grids = []
+  for sphere in params.sphere:
+    grids.append(grid(sphere = sphere, gap = params.atom_gap,
+      overlap = params.overlap_interval))
+  initial_b_factor = params.initial_b_factor
+  if(initial_b_factor is None):
+    initial_b_factor = flex.mean(
+      xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.))
+  da_xray_structures = []
+  counter = 0
+  for grid, sphere in zip(grids, params.sphere):
+    cntr_g = 0 # XXX
+    for x_start in grid.x_range:
+      for y_start in grid.y_range:
+        for z_start in grid.z_range:
+          cntr_g += 1
+          if(cntr_g>1): continue # XXX
+          counter += 1
+          new_center = flex.double([x_start, y_start, z_start])
+          atom_grid = make_grid(
+            center          = new_center,
+            radius          = sphere.radius,
+            gap             = params.atom_gap,
+            occupancy       = params.initial_occupancy,
+            b_factor        = initial_b_factor,
+            atom_name       = params.atom_name,
+            scattering_type = params.atom_type,
+            resname         = params.residue_name)
+          da_xray_structure = pdb_atoms_as_xray_structure(pdb_atoms = atom_grid,
+            crystal_symmetry = xray_structure.crystal_symmetry())
+          closest_distances_result = xray_structure.closest_distances(
+            sites_frac      = da_xray_structure.sites_frac(),
+            distance_cutoff = 5)
+          selection = closest_distances_result.smallest_distances > 0
+          selection &= closest_distances_result.smallest_distances < 0.5
+          da_xray_structure = da_xray_structure.select(~selection)
+          print counter, da_xray_structure.scatterers().size()
+          if(cntr_g==1): # XXX
+            da_xray_structures.append(da_xray_structure)
+  ###
+  result = []
+  for i, x1 in enumerate(da_xray_structures):
+    for j, x2 in enumerate(da_xray_structures):
+      if(x1 is not x2):
+        closest_distances_result = x1.closest_distances(
+          sites_frac      = x2.sites_frac(),
+          distance_cutoff = 5)
+        selection = closest_distances_result.smallest_distances > 0
+        selection &= closest_distances_result.smallest_distances < 1.0
+        da_xray_structures[j] = x2.select(~selection)
+  ###
+  #XXX for xda in da_xray_structures:
+  #XXX   print flex.max(xda.scatterers().extract_occupancies())
+  #XXX assert 0
+  return da_xray_structures
+
 def grow_density(f_obs,
                  r_free_flags,
                  xray_structure,
-                 params,
-                 center):
-    x_start, y_start, z_start = center - float(params.radius)
-    x_end, y_end, z_end       = center + float(params.radius)
-    atom_count = xray_structure.scatterers().size()
-    x_range = frange(center[0],center[0]+params.atom_gap,params.overlap_interval)
-    y_range = frange(center[1],center[1]+params.atom_gap,params.overlap_interval)
-    z_range = frange(center[2],center[2]+params.atom_gap,params.overlap_interval)
-    all_atoms = []
-    number_of_grids = len(x_range) * len(y_range) * len(z_range)
+                 params):
+    da_xray_structures = create_da_xray_structures(xray_structure =
+      xray_structure, params = params)
+    #
+    number_of_grids = len(da_xray_structures)
     print "Creating %s grids with atom spacing %s, each grid is %s apart" %(
       str(number_of_grids),str(params.atom_gap), str(params.overlap_interval))
     xray_structure_start = xray_structure.deep_copy_scatterers()
@@ -115,90 +186,143 @@ def grow_density(f_obs,
         target_name    = "ml",
         f_obs          = f_obs)
       fmodel.update_solvent_and_scale()
-      print "Start R-wok and R-free: %6.4f %6.4f"%(fmodel.r_work(),
+      print "Start R-work and R-free: %6.4f %6.4f"%(fmodel.r_work(),
         fmodel.r_free())
-    initial_b_factor = params.initial_b_factor
-    if(initial_b_factor is None):
-      initial_b_factor = flex.mean(
-        xray_structure_start.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.))
+
     counter = 0
     all_da_xray_structure = None
-    for x_start in x_range:
-      for y_start in y_range:
-        for z_start in z_range:
-          if 0: da_file_name = "tmp_%s.pdb"%str(counter) # XXX debug
-          counter += 1
-          new_center = flex.double([x_start, y_start, z_start])
-          print "Number of grids left: ", number_of_grids
-          number_of_grids = number_of_grids - 1
-          atom_grid = make_grid(
-            center          = new_center,
-            radius          = params.radius,
-            gap             = params.atom_gap,
-            occupancy       = params.initial_occupancy,
-            b_factor        = initial_b_factor,
-            atom_name       = params.atom_name,
-            scattering_type = params.atom_type,
-            resname         = params.residue_name)
-          da_xray_structure = pdb_atoms_as_xray_structure(pdb_atoms = atom_grid,
-            crystal_symmetry = xray_structure_start.crystal_symmetry())
-          closest_distances_result = xray_structure_start.closest_distances(
-            sites_frac      = da_xray_structure.sites_frac(),
-            distance_cutoff = 3)
-          selection = closest_distances_result.smallest_distances > 0
-          selection &= closest_distances_result.smallest_distances < 1.2
-          da_xray_structure = da_xray_structure.select(~selection)
-          xray_structure_current = xray_structure_start.concatenate(da_xray_structure)
-          da_sel = flex.bool(xray_structure_start.scatterers().size(), False)
-          da_sel.extend(flex.bool(da_xray_structure.scatterers().size(), True))
-          if(params.mode == "build_and_refine"):
-            fmodel.update_xray_structure(update_f_calc=True, update_f_mask=True,
-              xray_structure = xray_structure_current)
-            refine_atoms(
-              fmodel               = fmodel,
-              number_of_iterations = params.number_of_minimization_iterations,
-              number_of_cycles     = params.number_of_refinement_cycles,
-              selection            = da_sel)
-            xray_structure_current = fmodel.xray_structure
-          assert da_sel.size() == xray_structure_current.scatterers().size()
-          if(all_da_xray_structure is None):
-            all_da_xray_structure = xray_structure_current.select(da_sel)
-          else:
-            all_da_xray_structure = all_da_xray_structure.concatenate(
-              xray_structure_current.select(da_sel))
-    ofn = params.output_pdb_file_name
+    ### XXX
+    #XXX Z = da_xray_structures[0]
+    #XXX for ZZ in da_xray_structures[1:]:
+    #XXX   Z = Z.concatenate(ZZ)
+    #XXX da_xray_structures = [Z]
+    ### XXX
+    xray_structure_current = xray_structure_start.deep_copy_scatterers()
+    da_sel = flex.bool(xray_structure_start.scatterers().size(), False)
+    for i_model, da_xray_structure in enumerate(da_xray_structures):
+      print "Model:",i_model
+      try:
+        #closest_distances_result = xray_structure_start.closest_distances(
+        #  sites_frac      = da_xray_structure.sites_frac(),
+        #  distance_cutoff = 5)
+        #selection = closest_distances_result.smallest_distances > 0
+        #selection &= closest_distances_result.smallest_distances < 0.5
+        #da_xray_structure = da_xray_structure.select(~selection)
+        xray_structure_current = xray_structure_current.concatenate(da_xray_structure)
+        da_sel.extend(flex.bool(da_xray_structure.scatterers().size(), True))
+        if(params.mode == "build_and_refine"):
+          #XXXprint fmodel.r_work()
+          fmodel.update_xray_structure(update_f_calc=True, update_f_mask=False,
+            xray_structure = xray_structure_current)
+          #XXX print fmodel.r_work()
+          #XXX assert 0 # update_f_mask=True IS THE ROOT OF THE PROBLEM
+          refine_da(
+            fmodel               = fmodel,
+            number_of_iterations = params.number_of_minimization_iterations,
+            number_of_cycles     = params.number_of_refinement_cycles,
+            selection            = da_sel)
+          xray_structure_current = fmodel.xray_structure
+        #assert da_sel.size() == xray_structure_current.scatterers().size()
+        if(all_da_xray_structure is None):
+          all_da_xray_structure = da_xray_structure
+        else:
+          #all_da_xray_structure = all_da_xray_structure.concatenate(
+          #  xray_structure_current.select(da_sel))
+          all_da_xray_structure = all_da_xray_structure.concatenate(
+            da_xray_structure)
+        assert xray_structure_start.scatterers().size() == da_sel.count(False)
+      except Exception, e:
+        print "ERROR:", str(e)
+
+    ofn = params.output_file_name_prefix
     if(ofn is None):
-      ofn = os.path.basename(params.pdb_file_name)+"_all_da.pdb"
+      ofn = "DA.pdb"
+    else:
+      ofn = ofn+"_DA.pdb"
     ofn = open(ofn,"w")
     pdb_file_str = all_da_xray_structure.as_pdb_file()
     pdb_file_str = pdb_file_str.replace("    %s"%params.atom_type.upper(),"") # XXX tmp, to facilitate PyMol runs
     print >> ofn, pdb_file_str
+    ### XXX#####################
+    map_type_obj = mmtbx.map_names(map_name_string = "2mFo-DFc")
+    map_params = maps.map_master_params().fetch(
+      maps.cast_map_coeff_params(map_type_obj)).extract()
+    maps_obj = maps.compute_maps(fmodel = fmodel, params = map_params)
+    coeffs = maps_obj.coeffs
+    lbl_mgr = maps.map_coeffs_mtz_label_manager(map_params =
+      map_params.map_coefficients[0])
+    mtz_dataset = coeffs.as_mtz_dataset(
+      column_root_label = lbl_mgr.amplitudes(),
+      label_decorator   = lbl_mgr)
+    mtz_object = mtz_dataset.mtz_object()
+    output_map_file_name = "map_coeffs.mtz"
+    if(params.output_file_name_prefix is not None):
+      output_map_file_name = params.output_file_name_prefix+"_map_coeffs.mtz"
+    mtz_object.write(file_name = output_map_file_name)
+    ### XXX#####################
     print "Finished"
 
-def refine_atoms(fmodel, number_of_iterations, number_of_cycles, selection):
-  fmodels = mmtbx.fmodels(fmodel_xray = fmodel)
-  selection = selection.iselection()
+def refinery(fmodels, number_of_iterations, iselection, parameter):
   lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
     max_iterations = number_of_iterations)
-  for i in xrange(number_of_cycles):
-    fmodel.xray_structure.scatterers().flags_set_grad_u_iso(
-      iselection = selection)
-    minimized = mmtbx.refinement.minimization.lbfgs(
-      fmodels                  = fmodels,
-      lbfgs_termination_params = lbfgs_termination_params,
-      collect_monitor          = False)
-    print "Refined B-factors     Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(),
-      fmodel.r_free())
-    fmodel.xray_structure.scatterers().flags_set_grad_occupancy(
-      iselection = selection)
-    minimized = mmtbx.refinement.minimization.lbfgs(
-      fmodels                  = fmodels,
-      lbfgs_termination_params = lbfgs_termination_params,
-      collect_monitor          = False)
-    print "Refined occupancies   Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(),
-      fmodel.r_free())
+  if(parameter == "occupancies"):
+    fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grad_occupancy(
+      iselection = iselection)
+  elif(parameter == "adps"):
+    fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grad_u_iso(
+      iselection = iselection)
+  else: raise RuntimeError
+  minimized = mmtbx.refinement.minimization.lbfgs(
+    fmodels                  = fmodels,
+    lbfgs_termination_params = lbfgs_termination_params,
+    collect_monitor          = False)
+  xrs = fmodels.fmodel_xray().xray_structure
+  fmodels.update_xray_structure(xray_structure = xrs, update_f_calc=True,
+    update_f_mask=False)
   assert minimized.xray_structure is fmodels.fmodel_xray().xray_structure
-  assert minimized.xray_structure is fmodel.xray_structure
+
+def reset_occupancies(fmodels, occ_min, occ_max, set_min, set_max):
+  xrs = fmodels.fmodel_xray().xray_structure
+  occ = xrs.scatterers().extract_occupancies()
+  sel = occ < occ_min
+  occ = occ.set_selected(sel, set_min)
+  sel = occ > occ_max
+  occ = occ.set_selected(sel, set_max)
+  xrs.set_occupancies(occ)
+  fmodels.update_xray_structure(xray_structure = xrs, update_f_calc=True,
+    update_f_mask=False)
+
+def reset_adps(fmodels, b_min, b_max, set_min, set_max):
+  xrs = fmodels.fmodel_xray().xray_structure
+  b = xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+  sel = b > b_max
+  b = b.set_selected(sel, set_max)
+  sel = b < b_min
+  b = b.set_selected(sel, set_min)
+  xrs = xrs.set_b_iso(values=b)
+  fmodels.update_xray_structure(xray_structure = xrs, update_f_calc=True,
+    update_f_mask=False)
+
+def refine_da(fmodel, number_of_iterations, number_of_cycles, selection):
+  fmodels = mmtbx.fmodels(fmodel_xray = fmodel)
+  print "START: Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(), fmodel.r_free())
+  for i in xrange(number_of_cycles):
+    refinery(fmodels=fmodels, number_of_iterations=number_of_iterations,
+      iselection=selection.iselection(), parameter="occupancies")
+    reset_occupancies(fmodels=fmodels, occ_min=0., occ_max=10., set_min=0., set_max=10.)
+    print "mc %3d: Refined occupancies   Rwork = %8.6f Rfree = %8.6f"%(i,
+      fmodels.fmodel_xray().r_work(), fmodels.fmodel_xray().r_free())
+    #
+    refinery(fmodels=fmodels, number_of_iterations=number_of_iterations,
+      iselection=selection.iselection(), parameter="adps")
+    print "mc %3d: Refined B-factors     Rwork = %8.6f Rfree = %8.6f"%(i,
+      fmodels.fmodel_xray().r_work(), fmodels.fmodel_xray().r_free())
+    #
+    if(i<=3):
+      reset_occupancies(fmodels=fmodels, occ_min=0., occ_max=10., set_min=1.e-3, set_max=1.)
+      reset_adps(fmodels, b_min=10., b_max=80., set_min=10., set_max=80.)
+    #
+    assert fmodel.xray_structure is fmodels.fmodel_xray().xray_structure
 
 def pdb_atoms_as_xray_structure(pdb_atoms, crystal_symmetry):
   xray_structure = xray.structure(crystal_symmetry = crystal_symmetry)
@@ -208,6 +332,7 @@ def pdb_atoms_as_xray_structure(pdb_atoms, crystal_symmetry):
       label           = atom.name,
       site            = unit_cell.fractionalize(atom.xyz),
       b               = atom.b,
+      occupancy       = atom.occ,
       scattering_type = atom.element)
     xray_structure.add_scatterer(scatterer)
   return xray_structure
@@ -287,36 +412,71 @@ How to use:
     if(params.pdb_file_name is None):
       assert len(processed_args.pdb_file_names)==1
       params.pdb_file_name = processed_args.pdb_file_names[0]
-    if(params.mode == "filter"):
-      filter_da(params = params)
-    else:
-      assert params.mode in ["build", "build_and_refine"]
-      run(processed_args = processed_args, params = params)
+    run(processed_args = processed_args, params = params)
 
-def filter_da(params):
-  xrs = iotbx.pdb.input(file_name=params.pdb_file_name).xray_structure_simple()
-  occ = xrs.scatterers().extract_occupancies()
-  b_isos = xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
-  sel  = occ < params.occupancy_max
-  sel &= occ > params.occupancy_min
-  sel &= b_isos < params.b_iso_max
-  sel &= b_isos > params.b_iso_min
-  xrs = xrs.select(sel)
-  tmp = xrs.as_pdb_file()
+def filter_da(params, f_obs, r_free_flags):
+  xray_structure_mac = iotbx.pdb.input(
+    file_name=params.pdb_file_name).xray_structure_simple()
+  coeffs = None
+  xrs_da_all = None
+  for i_model, fp in enumerate(params.filter):
+    xrs = iotbx.pdb.input(file_name=fp.pdb_file_name).xray_structure_simple()
+    occ = xrs.scatterers().extract_occupancies()
+    b_isos = xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+    sel  = occ < fp.occupancy_max
+    sel &= occ > fp.occupancy_min
+    sel &= b_isos < fp.b_iso_max
+    sel &= b_isos > fp.b_iso_min
+    xrs = xrs.select(sel)
+    #
+    occ = xrs.scatterers().extract_occupancies()/512. # XXX
+    xrs.set_occupancies(occ)
+    if(xrs_da_all is None): xrs_da_all = xrs
+    else: xrs_da_all = xrs_da_all.concatenate(xrs)
+    xray_structure_mac_dc = xray_structure_mac.deep_copy_scatterers()
+    xrs_all = xray_structure_mac_dc.concatenate(xrs)
+    fmodel = mmtbx.f_model.manager(
+      xray_structure = xrs_all,
+      r_free_flags   = r_free_flags,
+      target_name    = "ml",
+      f_obs          = f_obs)
+    fmodel.update_solvent_and_scale()
+    print "R-work and R-free: %6.4f %6.4f"%(fmodel.r_work(),
+      fmodel.r_free())
+    ####
+    map_type_obj = mmtbx.map_names(map_name_string = "2mFo-DFc")
+    map_params = maps.map_master_params().fetch(
+      maps.cast_map_coeff_params(map_type_obj)).extract()
+    maps_obj = maps.compute_maps(fmodel = fmodel, params = map_params)
+    if(coeffs is None): coeffs = maps_obj.coeffs
+    else: coeffs = coeffs.array(data = coeffs.data()+maps_obj.coeffs.data())
+  coeffs = coeffs.array(data = coeffs.data()/i_model)
+  lbl_mgr = maps.map_coeffs_mtz_label_manager(map_params =
+    map_params.map_coefficients[0])
+  mtz_dataset = coeffs.as_mtz_dataset(
+    column_root_label = lbl_mgr.amplitudes(),
+    label_decorator   = lbl_mgr)
+  #
+  fc = coeffs.structure_factors_from_scatterers(
+    xray_structure = xrs_da_all).f_calc()
+  mtz_dataset.add_miller_array(
+    miller_array      = fc,
+    column_root_label = "Fcalc_DAonly")
+  #
+  mtz_object = mtz_dataset.mtz_object()
+  mtz_object.write(file_name = "map_coeffs.mtz")
+  #
+  tmp = xrs_da_all.as_pdb_file()
   tmp = tmp.replace("PDB= PDB"," DA   DA")
   tmp = tmp.replace("        D","")
-  print >> open(params.pdb_file_name+"_filtered.pdb","w"), tmp
+  print >> open(params.pdb_file_name+"_filtered_all.pdb","w"), tmp
+  #
+    ####
 
 def run(processed_args, params):
   if(params.scattering_table not in ["n_gaussian","wk1995",
      "it1992","neutron"]):
     raise Sorry("Incorrect scattering_table.")
-  center = flex.double()
-  center_strs = params.center.split()
-  for c in center_strs:
-    if(str(c).lower()=="none" or len(center_strs) != 3):
-      raise Sorry("Bad coordinates of the center")
-    center.append(float(c))
   crystal_symmetry = None
   crystal_symmetries = []
   for f in [str(params.pdb_file_name), str(params.reflection_file_name)]:
@@ -368,8 +528,12 @@ def run(processed_args, params):
     d_max = params.low_resolution)
   r_free_flags = r_free_flags.resolution_filter(d_min = params.high_resolution,
     d_max = params.low_resolution)
-  grow_density(f_obs          = f_obs,
-               r_free_flags   = r_free_flags,
-               xray_structure = xray_structure,
-               params         = params,
-               center         = center)
+  #
+  if(params.mode == "filter"):
+    filter_da(params = params, f_obs = f_obs, r_free_flags = r_free_flags)
+  else:
+    assert params.mode in ["build", "build_and_refine"]
+    grow_density(f_obs          = f_obs,
+                 r_free_flags   = r_free_flags,
+                 xray_structure = xray_structure,
+                 params         = params)
