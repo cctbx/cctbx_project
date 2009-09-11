@@ -20,7 +20,7 @@ f_obs_1_file_name = None
   .help = File with Fobs data
   .expert_level = 1
   .short_caption = Reflections file 1
-  .style = bold OnUpdate:update_labels_and_resolution
+  .style = bold OnUpdate:update_labels_and_resolution file_type:hkl
 f_obs_1_label = None
   .type = str
   .expert_level = 1
@@ -32,7 +32,7 @@ f_obs_2_file_name = None
   .help = File with Fobs data
   .expert_level = 1
   .short_caption = Reflections file 2
-  .style = bold OnUpdate:update_labels_and_resolution
+  .style = bold OnUpdate:update_labels_and_resolution file_type:hkl
 f_obs_2_label = None
   .type = str
   .expert_level = 1
@@ -58,17 +58,21 @@ phase_source = None
   .type = path
   .help = PDB file with a model or reflection file with the phases
   .expert_level = 1
-  .short_caption = PDB file or phases
-  .style = bold OnUpdate:validate_phase_source
+  .short_caption = PDB file for phasing
+  .style = bold OnUpdate:validate_phase_source file_type:pdb
 scattering_table = *xray neutron
   .type = choice(multi=False)
   .help = Choices of scattering table for structure factors calculations
   .expert_level=1
+output_file = None
+  .type = path
+  .style = bold new_file file_type:mtz
 """
 def fo_minus_fo_master_params():
   return iotbx.phil.parse(fo_minus_fo_master_params_str, process_includes=False)
 
-def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent):
+def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
+    output_file=None):
   fmodels = []
   for i_seq, d in enumerate(data_arrays):
     if(not silent):
@@ -162,7 +166,10 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent):
     label_decorator=lbl_mgr)
   mtz_history_buffer.append("> column label %s = phenix %s" % (
       lbl_mgr.amplitudes(), "FoFoPHFc"))
-  file_name = "FoFoPHFc.mtz"
+  if output_file is not None :
+    file_name = output_file
+  else :
+    file_name = "FoFoPHFc.mtz"
   mtz_history_buffer.append("file name %s"%file_name)
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.add_history(mtz_history_buffer)
@@ -283,4 +290,5 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
         sel = f_obss[i].data() > f_obss[i].sigmas()*params.sigma_cutoff
         f_obss[i] = f_obss[i].select(sel)
   compute_fo_minus_fo_map(data_arrays = f_obss, xray_structure = xray_structure,
-    log = log, silent = command_line.options.silent)
+    log = log, silent = command_line.options.silent,
+    output_file=params.output_file)
