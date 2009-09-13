@@ -14,6 +14,7 @@
 #define SCITBX_ERROR_H
 
 #include <scitbx/error_utils.h>
+#include <iostream>
 
 #define SCITBX_CHECK_POINT \
   std::cout << __FILE__ << "(" << __LINE__ << ")" << std::endl << std::flush
