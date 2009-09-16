@@ -304,8 +304,11 @@ class environment:
     assert os.path.isabs(sys.executable) # sanity check
     assert os.path.isfile(sys.executable) # sanity check
     assert os.access(sys.executable, os.X_OK) # sanity check
-    self.python_exe = sys.executable
-    assert os.path.isfile(self.python_exe)
+    if (os.name == "nt"):
+      self.python_exe = self.abs_path_clean(sys.executable)
+      assert os.path.isfile(self.python_exe)
+    else:
+      self.python_exe = sys.executable
     self.read_command_version_suffix()
     self.build_options = None
     self.repository_paths = []
