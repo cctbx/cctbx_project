@@ -6,6 +6,7 @@ from cctbx import xray
 from cctbx import geometry_restraints
 from cctbx import adp_restraints
 from iotbx import shelx
+from iotbx.shelx import crystal_symmetry_from_ins
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.math_utils import are_equivalent
@@ -94,6 +95,9 @@ def exercise_crystal_symmetry_parsing():
       space_group_symbol='Pbca'),
     relative_length_tolerance=1e-15,
     absolute_angle_tolerance=1e-15)
+  cs = crystal_symmetry_from_ins.extract_from(
+    file=cStringIO.StringIO(ins_mundane_tiny))
+  assert cs.is_similar_symmetry(l.builder.crystal_symmetry)
 
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_P1))
   l = shelx.crystal_symmetry_parser(stream,
@@ -105,6 +109,9 @@ def exercise_crystal_symmetry_parsing():
       space_group_symbol='P1'),
     relative_length_tolerance=1e-15,
     absolute_angle_tolerance=1e-15)
+  cs = crystal_symmetry_from_ins.extract_from(
+    file=cStringIO.StringIO(ins_P1))
+  assert cs.is_similar_symmetry(l.builder.crystal_symmetry)
 
 def exercise_xray_structure_parsing():
   for set_grad_flags in (False, True):
