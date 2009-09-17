@@ -115,7 +115,23 @@ Black Knight: It's just a flesh wound.""")
     except RuntimeError: pass
     else: raise Exception_expected
 
+def exercise_miller_export_as_shelx_hklf():
+  s = """\
+   1   2  -1   23.34    4.56
+   2  -3   9   12.45    6.12
+99999999999999999.9999999.99
+-999-999-999-9999.99-9999.99
+"""
+  ma = hklf.reader(file_object=StringIO(s)).as_miller_arrays()[0]
+  so = StringIO()
+  ma.export_as_shelx_hklf(file_object=so)
+  ma2 = hklf.reader(file_object=StringIO(so.getvalue())).as_miller_arrays()[0]
+  assert approx_equal(ma.indices(), ma2.indices())
+  assert approx_equal(ma.data(), ma2.data())
+  assert approx_equal(ma.sigmas(), ma2.sigmas())
+
 def run():
+  exercise_miller_export_as_shelx_hklf()
   exercise_fast_hkl_reading()
   assert hklf.reader is hklf.fast_reader
   print "OK"
