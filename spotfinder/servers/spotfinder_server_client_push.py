@@ -4,11 +4,43 @@ from iotbx.detectors import ImageFactory
 from scitbx.array_family import flex
 from libtbx.development.timers import Timer,Profiler
 import StringIO, cgi, sys
+from spotfinder.applications.stats_distl import optionally_add_saturation_webice,key_adaptor
 
 from urlparse import urlparse
 #backward compatibility with Python 2.5
 try: from urlparse import parse_qs
 except: from cgi import parse_qs
+
+def module_safe_items(image):
+  return [
+      ("%7d","Good Bragg Candidates",key_adaptor(image,'N_spots_inlier')),
+      ("%7.0f","Total integrated signal, pixel-ADC units above local background",
+                 key_adaptor(image,'ad_hoc_signal1')),
+      ("%7d","Ice Rings",key_adaptor(image,'ice-ring_impact')),
+      ("%7.1f","Resolution estimate",key_adaptor(image,'resolution')),
+      ("%7.1f","Maximum unit cell",key_adaptor(image,'maxcel')),
+  ]
+
+def module_image_stats(S,key):
+    # List of spots between specified high- and low-resolution limits
+    image = S.images[key]
+    spots = image.__getitem__('spots_inlier')
+
+    integrated = 0.0
+
+    for i,spot in enumerate(spots):
+     integrated += flex.sum(spot.wts)
+    image["ad_hoc_signal1"]=integrated
+
+    canonical_info = []
+    canonical_info.extend(module_safe_items(image))
+    optionally_add_saturation_webice(canonical_info,image)
+
+    for item in canonical_info:
+      if item[2]==None:
+        print "%63s : None"%item[1]
+      else:
+        print "%63s : %s"%(item[1],item[0]%item[2])
 
 class image_request_handler(BaseHTTPRequestHandler):
 
@@ -16,6 +48,11 @@ class image_request_handler(BaseHTTPRequestHandler):
     T = Timer("do_POST")
     parsed = urlparse(self.path)
     qs = parse_qs(parsed.query)
+
+    expect = self.headers.getheaders("Expect")
+    if len(expect)>=1:
+      if True in [item.find("100")>=0 for item in expect]:
+        self.send_response(100) # untested; has no apparent affect on libcurl
 
     # Get arguments by reading body of request.
     # We read this in chunks to avoid straining
@@ -45,7 +82,8 @@ class image_request_handler(BaseHTTPRequestHandler):
       })
     print "*****************************"
     for item in parts.keys():
-      print item, len(parts[item][0])
+      if len(parts[item][0])< 1000:
+        print item, parts[item]
     print "*****************************"
 
     from iotbx.detectors.image_from_http_request import module_or_slice_from_http_request
@@ -76,8 +114,9 @@ class image_request_handler(BaseHTTPRequestHandler):
 
     from spotfinder.applications.stats_distl import pretty_image_stats,notes
     for frame in frames:
-      pretty_image_stats(S,frame)
-      notes(S,frames[0])
+      #pretty_image_stats(S,frame)
+      #notes(S,frames[0])
+      module_image_stats(S,frame)
 
     sys.stdout = sys.__stdout__
     log = logfile.getvalue()
