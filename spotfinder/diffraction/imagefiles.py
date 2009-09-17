@@ -130,10 +130,10 @@ class file_names:
       else:
         A = url_support.potential_url_request(file)
         if A.is_url_request():
-          VF = self.interface3_FN_factory(A.file,error_message="URL not accepted")
+          VF = self.interface3_FN_factory(A.file,error_message="URL %s not accepted"%file)
           VF.full_url = A.text
         else:
-          raise InputFileError("File not found: %s"%file)
+          raise Exception("File not found: %s"%file)
 
   def __call__(self):
     return [item.fullpath() for item in self.FN]

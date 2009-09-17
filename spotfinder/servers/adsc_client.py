@@ -25,7 +25,10 @@ def get_spotfinder_url(file_object,host,port):
     'CCD_IMAGE_SATURATION', 'OSC_START', 'DETECTOR_SN', 'PIXEL_SIZE',
     'SIZE1','SIZE2','BEAM_CENTER_X','BEAM_CENTER_Y'
     ]:
-    query_object.append((item,file_object.parameters[item]))
+    if type(file_object.parameters[item])==type(1.0):
+      query_object.append((item,"%.6f"%file_object.parameters[item]))
+    else:
+      query_object.append((item,file_object.parameters[item]))
 
   files = [
     ("adsc_data",file_object.filename,raw_string)
