@@ -9,7 +9,6 @@
 
 #include <scitbx/sparse/vector.h>
 #include <scitbx/sparse/io.h>
-#include <strstream>
 
 namespace scitbx { namespace sparse { namespace boost_python {
 
