@@ -1,5 +1,6 @@
 from __future__ import division
 from libtbx import Auto
+from libtbx import group_args
 import sys, os
 
 def varnames(frames_back=0):
@@ -174,6 +175,15 @@ class virtual_memory_info(proc_file_reader):
   def show_if_available(self, out=None, prefix="", show_max=False):
     if (self.proc_status is not None):
       self.show(out=out, prefix=prefix, show_max=show_max)
+
+  def current_max_sizes_legend(self):
+    return ("Virtual memory", "Resident set", "Stack")
+
+  def current_max_sizes(self):
+    return group_args(
+      virtual_memory=self.max_virtual_memory_size,
+      resident_set=self.max_resident_set_size,
+      stack=self.max_stack_size)
 
 try:
   _proc_meminfo = "/proc/meminfo"
