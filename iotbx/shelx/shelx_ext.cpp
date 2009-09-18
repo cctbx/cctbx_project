@@ -5,7 +5,6 @@
 
 #include <iotbx/shelx/hklf_simple.h>
 #include <iotbx/shelx/hklf.h>
-#include <strstream>
 
 namespace iotbx { namespace shelx { namespace boost_python {
 

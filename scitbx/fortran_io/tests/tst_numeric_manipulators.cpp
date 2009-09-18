@@ -1,5 +1,4 @@
 #include <scitbx/fortran_io/numeric_manipulators.h>
-#include <strstream>
 #include <scitbx/error.h>
 #include <iostream>
 
