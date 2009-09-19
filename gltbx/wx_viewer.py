@@ -94,10 +94,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.field_of_view_y = 10.0
     self.min_near = 1
     self.min_viewport_use_fraction = 0.01
-    self.clip_near = 0
-    self.clip_far = 0
-    self.fog_start_offset = 0
-    self.fog_end_offset = 0
+    self.slab_scale = 1.0
+    self.fog_scale_factor = 0.5
     self.flag_show_fog = False # leave off by default
     self._settings_widget = None
 
@@ -249,8 +247,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.setup_fog()
 
   def get_clipping_distances (self) :
-    near = self.near + self.clip_near
-    far = self.far + self.clip_far
+    slab = self.far - self.near
+    clip = (1.0 - self.slab_scale) * (slab / 2.0)
+    near = self.near + clip
+    far = self.far - clip
     if near > far :
       near = far - 1
     if near < self.min_near :
@@ -260,9 +260,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def setup_fog (self) :
     if self.flag_show_fog :
       near, far = self.get_clipping_distances()
-      # TODO: this needs work.
-      fog_start = 0.25*(far - near) + near + self.fog_start_offset
-      fog_end = far - self.fog_end_offset
+      fog_start = near + self.fog_scale_factor*(far - near)
+      fog_end = max(fog_start + 5, far)
       glMatrixMode(GL_MODELVIEW)
       glEnable(GL_FOG)
       glFogi(GL_FOG_MODE, GL_LINEAR)
@@ -714,27 +713,21 @@ class OpenGLSettingsToolbox (wx.MiniFrame) :
     fog_box = wx.CheckBox(panel, -1, "Use fog")
     fog_box.SetValue(parent.flag_show_fog)
     main_sizer.Add(fog_box, 0, wx.ALL, 5)
+    self.fog_box = fog_box
     szr = wx.FlexGridSizer(rows=0, cols=2, vgap=5, hgap=5)
     main_sizer.Add(szr, 0, 0, 0)
-    clip_label = wx.StaticText(panel, -1, "Front clipping:")
-    clip_slider = wx.Slider(panel, -1, parent.clip_near, minValue=0,
-      maxValue=50)
-    szr.Add(clip_label, 0, wx.ALL, 5)
-    szr.Add(clip_slider, 0, wx.ALL, 5)
-    fog1_label = wx.StaticText(panel, -1, "Fog start:")
-    fog1_slider = wx.Slider(panel, -1, parent.fog_start_offset, minValue=0,
-      maxValue=20)
-    szr.Add(fog1_label, 0, wx.ALL, 5)
-    szr.Add(fog1_slider, 0, wx.ALL, 5)
-    fog2_label = wx.StaticText(panel, -1, "Fog end:")
-    fog2_slider = wx.Slider(panel, -1, parent.fog_end_offset, minValue=0,
-      maxValue=40)
-    szr.Add(fog2_label, 0, wx.ALL, 5)
-    szr.Add(fog2_slider, 0, wx.ALL, 5)
-    self.widgets['clip_near'] = clip_slider
-    self.widgets['fog_start_offset'] = fog1_slider
-    self.widgets['fog_end_offset'] = fog2_slider
-    self.widgets['flag_show_fog'] = fog_box
+    slab_label = wx.StaticText(panel, -1, "Slab:")
+    slab_slider = wx.Slider(panel, -1, int(parent.slab_scale * 100),
+      minValue=1, maxValue=100)
+    szr.Add(slab_label, 0, wx.ALL, 5)
+    szr.Add(slab_slider, 0, wx.ALL, 5)
+    fog_label = wx.StaticText(panel, -1, "Fog scale:")
+    fog_slider = wx.Slider(panel, -1, int(parent.fog_scale_factor * 100),
+      minValue=1, maxValue=100)
+    szr.Add(fog_label, 0, wx.ALL, 5)
+    szr.Add(fog_slider, 0, wx.ALL, 5)
+    self.widgets['slab_scale'] = slab_slider
+    self.widgets['fog_scale_factor'] = fog_slider
     self.SetSizer(main_sizer)
     main_sizer.Fit(panel)
     self.Fit()
@@ -744,8 +737,9 @@ class OpenGLSettingsToolbox (wx.MiniFrame) :
 
   def OnUpdate (self, event=None) :
     for setting_name, widget in self.widgets.iteritems() :
-      new_value = widget.GetValue()
+      new_value = float(widget.GetValue()) / 100.0
       setattr(self.parent, setting_name, new_value)
+    self.parent.flag_show_fog = self.fog_box.GetValue()
     self.parent.OnRedrawGL()
 
   def OnClose (self, event=None) :
