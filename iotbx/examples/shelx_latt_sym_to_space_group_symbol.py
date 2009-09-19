@@ -1,23 +1,34 @@
-from iotbx.shelx.crystal_symmetry_from_ins import read_shelx_latt
+from iotbx import shelx
 from cctbx import sgtbx
 import sys
 
 def convert(file_object):
+  """ Examplify the direct use of the tool from shelx.lexer
+
+  In practice, one is strongly encouraged to make use of the tools
+  from shelx.parsers: that is to say, for the task handled here,
+  crystal_symmetry_parser (the code to follow just parrots
+  the implementation of crystal_symmetry_parser).
+  """
   space_group = None
-  for line in file_object:
-    l = line.rstrip().split("!")[0]
-    if (l.startswith("LATT ")):
+  for command, line in shelx.command_stream(file=file_object):
+    cmd, args = command[0], command[-1]
+    if cmd == "LATT":
       assert space_group is None
-      latt = read_shelx_latt(l)
+      assert len(args) == 1
       space_group = sgtbx.space_group()
-      if (latt.centric):
+      n = int(args[0])
+      if n > 0:
         space_group.expand_inv(sgtbx.tr_vec((0,0,0)))
-      space_group.expand_conventional_centring_type(latt.z)
-    elif (l.startswith("SYMM ")):
+      z = "*PIRFABC"[abs(n)]
+      space_group.expand_conventional_centring_type(z)
+    elif cmd == "SYMM":
       assert space_group is not None
-      s = sgtbx.rt_mx(l[5:])
+      assert len(args) == 1
+      s = sgtbx.rt_mx(args[0])
       space_group.expand_smx(s)
-  return sgtbx.space_group_info(group=space_group)
+    elif cmd == "SFAC":
+      return sgtbx.space_group_info(group=space_group)
 
 def run(args):
   if (len(args) == 0):
