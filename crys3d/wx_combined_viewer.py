@@ -1,9 +1,9 @@
 from __future__ import division
 
 import sys, os
-from crys3d import wx_viewer_zoom
 from crys3d.wx_selection_editor import selection_editor_mixin
 import iotbx.phil
+from gltbx.wx_viewer import wxGLWindow
 import gltbx.util
 from gltbx.gl import *
 from gltbx.glu import *
@@ -94,11 +94,11 @@ class map_scene (object) :
     glPopMatrix()
 
 
-class map_viewer_mixin (wx_viewer_zoom.viewer_with_automatic_zoom) :
+class map_viewer_mixin (wxGLWindow) :
   initialize_map_viewer_super = True
   def __init__ (self, *args, **kwds) :
     if self.initialize_map_viewer_super :
-      wx_viewer_zoom.viewer_with_automatic_zoom.__init__(self, *args, **kwds)
+      wxGLWindow.__init__(self, *args, **kwds)
     # various data objects
     self.map_ids     = []
     self.map_objects = []
@@ -106,7 +106,6 @@ class map_viewer_mixin (wx_viewer_zoom.viewer_with_automatic_zoom) :
     self.show_object = {}
     # user settings
     self.mesh_line_width = 0.25 # very buggy on OS X + NVidia (and ???)
-    self.buffer_factor = 2
     self.update_maps = False
     self.flag_show_maps = True
     self.flag_smooth_lines = True
@@ -129,7 +128,7 @@ class map_viewer_mixin (wx_viewer_zoom.viewer_with_automatic_zoom) :
 
   def OnRedrawGL (self, event=None) :
     self.check_and_update_map_scenes()
-    wx_viewer_zoom.viewer_with_automatic_zoom.OnRedrawGL(self, event)
+    wxGLWindow.OnRedrawGL(self, event)
 
   def check_and_update_map_scenes (self) :
     if self.update_maps :
@@ -145,7 +144,7 @@ class map_viewer_mixin (wx_viewer_zoom.viewer_with_automatic_zoom) :
       self.draw_rotation_center()
 
   def OnTranslate (self, event) :
-    wx_viewer_zoom.viewer_with_automatic_zoom.OnTranslate(self, event)
+    wxGLWindow.OnTranslate(self, event)
     self.update_map_scenes()
 
   def draw_rotation_center(self):
@@ -172,14 +171,6 @@ class map_viewer_mixin (wx_viewer_zoom.viewer_with_automatic_zoom) :
     glVertex3f(0, 0, f)
     glEnd()
     glPopMatrix()
-
-  def OnMouseWheel (self, event) :
-    scale = event.GetWheelRotation()
-    if event.ShiftDown() :
-      self.fog_end_offset -= scale
-    else :
-      self.clip_far -= scale
-    self.OnRedrawGL()
 
   def process_key_stroke (self, key) :
     pass
@@ -261,6 +252,19 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
   def __init__ (self, *args, **kwds) :
     selection_editor_mixin.__init__(self, *args, **kwds)
     map_viewer_mixin.__init__(self, *args, **kwds)
+    self.buffer_factor = 1
+
+  def OnMouseWheel (self, event) :
+    scale = event.GetWheelRotation()
+    if event.ShiftDown() :
+      self.fog_end_offset -= scale
+    else :
+      self.slab_scale += 0.01 * scale
+      if self.slab_scale > 1.0 :
+        self.slab_scale = 1.0
+      elif self.slab_scale < 0.01 :
+        self.slab_scale = 0.01
+    self.OnRedrawGL()
 
   def InitGL (self) :
     selection_editor_mixin.InitGL(self)

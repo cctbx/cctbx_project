@@ -6,8 +6,8 @@ from __future__ import division
 # TODO: clean up handling of changes in atom count
 
 import iotbx.phil
-from crys3d import wx_viewer_zoom
 from cctbx import uctbx
+from gltbx.wx_viewer import wxGLWindow
 import gltbx.util
 from gltbx import viewer_utils, quadrics
 from gltbx.gl import *
@@ -487,9 +487,9 @@ class UpdateModelEvent (AddModelEvent) :
   event_id = UPDATE_MODEL_ID
   recenter = False
 
-class model_viewer_mixin (wx_viewer_zoom.viewer_with_automatic_zoom) :
+class model_viewer_mixin (wxGLWindow) :
   def __init__ (self, *args, **kwds) :
-    wx_viewer_zoom.viewer_with_automatic_zoom.__init__(self, *args, **kwds)
+    wxGLWindow.__init__(self, *args, **kwds)
     self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
     self.Connect(-1, -1, UPDATE_MODEL_ID, self.OnUpdateModel)
     self.Connect(-1, -1, ADD_MODEL_ID, self.OnAddModel)
@@ -548,7 +548,7 @@ class model_viewer_mixin (wx_viewer_zoom.viewer_with_automatic_zoom) :
   @debug
   def initialize_modelview (self) :
     if self.minimum_covering_sphere is not None :
-      wx_viewer_zoom.viewer_with_automatic_zoom.initialize_modelview(self)
+      wxGLWindow.initialize_modelview(self)
     else :
       self.setup_lighting()
 
@@ -562,7 +562,7 @@ class model_viewer_mixin (wx_viewer_zoom.viewer_with_automatic_zoom) :
       self.SwapBuffers()
       gltbx.util.handle_error()
     else :
-      wx_viewer_zoom.viewer_with_automatic_zoom.OnRedrawGL(self, event)
+      wxGLWindow.OnRedrawGL(self, event)
 
   def check_and_update_model_scenes (self) :
     if self.update_scene :
@@ -813,7 +813,7 @@ class model_viewer_mixin (wx_viewer_zoom.viewer_with_automatic_zoom) :
 
   @debug
   def process_key_stroke (self, key) :
-    wx_viewer_zoom.viewer_with_automatic_zoom.process_key_stroke(self, key)
+    wxGLWindow.process_key_stroke(self, key)
     if key == ord('u') :
       self.unzoom()
     elif key == ord('h') :
