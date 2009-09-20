@@ -6,6 +6,7 @@
 #include <scitbx/rigid_body/featherstone.h>
 #include <scitbx/rigid_body/body_lib.h>
 #include <scitbx/array_family/selections.h>
+#include <boost_adaptbx/error_utils.h>
 
 namespace scitbx { namespace rigid_body {
 
@@ -128,7 +129,7 @@ namespace tardy {
           }
         }
         else {
-          throw SCITBX_UNREACHABLE_ERROR();
+          throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
         }
         body->parent = -1;
       }
