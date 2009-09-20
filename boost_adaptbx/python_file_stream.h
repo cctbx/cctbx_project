@@ -8,6 +8,8 @@
 #include <boost/optional.hpp>
 #include <boost/utility/typed_in_place_factory.hpp>
 
+#include <boost_adaptbx/error_utils.h>
+
 #include <streambuf>
 #include <iostream>
 
@@ -342,10 +344,12 @@ class python_file_buffer : public std::basic_streambuf<char>
        de-allocated only at destruction time.
     */
     char *write_buffer;
-    char *farthest_pptr; // the farthest place the buffer has been written into
 
     off_type pos_of_read_buffer_end_in_py_file,
              pos_of_write_buffer_end_in_py_file;
+
+    // the farthest place the buffer has been written into
+    char *farthest_pptr;
 
 
     boost::optional<off_type> seekoff_without_calling_python(
@@ -373,6 +377,9 @@ class python_file_buffer : public std::basic_streambuf<char>
         farthest_pptr = std::max(farthest_pptr, pptr());
         upper_bound = reinterpret_cast<std::streamsize>(farthest_pptr) + 1;
       }
+      else {
+        throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
+      }
 
       // Sought position in "buffer coordinate"
       off_type buf_sought;
@@ -381,6 +388,9 @@ class python_file_buffer : public std::basic_streambuf<char>
       }
       else if (way == std::ios_base::beg) {
         buf_sought = buf_end + (off - pos_of_buffer_end_in_py_file);
+      }
+      else {
+        throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
       }
 
       // if the sought position is not in the buffer, give up
