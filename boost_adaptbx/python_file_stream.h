@@ -78,7 +78,7 @@ namespace python = boost::python;
 
           void bridge(python_file_buffer const &input) {
             istream is(&input);
-            mundanely_read(const_cast<istream &>(input));
+            mundanely_read(is);
             is.sync(); // synchs the python file object with 'is'
           }
 
