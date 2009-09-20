@@ -389,6 +389,9 @@ class python_file_buffer : public std::basic_streambuf<char>
       else if (way == std::ios_base::beg) {
         buf_sought = buf_end + (off - pos_of_buffer_end_in_py_file);
       }
+      else if (way == std::ios_base::end) {
+        return failure;
+      }
       else {
         throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
       }
