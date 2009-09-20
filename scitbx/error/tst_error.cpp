@@ -1,4 +1,5 @@
 #include <scitbx/error.h>
+#include <boost_adaptbx/error_utils.h>
 #include <iostream>
 
 int
@@ -21,7 +22,7 @@ main()
   {
     bool have_message = false;
     try {
-      throw SCITBX_UNREACHABLE_ERROR();
+      throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
     }
     catch (std::runtime_error const& e) {
       std::cout << e.what() << std::endl;
