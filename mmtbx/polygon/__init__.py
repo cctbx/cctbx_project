@@ -228,7 +228,7 @@ def polygon(params = master_params.extract(), d_min = None,
             show_histograms = True, extract_gui_data=False):
   if(params.polygon.database_file_name is None):
     file_name = libtbx.env.find_in_repositories(
-      relative_path = "chem_data/polygon_data/phenix_mvd_2009_APR_14_21h23.pickle",
+      relative_path = "chem_data/polygon_data/phenix_mvd_2009_SEP_8_10h36.pickle",
       test = os.path.isfile)
   else:
     file_name = params.polygon.database_file_name
