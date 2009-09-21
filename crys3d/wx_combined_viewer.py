@@ -189,8 +189,9 @@ class map_viewer_mixin (wxGLWindow) :
       i = self.map_ids.index(map_id)
       self.map_ids.pop(i)
       self.map_objects.pop(i)
-      if map_id in self.scene_objects :
-        self.scene_objects.pop(map_id)
+      self.show_object.pop(map_id)
+      if map_id in self.map_scenes :
+        self.map_scenes.pop(map_id)
     self.update_maps = True
 
   def update_map (self, map_id, map) :

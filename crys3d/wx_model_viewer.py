@@ -50,8 +50,6 @@ opengl {
     .type = bool
   use_atom_color_for_labels = True
     .type = bool
-  use_fog = True
-    .type = bool
   orthographic = False
     .type = bool
     .style = noauto
@@ -637,7 +635,6 @@ class model_viewer_mixin (wxGLWindow) :
     glDisable(GL_LIGHTING)
     use_atom_color = self.settings.opengl.use_atom_color_for_labels
     if not use_atom_color :
-      print "using global label color"
       glColor3f(1.0, 1.0, 1.0)
     font = gltbx.fonts.ucs_bitmap_8x13
     font.setup_call_lists()
