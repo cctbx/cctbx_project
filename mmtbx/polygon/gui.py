@@ -80,6 +80,16 @@ def get_stats_and_histogram_data (mvd_object, params, debug=False) :
                                extract_gui_data=True)
   return stats, histograms
 
+def get_basic_histogram_data (d_min) :
+  params = polygon.master_params.fetch().extract()
+  params.polygon.keys_to_show = ["r_work_re_computed", "r_free_re_computed",
+    "bonds_rmsd", "angles_rmsd", "adp_mean"]
+  histograms = polygon.polygon(params=params,
+                               d_min=d_min,
+                               show_histograms=False,
+                               extract_gui_data=True)
+  return histograms
+
 #-----------------------------------------------------------------------
 # TODO: tests for everything else
 class canvas_layout (object) :
