@@ -493,17 +493,20 @@ else:
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.debug_symbols):
-      opts.insert(0, "-g2")
+      opts.insert(0, "-g")
       if env_etc.compiler == "darwin_gcc-4.2":
-        # The gcc 4.2 shipped by Apple with all versions of XCode so far
-        # (the latest one being XCode 3.2.1) is plagued by bug 27574:
+        build_nb = libtbx.env_config.get_darwin_gcc_build_number(gcc="g++-4.2")
+        # The gcc 4.2 shipped by Apple with all versions of XCode
+        # on Leopard is plagued by bug 27574:
         # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=27574
         # Workaround till Apple applies the patch that has already landed
         # on GCC 4.2 branch: use the old stabs debugging info format instead
         # of the new now native dwarf.
         # Beware: valgrind does not support stabs on Darwin: just use
         # gcc 4.0.1 for code to be tested by valgrind
-        opts.insert(0, "-gstabs+")
+        if build_nb < 5646:
+          # fixed on Snow Leopard whose Dev Tools start with that build
+          opts.insert(0, "-gstabs+")
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = []
     env_etc.shlinkflags_bpl = [
