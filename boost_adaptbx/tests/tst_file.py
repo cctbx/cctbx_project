@@ -204,8 +204,15 @@ def time_it(path, buffer_size):
 
 def run(args):
   options = (option_parser()
-              .option(None, '--time_on_file')
-              .option(None, '--buffer_size', type='int')
+              .option(None, '--time_on_file',
+                      metavar="PATH",
+                      help="time reading and writing."
+                           "The file to read shall be a hkl file, i.e "
+                           "each line has a format like "
+                           "'int int int double double'. "
+                           "The end shall be marked by 0 0 0")
+              .option(None, '--buffer_size', type='int',
+                      metavar="INT")
               ).process(args).options
   exercise_illegal_conversions()
   stringio_test_case().run()

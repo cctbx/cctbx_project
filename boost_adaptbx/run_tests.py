@@ -4,13 +4,13 @@ import libtbx.load_env
 
 def run():
   tst_list = (
-  "$D/tst_libc_backtrace.py",
-  "$D/tst_rational.py",
-  "$D/tst_rational_truediv.py",
-  "$D/tst_optional.py",
-  "$D/tst_std_pair.py",
-  "$D/tst_tuple.py",
-  "$D/tst_file.py",
+  "$D/tests/tst_libc_backtrace.py",
+  "$D/tests/tst_rational.py",
+  "$D/tests/tst_rational_truediv.py",
+  "$D/tests/tst_optional.py",
+  "$D/tests/tst_std_pair.py",
+  "$D/tests/tst_tuple.py",
+  "$D/tests/tst_file.py",
   )
 
   build_dir = libtbx.env.under_build("boost_adaptbx")
