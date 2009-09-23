@@ -170,9 +170,14 @@ class python_file_buffer : public std::basic_streambuf<char>
         setp(0, 0);
       }
       if (py_tell != python::object()) {
-        off_type py_pos = python::extract<off_type>(py_tell());
-        pos_of_read_buffer_end_in_py_file = py_pos;
-        pos_of_write_buffer_end_in_py_file = py_pos;
+        try {
+          // this is known to fail with stdout, so catch Python error
+          off_type py_pos = python::extract<off_type>(py_tell());
+          pos_of_read_buffer_end_in_py_file = py_pos;
+          pos_of_write_buffer_end_in_py_file = py_pos;
+        }
+        catch (boost::python::error_already_set) {
+        }
       }
     }
 
@@ -248,7 +253,13 @@ class python_file_buffer : public std::basic_streambuf<char>
         off_type delta = pptr() - farthest_pptr;
         int_type status = overflow();
         if (traits_type::eq_int_type(status, traits_type::eof())) result = -1;
-        if (py_seek != python::object()) py_seek(delta, 1);
+        if (py_seek != python::object()) {
+          try {
+            // this is known to fail with stdout, so catch Python error
+            py_seek(delta, 1);
+          }
+          catch (boost::python::error_already_set) {}
+        }
       }
       else if (gptr() && gptr() < egptr()) {
         if (py_seek != python::object()) py_seek(gptr() - egptr(), 1);
