@@ -158,6 +158,20 @@ class python_file_buffer : public std::basic_streambuf<char>
         pos_of_write_buffer_end_in_py_file(buffer_size),
         farthest_pptr(0)
     {
+      /* Some Python file objects (e.g. sys.stdout and sys.stdin)
+         have non-functional seek and tell. If so, assign None to
+         py_tell and py_seek.
+       */
+      if (py_tell != python::object()) {
+        try {
+          py_tell();
+        }
+        catch (python::error_already_set) {
+          py_tell = python::object();
+          py_seek = python::object();
+        }
+      }
+
       if (py_write != python::object()) {
         // C-like string to make debugging easier
         write_buffer = new char[buffer_size + 1];
@@ -169,18 +183,13 @@ class python_file_buffer : public std::basic_streambuf<char>
         // The first attempt at output will result in a call to overflow
         setp(0, 0);
       }
+
       if (py_tell != python::object()) {
-        try {
-          // this is known to fail with stdout, so catch Python error
-          off_type py_pos = python::extract<off_type>(py_tell());
-          pos_of_read_buffer_end_in_py_file = py_pos;
-          pos_of_write_buffer_end_in_py_file = py_pos;
-        }
-        catch (boost::python::error_already_set) {
-        }
+        off_type py_pos = python::extract<off_type>(py_tell());
+        pos_of_read_buffer_end_in_py_file = py_pos;
+        pos_of_write_buffer_end_in_py_file = py_pos;
       }
     }
-
 
     /// Mundane destructor freeing the allocated resources
     virtual ~python_file_buffer() {
@@ -253,13 +262,7 @@ class python_file_buffer : public std::basic_streambuf<char>
         off_type delta = pptr() - farthest_pptr;
         int_type status = overflow();
         if (traits_type::eq_int_type(status, traits_type::eof())) result = -1;
-        if (py_seek != python::object()) {
-          try {
-            // this is known to fail with stdout, so catch Python error
-            py_seek(delta, 1);
-          }
-          catch (boost::python::error_already_set) {}
-        }
+        if (py_seek != python::object()) py_seek(delta, 1);
       }
       else if (gptr() && gptr() < egptr()) {
         if (py_seek != python::object()) py_seek(gptr() - egptr(), 1);
