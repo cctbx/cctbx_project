@@ -11,6 +11,7 @@ def run():
   "$D/tests/tst_std_pair.py",
   "$D/tests/tst_tuple.py",
   "$D/tests/tst_file.py",
+  "$D/tests/tst_stdout.py",
   )
 
   build_dir = libtbx.env.under_build("boost_adaptbx")
