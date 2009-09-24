@@ -288,14 +288,6 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
   def process_key_stroke (self, key) :
     selection_editor_mixin.process_key_stroke(self, key)
     map_viewer_mixin.process_key_stroke(self, key)
-    if key == wx.WXK_UP :
-      self.fog_start_offset += 1
-    elif key == wx.WXK_DOWN :
-      self.fog_start_offset -= 1
-    elif key == wx.WXK_LEFT :
-      self.clip_near -= 1
-    elif key == wx.WXK_RIGHT :
-      self.clip_near += 1
     self.OnRedrawGL()
 
   def update_mcs (self, *args, **kwds) :
