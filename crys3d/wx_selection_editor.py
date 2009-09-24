@@ -156,6 +156,7 @@ class selection_editor_mixin (model_viewer_mixin) :
     self.current_object_id = None
     self._callback = print_cb
     self._in_range_selection = False
+    self.buffer_selection_sphere = 5
     model_viewer_mixin.__init__(self, *args,**kwds)
     self.settings = viewer_phil.extract()
 
@@ -187,7 +188,7 @@ class selection_editor_mixin (model_viewer_mixin) :
         if self.show_object[object_id] :
           points.extend(scene.points)
     if points.size() != 0 :
-      self.update_mcs(points)
+      self.update_mcs(points, buffer=self.buffer_selection_sphere)
 
   def set_selection (self, object_id, selection_string) :
     for model_id, model in self.iter_models() :

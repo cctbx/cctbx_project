@@ -14,7 +14,7 @@ from gltbx.gl import *
 from gltbx.glu import *
 import gltbx
 from scitbx.array_family import flex, shared
-from scitbx.math import minimum_covering_sphere
+from scitbx.math import minimum_covering_sphere, sphere_3d
 from libtbx.introspection import method_debug_log
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
@@ -501,6 +501,7 @@ class model_viewer_mixin (wxGLWindow) :
     self.model_reps = {}
     self.update_scene = False
     self.buffer_factor = 2 # see gltbx.wx_viewer
+    self.min_slab = 4
     self.sphere_scale_factor = 1.0
     self.update_settings(opengl_phil.extract())
     self.closest_point_i_seq     = None
@@ -561,6 +562,17 @@ class model_viewer_mixin (wxGLWindow) :
       gltbx.util.handle_error()
     else :
       wxGLWindow.OnRedrawGL(self, event)
+
+  def get_clipping_distances (self) :
+    slab = self.far - self.near
+    clip = (1.0 - self.slab_scale) * (slab / 2.0)
+    near = self.near + clip
+    far = self.far - clip
+    if near < self.min_near :
+      near = self.min_near
+    if near > far or far < (near + self.min_slab) :
+      far = near + self.min_slab
+    return (near, far)
 
   def check_and_update_model_scenes (self) :
     if self.update_scene :
@@ -734,10 +746,15 @@ class model_viewer_mixin (wxGLWindow) :
       model.update_from_xray_structure(xray_structure)
       self.update_scene = True
 
-  def update_mcs (self, points, recenter_and_zoom=True) :
-    self.minimum_covering_sphere = minimum_covering_sphere(
-                                       points=points,
-                                       epsilon=0.1)
+  def update_mcs (self, points, recenter_and_zoom=True, buffer=0) :
+    mcs = minimum_covering_sphere(points=points,
+                                  epsilon=0.1)
+    if buffer > 0 :
+      self.minimum_covering_sphere = sphere_3d(
+        center=mcs.center(),
+        radius=mcs.radius() + buffer)
+    else :
+      self.minimum_covering_sphere = mcs
     if recenter_and_zoom :
       self.move_rotation_center_to_mcs_center()
       self.fit_into_viewport()
