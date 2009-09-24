@@ -29,6 +29,7 @@ standard_file_extensions = {
   'xml'  : ["xml"],
   'pkl'  : ["pickle", "pkl"],
   'txt'  : ["txt", "log", "html"],
+  'mtz'  : ["mtz"],
 }
 compression_extensions = ["gz", "Z", "bz2", "zip"]
 
@@ -41,7 +42,8 @@ standard_file_descriptions = {
   'phil' : "Parameters",
   'xml'  : "XML",
   'pkl'  : "Python pickle",
-  'txt'  : "Text"
+  'txt'  : "Text",
+  'mtz'  : "Reflections (MTZ)",
 }
 
 def guess_file_type (file_name) :
