@@ -464,6 +464,7 @@ rstbx/run_tests.py -text
 rstbx/symmetry/__init__.py -text
 rstbx/symmetry/sgtbx_adaptor.py -text
 rstbx/symmetry/subgroup.py -text
+scitbx/adapt_simulated_annealing.py -text
 scitbx/array_family/accessors/c_grid_padded_periodic.h -text
 scitbx/array_family/accessors/c_grid_periodic.h -text
 scitbx/array_family/accessors/c_interval_grid.h svneol=native#text/plain
