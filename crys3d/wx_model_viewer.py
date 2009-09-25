@@ -514,6 +514,8 @@ class model_viewer_mixin (wxGLWindow) :
     self.update_scene = False
     self.buffer_factor = 2 # see gltbx.wx_viewer
     self.min_slab = 4
+    self.min_viewport_use_fraction = 0.1
+    self.min_dist = 4.0
     self.sphere_scale_factor = 1.0
     self.update_settings(opengl_phil.extract())
     self.closest_point_i_seq     = None

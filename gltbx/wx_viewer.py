@@ -93,6 +93,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
     self.field_of_view_y = 10.0
     self.min_near = 1
+    self.min_dist = -100
     self.min_viewport_use_fraction = 0.01
     self.slab_scale = 1.0
     self.fog_scale_factor = 0.5
@@ -401,7 +402,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     r = (1+1.e-6)*s.radius()
     d = -gltbx.util.object_as_eye_coordinates(self.rotation_center)[2]
     dr = d + r
-    if (scale > 0 and dr <= self.min_near):
+    if (scale > 0 and (dr <= self.min_near or d <= self.min_dist)):
       pass # near limit
     elif (scale < 0 and r < d * math.sin(self.field_of_view_y*math.pi/180/2)
                               * self.min_viewport_use_fraction):
