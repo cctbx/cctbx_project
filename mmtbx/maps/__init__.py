@@ -187,8 +187,8 @@ class compute_maps(object):
     self.all_coeffs = []
     for mcp in params.map_coefficients:
       if(mcp.map_type is not None):
-        self.all_coeffs.append(self.coeffs)
         self.coeffs = self.compute_map_coefficients(map_params = mcp)
+        self.all_coeffs.append(self.coeffs)
         if("mtz" in mcp.format and self.coeffs is not None):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):
