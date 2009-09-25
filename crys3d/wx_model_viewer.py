@@ -58,6 +58,17 @@ opengl {
 }
 """)
 
+draw_modes = [ ("trace", "Show trace"),
+               ("all_atoms", "Show all atoms"),
+               ("bonded_only", "Show bonded atoms"), ]
+draw_flags = [ ("flag_show_hydrogens", "Show hydrogens"),
+               ("flag_show_ellipsoids", "Show B-factor ellipsoids"),
+               ("flag_show_labels", "Show labels"), ]
+color_modes = [ ("rainbow", "Color rainbow"),
+                ("b", "Color by B-factor"),
+                ("element", "Color by element"),
+                ("chain", "Color by chain"), ]
+
 #-----------------------------------------------------------------------
 # XXX: None of the data in this class is used directly in OpenGL calls;
 # instead, the model_scene object contains the subset of information
@@ -313,6 +324,7 @@ class model_data (object) :
     if cached is not None :
       self.atom_colors = cached
     else :
+      print self.base_color
       # these are approximations based on my (probably faulty) memory.
       # feel free to change to something more reasonable.
       element_shades = {' C' : self.base_color, # usually yellow or grey
@@ -684,17 +696,58 @@ class model_viewer_mixin (wxGLWindow) :
         return model
     return None
 
-  def get_model_state (self, object_id) :
+  def show_model_controls_menu (self, object_id, source_widget) :
     model = self.get_model(object_id)
-    model_attr = dir(model)
-    state = {}
-    for name in model_attr :
-      if name.startswith("flag_") :
-        state_var = name[5:] #re.sub("flag_", "", name)
-        state[state_var] = getattr(model, name)
-    state["draw_mode"] = model.draw_mode
-    state["color_mode"] = model.color_mode
-    return state
+    if model is None :
+      return
+    menu = wx.Menu(title=object_id)
+    for mode_name, mode_label in draw_modes :
+      item = menu.AppendCheckItem(-1, mode_label)
+      if model.draw_mode == mode_name :
+        item.Check(True)
+      source_widget.Bind(wx.EVT_MENU, self.OnModelMenu, item)
+    menu.AppendSeparator()
+    for flag_name, flag_label in draw_flags :
+      item = menu.AppendCheckItem(-1, flag_label)
+      if getattr(model, flag_name, False) :
+        item.Check(True)
+      source_widget.Bind(wx.EVT_MENU, self.OnModelMenu, item)
+    menu.AppendSeparator()
+    for color_name, color_label in color_modes :
+      item = menu.AppendCheckItem(-1, color_label)
+      if model.color_mode == color_name :
+        item.Check(True)
+      source_widget.Bind(wx.EVT_MENU, self.OnModelMenu, item)
+    menu.AppendSeparator()
+    item = menu.Append(-1, "Change base color. . .")
+    source_widget.Bind(wx.EVT_MENU, self.OnChangeModelColor, item)
+    source_widget.PopupMenu(menu)
+    menu.Destroy()
+    self.OnRedrawGL()
+
+  def process_model_menu_event (self, object_id, menu_item) :
+    model = self.get_model(object_id)
+    if model is None :
+      return
+    item_label = menu_item.GetText()
+    is_checked = menu_item.IsChecked()
+    for mode, label in draw_modes :
+      if label == item_label and is_checked :
+        model.set_draw_mode(mode)
+        self.update_scene = True
+        return True
+    for mode, label in color_modes :
+      if label == item_label and is_checked :
+        model.set_color_mode(mode)
+        self.update_scene = True
+        return True
+    for flag, label in draw_flags :
+      if label == item_label :
+        setattr(model, flag, is_checked)
+        model.refresh()
+        self.update_scene = True
+        return True
+    return False
 
   def set_model_state (self, object_id, model_state) :
     model = self.get_model(object_id)
@@ -954,6 +1007,24 @@ class model_viewer_mixin (wxGLWindow) :
     if self.closest_point_i_seq is not None :
       self.recenter_on_atom(self.closest_point_object_id,
         self.closest_point_i_seq)
+
+  def OnModelMenu (self, event) :
+    menu = event.GetEventObject()
+    item = menu.FindItemById(event.GetId())
+    model_id = menu.GetTitle()
+    self.process_model_menu_event(model_id, item)
+
+  def OnChangeModelColor (self, event) :
+    menu = event.GetEventObject()
+    model_id = menu.GetTitle()
+    model = self.get_model(model_id)
+    if model is not None :
+      base_color = [ int(x*255) for x in model.base_color ]
+      new_color = wx.GetColourFromUser(self, base_color)
+      new_color = [ x / 255 for x in new_color ]
+      model.set_base_color(new_color)
+      model.refresh()
+      self.update_scene = True
 
   def thread_safe_add_model (self, model_id, pdb_hierarchy, atomic_bonds) :
     wx.PostEvent(self, AddModelEvent(model_id, pdb_hierarchy, atomic_bonds))
