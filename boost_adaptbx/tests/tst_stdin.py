@@ -2,7 +2,7 @@ import boost.python_file
 ext = boost.python.import_ext("python_file_test_ext")
 import libtbx.load_env
 from libtbx import easy_run
-try: import subprocess_with_fixes as subprocess
+try: from libtbx import subprocess_with_fixes as subprocess
 except ImportError: import subprocess
 import sys, os
 
