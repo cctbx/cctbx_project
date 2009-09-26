@@ -741,7 +741,9 @@ def read_mvd_output(file_lines, name):
   for line in file_lines:
     x = line.strip()
     xs = x.split()
-    if(x.startswith("Unit cell:        ")): unit_cell        = tuple(xs[2:])
+    if(x.startswith("Unit cell:        ")):
+      vtmp = " ".join(xs[2:]).replace(","," ").replace("("," ").replace(")"," ")
+      unit_cell        = vtmp
     if(x.startswith("Space group:      ")): space_group      = xs[2:]
     if(x.startswith("Unit cell volume: ")): unit_cell_volume = float(xs[3])
     if(x.startswith("Number of models: ")): number_of_models = int(xs[3])

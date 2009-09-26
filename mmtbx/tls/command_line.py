@@ -178,6 +178,9 @@ def run(args, command_name = "phenix.tls"):
         print >> log, "Selection string:\n%s" % sel_s
         print >> log, "selects %d atoms." % sel_a.size()
         print >> log
+      print >> log, "Ready-to-use in phenix.refine:\n"
+      for sel_a, sel_s in zip(selections,tls_selections_strings):
+        print >> log, sel_s
   #
   ofn = params.output_file_name
   if(ofn is None):

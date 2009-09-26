@@ -69,7 +69,8 @@ class bulk_solvent(around_atoms):
         shrink_truncation_radius,
         ignore_hydrogen_atoms=True,
         gridding_n_real=None,
-        grid_step=None):
+        grid_step=None,
+        atom_radii=None):
      global number_of_mask_calculations
      number_of_mask_calculations += 1
      assert [gridding_n_real, grid_step].count(None) == 1
@@ -78,17 +79,19 @@ class bulk_solvent(around_atoms):
        gridding_n_real = maptbx.crystal_gridding(
          unit_cell=xray_structure.unit_cell(),
          step=grid_step).n_real()
-     atom_radii = vdw_radii_from_xray_structure(xray_structure =
-       self.xray_structure)
+     if(atom_radii is None):
+       atom_radii = vdw_radii_from_xray_structure(xray_structure =
+         self.xray_structure)
      sites_frac = xray_structure.sites_frac()
      self.n_atoms_excluded = 0
+     selection = flex.bool(xray_structure.scatterers().size(), True)
      if(ignore_zero_occupancy_atoms):
-       selection = xray_structure.scatterers().extract_occupancies() > 0
-       if(ignore_hydrogen_atoms):
-         selection &= (~xray_structure.hd_selection())
-       sites_frac = sites_frac.select(selection)
-       atom_radii = atom_radii.select(selection)
-       self.n_atoms_excluded = selection.count(False)
+       selection &= xray_structure.scatterers().extract_occupancies() > 0
+     if(ignore_hydrogen_atoms):
+       selection &= (~xray_structure.hd_selection())
+     sites_frac = sites_frac.select(selection)
+     atom_radii = atom_radii.select(selection)
+     self.n_atoms_excluded = selection.count(False)
      around_atoms.__init__(self,
        unit_cell           = xray_structure.unit_cell(),
        space_group_order_z = xray_structure.space_group().order_z(),
@@ -248,7 +251,17 @@ class manager(object):
         grid_step_factor         = self.mask_params.grid_step_factor,
         solvent_radius           = self.mask_params.solvent_radius,
         shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
-      asu_mask.compute(self.xray_structure.sites_frac(), self.atom_radii)
+      # XXX duplication from old mask calculation code, see above
+      selection = flex.bool(self.xray_structure.scatterers().size(), True)
+      if(self.mask_params.ignore_zero_occupancy_atoms):
+        selection &= self.xray_structure.scatterers().extract_occupancies() > 0
+      if(self.mask_params.ignore_hydrogens): # it is very essential
+        selection &= (~self.xray_structure.hd_selection())
+      sites_frac = self.xray_structure.sites_frac()
+      sites_frac = sites_frac.select(selection)
+      atom_radii = self.atom_radii.select(selection)
+      #
+      asu_mask.compute(sites_frac, atom_radii)
       fm_asu = asu_mask.structure_factors(self.miller_array.indices())
       self._f_mask = self.miller_array.set().array(data = fm_asu)
       if(self.miller_array_twin is not None):
