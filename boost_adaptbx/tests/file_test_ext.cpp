@@ -136,6 +136,16 @@ namespace boost_adaptbx { namespace file_conversion {
     std::cout << "\n\n";
   }
 
+  void
+  call_with_stderr_stdout_do_nothing(
+    python_file_buffer const& err_file_obj,
+    python_file_buffer const& out_file_obj)
+  {
+    typedef ostream py_ostream;
+    py_ostream err_stream(&err_file_obj);
+    py_ostream out_stream(&out_file_obj);
+  }
+
 }} // boost_adaptbx::file_conversion
 
 BOOST_PYTHON_MODULE(python_file_test_ext)
@@ -146,4 +156,6 @@ BOOST_PYTHON_MODULE(python_file_test_ext)
   def("test_write", test_write);
   def("time_read", time_read);
   def("time_write", time_write);
+  def("call_with_stderr_stdout_do_nothing",
+       call_with_stderr_stdout_do_nothing);
 }
