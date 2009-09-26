@@ -23,6 +23,7 @@ boost_adaptbx/tests/tst_file.py -text
 boost_adaptbx/tests/tst_libc_backtrace.py svneol=native#text/x-python
 boost_adaptbx/tests/tst_rational_truediv.py -text
 boost_adaptbx/tests/tst_std_pair.py -text
+boost_adaptbx/tests/tst_stderr_stdout.py svneol=native#text/x-python
 boost_adaptbx/tests/tst_stdin.py -text
 boost_adaptbx/tests/tst_stdout.py -text
 boost_adaptbx/tests/tst_tuple.py -text
