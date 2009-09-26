@@ -19,6 +19,7 @@ from mmtbx import model_statistics
 import random
 from libtbx import easy_run
 from iotbx.pdb import combine_unique_pdb_files
+from mmtbx.command_line import lockit
 
 
 fmodel_from_xray_structure_params_str = """\
@@ -153,6 +154,9 @@ sites
   shake = None
     .type = float
     .help = Randomize coordinates with mean error value equal to shake
+  max_rotomer_distortion = None
+    .type = bool
+    .help = Switch to a rotomer maximally distant from the curent one
   translate = 0 0 0
     .type = strings
     # XXX FUTURE float(3)
@@ -260,6 +264,7 @@ geometry_minimization
 class modify(object):
   def __init__(self, xray_structure, params, all_chain_proxies, log = None):
     self.log = log
+    self.pdb_hierarchy = all_chain_proxies.pdb_hierarchy
     if(self.log is None): self.log = sys.stdout
     self.xray_structure = xray_structure
     self.all_chain_proxies = all_chain_proxies
@@ -395,11 +400,57 @@ class modify(object):
             selection_strings=[sites.atom_selection],
             xray_structure=self.xray_structure)[0])
       self._shake_sites(selection=selection, rms_difference=sites.shake)
+      if(sites.max_rotomer_distortion is not None):
+        self._max_distant_rotomer(selection=selection)
       self._rb_shift(
         selection=selection,
         translate=sites.translate,
         rotate=sites.rotate,
         euler_angle_convention=sites.euler_angle_convention)
+
+  def _max_distant_rotomer(self, selection):
+    self._print_action(
+      text = "Switching to the max distant rotomers",
+      selection = selection)
+    mon_lib_srv = mmtbx.monomer_library.server.server()
+    selection = selection.flags
+    sites_cart_start = self.xray_structure.sites_cart()
+    sites_cart_result = sites_cart_start.deep_copy()
+    xrs = self.xray_structure.deep_copy_scatterers()
+    for model in self.pdb_hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          conformers = residue_group.conformers()
+          if(len(conformers)>1): continue # XXX ignore alt conformations
+          for conformer in residue_group.conformers():
+            residue = conformer.only_residue()
+            residue_iselection = flex.size_t()
+            exclude = False
+            for atom in residue.atoms():
+              residue_iselection.append(atom.i_seq)
+            for r_i_seq in residue_iselection:
+              if(not selection[r_i_seq]):
+                exclude = True
+                break
+            if(not exclude):
+              rotamer_iterator = lockit.get_rotamer_iterator(
+                mon_lib_srv         = mon_lib_srv,
+                residue             = residue,
+                atom_selection_bool = None)
+              dist_start = -1.
+              if(rotamer_iterator is not None):
+                for rotamer, rotamer_sites_cart in rotamer_iterator:
+                  sites_cart_start_ = sites_cart_start.deep_copy()
+                  xray_structure_ = self.xray_structure.deep_copy_scatterers()
+                  sites_cart_start_ = sites_cart_start_.set_selected(
+                    residue_iselection, rotamer_sites_cart)
+                  xray_structure_.set_sites_cart(sites_cart_start_)
+                  dist = flex.sum(xray_structure_.distances(xrs))
+                  if(dist > dist_start):
+                    dist_start = dist
+                    sites_cart_result = sites_cart_result.set_selected(
+                      residue_iselection, rotamer_sites_cart)
+    self.xray_structure.set_sites_cart(sites_cart_result)
 
   def _shake_sites(self, selection, rms_difference):
     if (rms_difference is not None):

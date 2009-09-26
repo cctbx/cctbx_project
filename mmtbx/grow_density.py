@@ -30,24 +30,24 @@ reflection_file_name = None
 data_labels = None
   .type = str
   .help = Labels for experimental data.
-high_resolution = None
-  .type = float
-low_resolution = None
-  .type = float
 sphere
   .multiple=True
   {
     center = None
-      .type = floats
+      .type = floats(size=3)
       .help = Approximate coordinates of the center of problem density.
     radius = None
       .type = float
       .help = Sphere radius of where the dummy atoms will be placed.
   }
-output_file_name_prefix = None
-  .type = str
 mode = build *build_and_refine filter
   .type = choice(multi=False)
+high_resolution = None
+  .type = float
+low_resolution = None
+  .type = float
+output_file_name_prefix = None
+  .type = str
 initial_occupancy = 0.1
   .type = float
   .help = Starting occupancy value for a newly placed DA
@@ -74,7 +74,7 @@ residue_name = DUM
 scattering_table = *n_gaussian wk1995 it1992 neutron
   .type = choice
   .help = Scattering table for structure factors calculations
-number_of_refinement_cycles = 3
+number_of_refinement_cycles = 5
   .type = int
   .help = Number of refinement cycles
 number_of_minimization_iterations = 25
@@ -146,9 +146,9 @@ def create_da_xray_structures(xray_structure, params):
             sites_frac      = da_xray_structure.sites_frac(),
             distance_cutoff = 5)
           selection = closest_distances_result.smallest_distances > 0
-          selection &= closest_distances_result.smallest_distances < 0.5
+          selection &= closest_distances_result.smallest_distances < 1
           da_xray_structure = da_xray_structure.select(~selection)
-          print counter, da_xray_structure.scatterers().size()
+          #print counter, da_xray_structure.scatterers().size()
           if(cntr_g==1): # XXX
             da_xray_structures.append(da_xray_structure)
   ###
@@ -160,24 +160,25 @@ def create_da_xray_structures(xray_structure, params):
           sites_frac      = x2.sites_frac(),
           distance_cutoff = 5)
         selection = closest_distances_result.smallest_distances > 0
-        selection &= closest_distances_result.smallest_distances < 1.0
+        selection &= closest_distances_result.smallest_distances < params.atom_gap
         da_xray_structures[j] = x2.select(~selection)
-  ###
-  #XXX for xda in da_xray_structures:
-  #XXX   print flex.max(xda.scatterers().extract_occupancies())
-  #XXX assert 0
   return da_xray_structures
 
 def grow_density(f_obs,
                  r_free_flags,
                  xray_structure,
                  params):
+    print "Start creating DAs..."
     da_xray_structures = create_da_xray_structures(xray_structure =
       xray_structure, params = params)
+    n_da = 0
+    for daxrs in da_xray_structures:
+      n_da += daxrs.scatterers().size()
+    print "Total number of dummy atoms to be added:", n_da
     #
     number_of_grids = len(da_xray_structures)
-    print "Creating %s grids with atom spacing %s, each grid is %s apart" %(
-      str(number_of_grids),str(params.atom_gap), str(params.overlap_interval))
+    #print "Creating %s grids with atom spacing %s, each grid is %s apart" %(
+    #  str(number_of_grids),str(params.atom_gap), str(params.overlap_interval))
     xray_structure_start = xray_structure.deep_copy_scatterers()
     if(params.mode == "build_and_refine"):
       fmodel = mmtbx.f_model.manager(
@@ -186,32 +187,17 @@ def grow_density(f_obs,
         target_name    = "ml",
         f_obs          = f_obs)
       fmodel.update_solvent_and_scale()
-      print "Start R-work and R-free: %6.4f %6.4f"%(fmodel.r_work(),
+      print "START R-work and R-free: %6.4f %6.4f"%(fmodel.r_work(),
         fmodel.r_free())
-
-    counter = 0
-    all_da_xray_structure = None
-    ### XXX
-    #XXX Z = da_xray_structures[0]
-    #XXX for ZZ in da_xray_structures[1:]:
-    #XXX   Z = Z.concatenate(ZZ)
-    #XXX da_xray_structures = [Z]
-    ### XXX
     xray_structure_current = xray_structure_start.deep_copy_scatterers()
     da_sel = flex.bool(xray_structure_start.scatterers().size(), False)
     for i_model, da_xray_structure in enumerate(da_xray_structures):
-      print "Model:",i_model
+      print "Model %d, adding %d dummy atoms" % (i_model,
+        da_xray_structure.scatterers().size())
       try:
-        #closest_distances_result = xray_structure_start.closest_distances(
-        #  sites_frac      = da_xray_structure.sites_frac(),
-        #  distance_cutoff = 5)
-        #selection = closest_distances_result.smallest_distances > 0
-        #selection &= closest_distances_result.smallest_distances < 0.5
-        #da_xray_structure = da_xray_structure.select(~selection)
         xray_structure_current = xray_structure_current.concatenate(da_xray_structure)
         da_sel.extend(flex.bool(da_xray_structure.scatterers().size(), True))
         if(params.mode == "build_and_refine"):
-          #XXXprint fmodel.r_work()
           fmodel.update_xray_structure(update_f_calc=True, update_f_mask=False,
             xray_structure = xray_structure_current)
           #XXX print fmodel.r_work()
@@ -222,18 +208,12 @@ def grow_density(f_obs,
             number_of_cycles     = params.number_of_refinement_cycles,
             selection            = da_sel)
           xray_structure_current = fmodel.xray_structure
-        #assert da_sel.size() == xray_structure_current.scatterers().size()
-        if(all_da_xray_structure is None):
-          all_da_xray_structure = da_xray_structure
-        else:
-          #all_da_xray_structure = all_da_xray_structure.concatenate(
-          #  xray_structure_current.select(da_sel))
-          all_da_xray_structure = all_da_xray_structure.concatenate(
-            da_xray_structure)
-        assert xray_structure_start.scatterers().size() == da_sel.count(False)
       except Exception, e:
         print "ERROR:", str(e)
-
+    da_sel = flex.bool(xray_structure_start.scatterers().size(), False)
+    da_sel.extend(flex.bool(xray_structure_current.scatterers().size()-xray_structure_start.scatterers().size(), True))
+    da_sel.count(True) == n_da
+    all_da_xray_structure = xray_structure_current.select(da_sel)
     ofn = params.output_file_name_prefix
     if(ofn is None):
       ofn = "DA.pdb"
@@ -243,23 +223,30 @@ def grow_density(f_obs,
     pdb_file_str = all_da_xray_structure.as_pdb_file()
     pdb_file_str = pdb_file_str.replace("    %s"%params.atom_type.upper(),"") # XXX tmp, to facilitate PyMol runs
     print >> ofn, pdb_file_str
-    ### XXX#####################
-    map_type_obj = mmtbx.map_names(map_name_string = "2mFo-DFc")
-    map_params = maps.map_master_params().fetch(
-      maps.cast_map_coeff_params(map_type_obj)).extract()
-    maps_obj = maps.compute_maps(fmodel = fmodel, params = map_params)
-    coeffs = maps_obj.coeffs
-    lbl_mgr = maps.map_coeffs_mtz_label_manager(map_params =
-      map_params.map_coefficients[0])
-    mtz_dataset = coeffs.as_mtz_dataset(
-      column_root_label = lbl_mgr.amplitudes(),
-      label_decorator   = lbl_mgr)
-    mtz_object = mtz_dataset.mtz_object()
-    output_map_file_name = "map_coeffs.mtz"
-    if(params.output_file_name_prefix is not None):
-      output_map_file_name = params.output_file_name_prefix+"_map_coeffs.mtz"
-    mtz_object.write(file_name = output_map_file_name)
-    ### XXX#####################
+    #
+    if(params.mode == "build_and_refine"):
+      map_type_obj = mmtbx.map_names(map_name_string = "2mFo-DFc")
+      map_params = maps.map_master_params().fetch(
+        maps.cast_map_coeff_params(map_type_obj)).extract()
+      maps_obj = maps.compute_maps(fmodel = fmodel, params = map_params)
+      coeffs = maps_obj.coeffs
+      lbl_mgr = maps.map_coeffs_mtz_label_manager(map_params =
+        map_params.map_coefficients[0])
+      mtz_dataset = coeffs.as_mtz_dataset(
+        column_root_label = lbl_mgr.amplitudes(),
+        label_decorator   = lbl_mgr)
+      #
+      f_calc_da = coeffs.structure_factors_from_scatterers(xray_structure =
+        all_da_xray_structure).f_calc()
+      mtz_dataset.add_miller_array(
+        miller_array      = f_calc_da,
+        column_root_label = "Fcalc_da")
+      #
+      mtz_object = mtz_dataset.mtz_object()
+      output_map_file_name = "map_coeffs.mtz"
+      if(params.output_file_name_prefix is not None):
+        output_map_file_name = params.output_file_name_prefix+"_map_coeffs.mtz"
+      mtz_object.write(file_name = output_map_file_name)
     print "Finished"
 
 def refinery(fmodels, number_of_iterations, iselection, parameter):
@@ -305,22 +292,22 @@ def reset_adps(fmodels, b_min, b_max, set_min, set_max):
 
 def refine_da(fmodel, number_of_iterations, number_of_cycles, selection):
   fmodels = mmtbx.fmodels(fmodel_xray = fmodel)
-  print "START: Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(), fmodel.r_free())
+  print "  START: Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(), fmodel.r_free())
   for i in xrange(number_of_cycles):
     refinery(fmodels=fmodels, number_of_iterations=number_of_iterations,
       iselection=selection.iselection(), parameter="occupancies")
     reset_occupancies(fmodels=fmodels, occ_min=0., occ_max=10., set_min=0., set_max=10.)
-    print "mc %3d: Refined occupancies   Rwork = %8.6f Rfree = %8.6f"%(i,
+    print "  mc %3d: Refined occupancies   Rwork = %8.6f Rfree = %8.6f"%(i,
       fmodels.fmodel_xray().r_work(), fmodels.fmodel_xray().r_free())
     #
     refinery(fmodels=fmodels, number_of_iterations=number_of_iterations,
       iselection=selection.iselection(), parameter="adps")
-    print "mc %3d: Refined B-factors     Rwork = %8.6f Rfree = %8.6f"%(i,
+    print "  mc %3d: Refined B-factors     Rwork = %8.6f Rfree = %8.6f"%(i,
       fmodels.fmodel_xray().r_work(), fmodels.fmodel_xray().r_free())
     #
-    if(i<=3):
-      reset_occupancies(fmodels=fmodels, occ_min=0., occ_max=10., set_min=1.e-3, set_max=1.)
-      reset_adps(fmodels, b_min=10., b_max=80., set_min=10., set_max=80.)
+#XXX    if(i<=2 and number_of_cycles > 3):
+#XXX      reset_occupancies(fmodels=fmodels, occ_min=0., occ_max=10., set_min=1.e-3, set_max=1.)
+#XXX      reset_adps(fmodels, b_min=10., b_max=80., set_min=10., set_max=80.)
     #
     assert fmodel.xray_structure is fmodels.fmodel_xray().xray_structure
 
@@ -391,11 +378,12 @@ def reflection_file_server(crystal_symmetry, reflection_files):
 def cmd_run(args, command_name):
   msg = """\
 
-Tool to compute local map correlation coefficient.
+Tool for local improvement of electron density map.
 
 How to use:
 1: Run this command: phenix.grow_density
-2: Copy, save into a file and edit the parameters shown between the lines *** below
+2: Copy, save into a file and edit the parameters shown between the
+   lines *** below. Do not include *** lines.
 3: Run the command with this parameters file:
    phenix.grow_density parameters.txt
 """
@@ -405,7 +393,12 @@ How to use:
     master_params().show()
     print "*"*79
     return
-  else :
+  else:
+    if(not os.path.isfile(args[0]) or len(args)>1):
+      print "Parameter file is expected at input. This is not a parameter file:\n", \
+        args
+      print "Run phenix.grow_density without argumets for running instructions."
+      return
     processed_args = utils.process_command_line_args(args = args,
       master_params = master_params(), log = None)
     params = processed_args.params.extract()

@@ -12,6 +12,7 @@ import mmtbx.refinement.real_space
 from cctbx import miller
 from mmtbx import map_tools
 from libtbx.test_utils import approx_equal, not_approx_equal
+from mmtbx import masks
 
 class residue_rsr_monitor(object):
   def __init__(self,
@@ -115,20 +116,6 @@ class rotomer_evaluator(object):
     t1 = target(sites_cart, self.unit_cell, self.two_mfo_dfc_map)
     t2 = target(sites_cart, self.unit_cell, self.mfo_dfc_map)
     t = t1+t2
-    dmif1 = t2 < 0 and self.t2_best < 0 and t2 < self.t2_best
-    dmif2 = self.t2_best > 0 and t2 < 0 and abs(t2) > abs(self.t2_best)
-    #dmif4 = self.t2_best > 0 and t2 > 0 and t2 > self.t2_best
-    #dmif3 = t1 < self.t1_best and (self.t2_best > 0 and t2 > 0 and t2 > self.t2_best)
-    #d1 = abs(abs(t1)-abs(self.t1_best))
-    #d2 = abs(abs(t2)-abs(self.t2_best))
-    #dmif5 = t1 < self.t1_best and abs(t2) > abs(self.t2_best)
-    #dmif6 = t1 < self.t1_best and d2 > d1*2
-    #dmif7 = abs(t2) > abs(self.t2_best) and d2 > d1 and t1 < self.t1_best
-    #
-    dmif = dmif1 or dmif2 #or dmif7 #or dmif5 #or dmif3 #or dmif4
-    result = t > self.t_best and not dmif
-
-    ####
     result = False
     if(t > self.t_best):
       #self.t_best = t # this gives lower Rfactor
@@ -142,19 +129,14 @@ class rotomer_evaluator(object):
         self.t2_best = t2
         self.t1_best = t1
         self.t_best = t
-      #elif(t2 > 0 and self.t2_best < 0 and abs(t2)>abs(self.t2_best)):
-      elif(t2 > 0 and self.t2_best < 0):
+      elif(t2 > 0 and self.t2_best < 0 and abs(t2)>abs(self.t2_best)):
+      #elif(t2 > 0 and self.t2_best < 0):
         result = True
         self.t2_best = t2
         self.t1_best = t1
         self.t_best = t
     return result
-    #### KEEP THE BEST RESULT GLOBALLY!!!
-    if(result):
-      self.t_best = t
-      self.t1_best = t1
-      self.t2_best = t2
-    return result
+
 
 def iterate_rotamers(pdb_hierarchy,
                      xray_structure,
@@ -167,10 +149,12 @@ def iterate_rotamers(pdb_hierarchy,
                      f_obs, fft_map,
                      poor_cc_threshold,
                      log,
+                     real_space_refine = "restrained",
                      ignore_alt_conformers = True):
   assert map_data_1.focus() == map_data_2.focus()
   assert map_data_1.all() == map_data_2.all()
-  fmt1 = "                SSSSSSTTTTTAAAAARRRRRRT FFFFIIINNNAAALLL"
+  assert real_space_refine in ["restrained","constrained"]
+  fmt1 = "                |--------START--------| |-----FINAL----|"
   fmt2 = "    residue id  map_cc 2mFo-DFc mFo-DFc 2mFo-DFc mFo-DFc rotomer n_rotamers"
   fmt3 = "%14s %7.4f %8.2f %7.2f %8.2f %7.2f %7s %10d"
   print >> log, fmt1
@@ -194,6 +178,7 @@ def iterate_rotamers(pdb_hierarchy,
         for conformer in residue_group.conformers():
           residue = conformer.only_residue()
           residue_iselection = flex.size_t()
+          residue_sidechain_iselection = flex.size_t()
           exclude = False
           for atom in residue.atoms():
             residue_iselection.append(atom.i_seq)
@@ -241,19 +226,20 @@ def iterate_rotamers(pdb_hierarchy,
                     if(rev.is_better(sites_cart = rotamer_sites_cart)):
                       rotamer_id_best = rotamer.id
                       residue_sites_best = rotamer_sites_cart.deep_copy()
-                      residue.atoms().set_xyz(new_xyz=rotamer_sites_cart)
-                      sites_cart_start = sites_cart_start.set_selected(
-                        residue_iselection, rotamer_sites_cart)
                   residue.atoms().set_xyz(new_xyz=residue_sites_best)
-                  refined = rsr_manager.refine_restrained(residue = residue)
+                  if(real_space_refine == "restrained"):
+                    refined = rsr_manager.refine_restrained(residue = residue)
+                  elif(real_space_refine == "constrained"):
+                    refined = rsr_manager.refine_constrained(residue = residue)
+                  else: raise RuntimeError
                   if(rev.is_better(sites_cart = refined.sites_cart_residue)):
                     rotamer_sites_cart_refined = \
                       refined.sites_cart_residue.deep_copy()
                     sites_cart_start = sites_cart_start.set_selected(
                       residue_iselection, rotamer_sites_cart_refined)
                     residue.atoms().set_xyz(new_xyz=rotamer_sites_cart_refined)
-              if(not_approx_equal(rev.t1_best, rev.t1_start, 0.01) and
-                 not_approx_equal(rev.t2_best, rev.t2_start, 0.01)):
+              if(abs(rev.t1_best-rev.t1_start) > 0.01 and
+                 abs(rev.t2_best-rev.t2_start) > 0.01):
                 print >> log, fmt3%(resid, cc_start, rev.t1_start, rev.t2_start,
                   rev.t1_best, rev.t2_best, rotamer_id_best, n_rotamers)
   xray_structure.set_sites_cart(sites_cart_start)
@@ -294,7 +280,7 @@ def validate(fmodel, residue_rsr_monitor, log):
   sites_cart_result = sites_cart.deep_copy()
   unit_cell = xray_structure.unit_cell()
   print >> log, "Validate:"
-  fmt1 = "                S     T    A    R     T F   I  N  A    L"
+  fmt1 = "                |--------START--------| |--------FINAL--------|"
   fmt2 = "    residue id  map_cc 2mFo-DFc mFo-DFc map_cc 2mFo-DFc mFo-DFc"
   fmt3 = "%14s %7.4f %8.2f %7.2f %7.4f %8.2f %7.2f"
   print >> log, fmt1
@@ -307,16 +293,16 @@ def validate(fmodel, residue_rsr_monitor, log):
       residue_iselection = rm.selection)
     flag = ""
     dmif1 = rm.mfodfc < 0 and t2 < 0 and t2 < rm.mfodfc
-    dmif2 = rm.mfodfc > 0 and t2 < 0 and abs(t2) > abs(rm.mfodfc) # XXX
+    dmif2 = rm.mfodfc > 0 and t2 < 0 and abs(t2) > abs(rm.mfodfc)
     dmif = dmif1 or dmif2
-    if(cc < rm.cc and t1 < rm.twomfodfc and dmif): flag = " <<<" ### XXX replace or with AND !!!
+    if((cc < rm.cc or t1 < rm.twomfodfc) and dmif): flag = " <<<"
     print >> log, fmt3 % (rm.resid, rm.cc, rm.twomfodfc, rm.mfodfc, cc,t1,t2), flag
     if(len(flag)>0):
       sites_cart_result = sites_cart_result.set_selected(rm.selection, rm.sites_cart)
   xray_structure.set_sites_cart(sites_cart_result)
   fmodel.update_xray_structure(xray_structure = xray_structure,
     update_f_calc=True, update_f_mask=True)
-  print fmodel.r_work(), fmodel.r_free()
+  print "r_work=%6.4f r_free=%6.4f" % (fmodel.r_work(), fmodel.r_free())
 
 def run(fmodel,
         geometry_restraints_manager,
@@ -327,7 +313,8 @@ def run(fmodel,
         poor_cc_threshold,
         log,
         ignore_water = False,
-        filter_residual_map_value = None):
+        filter_residual_map_value = 2.0,
+        filter_2fofc_map = None):
   mon_lib_srv = mmtbx.monomer_library.server.server()
   if(do_not_use_dihedrals):
     sel = flex.bool(fmodel.xray_structure.scatterers().size(), True)
@@ -353,12 +340,15 @@ def run(fmodel,
     if(filter_residual_map_value is not None):
       map_sel = flex.abs(map_data_3) < filter_residual_map_value
       map_data_3 = map_data_3.set_selected(map_sel, 0)
+    if(filter_2fofc_map is not None):
+      map_sel = flex.abs(map_data_1) < filter_2fofc_map
+      map_data_1 = map_data_1.set_selected(map_sel, 0)
     rsr_manager = refiner(
       pdb_hierarchy               = pdb_hierarchy,
       selection                   = selection,
       target_map                  = map_data_1,
       geometry_restraints_manager = geometry_restraints_manager,
-      real_space_target_weight    = 100,
+      real_space_target_weight    = 50,
       real_space_gradients_delta  = fmodel.f_obs.d_min()/4,
       max_iterations              = 55,
       min_iterations              = 50)
@@ -377,7 +367,7 @@ def run(fmodel,
     fmodel.update_xray_structure(update_f_calc=True, update_f_mask=True)
     print >> log, "1:", fmt%(macro_cycle, fmodel.r_work(), fmodel.r_free())
     del map_data_1, map_data_2, map_data_3, fft_map_1, fft_map_2, fft_map_3
-    if 1:
+    if 1: # XXX add option
       assert model.xray_structure is fmodel.xray_structure
       params = mmtbx.refinement.real_space.master_params().extract()
       params.real_space_refinement.mode="diff_map"
@@ -390,4 +380,5 @@ def run(fmodel,
       fmodel.update_xray_structure(update_f_calc=True, update_f_mask=True)
       print >> log, "2:",fmt%(macro_cycle, fmodel.r_work(), fmodel.r_free())
     #
-    validate(fmodel=fmodel, residue_rsr_monitor=residue_rsr_monitor, log=log)
+    if 1: # XXX add option
+      validate(fmodel=fmodel, residue_rsr_monitor=residue_rsr_monitor, log=log)
