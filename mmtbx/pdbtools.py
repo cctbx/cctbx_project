@@ -156,7 +156,7 @@ sites
     .help = Randomize coordinates with mean error value equal to shake
   max_rotomer_distortion = None
     .type = bool
-    .help = Switch to a rotomer maximally distant from the curent one
+    .help = Switch to a rotomer maximally distant from the current one
   translate = 0 0 0
     .type = strings
     # XXX FUTURE float(3)
