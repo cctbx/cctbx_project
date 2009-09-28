@@ -144,6 +144,8 @@ namespace boost_adaptbx { namespace file_conversion {
     typedef ostream py_ostream;
     py_ostream err_stream(&err_file_obj);
     py_ostream out_stream(&out_file_obj);
+    err_stream.flush();
+    out_stream.flush();
   }
 
 }} // boost_adaptbx::file_conversion
