@@ -169,6 +169,10 @@ class python_file_buffer : public std::basic_streambuf<char>
         catch (python::error_already_set) {
           py_tell = python::object();
           py_seek = python::object();
+          /* Boost.Python does not do any Python exception handling whatsoever
+             So we need to catch it by hand like so.
+           */
+          PyErr_Clear();
         }
       }
 
