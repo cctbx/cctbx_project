@@ -520,6 +520,7 @@ scitbx/graph/tst_tardy_tree.py svneol=native#text/x-python
 scitbx/graph/tst_tardy_tree_find_paths.py svneol=native#text/x-python
 scitbx/graph/tst_utils.py svneol=native#text/x-python
 scitbx/graph/utils.py svneol=native#text/x-python
+scitbx/gss.py -text
 scitbx/iso_surface.h -text
 scitbx/iso_surface/SConscript -text
 scitbx/iso_surface/__init__.py -text
