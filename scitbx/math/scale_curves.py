@@ -3,10 +3,79 @@ from scitbx.array_family import flex
 import math, sys
 from libtbx.test_utils import approx_equal
 
+class curve_interpolator(object):
+  def __init__(self, custom_x_array):
+    self.target_x = custom_x_array
+
+
+  def interpolate(self, x_array, y_array):
+    index_array = []
+    result_array = []
+
+    start_index = None
+    end_index = None
+
+    for jj,x in enumerate(self.target_x):
+      this_index = None
+      for index,this_x in enumerate(x_array):
+        if this_x - x >= 0:
+          #print x, this_x, x_array[index-1], x_array[index+1], "gues"
+          this_index = index
+          if start_index is None:
+             start_index = this_index
+          end_index = this_index
+          break
+      index_array.append( this_index )
+      y = None
+      if this_index is not None:
+        if this_index == 0:
+          y = self.two_point_interpolate( x,
+                                          x_array[this_index  ], y_array[this_index  ],
+                                          x_array[this_index+1], y_array[this_index+1] )
+        elif this_index == len(x_array)-1:
+          y = self.two_point_interpolate( x,
+                                          x_array[this_index-1], y_array[this_index-1],
+                                          x_array[this_index], y_array[this_index] )
+
+        else:
+          y = self.parabolic_interpolate( x,
+                                          x_array[this_index-1], y_array[this_index-1],
+                                          x_array[this_index  ], y_array[this_index  ],
+                                          x_array[this_index+1], y_array[this_index+1] )
+
+        result_array.append( y )
+
+    n = len(result_array)
+    x = flex.double(self.target_x[0:n])
+    y = flex.double(result_array)
+    return x,y,start_index,end_index
+
+  def two_point_interpolate(self,x, xo, fxo, xp, fxp):
+    ph = x-xo
+    h = xp-xo
+    p = ph
+    if ph >0:
+      p = ph/h
+    result = (1-p)*fxo + p*fxp
+    return result
+
+  def parabolic_interpolate(self, x, xm, fxm, xo, fxo, xp, fxp):
+    result = fxm*( (x-xo)*(x-xp) )/ ( (xm-xo)*(xm-xp) ) + \
+             fxo*( (x-xm)*(x-xp) )/ ( (xo-xm)*(xo-xp) ) + \
+             fxp*( (x-xm)*(x-xo) )/ ( (xp-xm)*(xp-xo) )
+    return result
+
+
+
+
+
+
+
+
 
 class linear_scaler(object):
   """This class scales together varios curves. means and varainces should be lists of flex arrays"""
-  def __init__(self, means, variances, reference_id=0,spread=3.0, factor=50,f=0.7,eps=1e-12,out=None,show_progress=False,insert_solution_vector=None,add=True):
+  def __init__(self, means, variances, reference_id=0,init_mean=1.0,spread=0.1, factor=50,f=0.7,eps=1e-12,out=None,show_progress=False,insert_solution_vector=None,add=True):
     self.out = None
     if self.out is None:
       self.out = sys.stdout
@@ -21,7 +90,7 @@ class linear_scaler(object):
 
     self.n = (len(self.means)-1)*2
     self.x = None
-    self.domain = [ ( -spread,spread ) ]*self.n
+    self.domain = [ ( -spread+init_mean,spread+init_mean ) ]*self.n
     self.optimizer =  de.differential_evolution_optimizer(self,population_size=self.n*factor,show_progress=show_progress,eps=eps, f=f,n_cross=2,cr=0.8,insert_solution_vector=insert_solution_vector)
 
   def setup_coeff_map(self):
@@ -141,6 +210,25 @@ def test_curve_scaler():
    assert approx_equal(o[2],-500,eps=1e-2)
 
 
+
+def tst_curve_interpolator():
+  x = flex.double( range(25) )/24.0
+  y = x*x
+  x_target = flex.double( range(200) )/100.0
+  y_ref = x_target*x_target
+  ip = curve_interpolator(x_target)
+  nx,ny,a,b = ip.interpolate(x,y)
+  for yy,yyy in zip(ny,y_ref):
+    assert approx_equal(yy,yyy,eps=1e-3)
+  assert a==0
+  assert b==24
+
+
+
+
+
+
 if __name__ == "__main__":
-  test_curve_scaler()
+  #test_curve_scaler()
+  tst_curve_interpolator()
   print "OK"
