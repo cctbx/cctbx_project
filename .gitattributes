@@ -510,6 +510,7 @@ scitbx/fortran_io/numeric_parsers.h -text
 scitbx/fortran_io/tests/SConscript -text
 scitbx/fortran_io/tests/tst_numeric_manipulators.cpp -text
 scitbx/fortran_io/tests/tst_numeric_parsers.cpp -text
+scitbx/golden_section_search.py -text
 scitbx/graph/__init__.py -text
 scitbx/graph/rigidity.py -text
 scitbx/graph/rigidity_matrix_symbolic.py svneol=native#text/x-python
