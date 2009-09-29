@@ -94,7 +94,8 @@ def run():
   "$D/simplex.py",
   "$D/differential_evolution.py",
   "$D/golden_section_search.py",
-  "$D/simulated_annealing.py"
+  "$D/simulated_annealing.py",
+  "$D/direct_search_simulated_annealing.py"
   )
 
   build_dir = libtbx.env.under_build("scitbx")
