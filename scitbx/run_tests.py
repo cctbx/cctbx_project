@@ -92,7 +92,9 @@ def run():
   "$B/fortran_io/tests/tst_numeric_manipulators",
   "$B/fortran_io/tests/tst_numeric_parsers",
   "$D/simplex.py",
-  "$D/differential_evolution.py"
+  "$D/differential_evolution.py",
+  "$D/golden_section_search.py",
+  "$D/simulated_annealing.py"
   )
 
   build_dir = libtbx.env.under_build("scitbx")
