@@ -85,6 +85,7 @@ class simplex_opt(object):
       self.min_score=self.simplexValue[self.min_indx]
       if count%self.monitor_cycle==0:
         rd = abs(monitor_score-self.min_score)
+        #rd = abs(self.simplexValue[self.max_indx]-self.min_score)
         rd = rd/(abs(self.min_score)+self.tolerance*self.tolerance)
         if rd < self.tolerance:
           found = True
@@ -184,6 +185,9 @@ class simplex_opt(object):
   def GetResult(self):
     return self.matrix[self.min_indx]
 
+  def GetScore(self):
+    return self.simplexValue[ self.min_indx ]
+
   def function(self,point):
     return self.evaluator.target( point )
 
@@ -209,9 +213,35 @@ class test_function(object):
     result +=1.0
     return result
 
+class test_rosenbrock_function(object):
+  def __init__(self, dim=2):
+    self.dim = dim
+    self.n = dim * 2
+    self.starting_simplex=[]
+    self.x = flex.double(self.n, 2)
+    for ii in range(self.n+1):
+      self.starting_simplex.append(flex.random_double(self.n)+ self.x)
+    self.optimizer = simplex_opt( dimension=self.n,
+                                  matrix  = self.starting_simplex,
+                                  evaluator = self,
+                                  tolerance=1e-10)
+    self.x = self.optimizer.GetResult()
+    assert (abs(self.x[0]-1.0) < 1e-6)
+    assert (abs(self.x[1]-1.0) < 1e-6)
+
+  def target(self, vector):
+    result = 0
+    for x, y in zip( vector[0:self.dim], vector[self.dim:]):
+      result = (1-x)**2.0 + 100.0*(y-x*x)**2.0
+    #print x, y, result
+    return result
+
+
+
 def run():
   flex.set_random_seed(0)
   for ii in xrange(10):
+    test_rosenbrock_function(1)
     test_function(1)
     test_function(2)
     test_function(3)
