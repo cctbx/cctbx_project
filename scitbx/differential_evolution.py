@@ -199,11 +199,37 @@ class test_function(object):
     return result
 
 
+class test_rosenbrock_function(object):
+  def __init__(self, dim=5):
+    self.x = None
+    self.n = 2*dim
+    self.dim = dim
+    self.domain = [ (-10,10) ]*self.n
+    self.optimizer =  differential_evolution_optimizer(self,population_size=self.n*10,n_cross=self.n*2,eps=1e-8, show_progress=False)
+    for x in self.x:
+      assert abs(x-1.0)<1e-2
+
+
+  def target(self, vector):
+    tmp = vector.deep_copy()
+    x_vec = vector[0:self.dim]
+    y_vec = vector[self.dim:]
+    result=0
+    for x,y in zip(x_vec,y_vec):
+      result+=100.0*((y-x*x)**2.0) + (1-x)**2.0
+    #print list(x_vec), list(y_vec), result
+    return result
+
+  def print_status(self, mins,means,vector,txt):
+    print mins, means, list(vector)
+
 
 def run():
   random.seed(0)
   flex.set_random_seed(0)
-  test_function()
+  #test_function()
+  test_rosenbrock_function(2)
+
   print "OK"
 
 
