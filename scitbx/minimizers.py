@@ -118,8 +118,14 @@ class newton_more_thuente_1994:
         eps_1=1.e-16,
         eps_2=1.e-16,
         matrix_symmetric_relative_epsilon=1.e-12,
-        k_max=1000):
+        k_max=1000,
+        constant_hessian=False):
     self.function = function
+    self.constant_hessian = constant_hessian
+    fdp = None
+    gmw = None
+    u = None
+
     x = x0.deep_copy()
     function_f, callback_after_step = [getattr(function, attr, None)
       for attr in ["f", "callback_after_step"]]
@@ -148,12 +154,16 @@ class newton_more_thuente_1994:
     while (k < k_max):
       if (flex.max(flex.abs(fp)) <= eps_1):
         break
-      fdp = function.hessian(x=x)
-      number_of_hessian_evaluations += 1
-      u = fdp.matrix_symmetric_as_packed_u(
-        relative_epsilon=matrix_symmetric_relative_epsilon)
-      gmw = scitbx.linalg.gill_murray_wright_cholesky_decomposition_in_place(u)
-      number_of_cholesky_decompositions += 1
+
+      if (fdp is None) or ( not self.constant_hessian ):
+        fdp = function.hessian(x=x)
+        number_of_hessian_evaluations += 1
+        u = fdp.matrix_symmetric_as_packed_u(
+          relative_epsilon=matrix_symmetric_relative_epsilon)
+        gmw = scitbx.linalg.gill_murray_wright_cholesky_decomposition_in_place(u)
+        number_of_cholesky_decompositions += 1
+
+
       h_dn = gmw.solve(b=-fp)
       initial_step_length = 1
       backup_x = x.deep_copy()
@@ -205,6 +215,7 @@ class newton_more_thuente_1994:
     self.number_of_hessian_evaluations = number_of_hessian_evaluations
     self.number_of_cholesky_decompositions = number_of_cholesky_decompositions
     self.line_search_info = line_search.info_meaning
+
 
   def show_statistics(self):
     print "scitbx.minimizers.newton_more_thuente_1994 results:"
