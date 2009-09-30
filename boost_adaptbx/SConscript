@@ -124,41 +124,41 @@ if (not env_etc.no_boost_python):
                    lo="boost/libs/python/src/libboost_python.lo",
                    dylib="lib/libboost_python.dylib")
 
-  bpl_dll_sources = []
+  # fixed list of file names introduced 2009-09-29, due to major changes in
+  # boost/libs/python/build/Jamfile.v2 svn rev. 56305 (new Python 3 support)
+  bpl_dll_sources = """\
+numeric.cpp
+list.cpp
+long.cpp
+dict.cpp
+tuple.cpp
+str.cpp
+slice.cpp
+converter/from_python.cpp
+converter/registry.cpp
+converter/type_id.cpp
+object/enum.cpp
+object/class.cpp
+object/function.cpp
+object/inheritance.cpp
+object/life_support.cpp
+object/pickle_support.cpp
+errors.cpp
+module.cpp
+converter/builtin_converters.cpp
+converter/arg_to_python_base.cpp
+object/iterator.cpp
+object/stl_iterator.cpp
+object_protocol.cpp
+object_operators.cpp
+wrapper.cpp
+import.cpp
+exec.cpp
+object/function_doc_signature.cpp
+""".splitlines()
   prefix = "#"+os.path.join(
     os.path.basename(env_etc.boost_dist), "libs", "python", "src")
-  jamfile_path = libtbx.env.under_dist("boost", "libs/python/build/Jamfile.v2")
-  jamfile_lines = iter(open(jamfile_path).read().splitlines())
-  error_msg = "Unexpected file content: %s" % show_string(jamfile_path)
-  for line in jamfile_lines:
-    if (line.strip() == "lib boost_python"):
-      for line in jamfile_lines:
-        line = line.strip()
-        if (line == ";"): break
-        if (line == "" or line[0] not in string.letters): continue
-        if (line.endswith("builtin_converters.cpp")):
-          bpl_dll_sources.append("#boost_adaptbx/builtin_converters.cpp")
-        else:
-          bpl_dll_sources.append(os.path.join(prefix, line))
-      else:
-        raise RuntimeError(error_msg)
-      break
-  else:
-    raise RuntimeError(error_msg)
-  assert len(bpl_dll_sources) > 0
-  #
-  builtin_converters_cpp = libtbx.env.under_dist(
-    "boost", "libs/python/src/converter/builtin_converters.cpp")
-  assert os.path.exists(builtin_converters_cpp)
-  code = open(builtin_converters_cpp).read()
-  if (eval(ARGUMENTS.get("patch_builtin_converters", "False"))):
-    print "boost_adaptbx: patching builtin_converters.cpp"
-    code = code.replace("return numeric_cast", "return static_cast")
-  build_boost_adaptbx = libtbx.env.under_build("boost_adaptbx")
-  if (not os.path.isdir(build_boost_adaptbx)):
-    os.mkdir(build_boost_adaptbx)
-  open(os.path.join(
-    build_boost_adaptbx, "builtin_converters.cpp"), "w").write(code)
+  bpl_dll_sources = [os.path.join(prefix, path) for path in bpl_dll_sources]
   #
   env.Repository(os.path.dirname(env_etc.boost_dist))
   if (env_etc.static_bpl):
