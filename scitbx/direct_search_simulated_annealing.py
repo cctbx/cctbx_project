@@ -1,12 +1,12 @@
 from scitbx.array_family import flex
+from stdlib import math
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
 from copy import deepcopy
-from math import exp,sin
 import random
 from scitbx import simplex
 
-class DSSA(object):
+class dssa(object):
   """
   Directed Simplex Simulated Annealing
   http://www-optima.amp.i.kyoto-u.ac.jp/member/student/hedar/Hedar_files/go_files/DSSA.pdf
@@ -17,7 +17,7 @@ class DSSA(object):
                dimension,
                matrix, # ndm * (ndm+1)
                evaluator,
-               N_candidate=None,
+               n_candidate=None,
                tolerance=1e-8,
                max_iter=1e9,
                coolfactor = 0.6,
@@ -32,10 +32,10 @@ class DSSA(object):
     self.coolfactor = coolfactor
     self.T_ratio = T_ratio
     self.simplex_scale = simplex_scale
-    if(N_candidate is None):
-      self.N_candidate=dimension+1
+    if(n_candidate is None):
+      self.n_candidate=dimension+1
     else:
-      self.N_candidate=N_candidate
+      self.n_candidate=n_candidate
 
     if((len(matrix) != self.dimension+1) or (matrix[0].size() != self.dimension)):
        raise Sorry("The initial simplex matrix does not match dimensions specified")
@@ -65,7 +65,7 @@ class DSSA(object):
     end = False
     self.Nstep=self.dimension
     monitor_score=0
-    self.Sort()
+    self.sort()
 
     for point in self.matrix:
       self.candidates.append(point.deep_copy() )
@@ -92,13 +92,13 @@ class DSSA(object):
         end =True
 
   def update_candi(self):
-    for ii in range(self.dimension+1):
-      for jj in range(ii, self.N_candidate):
+    for ii in range(2):
+      for jj in range(ii, self.n_candidate):
         if self.simplexValue[ii] < self.candi_value[jj]:
           if(self.simplexValue[ii] > self.candi_value[jj-1]):
             self.candi_value.insert( jj, self.simplexValue[ii])
             self.candidates.insert( jj, self.matrix[ii].deep_copy() )
-            if(self.candi_value.size() > self.N_candidate):
+            if(self.candi_value.size() > self.n_candidate):
               self.candi_value.pop_back()
               self.candidates.pop()
           break
@@ -115,8 +115,8 @@ class DSSA(object):
                                            evaluator = self.evaluator,
                                            tolerance=self.tolerance
                                      )
-      self.solutions.append( optimizer.GetResult() )
-      self.scores.append( optimizer.GetScore() )
+      self.solutions.append( optimizer.get_result() )
+      self.scores.append( optimizer.get_score() )
 
     min_index = flex.min_index( self.scores )
     self.best_solution = self.solutions[ min_index ]
@@ -125,7 +125,7 @@ class DSSA(object):
 
   def explore(self):
      if(self.count == 0):
-       self.T=(flex.mean(flex.pow(self.simplexValue - flex.mean(self.simplexValue), 2.0)))**0.5
+       self.T=(flex.mean(flex.pow2(self.simplexValue - flex.mean(self.simplexValue) )))**0.5 * 10.0
        self.min_T = self.T /self.T_ratio
      elif(self.count%self.Nstep == 0):
        self.T = self.T*self.coolfactor
@@ -133,11 +133,11 @@ class DSSA(object):
      for kk in range(1,self.dimension+1):
        self.FindCentroidPt(self.dimension+1-kk)
        self.FindReflectionPt(kk)
-     self.Sort()
+     self.sort()
 
      return # end of this explore step
 
-  def Sort(self):
+  def sort(self):
     tmp_matrix=deepcopy(self.matrix)
     tmp_value=list(self.simplexValue)
     sort_value=list(self.simplexValue)
@@ -167,7 +167,7 @@ class DSSA(object):
       reflect_value.append(self.function(reflectionPt))
     self.reflectionPtValue=min(reflect_value)
     if(self.reflectionPtValue > self.simplexValue[0]):
-      p=exp(-(self.reflectionPtValue-self.simplexValue[0])/self.T)
+      p=math.exp(-(self.reflectionPtValue-self.simplexValue[0])/self.T)
       #print p
       if(p >= random.random()):
         self.ReplacePt(kk, reflect_matrix, reflect_value)
@@ -180,13 +180,13 @@ class DSSA(object):
     for ii in range(self.dimension+1-kk,self.dimension+1):
       self.matrix[ii] = reflect_matrix[ii-(self.dimension+1-kk)]
       self.simplexValue[ii]=reflect_value[ii-(self.dimension+1-kk)]
-    self.Sort()
+    self.sort()
     #self.update_candi()
 
-  def GetResult(self):
+  def get_solution(self):
     return self.best_solution
 
-  def getCandi(self):
+  def get_candi(self):
     return self.candidates
 
   def function(self,point):
@@ -197,19 +197,22 @@ class test_rosenbrock_function(object):
   def __init__(self, dim=4):
     self.n = dim*2
     self.dim = dim
-    self.x = flex.double( self.n, 2.0 )
+    self.x = flex.double( self.n, 2.5 )
 
     self.starting_simplex=[]
     for ii in range(self.n+1):
       self.starting_simplex.append(flex.random_double(self.n) + self.x)
 
-    self.optimizer = DSSA(dimension=self.n,
+    self.optimizer = dssa(dimension=self.n,
                           matrix = self.starting_simplex,
                           evaluator = self,
-                          tolerance=1e-10,
+                          tolerance=1e-8,
                           coolfactor=0.6
                                           )
-    self.x = self.optimizer.GetResult()
+    self.x = self.optimizer.get_solution()
+  #  m = self.optimizer.get_candi()
+  #  for mm in m:
+  #    print list(mm)
     for x in self.x:
       assert abs(x-1.0)<1e-2
 
