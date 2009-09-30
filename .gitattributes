@@ -646,7 +646,6 @@ scitbx/rigid_body/tardy.h svneol=native#text/plain
 scitbx/rigid_body/tst.py svneol=native#text/x-python
 scitbx/rotr3.h svneol=native#text/plain
 scitbx/simplex.py -text
-scitbx/simulated_annealing.py -text
 scitbx/source_generators/flex_fwd_h.py -text
 scitbx/sparse/__init__.py -text
 scitbx/sparse/approx_equal.h -text
