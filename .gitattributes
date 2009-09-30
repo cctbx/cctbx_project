@@ -492,6 +492,7 @@ scitbx/boost_python/sequence_as_array.h svneol=native#text/plain
 scitbx/command_line/generate_error_h.py -text
 scitbx/command_line/show_sizes.py svneol=native#text/x-python
 scitbx/command_line/unicode_examples.py svneol=native#text/x-python
+scitbx/cross_entropy.py -text
 scitbx/direct_search_simulated_annealing.py -text
 scitbx/error/SConscript -text
 scitbx/error/tst_error.cpp -text
