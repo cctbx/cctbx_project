@@ -182,10 +182,10 @@ class simplex_opt(object):
     #self.FindCentroidPt()
     self.matrix[self.max_indx] = vector
 
-  def GetResult(self):
+  def get_result(self):
     return self.matrix[self.min_indx]
 
-  def GetScore(self):
+  def get_score(self):
     return self.simplexValue[ self.min_indx ]
 
   def function(self,point):
@@ -202,7 +202,7 @@ class test_function(object):
                                   matrix  = self.starting_simplex,
                                   evaluator = self,
                                   tolerance=1e-10)
-    self.x = self.optimizer.GetResult()
+    self.x = self.optimizer.get_result()
     for ii in xrange(self.n):
       assert approx_equal(self.x[ii],ii+1,1e-5)
 
@@ -225,7 +225,7 @@ class test_rosenbrock_function(object):
                                   matrix  = self.starting_simplex,
                                   evaluator = self,
                                   tolerance=1e-10)
-    self.x = self.optimizer.GetResult()
+    self.x = self.optimizer.get_result()
     assert (abs(self.x[0]-1.0) < 1e-6)
     assert (abs(self.x[1]-1.0) < 1e-6)
 
