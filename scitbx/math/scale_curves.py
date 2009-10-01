@@ -12,18 +12,23 @@ class curve_interpolator(object):
     index_array = []
     result_array = []
 
-    start_index = None
-    end_index = None
+    start_index_user = None
+    end_index_user = None
+
+    start_index_target = None
+    end_index_target = None
 
     for jj,x in enumerate(self.target_x):
       this_index = None
       for index,this_x in enumerate(x_array):
         if this_x - x >= 0:
-          #print x, this_x, x_array[index-1], x_array[index+1], "gues"
           this_index = index
-          if start_index is None:
-             start_index = this_index
-          end_index = this_index
+          if start_index_user is None:
+             start_index_user = this_index
+          if start_index_target is None:
+            start_index_target = jj
+          end_index_user = this_index
+          end_index_target = jj
           break
       index_array.append( this_index )
       y = None
@@ -48,7 +53,7 @@ class curve_interpolator(object):
     n = len(result_array)
     x = flex.double(self.target_x[0:n])
     y = flex.double(result_array)
-    return x,y,start_index,end_index
+    return x,y,(start_index_user,end_index_user),(start_index_target,end_index_target)
 
   def two_point_interpolate(self,x, xo, fxo, xp, fxp):
     ph = x-xo
@@ -218,11 +223,19 @@ def tst_curve_interpolator():
   y_ref = x_target*x_target
   ip = curve_interpolator(x_target)
   nx,ny,a,b = ip.interpolate(x,y)
+  count = 0
+  for xx in x_target:
+    if flex.max(x) >= xx:
+      count += 1
+  assert count==len(nx)
+
+
   for yy,yyy in zip(ny,y_ref):
     assert approx_equal(yy,yyy,eps=1e-3)
-  assert a==0
-  assert b==24
-
+  assert a[0]==0
+  assert a[1]==24
+  assert b[0]==0
+  assert b[1]==100
 
 
 
