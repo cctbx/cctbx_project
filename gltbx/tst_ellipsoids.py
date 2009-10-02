@@ -3,9 +3,9 @@ from scitbx.array_family import flex
 import scitbx.math
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, approx_equal
-from gltbx import quadrics
 
 def exercise_ellipsoid(n_trials=100, n_sub_trials=10):
+  from gltbx import quadrics
   rnd = random.Random(0)
   for i in xrange(n_trials):
     centre = matrix.col([ rnd.random() for k in xrange(3) ])
@@ -35,9 +35,13 @@ def exercise_ellipsoid(n_trials=100, n_sub_trials=10):
     raise Exception_expected
 
 def run():
-  exercise_ellipsoid()
+  try:
+    import gltbx.gl
+  except ImportError:
+    print "Skipping gltbx/tst_ellipsoids.py: gltbx.gl module not available."
+  else:
+    exercise_ellipsoid()
   print "OK"
-
 
 if __name__ == '__main__':
   run()
