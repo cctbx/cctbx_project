@@ -13,6 +13,7 @@ from cctbx import miller
 from mmtbx import map_tools
 from libtbx.test_utils import approx_equal, not_approx_equal
 from mmtbx import masks
+from cctbx import maptbx
 
 class residue_rsr_monitor(object):
   def __init__(self,
@@ -53,7 +54,6 @@ class select_map(object):
 class refiner(object):
   def __init__(self,
                pdb_hierarchy,
-               selection,
                target_map,
                geometry_restraints_manager,
                real_space_target_weight,
@@ -63,29 +63,19 @@ class refiner(object):
     self.target_map = target_map
     self.real_space_target_weight = real_space_target_weight
     self.real_space_gradients_delta = real_space_gradients_delta
-    self.geometry_restraints_manager = \
-      geometry_restraints_manager.select(selection)
-    self.pdb_hierarchy_selected = pdb_hierarchy.select(
-      selection, copy_atoms=False) # XXX ??? making True changes the outcome
+    self.geometry_restraints_manager = geometry_restraints_manager
+    self.pdb_hierarchy = pdb_hierarchy
     self.lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations, min_iterations = min_iterations)
 
-  def refine_constrained(self, residue):
-    return lockit.residue_refine_constrained(
-      pdb_hierarchy               = self.pdb_hierarchy_selected,
-      residue                     = residue,
+  def refine_restrained(self, sites_cart_all, rsel, rs):
+    geometry_restraints_manager = \
+      self.geometry_restraints_manager.select(rsel)
+    return maptbx.real_space_refinement_simple.fragment_refine_restrained(
+      fragment_i_seqs              = rs,
+      sites_cart_all              = sites_cart_all,
       density_map                 = self.target_map,
-      geometry_restraints_manager = self.geometry_restraints_manager,
-      real_space_target_weight    = self.real_space_target_weight,
-      real_space_gradients_delta  = self.real_space_gradients_delta,
-      lbfgs_termination_params    = self.lbfgs_termination_params)
-
-  def refine_restrained(self, residue):
-    return lockit.residue_refine_restrained(
-      pdb_hierarchy               = self.pdb_hierarchy_selected,
-      residue                     = residue,
-      density_map                 = self.target_map,
-      geometry_restraints_manager = self.geometry_restraints_manager,
+      geometry_restraints_manager = geometry_restraints_manager,
       real_space_target_weight    = self.real_space_target_weight,
       real_space_gradients_delta  = self.real_space_gradients_delta,
       lbfgs_termination_params    = self.lbfgs_termination_params)
@@ -137,6 +127,16 @@ class rotomer_evaluator(object):
         self.t_best = t
     return result
 
+def include_residue_selection(selection, residue_iselection):
+  #print list(residue_iselection)
+  size = selection.size()
+  selection_ = selection.deep_copy()
+  selection_ = selection_.iselection()
+  selection_.extend(residue_iselection)
+  new_sel = flex.bool(size, selection_)
+  rs = flex.bool(size, residue_iselection).select(new_sel).iselection()
+  #print list(rs)
+  return new_sel, rs
 
 def iterate_rotamers(pdb_hierarchy,
                      xray_structure,
@@ -186,7 +186,7 @@ def iterate_rotamers(pdb_hierarchy,
             if(not selection[r_i_seq]):
               exclude = True
               break
-          if(not exclude):
+          if 1:#(not exclude):
             resid = " ".join([chain.id,residue.resname,residue.resseq])
             sites_cart = xray_structure.select(residue_iselection).sites_cart()
             cc_start = map_selector.get_cc(
@@ -227,14 +227,18 @@ def iterate_rotamers(pdb_hierarchy,
                       rotamer_id_best = rotamer.id
                       residue_sites_best = rotamer_sites_cart.deep_copy()
                   residue.atoms().set_xyz(new_xyz=residue_sites_best)
-                  if(real_space_refine == "restrained"):
-                    refined = rsr_manager.refine_restrained(residue = residue)
-                  elif(real_space_refine == "constrained"):
-                    refined = rsr_manager.refine_constrained(residue = residue)
-                  else: raise RuntimeError
-                  if(rev.is_better(sites_cart = refined.sites_cart_residue)):
+                  ###
+                  rsel, rs = include_residue_selection(selection = selection,
+                    residue_iselection = residue_iselection)
+                  tmp = sites_cart_start.set_selected(
+                    residue_iselection, residue_sites_best)
+                  refined = rsr_manager.refine_restrained(
+                    tmp.select(rsel),
+                    rsel, rs)
+
+                  if(rev.is_better(sites_cart = refined.sites_cart_fragment)):
                     rotamer_sites_cart_refined = \
-                      refined.sites_cart_residue.deep_copy()
+                      refined.sites_cart_fragment.deep_copy()
                     sites_cart_start = sites_cart_start.set_selected(
                       residue_iselection, rotamer_sites_cart_refined)
                     residue.atoms().set_xyz(new_xyz=rotamer_sites_cart_refined)
@@ -250,8 +254,8 @@ def get_map_data(fmodel, map_type, resolution_factor=1./4, kick=False):
     km = map_tools.kick_map(
       fmodel            = fmodel,
       map_type          = map_type,
-      kick_sizes        = [0.0,0.3],
-      number_of_kicks   = 30,
+      kick_sizes        = [0.0,0.3,0.5],
+      number_of_kicks   = 50,
       real_map          = False,
       real_map_unpadded = True,
       update_bulk_solvent_and_scale = False,
@@ -327,10 +331,12 @@ def run(fmodel,
     restraints_manager = restraints_manager,
     xray_structure = fmodel.xray_structure,
     pdb_hierarchy = pdb_hierarchy)
+  backbone_selections = model.backbone_selections()
   if(ignore_water):
     selection = ~model.solvent_selection()
   else:
     selection = flex.bool(model.xray_structure.scatterers().size(), True)
+  selection &= backbone_selections
   fmt = "Macro-cycle %2d: r_work=%6.4f r_free=%6.4f"
   print >> log, fmt%(0, fmodel.r_work(), fmodel.r_free())
   for macro_cycle in range(1,number_of_macro_cycles+1):
@@ -345,10 +351,9 @@ def run(fmodel,
       map_data_1 = map_data_1.set_selected(map_sel, 0)
     rsr_manager = refiner(
       pdb_hierarchy               = pdb_hierarchy,
-      selection                   = selection,
       target_map                  = map_data_1,
       geometry_restraints_manager = geometry_restraints_manager,
-      real_space_target_weight    = 50,
+      real_space_target_weight    = 25,
       real_space_gradients_delta  = fmodel.f_obs.d_min()/4,
       max_iterations              = 55,
       min_iterations              = 50)

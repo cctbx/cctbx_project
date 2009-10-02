@@ -82,3 +82,73 @@ class lbfgs(object):
       f = rs_f + gr_e.target
       g = rs_g + gr_e.gradients
     return f, g.as_double()
+
+class fragment_refine_restrained(object):
+
+  def __init__(self,
+        sites_cart_all,
+        fragment_i_seqs,
+        density_map,
+        geometry_restraints_manager,
+        real_space_target_weight,
+        real_space_gradients_delta,
+        lbfgs_termination_params,
+        restraints_target_weight = 1.0):
+    self.density_map = density_map
+    self.geometry_restraints_manager = geometry_restraints_manager
+    self.real_space_gradients_delta = real_space_gradients_delta
+    self.real_space_target_weight = real_space_target_weight
+    self.restraints_target_weight = restraints_target_weight
+    #
+    self.unit_cell = geometry_restraints_manager.crystal_symmetry.unit_cell()
+    self.sites_cart_all = sites_cart_all
+    self.fragment_i_seqs = fragment_i_seqs
+    self.x = self.sites_cart_all.select(indices=self.fragment_i_seqs).as_double()
+    #
+    self.real_space_target = None
+    self.number_of_function_evaluations = -1
+    self.f_start, self.g_start = self.compute_functional_and_gradients()
+    self.rs_f_start = self.rs_f
+    self.minimizer = scitbx.lbfgs.run(
+      target_evaluator=self,
+      termination_params=lbfgs_termination_params)
+    self.f_final, self.g_final = self.compute_functional_and_gradients()
+    self.rs_f_final = self.rs_f
+    del self.rs_f
+    del self.x
+    del self.fragment_i_seqs
+    #del self.sites_cart_all
+    del self.unit_cell
+
+  def compute_functional_and_gradients(self):
+    if(self.number_of_function_evaluations == 0):
+      self.number_of_function_evaluations += 1
+      return self.f_start, self.g_start
+    self.number_of_function_evaluations += 1
+    self.sites_cart_fragment = flex.vec3_double(self.x)
+    rs_f = maptbx.real_space_target_simple(
+      unit_cell   = self.unit_cell,
+      density_map = self.density_map,
+      sites_cart  = self.sites_cart_fragment)
+    self.real_space_target = rs_f
+    rs_g = maptbx.real_space_gradients_simple(
+      unit_cell   = self.unit_cell,
+      density_map = self.density_map,
+      sites_cart  = self.sites_cart_fragment,
+      delta       = self.real_space_gradients_delta)
+    self.rs_f = rs_f
+    rs_f *= -self.real_space_target_weight
+    rs_g *= -self.real_space_target_weight
+    if(self.geometry_restraints_manager is None or
+       self.restraints_target_weight == 0):
+      f = rs_f
+      g = rs_g
+    else:
+      self.sites_cart_all.set_selected(self.fragment_i_seqs,
+        self.sites_cart_fragment)
+      gr_e = self.geometry_restraints_manager.energies_sites(
+        sites_cart = self.sites_cart_all, compute_gradients=True)
+      f = rs_f + gr_e.target * self.restraints_target_weight
+      g = rs_g + gr_e.gradients.select(indices = self.fragment_i_seqs) * \
+          self.restraints_target_weight
+    return f, g.as_double()
