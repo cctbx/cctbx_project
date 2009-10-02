@@ -174,11 +174,23 @@ class cluster_manager(slots_getstate_setstate):
   def overlapping_rigid_clusters(O, edge_sets):
     assert O.hinge_edges is None
     result = []
-    for cii,cluster in enumerate(O.clusters):
-      c = set(cluster)
-      for i in cluster:
-        c.update(edge_sets[i])
-      result.append(tuple(sorted(c)))
+    for cluster in O.clusters:
+      def add_cluster_and_connected_vertices():
+        c = set(cluster)
+        for i in cluster:
+          c.update(edge_sets[i])
+        result.append(tuple(sorted(c)))
+      if (len(cluster) != 1):
+        add_cluster_and_connected_vertices()
+      else:
+        i = cluster[0]
+        esi = edge_sets[i]
+        if (len(esi) != 1):
+          add_cluster_and_connected_vertices()
+        else:
+          j = list(esi)[0]
+          if (len(edge_sets[j]) == 1 and j > i):
+            result.append((i,j))
     return result
 
   def determine_weighted_order_for_construct_spanning_tree(O, edge_sets):
