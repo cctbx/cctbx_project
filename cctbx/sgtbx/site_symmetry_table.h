@@ -193,7 +193,9 @@ namespace cctbx { namespace sgtbx {
         return result;
       }
 
-      //! Support for Python's pickle facility. Do not use for other purposes.
+      //! Mainly to support Python's pickle facility.
+      /*! The inputs are NOT checked for consistency.
+       */
       site_symmetry_table(
         af::shared<std::size_t> const& indices,
         af::shared<site_symmetry_ops> const& table,
