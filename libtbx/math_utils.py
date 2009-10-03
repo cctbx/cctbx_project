@@ -18,6 +18,42 @@ def are_equivalent(p,q):
   """ does p <=> q in the sense of logical equivalence? """
   return does_imply(p,q) and does_imply(q,p)
 
+class nested_loop(object):
+
+  def __init__(O, end, begin=None, open_range=True):
+    if (begin is None):
+      begin = [0] * len(end)
+    else:
+      assert len(begin) == len(end)
+    if (not open_range):
+      end = list(end)
+      for i in xrange(len(end)):
+        end[i] += 1
+    for i in xrange(len(end)):
+      assert end[i] >= begin[i]
+    O.begin = begin
+    O.end = end
+    O.current = list(begin)
+    for i in xrange(len(end)):
+      if (end[i] > begin[i]):
+        O.current[-1] -= 1
+        break
+
+  def __iter__(O):
+    return O
+
+  def next(O):
+    b = O.begin
+    e = O.end
+    c = O.current
+    i = len(c)
+    while (i > 0):
+      i -= 1
+      c[i] += 1
+      if (c[i] < e[i]): return c
+      c[i] = b[i]
+    raise StopIteration
+
 def next_permutation(seq):
   """Emulation of C++ std::next_permutation:
   Treats all permutations of seq as a set of "dictionary" sorted

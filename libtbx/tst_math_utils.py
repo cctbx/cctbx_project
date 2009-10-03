@@ -31,6 +31,27 @@ def exercise_logical():
   assert not are_equivalent(False, True)
   assert are_equivalent(False, False)
 
+def exercise_nested_loop():
+  from libtbx.math_utils import nested_loop as nl
+  assert [list(i) for i in nl([])] == []
+  assert [list(i) for i in nl([1])] == [[0]]
+  assert [list(i) for i in nl([1], open_range=False)] == [[0], [1]]
+  assert [list(i) for i in nl([3])] == [[0], [1], [2]]
+  assert [list(i) for i in nl(begin=[-2], end=[3])] == [
+    [-2], [-1], [0], [1], [2]]
+  assert [list(i) for i in nl(begin=[-1], end=[1], open_range=False)] == [
+    [-1], [0], [1]]
+  assert [list(i) for i in nl(begin=[-2,4], end=[3,6])] == [
+    [-2, 4], [-2, 5], [-1, 4], [-1, 5], [0, 4], [0, 5], [1, 4], [1, 5],
+    [2, 4], [2, 5]]
+  assert [list(i) for i in nl(begin=[-2,4], end=[3,6], open_range=False)] == [
+    [-2, 4], [-2, 5], [-2, 6], [-1, 4], [-1, 5], [-1, 6], [0, 4], [0, 5],
+    [0, 6], [1, 4], [1, 5], [1, 6], [2, 4], [2, 5], [2, 6], [3, 4], [3, 5],
+    [3, 6]]
+  assert [list(i) for i in nl(begin=[-1,0,-1], end=[1,2,1])] == [
+    [-1, 0, -1], [-1, 0, 0], [-1, 1, -1], [-1, 1, 0], [0, 0, -1], [0, 0, 0],
+    [0, 1, -1], [0, 1, 0]]
+
 def exercise_next_permutation():
   from libtbx.math_utils import next_permutation
   seq = []
@@ -85,6 +106,7 @@ def exercise_normalize_angle():
 def exercise():
   exercise_integer()
   exercise_logical()
+  exercise_nested_loop()
   exercise_next_permutation()
   exercise_normalize_angle()
   print "OK"
