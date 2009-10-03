@@ -1664,6 +1664,22 @@ def exercise_loops():
   for index in flex.nested_loop([],[]):
     points.append(index)
   assert points == []
+  #
+  n_trials = 2
+  nl = flex.nested_loop
+  t0 = time.time()
+  for i_trial in xrange(n_trials):
+    c = list(nl(begin=[3,-5,8,10,-7], end=[7,0,13,12,-3], open_range=False))
+  if (n_trials > 2):
+    print "C++ nested_loop: %.2f s" % (time.time()-t0)
+  nl = libtbx.math_utils.nested_loop
+  t0 = time.time()
+  for i_trial in xrange(n_trials):
+    p = [tuple(i) for i in
+      nl(begin=[3,-5,8,10,-7], end=[7,0,13,12,-3], open_range=False)]
+  if (n_trials > 2):
+    print "Python nested_loop: %.2f s" % (time.time()-t0)
+  assert p == c
 
 def exercise_extract_attributes():
   class group(object):
