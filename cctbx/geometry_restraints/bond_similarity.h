@@ -112,7 +112,7 @@ namespace cctbx { namespace geometry_restraints {
             CCTBX_ASSERT(i_seq < sites_cart.size());
             sites[j] = sites_cart[i_seq];
           }
-          if ( proxy.sym_ops.get() ) {
+          if ( proxy.sym_ops.get() != 0 ) {
             sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
             if ( !rt_mx.is_unit_mx() ) {
               sites[1] = unit_cell.orthogonalize(
@@ -202,14 +202,15 @@ namespace cctbx { namespace geometry_restraints {
       {
         af::const_ref<af::tiny<std::size_t, 2> > i_seqs_ref
           = proxy.i_seqs.const_ref();
-        scitbx::optional_copy<af::shared<sgtbx::rt_mx> > const& sym_ops = proxy.sym_ops;
+        scitbx::optional_copy<af::shared<sgtbx::rt_mx> > const&
+          sym_ops = proxy.sym_ops;
         af::shared<af::tiny<vec3, 2> > grads = gradients();
         af::const_ref<af::tiny<vec3, 2> > grads_ref = grads.const_ref();
         for(std::size_t i=0;i<grads_ref.size();i++) {
           gradient_array[i_seqs_ref[i][0]] += grads_ref[i][0];
-          sgtbx::rt_mx const& rt_mx = sym_ops[i];
-          if ( sym_ops.get() && !sym_ops[i].is_unit_mx() ) {
-            scitbx::mat3<double> r_inv_cart_ = r_inv_cart(unit_cell, sym_ops[i]);
+          if ( sym_ops.get() != 0 && !sym_ops[i].is_unit_mx() ) {
+            scitbx::mat3<double>
+              r_inv_cart_ = r_inv_cart(unit_cell, sym_ops[i]);
             gradient_array[i_seqs_ref[i][1]] += grads_ref[i][1] * r_inv_cart_;
           }
           else gradient_array[i_seqs_ref[i][1]] += grads_ref[i][1];

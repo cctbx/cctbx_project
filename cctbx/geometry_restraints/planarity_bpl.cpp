@@ -27,13 +27,17 @@ namespace {
       class_<w_t>("planarity_proxy", no_init)
         .def(init<
           af::shared<std::size_t> const&,
-          af::shared<double> const&>(
-            (arg_("i_seqs"), arg_("weights"))))
+          af::shared<double> const&>((
+            arg_("i_seqs"), arg_("weights"))))
         .def(init<
           af::shared<std::size_t> const&,
           af::shared<sgtbx::rt_mx> const&,
-          af::shared<double> const&>(
-            (arg_("i_seqs"), arg_("sym_ops"), arg_("weights"))))
+          af::shared<double> const&>((
+            arg_("i_seqs"), arg_("sym_ops"), arg_("weights"))))
+        .def(init<
+          af::shared<std::size_t> const&,
+          w_t const&>((
+            arg_("i_seqs"), arg_("proxy"))))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("weights", make_getter(&w_t::weights, rbv()))
@@ -59,35 +63,6 @@ namespace {
       }
     }
   };
-
-  //struct planarity_sym_proxy_wrappers
-  //{
-  //  typedef planarity_sym_proxy w_t;
-
-  //  static void
-  //  wrap()
-  //  {
-  //    using namespace boost::python;
-  //    typedef return_value_policy<return_by_value> rbv;
-  //    class_<w_t>("planarity_sym_proxy", no_init)
-  //      .def(init<
-  //        af::shared<std::size_t> const&,
-  //        af::shared<sgtbx::rt_mx> const&,
-  //        af::shared<double> const&>(
-  //          (arg_("i_seqs"), arg_("sym_ops"), arg_("weights"))))
-  //      .def("sort_i_seqs", &w_t::sort_i_seqs)
-  //      .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
-  //      .add_property("weights", make_getter(&w_t::weights, rbv()))
-  //      .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
-
-  //    ;
-  //    {
-  //      scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
-  //        "shared_planarity_sym_proxy")
-  //      ;
-  //    }
-  //  }
-  //};
 
   struct planarity_wrappers
   {

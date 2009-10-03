@@ -24,21 +24,10 @@ namespace cctbx { namespace geometry_restraints {
       double weight_,
       int periodicity_=0)
     :
+      i_seqs(i_seqs_),
       angle_ideal(angle_ideal_),
       weight(weight_),
-      periodicity(periodicity_),
-      i_seqs(i_seqs_)
-    {}
-
-    //! Constructor.
-    dihedral_proxy(
-      i_seqs_type const& i_seqs_,
-      dihedral_proxy const& params)
-    :
-      angle_ideal(params.angle_ideal),
-      weight(params.weight),
-      periodicity(params.periodicity),
-      i_seqs(i_seqs_)
+      periodicity(periodicity_)
     {}
 
     //! Constructor.
@@ -49,30 +38,29 @@ namespace cctbx { namespace geometry_restraints {
       double weight_,
       int periodicity_=0)
     :
+      i_seqs(i_seqs_),
+      sym_ops(sym_ops_),
       angle_ideal(angle_ideal_),
       weight(weight_),
-      periodicity(periodicity_),
-      sym_ops(sym_ops_),
-      i_seqs(i_seqs_)
+      periodicity(periodicity_)
     {
-      if ( sym_ops.get() ) {
+      if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
       }
     }
 
-    //! Constructor.
+    //! Support for proxy_select (and similar operations).
     dihedral_proxy(
       i_seqs_type const& i_seqs_,
-      af::shared<sgtbx::rt_mx> const& sym_ops_,
-      dihedral_proxy const& params)
+      dihedral_proxy const& proxy)
     :
-      angle_ideal(params.angle_ideal),
-      weight(params.weight),
-      periodicity(params.periodicity),
-      sym_ops(sym_ops_),
-      i_seqs(i_seqs_)
+      i_seqs(i_seqs_),
+      sym_ops(proxy.sym_ops),
+      angle_ideal(proxy.angle_ideal),
+      weight(proxy.weight),
+      periodicity(proxy.periodicity)
     {
-      if ( sym_ops.get() ) {
+      if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
       }
     }
@@ -84,14 +72,14 @@ namespace cctbx { namespace geometry_restraints {
       dihedral_proxy result(*this);
       if (result.i_seqs[0] > result.i_seqs[3]) {
         std::swap(result.i_seqs[0], result.i_seqs[3]);
-        if ( sym_ops.get() ) {
+        if ( sym_ops.get() != 0 ) {
           std::swap(result.sym_ops[0], result.sym_ops[3]);
         }
         result.angle_ideal *= -1;
       }
       if (result.i_seqs[1] > result.i_seqs[2]) {
         std::swap(result.i_seqs[1], result.i_seqs[2]);
-        if ( sym_ops.get() ) {
+        if ( sym_ops.get() != 0 ) {
           std::swap(result.sym_ops[1], result.sym_ops[2]);
         }
         result.angle_ideal *= -1;
@@ -99,16 +87,16 @@ namespace cctbx { namespace geometry_restraints {
       return result;
     }
 
+    //! Indices into array of sites.
+    i_seqs_type i_seqs;
+    //! Optional array of symmetry operations.
+    scitbx::optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
     //! Parameter.
     double angle_ideal;
     //! Parameter.
     double weight;
     //! Parameter.
     int periodicity;
-    //! Indices into array of sites.
-    i_seqs_type i_seqs;
-    //! Optional array of symmetry operations.
-    scitbx::optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
   };
 
   //! Residual and gradient calculations for dihedral %angle restraint.
@@ -182,7 +170,7 @@ namespace cctbx { namespace geometry_restraints {
           std::size_t i_seq = proxy.i_seqs[i];
           CCTBX_ASSERT(i_seq < sites_cart.size());
           sites[i] = sites_cart[i_seq];
-          if ( proxy.sym_ops.get() ) {
+          if ( proxy.sym_ops.get() != 0 ) {
             sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
             if ( !rt_mx.is_unit_mx() ) {
               sites[i] = unit_cell.orthogonalize(
@@ -306,7 +294,7 @@ namespace cctbx { namespace geometry_restraints {
           sym_ops = proxy.sym_ops;
         af::tiny<scitbx::vec3<double>, 4> grads = gradients();
         for(int i=0;i<4;i++) {
-          if ( sym_ops.get() && !sym_ops[i].is_unit_mx() ) {
+          if ( sym_ops.get() != 0 && !sym_ops[i].is_unit_mx() ) {
             scitbx::mat3<double>
               r_inv_cart_ = r_inv_cart(unit_cell, sym_ops[i]);
             gradient_array[i_seqs[i]] += grads[i] * r_inv_cart_;

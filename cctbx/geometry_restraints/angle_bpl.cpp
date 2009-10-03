@@ -28,8 +28,8 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("angle_proxy", no_init)
-        .def(init<af::tiny<unsigned, 3> const&, double, double>(
-          (arg_("i_seqs"), arg_("angle_ideal"), arg_("weight"))))
+        .def(init<af::tiny<unsigned, 3> const&, double, double>((
+          arg_("i_seqs"), arg_("angle_ideal"), arg_("weight"))))
         .def(init<
           af::tiny<unsigned, 3> const&,
           af::shared<sgtbx::rt_mx> const&,
@@ -39,11 +39,13 @@ namespace {
             arg_("sym_ops"),
             arg_("angle_ideal"),
             arg_("weight"))))
+        .def(init<af::tiny<unsigned, 3> const&, w_t const&>((
+          arg_("i_seqs"), arg_("proxy"))))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
+        .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
         .def_readonly("angle_ideal", &w_t::angle_ideal)
         .def_readonly("weight", &w_t::weight)
-        .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(

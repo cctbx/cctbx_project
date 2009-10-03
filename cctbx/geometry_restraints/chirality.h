@@ -27,15 +27,15 @@ namespace cctbx { namespace geometry_restraints {
       weight(weight_)
     {}
 
-    //! Constructor.
+    //! Support for proxy_select (and similar operations).
     chirality_proxy(
       i_seqs_type const& i_seqs_,
-      chirality_proxy const& other)
+      chirality_proxy const& proxy)
     :
       i_seqs(i_seqs_),
-      volume_ideal(other.volume_ideal),
-      both_signs(other.both_signs),
-      weight(other.weight)
+      volume_ideal(proxy.volume_ideal),
+      both_signs(proxy.both_signs),
+      weight(proxy.weight)
     {}
 
     //! Sorts i_seqs such that i_seq[1] < i_seq[2] < i_seq[3].

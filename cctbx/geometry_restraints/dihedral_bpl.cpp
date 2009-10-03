@@ -25,19 +25,19 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("dihedral_proxy", no_init)
-        .def(init<af::tiny<unsigned, 4> const&,
-                  double,
-                  double,
-                  optional<int> >((
-            arg_("i_seqs"), arg_("angle_ideal"), arg_("weight"),
-            arg_("periodicity")=0)))
-        .def(init<af::tiny<unsigned, 4> const&,
-                  af::shared<sgtbx::rt_mx> const&,
-                  double,
-                  double,
-                  optional<int> >(
-          (arg_("i_seqs"), arg_("sym_ops"), arg_("angle_ideal"),
-           arg_("weight"), arg_("periodicity")=0)))
+        .def(init<af::tiny<unsigned, 4> const&, double, double, int>((
+          arg_("i_seqs"), arg_("angle_ideal"), arg_("weight"),
+          arg_("periodicity")=0)))
+        .def(init<
+          af::tiny<unsigned, 4> const&,
+          af::shared<sgtbx::rt_mx> const&,
+          double,
+          double,
+          int>((
+            arg_("i_seqs"), arg_("sym_ops"), arg_("angle_ideal"),
+            arg_("weight"), arg_("periodicity")=0)))
+        .def(init<af::tiny<unsigned, 4> const&, w_t const&>((
+          arg_("i_seqs"), arg_("proxy"))))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readwrite("angle_ideal", &w_t::angle_ideal)

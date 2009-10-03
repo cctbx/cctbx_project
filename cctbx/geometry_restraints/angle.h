@@ -40,36 +40,25 @@ namespace cctbx { namespace geometry_restraints {
       angle_ideal(angle_ideal_),
       weight(weight_)
     {
-      if ( sym_ops.get() ) {
+      if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
       }
     }
 
-    //! Constructor.
-    /*! Not available in Python.
-     */
+    //! Support for proxy_select (and similar operations).
     angle_proxy(
       i_seqs_type const& i_seqs_,
       angle_proxy const& proxy)
     :
       i_seqs(i_seqs_),
+      sym_ops(proxy.sym_ops),
       angle_ideal(proxy.angle_ideal),
       weight(proxy.weight)
-    {}
-
-    //! Constructor.
-    /*! Not available in Python.
-     */
-    angle_proxy(
-      i_seqs_type const& i_seqs_,
-      af::shared<sgtbx::rt_mx> const& sym_ops_,
-      angle_proxy const& proxy)
-    :
-      i_seqs(i_seqs_),
-      sym_ops(sym_ops_),
-      angle_ideal(proxy.angle_ideal),
-      weight(proxy.weight)
-    {}
+    {
+      if ( sym_ops.get() != 0 ) {
+        CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
+      }
+    }
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[2].
     angle_proxy
@@ -78,7 +67,7 @@ namespace cctbx { namespace geometry_restraints {
       angle_proxy result(*this);
       if (result.i_seqs[0] > result.i_seqs[2]) {
         std::swap(result.i_seqs[0], result.i_seqs[2]);
-        if ( sym_ops.get() ) {
+        if ( sym_ops.get() != 0 ) {
           std::swap(result.sym_ops[0], result.sym_ops[2]);
         }
       }
@@ -151,7 +140,7 @@ namespace cctbx { namespace geometry_restraints {
           std::size_t i_seq = proxy.i_seqs[i];
           CCTBX_ASSERT(i_seq < sites_cart.size());
           sites[i] = sites_cart[i_seq];
-          if ( proxy.sym_ops.get() ) {
+          if ( proxy.sym_ops.get() != 0 ) {
             sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
             if ( !rt_mx.is_unit_mx() ) {
               sites[i] = unit_cell.orthogonalize(
@@ -319,7 +308,7 @@ namespace cctbx { namespace geometry_restraints {
         af::tiny<scitbx::vec3<double>, 3> grads;
         grads_and_curvs_impl(grads.begin(), 0);
         for(int i=0;i<3;i++) {
-          if ( sym_ops.get() && !sym_ops[i].is_unit_mx() ) {
+          if ( sym_ops.get() != 0 && !sym_ops[i].is_unit_mx() ) {
             scitbx::mat3<double> r_inv_cart_ = r_inv_cart(
               unit_cell, sym_ops[i]);
             gradient_array[i_seqs[i]] += grads[i] * r_inv_cart_;

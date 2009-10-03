@@ -999,6 +999,13 @@ def exercise_angle():
   assert p.sym_ops is None
   assert approx_equal(p.angle_ideal, 95)
   assert approx_equal(p.weight, 1)
+  c = geometry_restraints.angle_proxy(
+    i_seqs=[3,4,5],
+    proxy=p)
+  assert c.i_seqs == (3,4,5)
+  assert c.sym_ops is None
+  assert approx_equal(c.angle_ideal, 95)
+  assert approx_equal(c.weight, 1)
   a = geometry_restraints.angle(
     sites=[(1,0,0),(0,0,0),(0,1,0)],
     angle_ideal=95,
@@ -1046,6 +1053,13 @@ def exercise_angle():
     weight=1)
   assert p.i_seqs == (2,1,0)
   assert p.sym_ops == sym_ops
+  c = geometry_restraints.angle_proxy(
+    i_seqs=[3,4,5],
+    proxy=p)
+  assert c.i_seqs == (3,4,5)
+  assert c.sym_ops == sym_ops
+  assert approx_equal(c.angle_ideal, 95)
+  assert approx_equal(c.weight, 1)
   p = p.sort_i_seqs()
   assert p.i_seqs == (0,1,2)
   assert p.sym_ops == (sgtbx.rt_mx(),sgtbx.rt_mx(),sgtbx.rt_mx('-1+x,+y,+z'))
@@ -1217,10 +1231,19 @@ def exercise_dihedral():
     weight=1,
     periodicity=2)
   assert p.i_seqs == (3,2,1,0)
-  assert tuple(p.sym_ops) == sym_ops
+  assert p.sym_ops == sym_ops
+  c = geometry_restraints.dihedral_proxy(
+    i_seqs=[6,8,5,3],
+    proxy=p)
+  assert c.i_seqs == (6,8,5,3)
+  assert c.sym_ops == sym_ops
+  assert approx_equal(c.angle_ideal, -40)
+  assert approx_equal(c.weight, 1)
+  assert c.periodicity == 2
   p = p.sort_i_seqs()
   assert p.i_seqs == (0,1,2,3)
-  assert tuple(p.sym_ops) == (sgtbx.rt_mx('+X,-1+Y,2+Z'), u_mx, sgtbx.rt_mx('1+X,+Y,+Z'), u_mx)
+  assert p.sym_ops == (
+    sgtbx.rt_mx('+X,-1+Y,2+Z'), u_mx, sgtbx.rt_mx('1+X,+Y,+Z'), u_mx)
   assert approx_equal(p.angle_ideal, -40)
   assert approx_equal(p.weight, 1)
   assert p.periodicity == 2
@@ -1328,7 +1351,9 @@ def exercise_dihedral():
     sites_cart=sites_cart,
     proxies=proxies,
     gradient_array=None)
-  assert approx_equal(residual_sum, dihedral_sym.residual() + dihedral_no_sym.residual())
+  assert approx_equal(
+    residual_sum,
+    dihedral_sym.residual() + dihedral_no_sym.residual())
   #
   unit_cell = uctbx.unit_cell([15,11.5,16.25,90,99.5,90])
   sites_cart = flex.vec3_double(
@@ -1581,6 +1606,13 @@ def exercise_chirality():
   assert approx_equal(p.volume_ideal, 4)
   assert not p.both_signs
   assert approx_equal(p.weight, 1)
+  c = geometry_restraints.chirality_proxy(
+    i_seqs=[9,0,4,6],
+    proxy=p)
+  assert c.i_seqs == (9,0,4,6)
+  assert approx_equal(c.volume_ideal, 4)
+  assert not c.both_signs
+  assert approx_equal(c.weight, 1)
   p = p.sort_i_seqs()
   assert p.i_seqs == (0,1,2,3)
   assert approx_equal(p.volume_ideal, 4)
@@ -1675,6 +1707,11 @@ def exercise_planarity():
   assert tuple(p.i_seqs) == (3,1,0,2)
   assert tuple(p.sym_ops) == sym_ops
   assert approx_equal(p.weights, weights)
+  c = geometry_restraints.planarity_proxy(
+    i_seqs=flex.size_t([8,6,3,1]),
+    proxy=p)
+  assert tuple(c.i_seqs) == (8,6,3,1)
+  assert c.sym_ops == sym_ops
   p = p.sort_i_seqs()
   assert tuple(p.i_seqs) == (0,1,2,3)
   assert tuple(p.weights) == (3,2,4,1)

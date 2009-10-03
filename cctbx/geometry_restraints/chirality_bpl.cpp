@@ -28,11 +28,14 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("chirality_proxy", no_init)
-        .def(init<af::tiny<unsigned, 4> const&, double, bool, double>(
-          (arg_("i_seqs"),
-           arg_("volume_ideal"),
-           arg_("both_signs"),
-           arg_("weight"))))
+        .def(init<af::tiny<unsigned, 4> const&, double, bool, double>((
+          arg_("i_seqs"),
+          arg_("volume_ideal"),
+          arg_("both_signs"),
+          arg_("weight"))))
+        .def(init<af::tiny<unsigned, 4> const&, w_t const&>((
+          arg_("i_seqs"),
+          arg_("proxy"))))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("volume_ideal", &w_t::volume_ideal)
