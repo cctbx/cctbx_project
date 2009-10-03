@@ -28,7 +28,7 @@ namespace cctbx { namespace geometry_restraints {
       for(unsigned i=0;i<p.i_seqs.size();i++) {
         unsigned i_seq = p.i_seqs[i];
         CCTBX_ASSERT(i_seq < n_seq);
-        new_i_seqs[i] = static_cast<unsigned>(reindexing_array[i_seq]);
+        new_i_seqs[i] = static_cast<unsigned>(reindexing_array_ref[i_seq]);
         if (new_i_seqs[i] == n_seq) {
           is_valid = false;
           break;
