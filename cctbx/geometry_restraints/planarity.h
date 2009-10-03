@@ -33,17 +33,6 @@ namespace cctbx { namespace geometry_restraints {
     //! Constructor.
     planarity_proxy(
       i_seqs_type const& i_seqs_,
-      planarity_proxy const& other)
-    :
-      i_seqs(i_seqs_),
-      weights(other.weights.begin(), other.weights.end())
-    {
-      CCTBX_ASSERT(weights.size() == i_seqs.size());
-    }
-
-    //! Constructor.
-    planarity_proxy(
-      i_seqs_type const& i_seqs_,
       af::shared<sgtbx::rt_mx> const& sym_ops_,
       af::shared<double> const& weights_)
     :
@@ -52,23 +41,22 @@ namespace cctbx { namespace geometry_restraints {
       weights(weights_)
     {
       CCTBX_ASSERT(weights.size() == i_seqs.size());
-      if ( sym_ops.get() ) {
+      if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
       }
     }
 
-    //! Constructor.
+    //! Support for proxy_select (and similar operations).
     planarity_proxy(
       i_seqs_type const& i_seqs_,
-      af::shared<sgtbx::rt_mx> const& sym_ops_,
-      planarity_proxy const& other)
+      planarity_proxy const& proxy)
     :
       i_seqs(i_seqs_),
-      sym_ops(sym_ops_),
-      weights(other.weights.begin(), other.weights.end())
+      sym_ops(proxy.sym_ops),
+      weights(proxy.weights.begin(), proxy.weights.end())
     {
       CCTBX_ASSERT(weights.size() == i_seqs.size());
-      if ( sym_ops.get() ) {
+      if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
       }
     }
@@ -91,7 +79,7 @@ namespace cctbx { namespace geometry_restraints {
         i_seqs_result.push_back(i_seqs_cr[perm_cr[i]]);
         weights_result.push_back(weights_cr[perm_cr[i]]);
       }
-      if ( sym_ops.get() ) {
+      if ( sym_ops.get() != 0 ) {
         af::const_ref<sgtbx::rt_mx> sym_ops_cr = sym_ops.get()->const_ref();
         af::shared<sgtbx::rt_mx> sym_ops_result;
         sym_ops_result.reserve(sym_ops_cr.size());
@@ -107,10 +95,10 @@ namespace cctbx { namespace geometry_restraints {
 
     //! Indices into array of sites.
     i_seqs_type i_seqs;
-    //! Array of weights.
-    af::shared<double> weights;
     //! Array of symmetry operations.
     scitbx::optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
+    //! Array of weights.
+    af::shared<double> weights;
   };
 
   //! Residual and gradient calculations for planarity restraint.
@@ -179,7 +167,7 @@ namespace cctbx { namespace geometry_restraints {
           std::size_t i_seq = i_seqs_ref[i];
           CCTBX_ASSERT(i_seq < sites_cart.size());
           sites.push_back(sites_cart[i_seq]);
-          if ( proxy.sym_ops.get() ) {
+          if ( proxy.sym_ops.get() != 0 ) {
             sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
             if ( !rt_mx.is_unit_mx() ) {
               sites[i] = unit_cell.orthogonalize(
@@ -261,12 +249,14 @@ namespace cctbx { namespace geometry_restraints {
         planarity_proxy const& proxy) const
       {
         af::const_ref<std::size_t> i_seqs_ref = proxy.i_seqs.const_ref();
-        scitbx::optional_copy<af::shared<sgtbx::rt_mx> > const& sym_ops = proxy.sym_ops;
+        scitbx::optional_copy<af::shared<sgtbx::rt_mx> > const&
+          sym_ops = proxy.sym_ops;
         af::shared<scitbx::vec3<double> > grads = gradients();
         af::const_ref<scitbx::vec3<double> > grads_ref = grads.const_ref();
         for(std::size_t i=0;i<grads_ref.size();i++) {
-          if (sym_ops.get() && !sym_ops[i].is_unit_mx() ) {
-            scitbx::mat3<double> r_inv_cart_ = r_inv_cart(unit_cell, sym_ops[i]);
+          if (sym_ops.get() != 0 && !sym_ops[i].is_unit_mx() ) {
+            scitbx::mat3<double>
+              r_inv_cart_ = r_inv_cart(unit_cell, sym_ops[i]);
             gradient_array[i_seqs_ref[i]] += grads_ref[i] * r_inv_cart_;
           }
           else { gradient_array[i_seqs_ref[i]] += grads_ref[i]; }
