@@ -13,6 +13,7 @@
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/slice.h>
 #include <boost_adaptbx/optional_conversions.h>
+#include <boost/optional.hpp>
 #include <boost/rational.hpp>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
@@ -457,8 +458,8 @@ namespace {
 
     {
       namespace oc = boost_adaptbx::optional_conversions;
-      oc::to_and_from_python<vec3<double> >();
-      oc::to_and_from_python<af::shared<double> >();
+      oc::to_and_from_python<boost::optional<vec3<double> > >();
+      oc::to_and_from_python<boost::optional<af::shared<double> > >();
     }
 
     wrap_flex_random();

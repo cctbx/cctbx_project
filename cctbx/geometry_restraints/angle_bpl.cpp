@@ -32,7 +32,7 @@ namespace {
           arg_("i_seqs"), arg_("angle_ideal"), arg_("weight"))))
         .def(init<
           af::tiny<unsigned, 3> const&,
-          af::shared<sgtbx::rt_mx> const&,
+          optional_copy<af::shared<sgtbx::rt_mx> > const&,
           double,
           double>((
             arg_("i_seqs"),
@@ -41,6 +41,7 @@ namespace {
             arg_("weight"))))
         .def(init<af::tiny<unsigned, 3> const&, w_t const&>((
           arg_("i_seqs"), arg_("proxy"))))
+        .def("scale_weight", &w_t::scale_weight, (arg_("factor")))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))

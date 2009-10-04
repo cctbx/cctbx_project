@@ -55,7 +55,6 @@ namespace scitbx { namespace boost_python {
 #include <scitbx/vec3.h>
 
 #include <boost_adaptbx/std_pair_fwd.h>
-#include <boost_adaptbx/optional_fwd.h>
 
 #if defined(__sgi) && !defined(__GNUC__)
 

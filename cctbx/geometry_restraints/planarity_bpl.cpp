@@ -31,13 +31,14 @@ namespace {
             arg_("i_seqs"), arg_("weights"))))
         .def(init<
           af::shared<std::size_t> const&,
-          af::shared<sgtbx::rt_mx> const&,
+          optional_copy<af::shared<sgtbx::rt_mx> > const&,
           af::shared<double> const&>((
             arg_("i_seqs"), arg_("sym_ops"), arg_("weights"))))
         .def(init<
           af::shared<std::size_t> const&,
           w_t const&>((
             arg_("i_seqs"), arg_("proxy"))))
+        .def("scale_weights", &w_t::scale_weights, (arg_("factor")))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("weights", make_getter(&w_t::weights, rbv()))

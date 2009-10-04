@@ -14,6 +14,7 @@
 #include <scitbx/boost_python/iterator_wrappers.h>
 #include <scitbx/boost_python/array_as_list.h>
 #include <boost_adaptbx/optional_conversions.h>
+#include <boost/optional.hpp>
 
 namespace cctbx { namespace eltbx { namespace xray_scattering {
 namespace boost_python {
@@ -71,7 +72,8 @@ namespace {
           af::const_ref<double> const&,
           optional<double, bool> >())
       ;
-      boost_adaptbx::optional_conversions::to_and_from_python<gaussian>();
+      boost_adaptbx::optional_conversions::to_and_from_python<
+        boost::optional<gaussian> >();
     }
   };
 

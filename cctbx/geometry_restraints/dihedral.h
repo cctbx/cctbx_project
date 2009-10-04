@@ -4,7 +4,6 @@
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
 #include <scitbx/constants.h>
-#include <scitbx/optional_copy.h>
 
 namespace cctbx { namespace geometry_restraints {
 
@@ -33,7 +32,7 @@ namespace cctbx { namespace geometry_restraints {
     //! Constructor.
     dihedral_proxy(
       i_seqs_type const& i_seqs_,
-      af::shared<sgtbx::rt_mx> const& sym_ops_,
+      optional_copy<af::shared<sgtbx::rt_mx> > const& sym_ops_,
       double angle_ideal_,
       double weight_,
       int periodicity_=0)
@@ -65,6 +64,14 @@ namespace cctbx { namespace geometry_restraints {
       }
     }
 
+    dihedral_proxy
+    scale_weight(
+      double factor) const
+    {
+      return dihedral_proxy(
+        i_seqs, sym_ops, angle_ideal, weight*factor, periodicity);
+    }
+
     //! Sorts i_seqs such that i_seq[0] < i_seq[3] and i_seq[1] < i_seq[2].
     dihedral_proxy
     sort_i_seqs() const
@@ -90,7 +97,7 @@ namespace cctbx { namespace geometry_restraints {
     //! Indices into array of sites.
     i_seqs_type i_seqs;
     //! Optional array of symmetry operations.
-    scitbx::optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
+    optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
     //! Parameter.
     double angle_ideal;
     //! Parameter.
@@ -290,7 +297,7 @@ namespace cctbx { namespace geometry_restraints {
         dihedral_proxy const& proxy) const
       {
         dihedral_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
-        scitbx::optional_copy<af::shared<sgtbx::rt_mx> > const&
+        optional_copy<af::shared<sgtbx::rt_mx> > const&
           sym_ops = proxy.sym_ops;
         af::tiny<scitbx::vec3<double>, 4> grads = gradients();
         for(int i=0;i<4;i++) {
