@@ -8,8 +8,8 @@
 #include <cctbx/sgtbx/rt_mx.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/stl/vector_wrapper.h>
-#include <scitbx/optional_copy.h>
 #include <scitbx/boost_python/container_conversions.h>
+#include <boost_adaptbx/optional_copy.h>
 #include <boost_adaptbx/optional_conversions.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
@@ -139,7 +139,7 @@ namespace {
       }
       {
         using boost_adaptbx::optional_conversions::to_and_from_python;
-        using scitbx::optional_copy;
+        using boost_adaptbx::optional_copy;
         // used in cctbx/geometry_restraints
         to_and_from_python<
           optional_copy<

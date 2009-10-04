@@ -83,7 +83,7 @@ if (not env_etc.no_boost_python):
   env = env_pure_boost_python_ext.Clone()
   env_etc.include_registry.prepend(
     env=env,
-    paths=[os.path.dirname(libtbx.env.dist_path("boost_adaptbx"))])
+    paths=[env_etc.boost_adaptbx_include])
   env.SharedLibrary(
     target="#lib/boost_python_meta_ext",
     source="meta_ext.cpp")
@@ -102,6 +102,14 @@ if (not env_etc.no_boost_python):
   env.SharedLibrary(
     target="#lib/python_file_test_ext",
     source="tests/file_test_ext.cpp")
+
+  env = env_base.Clone()
+  env_etc.include_registry.prepend(
+    env=env,
+    paths=[env_etc.boost_adaptbx_include])
+  env.Program(
+    target="tests/tst_optional_copy",
+    source="tests/tst_optional_copy.cpp")
 
   import os, os.path
   env = env_base.Clone(

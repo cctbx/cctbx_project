@@ -13,6 +13,7 @@ boost_adaptbx/command_line/show_environ_usage.py svneol=native#text/x-python
 boost_adaptbx/error_utils.h svneol=native#text/plain
 boost_adaptbx/file_ext.cpp -text
 boost_adaptbx/floating_point_exceptions.h -text
+boost_adaptbx/optional_copy.h svneol=native#text/plain
 boost_adaptbx/python_file_stream.h -text
 boost_adaptbx/std_pair_conversion.h -text
 boost_adaptbx/std_pair_ext.cpp -text
@@ -20,6 +21,8 @@ boost_adaptbx/std_pair_fwd.h -text
 boost_adaptbx/tests/file_test_ext.cpp -text
 boost_adaptbx/tests/tst_file.py -text
 boost_adaptbx/tests/tst_libc_backtrace.py svneol=native#text/x-python
+boost_adaptbx/tests/tst_optional_copy.cpp svneol=native#text/plain
+boost_adaptbx/tests/tst_optional_copy.h svneol=native#text/plain
 boost_adaptbx/tests/tst_rational_truediv.py -text
 boost_adaptbx/tests/tst_std_pair.py -text
 boost_adaptbx/tests/tst_stderr_stdout.py svneol=native#text/x-python
@@ -484,6 +487,7 @@ scitbx/array_family/boost_python/tst_smart_selection.py svneol=native#text/x-pyt
 scitbx/array_family/initialiser.h -text
 scitbx/array_family/owning_ref.h -text
 scitbx/array_family/ref_matrix.h -text
+scitbx/array_family/tst_optional_copy.cpp svneol=native#text/plain
 scitbx/array_family/tst_ref_matrix_facet.cpp -text
 scitbx/array_family/tst_unsigned_float_arithmetic.cpp -text
 scitbx/boost_python/cstringio_utils.h svneol=native#text/plain
@@ -596,9 +600,6 @@ scitbx/matrix/tests/utils.h -text
 scitbx/matrix/triangular_systems.h -text
 scitbx/matrix/vector_operations.h -text
 scitbx/misc/positive_getitem_index.h svneol=native#text/plain
-scitbx/optional_copy.h svneol=native#text/plain
-scitbx/optional_copy/SConscript -text
-scitbx/optional_copy/tst.cpp svneol=native#text/plain
 scitbx/rigid_body/SConscript -text
 scitbx/rigid_body/__init__.py svneol=native#text/x-python
 scitbx/rigid_body/array_packing.h svneol=native#text/plain
