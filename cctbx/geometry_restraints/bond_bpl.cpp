@@ -29,6 +29,7 @@ namespace {
       class_<w_t>("bond_params", no_init)
         .def(init<double, double, optional<double> >((
           arg_("distance_ideal"), arg_("weight"), arg_("slack")=0)))
+        .def("scale_weight", &w_t::scale_weight, (arg_("factor")))
         .def_readwrite("distance_ideal", &w_t::distance_ideal)
         .def_readwrite("weight", &w_t::weight)
         .def_readwrite("slack", &w_t::slack)

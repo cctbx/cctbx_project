@@ -3,7 +3,6 @@
 
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
-#include <scitbx/optional_copy.h>
 
 namespace cctbx { namespace geometry_restraints {
 
@@ -47,7 +46,7 @@ namespace cctbx { namespace geometry_restraints {
     /*! The bond is between sites_frac[i_seqs[0]] and
         rt_mx_ji * sites_frac[i_seqs[1]].
      */
-    scitbx::optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
+    optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
   };
 
   //! Residual and gradient calculations for harmonically restrained bonds.
@@ -202,7 +201,7 @@ namespace cctbx { namespace geometry_restraints {
       {
         af::const_ref<af::tiny<std::size_t, 2> > i_seqs_ref
           = proxy.i_seqs.const_ref();
-        scitbx::optional_copy<af::shared<sgtbx::rt_mx> > const&
+        optional_copy<af::shared<sgtbx::rt_mx> > const&
           sym_ops = proxy.sym_ops;
         af::shared<af::tiny<vec3, 2> > grads = gradients();
         af::const_ref<af::tiny<vec3, 2> > grads_ref = grads.const_ref();

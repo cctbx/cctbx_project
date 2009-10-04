@@ -7,6 +7,9 @@ namespace scitbx {
   template <typename ValueType>
   class optional_copy
   {
+    public:
+      typedef ValueType value_type;
+
     protected:
       ValueType* ptr_;
 
@@ -52,6 +55,8 @@ namespace scitbx {
         ptr_ = 0;
       }
 
+      operator bool() const { return (ptr_ != 0); }
+
       ValueType*
       get()       { return ptr_; }
 
@@ -63,6 +68,12 @@ namespace scitbx {
 
       ValueType const*
       operator->() const { return ptr_; }
+
+      ValueType&
+      operator*()       { return *ptr_; }
+
+      ValueType const&
+      operator*() const { return *ptr_; }
 
       typename ValueType::value_type&
       operator[](typename ValueType::size_type const& i)

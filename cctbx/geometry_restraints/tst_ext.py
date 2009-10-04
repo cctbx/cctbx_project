@@ -231,6 +231,11 @@ def exercise_bond():
   p.slack = 0
   assert approx_equal(p.slack, 0)
   #
+  c = p.scale_weight(factor=2)
+  assert c.distance_ideal == p.distance_ideal
+  assert approx_equal(c.weight, 2)
+  assert c.slack == p.slack
+  #
   t = geometry_restraints.bond_params_table()
   assert t.size() == 0
   d = geometry_restraints.bond_params_dict()
@@ -993,12 +998,20 @@ def exercise_angle():
     i_seqs=[2,1,0],
     angle_ideal=95,
     weight=1)
-  assert p.i_seqs == (2,1,0)
+  def check(p):
+    assert p.i_seqs == (2,1,0)
+    assert p.sym_ops is None
+    assert approx_equal(p.angle_ideal, 95)
+    assert approx_equal(p.weight, 1)
+  check(p)
+  p = geometry_restraints.angle_proxy(
+    i_seqs=[2,1,0],
+    sym_ops=None,
+    angle_ideal=95,
+    weight=1)
+  check(p)
   p = p.sort_i_seqs()
   assert p.i_seqs == (0,1,2)
-  assert p.sym_ops is None
-  assert approx_equal(p.angle_ideal, 95)
-  assert approx_equal(p.weight, 1)
   c = geometry_restraints.angle_proxy(
     i_seqs=[3,4,5],
     proxy=p)
@@ -1006,6 +1019,11 @@ def exercise_angle():
   assert c.sym_ops is None
   assert approx_equal(c.angle_ideal, 95)
   assert approx_equal(c.weight, 1)
+  c = p.scale_weight(factor=3.14)
+  assert c.i_seqs == (0,1,2)
+  assert c.sym_ops is None
+  assert approx_equal(c.angle_ideal, 95)
+  assert approx_equal(c.weight, 3.14)
   a = geometry_restraints.angle(
     sites=[(1,0,0),(0,0,0),(0,1,0)],
     angle_ideal=95,
@@ -1060,6 +1078,9 @@ def exercise_angle():
   assert c.sym_ops == sym_ops
   assert approx_equal(c.angle_ideal, 95)
   assert approx_equal(c.weight, 1)
+  c = p.scale_weight(factor=5.82)
+  assert c.sym_ops == sym_ops
+  assert approx_equal(c.weight, 5.82)
   p = p.sort_i_seqs()
   assert p.i_seqs == (0,1,2)
   assert p.sym_ops == (sgtbx.rt_mx(),sgtbx.rt_mx(),sgtbx.rt_mx('-1+x,+y,+z'))
@@ -1240,6 +1261,10 @@ def exercise_dihedral():
   assert approx_equal(c.angle_ideal, -40)
   assert approx_equal(c.weight, 1)
   assert c.periodicity == 2
+  c = p.scale_weight(factor=0.37)
+  assert c.i_seqs == (3,2,1,0)
+  assert c.sym_ops == sym_ops
+  assert approx_equal(c.weight, 0.37)
   p = p.sort_i_seqs()
   assert p.i_seqs == (0,1,2,3)
   assert p.sym_ops == (
@@ -1613,6 +1638,9 @@ def exercise_chirality():
   assert approx_equal(c.volume_ideal, 4)
   assert not c.both_signs
   assert approx_equal(c.weight, 1)
+  c = p.scale_weight(factor=9.32)
+  assert c.i_seqs == (0,2,3,1)
+  assert approx_equal(c.weight, 9.32)
   p = p.sort_i_seqs()
   assert p.i_seqs == (0,1,2,3)
   assert approx_equal(p.volume_ideal, 4)
@@ -1712,6 +1740,10 @@ def exercise_planarity():
     proxy=p)
   assert tuple(c.i_seqs) == (8,6,3,1)
   assert c.sym_ops == sym_ops
+  c = p.scale_weights(factor=4.94)
+  assert c.i_seqs.id() == p.i_seqs.id()
+  assert c.weights.id() != p.weights.id()
+  assert approx_equal(c.weights, p.weights*4.94)
   p = p.sort_i_seqs()
   assert tuple(p.i_seqs) == (0,1,2,3)
   assert tuple(p.weights) == (3,2,4,1)

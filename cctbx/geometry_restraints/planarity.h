@@ -5,8 +5,8 @@
 #include <cctbx/geometry_restraints/utils.h>
 #include <scitbx/matrix/eigensystem.h>
 #include <scitbx/array_family/sort.h>
+#include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/sym_mat3.h>
-#include <scitbx/optional_copy.h>
 
 namespace cctbx { namespace geometry_restraints {
 
@@ -33,7 +33,7 @@ namespace cctbx { namespace geometry_restraints {
     //! Constructor.
     planarity_proxy(
       i_seqs_type const& i_seqs_,
-      af::shared<sgtbx::rt_mx> const& sym_ops_,
+      optional_copy<af::shared<sgtbx::rt_mx> > const& sym_ops_,
       af::shared<double> const& weights_)
     :
       i_seqs(i_seqs_),
@@ -61,6 +61,13 @@ namespace cctbx { namespace geometry_restraints {
       }
     }
 
+    planarity_proxy
+    scale_weights(
+      double factor) const
+    {
+      return planarity_proxy(i_seqs, sym_ops, weights*factor);
+    }
+
     //! Sorts i_seqs such that i_seq[0] < i_seq[2].
     planarity_proxy
     sort_i_seqs() const
@@ -86,7 +93,10 @@ namespace cctbx { namespace geometry_restraints {
         for(std::size_t i=0;i<perm_cr.size();i++) {
           sym_ops_result.push_back(sym_ops_cr[perm_cr[i]]);
         }
-        return planarity_proxy(i_seqs_result, sym_ops_result, weights_result);
+        return planarity_proxy(
+          i_seqs_result,
+          optional_copy<af::shared<sgtbx::rt_mx> >(sym_ops_result),
+          weights_result);
       }
       else {
         return planarity_proxy(i_seqs_result, weights_result);
@@ -96,7 +106,7 @@ namespace cctbx { namespace geometry_restraints {
     //! Indices into array of sites.
     i_seqs_type i_seqs;
     //! Array of symmetry operations.
-    scitbx::optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
+    optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
     //! Array of weights.
     af::shared<double> weights;
   };
@@ -249,7 +259,7 @@ namespace cctbx { namespace geometry_restraints {
         planarity_proxy const& proxy) const
       {
         af::const_ref<std::size_t> i_seqs_ref = proxy.i_seqs.const_ref();
-        scitbx::optional_copy<af::shared<sgtbx::rt_mx> > const&
+        optional_copy<af::shared<sgtbx::rt_mx> > const&
           sym_ops = proxy.sym_ops;
         af::shared<scitbx::vec3<double> > grads = gradients();
         af::const_ref<scitbx::vec3<double> > grads_ref = grads.const_ref();

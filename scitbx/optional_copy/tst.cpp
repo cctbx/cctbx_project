@@ -29,14 +29,19 @@ namespace {
     typedef optional_copy<ValueType> o;
     {
       o o1;
+      SCITBX_ASSERT(!o1);
       SCITBX_ASSERT(o1.get() == 0);
       o o2(o1);
       SCITBX_ASSERT(o2.get() == 0);
       o2 = o1;
       SCITBX_ASSERT(o2.get() == 0);
       o2 = v1;
+      SCITBX_ASSERT(o2);
       SCITBX_ASSERT((*o2.get())[0] == 1);
       SCITBX_ASSERT(o2->begin() == o2.get()->begin());
+      (*o2)[0] = 2;
+      SCITBX_ASSERT((*oc_const_ref(o2))[0] == 2);
+      (*o2)[0] = 1;
       SCITBX_ASSERT(o2[0] == 1);
       o1 = o2;
       SCITBX_ASSERT(o1[0] == 1);

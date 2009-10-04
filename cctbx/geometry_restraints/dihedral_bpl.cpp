@@ -30,7 +30,7 @@ namespace {
           arg_("periodicity")=0)))
         .def(init<
           af::tiny<unsigned, 4> const&,
-          af::shared<sgtbx::rt_mx> const&,
+          optional_copy<af::shared<sgtbx::rt_mx> > const&,
           double,
           double,
           int>((
@@ -38,6 +38,7 @@ namespace {
             arg_("weight"), arg_("periodicity")=0)))
         .def(init<af::tiny<unsigned, 4> const&, w_t const&>((
           arg_("i_seqs"), arg_("proxy"))))
+        .def("scale_weight", &w_t::scale_weight, (arg_("factor")))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readwrite("angle_ideal", &w_t::angle_ideal)

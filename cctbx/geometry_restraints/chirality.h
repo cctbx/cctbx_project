@@ -38,6 +38,13 @@ namespace cctbx { namespace geometry_restraints {
       weight(proxy.weight)
     {}
 
+    chirality_proxy
+    scale_weight(
+      double factor) const
+    {
+      return chirality_proxy(i_seqs, volume_ideal, both_signs, weight*factor);
+    }
+
     //! Sorts i_seqs such that i_seq[1] < i_seq[2] < i_seq[3].
     chirality_proxy
     sort_i_seqs() const

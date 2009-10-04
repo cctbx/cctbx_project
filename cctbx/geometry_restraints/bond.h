@@ -24,6 +24,13 @@ namespace cctbx { namespace geometry_restraints {
       slack(slack_)
     {}
 
+    bond_params
+    scale_weight(
+      double factor) const
+    {
+      return bond_params(distance_ideal, weight*factor, slack);
+    }
+
     //! Parameter.
     double distance_ideal;
     //! Parameter.

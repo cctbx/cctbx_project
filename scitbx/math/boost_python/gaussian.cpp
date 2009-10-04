@@ -7,6 +7,7 @@
 #include <boost/python/tuple.hpp>
 #include <scitbx/math/gaussian/fit.h>
 #include <boost_adaptbx/optional_conversions.h>
+#include <boost/optional.hpp>
 
 namespace scitbx { namespace math { namespace gaussian {
 
@@ -91,7 +92,8 @@ namespace {
           arg_("b_min_for_erf_based_algorithm")=1e-3))
         .def_pickle(sum_wrappers())
       ;
-      boost_adaptbx::optional_conversions::to_and_from_python<sum<> >();
+      boost_adaptbx::optional_conversions::to_and_from_python<
+        boost::optional<sum<> > >();
     }
   };
 
