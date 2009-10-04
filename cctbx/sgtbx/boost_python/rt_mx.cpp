@@ -5,8 +5,12 @@
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/make_constructor.hpp>
-#include <scitbx/stl/vector_wrapper.h>
 #include <cctbx/sgtbx/rt_mx.h>
+#include <scitbx/array_family/shared.h>
+#include <scitbx/stl/vector_wrapper.h>
+#include <scitbx/optional_copy.h>
+#include <scitbx/boost_python/container_conversions.h>
+#include <boost_adaptbx/optional_conversions.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
@@ -129,6 +133,18 @@ namespace {
 
       scitbx::stl::boost_python::vector_wrapper<rt_mx>::wrap(
         "stl_vector_rt_mx");
+      {
+        using namespace scitbx::boost_python::container_conversions;
+        tuple_mapping_variable_capacity<af::shared<rt_mx> >();
+      }
+      {
+        using boost_adaptbx::optional_conversions::to_and_from_python;
+        using scitbx::optional_copy;
+        // used in cctbx/geometry_restraints
+        to_and_from_python<
+          optional_copy<
+            af::shared<cctbx::sgtbx::rt_mx> > >();
+      }
     }
   };
 
