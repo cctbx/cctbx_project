@@ -20,6 +20,13 @@ namespace boost_adaptbx { namespace error_utils {
 
 }} // boost_adaptbx::error_utils
 
+#define ASSERTBX(condition) \
+  if (!(condition)) { \
+    throw std::runtime_error( \
+      boost_adaptbx::error_utils::file_and_line_as_string(__FILE__, __LINE__) \
+      + ": ASSERT(" #condition ") failure."); \
+  }
+
 #define BOOST_ADAPTBX_UNREACHABLE_ERROR() \
   std::runtime_error( \
     "Control flow passes through branch that should be unreachable: " \

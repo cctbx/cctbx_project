@@ -40,7 +40,6 @@ if (not env_etc.no_boost_python):
   SConscript("lbfgsb/boost_python/SConscript")
   SConscript("sparse/boost_python/SConscript")
   SConscript("iso_surface/SConscript")
-  SConscript("optional_copy/SConscript")
   SConscript("rigid_body/SConscript")
 
 SConscript("lbfgs/SConscript")

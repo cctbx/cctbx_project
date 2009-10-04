@@ -13,6 +13,7 @@ def run():
   "$D/tests/tst_file.py",
   "$D/tests/tst_stdout.py",
   "$D/tests/tst_stderr_stdout.py",
+  "$B/tests/tst_optional_copy",
   )
 
   build_dir = libtbx.env.under_build("boost_adaptbx")

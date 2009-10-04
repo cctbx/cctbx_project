@@ -14,7 +14,7 @@ def run():
   "$B/array_family/tst_sym_mat3",
   "$B/array_family/tst_ref_matrix_facet",
   "$B/array_family/tst_accessors",
-  "$B/optional_copy/tst",
+  "$B/array_family/tst_optional_copy",
   "$B/serialization/tst_base_256",
   "$B/math/tests/tst",
   "$B/matrix/tests/tst_givens",

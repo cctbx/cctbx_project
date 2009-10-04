@@ -1,7 +1,7 @@
-#ifndef SCITBX_OPTIONAL_COPY_H
-#define SCITBX_OPTIONAL_COPY_H
+#ifndef BOOST_ADAPTBX_OPTIONAL_COPY_H
+#define BOOST_ADAPTBX_OPTIONAL_COPY_H
 
-namespace scitbx {
+namespace boost_adaptbx {
 
   //! Optional allocation of value with new, with value-copy semantics.
   template <typename ValueType>
@@ -88,6 +88,6 @@ namespace scitbx {
       }
   };
 
-} // namespace scitbx
+} // namespace boost_adaptbx
 
-#endif // SCITBX_OPTIONAL_COPY_H
+#endif // GUARD
