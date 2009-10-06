@@ -6,6 +6,10 @@
 
 namespace scitbx { namespace math {
 
+/*! Wrappers for boost::math statistical distributions.
+    See also:
+    http://www.boost.org/libs/math/doc/sf_and_dist/html/math_toolkit/dist.html
+ */
 namespace {
 
   template <typename FloatType>
