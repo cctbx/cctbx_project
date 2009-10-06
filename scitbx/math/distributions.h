@@ -4,6 +4,10 @@
 #include <scitbx/array_family/shared.h>
 #include <boost/math/distributions.hpp>
 
+/*! Extension of boost::math statistical distributions.
+    See also:
+    http://www.boost.org/libs/math/doc/sf_and_dist/html/math_toolkit/dist.html
+ */
 namespace scitbx { namespace math {
 
   /*! An array of quantiles of size n.
