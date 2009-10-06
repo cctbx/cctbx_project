@@ -394,6 +394,7 @@ mmtbx/rotamer/rotamer_names.props -text
 mmtbx/rotamer/sidechain_angles.props -text
 mmtbx/rotamer/sidechain_angles.py -text
 mmtbx/rotamer/tst_geostd_vs_sidechain_angles_props.py svneol=native#text/x-python
+mmtbx/rotamer/tst_rotamer_eval.py -text
 mmtbx/rsr/SConscript -text
 mmtbx/rsr/__init__.py -text
 mmtbx/rsr/rsr.h -text
