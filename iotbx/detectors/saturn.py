@@ -69,15 +69,16 @@ class SaturnImage(ADSCImage):
       assert self.parameters['CCD_DETECTOR_DIMENSIONS'][0]==self.size1
       self.parameters['PIXEL_SIZE'] = self.parameters['CCD_DETECTOR_SIZE'
         ][0] / self.size1
-      self.parameters['OSC_START'] = self.parameters['ROTATION'][0]
+      # rounding to hundreth of degree since encoder reports six (too many) decimal places
+      self.parameters['OSC_START'] = round(self.parameters['ROTATION'][0],2)
       assert self.parameters['CCD_GONIO_NAMES'][5]=='Distance'
       self.parameters['DISTANCE'] = self.parameters['CCD_GONIO_VALUES'][5]
       self.parameters['BEAM_CENTER_X'] = self.parameters[
         'CCD_SPATIAL_BEAM_POSITION'][0] * self.pixel_size
       self.parameters['BEAM_CENTER_Y'] = self.parameters[
         'CCD_SPATIAL_BEAM_POSITION'][1] * self.pixel_size
-      self.parameters['OSC_RANGE'] = self.parameters[
-        'ROTATION'][1] - self.parameters['ROTATION'][0]
+      self.parameters['OSC_RANGE'] = round(self.parameters[
+        'ROTATION'][1] - self.parameters['ROTATION'][0],2)
       assert self.parameters['CCD_GONIO_NAMES'][1]=='2Theta'
       self.parameters['TWOTHETA'] = self.parameters['CCD_GONIO_VALUES'][2]
 
