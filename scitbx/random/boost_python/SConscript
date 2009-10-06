@@ -1,0 +1,10 @@
+Import("env_scitbx_boost_python_ext")
+
+env = env_scitbx_boost_python_ext.Clone()
+env.SharedLibrary(
+  target="#lib/scitbx_random_ext",
+  source=[
+    "random_ext.cpp",
+    "random.cpp",
+  ]
+)
