@@ -20,6 +20,7 @@ from scitbx.math import chebyshev_base
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_fitter
 from scitbx.math import slatec_dgamma, slatec_dlngam
+from scitbx.math import distributions
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.utils import user_plus_sys_time
@@ -1400,9 +1401,10 @@ def exercise_median():
 
   try:
     median_statistics(flex.double())
-    raise Exception_expected
   except RuntimeError:
     pass
+  else:
+    raise Exception_expected
 
   stats = median_statistics(flex.double((1,)))
   assert stats.median == 1
@@ -1747,7 +1749,43 @@ def exercise_numeric_limits():
   print "\tepsilon:", l.epsilon
   print "\tsafe min:", l.safe_min
 
+def exercise_distributions():
+  # normal distribution
+  norm = distributions.normal_distribution()
+  assert norm.mean() == 0
+  assert norm.median() == 0
+  assert norm.mode() == 0
+  assert norm.standard_deviation() == 1
+  assert norm.variance() == math.pow(norm.standard_deviation(), 2)
+  assert norm.kurtosis() == 3
+  assert norm.skewness() == 0
+  assert approx_equal(norm.pdf(1.2), 0.19418605498321298)
+  assert approx_equal(norm.cdf(norm.quantile(.9)), .9)
+  assert approx_equal(norm.quantiles(5),
+    (-1.2815515655446006, -0.52440051270804089, 0.0,
+     0.52440051270804067, 1.2815515655446006))
+  norm = distributions.normal_distribution(1,6)
+  assert norm.mean() == 1
+  assert norm.standard_deviation() == 6
+  # student's t distribution
+  stu = distributions.students_t_distribution(10)
+  assert stu.degrees_of_freedom() == 10
+  assert stu.mean() == 0
+  assert stu.median() == 0
+  assert stu.mode() == 0
+  assert approx_equal(
+    math.pow(stu.standard_deviation(),2), 1.25)
+  assert approx_equal(stu.variance(), 1.25)
+  assert approx_equal(stu.kurtosis(), 4.0)
+  assert stu.skewness() == 0
+  assert approx_equal(norm.pdf(0.4), 0.066158757912835292)
+  assert approx_equal(norm.cdf(norm.quantile(.8)), .8)
+  assert approx_equal(stu.quantiles(6),
+    (-1.4915762442496054, -0.69981206131243145, -0.21599563333226371,
+     0.21599563333226388, 0.69981206131243145, 1.4915762442496057))
+
 def run():
+  exercise_distributions()
   exercise_median()
   exercise_numeric_limits()
   exercise_continued_fraction()
