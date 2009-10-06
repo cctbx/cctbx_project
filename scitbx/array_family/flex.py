@@ -8,14 +8,11 @@ from scitbx_array_family_flex_ext import *
 import scitbx_array_family_flex_ext as ext
 
 import scitbx.stl.map
+import scitbx.random
+from scitbx.random import get_random_seed, set_random_seed
 from libtbx.str_utils import format_value
 from libtbx.utils import hashlib_md5
-import time
-import sys, os
-
-builtin_int = __builtins__["int"]
-builtin_long = __builtins__["long"]
-builtin_max = __builtins__["max"]
+import sys
 
 def bool_md5(self):
   result = hashlib_md5()
@@ -172,16 +169,7 @@ def condense_as_ranges(integer_array):
   store_range()
   return result
 
-def get_random_seed():
-  try:
-    result = builtin_long(os.getpid() * (2**16)) \
-           + builtin_long(time.time() * (2**8))
-  except KeyboardInterrupt: raise
-  except:
-    result = time.time()
-  return builtin_int(result % (2**31-1))
-
-random_generator = ext.mersenne_twister(seed=get_random_seed())
+random_generator = ext.mersenne_twister(scitbx.random.mt19937)
 
 def set_random_seed(value):
   random_generator.seed(value=value)
