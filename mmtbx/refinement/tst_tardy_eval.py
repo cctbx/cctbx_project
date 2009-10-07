@@ -556,6 +556,7 @@ def eval_1(args):
       write_separate_pages=write_separate_pages)
 
 def eval_2(args):
+  # HIGH REDUNDANCY eval_2_orca()
   i_row_by_tc = {
     "tt": 0,
     "tc": 1,
@@ -607,11 +608,64 @@ def eval_2(args):
       print " ".join([str(v) for v in row])
     print
 
+def eval_2_orca(args):
+  # HIGH REDUNDANCY eval_2()
+  i_row_by_tc = {
+    "tt": 0,
+    "tc": 1,
+    "ct": 2,
+    "cc": 3}
+  i_col_major = {
+    "gly_gly_box.pdb": 0,
+    "lys_pro_trp_box.pdb": 1,
+    "1yjp_box.pdb": 2,
+    "1yjp_no_water.pdb": 3}
+  i_col_minor = {
+    "constrained": 0}
+  n_cols = len(i_col_major) * len(i_col_minor)
+  i_table = {
+    "minimization": 0}
+  def make_table():
+    return [[None] * n_cols for tc in i_row_by_tc]
+  tabs = [make_table() for i_tab in xrange(2)]
+  done = set()
+  for file_name in args:
+    mms = easy_pickle.load(file_name=file_name)
+    i_tab = i_table[mms.algorithm]
+    i_col = \
+      i_col_major[mms.pdb_file] * len(i_col_minor) + \
+      i_col_minor[mms.random_displacements_parameterization]
+    for tc,list_of_param_values in mms.data:
+      i_row = i_row_by_tc[tc]
+      key = (i_tab, i_row, i_col)
+      assert key not in done
+      done.add(key)
+      tabs[i_tab*2][i_row][i_col] = len(list_of_param_values)
+      n = 0
+      if (mms.algorithm == "minimization"):
+        for h,w in list_of_param_values:
+          if (w == 10): n += 1
+      elif (mms.algorithm == "annealing"):
+        for h,w,t,c in list_of_param_values:
+          if (w == 10): n += 1
+      else:
+        raise AssertionError
+      tabs[i_tab*1+1][i_row][i_col] = len(list_of_param_values) - n
+  assert len(done) == len(tabs)//2 * len(i_row_by_tc) * n_cols
+  table_i = dict([tuple(reversed(item)) for item in i_table.items()])
+  for i_tab,tab in enumerate(tabs):
+    print table_i[i_tab//2], "omit_weight_10=%s" % str(bool(i_tab%2))
+    for row in tab:
+      print " ".join([str(v) for v in row])
+    print
+
 def run(args):
-  if (args[0] != "eval_pickles"):
-    eval_1(args=args)
-  else:
+  if (args[0] == "eval_pickles"):
     eval_2(args=args[1:])
+  elif (args[0] == "eval_pickles_orca"):
+    eval_2_orca(args=args[1:])
+  else:
+    eval_1(args=args)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

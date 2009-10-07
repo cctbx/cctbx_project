@@ -28,7 +28,9 @@ class potential_object(object):
         nonbonded_attenuation_factor,
         real_space_gradients_delta,
         real_space_target_weight,
-        ideal_sites_cart):
+        ideal_sites_cart,
+        site_labels=None,
+        orca_experiments=False):
     O.density_map = density_map
     O.geo_manager = geo_manager
     O.reduced_geo_manager = reduced_geo_manager
@@ -42,6 +44,8 @@ class potential_object(object):
     O.real_space_gradients_delta = real_space_gradients_delta
     O.real_space_target_weight = real_space_target_weight
     O.ideal_sites_cart = ideal_sites_cart
+    O.site_labels = site_labels
+    O.orca_experiments = orca_experiments
     #
     O.last_sites_moved = None
     O.f = None
@@ -56,13 +60,24 @@ class potential_object(object):
       #
       if (O.reduced_geo_manager is None):
         flags = None
+        if (O.orca_experiments):
+          flags = cctbx.geometry_restraints.flags.flags(
+            nonbonded=False, default=True)
       else:
-        flags = cctbx.geometry_restraints.flags.flags(nonbonded=True)
+        # computing nonbonded interactions only with geo_manager,
+        # contributions from other restraints below with reduced_geo_manager
+        flags = cctbx.geometry_restraints.flags.flags(
+          nonbonded=True, default=False)
       geo_energies = O.geo_manager.energies_sites(
         sites_cart=sites_cart,
         flags=flags,
         custom_nonbonded_function=O.custom_nonbonded_function,
         compute_gradients=True)
+      if (0): # XXX orca_experiments
+        print "geo_energies:"
+        geo_energies.show()
+      if (0): # XXX orca_experiments
+        O.geo_manager.show_sorted(site_labels=O.site_labels)
       O.f = geo_energies.target
       O.g = geo_energies.gradients
       if (O.reduced_geo_manager is not None):
@@ -306,10 +321,6 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
   print >> log, "tardy_tree summary:"
   tardy_tree.show_summary(vertex_labels=labels, out=log, prefix="  ")
   print >> log
-  if (params.emulate_cartesian or params.keep_all_restraints):
-    reduced_geo_manager = None
-  else:
-    reduced_geo_manager = geo_manager.reduce_for_tardy(tardy_tree=tardy_tree)
   #
   if (len(pdb_files) == 2):
     ideal_pdb_inp = iotbx.pdb.input(file_name=pdb_files[0])
@@ -322,6 +333,28 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
     d_min=params.structure_factors_high_resolution).f_calc().fft_map()
   fft_map.apply_sigma_scaling()
   #
+  assert not params.orca_experiments or not params.emulate_cartesian
+  if (params.orca_experiments):
+    from mmtbx.refinement import orca
+    x = orca.expand(
+      labels=labels,
+      sites_cart=sites,
+      masses=masses,
+      geo_manager=geo_manager)
+    labels = x.labels
+    sites = x.sites_cart
+    masses = x.masses
+    geo_manager = x.geo_manager
+    tardy_tree = x.tardy_tree
+    x_ideal_sites_cart = flex.vec3_double()
+    for i_orc,i_seq in x.indices:
+      x_ideal_sites_cart.append(ideal_sites_cart[i_seq])
+    ideal_sites_cart = x_ideal_sites_cart
+  #
+  if (params.emulate_cartesian or params.keep_all_restraints):
+    reduced_geo_manager = None
+  else:
+    reduced_geo_manager = geo_manager.reduce_for_tardy(tardy_tree=tardy_tree)
   real_space_gradients_delta = \
       params.structure_factors_high_resolution \
     * params.real_space_gradients_delta_resolution_factor
@@ -332,7 +365,9 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
     nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
     real_space_gradients_delta=real_space_gradients_delta,
     real_space_target_weight=params.real_space_target_weight,
-    ideal_sites_cart=ideal_sites_cart)
+    ideal_sites_cart=ideal_sites_cart,
+    site_labels=labels,
+    orca_experiments=params.orca_experiments)
   tardy_model = scitbx.rigid_body.tardy_model(
     labels=labels,
     sites=sites,
@@ -355,6 +390,8 @@ real_space_target_weight = 100
   .type = float
 real_space_gradients_delta_resolution_factor = 1/3
   .type = float
+orca_experiments = False
+  .type = bool
 emulate_cartesian = False
   .type = bool
 keep_all_restraints = False
