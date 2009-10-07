@@ -5,6 +5,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/tuple.hpp>
+#include <boost/python/enum.hpp>
 
 #include <rstbx/dps_core/dps_core.h>
 #include <rstbx/dps_core/direction.h>
@@ -171,4 +172,22 @@ namespace boost_python { namespace {
 BOOST_PYTHON_MODULE(rstbx_ext)
 {
   rstbx::boost_python::init_module();
+
+  // Expose SpotClass to Python
+  enum_<rstbx::SpotClass>("SpotClass")
+    .value("GOOD",rstbx::GOOD)
+    .value("OVERLAP",rstbx::OVERLAP)
+    .value("SPINDLE",rstbx::SPINDLE)
+    .value("ICE",rstbx::ICE)
+    .value("OTHERIMAGE",rstbx::OTHERIMAGE)
+    .value("FULL_ENTER",rstbx::FULL_ENTER)
+    .value("FULL_EXIT",rstbx::FULL_EXIT)
+    .value("ENTER1",rstbx::ENTER1)
+    .value("ENTER2",rstbx::ENTER2)
+    .value("EXIT3",rstbx::EXIT3)
+    .value("EXIT4",rstbx::EXIT4)
+    .value("NONE",rstbx::NONE)
+    .value("OUTLIER",rstbx::OUTLIER)
+    .export_values()
+    ;
 }
