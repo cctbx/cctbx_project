@@ -27,15 +27,19 @@ class collector(object):
 
   def __init__(O):
     O.tardy_model = None
+    O.rmsd_calculator = None
     O.rmsd = flex.double()
 
-  def __call__(O, tardy_model=None):
+  def __call__(O, tardy_model=None, rmsd_calculator=None):
     if (tardy_model is not None):
+      assert rmsd_calculator is not None
       assert O.tardy_model is None
       O.tardy_model = tardy_model
+      O.rmsd_calculator = rmsd_calculator
     else:
       assert O.tardy_model is not None
-    O.rmsd.append(O.tardy_model.potential_obj.ideal_sites_cart.rms_difference(
+    O.rmsd.append(O.rmsd_calculator(
+      O.tardy_model.potential_obj.ideal_sites_cart,
       O.tardy_model.sites_moved()))
 
 common_parameter_trial_table = [

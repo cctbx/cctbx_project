@@ -624,6 +624,12 @@ class construct(slots_getstate_setstate):
       sites=sites, angular_tolerance_deg=angular_tolerance_deg)
     return O
 
+  def rmsd_calculator(O):
+    return O.rmsd_calculation
+
+  def rmsd_calculation(O, sites_cart_1, sites_cart_2):
+    return sites_cart_1.rms_difference(sites_cart_2)
+
   def viewer_lines_with_colors_legend(O, include_loop_edge_bendings):
     result = [
       "Edge colors:",
