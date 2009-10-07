@@ -11,6 +11,10 @@ try:
   from stdlib import math
 except ImportError:
   import math
+try:
+  from stdlib import random
+except ImportError:
+  import random
 
 class rec(object):
 
@@ -644,7 +648,7 @@ class col(rec):
     rec.__init__(self, elems, (len(elems), 1))
 
   def random(cls, n, a, b):
-    from random import uniform
+    uniform = random.uniform
     return cls([ uniform(a,b) for i in xrange(n) ])
   random = classmethod(random)
 
