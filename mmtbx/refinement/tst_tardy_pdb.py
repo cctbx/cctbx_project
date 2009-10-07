@@ -162,15 +162,16 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
   ideal_sites_cart = xs.sites_cart()
   sites = ideal_sites_cart
   masses = xs.atomic_weights()
+  tardy_tree_simple_connectivity = geo_manager.construct_tardy_tree(sites=sites)
+  rmsd_calculator = tardy_tree_simple_connectivity.rmsd_calculator()
   #
   if (params.tardy_displacements is not None):
     def get_tardy_model_no_potential():
-      tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
       return scitbx.rigid_body.tardy_model(
         labels=labels,
         sites=sites,
         masses=masses,
-        tardy_tree=tardy_tree,
+        tardy_tree=tardy_tree_simple_connectivity,
         potential_obj=None)
     def get_tardy_model_no_density():
       tardy_tree = scitbx.graph.tardy_tree.construct(
@@ -225,7 +226,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
           tardy_model.minimization(max_iterations=20)
           sites = tardy_model.sites_moved()
           sites_moved = sites
-          rmsd = sites_moved.rms_difference(ideal_sites_cart)
+          rmsd = rmsd_calculator(sites_moved, ideal_sites_cart)
           rmsd_history.append((multiplier, rmsd))
           print >> log, "    multiplier, rmsd: %13.6e, %13.6e" \
             % rmsd_history[-1]
@@ -243,7 +244,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
               tardy_model.minimization(max_iterations=500)
               sites = tardy_model.sites_moved()
               sites_moved = sites
-              rmsd = sites_moved.rms_difference(ideal_sites_cart)
+              rmsd = rmsd_calculator(sites_moved, ideal_sites_cart)
               rmsd_history.append((0, rmsd))
               print >> log, "    multiplier, rmsd: %13.6e, %13.6e" \
                 % rmsd_history[-1]
@@ -267,7 +268,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
           prev_qd = tardy_model.pack_qd()
           tardy_model.dynamics_step(delta_t=delta_t)
           sites_moved = tardy_model.sites_moved()
-          rmsd = sites_moved.rms_difference(ideal_sites_cart)
+          rmsd = rmsd_calculator(sites_moved, ideal_sites_cart)
           rmsd_history.append((delta_t, rmsd))
           if (rmsd < target_rmsd - target_rmsd_tol):
             delta_t *= 2 - rmsd / target_rmsd
@@ -317,7 +318,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
       n_vertices=len(sites), edge_list=[])
     tardy_tree.build_tree()
   else:
-    tardy_tree = geo_manager.construct_tardy_tree(sites=sites)
+    tardy_tree = tardy_tree_simple_connectivity
   print >> log, "tardy_tree summary:"
   tardy_tree.show_summary(vertex_labels=labels, out=log, prefix="  ")
   print >> log
@@ -377,6 +378,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
   mmtbx.refinement.tardy.action(
     tardy_model=tardy_model,
     params=params,
+    rmsd_calculator=rmsd_calculator,
     callback=callback,
     log=log)
   print >> log

@@ -177,12 +177,25 @@ def run(fmodels, model, target_weights, params, log,
   def refinement_callback (fmodel) :
     if monitor is not None :
       monitor.call_back(model, fmodel, "torsion_dynamics")
-  action(fmodel=fmodels.fmodel_xray(), tardy_model=tardy_model, params=params,
-    callback=None, log=log, format_for_phenix_refine=format_for_phenix_refine,
-    refinement_callback=refinement_callback) # XXX neutron
+  action( # XXX neutron
+    tardy_model=tardy_model,
+    params=params,
+    rmsd_calculator=tt.rmsd_calculator(),
+    callback=None,
+    log=log,
+    fmodel=fmodels.fmodel_xray(),
+    format_for_phenix_refine=format_for_phenix_refine,
+    refinement_callback=refinement_callback)
 
-def action(tardy_model, params, callback, log, fmodel=None,
-           format_for_phenix_refine=False, refinement_callback=None):
+def action(
+      tardy_model,
+      params,
+      rmsd_calculator,
+      callback,
+      log,
+      fmodel=None,
+      format_for_phenix_refine=False,
+      refinement_callback=None):
   sites_cart_start = tardy_model.sites_moved()
   qd_e_kin_scales = tardy_model.assign_random_velocities()
   cartesian_dof = sites_cart_start.size() * 3
@@ -221,7 +234,10 @@ def action(tardy_model, params, callback, log, fmodel=None,
     allowed_origin_shifts_need_to_be_suppressed
   log.flush()
   if (callback is not None):
-    if (callback(tardy_model=tardy_model) == False): return
+    if (callback(
+          tardy_model=tardy_model,
+          rmsd_calculator=rmsd_calculator) == False):
+      return
   if (allowed_origin_shifts_need_to_be_suppressed):
     number_of_sites_in_each_tree = tardy_model.number_of_sites_in_each_tree()
     crystal_symmetry = tardy_model.potential_obj.crystal_symmetry()
@@ -305,11 +321,11 @@ def action(tardy_model, params, callback, log, fmodel=None,
       if(format_for_phenix_refine):
         if(n_time_steps==1 or not n_time_steps%25):
           fmtr = "   step=%s temperature=%s rmsd=%s r_work=%s r_free=%s"
-          rmsddiff = tardy_model.sites_moved().rms_difference(sites_cart_start)
+          rmsd = rmsd_calculator(tardy_model.sites_moved(), sites_cart_start)
           print >> log, fmtr%(
             format_value("%5d", n_time_steps),
             format_value("%7.1f", e_as_t(e=tardy_model.e_kin())),
-            format_value("%6.4f", rmsddiff),
+            format_value("%6.4f", rmsd),
             format_value("%6.4f", fmodel.r_work()),
             format_value("%6.4f", fmodel.r_free()))
           if hasattr(refinement_callback, "__call__") :
@@ -325,8 +341,7 @@ def action(tardy_model, params, callback, log, fmodel=None,
         print >> log, "    %4d  %8.4f A  %8.2f K  %8.2f K  %s" \
           "  %6.2f  %6.2f  %6.2f" % (
             n_time_steps,
-            tardy_model.sites_moved().rms_difference(
-              sites_cart_start),
+            rmsd_calculator(tardy_model.sites_moved(), sites_cart_start),
             e_as_t(e=tardy_model.e_kin()),
             e_as_t(e=e_kin_after-e_kin_before),
             format_value(format="%6.3f", value=fluct_e_tot),
@@ -353,8 +368,7 @@ def action(tardy_model, params, callback, log, fmodel=None,
     log.flush()
     def show_rms(minimizer=None):
       print >> log, "  coor. rmsd: %8.4f" % (
-        tardy_model.sites_moved().rms_difference(
-          sites_cart_start))
+        rmsd_calculator(tardy_model.sites_moved(), sites_cart_start))
       log.flush()
       if (callback is not None):
         if (callback() == False): raise StopIteration
