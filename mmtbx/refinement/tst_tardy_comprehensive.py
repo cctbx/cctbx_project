@@ -79,6 +79,8 @@ pdb_file = None
 algorithm = *minimization annealing
   .type = choice
   .optional = False
+orca_experiments = False
+  .type = bool
 random_displacements_parameterization = *constrained cartesian
   .type = choice
   .optional = False
@@ -145,6 +147,12 @@ def run(args):
       trial_table=parameter_trial_table,
       cp_i_trial=cp_i_trial)
     if (local_params.algorithm == "minimization"):
+      if (local_params.orca_experiments):
+        tst_tardy_pdb_params.keep_all_restraints = True
+        if (tst_tardy_pdb_params.emulate_cartesian):
+          tst_tardy_pdb_params.orca_experiments = False
+        else:
+          tst_tardy_pdb_params.orca_experiments = True
       tst_tardy_pdb_params.number_of_cooling_steps = 0
       tst_tardy_pdb_params.minimization_max_iterations = None
     elif (local_params.algorithm == "annealing"):
