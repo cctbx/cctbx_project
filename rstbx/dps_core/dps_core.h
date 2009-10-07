@@ -14,8 +14,7 @@ namespace af = scitbx::af;
 namespace rstbx {
 
 enum SpotClass { GOOD, OVERLAP, SPINDLE, ICE, OTHERIMAGE, FULL_ENTER,
-  FULL_EXIT, ENTER1, ENTER2, EXIT3, EXIT4, NONE,
-  NONE1, NONE2, NONE3, NONE4, PARTIAL_THIN1, PARTIAL_THIN3 };
+  FULL_EXIT, ENTER1, ENTER2, EXIT3, EXIT4, NONE, OUTLIER };
 
 typedef af::shared<scitbx::vec3<double> >    pointlistmm; //memory management
 typedef boost::shared_ptr<Directional_FFT>   fftptr;
@@ -37,6 +36,7 @@ class dps_core {
                       //!   expressed in inverse Angstroms
   af::shared<Direction> hemisphere_solutions;
   Orientation orientation;
+  bool outliers_marked;// Boolean for indicating if outliers have been marked
  public:
   dps_statuslist status;  // scratch pad for spot status
   dps_statuslist Estatus; // scratch pad for spot status

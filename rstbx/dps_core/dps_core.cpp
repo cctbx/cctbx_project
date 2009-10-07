@@ -18,7 +18,7 @@ dps_fractional_to_miller(const scitbx::vec3<double>& p) {
 }
 
 pd::dps_core::dps_core():
-   granularity(5){}
+   granularity(5),outliers_marked(false){}
    /*! granularity of the internal projection of observed reciprocal space
       vectors onto the directional axis.  granularity value is a fixed
       parameter of the Rossmann DPS algorithm */
@@ -90,19 +90,33 @@ pd::dps_core::classify_spots() {
 void
 pd::dps_core::reset_spots() {
   scitbx::mat3<double> Ainv = orientation.direct_matrix();
-  status=dps_statuslist();
-  status.reserve(xyzdata.size());
-  Estatus=dps_statuslist();
-  Estatus.reserve(xyzdata.size());
-  obsdata = pointlistmm();
-  obsdata.reserve(xyzdata.size());
-  hkldata = pointlistmm();
-  hkldata.reserve(xyzdata.size());
-  for (std::size_t i = 0; i< xyzdata.size(); ++i) {
+  // initial construction of status
+  if (!outliers_marked) {
+    status=dps_statuslist();
+    status.reserve(xyzdata.size());
+    Estatus=dps_statuslist();
+    Estatus.reserve(xyzdata.size());
+    obsdata = pointlistmm();
+    obsdata.reserve(xyzdata.size());
+    hkldata = pointlistmm();
+    hkldata.reserve(xyzdata.size());
+    for (std::size_t i = 0; i< xyzdata.size(); ++i) {
       status.push_back(GOOD);
       Estatus.push_back(NONE);
       obsdata.push_back(Ainv*xyzdata[i]);
       hkldata.push_back(dps_fractional_to_miller(obsdata[i]));
+    }
+  }
+  // prevent 'OUTLIER' from being changed
+  else {
+    for (std::size_t i = 0; i< xyzdata.size(); ++i) {
+      if (status[i] != OUTLIER) {
+        status[i] = GOOD;
+      }
+      Estatus[i] = NONE;
+      obsdata[i] = Ainv*xyzdata[i];
+      hkldata[i] = dps_fractional_to_miller(obsdata[i]);
+    }
   }
 }
 double
@@ -152,4 +166,3 @@ pd::dps_core::hklobserved(const pointlistmm & spots) const {
   }
   return observed_miller;
 }
-
