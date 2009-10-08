@@ -115,7 +115,7 @@ class file_names:
     if VF.isImageFileName():
       self.FN.append(VF)
     else:
-      raise InputFileError(error_message)
+      raise Exception("Input error: "+error_message)
     return VF
 
   def interface3_parse_command(self):
