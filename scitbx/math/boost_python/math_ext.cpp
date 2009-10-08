@@ -14,7 +14,6 @@
 #include <scitbx/math/euler_angles.h>
 #include <scitbx/math/gcd.h>
 #include <boost/rational.hpp> // for boost::gcd
-#include <scitbx/math/distributions.h>
 
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
