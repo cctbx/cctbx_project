@@ -43,7 +43,9 @@ namespace {
       class_<wt>("students_t_distribution", no_init)
         .def(init<FloatType>(arg("v")))
         .def("degrees_of_freedom", &wt::degrees_of_freedom)
+#if !(defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 2) // XXX
         .def("find_degrees_of_freedom", &wt::find_degrees_of_freedom)
+#endif
       ;
     }
   };
@@ -85,8 +87,10 @@ namespace boost_python {
     non_member_function_wrappers<
       double, boost::math::normal_distribution<double> >::wrap();
     students_t_distribution_wrappers<double>::wrap();
+#if !(defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 2) // XXX
     non_member_function_wrappers<
       double, boost::math::students_t_distribution<double> >::wrap();
+#endif
   }
 
 }}} // namespace scitbx::math::boost_python
