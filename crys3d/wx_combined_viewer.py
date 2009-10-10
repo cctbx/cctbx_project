@@ -211,7 +211,6 @@ class map_viewer_mixin (wxGLWindow) :
     elif self.map_ctrls.get(map_id) is not None :
       self.map_ctrls[map_id].Raise()
     else :
-      print 0
       frame = MapEditor(self, map_object, map_id)
       frame.Show()
       self.map_ctrls[map_id] = frame
