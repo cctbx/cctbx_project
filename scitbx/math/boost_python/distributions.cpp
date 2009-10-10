@@ -6,6 +6,10 @@
 
 #include <scitbx/math/distributions.h>
 
+#if defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 2
+# define SCITBX_MATH_STUDENTS_T_DISABLED // to avoid compilation errors
+#endif
+
 namespace scitbx { namespace math {
 
 /*! Wrappers for boost::math statistical distributions.
@@ -30,6 +34,7 @@ namespace {
     }
   };
 
+#ifndef SCITBX_MATH_STUDENTS_T_DISABLED
   template <typename FloatType>
   struct students_t_distribution_wrappers
   {
@@ -43,12 +48,11 @@ namespace {
       class_<wt>("students_t_distribution", no_init)
         .def(init<FloatType>(arg("v")))
         .def("degrees_of_freedom", &wt::degrees_of_freedom)
-#if !(defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 2) // XXX
         .def("find_degrees_of_freedom", &wt::find_degrees_of_freedom)
-#endif
       ;
     }
   };
+#endif
 
   template <typename FloatType, class Distribution>
   struct non_member_function_wrappers
@@ -86,8 +90,8 @@ namespace boost_python {
     normal_distribution_wrappers<double>::wrap();
     non_member_function_wrappers<
       double, boost::math::normal_distribution<double> >::wrap();
+#ifndef SCITBX_MATH_STUDENTS_T_DISABLED
     students_t_distribution_wrappers<double>::wrap();
-#if !(defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 2) // XXX
     non_member_function_wrappers<
       double, boost::math::students_t_distribution<double> >::wrap();
 #endif
