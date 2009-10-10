@@ -873,6 +873,43 @@ def exercise_pickle():
       l.show_summary(vertex_labels=None, out=ls)
       assert not show_diff(ls.getvalue(), ts.getvalue())
 
+def exercise_rmsd_calculation():
+  from scitbx.array_family import flex
+  from libtbx.test_utils import approx_equal
+  sites_1 = flex.vec3_double([(0,0,0),(0,-1,1),(0,1,1)])
+  sites_2 = sites_1.select(flex.size_t([0,2,1]))
+  tt = construct(sites=sites_1, edge_list=[(0,1),(0,2)])
+  rmsd_calculator = tt.rmsd_calculator()
+  assert approx_equal(rmsd_calculator(
+    sites_cart_1=sites_1, sites_cart_2=sites_1), 0)
+  assert approx_equal(rmsd_calculator(
+    sites_cart_1=sites_1, sites_cart_2=sites_2), 0)
+  #
+  sites_1 = flex.vec3_double([
+    (0,0,0),(0,-1,1),(0,1,1),(0,-1,2),(0,-2,1),(0,2,1),(0,1,2)])
+  sites_2 = sites_1.select(flex.size_t([0,1,2,4,3,6,5]))
+  tt = construct(
+    sites=sites_1,
+    edge_list=[(0,1),(0,2),(1,3),(1,4),(2,5),(2,6)])
+  assert list(tt.rmsd_permutation(
+    sites_cart_1=sites_1, sites_cart_2=sites_1)) == [0,1,2,3,4,5,6]
+  assert list(tt.rmsd_permutation(
+    sites_cart_1=sites_1, sites_cart_2=sites_2)) == [0,1,2,4,3,6,5]
+  assert list(tt.rmsd_permutation(
+    sites_cart_1=sites_2, sites_cart_2=sites_1)) == [0,1,2,4,3,6,5]
+  #
+  sites_1.append((0,2,3))
+  sites_2.append((0,3,2))
+  tt = construct(
+    sites=sites_1,
+    edge_list=[(0,1),(0,2),(1,3),(1,4),(2,5),(2,6),(6,7)])
+  assert list(tt.rmsd_permutation(
+    sites_cart_1=sites_1, sites_cart_2=sites_1)) == [0,1,2,3,4,5,6,7]
+  assert list(tt.rmsd_permutation(
+    sites_cart_1=sites_1, sites_cart_2=sites_2)) == [0,1,2,4,3,5,6,7]
+  assert list(tt.rmsd_permutation(
+    sites_cart_1=sites_2, sites_cart_2=sites_1)) == [0,1,2,4,3,5,6,7]
+
 def run(args):
   assert args in [[], ["--verbose"]]
   verbose = "--verbose" in args
@@ -890,6 +927,7 @@ def run(args):
   exercise_edge_classifier()
   exercise_all_in_one_rigid_body()
   exercise_pickle()
+  exercise_rmsd_calculation()
   #
   print "OK"
 

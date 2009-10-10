@@ -628,7 +628,31 @@ class construct(slots_getstate_setstate):
     return O.rmsd_calculation
 
   def rmsd_calculation(O, sites_cart_1, sites_cart_2):
-    return sites_cart_1.rms_difference(sites_cart_2)
+    return sites_cart_1.rms_difference(sites_cart_2.select(
+      O.rmsd_permutation(
+        sites_cart_1=sites_cart_1,
+        sites_cart_2=sites_cart_2)))
+
+  def rmsd_permutation(O, sites_cart_1, sites_cart_2):
+    "simple, limited handling of flipped sites"
+    assert sites_cart_1.size() == len(O.edge_sets)
+    assert sites_cart_2.size() == len(O.edge_sets)
+    from scitbx.array_family import flex
+    result = flex.size_t_range(len(O.edge_sets))
+    for i,esi in enumerate(O.edge_sets):
+      if (len(esi) not in[2, 3]): continue
+      n1 = flex.size_t()
+      for j in esi:
+        if (len(O.edge_sets[j]) == 1):
+          n1.append(j)
+      if (len(n1) != 2): continue
+      n1_rev = flex.size_t(reversed(n1))
+      pair_1 = sites_cart_1.select(n1)
+      rmsd_1 = pair_1.rms_difference(sites_cart_2.select(n1))
+      rmsd_2 = pair_1.rms_difference(sites_cart_2.select(n1_rev))
+      if (rmsd_2 < rmsd_1*(1-1e-6)):
+        result.set_selected(n1, n1_rev)
+    return result
 
   def viewer_lines_with_colors_legend(O, include_loop_edge_bendings):
     result = [
