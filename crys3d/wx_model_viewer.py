@@ -324,7 +324,6 @@ class model_data (object) :
     if cached is not None :
       self.atom_colors = cached
     else :
-      print self.base_color
       # these are approximations based on my (probably faulty) memory.
       # feel free to change to something more reasonable.
       element_shades = {' C' : self.base_color, # usually yellow or grey
