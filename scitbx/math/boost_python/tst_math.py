@@ -1768,21 +1768,25 @@ def exercise_distributions():
   assert norm.mean() == 1
   assert norm.standard_deviation() == 6
   # student's t distribution
-  stu = distributions.students_t_distribution(10)
-  assert stu.degrees_of_freedom() == 10
-  assert stu.mean() == 0
-  assert stu.median() == 0
-  assert stu.mode() == 0
-  assert approx_equal(
-    math.pow(stu.standard_deviation(),2), 1.25)
-  assert approx_equal(stu.variance(), 1.25)
-  assert approx_equal(stu.kurtosis(), 4.0)
-  assert stu.skewness() == 0
-  assert approx_equal(norm.pdf(0.4), 0.066158757912835292)
-  assert approx_equal(norm.cdf(norm.quantile(.8)), .8)
-  assert approx_equal(stu.quantiles(6),
-    (-1.4915762442496054, -0.69981206131243145, -0.21599563333226371,
-     0.21599563333226388, 0.69981206131243145, 1.4915762442496057))
+  try:
+    stu = distributions.students_t_distribution(10)
+  except RuntimeError, e:
+    print "Skipping exercise students_t_distribution:", e
+  else:
+    assert stu.degrees_of_freedom() == 10
+    assert stu.mean() == 0
+    assert stu.median() == 0
+    assert stu.mode() == 0
+    assert approx_equal(
+      math.pow(stu.standard_deviation(),2), 1.25)
+    assert approx_equal(stu.variance(), 1.25)
+    assert approx_equal(stu.kurtosis(), 4.0)
+    assert stu.skewness() == 0
+    assert approx_equal(norm.pdf(0.4), 0.066158757912835292)
+    assert approx_equal(norm.cdf(norm.quantile(.8)), .8)
+    assert approx_equal(stu.quantiles(6),
+      (-1.4915762442496054, -0.69981206131243145, -0.21599563333226371,
+       0.21599563333226388, 0.69981206131243145, 1.4915762442496057))
 
 def run():
   exercise_distributions()
