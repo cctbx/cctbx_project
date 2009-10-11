@@ -603,14 +603,27 @@ class set(crystal.symmetry):
     return self.select(
       self.sort_permutation(by_value=by_value, reverse=reverse))
 
-  def generate_r_free_flags(self, fraction=0.1, max_free=2000, lattice_symmetry_max_delta=5.0, use_lattice_symmetry=False):
+  def generate_r_free_flags (self,
+                             fraction=0.1,
+                             max_free=2000,
+                             lattice_symmetry_max_delta=5.0,
+                             use_lattice_symmetry=False,
+                             use_dataman_shells=False,
+                             n_shells=20) :
     if use_lattice_symmetry:
       assert lattice_symmetry_max_delta>=0
 
     if not use_lattice_symmetry:
-      return self.generate_r_free_flags_basic(fraction, max_free)
+      return self.generate_r_free_flags_basic(fraction=fraction,
+        max_free=max_free,
+        use_dataman_shells=use_dataman_shells,
+        n_shells=n_shells)
     else:
-      return self.generate_r_free_flags_on_lattice_symmetry(fraction, max_free, lattice_symmetry_max_delta)
+      return self.generate_r_free_flags_on_lattice_symmetry(fraction=fraction,
+        max_free=max_free,
+        max_delta=lattice_symmetry_max_delta,
+        use_dataman_shells=use_dataman_shells,
+        n_shells=n_shells)
 
   def crystal_symmetry(self):
     return crystal.symmetry(
@@ -644,7 +657,9 @@ class set(crystal.symmetry):
                                                 max_free=2000,
                                                 max_delta=5.0,
                                                 return_integer_array=False,
-                                                n_partitions=None):
+                                                n_partitions=None,
+                                                use_dataman_shells=False,
+                                                n_shells=20):
     # the max_number of reflections is wrst the non anomalous set
     n_original = self.indices().size()
     if n_original<=0:
@@ -666,6 +681,7 @@ class set(crystal.symmetry):
       assert n_partitions is None
       assert return_integer_array is False
     if return_integer_array:
+      assert not use_dataman_shells
       assert fraction is None
       assert max_free is None
       assert n_partitions > 1
@@ -691,19 +707,12 @@ class set(crystal.symmetry):
     n = tmp_flags.indices().size()
     result = None
     if not return_integer_array:
-      group_size = 1/(fraction)
-      assert group_size >= 2
-      result = flex.bool(n, False)
-      i_start = 0
-      for i_group in count(1):
-        i_end = min(n, iround(i_group*group_size) )
-        if (i_start == i_end):
-          break
-        if (i_end + 1 == n):
-          i_end += 1
-        assert i_end - i_start >= 2
-        result[random.randrange(i_start, i_end)] = True
-        i_start = i_end
+      if use_dataman_shells :
+        result = assign_r_free_flags_by_shells(n_refl=n,
+          fraction_free=fraction,
+          n_bins=n_shells)
+      else :
+        result = assign_random_r_free_flags(n, fraction)
     else:
       result = flex.size_t()
       n_times = int(n/n_partitions)+1
@@ -741,9 +750,14 @@ class set(crystal.symmetry):
     assert tmp_flags.indices().all_eq( self.indices() )
     return tmp_flags
 
-  def generate_r_free_flags_basic(self, fraction=0.1, max_free=2000):
+  def generate_r_free_flags_basic (self,
+                                   fraction=0.1,
+                                   max_free=2000,
+                                   use_dataman_shells=False,
+                                   n_shells=20) :
     assert fraction > 0 and fraction < 0.5
     assert max_free is None or max_free > 0
+    assert not use_dataman_shells or n_shells > 5
     if (self.anomalous_flag()):
       matches = self.match_bijvoet_mates()[1]
       sel_pp = matches.pairs_hemisphere_selection("+")
@@ -757,19 +771,12 @@ class set(crystal.symmetry):
       n = self.indices().size()
     if (max_free is not None):
       fraction = min(fraction, max_free/max(1,n))
-    group_size = 1/fraction
-    assert group_size >= 2
-    result = flex.bool(n, False)
-    i_start = 0
-    for i_group in count(1):
-      i_end = min(n, iround(i_group * group_size))
-      if (i_start == i_end):
-        break
-      if (i_end + 1 == n):
-        i_end += 1
-      assert i_end - i_start >= 2
-      result[random.randrange(i_start, i_end)] = True
-      i_start = i_end
+    if use_dataman_shells :
+      result = assign_r_free_flags_by_shells(n_refl=n,
+                                             fraction_free=fraction,
+                                             n_shells=n_shells)
+    else :
+      result = assign_random_r_free_flags(n_refl=n, fraction_free=fraction)
     if (not self.anomalous_flag()):
       indices = self.indices()
     else:
@@ -1048,6 +1055,36 @@ class set(crystal.symmetry):
       crystal_symmetry = self,
       indices          = self._indices.concatenate(other.indices()),
       anomalous_flag   = self.anomalous_flag())
+
+def assign_random_r_free_flags (n_refl, fraction_free) :
+  group_size = 1/(fraction_free)
+  assert group_size >= 2
+  result = flex.bool(n_refl, False)
+  i_start = 0
+  for i_group in count(1):
+    i_end = min(n_refl, iround(i_group*group_size) )
+    if (i_start == i_end):
+      break
+    if (i_end + 1 == n_refl):
+      i_end += 1
+    assert i_end - i_start >= 2
+    result[random.randrange(i_start, i_end)] = True
+    i_start = i_end
+  return result
+
+def assign_r_free_flags_by_shells (n_refl, fraction_free, n_bins) :
+  n_free = iround(n_refl * fraction_free)
+  n_per_bin = iround(n_refl / n_bins)
+  half_n_work_per_bin = iround((n_refl-n_free) / n_bins / 2)
+  n_free_per_bin = n_per_bin - 2*half_n_work_per_bin
+  flags = flex.bool()
+  flags.reserve(n_refl)
+  for i_bin in xrange(n_bins):
+    flags.resize(min(n_refl, flags.size()+half_n_work_per_bin), False)
+    flags.resize(min(n_refl, flags.size()+n_free_per_bin), True)
+    flags.resize(min(n_refl, flags.size()+half_n_work_per_bin), False)
+  flags.resize(n_refl, False)
+  return flags
 
 def build_set(crystal_symmetry, anomalous_flag, d_min, d_max=None):
   result = set(
