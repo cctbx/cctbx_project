@@ -193,6 +193,7 @@ iotbx/command_line/pdb.join_fragment_files.py svneol=native#text/x-python
 iotbx/command_line/pdb.print_sequence.py -text
 iotbx/command_line/pdb_as_fasta.py svneol=native#text/x-python
 iotbx/command_line/r_free_flags_completion_simple.py svneol=native#text/x-python
+iotbx/command_line/reflection_file_editor.py -text
 iotbx/detectors/adsc_module.py -text
 iotbx/detectors/beam_center_convention.py -text
 iotbx/detectors/cbf.py -text

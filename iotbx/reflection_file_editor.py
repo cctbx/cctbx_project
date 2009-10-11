@@ -1,7 +1,6 @@
 from __future__ import division
 
 # TODO: regression testing
-# TODO: R-free flags in thin shells
 # TODO: merge/expand to compatible point groups
 # TODO: confirm old_test_flag_value if ambiguous
 
@@ -11,6 +10,7 @@ from iotbx.reflection_file_utils import get_r_free_flags_scores
 import iotbx.phil
 from cctbx import crystal, miller
 from scitbx.array_family import flex
+from libtbx.phil.command_line import argument_interpreter
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 
@@ -22,7 +22,12 @@ show_arrays = False
   .style = hidden
 dry_run = False
   .type = bool
-  .help = Print out final configuration and exit
+  .help = Print out final configuration and output summary, but don't write \
+          the output file
+  .style = hidden
+verbose = True
+  .type = bool
+  .help = Print extra debugging information
   .style = hidden
 hkltools
 {
@@ -85,9 +90,16 @@ hkltools
     .short_caption = R-free flags generation
     .style = menu_item auto_align box
   {
-    generate = False
+    generate = True
       .type = bool
-      .short_caption = Generate R-free flags
+      .short_caption = Generate R-free flags if not already present
+      .style = bold
+    force_generate = False
+      .type = bool
+      .short_caption = Generate R-free flags even if they are already present
+    new_label = FreeR_flag
+      .type = str
+      .short_caption = Output label for new R-free flags
       .style = bold
     use_resolution_shells = False
       .type = bool
@@ -106,6 +118,13 @@ hkltools
       .type = int
       .expert_level = 2
       .short_caption = Lattice symmetry max. delta
+    use_dataman_shells = False
+      .short_caption = Assign test set in thin resolution shells
+      .help = Used to avoid biasing of the test set by certain types of \
+        non-crystallographic symmetry.
+    n_shells = 20
+      .type = int
+      .short_caption = Number of resolution shells
     extend = None
       .type = bool
       .short_caption = Extend existing R-free array(s) to full resolution range
@@ -123,7 +142,7 @@ hkltools
 # XXX: params.hkltools.miller_array values will be ignored here, since the
 # arrays and file names should have already been extracted
 class process_arrays (object) :
-  def __init__ (self, miller_arrays, file_names, params,
+  def __init__ (self, miller_arrays, file_names, params, log=sys.stderr,
       accumulation_callback=None) :
     adopt_init_args(self, locals())
     if len(miller_arrays) == 0 :
@@ -132,9 +151,10 @@ class process_arrays (object) :
     if None in [params.hkltools.crystal_symmetry.space_group,
                 params.hkltools.crystal_symmetry.unit_cell] :
       raise Sorry("Missing or incomplete symmetry information.")
-    sg = params.hkltools.crystal_symmetry.space_group
+    sg = params.hkltools.crystal_symmetry.space_group.group()
     derived_sg = sg.build_derived_point_group()
     uc = params.hkltools.crystal_symmetry.unit_cell
+    self.symm = crystal.symmetry(unit_cell=uc, space_group=sg)
     force_symmetry = params.hkltools.crystal_symmetry.force_symmetry
     for file_name, miller_array in zip(file_names, miller_arrays) :
       array_symm = miller_array.crystal_symmetry()
@@ -152,12 +172,6 @@ class process_arrays (object) :
         raise Sorry(("The unit cell for the Miller array %s:%s (%s) is "+
           "significantly different than the output unit cell (%s).") %
           (file_name, miller_array.info().label_string(),str(array_uc),str(uc)))
-    try :
-      self.symm = crystal.symmetry(
-        unit_cell=params.hkltools.crystal_symmetry.unit_cell,
-        space_group=params.hkltools.crystal_symmetry.space_group)
-    except AssertionError, e :
-      raise Sorry(str(e))
     labels = ["H", "K", "L"]
     label_files = [None, None, None]
     i = 1
@@ -176,76 +190,92 @@ class process_arrays (object) :
       d_min = params.hkltools.d_min
 
     # XXX: main loop
-    for i, _old_array in enumerate(miller_arrays) :
-      info = _old_array.info()
-      old_labels = info.labels
-      old_array = _old_array.map_to_asu()
-      array_copy = old_array.customized_copy(crystal_symmetry=self.symm)
+    for i, old_array in enumerate(miller_arrays) :
+      info = old_array.info()
+      output_labels = info.labels
+      # TODO: convert to higher/lower symmetry
+      array_copy = old_array.customized_copy(
+        crystal_symmetry=self.symm).map_to_asu()
+      current_params = None
+      # XXX: workaround for scalepack files with anomalous data
+      if array_copy.anomalous_flag() and info.labels == ["i_obs","sigma"] :
+        output_labels = ["I(+)", "SIGI(+)", "I(-)", "SIGI(-)"]
       for array_params in params.hkltools.miller_array :
         if (array_params.labels == info.label_string() and
             array_params.file_name == file_names[i]) :
-          array_copy = array_copy.resolution_filter(d_min=array_params.d_min,
-                                                    d_max=array_params.d_max)
-          break
-      array = array_copy.resolution_filter(d_min=params.hkltools.d_min,
-                                           d_max=params.hkltools.d_max)
-      if ((old_array.is_integer_array() or old_array.is_bool_array()) and
+          current_params = array_params
+      if current_params is None :
+        raise Sorry("Parameters for Miller array %s not found!" %
+          info.label_string())
+      # XXX: array-specific resolution limits are applied first, then
+      # the global limits
+      new_array = array_copy.resolution_filter(d_min=current_params.d_min,
+        d_max=current_params.d_max).resolution_filter(
+          d_min=params.hkltools.d_min,
+          d_max=params.hkltools.d_max)
+      if len(current_params.output_label) == 0 :
+        current_params.output_label = output_labels
+      elif len(array_info.labels) != len(current_params.output_label) :
+        if info.labels==["i_obs","sigma"] and array_copy.anomalous_flag() :
+          if len(current_params.output_label) == 4 :
+            output_labels = current_params.output_label
+          else :
+            raise Sorry("For scalepack files containing anomalous data, "+
+                   "you must specify exactly four column labels (e.g. I(+), "+
+                   "SIGI(+),I(-),SIGI(-)).")
+      else :
+        raise Sorry(("Number of user-specified labels for %s:%s does not "+
+          "match the number of labels in the output file.") %
+            (file_names[i], info.label_string()))
+      # XXX: R-free flags handling
+      if ((new_array.is_integer_array() or new_array.is_bool_array()) and
            reflection_file_utils.looks_like_r_free_flags_info(info)) :
-        flag_scores = get_r_free_flags_scores(miller_arrays=[old_array],
+        flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
            test_flag_value=None)
         test_flag_value = flag_scores.test_flag_values[0]
-        fake_label = "Z" + string.uppercase[i]
-        old_r_free = old_r_free.customized_copy(
-          crystal_symmetry=self.symm).resolution_filter(
-            d_max=params.hkltools.d_max,
-            d_min=params.hkltools.d_min)
-        r_free_flags = old_array.array(data=old_r_free.data()==test_flag_value)
+        r_free_flags = new_array.array(data=new_array.data()==test_flag_value)
         fraction_free = (r_free_flags.data().count(True) /
                          r_free_flags.data().size())
-        print "%s: fraction_free=%.3f" % (label, fraction_free)
+        print >>log, "%s: fraction_free=%.3f" % (info.labels[0], fraction_free)
         missing_set = r_free_flags.complete_set(d_min=d_min,
           d_max=d_max).lone_set(r_free_flags.map_to_asu())
         n_missing = missing_set.indices().size()
-        print "%s: missing %d reflections" % (label, n_missing)
+        print >>log, "%s: missing %d reflections" % (info.labels[0], n_missing)
         if n_missing != 0 and params.hkltools.r_free_flags.extend :
-          if accumulation_callback is not None :
-            if not accumulation_callback(miller_array=old_r_free,
-                                         test_flag_value=test_flag_value,
-                                         n_missing=n_missing,
-                                         column_label=label) :
-              continue
-          missing_flags = missing_set.generate_r_free_flags(
-            fraction=fraction_free,
-            max_free=None,
-            use_lattice_symmetry=True)
-          extended_r_free_flags = r_free_flags.concatenate(other=missing_flags)
-          self.mtz_dataset.add_miller_array(miller_array=extended_r_free_flags,
-                                            column_root_label=fake_label)
+          if n_missing <= 20 :
+            # FIXME: MASSIVE CHEAT necessary for tiny sets
+            missing_flags = missing_set.array(data=flex.bool(n_missing,False))
+          else :
+            if accumulation_callback is not None :
+              if not accumulation_callback(miller_array=new_array,
+                                           test_flag_value=test_flag_value,
+                                           n_missing=n_missing,
+                                           column_label=info.labels[0]) :
+                continue
+            missing_flags = missing_set.generate_r_free_flags(
+              fraction=fraction_free,
+              max_free=None,
+              use_lattice_symmetry=True)
+          output_array = r_free_flags.concatenate(other=missing_flags)
         else :
-          self.mtz_dataset.add_miller_array(miller_array=r_free_flags,
-                                            column_root_label=fake_label)
-        self.labels.append(label)
-        self.label_files.append(file_names[i])
+          output_array = r_free_flags
         have_r_free_array = True
       else :
-        array = array_copy.resolution_filter(d_min=params.hkltools.d_min,
-                                             d_max=params.hkltools.d_max)
-        fake_label = 2 * string.uppercase[i]
-        if self.mtz_dataset is None :
-          self.mtz_dataset = array.as_mtz_dataset(column_root_label=fake_label)
-        else :
-          self.mtz_dataset.add_miller_array(
-            miller_array=array,
-            column_root_label=fake_label)
-        # XXX: workaround for scalepack files with anomalous data
-        if old_array.anomalous_flag() and old_labels[0:2] == ["i_obs","sigma"] :
-          old_labels = ["I(+)", "SIGI(+)", "I(-)", "SIGI(-)"]
-        for label in old_labels :
-          labels.append(label)
-          label_files.append(file_names[i])
-        i += 1
-
-    if params.hkltools.r_free_flags.generate and not have_r_free_array :
+        output_array = new_array
+      fake_label = 2 * string.uppercase[i]
+      if self.mtz_dataset is None :
+        self.mtz_dataset = output_array.as_mtz_dataset(
+                             column_root_label=fake_label)
+      else :
+        self.mtz_dataset.add_miller_array(
+          miller_array=output_array,
+          column_root_label=fake_label)
+      for label in output_labels :
+        labels.append(label)
+        label_files.append(file_names[i])
+      self.final_arrays.append(output_array)
+    if ((params.hkltools.r_free_flags.generate and not have_r_free_array) or
+        params.hkltools.r_free_flags.force_generate) :
       (d_max, d_min) = get_best_resolution(self.final_arrays)
       complete_set = miller.build_set(crystal_symmetry=self.symm,
                                       anomalous_flag=False,
@@ -256,11 +286,15 @@ class process_arrays (object) :
         fraction=r_free_params.fraction,
         max_free=r_free_params.max_free,
         lattice_symmetry_max_delta=r_free_params.lattice_symmetry_max_delta,
-        use_lattice_symmetry=r_free_params.use_lattice_symmetry)
+        use_lattice_symmetry=r_free_params.use_lattice_symmetry,
+        use_dataman_shells=r_free_params.use_dataman_shells,
+        n_shells=r_free_params.n_shells)
+      if r_free_params.new_label is None or r_free_params.new_label == "" :
+        r_free_params.new_label = "FreeR_flag"
       self.mtz_dataset.add_miller_array(
         miller_array=new_r_free_array,
-        column_root_label="FreeR_flag")
-      labels.append("FreeR_flag")
+        column_root_label=r_free_params.new_label)
+      labels.append(r_free_params.new_label)
       label_files.append("(new array)")
       self.created_r_free = True
     mtz_object = self.mtz_dataset.mtz_object()
@@ -271,48 +305,11 @@ class process_arrays (object) :
     self.label_files = label_files
     self.params = params
     self.mtz_object = mtz_object
-    self.apply_new_labels(labels, resolve_conflicts=True)
+    self.apply_new_labels(labels,
+      resolve_conflicts=params.hkltools.resolve_label_conflicts)
 
-  def extend_r_free_flags (self, old_array, flag_value, file_name, label) :
-    params = self.params
-    (d_max, d_min) = get_best_resolution(self.miller_arrays)
-
-      fake_label = "Z" + string.uppercase[i]
-      old_r_free = old_r_free.customized_copy(
-        crystal_symmetry=self.symm).resolution_filter(
-          d_max=params.hkltools.d_max,
-          d_min=params.hkltools.d_min)
-      r_free_flags = old_r_free.array(data=old_r_free.data()==test_flag_value)
-      fraction_free = r_free_flags.data().count(True)/r_free_flags.data().size()
-      print "%s: fraction_free=%.3f" % (label, fraction_free)
-      missing_set = r_free_flags.complete_set(d_min=d_min,
-        d_max=d_max).lone_set(r_free_flags.map_to_asu())
-      n_missing = missing_set.indices().size()
-      print "%s: missing %d reflections" % (label, n_missing)
-      if n_missing != 0 :
-        if accumulation_callback is not None :
-          if not accumulation_callback(miller_array=old_r_free,
-                                       test_flag_value=test_flag_value,
-                                       n_missing=n_missing,
-                                       column_label=label) :
-            continue
-        missing_flags = missing_set.generate_r_free_flags(
-          fraction=fraction_free,
-          max_free=None,
-          use_lattice_symmetry=True)
-        extended_r_free_flags = r_free_flags.concatenate(other=missing_flags)
-        self.mtz_dataset.add_miller_array(miller_array=extended_r_free_flags,
-                                          column_root_label=fake_label)
-      else :
-        self.mtz_dataset.add_miller_array(miller_array=r_free_flags,
-                                          column_root_label=fake_label)
-      self.labels.append(label)
-      self.label_files.append(file_name)
-    self.mtz_object = self.mtz_dataset.mtz_object()
-    self.apply_new_labels(self.labels, resolve_conflicts=True)
-
+  # In the GUI, this will be done at the end.
   def apply_new_labels (self, labels, resolve_conflicts=False) :
-    print labels
     assert len(labels) == self.mtz_object.n_columns() == len(self.label_files)
     i = 0
     used = dict([ (label, 0) for label in labels ])
@@ -326,9 +323,10 @@ class process_arrays (object) :
             label += "_%d" % (used[labels[i]] + 1)
             self.label_changes.append((label_files[i], labels[i], label))
           else :
-            raise Sorry(("Duplicate label '%s'.  Specify "+
+            raise Sorry(("Duplicate column label '%s'.  Specify "+
               "resolve_label_conflicts=True to automatically generate "+
-              "non-redundant labels.") % labels[i])
+              "non-redundant labels, or edit the parameters to provide your"+
+              "own choice of labels.") % labels[i])
         column.set_label(label)
         final_labels.append(label)
         used[labels[i]] += 1
@@ -337,9 +335,17 @@ class process_arrays (object) :
       i += 1
     self.labels = final_labels
 
+  def show (self, out=sys.stdout) :
+    if self.mtz_object is not None :
+      print >> out, ""
+      print >> out, ("=" * 20) + " Summary of output file " + ("=" * 20)
+      self.mtz_object.show_summary(out=out, prefix="  ")
+      print >> out, ""
+
   def finish (self) :
     assert self.mtz_object is not None
-    self.mtz_object.show_summary()
+    if self.params.verbose :
+      self.show(out=self.log)
     self.mtz_object.write(file_name=self.params.hkltools.output_file)
     del self.mtz_object
     self.mtz_object = None
@@ -378,6 +384,15 @@ def get_best_resolution (miller_arrays) :
   return (best_d_max, best_d_min)
 
 #-----------------------------------------------------------------------
+def usage (out=sys.stdout, attributes_level=0) :
+  print >> out, """
+# usage: iotbx.reflection_file_editor [file1.mtz ...] [parameters.eff]
+#            --help      (print this message)
+#            --details   (show parameter help strings)
+# Dumping default parameters:
+"""
+  master_phil.show(out=out, attributes_level=attributes_level)
+
 def run (args, out=sys.stdout) :
   crystal_symmetry_from_pdb = None
   crystal_symmetries_from_hkl = []
@@ -385,11 +400,12 @@ def run (args, out=sys.stdout) :
   user_phil = []
   all_arrays = []
   if len(args) == 0 :
-    master_phil.show(out=out, attributes_level=1)
-    return True
+    usage()
+  interpreter = argument_interpreter(master_phil=master_phil,
+                                     home_scope=None)
   for arg in args :
-    if arg in ["--help", "--options"] :
-      master_phil.show(out=out, attributes_level=1)
+    if arg in ["--help", "--options", "--details"] :
+      usage(attributes_level=args.count("--details"))
       return True
     elif os.path.isfile(arg) :
       full_path = os.path.abspath(arg)
@@ -415,7 +431,7 @@ def run (args, out=sys.stdout) :
           crystal_symmetry_from_pdb = symm
     else :
       try :
-        cmdline_phil = iotbx.phil.parse(arg)
+        cmdline_phil = interpreter.process(arg=arg)
       except Exception :
         pass
       else :
@@ -429,19 +445,22 @@ def run (args, out=sys.stdout) :
 hkltools.miller_array {
   file_name = %s
   labels = %s
-}""" % (input_file.file_name, miller_array.info().label_string())))
+  d_max = %.5f
+  d_min = %.5f
+}""" % (input_file.file_name, miller_array.info().label_string(),
+        miller_array.d_max_min()[0], miller_array.d_max_min()[1])))
 
   working_phil = master_phil.fetch(sources=user_phil)
   params = working_phil.extract()
   if crystal_symmetry_from_pdb is not None :
     params.hkltools.crystal_symmetry.space_group = \
-      crystal_symmetry_from_pdb.space_group()
+      crystal_symmetry_from_pdb.space_group_info()
     params.hkltools.crystal_symmetry.unit_cell = \
       crystal_symmetry_from_pdb.unit_cell()
   elif None in [params.hkltools.crystal_symmetry.space_group,
                 params.hkltools.crystal_symmetry.unit_cell] :
     for i, symm in enumerate(crystal_symmetries_from_hkl) :
-      params.hkltools.crystal_symmetry.space_group = symm.space_group()
+      params.hkltools.crystal_symmetry.space_group = symm.space_group_info()
       params.hkltools.crystal_symmetry.unit_cell = symm.unit_cell()
       break
   if params.hkltools.output_file is None :
@@ -450,9 +469,9 @@ hkltools.miller_array {
       if file_name.startswith("reflections_") and file_name.endswith(".mtz") :
         n += 1
     params.hkltools.output_file = "reflections_%d.mtz" % (n+1)
+  params.hkltools.output_file = os.path.abspath(params.hkltools.output_file)
   miller_arrays = []
   file_names = []
-  output_labels = ['H','K','L']
   for array_params in params.hkltools.miller_array :
     input_file = cached_files.get(array_params.file_name)
     if input_file is None :
@@ -465,23 +484,6 @@ hkltools.miller_array {
       if label_string == array_params.labels :
         miller_arrays.append(miller_array)
         file_names.append(input_file.file_name)
-        if len(array_params.output_label) == 0 :
-          output_labels.extend(array_info.labels)
-        elif len(array_info.labels) != len(array_params.output_label) :
-          if (array_info.labels==["i_obs","sigma"] and
-              miller_array.anomalous_flag()) :
-            if not len(array_params.output_label) == 4 :
-              raise Sorry("For scalepack files containing anomalous data, "+
-                "you must specify exactly four column labels (e.g. I(+), "+
-                "SIGI(+),I(-),SIGI(-)).")
-            else :
-              output_labels.extend(array_params.output_label)
-          else :
-            raise Sorry(("Number of user-specified labels for %s:%s does not "+
-              "match the number of labels in the output file.") %
-              (input_file.file_name, label_string))
-        else :
-          output_labels.extend(array_params.output_label)
 
   if params.show_arrays :
     shown_files = []
@@ -491,21 +493,20 @@ hkltools.miller_array {
         shown_files.append(file_name)
       print >> out, "  %s" % miller_array.info().label_string()
     return True
-  elif params.dry_run :
-    master_phil.format(python_object=params).show(out=out)
-    return True
   if len(miller_arrays) == 0 :
     raise Sorry("No Miller arrays picked for output.")
-  process = process_arrays(miller_arrays, file_names, params)
+  process = process_arrays(miller_arrays, file_names, params, log=out)
   if process.extend :
     process.extend_r_free_flags()
-  if process.created_r_free :
-    output_labels.append("FreeR_flag")
-  process.apply_new_labels(output_labels,
-    resolve_conflicts=params.hkltools.resolve_label_conflicts)
+  if params.dry_run :
+    print >> out, "# showing final parameters"
+    master_phil.format(python_object=params).show(out=out)
+    if params.verbose :
+      process.show(out=out)
+    return process
   process.finish()
   print >> out, "Data written to %s" % params.hkltools.output_file
-  return True
+  return process
 
 if __name__ == "__main__" :
   run(sys.argv[1:])
