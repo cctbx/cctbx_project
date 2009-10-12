@@ -119,6 +119,7 @@ hkltools
       .expert_level = 2
       .short_caption = Lattice symmetry max. delta
     use_dataman_shells = False
+      .type = bool
       .short_caption = Assign test set in thin resolution shells
       .help = Used to avoid biasing of the test set by certain types of \
         non-crystallographic symmetry.
@@ -177,7 +178,7 @@ class process_arrays (object) :
     i = 1
     self.extend = False
     self.created_r_free = False
-    new_r_free_array = None
+    have_r_free_array = False
     self.final_arrays = []
     self.mtz_dataset = None
     if len(miller_arrays) > 25 :
@@ -320,7 +321,10 @@ class process_arrays (object) :
         label = labels[i]
         if used[labels[i]] > 0 :
           if resolve_conflicts :
-            label += "_%d" % (used[labels[i]] + 1)
+            if label.endswith("(+)") or label.endswith("(-)") :
+              label = label[0:-3] + ("_%d" % (used[labels[i]]+1)) + label[-3:]
+            else :
+              label += "_%d" % (used[labels[i]] + 1)
             self.label_changes.append((label_files[i], labels[i], label))
           else :
             raise Sorry(("Duplicate column label '%s'.  Specify "+
@@ -393,6 +397,22 @@ def usage (out=sys.stdout, attributes_level=0) :
 """
   master_phil.show(out=out, attributes_level=attributes_level)
 
+def generate_params (file_name, miller_arrays) :
+  params = []
+  for miller_array in miller_arrays :
+    param_str = """hkltools.miller_array {
+  file_name = %s
+  labels = %s
+""" % (file_name, miller_array.info().label_string())
+    try :
+      (d_max, d_min) = miller_array.d_max_min()
+      param_str += """  d_max = %.5f\n  d_min = %.5f\n""" % (d_max, d_min)
+    except Exception :
+      pass
+    param_str += "}"
+    params.append(param_str)
+  return "\n".join(params)
+
 def run (args, out=sys.stdout) :
   crystal_symmetry_from_pdb = None
   crystal_symmetries_from_hkl = []
@@ -440,15 +460,8 @@ def run (args, out=sys.stdout) :
   for input_file in reflection_files :
     cached_files[input_file.file_name] = input_file
     file_arrays = input_file.file_object.as_miller_arrays()
-    for miller_array in file_arrays :
-      user_phil.append(iotbx.phil.parse("""
-hkltools.miller_array {
-  file_name = %s
-  labels = %s
-  d_max = %.5f
-  d_min = %.5f
-}""" % (input_file.file_name, miller_array.info().label_string(),
-        miller_array.d_max_min()[0], miller_array.d_max_min()[1])))
+    file_params_str= generate_params(input_file.file_name, file_arrays)
+    user_phil.append(iotbx.phil.parse(file_params_str))
 
   working_phil = master_phil.fetch(sources=user_phil)
   params = working_phil.extract()
