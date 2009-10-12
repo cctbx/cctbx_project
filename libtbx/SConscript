@@ -447,12 +447,15 @@ else:
           if build_nb < min_build_nb:
             raise RuntimeError("Apple GCC 4.2 (build %i) incompatible with "
                                "--enable_boost_threads" % build_nb)
+    link_flags = ["-w"] # suppress "source/lib does not exist" warning
+    if (env_etc.gcc_version >= 40201 and libtbx.env.build_options.force_32bit) :
+      link_flags.extend(["-arch", "i386"])
     env_base.Replace(
       CC=cc,
       SHCC=cc,
       CXX=cxx,
       LINK=cxx,
-      LINKFLAGS=["-w"], # suppress "source/lib does not exist" warning
+      LINKFLAGS=link_flags,
       SHCXX=cxx,
       SHLINK=cxx,
       SHLIBSUFFIX=env_etc.shlibsuffix,
@@ -472,7 +475,9 @@ else:
       warn_options = gcc_common_warn_options() + ["-Werror"]
     env_etc.ccflags_base.extend(warn_options)
     if (cxx == "c++"):
-      env_etc.ccflags_base.extend(["-no-cpp-precomp", "-Wno-long-double"])
+      env_etc.ccflags_base.extend(["-no-cpp-precomp"])
+      if (not env_etc.gcc_version >= 40201) : # fix for Snow Leopard/Xcode 3.2
+        env_etc.ccflags_base.append("-Wno-long-double")
     env_etc.cxxflags_base = []
     if (need_fcoalesce_templates):
       env_etc.cxxflags_base.append("-fcoalesce-templates")
@@ -507,12 +512,18 @@ else:
         if build_nb < 5646:
           # fixed on Snow Leopard whose Dev Tools start with that build
           opts.insert(0, "-gstabs+")
-    env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = []
     env_etc.shlinkflags_bpl = [
       "-w", # suppress "source/lib does not exist" warning
       "-bundle",
       "-undefined", "dynamic_lookup"]
+    # XXX: fix for 32-bit compilation on snow leopard
+    if (env_etc.gcc_version >= 40201 and libtbx.env.build_options.force_32bit) :
+      env_etc.ccflags_base.append("-m32")
+      env_etc.cxxflags_base.append("-m32")
+      env_etc.shlinkflags.extend(["-arch", "i386"])
+      env_etc.shlinkflags_bpl.append(["-arch", "i386"])
+    env_etc.ccflags_base.extend(opts)
     if (static_exe):
       # no action required
       static_exe = None
