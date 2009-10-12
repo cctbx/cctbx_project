@@ -2,6 +2,7 @@
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_SELECTIONS_WRAPPER_H
 
 #include <boost/python/args.hpp>
+#include <boost_adaptbx/boost_python_type_id_eq.h>
 #include <scitbx/array_family/selections.h>
 
 namespace scitbx { namespace af { namespace boost_python {
@@ -17,18 +18,11 @@ namespace scitbx { namespace af { namespace boost_python {
       return select(self.const_ref().as_1d(), flags);
     }
 
+    template <typename UnsignedType>
     static shared<ElementType>
     with_indices(
       SelfType const& self,
-      const_ref<std::size_t> const& indices)
-    {
-      return select(self.const_ref().as_1d(), indices, false);
-    }
-
-    static shared<ElementType>
-    with_indices_reverse(
-      SelfType const& self,
-      const_ref<std::size_t> const& indices,
+      const_ref<UnsignedType> const& indices,
       bool reverse)
     {
       return select(self.const_ref().as_1d(), indices, reverse);
@@ -40,9 +34,12 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       using namespace boost::python;
       aw.def("select", with_flags, (arg_("self"), arg_("flags")))
-        .def("select", with_indices, (arg_("self"), arg_("indices")))
-        .def("select", with_indices_reverse, (
-          arg_("self"), arg_("indices"), arg_("reverse")))
+        .def("select", with_indices<unsigned>, (
+          arg_("self"), arg_("indices"), arg_("reverse")=false))
+#if !defined(BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T)
+        .def("select", with_indices<std::size_t>, (
+          arg_("self"), arg_("indices"), arg_("reverse")=false))
+#endif
       ;
     }
   };

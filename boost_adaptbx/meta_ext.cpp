@@ -11,6 +11,8 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/list.hpp>
+
+#include <boost_adaptbx/boost_python_type_id_eq.h>
 #include <boost/cstdint.hpp>
 #include <stdexcept>
 
@@ -460,6 +462,9 @@ namespace {
 #if defined(BOOST_ADAPTBX_META_EXT_HAVE_GNU_LIBC_VERSION_H)
     result += "gnu libc version: ";
     result += gnu_get_libc_version() + nl;
+#endif
+#if defined(BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T)
+    result += "BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T\n";
 #endif
     return result;
   }

@@ -1,9 +1,12 @@
 import libtbx.load_env
 from libtbx.str_utils import show_string
-from libtbx.utils import warn_if_unexpected_md5_hexdigest
+from libtbx.utils import \
+  warn_if_unexpected_md5_hexdigest, \
+  write_this_is_auto_generated
 from libtbx.env_config import darwin_shlinkcom
 import string
 import sys, os
+op = os.path
 Import("env_base", "env_etc")
 env_etc.boost_dist = libtbx.env.dist_path("boost")
 env_etc.boost_include = env_etc.boost_dist
@@ -64,8 +67,10 @@ if (not env_etc.no_boost_python):
   env_etc.include_registry.set_boost_dir_name(env_etc.boost_dist)
   env_etc.include_registry.append(
     env=env_pure_boost_python_ext,
-    paths=[env_etc.boost_include,
-           env_etc.python_include])
+    paths=[
+      "#include",
+      env_etc.boost_include,
+      env_etc.python_include])
   env_boost_python_ext = env_pure_boost_python_ext.Clone()
   env_etc.include_registry.prepend(
     env=env_boost_python_ext,
@@ -304,14 +309,14 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
         all_tst.append("$ boost_libs_python_test_exec_dynamic %s"
           % show_string(os.path.join(test_dir, "exec.py")))
     #
-    if (sys.platform != "win32"):
+    if (os.name != "nt"):
       env.SharedLibrary(
         target="#lib/boost_adaptbx_char_array_ext",
         source=["char_array_ext.cpp"])
       all_tst.append(
         libtbx.env.under_dist("boost_adaptbx", "tst_char_array.py"))
     #
-    if (sys.platform == "win32"):
+    if (os.name == "nt"):
       boost_python_run_tests = \
         "%s\\boost_python_run_tests.bat" % libtbx.env.build_path
       f = open(boost_python_run_tests, "w")
@@ -334,6 +339,56 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
           print >> f, 'libtbx.python "%s"' % show_string(tst)
       f.close()
       os.chmod(boost_python_run_tests, 0755)
+
+  def write_boost_python_type_id_eq_h():
+    if (os.name == "nt"):
+      output = "0"
+    else:
+      test_code = """\
+#include <boost/python/type_id.hpp>
+#include <cstddef>
+#include <iostream>
+int
+main()
+{
+  std::cout << static_cast<int>(
+       boost::python::type_id<unsigned>()
+    == boost::python::type_id<std::size_t>()) << std::endl;
+  return 0;
+}
+"""
+      env = env_base.Clone()
+      env_etc.include_registry.append(
+        env=env,
+        paths=[env_etc.boost_include,
+               env_etc.python_include])
+      conf = env.Configure()
+      flag, output = conf.TryRun(test_code, extension='.cpp')
+      conf.Finish()
+      assert flag
+      output = output.strip()
+      assert output in ["0", "1"]
+    ss = ""
+    if (output == "0"): ss = "//"
+    dir_name = libtbx.env.under_build("include/boost_adaptbx")
+    if (not op.isdir(dir_name)):
+      os.makedirs(dir_name)
+    assert op.isdir(dir_name)
+    file_name = op.join(dir_name, "boost_python_type_id_eq.h")
+    f = open(file_name, "w")
+    write_this_is_auto_generated(
+      f=f,
+      file_name_generator="cctbx_project/boost_adaptbx/SConscript")
+    f.write("""\
+#ifndef BOOST_ADAPTBX_BOOST_PYTHON_TYPE_ID_EQ_H
+#define BOOST_ADAPTBX_BOOST_PYTHON_TYPE_ID_EQ_H
+
+%s#define BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T
+
+#endif // GUARD
+""" % ss)
+    del f
+  write_boost_python_type_id_eq_h()
 
   if (os.path.isfile(libtbx.env.under_build("lib/libswig_class_example.a"))):
     # this example requires these manual steps:
