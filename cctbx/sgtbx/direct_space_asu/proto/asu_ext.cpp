@@ -73,6 +73,12 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     return result;
   }
 
+  scitbx::af::long3 asu_grid_limits(const direct_space_asu &a)
+  {
+    scitbx::af::long3 result;
+    a.get_optimized_grid_limits(result);
+    return result;
+  }
 
   void wrap_direct_space_asu()
   {
@@ -117,6 +123,7 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       .def("__copy__", asu_copy)
       .def("optimize_for_grid", &w_t::optimize_for_grid)
       .def("is_optimized", &w_t::is_optimized)
+      .def("get_optimized_grid_limits", asu_grid_limits)
     ;
   }
 

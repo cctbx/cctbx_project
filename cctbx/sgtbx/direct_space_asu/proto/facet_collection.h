@@ -16,12 +16,16 @@ namespace cctbx { namespace sgtbx { namespace asu {
     typedef std::auto_ptr<facet_collection> pointer;
 
     virtual bool is_inside(const rvector3_t &p) const = 0;
-    virtual bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const = 0;
+    virtual bool is_inside(const scitbx::af::int3 &num,
+        const scitbx::af::int3 &den) const = 0;
     virtual bool is_inside(const scitbx::af::int3 &num) const = 0;
-    virtual bool is_inside_volume_only(const scitbx::af::double3 &point, double tol) const = 0;
-    virtual short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const = 0;
+    virtual bool is_inside_volume_only(const scitbx::af::double3 &point,
+        double tol) const = 0;
+    virtual short where_is(const scitbx::af::int3 &num,
+        const scitbx::af::int3 &den) const = 0;
     virtual short where_is(const scitbx::af::int3 &num) const = 0;
     virtual void optimize_for_grid(const scitbx::af::int3 &grid_size) = 0;
+    virtual void get_optimized_grid_limits(scitbx::af::long3 &max_p) const = 0;
     virtual pointer new_copy() const = 0;
     virtual pointer new_volume_only() const = 0;
     virtual size_type size() const = 0;

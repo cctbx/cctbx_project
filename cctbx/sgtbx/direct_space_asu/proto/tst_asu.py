@@ -54,6 +54,8 @@ def loop_grid(asu, n, mn, mx, asu2=None):
     asu_opt.optimize_for_grid(grid)
     assert asu_opt.is_optimized() and (not asu.is_optimized())
     first_is_new = True
+    max_p = asu_opt.get_optimized_grid_limits()
+    print >>cout, "grid limits: ", max_p
   result = 0
 
   i = mna[0]

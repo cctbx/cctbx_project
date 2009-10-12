@@ -44,6 +44,13 @@ namespace cctbx { namespace sgtbx { namespace asu {
       faces->optimize_for_grid(grid_size);
     }
 
+    void get_optimized_grid_limits(scitbx::af::long3 &max_p) const
+    {
+      if( !is_optimized() )
+        throw error("Asu must be optimized");
+      faces->get_optimized_grid_limits(max_p);
+    }
+
     void show_summary(std::ostream &os) const;
 
     std::string as_string() const;

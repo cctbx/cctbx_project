@@ -10,6 +10,8 @@
 
 #include <boost/rational.hpp>
 #include <scitbx/array_family/tiny_types.h>
+#include <scitbx/array_family/simple_tiny_io.h>
+#include <scitbx/array_family/simple_io.h>
 #include <scitbx/mat3.h>
 #include <cctbx/sgtbx/space_group.h>
 #include <cctbx/sgtbx/symbols.h>
@@ -44,18 +46,6 @@ namespace asu {
 
   using cctbx::sgtbx::change_of_basis_op;
 
-  inline std::ostream &operator<< (std::ostream &s, const sg_vec3 &v)
-  {
-    s << "("<< v[0] <<", "<< v[1] << ", " << v[2] << ")";
-    return s;
-  }
-
-  inline std::ostream &operator<< (std::ostream &s, const rvector3_t &v)
-  {
-    s << "("<< v[0] <<", "<< v[1] << ", " << v[2] << ")";
-    return s;
-  }
-
 }}} // namespace cctbx::sgtbx::asu
 
 
@@ -82,7 +72,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
   {
   public:
     //! Plane normal
-    int3_t n; // sg_vec3 n;
+    int3_t n;
     //! Plane constant
     int_type c;
     //! Flag indicating if plane points belong to the asymmetric unit
@@ -138,14 +128,75 @@ namespace cctbx { namespace sgtbx { namespace asu {
     //! Optimize plane for use with grid of size grid_size
     void optimize_for_grid(const scitbx::af::int3 &grid_size)
     {
+      // Actual transformation:
+      //   n[0]*= (static_cast<long>(grid_size[1])*grid_size[2]);
+      //   n[1]*= (static_cast<long>(grid_size[2])*grid_size[0]);
+      //   n[2]*= (static_cast<long>(grid_size[0])*grid_size[1]);
+      //   c*= (grid_size[0]*static_cast<long>(grid_size[1])*grid_size[2]);
+      // It is applied in a way reducing the risk of overflows
       BOOST_STATIC_ASSERT( sizeof(int_type) >= sizeof(long) );
-      // this limits grid size to about (max(long)/4)^(1/3)
-      // 812 for 32 bit systems, 1,321,122 for 64bit systems
-      n[0]*= (static_cast<long>(grid_size[1])*grid_size[2]);
-      n[1]*= (static_cast<long>(grid_size[0])*grid_size[2]);
-      n[2]*= (static_cast<long>(grid_size[0])*grid_size[1]);
-      c*= (grid_size[0]*static_cast<long>(grid_size[1])*grid_size[2]);
-      this->normalize(); // this should inrease maximal grid size
+      std::ostringstream errmsg;
+      errmsg << "Integer overflow. Grid: " << grid_size << ",  asu cut: ";
+      this->print(errmsg);
+      int_type g = boost::gcd(boost::gcd(grid_size[0],grid_size[1]),
+          grid_size[2]);
+      CCTBX_ASSERT( g>0 );
+      long gsz[3];
+      for(unsigned char i=0; i<3U; ++i)
+      {
+        CCTBX_ASSERT( grid_size[i]%g == 0 );
+        gsz[i] = grid_size[i]/g;
+      }
+      long szf[4];
+      const double max_int = std::numeric_limits<long>::max()-3;
+      if( (static_cast<double>(gsz[1])*gsz[2] > max_int)
+          ||(static_cast<double>(gsz[0])*gsz[2] > max_int)
+          ||(static_cast<double>(gsz[1])*gsz[0] > max_int)
+        )
+        throw error(errmsg.str());
+      szf[0] = gsz[1]*gsz[2];
+      szf[1] = gsz[0]*gsz[2];
+      szf[2] = gsz[0]*gsz[1];
+      g = boost::gcd(boost::gcd(szf[0],szf[1]),szf[2]);
+      CCTBX_ASSERT( g>0 );
+      for(unsigned char i=0; i<3U; ++i)
+      {
+        CCTBX_ASSERT( szf[i]%g == 0 );
+        szf[i] /= g;
+      }
+      if( static_cast<double>(szf[2])*grid_size[2] > max_int )
+        throw error(errmsg.str());
+      szf[3] = szf[2]*grid_size[2];
+
+      for(unsigned char i=0; i<3U; ++i)
+      {
+        if( static_cast<double>(n[i])*szf[i] > max_int )
+          throw error(errmsg.str());
+        n[i] *= szf[i];
+      }
+      if( static_cast<double>(c)*szf[3] > max_int )
+        throw error(errmsg.str());
+      c *= szf[3];
+      this->normalize();
+    }
+
+    void get_optimized_grid_limits(scitbx::af::long3 &max_p) const
+    {
+      const long C = std::numeric_limits<long>::max()-3;
+      const long Cc = C - std::abs(c);
+      CCTBX_ASSERT( C>0 && Cc>0 );
+      unsigned char nnz=0;
+      for(unsigned char i=0; i<3U; ++i)
+      {
+        if( n[i]!=0 )
+          ++nnz;
+      }
+      CCTBX_ASSERT( nnz>0U && nnz<=3U );
+      for(unsigned char i=0; i<3U; ++i)
+      {
+        max_p[i] = (n[i]!=0) ? (Cc/nnz/std::abs(n[i])) : C;
+        CCTBX_ASSERT( max_p[i]>=0 );
+      }
     }
 
     double evaluate_double(const scitbx::af::double3 &p) const

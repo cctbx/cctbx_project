@@ -34,7 +34,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return lhs.is_inside(p, rhs);
     }
 
-    bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    bool is_inside(const scitbx::af::int3 &num, const scitbx::af::int3 &den)
+      const
     {
       return lhs.is_inside(num,den,rhs);
     }
@@ -44,7 +45,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return lhs.is_inside(num,rhs);
     }
 
-    short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den) const
+    short where_is(const scitbx::af::int3 &num, const scitbx::af::int3 &den)
+      const
     {
       return lhs.where_is(num,den,rhs);
     }
@@ -233,6 +235,22 @@ namespace cctbx { namespace sgtbx { namespace asu {
     optimize_for_grid(expr.lhs, grid_size);
     optimize_for_grid(expr.rhs, grid_size);
   }
+
+  void get_optimized_grid_limits(const cut &c, scitbx::af::long3 &max_p)
+  {
+    c.get_optimized_grid_limits(max_p);
+  }
+
+  template<typename Expr>
+    void get_optimized_grid_limits(const Expr &expr, scitbx::af::long3 &max_p)
+  {
+    scitbx::af::long3 m1, m2;
+    get_optimized_grid_limits(expr.lhs, m1);
+    get_optimized_grid_limits(expr.rhs, m2);
+    for(unsigned char i=0; i<3U; ++i)
+      max_p[i] = std::min(m1[i],m2[i]);
+  }
+
 
   template< typename T >
     struct strip
