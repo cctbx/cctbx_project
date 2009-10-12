@@ -33,8 +33,8 @@ def darwin_shlinkcom(env_etc, env, lo, dylib):
   if env_etc.compiler.startswith('darwin_'):
     if (env_etc.mac_cpu == "powerpc" or env_etc.compiler == "darwin_gcc"):
       dylib1 = "-ldylib1.o"
-    else:
-      dylib1 = " "
+    else :
+      dylib1 = " ".join(env_etc.shlinkflags) #"-arch i386"
     env.Replace(SHLINKCOM=[
       "ld -dynamic -m -r -d -bind_at_load -o %s $SOURCES" % lo,
       "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
@@ -638,7 +638,8 @@ class environment:
         enable_boost_threads=command_line.options.enable_boost_threads,
         enable_openmp_if_possible
           =command_line.options.enable_openmp_if_possible,
-        use_environment_flags=command_line.options.use_environment_flags)
+        use_environment_flags=command_line.options.use_environment_flags,
+        force_32bit=command_line.options.force_32bit)
       self.build_options.get_flags_from_environment()
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
@@ -1518,7 +1519,8 @@ class build_options:
         boost_python_bool_int_strict=True,
         enable_boost_threads=default_enable_boost_threads,
         enable_openmp_if_possible=default_enable_openmp_if_possible,
-        use_environment_flags=False):
+        use_environment_flags=False,
+        force_32bit=False):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -1709,6 +1711,10 @@ class pre_process_args:
       help="build Boost.Python extension modules (default: %s)"
         % bool_literal(default_build_boost_python_extensions),
       metavar="True|False")
+    parser.option(None, "--force_32bit",
+      action="store_true",
+      default=False,
+      help="Force 32-bit compilation on Snow Leopard")
     parser.option(None, "--enable_boost_threads",
       action="store_true",
       default=False,
@@ -1807,6 +1813,9 @@ def unpickle():
     env.build_options.env_cxxflags = ""
     env.build_options.env_cflags = ""
     env.build_options.env_cppflags = ""
+  # XXX backward compatibility 2009-10-11
+  if (not hasattr(env.build_options, "force_32bit")) :
+    env.build_options.force_32bit = False
   return env
 
 def warm_start(args):
