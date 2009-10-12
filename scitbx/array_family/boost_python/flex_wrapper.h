@@ -9,6 +9,7 @@
 #include <boost/python/scope.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_non_const_reference.hpp>
+#include <boost_adaptbx/boost_python_type_id_eq.h>
 #include <scitbx/constants.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/versa_reductions.h>
@@ -725,6 +726,22 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("set_selected",
           (object(*)(
             object const&,
+            af::const_ref<unsigned> const&,
+            af::const_ref<e_t> const&)) set_selected_unsigned_a)
+        .def("set_selected",
+          (object(*)(
+            object const&,
+            af::const_ref<unsigned> const&,
+            e_t const&)) set_selected_unsigned_s)
+        .def("copy_selected",
+          (object(*)(
+            object const&,
+            af::const_ref<unsigned> const&,
+            af::const_ref<e_t> const&)) copy_selected_unsigned_a)
+#if !defined(BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T)
+        .def("set_selected",
+          (object(*)(
+            object const&,
             af::const_ref<std::size_t> const&,
             af::const_ref<e_t> const&)) set_selected_unsigned_a)
         .def("set_selected",
@@ -737,27 +754,8 @@ namespace scitbx { namespace af { namespace boost_python {
             object const&,
             af::const_ref<std::size_t> const&,
             af::const_ref<e_t> const&)) copy_selected_unsigned_a)
+#endif
       ;
-      if (   boost::python::type_id<af::const_ref<std::size_t> >()
-          != boost::python::type_id<af::const_ref<unsigned> >()) {
-        result
-          .def("set_selected",
-            (object(*)(
-              object const&,
-              af::const_ref<unsigned> const&,
-              af::const_ref<e_t> const&)) set_selected_unsigned_a)
-          .def("set_selected",
-            (object(*)(
-              object const&,
-              af::const_ref<unsigned> const&,
-              e_t const&)) set_selected_unsigned_s)
-          .def("copy_selected",
-            (object(*)(
-              object const&,
-              af::const_ref<unsigned> const&,
-              af::const_ref<e_t> const&)) copy_selected_unsigned_a)
-        ;
-      }
       return result;
     }
 
