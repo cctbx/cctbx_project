@@ -261,3 +261,21 @@ class expand(object):
       plain_pairs_radius=geo_manager.plain_pairs_radius,
       max_reasonable_bond_distance=geo_manager.max_reasonable_bond_distance,
       min_cubicle_edge=geo_manager.min_cubicle_edge)
+    O.tardy_tree_rmsd_calculator = None
+
+  def rmsd_calculator(O, tardy_tree_rmsd_calculator):
+    O.tardy_tree_rmsd_calculator = tardy_tree_rmsd_calculator
+    return O.rmsd_calculation
+
+  def rmsd_calculation(O, sites_cart_1, sites_cart_2):
+    return O.tardy_tree_rmsd_calculator(
+      average_sites_cart(
+        related_x_i_seqs=O.related_x_i_seqs, x_sites_cart=sites_cart_1),
+      average_sites_cart(
+        related_x_i_seqs=O.related_x_i_seqs, x_sites_cart=sites_cart_2))
+
+def average_sites_cart(related_x_i_seqs, x_sites_cart):
+  result = flex.vec3_double()
+  for x_i_seqs in related_x_i_seqs:
+    result.append(x_sites_cart.select(x_i_seqs).mean())
+  return result
