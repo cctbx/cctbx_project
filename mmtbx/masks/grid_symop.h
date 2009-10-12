@@ -29,20 +29,36 @@ namespace cctbx { namespace sgtbx {
       const cctbx::sgtbx::tr_vec &tr = symop.t();
       const int rd = rot.den();
       const int td = tr.den();
+      const double max_int = std::numeric_limits<int>::max()-3;
+      std::string err1("Integer overflow. "),
+        err2("The grid is not compatible with the spacegroup. ");
+      {
+        std::ostringstream str;
+        str << "Symop: " << symop.as_xyz()
+          << " on the grid: " << grid;
+        err2 += str.str();
+        str << ". Max int: " << max_int << ". May be grid is too large.";
+        err1 += str.str();
+      }
       for(unsigned char r=0; r<3; ++r)
       {
         for(unsigned char c=0; c<3; ++c)
         {
           int tmp = rot(r,c);
           SCITBX_ASSERT( tmp % rd == 0 );
-          tmp = (tmp/rd)*grid[r];
+          tmp /= rd;
+          if( static_cast<double>(tmp)*grid[r] > max_int )
+            throw error(err1);
+          tmp = tmp*grid[r];
           if( tmp % grid[c] != 0 )
-            throw cctbx::error("The grid is not compatible with the spacegroup");
+            throw error(err2);
           (*this)(r,c) = tmp/grid[c];
         }
+        if( static_cast<double>(tr[r])*grid[r] > max_int )
+          throw error(err1);
         int tmp = tr[r]*grid[r];
         if( tmp % td != 0 )
-          throw cctbx::error("The grid is not compatible with the spacegroup");
+          throw error(err2);
         (*this)(r,3) = tmp/td;
       }
     }
@@ -53,10 +69,39 @@ namespace cctbx { namespace sgtbx {
       af::int3 result;
       for(unsigned char r=0; r<3; ++r )
       {
-        result[r] = (*this)(r,0) * rhs[0] + (*this)(r,1) * rhs[1] + (*this)(r,2) * rhs[2] + (*this)(r,3);
+        result[r] = (*this)(r,0) * rhs[0] + (*this)(r,1) * rhs[1] + (*this)(r,2)
+          * rhs[2] + (*this)(r,3);
       }
       return result;
     }
+
+    void get_grid_limits(scitbx::af::int3 &max_p) const
+    {
+      const int C = std::numeric_limits<int>::max()-3;
+      CCTBX_ASSERT( C>0 );
+      max_p[0] = max_p[1] = max_p[2] = C;
+      const grid_symop &m = *this;
+      for(unsigned char r=0; r<3U; ++r)
+      {
+        unsigned char nnz=0;
+        for(unsigned char c=0; c<3U; ++c)
+        {
+          if( m(r,c)!=0 )
+            ++nnz;
+        }
+        CCTBX_ASSERT( nnz>0U && nnz<=3U );
+        const int Cc = C - std::abs(m(r,3));
+        CCTBX_ASSERT( Cc>0 );
+        for(unsigned char c=0; c<3U; ++c)
+        {
+          const int t = std::abs(m(r,c));
+          const int mx = (t!=0) ? (Cc / nnz / t) : C;
+          max_p[c] = std::min(max_p[c],mx);
+          CCTBX_ASSERT( max_p[c]>=0 );
+        }
+      }
+    }
+
 
   };
 

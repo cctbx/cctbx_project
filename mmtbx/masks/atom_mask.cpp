@@ -108,25 +108,19 @@ namespace mmtbx { namespace masks {
     MMTBX_ASSERT( order>0 );
     const scitbx::int3 n = this->grid_size();
     MMTBX_ASSERT( n[0]>0 && n[1]>0 && n[2] >0 );
-    // below is to make sure that direct_space_asu::is_inside integer
-    // arithmetics will not overflow
-    if( static_cast<double>(n[0])*static_cast<double>(n[1])*n[2]
-      >= static_cast<double>(std::numeric_limits<long>::max())/(4*8) )
-    {
-      std::stringstream str;
-      str << "the mask grid size: " << n[0] << " * " << n[1] << " * " << n[2]
-        << " = " << long(n[0])*long(n[1])*long(n[2]) << " is too big\n"
-        << " maximum allowed size is "
-        << std::numeric_limits<long>::max() / (4*8)
-        << " 64 bit OS and software might be required for such a big mask.";
-      throw error(str.str());
-    }
+    // determine expanded asu limits, due to symops arithmetics
+    const int max_int = std::numeric_limits<int>::max();
+    scitbx::af::int3 max_grid(max_int, max_int, max_int);
     // prepare grid adapted integer symmetry operators
     std::vector<cctbx::sgtbx::grid_symop> symops;
     for(size_t i=0; i<order; ++i)
     {
       cctbx::sgtbx::grid_symop grsym( group(i), n );
       symops.push_back(grsym);
+      scitbx::af::int3 grmx;
+      grsym.get_grid_limits(grmx);
+      for(unsigned char j=0; j<3U; ++j)
+        max_grid[j] = std::min(max_grid[j], grmx[j]);
     }
     MMTBX_ASSERT( symops.size() == order );
     scitbx::int3 imn, imx;
@@ -145,6 +139,21 @@ namespace mmtbx { namespace masks {
     opt_asu.optimize_for_grid(n);
     scitbx::int3 smn, smx;
     this->get_expanded_asu_boundaries(smn,smx); // [smn, smx)
+    // determine expanded asu limits, due to is_inside arithmetics
+    scitbx::af::long3 grmx;
+    opt_asu.get_optimized_grid_limits(grmx);
+    for(unsigned char j=0; j<3U; ++j)
+    {
+      if( grmx[j] < max_grid[j] )
+        max_grid[j] = grmx[j];
+      if( std::abs(smn[j])>max_grid[j] || std::abs(smx[j])>max_grid[j] )
+      {
+        std::ostringstream str;
+        str << "Mask's expanded asymmetric cell dimensions: [" << smn << ", "
+          << smx << ") are too large. 64 bit OS and/or software may be needed.";
+        throw error(str.str());
+      }
+    }
     const af::ref<data_type, grid_t > data_ref = data.ref();
     data_type *d_ptr = data_ref.begin();
     register size_t cell_volume = 0;
@@ -317,7 +326,20 @@ namespace mmtbx { namespace masks {
         ++emx[idim];
     MMTBX_ASSERT( scitbx::ge_all(emx, emn) && scitbx::ge_all(emx,this->asu_high)
       && scitbx::le_all(emn, this->asu_low) );
-    this->data.resize(grid_t(emn,emx));
+    grid_t interval(emn,emx);
+    double n_bytes = sizeof(mask_array_t::value_type);
+    for( unsigned char j=0; j<3U; ++j)
+      n_bytes *= interval.all()[j];
+    std::size_t max_int = std::numeric_limits<std::size_t>::max()-3;
+    if( n_bytes > max_int || n_bytes<=0.0 )
+    {
+      std::ostringstream str;
+      str << "mask dimensions: [" << emn << ",  " << emx << ") are too large.\n"
+        << " It requires " << n_bytes << " Bytes. Maxumum possible: " << max_int
+        << ". 64 bit OS and/or software may be required.";
+      throw error(str.str());
+    }
+    this->data.resize(interval);
   }
 
 
@@ -452,6 +474,18 @@ namespace mmtbx { namespace masks {
     const scitbx::int3 mdim = fft.m_real(), ndim = fft.n_real();
     MMTBX_ASSERT( ndim == grid_full_cell );
     MMTBX_ASSERT( scitbx::le_all( ndim, mdim ) );
+    double n_bytes = sizeof(double);
+    for(unsigned char j=0; j<3U; ++j)
+      n_bytes *= mdim[j];
+    const std::size_t max_int = std::numeric_limits<std::size_t>::max()-3;
+    if( n_bytes > max_int || n_bytes <= 0.0 )
+    {
+      std::ostringstream str;
+      str << "mask fft size: " << mdim << " is too large.\n"
+        << " It requires " << n_bytes << " Bytes. Maxumum possible: " << max_int
+        << ". 64 bit OS and software may be required.";
+      throw error(str.str());
+    }
     const padded_grid_t pad( mdim, ndim );
     // TODO: optimize?  padded_real could be a very huge array; filling it with
     // 0 could be the slowest part of this routine apart from fft
@@ -914,7 +948,7 @@ namespace mmtbx { namespace masks {
     if( layer==0 && !has_layers )
       layer = 1;
     if( layer>n_layers )
-      throw "Wrong mask solvent layer";
+      throw error("Wrong mask solvent layer");
     ++layer; // solvent layers start from 2 in this->data
     const double one = (invert ? 0.0 : 1.0),
           zero = (invert ? 1.0 : 0.0);
@@ -925,6 +959,7 @@ namespace mmtbx { namespace masks {
     FILE* fh = write_head(file_name, this->cell, this->grid_size(), imn,
         imx-scitbx::int3(1,1,1));
     register double mean = 0.0, esd = 0.0;
+    register std::size_t n=0;
     for(long iz=imn[2]; iz<imx[2]; ++iz)
     {
       fprintf(fh, "%8lu\n", static_cast<unsigned long>(iz));
@@ -938,6 +973,7 @@ namespace mmtbx { namespace masks {
           const double d = ((t.layer() == layer) ? one : zero);
           mean += d;
           esd += d*d;
+          ++n;
           fprintf(fh, "%s", format_e<12>("%12.5E", d).s);
           i_fld++;
           if (i_fld == 6)
@@ -951,7 +987,6 @@ namespace mmtbx { namespace masks {
         fprintf(fh, "\n");
       }
     } // z-loop
-    const double n = this->grid_size_1d();
     MMTBX_ASSERT(n>=1.0);
     mean /= n;
     esd = esd / n - mean*mean;
