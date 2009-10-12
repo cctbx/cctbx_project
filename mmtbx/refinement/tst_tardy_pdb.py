@@ -351,6 +351,8 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
     for i_orc,i_seq in x.indices:
       x_ideal_sites_cart.append(ideal_sites_cart[i_seq])
     ideal_sites_cart = x_ideal_sites_cart
+    rmsd_calculator = x.rmsd_calculator(
+      tardy_tree_rmsd_calculator=rmsd_calculator)
   #
   if (params.emulate_cartesian or params.keep_all_restraints):
     reduced_geo_manager = None
