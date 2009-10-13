@@ -187,6 +187,7 @@ object/function_doc_signature.cpp
         "b79f016d3ec10cf1625a9e006e605428", # svn revision 40714
         "f948983d970fd47e83a3a785bb54520a", # svn revision 41550
         "c3d84006331d534840c42ab956fdfa05", # svn revision 50367M
+        "cedfd061d767a27413ef4a75ee0e446f", # svn revision 56310
       ])
     bpl_tests = Split("""
 staticmethod
@@ -314,7 +315,7 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
         target="#lib/boost_adaptbx_char_array_ext",
         source=["char_array_ext.cpp"])
       all_tst.append(
-        libtbx.env.under_dist("boost_adaptbx", "tst_char_array.py"))
+        libtbx.env.under_dist("boost_adaptbx", "tests/tst_char_array.py"))
     #
     if (os.name == "nt"):
       boost_python_run_tests = \
