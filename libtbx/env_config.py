@@ -34,7 +34,7 @@ def darwin_shlinkcom(env_etc, env, lo, dylib):
     if (env_etc.mac_cpu == "powerpc" or env_etc.compiler == "darwin_gcc"):
       dylib1 = "-ldylib1.o"
     else :
-      dylib1 = " ".join(env_etc.shlinkflags) #"-arch i386"
+      dylib1 = " ".join(env_etc.shlinkflags)
     env.Replace(SHLINKCOM=[
       "ld -dynamic -m -r -d -bind_at_load -o %s $SOURCES" % lo,
       "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
@@ -1714,7 +1714,7 @@ class pre_process_args:
     parser.option(None, "--force_32bit",
       action="store_true",
       default=False,
-      help="Force 32-bit compilation on Snow Leopard")
+      help="Force 32-bit compilation on Mac OS 10.6 (Snow Leopard)")
     parser.option(None, "--enable_boost_threads",
       action="store_true",
       default=False,

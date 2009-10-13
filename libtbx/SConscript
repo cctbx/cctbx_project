@@ -476,7 +476,7 @@ else:
     env_etc.ccflags_base.extend(warn_options)
     if (cxx == "c++"):
       env_etc.ccflags_base.extend(["-no-cpp-precomp"])
-      if (not env_etc.gcc_version >= 40201) : # fix for Snow Leopard/Xcode 3.2
+      if (env_etc.gcc_version < 40201):
         env_etc.ccflags_base.append("-Wno-long-double")
     env_etc.cxxflags_base = []
     if (need_fcoalesce_templates):
@@ -510,15 +510,14 @@ else:
         # Beware: valgrind does not support stabs on Darwin: just use
         # gcc 4.0.1 for code to be tested by valgrind
         if build_nb < 5646:
-          # fixed on Snow Leopard whose Dev Tools start with that build
+          # fixed on 10.6 (Snow Leopard) whose Dev Tools start with that build
           opts.insert(0, "-gstabs+")
     env_etc.shlinkflags = []
     env_etc.shlinkflags_bpl = [
       "-w", # suppress "source/lib does not exist" warning
       "-bundle",
       "-undefined", "dynamic_lookup"]
-    # XXX: fix for 32-bit compilation on snow leopard
-    if (env_etc.gcc_version >= 40201 and libtbx.env.build_options.force_32bit) :
+    if (env_etc.gcc_version >= 40201 and libtbx.env.build_options.force_32bit):
       env_etc.ccflags_base.append("-m32")
       env_etc.cxxflags_base.append("-m32")
       env_etc.shlinkflags.extend(["-arch", "i386"])
