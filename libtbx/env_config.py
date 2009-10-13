@@ -639,7 +639,8 @@ class environment:
         enable_openmp_if_possible
           =command_line.options.enable_openmp_if_possible,
         use_environment_flags=command_line.options.use_environment_flags,
-        force_32bit=command_line.options.force_32bit)
+        force_32bit=command_line.options.force_32bit,
+        msvs_arch_flag=command_line.options.msvs_arch_flag)
       self.build_options.get_flags_from_environment()
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
@@ -1520,7 +1521,8 @@ class build_options:
         enable_boost_threads=default_enable_boost_threads,
         enable_openmp_if_possible=default_enable_openmp_if_possible,
         use_environment_flags=False,
-        force_32bit=False):
+        force_32bit=False,
+        msvs_arch_flag="SSE2"):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -1532,6 +1534,7 @@ class build_options:
       "debug", "debug_optimized", "profile"])
     if (self.static_exe):
       self.static_libraries = True
+    if (self.msvs_arch_flag == "None"): self.msvs_arch_flag = None
 
   def get_flags_from_environment(self):
     if (self.use_environment_flags ):
@@ -1704,6 +1707,10 @@ class pre_process_args:
         default=False,
         help="add compiler flags from environment variables: CXXFLAGS, CFLAGS,"
              " CPPFLAGS")
+      parser.option(None, "--msvs_arch_flag",
+        choices=("None", "SSE", "SSE2"),
+        default="SSE2",
+        help="choose MSVS CPU architecture instruction set for optimized builds")
     parser.option(None, "--build_boost_python_extensions",
       action="store",
       type="bool",
@@ -1816,6 +1823,9 @@ def unpickle():
   # XXX backward compatibility 2009-10-11
   if (not hasattr(env.build_options, "force_32bit")) :
     env.build_options.force_32bit = False
+  # XXX backward compatibility 2009-10-13
+  if (not hasattr(env.build_options, "msvs_arch_flag")) :
+    env.build_options.msvs_arch_flag = "SSE2"
   return env
 
 def warm_start(args):
