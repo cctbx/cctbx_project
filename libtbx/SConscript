@@ -220,7 +220,9 @@ libtbx.scons: Warning: compiling with /MDd:
       "/GR",
       "/EHsc"]
     if (libtbx.env.build_options.optimization):
-      opts = ["/DNDEBUG", "/O2", "/arch:SSE2"]
+      opts = ["/DNDEBUG", "/O2"]
+      if (libtbx.env.build_options.msvs_arch_flag is not None):
+        opts.append("/arch:%s" %libtbx.env.build_options.msvs_arch_flag)
       if (env_base["MSVS_VERSION"] != "7.1"):
         opts.append("/fp:fast")
     else:
@@ -272,7 +274,9 @@ libtbx.scons: Warning: compiling with /MDd:
       /DBOOST_DISABLE_THREADS
     """.split()
     if (libtbx.env.build_options.optimization):
-      opts = ["/DNDEBUG", "/Ob2", "/Ox", "/Oi", "/Ot", "/GT", "/MD", "/EHsc", "/arch:SSE2", "/fp:fast"]
+      opts = ["/DNDEBUG", "/Ob2", "/Ox", "/Oi", "/Ot", "/GT", "/MD", "/EHsc", "/fp:fast"]
+      if (libtbx.env.build_options.msvs_arch_flag is not None):
+        opts.append("/arch:%s" %libtbx.env.build_options.msvs_arch_flag)
     else:
       opts = ["/Od"]
     if (libtbx.env.build_options.debug_symbols):
