@@ -353,10 +353,14 @@ namespace scitbx { namespace fftpack { namespace {
   {
     using namespace boost::python;
 
-    def("adjust_gridding", adjust_gridding_2);
-    def("adjust_gridding", adjust_gridding_3);
-    def("adjust_gridding_triple", adjust_gridding_triple_2);
-    def("adjust_gridding_triple", adjust_gridding_triple_3);
+    def("adjust_gridding", adjust_gridding_2, (
+      arg("min_grid"), arg("max_prime")));
+    def("adjust_gridding", adjust_gridding_3, (
+      arg("min_grid"), arg("max_prime"), arg("mandatory_factor")));
+    def("adjust_gridding_triple", adjust_gridding_triple_2, (
+      arg("min_grid"), arg("max_prime")));
+    def("adjust_gridding_triple", adjust_gridding_triple_3, (
+      arg("min_grid"), arg("max_prime"), arg("mandatory_factors")));
 
     factorization_wrappers::wrap();
     complex_to_complex_wrappers::wrap();
