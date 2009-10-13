@@ -342,8 +342,10 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
       os.chmod(boost_python_run_tests, 0755)
 
   def write_boost_python_type_id_eq_h():
-    if (os.name == "nt"):
+    if (sys.platform == "win64"):
       output = "0"
+    elif (os.name == "nt"):
+      output = "1"
     else:
       test_code = """\
 #include <boost/python/type_id.hpp>
