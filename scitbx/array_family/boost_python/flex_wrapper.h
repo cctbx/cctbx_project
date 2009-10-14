@@ -9,7 +9,7 @@
 #include <boost/python/scope.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_non_const_reference.hpp>
-#include <boost_adaptbx/boost_python_type_id_eq.h>
+#include <boost_adaptbx/type_id_eq.h>
 #include <scitbx/constants.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/versa_reductions.h>
@@ -738,7 +738,7 @@ namespace scitbx { namespace af { namespace boost_python {
             object const&,
             af::const_ref<unsigned> const&,
             af::const_ref<e_t> const&)) copy_selected_unsigned_a)
-#if !defined(BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T)
+#if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
         .def("set_selected",
           (object(*)(
             object const&,

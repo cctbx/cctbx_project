@@ -12,7 +12,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/list.hpp>
 
-#include <boost_adaptbx/boost_python_type_id_eq.h>
+#include <boost_adaptbx/type_id_eq.h>
 #include <boost/cstdint.hpp>
 #include <stdexcept>
 
@@ -463,8 +463,17 @@ namespace {
     result += "gnu libc version: ";
     result += gnu_get_libc_version() + nl;
 #endif
-#if defined(BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T)
-    result += "BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T\n";
+#if defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_SHORT)
+    result += "BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_SHORT\n";
+#endif
+#if defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
+    result += "BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED\n";
+#endif
+#if defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_LONG)
+    result += "BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_LONG\n";
+#endif
+#if defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_LONG_LONG)
+    result += "BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_LONG_LONG\n";
 #endif
     return result;
   }

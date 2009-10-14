@@ -341,57 +341,62 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
       f.close()
       os.chmod(boost_python_run_tests, 0755)
 
-  def write_boost_python_type_id_eq_h():
-    if (sys.platform == "win64"):
-      output = "0"
-    elif (os.name == "nt"):
-      output = "1"
-    else:
-      test_code = """\
-#include <boost/python/type_id.hpp>
-#include <cstddef>
+  def write_type_id_eq_h():
+    unsigned_types = [
+      "unsigned short",
+      "unsigned",
+      "unsigned long",
+      "unsigned long long"]
+    test_code = """\
 #include <iostream>
+#include <stddef.h>
+
 int
 main()
 {
-  std::cout << static_cast<int>(
-       boost::python::type_id<unsigned>()
-    == boost::python::type_id<std::size_t>()) << std::endl;
+  std::cout
+%s
+    << std::endl;
   return 0;
 }
-"""
-      env = env_base.Clone()
-      env_etc.include_registry.append(
-        env=env,
-        paths=[env_etc.boost_include,
-               env_etc.python_include])
-      conf = env.Configure()
-      flag, output = conf.TryRun(test_code, extension='.cpp')
-      conf.Finish()
-      assert flag
-      output = output.strip()
-      assert output in ["0", "1"]
-    ss = ""
-    if (output == "0"): ss = "//"
+""" % "\n".join(["    << static_cast<int>(typeid(%s) == typeid(size_t))" % u
+      for u in unsigned_types])
+    env = env_base.Clone()
+    conf = env.Configure()
+    flag, output = conf.TryRun(test_code, extension='.cpp')
+    conf.Finish()
+    assert flag
+    output = output.rstrip()
+    if (   len(output) != len(unsigned_types)
+        or len(output.replace("0", "").replace("1", "")) != 0
+        or output.count("1") != 1):
+      raise RuntimeError('Unexpected output: "%s"' % output)
     dir_name = libtbx.env.under_build("include/boost_adaptbx")
     if (not op.isdir(dir_name)):
       os.makedirs(dir_name)
     assert op.isdir(dir_name)
-    file_name = op.join(dir_name, "boost_python_type_id_eq.h")
+    if (1): # XXX backward compatibility 2009-10-14
+      file_name = op.join(dir_name, "boost_python_type_id_eq.h")
+      if (op.isfile(file_name)):
+        try: os.remove(file_name)
+        except OSError: pass
+    file_name = op.join(dir_name, "type_id_eq.h")
     f = open(file_name, "w")
     write_this_is_auto_generated(
       f=f,
       file_name_generator="cctbx_project/boost_adaptbx/SConscript")
-    f.write("""\
-#ifndef BOOST_ADAPTBX_BOOST_PYTHON_TYPE_ID_EQ_H
-#define BOOST_ADAPTBX_BOOST_PYTHON_TYPE_ID_EQ_H
-
-%s#define BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T
-
-#endif // GUARD
-""" % ss)
+    guard = "BOOST_ADAPTBX_TYPE_ID_EQ_H"
+    print >> f, "#ifndef", guard
+    print >> f, "#define", guard
+    print >> f
+    for u,c in zip(unsigned_types, output):
+      if (c == "1"):
+        print >> f, "#define BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_" \
+          + u.replace(" ", "_").upper()
+    print >> f
+    print >> f, "#endif // GUARD"
     del f
-  write_boost_python_type_id_eq_h()
+  write_type_id_eq_h()
 
   if (os.path.isfile(libtbx.env.under_build("lib/libswig_class_example.a"))):
     # this example requires these manual steps:

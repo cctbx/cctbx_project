@@ -1,6 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
-#include <boost_adaptbx/boost_python_type_id_eq.h>
+#include <boost_adaptbx/type_id_eq.h>
 #include <boost/python/args.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/make_constructor.hpp>
@@ -265,7 +265,7 @@ namespace {
     std::size_t n_iselections = boost::python::len(iselections);
     for(std::size_t i=0;i<n_iselections;i++) {
       bool ok = union_core<unsigned>(iselections[i], r).ok;
-#if !defined(BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T)
+#if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
       if (!ok) ok = union_core<std::size_t>(iselections[i], r).ok;
 #endif
       if (!ok) {
@@ -316,7 +316,7 @@ namespace {
     std::size_t n_iselections = boost::python::len(iselections);
     for(std::size_t i=0;i<n_iselections;i++) {
       bool ok = intersection_core<unsigned>(iselections[i], r, t).ok;
-#if !defined(BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T)
+#if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
       if (!ok) ok = intersection_core<std::size_t>(iselections[i], r, t).ok;
 #endif
       if (!ok) {

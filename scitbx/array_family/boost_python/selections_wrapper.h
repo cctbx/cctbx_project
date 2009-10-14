@@ -2,7 +2,7 @@
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_SELECTIONS_WRAPPER_H
 
 #include <boost/python/args.hpp>
-#include <boost_adaptbx/boost_python_type_id_eq.h>
+#include <boost_adaptbx/type_id_eq.h>
 #include <scitbx/array_family/selections.h>
 
 namespace scitbx { namespace af { namespace boost_python {
@@ -45,7 +45,7 @@ namespace scitbx { namespace af { namespace boost_python {
       aw.def("select", with_flags, (arg_("self"), arg_("flags")))
         .def("select", with_indices_unsigned, (
           arg_("self"), arg_("indices"), arg_("reverse")=false))
-#if !defined(BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T)
+#if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
         .def("select", with_indices_size_t, (
           arg_("self"), arg_("indices"), arg_("reverse")=false))
 #endif

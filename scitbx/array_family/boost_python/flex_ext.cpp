@@ -13,7 +13,7 @@
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/slice.h>
 #include <boost_adaptbx/optional_conversions.h>
-#include <boost_adaptbx/boost_python_type_id_eq.h>
+#include <boost_adaptbx/type_id_eq.h>
 #include <boost/optional.hpp>
 #include <boost/rational.hpp>
 #include <boost/python/module.hpp>
@@ -74,7 +74,7 @@ namespace {
     tuple_mapping_fixed_capacity<small<int, 3> >();
     tuple_mapping_fixed_capacity<small<unsigned, 2> >();
     tuple_mapping_fixed_capacity<small<unsigned, 3> >();
-#if !defined(BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T)
+#if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
     // smtbx.refinement.constraints.geometric_hydrogen
     tuple_mapping_fixed_capacity<small<std::size_t, 3> >();
 #endif
@@ -93,7 +93,7 @@ namespace {
     tuple_mapping_fixed_size<tiny<unsigned, 2> >();
     tuple_mapping_fixed_size<tiny<unsigned, 3> >();
     tuple_mapping_fixed_size<tiny<unsigned, 4> >();
-#if !defined(BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T)
+#if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
     tuple_mapping_fixed_size<tiny<std::size_t, 2> >();
     tuple_mapping_fixed_size<tiny<std::size_t, 3> >();
     tuple_mapping_fixed_size<tiny<std::size_t, 4> >();
