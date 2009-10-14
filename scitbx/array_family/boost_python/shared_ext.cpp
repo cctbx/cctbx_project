@@ -4,7 +4,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_internal_reference.hpp>
-#include <boost_adaptbx/boost_python_type_id_eq.h>
+#include <boost_adaptbx/type_id_eq.h>
 #include <vector>
 #include <set>
 #include <scitbx/mat3.h>
@@ -33,7 +33,7 @@ namespace {
   {
     using namespace boost::python;
     typedef return_internal_reference<> rir;
-#if !defined(BOOST_PYTHON_TYPE_ID_UNSIGNED_EQ_SIZE_T)
+#if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
     shared_wrapper<unsigned>::wrap("unsigned");
 #endif
     shared_wrapper<std::vector<unsigned>, rir>::wrap("stl_vector_unsigned");
