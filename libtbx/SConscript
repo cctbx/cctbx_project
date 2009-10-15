@@ -4,6 +4,10 @@ from libtbx import easy_run
 from libtbx.str_utils import show_string
 from libtbx.path import norm_join, full_command_path
 import sys, os
+import platform
+
+#used for Win64 but can also be usefull somewhere else...
+platform_64bit = (platform.architecture()[0] == '64bit')
 
 if (hasattr(Environment, "Clone")):
   Environment.Copy = Environment.Clone # XXX backward compatibility 2008_03_30
@@ -221,7 +225,7 @@ libtbx.scons: Warning: compiling with /MDd:
       "/EHsc"]
     if (libtbx.env.build_options.optimization):
       opts = ["/DNDEBUG", "/O2"]
-      if (libtbx.env.build_options.msvs_arch_flag is not None):
+      if (libtbx.env.build_options.msvs_arch_flag is not None and not platform_64bit):
         opts.append("/arch:%s" %libtbx.env.build_options.msvs_arch_flag)
       if (env_base["MSVS_VERSION"] != "7.1"):
         opts.append("/fp:fast")
@@ -275,7 +279,7 @@ libtbx.scons: Warning: compiling with /MDd:
     """.split()
     if (libtbx.env.build_options.optimization):
       opts = ["/DNDEBUG", "/Ob2", "/Ox", "/Oi", "/Ot", "/GT", "/MD", "/EHsc", "/fp:fast"]
-      if (libtbx.env.build_options.msvs_arch_flag is not None):
+      if (libtbx.env.build_options.msvs_arch_flag is not None and not platform_64bit):
         opts.append("/arch:%s" %libtbx.env.build_options.msvs_arch_flag)
     else:
       opts = ["/Od"]

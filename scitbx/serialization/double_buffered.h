@@ -59,6 +59,13 @@ namespace scitbx { namespace serialization { namespace double_buffered {
       return *this;
     }
 
+    to_string& operator<<(unsigned long long const& val)
+    {
+      char buf[64];
+      buffer.append(buf, base_256::to_string(buf, val));
+      return *this;
+    }
+
     to_string& operator<<(float const& val)
     {
       char buf[64];
@@ -170,7 +177,13 @@ namespace scitbx { namespace serialization { namespace double_buffered {
       return *this;
     }
 
-    from_string& operator>>(float& val)
+    from_string& operator>>(unsigned long long& val)
+    {
+      val = get_value(type_holder<unsigned long long>());
+      return *this;
+    }
+
+	from_string& operator>>(float& val)
     {
       val = get_value(type_holder<float>());
       return *this;

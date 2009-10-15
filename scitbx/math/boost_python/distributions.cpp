@@ -75,9 +75,12 @@ namespace {
       def("cdf", (FloatType(*)(wt const&, FloatType const&)) boost::math::cdf);
       def("quantile", (FloatType(*)(wt const&, FloatType const&))
         boost::math::quantile);
-      def("quantiles",(
+/* this is changed due to the compilation error with MSVC 2005 x64 form:
+	  def("quantiles",(
         scitbx::af::shared<FloatType>(*)(wt const&, std::size_t))
-        quantiles);
+		quantiles);
+*/
+	  def("quantiles", quantiles<FloatType,wt>);
     }
   };
 
