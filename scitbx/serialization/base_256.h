@@ -253,6 +253,21 @@ namespace scitbx { namespace serialization { namespace base_256 {
 
   inline
   char*
+  to_string(char* buf, long long const& value)
+  {
+    return integer::signed_::to_string(buf, value);
+  }
+
+  template<>
+  struct from_string<long long> : integer::signed_::from_string<long long>
+  {
+    from_string(const char* buf)
+    : integer::signed_::from_string<long long>(buf)
+    {}
+  };
+
+  inline
+  char*
   to_string(char* buf, unsigned long long const& value)
   {
     return integer::unsigned_::to_string(buf, value);

@@ -112,9 +112,11 @@ int main(int argc, char* /*argv*/[])
     for(;;)
     {
       integer_signed<int>::exercise();
-      integer_unsigned<unsigned int>::exercise();
+      integer_unsigned<unsigned>::exercise();
       integer_signed<long>::exercise();
       integer_unsigned<unsigned long>::exercise();
+      integer_signed<long long>::exercise();
+      integer_unsigned<unsigned long long>::exercise();
       floating_point<float>::exercise();
       floating_point<double>::exercise();
       if (argc == 1) break;
