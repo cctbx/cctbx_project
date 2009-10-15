@@ -19,5 +19,8 @@ def dumps(obj):
 def load(file_name):
   return cPickle.load(_open(file_name, "rb"))
 
+def loads(string) :
+  return cPickle.loads(string)
+
 def dump_args(*args, **keyword_args):
   dump("args.pickle", (args, keyword_args))

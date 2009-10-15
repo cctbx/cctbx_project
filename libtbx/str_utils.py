@@ -179,14 +179,19 @@ class StringIO (object) :
     return getattr(self._buffer, *args, **kwds)
 
   def __getstate__ (self) :
-    return self._buffer.getvalue()
+    is_output_object = (type(self._buffer).__name__ == 'StringO')
+    return (self._buffer.getvalue(), is_output_object)
 
   def __setstate__ (self, state) :
-    self.__init__()
-    self._buffer.write(state)
+    (buffer_value, is_output_object) = state
+    if is_output_object :
+      self.__init__()
+      self._buffer.write(buffer_value)
+    else :
+      self.__init__(buffer_value)
 
 def exercise():
-  from libtbx.test_utils import show_diff
+  from libtbx.test_utils import show_diff, Exception_expected
   import cPickle
   #
   assert split_keeping_spaces(s="") == []
@@ -263,10 +268,18 @@ world""", suffix=" ", rstrip=False) == """\
     assert [block for block in line_breaker(string, width=7)]==expected_result
   out1 = cStringIO.StringIO()
   out2 = StringIO()
+  out3 = StringIO("Hello world!\n")
   print >> out1, "Hello world!"
   print >> out2, "Hello world!"
-  out3 = cPickle.loads(cPickle.dumps(out2))
-  assert out3.getvalue() == out1.getvalue() == out2.getvalue()
+  try :
+      print >> out3, "Hello world!"
+  except AttributeError :
+    pass
+  else :
+    raise Exception_expected
+  out4 = cPickle.loads(cPickle.dumps(out2))
+  out5 = cPickle.loads(cPickle.dumps(out3))
+  assert out4.getvalue()==out1.getvalue()==out2.getvalue()==out5.getvalue()
   txt1 = """
 This is some
 terminal-formatted
