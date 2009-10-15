@@ -14,6 +14,7 @@
 
 #include <boost_adaptbx/type_id_eq.h>
 #include <boost/cstdint.hpp>
+#include <sstream>
 #include <stdexcept>
 
 // for number_of_processors()
@@ -243,6 +244,15 @@ extern "C" {
 
 namespace {
 
+  template <typename T>
+  std::string
+  to_str(T const & value)
+  {
+    std::ostringstream o;
+    o << value;
+    return o.str();
+  }
+
   inline
   std::string
   to_str(bool value)
@@ -252,47 +262,11 @@ namespace {
 
   inline
   std::string
-  to_str(int value)
+  to_str(int value) // for enums
   {
-    char buf[256];
-    sprintf(buf, "%d", value);
-    return std::string(buf);
-  }
-
-  inline
-  std::string
-  to_str(unsigned int value)
-  {
-    char buf[256];
-    sprintf(buf, "%u", value);
-    return std::string(buf);
-  }
-
-  inline
-  std::string
-  to_str(long value)
-  {
-    char buf[256];
-    sprintf(buf, "%ld", value);
-    return std::string(buf);
-  }
-
-  inline
-  std::string
-  to_str(unsigned long value)
-  {
-    char buf[256];
-    sprintf(buf, "%lu", value);
-    return std::string(buf);
-  }
-
-  inline
-  std::string
-  to_str(unsigned long long value)
-  {
-    char buf[256];
-    sprintf(buf, "%Lu", value);
-    return std::string(buf);
+    std::ostringstream o;
+    o << value;
+    return o.str();
   }
 
   std::string
