@@ -348,6 +348,7 @@ crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
       "unsigned long",
       "unsigned long long"]
     test_code = """\
+#include <typeinfo>
 #include <iostream>
 #include <stddef.h>
 
