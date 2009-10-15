@@ -306,6 +306,8 @@ libtbx/object_oriented_patterns.py -text
 libtbx/pbs_utils.py svneol=native#text/x-python
 libtbx/phil/doc.txt svneol=native#text/plain
 libtbx/phil/example.params -text
+libtbx/phil/interface.py -text
+libtbx/phil/tst_interface.py -text
 libtbx/pythonpath/deep_thought.py svneol=native#text/x-python
 libtbx/queuing_system_utils.py svneol=native#text/x-python
 libtbx/smart_open.py svneol=native#text/x-python
