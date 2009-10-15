@@ -123,13 +123,29 @@ namespace scitbx { namespace serialization { namespace single_buffered {
 
   inline
   char*
+  to_string(char* start, long long const& value)
+  {
+    return base_256::to_string(start, value);
+  }
+
+  template <>
+  struct from_string<long long> : base_256::from_string<long long>
+  {
+    from_string(const char* start)
+    : base_256::from_string<long long>(start)
+    {}
+  };
+
+  inline
+  char*
   to_string(char* start, unsigned long long const& value)
   {
     return base_256::to_string(start, value);
   }
 
   template <>
-  struct from_string<unsigned long long> : base_256::from_string<unsigned long long>
+  struct from_string<unsigned long long>
+  : base_256::from_string<unsigned long long>
   {
     from_string(const char* start)
     : base_256::from_string<unsigned long long>(start)
