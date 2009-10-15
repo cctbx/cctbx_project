@@ -286,6 +286,15 @@ namespace {
     return std::string(buf);
   }
 
+  inline
+  std::string
+  to_str(unsigned long long value)
+  {
+    char buf[256];
+    sprintf(buf, "%Lu", value);
+    return std::string(buf);
+  }
+
   std::string
   platform_info()
   {

@@ -108,6 +108,12 @@ namespace scitbx { namespace af { namespace boost_python {
   };
 
   template <>
+  struct pickle_size_per_element<unsigned long long>
+  {
+    BOOST_STATIC_CONSTANT(std::size_t, value = (sizeof(unsigned long long)+1));
+  };
+
+  template <>
   struct pickle_size_per_element<float>
   {
     BOOST_STATIC_CONSTANT(std::size_t, value = (sizeof(float)+3));

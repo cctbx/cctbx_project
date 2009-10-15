@@ -251,6 +251,22 @@ namespace scitbx { namespace serialization { namespace base_256 {
     {}
   };
 
+  inline
+  char*
+  to_string(char* buf, unsigned long long const& value)
+  {
+    return integer::unsigned_::to_string(buf, value);
+  }
+
+  template<>
+  struct from_string<unsigned long long>
+  : integer::unsigned_::from_string<unsigned long long>
+  {
+    from_string(const char* buf)
+    : integer::unsigned_::from_string<unsigned long long>(buf)
+    {}
+  };
+
   namespace floating_point {
 
     struct decomposition
