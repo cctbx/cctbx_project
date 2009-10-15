@@ -22,17 +22,35 @@ namespace {
   }
 
   template <typename T>
+  struct integer_max
+  {
+    static const int loop1 = 1000000;
+    static const int loop2 = 2147481557;
+  };
+
+  template <>
+  struct integer_max<short>
+  {
+    static const int loop1 = 32767;
+    static const int loop2 = 32767;
+  };
+
+  template <>
+  struct integer_max<unsigned short> : integer_max<short>
+  {};
+
+  template <typename T>
   struct integer_signed
   {
     static void
     exercise()
     {
-      for(T i=0;i<1000000;i++) {
+      for(T i=0;i<integer_max<T>::loop1;i++) {
         for (T s = 1; s >= -1; s -= 2) {
           integer_core_exercise(s*i);
         }
       }
-      for(T i=0;i<2147481557;i += 2357) {
+      for(T i=0;i<integer_max<T>::loop2;i += 2357) {
         for (T s = 1; s >= -1; s -= 2) {
           integer_core_exercise(s*i);
         }
@@ -47,8 +65,8 @@ namespace {
     static void
     exercise()
     {
-      for(T i=0;i<1000000;i++) integer_core_exercise(i);
-      for(T i=0;i<2147481557;i += 2357) integer_core_exercise(i);
+      for(T i=0;i<integer_max<T>::loop1;i++) integer_core_exercise(i);
+      for(T i=0;i<integer_max<T>::loop2;i += 2357) integer_core_exercise(i);
     }
   };
 
@@ -111,6 +129,8 @@ int main(int argc, char* /*argv*/[])
   try {
     for(;;)
     {
+      integer_signed<short>::exercise();
+      integer_unsigned<unsigned short>::exercise();
       integer_signed<int>::exercise();
       integer_unsigned<unsigned>::exercise();
       integer_signed<long>::exercise();
