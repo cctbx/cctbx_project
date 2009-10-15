@@ -9,6 +9,7 @@ types_ordered = (
   "short",
   "int",
   "long",
+  "long long",
   "float",
   "double",
   "std::complex<float>",
@@ -16,7 +17,11 @@ types_ordered = (
 )
 
 unsigned = (
-  "unsigned char", "unsigned short", "unsigned int", "unsigned long"
+  "unsigned char",
+  "unsigned short",
+  "unsigned int",
+  "unsigned long",
+  "unsigned long long"
 )
 
 floating = ("float", "double")
