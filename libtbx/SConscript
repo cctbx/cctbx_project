@@ -3,11 +3,8 @@ import libtbx.env_config
 from libtbx import easy_run
 from libtbx.str_utils import show_string
 from libtbx.path import norm_join, full_command_path
-import sys, os
 import platform
-
-#used for Win64 but can also be usefull somewhere else...
-platform_64bit = (platform.architecture()[0] == '64bit')
+import sys, os
 
 if (hasattr(Environment, "Clone")):
   Environment.Copy = Environment.Clone # XXX backward compatibility 2008_03_30
@@ -157,6 +154,7 @@ env_etc.enable_more_warnings = enable_more_warnings
 env_etc._enable_more_warnings = None
 
 if (sys.platform == "win32"):
+  platform_64bit = (platform.architecture()[0] == '64bit')
   env_etc.static_libraries = 1
   env_etc.static_bpl = 0
   set_python_include_and_libs(env_etc)
@@ -217,7 +215,8 @@ libtbx.scons: Warning: compiling with /MDd:
         "/MDd",
         "/D_DEBUG",
         "/Z7",  # produce program database file containing debugging symbols
-        "/D_HAS_ITERATOR_DEBUGGING=0"]) # speed up memory allocation and deallocation in debug mode
+        "/D_HAS_ITERATOR_DEBUGGING=0"])
+          # speed up memory allocation and deallocation in debug mode
     else:
       env_etc.ccflags_base.append("/MD")
     env_etc.cxxflags_base = [
@@ -225,7 +224,8 @@ libtbx.scons: Warning: compiling with /MDd:
       "/EHsc"]
     if (libtbx.env.build_options.optimization):
       opts = ["/DNDEBUG", "/O2"]
-      if (libtbx.env.build_options.msvs_arch_flag is not None and not platform_64bit):
+      if (    libtbx.env.build_options.msvs_arch_flag is not None
+          and not platform_64bit):
         opts.append("/arch:%s" %libtbx.env.build_options.msvs_arch_flag)
       if (env_base["MSVS_VERSION"] != "7.1"):
         opts.append("/fp:fast")
@@ -278,8 +278,11 @@ libtbx.scons: Warning: compiling with /MDd:
       /DBOOST_DISABLE_THREADS
     """.split()
     if (libtbx.env.build_options.optimization):
-      opts = ["/DNDEBUG", "/Ob2", "/Ox", "/Oi", "/Ot", "/GT", "/MD", "/EHsc", "/fp:fast"]
-      if (libtbx.env.build_options.msvs_arch_flag is not None and not platform_64bit):
+      opts = [
+        "/DNDEBUG", "/Ob2", "/Ox", "/Oi", "/Ot", "/GT", "/MD", "/EHsc",
+        "/fp:fast"]
+      if (    libtbx.env.build_options.msvs_arch_flag is not None
+          and not platform_64bit):
         opts.append("/arch:%s" %libtbx.env.build_options.msvs_arch_flag)
     else:
       opts = ["/Od"]
