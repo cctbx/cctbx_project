@@ -77,6 +77,8 @@ class _advertise_subprocess(object):
               b = b.lower()
               if (   b.startswith("python")
                   or b == "lib"):
+                if (not os.path.isdir(p)): # non-existing path names in .pyc
+                  return True              # simply give up to avoid noise
                 for n in ["os","StringIO","UserDict","UserList","UserString"]:
                   if (not os.path.isfile(os.path.join(p, n+".py"))):
                     break
