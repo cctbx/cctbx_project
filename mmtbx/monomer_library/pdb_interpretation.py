@@ -502,7 +502,7 @@ class monomer_mapping(object):
         is_first_conformer_in_chain,
         conf_altloc,
         pdb_residue,
-        prev_mm):
+        next_pdb_residue):
     self.pdb_atoms = pdb_atoms
     self.mon_lib_srv = mon_lib_srv
     self.i_conformer = i_conformer
@@ -536,7 +536,7 @@ class monomer_mapping(object):
       if (self.atom_name_interpretation is not None):
         self._rna_sugar_pucker_analysis(
           params=rna_sugar_pucker_analysis_params,
-          prev_mm=prev_mm)
+          next_pdb_residue=next_pdb_residue)
       for id_str in atom_id_str_pdbres_list:
         for apply_data_mod in apply_cif_modifications.get(id_str, []):
           self.apply_mod(
@@ -564,41 +564,24 @@ class monomer_mapping(object):
         self.atom_names_given.append(atom.name.replace(" ",""))
     return sorted(atom_id_str_pdbres_set)
 
-  def _rna_sugar_pucker_analysis(self, params, prev_mm):
+  def _rna_sugar_pucker_analysis(self, params, next_pdb_residue):
     if (not params.use): return
     raise RuntimeError("""\
-Feature disabled because of known problems. Please set:
+Feature not available (under development). Please set:
   pdb_interpretation.rna_sugar_pucker_analysis.use=False
 """)
-    std_resname = getattr(
-      self.atom_name_interpretation, "residue_name", None)
-    if (    std_resname is not None
-        and std_resname in ["A", "C", "G", "U"]):
-      self.rna_sugar_pucker_analysis_atoms = \
-        rna_sugar_pucker_analysis.extract_required_atoms(
-          resname=std_resname,
-          atoms=self.active_atoms,
-          atom_names=[info.reference_name
-            for info in self.atom_name_interpretation.infos])
-      if (   self.rna_sugar_pucker_analysis_atoms is None
-          or prev_mm is None
-          or prev_mm.mon_lib_names is None
-          or prev_mm.rna_sugar_pucker_analysis_atoms is None):
-        is_2p = None
-      else:
-        is_2p = rna_sugar_pucker_analysis.evaluate.given_atoms(
-          params=params,
-          atoms_1=prev_mm.rna_sugar_pucker_analysis_atoms,
-          atoms_2=self.rna_sugar_pucker_analysis_atoms).is_2p
-        if (is_2p is not None):
-          if (is_2p): primary_mod_id = "rnaC2"
-          else:       primary_mod_id = "rnaC3"
-          self.monomer, chem_mod_ids = self.mon_lib_srv.get_comp_comp_id_mod(
-            comp_comp_id=self.monomer,
-            mod_ids=(primary_mod_id, "rnaEsd"))
-          self._track_mods(chem_mod_ids=chem_mod_ids)
-    else:
-      self.rna_sugar_pucker_analysis_atoms = None
+    # XXX under development
+    is_2p = rna_sugar_pucker_analysis.evaluate(
+      params=params,
+      pdb_residue=self.pdb_residue,
+      next_pdb_residue=next_pdb_residue).is_2p
+    if (is_2p is not None):
+      if (is_2p): primary_mod_id = "rnaC2"
+      else:       primary_mod_id = "rnaC3"
+      self.monomer, chem_mod_ids = self.mon_lib_srv.get_comp_comp_id_mod(
+        comp_comp_id=self.monomer,
+        mod_ids=(primary_mod_id, "rnaEsd"))
+      self._track_mods(chem_mod_ids=chem_mod_ids)
 
   def _get_mappings(self):
     self.monomer_atom_dict = atom_dict = self.monomer.atom_dict()
@@ -1555,10 +1538,15 @@ class build_chain_proxies(object):
     mm = None
     prev_mm = None
     prev_prev_mm = None
-    for i_residue,residue in enumerate(conformer.residues()):
+    pdb_residues = conformer.residues()
+    for i_residue,residue in enumerate(pdb_residues):
       for atom in residue.atoms():
         i_seq = atom.i_seq
         model_indices[i_seq] = i_model
+      def _get_next_residue():
+        j = i_residue + 1
+        if (j == len(pdb_residues)): return None
+        return pdb_residues[j]
       mm = monomer_mapping(
         pdb_atoms=pdb_atoms,
         mon_lib_srv=mon_lib_srv,
@@ -1572,7 +1560,7 @@ class build_chain_proxies(object):
         is_first_conformer_in_chain=is_first_conformer_in_chain,
         conf_altloc=conformer.altloc,
         pdb_residue=residue,
-        prev_mm=prev_mm)
+        next_pdb_residue=_get_next_residue())
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
           if (   residue.atoms_size() != 1
