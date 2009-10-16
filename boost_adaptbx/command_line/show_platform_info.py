@@ -2,6 +2,7 @@
 
 import boost.python
 from libtbx import introspection
+import platform
 import sys, os
 
 def run():
@@ -11,6 +12,8 @@ def run():
   print "os.name:", os.name
   print "sys.platform:", sys.platform
   print "sys.byteorder:", sys.byteorder
+  print "platform.platform():", platform.platform()
+  print "platform.architecture():", platform.architecture()
   try: import thread
   except ImportError: print "import thread: NO"
   else: print "import thread: OK"
