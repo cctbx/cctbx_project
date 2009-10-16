@@ -260,15 +260,6 @@ namespace {
     return std::string(value ? "true" : "false");
   }
 
-  inline
-  std::string
-  to_str(int value) // for enums
-  {
-    std::ostringstream o;
-    o << value;
-    return o.str();
-  }
-
   std::string
   platform_info()
   {
@@ -387,22 +378,22 @@ namespace {
     result += "__VERSION__ = " __VERSION__ "\n";
 #endif
 #if defined(FE_INEXACT)
-    result += "FE_INEXACT = " + to_str(FE_INEXACT) + nl;
+    result += "FE_INEXACT = " + to_str(int(FE_INEXACT)) + nl;
 #endif
 #if defined(FE_DIVBYZERO)
-    result += "FE_DIVBYZERO = " + to_str(FE_DIVBYZERO) + nl;
+    result += "FE_DIVBYZERO = " + to_str(int(FE_DIVBYZERO)) + nl;
 #endif
 #if defined(FE_UNDERFLOW)
-    result += "FE_UNDERFLOW = " + to_str(FE_UNDERFLOW) + nl;
+    result += "FE_UNDERFLOW = " + to_str(int(FE_UNDERFLOW)) + nl;
 #endif
 #if defined(FE_OVERFLOW)
-    result += "FE_OVERFLOW = " + to_str(FE_OVERFLOW) + nl;
+    result += "FE_OVERFLOW = " + to_str(int(FE_OVERFLOW)) + nl;
 #endif
 #if defined(FE_INVALID)
-    result += "FE_INVALID = " + to_str(FE_INVALID) + nl;
+    result += "FE_INVALID = " + to_str(int(FE_INVALID)) + nl;
 #endif
 #if defined(FE_ALL_EXCEPT)
-    result += "FE_ALL_EXCEPT = " + to_str(FE_ALL_EXCEPT) + nl;
+    result += "FE_ALL_EXCEPT = " + to_str(int(FE_ALL_EXCEPT)) + nl;
 #endif
 #if defined(__SSE2__)
     result += "__SSE2__ = " + to_str(__SSE2__) + nl;
