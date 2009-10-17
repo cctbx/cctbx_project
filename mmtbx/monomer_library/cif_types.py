@@ -1,3 +1,4 @@
+from iotbx.pdb import rna_dna_detection
 from cctbx import geometry_restraints
 from cctbx import uctbx
 from cctbx.array_family import flex
@@ -146,21 +147,6 @@ def esd_as_weight(esd):
   if (esd is None): return 0
   if (esd == 0): return 0
   return 1./(esd*esd)
-
-def _make_test_for_rna_dna_tables():
-  result = []
-  atoms_t = ("C5'", "C4'", "O4'", "C1'", "C2'", "C3'", "O3'")
-  atoms_s = tuple([a.replace("'","*") for a in atoms_t])
-  for bonds_1 in [("OP1 P", "OP2 P"), ("O1P P", "O2P P")]:
-    bonds_t = set(bonds_1 + (
-      "O5' P",
-      "C1' C2'", "C2' C3'", "C3' C4'", "C3' O3'", "C4' C5'", "C4' O4'",
-      "C1' O4'", "C5' O5'"))
-    result.append((atoms_t, bonds_t))
-    result.append((atoms_s, set([b.replace("'","*") for b in bonds_t])))
-  return result
-
-_test_for_rna_dna_tables = _make_test_for_rna_dna_tables()
 
 class comp_comp_id(object):
 
@@ -392,47 +378,8 @@ class comp_comp_id(object):
     return "peptide"
 
   def test_for_rna_dna(self, atom_dict):
-    if ("P" not in atom_dict): return None
-    if   ("OP1" in atom_dict):
-      if ("OP2" not in atom_dict): return None
-      tab_offs = 0
-    elif ("O1P" in atom_dict):
-      if ("O2P" not in atom_dict): return None
-      tab_offs = 2
-    else:
-      return None
-    if   ("O5'" in atom_dict):
-      required_atoms, required_bonds = _test_for_rna_dna_tables[tab_offs]
-      have_o2 = "O2'" in atom_dict
-      c2_o2 = "C2' O2'"
-    elif ("O5*" in atom_dict):
-      required_atoms, required_bonds = _test_for_rna_dna_tables[tab_offs+1]
-      have_o2 = "O2*" in atom_dict
-      c2_o2 = "C2* O2*"
-    else:
-      return None
-    if (tab_offs == 2 and c2_o2 == "C2* O2*"):
-      sub_classification = ""
-    elif (tab_offs == 0 and c2_o2 == "C2' O2'"):
-      sub_classification = "v3"
-    else:
-      return None
-    for required_atom in required_atoms:
-      if (not required_atom in atom_dict): return None
-    rna_indicator = False
-    bonds_matched = set()
-    for bond in self.bond_list:
-      pair = [bond.atom_id_1, bond.atom_id_2]
-      pair.sort()
-      pair = " ".join(pair)
-      if (pair in required_bonds):
-        bonds_matched.add(pair)
-      elif (have_o2 and pair == c2_o2):
-        rna_indicator = True
-    if (len(bonds_matched) != len(required_bonds)):
-      return None
-    if (rna_indicator): return "RNA"+sub_classification
-    return "DNA"+sub_classification
+    return rna_dna_detection.classification(
+      atom_dict=atom_dict, bond_list=self.bond_list)
 
   def test_for_water(self, atom_dict):
     atom_list = atom_dict.keys()
