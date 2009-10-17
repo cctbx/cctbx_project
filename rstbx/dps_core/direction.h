@@ -36,6 +36,7 @@ struct Direction {
   void initialize();
   bool is_nearly_collinear(const Direction &)const;
   inline af::shared<double> getff() { return ff; }
+  inline point bvec(){return point(uc_length*dvec[0],uc_length*dvec[1],uc_length*dvec[2]);}
   void extract_directional_properties(fftptr, const bool PS = true);
   // fill the original angle with kmax,kval,power spectrum,m,delta_p,pmin,
   // and unit cell length
