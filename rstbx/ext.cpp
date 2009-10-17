@@ -129,6 +129,7 @@ namespace boost_python { namespace {
       .def_readonly("phi",&Direction::phi)
       .def_readonly("m",&Direction::m)
       .def_readonly("delta_p",&Direction::delta_p)
+      .def("bvec",&Direction::bvec)
       .def("getff",&Direction::getff)
       .add_property("dvec",make_getter(&Direction::dvec, rbv()))
       .add_property("real",make_getter(&Direction::uc_length, rbv()))
