@@ -2,6 +2,7 @@ import sys, traceback, time
 import Queue
 import threading
 from libtbx.utils import Sorry
+from libtbx import group_args, adopt_init_args
 
 class thread_with_callback_and_wait(threading.Thread):
 
@@ -47,6 +48,21 @@ class thread_with_callback_and_wait(threading.Thread):
       self._queue.put(last_iteration)
     return self
 
+class child_process_message (object) :
+  def __init__ (self, message_type, data) :
+    adopt_init_args(self, locals())
+
+class child_process_pipe (object) :
+  def __init__ (self, connection_object) :
+    adopt_init_args(self, locals())
+
+  def send_confirm_abort (self, info=None) :
+    message = child_process_message(message_type="aborted", data=info)
+    self.connection_object.send(message)
+
+  def __getattr__ (self, name) :
+    return getattr(self.connection_object, name)
+
 # fake filehandle, sends data up pipe to parent process
 class _stdout_pipe (object) :
   def __init__ (self, connection) :
@@ -63,7 +79,8 @@ class _stdout_pipe (object) :
   def _flush (self) :
     try :
       if self._data != "" :
-        self._c.send([self._data, True, False])
+        message = child_process_message(message_type="stdout", data=self._data)
+        self._c.send(message)
         self._data = ""
     except Exception, e :
       sys.__stderr__.write("Exception in _stdout_pipe: %s\n" % str(e))
@@ -92,9 +109,6 @@ class _stdout_buffered_pipe (_stdout_pipe) :
 if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
   import multiprocessing
 
-  class _sorry_exception (Exception) :
-    pass
-
   class _process_with_stdout_redirect (multiprocessing.Process) :
     def __init__ (self, group=None, target=None, name=None, args=(), kwargs={},
         connection=None, buffer_stdout=True) :
@@ -108,26 +122,30 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
     def run (self) :
       old_stdout = sys.stdout
       sys.stdout = self._stdout
+      message = None
       try :
         if self._target :
           return_value = self._target(self._args, self._kwargs, self._c)
-          self._stdout._flush()
-          self._c.send([return_value, False, True])
-      except Sorry, s :
-        self._stdout._flush()
-        e = _sorry_exception(str(s))
-        self._c.send([e, False, False])
+          message = child_process_message(message_type="return",
+                                          data=return_value)
+      except Sorry, s : # XXX: 'Sorry' can't be pickled
+        message = child_process_message(message_type="sorry",
+                                        data=str(s))
       except Exception, e :
         traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
-        self._c.send([(e, traceback_str), False, False])
-      self._stdout._flush()
+        message = child_process_message(message_type="exception",
+                                        data=(e, traceback_str))
+      finally :
+        if message is not None :
+          self._stdout._flush()
+          self._c.send(message)
       sys.stdout = old_stdout
 
   #XXX: target functions must use this call signature!!!
   # I normally just write a very short wrapper function that invokes the
   # command I actually care about with args/kwds.
   def _process_target_function (args, kwds, connection) :
-    connection.send([True])
+    connection.send(True)
 
   # not really a process, but a wrapper for one.
   class process_with_callbacks (threading.Thread) :
@@ -166,7 +184,7 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
           target        = self._target,
           args          = self._args,
           kwargs        = self._kwargs,
-          connection    = child_conn,
+          connection    = child_process_pipe(connection_object=child_conn),
           buffer_stdout = self._buffer_stdout)
         child_process.start()
       except Exception, e :
@@ -178,32 +196,32 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
           if self._cb_abort is not None :
             self._cb_abort()
           break
-        pipe_output = list(parent_conn.recv())
-        if len(pipe_output) == 3 :
-          (child_object, is_stdout, is_return) = pipe_output
-          if (child_object, is_stdout, is_return) == (None, None, None) :
+        pipe_output = parent_conn.recv()
+        if isinstance(pipe_output, child_process_message) :
+          message = pipe_output
+          (error, traceback_info) = (None, None)
+          if message.message_type == "aborted" :
             child_process.terminate()
             if self._cb_abort is not None :
               self._cb_abort()
             break
-          elif is_stdout :
+          elif message.message_type == "stdout" :
             if self._cb_stdout is not None :
-              self._cb_stdout(child_object)
+              self._cb_stdout(message.data)
             else :
-              sys.stdout.write(child_object)
-          elif is_return :
+              sys.stdout.write(message.data)
+          elif message.message_type == "return" :
             if self._cb_final is not None :
-              self._cb_final(child_object)
+              self._cb_final(message.data)
             self._completed = True
             break
-          elif not is_stdout and not is_return :
-            if isinstance(child_object, _sorry_exception) :
-              e = Sorry(str(child_object))
-              tb_info = None
-            else :
-              (e, tb_info) = child_object
+          elif message.message_type == "sorry" :
+            error = Sorry(str(message.data))
+          elif message.message_type == "exception" :
+            (error, traceback_info) = message.data
+          if error is not None :
             if self._cb_err is not None :
-              self._cb_err(e, tb_info)
+              self._cb_err(error, traceback_info)
               self._error = True
               child_process.terminate()
               break
@@ -211,8 +229,8 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
               self._error = True
               child_process.terminate()
               raise e
-        elif len(pipe_output) == 1 and self._cb_other is not None :
-          self._cb_other(pipe_output[0])
+        elif self._cb_other is not None :
+          self._cb_other(pipe_output)
       if child_process is not None and child_process.is_alive() :
         child_process.join()
 
@@ -356,7 +374,7 @@ def tst_02 () :
 def _target_function03 (args, kwds, connection) :
   for i in xrange(4) :
     print i
-    connection.send([i])
+    connection.send(i)
   return 4
 
 def tst_03 () :
