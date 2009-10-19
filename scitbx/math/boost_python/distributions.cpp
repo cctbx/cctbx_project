@@ -75,7 +75,13 @@ namespace {
       def("cdf", (FloatType(*)(wt const&, FloatType const&)) boost::math::cdf);
       def("quantile", (FloatType(*)(wt const&, FloatType const&))
         boost::math::quantile);
-      def("quantiles", quantiles<FloatType, wt>);
+      def("quantiles",
+#if BOOST_WORKAROUND(__EDG_VERSION__, BOOST_TESTED_AT(306))
+        (scitbx::af::shared<FloatType>(*)(wt const&, std::size_t)) quantiles
+#else
+        quantiles<FloatType, wt>
+#endif
+        );
     }
   };
 
