@@ -49,7 +49,8 @@ polygon_params_str = """\
     .type = int
     .help = Number of histogram slots for the final histogram to be used to \
             draw the POLYGON's rays.  Not used in GUI.
-    .style = hidden
+    .input_size = 64
+    .style = noauto bold
   max_reject_fraction = 0.1
     .type = float
     .help = Fraction of models allowed to be rejected as outliers.
@@ -260,8 +261,8 @@ def polygon(params = master_params.extract(), d_min = None,
     database_dict = database_dict,
     keys          = params.polygon.keys_to_show)
   filters = params.polygon.filter
-  if((d_min is not None and len(filters) == 1 and filters[0].key is None) or
-     len(filters) == 0):
+  if(d_min is not None and
+    ((len(filters) == 1 and filters[0].key is None) or len(filters) == 0)) :
     result = apply_default_filter(database_dict = result, d_min = d_min,
       max_models_for_default_filter =
         params.polygon.max_models_for_default_filter)
