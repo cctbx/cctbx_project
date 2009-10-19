@@ -1,31 +1,49 @@
 from scitbx.array_family import flex
 import iotbx.phil
 import mmtbx.polygon
-import libtbx, os
+import libtbx, os, re
 from libtbx.utils import Sorry
 from libtbx import easy_pickle
 
+keys_to_show = ["r_work_re_computed", "r_free_re_computed", "r_work_pdb",
+  "r_free_pdb", "r_work_cutoff", "r_free_cutoff", "cmpl_in_range",
+  "cmpl_d_min_inf", "cmpl_6A_inf", "adp_mean", "adp_min", "adp_max",
+  "wilson_b", "b_sol", "k_sol", "solvent_cont", "matthews_coeff",
+  "bonds_rmsd", "bonds_max", "angles_rmsd", "angles_max", "dihedrals_rmsd",
+  "dihedrals_max", "planarity_rmsd", "planarity_max", "chirality_rmsd",
+  "chirality_max", "rama_favored", "rama_allowed", "rama_general",
+  "rama_outliers"]
+default_keys = ["r_work_re_computed", "r_free_re_computed", "adp_mean",
+  "b_sol", "k_sol", "bonds_rmsd", "angles_rmsd", "dihedrals_rmsd",
+  "planarity_rmsd", "chirality_rmsd","rama_outliers"]
+
+key_captions = ["R-work", "R-free", "R-work (PDB)", "R-free (PDB)",
+  "R-work (cutoff)", "R-free (cutoff)", "Completeness in range",
+  "Completeness", "Completeness to 6A", "Average B", "Minimum B", "Maximum B",
+  "Wilson B", "B(solvent)", "K(solvent)", "Solvent content", "Matthews coeff.",
+  "RMSD(bonds)", "Bonds max.", "RMSD(angles)", "Angles max.",
+  "RMSD(dihedrals)", "Dihedrals max.", "RMSD(planarity)", "Planarity max",
+  "RMSD(chirality)", "Chirality max.", "Ramachandran favored",
+  "Ramachandran allowed", "Ramachandran generous", "Ramachandran outliers",]
+
+assert len(keys_to_show) == len(key_captions)
+_selected = []
+for key_name in keys_to_show :
+  if key_name in default_keys :
+    _selected.append("*%s" % key_name)
+  else :
+    _selected.append(key_name)
+key_params_str = " ".join(_selected)
+captions_str = " ".join([ re.sub(" ", "_", txt) for txt in key_captions ])
 
 polygon_params_str = """\
   database_file_name = None
     .type = str
     .style = noauto
-  keys_to_show = *r_work_re_computed *r_free_re_computed r_work_pdb r_free_pdb\
-        r_work_cutoff r_free_cutoff cmpl_in_range cmpl_d_min_inf cmpl_6A_inf \
-        *adp_mean adp_min adp_max wilson_b *b_sol *k_sol solvent_cont \
-        matthews_coeff *bonds_rmsd bonds_max *angles_rmsd angles_max \
-        *dihedrals_rmsd dihedrals_max *planarity_rmsd planarity_max \
-        *chirality_rmsd chirality_max rama_favored rama_allowed rama_general \
-        rama_outliers
+  keys_to_show = %s
     .type = choice(multi=True)
     .short_caption = Statistics to display
-    .caption = R-work R-free R-work_(PDB) R-free_(PDB) R-work_(cutoff) \
-        R-free_(cutoff) Completeness_in_range Completeness Completeness_to_6A \
-        Average_B Minimum_B Maximum_B Wilson_B B(solvent) K(solvent) \
-        Solvent_content Matthews_coeff. RMSD(bonds) Bonds_max. RMSD(angles) \
-        Angles_max. RMSD(dihedrals) Dihedrals_max. RMSD(planarity) \
-        Planarity_max RMSD(chirality) Chirality_max. Ramachandran_favored \
-        Ramachandran_allowed Ramachandran_generous Ramachandran_outliers
+    .caption = %s
     .style = bold hide_label
   number_of_histogram_slots = None
     .type = int
@@ -42,6 +60,7 @@ polygon_params_str = """\
   filter
     .multiple = True
     .help = Selection keys.
+    .short_caption = Filtering options
     .style = noauto
   {
     key = twinned rama_proline n_fobs_outl rama_favored adp_mean rna_dna \
@@ -60,12 +79,15 @@ polygon_params_str = """\
       .type = choice(multi=False)
     value_min = None
       .type = float
+      .short_caption = Minimum value
     value_max = None
       .type = float
+      .short_caption = Maximum value
     target_value= None
       .type = str
+      .short_caption = Target value
   }
-"""
+""" % (key_params_str, captions_str)
 
 master_params = iotbx.phil.parse("""
 polygon {
@@ -279,5 +301,5 @@ def polygon(params = master_params.extract(), d_min = None,
       if(n_slots == 0):
         raise Sorry("Not enough data selected.")
       h = show_histogram(data = data, n_slots = n_slots)
-      histograms.append([selected_key,data])
+      histograms.append([selected_key,h])
   return histograms
