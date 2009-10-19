@@ -5,38 +5,7 @@ import iotbx.phil
 from math import pi, cos, sin, radians, degrees, floor
 import cStringIO
 
-stat_names = { "r_work_pdb" : "R-work(PDB)",
-               "r_free_pdb" : "R-free(PDB)",
-               "r_work_re_computed" : "R-work",
-               "r_free_re_computed" : "R-free",
-               "r_work_cutoff" : "R-work with cutoff",
-               "r_free_cutoff" : "R-free with cutoff",
-               "adp_mean" : "Average B",
-               "adp_min" : "Minimum B",
-               "adp_max" : "Maximum B",
-               "cmpl_in_range" : "Completeness in range",
-               "cmpl_d_min_inf" : "Completeness (d_min-inf)",
-               "cmpl_6A_inf" : "Completeness (6A-inf)",
-               "rama_favored" : "Ramachandran favored",
-               "rama_allowed" : "Ramachandran allowed",
-               "rama_general" : "Ramachandran general",
-               "rama_outliers" : "Ramachandran outliers",
-               "k_sol" : "K(sol)",
-               "b_sol" : "B(sol)",
-               "solvent_cont" : "Solvent content",
-               "matthews_coeff" : "Matthews coefficient (Vm)",
-               "wilson_b" : "Wilson B",
-               "bonds_rmsd" : "RMSD(bonds)",
-               "bonds_max" : "Max. bond deviation",
-               "angles_rmsd" : "RMSD(angles)",
-               "angles_max" : "Max. angle deviation",
-               "dihedrals_rmsd" : "RMSD(dihedrals)",
-               "dihedrals_max" : "Max. dihedral deviation",
-               "chirality_rmsd" : "RMSD(chirality)",
-               "chirality_max" : "Max. chirality deviation",
-               "planarity_rmsd" : "RMSD(planarity)",
-               "planarity_max" : "Max. planarity deviation",
-             }
+stat_names = dict(zip(polygon.keys_to_show, polygon.key_captions))
 stat_formats = { "r_work_pdb" : "%.4f",
                  "r_free_pdb" : "%.4f",
                  "bonds_rmsd" : "%.3f",
@@ -134,12 +103,22 @@ class canvas_layout (object) :
 
   def set_color_model (self, model_name, relative_scaling=True) :
     self.relative_scale_colors = relative_scaling
+    self.color_model = model_name
     if model_name == "original" :
       self.colors = original_color_model()
     elif model_name == "rainbow" :
       self.colors = rainbow_color_model()
     elif model_name == "rmb" :
       self.colors = rmb_color_model()
+    elif model_name == "blue" :
+      self.colors = blue_color_model()
+    elif model_name == "red" :
+      self.colors = red_color_model()
+    elif model_name == "gray" :
+      self.colors = grayscale_color_model()
+      self.line_color = (255, 0, 0)
+    if model_name != "gray" :
+      self.line_color = (0, 0, 0)
 
   def get_color_key (self) :
     if self.relative_scale_colors :
@@ -173,9 +152,9 @@ class canvas_layout (object) :
         angle=histogram.angle)
     for (start, end, dashed) in self._polygon.get_line_segments(self.units) :
       if dashed :
-        self.draw_dashed_line(out, start, end, (0, 0, 0))
+        self.draw_dashed_line(out, start, end, self.line_color)
       else :
-        self.draw_solid_line(out, start, end, (0, 0, 0))
+        self.draw_solid_line(out, start, end, self.line_color)
 
   def draw_bin (self, out, start, end, color) :
     print "NotImplemented"
@@ -330,6 +309,19 @@ class original_color_model (color_model) :
                             (  0, 255, 255),  # cyan
                             (  0,   0, 255),  # blue
                             (130,   0, 255) ] # purple
+
+# these two only work on the original scale
+class blue_color_model (original_color_model) :
+  def get_bin_color (self, value) :
+    return hsv2rgb(240, value, 1)
+ 
+class red_color_model (original_color_model) :
+  def get_bin_color (self, value) :
+    return hsv2rgb(0, value, 1)
+
+class grayscale_color_model (original_color_model) :
+  def get_bin_color (self, value) :
+    return hsv2rgb(0, 0, 1-value)
 
 class rainbow_color_model (color_model) :
   def __init__ (self) :
