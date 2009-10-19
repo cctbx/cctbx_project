@@ -240,7 +240,7 @@ class index (object) :
     return matching_defs
 
   def get_scope_phil (self, scope_name) :
-    _phil_string = cStringIO.StringIO()
+    _phil_string = str_utils.StringIO()
     scope_objects = self.get_scope_by_name(scope_name)
     if isinstance(scope_objects, list) :
       for phil_object in scope_objects :
