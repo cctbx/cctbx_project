@@ -60,8 +60,11 @@ class child_process_pipe (object) :
     message = child_process_message(message_type="aborted", data=info)
     self.connection_object.send(message)
 
-  def __getattr__ (self, name) :
-    return getattr(self.connection_object, name)
+  def send (self, *args, **kwds) :
+    return self.connection_object.send(*args, **kwds)
+
+  def recv (self, *args, **kwds) :
+    return self.connection_object.recv(*args, **kwds)
 
 # fake filehandle, sends data up pipe to parent process
 class _stdout_pipe (object) :
@@ -124,17 +127,18 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
       sys.stdout = self._stdout
       message = None
       try :
-        if self._target :
-          return_value = self._target(self._args, self._kwargs, self._c)
-          message = child_process_message(message_type="return",
-                                          data=return_value)
-      except Sorry, s : # XXX: 'Sorry' can't be pickled
-        message = child_process_message(message_type="sorry",
+        try :
+          if self._target :
+            return_value = self._target(self._args, self._kwargs, self._c)
+            message = child_process_message(message_type="return",
+                                            data=return_value)
+        except Sorry, s : # XXX: 'Sorry' can't be pickled
+          message = child_process_message(message_type="sorry",
                                         data=str(s))
-      except Exception, e :
-        traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
-        message = child_process_message(message_type="exception",
-                                        data=(e, traceback_str))
+        except Exception, e :
+          traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
+          message = child_process_message(message_type="exception",
+                                          data=(e, traceback_str))
       finally :
         if message is not None :
           self._stdout._flush()
