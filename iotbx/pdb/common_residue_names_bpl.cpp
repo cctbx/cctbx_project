@@ -1,6 +1,5 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 
@@ -9,9 +8,6 @@
 
 namespace iotbx { namespace pdb {
 namespace {
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    get_class_overloads, common_residue_names::get_class, 1, 2)
 
   void
   wrap_common_residue_names_impl()
@@ -32,9 +28,11 @@ namespace {
 
     typedef return_value_policy<copy_const_reference> ccr;
     def("common_residue_names_get_class",
-      (std::string const& (*)(std::string const&, bool)) 0,
-        get_class_overloads(
-          (arg_("name"), arg_("consider_ccp4_mon_lib_rna_dna")=false))[ccr()]);
+      (std::string const& (*)(std::string const&, bool))
+        common_residue_names::get_class, (
+          arg("name"),
+          arg("consider_ccp4_mon_lib_rna_dna")=false),
+        ccr());
   }
 
 } // namespace <anonymous>

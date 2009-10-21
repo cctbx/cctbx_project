@@ -3,7 +3,6 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/tuple.hpp>
 #include <scitbx/boost_python/stl_map_as_dict.h>
 #include <scitbx/boost_python/array_as_list.h>
@@ -33,17 +32,16 @@ namespace {
 #define IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(C) \
         .def(#C "s", get_##C##s) \
         .def(#C "s_size", &w_t::C##s_size) \
-        .def("find_" #C "_index", &w_t::find_##C##_index, \
-          find_##C##_index_overloads(( \
-            arg_(#C), arg_("must_be_present")=false))) \
-        .def("pre_allocate_" #C "s", &w_t::pre_allocate_##C##s, \
-          (arg_("number_of_additional_" #C "s"))) \
-        .def("insert_" #C, &w_t::insert_##C, (arg_("i"), arg_(#C))) \
-        .def("append_" #C, &w_t::append_##C, (arg_(#C))) \
+        .def("find_" #C "_index", &w_t::find_##C##_index, ( \
+          arg(#C), arg("must_be_present")=false)) \
+        .def("pre_allocate_" #C "s", &w_t::pre_allocate_##C##s, ( \
+          arg("number_of_additional_" #C "s"))) \
+        .def("insert_" #C, &w_t::insert_##C, (arg("i"), arg(#C))) \
+        .def("append_" #C, &w_t::append_##C, (arg(#C))) \
         .def("remove_" #C, \
-          (void(w_t::*)(long)) &w_t::remove_##C, (arg_("i"))) \
+          (void(w_t::*)(long)) &w_t::remove_##C, (arg("i"))) \
         .def("remove_" #C, \
-          (void(w_t::*)(C&)) &w_t::remove_##C, (arg_(#C)))
+          (void(w_t::*)(C&)) &w_t::remove_##C, (arg(#C)))
 
   template <typename ElementType>
   af::shared<ElementType>
@@ -68,9 +66,6 @@ namespace {
       return std_vector_as_af_shared(self.atoms());
     }
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      find_atom_index_overloads, find_atom_index, 1, 2)
-
     static void
     wrap()
     {
@@ -79,12 +74,12 @@ namespace {
         .def(init<
           residue_group const&,
             optional<const char*, const char*> >((
-              arg_("parent"), arg_("altloc")="", arg_("resname")="")))
+              arg("parent"), arg("altloc")="", arg("resname")="")))
         .def(init<
           optional<const char*, const char*> >((
-            arg_("altloc")="", arg_("resname")="")))
+            arg("altloc")="", arg("resname")="")))
         .def(init<residue_group const&, atom_group const&>((
-          arg_("parent"), arg_("other"))))
+          arg("parent"), arg("other"))))
         .add_property("altloc",
           make_function(get_altloc), make_function(set_altloc))
         .add_property("resname",
@@ -94,7 +89,7 @@ namespace {
         .def("parent", get_parent<atom_group, residue_group>::wrapper)
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(atom)
         .def("append_atom_with_other_parent",
-          &w_t::append_atom_with_other_parent, (arg_("atom")))
+          &w_t::append_atom_with_other_parent, (arg("atom")))
         .def("confid", &w_t::confid)
       ;
     }
@@ -137,23 +132,18 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(residue_group, atom_group, atom_groups)
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      find_atom_group_index_overloads, find_atom_group_index, 1, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
-
     static void
     wrap()
     {
       using namespace boost::python;
       class_<w_t>("residue_group", no_init)
         .def(init<chain const&, optional<const char*, const char*, bool> >((
-          arg_("parent"),
-          arg_("resseq")="", arg_("icode")="", arg_("link_to_previous")=true)))
+          arg("parent"),
+          arg("resseq")="", arg("icode")="", arg("link_to_previous")=true)))
         .def(init<optional<const char*, const char*, bool> >((
-          arg_("resseq")="", arg_("icode")="", arg_("link_to_previous")=true)))
+          arg("resseq")="", arg("icode")="", arg("link_to_previous")=true)))
         .def(init<chain const&, residue_group const&>((
-          arg_("parent"), arg_("other"))))
+          arg("parent"), arg("other"))))
         .add_property("resseq",
           make_function(get_resseq), make_function(set_resseq))
         .add_property("icode",
@@ -166,20 +156,19 @@ namespace {
         .def("parent", get_parent<residue_group, chain>::wrapper)
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(atom_group)
         .def("atoms_size", &w_t::atoms_size)
-        .def("atoms", &w_t::atoms, atoms_overloads((
-          arg_("interleaved_conf")=0)))
+        .def("atoms", &w_t::atoms, (arg("interleaved_conf")=0))
         .def("resseq_as_int", &w_t::resseq_as_int)
         .def("resid", &w_t::resid)
         .def("have_conformers", &w_t::have_conformers)
         .def("merge_atom_groups", &w_t::merge_atom_groups, (
-          arg_("primary"), arg_("secondary")))
+          arg("primary"), arg("secondary")))
         .def("move_blank_altloc_atom_groups_to_front",
           &w_t::move_blank_altloc_atom_groups_to_front)
         .def("edit_blank_altloc", &w_t::edit_blank_altloc)
         .def("is_identical_hierarchy", &w_t::is_identical_hierarchy, (
-          arg_("other")))
+          arg("other")))
         .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
-          arg_("other")))
+          arg("other")))
         .def("conformers", conformers_as_list<w_t>::get)
       ;
     }
@@ -193,45 +182,35 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(chain, residue_group, residue_groups)
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      find_residue_group_index_overloads, find_residue_group_index, 1, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      find_pure_altloc_ranges_overloads, find_pure_altloc_ranges, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
-
     static void
     wrap()
     {
       using namespace boost::python;
       class_<w_t>("chain", no_init)
         .def(init<model const&, optional<const char*> >((
-          arg_("parent"), arg_("id")="")))
+          arg("parent"), arg("id")="")))
         .def(init<const char*>((
-          arg_("id")="")))
+          arg("id")="")))
         .def(init<model const&, chain const&>((
-          arg_("parent"), arg_("other"))))
+          arg("parent"), arg("other"))))
         .add_property("id", make_function(get_id), make_function(set_id))
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<chain, model>::wrapper)
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(residue_group)
         .def("atoms_size", &w_t::atoms_size)
-        .def("atoms", &w_t::atoms, atoms_overloads((
-          arg_("interleaved_conf")=0)))
+        .def("atoms", &w_t::atoms, (arg("interleaved_conf")=0))
         .def("merge_residue_groups", &w_t::merge_residue_groups, (
-          arg_("primary"), arg_("secondary")))
+          arg("primary"), arg("secondary")))
         .def("merge_disconnected_residue_groups_with_pure_altloc",
           &w_t::merge_disconnected_residue_groups_with_pure_altloc)
-        .def("find_pure_altloc_ranges", &w_t::find_pure_altloc_ranges,
-          find_pure_altloc_ranges_overloads((
-            arg_("common_residue_name_class_only")=0)))
+        .def("find_pure_altloc_ranges", &w_t::find_pure_altloc_ranges, (
+          arg("common_residue_name_class_only")=object()))
         .def("conformers", conformers_as_list<w_t>::get)
         .def("is_identical_hierarchy", &w_t::is_identical_hierarchy, (
-          arg_("other")))
+          arg("other")))
         .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
-          arg_("other")))
+          arg("other")))
       ;
     }
   };
@@ -244,35 +223,29 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(model, chain, chains)
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      find_chain_index_overloads, find_chain_index, 1, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
-
     static void
     wrap()
     {
       using namespace boost::python;
       class_<w_t>("model", no_init)
         .def(init<root const&, optional<const char*> >((
-          arg_("parent"), arg_("id")="")))
-        .def(init<const char*>((arg_("id")="")))
+          arg("parent"), arg("id")="")))
+        .def(init<const char*>((arg("id")="")))
         .def(init<root const&, model const&>((
-          arg_("parent"), arg_("other"))))
+          arg("parent"), arg("other"))))
         .add_property("id", make_function(get_id), make_function(set_id))
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<model, root>::wrapper)
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(chain)
         .def("atoms_size", &w_t::atoms_size)
-        .def("atoms", &w_t::atoms, atoms_overloads((
-          arg_("interleaved_conf")=0)))
+        .def("atoms", &w_t::atoms, (arg("interleaved_conf")=0))
         .def("is_identical_hierarchy", &w_t::is_identical_hierarchy, (
-          arg_("other")))
+          arg("other")))
         .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
-          arg_("other")))
+          arg("other")))
         .def("transfer_chains_from_other", &w_t::transfer_chains_from_other, (
-          arg_("other")))
+          arg("other")))
       ;
     }
   };
@@ -291,14 +264,6 @@ namespace {
     }
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(root, model, models)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      find_model_index_overloads, find_model_index, 1, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      atoms_reset_serial_overloads, atoms_reset_serial, 0, 2)
 
     static void
     as_pdb_string_cstringio(
@@ -328,8 +293,6 @@ namespace {
         anisou,
         siguij);
     }
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(select_overloads, select, 1, 2)
 
     static void
     get_overall_counts(
@@ -448,43 +411,41 @@ namespace {
         .def("memory_id", &w_t::memory_id)
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(model)
         .def("atoms_size", &w_t::atoms_size)
-        .def("atoms", &w_t::atoms, atoms_overloads((
-          arg_("interleaved_conf")=0)))
+        .def("atoms", &w_t::atoms, (arg("interleaved_conf")=0))
         .def("atoms_with_i_seq_mismatch", &w_t::atoms_with_i_seq_mismatch)
-        .def("atoms_reset_serial", &w_t::atoms_reset_serial,
-          atoms_reset_serial_overloads((
-            arg_("interleaved_conf")=0,
-            arg_("first_value")=1)))
+        .def("atoms_reset_serial", &w_t::atoms_reset_serial, (
+          arg("interleaved_conf")=0,
+          arg("first_value")=1))
         .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
-          arg_("other")))
+          arg("other")))
         .def("_as_pdb_string_cstringio", as_pdb_string_cstringio, (
-          arg_("self"),
-          arg_("cstringio"),
-          arg_("append_end"),
-          arg_("interleaved_conf"),
-          arg_("atoms_reset_serial_first_value"),
-          arg_("atom_hetatm"),
-          arg_("sigatm"),
-          arg_("anisou"),
-          arg_("siguij")))
+          arg("self"),
+          arg("cstringio"),
+          arg("append_end"),
+          arg("interleaved_conf"),
+          arg("atoms_reset_serial_first_value"),
+          arg("atom_hetatm"),
+          arg("sigatm"),
+          arg("anisou"),
+          arg("siguij")))
         .def("_write_pdb_file", &w_t::write_pdb_file, (
-          arg_("file_name"),
-          arg_("open_append"),
-          arg_("append_end"),
-          arg_("interleaved_conf"),
-          arg_("atoms_reset_serial_first_value"),
-          arg_("atom_hetatm"),
-          arg_("sigatm"),
-          arg_("anisou"),
-          arg_("siguij")))
+          arg("file_name"),
+          arg("open_append"),
+          arg("append_end"),
+          arg("interleaved_conf"),
+          arg("atoms_reset_serial_first_value"),
+          arg("atom_hetatm"),
+          arg("sigatm"),
+          arg("anisou"),
+          arg("siguij")))
         .def("select",
           (root(w_t::*)(af::const_ref<bool> const&, bool) const)
-            &w_t::select, select_overloads((
-              arg_("atom_selection"), arg_("copy_atoms")=false)))
+            &w_t::select, (
+              arg("atom_selection"), arg("copy_atoms")=false))
         .def("select",
           (root(w_t::*)(af::const_ref<std::size_t> const&, bool) const)
-            &w_t::select, select_overloads((
-              arg_("atom_selection"), arg_("copy_atoms")=false)))
+            &w_t::select, (
+              arg("atom_selection"), arg("copy_atoms")=false))
         .def("get_overall_counts", get_overall_counts)
         .def("get_atom_selection_cache", get_atom_selection_cache)
         .def("altloc_indices", altloc_indices)
@@ -519,8 +480,6 @@ namespace {
       return std_vector_as_af_shared(self.atoms());
     }
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 1)
-
     static void
     wrap()
     {
@@ -537,8 +496,7 @@ namespace {
         .def("atoms", get_atoms)
         .def("resseq_as_int", &w_t::resseq_as_int)
         .def("resid", &w_t::resid)
-        .def("id_str", &w_t::id_str, id_str_overloads((
-          arg_("suppress_segid")=0)))
+        .def("id_str", &w_t::id_str, (arg("suppress_segid")=0))
       ;
     }
   };
@@ -558,7 +516,7 @@ namespace {
       using namespace boost::python;
       class_<w_t>("conformer", no_init)
         .def(init<chain const&, std::string const&>((
-          arg_("parent"), arg_("altloc"))))
+          arg("parent"), arg("altloc"))))
         .add_property("altloc", make_function(get_altloc))
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<conformer, chain>::wrapper)

@@ -17,7 +17,7 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-    def("utils_base_256_ordinal", utils::base_256_ordinal, (arg_("s")));
+    def("utils_base_256_ordinal", utils::base_256_ordinal, (arg("s")));
 
     wrap_hybrid_36();
     wrap_common_residue_names();
