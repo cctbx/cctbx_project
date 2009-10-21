@@ -3,7 +3,7 @@ import sys
 
 def run(args):
   if (len(args) == 0):
-    args = ["mod_rnaC3.cif", "mod_rnaC2.cif", "mod_rnaEsd.cif"]
+    args = ["mod_rna3p.cif", "mod_rna2p.cif", "mod_rna_esd.cif"]
   for file_name in args:
     mon_lib_srv = mmtbx.monomer_library.server.server()
     cif_object = mmtbx.monomer_library.server.read_cif(file_name=file_name)
@@ -13,7 +13,7 @@ def run(args):
       file_name_orig = "original_%s_show" % code
       print "writing", file_name_orig
       gr.show(f=open(file_name_orig, "w"))
-      for key in ["rnaC3", "rnaC2", "rnaEsd"]:
+      for key in ["rna3p", "rna2p", "rna_esd"]:
         mod = mon_lib_srv.mod_mod_id_dict.get(key)
         if (mod is not None):
           gr_mod = gr.apply_mod(mod)

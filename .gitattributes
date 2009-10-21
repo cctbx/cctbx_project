@@ -366,9 +366,6 @@ mmtbx/monomer_library/apply_mod_rna.py svneol=native#text/x-python
 mmtbx/monomer_library/cif_triage.py svneol=native#text/x-python
 mmtbx/monomer_library/conformation_dependent_restraints.py svneol=native#text/x-python
 mmtbx/monomer_library/conv_v2_v3.py svneol=native#text/x-python
-mmtbx/monomer_library/mod_rnaC2.cif -text
-mmtbx/monomer_library/mod_rnaC3.cif -text
-mmtbx/monomer_library/mod_rnaEsd.cif -text
 mmtbx/monomer_library/rna_sugar_pucker_analysis.py svneol=native#text/x-python
 mmtbx/monomer_library/rotamer_utils.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_cif_triage.py svneol=native#text/x-python

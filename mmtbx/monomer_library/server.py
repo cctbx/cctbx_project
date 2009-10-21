@@ -232,7 +232,6 @@ class server(process_cif_mixin):
       source_info="file: "+list_cif.path,
       cif_object=list_cif.cif, skip_comp_list=True)
     self.comp_comp_id_mod_dict = {}
-    self.process_rna_sugar_pucker_modifications()
     self.process_geostd_rna_dna()
 
   def convert_all(self, source_info, cif_object, skip_comp_list=False):
@@ -291,18 +290,14 @@ class server(process_cif_mixin):
       self.mod_mod_id_list.append(mod_mod_id)
       self.mod_mod_id_dict[mod_mod_id.chem_mod.id] = mod_mod_id
 
-  def process_rna_sugar_pucker_modifications(self):
-    dir_name = libtbx.env.under_dist(
-      module_name="mmtbx",
-      path="monomer_library",
-      test=os.path.isdir)
-    assert dir_name is not None
-    for mod_id in ["rnaC2", "rnaC3", "rnaEsd"]:
-      self.process_cif(file_name=os.path.join(dir_name, "mod_"+mod_id+".cif"))
-
   def process_geostd_rna_dna(self):
     if (not os.path.isdir(self.geostd_path)): return
-    for file_name in ["chain_link_rna2p.cif", "chain_link_rna3p.cif"]:
+    for file_name in [
+          "chain_link_rna2p.cif",
+          "chain_link_rna3p.cif",
+          "mod_rna2p.cif",
+          "mod_rna3p.cif",
+          "mod_rna_esd.cif"]:
       self.process_cif(
         file_name=os.path.join(self.geostd_path, "rna_dna", file_name))
 

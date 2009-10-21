@@ -19,56 +19,42 @@ master_phil = libtbx.phil.parse("""\
     .type = float
   p_distance_c1_n_line_2p_max = 2.9
     .type = float
+  bond_detection_distance_tolerance = 0.5
+    .type = float
 """)
-
-c1p_n_name = {
-  "A": " N9 ",
-  "G": " N9 ",
-  "C": " N1 ",
-  "U": " N1 "}
-
-def _build_required_atom_indices():
-  result = {}
-  # attention: indices hard-wired in evaluate.__init__ for efficiency
-  common = ["P", "C1'", "O2'", "O3'", "C3'", "C4'", "C5'"]
-  def as_dict(l): return dict(zip(l, range(len(l))))
-  result["A"] = as_dict(common + [c1p_n_name["A"].strip()])
-  result["G"] = result["A"]
-  result["C"] = as_dict(common + [c1p_n_name["C"].strip()])
-  result["U"] = result["C"]
-  return result
-
-required_atom_indices = _build_required_atom_indices()
-
-def extract_required_atoms(resname, atoms, atom_names=None):
-  assert atom_names is None or len(atom_names) == len(atoms)
-  if (atom_names is None):
-    atom_names = [atom.name for atom in atoms]
-  indices = required_atom_indices.get(resname.strip())
-  if (indices is None):
-    raise RuntimeError('Unexpected residue name: "%s"' % resname)
-  result = [None] * len(indices)
-  n_found = 0
-  for atom, atom_name in zip(atoms, atom_names):
-    if (atom_name is None): continue
-    i = indices.get(atom_name.strip())
-    if (i is None): continue
-    if (result[i] is not None):
-      raise RuntimeError('Duplicate atom name: "%s"' % atom_name)
-    result[i] = atom
-    n_found += 1
-  if (n_found != len(result)):
-    result = None
-  return result
 
 class evaluate(object):
 
-  def given_atoms(params, atoms_1, atoms_2):
+  def given_residue_atoms(params, residue_atoms_1, residue_atoms_2):
+    from iotbx.pdb.rna_dna_detection import residue_analysis
+    from scitbx.array_family import flex
+    ras = []
+    print "TRY IT"
+    for residue_atoms in [residue_atoms_1, residue_atoms_2]:
+      ra = residue_analysis(
+        residue_atoms=residue_atoms,
+        distance_tolerance=params.bond_detection_distance_tolerance)
+      print "IS RNA DNA", ra.is_rna_dna()
+      print "IS RNA", ra.is_rna()
+      if (not ra.is_rna()): return None
+      ras.append(ra)
+    print "LOOK HAVE ra"
+    sites_cart_list = []
+    for ra in ras:
+      if (ra.atom_name_analysis.sub_classification == "v3"):
+        required = ["P", "C1'", "O2'", "O3'", "C3'", "C4'", "C5'"]
+      else:
+        required = ["P", "C1*", "O2*", "O3*", "C3*", "C4*", "C5*"]
+      sites_cart = flex.vec3_double()
+      for name in required:
+        sites_cart.append(ra.atom_dict[name].xyz)
+      sites_cart.append(ra.c1_n_closest.xyz)
+      sites_cart_list.append(sites_cart)
     return evaluate(
       params=params,
-      sites_cart_1=[atom.xyz for atom in atoms_1],
-      sites_cart_2=[atom.xyz for atom in atoms_2])
-  given_atoms = staticmethod(given_atoms)
+      sites_cart_1=sites_cart_list[0],
+      sites_cart_2=sites_cart_list[1])
+  given_residue_atoms = staticmethod(given_residue_atoms)
 
   def __init__(self, params, sites_cart_1, sites_cart_2):
     assert len(sites_cart_1) == 8

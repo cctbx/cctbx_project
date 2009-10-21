@@ -178,3 +178,8 @@ class residue_analysis(object):
     if (len(O.long_distances) != 0): return False
     if (O.c1_n_closest is None): return False
     return True
+
+  def is_rna(O):
+    if (not O.is_rna_dna()): return False
+    if (not O.atom_name_analysis.have_o2): return False
+    return True
