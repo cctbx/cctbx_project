@@ -39,6 +39,7 @@ def run():
   "$D/examples/reduced_cell_two_folds.py",
   "$D/examples/lebedev_2005_perturbation.py",
   "$D/examples/le_page_1982_vs_lebedev_2005.py",
+  "$D/examples/random_puckers.py",
   )
 
   build_dir = libtbx.env.under_build("cctbx")
