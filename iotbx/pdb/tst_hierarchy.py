@@ -313,6 +313,25 @@ def exercise_atom():
   assert atoms.set_chemical_element_simple_if_necessary(
     tidy_existing=False) == 1
   assert [atom.element for atom in atoms] == ["", "NA", "N"]
+  #
+  assert sorted(atoms.build_dict().keys()) == ["", " X  ", "NA  "]
+  assert sorted(atoms.build_dict(strip_names=True).keys()) == ["", "NA", "X"]
+  atoms[0].name = "x   "
+  assert sorted(atoms.build_dict(upper_names=True).keys()) \
+      == [" X  ", "NA  ", "X   "]
+  d = atoms.build_dict(
+    strip_names=True,
+    upper_names=True,
+    throw_runtime_error_if_duplicate_keys=False)
+  assert sorted([atom.name for atom in d.values()]) == ["NA  ", "x   "]
+  try:
+    atoms.build_dict(strip_names=True, upper_names=True)
+  except RuntimeError, e:
+    assert not show_diff(str(e), '''\
+Duplicate keys in build_dict(strip_names=true, upper_names=true):
+  pdb="x              "
+  pdb=" X             "''')
+  else: raise Exception_expected
 
 def exercise_atom_group():
   ag = pdb.hierarchy.atom_group()
