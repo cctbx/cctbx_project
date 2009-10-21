@@ -141,6 +141,15 @@ namespace iotbx { namespace pdb {
     unsigned
     rstripped_size() const { return pdb::rstripped_size(elems); }
 
+    small_str<N> &
+    upper_in_place()
+    {
+      for(char* e=elems; *e != '\0'; e++) {
+        *e = std::toupper(*e);
+      }
+      return *this;
+    }
+
     bool
     operator==(small_str const& other) const
     {

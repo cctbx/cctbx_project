@@ -1,12 +1,15 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <boost/python/class.hpp>
+#include <boost/python/dict.hpp>
+#include <boost/python/str.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_arg.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/array_family/boost_python/selections_wrapper.h>
 #include <iotbx/pdb/hierarchy_atoms.h>
+#include <boost/format.hpp>
 
 namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
 
@@ -22,6 +25,39 @@ namespace {
     set_chemical_element_simple_if_necessary, 1, 2)
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(reset_tmp_overloads, reset_tmp, 1, 3)
+
+  boost::python::dict
+  build_dict(
+    af::const_ref<atom> const& atoms,
+    bool strip_names,
+    bool upper_names,
+    bool throw_runtime_error_if_duplicate_keys)
+  {
+    namespace bp = boost::python;
+    bp::dict result;
+    bp::object none;
+    for(unsigned i=0;i<atoms.size();i++) {
+      str4 name = atoms[i].data->name;
+      if (strip_names) name = name.strip();
+      if (upper_names) name.upper_in_place();
+      bp::str key = name.elems;
+      bp::object prev_atom = result.get(key);
+      if (prev_atom.ptr() == none.ptr()) {
+        result[key] = atoms[i];
+      }
+      else if (throw_runtime_error_if_duplicate_keys) {
+        throw std::runtime_error((boost::format(
+          "Duplicate keys in build_dict(strip_names=%s, upper_names=%s):\n"
+          "  %s\n"
+          "  %s")
+            % (strip_names ? "true" : "false")
+            % (upper_names ? "true" : "false")
+            % bp::extract<atom const&>(prev_atom)().id_str()
+            % atoms[i].id_str()).str());
+      }
+    }
+    return result;
+  }
 
 } // namespace <anonymous>
 
@@ -79,6 +115,10 @@ namespace {
         arg_("increment")=1)))
       .def("reset_tmp_for_occupancy_groups_simple",
         reset_tmp_for_occupancy_groups_simple)
+      .def("build_dict", build_dict, (
+        arg("strip_names")=false,
+        arg("upper_names")=false,
+        arg("throw_runtime_error_if_duplicate_keys")=true));
     ;
   }
 
