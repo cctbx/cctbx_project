@@ -566,22 +566,20 @@ class monomer_mapping(object):
 
   def _rna_sugar_pucker_analysis(self, params, next_pdb_residue):
     if (not params.use): return
-    raise RuntimeError("""\
-Feature not available (under development). Please set:
-  pdb_interpretation.rna_sugar_pucker_analysis.use=False
-""")
-    # XXX under development
-    is_2p = rna_sugar_pucker_analysis.evaluate(
-      params=params,
-      pdb_residue=self.pdb_residue,
-      next_pdb_residue=next_pdb_residue).is_2p
-    if (is_2p is not None):
-      if (is_2p): primary_mod_id = "rnaC2"
-      else:       primary_mod_id = "rnaC3"
-      self.monomer, chem_mod_ids = self.mon_lib_srv.get_comp_comp_id_mod(
-        comp_comp_id=self.monomer,
-        mod_ids=(primary_mod_id, "rnaEsd"))
-      self._track_mods(chem_mod_ids=chem_mod_ids)
+    is_2p = False
+    if (next_pdb_residue is not None):
+      ana = rna_sugar_pucker_analysis.evaluate.given_residue_atoms(
+        params=params,
+        residue_atoms_1=self.pdb_residue.atoms(),
+        residue_atoms_2=next_pdb_residue.atoms())
+      if (ana is not None and ana.is_2p is not None):
+        is_2p = is_2p
+    if (is_2p): primary_mod_id = "rna2p"
+    else:       primary_mod_id = "rna3p"
+    self.monomer, chem_mod_ids = self.mon_lib_srv.get_comp_comp_id_mod(
+      comp_comp_id=self.monomer,
+      mod_ids=(primary_mod_id, "rna_esd"))
+    self._track_mods(chem_mod_ids=chem_mod_ids)
 
   def _get_mappings(self):
     self.monomer_atom_dict = atom_dict = self.monomer.atom_dict()
