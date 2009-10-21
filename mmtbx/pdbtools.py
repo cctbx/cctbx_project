@@ -258,6 +258,14 @@ geometry_minimization
 {
   include scope mmtbx.command_line.geometry_minimization.master_params
 }
+action = modify f_model regularize add_h
+  .type = choice
+  .optional = True
+  .help = GUI-only parameter, equivalent to command-line flags.
+  .caption = Modify_atomic_coordinates_or_properties \
+             Calculate_F(calc)_from_current_model \
+             Regularize_model_geometry Add_hydrogens_to_model
+  .style = bold
 """%(modify_params_str, fmodel_from_xray_structure_master_params_str),
      process_includes=True)
 

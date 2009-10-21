@@ -314,7 +314,7 @@ class original_color_model (color_model) :
 class blue_color_model (original_color_model) :
   def get_bin_color (self, value) :
     return hsv2rgb(240, value, 1)
- 
+
 class red_color_model (original_color_model) :
   def get_bin_color (self, value) :
     return hsv2rgb(0, value, 1)
