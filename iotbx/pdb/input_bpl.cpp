@@ -2,7 +2,6 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/dict.hpp>
@@ -25,10 +24,10 @@ namespace {
           af::const_ref<std::string> const&,
           optional<
             unsigned,
-            unsigned> >(
-              (arg_("lines"),
-               arg_("is_frequent_threshold_atom_records")=1000,
-               arg_("is_frequent_threshold_other_records")=100)))
+            unsigned> >((
+              arg("lines"),
+              arg("is_frequent_threshold_atom_records")=1000,
+              arg("is_frequent_threshold_other_records")=100)))
         .def_readonly("finding", &w_t::finding)
         .def_readonly("is_old_style", &w_t::is_old_style)
       ;
@@ -95,9 +94,6 @@ namespace {
         siguij);
     }
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      construct_hierarchy_overloads, construct_hierarchy, 0, 1)
-
     static void
     wrap()
     {
@@ -106,12 +102,12 @@ namespace {
       class_<w_t, boost::shared_ptr<input> >("input", no_init)
         .def(init<
           std::string const&>((
-            arg_("file_name"))))
+            arg("file_name"))))
         .def(init<
           const char*,
           af::const_ref<std::string> const&>((
-            arg_("source_info"),
-            arg_("lines"))))
+            arg("source_info"),
+            arg("lines"))))
         //
         .enable_pickling()
         .def("source_info", &w_t::source_info, rbv())
@@ -140,24 +136,23 @@ namespace {
         .def("model_atom_counts", &w_t::model_atom_counts)
         .def("atoms_with_labels", atoms_with_labels)
         .def("_as_pdb_string_cstringio", as_pdb_string_cstringio, (
-          arg_("self"),
-          arg_("cstringio"),
-          arg_("append_end"),
-          arg_("atom_hetatm"),
-          arg_("sigatm"),
-          arg_("anisou"),
-          arg_("siguij")))
+          arg("self"),
+          arg("cstringio"),
+          arg("append_end"),
+          arg("atom_hetatm"),
+          arg("sigatm"),
+          arg("anisou"),
+          arg("siguij")))
         .def("_write_pdb_file", &w_t::write_pdb_file, (
-          arg_("file_name"),
-          arg_("open_append"),
-          arg_("append_end"),
-          arg_("atom_hetatm"),
-          arg_("sigatm"),
-          arg_("anisou"),
-          arg_("siguij")))
-        .def("construct_hierarchy", &w_t::construct_hierarchy,
-          construct_hierarchy_overloads((
-            arg_("residue_group_post_processing")=true)))
+          arg("file_name"),
+          arg("open_append"),
+          arg("append_end"),
+          arg("atom_hetatm"),
+          arg("sigatm"),
+          arg("anisou"),
+          arg("siguij")))
+        .def("construct_hierarchy", &w_t::construct_hierarchy, (
+          arg("residue_group_post_processing")=true))
       ;
     }
   };

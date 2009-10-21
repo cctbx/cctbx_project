@@ -45,8 +45,8 @@ namespace iotbx { namespace pdb { namespace boost_python {
   wrap_hybrid_36()
   {
     using namespace boost::python;
-    def("hy36encode", hy36encode_wrapper, (arg_("width"), arg_("value")));
-    def("hy36decode", hy36decode_wrapper, (arg_("width"), arg_("s")));
+    def("hy36encode", hy36encode_wrapper, (arg("width"), arg("value")));
+    def("hy36decode", hy36decode_wrapper, (arg("width"), arg("s")));
     def("hy36recode_width_4_all", hy36recode_width_4_all);
   }
 

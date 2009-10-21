@@ -2,7 +2,6 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/dict.hpp>
 #include <boost/python/return_arg.hpp>
 #include <iotbx/pdb/hierarchy.h>
@@ -155,7 +154,7 @@ namespace {
     boost::python::object
     format_atom_record(
       w_t const& self,
-      const char* replace_floats_with=0)
+      const char* replace_floats_with)
     {
       boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
       PyObject* str_obj = str_hdl.get();
@@ -213,20 +212,6 @@ namespace {
       return boost::python::object(boost::python::handle<>(str_obj));
     }
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 2)
-
-    BOOST_PYTHON_FUNCTION_OVERLOADS(
-      format_atom_record_overloads, format_atom_record, 1, 2)
-
-    BOOST_PYTHON_FUNCTION_OVERLOADS(
-      format_atom_record_group_overloads, format_atom_record_group, 1, 5)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(quote_overloads, quote, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      set_chemical_element_simple_if_necessary_overloads,
-      set_chemical_element_simple_if_necessary, 0, 1)
-
     // not inline to work around bug in
     // g++ (GCC) 3.2.3 20030502 (Red Hat Linux 3.2.3-34) x86_64
     static void
@@ -240,24 +225,24 @@ namespace {
       class_<w_t>("atom", no_init)
         .def(init<>())
         .def(init<atom_group const&, atom const&>((
-          arg_("parent"), arg_("other"))))
+          arg("parent"), arg("other"))))
         .def("detached_copy", &w_t::detached_copy)
-        .def("set_xyz", set_xyz, (arg_("new_xyz")), return_self<>())
-        .def("set_sigxyz", set_sigxyz, (arg_("new_sigxyz")), return_self<>())
-        .def("set_occ", set_occ, (arg_("new_occ")), return_self<>())
-        .def("set_sigocc", set_sigocc, (arg_("new_sigocc")), return_self<>())
-        .def("set_b", set_b, (arg_("new_b")), return_self<>())
-        .def("set_sigb", set_sigb, (arg_("new_sigb")), return_self<>())
-        .def("set_uij", set_uij, (arg_("new_uij")), return_self<>())
+        .def("set_xyz", set_xyz, (arg("new_xyz")), return_self<>())
+        .def("set_sigxyz", set_sigxyz, (arg("new_sigxyz")), return_self<>())
+        .def("set_occ", set_occ, (arg("new_occ")), return_self<>())
+        .def("set_sigocc", set_sigocc, (arg("new_sigocc")), return_self<>())
+        .def("set_b", set_b, (arg("new_b")), return_self<>())
+        .def("set_sigb", set_sigb, (arg("new_sigb")), return_self<>())
+        .def("set_uij", set_uij, (arg("new_uij")), return_self<>())
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
-        .def("set_siguij", set_siguij, (arg_("new_siguij")), return_self<>())
+        .def("set_siguij", set_siguij, (arg("new_siguij")), return_self<>())
 #endif
-        .def("set_hetero", set_hetero, (arg_("new_hetero")), return_self<>())
-        .def("set_serial", set_serial, (arg_("new_serial")), return_self<>())
-        .def("set_name", set_name, (arg_("new_name")), return_self<>())
-        .def("set_segid", set_segid, (arg_("new_segid")), return_self<>())
-        .def("set_element", set_element, (arg_("new_element")), return_self<>())
-        .def("set_charge", set_charge, (arg_("new_charge")), return_self<>())
+        .def("set_hetero", set_hetero, (arg("new_hetero")), return_self<>())
+        .def("set_serial", set_serial, (arg("new_serial")), return_self<>())
+        .def("set_name", set_name, (arg("new_name")), return_self<>())
+        .def("set_segid", set_segid, (arg("new_segid")), return_self<>())
+        .def("set_element", set_element, (arg("new_element")), return_self<>())
+        .def("set_charge", set_charge, (arg("new_charge")), return_self<>())
         .add_property("xyz",
           make_function(get_xyz), make_function(set_xyz))
         .add_property("sigxyz",
@@ -306,32 +291,29 @@ namespace {
         .def("siguij_erase", &w_t::siguij_erase)
         .def("pdb_label_columns", &w_t::pdb_label_columns)
         .def("pdb_element_charge_columns", &w_t::pdb_element_charge_columns)
-        .def("id_str", &w_t::id_str, id_str_overloads((
-          arg_("pdbres")=false,
-          arg_("suppress_segid")=false)))
-        .def("format_atom_record", format_atom_record,
-          format_atom_record_overloads((
-            arg_("self"),
-            arg_("replace_floats_with")=0)))
+        .def("id_str", &w_t::id_str, (
+          arg("pdbres")=false,
+          arg("suppress_segid")=false))
+        .def("format_atom_record", format_atom_record, (
+          arg("self"),
+          arg("replace_floats_with")=object()))
         .def("format_sigatm_record", format_sigatm_record)
         .def("format_anisou_record", format_anisou_record)
         .def("format_siguij_record", format_siguij_record)
-        .def("format_atom_record_group", format_atom_record_group,
-          format_atom_record_group_overloads((
-            arg_("self"),
-            arg_("atom_hetatm")=true,
-            arg_("sigatm")=true,
-            arg_("anisou")=true,
-            arg_("siguij")=true)))
-        .def("quote", &w_t::quote, quote_overloads((arg_("full")=false)))
+        .def("format_atom_record_group", format_atom_record_group, (
+          arg("self"),
+          arg("atom_hetatm")=true,
+          arg("sigatm")=true,
+          arg("anisou")=true,
+          arg("siguij")=true))
+        .def("quote", &w_t::quote, (arg("full")=false))
         .def("fetch_labels", &w_t::fetch_labels)
         .def("element_is_hydrogen", &w_t::element_is_hydrogen)
         .def("determine_chemical_element_simple",
           &w_t::determine_chemical_element_simple)
         .def("set_chemical_element_simple_if_necessary",
-          &w_t::set_chemical_element_simple_if_necessary,
-            set_chemical_element_simple_if_necessary_overloads((
-              arg_("tidy_existing")=true)))
+          &w_t::set_chemical_element_simple_if_necessary, (
+            arg("tidy_existing")=true))
       ;
     }
 
@@ -373,16 +355,6 @@ namespace {
 #undef IOTBX_LOC_SET
 #undef IOTBX_LOC_GET_SET
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      format_atom_record_overloads, format_atom_record, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      format_atom_record_group_overloads, format_atom_record_group, 0, 4)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(quote_overloads, quote, 0, 1)
-
     static void
     wrap()
     {
@@ -394,15 +366,15 @@ namespace {
           const char*, const char*, const char*,
           const char*, const char*, const char*,
           bool, bool>((
-            arg_("atom"),
-            arg_("model_id"),
-            arg_("chain_id"),
-            arg_("resseq"),
-            arg_("icode"),
-            arg_("altloc"),
-            arg_("resname"),
-            arg_("is_first_in_chain"),
-            arg_("is_first_after_break"))))
+            arg("atom"),
+            arg("model_id"),
+            arg("chain_id"),
+            arg("resseq"),
+            arg("icode"),
+            arg("altloc"),
+            arg("resname"),
+            arg("is_first_in_chain"),
+            arg("is_first_after_break"))))
         .def("detached_copy", &w_t::detached_copy)
         .add_property("model_id",
           make_function(get_model_id), make_function(set_model_id))
@@ -421,22 +393,20 @@ namespace {
         .def("serial_as_int", &w_t::serial_as_int)
         .def("resseq_as_int", &w_t::resseq_as_int)
         .def("resid", &w_t::resid)
-        .def("id_str", &w_t::id_str, id_str_overloads((
-          arg_("pdbres")=false,
-          arg_("suppress_segid")=false)))
-        .def("format_atom_record", &w_t::format_atom_record,
-          format_atom_record_overloads((
-            arg_("replace_floats_with")=0)))
+        .def("id_str", &w_t::id_str, (
+          arg("pdbres")=false,
+          arg("suppress_segid")=false))
+        .def("format_atom_record", &w_t::format_atom_record, (
+          arg("replace_floats_with")=object()))
         .def("format_sigatm_record", &w_t::format_sigatm_record)
         .def("format_anisou_record", &w_t::format_anisou_record)
         .def("format_siguij_record", &w_t::format_siguij_record)
-        .def("format_atom_record_group", &w_t::format_atom_record_group,
-          format_atom_record_group_overloads((
-            arg_("atom_hetatm")=true,
-            arg_("sigatm")=true,
-            arg_("anisou")=true,
-            arg_("siguij")=true)))
-        .def("quote", &w_t::quote, quote_overloads((arg_("full")=false)))
+        .def("format_atom_record_group", &w_t::format_atom_record_group, (
+          arg("atom_hetatm")=true,
+          arg("sigatm")=true,
+          arg("anisou")=true,
+          arg("siguij")=true))
+        .def("quote", &w_t::quote, (arg("full")=false))
       ;
     }
   };
