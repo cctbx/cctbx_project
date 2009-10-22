@@ -2,7 +2,7 @@
 # XXX: this module is used exclusively by the Phenix GUI, which needs an
 # index of all current phil parameters, and an easy way to change them.
 
-import os, sys, re
+import os, sys, re, string
 import libtbx.phil
 from libtbx.utils import Sorry
 from libtbx import easy_pickle, str_utils
@@ -453,7 +453,7 @@ def reindex_phil_objects (phil_object, path_index) :
 
 def get_standard_phil_label (phil_object=None, phil_name=None, append="") :
   if phil_object is None and phil_name is None :
-    raise Exception
+    raise Exception("No phil object or path name supplied.")
   if phil_object is not None :
     if phil_object.short_caption is None :
       if phil_name is not None :
@@ -469,11 +469,10 @@ def reformat_phil_full_name (phil_full_name) :
   return reformat_phil_name(phil_name)
 
 def reformat_phil_name (phil_name) :
-  try :
-    _name = " ".join(str(phil_name).split("_"))
-    name = string.upper(_name[0]) + _name[1:]
-    return name
-  except Exception :
-    return ""
+  if phil_name == "" :
+    return phil_name
+  _name = " ".join(str(phil_name).split("_"))
+  name = string.upper(_name[0]) + _name[1:]
+  return name
 
 #---end
