@@ -44,11 +44,13 @@ scale = 1.0
   .help = Overall scale factor
   .expert_level=2
 structure_factors_accuracy
+  .short_caption = Structure factors accuracy
   .style = menu_item auto_align noauto parent_submenu:advanced
 {
   include scope mmtbx.f_model.sf_and_grads_accuracy_master_params
 }
 mask
+  .short_caption = Bulk solvent mask
   .style = menu_item auto_align noauto parent_submenu:advanced
 {
   include scope mmtbx.masks.mask_master_params
@@ -74,11 +76,11 @@ add_sigmas = False
 hkl_output
   .short_caption = Reflection output
   .expert_level=0
-  .style = auto_align box
 {
   format = *mtz cns
     .type = choice
     .short_caption = File format
+    .style = OnChange:update_f_model_file_ext
   label = FMODEL
     .type = str
     .short_caption = Data label
@@ -92,6 +94,7 @@ hkl_output
     .short_caption = Output reflections file
     .help = Default is the original PDB file name with the file extension \
             replaced by ".pdbtools.mtz" or ".pdbtools.cns"
+    .style = bold noauto
 }
 """%fmodel_from_xray_structure_params_str
 
@@ -102,20 +105,23 @@ modify_params_str = """\
 selection = None
   .type = str
   .help = Selection for atoms to be modified
-  .short_caption=Atom selection
+  .short_caption = Modify atom selection
   .input_size=400
+  .style = bold selection
 adp
   .help = Scope of options to modify ADP of selected atoms
   .multiple = True
   .expert_level=2
   .short_caption=Modify ADPs
-  .style = auto_align
+  .style = auto_align menu_item parent_submenu:model_modifications noauto
 {
   atom_selection = None
     .type = str
     .help = Selection for atoms to be modified. \\
             Overrides parent-level selection.
+    .short_caption = Modify ADPs for selection
     .input_size=400
+    .style  = bold selection
   randomize = None
     .type = bool
     .help = Randomize ADP within a certain range
@@ -144,13 +150,15 @@ sites
   .multiple = True
   .short_caption=Modify coordinates
   .expert_level=2
-  .style = auto_align
+  .style = auto_align noauto menu_item parent_submenu:model_modifications
 {
   atom_selection = None
     .type = str
     .help = Selection for atoms to be modified. \\
             Overrides parent-level selection.
     .input_size=400
+    .short_caption = Modify sites for selection
+    .style = bold selection
   shake = None
     .type = float
     .help = Randomize coordinates with mean error value equal to shake
@@ -174,7 +182,7 @@ occupancies
   .help = Scope of options to modify occupancies of selected atoms
   .short_caption=Modify occupancies
   .expert_level=2
-  .style  = menu_item noauto
+  .style  = noauto menu_item parent_submenu:model_modifications
 {
   randomize = None
     .type = bool
@@ -187,6 +195,7 @@ occupancies
 truncate_to_polyala = None
   .type = bool
   .help = Truncate a model to poly-Ala.
+  .style = noauto
 output
   .help = Write out PDB file with modified model (file name is defined in \
           write_modified)
@@ -194,10 +203,11 @@ output
 {
   file_name=None
     .type=path
-    .input_size=300
+    .input_size=400
     .short_caption = Output PDB file
     .help = Default is the original file name with the file extension \
             replaced by "_modified.pdb".
+    .style = bold
 }
 random_seed = None
   .type = int
@@ -208,19 +218,22 @@ modify_params = iotbx.phil.parse(modify_params_str, process_includes=True)
 
 master_params = iotbx.phil.parse("""\
 modify
-  .short_caption = Model modifications
+  .caption = These options will only be processed if you selected "Modify atomic coordinates or properties" as the action.
+  .short_caption = Modify starting model
   .style = menu_item scrolled auto_align
 {
 remove = None
   .type = str
   .help = Selection for the atoms to be removed
-  .short_caption=Remove atoms
+  .short_caption=Remove atom selection
   .input_size=400
+  .style = bold selection
 keep = None
   .type = str
   .help = Select atoms to keep
-  .short_caption=Keep only atoms
+  .short_caption=Keep only atom selection
   .input_size=400
+  .style = bold selection
 put_into_box_with_buffer = None
   .type = float
   .help = Move molecule into center of box.
@@ -232,9 +245,13 @@ input {
   {
     include scope mmtbx.utils.pdb_params
   }
+  monomer_library {
+    include scope mmtbx.utils.cif_params
+  }
   crystal_symmetry
     .help = Unit cell and space group parameters
-    .style = auto_align
+    .short_caption = Crystal symmetry
+    .style = auto_align menu_item
   {
     unit_cell=None
       .type=unit_cell
@@ -244,28 +261,34 @@ input {
 }
 f_model
   .short_caption = F(model) calculation
-  .style = auto_align scrolled menu_item
+  .caption = Note: these options will only be processed if you select \
+      "Calculate F(calc) from current model" as the action.
+  .style = auto_align menu_item
 {
 %s
 }
 pdb_interpretation
-  .style = auto_align scrolled menu_item
+  .short_caption = PDB Interpretation
+  .style = menu_item
 {
   include scope mmtbx.monomer_library.pdb_interpretation.master_params
 }
 geometry_minimization
+  .short_caption = Geometry minimization
+  .caption = Note: these options will only be processed if you select \
+    "Regularize model geometry" as the action.
   .style = auto_align menu_item
 {
   include scope mmtbx.command_line.geometry_minimization.master_params
 }
-action = modify f_model regularize add_h
-  .type = choice
+action = f_model regularize
+  .type = choice(multi=True)
   .optional = True
   .help = GUI-only parameter, equivalent to command-line flags.
-  .caption = Modify_atomic_coordinates_or_properties \
-             Calculate_F(calc)_from_current_model \
-             Regularize_model_geometry Add_hydrogens_to_model
-  .style = bold
+  .short_caption = Extra actions
+  .caption = Calculate_F(calc)_from_current_model \
+             Regularize_model_geometry
+  .style = bold OnChange:update_pdbtools_actions
 """%(modify_params_str, fmodel_from_xray_structure_master_params_str),
      process_includes=True)
 
@@ -688,6 +711,7 @@ def run(args, command_name="phenix.pdbtools"):
   command_line_interpreter = interpreter(command_name  = command_name,
                                          args          = args,
                                          log           = log)
+  output_files = []
 ### Truncate to poly-Ala
   if(command_line_interpreter.params.modify.truncate_to_polyala):
     xray_structure = command_line_interpreter.pdb_inp.xray_structure_simple()
@@ -697,7 +721,8 @@ def run(args, command_name="phenix.pdbtools"):
     pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
     pdb_hierarchy.write_pdb_file(file_name = pdbout+"_modified.pdb",
       crystal_symmetry = xray_structure.crystal_symmetry())
-    return
+    output_files.append(pdbout+"_modified.pdb")
+    return output_files
 ###
   command_line_interpreter.set_ppf()
   all_chain_proxies = \
@@ -726,7 +751,7 @@ def run(args, command_name="phenix.pdbtools"):
       hd_selection       = xray_structure.hd_selection(),
       ignore_hd          = command_line_interpreter.command_line.options.ignore_hydrogens,
       restraints_manager = restraints_manager).show(out = log)
-    return
+    return None
 ### show_adp_statistics and exit
   if(command_line_interpreter.command_line.options.show_adp_statistics):
     utils.print_header("ADP statistics", out = log)
@@ -735,7 +760,7 @@ def run(args, command_name="phenix.pdbtools"):
       pdb_hierarchy = all_chain_proxies.pdb_hierarchy,
       log = log)
     model.show_adp_statistics(out = log, padded = True)
-    return
+    return None
 ### add hydrogens and exit
   if(command_line_interpreter.command_line.options.add_h):
     utils.print_header("Adding hydrogen atoms", out = log)
@@ -744,7 +769,7 @@ def run(args, command_name="phenix.pdbtools"):
     if(not os.path.isfile(ifn)): raise Sorry("File %s does not exist."%ifn)
     easy_run.go("phenix.reduce %s > %s"% (ifn, ofn))
     print >> log, "Output model file name (with H added): %s\n"%ofn
-    return
+    return [ofn]
 ### show parameters
   utils.print_header("Complete set of parameters", out = log)
   master_params.format(command_line_interpreter.params).show(out = log)
@@ -776,6 +801,7 @@ def run(args, command_name="phenix.pdbtools"):
     write_cryst1_record  = not command_line_interpreter.fake_crystal_symmetry,
     out                  = ofo)
   ofo.close()
+  output_files.append(ofn)
   if(command_line_interpreter.command_line.options.f_model):
     par = command_line_interpreter.params.f_model
     if(par.hkl_output.format == "cns"): extension = ".hkl"
@@ -792,7 +818,9 @@ def run(args, command_name="phenix.pdbtools"):
       add_sigmas     = command_line_interpreter.params.f_model.add_sigmas,
       params         = command_line_interpreter.params.f_model).write_to_file(
         file_name = ofn)
+    output_files.append(ofn)
   utils.print_header("Done", out = log)
+  return output_files
 
 class interpreter:
   def __init__(self,
@@ -807,6 +835,7 @@ class interpreter:
     self.ener_lib = monomer_library.server.ener_lib()
     self.params = None
     self.pdb_file_names = []
+    self.cif_file_names = []
     self.cif_objects = []
     self.processed_pdb_file = None
     self.processed_pdb_file_reference = None
@@ -840,6 +869,12 @@ class interpreter:
     self.pdb_inp = iotbx.pdb.input(source_info = None,
       lines = flex.std_string(pdb_combined.raw_records))
     #
+    for file_name in self.params.input.monomer_library.file_name :
+      if os.path.isfile(file_name) and not file_name in self.cif_file_names :
+        cif_object = mmtbx.monomer_library.server.read_cif(file_name=file_name)
+        if(len(cif_object) > 0):
+          self.cif_objects.append((file_name,cif_object))
+          self.cif_file_names.append(file_name)
 
   def set_ppf(self):
     processed_pdb_files_srv = utils.process_pdb_file_srv(
@@ -942,6 +977,7 @@ class interpreter:
           else:
             if(len(cif_object) > 0):
               self.cif_objects.append((arg,cif_object))
+              self.cif_file_names.append(os.path.abspath(arg))
               arg_is_processed = True
       if (not arg_is_processed):
         try:

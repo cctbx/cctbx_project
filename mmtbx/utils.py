@@ -635,8 +635,8 @@ pdb_params = iotbx.phil.parse("""\
     .help=Model file(s) name (PDB)
     .short_caption=PDB file
     .multiple=True
-    .input_size=300
-    .style = bold file_type:pdb OnUpdate:extract_pdb_symmetry_params
+    .input_size=400
+    .style = bold file_type:pdb OnUpdate:extract_pdb_params
 """)
 
 def get_atom_selections(all_chain_proxies,
@@ -867,7 +867,7 @@ cif_params = iotbx.phil.parse("""\
     .help=Monomer file(s) name (CIF)
     .multiple=True
     .short_caption=CIF File
-    .input_size = 300
+    .input_size = 400
     .style = bold file_type:cif
 """)
 
