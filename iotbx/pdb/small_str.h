@@ -145,7 +145,7 @@ namespace iotbx { namespace pdb {
     upper_in_place()
     {
       for(char* e=elems; *e != '\0'; e++) {
-        *e = std::toupper(*e);
+        *e = toupper(*e);
       }
       return *this;
     }
