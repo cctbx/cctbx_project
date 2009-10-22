@@ -67,6 +67,8 @@ dihedral_function_type_params_str = """\
 
 clash_guard_params_str = """\
   clash_guard
+    .short_caption = Clash guard
+    .style = noauto box auto_align
     .expert_level=2
   {
     nonbonded_distance_threshold = 0.5
@@ -82,24 +84,29 @@ master_params = iotbx.phil.parse("""\
   apply_cif_modification
     .optional = True
     .multiple = True
-    .short_caption = Modify CIF. . .
+    .short_caption = Modify CIF
+    .style = noauto auto_align
   {
     data_mod = None
       .type = str
     residue_selection = None
       .type = str
+      .style = selection
   }
   apply_cif_link
     .optional = True
     .multiple = True
-    .short_caption = Add link to CIF. . .
+    .short_caption = Add link to CIF
+    .style = noauto auto_align
   {
     data_link = None
       .type = str
     residue_selection_1 = None
       .type = str
+      .style = selection
     residue_selection_2 = None
       .type = str
+      .style = selection
   }
   link_distance_cutoff = 3
     .type=float
@@ -112,7 +119,8 @@ master_params = iotbx.phil.parse("""\
     .type=float
     .optional=False
   peptide_link
-    .style = box
+    .short_caption = Peptide link settings
+    .style = box auto_align noauto
   {
     cis_threshold = 45
       .type = float
@@ -142,12 +150,19 @@ master_params = iotbx.phil.parse("""\
     .optional=False
   proceed_with_excessive_length_bonds = False
     .type=bool
-  rna_sugar_pucker_analysis {
+  rna_sugar_pucker_analysis
+    .short_caption = RNA sugar pucker analysis
+    .style = box noauto auto_align menu_item parent_submenu:advanced
+  {
     use = False
       .type=bool
+      .short_caption = Enable
     include scope mmtbx.monomer_library.rna_sugar_pucker_analysis.master_phil
   }
-  show_histogram_slots {
+  show_histogram_slots
+    .style = box auto_align noauto
+    .expert_level = 2
+  {
     bond_lengths = 5
       .type=int
     nonbonded_interaction_distances = 5
@@ -159,7 +174,10 @@ master_params = iotbx.phil.parse("""\
     chiral_volume_deviations_from_ideal = 5
       .type=int
   }
-  show_max_items {
+  show_max_items
+    .expert_level = 2
+    .style = box auto_align noauto
+  {
     bond_restraints_sorted_by_residual = 5
       .type=int
     nonbonded_interactions_sorted_by_model_distance = 5
