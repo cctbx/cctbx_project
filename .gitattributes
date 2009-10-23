@@ -562,8 +562,10 @@ scitbx/math/accumulators.h -text
 scitbx/math/besselk.py -text
 scitbx/math/boost_python/__init__.py -text
 scitbx/math/boost_python/continued_fraction.cpp -text
+scitbx/math/boost_python/exp_functions.cpp svneol=native#text/plain
 scitbx/math/boost_python/least_squares_plane.cpp -text
 scitbx/math/boost_python/numeric_limits.cpp -text
+scitbx/math/boost_python/tst_exp_functions.py svneol=native#text/x-python
 scitbx/math/boost_python/tst_gcd.py svneol=native#text/x-python
 scitbx/math/continued_fraction.h -text
 scitbx/math/copysign.h -text
@@ -572,6 +574,7 @@ scitbx/math/fit_peak.py -text
 scitbx/math/gcd.h svneol=native#text/plain
 scitbx/math/imaginary.h -text
 scitbx/math/inertia_tensor.h svneol=native#text/plain
+scitbx/math/jacks_expf.h svneol=native#text/plain
 scitbx/math/least_squares_plane.h -text
 scitbx/math/modulo.h -text
 scitbx/math/numeric_limits.h -text

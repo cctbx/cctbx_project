@@ -26,5 +26,6 @@ env.SharedLibrary(
     "continued_fraction.cpp",
     "numeric_limits.cpp",
     "distributions.cpp",
+    "exp_functions.cpp",
     ]
 )
