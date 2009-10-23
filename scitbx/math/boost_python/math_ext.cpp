@@ -46,6 +46,7 @@ namespace boost_python {
   void wrap_continued_fraction();
   void wrap_numeric_limits();
   void wrap_distributions();
+  void wrap_exp_functions();
 
 namespace {
 
@@ -322,6 +323,7 @@ namespace {
     wrap_continued_fraction();
     wrap_numeric_limits();
     wrap_distributions();
+    wrap_exp_functions();
 
     def("superpose_kearsley_rotation", superpose_kearsley_rotation, (
       arg_("reference_sites"), arg_("other_sites")));
