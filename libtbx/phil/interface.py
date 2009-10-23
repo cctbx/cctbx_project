@@ -75,7 +75,7 @@ class index (object) :
     if sources is None :
       sources = []
     if extra_phil != "" :
-      sources.append(self.parse(extra_phil))
+      self.merge_phil(phil_string=extra_phil, rebuild_index=False)
     final_phil = self.master_phil.fetch(sources=[self.working_phil]+sources)
     if diff_only :
       output_phil = self.master_phil.fetch_diff(source=final_phil)
