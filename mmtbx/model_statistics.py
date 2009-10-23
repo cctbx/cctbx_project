@@ -276,6 +276,7 @@ class adp(object):
     #
     self.b_a_noH_histogram = flex.histogram(data = u_a_noH * eps,
       n_slots = n_histogram_slots)
+    self.b_a_noH = u_a_noH * eps # need this for phenix gui
     self.a_a_noH_histogram = flex.histogram(data = a_a_noH,
       n_slots = n_histogram_slots)
     #
