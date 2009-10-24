@@ -913,6 +913,8 @@ def exercise_functions():
   assert a.all_approx_equal(other=1, tolerance=3)
   #
   a = flex.double([-3.67,-0.123,-0.678,0.321,0.765,8.01])
+  b = a.as_float()
+  assert approx_equal(b, a)
   b = a.round()
   assert approx_equal(b, [-4,0,-1,0,1,8])
   for n_digits in [-2,1,0,1,2]:
