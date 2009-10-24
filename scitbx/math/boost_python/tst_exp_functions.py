@@ -8,7 +8,7 @@ import sys
 def exercise_with_random_arguments(n_arguments, n_iterations):
   mt = flex.mersenne_twister(seed=0)
   d = mt.random_double(size=n_arguments)*100-50
-  f = flex.float(tuple(d))
+  f = d.as_float()
   print "showing wall clock times!"
   t0 = time.time()
   for i_iteration in xrange(n_iterations):

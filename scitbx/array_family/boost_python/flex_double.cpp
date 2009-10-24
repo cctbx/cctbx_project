@@ -238,6 +238,20 @@ namespace {
     return self.all_approx_equal(other, tolerance);
   }
 
+  af::versa<float, af::flex_grid<> >
+  as_float(
+    af::const_ref<double, af::flex_grid<> > const& O)
+  {
+    af::versa<float, af::flex_grid<> > result(
+      O.accessor(), af::init_functor_null<float>());
+    std::size_t n = O.accessor().size_1d();
+    float* r = result.begin();
+    for(std::size_t i=0;i<n;i++) {
+      r[i] = static_cast<float>(O[i]);
+    }
+    return result;
+  }
+
   shared<double>
   round(
     const_ref<double> const& self,
@@ -313,6 +327,7 @@ namespace boost_python {
         all_approx_equal_a_s, (
           arg_("other"),
           arg_("tolerance")=1e-6))
+      .def("as_float", as_float)
       .def("round", round, (arg_("n_digits")=0))
       .def("select", select_stl_iterable<std::vector<unsigned> >, (
         arg_("selection")))
