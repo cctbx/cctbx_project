@@ -183,3 +183,130 @@ class residue_analysis(object):
     if (not O.is_rna_dna()): return False
     if (not O.atom_name_analysis.have_o2): return False
     return True
+
+deoxy_ribo_atom_keys = set("C1' C2' C3' O3' C4' O4' C5' O5'".split())
+
+def residue_analysis_2(residue_atoms, distance_tolerance=0.5):
+  problems = []
+  atom_dict = residue_atoms.build_dict(
+    strip_names=True,
+    upper_names=True,
+    convert_stars_to_primes=True,
+    throw_runtime_error_if_duplicate_keys=False)
+  if (len(atom_dict) != len(residue_atoms)):
+    problems.append("KEY_CLASH")
+  dexoy_ribo_atom_dict = {}
+  for key in deoxy_ribo_atom_keys:
+    atom = atom_dict.get(key)
+    if (atom is None):
+      problems.append("MISSING_DEOXY")
+      break
+    dexoy_ribo_atom_dict[key] = atom
+    del atom_dict[key]
+  p_atom = None
+  for key in atom_dict.keys():
+    if (key.startswith("P")):
+      if (key == "P"):
+        p_atom = atom_dict[key]
+        del atom_dict[key]
+      else:
+        problems.append("OTHER_P")
+  op_atoms = []
+  if (p_atom is not None):
+    for keys in [("OP1", "O1P"),
+                 ("OP2", "O2P")]:
+      for key in keys:
+        atom = atom_dict.get(key)
+        if (atom is not None):
+          op_atoms.append(atom)
+          del atom_dict[key]
+          break
+      else:
+        op_atoms.append(None)
+        problems.append("MISSING_"+keys[0])
+  o2p_atom = atom_dict.get("O2'")
+  if (o2p_atom is not None):
+    del atom_dict["O2'"]
+  h_atoms = {}
+  for key in atom_dict.keys():
+    if (len(key) == 0):
+      problems.append("BLANK_NAME")
+      continue
+    if (   "HD".find(key[0]) >= 0
+        or (    len(key) > 1
+            and "HD".find(key[1]) >= 0
+            and "0123456789".find(key[0]) >= 0)):
+      h_atoms[key] = atom_dict[key]
+      del atom_dict[key]
+  n_atoms = {}
+  for key in atom_dict.keys():
+    if (key.find("'") >= 0):
+      problems.append("OTHER_PRIME")
+      continue
+    if (key.startswith("N")):
+      n_atoms[key] = atom_dict[key]
+      del atom_dict[key]
+  if (len(n_atoms) == 0):
+    problems.append("MISSING_N")
+  def check_distance(key_pair, site_1, site_2):
+    distance_model = abs(site_1 - site_2)
+    distance_ideal = bond_distance_ideal_by_bond_atom_names_v3[key_pair]
+    if (distance_model > distance_ideal + distance_tolerance):
+      return False
+    return True
+  if (p_atom is not None):
+    site_1 = matrix.col(p_atom.xyz)
+    for i,key_pair in enumerate(["OP1 P", "OP2 P"]):
+      atom = op_atoms[i]
+      if (atom is None): continue
+      site_2 = matrix.col(atom.xyz)
+      if (not check_distance(key_pair, site_1, site_2)):
+        problems.append("LONG_DISTANCE_P_OP%d" % (i+1))
+    atom = dexoy_ribo_atom_dict.get("O5'")
+    if (atom is not None):
+      site_2 = matrix.col(atom.xyz)
+      if (not check_distance("O5' P", site_1, site_2)):
+        problems.append("LONG_DISTANCE_P_O5'")
+  if (o2p_atom is not None):
+    atom = dexoy_ribo_atom_dict.get("C2'")
+    if (atom is not None):
+      site_1 = matrix.col(atom.xyz)
+      site_2 = matrix.col(o2p_atom.xyz)
+      if (not check_distance("C2' O2'", site_1, site_2)):
+        problems.append("LONG_DISTANCE_C2'_O2'")
+  for key_pair in [
+        "C1' C2'",
+        "C1' O4'",
+        "C2' C3'",
+        "C3' O3'",
+        "C3' C4'",
+        "C4' O4'",
+        "C4' C5'",
+        "C5' O5'"]:
+    sites = []
+    for key in [key_pair[:3], key_pair[4:]]:
+      atom = dexoy_ribo_atom_dict.get(key)
+      if (atom is None): break
+      sites.append(matrix.col(atom.xyz))
+    else:
+      if (not check_distance(key_pair, *sites)):
+        problems.append("LONG_DISTANCE_"+key_pair.replace(" ","_"))
+  if (len(n_atoms) != 0):
+    atom = dexoy_ribo_atom_dict.get("C1'")
+    if (atom is not None):
+      c1_n_closest = None
+      c1_n_closest_distance = c1_n_distance_ideal + distance_tolerance
+      site_1 = matrix.col(atom.xyz)
+      for key,atom in n_atoms.items():
+        site_2 = matrix.col(atom.xyz)
+        distance = abs(site_1 - site_2)
+        if (    c1_n_closest_distance >= distance
+            and (   c1_n_closest_distance != distance
+                 or c1_n_closest is None)):
+          c1_n_closest = atom
+          c1_n_closest_distance = distance
+      if (c1_n_closest is None):
+        problems.append("LONG_DISTANCE_C1'_N")
+  if (len(problems) != 0):
+    return problems
+  return "END_"+str(p_atom is not None)
