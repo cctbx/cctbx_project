@@ -529,8 +529,8 @@ else:
       "-bundle",
       "-undefined", "dynamic_lookup"]
     if (env_etc.gcc_version >= 40201 and libtbx.env.build_options.force_32bit):
-      env_etc.ccflags_base.append("-m32")
-      env_etc.cxxflags_base.append("-m32")
+      env_etc.ccflags_base.append(["-arch", "i386"])
+      env_etc.cxxflags_base.append(["-arch", "i386"])
       env_etc.shlinkflags.extend(["-arch", "i386"])
       env_etc.shlinkflags_bpl.append(["-arch", "i386"])
     env_etc.ccflags_base.extend(opts)
