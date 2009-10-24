@@ -841,14 +841,18 @@ class environment:
       start_python = False
       cmd = ""
       if (source_is_py):
-        cmd += ' "%s%s$LIBTBX_PYEXE_BASENAME"' % (
-          escape_sh_double_quoted(pyexe_dirname), os.sep)
+        cmd += ' %s"%s%s$LIBTBX_PYEXE_BASENAME"' % (
+          ['', '/usr/bin/arch -i386 '][self.build_options.force_32bit],
+          escape_sh_double_quoted(pyexe_dirname),
+          os.sep)
         if (len(source_specific_dispatcher_include(
                   pattern="LIBTBX_START_PYTHON",
                   source_file=source_file)) > 3):
           start_python = True
       if (not start_python):
-        cmd += " '"+source_file+"'"
+        cmd += (" %s'"+source_file+"'") % [
+          '', '/usr/bin/arch -i386 '][self.build_options.force_32bit
+                                      and not source_is_py]
       print >> f, 'if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then'
       print >> f, "  exec $LIBTBX_VALGRIND"+cmd, '"$@"'
       print >> f, "elif [ $# -eq 0 ]; then"
@@ -1721,7 +1725,10 @@ class pre_process_args:
     parser.option(None, "--force_32bit",
       action="store_true",
       default=False,
-      help="Force 32-bit compilation on Mac OS 10.6 (Snow Leopard)")
+      help="Force 32-bit compilation on Mac OS 10.6 (Snow Leopard)\n"
+           "Not compatible with /usr/bin/python: please run configure\n"
+           "with /System/Library/Frameworks/Python.framework/"
+           "Versions/2.x/bin/python")
     parser.option(None, "--enable_boost_threads",
       action="store_true",
       default=False,
