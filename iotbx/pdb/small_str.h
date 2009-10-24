@@ -150,6 +150,15 @@ namespace iotbx { namespace pdb {
       return *this;
     }
 
+    small_str<N> &
+    replace_in_place(char old, char new_)
+    {
+      for(char* e=elems; *e != '\0'; e++) {
+        if (*e == old) *e = new_;
+      }
+      return *this;
+    }
+
     bool
     operator==(small_str const& other) const
     {

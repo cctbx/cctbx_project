@@ -328,10 +328,17 @@ def exercise_atom():
     atoms.build_dict(strip_names=True, upper_names=True)
   except RuntimeError, e:
     assert not show_diff(str(e), '''\
-Duplicate keys in build_dict(strip_names=true, upper_names=true):
+Duplicate keys in build_dict(strip_names=true, upper_names=true,\
+ convert_stars_to_primes=false):
   pdb="x              "
   pdb=" X             "''')
   else: raise Exception_expected
+  atoms[0].name = "x*  "
+  d = atoms.build_dict(
+    strip_names=True,
+    upper_names=True,
+    convert_stars_to_primes=True)
+  assert sorted(d.keys()) == ["NA", "X", "X'"]
 
 def exercise_atom_group():
   ag = pdb.hierarchy.atom_group()
