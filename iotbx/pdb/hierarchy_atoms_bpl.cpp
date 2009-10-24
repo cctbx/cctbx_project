@@ -19,6 +19,7 @@ namespace {
     af::const_ref<atom> const& atoms,
     bool strip_names,
     bool upper_names,
+    bool convert_stars_to_primes,
     bool throw_runtime_error_if_duplicate_keys)
   {
     namespace bp = boost::python;
@@ -28,6 +29,7 @@ namespace {
       str4 name = atoms[i].data->name;
       if (strip_names) name = name.strip();
       if (upper_names) name.upper_in_place();
+      if (convert_stars_to_primes) name.replace_in_place('*', '\'');
       bp::str key = name.elems;
       bp::object prev_atom = result.get(key);
       if (prev_atom.ptr() == none.ptr()) {
@@ -35,11 +37,13 @@ namespace {
       }
       else if (throw_runtime_error_if_duplicate_keys) {
         throw std::runtime_error((boost::format(
-          "Duplicate keys in build_dict(strip_names=%s, upper_names=%s):\n"
+          "Duplicate keys in build_dict("
+          "strip_names=%s, upper_names=%s, convert_stars_to_primes=%s):\n"
           "  %s\n"
           "  %s")
             % (strip_names ? "true" : "false")
             % (upper_names ? "true" : "false")
+            % (convert_stars_to_primes ? "true" : "false")
             % bp::extract<atom const&>(prev_atom)().id_str()
             % atoms[i].id_str()).str());
       }
@@ -99,6 +103,7 @@ namespace {
       .def("build_dict", build_dict, (
         arg("strip_names")=false,
         arg("upper_names")=false,
+        arg("convert_stars_to_primes")=false,
         arg("throw_runtime_error_if_duplicate_keys")=true));
     ;
   }
