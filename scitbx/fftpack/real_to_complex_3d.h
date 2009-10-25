@@ -297,7 +297,6 @@ namespace scitbx { namespace fftpack {
       for (int ix = 0; ix < nx; ix++) {
         for (int iy = 0; iy < ny; iy++) {
           // Transform along z (fast direction)
-          int i_thread = omp_get_thread_num();
           fft1d_z_.backward(&map(ix, iy, 0), scratch);
         }
       }
