@@ -48,9 +48,9 @@ namespace scitbx { namespace stl { namespace boost_python {
     static void
     wrap(std::string const& python_name)
     {
-      using namespace boost::python;
-      class_<w_t, std::auto_ptr<w_t> >(python_name.c_str())
-        .def(init<w_t const&>())
+      namespace bp = boost::python;
+      bp::class_<w_t, std::auto_ptr<w_t> >(python_name.c_str())
+        .def(bp::init<w_t const&>())
         .def("size", &w_t::size)
         .def("__len__", &w_t::size)
         .def("insert", insert_element)
