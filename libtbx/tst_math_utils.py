@@ -89,6 +89,23 @@ def exercise_next_permutation():
     assert seq == range(m)
     assert n == expected_n
 
+def exercise_prime_factors_of():
+  from libtbx.math_utils import prime_factors_of
+  assert prime_factors_of(n=1) == []
+  prime_set = set()
+  for n in xrange(2, 100):
+    primes = prime_factors_of(n)
+    pp = 1
+    for p in primes:
+      pp *= p
+    assert pp == n
+    prime_set.update(primes)
+    if (n == 30):
+      assert prime_set == set([2,3,5,7,11,13,17,19,23,29])
+  for n in prime_set:
+    assert prime_factors_of(n) == [n]
+  assert len(prime_set) == 25
+
 def exercise_normalize_angle():
   from libtbx.math_utils import normalize_angle as n
   import math
@@ -108,6 +125,7 @@ def exercise():
   exercise_logical()
   exercise_nested_loop()
   exercise_next_permutation()
+  exercise_prime_factors_of()
   exercise_normalize_angle()
   print "OK"
 

@@ -82,6 +82,17 @@ def next_permutation(seq):
       seq.reverse()
       return False
 
+def prime_factors_of(n):
+  "http://butunclebob.com/ArticleS.UncleBob.ThePrimeFactorsKata"
+  result = []
+  candidate = 2
+  while (n > 1):
+    while (n % candidate == 0):
+      result.append(candidate)
+      n /= candidate
+    candidate += 1
+  return result
+
 def normalize_angle(phi, deg=False):
   if (deg): period = 360
   else:     period = 2 * math.pi
