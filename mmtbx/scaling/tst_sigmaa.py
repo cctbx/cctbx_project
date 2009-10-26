@@ -21,7 +21,7 @@ from scitbx.math import chebyshev_lsq_fit
 from scitbx.math import erf
 import libtbx.phil.command_line
 from libtbx import table_utils
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 import scitbx.lbfgs
 import sys, os
 import math, time

@@ -23,7 +23,7 @@ from scitbx.math import erf
 import libtbx.phil.command_line
 from libtbx import table_utils
 from libtbx.utils import null_out
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 import sys, os
 import math
 import string
