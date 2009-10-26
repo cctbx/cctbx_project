@@ -5,7 +5,7 @@
 import os, sys, re, string
 import libtbx.phil
 from libtbx.utils import Sorry
-from libtbx import easy_pickle, str_utils
+from libtbx import easy_pickle, str_utils, smart_open
 from libtbx import adopt_init_args
 
 class index (object) :
@@ -81,9 +81,13 @@ class index (object) :
       output_phil = self.master_phil.fetch_diff(source=final_phil)
     else :
       output_phil = final_phil
-    f = open(file_name, "w")
-    output_phil.show(out=f)
-    f.close()
+    try :
+      f = smart_open.for_writing(file_name, "w")
+    except IOError, e :
+      raise Sorry(str(e))
+    else :
+      output_phil.show(out=f)
+      f.close()
     if save_state :
       cache_file = "%s_cache.pkl" % file_name
       easy_pickle.dump(cache_file, self)
