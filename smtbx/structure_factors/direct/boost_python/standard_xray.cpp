@@ -3,33 +3,92 @@
 #include <smtbx/structure_factors/direct/standard_xray.h>
 
 #include <boost/python/class.hpp>
-#include <boost/python/return_value_policy.hpp>
-#include <boost/python/return_by_value.hpp>
 
 namespace smtbx { namespace structure_factors { namespace direct {
   namespace boost_python {
 
-    template <typename FloatType,
-              template<typename, bool> class ObservableType>
-    struct linearisation_wrapper
+    template <class wt>
+    struct linearisation_class_ : boost::python::class_<wt>
     {
-      typedef one_h_linearisation::base<FloatType, true, ObservableType> wt;
+      typedef typename wt::complex_type complex_type;
       typedef typename wt::float_type float_type;
 
-      static void wrap(char const *name) {
+      static void compute(wt &self, miller::index<> const &h) {
+        self.compute(h);
+      }
+
+      static complex_type f_calc(wt const &self) {
+        return self.f_calc;
+      }
+
+      static float_type observable(wt const &self) {
+        return self.observable;
+      }
+
+      static af::shared<complex_type> grad_f_calc(wt const &self) {
+        return self.grad_f_calc.array();
+      }
+
+      static af::shared<float_type> grad_observable(wt const &self) {
+        return self.grad_observable.array();
+      }
+
+      linearisation_class_(std::string const &name)
+        : boost::python::class_<wt>(name.c_str(), boost::python::no_init)
+      {
         using namespace boost::python;
-        return_value_policy<return_by_value> rbv;
+        (*this)
+          .def("compute", compute, args("miller_index"))
+          .add_property("f_calc", f_calc)
+          .add_property("grad_f_calc", grad_f_calc)
+          .add_property("observable", observable)
+          .add_property("grad_observable", grad_observable)
+          ;
+      }
+    };
 
-        typedef void (wt::*compute_with_exact_exp_i_2pi_ptr)(
-                  miller::index<> const &);
-        typedef void (wt::*compute_with_tabulated_exp_i_2pi_ptr)(
-                  miller::index<> const &,
-                  cctbx::math::cos_sin_table<float_type> const &);
-        typedef void (wt::*compute_with_interpolated_tabulated_exp_i_2pi_ptr)(
-                  miller::index<> const &,
-                  cctbx::math::cos_sin_lin_interp_table<float_type> const &);
+    template <typename FloatType,
+              template<typename, bool> class ObservableType,
+              template<typename> class ExpI2PiFunctor>
+    struct linearisation_wrapper
+    {
+      typedef FloatType float_type;
+      typedef ExpI2PiFunctor<float_type> exp_i_2pi_functor;
 
-        class_<wt>(name, no_init)
+      static void wrap_custom_trigo(char const *core_name) {
+        using namespace boost::python;
+        typedef one_h_linearisation::custom_trigonometry<FloatType,
+                                                            true,
+                                                            ObservableType,
+                                                            ExpI2PiFunctor>
+                wt;
+        std::string name(core_name);
+        name += std::string("_with_custom_trigonometry");
+        linearisation_class_<wt>(name)
+          .def(init<std::size_t,
+                    uctbx::unit_cell const &,
+                    sgtbx::space_group const &,
+                    af::shared< xray::scatterer<float_type> > const &,
+                    xray::scattering_type_registry const &,
+                    exp_i_2pi_functor const &>
+               ((arg("n_parameters"),
+                 arg("unit_cell"),
+                 arg("space_group"),
+                 arg("scatterers"),
+                 arg("scattering_type_registry"),
+                 arg("exp_i_2pi_functor"))))
+          ;
+        }
+
+      static void wrap_std_trigo(char const *core_name) {
+        using namespace boost::python;
+        typedef one_h_linearisation::std_trigonometry<FloatType,
+                                                        true,
+                                                        ObservableType>
+                wt;
+        std::string name(core_name);
+        name += std::string("_with_std_trigonometry");
+        linearisation_class_<wt>(name)
           .def(init<std::size_t,
                     uctbx::unit_cell const &,
                     sgtbx::space_group const &,
@@ -40,33 +99,26 @@ namespace smtbx { namespace structure_factors { namespace direct {
                  arg("space_group"),
                  arg("scatterers"),
                  arg("scattering_type_registry"))))
-          .def("compute",
-               (compute_with_exact_exp_i_2pi_ptr) &wt::compute,
-               args("miller_index"))
-          .def("compute",
-               (compute_with_tabulated_exp_i_2pi_ptr) &wt::compute,
-               args("miller_index", "tabulated_exp_i_2pi"))
-          .def("compute",
-               (compute_with_interpolated_tabulated_exp_i_2pi_ptr) &wt::compute,
-               args("miller_index", "interpolated_tabulated_exp_i_2pi"))
-          .def_readonly("f_calc", &wt::f_calc)
-          .add_property("grad_f_calc",
-                        make_getter(&wt::grad_f_calc, rbv))
-          .def_readonly("observable", &wt::observable)
-          .add_property("grad_observable",
-                        make_getter(&wt::grad_observable, rbv))
           ;
+      }
+
+      static void wrap(char const *core_name) {
+        wrap_custom_trigo(core_name);
+        wrap_std_trigo(core_name);
       }
     };
 
 
     void wrap_standard_xray() {
       using namespace one_h_linearisation;
-      linearisation_wrapper<double, modulus_squared>::wrap(
-        "linearisation_of_f_calc_modulus_squared");
 
-      linearisation_wrapper<double, modulus>::wrap(
-        "linearisation_of_f_calc_modulus");
+      linearisation_wrapper<double, modulus_squared,
+                            cctbx::math::cos_sin_table>
+        ::wrap("linearisation_of_f_calc_modulus_squared");
+
+      linearisation_wrapper<double, modulus,
+                            cctbx::math::cos_sin_table>
+        ::wrap("linearisation_of_f_calc_modulus");
     }
   }
 }}}

@@ -206,11 +206,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         #if (   defined(__linux__) && defined(__GNUC__) \
              && __GNUC__ == 4 && __GNUC_MINOR__ == 0 && __GNUC_PATCHLEVEL__ == 0)
-        /** Careful analysis with valgrind showed that the compiler seems to generate
-            undefined bits in the array grad_site in this member function.
-            We hypothesised that an overzealous optimiser was at fault, hence the
-            idea of the volatile member. That it solves the problem seems to vindicate
-            our intuition.
+        /** Careful analysis with valgrind showed that the compiler seems to
+            generate undefined bits in the array grad_site in this member
+            function.
+            We hypothesised that an overzealous optimiser was at fault, hence
+            the idea of the volatile member. That it solves the problem seems
+            to vindicate our intuition.
         */
         foo = grad_site.begin();
       }
@@ -425,13 +426,16 @@ namespace smtbx { namespace structure_factors { namespace direct {
   namespace one_h_linearisation {
 
     template <typename FloatType, bool compute_grad,
-              template<typename, bool> class ObservableType>
+              template<typename, bool> class ObservableType,
+              template<typename> class ExpI2PiFunctor,
+              class Heir>
     class base
     {
     public:
       typedef FloatType float_type;
       typedef std::complex<float_type> complex_type;
       typedef ObservableType<float_type, compute_grad> observable_type;
+      typedef ExpI2PiFunctor<float_type> exp_i_2pi_functor;
 
     protected:
       uctbx::unit_cell const &unit_cell;
@@ -455,6 +459,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
            sgtbx::space_group const &space_group,
            af::shared< xray::scatterer<float_type> > const &scatterers,
            xray::scattering_type_registry const &scattering_type_registry)
+
         : unit_cell(unit_cell),
           space_group(space_group),
           origin_centric_case( space_group.is_origin_centric() ),
@@ -466,9 +471,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
           grad_observable(n_parameters, af::init_functor_null<float_type>())
       {}
 
-      template <typename ExpI2PiFunctor>
-      void compute(miller::index<> const &h,
-                   ExpI2PiFunctor const &exp_i_2pi)
+      void compute(miller::index<> const &h)
       {
         float_type d_star_sq = unit_cell.d_star_sq(h);
         af::shared<float_type> elastic_form_factors
@@ -476,29 +479,26 @@ namespace smtbx { namespace structure_factors { namespace direct {
         f_calc = 0;
         grad_f_calc_cursor = grad_f_calc.begin();
 
+        Heir &heir = static_cast<Heir &>(*this);
+
         typedef one_scatterer_one_h_linearisation::in_generic_space_group<
-                  float_type, ExpI2PiFunctor, compute_grad>
+                  float_type, exp_i_2pi_functor, compute_grad>
                 generic_linearisation_t;
 
         typedef one_scatterer_one_h_linearisation::in_origin_centric_space_group<
-                  float_type, ExpI2PiFunctor, compute_grad>
+                  float_type, exp_i_2pi_functor, compute_grad>
                 origin_centric_linearisation_t;
 
         if (!origin_centric_case) {
            generic_linearisation_t lin_for_h(space_group, h, d_star_sq,
-                                             exp_i_2pi);
+                                             heir.exp_i_2pi);
           compute(elastic_form_factors.ref(), lin_for_h);
         }
         else {
           origin_centric_linearisation_t lin_for_h(space_group, h, d_star_sq,
-                                                   exp_i_2pi);
+                                                   heir.exp_i_2pi);
           compute(elastic_form_factors.ref(), lin_for_h);
         }
-      }
-
-      void compute(miller::index<> const &h) {
-        cctbx::math::cos_sin_exact<float_type> exp_i_2pi;
-        compute(h, exp_i_2pi);
       }
 
     private:
@@ -541,6 +541,72 @@ namespace smtbx { namespace structure_factors { namespace direct {
         }
       }
     };
+
+
+    template <typename FloatType, bool compute_grad,
+              template<typename, bool> class ObservableType,
+              template<typename> class ExpI2PiFunctor>
+    class custom_trigonometry
+      : public base<FloatType, compute_grad, ObservableType, ExpI2PiFunctor,
+                    custom_trigonometry<
+                      FloatType, compute_grad, ObservableType, ExpI2PiFunctor> >
+    {
+    public:
+      typedef base<FloatType, compute_grad, ObservableType, ExpI2PiFunctor,
+                   custom_trigonometry<
+                     FloatType, compute_grad, ObservableType, ExpI2PiFunctor> >
+              base_t;
+
+      typedef FloatType float_type;
+      ExpI2PiFunctor<float_type> const &exp_i_2pi;
+
+      custom_trigonometry(
+        std::size_t n_parameters,
+        uctbx::unit_cell const &unit_cell,
+        sgtbx::space_group const &space_group,
+        af::shared< xray::scatterer<float_type> > const &scatterers,
+        xray::scattering_type_registry const &scattering_type_registry,
+        ExpI2PiFunctor<float_type> const &exp_i_2pi)
+
+        : base_t(n_parameters, unit_cell, space_group, scatterers,
+                 scattering_type_registry),
+          exp_i_2pi(exp_i_2pi)
+      {}
+    };
+
+
+    template <typename FloatType, bool compute_grad,
+              template<typename, bool> class ObservableType>
+    class std_trigonometry
+      : public base<FloatType, compute_grad, ObservableType,
+                    cctbx::math::cos_sin_exact,
+                    std_trigonometry<
+                      FloatType, compute_grad, ObservableType>
+                    >
+    {
+    public:
+      typedef base<FloatType, compute_grad, ObservableType,
+                   cctbx::math::cos_sin_exact,
+                   std_trigonometry<
+                     FloatType, compute_grad, ObservableType>
+                   >
+              base_t;
+
+      typedef FloatType float_type;
+      cctbx::math::cos_sin_exact<float_type> exp_i_2pi;
+
+      std_trigonometry(
+        std::size_t n_parameters,
+                                uctbx::unit_cell const &unit_cell,
+                                sgtbx::space_group const &space_group,
+                                af::shared< xray::scatterer<float_type> > const &scatterers,
+                                xray::scattering_type_registry const &scattering_type_registry)
+
+        : base_t(n_parameters, unit_cell, space_group, scatterers,
+                 scattering_type_registry)
+      {}
+    };
+
 
     template <typename FloatType, bool compute_grad>
     struct modulus_squared
