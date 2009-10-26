@@ -1,13 +1,12 @@
 from __future__ import division
 
 from cctbx.array_family import flex
-from smtbx import structure_factors
 from cctbx import sgtbx, uctbx, xray, crystal, miller, eltbx
 import cctbx.eltbx.wavelengths
 import smtbx.development
-import smtbx.development
 import smtbx.structure_factors.direct as structure_factors
 from libtbx.test_utils import approx_equal
+from scitbx.math import approx_equal_relatively
 import libtbx.utils
 import math, random
 from libtbx.itertbx import islice, izip
@@ -52,12 +51,13 @@ class test_case(object):
       max_index=(10, 10, 10)))
 
   def exercise(self, xray_structure=None, space_group_info=None,
-               verbose=False):
+               verbose=False, **kwds):
     assert [xray_structure, space_group_info].count(None) == 1
     if xray_structure is None:
       self.xs = self.random_structure(space_group_info, set_grads=True)
     else:
       self.xs = xray_structure
+    self.do_exercise(verbose)
 
 
 class consistency_test_cases(test_case):
@@ -87,13 +87,10 @@ class consistency_test_cases(test_case):
       yield direction
   structures_forward = classmethod(structures_forward)
 
-  def exercise(self, xray_structure=None, space_group_info=None,
-               verbose=False):
-    test_case.exercise(self, xray_structure, space_group_info, verbose)
+  def do_exercise(self, verbose=False):
     xs = self.xs
     sg = xs.space_group_info().group()
     origin_centric_case = sg.is_origin_centric()
-
 
     indices = self.miller_indices(xs.space_group_info())
     f_calc_linearisation = (
@@ -115,6 +112,8 @@ class consistency_test_cases(test_case):
                             self.n_directions):
       for h in indices:
         f_calc_linearisation.compute(h)
+        assert approx_equal(abs(f_calc_linearisation.f_calc)**2,
+                            f_calc_linearisation.observable)
         f_calc_linearisation_forward.compute(h)
         diff_num = (  f_calc_linearisation_forward.observable
                     - f_calc_linearisation.observable) / eta
@@ -129,9 +128,7 @@ class consistency_test_cases(test_case):
 
 class smtbx_against_cctbx_test_case(test_case):
 
-  def exercise(self, xray_structure=None, space_group_info=None,
-               verbose=False):
-    test_case.exercise(self, xray_structure, space_group_info, verbose)
+  def do_exercise(self, verbose=False):
     xs = self.xs
     indices = self.miller_indices(xs.space_group_info())
     cctbx_structure_factors = xray.structure_factors.from_scatterers_direct(
@@ -150,6 +147,50 @@ class smtbx_against_cctbx_test_case(test_case):
         delta = abs((f_calc_linearisation.f_calc - fc)/fc)
         assert delta < 1e-6
 
+class custom_vs_std_test_case(test_case):
+
+  def do_exercise(self, verbose=False):
+    xs = self.xs
+    indices = self.miller_indices(xs.space_group_info())
+    exp_i_2pi_functor = cctbx.math_module.cos_sin_table(1024)
+    custom_fc_sq = (
+      structure_factors.linearisation_of_f_calc_modulus_squared(
+        xs, exp_i_2pi_functor))
+    std_fc_sq = (
+      structure_factors.linearisation_of_f_calc_modulus_squared(xs))
+    deltas = flex.double()
+    for h in indices:
+      custom_fc_sq.compute(h)
+      std_fc_sq.compute(h)
+      deltas.append(abs(custom_fc_sq.f_calc - std_fc_sq.f_calc)
+                    /abs(std_fc_sq.f_calc))
+    stats = median_statistics(deltas)
+    assert stats.median < 0.01, (str(xs.space_group_info()), stats.median)
+    assert stats.median_absolute_deviation < 0.005, (
+      str(xs.space_group_info()), stats.median_absolute_deviation)
+
+
+class f_vs_f_sq_test_case(test_case):
+
+  def do_exercise(self, verbose=False):
+    xs = self.xs
+    indices = self.miller_indices(xs.space_group_info())
+    f_linearisation = (
+      structure_factors.linearisation_of_f_calc_modulus(xs))
+    f_sq_linearisation = (
+      structure_factors.linearisation_of_f_calc_modulus_squared(xs))
+    for h in indices:
+      f_linearisation.compute(h)
+      f_sq_linearisation.compute(h)
+      assert approx_equal_relatively(f_linearisation.observable**2,
+                                     f_sq_linearisation.observable,
+                                     relative_error=1e-15)
+      grad_f_sq = f_sq_linearisation.grad_observable
+      two_f_grad_f = (2*f_linearisation.observable
+                       *f_linearisation.grad_observable)
+      assert two_f_grad_f.all_approx_equal_relatively(grad_f_sq,
+                                                      relative_error=1e-14)
+
 def run(args):
   libtbx.utils.show_times_at_exit()
   parser = smtbx.development.space_group_option_parser()
@@ -166,6 +207,15 @@ def run(args):
     t.exercise(xray_structure=xs)
 
   else:
+    t = f_vs_f_sq_test_case(inelastic_scattering=True)
+    commands.loop_over_space_groups(t.exercise)
+
+    t = f_vs_f_sq_test_case(inelastic_scattering=True)
+    commands.loop_over_space_groups(t.exercise)
+
+    t = custom_vs_std_test_case(inelastic_scattering=None)
+    commands.loop_over_space_groups(t.exercise)
+
     t = smtbx_against_cctbx_test_case(inelastic_scattering=False)
     commands.loop_over_space_groups(t.exercise)
 
