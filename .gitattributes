@@ -709,6 +709,7 @@ smtbx/refinement/boost_python/SConscript -text
 smtbx/refinement/boost_python/minimization.cpp -text
 smtbx/refinement/boost_python/parameter_map.cpp -text
 smtbx/refinement/boost_python/refinement_ext.cpp -text
+smtbx/refinement/boost_python/weighting_schemes.cpp -text
 smtbx/refinement/constraints/__init__.py -text
 smtbx/refinement/constraints/boost_python/SConscript -text
 smtbx/refinement/constraints/boost_python/constraints_ext.cpp -text
@@ -726,6 +727,7 @@ smtbx/refinement/parameter_map.h -text
 smtbx/refinement/tests/__init__.py -text
 smtbx/refinement/tests/tst_minimization.py -text
 smtbx/refinement/tests/tst_minimization_at_random.py -text
+smtbx/refinement/weighting_schemes.h -text
 smtbx/run_tests.py -text
 smtbx/source_generators/__init__.py -text
 smtbx/source_generators/flex_fwd_h.py -text
