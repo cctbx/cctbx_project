@@ -1430,6 +1430,8 @@ def exercise_site_symmetry():
   ig = sc.independent_gradients(
     all_gradients=flex.double([0.1,0.2,0.5]))
   assert approx_equal(ig, [0.5])
+  ig = sc.independent_gradients((0.1,0.2,0.5))
+  assert approx_equal(ig, [0.5])
   ic = sc.independent_curvatures(
     all_curvatures=flex.double([0.1,0.2,0.5,0.3,0.2,-0.1]))
   assert approx_equal(ic, [-0.1])

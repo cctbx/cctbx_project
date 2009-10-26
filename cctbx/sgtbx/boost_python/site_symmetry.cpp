@@ -50,8 +50,14 @@ namespace {
         .def("all_params", &w_t::all_params, (
           arg_("independent_params")))
         .def("gradient_sum_matrix", gradient_sum_matrix_as_versa)
-        .def("independent_gradients", &w_t::independent_gradients, (
-          arg_("all_gradients")))
+        .def("independent_gradients",
+             (af::small<double, 3> (w_t::*)(af::const_ref<double> const&) const)
+             &w_t::independent_gradients,
+             (arg_("all_gradients")))
+        .def("independent_gradients",
+             (af::small<double, 3> (w_t::*)(scitbx::vec3<double> const&) const)
+             &w_t::independent_gradients,
+             (arg_("all_gradients")))
         .def("independent_curvatures", &w_t::independent_curvatures, (
           arg_("all_curvatures")))
       ;
