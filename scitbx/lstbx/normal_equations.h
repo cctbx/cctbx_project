@@ -4,6 +4,7 @@
 #define SCITBX_GAUSS_NEWTON_H
 
 #include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/array_family/owning_ref.h>
 #include <scitbx/matrix/cholesky.h>
 #include <scitbx/matrix/matrix_vector_operations.h>
@@ -136,7 +137,7 @@ namespace scitbx { namespace lstbx {
     /// Construct a least-squares problem with the given number of parameters
     /** That is the length of the vector \f$ x \f$ */
     normal_equations_separating_scale_factor(int n_parameters)
-      : yo_dot_yc(0), yc_sq(0), sum_w(0),
+      : yo_dot_yc(0), yc_sq(0), yo_sq(0), sum_w(0),
         n_params(n_parameters),
         a(n_parameters),
         yo_dot_grad_yc(n_parameters),
@@ -148,16 +149,21 @@ namespace scitbx { namespace lstbx {
      */
     void add_equation(scalar_t yc, af::const_ref<scalar_t> const &grad_yc,
                       scalar_t yo, scalar_t w)
-      {
-        SCITBX_ASSERT(grad_yc.size() == n_params);
-        add_equation(yc, grad_yc.begin(), yo, w);
-      }
+    {
+      SCITBX_ASSERT(grad_yc.size() == n_params);
+      add_equation(yc, grad_yc.begin(), yo, w);
+    }
 
     /// Overload for when efficiency is paramount.
     void add_equation(scalar_t yc, scalar_t const *grad_yc,
                       scalar_t yo, scalar_t w)
     {
       sum_w += w;
+      scalar_t yo_sq_old = yo_sq;
+      yo_sq += w * yo * yo;
+      if (yo_sq != yo_sq || std::abs(yo_sq) > 1.e20) {
+        SCITBX_EXAMINE(yo_sq_old);
+      }
       yo_dot_yc += w * yo * yc;
       yc_sq += w * yc * yc;
       double *pa = a.begin();
@@ -173,6 +179,26 @@ namespace scitbx { namespace lstbx {
     /// The separately optimised value of the scale factor, \f$ K^*(x) \f$
     scalar_t optimised_scale_factor() {
       return yo_dot_yc/yc_sq;
+    }
+
+    /** \brief The value of \f$L(K, x)\f$
+     for the optimised scale factor \f$ K^*(x) \f$
+     and the input \f$yc_(x)\f$.
+     */
+    scalar_t objective() {
+      scalar_t k_star_sq = std::pow(optimised_scale_factor(), 2);
+      scalar_t result = (yo_sq/sum_w) * (1 - (k_star_sq * yc_sq)/yo_sq);
+      if (result != result || std::abs(result) > 1.e20) {
+        SCITBX_EXAMINE(result);
+      }
+      return result;
+    }
+
+    /** \brief The value of \f$\nabla_x L(K^*(x), x)\f$ corresponding
+     to objective */
+    vector_t gradient() {
+      normal_equations<scalar_t> eqns = equations();
+      return eqns.right_hand_side()/sum_w;
     }
 
     /// The normal equation for the optimised overall scale factor.
@@ -196,14 +222,14 @@ namespace scitbx { namespace lstbx {
 
     /// Ready this for another computation of the normal equations
     void reset() {
-      yo_dot_yc = 0; yc_sq = 0; sum_w = 0;
+      yo_dot_yc = 0; yc_sq = 0; yo_sq = 0; sum_w = 0;
       std::fill(a.begin(), a.end(), scalar_t(0));
       std::fill(yo_dot_grad_yc.begin(), yo_dot_grad_yc.end(), scalar_t(0));
       std::fill(yc_dot_grad_yc.begin(), yc_dot_grad_yc.end(), scalar_t(0));
     }
 
   private:
-    scalar_t yo_dot_yc, yc_sq, sum_w;
+    scalar_t yo_dot_yc, yo_sq, yc_sq, sum_w;
     int n_params;
     symmetric_matrix_owning_ref_t a; // normal matrix stored
                                      // as packed upper diagonal

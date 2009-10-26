@@ -52,6 +52,8 @@ namespace scitbx { namespace lstbx { namespace boost_python {
         .def("add_equation", add_equation,
              (arg("y_calc"), arg("grad_y_calc"), arg("y_obs"), arg("weight")))
         .def("optimised_scale_factor", &wt::optimised_scale_factor)
+        .def("objective", &wt::objective)
+        .def("gradient", &wt::gradient)
         .def("equations", &wt::equations);
     }
   };
