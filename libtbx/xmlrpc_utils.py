@@ -112,7 +112,8 @@ class ServerProxy (object) :
         raise
       except Exception, e :
         msg = str(e)
-        if msg.startswith("[Errno 61]") or msg.startswith("[Errno 111]") :
+        if (msg.startswith("[Errno 61]") or msg.startswith("[Errno 111]") or
+            msg.startswith("[Errno 32]") or msg.startswith("[Error 54]")) :
           self._pending.insert(0, (methodname, params))
           break
         elif str(e).startswith("<ProtocolError ") :
@@ -120,7 +121,8 @@ class ServerProxy (object) :
           break
         else :
           print str(e)
-          raise
+          raise Exception("XMLRPC error: %s\nMethod: %s\nParams: %s\n" %
+            (str(e), str(methodname), ", ".join([ str(p) for p in params ])))
     return result
 
 
