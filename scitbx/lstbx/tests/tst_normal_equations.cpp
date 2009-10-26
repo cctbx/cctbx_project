@@ -35,7 +35,7 @@ struct linear_polynomial_fit
       double t2=t*t, t3=t*t2;
       double yc = -t3 + a*t2 + b*t + c;
       double grad_yc[n_params] = { t2, t, 1 };
-      ls.add_datum(yc, grad_yc, yo, w);
+      ls.add_equation(yc, grad_yc, yo, w);
     }
   }
 
@@ -46,9 +46,9 @@ struct linear_polynomial_fit
     {
       linear_polynomial_fit fit(1e-5);
       fit.compute(0.5, 0.3, 0.2);
-      symmetric_matrix_owning_ref_t a;
-      vector_owning_ref_t b;
-      boost::tie(a, b) = fit.ls.equations();
+      lstbx::normal_equations<double> normal_eqns = fit.ls.equations();
+      symmetric_matrix_owning_ref_t a = normal_eqns.normal_matrix();
+      vector_owning_ref_t b = normal_eqns.right_hand_side();
       // C.f. Mathematica notebook tst_normal_equations for how
       // these reference values have been obtained.
       symmetric_matrix_owning_ref_t a0(3);
@@ -105,7 +105,7 @@ struct linear_combination_fit
         grad_yc(2, k) += t3;
         grad_yc(3, k) += t4;
       }
-      ls.add_datum(yc.ref(), grad_yc, yo, w);
+      ls.add_equation(yc.ref(), grad_yc, yo, w);
     }
   }
 
@@ -118,9 +118,9 @@ struct linear_combination_fit
                           0.208033764252907,
                          -0.0543166780808711;
     SCITBX_ASSERT(a_star.all_approx_equal(a_star_0, 1e-14));
-    symmetric_matrix_owning_ref_t a;
-    vector_owning_ref_t b;
-    boost::tie(a, b) = fit.ls.equations();
+    lstbx::normal_equations<double> normal_eqns = fit.ls.equations();
+    symmetric_matrix_owning_ref_t a = normal_eqns.normal_matrix();
+    vector_owning_ref_t b = normal_eqns.right_hand_side();
 
     vector_owning_ref_t b0(n);
     af::init(b0) = 0.00542544409277865,   0.00539923674666925,

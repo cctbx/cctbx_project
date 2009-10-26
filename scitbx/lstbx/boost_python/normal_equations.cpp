@@ -7,39 +7,51 @@
 namespace scitbx { namespace lstbx { namespace boost_python {
 
   template <typename FloatType>
+  struct normal_equations_wrapper
+  {
+    typedef normal_equations<FloatType> wt;
+    typedef typename wt::symmetric_matrix_t symmetric_matrix_t;
+    typedef typename wt::vector_t vector_t;
+
+    static void wrap(char const *name) {
+      using namespace boost::python;
+      class_<wt>(name, no_init)
+        .def(init<int>(arg("n_parameters")))
+        .def(init<symmetric_matrix_t const &, vector_t const &>(
+             (arg("normal_matrix"), arg("right_hand_side"))))
+        .add_property("normal_matrix_packed_u", &wt::normal_matrix)
+        .add_property("right_hand_side", &wt::right_hand_side)
+        ;
+    }
+  };
+
+
+  template <typename FloatType>
   struct normal_equations_separating_scale_factor_wrapper
   {
     typedef normal_equations_separating_scale_factor<FloatType> wt;
     typedef typename wt::scalar_t scalar_t;
 
-    static void add_datum(wt &self,
-                          scalar_t yc, af::const_ref<scalar_t> const &grad_yc,
-                          scalar_t yo, scalar_t w)
+    static void add_equation(wt &self,
+                             scalar_t yc, af::const_ref<scalar_t> const &grad_yc,
+                             scalar_t yo, scalar_t w)
     {
-      self.add_datum(yc, grad_yc, yo, w);
-    }
-
-    static boost::python::tuple equations(wt &self) {
-      typename wt::symmetric_matrix_t a;
-      typename wt::vector_t b;
-      boost::tie(a, b) = self.equations();
-      af::flex_grid<> acc(a.accessor().size_1d());
-      af::versa<scalar_t, af::flex_grid<> > a_(a, acc);
-      return boost::python::make_tuple(a_, b);
+      self.add_equation(yc, grad_yc, yo, w);
     }
 
     static void wrap(char const *name) {
       using namespace boost::python;
       class_<wt>(name, no_init)
         .def(init<int>(arg("n_parameters")))
-        .def("add_datum", add_datum,
+        .def("add_equation", add_equation,
              (arg("y_calc"), arg("grad_y_calc"), arg("y_obs"), arg("weight")))
         .def("optimised_scale_factor", &wt::optimised_scale_factor)
-        .def("normal_matrix_packed_u_and_rhs", equations);
+        .def("equations", &wt::equations);
     }
   };
 
   void wrap_normal_equations() {
+    normal_equations_wrapper<double>::wrap("normal_equations");
     normal_equations_separating_scale_factor_wrapper<double>
       ::wrap("normal_equations_separating_scale_factor");
   }
