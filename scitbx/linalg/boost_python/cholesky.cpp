@@ -32,12 +32,16 @@ namespace scitbx { namespace matrix { namespace boost_python {
   {
     typedef cholesky::failure_info<double> wt;
 
+    static bool nonzero(wt const &self) {
+      return self.failed;
+    }
+
     static void wrap(char const *name) {
       using namespace boost::python;
       class_<wt>(name, no_init)
         .def_readonly("index", &wt::index)
         .def_readonly("value", &wt::value)
-        .def_readonly("failed", &wt::failed)
+        .def("__nonzero__", nonzero)
         ;
     }
   };

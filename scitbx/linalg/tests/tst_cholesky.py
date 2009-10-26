@@ -25,7 +25,7 @@ def exercise_scitbx_cholesky_decomposition(a):
   chol = scitbx.linalg.l_l_transpose_cholesky_decomposition_in_place(al)
   cl = al
   if (c is None):
-    assert chol.failure.failed
+    assert chol.failure
   else:
     assert approx_equal(cl, c.matrix_lower_triangle_as_packed_l())
     for i_trial in xrange(10):
