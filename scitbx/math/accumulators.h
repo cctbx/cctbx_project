@@ -45,7 +45,7 @@ class enumerated_accumulator
 };
 
 
-template<typename FloatType, class Previous>
+template<typename FloatType, class Previous=null_accumulator<FloatType> >
 class min_max_accumulator : public Previous
 {
   public:
@@ -69,7 +69,7 @@ class min_max_accumulator : public Previous
 };
 
 
-template<typename FloatType, class Previous>
+template<typename FloatType, class Previous=null_accumulator<FloatType> >
 class mean_variance_accumulator : public Previous
 {
   public:
@@ -159,7 +159,7 @@ class normalised_deviation_accumulator : public deviation_accumulator<FloatType>
 };
 
 
-template<typename FloatType, class Previous>
+template<typename FloatType, class Previous=null_accumulator<FloatType> >
 class skewness_accumulator : public Previous
 {
   public:
@@ -181,7 +181,7 @@ class skewness_accumulator : public Previous
     FloatType skewness_;
 };
 
-template<typename FloatType, class Previous>
+template<typename FloatType, class Previous=null_accumulator<FloatType> >
 class kurtosis_accumulator : public Previous
 {
   public:
@@ -204,7 +204,7 @@ class kurtosis_accumulator : public Previous
     FloatType kurtosis_;
 };
 
-template<typename FloatType, class Previous>
+template<typename FloatType, class Previous=null_accumulator<FloatType> >
 class mean_absolute_deviation_accumulator : public Previous
 {
   public:
