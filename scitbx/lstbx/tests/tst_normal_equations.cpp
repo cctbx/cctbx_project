@@ -46,6 +46,8 @@ struct linear_polynomial_fit
     {
       linear_polynomial_fit fit(1e-5);
       fit.compute(0.5, 0.3, 0.2);
+      SCITBX_ASSERT(
+        approx_equal(fit.ls.objective(), 0.007928541506865207, 5e-14));
       lstbx::normal_equations<double> normal_eqns = fit.ls.equations();
       symmetric_matrix_owning_ref_t a = normal_eqns.normal_matrix();
       vector_owning_ref_t b = normal_eqns.right_hand_side();
