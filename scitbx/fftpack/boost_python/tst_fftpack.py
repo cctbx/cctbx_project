@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx import fftpack
 from scitbx.array_family import flex
 import omptbx # initializes OpenMP environment
@@ -139,6 +140,31 @@ def test_real_to_complex(verbose):
   for i in xrange(0, fft.n_real(), 2):
     assert tuple(y[i:i+2]) == (1, -1)
 
+def exercise_real_to_complex_padding_area():
+  mt = flex.mersenne_twister(seed=1)
+  for n_real in xrange(1,101):
+    fft = fftpack.real_to_complex(n_real)
+    assert fft.n_real() == n_real
+    assert fft.n_complex() == n_real // 2 + 1
+    assert fft.m_real() == fft.n_complex() * 2
+    m_real = fft.m_real()
+    z = mt.random_double(size=m_real)*2-1 # non-zero values in padded area
+    c = z.deep_copy()
+    fft.forward(c)
+    if (n_real % 2 == 0):
+      assert approx_equal(c[-1], 0) # imaginary part of last complex value
+    r = c.deep_copy()
+    fft.backward(r)
+    r *= (1/n_real)
+    assert approx_equal(r[:n_real], z[:n_real])
+    if (n_real % 2 == 0):
+      assert approx_equal(r[n_real:], [0,0])
+      q = c.deep_copy()
+      q[-1] = 123 # random imaginary part (which should be zero)
+      fft.backward(q)
+      q *= (1/n_real)
+      assert approx_equal(q, r) # obtain zeros in padded area anyway
+
 def test_real_to_complex_3d(verbose):
   for nx in [3,4]:
     for ny in [4,5]:
@@ -146,7 +172,7 @@ def test_real_to_complex_3d(verbose):
         fft = fftpack.real_to_complex_3d((nx,ny,nz))
         m = fft.m_real()
         vd = flex.double(flex.grid(m))
-        vc = flex.complex_double(flex.grid((m[0], m[1], m[2]/2)))
+        vc = flex.complex_double(flex.grid((m[0], m[1], m[2]//2)))
         assert vd.size() == 2 * vc.size()
         for i in xrange(vd.size()):
           vd[i] = random.random()*2-1
@@ -233,6 +259,7 @@ def run():
   test_real_to_complex(flags.Verbose)
   test_complex_to_complex_3d(flags.Verbose)
   test_real_to_complex_3d(flags.Verbose)
+  exercise_real_to_complex_padding_area()
   max_transform_size = 300
   test_comprehensive_cc_1d(max_transform_size)
   test_comprehensive_rc_1d(max_transform_size)

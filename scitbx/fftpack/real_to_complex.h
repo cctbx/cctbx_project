@@ -287,7 +287,7 @@ namespace scitbx { namespace fftpack {
     // last complex number in the sequence is also always zero.
     // FFTPACK does not set this imaginary part. It is done here
     // instead.
-    if (n_ % 2 == 0) {
+    if ((n_ & 1) == 0) {
       seq_begin[n_ + 1] = real_type(0);
     }
   }
@@ -307,6 +307,14 @@ namespace scitbx { namespace fftpack {
     real_type* seq_begin,
     real_type* scratch)
   {
+    if ((n_ & 1) == 0) {
+      // If the transform length is even, the imaginary part of the
+      // last complex number in the sequence is always zero.
+      // fftpack produces the correct result even if this is not the
+      // case for the input sequence, but the corresponding value is
+      // used in floating-point operations. Resetting here for safety.
+      seq_begin[n_ + 1] = real_type(0);
+    }
     // The imaginary part of the first coefficient is always zero.
     // FFTPACK uses this knowledge to conserve space: the sequence
     // of floating point numbers is shifted down one real-sized slot.
