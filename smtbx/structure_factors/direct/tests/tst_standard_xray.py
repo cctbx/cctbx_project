@@ -191,6 +191,40 @@ class f_vs_f_sq_test_case(test_case):
       assert two_f_grad_f.all_approx_equal_relatively(grad_f_sq,
                                                       relative_error=1e-14)
 
+
+def exercise_trigonometric_ff():
+  from math import cos, sin,pi
+  sgi = sgtbx.space_group_info("P1")
+  cs = sgi.any_compatible_crystal_symmetry(volume=1000)
+  miller_set = miller.build_set(cs, anomalous_flag=False, d_min=1)
+  miller_set = miller_set.select(flex.random_double(miller_set.size()) < 0.2)
+  for i in xrange(5):
+    sites = flex.random_double(9)
+    x1, x2, x3 = (matrix.col(sites[:3]),
+                  matrix.col(sites[3:6]),
+                  matrix.col(sites[6:]))
+    xs = xray.structure(crystal.special_position_settings(cs))
+    for x in (x1, x2, x3):
+      sc = xray.scatterer(site=x, scattering_type="const")
+      sc.flags.set_grad_site(True)
+      xs.add_scatterer(sc)
+    f_sq_linearisation = (
+        structure_factors.linearisation_of_f_calc_modulus_squared(xs))
+    for h in miller_set.indices():
+      h = matrix.col(h)
+      phi1, phi2, phi3 = 2*pi*h.dot(x1), 2*pi*h.dot(x2), 2*pi*h.dot(x3)
+      fc_mod_sq = 3 + 2*(cos(phi1 - phi2) + cos(phi2 - phi3) + cos(phi3 - phi1))
+      g = []
+      g.extend( -2*(sin(phi1 - phi2) - sin(phi3 - phi1))*2*pi*h )
+      g.extend( -2*(sin(phi2 - phi3) - sin(phi1 - phi2))*2*pi*h )
+      g.extend( -2*(sin(phi3 - phi1) - sin(phi2 - phi3))*2*pi*h )
+      grad_fc_mod_sq = g
+
+      f_sq_linearisation.compute(h)
+      assert approx_equal(f_sq_linearisation.observable, fc_mod_sq)
+      assert approx_equal(f_sq_linearisation.grad_observable, grad_fc_mod_sq)
+
+
 def run(args):
   libtbx.utils.show_times_at_exit()
   parser = smtbx.development.space_group_option_parser()
@@ -207,6 +241,8 @@ def run(args):
     t.exercise(xray_structure=xs)
 
   else:
+    exercise_trigonometric_ff()
+
     t = f_vs_f_sq_test_case(inelastic_scattering=True)
     commands.loop_over_space_groups(t.exercise)
 

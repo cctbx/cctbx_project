@@ -425,6 +425,17 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
   namespace one_h_linearisation {
 
+    /** @brief Linearisation of \f$F_c(h)\f$ and of a derived observable,
+               for any miller index h,
+               as functions of crystallographic parameters.
+
+        The observable is modelled by the type ObservableType, two examples
+        of which are the class modulus and modulus_squared in this namespace.
+
+        This class is a CRTP: class Heir should be a heir of this class
+        and provide a member exp_i_2pi of type ExpI2PiFunctor to compute
+        \f$\exp i2\pi x\f$.
+     */
     template <typename FloatType, bool compute_grad,
               template<typename, bool> class ObservableType,
               template<typename> class ExpI2PiFunctor,
@@ -438,6 +449,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       typedef ExpI2PiFunctor<float_type> exp_i_2pi_functor;
 
     protected:
+      cctbx::xray::scatterer_grad_flags_counts grad_flags_counts;
       uctbx::unit_cell const &unit_cell;
       sgtbx::space_group const &space_group;
       bool origin_centric_case;
@@ -454,30 +466,45 @@ namespace smtbx { namespace structure_factors { namespace direct {
       af::ref_owning_shared<float_type> grad_observable;
 
     public:
-      base(std::size_t n_parameters,
-           uctbx::unit_cell const &unit_cell,
+      /** @brief The linearisation of \f$F_c\f$ for the given structure
+                 is to be computed.
+
+          After construction, only the value of the refined parameters may
+          change. That is, any of the following operations are forbidden:
+
+            - adding or removing scatterers
+            - changing the scattering type of a scatterer
+            - disabling the refinement of some parameters
+            - enabling the refinement of some parameters
+
+          Not only the computation will be incorrect but illegal memory
+          accesses will be prone to occur.
+       */
+      base(uctbx::unit_cell const &unit_cell,
            sgtbx::space_group const &space_group,
            af::shared< xray::scatterer<float_type> > const &scatterers,
            xray::scattering_type_registry const &scattering_type_registry)
 
-        : unit_cell(unit_cell),
+        : grad_flags_counts(scatterers.const_ref()),
+          unit_cell(unit_cell),
           space_group(space_group),
           origin_centric_case( space_group.is_origin_centric() ),
           scatterers(scatterers),
           scattering_type_registry(scattering_type_registry),
           scattering_type_indices(
             scattering_type_registry.unique_indices(this->scatterers) ),
-          grad_f_calc(n_parameters, af::init_functor_null<complex_type>()),
-          grad_observable(n_parameters, af::init_functor_null<float_type>())
+          grad_f_calc(grad_flags_counts.n_parameters(),
+                      af::init_functor_null<complex_type>()),
+          grad_observable(grad_flags_counts.n_parameters(),
+                          af::init_functor_null<float_type>())
       {}
 
+      /// Compute the linearisation
       void compute(miller::index<> const &h)
       {
         float_type d_star_sq = unit_cell.d_star_sq(h);
         af::shared<float_type> elastic_form_factors
           = scattering_type_registry.unique_form_factors_at_d_star_sq(d_star_sq);
-        f_calc = 0;
-        grad_f_calc_cursor = grad_f_calc.begin();
 
         Heir &heir = static_cast<Heir &>(*this);
 
@@ -504,41 +531,40 @@ namespace smtbx { namespace structure_factors { namespace direct {
     private:
       template <class LinearisationForMillerIndex>
       void compute(af::const_ref<float_type> const &elastic_form_factors,
-                   LinearisationForMillerIndex &linearisation_for_h)
+                   LinearisationForMillerIndex &l)
       {
+        f_calc = 0;
+        grad_f_calc_cursor = grad_f_calc.begin();
+
         for (int j=0; j < scatterers.size(); ++j) {
+          xray::scatterer<> const &sc = scatterers[j];
           float_type f0 = elastic_form_factors[ scattering_type_indices[j] ];
-          linearisation_for_h.compute(scatterers[j], f0);
-          update(scatterers[j], linearisation_for_h);
+          l.compute(sc, f0);
+
+          f_calc += l.structure_factor;
+
+          if (!compute_grad) continue;
+
+          if (sc.flags.grad_site()) {
+            for (int j=0; j<3; ++j) {
+              *grad_f_calc_cursor++ = l.grad_site[j];
+            }
+          }
+          if (sc.flags.use_u_iso() && sc.flags.grad_u_iso()) {
+            *grad_f_calc_cursor++ = l.grad_u_iso;
+          }
+          if (sc.flags.use_u_aniso() && sc.flags.grad_u_aniso()) {
+            for (int j=0; j<6; ++j) {
+              *grad_f_calc_cursor++ = l.grad_u_star[j];
+            }
+          }
+          if (sc.flags.grad_occupancy()) {
+            *grad_f_calc_cursor++ = l.grad_occ;
+          }
         }
         observable_type::compute(origin_centric_case,
                                  f_calc, grad_f_calc,
                                  observable, grad_observable);
-      }
-
-      void update(xray::scatterer<float_type> const &sc,
-                  one_scatterer_one_h_linearisation::core<float_type> const &l)
-      {
-        f_calc += l.structure_factor;
-
-        if (!compute_grad) return;
-
-        if (sc.flags.grad_site()) {
-          for (int j=0; j<3; ++j) {
-            *grad_f_calc_cursor++ = l.grad_site[j];
-          }
-        }
-        if (sc.flags.use_u_iso() && sc.flags.grad_u_iso()) {
-          *grad_f_calc_cursor++ = l.grad_u_iso;
-        }
-        if (sc.flags.use_u_aniso() && sc.flags.grad_u_aniso()) {
-          for (int j=0; j<6; ++j) {
-            *grad_f_calc_cursor++ = l.grad_u_star[j];
-          }
-        }
-        if (sc.flags.grad_occupancy()) {
-          *grad_f_calc_cursor++ = l.grad_occ;
-        }
       }
     };
 
@@ -561,15 +587,13 @@ namespace smtbx { namespace structure_factors { namespace direct {
       ExpI2PiFunctor<float_type> const &exp_i_2pi;
 
       custom_trigonometry(
-        std::size_t n_parameters,
         uctbx::unit_cell const &unit_cell,
         sgtbx::space_group const &space_group,
         af::shared< xray::scatterer<float_type> > const &scatterers,
         xray::scattering_type_registry const &scattering_type_registry,
         ExpI2PiFunctor<float_type> const &exp_i_2pi)
 
-        : base_t(n_parameters, unit_cell, space_group, scatterers,
-                 scattering_type_registry),
+        : base_t(unit_cell, space_group, scatterers, scattering_type_registry),
           exp_i_2pi(exp_i_2pi)
       {}
     };
@@ -596,14 +620,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
       cctbx::math::cos_sin_exact<float_type> exp_i_2pi;
 
       std_trigonometry(
-        std::size_t n_parameters,
-                                uctbx::unit_cell const &unit_cell,
-                                sgtbx::space_group const &space_group,
-                                af::shared< xray::scatterer<float_type> > const &scatterers,
-                                xray::scattering_type_registry const &scattering_type_registry)
+        uctbx::unit_cell const &unit_cell,
+        sgtbx::space_group const &space_group,
+        af::shared< xray::scatterer<float_type> > const &scatterers,
+        xray::scattering_type_registry const &scattering_type_registry)
 
-        : base_t(n_parameters, unit_cell, space_group, scatterers,
-                 scattering_type_registry)
+        : base_t(unit_cell, space_group, scatterers, scattering_type_registry)
       {}
     };
 

@@ -65,8 +65,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         std::string name(core_name);
         name += std::string("_with_custom_trigonometry");
         linearisation_class_<wt>(name)
-          .def(init<std::size_t,
-                    uctbx::unit_cell const &,
+          .def(init<uctbx::unit_cell const &,
                     sgtbx::space_group const &,
                     af::shared< xray::scatterer<float_type> > const &,
                     xray::scattering_type_registry const &,
@@ -89,8 +88,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         std::string name(core_name);
         name += std::string("_with_std_trigonometry");
         linearisation_class_<wt>(name)
-          .def(init<std::size_t,
-                    uctbx::unit_cell const &,
+          .def(init<uctbx::unit_cell const &,
                     sgtbx::space_group const &,
                     af::shared< xray::scatterer<float_type> > const &,
                     xray::scattering_type_registry const &>
