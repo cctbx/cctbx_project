@@ -2617,6 +2617,13 @@ def exercise_c_grid_flex_conversion():
   a.resize(flex.grid((2,3,4)))
   assert flex.tst_c_grid_flex_conversion(a, -1,4,-2) == a[1,1,2]
 
+def exercise_versa_packed_u_to_flex():
+  assert flex.exercise_versa_packed_u_to_flex() == flex.double(
+    (11, 12, 13,
+         22, 23,
+             33)
+  )
+
 def exercise_triangular_systems():
   for n in xrange(1,5):
     a = flex.random_double(n*(n+1)/2)
@@ -2650,6 +2657,7 @@ def exercise_approx_equal():
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_versa_packed_u_to_flex()
     exercise_quadratic_form()
     exercise_approx_equal()
     exercise_triangular_systems()

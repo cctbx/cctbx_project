@@ -4,7 +4,7 @@
 #include <scitbx/matrix/norms.h>
 #include <scitbx/matrix/move.h>
 #include <scitbx/matrix/matrix_vector_operations.h>
-#include <scitbx/array_family/boost_python/ref_flex_conversions.h>
+#include <scitbx/array_family/boost_python/packed_to_flex_conversions.h>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
@@ -34,6 +34,13 @@ namespace {
       }
     }
   }
+
+  versa<double, matrix::packed_u_accessor> exercise_versa_packed_u_to_flex() {
+    versa<double, matrix::packed_u_accessor> result(3);
+    for (int i=0; i<3; ++i) for (int j=i; j<3; ++j) result(i,j) = 10*(i+1) + j+1;
+    return result;
+  }
+
 
   bool
   is_square_matrix(
@@ -126,10 +133,9 @@ namespace boost_python {
     flex_wrapper<double>::class_f_t& class_f_t)
   {
     exercise_packed_u_accessor();
-    ref_from_flex<const_ref<double, matrix::packed_u_accessor>,
-                  packed_u_size_functor>();
-    ref_from_flex<ref<double, matrix::packed_u_accessor>,
-                  packed_u_size_functor>();
+    default_packed_flex_conversions<double>();
+    boost::python::def("exercise_versa_packed_u_to_flex",
+                       exercise_versa_packed_u_to_flex);
 
     using namespace boost::python;
 
