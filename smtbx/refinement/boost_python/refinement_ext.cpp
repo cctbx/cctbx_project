@@ -5,11 +5,13 @@ namespace smtbx { namespace refinement {
 namespace boost_python {
   void wrap_parameter_map();
   void wrap_minimization();
+  void wrap_weighting_schemes();
 
   namespace {
     void init_module() {
       wrap_parameter_map();
       wrap_minimization();
+      wrap_weighting_schemes();
     }
   }
 
