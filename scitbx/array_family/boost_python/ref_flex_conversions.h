@@ -4,12 +4,27 @@
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/boost_python/utils.h>
+#include <scitbx/matrix/packed.h>
 #include <boost/python/object.hpp>
 #include <boost/python/extract.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  template <typename RefType>
+  struct trivial_size_functor
+  {
+    static std::size_t get(std::size_t sz) {
+      return sz;
+    }
+  };
+
+  struct packed_u_size_functor
+  {
+    static std::size_t get(std::size_t sz) {
+      return matrix::symmetric_n_from_packed_size(sz);
+    }
+  };
+
+  template <typename RefType, class SizeFunctor=trivial_size_functor>
   struct ref_from_flex
   {
     typedef typename RefType::value_type element_type;
@@ -54,7 +69,7 @@ namespace scitbx { namespace af { namespace boost_python {
         if (!a.check_shared_size()) raise_shared_size_mismatch();
         assert(a.accessor().is_trivial_1d());
         bg = a.begin();
-        sz = a.size();
+        sz = SizeFunctor::get(a.size());
       }
       void* storage = (
         (boost::python::converter::rvalue_from_python_storage<RefType>*)
@@ -63,6 +78,7 @@ namespace scitbx { namespace af { namespace boost_python {
       data->convertible = storage;
     }
   };
+
 
   template <typename RefType>
   struct ref_flex_grid_from_flex

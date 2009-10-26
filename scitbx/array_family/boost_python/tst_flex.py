@@ -2346,6 +2346,15 @@ def exercise_matrix_bidiagonal():
     assert list(d) == [ a[i,i] for i in xrange(len(d)) ]
     assert list(f) == [ a[i+1,i] for i in xrange(len(f)) ]
 
+def exercise_quadratic_form():
+  for n in xrange(1,10):
+    a = flex.random_double(n*(n+1)//2)
+    x = flex.double(n)
+    s = a.matrix_symmetric_upper_triangle_quadratic_form(x)
+    s1 = matrix.col(x).dot(
+      matrix.sqr(a.matrix_packed_u_as_symmetric())*matrix.col(x))
+    assert approx_equal(s, s1)
+
 def exercise_matrix_inversion_in_place():
   m = flex.double()
   m.resize(flex.grid(0,0))
@@ -2641,6 +2650,7 @@ def exercise_approx_equal():
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_quadratic_form()
     exercise_approx_equal()
     exercise_triangular_systems()
     exercise_copy_upper_or_lower_triangle()
