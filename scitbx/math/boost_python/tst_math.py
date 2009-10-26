@@ -1788,8 +1788,20 @@ def exercise_distributions():
       (-1.4915762442496054, -0.69981206131243145, -0.21599563333226371,
        0.21599563333226388, 0.69981206131243145, 1.4915762442496057))
 
+def exercise_approx_equal():
+  from scitbx.math import double_numeric_limits as limits
+  from scitbx.math import approx_equal_relatively
+
+  # This would fail with a naive relative test for such tiny numbers
+  assert approx_equal_relatively(-limits.min/2, limits.min/2,
+                                 relative_error=1)
+  # vanilla relative difference test
+  assert approx_equal_relatively(0.9999, 1., 0.0001)
+  assert approx_equal_relatively(0.9997 + 0.0004j, 1., 0.0005)
+
 def run():
   exercise_distributions()
+  exercise_approx_equal()
   exercise_median()
   exercise_numeric_limits()
   exercise_continued_fraction()
