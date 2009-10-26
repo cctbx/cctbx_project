@@ -14,6 +14,7 @@
 #include <scitbx/math/euler_angles.h>
 #include <scitbx/math/gcd.h>
 #include <boost/rational.hpp> // for boost::gcd
+#include <scitbx/math/approx_equal.h>
 
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
@@ -226,6 +227,15 @@ namespace {
     return euler_angles::zyz_angles( m, eps );
   }
 
+  template <typename T>
+  bool approx_equal_relatively(
+                               T const &x, T const &y,
+                               typename math::approx_equal_relatively<T>::amplitude_type relative_error)
+  {
+    math::approx_equal_relatively<T> p(relative_error);
+    return p(x, y);
+  }
+
   void init_module()
   {
     using namespace boost::python;
@@ -374,6 +384,12 @@ namespace {
           math::nearest_phase, (
             arg_("reference"), arg_("other"), arg_("deg")=false));
     def("divmod", math::divmod);
+    def("approx_equal_relatively",
+        approx_equal_relatively<double>,
+        args("x", "y", "relative_error"));
+    def("approx_equal_relatively",
+        approx_equal_relatively<std::complex<double> >,
+        args("x", "y", "relative_error"));
   }
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>

@@ -561,6 +561,7 @@ scitbx/lstbx/SConscript -text
 scitbx/lstbx/normal_equations.h -text
 scitbx/lstbx/tests/tst_normal_equations.cpp -text
 scitbx/math/accumulators.h -text
+scitbx/math/approx_equal.h -text
 scitbx/math/besselk.py -text
 scitbx/math/boost_python/__init__.py -text
 scitbx/math/boost_python/continued_fraction.cpp -text
@@ -585,6 +586,7 @@ scitbx/math/sphere_sphere_intersection.py svneol=native#text/x-python
 scitbx/math/superpose.h -text
 scitbx/math/tests/SConscript -text
 scitbx/math/tests/tst.cpp -text
+scitbx/math/traits.h -text
 scitbx/math/tst_fit_peak.py -text
 scitbx/matrix/bidiagonalisation_flops.nb -text
 scitbx/matrix/delta_tensors.h -text
