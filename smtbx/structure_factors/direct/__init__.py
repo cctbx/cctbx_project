@@ -5,8 +5,7 @@ class constructed_with_xray_structure(object):
 
   def __init__(self, xray_structure, *args, **kwds):
     xs = xray_structure
-    args = (xs.n_parameters_XXX(),
-            xs.unit_cell(),
+    args = (xs.unit_cell(),
             xs.space_group(),
             xs.scatterers(),
             xs.scattering_type_registry()) + args
@@ -37,7 +36,6 @@ class linearisation_of_f_calc_modulus_with_custom_trigonometry(
 
 def linearisation_of_f_calc_modulus_squared(xray_structure,
                                             exp_i_2pi_functor=None):
-
   if exp_i_2pi_functor is None:
     return linearisation_of_f_calc_modulus_squared_with_std_trigonometry(
       xray_structure)
