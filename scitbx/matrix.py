@@ -707,6 +707,14 @@ robotics and classical mechanics literature.
      v2,   0, -v0,
     -v1,  v0,   0))
 
+def sum(iterable):
+  """ The sum of the given sequence of matrices """
+  sequence = iter(iterable)
+  result = sequence.next()
+  for m in sequence:
+    result += m
+  return result
+
 class rt(object):
 
   def __init__(self, tuple_r_t):
