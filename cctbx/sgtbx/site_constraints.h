@@ -171,6 +171,13 @@ namespace cctbx { namespace sgtbx {
         return result;
       }
 
+      af::small<FloatType, 3>
+      independent_gradients(scitbx::vec3<FloatType> const& all_gradients) const
+      {
+        return independent_gradients(all_gradients.const_ref());
+      }
+
+
       /*! \brief Matrix product:
               gradient_sum_matrix
             * all_curvatures
