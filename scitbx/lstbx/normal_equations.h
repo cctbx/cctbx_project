@@ -7,7 +7,6 @@
 #include <scitbx/array_family/owning_ref.h>
 #include <scitbx/matrix/cholesky.h>
 #include <scitbx/matrix/matrix_vector_operations.h>
-#include <boost/tuple/tuple.hpp>
 
 namespace scitbx { namespace lstbx {
 
@@ -29,84 +28,85 @@ namespace scitbx { namespace lstbx {
     typedef af::ref<scalar_t> vector_ref_t;
 
 
-  /// Normal equations for linear least-squares
+  /// Normal equations for linear and non-linear least-squares
   /** The least-squares target reads
 
-      \f$ L(x) = \| A x - b \|^2 \f$
+      \f$ L(x) = \| A x - b \|^2 + \sum \|r(x)\|^2\f$
 
       where the norm is diagonal-weighted
 
       \f$ \| y \|^2 = \sum_i w_i y_i^2 \f$
+
+      and \f$r(x)\f$ is a vector of residuals.
   */
   template <typename FloatType>
-  class normal_equations_for_linear_least_squares
+  class normal_equations
   {
   public:
     SCITBX_LSTBX_DECLARE_ARRAY_TYPE(FloatType);
 
-    /// Construct a linear least-squares problem with the given number of unknowns
-    normal_equations_for_linear_least_squares(int n_parameters)
-      : n_params(n_parameters), a(n_params), right_hand_side(n_params)
+    /// Construct a least-squares problem with the given number of unknowns.
+    normal_equations(int n_parameters)
+      : n_params(n_parameters),
+        normal_matrix_(n_params),
+        right_hand_side_(n_params),
+        r_sq(0)
     {}
 
-    /// Add the equation \f$ A_i.^T x = b_i \f$
-    void add_equation(scalar_t b,
+    /// Initialise the least-squares problem with the given normal matrix a
+    /// and right hand side b
+    normal_equations(symmetric_matrix_t const &a,
+                     vector_t const &b)
+      : n_params(a.accessor().n),
+        normal_matrix_(a),
+        right_hand_side_(b),
+        r_sq(0)
+    {
+      SCITBX_ASSERT(a.accessor().n == b.size());
+    }
+
+    /// Add the equation \f$ A_{i.}^T x = b_i \f$
+    void add_equation(scalar_t b_i,
                       af::const_ref<scalar_t> const &a_row,
                       scalar_t w)
     {
-      double *p = a.begin();
+      double *p = normal_matrix_.begin();
       for (int i=0; i<n_params; ++i)  {
-        right_hand_side[i] += w * a_row[i] * b;
+        right_hand_side_[i] += w * a_row[i] * b_i;
         for (int j=i; j<n_params; ++j) *p++ += w * a_row[i] * a_row[j];
       }
     }
 
-    boost::tuple<symmetric_matrix_t, vector_t> equations() {
-      return boost::make_tuple(a.array(), right_hand_side.array());
-    }
-
-  private:
-    int n_params;
-    symmetric_matrix_owning_ref_t a;
-    vector_owning_ref_t right_hand_side;
-  };
-
-
-  /// Normal equations for generic non-linear least-squares
-  /** The least-squares target reads
-
-      \f$ L(x) = \sum r(x)^2 \f$
-
-      where \f$ r \f$ is the vector of residuals.
-  */
-  template <typename FloatType>
-  class normal_equations_for_generic_residuals
-  {
-  public:
-    SCITBX_LSTBX_DECLARE_ARRAY_TYPE(FloatType);
-
-    normal_equations_for_generic_residuals(int n_parameters)
-      : n_params(n_parameters), a(n_params), b(n_params)
-    {}
-
-    void add_datum(scalar_t r, af::const_ref<scalar_t> const &grad_r) {
+    /// Add the linearisation of the equation \f$r_i(x) = 0\f$
+    void add_equation(scalar_t r, af::const_ref<scalar_t> const &grad_r) {
       r_sq += r*r;
-      double *p = a.begin();
+      scalar_t *p = normal_matrix_.begin();
       for (int i=0; i<n_params; ++i) {
-        b[i] -= r*grad_r[i];
+        right_hand_side_[i] -= r*grad_r[i];
         for (int j=i; j<n_params; ++j) *p++ += grad_r[i]*grad_r[j];
       }
     }
 
-    boost::tuple<symmetric_matrix_t, vector_t> equations() {
-      return boost::make_tuple(a.array(), b.array());
+    /// Reset the state to construction time, i.e. no equations accumulated
+    void reset() {
+      std::fill(normal_matrix_.begin(), normal_matrix_.end(), scalar_t(0));
+      std::fill(right_hand_side_.begin(), right_hand_side_.end(), scalar_t(0));
+      r_sq = 0;
+    }
+
+    symmetric_matrix_t normal_matrix() {
+      return normal_matrix_.array();
+    }
+
+    vector_t right_hand_side() {
+      return right_hand_side_.array();
     }
 
   private:
     int n_params;
     scalar_t r_sq;
-    symmetric_matrix_owning_ref_t a;
-    vector_owning_ref_t b;
+    symmetric_matrix_owning_ref_t normal_matrix_;
+    vector_owning_ref_t right_hand_side_;
   };
 
 
@@ -143,18 +143,19 @@ namespace scitbx { namespace lstbx {
         yc_dot_grad_yc(n_parameters)
     {}
 
-    /// Add the data yo with the weight w and the corresponding value of the
-    /// model yc and its gradient.
-    void add_datum(scalar_t yc, af::const_ref<scalar_t> const &grad_yc,
-                     scalar_t yo, scalar_t w)
+    /** \brief Add the linearisation of the equation
+         \f$y_{c,i} \propto y_{o,i}\f$ with weight w.
+     */
+    void add_equation(scalar_t yc, af::const_ref<scalar_t> const &grad_yc,
+                      scalar_t yo, scalar_t w)
       {
         SCITBX_ASSERT(grad_yc.size() == n_params);
-        add_datum(yc, grad_yc.begin(), yo, w);
+        add_equation(yc, grad_yc.begin(), yo, w);
       }
 
     /// Overload for when efficiency is paramount.
-    void add_datum(scalar_t yc, scalar_t const *grad_yc,
-                   scalar_t yo, scalar_t w)
+    void add_equation(scalar_t yc, scalar_t const *grad_yc,
+                      scalar_t yo, scalar_t w)
     {
       sum_w += w;
       yo_dot_yc += w * yo * yc;
@@ -174,9 +175,8 @@ namespace scitbx { namespace lstbx {
       return yo_dot_yc/yc_sq;
     }
 
-    /// The normal equation as a pair (A,b), the normal matrix A and
-    /// the right-hand side b.
-    boost::tuple<symmetric_matrix_t, vector_t> equations() {
+    /// The normal equation for the optimised overall scale factor.
+    normal_equations<scalar_t> equations() {
       scalar_t inv_k = 1/optimised_scale_factor();
       scalar_t inv_yc_norm = 1/std::sqrt(yc_sq);
       vector_ref_t alpha = yc_dot_grad_yc.ref();
@@ -191,7 +191,7 @@ namespace scitbx { namespace lstbx {
       for (int i=0; i<n_params; ++i) for (int j=i; j<n_params; ++j) {
         *pa++ -= alpha[i]*alpha[j];
       }
-      return boost::make_tuple(a.array(), b.array());
+      return normal_equations<scalar_t>(a.array(), b.array());
     }
 
     /// Ready this for another computation of the normal equations
@@ -245,9 +245,9 @@ namespace scitbx { namespace lstbx {
         has_solved_separable_linear_part(false)
     {}
 
-    void add_datum(af::const_ref<scalar_t> const &yc,
-                   af::const_ref<scalar_t, af::mat_grid> const &grad_yc,
-                   scalar_t yo, scalar_t w)
+    void add_equation(af::const_ref<scalar_t> const &yc,
+                      af::const_ref<scalar_t, af::mat_grid> const &grad_yc,
+                      scalar_t yo, scalar_t w)
     {
       sum_w += w;
       linear_part.add_equation(yo, yc, w);
@@ -276,7 +276,7 @@ namespace scitbx { namespace lstbx {
       return a_star.array();
     }
 
-    boost::tuple<symmetric_matrix_t, vector_t> equations() {
+    normal_equations<scalar_t> equations() {
       using namespace scitbx::matrix;
       if(!has_solved_separable_linear_part) optimise_separable_linear_part();
 
@@ -305,15 +305,14 @@ namespace scitbx { namespace lstbx {
         grad_yc_tr_grad_yc += p*p;
       }
 
-      return boost::make_tuple(a.array(), b.array());
+      return normal_equations<scalar_t>(a.array(), b.array());
     }
 
   private:
     void optimise_separable_linear_part() {
       using namespace scitbx::matrix;
-      symmetric_matrix_owning_ref_t lin_a;
-      vector_owning_ref_t lin_b;
-      boost::tie(lin_a, lin_b) = linear_part.equations();
+      symmetric_matrix_owning_ref_t lin_a = linear_part.normal_matrix();
+      vector_owning_ref_t lin_b = linear_part.right_hand_side();
       cholesky::u_transpose_u_decomposition_in_place<scalar_t> chol(lin_a);
       SCITBX_ASSERT(!chol.failure);
       lin_u = lin_a.array();
@@ -325,7 +324,7 @@ namespace scitbx { namespace lstbx {
     int n;
     int p;
 
-    normal_equations_for_linear_least_squares<scalar_t> linear_part;
+    normal_equations<scalar_t> linear_part;
 
     scalar_t sum_w;
     af::ref_owning_shared<scalar_t> grad_yc_trans_grad_yc;
