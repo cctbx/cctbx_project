@@ -3,7 +3,8 @@
 #include <boost/python/class.hpp>
 
 
-namespace smtbx { namespace refinement { namespace boost_python {
+namespace smtbx { namespace refinement { namespace least_squares {
+  namespace boost_python {
 
   template<template<typename FloatType> class WeightingScheme>
   struct weighting_scheme_class
@@ -50,4 +51,4 @@ namespace smtbx { namespace refinement { namespace boost_python {
   }
 
 
-}}}
+}}}}

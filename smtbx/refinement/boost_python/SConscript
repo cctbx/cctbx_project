@@ -4,5 +4,9 @@ env.SharedLibrary(target="#lib/smtbx_refinement_ext", source=[
   "refinement_ext.cpp",
   "parameter_map.cpp",
   "minimization.cpp",
+])
+env.SharedLibrary(target="#lib/smtbx_refinement_least_squares_ext", source=[
+  "least_squares_ext.cpp",
   "weighting_schemes.cpp",
+  "least_squares.cpp",
 ])
