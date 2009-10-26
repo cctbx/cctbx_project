@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace smtbx { namespace refinement {
+namespace smtbx { namespace refinement { namespace least_squares {
 
   template <typename T>
   struct unit_weighting
@@ -30,4 +30,4 @@ namespace smtbx { namespace refinement {
   };
 
 
-}}
+}}}
