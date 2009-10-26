@@ -7,7 +7,8 @@ def exercise_normal_equations_separating_scale_factor():
                    grad_y_calc=flex.double((1, 2, 3)),
                    y_obs=1,
                    weight=1)
-  a, b = eqs.equations()
+  eqs.finalise()
+  a, b = eqs.reduced_equations()
   assert a.size() == 6
   assert list(b) == [0, 0, 0]
 

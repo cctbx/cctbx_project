@@ -16,12 +16,18 @@ namespace scitbx { namespace lstbx {
     typedef af::ref_owning_versa<scalar_t,                                    \
                                  matrix::packed_u_accessor>                   \
             symmetric_matrix_owning_ref_t;                                    \
+    typedef af::ref_owning_versa<scalar_t,                                    \
+                                 matrix::packed_u_accessor>                   \
+            upper_diagonal_matrix_owning_ref_t;                               \
     typedef af::ref<scalar_t,                                                 \
                     matrix::packed_u_accessor>                                \
             symmetric_matrix_ref_t;                                           \
     typedef af::versa<scalar_t,                                               \
                       matrix::packed_u_accessor>                              \
             symmetric_matrix_t;                                               \
+    typedef af::versa<scalar_t,                                               \
+                      matrix::packed_u_accessor>                              \
+            upper_diagonal_matrix_t;                                          \
     typedef af::ref_owning_versa<FloatType, af::mat_grid> matrix_owning_ref_t;\
     typedef af::ref<FloatType, af::mat_grid> matrix_ref_t;                    \
     typedef af::ref_owning_shared<scalar_t> vector_owning_ref_t;              \
@@ -49,6 +55,7 @@ namespace scitbx { namespace lstbx {
     /// Construct a least-squares problem with the given number of unknowns.
     normal_equations(int n_parameters)
       : n_params(n_parameters),
+        solved_(false),
         normal_matrix_(n_params),
         right_hand_side_(n_params),
         r_sq(0)
@@ -59,6 +66,7 @@ namespace scitbx { namespace lstbx {
     normal_equations(symmetric_matrix_t const &a,
                      vector_t const &b)
       : n_params(a.accessor().n),
+        solved_(false),
         normal_matrix_(a),
         right_hand_side_(b),
         r_sq(0)
@@ -90,21 +98,54 @@ namespace scitbx { namespace lstbx {
 
     /// Reset the state to construction time, i.e. no equations accumulated
     void reset() {
+      solved = false;
       std::fill(normal_matrix_.begin(), normal_matrix_.end(), scalar_t(0));
       std::fill(right_hand_side_.begin(), right_hand_side_.end(), scalar_t(0));
       r_sq = 0;
     }
 
-    symmetric_matrix_t normal_matrix() {
+    /// Only available if the equations have not been solved yet
+    symmetric_matrix_t normal_matrix() const {
+      SCITBX_ASSERT(!solved());
       return normal_matrix_.array();
     }
 
-    vector_t right_hand_side() {
+    /// Only available if the equations have not been solved yet
+    vector_t right_hand_side() const {
+      SCITBX_ASSERT(!solved());
+      return right_hand_side_.array();
+    }
+
+    /** \brief Solve the normal equations for the parameters (linear case)
+         or their shift (linearised non-linear case)
+     */
+    void solve() {
+      using scitbx::matrix::cholesky::u_transpose_u_decomposition_in_place;
+      u_transpose_u_decomposition_in_place<scalar_t> chol(normal_matrix_);
+      SCITBX_ASSERT(!chol.failure);
+      chol.solve_in_place(right_hand_side_);
+      solved_ = true;
+    }
+
+    bool solved() const {
+      return solved_;
+    }
+
+    /// Only available after the equations have been solved
+    upper_diagonal_matrix_t cholesky_factor() const {
+      SCITBX_ASSERT(solved());
+      return normal_matrix_.array();
+    }
+
+    /// Only available after the equations have been solved
+    vector_t solution() const {
+      SCITBX_ASSERT(solved());
       return right_hand_side_.array();
     }
 
   private:
     int n_params;
+    bool solved_;
     scalar_t r_sq;
     symmetric_matrix_owning_ref_t normal_matrix_;
     vector_owning_ref_t right_hand_side_;
@@ -126,7 +167,15 @@ namespace scitbx { namespace lstbx {
         - step 2: Build the Newton equations for the problem
                   \f$ \min_x L(K^*(x), x) \f$
 
-          in the Gauss approximation of small residuals.
+          in the Gauss approximation of small residuals (reduced equations).
+
+  Reference:
+   Separable nonlinear least squares
+   H.B. Nielsen
+   Technical report IMM-REP-2000-01
+   http:http://www2.imm.dtu.dk/pubdb/views/edoc_download.php/646/ps/imm646.ps
+
+   and references therein.
   */
   template <typename FloatType>
   class normal_equations_separating_scale_factor
@@ -141,7 +190,8 @@ namespace scitbx { namespace lstbx {
         n_params(n_parameters),
         a(n_parameters),
         yo_dot_grad_yc(n_parameters),
-        yc_dot_grad_yc(n_parameters)
+        yc_dot_grad_yc(n_parameters),
+        grad_k_star(n_parameters)
     {}
 
     /** \brief Add the linearisation of the equation
@@ -151,19 +201,19 @@ namespace scitbx { namespace lstbx {
                       scalar_t yo, scalar_t w)
     {
       SCITBX_ASSERT(grad_yc.size() == n_params);
+      SCITBX_ASSERT(!finalised());
       add_equation(yc, grad_yc.begin(), yo, w);
     }
 
     /// Overload for when efficiency is paramount.
+    /** This shall not be called after build_reduced_equations has been called
+        but this is not enforced for speed.
+     */
     void add_equation(scalar_t yc, scalar_t const *grad_yc,
                       scalar_t yo, scalar_t w)
     {
       sum_w += w;
-      scalar_t yo_sq_old = yo_sq;
       yo_sq += w * yo * yo;
-      if (yo_sq != yo_sq || std::abs(yo_sq) > 1.e20) {
-        SCITBX_EXAMINE(yo_sq_old);
-      }
       yo_dot_yc += w * yo * yc;
       yc_sq += w * yc * yc;
       double *pa = a.begin();
@@ -176,48 +226,65 @@ namespace scitbx { namespace lstbx {
       }
     }
 
-    /// The separately optimised value of the scale factor, \f$ K^*(x) \f$
-    scalar_t optimised_scale_factor() {
+    /** \brief The value \f$ K^*(x) \f$ of the scale factor optimising the L.S. objective for a given constant \f$ x \f$.
+     */
+    scalar_t optimal_scale_factor() {
       return yo_dot_yc/yc_sq;
     }
 
     /** \brief The value of \f$L(K, x)\f$
-     for the optimised scale factor \f$ K^*(x) \f$
-     and the input \f$yc_(x)\f$.
+     for the optimised scale factor \f$ K^*(x) \f$ and the input \f$yc_(x)\f$.
      */
     scalar_t objective() {
-      scalar_t k_star_sq = std::pow(optimised_scale_factor(), 2);
+      scalar_t k_star_sq = std::pow(optimal_scale_factor(), 2);
       scalar_t result = (yo_sq/sum_w) * (1 - (k_star_sq * yc_sq)/yo_sq);
-      if (result != result || std::abs(result) > 1.e20) {
-        SCITBX_EXAMINE(result);
-      }
       return result;
     }
 
-    /** \brief The value of \f$\nabla_x L(K^*(x), x)\f$ corresponding
-     to objective */
-    vector_t gradient() {
-      normal_equations<scalar_t> eqns = equations();
-      return eqns.right_hand_side()/sum_w;
-    }
-
-    /// The normal equation for the optimised overall scale factor.
-    normal_equations<scalar_t> equations() {
-      scalar_t inv_k = 1/optimised_scale_factor();
-      scalar_t inv_yc_norm = 1/std::sqrt(yc_sq);
-      vector_ref_t alpha = yc_dot_grad_yc.ref();
+    /// Equation accumulation is finished.
+    /** The reduced normal equations for \f$ x \f$ as per step 2 are constructed
+     */
+    void finalise() {
+      SCITBX_ASSERT(!finalised());
+      scalar_t k_star = optimal_scale_factor();
+      scalar_t r_dot_yc = yo_dot_yc - k_star*yc_sq;
       vector_owning_ref_t b = yo_dot_grad_yc;
+      scalar_t inv_yc_sq = 1./yc_sq;
       for (int i=0; i<n_params; ++i) {
-        scalar_t yo_dot_grad_yc_i = yo_dot_grad_yc[i];
-        scalar_t yc_dot_grad_yc_i = yc_dot_grad_yc[i];
-        b[i] = inv_k*yo_dot_grad_yc_i - yc_dot_grad_yc_i;
-        alpha[i] = (2*yc_dot_grad_yc_i - inv_k*yo_dot_grad_yc_i)*inv_yc_norm;
+        scalar_t r_dot_grad_yc_i = yo_dot_grad_yc[i] - k_star*yc_dot_grad_yc[i];
+        grad_k_star[i] = inv_yc_sq*(r_dot_grad_yc_i - k_star*yc_dot_grad_yc[i]);
+        b[i] = k_star*r_dot_grad_yc_i + grad_k_star[i]*r_dot_yc;
       }
       double *pa = a.begin();
+      scalar_t k_star_sq = k_star*k_star;
       for (int i=0; i<n_params; ++i) for (int j=i; j<n_params; ++j) {
-        *pa++ -= alpha[i]*alpha[j];
+        scalar_t a_ij = *pa;
+        a_ij = k_star_sq*a_ij
+             + k_star*(  yc_dot_grad_yc[i]*grad_k_star[j]
+                       + yc_dot_grad_yc[j]*grad_k_star[i])
+             + grad_k_star[i]*grad_k_star[j]*yc_sq;
+        *pa++ = a_ij;
       }
-      return normal_equations<scalar_t>(a.array(), b.array());
+      reduced_equations_ = normal_equations<scalar_t>(a.array(), b.array());
+    }
+
+    /// Whether finalise has been called.
+    bool finalised() {
+      return reduced_equations_;
+    }
+
+    /// Reduced normal equations
+    normal_equations<scalar_t> reduced_equations() {
+      SCITBX_ASSERT(finalised());
+      return *reduced_equations_;
+    }
+
+    /** \brief The value of \f$\nabla_x L(K^*(x), x)\f$ corresponding
+     to objective.
+     */
+    vector_t gradient() {
+      SCITBX_ASSERT(finalised());
+      return reduced_equations_->right_hand_side()/sum_w;
     }
 
     /// Ready this for another computation of the normal equations
@@ -226,6 +293,8 @@ namespace scitbx { namespace lstbx {
       std::fill(a.begin(), a.end(), scalar_t(0));
       std::fill(yo_dot_grad_yc.begin(), yo_dot_grad_yc.end(), scalar_t(0));
       std::fill(yc_dot_grad_yc.begin(), yc_dot_grad_yc.end(), scalar_t(0));
+      std::fill(grad_k_star.begin(), grad_k_star.end(), scalar_t(0));
+      reduced_equations_ = boost::none;
     }
 
   private:
@@ -233,8 +302,8 @@ namespace scitbx { namespace lstbx {
     int n_params;
     symmetric_matrix_owning_ref_t a; // normal matrix stored
                                      // as packed upper diagonal
-    vector_owning_ref_t yo_dot_grad_yc;
-    vector_owning_ref_t yc_dot_grad_yc;
+    vector_owning_ref_t yo_dot_grad_yc, yc_dot_grad_yc, grad_k_star;
+    boost::optional< normal_equations<scalar_t> > reduced_equations_;
   };
 
 
@@ -254,6 +323,9 @@ namespace scitbx { namespace lstbx {
 
    - and then building the Newton equations for \f$ L(a^*(x), x) \f$
      in the Gauss approximation of small residuals.
+
+   TODO: fix implementation as normal_equations_separating_scale_factor
+   has been fixed.
    */
   template <typename FloatType>
   class normal_equations_separating_linear_part
