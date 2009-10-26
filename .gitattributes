@@ -54,6 +54,7 @@ cctbx/eltbx/xray_scattering/form_factor.h -text
 cctbx/eltbx/xray_scattering/hydrogen_plots.py svneol=native#text/x-python
 cctbx/examples/find_distances.cpp svneol=native#text/plain
 cctbx/examples/find_distances_using_cpp_objects.py svneol=native#text/x-python
+cctbx/examples/hirshfeld_test.py -text
 cctbx/examples/list_non_principal_continuous_shifts.py -text
 cctbx/examples/maximum_subgroups.py -text
 cctbx/examples/miller_transform.py -text
