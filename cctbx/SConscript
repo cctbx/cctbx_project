@@ -129,4 +129,5 @@ if (not env_etc.no_boost_python):
   SConscript("adp_restraints/SConscript")
 
 SConscript("sgtbx/direct_space_asu/proto/SConscript")
+SConscript("math/SConscript")
 
