@@ -628,6 +628,7 @@ namespace scitbx { namespace af { namespace boost_python {
     min_index_a(f_t const& a) { return min_index(a); }
     static e_t max_a(f_t const& a) { return max(a); }
     static e_t min_a(f_t const& a) { return min(a); }
+    static e_t max_absolute_a(f_t const& a) { return max_absolute(a); }
     static e_t sum_a(f_t const& a) { return sum(a); }
     static e_t sum_sq_a(f_t const& a) { return sum_sq(a); }
     static e_t product_a(f_t const& a) { return product(a); }
@@ -844,6 +845,7 @@ namespace scitbx { namespace af { namespace boost_python {
         def("max_index", max_index_a);
         def("min", min_a);
         def("max", max_a);
+        def("max_absolute", max_absolute_a);
         def("pow2", pow2_a);
         def("order", order_a_a);
         def("first_index", first_index_a_s);
@@ -867,6 +869,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("all_gt", all_gt_a_s)
         .def("all_le", all_le_a_s)
         .def("all_ge", all_ge_a_s)
+        .def("norm_inf", max_absolute_a)
       ;
     }
 
