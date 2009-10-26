@@ -88,7 +88,7 @@ namespace cctbx { namespace sgtbx {
 
       //! Selects discrete or continuous shifts only.
       structure_seminvariants
-      select(bool discrete)
+      select(bool discrete) const
       {
         structure_seminvariants result;
         for(std::size_t i_ss=0;i_ss<size();i_ss++) {
