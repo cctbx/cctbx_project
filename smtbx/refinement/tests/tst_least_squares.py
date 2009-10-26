@@ -43,14 +43,18 @@ class test_case(object):
 
   def exercise_floating_origin_restraints(self):
     n = self.n_independent_params
-
+    if sys.version.find('GCC 4.0.0 20050519 (Red Hat 4.0.0-8)') == -1:
+      eps_zero_rhs = 1e-12
+    else:
+      eps_zero_rhs = 5e-7    
     normal_eqns = least_squares.normal_equations(
       self.xray_structure,
       self.fo_sq,
       weighting_scheme=least_squares.unit_weighting(),
       floating_origin_restraint_relative_weight=0)
     normal_eqns.build_up()
-    assert normal_eqns.reduced.right_hand_side.all_approx_equal(0, 1e-12)
+    assert normal_eqns.reduced.right_hand_side.all_approx_equal(0, eps_zero_rhs),\
+            list(normal_eqns.reduced.right_hand_side)
     unrestrained_normal_matrix = normal_eqns.reduced.normal_matrix_packed_u
     assert len(unrestrained_normal_matrix) == n*(n+1)//2
     ev = eigensystem.real_symmetric(
@@ -64,7 +68,8 @@ class test_case(object):
       weighting_scheme=least_squares.unit_weighting(),
     )
     normal_eqns.build_up()
-    assert normal_eqns.reduced.right_hand_side.all_approx_equal(0, 1e-12)
+    assert normal_eqns.reduced.right_hand_side.all_approx_equal(0, eps_zero_rhs),\
+            list(normal_eqns.reduced.right_hand_side)
     restrained_normal_matrix = normal_eqns.reduced.normal_matrix_packed_u
     assert len(restrained_normal_matrix) == n*(n+1)//2
     ev = eigensystem.real_symmetric(
