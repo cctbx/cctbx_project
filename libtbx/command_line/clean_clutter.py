@@ -6,6 +6,7 @@ from libtbx.option_parser import option_parser
 import libtbx.command_line.file_clutter
 
 def clean_clutter_in(files, tabsize=8):
+  if not files: return
   n_empty = 0
   for line in input([ f for f in files if not os.path.isdir(f) ], inplace=1):
     if (isfirstline()):
