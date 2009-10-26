@@ -9,19 +9,14 @@
 #include <cctbx/coordinates.h>
 #include <cctbx/adptbx.h>
 
+#include <smtbx/error.h>
+#include <smtbx/import_cctbx.h>
+#include <smtbx/import_scitbx_af.h>
+
 #include <iostream>
 
 
-namespace smtbx {
-
-  namespace af = scitbx::af;
-  namespace sgtbx = cctbx::sgtbx;
-  namespace uctbx = cctbx::uctbx;
-  namespace adptbx = cctbx::adptbx;
-  using cctbx::fractional;
-  using cctbx::error;
-
-namespace refinement {
+namespace smtbx { namespace refinement {
 
   using cctbx::xray::scatterer;
   using cctbx::xray::packing_order_convention;
