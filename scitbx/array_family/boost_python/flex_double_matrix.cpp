@@ -3,6 +3,8 @@
 #include <scitbx/matrix/outer_product.h>
 #include <scitbx/matrix/norms.h>
 #include <scitbx/matrix/move.h>
+#include <scitbx/matrix/matrix_vector_operations.h>
+#include <scitbx/array_family/boost_python/ref_flex_conversions.h>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
@@ -110,11 +112,24 @@ namespace boost_python {
 
   double (*matrix_norm_1)(const_ref<double, mat_grid> const &) = matrix::norm_1;
 
+  double matrix_symmetric_upper_triangle_quadratic_form(
+    const_ref<double, matrix::packed_u_accessor> const &q,
+    const_ref<double> const &x)
+  {
+    SCITBX_ASSERT(q.n_columns() == x.size());
+    return matrix::quadratic_form_packed_u(x.size(), q.begin(), x.begin());
+  }
+
+
   void
   wrap_flex_double_matrix(
     flex_wrapper<double>::class_f_t& class_f_t)
   {
     exercise_packed_u_accessor();
+    ref_from_flex<const_ref<double, matrix::packed_u_accessor>,
+                  packed_u_size_functor>();
+    ref_from_flex<ref<double, matrix::packed_u_accessor>,
+                  packed_u_size_functor>();
 
     using namespace boost::python;
 
@@ -335,6 +350,8 @@ namespace boost_python {
             matrix::symmetric_upper_triangle_swap_rows_and_columns_in_place, (
               arg_("i"),
               arg_("j")))
+      .def("matrix_symmetric_upper_triangle_quadratic_form",
+           matrix_symmetric_upper_triangle_quadratic_form)
       .def("matrix_packed_u_swap_rows_and_columns_in_place",
         (void(*)(
           ref<double> const&, unsigned, unsigned))
