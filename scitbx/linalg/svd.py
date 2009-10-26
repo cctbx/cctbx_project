@@ -14,6 +14,8 @@ class real_bidiagonal(scitbx.linalg.svd_decomposition_of_bidiagonal_matrix):
 class real(object):
   """ SVD decomposition of a real matrix.
 
+      TODO: fix crashes for n x 1 or 1 x n matrices
+
       References:
         [1] Tony F. Chan,
             An improved algorithm for computing the singular value
