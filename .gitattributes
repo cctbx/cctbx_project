@@ -77,6 +77,8 @@ cctbx/maptbx/real_space_target_and_gradients.h -text
 cctbx/maptbx/real_space_target_and_gradients.py -text
 cctbx/maptbx/tst_real_space_refinement_simple.py svneol=native#text/x-python
 cctbx/maptbx/tst_real_space_target_and_gradients.py -text
+cctbx/math/SConscript -text
+cctbx/math/time_trigonometry.cpp -text
 cctbx/miller/equivalent_reflection_merging.tex -text
 cctbx/miller/transform_and_change_of_basis.tex -text
 cctbx/regression/random_generator_state.pickle -text
