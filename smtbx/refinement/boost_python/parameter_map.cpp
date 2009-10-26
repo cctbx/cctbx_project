@@ -3,6 +3,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/python/iterator.hpp>
 
 #include <cctbx/xray/scatterer.h>
 #include <smtbx/import_cctbx.h>
@@ -15,9 +16,14 @@ struct parameter_indices_wrapper
 {
   typedef parameter_indices wt;
 
+  static int const invariable() {
+    return wt::invariable;
+  }
+
   static void wrap() {
     using namespace boost::python;
     class_<wt>("parameter_indices", no_init)
+      .add_static_property("invariable", invariable)
       .def_readonly("site", &wt::site)
       .def_readonly("u_iso", &wt::u_iso)
       .def_readonly("u_aniso", &wt::u_aniso)
@@ -35,13 +41,15 @@ struct parameter_map_wrapper
 
   static void wrap(char const *name) {
     using namespace boost::python;
-    return_value_policy<copy_const_reference> ccr;
+    typedef return_value_policy<copy_const_reference> ccr;
     class_<wt>("parameter_map", no_init)
       .def(init<af::const_ref<typename wt::xray_scatterer_type> const &>(
             arg_("scatterers")))
       .def("__len__", &wt::size)
-      .def("__getitem__", &wt::operator[], ccr)
-      .def("n_parameters", &wt::n_parameters)
+      .def("__getitem__", &wt::operator[], ccr())
+      .def("__iter__", iterator<wt, ccr>())
+      .add_property("n_parameters", &wt::n_parameters)
+      .add_property("n_scatterers", &wt::n_scatterers)
       ;
   }
 };

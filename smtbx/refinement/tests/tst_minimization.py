@@ -28,19 +28,27 @@ def exercise_parameter_map():
 
   indices = m[0]
   assert indices.site == 0
-  assert indices.u_iso == -1
+  assert indices.u_iso == refinement.parameter_indices.invariable
   assert indices.u_aniso == 3
-  assert indices.occupancy == -1
+  assert indices.occupancy == refinement.parameter_indices.invariable
   assert indices.fp == 9
   assert indices.fdp == 10
 
   indices = m[1]
-  assert indices.site == -1
+  assert indices.site == refinement.parameter_indices.invariable
   assert indices.u_iso == 11
-  assert indices.u_aniso == -1
+  assert indices.u_aniso == refinement.parameter_indices.invariable
   assert indices.occupancy == 12
   assert indices.fp == 13
-  assert indices.fdp == -1
+  assert indices.fdp == refinement.parameter_indices.invariable
+
+  for i, indices in enumerate(m):
+    assert indices.site == m[i].site
+    assert indices.u_iso == m[i].u_iso
+    assert indices.u_aniso == m[i].u_aniso
+    assert indices.occupancy == m[i].occupancy
+    assert indices.fp == m[i].fp
+    assert indices.fdp == m[i].fdp
 
 def run():
   exercise_parameter_map()
