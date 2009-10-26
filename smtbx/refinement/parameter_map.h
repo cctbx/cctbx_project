@@ -42,6 +42,7 @@ class parameter_map
 
   public:
     typedef XRayScattererType xray_scatterer_type;
+    typedef parameter_indices const *iterator;
 
     parameter_map() : map() {}
 
@@ -67,9 +68,15 @@ class parameter_map
       }
     }
 
-    parameter_indices const & operator[](int i_sc) const { return map[i_sc]; }
+    parameter_indices const &operator[](int i_sc) const { return map[i_sc]; }
+
+    iterator begin() const { return map.begin(); }
+
+    iterator end() const { return map.end(); }
 
     int size() const { return map.size(); }
+
+    int n_scatterers() const { return size(); }
 
     int n_parameters() const { return params; }
 };
