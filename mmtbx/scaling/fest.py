@@ -17,7 +17,7 @@ from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses, data_statistics,pair_analyses
 import libtbx.phil.command_line
 from cStringIO import StringIO
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 from mmtbx.scaling import sad_scale, sir_scale, rip_scale, siras_scale
 from mmtbx.scaling import twmad_scale
 import sys, os

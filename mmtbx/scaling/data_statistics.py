@@ -20,7 +20,7 @@ from scitbx.math import chebyshev_lsq_fit
 from scitbx.math import erf
 import libtbx.phil.command_line
 from libtbx import table_utils
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 import sys, os
 import math
 import string
@@ -282,6 +282,11 @@ class possible_outliers(object):
     print >> out
     print >> out, " Acentric reflections:"
     print >> out
+    self.acentric_outliers_table = data_plots.table_data(
+      title="Acentric reflections",
+      column_labels=["d_spacing", "H K L", "|E|", "p(wilson)", "p(extreme)"],
+      graph_names=["Possible acentric outliers"],
+      graph_columns=[[0,1,2,3,4]])
     if self.acentric_outlier_miller.size() ==0:
       print >> out, "            None "
       print >> out
@@ -294,6 +299,7 @@ class possible_outliers(object):
                                 self.acentric_outlier_e_vals,
                                 self.acentric_outlier_p_val,
                                 self.acentric_outlier_extreme_val):
+        self.acentric_outliers_table.add_row([d, hkl, e, p, extr])
         h = hkl[0]
         k = hkl[1]
         l = hkl[2]
@@ -316,6 +322,11 @@ class possible_outliers(object):
 
     print >> out, " Centric reflections:"
     print >> out
+    self.centric_outliers_table = data_plots.table_data(
+      title="Centric reflections",
+      column_labels=["d_spacing", "H K L", "|E|", "p(wilson)", "p(extreme)"],
+      graph_names=["Possible centric outliers"],
+      graph_columns=[[0,1,2,3,4]])
     if self.centric_outlier_miller.size() ==0:
       print >> out, "            None "
       print >> out
@@ -328,6 +339,7 @@ class possible_outliers(object):
                                 self.centric_outlier_e_vals,
                                 self.centric_outlier_p_val,
                                 self.centric_outlier_extreme_val):
+        self.centric_outliers_table.add_row([d, hkl, e, p, extr])
         h = hkl[0]
         k = hkl[1]
         l = hkl[2]

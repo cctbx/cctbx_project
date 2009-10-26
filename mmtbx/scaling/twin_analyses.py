@@ -1928,9 +1928,8 @@ class symmetry_issues(object):
                sigma_inflation = 1.25,
                out=None):
     self.sigma_warning = None
-    self.out = out
-    if self.out == None:
-      self.out = sys.stdout
+    if out == None:
+      out = sys.stdout
 
     self.inflate_sigma = sigma_inflation
 
@@ -1977,7 +1976,7 @@ class symmetry_issues(object):
     self.make_pg_r_table()
     self.score_all()
     self.wind_up()
-    self.show(self.out)
+    self.show(out)
     self.xs_with_pg_choice_in_standard_setting = crystal.symmetry( unit_cell   = self.miller_niggli.unit_cell(),
                                                                    space_group = self.pg_choice,
                                                                    assert_is_compatible_unit_cell=False,
@@ -2178,28 +2177,36 @@ class symmetry_issues(object):
       print >> out
       print >> out, self.sigma_warning
 
-    print >> out
-    print >> out, "The point group of data as dictated by the space group is", self.pg_input_name
-    print >> out, "  the point group in the niggli setting is", sgtbx.space_group_info( group=self.pg_low_prim_set )
-    print >> out, "The point group of the lattice is", self.pg_lattice_name
-    print >> out, "A summary of R values for various possible point groups follow."
-    print >> out
+    self.caption1 = """
+The point group of data as dictated by the space group is %s
+The point group in the niggli setting is %s
+The point group of the lattice is %s
+A summary of R values for various possible point groups follow.
+""" % (str(self.pg_input_name),
+       str(sgtbx.space_group_info(group=self.pg_low_prim_set)),
+       str(self.pg_lattice_name))
+    print >> out, self.caption1
     print >> out, self.table
-    print >> out
-    print >> out, "R_used: mean and maximum R value for symmetry operators *used* in this point group"
-    print >> out, "R_unused: mean and minimum R value for symmetry operators *not used* in this point group"
-    print >> out, "An automated point group suggestion is made on the basis of the BIC (Bayesian information criterion)."
-    print >> out, "\n"
-    print >> out, " The likely point group of the data is: ",self.pg_choice
-    print >> out
-    print >> out, "Possible space groups in this point groups are:"
+    self.caption2 = """
+R_used: mean and maximum R value for symmetry operators *used* in this point group
+R_unused: mean and minimum R value for symmetry operators *not used* in this point group
+An automated point group suggestion is made on the basis of the BIC (Bayesian information criterion).
+
+"""
+
+    print >> out, self.caption2
+    print >> out, "The likely point group of the data is:", self.pg_choice
+    print >> out, ""
+    print >> out, "Possible space groups in this point group are:"
     for sg in self.sg_possibilities:
       sg[0].show_summary(f=out, prefix= "   ")
       print >> out
-    print >> out, "Note that this analysis does not take into account the effects of twinning."
-    print >> out, "If the data are (almost) perfectly twinned, the symmetry will appear to be"
-    print >> out, "higher than it actually is."
-    print >> out
+    self.caption3 = """
+Note that this analysis does not take into account the effects of twinning.
+If the data are (almost) perfectly twinned, the symmetry will appear to be
+higher than it actually is.
+"""
+    print >> out, self.caption3
 
 
 

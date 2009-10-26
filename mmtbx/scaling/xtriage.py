@@ -22,7 +22,7 @@ from mmtbx.scaling import massage_twin_detwin_data
 import libtbx.phil.command_line
 from cStringIO import StringIO
 from libtbx.utils import null_out
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 import sys, os
 
 
@@ -61,12 +61,14 @@ input {
       .type=strings
       .help="Labels for observed data"
       .short_caption = Fobs labels
+      .input_size = 160
       .style = bold renderer:draw_xtriage_hkl_label_widget \
         OnChange:update_resolution_limits
     calc_labels=None
       .type=strings
       .help="Lables for calculated data"
       .short_caption = Fcalc labels
+      .input_size = 160
       .style = bold renderer:draw_xtriage_hkl_label_widget
     unit_cell=None
       .type=unit_cell
@@ -79,10 +81,12 @@ input {
     high_resolution=None
       .type=float
       .help="High resolution limit"
+      .input_size = 64
       .style = bold renderer:draw_resolution_widget
     low_resolution=None
       .type=float
       .help="Low resolution limit"
+      .input_size = 64
       .style = bold renderer:draw_resolution_widget
     reference
       .help = "A reference data set. For the investigation of possible reindexing options"
@@ -917,6 +921,10 @@ class xtriage_summary (object) :
     self.meas_info = getattr(meas_anal, "message", None)
     self.low_d_cut = getattr(meas_anal, "low_d_cut", None)
     self.high_d_cut = getattr(meas_anal, "high_d_cut", None)
+    outliers = getattr(basic_results.basic_data_stats, "outlier", None)
+    if outliers is not None :
+      self.acentric_outliers = outliers.acentric_outliers_table
+      self.centric_outliers = outliers.centric_outliers_table
     # VM/%SOLV
     self.matthews_table = basic_results.matthews_results[4] # table
     for attr in ["defined_copies", "guessed_copies"] :
@@ -969,6 +977,9 @@ class xtriage_summary (object) :
     self.possible_twin_laws = getattr(twin_results, "possible_twin_laws", None)
     self.translation_pseudo_symmetry = getattr(twin_results,
       "translation_pseudo_symmetry", None)
+    self.check_sg = getattr(twin_results, "check_sg", None)
+    self.suggested_space_group = getattr(twin_results, "suggested_space_group",
+                                         None)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

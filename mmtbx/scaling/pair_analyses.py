@@ -19,7 +19,8 @@ from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses, data_statistics
 import libtbx.phil.command_line
 from cStringIO import StringIO
-from scitbx.python_utils import easy_pickle, robust_statistics
+from libtbx import easy_pickle
+from scitbx.python_utils import robust_statistics
 import sys, os, math
 import scitbx.lbfgs
 

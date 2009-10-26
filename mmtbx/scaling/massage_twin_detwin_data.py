@@ -57,7 +57,7 @@ from mmtbx.scaling import basic_analyses, outlier_rejection
 import libtbx.phil.command_line
 from libtbx.utils import null_out
 from cStringIO import StringIO
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 import sys, os
 
 
