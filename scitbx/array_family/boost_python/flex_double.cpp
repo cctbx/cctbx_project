@@ -6,9 +6,9 @@
 #include <boost/python/args.hpp>
 #include <boost/python/make_constructor.hpp>
 #include <boost/numeric/conversion/cast.hpp>
+#include <scitbx/array_family/boost_python/flex_helpers.h>
 #include <vector>
 #include <set>
-#include "flex_helpers.h"
 
 namespace scitbx { namespace af {
 
@@ -220,24 +220,6 @@ namespace {
     return result;
   }
 
-  bool
-  all_approx_equal_a_a(
-    const_ref<double> const& self,
-    const_ref<double> const& other,
-    double tolerance=1e-6)
-  {
-    return self.all_approx_equal(other, tolerance);
-  }
-
-  bool
-  all_approx_equal_a_s(
-    const_ref<double> const& self,
-    double other,
-    double tolerance=1e-6)
-  {
-    return self.all_approx_equal(other, tolerance);
-  }
-
   af::versa<float, af::flex_grid<> >
   as_float(
     af::const_ref<double, af::flex_grid<> > const& O)
@@ -317,23 +299,16 @@ namespace boost_python {
         (object(*)(
           object const&,
           const_ref<std::size_t> const&,
-          const_ref<double> const&)) add_selected_unsigned_a, (
-            arg_("indices"), arg_("values")))
-      .def("all_approx_equal",
-        all_approx_equal_a_a, (
-          arg_("other"),
-          arg_("tolerance")=1e-6))
-      .def("all_approx_equal",
-        all_approx_equal_a_s, (
-          arg_("other"),
-          arg_("tolerance")=1e-6))
+          const_ref<double> const&)) add_selected_unsigned_a,
+        (arg_("self"), arg_("indices"), arg_("values")))
       .def("as_float", as_float)
       .def("round", round, (arg_("n_digits")=0))
       .def("select", select_stl_iterable<std::vector<unsigned> >, (
         arg_("selection")))
       .def("select", select_stl_iterable<std::set<unsigned> >, (
         arg_("selection")))
-    ;
+      ;
+    approx_equal_helper::decorate(class_f_t);
     def(
       "double_from_byte_str",
       shared_from_byte_str<double>,

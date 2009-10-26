@@ -2632,9 +2632,16 @@ def exercise_triangular_systems():
     y = ut.matrix_multiply(x)
     assert approx_equal(y, b)
 
+def exercise_approx_equal():
+  a = flex.double((2.1, 3.1, 4.1))
+  b = flex.double((2, 3, 4))
+  assert a.all_approx_equal_relatively(3, relative_error=0.5)
+  assert a.all_approx_equal_relatively(b, relative_error=0.05)
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_approx_equal()
     exercise_triangular_systems()
     exercise_copy_upper_or_lower_triangle()
     exercise_matrix_bidiagonal()
