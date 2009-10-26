@@ -560,8 +560,12 @@ scitbx/linalg/tests/tst_eigensystem.py -text
 scitbx/linalg/tests/tst_matrix.py -text
 scitbx/linalg/tests/tst_svd.py -text
 scitbx/lstbx/SConscript -text
+scitbx/lstbx/__init__.py -text
+scitbx/lstbx/boost_python/lstbx_ext.cpp -text
+scitbx/lstbx/boost_python/normal_equations.cpp -text
 scitbx/lstbx/normal_equations.h -text
 scitbx/lstbx/tests/tst_normal_equations.cpp -text
+scitbx/lstbx/tests/tst_normal_equations.py -text
 scitbx/math/accumulators.h -text
 scitbx/math/approx_equal.h -text
 scitbx/math/besselk.py -text

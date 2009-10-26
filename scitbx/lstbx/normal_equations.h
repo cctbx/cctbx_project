@@ -153,7 +153,9 @@ namespace scitbx { namespace lstbx {
       }
 
     /// Overload for when efficiency is paramount.
-    void add_datum(scalar_t yc, scalar_t *grad_yc, scalar_t yo, scalar_t w) {
+    void add_datum(scalar_t yc, scalar_t const *grad_yc,
+                   scalar_t yo, scalar_t w)
+    {
       sum_w += w;
       yo_dot_yc += w * yo * yc;
       yc_sq += w * yc * yc;

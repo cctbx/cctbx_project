@@ -1,3 +1,4 @@
+import os
 Import("env_base", "env_etc")
 env = env_base.Clone()
 env_etc.include_registry.append(
@@ -8,3 +9,14 @@ envlm = env.Clone(
 )
 env.Program(target="tests/tst_normal_equations",
             source="tests/tst_normal_equations.cpp")
+
+
+Import("env_scitbx_boost_python_ext")
+env = env_scitbx_boost_python_ext.Copy()
+env.SharedLibrary(
+  target="#lib/scitbx_lstbx_ext",
+  source=[ os.path.join("boost_python", p) for p in [
+    "lstbx_ext.cpp",
+    "normal_equations.cpp",
+    ]]
+  )
