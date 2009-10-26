@@ -3,6 +3,7 @@
 #include <scitbx/array_family/initialiser.h>
 #include <scitbx/array_family/simple_io.h>
 #include <iostream>
+#include <iomanip>
 
 using namespace scitbx;
 using scitbx::fn::approx_equal;
@@ -15,10 +16,10 @@ struct linear_polynomial_fit
   typedef NormalEquationsType<double> normal_eqns_t;
   typedef typename normal_eqns_t::symmetric_matrix_owning_ref_t
           symmetric_matrix_owning_ref_t;
+  typedef typename normal_eqns_t::upper_diagonal_matrix_owning_ref_t
+          upper_diagonal_matrix_owning_ref_t;
   typedef typename normal_eqns_t::vector_owning_ref_t
           vector_owning_ref_t;
-  typedef matrix::cholesky::gill_murray_wright_decomposition_in_place<double>
-          cholesky_t;
   normal_eqns_t ls;
 
   linear_polynomial_fit(double noise_)
@@ -37,32 +38,83 @@ struct linear_polynomial_fit
       double grad_yc[n_params] = { t2, t, 1 };
       ls.add_equation(yc, grad_yc, yo, w);
     }
+    ls.finalise();
   }
 
   static void exercise()
   {
     // the optimal scale factor is 2
     double const tol=1e-15;
+    bool exception_thrown;
     {
       linear_polynomial_fit fit(1e-5);
       fit.compute(0.5, 0.3, 0.2);
       SCITBX_ASSERT(
         approx_equal(fit.ls.objective(), 0.007928541506865207, 5e-14));
-      lstbx::normal_equations<double> normal_eqns = fit.ls.equations();
-      symmetric_matrix_owning_ref_t a = normal_eqns.normal_matrix();
-      vector_owning_ref_t b = normal_eqns.right_hand_side();
+      SCITBX_ASSERT(
+        approx_equal(fit.ls.optimal_scale_factor(),
+                     0.6148971786833856, 5e-14));
+      lstbx::normal_equations<double> normal_eqns = fit.ls.reduced_equations();
+      SCITBX_ASSERT(!normal_eqns.solved());
+      try {
+        normal_eqns.cholesky_factor();
+        exception_thrown = false;
+      }
+      catch (scitbx::error) {
+        exception_thrown = true;
+      }
+      SCITBX_ASSERT(exception_thrown);
+      try {
+        normal_eqns.solution();
+        exception_thrown = false;
+      }
+      catch (scitbx::error) {
+        exception_thrown = true;
+      }
+      SCITBX_ASSERT(exception_thrown);
       // C.f. Mathematica notebook tst_normal_equations for how
       // these reference values have been obtained.
+      symmetric_matrix_owning_ref_t a = normal_eqns.normal_matrix();
+      vector_owning_ref_t b = normal_eqns.right_hand_side();
       symmetric_matrix_owning_ref_t a0(3);
-      af::init(a0) = 1.3178042921566215, 1.5732149143108503, 1.3858589230294014 ,
-                                         1.902836060198941 , 1.4304395500957026 ,
-                                                             0.05219586632944103;
+      af::init(a0) =
+        0.371944193675858, 0.39066546997866547, 0.10797294655500618,
+                           0.41859250354804045, 0.08077629438075473,
+                                                0.19767268057900367;
       vector_owning_ref_t b0(3);
-      af::init(b0) =  0.32134261313408674,
-                      0.3650836430078277 ,
-                     -0.06662453951574325;
+      af::init(b0) =
+        0.12149917297914861, 0.13803759252793774, -0.025190641142579157;
       SCITBX_ASSERT(a.all_approx_equal(a0, 5e-14));
       SCITBX_ASSERT(b.all_approx_equal(b0, 5e-14));
+
+      normal_eqns.solve();
+      SCITBX_ASSERT(normal_eqns.solved());
+      try {
+        normal_eqns.normal_matrix();
+        exception_thrown = false;
+      }
+      catch (scitbx::error) {
+        exception_thrown = true;
+      }
+      SCITBX_ASSERT(exception_thrown);
+      try {
+        normal_eqns.right_hand_side();
+        exception_thrown = false;
+      }
+      catch (scitbx::error) {
+        exception_thrown = true;
+      }
+      SCITBX_ASSERT(exception_thrown);
+      upper_diagonal_matrix_owning_ref_t u0(3), u=normal_eqns.cholesky_factor();
+      af::init(u0) =
+        0.6098722765266986, 0.6405693208478925 ,  0.1770418999366983 ,
+                            0.09090351333425013, -0.3589664912436558 ,
+                                                  0.19357661121640218;
+      SCITBX_ASSERT(u.all_approx_equal(u0, 5e-14));
+      vector_owning_ref_t s0(3), s=normal_eqns.solution();
+      af::init(s0) =
+        1.2878697604109028, -0.7727798877778043, -0.5151113342942297;
+      SCITBX_ASSERT(s.all_approx_equal(s0, 1e-12));
     }
   }
 };

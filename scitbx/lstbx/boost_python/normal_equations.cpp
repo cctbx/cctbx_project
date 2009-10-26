@@ -27,6 +27,10 @@ namespace scitbx { namespace lstbx { namespace boost_python {
              (arg("normal_matrix"), arg("right_hand_side"))))
         .add_property("normal_matrix_packed_u", &wt::normal_matrix)
         .add_property("right_hand_side", &wt::right_hand_side)
+        .def("solve", &wt::solve)
+        .add_property("solved", &wt::solved)
+        .add_property("cholesky_factor_packed_u", &wt::cholesky_factor)
+        .add_property("solution", &wt::solution)
         ;
     }
   };
@@ -51,10 +55,12 @@ namespace scitbx { namespace lstbx { namespace boost_python {
         .def(init<int>(arg("n_parameters")))
         .def("add_equation", add_equation,
              (arg("y_calc"), arg("grad_y_calc"), arg("y_obs"), arg("weight")))
-        .def("optimised_scale_factor", &wt::optimised_scale_factor)
+        .def("finalise", &wt::finalise)
+        .def("optimal_scale_factor", &wt::optimal_scale_factor)
         .def("objective", &wt::objective)
         .def("gradient", &wt::gradient)
-        .def("equations", &wt::equations);
+        .def("reduced_equations", &wt::reduced_equations)
+        .def("reset", &wt::reset);
     }
   };
 
