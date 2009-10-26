@@ -1,5 +1,7 @@
 #include <scitbx/lstbx/normal_equations.h>
 
+#include <boost_adaptbx/optional_conversions.h>
+
 #include <boost/python/class.hpp>
 #include <boost/python/tuple.hpp>
 
@@ -15,6 +17,10 @@ namespace scitbx { namespace lstbx { namespace boost_python {
 
     static void wrap(char const *name) {
       using namespace boost::python;
+
+      boost_adaptbx::optional_conversions::to_and_from_python<
+        boost::optional<wt> >();
+
       class_<wt>(name, no_init)
         .def(init<int>(arg("n_parameters")))
         .def(init<symmetric_matrix_t const &, vector_t const &>(
