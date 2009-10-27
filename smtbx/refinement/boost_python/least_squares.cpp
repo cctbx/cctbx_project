@@ -1,10 +1,10 @@
-#include <smtbx/refinement/least_squares.h>
-#include <smtbx/refinement/weighting_schemes.h>
-
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python/with_custodian_and_ward.hpp>
+
+#include <smtbx/refinement/least_squares.h>
+#include <smtbx/refinement/weighting_schemes.h>
 
 
 namespace smtbx { namespace refinement { namespace least_squares {
@@ -121,7 +121,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
              (arg("shifts"),
               arg("scatterers")))
         ;
-  }
+    }
   };
 
 
