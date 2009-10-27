@@ -228,7 +228,8 @@ namespace {
   }
 
   template <typename T>
-  bool approx_equal_relatively(T const &x, T const &y,
+  bool approx_equal_relatively(
+                               T const &x, T const &y,
                                typename math::approx_equal_relatively<T>::amplitude_type relative_error)
   {
     math::approx_equal_relatively<T> p(relative_error);
