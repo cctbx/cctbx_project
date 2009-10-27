@@ -238,6 +238,24 @@ namespace {
     return self.all_approx_equal(other, tolerance);
   }
 
+  bool
+  all_approx_equal_relatively_a_a(
+    const_ref<double> const& self,
+    const_ref<double> const& other,
+    double relative_error=1e-6)
+  {
+    return self.all_approx_equal_relatively(other, relative_error);
+  }
+
+  bool
+  all_approx_equal_relatively_a_s(
+    const_ref<double> const& self,
+    double other,
+    double relative_error=1e-6)
+  {
+    return self.all_approx_equal_relatively(other, relative_error);
+  }
+
   af::versa<float, af::flex_grid<> >
   as_float(
     af::const_ref<double, af::flex_grid<> > const& O)
@@ -327,6 +345,14 @@ namespace boost_python {
         all_approx_equal_a_s, (
           arg_("other"),
           arg_("tolerance")=1e-6))
+      .def("all_approx_equal_relatively",
+        all_approx_equal_relatively_a_a, (
+          arg_("other"),
+          arg_("relative_error")=1e-6))
+      .def("all_approx_equal_relatively",
+        all_approx_equal_relatively_a_s, (
+          arg_("other"),
+          arg_("relative_error")=1e-6))
       .def("as_float", as_float)
       .def("round", round, (arg_("n_digits")=0))
       .def("select", select_stl_iterable<std::vector<unsigned> >, (

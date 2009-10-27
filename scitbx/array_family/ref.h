@@ -2,6 +2,7 @@
 #define SCITBX_ARRAY_FAMILY_REF_H
 
 #include <scitbx/error.h>
+#include <scitbx/math/traits.h>
 #include <scitbx/array_family/error.h>
 #include <scitbx/array_family/accessors/trivial.h>
 #include <scitbx/array_family/detail/ref_helpers.h>
@@ -143,12 +144,26 @@ namespace scitbx { namespace af {
       bool
       all_approx_equal(
         const_ref const& other,
-        ElementType const& tolerance) const;
+        typename scitbx::math::abs_traits<
+          ElementType>::result_type const& tolerance) const;
 
       bool
       all_approx_equal(
         ElementType const& other,
-        ElementType const& tolerance) const;
+        typename scitbx::math::abs_traits<
+          ElementType>::result_type const& tolerance) const;
+
+      bool
+      all_approx_equal_relatively(
+        const_ref const& other,
+        typename scitbx::math::abs_traits<
+          ElementType>::result_type const& relative_error) const;
+
+      bool
+      all_approx_equal_relatively(
+        ElementType const& other,
+        typename scitbx::math::abs_traits<
+          ElementType>::result_type const& relative_error) const;
 
     protected:
       void

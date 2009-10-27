@@ -2,6 +2,7 @@
 #define SCITBX_ARRAY_FAMILY_REDUCTIONS_H
 
 #include <scitbx/error.h>
+#include <scitbx/math/approx_equal.h>
 #include <scitbx/array_family/ref.h>
 #include <scitbx/array_family/misc_functions.h>
 #include <boost/optional.hpp>
@@ -458,14 +459,13 @@ namespace scitbx { namespace af {
   const_ref<ElementType, AccessorType>
   ::all_approx_equal(
     const_ref const& other,
-    ElementType const& tolerance) const
+    typename scitbx::math::abs_traits<
+      ElementType>::result_type const& tolerance) const
   {
-    const ElementType* o = other.begin();
-    const ElementType* t = begin();
-    const ElementType* e = end();
-    if (e-t != other.end()-o) return false;
-    while (t != e) {
-      if (!fn::approx_equal(*t++, *o++, tolerance)) return false;
+    if (size() != other.size()) return false;
+    scitbx::math::approx_equal_absolutely<ElementType> predicate(tolerance);
+    for (std::size_t i=0; i<size(); ++i) {
+      if (!predicate((*this)[i], other[i])) return false;
     }
     return true;
   }
@@ -475,12 +475,43 @@ namespace scitbx { namespace af {
   const_ref<ElementType, AccessorType>
   ::all_approx_equal(
     ElementType const& other,
-    ElementType const& tolerance) const
+    typename scitbx::math::abs_traits<
+      ElementType>::result_type const& tolerance) const
   {
-    const ElementType* t = begin();
-    const ElementType* e = end();
-    while (t != e) {
-      if (!fn::approx_equal(*t++, other, tolerance)) return false;
+    scitbx::math::approx_equal_absolutely<ElementType> predicate(tolerance);
+    for (std::size_t i=0; i<size(); ++i) {
+      if (!predicate((*this)[i], other)) return false;
+    }
+    return true;
+  }
+
+  template <typename ElementType, typename AccessorType>
+  bool
+  const_ref<ElementType, AccessorType>
+  ::all_approx_equal_relatively(
+    const_ref const& other,
+    typename scitbx::math::abs_traits<
+      ElementType>::result_type const& relative_error) const
+  {
+    if (size() != other.size()) return false;
+    scitbx::math::approx_equal_relatively<ElementType> predicate(relative_error);
+    for (std::size_t i=0; i<size(); ++i) {
+      if (!predicate((*this)[i], other[i])) return false;
+    }
+    return true;
+  }
+
+  template <typename ElementType, typename AccessorType>
+  bool
+  const_ref<ElementType, AccessorType>
+  ::all_approx_equal_relatively(
+    ElementType const& other,
+    typename scitbx::math::abs_traits<
+      ElementType>::result_type const& relative_error) const
+  {
+    scitbx::math::approx_equal_relatively<ElementType> predicate(relative_error);
+    for (std::size_t i=0; i<size(); ++i) {
+      if (!predicate((*this)[i], other)) return false;
     }
     return true;
   }
