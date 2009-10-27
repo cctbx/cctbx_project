@@ -5,7 +5,6 @@
 #include <scitbx/array_family/error.h>
 #include <scitbx/array_family/accessors/trivial.h>
 #include <scitbx/array_family/detail/ref_helpers.h>
-#include <scitbx/math/traits.h>
 #include <algorithm>
 #include <boost/scoped_array.hpp>
 
@@ -117,40 +116,39 @@ namespace scitbx { namespace af {
         return begin_[accessor_(i0, i1, i2)];
       }
 
-      template <class PredicateType>
-      bool all(PredicateType const &predicate, const_ref const &other) const;
+      bool all_eq(const_ref const& other) const;
 
-      template <class PredicateType>
-      bool all(PredicateType const &predicate, value_type const &other) const;
+      bool all_eq(ElementType const& other) const;
 
-      template <class ConstRefOrElementType>
-      bool all_eq(ConstRefOrElementType const& other) const;
+      bool all_ne(const_ref const& other) const;
 
-      template <class ConstRefOrElementType>
-      bool all_ne(ConstRefOrElementType const& other) const;
+      bool all_ne(ElementType const& other) const;
 
-      template <class ConstRefOrElementType>
-      bool all_lt(ConstRefOrElementType const& other) const;
+      bool all_lt(const_ref const& other) const;
 
-      template <class ConstRefOrElementType>
-      bool all_gt(ConstRefOrElementType const& other) const;
+      bool all_lt(ElementType const& other) const;
 
-      template <class ConstRefOrElementType>
-      bool all_le(ConstRefOrElementType const& other) const;
+      bool all_gt(const_ref const& other) const;
 
-      template <class ConstRefOrElementType>
-      bool all_ge(ConstRefOrElementType const& other) const;
+      bool all_gt(ElementType const& other) const;
 
-      typedef typename math::abs_traits<value_type>::result_type
-              amplitude_type;
+      bool all_le(const_ref const& other) const;
 
-      template <class ConstRefOrElementType>
-      bool all_approx_equal(ConstRefOrElementType const& other,
-                            amplitude_type tolerance) const;
+      bool all_le(ElementType const& other) const;
 
-      template <class ConstRefOrElementType>
-      bool all_approx_equal_relatively(ConstRefOrElementType const& other,
-                                       amplitude_type tolerance) const;
+      bool all_ge(const_ref const& other) const;
+
+      bool all_ge(ElementType const& other) const;
+
+      bool
+      all_approx_equal(
+        const_ref const& other,
+        ElementType const& tolerance) const;
+
+      bool
+      all_approx_equal(
+        ElementType const& other,
+        ElementType const& tolerance) const;
 
     protected:
       void

@@ -4,7 +4,6 @@
 #include <scitbx/error.h>
 #include <scitbx/array_family/ref.h>
 #include <scitbx/array_family/misc_functions.h>
-#include <scitbx/math/approx_equal.h>
 #include <boost/optional.hpp>
 #include <complex>
 
@@ -287,104 +286,203 @@ namespace scitbx { namespace af {
   };
 
   template <typename ElementType, typename AccessorType>
-  template <class PredicateType>
-  inline
   bool
   const_ref<ElementType, AccessorType>
-  ::all(PredicateType const &predicate, const_ref const &other) const
+  ::all_eq(const_ref const& other) const
   {
-    if (size() != other.size()) return false;
-    for (std::size_t i=0; i<size(); ++i) {
-      if (!predicate((*this)[i], other[i])) return false;
+    const ElementType* o = other.begin();
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    if (e-t != other.end()-o) return false;
+    while (t != e) {
+      if (!(*t++ == *o++)) return false;
     }
     return true;
   }
 
   template <typename ElementType, typename AccessorType>
-  template <class PredicateType>
-  inline
   bool
   const_ref<ElementType, AccessorType>
-  ::all(PredicateType const &predicate, value_type const &other) const
+  ::all_eq(ElementType const& other) const
   {
-    for (std::size_t i=0; i<size(); ++i) {
-      if (!predicate((*this)[i], other)) return false;
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    while (t != e) {
+      if (!(*t++ == other)) return false;
     }
     return true;
   }
 
   template <typename ElementType, typename AccessorType>
-  template <class ConstRefOrElementType>
   bool
   const_ref<ElementType, AccessorType>
-  ::all_eq(ConstRefOrElementType const& other) const
+  ::all_ne(const_ref const& other) const
   {
-    return all(std::equal_to<ElementType>(), other);
+    const ElementType* o = other.begin();
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    if (e-t != other.end()-o) return false;
+    while (t != e) {
+      if (!(*t++ != *o++)) return false;
+    }
+    return true;
   }
 
   template <typename ElementType, typename AccessorType>
-  template <class ConstRefOrElementType>
   bool
   const_ref<ElementType, AccessorType>
-  ::all_ne(ConstRefOrElementType const& other) const
+  ::all_ne(ElementType const& other) const
   {
-    return all(std::not_equal_to<ElementType>(), other);
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    while (t != e) {
+      if (!(*t++ != other)) return false;
+    }
+    return true;
   }
 
   template <typename ElementType, typename AccessorType>
-  template <class ConstRefOrElementType>
   bool
   const_ref<ElementType, AccessorType>
-  ::all_lt(ConstRefOrElementType const& other) const
+  ::all_lt(const_ref const& other) const
   {
-    return all(std::less<ElementType>(), other);
+    const ElementType* o = other.begin();
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    if (e-t != other.end()-o) throw_range_error();
+    while (t != e) {
+      if (!(*t++ < *o++)) return false;
+    }
+    return true;
   }
 
   template <typename ElementType, typename AccessorType>
-  template <class ConstRefOrElementType>
   bool
   const_ref<ElementType, AccessorType>
-  ::all_gt(ConstRefOrElementType const& other) const
+  ::all_lt(ElementType const& other) const
   {
-    return all(std::greater<ElementType>(), other);
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    while (t != e) {
+      if (!(*t++ < other)) return false;
+    }
+    return true;
   }
 
   template <typename ElementType, typename AccessorType>
-  template <class ConstRefOrElementType>
   bool
   const_ref<ElementType, AccessorType>
-  ::all_le(ConstRefOrElementType const& other) const
+  ::all_gt(const_ref const& other) const
   {
-    return all(std::less_equal<ElementType>(), other);
+    const ElementType* o = other.begin();
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    if (e-t != other.end()-o) throw_range_error();
+    while (t != e) {
+      if (!(*t++ > *o++)) return false;
+    }
+    return true;
   }
 
   template <typename ElementType, typename AccessorType>
-  template <class ConstRefOrElementType>
   bool
   const_ref<ElementType, AccessorType>
-  ::all_ge(ConstRefOrElementType const& other) const
+  ::all_gt(ElementType const& other) const
   {
-    return all(std::greater_equal<ElementType>(), other);
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    while (t != e) {
+      if (!(*t++ > other)) return false;
+    }
+    return true;
   }
 
   template <typename ElementType, typename AccessorType>
-  template <class ConstRefOrElementType>
   bool
   const_ref<ElementType, AccessorType>
-  ::all_approx_equal(ConstRefOrElementType const& other,
-                     amplitude_type tolerance) const
+  ::all_le(const_ref const& other) const
   {
-    return all(math::approx_equal_absolutely<ElementType>(tolerance), other);
+    const ElementType* o = other.begin();
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    if (e-t != other.end()-o) throw_range_error();
+    while (t != e) {
+      if (!(*t++ <= *o++)) return false;
+    }
+    return true;
   }
 
   template <typename ElementType, typename AccessorType>
-  template <class ConstRefOrElementType>
   bool
   const_ref<ElementType, AccessorType>
-  ::all_approx_equal_relatively(ConstRefOrElementType const& other,
-                                amplitude_type relative_error) const
+  ::all_le(ElementType const& other) const
   {
-    return all(math::approx_equal_relatively<ElementType>(relative_error), other);
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    while (t != e) {
+      if (!(*t++ <= other)) return false;
+    }
+    return true;
+  }
+
+  template <typename ElementType, typename AccessorType>
+  bool
+  const_ref<ElementType, AccessorType>
+  ::all_ge(const_ref const& other) const
+  {
+    const ElementType* o = other.begin();
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    if (e-t != other.end()-o) throw_range_error();
+    while (t != e) {
+      if (!(*t++ >= *o++)) return false;
+    }
+    return true;
+  }
+
+  template <typename ElementType, typename AccessorType>
+  bool
+  const_ref<ElementType, AccessorType>
+  ::all_ge(ElementType const& other) const
+  {
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    while (t != e) {
+      if (!(*t++ >= other)) return false;
+    }
+    return true;
+  }
+
+  template <typename ElementType, typename AccessorType>
+  bool
+  const_ref<ElementType, AccessorType>
+  ::all_approx_equal(
+    const_ref const& other,
+    ElementType const& tolerance) const
+  {
+    const ElementType* o = other.begin();
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    if (e-t != other.end()-o) return false;
+    while (t != e) {
+      if (!fn::approx_equal(*t++, *o++, tolerance)) return false;
+    }
+    return true;
+  }
+
+  template <typename ElementType, typename AccessorType>
+  bool
+  const_ref<ElementType, AccessorType>
+  ::all_approx_equal(
+    ElementType const& other,
+    ElementType const& tolerance) const
+  {
+    const ElementType* t = begin();
+    const ElementType* e = end();
+    while (t != e) {
+      if (!fn::approx_equal(*t++, other, tolerance)) return false;
+    }
+    return true;
   }
 
 }} // namespace scitbx::af
