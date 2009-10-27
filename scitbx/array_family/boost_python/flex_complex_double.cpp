@@ -4,7 +4,6 @@
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/matrix/move.h>
 #include <boost/python/make_constructor.hpp>
-#include <scitbx/array_family/boost_python/flex_helpers.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 
@@ -58,9 +57,8 @@ namespace {
   void wrap_flex_complex_double()
   {
     using namespace boost::python;
-    typedef flex_wrapper<std::complex<double> > f_w;
-    f_w::class_f_t class_f_t(f_w::numeric_common("complex_double", scope()));
-    class_f_t
+    flex_wrapper<std::complex<double> >::numeric_common(
+      "complex_double", boost::python::scope())
       .def("__init__", make_constructor(
         from_pair_of_flex_double, default_call_policies(), (
           arg_("reals"), arg_("imags"))))
@@ -99,8 +97,7 @@ namespace {
               arg_("block"),
               arg_("i_row"),
               arg_("i_column")))
-      ;
-    approx_equal_helper::decorate(class_f_t);
+    ;
     flex_wrapper_complex_functions<double>::wrap(boost::python::scope());
   }
 
