@@ -16,7 +16,7 @@ struct parameter_indices_wrapper
 {
   typedef parameter_indices wt;
 
-  static int const invariable() {
+  static int invariable() {
     return wt::invariable;
   }
 
