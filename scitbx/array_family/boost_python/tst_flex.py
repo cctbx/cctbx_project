@@ -2653,6 +2653,12 @@ def exercise_approx_equal():
   b = flex.double((2, 3, 4))
   assert a.all_approx_equal_relatively(3, relative_error=0.5)
   assert a.all_approx_equal_relatively(b, relative_error=0.05)
+  c = flex.complex_double((2 + 2j, 3 + 3j, 4 + 4j))
+  u = 0.1 + 0.1j
+  d = c + flex.complex_double((u,)*3)
+  assert d.all_approx_equal_relatively(3 + 3j, relative_error=0.5)
+  assert d.all_approx_equal_relatively(c, relative_error=0.07)
+  assert not d.all_approx_equal(c, tolerance=0.1)
 
 def run(iterations):
   i = 0

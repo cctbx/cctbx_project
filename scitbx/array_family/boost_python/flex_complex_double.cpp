@@ -52,6 +52,38 @@ namespace {
     return matrix_multiply(a, b);
   }
 
+  bool
+  all_approx_equal_a_a(const_ref<std::complex<double> > const& self,
+                       const_ref<std::complex<double> > const& other,
+                       double relative_error=1e-6)
+  {
+    return self.all_approx_equal(other, relative_error);
+  }
+
+  bool
+  all_approx_equal_a_s(const_ref<std::complex<double> > const& self,
+                       std::complex<double>  other,
+                       double relative_error=1e-6)
+  {
+    return self.all_approx_equal(other, relative_error);
+  }
+
+  bool
+  all_approx_equal_relatively_a_a(const_ref<std::complex<double> > const& self,
+                                  const_ref<std::complex<double> > const& other,
+                                  double relative_error=1e-6)
+  {
+    return self.all_approx_equal_relatively(other, relative_error);
+  }
+
+  bool
+  all_approx_equal_relatively_a_s(const_ref<std::complex<double> > const& self,
+                                  std::complex<double>  other,
+                                  double relative_error=1e-6)
+  {
+    return self.all_approx_equal_relatively(other, relative_error);
+  }
+
 } // namespace <anonymous>
 
   void wrap_flex_complex_double()
@@ -63,6 +95,22 @@ namespace {
         from_pair_of_flex_double, default_call_policies(), (
           arg_("reals"), arg_("imags"))))
       .def_pickle(flex_pickle_single_buffered<std::complex<double> >())
+      .def("all_approx_equal",
+        all_approx_equal_a_a, (
+          arg_("other"),
+          arg_("tolerance")=1e-6))
+      .def("all_approx_equal",
+        all_approx_equal_a_s, (
+          arg_("other"),
+          arg_("tolerance")=1e-6))
+      .def("all_approx_equal_relatively",
+        all_approx_equal_relatively_a_a, (
+          arg_("other"),
+          arg_("relative_error")=1e-6))
+      .def("all_approx_equal_relatively",
+        all_approx_equal_relatively_a_s, (
+          arg_("other"),
+          arg_("relative_error")=1e-6))
       .def("__mul__", mul_ac_ar)
       .def("__rmul__", mul_ac_ar)
       .def("matrix_multiply", matrix_multiply_complex_matrix_complex_matrix)
