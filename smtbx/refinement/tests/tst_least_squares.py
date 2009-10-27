@@ -43,10 +43,7 @@ class test_case(object):
 
   def exercise_floating_origin_restraints(self):
     n = self.n_independent_params
-    if sys.version.find('GCC 4.0.0 20050519 (Red Hat 4.0.0-8)') == -1:
-      eps_zero_rhs = 1e-12
-    else:
-      eps_zero_rhs = 5e-7    
+    eps_zero_rhs = 1e-6
     normal_eqns = least_squares.normal_equations(
       self.xray_structure,
       self.fo_sq,
