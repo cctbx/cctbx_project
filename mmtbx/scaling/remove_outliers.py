@@ -27,7 +27,7 @@ from mmtbx.scaling import outlier_rejection
 from mmtbx import f_model
 import libtbx.phil.command_line
 from mmtbx.twinning import twin_f_model
-from cStringIO import StringIO
+from libtbx.str_utils import StringIO
 from libtbx import easy_pickle
 import sys, os
 

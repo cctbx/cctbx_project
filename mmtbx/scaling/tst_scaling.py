@@ -16,7 +16,7 @@ import random
 import math
 import time
 import sys
-from cStringIO import StringIO
+from libtbx.str_utils import StringIO
 
 random.seed(0)
 flex.set_random_seed(0)

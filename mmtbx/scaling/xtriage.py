@@ -20,7 +20,7 @@ from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses, pair_analyses
 from mmtbx.scaling import massage_twin_detwin_data
 import libtbx.phil.command_line
-from cStringIO import StringIO
+from libtbx.str_utils import StringIO
 from libtbx.utils import null_out
 from libtbx import easy_pickle
 import sys, os
@@ -926,7 +926,9 @@ class xtriage_summary (object) :
       self.acentric_outliers = outliers.acentric_outliers_table
       self.centric_outliers = outliers.centric_outliers_table
     # VM/%SOLV
+    self.nres_known = basic_results.nres_known
     self.matthews_table = basic_results.matthews_results[4] # table
+    self.matthews_info = basic_results.matthews_results
     for attr in ["defined_copies", "guessed_copies"] :
       setattr(self, attr, getattr(basic_results, attr, None))
     # ICE RINGS
