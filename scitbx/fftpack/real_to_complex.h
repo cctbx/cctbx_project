@@ -281,6 +281,9 @@ namespace scitbx { namespace fftpack {
     // of floating point numbers is shifted down one real-sized slot.
     // Here the shift is undone.
     std::copy_backward(seq_begin + 1, seq_begin + n_, seq_begin + n_ + 1);
+      // Note regarding runtime overhead: in the context of 3D transforms
+      // the copy was found to have no significant runtime penalty
+      // (dimensions 250,300,270 used for the timings, Xeon, gcc 4.1 and 4.4).
     // Insert the trivial imaginary part.
     seq_begin[1] = real_type(0);
     // If the transform length is even, the imaginary part of the
@@ -320,6 +323,7 @@ namespace scitbx { namespace fftpack {
     // of floating point numbers is shifted down one real-sized slot.
     // Here the shift is applied before calling the core transform.
     std::copy(seq_begin + 2, seq_begin + 2 * n_complex_, seq_begin + 1);
+      // See "Note regarding runtime overhead" above.
     if (scratch == 0) {
       boost::scoped_array<real_type> buffer(new real_type[n_]);
       scratch = buffer.get();
