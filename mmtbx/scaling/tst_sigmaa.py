@@ -26,7 +26,7 @@ import scitbx.lbfgs
 import sys, os
 import math, time
 import string
-from cStringIO import StringIO
+from libtbx.str_utils import StringIO
 import mmtbx.f_model
 from libtbx.test_utils import approx_equal
 

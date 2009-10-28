@@ -56,7 +56,7 @@ from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses, outlier_rejection
 import libtbx.phil.command_line
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from libtbx.str_utils import StringIO
 from libtbx import easy_pickle
 import sys, os
 

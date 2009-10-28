@@ -16,7 +16,7 @@ from mmtbx.scaling import absolute_scaling, relative_scaling
 from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses, data_statistics,pair_analyses
 import libtbx.phil.command_line
-from cStringIO import StringIO
+from libtbx.str_utils import StringIO
 from libtbx import easy_pickle
 from mmtbx.scaling import pre_scale
 from mmtbx.scaling import make_param

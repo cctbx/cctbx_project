@@ -27,7 +27,7 @@ from libtbx import easy_pickle
 import sys, os
 import math
 import string
-from cStringIO import StringIO
+from libtbx.str_utils import StringIO
 
 class outlier_manager(object):
   def __init__(self,

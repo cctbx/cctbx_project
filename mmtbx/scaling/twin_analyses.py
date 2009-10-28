@@ -18,7 +18,7 @@ from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
-from cStringIO import StringIO
+from libtbx.str_utils import StringIO # XXX: pickle support
 import math
 import sys
 from iotbx import data_plots
@@ -2706,7 +2706,7 @@ class twin_analyses(object):
 
 
       if pg_choice != pg_this_one:
-        self.suggested_space_group = merge_data_and_guess_space_groups(miller_array=nig_data, xs=xs_choice,out=out,
+        suggested_space_group = merge_data_and_guess_space_groups(miller_array=nig_data, xs=xs_choice,out=out,
                                                                        txt="Merging in *suggested* point group %s "%pg_choice  )
 
     ##--------------------------
@@ -2755,7 +2755,7 @@ def merge_data_and_guess_space_groups(miller_array, txt, xs=None,out=None, sigma
     except Sorry: pass
     if not this_worked:
       print >> out, "Systematic absence analyses failed"
-
+  return (merge_obj, abs_sg_anal)
 
 
 
