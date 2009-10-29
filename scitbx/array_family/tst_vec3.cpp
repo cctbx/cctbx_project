@@ -14,11 +14,16 @@ int main(int /*argc*/, char* /*argv*/[])
 {
   {
     vec3<int> a;
+    check_true(__LINE__, a.size() == 3);
     vec3<double> i = 0;
+    for(int j=0;j<3;j++) check_true(__LINE__, i[j] == 0);
     vec3<int> b(0,0,0);
+    for(int j=0;j<3;j++) check_true(__LINE__, b[j] == 0);
     vec3<int> c(af::tiny_plain<int,3>(0,0,0));
+    for(int j=0;j<3;j++) check_true(__LINE__, c[j] == 0);
     int id[] = {1,1,1};
     vec3<int> d(id);
+    for(int j=0;j<3;j++) check_true(__LINE__, d[j] == 1);
   }
   {
     vec3<int> a(0,0,0);

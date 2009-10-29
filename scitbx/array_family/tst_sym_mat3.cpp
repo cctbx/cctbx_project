@@ -14,10 +14,14 @@ int main(int /*argc*/, char* /*argv*/[])
 {
   {
     sym_mat3<int> va;
+    check_true(__LINE__, va.size() == 6);
     sym_mat3<int> vb(0,0,0,0,0,0);
+    for(int j=0;j<6;j++) check_true(__LINE__, vb[j] == 0);
     sym_mat3<int> vc(af::tiny_plain<int,6>(0,0,0,0,0,0));
+    for(int j=0;j<6;j++) check_true(__LINE__, vc[j] == 0);
     int id[] = {1,1,1,1,1,1};
     sym_mat3<int> vd(id);
+    for(int j=0;j<6;j++) check_true(__LINE__, vd[j] == 1);
     mat3<int> ve(sym_mat3<int>(1,2,3,4,5,6));
     check_true(__LINE__, ve == mat3<int>(1,4,5, 4,2,6, 5,6,3));
   }
