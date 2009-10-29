@@ -17,7 +17,6 @@ class dssa(object):
                dimension,
                matrix, # ndm * (ndm+1)
                evaluator,
-	       further_opt=False,
                n_candidate=None,
                tolerance=1e-8,
                max_iter=1e9,
@@ -48,8 +47,7 @@ class dssa(object):
     self.initialize(matrix)
     self.candidates = []
     self.optimize()
-    if(further_opt):
-      self.optimize_further()
+    self.optimize_further()
 
   def initialize(self,matrix):
     self.end=False
@@ -65,7 +63,7 @@ class dssa(object):
   def optimize(self):
     found = False
     end = False
-    self.Nstep=self.dimension * 2
+    self.Nstep=self.dimension
     monitor_score=0
     self.sort()
 
@@ -117,7 +115,7 @@ class dssa(object):
                                            evaluator = self.evaluator,
                                            tolerance=self.tolerance
                                      )
-      self.solutions.append( optimizer.get_solution() )
+      self.solutions.append( optimizer.get_result() )
       self.scores.append( optimizer.get_score() )
 
     min_index = flex.min_index( self.scores )
