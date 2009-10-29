@@ -202,7 +202,7 @@ class test_function(object):
                                   matrix  = self.starting_simplex,
                                   evaluator = self,
                                   tolerance=1e-10)
-    self.x = self.optimizer.get_result()
+    self.x = self.optimizer.get_solution()
     for ii in xrange(self.n):
       assert approx_equal(self.x[ii],ii+1,1e-5)
 
@@ -225,7 +225,7 @@ class test_rosenbrock_function(object):
                                   matrix  = self.starting_simplex,
                                   evaluator = self,
                                   tolerance=1e-10)
-    self.x = self.optimizer.get_result()
+    self.x = self.optimizer.get_solution()
     assert (abs(self.x[0]-1.0) < 1e-6)
     assert (abs(self.x[1]-1.0) < 1e-6)
 
