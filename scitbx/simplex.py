@@ -182,7 +182,7 @@ class simplex_opt(object):
     #self.FindCentroidPt()
     self.matrix[self.max_indx] = vector
 
-  def get_result(self):
+  def get_solution(self):
     return self.matrix[self.min_indx]
 
   def get_score(self):
