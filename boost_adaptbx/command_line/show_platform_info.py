@@ -14,6 +14,9 @@ def run():
   print "sys.byteorder:", sys.byteorder
   print "platform.platform():", platform.platform()
   print "platform.architecture():", platform.architecture()
+  for attr in ["division_by_zero", "invalid", "overflow"]:
+    attr = "floating_point_exceptions.%s_trapped" % attr
+    print "%s:" % attr, eval("boost.python.%s" % attr)
   try: import thread
   except ImportError: print "import thread: NO"
   else: print "import thread: OK"
