@@ -232,8 +232,10 @@ class test_rosenbrock_function(object):
 
 
 def run():
+  random.seed(0)
   flex.set_random_seed(0)
   test_rosenbrock_function(3)
+  random.seed(0)
   flex.set_random_seed(0)
   test_rosenbrock_function(4)
 
