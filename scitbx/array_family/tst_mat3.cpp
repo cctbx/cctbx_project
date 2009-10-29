@@ -15,10 +15,14 @@ int main(int /*argc*/, char* /*argv*/[])
 {
   {
     mat3<int> va;
+    check_true(__LINE__, va.size() == 9);
     mat3<int> vb(0,0,0,0,0,0,0,0,0);
+    for(int j=0;j<9;j++) check_true(__LINE__, vb[j] == 0);
     mat3<int> vc(af::tiny_plain<int,9>(0,0,0,0,0,0,0,0,0));
+    for(int j=0;j<9;j++) check_true(__LINE__, vc[j] == 0);
     int id[] = {1,1,1,1,1,1,1,1,1};
     mat3<int> vd(id);
+    for(int j=0;j<9;j++) check_true(__LINE__, vd[j] == 1);
   }
   {
     mat3<double> diag9(1,0,0,0,1,0,0,0,1);
