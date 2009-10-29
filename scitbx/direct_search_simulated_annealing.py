@@ -17,6 +17,7 @@ class dssa(object):
                dimension,
                matrix, # ndm * (ndm+1)
                evaluator,
+               further_opt=False,
                n_candidate=None,
                tolerance=1e-8,
                max_iter=1e9,
@@ -47,7 +48,8 @@ class dssa(object):
     self.initialize(matrix)
     self.candidates = []
     self.optimize()
-    self.optimize_further()
+    if(further_opt):
+      self.optimize_further()
 
   def initialize(self,matrix):
     self.end=False
@@ -63,7 +65,7 @@ class dssa(object):
   def optimize(self):
     found = False
     end = False
-    self.Nstep=self.dimension
+    self.Nstep=self.dimension * 2
     monitor_score=0
     self.sort()
 
@@ -115,7 +117,7 @@ class dssa(object):
                                            evaluator = self.evaluator,
                                            tolerance=self.tolerance
                                      )
-      self.solutions.append( optimizer.get_result() )
+      self.solutions.append( optimizer.get_solution() )
       self.scores.append( optimizer.get_score() )
 
     min_index = flex.min_index( self.scores )
@@ -197,7 +199,7 @@ class test_rosenbrock_function(object):
   def __init__(self, dim=4):
     self.n = dim*2
     self.dim = dim
-    self.x = flex.double( self.n, 2.5 )
+    self.x = flex.double( self.n, 2.0 )
 
     self.starting_simplex=[]
     for ii in range(self.n+1):
@@ -207,6 +209,7 @@ class test_rosenbrock_function(object):
                           matrix = self.starting_simplex,
                           evaluator = self,
                           tolerance=1e-8,
+                          further_opt=True,
                           coolfactor=0.6
                                           )
     self.x = self.optimizer.get_solution()
