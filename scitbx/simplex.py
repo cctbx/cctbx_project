@@ -32,7 +32,7 @@ class simplex_opt(object):
                beta=0.5,
                gamma=2.0,
                sigma=0.5,
-               monitor_cycle=20):
+               monitor_cycle=10):
 
     self.max_iter = max_iter
     self.dimension=dimension
@@ -77,13 +77,13 @@ class simplex_opt(object):
   def optimize(self):
     found = False
     end = False
-    count = 0
+    self.count = 0
     monitor_score=0
     while ((not found ) and (not end)):
       self.explore()
-      count += 1
+      self.count += 1
       self.min_score=self.simplexValue[self.min_indx]
-      if count%self.monitor_cycle==0:
+      if self.count%self.monitor_cycle==0:
         rd = abs(monitor_score-self.min_score)
         #rd = abs(self.simplexValue[self.max_indx]-self.min_score)
         rd = rd/(abs(self.min_score)+self.tolerance*self.tolerance)
@@ -92,7 +92,7 @@ class simplex_opt(object):
         else:
           monitor_score = self.min_score
 
-      if count>=self.max_iter:
+      if self.count>=self.max_iter:
         end =True
 
   def explore(self):
@@ -182,7 +182,7 @@ class simplex_opt(object):
     #self.FindCentroidPt()
     self.matrix[self.max_indx] = vector
 
-  def get_result(self):
+  def get_solution(self):
     return self.matrix[self.min_indx]
 
   def get_score(self):
@@ -202,7 +202,7 @@ class test_function(object):
                                   matrix  = self.starting_simplex,
                                   evaluator = self,
                                   tolerance=1e-10)
-    self.x = self.optimizer.get_result()
+    self.x = self.optimizer.get_solution()
     for ii in xrange(self.n):
       assert approx_equal(self.x[ii],ii+1,1e-5)
 
@@ -225,7 +225,7 @@ class test_rosenbrock_function(object):
                                   matrix  = self.starting_simplex,
                                   evaluator = self,
                                   tolerance=1e-10)
-    self.x = self.optimizer.get_result()
+    self.x = self.optimizer.get_solution()
     assert (abs(self.x[0]-1.0) < 1e-6)
     assert (abs(self.x[1]-1.0) < 1e-6)
 
