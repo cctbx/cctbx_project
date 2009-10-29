@@ -66,7 +66,8 @@ namespace scitbx { namespace fftpack {
         real_type* scratch)
       {
         typedef typename MapType::value_type real_or_complex_type;
-        transform(tag, map, scratch, real_or_complex_type());
+        real_or_complex_type const* select_overload = 0;
+        transform(tag, map, scratch, select_overload);
       }
 
       // Cast map of real to map of complex.
@@ -76,8 +77,9 @@ namespace scitbx { namespace fftpack {
         select_sign<Tag> tag,
         MapType map,
         real_type* scratch,
-        real_type)
+        real_type const* select_overload)
       {
+        SCITBX_ASSERT(select_overload == 0);
         typedef typename MapType::accessor_type accessor_type;
         accessor_type dim_real(map.accessor());
         if (dim_real[2] % 2 != 0) {
@@ -86,7 +88,8 @@ namespace scitbx { namespace fftpack {
         af::ref<complex_type, accessor_type> cmap(
           reinterpret_cast<complex_type*>(map.begin()),
           accessor_type(dim_real[0], dim_real[1], dim_real[2] / 2));
-        transform(tag, cmap, scratch, complex_type());
+        complex_type const* select_complex_overload = 0;
+        transform(tag, cmap, scratch, select_complex_overload);
       }
 
       // Core routine always works on complex maps.
@@ -96,10 +99,15 @@ namespace scitbx { namespace fftpack {
         select_sign<Tag> tag,
         MapType map,
         real_type* scratch,
-        complex_type)
+        complex_type const* select_overload)
       {
   // FUTURE: move out of class body
   {
+    if (select_overload != 0) {
+      // Unreachable.
+      // Trick to avoid g++ 4.4.0 warnings when compiling with -fopenmp.
+      throw std::runtime_error(__FILE__);
+    }
     int nx = fft1d_[0].n();
     int ny = fft1d_[1].n();
     int nz = fft1d_[2].n();
