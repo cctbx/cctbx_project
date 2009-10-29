@@ -1,5 +1,6 @@
-Import("env_scitbx_boost_python_ext")
+Import("env_scitbx_boost_python_ext", "env_etc")
 env = env_scitbx_boost_python_ext.Clone()
+env_etc.enable_more_warnings(env=env)
 env.Prepend(LIBS=["omptbx"])
 env.SharedLibrary(
   target="#lib/scitbx_fftpack_ext",

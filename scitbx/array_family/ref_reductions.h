@@ -185,7 +185,7 @@ namespace scitbx { namespace af {
     }
     ElementType result = a[0];
     for(std::size_t i=1;i<a.size();i++) result += a[i];
-    return result * (1./a.size());
+    return result * (1. / a.size());
   }
 
   template <typename ElementType, typename AccessorType>
@@ -197,7 +197,7 @@ namespace scitbx { namespace af {
     }
     ElementType result = a[0] * a[0];
     for(std::size_t i=1;i<a.size();i++) result += a[i] * a[i];
-    return result / a.size();
+    return result * (1. / a.size());
   }
 
   template <typename ElementType, typename AccessorType>

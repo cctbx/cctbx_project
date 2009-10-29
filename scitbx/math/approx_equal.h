@@ -17,7 +17,7 @@ namespace scitbx { namespace math {
     floating point values, providing that std::abs(x) exists
     and that abs_traits<NumType> has the correct specialisation.
 
-    The implementation first test whether the absolute difference
+    The implementation first tests whether the absolute difference
     between the two values is very small, in which case, they are deemed to be
     equal to zero.
   */
@@ -29,9 +29,9 @@ namespace scitbx { namespace math {
 
     amplitude_type relative_error, near_zero_threshold;
 
-    approx_equal_relatively(amplitude_type relative_error)
-      : near_zero_threshold(std::numeric_limits<amplitude_type>::min()),
-        relative_error(relative_error)
+    approx_equal_relatively(amplitude_type relative_error) :
+      relative_error(relative_error),
+      near_zero_threshold(std::numeric_limits<amplitude_type>::min())
     {}
 
     bool operator()(num_type const &x, num_type const &y) const {

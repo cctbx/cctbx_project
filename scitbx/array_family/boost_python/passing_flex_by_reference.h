@@ -15,8 +15,9 @@ class flex_1d
     typedef af::versa<ElementType, af::flex_grid<> > flex_array_type;
     typedef typename flex_array_type::base_array_type base_type;
 
-    flex_1d(flex_array_type &array)
-      : a(array), base_type(array.as_base_array())
+    flex_1d(flex_array_type &array) :
+      base_type(array.as_base_array()),
+      a(array)
     {
       SCITBX_ASSERT(array.accessor().nd() == 1 && array.accessor().is_0_based())
                    (array.accessor().nd());

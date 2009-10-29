@@ -348,6 +348,7 @@ slatec_dlngam(double x)
   static const double sqpi2l = .225791352644727432363097614947441;
   static const double pi = 3.14159265358979323846264338327950;
   double result, sinpiy, temp, y;
+  result = 0.; // silence compiler warnings
   if (first) {
     temp = 1./log(d1mach(2));
     xmax = temp*d1mach(2);
