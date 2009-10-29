@@ -7,8 +7,6 @@ import sys, os
 
 def run():
   sys.stdout.write(boost.python.platform_info)
-  print "number of processors:", introspection.number_of_processors(
-    return_value_if_unknown="unknown")
   print "os.name:", os.name
   print "sys.platform:", sys.platform
   print "sys.byteorder:", sys.byteorder
@@ -17,6 +15,9 @@ def run():
   for attr in ["division_by_zero", "invalid", "overflow"]:
     attr = "floating_point_exceptions.%s_trapped" % attr
     print "%s:" % attr, eval("boost.python.%s" % attr)
+  print "number of processors:", introspection.number_of_processors(
+    return_value_if_unknown="unknown")
+  introspection.machine_memory_info().show()
   try: import thread
   except ImportError: print "import thread: NO"
   else: print "import thread: OK"
