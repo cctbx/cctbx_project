@@ -30,7 +30,8 @@ namespace scitbx { namespace boost_python {
 #if PY_VERSION_HEX >= 0x02030000
         PyObject_CallFunction(
           (PyObject*) (void*) &PyRange_Type,
-          "lll", start, start+len*step, step)
+          const_cast<char*>("lll"), // Python 2.6.3 is still not const correct
+          start, start+len*step, step)
 #else
         PyRange_New(start, len, step, 1)
 #endif
