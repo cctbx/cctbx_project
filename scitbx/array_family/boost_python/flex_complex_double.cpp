@@ -89,8 +89,9 @@ namespace {
   void wrap_flex_complex_double()
   {
     using namespace boost::python;
-    flex_wrapper<std::complex<double> >::numeric_common(
-      "complex_double", boost::python::scope())
+    typedef flex_wrapper<std::complex<double> > f_w;
+    scope local_scope;
+    f_w::numeric_common("complex_double", local_scope)
       .def("__init__", make_constructor(
         from_pair_of_flex_double, default_call_policies(), (
           arg_("reals"), arg_("imags"))))
@@ -146,7 +147,9 @@ namespace {
               arg_("i_row"),
               arg_("i_column")))
     ;
-    flex_wrapper_complex_functions<double>::wrap(boost::python::scope());
+    def("mean", f_w::mean_a);
+    def("mean_sq", f_w::mean_sq_a);
+    flex_wrapper_complex_functions<double>::wrap(local_scope);
   }
 
 }}} // namespace scitbx::af::boost_python

@@ -64,7 +64,7 @@ namespace {
     check_true(__LINE__, af::max_absolute(a1) == a1[2]);
     check_true(__LINE__, af::sum(a1) == a1[0] + a1[1] + a1[2]);
     check_true(__LINE__, af::product(a1) == a1[0] * a1[1] * a1[2]);
-    check_true(__LINE__, af::mean(a1) == (a1[0] + a1[1] + a1[2]) / 3);
+    check_true(__LINE__, af::mean(a3) == (a3[0] + a3[1] + a3[2]) / 3);
     check_true(__LINE__, fn::absolute(
       af::mean_sq(a3)
       - (a3[0]*a3[0] + a3[1]*a3[1] + a3[2]*a3[2]) / 3) < 1.e-6);

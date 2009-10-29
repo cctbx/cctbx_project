@@ -1,6 +1,7 @@
-Import("env_scitbx_boost_python_ext")
+Import("env_scitbx_boost_python_ext", "env_etc")
 
 env = env_scitbx_boost_python_ext.Clone()
+# TODO env_etc.enable_more_warnings(env=env)
 env.SharedLibrary(
   target="#lib/scitbx_linalg_ext",
   source=[

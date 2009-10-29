@@ -589,11 +589,11 @@ namespace {
     check_true(__LINE__, af::max_absolute(r5) == -r5[1]);
     check_true(__LINE__, af::sum(r1) == r1[0] + r1[1] + r1[2]);
     check_true(__LINE__, af::product(r1) == r1[0] * r1[1] * r1[2]);
-    check_true(__LINE__, af::mean(r1) == (r1[0] + r1[1] + r1[2]) / 3);
     af::tiny<double, 3> a3(3,4,5);
     af::tiny<double, 3> a4(4,5,6);
     af::const_ref<double> r3 = a3.const_ref();
     af::const_ref<double> r4 = a4.const_ref();
+    check_true(__LINE__, af::mean(r3) == (r3[0] + r3[1] + r3[2]) / 3);
     check_true(__LINE__, fn::absolute(
       af::mean_sq(r3)
       - (r3[0]*r3[0] + r3[1]*r3[1] + r3[2]*r3[2]) / 3) < 1.e-6);
