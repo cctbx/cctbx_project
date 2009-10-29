@@ -688,7 +688,7 @@ namespace scitbx { namespace minpack { namespace raw {
         // is zero or the number of iterations has reached 10.
         //
         if (   std::fabs(fp) <= p1*delta
-            || parl == zero && fp <= temp && temp < zero
+            || (parl == zero && fp <= temp && temp < zero)
             || iter == 10) goto lbl_220;
         //
         // compute the newton correction.
