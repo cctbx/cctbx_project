@@ -101,8 +101,15 @@ class floating_point_exceptions_type(object):
     return locals()
   overflow_trapped = property(**overflow_trapped())
 
-floating_point_exceptions = floating_point_exceptions_type(
-  division_by_zero=True, invalid=True, overflow=True)
+def floating_point_exceptions():
+  import libtbx.load_env
+  if (libtbx.env.is_development_environment()):
+    flag = True
+  else:
+    flag = False
+  return floating_point_exceptions_type(
+    division_by_zero=flag, invalid=flag, overflow=flag)
+floating_point_exceptions = floating_point_exceptions()
 
 meta_class = ext.holder.__class__
 platform_info = ext.platform_info()
