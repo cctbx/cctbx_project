@@ -584,14 +584,23 @@ class monomer_mapping(object):
 
   def _rna_sugar_pucker_analysis(self, params, next_pdb_residue):
     if (not params.use): return
+    from iotbx.pdb.rna_dna_detection import residue_analysis_2
+    ra1 = residue_analysis_2(
+      residue_atoms=self.pdb_residue.atoms(),
+      distance_tolerance=params.bond_detection_distance_tolerance)
+    if (ra1.problems is not None): return
+    if (not ra1.is_rna): return
     is_2p = False
     if (next_pdb_residue is not None):
-      ana = rna_sugar_pucker_analysis.evaluate.given_residue_atoms(
+      ra2 = residue_analysis_2(
+        residue_atoms=next_pdb_residue.atoms(),
+        distance_tolerance=params.bond_detection_distance_tolerance)
+      ana = rna_sugar_pucker_analysis.evaluate(
         params=params,
-        residue_atoms_1=self.pdb_residue.atoms(),
-        residue_atoms_2=next_pdb_residue.atoms())
-      if (ana is not None and ana.is_2p is not None):
-        is_2p = is_2p
+        residue_1_deoxy_ribo_atom_dict=ra1.deoxy_ribo_atom_dict,
+        residue_1_c1_n_closest_atom=ra1.c1_n_closest_atom,
+        residue_2_p_atom=ra2.p_atom)
+      is_2p = ana.is_2p
     if (is_2p): primary_mod_id = "rna2p"
     else:       primary_mod_id = "rna3p"
     self.monomer, chem_mod_ids = self.mon_lib_srv.get_comp_comp_id_mod(

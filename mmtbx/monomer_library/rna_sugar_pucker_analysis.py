@@ -25,56 +25,31 @@ master_phil = libtbx.phil.parse("""\
 
 class evaluate(object):
 
-  def given_residue_atoms(params, residue_atoms_1, residue_atoms_2):
-    from iotbx.pdb.rna_dna_detection import residue_analysis
-    from scitbx.array_family import flex
-    ras = []
-    print "TRY IT"
-    for residue_atoms in [residue_atoms_1, residue_atoms_2]:
-      ra = residue_analysis(
-        residue_atoms=residue_atoms,
-        distance_tolerance=params.bond_detection_distance_tolerance)
-      print "IS RNA DNA", ra.is_rna_dna()
-      print "IS RNA", ra.is_rna()
-      if (not ra.is_rna()): return None
-      ras.append(ra)
-    print "LOOK HAVE ra"
-    sites_cart_list = []
-    for ra in ras:
-      if (ra.atom_name_analysis.sub_classification == "v3"):
-        required = ["P", "C1'", "O2'", "O3'", "C3'", "C4'", "C5'"]
-      else:
-        required = ["P", "C1*", "O2*", "O3*", "C3*", "C4*", "C5*"]
-      sites_cart = flex.vec3_double()
-      for name in required:
-        sites_cart.append(ra.atom_dict[name].xyz)
-      sites_cart.append(ra.c1_n_closest.xyz)
-      sites_cart_list.append(sites_cart)
-    return evaluate(
-      params=params,
-      sites_cart_1=sites_cart_list[0],
-      sites_cart_2=sites_cart_list[1])
-  given_residue_atoms = staticmethod(given_residue_atoms)
-
-  def __init__(self, params, sites_cart_1, sites_cart_2):
-    assert len(sites_cart_1) == 8
-    assert len(sites_cart_2) == 8
-    p = matrix.col(sites_cart_2[0])
-    def v(i): return matrix.col(sites_cart_1[i])
-    c1p = v(1)
-    o3p = v(3)
-    c3p = v(4)
-    c4p = v(5)
-    c5p = v(6)
-    n = v(7)
-    bonded_sites = [
-      (p, o3p),
-      (o3p, c3p),
-      (c3p, c4p),
-      (c1p, n),
-      (c5p, c4p)]
-    distances = [abs(s2-s1) for s1,s2 in bonded_sites]
-    if (   min(distances) < params.bond_min_distance
+  def __init__(self,
+        params,
+        residue_1_deoxy_ribo_atom_dict,
+        residue_1_c1_n_closest_atom,
+        residue_2_p_atom):
+    if (residue_2_p_atom is None):
+      distances = None
+    else:
+      p = matrix.col(residue_2_p_atom.xyz)
+      def v(key): return matrix.col(residue_1_deoxy_ribo_atom_dict[key].xyz)
+      c1p = v("C1'")
+      o3p = v("O3'")
+      c3p = v("C3'")
+      c4p = v("C4'")
+      c5p = v("C5'")
+      n = matrix.col(residue_1_c1_n_closest_atom.xyz)
+      bonded_sites = [
+        (p, o3p),
+        (o3p, c3p),
+        (c3p, c4p),
+        (c1p, n),
+        (c5p, c4p)]
+      distances = [abs(s2-s1) for s1,s2 in bonded_sites]
+    if (   distances is None
+        or min(distances) < params.bond_min_distance
         or max(distances) > params.bond_max_distance):
       epsilon = None
       delta = None
