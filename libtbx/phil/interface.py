@@ -479,4 +479,10 @@ def reformat_phil_name (phil_name) :
   name = string.upper(_name[0]) + _name[1:]
   return name
 
+def join_scope_paths (scope1, scope2) :
+  if scope1 == "" :
+    return scope2
+  else :
+    return "%s.%s" % (scope1, scope2)
+
 #---end
