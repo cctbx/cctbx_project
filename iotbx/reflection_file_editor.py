@@ -78,6 +78,11 @@ hkltools
       .type = float
     d_max = None
       .type = float
+    output_as = *auto amplitudes intensities
+      .type = choice
+      .short_caption = Output diffraction data as
+      .help = If the Miller array is amplitudes or intensities, this flag \
+        determines the output data type.
     output_label = None
       .type = str
       .multiple = True
@@ -148,10 +153,16 @@ class process_arrays (object) :
     adopt_init_args(self, locals())
     if len(miller_arrays) == 0 :
       raise Sorry("No Miller arrays have been selected for the output file.")
+    elif len(miller_arrays) > 25 :
+      raise Sorry("Only 25 or fewer arrays may be used.")
     assert len(miller_arrays) == len(file_names)
     if None in [params.hkltools.crystal_symmetry.space_group,
                 params.hkltools.crystal_symmetry.unit_cell] :
       raise Sorry("Missing or incomplete symmetry information.")
+
+    #-------------------------------------------------------------------
+    # SYMMETRY
+    # TODO: merge/expand
     sg = params.hkltools.crystal_symmetry.space_group.group()
     derived_sg = sg.build_derived_point_group()
     uc = params.hkltools.crystal_symmetry.unit_cell
@@ -173,16 +184,14 @@ class process_arrays (object) :
         raise Sorry(("The unit cell for the Miller array %s:%s (%s) is "+
           "significantly different than the output unit cell (%s).") %
           (file_name, miller_array.info().label_string(),str(array_uc),str(uc)))
+
     labels = ["H", "K", "L"]
     label_files = [None, None, None]
     i = 1
-    self.extend = False
     self.created_r_free = False
     have_r_free_array = False
     self.final_arrays = []
     self.mtz_dataset = None
-    if len(miller_arrays) > 25 :
-      raise Sorry("Only 25 or fewer arrays may be used.")
     i = 0
     (d_max, d_min) = get_best_resolution(miller_arrays)
     if params.hkltools.d_max is not None and params.hkltools.d_max < d_max :
@@ -190,17 +199,20 @@ class process_arrays (object) :
     if params.hkltools.d_min is not None and params.hkltools.d_min > d_min :
       d_min = params.hkltools.d_min
 
-    # XXX: main loop
+    #-------------------------------------------------------------------
+    # MAIN LOOP
     for i, old_array in enumerate(miller_arrays) :
+      output_array = None # this will eventually be the final processed array
       info = old_array.info()
       output_labels = info.labels
       # TODO: convert to higher/lower symmetry
       array_copy = old_array.customized_copy(
         crystal_symmetry=self.symm).map_to_asu()
       current_params = None
-      # XXX: workaround for scalepack files with anomalous data
-      if array_copy.anomalous_flag() and info.labels == ["i_obs","sigma"] :
-        output_labels = ["I(+)", "SIGI(+)", "I(-)", "SIGI(-)"]
+      # XXX: label hacks for non-MTZ formats (scalepack, d*TREK)
+      if array_copy.anomalous_flag() :
+        if info.labels in [["i_obs","sigma"], ["Intensity+-","SigmaI+-"]] :
+          output_labels = ["I(+)", "SIGI(+)", "I(-)", "SIGI(-)"]
       for array_params in params.hkltools.miller_array :
         if (array_params.labels == info.label_string() and
             array_params.file_name == file_names[i]) :
@@ -228,9 +240,10 @@ class process_arrays (object) :
         raise Sorry(("Number of user-specified labels for %s:%s does not "+
           "match the number of labels in the output file.") %
             (file_names[i], info.label_string()))
-      # XXX: R-free flags handling
-      if ((new_array.is_integer_array() or new_array.is_bool_array()) and
-           reflection_file_utils.looks_like_r_free_flags_info(info)) :
+
+      #-----------------------------------------------------------------
+      # R-FREE HANDLING
+      if is_rfree_array(new_array, info) :
         flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
            test_flag_value=None)
         test_flag_value = flag_scores.test_flag_values[0]
@@ -261,8 +274,20 @@ class process_arrays (object) :
         else :
           output_array = r_free_flags
         have_r_free_array = True
-      else :
+
+      #-----------------------------------------------------------------
+      # MISCELLANEOUS
+      elif new_array.is_xray_intensity_array() :
+        if current_params.output_as == "amplitudes" :
+          output_array = new_array.f_sq_as_f()
+      elif new_array.is_xray_amplitude_array() :
+        if current_params.output_as == "intensities" :
+          output_array = new_array.f_as_f_sq()
+      if output_array is None :
         output_array = new_array
+
+      #-----------------------------------------------------------------
+      # OUTPUT
       fake_label = 2 * string.uppercase[i]
       if self.mtz_dataset is None :
         self.mtz_dataset = output_array.as_mtz_dataset(
@@ -275,6 +300,9 @@ class process_arrays (object) :
         labels.append(label)
         label_files.append(file_names[i])
       self.final_arrays.append(output_array)
+
+    #-------------------------------------------------------------------
+    # NEW R-FREE ARRAY
     if ((params.hkltools.r_free_flags.generate and not have_r_free_array) or
         params.hkltools.r_free_flags.force_generate) :
       (d_max, d_min) = get_best_resolution(self.final_arrays)
@@ -298,6 +326,7 @@ class process_arrays (object) :
       labels.append(r_free_params.new_label)
       label_files.append("(new array)")
       self.created_r_free = True
+
     mtz_object = self.mtz_dataset.mtz_object()
     if mtz_object.n_columns() != len(labels) :
       raise Sorry("Wrong number of columns or labels!")
@@ -386,6 +415,11 @@ def get_best_resolution (miller_arrays) :
     except Exception, e :
       pass
   return (best_d_max, best_d_min)
+
+def is_rfree_array (miller_array, array_info) :
+  return ((miller_array.is_integer_array() or
+           miller_array.is_bool_array()) and
+          reflection_file_utils.looks_like_r_free_flags_info(array_info))
 
 #-----------------------------------------------------------------------
 def usage (out=sys.stdout, attributes_level=0) :
@@ -509,8 +543,6 @@ def run (args, out=sys.stdout) :
   if len(miller_arrays) == 0 :
     raise Sorry("No Miller arrays picked for output.")
   process = process_arrays(miller_arrays, file_names, params, log=out)
-  if process.extend :
-    process.extend_r_free_flags()
   if params.dry_run :
     print >> out, "# showing final parameters"
     master_phil.format(python_object=params).show(out=out)
