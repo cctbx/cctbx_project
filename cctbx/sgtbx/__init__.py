@@ -329,8 +329,10 @@ class _rot_mx_info(boost.python.injector, rot_mx_info):
       self._basis_of_invariant = basis
     return self._basis_of_invariant
 
+class _rt_mx(boost.python.injector, ext.rt_mx):
 
-class _rt_mx(boost.python.injector, rt_mx):
+  def __getinitargs__(self):
+    return (flex.int(self.as_int_array() + (self.r().den(), self.t().den())),)
 
   def as_rational(self):
     return matrix.rt((self.r().as_rational(), self.t().as_rational()))
@@ -355,11 +357,6 @@ class _search_symmetry_flags(boost.python.injector, ext.search_symmetry_flags):
     print >> f, "use_normalizer_k2l:", self.use_normalizer_k2l()
     print >> f, "use_normalizer_l2n:", self.use_normalizer_l2n()
     print >> f, "use_seminvariants:", self.use_seminvariants()
-
-class _rt_mx(boost.python.injector, ext.rt_mx):
-
-  def __getinitargs__(self):
-    return (flex.int(self.as_int_array() + (self.r().den(), self.t().den())),)
 
 class _site_symmetry_ops(boost.python.injector, ext.site_symmetry_ops):
 
