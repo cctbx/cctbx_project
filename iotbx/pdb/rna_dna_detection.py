@@ -188,6 +188,18 @@ deoxy_ribo_atom_keys = set("C1' C2' C3' O3' C4' O4' C5' O5'".split())
 
 class residue_analysis_2(object):
 
+  __slots__ = [
+    "problems",
+    "atom_dict",
+    "deoxy_ribo_atom_dict",
+    "p_atom",
+    "op_atoms",
+    "n_atoms",
+    "o2p_atom",
+    "h_atoms",
+    "c1_n_closest_atom",
+    "is_rna"]
+
   def __init__(O, residue_atoms, distance_tolerance=0.5):
     O.problems = []
     O.atom_dict = residue_atoms.build_dict(
@@ -197,13 +209,13 @@ class residue_analysis_2(object):
       throw_runtime_error_if_duplicate_keys=False)
     if (len(O.atom_dict) != len(residue_atoms)):
       O.problems.append("key_clash")
-    O.dexoy_ribo_atom_dict = {}
+    O.deoxy_ribo_atom_dict = {}
     for key in deoxy_ribo_atom_keys:
       atom = O.atom_dict.get(key)
       if (atom is None):
         O.problems.append("missing_"+key)
         break
-      O.dexoy_ribo_atom_dict[key] = atom
+      O.deoxy_ribo_atom_dict[key] = atom
       del O.atom_dict[key]
     O.p_atom = None
     for key in O.atom_dict.keys():
@@ -264,13 +276,13 @@ class residue_analysis_2(object):
         site_2 = matrix.col(atom.xyz)
         if (not check_distance(key_pair, site_1, site_2)):
           O.problems.append("long_distance_P_OP%d" % (i+1))
-      atom = O.dexoy_ribo_atom_dict.get("O5'")
+      atom = O.deoxy_ribo_atom_dict.get("O5'")
       if (atom is not None):
         site_2 = matrix.col(atom.xyz)
         if (not check_distance("O5' P", site_1, site_2)):
           O.problems.append("long_distance_P_O5'")
     if (O.o2p_atom is not None):
-      atom = O.dexoy_ribo_atom_dict.get("C2'")
+      atom = O.deoxy_ribo_atom_dict.get("C2'")
       if (atom is not None):
         site_1 = matrix.col(atom.xyz)
         site_2 = matrix.col(O.o2p_atom.xyz)
@@ -287,16 +299,16 @@ class residue_analysis_2(object):
           "C5' O5'"]:
       sites = []
       for key in [key_pair[:3], key_pair[4:]]:
-        atom = O.dexoy_ribo_atom_dict.get(key)
+        atom = O.deoxy_ribo_atom_dict.get(key)
         if (atom is None): break
         sites.append(matrix.col(atom.xyz))
       else:
         if (not check_distance(key_pair, *sites)):
           O.problems.append("long_distance_"+key_pair.replace(" ","_"))
     if (len(O.n_atoms) != 0):
-      atom = O.dexoy_ribo_atom_dict.get("C1'")
+      atom = O.deoxy_ribo_atom_dict.get("C1'")
       if (atom is not None):
-        c1_n_closest = None
+        O.c1_n_closest_atom = None
         c1_n_closest_distance = c1_n_distance_ideal + distance_tolerance
         site_1 = matrix.col(atom.xyz)
         for key,atom in O.n_atoms.items():
@@ -304,10 +316,11 @@ class residue_analysis_2(object):
           distance = abs(site_1 - site_2)
           if (    c1_n_closest_distance >= distance
               and (   c1_n_closest_distance != distance
-                   or c1_n_closest is None)):
-            c1_n_closest = atom
+                   or O.c1_n_closest_atom is None)):
+            O.c1_n_closest_atom = atom
             c1_n_closest_distance = distance
-        if (c1_n_closest is None):
+        if (O.c1_n_closest_atom is None):
           O.problems.append("long_distance_C1'_N")
     if (len(O.problems) == 0):
       O.problems = None
+    O.is_rna = (O.o2p_atom is not None)
