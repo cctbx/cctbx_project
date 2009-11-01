@@ -5,7 +5,7 @@ def run():
   tst_list = (
     "$D/ab_initio/tests/tst_ab_initio_ext.py",
     "$D/ab_initio/tests/tst_charge_flipping.py",
-    "$D/structure_factors/direct/tests/tst_standard_xray.py",
+    #"$D/structure_factors/direct/tests/tst_standard_xray.py",
     "$D/refinement/tests/tst_minimization.py",
     "$D/refinement/tests/tst_least_squares.py",
     "$D/refinement/constraints/tests/tst_constraints.py",
