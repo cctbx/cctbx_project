@@ -184,12 +184,12 @@ class f_vs_f_sq_test_case(test_case):
       f_sq_linearisation.compute(h)
       assert approx_equal_relatively(f_linearisation.observable**2,
                                      f_sq_linearisation.observable,
-                                     relative_error=1e-12)
+                                     relative_error=1e-15)
       grad_f_sq = f_sq_linearisation.grad_observable
       two_f_grad_f = (2*f_linearisation.observable
                        *f_linearisation.grad_observable)
       assert two_f_grad_f.all_approx_equal_relatively(grad_f_sq,
-                                                      relative_error=1e-12)
+                                                      relative_error=1e-14)
 
 
 def exercise_trigonometric_ff():
