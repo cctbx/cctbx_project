@@ -584,15 +584,15 @@ class monomer_mapping(object):
 
   def _rna_sugar_pucker_analysis(self, params, next_pdb_residue):
     if (not params.use): return
-    from iotbx.pdb.rna_dna_detection import residue_analysis_2
-    ra1 = residue_analysis_2(
+    from iotbx.pdb.rna_dna_detection import residue_analysis
+    ra1 = residue_analysis(
       residue_atoms=self.pdb_residue.atoms(),
       distance_tolerance=params.bond_detection_distance_tolerance)
     if (ra1.problems is not None): return
     if (not ra1.is_rna): return
     is_2p = False
     if (next_pdb_residue is not None):
-      ra2 = residue_analysis_2(
+      ra2 = residue_analysis(
         residue_atoms=next_pdb_residue.atoms(),
         distance_tolerance=params.bond_detection_distance_tolerance)
       ana = rna_sugar_pucker_analysis.evaluate(
