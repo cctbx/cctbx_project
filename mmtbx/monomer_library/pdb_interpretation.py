@@ -80,7 +80,7 @@ clash_guard_params_str = """\
   }
 """
 
-master_params = iotbx.phil.parse("""\
+master_params_str = """\
   apply_cif_modification
     .optional = True
     .multiple = True
@@ -192,7 +192,10 @@ master_params = iotbx.phil.parse("""\
       .type=int
   }
   %(clash_guard_params_str)s
-""" % vars(),
+""" % vars()
+
+master_params = iotbx.phil.parse(
+  input_string=master_params_str,
   process_includes=True)
 
 geometry_restraints_edits_str = """\
@@ -265,6 +268,18 @@ planarities=None
   .multiple=True
   .input_size=400
 """
+
+grand_master_phil_str = """\
+pdb_interpretation {
+  %(master_params_str)s
+}
+geometry_restraints.edits {
+  %(geometry_restraints_edits_str)s
+}
+geometry_restraints.remove {
+  %(geometry_restraints_remove_str)s
+}
+""" % vars()
 
 def flush_log(log):
   if (log is not None):
