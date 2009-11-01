@@ -288,66 +288,11 @@ def rotamer_score_and_choose_best(
   print
   sys.stdout.flush()
 
-class try_read_file(object):
-
-  def __init__(O, file_name):
-    def set(file_type, file_content):
-      O.file_name = file_name
-      O.file_type = file_type
-      O.file_content = file_content
-    lead = open(file_name, "rb").read(3)
-    if (lead == "MTZ"):
-      mtz_obj = iotbx.mtz.object(file_name=file_name)
-      set(file_type="mtz", file_content=mtz_obj)
-      return
-    try:
-      pdb_inp = iotbx.pdb.input(file_name=file_name)
-    except KeyboardInterrupt: raise
-    except:
-      if (iotbx.pdb.is_pdb_file(file_name=file_name)):
-        raise
-      pdb_inp = None
-    else:
-      if (pdb_inp.atoms().size() != 0):
-        set(file_type="pdb", file_content=pdb_inp)
-        return
-    try:
-      cif_obj = mmtbx.monomer_library.server.read_cif(file_name=file_name)
-    except KeyboardInterrupt: raise
-    except: pass
-    else:
-      if (len(cif_obj) != 0):
-        set(file_type="cif", file_content=cif_obj)
-        return
-    try:
-      phil_obj = iotbx.phil.parse(file_name=file_name)
-    except KeyboardInterrupt: raise
-    except: pass
-    else:
-      set(file_type="phil", file_content=phil_obj)
-      return
-    if (pdb_inp is not None):
-      if (pdb_inp.unknown_section().size() != 0):
-        set(file_type=None, file_content=None)
-        return
-      if (pdb_inp.header_section().size() != 0):
-        set(file_type="pdb", file_content=pdb_inp)
-    set(file_type=None, file_content=None)
-    return
-
 def get_master_phil():
   return iotbx.phil.parse(
     input_string="""\
 atom_selection = None
   .type = str
-
-symmetry_from_file = None
-  .type = path
-  .multiple = True
-unit_cell = None
-  .type=unit_cell
-space_group = None
-  .type=space_group
 
 map_coeff_labels = 2FOFCWT PH2FOFCWT
   .type = strings
@@ -373,65 +318,24 @@ rotamer_score_and_choose_best {
     .type = int
 }
 
-pdb_interpretation {
-  include scope mmtbx.monomer_library.pdb_interpretation.master_params
-}
-
-geometry_restraints.edits {
-  include scope \
-    mmtbx.monomer_library.pdb_interpretation.geometry_restraints_edits_str
-}
-
-geometry_restraints.remove {
-  include scope \
-    mmtbx.monomer_library.pdb_interpretation.geometry_restraints_remove_str
-}
+include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 """, process_includes=True)
 
 def run(args):
   show_times = libtbx.utils.show_times(time_start="now")
   master_phil = get_master_phil()
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil)
-  phil_objects = []
-  file_objects = {
-    "mtz": [],
-    "pdb": [],
-    "cif": []}
-  for arg in args:
-    if (len(arg) == 0): continue
-    def try_as_file():
-      if (not op.isfile(arg)): return False
-      obj = try_read_file(file_name=arg)
-      if (obj.file_type is None): return False
-      if (obj.file_type == "phil"):
-        phil_objects.append(obj.file_content)
-      else:
-        file_objects[obj.file_type].append(obj)
-      return True
-    def try_as_command_line_params():
-      try: command_line_params = argument_interpreter.process(arg=arg)
-      except KeyboardInterrupt: raise
-      except:
-        if (op.isfile(arg)):
-          raise Sorry(
-            "Error processing file: %s" % show_string(arg))
-        raise Sorry(
-          "Command-line argument not recognized: %s" % show_string(arg))
-      phil_objects.append(command_line_params)
-    if (not try_as_file()):
-      try_as_command_line_params()
-  work_phil = master_phil.fetch(sources=phil_objects)
+  import iotbx.utils
+  input_objects = iotbx.utils.process_command_line_inputs(
+    args=args,
+    master_phil=master_phil,
+    input_types=("mtz", "pdb", "cif"))
+  work_phil = master_phil.fetch(sources=input_objects["phil"])
   work_phil.show()
   print
   work_params = work_phil.extract()
   #
-  assert len(work_params.symmetry_from_file) == 0 # TODO not implemented
-  assert work_params.unit_cell is None # TODO not implemented
-  assert work_params.space_group is None # TODO not implemented
-  #
-  assert len(file_objects["mtz"]) == 1
-  miller_arrays = file_objects["mtz"][0].file_content.as_miller_arrays()
+  assert len(input_objects["mtz"]) == 1
+  miller_arrays = input_objects["mtz"][0].file_content.as_miller_arrays()
   map_coeffs = None
   for miller_array in miller_arrays:
     if (miller_array.info().labels == work_params.map_coeff_labels):
@@ -441,15 +345,15 @@ def run(args):
   #
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
-  for file_obj in file_objects["cif"]:
+  for file_obj in input_objects["cif"]:
     print "Processing CIF file: %s" % show_string(file_obj.file_name)
     for srv in [mon_lib_srv, ener_lib]:
       srv.process_cif_object(
         cif_object=file_obj.file_content,
         file_name=file_obj.file_name)
   #
-  assert len(file_objects["pdb"]) == 1 # TODO not implemented
-  file_obj = file_objects["pdb"][0]
+  assert len(input_objects["pdb"]) == 1 # TODO not implemented
+  file_obj = input_objects["pdb"][0]
   input_pdb_file_name = file_obj.file_name
   processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
