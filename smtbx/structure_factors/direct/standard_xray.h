@@ -712,8 +712,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
         else {
           if (f_calc.imag() == 0) {
             for (int j=0; j < grad_f_calc.size(); ++j) {
-              grad_observable[j]
-                =  scitbx::math::copysign(grad_f_calc[j].real(), f_calc.real());
+              grad_observable[j] = f_calc.real() > 0 ?  grad_f_calc[j].real()
+                                                     : -grad_f_calc[j].real();
             }
           }
           else {
