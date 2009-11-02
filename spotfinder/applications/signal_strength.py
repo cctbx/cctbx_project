@@ -3,7 +3,8 @@ from spotfinder.applications.wrappers import DistlOrganizer
 from labelit.preferences import procedure_preferences
 from labelit.command_line.screen import Empty
 
-def run_signal_strength(params, verbose=False):
+def run_signal_strength(params):
+  verbose = params.distl.verbose
   E = Empty()
   E.argv=['Empty']
   E.argv.append(params.distl.image)
@@ -27,7 +28,12 @@ def run_signal_strength(params, verbose=False):
   #Image analysis requested by NE-CAT (Point of contact: Craig Ogata)
   for key in Org.S.images.keys():
     # List of spots between specified high- and low-resolution limits
-    spots = Org.S.images[key].get('lo_pass_resolution_spots',[])
+    if Org.S.images[key].has_key('lo_pass_resolution_spots'):
+      spots = Org.S.images[key]['lo_pass_resolution_spots']
+    else:
+      spots = []
+
+    saturation = Org.Files.imageindex(key).saturation
 
     #Total number of spots in this range
     print
@@ -35,10 +41,12 @@ def run_signal_strength(params, verbose=False):
       key,len(spots))
 
     signals=flex.double()
+    saturations=flex.double()
 
     #Each spot
     for i,spot in enumerate(spots):
      signals.append(flex.sum(spot.wts))
+     saturations.append(flex.max(spot.wts)/saturation)
      if verbose:
       #peak height given in ADC units above local background
       #integrated signal strength given in pixel-ADC units above local background
@@ -61,4 +69,6 @@ def run_signal_strength(params, verbose=False):
     if signals.size()>0:
       print "Signals range from %.1f to %.1f with mean integrated signal %.1f"%(
       flex.min(signals), flex.max(signals), flex.mean(signals) )
+      print "Saturations range from %.1f%% to %.1f%% with mean saturation %.1f%%"%(
+      100.*flex.min(saturations), 100.*flex.max(saturations), 100.*flex.mean(saturations) )
   return Org
