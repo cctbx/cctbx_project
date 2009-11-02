@@ -126,6 +126,31 @@ def c_sizeof(typename):
 
 sizeof_void_ptr = c_sizeof("void*")
 
+
+class gcc_version(object):
+
+  def __init__(self):
+    import re
+    pat = r" \s* = \s* (\d+) \s+"
+    m = re.search("__GNUC__ %s __GNUC_MINOR__ %s __GNUC_PATCHLEVEL__ %s"
+                  % ((pat,)*3),
+                  platform_info, re.X|re.M|re.S)
+    if not m:
+      self.major, self.minor, self.patchlevel = None, None, None
+    else:
+      self.major, self.minor, self.patchlevel = tuple(
+        [ int(x) for x in m.groups() ])
+
+  def __nonzero__(self):
+    return self.major is not None
+
+  def __str__(self):
+    if self:
+      return "%i.%i.%i" % (self.major, self.minor, self.patchlevel)
+    else:
+      return "GCC, it is not"
+
+
 class injector(object):
   "see boost/libs/python/doc/tutorial/doc/quickstart.txt"
 
