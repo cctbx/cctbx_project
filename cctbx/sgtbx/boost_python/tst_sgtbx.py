@@ -157,6 +157,12 @@ def exercise_symbols():
     symbols = s("R 3 m :h (%s)" % cabc)
     assert str(sgtbx.space_group_info(group=sgtbx.space_group(symbols))) \
         == "R 3 m :R"
+  #
+  a83_symbols = []
+  for symbol in "Aem2 Aea2 Cmce Cmme Ccce CCCE:1".split():
+    a83_symbols.append(str(sgtbx.space_group_info(symbol=symbol)))
+  assert a83_symbols == [
+    "A b m 2", "A b a 2", "C m c a", "C m m a", "C c c a :2", "C c c a :1"]
 
 def exercise_tr_vec():
   tr_vec = sgtbx.tr_vec
