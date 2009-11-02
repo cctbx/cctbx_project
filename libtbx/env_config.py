@@ -15,6 +15,7 @@ def bool_literal(b):
   return "False"
 
 default_write_full_flex_fwd_h = sys.platform.startswith("irix")
+default_msvs_arch_flag = ["None", "SSE2"][int(os.name == "nt")]
 default_build_boost_python_extensions = True
 default_enable_boost_threads = False
 default_enable_openmp_if_possible = (sys.platform != "osf1V5")
@@ -1526,7 +1527,7 @@ class build_options:
         enable_openmp_if_possible=default_enable_openmp_if_possible,
         use_environment_flags=False,
         force_32bit=False,
-        msvs_arch_flag="SSE2"):
+        msvs_arch_flag=default_msvs_arch_flag):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -1711,10 +1712,20 @@ class pre_process_args:
         default=False,
         help="add compiler flags from environment variables: CXXFLAGS, CFLAGS,"
              " CPPFLAGS")
+      parser.option(None, "--force_32bit",
+        action="store_true",
+        default=False,
+        help="Force 32-bit compilation on Mac OS 10.6 (Snow Leopard)\n"
+             "Not compatible with /usr/bin/python: please run configure\n"
+             "with /System/Library/Frameworks/Python.framework/"
+             "Versions/2.x/bin/python")
+      msvs_arch_flag_choices = ("None", "SSE", "SSE2")
       parser.option(None, "--msvs_arch_flag",
-        choices=("None", "SSE", "SSE2"),
-        default="SSE2",
-        help="choose MSVS CPU architecture instruction set for optimized builds")
+        choices=msvs_arch_flag_choices,
+        default=default_msvs_arch_flag,
+        help="choose MSVS CPU architecture instruction set"
+             " for optimized builds",
+        metavar="|".join(msvs_arch_flag_choices))
     parser.option(None, "--build_boost_python_extensions",
       action="store",
       type="bool",
@@ -1722,13 +1733,6 @@ class pre_process_args:
       help="build Boost.Python extension modules (default: %s)"
         % bool_literal(default_build_boost_python_extensions),
       metavar="True|False")
-    parser.option(None, "--force_32bit",
-      action="store_true",
-      default=False,
-      help="Force 32-bit compilation on Mac OS 10.6 (Snow Leopard)\n"
-           "Not compatible with /usr/bin/python: please run configure\n"
-           "with /System/Library/Frameworks/Python.framework/"
-           "Versions/2.x/bin/python")
     parser.option(None, "--enable_boost_threads",
       action="store_true",
       default=False,
@@ -1758,6 +1762,20 @@ class pre_process_args:
       self.command_line.options.current_working_directory = None
     if (default_repositories is not None):
       self.repository_paths.extend(default_repositories)
+    if (self.command_line.options.force_32bit):
+      if (sys.platform != "darwin"):
+        raise Sorry(
+          "The --force_32bit option is only valid on Mac OS systems.")
+      buffers = easy_run.fully_buffered(
+        command="/usr/bin/arch -i386 /bin/ls /")
+      if (   len(buffers.stderr_lines) != 0
+          or len(buffers.stdout_lines) == 0):
+        raise Sorry(
+          "The --force_32bit option is not valid for this platform.")
+    if (    self.command_line.options.msvs_arch_flag != "None"
+        and os.name != "nt"):
+      raise Sorry(
+        "The --msvs_arch_flag option is not valid for this platform.")
 
   def option_repository(self, option, opt, value, parser):
     if (not os.path.isdir(value)):
@@ -1832,7 +1850,7 @@ def unpickle():
     env.build_options.force_32bit = False
   # XXX backward compatibility 2009-10-13
   if (not hasattr(env.build_options, "msvs_arch_flag")) :
-    env.build_options.msvs_arch_flag = "SSE2"
+    env.build_options.msvs_arch_flag = default_msvs_arch_flag
   return env
 
 def warm_start(args):
