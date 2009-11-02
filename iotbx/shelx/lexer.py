@@ -90,7 +90,7 @@ class command_stream(object):
         constants defined just above this method (actually, for
         the residue_number_tok, the value is an integer stored as a float).
       - The atomic refinable variables are not decoded: this is the job of
-        a lexer, not of a parser.
+        a parser, not of a lexer.
     """
     continued = False
     for i, li in enumerate(self.file):
