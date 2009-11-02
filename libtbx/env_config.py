@@ -1766,6 +1766,10 @@ class pre_process_args:
       if (sys.platform != "darwin"):
         raise Sorry(
           "The --force_32bit option is only valid on Mac OS systems.")
+      if (sys.maxint > 2**31-1):
+        raise Sorry(
+          'The --force_32bit option can only be used with 32-bit Python.\n'
+          '  See also: "man python"')
       buffers = easy_run.fully_buffered(
         command="/usr/bin/arch -i386 /bin/ls /")
       if (   len(buffers.stderr_lines) != 0
