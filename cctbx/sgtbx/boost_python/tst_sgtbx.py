@@ -1000,6 +1000,24 @@ cctbx Error: Rotation matrix is not invertible.""")
   sg2 = sg1.change_basis(icb)
   assert sg2.is_origin_centric()
   assert str(cb * icb) == "a,b,c+1/2"
+  #
+  sg = space_group()
+  s = sgtbx.rt_mx(2, 12)
+  assert s.r().den() == 2
+  assert s.t().den() == 12
+  try: sg.expand_smx(s)
+  except RuntimeError, e:
+    assert str(e) == "cctbx Error: sgtbx::space_group::expand_smx():" \
+      " rotation-part denominator must be 1 (implementation limitation)."
+  else: raise Exception_expected
+  s = sgtbx.rt_mx(1, 24)
+  assert s.r().den() == 1
+  assert s.t().den() == 24
+  try: sg.expand_smx(s)
+  except RuntimeError, e:
+    assert str(e) == "cctbx Error: sgtbx::space_group::expand_smx():" \
+      " incompatible translation-part denominator."
+  else: raise Exception_expected
 
 def exercise_space_group_type():
   space_group = sgtbx.space_group

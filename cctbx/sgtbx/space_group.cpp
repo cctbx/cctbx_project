@@ -113,6 +113,16 @@ namespace cctbx { namespace sgtbx {
   space_group&
   space_group::expand_smx(rt_mx const& new_smx)
   {
+    if (new_smx.r().den() != 1) {
+      throw error(
+        "sgtbx::space_group::expand_smx():"
+        " rotation-part denominator must be 1 (implementation limitation).");
+    }
+    if (new_smx.t().den() != smx_[0].t().den()) {
+      throw error(
+        "sgtbx::space_group::expand_smx():"
+        " incompatible translation-part denominator.");
+    }
     if (no_expand_) {
       add_smx(new_smx);
       return *this;
