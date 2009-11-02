@@ -17,6 +17,9 @@ distl {
       .type=float
       .help="Low resolution limit in angstroms"
   }
+  verbose = False
+    .type = bool
+    .help="Lengthy spot printout"
 }
 """)
 
@@ -37,7 +40,7 @@ Method 2 Resolution reflects drop off of spot count as a function of resolution 
   but is overridden by command line input of distl.res.outer
 Signal strength of the In-Resolution spots is then presented as integrated area of
   the spot above local background, expressed in pixel-analog/digital units.
-Very verbose output is available by setting verbose=True in command_line/signal_strength.py
+Very verbose output is available by setting distl.verbose=True
 """
 
   if (len(args) == 0 or args[0] in ["H","h","-H","-h","help","--help"]):
@@ -90,7 +93,7 @@ Missing file name for %(what)s structure:
 
   #Now actually run the program logic
   from spotfinder.applications import signal_strength
-  signal_strength.run_signal_strength(working_params.extract(), verbose=False)
+  signal_strength.run_signal_strength(working_params.extract())
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
