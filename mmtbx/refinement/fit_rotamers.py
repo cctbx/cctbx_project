@@ -71,9 +71,9 @@ class refiner(object):
   def refine_restrained(self, sites_cart_all, rsel, rs):
     geometry_restraints_manager = \
       self.geometry_restraints_manager.select(rsel)
-    return maptbx.real_space_refinement_simple.fragment_refine_restrained(
-      fragment_i_seqs              = rs,
-      sites_cart_all              = sites_cart_all,
+    return maptbx.real_space_refinement_simple.lbfgs(
+      iselection_refine           = rs,
+      sites_cart                  = sites_cart_all,
       density_map                 = self.target_map,
       geometry_restraints_manager = geometry_restraints_manager,
       real_space_target_weight    = self.real_space_target_weight,
@@ -179,73 +179,67 @@ def iterate_rotamers(pdb_hierarchy,
           residue = conformer.only_residue()
           residue_iselection = flex.size_t()
           residue_sidechain_iselection = flex.size_t()
-          exclude = False
           for atom in residue.atoms():
             residue_iselection.append(atom.i_seq)
-          for r_i_seq in residue_iselection:
-            if(not selection[r_i_seq]):
-              exclude = True
-              break
-          if 1:#(not exclude):
-            resid = " ".join([chain.id,residue.resname,residue.resseq])
-            sites_cart = xray_structure.select(residue_iselection).sites_cart()
-            cc_start = map_selector.get_cc(
-              sites_cart         = sites_cart,
-              residue_iselection = residue_iselection)
-            cc = cc_start
-            rotamer_id_best = None
-            rev = rotomer_evaluator(
-              sites_cart_start = sites_cart,
-              unit_cell        = unit_cell,
-              two_mfo_dfc_map  = map_data_1,
-              mfo_dfc_map      = map_data_3)
-            residue_sites_best = sites_cart.deep_copy()
-            rm = residue_rsr_monitor(
-              resid      = resid,
-              selection  = residue_iselection.deep_copy(),
-              sites_cart = sites_cart.deep_copy(),
-              twomfodfc  = rev.t1_start,
-              mfodfc     = rev.t2_start,
-              cc         = cc_start)
-            result.append(rm)
-            if(cc_start < poor_cc_threshold):
-              if(get_class(residue.resname) != "common_amino_acid"):
-                n_other_residues += 1
+          resid = " ".join([chain.id,residue.resname,residue.resseq])
+          sites_cart = xray_structure.select(residue_iselection).sites_cart()
+          cc_start = map_selector.get_cc(
+            sites_cart         = sites_cart,
+            residue_iselection = residue_iselection)
+          cc = cc_start
+          rotamer_id_best = None
+          rev = rotomer_evaluator(
+            sites_cart_start = sites_cart,
+            unit_cell        = unit_cell,
+            two_mfo_dfc_map  = map_data_1,
+            mfo_dfc_map      = map_data_3)
+          residue_sites_best = sites_cart.deep_copy()
+          rm = residue_rsr_monitor(
+            resid      = resid,
+            selection  = residue_iselection.deep_copy(),
+            sites_cart = sites_cart.deep_copy(),
+            twomfodfc  = rev.t1_start,
+            mfodfc     = rev.t2_start,
+            cc         = cc_start)
+          result.append(rm)
+          if(cc_start < poor_cc_threshold):
+            if(get_class(residue.resname) != "common_amino_acid"):
+              n_other_residues += 1
+            else:
+              rotamer_iterator = lockit.get_rotamer_iterator(
+                mon_lib_srv         = mon_lib_srv,
+                residue             = residue,
+                atom_selection_bool = None)
+              if(rotamer_iterator is None):
+                n_amino_acids_ignored += 1
               else:
-                rotamer_iterator = lockit.get_rotamer_iterator(
-                  mon_lib_srv         = mon_lib_srv,
-                  residue             = residue,
-                  atom_selection_bool = None)
-                if(rotamer_iterator is None):
-                  n_amino_acids_ignored += 1
-                else:
-                  n_amino_acids_scored += 1
-                  n_rotamers = 0
-                  for rotamer, rotamer_sites_cart in rotamer_iterator:
-                    n_rotamers += 1
-                    if(rev.is_better(sites_cart = rotamer_sites_cart)):
-                      rotamer_id_best = rotamer.id
-                      residue_sites_best = rotamer_sites_cart.deep_copy()
-                  residue.atoms().set_xyz(new_xyz=residue_sites_best)
-                  ###
-                  rsel, rs = include_residue_selection(selection = selection,
-                    residue_iselection = residue_iselection)
-                  tmp = sites_cart_start.set_selected(
-                    residue_iselection, residue_sites_best)
-                  refined = rsr_manager.refine_restrained(
-                    tmp.select(rsel),
-                    rsel, rs)
+                n_amino_acids_scored += 1
+                n_rotamers = 0
+                for rotamer, rotamer_sites_cart in rotamer_iterator:
+                  n_rotamers += 1
+                  if(rev.is_better(sites_cart = rotamer_sites_cart)):
+                    rotamer_id_best = rotamer.id
+                    residue_sites_best = rotamer_sites_cart.deep_copy()
+                residue.atoms().set_xyz(new_xyz=residue_sites_best)
+                ###
+                rsel, rs = include_residue_selection(selection = selection,
+                  residue_iselection = residue_iselection)
+                tmp = sites_cart_start.set_selected(
+                  residue_iselection, residue_sites_best)
+                refined = rsr_manager.refine_restrained(
+                  tmp.select(rsel),
+                  rsel, rs)
 
-                  if(rev.is_better(sites_cart = refined.sites_cart_fragment)):
-                    rotamer_sites_cart_refined = \
-                      refined.sites_cart_fragment.deep_copy()
-                    sites_cart_start = sites_cart_start.set_selected(
-                      residue_iselection, rotamer_sites_cart_refined)
-                    residue.atoms().set_xyz(new_xyz=rotamer_sites_cart_refined)
-              if(abs(rev.t1_best-rev.t1_start) > 0.01 and
-                 abs(rev.t2_best-rev.t2_start) > 0.01):
-                print >> log, fmt3%(resid, cc_start, rev.t1_start, rev.t2_start,
-                  rev.t1_best, rev.t2_best, rotamer_id_best, n_rotamers)
+                if(rev.is_better(sites_cart = refined.sites_cart_refined)):
+                  rotamer_sites_cart_refined = \
+                    refined.sites_cart_refined.deep_copy()
+                  sites_cart_start = sites_cart_start.set_selected(
+                    residue_iselection, rotamer_sites_cart_refined)
+                  residue.atoms().set_xyz(new_xyz=rotamer_sites_cart_refined)
+            if(abs(rev.t1_best-rev.t1_start) > 0.01 and
+               abs(rev.t2_best-rev.t2_start) > 0.01):
+              print >> log, fmt3%(resid, cc_start, rev.t1_start, rev.t2_start,
+                rev.t1_best, rev.t2_best, rotamer_id_best, n_rotamers)
   xray_structure.set_sites_cart(sites_cart_start)
   return result
 

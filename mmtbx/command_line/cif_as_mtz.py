@@ -702,11 +702,13 @@ def run(args, command_name = "phenix.cif_as_mtz"):
             else:
               r_free_flags = miller_array
               assert isinstance(r_free_flags.data(), flex.int)
+        data_label = f_obs.info().labels[0]
         if(r_free_flags is not None):
           f_obs = f_obs.common_set(r_free_flags)
           r_free_flags = r_free_flags.common_set(f_obs)
         mtz_object = mmtbx.utils.guess_observation_type(
           f_obs          = f_obs,
+          label          = data_label,
           xray_structure = xray_structure,
           r_free_flags   = r_free_flags).mtz_object()
     if(command_line.options.output_file_name):
