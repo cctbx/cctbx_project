@@ -243,7 +243,7 @@ def run(args):
   else:
     exercise_trigonometric_ff()
 
-    t = f_vs_f_sq_test_case(inelastic_scattering=True)
+    t = f_vs_f_sq_test_case(inelastic_scattering=False)
     commands.loop_over_space_groups(t.exercise)
 
     t = f_vs_f_sq_test_case(inelastic_scattering=True)
