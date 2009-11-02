@@ -397,14 +397,15 @@ class manager(object):
 
   def backbone_selections(self, bool=True):
     get_class = iotbx.pdb.common_residue_names_get_class
-    backbone_names = ["CA","CB","C","O","N"]
+    backbone_names = set(["CA","CB","C","O","N"])
     result = flex.size_t()
     for model in self.pdb_hierarchy.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
           for ag in rg.atom_groups():
+            is_common_amino_acid=get_class(name=ag.resname)=="common_amino_acid"
             for atom in rg.atoms():
-              if(get_class(name=ag.resname) == "common_amino_acid" and
+              if(is_common_amino_acid and
                  atom.name.strip().upper() in backbone_names):
                 result.append(atom.i_seq)
     if(bool):

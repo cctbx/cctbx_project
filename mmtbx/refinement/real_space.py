@@ -40,7 +40,7 @@ real_space_refinement
     rmsd_max_angles = 5.0
       .type = float
       .help = Refinement result is ignored if this max allowable deviation exceeded
-    grid_search_scales = 0.25 0.5 0.75 1.0 1.25 1.5 1.75
+    grid_search_scales = 0.25 0.5 0.75 1.0 1.25 1.5 1.75 2.0 2.5 3.0
       .type = floats
       .help = Defines the range of values for the weight grid search
     verbose = 1
@@ -106,11 +106,10 @@ class run(object):
       update_f_calc  = True,
       update_f_mask  = True)
     xrs_start = self.fmodel.xray_structure.deep_copy_scatterers()
-    xrs_best = self.fmodel.xray_structure.deep_copy_scatterers()
-    r_work_best = self.fmodel.r_work()
     geom = model.geometry_statistics(ignore_hd = True) # XXX
     b_start, a_start = geom.b_mean, geom.a_mean
-    for restraints_target_weight in restraints_target_weights:
+    best_weight_scale = None
+    for i_w, restraints_target_weight in enumerate(restraints_target_weights):
       self.fmodel.update_xray_structure(
         xray_structure = xrs_start,
         update_f_calc  = True,
@@ -142,20 +141,26 @@ class run(object):
           update_f_mask  = True)
         model.xray_structure = self.fmodel.xray_structure
         self.show(weight=restraints_target_weight)
-        r_work = self.fmodel.r_work()
-        geom = model.geometry_statistics(ignore_hd = True) # XXX
-        if(r_work < r_work_best and ((geom.b_mean <= params.rmsd_max_bonds and
-           geom.a_mean <= params.rmsd_max_angles) or
-           ((geom.b_mean > params.rmsd_max_bonds or geom.a_mean > params.rmsd_max_angles)
-           and (geom.b_mean <= b_start or geom.a_mean <= a_start)) )):
-          r_work_best = r_work
-          xrs_best = minimized.xray_structure.deep_copy_scatterers()
+        if(i_w == 0):
+          xrs_best = self.fmodel.xray_structure.deep_copy_scatterers()
+          r_free_best = self.fmodel.r_free()
+        else:
+          r_free = self.fmodel.r_free()
+          geom = model.geometry_statistics(ignore_hd = True) # XXX
+          if(r_free < r_free_best and ((geom.b_mean <= params.rmsd_max_bonds and
+             geom.a_mean <= params.rmsd_max_angles) or
+             ((geom.b_mean > params.rmsd_max_bonds or geom.a_mean > params.rmsd_max_angles)
+             and (geom.b_mean <= b_start or geom.a_mean <= a_start)) )):
+            r_free_best = r_free
+            xrs_best = minimized.xray_structure.deep_copy_scatterers()
+            best_weight_scale = restraints_target_weight/restraints_target_weight_
     self.fmodel.update_xray_structure(
       xray_structure = xrs_best,
       update_f_calc  = True,
       update_f_mask  = True)
     model.xray_structure = self.fmodel.xray_structure
     self.show()
+    print >> self.log, "Best weight scale: %s"%format_value("%8.4f",best_weight_scale)
 
   def compute_map(self, map_type=None, use_all_data=False):
     e_map_manager = self.fmodel.electron_density_map() # XXX pass in map filling options

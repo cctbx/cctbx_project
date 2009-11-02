@@ -1765,8 +1765,9 @@ class guess_observation_type(object):
 
   data_size = 500
 
-  def __init__(self, f_obs, xray_structure, r_free_flags=None):
+  def __init__(self, f_obs, label, xray_structure, r_free_flags=None):
     self.f_obs_original = f_obs.deep_copy()
+    self.label = label
     self.r_free_flags_original = None
     if(r_free_flags is not None):
       self.r_free_flags_original = r_free_flags.deep_copy()
@@ -1808,6 +1809,7 @@ class guess_observation_type(object):
           f_obs               = f.deep_copy(),
           f_calc              = f_calc.deep_copy(),
           xray_structure      = xrs.deep_copy_scatterers(),
+          twin_switch_tolerance = 5.,
           skip_twin_detection = True)
         results.append([dtype,ftype,fmodel.twin,fmodel.r_work()])
     #
@@ -1823,37 +1825,23 @@ class guess_observation_type(object):
       elif(r[0]=="N"): results_n.append(r)
       else: raise RuntimeError
     #
-    result_best_x = self.find_best(results = results_x)
-    result_best_n = self.find_best(results = results_n)
-    #
-    options = []
-    if(result_best_x[3]<result_best_n[3]): options = [result_best_x]
-    else: options = [result_best_n]
-    results = []
-    for r in options:
-      dtype,ftype = r[0],r[1]
-      xrs = xray_structure.deep_copy_scatterers()
-      if(dtype=="N"):
-        xrs.switch_to_neutron_scattering_dictionary()
-      f_calc = f_obs.structure_factors_from_scatterers(
-        xray_structure = xrs).f_calc()
-      f = f_obs.deep_copy()
-      if(ftype=="FFORCE"):
-        f = f_obs.f_sq_as_f()
-      elif(ftype=="IFORCE"):
-        f = f_obs.f_as_f_sq()
-      f.set_observation_type_xray_amplitude()
-      fmodel = self.get_r_factor(
-        f_obs               = f.deep_copy(),
-        f_calc              = f_calc.deep_copy(),
-        xray_structure      = xrs.deep_copy_scatterers(),
-        skip_twin_detection = False)
-      results.append([dtype,ftype,fmodel.twin,fmodel.r_work()])
-    print "All scores (stage 2):"
-    for r in results:
-      st_r = " ".join(["%6s"%str(r_) for r_ in r])
-      print st_r
-    self.result = self.find_best(results = results)
+    result_best_x, rbx = self.find_best(results = results_x)
+    result_best_n, rbn = self.find_best(results = results_n)
+    if(rbx > rbn and abs(rbx - rbn)*100. > 10.):
+      if(result_best_n is not None):
+        self.result = result_best_n
+      else:
+        self.result = ["N", self.label, None, None]
+    else:
+      if(result_best_x is not None):
+        self.result = result_best_x
+      else:
+        self.result = ["X", self.label, None, None]
+    if(len(self.result)==0): print "Answer: %s"%self.label
+    elif([self.result[2], self.result[3]].count(None)==2):
+      print "Answer: %s_%s"%(self.result[1], self.result[0])
+    else:
+      print "Answer: %s"%" ".join(["%6s"%str(r_) for r_ in self.result])
 
   def find_best(self, results):
     r_best = 1.e+9
@@ -1862,22 +1850,33 @@ class guess_observation_type(object):
       if(abs(r[3]) < abs(r_best)):
         r_best = abs(r[3])
         answer = r
-    print "Answer: %s"%" ".join(["%6s"%str(r_) for r_ in answer])
-    return answer
+    d0 = abs(results[0][3])
+    d1 = abs(results[1][3])
+    d2 = abs(results[2][3])
+    diff = min(min(abs(d0-d1), abs(d0-d2)), abs(d1-d2))*100.
+    if(diff < 5.0): answer = None
+    #if(answer is not None):
+    #  print "Answer: %s"%" ".join(["%6s"%str(r_) for r_ in answer])
+    return answer, r_best
 
   def mtz_object(self):
-    r = self.result
-    label = "OBS_%s"%r[0]
-    if(r[1]=="F"):
-      self.f_obs_original.set_observation_type_xray_amplitude()
-      label = "F"+label
-    elif(r[1]=="FFORCE"):
-      self.f_obs_original.set_observation_type_xray_intensity()
-      label = "I"+label
-    elif(r[1]=="IFORCE"):
-      self.f_obs_original = self.f_obs_original.f_as_f_sq()
-      self.f_obs_original.set_observation_type_xray_amplitude()
-      label = "F"+label
+    if(len(self.result)==0):
+      label = self.label
+    elif([self.result[2], self.result[3]].count(None)==2):
+      label = self.label + "_" + self.result[0]
+    else:
+      r = self.result
+      label = "OBS_%s"%r[0]
+      if(r[1]=="F"):
+        self.f_obs_original.set_observation_type_xray_amplitude()
+        label = "F"+label
+      elif(r[1]=="FFORCE"):
+        self.f_obs_original.set_observation_type_xray_intensity()
+        label = "I"+label
+      elif(r[1]=="IFORCE"):
+        self.f_obs_original = self.f_obs_original.f_as_f_sq()
+        self.f_obs_original.set_observation_type_xray_amplitude()
+        label = "F"+label
     mtz_dataset = self.f_obs_original.as_mtz_dataset(column_root_label = label)
     if(self.r_free_flags_original is not None):
       mtz_dataset.add_miller_array(
@@ -1885,7 +1884,8 @@ class guess_observation_type(object):
         column_root_label = "R-free-flags")
     return mtz_dataset.mtz_object()
 
-  def get_r_factor(self, f_obs, f_calc, xray_structure, skip_twin_detection):
+  def get_r_factor(self, f_obs, f_calc, xray_structure, twin_switch_tolerance,
+                   skip_twin_detection):
     r_free_flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
     for trial in xrange(3):
       result = outlier_rejection.outlier_manager(
@@ -1929,6 +1929,7 @@ class guess_observation_type(object):
       target_name              = "ls_wunit_k1",
       bulk_solvent_and_scaling = True,
       bss_params               = params,
+      twin_switch_tolerance    = twin_switch_tolerance,
       skip_twin_detection      = skip_twin_detection,
       twin_laws                = twin_laws)
     return fmodel
