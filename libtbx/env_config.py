@@ -1762,24 +1762,25 @@ class pre_process_args:
       self.command_line.options.current_working_directory = None
     if (default_repositories is not None):
       self.repository_paths.extend(default_repositories)
-    if (self.command_line.options.force_32bit):
-      if (sys.platform != "darwin"):
+    if (not self.warm_start):
+      if (self.command_line.options.force_32bit):
+        if (sys.platform != "darwin"):
+          raise Sorry(
+            "The --force_32bit option is only valid on Mac OS systems.")
+        if (sys.maxint > 2**31-1):
+          raise Sorry(
+            'The --force_32bit option can only be used with 32-bit Python.\n'
+            '  See also: "man python"')
+        buffers = easy_run.fully_buffered(
+          command="/usr/bin/arch -i386 /bin/ls /")
+        if (   len(buffers.stderr_lines) != 0
+            or len(buffers.stdout_lines) == 0):
+          raise Sorry(
+            "The --force_32bit option is not valid for this platform.")
+      if (    self.command_line.options.msvs_arch_flag != "None"
+          and os.name != "nt"):
         raise Sorry(
-          "The --force_32bit option is only valid on Mac OS systems.")
-      if (sys.maxint > 2**31-1):
-        raise Sorry(
-          'The --force_32bit option can only be used with 32-bit Python.\n'
-          '  See also: "man python"')
-      buffers = easy_run.fully_buffered(
-        command="/usr/bin/arch -i386 /bin/ls /")
-      if (   len(buffers.stderr_lines) != 0
-          or len(buffers.stdout_lines) == 0):
-        raise Sorry(
-          "The --force_32bit option is not valid for this platform.")
-    if (    self.command_line.options.msvs_arch_flag != "None"
-        and os.name != "nt"):
-      raise Sorry(
-        "The --msvs_arch_flag option is not valid for this platform.")
+          "The --msvs_arch_flag option is not valid for this platform.")
 
   def option_repository(self, option, opt, value, parser):
     if (not os.path.isdir(value)):
