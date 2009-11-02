@@ -49,7 +49,7 @@ class lbfgs(object):
     O.real_space_target_weight = real_space_target_weight
     O.iselection_refine = iselection_refine
     if(iselection_refine is None):
-      O.x = O.sites_cart.as_double()
+      O.x = sites_cart.as_double()
     else:
       O.x = O.sites_cart.select(indices=iselection_refine).as_double()
     O.number_of_function_evaluations = -1
@@ -85,6 +85,8 @@ class lbfgs(object):
     else:
       if(O.iselection_refine is not None):
         O.sites_cart.set_selected(O.iselection_refine, O.sites_cart_refined)
+      else:
+        O.sites_cart = O.sites_cart_refined
       gr_e = O.geometry_restraints_manager.energies_sites(
         sites_cart=O.sites_cart, compute_gradients=True)
       gr_e_gradients = gr_e.gradients
