@@ -845,8 +845,10 @@ namespace cctbx { namespace sgtbx {
     return std_table_id;
   }
 
-  void short_mono_hm_as_full_mono_hm(string const& std_table_id,
-                                     string& work_symbol)
+  bool
+  short_mono_hm_as_full_mono_hm(
+    string const& std_table_id,
+    string& work_symbol)
   {
     const tables::short_mono_hm_dict_entry* entry;
     if (std_table_id == "I1952") entry = tables::vol_i_short_mono_hm_dict;
@@ -854,6 +856,31 @@ namespace cctbx { namespace sgtbx {
     for (int i = 0; entry[i].shrt; i++) {
       if (work_symbol == entry[i].shrt) {
         work_symbol = entry[i].full;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /* Acta Cryst. (1992). A48, 727-732.
+     Symbols for symmetry elements and symmetry operations.
+     Final report of the International Union of Crystallography
+     Ad-Hoc Committee on the nomenclature of symmetry.
+
+     http://www.iucr.org/iucr-top/comm/cnom/symsym/node7.html
+     Space group No. 39 41 64 67 68
+     Symbol in ITA83: Abm2 Aba2 Cmca Cmma Ccca
+          New symbol: Aem2 Aea2 Cmce Cmme Ccce
+  */
+  void
+  ad_hoc_1992_symbol_as_a1983_symbol(
+    string& work_symbol)
+  {
+    static const char* a83[] = {"Abm2", "Aba2", "Cmca", "Cmma", "Ccca"};
+    static const char* adh[] = {"Aem2", "Aea2", "Cmce", "Cmme", "Ccce"};
+    for(int i=0;i<5;i++) {
+      if (work_symbol == adh[i]) {
+        work_symbol = a83[i];
         return;
       }
     }
@@ -1058,7 +1085,9 @@ namespace cctbx { namespace sgtbx {
       }
     }
     if (entry == 0) {
-      short_mono_hm_as_full_mono_hm(std_table_id, work_symbol);
+      if (!short_mono_hm_as_full_mono_hm(std_table_id, work_symbol)) {
+        ad_hoc_1992_symbol_as_a1983_symbol(work_symbol);
+      }
       entry = find_main_symbol_dict_entry(work_symbol);
       if (entry == 0) {
         throw error(not_recognized + symbol);
@@ -1175,10 +1204,3 @@ namespace cctbx { namespace sgtbx {
   }
 
 }} // namespace cctbx::sgtbx
-
-/*
-http://www.iucr.org/iucr-top/comm/cnom/symsym/node7.html
-Space group No. 39 41 64 67 68
-Symbol in ITA83:  Abm2 Aba2 Cmca Cmma Ccca
-New symbol: Aem2 Aea2 Cmce Cmme Ccce.
-*/
