@@ -176,6 +176,42 @@ class comp_comp_id(object):
     self.__rotamer_info = None
     self.classification = None
 
+  def normalize_atom_ids_in_place(self):
+    atom_ids_mod = []
+    atom_ids_mod_set = set()
+    for atom in self.atom_list:
+      atom_id = atom.atom_id.replace("'", "*")
+      if (atom_id in atom_ids_mod_set):
+        return False # changing ids results in ambiguity
+      atom_ids_mod.append(atom_id)
+      atom_ids_mod_set.add(atom_id)
+    del atom_ids_mod_set
+    #
+    atom_id_map = {}
+    for atom,atom_id in zip(self.atom_list, atom_ids_mod):
+      if (atom.atom_id != atom_id):
+        atom_id_map[atom.atom_id] = atom_id
+        atom.atom_id = atom_id
+    if (len(atom_id_map) == 0):
+      return False
+    def replace(obj_list, attrs):
+      for obj in obj_list:
+        for attr in attrs:
+          atom_id = atom_id_map.get(getattr(obj, attr))
+          if (atom_id is not None):
+            setattr(obj, attr, atom_id)
+    replace(self.bond_list, (
+      "atom_id_1", "atom_id_2"))
+    replace(self.angle_list, (
+      "atom_id_1", "atom_id_2", "atom_id_3"))
+    replace(self.tor_list, (
+      "atom_id_1", "atom_id_2", "atom_id_3", "atom_id_4"))
+    replace(self.chir_list, (
+      "atom_id_centre", "atom_id_1", "atom_id_2", "atom_id_3"))
+    replace(self.plane_atom_list, (
+      "atom_id",))
+    return True
+
   def __copy__(self):
     result = comp_comp_id(source_info=None, chem_comp=self.chem_comp)
     result.atom_list = [copy.copy(e) for e in self.atom_list]

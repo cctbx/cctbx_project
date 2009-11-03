@@ -1,6 +1,5 @@
 from __future__ import division
 from iotbx import pdb
-from iotbx.pdb import rna_2p_residue_names, rna_3p_residue_names
 import iotbx.phil
 from mmtbx.monomer_library import server
 from mmtbx.monomer_library import cif_types
@@ -178,6 +177,8 @@ master_params_str = """\
     .expert_level = 2
     .style = box auto_align noauto
   {
+    not_linked = 5
+      .type=int
     bond_restraints_sorted_by_residual = 5
       .type=int
     nonbonded_interactions_sorted_by_model_distance = 5
@@ -564,12 +565,11 @@ class monomer_mapping(object):
       self.incomplete_info = None
       self.is_terminus = None
     else:
-      self._get_mappings()
       self.chem_mod_ids = []
-      if (self.atom_name_interpretation is not None):
-        self._rna_sugar_pucker_analysis(
-          params=rna_sugar_pucker_analysis_params,
-          next_pdb_residue=next_pdb_residue)
+      self._rna_sugar_pucker_analysis(
+        params=rna_sugar_pucker_analysis_params,
+        next_pdb_residue=next_pdb_residue)
+      self._get_mappings()
       for id_str in atom_id_str_pdbres_list:
         for apply_data_mod in apply_cif_modifications.get(id_str, []):
           self.apply_mod(
@@ -598,14 +598,16 @@ class monomer_mapping(object):
     return sorted(atom_id_str_pdbres_set)
 
   def _rna_sugar_pucker_analysis(self, params, next_pdb_residue):
+    self.is_rna2p = None
     if (not params.use): return
+    if (self.monomer.is_peptide()): return
     from iotbx.pdb.rna_dna_detection import residue_analysis
     ra1 = residue_analysis(
       residue_atoms=self.pdb_residue.atoms(),
       distance_tolerance=params.bond_detection_distance_tolerance)
     if (ra1.problems is not None): return
     if (not ra1.is_rna): return
-    is_2p = False
+    self.is_rna2p = False
     if (next_pdb_residue is not None):
       ra2 = residue_analysis(
         residue_atoms=next_pdb_residue.atoms(),
@@ -615,12 +617,12 @@ class monomer_mapping(object):
         residue_1_deoxy_ribo_atom_dict=ra1.deoxy_ribo_atom_dict,
         residue_1_c1_n_closest_atom=ra1.c1_n_closest_atom,
         residue_2_p_atom=ra2.p_atom)
-      is_2p = ana.is_2p
-    if (is_2p): primary_mod_id = "rna2p"
-    else:       primary_mod_id = "rna3p"
+      self.is_rna2p = ana.is_2p
+    if (self.is_rna2p): primary_mod_id = "rna2p"
+    else:               primary_mod_id = "rna3p"
     self.monomer, chem_mod_ids = self.mon_lib_srv.get_comp_comp_id_mod(
       comp_comp_id=self.monomer,
-      mod_ids=(primary_mod_id, "rna_esd"))
+      mod_ids=(primary_mod_id,))
     self._track_mods(chem_mod_ids=chem_mod_ids)
 
   def _get_mappings(self):
@@ -632,7 +634,7 @@ class monomer_mapping(object):
     self.duplicate_atoms = {}
     if (self.atom_name_interpretation is not None):
       replace_primes = False
-    elif (self.monomer.is_rna_dna()):
+    elif (self.is_rna2p is not None or self.monomer.is_rna_dna()):
       replace_primes = True
     else:
       n_primes = 0
@@ -1019,13 +1021,11 @@ def get_lib_link_peptide(mon_lib_srv, m_i, m_j):
 def get_lib_link(mon_lib_srv, m_i, m_j):
   if (m_i.monomer.is_peptide() and m_j.monomer.is_peptide()):
     return get_lib_link_peptide(mon_lib_srv, m_i, m_j)
-  elif (m_i.monomer.is_rna_dna() and m_j.monomer.is_rna_dna()):
-    id = m_i.monomer.chem_comp.id
-    if (id in rna_2p_residue_names):
+  elif (    (m_i.is_rna2p is not None or m_i.monomer.is_rna_dna())
+        and (m_j.is_rna2p is not None or m_j.monomer.is_rna_dna())):
+    if (m_i.is_rna2p):
       return mon_lib_srv.link_link_id_dict["rna2p"]
-    if (id in rna_3p_residue_names):
-      return mon_lib_srv.link_link_id_dict["rna3p"]
-    return mon_lib_srv.link_link_id_dict["p"]
+    return mon_lib_srv.link_link_id_dict["rna3p"]
   if (m_i.monomer.is_water() or m_j.monomer.is_water()): return None
   comp_id_1 = m_i.monomer.chem_comp.id
   comp_id_2 = m_j.monomer.chem_comp.id
@@ -1520,6 +1520,7 @@ class build_chain_proxies(object):
         apply_cif_modifications,
         apply_cif_links_mm_pdbres_dict,
         link_distance_cutoff,
+        not_linked_show_max,
         dihedral_function_type,
         chir_volume_esd,
         peptide_link_params,
@@ -1556,6 +1557,7 @@ class build_chain_proxies(object):
     modifications_used = dicts.with_default_value(0)
     incomplete_infos = dicts.with_default_value(0)
     link_ids = dicts.with_default_value(0)
+    mm_pairs_not_linked = []
     n_unresolved_chain_links = 0
     n_chain_breaks = 0
     n_unresolved_chain_link_angles = 0
@@ -1633,6 +1635,7 @@ class build_chain_proxies(object):
             m_j=mm)
           if (prev_mm.lib_link is None):
             link_ids[None] += 1
+            mm_pairs_not_linked.append((prev_mm, mm))
           else:
             mod_id = prev_mm.lib_link.chem_link.mod_id_1
             if (mod_id not in [None, ""]):
@@ -1838,6 +1841,22 @@ class build_chain_proxies(object):
     if (log is not None):
       if (len(link_ids) > 0):
         print >> log, "          Link IDs:", link_ids
+        if (len(link_ids) != 1):
+          if (not_linked_show_max is None):
+            show_max = len(mm_pairs_not_linked)
+          else:
+            show_max = not_linked_show_max
+          n_not_shown = max(0, len(mm_pairs_not_linked) - show_max)
+          if (n_not_shown == 1):
+            show_max += 1
+            n_not_shown = 0
+          for pair in mm_pairs_not_linked[:show_max]:
+            print >> log, "            Not linked:"
+            for mm in pair:
+              print >> log, "              %s" % mm.pdb_residue.id_str()
+          if (n_not_shown != 0):
+            print >> log, \
+              "            ... (remaining %d not shown)" % n_not_shown
     if (is_unique_model and log is not None):
       if (n_unresolved_chain_links > 0):
         print >> log, "          Unresolved chain links:", \
@@ -2108,6 +2127,7 @@ class build_all_chain_proxies(object):
             apply_cif_modifications=self.apply_cif_modifications,
             apply_cif_links_mm_pdbres_dict=apply_cif_links_mm_pdbres_dict,
             link_distance_cutoff=self.params.link_distance_cutoff,
+            not_linked_show_max=self.params.show_max_items.not_linked,
             dihedral_function_type=self.params.dihedral_function_type,
             chir_volume_esd=self.params.chir_volume_esd,
             peptide_link_params=self.params.peptide_link,
