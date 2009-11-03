@@ -6,6 +6,7 @@
 #include <cctbx/sgtbx/symbols.h>
 #include <cctbx/sgtbx/reference_settings.h>
 #include <cctbx/sgtbx/change_of_basis_op.h>
+#include <map>
 
 using std::string;
 
@@ -871,19 +872,56 @@ namespace cctbx { namespace sgtbx {
      Space group No. 39 41 64 67 68
      Symbol in ITA83: Abm2 Aba2 Cmca Cmma Ccca
           New symbol: Aem2 Aea2 Cmce Cmme Ccce
+
+     The "e" symbols for space groups 67 and 68 are ambiguous.
+     An arbitrary choice is made below.
   */
   void
   ad_hoc_1992_symbol_as_a1983_symbol(
     string& work_symbol)
   {
-    static const char* a83[] = {"Abm2", "Aba2", "Cmca", "Cmma", "Ccca"};
-    static const char* adh[] = {"Aem2", "Aea2", "Cmce", "Cmme", "Ccce"};
-    for(int i=0;i<5;i++) {
-      if (work_symbol == adh[i]) {
-        work_symbol = a83[i];
-        return;
+    static char const* adh_a38_pairs[] = {
+      // No. 39
+      "Aem2", "Abm2",
+      "Bme2", "Bma2",
+      "B2em", "B2cm",
+      "C2me", "C2mb",
+      "Cm2e", "Cm2a",
+      "Ae2m", "Ac2m",
+      // No. 41
+      "Aea2", "Aba2",
+      "Bbe2", "Bba2",
+      "B2eb", "B2cb",
+      "C2ce", "C2cb",
+      "Cc2e", "Cc2a",
+      "Ae2a", "Ac2a",
+      // No. 64
+      "Cmce", "Cmca",
+      "Ccme", "Ccmb",
+      "Aema", "Abma",
+      "Aeam", "Acam",
+      "Bbem", "Bbcm",
+      "Bmeb", "Bmab",
+      // No. 67
+      "Cmme", "Cmma", // ambiguous: Cmmb
+      "Aemm", "Abmm", // ambiguous: Acmm
+      "Bmem", "Bmcm", // ambiguous: Bmam
+      // No. 68
+      "Ccce", "Ccca", // ambiguous: Cccb
+      "Aeaa", "Abaa", // ambiguous: Acaa
+      "Bbeb", "Bbcb"  // ambiguous: Bbab
+    };
+    typedef std::map<std::string, const char*> map_t;
+    static map_t adh_a38_map;
+    if (adh_a38_map.size() == 0) {
+      std::size_t n = sizeof(adh_a38_pairs) / sizeof(const char*);
+      for(int i=0;i<n;i+=2) {
+        adh_a38_map[adh_a38_pairs[i]] = adh_a38_pairs[i+1];
       }
+      CCTBX_ASSERT(adh_a38_map.size()*2 == n);
     }
+    map_t::const_iterator match = adh_a38_map.find(work_symbol);
+    if (match != adh_a38_map.end()) work_symbol = match->second;
   }
 
   const tables::main_symbol_dict_entry*
