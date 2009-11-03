@@ -150,11 +150,23 @@ def esd_as_weight(esd):
 
 class comp_comp_id(object):
 
+  __slots__ = [
+    "source_info",
+    "chem_comp",
+    "atom_list",
+    "bond_list",
+    "angle_list",
+    "tor_list",
+    "chir_list",
+    "plane_atom_list",
+    "rotamer_info_phil_str_list",
+    "__rotamer_info",
+    "classification"]
+
   def __init__(self, source_info, chem_comp):
     self.source_info = source_info
     self.chem_comp = chem_comp
     self.atom_list = []
-    self.tree_list = []
     self.bond_list = []
     self.angle_list = []
     self.tor_list = []
@@ -167,7 +179,6 @@ class comp_comp_id(object):
   def __copy__(self):
     result = comp_comp_id(source_info=None, chem_comp=self.chem_comp)
     result.atom_list = [copy.copy(e) for e in self.atom_list]
-    result.tree_list = [copy.copy(e) for e in self.tree_list]
     result.bond_list = [copy.copy(e) for e in self.bond_list]
     result.angle_list = [copy.copy(e) for e in self.angle_list]
     result.tor_list = [copy.copy(e) for e in self.tor_list]
@@ -254,11 +265,6 @@ class comp_comp_id(object):
       if (atom_id not in (bond.atom_id_1, bond.atom_id_2)):
         new_bond_list.append(bond)
     self.bond_list = new_bond_list
-    new_tree_list = []
-    for tree in self.tree_list:
-      if (atom_id not in (tree.atom_id, tree.atom_back, tree.atom_forward)):
-        new_tree_list.append(tree)
-    self.tree_list = new_tree_list
     new_angle_list = []
     for angle in self.angle_list:
       if (atom_id not in (angle.atom_id_1, angle.atom_id_2, angle.atom_id_3)):
@@ -300,13 +306,6 @@ class comp_comp_id(object):
           bond.atom_id_1 = atom.atom_id
         if (bond.atom_id_2 == old_atom_id):
           bond.atom_id_2 = atom.atom_id
-      for tree in self.tree_list:
-        if (tree.atom_id == old_atom_id):
-          tree.atom_id = atom.atom_id
-        if (tree.atom_back == old_atom_id):
-          tree.atom_back = atom.atom_id
-        if (tree.atom_forward == old_atom_id):
-          tree.atom_forward = atom.atom_id
       for angle in self.angle_list:
         if (angle.atom_id_1 == old_atom_id):
           angle.atom_id_1 = atom.atom_id
@@ -350,8 +349,6 @@ class comp_comp_id(object):
           + str(mod_atom.function))
     result.bond_list = apply_chem_mod_list(
       "bond", mod.bond_list, result.bond_list)
-    result.tree_list = apply_chem_mod_list(
-      "tree", mod.tree_list, result.tree_list)
     result.angle_list = apply_chem_mod_list(
       "angle", mod.angle_list, result.angle_list)
     result.tor_list = apply_chem_mod_list(
@@ -896,7 +893,6 @@ class mod_mod_id:
     self.source_info = source_info
     self.chem_mod = chem_mod
     self.atom_list = []
-    self.tree_list = []
     self.bond_list = []
     self.angle_list = []
     self.tor_list = []

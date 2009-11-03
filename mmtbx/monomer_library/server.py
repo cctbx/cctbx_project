@@ -136,7 +136,6 @@ def convert_comp_list(source_info, cif_object):
                         cif_type_outer=cif_types.comp_comp_id,
                         outer_mappings=[
                          ("chem_comp_atom","atom_list"),
-                         ("chem_comp_tree","tree_list"),
                          ("chem_comp_bond","bond_list"),
                          ("chem_comp_angle","angle_list"),
                          ("chem_comp_tor","tor_list"),
@@ -174,7 +173,6 @@ def convert_mod_list(source_info, cif_object):
                       cif_type_outer=cif_types.mod_mod_id,
                       outer_mappings=[
                         ("chem_mod_atom","atom_list"),
-                        ("chem_mod_tree","tree_list"),
                         ("chem_mod_bond","bond_list"),
                         ("chem_mod_angle","angle_list"),
                         ("chem_mod_tor","tor_list"),
@@ -301,11 +299,12 @@ class server(process_cif_mixin):
       self.process_cif(
         file_name=os.path.join(self.geostd_path, "rna_dna", file_name))
 
-  def get_comp_comp_id_direct(self, comp_id, return_file_name_only=False):
+  def get_comp_comp_id_direct(self, comp_id):
     comp_id = comp_id.strip().upper()
     if (len(comp_id) == 0): return None
-    try: return self.comp_comp_id_dict[comp_id]
-    except KeyError: pass
+    result = self.comp_comp_id_dict.get(comp_id)
+    if (result is not None):
+      return result
     std_comp_id = self.comp_synonym_list_dict.get(comp_id, "").strip().upper()
     def find_file():
       for i_pass in [0,1]:
@@ -342,7 +341,6 @@ class server(process_cif_mixin):
                 return os.path.join(dir_name, node)
       return None
     file_name = find_file()
-    if return_file_name_only: return find_file
     if (file_name is None): return None
     self.process_cif(file_name=file_name)
     if (len(std_comp_id) > 0):
@@ -350,12 +348,10 @@ class server(process_cif_mixin):
     else:
       result = None
     if (result is not None):
-      result.file_name = file_name
       self.comp_comp_id_dict[comp_id] = result
     else:
       result = self.comp_comp_id_dict.get(comp_id)
       if (result is not None):
-        result.file_name = file_name
         if (len(std_comp_id) != 0):
           self.comp_comp_id_dict[std_comp_id] = result
       else:
@@ -370,8 +366,7 @@ class server(process_cif_mixin):
   def get_comp_comp_id_and_atom_name_interpretation(self,
         residue_name,
         atom_names,
-        translate_cns_dna_rna_residue_names=None,
-        return_file_name_only=False):
+        translate_cns_dna_rna_residue_names=None):
     rnpani = residue_name_plus_atom_names_interpreter(
       residue_name=residue_name,
       atom_names=atom_names,
@@ -379,9 +374,7 @@ class server(process_cif_mixin):
       return_mon_lib_dna_name=True)
     if (rnpani.work_residue_name is None): return (None, None)
     return (
-      self.get_comp_comp_id_direct(
-        comp_id=rnpani.work_residue_name,
-        return_file_name_only=return_file_name_only),
+      self.get_comp_comp_id_direct(comp_id=rnpani.work_residue_name),
       rnpani.atom_name_interpretation)
 
   def rotamer_iterator(self, comp_id, atom_names, sites_cart):
