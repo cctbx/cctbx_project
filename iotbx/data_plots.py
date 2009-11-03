@@ -1,8 +1,9 @@
+
 from cctbx.array_family import flex
-from cStringIO import StringIO
 import sys
 import os
 import string, re, math
+from libtbx import adopt_init_args
 
 class plot_data(object):
   def __init__(self,
@@ -79,7 +80,7 @@ def plot_data_loggraph(plot_data,output):
 #-----------------------------------------------------------------------
 # Nat's utilities for plottable data
 def flip_table (table) :
-  if len(table) == 0 :
+  if table is None or len(table) == 0 :
     return []
   new_table = []
   for elem in table[0] :
@@ -105,21 +106,10 @@ class table_data (object) :
       data=None,
       comments=None,
       x_is_inverse_d_min=False) :
-    self.title = title
+    adopt_init_args(self, locals())
     self._is_complete = False
-    self.column_names = column_names
-    self.column_types = column_types
-    self.column_labels = column_labels
-    self.column_formats = column_formats
-    self.graph_names = graph_names
-    self.graph_types = graph_types
-    self.graph_labels = graph_labels
-    self.graph_columns = graph_columns
-    self.data = data
-    self.comments = comments
     self._graphs = {}
     self._column_width = 10
-    self.x_is_inverse_d_min = x_is_inverse_d_min
 
   def add_graph (self, name, type, columns) :
     if self.graph_names is None :
