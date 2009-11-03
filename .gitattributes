@@ -370,7 +370,6 @@ mmtbx/masks/tst_mask.cpp svneol=native#text/plain
 mmtbx/masks/util.h svneol=native#text/plain
 mmtbx/model_statistics.py -text
 mmtbx/model_vs_data.py -text
-mmtbx/monomer_library/apply_mod_rna.py svneol=native#text/x-python
 mmtbx/monomer_library/cif_triage.py svneol=native#text/x-python
 mmtbx/monomer_library/conformation_dependent_restraints.py svneol=native#text/x-python
 mmtbx/monomer_library/conv_v2_v3.py svneol=native#text/x-python
