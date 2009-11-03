@@ -69,6 +69,8 @@ def process_command_line_inputs(args, master_phil, input_types):
     argument_interpreter = libtbx.phil.command_line.argument_interpreter(
       master_phil=master_phil)
     input_objects["phil"] = []
+  from libtbx.utils import Sorry
+  from libtbx.str_utils import show_string
   import os.path as op
   for arg in args:
     if (len(arg) == 0): continue
