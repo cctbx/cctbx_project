@@ -163,6 +163,35 @@ def exercise_symbols():
     a83_symbols.append(str(sgtbx.space_group_info(symbol=symbol)))
   assert a83_symbols == [
     "A b m 2", "A b a 2", "C m c a", "C m m a", "C c c a :2", "C c c a :1"]
+  ad_hoc_1992_pairs = """\
+Abm2 Aem2
+Bma2 Bme2
+B2cm B2em
+C2mb C2me
+Cm2a Cm2e
+Ac2m Ae2m
+Aba2 Aea2
+Bba2 Bbe2
+B2cb B2eb
+C2cb C2ce
+Cc2a Cc2e
+Ac2a Ae2a
+Cmca Cmce
+Ccmb Ccme
+Abma Aema
+Acam Aeam
+Bbcm Bbem
+Bmab Bmeb
+Cmma Cmme
+Abmm Aemm
+Bmcm Bmem
+Ccca Ccce
+Abaa Aeaa
+Bbcb Bbeb
+""".splitlines()
+  for pair in ad_hoc_1992_pairs:
+    o,n = [sgtbx.space_group_info(symbol=symbol) for symbol in pair.split()]
+    assert o.group() == n.group()
 
 def exercise_tr_vec():
   tr_vec = sgtbx.tr_vec
