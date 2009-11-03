@@ -5,6 +5,10 @@ def get_master_phil():
   return iotbx.phil.parse("""\
 strict_processing = False
   .type = bool
+build_geometry_restraints_manager = True
+  .type = bool
+build_xray_structure = True
+  .type = bool
 max_atoms = None
   .type = int
 
@@ -57,10 +61,12 @@ def run(args):
       msg = processed_pdb_file.all_chain_proxies.fatal_problems_message()
       if (msg is not None):
         raise Sorry(msg)
-    processed_pdb_file.geometry_restraints_manager(
-      params_edits=work_params.geometry_restraints.edits,
-      params_remove=work_params.geometry_restraints.remove)
-    processed_pdb_file.xray_structure()
+    if (work_params.build_geometry_restraints_manager):
+      processed_pdb_file.geometry_restraints_manager(
+        params_edits=work_params.geometry_restraints.edits,
+        params_remove=work_params.geometry_restraints.remove)
+    if (work_params.build_xray_structure):
+      processed_pdb_file.xray_structure()
     processed_pdb_files.append(processed_pdb_file)
   print
   if (   work_params.write_geo_files
