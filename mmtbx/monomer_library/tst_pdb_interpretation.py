@@ -310,7 +310,7 @@ def exercise_cns_rna(mon_lib_srv, ener_lib):
       Conformer: ""
         Number of residues, atoms: 20, 646
           Classifications: {'RNA': 20}
-          Link IDs: {'p': 19}
+          Link IDs: {'rna3p': 19}
   Time building chain proxies: """,
     expected_modifications_used = {
       'p5*END': 1, '3*END': 1})
@@ -331,7 +331,7 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
       Conformer: ""
         Number of residues, atoms: 3, 63
           Classifications: {'RNA': 3}
-          Link IDs: {'p': 2}
+          Link IDs: {'rna3p': 2}
   Time building chain proxies: """)
   #
   exercise_rna(
@@ -349,7 +349,7 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
       Conformer: ""
         Number of residues, atoms: 5, 90
           Classifications: {'RNA': 5}
-          Link IDs: {'p': 4}
+          Link IDs: {'rna3p': 4}
           Chain breaks: 1
 """,
     expected_block_last_startswith=False)
@@ -413,14 +413,12 @@ def exercise_dna_cns_cy5_th6():
   monomer_library.pdb_interpretation.run(args=file_paths, log=log)
   assert not block_show_diff(log.getvalue(), """\
         Number of residues, atoms: 12, 244
-          Unusual residues: %s
           Classifications: %s
           Modifications used: {'5*END': 1}
           Link IDs: %s
 """ % (
-  str({'TH6': 1, 'CY5': 1}),
-  str({'undetermined': 2, 'DNA': 10}),
-  str({None: 4, 'p': 7})))
+  str({'DNA': 12}),
+  str({'rna3p': 11})))
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()

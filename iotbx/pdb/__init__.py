@@ -49,9 +49,6 @@ cns_dna_rna_residue_names = {
 }
 
 mon_lib_dna_rna_cif = set(["AD", "AR", "CD", "CR", "GD", "GR", "TD", "UR"])
-rna_2p_residue_names = set(["A2", "C2", "G2", "U2"])
-rna_3p_residue_names = set(["A3", "C3", "G3", "U3"])
-rna_2p_3p_residue_names = rna_2p_residue_names.union(rna_3p_residue_names)
 
 rna_dna_reference_residue_names = {
   "A": "?A",
@@ -196,14 +193,8 @@ class residue_name_plus_atom_names_interpreter(object):
       self.work_residue_name = None
       self.atom_name_interpretation = None
       return
-    if (work_residue_name in rna_2p_3p_residue_names):
-      rna_prime = work_residue_name[1]
-      work_residue_name = work_residue_name[0]+"R"
-      protein_interpreter = None
-    else:
-      rna_prime = None
-      protein_interpreter = protein_atom_name_interpreters.get(
-        work_residue_name)
+    protein_interpreter = protein_atom_name_interpreters.get(
+      work_residue_name)
     atom_name_interpretation = None
     if (protein_interpreter is not None):
       atom_name_interpretation = protein_interpreter.match_atom_names(
@@ -241,10 +232,7 @@ class residue_name_plus_atom_names_interpreter(object):
               "DC": "CD",
               "DG": "GD",
               "DT": "TD"}[work_residue_name]
-    if (rna_prime is None):
-      self.work_residue_name = work_residue_name
-    else:
-      self.work_residue_name = work_residue_name[0] + rna_prime
+    self.work_residue_name = work_residue_name
     self.atom_name_interpretation = atom_name_interpretation
 
 class combine_unique_pdb_files(object):

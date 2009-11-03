@@ -268,6 +268,7 @@ class server(process_cif_mixin):
   def convert_comp_list(self, source_info, cif_object):
     for comp_comp_id in convert_comp_list(
                           source_info=source_info, cif_object=cif_object):
+      comp_comp_id.normalize_atom_ids_in_place()
       chem_comp = comp_comp_id.chem_comp
       self.comp_comp_id_dict[chem_comp.id.strip().upper()] = comp_comp_id
       tlc = chem_comp.three_letter_code
@@ -294,8 +295,7 @@ class server(process_cif_mixin):
           "chain_link_rna2p.cif",
           "chain_link_rna3p.cif",
           "mod_rna2p.cif",
-          "mod_rna3p.cif",
-          "mod_rna_esd.cif"]:
+          "mod_rna3p.cif"]:
       self.process_cif(
         file_name=os.path.join(self.geostd_path, "rna_dna", file_name))
 
