@@ -881,7 +881,6 @@ class model_viewer_mixin (wxGLWindow) :
 
   @debug
   def process_key_stroke (self, key) :
-    wxGLWindow.process_key_stroke(self, key)
     if key == ord('u') :
       self.unzoom()
     elif key == ord('h') :
