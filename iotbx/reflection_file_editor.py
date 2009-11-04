@@ -1,18 +1,17 @@
 from __future__ import division
 
 # TODO: regression testing
-# TODO: merge/expand to compatible point groups
 # TODO: confirm old_test_flag_value if ambiguous
 
-import sys, os, string
 from iotbx import reflection_file_reader, reflection_file_utils, file_reader
 from iotbx.reflection_file_utils import get_r_free_flags_scores
 import iotbx.phil
-from cctbx import crystal, miller
+from cctbx import crystal, miller, sgtbx
 from scitbx.array_family import flex
 from libtbx.phil.command_line import argument_interpreter
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
+import sys, os, string, re, random
 
 # XXX: note that extend=True in the Phenix GUI
 master_phil = iotbx.phil.parse("""
@@ -32,19 +31,32 @@ verbose = True
 mtz_file
 {
   crystal_symmetry
+    .caption = By default, the input crystal symmetry will be used for the \
+      output file.
+    .style = auto_align menu_item
   {
     unit_cell = None
       .type = unit_cell
-      .style = bold
+      .style = bold noauto
     space_group = None
       .type = space_group
+      .style = bold noauto
+    output_unit_cell = None
+      .type = unit_cell
       .style = bold
-    force_symmetry = False
+    output_space_group = None
+      .type = space_group
+      .style = bold
+    change_of_basis = None
+      .type = str
+      .expert_level = 2
+    eliminate_invalid_indices = False
       .type = bool
-      .help = If specified symmetry is different than that of the miller \
-              arrays, this parameter will cause them to be merged or expanded \
-              as necessary.  CURRENTLY UNIMPLEMENTED
-      .style = noauto
+      .expert_level = 2
+    expand_to_p1 = False
+      .type = bool
+      .short_caption = Expand to P1
+      .style = bold
   }
   d_max = None
     .type = float
@@ -86,6 +98,23 @@ mtz_file
       .short_caption = Output diffraction data as
       .help = If the Miller array is amplitudes or intensities, this flag \
         determines the output data type.
+    scale_max = None
+      .type = float
+      .short_caption = Scale to maximum value
+      .help = Scales data such that the maximum is equal to the given value
+    scale_factor = None
+      .type = float
+      .help = Multiplies data with the given factor
+    remove_negatives = False
+      .type = bool
+      .short_caption = Remove negative intensities
+    massage_intensities = False
+      .type = bool
+    output_non_anomalous = False
+      .type = bool
+      .short_caption = Output non-anomalous data
+      .help = If enabled, anomalous arrays will be merged first.  Note that \
+        this will cut the number of output labels in half.
     output_label = None
       .type = str
       .multiple = True
@@ -130,6 +159,10 @@ mtz_file
       .type = int
       .expert_level = 2
       .short_caption = Lattice symmetry max. delta
+    random_seed = None
+      .type = int
+      .short_caption = Seed for random number generator
+      .expert_level = 2
     use_dataman_shells = False
       .type = bool
       .short_caption = Assign test set in thin resolution shells
@@ -163,6 +196,9 @@ class process_arrays (object) :
     if None in [params.mtz_file.crystal_symmetry.space_group,
                 params.mtz_file.crystal_symmetry.unit_cell] :
       raise Sorry("Missing or incomplete symmetry information.")
+
+    #-------------------------------------------------------------------
+    # COLLECT ARRAYS
     miller_arrays = []
     file_names = []
     for array_params in params.mtz_file.miller_array :
@@ -191,31 +227,6 @@ class process_arrays (object) :
         print >> log, "  %s" % miller_array.info().label_string()
       return
 
-    #-------------------------------------------------------------------
-    # SYMMETRY
-    # TODO: merge/expand
-    sg = params.mtz_file.crystal_symmetry.space_group.group()
-    derived_sg = sg.build_derived_point_group()
-    uc = params.mtz_file.crystal_symmetry.unit_cell
-    self.symm = crystal.symmetry(unit_cell=uc, space_group=sg)
-    force_symmetry = params.mtz_file.crystal_symmetry.force_symmetry
-    for file_name, miller_array in zip(file_names, miller_arrays) :
-      array_symm = miller_array.crystal_symmetry()
-      if array_symm is None :
-        continue
-      array_sg = array_symm.space_group()
-      array_uc = array_symm.unit_cell()
-      if (array_sg is not None and not force_symmetry and
-          array_sg.build_derived_point_group() != derived_sg) :
-        raise Sorry(("The point group for the Miller array %s:%s (%s) does "+
-          "not match the point group of the output space group (%s).") %
-          (file_name, miller_array.info().label_string(),str(array_sg),str(sg)))
-      if (array_uc is not None and not force_symmetry and
-          not array_uc.is_similar_to(uc)) : #, 1.e-1, 1.e-1)) :
-        raise Sorry(("The unit cell for the Miller array %s:%s (%s) is "+
-          "significantly different than the output unit cell (%s).") %
-          (file_name, miller_array.info().label_string(),str(array_uc),str(uc)))
-
     labels = ["H", "K", "L"]
     label_files = [None, None, None]
     self.created_r_free = False
@@ -227,33 +238,188 @@ class process_arrays (object) :
       d_max = params.mtz_file.d_max
     if params.mtz_file.d_min is not None and params.mtz_file.d_min > d_min :
       d_min = params.mtz_file.d_min
+    if params.mtz_file.r_free_flags.random_seed is not None :
+      random.seed(params.mtz_file.r_free_flags.random_seed)
+      flex.set_random_seed(params.mtz_file.r_free_flags.random_seed)
+
+    #-------------------------------------------------------------------
+    # SYMMETRY SETUP
+    change_symmetry = False
+    if params.mtz_file.crystal_symmetry.output_space_group is not None :
+      output_sg = params.mtz_file.crystal_symmetry.output_space_group.group()
+      change_symmetry = True
+    else :
+      output_sg = params.mtz_file.crystal_symmetry.space_group.group()
+    if params.mtz_file.crystal_symmetry.output_unit_cell is not None :
+      output_uc = params.mtz_file.crystal_symmetry.output_unit_cell
+      change_symmetry = True
+    else :
+      output_uc = params.mtz_file.crystal_symmetry.unit_cell
+    if params.mtz_file.crystal_symmetry.expand_to_p1 and change_symmetry :
+      raise Sorry("Output unit cell and space group must be undefined if "+
+          "expand_to_p1 is True.")
+    input_symm = crystal.symmetry(
+      unit_cell=params.mtz_file.crystal_symmetry.unit_cell,
+      space_group=params.mtz_file.crystal_symmetry.space_group.group())
+    derived_sg = input_symm.space_group().build_derived_point_group()
+    output_symm = crystal.symmetry(unit_cell=output_uc,
+                                   space_group=output_sg)
 
     #-------------------------------------------------------------------
     # MAIN LOOP
     i = 0
+    special_labels = ["i_obs,sigma", "Intensity+-,SigmaI+-"]
     for (array_params, file_name, miller_array) in \
         zip(params.mtz_file.miller_array, file_names, miller_arrays) :
+      array_name = "%s:%s" % (file_name, array_params.labels)
       output_array = None # this will eventually be the final processed array
       output_labels = array_params.output_label
       info = miller_array.info()
-      if array_params.labels in ["i_obs,sigma", "Intensity+-,SigmaI+-"] :
-        if miller_array.anomalous_flag() and not len(output_labels) == 4 :
-          raise Sorry("For scalepack files containing anomalous data, "+
-                 "you must specify exactly four column labels (e.g. I(+), "+
-                 "SIGI(+),I(-),SIGI(-)).")
+      if not None in [array_params.scale_factor, array_params.scale_max] :
+        raise Sorry("The parameters scale_factor and scale_max are " +
+          "mutually exclusive.")
+      if not False in [array_params.remove_negatives,
+                       array_params.massage_intensities] :
+        raise Sorry("The parameters remove_negatives and massage_intensities "+
+          "are mutually exclusive.")
 
       #-----------------------------------------------------------------
-      # APPLY SYMMETRY AND RESOLUTION LIMITS
-      # TODO: convert to higher/lower symmetry
-      array_copy = miller_array.customized_copy(
-        crystal_symmetry=self.symm).map_to_asu()
-      # XXX: array-specific resolution limits are applied first, then
-      # the global limits
-      new_array = array_copy.resolution_filter(
+      # OUTPUT LABELS SANITY CHECK
+      if miller_array.anomalous_flag() :
+        labels_base = re.sub(",merged$", "", array_params.labels)
+        input_labels = labels_base.split(",")
+        if array_params.output_non_anomalous :
+          if labels_base in special_labels and not len(output_labels) == 2 :
+            raise Sorry(("There are too many output labels for the array "+
+              "%s, which is being converted to non-anomalous data. "+
+              "Labels such as I,SIGI are appropriate (or F,SIGF if you are "+
+              "converting the array to amplitudes.") % array_name)
+          elif len(output_labels) == len(input_labels) :
+            raise Sorry(("There are too many output labels for the array "
+              "%s, which is being converted to non-anomalous data. "+
+              "The total number of columns will be halved in the output "+
+              "array, and the labels should not have trailing (+) or (-).") %
+              array_name)
+        elif labels_base in special_labels and not len(output_labels) == 4 :
+          raise Sorry(("There are not enough output labels for the array "+
+            "%s. For Scalepack or d*TREK files containing anomalous "+
+            "data, you must specify exactly four column labels (e.g. "+
+            "I(+),SIGI(+),I(-),SIGI(-), or F(+),SIGF(+),F(-),SIGF(-) "+
+            "if you are converting the array to amplitudes).") %
+            array_name)
+
+      #-----------------------------------------------------------------
+      # APPLY SYMMETRY
+      array_sg = miller_array.space_group()
+      array_uc = miller_array.unit_cell()
+      if array_sg is not None :
+        if array_sg.build_derived_point_group() != derived_sg :
+          raise Sorry(("The point group for the Miller array %s (%s) does "+
+            "not match the point group of the overall space group (%s).") %
+            (array_name, str(array_sg), str(input_symm.space_group())))
+      if array_uc is not None :
+        if not array_uc.is_similar_to(input_symm.unit_cell()) :
+          raise Sorry(("The unit cell for the Miller array %s (%s) is "+
+            "significantly different than the output unit cell (%s).") %
+            (array_name, str(array_uc), str(input_symm.unit_cell())))
+      new_array = miller_array.customized_copy(
+        crystal_symmetry=input_symm).map_to_asu()
+      if params.mtz_file.crystal_symmetry.expand_to_p1 :
+        new_array = new_array.expand_to_p1()
+      elif change_symmetry :
+        new_array = new_array.expand_to_p1()
+        new_array = new_array.customized_copy(crystal_symmetry=output_symm)
+      if not new_array.is_unique_set_under_symmetry() :
+        new_array = new_array.merge_equivalents().array()
+
+      #-----------------------------------------------------------------
+      # CHANGE OF BASIS
+      # XXX: copied from reflection_file_converter nearly verbatim
+      if params.mtz_file.crystal_symmetry.change_of_basis is not None :
+        if change_symmetry :
+          raise Sorry("You may not change symmetry when change_of_basis is "+
+            "defined.")
+        c_o_b = params.mtz_file.crystal_symmetry.change_of_basis
+        if c_o_b == "to_reference_setting" :
+          cb_op = new_array.change_of_basis_op_to_reference_setting()
+        elif c_o_b == "to_primitive_setting" :
+          cb_op = new_array.change_of_basis_op_to_primitive_setting()
+        elif c_o_b == "to_niggli_cell":
+          cb_op = new_array.change_of_basis_op_to_niggli_cell()
+        elif c_o_b == "to_inverse_hand" :
+          cb_op = new_array.change_of_basis_op_to_inverse_hand()
+        else:
+          cb_op = sgtbx.change_of_basis_op(c_o_b)
+        if (cb_op.c_inv().t().is_zero()):
+          print >> log, ("  Change of basis operator in both h,k,l and "+
+                         "x,y,z notation:")
+          print >> log, "   ", cb_op.as_hkl()
+        else:
+          print >> log, "  Change of basis operator in x,y,z notation:"
+        print >> log, "    %s [Inverse: %s]" % (cb_op.as_xyz(),
+          cb_op.inverse().as_xyz())
+        if (d < 0 and co.change_of_basis != "to_inverse_hand"):
+          print >> out, ("WARNING: This change of basis operator changes the "+
+                        "hand!")
+        if params.mtz_file.crystal_symmetry.eliminate_invalid_indices :
+          sel = cb_op.apply_results_in_non_integral_indices(
+            miller_indices=new_array.indices())
+          toss = flex.bool(new_array.indices().size(),sel)
+          keep = ~toss
+          keep_array = new_array.select(keep)
+          toss_array = new_array.select(toss)
+          print >> out, "  Mean value for kept reflections:", \
+            flex.mean(keep_array.data())
+          print >> out, "  Mean value for invalid reflections:", \
+            flex.mean(toss_array.data())
+          new_array = new_array
+        new_array = new_array.change_basis(cb_op=cb_op)
+        print >> out, "  Crystal symmetry after change of basis:"
+        crystal.symmetry.show_summary(new_array, out=out, prefix="    ")
+
+      #-----------------------------------------------------------------
+      # OTHER FILTERING
+      new_array = new_array.resolution_filter(
         d_min=array_params.d_min,
         d_max=array_params.d_max).resolution_filter(
           d_min=params.mtz_file.d_min,
           d_max=params.mtz_file.d_max)
+      if new_array.anomalous_flag() and array_params.output_non_anomalous :
+        print >> log, ("Converting array %s from anomalous to non-anomalous." %
+                       array_name)
+        if not new_array.is_xray_intensity_array() :
+          new_array = new_array.average_bijvoet_mates()
+        else :
+          new_array = new_array.f_sq_as_f()
+          new_array = new_array.average_bijvoet_mateS()
+          new_array = new_array.f_as_f_sq()
+          new_array.set_observation_type_xray_intensity()
+      if array_params.scale_max is not None :
+        print >> log, ("Scaling %s such that the maximum value is: %.6g" %
+                       (array_name, array_params.scale_max))
+        new_array = new_array.apply_scaling(target_max=array_params.scale_max)
+      elif array_params.scale_factor is not None :
+        print >> log, ("Multiplying data in %s with the factor: %.6g" %
+                       (array_name, array_params.scale_factor))
+        new_array = new_array.apply_scaling(factor=array_params.scale_factor)
+      if array_params.remove_negatives :
+        if new_array.is_real_array() :
+          print >> log, "Removing negatives from %s" % array_name
+          new_array = new_array.select(new_array.data() > 0)
+          if new_array.sigmas() is not None :
+            new_array = new_array.select(new_array.sigmas() > 0)
+        else :
+          raise Sorry("remove_negatives not applicable to %s." % array_name)
+      elif array_params.massage_intensities :
+        if new_array.is_xray_intensity_array() :
+          if array_params.output_as == "amplitudes" :
+            new_array = new_array.enforce_positive_amplitudes()
+          else :
+            raise Sorry(("You must output %s as amplitudes to use the "+
+              "massage_intensities option.") % array_name)
+        else :
+          raise Sorry("The parameter massage_intensities is only valid for "+
+            "X-ray intensity arrays.")
 
       #-----------------------------------------------------------------
       # R-FREE HANDLING
@@ -285,6 +451,8 @@ class process_arrays (object) :
               max_free=None,
               use_lattice_symmetry=True)
           output_array = r_free_flags.concatenate(other=missing_flags)
+          if not output_array.is_unique_set_under_symmetry() :
+            output_array = output_array.merge_equivalents().array()
         else :
           output_array = r_free_flags
         have_r_free_array = True
@@ -294,9 +462,19 @@ class process_arrays (object) :
       elif new_array.is_xray_intensity_array() :
         if array_params.output_as == "amplitudes" :
           output_array = new_array.f_sq_as_f()
+          if output_labels[0].upper().startswith("I") :
+            raise Sorry(("The output labels for the array %s:%s (%s) are not "+
+              "suitable for amplitudes; please change them to something "+
+              "with an 'F', or leave this array as intensities") %
+              (file_name, array_params.labels, " ".join(output_labels)))
       elif new_array.is_xray_amplitude_array() :
         if array_params.output_as == "intensities" :
           output_array = new_array.f_as_f_sq()
+          if output_labels[0].upper().startswith("F") :
+            raise Sorry(("The output labels for the array %s:%s (%s) are not "+
+              "suitable for intensities; please change them to something "+
+              "with an 'I', or leave this array as amplitudes.") %
+              (file_name, array_params.labels, " ".join(output_labels)))
       if output_array is None :
         output_array = new_array
 
@@ -321,7 +499,7 @@ class process_arrays (object) :
     if ((params.mtz_file.r_free_flags.generate and not have_r_free_array) or
         params.mtz_file.r_free_flags.force_generate) :
       (d_max, d_min) = get_best_resolution(self.final_arrays)
-      complete_set = miller.build_set(crystal_symmetry=self.symm,
+      complete_set = miller.build_set(crystal_symmetry=output_symm,
                                       anomalous_flag=False,
                                       d_min=d_min,
                                       d_max=d_max)
@@ -342,29 +520,28 @@ class process_arrays (object) :
       label_files.append("(new array)")
       self.created_r_free = True
 
+    #-------------------------------------------------------------------
+    # RE-LABEL COLUMNS
     mtz_object = self.mtz_dataset.mtz_object()
-    if mtz_object.n_columns() != len(labels) :
-      raise Sorry("Wrong number of columns or labels!")
-    self.labels = labels
     self.label_changes = []
-    self.label_files = label_files
-    self.params = params
     self.mtz_object = mtz_object
-    self.apply_new_labels(labels,
-      resolve_conflicts=params.mtz_file.resolve_label_conflicts)
-
-  # In the GUI, this will be done at the end.
-  def apply_new_labels (self, labels, resolve_conflicts=False) :
-    assert len(labels) == self.mtz_object.n_columns() == len(self.label_files)
+    if not len(labels) == mtz_object.n_columns() :
+      print >> log, "\n".join([ "LABEL: %s" % label for label in labels ])
+      self.show(out=log)
+      raise Sorry("The number of output labels does not match the final "+
+        "number of labels in the MTZ file.  Details have been printed to the "+
+        "console.")
     i = 0
     used = dict([ (label, 0) for label in labels ])
-    label_files = self.label_files
-    final_labels = []
     for column in self.mtz_object.columns() :
       if column.label() != labels[i] :
         label = labels[i]
+        if re.search("[^A-Za-z0-9_\-]", label) :
+          raise Sorry(("Invalid label '%s'.  Output labels may only contain "+
+            "alphanumeric characters (including underscore) or hyphens.")
+            % label)
         if used[labels[i]] > 0 :
-          if resolve_conflicts :
+          if params.mtz_file.resolve_label_conflicts :
             if label.endswith("(+)") or label.endswith("(-)") :
               label = label[0:-3] + ("_%d" % (used[labels[i]]+1)) + label[-3:]
             else :
@@ -376,12 +553,8 @@ class process_arrays (object) :
               "non-redundant labels, or edit the parameters to provide your"+
               "own choice of labels.") % labels[i])
         column.set_label(label)
-        final_labels.append(label)
         used[labels[i]] += 1
-      else :
-        final_labels.append(labels[i])
       i += 1
-    self.labels = final_labels
 
   def show (self, out=sys.stdout) :
     if self.mtz_object is not None :
@@ -442,9 +615,11 @@ def guess_array_output_labels (miller_array) :
   assert info is not None
   labels = info.labels
   output_labels = labels
-  if miller_array.anomalous_flag() :
-    if labels in [["i_obs","sigma"], ["Intensity+-","SigmaI+-"]] :
+  if labels in [["i_obs","sigma"], ["Intensity+-","SigmaI+-"]] :
+    if miller_array.anomalous_flag() :
       output_labels = ["I(+)", "SIGI(+)", "I(-)", "SIGI(-)"]
+    else :
+      output_labels = ["I", "SIGI"]
   return output_labels
 
 def usage (out=sys.stdout, attributes_level=0) :
@@ -487,6 +662,8 @@ def run (args, out=sys.stdout) :
     if arg in ["--help", "--options", "--details"] :
       usage(attributes_level=args.count("--details"))
       return True
+    elif arg in ["-q", "--quiet"] :
+      out = null_out()
     elif os.path.isfile(arg) :
       full_path = os.path.abspath(arg)
       try :
