@@ -1,6 +1,7 @@
-#include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/tuple.hpp>
 #include <boost/python/overloads.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
@@ -65,7 +66,7 @@ namespace {
           &w_t::universal_hermann_mauguin_symbol,
             universal_hermann_mauguin_symbol_overloads((
               arg_("tidy_cb_op")=true)))
-        .def("lookup_symbol", &w_t::lookup_symbol)
+        .def("lookup_symbol", &w_t::lookup_symbol, (arg("ad_hoc_1992")=false))
         .def_pickle(space_group_type_wrappers())
       ;
     }
