@@ -202,9 +202,38 @@ namespace cctbx { namespace sgtbx {
           <p>
           The result of lookup_symbol() can be used as the input
           for the constructor of class space_group_symbols.
+          <p>
+          If ad_hoc_1992 is true, symbols for space groups
+          39, 41, 64, 67, and 68 will contain the "e" character:
+          <p>
+          Acta Cryst. (1992). A48, 727-732.
+          Symbols for symmetry elements and symmetry operations.
+          Final report of the International Union of Crystallography
+          Ad-Hoc Committee on the nomenclature of symmetry.
+          <p>
+          http://www.iucr.org/iucr-top/comm/cnom/symsym/node7.html
+          <pre>
+          Space group No.   39   41   64   67   68
+          Symbol in ITA83: Abm2 Aba2 Cmca Cmma Ccca
+               New symbol: Aem2 Aea2 Cmce Cmme Ccce
+          </pre>
+          <p>
+          The "e" symbols are ambiguous for space groups 67 and 68:
+          <pre>
+          No. 67:
+            Cmme: Cmma or Cmmb
+            Aemm: Abmm or Acmm
+            Bmem: Bmcm or Bmam
+          No. 68
+            Ccce: Ccca or Cccb
+            Aeaa: Abaa or Acaa
+            Bbeb: Bbcb or Bbab
+          </pre>
+          This function produces the first choice, e.g. Cmme = Cmma.
        */
       std::string
-      lookup_symbol() const;
+      lookup_symbol(
+        bool ad_hoc_1992=false) const;
 
     protected:
       space_group group_;

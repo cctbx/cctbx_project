@@ -15,6 +15,33 @@ import pickle
 from cStringIO import StringIO
 import os
 
+ad_hoc_1992_pairs = """\
+Abm2 Aem2
+Bma2 Bme2
+B2cm B2em
+C2mb C2me
+Cm2a Cm2e
+Ac2m Ae2m
+Aba2 Aea2
+Bba2 Bbe2
+B2cb B2eb
+C2cb C2ce
+Cc2a Cc2e
+Ac2a Ae2a
+Cmca Cmce
+Ccmb Ccme
+Abma Aema
+Acam Aeam
+Bbcm Bbem
+Bmab Bmeb
+Cmma Cmme
+Abmm Aemm
+Bmcm Bmem
+Ccca Ccce
+Abaa Aeaa
+Bbcb Bbeb
+""".splitlines()
+
 def exercise_symbols():
   s = sgtbx.space_group_symbols("p 2")
   assert s.number() == 3
@@ -163,32 +190,6 @@ def exercise_symbols():
     a83_symbols.append(str(sgtbx.space_group_info(symbol=symbol)))
   assert a83_symbols == [
     "A b m 2", "A b a 2", "C m c a", "C m m a", "C c c a :2", "C c c a :1"]
-  ad_hoc_1992_pairs = """\
-Abm2 Aem2
-Bma2 Bme2
-B2cm B2em
-C2mb C2me
-Cm2a Cm2e
-Ac2m Ae2m
-Aba2 Aea2
-Bba2 Bbe2
-B2cb B2eb
-C2cb C2ce
-Cc2a Cc2e
-Ac2a Ae2a
-Cmca Cmce
-Ccmb Ccme
-Abma Aema
-Acam Aeam
-Bbcm Bbem
-Bmab Bmeb
-Cmma Cmme
-Abmm Aemm
-Bmcm Bmem
-Ccca Ccce
-Abaa Aeaa
-Bbcb Bbeb
-""".splitlines()
   for pair in ad_hoc_1992_pairs:
     o,n = [sgtbx.space_group_info(symbol=symbol) for symbol in pair.split()]
     assert o.group() == n.group()
@@ -1157,6 +1158,19 @@ def exercise_space_group_type():
   t = sgtbx.space_group_type("r -3 M :h")
   assert t.universal_hermann_mauguin_symbol() == "R -3 m :H"
   assert t.lookup_symbol() == "R -3 m :H"
+  #
+  for pair in [line.split() for line in ad_hoc_1992_pairs]:
+    o,n = [sgtbx.space_group_info(symbol=symbol) for symbol in pair]
+    for ad_hoc_1992 in [False, True]:
+      l1 = o.type().lookup_symbol(ad_hoc_1992=ad_hoc_1992)
+      l2 = n.type().lookup_symbol(ad_hoc_1992=ad_hoc_1992)
+      assert not show_diff(l1, l2)
+      assert l1.replace(" ", "").startswith(pair[int(ad_hoc_1992)])
+  sgi = sgtbx.space_group_info(symbol="Ae2a").primitive_setting()
+  assert not show_diff(
+    sgi.type().lookup_symbol(), "A b a 2 (x,y-z,y+z)")
+  assert not show_diff(
+    sgi.type().lookup_symbol(ad_hoc_1992=True), "A e a 2 (x,y-z,y+z)")
 
 def exercise_phase_info():
   phase_info = sgtbx.phase_info

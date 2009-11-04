@@ -863,23 +863,12 @@ namespace cctbx { namespace sgtbx {
     return false;
   }
 
-  /* Acta Cryst. (1992). A48, 727-732.
-     Symbols for symmetry elements and symmetry operations.
-     Final report of the International Union of Crystallography
-     Ad-Hoc Committee on the nomenclature of symmetry.
-
-     http://www.iucr.org/iucr-top/comm/cnom/symsym/node7.html
-     Space group No. 39 41 64 67 68
-     Symbol in ITA83: Abm2 Aba2 Cmca Cmma Ccca
-          New symbol: Aem2 Aea2 Cmce Cmme Ccce
-
-     The "e" symbols for space groups 67 and 68 are ambiguous.
-     An arbitrary choice is made below.
-  */
   void
   ad_hoc_1992_symbol_as_a1983_symbol(
     string& work_symbol)
   {
+    // see documentation of space_group_type::lookup_symbol()
+    // simlar table in space_group_type.cpp, space_group_type::lookup_symbol()
     static char const* adh_a38_pairs[] = {
       // No. 39
       "Aem2", "Abm2",

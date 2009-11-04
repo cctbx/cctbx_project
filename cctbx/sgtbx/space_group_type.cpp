@@ -888,8 +888,41 @@ namespace cctbx { namespace sgtbx {
   }
 
   std::string
-  space_group_type::lookup_symbol() const
+  space_group_type::lookup_symbol(
+    bool ad_hoc_1992) const
   {
+    // simlar table in symbols.cpp, ad_hoc_1992_symbol_as_a1983_symbol()
+    static char const* adh_a38_pairs[] = {
+      // No. 39
+      "A e m 2", "A b m 2",
+      "B m e 2", "B m a 2",
+      "B 2 e m", "B 2 c m",
+      "C 2 m e", "C 2 m b",
+      "C m 2 e", "C m 2 a",
+      "A e 2 m", "A c 2 m",
+      // No. 41
+      "A e a 2", "A b a 2",
+      "B b e 2", "B b a 2",
+      "B 2 e b", "B 2 c b",
+      "C 2 c e", "C 2 c b",
+      "C c 2 e", "C c 2 a",
+      "A e 2 a", "A c 2 a",
+      // No. 64
+      "C m c e", "C m c a",
+      "C c m e", "C c m b",
+      "A e m a", "A b m a",
+      "A e a m", "A c a m",
+      "B b e m", "B b c m",
+      "B m e b", "B m a b",
+      // No. 67
+      "C m m e", "C m m a", // ambiguous: Cmmb
+      "A e m m", "A b m m", // ambiguous: Acmm
+      "B m e m", "B m c m", // ambiguous: Bmam
+      // No. 68
+      "C c c e", "C c c a", // ambiguous: Cccb
+      "A e a a", "A b a a", // ambiguous: Acaa
+      "B b e b", "B b c b"  // ambiguous: Bbab
+    };
     if (!lookup_symbol_.size()) {
       space_group_symbols symbols = group_.match_tabulated_settings();
       if (symbols.number() != 0) {
@@ -897,6 +930,19 @@ namespace cctbx { namespace sgtbx {
       }
       else {
         lookup_symbol_ = universal_hermann_mauguin_symbol();
+      }
+    }
+    if (   ad_hoc_1992
+        && lookup_symbol_.size() >= 7
+        && (lookup_symbol_.size() == 7 || lookup_symbol_[7] == ' ')) {
+      for(int i=0;i<48;i+=2) {
+        if (std::strncmp(lookup_symbol_.data(), adh_a38_pairs[i+1], 7) == 0) {
+          std::string result = lookup_symbol_;
+          for(int j=0;j<7;j++) {
+            result[j] = adh_a38_pairs[i][j];
+          }
+          return result;
+        }
       }
     }
     return lookup_symbol_;
