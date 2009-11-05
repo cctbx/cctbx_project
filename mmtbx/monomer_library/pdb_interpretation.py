@@ -615,7 +615,7 @@ class monomer_mapping(object):
       ana = rna_sugar_pucker_analysis.evaluate(
         params=params,
         residue_1_deoxy_ribo_atom_dict=ra1.deoxy_ribo_atom_dict,
-        residue_1_c1_n_closest_atom=ra1.c1_n_closest_atom,
+        residue_1_c1p_outbound_atom=ra1.c1p_outbound_atom,
         residue_2_p_atom=ra2.p_atom)
       self.is_rna2p = ana.is_2p
     if (self.is_rna2p): primary_mod_id = "rna2p"
