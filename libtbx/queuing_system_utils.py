@@ -35,11 +35,17 @@ class chunk_manager(object):
       O.i = sge_info.id - 1
     return O
 
-  def redirect_chunk_stdout_and_stderr(O, log_format=Auto, out=Auto):
+  def redirect_chunk_stdout_and_stderr(O,
+        log_format=Auto,
+        out=Auto,
+        have_array=False):
     if (O.n == 1): return
     log_name = None
-    i = O.queuing_system_info
-    if (i is not None and i.have_array()):
+    if (not have_array):
+      i = O.queuing_system_info
+      if (i is not None and i.have_array()):
+        have_array = True
+    if (have_array):
       if (log_format is Auto): log_format="log%%0%dd"
       fmt = log_format % max(3, len("%d" % (O.n-1)))
       log_name = fmt % O.i
