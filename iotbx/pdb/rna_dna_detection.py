@@ -22,8 +22,8 @@ for key,value in bond_distance_ideal_by_bond_atom_names_v3.items():
     .replace("'", "*"))
   bond_distance_ideal_by_bond_atom_names_v2[key] = value
 
-# geostd value 2009-10-17 (identical for A, C, G, U)
-c1_n_distance_ideal = 1.463
+# 2009-10-17 geostd value for C1'-N, identical for A, C, G, U
+c1p_outbound_distance_estimate = 1.463
 
 class _make_tables(object):
 
@@ -130,10 +130,11 @@ class residue_analysis(object):
     "deoxy_ribo_atom_dict",
     "p_atom",
     "op_atoms",
-    "n_atoms",
+    "c1p_outbound_candidates",
     "o2p_atom",
     "h_atoms",
-    "c1_n_closest_atom",
+    "is_terminus_with_o5p",
+    "c1p_outbound_atom",
     "is_rna"]
 
   def __init__(O, residue_atoms, distance_tolerance=0.5):
@@ -145,12 +146,13 @@ class residue_analysis(object):
       throw_runtime_error_if_duplicate_keys=False)
     if (len(O.atom_dict) != len(residue_atoms)):
       O.problems.append("key_clash")
+    deoxy_ribo_problems = []
     O.deoxy_ribo_atom_dict = {}
     for key in deoxy_ribo_atom_keys:
       atom = O.atom_dict.get(key)
       if (atom is None):
-        O.problems.append("missing_"+key)
-        break
+        deoxy_ribo_problems.append("missing_"+key)
+        continue
       O.deoxy_ribo_atom_dict[key] = atom
       del O.atom_dict[key]
     O.p_atom = None
@@ -188,16 +190,22 @@ class residue_analysis(object):
               and "0123456789".find(key[0]) >= 0)):
         O.h_atoms[key] = O.atom_dict[key]
         del O.atom_dict[key]
-    O.n_atoms = {}
+    O.c1p_outbound_candidates = {}
     for key in O.atom_dict.keys():
       if (key.find("'") >= 0):
         O.problems.append("other_prime")
         continue
-      if (key.startswith("N")):
-        O.n_atoms[key] = O.atom_dict[key]
+      if (key.startswith("N") or key.startswith("C")):
+        O.c1p_outbound_candidates[key] = O.atom_dict[key]
         del O.atom_dict[key]
-    if (len(O.n_atoms) == 0):
-      O.problems.append("missing_N")
+    O.is_terminus_with_o5p = False
+    if (    len(O.problems) == 0
+        and len(deoxy_ribo_problems) != 0
+        and len(O.deoxy_ribo_atom_dict) == 1
+        and O.deoxy_ribo_atom_dict.get("O5'") is not None):
+      O.is_terminus_with_o5p = True
+    else:
+      O.problems.extend(deoxy_ribo_problems)
     def check_distance(key_pair, site_1, site_2):
       distance_model = abs(site_1 - site_2)
       distance_ideal = bond_distance_ideal_by_bond_atom_names_v3[key_pair]
@@ -241,22 +249,20 @@ class residue_analysis(object):
       else:
         if (not check_distance(key_pair, *sites)):
           O.problems.append("long_distance_"+key_pair.replace(" ","_"))
-    if (len(O.n_atoms) != 0):
+    if (len(O.c1p_outbound_candidates) != 0):
       atom = O.deoxy_ribo_atom_dict.get("C1'")
       if (atom is not None):
-        O.c1_n_closest_atom = None
-        c1_n_closest_distance = c1_n_distance_ideal + distance_tolerance
+        O.c1p_outbound_atom = None
+        closest_distance = c1p_outbound_distance_estimate + distance_tolerance
         site_1 = matrix.col(atom.xyz)
-        for key,atom in O.n_atoms.items():
+        for key,atom in O.c1p_outbound_candidates.items():
           site_2 = matrix.col(atom.xyz)
           distance = abs(site_1 - site_2)
-          if (    c1_n_closest_distance >= distance
-              and (   c1_n_closest_distance != distance
-                   or O.c1_n_closest_atom is None)):
-            O.c1_n_closest_atom = atom
-            c1_n_closest_distance = distance
-        if (O.c1_n_closest_atom is None):
-          O.problems.append("long_distance_C1'_N")
+          if (    closest_distance >= distance
+              and (   closest_distance != distance
+                   or O.c1p_outbound_atom is None)):
+            O.c1p_outbound_atom = atom
+            closest_distance = distance
     if (len(O.problems) == 0):
       O.problems = None
     O.is_rna = (O.o2p_atom is not None)
