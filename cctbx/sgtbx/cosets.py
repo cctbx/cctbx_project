@@ -2,8 +2,12 @@ from cctbx import sgtbx
 from scitbx.array_family import flex
 import sys
 
+class partition_t(list): pass
+
 class left_decomposition(object):
   def __init__(self, g, h):
+    g_lattice_translations = [ g(i,0,0).mod_short() for i in xrange(g.n_ltr())]
+
     if self.is_subgroup(g,h):
       self.h_name = str( sgtbx.space_group_info( group = h ) )
       self.g_name = str( sgtbx.space_group_info( group = g ) )
@@ -16,14 +20,14 @@ class left_decomposition(object):
       for i,gi in enumerate(g):
         if (self.partition_indices[i] != -1): continue
         self.partition_indices[i] = len(self.partitions)
-        partition = [gi]
+        partition = partition_t([gi])
         for hj in h[1:]:
           gihj = gi.multiply(hj)
           for k in xrange(i+1,len(g)):
             if (self.partition_indices[k] != -1): continue
             gk = g[k]
             tmp_g = gk.inverse().multiply( gihj ).mod_short()
-            if tmp_g.as_xyz() == 'x,y,z':
+            if tmp_g.as_xyz() in [ltr.as_xyz() for ltr in g_lattice_translations]:
               self.partition_indices[k] = len(self.partitions)
               partition.append(gk)
               break
@@ -57,7 +61,7 @@ class left_decomposition(object):
       for op in pp:
         orders.append( op.r().info().type() )
       orders = flex.sort_permutation( flex.int(orders) )
-      tmp = []
+      tmp = partition_t()
       for ii in orders:
         tmp.append( pp[ii] )
       new_partitions.append( tmp )
@@ -281,8 +285,148 @@ def test_double_coset_decomposition():
         tmp_new = double_cosets(g, h1, h2)
         assert not tmp_new.have_duplicates()
 
+def test_lattice_translattion_aware_left_decomposition():
+  from cctbx import crystal
+  def generate_cases():
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'C 2 2 21' ),
+                                      unit_cell = (74.033, 96.747, 109.085, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'C 2 1 1' ),
+                                      unit_cell = (74.033, 96.747, 109.085, 89.98, 90, 90) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'F 2 3' ),
+                                      unit_cell = (124.059, 124.059, 124.059, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'R 3 :H (-1/2*x+z,1/2*x-1/2*y+z,1/2*y+z)' ),
+                                      unit_cell = (124.059, 124.059, 124.059, 90.0003, 90.0003, 90.0003) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 6 2 2' ),
+                                      unit_cell = (94.705, 94.705, 57.381, 90, 90, 120) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 6' ),
+                                      unit_cell = (94.705, 94.705, 57.381, 90, 90, 120) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'I 2 3' ),
+                                      unit_cell = (80.8965, 80.8965, 80.8965, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'R 3 :H (y+1/2*z,-x+1/2*z,x-y+1/2*z)' ),
+                                      unit_cell = (80.8965, 80.8965, 80.8965, 89.993, 89.993, 89.993) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 61 2 2' ),
+                                      unit_cell = (115.7, 115.7, 247.2, 90, 90, 120) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 31 2 1 (a,b,c-1/6)' ),
+                                      unit_cell = (115.7, 115.7, 247.2, 90, 90, 120) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 41 21 2' ),
+                                      unit_cell = (64.766, 64.766, 270.651, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 41 (a,b+1/2,c)' ),
+                                      unit_cell = (64.766, 64.766, 270.651, 90, 90, 90) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'I 4 2 2' ),
+                                      unit_cell = (124.282, 124.282, 117.485, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'I 2 1 1' ),
+                                      unit_cell = (124.265, 124.299, 117.485, 89.9919, 90, 90) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 43 21 2' ),
+                                      unit_cell = (100.228, 100.228, 294.099, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'C 2 2 21 (x-y,x+y,z)' ),
+                                      unit_cell = (100.228, 100.228, 294.099, 90, 90, 90.0036) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 43 3 2' ),
+                                      unit_cell = (170.4, 170.4, 170.4, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 21 3' ),
+                                      unit_cell = (170.4, 170.4, 170.4, 90, 90, 90) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'R 3 2 :H' ),
+                                      unit_cell = (221.819, 221.819, 55.601, 90, 90, 120) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'C 1 2 1 (3/2*a-1/2*b+c,b,c)' ),
+                                      unit_cell = (221.835, 221.787, 55.601, 90, 89.9905, 119.993) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 64 2 2' ),
+                                      unit_cell = (142.63, 142.63, 108.35, 90, 90, 120) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 31' ),
+                                      unit_cell = (142.63, 142.63, 108.35, 90, 90, 120) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'I 41 3 2' ),
+                                      unit_cell = (134.242, 134.242, 134.242, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'I 21 3' ),
+                                      unit_cell = (134.242, 134.242, 134.242, 90, 90, 90) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 41 21 2' ),
+                                      unit_cell = (86.8055, 86.8055, 75.688, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 21 21 21 (a+1/4,b,c-3/8)' ),
+                                      unit_cell = (86.782, 86.829, 75.688, 90, 90, 90) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 31 2 1' ),
+                                      unit_cell = (97.868, 97.868, 208.953, 90, 90, 120) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'C 1 2 1 (x+y,-x+y,z)' ),
+                                      unit_cell = (97.8535, 97.8535, 208.953, 89.9913, 90.0087, 119.971) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'I 4 3 2' ),
+                                      unit_cell = (121.805, 121.805, 121.805, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'I 2 3' ),
+                                      unit_cell = (121.805, 121.805, 121.805, 90, 90, 90) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 43 2 2' ),
+                                      unit_cell = (67.472, 67.472, 174.41, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 2 2 21 (a,b,c-1/4)' ),
+                                      unit_cell = (67.479, 67.465, 174.41, 90, 90, 90) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'C 2 2 21' ),
+                                      unit_cell = (47.623, 120.166, 57.648, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 1 (a+b,a-b,-c)' ),
+                                      unit_cell = (47.623, 120.166, 57.648, 90.0124, 89.86, 89.9641) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'I 2 2 2' ),
+                                      unit_cell = (57.816, 75.599, 155.949, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 1 (b+c,a+c,a+b)' ),
+                                      unit_cell = (57.816, 75.599, 155.949, 89.9824, 90.0357, 90.02) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 41 21 2' ),
+                                      unit_cell = (97.6539, 97.6539, 215.352, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'C 1 2 1 (x-y,x+y,z-1/4)' ),
+                                      unit_cell = (97.6539, 97.6539, 215.352, 90, 90, 90.022) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 62 2 2' ),
+                                      unit_cell = (58.306, 58.306, 137.882, 90, 90, 120) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 32 1 2 (a,b,c-1/6)' ),
+                                      unit_cell = (58.306, 58.306, 137.882, 90, 90, 120) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 3 2 1' ),
+                                      unit_cell = (56.2477, 56.2477, 158.706, 90, 90, 120) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'C 1 2 1 (x+y,-x+y,z)' ),
+                                      unit_cell = (56.2235, 56.2235, 158.706, 89.9654, 90.0346, 119.915) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'F 2 2 2' ),
+                                      unit_cell = (88.492, 90.284, 90.6894, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'C 1 2 1 (a,b,a+2*c)' ),
+                                      unit_cell = (88.492, 90.284, 90.6894, 90, 89.9856, 90) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'I 41' ),
+                                      unit_cell = (59.2061, 59.2061, 59.48, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 1 (b+c,a+c,a+b)' ),
+                                      unit_cell = (59.1874, 59.2247, 59.48, 90.0179, 89.956, 89.9542) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 3 1 2' ),
+                                      unit_cell = (56.9, 56.9, 62.77, 90, 90, 120) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 3' ),
+                                      unit_cell = (56.9, 56.9, 62.77, 90, 90, 120) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 43' ),
+                                      unit_cell = (54.111, 54.111, 71.637, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 1 1 21' ),
+                                      unit_cell = (54.09, 54.132, 71.637, 90, 90, 90.04) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 4 3 2' ),
+                                      unit_cell = (122.638, 122.638, 122.638, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 2 3' ),
+                                      unit_cell = (122.638, 122.638, 122.638, 90, 90, 90) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 62' ),
+                                      unit_cell = (115.246, 115.246, 67.375, 90, 90, 120) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 1 1 2' ),
+                                      unit_cell = (115.246, 115.242, 67.375, 90, 90, 119.997) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 63' ),
+                                      unit_cell = (103.371, 103.371, 91.38, 90, 90, 120) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 1 1 21' ),
+                                      unit_cell = (103.35, 103.36, 91.38, 90, 90, 119.97) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'P 65 2 2' ),
+                                      unit_cell = (183.226, 183.226, 141.117, 90, 90, 120) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'C 1 2 1 (x-y,2*x,z)' ),
+                                      unit_cell = (183.108, 183.285, 141.117, 90.0433, 90, 119.968) )}
+    yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'F 41 3 2' ),
+                                      unit_cell = (228.763, 228.763, 228.763, 90, 90, 90) ),
+         'subgroup':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'I 41 (c,a+b,-a+b)' ),
+                                      unit_cell = (228.574, 228.858, 228.858, 90, 90, 90) )}
+
+  for case in generate_cases():
+    C = left_decomposition(g=case['group'].space_group(), h = case['subgroup'].space_group())
+
+    # double check that the first partition is identical to the subgroup:
+    for element in case['subgroup'].space_group():
+      assert element in C.partitions[0]
+
+    # make sure each coset is equal to the product of the coset representative and the subgroup
+    for x in xrange(1,len(C.partitions)):
+      part = C.partitions[x]
+      coset_representative = part[0]
+      for element in case['subgroup'].space_group():
+        assert coset_representative.multiply(element).mod_short().as_xyz() in [
+          i.mod_short().as_xyz() for i in part]
+
 def run():
   test_double_coset_decomposition()
+  test_lattice_translattion_aware_left_decomposition()
   print "OK"
 
 if (__name__ == "__main__"):
