@@ -285,7 +285,7 @@ def test_double_coset_decomposition():
         tmp_new = double_cosets(g, h1, h2)
         assert not tmp_new.have_duplicates()
 
-def test_lattice_translattion_aware_left_decomposition():
+def test_lattice_translation_aware_left_decomposition():
   from cctbx import crystal
   def generate_cases():
     yield { 'group':crystal.symmetry( space_group_info = sgtbx.space_group_info( 'C 2 2 21' ),
@@ -426,7 +426,7 @@ def test_lattice_translattion_aware_left_decomposition():
 
 def run():
   test_double_coset_decomposition()
-  test_lattice_translattion_aware_left_decomposition()
+  test_lattice_translation_aware_left_decomposition()
   print "OK"
 
 if (__name__ == "__main__"):
