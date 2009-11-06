@@ -1,9 +1,7 @@
 import libtbx.path
-from libtbx.option_parser import option_parser
 from libtbx.str_utils import show_string
 from libtbx.utils import escape_sh_double_quoted, Sorry, detect_binary_file
 from libtbx import adopt_init_args
-from libtbx import easy_run
 import shutil
 import pickle
 from cStringIO import StringIO
@@ -42,6 +40,7 @@ def darwin_shlinkcom(env_etc, env, lo, dylib):
       " %s -o %s %s" % (dylib1, dylib, lo)])
 
 def get_darwin_gcc_build_number(gcc='gcc'):
+  from libtbx import easy_run
   gcc_version = (easy_run.fully_buffered(command='%s --version' % gcc)
                          .raise_if_errors()
                          .stdout_lines[0].strip())
@@ -53,6 +52,7 @@ def get_darwin_gcc_build_number(gcc='gcc'):
     return None
 
 def get_gcc_version(command_name="gcc"):
+  from libtbx import easy_run
   buffer = easy_run.fully_buffered(
     command="%s -dumpversion" % command_name)
   if (len(buffer.stderr_lines) != 0):
@@ -81,9 +81,11 @@ def get_hostname():
 
 def get_ldd_output(target=None):
   if (target is None): target = sys.executable
+  from libtbx import easy_run
   return easy_run.go(command="ldd '%s'" % target).stdout_lines
 
 def get_hp_ux_acc_version():
+  from libtbx import easy_run
   run_out = easy_run.go(command="aCC -V").stdout_lines
   version = run_out
   if (len(version) > 0):
@@ -95,6 +97,7 @@ def get_hp_ux_acc_version():
     "\n  ".join(["Unknown C++ compiler (aCC -V):"] + run_out))
 
 def get_mipspro_version():
+  from libtbx import easy_run
   run_out = easy_run.go(command="CC -version").stdout_lines
   version = run_out
   if (len(version) > 0):
@@ -372,6 +375,7 @@ class environment:
     if (self._shortpath_bat is None):
       self._shortpath_bat = self.under_build("shortpath.bat")
       assert os.path.exists(self._shortpath_bat)
+    from libtbx import easy_run
     return easy_run.fully_buffered(
       command='call "%s" "%s"' % (self._shortpath_bat, abs_path)) \
         .raise_if_errors() \
@@ -1197,6 +1201,15 @@ class environment:
         return True
     return False
 
+  def clear_scons_memory(self):
+    file_name = os.path.join(self.build_path, ".sconsign.dblite")
+    if (os.path.isfile(file_name)):
+      os.remove(file_name)
+    dir_name = os.path.join(self.build_path, ".sconf_temp")
+    if (os.path.isdir(dir_name)):
+      from distutils.dir_util import remove_tree
+      remove_tree(dir_name)
+
   def refresh(self):
     is_completed_file_name = os.path.join(
       self.build_path, "libtbx_refresh_is_completed")
@@ -1644,6 +1657,7 @@ class pre_process_args:
     else:
       command_name = "libtbx/configure.py"
       self.warm_start = False
+    from libtbx.option_parser import option_parser
     parser = option_parser(
       usage="%s [options] module_name[=redirection_path] ..." % command_name)
     if (self.warm_start):
@@ -1753,6 +1767,10 @@ class pre_process_args:
         action="store_false",
         default=True,
         help="disable Boost.Python implicit bool<->int conversions")
+    parser.option(None, "--clear_scons_memory",
+      action="store_true",
+      default=False,
+      help="remove scons build signatures and config cache")
     self.command_line = parser.process(args=args)
     if (len(self.command_line.args) == 0):
       raise Sorry(
@@ -1771,6 +1789,7 @@ class pre_process_args:
           raise Sorry(
             'The --force_32bit option can only be used with 32-bit Python.\n'
             '  See also: "man python"')
+        from libtbx import easy_run
         buffers = easy_run.fully_buffered(
           command="/usr/bin/arch -i386 /bin/ls /")
         if (   len(buffers.stderr_lines) != 0
@@ -1804,6 +1823,11 @@ def set_preferred_sys_prefix_and_sys_executable(build_path):
             sys.executable = new_executable
 
 def cold_start(args):
+  cwd_was_empty_at_start = True
+  for file_name in os.listdir("."):
+    if (not file_name.startswith(".")):
+      cwd_was_empty_at_start = False
+      break
   default_repositories = []
   r = os.path.dirname(os.path.dirname(args[0]))
   b = os.path.basename(r)
@@ -1832,6 +1856,9 @@ def cold_start(args):
   set_preferred_sys_prefix_and_sys_executable(build_path=build_path)
   env = environment(build_path=build_path)
   env.process_args(pre_processed_args=pre_processed_args)
+  if (   pre_processed_args.command_line.options.clear_scons_memory
+      or cwd_was_empty_at_start):
+    env.clear_scons_memory()
   env.refresh()
 
 def unpickle():
@@ -1862,4 +1889,6 @@ def warm_start(args):
   pre_processed_args = pre_process_args(args=args[1:])
   env = unpickle()
   env.process_args(pre_processed_args=pre_processed_args)
+  if (pre_processed_args.command_line.options.clear_scons_memory):
+    env.clear_scons_memory()
   env.refresh()
