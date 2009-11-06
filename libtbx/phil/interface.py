@@ -156,7 +156,7 @@ class index (object) :
 
   #---------------------------------------------------------------------
   # Retrieval methods
-  # XXX: check return value for list!
+  # FIXME: not working properly for ncs restraint group phil
   def get_scope_by_name (self, scope_name, phil_parent=None) :
     if scope_name in self._full_path_index :
       indexed_phil_objects = self._full_path_index[scope_name]
@@ -176,8 +176,7 @@ class index (object) :
     template = self._template_index.get(phil_name)
     new_copy = None
     if template is not None :
-      new_copy = template.copy()
-      new_copy.is_template = 0
+      new_copy = template.customized_copy()
     return new_copy
 
   def get_validated_param (self, def_name) :
