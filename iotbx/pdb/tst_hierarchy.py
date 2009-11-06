@@ -197,6 +197,14 @@ def exercise_atom():
   a.name = ""
   a.element = ""
   #
+  assert a.distance(other=a) == 0
+  b = a.detached_copy()
+  b.xyz = (3,5,2)
+  assert approx_equal(a.distance(other=b), 3.56931365951)
+  assert approx_equal(b.distance(other=a), 3.56931365951)
+  assert approx_equal(a.distance(other_xyz=(3,5,2)), 3.56931365951)
+  assert approx_equal(a.distance(other_xyz=(2,3,5)), 2.13072757527)
+  #
   ag = pdb.hierarchy.atom_group()
   ac = pdb.hierarchy.atom(parent=ag, other=a)
   assert ac.memory_id() != a.memory_id()
