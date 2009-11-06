@@ -314,6 +314,10 @@ namespace {
         .def("set_chemical_element_simple_if_necessary",
           &w_t::set_chemical_element_simple_if_necessary, (
             arg("tidy_existing")=true))
+        .def("distance", (double(w_t::*)(atom const&)) &w_t::distance, (
+          arg("other")))
+        .def("distance", (double(w_t::*)(vec3 const&)) &w_t::distance, (
+          arg("other_xyz")))
       ;
     }
 

@@ -757,6 +757,20 @@ namespace hierarchy {
       bool
       set_chemical_element_simple_if_necessary(
         bool tidy_existing=true);
+
+      double
+      distance(
+        atom const& other)
+      {
+        return (data->xyz - other.data->xyz).length();
+      }
+
+      double
+      distance(
+        vec3 const& other_xyz)
+      {
+        return (data->xyz - other_xyz).length();
+      }
   };
 
   //! atom_group attributes.
