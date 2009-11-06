@@ -3,7 +3,7 @@ from stdlib import math
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
 from copy import deepcopy
-import random
+from stdlib import random
 from scitbx import simplex
 
 class dssa(object):
