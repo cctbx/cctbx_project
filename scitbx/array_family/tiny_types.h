@@ -13,6 +13,11 @@ namespace scitbx { namespace af {
   typedef tiny<double, 4> double4;
   typedef tiny<double, 6> double6;
   typedef tiny<double, 9> double9;
+  typedef tiny<float, 2> float2;
+  typedef tiny<float, 3> float3;
+  typedef tiny<float, 4> float4;
+  typedef tiny<float, 6> float6;
+  typedef tiny<float, 9> float9;
 
 }} // namespace scitbx::af
 
@@ -52,6 +57,26 @@ namespace boost {
 
   template<>
   struct has_trivial_destructor<scitbx::af::double9> {
+    static const bool value = true;
+  };
+
+  template<>
+  struct has_trivial_destructor<scitbx::af::float2> {
+    static const bool value = true;
+  };
+
+  template<>
+  struct has_trivial_destructor<scitbx::af::float3> {
+    static const bool value = true;
+  };
+
+  template<>
+  struct has_trivial_destructor<scitbx::af::float6> {
+    static const bool value = true;
+  };
+
+  template<>
+  struct has_trivial_destructor<scitbx::af::float9> {
     static const bool value = true;
   };
 
