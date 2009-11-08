@@ -134,6 +134,7 @@ compcomm/newsletter08/f_square_refinement.py -text
 compcomm/newsletter08/news.txt -text
 compcomm/newsletter08/notes -text
 compcomm/newsletter08/special_positions.py -text
+compcomm/newsletter09/sf_times.py svneol=native#text/x-python
 crys3d/__init__.py -text
 crys3d/images.py -text
 crys3d/reverse_selection.py -text
