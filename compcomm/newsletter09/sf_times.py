@@ -3,6 +3,7 @@ from libtbx.utils import Usage
 from libtbx import easy_run
 from libtbx import easy_pickle
 from libtbx.path import full_command_path
+import platform
 import sys, os
 op = os.path
 
@@ -381,6 +382,8 @@ def cpp_write_build_run(
     check_max_a_b=(not (replace_cos or replace_exp)))
 
 def run_combinations(
+      compiler_versions,
+      all_utimes,
       a_out_archive,
       write_a_out_archive,
       n_scatt,
@@ -388,9 +391,17 @@ def run_combinations(
       compiler_build_opts_list,
       real_list,
       write_build_run):
-  all_utimes = []
   for compiler,build_opts in compiler_build_opts_list:
-    have_compiler = (full_command_path(command=compiler) is not None)
+    if (write_a_out_archive):
+      have_compiler = (full_command_path(command=compiler) is not None)
+      if (not have_compiler):
+        compiler_version = "n/a"
+      else:
+        compiler_version = easy_run.fully_buffered(
+          command=compiler+" --version",
+          join_stdout_stderr=True).stdout_lines[0]
+      compiler_versions.append(compiler_version)
+      a_out = None
     build_cmd = " ".join([compiler, build_opts])
     print build_cmd
     utimes = []
@@ -400,9 +411,12 @@ def run_combinations(
         print "    replace_cos", replace_cos
         for replace_exp in [False, True]:
           print "      replace_exp", replace_exp
+          sys.stdout.flush()
           a_out_key = (build_cmd, replace_cos, replace_exp)
-          a_out = a_out_archive.get(a_out_key)
-          if (a_out is not None or have_compiler):
+          if (not write_a_out_archive):
+            compiler_version, a_out = a_out_archive.get(a_out_key, (
+              "n/a", None))
+          if (compiler_version != "n/a"):
             utime = write_build_run(
               a_out=a_out,
               n_scatt=n_scatt,
@@ -413,13 +427,34 @@ def run_combinations(
               replace_exp=replace_exp)
             print "        %4.2f" % utime
             if (write_a_out_archive):
-              a_out_archive[a_out_key] = open("a.out", "rb").read()
+              a_out_archive[a_out_key] = (
+                compiler_version,
+                open("a.out", "rb").read())
           else:
             utime = -1.0
             print "        n/a"
           utimes.append(utime)
+          sys.stdout.flush()
     all_utimes.append(utimes)
-  return all_utimes
+
+def gcc_static_is_available():
+  tmp_cpp = r"""\
+#include <iostream>
+#include <cmath>
+int
+main()
+{
+  std::cout << static_cast<int>(std::cos(0.0)) << std::endl;
+  return 0;
+}
+"""
+  open("tmp.cpp", "w").write(tmp_cpp)
+  buffers = easy_run.fully_buffered(command="g++ -O tmp.cpp")
+  buffers.raise_if_errors_or_output()
+  buffers = easy_run.fully_buffered(command="g++ -static -O tmp.cpp")
+  if (len(buffers.stderr_lines) != 0):
+    return False
+  return True
 
 def usage():
   raise Usage(
@@ -427,6 +462,10 @@ def usage():
 
 def run(args):
   if (len(args) != 1): usage()
+  build_platform = platform.platform()
+  build_node = platform.node()
+  compiler_versions = []
+  gcc_static = "-static "
   a_out_archive = {}
   write_a_out_archive = True
   if (args[0] == "unit_test"):
@@ -436,39 +475,63 @@ def run(args):
   elif (args[0] == "production"):
     n_scatt, n_refl = 2000, 20000
   elif (op.isfile(args[0])):
-    n_scatt, n_refl, a_out_archive = easy_pickle.load(file_name=args[0])
+    n_scatt, n_refl, \
+    build_platform, build_node, \
+    compiler_versions, gcc_static, a_out_archive = easy_pickle.load(
+      file_name=args[0])
     write_a_out_archive = False
   else:
     usage()
+  if (write_a_out_archive and not gcc_static_is_available()):
+    gcc_static = ""
   all_utimes = []
   if (1):
-    all_utimes.extend(run_combinations(
+    run_combinations(
+      compiler_versions,
+      all_utimes,
       a_out_archive=a_out_archive,
       write_a_out_archive=write_a_out_archive,
       n_scatt=n_scatt,
       n_refl=n_refl,
       compiler_build_opts_list=[
         ("ifort", "-O"),
-        ("gfortran", "-static -O -ffast-math"),
-        ("g77", "-static -O -ffast-math")],
+        ("gfortran", gcc_static+"-O -ffast-math"),
+        ("g77", gcc_static+"-O -ffast-math")],
       real_list=["real*4", "real*8"],
-      write_build_run=fortran_write_build_run))
+      write_build_run=fortran_write_build_run)
   if (1):
-    all_utimes.extend(run_combinations(
+    run_combinations(
+      compiler_versions,
+      all_utimes,
       a_out_archive=a_out_archive,
       write_a_out_archive=write_a_out_archive,
       n_scatt=n_scatt,
       n_refl=n_refl,
       compiler_build_opts_list=[
-        ("icpc", "-O"),
-        ("g++", "-O -ffast-math")],
+        ("icpc", "-static -O"),
+        ("g++", gcc_static+"-O -ffast-math")],
       real_list=["float", "double"],
-      write_build_run=cpp_write_build_run))
+      write_build_run=cpp_write_build_run)
   if (write_a_out_archive and len(a_out_archive) != 0):
     print "Writing file: a_out_archive.pickle"
     easy_pickle.dump(
       file_name="a_out_archive.pickle",
-      obj=(n_scatt, n_refl, a_out_archive))
+      obj=(
+        n_scatt,
+        n_refl,
+        build_platform,
+        build_node,
+        compiler_versions,
+        gcc_static,
+        a_out_archive))
+  print
+  print "current_platform:", platform.platform()
+  print "current_node:", platform.node()
+  print "build_platform:", build_platform
+  print "build_node:", build_node
+  print 'gcc_static: "%s"' % gcc_static
+  for compiler_version in compiler_versions:
+    print "compiler:", compiler_version
   print "n_scatt * n_refl: %d * %d" % (n_scatt, n_refl)
   for utimes in all_utimes:
     print " ".join(["%6.2f" % u for u in utimes])
