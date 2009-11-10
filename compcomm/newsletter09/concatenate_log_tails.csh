@@ -5,6 +5,7 @@ tail -17 /net/longnose/scratch2/rwgk/bintbx_py264/sf_times_plog
 tail -17 /net/anaconda/scratch1/rwgk/bintbx_py264/sf_times_plog
 ssh sharptail 'tail -17 /net/sharptail/scratch1/rwgk/bintbx_py264/sf_times_plog'
 tail -17 /net/chevy/raid1/rwgk/phenix-1.4-135/bintbx/91/sf_times_plog
+tail -17 /net/chevy/raid1/rwgk/phenix-1.4-135/bintbx/101/sf_times_plog
 tail -17 /net/chevy/raid1/rwgk/phenix-1.4-135/bintbx/111/sf_times_plog
 tail -17 /net/chevy/raid1/rwgk/bintbx_py264_gcc422/sf_times_plog
 tail -17 /net/chevy/raid1/rwgk/bintbx_py264_gcc434/sf_times_plog
