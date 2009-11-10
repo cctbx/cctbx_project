@@ -1,7 +1,9 @@
 * text=auto !eol
+boost_adaptbx/__init__.py -text
 boost_adaptbx/boost/python_file.py -text
 boost_adaptbx/boost/std_pair.py -text
 boost_adaptbx/boost/tuple.py -text
+boost_adaptbx/command_line/__init__.py -text
 boost_adaptbx/command_line/divide_by_zero.py svneol=native#text/x-python
 boost_adaptbx/command_line/double_overflow.py svneol=native#text/x-python
 boost_adaptbx/command_line/gcd.py svneol=native#text/x-python
