@@ -130,7 +130,7 @@ cpp_template = r"""// %(this_script)s
 #include <cmath>
 #include <cstddef>
 
-#define DO(i,n) for(i=1;i<=n;i++)
+#define DO1(i,n) for(i=1;i<=n;i++)
 
 template <typename T>
 struct dim1
@@ -172,19 +172,19 @@ typedef dim2<float> real2d;
     {
       int i_refl, i_scatt, j, h;
       float phi, cphi, sphi, dss, ldw, dw, a, b;
-      DO(i_refl, n_refl) {
+      DO1(i_refl, n_refl) {
         a = 0;
         b = 0;
-        DO(i_scatt, n_scatt) {
+        DO1(i_scatt, n_scatt) {
           phi = 0;
-          DO(j, 3) {
+          DO1(j, 3) {
             phi = phi + hkl(j,i_refl) * xyz(j,i_scatt);
           }
           phi = phi * 2 * 3.1415926535897931f;
           cos_wrapper(cphi, phi);
           cos_wrapper(sphi, phi - 3.1415926535897931f*0.5f);
           dss = 0;
-          DO(j, 3) {
+          DO1(j, 3) {
             h = hkl(j,i_refl);
             dss = dss + h*h * abcs(j);
           }
@@ -216,31 +216,31 @@ typedef dim2<float> real2d;
       abcs(2) = 1/(12.0f*12.0f);
       abcs(3) = 1/(13.0f*13.0f);
       jr = 0;
-      DO(i, n_scatt) {
-        DO(j, 3) {
+      DO1(i, n_scatt) {
+        DO1(j, 3) {
           jr = (jr*1366+150889) %% 714025;
           xyz(j,i) = (jr %% 20000 - 10000) / 10000.0f;
         }
       }
-      DO(i, n_scatt) {
+      DO1(i, n_scatt) {
         jr = (jr*1366+150889) %% 714025;
         b_iso(i) = (jr %% 10000) / 100.0f;
       }
       if (n_scatt <= 10) {
-        DO(i, n_scatt) {
+        DO1(i, n_scatt) {
           std::printf(" %%9.6f %%9.6f %%9.6f %%9.6f\n",
             xyz(1,i), xyz(2,i), xyz(3, i), b_iso(i));
         }
       }
-      DO(i, n_refl) {
-        DO(j, 3) {
+      DO1(i, n_refl) {
+        DO1(j, 3) {
           jr = (jr*1366+150889) %% 714025;
           hkl(j,i) = jr %% 10 - 5;
         }
       }
       sf(abcs, n_scatt, xyz, b_iso, n_refl, hkl, f_calc);
       if (n_refl <= 100) {
-        DO(i, n_refl) {
+        DO1(i, n_refl) {
           std::printf(" %%3d %%3d %%3d %%12.6f %%12.6f\n",
             hkl(1,i), hkl(2,i), hkl(3,i),
             f_calc(1,i), f_calc(2,i));
@@ -249,7 +249,7 @@ typedef dim2<float> real2d;
       else {
         max_a = 0.0f;
         max_b = 0.0f;
-        DO(i, n_refl) {
+        DO1(i, n_refl) {
           a = f_calc(1,i);
           b = f_calc(2,i);
           if (max_a < a) max_a = a;
