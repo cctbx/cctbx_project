@@ -153,6 +153,7 @@ namespace boost_python { namespace {
            (const ewald_sphere_base_model::point&)) &ewald_sphere_base_model::setH)
       .def("setH",(void(ewald_sphere_base_model::*)
            (const cctbx::miller::index<>&)) &ewald_sphere_base_model::setH)
+      .add_property("H",make_getter(&ewald_sphere_base_model::H, rbv()))
     ;
 
     class_<rotation_angles, bases<ewald_sphere_base_model> >("rotation_angles",

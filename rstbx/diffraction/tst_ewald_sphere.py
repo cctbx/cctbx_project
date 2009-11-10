@@ -13,18 +13,22 @@ from libtbx.test_utils import approx_equal
 # 5.01, 5.01, 5.47, 90, 90, 120,'''
 
 def rotation_scattering(reflections, UB_mat, rotation_vector,
-                        wavelength, resolution):
+                        wavelength, resolution,assert_non_integer_index=False):
     '''Perform some kind of calculation...'''
 
     ra = rotation_angles(resolution, UB_mat, wavelength,rotation_vector)
     beam_vector = matrix.col([0, 0, 1 / wavelength])
 
-    for hkl in indices:
+    for hkl in reflections:
         if ra(hkl):
 
             omegas = ra.get_intersection_angles()
 
             #print '%d %d %d' % hkl, '%.3f %.3f' % omegas
+            if assert_non_integer_index:
+              assert ra.H[0] != int(ra.H[0]) or \
+                     ra.H[1] != int(ra.H[1]) or \
+                     ra.H[2] != int(ra.H[2])
 
             for omegaidx in [0,1]:
 
@@ -97,4 +101,19 @@ if __name__ == '__main__':
 
     #print second_rotation_vector
     rotation_scattering(indices, bmat, second_rotation_vector,wavelength,resolution)
+
+    # Now repeat the entire excercise for some non-integer Miller indices
+    float_indices = []
+    for h in range(-maxh, maxh + 1):
+        for k in range(-maxk, maxk + 1):
+            for l in range(-maxl, maxl + 1):
+                float_indices.append((h+0.2, k+0.2, l+0.2))
+
+    #print first_rotation_vector
+    rotation_scattering(float_indices, bmat, first_rotation_vector,wavelength,resolution,
+      assert_non_integer_index=True)
+
+    #print second_rotation_vector
+    rotation_scattering(float_indices, bmat, second_rotation_vector,wavelength,resolution,
+      assert_non_integer_index=True)
     print "OK"
