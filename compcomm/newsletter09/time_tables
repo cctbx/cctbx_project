@@ -106,6 +106,23 @@ current_node: chevy.lbl.gov
 build_platform: Linux-2.6.23.15-137.fc8-x86_64-with-fedora-8-Werewolf
 build_node: chevy.lbl.gov
 gcc_static: "-static "
+compiler: n/a
+compiler: GNU Fortran (GCC) 4.1.2 20070925 (Red Hat 4.1.2-33)
+compiler: n/a
+compiler: icpc (ICC) 10.1 20080312
+compiler: g++ (GCC) 4.1.2 20070925 (Red Hat 4.1.2-33)
+n_scatt * n_refl: 2000 * 20000
+ -1.00  -1.00  -1.00  -1.00  -1.00  -1.00  -1.00  -1.00
+ 16.73   5.59  12.96   1.76   7.69   6.35   3.15   1.94
+ -1.00  -1.00  -1.00  -1.00  -1.00  -1.00  -1.00  -1.00
+  1.88   1.43   0.96   0.63   2.44   1.84   1.41   1.02
+ 17.04   5.54  13.04   1.68   7.58   6.36   2.95   1.86
+
+current_platform: Linux-2.6.23.15-137.fc8-x86_64-with-fedora-8-Werewolf
+current_node: chevy.lbl.gov
+build_platform: Linux-2.6.23.15-137.fc8-x86_64-with-fedora-8-Werewolf
+build_node: chevy.lbl.gov
+gcc_static: "-static "
 compiler: ifort (IFORT) 11.1 20091012
 compiler: GNU Fortran (GCC) 4.1.2 20070925 (Red Hat 4.1.2-33)
 compiler: n/a
