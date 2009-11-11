@@ -1,4 +1,5 @@
 * text=auto !eol
+boost_adaptbx/__init__.py svneol=native#text/x-python
 boost_adaptbx/boost/python_file.py -text
 boost_adaptbx/boost/std_pair.py -text
 boost_adaptbx/boost/tuple.py -text

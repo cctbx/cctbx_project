@@ -5,7 +5,8 @@ from libtbx import introspection
 import platform
 import sys, os
 
-def run (out=sys.stdout):
+def run (out=None, omit_unicode_experiment=False):
+  if (out is None): out = sys.stdout
   out.write(boost.python.platform_info)
   print >> out, "os.name:", os.name
   print >> out, "sys.platform:", sys.platform
@@ -17,12 +18,12 @@ def run (out=sys.stdout):
     print >> out, "%s:" % attr, eval("boost.python.%s" % attr)
   print >> out, "number of processors:", introspection.number_of_processors(
     return_value_if_unknown="unknown")
-  introspection.machine_memory_info().show()
+  introspection.machine_memory_info().show(out=out)
   try: import thread
   except ImportError: print >> out, "import thread: NO"
   else: print >> out, "import thread: OK"
   c = getattr(boost.python.ext, "str_or_unicode_as_char_list", None)
-  if (c is not None):
+  if (c is not None and not omit_unicode_experiment):
     print >> out, '"hello" =', c("hello")
     print >> out, 'u"hello" =', c(u"hello")
     e = u"\u00C5".encode("utf-8", "strict")
