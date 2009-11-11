@@ -113,7 +113,8 @@ class ServerProxy (object) :
       except Exception, e :
         msg = str(e)
         if (msg.startswith("[Errno 61]") or msg.startswith("[Errno 111]") or
-            msg.startswith("[Errno 32]") or msg.startswith("[Error 54]")) :
+            msg.startswith("[Errno 32]") or msg.startswith("[Errno 54]") or
+            msg.startswith("[Errno 104]")) :
           self._pending.insert(0, (methodname, params))
           break
         elif str(e).startswith("<ProtocolError ") :
