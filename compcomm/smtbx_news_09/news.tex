@@ -10,7 +10,7 @@
 \geometry{margin=2cm}
 %\usepackage[hang,flushmargin]{footmisc} 
 \title{Small Molecule ToolBox}
-\author{Luc J. Bourhis \and Richard J. Gildea \and J.A.K. Howard \and Oleg V. Dolomanov \and Horst Puschmann}
+\author{Luc J. Bourhis \and Richard J. Gildea \and Oleg V. Dolomanov \and J.A.K. Howard \and Horst Puschmann}
 \date{}
 \begin{document}
 \maketitle
@@ -21,16 +21,18 @@ Durham University, UK
 
 \section{Introduction}
 
-This article belongs to a series of three published in this edition of the newsletter. The other two are respectively about the program Olex 2~\cite{Dolomanov:2009}, developed by the same Durham group, which provides an point-and-click interface to several of the tools we will expound in this newsletter, and about new advances endeavoured by the Oxford end of our common EPSRC grant. In this article, we will concern ourselves with the contributions made to the \cctbx~\cite{cctbx} with the goal to enable small molecule structure refinement up to the standards required for publication, a goal which has become temptingly close at the time of writing this newsletter.
+This article belongs to a series of three published in this edition of the newsletter. The other two are respectively about the program Olex2~\cite{Dolomanov:2009}, developed by the same Durham group, which provides an point-and-click interface to several of the tools we will expound in this newsletter, and about new advances endeavoured by the Oxford end of our common EPSRC grant. In this article, we will concern ourselves with the contributions made to the \cctbx~\cite{cctbx} with the goal to enable small molecule structure refinement up to the standards required for publication, a goal which has become temptingly close at the time of writing this newsletter.
 
 Although the \cctbx new developments have increasingly become targeted towards macro-molecular works, a consequence of its being the foundation upon which the Phenix~\cite{phenix} suite is built, all the core algorithms are valid for any crystal structure. The most important example is that all algorithms in the \cctbx module\footnote{The reader is referred to the previous \cctbx newsletter for the general organisation of the toolbox, especially the very first one~\cite{Grosse-Kunstleve:2003}.} are correct in any setting of the 230 crystallographic space groups\footnote{E.g. settings with an inversion centre not placed at the origin are allowed, which is not the case in any other small molecule program we know of.} and that they are routinely tested with space groups not found in protein crystallography. However, there are key differences between macro-molecular and small molecule studies in the way crystal structures are modelled and in the way the fit to the diffraction data is performed, interpreted and reported. As a result, the \cctbx, as it stood four years ago at the beginning of our grant, could not be used for routine small molecule works. Therefore, on the one hand, we have improved existing or added new tools to the \cctbx where it seemed they were not small molecule-specific and on the other hand we have spun a sister library off, the Small Molecule Toolbox, or \smtbx, for the more dedicated tools. In practice that dividing line has not been strongly enforced when the changes to the \cctbx would have threatened its stability. In those cases, we preferred to roll out a new implementation in the \smtbx (a key example being structure factor computations).
 
-This newsletter will be organised as follow.
+This newsletter will be organised as follows.
 
 The new ab-initio solution method known as charge flipping~\cite{Oszlanyi:2008,Palatinus:2007} has become increasingly popular in recent years for small molecule structures, which motivated us to implement that algorithm in the \smtbx. We will discuss it in section~\ref{chargeflipping}.
 
 The refinement of small molecule single crystal structure has a few key specificities, which reflects in the feature set provided by the programs ShelXL~\cite{Sheldrick:2008} and Crystals~\cite{Crystals:v12}, with which nearly all traditional\footnote{By ``traditional'', we mean no incommensurate crystals and no charge density models.} small molecule studies are done.
-This will be the subject of section~\ref{refinement} where, after a short reminder of the specificities of small molecule refinement, we will discuss in turn the LBFGS refinement scheme, the full matrix scheme, normal equations, the floating origin problem and constraints.
+This will be the subject of section~\ref{refinement} where, after a short reminder of the specificities of small molecule refinement, we will discuss in turn the LBFGS refinement scheme, the full matrix scheme, normal equations, the floating origin problem and restraints and constraints.
+
+We will then briefly discuss some of the graphs for the analysis of reflection statistics that have been implemented using the \cctbx.
 
 
 \section{Charge flipping}
@@ -41,7 +43,7 @@ The second difficulty to overcome is the detection of the phase transition.  Fol
 
 The third and last difficulty is to find the origin shift. Indeed charge flipping works in P1 and the structure is shifted compared to the standard space group settings. SUPERFLIP does actually discover the space group symmetry from the final map along with the origin shift, which is clearly the approach to be preferred since it makes charge flipping an ab-initio method by itself. Our code is much cruder and it relies on an a priori knowledge of the symmetry. Moreover we use the macro-molecular technique known as fast translation function to recover the origin shift, a method which scales like the 4th power of the number of symmetry elements, which makes it extremely slow on those highly symmetric space groups common in inorganic materials. We are currently working on improving on this weaknesses.
 
-Finally, after the solution has been obtained, a few cycles of polishing using low density elimination~\cite{Shiono:1992} are performed. This polishing could be performed after any solution method actually and it has proven to be invaluable to get good electron density peak positions from which one can assign atom types from geometric considerations. This is at least the experience accumulated with AutoChem, the automatic system developed by our group for Oxford Diffraction, which is available through Olex 2.
+Finally, after the solution has been obtained, a few cycles of polishing using low density elimination~\cite{Shiono:1992} are performed. This polishing could be performed after any solution method actually and it has proven to be invaluable to get good electron density peak positions from which one can assign atom types from geometric considerations. This is at least the experience accumulated with AutoChem, the automatic system developed by our group for Oxford Diffraction, which is available through Olex2.
 
 The implementation is nearly entirely done in Python, and reside in the module\\ \code{smtbx.ab_initio.charge_flipping}. It features the original method as well as the newer one enhanced to deal with weak reflections~\cite{Oszlanyi:2004}. Here is the starting point to explore these tools
  \begin{lstlisting}[language=Python]
@@ -219,6 +221,135 @@ does not have any component along $v'$ holds as in the first case without specia
 We shall stress that the fact that the barycentre is not always restrained to stay at the origin is not a problem at all. Since the shifts along the singular direction(s) of the normal matrix are null in this scheme, one obtains the so-called minimum norm solution of the least-square problems. A corollary is that the inverse of the restrained normal matrix is the pseudo-inverse of the original singular normal matrix, which is precisely the one with the right statistical properties, i.e. the one which gives the correct variances and correlations under the Gauss-Markov theorem, as any good treaty on Statistics would expound, see e.g.~\cite{Silvey:1975}.
 
 This flavour of floating origin restraints is implemented in the \cpp class \code{floating_origin_restraints} defined in \code{smtbx/refinement/least_squares.h}.
+\subsection{Restraints}
+
+As described in a previous \cctbx newsletter \cite{cctbxnews:2004b}, geometry restraints of the kind that are extensively used in macromolecular crystallography have already been implemented in the \cctbx.  However, with the exception of the bond distance restraint, these were not able to deal with symmetry equivalent atoms, as is allowed by most common small molecule refinement programs.  These have now been extended to allow symmetry equivalent atoms, and a new bond similarity restraint has been added.  We have also implemented several common restraints on anisotropic displacement parameters (ADPs), including restraints based on Hirshfeld's ``rigid-bond'' test \cite{Hirshfeld:1976}, similarity restraints and isotropic restraints.
+
+\subsubsection{Restraints on Atomic Displacement Parameters}
+
+There appears to very little in the literature with regard to restraints on ADPs, and in particular the details of their implementation in refinement programs. It was therefore necessary to devise our formulae for the equations of restraints and derive their gradients with respect to the least squares parameters. The correctness of the analytical gradients was confirmed by testing against gradients determined by the finite differences method. The residuals were also tested for frame invariance (\textit{i.e.} the residual should be invariant with respect to the orientation of the ADP within the Cartesian frame).
+
+\subsubsection{Rigid-bond restraint}
+
+In a `rigid-bond' restraint the components of the anisotropic displacement parameters of two atoms in the direction of the vector connecting those two atoms are restrained to be equal. This corresponds to Hirshfeld's ``rigid-bond'' test \cite{Hirshfeld:1976} for testing whether anisotropic displacement parameters are physically reasonable (see SHELX manual, DELU restraint \cite{SHELX:man97})and is in general appropriate for bonded and 1,3-separated pairs of atoms and should hold true for most covalently bonded systems. We therefore minimise the mean square displacement of atom in the direction of the bond.
+
+The weighted least squares residual is then
+\begin{equation}
+R = w(z^2_{A,B} - z^2_{B,A})^2,
+\end{equation}
+where in the Cartesian coordinate system the mean square displacement of atom A
+along the vector $\overrightarrow{AB}$, $z^2_{A,B}$, is given by
+\begin{equation}
+z^2_{A,B} = \frac{\vec{r}^t\mat{U}_{cart,A}\vec{r}}{\norm{\vec{r}}^2},
+\end{equation}
+where
+\begin{equation}
+\vec{r} = \begin{pmatrix} x_A - x_B\\y_A - y_B\\z_A - z_B \end{pmatrix}
+= \begin{pmatrix} x\\y\\z \end{pmatrix},
+\end{equation}
+$\vec{r}^t$ is the transpose of $\vec{r}$ (\textit{i.e.} a row vector) and
+$\norm{\vec{r}}$ is the length of the vector $\overrightarrow{AB}$.
+
+The derivative of the residual with respect to an element of $\vec{U}_{cart,A}$,
+$U_{A,ij}$ is given by (using the chain rule)
+\begin{align}
+\partialder{R}{U_{A,ij}} &= \partialder{R}{z^2_{A,B}} \partialder{z^2_{A,B}}{U_{A,ij}}\\
+&=2w(z^2_{A,B} - z^2_{B,A}) \partialder{z^2_{A,B}}{U_{A,ij}}\label{eqn:u_derivative}
+\end{align}
+
+The matrix multiplication in obtaining $z^2_{A,B}$ can be evaluated as follows
+(remembering $\vec{U}_{cart}$ is symmetric):
+\begin{align}
+\vec{r}^t\vec{U}_{cart,A}\vec{r} &= 
+\begin{pmatrix} x & y & z \end{pmatrix}
+\begin{pmatrix} U_{11} & U_{12} & U_{13}\\
+  U_{12} & U_{22} & U_{23}\\
+  U_{13} & U_{23} & U_{33}\end{pmatrix}
+\begin{pmatrix} x\\y\\z\end{pmatrix}\\
+&= U_{11}\: x^2 + U_{22}\: y^2 + U_{33}\: z^2 + 2U_{12}\: xy + 2U_{13}\: xz + 2U_{23}\: yz
+\end{align}
+It then follows that
+\begin{equation}
+\partialder{z^2_{A,B}}{U_{11}} = \frac{x^2}{\norm{\vec{r}}^2} ,\qquad
+\partialder{z^2_{A,B}}{U_{22}} = \frac{y^2}{\norm{\vec{r}}^2} ,\qquad
+\partialder{z^2_{A,B}}{U_{33}} = \frac{z^2}{\norm{\vec{r}}^2} ,
+\end{equation}
+and
+\begin{equation}
+\partialder{z^2_{A,B}}{U_{12}} = \frac{2xy}{\norm{\vec{r}}^2} ,\qquad
+\partialder{z^2_{A,B}}{U_{13}} = \frac{2xz}{\norm{\vec{r}}^2} ,\qquad
+\partialder{z^2_{A,B}}{U_{23}} = \frac{2yz}{\norm{\vec{r}}^2} .
+\end{equation}
+These can be combined with \eqnref{u_derivative} to give us the derivatives
+with respect to each $U_{ij}$ component.
+
+
+%------------------------------------------------------------------------------
+
+
+\subsubsection{ADP similarity restraint}
+\label{ADP:similarity}
+The anisotropic displacement parameters of two atoms are restrained to have the same $U_{ij}$ components. Since this is only a rough approximation to reality, this restraint should be given a smaller weight in the least squares minimisation than for a rigid-bond restraint, and is suitable for use in larger structures with a poor data to parameter ratio. Applied correctly, this restraint permits a gradual increase and change in direction of the anisotropic displacement parameters along a side-chain \cite{SHELX:man97}. This is equivalent to a SHELXL SIMU restraint \cite{SHELX:man97}.
+The weighted least squares residual is defined as the square of the Frobenius norm of the matrix of deltas, which, after taking into account the symmetric nature of $\mat{U}$, can be written as
+\begin{equation}
+R = w \left( \sum_{i=1}^3 (U_{A,ii} - U_{B,ii})^2 + 2 \sum_{i < j} (U_{A,ij} - U_{B,ij})^2 \right) .
+\end{equation}
+Therefore the gradient of the residual with respect to the diagonal element $U_{A,ii}$ is then
+\begin{equation}
+\partialder{R}{U_{A,ii}} = 2w(U_{A,ii} - U_{B,ii}).
+\end{equation}
+Similarly the gradient with respect to the off-diagonal element $U_{A,ij}$ is
+\begin{equation}
+\partialder{R}{U_{A,ij}} = 4w(U_{A,ij} - U_{B,ij}).
+\end{equation}
+
+
+%------------------------------------------------------------------------------
+
+
+\subsubsection{Isotropic ADP restraint}
+Here we minimise the difference between the Cartesian ADPs, $\mat{U}_{cart}$, and the isotropic equivalent, $\mat{U}_{eq}$. As in section \ref{ADP:similarity}, we must remember that we are dealing with symmetric matrices, and we can therefore define the weighted least squares residual as
+\begin{equation}
+R = w \left( \sum_{i=1}^3 (U_{ii} - U_{eq,ii})^2 + 2 \sum_{i<j} (U_{ij} - U_{eq,ij})^2 \right) ,
+\end{equation}
+where
+\begin{equation}
+\mat{U}_{eq} = 
+\begin{pmatrix} U_{iso} & 0 & 0\\
+  0 & U_{iso} & 0\\
+  0 & 0 & U_{iso}\end{pmatrix},
+\end{equation}
+and
+\begin{equation}
+U_{iso} = \tfrac{1}{3} \mathrm{tr}(\mat{U}_{cart}).
+\end{equation}
+The derivatives of the residual with respect to the off-diagonal elements are
+\begin{equation}
+\partialder{R}{U_{ij,i\neq j}} = 4 w U_{ij},
+\end{equation}
+and the derivatives with respect to the diagonal elements are
+\begin{equation}
+\partialder{R}{U_{ii}} = 2 w (U_{ii} - U_{iso}) .
+\end{equation}
+
+
+%>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+\subsubsection{Implementation}
+
+The implementation of the geometry restraints has previously been described by Grosse-Kunstleve et al. \cite{cctbxnews:2004b}, and the ADP restraints were designed in the same way as the pre-existing geometry restraints classes.
+
+The SHELXL SIMU, ISOR and DELU instructions for restraints on anisotropic displacement parameters automatically set up the appropriate restraints for adjacent pairs of atoms (and 1,3- pairs in the case of DELU), using the atomic connectivity table \cite{SHELX:man97}. This can be done for all atoms in the structure, current residue, or given list of atoms. A python class was implemented to emulate each of these SHELXL instructions and create the appropriate shared proxy arrays for each restraint type. These were tested and compared against structures using SHELXL to confirm that both setup the same restraints.
+
+It was necessary to add the ability to create the \cctbx atomic connectivity table taking into account the covalent radii of the atoms when deciding whether any two atoms are bonded or not. Previously it was only possible to discriminate bonded from non-bonded by means of a distance cutoff value.
+
+
+%>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+\subsubsection{Parsing of SHELXL restraints}
+
+Parsing of a crystal structure from a SHELXL instruction file exists in the iotbx module of the \cctbx in the form of a lexer/parser/builder combination. This has been extended to include parsing of SHELXL restraints and building of the appropriate shared proxy arrays required by the refinement.
 
 \subsection{Constraints}
 
@@ -227,6 +358,37 @@ We will finish this overview with a quick word on constraints.
 Special position constraints are automatically handled, for the both of sites and ADP's, and for the both of LBFGS and full matrix refinement. The core numerical code was discussed in last year's cctbx newsletter.
 
 The chain rule has been implemented for all Hydrogen geometries supported by ShelXL, including rotating $CH_3$ and stretchable $C-H$ bonds. In the former, this results in one azimuthal angle to be added to the independent parameters, whereas an additional bond length appears in the latter. The implementation has been validated with a comprehensive list of tests. It sits in \code{smtbx/refinement/constraints/geometric_hydrogen.h}. However it has not been plugged into either the LBFGS or the full matrix refinement engine yet. The design of the interface for the constraint system is still in a state of flux and this is clearly the next priority.
+
+
+\section{Analysis of reflection statistics}
+
+An example of the ease of rapid prototyping with the Python language can be found in the statistical graphs that have been added to the \cctbx and which are now available from Olex2 \cite{Dolomanov:2009}. These include Wilson plots, systematic absences intensity distribution, completeness plots and a cumulative intensity distribution. In each cases, it was possible to take advantage of tools already in the \cctbx such as those for dealing with miller arrays of reflection data, binning of data and general scientific and mathematical tools available in the scitbx module.
+A simple implementation of a systematic absences intensity distribution could be written in just seven lines of Python.
+
+\begin{lstlisting}[language=Python]
+class sys_absent_intensity_distribution: 
+ # I/sigma(I) vs I
+ def __init__(self, f_obs):
+ sys_absences=f_obs.select_sys_absent()
+ assert sys_absences.sigmas() is not None
+ intensities=sys_absences.as_intensity_array()
+ self.x=(intensities/sys_absences.sigmas()).data()
+ self.y=intensities.data()
+\end{lstlisting}
+
+The computation that occurs in the penultimate line
+\begin{lstlisting}[language=Python]
+intensities/sys_absences.sigmas()
+\end{lstlisting}
+actually occurs in C++ code, despite being called in Python.
+
+A class to calculate the Wilson plot was already in the \cctbx, however this did not calculate the normalised amplitudes or E statistics that are used in space group determination. Therefore, a C++ class was written to calculate the normalised amplitudes and E statistics that were missing from the current python class.
+
+A cumulative intensity distribution class \cite{Howells:1950} was initially written exclusively in Python, but the core part of the algorithm was rewritten in C++ for increased speed in the computationally intensive loop over potentially as many as several tens of thousands of reflections.
+
+We have recently exposed some of the statistical distributions that are part of the BOOST C++ library \cite{boostcpp} to python, in order to enable the calculation of quantile-quantile plots such as normal probability plots \cite{Abrahams:1971}, or probability plots based on Student's \textit{t}-distribution \cite{Hooft:2009}.
+
+Some small tools were added to the iotbx (input/output toolbox) module of the \cctbx to enable simple outputting of data to a comma-separated values (CSV) file for easy importing of the data into spreadsheet software if required, or the XY data can be passed to a program such as Olex2 \cite{Dolomanov:2009} for graphical output.
 
 
 \section{Future works}
