@@ -25,9 +25,9 @@ fortran_template = r"""C %(this_script)s
       return
       end
 
-      subroutine sf(abcs, n_scatt, xyz, b_iso, n_refl, hkl, f_calc)
+      subroutine sf(abcss, n_scatt, xyz, b_iso, n_refl, hkl, f_calc)
       implicit none
-      REAL abcs(3)
+      REAL abcss(3)
       integer n_scatt
       REAL xyz(3, *)
       REAL b_iso(*)
@@ -50,7 +50,7 @@ fortran_template = r"""C %(this_script)s
           dss = 0
           DO j=1,3
             h = hkl(j,i_refl)
-            dss = dss + h*h * abcs(j)
+            dss = dss + h*h * abcss(j)
           enddo
           ldw = -0.25 * dss * b_iso(i_scatt)
           call exp_wrapper(dw, ldw)
@@ -65,7 +65,7 @@ fortran_template = r"""C %(this_script)s
 
       program run
       implicit none
-      REAL abcs(3)
+      REAL abcss(3)
       integer n_scatt
       parameter(n_scatt=%(n_scatt)s)
       REAL xyz(3, n_scatt)
@@ -76,9 +76,9 @@ fortran_template = r"""C %(this_script)s
       REAL f_calc(2, n_refl)
       integer i, j, jr
       REAL a, b, max_a, max_b
-      abcs(1) = 1/(11.0*11.0)
-      abcs(2) = 1/(12.0*12.0)
-      abcs(3) = 1/(13.0*13.0)
+      abcss(1) = 1/(11.0*11.0)
+      abcss(2) = 1/(12.0*12.0)
+      abcss(3) = 1/(13.0*13.0)
       jr = 0
       DO i=1,n_scatt
         DO j=1,3
@@ -102,7 +102,7 @@ fortran_template = r"""C %(this_script)s
           hkl(j,i) = mod(jr, 10) - 5
         enddo
       enddo
-      call sf(abcs, n_scatt, xyz, b_iso, n_refl, hkl, f_calc)
+      call sf(abcss, n_scatt, xyz, b_iso, n_refl, hkl, f_calc)
       if (n_refl .le. 100) then
         DO i=1,n_refl
           write(6, '(3(1x,i3),1x,f12.6,1x,f12.6)')
@@ -166,7 +166,7 @@ typedef dim2<float> real2d;
     }
 
     void
-    sf(real1d& abcs,
+    sf(real1d& abcss,
        int n_scatt, real2d& xyz, real1d& b_iso,
        int n_refl, int2d& hkl, real2d& f_calc)
     {
@@ -186,7 +186,7 @@ typedef dim2<float> real2d;
           dss = 0;
           DO1(j, 3) {
             h = hkl(j,i_refl);
-            dss = dss + h*h * abcs(j);
+            dss = dss + h*h * abcss(j);
           }
           ldw = -0.25f * dss * b_iso(i_scatt);
           exp_wrapper(dw, ldw);
@@ -201,7 +201,7 @@ typedef dim2<float> real2d;
     int
     main()
     {
-      real1d abcs(3);
+      real1d abcss(3);
       int n_scatt;
       n_scatt = %(n_scatt)s;
       real2d xyz(3, n_scatt);
@@ -212,9 +212,9 @@ typedef dim2<float> real2d;
       real2d f_calc(2, n_refl);
       int i, j, jr;
       float a, b, max_a, max_b;
-      abcs(1) = 1/(11.0f*11.0f);
-      abcs(2) = 1/(12.0f*12.0f);
-      abcs(3) = 1/(13.0f*13.0f);
+      abcss(1) = 1/(11.0f*11.0f);
+      abcss(2) = 1/(12.0f*12.0f);
+      abcss(3) = 1/(13.0f*13.0f);
       jr = 0;
       DO1(i, n_scatt) {
         DO1(j, 3) {
@@ -238,7 +238,7 @@ typedef dim2<float> real2d;
           hkl(j,i) = jr %% 10 - 5;
         }
       }
-      sf(abcs, n_scatt, xyz, b_iso, n_refl, hkl, f_calc);
+      sf(abcss, n_scatt, xyz, b_iso, n_refl, hkl, f_calc);
       if (n_refl <= 100) {
         DO1(i, n_refl) {
           std::printf(" %%3d %%3d %%3d %%12.6f %%12.6f\n",
