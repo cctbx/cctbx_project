@@ -223,11 +223,12 @@ We shall stress that the fact that the barycentre is not always restrained to st
 This flavour of floating origin restraints is implemented in the \cpp class \code{floating_origin_restraints} defined in \code{smtbx/refinement/least_squares.h}.
 \subsection{Restraints}
 
-As described in a previous \cctbx newsletter \cite{cctbxnews:2004b}, geometry restraints of the kind that are extensively used in macromolecular crystallography have already been implemented in the \cctbx.  However, with the exception of the bond distance restraint, these were not able to deal with symmetry equivalent atoms, as is allowed by most common small molecule refinement programs.  These have now been extended to allow symmetry equivalent atoms, and a new bond similarity restraint has been added.  We have also implemented several common restraints on anisotropic displacement parameters (ADPs), including restraints based on Hirshfeld's ``rigid-bond'' test \cite{Hirshfeld:1976}, similarity restraints and isotropic restraints.
+As described in a previous \cctbx newsletter \cite{cctbxnews:2004b}, geometry restraints of the kind that are extensively used in macromolecular crystallography have already been implemented in the \cctbx.  However, with the exception of the bond distance restraint, these were not able to deal with symmetry equivalent atoms, as is allowed by most common small molecule refinement programs.  These have now been extended to allow symmetry equivalent atoms, and a new bond similarity restraint has been added.
 
-\subsubsection{Restraints on Atomic Displacement Parameters}
+We have also implemented several common restraints on anisotropic displacement parameters (ADPs), including restraints based on Hirshfeld's ``rigid-bond'' test \cite{Hirshfeld:1976}, similarity restraints and isotropic restraints.
+There appears to very little in the literature with regard to restraints on ADPs, and in particular the details of their implementation in refinement programs. It was therefore necessary to devise our formulae for the equations of restraints and derive their gradients with respect to the least squares parameters. All the residuals we have implemented possess a property we deemed important: they are rotationally invariant, \emph{i.e.} they are left unchanged if the ADP is transformed by any rotation, or equivalently they are frame-invariant, \emph{i.e.} they are unaffected if the frame they are referred to is rotated.
 
-There appears to very little in the literature with regard to restraints on ADPs, and in particular the details of their implementation in refinement programs. It was therefore necessary to devise our formulae for the equations of restraints and derive their gradients with respect to the least squares parameters. The correctness of the analytical gradients was confirmed by testing against gradients determined by the finite differences method. The residuals were also tested for frame invariance (\textit{i.e.} the residual should be invariant with respect to the orientation of the ADP within the Cartesian frame).
+An extensive set of tests has been written. The correctness of the analytical gradients was confirmed by testing against gradients determined by the finite differences method. The frame-invariance was also systematically tested.
 
 \subsubsection{Rigid-bond restraint}
 
@@ -252,36 +253,21 @@ $\norm{\vec{r}}$ is the length of the vector $\overrightarrow{AB}$.
 
 The derivative of the residual with respect to an element of $\vec{U}_{cart,A}$,
 $U_{A,ij}$ is given by (using the chain rule)
-\begin{align}
-\partialder{R}{U_{A,ij}} &= \partialder{R}{z^2_{A,B}} \partialder{z^2_{A,B}}{U_{A,ij}}\\
-&=2w(z^2_{A,B} - z^2_{B,A}) \partialder{z^2_{A,B}}{U_{A,ij}}\label{eqn:u_derivative}
-\end{align}
-
-The matrix multiplication in obtaining $z^2_{A,B}$ can be evaluated as follows
-(remembering $\vec{U}_{cart}$ is symmetric):
-\begin{align}
-\vec{r}^t\vec{U}_{cart,A}\vec{r} &= 
-\begin{pmatrix} x & y & z \end{pmatrix}
-\begin{pmatrix} U_{11} & U_{12} & U_{13}\\
-  U_{12} & U_{22} & U_{23}\\
-  U_{13} & U_{23} & U_{33}\end{pmatrix}
-\begin{pmatrix} x\\y\\z\end{pmatrix}\\
-&= U_{11}\: x^2 + U_{22}\: y^2 + U_{33}\: z^2 + 2U_{12}\: xy + 2U_{13}\: xz + 2U_{23}\: yz
-\end{align}
-It then follows that
 \begin{equation}
-\partialder{z^2_{A,B}}{U_{11}} = \frac{x^2}{\norm{\vec{r}}^2} ,\qquad
-\partialder{z^2_{A,B}}{U_{22}} = \frac{y^2}{\norm{\vec{r}}^2} ,\qquad
-\partialder{z^2_{A,B}}{U_{33}} = \frac{z^2}{\norm{\vec{r}}^2} ,
+\partialder{R}{U_{A,ij}} 
+=2w(z^2_{A,B} - z^2_{B,A}) \partialder{z^2_{A,B}}{U_{A,ij}}\label{eqn:u_derivative}
 \end{equation}
-and
-\begin{equation}
-\partialder{z^2_{A,B}}{U_{12}} = \frac{2xy}{\norm{\vec{r}}^2} ,\qquad
-\partialder{z^2_{A,B}}{U_{13}} = \frac{2xz}{\norm{\vec{r}}^2} ,\qquad
-\partialder{z^2_{A,B}}{U_{23}} = \frac{2yz}{\norm{\vec{r}}^2} .
-\end{equation}
-These can be combined with \eqnref{u_derivative} to give us the derivatives
-with respect to each $U_{ij}$ component.
+with
+\begin{align}
+\partialder{z^2_{A,B}}{U_{11}} &= \frac{x^2}{\norm{\vec{r}}^2} ,&
+\partialder{z^2_{A,B}}{U_{22}} &= \frac{y^2}{\norm{\vec{r}}^2} ,&
+\partialder{z^2_{A,B}}{U_{33}} &= \frac{z^2}{\norm{\vec{r}}^2} ,&
+\\
+\intertext{and}
+\partialder{z^2_{A,B}}{U_{12}} &= \frac{2xy}{\norm{\vec{r}}^2} ,&
+\partialder{z^2_{A,B}}{U_{13}} &= \frac{2xz}{\norm{\vec{r}}^2} ,&
+\partialder{z^2_{A,B}}{U_{23}} &= \frac{2yz}{\norm{\vec{r}}^2} .
+\end{align}
 
 
 %------------------------------------------------------------------------------
@@ -294,21 +280,13 @@ The weighted least squares residual is defined as the square of the Frobenius no
 \begin{equation}
 R = w \left( \sum_{i=1}^3 (U_{A,ii} - U_{B,ii})^2 + 2 \sum_{i < j} (U_{A,ij} - U_{B,ij})^2 \right) .
 \end{equation}
-Therefore the gradient of the residual with respect to the diagonal element $U_{A,ii}$ is then
-\begin{equation}
-\partialder{R}{U_{A,ii}} = 2w(U_{A,ii} - U_{B,ii}).
-\end{equation}
-Similarly the gradient with respect to the off-diagonal element $U_{A,ij}$ is
-\begin{equation}
-\partialder{R}{U_{A,ij}} = 4w(U_{A,ij} - U_{B,ij}).
-\end{equation}
-
+The factor 2 in front of the off-diagonal contribution is necessary to make $R$ independent of its orientation with respect to Cartesian axes.
 
 %------------------------------------------------------------------------------
 
 
 \subsubsection{Isotropic ADP restraint}
-Here we minimise the difference between the Cartesian ADPs, $\mat{U}_{cart}$, and the isotropic equivalent, $\mat{U}_{eq}$. As in section \ref{ADP:similarity}, we must remember that we are dealing with symmetric matrices, and we can therefore define the weighted least squares residual as
+Here we minimise the difference between the Cartesian ADPs, $\mat{U}_{cart}$, and the isotropic equivalent, $\mat{U}_{eq}$. The weighted least squares residual then reads
 \begin{equation}
 R = w \left( \sum_{i=1}^3 (U_{ii} - U_{eq,ii})^2 + 2 \sum_{i<j} (U_{ij} - U_{eq,ij})^2 \right) ,
 \end{equation}
@@ -323,15 +301,7 @@ and
 \begin{equation}
 U_{iso} = \tfrac{1}{3} \mathrm{tr}(\mat{U}_{cart}).
 \end{equation}
-The derivatives of the residual with respect to the off-diagonal elements are
-\begin{equation}
-\partialder{R}{U_{ij,i\neq j}} = 4 w U_{ij},
-\end{equation}
-and the derivatives with respect to the diagonal elements are
-\begin{equation}
-\partialder{R}{U_{ii}} = 2 w (U_{ii} - U_{iso}) .
-\end{equation}
-
+The factor 2 is again essential for frame-independence.
 
 %>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -353,7 +323,7 @@ Parsing of a crystal structure from a SHELXL instruction file exists in the iotb
 
 \subsection{Constraints}
 
-We will finish this overview with a quick word on constraints.
+We will finish this overview of refinement with a quick word on constraints.
 
 Special position constraints are automatically handled, for the both of sites and ADP's, and for the both of LBFGS and full matrix refinement. The core numerical code was discussed in last year's cctbx newsletter.
 
