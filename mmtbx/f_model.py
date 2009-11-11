@@ -1951,7 +1951,8 @@ class manager(manager_mixin):
       b_cart[4],
       b_cart[5]])
 
-  def show_rwork_in_bins(self, reflections_per_bin, title, log):
+  def show_rwork_in_bins(self, reflections_per_bin, title="", log=None):
+    if(log is None): log = sys.stdout
     print >> log, title
     fo_w = self.f_obs_w
     fc_w = self.f_model_scaled_with_k1_w()
@@ -1966,7 +1967,7 @@ class manager(manager_mixin):
       s_fo_w_d = flex.abs(sel_fo_w.data())
       s_fc_w_d = flex.abs(sel_fc_w.data())
       r_work = flex.sum(flex.abs(s_fo_w_d - s_fc_w_d)) / flex.sum(s_fo_w_d)
-      print >>log,"%3d: %-17s %3d %6.4f"%(i_bin,d_range,s_fo_w_d.size(),r_work)
+      print >>log,"%3d: %-17s %4d %6.4f"%(i_bin,d_range,s_fo_w_d.size(),r_work)
 
 class phaser_sad_target_functor(object):
 
