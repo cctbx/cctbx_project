@@ -143,6 +143,7 @@ compcomm/newsletter09/run_other_builds_on_chevy.csh -text
 compcomm/newsletter09/sf_times.py svneol=native#text/x-python
 compcomm/newsletter09/sf_times_digest.py svneol=native#text/x-python
 compcomm/newsletter09/time_tables -text
+compcomm/smtbx_news_09/news.tex -text
 crys3d/__init__.py -text
 crys3d/images.py -text
 crys3d/reverse_selection.py -text
