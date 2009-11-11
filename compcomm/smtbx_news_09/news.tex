@@ -10,7 +10,7 @@
 \geometry{margin=2cm}
 %\usepackage[hang,flushmargin]{footmisc} 
 \title{Small Molecule ToolBox}
-\author{Luc J. Bourhis \and Richard J. Gildea \and Oleg V. Dolomanov \and J.A.K. Howard \and Horst Puschmann}
+\author{Luc J. Bourhis \and Richard J. Gildea \and Oleg V. Dolomanov \and Judith A.K. Howard \and Horst Puschmann}
 \date{}
 \begin{document}
 \maketitle
@@ -39,13 +39,13 @@ We will then briefly discuss some of the graphs for the analysis of reflection s
 \label{chargeflipping}
 The first difficulty to overcome in any practical charge flipping algorithm is the initial guess of the flipping threshold $\delta$: too low and the initial random electron density will never be altered enough to reveal structures, too high and emerging structures will be swamped and not given enough time to build up. Our current implementation relies on the map noise $\sigma$: $\delta = k \sigma$ where $k$ is a parameter that can be specified at runtime, with a reasonable default value of 1.1.
 
-The second difficulty to overcome is the detection of the phase transition.  Following Gabor Oszlányi's advice, we elected the map skewness as the best indicator, which brutally increases at the phase transition as the tail of high density grid points corresponding to the scatterers emerges from the sea of low density. However, before and after the phase transition, the skewness, or any indicator for that matter, significantly fluctuates, which complicates the detection of the phase transition. We therefore use a smoothing technique known as exponential moving average.
+The second difficulty to overcome is the detection of the phase transition.  Following Gabor Oszl{\'a}nyi's advice, we elected the map skewness as the best indicator, which brutally increases at the phase transition as the tail of high density grid points corresponding to the scatterers emerges from the sea of low density. However, before and after the phase transition, the skewness, or any indicator for that matter, significantly fluctuates, which complicates the detection of the phase transition. We therefore use a smoothing technique known as exponential moving average.
 
 The third and last difficulty is to find the origin shift. Indeed charge flipping works in P1 and the structure is shifted compared to the standard space group settings. SUPERFLIP does actually discover the space group symmetry from the final map along with the origin shift, which is clearly the approach to be preferred since it makes charge flipping an ab-initio method by itself. Our code is much cruder and it relies on an a priori knowledge of the symmetry. Moreover we use the macro-molecular technique known as fast translation function to recover the origin shift, a method which scales like the 4th power of the number of symmetry elements, which makes it extremely slow on those highly symmetric space groups common in inorganic materials. We are currently working on improving on this weaknesses.
 
 Finally, after the solution has been obtained, a few cycles of polishing using low density elimination~\cite{Shiono:1992} are performed. This polishing could be performed after any solution method actually and it has proven to be invaluable to get good electron density peak positions from which one can assign atom types from geometric considerations. This is at least the experience accumulated with AutoChem, the automatic system developed by our group for Oxford Diffraction, which is available through Olex2.
 
-The implementation is nearly entirely done in Python, and reside in the module\\ \code{smtbx.ab_initio.charge_flipping}. It features the original method as well as the newer one enhanced to deal with weak reflections~\cite{Oszlanyi:2004}. Here is the starting point to explore these tools
+The implementation is nearly entirely done in Python, and resides in the module\\ \code{smtbx.ab_initio.charge_flipping}. It features the original method as well as the newer one enhanced to deal with weak reflections~\cite{Oszlanyi:2004}. Here is the starting point to explore these tools
  \begin{lstlisting}[language=Python]
  from smtbx.ab_initio import charge_flipping
  
@@ -163,10 +163,10 @@ Secondly, at step~\ref{constrainedshifts}, it would not have been correct to sim
 
 Thirdly, compared to the macro-molecular scheme, where the work was split into 3 loops over the Miller indices, all the work needs to be done in one and only one loop here. Any splitting would result in a loss of performance. Let us elaborate on this.
 \begin{itemize}
-\item Why not computing the normal matrix $A_x$ for the crystallographic parameters $x$ and then reducing it to $A_y$ with $A_y = C^T A_x C$?\\
+\item Why not compute the normal matrix $A_x$ for the crystallographic parameters $x$ and then reducing it to $A_y$ with $A_y = C^T A_x C$?\\
 With the scheme outlined above, the cost of accumulating the normal matrix is $O(m n_y^2)$ where $m$ is the number of reflections and $n_y$ the number of independent parameters. The proposed alternative would make it $O(m n_x^2)$. The ratio $n_x/n_y$ can be as large as 2 in practice, a case which would result in a fourfold increase of computational cost.
-\item Why not storing the design matrix, each row of which is one $\nabla_x \modulus{F_c(h)}^2$?\\
-At the resolutions used for small molecule work, the reflection to parameter ratio $m/n_x$ is routinely around 30. For example, a structure with 4096 parameters and a data to parameter ratio of 32, refined in double precision, result in a design matrix occupying 4 GB whereas the normal matrix occupies just over 64 MB, a dramatic difference indeed.
+\item Why not store the design matrix, each row of which is one $\nabla_x \modulus{F_c(h)}^2$?\\
+At the resolutions used for small molecule work, the reflection to parameter ratio $m/n_x$ is routinely around 30. For example, a structure with 4096 parameters and a data to parameter ratio of 32, refined in double precision, results in a design matrix occupying 4 GB whereas the normal matrix occupies just over 64 MB, a dramatic difference indeed.
 \end{itemize}
 
 This scheme is efficient from the point of view of flops and data size but it may be dreadful from the point of view of code size. Indeed, the code for the whole of step~\ref{bignormalmatrixloop} must be compiled in one block. If one wishes to keep each component independent from the others, then for each combination of structure factor algorithm, weighting schemes, constraint system and minimisation targets, we need to compile the whole block. Thus, for example, merely adding another weighting scheme will result in duplicating the whole block of machine code instead of augmenting the code size by the weighting scheme code which is typically tiny. As a result, the total code size needed to enable all possible component combinations is not the sum of the code size of each component anymore: it scales as the number of those combinations. This can result in a very significant overhead. The traditional solution in FORTRAN code is to have a monolithic block which does all alternatives and branches depending on flags passed at runtime. But such a design defeats modularity and makes future extension and maintenance difficult, which is precisely one of the reason to have chosen modern programming languages such as \cpp and Python in the first place. This is clearly a difficult problem where some tradeoffs will have to be made.
@@ -232,7 +232,7 @@ An extensive set of tests has been written. The correctness of the analytical gr
 
 \subsubsection{Rigid-bond restraint}
 
-In a `rigid-bond' restraint the components of the anisotropic displacement parameters of two atoms in the direction of the vector connecting those two atoms are restrained to be equal. This corresponds to Hirshfeld's ``rigid-bond'' test \cite{Hirshfeld:1976} for testing whether anisotropic displacement parameters are physically reasonable (see SHELX manual, DELU restraint \cite{SHELX:man97})and is in general appropriate for bonded and 1,3-separated pairs of atoms and should hold true for most covalently bonded systems. We therefore minimise the mean square displacement of atom in the direction of the bond.
+In a ``rigid-bond'' restraint the components of the anisotropic displacement parameters of two atoms in the direction of the vector connecting those two atoms are restrained to be equal. This corresponds to Hirshfeld's ``rigid-bond'' test \cite{Hirshfeld:1976} for testing whether anisotropic displacement parameters are physically reasonable (see SHELX manual, DELU restraint \cite{SHELX:man97})and is in general appropriate for bonded and 1,3-separated pairs of atoms and should hold true for most covalently bonded systems. We therefore minimise the mean square displacement of atom in the direction of the bond.
 
 The weighted least squares residual is then
 \begin{equation}
@@ -350,13 +350,13 @@ The computation that occurs in the penultimate line
 \begin{lstlisting}[language=Python]
 intensities/sys_absences.sigmas()
 \end{lstlisting}
-actually occurs in C++ code, despite being called in Python.
+actually occurs in \cpp code, despite being called in Python.
 
-A class to calculate the Wilson plot was already in the \cctbx, however this did not calculate the normalised amplitudes or E statistics that are used in space group determination. Therefore, a C++ class was written to calculate the normalised amplitudes and E statistics that were missing from the current python class.
+A class to calculate the Wilson plot was already in the \cctbx, however this did not calculate the normalised amplitudes or E statistics that are used in space group determination. Therefore, a \cpp class was written to calculate the normalised amplitudes and E statistics that were missing from the current python class.
 
-A cumulative intensity distribution class \cite{Howells:1950} was initially written exclusively in Python, but the core part of the algorithm was rewritten in C++ for increased speed in the computationally intensive loop over potentially as many as several tens of thousands of reflections.
+A cumulative intensity distribution class \cite{Howells:1950} was initially written exclusively in Python, but the core part of the algorithm was rewritten in \cpp for increased speed in the computationally intensive loop over potentially as many as several tens of thousands of reflections.
 
-We have recently exposed some of the statistical distributions that are part of the BOOST C++ library \cite{boostcpp} to python, in order to enable the calculation of quantile-quantile plots such as normal probability plots \cite{Abrahams:1971}, or probability plots based on Student's \textit{t}-distribution \cite{Hooft:2009}.
+We have recently exposed some of the statistical distributions that are part of the BOOST \cpp library \cite{boostcpp} to python, in order to enable the calculation of quantile-quantile plots such as normal probability plots \cite{Abrahams:1971}, or probability plots based on Student's \textit{t}-distribution \cite{Hooft:2009}.
 
 Some small tools were added to the iotbx (input/output toolbox) module of the \cctbx to enable simple outputting of data to a comma-separated values (CSV) file for easy importing of the data into spreadsheet software if required, or the XY data can be passed to a program such as Olex2 \cite{Dolomanov:2009} for graphical output.
 
@@ -367,7 +367,7 @@ We will conclude this newsletter by laying out the plan for the foreseeable futu
 
 
 \section*{Acknowledgements}
-We gratefully acknowledge the financial support of the Engineering and Physical Sciences Research Council (UK) under grant number EP/C536274/1. We would like to thank David Watkin who was key to the birth of this project and who has shared his in-depth knowledge of crystallography during all those years. One of the authors, Luc Bourhis, would like to warmly thank Gabor Oszlányi for openly sharing with him his mastery of the charge flipping algorithm at the Kyoto Computing School. Finally we are all indebted to Ralf W. Grosse-Kunstleve for his infallible support and patience.
+We gratefully acknowledge the financial support of the Engineering and Physical Sciences Research Council (UK) under grant number EP/C536274/1. We would like to thank David Watkin who was key to the birth of this project and who has shared his in-depth knowledge of crystallography during all those years. One of the authors, Luc Bourhis, would like to warmly thank Gabor Oszl{\'a}nyi for openly sharing with him his mastery of the charge flipping algorithm at the Kyoto Computing School. Finally we are all indebted to Ralf W. Grosse-Kunstleve for his infallible support and patience.
 
 \bibliography{cctbx_references}
 
