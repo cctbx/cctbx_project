@@ -1405,7 +1405,6 @@ class module:
         path = os.path.normpath(dist_path + sub_file)
         if (os.path.isfile(path)):
           result.append(os.path.dirname(os.path.dirname(path)))
-          break
     return result
 
   def has_top_level_directory(self, directory_name):
