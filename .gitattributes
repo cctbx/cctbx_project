@@ -138,6 +138,7 @@ compcomm/newsletter08/special_positions.py -text
 compcomm/newsletter09/concatenate_log_tails.csh -text
 compcomm/newsletter09/conv_recipe.cpp svneol=native#text/plain
 compcomm/newsletter09/conv_recipe.f -text
+compcomm/newsletter09/news.txt svneol=native#text/plain
 compcomm/newsletter09/run_other_builds_on_chevy.csh -text
 compcomm/newsletter09/sf_times.py svneol=native#text/x-python
 compcomm/newsletter09/sf_times_digest.py svneol=native#text/x-python

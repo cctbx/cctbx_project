@@ -60,12 +60,13 @@ class table_entry(object):
       assert len(flds) == 8
       O.all_utimes.append([float(fld) for fld in flds])
 
-  def format_ntimes(O, i_compiler, ntime_factor=1.63):
-    return " ".join(["%6.2f" % (u/ntime_factor)
-      for u in O.all_utimes[i_compiler]])
+  def format_utimes(O, i_compiler):
+    return " ".join(["%6.2f" % u for u in O.all_utimes[i_compiler]])
 
   def ifort_label(O):
     ic = 0
+    if (O.all_utimes[0][0] < 0):
+      return None, None
     v = O.compiler_versions[ic].split()[2]
     assert v in ["9.1", "11.1"]
     if (v == "9.1"): v = "_"+v
@@ -91,6 +92,20 @@ class table_entry(object):
     v = lbls[O.compiler_versions[ic]]
     return ic, "%s_%s" % (v, node_os_bits(O.build_node))
 
+  def gpp_label(O):
+    lbls = {
+      "g++ (GCC) 3.2 20020903 (Red Hat Linux 8.0 3.2-7)": "gc32",
+      "g++ (GCC) 3.3.4 (pre 3.3.5 20040809)": "gc33",
+      "g++ (GCC) 3.4.2 20041017 (Red Hat 3.4.2-6.fc3)": "gc34",
+      "g++ (GCC) 4.0.0 20050519 (Red Hat 4.0.0-8)": "gc40",
+      "g++ (GCC) 4.1.2 20070925 (Red Hat 4.1.2-33)": "gc41",
+      "g++ (GCC) 4.2.2": "gc42",
+      "g++ (GCC) 4.3.4": "gc43",
+      "g++ (GCC) 4.4.2": "gc44"}
+    ic = 4
+    v = lbls[O.compiler_versions[ic]]
+    return ic, "%s_%s" % (v, node_os_bits(O.build_node))
+
 def process_time_tables():
   import libtbx.load_env
   time_tables_path = libtbx.env.find_in_repositories(
@@ -99,8 +114,7 @@ def process_time_tables():
     optional=False)
   result = []
   lines = open(time_tables_path).read().splitlines()
-  assert len(lines) == 357
-  assert len(lines) % 17 == 0, lines
+  assert len(lines) == 22 * 17
   for i_line in xrange(0, len(lines), 17):
     assert lines[i_line] == ""
     result.append(table_entry(lines=lines[i_line+1:i_line+17]))
@@ -110,36 +124,58 @@ def run(args):
   assert len(args) == 0
   table_entries = process_time_tables()
   #
-  # ifort times on chevy
+  print "Intel Fortran times on chevy:"
   tab = {}
   for entry in table_entries:
     if (entry.current_node == "chevy"):
       ic, lbl = entry.ifort_label()
+      if (ic is None): continue
       if (    lbl == "if_9.1_64b"
           and entry.build_node != "anaconda"):
         continue
       if (    lbl == "if_9.1_32b"
           and entry.build_node != "longnose"):
         continue
-      tab[lbl] = (entry.format_ntimes(i_compiler=ic), entry.build_node)
+      tab[lbl] = (entry.format_utimes(i_compiler=ic), entry.build_node)
   for key in ["if_9.1_32b", "if_9.1_64b", "if11.1_64b"]:
     print key, " ".join(tab[key])
   print
   #
-  # g77/gfortran times on chevy
+  print "GNU Fortran times on chevy:"
   tab = {}
   for entry in table_entries:
     if (entry.current_node == "chevy"):
       ic, lbl = entry.gfort_label()
       if (ic is None): continue
-      tab[lbl] = (entry.format_ntimes(i_compiler=ic), entry.build_node)
+      tab[lbl] = (entry.format_utimes(i_compiler=ic), entry.build_node)
   for key in sorted(tab.keys()):
     print key, " ".join(tab[key])
   print
   #
-  # icpc times on chevy
-  # g++ times on chevy
-  # ribbon build times on all platforms
+  print "Intel C++ times on chevy:"
+  for entry in table_entries:
+    if (entry.current_node == "chevy" and entry.build_node == "chevy"):
+      if (entry.all_utimes[3][0] >= 0):
+        print entry.format_utimes(i_compiler=3), \
+          entry.compiler_versions[3].replace(" (ICC)", "")
+  print
+  #
+  print "GNU C++ times on chevy:"
+  tab = {}
+  for entry in table_entries:
+    if (entry.current_node == "chevy"):
+      ic, lbl = entry.gpp_label()
+      if (ic is None): continue
+      tab[lbl] = (entry.format_utimes(i_compiler=ic), entry.build_node)
+  for key in sorted(tab.keys()):
+    print key, " ".join(tab[key])
+  print
+  #
+  print "GNU C++ 3.2 32-bit (Red Hat 8.0) executable on all platforms:"
+  for entry in table_entries:
+    if (entry.build_node == "ribbon"):
+      print entry.format_utimes(i_compiler=4), entry.current_node
+  print
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

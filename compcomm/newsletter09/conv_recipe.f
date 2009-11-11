@@ -1,4 +1,5 @@
       subroutine show_resolution(h, k, l)
+      implicit none
       integer h, k, l
       real a, b, c
       logical first
@@ -30,6 +31,7 @@
       end
 
       PROGRAM conv_recipe
+      implicit none
       real a, b, c
       COMMON /abc/ a, b, c
       a = 11.0
