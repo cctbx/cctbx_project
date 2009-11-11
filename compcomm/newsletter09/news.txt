@@ -52,10 +52,10 @@ Another set of problems arises from the mixing of Fortran and C++.
 Using C++ libraries from Fortran is very difficult, although it
 is not impossible. Fortran RESOLVE uses the latest CCP4 libraries
 (Collaborative Computational Project, Number 4, 1994) including
-indirectly MMDB which is implemented in C++; the required Fortran
-interface layer is provided by CCP4. A major disadvantage of the
-C++/Fortran mix is that the build process becomes much more complex
-than a pure C++ or pure Fortran build.
+indirectly MMDB (http://www.ebi.ac.uk/~keb/cldoc/) which is implemented
+in C++; the required Fortran interface layer is provided by CCP4. A
+major disadvantage of the C++/Fortran mix is that the build process
+becomes much more complex than a pure C++ or pure Fortran build.
 
 Mixing Fortran and C++ and starting external processes has a number
 of other practical drawbacks, for example the external process calls
@@ -90,35 +90,37 @@ syntax to C++ syntax that still resembles the original Fortran. The
 converted code can be evolved over time to increasingly take advantage
 of the much richer features of the C++ language.
 
-The Objexx company (objexx.com) was hired to help with the mechanical
+The company Objexx (objexx.com) was hired to help with the mechanical
 conversion work. The company guided us in tidying the Fortran code and
-writing a set of automatic tests that together call all subroutines
-at least once. After this, Objexx converted the sources automatically,
-followed by some amount of manual editing. We did a few further manual
-steps to call the CCP4 libraries from C++, but temporarily still
-through the Fortran interfaces, to keep the manual changes as limited
-as possible. The test suite was modified to exercise the new C++ version
-in addition to the original Fortran. A significant but limited amount
-of time (ca. a couple weeks) was spent on finding and fixing conversion
-errors. The majority of errors was due to oversights in the manual
-changes, which underlines the importance of keeping these at a minimum.
+writing a set of automatic tests that together call all subroutines at
+least once. After this, Objexx converted the sources automatically,
+followed by some amount of manual editing. We did a few further
+manual steps to call the CCP4 libraries from C++, but temporarily
+still through the Fortran interfaces, to keep the manual changes as
+limited as possible. The test suite was modified to exercise the new
+C++ version in addition to the original Fortran. A significant but
+limited amount of time (approximately a couple weeks) was spent on
+finding and fixing conversion errors. The majority of errors was due
+to oversights in the manual changes, which underlines the importance
+of keeping these at a minimum.
 
 After the syntax conversion we applied an extensive series of
 semi-automatic source code transformations. The first major goal
 was to improve the initially quite poor runtime performance, which
 was expected. However, it was a surprise when we discovered that the
-performance of the single-precision exp() function in the system math
-libraries is extremely poor compared to the Intel Fortran version which
-we used for comparison (see the following section in this article). The
-runtime of several tests is dominated by exp() calls. Therefore we
-substituted custom code for the exp() function, which is not as fast as
-the Intel version, but much faster than the math library version. The
-next important step was to replace all small dynamically allocated
-arrays with automatic arrays. These changes could be applied globally
-via a set of small, custom Python scripts. The only localized change
-was to re-write small functions for reading and writing density maps
-using low-level C I/O facilities (printf(), scanf()). The re-written
-functions significantly out-perform the original Fortran subroutines.
+performance of the single-precision exp() function in the GNU/Linux
+system math libraries is extremely poor compared to the Intel Fortran
+version which we used for comparison (see the following section in
+this article). The runtime of several tests is dominated by exp()
+calls. Therefore we substituted custom code for the exp() function,
+which is not as fast as the Intel version, but much faster than
+the math library version. The next important step was to replace
+all small dynamically allocated arrays with automatic arrays. These
+changes could be applied globally via a set of small, custom Python
+scripts. The only localized change was to re-write small functions
+for reading and writing density maps using low-level C I/O facilities
+(printf(), scanf()). The re-written functions significantly out-perform
+the original Fortran subroutines.
 
 The second major goal was to transform the sources to be suitable
 for building a Python extension. For this, all non-constant global
@@ -332,19 +334,20 @@ table (one of 22) in the file is::
   compiler: icpc (ICC) 11.1 20091012
   compiler: g++ (GCC) 4.1.2 20070925 (Red Hat 4.1.2-33)
   n_scatt * n_refl: 2000 * 20000
+
+    sEC    seC    sEc    sec    dEC    deC    dEc    dec
     1.67   1.31   0.73   0.46   2.26   1.62   1.25   0.84  ifort
    16.76   5.59  12.97   1.76   7.70   6.35   3.15   1.94  gfortran
    -1.00  -1.00  -1.00  -1.00  -1.00  -1.00  -1.00  -1.00  g77
     1.69   1.33   0.78   0.46   2.20   1.65   1.41   0.84  icpc
    16.66   5.54  12.87   1.69   7.59   6.36   2.95   1.86  g++
-    sEC    seC    sEc    sec    dEC    deC    dEc    dec
 
 Each row is for a particular compiler: Intel Fortran (ifort),
 the current GNU Fortran development line (gfortran), an old GNU
 Fortran development line (g77), Intel C++ (icpc), and GNU C++
 (g++), always in this order, but different versions on different
 platforms. If a certain compiler is not available on a given platform,
-the corresponding row is filled with ``-1.00``.  The last row
+the corresponding row is filled with ``-1.00``.  The table heading
 (``sEC ... dec``) is not included in the ``time_tables`` file but was
 added here do indicate each of the eight source code variations. For
 example, ``deC`` indicates "double precision", using the ``max(...)``
@@ -378,9 +381,9 @@ fast as the gfortran executables. The situation is still very similar
 for the latest g++ and gfortran versions. The times with gcc 4.4.2
 on the same machine ("chevy", 2.9 GHz Xeon) are::
 
+    sEC    seC    sEc    sec    dEC    deC    dEc    dec
    16.39   5.14  12.73   1.63   7.37   6.14   2.92   1.77  gfortran
    16.56   5.37  13.02   1.76   7.64   6.34   3.03   1.90  g++
-    sEC    seC    sEc    sec    dEC    deC    dEc    dec
 
 Interestingly, a different picture emerges with an older version
 of the Intel compilers (machine chevy)::
@@ -391,10 +394,10 @@ of the Intel compilers (machine chevy)::
 
 The following table compares the Intel C++ times only::
 
+    sEC    seC    sEc    sec    dEC    deC    dEc    dec
     2.67   2.22   1.94   1.50   3.27   2.66   2.62   1.93  icpc 9.1 20061101
     1.88   1.43   0.96   0.63   2.44   1.84   1.41   1.02  icpc 10.1 20080312
     1.69   1.33   0.78   0.46   2.20   1.65   1.41   0.84  icpc 11.1 20091012
-    sEC    seC    sEc    sec    dEC    deC    dEc    dec
 
 Apparently, the Intel C++ optimizer has been improved significantly
 in recent years, to be on par with the Fortran optimizer.
@@ -402,9 +405,9 @@ in recent years, to be on par with the Fortran optimizer.
 As an aside, we want to highlight the following result in the
 ``time_tables`` file (machine chevy)::
 
+    sEC    seC    sEc    sec    dEC    deC    dEc    dec
     3.20   2.68   1.84   1.41   3.20   2.69   1.84   1.41  ifort 9.1 32-bit
     2.06   1.62   1.29   0.84   2.06   1.62   1.29   0.84  ifort 9.1 64-bit
-    sEC    seC    sEc    sec    dEC    deC    dEc    dec
 
 Our motivation for showing these times is to encourage the use of
 64-bit systems, even on machines with less than 2 GB system memory. We
