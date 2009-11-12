@@ -80,15 +80,15 @@ preclude rewriting RESOLVE as idiomatic C++ code from scratch. Even
 when producing new code at the very high sustained rate of of 100
 lines per day, 50 five-day weeks per year, it would take almost 3
 1/2 years to finish the work. After all this time there would be very
-little new still from a user's perspective. The way science funding
-works, we had to find a more evolutionary approach that produces new
-results while gradually improving the underlying framework in order
-to accelerate future developments. Therefore we did not try to turn
-idiomatic Fortran into idiomatic C++, but instead concentrated our
-resources on the more limited task of mechanically converting Fortran
-syntax to C++ syntax that still resembles the original Fortran. The
-converted code can be evolved over time to increasingly take advantage
-of the much richer features of the C++ language.
+little new still from a user's perspective. Thus, we wanted to find a
+more evolutionary approach that produces new results while gradually
+improving the underlying framework in order to accelerate future
+developments. Therefore we did not try to turn idiomatic Fortran
+into idiomatic C++, but instead concentrated our resources on the
+more limited task of mechanically converting Fortran syntax to C++
+syntax that still resembles the original Fortran. The converted code
+can be evolved over time to increasingly take advantage of the much
+richer features of the C++ language.
 
 The company Objexx (objexx.com) was hired to help with the mechanical
 conversion work. The company guided us in tidying the Fortran code and
@@ -102,7 +102,7 @@ C++ version in addition to the original Fortran. A significant but
 limited amount of time (approximately a couple weeks) was spent on
 finding and fixing conversion errors. The majority of errors was due
 to oversights in the manual changes, which underlines the importance
-of keeping these at a minimum.
+of keeping these at a minimum until all tests are in place.
 
 After the syntax conversion we applied an extensive series of
 semi-automatic source code transformations. The first major goal
@@ -141,12 +141,12 @@ this is currently not important and can be changed later if necessary.)
 
 After finishing the large-scale source transformations we concentrated
 on the runtime performance of one of the most important parts of
-RESOLVE, a search for model fragments. Using profiling tools to
-find the bottlenecks we were able to manually optimize the code to
-be faster than the original Fortran code. This is to illustrate
-that C++ performance can match Fortran performance if reasonable
-attention is given to the time-critical parts. Of course, similar
-manipulations to the Fortran code would make the Fortran speed
+RESOLVE, a search for model fragments. Using profiling tools to find
+the bottlenecks we were able to manually optimize the code to be faster
+than the original Fortran code (using the Intel Fortran compiler). This
+is to illustrate that C++ performance can match Fortran performance if
+reasonable attention is given to the time-critical parts. Of course,
+similar manipulations to the Fortran code would make the Fortran speed
 comparable again. Overall the Fortran version is still faster than
 the C++ version, up to ca. factor 1.5-2.0, depending on the platform,
 but this is mainly due to the use of certain approaches to ease the
@@ -424,12 +424,12 @@ in this article. The current URL to the directory with the file is:
  Conversion recipe
 ===================
 
-The RESOLVE conversion process was a major learning experience for
-us. From previous smaller conversion projects (FFTPACK and L-BFGS
-in the cctbx project) we had learned already that a conversion to
-idiomatic C++ is very time consuming. We also knew that there is very
-little to no performance gain when converting 1-based Fortran indices
-to 0-based C-style indices, as is re-confirmed by the results in the
+The RESOLVE conversion process was a major learning experience.
+From previous smaller conversion projects (FFTPACK and L-BFGS in the
+cctbx project) we had learned already that a conversion to idiomatic
+C++ is very time consuming. We also knew that there is very little
+to no performance gain when converting 1-based Fortran indices to
+0-based C-style indices, as is re-confirmed by the results in the
 previous section. However, we did not have experience encapsulating a
 complete large program as a Python extension. In the section outlining
 the RESOLVE conversion work, we already mentioned that the essential
@@ -483,12 +483,13 @@ Fortran-77 program. We do this by way of a small example::
 This example includes the three major Fortran features breaking
 encapsulation: COMMON, SAVE, and STOP. COMMON and SAVE introduce
 global data, which make the subroutine non-reentrant (see
-http://en.wikipedia.org/wiki/Reentrant_%28subroutine%29). Worse, in
-this example the reciprocal space parameters (ass, bss, css) are set
-only the first time the subroutine is called in the process. Clearly,
-this would not work well for a Python extension. Subsequent calls
-of a Python function need to be independent of each other to avoid
-confusing behavior. This is particularly important in large systems.
+http://en.wikipedia.org/wiki/Reentrant_%28subroutine%29). Worse,
+in this example the reciprocal space parameters (``ass``, ``bss``,
+``css``) are set only the first time the subroutine is called
+in the process. Clearly, this would not work well for a Python
+extension. Subsequent calls of a Python function need to be independent
+of each other to avoid confusing behavior. This is particularly
+important in large systems.
 
 While it is difficult to pin-point and remove specific critical globals
 (the program would need to be re-organized), it is not difficult to
@@ -592,14 +593,14 @@ solve problems with complex I/O operations.
 
 Based on our experience working on CNS (Brunger et al. 1998), RESOLVE,
 and PHENIX, we are convinced that writing an entire program system
-in Fortran or even C++ is an extremely inefficient use of our most
-valuable resource, human time. Within the PHENIX project, most new
-developments start out as Python scripts building on previously
-implemented methods. By converting RESOLVE to a Python extension we
-have added the RESOLVE functionality to the pool of methods that
-can easily be re-used. Our systematic review of runtimes suggests
-that this can be achieved without significantly compromising the
-performance of time-critical algorithms.
+in Fortran or even C++ is a very inefficient use of the most valuable
+resource, human time. Within the PHENIX project, most new developments
+start out as Python scripts building on previously implemented
+methods. By converting RESOLVE to a Python extension we have added
+the RESOLVE functionality to the pool of methods that can easily be
+re-used. Our systematic review of runtimes suggests that this can
+be achieved without significantly compromising the performance of
+time-critical algorithms.
 
 The conservative conversion methods presented above do not produce
 a designed "clean" system. However, they lead to a system that
