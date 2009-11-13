@@ -155,9 +155,6 @@ master_params_str = """\
     .short_caption = RNA sugar pucker analysis
     .style = box noauto auto_align menu_item parent_submenu:advanced
   {
-    use = False
-      .type=bool
-      .short_caption = Enable
     include scope mmtbx.monomer_library.rna_sugar_pucker_analysis.master_phil
   }
   show_histogram_slots
@@ -601,7 +598,6 @@ class monomer_mapping(object):
 
   def _rna_sugar_pucker_analysis(self, params, next_pdb_residue):
     self.is_rna2p = None
-    if (not params.use): return
     if (self.monomer.is_peptide()): return
     from iotbx.pdb.rna_dna_detection import residue_analysis
     ra1 = residue_analysis(

@@ -313,7 +313,7 @@ def exercise_cns_rna(mon_lib_srv, ener_lib):
           Link IDs: {'rna3p': 19}
   Time building chain proxies: """,
     expected_modifications_used = {
-      'p5*END': 1, '3*END': 1})
+      'p5*END': 1, 'rna3p': 20, '3*END': 1})
 
 def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
   exercise_rna(
@@ -331,8 +331,10 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
       Conformer: ""
         Number of residues, atoms: 3, 63
           Classifications: {'RNA': 3}
-          Link IDs: {'rna3p': 2}
-  Time building chain proxies: """)
+          Link IDs: {'rna3p': 1, 'rna2p': 1}
+  Time building chain proxies: """,
+    expected_modifications_used = {
+      'rna3p': 2, 'rna2p': 1})
   #
   exercise_rna(
     mon_lib_srv=mon_lib_srv,
@@ -352,7 +354,9 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
           Link IDs: {'rna3p': 4}
           Chain breaks: 1
 """,
-    expected_block_last_startswith=False)
+    expected_block_last_startswith=False,
+    expected_modifications_used = {
+      'rna3p': 4})
 
 def exercise_hydrogen_deuterium_aliases():
   file_paths = []

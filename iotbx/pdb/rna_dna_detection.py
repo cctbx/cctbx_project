@@ -249,10 +249,10 @@ class residue_analysis(object):
       else:
         if (not check_distance(key_pair, *sites)):
           O.problems.append("long_distance_"+key_pair.replace(" ","_"))
+    O.c1p_outbound_atom = None
     if (len(O.c1p_outbound_candidates) != 0):
       atom = O.deoxy_ribo_atom_dict.get("C1'")
       if (atom is not None):
-        O.c1p_outbound_atom = None
         closest_distance = c1p_outbound_distance_estimate + distance_tolerance
         site_1 = matrix.col(atom.xyz)
         for key,atom in O.c1p_outbound_candidates.items():
