@@ -76,6 +76,7 @@ env_etc.no_boost_python = ARGUMENTS.get(
   not libtbx.env.build_options.build_boost_python_extensions)
 env_etc.norm_join = norm_join
 env_etc.gcc_version = None
+env_etc.icc_version = None
 
 env_etc.include_registry = libtbx.env_config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
@@ -152,6 +153,12 @@ def enable_more_warnings(env):
 
 env_etc.enable_more_warnings = enable_more_warnings
 env_etc._enable_more_warnings = None
+
+boost_dot_svn = libtbx.env.under_dist(
+  module_name="boost",
+  default=None,
+  path=".svn",
+  test=os.path.isdir)
 
 if (sys.platform == "win32"):
   platform_64bit = (platform.architecture()[0] == '64bit')
@@ -358,6 +365,8 @@ else:
       "-fPIC",
       "-fno-strict-aliasing"]
     env_etc.cxxflags_base = []
+    if (env_etc.gcc_version >= 40400 and boost_dot_svn is not None):
+      env_etc.cxxflags_base.append("-std=c++0x")
     if (libtbx.env.build_options.warning_level == 0):
       warn_options = ["-w"]
       env_etc._enable_more_warnings = "gcc"
@@ -406,6 +415,7 @@ else:
   elif (env_etc.compiler == "unix_icc"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
+    env_etc.icc_version = libtbx.env_config.get_gcc_version(command_name="icc")
     env_base.Replace(
       CC="icc",
       SHCC="icc",
@@ -417,6 +427,8 @@ else:
     env_etc.c_link = "icc"
     env_etc.ccflags_base = ["-fPIC", "-wd161,167"]
     env_etc.cxxflags_base = ["-Wno-deprecated"]
+    if (env_etc.icc_version >= 100000 and boost_dot_svn is not None):
+      env_etc.cxxflags_base.append("-std=c++0x")
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2"]
     else:
