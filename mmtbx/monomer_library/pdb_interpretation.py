@@ -130,6 +130,8 @@ master_params_str = """\
     omega_esd_override_value = None
       .type = float
   }
+  max_reasonable_bond_distance = 50.0
+    .type=float
   nonbonded_distance_cutoff = None
     .type=float
   default_vdw_distance = 1
@@ -2950,6 +2952,7 @@ class build_all_chain_proxies(object):
       dihedral_proxies=self.geometry_proxy_registries.dihedral.proxies,
       chirality_proxies=self.geometry_proxy_registries.chirality.proxies,
       planarity_proxies=self.geometry_proxy_registries.planarity.proxies,
+      max_reasonable_bond_distance=self.params.max_reasonable_bond_distance,
       plain_pairs_radius=plain_pairs_radius)
     if (params_remove is not None):
       self.process_geometry_restraints_remove(
