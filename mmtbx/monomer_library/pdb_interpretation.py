@@ -523,6 +523,41 @@ class monomer_mapping_summary(object):
 
 class monomer_mapping(object):
 
+  __slots__ = [
+    "active_atoms",
+    "angle_counters",
+    "atom_name_interpretation",
+    "atom_names_given",
+    "bond_counters",
+    "chem_mod_ids",
+    "chirality_counters",
+    "classification",
+    "conf_altloc",
+    "dihedral_counters",
+    "duplicate_atoms",
+    "expected_atoms",
+    "i_conformer",
+    "ignored_atoms",
+    "incomplete_info",
+    "is_first_conformer_in_chain",
+    "is_rna2p",
+    "is_rna_dna",
+    "is_terminus",
+    "is_unusual",
+    "lib_link",
+    "missing_hydrogen_atoms",
+    "missing_non_hydrogen_atoms",
+    "mon_lib_names",
+    "mon_lib_srv",
+    "monomer",
+    "monomer_atom_dict",
+    "pdb_atoms",
+    "pdb_residue",
+    "pdb_residue_id_str",
+    "planarity_counters",
+    "residue_name",
+    "unexpected_atoms"]
+
   def __init__(self,
         pdb_atoms,
         mon_lib_srv,
@@ -597,6 +632,7 @@ class monomer_mapping(object):
     return sorted(atom_id_str_pdbres_set)
 
   def _rna_sugar_pucker_analysis(self, params, next_pdb_residue):
+    self.is_rna_dna = False
     self.is_rna2p = None
     if (self.monomer.is_peptide()): return
     from iotbx.pdb.rna_dna_detection import residue_analysis
@@ -604,6 +640,7 @@ class monomer_mapping(object):
       residue_atoms=self.pdb_residue.atoms(),
       distance_tolerance=params.bond_detection_distance_tolerance)
     if (ra1.problems is not None): return
+    self.is_rna_dna = True
     if (not ra1.is_rna): return
     self.is_rna2p = False
     if (next_pdb_residue is not None):
@@ -632,7 +669,7 @@ class monomer_mapping(object):
     self.duplicate_atoms = {}
     if (self.atom_name_interpretation is not None):
       replace_primes = False
-    elif (self.is_rna2p is not None or self.monomer.is_rna_dna()):
+    elif (self.is_rna_dna or self.monomer.is_rna_dna()):
       replace_primes = True
     else:
       n_primes = 0
@@ -730,7 +767,7 @@ class monomer_mapping(object):
         if (atom_ids == "C CA N"): return "n_c_alpha_c_only"
         if (atom_ids == "C CA N O"): return "backbone_only"
         if (atom_ids == "C CA CB N O"): return "truncation_to_alanine"
-      elif (self.monomer.is_rna_dna()):
+      elif (self.is_rna_dna or self.monomer.is_rna_dna()):
         atom_ids = " ".join(self.expected_atoms.keys())
         if (atom_ids == "P"): return "p_only"
     return None
@@ -1019,8 +1056,8 @@ def get_lib_link_peptide(mon_lib_srv, m_i, m_j):
 def get_lib_link(mon_lib_srv, m_i, m_j):
   if (m_i.monomer.is_peptide() and m_j.monomer.is_peptide()):
     return get_lib_link_peptide(mon_lib_srv, m_i, m_j)
-  elif (    (m_i.is_rna2p is not None or m_i.monomer.is_rna_dna())
-        and (m_j.is_rna2p is not None or m_j.monomer.is_rna_dna())):
+  elif (    (m_i.is_rna_dna or m_i.monomer.is_rna_dna())
+        and (m_j.is_rna_dna or m_j.monomer.is_rna_dna())):
     if (m_i.is_rna2p):
       return mon_lib_srv.link_link_id_dict["rna2p"]
     return mon_lib_srv.link_link_id_dict["rna3p"]
