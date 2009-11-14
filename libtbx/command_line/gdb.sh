@@ -1,0 +1,8 @@
+#! /bin/sh
+VALGRIND_OPTS="-q"
+export VALGRIND_OPTS
+LIBTBX_VALGRIND="gdb"
+export LIBTBX_VALGRIND
+LIBTBX__VALGRIND_FLAG__=1
+export LIBTBX__VALGRIND_FLAG__
+exec "$@"
