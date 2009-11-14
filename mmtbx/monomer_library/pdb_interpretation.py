@@ -678,6 +678,7 @@ class monomer_mapping(object):
         if (atom_name.find("'") >= 0): n_primes += 1
         if (atom_name.find("*") >= 0): n_stars += 1
       replace_primes = (n_primes != 0 and n_stars == 0)
+    rna_dna_bb_cif_by_ref = None
     for i_atom,atom in enumerate(self.active_atoms):
       atom_name_given = self.atom_names_given[i_atom]
       if (self.mon_lib_names is None):
@@ -716,6 +717,20 @@ class monomer_mapping(object):
               if (atom_name is not None): break
             else:
               atom_name = atom_name_given
+      if (    len(atom_name) != 0
+          and not atom_dict.has_key(atom_name)
+          and self.is_rna_dna):
+        aliases = pdb.rna_dna_atom_names_backbone_aliases
+        if (rna_dna_bb_cif_by_ref is None):
+          rna_dna_bb_cif_by_ref = {}
+          for cif_name in atom_dict:
+            ref_name = aliases.get(cif_name)
+            if (ref_name is not None):
+              rna_dna_bb_cif_by_ref[ref_name] = cif_name
+        ref_name = aliases.get(atom_name)
+        cif_name = rna_dna_bb_cif_by_ref.get(ref_name)
+        if (cif_name is not None):
+          atom_name = cif_name
       prev_atom = processed_atom_names.get(atom_name)
       if (prev_atom is None):
         processed_atom_names[atom_name] = atom
