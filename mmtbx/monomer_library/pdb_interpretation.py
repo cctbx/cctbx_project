@@ -642,17 +642,15 @@ class monomer_mapping(object):
     if (ra1.problems is not None): return
     self.is_rna_dna = True
     if (not ra1.is_rna): return
-    self.is_rna2p = False
+    residue_2_p_atom = None
     if (next_pdb_residue is not None):
-      ra2 = residue_analysis(
-        residue_atoms=next_pdb_residue.atoms(),
-        distance_tolerance=params.bond_detection_distance_tolerance)
-      ana = rna_sugar_pucker_analysis.evaluate(
-        params=params,
-        residue_1_deoxy_ribo_atom_dict=ra1.deoxy_ribo_atom_dict,
-        residue_1_c1p_outbound_atom=ra1.c1p_outbound_atom,
-        residue_2_p_atom=ra2.p_atom)
-      self.is_rna2p = ana.is_2p
+      residue_2_p_atom = next_pdb_residue.find_atom_by(name=" P  ")
+    ana = rna_sugar_pucker_analysis.evaluate(
+      params=params,
+      residue_1_deoxy_ribo_atom_dict=ra1.deoxy_ribo_atom_dict,
+      residue_1_c1p_outbound_atom=ra1.c1p_outbound_atom,
+      residue_2_p_atom=residue_2_p_atom)
+    self.is_rna2p = ana.is_2p
     if (self.is_rna2p): primary_mod_id = "rna2p"
     else:               primary_mod_id = "rna3p"
     self.monomer, chem_mod_ids = self.mon_lib_srv.get_comp_comp_id_mod(

@@ -58,11 +58,13 @@ class evaluate(object):
       (c3p, c4p),
       (c5p, c4p)]
     distances = [abs(s2-s1) for s1,s2 in bonded_sites]
-    if (residue_2_p_atom is None):
-      p = None
-    else:
-      p = matrix.col(residue_2_p_atom.xyz)
-      distances.append(abs(p-o3p))
+    p = None
+    if (residue_2_p_atom is not None):
+      p_trial = matrix.col(residue_2_p_atom.xyz)
+      d = abs(p_trial-o3p)
+      if (d <= params.bond_max_distance):
+        p = p_trial
+        distances.append(d)
     if (residue_1_c1p_outbound_atom is None):
       c1p_outbound = None
     else:
