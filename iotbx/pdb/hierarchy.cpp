@@ -1078,6 +1078,23 @@ namespace {
     return make_resid(data->resseq, data->icode);
   }
 
+  boost::optional<atom>
+  residue::find_atom_by(char const* name) const
+  {
+    boost::optional<atom> result;
+    if (name != 0) {
+      std::vector<atom> const& ats = atoms();
+      unsigned n_ats = atoms_size();
+      for(unsigned i_at=0;i_at<n_ats;i_at++) {
+        atom const& a = ats[i_at];
+        if (std::strcmp(a.data->name.elems, name) == 0) {
+          return boost::optional<atom>(a);
+        }
+      }
+    }
+    return boost::optional<atom>();
+  }
+
   std::string
   atom_with_labels::resid() const
   {
