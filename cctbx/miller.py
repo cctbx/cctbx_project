@@ -101,11 +101,11 @@ class binner(ext.binner):
       self.fmt_bin = "bin %%%dd:"%n
       self.fmt_unused = " "*(4+n+1-7) + "unused:"
       n = len("%.4f" % self.bin_d_range(1)[0])
-      self.fmt_d = "%%%d.4f"%n
+      self.fmt_bin_range = "%%%d.4f"%n
       blank_d = " "*n
-      self.fmt_d_range_first = " ".join([blank_d,    "-", self.fmt_d])
-      self.fmt_d_range_used  = " ".join([self.fmt_d, "-", self.fmt_d])
-      self.fmt_d_range_last  = " ".join([self.fmt_d, "-", blank_d])
+      self.fmt_bin_range_first = " ".join([blank_d,    "-", self.fmt_bin_range])
+      self.fmt_bin_range_used  = " ".join([self.fmt_bin_range, "-", self.fmt_bin_range])
+      self.fmt_bin_range_last  = " ".join([self.fmt_bin_range, "-", blank_d])
       self.fmt_counts_given = "%%%dd"%len(str(max(self.counts_given())))
       self.fmt_counts_complete = "%%-%dd"%len(str(max(self.counts_complete())))
       self.fmt_both_counts \
@@ -114,8 +114,18 @@ class binner(ext.binner):
   def bin_legend(self,
         i_bin,
         show_bin_number=True,
-        show_d_range=True,
-        show_counts=True):
+        show_bin_range=True,
+        show_d_range=None,
+        show_counts=True,
+        bin_range_as="d",
+        wavelength=None):
+    if show_d_range is not None:
+      # XXX backward compatibility 2009-11-16
+      show_bin_range = show_d_range
+      bin_range_as = "d"
+    assert bin_range_as in ("d", "d_star_sq", "stol", "stol_sq", "two_theta")
+    if bin_range_as == "two_theta":
+      assert wavelength is not None
     self._setup_format_strings()
     is_first = (i_bin == self.i_bin_d_too_large())
     is_last = (i_bin == self.i_bin_d_too_small())
@@ -125,14 +135,26 @@ class binner(ext.binner):
         result.append(self.fmt_unused)
       else:
         result.append(self.fmt_bin % i_bin)
-    bin_d_range = self.bin_d_range(i_bin)
-    if (show_d_range):
+    bin_range = self.bin_d_range(i_bin)
+    if (show_bin_range):
+      if bin_range_as == "d_star_sq":
+        bin_range = [uctbx.d_as_d_star_sq(bin_d) for bin_d in bin_range]
+      elif bin_range_as == "stol":
+        bin_range = [uctbx.d_star_sq_as_stol(uctbx.d_as_d_star_sq(bin_d))
+                     for bin_d in bin_range]
+      elif bin_range_as == "stol_sq":
+        bin_range = [uctbx.d_star_sq_as_stol_sq(uctbx.d_as_d_star_sq(bin_d))
+                     for bin_d in bin_range]
+      elif bin_range_as == "two_theta":
+        bin_range = [uctbx.d_star_sq_as_two_theta(
+          uctbx.d_as_d_star_sq(bin_d), wavelength=wavelength, deg=True)
+                     for bin_d in bin_range]
       if (is_first):
-        result.append(self.fmt_d_range_first % bin_d_range[1])
+        result.append(self.fmt_bin_range_first % bin_range[1])
       elif (is_last):
-        result.append(self.fmt_d_range_last % bin_d_range[0])
+        result.append(self.fmt_bin_range_last % bin_range[0])
       else:
-        result.append(self.fmt_d_range_used % bin_d_range)
+        result.append(self.fmt_bin_range_used % tuple(bin_range))
     if (show_counts):
       result.append(self.fmt_both_counts % (
         self._counts_given[i_bin], self._counts_complete[i_bin]))
@@ -140,8 +162,11 @@ class binner(ext.binner):
 
   def show_summary(self,
         show_bin_number=True,
-        show_d_range=True,
+        show_bin_range=True,
+        show_d_range=None,
         show_counts=True,
+        bin_range_as="d",
+        wavelength=None,
         f=None,
         prefix=""):
     if (f is None): f = sys.stdout
@@ -149,16 +174,22 @@ class binner(ext.binner):
       print >> f, prefix + self.bin_legend(
         i_bin=i_bin,
         show_bin_number=show_bin_number,
+        show_bin_range=show_bin_range,
         show_d_range=show_d_range,
-        show_counts=show_counts)
+        show_counts=show_counts,
+        bin_range_as=bin_range_as,
+        wavelength=wavelength)
 
   def show_data(self,
         data,
         data_fmt=None,
         show_bin_number=True,
-        show_d_range=True,
+        show_bin_range=True,
+        show_d_range=None,
         show_counts=True,
         show_unused=True,
+        bin_range_as="d",
+        wavelength=None,
         f=None,
         prefix=""):
     assert len(data) == self.n_bins_all()
@@ -172,8 +203,11 @@ class binner(ext.binner):
       legend = self.bin_legend(
         i_bin=i_bin,
         show_bin_number=show_bin_number,
+        show_bin_range=show_bin_range,
         show_d_range=show_d_range,
-        show_counts=show_counts)
+        show_counts=show_counts,
+        bin_range_as=bin_range_as,
+        wavelength=wavelength)
       print >> f, prefix + legend,
       if (data[i_bin] is not None):
         if (isinstance(data[i_bin], str) or data_fmt is None):
@@ -197,9 +231,12 @@ class binned_data(object):
   def show(self,
         data_fmt=None,
         show_bin_number=True,
-        show_d_range=True,
+        show_bin_range=True,
+        show_d_range=None,
         show_counts=True,
         show_unused=True,
+        bin_range_as="d",
+        wavelength=None,
         f=None,
         prefix=""):
     if (data_fmt is None): data_fmt = self.data_fmt
@@ -207,9 +244,12 @@ class binned_data(object):
       data=self.data,
       data_fmt=data_fmt,
       show_bin_number=show_bin_number,
+      show_bin_range=show_bin_range,
       show_d_range=show_d_range,
       show_counts=show_counts,
       show_unused=show_unused,
+      bin_range_as=bin_range_as,
+      wavelength=wavelength,
       f=f,
       prefix=prefix)
 
