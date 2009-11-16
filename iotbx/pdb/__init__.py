@@ -48,7 +48,7 @@ cns_dna_rna_residue_names = {
   "URI": "U"
 }
 
-mon_lib_dna_rna_cif = set(["AD", "AR", "CD", "CR", "GD", "GR", "TD", "UR"])
+mon_lib_dna_rna_cif = set(["AD", "A", "CD", "C", "GD", "G", "TD", "U"])
 
 rna_dna_reference_residue_names = {
   "A": "?A",
@@ -437,10 +437,10 @@ class residue_name_plus_atom_names_interpreter(object):
           work_residue_name = atom_name_interpretation.residue_name
           if (return_mon_lib_dna_name):
             work_residue_name = {
-              "A": "AR",
-              "C": "CR",
-              "G": "GR",
-              "U": "UR",
+              "A": "A",
+              "C": "C",
+              "G": "G",
+              "U": "U",
               "DA": "AD",
               "DC": "CD",
               "DG": "GD",
