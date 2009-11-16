@@ -996,6 +996,52 @@ def exercise_r1_factor():
   assert raised
   pass
 
+def exercise_scale_factor():
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=(10,11,12,85,95,100),
+    space_group_symbol="P 1")
+  miller_set = miller.build_set(
+    crystal_symmetry=crystal_symmetry,
+    anomalous_flag=False,
+    d_min=2)
+  f_c = miller_set.array(
+    data=flex.polar(
+      flex.random_double(miller_set.size(), 10)*10-5,
+      flex.random_double(miller_set.size(), 10)*10-5))
+  f_o = f_c.as_amplitude_array()
+  f_sq_o = f_c.as_intensity_array()
+  # first with no scale factor
+  assert approx_equal(f_o.quick_scale_factor_approximation(f_c), 1.)
+  assert approx_equal(f_sq_o.quick_scale_factor_approximation(f_c), 1.)
+  assert approx_equal(
+    f_o.quick_scale_factor_approximation(f_c, cutoff_factor=0), 1.)
+  # now try with scale factor
+  scale_factor = flex.random_double()
+  f_o = f_c.customized_copy(data=flex.abs(f_c.data())*scale_factor)
+  f_o.set_observation_type_xray_amplitude()
+  f_sq_o = f_o.as_intensity_array()
+  assert approx_equal(f_o.quick_scale_factor_approximation(f_c), scale_factor)
+  assert approx_equal(f_sq_o.quick_scale_factor_approximation(
+    f_c, cutoff_factor=0.9), scale_factor*scale_factor)
+  # let's make things more random and using weights
+  f_o = miller_set.array(data=scale_factor * flex.abs(f_c.data())
+                         + (flex.random_double(miller_set.size())*2-1),
+    sigmas=flex.random_double(miller_set.size()))
+  f_o.set_observation_type_xray_amplitude()
+  f_sq_o = f_o.f_as_f_sq()
+  assert approx_equal(f_o.quick_scale_factor_approximation(f_c),
+                      scale_factor, eps=0.1)
+  assert approx_equal(f_sq_o.quick_scale_factor_approximation(f_c),
+                      scale_factor*scale_factor, eps=0.1)
+  # using more of the data should give better estimate of true scale factor
+  assert abs(f_o.quick_scale_factor_approximation(f_c, cutoff_factor=0.5)
+             - scale_factor) \
+         < abs(f_o.quick_scale_factor_approximation(f_c) - scale_factor)
+  assert abs(f_sq_o.quick_scale_factor_approximation(f_c, cutoff_factor=0.5)
+             - scale_factor*scale_factor) \
+         < abs(f_sq_o.quick_scale_factor_approximation(f_c)
+               - scale_factor*scale_factor)
+
 def exercise_array_2(space_group_info):
   xs = space_group_info.any_compatible_crystal_symmetry(volume=60)
   for anomalous_flag in (False, True):
@@ -1526,6 +1572,7 @@ def run(args):
   exercise_binner()
   exercise_array()
   exercise_r1_factor()
+  exercise_scale_factor()
   exercise_complete_array()
   exercise_crystal_gridding()
   exercise_fft_map()
