@@ -271,11 +271,6 @@ class server(process_cif_mixin):
       comp_comp_id.normalize_atom_ids_in_place()
       chem_comp = comp_comp_id.chem_comp
       self.comp_comp_id_dict[chem_comp.id.strip().upper()] = comp_comp_id
-      tlc = chem_comp.three_letter_code
-      if (tlc is not None):
-        tlc = tlc.strip()
-        if (1 <= len(tlc) <= 3):
-          self.comp_comp_id_dict[tlc.upper()] = comp_comp_id
 
   def convert_link_list(self, source_info, cif_object):
     for link_link_id in convert_link_list(
