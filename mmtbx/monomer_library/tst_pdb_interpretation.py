@@ -290,9 +290,11 @@ def exercise_rna(
   if (expected_modifications_used is None):
     assert len(lines_modifications_used) == 0
   else:
-    assert len(lines_modifications_used) == 1
-    modifications_used = eval(lines_modifications_used[0].split(":", 1)[1])
-    assert modifications_used == expected_modifications_used
+    assert len(lines_modifications_used) == len(expected_modifications_used)
+    for line,expected in zip(
+          lines_modifications_used, expected_modifications_used):
+      modifications_used = eval(line.split(":", 1)[1])
+      assert modifications_used == expected
 
 def exercise_cns_rna(mon_lib_srv, ener_lib):
   exercise_rna(
@@ -312,8 +314,7 @@ def exercise_cns_rna(mon_lib_srv, ener_lib):
           Classifications: {'RNA': 20}
           Link IDs: {'rna3p': 19}
   Time building chain proxies: """,
-    expected_modifications_used = {
-      'p5*END': 1, 'rna3p': 20, '3*END': 1})
+    expected_modifications_used=[{'p5*END': 1, 'rna3p': 20, '3*END': 1}])
 
 def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
   exercise_rna(
@@ -333,8 +334,7 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
           Classifications: {'RNA': 3}
           Link IDs: {'rna3p': 1, 'rna2p': 1}
   Time building chain proxies: """,
-    expected_modifications_used = {
-      'rna3p': 2, 'rna2p': 1})
+    expected_modifications_used=[{'rna3p': 2, 'rna2p': 1}])
   #
   exercise_rna(
     mon_lib_srv=mon_lib_srv,
@@ -355,8 +355,32 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
           Chain breaks: 1
 """,
     expected_block_last_startswith=False,
-    expected_modifications_used = {
-      'rna3p': 4})
+    expected_modifications_used=[{'rna3p': 4}])
+
+def exercise_rna_dna_hybrid(mon_lib_srv, ener_lib):
+  exercise_rna(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name="da_a.pdb",
+    expected_block= """\
+  Total number of atoms: 63
+  Number of models: 1
+  Model: ""
+    Number of chains: 2
+    Chain: "A"
+      Number of atoms: 30
+      Number of conformers: 1
+      Conformer: ""
+        Number of residues, atoms: 1, 30
+          Classifications: {'DNA': 1}
+    Chain: "B"
+      Number of atoms: 33
+      Number of conformers: 1
+      Conformer: ""
+        Number of residues, atoms: 1, 33
+          Classifications: {'RNA': 1}
+  Time building chain proxies: """,
+    expected_modifications_used=[{'5*END': 1}, {'rna3p': 1}])
 
 def exercise_hydrogen_deuterium_aliases():
   file_paths = []
@@ -430,6 +454,7 @@ def exercise():
   exercise_pdb_string(mon_lib_srv, ener_lib)
   exercise_cns_rna(mon_lib_srv, ener_lib)
   exercise_rna_3p_2p(mon_lib_srv, ener_lib)
+  exercise_rna_dna_hybrid(mon_lib_srv, ener_lib)
   exercise_hydrogen_deuterium_aliases()
   exercise_corrupt_cif_link()
   exercise_dna_cns_cy5_th6()
