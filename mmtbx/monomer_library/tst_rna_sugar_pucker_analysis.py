@@ -27,6 +27,7 @@ def exercise(args):
   assert analysis.is_2p_epsilon is None
   assert analysis.is_2p_delta is None
   assert analysis.is_2p_p_distance_c1p_outbound_line is None
+  assert analysis.is_2p_o3p_distance_c1p_outbound_line is None
   assert analysis.is_2p is None
   analysis = rna_sugar_pucker_analysis.evaluate(
     params=params,
@@ -38,27 +39,35 @@ def exercise(args):
   assert approx_equal(analysis.epsilon, 250.715932662)
   assert approx_equal(analysis.delta, 133.811229901)
   assert approx_equal(analysis.p_distance_c1p_outbound_line, 1.52374220064)
+  assert approx_equal(analysis.o3p_distance_c1p_outbound_line, 0.860583842822)
   assert not analysis.is_2p_epsilon
   assert analysis.is_2p_delta
   assert analysis.is_2p_p_distance_c1p_outbound_line
+  assert analysis.is_2p_o3p_distance_c1p_outbound_line
   assert analysis.is_2p
-  analysis = rna_sugar_pucker_analysis.evaluate(
-    params=params,
-    residue_1_deoxy_ribo_atom_dict=atom_dict([
-      (42.736,12.998,31.661), (42.922,16.529,31.706), (42.428,15.271,31.984),
-      (43.132,14.710,33.185), (42.545,15.146,34.511)]),
-    residue_1_c1p_outbound_atom=atom((41.433,12.332,31.466)),
-    residue_2_p_atom=atom((41.856,17.581,31.191)))
-  assert not analysis.is_2p_epsilon
-  assert not analysis.is_2p_delta
-  assert not analysis.is_2p_p_distance_c1p_outbound_line
-  assert not analysis.is_2p
+  for residue_2_p_atom in [atom((41.856,17.581,31.191)), None]:
+    analysis = rna_sugar_pucker_analysis.evaluate(
+      params=params,
+      residue_1_deoxy_ribo_atom_dict=atom_dict([
+        (42.736,12.998,31.661), (42.922,16.529,31.706), (42.428,15.271,31.984),
+        (43.132,14.710,33.185), (42.545,15.146,34.511)]),
+      residue_1_c1p_outbound_atom=atom((41.433,12.332,31.466)),
+      residue_2_p_atom=residue_2_p_atom)
+    assert not analysis.is_2p_epsilon
+    assert not analysis.is_2p_delta
+    if (residue_2_p_atom is not None):
+      assert not analysis.is_2p_p_distance_c1p_outbound_line
+    else:
+      assert analysis.is_2p_p_distance_c1p_outbound_line is None
+    assert not analysis.is_2p_o3p_distance_c1p_outbound_line
+    assert not analysis.is_2p
   #
   params.epsilon_range_not_2p_min = None
   params.epsilon_range_not_2p_max = None
   params.delta_range_2p_min = None
   params.delta_range_2p_max = None
   params.p_distance_c1p_outbound_line_2p_max = None
+  params.o3p_distance_c1p_outbound_line_2p_max = None
   analysis = rna_sugar_pucker_analysis.evaluate(
     params=params,
     residue_1_deoxy_ribo_atom_dict=atom_dict([
@@ -72,6 +81,7 @@ def exercise(args):
   assert analysis.is_2p_epsilon is None
   assert analysis.is_2p_delta is None
   assert analysis.is_2p_p_distance_c1p_outbound_line is None
+  assert analysis.is_2p_o3p_distance_c1p_outbound_line is None
   assert analysis.is_2p is None
   #
   print "OK"
