@@ -2658,6 +2658,28 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     assert self.is_xray_intensity_array()
     return normalised_amplitudes(self, asu_contents, wilson_plot)
 
+  def quick_scale_factor_approximation(self, f_calc, cutoff_factor=0.99):
+    """
+    Quick scale factor approximation using only the fraction of reflections
+    that are above the cutoff_factor (default value is 0.99).
+    """
+    assert cutoff_factor < 1
+    assert f_calc.is_complex_array()
+    assert f_calc.size() == self.data().size()
+    sel = self.data() > flex.max(self.data()) * cutoff_factor
+    obs = self.data().select(sel)
+    if self.is_xray_intensity_array():
+      calc = f_calc.norm().data().select(sel)
+    else:
+      calc = flex.abs(f_calc.data()).select(sel)
+    if self.sigmas() is None:
+      return flex.mean(obs*calc) / flex.mean(flex.pow2(calc))
+    else:
+      assert self.sigmas().size() == self.data().size()
+      sigmas = self.sigmas().select(sel)
+      return flex.mean_weighted(obs*calc, sigmas) \
+             / flex.mean_weighted(flex.pow2(calc), sigmas)
+
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
 
   def __init__(self, miller_array,

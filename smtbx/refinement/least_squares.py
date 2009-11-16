@@ -35,15 +35,13 @@ class normal_equations(object):
     self._core_normal_eqns = lstbx.normal_equations_separating_scale_factor(
       self.special_position_constraints.n_independent_params)
     self.reduced = None
+    self.shifts = None
 
   def compute_quick_scale_factor_approximation(self):
-    sel = self.fo_sq.data() > 0.99*flex.max(self.fo_sq.data())
-    fo_sq = self.fo_sq.select(sel)
-    fc_sq = xray.structure_factors.from_scatterers_direct(
-      self.xray_structure, fo_sq).f_calc().norm()
-    self.scale_factor = (
-      flex.mean_weighted(fc_sq.data()*fo_sq.data(), fo_sq.sigmas())
-     /flex.mean_weighted(flex.pow2(fc_sq.data()), fo_sq.sigmas()))
+    self.fo_sq.set_observation_type_xray_intensity()
+    f_calc = xray.structure_factors.from_scatterers_direct(
+      self.xray_structure, self.fo_sq).f_calc()
+    self.scale_factor = self.fo_sq.quick_scale_factor_approximation(f_calc)
 
   def build_up(self):
     if self.scale_factor is None:
@@ -67,11 +65,12 @@ class normal_equations(object):
 
   def solve(self):
     self.reduced.solve()
-    return self.reduced.solution
+    self.shifts = self.reduced.solution
 
-  def apply_shifts(self, shifts):
-    self.special_position_constraints.apply_shifts(shifts)
+  def apply_shifts(self):
+    assert self.shifts is not None
+    self.special_position_constraints.apply_shifts(self.shifts)
 
   def solve_and_apply_shifts(self):
-    shifts = self.solve()
-    self.apply_shifts(shifts)
+    self.solve()
+    self.apply_shifts()

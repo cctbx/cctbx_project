@@ -146,7 +146,8 @@ class test_case(object):
 
     # one refinement cycle
     normal_eqns.build_up()
-    shifts = normal_eqns.solve()
+    normal_eqns.solve()
+    shifts = normal_eqns.shifts
 
     # That's what floating origin restraints are for!
     # Note that in the presence of special position, that's different
@@ -177,7 +178,8 @@ class test_case(object):
       objectives.append(normal_eqns.objective)
       scales.append(normal_eqns.scale_factor)
       gradient_relative_norm = normal_eqns.gradient.norm()/fo_sq_max
-      shifts = normal_eqns.solve_and_apply_shifts()
+      normal_eqns.solve_and_apply_shifts()
+      shifts = normal_eqns.shifts
 
     assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-5)
     assert approx_equal(normal_eqns.objective, 0)
