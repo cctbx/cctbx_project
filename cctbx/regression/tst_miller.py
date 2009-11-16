@@ -267,6 +267,15 @@ def exercise_binner():
 ..bin  3: 11.4473 - 10.0715 [2/2]
 ..unused: 10.0715 -         [0/0]
 """
+    s = StringIO()
+    set1.binner().show_summary(f=s, prefix=" ", bin_range_as="stol")
+    assert s.getvalue() == """\
+ unused:         -  0.0174 [0/0]
+ bin  1:  0.0174 -  0.0354 [3/3]
+ bin  2:  0.0354 -  0.0437 [3/3]
+ bin  3:  0.0437 -  0.0496 [2/2]
+ unused:  0.0496 -         [0/0]
+"""
     set2 = miller.build_set(
       crystal_symmetry=crystal_symmetry,
       anomalous_flag=anomalous_flag,
@@ -289,6 +298,16 @@ def exercise_binner():
 14.1305 - 11.4473 [3/3] 1.000
 11.4473 - 10.0715 [2/2] 1.000
 10.0715 -         [8/8] 1.000
+"""
+    s = StringIO()
+    set2.completeness(use_binning=True).show(
+      show_bin_number=False, f=s, bin_range_as="two_theta", wavelength=0.71073)
+    assert s.getvalue() == """\
+        -  1.4180 [0/0]
+ 1.4180 -  2.8822 [3/3] 1.000
+ 2.8822 -  3.5579 [3/3] 1.000
+ 3.5579 -  4.0441 [2/2] 1.000
+ 4.0441 -         [8/8] 1.000
 """
     s = StringIO()
     set2.completeness(use_binning=True).show(show_d_range=False, f=s)
@@ -317,6 +336,26 @@ unused: 10.0715 -         1.000
  1.000
  1.000
  1.000
+"""
+    s = StringIO()
+    set2.completeness(use_binning=True).show(
+      show_bin_range=False, show_counts=False, f=s)
+    assert s.getvalue() == """\
+unused:
+bin  1: 1.000
+bin  2: 1.000
+bin  3: 1.000
+unused: 1.000
+"""
+    s = StringIO()
+    set2.completeness(use_binning=True).show(
+      show_bin_number=False, bin_range_as="d_star_sq", show_counts=False, f=s)
+    assert s.getvalue() == """\
+        -  0.0012
+ 0.0012 -  0.0050 1.000
+ 0.0050 -  0.0076 1.000
+ 0.0076 -  0.0099 1.000
+ 0.0099 -         1.000
 """
   set2 = set2.customized_copy(indices=flex.miller_index())
   set2.use_binning_of(set1)
