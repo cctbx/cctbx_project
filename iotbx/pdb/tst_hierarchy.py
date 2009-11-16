@@ -4167,6 +4167,19 @@ conformer: "B"
     atom: " O  "
 """)
 
+def exercise_residue():
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      1  N   MET A   1
+ATOM      2  CA  MET A   1
+"""))
+  h = pdb_inp.construct_hierarchy()
+  residue = h.only_residue()
+  assert residue.resid() == "   1 "
+  assert residue.find_atom_by(name=None) is None
+  assert residue.find_atom_by(name=" N  ").name == " N  "
+  assert residue.find_atom_by(name="N   ") is None
+  assert residue.find_atom_by(name=" CA ").name == " CA "
+
 def exercise_is_identical_hierarchy():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 MODEL        0
@@ -5381,6 +5394,7 @@ def exercise(args):
     exercise_find_pure_altloc_ranges()
     exercise_occupancy_groups_simple()
     exercise_conformers()
+    exercise_residue()
     exercise_is_identical_hierarchy()
     exercise_is_similar_hierarchy()
     exercise_atoms()

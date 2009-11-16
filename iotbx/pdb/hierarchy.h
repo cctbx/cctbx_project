@@ -1491,6 +1491,9 @@ namespace hierarchy {
       //! model="   1" pdbres="GLY A   1 " segid="S001"
       std::string
       id_str(int suppress_segid=0) const;
+
+      boost::optional<atom>
+      find_atom_by(char const* name) const;
   };
 
   //! Conformer attributes.

@@ -497,6 +497,7 @@ namespace {
         .def("resseq_as_int", &w_t::resseq_as_int)
         .def("resid", &w_t::resid)
         .def("id_str", &w_t::id_str, (arg("suppress_segid")=0))
+        .def("find_atom_by", &w_t::find_atom_by, (arg("name")))
       ;
     }
   };

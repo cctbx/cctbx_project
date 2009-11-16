@@ -4,6 +4,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/dict.hpp>
 #include <boost/python/return_arg.hpp>
+#include <boost_adaptbx/optional_conversions.h>
 #include <iotbx/pdb/hierarchy.h>
 #include <iotbx/pdb/hierarchy_bpl.h>
 
@@ -412,6 +413,8 @@ namespace {
           arg("siguij")=true))
         .def("quote", &w_t::quote, (arg("full")=false))
       ;
+      boost_adaptbx::optional_conversions::
+        to_and_from_python<boost::optional<atom> >();
     }
   };
 
