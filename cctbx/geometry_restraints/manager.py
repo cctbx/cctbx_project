@@ -335,6 +335,18 @@ class manager(object):
           raise RuntimeError(
             "Bond distance > max_reasonable_bond_distance: %.6g > %.6g" % (
               bonded_distance_cutoff, self.max_reasonable_bond_distance))
+    def flags_are_different():
+      if (flags is None):
+        if (not self._flags_bond_used_for_pair_proxies):
+          return True
+        if (not self._flags_nonbonded_used_for_pair_proxies):
+          return True
+      else:
+        if (self._flags_bond_used_for_pair_proxies != flags.bond):
+          return True
+        if (self._flags_nonbonded_used_for_pair_proxies != flags.nonbonded):
+          return True
+      return False
     if (self.nonbonded_types is None):
       if (    self._pair_proxies is None
           and self.shell_sym_tables is not None
@@ -377,14 +389,10 @@ class manager(object):
           bond_params_table=self.bond_params_table,
           min_cubicle_edge=self.min_cubicle_edge)
     elif (sites_cart is not None
-          and (self._sites_cart_used_for_pair_proxies is None
-               or flags is not None
-                  and (self._flags_bond_used_for_pair_proxies
-                          != flags.bond
-                       or self._flags_nonbonded_used_for_pair_proxies
-                             != flags.nonbonded)
-          or self._sites_cart_used_for_pair_proxies.max_distance(sites_cart)
-             > self.effective_nonbonded_buffer)):
+            and (self._sites_cart_used_for_pair_proxies is None
+              or flags_are_different()
+              or self._sites_cart_used_for_pair_proxies.max_distance(
+                   sites_cart) > self.effective_nonbonded_buffer)):
       self.n_updates_pair_proxies += 1
       self._sites_cart_used_for_pair_proxies = sites_cart.deep_copy()
       if (flags is None):
