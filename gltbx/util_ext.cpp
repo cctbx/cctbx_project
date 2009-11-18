@@ -9,6 +9,7 @@
 #include <scitbx/mat3.h>
 #include <scitbx/constants.h>
 #include <scitbx/array_family/ref.h>
+#include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
 #include <boost/shared_array.hpp>
 
 #include <gltbx/error.h>
@@ -541,7 +542,11 @@ namespace gltbx { namespace util {
       arg_("radius"),
       arg_("slices"),
       arg_("stacks")));
-    vertex_array_wrapper<std::ptrdiff_t, GLdouble>::wrap("vertex_array");
+    {
+      // compatibility with scitbx/iso_surface/iso_surface_ext.cpp
+      typedef af::c_grid_padded_periodic<3>::index_value_type ivt;
+      vertex_array_wrapper<ivt, GLdouble>::wrap("vertex_array");
+    }
   }
 
 }} // namespace gltbx::util
