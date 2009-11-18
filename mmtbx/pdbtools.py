@@ -34,7 +34,8 @@ b_sol = 0.0
   .short_caption=Bulk solvent B_sol value
   .expert_level=2
 b_cart = 0 0 0 0 0 0
-  .type = strings
+  .type = floats
+  #.type = strings
   # XXX FUTURE float(6)
   .help = Anisotropic scale matrix
   .short_caption = Anisotropic scale matrix
@@ -94,7 +95,7 @@ hkl_output
     .short_caption = Output reflections file
     .help = Default is the original PDB file name with the file extension \
             replaced by ".pdbtools.mtz" or ".pdbtools.cns"
-    .style = bold noauto
+    .style = bold noauto new_file
 }
 """%fmodel_from_xray_structure_params_str
 
@@ -610,7 +611,7 @@ class fmodel_from_xray_structure(object):
       f_obs                        = abs(f_obs),
       k_sol                        = params.k_sol,
       b_sol                        = params.b_sol,
-      b_cart                       = [float(i) for i in params.b_cart])
+      b_cart                       = params.b_cart)#[float(i) for i in params.b_cart])
     f_model = fmodel.f_model()
     f_model = f_model.array(data = f_model.data()*params.scale)
     try:

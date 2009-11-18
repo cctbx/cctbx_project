@@ -195,7 +195,7 @@ data_and_flags = iotbx.phil.parse("""\
     use_lattice_symmetry = True
       .type=bool
       .short_caption = Use lattice symmetry to generate test set
-      .expert_level=2
+      .expert_level=0
   }
 """)
 
