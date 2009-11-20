@@ -1,5 +1,6 @@
 import libtbx.load_env
 import os
+op = os.path
 Import("env_etc")
 
 env_etc.gltbx_dist = libtbx.env.dist_path("gltbx")
@@ -10,6 +11,21 @@ env_etc.gltbx_common_includes = [
   env_etc.scitbx_include,
   env_etc.boost_include,
 ]
+
+# XXX TODO move to libtbx/SConscript
+def find_base_dir():
+  path = env_etc.python_include
+  while True:
+    dn,bn = op.split(path)
+    if (bn == "base"):
+      break
+    if (path == dn or len(dn) == 0):
+      return None
+    path = dn
+  for sub_dir in ["include", "lib"]:
+    if (not op.isdir(op.join(path, sub_dir))):
+      return None
+  return path
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
@@ -28,24 +44,35 @@ if (not env_etc.no_boost_python):
   env_etc.include_registry.append(
     env=env,
     paths=env_etc.gltbx_common_includes + [env_etc.python_include])
+  #
+  env_etc.gltbx_has_opengl_headers = False
   conf = env.Configure()
-  if (not conf.TryCompile(
-            "#include <gltbx/include_opengl.h>", extension=".cpp")):
+  if (conf.TryCompile("#include <gltbx/include_opengl.h>", extension=".cpp")):
+    env_etc.gltbx_has_opengl_headers = True
+  else:
     print "gltbx: OpenGL headers not available."
     print "gltbx: Compilation skipped."
-  else:
-    env_utils = env
-    base_dir = libtbx.env.under_build("base")
-    if os.path.isdir(base_dir) :
-      env.Append(LIBPATH=[os.path.join(base_dir, "lib")])
+  conf.Finish()
+  #
+  if (env_etc.gltbx_has_opengl_headers):
+    env_write_png = env.Clone()
+    base_dir = find_base_dir()
+    if (base_dir is not None):
       env_etc.include_registry.append(
-        env=env,
-        paths=[os.path.join(base_dir, "include")])
-    if conf.TryCompile("#include <png.h>", extension=".cpp") :
-      print "gltbx: PNG library found."
-      env_utils = env.Clone()
-      env_utils.Append(SHCXXFLAGS=["-DGLTBX_HAVE_LIBPNG"])
-      env_utils.Prepend(LIBS=["png"])
+        env=env_write_png,
+        paths=[op.join(base_dir, "include")])
+    conf = env_write_png.Configure()
+    if (conf.TryCompile("#include <png.h>", extension=".cpp")):
+      print "gltbx: PNG library is available."
+      env_write_png.Append(SHCXXFLAGS=["-DGLTBX_HAVE_LIBPNG"])
+      env_viewer_utils = env.Clone()
+      env_viewer_utils.Append(LIBPATH=[op.join(base_dir, "lib")])
+      env_viewer_utils.Prepend(LIBS=["png"])
+    else:
+      env_write_png = env
+      env_viewer_utils = env
+    conf.Finish()
+    #
     for namespace,n_fragments_def,n_fragments_fun in [("gl", 8, 16),
                                                       ("glu", 2, 4)]:
       source=["%s_ext.cpp" % namespace]
@@ -61,9 +88,11 @@ if (not env_etc.no_boost_python):
     env.SharedLibrary(
       target="#lib/gltbx_util_ext",
       source=["util_ext.cpp"])
-    env_utils.SharedLibrary(
+    env_viewer_utils.SharedLibrary(
       target="#lib/gltbx_viewer_utils_ext",
-      source=["viewer_utils_ext.cpp", "write_png.cpp"])
+      source=[
+        "viewer_utils_ext.cpp",
+        env_write_png.SharedObject(source=["write_png.cpp"])])
     env.SharedLibrary(
       target="#lib/gltbx_quadrics_ext",
       source=["quadrics_ext.cpp"])
@@ -74,4 +103,3 @@ if (not env_etc.no_boost_python):
         "font_ucs_8x13.cpp",
         "font_ucs_9x15.cpp",
         "font_ucs_10x20.cpp"])
-  env = conf.Finish()
