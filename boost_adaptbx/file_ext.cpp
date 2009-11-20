@@ -1,6 +1,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/handle.hpp>
 #include <boost_adaptbx/python_file_stream.h>
 
@@ -33,7 +34,8 @@ namespace boost_adaptbx { namespace file_conversion {
       boost::python::converter::rvalue_from_python_stage1_data *data)
     {
       using namespace boost::python;
-      typedef converter::rvalue_from_python_storage<python_file_buffer> rvalue_t;
+      typedef converter::rvalue_from_python_storage<python_file_buffer>
+        rvalue_t;
       void *storage = ((rvalue_t *) data)->storage.bytes;
       object python_file((handle<>(borrowed(obj_ptr))));
       new (storage) python_file_buffer(python_file);
@@ -46,12 +48,26 @@ namespace boost_adaptbx { namespace file_conversion {
   {
     typedef python_file_buffer wt;
 
+    static std::size_t
+    get_size()
+    {
+      throw std::runtime_error(
+        "obsolete attribute. please use default_buffer_size.");
+    }
+
+    static void
+    set_size(std::size_t) { get_size(); }
+
     static void wrap() {
       using namespace boost::python;
       class_<wt, boost::noncopyable>("buffer", no_init)
-        .def_readwrite("size", wt::buffer_size,
-                       "The size of the buffer sitting "
+        .def(init<python::object&, std::size_t>((
+          arg("python_file_obj"),
+          arg("buffer_size")=0)))
+        .def_readwrite("default_buffer_size", wt::default_buffer_size,
+                       "The default size of the buffer sitting "
                        "between a Python file object and a C++ stream.")
+        .add_static_property("size", get_size, set_size)
       ;
     }
   };

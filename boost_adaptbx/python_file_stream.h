@@ -141,23 +141,30 @@ class python_file_buffer : public std::basic_streambuf<char>
     int
     traits_type_eof() { return traits_type::eof(); }
 
-    /// The size of the read and write buffer.
+    /// The default size of the read and write buffer.
     /** They are respectively used to buffer data read from and data written to
         the Python file object. It can be modified from Python.
     */
-    static std::size_t buffer_size;
+    static std::size_t default_buffer_size;
 
     /// Construct from a Python file object
-    python_file_buffer(python::object& python_file)
-      : py_read (getattr(python_file, "read",  python::object())),
-        py_write(getattr(python_file, "write", python::object())),
-        py_seek (getattr(python_file, "seek",  python::object())),
-        py_tell (getattr(python_file, "tell",  python::object())),
-        write_buffer(0),
-        pos_of_read_buffer_end_in_py_file(0),
-        pos_of_write_buffer_end_in_py_file(buffer_size),
-        farthest_pptr(0)
+    /** if buffer_size is 0 the current default_buffer_size is used.
+    */
+    python_file_buffer(
+      python::object& python_file_obj,
+      std::size_t buffer_size_=0)
+    :
+      py_read (getattr(python_file_obj, "read",  python::object())),
+      py_write(getattr(python_file_obj, "write", python::object())),
+      py_seek (getattr(python_file_obj, "seek",  python::object())),
+      py_tell (getattr(python_file_obj, "tell",  python::object())),
+      buffer_size(buffer_size_ != 0 ? buffer_size_ : default_buffer_size),
+      write_buffer(0),
+      pos_of_read_buffer_end_in_py_file(0),
+      pos_of_write_buffer_end_in_py_file(buffer_size),
+      farthest_pptr(0)
     {
+      ASSERTBX(buffer_size != 0);
       /* Some Python file objects (e.g. sys.stdout and sys.stdin)
          have non-functional seek and tell. If so, assign None to
          py_tell and py_seek.
@@ -351,6 +358,8 @@ class python_file_buffer : public std::basic_streambuf<char>
   private:
     python::object py_read, py_write, py_seek, py_tell;
 
+    std::size_t buffer_size;
+
     /* This is actually a Python string and the actual read buffer is
        its internal data, i.e. an array of characters. We use a Boost.Python
        object so as to hold on it: as a result, the actual buffer can't
@@ -425,7 +434,7 @@ class python_file_buffer : public std::basic_streambuf<char>
 };
 
 
-std::size_t python_file_buffer::buffer_size = 1024;
+std::size_t python_file_buffer::default_buffer_size = 1024;
 
 
 namespace details {

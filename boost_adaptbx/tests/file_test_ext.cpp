@@ -117,7 +117,9 @@ namespace boost_adaptbx { namespace file_conversion {
     double py_cpp = t.elapsed();
     std::cout << "- Reading -\nPython bridge:" << py_t;
     std::cout << "\nPure C++:" << py_cpp;
-    std::cout << "\noverhead: " << (py_t - py_cpp)/py_t*100 << " %";
+    if (py_t > py_cpp) {
+      std::cout << "\noverhead: " << (py_t - py_cpp)/py_t*100 << " %";
+    }
     std::cout << "\n\n";
   }
 
@@ -132,7 +134,9 @@ namespace boost_adaptbx { namespace file_conversion {
     double py_cpp = t.elapsed();
     std::cout << "- Writing -\nPython bridge:" << py_t;
     std::cout << "\nPure C++:" << py_cpp;
-    std::cout << "\noverhead: " << (py_t - py_cpp)/py_t*100 << " %";
+    if (py_t > py_cpp) {
+      std::cout << "\noverhead: " << (py_t - py_cpp)/py_t*100 << " %";
+    }
     std::cout << "\n\n";
   }
 
