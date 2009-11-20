@@ -1,4 +1,4 @@
-import sys, traceback, time
+import sys, traceback, time, os
 import Queue
 import threading
 from libtbx.utils import Sorry
@@ -132,10 +132,8 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
             return_value = self._target(self._args, self._kwargs, self._c)
             message = child_process_message(message_type="return",
                                             data=return_value)
-        except Sorry, s : # XXX: 'Sorry' can't be pickled
-          message = child_process_message(message_type="sorry",
-                                        data=str(s))
         except Exception, e :
+          Sorry.reset_module()
           traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
           message = child_process_message(message_type="exception",
                                           data=(e, traceback_str))
@@ -190,6 +188,7 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
           kwargs        = self._kwargs,
           connection    = child_process_pipe(connection_object=child_conn),
           buffer_stdout = self._buffer_stdout)
+        os.environ["OMP_NUM_THREADS"] = "1"
         child_process.start()
       except Exception, e :
         sys.__stderr__.write("Error starting child process: %s\n" % str(e))
@@ -219,11 +218,8 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
               self._cb_final(message.data)
             self._completed = True
             break
-          elif message.message_type == "sorry" :
-            error = Sorry(str(message.data))
           elif message.message_type == "exception" :
             (error, traceback_info) = message.data
-          if error is not None :
             if self._cb_err is not None :
               self._cb_err(error, traceback_info)
               self._error = True
