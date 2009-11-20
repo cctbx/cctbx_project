@@ -16,6 +16,7 @@ import wx
 import wx.glcanvas
 import math
 import time
+import os
 
 def animation_stepper(time_move=1.0, move_factor=1, frames_per_second=100):
   time_move *= move_factor
@@ -149,6 +150,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.snap_back_rotation()
     elif (key == ord('s')):
       self.autospin_allowed = not self.autospin_allowed
+    elif (key == ord('S')) :
+      self.save_png()
     elif (key == ord('V')):
       gltbx.util.show_versions()
     elif (key == ord('O')):
@@ -546,6 +549,21 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     if self._settings_widget is None :
       self._settings_widget = OpenGLSettingsToolbox(self)
       self._settings_widget.Show()
+
+  def save_png (self, file_name="wx_viewer.png") :
+    import gltbx.viewer_utils
+    try :
+      status = gltbx.viewer_utils.write_png(file_name=file_name,
+        width=self.w,
+        height=self.h)
+    except RuntimeError, e :
+      raise Sorry(str(e))
+    else :
+      if not status :
+        raise Sorry("PNG output failed - did you compile with libpng?")
+      else :
+        print "Saved %dx%d PNG as '%s'." % (self.w, self.h,
+          os.path.abspath(file_name))
 
 class show_points_and_lines_mixin(wxGLWindow):
 

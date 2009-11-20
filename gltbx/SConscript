@@ -33,6 +33,12 @@ if (not env_etc.no_boost_python):
     print "gltbx: OpenGL headers not available."
     print "gltbx: Compilation skipped."
   else:
+    env_utils = env
+    if conf.TryCompile("#include <png.h>", extension=".cpp") :
+      print "gltbx: PNG library found."
+      env_utils = env.Clone()
+      env_utils.Append(SHCXXFLAGS=["-DGLTBX_HAVE_LIBPNG"])
+      env_utils.Prepend(LIBS=["png"])
     for namespace,n_fragments_def,n_fragments_fun in [("gl", 8, 16),
                                                       ("glu", 2, 4)]:
       source=["%s_ext.cpp" % namespace]
@@ -48,9 +54,9 @@ if (not env_etc.no_boost_python):
     env.SharedLibrary(
       target="#lib/gltbx_util_ext",
       source=["util_ext.cpp"])
-    env.SharedLibrary(
+    env_utils.SharedLibrary(
       target="#lib/gltbx_viewer_utils_ext",
-      source=["viewer_utils_ext.cpp"])
+      source=["viewer_utils_ext.cpp", "write_png.cpp"])
     env.SharedLibrary(
       target="#lib/gltbx_quadrics_ext",
       source=["quadrics_ext.cpp"])

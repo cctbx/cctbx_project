@@ -190,6 +190,7 @@ gltbx/tst_viewer_utils.py svneol=native#text/x-python
 gltbx/util.h -text
 gltbx/viewer_utils.py svneol=native#text/x-python
 gltbx/viewer_utils_ext.cpp svneol=native#text/plain
+gltbx/write_png.cpp -text
 gltbx/wx_controllers.py -text
 gltbx/wx_ellipsoids_test.py -text
 gltbx/wx_motion_on_tab.py svneol=native#text/x-python
