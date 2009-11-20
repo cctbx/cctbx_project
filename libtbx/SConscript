@@ -182,13 +182,13 @@ if (sys.platform == "win32"):
       # Reset VS_UNICODE_OUTPUT
       os.environ['VS_UNICODE_OUTPUT'] = VS_UNICODE_OUTPUT
     if (cl_info.find("Version 13.10") >= 0):
-      env_base = Environment(ENV=os.environ, MSVS_VERSION="7.1")
+      env_base = Environment(ENV=os.environ, MSVC_VERSION="7.1")
       env_etc.have_manifest_tool = False
     elif (cl_info.find("Version 14.00") >= 0):
-      env_base = Environment(ENV=os.environ, MSVS_VERSION="8.0")
+      env_base = Environment(ENV=os.environ, MSVC_VERSION="8.0")
       env_etc.have_manifest_tool = True
     elif (cl_info.find("Version 15.00") >= 0):
-      env_base = Environment(ENV=os.environ, MSVS_VERSION="9.0")
+      env_base = Environment(ENV=os.environ, MSVC_VERSION="9.0")
       env_etc.have_manifest_tool = True
     else:
       raise RuntimeError("""\
@@ -197,7 +197,7 @@ Unknown or unsupported cl.exe version.
 Minimum version is 7.1 (Visual Studio 2003).
 For newer versions, please adjust this SConscript.
 """)
-    print "MSVS_VERSION:", env_base["MSVS_VERSION"]
+    print "MSVC_VERSION:", env_base["MSVC_VERSION"]
     env_base.Replace(
       SHCC="cl",
       SHCXX="cl",
@@ -234,7 +234,7 @@ libtbx.scons: Warning: compiling with /MDd:
       if (    libtbx.env.build_options.msvs_arch_flag is not None
           and not platform_64bit):
         opts.append("/arch:%s" %libtbx.env.build_options.msvs_arch_flag)
-      if (env_base["MSVS_VERSION"] != "7.1"):
+      if (env_base["MSVC_VERSION"] != "7.1"):
         opts.append("/fp:fast")
     else:
       opts = ["/Od"]
@@ -256,12 +256,12 @@ libtbx.scons: Warning: compiling with /MDd:
       join_stdout_stderr=True,
       stdout_splitlines=False).stdout_buffer
     if (cl_info.find("Version 13.10") >= 0):
-      env_base = Environment(ENV=os.environ, MSVS_VERSION="7.1")
+      env_base = Environment(ENV=os.environ, MSVC_VERSION="7.1")
     elif (cl_info.find("Version 14.00") >= 0):
-      env_base = Environment(ENV=os.environ, MSVS_VERSION="8.0")
+      env_base = Environment(ENV=os.environ, MSVC_VERSION="8.0")
     else:
       env_base = Environment(ENV=os.environ)
-    print "MSVS_VERSION:", env_base["MSVS_VERSION"]
+    print "MSVC_VERSION:", env_base["MSVC_VERSION"]
     env_etc.have_manifest_tool = os.path.isfile(
       os.path.join(os.path.dirname(cl_exe), "mt.exe"))
     env_base.Replace(
@@ -627,7 +627,7 @@ int main() {
 """ % ['', '#include <omp.h>'][int(sys.platform == 'win32')]
   #
   env_etc.have_openmp = False
-  if (env_etc.compiler == "win32_cl" and env_base["MSVS_VERSION"] == "7.1"):
+  if (env_etc.compiler == "win32_cl" and env_base["MSVC_VERSION"] == "7.1"):
     print "libtbx.scons: OpenMP is not available."
     return
   if (libtbx.env.build_options.enable_boost_threads):
