@@ -445,20 +445,9 @@ else:
     env_etc.gcc_version = libtbx.env_config.get_gcc_version()
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
-    need_fcoalesce_templates = False
     if env_etc.compiler == "darwin_c++":
       cc = "cc"
       cxx = "c++"
-      cxx_version = easy_run.fully_buffered(command="c++ -dumpversion") \
-        .raise_if_errors() \
-        .stdout_lines[0].strip()
-      cxx_major = cxx_version.split(".")[:1]
-      if (len(cxx_major) == 1):
-        try: cxx_major = int(cxx_major[0])
-        except ValueError: pass
-        else:
-          if (cxx_major <= 3):
-            need_fcoalesce_templates = True
     else:
       cc  = env_etc.compiler.replace('darwin_','')
       cxx = cc.replace('gcc', 'g++')
@@ -502,7 +491,7 @@ else:
       if (env_etc.gcc_version < 40201):
         env_etc.ccflags_base.append("-Wno-long-double")
     env_etc.cxxflags_base = []
-    if (need_fcoalesce_templates):
+    if (env_etc.gcc_version < 40000):
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
     if not libtbx.env.build_options.enable_boost_threads:
@@ -512,8 +501,13 @@ else:
       if env_etc.gcc_version >= 40300:
         opts.append("-fno-associative-math")
       opts.append("-ftrapping-math")
-      if (cxx == "c++" and cxx_version == "4.0.0"):
+      if (cxx == "c++"
+            and env_etc.gcc_version == 40000):
         opts[1] = "-O2" # Apple's optimizer is broken
+      elif (cxx == "c++"
+              and env_etc.gcc_version == 40201
+                and libtbx.env.build_options.force_32bit):
+        opts[1] = "-O1" # Apple's optimizer is even more broken
       elif (libtbx.env.build_options.max_optimized):
         opts[1] = "-fast"
         if (env_etc.mac_cpu_is_g4):
