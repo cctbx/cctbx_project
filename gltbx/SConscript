@@ -1,4 +1,5 @@
 import libtbx.load_env
+import os
 Import("env_etc")
 
 env_etc.gltbx_dist = libtbx.env.dist_path("gltbx")
@@ -34,6 +35,12 @@ if (not env_etc.no_boost_python):
     print "gltbx: Compilation skipped."
   else:
     env_utils = env
+    base_dir = libtbx.env.under_build("base")
+    if os.path.isdir(base_dir) :
+      env.Append(LIBPATH=[os.path.join(base_dir, "lib")])
+      env_etc.include_registry.append(
+        env=env,
+        paths=[os.path.join(base_dir, "include")])
     if conf.TryCompile("#include <png.h>", extension=".cpp") :
       print "gltbx: PNG library found."
       env_utils = env.Clone()
