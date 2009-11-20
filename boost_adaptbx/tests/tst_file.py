@@ -39,9 +39,9 @@ class io_test_case(object):
   #         01234567890123456789
 
   def run(self):
-    m = boost.python_file.buffer.size
+    m = boost.python_file.buffer.default_buffer_size
     for n in xrange(50, 0, -1):
-      boost.python_file.buffer.size = n
+      boost.python_file.buffer.default_buffer_size = n
       self.exercise_read_failure()
       self.exercise_write_failure()
       self.exercise_read()
@@ -49,7 +49,7 @@ class io_test_case(object):
       self.exercise_seek_and_read()
       self.exercise_partial_read()
       self.exercise_write_and_seek()
-    boost.python_file.buffer.size = m
+    boost.python_file.buffer.default_buffer_size = m
 
   def exercise_read(self):
     self.create_file_object(mode='r')
@@ -87,7 +87,7 @@ class io_test_case(object):
     self.create_instrumented_file_object(mode='r')
     words = ext.test_read(self.file_object, "read and seek")
     assert words == "should, should, uld, ding, fun, [ eof ]"
-    n = boost.python_file.buffer.size
+    n = boost.python_file.buffer.default_buffer_size
     soughts = self.file_object.seek_call_log
     # stringent tests carefully crafted to make sure the seek-in-buffer
     # optimisation works as expected
@@ -118,7 +118,7 @@ class io_test_case(object):
     expected = '1000 times 1000 equals 1000000'
     assert self.file_content() == expected
     assert self.file_object.tell() == 9
-    if boost.python_file.buffer.size >= 30:
+    if boost.python_file.buffer.default_buffer_size >= 30:
       assert self.file_object.write_call_log == [ expected ]
     self.file_object.close()
 
@@ -192,15 +192,19 @@ class mere_file_test_case(io_test_case):
 
 def time_it(path, buffer_size):
   import os, tempfile
-  if buffer_size:
-    boost.python_file.buffer.size = buffer_size
-  print "Buffer is %i bytes" % boost.python_file.buffer.size
+  if (buffer_size is None):
+    buffer_size = boost.python_file.buffer.default_buffer_size
+  print "Buffer is %i bytes" % buffer_size
   path = os.path.expanduser(path)
   input = open(path, 'r')
-  ext.time_read(input.name, input)
+  inp_buf = boost.python_file.buffer(
+    python_file_obj=input, buffer_size=buffer_size)
+  ext.time_read(input.name, inp_buf)
   fd, name = tempfile.mkstemp()
   output = open(name, 'w')
-  ext.time_write(name, output)
+  out_buf = boost.python_file.buffer(
+    python_file_obj=output, buffer_size=buffer_size)
+  ext.time_write(name, out_buf)
 
 def run(args):
   options = (option_parser()
