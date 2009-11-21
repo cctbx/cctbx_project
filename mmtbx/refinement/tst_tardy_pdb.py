@@ -25,7 +25,7 @@ class potential_object(object):
         density_map,
         geo_manager,
         reduced_geo_manager,
-        nonbonded_attenuation_factor,
+        prolsq_repulsion_function_changes,
         real_space_gradients_delta,
         real_space_target_weight,
         ideal_sites_cart,
@@ -37,10 +37,13 @@ class potential_object(object):
     assert isinstance(
       geo_manager.nonbonded_function,
       cctbx.geometry_restraints.prolsq_repulsion_function)
-    assert nonbonded_attenuation_factor > 0
-    assert nonbonded_attenuation_factor <= 1
+    c = prolsq_repulsion_function_changes
     O.custom_nonbonded_function = geo_manager.nonbonded_function \
-      .customized_copy(k_rep=nonbonded_attenuation_factor)
+      .customized_copy(
+        c_rep=c.c_rep,
+        k_rep=c.k_rep,
+        irexp=c.irexp,
+        rexp=c.rexp)
     O.real_space_gradients_delta = real_space_gradients_delta
     O.real_space_target_weight = real_space_target_weight
     O.ideal_sites_cart = ideal_sites_cart
@@ -181,7 +184,8 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
         density_map=None,
         geo_manager=geo_manager,
         reduced_geo_manager=None,
-        nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
+        prolsq_repulsion_function_changes=
+          params.prolsq_repulsion_function_changes,
         real_space_gradients_delta=None,
         real_space_target_weight=None,
         ideal_sites_cart=None)
@@ -365,7 +369,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
     density_map=fft_map.real_map(),
     geo_manager=geo_manager,
     reduced_geo_manager=reduced_geo_manager,
-    nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
+    prolsq_repulsion_function_changes=params.prolsq_repulsion_function_changes,
     real_space_gradients_delta=real_space_gradients_delta,
     real_space_target_weight=params.real_space_target_weight,
     ideal_sites_cart=ideal_sites_cart,
