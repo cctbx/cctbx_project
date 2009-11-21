@@ -37,8 +37,25 @@ master_phil_str = """\
     .optional = False
   minimization_max_iterations = 0
     .type = int
-  nonbonded_attenuation_factor = 0.75
-    .type = float
+  prolsq_repulsion_function_changes
+    .help = "energy(delta) = "
+            "c_rep*(max(0,(k_rep*vdw_distance)**irexp-delta**irexp))**rexp"
+  {
+    c_rep = None
+      .type = float
+      .help = "Usual value: 16"
+    k_rep = 0.75
+      .type = float
+      .help = "Usual value: 1."
+              "Smaller values reduce the distance threshold at which"
+              "the repulsive force becomes active."
+    irexp = None
+      .type = float
+      .help = "Usual value: 1"
+    rexp = None
+      .type = float
+      .help = "Usual value: 4"
+  }
   omit_bonds_with_slack_greater_than = 0
     .type = float
   constrain_dihedrals_with_sigma_less_than = 10
@@ -53,7 +70,7 @@ class potential_object(object):
 
   def __init__(O,
         xray_weight_factor,
-        nonbonded_attenuation_factor,
+        prolsq_repulsion_function_changes,
         fmodels,
         model,
         target_weights,
@@ -63,17 +80,22 @@ class potential_object(object):
     O.model = model
     O.weights = target_weights.xyz_weights_result
     O.reduced_geo_manager = reduced_geo_manager
-    if (nonbonded_attenuation_factor is None):
+    c = prolsq_repulsion_function_changes
+    if (    c.c_rep is None
+        and c.k_rep is None
+        and c.irexp is None
+        and c.rexp is None):
       O.custom_nonbonded_function = None
     else:
-      assert nonbonded_attenuation_factor > 0
-      assert nonbonded_attenuation_factor <= 1
       nonbonded_function = model.restraints_manager.geometry.nonbonded_function
       assert isinstance(
         nonbonded_function,
         cctbx.geometry_restraints.prolsq_repulsion_function)
       O.custom_nonbonded_function = nonbonded_function.customized_copy(
-        k_rep=nonbonded_attenuation_factor)
+        c_rep=c.c_rep,
+        k_rep=c.k_rep,
+        irexp=c.irexp,
+        rexp=c.rexp)
     O.fmodels.create_target_functors()
     O.fmodels.prepare_target_functors_for_minimization()
     O.last_sites_moved = None
@@ -157,7 +179,7 @@ def run(fmodels, model, target_weights, params, log,
   log.flush()
   potential_obj = potential_object(
     xray_weight_factor=params.xray_weight_factor,
-    nonbonded_attenuation_factor=params.nonbonded_attenuation_factor,
+    prolsq_repulsion_function_changes=params.prolsq_repulsion_function_changes,
     fmodels=fmodels,
     model=model,
     target_weights=target_weights,
