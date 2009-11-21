@@ -252,7 +252,7 @@ namespace grid_tags_detail {
       scitbx::math::linear_correlation<>
       dependent_correlation(
         af::const_ref<FloatType, af::c_grid_padded<3> > const& data,
-        double epsilon=1.e-15) const
+        double epsilon=1e-15) const
       {
         CCTBX_ASSERT(is_valid_);
         CCTBX_ASSERT(tag_array_.accessor().all_eq(data.accessor().focus()));

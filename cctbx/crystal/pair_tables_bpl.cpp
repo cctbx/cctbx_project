@@ -2,7 +2,6 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_arg.hpp>
@@ -55,15 +54,6 @@ namespace {
   {
     typedef pair_asu_table<> w_t;
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      cluster_pivot_selection_overloads, cluster_pivot_selection, 0, 3)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      add_all_pairs_overloads, add_all_pairs, 1, 3)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      extract_pair_sym_table_overloads, extract_pair_sym_table, 0, 1)
-
     static void
     wrap()
     {
@@ -87,23 +77,21 @@ namespace {
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
         .def("pair_counts", &w_t::pair_counts)
-        .def("cluster_pivot_selection", &w_t::cluster_pivot_selection,
-          cluster_pivot_selection_overloads((
-            arg_("general_positions_only")=false,
-            arg_("max_clusters")=0,
-            arg_("estimated_reduction_factor")=4)))
+        .def("cluster_pivot_selection", &w_t::cluster_pivot_selection, (
+          arg("general_positions_only")=false,
+          arg("max_clusters")=0,
+          arg("estimated_reduction_factor")=4))
         .def("add_covalent_pairs", &w_t::add_covalent_pairs, (
-            arg_("scattering_types"),
-            arg_("exclude_scattering_types")=boost::python::object(),
-            arg_("distance_cutoff")=3.5,
-            arg_("min_cubicle_edge")=5,
-            arg_("tolerance")=0.5,
-            arg_("epsilon")=1.e-6), return_self<>())
-        .def("add_all_pairs", &w_t::add_all_pairs,
-          add_all_pairs_overloads((
-            arg_("distance_cutoff"),
-            arg_("min_cubicle_edge")=5,
-            arg_("epsilon")=1.e-6))[return_self<>()])
+          arg("scattering_types"),
+          arg("exclude_scattering_types")=boost::python::object(),
+          arg("distance_cutoff")=3.5,
+          arg("min_cubicle_edge")=5,
+          arg("tolerance")=0.5,
+          arg("epsilon")=1e-6), return_self<>())
+        .def("add_all_pairs", &w_t::add_all_pairs, (
+          arg("distance_cutoff"),
+          arg("min_cubicle_edge")=5,
+          arg("epsilon")=1e-6), return_self<>())
         .def("add_pair_sym_table", &w_t::add_pair_sym_table, (
           arg_("sym_table")), return_self<>())
         .def("add_pair", (pair_asu_table<>&(w_t::*)(
@@ -115,9 +103,8 @@ namespace {
         .def("add_pair", (pair_asu_table<>&(w_t::*)(
             af::tiny<unsigned, 2> const&)) &w_t::add_pair,
           (arg_("i_seqs")), return_self<>())
-        .def("extract_pair_sym_table", &w_t::extract_pair_sym_table,
-          extract_pair_sym_table_overloads((
-            arg_("skip_j_seq_less_than_i_seq")=true)))
+        .def("extract_pair_sym_table", &w_t::extract_pair_sym_table, (
+          arg("skip_j_seq_less_than_i_seq")=true))
         .def("angle_pair_asu_table", &w_t::angle_pair_asu_table)
       ;
     }

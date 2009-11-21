@@ -8,7 +8,6 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/args.hpp>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
@@ -27,10 +26,6 @@ namespace cctbx { namespace maptbx { namespace boost_python {
   void wrap_real_space_refinement();
 
 namespace {
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    non_crystallographic_eight_point_interpolation_overloads,
-    non_crystallographic_eight_point_interpolation, 3, 5)
 
   void init_module()
   {
@@ -182,13 +177,12 @@ namespace {
          scitbx::vec3<double> const&,
          bool,
          double const&))
-           non_crystallographic_eight_point_interpolation,
-         non_crystallographic_eight_point_interpolation_overloads((
-           arg_("map"),
-           arg_("gridding_matrix"),
-           arg_("site_cart"),
-           arg_("allow_out_of_bounds")=false,
-           arg_("out_of_bounds_substitute_value")=0)));
+           non_crystallographic_eight_point_interpolation, (
+             arg("map"),
+             arg("gridding_matrix"),
+             arg("site_cart"),
+             arg("allow_out_of_bounds")=false,
+             arg("out_of_bounds_substitute_value")=0));
     def("asu_eight_point_interpolation",
       (double(*)
         (af::const_ref<double, af::flex_grid<> > const&,

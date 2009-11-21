@@ -170,7 +170,7 @@ namespace cctbx { namespace geometry_restraints {
       grads_and_curvs_impl(
         scitbx::vec3<double>* grads,
         scitbx::vec3<double>* curvs,
-        double epsilon=1.e-100) const
+        double epsilon=1e-100) const
       {
         if (!have_angle_model) {
           std::fill_n(grads, 3U, scitbx::vec3<double>(0,0,0));
@@ -263,7 +263,7 @@ namespace cctbx { namespace geometry_restraints {
             "Features and their derivatives"
        */
       af::shared<scitbx::vec3<double> >
-      grads_and_curvs(double epsilon=1.e-100) const
+      grads_and_curvs(double epsilon=1e-100) const
       {
         af::shared<scitbx::vec3<double> > result(6);
         grads_and_curvs_impl(&result[0], &result[3], epsilon);
@@ -274,7 +274,7 @@ namespace cctbx { namespace geometry_restraints {
       /*! See also: grads_and_curvs()
        */
       af::tiny<scitbx::vec3<double>, 3>
-      gradients(double epsilon=1.e-100) const
+      gradients(double epsilon=1e-100) const
       {
         af::tiny<scitbx::vec3<double>, 3> result;
         grads_and_curvs_impl(result.begin(), 0, epsilon);

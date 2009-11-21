@@ -3,7 +3,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
@@ -227,9 +226,6 @@ namespace {
     }
   };
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    bond_residual_sum_overloads, bond_residual_sum, 3, 4)
-
   void
   wrap_all()
   {
@@ -290,12 +286,11 @@ namespace {
         af::const_ref<scitbx::vec3<double> > const&,
         bond_sorted_asu_proxies_base const&,
         af::ref<scitbx::vec3<double> > const&,
-        bool)) bond_residual_sum,
-      bond_residual_sum_overloads((
-        arg_("sites_cart"),
-        arg_("sorted_asu_proxies"),
-        arg_("gradient_array"),
-        arg_("disable_cache")=false)));
+        bool)) bond_residual_sum, (
+          arg("sites_cart"),
+          arg("sorted_asu_proxies"),
+          arg("gradient_array"),
+          arg("disable_cache")=false));
   }
 
 } // namespace <anonymous>

@@ -3,7 +3,7 @@
 #include <cctbx/xray/sampling_base.h>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
-#include <boost/python/overloads.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
@@ -48,32 +48,30 @@ namespace {
     }
   };
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    calc_u_base_overloads, calc_u_base, 2, 4)
-
-  void
-  apply_u_extra_double(
-    uctbx::unit_cell const& unit_cell,
-    double const& u_extra,
-    af::const_ref<miller::index<> > const& miller_indices,
-    af::ref<std::complex<double> > const& structure_factors,
-    double const& multiplier=1)
-  {
-    apply_u_extra(unit_cell, u_extra, miller_indices, structure_factors,
-                      multiplier);
-  }
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    apply_u_extra_double_overloads, apply_u_extra_double, 4, 5)
-
 } // namespace <anoymous>
 
   void wrap_sampling_base()
   {
     using namespace boost::python;
 
-    def("calc_u_base", calc_u_base, calc_u_base_overloads());
-    def("apply_u_extra",apply_u_extra_double,apply_u_extra_double_overloads());
+    def("calc_u_base", calc_u_base, (
+      arg("d_min"),
+      arg("grid_resolution_factor"),
+      arg("quality_factor")=100,
+      arg("max_u_base")=adptbx::b_as_u(1000)));
+
+    def("apply_u_extra",
+      (void(*)(
+        uctbx::unit_cell const&,
+        double const&,
+        af::const_ref<miller::index<> > const&,
+        af::ref<std::complex<double> > const&,
+        double const&)) apply_u_extra, (
+          arg("unit_cell"),
+          arg("u_extra"),
+          arg("miller_indices"),
+          arg("structure_factors"),
+          arg("multiplier")=1));
 
     sampling_base_wrappers::wrap();
   }
