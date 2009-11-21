@@ -237,7 +237,7 @@ namespace cctbx { namespace geometry_restraints {
             "Features and their derivatives"
        */
       af::tiny<scitbx::vec3<double>, 4>
-      gradients(double epsilon=1.e-100) const
+      gradients(double epsilon=1e-100) const
       {
         af::tiny<scitbx::vec3<double>, 4> result;
         double d_21_norm = d_21.length_sq();

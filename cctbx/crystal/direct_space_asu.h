@@ -97,7 +97,7 @@ namespace direct_space_asu {
       float_asu(
         uctbx::unit_cell const& unit_cell,
         facets_t const& facets,
-        FloatType const& is_inside_epsilon=1.e-6)
+        FloatType const& is_inside_epsilon=1e-6)
       :
         unit_cell_(unit_cell),
         facets_(facets),
@@ -179,7 +179,7 @@ namespace direct_space_asu {
       af::shared<scitbx::vec3<FloatType> >
       volume_vertices(
         bool cartesian=false,
-        FloatType const& epsilon=1.e-6) const
+        FloatType const& epsilon=1e-6) const
       {
         CCTBX_ASSERT(epsilon > 0);
         af::shared<scitbx::vec3<FloatType> > result;

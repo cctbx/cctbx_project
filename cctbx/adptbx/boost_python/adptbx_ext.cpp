@@ -5,7 +5,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -39,15 +38,12 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("eigensystem", no_init)
-        .def(init<sym_mat3<double> const&>())
+        .def(init<sym_mat3<double> const&>((arg("sym_mat3"))))
         .def("vectors", &w_t::vectors, ccr())
         .def("values", &w_t::values, ccr())
       ;
     }
   };
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    eigenvalue_filtering_overloads, eigenvalue_filtering, 1, 3)
 
   void init_module()
   {
@@ -103,7 +99,7 @@ namespace {
 #undef CCTBX_DEF
 
     class_<factor_u_cart_u_iso<> >("factor_u_cart_u_iso", no_init)
-      .def(init<sym_mat3<double> const&>((arg_("u_cart"))))
+      .def(init<sym_mat3<double> const&>((arg("u_cart"))))
       .def_readonly("u_iso", &factor_u_cart_u_iso<>::u_iso)
       .add_property("u_cart_minus_u_iso",
         make_getter(&factor_u_cart_u_iso<>::u_cart_minus_u_iso, rbv()))
@@ -111,7 +107,7 @@ namespace {
     class_<factor_u_star_u_iso<> >("factor_u_star_u_iso", no_init)
       .def(init<
         uctbx::unit_cell const&, sym_mat3<double> const&>((
-          arg_("unit_cell"), arg_("u_star"))))
+          arg("unit_cell"), arg("u_star"))))
       .def_readonly("u_iso", &factor_u_star_u_iso<>::u_iso)
       .add_property("u_star_minus_u_iso",
         make_getter(&factor_u_star_u_iso<>::u_star_minus_u_iso, rbv()))
@@ -119,7 +115,7 @@ namespace {
     class_<factor_u_cif_u_iso<> >("factor_u_cif_u_iso", no_init)
       .def(init<
         uctbx::unit_cell const&, sym_mat3<double> const&>((
-          arg_("unit_cell"), arg_("u_cif"))))
+          arg("unit_cell"), arg("u_cif"))))
       .def_readonly("u_iso", &factor_u_cif_u_iso<>::u_iso)
       .add_property("u_cif_minus_u_iso",
         make_getter(&factor_u_cif_u_iso<>::u_cif_minus_u_iso, rbv()))
@@ -127,7 +123,7 @@ namespace {
     class_<factor_beta_u_iso<> >("factor_beta_u_iso", no_init)
       .def(init<
         uctbx::unit_cell const&, sym_mat3<double> const&>((
-          arg_("unit_cell"), arg_("beta"))))
+          arg("unit_cell"), arg("beta"))))
       .def_readonly("u_iso", &factor_beta_u_iso<>::u_iso)
       .add_property("beta_minus_u_iso",
         make_getter(&factor_beta_u_iso<>::beta_minus_u_iso, rbv()))
@@ -148,10 +144,10 @@ namespace {
       debye_waller_factor_u_star);
     def("debye_waller_factor_u_star_gradient_coefficients",
       debye_waller_factor_u_star_gradient_coefficients_double, (
-        arg_("h")));
+        arg("h")));
     def("debye_waller_factor_u_star_curvature_coefficients",
       debye_waller_factor_u_star_curvature_coefficients_double, (
-        arg_("h")));
+        arg("h")));
     def("debye_waller_factor_beta",
       (double(*)(miller::index<> const&, sym_mat3<double> const&))
       debye_waller_factor_beta);
@@ -200,11 +196,10 @@ namespace {
     def("eigenvalue_filtering",
       (sym_mat3<double>(*)(
         sym_mat3<double> const&, double const&, double const&))
-          eigenvalue_filtering,
-          eigenvalue_filtering_overloads((
-            arg_("u_cart"),
-            arg_("u_min")=0,
-            arg_("u_max")=0)));
+          eigenvalue_filtering, (
+            arg("u_cart"),
+            arg("u_min")=0,
+            arg("u_max")=0));
 
     eigensystem_wrappers::wrap();
 

@@ -1,7 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <boost/python/class.hpp>
-#include <boost/python/overloads.hpp>
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <cctbx/crystal/site_cluster_analysis.h>
 #include <cctbx/crystal/workarounds_bpl.h>
@@ -15,15 +14,6 @@ namespace {
   struct site_cluster_analysis_wrappers
   {
     typedef site_cluster_analysis<> w_t;
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      process_sites_frac_3_overloads, process_sites_frac, 2, 3)
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      process_sites_frac_2_overloads, process_sites_frac, 1, 2)
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      process_sites_cart_3_overloads, process_sites_cart, 2, 3)
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      process_sites_cart_2_overloads, process_sites_cart, 1, 2)
 
     static void
     wrap()
@@ -85,33 +75,33 @@ namespace {
             af::const_ref<scitbx::vec3<double> > const&,
             sgtbx::site_symmetry_table const&,
             std::size_t))
-              &w_t::process_sites_frac, process_sites_frac_3_overloads((
-                arg_("original_sites"),
-                arg_("site_symmetry_table"),
-                arg_("max_clusters")=0)))
+              &w_t::process_sites_frac, (
+                arg("original_sites"),
+                arg("site_symmetry_table"),
+                arg("max_clusters")=0))
         .def("process_sites_frac",
           (af::shared<std::size_t>(w_t::*)(
             af::const_ref<scitbx::vec3<double> > const&,
             std::size_t))
-              &w_t::process_sites_frac, process_sites_frac_2_overloads((
-                arg_("original_sites"),
-                arg_("max_clusters")=0)))
+              &w_t::process_sites_frac, (
+                arg("original_sites"),
+                arg("max_clusters")=0))
         .def("process_sites_cart",
           (af::shared<std::size_t>(w_t::*)(
             af::const_ref<scitbx::vec3<double> > const&,
             sgtbx::site_symmetry_table const&,
             std::size_t))
-              &w_t::process_sites_cart, process_sites_cart_3_overloads((
-                arg_("original_sites"),
-                arg_("site_symmetry_table"),
-                arg_("max_clusters")=0)))
+              &w_t::process_sites_cart, (
+                arg("original_sites"),
+                arg("site_symmetry_table"),
+                arg("max_clusters")=0))
         .def("process_sites_cart",
           (af::shared<std::size_t>(w_t::*)(
             af::const_ref<scitbx::vec3<double> > const&,
             std::size_t))
-              &w_t::process_sites_cart, process_sites_cart_2_overloads((
-                arg_("original_sites"),
-                arg_("max_clusters")=0)))
+              &w_t::process_sites_cart, (
+                arg("original_sites"),
+                arg("max_clusters")=0))
       ;
     }
   };

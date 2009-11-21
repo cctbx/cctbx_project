@@ -4,7 +4,6 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -148,19 +147,15 @@ namespace {
     }
   };
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    get_standard_label_overloads, get_standard_label, 1, 3)
-
   void init_module()
   {
     using namespace boost::python;
 
     def("standard_labels_list", standard_labels_list);
-    def("get_standard_label", get_standard_label,
-      get_standard_label_overloads((
-        arg_("label"),
-        arg_("exact")=false,
-        arg_("optional")=false)));
+    def("get_standard_label", get_standard_label, (
+      arg("label"),
+      arg("exact")=false,
+      arg("optional")=false));
 
     isotropic_form_factor_mixin_wrapper<gaussian>::wrap(
       "gaussian_mixin");

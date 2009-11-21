@@ -6,7 +6,6 @@
 #include <cctbx/eltbx/sasaki.h>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
@@ -19,15 +18,6 @@ namespace {
   {
     typedef scatterer<> w_t;
     typedef w_t::float_type flt_t;
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      apply_symmetry_1_overloads, apply_symmetry, 2, 5)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      apply_symmetry_2_overloads, apply_symmetry, 1, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      apply_symmetry_u_star_overloads, apply_symmetry_u_star, 1, 2)
 
     static void
     wrap()
@@ -125,30 +115,27 @@ namespace {
           arg_("q_shift")))
         .def("apply_symmetry",
           (sgtbx::site_symmetry(w_t::*)(
-             uctbx::unit_cell const&,
-             sgtbx::space_group const&,
-             double const&,
-             double const&,
-             bool)) &w_t::apply_symmetry,
-          apply_symmetry_1_overloads((
-            arg_("unit_cell"),
-            arg_("space_group"),
-            arg_("min_distance_sym_equiv")=0.5,
-            arg_("u_star_tolerance")=0,
-            arg_("assert_min_distance_sym_equiv")=true)))
+            uctbx::unit_cell const&,
+            sgtbx::space_group const&,
+            double const&,
+            double const&,
+            bool)) &w_t::apply_symmetry, (
+              arg("unit_cell"),
+              arg("space_group"),
+              arg("min_distance_sym_equiv")=0.5,
+              arg("u_star_tolerance")=0,
+              arg("assert_min_distance_sym_equiv")=true))
         .def("apply_symmetry",
           (void(w_t::*)(
-             sgtbx::site_symmetry_ops const&,
-             double const&)) &w_t::apply_symmetry,
-          apply_symmetry_2_overloads((
-            arg_("site_symmetry_ops"),
-            arg_("u_star_tolerance")=0)))
+            sgtbx::site_symmetry_ops const&,
+            double const&)) &w_t::apply_symmetry, (
+              arg("site_symmetry_ops"),
+              arg("u_star_tolerance")=0))
         .def("apply_symmetry_site", &w_t::apply_symmetry_site, (
           arg_("site_symmetry_ops")))
-        .def("apply_symmetry_u_star", &w_t::apply_symmetry_u_star,
-          apply_symmetry_u_star_overloads((
-            arg_("site_symmetry_ops"),
-            arg_("u_star_tolerance")=0)))
+        .def("apply_symmetry_u_star", &w_t::apply_symmetry_u_star, (
+          arg("site_symmetry_ops"),
+          arg("u_star_tolerance")=0))
         .def("multiplicity", &w_t::multiplicity)
         .def("weight_without_occupancy", &w_t::weight_without_occupancy)
         .def("weight", &w_t::weight)
@@ -158,9 +145,6 @@ namespace {
       ;
     }
   };
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    apply_symmetry_u_stars_overloads, apply_symmetry_u_stars, 2, 3)
 
 } // namespace <anoymous>
 
@@ -253,10 +237,10 @@ namespace {
       (void(*)(
         sgtbx::site_symmetry_table const&,
         af::ref<scatterer<> > const&,
-        double)) 0, apply_symmetry_u_stars_overloads((
-          arg_("site_symmetry_table"),
-          arg_("scatterers"),
-          arg_("u_star_tolerance")=0)));
+        double)) apply_symmetry_u_stars, (
+          arg("site_symmetry_table"),
+          arg("scatterers"),
+          arg("u_star_tolerance")=0));
 
     def("add_scatterers_ext",
       (void(*)(

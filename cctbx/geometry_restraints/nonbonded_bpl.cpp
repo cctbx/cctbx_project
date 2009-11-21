@@ -3,7 +3,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_by_value.hpp>
@@ -214,56 +213,54 @@ namespace {
     }
   };
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    nonbonded_residual_sum_overloads, nonbonded_residual_sum, 4, 5)
-
   template <typename NonbondedFunction>
   void
   wrap_functions(scitbx::type_holder<NonbondedFunction> const&)
   {
     using boost::python::def;
-    using boost::python::arg_;
+    using boost::python::arg;
     def("nonbonded_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<nonbonded_simple_proxy> const&)) nonbonded_deltas,
-      (arg_("sites_cart"), arg_("proxies")));
+      (arg("sites_cart"), arg("proxies")));
     def("nonbonded_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<nonbonded_simple_proxy> const&,
         NonbondedFunction const& function)) nonbonded_residuals,
-      (arg_("sites_cart"), arg_("proxies"), arg_("function")));
+      (arg("sites_cart"), arg("proxies"), arg("function")));
     def("nonbonded_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<nonbonded_simple_proxy> const&,
         af::ref<scitbx::vec3<double> > const&,
         NonbondedFunction const& function)) nonbonded_residual_sum,
-      (arg_("sites_cart"), arg_("proxies"), arg_("gradient_array"),
-       arg_("function")));
+      (arg("sites_cart"), arg("proxies"), arg("gradient_array"),
+       arg("function")));
     def("nonbonded_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         nonbonded_sorted_asu_proxies_base const&)) nonbonded_deltas,
-      (arg_("sites_cart"), arg_("sorted_asu_proxies")));
+      (arg("sites_cart"), arg("sorted_asu_proxies")));
     def("nonbonded_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         nonbonded_sorted_asu_proxies_base const&,
         NonbondedFunction const& function)) nonbonded_residuals,
-      (arg_("sites_cart"), arg_("sorted_asu_proxies"), arg_("function")));
+      (arg("sites_cart"), arg("sorted_asu_proxies"), arg("function")));
     def("nonbonded_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         nonbonded_sorted_asu_proxies_base const&,
         af::ref<scitbx::vec3<double> > const&,
         NonbondedFunction const&,
-        bool)) nonbonded_residual_sum,
-      nonbonded_residual_sum_overloads(
-        (arg_("sites_cart"), arg_("sorted_asu_proxies"),
-         arg_("gradient_array"), arg_("function"),
-         arg_("disable_cache")=false)));
+        bool)) nonbonded_residual_sum, (
+          arg("sites_cart"),
+          arg("sorted_asu_proxies"),
+          arg("gradient_array"),
+          arg("function"),
+          arg("disable_cache")=false));
   }
 
   void

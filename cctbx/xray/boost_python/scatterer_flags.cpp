@@ -1,7 +1,6 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_arg.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/make_constructor.hpp>

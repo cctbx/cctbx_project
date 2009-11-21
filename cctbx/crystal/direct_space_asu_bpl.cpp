@@ -7,7 +7,6 @@
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_arg.hpp>
-#include <boost/python/overloads.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <cctbx/crystal/direct_space_asu.h>
@@ -20,9 +19,6 @@ namespace {
   struct float_cut_plane_wrappers
   {
     typedef float_cut_plane<> w_t;
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      is_inside_overloads, is_inside, 1, 2)
 
     static void
     wrap()
@@ -37,8 +33,8 @@ namespace {
           make_setter(&w_t::n, dcp()))
         .def_readwrite("c", &w_t::c)
         .def("evaluate", &w_t::evaluate, (arg_("point")))
-        .def("is_inside", &w_t::is_inside, is_inside_overloads(
-          (arg_("point"), arg_("epsilon"))))
+        .def("is_inside", &w_t::is_inside, (
+          arg("point"), arg("epsilon")=0))
         .def("get_point_in_plane", &w_t::get_point_in_plane)
         .def("add_buffer", &w_t::add_buffer,
           (arg_("unit_cell"), arg_("thickness")))
@@ -49,15 +45,6 @@ namespace {
   struct float_asu_wrappers
   {
     typedef float_asu<> w_t;
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      volume_vertices_overloads, volume_vertices, 0, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      box_min_overloads, box_min, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      box_max_overloads, box_max, 0, 1)
 
     static void
     wrap()
@@ -77,12 +64,11 @@ namespace {
         .def("is_inside_frac", &w_t::is_inside_frac, (arg_("sites_frac")))
         .def("is_inside_cart", &w_t::is_inside_cart, (arg_("sites_cart")))
         .def("_add_buffer", &w_t::add_buffer)
-        .def("volume_vertices", &w_t::volume_vertices,
-          volume_vertices_overloads((arg_("cartesian"), arg_("epsilon"))))
-        .def("box_min", &w_t::box_min, box_min_overloads(
-          (arg_("cartesian")))[ccr()])
-        .def("box_max", &w_t::box_max, box_max_overloads(
-          (arg_("cartesian")))[ccr()])
+        .def("volume_vertices", &w_t::volume_vertices, (
+          arg("cartesian")=false,
+          arg("epsilon")=1e-6))
+        .def("box_min", &w_t::box_min, (arg("cartesian")=false), ccr())
+        .def("box_max", &w_t::box_max, (arg("cartesian")=false), ccr())
       ;
       {
         using namespace scitbx::boost_python::container_conversions;
@@ -112,9 +98,6 @@ namespace {
   {
     typedef asu_mapping_index_pair w_t;
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      is_active_overloads, is_active, 0, 1)
-
     static void
     wrap()
     {
@@ -123,8 +106,7 @@ namespace {
         .def_readonly("i_seq", &w_t::i_seq)
         .def_readonly("j_seq", &w_t::j_seq)
         .def_readonly("j_sym", &w_t::j_sym)
-        .def("is_active", &w_t::is_active, is_active_overloads(
-          (arg_("minimal"))))
+        .def("is_active", &w_t::is_active, (arg("minimal")=false))
       ;
     }
   };
@@ -150,15 +132,6 @@ namespace {
   {
     typedef asu_mappings<> w_t;
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      process_overloads, process, 1, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      process_sites_frac_overloads, process_sites_frac, 1, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      process_sites_cart_overloads, process_sites_cart, 1, 2)
-
     static void
     wrap()
     {
@@ -181,10 +154,9 @@ namespace {
         .def("asu_buffer", &w_t::asu_buffer, rir())
         .def("buffer_covering_sphere", &w_t::buffer_covering_sphere, rir())
         .def("process",
-          (w_t&(w_t::*)(fractional<> const&, double const&))
-            &w_t::process, process_overloads((
-          arg_("original_site"), arg_("min_distance_sym_equiv")))[
-            return_self<>()])
+          (w_t&(w_t::*)(fractional<> const&, double const&)) &w_t::process, (
+            arg("original_site"), arg("min_distance_sym_equiv")=0.5),
+              return_self<>())
         .def("process",
           (w_t&(w_t::*)(fractional<> const&, sgtbx::site_symmetry_ops const&))
               &w_t::process, (
@@ -194,9 +166,10 @@ namespace {
           (w_t&(w_t::*)(
             af::const_ref<scitbx::vec3<double> > const&,
             double const&))
-              &w_t::process_sites_frac, process_sites_frac_overloads((
-          arg_("original_sites"), arg_("min_distance_sym_equiv")))[
-            return_self<>()])
+              &w_t::process_sites_frac, (
+            arg("original_sites"),
+            arg("min_distance_sym_equiv")=0.5),
+              return_self<>())
         .def("process_sites_frac",
           (w_t&(w_t::*)(
             af::const_ref<scitbx::vec3<double> > const&,
@@ -208,9 +181,10 @@ namespace {
           (w_t&(w_t::*)(
             af::const_ref<scitbx::vec3<double> > const&,
             double const&))
-              &w_t::process_sites_cart, process_sites_cart_overloads((
-          arg_("original_sites"), arg_("min_distance_sym_equiv")))[
-            return_self<>()])
+              &w_t::process_sites_cart, (
+            arg("original_sites"),
+            arg("min_distance_sym_equiv")=0.5),
+              return_self<>())
         .def("process_sites_cart",
           (w_t&(w_t::*)(
             af::const_ref<scitbx::vec3<double> > const&,

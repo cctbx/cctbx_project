@@ -3,7 +3,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
@@ -73,9 +72,6 @@ namespace {
   {
     typedef dihedral w_t;
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      gradients_overloads, gradients, 0, 1)
-
     static void
     wrap()
     {
@@ -101,8 +97,7 @@ namespace {
         .def_readonly("angle_model", &w_t::angle_model)
         .def_readonly("delta", &w_t::delta)
         .def("residual", &w_t::residual)
-        .def("gradients", &w_t::gradients, gradients_overloads(
-          (arg_("epsilon"))))
+        .def("gradients", &w_t::gradients, (arg_("epsilon")=1e-100))
       ;
     }
   };

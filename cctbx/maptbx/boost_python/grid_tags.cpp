@@ -6,7 +6,6 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
-#include <boost/python/overloads.hpp>
 
 namespace cctbx { namespace maptbx {
 namespace {
@@ -14,12 +13,6 @@ namespace {
   struct grid_tags_wrappers
   {
     typedef grid_tags<> w_t;
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      dependent_correlation_overloads, dependent_correlation, 1, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      verify_overloads, verify, 1, 2)
 
     static void
     wrap()
@@ -43,28 +36,28 @@ namespace {
           (scitbx::math::linear_correlation<>(w_t::*)(
             af::const_ref<float, af::c_grid_padded<3> > const&,
             double) const)
-              &w_t::dependent_correlation,
-              dependent_correlation_overloads(
-                (arg_("data"), arg_("epsilon"))))
+              &w_t::dependent_correlation, (
+                arg("data"),
+                arg("epsilon")=1e-15))
         .def("dependent_correlation",
           (scitbx::math::linear_correlation<>(w_t::*)(
             af::const_ref<double, af::c_grid_padded<3> > const&,
             double) const)
-              &w_t::dependent_correlation,
-              dependent_correlation_overloads(
-                (arg_("data"), arg_("epsilon"))))
+              &w_t::dependent_correlation, (
+                arg("data"),
+                arg("epsilon")=1e-15))
         .def("verify",
           (bool(w_t::*)(
             af::const_ref<float, af::c_grid_padded<3> > const&,
             double) const)
-              &w_t::verify, verify_overloads(
-                (arg_("data"), arg_("min_correlation"))))
+              &w_t::verify, (
+                arg_("data"), arg_("min_correlation")=0.99))
         .def("verify",
           (bool(w_t::*)(
             af::const_ref<double, af::c_grid_padded<3> > const&,
             double) const)
-              &w_t::verify, verify_overloads(
-                (arg_("data"), arg_("min_correlation"))))
+              &w_t::verify, (
+                arg_("data"), arg_("min_correlation")=0.99))
         .def("sum_sym_equiv_points",
           (void(w_t::*)(af::ref<float, c_grid_padded_p1<3> > const&) const)
             &w_t::sum_sym_equiv_points,
