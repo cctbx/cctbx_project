@@ -156,6 +156,7 @@ BOOST_PYTHON_MODULE(spotfinder_distltbx_ext)
    def("bin_populations",bin_populations);
    def("bin_exclusion_and_impact",bin_exclusion_and_impact);
 
+   using boost::python::arg;
    class_<SpotFilterAgent>("SpotFilterAgent", init< double const&,
       double const&, double const&, double const&, double const&,
       af::shared<Distl::icering> >(
