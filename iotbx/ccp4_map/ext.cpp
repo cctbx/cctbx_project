@@ -146,7 +146,7 @@ namespace ccp4_map {
     using namespace boost::python;
     typedef return_value_policy<return_by_value> rbv;
     class_<map_reader>("map_reader", no_init)
-      .def(init<std::string const&>((arg_("file_name"))))
+      .def(init<std::string const&>((arg("file_name"))))
       .def_readonly("header_min", &map_reader::header_min)
       .def_readonly("header_max", &map_reader::header_max)
       .def_readonly("header_mean", &map_reader::header_mean)

@@ -144,7 +144,7 @@ namespace scitbx { namespace {
     def("use_const_ref_c_grid_3", use_const_ref_c_grid_3);
     def("use_const_ref_c_grid_padded_2", use_const_ref_c_grid_padded_2);
     def("use_const_ref_c_grid_padded_3", use_const_ref_c_grid_padded_3);
-    def("make_boost_int_2", make_boost_int_2, (arg_("x0")=7, arg_("x1")=2));
+    def("make_boost_int_2", make_boost_int_2, (arg("x0")=7, arg("x1")=2));
 
     boost::python::to_python_converter<
       boost::array<int, 2>,

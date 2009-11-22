@@ -119,27 +119,27 @@ namespace {
           af::versa<double, af::flex_grid<> >,
           double const&,
           int>((
-            arg_("a_work"),
-            arg_("min_abs_pivot")=0,
-            arg_("max_rank")=-1)))
+            arg("a_work"),
+            arg("min_abs_pivot")=0,
+            arg("max_rank")=-1)))
         .def(init<
           af::versa<double, af::flex_grid<> >,
           af::shared<double>,
           double const&,
           int>((
-            arg_("a_work"),
-            arg_("b_work"),
-            arg_("min_abs_pivot")=0,
-            arg_("max_rank")=-1)))
+            arg("a_work"),
+            arg("b_work"),
+            arg("min_abs_pivot")=0,
+            arg("max_rank")=-1)))
         .add_property("col_perm", make_getter(&wt::col_perm, rbv()))
         .def_readonly("rank", &wt::rank)
         .def_readonly("nullity", &wt::nullity)
         .def("is_in_row_space", &wt::is_in_row_space, (
-          arg_("x"),
-          arg_("epsilon")))
+          arg("x"),
+          arg("epsilon")))
         .def("back_substitution", &wt::back_substitution, (
-          arg_("free_values"),
-          arg_("epsilon")=0))
+          arg("free_values"),
+          arg("epsilon")=0))
       ;
     }
   };

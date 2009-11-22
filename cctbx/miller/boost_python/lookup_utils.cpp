@@ -27,9 +27,9 @@ namespace{
         .def(init< scitbx::af::const_ref< cctbx::miller::index<> >  const&,
                    cctbx::sgtbx::space_group const&,
                    bool const&
-                 >((arg_("miller_indices"),
-                    arg_("space_group"),
-                    arg_("anomalous_flag") )))
+                 >((arg("miller_indices"),
+                    arg("space_group"),
+                    arg("anomalous_flag") )))
         .def("n_duplicates", &w_t::n_duplicates)
         .def("find_hkl", (long(w_t::*)(cctbx::miller::index<> const&))
              &w_t::find_hkl)
@@ -60,10 +60,10 @@ namespace{
                    long const&
                  >
              ((
-                arg_("miller_indices"),
-                arg_("space_group"),
-                arg_("anomalous_flag"),
-                arg_("radius")
+                arg("miller_indices"),
+                arg("space_group"),
+                arg("anomalous_flag"),
+                arg("radius")
                 )))
         .def("construct_neighbourhood",
              ( std::vector<unsigned>(w_t::*) ( cctbx::miller::index<> const&) )
@@ -112,13 +112,13 @@ namespace{
                    std::size_t const&
                  >
              ((
-                arg_("miller_indices"),
-                arg_("property"),
-                arg_("space_group"),
-                arg_("anomalous_flag"),
-                arg_("radius"),
-                arg_("depth"),
-                arg_("target_ref")
+                arg("miller_indices"),
+                arg("property"),
+                arg("space_group"),
+                arg("anomalous_flag"),
+                arg("radius"),
+                arg("depth"),
+                arg("target_ref")
                 )))
         .def("area", &w_t::area)
         ;

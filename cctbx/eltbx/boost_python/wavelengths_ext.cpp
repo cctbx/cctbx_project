@@ -18,7 +18,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("characteristic", no_init)
-        .def(init<std::string const&>((arg_("label"))))
+        .def(init<std::string const&>((arg("label"))))
         .def("label", &w_t::label)
         .def("as_angstrom", &w_t::as_angstrom)
         .def("as_kev", &w_t::as_kev)

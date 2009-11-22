@@ -27,23 +27,23 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t, boost::noncopyable>("pair_registry", no_init)
-        .def(init<unsigned, unsigned>((arg_("n_seq"), arg_("n_ncs"))))
+        .def(init<unsigned, unsigned>((arg("n_seq"), arg("n_ncs"))))
         .def("n_seq", &w_t::n_seq)
         .def_readonly("number_of_additional_isolated_sites",
           &w_t::number_of_additional_isolated_sites)
         .def("register_additional_isolated_sites",
-          &w_t::register_additional_isolated_sites, (arg_("number")))
+          &w_t::register_additional_isolated_sites, (arg("number")))
         .def("enter", &w_t::enter, (
-          arg_("i_seq"), arg_("j_seq"), arg_("j_ncs")))
+          arg("i_seq"), arg("j_seq"), arg("j_ncs")))
         .def("proxy_select", &w_t::proxy_select, (
-          arg_("iselection")))
+          arg("iselection")))
         .def("selection_pairs", &w_t::selection_pairs)
         .def("adp_iso_residual_sum", &w_t::adp_iso_residual_sum, (
-          arg_("weight"),
-          arg_("average_power"),
-          arg_("u_isos"),
-          arg_("u_average_min"),
-          arg_("gradients")))
+          arg("weight"),
+          arg("average_power"),
+          arg("u_isos"),
+          arg("u_average_min"),
+          arg("gradients")))
       ;
       register_ptr_to_python<std::auto_ptr<pair_registry> >();
     }

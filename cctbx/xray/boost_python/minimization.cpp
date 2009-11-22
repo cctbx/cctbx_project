@@ -23,9 +23,9 @@ namespace cctbx { namespace xray { namespace boost_python {
           uctbx::unit_cell const&,
           af::const_ref<scatterer<> > const&,
           af::const_ref<double> const& >((
-            arg_("unit_cell"),
-            arg_("scatterers"),
-            arg_("shifts"))))
+            arg("unit_cell"),
+            arg("scatterers"),
+            arg("shifts"))))
         .add_property("shifted_scatterers",
           make_getter(&w_t::shifted_scatterers, rbv()))
         .add_property("u_iso_refinable_params",
@@ -48,14 +48,14 @@ namespace cctbx { namespace xray { namespace boost_python {
         double const&,
         double const&,
         double const&)) minimization::shift_scales, (
-          arg_("scatterers"),
-          arg_("n_parameters"),
-          arg_("site_cart"),
-          arg_("u_iso"),
-          arg_("u_cart"),
-          arg_("occupancy"),
-          arg_("fp"),
-          arg_("fdp")));
+          arg("scatterers"),
+          arg("n_parameters"),
+          arg("site_cart"),
+          arg("u_iso"),
+          arg("u_cart"),
+          arg("occupancy"),
+          arg("fp"),
+          arg("fdp")));
 
     apply_shifts_wrappers::wrap();
 
@@ -68,19 +68,19 @@ namespace cctbx { namespace xray { namespace boost_python {
         af::const_ref<scitbx::sym_mat3<double> > const&,
         af::const_ref<double> const&))
           minimization::add_gradients, (
-      arg_("scatterers"),
-      arg_("xray_gradients"),
-      arg_("site_gradients"),
-      arg_("u_iso_gradients"),
-      arg_("u_aniso_gradients"),
-      arg_("occupancy_gradients")));
+      arg("scatterers"),
+      arg("xray_gradients"),
+      arg("site_gradients"),
+      arg("u_iso_gradients"),
+      arg("u_aniso_gradients"),
+      arg("occupancy_gradients")));
     def("minimization_extract_site_gradients",
       (af::shared<scitbx::vec3<double> >(*)(
         af::const_ref<scatterer<> > const&,
         af::const_ref<double> const&))
           minimization::extract_site_gradients, (
-      arg_("scatterers"),
-      arg_("xray_gradients")));
+      arg("scatterers"),
+      arg("xray_gradients")));
   }
 
 }}} // namespace cctbx::xray::boost_python

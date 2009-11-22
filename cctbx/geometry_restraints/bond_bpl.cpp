@@ -27,8 +27,8 @@ namespace {
       using namespace boost::python;
       class_<w_t>("bond_params", no_init)
         .def(init<double, double, optional<double> >((
-          arg_("distance_ideal"), arg_("weight"), arg_("slack")=0)))
-        .def("scale_weight", &w_t::scale_weight, (arg_("factor")))
+          arg("distance_ideal"), arg("weight"), arg("slack")=0)))
+        .def("scale_weight", &w_t::scale_weight, (arg("factor")))
         .def_readwrite("distance_ideal", &w_t::distance_ideal)
         .def_readwrite("weight", &w_t::weight)
         .def_readwrite("slack", &w_t::slack)
@@ -81,25 +81,25 @@ namespace {
       scitbx::af::boost_python::shared_wrapper<bond_params_dict, rir>::wrap(
         "bond_params_table")
         .def("update", update, (
-          arg_("self"),
-          arg_("i_seq"),
-          arg_("j_seq"),
-          arg_("params")))
+          arg("self"),
+          arg("i_seq"),
+          arg("j_seq"),
+          arg("params")))
         .def("mean_residual", mean_residual, (
-          arg_("self"),
-          arg_("bond_stretch_factor")))
+          arg("self"),
+          arg("bond_stretch_factor")))
         .def("proxy_select",
           (bond_params_table(*)(
             af::const_ref<bond_params_dict> const&,
             af::const_ref<std::size_t> const&))
               scitbx::af::array_of_map_proxy_select, (
-          arg_("iselection")))
+          arg("iselection")))
         .def("proxy_remove",
           (bond_params_table(*)(
             af::const_ref<bond_params_dict> const&,
             af::const_ref<bool> const&))
               scitbx::af::array_of_map_proxy_remove, (
-          arg_("selection")))
+          arg("selection")))
       ;
     }
   };
@@ -116,10 +116,10 @@ namespace {
       class_<w_t, bases<bond_params> >("bond_simple_proxy", no_init)
         .def(init<
           af::tiny<unsigned, 2> const&, double, double, optional<double> >((
-            arg_("i_seqs"),
-            arg_("distance_ideal"),
-            arg_("weight"),
-            arg_("slack")=0)))
+            arg("i_seqs"),
+            arg("distance_ideal"),
+            arg("weight"),
+            arg("slack")=0)))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
       ;
@@ -147,11 +147,11 @@ namespace {
           double,
           double,
           optional<double> >((
-            arg_("i_seqs"),
-            arg_("rt_mx_ji"),
-            arg_("distance_ideal"),
-            arg_("weight"),
-            arg_("slack")=0)))
+            arg("i_seqs"),
+            arg("rt_mx_ji"),
+            arg("distance_ideal"),
+            arg("weight"),
+            arg("slack")=0)))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("rt_mx_ji", &w_t::rt_mx_ji)
       ;
@@ -170,12 +170,12 @@ namespace {
             "bond_asu_proxy", no_init)
         .def(init<
           asu_mapping_index_pair const&, double, double, optional<double> >((
-            arg_("pair"),
-            arg_("distance_ideal"),
-            arg_("weight"),
-            arg_("slack")=0)))
+            arg("pair"),
+            arg("distance_ideal"),
+            arg("weight"),
+            arg("slack")=0)))
         .def(init<asu_mapping_index_pair const&, bond_params const&>(
-          (arg_("pair"), arg_("params"))))
+          (arg("pair"), arg("params"))))
         .def("as_simple_proxy", &w_t::as_simple_proxy)
       ;
       {
@@ -201,21 +201,21 @@ namespace {
           double,
           double,
           optional<double> >((
-            arg_("sites"),
-            arg_("distance_ideal"),
-            arg_("weight"),
-            arg_("slack")=0)))
+            arg("sites"),
+            arg("distance_ideal"),
+            arg("weight"),
+            arg("slack")=0)))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   bond_simple_proxy const&>(
-          (arg_("sites_cart"), arg_("proxy"))))
+          (arg("sites_cart"), arg("proxy"))))
         .def(init<uctbx::unit_cell const&,
                   af::const_ref<scitbx::vec3<double> > const&,
                   bond_sym_proxy const&>(
-          (arg_("unit_cell"), arg_("sites_cart"), arg_("proxy"))))
+          (arg("unit_cell"), arg("sites_cart"), arg("proxy"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   asu_mappings const&,
                   bond_asu_proxy const&>(
-          (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxy"))))
+          (arg("sites_cart"), arg("asu_mappings"), arg("proxy"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
         .def_readonly("distance_model", &w_t::distance_model)
         .def_readonly("delta", &w_t::delta)
@@ -237,50 +237,50 @@ namespace {
     bond_asu_proxy_wrappers::wrap();
     bond_wrappers::wrap();
     def("extract_bond_params", extract_bond_params, (
-      (arg_("n_seq"), arg_("bond_simple_proxies"))));
+      (arg("n_seq"), arg("bond_simple_proxies"))));
     def("bond_distances_model",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<bond_simple_proxy> const&))
       bond_distances_model,
-      (arg_("sites_cart"), arg_("proxies")));
+      (arg("sites_cart"), arg("proxies")));
     def("bond_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<bond_simple_proxy> const&))
       bond_deltas,
-      (arg_("sites_cart"), arg_("proxies")));
+      (arg("sites_cart"), arg("proxies")));
     def("bond_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<bond_simple_proxy> const&))
       bond_residuals,
-      (arg_("sites_cart"), arg_("proxies")));
+      (arg("sites_cart"), arg("proxies")));
     def("bond_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<bond_simple_proxy> const&,
         af::ref<scitbx::vec3<double> > const&))
       bond_residual_sum,
-      (arg_("sites_cart"), arg_("proxies"), arg_("gradient_array")));
+      (arg("sites_cart"), arg("proxies"), arg("gradient_array")));
     def("bond_distances_model",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         bond_sorted_asu_proxies_base const&))
       bond_distances_model,
-      (arg_("sites_cart"), arg_("sorted_asu_proxies")));
+      (arg("sites_cart"), arg("sorted_asu_proxies")));
     def("bond_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         bond_sorted_asu_proxies_base const&))
       bond_deltas,
-      (arg_("sites_cart"), arg_("sorted_asu_proxies")));
+      (arg("sites_cart"), arg("sorted_asu_proxies")));
     def("bond_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         bond_sorted_asu_proxies_base const&))
       bond_residuals,
-      (arg_("sites_cart"), arg_("sorted_asu_proxies")));
+      (arg("sites_cart"), arg("sorted_asu_proxies")));
     def("bond_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,

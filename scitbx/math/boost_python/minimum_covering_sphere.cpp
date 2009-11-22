@@ -23,13 +23,13 @@ namespace {
       using namespace boost::python;
       class_<w_t>("sphere_3d", no_init)
         .def(init<vec3<double> const&, double>(
-          (arg_("center"), arg_("radius"))))
+          (arg("center"), arg("radius"))))
         .def("center", &w_t::center)
         .def("radius", &w_t::radius)
-        .def("expand", &w_t::expand, (arg_("additional_radius")))
+        .def("expand", &w_t::expand, (arg("additional_radius")))
         .def("expand_relative", &w_t::expand_relative,
-          (arg_("additional_relative_radius")))
-        .def("is_inside", &w_t::is_inside, (arg_("point")))
+          (arg("additional_relative_radius")))
+        .def("is_inside", &w_t::is_inside, (arg("point")))
         .def("box_min", &w_t::box_min)
         .def("box_max", &w_t::box_max)
       ;
@@ -51,10 +51,10 @@ namespace {
             double const&,
             double const&,
             vec3<double> const&> >((
-              arg_("points"),
-              arg_("epsilon")=1.e-6,
-              arg_("radius_if_one_or_no_points")=1,
-              arg_("center_if_no_points")=w_t::default_center_if_no_points)))
+              arg("points"),
+              arg("epsilon")=1.e-6,
+              arg("radius_if_one_or_no_points")=1,
+              arg("center_if_no_points")=w_t::default_center_if_no_points)))
         .def("n_iterations", &w_t::n_iterations)
       ;
     }

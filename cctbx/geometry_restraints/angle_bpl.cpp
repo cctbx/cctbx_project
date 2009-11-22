@@ -28,19 +28,19 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("angle_proxy", no_init)
         .def(init<af::tiny<unsigned, 3> const&, double, double>((
-          arg_("i_seqs"), arg_("angle_ideal"), arg_("weight"))))
+          arg("i_seqs"), arg("angle_ideal"), arg("weight"))))
         .def(init<
           af::tiny<unsigned, 3> const&,
           optional_copy<af::shared<sgtbx::rt_mx> > const&,
           double,
           double>((
-            arg_("i_seqs"),
-            arg_("sym_ops"),
-            arg_("angle_ideal"),
-            arg_("weight"))))
+            arg("i_seqs"),
+            arg("sym_ops"),
+            arg("angle_ideal"),
+            arg("weight"))))
         .def(init<af::tiny<unsigned, 3> const&, w_t const&>((
-          arg_("i_seqs"), arg_("proxy"))))
-        .def("scale_weight", &w_t::scale_weight, (arg_("factor")))
+          arg("i_seqs"), arg("proxy"))))
+        .def("scale_weight", &w_t::scale_weight, (arg("factor")))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
@@ -56,13 +56,13 @@ namespace {
               std::size_t,
               af::const_ref<std::size_t> const&))
                 shared_proxy_select, (
-            arg_("n_seq"), arg_("iselection")))
+            arg("n_seq"), arg("iselection")))
           .def("proxy_remove",
             (af::shared<w_t>(*)(
               af::const_ref<w_t> const&,
               af::const_ref<bool> const&))
                 shared_proxy_remove, (
-            arg_("selection")))
+            arg("selection")))
         ;
       }
     }
@@ -79,14 +79,14 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("angle", no_init)
         .def(init<af::tiny<scitbx::vec3<double>, 3> const&, double, double>(
-          (arg_("sites"), arg_("angle_ideal"), arg_("weight"))))
+          (arg("sites"), arg("angle_ideal"), arg("weight"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   angle_proxy const&>(
-          (arg_("sites_cart"), arg_("proxy"))))
+          (arg("sites_cart"), arg("proxy"))))
         .def(init<uctbx::unit_cell const&,
                   af::const_ref<scitbx::vec3<double> > const&,
                   angle_proxy const&>(
-          (arg_("unit_cell"), arg_("sites_cart"), arg_("proxy"))))
+          (arg("unit_cell"), arg("sites_cart"), arg("proxy"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
         .def_readonly("angle_ideal", &w_t::angle_ideal)
         .def_readonly("weight", &w_t::weight)
@@ -113,34 +113,34 @@ namespace {
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<angle_proxy> const&))
       angle_deltas,
-      (arg_("sites_cart"), arg_("proxies")));
+      (arg("sites_cart"), arg("proxies")));
     def("angle_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<angle_proxy> const&))
       angle_residuals,
-      (arg_("sites_cart"), arg_("proxies")));
+      (arg("sites_cart"), arg("proxies")));
     def("angle_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<angle_proxy> const&,
         af::ref<scitbx::vec3<double> > const&))
       angle_residual_sum,
-      (arg_("sites_cart"), arg_("proxies"), arg_("gradient_array")));
+      (arg("sites_cart"), arg("proxies"), arg("gradient_array")));
     def("angle_deltas",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<angle_proxy> const&))
       angle_deltas,
-      (arg_("unit_cell"), arg_("sites_cart"), arg_("proxies")));
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
     def("angle_residuals",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<angle_proxy> const&))
       angle_residuals,
-      (arg_("unit_cell"), arg_("sites_cart"), arg_("proxies")));
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
     def("angle_residual_sum",
       (double(*)(
         uctbx::unit_cell const&,
@@ -148,7 +148,7 @@ namespace {
         af::const_ref<angle_proxy> const&,
         af::ref<scitbx::vec3<double> > const&))
       angle_residual_sum,
-      (arg_("unit_cell"), arg_("sites_cart"), arg_("proxies"), arg_("gradient_array")));
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies"), arg("gradient_array")));
   }
 
 } // namespace <anonymous>

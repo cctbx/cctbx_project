@@ -27,10 +27,10 @@ namespace {
           bool,
           af::const_ref<index<> > const&,
           af::const_ref<ComplexType> const&>((
-            arg_("space_group"),
-            arg_("anomalous_flag"),
-            arg_("indices"),
-            arg_("data"))))
+            arg("space_group"),
+            arg("anomalous_flag"),
+            arg("indices"),
+            arg("data"))))
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
       ;
@@ -54,11 +54,11 @@ namespace {
           af::const_ref<index<> > const&,
           af::const_ref<FloatType> const&,
           af::const_ref<FloatType> const&>((
-            arg_("space_group"),
-            arg_("anomalous_flag"),
-            arg_("indices"),
-            arg_("data"),
-            arg_("sigmas"))))
+            arg("space_group"),
+            arg("anomalous_flag"),
+            arg("indices"),
+            arg("data"),
+            arg("sigmas"))))
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
         .add_property("sigmas", make_getter(&w_t::sigmas, rbv()))
@@ -83,11 +83,11 @@ namespace {
           af::const_ref<index<> > const&,
           af::const_ref<FloatType> const&,
           bool>((
-            arg_("space_group"),
-            arg_("anomalous_flag"),
-            arg_("indices"),
-            arg_("data"),
-            arg_("deg"))))
+            arg("space_group"),
+            arg("anomalous_flag"),
+            arg("indices"),
+            arg("data"),
+            arg("deg"))))
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
       ;
@@ -100,9 +100,9 @@ namespace {
   {
     using namespace boost::python;
     def("expand_to_p1_indices", expand_to_p1_indices, (
-      arg_("space_group"),
-      arg_("anomalous_flag"),
-      arg_("indices")));
+      arg("space_group"),
+      arg("anomalous_flag"),
+      arg("indices")));
     expand_to_p1_generic_wrappers<
       bool,
       expand_to_p1_scalar<bool> >::wrap(

@@ -30,16 +30,16 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
         int3_t const&,
         rational_t ,
         optional< bool > >((
-          arg_("n"),
-          arg_("c"),
-          arg_("inclusive") )))
+          arg("n"),
+          arg("c"),
+          arg("inclusive") )))
       .def(init<
         int_type, int_type, int_type,
         rational_t ,
         optional< bool > >((
-          arg_("x"),arg_("y"),arg_("z"),
-          arg_("c"),
-          arg_("inclusive") )))
+          arg("x"),arg("y"),arg("z"),
+          arg("c"),
+          arg("inclusive") )))
       .add_property("n", make_getter(&w_t::n, rbv()))
       .def_readonly("c", &w_t::c)
       .def_readonly("inclusive", &w_t::inclusive)
@@ -100,8 +100,8 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       &w_t::where_is;
 
     class_<w_t>("direct_space_asu", no_init)
-      .def(init< const std::string& >(( arg_("group_symbol") )))
-      .def(init< const space_group_type& >(( arg_("group_type") )))
+      .def(init< const std::string& >(( arg("group_symbol") )))
+      .def(init< const space_group_type& >(( arg("group_type") )))
       .def_readonly("hall_symbol", &w_t::hall_symbol)
       .def("is_inside", is_inside1)
       .def("is_inside", is_inside2)

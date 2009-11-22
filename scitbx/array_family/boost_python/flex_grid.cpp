@@ -46,20 +46,21 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      using boost::python::arg;
       typedef return_value_policy<copy_const_reference> copy_const_reference;
       c_w_t("grid")
-        .def(init<df_i_t const&>((arg_("all"))))
+        .def(init<df_i_t const&>((arg("all"))))
         .def(init<ivt const&, optional<ivt const&, ivt const&,
                   ivt const&, ivt const&, ivt const&> >((
-          arg_("all_0"), arg_("all_1"), arg_("all_2"),
-          arg_("all_3"), arg_("all_4"), arg_("all_5"))))
+          arg("all_0"), arg("all_1"), arg("all_2"),
+          arg("all_3"), arg("all_4"), arg("all_5"))))
         .def(init<df_i_t const&, df_i_t const&, bool>((
-          arg_("origin"),
-          arg_("last"),
-          arg_("open_range")=true)))
+          arg("origin"),
+          arg("last"),
+          arg("open_range")=true)))
         .def("set_focus",
           (w_t(w_t::*)(df_i_t const&, bool)) &w_t::set_focus, (
-            arg_("focus"), arg_("open_range")=true))
+            arg("focus"), arg("open_range")=true))
         .def("set_focus",
           (w_t(w_t::*)(ivt const&, ivt const&, ivt const&,
                        ivt const&, ivt const&, ivt const&)) 0,
@@ -70,17 +71,17 @@ namespace {
         .def("origin", &w_t::origin)
         .def("all", &w_t::all, copy_const_reference())
         .def("last", (df_i_t(w_t::*)(bool)) &w_t::last, (
-          arg_("open_range")=true))
+          arg("open_range")=true))
         .def("is_padded", &w_t::is_padded)
         .def("focus", (df_i_t(w_t::*)(bool)) &w_t::focus, (
-          arg_("open_range")=true))
+          arg("open_range")=true))
         .def("focus_size_1d", &w_t::focus_size_1d)
         .def("is_trivial_1d", &w_t::is_trivial_1d)
         .def("shift_origin", &w_t::shift_origin)
-        .def("is_valid_index", &w_t::is_valid_index, (arg_("index")))
+        .def("is_valid_index", &w_t::is_valid_index, (arg("index")))
         .def("__call__",
           (std::size_t(w_t::*)(df_i_t const&) const) &w_t::operator(), (
-            arg_("index")))
+            arg("index")))
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
         .def_pickle(flex_grid_wrappers())

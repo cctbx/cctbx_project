@@ -71,35 +71,35 @@ struct mapper_wrappers {
 
     def("get_non_symmetric_mapper",
       &mapper_wrappers::get_non_symmetric_mapper,
-      arg_("coordinate"));
+      arg("coordinate"));
 
     def("get_unit_cell_mapper",
       &mapper_wrappers::get_unit_cell_mapper,
-      arg_("coordinate"));
+      arg("coordinate"));
 
     def("get_asu_mapper",
       &mapper_wrappers::get_asu_mapper,
-      (arg_("coordinate")
-      ,arg_("space_group")
-      ,arg_("float_asu")
-      ,arg_("min_distance_sym_equiv")
-      ,arg_("assert_min_distance_sym_equiv")));
+      (arg("coordinate")
+      ,arg("space_group")
+      ,arg("float_asu")
+      ,arg("min_distance_sym_equiv")
+      ,arg("assert_min_distance_sym_equiv")));
 
     class_<factory_handle>("factory_handle",no_init);
 
     class_<ns_factory>("non_symmetric_factory",no_init)
       .def(init<>())
-      .def("map",&ns_factory::map,arg_("coordinate"))
+      .def("map",&ns_factory::map,arg("coordinate"))
       .def("as_handle",&ns_factory::as_handle);
 
     class_<uc_factory>("unit_cell_factory",no_init)
       .def(init<>())
-      .def("map",&uc_factory::map,arg_("coordinate"))
+      .def("map",&uc_factory::map,arg("coordinate"))
       .def("as_handle",&uc_factory::as_handle);
 
     class_<as_factory>("asu_factory",no_init)
       .def(init<space_group,crystal::direct_space_asu::float_asu<double>,double const&,bool>())//float_asu>())
-      .def("map",&as_factory::map,arg_("coordinate"))
+      .def("map",&as_factory::map,arg("coordinate"))
       .def("as_handle",&as_factory::as_handle);
 
   }

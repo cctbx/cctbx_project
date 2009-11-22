@@ -16,12 +16,12 @@ namespace {
       (sym_mat3<double>(*)(
         mat3<double> const& a,
         sym_mat3<double> const& g))
-      tensor_rank_2::gradient_transform, (arg_("a"), arg_("g")));
+      tensor_rank_2::gradient_transform, (arg("a"), arg("g")));
 
     def("tensor_rank_2_gradient_transform_matrix",
       (af::versa<double, af::c_grid<2> >(*)(
         mat3<double> const& a))
-      tensor_rank_2::gradient_transform_matrix, (arg_("a")));
+      tensor_rank_2::gradient_transform_matrix, (arg("a")));
   }
 
 }}} // namespace matrix::boost_python::<anonymous>

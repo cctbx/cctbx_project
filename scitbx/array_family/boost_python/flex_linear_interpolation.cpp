@@ -19,20 +19,20 @@ namespace {
         const_ref<ElementType> const&,
         ElementType const&,
         ElementType const&)) linear_interpolation, (
-          arg_("table_x"),
-          arg_("table_y"),
-          arg_("x"),
-          arg_("tolerance")=1e-6));
+          arg("table_x"),
+          arg("table_y"),
+          arg("x"),
+          arg("tolerance")=1e-6));
     def("linear_interpolation",
       (shared<ElementType>(*)(
         const_ref<ElementType> const&,
         const_ref<ElementType> const&,
         const_ref<ElementType> const&,
         ElementType const&)) linear_interpolation, (
-          arg_("table_x"),
-          arg_("table_y"),
-          arg_("x"),
-          arg_("tolerance")=1e-6));
+          arg("table_x"),
+          arg("table_y"),
+          arg("x"),
+          arg("tolerance")=1e-6));
   }
 
 } // namespace <anonymous>

@@ -28,11 +28,11 @@ struct constrained_scatterers_wrapper
                 af::shared<typename wt::xray_scatterer_type>, // 4th
                 typename wt::parameter_map_type const &, // 5th
                 af::shared<xray::scatterer_flags> >( // 6th
-           (arg_("unit_cell"),
-            arg_("site_symmetry_table"),
-            arg_("scatterers"),
-            arg_("crystallographic_parameter_map"),
-            arg_("constraint_flags")))
+           (arg("unit_cell"),
+            arg("site_symmetry_table"),
+            arg("scatterers"),
+            arg("crystallographic_parameter_map"),
+            arg("constraint_flags")))
            [with_custodian_and_ward<1,2,
             with_custodian_and_ward<1,3,
             with_custodian_and_ward<1,5> > >()])

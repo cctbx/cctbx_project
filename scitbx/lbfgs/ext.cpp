@@ -196,22 +196,22 @@ struct raw_lbfgs_wrappers
     class_<w_t, boost::noncopyable>("raw_lbfgs", no_init)
       .def(init<>())
       .def("__call__", &w_t::operator(), (
-        arg_("n"),
-        arg_("m"),
-        arg_("x"),
-        arg_("f"),
-        arg_("g"),
-        arg_("diagco"),
-        arg_("diag"),
-        arg_("iprint"),
-        arg_("eps"),
-        arg_("xtol"),
-        arg_("w"),
-        arg_("iflag")))
+        arg("n"),
+        arg("m"),
+        arg("x"),
+        arg("f"),
+        arg("g"),
+        arg("diagco"),
+        arg("diag"),
+        arg("iprint"),
+        arg("eps"),
+        arg("xtol"),
+        arg("w"),
+        arg("iflag")))
       .def("nfun", &w_t::nfun)
       .def("iter", &w_t::iter)
       .def("stp", &w_t::stp)
-      .def("set_stp", &w_t::set_stp, (arg_("value")))
+      .def("set_stp", &w_t::set_stp, (arg("value")))
       .def("current_search_direction", &w_t::current_search_direction)
     ;
   }
@@ -324,15 +324,15 @@ struct raw_lbfgs_wrappers
       using namespace boost::python;
       class_<w_t>("drop_convergence_test", no_init)
         .def(init<optional<std::size_t, double, double> >((
-          arg_("n_test_points")=5,
-          arg_("max_drop_eps")=1.e-5,
-          arg_("iteration_coefficient")=2)))
+          arg("n_test_points")=5,
+          arg("max_drop_eps")=1.e-5,
+          arg("iteration_coefficient")=2)))
         .def("n_test_points", &w_t::n_test_points)
         .def("max_drop_eps", &w_t::max_drop_eps)
         .def("iteration_coefficient", &w_t::iteration_coefficient)
         .def("__call__", &w_t::operator())
         .def("objective_function_values", &w_t::objective_function_values, (
-          arg_("f")))
+          arg("f")))
         .def("max_drop", &w_t::max_drop)
       ;
     }
@@ -349,31 +349,31 @@ struct raw_lbfgs_wrappers
       false;
 #endif
     def("fortran", fortran, (
-      arg_("n"),
-      arg_("m"),
-      arg_("x"),
-      arg_("f"),
-      arg_("g"),
-      arg_("diagco"),
-      arg_("diag"),
-      arg_("iprint"),
-      arg_("eps"),
-      arg_("xtol"),
-      arg_("w"),
-      arg_("iflag")));
+      arg("n"),
+      arg("m"),
+      arg("x"),
+      arg("f"),
+      arg("g"),
+      arg("diagco"),
+      arg("diag"),
+      arg("iprint"),
+      arg("eps"),
+      arg("xtol"),
+      arg("w"),
+      arg("iflag")));
     def("raw_reference", raw_reference, (
-      arg_("n"),
-      arg_("m"),
-      arg_("x"),
-      arg_("f"),
-      arg_("g"),
-      arg_("diagco"),
-      arg_("diag"),
-      arg_("iprint"),
-      arg_("eps"),
-      arg_("xtol"),
-      arg_("w"),
-      arg_("iflag")));
+      arg("n"),
+      arg("m"),
+      arg("x"),
+      arg("f"),
+      arg("g"),
+      arg("diagco"),
+      arg("diag"),
+      arg("iprint"),
+      arg("eps"),
+      arg("xtol"),
+      arg("w"),
+      arg("iflag")));
     raw_lbfgs_wrappers::wrap();
 
     minimizer_wrappers::wrap();

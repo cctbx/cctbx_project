@@ -93,13 +93,13 @@ namespace {
     def("map_to_asu", map_to_asu_no_bool<std::complex<double> >::wrapper);
     def("map_to_asu", map_to_asu_no_bool<hendrickson_lattman<> >::wrapper);
     def("is_unique_set_under_symmetry", is_unique_set_under_symmetry, (
-      arg_("space_group_type"),
-      arg_("anomalous_flag"),
-      arg_("miller_indices")));
+      arg("space_group_type"),
+      arg("anomalous_flag"),
+      arg("miller_indices")));
     def("unique_under_symmetry_selection", unique_under_symmetry_selection, (
-      arg_("space_group_type"),
-      arg_("anomalous_flag"),
-      arg_("miller_indices")));
+      arg("space_group_type"),
+      arg("anomalous_flag"),
+      arg("miller_indices")));
   }
 
 }}} // namespace cctbx::miller::boost_python

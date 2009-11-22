@@ -17,7 +17,7 @@ namespace {
       class_<w_t, bases<sgtbx::search_symmetry_flags> >(
         "symmetry_flags", no_init)
         .def(init<bool, bool>(
-          (arg_("is_isotropic_search_model"), arg_("have_f_part"))))
+          (arg("is_isotropic_search_model"), arg("have_f_part"))))
         .def("is_isotropic_search_model", &w_t::is_isotropic_search_model)
         .def("have_f_part", &w_t::have_f_part)
       ;

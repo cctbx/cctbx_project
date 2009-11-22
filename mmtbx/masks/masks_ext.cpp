@@ -34,15 +34,15 @@ namespace {
           FloatType const&,
           FloatType const&,
           optional< bool, bool> >((
-            arg_("unit_cell"),
-            arg_("space_group_order_z"),
-            arg_("sites_frac"),
-            arg_("atom_radii"),
-            arg_("gridding_n_real"),
-            arg_("solvent_radius"),
-            arg_("shrink_truncation_radius"),
-            arg_("explicit_distance"),
-            arg_("debug")     )))
+            arg("unit_cell"),
+            arg("space_group_order_z"),
+            arg("sites_frac"),
+            arg("atom_radii"),
+            arg("gridding_n_real"),
+            arg("solvent_radius"),
+            arg("shrink_truncation_radius"),
+            arg("explicit_distance"),
+            arg("debug")     )))
         .def_readonly("solvent_radius",
                  &w_t::solvent_radius)
         .def_readonly("n_atom_points",
@@ -84,12 +84,12 @@ namespace {
             double,
             double >
           > ((
-              arg_("unit_cell"),
-              arg_("group"),
-              arg_("resolution"),
-              arg_("grid_step_factor"),
-              arg_("solvent_radius"),
-              arg_("shrink_truncation_radius")
+              arg("unit_cell"),
+              arg("group"),
+              arg("resolution"),
+              arg("grid_step_factor"),
+              arg("solvent_radius"),
+              arg("shrink_truncation_radius")
               )))
       .def(init<
           const cctbx::uctbx::unit_cell &,
@@ -98,11 +98,11 @@ namespace {
           double,
           double
           > ((
-              arg_("unit_cell"),
-              arg_("space_group"),
-              arg_("gridding_n_real"),
-              arg_("solvent_radius"),
-              arg_("shrink_truncation_radius")
+              arg("unit_cell"),
+              arg("space_group"),
+              arg("gridding_n_real"),
+              arg("solvent_radius"),
+              arg("shrink_truncation_radius")
               )))
       .def("compute", &w_t::compute, (arg("sites_frac"), arg("atom_radii"),
          arg("shells") = shells_array_t() ) )

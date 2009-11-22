@@ -41,13 +41,13 @@ namespace scitbx { namespace af { namespace boost_python {
     static void
     wrap(ArrayWrapper& aw)
     {
-      using namespace boost::python;
-      aw.def("select", with_flags, (arg_("self"), arg_("flags")))
+      using boost::python::arg;
+      aw.def("select", with_flags, (arg("self"), arg("flags")))
         .def("select", with_indices_unsigned, (
-          arg_("self"), arg_("indices"), arg_("reverse")=false))
+          arg("self"), arg("indices"), arg("reverse")=false))
 #if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
         .def("select", with_indices_size_t, (
-          arg_("self"), arg_("indices"), arg_("reverse")=false))
+          arg("self"), arg("indices"), arg("reverse")=false))
 #endif
       ;
     }

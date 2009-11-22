@@ -138,6 +138,7 @@ namespace boost_python {
                        exercise_versa_packed_u_to_flex);
 
     using namespace boost::python;
+    using boost::python::arg;
 
     boost_adaptbx::std_pair_conversions::to_tuple<shared<double>,
                                                   shared<double> >();
@@ -153,17 +154,17 @@ namespace boost_python {
         (void(*)(
           ref<double, c_grid<2> > const&,
           double const&)) matrix_diagonal_set_in_place,
-            arg_("value"))
+            arg("value"))
       .def("matrix_diagonal_set_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&,
           const_ref<double> const&)) matrix_diagonal_set_in_place,
-            arg_("diagonal"))
+            arg("diagonal"))
       .def("matrix_diagonal_add_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&,
           double const&)) matrix_diagonal_add_in_place,
-            arg_("value"))
+            arg("value"))
       .def("matrix_diagonal_sum",
         (double(*)(
           const_ref<double, c_grid<2> > const&)) matrix_diagonal_sum)
@@ -204,10 +205,10 @@ namespace boost_python {
         matrix_multiply_packed_u_real_matrix_complex_u)
       .def("matrix_multiply_packed_u_multiply_lhs_transpose",
         matrix_multiply_packed_u_multiply_lhs_transpose_real_matrix_real_u, (
-          arg_("packed_u")))
+          arg("packed_u")))
       .def("matrix_multiply_packed_u_multiply_lhs_transpose",
         matrix_multiply_packed_u_multiply_lhs_transpose_real_matrix_complex_u,(
-          arg_("packed_u")))
+          arg("packed_u")))
       .def("matrix_transpose_multiply_as_packed_u",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&))
@@ -217,7 +218,7 @@ namespace boost_python {
           const_ref<double, c_grid<2> > const&,
           const_ref<double> const&))
             matrix_transpose_multiply_diagonal_multiply_as_packed_u, (
-              arg_("diagonal_elements")))
+              arg("diagonal_elements")))
       .def("matrix_transpose",
         (versa<double, c_grid<2> >(*)(
            const_ref<double, c_grid<2> > const&)) matrix_transpose)
@@ -226,7 +227,7 @@ namespace boost_python {
       .def("matrix_outer_product",
         (versa<double, c_grid<2> >(*)(
            const_ref<double> const&,
-           const_ref<double> const&)) matrix::outer_product, (arg_("rhs")))
+           const_ref<double> const&)) matrix::outer_product, (arg("rhs")))
       .def("matrix_lu_decomposition_in_place",
         (shared<std::size_t>(*)(
           ref<double, c_grid<2> > const&)) matrix_lu_decomposition_in_place)
@@ -235,22 +236,22 @@ namespace boost_python {
           const_ref<double, c_grid<2> > const&,
           const_ref<std::size_t> const&,
           const_ref<double> const&)) matrix_lu_back_substitution, (
-        arg_("pivot_indices"), arg_("b")))
+        arg("pivot_indices"), arg("b")))
       .def("matrix_forward_substitution", matrix_forward_substitution<double>,
-           (arg_("l"), arg_("b"), arg_("unit_diag")=false))
+           (arg("l"), arg("b"), arg("unit_diag")=false))
       .def("matrix_back_substitution", matrix_back_substitution<double>,
-           (arg_("u"), arg_("b"), arg_("unit_diag")=false))
+           (arg("u"), arg("b"), arg("unit_diag")=false))
       .def("matrix_forward_substitution_given_transpose",
            matrix_forward_substitution_given_transpose<double>,
-           (arg_("u"), arg_("b"), arg_("unit_diag")=false))
+           (arg("u"), arg("b"), arg("unit_diag")=false))
       .def("matrix_back_substitution_given_transpose",
            matrix_back_substitution_given_transpose<double>,
-           (arg_("l"), arg_("b"), arg_("unit_diag")=false))
+           (arg("l"), arg("b"), arg("unit_diag")=false))
       .def("matrix_determinant_via_lu",
         (double(*)(
           const_ref<double, c_grid<2> > const&,
           const_ref<std::size_t> const&)) matrix_determinant_via_lu, (
-        arg_("pivot_indices")))
+        arg("pivot_indices")))
       .def("matrix_determinant_via_lu",
         (double(*)(
           const_ref<double, c_grid<2> > const&)) matrix_determinant_via_lu)
@@ -258,7 +259,7 @@ namespace boost_python {
         (void(*)(
           ref<double, c_grid<2> > const&,
           ref<double, c_grid<2> > const&)) matrix_inversion_in_place, (
-        arg_("b")))
+        arg("b")))
       .def("matrix_inversion_in_place",
         (void(*)(ref<double, c_grid<2> > const&)) matrix_inversion_in_place)
       .def("matrix_upper_triangle_as_packed_u",
@@ -281,17 +282,17 @@ namespace boost_python {
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&, double const&))
             matrix::symmetric_as_packed_u, (
-              arg_("relative_epsilon")=1e-12))
+              arg("relative_epsilon")=1e-12))
       .def("matrix_symmetric_as_packed_l",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&, double const&))
             matrix::symmetric_as_packed_l, (
-              arg_("relative_epsilon")=1e-12))
+              arg("relative_epsilon")=1e-12))
       .def("matrix_is_symmetric",
         (bool(*)(
           const_ref<double, c_grid<2> > const&, double const&))
             matrix::is_symmetric, ((
-              arg_("relative_epsilon"))))
+              arg("relative_epsilon"))))
       .def("matrix_packed_u_as_symmetric",
         (versa<double, c_grid<2> >(*)(
           const_ref<double> const&))
@@ -317,75 +318,75 @@ namespace boost_python {
           const_ref<double, c_grid<2> > const&,
           unsigned))
             matrix::copy_column, (
-              arg_("i_column")))
+              arg("i_column")))
       .def("matrix_copy_block",
         (versa<double, c_grid<2> >(*)(
           const_ref<double, c_grid<2> > const&,
           unsigned, unsigned, unsigned, unsigned))
             matrix::copy_block, (
-              arg_("i_row"),
-              arg_("i_column"),
-              arg_("n_rows"),
-              arg_("n_columns")))
+              arg("i_row"),
+              arg("i_column"),
+              arg("n_rows"),
+              arg("n_columns")))
       .def("matrix_paste_block_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&,
           const_ref<double, c_grid<2> > const&,
           unsigned, unsigned))
             matrix::paste_block_in_place, (
-              arg_("block"),
-              arg_("i_row"),
-              arg_("i_column")))
+              arg("block"),
+              arg("i_row"),
+              arg("i_column")))
       .def("matrix_copy_upper_triangle", matrix::copy_upper_triangle<double>)
       .def("matrix_copy_lower_triangle", matrix::copy_lower_triangle<double>)
       .def("matrix_swap_rows_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&, unsigned, unsigned))
             matrix::swap_rows_in_place, (
-              arg_("i"),
-              arg_("j")))
+              arg("i"),
+              arg("j")))
       .def("matrix_swap_columns_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&, unsigned, unsigned))
             matrix::swap_columns_in_place, (
-              arg_("i"),
-              arg_("j")))
+              arg("i"),
+              arg("j")))
       .def("matrix_symmetric_upper_triangle_swap_rows_and_columns_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&, unsigned, unsigned))
             matrix::symmetric_upper_triangle_swap_rows_and_columns_in_place, (
-              arg_("i"),
-              arg_("j")))
+              arg("i"),
+              arg("j")))
       .def("matrix_symmetric_upper_triangle_quadratic_form",
            matrix_symmetric_upper_triangle_quadratic_form)
       .def("matrix_packed_u_swap_rows_and_columns_in_place",
         (void(*)(
           ref<double> const&, unsigned, unsigned))
             matrix::packed_u_swap_rows_and_columns_in_place, (
-              arg_("i"),
-              arg_("j")))
+              arg("i"),
+              arg("j")))
       .def("cos_angle",
         (boost::optional<double>(*)(
           const_ref<double> const&,
           const_ref<double> const&)) cos_angle, (
-        arg_("b")))
+        arg("b")))
       .def("cos_angle",
         (double(*)(
           const_ref<double> const&,
           const_ref<double> const&,
           const double&)) cos_angle, (
-        arg_("b"), arg_("value_if_undefined")))
+        arg("b"), arg("value_if_undefined")))
       .def("angle",
         (boost::optional<double>(*)(
           const_ref<double> const&,
           const_ref<double> const&)) angle, (
-        arg_("b")))
+        arg("b")))
       .def("angle",
         (boost::optional<double>(*)(
           const_ref<double> const&,
           const_ref<double> const&,
           bool)) angle, (
-        arg_("b"), arg_("deg")=false))
+        arg("b"), arg("deg")=false))
     ;
   }
 

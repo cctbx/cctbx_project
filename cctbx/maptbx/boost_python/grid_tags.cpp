@@ -21,11 +21,11 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("grid_tags", no_init)
-        .def(init<af::int3 const&>((arg_("dim"))))
+        .def(init<af::int3 const&>((arg("dim"))))
         .def("is_valid", &w_t::is_valid)
         .def("tag_array", &w_t::tag_array)
         .def("build", &w_t::build,
-          (arg_("space_group_type"), arg_("symmetry_flags")))
+          (arg("space_group_type"), arg("symmetry_flags")))
         .def("space_group_type", &w_t::space_group_type, rir())
         .def("symmetry_flags", &w_t::symmetry_flags, ccr())
         .def("grid_ss_continuous", &w_t::grid_ss_continuous, ccr())
@@ -51,25 +51,25 @@ namespace {
             af::const_ref<float, af::c_grid_padded<3> > const&,
             double) const)
               &w_t::verify, (
-                arg_("data"), arg_("min_correlation")=0.99))
+                arg("data"), arg("min_correlation")=0.99))
         .def("verify",
           (bool(w_t::*)(
             af::const_ref<double, af::c_grid_padded<3> > const&,
             double) const)
               &w_t::verify, (
-                arg_("data"), arg_("min_correlation")=0.99))
+                arg("data"), arg("min_correlation")=0.99))
         .def("sum_sym_equiv_points",
           (void(w_t::*)(af::ref<float, c_grid_padded_p1<3> > const&) const)
             &w_t::sum_sym_equiv_points,
-              (arg_("data")))
+              (arg("data")))
         .def("sum_sym_equiv_points",
           (void(w_t::*)(af::ref<double, c_grid_padded_p1<3> > const&) const)
             &w_t::sum_sym_equiv_points,
-              (arg_("data")))
+              (arg("data")))
         .def("apply_symmetry_to_mask",
           (std::size_t(w_t::*)(af::ref<int, af::c_grid<3> > const&) const)
             &w_t::apply_symmetry_to_mask,
-              (arg_("data")))
+              (arg("data")))
       ;
     }
   };

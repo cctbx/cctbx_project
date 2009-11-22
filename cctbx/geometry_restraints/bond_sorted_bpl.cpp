@@ -22,28 +22,28 @@ namespace {
       class_<w_t>("bond_sorted_asu_proxies_base", no_init)
         .def(init<
           boost::shared_ptr<asu_mappings> const&>(
-            (arg_("asu_mappings"))))
+            (arg("asu_mappings"))))
         .def("asu_mappings", &w_t::asu_mappings, ccr())
         .def("process", (bool(w_t::*)(bond_simple_proxy const&)) &w_t::process,
-          (arg_("proxy")))
+          (arg("proxy")))
         .def("process",
           (void(w_t::*)(af::const_ref<bond_simple_proxy> const&))
             &w_t::process,
-          (arg_("proxies")))
+          (arg("proxies")))
         .def("process",
           (bool(w_t::*)(bond_asu_proxy const&)) &w_t::process,
-            (arg_("proxy")))
+            (arg("proxy")))
         .def("process",
           (void(w_t::*)(af::const_ref<bond_asu_proxy> const&))
             &w_t::process,
-          (arg_("proxies")))
+          (arg("proxies")))
         .def("push_back",
           (void(w_t::*)(bond_asu_proxy const&)) &w_t::push_back,
-            (arg_("proxy")))
+            (arg("proxy")))
         .def("push_back",
           (void(w_t::*)(af::const_ref<bond_asu_proxy> const&))
             &w_t::push_back,
-          (arg_("proxies")))
+          (arg("proxies")))
         .def("n_total", &w_t::n_total)
         .def_readonly("simple", &w_t::simple)
         .def_readonly("asu", &w_t::asu)
@@ -64,17 +64,17 @@ namespace {
         "bond_sorted_asu_proxies", no_init)
           .def(init<
             boost::shared_ptr<asu_mappings> const&>(
-              (arg_("asu_mappings"))))
+              (arg("asu_mappings"))))
           .def(init<
             af::const_ref<bond_params_dict> const&>(
-              (arg_("bond_params_table"))))
+              (arg("bond_params_table"))))
           .def(init<
             af::const_ref<bond_params_dict> const&,
             crystal::pair_asu_table<> const&>(
-              (arg_("bond_params_table"), arg_("bond_asu_table"))))
+              (arg("bond_params_table"), arg("bond_asu_table"))))
           .def(init<
             crystal::pair_asu_table<> const&>(
-              (arg_("pair_asu_table"))))
+              (arg("pair_asu_table"))))
       ;
     }
   };
@@ -86,7 +86,7 @@ namespace {
     bond_sorted_asu_proxies_base_wrappers::wrap();
     bond_sorted_asu_proxies_wrappers::wrap();
     def("add_pairs", add_pairs, (
-      arg_("pair_asu_table"), arg_("bond_simple_proxies")));
+      arg("pair_asu_table"), arg("bond_simple_proxies")));
   }
 
 } // namespace <anonymous>

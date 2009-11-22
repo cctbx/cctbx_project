@@ -76,38 +76,38 @@ namespace {
         .def("unique_gaussians_as_list", unique_gaussians_as_list)
         .add_property("unique_counts", make_getter(&w_t::unique_counts, rbv()))
         .def("size", &w_t::size)
-        .def("has_key", &w_t::has_key, (arg_("scattering_type")))
+        .def("has_key", &w_t::has_key, (arg("scattering_type")))
         .def("process",
           (std::size_t(w_t::*)(
             std::string const&)) &w_t::process, (
-              arg_("scattering_type")))
+              arg("scattering_type")))
         .def("process",
           (af::shared<std::size_t>(w_t::*)(
             af::const_ref<scatterer<> > const&)) &w_t::process, (
-              arg_("scatterers")))
-        .def("unique_index", &w_t::unique_index, (arg_("scattering_type")))
+              arg("scatterers")))
+        .def("unique_index", &w_t::unique_index, (arg("scattering_type")))
         .def("unique_indices",
           (af::shared<std::size_t>(w_t::*)(
             af::const_ref<scatterer<> > const&) const) &w_t::unique_indices, (
-              arg_("scatterers")))
+              arg("scatterers")))
         .def("occupancy_sums", &w_t::occupancy_sums<xray::scatterer<> >,
-             arg_("scatterers"))
-        .def("gaussian", &w_t::gaussian, (arg_("scattering_type")), ccr())
+             arg("scatterers"))
+        .def("gaussian", &w_t::gaussian, (arg("scattering_type")), ccr())
         .def("gaussian_not_optional",
           &w_t::gaussian_not_optional,
-            (arg_("scattering_type")), ccr())
+            (arg("scattering_type")), ccr())
         .def("unassigned_types", &w_t::unassigned_types)
         .def("assign", &w_t::assign, (
-          arg_("scattering_type"), arg_("gaussian")))
+          arg("scattering_type"), arg("gaussian")))
         .def("assign_from_table", &w_t::assign_from_table, (
-          arg_("table")))
+          arg("table")))
         .def("unique_form_factors_at_d_star_sq",
           &w_t::unique_form_factors_at_d_star_sq, (
-            arg_("d_star_sq")))
+            arg("d_star_sq")))
         .def("dilated_form_factors_at_d_star_sq",
              &w_t::dilated_form_factors_at_d_star_sq,
-             (arg_("d_star_sq"), arg_("dilation_coeffs"),
-              arg_("unique_indices")))
+             (arg("d_star_sq"), arg("dilation_coeffs"),
+              arg("unique_indices")))
         .enable_pickling()
         .def("__getinitargs__", getinitargs)
         .def("__init__", make_constructor(constructor_for_pickle),

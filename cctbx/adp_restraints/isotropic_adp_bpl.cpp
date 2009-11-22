@@ -28,8 +28,8 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("isotropic_adp_proxy", no_init)
         .def(init<unsigned, double>((
-           arg_("i_seq"),
-           arg_("weight"))))
+           arg("i_seq"),
+           arg("weight"))))
         .add_property("i_seq", make_getter(&w_t::i_seq, rbv()))
         .add_property("weight", make_getter(&w_t::weight, rbv()))
       ;
@@ -54,13 +54,13 @@ namespace {
         .def(init<
            scitbx::sym_mat3<double> const&,
            double>(
-          (arg_("u_cart"),
-           arg_("weight"))))
+          (arg("u_cart"),
+           arg("weight"))))
         .def(init<
            af::const_ref<scitbx::sym_mat3<double> > const&,
            isotropic_adp_proxy const&>(
-          (arg_("u_cart"),
-           arg_("proxy"))))
+          (arg("u_cart"),
+           arg("proxy"))))
         .add_property("u_cart", make_getter(&w_t::u_cart, rbv()))
         .add_property("weight", make_getter(&w_t::weight, rbv()))
         .def("deltas", &w_t::deltas)
@@ -78,15 +78,15 @@ namespace {
     isotropic_adp_wrappers::wrap();
     isotropic_adp_proxy_wrappers::wrap();
     def("isotropic_adp_residual_sum", isotropic_adp_residual_sum,
-      (arg_("u_cart"),
-       arg_("proxies"),
-       arg_("gradients_aniso_cart")));
+      (arg("u_cart"),
+       arg("proxies"),
+       arg("gradients_aniso_cart")));
     def("isotropic_adp_residuals", isotropic_adp_residuals,
-      (arg_("u_cart"),
-       arg_("proxies")));
+      (arg("u_cart"),
+       arg("proxies")));
     def("isotropic_adp_deltas_rms", isotropic_adp_deltas_rms,
-      (arg_("u_cart"),
-       arg_("proxies")));
+      (arg("u_cart"),
+       arg("proxies")));
   }
 
 }

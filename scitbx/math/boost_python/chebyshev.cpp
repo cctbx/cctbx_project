@@ -25,17 +25,17 @@ namespace {
       class_<w_t>("chebyshev_base", no_init)
         .def(init<std::size_t const&,
                   double const&,
-                  double const&>((arg_("n_terms"),
-                                  arg_("low_limit"),
-                                  arg_("high_limit") )))
+                  double const&>((arg("n_terms"),
+                                  arg("low_limit"),
+                                  arg("high_limit") )))
         .def(init<std::size_t const& ,
                   double const&,
                   double const&,
                   scitbx::af::const_ref<double> const&>
-             ((arg_("n_terms"),
-               arg_("low_limit"),
-               arg_("high_limit"),
-               arg_("cheb_coefs") )))
+             ((arg("n_terms"),
+               arg("low_limit"),
+               arg("high_limit"),
+               arg("cheb_coefs") )))
         .def("f", (double(w_t::*)(double const&)) &w_t::f)
         .def("f", (scitbx::af::shared<double>(w_t::*)
                    (scitbx::af::const_ref<double> const&))
@@ -64,10 +64,10 @@ namespace {
                   double const&,
                   double const&,
                   scitbx::af::const_ref<double> const&>
-             ((arg_("n_terms"),
-               arg_("low_limit"),
-               arg_("high_limit"),
-               arg_("cheb_coefs") )))
+             ((arg("n_terms"),
+               arg("low_limit"),
+               arg("high_limit"),
+               arg("cheb_coefs") )))
         .def("f", (double(w_t::*)(double const&)) &w_t::f)
         .def("f", (scitbx::af::shared<double>(w_t::*)
                    (scitbx::af::const_ref<double> const&))
@@ -100,17 +100,17 @@ namespace {
         .def(init<std::size_t const& ,
                   double const&,
                   double const& >
-             ((arg_("n_terms"),
-               arg_("low_limit"),
-               arg_("high_limit") )))
+             ((arg("n_terms"),
+               arg("low_limit"),
+               arg("high_limit") )))
         .def(init<std::size_t const& ,
                   double const&,
                   double const&,
                   scitbx::af::const_ref<double> const&>
-             ((arg_("n_terms"),
-               arg_("low_limit"),
-               arg_("high_limit"),
-               arg_("cheb_coefs") )))
+             ((arg("n_terms"),
+               arg("low_limit"),
+               arg("high_limit"),
+               arg("cheb_coefs") )))
 
 
         .def("f", (double(w_t::*)(double const&)) &w_t::f)
@@ -143,17 +143,17 @@ namespace {
       class_<w_t>("chebyshev_smooth", no_init)
         .def(init<std::size_t const&,
                   double const&,
-                  double const&>((arg_("n_terms"),
-                                  arg_("low_limit"),
-                                  arg_("high_limit") )))
+                  double const&>((arg("n_terms"),
+                                  arg("low_limit"),
+                                  arg("high_limit") )))
         .def(init<std::size_t const& ,
                   double const&,
                   double const&,
                   scitbx::af::const_ref<double> const&>
-             ((arg_("n_terms"),
-               arg_("low_limit"),
-               arg_("high_limit"),
-               arg_("cheb_coefs") )))
+             ((arg("n_terms"),
+               arg("low_limit"),
+               arg("high_limit"),
+               arg("cheb_coefs") )))
         .def("f", (double(w_t::*)(double const&)) &w_t::f)
         .def("f", (scitbx::af::shared<double>(w_t::*)
                    (scitbx::af::const_ref<double> const&))
@@ -181,17 +181,17 @@ namespace {
       class_<w_t>("chebyshev_smooth_fitter", no_init)
         .def(init<std::size_t const&,
                   double const&,
-                  double const&>((arg_("n_terms"),
-                                  arg_("low_limit"),
-                                  arg_("high_limit") )))
+                  double const&>((arg("n_terms"),
+                                  arg("low_limit"),
+                                  arg("high_limit") )))
         .def(init<std::size_t const& ,
                   double const&,
                   double const&,
                   scitbx::af::const_ref<double> const&>
-             ((arg_("n_terms"),
-               arg_("low_limit"),
-               arg_("high_limit"),
-               arg_("cheb_coefs") )))
+             ((arg("n_terms"),
+               arg("low_limit"),
+               arg("high_limit"),
+               arg("cheb_coefs") )))
         .def("f", (double(w_t::*)(double const&)) &w_t::f)
         .def("f", (scitbx::af::shared<double>(w_t::*)
                    (scitbx::af::const_ref<double> const&))
@@ -226,13 +226,13 @@ namespace {
                   scitbx::af::const_ref<double> const&,
                   scitbx::af::const_ref<double> const&,
                   scitbx::af::const_ref<bool> const&
-                  >((arg_("n_terms"),
-                     arg_("low_limit"),
-                     arg_("high_limit"),
-                     arg_("x_obs"),
-                     arg_("y_obs"),
-                     arg_("w_obs"),
-                     arg_("free_flags") )))
+                  >((arg("n_terms"),
+                     arg("low_limit"),
+                     arg("high_limit"),
+                     arg("x_obs"),
+                     arg("y_obs"),
+                     arg("w_obs"),
+                     arg("free_flags") )))
 
         .def("residual", &w_t::residual)
         .def("free_residual", &w_t::free_residual)

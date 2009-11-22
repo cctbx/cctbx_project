@@ -11,11 +11,11 @@ namespace {
 
 #define IOTBX_MTZ_BATCH_BPL_GET_SET(name) \
         .def(#name, &w_t::name) \
-        .def("set_" #name, &w_t::set_##name, (arg_("value")), return_self<>())
+        .def("set_" #name, &w_t::set_##name, (arg("value")), return_self<>())
 
 #define IOTBX_MTZ_BATCH_BPL_GET_SET_ARRAY(name) \
         .def(#name, &w_t::name) \
-        .def("set_" #name, &w_t::set_##name, (arg_("values")), return_self<>())
+        .def("set_" #name, &w_t::set_##name, (arg("values")), return_self<>())
 
   struct batch_wrappers
   {
@@ -26,7 +26,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("batch", no_init)
-        .def(init<object const&, int>((arg_("mtz_object"), arg_("i_batch"))))
+        .def(init<object const&, int>((arg("mtz_object"), arg("i_batch"))))
         .def("mtz_object", &w_t::mtz_object)
         .def("i_batch", &w_t::i_batch)
         IOTBX_MTZ_BATCH_BPL_GET_SET(num)

@@ -326,8 +326,8 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
   class_<Distl::image_divider>("image_divider", no_init)
      .def(init<scitbx::af::flex_int, const int&>(
            (
-           arg_("data"),
-           arg_("nullvalue")
+           arg("data"),
+           arg("nullvalue")
            )
          ))
      .def("module_count", &Distl::image_divider::module_count)

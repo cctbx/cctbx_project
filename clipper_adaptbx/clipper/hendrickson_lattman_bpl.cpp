@@ -67,10 +67,10 @@ namespace clipper { namespace boost_python {
                   cctbx::sgtbx::space_group const&,
                   af::shared<cctbx::miller::index<> > const&,
                   af::const_ref<cctbx::hendrickson_lattman<> > const&>((
-          arg_("unit_cell"),
-          arg_("space_group"),
-          arg_("miller_indices"),
-          arg_("phase_probabilities"))))
+          arg("unit_cell"),
+          arg("space_group"),
+          arg("miller_indices"),
+          arg("phase_probabilities"))))
         .def("centroid_phases", &w_t::centroid_phases)
         .def("figures_of_merit", &w_t::figures_of_merit)
       ;

@@ -21,7 +21,7 @@ namespace {
           af::const_ref<scitbx::vec3<double> > const&,
           af::const_ref<double> const&))
         real_space_refinement::residual, (
-        arg_("basic_map"), arg_("sites"), arg_("weights")));
+        arg("basic_map"), arg("sites"), arg("weights")));
       def("real_space_refinement_gradients",
         (af::shared<scitbx::vec3<double> >(*)(
           basic_map<double,signed long> const&,

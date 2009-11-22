@@ -14,7 +14,7 @@ namespace {
     using namespace boost::python;
 
     def("kinetic_energy", kinetic_energy<double>, (
-      arg_("velocities"), arg_("masses")));
+      arg("velocities"), arg("masses")));
 
     class_<center_of_mass_info>("center_of_mass_info",
                   init<vec3<double>,

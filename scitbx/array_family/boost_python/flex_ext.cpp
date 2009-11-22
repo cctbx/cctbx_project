@@ -147,6 +147,7 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      using boost::python::arg;
       class_<w_t>("linear_regression_core", no_init)
         .def("is_well_defined", &w_t::is_well_defined)
         .def("y_intercept", &w_t::y_intercept)
@@ -164,24 +165,25 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      using boost::python::arg;
       class_<w_t, bases<math::linear_regression_core<> > >(
             "linear_regression", no_init)
         .def(init<
           af::const_ref<float_t> const&,
           af::const_ref<float_t> const&,
           float_t const&>((
-            arg_("x"),
-            arg_("y"),
-            arg_("epsilon")=1e-15)))
+            arg("x"),
+            arg("y"),
+            arg("epsilon")=1e-15)))
         .def(init<
           af::const_ref<float_t> const&,
           af::const_ref<float_t> const&,
           af::const_ref<float_t> const&,
           float_t const&>((
-            arg_("x"),
-            arg_("y"),
-            arg_("weights"),
-            arg_("epsilon")=1e-15)))
+            arg("x"),
+            arg("y"),
+            arg("weights"),
+            arg("epsilon")=1e-15)))
       ;
     }
   };
@@ -195,14 +197,15 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      using boost::python::arg;
       class_<w_t>("linear_correlation", no_init)
         .def(init<
           af::const_ref<float_t> const&,
           af::const_ref<float_t> const&,
           float_t const&>(
-            (arg_("x"),
-             arg_("y"),
-             arg_("epsilon")=1.e-15)))
+            (arg("x"),
+             arg("y"),
+             arg("epsilon")=1.e-15)))
         .def("is_well_defined", &w_t::is_well_defined)
         .def("n", &w_t::n)
         .def("mean_x", &w_t::mean_x)
@@ -423,6 +426,7 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
+    using boost::python::arg;
 
     register_scitbx_tuple_mappings();
 
@@ -468,7 +472,7 @@ namespace {
     wrap_show_sizes();
 
     def("slice_indices", slice_indices, (
-      arg_("array_size"), arg_("python_slice")));
+      arg("array_size"), arg("python_slice")));
 
     linear_regression_core_wrappers::wrap();
     linear_regression_wrappers::wrap();
@@ -479,10 +483,10 @@ namespace {
     {
       typedef cost_of_m_handle_in_af_shared wt;
       class_<wt>("cost_of_m_handle_in_af_shared", no_init)
-        .def(init<af::shared<double> const &>((arg_("data"))))
+        .def(init<af::shared<double> const &>((arg("data"))))
         .add_property("result", &wt::result)
         .def("__call__", &wt::operator(),
-             (arg_("n_repeats"), arg_("test_id")))
+             (arg("n_repeats"), arg("test_id")))
         ;
     }
     {

@@ -45,8 +45,8 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("rigid_bond_proxy", no_init)
         .def(init<af::tiny<unsigned, 2> const&, double>((
-           arg_("i_seqs"),
-           arg_("weight"))))
+           arg("i_seqs"),
+           arg("weight"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("weight", make_getter(&w_t::weight, rbv()))
       ;
@@ -72,16 +72,16 @@ namespace {
            af::tiny<scitbx::vec3<double>, 2> const&,
            af::tiny<scitbx::sym_mat3<double>, 2> const&,
            double>(
-          (arg_("sites"),
-           arg_("u_cart"),
-           arg_("weight"))))
+          (arg("sites"),
+           arg("u_cart"),
+           arg("weight"))))
         .def(init<
            af::const_ref<scitbx::vec3<double> > const&,
            af::const_ref<scitbx::sym_mat3<double> > const&,
            rigid_bond_proxy const&>(
-          (arg_("sites_cart"),
-           arg_("u_cart"),
-           arg_("proxy"))))
+          (arg("sites_cart"),
+           arg("u_cart"),
+           arg("proxy"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
         .add_property("u_cart", make_getter(&w_t::u_cart, rbv()))
         .add_property("weight", make_getter(&w_t::weight, rbv()))
@@ -102,18 +102,18 @@ namespace {
     rigid_bond_wrappers::wrap();
     rigid_bond_proxy_wrappers::wrap();
     def("rigid_bond_residual_sum", rigid_bond_residual_sum,
-      (arg_("sites_cart"),
-       arg_("u_cart"),
-       arg_("proxies"),
-       arg_("gradients_aniso_cart")));
+      (arg("sites_cart"),
+       arg("u_cart"),
+       arg("proxies"),
+       arg("gradients_aniso_cart")));
     def("rigid_bond_residuals", rigid_bond_residuals,
-      (arg_("sites_cart"),
-       arg_("u_cart"),
-       arg_("proxies")));
+      (arg("sites_cart"),
+       arg("u_cart"),
+       arg("proxies")));
     def("rigid_bond_deltas", rigid_bond_deltas,
-      (arg_("sites_cart"),
-       arg_("u_cart"),
-       arg_("proxies")));
+      (arg("sites_cart"),
+       arg("u_cart"),
+       arg("proxies")));
   }
 
 }

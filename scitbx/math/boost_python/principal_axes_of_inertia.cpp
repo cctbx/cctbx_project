@@ -23,10 +23,10 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("principal_axes_of_inertia", no_init)
-        .def(init<af::const_ref<vec3<double> > const&>((arg_("points"))))
+        .def(init<af::const_ref<vec3<double> > const&>((arg("points"))))
         .def(init<af::const_ref<vec3<double> > const&,
                   af::const_ref<double> const&>(
-          (arg_("points"), arg_("weights"))))
+          (arg("points"), arg("weights"))))
         .def("center_of_mass", &w_t::center_of_mass, ccr())
         .def("inertia_tensor", &w_t::inertia_tensor, ccr())
         .def("eigensystem", &w_t::eigensystem, rir())
@@ -34,19 +34,19 @@ namespace {
           &w_t::change_of_basis_mx_to_principal)
         .def("distance_to_inertia_ellipsoid_surface",
           &w_t::distance_to_inertia_ellipsoid_surface, (
-            arg_("unit_direction")))
+            arg("unit_direction")))
       ;
       class_<w_t_2d>("principal_axes_of_inertia_2d", no_init)
-        .def(init<af::const_ref<vec2<double> > const&>((arg_("points"))))
+        .def(init<af::const_ref<vec2<double> > const&>((arg("points"))))
         .def(init<af::const_ref<vec2<double> > const&,
                   af::const_ref<double> const&>(
-          (arg_("points"), arg_("weights"))))
+          (arg("points"), arg("weights"))))
         .def("center_of_mass", &w_t_2d::center_of_mass, ccr())
         .def("inertia_tensor", &w_t_2d::inertia_tensor, ccr())
         .def("eigensystem", &w_t_2d::eigensystem, rir())
         .def("distance_to_inertia_ellipsoid_surface",
           &w_t_2d::distance_to_inertia_ellipsoid_surface, (
-            arg_("unit_direction")))
+            arg("unit_direction")))
       ;
     }
   };
@@ -63,14 +63,14 @@ namespace boost_python {
       (sym_mat3<double>(*)(
         af::const_ref<vec3<double> > const&,
         vec3<double> const&)) inertia_tensor, (
-          arg_("points"), arg_("pivot")));
+          arg("points"), arg("pivot")));
 
     def("inertia_tensor",
       (sym_mat3<double>(*)(
         af::const_ref<vec3<double> > const&,
         af::const_ref<double> const&,
         vec3<double> const&)) inertia_tensor, (
-          arg_("points"), arg_("weights"), arg_("pivot")));
+          arg("points"), arg("weights"), arg("pivot")));
 
     principal_axes_of_inertia_wrappers::wrap();
   }

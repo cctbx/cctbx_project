@@ -44,30 +44,30 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("structure_seminvariants", no_init)
-        .def(init<space_group const&>((arg_("space_group"))))
+        .def(init<space_group const&>((arg("space_group"))))
         .def("vectors_and_moduli", &w_t::vectors_and_moduli, ccr())
         .def("size", &w_t::size)
-        .def("is_ss", &w_t::is_ss, (arg_("miller_index")))
-        .def("apply_mod", &w_t::apply_mod, (arg_("miller_index")))
-        .def("select", &w_t::select, (arg_("discrete")))
+        .def("is_ss", &w_t::is_ss, (arg("miller_index")))
+        .def("apply_mod", &w_t::apply_mod, (arg("miller_index")))
+        .def("select", &w_t::select, (arg("discrete")))
         .def("continuous_shifts_are_principal",
           &w_t::continuous_shifts_are_principal)
         .def("principal_continuous_shift_flags",
           &w_t::principal_continuous_shift_flags,
             principal_continuous_shift_flags_overloads((
-              arg_("assert_principal")=true)))
+              arg("assert_principal")=true)))
         .def("subtract_principal_continuous_shifts",
           &w_t::subtract_principal_continuous_shifts,
             subtract_principal_continuous_shifts_overloads((
-              arg_("translation"),
-              arg_("assert_principal")=true)))
+              arg("translation"),
+              arg("assert_principal")=true)))
         .def("gridding", &w_t::gridding)
         .def("refine_gridding",
           (sg_vec3(w_t::*)(sg_vec3 const&) const)
-          &w_t::refine_gridding, (arg_("grid")))
+          &w_t::refine_gridding, (arg("grid")))
         .def("grid_adapted_moduli",
           (af::small<ss_vec_mod, 3>(w_t::*)(sg_vec3 const&) const)
-          &w_t::grid_adapted_moduli, (arg_("dim")))
+          &w_t::grid_adapted_moduli, (arg("dim")))
       ;
     }
   };

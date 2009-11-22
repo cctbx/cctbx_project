@@ -27,15 +27,15 @@ namespace {
         .def(init<
           af::shared<af::tiny<std::size_t, 2> >,
           af::shared<double> const&>((
-            arg_("i_seqs"),
-            arg_("weights"))))
+            arg("i_seqs"),
+            arg("weights"))))
         .def(init<
           af::shared<af::tiny<std::size_t, 2> >,
           af::shared<sgtbx::rt_mx>,
           af::shared<double> const&>((
-            arg_("i_seqs"),
-            arg_("sym_ops"),
-            arg_("weights"))))
+            arg("i_seqs"),
+            arg("sym_ops"),
+            arg("weights"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("weights", make_getter(&w_t::weights, rbv()))
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
@@ -66,15 +66,15 @@ namespace {
         .def(init<
           af::shared<af::tiny<scitbx::vec3<double>, 2> > const&,
           af::shared<double> const&>((
-            arg_("sites_array"),
-            arg_("weights"))))
+            arg("sites_array"),
+            arg("weights"))))
         .def(init<uctbx::unit_cell const&,
                   af::const_ref<scitbx::vec3<double> > const&,
                   bond_similarity_proxy const&>(
-          (arg_("unit_cell"), arg_("sites_cart"), arg_("proxy"))))
+          (arg("unit_cell"), arg("sites_cart"), arg("proxy"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   bond_similarity_proxy const&>(
-          (arg_("sites_cart"), arg_("proxy"))))
+          (arg("sites_cart"), arg("proxy"))))
         .add_property("sites_array", make_getter(
           &w_t::sites_array, rbv()))
         .add_property("weights", make_getter(&w_t::weights, rbv()))
@@ -98,36 +98,36 @@ namespace {
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<bond_similarity_proxy> const&))
       bond_similarity_deltas_rms,
-      (arg_("sites_cart"), arg_("proxies")));
+      (arg("sites_cart"), arg("proxies")));
     def("bond_similarity_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<bond_similarity_proxy> const&))
       bond_similarity_residuals,
-      (arg_("sites_cart"), arg_("proxies")));
+      (arg("sites_cart"), arg("proxies")));
     def("bond_similarity_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<bond_similarity_proxy> const&,
         af::ref<scitbx::vec3<double> > const&))
       bond_similarity_residual_sum,
-      (arg_("sites_cart"),
-       arg_("proxies"),
-       arg_("gradient_array")));
+      (arg("sites_cart"),
+       arg("proxies"),
+       arg("gradient_array")));
     def("bond_similarity_deltas_rms",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<bond_similarity_proxy> const&))
       bond_similarity_deltas_rms,
-      (arg_("unit_cell"), arg_("sites_cart"), arg_("proxies")));
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
     def("bond_similarity_residuals",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<bond_similarity_proxy> const&))
       bond_similarity_residuals,
-      (arg_("unit_cell"), arg_("sites_cart"), arg_("proxies")));
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
     def("bond_similarity_residual_sum",
       (double(*)(
         uctbx::unit_cell const&,
@@ -135,10 +135,10 @@ namespace {
         af::const_ref<bond_similarity_proxy> const&,
         af::ref<scitbx::vec3<double> > const&))
       bond_similarity_residual_sum,
-      (arg_("unit_cell"),
-       arg_("sites_cart"),
-       arg_("proxies"),
-       arg_("gradient_array")));
+      (arg("unit_cell"),
+       arg("sites_cart"),
+       arg("proxies"),
+       arg("gradient_array")));
   }
 
 } // namespace <anonymous>

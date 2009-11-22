@@ -140,17 +140,17 @@ namespace {
     using namespace boost::python;
     scope().attr("fftw_version") = std::string(fftw_version);
     def("complex_to_complex_in_place", complex_to_complex_in_place, (
-      arg_("data"), arg_("exp_sign")));
+      arg("data"), arg("exp_sign")));
     def("complex_to_complex_3d_in_place", complex_to_complex_3d_in_place, (
-      arg_("data"), arg_("exp_sign")));
+      arg("data"), arg("exp_sign")));
     def("real_to_complex_in_place", real_to_complex_in_place, (
-      arg_("data")));
+      arg("data")));
     def("complex_to_real_in_place", complex_to_real_in_place, (
-      arg_("data"), arg_("n")));
+      arg("data"), arg("n")));
     def("real_to_complex_3d_in_place", real_to_complex_3d_in_place, (
-      arg_("data")));
+      arg("data")));
     def("complex_to_real_3d_in_place", complex_to_real_3d_in_place, (
-      arg_("data"), arg_("n")));
+      arg("data"), arg("n")));
   }
 
 } // namespace <anonymous>

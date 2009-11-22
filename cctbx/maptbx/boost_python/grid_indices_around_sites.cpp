@@ -39,11 +39,11 @@ namespace {
     using namespace boost::python;
     def("grid_indices_around_sites",
       grid_indices_around_sites_wrapper, (
-        arg_("unit_cell"),
-        arg_("fft_n_real"),
-        arg_("fft_m_real"),
-        arg_("sites_cart"),
-        arg_("site_radii")));
+        arg("unit_cell"),
+        arg("fft_n_real"),
+        arg("fft_m_real"),
+        arg("sites_cart"),
+        arg("site_radii")));
   }
 
 }}} // namespace cctbx::maptbx::boost_python

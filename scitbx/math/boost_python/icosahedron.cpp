@@ -20,7 +20,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("icosahedron", no_init)
-        .def(init<int>((arg_("level"))))
+        .def(init<int>((arg("level"))))
         .def_readonly("level", &w_t::level)
         .add_property("sites", make_getter(&w_t::sites, rbv()))
         .def("next_neighbors_distance", &w_t::next_neighbors_distance)

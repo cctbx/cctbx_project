@@ -89,29 +89,30 @@ namespace {
   void wrap_flex_complex_double()
   {
     using namespace boost::python;
+    using boost::python::arg;
     typedef flex_wrapper<std::complex<double> > f_w;
     scope local_scope;
     f_w::numeric_common("complex_double", local_scope)
       .def("__init__", make_constructor(
         from_pair_of_flex_double, default_call_policies(), (
-          arg_("reals"), arg_("imags"))))
+          arg("reals"), arg("imags"))))
       .def_pickle(flex_pickle_single_buffered<std::complex<double> >())
       .def("all_approx_equal",
         all_approx_equal_a_a, (
-          arg_("other"),
-          arg_("tolerance")=1e-6))
+          arg("other"),
+          arg("tolerance")=1e-6))
       .def("all_approx_equal",
         all_approx_equal_a_s, (
-          arg_("other"),
-          arg_("tolerance")=1e-6))
+          arg("other"),
+          arg("tolerance")=1e-6))
       .def("all_approx_equal_relatively",
         all_approx_equal_relatively_a_a, (
-          arg_("other"),
-          arg_("relative_error")=1e-6))
+          arg("other"),
+          arg("relative_error")=1e-6))
       .def("all_approx_equal_relatively",
         all_approx_equal_relatively_a_s, (
-          arg_("other"),
-          arg_("relative_error")=1e-6))
+          arg("other"),
+          arg("relative_error")=1e-6))
       .def("__mul__", mul_ac_ar)
       .def("__rmul__", mul_ac_ar)
       .def("matrix_multiply", matrix_multiply_complex_matrix_complex_matrix)
@@ -133,19 +134,19 @@ namespace {
           const_ref<std::complex<double>, c_grid<2> > const&,
           unsigned, unsigned, unsigned, unsigned))
             matrix::copy_block, (
-              arg_("i_row"),
-              arg_("i_column"),
-              arg_("n_rows"),
-              arg_("n_columns")))
+              arg("i_row"),
+              arg("i_column"),
+              arg("n_rows"),
+              arg("n_columns")))
       .def("matrix_paste_block_in_place",
         (void(*)(
           ref<std::complex<double>, c_grid<2> > const&,
           const_ref<std::complex<double>, c_grid<2> > const&,
           unsigned, unsigned))
             matrix::paste_block_in_place, (
-              arg_("block"),
-              arg_("i_row"),
-              arg_("i_column")))
+              arg("block"),
+              arg("i_row"),
+              arg("i_column")))
     ;
     def("mean", f_w::mean_a);
     def("mean_sq", f_w::mean_sq_a);

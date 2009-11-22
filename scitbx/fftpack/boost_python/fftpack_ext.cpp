@@ -368,7 +368,7 @@ namespace scitbx { namespace fftpack { namespace {
     complex_to_complex_3d_wrappers::wrap();
     real_to_complex_3d_wrappers::wrap();
 
-    def("zeros_parallel_double", zeros_parallel_double, (arg_("flex_grid")));
+    def("zeros_parallel_double", zeros_parallel_double, (arg("flex_grid")));
   }
 
 }}} // namespace scitbx::fftpack::<anonymous>

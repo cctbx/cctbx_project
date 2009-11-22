@@ -17,7 +17,7 @@ struct gilbert_peierls_lu_factorization_wrapper
     using namespace boost::python;
     return_internal_reference<> rir;
     class_<wt>(name, no_init)
-      .def(init<typename wt::matrix_type const&>(arg_("matrix")))
+      .def(init<typename wt::matrix_type const&>(arg("matrix")))
       .def("factored", &wt::factored, rir)
       .def("l", &wt::l, rir)
       .def("u", &wt::u, rir)

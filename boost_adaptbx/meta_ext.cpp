@@ -543,7 +543,7 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
   class_<boost_python_meta_ext::holder>("holder").enable_pickling();
   class_<docstring_options, boost::noncopyable>("docstring_options", no_init)
     .def(init<bool, bool>((
-      arg_("show_user_defined"),
-      arg_("show_signatures"))))
+      arg("show_user_defined"),
+      arg("show_signatures"))))
   ;
 }

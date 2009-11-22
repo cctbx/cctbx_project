@@ -125,16 +125,16 @@ namespace clipper { namespace boost_python {
                   af::const_ref<std::complex<double> > const&,
                   af::const_ref<bool> const&,
                   optional<int, int> >((
-          arg_("unit_cell"),
-          arg_("space_group"),
-          arg_("miller_indices"),
-          arg_("anomalous_flag"),
-          arg_("f_obs_data"),
-          arg_("f_obs_sigmas"),
-          arg_("f_calc"),
-          arg_("test_set_flags"),
-          arg_("n_refln")=1000,
-          arg_("n_param")=20)))
+          arg("unit_cell"),
+          arg("space_group"),
+          arg("miller_indices"),
+          arg("anomalous_flag"),
+          arg("f_obs_data"),
+          arg("f_obs_sigmas"),
+          arg("f_calc"),
+          arg("test_set_flags"),
+          arg("n_refln")=1000,
+          arg("n_param")=20)))
         .def("number_of_spline_parameters", &w_t::number_of_spline_parameters)
         .def("fb", &w_t::fb)
         .def("fd", &w_t::fd)

@@ -42,9 +42,9 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
         typedef return_value_policy<copy_const_reference> ccr;
         class_<wt>("any_generator_set", no_init)
           .def(init<space_group const&, int, int>((
-              arg_("space_group"),
-              arg_("z2p_r_den")=cb_r_den,
-              arg_("z2p_t_den")=cb_t_den)))
+              arg("space_group"),
+              arg("z2p_r_den")=cb_r_den,
+              arg("z2p_t_den")=cb_t_den)))
           .def("z_gen", z_gen)
           .def("p_gen", p_gen)
           .def("set_primitive", &wt::set_primitive)

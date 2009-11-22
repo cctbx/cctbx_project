@@ -22,33 +22,33 @@ namespace scitbx { namespace af { namespace boost_python { namespace {
         .def(init<
           af::const_ref<double> const&,
           std::size_t>((
-            arg_("data"),
-            arg_("n_slots")=1000)))
+            arg("data"),
+            arg("n_slots")=1000)))
         .def(init<af::const_ref<double> const&,
           double const&,
           double const&,
           std::size_t,
           double const&>((
-            arg_("data"),
-            arg_("data_min"),
-            arg_("data_max"),
-            arg_("n_slots")=1000,
-            arg_("relative_tolerance")=1e-4)))
+            arg("data"),
+            arg("data_min"),
+            arg("data_max"),
+            arg("n_slots")=1000,
+            arg("relative_tolerance")=1e-4)))
         .def(init<
           w_t const&,
           af::const_ref<double> const&,
           double const&>((
-            arg_("other"),
-            arg_("data"),
-            arg_("relative_tolerance")=1e-4)))
+            arg("other"),
+            arg("data"),
+            arg("relative_tolerance")=1e-4)))
         .def("data_min", &w_t::data_min)
         .def("data_max", &w_t::data_max)
         .def("slot_width", &w_t::slot_width)
         .def("slots", &w_t::slots)
         .def("n_out_of_slot_range", &w_t::n_out_of_slot_range)
         .def("get_cutoff", &w_t::get_cutoff, (
-          arg_("max_points"),
-          arg_("relative_tolerance")=1e-4))
+          arg("max_points"),
+          arg("relative_tolerance")=1e-4))
       ;
     }
   };

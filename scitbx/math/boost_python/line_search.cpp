@@ -29,15 +29,15 @@ namespace {
         .def_readonly("stp", &w_t::stp)
         .def_readonly("nfev", &w_t::nfev)
         .def("start", &w_t::start, (
-          arg_("x"),
-          arg_("functional"),
-          arg_("gradients"),
-          arg_("search_direction"),
-          arg_("initial_estimate_of_satisfactory_step_length")))
+          arg("x"),
+          arg("functional"),
+          arg("gradients"),
+          arg("search_direction"),
+          arg("initial_estimate_of_satisfactory_step_length")))
         .def("next", &w_t::next, (
-          arg_("x"),
-          arg_("functional"),
-          arg_("gradients")))
+          arg("x"),
+          arg("functional"),
+          arg("gradients")))
       ;
     }
   };

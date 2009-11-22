@@ -15,7 +15,7 @@ namespace scitbx { namespace math { namespace {
     {
       using namespace boost::python;
       class_<w_t>("basic_statistics", no_init)
-        .def(init<af::const_ref<double> const&>((arg_("values"))))
+        .def(init<af::const_ref<double> const&>((arg("values"))))
         .def_readonly("n", &w_t::n)
         .def_readonly("min", &w_t::min)
         .def_readonly("max", &w_t::max)

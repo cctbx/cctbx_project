@@ -607,7 +607,7 @@ class signature:
       print >> f, '    def("%s", %s, (' % def_args
       s = ""
       for arg in self.args:
-        s += ', arg_("%s")' % arg.name
+        s += ', arg("%s")' % arg.name
       s = s[2:] + "));"
       for line in line_breaker(s, 73):
         print >> f, "      "+line

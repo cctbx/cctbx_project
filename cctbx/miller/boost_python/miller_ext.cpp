@@ -80,9 +80,9 @@ namespace {
                  af::const_ref<double> const&)) statistical_mean);
 
     def("as_hendrickson_lattman", as_hendrickson_lattman, (
-      arg_("centric_flag"),
-      arg_("phase_integral"),
-      arg_("max_figure_of_merit")));
+      arg("centric_flag"),
+      arg("phase_integral"),
+      arg("max_figure_of_merit")));
   }
 
 } // namespace <anonymous>

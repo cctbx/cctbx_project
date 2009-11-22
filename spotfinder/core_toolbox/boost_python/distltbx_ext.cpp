@@ -159,8 +159,8 @@ BOOST_PYTHON_MODULE(spotfinder_distltbx_ext)
    class_<SpotFilterAgent>("SpotFilterAgent", init< double const&,
       double const&, double const&, double const&, double const&,
       af::shared<Distl::icering> >(
-        (arg_("pixel_size"),arg_("xbeam"),arg_("ybeam"),arg_("distance"),
-         arg_("wavelength"),arg_("icerings")
+        (arg("pixel_size"),arg("xbeam"),arg("ybeam"),arg("distance"),
+         arg("wavelength"),arg("icerings")
         )
       ))
       .def("precompute_resolution",&SpotFilterAgent::precompute_resolution)

@@ -18,7 +18,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("gauss_legendre_engine",no_init)
-        .def(init<int const& > ((arg_("n_points"))))
+        .def(init<int const& > ((arg("n_points"))))
         .def("f", &w_t::f)
         .def("refine", &w_t::refine)
         .def("x", &w_t::x)
@@ -37,7 +37,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("gauss_hermite_engine",no_init)
-        .def(init<int const& > ((arg_("n_points"))))
+        .def(init<int const& > ((arg("n_points"))))
         .def("f", &w_t::f)
         .def("refine", &w_t::refine)
         .def("x", &w_t::x)

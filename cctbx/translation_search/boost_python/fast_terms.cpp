@@ -23,16 +23,16 @@ namespace {
                   bool,
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<std::complex<double> > >(
-          (arg_("gridding"),
-           arg_("anomalous_flag"),
-           arg_("miller_indices_p1_f_calc"),
-           arg_("p1_f_calc"))))
+          (arg("gridding"),
+           arg("anomalous_flag"),
+           arg("miller_indices_p1_f_calc"),
+           arg("p1_f_calc"))))
         .def("summation", &w_t::summation, rir(),
-          (arg_("space_group"),
-           arg_("miller_indices_f_obs"),
-           arg_("m"),
-           arg_("f_part"),
-           arg_("squared_flag")))
+          (arg("space_group"),
+           arg("miller_indices_f_obs"),
+           arg("m"),
+           arg("f_part"),
+           arg("squared_flag")))
         .def("fft", &w_t::fft, rir())
         .def("accu_real_copy", &w_t::accu_real_copy)
       ;

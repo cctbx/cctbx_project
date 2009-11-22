@@ -38,15 +38,16 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_int()
   {
     using namespace boost::python;
+    using boost::python::arg;
     flex_wrapper<int>::signed_integer("int", scope())
       .def_pickle(flex_pickle_single_buffered<int>())
       .def("copy_to_byte_str", copy_to_byte_str<versa<int, flex_grid<> > >)
       .def("slice_to_byte_str",
         slice_to_byte_str<versa<int, flex_grid<> > >)
-      .def("as_bool", as_bool, (arg_("strict")=true))
+      .def("as_bool", as_bool, (arg("strict")=true))
       .def("counts", counts<int, std::map<long, long> >::unlimited)
       .def("counts", counts<int, std::map<long, long> >::limited, (
-        arg_("max_keys")))
+        arg("max_keys")))
       .def("matrix_is_symmetric",
         (bool(*)(
           const_ref<int, c_grid<2> > const&))
@@ -56,24 +57,24 @@ namespace scitbx { namespace af { namespace boost_python {
           const_ref<int, c_grid<2> > const&,
           unsigned, unsigned, unsigned, unsigned))
             matrix::copy_block, (
-              arg_("i_row"),
-              arg_("i_column"),
-              arg_("n_rows"),
-              arg_("n_columns")))
+              arg("i_row"),
+              arg("i_column"),
+              arg("n_rows"),
+              arg("n_columns")))
       .def("matrix_paste_block_in_place",
         (void(*)(
           ref<int, c_grid<2> > const&,
           const_ref<int, c_grid<2> > const&,
           unsigned, unsigned))
             matrix::paste_block_in_place, (
-              arg_("block"),
-              arg_("i_row"),
-              arg_("i_column")))
+              arg("block"),
+              arg("i_row"),
+              arg("i_column")))
     ;
     def(
       "int_from_byte_str",
       shared_from_byte_str<int>,
-      (arg_("byte_str")));
+      (arg("byte_str")));
     range_wrappers<int, int>::wrap("int_range");
   }
 

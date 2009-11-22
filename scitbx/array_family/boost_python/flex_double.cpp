@@ -313,6 +313,7 @@ namespace boost_python {
   void wrap_flex_double()
   {
     using namespace boost::python;
+    using boost::python::arg;
 
     typedef flex_wrapper<double> f_w;
     f_w::class_f_t class_f_t(f_w::numeric("double", scope()));
@@ -336,40 +337,40 @@ namespace boost_python {
           object const&,
           const_ref<std::size_t> const&,
           const_ref<double> const&)) add_selected_unsigned_a, (
-            arg_("indices"), arg_("values")))
+            arg("indices"), arg("values")))
       .def("all_approx_equal",
         all_approx_equal_a_a, (
-          arg_("other"),
-          arg_("tolerance")=1e-6))
+          arg("other"),
+          arg("tolerance")=1e-6))
       .def("all_approx_equal",
         all_approx_equal_a_s, (
-          arg_("other"),
-          arg_("tolerance")=1e-6))
+          arg("other"),
+          arg("tolerance")=1e-6))
       .def("all_approx_equal_relatively",
         all_approx_equal_relatively_a_a, (
-          arg_("other"),
-          arg_("relative_error")=1e-6))
+          arg("other"),
+          arg("relative_error")=1e-6))
       .def("all_approx_equal_relatively",
         all_approx_equal_relatively_a_s, (
-          arg_("other"),
-          arg_("relative_error")=1e-6))
+          arg("other"),
+          arg("relative_error")=1e-6))
       .def("as_float", as_float)
-      .def("round", round, (arg_("n_digits")=0))
+      .def("round", round, (arg("n_digits")=0))
       .def("select", select_stl_iterable<std::vector<unsigned> >, (
-        arg_("selection")))
+        arg("selection")))
       .def("select", select_stl_iterable<std::set<unsigned> >, (
-        arg_("selection")))
+        arg("selection")))
     ;
     def(
       "double_from_byte_str",
       shared_from_byte_str<double>,
-      (arg_("byte_str")));
+      (arg("byte_str")));
     range_wrappers<double, long>::wrap("double_range");
 
     typedef return_value_policy<return_by_value> rbv;
     typedef af::min_max_mean<double> mmm;
     class_<mmm>("min_max_mean_double", no_init)
-      .def(init<af::const_ref<double> const&>((arg_("values"))))
+      .def(init<af::const_ref<double> const&>((arg("values"))))
       .def_readonly("n", &mmm::n)
       .add_property("min", make_getter(&mmm::min, rbv()))
       .add_property("max", make_getter(&mmm::max, rbv()))
@@ -378,7 +379,7 @@ namespace boost_python {
     ;
 
     def("extract_double_attributes", extract_double_attributes,
-      (arg_("array"), arg_("attribute_name"), arg_("none_substitute")));
+      (arg("array"), arg("attribute_name"), arg("none_substitute")));
 
     wrap_flex_double_matrix(class_f_t);
   }

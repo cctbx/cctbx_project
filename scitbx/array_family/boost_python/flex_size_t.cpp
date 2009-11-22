@@ -45,6 +45,7 @@ namespace {
   void wrap_flex_size_t()
   {
     using namespace boost::python;
+    using boost::python::arg;
     flex_wrapper<std::size_t>::integer("size_t", scope())
       .def_pickle(flex_pickle_single_buffered<std::size_t>())
       .def("__init__", make_constructor(
@@ -53,10 +54,10 @@ namespace {
         (af::shared<std::size_t>(*)(
           af::const_ref<std::size_t> const&,
           af::const_ref<std::size_t> const&))
-        af::intersection, (arg_("self"), arg_("other")))
+        af::intersection, (arg("self"), arg("other")))
       .def("counts", counts<std::size_t, std::map<long, long> >::unlimited)
       .def("counts", counts<std::size_t, std::map<long, long> >::limited, (
-        arg_("max_keys")))
+        arg("max_keys")))
       .def("next_permutation", next_permutation)
       .def("inverse_permutation", inverse_permutation)
     ;

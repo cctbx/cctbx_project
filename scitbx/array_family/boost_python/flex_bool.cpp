@@ -347,6 +347,7 @@ namespace {
   void wrap_flex_bool()
   {
     using namespace boost::python;
+    using boost::python::arg;
 
     typedef flex_wrapper<bool> f_w;
 
@@ -355,19 +356,19 @@ namespace {
       .def("__init__", make_constructor(
         &from_iselection<unsigned>::get,
         default_call_policies(),
-        (arg_("size"), arg_("iselection"))))
+        (arg("size"), arg("iselection"))))
       .def("__init__", make_constructor(
         &from_iselection<std::size_t>::get,
         default_call_policies(),
-        (arg_("size"), arg_("iselection"))))
+        (arg("size"), arg("iselection"))))
       .def("__eq__", eq)
       .def("__ne__", ne)
       .def("__eq__", eq)
       .def("__ne__", ne)
-      .def("all_eq", all_eq, (arg_("other")))
-      .def("all_ne", all_ne, (arg_("other")))
-      .def("all_eq", all_eq, (arg_("other")))
-      .def("all_ne", all_ne, (arg_("other")))
+      .def("all_eq", all_eq, (arg("other")))
+      .def("all_ne", all_ne, (arg("other")))
+      .def("all_eq", all_eq, (arg("other")))
+      .def("all_ne", all_ne, (arg("other")))
       .def("__invert__", invert_a)
       .def("__and__", and_a_a)
       .def("__or__", or_a_a)
@@ -375,23 +376,23 @@ namespace {
       .def("__ior__", ior_a_a)
       .def("__iand__", iand_a_s)
       .def("__ior__", ior_a_s)
-      .def("exclusive_or", exclusive_or_a_a, (arg_("other")))
-      .def("is_super_set", is_super_set, (arg_("other")))
-      .def("count", f_w::count, (arg_("value")))
+      .def("exclusive_or", exclusive_or_a_a, (arg("other")))
+      .def("is_super_set", is_super_set, (arg("other")))
+      .def("count", f_w::count, (arg("value")))
       .def("as_int", as_int)
       .def("as_double", as_double)
-      .def("iselection", iselection, (arg_("test_value")=true))
+      .def("iselection", iselection, (arg("test_value")=true))
       .def("filter_indices",
         (af::shared<std::size_t>(*)(
            af::const_ref<bool> const&,
            af::const_ref<std::size_t> const&)) filter_indices, (
-             arg_("indices")))
+             arg("indices")))
     ;
-    def("order", f_w::order_a_a, (arg_("other")));
-    def("union", union_, (arg_("size"), arg_("iselections")));
-    def("intersection", intersection, (arg_("size"), arg_("iselections")));
-    def("first_index", f_w::first_index_a_s, (arg_("value")));
-    def("last_index", f_w::last_index_a_s, (arg_("value")));
+    def("order", f_w::order_a_a, (arg("other")));
+    def("union", union_, (arg("size"), arg("iselections")));
+    def("intersection", intersection, (arg("size"), arg("iselections")));
+    def("first_index", f_w::first_index_a_s, (arg("value")));
+    def("last_index", f_w::last_index_a_s, (arg("value")));
   }
 
 }}} // namespace scitbx::af::boost_python

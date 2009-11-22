@@ -21,11 +21,11 @@ namespace {
       class_<w_t>("symmetry", no_init)
         .def(init<uctbx::unit_cell const&,
                   sgtbx::space_group const&>(
-          (arg_("unit_cell"), arg_("space_group"))))
+          (arg("unit_cell"), arg("space_group"))))
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("space_group", &w_t::space_group, rir())
         .def("change_basis", &w_t::change_basis,
-          (arg_("change_of_basis_op")))
+          (arg("change_of_basis_op")))
       ;
     }
   };

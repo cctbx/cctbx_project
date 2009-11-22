@@ -28,8 +28,8 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("adp_similarity_proxy", no_init)
         .def(init<af::tiny<unsigned, 2> const&, double>((
-           arg_("i_seqs"),
-           arg_("weight"))))
+           arg("i_seqs"),
+           arg("weight"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("weight", make_getter(&w_t::weight, rbv()))
       ;
@@ -56,19 +56,19 @@ namespace {
            af::tiny<double, 2> const&,
            af::tiny<bool, 2> const&,
            double>(
-          (arg_("u_cart"),
-           arg_("u_iso"),
-           arg_("use_u_aniso"),
-           arg_("weight"))))
+          (arg("u_cart"),
+           arg("u_iso"),
+           arg("use_u_aniso"),
+           arg("weight"))))
         .def(init<
            af::const_ref<scitbx::sym_mat3<double> > const&,
            af::const_ref<double> const&,
            af::const_ref<bool> const&,
            adp_similarity_proxy const&>(
-          (arg_("u_cart"),
-           arg_("u_iso"),
-           arg_("use_u_aniso"),
-           arg_("proxy"))))
+          (arg("u_cart"),
+           arg("u_iso"),
+           arg("use_u_aniso"),
+           arg("proxy"))))
         .add_property("u_cart", make_getter(&w_t::u_cart, rbv()))
         .add_property("u_iso", make_getter(&w_t::u_iso, rbv()))
         .add_property("use_u_aniso", make_getter(&w_t::use_u_aniso, rbv()))
@@ -92,22 +92,22 @@ namespace {
     adp_similarity_wrappers::wrap();
     adp_similarity_proxy_wrappers::wrap();
     def("adp_similarity_residual_sum", adp_similarity_residual_sum,
-      (arg_("u_cart"),
-       arg_("u_iso"),
-       arg_("use_u_aniso"),
-       arg_("proxies"),
-       arg_("gradients_aniso_cart"),
-       arg_("gradients_iso")));
+      (arg("u_cart"),
+       arg("u_iso"),
+       arg("use_u_aniso"),
+       arg("proxies"),
+       arg("gradients_aniso_cart"),
+       arg("gradients_iso")));
     def("adp_similarity_residuals", adp_similarity_residuals,
-      (arg_("u_cart"),
-       arg_("u_iso"),
-       arg_("use_u_aniso"),
-       arg_("proxies")));
+      (arg("u_cart"),
+       arg("u_iso"),
+       arg("use_u_aniso"),
+       arg("proxies")));
     def("adp_similarity_deltas_rms", adp_similarity_deltas_rms,
-      (arg_("u_cart"),
-       arg_("u_iso"),
-       arg_("use_u_aniso"),
-       arg_("proxies")));
+      (arg("u_cart"),
+       arg("u_iso"),
+       arg("use_u_aniso"),
+       arg("proxies")));
   }
 
 }

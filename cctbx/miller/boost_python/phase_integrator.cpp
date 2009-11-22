@@ -17,22 +17,22 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("phase_integrator", no_init)
-        .def(init<optional<unsigned> >(arg_("n_steps")=360/5))
+        .def(init<optional<unsigned> >(arg("n_steps")=360/5))
         .def("n_steps", &w_t::n_steps)
         .def("__call__",
           (std::complex<double>(w_t::*)(
             sgtbx::phase_info const&,
             hendrickson_lattman<> const&) const) &w_t::operator(), (
-          arg_("phase_info"), arg_("hendrickson_lattman")))
+          arg("phase_info"), arg("hendrickson_lattman")))
         .def("__call__",
           (af::shared<std::complex<double> >(w_t::*)(
             sgtbx::space_group const&,
             af::const_ref<miller::index<> > const&,
             af::const_ref<hendrickson_lattman<> > const&) const)
               &w_t::operator(), (
-          arg_("space_group"),
-          arg_("miller_indices"),
-          arg_("hendrickson_lattman_coefficients")))
+          arg("space_group"),
+          arg("miller_indices"),
+          arg("hendrickson_lattman_coefficients")))
       ;
     }
   };
@@ -49,7 +49,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("phase_entropy", no_init)
-        .def(init<optional<unsigned> >(arg_("n_steps")=360/5))
+        .def(init<optional<unsigned> >(arg("n_steps")=360/5))
         .def("n_steps", &w_t::n_steps)
         .def("relative_entropy", &w_t::relative_entropy)
       ;

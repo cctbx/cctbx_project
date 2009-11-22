@@ -25,10 +25,10 @@ namespace {
                   af::const_ref<index<> > const&,
                   af::const_ref<DataType> const&,
                   optional<bool> >((
-          arg_("cb_op"),
-          arg_("indices_in"),
-          arg_("data_in"),
-          arg_("deg")=false)))
+          arg("cb_op"),
+          arg("indices_in"),
+          arg("data_in"),
+          arg("deg")=false)))
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
       ;

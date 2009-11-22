@@ -16,18 +16,19 @@ namespace scitbx { namespace af { namespace boost_python {
     wrap(const char* python_name)
     {
       using namespace boost::python;
+      using boost::python::arg;
       def(python_name,
         (shared<ValueType>(*)(IntType const&, IntType const&, IntType const&))
           range<ValueType, IntType, CheckType>::array, (
-            arg_("start"), arg_("stop"), arg_("step")));
+            arg("start"), arg("stop"), arg("step")));
       def(python_name,
         (shared<ValueType>(*)(IntType const&, IntType const&))
           range<ValueType, IntType, CheckType>::array, (
-            arg_("start"), arg_("stop")));
+            arg("start"), arg("stop")));
       def(python_name,
         (shared<ValueType>(*)(IntType const&))
           range<ValueType, IntType, CheckType>::array, (
-            arg_("stop")));
+            arg("stop")));
     }
   };
 

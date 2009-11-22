@@ -16,28 +16,29 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      using boost::python::arg;
       class_<w_t>("mersenne_twister", no_init)
-        .def(init<unsigned>((arg_("seed")=0)))
+        .def(init<unsigned>((arg("seed")=0)))
         .def(init<boost_random::mt19937 &>())
         .def("random_size_t_min", &w_t::random_size_t_min)
         .def("random_size_t_max", &w_t::random_size_t_max)
-        .def("seed", &w_t::seed, (arg_("value")=0))
+        .def("seed", &w_t::seed, (arg("value")=0))
         .def("random_size_t", (std::size_t(w_t::*)()) &w_t::random_size_t)
         .def("random_size_t",
           (af::shared<std::size_t>(w_t::*)(std::size_t))
-            &w_t::random_size_t, (arg_("size")))
+            &w_t::random_size_t, (arg("size")))
         .def("random_size_t",
           (af::shared<std::size_t>(w_t::*)(std::size_t, std::size_t))
-            &w_t::random_size_t, (arg_("size"), arg_("modulus")))
+            &w_t::random_size_t, (arg("size"), arg("modulus")))
         .def("random_double", (double(w_t::*)()) &w_t::random_double)
         .def("random_double", (af::shared<double>(w_t::*)(std::size_t))
-          &w_t::random_double, (arg_("size")))
+          &w_t::random_double, (arg("size")))
         .def("random_double",
           (af::shared<double>(w_t::*)(std::size_t, double))
-            &w_t::random_double, (arg_("size"), arg_("factor")))
+            &w_t::random_double, (arg("size"), arg("factor")))
         .def("random_bool", &w_t::random_bool, (
-          arg_("size"), arg_("threshold")))
-        .def("random_permutation", &w_t::random_permutation, (arg_("size")))
+          arg("size"), arg("threshold")))
+        .def("random_permutation", &w_t::random_permutation, (arg("size")))
         .def("random_double_point_on_sphere",
           &w_t::random_double_point_on_sphere)
         .def("random_double_unit_quaternion",
@@ -45,7 +46,7 @@ namespace {
         .def("random_double_r3_rotation_matrix",
           &w_t::random_double_r3_rotation_matrix)
         .def("getstate", &w_t::getstate)
-        .def("setstate", &w_t::setstate, (arg_("state")))
+        .def("setstate", &w_t::setstate, (arg("state")))
       ;
     }
   };

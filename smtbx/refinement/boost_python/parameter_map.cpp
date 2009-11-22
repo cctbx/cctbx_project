@@ -44,7 +44,7 @@ struct parameter_map_wrapper
     typedef return_value_policy<copy_const_reference> ccr;
     class_<wt>("parameter_map", no_init)
       .def(init<af::const_ref<typename wt::xray_scatterer_type> const &>(
-            arg_("scatterers")))
+            arg("scatterers")))
       .def("__len__", &wt::size)
       .def("__getitem__", &wt::operator[], ccr())
       .def("__iter__", iterator<wt, ccr>())

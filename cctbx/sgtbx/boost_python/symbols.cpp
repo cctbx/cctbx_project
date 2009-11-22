@@ -20,12 +20,12 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("space_group_symbols", no_init)
         .def(init<std::string const&, optional<std::string const&> >((
-          arg_("symbol"),
-          arg_("table_id")="")))
+          arg("symbol"),
+          arg("table_id")="")))
         .def(init<int, optional<std::string const&, std::string const&> >((
-          arg_("space_group_number"),
-          arg_("extension")="",
-          arg_("table_id")="")))
+          arg("space_group_number"),
+          arg("extension")="",
+          arg("table_id")="")))
         .def("number", &w_t::number)
         .def("schoenflies", &w_t::schoenflies, ccr())
         .def("qualifier", &w_t::qualifier, ccr())

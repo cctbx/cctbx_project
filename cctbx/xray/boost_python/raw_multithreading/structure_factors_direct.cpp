@@ -29,24 +29,24 @@ namespace cctbx { namespace xray { namespace structure_factors {
                     af::const_ref<miller::index<> > const&,
                     af::const_ref<scatterer_type> const&,
                     scattering_type_registry const&,
-                    unsigned>((arg_("cos_sin_table"),
-                               arg_("unit_cell"),
-                               arg_("space_group"),
-                               arg_("miller_indices"),
-                               arg_("scatterers"),
-                               arg_("scattering_type_registry"),
-                               arg_("n_threads"))))
+                    unsigned>((arg("cos_sin_table"),
+                               arg("unit_cell"),
+                               arg("space_group"),
+                               arg("miller_indices"),
+                               arg("scatterers"),
+                               arg("scattering_type_registry"),
+                               arg("n_threads"))))
           .def(init<uctbx::unit_cell const&,
                     sgtbx::space_group const&,
                     af::const_ref<miller::index<> > const&,
                     af::const_ref<scatterer_type> const&,
                     scattering_type_registry const&,
-                    unsigned>((arg_("unit_cell"),
-                               arg_("space_group"),
-                               arg_("miller_indices"),
-                               arg_("scatterers"),
-                               arg_("scattering_type_registry"),
-                               arg_("n_threads"))))
+                    unsigned>((arg("unit_cell"),
+                               arg("space_group"),
+                               arg("miller_indices"),
+                               arg("scatterers"),
+                               arg("scattering_type_registry"),
+                               arg("n_threads"))))
           .def("f_calc", &w_t::f_calc, ccr())
           ;
         }

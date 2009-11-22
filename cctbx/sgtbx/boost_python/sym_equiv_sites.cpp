@@ -23,39 +23,39 @@ namespace {
       typedef return_internal_reference<> rir;
       class_<w_t>("sym_equiv_sites", no_init)
         .def(init<site_symmetry const&>((
-          arg_("site_symmetry"))))
+          arg("site_symmetry"))))
         .def(init<uctbx::unit_cell const&,
                   sgtbx::space_group const&,
                   fractional<> const&,
                   sgtbx::site_symmetry_ops const&> ((
-          arg_("unit_cell"), arg_("space_group"), arg_("original_site"),
-          arg_("site_symmetry_ops"))))
+          arg("unit_cell"), arg("space_group"), arg("original_site"),
+          arg("site_symmetry_ops"))))
         .def(init<wyckoff::mapping const&>((
-          arg_("wyckoff_mapping"))))
+          arg("wyckoff_mapping"))))
         .def(init<sgtbx::space_group const&,
                   fractional<> const&,
                   optional<uctbx::unit_cell const&> >((
-          arg_("space_group"), arg_("original_site"), arg_("unit_cell"))))
+          arg("space_group"), arg("original_site"), arg("unit_cell"))))
         .def(init<uctbx::unit_cell const&,
                   sgtbx::space_group const&,
                   fractional<> const&,
                   rt_mx const&,
                   optional<std::size_t> >((
-          arg_("unit_cell"), arg_("space_group"), arg_("original_site"),
-          arg_("special_op"), arg_("multiplicity"))))
+          arg("unit_cell"), arg("space_group"), arg("original_site"),
+          arg("special_op"), arg("multiplicity"))))
         .def(init<uctbx::unit_cell const&,
                   sgtbx::space_group const&,
                   fractional<> const&,
                   optional<double, double> >((
-          arg_("unit_cell"), arg_("space_group"), arg_("original_site"),
-          arg_("minimum_distance"), arg_("tolerance"))))
+          arg("unit_cell"), arg("space_group"), arg("original_site"),
+          arg("minimum_distance"), arg("tolerance"))))
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("space_group", &w_t::space_group, rir())
         .def("original_site", &w_t::original_site, ccr())
         .def("special_op", &w_t::special_op, ccr())
         .def("max_accepted_tolerance", &w_t::max_accepted_tolerance)
         .def("coordinates", &w_t::coordinates)
-        .def("sym_op", &w_t::sym_op, (arg_("i_coor")))
+        .def("sym_op", &w_t::sym_op, (arg("i_coor")))
         .def("sym_op_indices", &w_t::sym_op_indices)
         .def("is_special_position", &w_t::is_special_position)
       ;
@@ -75,23 +75,23 @@ namespace {
         .def(init<sym_equiv_sites<> const&,
                   fractional<> const&,
                   optional<af::tiny<bool, 3> const&> >(
-          (arg_("reference_sites"),
-           arg_("other"),
-           arg_("principal_continuous_allowed_origin_shift_flags")
+          (arg("reference_sites"),
+           arg("other"),
+           arg("principal_continuous_allowed_origin_shift_flags")
              =no_continuous_allowed_shifts)))
         .def(init<sym_equiv_sites<> const&,
                   af::const_ref<scitbx::vec3<double> > const&,
                   optional<af::tiny<bool, 3> const&> >(
-          (arg_("reference_sites"),
-           arg_("others"),
-           arg_("principal_continuous_allowed_origin_shift_flags")
+          (arg("reference_sites"),
+           arg("others"),
+           arg("principal_continuous_allowed_origin_shift_flags")
              =no_continuous_allowed_shifts)))
         .def("i_other", &w_t::i_other)
         .def("sym_op", &w_t::sym_op, ccr())
         .def("continuous_shifts", &w_t::continuous_shifts, ccr())
         .def("diff", &w_t::diff, ccr())
         .def("dist", &w_t::dist)
-        .def("apply", &w_t::apply, (arg_("sites_frac")))
+        .def("apply", &w_t::apply, (arg("sites_frac")))
       ;
     }
   };

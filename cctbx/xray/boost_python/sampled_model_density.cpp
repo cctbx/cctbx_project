@@ -33,24 +33,24 @@ namespace {
                            double const&,
                            bool,
                            int> >(
-          (arg_("unit_cell"),
-           arg_("scatterers"),
-           arg_("scattering_type_registry"),
-           arg_("fft_n_real"),
-           arg_("fft_m_real"),
-           arg_("u_base")=0.25,
-           arg_("wing_cutoff")=1.e-3,
-           arg_("exp_table_one_over_step_size")=-100,
-           arg_("force_complex")=false,
-           arg_("sampled_density_must_be_positive")=false,
-           arg_("tolerance_positive_definite")=1.e-5,
-           arg_("use_u_base_as_u_extra")=false,
-           arg_("store_grid_indices_for_each_scatterer")=0)))
+          (arg("unit_cell"),
+           arg("scatterers"),
+           arg("scattering_type_registry"),
+           arg("fft_n_real"),
+           arg("fft_m_real"),
+           arg("u_base")=0.25,
+           arg("wing_cutoff")=1.e-3,
+           arg("exp_table_one_over_step_size")=-100,
+           arg("force_complex")=false,
+           arg("sampled_density_must_be_positive")=false,
+           arg("tolerance_positive_definite")=1.e-5,
+           arg("use_u_base_as_u_extra")=false,
+           arg("store_grid_indices_for_each_scatterer")=0)))
         .def("real_map", &w_t::real_map)
         .def("complex_map", &w_t::complex_map)
         .def("eliminate_u_extra_and_normalize",
           &w_t::eliminate_u_extra_and_normalize,
-          (arg_("miller_indices"), arg_("structure_factors")))
+          (arg("miller_indices"), arg("structure_factors")))
         .def("grid_indices_for_each_scatterer",
           &w_t::grid_indices_for_each_scatterer, ccr())
       ;

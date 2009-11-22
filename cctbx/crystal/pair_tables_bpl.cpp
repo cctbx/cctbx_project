@@ -63,17 +63,17 @@ namespace {
       class_<w_t, boost::shared_ptr<w_t> >("pair_asu_table", no_init)
         .def(init<
           boost::shared_ptr<direct_space_asu::asu_mappings<> > >(
-            (arg_("asu_mappings"))))
+            (arg("asu_mappings"))))
         .def("asu_mappings", &w_t::asu_mappings)
         .def("table", &w_t::table, ccr())
         .def("__contains__",
           (bool(w_t::*)(direct_space_asu::asu_mapping_index_pair const&) const)
             &w_t::contains, (
-          arg_("pair")))
+          arg("pair")))
         .def("contains",
           (bool(w_t::*)(unsigned, unsigned, unsigned) const)
             &w_t::contains, (
-          arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
+          arg("i_seq"), arg("j_seq"), arg("j_sym")))
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
         .def("pair_counts", &w_t::pair_counts)
@@ -93,16 +93,16 @@ namespace {
           arg("min_cubicle_edge")=5,
           arg("epsilon")=1e-6), return_self<>())
         .def("add_pair_sym_table", &w_t::add_pair_sym_table, (
-          arg_("sym_table")), return_self<>())
+          arg("sym_table")), return_self<>())
         .def("add_pair", (pair_asu_table<>&(w_t::*)(
             direct_space_asu::asu_mapping_index_pair const&)) &w_t::add_pair,
-          (arg_("pair")), return_self<>())
+          (arg("pair")), return_self<>())
         .def("add_pair", (pair_asu_table<>&(w_t::*)(
             unsigned, unsigned, sgtbx::rt_mx const&)) &w_t::add_pair,
-          (arg_("i_seq"), arg_("j_seq"), arg_("rt_mx_ji")), return_self<>())
+          (arg("i_seq"), arg("j_seq"), arg("rt_mx_ji")), return_self<>())
         .def("add_pair", (pair_asu_table<>&(w_t::*)(
             af::tiny<unsigned, 2> const&)) &w_t::add_pair,
-          (arg_("i_seqs")), return_self<>())
+          (arg("i_seqs")), return_self<>())
         .def("extract_pair_sym_table", &w_t::extract_pair_sym_table, (
           arg("skip_j_seq_less_than_i_seq")=true))
         .def("angle_pair_asu_table", &w_t::angle_pair_asu_table)
@@ -135,19 +135,19 @@ namespace {
           double,
           bool,
           bool>((
-            arg_("pair_sym_table"),
-            arg_("orthogonalization_matrix"),
-            arg_("sites_frac"),
-            arg_("u_isos"),
-            arg_("selection"),
-            arg_("use_u_iso"),
-            arg_("grad_u_iso"),
-            arg_("sphere_radius"),
-            arg_("distance_power"),
-            arg_("average_power"),
-            arg_("min_u_sum"),
-            arg_("compute_gradients"),
-            arg_("collect"))))
+            arg("pair_sym_table"),
+            arg("orthogonalization_matrix"),
+            arg("sites_frac"),
+            arg("u_isos"),
+            arg("selection"),
+            arg("use_u_iso"),
+            arg("grad_u_iso"),
+            arg("sphere_radius"),
+            arg("distance_power"),
+            arg("average_power"),
+            arg("min_u_sum"),
+            arg("compute_gradients"),
+            arg("collect"))))
         .def_readonly("number_of_restraints", &w_t::number_of_restraints)
         .def_readonly("residual_sum", &w_t::residual_sum)
         .add_property("gradients", make_getter(&w_t::gradients, rbv()))
@@ -168,15 +168,15 @@ namespace {
         af::const_ref<crystal::pair_sym_dict> const&,
         scitbx::mat3<double> const&,
         af::const_ref<scitbx::vec3<double> > const&)) get_distances, (
-      arg_("pair_sym_table"),
-      arg_("orthogonalization_matrix"),
-      arg_("sites_frac")));
+      arg("pair_sym_table"),
+      arg("orthogonalization_matrix"),
+      arg("sites_frac")));
     def("get_distances",
       (af::shared<double>(*)(
         af::const_ref<crystal::pair_sym_dict> const&,
         af::const_ref<scitbx::vec3<double> > const&)) get_distances, (
-      arg_("pair_sym_table"),
-      arg_("sites_cart")));
+      arg("pair_sym_table"),
+      arg("sites_cart")));
     pair_sym_table_wrappers::wrap();
 
     pair_asu_table_table_wrappers::wrap();

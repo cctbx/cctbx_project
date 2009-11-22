@@ -51,47 +51,47 @@ struct transform_coordinate_wrappers {
     using namespace boost::python;
 
     class_<frac2frac>("frac2frac",init<>())
-      .def("__call__",&frac2frac::operator(),arg_("coordinate"))
+      .def("__call__",&frac2frac::operator(),arg("coordinate"))
       .def("inverse",&frac2frac::inverse);
 
     class_<frac2cart>("frac2cart",no_init)
       .def(init<matrix3>())
-      .def("__call__",&frac2cart::operator(),arg_("coordinate"))
+      .def("__call__",&frac2cart::operator(),arg("coordinate"))
       .def("inverse",&frac2cart::inverse);
 
     class_<frac2grid>("frac2grid",no_init)
       .def(init<extents>())
-      .def("__call__",&frac2grid::operator(),arg_("coordinate"))
-      .def("fractional_transform",&frac2grid::strange_transform,arg_("coordinate"))
-      .def("floor_transform",&frac2grid::floor_transform,arg_("coordinate"))
+      .def("__call__",&frac2grid::operator(),arg("coordinate"))
+      .def("fractional_transform",&frac2grid::strange_transform,arg("coordinate"))
+      .def("floor_transform",&frac2grid::floor_transform,arg("coordinate"))
       .def("inverse",&frac2grid::inverse);
 
     class_<cart2frac>("cart2frac",no_init)
       .def(init<matrix3>())
-      .def("__call__",&cart2frac::operator(),arg_("coordinate"))
+      .def("__call__",&cart2frac::operator(),arg("coordinate"))
       .def("inverse",&cart2frac::inverse);
 
     class_<cart2cart>("cart2cart",init<>())
-      .def("__call__",&cart2cart::operator(),arg_("coordinate"))
+      .def("__call__",&cart2cart::operator(),arg("coordinate"))
       .def("inverse",&cart2cart::inverse);
 
     class_<cart2grid>("cart2grid",no_init)
       .def(init<matrix3,extents>())
-      .def("__call__",&cart2grid::operator(),arg_("coordinate"))
+      .def("__call__",&cart2grid::operator(),arg("coordinate"))
       .def("inverse",&cart2grid::inverse);
 
     class_<grid2frac>("grid2frac",no_init)
       .def(init<extents>())
-      .def("__call__",&grid2frac::operator(),arg_("coordinate"))
+      .def("__call__",&grid2frac::operator(),arg("coordinate"))
       .def("inverse",&grid2frac::inverse);
 
     class_<grid2cart>("grid2cart",no_init)
       .def(init<extents,matrix3>())
-      .def("__call__",&grid2cart::operator(),arg_("coordinate"))
+      .def("__call__",&grid2cart::operator(),arg("coordinate"))
       .def("inverse",&grid2cart::inverse);
 
     class_<grid2grid>("grid2grid",init<>())
-      .def("__call__",&grid2grid::operator(),arg_("coordinate"))
+      .def("__call__",&grid2grid::operator(),arg("coordinate"))
       .def("inverse",&grid2grid::inverse);
 
   }

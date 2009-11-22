@@ -46,20 +46,20 @@ namespace {
         .def("n_independent_params", &w_t::n_independent_params)
         .def("n_dependent_params", &w_t::n_dependent_params)
         .def("independent_params", &w_t::independent_params, (
-          arg_("all_params")))
+          arg("all_params")))
         .def("all_params", &w_t::all_params, (
-          arg_("independent_params")))
+          arg("independent_params")))
         .def("gradient_sum_matrix", gradient_sum_matrix_as_versa)
         .def("independent_gradients",
              (af::small<double, 3> (w_t::*)(af::const_ref<double> const&) const)
              &w_t::independent_gradients,
-             (arg_("all_gradients")))
+             (arg("all_gradients")))
         .def("independent_gradients",
              (af::small<double, 3> (w_t::*)(scitbx::vec3<double> const&) const)
              &w_t::independent_gradients,
-             (arg_("all_gradients")))
+             (arg("all_gradients")))
         .def("independent_curvatures", &w_t::independent_curvatures, (
-          arg_("all_curvatures")))
+          arg("all_curvatures")))
       ;
     }
   };
@@ -80,9 +80,9 @@ namespace {
       class_<w_t>("site_symmetry_ops", no_init)
         .enable_pickling()
         .def(init<int, rt_mx const&, af::shared<rt_mx> const&>(( // for pickle
-          arg_("multiplicity"),
-          arg_("special_op"),
-          arg_("matrices"))))
+          arg("multiplicity"),
+          arg("special_op"),
+          arg("matrices"))))
         .def("multiplicity", &w_t::multiplicity)
         .def("special_op", &w_t::special_op, ccr())
         .def("matrices", &w_t::matrices, ccr())
@@ -92,16 +92,16 @@ namespace {
         .def("is_compatible_u_star",
            (bool(w_t::*)(scitbx::sym_mat3<double> const&, double) const)0,
            is_compatible_u_star_overloads(
-             (arg_("u_star"), arg_("tolerance")=1.e-6)))
+             (arg("u_star"), arg("tolerance")=1.e-6)))
         .def("average_u_star",
           (scitbx::sym_mat3<double>
             (w_t::*)(scitbx::sym_mat3<double> const&) const)
-          &w_t::average_u_star, (arg_("u_star")))
-        .def("change_basis", &w_t::change_basis, (arg_("cb_op")))
+          &w_t::average_u_star, (arg("u_star")))
+        .def("change_basis", &w_t::change_basis, (arg("cb_op")))
         .def("site_constraints", &w_t::site_constraints, rir())
         .def("adp_constraints", &w_t::adp_constraints, rir())
         .def("cartesian_adp_constraints", &w_t::cartesian_adp_constraints, (
-          arg_("unit_cell"), arg_("unit_cell_has_changed")=false), rir())
+          arg("unit_cell"), arg("unit_cell_has_changed")=false), rir())
       ;
     }
   };
@@ -121,11 +121,11 @@ namespace {
                   sgtbx::space_group const&,
                   fractional<double> const&,
                   optional<double, bool> >(
-          (arg_("unit_cell"),
-           arg_("space_group"),
-           arg_("original_site"),
-           arg_("min_distance_sym_equiv")=0.5,
-           arg_("assert_min_distance_sym_equiv")=true)))
+          (arg("unit_cell"),
+           arg("space_group"),
+           arg("original_site"),
+           arg("min_distance_sym_equiv")=0.5,
+           arg("assert_min_distance_sym_equiv")=true)))
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("space_group", &w_t::space_group, rir())
         .def("original_site", &w_t::original_site, ccr())
@@ -160,18 +160,18 @@ namespace {
           af::shared<std::size_t> const&,
           af::shared<site_symmetry_ops> const&,
           af::shared<std::size_t> const&>(( // for pickle
-            arg_("indices"),
-            arg_("table"),
-            arg_("special_position_indices"))))
+            arg("indices"),
+            arg("table"),
+            arg("special_position_indices"))))
         .def("process",
           (void(w_t::*)(std::size_t, site_symmetry_ops const&))
             &w_t::process, (
-              arg_("insert_at_index"),
-              arg_("site_symmetry_ops")))
+              arg("insert_at_index"),
+              arg("site_symmetry_ops")))
         .def("process",
           (void(w_t::*)(site_symmetry_ops const&))
             &w_t::process,
-          (arg_("site_symmetry_ops")))
+          (arg("site_symmetry_ops")))
         .def("process",
           (void(w_t::*)(
             uctbx::unit_cell const&,
@@ -179,13 +179,13 @@ namespace {
             af::const_ref<scitbx::vec3<double> > const&,
             double,
             bool))0, process_overloads((
-          arg_("unit_cell"),
-          arg_("space_group"),
-          arg_("original_sites_frac"),
-          arg_("min_distance_sym_equiv")=0.5,
-          arg_("assert_min_distance_sym_equiv")=true)))
-        .def("is_special_position", &w_t::is_special_position, (arg_("i_seq")))
-        .def("get", &w_t::get, (arg_("i_seq")), rir())
+          arg("unit_cell"),
+          arg("space_group"),
+          arg("original_sites_frac"),
+          arg("min_distance_sym_equiv")=0.5,
+          arg("assert_min_distance_sym_equiv")=true)))
+        .def("is_special_position", &w_t::is_special_position, (arg("i_seq")))
+        .def("get", &w_t::get, (arg("i_seq")), rir())
         .def("n_special_positions", &w_t::n_special_positions)
         .def("special_position_indices",&w_t::special_position_indices,ccr())
         .def("n_unique", &w_t::n_unique)
@@ -193,17 +193,17 @@ namespace {
         .def("table", &w_t::table, ccr())
         .def("reserve", &w_t::reserve)
         .def("deep_copy", &w_t::deep_copy)
-        .def("change_basis", &w_t::change_basis, (arg_("cb_op")))
+        .def("change_basis", &w_t::change_basis, (arg("cb_op")))
         .def("select",
           (site_symmetry_table(w_t::*)(
             af::const_ref<std::size_t> const& ) const)
               &w_t::select,
-          (arg_("selection")))
+          (arg("selection")))
         .def("select",
           (site_symmetry_table(w_t::*)(
             af::const_ref<bool> const& ) const)
               &w_t::select,
-          (arg_("selection")))
+          (arg("selection")))
       ;
     }
   };
