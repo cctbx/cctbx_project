@@ -96,37 +96,37 @@ namespace scitbx { namespace rigid_body { namespace ext {
         .def("q_size_each_joint", &wt::q_size_each_joint)
         .def("root_indices", &wt::root_indices)
         .def("pack_q", &wt::pack_q)
-        .def("unpack_q", &wt::unpack_q, (arg_("q_packed")))
+        .def("unpack_q", &wt::unpack_q, (arg("q_packed")))
         .def("pack_qd", &wt::pack_qd)
-        .def("unpack_qd", &wt::unpack_qd, (arg_("qd_packed")))
+        .def("unpack_qd", &wt::unpack_qd, (arg("qd_packed")))
         .def("number_of_sites_in_each_tree",
           &wt::number_of_sites_in_each_tree)
         .def("sum_of_masses_in_each_tree", sum_of_masses_in_each_tree)
         .def("mean_linear_velocity", &wt::mean_linear_velocity, (
-          arg_("number_of_sites_in_each_tree")))
+          arg("number_of_sites_in_each_tree")))
         .def("subtract_from_linear_velocities",
           &wt::subtract_from_linear_velocities, (
-            arg_("number_of_sites_in_each_tree"),
-            arg_("value")))
+            arg("number_of_sites_in_each_tree"),
+            arg("value")))
         .def("e_kin", &wt::e_kin, ccr())
         .def("reset_e_kin", &wt::reset_e_kin, (
-           arg_("e_kin_target"),
-           arg_("e_kin_epsilon")=1e-12))
+           arg("e_kin_target"),
+           arg("e_kin_epsilon")=1e-12))
         .def("assign_zero_velocities", &wt::assign_zero_velocities)
         .def("assign_random_velocities", assign_random_velocities, (
-           arg_("e_kin_target")=none,
-           arg_("e_kin_epsilon")=1e-12,
-           arg_("random_gauss")=none))
+           arg("e_kin_target")=none,
+           arg("e_kin_epsilon")=1e-12,
+           arg("random_gauss")=none))
         .def("inverse_dynamics_packed", &wt::inverse_dynamics_packed, (
-          arg_("qdd_packed")=none,
-          arg_("f_ext_packed")=none,
-          arg_("grav_accn")=none))
+          arg("qdd_packed")=none,
+          arg("f_ext_packed")=none,
+          arg("grav_accn")=none))
         .def("f_ext_as_tau_packed", &wt::f_ext_as_tau_packed, (
-          arg_("f_ext_packed")))
+          arg("f_ext_packed")))
         .def("forward_dynamics_ab_packed", &wt::forward_dynamics_ab_packed, (
-          arg_("tau_packed")=none,
-          arg_("f_ext_packed")=none,
-          arg_("grav_accn")=none))
+          arg("tau_packed")=none,
+          arg("f_ext_packed")=none,
+          arg("grav_accn")=none))
       ;
     }
   };
@@ -155,12 +155,12 @@ namespace scitbx { namespace rigid_body { namespace ext {
           object const&,
           object const&,
           optional<ft const&> >((
-            arg_("labels"),
-            arg_("sites"),
-            arg_("masses"),
-            arg_("tardy_tree"),
-            arg_("potential_obj"),
-            arg_("near_singular_hinges_angular_tolerance_deg")=5)))
+            arg("labels"),
+            arg("sites"),
+            arg("masses"),
+            arg("tardy_tree"),
+            arg("potential_obj"),
+            arg("near_singular_hinges_angular_tolerance_deg")=5)))
         .def_readonly("labels", &wt::labels)
         .add_property("sites", make_getter(&wt::sites, rbv()))
         .add_property("masses", make_getter(&wt::masses, rbv()))
@@ -178,7 +178,7 @@ namespace scitbx { namespace rigid_body { namespace ext {
         .def("d_e_pot_d_q_packed", &wt::d_e_pot_d_q_packed)
         .def("e_tot", &wt::e_tot)
         .def("qdd_packed", &wt::qdd_packed)
-        .def("dynamics_step", &wt::dynamics_step, (arg_("delta_t")))
+        .def("dynamics_step", &wt::dynamics_step, (arg("delta_t")))
       ;
     }
   };
@@ -188,8 +188,8 @@ namespace scitbx { namespace rigid_body { namespace ext {
     using namespace boost::python;
     def("joint_lib_six_dof_aja_simplified",
       joint_lib_six_dof_aja_simplified_wrapper, (
-        arg_("center_of_mass"),
-        arg_("q")));
+        arg("center_of_mass"),
+        arg("q")));
 
     featherstone_system_model_wrappers::wrap();
     tardy_model_wrappers::wrap();

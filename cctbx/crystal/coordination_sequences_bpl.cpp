@@ -14,12 +14,12 @@ namespace {
   {
     using namespace boost::python;
     def("coordination_sequences_simple", coordination_sequences::simple, (
-      arg_("pair_asu_table"),
-      arg_("max_shell")));
+      arg("pair_asu_table"),
+      arg("max_shell")));
     def("coordination_sequences_shell_asu_tables",
       coordination_sequences::shell_asu_tables, (
-      arg_("pair_asu_table"),
-      arg_("max_shell")));
+      arg("pair_asu_table"),
+      arg("max_shell")));
     {
       using namespace scitbx::boost_python::container_conversions;
       tuple_mapping<

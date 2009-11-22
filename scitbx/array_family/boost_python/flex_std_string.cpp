@@ -27,15 +27,16 @@ namespace {
   void wrap_flex_std_string()
   {
     using namespace boost::python;
+    using boost::python::arg;
     typedef flex_wrapper<std::string> fw;
     fw::ordered("std_string", scope())
       .def_pickle(flex_pickle_double_buffered<std::string>())
       .def("count", fw::count)
     ;
     def("split_lines", split_lines_wrapper, (
-      arg_("multi_line_string"),
-      arg_("keep_ends")=false,
-      arg_("count_lines_first")=true));
+      arg("multi_line_string"),
+      arg("keep_ends")=false,
+      arg("count_lines_first")=true));
   }
 
 }}} // namespace scitbx::af::boost_python

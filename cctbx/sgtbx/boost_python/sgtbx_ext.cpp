@@ -45,7 +45,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("parse_string", no_init)
-        .def(init<std::string const&>((arg_("str"))))
+        .def(init<std::string const&>((arg("str"))))
         .def("string", &w_t::string)
         .def("where", &w_t::where)
       ;
@@ -123,7 +123,7 @@ namespace {
     def("n_fold_operator_from_axis_direction",
       n_fold_operator_from_axis_direction,
       n_fold_operator_from_axis_direction_overloads((
-        arg_("ev_cart"), arg_("n"), arg_("sense")=1)));
+        arg("ev_cart"), arg("n"), arg("sense")=1)));
   }
 
 } // namespace <anonymous>

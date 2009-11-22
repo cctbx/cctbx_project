@@ -16,7 +16,7 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_;
+    using boost::python::arg;
     typedef return_value_policy<return_by_value> rbv;
     class_<manager<> >("manager",
       init<int const&,
@@ -27,14 +27,14 @@ namespace {
            af::const_ref<cctbx::xray::scatterer<> > const&,
            optional<double const&,
                     double const&> >((
-                                  arg_("nx"),
-                                  arg_("ny"),
-                                  arg_("nz"),
-                                  arg_("scattering_type_registry"),
-                                  arg_("unit_cell"),
-                                  arg_("scatterers"),
-                                  arg_("exp_table_one_over_step_size")=-100,
-                                  arg_("wing_cutoff")=1.e-3)))
+                                  arg("nx"),
+                                  arg("ny"),
+                                  arg("nz"),
+                                  arg("scattering_type_registry"),
+                                  arg("unit_cell"),
+                                  arg("scatterers"),
+                                  arg("exp_table_one_over_step_size")=-100,
+                                  arg("wing_cutoff")=1.e-3)))
       .add_property("density_array", make_getter(&manager<>::density_array, rbv()))
     ;
 

@@ -32,11 +32,11 @@ namespace {
       using namespace boost::python;
       class_<w_t>("search_symmetry_flags", no_init)
         .def(init<bool, optional<int, bool, bool, bool> >(
-          (arg_("use_space_group_symmetry"),
-           arg_("use_space_group_ltr")=0,
-           arg_("use_seminvariants")=false,
-           arg_("use_normalizer_k2l")=false,
-           arg_("use_normalizer_l2n")=false)))
+          (arg("use_space_group_symmetry"),
+           arg("use_space_group_ltr")=0,
+           arg("use_seminvariants")=false,
+           arg("use_normalizer_k2l")=false,
+           arg("use_normalizer_l2n")=false)))
         .def("use_space_group_symmetry", &w_t::use_space_group_symmetry)
         .def("use_space_group_ltr", &w_t::use_space_group_ltr)
         .def("use_seminvariants", &w_t::use_seminvariants)
@@ -66,14 +66,14 @@ namespace {
       class_<w_t>("search_symmetry", no_init)
         .def(init<search_symmetry_flags const&,
                   space_group_type const&>(
-          (arg_("flags"),
-           arg_("space_group_type"))))
+          (arg("flags"),
+           arg("space_group_type"))))
         .def(init<search_symmetry_flags const&,
                   space_group_type const&,
                   structure_seminvariants const&>(
-          (arg_("flags"),
-           arg_("space_group_type"),
-           arg_("seminvariant"))))
+          (arg("flags"),
+           arg("space_group_type"),
+           arg("seminvariant"))))
         .def("flags", &w_t::flags, rir())
         .def("subgroup", &w_t::subgroup, rir())
         .def("continuous_shifts", &w_t::continuous_shifts, ccr())
@@ -81,7 +81,7 @@ namespace {
           &w_t::continuous_shifts_are_principal)
         .def("continuous_shift_flags", &w_t::continuous_shift_flags,
           continuous_shift_flags_overloads(
-            (arg_("assert_principal")=true)))
+            (arg("assert_principal")=true)))
         .def("projected_subgroup", &w_t::projected_subgroup)
       ;
     }

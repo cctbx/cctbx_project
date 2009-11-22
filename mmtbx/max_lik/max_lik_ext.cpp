@@ -17,13 +17,13 @@ namespace {
     using namespace boost::python;
     class_<wat_dist>("wat_dist")
       .def("do_wat_dist", &wat_dist::do_wat_dist,
-        (arg_("shell"),
-         arg_("xyzf"),  arg_("atmrad"), arg_("element_symbol"),
-         arg_("uc"),  arg_("sg"), arg_("nxnynz"), arg_("sel_flag"), arg_("rad"), arg_("nshells")))
+        (arg("shell"),
+         arg("xyzf"),  arg("atmrad"), arg("element_symbol"),
+         arg("uc"),  arg("sg"), arg("nxnynz"), arg("sel_flag"), arg("rad"), arg("nshells")))
       .def("data", &wat_dist::data)
       .def("max_number_of_shells", &wat_dist::max_number_of_shells)
       .def("as_xplor_map", &wat_dist::as_xplor_map,
-        (arg_("outputfile")))
+        (arg("outputfile")))
     ;
     def("fo_fc_alpha_over_eps_beta",
          (af::shared<double>(*)
@@ -33,21 +33,21 @@ namespace {
                 af::shared<double> const&,
                 cctbx::sgtbx::space_group const&,
                 af::const_ref<cctbx::miller::index<> >)) fo_fc_alpha_over_eps_beta,
-                                                          (arg_("f_obs"),
-                                                           arg_("f_model"),
-                                                           arg_("alpha"),
-                                                           arg_("beta"),
-                                                           arg_("space_group"),
-                                                           arg_("miller_indices")))
+                                                          (arg("f_obs"),
+                                                           arg("f_model"),
+                                                           arg("alpha"),
+                                                           arg("beta"),
+                                                           arg("space_group"),
+                                                           arg("miller_indices")))
     ;
     class_<alpha_beta_est>("alpha_beta_est",
                  init<boost::python::list const&,
                       boost::python::list const&,
                       boost::python::list const&,
-                      cctbx::sgtbx::space_group const& >((arg_("fo_test"),
-                                                          arg_("fm_test"),
-                                                          arg_("indices"),
-                                                          arg_("space_group"))))
+                      cctbx::sgtbx::space_group const& >((arg("fo_test"),
+                                                          arg("fm_test"),
+                                                          arg("indices"),
+                                                          arg("space_group"))))
       .def("alpha", &alpha_beta_est::alpha)
       .def("beta",  &alpha_beta_est::beta)
     ;
@@ -58,12 +58,12 @@ namespace {
                       af::shared<double> const&,
                       cctbx::sgtbx::space_group const&,
                       af::const_ref<cctbx::miller::index<> > const& >((
-                                                          arg_("f_obs"),
-                                                          arg_("f_model"),
-                                                          arg_("alpha"),
-                                                          arg_("beta"),
-                                                          arg_("space_group"),
-                                                          arg_("miller_indices"))))
+                                                          arg("f_obs"),
+                                                          arg("f_model"),
+                                                          arg("alpha"),
+                                                          arg("beta"),
+                                                          arg("space_group"),
+                                                          arg("miller_indices"))))
       .def("fom",         &fom_and_phase_error::fom)
       .def("phase_error", &fom_and_phase_error::phase_error)
     ;
@@ -74,12 +74,12 @@ namespace {
                       af::const_ref<double> const&,
                       cctbx::sgtbx::space_group const&,
                       af::const_ref<cctbx::miller::index<> > const& >((
-                                                          arg_("f_obs"),
-                                                          arg_("f_model"),
-                                                          arg_("alpha"),
-                                                          arg_("beta"),
-                                                          arg_("space_group"),
-                                                          arg_("miller_indices"))))
+                                                          arg("f_obs"),
+                                                          arg("f_model"),
+                                                          arg("alpha"),
+                                                          arg("beta"),
+                                                          arg("space_group"),
+                                                          arg("miller_indices"))))
       .def("f_star", &f_star_w_star_mu_nu::f_star)
       .def("w_star", &f_star_w_star_mu_nu::w_star)
       .def("mu",     &f_star_w_star_mu_nu::mu)
@@ -99,15 +99,15 @@ namespace {
                       af::const_ref<std::string> const&,
                       cctbx::uctbx::unit_cell const&,
                       cctbx::sgtbx::space_group const&,
-                      double >((arg_("r1f"),
-                                    arg_("r1c"),
-                                    arg_("r2f"),
-                                    arg_("r2c"),
-                                    arg_("lab1"),
-                                    arg_("lab2"),
-                                    arg_("uc"),
-                                    arg_("sg"),
-                                    arg_("rad"))))
+                      double >((arg("r1f"),
+                                    arg("r1c"),
+                                    arg("r2f"),
+                                    arg("r2c"),
+                                    arg("lab1"),
+                                    arg("lab2"),
+                                    arg("uc"),
+                                    arg("sg"),
+                                    arg("rad"))))
       .def("doptimal", &sasha_error_calculator::doptm)
       .def("dregular", &sasha_error_calculator::distm)
     ;
@@ -117,12 +117,12 @@ namespace {
                       af::const_ref<double> const&,
                       af::const_ref<double> const&,
                       cctbx::uctbx::unit_cell const&,
-                      double const& >((arg_("r1f"),
-                                       arg_("r2f"),
-                                       arg_("h1"),
-                                       arg_("h2"),
-                                       arg_("uc"),
-                                       arg_("cutoff"))))
+                      double const& >((arg("r1f"),
+                                       arg("r2f"),
+                                       arg("h1"),
+                                       arg("h2"),
+                                       arg("uc"),
+                                       arg("cutoff"))))
       .def("sites", &peak_clustering::sites)
       .def("heights", &peak_clustering::heights)
     ;

@@ -17,7 +17,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("halton",no_init)
-      .def(init<int const& > (( arg_("dimension")) ))
+      .def(init<int const& > (( arg("dimension")) ))
       .def("nth_given_base", &w_t::nth_given_base)
       .def("nth_all", &w_t::nth_all)
       ;
@@ -36,10 +36,10 @@ namespace {
               double const&,
               double const&,
               double const&,
-              double const&>(( arg_("low_x"),
-                               arg_("high_x"),
-                               arg_("low_y"),
-                               arg_("high_y") )))
+              double const&>(( arg("low_x"),
+                               arg("high_x"),
+                               arg("low_y"),
+                               arg("high_y") )))
          .def("next", &w_t::next )
          .def("start", &w_t::start )
          .def("state", &w_t::state )

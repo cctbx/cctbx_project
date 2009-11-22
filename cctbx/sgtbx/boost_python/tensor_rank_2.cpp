@@ -36,12 +36,12 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("tensor_rank_2_constraints", no_init)
         .def(init<sgtbx::space_group const&, bool>((
-          arg_("space_group"),
-          arg_("reciprocal_space"))))
+          arg("space_group"),
+          arg("reciprocal_space"))))
         .def(init<af::shared<rt_mx> const&, std::size_t, bool>((
-          arg_("symmetry_matrices"),
-          arg_("i_first_matrix_to_use"),
-          arg_("reciprocal_space"))))
+          arg("symmetry_matrices"),
+          arg("i_first_matrix_to_use"),
+          arg("reciprocal_space"))))
         .def("row_echelon_form", row_echelon_form_as_versa)
         .add_property("independent_indices",
           make_getter(&w_t::independent_indices, rbv()))
@@ -49,12 +49,12 @@ namespace {
         .def("n_independent_params", &w_t::n_independent_params)
         .def("n_dependent_params", &w_t::n_dependent_params)
         .def("independent_params", &w_t::independent_params,
-          (arg_("all_params")))
-        .def("all_params", &w_t::all_params, (arg_("independent_params")))
+          (arg("all_params")))
+        .def("all_params", &w_t::all_params, (arg("independent_params")))
         .def("independent_gradients", &w_t::independent_gradients,
-          (arg_("all_gradients")))
+          (arg("all_gradients")))
         .def("independent_curvatures", &w_t::independent_curvatures,
-          (arg_("all_curvatures")))
+          (arg("all_curvatures")))
       ;
     }
   };
@@ -68,12 +68,12 @@ namespace {
       using namespace boost::python;
       class_<wt>("tensor_rank_2_cartesian_constraints", no_init)
         .def(init<uctbx::unit_cell const&, sgtbx::space_group const&>((
-          arg_("unit_cell"), arg_("space_group"))))
+          arg("unit_cell"), arg("space_group"))))
         .def("n_independent_params", &wt::n_independent_parameters)
         .def("all_params", &wt::all_params,
-          arg_("independent_params"))
+          arg("independent_params"))
         .def("independent_gradients", &wt::independent_gradients,
-          arg_("all_gradients"))
+          arg("all_gradients"))
       ;
     }
   };

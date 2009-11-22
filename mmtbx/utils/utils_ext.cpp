@@ -12,7 +12,7 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_;
+    using boost::python::arg;
     typedef return_value_policy<return_by_value> rbv;
 
     class_<fit_hoh<> >("fit_hoh")
@@ -23,13 +23,13 @@ namespace {
             cctbx::fractional<> const&,
             cctbx::fractional<> const&,
             double const&,
-            cctbx::uctbx::unit_cell const& >((arg_("site_frac_o"),
-                                              arg_("site_frac_h1"),
-                                              arg_("site_frac_h2"),
-                                              arg_("site_frac_peak1"),
-                                              arg_("site_frac_peak2"),
-                                              arg_("angular_shift"),
-                                              arg_("unit_cell"))))
+            cctbx::uctbx::unit_cell const& >((arg("site_frac_o"),
+                                              arg("site_frac_h1"),
+                                              arg("site_frac_h2"),
+                                              arg("site_frac_peak1"),
+                                              arg("site_frac_peak2"),
+                                              arg("angular_shift"),
+                                              arg("unit_cell"))))
        .add_property("site_cart_o_fitted",
           make_getter(&fit_hoh<>::site_cart_o_fitted, rbv()))
        .add_property("site_cart_h1_fitted",
@@ -48,13 +48,13 @@ namespace {
                 double const&,
                 double const&,
                 cctbx::uctbx::unit_cell const&)) select_water_by_distance,
-                                                          (arg_("sites_frac_all"),
-                                                           arg_("element_symbols_all"),
-                                                           arg_("water_selection_o"),
-                                                           arg_("dist_max"),
-                                                           arg_("dist_min_mac"),
-                                                           arg_("dist_min_sol"),
-                                                           arg_("unit_cell")))
+                                                          (arg("sites_frac_all"),
+                                                           arg("element_symbols_all"),
+                                                           arg("water_selection_o"),
+                                                           arg("dist_max"),
+                                                           arg("dist_min_mac"),
+                                                           arg("dist_min_sol"),
+                                                           arg("unit_cell")))
    ;
        def("correct_drifted_waters",
          (void(*)
@@ -62,18 +62,18 @@ namespace {
                 af::const_ref<vec3<double> > const&,
                 af::const_ref<bool> const&,
                 cctbx::uctbx::unit_cell const&)) correct_drifted_waters,
-                                                          (arg_("sites_frac_all"),
-                                                           arg_("sites_frac_peaks"),
-                                                           arg_("water_selection"),
-                                                           arg_("unit_cell")))
+                                                          (arg("sites_frac_all"),
+                                                           arg("sites_frac_peaks"),
+                                                           arg("water_selection"),
+                                                           arg("unit_cell")))
    ;
 
    def("create_twin_mate",
          (af::shared<cctbx::miller::index<> >(*)
                (af::const_ref<cctbx::miller::index<> > const&,
                 scitbx::mat3<double>)) create_twin_mate,
-                  (arg_("miller_indices"),
-                   arg_("twin_law_matrix")))
+                  (arg("miller_indices"),
+                   arg("twin_law_matrix")))
    ;
 
    def("apply_twin_fraction",
@@ -81,9 +81,9 @@ namespace {
                (af::const_ref<double> const&,
                 af::const_ref<double> const&,
                 double const&)) apply_twin_fraction,
-                  (arg_("amplitude_data_part_one"),
-                   arg_("amplitude_data_part_two"),
-                   arg_("twin_fraction")))
+                  (arg("amplitude_data_part_one"),
+                   arg("amplitude_data_part_two"),
+                   arg("twin_fraction")))
    ;
 
   }

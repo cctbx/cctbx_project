@@ -303,6 +303,7 @@ namespace boost_python {
   void wrap_flex_vec3_double()
   {
     using namespace boost::python;
+    using boost::python::arg;
     typedef flex_wrapper<vec3<double> > f_w;
     f_w::plain("vec3_double")
       .def_pickle(flex_pickle_single_buffered<vec3<double>,
@@ -315,12 +316,12 @@ namespace boost_python {
           object const&,
           af::const_ref<std::size_t> const&,
           af::const_ref<vec3<double> > const&)) add_selected_unsigned_a,
-        (arg_("self"), arg_("indices"), arg_("values")))
+        (arg("self"), arg("indices"), arg("values")))
       .def("min", vec3_min)
       .def("max", vec3_max)
       .def("sum", f_w::sum_a)
       .def("mean", f_w::mean_a)
-      .def("mean_weighted", mean_weighted_a_a, (arg_("self"), arg_("weights")))
+      .def("mean_weighted", mean_weighted_a_a, (arg("self"), arg("weights")))
       .def("__add__", f_w::add_a_s)
       .def("__add__", f_w::add_a_a)
       .def("__iadd__", f_w::iadd_a_s)

@@ -25,14 +25,14 @@ namespace {
             int,
             double,
             bool> >((
-          arg_("m"),
-          arg_("x"),
-          arg_("ftol")=-1,
-          arg_("xtol")=-1,
-          arg_("gtol")=0,
-          arg_("maxfev")=0,
-          arg_("factor")=1.0e2,
-          arg_("call_back_after_iteration")=false)))
+          arg("m"),
+          arg("x"),
+          arg("ftol")=-1,
+          arg("xtol")=-1,
+          arg("gtol")=0,
+          arg("maxfev")=0,
+          arg("factor")=1.0e2,
+          arg("call_back_after_iteration")=false)))
         .def_readonly("m", &w_t::m)
         .def_readonly("ftol", &w_t::ftol)
         .def_readonly("xtol", &w_t::xtol)
@@ -43,8 +43,8 @@ namespace {
         .def("requests_fvec", &w_t::requests_fvec)
         .def("requests_fjac", &w_t::requests_fjac)
         .def("calls_back_after_iteration", &w_t::calls_back_after_iteration)
-        .def("process_fvec", &w_t::process_fvec, (arg_("fvec")))
-        .def("process_fjac", &w_t::process_fjac, (arg_("fjac")))
+        .def("process_fvec", &w_t::process_fvec, (arg("fvec")))
+        .def("process_fjac", &w_t::process_fjac, (arg("fjac")))
         .def("continue_after_call_back_after_iteration",
           &w_t::continue_after_call_back_after_iteration)
         .def_readonly("info", &w_t::info)

@@ -27,17 +27,17 @@ namespace {
         .def(init<
           af::shared<std::size_t> const&,
           af::shared<double> const&>((
-            arg_("i_seqs"), arg_("weights"))))
+            arg("i_seqs"), arg("weights"))))
         .def(init<
           af::shared<std::size_t> const&,
           optional_copy<af::shared<sgtbx::rt_mx> > const&,
           af::shared<double> const&>((
-            arg_("i_seqs"), arg_("sym_ops"), arg_("weights"))))
+            arg("i_seqs"), arg("sym_ops"), arg("weights"))))
         .def(init<
           af::shared<std::size_t> const&,
           w_t const&>((
-            arg_("i_seqs"), arg_("proxy"))))
-        .def("scale_weights", &w_t::scale_weights, (arg_("factor")))
+            arg("i_seqs"), arg("proxy"))))
+        .def("scale_weights", &w_t::scale_weights, (arg("factor")))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("weights", make_getter(&w_t::weights, rbv()))
@@ -52,13 +52,13 @@ namespace {
               std::size_t,
               af::const_ref<std::size_t> const&))
                 shared_planarity_proxy_select, (
-            arg_("n_seq"), arg_("iselection")))
+            arg("n_seq"), arg("iselection")))
           .def("proxy_remove",
             (af::shared<w_t>(*)(
               af::const_ref<w_t> const&,
               af::const_ref<bool> const&))
                 shared_proxy_remove, (
-            arg_("selection")))
+            arg("selection")))
         ;
       }
     }
@@ -79,14 +79,14 @@ namespace {
         .def(init<
           af::shared<scitbx::vec3<double> > const&,
           af::shared<double> const&>(
-            (arg_("sites"), arg_("weights"))))
+            (arg("sites"), arg("weights"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   planarity_proxy const&>(
-          (arg_("sites_cart"), arg_("proxy"))))
+          (arg("sites_cart"), arg("proxy"))))
         .def(init<uctbx::unit_cell const&,
                   af::const_ref<scitbx::vec3<double> > const&,
                   planarity_proxy const&>(
-          (arg_("unit_cell"), arg_("sites_cart"), arg_("proxy"))))
+          (arg("unit_cell"), arg("sites_cart"), arg("proxy"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
         .add_property("weights", make_getter(&w_t::weights, rbv()))
         .def("deltas", &w_t::deltas, ccr())
@@ -114,34 +114,34 @@ namespace {
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<planarity_proxy> const&))
       planarity_deltas_rms,
-      (arg_("sites_cart"), arg_("proxies")));
+      (arg("sites_cart"), arg("proxies")));
     def("planarity_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<planarity_proxy> const&))
       planarity_residuals,
-      (arg_("sites_cart"), arg_("proxies")));
+      (arg("sites_cart"), arg("proxies")));
     def("planarity_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<planarity_proxy> const&,
         af::ref<scitbx::vec3<double> > const&))
       planarity_residual_sum,
-      (arg_("sites_cart"), arg_("proxies"), arg_("gradient_array")));
+      (arg("sites_cart"), arg("proxies"), arg("gradient_array")));
     def("planarity_deltas_rms",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<planarity_proxy> const&))
       planarity_deltas_rms,
-      (arg_("unit_cell"), arg_("sites_cart"), arg_("proxies")));
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
     def("planarity_residuals",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<planarity_proxy> const&))
       planarity_residuals,
-      (arg_("unit_cell"), arg_("sites_cart"), arg_("proxies")));
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
     def("planarity_residual_sum",
       (double(*)(
         uctbx::unit_cell const&,
@@ -149,7 +149,7 @@ namespace {
         af::const_ref<planarity_proxy> const&,
         af::ref<scitbx::vec3<double> > const&))
       planarity_residual_sum,
-      (arg_("unit_cell"), arg_("sites_cart"), arg_("proxies"), arg_("gradient_array")));
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies"), arg("gradient_array")));
   }
 
 } // namespace <anonymous>

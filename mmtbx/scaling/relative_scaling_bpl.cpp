@@ -33,14 +33,14 @@ namespace{
                    scitbx::sym_mat3<double> const&
                  >
              ((
-               arg_("hkl"),
-               arg_("i_nat"),
-               arg_("sig_nat"),
-               arg_("i_der"),
-               arg_("sig_nat"),
-               arg_("p_scale"),
-               arg_("unit_cell"),
-               arg_("u_rwgk")
+               arg("hkl"),
+               arg("i_nat"),
+               arg("sig_nat"),
+               arg("i_der"),
+               arg("sig_nat"),
+               arg("p_scale"),
+               arg("unit_cell"),
+               arg("u_rwgk")
              )))
         .def("get_function",( double(w_t::*)() ) &w_t::get_function)
         .def("get_function",( double(w_t::*)(unsigned) ) &w_t::get_function)
@@ -75,14 +75,14 @@ namespace{
                    scitbx::sym_mat3<double> const&
                  >
              ((
-               arg_("hkl"),
-               arg_("f_nat"),
-               arg_("sig_nat"),
-               arg_("f_der"),
-               arg_("sig_nat"),
-               arg_("p_scale"),
-               arg_("unit_cell"),
-               arg_("u_rwgk")
+               arg("hkl"),
+               arg("f_nat"),
+               arg("sig_nat"),
+               arg("f_der"),
+               arg("sig_nat"),
+               arg("p_scale"),
+               arg("unit_cell"),
+               arg("u_rwgk")
              )))
 
         .def("get_function",( double(w_t::*)() ) &w_t::get_function)
@@ -119,14 +119,14 @@ namespace{
                    scitbx::sym_mat3<double> const&
                  >
              ((
-               arg_("hkl"),
-               arg_("i_nat"),
-               arg_("sig_nat"),
-               arg_("i_der"),
-               arg_("sig_nat"),
-               arg_("p_scale"),
-               arg_("unit_cell"),
-               arg_("u_rwgk")
+               arg("hkl"),
+               arg("i_nat"),
+               arg("sig_nat"),
+               arg("i_der"),
+               arg("sig_nat"),
+               arg("p_scale"),
+               arg("unit_cell"),
+               arg("u_rwgk")
              )))
         .def("get_function",( double(w_t::*)() ) &w_t::get_function)
         .def("get_function",( double(w_t::*)(unsigned) ) &w_t::get_function)
@@ -164,14 +164,14 @@ namespace{
                    scitbx::sym_mat3<double> const&
                  >
              ((
-               arg_("hkl"),
-               arg_("f_nat"),
-               arg_("sig_nat"),
-               arg_("f_der"),
-               arg_("sig_nat"),
-               arg_("p_scale"),
-               arg_("unit_cell"),
-               arg_("u_rwgk")
+               arg("hkl"),
+               arg("f_nat"),
+               arg("sig_nat"),
+               arg("f_der"),
+               arg("sig_nat"),
+               arg("p_scale"),
+               arg("unit_cell"),
+               arg("u_rwgk")
              )))
         .def("get_function",( double(w_t::*)() ) &w_t::get_function)
         .def("get_function",( double(w_t::*)(unsigned) ) &w_t::get_function)
@@ -230,18 +230,18 @@ namespace{
                    bool const&
                  >
              ((
-                arg_("hkl_master"),
-                arg_("hkl_sets"),
-                arg_("data_set_a"),
-                arg_("sigma_set_a"),
-                arg_("data_set_b"),
-                arg_("sigma_set_b"),
-                arg_("space_group"),
-                arg_("anomalous_flag"),
-                arg_("radius"),
-                arg_("depth"),
-                arg_("target_ref"),
-                arg_("use_experimental_sigmas")
+                arg("hkl_master"),
+                arg("hkl_sets"),
+                arg("data_set_a"),
+                arg("sigma_set_a"),
+                arg("data_set_b"),
+                arg("sigma_set_b"),
+                arg("space_group"),
+                arg("anomalous_flag"),
+                arg("radius"),
+                arg("depth"),
+                arg("target_ref"),
+                arg("use_experimental_sigmas")
                 )))
         .def("get_scales", &w_t::get_scales)
         .def("stats", &w_t::stats)
@@ -278,18 +278,18 @@ namespace{
                    bool const&
                  >
              ((
-                arg_("hkl_master"),
-                arg_("hkl_sets"),
-                arg_("data_set_a"),
-                arg_("sigma_set_a"),
-                arg_("data_set_b"),
-                arg_("sigma_set_b"),
-                arg_("space_group"),
-                arg_("anomalous_flag"),
-                arg_("radius"),
-                arg_("depth"),
-                arg_("target_ref"),
-                arg_("use_experimental_sigmas")
+                arg("hkl_master"),
+                arg("hkl_sets"),
+                arg("data_set_a"),
+                arg("sigma_set_a"),
+                arg("data_set_b"),
+                arg("sigma_set_b"),
+                arg("space_group"),
+                arg("anomalous_flag"),
+                arg("radius"),
+                arg("depth"),
+                arg("target_ref"),
+                arg("use_experimental_sigmas")
                 )))
         .def("get_scales", &w_t::get_scales)
         .def("stats", &w_t::stats)
@@ -332,18 +332,18 @@ namespace{
                    std::size_t const&
                  >
              ((
-                arg_("hkl_master"),
-                arg_("hkl_sets"),
-                arg_("data_set_a"),
-                arg_("data_set_b"),
-                arg_("epsilons"),
-                arg_("centric"),
-                arg_("threshold"),
-                arg_("space_group"),
-                arg_("anomalous_flag"),
-                arg_("radius"),
-                arg_("depth"),
-                arg_("target_ref")
+                arg("hkl_master"),
+                arg("hkl_sets"),
+                arg("data_set_a"),
+                arg("data_set_b"),
+                arg("epsilons"),
+                arg("centric"),
+                arg("threshold"),
+                arg("space_group"),
+                arg("anomalous_flag"),
+                arg("radius"),
+                arg("depth"),
+                arg("target_ref")
                 )))
         .def("get_scales", &w_t::get_scales)
         .def("stats", &w_t::stats)

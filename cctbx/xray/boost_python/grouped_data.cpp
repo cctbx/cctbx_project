@@ -29,10 +29,10 @@ namespace cctbx { namespace xray { namespace grouped_data { namespace boost_pyth
                      sgtbx::space_group const&,
                      bool const&
                    >
-               (( arg_("hkl_obs"),
-                  arg_("asu_hkl"),
-                  arg_("space_group"),
-                  arg_("anomalous_flag") )))
+               (( arg("hkl_obs"),
+                  arg("asu_hkl"),
+                  arg("space_group"),
+                  arg("anomalous_flag") )))
           ;
       }
 
@@ -58,12 +58,12 @@ namespace cctbx { namespace xray { namespace grouped_data { namespace boost_pyth
                      bool                                            const&,
                      cctbx::uctbx::unit_cell                         const&
                    >
-               (( arg_("hkl_obs"),
-                  arg_("i_obs"),
-                  arg_("s_obs"),
-                  arg_("space_group"),
-                  arg_("anomalous_flag"),
-                  arg_("unit_cell")
+               (( arg("hkl_obs"),
+                  arg("i_obs"),
+                  arg("s_obs"),
+                  arg("space_group"),
+                  arg("anomalous_flag"),
+                  arg("unit_cell")
                )))
           .def("bic", &w_t::bic)
           .def("r_abs", &w_t::r_abs)

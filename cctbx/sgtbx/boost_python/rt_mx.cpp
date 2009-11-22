@@ -55,33 +55,33 @@ namespace {
         .enable_pickling()
         .def("__init__", boost::python::make_constructor(unpickle_init))
         .def(init<optional<int, int> >((
-          arg_("r_den")=1,
-          arg_("t_den")=sg_t_den)))
-        .def(init<rot_mx const&, tr_vec const&>((arg_("r"), arg_("t"))))
+          arg("r_den")=1,
+          arg("t_den")=sg_t_den)))
+        .def(init<rot_mx const&, tr_vec const&>((arg("r"), arg("t"))))
         .def(init<rot_mx const&, optional<int> >((
-          arg_("r"),
-          arg_("t_den")=sg_t_den)))
+          arg("r"),
+          arg("t_den")=sg_t_den)))
         .def(init<tr_vec const&, optional<int> >((
-          arg_("t"),
-          arg_("r_den")=1)))
+          arg("t"),
+          arg("r_den")=1)))
         .def(init<parse_string&, optional<const char*, int, int> >((
-          arg_("symbol"),
-          arg_("stop_chars")="",
-          arg_("r_den")=1,
-          arg_("t_den")=sg_t_den)))
+          arg("symbol"),
+          arg("stop_chars")="",
+          arg("r_den")=1,
+          arg("t_den")=sg_t_den)))
         .def(init<std::string const&, optional<const char*, int, int> >((
-          arg_("symbol"),
-          arg_("stop_chars")="",
-          arg_("r_den")=1,
-          arg_("t_den")=sg_t_den)))
+          arg("symbol"),
+          arg("stop_chars")="",
+          arg("r_den")=1,
+          arg("t_den")=sg_t_den)))
         .def(init<
           scitbx::mat3<double> const&,
           scitbx::vec3<double> const&,
           optional<int, int> >((
-            arg_("r"),
-            arg_("t"),
-            arg_("r_den")=1,
-            arg_("t_den")=sg_t_den)))
+            arg("r"),
+            arg("t"),
+            arg("r_den")=1,
+            arg("t_den")=sg_t_den)))
         .def("r", (rot_mx const&(w_t::*)() const) &w_t::r, rir())
         .def("t", (tr_vec const&(w_t::*)() const) &w_t::t, rir())
         .def("__eq__", &w_t::operator==)
@@ -90,30 +90,30 @@ namespace {
         .def("unit_mx", &w_t::unit_mx)
         .def("is_unit_mx", &w_t::is_unit_mx)
         .def("as_xyz", &w_t::as_xyz, as_xyz_overloads((
-          arg_("decimal")=false,
-          arg_("t_first")=false,
-          arg_("symbol_letters")="xyz",
-          arg_("separator")=",")))
+          arg("decimal")=false,
+          arg("t_first")=false,
+          arg("symbol_letters")="xyz",
+          arg("separator")=",")))
         .def("__str__", str)
         .def("as_int_array", &w_t::as_int_array)
         .def("as_double_array", &w_t::as_double_array)
         .def("new_denominators",
           (rt_mx(w_t::*)(int, int) const) 0,
             new_denominators_overloads((
-              arg_("r_den"),
-              arg_("t_den")=0)))
+              arg("r_den"),
+              arg("t_den")=0)))
         .def("new_denominators",
           (rt_mx(w_t::*)(rt_mx const&) const)
             &w_t::new_denominators, (
-              arg_("other")))
+              arg("other")))
         .def("mod_positive", &w_t::mod_positive)
         .def("mod_short", &w_t::mod_short)
         .def("inverse", &w_t::inverse)
         .def("refine_gridding", (sg_vec3(w_t::*)(sg_vec3 const&) const)
-          &w_t::refine_gridding, (arg_("grid")))
+          &w_t::refine_gridding, (arg("grid")))
         .def("cancel", &w_t::cancel)
         .def("inverse_cancel", &w_t::inverse_cancel)
-        .def("multiply", &w_t::multiply, (arg_("rhs")))
+        .def("multiply", &w_t::multiply, (arg("rhs")))
         .def("__mul__", mul)
         .def("__add__", (rt_mx(w_t::*)(sg_vec3 const&) const)&w_t::operator+)
         .def("__add__", (rt_mx(w_t::*)(tr_vec const&) const)&w_t::operator+)
@@ -122,13 +122,13 @@ namespace {
             fractional<double> const&,
             fractional<double> const&) const)
               &w_t::unit_shifts_minimum_distance, (
-                arg_("site_frac_1"), arg_("site_frac_2")))
+                arg("site_frac_1"), arg("site_frac_2")))
         .def("add_unit_shifts_minimum_distance", (
           rt_mx(w_t::*)(
             fractional<double> const&,
             fractional<double> const&) const)
               &w_t::add_unit_shifts_minimum_distance, (
-                arg_("site_frac_1"), arg_("site_frac_2")))
+                arg("site_frac_1"), arg("site_frac_2")))
       ;
 
       scitbx::stl::boost_python::vector_wrapper<rt_mx>::wrap(
@@ -158,7 +158,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("translation_part_info", no_init)
-        .def(init<rt_mx const&>((arg_("s"))))
+        .def(init<rt_mx const&>((arg("s"))))
         .def("intrinsic_part", &w_t::intrinsic_part, ccr())
         .def("location_part", &w_t::location_part, ccr())
         .def("origin_shift", &w_t::origin_shift, ccr())

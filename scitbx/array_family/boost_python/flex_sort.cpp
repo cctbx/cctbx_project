@@ -17,7 +17,7 @@ namespace {
       // cast needed for Intel C++ 9.1
       (shared<std::size_t>(*)(const_ref<ElementType> const&, bool))
         af::sort_permutation, (
-          arg_("data"), arg_("reverse")=false));
+          arg("data"), arg("reverse")=false));
   }
 
 } // namespace <anonymous>

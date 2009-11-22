@@ -113,42 +113,42 @@ struct basic_map_wrapper {
           ,FloatType const&
           ,bool))
         &basic_map_type::set_grid_handle,
-        (arg_("data")
-        ,arg_("space_group")
-        ,arg_("float_asu")
-        ,arg_("grid_length")
-        ,arg_("min_distance_sym_equiv")
-        ,arg_("assert_min_distance_sym_equiv")))
+        (arg("data")
+        ,arg("space_group")
+        ,arg("float_asu")
+        ,arg("grid_length")
+        ,arg("min_distance_sym_equiv")
+        ,arg("assert_min_distance_sym_equiv")))
       .def("as_unit_cell",
         (void(basic_map_type::*)
           (af_versa const&))
         &basic_map_type::set_grid_handle,
-        arg_("data"))
+        arg("data"))
       .def("as_non_symmetric",
         (void(basic_map_type::*)
           (af_versa const&
           ,af_extents const&))
         &basic_map_type::set_grid_handle,
-        (arg_("data")
-        ,arg_("grid_length")))
+        (arg("data")
+        ,arg("grid_length")))
       .def("set_out_of_bounds_handle",
-        &basic_map_type::set_out_of_bounds_handle,arg_("handle"))
+        &basic_map_type::set_out_of_bounds_handle,arg("handle"))
       .def("get_cart_value",
-        &basic_map_type::get_cart_value,arg_("coordinate"))
+        &basic_map_type::get_cart_value,arg("coordinate"))
       .def("get_frac_value",
-        &basic_map_type::get_frac_value,arg_("coordinate"))
+        &basic_map_type::get_frac_value,arg("coordinate"))
       .def("get_grid_value",
-        &basic_map_type::get_grid_value,arg_("coordinate"))
+        &basic_map_type::get_grid_value,arg("coordinate"))
       .def("get_cart_values",
-        &basic_map_type::get_cart_values,arg_("coordinates"))
+        &basic_map_type::get_cart_values,arg("coordinates"))
       .def("get_frac_values",
-        &basic_map_type::get_frac_values,arg_("coordinates"))
+        &basic_map_type::get_frac_values,arg("coordinates"))
       .def("get_grid_values",
-        &basic_map_type::get_grid_values,arg_("coordinates"))
+        &basic_map_type::get_grid_values,arg("coordinates"))
       .def("set_grid_value",
         &basic_map_type::set_grid_value,
-        (arg_("coordinate")
-        ,arg_("value")))
+        (arg("coordinate")
+        ,arg("value")))
       .def("cart2frac",&basic_map_type::cart_to_frac)
       .def("cart2grid",&basic_map_type::cart_to_grid)
       .def("grid2frac",&basic_map_type::grid_to_frac)
@@ -156,34 +156,34 @@ struct basic_map_wrapper {
       .def("frac2grid",&basic_map_type::frac_to_grid)
       .def("frac2cart",&basic_map_type::frac_to_cart)
       .def("nearest_grid_point_cartesian",
-        &basic_map_type::cart_nearest_grid_point,arg_("coordinate"))
+        &basic_map_type::cart_nearest_grid_point,arg("coordinate"))
       .def("nearest_grid_point_fractional",
-        &basic_map_type::frac_nearest_grid_point,arg_("coordinate"))
+        &basic_map_type::frac_nearest_grid_point,arg("coordinate"))
       .def("value_at_nearest_grid_point_fractional",
-        &basic_map_type::frac_value_at_nearest_grid_point,arg_("coordinate"))
+        &basic_map_type::frac_value_at_nearest_grid_point,arg("coordinate"))
       .def("value_at_nearest_grid_point_cartesian",
-        &basic_map_type::cart_value_at_nearest_grid_point,arg_("coordinate"))
+        &basic_map_type::cart_value_at_nearest_grid_point,arg("coordinate"))
       .def("remap_cartesian",
-        &basic_map_type::remap_cart_coordinate,arg_("coordinate"))
+        &basic_map_type::remap_cart_coordinate,arg("coordinate"))
       .def("remap_fractional",
-        &basic_map_type::remap_frac_coordinate,arg_("coordinate"))
+        &basic_map_type::remap_frac_coordinate,arg("coordinate"))
       .def("remap_grid",
-        &basic_map_type::remap_grid_coordinate,arg_("coordinate"))
-      .def("remap",&basic_map_type::remap,arg_("coordinate"))
+        &basic_map_type::remap_grid_coordinate,arg("coordinate"))
+      .def("remap",&basic_map_type::remap,arg("coordinate"))
       .def("is_inside_grid",
         (bool(basic_map_type::*)(grid_type const&)const)
         &basic_map_type::is_inside,
-        arg_("coordinate"))
+        arg("coordinate"))
       .def("is_inside_frac",
         (bool(basic_map_type::*)(frac_type const&)const)
         &basic_map_type::is_inside,
-        arg_("coordinate"))
+        arg("coordinate"))
       .def("is_inside_cart",
         (bool(basic_map_type::*)(cart_type const&)const)
         &basic_map_type::is_inside,
-        arg_("coordinate"))
+        arg("coordinate"))
       .def("rebuild_transformers",&basic_map_type::rebuild_transformers,
-        (arg_("extents"),arg_("matrix")))
+        (arg("extents"),arg("matrix")))
       .def("extents",&basic_map_type::extents)
       .def("unit_cell",&basic_map_type::unit_cell)
       ;

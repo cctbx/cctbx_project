@@ -31,7 +31,7 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_;
+    using boost::python::arg;
 
     typedef return_value_policy<return_by_value> rbv;
     class_<core<> >("core")
@@ -44,14 +44,14 @@ namespace {
            af::shared<cctbx::miller::index<> >    const&,
            cctbx::uctbx::unit_cell                const&,
            af::shared<double>                     const& >(
-                                                        (arg_("f_calc"),
-                                                         arg_("f_mask"),
-                                                         arg_("u_star"),
-                                                         arg_("k_sol"),
-                                                         arg_("b_sol"),
-                                                         arg_("hkl"),
-                                                         arg_("uc"),
-                                                         arg_("ss"))))
+                                                        (arg("f_calc"),
+                                                         arg("f_mask"),
+                                                         arg("u_star"),
+                                                         arg("k_sol"),
+                                                         arg("b_sol"),
+                                                         arg("hkl"),
+                                                         arg("uc"),
+                                                         arg("ss"))))
       .add_property("f_calc",        make_getter(&core<>::f_calc,       rbv()))
       .add_property("f_mask",        make_getter(&core<>::f_mask,       rbv()))
       .add_property("u_star",        make_getter(&core<>::u_star,       rbv()))

@@ -80,37 +80,37 @@ namespace {
       using namespace boost::python;
       class_<w_t>("object", no_init)
         .def(init<>())
-        .def(init<const char*>((arg_("file_name"))))
+        .def(init<const char*>((arg("file_name"))))
         .def("title", &w_t::title)
         .def("set_title", &w_t::set_title, set_title_overloads((
-          arg_("title"), arg_("append")=false))[return_self<>()])
+          arg("title"), arg("append")=false))[return_self<>()])
         .def("history", &w_t::history)
         .def("add_history",
           (object&(w_t::*)(af::const_ref<std::string> const&))
             &w_t::add_history, (
-          arg_("lines")), return_self<>())
+          arg("lines")), return_self<>())
         .def("add_history",
           (object&(w_t::*)(const char*))
             &w_t::add_history, (
-          arg_("line")), return_self<>())
+          arg("line")), return_self<>())
         .def("space_group_name", &w_t::space_group_name)
         .def("set_space_group_name", &w_t::set_space_group_name, (
-          arg_("name")), return_self<>())
+          arg("name")), return_self<>())
         .def("space_group_number", &w_t::space_group_number)
         .def("set_space_group_number", &w_t::set_space_group_number, (
-          arg_("number")), return_self<>())
+          arg("number")), return_self<>())
         .def("point_group_name", &w_t::point_group_name)
         .def("set_point_group_name", &w_t::set_point_group_name, (
-          arg_("name")), return_self<>())
+          arg("name")), return_self<>())
         .def("lattice_centring_type",
           &w_t::lattice_centring_type)
         .def("set_lattice_centring_type",
           &w_t::set_lattice_centring_type, (
-            arg_("symbol")), return_self<>())
+            arg("symbol")), return_self<>())
         .def("n_symmetry_matrices", &w_t::n_symmetry_matrices)
         .def("space_group", &w_t::space_group)
         .def("set_space_group", &w_t::set_space_group, (
-          arg_("space_group")), return_self<>())
+          arg("space_group")), return_self<>())
         .def("reserve", &w_t::reserve)
         .def("n_batches", &w_t::n_batches)
         .def("batches", &w_t::batches)
@@ -125,91 +125,91 @@ namespace {
           (crystal(w_t::*)(
             const char*, const char*, af::double6 const&))
               &w_t::add_crystal, (
-          arg_("name"),
-          arg_("project_name"),
-          arg_("unit_cell_parameters")))
+          arg("name"),
+          arg("project_name"),
+          arg("unit_cell_parameters")))
         .def("add_crystal",
           (crystal(w_t::*)(
             const char*, const char*, cctbx::uctbx::unit_cell const&))
               &w_t::add_crystal, (
-          arg_("name"),
-          arg_("project_name"),
-          arg_("unit_cell")))
-        .def("has_crystal", &w_t::has_crystal, (arg_("name")))
-        .def("has_column", &w_t::has_column, (arg_("label")))
-        .def("get_column", &w_t::get_column, (arg_("label")))
+          arg("name"),
+          arg("project_name"),
+          arg("unit_cell")))
+        .def("has_crystal", &w_t::has_crystal, (arg("name")))
+        .def("has_column", &w_t::has_column, (arg("label")))
+        .def("get_column", &w_t::get_column, (arg("label")))
         .def("extract_miller_indices", &w_t::extract_miller_indices)
         .def("replace_miller_indices", &w_t::replace_miller_indices, (
-          (arg_("miller_indices"))))
+          (arg("miller_indices"))))
         .def("extract_integers",
           (integer_group(w_t::*)(const char*) const) &w_t::extract_integers, (
-          (arg_("column_label"))))
+          (arg("column_label"))))
         .def("extract_integers",
           (af::shared<int>(w_t::*)
             (af::const_ref<int> const&, const char*) const)
               &w_t::extract_integers, (
-          (arg_("mtz_reflection_indices"), arg_("column_label"))))
+          (arg("mtz_reflection_indices"), arg("column_label"))))
         .def("extract_integers_anomalous", &w_t::extract_integers_anomalous, (
-          arg_("column_label_plus"), arg_("column_label_minus")))
+          arg("column_label_plus"), arg("column_label_minus")))
         .def("extract_reals",
           (real_group(w_t::*)(const char*) const) &w_t::extract_reals, (
-          (arg_("column_label"))))
+          (arg("column_label"))))
         .def("extract_reals",
           (af::shared<double>(w_t::*)
             (af::const_ref<int> const&, const char*) const)
               &w_t::extract_reals, (
-          (arg_("mtz_reflection_indices"), arg_("column_label"))))
+          (arg("mtz_reflection_indices"), arg("column_label"))))
         .def("extract_reals_anomalous", &w_t::extract_reals_anomalous, (
-          arg_("column_label_plus"), arg_("column_label_minus")))
+          arg("column_label_plus"), arg("column_label_minus")))
         .def("extract_hendrickson_lattman",
             &w_t::extract_hendrickson_lattman, (
-          arg_("column_label_a"),
-          arg_("column_label_b"),
-          arg_("column_label_c"),
-          arg_("column_label_d")))
+          arg("column_label_a"),
+          arg("column_label_b"),
+          arg("column_label_c"),
+          arg("column_label_d")))
         .def("extract_hendrickson_lattman_ab_only",
             &w_t::extract_hendrickson_lattman_ab_only, (
-          arg_("column_label_a"),
-          arg_("column_label_b")))
+          arg("column_label_a"),
+          arg("column_label_b")))
         .def("extract_hendrickson_lattman_anomalous",
             &w_t::extract_hendrickson_lattman_anomalous, (
-          arg_("column_label_a_plus"),
-          arg_("column_label_b_plus"),
-          arg_("column_label_c_plus"),
-          arg_("column_label_d_plus"),
-          arg_("column_label_a_minus"),
-          arg_("column_label_b_minus"),
-          arg_("column_label_c_minus"),
-          arg_("column_label_d_minus")))
+          arg("column_label_a_plus"),
+          arg("column_label_b_plus"),
+          arg("column_label_c_plus"),
+          arg("column_label_d_plus"),
+          arg("column_label_a_minus"),
+          arg("column_label_b_minus"),
+          arg("column_label_c_minus"),
+          arg("column_label_d_minus")))
         .def("extract_hendrickson_lattman_anomalous_ab_only",
             &w_t::extract_hendrickson_lattman_anomalous_ab_only, (
-          arg_("column_label_a_plus"),
-          arg_("column_label_b_plus"),
-          arg_("column_label_a_minus"),
-          arg_("column_label_b_minus")))
+          arg("column_label_a_plus"),
+          arg("column_label_b_plus"),
+          arg("column_label_a_minus"),
+          arg("column_label_b_minus")))
         .def("extract_observations", &w_t::extract_observations, (
-          arg_("column_label_data"),
-          arg_("column_label_sigmas")))
+          arg("column_label_data"),
+          arg("column_label_sigmas")))
         .def("extract_observations_anomalous",
           &w_t::extract_observations_anomalous, (
-            arg_("column_label_data_plus"),
-            arg_("column_label_sigmas_plus"),
-            arg_("column_label_data_minus"),
-            arg_("column_label_sigmas_minus")))
+            arg("column_label_data_plus"),
+            arg("column_label_sigmas_plus"),
+            arg("column_label_data_minus"),
+            arg("column_label_sigmas_minus")))
         .def("extract_delta_anomalous", &w_t::extract_delta_anomalous, (
-          arg_("column_label_f_data"),
-          arg_("column_label_f_sigmas"),
-          arg_("column_label_d_data"),
-          arg_("column_label_d_sigmas")))
+          arg("column_label_f_data"),
+          arg("column_label_f_sigmas"),
+          arg("column_label_d_data"),
+          arg("column_label_d_sigmas")))
         .def("extract_complex", &w_t::extract_complex, (
-          arg_("column_label_ampl"),
-          arg_("column_label_phi")))
+          arg("column_label_ampl"),
+          arg("column_label_phi")))
         .def("extract_complex_anomalous", &w_t::extract_complex_anomalous, (
-          arg_("column_label_ampl_plus"),
-          arg_("column_label_phi_plus"),
-          arg_("column_label_ampl_minus"),
-          arg_("column_label_phi_minus")))
-        .def("write", &w_t::write, (arg_("file_name")))
+          arg("column_label_ampl_plus"),
+          arg("column_label_phi_plus"),
+          arg("column_label_ampl_minus"),
+          arg("column_label_phi_minus")))
+        .def("write", &w_t::write, (arg("file_name")))
       ;
     }
   };
@@ -219,7 +219,7 @@ namespace {
   {
     using namespace boost::python;
     def("cmtz_struct_sizes", cmtz_struct_sizes);
-    def("ccp4_liberr_verbosity", ccp4_liberr_verbosity, (arg_("level")));
+    def("ccp4_liberr_verbosity", ccp4_liberr_verbosity, (arg("level")));
     data_group_wrappers<int>::wrap("integer_group");
     data_group_wrappers<double>::wrap("real_group");
     data_group_wrappers<cctbx::hendrickson_lattman<> >::wrap("hl_group");

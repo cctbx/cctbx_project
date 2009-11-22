@@ -23,7 +23,7 @@ namespace scitbx { namespace matrix { namespace boost_python {
         .add_property("packed_u", make_getter(&w_t::packed_u, rbv()))
         .add_property("e", make_getter(&w_t::e, rbv()))
         .add_property("pivots", make_getter(&w_t::pivots, rbv()))
-        .def("solve", &w_t::solve, (arg_("b")))
+        .def("solve", &w_t::solve, (arg("b")))
       ;
     }
   };

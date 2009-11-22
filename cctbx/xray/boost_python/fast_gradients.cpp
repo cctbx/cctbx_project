@@ -27,13 +27,13 @@ namespace {
                            double const&,
                            double const&,
                            double const&> >(
-          (arg_("unit_cell"),
-           arg_("scatterers"),
-           arg_("scattering_type_registry"),
-           arg_("u_base"),
-           arg_("wing_cutoff"),
-           arg_("exp_table_one_over_step_size"),
-           arg_("tolerance_positive_definite"))))
+          (arg("unit_cell"),
+           arg("scatterers"),
+           arg("scattering_type_registry"),
+           arg("u_base"),
+           arg("wing_cutoff"),
+           arg("exp_table_one_over_step_size"),
+           arg("tolerance_positive_definite"))))
         .def("sampling",
           (void(w_t::*)(
             af::const_ref<scatterer<> > const&,
@@ -43,13 +43,13 @@ namespace {
             af::const_ref<double, w_t::accessor_type> const&,
             std::size_t,
             bool)) &w_t::sampling,
-          (arg_("scatterers"),
-           arg_("u_iso_refinable_params"),
-           arg_("scattering_type_registry"),
-           arg_("site_symmetry_table"),
-           arg_("ft_d_target_d_f_calc"),
-           arg_("n_parameters"),
-           arg_("sampled_density_must_be_positive")))
+          (arg("scatterers"),
+           arg("u_iso_refinable_params"),
+           arg("scattering_type_registry"),
+           arg("site_symmetry_table"),
+           arg("ft_d_target_d_f_calc"),
+           arg("n_parameters"),
+           arg("sampled_density_must_be_positive")))
         .def("sampling",
           (void(w_t::*)(
             af::const_ref<scatterer<> > const&,
@@ -59,13 +59,13 @@ namespace {
             af::const_ref<std::complex<double>, w_t::accessor_type> const&,
             std::size_t,
             bool)) &w_t::sampling,
-          (arg_("scatterers"),
-           arg_("u_iso_refinable_params"),
-           arg_("scattering_type_registry"),
-           arg_("site_symmetry_table"),
-           arg_("ft_d_target_d_f_calc"),
-           arg_("n_parameters"),
-           arg_("sampled_density_must_be_positive")))
+          (arg("scatterers"),
+           arg("u_iso_refinable_params"),
+           arg("scattering_type_registry"),
+           arg("site_symmetry_table"),
+           arg("ft_d_target_d_f_calc"),
+           arg("n_parameters"),
+           arg("sampled_density_must_be_positive")))
         .def("packed", &w_t::packed)
         .def("d_target_d_site_cart", &w_t::d_target_d_site_cart)
         .def("d_target_d_u_iso", &w_t::d_target_d_u_iso)

@@ -37,7 +37,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("ucs_bitmap", no_init)
-        .def(init<const char*>((arg_("short_name"))))
+        .def(init<const char*>((arg("short_name"))))
         .def("short_name", &w_t::short_name)
         .def("full_name", &w_t::full_name)
         .def("width", &w_t::width)
@@ -46,9 +46,9 @@ namespace {
         .def("yorig", &w_t::yorig)
         .def("setup_call_lists", &w_t::setup_call_lists)
 #if defined(GLTBX_USING_UNICODE)
-        .def("render_string", render_wstring, (arg_("string")))
+        .def("render_string", render_wstring, (arg("string")))
 #endif
-        .def("render_string", &w_t::render_string, (arg_("string")))
+        .def("render_string", &w_t::render_string, (arg("string")))
       ;
     }
   };

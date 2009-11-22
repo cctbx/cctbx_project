@@ -17,7 +17,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("unimodular_generator", no_init)
-        .def(init<int const&>((arg_("range"))))
+        .def(init<int const&>((arg("range"))))
         .def("at_end", &w_t::at_end)
         .def("next", &w_t::next)
         .def("count", &w_t::count)

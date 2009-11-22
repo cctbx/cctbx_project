@@ -23,10 +23,10 @@ namespace {
         .def(init<
           const char*,
             optional<const char*, const char*, double> >((
-              arg_("name"),
-              arg_("scattering_type")="",
-              arg_("nonbonded_type")="",
-              arg_("partial_charge")=0)))
+              arg("name"),
+              arg("scattering_type")="",
+              arg("nonbonded_type")="",
+              arg("partial_charge")=0)))
         .def_readwrite("name", &w_t::name)
         .def_readwrite("scattering_type", &w_t::scattering_type)
         .def_readwrite("nonbonded_type", &w_t::nonbonded_type)
@@ -49,11 +49,11 @@ namespace {
         .def(init<
           af::tiny<std::string, 2>,
             optional<const char*, double, double, const char*> >((
-              arg_("atom_names"),
-              arg_("type")="",
-              arg_("distance_ideal")=0,
-              arg_("weight")=0,
-              arg_("id")="")))
+              arg("atom_names"),
+              arg("type")="",
+              arg("distance_ideal")=0,
+              arg("weight")=0,
+              arg("id")="")))
         .add_property("atom_names",
           make_getter(&w_t::atom_names, rbv()),
           make_setter(&w_t::atom_names, dcp()))
@@ -79,10 +79,10 @@ namespace {
         .def(init<
           af::tiny<std::string, 3>,
             optional<double, double, const char*> >((
-              arg_("atom_names"),
-              arg_("angle_ideal")=0,
-              arg_("weight")=0,
-              arg_("id")="")))
+              arg("atom_names"),
+              arg("angle_ideal")=0,
+              arg("weight")=0,
+              arg("id")="")))
         .add_property("atom_names",
           make_getter(&w_t::atom_names, rbv()),
           make_setter(&w_t::atom_names, dcp()))
@@ -107,11 +107,11 @@ namespace {
         .def(init<
           af::tiny<std::string, 4>,
             optional<double, double, int, const char*> >((
-              arg_("atom_names"),
-              arg_("angle_ideal")=0,
-              arg_("weight")=0,
-              arg_("periodicity")=0,
-              arg_("id")="")))
+              arg("atom_names"),
+              arg("angle_ideal")=0,
+              arg("weight")=0,
+              arg("periodicity")=0,
+              arg("id")="")))
         .add_property("atom_names",
           make_getter(&w_t::atom_names, rbv()),
           make_setter(&w_t::atom_names, dcp()))
@@ -137,12 +137,12 @@ namespace {
         .def(init<
           af::tiny<std::string, 4>,
             optional<const char*, bool, double, double, const char*> >((
-              arg_("atom_names"),
-              arg_("volume_sign")="",
-              arg_("both_signs")=false,
-              arg_("volume_ideal")=0,
-              arg_("weight")=0,
-              arg_("id")="")))
+              arg("atom_names"),
+              arg("volume_sign")="",
+              arg("both_signs")=false,
+              arg("volume_ideal")=0,
+              arg("weight")=0,
+              arg("id")="")))
         .add_property("atom_names",
           make_getter(&w_t::atom_names, rbv()),
           make_setter(&w_t::atom_names, dcp()))
@@ -171,7 +171,7 @@ namespace {
           af::shared<std::string> const&,
           af::shared<double> const&,
             optional<const char*> >((
-              arg_("atom_names"), arg_("weights"), arg_("id")="")))
+              arg("atom_names"), arg("weights"), arg("id")="")))
         .add_property("atom_names",
           make_getter(&w_t::atom_names, rbv()),
           make_setter(&w_t::atom_names, dcp()))
@@ -314,7 +314,7 @@ namespace {
       typedef default_call_policies dcp;
       class_<w_t>("motif_alteration", no_init)
         .def(init<optional<std::string const&, std::string const&> >((
-          arg_("action"), arg_("operand"))))
+          arg("action"), arg("operand"))))
         .add_property("action",
           make_function(get_action),
           make_function(set_action))
@@ -336,25 +336,25 @@ namespace {
         .def("set_planarity_atom_actions", set_planarity_atom_actions)
         .def("change_partial_charge", &w_t::change_partial_charge)
         .def("set_change_partial_charge", &w_t::set_change_partial_charge,
-          (arg_("state")), return_self<>())
+          (arg("state")), return_self<>())
         .def("change_distance_ideal", &w_t::change_distance_ideal)
         .def("set_change_distance_ideal", &w_t::set_change_distance_ideal,
-          (arg_("state")), return_self<>())
+          (arg("state")), return_self<>())
         .def("change_weight", &w_t::change_weight)
         .def("set_change_weight", &w_t::set_change_weight,
-          (arg_("state")), return_self<>())
+          (arg("state")), return_self<>())
         .def("change_angle_ideal", &w_t::change_angle_ideal)
         .def("set_change_angle_ideal", &w_t::set_change_angle_ideal,
-          (arg_("state")), return_self<>())
+          (arg("state")), return_self<>())
         .def("change_periodicity", &w_t::change_periodicity)
         .def("set_change_periodicity", &w_t::set_change_periodicity,
-          (arg_("state")), return_self<>())
+          (arg("state")), return_self<>())
         .def("change_both_signs", &w_t::change_both_signs)
         .def("set_change_both_signs", &w_t::set_change_both_signs,
-          (arg_("state")), return_self<>())
+          (arg("state")), return_self<>())
         .def("change_volume_ideal", &w_t::change_volume_ideal)
         .def("set_change_volume_ideal", &w_t::set_change_volume_ideal,
-          (arg_("state")), return_self<>())
+          (arg("state")), return_self<>())
       ;
     }
   };

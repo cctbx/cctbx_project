@@ -135,7 +135,7 @@ namespace {
   {
     using namespace boost::python;
     def("is_match", is_match, is_match_overloads(
-      (arg_("string"), arg_("pattern"), arg_("escape_char")='\0')));
+      (arg("string"), arg("pattern"), arg("escape_char")='\0')));
   }
 
 } // namespace <anonymous>

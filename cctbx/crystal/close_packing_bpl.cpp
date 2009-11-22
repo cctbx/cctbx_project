@@ -40,12 +40,12 @@ namespace {
                   double const&,
                   optional<double const&,
                            bool> >(
-          (arg_("cb_op_original_to_sampling"),
-           arg_("float_asu"),
-           arg_("continuous_shift_flags"),
-           arg_("point_distance"),
-           arg_("buffer_thickness")=-1,
-           arg_("all_twelve_neighbors")=false)))
+          (arg("cb_op_original_to_sampling"),
+           arg("float_asu"),
+           arg("continuous_shift_flags"),
+           arg("point_distance"),
+           arg("buffer_thickness")=-1,
+           arg("all_twelve_neighbors")=false)))
         .def("cb_op_original_to_sampling",
           &w_t::cb_op_original_to_sampling, rir())
         .def("float_asu", &w_t::float_asu, rir())

@@ -111,6 +111,7 @@ namespace {
   void wrap_flex_hendrickson_lattman()
   {
     using namespace boost::python;
+    using boost::python::arg;
     typedef flex_wrapper<cctbx::hendrickson_lattman<> > f_w;
     f_w::plain("hendrickson_lattman")
       .def_pickle(flex_pickle_single_buffered<cctbx::hendrickson_lattman<>,
@@ -119,19 +120,19 @@ namespace {
       .def("__init__", make_constructor(
         from_a_b,
         default_call_policies(),
-        (arg_("a"),
-         arg_("b"))))
+        (arg("a"),
+         arg("b"))))
       .def("__init__", make_constructor(
         from_phase_integrals,
         default_call_policies(),
-        (arg_("centric_flags"),
-         arg_("phase_integrals"),
-         arg_("max_figure_of_merit"))))
+        (arg("centric_flags"),
+         arg("phase_integrals"),
+         arg("max_figure_of_merit"))))
       .def("count", f_w::count)
       .def("__add__", f_w::add_a_a)
       .def("__iadd__", f_w::iadd_a_a)
       .def("all_eq", f_w::all_eq_a_s)
-      .def("slice", slice, (arg_("self"), arg_("i_param")))
+      .def("slice", slice, (arg("self"), arg("i_param")))
       .def("conj", conj)
     ;
   }

@@ -68,17 +68,17 @@ namespace cctbx { namespace xray { namespace f_model_core_data { namespace boost
                double const&,                                           // 2 part scale
                double const&                                            // 3 part u
                >
-               ((arg_("hkl"),
-                 arg_("f_atoms"),
-                 arg_("f_mask"),
-                 arg_("unit_cell"),
-                 arg_("k_overall"),
-                 arg_("u_star"),
-                 arg_("k_sol"),
-                 arg_("u_sol"),
-                 arg_("f_part"),
-                 arg_("k_part"),
-                 arg_("u_part") )))
+               ((arg("hkl"),
+                 arg("f_atoms"),
+                 arg("f_mask"),
+                 arg("unit_cell"),
+                 arg("k_overall"),
+                 arg("u_star"),
+                 arg("k_sol"),
+                 arg("u_sol"),
+                 arg("f_part"),
+                 arg("k_part"),
+                 arg("u_part") )))
 
           .def(init<
                scitbx::af::const_ref< cctbx::miller::index<> > const&,  // 1 indices
@@ -93,17 +93,17 @@ namespace cctbx { namespace xray { namespace f_model_core_data { namespace boost
                double const&,                                           // 2 part scale
                double const&                                            // 3 part b
                >
-               ((arg_("hkl"),
-                 arg_("f_atoms"),
-                 arg_("f_mask"),
-                 arg_("d_star_sq"),
-                 arg_("k_overall"),
-                 arg_("u_star"),
-                 arg_("k_sol"),
-                 arg_("u_sol"),
-                 arg_("f_part"),
-                 arg_("k_part"),
-                 arg_("u_part") )))
+               ((arg("hkl"),
+                 arg("f_atoms"),
+                 arg("f_mask"),
+                 arg("d_star_sq"),
+                 arg("k_overall"),
+                 arg("u_star"),
+                 arg("k_sol"),
+                 arg("u_sol"),
+                 arg("f_part"),
+                 arg("k_part"),
+                 arg("u_part") )))
 
           // derivatives using gradientflags
           .def("d_target_d_all",

@@ -21,7 +21,7 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("asu_clusters", no_init)
         .def(init<pair_asu_table<> const&, optional<bool> >((
-          arg_("pair_asu_table"), arg_("strictly_in_asu")=true)))
+          arg("pair_asu_table"), arg("strictly_in_asu")=true)))
         .def("sort_index_groups_by_size",
           &w_t::sort_index_groups_by_size, return_self<>())
         .def("sort_indices_in_each_group",

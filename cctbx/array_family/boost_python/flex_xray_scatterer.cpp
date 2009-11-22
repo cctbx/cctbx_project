@@ -569,6 +569,7 @@ namespace scitbx { namespace af { namespace boost_python {
   {
     using namespace cctbx;
     using namespace boost::python;
+    using boost::python::arg;
 
     flex_wrapper<cctbx::xray::scatterer<>,
                  return_internal_reference<>
@@ -579,18 +580,18 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("extract_scattering_types", cctbx::xray::extract_scattering_types)
       .def("extract_sites", cctbx::xray::extract_sites)
       .def("set_sites", cctbx::xray::set_sites,
-        (arg_("sites")))
+        (arg("sites")))
       .def("extract_occupancies", cctbx::xray::extract_occupancies)
       .def("extract_grad_u_iso", cctbx::xray::extract_grad_u_iso)
       .def("set_occupancies", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
               af::const_ref<double> const&)) cctbx::xray::set_occupancies,
-              (arg_("occupancies")))
+              (arg("occupancies")))
       .def("set_occupancies", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
               af::const_ref<double> const&,
               af::const_ref<bool> const&)) cctbx::xray::set_occupancies,
-              (arg_("occupancies"),arg_("selection")))
+              (arg("occupancies"),arg("selection")))
       .def("adjust_u_iso", cctbx::xray::adjust_u_iso)
       .def("n_grad_u_iso", cctbx::xray::n_grad_u_iso)
       .def("n_grad_u_aniso", cctbx::xray::n_grad_u_aniso)
@@ -598,54 +599,54 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("extract_use_u_iso", cctbx::xray::extract_use_u_iso)
       .def("extract_use_u_aniso", cctbx::xray::extract_use_u_aniso)
       .def("extract_u_iso_or_u_equiv", cctbx::xray::extract_u_iso_or_u_equiv,
-        (arg_("unit_cell")))
+        (arg("unit_cell")))
       .def("extract_u_cart_plus_u_iso", cctbx::xray::extract_u_cart_plus_u_iso,
-        (arg_("unit_cell")))
+        (arg("unit_cell")))
       .def("u_cart_eigenvalues", cctbx::xray::u_cart_eigenvalues,
-        (arg_("unit_cell")))
+        (arg("unit_cell")))
       .def("anisotropy", cctbx::xray::anisotropy,
-        (arg_("unit_cell")))
+        (arg("unit_cell")))
       .def("set_u_iso", cctbx::xray::set_u_iso,
-        (arg_("u_iso"),arg_("selection"),arg_("unit_cell")))
+        (arg("u_iso"),arg("selection"),arg("unit_cell")))
       .def("extract_u_star", cctbx::xray::extract_u_star)
       .def("set_u_star", cctbx::xray::set_u_star,
-        (arg_("u_star")))
+        (arg("u_star")))
       .def("extract_u_cart", cctbx::xray::extract_u_cart,
-        (arg_("unit_cell")))
+        (arg("unit_cell")))
       .def("set_u_cart", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
               uctbx::unit_cell const&,
               af::const_ref<scitbx::sym_mat3<double> > const&)) cctbx::xray::set_u_cart,
-              (arg_("unit_cell"),arg_("u_cart")))
+              (arg("unit_cell"),arg("u_cart")))
       .def("set_u_cart", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
               uctbx::unit_cell const&,
               af::const_ref<scitbx::sym_mat3<double> > const&,
               af::const_ref<std::size_t> const&)) cctbx::xray::set_u_cart,
-              (arg_("unit_cell"),arg_("u_cart"),arg_("selection")))
+              (arg("unit_cell"),arg("u_cart"),arg("selection")))
       .def("convert_to_isotropic", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
               uctbx::unit_cell const&)) cctbx::xray::convert_to_isotropic,
-              (arg_("unit_cell")))
+              (arg("unit_cell")))
       .def("convert_to_isotropic", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
               uctbx::unit_cell const&,
               af::const_ref<std::size_t> const&)) cctbx::xray::convert_to_isotropic,
-              (arg_("unit_cell"),arg_("selection")))
+              (arg("unit_cell"),arg("selection")))
       .def("convert_to_anisotropic", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
               uctbx::unit_cell const&)) cctbx::xray::convert_to_anisotropic,
-              (arg_("unit_cell")))
+              (arg("unit_cell")))
       .def("convert_to_anisotropic", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
               uctbx::unit_cell const&,
               af::const_ref<bool> const&)) cctbx::xray::convert_to_anisotropic,
-              (arg_("unit_cell"),arg_("selection")))
+              (arg("unit_cell"),arg("selection")))
       .def("convert_to_anisotropic", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
               uctbx::unit_cell const&,
               af::const_ref<std::size_t> const&)) cctbx::xray::convert_to_anisotropic,
-              (arg_("unit_cell"),arg_("selection")))
+              (arg("unit_cell"),arg("selection")))
       .def("count_anisotropic", cctbx::xray::count_anisotropic)
       .def("count_anomalous", cctbx::xray::count_anomalous)
       .def("sites_mod_positive", cctbx::xray::sites_mod_positive)
@@ -654,14 +655,14 @@ namespace scitbx { namespace af { namespace boost_python {
         (void(*)(
           af::ref<cctbx::xray::scatterer<> > const&, bool))
             cctbx::xray::flags_set_grads, (
-              arg_("state")))
+              arg("state")))
 #define CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(attr) \
       .def("flags_set_" #attr, \
         (void(*)( \
           af::ref<cctbx::xray::scatterer<> > const&, \
           af::const_ref<std::size_t> const&)) \
             cctbx::xray::flags_set_##attr, ( \
-              arg_("iselection")))
+              arg("iselection")))
       CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(grad_site)
       CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(grad_u_iso)
       CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(grad_u_aniso)

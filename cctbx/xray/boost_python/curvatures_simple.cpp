@@ -33,14 +33,14 @@ namespace {
           af::const_ref<miller::index<> > const&,
           af::const_ref<std::complex<double> > const&,
           af::const_ref<scitbx::vec3<double> > const&>((
-            arg_("unit_cell"),
-            arg_("space_group"),
-            arg_("scatterers"),
-            arg_("scattering_type_registry"),
-            arg_("site_symmetry_table"),
-            arg_("miller_indices"),
-            arg_("da_db"),
-            arg_("daa_dbb_dab"))))
+            arg("unit_cell"),
+            arg("space_group"),
+            arg("scatterers"),
+            arg("scattering_type_registry"),
+            arg("site_symmetry_table"),
+            arg("miller_indices"),
+            arg("da_db"),
+            arg("daa_dbb_dab"))))
         .add_property("grads", make_getter(&w_t::grads, rbv()))
         .add_property("curvs", make_getter(&w_t::curvs, rbv()))
       ;

@@ -25,8 +25,8 @@ namespace {
       class_<w_t>("non_parametric_bootstrap", no_init)
         .def(init< scitbx::af::const_ref<double> const&,
                   long const&>
-             ((arg_("observations"),
-               arg_("seed") )))
+             ((arg("observations"),
+               arg("seed") )))
         .def("draw", &w_t::draw)
         .def("draw_from_random_jack_knifed_sample",
              &w_t::draw_from_random_jack_knifed_sample )
@@ -50,8 +50,8 @@ namespace {
       class_<w_t>("non_parametric_bootstrap_as_int", no_init)
         .def(init< scitbx::af::const_ref<std::size_t> const&,
                   long const&>
-             ((arg_("observations"),
-               arg_("seed") )))
+             ((arg("observations"),
+               arg("seed") )))
         .def("draw", &w_t::draw)
         .def("draw_from_random_jack_knifed_sample",
              &w_t::draw_from_random_jack_knifed_sample )
@@ -75,8 +75,8 @@ namespace {
       class_<w_t>("smooth_bootstrap", no_init)
         .def(init< scitbx::af::const_ref<double> const&,
                   long const&>
-             ((arg_("observations"),
-               arg_("seed") )))
+             ((arg("observations"),
+               arg("seed") )))
         .def("draw", &w_t::draw)
         .def("draw_from_random_jack_knifed_sample",
              &w_t::draw_from_random_jack_knifed_sample )

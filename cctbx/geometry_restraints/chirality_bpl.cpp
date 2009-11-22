@@ -28,14 +28,14 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("chirality_proxy", no_init)
         .def(init<af::tiny<unsigned, 4> const&, double, bool, double>((
-          arg_("i_seqs"),
-          arg_("volume_ideal"),
-          arg_("both_signs"),
-          arg_("weight"))))
+          arg("i_seqs"),
+          arg("volume_ideal"),
+          arg("both_signs"),
+          arg("weight"))))
         .def(init<af::tiny<unsigned, 4> const&, w_t const&>((
-          arg_("i_seqs"),
-          arg_("proxy"))))
-        .def("scale_weight", &w_t::scale_weight, (arg_("factor")))
+          arg("i_seqs"),
+          arg("proxy"))))
+        .def("scale_weight", &w_t::scale_weight, (arg("factor")))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("volume_ideal", &w_t::volume_ideal)
@@ -51,13 +51,13 @@ namespace {
               std::size_t,
               af::const_ref<std::size_t> const&))
                 shared_proxy_select, (
-            arg_("n_seq"), arg_("iselection")))
+            arg("n_seq"), arg("iselection")))
           .def("proxy_remove",
             (af::shared<w_t>(*)(
               af::const_ref<w_t> const&,
               af::const_ref<bool> const&))
                 shared_proxy_remove, (
-            arg_("selection")))
+            arg("selection")))
         ;
       }
     }
@@ -75,13 +75,13 @@ namespace {
       class_<w_t>("chirality", no_init)
         .def(init<af::tiny<scitbx::vec3<double>, 4> const&,
                   double, bool, double>(
-          (arg_("sites"),
-           arg_("volume_ideal"),
-           arg_("both_signs"),
-           arg_("weight"))))
+          (arg("sites"),
+           arg("volume_ideal"),
+           arg("both_signs"),
+           arg("weight"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   chirality_proxy const&>(
-          (arg_("sites_cart"), arg_("proxy"))))
+          (arg("sites_cart"), arg("proxy"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
         .def_readonly("volume_ideal", &w_t::volume_ideal)
         .def_readonly("both_signs", &w_t::both_signs)
@@ -102,11 +102,11 @@ namespace {
     chirality_proxy_wrappers::wrap();
     chirality_wrappers::wrap();
     def("chirality_deltas", chirality_deltas,
-      (arg_("sites_cart"), arg_("proxies")));
+      (arg("sites_cart"), arg("proxies")));
     def("chirality_residuals", chirality_residuals,
-      (arg_("sites_cart"), arg_("proxies")));
+      (arg("sites_cart"), arg("proxies")));
     def("chirality_residual_sum", chirality_residual_sum,
-      (arg_("sites_cart"), arg_("proxies"), arg_("gradient_array")));
+      (arg("sites_cart"), arg("proxies"), arg("gradient_array")));
   }
 
 } // namespace <anonymous>

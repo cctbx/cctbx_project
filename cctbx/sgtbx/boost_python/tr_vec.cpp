@@ -25,10 +25,10 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("tr_vec")
-        .def(init<optional<int> >((arg_("tr_den")=sg_t_den)))
+        .def(init<optional<int> >((arg("tr_den")=sg_t_den)))
         .def(init<sg_vec3 const&, optional<int> >((
-          arg_("v"),
-          arg_("tr_den")=sg_t_den)))
+          arg("v"),
+          arg("tr_den")=sg_t_den)))
         .def("num", (sg_vec3 const&(w_t::*)() const) &w_t::num, ccr())
         .def("den", (int const&(w_t::*)() const) &w_t::den, ccr())
         .def(self == self)
@@ -36,17 +36,17 @@ namespace {
         .def(-self)
         .def("is_valid", &w_t::is_valid)
         .def("is_zero", &w_t::is_zero)
-        .def("new_denominator", &w_t::new_denominator, (arg_("new_den")))
-        .def("scale", &w_t::scale, (arg_("factor")))
+        .def("new_denominator", &w_t::new_denominator, (arg("new_den")))
+        .def("scale", &w_t::scale, (arg("factor")))
         .def("mod_positive", &w_t::mod_positive)
         .def("mod_short", &w_t::mod_short)
         .def("cancel", &w_t::cancel)
         .def("as_double", &w_t::as_double)
-        .def("plus", &w_t::plus, (arg_("rhs")))
-        .def("minus", &w_t::minus, (arg_("rhs")))
+        .def("plus", &w_t::plus, (arg("rhs")))
+        .def("minus", &w_t::minus, (arg("rhs")))
         .def("as_string", &w_t::as_string, as_string_overloads((
-          arg_("decimal")=false,
-          arg_("separator")=",")))
+          arg("decimal")=false,
+          arg("separator")=",")))
         .def("__str__", str)
       ;
     }

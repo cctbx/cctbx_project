@@ -52,11 +52,11 @@ namespace {
                   af::const_ref<double, af::c_grid_padded<3> > const&,
                   double const&,
                   af::const_ref<scitbx::vec3<double> > const& >((
-                                    arg_("unit_cell"),
-                                    arg_("map_target"),
-                                    arg_("map_current"),
-                                    arg_("step"),
-                                    arg_("sites_frac"))))
+                                    arg("unit_cell"),
+                                    arg("map_target"),
+                                    arg("map_current"),
+                                    arg("step"),
+                                    arg("sites_frac"))))
         .def("target", &w_t::target)
         .def("gradients", &w_t::gradients)
       ;
@@ -70,11 +70,11 @@ namespace {
                   double const&,
                   double const&,
                   scitbx::vec3<double> const& >(
-                    (arg_("unit_cell"),
-                     arg_("data"),
-                     arg_("radius"),
-                     arg_("shell"),
-                     arg_("site_frac"))))
+                    (arg("unit_cell"),
+                     arg("data"),
+                     arg("radius"),
+                     arg("shell"),
+                     arg("site_frac"))))
         .def("data_at_grid_points", &w_t::data_at_grid_points)
         .def("data_at_grid_points_averaged", &w_t::data_at_grid_points_averaged)
         .def("distances", &w_t::distances)
@@ -88,10 +88,10 @@ namespace {
                   af::const_ref<double> const&,
                   bool const&,
                   bool const& >(
-                    (arg_("data_at_grid_points"),
-                     arg_("distances"),
-                     arg_("use_weights"),
-                     arg_("optimize_cutoff_radius"))))
+                    (arg("data_at_grid_points"),
+                     arg("distances"),
+                     arg("use_weights"),
+                     arg("optimize_cutoff_radius"))))
         .def("a_real_space", &w_t::a_real_space)
         .def("b_real_space", &w_t::b_real_space)
         .def("a_reciprocal_space", &w_t::a_reciprocal_space)
@@ -107,36 +107,36 @@ namespace {
       (af::versa<float, af::flex_grid<> >(*)
         (af::const_ref<float, af::flex_grid<> > const&,
          af::flex_grid<> const&)) maptbx::copy, (
-      arg_("map"),
-      arg_("result_grid")));
+      arg("map"),
+      arg("result_grid")));
     def("copy",
       (af::versa<double, af::flex_grid<> >(*)
         (af::const_ref<double, af::flex_grid<> > const&,
          af::flex_grid<> const&)) maptbx::copy, (
-      arg_("map"),
-      arg_("result_grid")));
+      arg("map"),
+      arg("result_grid")));
     def("copy",
       (af::versa<float, af::flex_grid<> >(*)
         (af::const_ref<float, c_grid_padded_p1<3> > const&,
          af::int3 const&,
          af::int3 const&)) maptbx::copy, (
-      arg_("map_unit_cell"),
-      arg_("first"),
-      arg_("last")));
+      arg("map_unit_cell"),
+      arg("first"),
+      arg("last")));
     def("copy",
       (af::versa<double, af::flex_grid<> >(*)
         (af::const_ref<double, c_grid_padded_p1<3> > const&,
          af::int3 const&,
          af::int3 const&)) maptbx::copy, (
-      arg_("map_unit_cell"),
-      arg_("first"),
-      arg_("last")));
+      arg("map_unit_cell"),
+      arg("first"),
+      arg("last")));
     def("unpad_in_place",
       (void(*)(af::versa<float, af::flex_grid<> >&))
-        maptbx::unpad_in_place, (arg_("map")));
+        maptbx::unpad_in_place, (arg("map")));
     def("unpad_in_place",
       (void(*)(af::versa<double, af::flex_grid<> >&))
-        maptbx::unpad_in_place, (arg_("map")));
+        maptbx::unpad_in_place, (arg("map")));
 
     def("fft_to_real_map_unpadded",
       (af::versa<double, af::c_grid<3> >(*)(
@@ -145,10 +145,10 @@ namespace {
         af::const_ref<miller::index<> > const&,
         af::const_ref<std::complex<double> > const&))
           maptbx::fft_to_real_map_unpadded, (
-            arg_("space_group"),
-            arg_("n_real"),
-            arg_("miller_indices"),
-            arg_("data")));
+            arg("space_group"),
+            arg("n_real"),
+            arg("miller_indices"),
+            arg("data")));
 
     def("box_map_averaging",box_map_averaging);
     def("average_densities",
@@ -157,10 +157,10 @@ namespace {
          af::const_ref<double, af::c_grid<3> > const&,
          af::const_ref<scitbx::vec3<double> > const&,
          float)) average_densities, (
-      arg_("unit_cell"),
-      arg_("data"),
-      arg_("sites_frac"),
-      arg_("radius")));
+      arg("unit_cell"),
+      arg("data"),
+      arg("sites_frac"),
+      arg("radius")));
 
     def("eight_point_interpolation",
       (double(*)
@@ -194,19 +194,19 @@ namespace {
          af::const_ref<double, af::c_grid_padded<3> > const&,
          af::const_ref<scitbx::vec3<double> > const&))
            real_space_target_simple, (
-             arg_("unit_cell"),
-             arg_("density_map"),
-             arg_("sites_cart")));
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart")));
     def("real_space_gradients_simple",
       (af::shared<scitbx::vec3<double> >(*)
         (uctbx::unit_cell const&,
          af::const_ref<double, af::c_grid_padded<3> > const&,
          af::const_ref<scitbx::vec3<double> > const&,
          double)) real_space_gradients_simple, (
-           arg_("unit_cell"),
-           arg_("density_map"),
-           arg_("sites_cart"),
-           arg_("delta")));
+           arg("unit_cell"),
+           arg("density_map"),
+           arg("sites_cart"),
+           arg("delta")));
   }
 
 } // namespace <anonymous>

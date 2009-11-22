@@ -20,16 +20,16 @@ namespace {
       using namespace boost::python;
       class_<w_t>("dataset", no_init)
         .def(init<crystal const&, int>((
-          arg_("mtz_crystal"), arg_("i_dataset"))))
+          arg("mtz_crystal"), arg("i_dataset"))))
         .def("mtz_crystal", &w_t::mtz_crystal)
         .def("i_dataset", &w_t::i_dataset)
         .def("mtz_object", &w_t::mtz_object)
         .def("id", &w_t::id)
-        .def("set_id", &w_t::set_id, (arg_("id")), return_self<>())
+        .def("set_id", &w_t::set_id, (arg("id")), return_self<>())
         .def("name", &w_t::name)
-        .def("set_name", &w_t::set_name, (arg_("new_name")), return_self<>())
+        .def("set_name", &w_t::set_name, (arg("new_name")), return_self<>())
         .def("wavelength", &w_t::wavelength)
-        .def("set_wavelength", &w_t::set_wavelength, (arg_("new_wavelength")),
+        .def("set_wavelength", &w_t::set_wavelength, (arg("new_wavelength")),
           return_self<>())
         .def("n_batches", &w_t::n_batches)
         .def("batches", &w_t::batches)
@@ -37,7 +37,7 @@ namespace {
         .def("n_columns", &w_t::n_columns)
         .def("columns", &w_t::columns)
         .def("add_column", &w_t::add_column, (
-          arg_("label"), arg_("type")))
+          arg("label"), arg("type")))
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(

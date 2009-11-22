@@ -144,9 +144,9 @@ namespace spotfinder { namespace distltbx { namespace boost_python {
       .def(init<const double&, const double&, const double&,
                 const double&, const double&, const double&,
                 const double&>(
-                ( arg_("pixel_size"), arg_("size1"), arg_("size2"),
-                  arg_("xbeam"), arg_("ybeam"), arg_("distance"),
-                  arg_("wavelength")
+                ( arg("pixel_size"), arg("size1"), arg("size2"),
+                  arg("xbeam"), arg("ybeam"), arg("distance"),
+                  arg("wavelength")
                 )))
       .def("__call__", &geometry_2d_base::operator())
     ;

@@ -313,49 +313,49 @@ namespace gltbx { namespace viewer_utils {
   {
     using namespace boost::python;
     def("write_png", write_png, (
-      arg_("file_name"),
-      arg_("width"),
-      arg_("height")));
+      arg("file_name"),
+      arg("width"),
+      arg("height")));
     def("make_rainbow_gradient", make_rainbow_gradient, (
-      arg_("nbins")));
+      arg("nbins")));
     def("color_rainbow", color_rainbow, color_rainbow_overloads((
-      arg_("atoms_visible"),
-      arg_("visible_atom_count"),
-      arg_("color_invisible_atoms")=false)));
+      arg("atoms_visible"),
+      arg("visible_atom_count"),
+      arg("color_invisible_atoms")=false)));
     def("color_by_property", color_by_property, color_by_property_overloads((
-      arg_("atom_properties"),
-      arg_("atoms_visible"),
-      arg_("color_invisible_atoms")=true,
-      arg_("use_rb_color_gradient")=false)));
+      arg("atom_properties"),
+      arg("atoms_visible"),
+      arg("color_invisible_atoms")=true,
+      arg("use_rb_color_gradient")=false)));
     def("draw_points", draw_points, draw_points_overloads((
-      arg_("points"),
-      arg_("atom_colors"),
-      arg_("points_visible"),
-      arg_("cross_radius")=0.25)));
+      arg("points"),
+      arg("atom_colors"),
+      arg("points_visible"),
+      arg("cross_radius")=0.25)));
     def("draw_bonds", draw_bonds, (
-      arg_("points"),
-      arg_("bonds"),
-      arg_("atom_colors"),
-      arg_("bonds_visible")));
+      arg("points"),
+      arg("bonds"),
+      arg("atom_colors"),
+      arg("bonds_visible")));
     def("closest_visible_point", closest_visible_point,
       closest_visible_point_overloads((
-        arg_("points"),
-        arg_("atoms_visible"),
-        arg_("point0"),
-        arg_("point1"),
-        arg_("min_dist_sq")=1.0)));
+        arg("points"),
+        arg("atoms_visible"),
+        arg("point0"),
+        arg("point1"),
+        arg("min_dist_sq")=1.0)));
     typedef atom_visibility a_v;
     typedef return_value_policy<return_by_value> rbv;
     class_<a_v>("atom_visibility", no_init)
       .def(init<af::const_ref< std::set<unsigned> > const&,
                 af::const_ref<bool> const&,
                 bool>((
-        arg_("bonds"),
-        arg_("atoms_drawable"),
-        arg_("flag_show_points"))))
+        arg("bonds"),
+        arg("atoms_drawable"),
+        arg("flag_show_points"))))
       .def("get_selection_visibility", &a_v::get_selection_visibility, (
-        arg_("bonds"),
-        arg_("atoms_selected")))
+        arg("bonds"),
+        arg("atoms_selected")))
       .def_readonly("visible_atoms_count", &a_v::visible_atoms_count)
       .def_readonly("visible_bonds_count", &a_v::visible_bonds_count)
       .def_readonly("visible_points_count", &a_v::visible_points_count)

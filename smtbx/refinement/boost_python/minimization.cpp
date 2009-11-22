@@ -28,10 +28,10 @@ namespace smtbx { namespace refinement { namespace boost_python {
           const sgtbx::site_symmetry_table&,
           af::const_ref<scatterer<> > const&,
           af::const_ref<double> const& >((
-            arg_("unit_cell"),
-            arg_("site_symmetry_table"),
-            arg_("scatterers"),
-            arg_("shifts"))))
+            arg("unit_cell"),
+            arg("site_symmetry_table"),
+            arg("scatterers"),
+            arg("shifts"))))
         .add_property("shifted_scatterers",
           make_getter(&w_t::shifted_scatterers, rbv()))
         .add_property("u_iso_refinable_params",
@@ -59,10 +59,10 @@ namespace smtbx { namespace refinement { namespace boost_python {
           const sgtbx::site_symmetry_table&,
           af::const_ref<scatterer<> > const&,
           af::ref<double> const& >((
-            arg_("unit_cell"),
-            arg_("site_symmetry_table"),
-            arg_("scatterers"),
-            arg_("xray_gradients"))))
+            arg("unit_cell"),
+            arg("site_symmetry_table"),
+            arg("scatterers"),
+            arg("xray_gradients"))))
         .add_property("reduced_gradients",
           make_getter(&w_t::reduced_gradients, rbv()))
       ;

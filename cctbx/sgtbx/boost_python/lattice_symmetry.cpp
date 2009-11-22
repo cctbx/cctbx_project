@@ -13,14 +13,14 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
     using namespace boost::python;
 
     def("lattice_symmetry_find_max_delta", lattice_symmetry::find_max_delta, (
-      arg_("reduced_cell"), arg_("space_group")));
+      arg("reduced_cell"), arg("space_group")));
 
     def("lattice_symmetry_group",
       lattice_symmetry::group,
         lattice_symmetry_group_overloads((
-          arg_("reduced_cell"),
-          arg_("max_delta")=3.,
-          arg_("enforce_max_delta_for_generated_two_folds")=true)));
+          arg("reduced_cell"),
+          arg("max_delta")=3.,
+          arg("enforce_max_delta_for_generated_two_folds")=true)));
   }
 
 }}} // namespace cctbx::sgtbx::boost_python

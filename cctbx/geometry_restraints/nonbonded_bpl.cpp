@@ -22,12 +22,12 @@ namespace {
       using namespace boost::python;
       class_<w_t>("nonbonded_params", no_init)
         .def(init<optional<double, double, double, double> >(
-            (arg_("factor_1_4_interactions")=2/3.,
-             arg_("const_shrink_1_4_interactions")=0,
-             arg_("default_distance")=0,
-             arg_("minimum_distance")=0)))
+            (arg("factor_1_4_interactions")=2/3.,
+             arg("const_shrink_1_4_interactions")=0,
+             arg("default_distance")=0,
+             arg("minimum_distance")=0)))
         .def("find_max_vdw_distance", &w_t::find_max_vdw_distance,
-          (arg_("nonbonded_types")))
+          (arg("nonbonded_types")))
         .def_readonly("distance_table", &w_t::distance_table)
         .def_readonly("radius_table", &w_t::radius_table)
         .def_readwrite("factor_1_4_interactions",
@@ -51,7 +51,7 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("nonbonded_simple_proxy", no_init)
         .def(init<af::tiny<unsigned, 2> const&, double>(
-            (arg_("i_seqs"), arg_("vdw_distance"))))
+            (arg("i_seqs"), arg("vdw_distance"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readwrite("vdw_distance", &w_t::vdw_distance)
       ;
@@ -75,7 +75,7 @@ namespace {
       class_<w_t, bases<asu_mapping_index_pair> >(
             "nonbonded_asu_proxy", no_init)
         .def(init<asu_mapping_index_pair const&, double>(
-          (arg_("pair"), arg_("vdw_distance"))))
+          (arg("pair"), arg("vdw_distance"))))
         .def_readwrite("vdw_distance", &w_t::vdw_distance)
       ;
       {
@@ -96,17 +96,17 @@ namespace {
       using namespace boost::python;
       class_<w_t>("prolsq_repulsion_function", no_init)
         .def(init<optional<double, double, double, double> >(
-          (arg_("c_rep")=16,
-           arg_("k_rep")=1,
-           arg_("irexp")=1,
-           arg_("rexp")=4)))
+          (arg("c_rep")=16,
+           arg("k_rep")=1,
+           arg("irexp")=1,
+           arg("rexp")=4)))
         .def_readonly("c_rep", &w_t::c_rep)
         .def_readonly("k_rep", &w_t::k_rep)
         .def_readonly("irexp", &w_t::irexp)
         .def_readonly("rexp", &w_t::rexp)
         .def("residual",
           (double (w_t::*)(double, double) const) &w_t::residual,
-            (arg_("vdw_distance"), arg_("delta")))
+            (arg("vdw_distance"), arg("delta")))
       ;
     }
   };
@@ -121,16 +121,16 @@ namespace {
       using namespace boost::python;
       class_<w_t>("inverse_power_repulsion_function", no_init)
         .def(init<double, optional<double, double> >(
-          (arg_("nonbonded_distance_cutoff"),
-           arg_("k_rep")=1,
-           arg_("irexp")=1)))
+          (arg("nonbonded_distance_cutoff"),
+           arg("k_rep")=1,
+           arg("irexp")=1)))
         .def_readonly("nonbonded_distance_cutoff",
                  &w_t::nonbonded_distance_cutoff)
         .def_readonly("k_rep", &w_t::k_rep)
         .def_readonly("irexp", &w_t::irexp)
         .def("residual",
           (double (w_t::*)(double, double) const) &w_t::residual,
-            (arg_("vdw_distance"), arg_("delta")))
+            (arg("vdw_distance"), arg("delta")))
       ;
     }
   };
@@ -145,13 +145,13 @@ namespace {
       using namespace boost::python;
       class_<w_t>("cos_repulsion_function", no_init)
         .def(init<double, optional<double> >(
-          (arg_("max_residual"),
-           arg_("exponent")=1)))
+          (arg("max_residual"),
+           arg("exponent")=1)))
         .def_readonly("max_residual", &w_t::max_residual)
         .def_readonly("exponent", &w_t::exponent)
         .def("residual",
           (double (w_t::*)(double, double) const) &w_t::residual,
-            (arg_("vdw_distance"), arg_("delta")))
+            (arg("vdw_distance"), arg("delta")))
       ;
     }
   };
@@ -166,13 +166,13 @@ namespace {
       using namespace boost::python;
       class_<w_t>("gaussian_repulsion_function", no_init)
         .def(init<double, optional<double> >(
-          (arg_("max_residual"),
-           arg_("norm_height_at_vdw_distance")=0.1)))
+          (arg("max_residual"),
+           arg("norm_height_at_vdw_distance")=0.1)))
         .def_readonly("max_residual", &w_t::max_residual)
         .def("norm_height_at_vdw_distance", &w_t::norm_height_at_vdw_distance)
         .def("residual",
           (double (w_t::*)(double, double) const) &w_t::residual,
-            (arg_("vdw_distance"), arg_("delta")))
+            (arg("vdw_distance"), arg("delta")))
       ;
     }
   };
@@ -191,17 +191,17 @@ namespace {
         .def(init<af::tiny<scitbx::vec3<double>, 2> const&,
                   double,
                   NonbondedFunction const&>(
-          (arg_("sites"), arg_("vdw_distance"), arg_("function"))))
+          (arg("sites"), arg("vdw_distance"), arg("function"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   nonbonded_simple_proxy const&,
                   NonbondedFunction const&>(
-          (arg_("sites_cart"), arg_("proxy"), arg_("function"))))
+          (arg("sites_cart"), arg("proxy"), arg("function"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   asu_mappings const&,
                   nonbonded_asu_proxy const&,
                   NonbondedFunction const&>(
-          (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxy"),
-           arg_("function"))))
+          (arg("sites_cart"), arg("asu_mappings"), arg("proxy"),
+           arg("function"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
         .def_readonly("vdw_distance", &w_t::vdw_distance)
         .def_readonly("function", &w_t::function)

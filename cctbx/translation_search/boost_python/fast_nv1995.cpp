@@ -25,14 +25,14 @@ namespace {
                   af::const_ref<std::complex<double> > const&,
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<std::complex<double> > >(
-          (arg_("gridding"),
-           arg_("space_group"),
-           arg_("anomalous_flag"),
-           arg_("miller_indices_f_obs"),
-           arg_("f_obs"),
-           arg_("f_part"),
-           arg_("miller_indices_p1_f_calc"),
-           arg_("p1_f_calc"))))
+          (arg("gridding"),
+           arg("space_group"),
+           arg("anomalous_flag"),
+           arg("miller_indices_f_obs"),
+           arg("f_obs"),
+           arg("f_part"),
+           arg("miller_indices_p1_f_calc"),
+           arg("p1_f_calc"))))
         .def("target_map", &w_t::target_map)
       ;
     }

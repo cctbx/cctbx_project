@@ -35,13 +35,13 @@ namespace{
              scitbx::af::const_ref< bool >  const&,
              scitbx::af::const_ref< double >  const&,
              scitbx::af::const_ref< double >  const&>
-             ((arg_("f_obs"),
-               arg_("sigma_obs"),
-               arg_("f_calc"),
-               arg_("epsilon"),
-               arg_("centric"),
-               arg_("alpha"),
-               arg_("beta")
+             ((arg("f_obs"),
+               arg("sigma_obs"),
+               arg("f_calc"),
+               arg("epsilon"),
+               arg("centric"),
+               arg("alpha"),
+               arg("beta")
                )))
         .def("log_likelihood", &w_t::log_likelihood)
         .def("posterior_mode_log_likelihood", &w_t::posterior_mode_log_likelihood)
@@ -75,29 +75,29 @@ namespace{
              scitbx::af::const_ref< bool >    const&,
              scitbx::af::const_ref< double >  const&,
              double                           const&>
-             ((arg_("e_obs"),
-               arg_("e_calc"),
-               arg_("centric"),
-               arg_("d_star_cubed"),
-               arg_("width")
+             ((arg("e_obs"),
+               arg("e_calc"),
+               arg("centric"),
+               arg("d_star_cubed"),
+               arg("width")
                )))
         .def("sum_weights", &w_t::sum_weights,
-             ( arg_("d_star_cubed")
+             ( arg("d_star_cubed")
                )
              )
         .def("target", &w_t::target,
-             (( arg_("d_star_cubed"),
-                arg_("sigmaa")
+             (( arg("d_star_cubed"),
+                arg("sigmaa")
                 ))
              )
         .def("dtarget", &w_t::dtarget,
-             (( arg_("d_star_cubed"),
-                arg_("sigmaa")
+             (( arg("d_star_cubed"),
+                arg("sigmaa")
                 ))
              )
         .def("target_and_gradient", &w_t::target_and_gradient,
-             (( arg_("d_star_cubed"),
-                arg_("sigmaa")
+             (( arg("d_star_cubed"),
+                arg("sigmaa")
                 ))
              )
         ;

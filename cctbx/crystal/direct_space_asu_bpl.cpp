@@ -27,17 +27,17 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       typedef default_call_policies dcp;
       class_<w_t>("direct_space_asu_float_cut_plane", no_init)
-        .def(init<fractional<double> const&, double>((arg_("n"), arg_("c"))))
+        .def(init<fractional<double> const&, double>((arg("n"), arg("c"))))
         .add_property("n",
           make_getter(&w_t::n, rbv()),
           make_setter(&w_t::n, dcp()))
         .def_readwrite("c", &w_t::c)
-        .def("evaluate", &w_t::evaluate, (arg_("point")))
+        .def("evaluate", &w_t::evaluate, (arg("point")))
         .def("is_inside", &w_t::is_inside, (
           arg("point"), arg("epsilon")=0))
         .def("get_point_in_plane", &w_t::get_point_in_plane)
         .def("add_buffer", &w_t::add_buffer,
-          (arg_("unit_cell"), arg_("thickness")))
+          (arg("unit_cell"), arg("thickness")))
       ;
     }
   };
@@ -56,13 +56,13 @@ namespace {
         .def(init<uctbx::unit_cell const&,
                   w_t::facets_t const&,
                   optional<double const&> >(
-          (arg_("unit_cell"), arg_("facets"), arg_("is_inside_epsilon"))))
+          (arg("unit_cell"), arg("facets"), arg("is_inside_epsilon"))))
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("facets", &w_t::facets, ccr())
         .def("is_inside_epsilon", &w_t::is_inside_epsilon)
-        .def("is_inside", &w_t::is_inside, (arg_("point")))
-        .def("is_inside_frac", &w_t::is_inside_frac, (arg_("sites_frac")))
-        .def("is_inside_cart", &w_t::is_inside_cart, (arg_("sites_cart")))
+        .def("is_inside", &w_t::is_inside, (arg("point")))
+        .def("is_inside_frac", &w_t::is_inside_frac, (arg("sites_frac")))
+        .def("is_inside_cart", &w_t::is_inside_cart, (arg("sites_cart")))
         .def("_add_buffer", &w_t::add_buffer)
         .def("volume_vertices", &w_t::volume_vertices, (
           arg("cartesian")=false,
@@ -143,10 +143,10 @@ namespace {
         .def(init<sgtbx::space_group const&,
                   float_asu<> const&,
                   double const&>((
-          arg_("space_group"),
-          arg_("asu"),
-          arg_("buffer_thickness"))))
-        .def("reserve", &w_t::reserve, (arg_("n_sites_final")))
+          arg("space_group"),
+          arg("asu"),
+          arg("buffer_thickness"))))
+        .def("reserve", &w_t::reserve, (arg("n_sites_final")))
         .def("space_group", &w_t::space_group, rir())
         .def("asu", &w_t::asu, rir())
         .def("unit_cell", &w_t::unit_cell, rir())
@@ -160,7 +160,7 @@ namespace {
         .def("process",
           (w_t&(w_t::*)(fractional<> const&, sgtbx::site_symmetry_ops const&))
               &w_t::process, (
-          arg_("original_site"), arg_("site_symmetry_ops")),
+          arg("original_site"), arg("site_symmetry_ops")),
           return_self<>())
         .def("process_sites_frac",
           (w_t&(w_t::*)(
@@ -175,7 +175,7 @@ namespace {
             af::const_ref<scitbx::vec3<double> > const&,
             sgtbx::site_symmetry_table const&))
               &w_t::process_sites_frac, (
-          arg_("original_sites"), arg_("site_symmetry_table")),
+          arg("original_sites"), arg("site_symmetry_table")),
           return_self<>())
         .def("process_sites_cart",
           (w_t&(w_t::*)(
@@ -190,7 +190,7 @@ namespace {
             af::const_ref<scitbx::vec3<double> > const&,
             sgtbx::site_symmetry_table const&))
               &w_t::process_sites_cart, (
-          arg_("original_sites"), arg_("site_symmetry_table")),
+          arg("original_sites"), arg("site_symmetry_table")),
           return_self<>())
         .def("n_sites_in_asu_and_buffer", &w_t::n_sites_in_asu_and_buffer)
         .def("n_sites_in_asu_and_buffer", &w_t::n_sites_in_asu_and_buffer)
@@ -198,29 +198,29 @@ namespace {
         .def("mapped_sites_min", &w_t::mapped_sites_min, ccr())
         .def("mapped_sites_max", &w_t::mapped_sites_max, ccr())
         .def("mapped_sites_span", &w_t::mapped_sites_span)
-        .def("special_op", &w_t::special_op, (arg_("i_seq")), ccr())
+        .def("special_op", &w_t::special_op, (arg("i_seq")), ccr())
         .def("site_symmetry_table", &w_t::site_symmetry_table, rir())
         .def("get_rt_mx",
           (sgtbx::rt_mx(w_t::*)(asu_mapping<> const&) const)
             &w_t::get_rt_mx, (
-          arg_("mapping")))
+          arg("mapping")))
         .def("get_rt_mx",
           (sgtbx::rt_mx(w_t::*)(std::size_t, std::size_t) const)
             &w_t::get_rt_mx, (
-          arg_("i_seq"), arg_("i_sym")))
-        .def("get_rt_mx_i", &w_t::get_rt_mx_i, (arg_("pair")))
-        .def("get_rt_mx_j", &w_t::get_rt_mx_j, (arg_("pair")))
-        .def("diff_vec", &w_t::diff_vec, (arg_("pair")))
+          arg("i_seq"), arg("i_sym")))
+        .def("get_rt_mx_i", &w_t::get_rt_mx_i, (arg("pair")))
+        .def("get_rt_mx_j", &w_t::get_rt_mx_j, (arg("pair")))
+        .def("diff_vec", &w_t::diff_vec, (arg("pair")))
         .def("map_moved_site_to_asu", &w_t::map_moved_site_to_asu, (
-          arg_("moved_original_site"), arg_("i_seq"), arg_("i_sym")))
-        .def("r_inv_cart", &w_t::r_inv_cart, (arg_("i_seq"), arg_("i_sym")))
+          arg("moved_original_site"), arg("i_seq"), arg("i_sym")))
+        .def("r_inv_cart", &w_t::r_inv_cart, (arg("i_seq"), arg("i_sym")))
         .def("is_simple_interaction", &w_t::is_simple_interaction, (
-          arg_("pair")))
+          arg("pair")))
         .def("make_trial_pair", &w_t::make_trial_pair, (
-          arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
+          arg("i_seq"), arg("j_seq"), arg("j_sym")))
         .def("make_pair", &w_t::make_pair, (
-          arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
-        .def("find_i_sym", &w_t::find_i_sym, (arg_("i_seq"), arg_("rt_mx")))
+          arg("i_seq"), arg("j_seq"), arg("j_sym")))
+        .def("find_i_sym", &w_t::find_i_sym, (arg("i_seq"), arg("rt_mx")))
       ;
       {
         using namespace scitbx::boost_python::container_conversions;

@@ -23,7 +23,7 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_;
+    using boost::python::arg;
    // def("uaniso_from_tls",uaniso_from_tls)
    //;
     class_<uaniso_from_tls>("uaniso_from_tls",
@@ -41,11 +41,11 @@ namespace {
                                 af::shared<sym_mat3<double> > const&,
                                 bool,
                                 bool>(
-                                   (arg_("sites"),
-                                    arg_("origin"),
-                                    arg_("d_target_d_uaniso"),
-                                    arg_("scale_l_and_s"),
-                                    arg_("use_trace_s_zero_constraint"))))
+                                   (arg("sites"),
+                                    arg("origin"),
+                                    arg("d_target_d_uaniso"),
+                                    arg("scale_l_and_s"),
+                                    arg("use_trace_s_zero_constraint"))))
       .def("grad_T", &d_target_d_tls::grad_T)
       .def("grad_L", &d_target_d_tls::grad_L)
       .def("grad_S", &d_target_d_tls::grad_S)
@@ -68,8 +68,8 @@ namespace {
       .def(init<scitbx::sym_mat3<double> const&,
                 scitbx::sym_mat3<double> const&,
                 scitbx::mat3<double> const&,
-                scitbx::vec3<double> const& >((arg_("t"),arg_("l"),arg_("s"),
-                                               arg_("origin"))))
+                scitbx::vec3<double> const& >((arg("t"),arg("l"),arg("s"),
+                                               arg("origin"))))
       .add_property("t",      make_getter(&tlso<>::t,      rbv()))
       .add_property("l",      make_getter(&tlso<>::l,      rbv()))
       .add_property("s",      make_getter(&tlso<>::s,      rbv()))
@@ -81,8 +81,8 @@ namespace {
          (af::shared<sym_mat3<double> >(*)
                (tlso<double>,
                 af::shared<vec3<double> > const&)) uaniso_from_tls_one_group,
-                                                          (arg_("tlso"),
-                                                           arg_("sites_cart")))
+                                                          (arg("tlso"),
+                                                           arg("sites_cart")))
    ;
 
    class_<tls_parts_one_group>("tls_parts_one_group",
@@ -120,9 +120,9 @@ namespace {
    //def("t_from_u_cart",t_from_u_cart)
    //;
 
-   def("t_from_u_cart", (sym_mat3<double>(*)(af::shared<sym_mat3<double> > const&, double)) t_from_u_cart, (arg_("u_cart"),arg_("small")))
+   def("t_from_u_cart", (sym_mat3<double>(*)(af::shared<sym_mat3<double> > const&, double)) t_from_u_cart, (arg("u_cart"),arg("small")))
    ;
-   def("t_from_u_cart", (sym_mat3<double>(*)(af::shared<double> const&, double))            t_from_u_cart, (arg_("u_iso"),arg_("small")))
+   def("t_from_u_cart", (sym_mat3<double>(*)(af::shared<double> const&, double))            t_from_u_cart, (arg("u_iso"),arg("small")))
    ;
 
   }

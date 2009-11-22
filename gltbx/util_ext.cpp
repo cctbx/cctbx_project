@@ -458,9 +458,9 @@ namespace gltbx { namespace util {
       using namespace boost::python;
       class_<wt>(name, no_init)
         .def(init<inp_t, inp_t>((
-             arg_("vertices"),
-             arg_("normals"))))
-        .def("draw_triangles", &wt::draw_triangles, (arg_("triangles")))
+             arg("vertices"),
+             arg("normals"))))
+        .def("draw_triangles", &wt::draw_triangles, (arg("triangles")))
       ;
     }
   };
@@ -478,70 +478,70 @@ namespace gltbx { namespace util {
     def("extract_translation_from_gl_modelview_matrix",
       extract_translation_from_gl_modelview_matrix);
     def("object_as_eye_coordinates", object_as_eye_coordinates, (
-      arg_("object_coordinates")));
+      arg("object_coordinates")));
     def("translate_object",
       (void(*)(double, double, double)) translate_object, (
-        arg_("eye_x"),
-        arg_("eye_y"),
-        arg_("eye_z")));
+        arg("eye_x"),
+        arg("eye_y"),
+        arg("eye_z")));
     def("translate_object",
       (void(*)(scitbx::vec3<double> const&)) translate_object, (
-        arg_("eye_vector")));
+        arg("eye_vector")));
     def("translate_object",
       (void(*)(double, double, double, double, double)) translate_object, (
-        arg_("s"),
-        arg_("x"),
-        arg_("y"),
-        arg_("mousex"),
-        arg_("mousey")));
+        arg("s"),
+        arg("x"),
+        arg("y"),
+        arg("mousex"),
+        arg("mousey")));
     def("rotate_object_about_eye_x_and_y", rotate_object_about_eye_x_and_y, (
-      arg_("s"),
-      arg_("xcenter"),
-      arg_("ycenter"),
-      arg_("zcenter"),
-      arg_("x"),
-      arg_("y"),
-      arg_("mousex"),
-      arg_("mousey")));
+      arg("s"),
+      arg("xcenter"),
+      arg("ycenter"),
+      arg("zcenter"),
+      arg("x"),
+      arg("y"),
+      arg("mousex"),
+      arg("mousey")));
     def("rotate_object_about_eye_vector", rotate_object_about_eye_vector, (
-      arg_("xcenter"),
-      arg_("ycenter"),
-      arg_("zcenter"),
-      arg_("xvector"),
-      arg_("yvector"),
-      arg_("zvector"),
-      arg_("angle")));
+      arg("xcenter"),
+      arg("ycenter"),
+      arg("zcenter"),
+      arg("xvector"),
+      arg("yvector"),
+      arg("zvector"),
+      arg("angle")));
     def("TranslateScene", TranslateScene, (
-      arg_("s"),
-      arg_("x"),
-      arg_("y"),
-      arg_("mousex"),
-      arg_("mousey")));
+      arg("s"),
+      arg("x"),
+      arg("y"),
+      arg("mousex"),
+      arg("mousey")));
     def("RotateScene", RotateScene, (
-      arg_("s"),
-      arg_("xcenter"),
-      arg_("ycenter"),
-      arg_("zcenter"),
-      arg_("x"),
-      arg_("y"),
-      arg_("mousex"),
-      arg_("mousey")));
+      arg("s"),
+      arg("xcenter"),
+      arg("ycenter"),
+      arg("zcenter"),
+      arg("x"),
+      arg("y"),
+      arg("mousex"),
+      arg("mousey")));
     def("RotateAboutVector", RotateAboutVector, (
-      arg_("xcenter"),
-      arg_("ycenter"),
-      arg_("zcenter"),
-      arg_("xvector"),
-      arg_("yvector"),
-      arg_("zvector"),
-      arg_("angle")));
+      arg("xcenter"),
+      arg("ycenter"),
+      arg("zcenter"),
+      arg("xvector"),
+      arg("yvector"),
+      arg("zvector"),
+      arg("angle")));
     def("SolidSphere", SolidSphere, (
-      arg_("radius"),
-      arg_("slices"),
-      arg_("stacks")));
+      arg("radius"),
+      arg("slices"),
+      arg("stacks")));
     def("WireSphere", WireSphere, (
-      arg_("radius"),
-      arg_("slices"),
-      arg_("stacks")));
+      arg("radius"),
+      arg("slices"),
+      arg("stacks")));
     {
       // compatibility with scitbx/iso_surface/iso_surface_ext.cpp
       typedef af::c_grid_padded_periodic<3>::index_value_type ivt;

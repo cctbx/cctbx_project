@@ -13,7 +13,7 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_;
+    using boost::python::arg;
     class_<target_gradients_aniso_ml>("target_gradients_aniso_ml",
                              init<af::const_ref<double> const&,
                                   af::const_ref< std::complex<double> > const&,
@@ -45,24 +45,24 @@ namespace {
            bool const&,
            bool const&,
            bool const& >(
-             (arg_("fm1"),
-              arg_("fm2"),
-              arg_("twin_fraction"),
-              arg_("fo"),
-              arg_("compute_k_sol_grad"),
-              arg_("compute_b_sol_grad"),
-              arg_("compute_u_star_grad"))))
+             (arg("fm1"),
+              arg("fm2"),
+              arg("twin_fraction"),
+              arg("fo"),
+              arg("compute_k_sol_grad"),
+              arg("compute_b_sol_grad"),
+              arg("compute_u_star_grad"))))
       .def(init<
            f_model::core<double, std::complex<double> > const&,
            af::const_ref<double> const&,
            bool const&,
            bool const&,
            bool const& >(
-             (arg_("fm"),
-              arg_("fo"),
-              arg_("compute_k_sol_grad"),
-              arg_("compute_b_sol_grad"),
-              arg_("compute_u_star_grad"))))
+             (arg("fm"),
+              arg("fo"),
+              arg("compute_k_sol_grad"),
+              arg("compute_b_sol_grad"),
+              arg("compute_u_star_grad"))))
       .def("target", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::target)
       .def("grad_u_star", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_u_star)
       .def("grad_k_sol", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_k_sol)

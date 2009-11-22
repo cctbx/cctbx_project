@@ -33,10 +33,10 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
                      sgtbx::space_group const&,
                      bool const&,
                      scitbx::mat3<double> const& >
-               (( arg_("hkl"),
-                  arg_("space_group"),
-                  arg_("anomalous_flag"),
-                  arg_("twin_law") )))
+               (( arg("hkl"),
+                  arg("space_group"),
+                  arg("anomalous_flag"),
+                  arg("twin_law") )))
           .def("twin_complete", &w_t::twin_complete )
           .def("check_free_flags", &w_t::check_free_flags)
           .def("get_free_model_selection", &w_t::get_free_model_selection)
@@ -84,14 +84,14 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
                double const&,                                           // 7 alpha
                scitbx::mat3<double> const&                              // 8 twin law)
                >
-               ((arg_("hkl_obs"),
-                 arg_("i_obs"),
-                 arg_("w_obs"),
-                 arg_("hkl_calc"),
-                 arg_("space_group"),
-                 arg_("anomalous_flag"),
-                 arg_("alpha"),
-                 arg_("twin_law")
+               ((arg("hkl_obs"),
+                 arg("i_obs"),
+                 arg("w_obs"),
+                 arg("hkl_calc"),
+                 arg("space_group"),
+                 arg("anomalous_flag"),
+                 arg("alpha"),
+                 arg("twin_law")
                  )))
           .def("target", &w_t::target)
           .def("d_target_d_ab", d_target_d_ab )
@@ -135,14 +135,14 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
                double const&,                                           // 7 alpha
                scitbx::mat3<double> const&                              // 8 twin law)
                >
-               ((arg_("hkl_obs"),
-                 arg_("f_obs"),
-                 arg_("w_obs"),
-                 arg_("hkl_calc"),
-                 arg_("space_group"),
-                 arg_("anomalous_flag"),
-                 arg_("alpha"),
-                 arg_("twin_law")
+               ((arg("hkl_obs"),
+                 arg("f_obs"),
+                 arg("w_obs"),
+                 arg("hkl_calc"),
+                 arg("space_group"),
+                 arg("anomalous_flag"),
+                 arg("alpha"),
+                 arg("twin_law")
                  )))
           .def("target", &w_t::target)
           .def("d_target_d_ab", d_target_d_ab )
@@ -173,38 +173,38 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
              bool const&,                                              // 4 anomalous flag
              scitbx::mat3<double> const&                               // 5 twin law
              >
-             ((arg_("hkl_obs"),
-               arg_("hkl_calc"),
-               arg_("space_group"),
-               arg_("anomalous_flag"),
-               arg_("twin_law")
+             ((arg("hkl_obs"),
+               arg("hkl_calc"),
+               arg("space_group"),
+               arg("anomalous_flag"),
+               arg("twin_law")
              )))
         .def("r_intensity_abs", &w_t::r_intensity_abs,
-             ( arg_("f_obs"),
-               arg_("f_model"),
-               arg_("selection"),
-               arg_("twin_fraction")
+             ( arg("f_obs"),
+               arg("f_model"),
+               arg("selection"),
+               arg("twin_fraction")
              )
             )
         .def("r_intensity_sq", &w_t::r_intensity_sq,
-             ( arg_("f_obs"),
-               arg_("f_model"),
-               arg_("selection"),
-               arg_("twin_fraction")
+             ( arg("f_obs"),
+               arg("f_model"),
+               arg("selection"),
+               arg("twin_fraction")
              )
             )
         .def("r_amplitude_abs", &w_t::r_amplitude_abs,
-             ( arg_("f_obs"),
-               arg_("f_model"),
-               arg_("selection"),
-               arg_("twin_fraction")
+             ( arg("f_obs"),
+               arg("f_model"),
+               arg("selection"),
+               arg("twin_fraction")
              )
             )
         .def("r_amplitude_sq", &w_t::r_amplitude_sq,
-             ( arg_("f_obs"),
-               arg_("f_model"),
-               arg_("selection"),
-               arg_("twin_fraction")
+             ( arg("f_obs"),
+               arg("f_model"),
+               arg("selection"),
+               arg("twin_fraction")
              )
             )
 
@@ -287,37 +287,37 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
                   bool const&,                                              // 4 anomalous flag
                   scitbx::mat3<double> const&                               // 5 twin law
                 >
-                ((arg_("hkl_obs"),
-                  arg_("hkl_calc"),
-                  arg_("space_group"),
-                  arg_("anomalous_flag"),
-                  arg_("twin_law")
+                ((arg("hkl_obs"),
+                  arg("hkl_calc"),
+                  arg("space_group"),
+                  arg("anomalous_flag"),
+                  arg("twin_law")
                 )))
 
        .def("detwin_with_twin_fraction", detwin_with_twin_fraction,
-             ( arg_("i_obs"),
-               arg_("sigma_obs"),
-               arg_("twin_fraction")
+             ( arg("i_obs"),
+               arg("sigma_obs"),
+               arg("twin_fraction")
              ) )
 
        .def("twin_with_twin_fraction", twin_with_twin_fraction,
-             ( arg_("i_obs"),
-               arg_("sigma_obs"),
-               arg_("twin_fraction")
+             ( arg("i_obs"),
+               arg("sigma_obs"),
+               arg("twin_fraction")
              ) )
 
        .def("detwin_with_model_data", detwin_with_model_data,
-             ( arg_("i_obs"),
-               arg_("sigma_obs"),
-               arg_("f_model"),
-               arg_("twin_fraction")
+             ( arg("i_obs"),
+               arg("sigma_obs"),
+               arg("f_model"),
+               arg("twin_fraction")
              ) )
 
        .def("detwin_with_abs_model_data", detwin_with_abs_model_data,
-             ( arg_("i_obs"),
-               arg_("sigma_obs"),
-               arg_("f_model"),
-               arg_("twin_fraction")
+             ( arg("i_obs"),
+               arg("sigma_obs"),
+               arg("f_model"),
+               arg("twin_fraction")
              ) )
        .def("obs_to_twin_obs", &w_t::obs_to_twin_obs)
 
@@ -349,13 +349,13 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
               double const&, double const&,
               double const&, int    const&
               >
-              ((arg_("i_obs1"),  arg_("s_obs1"),
-                arg_("i_obs2"),  arg_("s_obs2"),
-                arg_("f_calc1"), arg_("f_calc2"),
-                arg_("eps1"),    arg_("eps2"),
-                arg_("centric1"),arg_("centric2"),
-                arg_("alpha"),   arg_("beta"),
-                arg_("twin_fraction"), arg_("n_quad")
+              ((arg("i_obs1"),  arg("s_obs1"),
+                arg("i_obs2"),  arg("s_obs2"),
+                arg("f_calc1"), arg("f_calc2"),
+                arg("eps1"),    arg("eps2"),
+                arg("centric1"),arg("centric2"),
+                arg("alpha"),   arg("beta"),
+                arg("twin_fraction"), arg("n_quad")
                 ))
               )
          .def("log_p" , &w_t::log_p)

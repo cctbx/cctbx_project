@@ -119,7 +119,7 @@ namespace boost_python { namespace {
     ;
 
     class_<Direction>("Direction", init<const point &>())
-      .def(init<const double &, const double &>((arg_("psi"),arg_("phi"))))
+      .def(init<const double &, const double &>((arg("psi"),arg("phi"))))
       .def_readonly("kmax",&Direction::kmax)
       .def_readonly("kval",&Direction::kval)
       .def_readonly("kval0",&Direction::kval0)
@@ -147,8 +147,8 @@ namespace boost_python { namespace {
     class_<ewald_sphere_base_model>("ewald_sphere_base_model",
       init<const double&, const ewald_sphere_base_model::matrix&, const double&,
            const ewald_sphere_base_model::point&>(
-           (arg_("limiting_resolution"),arg_("orientation"),
-            arg_("wavelength"),arg_("axial_direction"))))
+           (arg("limiting_resolution"),arg("orientation"),
+            arg("wavelength"),arg("axial_direction"))))
       .def("setH",(void(ewald_sphere_base_model::*)
            (const ewald_sphere_base_model::point&)) &ewald_sphere_base_model::setH)
       .def("setH",(void(ewald_sphere_base_model::*)
@@ -159,8 +159,8 @@ namespace boost_python { namespace {
     class_<rotation_angles, bases<ewald_sphere_base_model> >("rotation_angles",
       init<const double&, const ewald_sphere_base_model::matrix&, const double&,
            const ewald_sphere_base_model::point&>(
-           (arg_("limiting_resolution"),arg_("orientation"),
-            arg_("wavelength"),arg_("axial_direction"))))
+           (arg("limiting_resolution"),arg("orientation"),
+            arg("wavelength"),arg("axial_direction"))))
       .def(init<const ewald_sphere_base_model&>())
       .def("__call__", &rotation_angles::operator())
       .def("axis", &rotation_angles::axis)

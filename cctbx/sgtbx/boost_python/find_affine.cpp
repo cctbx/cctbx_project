@@ -16,9 +16,9 @@ namespace {
       using namespace boost::python;
       class_<w_t>("find_affine", no_init)
         .def(init<space_group const&, optional<int, bool> >((
-          arg_("group"),
-          arg_("range")=2,
-          arg_("use_p1_algorithm")=false)))
+          arg("group"),
+          arg("range")=2,
+          arg("use_p1_algorithm")=false)))
         .def("cb_mx", &w_t::cb_mx)
       ;
     }

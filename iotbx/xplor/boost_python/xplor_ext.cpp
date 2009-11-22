@@ -213,20 +213,20 @@ namespace iotbx { namespace boost_python { namespace xplor_ext {
 
     class_<map_reader>("map_reader", no_init)
       .def(init<std::string const&, std::size_t, af::flex_grid<> const&>(
-        (arg_("file_name"), arg_("n_header_lines"), arg_("grid"))))
+        (arg("file_name"), arg("n_header_lines"), arg("grid"))))
       .def_readonly("data", &map_reader::data)
       .def_readonly("average", &map_reader::average)
       .def_readonly("standard_deviation", &map_reader::standard_deviation)
     ;
 
     def("map_writer", map_writer_box,
-      (arg_("file_name"), arg_("unit_cell"),
-       arg_("data"),
-       arg_("average"), arg_("standard_deviation")));
+      (arg("file_name"), arg("unit_cell"),
+       arg("data"),
+       arg("average"), arg("standard_deviation")));
     def("map_writer", map_writer_p1_cell,
-      (arg_("file_name"), arg_("unit_cell"),
-       arg_("gridding_first"), arg_("gridding_last"), arg_("data"),
-       arg_("average"), arg_("standard_deviation")));
+      (arg("file_name"), arg("unit_cell"),
+       arg("gridding_first"), arg("gridding_last"), arg("data"),
+       arg("average"), arg("standard_deviation")));
   }
 
 }}} // namespace iotbx::boost_python::xplor_ext

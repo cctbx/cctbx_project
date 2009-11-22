@@ -27,10 +27,10 @@ namespace scitbx { namespace lbfgsb { namespace {
                   FloatType const&,
                   int const&>())
         .def("process", &w_t::process, (
-          arg_("x"),
-          arg_("f"),
-          arg_("g"),
-          arg_("use_fortran_library")=false))
+          arg("x"),
+          arg("f"),
+          arg("g"),
+          arg("use_fortran_library")=false))
         .def("requests_f_and_g", &w_t::requests_f_and_g)
         .def("requests_stp_init", &w_t::requests_stp_init)
         .def("is_terminated", &w_t::is_terminated)
@@ -96,7 +96,7 @@ namespace scitbx { namespace lbfgsb { namespace {
           &w_t::relative_step_length_line_search)
         .def(  "set_relative_step_length_line_search",
           &w_t::set_relative_step_length_line_search, (
-            arg_("value")))
+            arg("value")))
         .def(  "infinity_norm_projected_gradient",
           &w_t::infinity_norm_projected_gradient)
         .def(  "current_search_direction",

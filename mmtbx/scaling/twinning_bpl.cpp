@@ -35,11 +35,11 @@ namespace{
              cctbx::sgtbx::space_group const&,
              bool const&,
              scitbx::mat3<double> const& >
-             ((arg_("miller_indices"),
-               arg_("intensity"),
-               arg_("space_group"),
-               arg_("anomalous_flag"),
-               arg_("symop") )))
+             ((arg("miller_indices"),
+               arg("intensity"),
+               arg("space_group"),
+               arg("anomalous_flag"),
+               arg("symop") )))
         .def("r_abs_value", &w_t::r_abs_value)
         .def("r_sq_value", &w_t::r_sq_value)
         .def("r_abs_pair", &w_t::r_abs_pair)
@@ -72,14 +72,14 @@ namespace{
              long const&,
              long const&,
              std::size_t const& >
-             ((arg_("miller_indices"),
-               arg_("intensity"),
-               arg_("space_group"),
-               arg_("anomalous_flag"),
-               arg_("parity_h"),
-               arg_("parity_k"),
-               arg_("parity_l"),
-               arg_("max_delta_h") )))
+             ((arg("miller_indices"),
+               arg("intensity"),
+               arg("space_group"),
+               arg("anomalous_flag"),
+               arg("parity_h"),
+               arg("parity_k"),
+               arg("parity_l"),
+               arg("max_delta_h") )))
         .def("mean_l", &w_t::mean_l)
         .def("mean_l2", &w_t::mean_l2)
         .def("ml_alpha", &w_t::ml_alpha)
@@ -108,12 +108,12 @@ namespace{
              bool const&,
              scitbx::mat3<double> const&
              >
-             ((arg_("miller_indices"),
-               arg_("intensity"),
-               arg_("sigma"),
-               arg_("space_group"),
-               arg_("anomalous_flag"),
-               arg_("twin_law") )))
+             ((arg("miller_indices"),
+               arg("intensity"),
+               arg("sigma"),
+               arg("space_group"),
+               arg("anomalous_flag"),
+               arg("twin_law") )))
         .def("detwin_with_alpha", &w_t::detwin_with_alpha)
         .def("detwinned_i", &w_t::detwinned_i)
         .def("detwinned_sigi", &w_t::detwinned_sigi)
@@ -145,13 +145,13 @@ namespace{
              scitbx::mat3<double> const&,
              double const&
              >
-             ((arg_("miller_indices"),
-               arg_("intensity"),
-               arg_("sigma"),
-               arg_("space_group"),
-               arg_("anomalous_flag"),
-               arg_("twin_law"),
-               arg_("fraction")) ))
+             ((arg("miller_indices"),
+               arg("intensity"),
+               arg("sigma"),
+               arg("space_group"),
+               arg("anomalous_flag"),
+               arg("twin_law"),
+               arg("fraction")) ))
         .def("h_array", &w_t::h_array)
         .def("h_values", &w_t::h_values)
         .def("h_cumul_obs", &w_t::h_cumul_obs)
@@ -183,23 +183,23 @@ namespace{
              bool const&,
              scitbx::mat3<double> const&,
              long const&
-             > (( arg_("z"),
-                  arg_("sig_z"),
-                  arg_("indices"),
-                  arg_("space_group"),
-                  arg_("anomalous_flag"),
-                  arg_("twin_law"),
-                  arg_("n_hermite"))
+             > (( arg("z"),
+                  arg("sig_z"),
+                  arg("indices"),
+                  arg("space_group"),
+                  arg("anomalous_flag"),
+                  arg("twin_law"),
+                  arg("n_hermite"))
                 ))
         .def("num_int", &w_t::num_int,
-             (( arg_("ito1"),
-                arg_("sito1"),
-                arg_("ito2"),
-                arg_("sito2"),
-                arg_("low_sig"),
-                arg_("high_sig"),
-                arg_("twin_fraction"),
-                arg_("n")
+             (( arg("ito1"),
+                arg("sito1"),
+                arg("ito2"),
+                arg("sito2"),
+                arg("low_sig"),
+                arg("high_sig"),
+                arg("twin_fraction"),
+                arg("n")
                 ))
             )
         .def("p_raw", &w_t::p_raw)
@@ -233,15 +233,15 @@ namespace{
              scitbx::mat3<double> const&,
              cctbx::uctbx::unit_cell const&,
              long const&
-             > (( arg_("z"),
-                  arg_("sig_z"),
-                  arg_("indices"),
-                  arg_("bins"),
-                  arg_("space_group"),
-                  arg_("anomalous_flag"),
-                  arg_("twin_law"),
-                  arg_("unit_cell"),
-                  arg_("n_quadrature"))
+             > (( arg("z"),
+                  arg("sig_z"),
+                  arg("indices"),
+                  arg("bins"),
+                  arg("space_group"),
+                  arg("anomalous_flag"),
+                  arg("twin_law"),
+                  arg("unit_cell"),
+                  arg("n_quadrature"))
                 ))
         .def("p_raw", &w_t::p_raw)
         .def("num_int", &w_t::num_int )
@@ -264,10 +264,10 @@ namespace{
     {
       using namespace boost::python;
       class_<w_t>("very_quick_erf", no_init)
-        .def(init<double const& > ((arg_("step_size"))))
+        .def(init<double const& > ((arg("step_size"))))
         .def("erf", &w_t::erf)
         .def("loop_for_timings", &w_t::loop_for_timings, (
-          arg_("number_of_iterations"), arg_("optimized")))
+          arg("number_of_iterations"), arg("optimized")))
         ;
     }
   };
@@ -281,10 +281,10 @@ namespace{
     {
       using namespace boost::python;
       class_<w_t>("quick_ei0", no_init)
-        .def(init<int const& > ((arg_("n_points"))))
+        .def(init<int const& > ((arg("n_points"))))
         .def("ei0", &w_t::ei0)
         .def("loop_for_timings", &w_t::loop_for_timings, (
-          arg_("number_of_iterations"), arg_("optimized")))
+          arg("number_of_iterations"), arg("optimized")))
         ;
     }
   };

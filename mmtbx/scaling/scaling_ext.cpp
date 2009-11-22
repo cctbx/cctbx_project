@@ -81,16 +81,16 @@ namespace {
                    bool const&
                    ))
         absolute_scaling::wilson_single_nll,
-        wilson_single_nll_overloads((arg_("d_star_sq"),
-                                     arg_("f_obs"),
-                                     arg_("sigma_f_obs"),
-                                     arg_("epsilon"),
-                                     arg_("sigma_sq"),
-                                     arg_("gamma_prot"),
-                                     arg_("centric"),
-                                     arg_("p_scale"),
-                                     arg_("p_B_wilson"),
-                                     arg_("transform")=true))
+        wilson_single_nll_overloads((arg("d_star_sq"),
+                                     arg("f_obs"),
+                                     arg("sigma_f_obs"),
+                                     arg("epsilon"),
+                                     arg("sigma_sq"),
+                                     arg("gamma_prot"),
+                                     arg("centric"),
+                                     arg("p_scale"),
+                                     arg("p_B_wilson"),
+                                     arg("transform")=true))
         );
 
     def("wilson_total_nll",
@@ -105,16 +105,16 @@ namespace {
                    double const&,
                    bool))
         absolute_scaling::wilson_total_nll,
-        wilson_total_nll_overloads((arg_("d_star_sq"),
-                                    arg_("f_obs"),
-                                    arg_("sigma_f_obs"),
-                                    arg_("epsilon"),
-                                    arg_("sigma_sq"),
-                                    arg_("gamma_prot"),
-                                    arg_("centric"),
-                                    arg_("p_scale"),
-                                    arg_("p_B_wilson"),
-                                    arg_("transform")=true))
+        wilson_total_nll_overloads((arg("d_star_sq"),
+                                    arg("f_obs"),
+                                    arg("sigma_f_obs"),
+                                    arg("epsilon"),
+                                    arg("sigma_sq"),
+                                    arg("gamma_prot"),
+                                    arg("centric"),
+                                    arg("p_scale"),
+                                    arg("p_B_wilson"),
+                                    arg("transform")=true))
         );
 
 
@@ -129,15 +129,15 @@ namespace {
                                         double const&,
                                         double const&))
         absolute_scaling::wilson_single_nll_gradient,
-          (arg_("d_star_sq"),
-           arg_("f_obs"),
-           arg_("sigma_f_obs"),
-           arg_("epsilon"),
-           arg_("sigma_sq"),
-           arg_("gamma_prot"),
-           arg_("centric"),
-           arg_("p_scale"),
-           arg_("p_B_wilson"))
+          (arg("d_star_sq"),
+           arg("f_obs"),
+           arg("sigma_f_obs"),
+           arg("epsilon"),
+           arg("sigma_sq"),
+           arg("gamma_prot"),
+           arg("centric"),
+           arg("p_scale"),
+           arg("p_B_wilson"))
         );
 
     def("wilson_total_nll_gradient", (scitbx::af::tiny<double,2>(*)(
@@ -151,15 +151,15 @@ namespace {
                                       double const&,
                                       double const&))
         absolute_scaling::wilson_total_nll_gradient,
-          (arg_("d_star_sq"),
-           arg_("f_obs"),
-           arg_("sigma_f_obs"),
-           arg_("epsilon"),
-           arg_("sigma_sq"),
-           arg_("gamma_prot"),
-           arg_("centric"),
-           arg_("p_scale"),
-           arg_("p_B_wilson"))
+          (arg("d_star_sq"),
+           arg("f_obs"),
+           arg("sigma_f_obs"),
+           arg("epsilon"),
+           arg("sigma_sq"),
+           arg("gamma_prot"),
+           arg("centric"),
+           arg("p_scale"),
+           arg("p_B_wilson"))
         );
 
     def ("ml_normalise", (scitbx::af::shared<double>(*)(
@@ -174,15 +174,15 @@ namespace {
                           bool const&))
          absolute_scaling::ml_normalise,
          ml_normalise_overloads(
-         (arg_("d_star_sq"),
-          arg_("f_obs"),
-          arg_("epsilon"),
-          arg_("sigma_sq"),
-          arg_("gamma_prot"),
-          arg_("centric"),
-          arg_("p_scale"),
-          arg_("p_B_wilson"),
-          arg_("wiggle")=true))
+         (arg("d_star_sq"),
+          arg("f_obs"),
+          arg("epsilon"),
+          arg("sigma_sq"),
+          arg("gamma_prot"),
+          arg("centric"),
+          arg("p_scale"),
+          arg("p_B_wilson"),
+          arg("wiggle")=true))
          );
 
 
@@ -280,12 +280,12 @@ namespace {
           bool const&))
          absolute_scaling::ml_normalise_aniso,
          ml_normalise_aniso_overloads(
-           (arg_("hkl"),
-            arg_("f_obs"),
-            arg_("p_scale"),
-            arg_("unit_cell"),
-            arg_("u_star"),
-            arg_("volume_correction_rwgk")=false)));
+           (arg("hkl"),
+            arg("f_obs"),
+            arg("p_scale"),
+            arg("unit_cell"),
+            arg("u_star"),
+            arg("volume_correction_rwgk")=false)));
 
 
     def("kernel_normalisation",
@@ -296,11 +296,11 @@ namespace {
           scitbx::af::const_ref< double > const&,
           double const&))
         absolute_scaling::kernel_normalisation,
-        (arg_("d_star_sq_hkl"),
-         arg_("I_hkl"),
-         arg_("epsilon"),
-         arg_("d_star_sq_array"),
-         arg_("kernel_width")));
+        (arg("d_star_sq_hkl"),
+         arg("I_hkl"),
+         arg("epsilon"),
+         arg("d_star_sq_array"),
+         arg("kernel_width")));
 
 
     //outlier detection

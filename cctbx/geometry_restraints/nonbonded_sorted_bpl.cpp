@@ -21,22 +21,22 @@ namespace {
       class_<w_t>("nonbonded_sorted_asu_proxies_base", no_init)
         .def(init<
           boost::shared_ptr<asu_mappings> const&>(
-            (arg_("asu_mappings"))))
+            (arg("asu_mappings"))))
         .def("asu_mappings", &w_t::asu_mappings, ccr())
         .def("process",
           (bool(w_t::*)(nonbonded_simple_proxy const&)) &w_t::process,
-            (arg_("proxy")))
+            (arg("proxy")))
         .def("process",
           (void(w_t::*)(af::const_ref<nonbonded_simple_proxy> const&))
             &w_t::process,
-          (arg_("proxies")))
+          (arg("proxies")))
         .def("process",
           (bool(w_t::*)(nonbonded_asu_proxy const&)) &w_t::process,
-            (arg_("proxy")))
+            (arg("proxy")))
         .def("process",
           (void(w_t::*)(af::const_ref<nonbonded_asu_proxy> const&))
             &w_t::process,
-          (arg_("proxies")))
+          (arg("proxies")))
         .def("n_total", &w_t::n_total)
         .def_readonly("simple", &w_t::simple)
         .def_readonly("asu", &w_t::asu)
@@ -56,7 +56,7 @@ namespace {
         "nonbonded_sorted_asu_proxies", no_init)
         .def(init<
           boost::shared_ptr<asu_mappings> const&>(
-            (arg_("asu_mappings"))))
+            (arg("asu_mappings"))))
         .def(init<
           af::const_ref<std::size_t> const&,
           af::const_ref<std::size_t> const&,
@@ -65,13 +65,13 @@ namespace {
           double,
           double,
           std::vector<crystal::pair_asu_table<> > const&>((
-            arg_("model_indices"),
-            arg_("conformer_indices"),
-            arg_("nonbonded_params"),
-            arg_("nonbonded_types"),
-            arg_("nonbonded_distance_cutoff_plus_buffer"),
-            arg_("min_cubicle_edge"),
-            arg_("shell_asu_tables"))))
+            arg("model_indices"),
+            arg("conformer_indices"),
+            arg("nonbonded_params"),
+            arg("nonbonded_types"),
+            arg("nonbonded_distance_cutoff_plus_buffer"),
+            arg("min_cubicle_edge"),
+            arg("shell_asu_tables"))))
         .def_readonly("n_1_3", &w_t::n_1_3)
         .def_readonly("n_1_4", &w_t::n_1_4)
         .def_readonly("n_nonbonded", &w_t::n_nonbonded)

@@ -32,6 +32,7 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
+    using boost::python::arg;
     typedef return_internal_reference<> rir;
 #if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
     shared_wrapper<unsigned>::wrap("unsigned");
@@ -41,7 +42,7 @@ namespace {
     shared_wrapper<std::set<unsigned>, rir>::wrap("stl_set_unsigned")
       .def("append_union_of_selected_arrays",
         append_union_of_selected_arrays, (
-          arg_("arrays"), arg_("selection")))
+          arg("arrays"), arg("selection")))
       .enable_pickling()
     ;
     shared_wrapper<mat3<int> >::wrap("mat3_int");

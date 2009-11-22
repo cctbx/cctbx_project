@@ -26,21 +26,21 @@ namespace {
           double,
           boost::optional<double> const&,
           af::shared<std::complex<double> > const&>((
-            arg_("target_per_reflection"),
-            arg_("target_work"),
-            arg_("target_test"),
-            arg_("gradients_work"))))
+            arg("target_per_reflection"),
+            arg("target_work"),
+            arg("target_test"),
+            arg("gradients_work"))))
         .def(init<
           af::shared<double> const&,
           double,
           boost::optional<double> const&,
           af::shared<std::complex<double> > const&,
           af::shared<scitbx::vec3<double> > const&>((
-            arg_("target_per_reflection"),
-            arg_("target_work"),
-            arg_("target_test"),
-            arg_("gradients_work"),
-            arg_("curvatures_work"))))
+            arg("target_per_reflection"),
+            arg("target_work"),
+            arg("target_test"),
+            arg("gradients_work"),
+            arg("curvatures_work"))))
         .def("target_per_reflection", &w_t::target_per_reflection, ccr())
         .def("target_work", &w_t::target_work)
         .def("target_test", &w_t::target_test)
@@ -69,14 +69,14 @@ namespace {
           af::const_ref< std::complex<double> > const&,
           int,
           double>((
-            arg_("apply_scale_to_f_calc"),
-            arg_("compute_scale_using_all_data"),
-            arg_("f_obs"),
-            arg_("weights"),
-            arg_("r_free_flags"),
-            arg_("f_calc"),
-            arg_("compute_derivatives"),
-            arg_("scale_factor"))))
+            arg("apply_scale_to_f_calc"),
+            arg("compute_scale_using_all_data"),
+            arg("f_obs"),
+            arg("weights"),
+            arg("r_free_flags"),
+            arg("f_calc"),
+            arg("compute_derivatives"),
+            arg("scale_factor"))))
         .def("apply_scale_to_f_calc", &w_t::apply_scale_to_f_calc)
         .def("compute_scale_using_all_data",&w_t::compute_scale_using_all_data)
         .def("scale_factor", &w_t::scale_factor)
@@ -155,15 +155,15 @@ namespace {
           af::const_ref<int> const&,
           af::const_ref<bool> const&,
           bool>((
-            arg_("f_obs"),
-            arg_("r_free_flags"),
-            arg_("f_calc"),
-            arg_("alpha"),
-            arg_("beta"),
-            arg_("scale_factor"),
-            arg_("epsilons"),
-            arg_("centric_flags"),
-            arg_("compute_gradients"))))
+            arg("f_obs"),
+            arg("r_free_flags"),
+            arg("f_calc"),
+            arg("alpha"),
+            arg("beta"),
+            arg("scale_factor"),
+            arg("epsilons"),
+            arg("centric_flags"),
+            arg("compute_gradients"))))
       ;
     }
   };
@@ -189,16 +189,16 @@ namespace {
           af::const_ref<bool> const&,
           double,
           bool>((
-            arg_("f_obs"),
-            arg_("r_free_flags"),
-            arg_("experimental_phases"),
-            arg_("f_calc"),
-            arg_("alpha"),
-            arg_("beta"),
-            arg_("epsilons"),
-            arg_("centric_flags"),
-            arg_("integration_step_size"),
-            arg_("compute_gradients"))))
+            arg("f_obs"),
+            arg("r_free_flags"),
+            arg("experimental_phases"),
+            arg("f_calc"),
+            arg("alpha"),
+            arg("beta"),
+            arg("epsilons"),
+            arg("centric_flags"),
+            arg("integration_step_size"),
+            arg("compute_gradients"))))
       ;
     }
   };

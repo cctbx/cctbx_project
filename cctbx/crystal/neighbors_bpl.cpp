@@ -42,7 +42,7 @@ namespace {
       class_<w_t>("neighbors_simple_pair_generator", no_init)
         .def(init<boost::shared_ptr<direct_space_asu::asu_mappings<> >&,
                   optional<double const&, bool> >(
-          (arg_("asu_mappings"), arg_("distance_cutoff"), arg_("minimal"))))
+          (arg("asu_mappings"), arg("distance_cutoff"), arg("minimal"))))
         .def("asu_mappings", &w_t::asu_mappings)
         .def("distance_cutoff_sq", &w_t::distance_cutoff_sq)
         .def("minimal", &w_t::minimal)
@@ -52,7 +52,7 @@ namespace {
         .def("restart", &w_t::restart)
         .def("count_pairs", &w_t::count_pairs)
         .def("max_distance_sq", &w_t::max_distance_sq)
-        .def("neighbors_of", &w_t::neighbors_of, (arg_("primary_selection")))
+        .def("neighbors_of", &w_t::neighbors_of, (arg("primary_selection")))
         .def("is_simple_interaction", &w_t::is_simple_interaction)
       ;
     }
@@ -72,18 +72,18 @@ namespace {
         .def(init<boost::shared_ptr<direct_space_asu::asu_mappings<> >&,
                   double const&,
                   optional<bool, double const&, double const&> >((
-          arg_("asu_mappings"),
-          arg_("distance_cutoff"),
-          arg_("minimal"),
-          arg_("min_cubicle_edge"),
-          arg_("epsilon"))))
+          arg("asu_mappings"),
+          arg("distance_cutoff"),
+          arg("minimal"),
+          arg("min_cubicle_edge"),
+          arg("epsilon"))))
         .def("epsilon", &w_t::epsilon)
         .def("n_boxes", &w_t::n_boxes, ccr())
         .def("next", helper<w_t>::next)
         .def("restart", &w_t::restart)
         .def("count_pairs", &w_t::count_pairs)
         .def("max_distance_sq", &w_t::max_distance_sq)
-        .def("neighbors_of", &w_t::neighbors_of, (arg_("primary_selection")))
+        .def("neighbors_of", &w_t::neighbors_of, (arg("primary_selection")))
       ;
     }
   };
@@ -96,7 +96,7 @@ namespace boost_python {
   {
     using namespace boost::python;
     def("neighbors_max_memory_allocation_set",
-      scitbx::cubicles_max_memory_allocation_set, (arg_("number_of_bytes")));
+      scitbx::cubicles_max_memory_allocation_set, (arg("number_of_bytes")));
     def("neighbors_max_memory_allocation_get",
       scitbx::cubicles_max_memory_allocation_get);
     neighbors::simple_pair_generator_wrappers::wrap();

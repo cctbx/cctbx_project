@@ -11,11 +11,12 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_long()
   {
     using namespace boost::python;
+    using boost::python::arg;
     flex_wrapper<long>::signed_integer("long", boost::python::scope())
       .def_pickle(flex_pickle_single_buffered<long>())
       .def("counts", counts<long, std::map<long, long> >::unlimited)
       .def("counts", counts<long, std::map<long, long> >::limited, (
-        arg_("max_keys")))
+        arg("max_keys")))
     ;
     range_wrappers<long, long>::wrap("long_range");
   }
