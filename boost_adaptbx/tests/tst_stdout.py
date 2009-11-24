@@ -1,5 +1,5 @@
 import boost.python
-from boost.python import streambuf
+from boost.python import ostream
 ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
 try: from libtbx import subprocess_with_fixes as subprocess
 except ImportError: import subprocess
@@ -15,7 +15,7 @@ def exercise():
   assert output == "2 times 1.6 equals 3.2", output
 
 def write_to_stdout():
-  report = ext.test_write(streambuf(sys.stdout), "write")
+  ext.test_write(ostream(sys.stdout), "write")
 
 def run(core):
   if not core:
