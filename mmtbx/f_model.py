@@ -2148,6 +2148,9 @@ class target_functor(object):
       self.manager.adopt_external_b_iso_adjustments(
         overall_b_iso_shift=self.core.refined_overall_b_iso)
 
+  def target_function_is_invariant_under_allowed_origin_shifts(self):
+    return (self.manager.target_name != "mlhl")
+
   def __call__(self, compute_gradients=False):
     result = target_result(
       manager=self.manager,
