@@ -102,11 +102,8 @@ if (not env_etc.no_boost_python):
     target="#lib/boost_tuple_ext",
     source="tuple_ext.cpp")
   env.SharedLibrary(
-    target="#lib/python_file_ext",
-    source="file_ext.cpp")
-  env.SharedLibrary(
-    target="#lib/python_file_test_ext",
-    source="tests/file_test_ext.cpp")
+    target="#lib/boost_adaptbx_python_streambuf_test_ext",
+    source="tests/python_streambuf_test_ext.cpp")
 
   env = env_base.Clone()
   env_etc.include_registry.prepend(

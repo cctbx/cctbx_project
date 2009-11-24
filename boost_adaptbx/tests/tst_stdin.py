@@ -1,7 +1,6 @@
-import boost.python_file
-ext = boost.python.import_ext("python_file_test_ext")
-import libtbx.load_env
-from libtbx import easy_run
+import boost.python
+from boost.python import streambuf
+ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
 try: from libtbx import subprocess_with_fixes as subprocess
 except ImportError: import subprocess
 import sys, os
@@ -17,7 +16,7 @@ def exercise():
   assert not output, output
 
 def read_from_stdin():
-  written = ext.test_read(sys.stdin, "read")
+  written = ext.test_read(streambuf(sys.stdin), "read")
   assert written == "Veni, Vidi, Vici, [ fail, eof ]", written
 
 def run(core):

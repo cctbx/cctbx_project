@@ -1,5 +1,6 @@
+import boost.python
+from boost.python import streambuf
 import libtbx.object_oriented_patterns as oop
-import boost.python_file
 import sys
 import gc
 
@@ -10,12 +11,15 @@ class without_tell(oop.proxy):
   def tell(self):
     raise NotImplementedError("Test of stdout/stderr / C++ stream bridge")
 
-
 def run():
-  ext = boost.python.import_ext("python_file_test_ext")
+  ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
   ext.call_with_stderr_stdout_do_nothing(
-    without_tell(sys.stderr), # bug trigger on MacOS X
-    sys.stdout)
+    streambuf(sys.stderr),
+    streambuf(sys.stdout))
+  gc.collect()
+  ext.call_with_stderr_stdout_do_nothing(
+    streambuf(without_tell(sys.stderr)), # bug trigger on MacOS X
+    streambuf(sys.stdout))
   gc.collect()
   print "OK"
 

@@ -1,5 +1,5 @@
-#ifndef BOOST_ADAPTBX_PYTHON_FILE_STREAM_H
-#define BOOST_ADAPTBX_PYTHON_FILE_STREAM_H
+#ifndef BOOST_ADAPTBX_PYTHON_STREAMBUF_H
+#define BOOST_ADAPTBX_PYTHON_STREAMBUF_H
 
 #include <boost/python/object.hpp>
 #include <boost/python/str.hpp>
@@ -13,10 +13,9 @@
 #include <streambuf>
 #include <iostream>
 
-namespace boost_adaptbx { namespace file_conversion {
+namespace boost_adaptbx { namespace python {
 
-namespace python = boost::python;
-
+namespace bp = boost::python;
 
 /// A stream buffer getting data from and putting data into a Python file object
 /** The aims are as follow:
@@ -24,25 +23,25 @@ namespace python = boost::python;
     - Given a C++ function acting on a standard stream, e.g.
 
       \code
-      void mundanely_read(std::istream &input) {
+      void read_inputs(std::istream& input) {
         ...
         input >> something >> something_else;
       }
       \endcode
 
-      and given a piece of Python code which creates a file-object, to be
-      able to pass this file object to that C++ function, e.g.
+      and given a piece of Python code which creates a file-like object,
+      to be able to pass this file object to that C++ function, e.g.
 
       \code
       import gzip
-      gzip_file = gzip.GzipFile(...)
-      mundanely_read(gzip_file)
+      gzip_file_obj = gzip.GzipFile(...)
+      read_inputs(gzip_file_obj)
       \endcode
 
       and have the standard stream pull data from and put data into the Python
       file object.
 
-    - When Python \c mundanely_read returns, the Python object is able to
+    - When Python \c read_inputs() returns, the Python object is able to
       continue reading or writing where the C++ code left off.
 
     - Operations in C++ on mere files should be competitively fast compared
@@ -56,70 +55,42 @@ namespace python = boost::python;
         offer of streams in the C++ standard library and Boost C++ libraries.
 
       - i/o code involves a fair amount of text processing which is more
-        efficiently prototyped in Python but then one may need
-        to rewrite a time-critical part in C++, in as seamless a manner
-        as possible.
+        efficiently prototyped in Python but then one may need to rewrite
+        a time-critical part in C++, in as seamless a manner as possible.
 
-    \b Design
+    \b Usage
 
-    This is 2-step.
+    This is 2-step:
 
-      - a Boost.Python conversion from any object featuring enough file
-        operations (read, write, seek) to this class, which can then be used
-        as a stream buffer for the stream classes \c istream, \c ostream and
-        \c iostream defined in namespace \c boost_adaptbx::file_conversion
-        Written once, useable everywhere the Boost.Python extension module
-        "python_file_ext" is loaded.
-
-      - a trivial bridge function
+      - a trivial wrapper function
 
         \code
-        namespace boost_adaptbx { namespace file_conversion {
-
-          void bridge(python_file_buffer const &input) {
-            istream is(&input);
-            mundanely_read(is);
-            is.sync(); // synchs the python file object with 'is'
+          using boost_adaptbx::python::streambuf;
+          void read_inputs_wrapper(streambuf& input)
+          {
+            streambuf::istream is(input);
+            read_inputs(is);
           }
 
-        }}
+          def("read_inputs", read_inputs_wrapper);
         \endcode
 
         which has to be written every time one wants a Python binding for
-        such a C++ function. Note that is.sync() shall be replaced by
-        os.flush() for an output stream.
+        such a C++ function.
 
-    Here are the rationales for this design:
+      - the Python side
 
-      - it seems impossible to convert a file-object directly to std::istream,
-        std::ostream or std::iostream because we can't control the lifetime
-        of the stream buffer. We would create the latter in the conversion code
-        but what code would destroy it? The std:*stream classes do indeed
-        not manage the buffer lifetime.
+        \code
+          from boost.python import streambuf
+          read_inputs(streambuf(python_file_obj=obj, buffer_size=1024))
+        \endcode
 
-      - the conversion system would not be triggered if the bridge function
-        took an argument \code python_file_buffer &input \endcode. We need
-        the const reference because Boost.Python does not have custom converters
-        with write-back: if the result of the conversion was to be altered,
-        then those modifications should be written back to the converted Python
-        object so as not to create any surprise. Since that is not supported,
-        const-references are enforced to discourage modifying the converted
-        object. However in our case, we know what we are doing! That is,
-        any operation on the instance of \c python_file_buffer
-        is delegated to the associated Python file object:
-        this is all sound and safe.
-
-      - but then stream classes need a non-const pointer to a file buffer to be
-        passed to their constructor (since they will modify that buffer).
-        Hence the need for a const_cast to work around the mismatch between
-        the handrail put by Boost.Python, which is over-conservative here,
-        and the C++ colloquialisms. That const-cast is the only reason for the
-        stream classes in boost_adaptbx::file_conversion to exist.
+        \c buffer_size is optional. See also: \c default_buffer_size
 
   Note: references are to the C++ standard (the numbers between parentheses
   at the end of references are margin markers).
 */
-class python_file_buffer : public std::basic_streambuf<char>
+class streambuf : public std::basic_streambuf<char>
 {
   private:
     typedef std::basic_streambuf<char> base_t;
@@ -136,9 +107,7 @@ class python_file_buffer : public std::basic_streambuf<char>
     typedef base_t::traits_type traits_type;
 
     // work around Visual C++ 7.1 problem
-    inline
-    static
-    int
+    inline static int
     traits_type_eof() { return traits_type::eof(); }
 
     /// The default size of the read and write buffer.
@@ -150,14 +119,14 @@ class python_file_buffer : public std::basic_streambuf<char>
     /// Construct from a Python file object
     /** if buffer_size is 0 the current default_buffer_size is used.
     */
-    python_file_buffer(
-      python::object& python_file_obj,
+    streambuf(
+      bp::object& python_file_obj,
       std::size_t buffer_size_=0)
     :
-      py_read (getattr(python_file_obj, "read",  python::object())),
-      py_write(getattr(python_file_obj, "write", python::object())),
-      py_seek (getattr(python_file_obj, "seek",  python::object())),
-      py_tell (getattr(python_file_obj, "tell",  python::object())),
+      py_read (getattr(python_file_obj, "read",  bp::object())),
+      py_write(getattr(python_file_obj, "write", bp::object())),
+      py_seek (getattr(python_file_obj, "seek",  bp::object())),
+      py_tell (getattr(python_file_obj, "tell",  bp::object())),
       buffer_size(buffer_size_ != 0 ? buffer_size_ : default_buffer_size),
       write_buffer(0),
       pos_of_read_buffer_end_in_py_file(0),
@@ -169,13 +138,13 @@ class python_file_buffer : public std::basic_streambuf<char>
          have non-functional seek and tell. If so, assign None to
          py_tell and py_seek.
        */
-      if (py_tell != python::object()) {
+      if (py_tell != bp::object()) {
         try {
           py_tell();
         }
-        catch (python::error_already_set) {
-          py_tell = python::object();
-          py_seek = python::object();
+        catch (bp::error_already_set) {
+          py_tell = bp::object();
+          py_seek = bp::object();
           /* Boost.Python does not do any Python exception handling whatsoever
              So we need to catch it by hand like so.
            */
@@ -183,7 +152,7 @@ class python_file_buffer : public std::basic_streambuf<char>
         }
       }
 
-      if (py_write != python::object()) {
+      if (py_write != bp::object()) {
         // C-like string to make debugging easier
         write_buffer = new char[buffer_size + 1];
         write_buffer[buffer_size] = '\0';
@@ -195,36 +164,34 @@ class python_file_buffer : public std::basic_streambuf<char>
         setp(0, 0);
       }
 
-      if (py_tell != python::object()) {
-        off_type py_pos = python::extract<off_type>(py_tell());
+      if (py_tell != bp::object()) {
+        off_type py_pos = bp::extract<off_type>(py_tell());
         pos_of_read_buffer_end_in_py_file = py_pos;
         pos_of_write_buffer_end_in_py_file = py_pos;
       }
     }
 
     /// Mundane destructor freeing the allocated resources
-    virtual ~python_file_buffer() {
+    virtual ~streambuf() {
       if (write_buffer) delete[] write_buffer;
     }
 
     /// C.f. C++ standard section 27.5.2.4.3
     virtual int_type underflow() {
       int_type const failure = traits_type::eof();
-      if (py_read == python::object()) {
-        PyErr_SetString(PyExc_AttributeError,
-                        "That Python file object has no 'read' attribute");
-        python::throw_error_already_set();
+      if (py_read == bp::object()) {
+        throw std::invalid_argument(
+          "That Python file object has no 'read' attribute");
       }
       read_buffer = py_read(buffer_size);
       char *read_buffer_data;
-      python::ssize_t py_n_read;
+      bp::ssize_t py_n_read;
       if (PyString_AsStringAndSize(read_buffer.ptr(),
                                    &read_buffer_data, &py_n_read) == -1) {
         setg(0, 0, 0);
-        PyErr_SetString(PyErr_Occurred(),
-                        "The method 'read' of the Python file object "
-                        "did not return a string.");
-        python::throw_error_already_set();
+        throw std::invalid_argument(
+          "The method 'read' of the Python file object "
+          "did not return a string.");
       }
       off_type n_read = (off_type)py_n_read;
       pos_of_read_buffer_end_in_py_file += n_read;
@@ -236,14 +203,13 @@ class python_file_buffer : public std::basic_streambuf<char>
 
     /// C.f. C++ standard section 27.5.2.4.5
     virtual int_type overflow(int_type c=traits_type_eof()) {
-      if (py_write == python::object()) {
-        PyErr_SetString(PyExc_AttributeError,
-                        "That Python file object has no 'write' attribute");
-        python::throw_error_already_set();
+      if (py_write == bp::object()) {
+        throw std::invalid_argument(
+          "That Python file object has no 'write' attribute");
       }
       farthest_pptr = std::max(farthest_pptr, pptr());
       off_type n_written = (off_type)(farthest_pptr - pbase());
-      python::str chunk(pbase(), farthest_pptr);
+      bp::str chunk(pbase(), farthest_pptr);
       py_write(chunk);
       if (!traits_type::eq_int_type(c, traits_type::eof())) {
         py_write(traits_type::to_char_type(c));
@@ -273,10 +239,10 @@ class python_file_buffer : public std::basic_streambuf<char>
         off_type delta = pptr() - farthest_pptr;
         int_type status = overflow();
         if (traits_type::eq_int_type(status, traits_type::eof())) result = -1;
-        if (py_seek != python::object()) py_seek(delta, 1);
+        if (py_seek != bp::object()) py_seek(delta, 1);
       }
       else if (gptr() && gptr() < egptr()) {
-        if (py_seek != python::object()) py_seek(gptr() - egptr(), 1);
+        if (py_seek != bp::object()) py_seek(gptr() - egptr(), 1);
       }
       return result;
     }
@@ -300,10 +266,9 @@ class python_file_buffer : public std::basic_streambuf<char>
       */
       int const failure = off_type(-1);
 
-      if (py_seek == python::object()) {
-        PyErr_SetString(PyExc_AttributeError,
-                        "That Python file object has no 'seek' attribute");
-        python::throw_error_already_set();
+      if (py_seek == bp::object()) {
+        throw std::invalid_argument(
+          "That Python file object has no 'seek' attribute");
       }
 
       // we need the read buffer to contain something!
@@ -340,7 +305,7 @@ class python_file_buffer : public std::basic_streambuf<char>
           else if (which == std::ios_base::out) off += pptr() - pbase();
         }
         py_seek(off, whence);
-        result = off_type(python::extract<off_type>(py_tell()));
+        result = off_type(bp::extract<off_type>(py_tell()));
         if (which == std::ios_base::in) underflow();
       }
       return *result;
@@ -352,11 +317,11 @@ class python_file_buffer : public std::basic_streambuf<char>
                      std::ios_base::openmode which=  std::ios_base::in
                                                    | std::ios_base::out)
     {
-      return python_file_buffer::seekoff(sp, std::ios_base::beg, which);
+      return streambuf::seekoff(sp, std::ios_base::beg, which);
     }
 
   private:
-    python::object py_read, py_write, py_seek, py_tell;
+    bp::object py_read, py_write, py_seek, py_tell;
 
     std::size_t buffer_size;
 
@@ -365,7 +330,7 @@ class python_file_buffer : public std::basic_streambuf<char>
        object so as to hold on it: as a result, the actual buffer can't
        go away.
     */
-    python::object read_buffer;
+    bp::object read_buffer;
 
     /* A mere array of char's allocated on the heap at construction time and
        de-allocated only at destruction time.
@@ -431,30 +396,34 @@ class python_file_buffer : public std::basic_streambuf<char>
       else if (which == std::ios_base::out) pbump(buf_sought - buf_cur);
       return pos_of_buffer_end_in_py_file + (buf_sought - buf_end);
     }
+
+  public:
+
+    class istream : public std::istream
+    {
+      public:
+        istream(streambuf& buf) : std::istream(&buf)
+        {
+          exceptions(std::ios_base::badbit);
+        }
+
+        ~istream() { if (this->good()) this->sync(); }
+    };
+
+    class ostream : public std::ostream
+    {
+      public:
+        ostream(streambuf& buf) : std::ostream(&buf)
+        {
+          exceptions(std::ios_base::badbit);
+        }
+
+        ~ostream() { if (this->good()) this->flush(); }
+    };
 };
 
+std::size_t streambuf::default_buffer_size = 1024;
 
-std::size_t python_file_buffer::default_buffer_size = 1024;
-
-
-namespace details {
-  template <class BaseType>
-  class gen_stream : public BaseType
-  {
-    public:
-      gen_stream(python_file_buffer const *sb)
-        : BaseType(const_cast<python_file_buffer *>(sb))
-      {
-        this->exceptions(std::ios_base::badbit);
-      }
-    };
-}
-
-
-typedef details::gen_stream<std::istream>  istream;
-typedef details::gen_stream<std::ostream>  ostream;
-typedef details::gen_stream<std::iostream> iostream;
-
-}} // boost_adaptbx::file
+}} // boost_adaptbx::python
 
 #endif // GUARD

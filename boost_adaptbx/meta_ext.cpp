@@ -13,6 +13,8 @@
 #include <boost/python/list.hpp>
 
 #include <boost_adaptbx/type_id_eq.h>
+#include <boost_adaptbx/python_streambuf.h>
+
 #include <boost/cstdint.hpp>
 #include <sstream>
 #include <stdexcept>
@@ -510,6 +512,26 @@ namespace {
   long
   add_longs(long i, long j) { return i + j; }
 
+  struct streambuf_wrapper
+  {
+    typedef boost_adaptbx::python::streambuf wt;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<wt, boost::noncopyable>("streambuf", no_init)
+        .def(init<object&, std::size_t>((
+          arg("python_file_obj"),
+          arg("buffer_size")=0)))
+        .def_readwrite(
+          "default_buffer_size", wt::default_buffer_size,
+          "The default size of the buffer sitting "
+          "between a Python file object and a C++ stream.")
+      ;
+    }
+  };
+
 } // namespace anonymous
 
 namespace boost_python_meta_ext { struct holder {}; }
@@ -541,6 +563,7 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
   def("add_ints", add_ints);
   def("add_longs", add_longs);
   class_<boost_python_meta_ext::holder>("holder").enable_pickling();
+  streambuf_wrapper::wrap();
   class_<docstring_options, boost::noncopyable>("docstring_options", no_init)
     .def(init<bool, bool>((
       arg("show_user_defined"),
