@@ -343,8 +343,8 @@ class index (object) :
     except KeyboardInterrupt :
       raise
     except Exception, e :
-      self.log(e)
-      self.log(phil_string)
+      self.log(str(e))
+      self.log(str(phil_string))
       raise Sorry("An unknown error occurred parsing internal parameters. "+
                   "This is probably a bug; if the program was launched with "+
                   "the argument --debug, further information will be printed "+
