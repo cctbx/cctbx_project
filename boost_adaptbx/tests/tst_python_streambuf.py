@@ -1,5 +1,6 @@
-import boost.python_file
-ext = boost.python.import_ext("python_file_test_ext")
+import boost.python
+from boost.python import streambuf
+ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
 import StringIO
 import cStringIO
 from libtbx.test_utils import Exception_expected
@@ -7,15 +8,6 @@ from libtbx.option_parser import option_parser
 import libtbx.object_oriented_patterns as oop
 import tempfile
 import os
-
-
-def exercise_illegal_conversions():
-  for obj in ("", [], 2):
-    try:
-      s = ext.test_read(obj, "read")
-    except Exception, err:
-      assert str(err).find("argument types") > -1
-      assert str(err).find("did not match C++ signature") > -1
 
 
 class file_object_debug_proxy(oop.proxy):
@@ -39,9 +31,9 @@ class io_test_case(object):
   #         01234567890123456789
 
   def run(self):
-    m = boost.python_file.buffer.default_buffer_size
+    m = streambuf.default_buffer_size
     for n in xrange(50, 0, -1):
-      boost.python_file.buffer.default_buffer_size = n
+      streambuf.default_buffer_size = n
       self.exercise_read_failure()
       self.exercise_write_failure()
       self.exercise_read()
@@ -49,17 +41,17 @@ class io_test_case(object):
       self.exercise_seek_and_read()
       self.exercise_partial_read()
       self.exercise_write_and_seek()
-    boost.python_file.buffer.default_buffer_size = m
+    streambuf.default_buffer_size = m
 
   def exercise_read(self):
     self.create_file_object(mode='r')
-    words = ext.test_read(self.file_object, "read")
+    words = ext.test_read(streambuf(self.file_object), "read")
     assert words == "Coding, should, be, fun, [ fail, eof ]"
     self.file_object.close()
 
   def exercise_partial_read(self):
     self.create_file_object(mode='r')
-    words = ext.test_read(self.file_object, "partial read")
+    words = ext.test_read(streambuf(self.file_object), "partial read")
     assert words == "Coding, should, "
     trailing = self.file_object.read()
     assert  trailing == " be fun"
@@ -69,7 +61,7 @@ class io_test_case(object):
     self.create_file_object(mode='r')
     self.file_object.close()
     try:
-      ext.test_read(self.file_object, "read")
+      ext.test_read(streambuf(self.file_object), "read")
     except ValueError:
       pass
     else:
@@ -78,16 +70,16 @@ class io_test_case(object):
 
   def exercise_write(self):
     self.create_file_object(mode='w')
-    report = ext.test_write(self.file_object, "write")
+    report = ext.test_write(streambuf(self.file_object), "write")
     assert report == ''
     assert self.file_content() == "2 times 1.6 equals 3.2"
     self.file_object.close()
 
   def exercise_seek_and_read(self):
     self.create_instrumented_file_object(mode='r')
-    words = ext.test_read(self.file_object, "read and seek")
+    words = ext.test_read(streambuf(self.file_object), "read and seek")
     assert words == "should, should, uld, ding, fun, [ eof ]"
-    n = boost.python_file.buffer.default_buffer_size
+    n = streambuf.default_buffer_size
     soughts = self.file_object.seek_call_log
     # stringent tests carefully crafted to make sure the seek-in-buffer
     # optimisation works as expected
@@ -113,12 +105,12 @@ class io_test_case(object):
 
   def exercise_write_and_seek(self):
     self.create_instrumented_file_object(mode='w')
-    report = ext.test_write(self.file_object, "write and seek (cur)")
+    report = ext.test_write(streambuf(self.file_object), "write and seek (cur)")
     assert report == ''
     expected = '1000 times 1000 equals 1000000'
     assert self.file_content() == expected
     assert self.file_object.tell() == 9
-    if boost.python_file.buffer.default_buffer_size >= 30:
+    if streambuf.default_buffer_size >= 30:
       assert self.file_object.write_call_log == [ expected ]
     self.file_object.close()
 
@@ -156,8 +148,8 @@ class cstringio_test_case(stringio_test_case):
   def exercise_write_failure(self):
     self.create_file_object(mode='r')
     try:
-      report = ext.test_write(self.file_object, "write")
-    except AttributeError, err:
+      report = ext.test_write(streambuf(self.file_object), "write")
+    except ValueError, err:
       assert str(err).find("write") > -1
     else:
       raise Exception_expected
@@ -168,7 +160,7 @@ class mere_file_test_case(io_test_case):
   def exercise_write_failure(self):
     self.create_file_object(mode='r')
     try:
-      report = ext.test_write(self.file_object, "write")
+      report = ext.test_write(streambuf(self.file_object), "write")
     except IOError, err:
       pass
     else:
@@ -193,16 +185,16 @@ class mere_file_test_case(io_test_case):
 def time_it(path, buffer_size):
   import os, tempfile
   if (buffer_size is None):
-    buffer_size = boost.python_file.buffer.default_buffer_size
+    buffer_size = streambuf.default_buffer_size
   print "Buffer is %i bytes" % buffer_size
   path = os.path.expanduser(path)
   input = open(path, 'r')
-  inp_buf = boost.python_file.buffer(
+  inp_buf = boost.python.streambuf(
     python_file_obj=input, buffer_size=buffer_size)
   ext.time_read(input.name, inp_buf)
   fd, name = tempfile.mkstemp()
   output = open(name, 'w')
-  out_buf = boost.python_file.buffer(
+  out_buf = boost.python.streambuf(
     python_file_obj=output, buffer_size=buffer_size)
   ext.time_write(name, out_buf)
 
@@ -218,13 +210,14 @@ def run(args):
               .option(None, '--buffer_size', type='int',
                       metavar="INT")
               ).process(args).options
-  exercise_illegal_conversions()
-  stringio_test_case().run()
-  cstringio_test_case().run()
-  mere_file_test_case().run()
+  for i_trial in xrange(3):
+    stringio_test_case().run()
+  for i_trial in xrange(3):
+    cstringio_test_case().run()
+  for i_trial in xrange(3):
+    mere_file_test_case().run()
   if options.time_on_file:
     time_it(options.time_on_file, options.buffer_size)
-
 
   print 'OK'
 

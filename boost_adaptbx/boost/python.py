@@ -43,6 +43,7 @@ FATAL: libstdc++.so mismatch:
   return mod
 
 ext = import_ext("boost_python_meta_ext")
+streambuf = ext.streambuf
 
 if ("BOOST_ADAPTBX_SIGNALS_DEFAULT" not in os.environ):
   ext.enable_signals_backtrace_if_possible()

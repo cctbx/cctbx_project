@@ -1,10 +1,11 @@
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
-#include <boost_adaptbx/python_file_stream.h>
+
+#include <boost_adaptbx/python_streambuf.h>
 #include <boost/timer.hpp>
 #include <fstream>
 
-namespace boost_adaptbx { namespace file_conversion {
+namespace boost_adaptbx { namespace python { namespace {
 
   template <class StreamType>
   void append_status(StreamType const &s, std::string &result) {
@@ -66,22 +67,18 @@ namespace boost_adaptbx { namespace file_conversion {
     return result;
   }
 
-  std::string test_read(python_file_buffer const &input,
+  std::string test_read(streambuf& input,
                         std::string const &what)
   {
-    istream is(&input);
-    std::string result = actual_read_test(is, what);
-    is.sync();
-    return result;
+    streambuf::istream is(input);
+    return actual_read_test(is, what);
   }
 
-  std::string test_write(python_file_buffer const &output,
+  std::string test_write(streambuf& output,
                          std::string const &what)
   {
-    ostream os(&output);
-    std::string result = actual_write_test(os, what);
-    os.flush();
-    return result;
+    streambuf::ostream os(output);
+    return actual_write_test(os, what);
   }
 
   double work_for_time_read(std::istream &is) {
@@ -106,34 +103,34 @@ namespace boost_adaptbx { namespace file_conversion {
     }
   }
 
-  void time_read(char const *path, python_file_buffer const &input) {
-    istream is(&input);
+  void time_read(char const *path, streambuf& input) {
     boost::timer t;
+    streambuf::istream is(input);
     work_for_time_read(is);
     double py_t = t.elapsed();
     std::ifstream std_is(path);
     t.restart();
     work_for_time_read(std_is);
     double py_cpp = t.elapsed();
-    std::cout << "- Reading -\nPython bridge:" << py_t;
-    std::cout << "\nPure C++:" << py_cpp;
+    std::cout << "- Reading -\nPython adaptor: " << py_t;
+    std::cout << "\nPure C++: " << py_cpp;
     if (py_t > py_cpp) {
       std::cout << "\noverhead: " << (py_t - py_cpp)/py_t*100 << " %";
     }
     std::cout << "\n\n";
   }
 
-  void time_write(char const *path, python_file_buffer const &output) {
-    ostream os(&output);
+  void time_write(char const *path, streambuf& output) {
     boost::timer t;
+    streambuf::ostream os(output);
     work_for_time_write(os);
     double py_t = t.elapsed();
     std::ofstream std_os(path);
     t.restart();
     work_for_time_write(std_os);
     double py_cpp = t.elapsed();
-    std::cout << "- Writing -\nPython bridge:" << py_t;
-    std::cout << "\nPure C++:" << py_cpp;
+    std::cout << "- Writing -\nPython adaptor: " << py_t;
+    std::cout << "\nPure C++: " << py_cpp;
     if (py_t > py_cpp) {
       std::cout << "\noverhead: " << (py_t - py_cpp)/py_t*100 << " %";
     }
@@ -142,26 +139,28 @@ namespace boost_adaptbx { namespace file_conversion {
 
   void
   call_with_stderr_stdout_do_nothing(
-    python_file_buffer const& err_file_obj,
-    python_file_buffer const& out_file_obj)
+    streambuf& err_streambuf,
+    streambuf& out_streambuf)
   {
-    typedef ostream py_ostream;
-    py_ostream err_stream(&err_file_obj);
-    py_ostream out_stream(&out_file_obj);
-    err_stream.flush();
-    out_stream.flush();
+    streambuf::ostream err_stream(err_streambuf);
+    streambuf::ostream out_stream(out_streambuf);
   }
 
-}} // boost_adaptbx::file_conversion
+  void
+  wrap_all()
+  {
+    using namespace boost::python;
+    def("test_read", test_read);
+    def("test_write", test_write);
+    def("time_read", time_read);
+    def("time_write", time_write);
+    def("call_with_stderr_stdout_do_nothing",
+         call_with_stderr_stdout_do_nothing);
+  }
 
-BOOST_PYTHON_MODULE(python_file_test_ext)
+}}} // namespace boost_adaptbx::python::<anonymous>
+
+BOOST_PYTHON_MODULE(boost_adaptbx_python_streambuf_test_ext)
 {
-  using namespace boost::python;
-  using namespace boost_adaptbx::file_conversion;
-  def("test_read", test_read);
-  def("test_write", test_write);
-  def("time_read", time_read);
-  def("time_write", time_write);
-  def("call_with_stderr_stdout_do_nothing",
-       call_with_stderr_stdout_do_nothing);
+  boost_adaptbx::python::wrap_all();
 }
