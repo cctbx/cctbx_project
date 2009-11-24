@@ -164,6 +164,15 @@ class fmodels(object):
     if (self.target_functor_neutron is not None):
       self.target_functor_neutron.prepare_for_minimization()
 
+  def target_functions_are_invariant_under_allowed_origin_shifts(self):
+    for f in [
+          self.target_functor_xray,
+          self.target_functor_neutron]:
+      if (f is None): continue
+      if (not f.target_function_is_invariant_under_allowed_origin_shifts()):
+        return False
+    return True
+
   def target_functor_result_xray(self, compute_gradients):
     fmx = self.fmodel_xray()
     return self.target_functor_xray(compute_gradients = compute_gradients)

@@ -66,8 +66,6 @@ master_phil_str = """\
 
 class potential_object(object):
 
-  allowed_origin_shifts_need_to_be_suppressed = True
-
   def __init__(O,
         xray_weight_factor,
         prolsq_repulsion_function_changes,
@@ -98,6 +96,8 @@ class potential_object(object):
         rexp=c.rexp)
     O.fmodels.create_target_functors()
     O.fmodels.prepare_target_functors_for_minimization()
+    O.allowed_origin_shifts_need_to_be_suppressed = \
+      O.fmodels.target_functions_are_invariant_under_allowed_origin_shifts()
     O.last_sites_moved = None
     O.f = None
     O.g = None
@@ -351,8 +351,7 @@ def action(
             format_value("%6.4f", fmodel.r_work()),
             format_value("%6.4f", fmodel.r_free()))
           if hasattr(refinement_callback, "__call__") :
-            # XXX: for phenix.refine GUI
-            refinement_callback(fmodel)
+            refinement_callback(fmodel) # for phenix.refine GUI
       else:
         if (show_column_headings):
           show_column_headings = False
