@@ -1,5 +1,5 @@
 import boost.python
-from boost.python import streambuf
+from boost.python import ostream
 import libtbx.object_oriented_patterns as oop
 import sys
 import gc
@@ -14,12 +14,12 @@ class without_tell(oop.proxy):
 def run():
   ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
   ext.call_with_stderr_stdout_do_nothing(
-    streambuf(sys.stderr),
-    streambuf(sys.stdout))
+    ostream(sys.stderr),
+    ostream(sys.stdout))
   gc.collect()
   ext.call_with_stderr_stdout_do_nothing(
-    streambuf(without_tell(sys.stderr)), # bug trigger on MacOS X
-    streambuf(sys.stdout))
+    ostream(without_tell(sys.stderr)), # bug trigger on MacOS X
+    ostream(sys.stdout))
   gc.collect()
   print "OK"
 

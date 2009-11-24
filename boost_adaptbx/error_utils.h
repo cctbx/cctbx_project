@@ -1,9 +1,17 @@
 #ifndef BOOST_ADAPTBX_ERROR_UTILS_H
 #define BOOST_ADAPTBX_ERROR_UTILS_H
 
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <stdexcept>
+
+#define BOOSTBX_CHECK_POINT \
+  std::cout << __FILE__ << "(" << __LINE__ << ")" << std::endl
+#define BOOSTBX_CHECK_POINT_MSG(msg) \
+  std::cout << msg << " @ " __FILE__ << "(" << __LINE__ << ")" << std::endl
+#define BOOSTBX_EXAMINE(A) \
+  std::cout << "variable " << (#A) << ": " << A << std::endl
 
 namespace boost_adaptbx { namespace error_utils {
 

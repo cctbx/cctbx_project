@@ -142,7 +142,7 @@ class streambuf : public std::basic_streambuf<char>
         try {
           py_tell();
         }
-        catch (bp::error_already_set) {
+        catch (bp::error_already_set&) {
           py_tell = bp::object();
           py_seek = bp::object();
           /* Boost.Python does not do any Python exception handling whatsoever
@@ -423,6 +423,44 @@ class streambuf : public std::basic_streambuf<char>
 };
 
 std::size_t streambuf::default_buffer_size = 1024;
+
+struct streambuf_capsule
+{
+  streambuf python_streambuf;
+
+  streambuf_capsule(
+    bp::object& python_file_obj,
+    std::size_t buffer_size=0)
+  :
+    python_streambuf(python_file_obj, buffer_size)
+  {}
+};
+
+struct ostream : private streambuf_capsule, streambuf::ostream
+{
+  ostream(
+    bp::object& python_file_obj,
+    std::size_t buffer_size=0)
+  :
+    streambuf_capsule(python_file_obj, buffer_size),
+    streambuf::ostream(this->python_streambuf)
+  {}
+
+  ~ostream()
+  {
+    try {
+      if (this->good()) this->flush();
+    }
+    catch (bp::error_already_set&) {
+      PyErr_Clear();
+      throw std::runtime_error(
+        "Problem closing python ostream.\n"
+        "  Known limitation: the error is unrecoverable. Sorry.\n"
+        "  Suggestion for programmer: add ostream.flush() before"
+        " returning.");
+    }
+  }
+};
 
 }} // boost_adaptbx::python
 

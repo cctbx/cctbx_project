@@ -139,18 +139,16 @@ namespace boost_adaptbx { namespace python { namespace {
 
   void
   call_with_stderr_stdout_do_nothing(
-    streambuf& err_streambuf,
-    streambuf& out_streambuf)
-  {
-    streambuf::ostream err_stream(err_streambuf);
-    streambuf::ostream out_stream(out_streambuf);
-  }
+    std::ostream& err_stream,
+    std::ostream& out_stream)
+  {}
 
   void
   wrap_all()
   {
     using namespace boost::python;
     def("test_read", test_read);
+    def("test_write", actual_write_test);
     def("test_write", test_write);
     def("time_read", time_read);
     def("time_write", time_write);

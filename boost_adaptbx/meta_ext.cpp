@@ -512,7 +512,7 @@ namespace {
   long
   add_longs(long i, long j) { return i + j; }
 
-  struct streambuf_wrapper
+  struct python_streambuf_wrapper
   {
     typedef boost_adaptbx::python::streambuf wt;
 
@@ -528,6 +528,23 @@ namespace {
           "default_buffer_size", wt::default_buffer_size,
           "The default size of the buffer sitting "
           "between a Python file object and a C++ stream.")
+      ;
+    }
+  };
+
+  struct python_ostream_wrapper
+  {
+    typedef boost_adaptbx::python::ostream wt;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<std::ostream, boost::noncopyable>("std_ostream", no_init);
+      class_<wt, boost::noncopyable, bases<std::ostream> >("ostream", no_init)
+        .def(init<object&, std::size_t>((
+          arg("python_file_obj"),
+          arg("buffer_size")=0)))
       ;
     }
   };
@@ -563,7 +580,8 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
   def("add_ints", add_ints);
   def("add_longs", add_longs);
   class_<boost_python_meta_ext::holder>("holder").enable_pickling();
-  streambuf_wrapper::wrap();
+  python_streambuf_wrapper::wrap();
+  python_ostream_wrapper::wrap();
   class_<docstring_options, boost::noncopyable>("docstring_options", no_init)
     .def(init<bool, bool>((
       arg("show_user_defined"),

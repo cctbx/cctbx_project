@@ -1,5 +1,5 @@
 import boost.python
-from boost.python import streambuf
+from boost.python import streambuf, ostream
 ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
 import StringIO
 import cStringIO
@@ -70,7 +70,7 @@ class io_test_case(object):
 
   def exercise_write(self):
     self.create_file_object(mode='w')
-    report = ext.test_write(streambuf(self.file_object), "write")
+    report = ext.test_write(ostream(self.file_object), "write")
     assert report == ''
     assert self.file_content() == "2 times 1.6 equals 3.2"
     self.file_object.close()
@@ -105,7 +105,7 @@ class io_test_case(object):
 
   def exercise_write_and_seek(self):
     self.create_instrumented_file_object(mode='w')
-    report = ext.test_write(streambuf(self.file_object), "write and seek (cur)")
+    report = ext.test_write(ostream(self.file_object), "write and seek (cur)")
     assert report == ''
     expected = '1000 times 1000 equals 1000000'
     assert self.file_content() == expected
@@ -148,7 +148,7 @@ class cstringio_test_case(stringio_test_case):
   def exercise_write_failure(self):
     self.create_file_object(mode='r')
     try:
-      report = ext.test_write(streambuf(self.file_object), "write")
+      ext.test_write(ostream(self.file_object), "write")
     except ValueError, err:
       assert str(err).find("write") > -1
     else:
@@ -160,7 +160,7 @@ class mere_file_test_case(io_test_case):
   def exercise_write_failure(self):
     self.create_file_object(mode='r')
     try:
-      report = ext.test_write(streambuf(self.file_object), "write")
+      ext.test_write(streambuf(self.file_object), "write")
     except IOError, err:
       pass
     else:
@@ -189,13 +189,11 @@ def time_it(path, buffer_size):
   print "Buffer is %i bytes" % buffer_size
   path = os.path.expanduser(path)
   input = open(path, 'r')
-  inp_buf = boost.python.streambuf(
-    python_file_obj=input, buffer_size=buffer_size)
+  inp_buf = streambuf(python_file_obj=input, buffer_size=buffer_size)
   ext.time_read(input.name, inp_buf)
   fd, name = tempfile.mkstemp()
   output = open(name, 'w')
-  out_buf = boost.python.streambuf(
-    python_file_obj=output, buffer_size=buffer_size)
+  out_buf = streambuf(python_file_obj=output, buffer_size=buffer_size)
   ext.time_write(name, out_buf)
 
 def run(args):
