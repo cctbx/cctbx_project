@@ -1253,6 +1253,7 @@ def exercise_flex_vec3_double():
   b = flex.vec3_double(z,x,y)
   assert approx_equal(a.cross(b), [(9, 45, -27), (9, 54, -36), (9, 63, -45)])
   assert approx_equal(a.norms(),flex.sqrt(a.dot()))
+  assert approx_equal(a.each_normalize().dot(), [1]*3)
   assert approx_equal(
     a.max_distance(b)**2,
     max(flex.vec3_double(a.as_double()-b.as_double()).dot()))

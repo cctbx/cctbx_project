@@ -262,6 +262,19 @@ namespace {
     return std::sqrt(sum_sq_(self));
   }
 
+  af::shared<vec3<double> >
+  each_normalize(
+    af::const_ref<vec3<double> > const& a)
+  {
+    af::shared<vec3<double> > result(a.begin(), a.end());
+    vec3<double>* r = result.begin();
+    for(std::size_t i=0;i<a.size();i++) {
+      double length = r[i].length();
+      if (length != 0) r[i] *= (1 / length);
+    }
+    return result;
+  }
+
   double
   max_distance(
     af::const_ref<vec3<double> > const& lhs,
@@ -360,6 +373,7 @@ namespace boost_python {
           af::const_ref<vec3<double> > const&)) matrix::transpose_multiply)
       .def("sum_sq", sum_sq_)
       .def("norm", norm_)
+      .def("each_normalize", each_normalize)
       .def("max_distance", max_distance)
       .def("rms_difference", rms_difference)
       .def("rms_length", rms_length)
