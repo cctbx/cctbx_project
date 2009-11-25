@@ -55,6 +55,7 @@ def lower_bidiagonal(d, f):
 
 def export_to(target_module_name):
   export_list = [
+    "show",
     "to_list",
     "min_default",
     "max_default",
