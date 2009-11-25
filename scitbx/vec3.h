@@ -3,6 +3,7 @@
 
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/operator_traits_builtin.h>
+#include <boost/optional.hpp>
 
 namespace scitbx {
 
@@ -146,10 +147,31 @@ namespace scitbx {
       }
 
       //! Return angle (in radians) between this and other.
-      NumType angle(vec3 const& other) const
+      /*! This implementation is unsafe as it does not check
+          if both vector lengths are different from zero.
+       */
+      NumType
+      angle(
+        vec3 const& other) const
       {
         return NumType(
           std::acos(((*this) * other) / (length() * other.length())));
+      }
+
+      //! Return angle (in radians) between this and other.
+      /*! Safe implementation guarding against division-by-zero
+          and rounding errors.
+       */
+      boost::optional<NumType>
+      angle_rad(
+        vec3 const& other) const
+      {
+        NumType den = length() * other.length();
+        if (den == 0) return boost::optional<NumType>();
+        NumType c = ((*this) * other) / den;
+        if      (c < -1) c = -1;
+        else if (c >  1) c =  1;
+        return boost::optional<NumType>(NumType(std::acos(c)));
       }
 
       //! Return the reflection vector.
