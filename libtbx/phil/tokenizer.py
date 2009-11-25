@@ -1,74 +1,85 @@
-class character_iterator(object):
+from libtbx import slots_getstate_setstate
 
-  def __init__(self, input_string):
-    self.input_string = input_string
-    self.i_char = 0
-    self.line_number = 1
+class character_iterator(slots_getstate_setstate):
 
-  def mark_for_backup(self):
-    self.backup_i_char = self.i_char
-    self.backup_line_number = self.line_number
+  __slots__ = [
+    "input_string",
+    "i_char",
+    "line_number",
+    "backup_i_char",
+    "backup_line_number"]
 
-  def restore_backup(self):
-    self.i_char = self.backup_i_char
-    self.line_number = self.backup_line_number
+  def __init__(O, input_string):
+    O.input_string = input_string
+    O.i_char = 0
+    O.line_number = 1
+    O.backup_i_char = None
+    O.backup_line_number = None
 
-  def look_ahead(self, n):
-    end = self.i_char + n
-    if (end > len(self.input_string)): return None
-    return self.input_string[self.i_char:end]
+  def mark_for_backup(O):
+    O.backup_i_char = O.i_char
+    O.backup_line_number = O.line_number
 
-  def look_ahead_1(self):
-    if (self.i_char == len(self.input_string)): return None
-    return self.input_string[self.i_char]
+  def restore_backup(O):
+    O.i_char = O.backup_i_char
+    O.line_number = O.backup_line_number
 
-  def skip_ahead_1(self):
-    if (self.input_string[self.i_char] == "\n"): self.line_number += 1
-    self.i_char += 1
+  def look_ahead(O, n):
+    end = O.i_char + n
+    if (end > len(O.input_string)): return None
+    return O.input_string[O.i_char:end]
 
-  def next(self):
-    result = self.look_ahead_1()
+  def look_ahead_1(O):
+    if (O.i_char == len(O.input_string)): return None
+    return O.input_string[O.i_char]
+
+  def skip_ahead_1(O):
+    if (O.input_string[O.i_char] == "\n"): O.line_number += 1
+    O.i_char += 1
+
+  def next(O):
+    result = O.look_ahead_1()
     if (result is not None):
-      self.i_char += 1
-      if (result == "\n"): self.line_number += 1
+      O.i_char += 1
+      if (result == "\n"): O.line_number += 1
     return result
 
-  def scan_for_start(self, intro, followups):
+  def scan_for_start(O, intro, followups):
     while True:
-      if (self.i_char == len(self.input_string)): return 0
-      if (self.input_string[self.i_char] != "\n"):
-        self.i_char += 1
+      if (O.i_char == len(O.input_string)): return 0
+      if (O.input_string[O.i_char] != "\n"):
+        O.i_char += 1
       else:
         while True:
-          self.line_number += 1
-          self.i_char += 1
-          if (self.i_char == len(self.input_string)): return 0
-          if (self.input_string[self.i_char] != "\n"): break
-        if (self.input_string.find(
-              intro, self.i_char, self.i_char+len(intro)) != self.i_char):
-          self.i_char += 1
+          O.line_number += 1
+          O.i_char += 1
+          if (O.i_char == len(O.input_string)): return 0
+          if (O.input_string[O.i_char] != "\n"): break
+        if (O.input_string.find(
+              intro, O.i_char, O.i_char+len(intro)) != O.i_char):
+          O.i_char += 1
         else:
-          self.i_char += len(intro)
+          O.i_char += len(intro)
           while True:
-            if (self.i_char == len(self.input_string)): return 0
-            if (self.input_string[self.i_char].isspace()): break
-            self.i_char += 1
+            if (O.i_char == len(O.input_string)): return 0
+            if (O.input_string[O.i_char].isspace()): break
+            O.i_char += 1
           while True:
-            if (self.i_char == len(self.input_string)): return 0
-            if (not self.input_string[self.i_char].isspace()): break
-            self.i_char += 1
+            if (O.i_char == len(O.input_string)): return 0
+            if (not O.input_string[O.i_char].isspace()): break
+            O.i_char += 1
           for i_followup,followup in enumerate(followups):
-            if (self.input_string.find(
+            if (O.input_string.find(
                   followup,
-                  self.i_char,
-                  self.i_char+len(followup)) == self.i_char):
-              self.i_char += len(followup)
+                  O.i_char,
+                  O.i_char+len(followup)) == O.i_char):
+              O.i_char += len(followup)
               while True:
-                if (self.i_char == len(self.input_string)): return i_followup
-                c = self.input_string[self.i_char]
-                self.i_char += 1
+                if (O.i_char == len(O.input_string)): return i_followup
+                c = O.input_string[O.i_char]
+                O.i_char += 1
                 if (c == "\n"):
-                  self.line_number += 1
+                  O.line_number += 1
                   return i_followup
                 if (not c.isspace()): break
               break
@@ -90,92 +101,104 @@ def where_str(source_info, line_number):
   if (s is None): return ""
   return " (%s)" % s
 
-class word: # FUTURE word(object)
+class word(slots_getstate_setstate):
 
   __slots__ = ["value", "quote_token", "line_number", "source_info"]
 
-  def __init__(self,
+  def __init__(O,
         value,
         quote_token=None,
         line_number=None,
         source_info=None):
-    self.value = value
-    self.quote_token = quote_token
-    self.line_number = line_number
-    self.source_info = source_info
+    O.value = value
+    O.quote_token = quote_token
+    O.line_number = line_number
+    O.source_info = source_info
 
-  def __str__(self):
-    if (self.quote_token is None):
-      return self.value
-    return self.quote_token \
-         + self.value \
+  def __str__(O):
+    if (O.quote_token is None):
+      return O.value
+    return O.quote_token \
+         + O.value \
             .replace("\\", "\\\\") \
-            .replace(self.quote_token, "\\"+self.quote_token) \
-         + self.quote_token
+            .replace(O.quote_token, "\\"+O.quote_token) \
+         + O.quote_token
 
-  def where(self):
-    return where(self.source_info, self.line_number)
+  def where(O):
+    return where(O.source_info, O.line_number)
 
-  def where_str(self):
-    return where_str(self.source_info, self.line_number)
+  def where_str(O):
+    return where_str(O.source_info, O.line_number)
 
-  def raise_syntax_error(self, message):
+  def raise_syntax_error(O, message):
     raise RuntimeError(
-      'Syntax error: %s"%s"%s' % (message, self.value, self.where_str()))
+      'Syntax error: %s"%s"%s' % (message, O.value, O.where_str()))
 
-  def assert_expected(self, value):
-    if (self.value != value):
-      self.raise_syntax_error('expected "%s", found ' % value)
+  def assert_expected(O, value):
+    if (O.value != value):
+      O.raise_syntax_error('expected "%s", found ' % value)
 
-  def raise_unquoted_word_expected(self):
+  def raise_unquoted_word_expected(O):
     raise RuntimeError('Unquoted word expected, found %s%s' % (
-      str(self), self.where_str()))
+      str(O), O.where_str()))
 
 default_contiguous_word_characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
                                    + "abcdefghijklmnopqrstuvwxyz" \
                                    + "0123456789" \
                                    + "_"
-class settings(object):
+class settings(slots_getstate_setstate):
 
-  def __init__(self,
+  __slots__ = [
+    "unquoted_single_character_words",
+    "contiguous_word_characters",
+    "enable_unquoted_embedded_quotes",
+    "comment_characters",
+    "meta_comment"]
+
+  def __init__(O,
         unquoted_single_character_words="",
         contiguous_word_characters=None,
         enable_unquoted_embedded_quotes=True,
         comment_characters="",
         meta_comment=None):
-    self.unquoted_single_character_words = unquoted_single_character_words
+    O.unquoted_single_character_words = unquoted_single_character_words
     if (contiguous_word_characters is None):
-      self.contiguous_word_characters = default_contiguous_word_characters
+      O.contiguous_word_characters = default_contiguous_word_characters
     else:
-      self.contiguous_word_characters = contiguous_word_characters
-    self.enable_unquoted_embedded_quotes = enable_unquoted_embedded_quotes
-    self.comment_characters = comment_characters
-    self.meta_comment = meta_comment
+      O.contiguous_word_characters = contiguous_word_characters
+    O.enable_unquoted_embedded_quotes = enable_unquoted_embedded_quotes
+    O.comment_characters = comment_characters
+    O.meta_comment = meta_comment
 
-class word_iterator(object):
+class word_iterator(slots_getstate_setstate):
 
-  def __init__(self,
+  __slots__ = [
+    "char_iter",
+    "source_info",
+    "list_of_settings"]
+
+  def __init__(O,
         input_string,
         source_info=None,
         file_name=None,
         list_of_settings=None):
     assert source_info is None or file_name is None
-    self.char_iter = character_iterator(input_string)
+    O.char_iter = character_iterator(input_string)
     if (source_info is None and file_name is not None):
-      self.source_info = 'file "%s"' % file_name
+      O.source_info = 'file "%s"' % file_name
     else:
-      self.source_info = source_info
+      O.source_info = source_info
     if (list_of_settings is None):
-      self.list_of_settings = [settings()]
+      O.list_of_settings = [settings()]
     else:
-      self.list_of_settings = list_of_settings
+      O.list_of_settings = list_of_settings
 
-  def __iter__(self):
-    return self
+  def __iter__(O):
+    return O
 
-  def next(self, settings_index=0):
-    settings = self.list_of_settings[settings_index]
-    char_iter = self.char_iter
+  def next(O, settings_index=0):
+    settings = O.list_of_settings[settings_index]
+    char_iter = O.char_iter
     char_iter.mark_for_backup()
     while True:
       c = char_iter.next()
@@ -217,13 +240,13 @@ class word_iterator(object):
           if (c is None):
             raise RuntimeError(
               "Syntax error: missing closing quote%s" % (
-                where_str(self.source_info, char_iter.line_number)))
+                where_str(O.source_info, char_iter.line_number)))
           word_value += c
         return word(
           value=word_value,
           quote_token=quote_token,
           line_number=word_line_number,
-          source_info=self.source_info)
+          source_info=O.source_info)
       else:
         word_value = c
         word_line_number = char_iter.line_number
@@ -245,30 +268,30 @@ class word_iterator(object):
         return word(
           value=word_value,
           line_number=word_line_number,
-          source_info=self.source_info)
+          source_info=O.source_info)
     raise StopIteration
 
-  def try_pop(self, settings_index=0):
-    try: return self.next(settings_index)
+  def try_pop(O, settings_index=0):
+    try: return O.next(settings_index)
     except StopIteration: return None
 
-  def pop(self, settings_index=0):
-    try: return self.next(settings_index)
+  def pop(O, settings_index=0):
+    try: return O.next(settings_index)
     except StopIteration: raise RuntimeError("Unexpected end of input.")
 
-  def try_pop_unquoted(self, settings_index=0):
-    word = self.try_pop(settings_index)
+  def try_pop_unquoted(O, settings_index=0):
+    word = O.try_pop(settings_index)
     if (word is not None):
       if (word.quote_token is not None): word.raise_unquoted_word_expected()
     return word
 
-  def pop_unquoted(self, settings_index=0):
-    word = self.pop(settings_index)
+  def pop_unquoted(O, settings_index=0):
+    word = O.pop(settings_index)
     if (word.quote_token is not None): word.raise_unquoted_word_expected()
     return word
 
-  def backup(self):
-    self.char_iter.restore_backup()
+  def backup(O):
+    O.char_iter.restore_backup()
 
-  def scan_for_start(self, intro, followups):
-    self.char_iter.scan_for_start(intro, followups)
+  def scan_for_start(O, intro, followups):
+    O.char_iter.scan_for_start(intro, followups)
