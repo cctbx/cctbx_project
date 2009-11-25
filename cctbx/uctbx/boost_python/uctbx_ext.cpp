@@ -228,27 +228,67 @@ namespace {
   {
     using namespace boost::python;
     //! Forward conversions
-    def("d_star_sq_as_stol_sq", d_star_sq_as_stol_sq, (arg("d_star_sq")));
-    def("d_star_sq_as_two_stol", d_star_sq_as_two_stol, (arg("d_star_sq")));
-    def("d_star_sq_as_stol", d_star_sq_as_stol, (arg("d_star_sq")));
-    def("d_star_sq_as_d", d_star_sq_as_d, (arg("d_star_sq")));
+    def("d_star_sq_as_stol_sq", (
+      double(*)(double)) d_star_sq_as_stol_sq, (arg("d_star_sq")));
+    def("d_star_sq_as_stol_sq", (
+      af::shared<double>(*)(af::const_ref<double> const &))
+      d_star_sq_as_stol_sq, (arg("d_star_sq")));
+    def("d_star_sq_as_two_stol", (
+      double(*)(double)) d_star_sq_as_two_stol, (arg("d_star_sq")));
+    def("d_star_sq_as_two_stol", (
+      af::shared<double>(*)(af::const_ref<double> const &))
+      d_star_sq_as_two_stol, (arg("d_star_sq")));
+    def("d_star_sq_as_stol", (
+      double(*)(double)) d_star_sq_as_stol, (arg("d_star_sq")));
+    def("d_star_sq_as_stol", (
+      af::shared<double>(*)(af::const_ref<double> const &))
+      d_star_sq_as_stol, (arg("d_star_sq")));
+    def("d_star_sq_as_d", (
+      double(*)(double)) d_star_sq_as_d, (arg("d_star_sq")));
+    def("d_star_sq_as_d", (
+      af::shared<double>(*)(af::const_ref<double> const &))
+      d_star_sq_as_d, (arg("d_star_sq")));
     def("d_star_sq_as_two_theta", (
       double(*)(double, double, bool)) d_star_sq_as_two_theta,
       (arg("d_star_sq"), arg("wavelength"), arg("deg")=false));
     def("d_star_sq_as_two_theta", (
-      af::shared<double>(*)(af::shared<double>, double, bool))
+      af::shared<double>(*)(af::const_ref<double> const &, double, bool))
       d_star_sq_as_two_theta,
       (arg("d_star_sq"), arg("wavelength"), arg("deg")=false));
     //! Reverse conversions
-    def("stol_sq_as_d_star_sq", stol_sq_as_d_star_sq, (arg("stol_sq")));
-    def("two_stol_as_d_star_sq", two_stol_as_d_star_sq, (arg("two_stol")));
-    def("stol_as_d_star_sq", stol_as_d_star_sq, (arg("stol")));
-    def("d_as_d_star_sq", d_as_d_star_sq, (arg("d")));
+    def("stol_sq_as_d_star_sq", (
+      double(*)(double)) stol_sq_as_d_star_sq, (arg("stol_sq")));
+    def("stol_sq_as_d_star_sq", (
+      af::shared<double>(*)(af::const_ref<double> const &))
+      stol_sq_as_d_star_sq, (arg("stol_sq")));
+    def("two_stol_as_d_star_sq", (
+      double(*)(double)) two_stol_as_d_star_sq, (arg("two_stol")));
+    def("two_stol_as_d_star_sq", (
+      af::shared<double>(*)(af::const_ref<double> const &))
+      two_stol_as_d_star_sq, (arg("two_stol")));
+    def("stol_as_d_star_sq", (
+      double(*)(double)) stol_as_d_star_sq, (arg("stol")));
+    def("stol_as_d_star_sq", (
+      af::shared<double>(*)(af::const_ref<double> const &))
+      stol_as_d_star_sq, (arg("stol")));
+    def("d_as_d_star_sq", (
+      double(*)(double)) d_as_d_star_sq, (arg("d")));
+    def("d_as_d_star_sq", (
+      af::shared<double>(*)(af::const_ref<double> const &))
+      d_as_d_star_sq, (arg("d")));
     def("two_theta_as_d_star_sq", (
       double(*)(double, double, bool)) two_theta_as_d_star_sq,
       (arg("two_theta"), arg("wavelength"), arg("deg")=false));
+    def("two_theta_as_d_star_sq", (
+      af::shared<double>(*)(af::const_ref<double> const &, double, bool))
+      two_theta_as_d_star_sq,
+      (arg("two_theta"), arg("wavelength"), arg("deg")=false));
     def("two_theta_as_d", (
       double(*)(double, double, bool)) two_theta_as_d,
+      (arg("two_theta"), arg("wavelength"), arg("deg")=false));
+    def("two_theta_as_d", (
+      af::shared<double>(*)(af::const_ref<double> const &, double, bool))
+      two_theta_as_d,
       (arg("two_theta"), arg("wavelength"), arg("deg")=false));
 
     unit_cell_wrappers::wrap();
