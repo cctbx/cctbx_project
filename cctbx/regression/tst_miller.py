@@ -1036,6 +1036,7 @@ def exercise_r1_factor():
   pass
 
 def exercise_scale_factor():
+  flex.set_random_seed(0)
   crystal_symmetry = crystal.symmetry(
     unit_cell=(10,11,12,85,95,100),
     space_group_symbol="P 1")
