@@ -67,7 +67,7 @@ class child_process_pipe (object) :
     return self.connection_object.recv(*args, **kwds)
 
 # fake filehandle, sends data up pipe to parent process
-class _stdout_pipe (object) :
+class stdout_pipe (object) :
   def __init__ (self, connection) :
     self._c = connection
     self._data = ""
@@ -86,14 +86,14 @@ class _stdout_pipe (object) :
         self._c.send(message)
         self._data = ""
     except Exception, e :
-      sys.__stderr__.write("Exception in _stdout_pipe: %s\n" % str(e))
+      sys.__stderr__.write("Exception in stdout_pipe: %s\n" % str(e))
 
 wait_before_flush = 0.01 # minimum time between send() calls
 
 # this slows down the output so it won't stall a GUI
-class _stdout_buffered_pipe (_stdout_pipe) :
+class stdout_pipe_buffered (stdout_pipe) :
   def __init__ (self, *args, **kwds) :
-    _stdout_pipe.__init__(self, *args, **kwds)
+    stdout_pipe.__init__(self, *args, **kwds)
     self._last_t = time.time()
 
   def write (self, data) :
@@ -118,9 +118,9 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
       multiprocessing.Process.__init__(self, group, target, name, args, kwargs)
       self._c = connection
       if buffer_stdout :
-        self._stdout = _stdout_buffered_pipe(connection)
+        self._stdout = stdout_pipe_buffered(connection)
       else :
-        self._stdout = _stdout_pipe(connection)
+        self._stdout = stdout_pipe(connection)
 
     def run (self) :
       old_stdout = sys.stdout
