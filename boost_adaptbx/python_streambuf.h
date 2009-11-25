@@ -443,7 +443,7 @@ struct ostream : private streambuf_capsule, streambuf::ostream
     std::size_t buffer_size=0)
   :
     streambuf_capsule(python_file_obj, buffer_size),
-    streambuf::ostream(this->python_streambuf)
+    streambuf::ostream(python_streambuf)
   {}
 
   ~ostream()
