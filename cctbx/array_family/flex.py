@@ -8,3 +8,4 @@ import cctbx_array_family_flex_ext as ext
 
 scitbx.array_family.flex.export_to("cctbx.array_family.flex")
 from scitbx.array_family.flex import show
+from scitbx.array_family.flex import set_random_seed
