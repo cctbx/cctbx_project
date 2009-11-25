@@ -39,9 +39,33 @@ namespace cctbx {
   }
 
   //! Conversion of d-spacing measures.
+  inline af::shared<double>
+  d_star_sq_as_stol_sq(af::const_ref<double> const &d_star_sq)
+  {
+    af::shared<double> result(
+      d_star_sq.size(), af::init_functor_null<double>());
+    for(std::size_t i=0;i<d_star_sq.size();i++) {
+      result[i] = d_star_sq_as_stol_sq(d_star_sq[i]);
+    }
+    return result;
+  }
+
+  //! Conversion of d-spacing measures.
   inline double d_star_sq_as_two_stol(double d_star_sq)
   {
     return std::sqrt(d_star_sq);
+  }
+
+  //! Conversion of d-spacing measures.
+  inline af::shared<double>
+  d_star_sq_as_two_stol(af::const_ref<double> const &d_star_sq)
+  {
+    af::shared<double> result(
+      d_star_sq.size(), af::init_functor_null<double>());
+    for(std::size_t i=0;i<d_star_sq.size();i++) {
+      result[i] = d_star_sq_as_two_stol(d_star_sq[i]);
+    }
+    return result;
   }
 
   //! Conversion of d-spacing measures.
@@ -51,10 +75,34 @@ namespace cctbx {
   }
 
   //! Conversion of d-spacing measures.
+  inline af::shared<double>
+  d_star_sq_as_stol(af::const_ref<double> const &d_star_sq)
+  {
+    af::shared<double> result(
+      d_star_sq.size(), af::init_functor_null<double>());
+    for(std::size_t i=0;i<d_star_sq.size();i++) {
+      result[i] = d_star_sq_as_stol(d_star_sq[i]);
+    }
+    return result;
+  }
+
+  //! Conversion of d-spacing measures.
   inline double d_star_sq_as_d(double d_star_sq)
   {
     if (d_star_sq == 0.) return -1.;
     return 1. / std::sqrt(d_star_sq);
+  }
+
+  //! Conversion of d-spacing measures.
+  inline af::shared<double>
+  d_star_sq_as_d(af::const_ref<double> const &d_star_sq)
+  {
+    af::shared<double> result(
+      d_star_sq.size(), af::init_functor_null<double>());
+    for(std::size_t i=0;i<d_star_sq.size();i++) {
+      result[i] = d_star_sq_as_d(d_star_sq[i]);
+    }
+    return result;
   }
 
   //! Conversion of d-spacing measures.
@@ -70,7 +118,7 @@ namespace cctbx {
 
   //! Conversion of d-spacing measures.
   inline af::shared<double> d_star_sq_as_two_theta(
-    af::shared<double> d_star_sq, double wavelength, bool deg=false)
+    af::const_ref<double> const &d_star_sq, double wavelength, bool deg=false)
   {
     af::shared<double> result(
       d_star_sq.size(), af::init_functor_null<double>());
@@ -87,9 +135,33 @@ namespace cctbx {
   }
 
   //! Conversion of d-spacing measures.
+  inline af::shared<double>
+  stol_sq_as_d_star_sq(af::const_ref<double> const &stol_sq)
+  {
+    af::shared<double> result(
+      stol_sq.size(), af::init_functor_null<double>());
+    for(std::size_t i=0;i<stol_sq.size();i++) {
+      result[i] = stol_sq_as_d_star_sq(stol_sq[i]);
+    }
+    return result;
+  }
+
+  //! Conversion of d-spacing measures.
   inline double two_stol_as_d_star_sq(double two_stol)
   {
     return std::pow(two_stol, 2);
+  }
+
+  //! Conversion of d-spacing measures.
+  inline af::shared<double>
+  two_stol_as_d_star_sq(af::const_ref<double> const &two_stol)
+  {
+    af::shared<double> result(
+      two_stol.size(), af::init_functor_null<double>());
+    for(std::size_t i=0;i<two_stol.size();i++) {
+      result[i] = two_stol_as_d_star_sq(two_stol[i]);
+    }
+    return result;
   }
 
   //! Conversion of d-spacing measures.
@@ -99,10 +171,34 @@ namespace cctbx {
   }
 
   //! Conversion of d-spacing measures.
+  inline af::shared<double>
+  stol_as_d_star_sq(af::const_ref<double> const &stol)
+  {
+    af::shared<double> result(
+      stol.size(), af::init_functor_null<double>());
+    for(std::size_t i=0;i<stol.size();i++) {
+      result[i] = stol_as_d_star_sq(stol[i]);
+    }
+    return result;
+  }
+
+  //! Conversion of d-spacing measures.
   inline double d_as_d_star_sq(double d)
   {
     if (d == 0.) return -1.;
     return 1. / std::pow(d, 2);
+  }
+
+  //! Conversion of d-spacing measures.
+  inline af::shared<double>
+  d_as_d_star_sq(af::const_ref<double> const &d)
+  {
+    af::shared<double> result(
+      d.size(), af::init_functor_null<double>());
+    for(std::size_t i=0;i<d.size();i++) {
+      result[i] = d_as_d_star_sq(d[i]);
+    }
+    return result;
   }
 
   //! Conversion of d-spacing measures.
@@ -116,11 +212,35 @@ namespace cctbx {
   }
 
   //! Conversion of d-spacing measures.
+  inline af::shared<double> two_theta_as_d_star_sq(
+    af::const_ref<double> const &two_theta, double wavelength, bool deg=false)
+  {
+    af::shared<double> result(
+      two_theta.size(), af::init_functor_null<double>());
+    for(std::size_t i=0;i<two_theta.size();i++) {
+      result[i] = two_theta_as_d_star_sq(two_theta[i], wavelength, deg);
+    }
+    return result;
+  }
+
+  //! Conversion of d-spacing measures.
   inline double two_theta_as_d(
     double two_theta, double wavelength, bool deg=false)
   {
     return d_star_sq_as_d(
       two_theta_as_d_star_sq(two_theta, wavelength, deg));
+  }
+
+  //! Conversion of d-spacing measures.
+  inline af::shared<double> two_theta_as_d(
+    af::const_ref<double> const &two_theta, double wavelength, bool deg=false)
+  {
+    af::shared<double> result(
+      two_theta.size(), af::init_functor_null<double>());
+    for(std::size_t i=0;i<two_theta.size();i++) {
+      result[i] = two_theta_as_d(two_theta[i], wavelength, deg);
+    }
+    return result;
   }
 
   template <typename FloatType>
