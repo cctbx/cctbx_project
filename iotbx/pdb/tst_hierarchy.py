@@ -6,6 +6,7 @@ from libtbx.utils import hashlib_md5, Sorry, format_cpu_times
 import libtbx.load_env
 from libtbx import Auto
 from cStringIO import StringIO
+import math
 import cPickle
 import pickle
 import random
@@ -204,6 +205,17 @@ def exercise_atom():
   assert approx_equal(b.distance(other=a), 3.56931365951)
   assert approx_equal(a.distance(other_xyz=(3,5,2)), 3.56931365951)
   assert approx_equal(a.distance(other_xyz=(2,3,5)), 2.13072757527)
+  assert a.angle(atom_1=a, atom_3=a) is None
+  assert a.angle(atom_1=a, atom_3=a, deg=True) is None
+  assert a.angle(atom_1_xyz=a.xyz, atom_3_xyz=a.xyz) is None
+  assert a.angle(atom_1_xyz=a.xyz, atom_3_xyz=a.xyz, deg=True) is None
+  assert approx_equal(a.angle(atom_1=b, atom_3=b), 0)
+  assert approx_equal(a.angle(atom_1=b, atom_3=b, deg=True), 0)
+  c = a.detached_copy()
+  c.xyz = (5,3,1)
+  assert approx_equal(a.angle(atom_1=b, atom_3=c, deg=True), 42.6776898341)
+  assert approx_equal(math.degrees(a.angle(atom_1=c, atom_3=b, deg=False)),
+    42.6776898341)
   #
   ag = pdb.hierarchy.atom_group()
   ac = pdb.hierarchy.atom(parent=ag, other=a)

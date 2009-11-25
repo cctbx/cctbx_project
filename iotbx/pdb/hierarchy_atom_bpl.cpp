@@ -315,10 +315,22 @@ namespace {
         .def("set_chemical_element_simple_if_necessary",
           &w_t::set_chemical_element_simple_if_necessary, (
             arg("tidy_existing")=true))
-        .def("distance", (double(w_t::*)(atom const&)) &w_t::distance, (
-          arg("other")))
         .def("distance", (double(w_t::*)(vec3 const&)) &w_t::distance, (
           arg("other_xyz")))
+        .def("distance", (double(w_t::*)(atom const&)) &w_t::distance, (
+          arg("other")))
+        .def("angle",
+          (boost::optional<double>(w_t::*)(vec3 const&, vec3 const&, bool))
+            &w_t::angle, (
+              arg("atom_1_xyz"),
+              arg("atom_3_xyz"),
+              arg("deg")=false))
+        .def("angle",
+          (boost::optional<double>(w_t::*)(atom const&, atom const&, bool))
+            &w_t::angle, (
+              arg("atom_1"),
+              arg("atom_3"),
+              arg("deg")=false))
       ;
     }
 

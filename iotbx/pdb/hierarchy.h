@@ -7,6 +7,7 @@
 
 #include <iotbx/pdb/namespace.h>
 #include <iotbx/pdb/small_str.h>
+#include <scitbx/constants.h>
 #include <boost/optional.hpp>
 #include <boost/noncopyable.hpp>
 #include <map>
@@ -760,16 +761,40 @@ namespace hierarchy {
 
       double
       distance(
-        atom const& other)
+        vec3 const& other_xyz)
       {
-        return (data->xyz - other.data->xyz).length();
+        return (data->xyz - other_xyz).length();
       }
 
       double
       distance(
-        vec3 const& other_xyz)
+        atom const& other)
       {
-        return (data->xyz - other_xyz).length();
+        return distance(other.data->xyz);
+      }
+
+      boost::optional<double>
+      angle(
+        vec3 const& atom_1_xyz,
+        vec3 const& atom_3_xyz,
+        bool deg=false)
+      {
+        boost::optional<double> result =
+          (atom_1_xyz - data->xyz).angle_rad
+          (atom_3_xyz - data->xyz);
+        if (deg && result) {
+          (*result) /= scitbx::constants::pi_180;
+        }
+        return result;
+      }
+
+      boost::optional<double>
+      angle(
+        atom const& atom_1,
+        atom const& atom_3,
+        bool deg=false)
+      {
+        return angle(atom_1.data->xyz, atom_3.data->xyz, deg);
       }
   };
 
