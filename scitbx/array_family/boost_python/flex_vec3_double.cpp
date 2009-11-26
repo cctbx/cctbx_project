@@ -137,6 +137,19 @@ namespace {
     return result;
   }
 
+  af::shared<vec3<double> >
+  mul_a_a_scalar(
+    af::const_ref<vec3<double> > const& lhs,
+    af::const_ref<double> const& rhs)
+  {
+    SCITBX_ASSERT(lhs.size() == rhs.size());
+    af::shared<vec3<double> > result((af::reserve(lhs.size())));
+    for(std::size_t i=0;i<lhs.size();i++) {
+      result.push_back(lhs[i] * rhs[i]);
+    }
+    return result;
+  }
+
   void
   imul_a_scalar(
     af::ref<vec3<double> > const& a,
@@ -357,6 +370,8 @@ namespace boost_python {
       .def("__isub__", f_w::isub_a_s)
       .def("__mul__", mul_a_scalar)
       .def("__rmul__", mul_a_scalar)
+      .def("__mul__", mul_a_a_scalar)
+      .def("__rmul__", mul_a_a_scalar)
       .def("__imul__", imul_a_scalar, return_self<>())
       .def("__div__", div_a_as)
       .def("__truediv__", div_a_as)
