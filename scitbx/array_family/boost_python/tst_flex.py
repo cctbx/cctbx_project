@@ -1235,6 +1235,9 @@ def exercise_flex_vec3_double():
   assert approx_equal(tuple(a*2), ((22,44,70), (16,46,68), (26,48,66)))
   assert approx_equal(tuple(-3*a),
     ((-33,-66,-105), (-24,-69,-102), (-39,-72,-99)))
+  d = flex.double([3,7,-5])
+  assert approx_equal(a*d, [(33,66,105), (56,161,238), (-65,-120,-165)])
+  assert approx_equal(d*a, [(33,66,105), (56,161,238), (-65,-120,-165)])
   assert approx_equal(a/flex.double([1,-2,3]),
     [(11,22,35), (-4,-11.5,-17), (4+1/3.,8,11)])
   assert approx_equal(tuple(a*(-1,1,0,1,0,-1,1,-1,1)),
@@ -1254,6 +1257,15 @@ def exercise_flex_vec3_double():
   assert approx_equal(a.cross(b), [(9, 45, -27), (9, 54, -36), (9, 63, -45)])
   assert approx_equal(a.norms(),flex.sqrt(a.dot()))
   assert approx_equal(a.each_normalize().dot(), [1]*3)
+  zoz = flex.vec3_double([(0,0,0),(0,1,0),(0,0,0)])
+  try:
+    zoz.each_normalize()
+  except RuntimeError, e:
+    assert str(e) == "flex.vec3_double.each_normalize():" \
+      " number of vectors with length zero: 2 of 3"
+  else: raise Exception_expected
+  assert approx_equal(
+    zoz.each_normalize(raise_if_length_zero=False).dot(), [0,1,0])
   assert approx_equal(
     a.max_distance(b)**2,
     max(flex.vec3_double(a.as_double()-b.as_double()).dot()))
