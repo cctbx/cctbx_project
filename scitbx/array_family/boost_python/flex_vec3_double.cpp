@@ -7,6 +7,7 @@
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_arg.hpp>
+#include <boost/format.hpp>
 #include "flex_helpers.h"
 
 namespace scitbx { namespace serialization { namespace single_buffered {
@@ -277,13 +278,22 @@ namespace {
 
   af::shared<vec3<double> >
   each_normalize(
-    af::const_ref<vec3<double> > const& a)
+    af::const_ref<vec3<double> > const& a,
+    bool raise_if_length_zero=true)
   {
     af::shared<vec3<double> > result(a.begin(), a.end());
     vec3<double>* r = result.begin();
+    std::size_t n_zero = 0;
     for(std::size_t i=0;i<a.size();i++) {
       double length = r[i].length();
-      if (length != 0) r[i] *= (1 / length);
+      if (length == 0) n_zero++;
+      else r[i] *= (1 / length);
+    }
+    if (n_zero != 0 && raise_if_length_zero) {
+      throw std::runtime_error((boost::format(
+        "flex.vec3_double.each_normalize():"
+        " number of vectors with length zero: %lu of %lu")
+          % n_zero % a.size()).str());
     }
     return result;
   }
@@ -354,13 +364,13 @@ namespace boost_python {
         (object(*)(
           object const&,
           af::const_ref<std::size_t> const&,
-          af::const_ref<vec3<double> > const&)) add_selected_unsigned_a,
-        (arg("self"), arg("indices"), arg("values")))
+          af::const_ref<vec3<double> > const&)) add_selected_unsigned_a, (
+            arg("indices"), arg("values")))
       .def("min", vec3_min)
       .def("max", vec3_max)
       .def("sum", f_w::sum_a)
       .def("mean", f_w::mean_a)
-      .def("mean_weighted", mean_weighted_a_a, (arg("self"), arg("weights")))
+      .def("mean_weighted", mean_weighted_a_a, (arg("weights")))
       .def("__add__", f_w::add_a_s)
       .def("__add__", f_w::add_a_a)
       .def("__iadd__", f_w::iadd_a_s)
@@ -388,7 +398,8 @@ namespace boost_python {
           af::const_ref<vec3<double> > const&)) matrix::transpose_multiply)
       .def("sum_sq", sum_sq_)
       .def("norm", norm_)
-      .def("each_normalize", each_normalize)
+      .def("each_normalize", each_normalize, (
+        arg("raise_if_length_zero")=true))
       .def("max_distance", max_distance)
       .def("rms_difference", rms_difference)
       .def("rms_length", rms_length)
