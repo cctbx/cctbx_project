@@ -141,6 +141,12 @@ namespace scitbx {
       }
 
       //! Return normalized vector.
+      /*! length() == 0 will lead to a division-by-zero exception.
+          Explicit checks are avoided to maximize performance.
+          A maximally robust (but slower) calculation of the
+          ||.||_2 norm is implemented in
+          scitbx::math::accumulator::norm_accumulator .
+       */
       vec3 normalize() const
       {
         return (*this) / length();
