@@ -1,6 +1,5 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <cctbx/sgtbx/space_group.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
@@ -10,15 +9,6 @@ namespace {
   struct phase_info_wrappers
   {
     typedef phase_info w_t;
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      ht_angle_overloads, ht_angle, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      is_valid_phase_overloads, is_valid_phase, 1, 3)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      nearest_valid_phase_overloads, nearest_valid_phase, 1, 2)
 
     static void
     wrap()
@@ -37,18 +27,15 @@ namespace {
         .def("is_centric", &w_t::is_centric)
         .def("ht", &w_t::ht)
         .def("t_den", &w_t::t_den)
-        .def("ht_angle", &w_t::ht_angle, ht_angle_overloads((
-          arg("deg")=false)))
-        .def("is_valid_phase",
-          &w_t::is_valid_phase, is_valid_phase_overloads((
-            arg("phi"),
-            arg("deg")=false,
-            arg("tolerance")=1.e-5)))
+        .def("ht_angle", &w_t::ht_angle, (arg("deg")=false))
+        .def("is_valid_phase", &w_t::is_valid_phase, (
+          arg("phi"),
+          arg("deg")=false,
+          arg("tolerance")=1e-5))
         .def("nearest_valid_phase",
-          (double(w_t::*)(double, bool) const) 0,
-            nearest_valid_phase_overloads((
-              arg("phi"),
-              arg("deg")=false)))
+          (double(w_t::*)(double, bool) const) &w_t::nearest_valid_phase, (
+            arg("phi"),
+            arg("deg")=false))
         .def("valid_structure_factor",
           (std::complex<double>(w_t::*)(std::complex<double> const&) const)
             &w_t::valid_structure_factor, (arg("f")))

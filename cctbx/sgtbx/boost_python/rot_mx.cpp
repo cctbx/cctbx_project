@@ -1,5 +1,4 @@
 #include <boost/python/class.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -12,15 +11,6 @@ namespace {
   struct rot_mx_wrappers
   {
     typedef rot_mx w_t;
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      order_overloads, order, 0, 1)
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      accumulate_overloads, accumulate, 0, 1)
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      as_xyz_overloads, as_xyz, 0, 3)
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      as_hkl_overloads, as_hkl, 0, 3)
 
     static
     scitbx::vec3<double>
@@ -65,19 +55,18 @@ namespace {
             arg("rhs")))
         .def("divide", &w_t::divide, (arg("rhs")))
         .def("type", &w_t::type)
-        .def("order", &w_t::order, order_overloads())
-        .def("accumulate", &w_t::accumulate, accumulate_overloads((
-          arg("type")=0)))
+        .def("order", &w_t::order, (arg("type")=0))
+        .def("accumulate", &w_t::accumulate, (arg("type")=0))
         .def("info", &w_t::info)
         .def("as_double", &w_t::as_double)
-        .def("as_xyz", &w_t::as_xyz, as_xyz_overloads((
+        .def("as_xyz", &w_t::as_xyz, (
            arg("decimal")=false,
            arg("symbol_letters")="xyz",
-           arg("separator")=",")))
-        .def("as_hkl", &w_t::as_hkl, as_hkl_overloads((
+           arg("separator")=","))
+        .def("as_hkl", &w_t::as_hkl, (
            arg("decimal")=false,
            arg("letters_hkl")="hkl",
-           arg("separator")=",")))
+           arg("separator")=","))
         .def("__mul__",
           (scitbx::vec3<double>(*)(
             rot_mx const&, scitbx::vec3<double> const&)) operator*)

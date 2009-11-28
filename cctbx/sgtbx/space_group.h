@@ -464,7 +464,7 @@ namespace cctbx { namespace sgtbx {
         miller::index<> const& miller_index,
         double phi,
         bool deg=false,
-        double tolerance=1.e-5) const
+        double tolerance=1e-5) const
       {
         return phase_restriction(miller_index)
           .is_valid_phase(phi, deg, tolerance);

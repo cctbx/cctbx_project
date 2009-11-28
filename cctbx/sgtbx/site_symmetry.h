@@ -110,7 +110,7 @@ namespace cctbx { namespace sgtbx {
       bool
       is_compatible_u_star(
         scitbx::sym_mat3<FloatType> const& u_star,
-        FloatType tolerance=1.e-6) const;
+        FloatType tolerance=1e-6) const;
 
       /*! \brief Averages symmetrically equivalent u_star tensors to
           obtain a tensor that satisfies the symmetry constraints.

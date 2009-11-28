@@ -1,6 +1,5 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
@@ -60,9 +59,6 @@ namespace {
   {
     typedef wyckoff::table w_t;
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      mapping_overloads, mapping, 2, 3)
-
     static void
     wrap()
     {
@@ -85,15 +81,14 @@ namespace {
            &w_t::mapping, (arg("site_symmetry")),
            with_custodian_and_ward_postcall<0,1>())
         .def("mapping",
-           (wyckoff::mapping(w_t::*)(
-              uctbx::unit_cell const&,
-              fractional<> const&,
-              double) const) 0,
-           mapping_overloads((
-             arg("unit_cell"),
-             arg("original_site"),
-             arg("special_position_radius")=0.5)
-           )[with_custodian_and_ward_postcall<0,1>()])
+          (wyckoff::mapping(w_t::*)(
+            uctbx::unit_cell const&,
+            fractional<> const&,
+            double) const) &w_t::mapping, (
+              arg("unit_cell"),
+              arg("original_site"),
+              arg("special_position_radius")=0.5),
+                with_custodian_and_ward_postcall<0,1>())
       ;
     }
   };

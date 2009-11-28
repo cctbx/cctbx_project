@@ -3,7 +3,6 @@
 #include <cctbx/sgtbx/change_of_basis_op.h>
 #include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -33,13 +32,6 @@ namespace {
     {
       o.update(other);
     }
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      as_xyz_overloads, as_xyz, 0, 4)
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      as_hkl_overloads, as_hkl, 0, 3)
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      as_abc_overloads, as_abc, 0, 3)
 
     static boost::python::tuple
     getinitargs(w_t const& o)
@@ -101,19 +93,20 @@ namespace {
           &w_t::operator(), (arg("site_frac")))
         .def("update", update_w_t, (arg("other")))
         .def("__mul__", &w_t::operator*)
-        .def("as_xyz", &w_t::as_xyz, as_xyz_overloads((
-           arg("decimal")=false,
-           arg("t_first")=false,
-           arg("symbol_letters")="xyz",
-           arg("separator")=",")))
-        .def("as_hkl", &w_t::as_hkl, as_hkl_overloads((
-           arg("decimal")=false,
-           arg("letters_hkl")="hkl",
-           arg("separator")=",")))
-        .def("as_abc", &w_t::as_abc, as_abc_overloads((
-           arg("decimal")=false,
-           arg("letters_abc")="abc",
-           arg("separator")=",")))
+        .def("as_xyz", &w_t::as_xyz, (
+          arg("decimal")=false,
+          arg("t_first")=false,
+          arg("symbol_letters")="xyz",
+          arg("separator")=","))
+        .def("as_hkl", &w_t::as_hkl, (
+          arg("decimal")=false,
+          arg("letters_hkl")="hkl",
+          arg("separator")=","))
+        .def("as_abc", &w_t::as_abc, (
+          arg("decimal")=false,
+          arg("t_first")=false,
+          arg("letters_abc")="abc",
+          arg("separator")=","))
         .def("symbol", &w_t::symbol)
         .def("__str__", &w_t::symbol)
         .def_pickle(change_of_basis_op_wrappers())

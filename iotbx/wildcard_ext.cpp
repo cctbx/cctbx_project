@@ -1,7 +1,6 @@
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 
 namespace {
 
@@ -129,13 +128,11 @@ namespace {
             == 2);
   }
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(is_match_overloads, is_match, 2, 3)
-
   void init_module()
   {
     using namespace boost::python;
-    def("is_match", is_match, is_match_overloads(
-      (arg("string"), arg("pattern"), arg("escape_char")='\0')));
+    def("is_match", is_match, (
+      arg("string"), arg("pattern"), arg("escape_char")='\0'));
   }
 
 } // namespace <anonymous>

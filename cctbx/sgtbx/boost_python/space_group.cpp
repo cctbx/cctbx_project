@@ -4,7 +4,6 @@
 #include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_arg.hpp>
 #include <scitbx/boost_python/utils.h>
 
@@ -15,12 +14,6 @@ namespace {
   struct space_group_wrappers : boost::python::pickle_suite
   {
     typedef space_group w_t;
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      reset_overloads, reset, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      parse_hall_symbol_overloads, parse_hall_symbol, 1, 3)
 
     static rt_mx
     getitem(w_t const& o, std::size_t i_op)
@@ -36,29 +29,11 @@ namespace {
       return o(i_ltr, i_inv, i_smx);
     }
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      z2p_op_overloads, z2p_op, 0, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      construct_z2p_op_overloads, construct_z2p_op, 0, 2)
-
     static boost::python::tuple
     getinitargs(w_t const& o)
     {
       return boost::python::make_tuple(o.type().hall_symbol());
     }
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      is_valid_phase_overloads, is_valid_phase, 2, 4)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      nearest_valid_phases_overloads, nearest_valid_phases, 2, 3)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      is_compatible_unit_cell_overloads, is_compatible_unit_cell, 1, 3)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      all_ops_overloads, all_ops, 0, 2)
 
     static void
     wrap()
@@ -81,7 +56,7 @@ namespace {
           arg("space_group_symbols"),
           arg("t_den")=sg_t_den)))
         .def(init<space_group const&>((arg("other"))))
-        .def("reset", &w_t::reset, reset_overloads((arg("t_den")=sg_t_den)))
+        .def("reset", &w_t::reset, (arg("t_den")=sg_t_den))
         .def("expand_ltr", &w_t::expand_ltr, return_self<>(), (arg("new_t")))
         .def("expand_inv", &w_t::expand_inv,
           return_self<>(), (arg("new_inv_t")))
@@ -91,12 +66,10 @@ namespace {
           &w_t::expand_smx, return_self<>(), (arg("smx_symbol")))
         .def("expand_conventional_centring_type",
           &w_t::expand_conventional_centring_type, (arg("symbol")))
-        .def("parse_hall_symbol",
-          &w_t::parse_hall_symbol,
-          parse_hall_symbol_overloads((
-            arg("hall_symbol"),
-            arg("pedantic")=false,
-            arg("no_centring_type_symbol")=false)))
+        .def("parse_hall_symbol", &w_t::parse_hall_symbol, (
+          arg("hall_symbol"),
+          arg("pedantic")=false,
+          arg("no_centring_type_symbol")=false))
         .def("change_basis", &w_t::change_basis, (arg("cb_op")))
         .def("change_of_origin_realising_origin_centricity",
              &w_t::change_of_origin_realising_origin_centricity)
@@ -124,13 +97,12 @@ namespace {
         .def("__ne__", &w_t::operator!=)
         .def("conventional_centring_type_symbol",
           &w_t::conventional_centring_type_symbol)
-        .def("z2p_op", &w_t::z2p_op, z2p_op_overloads((
+        .def("z2p_op", &w_t::z2p_op, (
           arg("r_den")=cb_r_den,
-          arg("t_den")=cb_t_den)))
-        .def("construct_z2p_op",
-          &w_t::construct_z2p_op, construct_z2p_op_overloads((
-            arg("r_den")=cb_r_den,
-            arg("t_den")=cb_t_den)))
+          arg("t_den")=cb_t_den))
+        .def("construct_z2p_op", &w_t::construct_z2p_op, (
+          arg("r_den")=cb_r_den,
+          arg("t_den")=cb_t_den))
         .def("is_chiral", &w_t::is_chiral)
         .def("is_sys_absent",
           (bool(w_t::*)(miller::index<> const&) const)
@@ -148,19 +120,15 @@ namespace {
           &w_t::is_centric, (arg("miller_indices")))
         .def("phase_restriction", &w_t::phase_restriction, (
           arg("miller_index")))
-        .def("is_valid_phase",
-          &w_t::is_valid_phase,
-          is_valid_phase_overloads((
-            arg("miller_index"),
-            arg("phi"),
-            arg("deg")=false,
-            arg("tolerance")=1.e-5)))
-        .def("nearest_valid_phases",
-          &w_t::nearest_valid_phases,
-          nearest_valid_phases_overloads((
-            arg("miller_indices"),
-            arg("phases"),
-            arg("deg")=false)))
+        .def("is_valid_phase", &w_t::is_valid_phase, (
+          arg("miller_index"),
+          arg("phi"),
+          arg("deg")=false,
+          arg("tolerance")=1e-5))
+        .def("nearest_valid_phases", &w_t::nearest_valid_phases, (
+          arg("miller_indices"),
+          arg("phases"),
+          arg("deg")=false))
         .def("multiplicity",
           (int(w_t::*)(miller::index<> const&, bool) const)
           &w_t::multiplicity, (arg("miller_index")))
@@ -177,12 +145,10 @@ namespace {
           &w_t::epsilon, (arg("miller_indices")))
         .def("average_unit_cell", &w_t::average_unit_cell, (
           arg("unit_cell")))
-        .def("is_compatible_unit_cell",
-          &w_t::is_compatible_unit_cell,
-          is_compatible_unit_cell_overloads((
-            arg("unit_cell"),
-            arg("relative_length_tolerance")=0.01,
-            arg("absolute_angle_tolerance")=1.)))
+        .def("is_compatible_unit_cell", &w_t::is_compatible_unit_cell, (
+          arg("unit_cell"),
+          arg("relative_length_tolerance")=0.01,
+          arg("absolute_angle_tolerance")=1.))
         .def("average_u_star",
           (scitbx::sym_mat3<double>(w_t::*)(
             scitbx::sym_mat3<double> const&) const) &w_t::average_u_star, (
@@ -208,8 +174,7 @@ namespace {
         .def("refine_gridding",
           (sg_vec3(w_t::*)(sg_vec3 const&) const)
           &w_t::refine_gridding, (arg("grid")))
-        .def("all_ops", &w_t::all_ops, all_ops_overloads(
-          (arg("mod"), arg("cancel"))))
+        .def("all_ops", &w_t::all_ops, (arg("mod")=0, arg("cancel")=false))
         .def("unique", &w_t::unique, (arg("special_op")))
         .def("type", &w_t::type)
         .def_pickle(space_group_wrappers())

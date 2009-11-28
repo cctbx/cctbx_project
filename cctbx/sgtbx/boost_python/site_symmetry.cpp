@@ -2,7 +2,6 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
@@ -68,9 +67,6 @@ namespace {
   {
     typedef site_symmetry_ops w_t;
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      is_compatible_u_star_overloads, is_compatible_u_star, 1, 2)
-
     static void
     wrap()
     {
@@ -90,9 +86,9 @@ namespace {
         .def("is_point_group_1", &w_t::is_point_group_1)
         .def("__eq__", &w_t::operator==)
         .def("is_compatible_u_star",
-           (bool(w_t::*)(scitbx::sym_mat3<double> const&, double) const)0,
-           is_compatible_u_star_overloads(
-             (arg("u_star"), arg("tolerance")=1.e-6)))
+          (bool(w_t::*)(scitbx::sym_mat3<double> const&, double) const)
+            &w_t::is_compatible_u_star, (
+            arg("u_star"), arg("tolerance")=1e-6))
         .def("average_u_star",
           (scitbx::sym_mat3<double>
             (w_t::*)(scitbx::sym_mat3<double> const&) const)
@@ -145,9 +141,6 @@ namespace {
   {
     typedef site_symmetry_table w_t;
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      process_overloads, process, 3, 5)
-
     static void
     wrap()
     {
@@ -178,12 +171,12 @@ namespace {
             space_group const&,
             af::const_ref<scitbx::vec3<double> > const&,
             double,
-            bool))0, process_overloads((
+            bool)) &w_t::process, (
           arg("unit_cell"),
           arg("space_group"),
           arg("original_sites_frac"),
           arg("min_distance_sym_equiv")=0.5,
-          arg("assert_min_distance_sym_equiv")=true)))
+          arg("assert_min_distance_sym_equiv")=true))
         .def("is_special_position", &w_t::is_special_position, (arg("i_seq")))
         .def("get", &w_t::get, (arg("i_seq")), rir())
         .def("n_special_positions", &w_t::n_special_positions)

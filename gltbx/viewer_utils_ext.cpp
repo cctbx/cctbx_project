@@ -11,7 +11,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/optional.hpp>
@@ -301,13 +300,6 @@ namespace gltbx { namespace viewer_utils {
     return boost::optional<unsigned>();
   }
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(color_rainbow_overloads, color_rainbow, 2, 3)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(color_by_property_overloads,
-    color_by_property, 2, 4)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(draw_points_overloads, draw_points, 3, 4)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(closest_visible_point_overloads,
-    closest_visible_point, 4, 5)
-
   void
   init_module()
   {
@@ -318,32 +310,31 @@ namespace gltbx { namespace viewer_utils {
       arg("height")));
     def("make_rainbow_gradient", make_rainbow_gradient, (
       arg("nbins")));
-    def("color_rainbow", color_rainbow, color_rainbow_overloads((
+    def("color_rainbow", color_rainbow, (
       arg("atoms_visible"),
       arg("visible_atom_count"),
-      arg("color_invisible_atoms")=false)));
-    def("color_by_property", color_by_property, color_by_property_overloads((
+      arg("color_invisible_atoms")=false));
+    def("color_by_property", color_by_property, (
       arg("atom_properties"),
       arg("atoms_visible"),
       arg("color_invisible_atoms")=true,
-      arg("use_rb_color_gradient")=false)));
-    def("draw_points", draw_points, draw_points_overloads((
+      arg("use_rb_color_gradient")=false));
+    def("draw_points", draw_points, (
       arg("points"),
       arg("atom_colors"),
       arg("points_visible"),
-      arg("cross_radius")=0.25)));
+      arg("cross_radius")=0.25));
     def("draw_bonds", draw_bonds, (
       arg("points"),
       arg("bonds"),
       arg("atom_colors"),
       arg("bonds_visible")));
-    def("closest_visible_point", closest_visible_point,
-      closest_visible_point_overloads((
-        arg("points"),
-        arg("atoms_visible"),
-        arg("point0"),
-        arg("point1"),
-        arg("min_dist_sq")=1.0)));
+    def("closest_visible_point", closest_visible_point, (
+      arg("points"),
+      arg("atoms_visible"),
+      arg("point0"),
+      arg("point1"),
+      arg("min_dist_sq")=1.0));
     typedef atom_visibility a_v;
     typedef return_value_policy<return_by_value> rbv;
     class_<a_v>("atom_visibility", no_init)

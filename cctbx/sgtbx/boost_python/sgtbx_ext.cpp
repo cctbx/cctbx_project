@@ -8,7 +8,6 @@
 #include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/args.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 
@@ -78,10 +77,6 @@ namespace {
     tuple_mapping_fixed_capacity<af::small<ss_vec_mod, 3> >();
   }
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    n_fold_operator_from_axis_direction_overloads,
-    n_fold_operator_from_axis_direction, 2, 3)
-
   void init_module()
   {
     using namespace boost::python;
@@ -121,9 +116,8 @@ namespace {
     wrap_select_generators();
 
     def("n_fold_operator_from_axis_direction",
-      n_fold_operator_from_axis_direction,
-      n_fold_operator_from_axis_direction_overloads((
-        arg("ev_cart"), arg("n"), arg("sense")=1)));
+      n_fold_operator_from_axis_direction, (
+        arg("ev_cart"), arg("n"), arg("sense")=1));
   }
 
 } // namespace <anonymous>
