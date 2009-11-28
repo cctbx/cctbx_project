@@ -45,7 +45,8 @@ class option_parser(OptionParser):
     self.chunk_callback = chunk_callback()
 
   def call_with_self_as_first_argument(self, callable, **kw):
-    callable(option_parser=self, **kw)
+    if (callable is not None):
+      callable(option_parser=self, **kw)
     return self
 
   def option(self, *args, **kw):
