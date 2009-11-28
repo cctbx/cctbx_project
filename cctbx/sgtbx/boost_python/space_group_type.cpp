@@ -1,6 +1,5 @@
 #include <boost/python/class.hpp>
 #include <boost/python/tuple.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -14,14 +13,6 @@ namespace {
   struct space_group_type_wrappers : boost::python::pickle_suite
   {
     typedef space_group_type w_t;
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      hall_symbol_overloads, hall_symbol, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      universal_hermann_mauguin_symbol_overloads,
-      universal_hermann_mauguin_symbol,
-      0, 1)
 
     static boost::python::tuple
     getinitargs(w_t const& self)
@@ -60,12 +51,10 @@ namespace {
             arg("flag_k2l"), arg("flag_l2n")))
         .def("is_enantiomorphic", &w_t::is_enantiomorphic)
         .def("change_of_hand_op", &w_t::change_of_hand_op)
-        .def("hall_symbol", &w_t::hall_symbol, hall_symbol_overloads((
-          arg("tidy_cb_op")=true)))
+        .def("hall_symbol", &w_t::hall_symbol, (arg("tidy_cb_op")=true))
         .def("universal_hermann_mauguin_symbol",
-          &w_t::universal_hermann_mauguin_symbol,
-            universal_hermann_mauguin_symbol_overloads((
-              arg("tidy_cb_op")=true)))
+          &w_t::universal_hermann_mauguin_symbol, (
+            arg("tidy_cb_op")=true))
         .def("lookup_symbol", &w_t::lookup_symbol, (arg("ad_hoc_1992")=false))
         .def_pickle(space_group_type_wrappers())
       ;

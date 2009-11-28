@@ -4,7 +4,6 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <mmtbx/scaling/scaling.h>
 #include <mmtbx/scaling/absolute_scaling.h>
 #include <mmtbx/scaling/relative_scaling.h>
@@ -29,22 +28,6 @@ namespace boost_python{
   void wrap_least_squares_on_f_wt();
 
 namespace {
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-     wilson_single_nll_overloads,
-     absolute_scaling::wilson_single_nll, 9, 10)
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-     wilson_total_nll_overloads,
-     absolute_scaling::wilson_total_nll, 9, 10)
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-     ml_normalise_overloads,
-     absolute_scaling::ml_normalise, 8, 9)
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-     ml_normalise_aniso_overloads,
-     absolute_scaling::ml_normalise_aniso, 5, 6)
 
   void init_module()
   {
@@ -80,18 +63,17 @@ namespace {
                    double const&,
                    bool const&
                    ))
-        absolute_scaling::wilson_single_nll,
-        wilson_single_nll_overloads((arg("d_star_sq"),
-                                     arg("f_obs"),
-                                     arg("sigma_f_obs"),
-                                     arg("epsilon"),
-                                     arg("sigma_sq"),
-                                     arg("gamma_prot"),
-                                     arg("centric"),
-                                     arg("p_scale"),
-                                     arg("p_B_wilson"),
-                                     arg("transform")=true))
-        );
+        absolute_scaling::wilson_single_nll, (
+          arg("d_star_sq"),
+          arg("f_obs"),
+          arg("sigma_f_obs"),
+          arg("epsilon"),
+          arg("sigma_sq"),
+          arg("gamma_prot"),
+          arg("centric"),
+          arg("p_scale"),
+          arg("p_B_wilson"),
+          arg("transform")=true));
 
     def("wilson_total_nll",
         (double(*)(scitbx::af::const_ref<double> const&,
@@ -104,18 +86,17 @@ namespace {
                    double const&,
                    double const&,
                    bool))
-        absolute_scaling::wilson_total_nll,
-        wilson_total_nll_overloads((arg("d_star_sq"),
-                                    arg("f_obs"),
-                                    arg("sigma_f_obs"),
-                                    arg("epsilon"),
-                                    arg("sigma_sq"),
-                                    arg("gamma_prot"),
-                                    arg("centric"),
-                                    arg("p_scale"),
-                                    arg("p_B_wilson"),
-                                    arg("transform")=true))
-        );
+        absolute_scaling::wilson_total_nll, (
+          arg("d_star_sq"),
+          arg("f_obs"),
+          arg("sigma_f_obs"),
+          arg("epsilon"),
+          arg("sigma_sq"),
+          arg("gamma_prot"),
+          arg("centric"),
+          arg("p_scale"),
+          arg("p_B_wilson"),
+          arg("transform")=true));
 
 
     def("wilson_single_nll_gradient", (scitbx::af::tiny<double,2>(*)(
@@ -172,18 +153,16 @@ namespace {
                           double const&,
                           double const&,
                           bool const&))
-         absolute_scaling::ml_normalise,
-         ml_normalise_overloads(
-         (arg("d_star_sq"),
-          arg("f_obs"),
-          arg("epsilon"),
-          arg("sigma_sq"),
-          arg("gamma_prot"),
-          arg("centric"),
-          arg("p_scale"),
-          arg("p_B_wilson"),
-          arg("wiggle")=true))
-         );
+         absolute_scaling::ml_normalise, (
+           arg("d_star_sq"),
+           arg("f_obs"),
+           arg("epsilon"),
+           arg("sigma_sq"),
+           arg("gamma_prot"),
+           arg("centric"),
+           arg("p_scale"),
+           arg("p_B_wilson"),
+           arg("wiggle")=true));
 
 
 
@@ -278,14 +257,13 @@ namespace {
           cctbx::uctbx::unit_cell const& ,
           scitbx::sym_mat3<double> const&,
           bool const&))
-         absolute_scaling::ml_normalise_aniso,
-         ml_normalise_aniso_overloads(
-           (arg("hkl"),
-            arg("f_obs"),
-            arg("p_scale"),
-            arg("unit_cell"),
-            arg("u_star"),
-            arg("volume_correction_rwgk")=false)));
+         absolute_scaling::ml_normalise_aniso, (
+           arg("hkl"),
+           arg("f_obs"),
+           arg("p_scale"),
+           arg("unit_cell"),
+           arg("u_star"),
+           arg("volume_correction_rwgk")=false));
 
 
     def("kernel_normalisation",

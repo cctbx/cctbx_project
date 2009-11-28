@@ -110,7 +110,7 @@ namespace cctbx { namespace sgtbx {
       is_valid_phase(
         double phi,
         bool deg=false,
-        double tolerance=1.e-5) const;
+        double tolerance=1e-5) const;
 
       //! Nearest valid phase.
       /*! For acentric reflections equivalent to the input phase phi.

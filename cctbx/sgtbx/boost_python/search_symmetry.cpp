@@ -1,6 +1,5 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -54,9 +53,6 @@ namespace {
   {
     typedef search_symmetry w_t;
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      continuous_shift_flags_overloads, continuous_shift_flags, 0, 1)
-
     static void
     wrap()
     {
@@ -79,9 +75,8 @@ namespace {
         .def("continuous_shifts", &w_t::continuous_shifts, ccr())
         .def("continuous_shifts_are_principal",
           &w_t::continuous_shifts_are_principal)
-        .def("continuous_shift_flags", &w_t::continuous_shift_flags,
-          continuous_shift_flags_overloads(
-            (arg("assert_principal")=true)))
+        .def("continuous_shift_flags", &w_t::continuous_shift_flags, (
+          arg("assert_principal")=true))
         .def("projected_subgroup", &w_t::projected_subgroup)
       ;
     }

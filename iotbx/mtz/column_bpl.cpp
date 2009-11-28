@@ -2,7 +2,6 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_arg.hpp>
 #include <iotbx/mtz/column.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
@@ -13,9 +12,6 @@ namespace {
   struct column_wrappers
   {
     typedef column w_t;
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      extract_values_overloads, extract_values, 0, 1)
 
     static void
     wrap()
@@ -41,8 +37,8 @@ namespace {
         .def("n_valid_values", &w_t::n_valid_values)
         .def("extract_valid_values", &w_t::extract_valid_values)
         .def("selection_valid", &w_t::selection_valid)
-        .def("extract_values", &w_t::extract_values, extract_values_overloads((
-          arg("not_a_number_substitute"))))
+        .def("extract_values", &w_t::extract_values, (
+          arg("not_a_number_substitute")=0))
         .def("set_values", (void(w_t::*)(
           af::const_ref<float> const&,
           af::const_ref<bool> const&) const)&w_t::set_values, (

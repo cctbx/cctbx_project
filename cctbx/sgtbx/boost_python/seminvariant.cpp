@@ -1,6 +1,5 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_by_value.hpp>
@@ -30,14 +29,6 @@ namespace {
   {
     typedef structure_seminvariants w_t;
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      principal_continuous_shift_flags_overloads,
-      principal_continuous_shift_flags, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      subtract_principal_continuous_shifts_overloads,
-      subtract_principal_continuous_shifts, 1, 2)
-
     static void
     wrap()
     {
@@ -53,14 +44,12 @@ namespace {
         .def("continuous_shifts_are_principal",
           &w_t::continuous_shifts_are_principal)
         .def("principal_continuous_shift_flags",
-          &w_t::principal_continuous_shift_flags,
-            principal_continuous_shift_flags_overloads((
-              arg("assert_principal")=true)))
+          &w_t::principal_continuous_shift_flags, (
+            arg("assert_principal")=true))
         .def("subtract_principal_continuous_shifts",
-          &w_t::subtract_principal_continuous_shifts,
-            subtract_principal_continuous_shifts_overloads((
-              arg("translation"),
-              arg("assert_principal")=true)))
+          &w_t::subtract_principal_continuous_shifts, (
+            arg("translation"),
+            arg("assert_principal")=true))
         .def("gridding", &w_t::gridding)
         .def("refine_gridding",
           (sg_vec3(w_t::*)(sg_vec3 const&) const)

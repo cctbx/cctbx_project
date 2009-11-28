@@ -1,6 +1,5 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
@@ -33,12 +32,6 @@ namespace {
       }
       return new rt_mx(result);
     }
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      as_xyz_overloads, as_xyz, 0, 4)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      new_denominators_overloads, new_denominators, 1, 2)
 
     static std::string
     str(w_t const& o) { return o.as_xyz(); }
@@ -89,23 +82,21 @@ namespace {
         .def("is_valid", &w_t::is_valid)
         .def("unit_mx", &w_t::unit_mx)
         .def("is_unit_mx", &w_t::is_unit_mx)
-        .def("as_xyz", &w_t::as_xyz, as_xyz_overloads((
+        .def("as_xyz", &w_t::as_xyz, (
           arg("decimal")=false,
           arg("t_first")=false,
           arg("symbol_letters")="xyz",
-          arg("separator")=",")))
+          arg("separator")=","))
         .def("__str__", str)
         .def("as_int_array", &w_t::as_int_array)
         .def("as_double_array", &w_t::as_double_array)
         .def("new_denominators",
-          (rt_mx(w_t::*)(int, int) const) 0,
-            new_denominators_overloads((
-              arg("r_den"),
-              arg("t_den")=0)))
+          (rt_mx(w_t::*)(int, int) const) &w_t::new_denominators, (
+            arg("r_den"),
+            arg("t_den")=0))
         .def("new_denominators",
-          (rt_mx(w_t::*)(rt_mx const&) const)
-            &w_t::new_denominators, (
-              arg("other")))
+          (rt_mx(w_t::*)(rt_mx const&) const) &w_t::new_denominators, (
+            arg("other")))
         .def("mod_positive", &w_t::mod_positive)
         .def("mod_short", &w_t::mod_short)
         .def("inverse", &w_t::inverse)

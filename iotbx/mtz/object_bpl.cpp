@@ -3,7 +3,6 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_arg.hpp>
@@ -71,9 +70,6 @@ namespace {
   {
     typedef object w_t;
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      set_title_overloads, set_title, 1, 2)
-
     static void
     wrap()
     {
@@ -82,8 +78,8 @@ namespace {
         .def(init<>())
         .def(init<const char*>((arg("file_name"))))
         .def("title", &w_t::title)
-        .def("set_title", &w_t::set_title, set_title_overloads((
-          arg("title"), arg("append")=false))[return_self<>()])
+        .def("set_title", &w_t::set_title, (
+          arg("title"), arg("append")=false), return_self<>())
         .def("history", &w_t::history)
         .def("add_history",
           (object&(w_t::*)(af::const_ref<std::string> const&))

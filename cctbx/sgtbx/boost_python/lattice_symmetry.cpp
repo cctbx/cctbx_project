@@ -1,12 +1,8 @@
 #include <boost/python/def.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/args.hpp>
 #include <cctbx/sgtbx/lattice_symmetry.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    lattice_symmetry_group_overloads, lattice_symmetry::group, 1, 3)
 
   void wrap_lattice_symmetry()
   {
@@ -15,12 +11,10 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
     def("lattice_symmetry_find_max_delta", lattice_symmetry::find_max_delta, (
       arg("reduced_cell"), arg("space_group")));
 
-    def("lattice_symmetry_group",
-      lattice_symmetry::group,
-        lattice_symmetry_group_overloads((
-          arg("reduced_cell"),
-          arg("max_delta")=3.,
-          arg("enforce_max_delta_for_generated_two_folds")=true)));
+    def("lattice_symmetry_group", lattice_symmetry::group, (
+      arg("reduced_cell"),
+      arg("max_delta")=3.,
+      arg("enforce_max_delta_for_generated_two_folds")=true));
   }
 
 }}} // namespace cctbx::sgtbx::boost_python
