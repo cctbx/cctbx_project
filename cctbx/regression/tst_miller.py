@@ -649,6 +649,18 @@ def exercise_array():
     (5.760794, 1.5889009, 1.1336907))
   assert approx_equal(ma.mean_sq(True,True).data[1:-1],
     (4.805354, 1.5916849, 1.1629777))
+  assert approx_equal(ma.sum(False,False), 79.01154935280627)
+  assert approx_equal(ma.sum(False,True), 72.704563158141255)
+  assert approx_equal(ma.sum(True,False).data[1:-1],
+    (46.792023266563191, 22.643695504219149, 9.5758305820238991))
+  assert approx_equal(ma.sum(True,True).data[1:-1],
+    (43.467564215172203, 22.658357766449797, 9.7016727390599851))
+  assert approx_equal(ma.sum_sq(False,False), 159.7800992093843)
+  assert approx_equal(ma.sum_sq(False,True), 127.9993737702583)
+  assert approx_equal(ma.sum_sq(True,False).data[1:-1],
+    (120.9766669251709, 28.600215901274829, 10.203216382938619))
+  assert approx_equal(ma.sum_sq(True,True).data[1:-1],
+    (100.91243638831548, 28.650328284843834, 10.466799373124193))
   assert approx_equal(ma.rms(False,False)**2, 3.3287521)
   assert approx_equal(ma.rms(False,True)**2, 2.6666536)
   assert approx_equal([x**2 for x in ma.rms(True,False).data[1:-1]],
