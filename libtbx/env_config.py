@@ -312,7 +312,7 @@ class environment:
       self.python_exe = self.abs_path_clean(sys.executable)
       assert os.path.isfile(self.python_exe)
     else:
-      self.python_exe = sys.executable
+      self.python_exe = os.path.normpath(sys.executable)
     self.read_command_version_suffix()
     self.build_options = None
     self.repository_paths = []
