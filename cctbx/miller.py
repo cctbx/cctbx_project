@@ -2267,8 +2267,24 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       use_multiplicities=use_multiplicities,
       squared=True)
 
+  def sum(self, use_binning=False, use_multiplicities=False, squared=False):
+    mean = self.mean(
+      use_binning=use_binning,
+      use_multiplicities=use_multiplicities,
+      squared=squared)
+    if not use_binning:
+      return self.size() * mean
+    else:
+      counts = self.binner().counts()
+      for i in self.binner().range_used():
+        mean.data[i] *= counts[i]
+      return mean
+
   def sum_sq(self, use_binning=False, use_multiplicities=False):
-    return self.size()*self.mean_sq()
+    return self.sum(
+      use_binning=use_binning,
+      use_multiplicities=use_multiplicities,
+      squared=True)
 
   def rms(self, use_binning=False, use_multiplicities=False):
     return self.mean(
