@@ -56,22 +56,22 @@ if (not env_etc.no_boost_python):
   #
   if (env_etc.gltbx_has_opengl_headers):
     env_write_png = env.Clone()
+    env_viewer_utils = env
     base_dir = find_base_dir()
     if (base_dir is not None):
       env_etc.include_registry.append(
         env=env_write_png,
         paths=[op.join(base_dir, "include")])
-    conf = env_write_png.Configure()
-    if (conf.TryCompile("#include <png.h>", extension=".cpp")):
-      print "gltbx: PNG library is available."
-      env_write_png.Append(SHCXXFLAGS=["-DGLTBX_HAVE_LIBPNG"])
-      env_viewer_utils = env.Clone()
-      env_viewer_utils.Append(LIBPATH=[op.join(base_dir, "lib")])
-      env_viewer_utils.Prepend(LIBS=["png"])
-    else:
+      conf = env_write_png.Configure()
+      if (conf.TryCompile("#include <png.h>", extension=".cpp")):
+        print "gltbx: PNG library is available."
+        env_write_png.Append(SHCXXFLAGS=["-DGLTBX_HAVE_LIBPNG"])
+        env_viewer_utils = env.Clone()
+        env_viewer_utils.Append(LIBPATH=[op.join(base_dir, "lib")])
+        env_viewer_utils.Prepend(LIBS=["png"])
+      conf.Finish()
+    if (env_viewer_utils is env):
       env_write_png = env
-      env_viewer_utils = env
-    conf.Finish()
     #
     for namespace,n_fragments_def,n_fragments_fun in [("gl", 8, 16),
                                                       ("glu", 2, 4)]:
