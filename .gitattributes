@@ -344,6 +344,7 @@ libtbx/try_hello_world_c.py svneol=native#text/x-python
 libtbx/tst_itertbx.py -text
 libtbx/tst_math_utils.py svneol=native#text/x-python
 libtbx/tst_object_oriented_patterns.py -text
+libtbx/tst_path.py svneol=native#text/x-python
 libtbx/tst_xmlrpc_utils.py -text
 libtbx/windows_dispatcher.exe -text
 libtbx/xmlrpc_server_example.py -text
