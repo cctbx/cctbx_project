@@ -321,6 +321,7 @@ class solving_iterator(object):
 
   def __init__(self, flipping_iterator, **kwds):
     self.flipping_iterator = flipping_iterator
+    self.flipping_iterator_class_for_solving = flipping_iterator.__class__
     adopt_optional_init_args(self, kwds)
     self.attempts = []
     self.f_calc_solutions = []
@@ -441,6 +442,11 @@ class solving_iterator(object):
                            in self.flipping_iterator.f_calc_symmetrisations():
           if (not self.f_calc_solutions
               and cc_peak_height < self.min_cc_peak_height):
+            # we got here from polishing, so the flipping iterator is of
+            # the low density elimination type and we need to reset to
+            # the type passed to the __init__ before restarting
+            self.flipping_iterator.__class__ = \
+                self.flipping_iterator_class_for_solving
             yield self.guessing_delta
             break
           self.f_calc_solutions.append((f_calc, shift, cc_peak_height))
@@ -494,6 +500,9 @@ def loop(solving, verbose=True, stdout=sys.stdout):
         print
         print "Polishing with rho_c=%.4f" % flipping.rho_c()
     elif solving.state is solving.finished:
+      if solving.max_attempts_exceeded:
+        print
+        print "** Maximum number of attempts exceeded: it won't solve!"
       break
 
     previous_state = solving.state
