@@ -60,17 +60,17 @@ def tardy_model(
       mon_lib_atom_names,
       sites_cart,
       bonds_to_omit,
-      constrain_dihedrals_with_sigma_less_than_or_equal_to):
+      constrain_dihedrals_with_sigma_less_than_or_equal_to,
+      tree_root_atom_names=set(["N", "CA", "C", "O"]),
+      terminal_backbone_atom_names=set(["OXT", "HXT", "H1", "H2", "H3"])):
   assert len(mon_lib_atom_names) == len(input_atom_names)
   assert len(sites_cart) == len(input_atom_names)
   atom_indices = sequence_index_dict(seq=mon_lib_atom_names)
-  tree_root_atom_names = set(["N", "CA", "C", "O"])
   fixed_vertices = []
   for i,atom_name in enumerate(mon_lib_atom_names):
     if (atom_name in tree_root_atom_names):
       fixed_vertices.append(i)
   assert len(fixed_vertices) == len(tree_root_atom_names)
-  terminal_backbone_atom_names = set(["OXT", "HXT", "H1", "H2", "H3"])
   for i,atom_name in enumerate(mon_lib_atom_names):
     if (atom_name in terminal_backbone_atom_names):
       fixed_vertices.append(i)
@@ -183,10 +183,12 @@ def build_angle_start_by_tor_id(
   result = {}
   atom_indices = sequence_index_dict(seq=mon_lib_atom_names)
   for tor_id in i_q_packed_by_tor_id.keys():
-    tor_atom_ids = rotamer_tor_atom_ids_by_tor_id[tor_id]
-    ai = [atom_indices.get(atom_id) for atom_id in tor_atom_ids]
-    assert ai.count(None) == 0
-    d_sites = [sites_cart[i] for i in ai]
+    d_sites = []
+    for atom_id in rotamer_tor_atom_ids_by_tor_id[tor_id]:
+      i = atom_indices.get(atom_id)
+      if (i is None):
+        return (atom_id, tor_id)
+      d_sites.append(sites_cart[i])
     d = cctbx.geometry_restraints.dihedral(
       sites=d_sites, angle_ideal=0, weight=1)
     assert tor_id not in result
@@ -242,11 +244,17 @@ class rotamer_iterator(object):
     O.i_q_packed_by_tor_id = build_i_q_packed_by_tor_id(
       rotamer_tor_atom_ids_by_tor_id=O.rotamer_tor_atom_ids_by_tor_id,
       tardy_model=O.tardy_model)
-    O.angle_start_by_tor_id = build_angle_start_by_tor_id(
+    build_result = build_angle_start_by_tor_id(
       mon_lib_atom_names=O.mon_lib_atom_names,
       sites_cart=sites_cart,
       rotamer_tor_atom_ids_by_tor_id=O.rotamer_tor_atom_ids_by_tor_id,
       i_q_packed_by_tor_id=O.i_q_packed_by_tor_id)
+    if (isinstance(build_result, dict)):
+      O.angle_start_by_tor_id = build_result
+    else:
+      O.problem_message = 'resname=%s: missing atom "%s" for tor_id "%s"' % (
+        (resname,) + build_result)
+      return
     O.reset()
 
   def reset(O):
