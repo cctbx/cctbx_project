@@ -12,6 +12,7 @@ def run():
   "$D/thread_utils.py",
   "$D/easy_run.py",
   "$D/tst_utils.py",
+  "$D/tst_path.py",
   "$D/tst_math_utils.py",
   "$D/assert_utils.py",
   "$D/str_utils.py",

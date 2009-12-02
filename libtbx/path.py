@@ -1,6 +1,4 @@
-from libtbx.str_utils import show_string
 import os
-
 op = os.path
 
 def norm_join(*args):
@@ -16,6 +14,24 @@ def create_target_dir(target_file):
   target_dir = op.split(target_file)[0]
   if (not op.isdir(target_dir)):
     os.makedirs(target_dir)
+
+def move_old(path, serial_sep="_", serial_fmt="%03d"):
+  if (not op.exists(path)): return
+  bns = op.basename(path) + serial_sep
+  dn = op.dirname(op.abspath(path))
+  max_i = 0
+  for ex in os.listdir(dn):
+    if (ex.startswith(bns)):
+      s = ex[len(bns):]
+      try: i = int(s)
+      except ValueError: pass
+      else: max_i = max(max_i, i)
+  nn = op.join(dn, bns + serial_fmt % (max_i+1))
+  os.rename(path, nn)
+
+def move_old_create_new_directory(path, serial_sep="_", serial_fmt="%03d"):
+  move_old(path=path, serial_sep=serial_sep, serial_fmt=serial_fmt)
+  os.makedirs(path)
 
 def canonical_path(file_name, effective_current_working_directory=None):
   if (not op.isabs(file_name)):
@@ -53,12 +69,14 @@ class directory(object):
     assert name is not None
     result = op.join(self.path, name)
     if (must_exist and not op.exists(result)):
+      from libtbx.str_utils import show_string
       raise RuntimeError("No such file or directory: %s" % show_string(result))
     return result
 
   def sub_directory(self, name, must_exist=True):
     result = directory(self.get(name))
     if (must_exist and not op.isdir(result.path)):
+      from libtbx.str_utils import show_string
       raise RuntimeError("Not a directory: %s" % show_string(result.path))
     return result
 
