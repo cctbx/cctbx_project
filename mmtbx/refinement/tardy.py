@@ -10,8 +10,10 @@ import scitbx.rigid_body
 from scitbx.graph import tardy_tree
 from scitbx import matrix
 from libtbx.utils import Sorry, numbers_as_str
-from libtbx.str_utils import format_value
+from libtbx.str_utils import format_value, show_string
 from libtbx import group_args
+import os
+op = os.path
 
 master_phil_str = """\
   xray_weight_factor = 10
@@ -62,6 +64,8 @@ master_phil_str = """\
     .type = float
   near_singular_hinges_angular_tolerance_deg = 5
     .type = float
+  trajectory_directory = None
+    .type = path
 """
 
 class potential_object(object):
@@ -220,6 +224,25 @@ def action(
       refinement_callback=None):
   sites_cart_start = tardy_model.sites_moved()
   qd_e_kin_scales = tardy_model.assign_random_velocities()
+  traj_dir = params.trajectory_directory
+  if (traj_dir is not None):
+    print >> log, "Creating trajectory directory: %s" % show_string(traj_dir)
+    from libtbx.path import move_old_create_new_directory
+    move_old_create_new_directory(path=traj_dir)
+    from libtbx import easy_pickle
+    easy_pickle.dump(
+      file_name=op.join(traj_dir, "labels"),
+      obj=tardy_model.labels)
+    traj_serial_fmt = "sites_%%0%dd" % len(
+      "%d" % (params.number_of_cooling_steps * params.number_of_time_steps))
+    easy_pickle.dump(
+      file_name=op.join(traj_dir, traj_serial_fmt % 0),
+      obj=sites_cart_start)
+    if (fmodel is not None):
+      easy_pickle.dump(
+        file_name=op.join(traj_dir, "xray_structure"),
+        obj=fmodel.xray_structure)
+    print >> log
   cartesian_dof = sites_cart_start.size() * 3
   if   (params.temperature_degrees_of_freedom == "cartesian"):
     temperature_dof = cartesian_dof
@@ -339,6 +362,10 @@ def action(
       if (params.velocity_scaling):
         tardy_model.reset_e_kin(e_kin_target=e_kin_target)
       n_time_steps += 1
+      if (traj_dir is not None):
+        easy_pickle.dump(
+          file_name=op.join(traj_dir, traj_serial_fmt % n_time_steps),
+          obj=tardy_model.sites_moved())
       grms = tardy_model.potential_obj.last_grms
       if(format_for_phenix_refine):
         if(n_time_steps==1 or not n_time_steps%25):
