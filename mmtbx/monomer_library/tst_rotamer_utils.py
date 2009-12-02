@@ -259,6 +259,32 @@ def exercise_termini(mon_lib_srv, pdb_file_name):
   if (msg is not None):
     raise RuntimeError("rotamer_iterator.problem_message: %s" % msg)
 
+def exercise_pro_missing_hd1(mon_lib_srv):
+  pdb_inp = iotbx.pdb.input(source_info=None, lines="""\
+ATOM    110  N   PRO A 263       0.453 -20.680 -39.256  1.00 53.34           N
+ATOM    111  CA  PRO A 263       0.444 -22.054 -39.751  1.00 50.42           C
+ATOM    112  C   PRO A 263       0.860 -22.998 -38.645  1.00 52.10           C
+ATOM    113  O   PRO A 263       1.693 -22.614 -37.817  1.00 48.32           O
+ATOM    114  CB  PRO A 263       1.491 -22.052 -40.887  1.00 53.30           C
+ATOM    115  CG  PRO A 263       2.012 -20.645 -40.990  1.00 57.05           C
+ATOM    116  CD  PRO A 263       1.586 -19.897 -39.782  1.00 53.45           C
+ATOM    117  HA  PRO A 263      -0.437 -22.302 -40.100  1.00 60.51           H
+ATOM    118  HB2 PRO A 263       2.210 -22.664 -40.664  1.00 63.96           H
+ATOM    119  HB3 PRO A 263       1.066 -22.318 -41.718  1.00 63.96           H
+ATOM    120  HG2 PRO A 263       2.980 -20.669 -41.043  1.00 68.45           H
+ATOM    121  HG3 PRO A 263       1.645 -20.229 -41.786  1.00 68.45           H
+ATOM    122  HD2 PRO A 263       1.267 -19.021 -40.049  1.00 64.14           H
+""")
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  residue = pdb_hierarchy.only_residue()
+  rotamer_iterator = mon_lib_srv.rotamer_iterator(
+    comp_id=residue.resname,
+    atom_names=residue.atoms().extract_name(),
+    sites_cart=residue.atoms().extract_xyz())
+  assert not show_diff(
+    rotamer_iterator.problem_message,
+    'resname=PRO: missing atom "HD1" for tor_id "hh3"')
+
 def run(args):
   verbose = False
   semi_emp_rotamer_pdb_dirs = []
@@ -303,6 +329,7 @@ def run(args):
       mon_lib_srv=mon_lib_srv,
       pdb_file_name=op.join(protein_pdb_files, file_name))
     if (verbose): print
+  exercise_pro_missing_hd1(mon_lib_srv=mon_lib_srv)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
