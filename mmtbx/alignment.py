@@ -568,12 +568,49 @@ def exercise():
 
   print "OK" # necessary for auto_build checking
 
+class pairwise_global_wrapper(pairwise_global):
+
+  def range_matches_from_aligned_sequences(self):
+    a1 = self.result1
+    a2 = self.result2
+
+    #in one pass, algorithmically determine the range matches from the given alignment
+    assert len(a1) == len(a2)
+    #use three pointers, ptr0:overall alignment; ptr1:sequence 1; ptr2:sequence 2
+    ptr0 = -1; ptr1 = -1; ptr2 = -1
+
+    in_an_aligned_range = False
+    overall_ranges1 = []
+    overall_ranges2 = []
+    while 1:
+      ptr0+=1
+      if ptr0 == len(a1): break #done with whole alignment
+      if a1[ptr0]!='-':  ptr1+=1
+      if a2[ptr0]!='-':  ptr2+=1
+      if a1[ptr0]!='-' and a2[ptr0]!='-':
+        # we are inside a matching range
+        if not in_an_aligned_range:
+          overall_ranges1.append([ptr1,ptr1+1])
+          overall_ranges2.append([ptr2,ptr2+1])
+          in_an_aligned_range = True
+        else:
+          overall_ranges1[-1][1]+=1
+          overall_ranges2[-1][1]+=1
+
+      else:
+        in_an_aligned_range = False
+
+    return overall_ranges1,overall_ranges2
+
 def exercise_ext():
-  pg = pairwise_global(
-    seq1="THEQUICKBOWNFOXJUMPSOVETHELAZY",
-    seq2="QUICKBRWNFXJUMPSVERTH3LAZYDOG")
+  seq1="THEQUICKBOWNFOXJUMPSOVETHELAZY"
+  seq2="QUICKBRWNFXJUMPSVERTH3LAZYDOG"
+  pg = pairwise_global(seq1,seq2)
   assert pg.result1 == "THEQUICKBOWNFOXJUMPSOVE-THELAZY---"
   assert pg.result2 == "---QUICKBRWNF-XJUMPS-VERTH3LAZYDOG"
+  pg = pairwise_global_wrapper(seq1,seq2)
+  assert pg.range_matches_from_aligned_sequences() == (
+  [[3, 13], [14, 20], [21, 23], [23, 30]], [[0, 10], [10, 16], [16, 18], [19, 26]])
 
 if __name__=="__main__":
   exercise_similarity_scores()
