@@ -242,7 +242,23 @@ PM: Pseudomerohedral twin law"""
       print >> out, "In total, %3.0f twin operator were found"%(len(self.operators))
       print >> out
       print >> out
+      print >> out, " The presence of twin laws indicates the following: "
+      print >> out, "        The symmetry of the lattice (unit cell) is higher (has more elements) "
+      print >> out, "        than the point group of the assigned space group."
+      print >> out
+      print >> out, " There are four likely scenarios associated with the presence of twin laws: "
+      print >> out, "    i.  The assigned space group is incorrect (too low)."
+      print >> out, "   ii.  The assigned space group is correct and the data *is not* twinned."
+      print >> out, "  iii.  The assigned space group is correct and the data *is* twinned."
+      print >> out, "   iv.  The assigned space group is not correct (too low) and at the same time, the data *is* twinned."
+      print >> out
+      print >> out, " Xtriage tries to distinguish between these cases by inspecting the intensity statistics."
+      print >> out, " It never hurts to carefully inspect statistics yourself and make sure that the automated "
+      print >> out, " interpretation is correct."
+      print >> out
+
       assert (self.m + self.pm)==len(self.operators)
+
 
 
       coset_table = None
