@@ -88,7 +88,7 @@ class stdout_pipe (object) :
     except Exception, e :
       sys.__stderr__.write("Exception in stdout_pipe: %s\n" % str(e))
 
-wait_before_flush = 0.01 # minimum time between send() calls
+wait_before_flush = 0.1 # minimum time between send() calls
 
 # this slows down the output so it won't stall a GUI
 class stdout_pipe_buffered (stdout_pipe) :
