@@ -77,6 +77,7 @@ class manager(object):
   def construct_tardy_tree(self,
         sites=None,
         sites_cart=None,
+        selection=None,
         omit_bonds_with_slack_greater_than=0,
         constrain_dihedrals_with_sigma_less_than=10,
         near_singular_hinges_angular_tolerance_deg=5):
@@ -85,10 +86,15 @@ class manager(object):
     from scitbx import matrix
     if (sites is None):
       sites = matrix.col_list(sites_cart)
-    if (self.site_symmetry_table is None):
-      fixed_vertices = ()
+    if (selection is not None):
+      if (not isinstance(selection, flex.bool)):
+        selection = flex.bool(len(sites), selection)
+      fixed_vertices_bool = ~selection
     else:
-      fixed_vertices = self.site_symmetry_table.special_position_indices()
+      fixed_vertices_bool = flex.bool(len(sites), False)
+    if (self.site_symmetry_table is not None):
+      fixed_vertices_bool.set_selected(
+        self.site_symmetry_table.special_position_indices(), True)
     return tardy_tree.construct(
       sites=sites,
       edge_list=self.simple_edge_list(
@@ -97,7 +103,7 @@ class manager(object):
       external_clusters=self.rigid_clusters_due_to_dihedrals_and_planes(
         constrain_dihedrals_with_sigma_less_than
           =constrain_dihedrals_with_sigma_less_than),
-      fixed_vertices=fixed_vertices,
+      fixed_vertices=fixed_vertices_bool.iselection(),
       near_singular_hinges_angular_tolerance_deg
         =near_singular_hinges_angular_tolerance_deg)
 
