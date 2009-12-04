@@ -162,6 +162,10 @@ boost_dot_svn = libtbx.env.under_dist(
 
 if (sys.platform == "win32"):
   platform_64bit = (platform.architecture()[0] == '64bit')
+  if platform_64bit:
+    target_arch = 'x86_64'
+  else:
+    target_arch = 'x86'
   env_etc.static_libraries = 1
   env_etc.static_bpl = 0
   set_python_include_and_libs(env_etc)
@@ -185,10 +189,10 @@ if (sys.platform == "win32"):
       env_base = Environment(ENV=os.environ, MSVC_VERSION="7.1")
       env_etc.have_manifest_tool = False
     elif (cl_info.find("Version 14.00") >= 0):
-      env_base = Environment(ENV=os.environ, MSVC_VERSION="8.0")
+      env_base = Environment(ENV=os.environ, MSVC_VERSION="8.0", TARGET_ARCH=target_arch)
       env_etc.have_manifest_tool = True
     elif (cl_info.find("Version 15.00") >= 0):
-      env_base = Environment(ENV=os.environ, MSVC_VERSION="9.0")
+      env_base = Environment(ENV=os.environ, MSVC_VERSION="9.0", TARGET_ARCH=target_arch)
       env_etc.have_manifest_tool = True
     else:
       raise RuntimeError("""\
