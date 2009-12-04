@@ -1,6 +1,50 @@
 from scitbx.graph import utils
 import sys
 
+def exercise_tree_marking():
+  tree_marking = utils.tree_marking
+  el = []
+  for n_vertices in xrange(5):
+    es = utils.construct_edge_sets(n_vertices=n_vertices, edge_list=el)
+    ti = tree_marking(edge_sets=es).indices
+    assert ti == range(n_vertices)
+  el = [(0,1)]
+  for n_vertices in xrange(2,5):
+    es = utils.construct_edge_sets(n_vertices=n_vertices, edge_list=el)
+    ti = tree_marking(edge_sets=es).indices
+    assert ti == [0] + range(n_vertices-1)
+  el = [(2,5)]
+  es = utils.construct_edge_sets(n_vertices=7, edge_list=el)
+  ti = tree_marking(edge_sets=es).indices
+  assert ti == [0,1,2,3,4,2,5]
+  for n_vertices in xrange(7):
+    el = [(i,i+1) for i in xrange(n_vertices-1)]
+    es = utils.construct_edge_sets(n_vertices=n_vertices, edge_list=el)
+    ti = tree_marking(edge_sets=es).indices
+    assert ti == [0] * n_vertices
+  el = [(0,1),(2,3)]
+  es = utils.construct_edge_sets(n_vertices=4, edge_list=el)
+  ti = tree_marking(edge_sets=es).indices
+  assert ti == [0,0,1,1]
+  el = [(1,2),(0,3)]
+  es = utils.construct_edge_sets(n_vertices=4, edge_list=el)
+  ti = tree_marking(edge_sets=es).indices
+  assert ti == [0,1,1,0]
+  el = [
+    (8,9),(7,9),(3,7),(8,11),(8,12),(12,14),(13,15),(7,13),
+    (1,6),(4,6),
+    (0,5)]
+  es = utils.construct_edge_sets(n_vertices=16, edge_list=el)
+  tm = tree_marking(edge_sets=es)
+  assert tm.indices == [0,1,2,3,1,0,1,3,3,3,4,3,3,3,3,3]
+  assert tm.partitions_of(vertex_indices=()) == []
+  for i in xrange(16):
+    assert tm.partitions_of(vertex_indices=[i]) == [[i]]
+  assert tm.partitions_of(vertex_indices=[14,3]) == [[14,3]]
+  assert tm.partitions_of(vertex_indices=[5,10]) == [[5],[10]]
+  assert tm.partitions_of(vertex_indices=range(16)) == [
+    [0,5], [1,4,6], [2], [3,7,8,9,11,12,13,14,15], [10]]
+
 def run(args):
   assert len(args) == 0
   #
@@ -147,6 +191,8 @@ def run(args):
   assert sub.edge_list == [(1,2), (2,3), (0,3)]
   assert len(sub.edge_sets()) == 4
   assert sub.reindexing_dict == {2: 3, 3: 2, 6: 0, 7: 1}
+  #
+  exercise_tree_marking()
   #
   print "OK"
 

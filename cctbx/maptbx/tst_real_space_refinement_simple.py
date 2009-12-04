@@ -4,7 +4,7 @@ import cctbx.geometry_restraints.manager
 from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
-from scitbx.graph import tst_tardy_pdb
+from scitbx.graph import test_cases_tardy_pdb
 import scitbx.math
 from scitbx import matrix
 from libtbx.utils import null_out, format_cpu_times
@@ -70,7 +70,8 @@ def run(args):
   for arg in args:
     if (arg == "--verbose"): out = sys.stdout
     else: remaining_args.append(arg)
-  test_cases = tst_tardy_pdb.select_test_cases(tags_or_indices=remaining_args)
+  test_cases = test_cases_tardy_pdb.select_test_cases(
+    tags_or_indices=remaining_args)
   for test_case in test_cases:
     print >> out, "test case %d: %s" % (test_case.index, test_case.tag)
     minimized = []

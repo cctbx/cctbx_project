@@ -75,3 +75,39 @@ class sub_edge_list(object):
     return construct_edge_sets(
       n_vertices=len(O.vertex_indices),
       edge_list=O.edge_list)
+
+class tree_marking(object):
+
+  __slots__ = ["edge_sets", "n_trees", "indices"]
+
+  def __init__(O, edge_sets):
+    n_vertices = len(edge_sets)
+    indices = [n_vertices] * n_vertices
+    i_tree = 0
+    for i_root in xrange(n_vertices):
+      if (indices[i_root] == n_vertices):
+        follow = [i_root]
+        while (len(follow) != 0):
+          i = follow.pop()
+          if (indices[i] == n_vertices):
+            indices[i] = i_tree
+            follow.extend(edge_sets[i])
+        i_tree += 1
+    O.edge_sets = edge_sets
+    O.n_trees = i_tree
+    O.indices = indices
+
+  def partitions_of(O, vertex_indices):
+    result = []
+    ti = O.indices
+    nt = O.n_trees
+    ri = [nt] * nt
+    for i in vertex_indices:
+      tii = ti[i]
+      rii = ri[tii]
+      if (rii == nt):
+        ri[tii] = len(result)
+        result.append([i])
+      else:
+        result[rii].append(i)
+    return result
