@@ -171,6 +171,7 @@ def run(fmodels, model, target_weights, params, log,
   labels = [sc.label for sc in xs.scatterers()]
   tt = model.restraints_manager.geometry.construct_tardy_tree(
     sites=sites,
+    selection=model.refinement_flags.sites_torsion_angles,
     omit_bonds_with_slack_greater_than
       =params.omit_bonds_with_slack_greater_than,
     constrain_dihedrals_with_sigma_less_than
