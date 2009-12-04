@@ -85,6 +85,10 @@ class manager(object):
     from scitbx import matrix
     if (sites is None):
       sites = matrix.col_list(sites_cart)
+    if (self.site_symmetry_table is None):
+      fixed_vertices = ()
+    else:
+      fixed_vertices = self.site_symmetry_table.special_position_indices()
     return tardy_tree.construct(
       sites=sites,
       edge_list=self.simple_edge_list(
@@ -93,6 +97,7 @@ class manager(object):
       external_clusters=self.rigid_clusters_due_to_dihedrals_and_planes(
         constrain_dihedrals_with_sigma_less_than
           =constrain_dihedrals_with_sigma_less_than),
+      fixed_vertices=fixed_vertices,
       near_singular_hinges_angular_tolerance_deg
         =near_singular_hinges_angular_tolerance_deg)
 
