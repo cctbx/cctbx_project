@@ -1,6 +1,6 @@
 from __future__ import division
 from scitbx.graph.utils import \
-  construct_edge_sets, extract_edge_list, sub_edge_list
+  construct_edge_sets, extract_edge_list, sub_edge_list, tree_marking
 from libtbx import slots_getstate_setstate
 import math
 
@@ -75,7 +75,9 @@ class cluster_manager(slots_getstate_setstate):
     result = {}
     ci = O.cluster_indices
     for fixed_vertices in O.fixed_vertex_lists:
-      result[ci[fixed_vertices[0]]] = fixed_vertices
+      i = ci[fixed_vertices[0]]
+      assert i not in result
+      result[i] = fixed_vertices
     return result
 
   def connect_clusters(O, cii, cij, optimize):
@@ -472,10 +474,12 @@ class construct(slots_getstate_setstate):
         sites=None,
         edge_list=None,
         external_clusters=None,
-        fixed_vertex_lists=[],
+        fixed_vertices=None,
+        fixed_vertex_lists=None,
         near_singular_hinges_angular_tolerance_deg=5):
     assert [n_vertices, sites].count(None) == 1
     assert edge_list is not None
+    assert [fixed_vertices, fixed_vertex_lists].count(None) != 0
     if (sites is not None):
       n_vertices = len(sites)
     O.n_vertices = n_vertices
@@ -488,6 +492,13 @@ class construct(slots_getstate_setstate):
       O.edge_list = edge_list
       O.edge_sets = construct_edge_sets(
         n_vertices=n_vertices, edge_list=edge_list)
+    if (fixed_vertex_lists is None):
+      if (fixed_vertices is None or len(fixed_vertices) == 0):
+        fixed_vertex_lists = ()
+      else:
+        assert O.edge_sets is not None # not implemented
+        fixed_vertex_lists = tree_marking(edge_sets=O.edge_sets) \
+          .partitions_of(vertex_indices=fixed_vertices)
     O.cluster_manager = cluster_manager(
       n_vertices=n_vertices,
       all_in_one_rigid_body=all_in_one_rigid_body,

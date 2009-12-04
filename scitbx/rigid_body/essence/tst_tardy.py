@@ -1,7 +1,7 @@
 from __future__ import division
 from scitbx.rigid_body.essence import tardy
 from scitbx.graph import tardy_tree
-from scitbx.graph import tst_tardy_pdb
+from scitbx.graph import test_cases_tardy_pdb
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.utils import null_out, show_times_at_exit
@@ -173,7 +173,7 @@ def exercise_accumulate_in_each_tree():
     somiet=[(0, 119)])
 
 def exercise_near_singular_hinges():
-  # similar to scitbx/graph/tst_tardy_pdb.py, "collinear" test case
+  # similar to scitbx/graph/test_cases_tardy_pdb.py, "collinear" test case
   """
     0                6
     | \             /
@@ -434,10 +434,10 @@ def exercise_with_tardy_model(out, tardy_model, n_dynamics_steps):
     out=out, tardy_model=tardy_model, n_dynamics_steps=n_dynamics_steps)
   exercise_minimization_quick(out=out, tardy_model=tardy_model)
 
-n_test_models = len(tst_tardy_pdb.test_cases)
+n_test_models = len(test_cases_tardy_pdb.test_cases)
 
 def get_test_model_by_index(i, fixed_vertex_lists=[]):
-  tc = tst_tardy_pdb.test_cases[i]
+  tc = test_cases_tardy_pdb.test_cases[i]
   tt = tc.tardy_tree_construct(fixed_vertex_lists=fixed_vertex_lists)
   return construct_tardy_model(
     labels=tc.labels,

@@ -1,6 +1,6 @@
 import scitbx.rigid_body.essence
 from scitbx.rigid_body.essence import tst_tardy
-from scitbx.graph import tst_tardy_pdb
+from scitbx.graph import test_cases_tardy_pdb
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import \
@@ -11,7 +11,7 @@ import random
 import sys
 
 def exercise_joint_lib_six_dof_aja_simplified():
-  tc = tst_tardy_pdb.test_cases[9]
+  tc = test_cases_tardy_pdb.test_cases[9]
   tt = tc.tardy_tree_construct()
   masses = [1.0]*len(tc.sites)
   # arbitrary transformation so that the center of mass is not at the origin
@@ -400,9 +400,9 @@ def compare_essence_and_fast_tardy_models(
     ftm.minimization(max_iterations=3)
     check_packed()
 
-def exercise_with_tst_tardy_pdb_test_cases():
+def exercise_with_test_cases_tardy_pdb():
   n_tested = 0
-  for tc in tst_tardy_pdb.test_cases:
+  for tc in test_cases_tardy_pdb.test_cases:
     tt = tc.tardy_tree_construct()
     masses = [1.0]*len(tc.sites)
     if (n_tested < 2):
@@ -472,7 +472,7 @@ def exercise_pickle():
 def run(args):
   assert len(args) == 0
   exercise_joint_lib_six_dof_aja_simplified()
-  exercise_with_tst_tardy_pdb_test_cases()
+  exercise_with_test_cases_tardy_pdb()
   exercise_fixed_vertices()
   exercise_pickle()
   print format_cpu_times()

@@ -548,9 +548,9 @@ def exercise_test_cases(out):
     print >> out
 
 def exercise_pdb_test_cases(out):
-  from scitbx.graph import tst_tardy_pdb
-  for i_tc,tc in enumerate(tst_tardy_pdb.test_cases):
-    print >> out, "tst_tardy_pdb index:", i_tc
+  from scitbx.graph import test_cases_tardy_pdb
+  for i_tc,tc in enumerate(test_cases_tardy_pdb.test_cases):
+    print >> out, "test_cases_tardy_pdb index:", i_tc
     tc.tardy_tree_construct()
 
 def exercise_special_case_ZINC03847121():
@@ -699,8 +699,8 @@ def exercise_fixed_vertices(n_trials=10):
         assert cm.hinge_edges == [(-1,1)]
         assert cm.loop_edges == []
   #
-  from scitbx.graph import tst_tardy_pdb
-  tc = tst_tardy_pdb.test_cases[5]
+  from scitbx.graph import test_cases_tardy_pdb
+  tc = test_cases_tardy_pdb.test_cases[5]
   assert tc.tag == "tyr_with_h"
   tt = tc.tardy_tree_construct(fixed_vertex_lists=[[0,16,17]])
   assert tt.cluster_manager.clusters == [
@@ -765,10 +765,20 @@ def exercise_fixed_vertices(n_trials=10):
       edge_list=[(0,1),(1,2)],
       fixed_vertex_lists=[[fixed_vertex]]).build_tree()
     assert tt.cluster_manager.clusters == [[0,1,2]]
+  #
+  el = [
+    (8,9),(7,9),(3,7),(8,11),(8,12),(12,14),(13,15),(7,13),
+    (1,6),(4,6),
+    (0,5)]
+  tt = construct(n_vertices=16, edge_list=el, fixed_vertices=())
+  assert tt.cluster_manager.fixed_vertex_lists == ()
+  tt = construct(n_vertices=16, edge_list=el, fixed_vertices=(12,6,4,7,9,5))
+  assert tt.cluster_manager.fixed_vertex_lists == [[12,7,9], [6,4], [5]]
 
 def exercise_show_summary():
-  from scitbx.graph import tst_tardy_pdb
-  tcs = tst_tardy_pdb.select_test_cases(tags_or_indices=["ZINC03847120"])
+  from scitbx.graph import test_cases_tardy_pdb
+  tcs = test_cases_tardy_pdb.select_test_cases(
+    tags_or_indices=["ZINC03847120"])
   assert len(tcs) == 1
   tt = tcs[0].tardy_tree_construct()
   for vl,cb in [(None, ("10", "11")),
@@ -793,8 +803,8 @@ def exercise_show_summary():
 
 def exercise_edge_classifier():
   def get(tag):
-    from scitbx.graph import tst_tardy_pdb
-    tcs = tst_tardy_pdb.select_test_cases(tags_or_indices=[tag])
+    from scitbx.graph import test_cases_tardy_pdb
+    tcs = test_cases_tardy_pdb.select_test_cases(tags_or_indices=[tag])
     assert len(tcs) == 1
     tt = tcs[0].tardy_tree_construct()
     ec = tt.cluster_manager.edge_classifier()
@@ -855,8 +865,9 @@ number of fixed hinges: 0
 """)
 
 def exercise_pickle():
-  from scitbx.graph import tst_tardy_pdb
-  tcs = tst_tardy_pdb.select_test_cases(tags_or_indices=["ZINC03847120"])
+  from scitbx.graph import test_cases_tardy_pdb
+  tcs = test_cases_tardy_pdb.select_test_cases(
+    tags_or_indices=["ZINC03847120"])
   assert len(tcs) == 1
   tt = tcs[0].tardy_tree_construct()
   try:
