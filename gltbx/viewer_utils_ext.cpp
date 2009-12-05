@@ -26,8 +26,6 @@ namespace gltbx { namespace viewer_utils {
 
   namespace af = scitbx::af;
 
-  bool write_png (const char* file_name, int width, int height);
-
   // Hue, Saturation, Value --> Red, Green, Blue
   scitbx::vec3<double>
   hsv2rgb (double h, double s, double v)
@@ -304,10 +302,6 @@ namespace gltbx { namespace viewer_utils {
   init_module()
   {
     using namespace boost::python;
-    def("write_png", write_png, (
-      arg("file_name"),
-      arg("width"),
-      arg("height")));
     def("make_rainbow_gradient", make_rainbow_gradient, (
       arg("nbins")));
     def("color_rainbow", color_rainbow, (
