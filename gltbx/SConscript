@@ -1,6 +1,4 @@
 import libtbx.load_env
-import os
-op = os.path
 Import("env_etc")
 
 env_etc.gltbx_dist = libtbx.env.dist_path("gltbx")
@@ -11,21 +9,6 @@ env_etc.gltbx_common_includes = [
   env_etc.scitbx_include,
   env_etc.boost_include,
 ]
-
-# XXX TODO move to libtbx/SConscript
-def find_base_dir():
-  path = env_etc.python_include
-  while True:
-    dn,bn = op.split(path)
-    if (bn == "base"):
-      break
-    if (path == dn or len(dn) == 0):
-      return None
-    path = dn
-  for sub_dir in ["include", "lib"]:
-    if (not op.isdir(op.join(path, sub_dir))):
-      return None
-  return path
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
@@ -55,24 +38,6 @@ if (not env_etc.no_boost_python):
   conf.Finish()
   #
   if (env_etc.gltbx_has_opengl_headers):
-    env_write_png = env.Clone()
-    env_viewer_utils = env
-    base_dir = find_base_dir()
-    if (base_dir is not None):
-      env_etc.include_registry.append(
-        env=env_write_png,
-        paths=[op.join(base_dir, "include")])
-      conf = env_write_png.Configure()
-      if (conf.TryCompile("#include <png.h>", extension=".cpp")):
-        print "gltbx: PNG library is available."
-        env_write_png.Append(SHCXXFLAGS=["-DGLTBX_HAVE_LIBPNG"])
-        env_viewer_utils = env.Clone()
-        env_viewer_utils.Append(LIBPATH=[op.join(base_dir, "lib")])
-        env_viewer_utils.Prepend(LIBS=["png"])
-      conf.Finish()
-    if (env_viewer_utils is env):
-      env_write_png = env
-    #
     for namespace,n_fragments_def,n_fragments_fun in [("gl", 8, 16),
                                                       ("glu", 2, 4)]:
       source=["%s_ext.cpp" % namespace]
@@ -88,11 +53,9 @@ if (not env_etc.no_boost_python):
     env.SharedLibrary(
       target="#lib/gltbx_util_ext",
       source=["util_ext.cpp"])
-    env_viewer_utils.SharedLibrary(
+    env.SharedLibrary(
       target="#lib/gltbx_viewer_utils_ext",
-      source=[
-        "viewer_utils_ext.cpp",
-        env_write_png.SharedObject(source=["write_png.cpp"])])
+      source=["viewer_utils_ext.cpp"])
     env.SharedLibrary(
       target="#lib/gltbx_quadrics_ext",
       source=["quadrics_ext.cpp"])
