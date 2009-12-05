@@ -217,9 +217,9 @@ namespace gltbx { namespace boost_python {
     write_back()
     {
       namespace bp = boost::python;
-      bp::object new_item(bp::handle<>(PyString_FromStringAndSize(
+      bp::object new_item((bp::handle<>(PyString_FromStringAndSize(
         reinterpret_cast<char*>(data_.get()),
-        data_size_ * sizeof(T))));
+        data_size_ * sizeof(T)))));
       if (len_py_arg_ == 0) {
         if (PyList_Append(py_arg_ptr_, new_item.ptr()) != 0) {
           bp::throw_error_already_set();
