@@ -290,6 +290,8 @@ class process_arrays (object) :
     for (array_params, file_name, miller_array) in \
         zip(params.mtz_file.miller_array, file_names, miller_arrays) :
       array_name = "%s:%s" % (file_name, array_params.labels)
+      if params.verbose :
+        print "Processing %s" % array_name
       output_array = None # this will eventually be the final processed array
       output_labels = array_params.output_label
       info = miller_array.info()
@@ -348,6 +350,12 @@ class process_arrays (object) :
         new_array = new_array.expand_to_p1()
         new_array = new_array.customized_copy(crystal_symmetry=output_symm)
       if not new_array.is_unique_set_under_symmetry() :
+        if new_array.is_integer_array() and not is_rfree_array(new_array,info):
+          raise Sorry("The data in %s cannot be merged because it is in "+
+            "integer format.  If you wish to change symmetry (or the input "+
+            "data is unmerged), you must omit this array.  (Note also that "+
+            "merging will fail for R-free flags if the flags for symmetry-"+
+            "related reflections are not identical.)" % array_name)
         new_array = new_array.merge_equivalents().array()
 
       #-----------------------------------------------------------------
@@ -619,6 +627,15 @@ def get_r_free_stats (miller_array, test_flag_value) :
       n_bins += 1
     n_ref_last = x
   return (n_bins, n_free, sse, accu)
+
+def get_r_free_as_bool (miller_array, test_flag_value=0) :
+  if miller_array.is_bool_array() :
+    return miller_array
+  else :
+    assert miller_array.is_integer_array()
+    return miller_array.customized_copy(
+      data=miller_array.data() == test_flag_value,
+      sigmas=None)
 
 def get_best_resolution (miller_arrays) :
   best_d_min = None
