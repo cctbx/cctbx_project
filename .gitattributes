@@ -183,6 +183,7 @@ gltbx/quadrics.h -text
 gltbx/quadrics.py -text
 gltbx/quadrics_ext.cpp -text
 gltbx/run_tests.py -text
+gltbx/special_wrapper_support.h svneol=native#text/plain
 gltbx/tst_ellipsoids.py -text
 gltbx/tst_viewer_utils.py svneol=native#text/x-python
 gltbx/util.h -text

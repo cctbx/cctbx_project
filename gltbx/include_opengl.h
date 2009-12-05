@@ -1,3 +1,6 @@
+#ifndef GLTBX_INCLUDE_OPENGL_H
+#define GLTBX_INCLUDE_OPENGL_H
+
 #if defined(_MSC_VER)
 # include <windows.h>
 #endif
@@ -22,3 +25,5 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+#endif // GUARD

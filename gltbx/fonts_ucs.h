@@ -172,4 +172,4 @@ namespace gltbx { namespace fonts { namespace ucs {
 
 }}} // namespace gltbx::fonts::ucs
 
-#endif // GLTBX_FONTS_UCS_H
+#endif // GUARD

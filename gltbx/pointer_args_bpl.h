@@ -1,3 +1,6 @@
+#ifndef GLTBX_POINTER_ARGS_BPL_H
+#define GLTBX_POINTER_ARGS_BPL_H
+
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/extract.hpp>
@@ -9,14 +12,16 @@
 
 namespace gltbx { namespace boost_python {
 
+  typedef boost::python::ssize_t py_ssize_t;
+
   namespace detail {
 
     inline
     unsigned
     consolidate_sizes(
       const char* arg_name,
-      unsigned expected_size,
-      unsigned given_size)
+      py_ssize_t expected_size,
+      py_ssize_t given_size)
     {
       if (expected_size != 0
           && given_size != 0
@@ -41,14 +46,14 @@ namespace gltbx { namespace boost_python {
     boost::python::object py_arg_;
     bool is_const_;
     PyObject* py_arg_ptr_;
-    unsigned len_py_arg_;
+    py_ssize_t len_py_arg_;
     std::vector<T> data_;
 
     void
-    process_size(unsigned expected_size, unsigned len_py_arg)
+    process_size(py_ssize_t expected_size, py_ssize_t len_py_arg)
     {
       len_py_arg_ = len_py_arg;
-      unsigned data_size = detail::consolidate_sizes(
+      py_ssize_t data_size = detail::consolidate_sizes(
         arg_name_, expected_size, len_py_arg);
       if (len_py_arg_ == 0) data_.resize(data_size, 0);
       else                  data_.reserve(data_size);
@@ -74,7 +79,7 @@ namespace gltbx { namespace boost_python {
     converter(
       const char* arg_name,
       boost::python::object const& py_arg,
-      unsigned expected_size,
+      py_ssize_t expected_size,
       bool is_const)
     :
       arg_name_(arg_name),
@@ -88,13 +93,13 @@ namespace gltbx { namespace boost_python {
       }
       if (PyList_Check(py_arg_ptr_)) {
         process_size(expected_size, PyList_GET_SIZE(py_arg_ptr_));
-        for(unsigned i=0;i<len_py_arg_;i++) {
+        for(py_ssize_t i=0;i<len_py_arg_;i++) {
           extract_element(PyList_GET_ITEM(py_arg_ptr_, i));
         }
       }
       else if (PyTuple_Check(py_arg_ptr_)) {
         process_size(expected_size, PyTuple_GET_SIZE(py_arg_ptr_));
-        for(unsigned i=0;i<len_py_arg_;i++) {
+        for(py_ssize_t i=0;i<len_py_arg_;i++) {
           extract_element(PyTuple_GET_ITEM(py_arg_ptr_, i));
         }
       }
@@ -110,18 +115,18 @@ namespace gltbx { namespace boost_python {
     void
     write_back()
     {
-      unsigned sz = data_.size();
-      for(unsigned i=0;i<sz;i++) {
-        boost::python::object item(data_[i]);
-        PyObject* item_ptr = boost::python::incref(item.ptr());
+      namespace bp = boost::python;
+      py_ssize_t sz = data_.size();
+      for(py_ssize_t i=0;i<sz;i++) {
+        bp::object item(data_[i]);
         if (len_py_arg_ == 0) {
-          if (PyList_Append(py_arg_ptr_, item_ptr) != 0) {
-            boost::python::throw_error_already_set();
+          if (PyList_Append(py_arg_ptr_, item.ptr()) != 0) {
+            bp::throw_error_already_set();
           }
         }
         else {
-          if (PyList_SetItem(py_arg_ptr_, i, item_ptr) != 0) {
-            boost::python::throw_error_already_set();
+          if (PyList_SetItem(py_arg_ptr_, i, bp::incref(item.ptr())) != 0) {
+            bp::throw_error_already_set();
           }
         }
       }
@@ -135,7 +140,8 @@ namespace gltbx { namespace boost_python {
     boost::python::object py_arg_;
     bool is_const_;
     PyObject* py_arg_ptr_;
-    unsigned data_size_;
+    py_ssize_t len_py_arg_;
+    py_ssize_t data_size_;
     boost::shared_array<T> data_;
 
     void
@@ -154,39 +160,52 @@ namespace gltbx { namespace boost_python {
     converter_str(
       const char* arg_name,
       boost::python::object const& py_arg,
-      unsigned expected_size,
+      py_ssize_t expected_size,
       bool is_const)
     :
       arg_name_(arg_name),
       py_arg_(py_arg),
       is_const_(is_const),
-      py_arg_ptr_(py_arg.ptr())
+      py_arg_ptr_(py_arg.ptr()),
+      len_py_arg_(0)
     {
-      if (!is_const_ && !PyList_Check(py_arg_ptr_)) throw_must_be();
-      PyObject* item;
+      PyObject* item = 0;
       if (PyList_Check(py_arg_ptr_)) {
-        if (PyList_GET_SIZE(py_arg_ptr_) != 1) throw_must_be();
-        item = PyList_GET_ITEM(py_arg_ptr_, 0);
-        if (!PyString_Check(item)) throw_must_be();
+        len_py_arg_ = PyList_GET_SIZE(py_arg_ptr_);
+        if (len_py_arg_ == 1) {
+          item = PyList_GET_ITEM(py_arg_ptr_, 0);
+          if (!PyString_Check(item)) throw_must_be();
+        }
+        else if (len_py_arg_ != 0 || is_const_) {
+          throw_must_be();
+        }
       }
-      else if (PyString_Check(py_arg_ptr_)) {
+      else if (is_const_ && PyString_Check(py_arg_ptr_)) {
         item = py_arg_ptr_;
       }
       else {
         throw_must_be();
       }
-      unsigned item_size = PyString_GET_SIZE(item);
-      data_size_ = detail::consolidate_sizes(
-        arg_name_, expected_size, item_size);
+      py_ssize_t item_size = 0;
+      if (item != 0) {
+        item_size = PyString_GET_SIZE(item);
+        data_size_ = detail::consolidate_sizes(
+          arg_name_, expected_size, item_size);
+      }
+      else if (expected_size != 0) {
+        data_size_ = expected_size;
+      }
       data_ = boost::shared_array<T>(new T[data_size_]);
-      char* item_char_pointer = PyString_AsString(item);
-      if (item_char_pointer == 0) {
-        boost::python::throw_error_already_set();
+      if (item != 0) {
+        char* item_char_pointer = PyString_AsString(item);
+        if (item_char_pointer == 0) {
+          boost::python::throw_error_already_set();
+        }
+        for(py_ssize_t i=0;i<item_size;i++) {
+          data_[i] = static_cast<T>(item_char_pointer[i]);
+        }
       }
-      for(unsigned i=0;i<item_size;i++) {
-        data_[i] = static_cast<T>(item_char_pointer[i]);
-      }
-      for(unsigned i=item_size;i<data_size_;i++) {
+      for(ssize_t i=item_size;i<data_size_;i++) {
         data_[i] = static_cast<T>(0);
       }
     }
@@ -197,18 +216,23 @@ namespace gltbx { namespace boost_python {
     void
     write_back()
     {
-      boost::shared_array<char> buf(new char[data_size_]);
-      for(unsigned i=0;i<data_size_;i++) {
-        buf[i] = static_cast<char>(data_[i]);
+      namespace bp = boost::python;
+      bp::object new_item(bp::handle<>(PyString_FromStringAndSize(
+        reinterpret_cast<char*>(data_.get()),
+        data_size_ * sizeof(T))));
+      if (len_py_arg_ == 0) {
+        if (PyList_Append(py_arg_ptr_, new_item.ptr()) != 0) {
+          bp::throw_error_already_set();
+        }
       }
-      PyObject* new_item = PyString_FromStringAndSize(buf.get(), data_size_);
-      if (new_item == 0) {
-        boost::python::throw_error_already_set();
-      }
-      if (PyList_SetItem(py_arg_ptr_, 0, new_item) != 0) {
-        boost::python::throw_error_already_set();
+      else {
+        if (PyList_SetItem(py_arg_ptr_, 0, bp::incref(new_item.ptr())) != 0) {
+          bp::throw_error_already_set();
+        }
       }
     }
   };
 
 }} // namespace gltbx::boost_python
+
+#endif // GUARD
