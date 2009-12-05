@@ -69,11 +69,12 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
         self.steps_per_tab = max(1, self.steps_per_tab // 2)
       print "Steps per Tab:", self.steps_per_tab
       return
-    self.tardy_model.dynamics_step(delta_t=0.05)
+    tm = self.tardy_model
+    tm.dynamics_step(delta_t=0.05)
     if (self.velocity_scaling):
-      self.tardy_model.reset_e_kin(e_kin_target=self.e_kin_target)
+      tm.reset_e_kin(e_kin_target=self.e_kin_target)
     print "e_kin+e_pot: %12.6g + %12.6g = %12.6g" % (
-      self.tardy_model.e_kin(), self.tardy_model.e_pot(), self.tardy_model.e_tot())
+      tm.e_kin(), tm.e_pot(), tm.e_tot())
     self.set_points()
     self.OnRedraw()
 

@@ -351,7 +351,7 @@ None
 
 }
 
-def bytes_converters(signature):
+def bytes_converters(signature, expected_size="0", post_extract=""):
   assert signature.return_type == "void"
   function_name = signature.function_name
   arg_type = signature.args[-1].type
@@ -375,17 +375,17 @@ def bytes_converters(signature):
       arg.type, arg.name, arg.name))
   extracts = "\n  ".join(extracts)
   return """\
-%(extracts)s
+%(extracts)s%(post_extract)s
   if      (type == GL_BYTE) {
     boost_python::converter_str<GLubyte> %(arg_name)s_proxy(
-      "%(arg_name)s", py_%(arg_name)s, 0, %(is_const)s);
+      "%(arg_name)s", py_%(arg_name)s, %(expected_size)s, %(is_const)s);
     %(arg_type_name)s = reinterpret_cast<%(arg_type)s>(
       %(arg_name)s_proxy.get());
 %(call)s
   }
   else if (type == GL_UNSIGNED_BYTE) {
     boost_python::converter_str<GLbyte> %(arg_name)s_proxy(
-      "%(arg_name)s", py_%(arg_name)s, 0, %(is_const)s);
+      "%(arg_name)s", py_%(arg_name)s, %(expected_size)s, %(is_const)s);
     %(arg_type_name)s = reinterpret_cast<%(arg_type)s>(
       %(arg_name)s_proxy.get());
 %(call)s
@@ -396,12 +396,20 @@ def bytes_converters(signature):
       " %(function_name)s(): %(arg_type_name)s");
   }""" % vars()
 
+def glReadPixels_wrapper_body(signature):
+  return bytes_converters(
+    signature=signature,
+    expected_size="expected_size",
+    post_extract="""
+  boost::python::ssize_t expected_size = glReadPixels_pixels_expected_size(
+    width, height, format, type);""")
+
 special_wrapper_bodies = {
 
 "glCallLists": bytes_converters,
 "glDrawPixels": bytes_converters,
 "glGetTexImage": bytes_converters,
-"glReadPixels": bytes_converters,
+"glReadPixels": glReadPixels_wrapper_body,
 "glTexImage1D": bytes_converters,
 "glTexImage2D": bytes_converters,
 "glTexSubImage1D": bytes_converters,
@@ -625,6 +633,7 @@ def get_signatures():
 def write_function_wrappers(f, namespace, signatures, i_fragment):
   write_this_is_auto_generated(f, this)
   print >> f, """\
+#include <gltbx/special_wrapper_support.h>
 #include <gltbx/pointer_args_bpl.h>
 #include <gltbx/error.h>
 """

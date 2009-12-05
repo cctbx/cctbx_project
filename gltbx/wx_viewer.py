@@ -151,7 +151,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     elif (key == ord('s')):
       self.autospin_allowed = not self.autospin_allowed
     elif (key == ord('S')) :
-      self.save_png()
+      self.save_screen_shot()
     elif (key == ord('V')):
       gltbx.util.show_versions()
     elif (key == ord('O')):
@@ -550,20 +550,44 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self._settings_widget = OpenGLSettingsToolbox(self)
       self._settings_widget.Show()
 
-  def save_png (self, file_name="wx_viewer.png") :
+  def save_screen_shot(self,
+        file_name="wx_viewer",
+        extensions=["png", "jpg", "tiff", "eps"]):
     import gltbx.viewer_utils
-    try :
-      status = gltbx.viewer_utils.write_png(file_name=file_name,
-        width=self.w,
-        height=self.h)
-    except RuntimeError, e :
-      raise Sorry(str(e))
-    else :
-      if not status :
-        raise Sorry("PNG output failed - did you compile with libpng?")
-      else :
-        print "Saved %dx%d PNG as '%s'." % (self.w, self.h,
-          os.path.abspath(file_name))
+    from libtbx.utils import Sorry
+    from libtbx.str_utils import show_string
+    pil_image = gltbx.viewer_utils.read_pixels_to_pil_image(
+      x=0, y=0, width=self.w, height=self.h)
+    if (pil_image is None):
+      raise Sorry(
+        "Cannot save screen shot to file:"
+        " Python Imaging Library (PIL) not available.")
+    print "Screen shot width x height: %d x %d" % (self.w, self.h)
+    save = pil_image.save
+    def try_save(file_name_ext):
+      try: save(file_name_ext)
+      except KeyboardInterrupt: raise
+      except Exception: return False
+      return True
+    for ext in extensions:
+      if (file_name.endswith("."+ext)):
+        print "Writing file: %s" % show_string(os.path.abspath(file_name))
+        if (not try_save(file_name_ext=file_name)):
+          raise Sorry(
+            "Failure saving screen shot as %s file." % ext.upper())
+        return 1
+    n_written = 0
+    for ext in extensions:
+      file_name_ext = file_name + "."+ext
+      if (not try_save(file_name_ext=file_name_ext)):
+        print "Image output format not available: %s" % ext.upper()
+      else:
+        print "Wrote file: %s" % show_string(os.path.abspath(file_name_ext))
+        n_written += 1
+    if (n_written == 0):
+      raise Sorry(
+        "Cannot save screen shot in any of the formats specified.")
+    return n_written
 
 class show_points_and_lines_mixin(wxGLWindow):
 

@@ -1,3 +1,6 @@
+#ifndef GLTBX_ERROR_UTILS_H
+#define GLTBX_ERROR_UTILS_H
+
 #include <gltbx/include_opengl.h>
 #include <gltbx/error_utils.h>
 #include <string>
@@ -55,3 +58,5 @@ namespace gltbx {
   }
 
 } // namespace gltbx
+
+#endif // GUARD
