@@ -13,7 +13,7 @@ import scitbx.lbfgs
 from scitbx import matrix
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
-from libtbx import group_args
+from libtbx import Auto, group_args
 import libtbx
 import sys, os
 op = os.path
@@ -296,6 +296,8 @@ atom_selection = None
 
 map_coeff_labels = 2FOFCWT PH2FOFCWT
   .type = strings
+map_coeff_weights_label = None
+  .type = str
 map_resolution_factor = 1/3
   .type = float
 
@@ -304,9 +306,11 @@ real_space_target_weight = 1
 real_space_gradients_delta_resolution_factor = 1/3
   .type = float
 
-all_coordinate_refinement {
+coordinate_refinement {
   run = False
     .type = bool
+  atom_selection = Auto
+    .type = str
   lbfgs_max_iterations = 500
     .type = int
 }
@@ -314,12 +318,55 @@ all_coordinate_refinement {
 rotamer_score_and_choose_best {
   run = False
     .type = bool
+  atom_selection = Auto
+    .type = str
   lbfgs_max_iterations = 50
     .type = int
 }
 
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 """, process_includes=True)
+
+def extract_map_coeffs(
+      map_coeff_labels,
+      map_coeff_weights_label,
+      miller_arrays):
+  def find(labels):
+    for miller_array in miller_arrays:
+      if (miller_array.info().labels == labels):
+        return miller_array
+    return None
+  def raise_sorry(cannot_find, param_name, labels):
+    msg = [
+      "Cannot find %s:" % cannot_find,
+      "  %s = %s" % (param_name, " ".join(labels)),
+      "  List of available labels:"]
+    for miller_array in miller_arrays:
+      msg.append("    %s" % ",".join(miller_array.info().labels))
+    raise Sorry("\n".join(msg))
+  map_coeffs = find(labels=map_coeff_labels)
+  if (map_coeffs is None):
+    map_coeffs = find(
+      labels=" ".join(map_coeff_labels).replace(","," ").split())
+  if (map_coeffs is None):
+    raise_sorry(
+      cannot_find="map coefficients",
+      param_name="map_coeff_labels",
+      labels=map_coeff_labels)
+  if (map_coeff_weights_label is not None):
+    map_coeff_weights = find(labels=[map_coeff_weights_label])
+    if (map_coeff_weights is None):
+      raise_sorry(
+        cannot_find="map coefficient weights",
+        param_name="map_coeff_weights_label",
+        labels=[map_coeff_weights_label])
+    c, w = map_coeffs.common_sets(map_coeff_weights)
+    if (c.indices().size() != map_coeffs.indices().size()):
+      raise Sorry(
+        "Number of missing map coefficient weights: %d" % (
+          map_coeffs.indices().size() - c.indices().size()))
+    map_coeffs = c.customized_copy(data=w.data()*c.data())
+  return map_coeffs
 
 def run(args):
   show_times = libtbx.utils.show_times(time_start="now")
@@ -335,13 +382,10 @@ def run(args):
   work_params = work_phil.extract()
   #
   assert len(input_objects["mtz"]) == 1
-  miller_arrays = input_objects["mtz"][0].file_content.as_miller_arrays()
-  map_coeffs = None
-  for miller_array in miller_arrays:
-    if (miller_array.info().labels == work_params.map_coeff_labels):
-      map_coeffs = miller_array
-      break
-  assert map_coeffs is not None
+  map_coeffs = extract_map_coeffs(
+    miller_arrays=input_objects["mtz"][0].file_content.as_miller_arrays(),
+    map_coeff_labels=work_params.map_coeff_labels,
+    map_coeff_weights_label=work_params.map_coeff_weights_label)
   #
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
@@ -383,44 +427,67 @@ def run(args):
   print
   sys.stdout.flush()
   #
+  common_atom_selection_bool_cache = []
+  def atom_selection_bool(scope_extract, attr):
+    result = processed_pdb_file.all_chain_proxies \
+      .phil_atom_selection(
+        cache=None,
+        scope_extract=scope_extract,
+        attr="atom_selection",
+        allow_none=True,
+        allow_auto=True)
+    if (result is None or result is not Auto):
+      return result
+    if (len(common_atom_selection_bool_cache) == 0):
+      common_atom_selection_bool_cache.append(
+        processed_pdb_file.all_chain_proxies
+          .phil_atom_selection(
+            cache=None,
+            scope_extract=work_params,
+            attr="atom_selection",
+            allow_none=True))
+    return common_atom_selection_bool_cache[0]
+  #
   if (work_params.rotamer_score_and_choose_best.run):
-    if (work_params.atom_selection is None):
-      atom_selection_bool = None
-    else:
-      atom_selection_bool = processed_pdb_file.all_chain_proxies \
-        .phil_atom_selection(
-          cache=None,
-          scope_extract=work_params,
-          attr="atom_selection")
     rotamer_score_and_choose_best(
       mon_lib_srv=mon_lib_srv,
       density_map=density_map,
       pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
       geometry_restraints_manager=grm,
-      atom_selection_bool=atom_selection_bool,
+      atom_selection_bool=atom_selection_bool(
+        scope_extract=work_params.rotamer_score_and_choose_best,
+        attr="atom_selection"),
       real_space_target_weight=work_params.real_space_target_weight,
       real_space_gradients_delta=real_space_gradients_delta,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=work_params
           .rotamer_score_and_choose_best.lbfgs_max_iterations))
   #
-  if (work_params.all_coordinate_refinement.run != 0):
+  if (work_params.coordinate_refinement.run != 0):
     pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
     sites_cart = pdb_atoms.extract_xyz()
-    print "Before all coordinate refinement:"
+    print "Before coordinate refinement:"
     grm.energies_sites(sites_cart=sites_cart).show()
     print
     sys.stdout.flush()
+    atom_selection_bool = atom_selection_bool(
+      scope_extract=work_params.coordinate_refinement,
+      attr="atom_selection")
+    if (atom_selection_bool is None):
+      iselection_refine = None
+    else:
+      iselection_refine = atom_selection_bool.iselection()
     refined = maptbx.real_space_refinement_simple.lbfgs(
       sites_cart=sites_cart,
       density_map=density_map,
+      iselection_refine=iselection_refine,
       geometry_restraints_manager=grm,
       real_space_target_weight=work_params.real_space_target_weight,
       real_space_gradients_delta=real_space_gradients_delta,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=work_params.all_coordinate_refinement
+        max_iterations=work_params.coordinate_refinement
           .lbfgs_max_iterations))
-    print "After all coordinate refinement:"
+    print "After coordinate refinement:"
     grm.energies_sites(sites_cart=refined.sites_cart).show()
     pdb_atoms.set_xyz(new_xyz=refined.sites_cart)
     print

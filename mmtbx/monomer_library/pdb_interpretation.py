@@ -2647,12 +2647,22 @@ class build_all_chain_proxies(object):
         cache,
         scope_extract,
         attr,
+        allow_none=False,
+        allow_auto=False,
         raise_if_empty_selection=True):
     def parameter_name():
       result = ".".join([scope_extract.__phil_path__(), attr])
       if (result.startswith(".")): return result[1:]
       return result
     string = getattr(scope_extract, attr)
+    if (string is None):
+      if (allow_none): return None
+      raise Sorry('Atom selection cannot be None:\n  %s=None' % (
+        parameter_name()))
+    elif (string is Auto):
+      if (allow_auto): return Auto
+      raise Sorry('Atom selection cannot be Auto:\n  %s=Auto' % (
+        parameter_name()))
     try: result = self.selection(string=string, cache=cache)
     except KeyboardInterrupt: raise
     except Exception, e: # keep e alive to avoid traceback
