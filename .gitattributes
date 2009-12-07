@@ -290,6 +290,7 @@ iotbx/tst_data_plots.py -text
 iotbx/tst_file_reader.py -text
 iotbx/utils.py svneol=native#text/x-python
 libtbx/assert_utils.py -text
+libtbx/binary_search.py svneol=native#text/x-python
 libtbx/clear_paths.py svneol=native#text/x-python
 libtbx/code_analysis.py -text
 libtbx/command_line/analyse_code_comments.py -text
@@ -341,6 +342,7 @@ libtbx/sourceforge_checkout.py -text
 libtbx/subversion.py -text
 libtbx/thread_utils.py -text
 libtbx/try_hello_world_c.py svneol=native#text/x-python
+libtbx/tst_binary_search.py svneol=native#text/x-python
 libtbx/tst_itertbx.py -text
 libtbx/tst_math_utils.py svneol=native#text/x-python
 libtbx/tst_object_oriented_patterns.py -text
