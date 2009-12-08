@@ -356,7 +356,7 @@ def extract_map_coeffs(params, miller_arrays):
   f = find(labels=params.f)
   if (f is None):
     raise_sorry(msg_intro="Cannot find map coefficients:", name="f")
-  if (not f.is_complex_array()):
+  if (not f.is_complex_array() or params.phases is not None):
     if (params.phases is None):
       raise_sorry(msg_intro="Missing assignment:", name="phases")
     phases = find(labels=params.phases)
