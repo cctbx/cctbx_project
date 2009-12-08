@@ -145,8 +145,8 @@ class cartesian_dynamics(object):
       self.time_step *= imp.time_step_factor
       if ("bonds" not in imp.restraints):
         raise Sorry(
-          'Invalid choice: %s.restraints: "bonds" must always be included.'
-            % imp.__phil_path__())
+          'Invalid choice: %s: "bonds" must always be included.'
+            % imp.__phil_path__(object_name="restraints"))
       self.interleaved_minimization_angles = "angles" in imp.restraints
     else:
       self.interleaved_minimization_angles = False

@@ -2651,9 +2651,7 @@ class build_all_chain_proxies(object):
         allow_auto=False,
         raise_if_empty_selection=True):
     def parameter_name():
-      result = ".".join([scope_extract.__phil_path__(), attr])
-      if (result.startswith(".")): return result[1:]
-      return result
+      return scope_extract.__phil_path__(object_name=attr)
     string = getattr(scope_extract, attr)
     if (string is None):
       if (allow_none): return None
@@ -2756,8 +2754,8 @@ class build_all_chain_proxies(object):
         print >> log, "      sigma = %.6g" % bond.sigma
         print >> log, "      slack = %.6g" % slack
       elif (bond.action != "add"):
-        raise Sorry("%s.action = %s not implemented." % (
-          bond.__phil_path__(), bond.action))
+        raise Sorry("%s = %s not implemented." %
+          bond.__phil_path_and_value__(object_name="action"))
       else:
         i_seqs = self.phil_atom_selections_as_i_seqs(
           cache=sel_cache, scope_extract=bond, sel_attrs=sel_attrs)
@@ -2806,8 +2804,8 @@ class build_all_chain_proxies(object):
           " length of shortest vector between unit cell lattice points: %.6g" \
             % uc_shortest_vector
       else:
-        print >> log, "  %s.excessive_bond_distance_limit = %.6g" % (
-          params.__phil_path__(), params.excessive_bond_distance_limit)
+        print >> log, "  %s = %.6g" % \
+          params.__phil_path_and_value__("excessive_bond_distance_limit")
         print >> log, \
           "    Please assign a larger value to this parameter if necessary."
       raise Sorry(
@@ -2846,8 +2844,8 @@ class build_all_chain_proxies(object):
         print >> log, "      angle_ideal = %.6g" % angle.angle_ideal
         print >> log, "      sigma = %.6g" % angle.sigma
       elif (angle.action != "add"):
-        raise Sorry("%s.action = %s not implemented." % (
-          angle.__phil_path__(), angle.action))
+        raise Sorry("%s = %s not implemented." %
+          angle.__phil_path_and_value__("action"))
       else:
         i_seqs = self.phil_atom_selections_as_i_seqs(
           cache=sel_cache, scope_extract=angle, sel_attrs=sel_attrs)
