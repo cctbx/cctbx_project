@@ -294,10 +294,14 @@ def get_master_phil():
 atom_selection = None
   .type = str
 
-map_coeff_labels = 2FOFCWT PH2FOFCWT
-  .type = strings
-map_coeff_weights_label = None
-  .type = str
+map_coeff_labels {
+  f = 2FOFCWT,PH2FOFCWT
+    .type = str
+  phases = None
+    .type = str
+  weights = None
+    .type = str
+}
 map_resolution_factor = 1/3
   .type = float
 
@@ -327,46 +331,57 @@ rotamer_score_and_choose_best {
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 """, process_includes=True)
 
-def extract_map_coeffs(
-      map_coeff_labels,
-      map_coeff_weights_label,
-      miller_arrays):
+def extract_map_coeffs(params, miller_arrays):
   def find(labels):
     for miller_array in miller_arrays:
-      if (miller_array.info().labels == labels):
+      if (",".join(miller_array.info().labels) == labels):
         return miller_array
-    return None
-  def raise_sorry(cannot_find, param_name, labels):
+    matching_array = None
+    for miller_array in miller_arrays:
+      if (",".join(miller_array.info().labels).lower() == labels.lower()):
+        if (matching_array is not None):
+          return None
+        matching_array = miller_array
+    return matching_array
+  def raise_sorry(msg_intro, name):
     msg = [
-      "Cannot find %s:" % cannot_find,
-      "  %s = %s" % (param_name, " ".join(labels)),
+      msg_intro,
+      "  %s = %s" % params.__phil_path_and_value__(object_name=name),
       "  List of available labels:"]
     for miller_array in miller_arrays:
       msg.append("    %s" % ",".join(miller_array.info().labels))
     raise Sorry("\n".join(msg))
-  map_coeffs = find(labels=map_coeff_labels)
-  if (map_coeffs is None):
-    map_coeffs = find(
-      labels=" ".join(map_coeff_labels).replace(","," ").split())
-  if (map_coeffs is None):
-    raise_sorry(
-      cannot_find="map coefficients",
-      param_name="map_coeff_labels",
-      labels=map_coeff_labels)
-  if (map_coeff_weights_label is not None):
-    map_coeff_weights = find(labels=[map_coeff_weights_label])
-    if (map_coeff_weights is None):
+  if (params.f is None):
+    raise_sorry(msg_intro="Missing assignment:", name="f")
+  f = find(labels=params.f)
+  if (f is None):
+    raise_sorry(msg_intro="Cannot find map coefficients:", name="f")
+  if (not f.is_complex_array()):
+    if (params.phases is None):
+      raise_sorry(msg_intro="Missing assignment:", name="phases")
+    phases = find(labels=params.phases)
+    if (phases is None):
       raise_sorry(
-        cannot_find="map coefficient weights",
-        param_name="map_coeff_weights_label",
-        labels=[map_coeff_weights_label])
-    c, w = map_coeffs.common_sets(map_coeff_weights)
-    if (c.indices().size() != map_coeffs.indices().size()):
+        msg_intro="Cannot find map coefficient phases:", name="phases")
+    cf, cp = f.common_sets(other=phases)
+    if (cf.indices().size() != f.indices().size()):
+      raise Sorry(
+        "Number of missing map coefficient phases: %d" % (
+          f.indices().size() - cf.indices().size()))
+    f = cf.phase_transfer(phase_source=cp, deg=True)
+  if (params.weights is not None):
+    weights = find(labels=params.weights)
+    if (weights is None):
+      raise_sorry(
+        msg_intro="Cannot find map coefficient weights:",
+        name="weights")
+    cf, cw = f.common_sets(other=weights)
+    if (cf.indices().size() != f.indices().size()):
       raise Sorry(
         "Number of missing map coefficient weights: %d" % (
-          map_coeffs.indices().size() - c.indices().size()))
-    map_coeffs = c.customized_copy(data=w.data()*c.data())
-  return map_coeffs
+          f.indices().size() - cf.indices().size()))
+    f = cf.customized_copy(data=cw.data()*cf.data())
+  return f
 
 def run(args):
   show_times = libtbx.utils.show_times(time_start="now")
@@ -384,8 +399,7 @@ def run(args):
   assert len(input_objects["mtz"]) == 1
   map_coeffs = extract_map_coeffs(
     miller_arrays=input_objects["mtz"][0].file_content.as_miller_arrays(),
-    map_coeff_labels=work_params.map_coeff_labels,
-    map_coeff_weights_label=work_params.map_coeff_weights_label)
+    params=work_params.map_coeff_labels)
   #
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()

@@ -1719,7 +1719,8 @@ class array(set):
   def phase_transfer(self, phase_source, epsilon=1.e-10, deg=False,
                            phase_integrator_n_steps=None):
     """\
-Combines phases of phase_source with self's data if real (keeping the sign of  self's data) or with self's amplitudes if complex.
+Combines phases of phase_source with self's data if real (keeping
+the sign of self's data) or with self's amplitudes if complex.
 
 Centric reflections are forced to be compatible with the phase
 restrictions.
