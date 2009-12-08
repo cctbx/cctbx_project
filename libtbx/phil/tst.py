@@ -3393,18 +3393,25 @@ s {
 }
 t {
   b.c=None
-  c.d.e=None
+  c.d.e=f
+    .type = str
 }
 """)
   extracted = parameters.extract()
   assert extracted.__phil_path__() == ""
+  assert extracted.__phil_path__(object_name="o1") == "o1"
   assert extracted.s.__phil_path__() == "s"
+  assert extracted.s.__phil_path__(object_name="o2") == "s.o2"
   assert extracted.s.t.__phil_path__() == "s.t"
+  assert extracted.s.t.__phil_path__(object_name="o3") == "s.t.o3"
   assert extracted.s.t.u.__phil_path__() == "s.t.u"
   assert extracted.t.__phil_path__() == "t"
+  assert extracted.t.__phil_path__(object_name="o4") == "t.o4"
   assert extracted.t.b.__phil_path__() == "t.b"
   assert extracted.t.c.__phil_path__() == "t.c"
   assert extracted.t.c.d.__phil_path__() == "t.c.d"
+  assert extracted.t.c.d.__phil_path_and_value__(object_name="e") == (
+    "t.c.d.e", "f")
   #
   try: extracted.z = 12
   except AttributeError, e:
