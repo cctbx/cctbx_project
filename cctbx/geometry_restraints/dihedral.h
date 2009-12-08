@@ -4,8 +4,12 @@
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
 #include <scitbx/constants.h>
+#include <boost_adaptbx/error_utils.h>
+#include <boost/format.hpp>
 
 namespace cctbx { namespace geometry_restraints {
+
+  typedef optional_copy<af::small<int, 10> > exclude_periods_type;
 
   //! Grouping of indices into array of sites (i_seqs) and dihedral_params.
   struct dihedral_proxy
@@ -21,12 +25,14 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs_type const& i_seqs_,
       double angle_ideal_,
       double weight_,
-      int periodicity_=0)
+      int periodicity_=0,
+      exclude_periods_type const& exclude_periods_=exclude_periods_type())
     :
       i_seqs(i_seqs_),
       angle_ideal(angle_ideal_),
       weight(weight_),
-      periodicity(periodicity_)
+      periodicity(periodicity_),
+      exclude_periods(exclude_periods_)
     {}
 
     //! Constructor.
@@ -35,13 +41,15 @@ namespace cctbx { namespace geometry_restraints {
       optional_copy<af::shared<sgtbx::rt_mx> > const& sym_ops_,
       double angle_ideal_,
       double weight_,
-      int periodicity_=0)
+      int periodicity_=0,
+      exclude_periods_type const& exclude_periods_=exclude_periods_type())
     :
       i_seqs(i_seqs_),
       sym_ops(sym_ops_),
       angle_ideal(angle_ideal_),
       weight(weight_),
-      periodicity(periodicity_)
+      periodicity(periodicity_),
+      exclude_periods(exclude_periods_)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -57,7 +65,8 @@ namespace cctbx { namespace geometry_restraints {
       sym_ops(proxy.sym_ops),
       angle_ideal(proxy.angle_ideal),
       weight(proxy.weight),
-      periodicity(proxy.periodicity)
+      periodicity(proxy.periodicity),
+      exclude_periods(proxy.exclude_periods)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -69,7 +78,8 @@ namespace cctbx { namespace geometry_restraints {
       double factor) const
     {
       return dihedral_proxy(
-        i_seqs, sym_ops, angle_ideal, weight*factor, periodicity);
+        i_seqs, sym_ops, angle_ideal, weight*factor,
+        periodicity, exclude_periods);
     }
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[3] and i_seq[1] < i_seq[2].
@@ -104,6 +114,8 @@ namespace cctbx { namespace geometry_restraints {
     double weight;
     //! Parameter.
     int periodicity;
+    //! Optional array of periods to exclude.
+    exclude_periods_type exclude_periods;
   };
 
   //! Residual and gradient calculations for dihedral %angle restraint.
@@ -131,12 +143,14 @@ namespace cctbx { namespace geometry_restraints {
         af::tiny<scitbx::vec3<double>, 4> const& sites_,
         double angle_ideal_,
         double weight_,
-        int periodicity_=0)
+        int periodicity_=0,
+        exclude_periods_type const& exclude_periods_=exclude_periods_type())
       :
         sites(sites_),
         angle_ideal(angle_ideal_),
         weight(weight_),
-        periodicity(periodicity_)
+        periodicity(periodicity_),
+        exclude_periods(exclude_periods_)
       {
         init_angle_model();
       }
@@ -150,7 +164,8 @@ namespace cctbx { namespace geometry_restraints {
       :
         angle_ideal(proxy.angle_ideal),
         weight(proxy.weight),
-        periodicity(proxy.periodicity)
+        periodicity(proxy.periodicity),
+        exclude_periods(proxy.exclude_periods)
       {
         for(int i=0;i<4;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -171,7 +186,8 @@ namespace cctbx { namespace geometry_restraints {
       :
         angle_ideal(proxy.angle_ideal),
         weight(proxy.weight),
-        periodicity(proxy.periodicity)
+        periodicity(proxy.periodicity),
+        exclude_periods(proxy.exclude_periods)
       {
         for(int i=0;i<4;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -318,6 +334,8 @@ namespace cctbx { namespace geometry_restraints {
       double weight;
       //! Parameter (usually as passed to the constructor).
       int periodicity;
+      //! Optional array of periods to exclude.
+      exclude_periods_type exclude_periods;
       //! false in singular situations.
       bool have_angle_model;
     protected:
@@ -332,7 +350,7 @@ namespace cctbx { namespace geometry_restraints {
       //! Value of the dihedral %angle formed by the sites.
       double angle_model;
       /*! \brief Smallest difference between angle_model and angle_ideal
-          taking the periodicity into account.
+          taking the periodicity and exclude_periods into account.
        */
       /*! See also: angle_delta_deg
        */
@@ -362,7 +380,53 @@ namespace cctbx { namespace geometry_restraints {
           angle_model *= -1;
         }
         have_angle_model = true;
-        delta = angle_delta_deg(angle_model, angle_ideal, periodicity);
+        if (!exclude_periods) {
+          delta = angle_delta_deg(angle_model, angle_ideal, periodicity);
+        }
+        else {
+          using scitbx::fn::absolute;
+          int abs_periodicity = absolute(periodicity);
+          static const unsigned max_reasonable_periodicity = 36;
+          ASSERTBX(abs_periodicity <= max_reasonable_periodicity);
+          bool exclude_flags[max_reasonable_periodicity];
+          std::fill_n(exclude_flags, abs_periodicity, false);
+          exclude_periods_type::value_type& ep = *exclude_periods;
+          for(unsigned i_ep=0;i_ep<ep.size();i_ep++) {
+            int e = ep[i_ep];
+            if (absolute(e) >= abs_periodicity) {
+              throw std::runtime_error((
+                boost::format(
+                  "dihedral geometry restraint: invalid exclude_period:"
+                  " periodicity=%d, exclude=%d") % abs_periodicity % e).str());
+            }
+            int pos_e = e;
+            if (pos_e < 0) pos_e += abs_periodicity;
+            if (exclude_flags[pos_e]) {
+              throw std::runtime_error((
+                boost::format(
+                  "dihedral geometry restraint: duplicate exclude_period:"
+                  " periodicity=%d, exclude=%d") % abs_periodicity % e).str());
+            }
+            exclude_flags[pos_e] = true;
+          }
+          delta = 999;
+          double width = 360. / abs_periodicity;
+          for(unsigned i=0;i<abs_periodicity;i++) {
+            if (!exclude_flags[i]) {
+              double delta_i = angle_delta_deg(
+                angle_model, angle_ideal+i*width);
+              if (absolute(delta) > absolute(delta_i)) {
+                delta = delta_i;
+              }
+            }
+          }
+          if (delta == 999) {
+            throw std::runtime_error((
+              boost::format(
+                "dihedral geometry restraint: invalid exclude_period:"
+                " periodicity=%d, all excluded") % abs_periodicity).str());
+          }
+        }
       }
   };
 

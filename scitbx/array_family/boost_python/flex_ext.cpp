@@ -13,6 +13,7 @@
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/slice.h>
 #include <boost_adaptbx/optional_conversions.h>
+#include <boost_adaptbx/optional_copy.h>
 #include <boost_adaptbx/type_id_eq.h>
 #include <boost/optional.hpp>
 #include <boost/rational.hpp>
@@ -72,14 +73,15 @@ namespace {
     tuple_mapping_fixed_size<tiny<std::string, 4> >();
 
     tuple_mapping_fixed_capacity<small<int, 3> >();
+    tuple_mapping_fixed_capacity<small<int, 10> >();
     tuple_mapping_fixed_capacity<small<unsigned, 2> >();
     tuple_mapping_fixed_capacity<small<unsigned, 3> >();
+    tuple_mapping_fixed_capacity<small<unsigned, 6> >();
 #if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
     // smtbx.refinement.constraints.geometric_hydrogen
     tuple_mapping_fixed_capacity<small<std::size_t, 3> >();
 #endif
     tuple_mapping_fixed_capacity<small<std::size_t, 5> >();
-    tuple_mapping_fixed_capacity<small<unsigned, 6> >();
     tuple_mapping_fixed_capacity<small<double, 3> >();
     tuple_mapping_fixed_capacity<small<double, 6> >();
     // scitbx/math/gaussian/sum.h SCITBX_MATH_GAUSSIAN_SUM_MAX_N_TERMS
@@ -459,6 +461,8 @@ namespace {
       namespace oc = boost_adaptbx::optional_conversions;
       oc::to_and_from_python<boost::optional<vec3<double> > >();
       oc::to_and_from_python<boost::optional<af::shared<double> > >();
+      oc::to_and_from_python<
+       boost_adaptbx::optional_copy<af::small<int, 10> > >();
     }
 
     wrap_flex_random();
