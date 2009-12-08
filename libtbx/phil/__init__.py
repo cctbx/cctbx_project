@@ -1179,13 +1179,27 @@ class scope_extract(object):
     object.__setattr__(self, "__phil_parent__", parent)
     object.__setattr__(self, "__phil_call__", call)
 
-  def __phil_path__(self):
+  def __phil_path__(self, object_name=None):
     if (   self.__phil_parent__ is None
         or self.__phil_parent__.__phil_name__ is None
         or self.__phil_parent__.__phil_name__ == ""):
-      return self.__phil_name__
-    return ".".join([self.__phil_parent__.__phil_path__(),
-                     self.__phil_name__])
+      if (object_name is None):
+        return self.__phil_name__
+      elif (   self.__phil_name__ is None
+            or self.__phil_name__ == ""):
+        return object_name
+      return self.__phil_name__ + "." + object_name
+    result = [
+      self.__phil_parent__.__phil_path__(),
+      self.__phil_name__]
+    if (object_name is not None):
+      result.append(object_name)
+    return ".".join(result)
+
+  def __phil_path_and_value__(self, object_name):
+    return (
+      self.__phil_path__(object_name=object_name), 
+      getattr(self, object_name))
 
   def __setattr__(self, name, value):
     if (getattr(self, name, scope_extract_attribute_error)

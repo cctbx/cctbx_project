@@ -970,10 +970,17 @@ Output::
 
 This feature is most useful for formatting informative error messages
 without having to hard-wire the fully-qualified parameter names. Use
-``.__phil_path__()`` to ensure that the names are automatically correct
-even if the master file is changed in major ways. -- Note that the
-``.__phil_path__()`` method is available only for extracted scopes, not
-for extracted definitions (this would be very cumbersome to implement).
+``.__phil_path__()`` to ensure that the names are automatically
+correct even if the master file is changed in major ways. Note that the
+``.__phil_path__()`` method is available only for extracted scopes,
+not for extracted definitions since it would be very cumbersome to
+implement. However, the fully-qualified name of a definition can
+be obtained via ``.__phil_path__(object_name="max_iterations")``;
+usually the ``object_name`` is readily available in the contexts in
+which the fully-qualified name is needed. There is also
+``.__phil_path_and_value__(object_name)`` which returns a 2-tuple
+of the fully-qualified path and the extracted value, ready to
+be used for formatting error messages.
 
 The next important feature is a safety guard: assignment to a
 non-existing attribute leads to an exception. For example,
