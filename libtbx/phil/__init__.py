@@ -1198,7 +1198,7 @@ class scope_extract(object):
 
   def __phil_path_and_value__(self, object_name):
     return (
-      self.__phil_path__(object_name=object_name), 
+      self.__phil_path__(object_name=object_name),
       getattr(self, object_name))
 
   def __setattr__(self, name, value):
