@@ -126,6 +126,20 @@ namespace cctbx { namespace sgtbx {
         return result;
       }
 
+      fractional<FloatType>
+      all_shifts(af::small<FloatType, 3> const& independent_shifts) const
+      {
+        fractional<FloatType> result(0,0,0);
+        for(std::size_t i=0;i<independent_shifts.size();i++) {
+          result[independent_indices[i]] = independent_shifts[i];
+        }
+        scitbx::matrix::row_echelon::back_substitution_float(
+          row_echelon_form(),
+          static_cast<FloatType *>(0),
+          result.begin());
+        return result;
+      }
+
     protected:
       void
       initialize_gradient_sum_matrix() const

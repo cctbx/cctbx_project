@@ -1491,6 +1491,7 @@ def exercise_site_symmetry():
   ip = sc.independent_params(all_params=(7,8,0.123))
   assert approx_equal(ip, [0.123])
   ap = sc.all_params(independent_params=ip)
+  assert sc.all_shifts([0.128]) == (0, 0, 0.128)
   assert approx_equal(ap, [1.0,-2.0,0.123])
   assert sc.gradient_sum_matrix().focus() == (1,3)
   assert approx_equal(sc.gradient_sum_matrix(), [0,0,1])
@@ -1540,6 +1541,17 @@ def exercise_site_symmetry():
   t.process(insert_at_index=6, site_symmetry_ops=s1)
   assert list(t.indices()) == [0,1,0,2,1,2,0]
   assert list(t.special_position_indices()) == [1,3,4,5]
+  #
+  u = uctbx.unit_cell((3,4,5,80,100,110))
+  g = sgtbx.space_group("-P")
+  site_c = site_symmetry(u, g, (0, 1, 0.5)).site_constraints()
+  assert site_c.all_shifts(()) == (0, 0, 0)
+  #
+  u = uctbx.unit_cell((2, 2, 2, 80, 80, 80))
+  g = sgtbx.space_group("R 3 (-y+z, x+z, -x+y+z)")
+  site_c = site_symmetry(u, g, (0.1, 0.1, 0.1)).site_constraints()
+  assert site_c.all_shifts((0.128,)) == (0.128, 0.128, 0.128)
+
 
 def exercise_wyckoff():
   space_group_type = sgtbx.space_group_type
