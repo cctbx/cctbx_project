@@ -114,10 +114,8 @@ if (not env_etc.no_boost_python):
     source="tests/tst_optional_copy.cpp")
 
   import os, os.path
-  env = env_base.Clone(
-    LIBS=env_etc.libs_python,
-    LIBPATH=env_etc.libpath_python,
-  )
+  env = env_base.Clone(LIBS=env_etc.libs_python)
+  env.Append(LIBPATH=env_etc.libpath_python)
   env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
   env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_SOURCE"])
   if (libtbx.env.build_options.boost_python_bool_int_strict):
