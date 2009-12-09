@@ -1,6 +1,6 @@
 import os, os.path
 Import("env_base", "env_etc")
-env = env_base.Clone(LIBPATH=["#lib"])
+env = env_base.Clone()
 env_etc.enable_more_warnings(env=env)
 env_etc.include_registry.append(
   env=env,
