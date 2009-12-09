@@ -305,6 +305,9 @@ map_coeff_labels {
 map_resolution_factor = 1/3
   .type = float
 
+output_file = None
+  .type = str
+
 real_space_target_weight = 1
   .type = float
 real_space_gradients_delta_resolution_factor = 1/3
@@ -511,11 +514,14 @@ def run(args):
     print "real+geo target final: %.6g" % refined.f_final
     print
   #
-  file_name = op.basename(input_pdb_file_name)
-  if (   file_name.endswith(".pdb")
-      or file_name.endswith(".ent")):
-    file_name = file_name[:-4]
-  file_name += "_lockit.pdb"
+  if (work_params.output_file is not None):
+    file_name=work_params.output_file
+  else:
+    file_name = op.basename(input_pdb_file_name)
+    if (   file_name.endswith(".pdb")
+        or file_name.endswith(".ent")):
+      file_name = file_name[:-4]
+    file_name += "_lockit.pdb"
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   print "Writing file: %s" % show_string(file_name)
   sys.stdout.flush()
