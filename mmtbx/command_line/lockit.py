@@ -310,7 +310,7 @@ map_resolution_factor = 1/3
 output_file = None
   .type = str
 
-real_space_target_weight = 1
+real_space_target_weight = 10
   .type = float
 real_space_gradients_delta_resolution_factor = 1/3
   .type = float
@@ -368,6 +368,11 @@ def extract_map_coeffs(params, miller_arrays):
     if (phases is None):
       raise_sorry(
         msg_intro="Cannot find map coefficient phases:", name="phases")
+    if (phases.is_hendrickson_lattman_array()
+          and phases.data().all_eq((0,0,0,0))):
+      raise Sorry(
+        "All Hendrickson-Lattman coefficient zero:\n"
+        "  %s = %s" % params.__phil_path_and_value__(object_name="phases"))
     cf, cp = f.common_sets(other=phases)
     if (cf.indices().size() != f.indices().size()):
       raise Sorry(
