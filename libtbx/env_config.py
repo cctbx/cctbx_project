@@ -1176,19 +1176,10 @@ selfx:
             target_file=target_file)
 
   def write_python_and_show_path_duplicates(self):
-    module_names = set()
-    have_ipython = False
-    for file_name in os.listdir(self.bin_path):
-      if (file_name.startswith(".")): continue
-      file_name_lower = file_name.lower()
-      if (file_name_lower.startswith("libtbx.")):
-        if (   file_name_lower == "libtbx.ipython"
-            or file_name_lower.startswith("libtbx.ipython.")):
-          have_ipython = True
-        continue
-      if (   file_name_lower == "python"
-          or file_name_lower.startswith("python.")): continue
-      module_names.add(file_name.split(".")[0])
+    module_names = []
+    for module in self.module_list:
+      if (len(module.command_line_directory_paths()) != 0):
+        module_names.append(module.name)
     for module_name in module_names:
       self._write_dispatcher_in_bin(
         source_file=self.python_exe,
@@ -1200,8 +1191,15 @@ selfx:
         self._write_dispatcher_in_bin(
           source_file=pythonw_exe,
           target_file=module_name+".pythonw")
+    def have_ipython():
+      for file_name in os.listdir(self.bin_path):
+        file_name_lower = file_name.lower()
+        if (file_name_lower.startswith("libtbx.")):
+          if (   file_name_lower == "libtbx.ipython"
+              or file_name_lower.startswith("libtbx.ipython.")):
+            return
     commands = ["show_build_path", "show_dist_paths"]
-    if (have_ipython): commands.append("ipython")
+    if (have_ipython()): commands.append("ipython")
     for command in commands:
       source_file = self.under_dist(
         "libtbx", "command_line/"+command+".py")
@@ -1497,34 +1495,38 @@ class module:
       source_file=source_file,
       target_file=target_file)
 
-  def process_command_line_directories(self):
+  def command_line_directory_paths(self):
+    result = []
     for dist_path in self.dist_paths_active():
-      for source_dir,suppress_warning in ([
-            ("command_line", False),
-            (self.name+"/command_line", False)]):
-        source_dir = libtbx.path.norm_join(dist_path, source_dir)
-        if (not os.path.isdir(source_dir)): continue
-        print 'Processing: "%s"' % source_dir
-        def is_py_sh(file_name):
-          return file_name.endswith(".sh") \
-              or file_name.endswith(".py")
-        nodes = os.listdir(source_dir)
-        py_sh_dict = {}
-        for file_name in nodes:
-          if (is_py_sh(file_name)):
-            py_sh_dict.setdefault(file_name[:-3], []).append(file_name[-2:])
-        for file_name in nodes:
-          if (    is_py_sh(file_name)
-              and len(py_sh_dict[file_name[:-3]]) == 2):
-            if (os.name == "nt"): skip = ".sh"
-            else:                 skip = ".py"
-            if (file_name.endswith(skip)):
-              continue
-          self.write_dispatcher(
-            source_dir=source_dir,
-            file_name=file_name,
-            suppress_warning=suppress_warning,
-            scan_for_libtbx_set_dispatcher_name=True)
+      for sub_dir in ["command_line", self.name+"/command_line"]:
+        path = libtbx.path.norm_join(dist_path, sub_dir)
+        if (os.path.isdir(path)):
+          result.append(path)
+    return result
+
+  def process_command_line_directories(self):
+    for source_dir in self.command_line_directory_paths():
+      print 'Processing: "%s"' % source_dir
+      def is_py_sh(file_name):
+        return file_name.endswith(".sh") \
+            or file_name.endswith(".py")
+      nodes = os.listdir(source_dir)
+      py_sh_dict = {}
+      for file_name in nodes:
+        if (is_py_sh(file_name)):
+          py_sh_dict.setdefault(file_name[:-3], []).append(file_name[-2:])
+      for file_name in nodes:
+        if (    is_py_sh(file_name)
+            and len(py_sh_dict[file_name[:-3]]) == 2):
+          if (os.name == "nt"): skip = ".sh"
+          else:                 skip = ".py"
+          if (file_name.endswith(skip)):
+            continue
+        self.write_dispatcher(
+          source_dir=source_dir,
+          file_name=file_name,
+          suppress_warning=False,
+          scan_for_libtbx_set_dispatcher_name=True)
 
   def process_python_command_line_scripts(self,
         source_dir,
