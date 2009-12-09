@@ -2334,21 +2334,42 @@ class build_all_chain_proxies(object):
       if (n_unique_models != 1):
         print >> log, "  Number of unique models:", n_unique_models
       self.geometry_proxy_registries.report(log=log, prefix="  ")
-      self.scattering_type_registry.report(
-        pdb_atoms=self.pdb_atoms, log=log, prefix="  ")
-      self.nonbonded_energy_type_registry.report(
-        pdb_atoms=self.pdb_atoms, log=log, prefix="  ")
+      self.fatal_problems_report(prefix="  ", log=log)
     self.time_building_chain_proxies = timer.elapsed()
 
-  def fatal_problems_message(self):
+  def fatal_problems_report(self, prefix="", log=None):
+    self.scattering_type_registry.report(
+      pdb_atoms=self.pdb_atoms, log=log, prefix=prefix)
+    self.nonbonded_energy_type_registry.report(
+      pdb_atoms=self.pdb_atoms, log=log, prefix=prefix)
+
+  def fatal_problems_message(self,
+        ignore_unknown_scattering_types=False,
+        ignore_unknown_nonbonded_energy_types=False):
     result = ["Fatal problems interpreting PDB file:"]
-    for reg in [self.scattering_type_registry,
-                self.nonbonded_energy_type_registry]:
-      n_unknown = reg.n_unknown_type_symbols()
-      if (n_unknown != 0):
-        result.append("  %s: %d" % (reg.report_unknown_message(), n_unknown))
+    for reg,ignore in [
+          (self.scattering_type_registry,
+            ignore_unknown_scattering_types),
+          (self.nonbonded_energy_type_registry,
+             ignore_unknown_nonbonded_energy_types)]:
+      if (not ignore):
+        n_unknown = reg.n_unknown_type_symbols()
+        if (n_unknown != 0):
+          result.append("%s: %d" % (reg.report_unknown_message(), n_unknown))
     if (len(result) == 1): return None
-    return "\n".join(result)
+    result.extend([
+      "  Please edit the PDB file to resolve the problems and/or supply a",
+      "  CIF file with matching restraint definitions, along with",
+      "  apply_cif_modification and apply_cif_link parameter definitions",
+      "  if necessary."])
+    if (self.scattering_type_registry.n_unknown_type_symbols() != 0):
+      result.extend([
+        "  It is best practice to define the element names in",
+        "  columns 77-78 of the PDB file."])
+    result.extend([
+      "  Also note that phenix.ready_set and phenix.elbow are available",
+      "  for creating restraint definitions (CIF files)."])
+    return "\n  ".join(result)
 
   def site_symmetry_table(self):
     if (self._site_symmetry_table is None):

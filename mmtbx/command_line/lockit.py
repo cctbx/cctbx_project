@@ -293,6 +293,8 @@ def get_master_phil():
     input_string="""\
 atom_selection = None
   .type = str
+strict_processing = True
+  .type = bool
 
 map_coeff_labels {
   f = 2FOFCWT,PH2FOFCWT
@@ -422,9 +424,13 @@ def run(args):
     params=work_params.pdb_interpretation,
     file_name=file_obj.file_name,
     pdb_inp=file_obj.file_content,
-    strict_conflict_handling=True,
+    strict_conflict_handling=work_params.strict_processing,
     substitute_non_crystallographic_unit_cell_if_necessary=True,
     log=sys.stdout)
+  if (work_params.strict_processing):
+    msg = processed_pdb_file.all_chain_proxies.fatal_problems_message()
+    if (msg is not None):
+      raise Sorry(msg)
   #
   grm = processed_pdb_file.geometry_restraints_manager(
     params_edits=work_params.geometry_restraints.edits,

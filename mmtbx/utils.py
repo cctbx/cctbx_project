@@ -938,32 +938,14 @@ class process_pdb_file_srv(object):
       crystal_symmetry         = self.crystal_symmetry,
       force_symmetry           = True,
       log                      = self.log)
-    if(self.log):
-      print >> self.log
-    msg = processed_pdb_file.all_chain_proxies.fatal_problems_message()
-    if(msg is not None and self.stop_for_unknowns):
-       msg = "\n  ".join([msg,
-         "Please edit the PDB file to resolve the problems and/or supply a",
-         "CIF file with matching restraint definitions, along with",
-         "apply_cif_modification and apply_cif_link parameter definitions",
-         "if necessary (see phenix.refine documentation).",
-         "Also note that phenix.elbow is available to create restraint",
-         "definitions for unknown ligands."])
-       raise Sorry(msg)
-    # check for unknown scattering types and say sorry if there are any
-    scattering_types = processed_pdb_file.xray_structure().scatterers().\
-      extract_scattering_types()
-    unk_scat_type_atoms_sel = (scattering_types == '?').iselection()
-    if(len(unk_scat_type_atoms_sel) > 0):
-      bad_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms.select(
-        unk_scat_type_atoms_sel)
-      msg = "\n  ".join([
-        "Bad input PDB file: there is a number of atoms with unknown scattering type.",
-        "To resolve the problem: make sure that all atoms in input PDB file have proper",
-        "element name in column 77-78. Problem lines in input PDB file:\n"
-        ]+[atom.format_atom_record() for atom in bad_atoms])
+    processed_pdb_file.xray_structure(show_summary=True)
+    msg = processed_pdb_file.all_chain_proxies.fatal_problems_message(
+      ignore_unknown_scattering_types=False,
+      ignore_unknown_nonbonded_energy_types=not self.stop_for_unknowns)
+    if (msg is not None):
       raise Sorry(msg)
-    #
+    if (self.log):
+      print >> self.log
     return processed_pdb_file, pdb_inp
 
   def _process_monomer_cif_files(self):
