@@ -48,6 +48,8 @@ namespace {
           arg("all_params")))
         .def("all_params", &w_t::all_params, (
           arg("independent_params")))
+        .def("all_shifts", &w_t::all_shifts, (
+          arg("independent_shifts")))
         .def("gradient_sum_matrix", gradient_sum_matrix_as_versa)
         .def("independent_gradients",
              (af::small<double, 3> (w_t::*)(af::const_ref<double> const&) const)
