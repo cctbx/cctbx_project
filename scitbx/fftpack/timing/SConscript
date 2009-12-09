@@ -1,14 +1,12 @@
 import os, os.path
 Import("env_base", "env_etc")
-env = env_base.Clone(
-  LIBPATH=["#lib"],
-  LIBS=["omptbx"])
+env = env_base.Clone(LIBPATH=["#lib"])
 env_etc.enable_more_warnings(env=env)
 env_etc.include_registry.append(
   env=env,
   paths=env_etc.scitbx_common_includes)
 envlm = env.Clone()
-envlm.Append(LIBS=[env_etc.libm])
+envlm.Append(LIBS=["omptbx", env_etc.libm])
 envlm.Program(target="test0", source="test0.cpp")
 envlm.Program(target="fftpack_timer", source="fftpack_timer.cpp")
 fftw_build = os.environ.get("FFTW_BUILD")

@@ -50,9 +50,9 @@ if (not env_etc.no_boost_python):
   env_no_includes_boost_python_ext = env_base.Clone(
     SHLINKFLAGS=env_etc.shlinkflags_bpl,
     SHLIBPREFIX="",
-    LIBPATH=["#lib"] + env_etc.libpath_python,
-    LIBS=["boost_python"] + env_etc.libs_python + env_etc.libm,
-  )
+    LIBS=["boost_python"] + env_etc.libs_python + env_etc.libm)
+  env_no_includes_boost_python_ext.Append(
+    LIBPATH=env_etc.libpath_python)
   env_no_includes_boost_python_ext.Append(
     SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
   env_no_includes_boost_python_ext.Replace(

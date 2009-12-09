@@ -14,10 +14,7 @@ env_etc.rstbx_common_includes = [
   env_etc.boost_include,
 ]
 
-env = env_base.Clone(
-  SHLINKFLAGS=env_etc.shlinkflags,
-  LIBPATH="#lib",
-)
+env = env_base.Clone(SHLINKFLAGS=env_etc.shlinkflags)
 env.Append(LIBS=["cctbx"] + env_etc.libm)
 env_etc.include_registry.append(
   env=env,

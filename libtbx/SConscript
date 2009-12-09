@@ -571,7 +571,8 @@ else:
     flg = opts.env_cppflags.split(" ")
     env_etc.ccflags_base.extend(flg)
 
-env_base["SHOBJSUFFIX"] = env_base["OBJSUFFIX"]
+env_base.Replace(LIBPATH=["#lib"])
+env_base.Replace(SHOBJSUFFIX=env_base["OBJSUFFIX"])
 
 # XXX backward compatibility 2009-08-21
 # future: remove ccflags_base, cxxflags_base from env_etc
