@@ -3,7 +3,6 @@ import os
 
 Import("env_base", "env_etc")
 env = env_base.Clone()
-env.Append(LIBPATH=["#lib"])
 env.Prepend(LIBS=["cctbx_sgtbx_asu", "cctbx"])
 env.Append(LIBS=env_etc.libm)
 env_etc.include_registry.append(

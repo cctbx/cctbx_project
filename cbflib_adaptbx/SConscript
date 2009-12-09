@@ -75,7 +75,6 @@ env_standalone = env.Clone(
   LIBS = [env_etc.libm,],CPPPATH=env_etc.cbflib_common_includes
 )
 env_standalone.Prepend(LIBS=["cbf",])
-env_standalone.Append(LIBPATH=["#lib"])
 
 for source in ["detectors/tst_memory",]:
   target = "cbflib."+os.path.basename(source)

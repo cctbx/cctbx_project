@@ -49,9 +49,7 @@ builder(target='#lib/clipper',
 # fftmap_sparse.cpp
 # fftmap.cpp
 
-env_exe = env.Clone(
-  LIBPATH=["#lib"],
-)
+env_exe = env.Clone()
 env_exe.Prepend(LIBS=["clipper"])
 
 exe = env_exe.Program(

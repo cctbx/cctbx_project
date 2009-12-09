@@ -34,7 +34,6 @@ env_etc.include_registry.append(
 envlm = env.Clone(
   LIBS=["ann","omptbx"]+env_etc.libm
 )
-envlm.Append(LIBPATH=["#lib"])
 
 boost_libs = "#"+os.path.join(os.path.basename(env_etc.boost_dist), "libs")
 lib_spotfinder_sources = [
