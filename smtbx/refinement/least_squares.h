@@ -272,7 +272,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             &site_c = op.site_constraints();
             int n = site_c.n_independent_params();
             af::small<scalar_t, 3> shift(g, g+n);
-            sc.site += site_c.all_params(shift);
+            sc.site += site_c.all_shifts(shift);
             g += n;
           }
         }
