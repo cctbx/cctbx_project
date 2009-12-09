@@ -1178,7 +1178,8 @@ selfx:
   def write_python_and_show_path_duplicates(self):
     module_names = []
     for module in self.module_list:
-      if (len(module.command_line_directory_paths()) != 0):
+      if (   len(module.command_line_directory_paths()) != 0
+          or len(module.assemble_pythonpath()) != 0):
         module_names.append(module.name)
     for module_name in module_names:
       self._write_dispatcher_in_bin(
