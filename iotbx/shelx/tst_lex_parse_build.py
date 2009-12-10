@@ -143,7 +143,12 @@ def exercise_xray_structure_parsing():
     assert c3.flags.use_u_iso() and not c3.flags.use_u_aniso()
     h3 = scatterer_labelled['H3']
     assert approx_equal(h3.u_iso, 0.06952, eps=1e-5)
-
+    h9a, h9b, h9c = [ scatterer_labelled[lbl]
+                      for lbl in ('H9A', 'H9B', 'H9C') ]
+    assert [ h.flags.use_u_iso() for h in (h9a, h9b, h9c) ]
+    assert h9a.u_iso == h9b.u_iso == h9c.u_iso
+    c9 = scatterer_labelled['C9']
+    assert approx_equal(h9a.u_iso, 1.5*c9.u_iso_or_equiv(unit_cell))
     if not set_grad_flags:
       for scatt in scatterers:
         f = scatt.flags
