@@ -1,6 +1,6 @@
 from scitbx.linalg import eigensystem, svd
 from scitbx import matrix
-from cctbx import sgtbx, crystal, xray, miller
+from cctbx import sgtbx, crystal, xray, miller, adptbx
 from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
 from smtbx.refinement import least_squares
@@ -10,22 +10,31 @@ import libtbx.utils
 from stdlib import math
 import sys
 
-class site_refinement_test(object):
 
-  debug = 1
+class refinement_test(object):
+
   ls_cycle_repeats = 1
 
   def run(self):
-    self.exercise_floating_origin_restraints()
     if self.ls_cycle_repeats == 1:
       self.exercise_ls_cycles()
     else:
-      print self.hall
+      print "%s in %s" % (self.purpose, self.hall)
       for n in xrange(self.ls_cycle_repeats):
         self.exercise_ls_cycles()
         print '.',
         sys.stdout.flush()
       print
+
+
+class site_refinement_test(refinement_test):
+
+  debug = 1
+  purpose = "site refinement"
+
+  def run(self):
+    self.exercise_floating_origin_restraints()
+    refinement_test.run(self)
 
   def __init__(self):
     sgi = sgtbx.space_group_info("Hall: %s" % self.hall)
@@ -196,6 +205,57 @@ class site_refinement_test(object):
       assert approx_equal(match.calculate_shortest_dist(pair), 0, eps=1e-4)
 
 
+class adp_refinement_test(refinement_test):
+
+  random_u_cart_scale = 0.2
+  purpose = "ADP refinement"
+
+  def __init__(self):
+    sgi = sgtbx.space_group_info("Hall: %s" % self.hall)
+    cs = sgi.any_compatible_crystal_symmetry(volume=1000)
+    xs = xray.structure(crystal.special_position_settings(cs))
+    for i, sc in enumerate(self.scatterers()):
+      sc.flags.set_use_u_iso(False).set_use_u_aniso(True)\
+              .set_grad_u_aniso(True)
+      xs.add_scatterer(sc)
+      site_symm = xs.site_symmetry_table().get(i)
+      u_cart = adptbx.random_u_cart(u_scale=self.random_u_cart_scale)
+      u_star = adptbx.u_cart_as_u_star(cs.unit_cell(), u_cart)
+      xs.scatterers()[-1].u_star = site_symm.average_u_star(u_star)
+    self.xray_structure = xs
+
+    mi = cs.build_miller_set(d_min=0.5, anomalous_flag=False)
+    ma = mi.structure_factors_from_scatterers(xs, algorithm="direct").f_calc()
+    self.fo_sq = ma.norm().customized_copy(
+      sigmas=flex.double(ma.size(), 1.))
+
+  def exercise_ls_cycles(self):
+    xs = self.xray_structure.deep_copy_scatterers()
+    normal_eqns = least_squares.normal_equations(
+      xs, self.fo_sq, weighting_scheme=least_squares.unit_weighting())
+    xs.shake_adp()
+
+    objectives = []
+    scales = []
+    fo_sq_max = flex.max(self.fo_sq.data())
+    for i in xrange(5):
+      normal_eqns.build_up()
+      objectives.append(normal_eqns.objective)
+      scales.append(normal_eqns.scale_factor)
+      gradient_relative_norm = normal_eqns.gradient.norm()/fo_sq_max
+      normal_eqns.solve_and_apply_shifts()
+      shifts = normal_eqns.shifts
+
+    assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-4)
+    assert approx_equal(normal_eqns.objective, 0)
+    # skip next-to-last one to allow for no progress and rounding error
+    assert objectives[0] >= objectives[1] >= objectives[3], objectives
+    assert approx_equal(gradient_relative_norm, 0, eps=1e-6)
+
+    for sc0, sc1 in zip(self.xray_structure.scatterers(), xs.scatterers()):
+      assert approx_equal(sc0.u_star, sc1.u_star)
+
+
 class p1_test(object):
 
   hall = "P 1"
@@ -255,7 +315,21 @@ class site_refinement_in_pm_test(pm_test, site_refinement_test): pass
 class site_refinement_in_r3_test(r3_test, site_refinement_test): pass
 
 
+class adp_refinement_in_p1_test(p1_test, adp_refinement_test): pass
+
+class adp_refinement_in_p2_test(p2_test, adp_refinement_test): pass
+
+class adp_refinement_in_pm_test(pm_test, adp_refinement_test): pass
+
+class adp_refinement_in_r3_test(r3_test, adp_refinement_test): pass
+
+
 def exercise_normal_equations():
+  adp_refinement_in_p1_test().run()
+  adp_refinement_in_pm_test().run()
+  adp_refinement_in_p2_test().run()
+  adp_refinement_in_r3_test().run()
+
   site_refinement_in_p1_test().run()
   site_refinement_in_pm_test().run()
   site_refinement_in_p2_test().run()
@@ -265,7 +339,7 @@ def run():
   libtbx.utils.show_times_at_exit()
   import sys
   if sys.argv[1:]:
-    test.ls_cycle_repeats = int(sys.argv[1])
+    refinement_test.ls_cycle_repeats = int(sys.argv[1])
   exercise_normal_equations()
 
 if __name__ == '__main__':
