@@ -195,7 +195,9 @@ class atom_parser(parser, variable_decoder):
       occupancy       = occ,
       u               = u,
       scattering_type = scattering_type)
-    if not isotropic or behaviours[-1] != self.p_times_previous_u_eq:
+    if (not isotropic
+        or not isinstance(behaviours[-1], tuple)
+        or behaviours[-1][0] != self.p_times_previous_u_eq):
       self.builder.scatterer_to_bind_u_eq_to = (scatterer, scatterer_index)
     return scatterer, behaviours
 
