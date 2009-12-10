@@ -320,6 +320,22 @@ coordinate_refinement {
     .type = bool
   atom_selection = Auto
     .type = str
+  real_space_target_weights {
+    first_sample = 10
+      .type = float
+    sampling_step = 30
+      .type = float
+    number_of_samples = 10
+      .type = int
+    bond_rmsd_target = 0.03
+      .type = float
+    worst_acceptable_bond_rmsd {
+      pool_size = 10
+        .type = int
+      max_pool_average = 0.1
+        .type = float
+    }
+  }
   lbfgs_max_iterations = 500
     .type = int
 }
@@ -493,9 +509,10 @@ def run(args):
   #
   if (work_params.coordinate_refinement.run != 0):
     pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
-    sites_cart = pdb_atoms.extract_xyz()
+    sites_cart_start = pdb_atoms.extract_xyz()
+    site_labels = [atom.id_str() for atom in pdb_atoms]
     print "Before coordinate refinement:"
-    grm.energies_sites(sites_cart=sites_cart).show()
+    grm.energies_sites(sites_cart=sites_cart_start).show()
     print
     sys.stdout.flush()
     atom_selection_bool = atom_selection_bool(
@@ -505,25 +522,69 @@ def run(args):
       iselection_refine = None
     else:
       iselection_refine = atom_selection_bool.iselection()
-    refined = maptbx.real_space_refinement_simple.lbfgs(
-      sites_cart=sites_cart,
-      density_map=density_map,
-      iselection_refine=iselection_refine,
-      geometry_restraints_manager=grm,
-      real_space_target_weight=work_params.real_space_target_weight,
-      real_space_gradients_delta=real_space_gradients_delta,
-      lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=work_params.coordinate_refinement
-          .lbfgs_max_iterations))
-    print "After coordinate refinement:"
-    grm.energies_sites(sites_cart=refined.sites_cart).show()
-    pdb_atoms.set_xyz(new_xyz=refined.sites_cart)
-    print
-    print "number_of_function_evaluations:", \
-      refined.number_of_function_evaluations
-    print "real+geo target start: %.6g" % refined.f_start
-    print "real+geo target final: %.6g" % refined.f_final
-    print
+    rstw_params = work_params.coordinate_refinement.real_space_target_weights
+    if (rstw_params.number_of_samples is None):
+      rstw_list = [work_params.real_space_target_weight]
+    else:
+      rstw_list = [rstw_params.first_sample + i * rstw_params.sampling_step
+        for i in xrange(rstw_params.number_of_samples)]
+    best_rstw = None
+    best_refined = None
+    best_acceptable = None
+    best_rmsd_diff = None
+    bond_rmsd_list = []
+    for rstw in rstw_list:
+      refined = maptbx.real_space_refinement_simple.lbfgs(
+        sites_cart=sites_cart_start,
+        density_map=density_map,
+        iselection_refine=iselection_refine,
+        geometry_restraints_manager=grm,
+        real_space_target_weight=rstw,
+        real_space_gradients_delta=real_space_gradients_delta,
+        lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+          max_iterations=work_params.coordinate_refinement
+            .lbfgs_max_iterations))
+      print "After coordinate refinement" \
+        " with real-space target weight %.1f:" % rstw
+      grm.energies_sites(sites_cart=refined.sites_cart).show()
+      bond_proxies = grm.pair_proxies().bond_proxies
+      bond_proxies.show_sorted(
+        by_value="residual",
+        sites_cart=refined.sites_cart,
+        site_labels=site_labels,
+        prefix="  ",
+        max_items=3)
+      print
+      print "  number_of_function_evaluations:", \
+        refined.number_of_function_evaluations
+      print "  real+geo target start: %.6g" % refined.f_start
+      print "  real+geo target final: %.6g" % refined.f_final
+      deltas = bond_proxies.deltas(sites_cart=refined.sites_cart)
+      deltas_abs = flex.abs(deltas)
+      deltas_abs_sorted = deltas_abs.select(
+        flex.sort_permutation(deltas_abs), reverse=True)
+      wabr_params = rstw_params.worst_acceptable_bond_rmsd
+      acceptable = (
+        flex.mean(deltas_abs_sorted[:wabr_params.pool_size])
+          < wabr_params.max_pool_average)
+      bond_rmsd = flex.mean_sq(deltas)**0.5
+      bond_rmsd_list.append(bond_rmsd)
+      print "  Bond RMSD: %.3f" % bond_rmsd
+      rmsd_diff = abs(rstw_params.bond_rmsd_target - bond_rmsd)
+      if (   best_rmsd_diff is None
+          or best_rmsd_diff > rmsd_diff
+            and (acceptable or not best_acceptable)):
+        best_rstw, best_refined, best_acceptable, best_rmsd_diff = \
+          rstw, refined, acceptable, rmsd_diff
+      print
+    if (best_refined is not None):
+      pdb_atoms.set_xyz(new_xyz=best_refined.sites_cart)
+      print "Table of real-space target weights vs. bond RMSD:"
+      print "  weight   RMSD"
+      for w,d in zip(rstw_list, bond_rmsd_list):
+        print "  %6.1f  %5.3f" % (w,d)
+      print "Best real-space target weight: %.1f" % best_rstw
+      print
   #
   if (work_params.output_file is not None):
     file_name=work_params.output_file
