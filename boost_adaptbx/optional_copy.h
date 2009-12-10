@@ -18,7 +18,7 @@ namespace boost_adaptbx {
 
       ~optional_copy()
       {
-        if (ptr_ != 0) delete ptr_;
+        delete ptr_;
       }
 
       optional_copy(optional_copy const& other)
@@ -29,7 +29,7 @@ namespace boost_adaptbx {
       optional_copy&
       operator=(optional_copy const& other)
       {
-        if (ptr_ != 0) delete ptr_;
+        delete ptr_;
         ptr_ = (other.ptr_ == 0 ? 0 : new ValueType(*(other.ptr_)));
         return *this;
       }
@@ -43,7 +43,7 @@ namespace boost_adaptbx {
       optional_copy&
       operator=(ValueType const& value)
       {
-        if (ptr_ != 0) delete ptr_;
+        delete ptr_;
         ptr_ = new ValueType(value);
         return *this;
       }
@@ -51,7 +51,7 @@ namespace boost_adaptbx {
       void
       release()
       {
-        if (ptr_ != 0) delete ptr_;
+        delete ptr_;
         ptr_ = 0;
       }
 
