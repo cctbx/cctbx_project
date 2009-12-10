@@ -232,9 +232,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
           *g++ = *xg++;
         }
         if (sc.flags.use_u_aniso() && sc.flags.grad_u_aniso()) {
-          scitbx::sym_mat3<scalar_t> cart_grad(xg);
+          scitbx::sym_mat3<scalar_t>
+          frac_grad(xg),
+          cart_grad = adptbx::grad_u_star_as_u_cart(unit_cell, frac_grad);
           if (op.is_point_group_1()) {
-            g = std::copy(xg, xg+6, g);
+            g = std::copy(cart_grad.begin(), cart_grad.end(), g);
           }
           else {
             const sgtbx::tensor_rank_2::cartesian_constraints<scalar_t>
@@ -281,8 +283,10 @@ namespace smtbx { namespace refinement { namespace least_squares {
         }
         if (sc.flags.use_u_aniso() && sc.flags.grad_u_aniso()) {
           if (op.is_point_group_1()) {
-            scitbx::sym_mat3<scalar_t> delta_u_cart(g);
-            sc.u_star += adptbx::u_cart_as_u_star(unit_cell, delta_u_cart);
+            scitbx::sym_mat3<scalar_t>
+            delta_u_cart(g),
+            delta_u_star = adptbx::u_cart_as_u_star(unit_cell, delta_u_cart);
+            sc.u_star += delta_u_star;
             g += 6;
           }
           else {
