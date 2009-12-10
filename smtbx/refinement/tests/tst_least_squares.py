@@ -10,7 +10,7 @@ import libtbx.utils
 from stdlib import math
 import sys
 
-class test_case(object):
+class site_refinement_test(object):
 
   debug = 1
   ls_cycle_repeats = 1
@@ -32,6 +32,8 @@ class test_case(object):
     cs = sgi.any_compatible_crystal_symmetry(volume=1000)
     xs = xray.structure(crystal.special_position_settings(cs))
     for sc in self.scatterers():
+      sc.flags.set_use_u_iso(False).set_use_u_aniso(False)\
+              .set_grad_site(True)
       xs.add_scatterer(sc)
     self.reference_xs = xs.as_emma_model()
     self.xray_structure = xs
@@ -50,8 +52,9 @@ class test_case(object):
       weighting_scheme=least_squares.unit_weighting(),
       floating_origin_restraint_relative_weight=0)
     normal_eqns.build_up()
-    assert normal_eqns.reduced.right_hand_side.all_approx_equal(0, eps_zero_rhs),\
-            list(normal_eqns.reduced.right_hand_side)
+    assert normal_eqns.reduced.right_hand_side.all_approx_equal(
+      0, eps_zero_rhs),\
+           list(normal_eqns.reduced.right_hand_side)
     unrestrained_normal_matrix = normal_eqns.reduced.normal_matrix_packed_u
     assert len(unrestrained_normal_matrix) == n*(n+1)//2
     ev = eigensystem.real_symmetric(
@@ -193,7 +196,7 @@ class test_case(object):
       assert approx_equal(match.calculate_shortest_dist(pair), 0, eps=1e-4)
 
 
-class p1_test_case(test_case):
+class p1_test(object):
 
   hall = "P 1"
   n_independent_params = 9
@@ -202,35 +205,23 @@ class p1_test_case(test_case):
                                     (0,0,1)*3 ]
 
   def scatterers(self):
-    sc = xray.scatterer("C1", (0.1, 0.2, 0.3))
-    sc.flags.set_grad_site(True)
-    yield sc
-    sc = xray.scatterer("C2", (0.4, 0.7, 0.8))
-    sc.flags.set_grad_site(True)
-    yield sc
-    sc = xray.scatterer("C3", (-0.1, -0.8, 0.6))
-    sc.flags.set_grad_site(True)
-    yield sc
+    yield xray.scatterer("C1", (0.1, 0.2, 0.3))
+    yield xray.scatterer("C2", (0.4, 0.7, 0.8))
+    yield xray.scatterer("C3", (-0.1, -0.8, 0.6))
 
 
-class p2_test_case(test_case):
+class p2_test(object):
 
   hall = "P 2x"
   n_independent_params = 7
   continuous_origin_shift_basis = [ (1,0,0, 1, 1,0,0) ]
 
   def scatterers(self):
-    sc = xray.scatterer("C1", (0.1, 0.2, 0.3))
-    sc.flags.set_grad_site(True)
-    yield sc
-    sc = xray.scatterer("C2", (-0.3, 0, 0)) # on 2-axis
-    sc.flags.set_grad_site(True)
-    yield sc
-    sc = xray.scatterer("C3", (0.4, 0.1, -0.1)) # near 2-axis
-    sc.flags.set_grad_site(True)
-    yield sc
+    yield xray.scatterer("C1", (0.1, 0.2, 0.3))
+    yield xray.scatterer("C2", (-0.3, 0, 0)) # on 2-axis
+    yield xray.scatterer("C3", (0.4, 0.1, -0.1)) # near 2-axis
 
-class pm_test_case(test_case):
+class pm_test(object):
 
   hall = "P -2x"
   n_independent_params = 8
@@ -238,47 +229,43 @@ class pm_test_case(test_case):
                                     (0,0,1, 0,1, 0,0,1) ]
 
   def scatterers(self):
-    sc = xray.scatterer("C1", (0.1, 0.2, 0.3)) # near mirror plance
-    sc.flags.set_grad_site(True)
-    yield sc
-    sc = xray.scatterer("C2", (0, -0.3, 0.4)) # on mirror plane
-    sc.flags.set_grad_site(True)
-    yield sc
-    sc = xray.scatterer("C3", (0.7, 0.1, -0.1))
-    sc.flags.set_grad_site(True)
-    yield sc
+    yield xray.scatterer("C1", (0.1, 0.2, 0.3)) # near mirror plance
+    yield xray.scatterer("C2", (0, -0.3, 0.4)) # on mirror plane
+    yield xray.scatterer("C3", (0.7, 0.1, -0.1))
 
 
-class r3_test_case(test_case):
+class r3_test(object):
 
   hall = "R 3 (-y+z, x+z, -x+y+z)"
   n_independent_params = 7
   continuous_origin_shift_basis = [(1,1,1, 1, 1,1,1)]
 
   def scatterers(self):
-    sc = xray.scatterer("C1", (0.1, 0.2, 0.3))
-    sc.flags.set_grad_site(True)
-    yield sc
-    sc = xray.scatterer("C2", (0.4, 0.4, 0.4)) # on 3-axis
-    sc.flags.set_grad_site(True)
-    yield sc
-    sc = xray.scatterer("C3", (0.3, 0.4, 0.4)) # near 3-axis
-    sc.flags.set_grad_site(True)
-    yield sc
+    yield xray.scatterer("C1", (0.1, 0.2, 0.3))
+    yield xray.scatterer("C2", (0.4, 0.4, 0.4)) # on 3-axis
+    yield xray.scatterer("C3", (0.3, 0.4, 0.4)) # near 3-axis
+
+
+class site_refinement_in_p1_test(p1_test, site_refinement_test): pass
+
+class site_refinement_in_p2_test(p2_test, site_refinement_test): pass
+
+class site_refinement_in_pm_test(pm_test, site_refinement_test): pass
+
+class site_refinement_in_r3_test(r3_test, site_refinement_test): pass
 
 
 def exercise_normal_equations():
-  p1_test_case().run()
-  pm_test_case().run()
-  p2_test_case().run()
-  r3_test_case().run()
-
+  site_refinement_in_p1_test().run()
+  site_refinement_in_pm_test().run()
+  site_refinement_in_p2_test().run()
+  site_refinement_in_r3_test().run()
 
 def run():
   libtbx.utils.show_times_at_exit()
   import sys
   if sys.argv[1:]:
-    test_case.ls_cycle_repeats = int(sys.argv[1])
+    test.ls_cycle_repeats = int(sys.argv[1])
   exercise_normal_equations()
 
 if __name__ == '__main__':
