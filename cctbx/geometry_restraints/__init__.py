@@ -366,7 +366,6 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
       low_cutoff = high_cutoff
     return histogram
 
-  # XXX: Nat was here - I need this data for the GUI
   def get_sorted(self,
         by_value,
         sites_cart,
@@ -426,7 +425,6 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
     n_not_shown = data_to_sort.size() - i_proxies_sorted.size()
     return sorted_table, n_not_shown
 
-  # XXX: This now outputs the results of get_sorted(...)
   def show_sorted(self,
         by_value,
         sites_cart,
@@ -435,10 +433,10 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
         prefix="",
         max_items=None) :
     sorted_table, n_not_shown = self.get_sorted(
-        by_value=by_value,
-        sites_cart=sites_cart,
-        site_labels=site_labels,
-        max_items=max_items)
+      by_value=by_value,
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      max_items=max_items)
     print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
     if sorted_table is None :
       return
