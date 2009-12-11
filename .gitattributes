@@ -603,6 +603,7 @@ scitbx/math/boost_python/tst_exp_functions.py svneol=native#text/x-python
 scitbx/math/boost_python/tst_gcd.py svneol=native#text/x-python
 scitbx/math/continued_fraction.h -text
 scitbx/math/copysign.h -text
+scitbx/math/dihedral.h svneol=native#text/plain
 scitbx/math/euler_angles.h -text
 scitbx/math/fit_peak.py -text
 scitbx/math/gcd.h svneol=native#text/plain

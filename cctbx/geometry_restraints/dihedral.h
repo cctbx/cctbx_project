@@ -3,7 +3,7 @@
 
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
-#include <scitbx/constants.h>
+#include <scitbx/math/dihedral.h>
 #include <boost_adaptbx/error_utils.h>
 #include <boost/format.hpp>
 
@@ -132,7 +132,7 @@ namespace cctbx { namespace geometry_restraints {
         van Schaik, R. C., Berendsen, H. J., & Torda, A. E. (1993).
         J.Mol.Biol. 234, 751-762.
    */
-  class dihedral
+  class dihedral : protected scitbx::math::dihedral_calculations
   {
     public:
       //! Default constructor. Some data members are not initialized!
@@ -338,14 +338,6 @@ namespace cctbx { namespace geometry_restraints {
       exclude_periods_type exclude_periods;
       //! false in singular situations.
       bool have_angle_model;
-    protected:
-      scitbx::vec3<double> d_01;
-      scitbx::vec3<double> d_21;
-      scitbx::vec3<double> d_23;
-      scitbx::vec3<double> n_0121;
-      double n_0121_norm;
-      scitbx::vec3<double> n_2123;
-      double n_2123_norm;
     public:
       //! Value of the dihedral %angle formed by the sites.
       double angle_model;
@@ -360,26 +352,11 @@ namespace cctbx { namespace geometry_restraints {
       void
       init_angle_model()
       {
-        using scitbx::constants::pi_180;
-        have_angle_model = false;
-        angle_model = angle_ideal;
-        delta = 0;
-        d_01 = sites[0] - sites[1];
-        d_21 = sites[2] - sites[1];
-        d_23 = sites[2] - sites[3];
-        n_0121 = d_01.cross(d_21);
-        n_0121_norm = n_0121.length_sq();
-        if (n_0121_norm == 0) return;
-        n_2123 = d_21.cross(d_23);
-        n_2123_norm = n_2123.length_sq();
-        if (n_2123_norm == 0) return;
-        double cos_angle_model = std::max(-1.,std::min(1.,
-          n_0121 * n_2123 / std::sqrt(n_0121_norm * n_2123_norm)));
-        angle_model = std::acos(cos_angle_model) / pi_180;
-        if (d_21 * (n_0121.cross(n_2123)) < 0) {
-          angle_model *= -1;
-        }
-        have_angle_model = true;
+        scitbx::math::dihedral_calculations::init(sites.begin());
+        boost::optional<double> angle_deg = angle(/* deg */ true);
+        have_angle_model = bool(angle_deg);
+        if (!have_angle_model) return;
+        angle_model = *angle_deg;
         if (!exclude_periods) {
           delta = angle_delta_deg(angle_model, angle_ideal, periodicity);
         }
