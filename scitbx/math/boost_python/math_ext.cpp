@@ -1,18 +1,19 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
-#include <scitbx/math/floating_point_epsilon.h>
-#include <scitbx/math/erf.h>
 #include <scitbx/math/bessel.h>
-#include <scitbx/math/gamma.h>
 #include <scitbx/math/chebyshev.h>
+#include <scitbx/math/dihedral.h>
+#include <scitbx/math/erf.h>
+#include <scitbx/math/euler_angles.h>
+#include <scitbx/math/floating_point_epsilon.h>
+#include <scitbx/math/gamma.h>
+#include <scitbx/math/gcd.h>
+#include <scitbx/math/halton.h>
 #include <scitbx/math/lambertw.h>
-#include <scitbx/math/superpose.h>
 #include <scitbx/math/phase_error.h>
 #include <scitbx/math/resample.h>
-#include <scitbx/math/halton.h>
+#include <scitbx/math/superpose.h>
 #include <scitbx/math/utils.h>
-#include <scitbx/math/euler_angles.h>
-#include <scitbx/math/gcd.h>
 #include <boost/rational.hpp> // for boost::gcd
 #include <scitbx/math/approx_equal.h>
 
@@ -20,6 +21,8 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
 
 namespace scitbx { namespace math {
 namespace boost_python {
@@ -167,6 +170,23 @@ namespace {
 # endif
 #endif
 
+  struct dihedral_wrappers
+  {
+    typedef dihedral wt;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<wt>("dihedral", no_init)
+        .def(init<af::tiny<vec3<double>, 4> const&>((arg("sites"))))
+        .def(init<af::const_ref<vec3<double> > const&>((arg("sites"))))
+        .add_property("angle_deg", make_getter(&wt::angle_deg, rbv()))
+      ;
+    }
+  };
+
   mat3<double>
   superpose_kearsley_rotation(
     af::const_ref<vec3<double> > const& reference_sites,
@@ -281,8 +301,6 @@ namespace {
     def("ei1", (double(*)(double const&)) bessel::ei1);
     def("ei0", (double(*)(double const&)) bessel::ei0);
 
-
-
     def("gamma_complete", (double(*)(double const&, bool))
       gamma::complete, (
         arg("x"),
@@ -302,8 +320,6 @@ namespace {
         arg("max_iterations")=500));
     def("exponential_integral_e1z", (double(*)(double const&))
          gamma::exponential_integral_e1z );
-
-
 
     def("lambertw", (double(*)(double const&, unsigned))
       lambertw, (
@@ -337,6 +353,8 @@ namespace {
 
     def("superpose_kearsley_rotation", superpose_kearsley_rotation, (
       arg("reference_sites"), arg("other_sites")));
+
+    dihedral_wrappers::wrap();
 
     def( "euler_angles_xyz_matrix", euler_angles_xyz_matrix, (
       arg("ax"), arg("ay"), arg("az")));
