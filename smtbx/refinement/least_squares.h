@@ -208,6 +208,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     }
 
     scalar_t *independent_gradients(scalar_t *crystallographic_gradients) const {
+      if (!independent_grads.size()) return 0;
       scalar_t *xg = crystallographic_gradients;
       scalar_t *result = independent_grads.begin();
       scalar_t *g = result;
@@ -305,7 +306,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
           sc.occupancy += *g++;
         }
       }
-      SCITBX_ASSERT(g - shifts.begin() == shifts.size());
+      SCITBX_ASSERT(g - shifts.begin() == shifts.size())
+                   (g - shifts.begin())(shifts.size());
     }
   };
 
