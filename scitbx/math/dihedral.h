@@ -7,7 +7,7 @@
 
 namespace scitbx { namespace math {
 
-  struct dihedral_calculations
+  struct dihedral
   {
     vec3<double> d_01;
     vec3<double> d_21;
@@ -16,6 +16,22 @@ namespace scitbx { namespace math {
     vec3<double> n_2123;
     double n_0121_norm;
     double n_2123_norm;
+
+    //! Default constructor. Some data members are not initialized!
+    dihedral() {}
+
+    dihedral(
+      af::tiny<vec3<double>, 4> const& sites)
+    {
+      init(sites.begin());
+    }
+
+    dihedral(
+      af::const_ref<vec3<double> > const& sites)
+    {
+      ASSERTBX(sites.size() == 4);
+      init(sites.begin());
+    }
 
     void
     init(
@@ -45,35 +61,6 @@ namespace scitbx { namespace math {
       }
       if (deg) result /= constants::pi_180;
       return boost::optional<double>(result);
-    }
-  };
-
-  struct dihedral : dihedral_calculations
-  {
-    boost::optional<double> angle_deg;
-
-    //! Default constructor. Some data members are not initialized!
-    dihedral() {}
-
-    dihedral(
-      af::tiny<vec3<double>, 4> const& sites)
-    {
-      init(sites.begin());
-    }
-
-    dihedral(
-      af::const_ref<vec3<double> > const& sites)
-    {
-      ASSERTBX(sites.size() == 4);
-      init(sites.begin());
-    }
-
-    void
-    init(
-      vec3<double> const* sites)
-    {
-      dihedral_calculations::init(sites);
-      angle_deg = angle(/* deg */ true);
     }
   };
 
