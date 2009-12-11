@@ -21,8 +21,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/return_value_policy.hpp>
-#include <boost/python/return_by_value.hpp>
 
 namespace scitbx { namespace math {
 namespace boost_python {
@@ -170,22 +168,14 @@ namespace {
 # endif
 #endif
 
-  struct dihedral_wrappers
+  template <typename SitesType>
+  boost::optional<double>
+  dihedral_angle(
+    SitesType const& sites,
+    bool deg)
   {
-    typedef dihedral wt;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      typedef return_value_policy<return_by_value> rbv;
-      class_<wt>("dihedral", no_init)
-        .def(init<af::tiny<vec3<double>, 4> const&>((arg("sites"))))
-        .def(init<af::const_ref<vec3<double> > const&>((arg("sites"))))
-        .add_property("angle_deg", make_getter(&wt::angle_deg, rbv()))
-      ;
-    }
-  };
+    return dihedral(sites).angle(deg);
+  }
 
   mat3<double>
   superpose_kearsley_rotation(
@@ -354,7 +344,12 @@ namespace {
     def("superpose_kearsley_rotation", superpose_kearsley_rotation, (
       arg("reference_sites"), arg("other_sites")));
 
-    dihedral_wrappers::wrap();
+    def("dihedral_angle",
+      dihedral_angle<af::tiny<vec3<double>, 4> >, (
+        arg("sites"), arg("deg")=false));
+    def("dihedral_angle",
+      dihedral_angle<af::const_ref<vec3<double> > >, (
+        arg("sites"), arg("deg")=false));
 
     def( "euler_angles_xyz_matrix", euler_angles_xyz_matrix, (
       arg("ax"), arg("ay"), arg("az")));

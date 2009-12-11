@@ -1,7 +1,7 @@
 import scitbx.math
 import boost.rational
 from scitbx.math import line_given_points
-from scitbx.math import dihedral
+from scitbx.math import dihedral_angle
 from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import bessel_i1_over_i0, bessel_i0, bessel_i1,\
@@ -103,22 +103,22 @@ def exercise_line_given_points():
   assert lgp.distance_sq(point=matrix.col((0,0,0))) == 12
   assert lgp.distance_sq(point=matrix.col((0,0,1))) == 8
 
-def exercise_dihedral():
+def exercise_dihedral_angle():
   def dihe(sites):
-    t = dihedral(sites=sites)
-    v = dihedral(sites=flex.vec3_double(sites))
-    assert t.angle_deg == v.angle_deg
+    t = dihedral_angle(sites=sites, deg=True)
+    v = dihedral_angle(sites=flex.vec3_double(sites), deg=True)
+    assert t == v
     return t
   d = dihe(sites=[(0,0,0)]*4)
-  assert d.angle_deg is None
+  assert d is None
   d = dihe(sites=[(1,0,0), (0,0,0), (0,1,0), (1,1,0)])
-  assert approx_equal(d.angle_deg, 0)
+  assert approx_equal(d, 0)
   d = dihe(sites=[(1,0,0), (0,0,0), (0,1,0), (-1,1,0)])
-  assert approx_equal(abs(d.angle_deg), 180)
+  assert approx_equal(abs(d), 180)
   d = dihe(sites=[(1,0,0), (0,0,0), (0,1,0), (0,1,1)])
-  assert approx_equal(d.angle_deg, -90)
+  assert approx_equal(d, -90)
   d = dihe(sites=[(1,0,0), (0,0,0), (0,1,0), (0,1,-1)])
-  assert approx_equal(d.angle_deg, 90)
+  assert approx_equal(d, 90)
   mt = flex.mersenne_twister(seed=0)
   for ad in xrange(-179, 180):
     ar = math.radians(ad)
@@ -127,21 +127,21 @@ def exercise_dihedral():
     sites = flex.vec3_double([(f,0,0), (0,0,0), (0,f,0), (f*c,f,-f*s)])
       #                                                         ^
       #                                 conventions are wonderful
-    d = dihedral(sites=sites)
-    assert approx_equal(d.angle_deg, ad)
+    d = dihedral_angle(sites=sites, deg=True)
+    assert approx_equal(d, ad)
     r = mt.random_double_r3_rotation_matrix()
     t = mt.random_double_point_on_sphere()
-    d = dihedral(sites=r*sites+t)
-    assert approx_equal(d.angle_deg, ad)
-    assert approx_equal(
-      matrix._dihedral_angle(sites=matrix.col_list(r*sites+t), deg=True), ad)
+    d = dihedral_angle(sites=r*sites+t, deg=True)
+    assert approx_equal(d, ad)
+    d = matrix._dihedral_angle(sites=matrix.col_list(r*sites+t), deg=True)
+    assert approx_equal(d, ad)
   sites = [
     (-3.193, 1.904, 4.589),
     (-1.955, 1.332, 3.895),
     (-1.005, 2.228, 3.598),
     ( 0.384, 1.888, 3.199)]
   d = dihe(sites=sites)
-  assert approx_equal(d.angle_deg, 166.212120415)
+  assert approx_equal(d, 166.212120415)
 
 def exercise_euler_angles():
   assert approx_equal(euler_angles_as_matrix([0,0,0]).elems,
@@ -1853,7 +1853,7 @@ def run():
   exercise_eix()
   exercise_floating_point_epsilon()
   exercise_line_given_points()
-  exercise_dihedral()
+  exercise_dihedral_angle()
   exercise_euler_angles()
   exercise_erf()
   exercise_gamma_incomplete()

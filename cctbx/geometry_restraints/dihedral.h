@@ -132,7 +132,7 @@ namespace cctbx { namespace geometry_restraints {
         van Schaik, R. C., Berendsen, H. J., & Torda, A. E. (1993).
         J.Mol.Biol. 234, 751-762.
    */
-  class dihedral : protected scitbx::math::dihedral_calculations
+  class dihedral : protected scitbx::math::dihedral
   {
     public:
       //! Default constructor. Some data members are not initialized!
@@ -352,7 +352,7 @@ namespace cctbx { namespace geometry_restraints {
       void
       init_angle_model()
       {
-        scitbx::math::dihedral_calculations::init(sites.begin());
+        scitbx::math::dihedral::init(sites.begin());
         boost::optional<double> angle_deg = angle(/* deg */ true);
         have_angle_model = bool(angle_deg);
         if (!have_angle_model) return;
