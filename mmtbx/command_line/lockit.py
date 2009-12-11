@@ -518,10 +518,6 @@ def run(args):
     atom_selection_bool = atom_selection_bool(
       scope_extract=work_params.coordinate_refinement,
       attr="atom_selection")
-    if (atom_selection_bool is None):
-      iselection_refine = None
-    else:
-      iselection_refine = atom_selection_bool.iselection()
     rstw_params = work_params.coordinate_refinement.real_space_target_weights
     if (rstw_params.number_of_samples is None):
       rstw_list = [work_params.real_space_target_weight]
@@ -537,7 +533,7 @@ def run(args):
       refined = maptbx.real_space_refinement_simple.lbfgs(
         sites_cart=sites_cart_start,
         density_map=density_map,
-        iselection_refine=iselection_refine,
+        selection_variable=atom_selection_bool,
         geometry_restraints_manager=grm,
         real_space_target_weight=rstw,
         real_space_gradients_delta=real_space_gradients_delta,

@@ -31,7 +31,7 @@ class lbfgs(object):
         sites_cart,
         density_map,
         unit_cell=None,
-        iselection_refine=None,
+        selection_variable=None,
         geometry_restraints_manager=None,
         real_space_target_weight=1,
         real_space_gradients_delta=None,
@@ -47,11 +47,13 @@ class lbfgs(object):
     O.geometry_restraints_manager = geometry_restraints_manager
     O.real_space_gradients_delta = real_space_gradients_delta
     O.real_space_target_weight = real_space_target_weight
-    O.iselection_refine = iselection_refine
-    if(iselection_refine is None):
+    O.selection_variable = selection_variable
+    if (O.selection_variable is None):
+      O.sites_cart = sites_cart
       O.x = sites_cart.as_double()
     else:
-      O.x = O.sites_cart.select(indices=iselection_refine).as_double()
+      O.sites_cart = sites_cart.deep_copy()
+      O.x = sites_cart.select(O.selection_variable).as_double()
     O.number_of_function_evaluations = -1
     O.f_start, O.g_start = O.compute_functional_and_gradients()
     O.minimizer = scitbx.lbfgs.run(
@@ -59,7 +61,6 @@ class lbfgs(object):
       termination_params=lbfgs_termination_params,
       exception_handling_params=lbfgs_exception_handling_params)
     O.f_final, O.g_final = O.compute_functional_and_gradients()
-    O.sites_cart = flex.vec3_double(O.x)
     del O.x
 
   def compute_functional_and_gradients(O):
@@ -67,15 +68,15 @@ class lbfgs(object):
       O.number_of_function_evaluations += 1
       return O.f_start, O.g_start
     O.number_of_function_evaluations += 1
-    O.sites_cart_refined = flex.vec3_double(O.x)
+    O.sites_cart_variable = flex.vec3_double(O.x)
     rs_f = maptbx.real_space_target_simple(
       unit_cell   = O.unit_cell,
       density_map = O.density_map,
-      sites_cart  = O.sites_cart_refined)
+      sites_cart  = O.sites_cart_variable)
     rs_g = maptbx.real_space_gradients_simple(
       unit_cell   = O.unit_cell,
       density_map = O.density_map,
-      sites_cart  = O.sites_cart_refined,
+      sites_cart  = O.sites_cart_variable,
       delta       = O.real_space_gradients_delta)
     rs_f *= -O.real_space_target_weight
     rs_g *= -O.real_space_target_weight
@@ -83,15 +84,15 @@ class lbfgs(object):
       f = rs_f
       g = rs_g
     else:
-      if(O.iselection_refine is not None):
-        O.sites_cart.set_selected(O.iselection_refine, O.sites_cart_refined)
+      if (O.selection_variable is None):
+        O.sites_cart = O.sites_cart_variable
       else:
-        O.sites_cart = O.sites_cart_refined
+        O.sites_cart.set_selected(O.selection_variable, O.sites_cart_variable)
       gr_e = O.geometry_restraints_manager.energies_sites(
         sites_cart=O.sites_cart, compute_gradients=True)
       gr_e_gradients = gr_e.gradients
-      if(O.iselection_refine is not None):
-        gr_e_gradients = gr_e.gradients.select(indices = O.iselection_refine)
+      if (O.selection_variable is not None):
+        gr_e_gradients = gr_e.gradients.select(O.selection_variable)
       f = rs_f + gr_e.target
       g = rs_g + gr_e_gradients
     return f, g.as_double()

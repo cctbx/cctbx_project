@@ -17,7 +17,7 @@ from cctbx import maptbx
 
 class residue_rsr_monitor(object):
   def __init__(self,
-               resid = None,
+               residue_id_str = None,
                selection = None,
                sites_cart = None,
                twomfodfc = None,
@@ -68,12 +68,14 @@ class refiner(object):
     self.lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations, min_iterations = min_iterations)
 
-  def refine_restrained(self, sites_cart_all, rsel, rs):
+  def refine_restrained(self, sites_cart_rsel, rsel, rs):
+    assert rsel.size() == self.pdb_hierarchy.atoms_size()
+    assert sites_cart_rsel.size() == rsel.count(True)
     geometry_restraints_manager = \
       self.geometry_restraints_manager.select(rsel)
     return maptbx.real_space_refinement_simple.lbfgs(
-      iselection_refine           = rs,
-      sites_cart                  = sites_cart_all,
+      selection_variable          = rs,
+      sites_cart                  = sites_cart_rsel,
       density_map                 = self.target_map,
       geometry_restraints_manager = geometry_restraints_manager,
       real_space_target_weight    = self.real_space_target_weight,
@@ -155,8 +157,9 @@ def iterate_rotamers(pdb_hierarchy,
   assert map_data_1.all() == map_data_2.all()
   assert real_space_refine in ["restrained","constrained"]
   fmt1 = "                |--------START--------| |-----FINAL----|"
-  fmt2 = "    residue id  map_cc 2mFo-DFc mFo-DFc 2mFo-DFc mFo-DFc rotomer n_rotamers"
-  fmt3 = "%14s %7.4f %8.2f %7.2f %8.2f %7.2f %7s %10d"
+  fmt2 = "     residue    map_cc 2mFo-DFc mFo-DFc 2mFo-DFc mFo-DFc" \
+    " rotomer n_rotamers"
+  fmt3 = "  %12s %7.4f %8.2f %7.2f %8.2f %7.2f %7s %10d"
   print >> log, fmt1
   print >> log, fmt2
   unit_cell = xray_structure.unit_cell()
@@ -177,12 +180,9 @@ def iterate_rotamers(pdb_hierarchy,
         if(ignore_alt_conformers and len(conformers)>1): continue
         for conformer in residue_group.conformers():
           residue = conformer.only_residue()
-          residue_iselection = flex.size_t()
-          residue_sidechain_iselection = flex.size_t()
-          for atom in residue.atoms():
-            residue_iselection.append(atom.i_seq)
-          resid = " ".join([chain.id,residue.resname,residue.resseq])
-          sites_cart = xray_structure.select(residue_iselection).sites_cart()
+          residue_id_str = residue.id_str(suppress_segid=1)[-12:]
+          residue_iselection = residue.atoms().extract_i_seq()
+          sites_cart = xray_structure.sites_cart().select(residue_iselection)
           cc_start = map_selector.get_cc(
             sites_cart         = sites_cart,
             residue_iselection = residue_iselection)
@@ -195,7 +195,7 @@ def iterate_rotamers(pdb_hierarchy,
             mfo_dfc_map      = map_data_3)
           residue_sites_best = sites_cart.deep_copy()
           rm = residue_rsr_monitor(
-            resid      = resid,
+            residue_id_str = residue_id_str,
             selection  = residue_iselection.deep_copy(),
             sites_cart = sites_cart.deep_copy(),
             twomfodfc  = rev.t1_start,
@@ -229,16 +229,16 @@ def iterate_rotamers(pdb_hierarchy,
                 refined = rsr_manager.refine_restrained(
                   tmp.select(rsel),
                   rsel, rs)
-
-                if(rev.is_better(sites_cart = refined.sites_cart_refined)):
+                if(rev.is_better(sites_cart = refined.sites_cart_variable)):
                   rotamer_sites_cart_refined = \
-                    refined.sites_cart_refined.deep_copy()
+                    refined.sites_cart_variable.deep_copy()
                   sites_cart_start = sites_cart_start.set_selected(
                     residue_iselection, rotamer_sites_cart_refined)
                   residue.atoms().set_xyz(new_xyz=rotamer_sites_cart_refined)
             if(abs(rev.t1_best-rev.t1_start) > 0.01 and
                abs(rev.t2_best-rev.t2_start) > 0.01):
-              print >> log, fmt3%(resid, cc_start, rev.t1_start, rev.t2_start,
+              print >> log, fmt3 % (
+                residue_id_str, cc_start, rev.t1_start, rev.t2_start,
                 rev.t1_best, rev.t2_best, rotamer_id_best, n_rotamers)
   xray_structure.set_sites_cart(sites_cart_start)
   return result
@@ -267,9 +267,12 @@ def get_map_data(fmodel, map_type, resolution_factor=1./4, kick=False):
 
 def validate(fmodel, residue_rsr_monitor, log):
   xray_structure = fmodel.xray_structure
-  map_data_1,fft_map_1 = get_map_data(fmodel = fmodel, map_type = "2mFo-DFc", kick=False)
-  map_data_2,fft_map_2 = get_map_data(fmodel = fmodel, map_type = "Fc")
-  map_data_3,fft_map_3 = get_map_data(fmodel = fmodel, map_type = "mFo-DFc", kick=False)
+  map_data_1,fft_map_1 = get_map_data(
+    fmodel = fmodel, map_type = "2mFo-DFc", kick=False)
+  map_data_2,fft_map_2 = get_map_data(
+    fmodel = fmodel, map_type = "Fc")
+  map_data_3,fft_map_3 = get_map_data(
+    fmodel = fmodel, map_type = "mFo-DFc", kick=False)
   map_selector = select_map(
     unit_cell  = xray_structure.unit_cell(),
     map_data_1 = map_data_1,
@@ -278,9 +281,9 @@ def validate(fmodel, residue_rsr_monitor, log):
   sites_cart_result = sites_cart.deep_copy()
   unit_cell = xray_structure.unit_cell()
   print >> log, "Validate:"
-  fmt1 = "                |--------START--------| |--------FINAL--------|"
-  fmt2 = "    residue id  map_cc 2mFo-DFc mFo-DFc map_cc 2mFo-DFc mFo-DFc"
-  fmt3 = "%14s %7.4f %8.2f %7.2f %7.4f %8.2f %7.2f"
+  fmt1 = "                |--------START--------|  |--------FINAL--------|"
+  fmt2 = "     residue    map_cc 2mFo-DFc mFo-DFc  map_cc 2mFo-DFc mFo-DFc"
+  fmt3 = "  %12s %7.4f %8.2f %7.2f %7.4f %8.2f %7.2f"
   print >> log, fmt1
   print >> log, fmt2
   for rm in residue_rsr_monitor:
@@ -294,9 +297,11 @@ def validate(fmodel, residue_rsr_monitor, log):
     dmif2 = rm.mfodfc > 0 and t2 < 0 and abs(t2) > abs(rm.mfodfc)
     dmif = dmif1 or dmif2
     if((cc < rm.cc or t1 < rm.twomfodfc) and dmif): flag = " <<<"
-    print >> log, fmt3 % (rm.resid, rm.cc, rm.twomfodfc, rm.mfodfc, cc,t1,t2), flag
+    print >> log, fmt3 % (
+      rm.residue_id_str, rm.cc, rm.twomfodfc, rm.mfodfc, cc,t1,t2), flag
     if(len(flag)>0):
-      sites_cart_result = sites_cart_result.set_selected(rm.selection, rm.sites_cart)
+      sites_cart_result = sites_cart_result.set_selected(
+        rm.selection, rm.sites_cart)
   xray_structure.set_sites_cart(sites_cart_result)
   fmodel.update_xray_structure(xray_structure = xray_structure,
     update_f_calc=True, update_f_mask=True)
