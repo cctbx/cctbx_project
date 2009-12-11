@@ -1,6 +1,7 @@
+from __future__ import division
 from scitbx.linalg import eigensystem, svd
 from scitbx import matrix
-from cctbx import sgtbx, crystal, xray, miller, adptbx
+from cctbx import sgtbx, crystal, xray, miller, adptbx, uctbx
 from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
 from smtbx.refinement import least_squares
@@ -9,6 +10,7 @@ from libtbx.test_utils import approx_equal
 import libtbx.utils
 from stdlib import math
 import sys
+import random
 
 
 class refinement_test(object):
@@ -238,7 +240,7 @@ class adp_refinement_test(refinement_test):
     objectives = []
     scales = []
     fo_sq_max = flex.max(self.fo_sq.data())
-    for i in xrange(5):
+    for i in xrange(8):
       normal_eqns.build_up()
       objectives.append(normal_eqns.objective)
       scales.append(normal_eqns.scale_factor)
@@ -335,11 +337,127 @@ def exercise_normal_equations():
   site_refinement_in_p2_test().run()
   site_refinement_in_r3_test().run()
 
+class special_positions_test(object):
+
+  delta_site   = 0.1 # angstrom
+  delta_u_star = 0.1 # %
+
+  def __init__(self, n_runs, **kwds):
+    libtbx.adopt_optional_init_args(self, kwds)
+    self.n_runs = n_runs
+    self.crystal_symmetry = crystal.symmetry(
+      unit_cell=uctbx.unit_cell((5.1534, 5.1534, 8.6522, 90, 90, 120)),
+      space_group_symbol='Hall: P 6c')
+    self.structure = xray.structure(
+      self.crystal_symmetry.special_position_settings(),
+      flex.xray_scatterer((
+        xray.scatterer('K1',
+                        site=(0, 0, -0.00195),
+                        u=self.u_cif_as_u_star((0.02427, 0.02427, 0.02379,
+                                                0.01214, 0.00000, 0.00000))),
+        xray.scatterer('S1',
+                       site=(1/3, 2/3, 0.204215),
+                       u=self.u_cif_as_u_star((0.01423, 0.01423, 0.01496,
+                                               0.00712, 0.00000, 0.00000 ))),
+        xray.scatterer('Li1',
+                       site=(1/3, 2/3, 0.815681),
+                       u=self.u_cif_as_u_star((0.02132, 0.02132, 0.02256,
+                                               0.01066, 0.00000, 0.00000 ))),
+        xray.scatterer('O1',
+                       site=(1/3, 2/3, 0.035931),
+                       u=self.u_cif_as_u_star((0.06532, 0.06532, 0.01669,
+                                               0.03266, 0.00000, 0.00000 ))),
+        xray.scatterer('O2',
+                       site=(0.343810, 0.941658, 0.258405),
+                       u=self.u_cif_as_u_star((0.02639,  0.02079, 0.05284,
+                                               0.01194, -0.00053,-0.01180 )))
+      )))
+    mi = self.crystal_symmetry.build_miller_set(anomalous_flag=False,
+                                                d_min=0.5)
+    fo_sq = mi.structure_factors_from_scatterers(
+      self.structure, algorithm="direct").f_calc().norm()
+    self.fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1))
+
+  def u_cif_as_u_star(self, u_cif):
+    return adptbx.u_cif_as_u_star(self.crystal_symmetry.unit_cell(), u_cif)
+
+  def shake_point_group_3(self, sc):
+    _, _, c, _, _, _ = self.crystal_symmetry.unit_cell().parameters()
+
+    x, y, z = sc.site
+    z += random.uniform(-self.delta_site, self.delta_site)/c
+    sc.site = (x, y, z)
+
+    u11, _, u33, _, _, _ = sc.u_star
+    u11 *= 1 + random.uniform(-self.delta_u_star, self.delta_u_star)
+    u33 *= 1 + random.uniform(-self.delta_u_star, self.delta_u_star)
+    sc.u_star = (u11, u11, u33, u11/2, 0, 0)
+
+  def run(self):
+    if self.n_runs > 1:
+      print 'small inorganic refinement'
+      for i in xrange(self.n_runs):
+        print '.',
+        self.exercise()
+      print
+    else:
+      self.exercise()
+
+  def exercise(self):
+    xs0 = self.structure
+    xs = xs0.deep_copy_scatterers()
+    k1, s1, li1, o1, o2 = xs.scatterers()
+    self.shake_point_group_3(k1)
+    self.shake_point_group_3(s1)
+    self.shake_point_group_3(li1)
+    self.shake_point_group_3(o1)
+    o2.site = tuple(
+      [ x*(1 + random.uniform(-self.delta_site, self.delta_site))
+        for x in o2.site])
+    o2.u_star = tuple(
+      [ u*(1 + random.uniform(-self.delta_u_star, self.delta_u_star))
+        for u in o2.u_star])
+
+    for sc in xs.scatterers():
+      sc.flags.set_use_u_iso(False).set_use_u_aniso(True)
+      sc.flags.set_grad_site(True).set_grad_u_aniso(True)
+    normal_eqns = least_squares.normal_equations(
+      xs, self.fo_sq, weighting_scheme=least_squares.unit_weighting())
+
+    objectives = []
+    scales = []
+    fo_sq_max = flex.max(self.fo_sq.data())
+    shifts = []
+    for i in xrange(10):
+      normal_eqns.build_up()
+      objectives.append(normal_eqns.objective)
+      scales.append(normal_eqns.scale_factor)
+      gradient_relative_norm = normal_eqns.gradient.norm()/fo_sq_max
+      a = normal_eqns.reduced.normal_matrix_packed_u.deep_copy()
+      normal_eqns.solve_and_apply_shifts()
+      shifts.append(normal_eqns.shifts)
+
+    match = emma.model_matches(xs0.as_emma_model(),
+                               xs.as_emma_model()).refined_matches[0]
+    assert match.rt.r == matrix.identity(3)
+    assert not match.singles1 and not match.singles2
+    assert match.rms < 1e-6
+
+    delta_u_carts= (   xs.scatterers().extract_u_cart(xs.unit_cell())
+                    - xs0.scatterers().extract_u_cart(xs.unit_cell())).norms()
+    assert flex.abs(delta_u_carts) < 1e-6
+
+    assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-4)
+
 def run():
   libtbx.utils.show_times_at_exit()
   import sys
   if sys.argv[1:]:
-    refinement_test.ls_cycle_repeats = int(sys.argv[1])
+    n_runs = int(sys.argv[1])
+    refinement_test.ls_cycle_repeats = n_runs
+  else:
+    n_runs = 1
+  special_positions_test(n_runs).run()
   exercise_normal_equations()
 
 if __name__ == '__main__':
