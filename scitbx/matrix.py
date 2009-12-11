@@ -210,6 +210,9 @@ class rec(object):
     assert self.n_rows() == 1 or self.n_columns() == 1
     return math.sqrt(self.norm_sq())
 
+  length_sq = norm_sq # for compatibility with scitbx/vec3.h
+  length = __abs__
+
   def normalize(self):
     return self / abs(self)
 
@@ -695,6 +698,14 @@ def zeros(n):
   nr,nc = n
   return rec(elems=(0,)*(nr*nc), n=(nr,nc))
 
+def sum(iterable):
+  """ The sum of the given sequence of matrices """
+  sequence = iter(iterable)
+  result = sequence.next()
+  for m in sequence:
+    result += m
+  return result
+
 def cross_product_matrix((v0, v1, v2)):
   """\
 Matrix associated with vector cross product:
@@ -707,12 +718,32 @@ robotics and classical mechanics literature.
      v2,   0, -v0,
     -v1,  v0,   0))
 
-def sum(iterable):
-  """ The sum of the given sequence of matrices """
-  sequence = iter(iterable)
-  result = sequence.next()
-  for m in sequence:
-    result += m
+def _dihedral_angle(sites, deg):
+  assert len(sites) == 4
+  d_01 = sites[0] - sites[1]
+  d_21 = sites[2] - sites[1]
+  d_23 = sites[2] - sites[3]
+  n_0121 = d_01.cross(d_21)
+  n_0121_norm = n_0121.length_sq()
+  n_2123 = d_21.cross(d_23)
+  n_2123_norm = n_2123.length_sq()
+  if (n_0121_norm == 0 or n_2123_norm == 0):
+    return None
+  cos_angle = max(-1.,min(1.,
+    n_0121.dot(n_2123) / (n_0121_norm * n_2123_norm)**0.5))
+  result = math.acos(cos_angle)
+  if (d_21.dot(n_0121.cross(n_2123)) < 0):
+    result *= -1
+  if (deg): result = math.degrees(result)
+  return result
+
+def dihedral_angle(sites, deg=False):
+  if (flex is None):
+    return _dihedral_angle(sites=sites, deg=deg)
+  from scitbx.math import dihedral
+  result = dihedral(sites=sites).angle_deg
+  if (not deg and result is not None):
+    result = math.radians(result)
   return result
 
 class rt(object):
@@ -1404,6 +1435,19 @@ def exercise():
     "(0.5, -0.5, -0.5, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)"
   assert str(rational1.as_boost_rational().inverse().elems)==\
     "(1/2, -1/2, -1/2, 0, 1, 0, 0, 0, 1)"
+  #
+  assert _dihedral_angle(sites=col_list([(0,0,0)]*4), deg=False) is None
+  assert dihedral_angle(sites=col_list([(0,0,0)]*4)) is None
+  sites = col_list([
+    (-3.193, 1.904, 4.589),
+    (-1.955, 1.332, 3.895),
+    (-1.005, 2.228, 3.598),
+    ( 0.384, 1.888, 3.199)])
+  expected = 166.212120415
+  assert approx_equal(_dihedral_angle(sites=sites, deg=True), expected)
+  assert approx_equal(dihedral_angle(sites=sites, deg=True), expected)
+  # more dihedral tests in scitbx/math/boost_python/tst_math.py
+  #
   print "OK"
 
 if (__name__ == "__main__"):

@@ -133,6 +133,8 @@ def exercise_dihedral():
     t = mt.random_double_point_on_sphere()
     d = dihedral(sites=r*sites+t)
     assert approx_equal(d.angle_deg, ad)
+    assert approx_equal(
+      matrix._dihedral_angle(sites=matrix.col_list(r*sites+t), deg=True), ad)
   sites = [
     (-3.193, 1.904, 4.589),
     (-1.955, 1.332, 3.895),
