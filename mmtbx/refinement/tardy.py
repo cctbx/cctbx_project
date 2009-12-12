@@ -64,6 +64,8 @@ master_phil_str = """\
     .type = float
   near_singular_hinges_angular_tolerance_deg = 5
     .type = float
+  emulate_cartesian = False
+    .type = bool
   trajectory_directory = None
     .type = path
 """
@@ -128,9 +130,12 @@ class potential_object(object):
       O.f = tg.target() * O.xray_weight_factor
       O.g = tg.gradients() * O.xray_weight_factor
       assert O.g.size() == len(sites_moved) * 3
-      reduced_geo_energies = O.reduced_geo_manager.energies_sites(
-        sites_cart=sites_cart,
-        compute_gradients=True)
+      if (O.reduced_geo_manager is None):
+        reduced_geo_energies = None
+      else:
+        reduced_geo_energies = O.reduced_geo_manager.energies_sites(
+          sites_cart=sites_cart,
+          compute_gradients=True)
       other_energies = O.model.restraints_manager.energies_sites(
         sites_cart=sites_cart,
         geometry_flags=cctbx.geometry_restraints.flags.flags(nonbonded=True),
@@ -138,9 +143,10 @@ class potential_object(object):
         compute_gradients=True)
       nfw = other_energies.normalization_factor * O.weights.w
       O.f += other_energies.target * O.weights.w
-      O.f += reduced_geo_energies.target * nfw
       gg = other_energies.gradients * O.weights.w
-      gg += reduced_geo_energies.gradients * nfw
+      if (reduced_geo_energies is not None):
+        O.f += reduced_geo_energies.target * nfw
+        gg += reduced_geo_energies.gradients * nfw
       assert nfw != 0
       scale = 1 / nfw
       O.last_grms = group_args(
@@ -169,30 +175,39 @@ def run(fmodels, model, target_weights, params, log,
   sites_cart_start = xs.sites_cart()
   sites = sites_cart_start
   labels = [sc.label for sc in xs.scatterers()]
-  tt = model.restraints_manager.geometry.construct_tardy_tree(
-    sites=sites,
-    selection=model.refinement_flags.sites_torsion_angles,
-    omit_bonds_with_slack_greater_than
-      =params.omit_bonds_with_slack_greater_than,
-    constrain_dihedrals_with_sigma_less_than
-      =params.constrain_dihedrals_with_sigma_less_than,
-    near_singular_hinges_angular_tolerance_deg
-      =params.near_singular_hinges_angular_tolerance_deg)
+  if (params.emulate_cartesian):
+    tt = scitbx.graph.tardy_tree.construct(
+      n_vertices=len(sites), edge_list=[])
+    tt.build_tree()
+  else:
+    tt = model.restraints_manager.geometry.construct_tardy_tree(
+      sites=sites,
+      selection=model.refinement_flags.sites_torsion_angles,
+      omit_bonds_with_slack_greater_than
+        =params.omit_bonds_with_slack_greater_than,
+      constrain_dihedrals_with_sigma_less_than
+        =params.constrain_dihedrals_with_sigma_less_than,
+      near_singular_hinges_angular_tolerance_deg
+        =params.near_singular_hinges_angular_tolerance_deg)
   print >> log, "tardy_tree summary:"
   tt.show_summary(vertex_labels=labels, out=log, prefix="  ")
   print >> log
   log.flush()
+  if (params.emulate_cartesian):
+    reduced_geo_manager = None
+  else:
+    reduced_geo_manager = model.restraints_manager.geometry \
+      .reduce_for_tardy(
+        tardy_tree=tt,
+        omit_bonds_with_slack_greater_than
+          =params.omit_bonds_with_slack_greater_than)
   potential_obj = potential_object(
     xray_weight_factor=params.xray_weight_factor,
     prolsq_repulsion_function_changes=params.prolsq_repulsion_function_changes,
     fmodels=fmodels,
     model=model,
     target_weights=target_weights,
-    reduced_geo_manager=model.restraints_manager.geometry
-      .reduce_for_tardy(
-        tardy_tree=tt,
-        omit_bonds_with_slack_greater_than
-          =params.omit_bonds_with_slack_greater_than))
+    reduced_geo_manager=reduced_geo_manager)
   tardy_model = scitbx.rigid_body.tardy_model(
     labels=labels,
     sites=sites,
