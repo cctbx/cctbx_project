@@ -1,6 +1,7 @@
 import cctbx.geometry_restraints
 import scitbx.rigid_body
 import scitbx.graph.tardy_tree
+import scitbx.math
 from scitbx.array_family import flex
 from libtbx.str_utils import show_string
 from libtbx.utils import sequence_index_dict
@@ -189,10 +190,10 @@ def build_angle_start_by_tor_id(
       if (i is None):
         return (atom_id, tor_id)
       d_sites.append(sites_cart[i])
-    d = cctbx.geometry_restraints.dihedral(
-      sites=d_sites, angle_ideal=0, weight=1)
+    dihe = scitbx.math.dihedral_angle(sites=d_sites, deg=True)
+    assert dihe is not None
     assert tor_id not in result
-    result[tor_id] = d.angle_model
+    result[tor_id] = dihe
   return result
 
 class rotamer_iterator(object):

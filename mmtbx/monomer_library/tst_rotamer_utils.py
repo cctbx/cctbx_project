@@ -1,6 +1,7 @@
 import mmtbx.monomer_library.server
 import iotbx.pdb.amino_acid_codes
 import cctbx.geometry_restraints
+import scitbx.math
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import show_diff
@@ -58,9 +59,7 @@ def report_tors(
       angle_model = None
     else:
       d_sites = [sites_cart[j] for j in js]
-      d = cctbx.geometry_restraints.dihedral(
-        sites=d_sites, angle_ideal=0, weight=1)
-      angle_model = d.angle_model
+      angle_model = scitbx.math.dihedral_angle(sites=d_sites, deg=True)
     target_angle = target_angles.get(tor_id)
     if (angle_model is not None and target_angle is not None):
       if (cctbx.geometry_restraints.angle_delta_deg(
