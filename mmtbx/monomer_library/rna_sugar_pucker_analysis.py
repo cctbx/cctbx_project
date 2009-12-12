@@ -1,4 +1,3 @@
-from cctbx import geometry_restraints
 import scitbx.math
 from scitbx import matrix
 import libtbx.phil
@@ -75,8 +74,10 @@ class evaluate(object):
       O.assign()
       return
     #
-    def dihe(sites): return normalize_angle(geometry_restraints.dihedral(
-      sites=sites, angle_ideal=0, weight=1).angle_model, deg=True)
+    def dihe(sites):
+      return normalize_angle(
+        scitbx.math.dihedral_angle(sites=sites, deg=True),
+        deg=True)
     if (p is None):
       epsilon = None
     else:

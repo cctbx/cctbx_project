@@ -1,6 +1,6 @@
+import scitbx.math
 from libtbx.utils import Sorry
 import libtbx.load_env
-from cctbx import geometry_restraints
 import sys, os
 
 def find_source_dir(optional=False):
@@ -114,11 +114,8 @@ class SidechainAngles:
       if testAtom != None: angleAtoms.append(atomNamesMap.get(testAtom.name))
       else: raise AttributeError, "some sidechain atoms are missing!"
       #testAtom = res.atoms[res.atoms().index(angleAtom)]
-    d = geometry_restraints.dihedral(
-      sites=[angleAtoms[0].xyz,angleAtoms[1].xyz,angleAtoms[2].xyz,angleAtoms[3].xyz],
-      angle_ideal=-40,
-      weight=1)
-    return d.angle_model
+    return scitbx.math.dihedral_angle(
+      sites=[a.xyz for a in angleAtoms], deg=True)
 
 def makeAtomDict(res):
   atomNamesMap = {}
