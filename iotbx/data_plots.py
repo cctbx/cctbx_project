@@ -129,7 +129,8 @@ class table_data (object) :
     sections_passed = 0
     initial_spaces = re.compile("^\s*")
     trailing_spaces = re.compile("\s*$")
-    trailing_dollars = re.compile("\$\$\ *$")
+    trailing_dollars = re.compile("\$\$\.*")
+    trailing_dollars_phaser = re.compile("\$\$ loggraph \$\$.*")
     graph_lines = None
     if isinstance(loggraph_lines, str) :
       lines = loggraph_lines.split("\n")
@@ -139,21 +140,23 @@ class table_data (object) :
       line = initial_spaces.sub("", raw_line)
       if line == "" :
         pass
-      elif line[0:7] == "$TABLE:" :
-        self.title = initial_spaces.sub("", re.sub("\ *:\ *$", "", line[8:]))
+      elif line.startswith("$TABLE") :
+        self.title = initial_spaces.sub("", line.split(":")[1])
+        #re.sub("\ *:\ *$", "", line[8:]))
       elif line[0:7] == "$GRAPHS" :
         graph_lines = line[8:]
       elif graph_lines is not None and sections_passed == 0 :
         graph_lines += line
       elif sections_passed == 1 :
-        clean_line = trailing_dollars.sub("", line)
+        clean_line = trailing_dollars.sub("",
+          trailing_dollars_phaser.sub("", line))
         column_labels = clean_line.split()
         self.column_labels = [ re.sub("_", " ", lbl) for lbl in column_labels ]
       elif sections_passed == 3 and line[0:2] != "$$" :
         fields = [ _atof(x) for x in line.split() ]
         self.add_row(fields)
-      if trailing_spaces.sub("", line)[-2:] == "$$" :
-        sections_passed += 1
+      if trailing_spaces.sub("", line).endswith("$$") :
+        sections_passed += line.count("$$")
         if sections_passed == 1 :
           if graph_lines is None : graph_lines = line[:-2]
           else                   : graph_lines += line[:-2]
