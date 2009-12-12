@@ -740,11 +740,8 @@ def _dihedral_angle(sites, deg):
 def dihedral_angle(sites, deg=False):
   if (flex is None):
     return _dihedral_angle(sites=sites, deg=deg)
-  from scitbx.math import dihedral
-  result = dihedral(sites=sites).angle_deg
-  if (not deg and result is not None):
-    result = math.radians(result)
-  return result
+  from scitbx.math import dihedral_angle
+  return dihedral_angle(sites=sites, deg=deg)
 
 class rt(object):
 
