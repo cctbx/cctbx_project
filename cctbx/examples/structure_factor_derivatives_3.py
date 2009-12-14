@@ -6,7 +6,7 @@ import cmath
 import math
 
 def scatterer_as_list(self):
-  if (not self.anisotropic_flag):
+  if (self.flags.use_u_iso_only()):
     return list(self.site) + [self.u_iso, self.occupancy, self.fp, self.fdp]
   return list(self.site) + list(self.u_star) \
        + [self.occupancy, self.fp, self.fdp]
@@ -34,7 +34,10 @@ class gradients:
     self.site = site
     self.u_iso = u_iso
     self.u_star = u_star
-    self.anisotropic_flag = (self.u_star is not None)
+    self.flags = xray.scatterer_flags()
+    self.flags.set_use_u(
+      iso=(u_iso is not None),
+      aniso=(u_star is not None))
     self.occupancy = occupancy
     self.fp = fp
     self.fdp = fdp

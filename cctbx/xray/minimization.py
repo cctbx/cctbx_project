@@ -107,7 +107,7 @@ class lbfgs(object):
       cctbx.xray.structure_factors.gradients(
         miller_set=self.target_functor.f_obs(),
         cos_sin_table=cos_sin_table)
-    self.x = flex.double(xray_structure.n_parameters_XXX(), 0)
+    self.x = flex.double(xray_structure.n_parameters(), 0)
     xray_structure.tidy_us(u_min=1.e-6)
     self._scatterers_start = xray_structure.scatterers()
     self._d_min = self.target_functor.f_obs().d_min()

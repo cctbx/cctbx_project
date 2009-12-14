@@ -998,30 +998,38 @@ class structure(crystal.special_position_settings):
                                   u_cart    = u_cart)
 
   def show_scatterer_flags_summary(self, out=None):
-    #XXX move to C++ (after anisotropic_flag is gone)
+    # XXX move to C++
     if (out is None): out = sys.stdout
-    n_use            = 0
-    n_use_u_iso      = 0
-    n_use_u_aniso    = 0
-    n_grad_site      = 0
-    n_grad_u_iso     = 0
-    n_grad_u_aniso   = 0
+    n_use = 0
+    n_use_u_both = 0
+    n_use_u_iso = 0
+    n_use_u_aniso = 0
+    n_use_u_none = 0
+    n_grad_site = 0
+    n_grad_u_iso = 0
+    n_grad_u_aniso = 0
     n_grad_occupancy = 0
-    n_grad_fp        = 0
-    n_grad_fdp       = 0
-    n_anisotropic_flag = 0
-    for sc in self.scatterers():
-        if(sc.flags.use()           ): n_use            += 1
-        if(sc.flags.use_u_iso()     ): n_use_u_iso      += 1
-        if(sc.flags.use_u_aniso()   ): n_use_u_aniso    += 1
-        if(sc.flags.grad_site()     ): n_grad_site      += 1
-        if(sc.flags.grad_u_iso()    ): n_grad_u_iso     += 1
-        if(sc.flags.grad_u_aniso()  ): n_grad_u_aniso   += 1
-        if(sc.flags.grad_occupancy()): n_grad_occupancy += 1
-        if(sc.flags.grad_fp()       ): n_grad_fp        += 1
-        if(sc.flags.grad_fdp()      ): n_grad_fdp       += 1
-        if(sc.anisotropic_flag      ): n_anisotropic_flag += 1
+    n_grad_fp = 0
+    n_grad_fdp = 0
+    for scatterer in self.scatterers():
+      flags = scatterer.flags
+      if (flags.use()): n_use += 1
+      i, a = flags.use_u_iso(), flags.use_u_aniso()
+      if (i and a): n_use_u_both += 1
+      elif (i):     n_use_u_iso += 1
+      elif (a):     n_use_u_aniso += 1
+      else:         n_use_u_none += 1
+      if (flags.grad_site()):      n_grad_site += 1
+      if (flags.grad_u_iso()):     n_grad_u_iso += 1
+      if (flags.grad_u_aniso()):   n_grad_u_aniso += 1
+      if (flags.grad_occupancy()): n_grad_occupancy += 1
+      if (flags.grad_fp()):        n_grad_fp += 1
+      if (flags.grad_fdp()):       n_grad_fdp += 1
     print >> out, "n_use            = ", n_use
+    if (n_use_u_none != 0):
+      print >> out, "n_use_u_none     = ", n_use_u_none
+    if (n_use_u_both != 0):
+      print >> out, "n_use_u_both     = ", n_use_u_both
     print >> out, "n_use_u_iso      = ", n_use_u_iso
     print >> out, "n_use_u_aniso    = ", n_use_u_aniso
     print >> out, "n_grad_site      = ", n_grad_site
@@ -1030,7 +1038,6 @@ class structure(crystal.special_position_settings):
     print >> out, "n_grad_occupancy = ", n_grad_occupancy
     print >> out, "n_grad_fp        = ", n_grad_fp
     print >> out, "n_grad_fdp       = ", n_grad_fdp
-    print >> out, "n_anisotropic_flag = ", n_anisotropic_flag
     print >> out, "total number of scatterers = ", self.scatterers().size()
 
   def scatterer_flags(self):
@@ -1040,34 +1047,25 @@ class structure(crystal.special_position_settings):
     scatterer_flags.assign_to(self.scatterers())
 
   def n_parameters(self):
-    #XXX move to C++ (after anisotropic_flag is gone)
-    result_ = 0
-    for sc in self.scatterers():
-      if(sc.flags.grad_site()     ): result_ +=3
-      if(sc.flags.grad_u_iso()   and sc.anisotropic_flag==False): result_ +=1
-      if(sc.flags.grad_u_aniso() and sc.anisotropic_flag==True): result_ +=6
-      if(sc.flags.grad_occupancy()): result_ +=1
-      if(sc.flags.grad_fp()       ): result_ +=1
-      if(sc.flags.grad_fdp()      ): result_ +=1
-    return result_
+    # XXX move to C++
+    result = 0
+    for scatterer in self.scatterers():
+      flags = scatterer.flags
+      if (flags.grad_site()):       result += 3
+      if (    flags.grad_u_iso()
+          and flags.use_u_iso()):   result += 1
+      if (    flags.grad_u_aniso()
+          and flags.use_u_aniso()): result += 6
+      if (flags.grad_occupancy()):  result += 1
+      if (flags.grad_fp()):         result += 1
+      if (flags.grad_fdp()):        result += 1
+    return result
 
   def n_grad_u_iso(self):
     return self.scatterers().n_grad_u_iso()
 
   def n_grad_u_aniso(self):
     return self.scatterers().n_grad_u_aniso()
-
-  def n_parameters_XXX(self):
-    #XXX move to C++ (after anisotropic_flag is gone)
-    result_ = 0
-    for sc in self.scatterers():
-        if(sc.flags.grad_site()): result_ +=3
-        if(sc.flags.grad_u_iso() and sc.flags.use_u_iso()): result_ +=1
-        if(sc.flags.grad_u_aniso() and sc.flags.use_u_aniso()): result_ +=6
-        if(sc.flags.grad_occupancy()): result_ +=1
-        if(sc.flags.grad_fp()       ): result_ +=1
-        if(sc.flags.grad_fdp()      ): result_ +=1
-    return result_
 
   def parameter_map(self):
     import smtbx.refinement

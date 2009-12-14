@@ -114,6 +114,41 @@ def exercise_scatterer_flags():
     assert f.tan_u_iso()                == state
     assert f.param                      == 42
 
+  f.set_use_u_iso(state=False)
+  f.set_use_u_aniso(state=True)
+  f.set_use_u_iso_only()
+  assert f.use_u_iso()
+  assert not f.use_u_aniso()
+  assert f.use_u_iso_only()
+  assert not f.use_u_aniso_only()
+  f.set_use_u_aniso_only()
+  assert not f.use_u_iso()
+  assert f.use_u_aniso()
+  assert not f.use_u_iso_only()
+  assert f.use_u_aniso_only()
+  f.set_use_u(iso=True, aniso=True)
+  try: f.use_u_iso_only()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "scatterer.flags.u_iso_only(): u_iso and u_aniso both true.")
+  else: raise Exception_expected
+  try: f.use_u_aniso_only()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "scatterer.flags.u_aniso_only(): u_iso and u_aniso both true.")
+  else: raise Exception_expected
+  f.set_use_u(iso=False, aniso=False)
+  try: f.use_u_iso_only()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "scatterer.flags.u_iso_only(): u_iso and u_aniso both false.")
+  else: raise Exception_expected
+  try: f.use_u_aniso_only()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "scatterer.flags.u_aniso_only(): u_iso and u_aniso both false.")
+  else: raise Exception_expected
+
   f1 = xray.scatterer_flags()
   f1.set_grad_site(True)
   f1.set_grad_u_aniso(True)
@@ -152,7 +187,8 @@ def exercise_scatterer_flags():
     sc.flags.set_use_u_aniso(True)
     sc.flags.set_grad_u_aniso(True)
   grad_flags = xray.shared_scatterer_flags(scatterers)
-  assert [ f.bits for f in grad_flags ] == [ sc.flags.bits for sc in scatterers ]
+  assert [ f.bits for f in grad_flags ] \
+      == [ sc.flags.bits for sc in scatterers ]
 
 def exercise_set_scatterer_grad_flags():
   x = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=(0,0,0,0,0,0))
@@ -245,7 +281,8 @@ def exercise_set_scatterer_grad_flags():
           sc0.flags.set_use_u(iso = aniso, aniso = iso)
           assert sc0.flags.use_u_iso() == aniso
           assert sc0.flags.use_u_aniso() == iso
-          sc0.flags.set_use_u(iso = iso)
+          if (iso): sc0.flags.set_use_u_iso_only()
+          else:     sc0.flags.set_use_u_aniso_only()
           assert sc0.flags.use_u_iso() == iso
           assert sc0.flags.use_u_aniso() != iso
   for iso in [False, True]:
@@ -265,7 +302,8 @@ def exercise_set_scatterer_grad_flags():
           if(iso): assert sc0.u_star == (0.5,0.5,0.5,0.5,0.5,0.5)
           sc0.u_iso = 0.5
           sc0.u_star = [0.5,0.5,0.5,0.5,0.5,0.5]
-          sc0.set_use_u(iso = iso)
+          if (iso): sc0.set_use_u_iso_only()
+          else:     sc0.set_use_u_aniso_only()
           assert sc0.flags.use_u_iso() == iso
           assert sc0.flags.use_u_aniso() != iso
           if(iso):
@@ -448,6 +486,18 @@ def exercise_xray_scatterer():
   x.flags.set_grad_site(state=True)
   assert x.flags.grad_site()
   #
+  x.u_iso = 4
+  x.set_use_u(iso=True, aniso=True)
+  assert approx_equal(x.u_iso, 4)
+  assert approx_equal(x.u_star, (3,2,1,6,5,4))
+  x.set_use_u_iso_only()
+  assert approx_equal(x.u_iso, 4)
+  assert approx_equal(x.u_star, (-1,-1,-1,-1,-1,-1))
+  x.u_star = (9,3,6,0,1,5)
+  x.set_use_u_aniso_only()
+  assert approx_equal(x.u_iso, -1)
+  assert approx_equal(x.u_star, (9,3,6,0,1,5))
+  #
   x = xray.scatterer(
     "si1", site=(0.01,0.02,0.3), occupancy=0.9, u=(0.3, 0.3, 0.2, 0,0,0))
   assert x.scattering_type == "Si"
@@ -493,7 +543,7 @@ def exercise_xray_scatterer():
   x.site = (0.2,0.5,0.4)
   ss = x.apply_symmetry(uc, sg.group(), 1.e-10, 0)
   assert ss.is_point_group_1()
-  assert x.flags.use_u_aniso()
+  assert x.flags.use_u_aniso_only()
   x.convert_to_isotropic(unit_cell=uc)
   assert not x.flags.use_u_aniso()
   assert approx_equal(x.u_iso, 269)

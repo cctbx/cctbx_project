@@ -101,7 +101,7 @@ class lbfgs(object):
     for s in self.xray_structure.scatterers():
       s.flags.set_grads(False)
       s.flags.set_grad_site(True)
-    self.unconstrained_parameters = self.xray_structure.n_parameters_XXX()
+    self.unconstrained_parameters = self.xray_structure.n_parameters()
     self.x = flex.double(self.n_parameters(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
     self.pre_minimiser = scitbx.lbfgs.run(
@@ -119,7 +119,7 @@ class lbfgs(object):
 
     # Main minimisation
     self.pre_minimisation = False
-    self.unconstrained_parameters = self.xray_structure.n_parameters_XXX()
+    self.unconstrained_parameters = self.xray_structure.n_parameters()
     self.x = flex.double(self.n_parameters(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
     self.minimizer = scitbx.lbfgs.run(
@@ -137,7 +137,7 @@ class lbfgs(object):
     if self.verbose: print "Final L.S. residual: %f" % self.f
 
   def n_parameters(self):
-    n = self.xray_structure.n_parameters_XXX()
+    n = self.xray_structure.n_parameters()
     site_symmetry_table = self.xray_structure.site_symmetry_table()
     scatterers = self.xray_structure.scatterers()
     for i_seq in site_symmetry_table.special_position_indices():

@@ -313,18 +313,14 @@ class xray_structure(xray.structure):
       scatterer.fp = fp
       scatterer.fdp = fdp
       if (self.use_u_iso_):
-        #scatterer.flags.set_use_u_iso(True) # XXX this will come to replace two lines below
-        scatterer.anisotropic_flag = False
-        scatterer.flags.set_use_u(iso=True)
+        scatterer.flags.set_use_u_iso_only()
         u_iso = self.u_iso
         if (not u_iso and self.random_u_iso):
           u_iso = random.random() * self.random_u_iso_scale \
                 + self.random_u_iso_min
         scatterer.u_iso = u_iso
       if (self.use_u_aniso):
-        #scatterer.flags.set_use_u_aniso(True) # XXX this will come to replace two lines below
-        scatterer.anisotropic_flag = True
-        scatterer.flags.set_use_u(iso=False)
+        scatterer.flags.set_use_u_aniso_only()
         run_away_counter = 0
         while 1:
           run_away_counter += 1

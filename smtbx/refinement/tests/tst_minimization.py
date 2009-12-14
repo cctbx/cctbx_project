@@ -24,7 +24,7 @@ def exercise_parameter_map():
     f.set_grad_fp(fp)
     f.set_grad_fdp(fdp)
   m = xs.parameter_map()
-  assert m.n_parameters == xs.n_parameters_XXX()
+  assert m.n_parameters == xs.n_parameters()
 
   indices = m[0]
   assert indices.site == 0

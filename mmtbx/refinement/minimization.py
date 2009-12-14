@@ -70,7 +70,7 @@ class lbfgs(object):
       self.xray_structure.set_occupancies(value=0, selection=self.hd_selection)
     #
     self.neutron_refinement = (self.fmodels.fmodel_n is not None)
-    self.x = flex.double(self.xray_structure.n_parameters_XXX(), 0)
+    self.x = flex.double(self.xray_structure.n_parameters(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator          = self,

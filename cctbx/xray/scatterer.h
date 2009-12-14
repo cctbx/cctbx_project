@@ -5,6 +5,9 @@
 #include <cctbx/sgtbx/site_symmetry.h>
 #include <cctbx/adptbx.h>
 
+// XXX backward compatibility 2009-12-12
+#define CCTBX_XRAY_SCATTERER_ANISOTROPIC_FLAG_REMOVED
+
 namespace cctbx {
   //! X-ray scatterer and structure factor namespace.
 namespace xray {
@@ -54,7 +57,6 @@ namespace xray {
         fdp(fdp_),
         site(site_),
         occupancy(occupancy_),
-        anisotropic_flag(false),
         u_iso(u_iso_),
         u_star(-1,-1,-1,-1,-1,-1),
         flags(scatterer_flags::use_bit|scatterer_flags::use_u_iso_bit),
@@ -77,7 +79,6 @@ namespace xray {
         fdp(fdp_),
         site(site_),
         occupancy(occupancy_),
-        anisotropic_flag(true),
         u_iso(-1),
         u_star(u_star_),
         flags(scatterer_flags::use_bit|scatterer_flags::use_u_aniso_bit),
@@ -114,21 +115,11 @@ namespace xray {
       //! Direct access to occupancy factor.
       FloatType occupancy;
 
-      //! Direct access to flag indicating anisotropic displacement parameters.
-      bool anisotropic_flag;
-
       //! Direct access to isotropic displacement parameter.
-      /*! Defined only if anisotropic_flag == false.
-          <p>
-          Conversions between isotropic and anisotropic displacement
-          parameters are provided by cctbx::adptbx.
-       */
       FloatType u_iso;
 
       //! Direct access to anisotropic displacement parameters.
-      /*! Defined only if anisotropic_flag == true.
-          <p>
-          Conversions between isotropic and anisotropic displacement
+      /*! Conversions between isotropic and anisotropic displacement
           parameters are provided by cctbx::adptbx.
           <p>
           See also: apply_symmetry(), apply_symmetry_u_star()
@@ -146,19 +137,18 @@ namespace xray {
         if(!aniso) u_star.fill(-1);
       }
 
-      void set_use_u(bool state)
+      void set_use_u_iso_only()
       {
-        flags.set_use_u_iso(state);
-        flags.set_use_u_aniso(!state);
-        if(!state) u_iso = -1;
-        if(state) u_star.fill(-1);
+        set_use_u(true, false);
+      }
+
+      void set_use_u_aniso_only()
+      {
+        set_use_u(false, true);
       }
 
       //! Converts u_star to the equivalent u_iso in place.
-      /*! The u_star values are reset to -1 and the anisotropic_flag
-          is reset to false.
-          This function has no effect if anisotropic_flag is false
-          already.
+      /*! The u_star values are reset to -1.
        */
       void
       convert_to_isotropic(
@@ -167,18 +157,12 @@ namespace xray {
         if (flags.use_u_aniso()) {
           if (!flags.use_u_iso()) u_iso = 0;
           u_iso += adptbx::u_star_as_u_iso(unit_cell, u_star);
-          anisotropic_flag = false;
-          flags.set_use_u_aniso(false);
-          flags.set_use_u_iso(true);
-          u_star.fill(-1);
+          set_use_u(true, false);
         }
       }
 
       //! Converts u_iso to u_star in place.
-      /*! The u_iso value is reset to -1 and the anisotropic_flag
-          is reset to true.
-          This function has no effect if anisotropic_flag is true
-          already.
+      /*! The u_iso value is reset to -1.
        */
       void
       convert_to_anisotropic(
@@ -192,10 +176,7 @@ namespace xray {
           else {
             u_star += adptbx::u_iso_as_u_star(unit_cell, u_iso);
           }
-          flags.set_use_u_aniso(true);
-          flags.set_use_u_iso(false);
-          anisotropic_flag = true;
-          u_iso = -1;
+          set_use_u(false, true);
         }
       }
 
@@ -389,8 +370,6 @@ namespace xray {
           components of u_star before and after the
           application of the site symmetry is greater than
           u_star_tolerance.
-
-          This function has no effect if anisotropic_flag == false.
        */
       void
       apply_symmetry_u_star(

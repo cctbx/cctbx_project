@@ -19,6 +19,22 @@ namespace {
     typedef scatterer<> w_t;
     typedef w_t::float_type flt_t;
 
+    // XXX backward compatibility 2009-12-12
+    static bool
+    get_anisotropic_flag()
+    {
+      throw std::runtime_error(
+        "obsolete attribute. please use use_u_aniso_only().");
+    }
+
+    // XXX backward compatibility 2009-12-12
+    static void
+    set_anisotropic_flag(bool)
+    {
+      throw std::runtime_error(
+        "obsolete attribute. please use set_use_u_aniso_only().");
+    }
+
     static void
     wrap()
     {
@@ -67,17 +83,16 @@ namespace {
                               make_setter(&w_t::site, dcp()))
         .add_property("occupancy", make_getter(&w_t::occupancy, rbv()),
                                    make_setter(&w_t::occupancy, dcp()))
-        .add_property("anisotropic_flag",
-          make_getter(&w_t::anisotropic_flag, rbv()),
-          make_setter(&w_t::anisotropic_flag, dcp()))
+        .add_static_property("anisotropic_flag",
+          get_anisotropic_flag, set_anisotropic_flag)
         .add_property("u_iso", make_getter(&w_t::u_iso, rbv()),
                                make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
                                 make_setter(&w_t::u_star, dcp()))
         .def_readwrite("flags", &w_t::flags)
-        .def("set_use_u", (void(w_t::*)(bool, bool)) &w_t::set_use_u, (
-          arg("iso"),arg("aniso")))
-        .def("set_use_u", (void(w_t::*)(bool)) &w_t::set_use_u, (arg("iso")))
+        .def("set_use_u", &w_t::set_use_u, (arg("iso"),arg("aniso")))
+        .def("set_use_u_iso_only", &w_t::set_use_u_iso_only)
+        .def("set_use_u_aniso_only", &w_t::set_use_u_aniso_only)
         .def("convert_to_isotropic", &w_t::convert_to_isotropic, (
           arg("unit_cell")))
         .def("convert_to_anisotropic", &w_t::convert_to_anisotropic, (

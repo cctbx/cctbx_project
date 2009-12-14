@@ -55,6 +55,8 @@ namespace {
         .def("curv_fdp_fdp", &w_t::curv_fdp_fdp)
         .def("tan_u_iso", &w_t::tan_u_iso)
         .def("use_fp_fdp", &w_t::use_fp_fdp)
+        .def("use_u_iso_only", &w_t::use_u_iso_only)
+        .def("use_u_aniso_only", &w_t::use_u_aniso_only)
         .def("set_use", &w_t::set_use, (arg("state")), return_self<>())
         .def("set_use_u_iso", &w_t::set_use_u_iso, (arg("state")), return_self<>())
         .def("set_use_u_aniso", &w_t::set_use_u_aniso, (arg("state")), return_self<>())
@@ -88,9 +90,10 @@ namespace {
         .def("set_tan_u_iso", &w_t::set_tan_u_iso, (arg("state")), return_self<>())
         .def("set_use_fp_fdp", &w_t::set_use_fp_fdp, arg("state"),
              return_self<>())
-        .def("set_use_u", (void(w_t::*)(bool, bool)) &w_t::set_use_u, (arg("iso"),arg("aniso")))
-        .def("set_use_u", (void(w_t::*)(bool)) &w_t::set_use_u, (arg("iso")))
-        .def("set_grads", (void(w_t::*)(bool)) &w_t::set_grads, (arg("state")))
+        .def("set_use_u_iso_only", &w_t::set_use_u_iso_only)
+        .def("set_use_u_aniso_only", &w_t::set_use_u_aniso_only)
+        .def("set_use_u", &w_t::set_use_u, (arg("iso"), arg("aniso")))
+        .def("set_grads", &w_t::set_grads, (arg("state")))
         .def_readonly("bits", &w_t::bits)
         .def_readwrite("param", &w_t::param)
       ;

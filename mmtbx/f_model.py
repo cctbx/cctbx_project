@@ -2213,7 +2213,7 @@ class target_result_mixin(object):
         u_iso_refinable_params=u_iso_refinable_params,
         d_target_d_f_calc=d_target_d_f_calc.data(),
         xray_structure=xray_structure,
-        n_parameters=xray_structure.n_parameters_XXX(),
+        n_parameters=xray_structure.n_parameters(),
         miller_set=d_target_d_f_calc,
         algorithm=manager.sfg_params.algorithm)
     time_gradients_wrt_atomic_parameters += timer.elapsed()
