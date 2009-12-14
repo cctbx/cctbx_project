@@ -144,6 +144,18 @@ namespace smtbx { namespace refinement { namespace least_squares {
       special_position_constraints<double>
     >::wrap();
 
+    normal_equation_building<
+      double,
+      scitbx::lstbx::normal_equations_separating_scale_factor,
+      mainstream_shelx_weighting,
+      structure_factors::direct::one_h_linearisation::std_trigonometry<
+        double,
+        true,
+        structure_factors::direct::one_h_linearisation::modulus_squared
+      >,
+      special_position_constraints<double>
+    >::wrap();
+
     special_position_constraints_wrapper<
       double>::wrap("special_position_constraints");
   }

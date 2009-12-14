@@ -17,6 +17,7 @@
 #include <cctbx/coordinates.h>
 #include <cctbx/adptbx.h>
 
+#include <smtbx/error.h>
 #include <smtbx/structure_factors/direct/standard_xray.h>
 
 #include <algorithm>
@@ -142,6 +143,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
                          ConstraintsType const &constraints)
   {
     // Accumulate equations Fo(h) ~ Fc(h)
+    SMTBX_ASSERT(miller_indices.size() == data.size())(miller_indices.size())(data.size());
+    SMTBX_ASSERT(data.size() == sigmas.size())(data.size())(sigmas.size());
     for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
       miller::index<> const &h = miller_indices[i_h];
       one_h_linearisation.compute(h);
