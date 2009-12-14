@@ -70,7 +70,7 @@ def write_scatterer(s, running_index, scatterer,
   if (segid is None): segid = "SITE"
   if (group is None): group = ""
   assert running_index > 0
-  assert not scatterer.anisotropic_flag
+  assert scatterer.flags.use_u_iso_only()
   assert action in ("refine", "fix", "ignore")
   i = running_index
   print >> s, """\

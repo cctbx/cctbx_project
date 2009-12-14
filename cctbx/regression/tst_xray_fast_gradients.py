@@ -792,7 +792,7 @@ def exercise_packed(structure_ideal, f_obs,
       u_iso_refinable_params.append(value)
   n_parameters = xray.scatterer_grad_flags_counts(
                               sh.structure_shifted.scatterers()).n_parameters()
-  assert n_parameters == sh.structure_shifted.n_parameters_XXX()
+  assert n_parameters == sh.structure_shifted.n_parameters()
   if (n_parameters > 0):
     sfd = xray.structure_factors.gradients_direct(
       xray_structure=sh.structure_shifted,
@@ -853,7 +853,7 @@ def exercise_gradient_manager(structure_ideal, f_obs,
   else:
     n_parameters = xray.scatterer_grad_flags_counts(
                               sh.structure_shifted.scatterers()).n_parameters()
-    assert n_parameters == sh.structure_shifted.n_parameters_XXX()
+    assert n_parameters == sh.structure_shifted.n_parameters()
   gd = grad_manager(
     xray_structure=sh.structure_shifted,
     u_iso_refinable_params=None,

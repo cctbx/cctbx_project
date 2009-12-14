@@ -44,7 +44,7 @@ class _scatterer(boost.python.injector, ext.scatterer):
     if (label is None): label = self.label
     if (site is None): site = self.site
     if (u is None):
-      if (self.anisotropic_flag): u = self.u_star
+      if (self.flags.use_u_aniso_only()): u = self.u_star
       else: u = self.u_iso
     if (occupancy is None): occupancy = self.occupancy
     if (scattering_type is None): scattering_type = self.scattering_type

@@ -18,7 +18,7 @@ random.seed(0)
 flex.set_random_seed(0)
 
 def scatterer_as_list(self):
-  if (not self.anisotropic_flag):
+  if (self.flags.use_u_iso_only()):
     return list(self.site) + [self.u_iso, self.occupancy, self.fp, self.fdp]
   return list(self.site) + list(self.u_star) \
        + [self.occupancy, self.fp, self.fdp]

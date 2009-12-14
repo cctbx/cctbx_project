@@ -91,15 +91,10 @@ namespace iotbx { namespace pdb {
               scatterer.site = scale_r_ * atom->data->xyz + scale_t_;
             }
             if (atom->data->uij.const_ref().all_eq(-1)) {
-              scatterer.anisotropic_flag = false;
-              scatterer.flags.set_use_u(true, false);
               scatterer.u_iso = cctbx::adptbx::b_as_u(atom->data->b);
-              scatterer.u_star.fill(-1);
+              scatterer.set_use_u_iso_only();
             }
             else {
-              scatterer.anisotropic_flag = true;
-              scatterer.flags.set_use_u(false, true);
-              scatterer.u_iso = -1;
               if (unit_cube_pseudo_crystal_) {
                 scatterer.u_star = atom->data->uij;
               }
@@ -107,6 +102,7 @@ namespace iotbx { namespace pdb {
                 scatterer.u_star = cctbx::adptbx::u_cart_as_u_star(
                   unit_cell_, atom->data->uij);
               }
+              scatterer.set_use_u_aniso_only();
             }
             scatterer.occupancy = atom->data->occ;
             if (   atom_names_scattering_type_const_.find(

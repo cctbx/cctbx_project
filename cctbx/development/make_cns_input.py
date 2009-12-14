@@ -44,7 +44,7 @@ def coordinates(scatterers, xyz_only=False):
   for scatterer in scatterers:
     x = scatterer.site
     q = scatterer.occupancy
-    assert not scatterer.anisotropic_flag
+    assert scatterer.flags.use_u_iso_only()
     b = adptbx.u_as_b(scatterer.u_iso)
     gaussian = eltbx.xray_scattering.it1992(scatterer.scattering_type).fetch()
     fp = scatterer.fp

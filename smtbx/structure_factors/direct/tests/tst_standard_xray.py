@@ -68,7 +68,7 @@ class consistency_test_cases(test_case):
 
   def structures_forward(self, xs, xs_forward, eta_norm):
     while True:
-      direction = flex.random_double(xs.n_parameters_XXX())
+      direction = flex.random_double(xs.n_parameters())
       direction /= direction.norm()
       eta = eta_norm * direction
 

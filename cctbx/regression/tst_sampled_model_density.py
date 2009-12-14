@@ -223,7 +223,7 @@ def exercise_negative_parameters(verbose=0):
       assert max(adptbx.eigenvalues(u_cart)) < 0
       u_star = adptbx.u_cart_as_u_star(structure.unit_cell(), u_cart)
       scatterer.u_star = u_star
-      scatterer.flags.set_use_u(iso=False)
+      scatterer.flags.set_use_u_aniso_only()
     elif (i_trial == 5):
       scatterer.fp = -10
     elif (i_trial == 6):
@@ -272,7 +272,7 @@ def exercise_negative_parameters(verbose=0):
         u_iso_refinable_params=None,
         miller_set=f_direct,
         d_target_d_f_calc=target_result.derivatives(),
-        n_parameters = structure.n_parameters_XXX(),
+        n_parameters = structure.n_parameters(),
         algorithm=algorithm).packed()
 
 def run_call_back(flags, space_group_info):

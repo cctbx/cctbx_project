@@ -30,7 +30,7 @@ def as_pdb_file(self,
   for scatterer in self.scatterers():
     serial += 1
     atom.serial = iotbx.pdb.hy36encode(width=5, value=serial)
-    if (scatterer.anisotropic_flag):
+    if (scatterer.flags.use_u_aniso_only()):
       atom.uij = adptbx.u_star_as_u_cart(self.unit_cell(), scatterer.u_star)
       atom.b = adptbx.u_as_b(adptbx.u_cart_as_u_iso(atom.uij))
     else:

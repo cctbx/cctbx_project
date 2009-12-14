@@ -18,7 +18,7 @@ namespace {
 
     to_string()
     {
-      unsigned version = 2;
+      unsigned version = 3;
       *this << version;
     }
 
@@ -30,7 +30,6 @@ namespace {
             << val.fdp;
       *this << val.site.const_ref()
             << val.occupancy
-            << val.anisotropic_flag
             << val.u_iso;
       *this << val.u_star.const_ref()
             << val.multiplicity()
@@ -47,13 +46,14 @@ namespace {
     : pickle_double_buffered::from_string(str_ptr)
     {
       *this >> version;
-      CCTBX_ASSERT(version == 2);
+      CCTBX_ASSERT(version == 2 || version == 3);
     }
 
     using pickle_double_buffered::from_string::operator>>;
 
     from_string& operator>>(cctbx::xray::scatterer<>& val)
     {
+      bool obsolete_anisotropic_flag;
       int multiplicity;
       cctbx::xray::scatterer<>::float_type weight_without_occupancy;
       *this >> val.label
@@ -61,9 +61,11 @@ namespace {
             >> val.fp
             >> val.fdp;
       *this >> val.site.ref()
-            >> val.occupancy
-            >> val.anisotropic_flag
-            >> val.u_iso;
+            >> val.occupancy;
+      if (version == 2) {
+        *this >> obsolete_anisotropic_flag;
+      }
+      *this >> val.u_iso;
       *this >> val.u_star.ref()
             >> multiplicity
             >> weight_without_occupancy;

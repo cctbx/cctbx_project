@@ -57,7 +57,7 @@ def read_scatterer(flds, default_b_iso=3.0):
       site[i] = float(site[i])
     scatterer.site = site
     scatterer.occupancy = 1.
-    scatterer.anisotropic_flag = False
+    scatterer.set_use_u_iso_only()
     scatterer.u_iso = adptbx.b_as_u(default_b_iso)
     if (len(flds) >= offs + 4):
       scatterer.occupancy = float(flds[offs + 3])

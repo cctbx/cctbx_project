@@ -177,16 +177,60 @@ namespace cctbx { namespace xray {
     CCTBX_XRAY_SCATTERER_FLAGS_GET_SET(tan_u_iso)
     CCTBX_XRAY_SCATTERER_FLAGS_GET_SET(use_fp_fdp)
 
+    //! An exception is thrown if u_iso and u_aniso are both true.
+    bool use_u_iso_only() const
+    {
+      bool result = use_u_iso();
+      if (result) {
+        if (use_u_aniso()) {
+          throw std::runtime_error(
+            "scatterer.flags.u_iso_only(): u_iso and u_aniso both true.");
+        }
+      }
+      else {
+        if (!use_u_aniso()) {
+          throw std::runtime_error(
+            "scatterer.flags.u_iso_only(): u_iso and u_aniso both false.");
+        }
+      }
+      return result;
+    }
+
+    //! An exception is thrown if u_iso and u_aniso are both true.
+    bool use_u_aniso_only() const
+    {
+      bool result = use_u_aniso();
+      if (result) {
+        if (use_u_iso()) {
+          throw std::runtime_error(
+            "scatterer.flags.u_aniso_only(): u_iso and u_aniso both true.");
+        }
+      }
+      else {
+        if (!use_u_iso()) {
+          throw std::runtime_error(
+            "scatterer.flags.u_aniso_only(): u_iso and u_aniso both false.");
+        }
+      }
+      return result;
+    }
+
+    void set_use_u_iso_only()
+    {
+      set_use_u_iso(true);
+      set_use_u_aniso(false);
+    };
+
+    void set_use_u_aniso_only()
+    {
+      set_use_u_iso(false);
+      set_use_u_aniso(true);
+    };
+
     void set_use_u(bool iso, bool aniso)
     {
       set_use_u_iso(iso);
       set_use_u_aniso(aniso);
-    };
-
-    void set_use_u(bool state)
-    {
-      set_use_u_iso(state);
-      set_use_u_aniso(!state);
     };
 
     void
