@@ -24,30 +24,58 @@ def random_modify_adp_and_adp_flags(scatterers,
   us7 = sc[7].u_star
   us8 = sc[8].u_star
   nv = neg_u_aniso
-  sc[0].u_iso = u_isos[0] ; sc[0].flags.set_use_u_iso(True ) ; sc[0].flags.set_use_u_aniso(True )
-  sc[1].u_iso = u_isos[1] ; sc[1].flags.set_use_u_iso(False) ; sc[1].flags.set_use_u_aniso(False)
-  sc[2].u_iso = u_isos[2] ; sc[2].flags.set_use_u_iso(True ) ; sc[2].flags.set_use_u_aniso(False)
-  sc[3].u_iso = u_isos[3] ; sc[3].flags.set_use_u_iso(False) ; sc[3].flags.set_use_u_aniso(True )
-  sc[4].u_iso =  neg_u_iso ; sc[4].flags.set_use_u_iso(False) ; sc[4].flags.set_use_u_aniso(False)
-  sc[5].u_iso =  neg_u_iso ; sc[5].flags.set_use_u_iso(False) ; sc[5].flags.set_use_u_aniso(True )
-  sc[6].u_iso = u_isos[6] ; sc[6].u_star = nv ; sc[6].flags.set_use_u_iso(False) ; sc[6].flags.set_use_u_aniso(False)
-  sc[7].u_iso = u_isos[7] ; sc[7].u_star = nv ; sc[7].flags.set_use_u_iso(True ) ; sc[7].flags.set_use_u_aniso(False)
-  sc[8].u_iso =  neg_u_iso ; sc[8].u_star = nv ; sc[8].flags.set_use_u_iso(False) ; sc[8].flags.set_use_u_aniso(False)
-  if(parameter_name == "u_iso"):
-     sc[1].u_iso = u_isos[1] ; sc[1].flags.set_use_u_iso(True) ; sc[1].flags.set_use_u_aniso(False)
-     sc[3].u_iso = u_isos[3] ; sc[3].flags.set_use_u_iso(True) ; sc[3].flags.set_use_u_aniso(True )
-     sc[4].u_iso = u_isos[4] ; sc[4].flags.set_use_u_iso(True) ; sc[4].flags.set_use_u_aniso(False)
-     sc[5].u_iso = u_isos[5] ; sc[5].flags.set_use_u_iso(True) ; sc[5].flags.set_use_u_aniso(True )
-     sc[6].u_iso = u_isos[6] ; sc[6].u_star = nv ; sc[6].flags.set_use_u_iso(True) ; sc[6].flags.set_use_u_aniso(False)
-     sc[8].u_iso = u_isos[8] ; sc[8].u_star = nv ; sc[8].flags.set_use_u_iso(True) ; sc[8].flags.set_use_u_aniso(False)
-  if(parameter_name == "u_star"):
-     sc[1].u_iso = u_isos[1] ; sc[1].flags.set_use_u_iso(False) ; sc[1].flags.set_use_u_aniso(True)
-     sc[2].u_iso = u_isos[2] ; sc[2].flags.set_use_u_iso(True ) ; sc[2].flags.set_use_u_aniso(True)
-     sc[4].u_iso =  neg_u_iso ; sc[4].flags.set_use_u_iso(False) ; sc[4].flags.set_use_u_aniso(True)
-     sc[6].u_iso = u_isos[6] ; sc[6].u_star = us6 ; sc[6].flags.set_use_u_iso(False) ; sc[6].flags.set_use_u_aniso(True)
-     sc[7].u_iso = u_isos[7] ; sc[7].u_star = us7 ; sc[7].flags.set_use_u_iso(True ) ; sc[7].flags.set_use_u_aniso(True)
-     sc[8].u_iso =  neg_u_iso ; sc[8].u_star = us8 ; sc[8].flags.set_use_u_iso(False) ; sc[8].flags.set_use_u_aniso(True)
-
+  sc[0].u_iso = u_isos[0]
+  sc[0].flags.set_use_u(iso=True,  aniso=True)
+  sc[1].u_iso = u_isos[1]
+  sc[1].flags.set_use_u(iso=False, aniso=False)
+  sc[2].u_iso = u_isos[2]
+  sc[2].flags.set_use_u(iso=True,  aniso=False)
+  sc[3].u_iso = u_isos[3]
+  sc[3].flags.set_use_u(iso=False, aniso=True)
+  sc[4].u_iso =  neg_u_iso
+  sc[4].flags.set_use_u(iso=False, aniso=False)
+  sc[5].u_iso =  neg_u_iso
+  sc[5].flags.set_use_u(iso=False, aniso=True)
+  sc[6].u_iso = u_isos[6]
+  sc[6].u_star = nv
+  sc[6].flags.set_use_u(iso=False, aniso=False)
+  sc[7].u_iso = u_isos[7]
+  sc[7].u_star = nv
+  sc[7].flags.set_use_u(iso=True,  aniso=False)
+  sc[8].u_iso =  neg_u_iso
+  sc[8].u_star = nv
+  sc[8].flags.set_use_u(iso=False, aniso=False)
+  if (parameter_name == "u_iso"):
+    sc[1].u_iso = u_isos[1]
+    sc[1].flags.set_use_u(iso=True, aniso=False)
+    sc[3].u_iso = u_isos[3]
+    sc[3].flags.set_use_u(iso=True, aniso=True)
+    sc[4].u_iso = u_isos[4]
+    sc[4].flags.set_use_u(iso=True, aniso=False)
+    sc[5].u_iso = u_isos[5]
+    sc[5].flags.set_use_u(iso=True, aniso=True)
+    sc[6].u_iso = u_isos[6]
+    sc[6].u_star = nv
+    sc[6].flags.set_use_u(iso=True, aniso=False)
+    sc[8].u_iso = u_isos[8]
+    sc[8].u_star = nv
+    sc[8].flags.set_use_u(iso=True, aniso=False)
+  elif (parameter_name == "u_star"):
+    sc[1].u_iso = u_isos[1]
+    sc[1].flags.set_use_u(iso=False, aniso=True)
+    sc[2].u_iso = u_isos[2]
+    sc[2].flags.set_use_u(iso=True , aniso=True)
+    sc[4].u_iso =  neg_u_iso
+    sc[4].flags.set_use_u(iso=False, aniso=True)
+    sc[6].u_iso = u_isos[6]
+    sc[6].u_star = us6
+    sc[6].flags.set_use_u(iso=False, aniso=True)
+    sc[7].u_iso = u_isos[7]
+    sc[7].u_star = us7
+    sc[7].flags.set_use_u(iso=True , aniso=True)
+    sc[8].u_iso =  neg_u_iso
+    sc[8].u_star = us8
+    sc[8].flags.set_use_u(iso=False, aniso=True)
 
 def random_modify_adp_and_adp_flags_2(
                                     scatterers,
