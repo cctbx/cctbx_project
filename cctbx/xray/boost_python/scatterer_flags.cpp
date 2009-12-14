@@ -58,36 +58,67 @@ namespace {
         .def("use_u_iso_only", &w_t::use_u_iso_only)
         .def("use_u_aniso_only", &w_t::use_u_aniso_only)
         .def("set_use", &w_t::set_use, (arg("state")), return_self<>())
-        .def("set_use_u_iso", &w_t::set_use_u_iso, (arg("state")), return_self<>())
-        .def("set_use_u_aniso", &w_t::set_use_u_aniso, (arg("state")), return_self<>())
-        .def("set_grad_site", &w_t::set_grad_site, (arg("state")), return_self<>())
-        .def("set_grad_u_iso", &w_t::set_grad_u_iso, (arg("state")), return_self<>())
-        .def("set_grad_u_aniso", &w_t::set_grad_u_aniso, (arg("state")), return_self<>())
-        .def("set_grad_occupancy", &w_t::set_grad_occupancy, (arg("state")), return_self<>())
-        .def("set_grad_fp", &w_t::set_grad_fp, (arg("state")), return_self<>())
-        .def("set_grad_fdp", &w_t::set_grad_fdp, (arg("state")), return_self<>())
-        .def("set_curv_site_site", &w_t::set_curv_site_site, (arg("state")), return_self<>())
-        .def("set_curv_site_u_iso", &w_t::set_curv_site_u_iso, (arg("state")), return_self<>())
-        .def("set_curv_site_u_aniso", &w_t::set_curv_site_u_aniso, (arg("state")), return_self<>())
-        .def("set_curv_site_occupancy", &w_t::set_curv_site_occupancy, (arg("state")), return_self<>())
-        .def("set_curv_site_fp", &w_t::set_curv_site_fp, (arg("state")), return_self<>())
-        .def("set_curv_site_fdp", &w_t::set_curv_site_fdp, (arg("state")), return_self<>())
-        .def("set_curv_u_iso_u_iso", &w_t::set_curv_u_iso_u_iso, (arg("state")), return_self<>())
-        .def("set_curv_u_iso_u_aniso", &w_t::set_curv_u_iso_u_aniso, (arg("state")), return_self<>())
-        .def("set_curv_u_iso_occupancy", &w_t::set_curv_u_iso_occupancy, (arg("state")), return_self<>())
-        .def("set_curv_u_iso_fp", &w_t::set_curv_u_iso_fp, (arg("state")), return_self<>())
-        .def("set_curv_u_iso_fdp", &w_t::set_curv_u_iso_fdp, (arg("state")), return_self<>())
-        .def("set_curv_u_aniso_u_aniso", &w_t::set_curv_u_aniso_u_aniso, (arg("state")), return_self<>())
-        .def("set_curv_u_aniso_occupancy", &w_t::set_curv_u_aniso_occupancy, (arg("state")), return_self<>())
-        .def("set_curv_u_aniso_fp", &w_t::set_curv_u_aniso_fp, (arg("state")), return_self<>())
-        .def("set_curv_u_aniso_fdp", &w_t::set_curv_u_aniso_fdp, (arg("state")), return_self<>())
-        .def("set_curv_occupancy_occupancy", &w_t::set_curv_occupancy_occupancy, (arg("state")), return_self<>())
-        .def("set_curv_occupancy_fp", &w_t::set_curv_occupancy_fp, (arg("state")), return_self<>())
-        .def("set_curv_occupancy_fdp", &w_t::set_curv_occupancy_fdp, (arg("state")), return_self<>())
-        .def("set_curv_fp_fp", &w_t::set_curv_fp_fp, (arg("state")), return_self<>())
-        .def("set_curv_fp_fdp", &w_t::set_curv_fp_fdp, (arg("state")), return_self<>())
-        .def("set_curv_fdp_fdp", &w_t::set_curv_fdp_fdp, (arg("state")), return_self<>())
-        .def("set_tan_u_iso", &w_t::set_tan_u_iso, (arg("state")), return_self<>())
+        .def("set_use_u_iso", &w_t::set_use_u_iso, (
+          arg("state")), return_self<>())
+        .def("set_use_u_aniso", &w_t::set_use_u_aniso, (
+          arg("state")), return_self<>())
+        .def("set_grad_site", &w_t::set_grad_site, (
+          arg("state")), return_self<>())
+        .def("set_grad_u_iso", &w_t::set_grad_u_iso, (
+          arg("state")), return_self<>())
+        .def("set_grad_u_aniso", &w_t::set_grad_u_aniso, (
+          arg("state")), return_self<>())
+        .def("set_grad_occupancy", &w_t::set_grad_occupancy, (
+          arg("state")), return_self<>())
+        .def("set_grad_fp", &w_t::set_grad_fp, (
+          arg("state")), return_self<>())
+        .def("set_grad_fdp", &w_t::set_grad_fdp, (
+          arg("state")), return_self<>())
+        .def("set_curv_site_site", &w_t::set_curv_site_site, (
+          arg("state")), return_self<>())
+        .def("set_curv_site_u_iso", &w_t::set_curv_site_u_iso, (
+          arg("state")), return_self<>())
+        .def("set_curv_site_u_aniso", &w_t::set_curv_site_u_aniso, (
+          arg("state")), return_self<>())
+        .def("set_curv_site_occupancy", &w_t::set_curv_site_occupancy, (
+          arg("state")), return_self<>())
+        .def("set_curv_site_fp", &w_t::set_curv_site_fp, (
+          arg("state")), return_self<>())
+        .def("set_curv_site_fdp", &w_t::set_curv_site_fdp, (
+          arg("state")), return_self<>())
+        .def("set_curv_u_iso_u_iso", &w_t::set_curv_u_iso_u_iso, (
+          arg("state")), return_self<>())
+        .def("set_curv_u_iso_u_aniso", &w_t::set_curv_u_iso_u_aniso, (
+          arg("state")), return_self<>())
+        .def("set_curv_u_iso_occupancy", &w_t::set_curv_u_iso_occupancy, (
+          arg("state")), return_self<>())
+        .def("set_curv_u_iso_fp", &w_t::set_curv_u_iso_fp, (
+          arg("state")), return_self<>())
+        .def("set_curv_u_iso_fdp", &w_t::set_curv_u_iso_fdp, (
+          arg("state")), return_self<>())
+        .def("set_curv_u_aniso_u_aniso", &w_t::set_curv_u_aniso_u_aniso, (
+          arg("state")), return_self<>())
+        .def("set_curv_u_aniso_occupancy", &w_t::set_curv_u_aniso_occupancy, (
+          arg("state")), return_self<>())
+        .def("set_curv_u_aniso_fp", &w_t::set_curv_u_aniso_fp, (
+          arg("state")), return_self<>())
+        .def("set_curv_u_aniso_fdp", &w_t::set_curv_u_aniso_fdp, (
+          arg("state")), return_self<>())
+        .def("set_curv_occupancy_occupancy",
+          &w_t::set_curv_occupancy_occupancy, (
+            arg("state")), return_self<>())
+        .def("set_curv_occupancy_fp", &w_t::set_curv_occupancy_fp, (
+          arg("state")), return_self<>())
+        .def("set_curv_occupancy_fdp", &w_t::set_curv_occupancy_fdp, (
+          arg("state")), return_self<>())
+        .def("set_curv_fp_fp", &w_t::set_curv_fp_fp, (
+          arg("state")), return_self<>())
+        .def("set_curv_fp_fdp", &w_t::set_curv_fp_fdp, (
+          arg("state")), return_self<>())
+        .def("set_curv_fdp_fdp", &w_t::set_curv_fdp_fdp, (
+          arg("state")), return_self<>())
+        .def("set_tan_u_iso", &w_t::set_tan_u_iso, (
+          arg("state")), return_self<>())
         .def("set_use_fp_fdp", &w_t::set_use_fp_fdp, arg("state"),
              return_self<>())
         .def("set_use_u_iso_only", &w_t::set_use_u_iso_only)
@@ -135,7 +166,10 @@ namespace {
     }
 
     static
-    wt const &assign_to(wt const &self, af::ref<scatterer<> > const &scatterers) {
+    wt const&
+    assign_to(
+      wt const &self, af::ref<scatterer<> > const &scatterers)
+    {
       CCTBX_ASSERT(self.size() == scatterers.size());
       for (std::size_t i=0; i < self.size(); ++i) {
         scatterers[i].flags = self[i];
