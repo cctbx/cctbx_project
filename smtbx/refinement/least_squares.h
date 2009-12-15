@@ -140,21 +140,21 @@ namespace smtbx { namespace refinement { namespace least_squares {
                          WeightingScheme<FloatType> const &weighting_scheme,
                          FloatType scale_factor,
                          OneMillerIndexLinearisation &one_h_linearisation,
-                         ConstraintsType const &constraints)
+                         ConstraintsType &constraints)
   {
     // Accumulate equations Fo(h) ~ Fc(h)
-    SMTBX_ASSERT(miller_indices.size() == data.size())(miller_indices.size())(data.size());
+    SMTBX_ASSERT(miller_indices.size() == data.size())
+                (miller_indices.size())(data.size());
     SMTBX_ASSERT(data.size() == sigmas.size())(data.size())(sigmas.size());
     for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
       miller::index<> const &h = miller_indices[i_h];
       one_h_linearisation.compute(h);
-      FloatType *independent_gradients = constraints.independent_gradients(
-        one_h_linearisation.grad_observable.begin());
+      constraints.apply_chain_rule(one_h_linearisation.grad_observable);
       FloatType observable = one_h_linearisation.observable;
       FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
                                           scale_factor * observable);
       normal_equations.add_equation(observable,
-                                    independent_gradients,
+                                    constraints.independent_gradients().begin(),
                                     data[i_h],
                                     weight);
     }
@@ -175,7 +175,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     uctbx::unit_cell const &unit_cell;
     sgtbx::site_symmetry_table const &site_symmetry_table;
     af::ref_owning_shared<scatterer_t> scatterers;
-    af::shared<scalar_t> mutable independent_grads;
+    af::shared<scalar_t> independent_grads;
 
   public:
     special_position_constraints(uctbx::unit_cell const &unit_cell,
@@ -210,11 +210,16 @@ namespace smtbx { namespace refinement { namespace least_squares {
       independent_grads.resize(n_independent_params);
     }
 
-    scalar_t *independent_gradients(scalar_t *crystallographic_gradients) const {
-      if (!independent_grads.size()) return 0;
-      scalar_t *xg = crystallographic_gradients;
-      scalar_t *result = independent_grads.begin();
-      scalar_t *g = result;
+    af::shared<scalar_t> const independent_gradients() const {
+      return independent_grads;
+    }
+
+    void
+    apply_chain_rule(af::const_ref<scalar_t> const &crystallographic_gradients)
+    {
+      if (!independent_grads.size()) return;
+      scalar_t const *xg = crystallographic_gradients.begin();
+      scalar_t       *g  = independent_grads.begin();
       for (int i_sc=0; i_sc<scatterers.size(); ++i_sc) {
         scatterer_t const& sc = scatterers[i_sc];
         const sgtbx::site_symmetry_ops& op = site_symmetry_table.get(i_sc);
@@ -255,15 +260,15 @@ namespace smtbx { namespace refinement { namespace least_squares {
           *g++ = *xg++;
         }
       }
-      SCITBX_ASSERT(xg - crystallographic_gradients
-                    ==  n_crystallographic_params);
-      SCITBX_ASSERT(g - result == n_independent_params);
-      return result;
+      SCITBX_ASSERT(xg - crystallographic_gradients.begin()
+                    == n_crystallographic_params);
+      SCITBX_ASSERT(g - independent_grads.begin()
+                    == n_independent_params);
     }
 
-    void apply_shifts(af::ref<FloatType> const &shifts) const
+    void apply_shifts(af::const_ref<FloatType> const &shifts) const
     {
-      scalar_t *g = shifts.begin();
+      scalar_t const *g = shifts.begin();
       for (int i_sc=0; i_sc < scatterers.size(); ++i_sc) {
         scatterer_t &sc = scatterers[i_sc];
         sgtbx::site_symmetry_ops const &op = site_symmetry_table.get(i_sc);
