@@ -60,30 +60,18 @@ namespace smtbx { namespace refinement { namespace least_squares {
             class ConstraintsType>
   struct normal_equation_building
   {
-    static void
-    delegate(NormalEquations<FloatType> const &normal_equations,
-             af::const_ref<miller::index<> > const &miller_indices,
-             af::const_ref<FloatType> const &data,
-             af::const_ref<FloatType> const &sigmas,
-             WeightingScheme<FloatType> const &weighting_scheme,
-             FloatType scale_factor,
-             OneMillerIndexLinearisation const &one_h_linearisation,
-             ConstraintsType const &constraints)
-    {
-      smtbx::refinement::least_squares::build_normal_equations(
-        const_cast<NormalEquations<FloatType> &>(normal_equations),
-        miller_indices,
-        data,
-        sigmas,
-        weighting_scheme,
-        scale_factor,
-        const_cast<OneMillerIndexLinearisation &>(one_h_linearisation),
-        constraints);
-    }
-
     static void wrap() {
       using namespace boost::python;
-      def("build_normal_equations", delegate,
+      void (*build)(NormalEquations<FloatType> &, //normal_equations
+                    af::const_ref<miller::index<> > const &, //miller_indices
+                    af::const_ref<FloatType> const &, //data
+                    af::const_ref<FloatType> const &, //sigmas
+                    WeightingScheme<FloatType> const &, //weighting_scheme
+                    FloatType,  //scale_factor
+                    OneMillerIndexLinearisation &, //one_h_linearisation
+                    ConstraintsType &//constraints
+                    ) =  smtbx::refinement::least_squares::build_normal_equations;
+      def("build_normal_equations", build,
           (arg("normal_equations"),
            arg("miller_indices"),
            arg("data"),
@@ -117,6 +105,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
                       &wt::n_independent_params)
         .def_readonly("n_crystallographic_params",
                       &wt::n_crystallographic_params)
+        .add_property("independent_gradients", &wt::independent_gradients)
+        .def("apply_chain_rule", &wt::apply_chain_rule,
+             arg("crystallographic_gradients"))
         .def("apply_shifts", &wt::apply_shifts,
              (arg("shifts"),
               arg("scatterers")))
