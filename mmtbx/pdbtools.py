@@ -197,6 +197,18 @@ truncate_to_polyala = None
   .type = bool
   .help = Truncate a model to poly-Ala.
   .style = noauto
+set_chemical_element_simple_if_necessary = None
+  .type = bool
+  .help = Make a simple guess about what the chemical element is (based on \
+          atom name and the way how it is formatted) and write it into output file.
+rename_chain_id
+  .help = Rename chains
+{
+  old_id = None
+    .type = str
+  new_id = None
+    .type = str
+}
 output
   .help = Write out PDB file with modified model (file name is defined in \
           write_modified)
@@ -686,6 +698,25 @@ class fmodel_from_xray_structure(object):
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = file_name)
 
+def set_chemical_element_simple_if_necessary(hierarchy):
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for atom in chain.atoms():
+        atom.set_element(atom.determine_chemical_element_simple())
+
+def rename_chain_id(hierarchy, params, log):
+  print >> log, "old_id= '%s'"%params.old_id
+  print >> log, "new_id= '%s'"%params.new_id
+  counter = 0
+  for model in hierarchy.models():
+    for chain in model.chains():
+      if(chain.id == params.old_id):
+        chain.id = params.new_id
+        counter += 1
+  if(counter==0):
+    print >> log, \
+    "WARNING: no chain id renamed: check input PDB file or renaming parameters."
+
 def truncate_to_poly_ala(hierarchy):
   import iotbx.pdb.amino_acid_codes
   aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
@@ -783,6 +814,33 @@ def run(args, command_name="phenix.pdbtools"):
       processed_pdb_file = command_line_interpreter.processed_pdb_file,
       log = log)
     xray_structure = xray_structure.replace_sites_cart(new_sites = sites_cart)
+### set_chemical_element_simple_if_necessary
+  if(command_line_interpreter.params.modify.set_chemical_element_simple_if_necessary):
+    xray_structure = command_line_interpreter.pdb_inp.xray_structure_simple()
+    utils.print_header("Restore 77-78 column", out = log)
+    print >> log, """  Make a simple guess about which chemical element should be in 77-78 column,
+  and outputs and new file with this column filled."""
+    pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
+    set_chemical_element_simple_if_necessary(hierarchy = pdb_hierarchy)
+    pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
+    pdb_hierarchy.write_pdb_file(file_name = pdbout+"_modified.pdb",
+      crystal_symmetry = xray_structure.crystal_symmetry())
+    output_files.append(pdbout+"_modified.pdb")
+    print >> log, "All done."
+    return output_files
+### rename_chain_id
+  if([command_line_interpreter.params.modify.rename_chain_id.old_id,
+      command_line_interpreter.params.modify.rename_chain_id.new_id].count(None)==0):
+    utils.print_header("Rename chain id", out = log)
+    pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
+    rename_chain_id(hierarchy = pdb_hierarchy,
+      params = command_line_interpreter.params.modify.rename_chain_id, log = log)
+    pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
+    pdb_hierarchy.write_pdb_file(file_name = pdbout+"_modified.pdb",
+      crystal_symmetry = xray_structure.crystal_symmetry())
+    output_files.append(pdbout+"_modified.pdb")
+    print >> log, "All done."
+    return output_files
 ### do other model manipulations
   utils.print_header("Performing requested model manipulations", out = log)
   result = modify(xray_structure    = xray_structure,
