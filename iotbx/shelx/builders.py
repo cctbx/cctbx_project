@@ -1,8 +1,10 @@
+from __future__ import division
 from cctbx import crystal
 from cctbx import xray
 from cctbx import sgtbx
 from cctbx import geometry_restraints
 from cctbx import adp_restraints
+import scitbx.math
 
 from iotbx.shelx import util
 
@@ -48,6 +50,15 @@ class crystal_structure_builder(crystal_symmetry_builder,
         if behaviour_of_variable[-6:].count(self.fixed) != 3:
           f.set_grad_u_aniso(True)
     self.structure.add_scatterer(scatterer)
+
+    ## scatterer.occupancy has been filled with the chemical occupancy times
+    ## the special position occupancy by the parsers, and this  needs to be
+    ## corrected for.
+    sc = self.structure.scatterers()[-1]
+    sc.occupancy /= sc.weight_without_occupancy()
+    occ = scitbx.math.continued_fraction.from_real(sc.occupancy, eps=1e-5)
+    r_occ = occ.as_rational()
+    sc.occupancy = round(r_occ.numerator() / r_occ.denominator(), 5)
 
 
 class afixed_crystal_structure_builder(crystal_structure_builder):
