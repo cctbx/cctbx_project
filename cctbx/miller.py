@@ -2144,9 +2144,10 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
         ff.append(c/n)
     return group_args(reflection_counts=rc, free_fractions=ff)
 
-  def r1_factor(self, other, assume_index_matching=False):
-    """ sum ||F| - |F'|| / sum |F|
-    where F is self.data() and F' is other.data() """
+  def r1_factor(self, other, scale_factor=None, assume_index_matching=False):
+    """ sum ||F| - k|F'|| / sum |F|
+    where F is self.data() and F' is other.data() and
+    k is the factor to put F' on the same scale as F """
     assert (self.observation_type() is None
             or self.is_complex_array() or self.is_xray_amplitude_array())
     assert (self.observation_type() is None
@@ -2160,6 +2161,8 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       data = other.select(matching.pairs().column(1)).data()
     data  = flex.abs(data)
     data0 = flex.abs(data0)
+    if scale_factor is not None:
+      data *= scale_factor
     return flex.sum(flex.abs(data - data0)) / flex.sum(data0)
 
   def select(self, selection, negate=False, anomalous_flag=None):
@@ -2723,7 +2726,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     assert cutoff_factor < 1
     assert f_calc.is_complex_array()
     assert f_calc.size() == self.data().size()
-    sel = self.data() > flex.max(self.data()) * cutoff_factor
+    sel = self.data() >= flex.max(self.data()) * cutoff_factor
     obs = self.data().select(sel)
     if self.is_xray_intensity_array():
       calc = f_calc.norm().data().select(sel)
