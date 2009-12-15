@@ -114,6 +114,20 @@ def exercise_crystal_symmetry_parsing():
   assert cs.is_similar_symmetry(l.builder.crystal_symmetry)
 
 def exercise_xray_structure_parsing():
+  exercise_special_positions()
+  exercise_aspirin()
+  exercise_disordered()
+  exercise_invalid()
+
+def exercise_special_positions():
+  structure = xray.structure.from_shelx(
+    file=cStringIO.StringIO(ins_special_positions))
+  occupancies = [ sc.occupancy for sc in structure.scatterers() ]
+  multiplicities = [ sc.multiplicity() for sc in structure.scatterers() ]
+  assert multiplicities == [ 2, 2, 2, 2, 6 ]
+  assert occupancies == [ 1, 0.9999, 1, 1, 1 ]
+
+def exercise_aspirin():
   for set_grad_flags in (False, True):
     structure = xray.structure.from_shelx(
       file=cStringIO.StringIO(ins_aspirin),
@@ -170,6 +184,7 @@ def exercise_xray_structure_parsing():
         assert not f.grad_fp()
         assert not f.grad_fdp()
 
+def exercise_disordered():
   for set_grad_flags in (False, True):
     structure = xray.structure.from_shelx(
       file=cStringIO.StringIO(ins_disordered),
@@ -199,30 +214,32 @@ def exercise_xray_structure_parsing():
       for a in (c12, h121, h122, h123):
         assert a.flags.grad_occupancy()
 
-  try:
-    structure = xray.structure.from_shelx(
-      file=cStringIO.StringIO(ins_invalid_scatt),
-      set_grad_flags=set_grad_flags)
-    raise Exception_expected
-  except RuntimeError, e:
-    assert str(e) == "ShelX: illegal argument '0.3.' at line 3"
+def exercise_invalid():
+  for set_grad_flags in (False, True):
+    try:
+      structure = xray.structure.from_shelx(
+        file=cStringIO.StringIO(ins_invalid_scatt),
+        set_grad_flags=set_grad_flags)
+      raise Exception_expected
+    except RuntimeError, e:
+      assert str(e) == "ShelX: illegal argument '0.3.' at line 3"
 
-  try:
-    structure = xray.structure.from_shelx(
-      file=cStringIO.StringIO(ins_invalid_scatt_1),
-      set_grad_flags=set_grad_flags)
-    raise Exception_expected
-  except RuntimeError, e:
-    assert str(e) == ("ShelX: wrong number of parameters "
-                      "for scatterer at line 3")
+    try:
+      structure = xray.structure.from_shelx(
+        file=cStringIO.StringIO(ins_invalid_scatt_1),
+        set_grad_flags=set_grad_flags)
+      raise Exception_expected
+    except RuntimeError, e:
+      assert str(e) == ("ShelX: wrong number of parameters "
+                        "for scatterer at line 3")
 
-  try:
-    structure = xray.structure.from_shelx(
-      file=cStringIO.StringIO(ins_missing_sfac),
-      set_grad_flags=set_grad_flags)
-    raise Exception_expected
-  except RuntimeError, e:
-    assert e.args[0].startswith('ShelX:')
+    try:
+      structure = xray.structure.from_shelx(
+        file=cStringIO.StringIO(ins_missing_sfac),
+        set_grad_flags=set_grad_flags)
+      raise Exception_expected
+    except RuntimeError, e:
+      assert e.args[0].startswith('ShelX:')
 
   structure = xray.structure.from_shelx(
     file=cStringIO.StringIO(ins_disordered_with_part_sof))
@@ -595,6 +612,31 @@ ins_mundane_tiny = (
 "Q3    1   0.5706  0.1441  0.1462  11.00000  0.05    0.29\n"
 "Q4    1   0.4966  0.1552  0.0716  11.00000  0.05    0.29\n"
 "Q5    1   0.4666  0.3316  0.1506  11.00000  0.05    0.26\n")
+
+ins_special_positions = """TITL cr4 in P6(3)
+CELL 0.71073   5.1534   5.1534   8.6522  90.000  90.000 120.000
+ZERR    2.00   0.0007   0.0007   0.0017   0.000   0.000   0.000
+LATT -1
+SYMM -Y, X-Y, Z
+SYMM -X+Y, -X, Z
+SYMM -X, -Y, 0.5+Z
+SYMM Y, -X+Y, 0.5+Z
+SYMM X-Y, X, 0.5+Z
+SFAC LI O S K
+UNIT 2 8 2 2
+
+K1    4    0.000000    0.000000   -0.001950    10.33333    0.02427    0.02427 =
+         0.02379    0.00000    0.00000    0.01214
+S1    3    0.333333    0.666667    0.204215    10.33330    0.01423    0.01423 =
+         0.01496    0.00000    0.00000    0.00712
+LI1   1    0.333333    0.666667    0.815681    10.33333    0.02132    0.02132 =
+         0.02256    0.00000    0.00000    0.01066
+O1    2    0.333333    0.666667    0.035931    10.33333    0.06532    0.06532 =
+         0.01669    0.00000    0.00000    0.03266
+O2    2    0.343810    0.941658    0.258405    11.00000    0.02639    0.02079 =
+         0.05284   -0.01180   -0.00053    0.01194
+HKLF 4
+"""
 
 ins_P1 = (
 "TITL P1\n"
