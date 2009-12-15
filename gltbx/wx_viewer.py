@@ -600,6 +600,7 @@ class show_points_and_lines_mixin(wxGLWindow):
     self.flag_show_lines = True
     self.flag_show_rotation_center = True
     self.flag_show_spheres = True
+    self.long_labels = None
     self.labels = []
     self.points = flex.vec3_double()
     self.line_i_seqs = []
@@ -736,14 +737,25 @@ class show_points_and_lines_mixin(wxGLWindow):
   def process_pick_points(self):
     line = scitbx.math.line_given_points(self.pick_points)
     min_dist_sq = 1**2
-    closest_point = None
-    for point in self.points:
+    i_point_closest = None
+    for i_point,point in enumerate(self.points):
       dist_sq = line.distance_sq(point=matrix.col(point))
       if (min_dist_sq > dist_sq):
         min_dist_sq = dist_sq
-        closest_point = point
-    if (closest_point is not None):
-      self.rotation_center = closest_point
+        i_point_closest = i_point
+    if (i_point_closest is not None):
+      self.rotation_center = self.points[i_point_closest]
+      if (self.long_labels is not None):
+        assert len(self.long_labels) == len(self.points)
+        lbl = self.long_labels[i_point_closest]
+      elif (self.labels is not None):
+        assert len(self.labels) == len(self.points)
+        lbl = self.labels[i_point_closest]
+      else:
+        lbl = "index %d" % i_point_closest
+      txt = "pick point: %s" % lbl
+      print txt
+      self.parent.SetStatusText(txt)
 
 class OpenGLSettingsToolbox (wx.MiniFrame) :
   def __init__ (self, parent) :
