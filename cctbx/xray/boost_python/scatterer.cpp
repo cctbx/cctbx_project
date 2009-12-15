@@ -42,6 +42,7 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       typedef default_call_policies dcp;
       class_<w_t>("scatterer", no_init)
+        .def(init<w_t const&>(arg("other")))
         .def(init<std::string const&,
                   fractional<flt_t> const&,
                   flt_t const&,

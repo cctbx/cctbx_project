@@ -38,26 +38,35 @@ class _scatterer(boost.python.injector, ext.scatterer):
         occupancy=None,
         scattering_type=None,
         fp=None,
-        fdp=None):
+        fdp=None,
+        flags=None,
+        u_iso=None,
+        u_star=None):
     assert u is None or b is None
     if (b is not None): u = adptbx.b_as_u(b)
-    if (label is None): label = self.label
-    if (site is None): site = self.site
-    if (u is None):
-      if (self.flags.use_u_aniso_only()): u = self.u_star
-      else: u = self.u_iso
-    if (occupancy is None): occupancy = self.occupancy
-    if (scattering_type is None): scattering_type = self.scattering_type
-    if (fp is None): fp = self.fp
-    if (fdp is None): fdp = self.fdp
-    return scatterer(
-      label=label,
-      site=site,
-      u=u,
-      occupancy=occupancy,
-      scattering_type=scattering_type,
-      fp=fp,
-      fdp=fdp)
+    del b
+    if (u is not None):
+      assert u_iso is None and u_star is None
+      if (flags is None):
+        assert self.flags.use_u_iso() ^ self.flags.use_u_aniso()
+      else:
+        assert flags.use_u_iso() ^ flags.use_u_aniso()
+    result = ext.scatterer(other=self)
+    if (label is not None): result.label = label
+    if (site is not None): result.site = site
+    if (flags is not None): result.flags = flags
+    if (u is not None):
+      if (result.flags.use_u_iso()):
+        result.u_iso = u
+      else:
+        result.u_star = u
+    if (u_iso is not None): result.u_iso = u_iso
+    if (u_star is not None): result.u_star = u_star
+    if (occupancy is not None): result.occupancy = occupancy
+    if (scattering_type is not None): result.scattering_type = scattering_type
+    if (fp is not None): result.fp = fp
+    if (fdp is not None): result.fdp = fdp
+    return result
 
   def element_and_charge_symbols(self, exact=False):
     return eltbx.xray_scattering.get_element_and_charge_symbols(
