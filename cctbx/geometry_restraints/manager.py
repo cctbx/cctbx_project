@@ -116,7 +116,8 @@ class manager(object):
     assert tardy_tree.n_vertices == self.bond_params_table.size()
     loop_edge_sets = construct_edge_sets(
       n_vertices=tardy_tree.n_vertices,
-      edge_list=tardy_tree.cluster_manager.loop_edges)
+      edge_list=tardy_tree.cluster_manager.loop_edges,
+      assert_i_lt_j=False)
     #
     def get():
       result = crystal.pair_sym_table(tardy_tree.n_vertices)

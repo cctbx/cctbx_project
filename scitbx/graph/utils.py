@@ -1,7 +1,10 @@
-def construct_edge_sets(n_vertices, edge_list):
+def construct_edge_sets(n_vertices, edge_list, assert_i_lt_j=True):
   result = [set() for i in xrange(n_vertices)]
   for i,j in edge_list:
-    assert i < j
+    if (assert_i_lt_j):
+      assert i < j
+    else:
+      assert i != j
     result[i].add(j)
     result[j].add(i)
   return result
