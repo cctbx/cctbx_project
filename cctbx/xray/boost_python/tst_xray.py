@@ -459,6 +459,18 @@ def exercise_xray_scatterer():
   assert approx_equal(x.occupancy, 0.9)
   x.occupancy = 0.3
   assert approx_equal(x.occupancy, 0.3)
+  c = xray.ext.scatterer(other=x)
+  assert c.fp == 1
+  c.fp = 3
+  assert x.fp == 1
+  assert c.fp == 3
+  f = xray.scatterer_flags()
+  f.set_use_u_iso_only()
+  c.flags = f
+  assert c.flags.use_u_iso_only()
+  c.flags.set_use_u_aniso_only()
+  assert f.use_u_iso_only()
+  assert c.flags.use_u_aniso_only()
   for flag0 in [True, False]:
     x.flags.set_use(flag0)
     for flag1 in [True, False]:
@@ -565,7 +577,9 @@ def exercise_xray_scatterer():
     (3.3458045216665266, 4.5710990727698393, 4.4720459395534728,
      3.9006326295505751, 3.8598099147456764, 4.5133641373560351))
   assert x.is_positive_definite_u(unit_cell=uc)
-  y = x.customized_copy(u=-1)
+  f = xray.scatterer_flags()
+  f.set_use_u_iso_only()
+  y = x.customized_copy(u=-1, flags=f)
   assert not y.flags.use_u_aniso()
   assert approx_equal(y.u_iso, -1)
   assert not y.is_positive_definite_u(unit_cell=uc)
@@ -597,6 +611,14 @@ def exercise_xray_scatterer():
   xray.shift_us(scatterers=a, unit_cell=uc, u_shift=-10)
   assert approx_equal(a[0].u_star, x_u_star_orig)
   assert approx_equal(a[1].u_iso, 1)
+  #
+  f = xray.scatterer_flags()
+  f.set_use_u(iso=True, aniso=True)
+  y = x.customized_copy(u_iso=0.3, u_star=(1,3,5,-2,6,4), flags=f)
+  assert y.flags.use_u_iso()
+  assert y.flags.use_u_aniso()
+  assert approx_equal(y.u_iso, 0.3)
+  assert approx_equal(y.u_star, (1,3,5,-2,6,4))
 
   scs = flex.xray_scatterer((
     xray.scatterer("o", site=(0.01,0.02,0.1), u=0.1),

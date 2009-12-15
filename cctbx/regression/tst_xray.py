@@ -591,7 +591,7 @@ Si*4  O     Si     146.93
     assert approx_equal(1-deleted, retained)
   #
   xs.scatterers()[0] = xs.scatterers()[0].customized_copy()
-  assert approx_equal(xs.scatterers()[0].weight(), 0.0)
+  assert approx_equal(xs.scatterers()[0].weight(), 1.0)
   xs.re_apply_symmetry(i_scatterer=0)
   assert approx_equal(xs.scatterers()[0].weight(), 1.0)
 # apply_rigid_body_shift
