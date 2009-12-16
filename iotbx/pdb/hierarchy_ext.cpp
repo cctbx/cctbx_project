@@ -457,6 +457,14 @@ namespace {
   {
     typedef residue w_t;
 
+    static boost::python::object
+    get_root(w_t const& self)
+    {
+      boost::optional<root> result = self.root();
+      if (!result) return boost::python::object();
+      return boost::python::object(*result);
+    }
+
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(resname)
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(resseq)
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(icode)
@@ -485,6 +493,9 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("residue", no_init)
+        .enable_pickling()
+        .def(init<root const&>((arg("root"))))
+        .def("root", get_root)
         .add_property("resname", make_function(get_resname))
         .add_property("resseq", make_function(get_resseq))
         .add_property("icode", make_function(get_icode))

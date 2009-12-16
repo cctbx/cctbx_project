@@ -1476,6 +1476,9 @@ namespace hierarchy {
   //! Residue attributes.
   class residue
   {
+    protected:
+      boost::optional<hierarchy::root> root_;
+
     public:
       shared_ptr<residue_data> data;
 
@@ -1492,6 +1495,17 @@ namespace hierarchy {
         std::vector<atom> const& atoms);
 
     public:
+      //! Helper function for object serialization (Python pickle).
+      /*! A reference to root is kept. root should not be modified.
+          Pass root.deep_copy() if an independent copy is required.
+       */
+      residue(
+        hierarchy::root const& root);
+
+      //! Helper function for object serialization (Python pickle).
+      boost::optional<hierarchy::root> const&
+      root() const { return root_; }
+
       std::size_t
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
 
