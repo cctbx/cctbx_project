@@ -1,4 +1,5 @@
 from cctbx.array_family import flex
+import math
 
 
 class amplitude_unit_weighting(object):
@@ -60,11 +61,17 @@ class simple_shelx_weighting(object):
   def __init__(self, a=0.1, b=0):
     self._params = a,b
 
-  def compute(self):
+  def compute(self, f_calc, scale_factor=None):
+    self.calculated = f_calc
     assert(self.observed.is_xray_intensity_array())
     assert(self.calculated.is_complex_array())
     a,b = self._params
     f_c = self.calculated.data()
+    if scale_factor is None:
+      scale_factor = self.observed.quick_scale_factor_approximation(
+        self.calculated)
+    self.scale_factor = scale_factor
+    f_c = f_c * math.sqrt(scale_factor) # don't modify f_c in place
     sigmas_square = flex.pow2(self.observed.sigmas())
     f_obs_square_plus = self.observed.data().deep_copy()
     negatives = self.observed.data() < 0
@@ -106,7 +113,8 @@ class shelx_weighting(object):
     return locals()
   calculated = property(**_propdef())
 
-  def compute(self):
+  def compute(self, f_calc, scale_factor=None):
+    self.calculated = f_calc
     a,b,c,d,e,f = self._params
     if self._obs_part_dirty:
       # The part depending only on |F_o|^2
@@ -142,6 +150,11 @@ class shelx_weighting(object):
     q = self._q
     f_c = self.calculated.data()
     p = flex.norm(f_c)
+    if scale_factor is None:
+      scale_factor = self.observed.quick_scale_factor_approximation(
+        self.calculated)
+    self.scale_factor = scale_factor
+    p *= scale_factor
     p *= 1 - f
     p += self._p_obs
     den = p.deep_copy()
@@ -157,6 +170,9 @@ class shelx_weighting(object):
     else:
       w =  q / den
     if self.computing_derivatives_wrt_f_c:
+      if scale_factor is not None:
+        # don't modify f_c in place
+        f_c = f_c * math.sqrt(scale_factor)
       der *= -flex.pow2(w)
       der *= 4./3
       der = der * f_c

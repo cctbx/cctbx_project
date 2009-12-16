@@ -16,44 +16,45 @@ def run():
     data=flex.polar(
       flex.random_double(miller_set.size())*10-5,
       flex.random_double(miller_set.size())*10-5))
+  scale_factor = flex.random_double()
   obs = miller_set.array(
-    data=flex.norm(f_calc.data()) + (flex.random_double(miller_set.size())*2-1),
+    data=scale_factor * flex.norm(f_calc.data()) + (flex.random_double(miller_set.size())*2-1),
     sigmas=flex.random_double(miller_set.size()))
   obs.set_observation_type_xray_intensity()
 
-  exercise_shelx_weighting(f_calc, obs)
+  exercise_shelx_weighting(f_calc, obs, scale_factor)
   exercise_quasi_unit_weighting(obs)
 
   print 'OK'
 
 
-def exercise_shelx_weighting(f_calc, obs):
+def exercise_shelx_weighting(f_calc, obs, scale_factor):
   a,b = 0, 0
   weighting = xray.weighting_schemes.simple_shelx_weighting(a,b)
   weighting_ref = xray.weighting_schemes.pure_statistical_weighting()
-  for w in (weighting, weighting_ref):
-    w.calculated = f_calc
-    w.observed = obs
-    w.compute()
+  weighting_ref.observed = obs
+  weighting_ref.compute()
+  weighting.observed = obs
+  weighting.compute(f_calc, scale_factor)
   assert approx_equal(weighting.weights, weighting_ref.weights)
 
-  a,b = 10, 100
-  weighting = xray.weighting_schemes.shelx_weighting(a,b)
-  weighting_ref = xray.weighting_schemes.simple_shelx_weighting(a,b)
-  for w in (weighting, weighting_ref):
-    w.calculated = f_calc
-    w.observed = obs
-    w.compute()
-  assert approx_equal(weighting.weights, weighting_ref.weights)
-  assert weighting.derivatives_wrt_f_c is None
-  for w in (weighting, weighting_ref):
-    w.computing_derivatives_wrt_f_c = True
-    w.compute()
-  assert approx_equal(weighting.derivatives_wrt_f_c,
-                      weighting_ref.derivatives_wrt_f_c)
+  for k in (scale_factor, None):
+    a,b = 10, 100
+    weighting = xray.weighting_schemes.shelx_weighting(a,b)
+    weighting_ref = xray.weighting_schemes.simple_shelx_weighting(a,b)
+    for w in (weighting, weighting_ref):
+      w.observed = obs
+      w.compute(f_calc, k)
+    assert approx_equal(weighting.weights, weighting_ref.weights)
+    assert weighting.derivatives_wrt_f_c is None
+    for w in (weighting, weighting_ref):
+      w.computing_derivatives_wrt_f_c = True
+      w.compute(f_calc, k)
+    assert approx_equal(weighting.derivatives_wrt_f_c,
+                        weighting_ref.derivatives_wrt_f_c)
 
-  weighting.observed = weighting.observed.discard_sigmas()
-  weighting.compute()
+    weighting.observed = weighting.observed.discard_sigmas()
+    weighting.compute(f_calc, k)
 
 def exercise_quasi_unit_weighting(obs):
   w = xray.weighting_schemes.intensity_quasi_unit_weighting()

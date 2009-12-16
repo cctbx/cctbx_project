@@ -173,7 +173,13 @@ class unified_least_squares_residual(object):
     else:
       self._scale_factor = scale_factor
     self.weighting().calculated = f_calc
-    self.weighting().compute()
+    if scale_factor == 0: scale_factor = None
+    if (isinstance(self.weighting(), weighting_schemes.shelx_weighting) or
+        isinstance(self.weighting(), weighting_schemes.simple_shelx_weighting)):
+      self.weighting().compute(f_calc, scale_factor)
+      self._scale_factor = self.weighting().scale_factor
+    else:
+      self.weighting().compute()
     if (self.weighting().weights is not None):
       result = self._ext_ls_residual(
         self.obs().data(),
