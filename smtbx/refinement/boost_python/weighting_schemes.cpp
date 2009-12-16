@@ -13,12 +13,22 @@ namespace smtbx { namespace refinement { namespace least_squares {
     typedef WeightingScheme<double> wt;
     typedef boost::python::class_<wt> base_t;
 
+    static af::shared<double> weights(wt const &weighting_scheme,
+                                      af::const_ref<double> const &fo_sq,
+                                      af::const_ref<double> const &sigmas,
+                                      af::const_ref<double> const &fc_sq)
+    {
+      return least_squares::weights(weighting_scheme, fo_sq, sigmas, fc_sq);
+    }
+
     weighting_scheme_class(char const *name)
       : base_t(name, boost::python::no_init)
     {
       using namespace boost::python;
       def("__call__", &wt::operator(),
           (arg("fo_sq"), arg("sigma"), arg("fc_sq")));
+      def("__call__", weights,
+          (arg("fo_sq"), arg("sigmas"), arg("fc_sq")));
     }
   };
 
