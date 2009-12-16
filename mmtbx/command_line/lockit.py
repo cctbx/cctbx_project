@@ -296,16 +296,22 @@ atom_selection = None
 strict_processing = True
   .type = bool
 
-map_coeff_labels {
-  f = 2FOFCWT,PH2FOFCWT
-    .type = str
-  phases = None
-    .type = str
-  weights = None
-    .type = str
+map {
+  coeff_labels {
+    f = 2FOFCWT,PH2FOFCWT
+      .type = str
+    phases = None
+      .type = str
+    weights = None
+      .type = str
+  }
+  low_resolution = None
+    .type = float
+  high_resolution = None
+    .type = float
+  grid_resolution_factor = 1/3
+    .type = float
 }
-map_resolution_factor = 1/3
-  .type = float
 
 output_file = None
   .type = str
@@ -425,7 +431,7 @@ def run(args):
   assert len(input_objects["mtz"]) == 1
   map_coeffs = extract_map_coeffs(
     miller_arrays=input_objects["mtz"][0].file_content.as_miller_arrays(),
-    params=work_params.map_coeff_labels)
+    params=work_params.map.coeff_labels)
   #
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
@@ -459,10 +465,43 @@ def run(args):
   print
   sys.stdout.flush()
   #
-  d_min = map_coeffs.d_min()
+  def show_completeness(annotation):
+    print "Completeness of %s map coefficients:" % annotation
+    map_coeffs.setup_binner(auto_binning=True)
+    if (map_coeffs.binner().n_bins_used() > 12):
+      map_coeffs.setup_binner(n_bins=12)
+    map_coeffs.completeness(use_binning=True).show(prefix="  ")
+    print
+    sys.stdout.flush()
+  show_completeness("input")
+  map_coeffs_input = map_coeffs
+  #
+  low_res = work_params.map.low_resolution
+  high_res = work_params.map.high_resolution
+  d_max, d_min = map_coeffs.d_max_min()
+  d_max_apply, d_min_apply = None, None
+  if (low_res is not None and low_res < d_max):
+    d_max_apply = low_res
+    print "Applying low resolution cutoff to map coefficients:" \
+      " d_max=%.6g" % d_max_apply
+  if (high_res is not None and high_res > d_min):
+    d_min_apply = high_res
+    print "Applying high resolution cutoff to map coefficients:" \
+      " d_min=%.6g" % d_min_apply
+  if (d_max_apply is not None or d_min_apply is not None):
+    map_coeffs = map_coeffs.resolution_filter(
+      d_max=d_max_apply, d_min=d_min_apply)
+    if (d_min_apply is not None):
+      d_min = d_min_apply
+    print
+    sys.stdout.flush()
+  #
+  if (map_coeffs is not map_coeffs_input):
+    show_completeness("final")
+  #
   fft_map = map_coeffs.fft_map(
     d_min=d_min,
-    resolution_factor=work_params.map_resolution_factor)
+    resolution_factor=work_params.map.grid_resolution_factor)
   fft_map.apply_sigma_scaling()
   density_map = fft_map.real_map()
   real_space_gradients_delta = \
