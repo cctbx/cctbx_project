@@ -5350,6 +5350,38 @@ ENDMDL
     assert not show_diff("\n".join(l.info), "\n".join(hierarchy.info))
     assert not show_diff(l.as_pdb_string(), hierarchy.as_pdb_string())
 
+def exercise_residue_pickling():
+  pdb_inp = pdb.input(source_info=None, lines="""\
+ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
+ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
+ANISOU    2  CA  GLY A   1      788    626    677   -344    621   -232       C
+ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
+ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O
+ATOM      5  N   ASN A   2      -7.656   2.923   3.155  1.00 15.02           N
+ATOM      6  CA  ASN A   2      -6.522   2.038   2.831  1.00 14.10           C
+ATOM      7  C   ASN A   2      -5.241   2.537   3.427  1.00 13.13           C
+ATOM      8  O   ASN A   2      -4.978   3.742   3.426  1.00 11.91           O
+ATOM      9  N   ASN A   3      -4.438   1.590   3.905  1.00 12.26           N
+SIGATM    9  N   ASN A   3       0.012   0.012   0.011  0.00  0.00           N
+ATOM     10  CA  ASN A   3      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     11  C   ASN A   3      -1.955   1.332   3.895  1.00 11.10           C
+ATOM     12  O   ASN A   3      -1.872   0.119   3.648  1.00 10.42           O
+""")
+  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy.atoms().reset_i_seq()
+  conformer = hierarchy.only_conformer()
+  for residue in conformer.residues():
+    eps = hierarchy.select(residue.atoms().extract_i_seq()).as_pdb_string()
+    rsc = residue.standalone_copy()
+    assert not show_diff(rsc.root().as_pdb_string(), eps)
+    for p in [pickle, cPickle]:
+      for rp in [residue, rsc]:
+        for i_pass in xrange(2):
+          s = p.dumps(rp, 1)
+          l = p.loads(s)
+          assert not show_diff(l.root().as_pdb_string(), eps)
+          rp = l
+
 def exercise_hierarchy_input():
   pdb_obj = pdb.hierarchy.input(pdb_string=pdb_2izq_220)
   i_atoms = pdb_obj.input.atoms()
@@ -5419,6 +5451,7 @@ def exercise(args):
     exercise_root_select()
     exercise_root_altloc_indices()
     exercise_root_pickling()
+    exercise_residue_pickling()
     exercise_hierarchy_input()
     if (not forever): break
   print format_cpu_times()

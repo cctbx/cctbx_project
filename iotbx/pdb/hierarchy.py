@@ -775,6 +775,33 @@ class _conformer(boost.python.injector, ext.conformer):
 
 class _residue(boost.python.injector, ext.residue):
 
+  def __getinitargs__(self):
+    result_root = self.root()
+    if (result_root is None):
+      orig_conformer = self.parent()
+      assert orig_conformer is not None
+      orig_chain = orig_conformer.parent()
+      assert orig_chain is not None
+      orig_model = orig_chain.parent()
+      assert orig_model is not None
+      result_atom_group = atom_group(
+        altloc=orig_conformer.altloc, resname=self.resname)
+      result_residue_group = residue_group(
+        resseq=self.resseq, icode=self.icode)
+      result_chain = chain(id=orig_chain.id)
+      result_model = model(id=orig_model.id)
+      result_root = root()
+      result_root.append_model(result_model)
+      result_model.append_chain(result_chain)
+      result_chain.append_residue_group(result_residue_group)
+      result_residue_group.append_atom_group(result_atom_group)
+      for atom in self.atoms():
+        result_atom_group.append_atom(atom.detached_copy())
+    return (result_root,)
+
+  def standalone_copy(self):
+    return residue(root=self.__getinitargs__()[0])
+
   def only_atom(self):
     assert self.atoms_size() == 1
     return self.atoms()[0]

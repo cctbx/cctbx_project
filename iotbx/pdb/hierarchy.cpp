@@ -1459,6 +1459,22 @@ namespace {
       atoms))
   {}
 
+  residue::residue(
+    hierarchy::root const& root)
+  :
+    root_(root)
+  {
+    std::vector<model> const& models = root.models();
+    IOTBX_ASSERT(models.size() == 1);
+    std::vector<chain> const& chains = models[0].chains();
+    IOTBX_ASSERT(chains.size() == 1);
+    af::shared<conformer> conformers = chains[0].conformers();
+    IOTBX_ASSERT(conformers.size() == 1);
+    std::vector<residue> const& residues = conformers[0].residues();
+    IOTBX_ASSERT(residues.size() == 1);
+    data = residues[0].data;
+  }
+
   void
   conformer::append_residue(
     const char* resname,
