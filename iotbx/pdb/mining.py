@@ -55,21 +55,43 @@ def pdb_code_from_file_name(file_name):
     return bn[-8:-4]
   return bn.split(".")[0]
 
-def pdb_inp_generator(file_names, chunk_n, chunk_i):
+class file_info(object):
+
+  __slots__ = ["name", "atom_selection_string"]
+
+  def __init__(O, name, atom_selection_string=None):
+    assert op.isfile(name)
+    O.name = name
+    O.atom_selection_string = atom_selection_string
+
+class pdb_info(object):
+
+  __slots__ = ["file_name", "atom_selection_string", "pdb_code", "pdb_inp"]
+
+  def __init__(O, file_info, pdb_code, pdb_inp):
+    O.file_name = file_info.name
+    O.atom_selection_string = file_info.atom_selection_string
+    O.pdb_code = pdb_code
+    O.pdb_inp = pdb_inp
+
+def pdb_inp_generator(file_infos, chunk_n, chunk_i):
   import iotbx.pdb
   from libtbx.utils import format_cpu_times
   import time
-  print "len(file_names):", len(file_names)
+  print "len(file_infos):", len(file_infos)
   sys.stdout.flush()
   t0_total = time.time()
   try:
-    for i_file,file_name in enumerate(file_names):
+    for i_file,file_info in enumerate(file_infos):
       if (i_file % chunk_n != chunk_i): continue
-      print "i_file:", i_file, file_name
+      print "i_file:", i_file, file_info.name
       sys.stdout.flush()
-      pdb_code = pdb_code_from_file_name(file_name=file_name)
+      pdb_code = pdb_code_from_file_name(file_name=file_info.name)
       try:
-        yield pdb_code, iotbx.pdb.input(file_name=file_name)
+        yield pdb_info(
+          file_info=file_info,
+          pdb_code=pdb_code,
+          pdb_inp=iotbx.pdb.input(file_name=file_info.name))
       except KeyboardInterrupt: raise
       except Exception:
         report_exception(file_name=file_name)
@@ -122,39 +144,50 @@ def run(args, command_call, command_line_add_options=None):
   ca = command_line.args
   if (len(ca) == 0 and pdb_mirror_pdb is not None):
     ca = [pdb_mirror_pdb]
-  file_names = []
+  file_infos = []
   for arg in ca:
     if (op.isfile(arg)):
       bn = op.basename(arg)
       if (bn.startswith("pdb_codes_")):
         assert pdb_mirror_pdb is not None
-        for pdb_code in open(arg).read().splitlines():
+        for i_line,line in enumerate(open(arg).read().splitlines()):
+          flds = line.split(None, 1)
+          if (len(flds) == 0):
+            raise RuntimeError(
+              "Error interpreting pdb_codes file:\n"
+              "  %s"
+              "  line number: %d"
+              "  line: %s" % (
+                show_string(arg), i_line+1, show_string(line)))
+          pdb_code = flds[0]
+          atom_selection_string = None
+          if (len(flds) > 1):
+            atom_selection_string = flds[1]
           file_name = op.join(
             pdb_mirror_pdb, pdb_code[1:3], "pdb%s.ent.gz" % pdb_code)
-          assert op.isfile(file_name)
-          file_names.append(file_name)
+          file_infos.append(
+            file_info(
+              name=file_name,
+              atom_selection_string=atom_selection_string))
       elif (bn.startswith("file_names_")):
         for file_name in open(arg).read().splitlines():
-          assert op.isfile(file_name)
-          file_names.append(file_name)
+          file_infos.append(file_info(name=file_name))
       else:
-        file_names.append(arg)
+        file_infos.append(file_info(name=arg))
     elif (op.isdir(arg)):
       file_name_index = op.join(arg, "INDEX")
       if (op.isfile(file_name_index)):
         for relative_path in open(file_name_index).read().splitlines():
           file_name = op.join(arg, relative_path)
-          assert op.isfile(file_name)
-          file_names.append(file_name)
+          file_infos.append(file_info(name=file_name))
       else:
-        prev_len_file_names = len(file_names)
+        prev_len_file_infos = len(file_infos)
         for relative_path in os.listdir(arg):
           if (relative_path.endswith((".ent", ".ent.gz", "ent.Z",
                                       ".pdb", ".pdb.gz", "pdb.Z"))):
             file_name = op.join(arg, relative_path)
-            assert op.isfile(file_name)
-            file_names.append(file_name)
-        if (len(file_names) == prev_len_file_names):
+            file_infos.append(file_info(name=file_name))
+        if (len(file_infos) == prev_len_file_infos):
           raise RuntimeError(
             "No INDEX file and no pdb files found in directory: %s" %
               show_string(arg))
@@ -163,6 +196,6 @@ def run(args, command_call, command_line_add_options=None):
         "Not a file or directory: %s" % show_string(arg))
   #
   return command_line, pdb_inp_generator(
-    file_names=file_names,
+    file_infos=file_infos,
     chunk_n=command_line.chunk.n,
     chunk_i=command_line.chunk.i)
