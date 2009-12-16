@@ -150,8 +150,9 @@ class table_data (object) :
       elif sections_passed == 1 :
         clean_line = trailing_dollars.sub("",
           trailing_dollars_phaser.sub("", line))
-        column_labels = clean_line.split()
-        self.column_labels = [ re.sub("_", " ", lbl) for lbl in column_labels ]
+        if self.column_labels is None :
+          column_labels = clean_line.split()
+          self.column_labels = [ re.sub("_"," ",lbl) for lbl in column_labels ]
       elif sections_passed == 3 and line[0:2] != "$$" :
         fields = [ _atof(x) for x in line.split() ]
         self.add_row(fields)
@@ -380,7 +381,7 @@ class graph_data (object) :
     self.type = type
     if data_labels is None or len(data_labels) == 0 :
       self.x_label = "X"
-      self.y_label = [ "Y" for i in xrange(1, len(data)) ]
+      self.y_labels = [ "Y" for i in xrange(1, len(data)) ]
     else :
       self.x_label = data_labels[0]
       self.y_labels = [ data_labels[i] for i in xrange(1, len(data)) ]
