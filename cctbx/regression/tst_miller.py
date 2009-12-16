@@ -1041,7 +1041,7 @@ def exercise_r1_factor():
   assert approx_equal(f1_o.r1_factor(f1_c, scale_factor=2), 0.440646)
   f_o *= 2
   assert approx_equal(
-    f_o.r1_factor(f1_c, scale_factor=2, assume_index_matching=True), 0.440646)
+    f_o.r1_factor(f_c, scale_factor=2, assume_index_matching=True), 0.440646)
   f1_c.indices().append((4,5,6))
   f1_c.data().append(0.5)
   try:
