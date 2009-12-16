@@ -539,7 +539,10 @@ def run(args):
         real_space_gradients_delta=real_space_gradients_delta,
         lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
           max_iterations=work_params.coordinate_refinement
-            .lbfgs_max_iterations))
+            .lbfgs_max_iterations),
+        lbfgs_exception_handling_params=
+          scitbx.lbfgs.exception_handling_parameters(
+            ignore_line_search_failed_step_at_lower_bound=True))
       print "After coordinate refinement" \
         " with real-space target weight %.1f:" % rstw
       grm.energies_sites(sites_cart=refined.sites_cart).show()
