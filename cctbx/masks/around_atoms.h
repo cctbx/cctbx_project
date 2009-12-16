@@ -2,10 +2,10 @@
 // Pavel Afonine, with speed optimizations by
 // Ralf Grosse-Kunstleve.
 
-#ifndef MMTBX_MASKS_AROUND_ATOMS_H
-#define MMTBX_MASKS_AROUND_ATOMS_H
+#ifndef CCTBX_MASKS_AROUND_ATOMS_H
+#define CCTBX_MASKS_AROUND_ATOMS_H
 
-#include <mmtbx/error.h>
+#include <cctbx/error.h>
 #include <cctbx/uctbx.h>
 #include <scitbx/math/modulo.h>
 #include <scitbx/array_family/versa.h>
@@ -13,7 +13,7 @@
 #include <map>
 #include <vector>
 
-namespace mmtbx { namespace masks {
+namespace cctbx { namespace masks {
 
   namespace af = scitbx::af;
 
@@ -41,10 +41,10 @@ namespace mmtbx { namespace masks {
         debug(debug_),
         explicit_distance(explicit_distance_)
       {
-        MMTBX_ASSERT(sites_frac.size() == atom_radii.size());
-        MMTBX_ASSERT(solvent_radius >= 0);
-        MMTBX_ASSERT(shrink_truncation_radius >= 0);
-        MMTBX_ASSERT(gridding_n_real.const_ref().all_gt(0));
+        CCTBX_ASSERT(sites_frac.size() == atom_radii.size());
+        CCTBX_ASSERT(solvent_radius >= 0);
+        CCTBX_ASSERT(shrink_truncation_radius >= 0);
+        CCTBX_ASSERT(gridding_n_real.const_ref().all_gt(0));
         data.resize(af::c_grid<3>(gridding_n_real), static_cast<DataType>(1));
         std::size_t n_solvent = compute_accessible_surface(
           unit_cell,
@@ -55,8 +55,8 @@ namespace mmtbx { namespace masks {
           n_atom_points = std::count(data.begin(), data.end(), 0);
           const size_t n1bar = std::count(data.begin(), data.end(), -1);
           const size_t n1 = std::count(data.begin(), data.end(), 1);
-          MMTBX_ASSERT( n1 == n_solvent );
-          MMTBX_ASSERT( n1 + n_atom_points + n1bar == data.size() );
+          CCTBX_ASSERT( n1 == n_solvent );
+          CCTBX_ASSERT( n1 + n_atom_points + n1bar == data.size() );
         }
         else {
           n_atom_points = 0;
@@ -169,7 +169,7 @@ namespace mmtbx { namespace masks {
           f_t yfi=static_cast<f_t>(site[1]);
           f_t zfi=static_cast<f_t>(site[2]);
           const f_t atmrad = atom_radii[i_site];
-          MMTBX_ASSERT( atmrad >= 0.0 );
+          CCTBX_ASSERT( atmrad >= 0.0 );
           f_t cutoff=static_cast<f_t>(atmrad+solvent_radius);
           f_t radsq=static_cast<f_t>(atmrad*atmrad);
           f_t cutoffsq=cutoff*cutoff;
@@ -238,8 +238,8 @@ namespace mmtbx { namespace masks {
                   dist_c = mr1*dx*dx+mr5*dy*dy+mr9*dz*dz
                         +tmr2*dx*dy+tmr3*dx*dz+tmr6*dy*dz;
                   if( debug ) {
-                    MMTBX_ASSERT( dist_c>=0.0 );
-                    MMTBX_ASSERT( std::fabs(dist-dist_c)<0.001 );
+                    CCTBX_ASSERT( dist_c>=0.0 );
+                    CCTBX_ASSERT( std::fabs(dist-dist_c)<0.001 );
                   }
                 }
 
@@ -392,6 +392,6 @@ namespace mmtbx { namespace masks {
       }
   };
 
-}} // namespace mmtbx::masks
+}} // namespace cctbx::masks
 
-#endif // MMTBX_MASKS_AROUND_ATOMS_H
+#endif // CCTBX_MASKS_AROUND_ATOMS_H
