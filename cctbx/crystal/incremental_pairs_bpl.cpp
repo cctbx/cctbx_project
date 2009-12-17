@@ -24,14 +24,13 @@ namespace {
           sgtbx::space_group const&,
           direct_space_asu::float_asu<> const&,
           double const&,
-          optional<
-            double const&,
-            double const&> >((
-              arg("space_group"),
-              arg("asu"),
-              arg("distance_cutoff"),
-              arg("asu_mappings_buffer_thickness")=-1,
-              arg("cubicle_epsilon")=-1)))
+          double const&,
+          double const&>((
+            arg("space_group"),
+            arg("asu"),
+            arg("distance_cutoff"),
+            arg("asu_mappings_buffer_thickness")=-1,
+            arg("cubicle_epsilon")=-1)))
         .def_readwrite("min_distance_sym_equiv",
                   &w_t::min_distance_sym_equiv)
         .def_readwrite("assert_min_distance_sym_equiv",

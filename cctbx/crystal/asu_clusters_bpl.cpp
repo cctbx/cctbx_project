@@ -20,7 +20,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("asu_clusters", no_init)
-        .def(init<pair_asu_table<> const&, optional<bool> >((
+        .def(init<pair_asu_table<> const&, bool>((
           arg("pair_asu_table"), arg("strictly_in_asu")=true)))
         .def("sort_index_groups_by_size",
           &w_t::sort_index_groups_by_size, return_self<>())

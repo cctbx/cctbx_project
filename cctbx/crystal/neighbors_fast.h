@@ -49,7 +49,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
         FloatType const& distance_cutoff,
         bool minimal=false,
         FloatType const& min_cubicle_edge=5,
-        FloatType const& epsilon=1.e-6)
+        FloatType const& epsilon=1e-6)
       :
         epsilon_(epsilon),
         cubicles_(

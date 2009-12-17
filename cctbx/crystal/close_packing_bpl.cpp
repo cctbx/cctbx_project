@@ -34,18 +34,18 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("close_packing_hexagonal_sampling_generator", no_init)
-        .def(init<sgtbx::change_of_basis_op const&,
-                  direct_space_asu::float_asu<double>,
-                  af::tiny<bool, 3> const&,
-                  double const&,
-                  optional<double const&,
-                           bool> >(
-          (arg("cb_op_original_to_sampling"),
-           arg("float_asu"),
-           arg("continuous_shift_flags"),
-           arg("point_distance"),
-           arg("buffer_thickness")=-1,
-           arg("all_twelve_neighbors")=false)))
+        .def(init<
+          sgtbx::change_of_basis_op const&,
+          direct_space_asu::float_asu<double>,
+          af::tiny<bool, 3> const&,
+          double const&,
+          double const&,
+          bool>((arg("cb_op_original_to_sampling"),
+            arg("float_asu"),
+            arg("continuous_shift_flags"),
+            arg("point_distance"),
+            arg("buffer_thickness")=-1,
+            arg("all_twelve_neighbors")=false)))
         .def("cb_op_original_to_sampling",
           &w_t::cb_op_original_to_sampling, rir())
         .def("float_asu", &w_t::float_asu, rir())
