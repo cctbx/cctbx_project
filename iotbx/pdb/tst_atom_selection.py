@@ -1,6 +1,6 @@
 from iotbx import pdb
 from cctbx.array_family import flex
-from libtbx.test_utils import Exception_expected
+from libtbx.test_utils import Exception_expected, show_diff
 
 def exercise_selection():
   hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -194,6 +194,8 @@ END
   assert list(isel(r"element o")) == [65,66,67,68]
   assert list(isel(r"charge 4+")) == [64]
   assert list(isel(r"anisou")) == [1, 3]
+  assert list(isel(r"pepnames")) == range(40)
+  #
   try: isel(r"resseq")
   except pdb.atom_selection.AtomSelectionError, e:
     assert str(e).find(
@@ -286,6 +288,41 @@ END
   assert list(isel("chain a")) == []
   assert list(isel("chain B")) == []
   assert list(isel("chain b")) == [3,4,5]
+  #
+  hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      5  CA  SER     1       9.242  30.200  62.974  1.00 46.62
+ATOM     11  CA  ARG     2      12.548  28.316  63.532  1.00 30.20
+ATOM     21  N   PRO     3J     13.947  29.997  64.680  1.00 22.94
+ATOM     22  CA  PRO     3J     14.902  31.100  64.827  1.00 20.19
+ATOM     24  O   PRO     3J     16.545  29.521  64.086  1.00 19.76
+ATOM     28  N  AILE     4      16.953  31.648  63.512  1.00 15.29
+ATOM     29  CA AILE     4      18.243  31.372  62.859  1.00 14.32
+ATOM     30  C  AILE     4      19.233  32.112  63.743  1.00 13.54
+ATOM     31  O  AILE     4      19.105  33.315  64.009  1.00 11.84
+""")).construct_hierarchy()
+  sel_cache = hierarchy.atom_selection_cache()
+  isel = sel_cache.iselection
+  assert list(isel("pepnames")) == [0,1,5,6,7,8]
+  #
+  for s in ["peptide", "protein"]:
+    try:
+      isel(s)
+    except pdb.atom_selection.AtomSelectionError, e:
+      assert not show_diff(str(e), """\
+Sorry: "%s" atom selection keyword not available:
+  Please try using "pepnames" instead.
+Atom selection string leading to error:
+  %s""" % (s, s))
+    else: raise Exception_expected
+  #
+  try:
+    isel("chain A or (peptyde and name ca)")
+  except pdb.atom_selection.AtomSelectionError, e:
+    assert not show_diff(str(e), """\
+RuntimeError: Atom selection syntax error at word "peptyde".
+Atom selection string leading to error:
+  chain A or (peptyde and name ca)""")
+  else: raise Exception_expected
 
 def run():
   exercise_selection()
