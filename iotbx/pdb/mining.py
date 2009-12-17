@@ -66,9 +66,17 @@ class file_info(object):
 
 class pdb_info(object):
 
-  __slots__ = ["file_name", "atom_selection_string", "pdb_code", "pdb_inp"]
+  __slots__ = [
+    "chunk_n",
+    "chunk_i",
+    "file_name",
+    "atom_selection_string",
+    "pdb_code",
+    "pdb_inp"]
 
-  def __init__(O, file_info, pdb_code, pdb_inp):
+  def __init__(O, chunk_n, chunk_i, file_info, pdb_code, pdb_inp):
+    O.chunk_n = chunk_n
+    O.chunk_i = chunk_i
     O.file_name = file_info.name
     O.atom_selection_string = file_info.atom_selection_string
     O.pdb_code = pdb_code
@@ -89,6 +97,8 @@ def pdb_inp_generator(file_infos, chunk_n, chunk_i):
       pdb_code = pdb_code_from_file_name(file_name=file_info.name)
       try:
         yield pdb_info(
+          chunk_n=chunk_n,
+          chunk_i=chunk_i,
           file_info=file_info,
           pdb_code=pdb_code,
           pdb_inp=iotbx.pdb.input(file_name=file_info.name))
