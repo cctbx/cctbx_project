@@ -50,6 +50,8 @@ cctbx/command_line/find_reticular_twin_laws.py -text
 cctbx/command_line/version.py -text
 cctbx/crystal_orientation.h -text
 cctbx/crystal_orientation.py -text
+cctbx/eltbx/distance_based_connectivity.py svneol=native#text/x-python
+cctbx/eltbx/tst_distance_based_connectivity.py svneol=native#text/x-python
 cctbx/eltbx/xray_scattering/form_factor.h -text
 cctbx/eltbx/xray_scattering/hydrogen_plots.py svneol=native#text/x-python
 cctbx/examples/find_distances.cpp svneol=native#text/plain
