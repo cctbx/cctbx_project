@@ -95,9 +95,29 @@ class AtomSelectionError(Sorry):
 
 class cache(object):
 
+  __slots__ = [
+    "root",
+    "wildcard_escape_char",
+    "n_seq",
+    "name",
+    "altloc",
+    "resname",
+    "chain_id",
+    "resseq",
+    "icode",
+    "resid",
+    "segid",
+    "model_id",
+    "element",
+    "charge",
+    "anisou",
+    "pepnames"]
+
   def __init__(self, root, wildcard_escape_char='\\'):
+    self.root = root
     self.wildcard_escape_char = wildcard_escape_char
     root.get_atom_selection_cache(self)
+    self.pepnames = None
 
   def get_name(self, pattern):
     return _get_map_string(
@@ -200,6 +220,28 @@ class cache(object):
   def get_anisou(self):
     return [self.anisou]
 
+  def get_pepnames(self):
+    if (self.pepnames is None):
+      n_ca_c_o = set([" N  ", " CA ", " C  ", " O  "])
+      atoms = self.root.atoms()
+      sentinel = atoms.reset_tmp(first_value=0, increment=0)
+      for model in self.root.models():
+        for chain in model.chains():
+          for conformer in chain.conformers():
+            for residue in conformer.residues():
+              ca = residue.find_atom_by(name=" CA ")
+              if (ca is not None):
+                if (residue.atoms_size() == 1):
+                  ca.tmp = 1
+                else:
+                  residue_atoms = residue.atoms()
+                  if (n_ca_c_o.issubset([atom.name
+                        for atom in residue_atoms])):
+                    for atom in residue_atoms:
+                      atom.tmp = 1
+      self.pepnames = (atoms.extract_tmp_as_size_t() == 1).iselection()
+    return [self.pepnames]
+
   def union(self, iselections):
     return flex.union(
       size=self.n_seq,
@@ -256,6 +298,9 @@ class cache(object):
   def sel_anisou(self):
     return self.union(iselections=self.get_anisou())
 
+  def sel_pepnames(self):
+    return self.union(iselections=self.get_pepnames())
+
   def selection_tokenizer(self, string, contiguous_word_characters=None):
     return selection_tokenizer(string, contiguous_word_characters)
 
@@ -271,6 +316,13 @@ class cache(object):
           expect_nonmatching_closing_parenthesis
             =expect_nonmatching_closing_parenthesis):
       lword = word.value.lower()
+      def raise_syntax_error():
+        if (lword in ["peptide", "protein"]):
+          raise Sorry(
+            '"%s" atom selection keyword not available:\n'
+            '  Please try using "pepnames" instead.' % lword)
+        raise RuntimeError(
+          'Atom selection syntax error at word "%s".' % lword)
       if (lword == "not"):
         assert len(result_stack) >= 1
         arg = result_stack.pop()
@@ -364,14 +416,16 @@ class cache(object):
             self.sel_charge(pattern=word_iterator.pop_argument(word.value)))
         elif (lword == "anisou"):
           result_stack.append(self.sel_anisou())
+        elif (lword == "pepnames"):
+          result_stack.append(self.sel_pepnames())
         elif (callback is not None):
           if (not callback(
                     word=word,
                     word_iterator=word_iterator,
                     result_stack=result_stack)):
-            raise RuntimeError("Syntax error.")
+            raise_syntax_error()
         else:
-          raise RuntimeError("Syntax error.")
+          raise_syntax_error()
     if (len(result_stack) == 0):
       return flex.bool(self.n_seq, False)
     selection = result_stack[0]
