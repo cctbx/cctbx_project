@@ -25,21 +25,20 @@ namespace {
           direct_space_asu::float_asu<> const&,
           double const&,
           double const&,
-          optional<
-            bool,
-            unsigned,
-            double const&,
-            double const&,
-            double const&> >((
-              arg("space_group"),
-              arg("asu"),
-              arg("min_cross_distance"),
-              arg("min_self_distance"),
-              arg("general_positions_only"),
-              arg("estimated_reduction_factor")=4,
-              arg("asu_mappings_buffer_thickness")=-1,
-              arg("min_cubicle_edge")=5,
-              arg("cubicle_epsilon")=-1)))
+          bool,
+          unsigned,
+          double const&,
+          double const&,
+          double const&>((
+            arg("space_group"),
+            arg("asu"),
+            arg("min_cross_distance"),
+            arg("min_self_distance"),
+            arg("general_positions_only"),
+            arg("estimated_reduction_factor")=4,
+            arg("asu_mappings_buffer_thickness")=-1,
+            arg("min_cubicle_edge")=5,
+            arg("cubicle_epsilon")=-1)))
         .def_readonly("min_cross_distance",
                  &w_t::min_cross_distance)
         .def_readonly("min_self_distance",

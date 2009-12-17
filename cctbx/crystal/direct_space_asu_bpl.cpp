@@ -53,10 +53,13 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("direct_space_asu_float_asu", no_init)
-        .def(init<uctbx::unit_cell const&,
-                  w_t::facets_t const&,
-                  optional<double const&> >(
-          (arg("unit_cell"), arg("facets"), arg("is_inside_epsilon"))))
+        .def(init<
+          uctbx::unit_cell const&,
+          w_t::facets_t const&,
+          double const&>((
+            arg("unit_cell"),
+            arg("facets"),
+            arg("is_inside_epsilon")=1e-6)))
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("facets", &w_t::facets, ccr())
         .def("is_inside_epsilon", &w_t::is_inside_epsilon)

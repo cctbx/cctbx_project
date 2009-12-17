@@ -40,9 +40,13 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("neighbors_simple_pair_generator", no_init)
-        .def(init<boost::shared_ptr<direct_space_asu::asu_mappings<> >&,
-                  optional<double const&, bool> >(
-          (arg("asu_mappings"), arg("distance_cutoff"), arg("minimal"))))
+        .def(init<
+          boost::shared_ptr<direct_space_asu::asu_mappings<> >&,
+          double const&,
+          bool>((
+            arg("asu_mappings"),
+            arg("distance_cutoff")=0,
+            arg("minimal")=false)))
         .def("asu_mappings", &w_t::asu_mappings)
         .def("distance_cutoff_sq", &w_t::distance_cutoff_sq)
         .def("minimal", &w_t::minimal)
@@ -69,14 +73,17 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t, bases<simple_pair_generator<> > >(
         "neighbors_fast_pair_generator", no_init)
-        .def(init<boost::shared_ptr<direct_space_asu::asu_mappings<> >&,
-                  double const&,
-                  optional<bool, double const&, double const&> >((
-          arg("asu_mappings"),
-          arg("distance_cutoff"),
-          arg("minimal"),
-          arg("min_cubicle_edge"),
-          arg("epsilon"))))
+        .def(init<
+          boost::shared_ptr<direct_space_asu::asu_mappings<> >&,
+          double const&,
+          bool,
+          double const&,
+          double const&>((
+            arg("asu_mappings"),
+            arg("distance_cutoff"),
+            arg("minimal")=false,
+            arg("min_cubicle_edge")=5,
+            arg("epsilon")=1e-6)))
         .def("epsilon", &w_t::epsilon)
         .def("n_boxes", &w_t::n_boxes, ccr())
         .def("next", helper<w_t>::next)
