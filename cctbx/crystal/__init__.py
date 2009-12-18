@@ -417,6 +417,28 @@ class special_position_settings(symmetry):
         site_symmetry_table=site_symmetry_table)
     return asu_mappings
 
+  def pair_generator(self,
+        distance_cutoff,
+        sites_frac=None,
+        sites_cart=None,
+        site_symmetry_table=None,
+        asu_mappings_buffer_thickness=None,
+        asu_is_inside_epsilon=None,
+        minimal=False):
+    assert sites_frac is not None or sites_cart is not None
+    if (asu_mappings_buffer_thickness is None):
+        asu_mappings_buffer_thickness = distance_cutoff
+    asu_mappings = self.asu_mappings(
+      buffer_thickness=asu_mappings_buffer_thickness,
+      sites_frac=sites_frac,
+      sites_cart=sites_cart,
+      site_symmetry_table=site_symmetry_table,
+      asu_is_inside_epsilon=asu_is_inside_epsilon)
+    return neighbors_fast_pair_generator(
+      asu_mappings=asu_mappings,
+      distance_cutoff=distance_cutoff,
+      minimal=minimal)
+
   def pair_asu_table(self,
         distance_cutoff,
         sites_frac=None,
