@@ -235,8 +235,8 @@ class cache(object):
                   ca.tmp = 1
                 else:
                   residue_atoms = residue.atoms()
-                  if (n_ca_c_o.issubset([atom.name
-                        for atom in residue_atoms])):
+                  if (n_ca_c_o.issubset(set([atom.name
+                        for atom in residue_atoms]))):
                     for atom in residue_atoms:
                       atom.tmp = 1
       self.pepnames = (atoms.extract_tmp_as_size_t() == 1).iselection()
