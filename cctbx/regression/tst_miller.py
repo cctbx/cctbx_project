@@ -1600,6 +1600,9 @@ def exercise_difference_map():
   assert ph_restrict.is_centric()
   assert ph_restrict.nearest_valid_phase(90, deg=True) == 0
   assert approx_equal(diff.data()[1], -1)
+  f_o = miller.array(mi, data=(flex.complex_double((3j, 4j))))
+  diff = f_o.f_obs_minus_f_calc(f_obs_factor=1, f_calc=f_c)
+  assert approx_equal(diff.data(), ((1j, 1j)))
 
 def exercise_multiscale():
   xrs = random_structure.xray_structure(
