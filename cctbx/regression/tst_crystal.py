@@ -213,6 +213,23 @@ def exercise_special_position_settings():
       crystal_symmetry=xs,
       min_distance_sym_equiv=min_distance_sym_equiv)
     assert str(sp.sym_equiv_sites((0,0,0)).special_op()) == special_op
+  #
+  sites_cart = flex.vec3_double([(0,0,0)])
+  sp = xs.special_position_settings()
+  asu_mappings = sp.asu_mappings(buffer_thickness=3, sites_cart=sites_cart)
+  assert list(asu_mappings.site_symmetry_table().special_position_indices()) \
+      == [0]
+  #
+  pair_generator = sp.pair_generator(distance_cutoff=1, sites_cart=sites_cart)
+  assert pair_generator.count_pairs() == 0
+  sp0 = xs.special_position_settings(min_distance_sym_equiv=0)
+  pair_generator = sp0.pair_generator(distance_cutoff=1, sites_cart=sites_cart)
+  assert pair_generator.count_pairs() == 3
+  #
+  pair_asu_table = sp.pair_asu_table(distance_cutoff=1, sites_cart=sites_cart)
+  assert pair_asu_table.table()[0].size() == 0
+  pair_asu_table = sp0.pair_asu_table(distance_cutoff=1, sites_cart=sites_cart)
+  assert pair_asu_table.table()[0][0].size() == 3
 
 def exercise_site_symmetry(space_group_info):
   special_position_settings = crystal.special_position_settings(
