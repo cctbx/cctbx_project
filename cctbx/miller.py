@@ -1707,14 +1707,18 @@ class array(set):
       sigmas=result_sigmas).set_observation_type(self.observation_type())
 
   def f_obs_minus_f_calc(self, f_obs_factor, f_calc):
-    assert self.is_real_array()
     assert f_calc.is_complex_array()
     assert self.indices().all_eq(f_calc.indices())
     assert self.anomalous_flag() is f_calc.anomalous_flag()
-    return array(
-      miller_set=self,
-      data=f_obs_factor*self.data()-flex.abs(f_calc.data())).phase_transfer(
-        phase_source=f_calc)
+    if self.is_complex_array():
+      return array(
+        miller_set=self,
+        data=f_obs_factor*self.data()-f_calc.data())
+    else:
+      return array(
+        miller_set=self,
+        data=f_obs_factor*self.data()-flex.abs(f_calc.data())).phase_transfer(
+          phase_source=f_calc)
 
   def phase_transfer(self, phase_source, epsilon=1.e-10, deg=False,
                            phase_integrator_n_steps=None):
@@ -1768,7 +1772,8 @@ phases are determined on the fly using the given step size.
           self.indices(),
           data,
           phase_source,
-          epsilon))
+          epsilon),
+        sigmas=self.sigmas())
     return array(
       miller_set=self,
       data=phase_transfer(
@@ -1776,7 +1781,8 @@ phases are determined on the fly using the given step size.
         self.indices(),
         data,
         phase_source,
-        deg))
+        deg),
+      sigmas=self.sigmas())
 
   def randomize_phases(self):
     random_phases = (2*math.pi)*flex.random_double(self.data().size())
