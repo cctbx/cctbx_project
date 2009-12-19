@@ -180,6 +180,8 @@ class table_data (object) :
           if x is None : newcol.append(x)
           else :         newcol.append(int(x))
         self.data[i] = newcol
+    if self.column_labels[0] in ["1/d^2","1/d**2","1/resol^2"] :
+      self.x_is_inverse_d_min = True
 
   def add_row (self, row) :
     if self.data is None or len(self.data) == 0 :
