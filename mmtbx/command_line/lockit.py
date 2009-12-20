@@ -565,6 +565,7 @@ def run(args):
         for i in xrange(rstw_params.number_of_samples)]
     best_rstw = None
     best_refined = None
+    best_refined_final = None
     best_acceptable = None
     best_rmsd_diff = None
     bond_rmsd_list = []
@@ -612,8 +613,8 @@ def run(args):
       if (   best_rmsd_diff is None
           or best_rmsd_diff > rmsd_diff
             and (acceptable or not best_acceptable)):
-        best_rstw, best_refined, best_acceptable, best_rmsd_diff = \
-          rstw, refined, acceptable, rmsd_diff
+        best_rstw, best_refined, best_acceptable, best_rmsd_diff, best_refined_final = \
+          rstw, refined, acceptable, rmsd_diff, refined.f_final
       print
     if (best_refined is not None):
       pdb_atoms.set_xyz(new_xyz=best_refined.sites_cart)
@@ -622,6 +623,7 @@ def run(args):
       for w,d in zip(rstw_list, bond_rmsd_list):
         print "  %6.1f  %5.3f" % (w,d)
       print "Best real-space target weight: %.1f" % best_rstw
+      print "Best refined final value:",best_refined_final
       print
   #
   if (work_params.output_file is not None):
@@ -642,6 +644,7 @@ def run(args):
   #
   show_times()
   sys.stdout.flush()
+  return best_refined_final # XXX exchange for correlation, or both?
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
