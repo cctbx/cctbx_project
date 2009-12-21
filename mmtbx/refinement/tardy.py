@@ -308,18 +308,20 @@ def action(
   def suppress_allowed_origin_shifts(collect_stats):
     if (not allowed_origin_shifts_need_to_be_suppressed):
       return
-    mlv = matrix.col(tardy_model.mean_linear_velocity(
-      number_of_sites_in_each_tree=number_of_sites_in_each_tree))
-    mlv_perp = matrix.col(
-      crystal_symmetry.subtract_continuous_allowed_origin_shifts(
-        translation_cart=mlv))
-    correction = mlv - mlv_perp
-    tardy_model.subtract_from_linear_velocities(
-      number_of_sites_in_each_tree=number_of_sites_in_each_tree,
-      value=correction)
-    if (collect_stats):
-      allowed_origin_shift_velocity_corrections.append(abs(correction))
-      sum_of_allowed_origin_shift_velocity_corrections[0] += correction
+    mlv = tardy_model.mean_linear_velocity(
+      number_of_sites_in_each_tree=number_of_sites_in_each_tree)
+    if (mlv is not None):
+      mlv = matrix.col(mlv)
+      mlv_perp = matrix.col(
+        crystal_symmetry.subtract_continuous_allowed_origin_shifts(
+          translation_cart=mlv))
+      correction = mlv - mlv_perp
+      tardy_model.subtract_from_linear_velocities(
+        number_of_sites_in_each_tree=number_of_sites_in_each_tree,
+        value=correction)
+      if (collect_stats):
+        allowed_origin_shift_velocity_corrections.append(abs(correction))
+        sum_of_allowed_origin_shift_velocity_corrections[0] += correction
   suppress_allowed_origin_shifts(collect_stats=False)
   n_time_steps = 0
   for i_cool_step in xrange(params.number_of_cooling_steps+1):
