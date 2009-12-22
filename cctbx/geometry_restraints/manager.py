@@ -15,6 +15,7 @@ class manager(object):
         crystal_symmetry=None,
         model_indices=None,
         conformer_indices=None,
+        sym_excl_indices=None,
         site_symmetry_table=None,
         bond_params_table=None,
         shell_sym_tables=None,
@@ -177,11 +178,13 @@ class manager(object):
         n_additional_sites,
         model_indices=None,
         conformer_indices=None,
+        sym_excl_indices=None,
         site_symmetry_table=None,
         nonbonded_types=None):
     assert n_additional_sites >= 0
     assert (model_indices is None) == (self.model_indices is None)
     assert (conformer_indices is None) == (self.conformer_indices is None)
+    assert (sym_excl_indices is None) == (self.sym_excl_indices is None)
     assert (site_symmetry_table is None) == (self.site_symmetry_table is None)
     assert (nonbonded_types is None) == (self.nonbonded_types is None)
     if (self.model_indices is not None):
@@ -192,6 +195,10 @@ class manager(object):
       assert conformer_indices.size() == n_additional_sites
       conformer_indices = self.conformer_indices.concatenate(
         conformer_indices)
+    if (self.sym_excl_indices is not None):
+      assert sym_excl_indices.size() == n_additional_sites
+      sym_excl_indices = self.sym_excl_indices.concatenate(
+        sym_excl_indices)
     if (self.site_symmetry_table is not None):
       assert site_symmetry_table.indices().size() == n_additional_sites
       # XXX should become site_symmetry_table.concatenate()
@@ -221,6 +228,7 @@ class manager(object):
       crystal_symmetry=self.crystal_symmetry,
       model_indices=model_indices,
       conformer_indices=conformer_indices,
+      sym_excl_indices=sym_excl_indices,
       site_symmetry_table=site_symmetry_table,
       bond_params_table=bond_params_table,
       shell_sym_tables=shell_sym_tables,
@@ -251,6 +259,11 @@ class manager(object):
       selected_conformer_indices = self.conformer_indices.select(
         iselection)
       n_seqs[self.conformer_indices.size()] += 1
+    selected_sym_excl_indices = None
+    if (self.sym_excl_indices is not None):
+      selected_sym_excl_indices = self.sym_excl_indices.select(
+        iselection)
+      n_seqs[self.sym_excl_indices.size()] += 1
     selected_site_symmetry_table = None
     if (self.site_symmetry_table is not None):
       selected_site_symmetry_table = self.site_symmetry_table.select(
@@ -303,6 +316,7 @@ class manager(object):
       crystal_symmetry=self.crystal_symmetry,
       model_indices=selected_model_indices,
       conformer_indices=selected_conformer_indices,
+      sym_excl_indices=selected_sym_excl_indices,
       site_symmetry_table=selected_site_symmetry_table,
       bond_params_table=selected_bond_params_table,
       shell_sym_tables=selected_shell_sym_tables,
@@ -492,6 +506,7 @@ class manager(object):
           shell_asu_tables=shell_asu_tables,
           model_indices=self.model_indices,
           conformer_indices=self.conformer_indices,
+          sym_excl_indices=self.sym_excl_indices,
           nonbonded_params=self.nonbonded_params,
           nonbonded_types=self.nonbonded_types,
           nonbonded_distance_cutoff_plus_buffer

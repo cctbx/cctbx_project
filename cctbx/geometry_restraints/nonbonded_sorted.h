@@ -41,6 +41,7 @@ namespace cctbx { namespace geometry_restraints {
       nonbonded_sorted_asu_proxies(
         af::const_ref<std::size_t> const& model_indices,
         af::const_ref<std::size_t> const& conformer_indices,
+        af::const_ref<std::size_t> const& sym_excl_indices,
         geometry_restraints::nonbonded_params const& nonbonded_params,
         af::const_ref<std::string> const& nonbonded_types,
         double nonbonded_distance_cutoff_plus_buffer,
@@ -59,6 +60,8 @@ namespace cctbx { namespace geometry_restraints {
                   || model_indices.size() == nonbonded_types.size());
         CCTBX_ASSERT(conformer_indices.size() == 0
                   || conformer_indices.size() == nonbonded_types.size());
+        CCTBX_ASSERT(sym_excl_indices.size() == 0
+                  || sym_excl_indices.size() == nonbonded_types.size());
         CCTBX_ASSERT(shell_asu_tables.size() > 0);
         for(unsigned i=0; i<shell_asu_tables.size(); i++) {
           CCTBX_ASSERT(shell_asu_tables[i].table().size()
@@ -96,30 +99,39 @@ namespace cctbx { namespace geometry_restraints {
               != conformer_indices[pair.j_seq]) {
             continue;
           }
+          bool sym_excl_flag = false;
+          if (   sym_excl_indices.size() != 0
+              && sym_excl_indices[pair.i_seq] != 0
+              && sym_excl_indices[pair.i_seq]
+              == sym_excl_indices[pair.j_seq]) {
+            sym_excl_flag = true;
+          }
           if (   shell_asu_tables_size > 2
               && shell_asu_tables[2].contains(pair)) {
             nonbonded_asu_proxy proxy = make_nonbonded_asu_proxy(
-              nonbonded_params, nonbonded_types, pair, true);
+              nonbonded_params, nonbonded_types, pair,
+              /*is_1_4_interaction*/ true);
             if (min_vdw_distance < 0 || min_vdw_distance > proxy.vdw_distance){
               min_vdw_distance = proxy.vdw_distance;
             }
             if (max_vdw_distance < proxy.vdw_distance) {
               max_vdw_distance = proxy.vdw_distance;
             }
-            process(proxy);
+            process(proxy, sym_excl_flag);
             n_1_4++;
             continue;
           }
           {
             nonbonded_asu_proxy proxy = make_nonbonded_asu_proxy(
-              nonbonded_params, nonbonded_types, pair, false);
+              nonbonded_params, nonbonded_types, pair,
+              /*is_1_4_interaction*/ false);
             if (min_vdw_distance < 0 || min_vdw_distance > proxy.vdw_distance){
               min_vdw_distance = proxy.vdw_distance;
             }
             if (max_vdw_distance < proxy.vdw_distance) {
               max_vdw_distance = proxy.vdw_distance;
             }
-            process(proxy);
+            process(proxy, sym_excl_flag);
             n_nonbonded++;
           }
         }

@@ -333,6 +333,15 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
         Number of residues, atoms: 3, 63
           Classifications: {'RNA': 3}
           Link IDs: {'rna3p': 1, 'rna2p': 1}
+  Residues with excluded nonbonded symmetry interactions: 2
+    residue:
+      pdb=" P     C A 857 " occ=0.30
+      ... (18 atoms not shown)
+      pdb=" C6    C A 857 " occ=0.30
+    residue:
+      pdb=" P     U A 858 " occ=0.30
+      ... (18 atoms not shown)
+      pdb=" C6    U A 858 " occ=0.30
   Time building chain proxies: """,
     expected_modifications_used=[{'rna3p': 2, 'rna2p': 1}])
   #
@@ -390,7 +399,7 @@ def exercise_hydrogen_deuterium_aliases():
       test=os.path.isfile)
     if (file_path is None):
       print "Skipping exercise_hydrogen_deuterium_aliases():", \
-        " input file not available:", file_name
+        "input file not available:", file_name
       return
     file_paths.append(file_path)
   log = StringIO()
@@ -414,7 +423,7 @@ def exercise_corrupt_cif_link():
       test=os.path.isfile)
     if (file_path is None):
       print "Skipping exercise_corrupt_cif_link():", \
-        " input file not available:", file_name
+        "input file not available:", file_name
       return
     file_paths.append(file_path)
   log = StringIO()
@@ -434,7 +443,7 @@ def exercise_dna_cns_cy5_th6():
       test=os.path.isfile)
     if (file_path is None):
       print "Skipping exercise_dna_cns_cy5_th6():", \
-        " input file not available:", file_name
+        "input file not available:", file_name
       return
     file_paths.append(file_path)
   log = StringIO()
@@ -448,7 +457,43 @@ def exercise_dna_cns_cy5_th6():
   str({'DNA': 12}),
   str({'rna3p': 11})))
 
-def exercise():
+def exercise_sym_excl_indices(mon_lib_srv, ener_lib):
+  file_name = "so4_on_two_fold.pdb"
+  file_path = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/"+file_name,
+    test=os.path.isfile)
+  if (file_path is None):
+    print "Skipping exercise_sym_excl_indices():", \
+      "input file not available:", file_name
+    return
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=file_path,
+    log=log)
+  processed_pdb_file.geometry_restraints_manager()
+  lines = log.getvalue().splitlines()
+  assert not block_show_diff(
+    lines, """\
+  Residues with excluded nonbonded symmetry interactions: 1
+    residue:
+      pdb=" S   SO4 A  13 " occ=0.50
+      ... (3 atoms not shown)
+      pdb=" O4  SO4 A  13 " occ=0.50
+  Time building chain proxies:
+""", last_startswith=True)
+  assert not block_show_diff(
+    lines, """\
+  Sorted by model distance:
+  nonbonded pdb=" OE1 GLU A   9 "
+            pdb=" O4  SO4 A  13 "
+     model   vdw sym.op.
+     2.134 3.040 z+1/4,y-1/4,-x+3/4
+""")
+
+def run(args):
+  assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   exercise_pdb_string(mon_lib_srv, ener_lib)
@@ -458,7 +503,9 @@ def exercise():
   exercise_hydrogen_deuterium_aliases()
   exercise_corrupt_cif_link()
   exercise_dna_cns_cy5_th6()
+  exercise_sym_excl_indices(mon_lib_srv, ener_lib)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
-  exercise()
+  import sys
+  run(args=sys.argv[1:])

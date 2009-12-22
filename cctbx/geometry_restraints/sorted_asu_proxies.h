@@ -79,7 +79,7 @@ namespace cctbx { namespace geometry_restraints {
             nonbonded_asu_proxy::as_simple_proxy
        */
       bool
-      process(AsuProxyType const& proxy)
+      process(AsuProxyType const& proxy, bool sym_excl_flag=false)
       {
         CCTBX_ASSERT(asu_mappings_ != 0 && proxy.is_active());
         if (asu_mappings_->is_simple_interaction(proxy)) {
@@ -88,7 +88,9 @@ namespace cctbx { namespace geometry_restraints {
           }
           return false;
         }
-        push_back(proxy);
+        if (!sym_excl_flag) {
+          push_back(proxy);
+        }
         return true;
       }
 

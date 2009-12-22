@@ -147,6 +147,7 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      object none;
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("site_symmetry_table")
@@ -172,11 +173,13 @@ namespace {
             uctbx::unit_cell const&,
             space_group const&,
             af::const_ref<scitbx::vec3<double> > const&,
+            af::const_ref<bool> const&,
             double,
             bool)) &w_t::process, (
           arg("unit_cell"),
           arg("space_group"),
           arg("original_sites_frac"),
+          arg("unconditional_general_position_flags")=none,
           arg("min_distance_sym_equiv")=0.5,
           arg("assert_min_distance_sym_equiv")=true))
         .def("is_special_position", &w_t::is_special_position, (arg("i_seq")))

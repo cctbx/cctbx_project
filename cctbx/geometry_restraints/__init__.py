@@ -1119,6 +1119,7 @@ class pair_proxies(object):
         shell_asu_tables=None,
         model_indices=None,
         conformer_indices=None,
+        sym_excl_indices=None,
         nonbonded_params=None,
         nonbonded_types=None,
         nonbonded_distance_cutoff_plus_buffer=None,
@@ -1144,6 +1145,7 @@ class pair_proxies(object):
       self.nonbonded_proxies = nonbonded_sorted_asu_proxies(
         model_indices=model_indices,
         conformer_indices=conformer_indices,
+        sym_excl_indices=sym_excl_indices,
         nonbonded_params=nonbonded_params,
         nonbonded_types=nonbonded_types,
         nonbonded_distance_cutoff_plus_buffer=\
