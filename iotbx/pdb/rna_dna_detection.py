@@ -1,4 +1,5 @@
 from scitbx import matrix
+from libtbx import slots_getstate_setstate
 
 # geostd values 2009-10-17
 bond_distance_ideal_by_bond_atom_names_v3 = {
@@ -46,7 +47,7 @@ class _make_tables(object):
 
 _tables = _make_tables()
 
-class atom_name_analysis(object):
+class atom_name_analysis(slots_getstate_setstate):
 
   __slots__ = [
     "sub_classification",
@@ -122,7 +123,7 @@ def classification(atom_dict, bond_list):
 
 deoxy_ribo_atom_keys = set("C1' C2' C3' O3' C4' O4' C5' O5'".split())
 
-class residue_analysis(object):
+class residue_analysis(slots_getstate_setstate):
 
   __slots__ = [
     "problems",

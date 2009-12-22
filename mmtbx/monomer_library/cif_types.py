@@ -3,6 +3,7 @@ from cctbx import geometry_restraints
 from cctbx import uctbx
 from cctbx.array_family import flex
 from libtbx.utils import if_none
+from libtbx import slots_getstate_setstate
 import copy
 import sys
 
@@ -148,7 +149,7 @@ def esd_as_weight(esd):
   if (esd == 0): return 0
   return 1./(esd*esd)
 
-class comp_comp_id(object):
+class comp_comp_id(slots_getstate_setstate):
 
   __slots__ = [
     "source_info",

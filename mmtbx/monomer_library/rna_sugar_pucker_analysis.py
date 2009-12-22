@@ -2,6 +2,7 @@ import scitbx.math
 from scitbx import matrix
 import libtbx.phil
 from libtbx.math_utils import normalize_angle
+from libtbx import slots_getstate_setstate
 
 master_phil = libtbx.phil.parse("""\
   bond_min_distance = 1.2
@@ -24,7 +25,7 @@ master_phil = libtbx.phil.parse("""\
     .type = float
 """)
 
-class evaluate(object):
+class evaluate(slots_getstate_setstate):
 
   __slots__ = [
     "epsilon",

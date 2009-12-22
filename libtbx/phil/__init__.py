@@ -1871,7 +1871,7 @@ def process_include_scope(
           object.where_str))
   return result.change_primary_parent_scope(object.primary_parent_scope)
 
-class variable_substitution_fragment(object):
+class variable_substitution_fragment(slots_getstate_setstate):
 
   __slots__ = ["is_variable", "value", "result"]
 
@@ -1879,7 +1879,7 @@ class variable_substitution_fragment(object):
     self.is_variable = is_variable
     self.value = value
 
-class variable_substitution_proxy(object):
+class variable_substitution_proxy(slots_getstate_setstate):
 
   __slots__ = ["word", "force_string", "have_variables", "fragments"]
 

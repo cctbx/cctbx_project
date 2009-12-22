@@ -1,3 +1,5 @@
+from libtbx import slots_getstate_setstate
+
 def construct_edge_sets(n_vertices, edge_list, assert_i_lt_j=True):
   result = [set() for i in xrange(n_vertices)]
   for i,j in edge_list:
@@ -79,7 +81,7 @@ class sub_edge_list(object):
       n_vertices=len(O.vertex_indices),
       edge_list=O.edge_list)
 
-class tree_marking(object):
+class tree_marking(slots_getstate_setstate):
 
   __slots__ = ["edge_sets", "n_trees", "indices"]
 
