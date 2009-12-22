@@ -170,6 +170,7 @@ namespace {
         .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
           arg("other")))
         .def("conformers", conformers_as_list<w_t>::get)
+        .def("unique_resnames", &w_t::unique_resnames)
       ;
     }
   };
