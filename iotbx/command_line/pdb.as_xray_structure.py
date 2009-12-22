@@ -37,10 +37,14 @@ def run(args, command_name="iotbx.pdb.as_xray_structure"):
   for file_name in command_line.args:
     print "file_name:", file_name
     sys.stdout.flush()
-    structure = pdb.input(file_name=file_name).xray_structure_simple(
+    pdb_inp = pdb.input(file_name=file_name)
+    structure = pdb_inp.xray_structure_simple(
       crystal_symmetry=command_line.symmetry,
       weak_symmetry=co.weak_symmetry)
     structure.show_summary()
+    if (structure.special_position_indices().size() != 0):
+      structure.show_special_position_shifts(
+        sites_cart_original=pdb_inp.atoms().extract_xyz())
     structure.scattering_type_registry().show(show_gaussians=False)
     if (co.verbose):
       structure.show_scatterers()
