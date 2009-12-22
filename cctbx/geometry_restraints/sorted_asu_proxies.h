@@ -52,12 +52,11 @@ namespace cctbx { namespace geometry_restraints {
         return asu_mappings_owner_;
       }
 
-      //! Appends proxy to simple array. Always returns false.
-      bool
+      //! Appends proxy to simple array.
+      void
       process(SimpleProxyType const& proxy)
       {
         simple.push_back(proxy);
-        return false;
       }
 
       //! Appends all proxies to simple array.
@@ -70,15 +69,12 @@ namespace cctbx { namespace geometry_restraints {
       /*! \brief Appends proxy to the simple array if possible, the
           asu array otherwise.
        */
-      /*! Returns false if the proxy was added to the simple array,
-          true if the proxy was added to the asu array.
-
-          See also:
+      /*! See also:
             asu_mappings::is_simple_interaction,
             bond_asu_proxy::as_simple_proxy,
             nonbonded_asu_proxy::as_simple_proxy
        */
-      bool
+      void
       process(AsuProxyType const& proxy, bool sym_excl_flag=false)
       {
         CCTBX_ASSERT(asu_mappings_ != 0 && proxy.is_active());
@@ -86,12 +82,10 @@ namespace cctbx { namespace geometry_restraints {
           if (proxy.i_seq < proxy.j_seq) {
             simple.push_back(proxy.as_simple_proxy());
           }
-          return false;
         }
-        if (!sym_excl_flag) {
+        else if (!sym_excl_flag) {
           push_back(proxy);
         }
-        return true;
       }
 
       //! Calls process() for each proxy in the proxies array.
