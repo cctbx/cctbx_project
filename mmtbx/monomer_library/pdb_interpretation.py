@@ -190,6 +190,8 @@ master_params_str = """\
       .type=int
     planarity_restraints_sorted_by_residual = 3
       .type=int
+    residues_with_excluded_nonbonded_symmetry_interactions = 12
+      .type=int
   }
   %(clash_guard_params_str)s
 """ % vars()
@@ -1578,7 +1580,6 @@ class build_chain_proxies(object):
         special_position_indices,
         keep_monomer_mappings,
         all_monomer_mappings,
-        model_indices,
         scattering_type_registry,
         nonbonded_energy_type_registry,
         geometry_proxy_registries,
@@ -1630,9 +1631,6 @@ class build_chain_proxies(object):
     prev_prev_mm = None
     pdb_residues = conformer.residues()
     for i_residue,residue in enumerate(pdb_residues):
-      for atom in residue.atoms():
-        i_seq = atom.i_seq
-        model_indices[i_seq] = i_model
       def _get_next_residue():
         j = i_residue + 1
         if (j == len(pdb_residues)): return None
@@ -2082,6 +2080,40 @@ class build_all_chain_proxies(object):
         print >> log, "  More than %d atoms: no processing." % max_atoms
         return
     self.sites_cart = self.pdb_atoms.extract_xyz()
+    models = self.pdb_hierarchy.models()
+    if (log is not None):
+      print >> log, "  Number of models:", len(models)
+    n_seq = self.pdb_atoms.size()
+    def set_model_indices():
+      self.model_indices = flex.size_t(n_seq, n_seq)
+      for i_model,model in enumerate(models):
+        self.model_indices.set_selected(model.atoms().extract_i_seq(), i_model)
+      assert self.model_indices.count(n_seq) == 0
+    set_model_indices()
+    altloc_i_conformer = {}
+    def set_conformer_indices():
+      self.conformer_indices = flex.size_t(n_seq, 0)
+      altloc_indices = self.pdb_hierarchy.altloc_indices()
+      if ("" in altloc_indices): p = 0
+      else:                      p = 1
+      altlocs = sorted(altloc_indices.keys())
+      for i,altloc in enumerate(altlocs):
+        if (altloc == ""): continue
+        self.conformer_indices.set_selected(altloc_indices[altloc], i+p)
+        altloc_i_conformer[altloc] = i+p
+      altloc_i_conformer[""] = 0
+    set_conformer_indices()
+    sym_excl_residue_groups = []
+    def set_sym_excl_indices():
+      self.sym_excl_indices = flex.size_t(n_seq, 0)
+      for rg in self.pdb_hierarchy.residue_groups():
+        rg_atoms = rg.atoms()
+        if (rg_atoms.extract_occ().all_lt(1.0)):
+          sym_excl_residue_groups.append(rg)
+          self.sym_excl_indices.set_selected(
+            rg_atoms.extract_i_seq(), len(sym_excl_residue_groups))
+    set_sym_excl_indices()
+    #
     if (    special_position_settings is None
         and crystal_symmetry is not None):
       special_position_settings = crystal_symmetry.special_position_settings()
@@ -2104,25 +2136,7 @@ class build_all_chain_proxies(object):
     self.process_apply_cif_modification(mon_lib_srv=mon_lib_srv, log=log)
     self.process_apply_cif_link(mon_lib_srv=mon_lib_srv, log=log)
     self.conformation_dependent_restraints_list = []
-    models = self.pdb_hierarchy.models()
-    if (log is not None):
-      print >> log, "  Number of models:", len(models)
     model_type_indices = [-1] * len(models)
-    n_seq = self.pdb_atoms.size()
-    self.model_indices = flex.size_t(n_seq, n_seq)
-    self.conformer_indices = flex.size_t(n_seq, 0)
-    altloc_i_conformer = {}
-    def set_conformer_indices():
-      altloc_indices = self.pdb_hierarchy.altloc_indices()
-      if ("" in altloc_indices): p = 0
-      else:                      p = 1
-      altlocs = sorted(altloc_indices.keys())
-      for i,altloc in enumerate(altlocs):
-        if (altloc == ""): continue
-        self.conformer_indices.set_selected(altloc_indices[altloc], i+p)
-        altloc_i_conformer[altloc] = i+p
-      altloc_i_conformer[""] = 0
-    set_conformer_indices()
     self.all_monomer_mappings = []
     self.scattering_type_registry = scattering_type_registry(
       # XXX should be same as in pdb_inp.xray_structure_simple
@@ -2185,7 +2199,6 @@ class build_all_chain_proxies(object):
             special_position_indices=self.special_position_indices,
             keep_monomer_mappings=keep_monomer_mappings,
             all_monomer_mappings=self.all_monomer_mappings,
-            model_indices=self.model_indices,
             scattering_type_registry=self.scattering_type_registry,
             nonbonded_energy_type_registry=self.nonbonded_energy_type_registry,
             geometry_proxy_registries=self.geometry_proxy_registries,
@@ -2321,7 +2334,6 @@ class build_all_chain_proxies(object):
             "          Unresolved apply_cif_link planarities:", \
             n_unresolved_apply_cif_link_planarities
         flush_log(log)
-    assert self.model_indices.count(n_seq) == 0
     for apply in self.apply_cif_links:
       if (not apply.was_used):
         raise RuntimeError(
@@ -2333,6 +2345,16 @@ class build_all_chain_proxies(object):
     if (log is not None):
       if (n_unique_models != 1):
         print >> log, "  Number of unique models:", n_unique_models
+      if (len(sym_excl_residue_groups) != 0):
+        print >> log, \
+          "  Residues with excluded nonbonded symmetry interactions:", \
+          len(sym_excl_residue_groups)
+        show_residue_groups(
+          residue_groups=sym_excl_residue_groups,
+          log=log,
+          prefix="    ",
+          max_items=self.params.show_max_items
+            .residues_with_excluded_nonbonded_symmetry_interactions)
       self.geometry_proxy_registries.report(log=log, prefix="  ")
       self.fatal_problems_report(prefix="  ", log=log)
     self.time_building_chain_proxies = timer.elapsed()
@@ -2377,7 +2399,8 @@ class build_all_chain_proxies(object):
       assert self.sites_cart is not None
       self._site_symmetry_table = \
         self.special_position_settings.site_symmetry_table(
-          sites_cart=self.sites_cart)
+          sites_cart=self.sites_cart,
+          unconditional_general_position_flags=(self.sym_excl_indices != 0))
     return self._site_symmetry_table
 
   def sites_cart_exact(self):
@@ -2596,6 +2619,8 @@ class build_all_chain_proxies(object):
       model_indices = self.model_indices.select(self.cystein_sulphur_i_seqs)
     conformer_indices = self.conformer_indices.select(
       self.cystein_sulphur_i_seqs)
+    sym_excl_indices = self.sym_excl_indices.select(
+      self.cystein_sulphur_i_seqs)
     asu_mappings = self.special_position_settings.asu_mappings(
       buffer_thickness=disulfide_distance_cutoff)
     sulphur_sites_cart = self.sites_cart.select(self.cystein_sulphur_i_seqs)
@@ -2607,6 +2632,7 @@ class build_all_chain_proxies(object):
     nonbonded_proxies = geometry_restraints.nonbonded_sorted_asu_proxies(
       model_indices=model_indices,
       conformer_indices=conformer_indices,
+      sym_excl_indices=sym_excl_indices,
       nonbonded_params=geometry_restraints.nonbonded_params(
         default_distance=1),
       nonbonded_types=flex.std_string(conformer_indices.size()),
@@ -3015,6 +3041,7 @@ class build_all_chain_proxies(object):
       crystal_symmetry=self.special_position_settings,
       model_indices=self.model_indices,
       conformer_indices=self.conformer_indices,
+      sym_excl_indices=self.sym_excl_indices,
       site_symmetry_table=self.site_symmetry_table(),
       bond_params_table=bond_params_table,
       shell_sym_tables=shell_sym_tables,
@@ -3082,6 +3109,30 @@ class build_all_chain_proxies(object):
           scattering_type=scattering_type),
         site_symmetry_ops=site_symmetry_ops)
     return result
+
+def show_residue_groups(residue_groups, log, prefix, max_items):
+  if (len(residue_groups) == max_items + 1):
+    max_items += 1
+  for rg in residue_groups[:max_items]:
+    if (rg.unique_resnames().size() == 1):
+      print >> log, prefix+"residue:"
+    else:
+      print >> log, prefix+"residue group:"
+    rg_atoms = rg.atoms()
+    def show_atom(i):
+      a = rg_atoms[i]
+      print >> log, prefix+"  %s occ=%.2f" % (a.id_str(), a.occ)
+    show_atom(0)
+    n = rg_atoms.size()
+    if (n > 3):
+      print >> log, prefix+"  ... (%d atoms not shown)" % (n-2)
+    elif (n == 3):
+      show_atom(1)
+    if (n > 1):
+      show_atom(-1)
+  n = len(residue_groups) - max_items
+  if (n > 0):
+    print >> log, prefix+"... (remaining %d not shown)" % n
 
 class process(object):
 

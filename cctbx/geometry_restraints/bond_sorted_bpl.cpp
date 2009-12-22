@@ -14,6 +14,14 @@ namespace {
   {
     typedef bond_sorted_asu_proxies_base w_t;
 
+    static bool
+    process_bond_asu_proxy(
+      w_t& O,
+      bond_asu_proxy const& proxy)
+    {
+      return O.process(proxy);
+    }
+
     static void
     wrap()
     {
@@ -30,9 +38,7 @@ namespace {
           (void(w_t::*)(af::const_ref<bond_simple_proxy> const&))
             &w_t::process,
           (arg("proxies")))
-        .def("process",
-          (bool(w_t::*)(bond_asu_proxy const&)) &w_t::process,
-            (arg("proxy")))
+        .def("process", process_bond_asu_proxy, (arg("proxy")))
         .def("process",
           (void(w_t::*)(af::const_ref<bond_asu_proxy> const&))
             &w_t::process,

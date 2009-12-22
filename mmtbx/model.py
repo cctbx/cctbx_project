@@ -897,20 +897,25 @@ class manager(object):
     #
     geometry = self.restraints_manager.geometry
     number_of_new_solvent = solvent_xray_structure.scatterers().size()
-    if(geometry.model_indices is None):
-       model_indices = None
+    if (geometry.model_indices is None):
+      model_indices = None
     else:
-       model_indices = flex.size_t(number_of_new_solvent, 0)
-    if(geometry.conformer_indices is None):
-       conformer_indices = None
+      model_indices = flex.size_t(number_of_new_solvent, 0)
+    if (geometry.conformer_indices is None):
+      conformer_indices = None
     else:
-       conformer_indices = flex.size_t(number_of_new_solvent, 0)
+      conformer_indices = flex.size_t(number_of_new_solvent, 0)
+    if (geometry.sym_excl_indices is None):
+      sym_excl_indices = None
+    else:
+      sym_excl_indices = flex.size_t(number_of_new_solvent, 0)
     geometry = geometry.new_including_isolated_sites(
-           n_additional_sites  = number_of_new_solvent,
-           model_indices       = model_indices,
-           conformer_indices   = conformer_indices,
-           site_symmetry_table = solvent_xray_structure.site_symmetry_table(),
-           nonbonded_types     = flex.std_string(number_of_new_solvent, "OH2"))
+      n_additional_sites =number_of_new_solvent,
+      model_indices=model_indices,
+      conformer_indices=conformer_indices,
+      sym_excl_indices=sym_excl_indices,
+      site_symmetry_table=solvent_xray_structure.site_symmetry_table(),
+      nonbonded_types=flex.std_string(number_of_new_solvent, "OH2"))
     self.restraints_manager = mmtbx.restraints.manager(
                          geometry      = geometry,
                          ncs_groups    = self.restraints_manager.ncs_groups,

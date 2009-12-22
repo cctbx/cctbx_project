@@ -44,15 +44,22 @@ namespace cctbx { namespace sgtbx {
         uctbx::unit_cell const& unit_cell,
         sgtbx::space_group const& space_group,
         af::const_ref<scitbx::vec3<double> > const& original_sites_frac,
+        af::const_ref<bool> const& unconditional_general_position_flags=
+          af::const_ref<bool>(0,0),
         double min_distance_sym_equiv=0.5,
         bool assert_min_distance_sym_equiv=true)
       {
+        CCTBX_ASSERT(
+             unconditional_general_position_flags.size() == 0
+          || unconditional_general_position_flags.size()
+               == original_sites_frac.size());
+        bool const* ugpf = unconditional_general_position_flags.begin();
         for(std::size_t i_seq=0;i_seq<original_sites_frac.size();i_seq++) {
           process(site_symmetry(
             unit_cell,
             space_group,
             original_sites_frac[i_seq],
-            min_distance_sym_equiv,
+            (ugpf != 0 && ugpf[i_seq] != 0 ? 0 : min_distance_sym_equiv),
             assert_min_distance_sym_equiv));
         }
       }

@@ -31,8 +31,8 @@ namespace {
             &w_t::process,
           (arg("proxies")))
         .def("process",
-          (bool(w_t::*)(nonbonded_asu_proxy const&)) &w_t::process,
-            (arg("proxy")))
+          (bool(w_t::*)(nonbonded_asu_proxy const&, bool)) &w_t::process,
+            (arg("proxy"), arg("sym_excl_flag")=false))
         .def("process",
           (void(w_t::*)(af::const_ref<nonbonded_asu_proxy> const&))
             &w_t::process,
@@ -60,6 +60,7 @@ namespace {
         .def(init<
           af::const_ref<std::size_t> const&,
           af::const_ref<std::size_t> const&,
+          af::const_ref<std::size_t> const&,
           nonbonded_params const&,
           af::const_ref<std::string> const&,
           double,
@@ -67,6 +68,7 @@ namespace {
           std::vector<crystal::pair_asu_table<> > const&>((
             arg("model_indices"),
             arg("conformer_indices"),
+            arg("sym_excl_indices"),
             arg("nonbonded_params"),
             arg("nonbonded_types"),
             arg("nonbonded_distance_cutoff_plus_buffer"),
