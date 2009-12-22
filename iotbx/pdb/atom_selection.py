@@ -5,6 +5,7 @@ from scitbx import stl
 import scitbx.stl.map
 from libtbx.phil import tokenizer
 from libtbx.utils import Sorry, format_exception
+from libtbx import slots_getstate_setstate
 from cStringIO import StringIO
 
 def _character_case_id(strings):
@@ -93,7 +94,7 @@ class selection_tokenizer(tokenizer.word_iterator):
 class AtomSelectionError(Sorry):
   __module__ = "exceptions"
 
-class cache(object):
+class cache(slots_getstate_setstate):
 
   __slots__ = [
     "root",

@@ -15,7 +15,7 @@ from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
 from libtbx.utils import format_exception
-from libtbx import Auto, group_args
+from libtbx import Auto, group_args, slots_getstate_setstate
 from cStringIO import StringIO
 import string
 import sys, os
@@ -495,7 +495,7 @@ class nonbonded_energy_type_registry(type_symbol_registry_base):
       symbols=flex.std_string(n_seq),
       strict_conflict_handling=strict_conflict_handling)
 
-class monomer_mapping_summary(object):
+class monomer_mapping_summary(slots_getstate_setstate):
 
   __slots__ = [
     "conf_altloc",
@@ -523,7 +523,7 @@ class monomer_mapping_summary(object):
   def summary(self):
     return self
 
-class monomer_mapping(object):
+class monomer_mapping(slots_getstate_setstate):
 
   __slots__ = [
     "active_atoms",
