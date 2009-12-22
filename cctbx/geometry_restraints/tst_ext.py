@@ -475,8 +475,8 @@ def exercise_bond():
   assert sorted_asu_proxies.asu.size() == 1
   sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
     asu_mappings=asu_mappings)
-  assert not sorted_asu_proxies.process(proxy=proxies[0])
-  assert not sorted_asu_proxies.process(proxy=sym_proxies[0])
+  sorted_asu_proxies.process(proxy=proxies[0])
+  sorted_asu_proxies.process(proxy=sym_proxies[0])
   assert sorted_asu_proxies.simple.size() == 2
   assert sorted_asu_proxies.asu.size() == 0
   assert sorted_asu_proxies.n_total() == 2
@@ -957,8 +957,8 @@ def exercise_nonbonded():
   #
   sorted_asu_proxies = geometry_restraints.nonbonded_sorted_asu_proxies(
     asu_mappings=asu_mappings)
-  assert not sorted_asu_proxies.process(proxy=proxies[0])
-  assert not sorted_asu_proxies.process(proxy=sym_proxies[0])
+  sorted_asu_proxies.process(proxy=proxies[0])
+  sorted_asu_proxies.process(proxy=sym_proxies[0], sym_excl_flag=False)
   assert sorted_asu_proxies.simple.size() == 2
   assert sorted_asu_proxies.asu.size() == 0
   assert sorted_asu_proxies.n_total() == 2

@@ -164,9 +164,6 @@ def exercise(verbose=0):
            pair_proxies.nonbonded_proxies.n_total(),
     print "simple:", pair_proxies.nonbonded_proxies.simple.size(),
     print "sym:", pair_proxies.nonbonded_proxies.asu.size()
-    print "pair_proxies.n_nonbonded:", \
-      pair_proxies.nonbonded_proxies.n_nonbonded
-    print "pair_proxies.n_1_4:      ", pair_proxies.nonbonded_proxies.n_1_4
     print "min_distance_nonbonded: %.2f" % flex.min(
       geometry_restraints.nonbonded_deltas(
         sites_cart=sites_cart,
@@ -287,9 +284,6 @@ def exercise(verbose=0):
       manager = manager.select(
         iselection=flex.size_t_range(stop=sites_cart.size()))
       pair_proxies = manager.pair_proxies(sites_cart=sites_cart)
-      if (0 or verbose):
-        print "len(vdw_1):", pair_proxies.nonbonded_proxies.n_nonbonded
-        print "len(vdw_2):", pair_proxies.nonbonded_proxies.n_1_4
       minimized = geometry_restraints.lbfgs.lbfgs(
         sites_cart=sites_cart,
         geometry_restraints_manager=manager,

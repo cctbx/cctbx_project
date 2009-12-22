@@ -19,9 +19,6 @@ namespace cctbx { namespace geometry_restraints {
           direct_space_asu::asu_mappings<> > const& asu_mappings)
       :
         nonbonded_sorted_asu_proxies_base(asu_mappings),
-        n_1_3(0),
-        n_1_4(0),
-        n_nonbonded(0),
         n_unknown_nonbonded_type_pairs(0),
         min_vdw_distance(-1),
         max_vdw_distance(-1)
@@ -49,9 +46,6 @@ namespace cctbx { namespace geometry_restraints {
         std::vector<crystal::pair_asu_table<> > const& shell_asu_tables)
       :
         nonbonded_sorted_asu_proxies_base(shell_asu_tables[0].asu_mappings()),
-        n_1_3(0),
-        n_1_4(0),
-        n_nonbonded(0),
         n_unknown_nonbonded_type_pairs(0),
         min_vdw_distance(-1),
         max_vdw_distance(-1)
@@ -85,7 +79,6 @@ namespace cctbx { namespace geometry_restraints {
           }
           if (   shell_asu_tables_size > 1
               && shell_asu_tables[1].contains(pair)) {
-            n_1_3++;
             continue;
           }
           if (   model_indices.size() != 0
@@ -118,7 +111,6 @@ namespace cctbx { namespace geometry_restraints {
               max_vdw_distance = proxy.vdw_distance;
             }
             process(proxy, sym_excl_flag);
-            n_1_4++;
             continue;
           }
           {
@@ -132,7 +124,6 @@ namespace cctbx { namespace geometry_restraints {
               max_vdw_distance = proxy.vdw_distance;
             }
             process(proxy, sym_excl_flag);
-            n_nonbonded++;
           }
         }
       }
@@ -167,12 +158,6 @@ namespace cctbx { namespace geometry_restraints {
           + type_i + " - " + type_j);
       }
 
-      //! Number of 1-3 interactions excluded from nonbonded proxies.
-      unsigned n_1_3;
-      //! Number of attenuated 1-4 interactions.
-      unsigned n_1_4;
-      //! Total number of full strength (not attenuated) nonbonded terms.
-      unsigned n_nonbonded;
       /*! \brief Number of unknown nonbonded type pairs (nonbonded proxies
           with default distance).
        */

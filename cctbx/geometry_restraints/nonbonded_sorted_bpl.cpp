@@ -24,14 +24,14 @@ namespace {
             (arg("asu_mappings"))))
         .def("asu_mappings", &w_t::asu_mappings, ccr())
         .def("process",
-          (bool(w_t::*)(nonbonded_simple_proxy const&)) &w_t::process,
+          (void(w_t::*)(nonbonded_simple_proxy const&)) &w_t::process,
             (arg("proxy")))
         .def("process",
           (void(w_t::*)(af::const_ref<nonbonded_simple_proxy> const&))
             &w_t::process,
           (arg("proxies")))
         .def("process",
-          (bool(w_t::*)(nonbonded_asu_proxy const&, bool)) &w_t::process,
+          (void(w_t::*)(nonbonded_asu_proxy const&, bool)) &w_t::process,
             (arg("proxy"), arg("sym_excl_flag")=false))
         .def("process",
           (void(w_t::*)(af::const_ref<nonbonded_asu_proxy> const&))
@@ -74,9 +74,6 @@ namespace {
             arg("nonbonded_distance_cutoff_plus_buffer"),
             arg("min_cubicle_edge"),
             arg("shell_asu_tables"))))
-        .def_readonly("n_1_3", &w_t::n_1_3)
-        .def_readonly("n_1_4", &w_t::n_1_4)
-        .def_readonly("n_nonbonded", &w_t::n_nonbonded)
         .def_readonly("n_unknown_nonbonded_type_pairs",
           &w_t::n_unknown_nonbonded_type_pairs)
         .def_readonly("min_vdw_distance", &w_t::min_vdw_distance)

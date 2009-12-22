@@ -14,12 +14,12 @@ namespace {
   {
     typedef bond_sorted_asu_proxies_base w_t;
 
-    static bool
+    static void
     process_bond_asu_proxy(
       w_t& O,
       bond_asu_proxy const& proxy)
     {
-      return O.process(proxy);
+      O.process(proxy);
     }
 
     static void
@@ -32,7 +32,7 @@ namespace {
           boost::shared_ptr<asu_mappings> const&>(
             (arg("asu_mappings"))))
         .def("asu_mappings", &w_t::asu_mappings, ccr())
-        .def("process", (bool(w_t::*)(bond_simple_proxy const&)) &w_t::process,
+        .def("process", (void(w_t::*)(bond_simple_proxy const&)) &w_t::process,
           (arg("proxy")))
         .def("process",
           (void(w_t::*)(af::const_ref<bond_simple_proxy> const&))
