@@ -1438,28 +1438,39 @@ def exercise_site_symmetry():
     for unp,orig in zip(unpickled.matrices(), original.matrices()):
       assert unp == orig
   assert list(l.special_position_indices()) == [0,1,2,3,5]
+  original_sites_frac=flex.vec3_double([
+    (0,0,0),
+    (0.25,0.66,0.0),
+    (0,0,0),
+    (0.5,0.5,0.5)])
   t = sgtbx.site_symmetry_table()
   t.process(
     unit_cell=u,
     space_group=g,
-    original_sites_frac=flex.vec3_double([
-      (0,0,0),
-      (0.25,0.66,0.0),
-      (0,0,0),
-      (0.5,0.5,0.5)]))
+    original_sites_frac=original_sites_frac)
   assert list(t.indices()) == [1,0,1,2]
   t = sgtbx.site_symmetry_table()
   t.process(
     unit_cell=u,
     space_group=g,
-    original_sites_frac=flex.vec3_double([
-      (0,0,0),
-      (0.25,0.66,0.0),
-      (0,0,0),
-      (0.5,0.5,0.5)]),
+    original_sites_frac=original_sites_frac,
     min_distance_sym_equiv=100,
     assert_min_distance_sym_equiv=False)
   assert list(t.indices()) == [1,2,1,3]
+  for ugpf,ti in [
+        ([False,False,False,False], [1,0,1,2]),
+        ([False,False,True,False], [1,0,0,2]),
+        ([True,False,False,False], [0,0,1,2]),
+        ([True,False,True,False], [0,0,0,1]),
+        ([True,False,True,True], [0,0,0,0]),
+        ([True,True,True,True], [0,0,0,0])]:
+    t = sgtbx.site_symmetry_table()
+    t.process(
+      unit_cell=u,
+      space_group=g,
+      original_sites_frac=original_sites_frac,
+      unconditional_general_position_flags=flex.bool(ugpf))
+    assert list(t.indices()) == ti
   #
   u = uctbx.unit_cell((3,4,5,80,100,110))
   g = sgtbx.space_group("P 2")
@@ -1551,7 +1562,6 @@ def exercise_site_symmetry():
   g = sgtbx.space_group("R 3 (-y+z, x+z, -x+y+z)")
   site_c = site_symmetry(u, g, (0.1, 0.1, 0.1)).site_constraints()
   assert site_c.all_shifts((0.128,)) == (0.128, 0.128, 0.128)
-
 
 def exercise_wyckoff():
   space_group_type = sgtbx.space_group_type
