@@ -1051,6 +1051,9 @@ namespace hierarchy {
       af::shared<atom>
       atoms(
         int interleaved_conf=0) const;
+
+      af::shared<std::string>
+      unique_resnames() const;
   };
 
   //! Chain attributes.

@@ -1904,6 +1904,25 @@ namespace {
     return result;
   }
 
+  af::shared<std::string>
+  residue_group::unique_resnames() const
+  {
+    unsigned n_ag = atom_groups_size();
+    std::vector<atom_group> const& ags = atom_groups();
+    typedef std::set<str3> ss3;
+    ss3 resname_set;
+    for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
+      atom_group const& ag = ags[i_ag];
+      resname_set.insert(ag.data->resname);
+    }
+    af::shared<std::string> result((af::reserve(resname_set.size())));
+    typedef ss3::const_iterator it;
+    for(it i=resname_set.begin();i!=resname_set.end();i++) {
+      result.push_back(std::string(i->elems));
+    }
+    return result;
+  }
+
   af::shared<atom>
   chain::atoms_interleaved_conf(
     bool group_residue_names) const

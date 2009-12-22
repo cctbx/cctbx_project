@@ -618,6 +618,20 @@ def exercise_residue_group():
   except (ValueError, RuntimeError), e:
     assert not show_diff(str(e), 'invalid residue sequence number: "x"')
   else: raise Exception_expected
+  #
+  rg = pdb.hierarchy.residue_group()
+  assert len(rg.unique_resnames()) == 0
+  def rga(altloc, resname):
+    rg.append_atom_group(atom_group=pdb.hierarchy.atom_group(
+      altloc=altloc, resname=resname))
+  rga("", "RN1")
+  assert list(rg.unique_resnames()) == ["RN1"]
+  rga("", "RN")
+  assert list(rg.unique_resnames()) == ["RN", "RN1"]
+  rga("A", "RN1")
+  assert list(rg.unique_resnames()) == ["RN", "RN1"]
+  rga("A", "RN2")
+  assert list(rg.unique_resnames()) == ["RN", "RN1", "RN2"]
 
 def exercise_chain():
   c = pdb.hierarchy.chain()
