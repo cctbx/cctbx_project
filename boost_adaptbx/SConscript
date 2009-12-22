@@ -361,7 +361,11 @@ main()
     conf = env.Configure()
     flag, output = conf.TryRun(test_code, extension='.cpp')
     conf.Finish()
-    assert flag
+    if (not flag):
+      see_message_above = \
+        'Failure building small C++ program for obtaining unsigned sizes.' \
+        ' Please inspect "config.log" for details'
+      raise RuntimeError(see_message_above)
     output = output.rstrip()
     if (   len(output) != len(unsigned_types)
         or len(output.replace("0", "").replace("1", "")) != 0
