@@ -14,6 +14,10 @@ def run(args, command_name="iotbx.pdb.as_xray_structure"):
       action="store_true",
       default=False,
       help="symmetry on command line is weaker than symmetry found in files")
+    .option(None, "--ignore_occ_for_site_symmetry",
+      action="store_true",
+      default=False,
+      help="disables non_unit_occupancy_implies_min_distance_sym_equiv_zero")
     .option("-v", "--verbose",
       action="store_true",
       default=False,
@@ -40,7 +44,9 @@ def run(args, command_name="iotbx.pdb.as_xray_structure"):
     pdb_inp = pdb.input(file_name=file_name)
     structure = pdb_inp.xray_structure_simple(
       crystal_symmetry=command_line.symmetry,
-      weak_symmetry=co.weak_symmetry)
+      weak_symmetry=co.weak_symmetry,
+      non_unit_occupancy_implies_min_distance_sym_equiv_zero=
+        not co.ignore_occ_for_site_symmetry)
     structure.show_summary()
     if (structure.special_position_indices().size() != 0):
       structure.show_special_position_shifts(

@@ -267,6 +267,7 @@ namespace {
         sgtbx::site_symmetry_table const&,
         double,
         double,
+        bool,
         bool)) add_scatterers_ext, (
           arg("unit_cell"),
           arg("space_group"),
@@ -275,7 +276,8 @@ namespace {
           arg("site_symmetry_table_for_new"),
           arg("min_distance_sym_equiv"),
           arg("u_star_tolerance"),
-          arg("assert_min_distance_sym_equiv")));
+          arg("assert_min_distance_sym_equiv"),
+          arg("non_unit_occupancy_implies_min_distance_sym_equiv_zero")));
 
     def("change_basis",
       (af::shared<scatterer<> >(*)(

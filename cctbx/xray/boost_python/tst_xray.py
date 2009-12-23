@@ -910,7 +910,8 @@ def exercise_structure_factors():
     site_symmetry_table_for_new=sgtbx.site_symmetry_table(),
     min_distance_sym_equiv=0.5,
     u_star_tolerance=0,
-    assert_min_distance_sym_equiv=True)
+    assert_min_distance_sym_equiv=True,
+    non_unit_occupancy_implies_min_distance_sym_equiv_zero=False)
   assert list(site_symmetry_table.special_position_indices()) == [0]
   xray.tidy_us(
     scatterers=scatterers,

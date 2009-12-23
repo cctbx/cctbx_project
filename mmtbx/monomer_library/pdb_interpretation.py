@@ -2400,7 +2400,8 @@ class build_all_chain_proxies(object):
       self._site_symmetry_table = \
         self.special_position_settings.site_symmetry_table(
           sites_cart=self.sites_cart,
-          unconditional_general_position_flags=(self.sym_excl_indices != 0))
+          unconditional_general_position_flags=(
+            self.pdb_atoms.extract_occ() != 1))
     return self._site_symmetry_table
 
   def sites_cart_exact(self):
