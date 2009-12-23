@@ -602,6 +602,15 @@ class null_out(object):
   def write(self, str): pass
   def writelines(self, sequence): pass
 
+class raise_if_output(object):
+  "example use: sys.stdout = raise_if_output()"
+
+  def isatty(self): return False
+  def close(self): pass
+  def flush(self): pass
+  def write(self, str): raise RuntimeError
+  def writelines(self, sequence): raise RuntimeError
+
 class multi_out(object):
 
   def __init__(self):
