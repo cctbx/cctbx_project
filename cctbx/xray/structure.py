@@ -41,7 +41,8 @@ class structure(crystal.special_position_settings):
         scatterers=None,
         site_symmetry_table=None,
         scattering_type_registry=None,
-        crystal_symmetry=None):
+        crystal_symmetry=None,
+        non_unit_occupancy_implies_min_distance_sym_equiv_zero=False):
     assert [special_position_settings, crystal_symmetry].count(None) == 1
     assert scatterers is not None or site_symmetry_table is None
     if (special_position_settings is None):
@@ -54,7 +55,9 @@ class structure(crystal.special_position_settings):
     if (scatterers is not None):
       self.add_scatterers(
         scatterers=scatterers,
-        site_symmetry_table=site_symmetry_table)
+        site_symmetry_table=site_symmetry_table,
+        non_unit_occupancy_implies_min_distance_sym_equiv_zero=
+          non_unit_occupancy_implies_min_distance_sym_equiv_zero)
     self.scattering_type_registry_params = None
 
   def _copy_constructor(self, other):
@@ -687,11 +690,15 @@ class structure(crystal.special_position_settings):
       insert_at_index=insert_at_index, site_symmetry_ops=site_symmetry_ops)
     self._scattering_type_registry_is_out_of_date = True
 
-  def add_scatterers(self, scatterers, site_symmetry_table=None):
+  def add_scatterers(self,
+        scatterers,
+        site_symmetry_table=None,
+        non_unit_occupancy_implies_min_distance_sym_equiv_zero=False):
     if (site_symmetry_table is None):
       site_symmetry_table = sgtbx.site_symmetry_table()
     else:
       assert site_symmetry_table.indices().size() == scatterers.size()
+      assert not non_unit_occupancy_implies_min_distance_sym_equiv_zero
     self._scatterers.extend(scatterers)
     ext.add_scatterers_ext(
       unit_cell=self.unit_cell(),
@@ -701,7 +708,9 @@ class structure(crystal.special_position_settings):
       site_symmetry_table_for_new=site_symmetry_table,
       min_distance_sym_equiv=self.min_distance_sym_equiv(),
       u_star_tolerance=self.u_star_tolerance(),
-      assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
+      assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv(),
+      non_unit_occupancy_implies_min_distance_sym_equiv_zero=
+        non_unit_occupancy_implies_min_distance_sym_equiv_zero)
     self._scattering_type_registry_is_out_of_date = True
 
   def concatenate(self, other):

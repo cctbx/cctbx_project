@@ -209,7 +209,8 @@ namespace cctbx { namespace xray {
     sgtbx::site_symmetry_table const& site_symmetry_table_for_new,
     double min_distance_sym_equiv,
     double u_star_tolerance,
-    bool assert_min_distance_sym_equiv)
+    bool assert_min_distance_sym_equiv,
+    bool non_unit_occupancy_implies_min_distance_sym_equiv_zero)
   {
     if (site_symmetry_table_for_new.indices_const_ref().size() == 0) {
       CCTBX_ASSERT(scatterers.size()
@@ -217,16 +218,20 @@ namespace cctbx { namespace xray {
       for(std::size_t i=site_symmetry_table.indices_const_ref().size();
                       i<scatterers.size();
                       i++) {
-        sgtbx::site_symmetry site_symmetry = scatterers[i].apply_symmetry(
+        ScattererType& sc = scatterers[i];
+        sgtbx::site_symmetry site_symmetry = sc.apply_symmetry(
           unit_cell,
           space_group,
-          min_distance_sym_equiv,
+          (   sc.occupancy != 1
+           && non_unit_occupancy_implies_min_distance_sym_equiv_zero
+             ? 0 :  min_distance_sym_equiv),
           u_star_tolerance,
           assert_min_distance_sym_equiv);
         site_symmetry_table.process(site_symmetry);
       }
     }
     else {
+      CCTBX_ASSERT(!non_unit_occupancy_implies_min_distance_sym_equiv_zero);
       CCTBX_ASSERT(scatterers.size()
                 == site_symmetry_table.indices_const_ref().size()
                  + site_symmetry_table_for_new.indices_const_ref().size());

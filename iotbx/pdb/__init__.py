@@ -754,6 +754,7 @@ class _input(boost.python.injector, ext.input):
         fractional_coordinates=False,
         use_scale_matrix_if_available=True,
         min_distance_sym_equiv=0.5,
+        non_unit_occupancy_implies_min_distance_sym_equiv_zero=True,
         scattering_type_exact=False,
         enable_scattering_type_unknown=False,
         atom_names_scattering_type_const
@@ -766,6 +767,8 @@ class _input(boost.python.injector, ext.input):
       fractional_coordinates=fractional_coordinates,
       use_scale_matrix_if_available=use_scale_matrix_if_available,
       min_distance_sym_equiv=min_distance_sym_equiv,
+      non_unit_occupancy_implies_min_distance_sym_equiv_zero=
+        non_unit_occupancy_implies_min_distance_sym_equiv_zero,
       scattering_type_exact=scattering_type_exact,
       enable_scattering_type_unknown=enable_scattering_type_unknown,
       atom_names_scattering_type_const=atom_names_scattering_type_const)[0]
@@ -777,6 +780,7 @@ class _input(boost.python.injector, ext.input):
         unit_cube_pseudo_crystal=False,
         fractional_coordinates=False,
         min_distance_sym_equiv=0.5,
+        non_unit_occupancy_implies_min_distance_sym_equiv_zero=True,
         use_scale_matrix_if_available=True,
         scattering_type_exact=False,
         enable_scattering_type_unknown=False,
@@ -838,7 +842,9 @@ class _input(boost.python.injector, ext.input):
     while (loop.next()):
       result.append(xray.structure(
         special_position_settings=special_position_settings,
-        scatterers=loop.scatterers))
+        scatterers=loop.scatterers,
+        non_unit_occupancy_implies_min_distance_sym_equiv_zero=
+          non_unit_occupancy_implies_min_distance_sym_equiv_zero))
     return result
 
 class rewrite_normalized(object):
