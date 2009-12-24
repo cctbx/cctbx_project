@@ -429,7 +429,7 @@ else:
       SHLINK="icpc",
     )
     env_etc.c_link = "icc"
-    env_etc.ccflags_base = ["-fPIC", "-wd161,167"]
+    env_etc.ccflags_base = ["-fPIC", "-fno-strict-aliasing", "-wd161,167"]
     env_etc.cxxflags_base = ["-Wno-deprecated"]
     if (env_etc.icc_version >= 100000 and boost_dot_svn is not None):
       env_etc.cxxflags_base.append("-std=c++0x")
