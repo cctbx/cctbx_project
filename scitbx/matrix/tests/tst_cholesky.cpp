@@ -117,7 +117,7 @@ struct hilbert
 
   void check_failure(int n, cholesky::failure_info<double> const &fail) {
     SCITBX_ASSERT(n >= 14);
-    SCITBX_ASSERT(fail.index == 13);
+    SCITBX_ASSERT(fail.index == 13 || fail.index == 14);
   }
 };
 
