@@ -282,9 +282,14 @@ def exercise_miller_index_methods():
     for i,v in enumerate(values):
       assert approx_equal(
         v, u.two_theta(miller_indices[i], wavelength, deg))
-  assert u.max_d_star_sq(miller_indices) == u.d_star_sq((-3,4,-5))
-  assert u.min_max_d_star_sq(miller_indices) == (
-    u.d_star_sq((1,2,3)), u.d_star_sq((-3,4,-5)))
+  assert approx_equal(
+    u.max_d_star_sq(miller_indices),
+    u.d_star_sq((-3,4,-5)),
+    eps=1e-10)
+  assert approx_equal(
+    u.min_max_d_star_sq(miller_indices),
+    [u.d_star_sq((1,2,3)), u.d_star_sq((-3,4,-5))],
+    eps=1e-10)
 
 def exercise_compare():
   u1 = uctbx.unit_cell((3,2,5,90,100,90))
