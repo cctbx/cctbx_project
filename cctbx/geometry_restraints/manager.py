@@ -566,7 +566,8 @@ class manager(object):
         compute_gradients=False,
         gradients=None,
         disable_asu_cache=False,
-        normalization=False):
+        normalization=False,
+        extension_objects=[]):
     if (flags is None):
       flags = geometry_restraints.flags.flags(default=True)
     pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
@@ -603,7 +604,8 @@ class manager(object):
       compute_gradients=compute_gradients,
       gradients=gradients,
       disable_asu_cache=disable_asu_cache,
-      normalization=normalization)
+      normalization=normalization,
+      extension_objects=extension_objects)
 
   def harmonic_restraints(self, variables, type_indices, type_weights):
     assert self.shell_sym_tables is not None

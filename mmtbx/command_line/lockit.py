@@ -326,6 +326,16 @@ coordinate_refinement {
     .type = bool
   atom_selection = Auto
     .type = str
+  home_restraints
+    .multiple = True
+  {
+    selection = None
+      .type = str
+    sigma = 0.05
+      .type = float
+    slack = 0
+      .type = float
+  }
   real_space_target_weights {
     first_sample = 10
       .type = float
@@ -414,6 +424,103 @@ def extract_map_coeffs(params, miller_arrays):
           f.indices().size() - cf.indices().size()))
     f = cf.customized_copy(data=cw.data()*cf.data())
   return f
+
+class home_restraints(object):
+
+  __slots__ = ["iselection", "weight", "slack"]
+
+  def __init__(O, iselection, weight, slack):
+    O.iselection = iselection
+    O.weight = weight
+    O.slack = slack
+
+def process_home_restraints_params(work_params, processed_pdb_file):
+  result = []
+  for params in work_params:
+    sigma = params.sigma
+    if (sigma is None or sigma <= 0):
+      continue
+    bsel = processed_pdb_file.all_chain_proxies.phil_atom_selection(
+      cache=None,
+      scope_extract=params,
+      attr="selection",
+      allow_none=True,
+      allow_auto=False)
+    if (bsel is not None):
+      slack = params.slack
+      if (slack is None or slack <= 0):
+        slack = 0
+      result.append(home_restraints(
+        iselection=bsel.iselection(), weight=1/sigma**2, slack=slack))
+  return result
+
+class geometry_restraints_manager_plus(object):
+
+  __slots__ = [
+    "manager",
+    "home_sites_cart",
+    "home_restraints_list",
+    "crystal_symmetry",
+    "pair_proxies"]
+
+  def __init__(O, manager, home_sites_cart, home_restraints_list):
+    O.manager = manager
+    O.home_sites_cart = home_sites_cart
+    O.home_restraints_list = home_restraints_list
+    O.crystal_symmetry = manager.crystal_symmetry
+    O.pair_proxies = manager.pair_proxies
+
+  def energies_add(O, energies_obj):
+    if (O.manager.site_symmetry_table is not None):
+      site_symmetry_table_indices = O.manager.site_symmetry_table.indices()
+    else:
+      site_symmetry_table_indices = None
+    from cctbx.geometry_restraints import bond
+    n_restraints = 0
+    r_sum = 0
+    grads = energies_obj.gradients
+    for hr in O.home_restraints_list:
+      for i_seq in hr.iselection:
+        if (    site_symmetry_table_indices is not None
+            and site_symmetry_table_indices[i_seq] != 0):
+          continue
+        b = bond(
+          sites=[energies_obj.sites_cart[i_seq], O.home_sites_cart[i_seq]],
+          distance_ideal=0,
+          weight=hr.weight,
+          slack=hr.slack)
+        r_sum += b.residual()
+        if (energies_obj.compute_gradients):
+          grads[i_seq] = matrix.col(grads[i_seq]) \
+                       + matrix.col(b.gradients()[0])
+      n_restraints += hr.iselection.size()
+    energies_obj.n_home_restraints = n_restraints
+    energies_obj.home_restraints_residual_sum = r_sum
+    energies_obj.number_of_restraints += n_restraints
+    energies_obj.residual_sum += r_sum
+
+  def energies_show(O, energies_obj, f, prefix):
+    print >> f, prefix+"  home_restraints_residual_sum (n=%d): %.6g" % (
+      energies_obj.n_home_restraints,
+      energies_obj.home_restraints_residual_sum)
+
+  def energies_sites(O,
+        sites_cart,
+        flags=None,
+        custom_nonbonded_function=None,
+        compute_gradients=False,
+        gradients=None,
+        disable_asu_cache=False,
+        normalization=False):
+    return O.manager.energies_sites(
+      sites_cart=sites_cart,
+      flags=flags,
+      custom_nonbonded_function=custom_nonbonded_function,
+      compute_gradients=compute_gradients,
+      gradients=gradients,
+      disable_asu_cache=disable_asu_cache,
+      normalization=normalization,
+      extension_objects=[O])
 
 def run(args):
   show_times = libtbx.utils.show_times(time_start="now")
@@ -547,16 +654,23 @@ def run(args):
           .rotamer_score_and_choose_best.lbfgs_max_iterations))
   #
   if (work_params.coordinate_refinement.run != 0):
+    atom_selection_bool = atom_selection_bool(
+      scope_extract=work_params.coordinate_refinement,
+      attr="atom_selection")
+    home_restraints_list = process_home_restraints_params(
+      work_params=work_params.coordinate_refinement.home_restraints,
+      processed_pdb_file=processed_pdb_file)
     pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
     sites_cart_start = pdb_atoms.extract_xyz()
     site_labels = [atom.id_str() for atom in pdb_atoms]
     print "Before coordinate refinement:"
-    grm.energies_sites(sites_cart=sites_cart_start).show()
+    grmp = geometry_restraints_manager_plus(
+      manager=grm,
+      home_sites_cart=sites_cart_start,
+      home_restraints_list=home_restraints_list)
+    grmp.energies_sites(sites_cart=sites_cart_start).show()
     print
     sys.stdout.flush()
-    atom_selection_bool = atom_selection_bool(
-      scope_extract=work_params.coordinate_refinement,
-      attr="atom_selection")
     rstw_params = work_params.coordinate_refinement.real_space_target_weights
     if (rstw_params.number_of_samples is None):
       rstw_list = [work_params.real_space_target_weight]
@@ -574,7 +688,7 @@ def run(args):
         sites_cart=sites_cart_start,
         density_map=density_map,
         selection_variable=atom_selection_bool,
-        geometry_restraints_manager=grm,
+        geometry_restraints_manager=grmp,
         real_space_target_weight=rstw,
         real_space_gradients_delta=real_space_gradients_delta,
         lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
@@ -585,8 +699,8 @@ def run(args):
             ignore_line_search_failed_step_at_lower_bound=True))
       print "After coordinate refinement" \
         " with real-space target weight %.1f:" % rstw
-      grm.energies_sites(sites_cart=refined.sites_cart).show()
-      bond_proxies = grm.pair_proxies().bond_proxies
+      grmp.energies_sites(sites_cart=refined.sites_cart).show()
+      bond_proxies = grmp.pair_proxies().bond_proxies
       bond_proxies.show_sorted(
         by_value="residual",
         sites_cart=refined.sites_cart,
