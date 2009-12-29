@@ -439,12 +439,12 @@ class manager(object):
       pdb_hierarchy         = self.model.pdb_hierarchy,
       map_1_name            = par.cc_map_1_type,
       map_2_name            = par.cc_map_2_type,
+      diff_map              = None,
       number_of_grid_points = par.number_of_grid_points,
       atom_radius           = par.atom_radius,
       details_level         = "atom",
       selection             = selection,
       show                  = False,
-      ignore_points_with_map_values_less_than   = par.ignore_points_with_map_values_less_than,
       set_cc_to_zero_if_n_grid_points_less_than = par.set_cc_to_zero_if_n_grid_points_less_than,
       poor_cc_threshold                         = par.poor_cc_threshold,
       poor_map_value_threshold                  = par.poor_map_value_threshold)

@@ -27,6 +27,7 @@ from iotbx.pdb import combine_unique_pdb_files
 from libtbx import group_args
 from mmtbx import masks
 from mmtbx import maps
+from mmtbx import real_space_correlation
 
 if (1):
   random.seed(0)
@@ -228,7 +229,7 @@ def get_matthews_coeff(file_lines):
     except ValueError: pass
   return result
 
-def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
+def show_geometry(processed_pdb_file, scattering_table, hierarchy,
                   model_selections, show_geometry_statistics, mvd_obj):
   xray_structures = processed_pdb_file.xray_structure()
   hd_sel_all = xray_structures.hd_selection()
@@ -243,7 +244,6 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
     restraints_manager_all = mmtbx.restraints.manager(
       geometry      = geometry,
       normalization = True)
-  hierarchy = pdb_inp.construct_hierarchy()
   models = hierarchy.models()
   geometry_statistics = []
   for i_seq, model_selection in enumerate(model_selections):
@@ -430,6 +430,11 @@ def run(args,
       default="n_gaussian",
       type="string",
       help="Choice for scattering table: n_gaussian (default) or wk1995 or it1992 or neutron.")
+    .option(None, "--comprihensive",
+      action="store",
+      default=True,
+      type="bool",
+      help="Show detailed statistics per residue (map CC, etc).")
     .option(None, "--map",
       action="store",
       default="None",
@@ -524,18 +529,22 @@ def run(args,
     n_sym_op = f_obs.crystal_symmetry().space_group_info().type().group().order_z(),
     uc_vol   = f_obs.unit_cell().volume()))
   #
+  hierarchy = pdb_inp.construct_hierarchy()
+  pdb_atoms = hierarchy.atoms()
+  pdb_atoms.reset_i_seq()
   geometry_statistics = show_geometry(
     processed_pdb_file       = processed_pdb_file,
     scattering_table         = command_line.options.scattering_table,
-    pdb_inp                  = pdb_inp,
+    hierarchy                = hierarchy,
     model_selections         = model_selections,
     show_geometry_statistics = show_geometry_statistics,
     mvd_obj                  = mvd_obj)
   #
   # Extract TLS
   pdb_tls = None
-  pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(pdb_inp =
-    mmtbx_pdb_file.pdb_inp)
+  pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(
+    remark_3_records = pdb_inp.extract_remark_iii_records(3),
+    pdb_hierarchy    = hierarchy)
   pdb_tls = group_args(pdb_inp_tls           = pdb_inp_tls,
                        tls_selections        = [],
                        tls_selection_strings = [])
@@ -644,6 +653,23 @@ def run(args,
     else: prefix= fn
     file_name = prefix+"_%s_map_coeffs.mtz"%map_type_obj.format()
     maps_obj.write_mtz_file(file_name = file_name)
+  # report map cc
+  if(command_line.options.comprihensive and not fmodel_cut.twin):
+    real_space_correlation.simple(
+      fmodel                = fmodel_cut,
+      pdb_hierarchy         = hierarchy,
+      map_1_name            = "Fc",
+      map_2_name            = "2mFo-DFc",
+      details_level         = "automatic",
+      atom_radius           = None,
+      number_of_grid_points = 100,
+      show                  = True,
+      log                   = None,
+      show_hydrogens        = False,
+      selection             = None,
+      set_cc_to_zero_if_n_grid_points_less_than = 50,
+      poor_cc_threshold                         = 0.7,
+      poor_map_value_threshold                  = 1.0)
   return mvd_obj
 
 def read_mvd_output(file_lines, name):

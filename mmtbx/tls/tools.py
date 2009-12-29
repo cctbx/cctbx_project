@@ -14,6 +14,7 @@ from iotbx.option_parser import iotbx_option_parser
 from libtbx import group_args
 import mmtbx.utils
 import iotbx
+import iotbx.pdb.remark_3_interpretation
 
 def combine_tls_and_u_local(xray_structure, tls_selections, tls_groups):
   assert len(tls_selections) == len(tls_groups)
@@ -37,10 +38,8 @@ def combine_tls_and_u_local(xray_structure, tls_selections, tls_groups):
         tuple(u_cart_tls[i_seq]))
       sc.u_star = tuple(flex.double(sc.u_star) + flex.double(u_star_tls))
 
-def tls_from_pdb_inp(pdb_inp):
-  remark_3_records = pdb_inp.extract_remark_iii_records(3)
+def tls_from_pdb_inp(remark_3_records, pdb_hierarchy):
   chain_ids = []
-  pdb_hierarchy = pdb_inp.construct_hierarchy()
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       chain_ids.append(chain.id)
