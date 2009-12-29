@@ -430,7 +430,7 @@ def run(args,
       default="n_gaussian",
       type="string",
       help="Choice for scattering table: n_gaussian (default) or wk1995 or it1992 or neutron.")
-    .option(None, "--comprihensive",
+    .option(None, "--comprehensive",
       action="store",
       default=True,
       type="bool",
@@ -654,7 +654,7 @@ def run(args,
     file_name = prefix+"_%s_map_coeffs.mtz"%map_type_obj.format()
     maps_obj.write_mtz_file(file_name = file_name)
   # report map cc
-  if(command_line.options.comprihensive and not fmodel_cut.twin):
+  if(command_line.options.comprehensive and not fmodel_cut.twin):
     real_space_correlation.simple(
       fmodel                = fmodel_cut,
       pdb_hierarchy         = hierarchy,
