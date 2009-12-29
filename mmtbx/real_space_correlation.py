@@ -34,10 +34,6 @@ number_of_grid_points = 50
   .help = Requesteed number of grid points to be used in CC calculation. \
           Together with atom_radius it will define the grid step.
   .expert_level = 2
-ignore_points_with_map_values_less_than = 0.3
-  .type = float
-  .help = Ignore points with denisty values less than above defined (in sigma)
-  .expert_level = 2
 set_cc_to_zero_if_n_grid_points_less_than = 10
   .type = int
   .help = Return zero CC if number of grid nodes is less than defined above
@@ -389,6 +385,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     pdb_hierarchy = pdb_to_xrs_.pdb_hierarchy
     result = map_cc_funct(
       map_1          = map_1,
+      map_1_name     = params.map_1.map_type,
       xray_structure = pdb_to_xrs_.xray_structure,
       fft_map        = fft_map_1,
       pdb_hierarchy  = pdb_hierarchy,
@@ -541,7 +538,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   # get map cc
   result = map_cc_obj.map_cc(
     map_2                                     = map_2,
-    ignore_points_with_map_values_less_than   = params.ignore_points_with_map_values_less_than,
+    map_2_name                                = params.map_2.map_type,
     set_cc_to_zero_if_n_grid_points_less_than = params.set_cc_to_zero_if_n_grid_points_less_than,
     poor_cc_threshold                         = params.poor_cc_threshold,
     poor_map_value_threshold                  = params.poor_map_value_threshold)
@@ -556,8 +553,10 @@ class map_cc_funct(object):
                      atom_radius,
                      atom_detail,
                      residue_detail,
+                     map_1_name = None,
                      selection = None,
                      pdb_hierarchy = None):
+    self.map_1_name = map_1_name
     self.xray_structure = xray_structure
     self.selection = selection
     self.atom_detail = atom_detail
@@ -619,13 +618,14 @@ class map_cc_funct(object):
     del map_1
 
   def map_cc(self, map_2,
-                   ignore_points_with_map_values_less_than,
                    set_cc_to_zero_if_n_grid_points_less_than,
                    poor_cc_threshold,
-                   poor_map_value_threshold):
+                   poor_map_value_threshold,
+                   map_2_name = None):
     assert self.map_1_size == map_2.size()
     self.map_2_stat = maptbx.statistics(map_2)
     scatterers = self.xray_structure.scatterers()
+    unit_cell = self.xray_structure.unit_cell()
     if(self.atom_detail):
       for i_seq, scatterer in enumerate(scatterers):
         if(self.selection[i_seq]):
@@ -633,11 +633,6 @@ class map_cc_funct(object):
           m1 = self._result[i_seq].m1
           m2 = map_2.select(sel)
           assert m1.size() == m2.size()
-          sel_flat  = flex.abs(m1) < ignore_points_with_map_values_less_than
-          sel_flat |= flex.abs(m2) < ignore_points_with_map_values_less_than
-          sel_flat = ~sel_flat
-          m1 = m1.select(sel_flat)
-          m2 = m2.select(sel_flat)
           if(m1.size() < set_cc_to_zero_if_n_grid_points_less_than or
             scatterer.occupancy == 0.0): corr = 0.
           else: corr = flex.linear_correlation(x = m1, y = m2).coefficient()
@@ -652,14 +647,20 @@ class map_cc_funct(object):
           if(self._result[i_seq].atom is not None):
             assert self._result[i_seq].atom is self.atoms_with_labels[i_seq]
             a = self._result[i_seq].atom
+          if(scatterer.u_iso == -1):
+            b_iso = adptbx.u_as_b(adptbx.u_star_as_u_iso(unit_cell, scatterer.u_star))
+          else:
+            b_iso = adptbx.u_as_b(scatterer.u_iso)
           self.result.append(group_args(
             atom             = a,
-            b_iso            = adptbx.u_as_b(scatterer.u_iso),
+            b_iso            = b_iso,
             occupancy        = scatterer.occupancy,
             xyz              = xyz,
             cc               = corr,
             map_1_val        = ed1,
             map_2_val        = ed2,
+            map_1_name       = self.map_1_name,
+            map_2_name       = map_2_name,
             residual_map_val = None,
             scatterer        = scatterers[i_seq],
             data_points      = m2.size(),
@@ -674,11 +675,6 @@ class map_cc_funct(object):
         m1 = self._result[i].m1
         m2 = map_2.select(sel)
         assert m1.size() == m2.size()
-        sel_flat  = flex.abs(m1) < ignore_points_with_map_values_less_than
-        sel_flat |= flex.abs(m2) < ignore_points_with_map_values_less_than
-        sel_flat = ~sel_flat
-        m1 = m1.select(sel_flat)
-        m2 = m2.select(sel_flat)
         if(m1.size() < set_cc_to_zero_if_n_grid_points_less_than): corr = 0.
         else: corr = flex.linear_correlation(x = m1, y = m2).coefficient()
         ed1 = self._result[i].ed1
@@ -783,7 +779,7 @@ def simple(fmodel,
            log                   = None,
            show_hydrogens        = False,
            selection             = None,
-           ignore_points_with_map_values_less_than   = 0.3,
+           diff_map              = "mFo-DFc",
            set_cc_to_zero_if_n_grid_points_less_than = 50,
            poor_cc_threshold                         = 0.7,
            poor_map_value_threshold                  = 1.0):
@@ -814,6 +810,7 @@ def simple(fmodel,
     map_1 = fft_map_1.real_map_unpadded()
     map_cc_obj = map_cc_funct(
       map_1          = map_1,
+      map_1_name     = map_1_name,
       xray_structure = fmodel.xray_structure,
       selection      = selection,
       fft_map        = fft_map_1,
@@ -830,15 +827,15 @@ def simple(fmodel,
     map_2 = fft_map_2.real_map_unpadded()
     result = map_cc_obj.map_cc(
       map_2                                     = map_2,
-      ignore_points_with_map_values_less_than   = ignore_points_with_map_values_less_than,
+      map_2_name                                = map_2_name,
       set_cc_to_zero_if_n_grid_points_less_than = set_cc_to_zero_if_n_grid_points_less_than,
       poor_cc_threshold                         = poor_cc_threshold,
       poor_map_value_threshold                  = poor_map_value_threshold)
     del map_2
-    if(atom_detail):
+    if(atom_detail and diff_map is not None):
       fft_map_3 = fmodel.electron_density_map().fft_map(
         other_fft_map  = fft_map_1,
-        map_type       = "mFo-DFc",
+        map_type       = diff_map,
         symmetry_flags = maptbx.use_space_group_symmetry)
       fft_map_3.apply_sigma_scaling()
       map_3 = fft_map_3.real_map_unpadded()
@@ -857,12 +854,12 @@ def show_result(result, show_hydrogens = False, log = None):
   if("atom" in keys):
     assert not "residue" in keys
     if(result[0].residual_map_val is not None):
-      print >> log, "i_seq :   PDB_string      element   occ      b      CC   map1   map2  mFo-DFc  No.Points  FLAG"
-      fmt = "%5d : %s %7s %5.2f %6.2f %7.4f %6.2f %6.2f %6.2f       %4d  %s"
+      print >> log, "i_seq :   PDB_string      element   occ      b      CC   %s   %s  mFo-DFc  No.Points  FLAG"%(result[0].map_1_name,result[0].map_2_name)
+      fmt = "%5d : %s %7s %5.2f %6.2f %7.4f %6.2f %6.2f   %6.2f     %4d  %s"
       for i_seq, r in enumerate(result):
         w_msg = ""
-        if(r.poor_flag): w_msg = " <<< WEAK DENSITY"
-        if(abs(r.residual_map_val) > 1.5): w_msg = " <<< ???? DENSITY"
+        if(r.poor_flag): w_msg = " <<<"
+        if(abs(r.residual_map_val) > 2.5): w_msg = " <<<"
         print_line = True
         if(not show_hydrogens and
            r.scatterer.element_symbol().strip().upper() in ["H","D"]):
@@ -881,11 +878,11 @@ def show_result(result, show_hydrogens = False, log = None):
             r.data_points,
             w_msg)
     else:
-      print >> log, "i_seq :   PDB_string      element   occ      b      CC   map1   map2  No.Points FLAG"
+      print >> log, "i_seq :   PDB_string      element   occ      b      CC   %s   %s  No.Points FLAG"%(result[0].map_1_name,result[0].map_2_name)
       fmt = "%5d : %s %7s %5.2f %6.2f %7.4f %6.2f %6.2f   %d %s"
       for i_seq, r in enumerate(result):
         w_msg = ""
-        if(r.poor_flag): w_msg = " <<< WEAK DENSITY"
+        if(r.poor_flag): w_msg = " <<<"
         print_line = True
         if(not show_hydrogens and
            r.scatterer.element_symbol().strip().upper() in ["H","D"]):
