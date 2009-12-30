@@ -556,6 +556,53 @@ def exercise_bond():
         g_ana = b.gradients()[0][i]
         assert approx_equal(g_ana, g_fin)
 
+  #
+  sites_cart = flex.vec3_double([(1,2,3),(2,3,4)])
+  gradients_inp = flex.vec3_double([(10,20,30),(20,30,40)])
+  site_symmetry_table_indices = flex.size_t([0,1])
+  home_sites_cart = flex.vec3_double([(1.1,1.9,3.05),(2.1,3.2,4.3)])
+  iselection = flex.size_t([0,1])
+  def get(weight, slack, no_grads=False, no_site_sym=False):
+    gradients = None
+    if (not no_grads):
+      gradients = gradients_inp.deep_copy()
+    site_sym = None
+    if (not no_site_sym):
+      site_sym = site_symmetry_table_indices
+    residual_sum = geometry_restraints \
+      .home_restraints_summation_skip_special_positions(
+        sites_cart=sites_cart,
+        gradients=gradients,
+        site_symmetry_table_indices=site_sym,
+        home_sites_cart=home_sites_cart,
+        iselection=iselection,
+        weight=weight,
+        slack=slack)
+    if (not no_grads):
+      return [residual_sum, gradients]
+    return residual_sum
+  assert approx_equal(get(1, 0),
+    [0.0225, [(9.8,20.2,29.9), (20,30,40)]])
+  assert approx_equal(get(1, 0, True), 0.0225)
+  assert approx_equal(get(1, 0, True, True), 0.1625)
+  assert approx_equal(get(1, 0, False, True),
+    [0.1625, [(9.8,20.2,29.9), (19.8,29.6,39.4)]])
+  assert approx_equal(get(3, 0),
+    [0.0675, [(9.4,20.6,29.7), (20,30,40)]])
+  assert approx_equal(get(1, 3),
+    [0.0, [(10,20,30), (20,30,40)]])
+  site_symmetry_table_indices = flex.size_t([1,0])
+  assert approx_equal(get(1, 0),
+    [0.14, [(10,20,30), (19.8,29.6,39.4)]])
+  site_symmetry_table_indices = flex.size_t([0,0])
+  iselection = flex.size_t([1])
+  assert approx_equal(get(1, 0),
+    [0.14, [(10,20,30), (19.8,29.6,39.4)]])
+  iselection = flex.size_t([])
+  assert approx_equal(get(1, 0),
+    [0.0, [(10,20,30), (20,30,40)]])
+  iselection = flex.size_t([0,1])
+
 class py_nonbonded_cos(object): # prototype
 
   def __init__(self, max_residual, exponent=1):

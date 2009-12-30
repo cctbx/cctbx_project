@@ -9,7 +9,7 @@
 #include <scitbx/array_family/selections.h>
 #include <scitbx/stl/map_wrapper.h>
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
-#include <cctbx/geometry_restraints/bond.h>
+#include <cctbx/geometry_restraints/bond_misc.h>
 
 SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
   cctbx::geometry_restraints::bond_asu_proxy)
@@ -291,6 +291,16 @@ namespace {
           arg("sorted_asu_proxies"),
           arg("gradient_array"),
           arg("disable_cache")=false));
+
+    def("home_restraints_summation_skip_special_positions",
+      home_restraints_summation_skip_special_positions, (
+        arg("sites_cart"),
+        arg("gradients"),
+        arg("site_symmetry_table_indices"),
+        arg("home_sites_cart"),
+        arg("iselection"),
+        arg("weight"),
+        arg("slack")));
   }
 
 } // namespace <anonymous>
