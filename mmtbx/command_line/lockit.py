@@ -478,21 +478,17 @@ class geometry_restraints_manager_plus(object):
     from cctbx.geometry_restraints import bond
     n_restraints = 0
     r_sum = 0
-    grads = energies_obj.gradients
+    hr_summation = cctbx.geometry_restraints \
+      .home_restraints_summation_skip_special_positions
     for hr in O.home_restraints_list:
-      for i_seq in hr.iselection:
-        if (    site_symmetry_table_indices is not None
-            and site_symmetry_table_indices[i_seq] != 0):
-          continue
-        b = bond(
-          sites=[energies_obj.sites_cart[i_seq], O.home_sites_cart[i_seq]],
-          distance_ideal=0,
-          weight=hr.weight,
-          slack=hr.slack)
-        r_sum += b.residual()
-        if (energies_obj.compute_gradients):
-          grads[i_seq] = matrix.col(grads[i_seq]) \
-                       + matrix.col(b.gradients()[0])
+      r_sum += hr_summation(
+        sites_cart=energies_obj.sites_cart,
+        gradients=energies_obj.gradients,
+        site_symmetry_table_indices=site_symmetry_table_indices,
+        home_sites_cart=O.home_sites_cart,
+        iselection=hr.iselection,
+        weight=hr.weight,
+        slack=hr.slack)
       n_restraints += hr.iselection.size()
     energies_obj.n_home_restraints = n_restraints
     energies_obj.home_restraints_residual_sum = r_sum

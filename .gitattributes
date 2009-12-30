@@ -68,6 +68,7 @@ cctbx/examples/symops_530.py svneol=native#text/x-python
 cctbx/examples/trigonal_r_vs_tetragonal_i.py svneol=native#text/x-python
 cctbx/examples/tst_space_subgroups.py svneol=native#text/x-python
 cctbx/examples/unit_cell_minimizers.py svneol=native#text/x-python
+cctbx/geometry_restraints/bond_misc.h svneol=native#text/plain
 cctbx/geometry_restraints/gradients.tex -text
 cctbx/geometry_restraints/tst_angle_derivs.py svneol=native#text/x-python
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
