@@ -29,10 +29,9 @@ namespace cctbx { namespace geometry_restraints {
           && site_symmetry_table_indices[i_seq] != 0) {
         continue;
       }
-      typedef af::tiny<scitbx::vec3<double>, 2> v32;
-      bond b(
-        v32(sites_cart[i_seq], home_sites_cart[i_seq]),
-        /* distance_ideal */ 0, weight, slack);
+      af::tiny<scitbx::vec3<double>, 2> sites(
+        sites_cart[i_seq], home_sites_cart[i_seq]);
+      bond b(sites, /* distance_ideal */ 0, weight, slack);
       residual_sum += b.residual();
       if (gradients.size() != 0) {
         gradients[i_seq] += b.gradient_0();
