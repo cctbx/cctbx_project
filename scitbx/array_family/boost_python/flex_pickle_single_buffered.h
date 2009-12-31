@@ -17,7 +17,8 @@ namespace scitbx { namespace af { namespace boost_python {
       {
         str_capacity = a_size * size_per_element + 50;// extra space for a_size
         str_obj = PyString_FromStringAndSize(
-          0, static_cast<int>(str_capacity + 100)); // extra space for safety
+          0, static_cast<boost::python::ssize_t>(str_capacity + 100));
+            // extra space for safety
         str_begin = PyString_AS_STRING(str_obj);
         str_end = scitbx::serialization::single_buffered::to_string(
           str_begin, a_size);
@@ -32,7 +33,7 @@ namespace scitbx { namespace af { namespace boost_python {
       PyObject* finalize()
       {
         if (_PyString_Resize(&str_obj,
-              static_cast<int>(str_end - str_begin)) != 0) {
+              static_cast<boost::python::ssize_t>(str_end - str_begin)) != 0) {
           boost::python::throw_error_already_set();
         }
         return str_obj;
