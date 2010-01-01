@@ -1,9 +1,10 @@
-from cctbx.crystal import coordination_sequences
-from cctbx import xray
-from cctbx import crystal
 from iotbx.kriber import strudat
 import iotbx.pdb
 from iotbx.option_parser import option_parser
+from cctbx.crystal import coordination_sequences
+from cctbx import xray
+from cctbx import crystal
+from libtbx.utils import Sorry
 import sys
 
 def display(
@@ -52,6 +53,7 @@ def run(args):
     .option(None, "--show_cartesian",
       action="store_true",
       help="Show Cartesian coordinates (instead of fractional)")
+    .enable_symmetry_comprehensive()
     .option(None, "--cs",
       action="store",
       type="int",
@@ -66,10 +68,11 @@ def run(args):
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return
-  max_shell = command_line.options.cs
-  if (command_line.options.coseq is not None):
+  co = command_line.options
+  max_shell = co.cs
+  if (co.coseq is not None):
     coseq_dict = coordination_sequences.get_kriber_coseq_file(
-      file_name=command_line.options.coseq)
+      file_name=co.coseq)
     if (max_shell is None): max_shell = 10
   else:
     coseq_dict = None
@@ -77,25 +80,33 @@ def run(args):
     if (iotbx.pdb.is_pdb_file(file_name=file_name)):
       xray_structure = iotbx.pdb.input(
         file_name=file_name).xray_structure_simple(
+          crystal_symmetry=command_line.symmetry,
+          cryst1_substitution_buffer_layer=max(5,
+            co.distance_cutoff+1),
           enable_scattering_type_unknown=True)
       display(
-        distance_cutoff=command_line.options.distance_cutoff,
-        show_cartesian=command_line.options.show_cartesian,
+        distance_cutoff=co.distance_cutoff,
+        show_cartesian=co.show_cartesian,
         max_shell=max_shell,
         coseq_dict=coseq_dict,
         xray_structure=xray_structure)
     else:
+      if (command_line.symmetry is not None
+          and (command_line.symmetry.unit_cell() is not None
+            or command_line.symmetry.space_group_info() is not None)):
+        raise Sorry(
+          "Command-line symmetry options not supported for strudat files.")
       strudat_entries = strudat.read_all_entries(open(file_name))
       for entry in strudat_entries.entries:
-        if (    command_line.options.tag is not None
-            and command_line.options.tag != entry.tag):
+        if (    co.tag is not None
+            and co.tag != entry.tag):
           continue
         print "strudat tag:", entry.tag
         print
         xray_structure = entry.as_xray_structure()
         display(
-          distance_cutoff=command_line.options.distance_cutoff,
-          show_cartesian=command_line.options.show_cartesian,
+          distance_cutoff=co.distance_cutoff,
+          show_cartesian=co.show_cartesian,
           max_shell=max_shell,
           coseq_dict=coseq_dict,
           xray_structure=xray_structure)

@@ -909,7 +909,7 @@ ATOM      1  N   GLN A   3      25.299   1.075   9.070  0.54 26.89
 ATOM      2  CA  GLN A   3      24.482  -1.927   8.794  1.00 27.88
 ENDMDL
 """))
-  xray_structure = pdb_inp.xray_structure_simple()
+  xray_structure = pdb_inp.xray_structure_simple(unit_cube_pseudo_crystal=True)
   out = StringIO()
   xray_structure.show_scatterers(f=out)
   assert not show_diff(out.getvalue(), """\
@@ -923,7 +923,8 @@ model="   2" pdb=" N   GLN A   3 " N      1 (25.2990  1.0750  9.0700)\
 model="   2" pdb=" CA  GLN A   3 " C      1 (24.4820 -1.9270  8.7940)\
  1.00 0.3531 [ - ]
 """)
-  xray_structures = pdb_inp.xray_structures_simple()
+  xray_structures = pdb_inp.xray_structures_simple(
+    unit_cube_pseudo_crystal=True)
   assert len(xray_structures) == 2
   out = StringIO()
   xray_structures[0].show_scatterers(f=out)
@@ -1027,6 +1028,54 @@ ATOM      8  O   MET A   5       6.215  22.789  24.067  1.00  0.00            -2
       scattering_type_exact=True,
       enable_scattering_type_unknown=True).scatterers()] \
         == ["N", "C", "C", "O", "unknown", "unknown", "unknown", "O2-"]
+  #
+  cs1 = crystal.symmetry(
+    unit_cell=(3.113,3.444,2.572,90,90,90),
+    space_group_symbol="P1")
+  cs2 = crystal.symmetry(
+    unit_cell=(10,20,30,80,85,95),
+    space_group_symbol="P-1")
+  input_pdb_string = """\
+ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
+ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88           C
+"""
+  pdb_inp = pdb.input(source_info=None, lines=input_pdb_string)
+  xs = pdb_inp.xray_structure_simple()
+  assert xs.is_similar_symmetry(cs1)
+  xs = pdb_inp.xray_structure_simple(crystal_symmetry=cs2)
+  assert xs.is_similar_symmetry(cs2)
+  input_pdb_string = """\
+CRYST1   10.000   20.000   30.000  80.00  85.00  95.00
+ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
+ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88           C
+"""
+  pdb_inp = pdb.input(source_info=None, lines=input_pdb_string)
+  xs = pdb_inp.xray_structure_simple()
+  assert xs.is_similar_symmetry(
+    cs1.customized_copy(unit_cell=cs2.unit_cell()))
+  xs = pdb_inp.xray_structure_simple(crystal_symmetry=cs2)
+  assert xs.is_similar_symmetry(cs2)
+  input_pdb_string = """\
+CRYST1                                                 P -1
+ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
+ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88           C
+"""
+  pdb_inp = pdb.input(source_info=None, lines=input_pdb_string)
+  xs = pdb_inp.xray_structure_simple()
+  assert xs.is_similar_symmetry(cs1.customized_copy(
+    space_group_info=cs2.space_group_info()))
+  xs = pdb_inp.xray_structure_simple(crystal_symmetry=cs2)
+  assert xs.is_similar_symmetry(cs2)
+  input_pdb_string = """\
+CRYST1   10.000   20.000   30.000  80.00  85.00  95.00 P -1
+ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
+ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88           C
+"""
+  pdb_inp = pdb.input(source_info=None, lines=input_pdb_string)
+  xs = pdb_inp.xray_structure_simple()
+  assert xs.is_similar_symmetry(cs2)
+  xs = pdb_inp.xray_structure_simple(crystal_symmetry=cs1)
+  assert xs.is_similar_symmetry(cs1)
 
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")

@@ -750,6 +750,7 @@ class _input(boost.python.injector, ext.input):
   def xray_structure_simple(self,
         crystal_symmetry=None,
         weak_symmetry=False,
+        cryst1_substitution_buffer_layer=None,
         unit_cube_pseudo_crystal=False,
         fractional_coordinates=False,
         use_scale_matrix_if_available=True,
@@ -763,6 +764,7 @@ class _input(boost.python.injector, ext.input):
       one_structure_for_each_model=False,
       crystal_symmetry=crystal_symmetry,
       weak_symmetry=weak_symmetry,
+      cryst1_substitution_buffer_layer=cryst1_substitution_buffer_layer,
       unit_cube_pseudo_crystal=unit_cube_pseudo_crystal,
       fractional_coordinates=fractional_coordinates,
       use_scale_matrix_if_available=use_scale_matrix_if_available,
@@ -777,6 +779,7 @@ class _input(boost.python.injector, ext.input):
         one_structure_for_each_model=True,
         crystal_symmetry=None,
         weak_symmetry=False,
+        cryst1_substitution_buffer_layer=None,
         unit_cube_pseudo_crystal=False,
         fractional_coordinates=False,
         min_distance_sym_equiv=0.5,
@@ -788,20 +791,25 @@ class _input(boost.python.injector, ext.input):
           =default_atom_names_scattering_type_const):
     from cctbx import xray
     from cctbx import crystal
-    assert crystal_symmetry is None or not unit_cube_pseudo_crystal
-    if (not unit_cube_pseudo_crystal):
-      crystal_symmetry = self.crystal_symmetry(
-        crystal_symmetry=crystal_symmetry,
-        weak_symmetry=weak_symmetry)
-    if (crystal_symmetry is None
-        or (    crystal_symmetry.unit_cell() is None
-            and crystal_symmetry.space_group_info() is None)):
-      unit_cube_pseudo_crystal = True
+    from cctbx import uctbx
+    if (unit_cube_pseudo_crystal):
+      assert crystal_symmetry is None and cryst1_substitution_buffer_layer is None
       crystal_symmetry = crystal.symmetry(
         unit_cell=(1,1,1,90,90,90),
         space_group_symbol="P1")
-    assert crystal_symmetry.unit_cell() is not None
-    assert crystal_symmetry.space_group_info() is not None
+    else:
+      crystal_symmetry = self.crystal_symmetry(
+        crystal_symmetry=crystal_symmetry,
+        weak_symmetry=weak_symmetry)
+      if (crystal_symmetry is None):
+        crystal_symmetry = crystal.symmetry()
+      if (crystal_symmetry.unit_cell() is None):
+        crystal_symmetry = crystal_symmetry.customized_copy(
+          unit_cell=uctbx.non_crystallographic_unit_cell(
+            sites_cart=self.atoms().extract_xyz(),
+            buffer_layer=cryst1_substitution_buffer_layer))
+      if (crystal_symmetry.space_group_info() is None):
+        crystal_symmetry = crystal_symmetry.cell_equivalent_p1()
     unit_cell = crystal_symmetry.unit_cell()
     scale_r = (0,0,0,0,0,0,0,0,0)
     scale_t = (0,0,0)

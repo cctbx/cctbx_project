@@ -305,7 +305,8 @@ def select_crystal_symmetry(
           break
   for crystal_symmetry in from_coordinate_files:
     if crystal_symmetry is not None:
-      result = result.join_symmetry(other_symmetry=crystal_symmetry, force=False)
+      result = result.join_symmetry(
+        other_symmetry=crystal_symmetry, force=False)
   if (result.space_group_info() is None):
     for crystal_symmetry in from_reflection_files:
       space_group_info = None
@@ -319,13 +320,11 @@ def select_crystal_symmetry(
         break
   return result
 
-
-
-
 def non_crystallographic_symmetry(
       sites_cart=None,
       sites_cart_min=None,
       sites_cart_max=None,
+      buffer_layer=None,
       default_buffer_layer=0.5,
       min_unit_cell_length=0):
   return symmetry(
@@ -333,6 +332,7 @@ def non_crystallographic_symmetry(
       sites_cart=sites_cart,
       sites_cart_min=sites_cart_min,
       sites_cart_max=sites_cart_max,
+      buffer_layer=buffer_layer,
       default_buffer_layer=default_buffer_layer,
       min_unit_cell_length=min_unit_cell_length),
     space_group=sgtbx.space_group())
