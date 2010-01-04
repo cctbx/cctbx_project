@@ -601,7 +601,7 @@ class monomer_mapping(slots_getstate_setstate):
       self.incomplete_info = None
       self.is_terminus = None
     else:
-      self.chem_mod_ids = []
+      self.chem_mod_ids = set()
       self._rna_sugar_pucker_analysis(
         params=rna_sugar_pucker_analysis_params,
         next_pdb_residue=next_pdb_residue)
@@ -887,11 +887,24 @@ Please contact cctbx@cci.lbl.gov for more information.""")
 
   def _track_mods(self, chem_mod_ids):
     for chem_mod_id in chem_mod_ids:
-      self.chem_mod_ids.append(chem_mod_id)
+      self.chem_mod_ids.add(chem_mod_id)
       self.residue_name += "%" + chem_mod_id
 
   def apply_mod(self, mod_mod_id):
-    mod_mon = self.monomer.apply_mod(mod_mod_id)
+    if (mod_mod_id.chem_mod.id in self.chem_mod_ids):
+      return
+        # mod previously applied already, e.g. two links to same carbohydrate
+    try:
+      mod_mon = self.monomer.apply_mod(mod_mod_id)
+    except Exception, e:
+      import traceback
+      msg = traceback.format_exc().splitlines()
+      msg.extend([
+        "apply_mod failure:",
+        "  %s" % self.pdb_residue.id_str(),
+        "  comp id: %s" % self.monomer.chem_comp.id,
+        "  mod id: %s" % mod_mod_id.chem_mod.id])
+      raise Sorry("\n".join(msg))
     self._track_mods(chem_mod_ids=[mod_mod_id.chem_mod.id])
     mod_mon.classification = self.monomer.classification
     self.monomer = mod_mon
