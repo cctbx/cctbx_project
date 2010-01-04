@@ -1409,6 +1409,8 @@ class scope(slots_getstate_setstate):
     for object in self.objects:
       obj = object.copy()
       obj.primary_parent_scope = new_value
+      if obj.is_scope:
+        obj = obj.change_primary_parent_scope(obj)
       objects.append(obj)
     return self.customized_copy(objects=objects)
 

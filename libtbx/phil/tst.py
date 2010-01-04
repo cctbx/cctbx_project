@@ -1223,6 +1223,7 @@ o {
   }
 }
 """)
+  assert not show_diff(params.get('o.s.y').objects[0].full_path(), 'o.s.y')
   params = phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_1 x
 """, process_includes=True)
