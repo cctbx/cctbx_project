@@ -60,7 +60,8 @@ class file_info(object):
   __slots__ = ["name", "atom_selection_string"]
 
   def __init__(O, name, atom_selection_string=None):
-    assert op.isfile(name)
+    if (not op.isfile(name)):
+      raise RuntimeError("Missing pdb file: %s" % show_string(name))
     O.name = name
     O.atom_selection_string = atom_selection_string
 
