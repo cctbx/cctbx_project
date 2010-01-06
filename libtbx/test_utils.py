@@ -369,6 +369,18 @@ def block_show_diff(lines, expected, last_startswith=False):
   expected = "\n".join(expected)+"\n"
   assert not show_diff(lines, expected)
 
+def contains_lines(lines, expected):
+  assert isinstance(lines, str)
+  assert isinstance(expected, str)
+  if (lines.find(expected) < 0):
+    print "contains_lines() FAILURE:"
+    print "expected:"
+    print "v"*79
+    sys.stdout.write(expected)
+    print "^"*79
+    return False
+  return True
+
 class RunCommandError(RuntimeError): pass
 
 def _check_command_output(
