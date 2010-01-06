@@ -19,6 +19,13 @@ def run(args, command_name=libtbx.env.dispatcher_name):
       default=None,
       help="write selected atoms to new PDB file",
       metavar="FILE")
+    .option(None, "--cryst1_replacement_buffer_layer",
+      action="store",
+      type="float",
+      default=None,
+      help="replace CRYST1 with pseudo unit cell covering the selected"
+        " atoms plus a surrounding buffer layer",
+      metavar="WIDTH")
   ).process(args=args, min_nargs=2)
   co = command_line.options
   mon_lib_srv = server.server()
@@ -44,9 +51,17 @@ def run(args, command_name=libtbx.env.dispatcher_name):
   print
   if (co.write_pdb_file):
     print "Writing file:", show_string(co.write_pdb_file)
-    acp.pdb_hierarchy.select(all_bsel).write_pdb_file(
+    sel_hierarchy = acp.pdb_hierarchy.select(all_bsel)
+    if (co.cryst1_replacement_buffer_layer is None):
+      crystal_symmetry = acp.special_position_settings
+    else:
+      import cctbx.crystal
+      crystal_symmetry = cctbx.crystal.non_crystallographic_symmetry(
+        sites_cart=sel_hierarchy.atoms().extract_xyz(),
+        buffer_layer=co.cryst1_replacement_buffer_layer)
+    sel_hierarchy.write_pdb_file(
       file_name=co.write_pdb_file,
-      crystal_symmetry=acp.special_position_settings,
+      crystal_symmetry=crystal_symmetry,
       append_end=True)
     print
 
