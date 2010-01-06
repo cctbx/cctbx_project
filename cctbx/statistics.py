@@ -72,9 +72,8 @@ class wilson_plot(object):
     self.wilson_b = -self.fit_slope / 2
     self.fit_correlation = flex.linear_correlation(self.x,self.y).coefficient()
 
-    f_obs_sq = f_obs_selected.f_as_f_sq()
-
     if e_statistics:
+      f_obs_sq = f_obs_selected.f_as_f_sq()
       normalised = f_obs_sq.normalised_amplitudes(asu_contents, self)
       self.normalised_f_obs = normalised.array()
       self.mean_e_sq_minus_1 = normalised.mean_e_sq_minus_1()

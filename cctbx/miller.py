@@ -2807,13 +2807,13 @@ class normalised_amplitudes(object):
                wilson_plot=None):
     assert miller_array.is_xray_intensity_array()
 
-    import statistics
     import eltbx
     if not wilson_plot:
+      import statistics
       binner = miller_array.binner
-      miller_array.setup_binner(n_bins=20)
-      wilson_plot = statistics.wilson_plot(miller_array, asu_contents)
-      miller_array.binner = binner
+      f_obs = miller_array.as_amplitude_array()
+      f_obs.setup_binner(n_bins=20)
+      wilson_plot = statistics.wilson_plot(f_obs, asu_contents)
 
     # cache scattering factor info
     multiplicities = flex.double()
