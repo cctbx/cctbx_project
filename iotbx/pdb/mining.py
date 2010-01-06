@@ -61,6 +61,7 @@ class file_info(object):
 
   def __init__(O, name, atom_selection_string=None):
     if (not op.isfile(name)):
+      from libtbx.str_utils import show_string
       raise RuntimeError("Missing pdb file: %s" % show_string(name))
     O.name = name
     O.atom_selection_string = atom_selection_string
@@ -124,7 +125,6 @@ def run(args, command_call, command_line_add_options=None):
   from iotbx.option_parser import option_parser as iotbx_option_parser
   import libtbx.utils
   from libtbx.utils import escape_sh_double_quoted
-  from libtbx.str_utils import show_string
   show_times = libtbx.utils.show_times(time_start="now")
   command_line = (iotbx_option_parser(
     usage=" ".join(command_call) + " [options] file|directory...")
