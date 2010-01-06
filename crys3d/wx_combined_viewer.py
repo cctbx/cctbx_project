@@ -83,25 +83,34 @@ class map_scene (object) :
     assert len(triangles) == len(colors)
     adopt_init_args(self, locals())
     self.flag_use_materials = False
+    self.clear_lists()
+
+  def clear_lists (self) :
+    self.mesh_display_list = None
 
   def draw_mesh (self) :
-    glMatrixMode(GL_MODELVIEW)
-    glPushMatrix()
-    glMultTransposeMatrixd(self.orthogonaliser)
-    gltbx.util.handle_error()
-    for i, triangulation in enumerate(self.triangles) :
+    if self.mesh_display_list is None :
+      self.mesh_display_list = gltbx.gl_managed.display_list()
+      self.mesh_display_list.compile()
+      glMatrixMode(GL_MODELVIEW)
       glLineWidth(0.2)
-      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-      if self.flag_use_materials :
-        pass
-      #  self.materials[i].execute(specular=False)
-      #  glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
-      else :
-        glColor3f(*self.colors[i])
-      va = gltbx.util.vertex_array(triangulation.vertices,
-                                   triangulation.normals)
-      va.draw_triangles(triangulation.triangles)
-    glPopMatrix()
+      glPushMatrix()
+      glMultTransposeMatrixd(self.orthogonaliser)
+      gltbx.util.handle_error()
+      for i, triangulation in enumerate(self.triangles) :
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        if self.flag_use_materials :
+          pass
+        #  self.materials[i].execute(specular=False)
+        #  glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
+        else :
+          glColor3f(*self.colors[i])
+        va = gltbx.util.vertex_array(triangulation.vertices,
+                                     triangulation.normals)
+        va.draw_triangles(triangulation.triangles)
+      glPopMatrix()
+      self.mesh_display_list.end()
+    self.mesh_display_list.call()
 
 #-----------------------------------------------------------------------
 class map_viewer_mixin (wxGLWindow) :
