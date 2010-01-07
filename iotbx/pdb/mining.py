@@ -152,6 +152,7 @@ def run(args, command_call, command_line_add_options=None):
       return command_line, null_generator()
     command_line.chunk.redirect_chunk_stdout_and_stderr(have_array=True)
   #
+  from libtbx.str_utils import show_string
   ca = command_line.args
   if (len(ca) == 0 and pdb_mirror_pdb is not None):
     ca = [pdb_mirror_pdb]
