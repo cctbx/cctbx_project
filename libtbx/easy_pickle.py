@@ -16,7 +16,9 @@ def dump(file_name, obj):
 def dumps(obj):
   return cPickle.dumps(obj, 1)
 
-def load(file_name):
+def load(file_name, faster_but_using_more_memory=True):
+  if (faster_but_using_more_memory):
+    return cPickle.loads(_open(file_name, "rb").read())
   return cPickle.load(_open(file_name, "rb"))
 
 def loads(string) :

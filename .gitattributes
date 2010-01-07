@@ -348,6 +348,7 @@ libtbx/subversion.py -text
 libtbx/thread_utils.py -text
 libtbx/try_hello_world_c.py svneol=native#text/x-python
 libtbx/tst_binary_search.py svneol=native#text/x-python
+libtbx/tst_easy_pickle.py svneol=native#text/x-python
 libtbx/tst_itertbx.py -text
 libtbx/tst_math_utils.py svneol=native#text/x-python
 libtbx/tst_object_oriented_patterns.py -text
