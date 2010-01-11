@@ -256,6 +256,7 @@ class electron_density_map(object):
       fo_scale.set_selected(centric_flags, max(map_name_manager.k-1.,0.))
     else:
       acf_scale.set_selected(~centric_flags, 2.0)
+      fo_scale = fo_scale * map_name_manager.k
     if(not map_name_manager.ml_map):
        return self._map_coeff(
          f_obs         = self.map_helper_obj.f_obs_scaled,

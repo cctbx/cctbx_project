@@ -166,6 +166,9 @@ sites
   max_rotomer_distortion = None
     .type = bool
     .help = Switch to a rotomer maximally distant from the current one
+  min_rotomer_distortion = None
+    .type = bool
+    .help = Switch to a rotomer minimally distant from the current one
   translate = 0 0 0
     .type = strings
     # XXX FUTURE float(3)
@@ -446,16 +449,23 @@ class modify(object):
       self._shake_sites(selection=selection, rms_difference=sites.shake)
       if(sites.max_rotomer_distortion is not None):
         self._max_distant_rotomer(selection=selection)
+      if(sites.min_rotomer_distortion is not None):
+        self._max_distant_rotomer(selection=selection, min_dist_flag=True)
       self._rb_shift(
         selection=selection,
         translate=sites.translate,
         rotate=sites.rotate,
         euler_angle_convention=sites.euler_angle_convention)
 
-  def _max_distant_rotomer(self, selection):
-    self._print_action(
-      text = "Switching to the max distant rotomers",
-      selection = selection)
+  def _max_distant_rotomer(self, selection, min_dist_flag=False):
+    if(min_dist_flag):
+      self._print_action(
+        text = "Switching to the min distant rotomers",
+        selection = selection)
+    else:
+      self._print_action(
+        text = "Switching to the max distant rotomers",
+        selection = selection)
     mon_lib_srv = mmtbx.monomer_library.server.server()
     selection = selection.flags
     sites_cart_start = self.xray_structure.sites_cart()
@@ -482,6 +492,7 @@ class modify(object):
                 residue             = residue,
                 atom_selection_bool = None)
               dist_start = -1.
+              if(min_dist_flag): dist_start = 1.e+6
               if(rotamer_iterator is not None):
                 for rotamer, rotamer_sites_cart in rotamer_iterator:
                   sites_cart_start_ = sites_cart_start.deep_copy()
@@ -490,7 +501,12 @@ class modify(object):
                     residue_iselection, rotamer_sites_cart)
                   xray_structure_.set_sites_cart(sites_cart_start_)
                   dist = flex.sum(xray_structure_.distances(xrs))
-                  if(dist > dist_start):
+                  flag = None
+                  if(min_dist_flag):
+                    flag = dist < dist_start and abs(dist-dist_start) > 0.3
+                  else:
+                    flag = dist > dist_start
+                  if(flag):
                     dist_start = dist
                     sites_cart_result = sites_cart_result.set_selected(
                       residue_iselection, rotamer_sites_cart)
