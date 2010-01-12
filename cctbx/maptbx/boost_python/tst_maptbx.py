@@ -845,6 +845,48 @@ def exercise_grid_indices_around_sites():
     assert str(e).startswith("product of fft_m_real")
   else: raise Exception_expected
 
+def exercise_region_density_correlation():
+  sites_frac = flex.vec3_double([
+    (0.02,0.10,0.02),
+    (0.10,0.02,0.40),
+    (0.98,0.10,0.60),
+    (0.10,0.98,0.80),
+    (0.20,0.50,0.98)])
+  from cctbx import xray
+  xray_structure = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(30,30,50,90,90,120),
+      space_group_symbol="P1"),
+    scatterers=flex.xray_scatterer([
+      xray.scatterer(label=str(i), scattering_type="Si", site=site_frac)
+        for i,site_frac in enumerate(sites_frac)]))
+  d_min = 2
+  f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
+  density_map = f_calc.fft_map().real_map_unpadded()
+  def get(region_sel):
+    return maptbx.region_density_correlation(
+      large_unit_cell=xray_structure.unit_cell(),
+      large_d_min=d_min,
+      large_density_map=density_map,
+      sites_cart=xray_structure.sites_cart().select(region_sel),
+      site_radii=flex.double(sites_frac.size(), 1).select(region_sel),
+      work_scatterers=xray_structure.scatterers().select(region_sel))
+  cc = get(region_sel=flex.bool(5, False))
+  assert cc is None
+  cc = get(region_sel=flex.bool(5, True))
+  assert approx_equal(cc, 1)
+  cc = get(region_sel=flex.size_t([4]))
+  assert approx_equal(cc, 0.999923364584)
+  cc = get(region_sel=flex.size_t([0,2]))
+  assert approx_equal(cc, 0.998640554144)
+  cc = get(region_sel=flex.size_t([1,3]))
+  assert approx_equal(cc, 0.999324555256)
+  cc = get(region_sel=flex.size_t([0,4]))
+  assert approx_equal(cc, 0.999570252441)
+  xray_structure.scatterers()[4].site = (0.205,0.503,0.974)
+  cc = get(region_sel=flex.size_t([4]))
+  assert approx_equal(cc, 0.6756590336)
+
 def run(args):
   assert args in [[], ["--timing"]]
   timing = len(args) != 0
@@ -867,6 +909,7 @@ def run(args):
   exercise_real_space_refinement()
   exercise_average_density()
   exercise_grid_indices_around_sites()
+  exercise_region_density_correlation()
   print "OK"
 
 if (__name__ == "__main__"):
