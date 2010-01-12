@@ -94,6 +94,12 @@ class index (object) :
       cache_file = "%s_cache.pkl" % file_name
       easy_pickle.dump(cache_file, self)
 
+  def get_combined_phil (self, sources=None) :
+    if sources is None :
+      sources = []
+    new_phil = self.master_phil.fetch(sources=[self.working_phil]+sources)
+    return new_phil
+
   def save_diff (self, file_name) :
     self.save_param_file(file_name=file_name, diff_only=True)
 
