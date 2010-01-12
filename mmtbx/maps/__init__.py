@@ -44,26 +44,28 @@ map_params_str ="""\
   map
     .short_caption = XPLOR map
     .multiple = True
+    .style = auto_align
   {
     map_type = None
       .type = str
-      .expert_level=1
+      .expert_level=0
+      .style = bold renderer:draw_map_type_widget
     kicked = False
       .type = bool
-      .expert_level=1
+      .expert_level=0
     fill_missing_f_obs = False
       .type = bool
-      .expert_level=1
+      .expert_level=0
     grid_resolution_factor = 1/4.
       .type = float
-      .expert_level=1
+      .expert_level=0
     region = *selection cell
       .type = choice
       .expert_level=1
       .short_caption=Map region
     atom_selection = None
       .type = str
-      .expert_level=2
+      .expert_level=1
       .style = selection
     scale = *sigma volume
       .type = choice(multi=False)
@@ -72,7 +74,8 @@ map_params_str ="""\
       .type = float
       .expert_level=2
     file_name = None
-      .type = str
+      .type = path
+      .style = bold new_file
   }
 """%map_coeff_params_str
 master_params = iotbx.phil.parse(map_params_str, process_includes=False)
@@ -205,6 +208,7 @@ class compute_maps(object):
     # xplor maps
     for mp in params.map:
       if(mp.map_type is not None):
+        print "generating %s map" % mp.map_type
         assert all_chain_proxies is not None
         self.coeffs = self.compute_map_coefficients(map_params = mp)
         write_xplor_map_file(params = mp, coeffs = self.coeffs,

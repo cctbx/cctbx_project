@@ -14,7 +14,7 @@ keys_to_show = ["r_work_re_computed", "r_free_re_computed", "r_work_pdb",
   "chirality_max", "rama_favored", "rama_allowed", "rama_general",
   "rama_outliers"]
 default_keys = ["r_work_re_computed", "r_free_re_computed", "adp_mean",
-  "bonds_rmsd", "angles_rmsd", "rama_outliers"]
+  "bonds_rmsd", "angles_rmsd"]
 
 key_captions = ["R-work", "R-free", "R-work (PDB)", "R-free (PDB)",
   "R-work (cutoff)", "R-free (cutoff)", "Completeness in range",
