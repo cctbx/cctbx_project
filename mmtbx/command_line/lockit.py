@@ -326,6 +326,8 @@ coordinate_refinement {
     .type = bool
   atom_selection = Auto
     .type = str
+  compute_final_correlation = True
+    .type = bool
   home_restraints
     .multiple = True
   {
@@ -657,6 +659,15 @@ def run(args):
       work_params=work_params.coordinate_refinement.home_restraints,
       processed_pdb_file=processed_pdb_file)
     pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
+    if (not work_params.coordinate_refinement.compute_final_correlation):
+      work_scatterers = None
+    else:
+      work_scatterers = processed_pdb_file.xray_structure(
+        show_summary=False).scatterers()
+      if (atom_selection_bool is None):
+        work_scatterers = work_scatterers.deep_copy()
+      else:
+        work_scatterers = work_scatterers.select(atom_selection_bool)
     sites_cart_start = pdb_atoms.extract_xyz()
     site_labels = [atom.id_str() for atom in pdb_atoms]
     print "Before coordinate refinement:"
@@ -673,11 +684,7 @@ def run(args):
     else:
       rstw_list = [rstw_params.first_sample + i * rstw_params.sampling_step
         for i in xrange(rstw_params.number_of_samples)]
-    best_rstw = None
-    best_refined = None
-    best_refined_final = None
-    best_acceptable = None
-    best_rmsd_diff = None
+    best_info = None
     bond_rmsd_list = []
     for rstw in rstw_list:
       refined = maptbx.real_space_refinement_simple.lbfgs(
@@ -719,21 +726,39 @@ def run(args):
       bond_rmsd = flex.mean_sq(deltas)**0.5
       bond_rmsd_list.append(bond_rmsd)
       print "  Bond RMSD: %.3f" % bond_rmsd
+      #
+      if (work_scatterers is None):
+        region_cc = None
+      else:
+        region_cc = maptbx.region_density_correlation(
+          large_unit_cell=fft_map.unit_cell(),
+          large_d_min=fft_map.d_min(),
+          large_density_map=density_map,
+          sites_cart=refined.sites_cart_variable,
+          site_radii=flex.double(refined.sites_cart_variable.size(), 1),
+          work_scatterers=work_scatterers)
+      #
       rmsd_diff = abs(rstw_params.bond_rmsd_target - bond_rmsd)
-      if (   best_rmsd_diff is None
-          or best_rmsd_diff > rmsd_diff
-            and (acceptable or not best_acceptable)):
-        best_rstw, best_refined, best_acceptable, best_rmsd_diff, best_refined_final = \
-          rstw, refined, acceptable, rmsd_diff, refined.f_final
+      if (   best_info is None
+          or best_info.rmsd_diff > rmsd_diff
+            and (acceptable or not best_info.acceptable)):
+        best_info = group_args(
+          rstw=rstw,
+          refined=refined,
+          acceptable=acceptable,
+          rmsd_diff=rmsd_diff,
+          region_cc=region_cc)
       print
-    if (best_refined is not None):
-      pdb_atoms.set_xyz(new_xyz=best_refined.sites_cart)
+    if (best_info is not None):
+      pdb_atoms.set_xyz(new_xyz=best_info.refined.sites_cart)
       print "Table of real-space target weights vs. bond RMSD:"
       print "  weight   RMSD"
       for w,d in zip(rstw_list, bond_rmsd_list):
         print "  %6.1f  %5.3f" % (w,d)
-      print "Best real-space target weight: %.1f" % best_rstw
-      print "Best refined final value:",best_refined_final
+      print "Best real-space target weight: %.1f" % best_info.rstw
+      print "Associated refined final value: %.6g" % best_info.refined.f_final
+      if (best_info.region_cc is not None):
+        print "Associated region correlation: %.4f" % best_info.region_cc
       print
   #
   if (work_params.output_file is not None):
@@ -754,7 +779,7 @@ def run(args):
   #
   show_times()
   sys.stdout.flush()
-  return best_refined_final # XXX exchange for correlation, or both?
+  return best_info.refined.f_final # XXX exchange for correlation, or both?
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

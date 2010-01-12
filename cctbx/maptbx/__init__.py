@@ -1,3 +1,4 @@
+from __future__ import division
 import cctbx.sgtbx
 
 import boost.python
@@ -72,26 +73,36 @@ class crystal_gridding(object):
                      space_group_info=None,
                      mandatory_factors=None,
                      max_prime=5,
-                     assert_shannon_sampling=True):
-    assert [d_min, step].count(None) == 1
-    if (step is not None):
-      d_min = step*2
-      resolution_factor = 0.5
-    elif (resolution_factor is None):
-      resolution_factor = 1/3.
-    if (symmetry_flags is not None): assert space_group_info is not None
-    if (mandatory_factors is None): mandatory_factors = (1,1,1)
-    assert len(mandatory_factors) == 3
+                     assert_shannon_sampling=True,
+                     pre_determined_n_real=None):
+    if (pre_determined_n_real is None):
+      assert [d_min, step].count(None) == 1
+      if (step is not None):
+        d_min = step*2
+        resolution_factor = 0.5
+      elif (resolution_factor is None):
+        resolution_factor = 1/3
+      if (symmetry_flags is not None): assert space_group_info is not None
+      if (mandatory_factors is None): mandatory_factors = (1,1,1)
+      assert len(mandatory_factors) == 3
+    else:
+      assert d_min is None
+      assert step is None
+      assert symmetry_flags is None
+      assert mandatory_factors is None
     adopt_init_args(self, locals(), hide=True)
     if (symmetry_flags is not None):
+      assert pre_determined_n_real is None
       self._n_real = determine_gridding(
         unit_cell, d_min, resolution_factor,
         symmetry_flags, space_group_info.type(),
         mandatory_factors, max_prime, assert_shannon_sampling)
-    else:
+    elif (pre_determined_n_real is None):
       self._n_real = determine_gridding(
         unit_cell, d_min, resolution_factor,
         mandatory_factors, max_prime, assert_shannon_sampling)
+    else:
+      self._n_real = pre_determined_n_real
 
   def _copy_constructor(self, other):
     self._unit_cell = other._unit_cell
@@ -282,9 +293,9 @@ class peak_cluster_analysis(object):
                      min_cubicle_edge=5):
     if (effective_resolution is not None):
       if (significant_height_fraction is None):
-          significant_height_fraction = 1/5.
+          significant_height_fraction = 1/5
       if (cluster_height_fraction is None):
-          cluster_height_fraction = 1/3.
+          cluster_height_fraction = 1/3
     if (min_cross_distance is None):
         min_cross_distance = special_position_settings.min_distance_sym_equiv()
     adopt_init_args(self, locals(), hide=True)
@@ -504,3 +515,79 @@ class peak_cluster_analysis(object):
       if (self._sites.size() >= max_clusters): break
       if (self.next_with_effective_resolution() is None): break
     return self
+
+def region_density_correlation(
+      large_unit_cell,
+      large_d_min,
+      large_density_map,
+      sites_cart,
+      site_radii,
+      work_scatterers):
+  sites_frac_large = large_unit_cell.fractionalize(sites_cart)
+  large_frac_min = sites_frac_large.min()
+  large_frac_max = sites_frac_large.max()
+  large_n_real = large_density_map.focus()
+  from scitbx import fftpack
+  from libtbx.math_utils import ifloor, iceil
+  large_ucp = large_unit_cell.parameters()
+  small_n_real = [0,0,0]
+  small_origin_in_large_grid = [0,0,0]
+  small_abc = [0,0,0]
+  sites_frac_shift = [0,0,0]
+  for i in xrange(3):
+    grid_step = large_ucp[i] / large_n_real[i]
+    buffer = large_d_min / grid_step
+    grid_min = ifloor(large_frac_min[i] * large_n_real[i] - buffer)
+    grid_max = iceil(large_frac_max[i] * large_n_real[i] + buffer)
+    min_grid = grid_max - grid_min + 1
+    small_n_real[i] = fftpack.adjust_gridding(min_grid=min_grid, max_prime=5)
+    if (small_n_real[i] < large_n_real[i]):
+      shift_min = (small_n_real[i] - min_grid) // 2
+      small_origin_in_large_grid[i] = grid_min - shift_min
+      small_abc[i] = small_n_real[i] * grid_step
+      sites_frac_shift[i] = small_origin_in_large_grid[i] / large_n_real[i]
+    else:
+      small_n_real[i] = large_n_real[i]
+      small_origin_in_large_grid[i] = 0
+      small_abc[i] = large_ucp[i]
+      sites_frac_shift[i] = 0
+  sites_cart_shift = large_unit_cell.orthogonalize(sites_frac_shift)
+  sites_cart_small = sites_cart - sites_cart_shift
+  from cctbx import xray
+  small_xray_structure = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=tuple(small_abc)+large_ucp[3:],
+      space_group_symbol="P1"),
+    scatterers=work_scatterers)
+  small_xray_structure.set_sites_cart(sites_cart=sites_cart_small)
+  small_f_calc = small_xray_structure.structure_factors(
+    d_min=large_d_min).f_calc()
+  small_gridding = crystal_gridding(
+    unit_cell=small_f_calc.unit_cell(),
+    space_group_info=small_f_calc.space_group_info(),
+    pre_determined_n_real=small_n_real)
+  from cctbx import miller
+  small_fft_map = miller.fft_map(
+    crystal_gridding=small_gridding,
+    fourier_coefficients=small_f_calc)
+  small_fft_map.apply_sigma_scaling()
+  small_map = small_fft_map.real_map_unpadded()
+  grid_indices = grid_indices_around_sites(
+    unit_cell=small_xray_structure.unit_cell(),
+    fft_n_real=small_n_real,
+    fft_m_real=small_n_real,
+    sites_cart=sites_cart_small,
+    site_radii=site_radii)
+  small_copy_from_large_map = copy(
+    map_unit_cell=large_density_map,
+    first=small_origin_in_large_grid,
+    last=matrix.col(small_origin_in_large_grid)
+       + matrix.col(small_n_real)
+       - matrix.col((1,1,1)))
+  assert small_copy_from_large_map.all() == small_map.all()
+  corr = flex.linear_correlation(
+    x=small_map.select(grid_indices),
+    y=small_copy_from_large_map.select(grid_indices))
+  if (not corr.is_well_defined()):
+    return None
+  return corr.coefficient()
