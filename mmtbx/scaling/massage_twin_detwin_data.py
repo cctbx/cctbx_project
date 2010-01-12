@@ -62,65 +62,93 @@ import sys, os
 
 
 master_params = iotbx.phil.parse("""
-     hklout = None
-     .type=path
-     .help="HKL out"
-     hklout_type=mtz sca *mtz_or_sca
-     .type=choice
-     .help="Output format"
-     label_extension="massaged"
-     .type=str
-     .help="Label extension"
-     aniso
-     .help="Parameters dealing with anisotropy correction"
-     {
-       action=*remove_aniso None
-       .type=choice
-       .help="Remove anisotropy?"
-       final_b=*eigen_min eigen_mean user_b_iso
-       .help="Final b value"
-       .type=choice
-       b_iso=None
-       .type=float
-       .help="User specified B value"
-     }
-     outlier
-     .help="Outlier analyses"
-     {
-       action=*extreme basic beamstop None
-       .help="Outlier protocol"
-       .type=choice
-       parameters
-       .help="Parameters for outlier detection"
-       {
-         basic_wilson{
-          level=1E-6
-          .type=float
-         }
-         extreme_wilson{
-           level=0.01
-           .type=float
-         }
-         beamstop{
-           level=0.001
-           .type=float
-           d_min=10.0
-           .type=float
-         }
-       }
-     }
-     symmetry{
-       action=detwin twin *None
-       .type=choice
-       twinning_parameters{
-         twin_law=None
-         .type=str
-         fraction=None
-         .type=float
-       }
-     }
-
-  """)
+    hklout = None
+      .type=path
+      .help="HKL out"
+      .short_caption = Output reflections file
+      .style = bold new_file
+    hklout_type=mtz sca *mtz_or_sca
+      .type=choice
+      .help="Output format"
+      .caption = MTZ Scalepack MTZ_or_Scalepack
+      .short_caption = Output format
+    label_extension="massaged"
+      .type=str
+      .help="Label extension"
+    aniso
+      .help="Parameters dealing with anisotropy correction"
+      .short_caption = Anisotropy correction
+      .style = box auto_align
+    {
+      action=*remove_aniso None
+        .type=choice
+        .caption = Remove_anisotropy None
+        .help="Remove anisotropy?"
+        .style = bold
+      final_b=*eigen_min eigen_mean user_b_iso
+        .help="Final b value"
+        .type=choice
+        .caption = Minimum_eigenvalue Mean_eigenvalue User_specified
+        .short_caption = Final B-factor source
+      b_iso=None
+        .type=float
+        .help="User specified B value"
+        .short_caption = User-specified B-factor
+    }
+    outlier
+      .help="Outlier analyses"
+      .short_caption = Outlier analyses
+      .style = box auto_align
+    {
+      action=*extreme basic beamstop None
+        .help="Outlier protocol"
+        .type=choice
+        .short_caption = Outlier rejection protocol
+      parameters
+        .help="Parameters for outlier detection"
+      {
+        basic_wilson{
+          level = 1E-6
+            .type=float
+            .short_caption = Basic Wilson level
+        }
+        extreme_wilson{
+          level = 0.01
+            .type=float
+            .short_caption = Extreme Wilson level
+        }
+        beamstop{
+          level = 0.001
+            .type=float
+            .short_caption = Beamstop level
+          d_min = 10.0
+            .type=float
+            .short_caption = Max. resolution
+            .style = resolution
+        }
+      }
+    }
+    symmetry
+      .short_caption = Detwinning
+      .style = box auto_align
+    {
+      action = detwin twin *None
+        .type = choice
+        .short_caption = Action
+        .style = bold
+      twinning_parameters{
+        twin_law = None
+          .type = str
+          .short_caption = Twin law
+          .input_size = 120
+          .style = bold
+        fraction = None
+          .type = float
+          .short_caption = Detwinning fraction
+          .style = bold
+      }
+    }
+""")
 
 
 
