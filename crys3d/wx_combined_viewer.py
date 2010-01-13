@@ -19,7 +19,7 @@ viewer_phil = iotbx.phil.parse("""
 """, process_includes=True)
 
 class map_data (object) :
-  def __init__ (self, map, is_difference_map=False) :
+  def __init__ (self, map, is_difference_map=False, radius=10.0) :
     adopt_init_args(self, locals())
     self.unit_cell = map.unit_cell()
     o = self.unit_cell.orthogonalization_matrix()
@@ -33,7 +33,6 @@ class map_data (object) :
     s = self.unit_cell.orthogonalize((0, 1, 1))
     self.iso_levels = [1]
     self.colors = [(1,1,1)]
-    self.radius = 10.0
 
   def set_iso_levels (self, levels) :
     self.iso_levels = levels
@@ -199,7 +198,9 @@ class map_viewer_mixin (wxGLWindow) :
   def add_map (self, map_id, map, is_difference_map=False) :
     if map_id in self.map_ids :
       self.delete_map(map_id)
-    map_object = map_data(map, is_difference_map)
+    map_object = map_data(map,
+      is_difference_map=is_difference_map,
+      radius=self.settings.opengl.map_radius)
     self.map_ids.append(map_id)
     self.map_objects.append(map_object)
     self.show_object[map_id] = True
@@ -283,6 +284,7 @@ class map_viewer_mixin (wxGLWindow) :
 
   def update_map_scenes (self) :
     for object_id, map in self.iter_maps() :
+      map.radius = self.settings.opengl.map_radius
       scene = map.get_scene_data(self.rotation_center)
       self.map_scenes[object_id] = scene
 
@@ -370,6 +372,10 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
     for current_object_id in self.model_ids+self.map_ids :
       if current_object_id == object_id :
         self.show_object[current_object_id] = show_object
+
+  def update_all_settings (self, params, redraw=False) :
+    selection_editor_mixin.update_settings(self, params, redraw)
+    self.update_maps = True
 
 ########################################################################
 class MapEditor (wx.MiniFrame) :
