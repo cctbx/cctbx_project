@@ -1620,7 +1620,10 @@ class pdb_file(object):
       from elbow.scripts import elbow_on_pdb_file
       from elbow.command_line import join_cif_files
       if len(sys.argv)>1: del sys.argv[1:]
-      rc = elbow_on_pdb_file.run("\n".join(self.pdb_raw_records), silent=True)
+      rc = elbow_on_pdb_file.run("\n".join(self.pdb_raw_records),
+                                 model_vs_data=True,
+                                 silent=True,
+                                 )
       cif_file = prefix+time_stamp+".cif"
       if rc is not None:
         hierarchy, cifs = rc
