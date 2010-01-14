@@ -876,16 +876,16 @@ def exercise_region_density_correlation():
   cc = get(region_sel=flex.bool(5, True))
   assert approx_equal(cc, 1)
   cc = get(region_sel=flex.size_t([4]))
-  assert approx_equal(cc, 0.999923364584)
+  assert approx_equal(cc, 0.999923364584, eps=1.e-4)
   cc = get(region_sel=flex.size_t([0,2]))
-  assert approx_equal(cc, 0.998640554144)
+  assert approx_equal(cc, 0.998640554144, eps=1.e-4)
   cc = get(region_sel=flex.size_t([1,3]))
-  assert approx_equal(cc, 0.999324555256)
+  assert approx_equal(cc, 0.999324555256, eps=1.e-4)
   cc = get(region_sel=flex.size_t([0,4]))
-  assert approx_equal(cc, 0.999570252441)
+  assert approx_equal(cc, 0.999570252441, eps=1.e-4)
   xray_structure.scatterers()[4].site = (0.205,0.503,0.974)
   cc = get(region_sel=flex.size_t([4]))
-  assert approx_equal(cc, 0.6756590336)
+  assert approx_equal(cc, 0.6756590336, eps=1.e-4)
 
 def run(args):
   assert args in [[], ["--timing"]]
