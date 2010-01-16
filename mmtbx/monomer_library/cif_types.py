@@ -564,12 +564,12 @@ class comp_comp_id(slots_getstate_setstate):
           input_string=self.rotamer_info_phil_str_list[0].phil_str)).extract()
     return self.__rotamer_info
 
-  def rotamer_iterator(self, atom_names, sites_cart):
+  def rotamer_iterator(self, atom_names, sites_cart, fine_sampling=False):
     from mmtbx.monomer_library.rotamer_utils import rotamer_iterator
     return rotamer_iterator(
       comp_comp_id=self,
       atom_names=atom_names,
-      sites_cart=sites_cart)
+      sites_cart=sites_cart, fine_sampling=fine_sampling)
 
 class chem_comp(looped_data):
   """

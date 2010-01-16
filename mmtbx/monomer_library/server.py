@@ -372,10 +372,15 @@ class server(process_cif_mixin):
       self.get_comp_comp_id_direct(comp_id=rnpani.work_residue_name),
       rnpani.atom_name_interpretation)
 
-  def rotamer_iterator(self, comp_id, atom_names, sites_cart):
+  def rotamer_iterator(self, 
+    comp_id, 
+    atom_names, 
+    sites_cart, 
+    fine_sampling=False):
     return self.get_comp_comp_id_direct(comp_id=comp_id).rotamer_iterator(
       atom_names=atom_names,
-      sites_cart=sites_cart)
+      sites_cart=sites_cart, 
+      fine_sampling=fine_sampling)
 
   def get_comp_comp_id_mod(self, comp_comp_id, mod_ids):
     key = "%".join((comp_comp_id.chem_comp.id,) + mod_ids)

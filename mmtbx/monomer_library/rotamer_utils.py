@@ -20,6 +20,8 @@ tree_generation_without_bond = None
   .multiple = True
 constrain_dihedrals_with_sigma_less_than_or_equal_to = 10
   .type=float
+fine_sampling = False
+  .type=bool
 rotamer
   .multiple = True
 {
@@ -198,12 +200,14 @@ def build_angle_start_by_tor_id(
 
 class rotamer_iterator(object):
 
-  def __init__(O, comp_comp_id, atom_names, sites_cart):
+  def __init__(O, comp_comp_id, atom_names, sites_cart, fine_sampling=False):
     assert sites_cart.size() == len(atom_names)
     O.problem_message = None
     O.rotamer_info = comp_comp_id.rotamer_info()
     if (O.rotamer_info is None):
       return
+    if fine_sampling == True:
+      O.rotamer_info.fine_sampling = True
     resname = comp_comp_id.chem_comp.id
     import iotbx.pdb.atom_name_interpretation
     matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
@@ -266,6 +270,9 @@ class rotamer_iterator(object):
 
   def next(O):
     rotamer = O.__iterates.next()
+    if O.rotamer_info.fine_sampling == False:
+      while(rotamer.frequency_annotation == "for more uniform sampling"):
+        rotamer = O.__iterates.next()
     q_packed_work = flex.double(O.tardy_model.q_packed_size, 0)
     for tor_id,angle in zip(O.rotamer_info.tor_ids, rotamer.angles):
       i_q_packed = O.i_q_packed_by_tor_id.get(tor_id)

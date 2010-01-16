@@ -116,7 +116,7 @@ def exercise_server_rotamer_iterator(mon_lib_srv, pdb_hierarchy, verbose):
     pdb_atoms.reset_i_seq()
     rotamer_iterator = comp_comp_id.rotamer_iterator(
       atom_names=pdb_atoms.extract_name(),
-      sites_cart=pdb_atoms.extract_xyz())
+      sites_cart=pdb_atoms.extract_xyz(),fine_sampling=False)
     if (rotamer_iterator.problem_message):
       raise RuntimeError(rotamer_iterator.problem_message)
     if (rotamer_iterator.rotamer_info is not None):
