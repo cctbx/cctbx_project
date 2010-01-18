@@ -775,6 +775,27 @@ def exercise_fixed_vertices(n_trials=10):
   tt = construct(n_vertices=16, edge_list=el, fixed_vertices=(12,6,4,7,9,5))
   assert tt.cluster_manager.fixed_vertex_lists == [[12,7,9], [6,4], [5]]
 
+def exercise_fixed_hinges():
+  # disulfide bond: CA - CB - SG - SG - CB - CA
+  edge_list = [(0,1), (1,2), (2,5), (3,4), (4,5)]
+  sites = matrix.col_list([
+    ( 2.031, 74.980, 4.910),
+    ( 0.672, 75.625, 4.635),
+    (-0.061, 75.171, 3.047),
+    (-2.009, 74.382, 0.323),
+    (-0.709, 75.082, 0.718),
+    (-0.355, 75.059, 2.491)])
+  tt = construct(
+    sites=sites,
+    edge_list=edge_list,
+    near_singular_hinges_angular_tolerance_deg=0)
+  assert tt.cluster_manager.cluster_indices == [0,0,0,3,2,1]
+  tt = construct(
+    sites=sites,
+    edge_list=edge_list,
+    near_singular_hinges_angular_tolerance_deg=5)
+  assert tt.cluster_manager.cluster_indices == [0,0,0,2,1,0]
+
 def exercise_show_summary():
   from scitbx.graph import test_cases_tardy_pdb
   tcs = test_cases_tardy_pdb.select_test_cases(
@@ -934,6 +955,7 @@ def run(args):
   exercise_special_case_ZINC03847121()
   exercise_external_clusters()
   exercise_fixed_vertices()
+  exercise_fixed_hinges()
   exercise_show_summary()
   exercise_edge_classifier()
   exercise_all_in_one_rigid_body()

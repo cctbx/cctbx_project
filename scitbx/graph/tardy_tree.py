@@ -392,9 +392,13 @@ class cluster_manager(slots_getstate_setstate):
         ic = O.cluster_indices[hj]
         O.clusters[ic].extend(O.clusters[jc])
         O.clusters[ic].sort()
+        ci = O.cluster_indices
         for i in O.clusters[jc]:
-          O.cluster_indices[i] = ic
+          ci[i] = ic
         del O.clusters[jc]
+        for ic in xrange(jc,len(O.clusters)):
+          for i in O.clusters[ic]:
+            ci[i] = ic
     O.fixed_hinges.sort()
 
   def edge_classifier(O):
