@@ -159,6 +159,8 @@ namespace tardy {
             /*normal*/ (normal_sites_1-normal_sites_0).normalize()));
         body->parent = bp::extract<int>(
           cluster_manager.attr("cluster_indices")[he_1])();
+        SCITBX_ASSERT(body->parent >= 0);
+        SCITBX_ASSERT(body->parent < nc);
       }
       result.push_back(body);
     }
