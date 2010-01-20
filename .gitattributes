@@ -386,6 +386,7 @@ mmtbx/map_tools.py -text
 mmtbx/maps/__init__.py -text
 mmtbx/maps/fobs_minus_fobs_map.py -text
 mmtbx/maps/phenix_refine_map_params.py -text
+mmtbx/maps/utils.py -text
 mmtbx/masks/atom_mask.cpp svneol=native#text/plain
 mmtbx/masks/atom_mask.h svneol=native#text/plain
 mmtbx/masks/grid_symop.h svneol=native#text/plain
