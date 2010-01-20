@@ -531,11 +531,7 @@ class process_arrays (object) :
     # NEW R-FREE ARRAY
     if ((params.mtz_file.r_free_flags.generate and not have_r_free_array) or
         params.mtz_file.r_free_flags.force_generate) :
-      (d_max, d_min) = get_best_resolution(self.final_arrays)
-      complete_set = miller.build_set(crystal_symmetry=output_symm,
-                                      anomalous_flag=False,
-                                      d_min=d_min,
-                                      d_max=d_max)
+      complete_set = make_joined_set(self.final_arrays).complete_set()
       r_free_params = params.mtz_file.r_free_flags
       new_r_free_array = complete_set.generate_r_free_flags(
         fraction=r_free_params.fraction,
@@ -650,6 +646,23 @@ def get_best_resolution (miller_arrays) :
     except Exception, e :
       pass
   return (best_d_max, best_d_min)
+
+def make_joined_set (miller_arrays) :
+  master_set = miller.set(
+    crystal_symmetry=miller_arrays[0].crystal_symmetry(),
+    indices=miller_arrays[0].indices(),
+    anomalous_flag=False)
+  for array in miller_arrays[1:] :
+    missing_set = array.lone_set(master_set)
+    missing_indices = missing_set.indices()
+    if missing_indices.size() > 0 :
+      indices = master_set.indices()
+      indices.extend(missing_set)
+      master_set = miller.set(
+        crystal_symmetry=miller_arrays[0].crystal_symmetry(),
+        indices=indices,
+        anomalous_flag=False)
+  return master_set
 
 def is_rfree_array (miller_array, array_info) :
   return ((miller_array.is_integer_array() or
