@@ -93,21 +93,23 @@ class map_scene (object) :
       self.mesh_display_list.compile()
       glMatrixMode(GL_MODELVIEW)
       glLineWidth(0.2)
-      glPushMatrix()
-      glMultTransposeMatrixd(self.orthogonaliser)
       gltbx.util.handle_error()
-      for i, triangulation in enumerate(self.triangles) :
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-        if self.flag_use_materials :
-          pass
-        #  self.materials[i].execute(specular=False)
-        #  glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
-        else :
-          glColor3f(*self.colors[i])
-        va = gltbx.util.vertex_array(triangulation.vertices,
+      glPushMatrix()
+      try :
+        glMultTransposeMatrixd(self.orthogonaliser)
+        for i, triangulation in enumerate(self.triangles) :
+          glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+          if self.flag_use_materials :
+            pass
+          #  self.materials[i].execute(specular=False)
+          #  glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
+          else :
+            glColor3f(*self.colors[i])
+          va = gltbx.util.vertex_array(triangulation.vertices,
                                      triangulation.normals)
-        va.draw_triangles(triangulation.triangles)
-      glPopMatrix()
+          va.draw_triangles(triangulation.triangles)
+      finally :
+        glPopMatrix()
       self.mesh_display_list.end()
     self.mesh_display_list.call()
 
