@@ -2,6 +2,7 @@ import sys, traceback, time, os
 import Queue
 import threading
 from libtbx.utils import Sorry
+from libtbx import object_oriented_patterns as oop
 from libtbx import group_args, adopt_init_args
 
 class thread_with_callback_and_wait(threading.Thread):
@@ -47,6 +48,8 @@ class thread_with_callback_and_wait(threading.Thread):
     if (self.isAlive()):
       self._queue.put(last_iteration)
     return self
+
+null_callback = oop.null()
 
 class child_process_message (object) :
   def __init__ (self, message_type, data) :
@@ -155,11 +158,11 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
         target,
         args=(),
         kwargs={},
-        callback_stdout=None,
-        callback_final=None,
-        callback_err=None,
-        callback_abort=None,
-        callback_other=None,
+        callback_stdout=null_callback,
+        callback_final=null_callback,
+        callback_err=null_callback,
+        callback_abort=null_callback,
+        callback_other=null_callback,
         buffer_stdout=True) :
       threading.Thread.__init__(self)
       self._target = target
@@ -196,8 +199,7 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
       while child_process is not None :
         if self._abort :
           child_process.terminate()
-          if self._cb_abort is not None :
-            self._cb_abort()
+          self._cb_abort()
           break
         pipe_output = parent_conn.recv()
         if isinstance(pipe_output, child_process_message) :
@@ -205,31 +207,21 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
           (error, traceback_info) = (None, None)
           if message.message_type == "aborted" :
             child_process.terminate()
-            if self._cb_abort is not None :
-              self._cb_abort()
+            self._cb_abort()
             break
           elif message.message_type == "stdout" :
-            if self._cb_stdout is not None :
-              self._cb_stdout(message.data)
-            else :
-              sys.stdout.write(message.data)
+            self._cb_stdout(message.data)
           elif message.message_type == "return" :
-            if self._cb_final is not None :
-              self._cb_final(message.data)
+            self._cb_final(message.data)
             self._completed = True
             break
           elif message.message_type == "exception" :
             (error, traceback_info) = message.data
-            if self._cb_err is not None :
-              self._cb_err(error, traceback_info)
-              self._error = True
-              child_process.terminate()
-              break
-            else :
-              self._error = True
-              child_process.terminate()
-              raise e
-        elif self._cb_other is not None :
+            self._cb_err(error, traceback_info)
+            self._error = True
+            child_process.terminate()
+            break
+        else :
           self._cb_other(pipe_output)
       if child_process is not None and child_process.is_alive() :
         child_process.join()
@@ -423,17 +415,6 @@ def tst_04 () :
     while p.isAlive() :
       pass
     assert tmpout.getvalue() == ch._stdout
-
-  # without a stdout callback, 'p' will write stdout to sys.stdout
-  sys.stdout = cStringIO.StringIO()
-  ch = _callback_handler()
-  p = process_with_callbacks(
-    target = _target_function04)
-  p.start()
-  while p.isAlive() :
-    pass
-  assert tmpout.getvalue() == sys.stdout.getvalue()
-  sys.stdout = sys.__stdout__
 
 #--- test 05 : propagating standard Exceptions and Sorry
 def _target_function05a (args, kwds, connection) :

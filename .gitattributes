@@ -294,6 +294,7 @@ iotbx/tst_file_reader.py -text
 iotbx/utils.py svneol=native#text/x-python
 libtbx/assert_utils.py -text
 libtbx/binary_search.py svneol=native#text/x-python
+libtbx/callbacks.py -text
 libtbx/clear_paths.py svneol=native#text/x-python
 libtbx/code_analysis.py -text
 libtbx/command_line/analyse_code_comments.py -text
@@ -324,6 +325,7 @@ libtbx/command_line/show_full_command_path.py -text
 libtbx/command_line/show_include_paths.py svneol=native#text/x-python
 libtbx/command_line/show_number_of_processors.py svneol=native#text/x-python
 libtbx/command_line/show_python_sys_executable.py svneol=native#text/x-python
+libtbx/command_line/start_process.py -text
 libtbx/command_line/tcsh.sh -text
 libtbx/command_line/wait_for_file.py svneol=native#text/x-python
 libtbx/development/__init__.py -text
@@ -341,6 +343,7 @@ libtbx/phil/interface.py -text
 libtbx/phil/tst_interface.py -text
 libtbx/pythonpath/deep_thought.py svneol=native#text/x-python
 libtbx/queuing_system_utils.py svneol=native#text/x-python
+libtbx/runtime_utils.py -text
 libtbx/smart_open.py svneol=native#text/x-python
 libtbx/smp_utils.py -text
 libtbx/sourceforge_checkout.py -text
