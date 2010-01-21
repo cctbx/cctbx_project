@@ -1,4 +1,8 @@
 import sys, os
+import re
+from libtbx import cpp_function_name
+symbol_not_found_pat = re.compile(
+  r"[Ss]ymbol[ ]not[ ]found: \s* (\w+) $", re.X | re.M | re.S)
 
 python_libstdcxx_so = None
 if (sys.platform.startswith("linux")):
@@ -19,8 +23,14 @@ def import_ext(name):
     sys.setdlopenflags(0x100|0x2)
   try: mod = __import__(name)
   except ImportError, e:
+    error_msg = str(e)
+    m = symbol_not_found_pat.search(error_msg)
+    if m:
+      error_msg = (  error_msg[:m.start(1)]
+                   + cpp_function_name.demangle(m.group(1))
+                   + error_msg[m.end(1):])
     raise ImportError(
-      "\n  ".join(['__import__("%s"): %s' % (name, str(e)), "sys.path:"]
+      "\n  ".join(['__import__("%s"): %s' % (name, error_msg), "sys.path:"]
       + ["  "+p for p in sys.path]))
   for comp in components[1:]:
     mod = getattr(mod, comp)
