@@ -147,12 +147,12 @@ namespace scitbx { namespace fortran_io { namespace details {
       if (!extract(scan)) {
         int n = extract.n;
         char ch = *scan;
-        if (ch == 'e' || ch == 'd') {
+        if (ch == 'e' || ch == 'd' || ch == 'E' || ch == 'D') {
           ++n, ++scan;
           if (n == field_width || scan.at_end()) return false;
         }
         fortran_int_extractor<int> extract_exponent(
-          strict_width, field_width, extract.n);
+          strict_width, field_width, n);
         if (!extract_exponent(scan)) return false;
         exponent = extract_exponent.value + extract.exponent;
       }
