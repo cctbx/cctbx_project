@@ -652,17 +652,18 @@ def make_joined_set (miller_arrays) :
     crystal_symmetry=miller_arrays[0].crystal_symmetry(),
     indices=miller_arrays[0].indices(),
     anomalous_flag=False)
+  master_indices = miller_arrays[0].indices().deep_copy()
   for array in miller_arrays[1:] :
-    missing_set = array.lone_set(master_set)
-    missing_indices = missing_set.indices()
-    if missing_indices.size() > 0 :
-      indices = master_set.indices()
-      indices.extend(missing_set)
-      master_set = miller.set(
-        crystal_symmetry=miller_arrays[0].crystal_symmetry(),
-        indices=indices,
-        anomalous_flag=False)
-  return master_set
+    current_indices = array.indices()
+    missing_isel = miller.match_indices(master_indices,
+      current_indices).singles(1)
+    missing_indices = current_indices.select(missing_isel)
+    master_indices.extend(missing_indices)
+  master_set = miller.set(
+    crystal_symmetry=miller_arrays[0].crystal_symmetry(),
+    indices=master_indices,
+    anomalous_flag=False)
+  return master_set.unique_under_symmetry()
 
 def is_rfree_array (miller_array, array_info) :
   return ((miller_array.is_integer_array() or
