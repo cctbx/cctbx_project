@@ -25,10 +25,12 @@ def clean_clutter_in(files, tabsize=8):
 def run():
   opt_parser = (option_parser(
     usage="""
-clean_clutter [-t n | --tabsize==n] file1 file2 ...
-clean_clutter [-t n | --tabsize==n] [--committing|-c]""",
+clean_clutter [-t n | --tabsize=n] file1 file2 ...
+clean_clutter [-t n | --tabsize=n] [directory]
+clean_clutter [-t n | --tabsize=n] [--committing|-c]""",
     description="""The first form cleans the specified files whereas the second
-form cleans all files in the hierarchy rooted in the current directory.
+form cleans all files in the hierarchy rooted in the given directory or
+the current directory is none is given.
 The  -c options restricts cleaning to those files which would be committed
 by running svn commit.""")
     .option("-t", "--tabsize",
@@ -54,9 +56,12 @@ by running svn commit.""")
     except RuntimeError, err:
       print err
       exit(1)
-  elif not files:
-    files = [ c.path for c in libtbx.command_line.file_clutter.gather(['.'])
-              if c.is_cluttered(flag_x=False) ]
+  else:
+    if len(files) <= 1:
+      if not files: dir = '.'
+      else: dir = files[0]
+      files = [ c.path for c in libtbx.command_line.file_clutter.gather([dir])
+                if c.is_cluttered(flag_x=False) ]
   clean_clutter_in(files, tabsize=co.tabsize)
 
 if (__name__ == "__main__"):
