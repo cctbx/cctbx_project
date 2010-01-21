@@ -177,6 +177,17 @@ class streambuf : public std::basic_streambuf<char>
     }
 
     /// C.f. C++ standard section 27.5.2.4.3
+    /** It is essential to override this virtual function for the stream
+        member function readsome to work correctly (c.f. 27.6.1.3, alinea 30)
+     */
+    virtual std::streamsize showmanyc() {
+      int_type const failure = traits_type::eof();
+      int_type status = underflow();
+      if (status == failure) return -1;
+      return egptr() - gptr();
+    }
+
+    /// C.f. C++ standard section 27.5.2.4.3
     virtual int_type underflow() {
       int_type const failure = traits_type::eof();
       if (py_read == bp::object()) {
