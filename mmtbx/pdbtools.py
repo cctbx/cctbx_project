@@ -21,87 +21,6 @@ from libtbx import easy_run
 from iotbx.pdb import combine_unique_pdb_files
 from mmtbx.command_line import lockit
 
-
-fmodel_from_xray_structure_params_str = """\
-k_sol = 0.0
-  .type = float
-  .help = Bulk solvent k_sol values
-  .short_caption=Bulk solvent K_sol value
-  .expert_level=2
-b_sol = 0.0
-  .type = float
-  .help = Bulk solvent b_sol values
-  .short_caption=Bulk solvent B_sol value
-  .expert_level=2
-b_cart = 0 0 0 0 0 0
-  .type = floats
-  #.type = strings
-  # XXX FUTURE float(6)
-  .help = Anisotropic scale matrix
-  .short_caption = Anisotropic scale matrix
-  .expert_level=2
-scale = 1.0
-  .type = float
-  .help = Overall scale factor
-  .expert_level=2
-structure_factors_accuracy
-  .short_caption = Structure factors accuracy
-  .style = menu_item auto_align noauto parent_submenu:advanced
-{
-  include scope mmtbx.f_model.sf_and_grads_accuracy_master_params
-}
-mask
-  .short_caption = Bulk solvent mask
-  .style = menu_item auto_align noauto parent_submenu:advanced
-{
-  include scope mmtbx.masks.mask_master_params
-}
-scattering_table = wk1995  it1992  *n_gaussian  neutron
-  .type = choice
-  .help = Choices of scattering table for structure factors calculations
-  .expert_level=2
-"""
-fmodel_from_xray_structure_params = iotbx.phil.parse(
-  fmodel_from_xray_structure_params_str, process_includes=True)
-
-fmodel_from_xray_structure_master_params_str = """\
-high_resolution = None
-  .type = float
-low_resolution = None
-  .type = float
-r_free_flags_fraction = None
-  .type = float
-add_sigmas = False
-  .type = bool
-%s
-hkl_output
-  .short_caption = Reflection output
-  .expert_level=0
-{
-  format = *mtz cns
-    .type = choice
-    .short_caption = File format
-    .style = OnChange:update_f_model_file_ext
-  label = FMODEL
-    .type = str
-    .short_caption = Data label
-    .expert_level=1
-  type = real *complex
-    .type = choice
-    .short_caption = Data type
-    .expert_level=2
-  file_name = None
-    .type = path
-    .short_caption = Output reflections file
-    .help = Default is the original PDB file name with the file extension \
-            replaced by ".pdbtools.mtz" or ".pdbtools.cns"
-    .style = bold noauto new_file
-}
-"""%fmodel_from_xray_structure_params_str
-
-fmodel_from_xray_structure_master_params = iotbx.phil.parse(
-  fmodel_from_xray_structure_master_params_str, process_includes=True)
-
 modify_params_str = """\
 selection = None
   .type = str
@@ -275,14 +194,6 @@ input {
       .type=space_group
   }
 }
-f_model
-  .short_caption = F(model) calculation
-  .caption = Note: these options will only be processed if you select \
-      "Calculate F(calc) from current model" as the action.
-  .style = auto_align menu_item
-{
-%s
-}
 pdb_interpretation
   .short_caption = PDB Interpretation
   .style = menu_item
@@ -297,16 +208,14 @@ geometry_minimization
 {
   include scope mmtbx.command_line.geometry_minimization.master_params
 }
-action = f_model regularize
+action = regularize
   .type = choice(multi=True)
   .optional = True
   .help = GUI-only parameter, equivalent to command-line flags.
   .short_caption = Extra actions
-  .caption = Calculate_F(calc)_from_current_model \
-             Regularize_model_geometry
+  .caption = Regularize_model_geometry
   .style = bold OnChange:update_pdbtools_actions
-"""%(modify_params_str, fmodel_from_xray_structure_master_params_str),
-     process_includes=True)
+"""%modify_params_str, process_includes=True)
 
 class modify(object):
   def __init__(self, xray_structure, params, all_chain_proxies, log = None):
@@ -574,146 +483,6 @@ class modify(object):
         out = self.log,
         label = "Atoms to be kept: ")
 
-class fmodel_from_xray_structure(object):
-  def __init__(self, xray_structure, f_obs = None, params = None,
-                     target_name = "ml", r_free_flags_fraction = None,
-                     add_sigmas = False):
-    self.add_sigmas = add_sigmas
-    if(params is None):
-      params = fmodel_from_xray_structure_master_params.extract()
-    if(r_free_flags_fraction is None):
-      if(params.r_free_flags_fraction is not None):
-        r_free_flags_fraction = params.r_free_flags_fraction
-      else:
-        r_free_flags_fraction = 0.1
-    if(f_obs is None):
-      hr = None
-      try: hr = params.high_resolution
-      except: self.Sorry_high_resolution_is_not_defined()
-      if(params.scattering_table == "neutron"):
-        xray_structure.switch_to_neutron_scattering_dictionary()
-      else:
-        xray_structure.scattering_type_registry(
-          table = params.scattering_table, d_min = hr)
-      if(hr is None): self.Sorry_high_resolution_is_not_defined()
-      f_obs = xray_structure.structure_factors(d_min = hr).f_calc()
-      sfga = params.structure_factors_accuracy
-      f_obs = f_obs.structure_factors_from_scatterers(
-         xray_structure = xray_structure,
-         algorithm                    = sfga.algorithm,
-         cos_sin_table                = sfga.cos_sin_table,
-         grid_resolution_factor       = sfga.grid_resolution_factor,
-         quality_factor               = sfga.quality_factor,
-         u_base                       = sfga.u_base,
-         b_base                       = sfga.b_base,
-         wing_cutoff                  = sfga.wing_cutoff,
-         exp_table_one_over_step_size = sfga.exp_table_one_over_step_size
-         ).f_calc()
-      lr = None
-      try: lr = params.low_resolution
-      except: RuntimeError("Parameter scope does not have 'low_resolution'.")
-      if(params.low_resolution is not None):
-        f_obs = f_obs.resolution_filter(d_max = lr)
-    else:
-      hr = None
-      try: hr = params.high_resolution
-      except AttributeError: pass
-      except: raise RuntimeError
-      lr = None
-      try: lr = params.low_resolution
-      except AttributeError: pass
-      except: raise RuntimeError
-      f_obs = f_obs.resolution_filter(d_max = lr, d_min = hr)
-      if(params.scattering_table == "neutron"):
-        xray_structure.switch_to_neutron_scattering_dictionary()
-      else:
-        xray_structure.scattering_type_registry(
-          table = params.scattering_table, d_min = hr)
-    r_free_flags = f_obs.generate_r_free_flags(fraction = r_free_flags_fraction)
-    fmodel = mmtbx.f_model.manager(
-      xray_structure               = xray_structure,
-      sf_and_grads_accuracy_params = params.structure_factors_accuracy,
-      r_free_flags                 = r_free_flags,
-      mask_params                  = params.mask,
-      target_name                  = target_name,
-      f_obs                        = abs(f_obs),
-      k_sol                        = params.k_sol,
-      b_sol                        = params.b_sol,
-      b_cart                       = params.b_cart)#[float(i) for i in params.b_cart])
-    f_model = fmodel.f_model()
-    f_model = f_model.array(data = f_model.data()*params.scale)
-    try:
-      if(params.hkl_output.type == "real"):
-        f_model = abs(f_model)
-        f_model.set_observation_type_xray_amplitude()
-    except AttributeError: pass
-    except: raise RuntimeError
-    self.f_model = f_model
-    self.params = params
-    self.fmodel = fmodel
-    self.r_free_flags = None
-    if(params.r_free_flags_fraction is not None):
-      self.r_free_flags = fmodel.r_free_flags
-
-  def Sorry_high_resolution_is_not_defined(self):
-    raise Sorry("High resolution limit is not defined. "\
-      "Use 'high_resolution' keyword to define it.")
-
-  def write_to_file(self, file_name):
-    assert self.params.hkl_output.format in ["mtz", "cns"]
-    assert file_name is not None
-    op = self.params.hkl_output
-    if(self.params.hkl_output.format == "cns"):
-      ofo = open(file_name, "w")
-      iotbx.cns.miller_array.crystal_symmetry_as_cns_comments(
-        crystal_symmetry=self.f_model, out=ofo)
-      print >> ofo, "NREFlections=%d" % self.f_model.indices().size()
-      print >> ofo, "ANOMalous=%s" % {0: "FALSE"}.get(
-        int(self.f_model.anomalous_flag()), "TRUE")
-      for n_t in [("%s"%op.label, "%s"%op.type.upper())]:
-        print >> ofo, "DECLare NAME=%s DOMAin=RECIprocal TYPE=%s END"%n_t
-      if(self.params.r_free_flags_fraction is not None):
-        print >> ofo, "DECLare NAME=TEST DOMAin=RECIprocal TYPE=INTeger END"
-      if(op.type == "complex"):
-        arrays = [
-          self.f_model.indices(), flex.abs(self.f_model.data()),
-          self.f_model.phases(deg=True).data()]
-        if(self.params.r_free_flags_fraction is not None):
-          arrays.append(self.r_free_flags.data())
-        for values in zip(*arrays):
-          if(self.params.r_free_flags_fraction is None):
-            print >> ofo, "INDE %d %d %d" % values[0],
-            print >> ofo, " %s= %.6g %.6g" % (op.label, values[1],values[2])
-          else:
-            print >> ofo, "INDE %d %d %d" % values[0],
-            print >> ofo, " %s= %.6g %.6g TEST=%d" % (op.label, values[1],
-              values[2], values[3])
-      else:
-        arrays = [
-          self.f_model.indices(), self.f_model.data()]
-        if(self.params.r_free_flags_fraction is not None):
-          arrays.append(self.r_free_flags.data())
-        for values in zip(*arrays):
-          if(self.params.r_free_flags_fraction is None):
-            print >> ofo, "INDE %d %d %d" % values[0],
-            print >> ofo, " %s= %.6g" % (op.label, values[1])
-          else:
-            print >> ofo, "INDE %d %d %d" % values[0],
-            print >> ofo, " %s= %.6g TEST=%d" % (op.label, values[1],values[2])
-    else:
-      mtz_dataset= self.f_model.as_mtz_dataset(column_root_label="%s"%op.label)
-      if(self.params.r_free_flags_fraction is not None):
-        mtz_dataset.add_miller_array(
-          miller_array      = self.r_free_flags,
-          column_root_label = "R-free-flags")
-      if(self.add_sigmas):
-        sigmas = abs(self.f_model).array(data = flex.double(self.f_model.data().size(),1))
-        mtz_dataset.add_miller_array(
-          miller_array      = sigmas,
-          column_root_label = "SIG%s"%op.label)
-      mtz_object = mtz_dataset.mtz_object()
-      mtz_object.write(file_name = file_name)
-
 def set_chemical_element_simple_if_necessary(hierarchy):
   for model in hierarchy.models():
     for chain in model.chains():
@@ -877,23 +646,6 @@ def run(args, command_name="phenix.pdbtools"):
     out                  = ofo)
   ofo.close()
   output_files.append(ofn)
-  if(command_line_interpreter.command_line.options.f_model):
-    par = command_line_interpreter.params.f_model
-    if(par.hkl_output.format == "cns"): extension = ".hkl"
-    elif(par.hkl_output.format == "mtz"): extension = ".mtz"
-    else: extension = ".reflections"
-    ofn = par.hkl_output.file_name
-    if(ofn is None):
-      if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + extension
-      else: ofn = os.path.basename(ifn[0]) + "_et_al" + extension
-    utils.print_header("Compute model structure factors", out = log)
-    print >> log, "Output reflections file name: ", ofn
-    fmodel_from_xray_structure(
-      xray_structure = xray_structure,
-      add_sigmas     = command_line_interpreter.params.f_model.add_sigmas,
-      params         = command_line_interpreter.params.f_model).write_to_file(
-        file_name = ofn)
-    output_files.append(ofn)
   utils.print_header("Done", out = log)
   return output_files
 
@@ -996,9 +748,6 @@ class interpreter:
       .option("--geometry_regularization",
           action="store_true",
           help="Perform geometry regularization.")
-      .option("--f_model",
-          action="store_true",
-          help="Compute total model structure factors (F_model) and output into a file.")
       .option("--ignore_hydrogens",
           action="store_true",
           help="Do not account for H and D atoms in geometry statistics.")
@@ -1107,6 +856,3 @@ class interpreter:
       print >> self.log, "*** No input crystal symmetry found. ***"
       print >> self.log,"Functionality requiring crystal symmetry unavailable."
       print >> self.log
-      if(self.command_line.options.f_model):
-        raise Sorry(
-          "Cannot compute structure factors: no crystal symmetry available.")

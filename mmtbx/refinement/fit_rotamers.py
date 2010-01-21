@@ -309,7 +309,7 @@ def get_map_data(fmodel, map_type, resolution_factor=1./4, kick=False):
     map_data = fft_map.real_map_unpadded()
   return map_data,fft_map
 
-def validate(fmodel, residue_rsr_monitor, log):
+def validate_changes(fmodel, residue_rsr_monitor, log):
   xray_structure = fmodel.xray_structure
   map_data_1,fft_map_1 = get_map_data(
     fmodel = fmodel, map_type = "2mFo-DFc", kick=False)
@@ -361,6 +361,9 @@ def run(fmodel,
         do_not_use_dihedrals,
         solvent_selection,
         log,
+        overall_rsr = True,
+        validate = True,
+        exclude_h = True,
         poor_cc_threshold=0.9,
         ignore_water = False,
         filter_residual_map_value = 2.0,
@@ -417,18 +420,25 @@ def run(fmodel,
     fmodel.update_xray_structure(update_f_calc=True, update_f_mask=True)
     print >> log, "1:", fmt%(macro_cycle, fmodel.r_work(), fmodel.r_free())
     del map_data_1, map_data_2, map_data_3, fft_map_1, fft_map_2, fft_map_3
-    if 1: # XXX add option
+    if(overall_rsr):
       assert model.xray_structure is fmodel.xray_structure
       params = mmtbx.refinement.real_space.master_params().extract()
       params.real_space_refinement.mode="diff_map"
+      if(exclude_h):
+        hd_selection = fmodel.xray_structure.hd_selection()
+        occupancies_cache= fmodel.xray_structure.scatterers().extract_occupancies()
+        fmodel.xray_structure.set_occupancies(value=0, selection=hd_selection)
       mmtbx.refinement.real_space.run(
         fmodel = fmodel, # XXX neutron ?
         model  = model,
         params = params.real_space_refinement,
         log    = log)
+      if(exclude_h):
+        fmodel.xray_structure.set_occupancies(value = occupancies_cache)
       assert model.xray_structure is fmodel.xray_structure
       fmodel.update_xray_structure(update_f_calc=True, update_f_mask=True)
       print >> log, "2:",fmt%(macro_cycle, fmodel.r_work(), fmodel.r_free())
-    #
-    if 1: # XXX add option
-      validate(fmodel=fmodel, residue_rsr_monitor=residue_rsr_monitor, log=log)
+    if(validate):
+      validate_changes(fmodel = fmodel,
+                       residue_rsr_monitor = residue_rsr_monitor,
+                       log = log)

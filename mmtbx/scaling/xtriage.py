@@ -13,7 +13,7 @@ from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 from iotbx import pdb
 from iotbx.option_parser import option_parser
-from mmtbx import pdbtools
+import mmtbx.utils
 import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import matthews, twin_analyses
@@ -748,7 +748,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         assert f_calc_miller is None
         reference_structure = iotbx.pdb.input( file_name=params.scaling.input.xray_data.reference.structure.file_name).xray_structure_simple(
           crystal_symmetry = miller_array.crystal_symmetry() )
-        tmp_obj = pdbtools.fmodel_from_xray_structure( xray_structure = reference_structure, f_obs = miller_array)
+        tmp_obj = mmtbx.utils.fmodel_from_xray_structure( xray_structure = reference_structure, f_obs = miller_array)
         f_calc_miller_complex = tmp_obj.f_model
         f_calc_miller = abs( tmp_obj.f_model ).eliminate_sys_absent(integral_only=True, log=log).set_observation_type_xray_amplitude()
     twin_results = None

@@ -369,6 +369,7 @@ mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
 mmtbx/command_line/cif_as_mtz.py -text
+mmtbx/command_line/fmodel.py -text
 mmtbx/command_line/fobs_minus_fobs_map.py -text
 mmtbx/command_line/grow_density.py -text
 mmtbx/command_line/lockit.py svneol=native#text/x-python
@@ -445,6 +446,7 @@ mmtbx/scaling/absences.py -text
 mmtbx/tls/command_line.py -text
 mmtbx/tst_alignment.py -text
 mmtbx/tst_bioinformatics.py -text
+mmtbx/tst_fmodel_cmdlinetool.py -text
 mmtbx/tst_map_type_parser.py -text
 mmtbx/tst_pdbtools.py -text
 mmtbx/tst_utils.py -text

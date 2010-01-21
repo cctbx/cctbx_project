@@ -14,10 +14,11 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import random, math
 from cctbx import xray
-from mmtbx import pdbtools
+import mmtbx.utils
 import iotbx.pdb
 import scitbx.math.euler_angles
 from scitbx import matrix
+import mmtbx.command_line.fmodel
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -188,14 +189,17 @@ def get_fmodel_from_pdb(pdb_file_name,
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/%s"%pdb_file_name,test=os.path.isfile)
   xray_structure = iotbx.pdb.input(file_name =pdb_file).xray_structure_simple()
-  params = pdbtools.fmodel_from_xray_structure_master_params.extract()
+  params = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params.extract()
+  assert params.high_resolution is None
+  assert params.scattering_table == 'n_gaussian'
+  assert params.structure_factors_accuracy.algorithm == 'fft'
   params.high_resolution = d_min
   params.scattering_table = "wk1995"
   params.structure_factors_accuracy.algorithm = algorithm
-  fmodel = pdbtools.fmodel_from_xray_structure(
+  fmodel = mmtbx.utils.fmodel_from_xray_structure(
     xray_structure        = xray_structure,
     params                = params,
-    target_name           = target,
+    target                = target,
     r_free_flags_fraction = 0.01).fmodel
   assert approx_equal(fmodel.r_work(), 0)
   return fmodel
