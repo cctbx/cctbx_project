@@ -42,6 +42,7 @@ import mmtbx.f_model
 from mmtbx import masks
 import mmtbx.tls.tools
 from mmtbx.scaling import outlier_rejection
+import mmtbx.command_line.fmodel
 
 import boost.python
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
@@ -1918,3 +1919,147 @@ class guess_observation_type(object):
       skip_twin_detection      = skip_twin_detection,
       twin_laws                = twin_laws)
     return fmodel
+
+class fmodel_from_xray_structure(object):
+
+  def __init__(self, xray_structure,
+                     f_obs = None,
+                     params = None,
+                     r_free_flags_fraction = None,
+                     target = "ml",
+                     add_sigmas = False):
+    self.add_sigmas = add_sigmas
+    if(params is None):
+      params = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params.extract()
+    if(r_free_flags_fraction is None):
+      if(params.r_free_flags_fraction is not None):
+        r_free_flags_fraction = params.r_free_flags_fraction
+      else:
+        r_free_flags_fraction = 0.1
+    if(f_obs is None):
+      hr = None
+      try: hr = params.high_resolution
+      except: self.Sorry_high_resolution_is_not_defined()
+      if(params.scattering_table == "neutron"):
+        xray_structure.switch_to_neutron_scattering_dictionary()
+      else:
+        xray_structure.scattering_type_registry(
+          table = params.scattering_table, d_min = hr)
+      if(hr is None): self.Sorry_high_resolution_is_not_defined()
+      f_obs = xray_structure.structure_factors(d_min = hr).f_calc()
+      sfga = params.structure_factors_accuracy
+      f_obs = f_obs.structure_factors_from_scatterers(
+         xray_structure = xray_structure,
+         algorithm                    = sfga.algorithm,
+         cos_sin_table                = sfga.cos_sin_table,
+         grid_resolution_factor       = sfga.grid_resolution_factor,
+         quality_factor               = sfga.quality_factor,
+         u_base                       = sfga.u_base,
+         b_base                       = sfga.b_base,
+         wing_cutoff                  = sfga.wing_cutoff,
+         exp_table_one_over_step_size = sfga.exp_table_one_over_step_size
+         ).f_calc()
+      lr = None
+      try: lr = params.low_resolution
+      except: RuntimeError("Parameter scope does not have 'low_resolution'.")
+      if(params.low_resolution is not None):
+        f_obs = f_obs.resolution_filter(d_max = lr)
+    else:
+      hr = None
+      try: hr = params.high_resolution
+      except AttributeError: pass
+      except: raise RuntimeError
+      lr = None
+      try: lr = params.low_resolution
+      except AttributeError: pass
+      except: raise RuntimeError
+      f_obs = f_obs.resolution_filter(d_max = lr, d_min = hr)
+      if(params.scattering_table == "neutron"):
+        xray_structure.switch_to_neutron_scattering_dictionary()
+      else:
+        xray_structure.scattering_type_registry(
+          table = params.scattering_table, d_min = hr)
+    r_free_flags = f_obs.generate_r_free_flags(fraction = r_free_flags_fraction)
+    fmodel = mmtbx.f_model.manager(
+      xray_structure               = xray_structure,
+      sf_and_grads_accuracy_params = params.structure_factors_accuracy,
+      r_free_flags                 = r_free_flags,
+      mask_params                  = params.mask,
+      f_obs                        = abs(f_obs),
+      target_name                  = target,
+      k_sol                        = params.fmodel.k_sol,
+      b_sol                        = params.fmodel.b_sol,
+      b_cart                       = params.fmodel.b_cart)#[float(i) for i in params.b_cart])
+    f_model = fmodel.f_model()
+    f_model = f_model.array(data = f_model.data()*params.fmodel.scale)
+    try:
+      if(params.output.type == "real"):
+        f_model = abs(f_model)
+        f_model.set_observation_type_xray_amplitude()
+    except AttributeError: pass
+    except: raise RuntimeError
+    self.f_model = f_model
+    self.params = params
+    self.fmodel = fmodel
+    self.r_free_flags = None
+    if(params.r_free_flags_fraction is not None):
+      self.r_free_flags = fmodel.r_free_flags
+
+  def Sorry_high_resolution_is_not_defined(self):
+    raise Sorry("High resolution limit is not defined. "\
+      "Use 'high_resolution' keyword to define it.")
+
+  def write_to_file(self, file_name):
+    assert self.params.output.format in ["mtz", "cns"]
+    assert file_name is not None
+    op = self.params.output
+    if(self.params.output.format == "cns"):
+      ofo = open(file_name, "w")
+      iotbx.cns.miller_array.crystal_symmetry_as_cns_comments(
+        crystal_symmetry=self.f_model, out=ofo)
+      print >> ofo, "NREFlections=%d" % self.f_model.indices().size()
+      print >> ofo, "ANOMalous=%s" % {0: "FALSE"}.get(
+        int(self.f_model.anomalous_flag()), "TRUE")
+      for n_t in [("%s"%op.label, "%s"%op.type.upper())]:
+        print >> ofo, "DECLare NAME=%s DOMAin=RECIprocal TYPE=%s END"%n_t
+      if(self.params.r_free_flags_fraction is not None):
+        print >> ofo, "DECLare NAME=TEST DOMAin=RECIprocal TYPE=INTeger END"
+      if(op.type == "complex"):
+        arrays = [
+          self.f_model.indices(), flex.abs(self.f_model.data()),
+          self.f_model.phases(deg=True).data()]
+        if(self.params.r_free_flags_fraction is not None):
+          arrays.append(self.r_free_flags.data())
+        for values in zip(*arrays):
+          if(self.params.r_free_flags_fraction is None):
+            print >> ofo, "INDE %d %d %d" % values[0],
+            print >> ofo, " %s= %.6g %.6g" % (op.label, values[1],values[2])
+          else:
+            print >> ofo, "INDE %d %d %d" % values[0],
+            print >> ofo, " %s= %.6g %.6g TEST=%d" % (op.label, values[1],
+              values[2], values[3])
+      else:
+        arrays = [
+          self.f_model.indices(), self.f_model.data()]
+        if(self.params.r_free_flags_fraction is not None):
+          arrays.append(self.r_free_flags.data())
+        for values in zip(*arrays):
+          if(self.params.r_free_flags_fraction is None):
+            print >> ofo, "INDE %d %d %d" % values[0],
+            print >> ofo, " %s= %.6g" % (op.label, values[1])
+          else:
+            print >> ofo, "INDE %d %d %d" % values[0],
+            print >> ofo, " %s= %.6g TEST=%d" % (op.label, values[1],values[2])
+    else:
+      mtz_dataset= self.f_model.as_mtz_dataset(column_root_label="%s"%op.label)
+      if(self.params.r_free_flags_fraction is not None):
+        mtz_dataset.add_miller_array(
+          miller_array      = self.r_free_flags,
+          column_root_label = "R-free-flags")
+      if(self.add_sigmas):
+        sigmas = abs(self.f_model).array(data = flex.double(self.f_model.data().size(),1))
+        mtz_dataset.add_miller_array(
+          miller_array      = sigmas,
+          column_root_label = "SIG%s"%op.label)
+      mtz_object = mtz_dataset.mtz_object()
+      mtz_object.write(file_name = file_name)

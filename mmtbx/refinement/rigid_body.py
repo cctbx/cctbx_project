@@ -420,8 +420,6 @@ class manager(object):
                      monitors   = None):
     global time_rigid_body_total
     self.params = params
-    if(params is None):
-      self.params = fmodel_from_xray_structure_master_params.extract()
     save_original_target_name = fmodel.target_name
     save_bss_anisotropic_scaling = None
     if(bss is not None):
