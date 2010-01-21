@@ -171,6 +171,11 @@ void exercise_fortran_real_fixed_2() {
   info = parse("   1.", f5_1_p[assign_a(x)]);
   SCITBX_ASSERT(info.hit);
   SCITBX_ASSERT(x == 1);
+  fortran_real_parser<
+    double, /*Width=*/10, /*FracDigits=*/3, /*StrictWidth=*/true> f_10_3_p;
+  info = parse(" 0.842E+04\n", f_10_3_p[assign_a(x)]);
+  SCITBX_ASSERT(info.hit);
+  SCITBX_ASSERT(x == 0.842E+04);
 }
 
 int main() {
