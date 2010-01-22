@@ -1,7 +1,7 @@
 from scitbx.linalg import eigensystem, time_eigensystem_real_symmetric
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
-from scitbx.math.boost_python.tst_math import matrix_mul
+from scitbx.math.tests.tst_math import matrix_mul
 import random
 import time
 
