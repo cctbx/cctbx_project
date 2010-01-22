@@ -1,6 +1,6 @@
 
 import os
-from libtbx import group_args
+from libtbx import group_args, adopt_init_args
 
 class manager (object) :
   def __init__ (self) :
@@ -11,7 +11,7 @@ class manager (object) :
     assert hasattr(handler, "__call__")
     self.handlers.append(handler)
 
-  def __call__ (self, message, data, accumulate=False, cached=True) :
+  def __call__ (self, message, data, accumulate=True, cached=True) :
 #    assert os.getpid() == self._pid
     for handler in self.handlers :
       handler(message=message,
