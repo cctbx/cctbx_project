@@ -1,8 +1,9 @@
 
 import libtbx.phil
 from libtbx.utils import Sorry
-from libtbx import easy_pickle, thread_utils
-from libtbx import adopt_init_args
+from libtbx import easy_pickle
+from libtbx import adopt_init_args, group_args
+import traceback
 import sys, os, time
 import cStringIO
 
@@ -11,13 +12,15 @@ run_file = None
   .type = path
 prefix = None
   .type = str
-tmp_dir = None
+output_dir = None
   .type = path
 debug = False
   .type = bool
 timeout = 200
   .type = int
-buffer_stdout = True
+buffer_stdout = False
+  .type = bool
+use_multiprocessing = False
   .type = bool
 """)
 
@@ -25,6 +28,12 @@ class detached_process_driver (object) :
   def __init__ (self, output_dir, target) :
     adopt_init_args(self, locals())
 
+  def __call__ (self, args, kwds, child_conn) :
+    os.chdir(self.output_dir)
+    result = self.target(args, kwds, child_conn)
+    return result
+
+class detached_process_driver_mp (detached_process_driver) :
   def __call__ (self, args, kwds, child_conn) :
     os.chdir(self.output_dir)
     import libtbx.callbacks
@@ -39,14 +48,15 @@ class detached_base (object) :
     self._accumulated_callbacks = []
     if params.prefix is None :
       params.prefix = ""
-    if params.tmp_dir is not None :
-      self.set_file_names(params.tmp_dir)
+    if params.output_dir is not None :
+      self.set_file_names(params.output_dir)
 
   def set_file_names (self, tmp_dir) :
     prefix = os.path.join(tmp_dir, self.params.prefix)
     self.start_file = os.path.join(tmp_dir, prefix + ".libtbx_start")
     self.stdout_file = prefix + ".libtbx_stdout"
     self.error_file =  prefix + ".libtbx_error"
+    self.stop_file = prefix + ".libtbx_STOP"
     self.abort_file =  prefix + ".libtbx_abort"
     self.result_file = prefix + ".libtbx_result"
     self.info_file = prefix + ".libtbx_info"
@@ -73,29 +83,56 @@ class detached_base (object) :
   def callback_other (self, status) :
     pass
 
+class stdout_redirect (object) :
+  def __init__ (self, handler) :
+    adopt_init_args(self, locals())
+
+  def write (self, data) :
+    self.handler.callback_stdout(data)
+
+  def flush (self) :
+    pass
+
+  def close (self) :
+    pass
+
 class detached_process_server (detached_base) :
   def __init__ (self, *args, **kwds) :
     detached_base.__init__(self, *args, **kwds)
     target = easy_pickle.load(self.params.run_file)
-    assert isinstance(target, detached_process_driver)
-    self.params.tmp_dir = target.output_dir
-    self.set_file_names(self.params.tmp_dir)
-    self.libtbx_process = thread_utils.process_with_callbacks(
-      target=target,
-      callback_stdout=self.callback_stdout,
-      callback_final=self.callback_final,
-      callback_err=self.callback_error,
-      callback_abort=self.callback_abort,
-      callback_other=self.callback_other,
-      buffer_stdout=False) #self.params.buffer_stdout)
+    assert hasattr(target, "__call__")
+    assert hasattr(target, "output_dir")
+    self.params.output_dir = target.output_dir
+    self.set_file_names(self.params.output_dir)
+    self.target = target
     f = open(self.start_file, "w", 0)
     f.write("1")
     f.close()
     self._stdout = open(self.stdout_file, "w")
-    self.libtbx_process.start()
+    self.run()
 
-  def isAlive (self) :
-    return self.libtbx_process.isAlive()
+  def run (self) :
+    old_stdout = sys.stdout
+    sys.stdout = stdout_redirect(self)
+    import libtbx.callbacks
+    libtbx.call_back.register_handler(self.callback_wrapper)
+    try :
+      return_value = self.target(args=None, kwds=None, child_conn=None)
+    except Exception, e :
+      Sorry.reset_module()
+      traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
+      self.callback_error(e, traceback_str)
+    else :
+      self.callback_final(return_value)
+    sys.stdout = old_stdout
+
+  def callback_wrapper (self, message, data, accumulate=True, cached=True) :
+    if cached :
+      self.callback_other(data=group_args(
+        message=message,
+        data=data,
+        accumulate=accumulate,
+        cached=cached))
 
   def callback_stdout (self, data) :
     self._stdout.write(data)
@@ -131,6 +168,23 @@ class detached_process_server (detached_base) :
     self._stdout.flush()
     self._stdout.close()
 
+class detached_process_server_mp (detached_process_server) :
+  def run (self) :
+    from libtbx import thread_utils
+    target = detached_process_driver_mp(self.params.output_dir, self.target)
+    self.libtbx_process = thread_utils.process_with_callbacks(
+      target=target,
+      callback_stdout=self.callback_stdout,
+      callback_final=self.callback_final,
+      callback_err=self.callback_error,
+      callback_abort=self.callback_abort,
+      callback_other=self.callback_other,
+      buffer_stdout=False) #self.params.buffer_stdout)
+    self.libtbx_process.start()
+
+  def isAlive (self) :
+    return self.libtbx_process.isAlive()
+
 class detached_process_client (detached_base) :
   def __init__ (self, *args, **kwds) :
     detached_base.__init__(self, *args, **kwds)
@@ -139,6 +193,7 @@ class detached_process_client (detached_base) :
     self._state_mtime = time.time()
     self.running = False
     self.finished = False
+    self.update_progress = True
 
   def isAlive (self) :
     return (not self.finished)
@@ -149,25 +204,32 @@ class detached_process_client (detached_base) :
   def run (self) :
     timeout = self.params.timeout
     while True :
-      if not self.running and os.path.exists(self.start_file) :
-        self.running = True
+      self.update()
+      if self.finished :
+        break
+      else :
+        time.sleep(timeout * 0.001)
+    return True
+
+  def update (self) :
+    if not self.running and os.path.exists(self.start_file) :
+      self.running = True
+    if self.update_progress :
       self.check_stdout()
       self.check_status()
-      if os.path.exists(self.error_file) :
-        (error, traceback_info) = easy_pickle.load(self.error_file)
-        self.callback_error(error, traceback_info)
-        break
-      elif os.path.exists(self.abort_file) :
-        self.callback_abort()
-        break
-      elif os.path.exists(self.result_file) :
-        result = easy_pickle.load(self.result_file)
-        self.check_stdout()
-        self.callback_final(result)
-        break
-      time.sleep(timeout * 0.001)
+    if os.path.exists(self.error_file) :
+      (error, traceback_info) = easy_pickle.load(self.error_file)
+      self.callback_error(error, traceback_info)
+    elif os.path.exists(self.abort_file) :
+      self.callback_abort()
+    elif os.path.exists(self.result_file) :
+      result = easy_pickle.load(self.result_file)
+      self.check_stdout()
+      self.callback_final(result)
+    else :
+      self.finished = False
+      return
     self.finished = True
-    return True
 
   def check_stdout (self) :
     if self._logfile is None and os.path.exists(self.stdout_file) :
@@ -179,6 +241,10 @@ class detached_process_client (detached_base) :
         self._logfile.seek(last)
       else :
         self.callback_stdout(data)
+
+  def reset_logfile (self) :
+    if self._logfile is not None :
+      self._logfile.seek(0)
 
   def check_status (self) :
     if os.path.exists(self.info_file) :
@@ -222,7 +288,11 @@ def run (args) :
   for arg in args :
     if os.path.isfile(arg) :
       file_name = os.path.abspath(arg)
-      user_phil.append(libtbx.phil.parse("run_file = \"%s\"" % file_name))
+      base, ext = os.path.splitext(file_name)
+      if ext in [".pkl", ".pickle"] :
+        user_phil.append(libtbx.phil.parse("run_file = \"%s\"" % file_name))
+      elif ext in [".params", ".eff", ".def", ".phil"] :
+        user_phil.append(libtbx.phil.parse(file_name=file_name))
     else :
       try :
         arg_phil = libtbx.phil.parse(arg)
@@ -231,7 +301,10 @@ def run (args) :
       else :
         user_phil.append(arg_phil)
   params = process_master_phil.fetch(sources=user_phil).extract()
-  server = detached_process_server(params)
+  if params.use_multiprocessing :
+    server = detached_process_server_mp(params)
+  else :
+    server = detached_process_server(params)
 
 ########################################################################
 # testing classes (see tst_runtime_utils.py for usage)
@@ -258,6 +331,9 @@ class simple_client (detached_process_client) :
     self.result = result
 
 class simple_run (object) :
+  def __init__ (self, output_dir) :
+    adopt_init_args(self, locals())
+
   def __call__ (self, args, kwds, child_conn) :
     pu_total = 0
     for run in range(0, 4) :
