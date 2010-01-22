@@ -39,9 +39,8 @@ def run():
   "$D/matrix.py",
   "$D/python_utils/tst_random_transform.py",
   "$D/python_utils/tst_graph.py",
-  #*** Has someone forgot to add those here? ***
-  #"$D/math/tests/tst_exp_functions.py",
-  #"$D/math/tests/tst_fit_quadratic_function.py",
+  "$D/math/tests/tst_exp_functions.py",
+  "$D/math/tests/tst_fit_quadratic_function.py",
   "$D/math/tests/tst_gcd.py",
   "$D/math/tests/tst_math.py",
   "$D/math/tests/tst_r3_rotation.py",
