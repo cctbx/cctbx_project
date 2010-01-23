@@ -7,6 +7,10 @@ class manager (object) :
     self.handlers = []
     self._pid = os.getpid()
 
+  def add_piped_callback (self, connection) :
+    cb = piped_callback(connection)
+    self.register_handler(cb)
+
   def register_handler (self, handler) :
     assert hasattr(handler, "__call__")
     self.handlers.append(handler)
