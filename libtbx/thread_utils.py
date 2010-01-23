@@ -126,6 +126,8 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
         self._stdout = stdout_pipe(connection)
 
     def run (self) :
+      import libtbx.callbacks
+      libtbx.call_back.add_piped_callback(self._c)
       old_stdout = sys.stdout
       sys.stdout = self._stdout
       message = None

@@ -1,4 +1,11 @@
 
+# detached process management (used in Phenix GUI)
+# This is intended to imitate running a process using libtbx.thread_utils,
+# but split across truly independent processes (potentially on different
+# systems).  I use something like this to start a server:
+#
+#   easy_run.call("libtbx.start_process run.pkl &")
+
 import libtbx.phil
 from libtbx.utils import Sorry
 from libtbx import easy_pickle
@@ -28,9 +35,9 @@ class detached_process_driver (object) :
   def __init__ (self, output_dir, target) :
     adopt_init_args(self, locals())
 
-  def __call__ (self, args, kwds, child_conn) :
+  def __call__ (self) :
     os.chdir(self.output_dir)
-    result = self.target(args, kwds, child_conn)
+    result = self.target()
     return result
 
 class detached_process_driver_mp (detached_process_driver) :
@@ -39,7 +46,7 @@ class detached_process_driver_mp (detached_process_driver) :
     import libtbx.callbacks
     callback = libtbx.callbacks.piped_callback(child_conn)
     libtbx.call_back.register_handler(callback)
-    result = self.target(args, kwds, child_conn)
+    result = self.target()
     return result
 
 class detached_base (object) :
@@ -96,6 +103,9 @@ class stdout_redirect (object) :
   def close (self) :
     pass
 
+class Abort (Exception) :
+  pass
+
 class detached_process_server (detached_base) :
   def __init__ (self, *args, **kwds) :
     detached_base.__init__(self, *args, **kwds)
@@ -109,7 +119,6 @@ class detached_process_server (detached_base) :
     f.write("1")
     f.close()
     self._stdout = open(self.stdout_file, "w")
-    self.run()
 
   def run (self) :
     old_stdout = sys.stdout
@@ -117,7 +126,9 @@ class detached_process_server (detached_base) :
     import libtbx.callbacks
     libtbx.call_back.register_handler(self.callback_wrapper)
     try :
-      return_value = self.target(args=None, kwds=None, child_conn=None)
+      return_value = self.target()
+    except Abort :
+      self.callback_abort()
     except Exception, e :
       Sorry.reset_module()
       traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
@@ -138,6 +149,8 @@ class detached_process_server (detached_base) :
     self._stdout.write(data)
     self._stdout.flush()
     os.fsync(self._stdout.fileno())
+    if os.path.isfile(self.stop_file) :
+      raise Abort()
 
   def callback_error (self, error, traceback_info) :
     easy_pickle.dump(self.error_file, (error, traceback_info))
@@ -168,6 +181,7 @@ class detached_process_server (detached_base) :
     self._stdout.flush()
     self._stdout.close()
 
+# XXX: is there any reason to use this?
 class detached_process_server_mp (detached_process_server) :
   def run (self) :
     from libtbx import thread_utils
@@ -225,6 +239,7 @@ class detached_process_client (detached_base) :
     elif os.path.exists(self.result_file) :
       result = easy_pickle.load(self.result_file)
       self.check_stdout()
+      self.check_status()
       self.callback_final(result)
     else :
       self.finished = False
@@ -277,10 +292,11 @@ class detached_process_client (detached_base) :
         else :
           self.callback_other(current_status)
 
+  def abort (self) :
+    touch_file(self.stop_file)
+
 def touch_file (file_name) :
-  f = open(file_name, "w")
-  f.write("1")
-  f.close()
+  f = open(file_name, "w").close()
 
 # XXX command-line launcher
 def run (args) :
@@ -305,6 +321,7 @@ def run (args) :
     server = detached_process_server_mp(params)
   else :
     server = detached_process_server(params)
+  server.run()
 
 ########################################################################
 # testing classes (see tst_runtime_utils.py for usage)
@@ -334,7 +351,7 @@ class simple_run (object) :
   def __init__ (self, output_dir) :
     adopt_init_args(self, locals())
 
-  def __call__ (self, args, kwds, child_conn) :
+  def __call__ (self) :
     pu_total = 0
     for run in range(0, 4) :
       (x, n) = (0.1 * (run+1) , 20000)
