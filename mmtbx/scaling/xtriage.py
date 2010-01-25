@@ -22,7 +22,7 @@ from mmtbx.scaling import massage_twin_detwin_data
 import libtbx.phil.command_line
 from libtbx.str_utils import StringIO
 from libtbx.utils import null_out
-from libtbx import easy_pickle
+from libtbx import easy_pickle, runtime_utils
 import sys, os
 
 

@@ -52,9 +52,6 @@ class detached_process_driver (object) :
 class detached_process_driver_mp (detached_process_driver) :
   def __call__ (self, args, kwds, child_conn) :
     os.chdir(self.output_dir)
-    import libtbx.callbacks
-    callback = libtbx.callbacks.piped_callback(child_conn)
-    libtbx.call_back.register_handler(callback)
     result = self.target()
     return result
 
@@ -143,6 +140,7 @@ class detached_process_server (detached_base) :
       traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
       self.callback_error(e, traceback_str)
     else :
+      time.sleep(1)
       self.callback_final(return_value)
     sys.stdout = old_stdout
 
@@ -241,15 +239,24 @@ class detached_process_client (detached_base) :
       self.check_stdout()
       self.check_status()
     if os.path.exists(self.error_file) :
-      (error, traceback_info) = easy_pickle.load(self.error_file)
-      self.callback_error(error, traceback_info)
+      try :
+        (error, traceback_info) = easy_pickle.load(self.error_file)
+      except EOFError :
+        pass
+      else :
+        self.callback_error(error, traceback_info)
     elif os.path.exists(self.abort_file) :
       self.callback_abort()
     elif os.path.exists(self.result_file) :
-      result = easy_pickle.load(self.result_file)
-      self.check_stdout()
-      self.check_status()
-      self.callback_final(result)
+      try :
+        result = easy_pickle.load(self.result_file)
+      except EOFError :
+        pass
+      else :
+        time.sleep(1)
+        self.check_stdout()
+        self.check_status()
+        self.callback_final(result)
     else :
       self.finished = False
       return
@@ -279,6 +286,8 @@ class detached_process_client (detached_base) :
           accumulated_status = easy_pickle.load(self.info_file)
         except KeyboardInterrupt :
           raise
+        except EOFError :
+          pass
         except Exception, e :
           print e
         else :
@@ -296,6 +305,8 @@ class detached_process_client (detached_base) :
           current_status = easy_pickle.load(self.state_file)
         except KeyboardInterrupt :
           raise
+        except EOFError :
+          pass
         except Exception, e :
           print e
         else :

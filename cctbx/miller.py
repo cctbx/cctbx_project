@@ -814,7 +814,7 @@ class set(crystal.symmetry):
     if use_dataman_shells :
       result = assign_r_free_flags_by_shells(n_refl=n,
                                              fraction_free=fraction,
-                                             n_shells=n_shells)
+                                             n_bins=n_shells)
     else :
       result = assign_random_r_free_flags(n_refl=n, fraction_free=fraction)
     if (not self.anomalous_flag()):
