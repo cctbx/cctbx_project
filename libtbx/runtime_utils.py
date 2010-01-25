@@ -31,6 +31,15 @@ use_multiprocessing = False
   .type = bool
 """)
 
+class simple_target (object) :
+  def __init__ (self, args, output_dir=None) :
+    adopt_init_args(self, locals())
+    if output_dir is None :
+      self.output_dir = os.getcwd()
+
+  def __call__ (self) :
+    return True
+
 class detached_process_driver (object) :
   def __init__ (self, output_dir, target) :
     adopt_init_args(self, locals())
