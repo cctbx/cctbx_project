@@ -56,6 +56,7 @@ cctbx/eltbx/xray_scattering/form_factor.h -text
 cctbx/eltbx/xray_scattering/hydrogen_plots.py svneol=native#text/x-python
 cctbx/examples/find_distances.cpp svneol=native#text/plain
 cctbx/examples/find_distances_using_cpp_objects.py svneol=native#text/x-python
+cctbx/examples/find_sys_abs_equiv_space_groups.py svneol=native#text/x-python
 cctbx/examples/hirshfeld_test.py -text
 cctbx/examples/list_non_principal_continuous_shifts.py -text
 cctbx/examples/maximum_subgroups.py -text
@@ -65,6 +66,7 @@ cctbx/examples/random_puckers.py svneol=native#text/x-python
 cctbx/examples/space_subgroups.py svneol=native#text/x-python
 cctbx/examples/sub_group_graph.py -text
 cctbx/examples/symops_530.py svneol=native#text/x-python
+cctbx/examples/sys_abs_equiv_space_groups.cpp svneol=native#text/plain
 cctbx/examples/trigonal_r_vs_tetragonal_i.py svneol=native#text/x-python
 cctbx/examples/tst_space_subgroups.py svneol=native#text/x-python
 cctbx/examples/unit_cell_minimizers.py svneol=native#text/x-python
@@ -118,6 +120,8 @@ cctbx/sgtbx/rational_matrices_point_groups.py -text
 cctbx/sgtbx/reticular_pg_tools.py -text
 cctbx/sgtbx/reticular_twin_laws.py -text
 cctbx/sgtbx/show_cosets.py -text
+cctbx/sgtbx/sys_abs_equiv.h svneol=native#text/plain
+cctbx/sgtbx/sys_abs_equiv.py svneol=native#text/x-python
 cctbx/source_generators/flex_fwd_h.py -text
 cctbx/translation_search/notes.tex -text
 cctbx/translation_search/timing.py -text

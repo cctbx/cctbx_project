@@ -9,6 +9,14 @@ from libtbx.utils import format_cpu_times
 import pickle
 import sys
 
+def exercise_sys_abs_equiv():
+  from cctbx.sgtbx import sys_abs_equiv
+  assert sys_abs_equiv.space_group_numbers[0] is None
+  assert sys_abs_equiv.space_group_numbers[1] == (2,)
+  assert sys_abs_equiv.space_group_numbers[2] == (1,)
+  assert sys_abs_equiv.space_group_numbers[75] == (81,83,89,99,111,115,123)
+  assert sys_abs_equiv.space_group_numbers[230] is None
+
 def exercise_space_group_info():
   i = sgtbx.space_group_info("P 1")
   assert i.type().number() == 1
@@ -469,6 +477,7 @@ def exercise_inversion_centring():
       assert str(icb) == "a,b,c"
 
 def run(args):
+  exercise_sys_abs_equiv()
   exercise_allowed_origin_shift()
   exercise_generator_set()
   exercise_space_group_info()
