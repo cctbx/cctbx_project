@@ -12,6 +12,7 @@ import libtbx.load_env
 from mmtbx import utils
 from iotbx.pdb import combine_unique_pdb_files
 import iotbx.pdb
+from libtbx import runtime_utils
 
 
 fo_minus_fo_master_params_str = """\
@@ -283,3 +284,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
   compute_fo_minus_fo_map(data_arrays = f_obss, xray_structure = xray_structure,
     log = log, silent = command_line.options.silent,
     output_file=params.output_file)
+
+class launcher (runtime_utils.simple_target) :
+  def __call__ (self) :
+    return run(args=list(self.args))
