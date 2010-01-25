@@ -20,6 +20,7 @@ import random
 from libtbx import easy_run
 from iotbx.pdb import combine_unique_pdb_files
 from mmtbx.command_line import lockit
+from libtbx import runtime_utils
 
 modify_params_str = """\
 selection = None
@@ -648,6 +649,10 @@ def run(args, command_name="phenix.pdbtools"):
   output_files.append(ofn)
   utils.print_header("Done", out = log)
   return output_files
+
+class launcher (runtime_utils.simple_target) :
+  def __call__ (self) :
+    return run(list(self.args))
 
 class interpreter:
   def __init__(self,
