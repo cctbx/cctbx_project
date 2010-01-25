@@ -983,7 +983,7 @@ class xtriage_summary (object) :
     self.suggested_space_group = getattr(twin_results, "suggested_space_group",
                                          None)
 
-class launcher (runtime_utils.simple_launcher) :
+class launcher (runtime_utils.simple_target) :
   def __call__ (self) :
     return run(args=list(self.args), return_result=True)
 
