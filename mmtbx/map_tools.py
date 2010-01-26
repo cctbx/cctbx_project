@@ -236,7 +236,8 @@ class electron_density_map(object):
       reverse_scale = reverse_scale)
     #del self.fmodel # XXX
 
-  def map_coefficients(self, map_type, alpha_fom_source = None):
+  def map_coefficients(self, map_type, alpha_fom_source = None,
+                       acentrics_scale = 2.0, centrics_pre_scale = 1.0):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
     if(map_name_manager.anomalous):
       if(self.anom_diff is not None):
@@ -245,24 +246,33 @@ class electron_density_map(object):
         return miller.array(miller_set = self.anom_diff,
                             data       = self.anom_diff.data()/(2j))
       else: return None
+    #
+    # R.Read, SIGMAA: 2mFo-DFc (acentrics) & mFo (centrics)
+    #
     centric_flags = self.fmodel.f_obs.centric_flags().data()
-    cf_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
-    acf_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
-    fo_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
+    if(map_name_manager.k != 0):
+      fo_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
+    else: fo_scale = flex.double(self.fmodel.f_obs.size(), 0.0)
+    if(map_name_manager.n != 0):
+      fc_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
+    else: fc_scale = flex.double(self.fmodel.f_obs.size(), 0.0)
     if(map_name_manager.k != abs(map_name_manager.n) and
        abs(map_name_manager.k*map_name_manager.n) > 1.e-6):
-      cf_scale = (~centric_flags).as_double()
       fo_scale.set_selected(~centric_flags, map_name_manager.k)
-      fo_scale.set_selected(centric_flags, max(map_name_manager.k-1.,0.))
+      fo_scale.set_selected(centric_flags, max(map_name_manager.k-centrics_pre_scale,0.))
+      fc_scale.set_selected(~centric_flags, map_name_manager.n)
+      fc_scale.set_selected(centric_flags, max(map_name_manager.n-centrics_pre_scale,0.))
     else:
-      acf_scale.set_selected(~centric_flags, 2.0)
-      fo_scale = fo_scale * map_name_manager.k
+      fo_scale.set_selected(~centric_flags, fo_scale*map_name_manager.k*acentrics_scale)
+      fo_scale.set_selected( centric_flags, fo_scale*map_name_manager.k)
+      fc_scale.set_selected(~centric_flags, fc_scale*map_name_manager.n*acentrics_scale)
+      fc_scale.set_selected( centric_flags, fc_scale*map_name_manager.n)
     if(not map_name_manager.ml_map):
        return self._map_coeff(
          f_obs         = self.map_helper_obj.f_obs_scaled,
          f_model       = self.map_helper_obj.f_model_scaled,
-         f_obs_scale   = fo_scale*acf_scale,
-         f_model_scale = map_name_manager.n*cf_scale*acf_scale)
+         f_obs_scale   = fo_scale,
+         f_model_scale = fc_scale)
     if(map_name_manager.ml_map):
       if(alpha_fom_source is not None):
         alpha = alpha_fom_source.alpha.data()
@@ -274,14 +284,14 @@ class electron_density_map(object):
         return self._map_coeff(
           f_obs         = self.map_helper_obj.f_obs_scaled,
           f_model       = self.map_helper_obj.f_model_scaled,
-          f_obs_scale   = fo_scale*fom*acf_scale,
-          f_model_scale = map_name_manager.n*alpha*cf_scale*acf_scale)
+          f_obs_scale   = fo_scale*fom,
+          f_model_scale = fc_scale*alpha)
       else:
         comb_p = self.fmodel.combine_phases()
         fo_all_scales = self.map_helper_obj.f_obs_scaled.data()*fo_scale*\
-          acf_scale*comb_p.f_obs_phase_and_fom_source()
+          comb_p.f_obs_phase_and_fom_source()
         fc_all_scales = self.map_helper_obj.f_model_scaled.data()*\
-          map_name_manager.n*alpha*cf_scale*acf_scale
+          fc_scale*alpha
         return miller.array(
           miller_set = self.fmodel.f_calc(),
           data       = fo_all_scales + fc_all_scales)

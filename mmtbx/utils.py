@@ -1576,9 +1576,8 @@ class process_command_line_args(object):
                if(cs[1] is not None):
                  print >> self.log, cs[0], cs[1].unit_cell(), cs[1].space_group_info()
              if(self.cmd_cs is None or self.cmd_cs.unit_cell() is None):
-               m1 = "Crystal symmetry mismatch between different files."
-               m2 = "Use --symmetry=SYMMETRY_SOURCE option to specify symmetry from the command line."
-               raise Sorry("%s\n%s"%(m1,m2))
+               msg = "Crystal symmetry mismatch between different files."
+               raise Sorry("%s\n"%(msg))
              else:
                cs0 = self.cmd_cs
                break

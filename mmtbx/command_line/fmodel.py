@@ -60,6 +60,15 @@ Usage examples:
      contain all or any subset of parameters listed below. Note, that each {
      must have a matching one }.
 
+  7) phenix.fmodel model.pdb reflection_data.mtz
+
+     will result in a file containing a set of Fmodel = Fcalc that will match
+     the set of Miller indices of the data in reflection_data.mtz file.
+
+  8) phenix.fmodel model.pdb reflection_data.mtz data_column_label="FOBS,SIGMA"
+
+     similar to "7)", where the specific data array is selected.
+
 See below for complete list of available parameters.
 """
 
@@ -119,6 +128,8 @@ scattering_table = wk1995  it1992  *n_gaussian  neutron
   .type = choice
   .help = Choices of scattering table for structure factors calculations
   .expert_level=1
+data_column_label = None
+  .type = str
 %s
 output
   .short_caption = Reflection output
@@ -141,7 +152,6 @@ output
     .short_caption = Output reflections file
     .style = bold noauto new_file
 }
-
 anomalous_scatterers
   .short_caption = Anomalous sites
   .style = menu_item scrolled parent_submenu:Atom_selections
@@ -207,7 +217,7 @@ def run(args, log = sys.stdout):
     if([cryst1.unit_cell(), cryst1.space_group_info()].count(None) != 0):
       raise Sorry("CRYST1 record in input PDB file is incomplete or missing.")
   xray_structure = pdb_inp.xray_structure_simple()
-  xray_structure.show_summary(f = log)
+  xray_structure.show_summary(f = log, prefix="  ")
   if(len(params.anomalous_scatterers.group) != 0):
     pdb_hierarchy = pdb_inp.construct_hierarchy()
     pdb_atoms = pdb_hierarchy.atoms()
@@ -216,6 +226,34 @@ def run(args, log = sys.stdout):
       pdb_hierarchy              = pdb_hierarchy,
       xray_structure             = xray_structure,
       anomalous_scatterer_groups = params.anomalous_scatterers.group)
+  #
+  miller_array = None
+  if(len(processed_args.reflection_files) > 1):
+    raise Sorry("Multiple reflection files found at input.")
+  if(len(processed_args.reflection_files) == 1):
+    print >> log, "-"*79
+    print >> log, "Input reflection data:", \
+      " ".join(processed_args.reflection_file_names)
+    if([params.high_resolution, params.low_resolution].count(None) != 2):
+      raise Sorry("high_resolution and low_resolution must be undefined "+
+                  "if reflection data file is given.")
+    miller_arrays = processed_args.reflection_files[0].as_miller_arrays()
+    data_sizes = flex.int([ma.data().size() for ma in miller_arrays])
+    if(data_sizes.all_eq(data_sizes[0])): ma = miller_arrays[0]
+    else:
+      all_labels = []
+      for ma in miller_arrays:
+        if(params.data_column_label is not None and
+           ma.info().label_string() == params.data_column_label):
+          miller_array = ma
+          break
+        all_labels.append(",".join(ma.info().labels))
+    if(miller_array is None):
+      raise Sorry("Multiple data available in input reflection file:\n%s\n%s"%(
+        "\n".join(all_labels),"Please select one using 'data_column_label=' keyword."))
+    else:
+      miller_array.show_comprehensive_summary(f = log, prefix="  ")
+  #
   print >> log, "-"*79
   print >> log, "Computing model structure factors, Fmodel:"
   if(params.output.format == "cns"): extension = ".hkl"
@@ -227,6 +265,7 @@ def run(args, log = sys.stdout):
     else: ofn = ofn + "_et_al" + extension
   mmtbx.utils.fmodel_from_xray_structure(
     xray_structure = xray_structure,
+    f_obs          = miller_array,
     add_sigmas     = params.add_sigmas,
     params         = params).write_to_file(file_name = ofn)
   print >> log, "Output file name:", ofn
