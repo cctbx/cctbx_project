@@ -27,8 +27,6 @@ timeout = 200
   .type = int
 buffer_stdout = False
   .type = bool
-use_multiprocessing = False
-  .type = bool
 """)
 
 class simple_target (object) :
@@ -140,7 +138,7 @@ class detached_process_server (detached_base) :
       traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
       self.callback_error(e, traceback_str)
     else :
-      time.sleep(1)
+      #time.sleep(1)
       self.callback_final(return_value)
     sys.stdout = old_stdout
 
@@ -160,16 +158,16 @@ class detached_process_server (detached_base) :
       raise Abort()
 
   def callback_error (self, error, traceback_info) :
-    easy_pickle.dump(self.error_file, (error, traceback_info))
     self.cleanup()
+    easy_pickle.dump(self.error_file, (error, traceback_info))
 
   def callback_abort (self) :
-    easy_pickle.dump(self.abort_file, True)
     self.cleanup()
+    easy_pickle.dump(self.abort_file, True)
 
   def callback_final (self, result) :
-    easy_pickle.dump(self.result_file, result)
     self.cleanup()
+    easy_pickle.dump(self.result_file, result)
 
   def callback_other (self, data) :
     if not data.cached :
@@ -187,24 +185,6 @@ class detached_process_server (detached_base) :
   def cleanup (self) :
     self._stdout.flush()
     self._stdout.close()
-
-# XXX: is there any reason to use this?
-class detached_process_server_mp (detached_process_server) :
-  def run (self) :
-    from libtbx import thread_utils
-    target = detached_process_driver_mp(self.params.output_dir, self.target)
-    self.libtbx_process = thread_utils.process_with_callbacks(
-      target=target,
-      callback_stdout=self.callback_stdout,
-      callback_final=self.callback_final,
-      callback_err=self.callback_error,
-      callback_abort=self.callback_abort,
-      callback_other=self.callback_other,
-      buffer_stdout=False) #self.params.buffer_stdout)
-    self.libtbx_process.start()
-
-  def isAlive (self) :
-    return self.libtbx_process.isAlive()
 
 class detached_process_client (detached_base) :
   def __init__ (self, *args, **kwds) :
@@ -337,10 +317,7 @@ def run (args) :
       else :
         user_phil.append(arg_phil)
   params = process_master_phil.fetch(sources=user_phil).extract()
-  if params.use_multiprocessing :
-    server = detached_process_server_mp(params)
-  else :
-    server = detached_process_server(params)
+  server = detached_process_server(params)
   server.run()
 
 ########################################################################
