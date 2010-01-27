@@ -262,11 +262,15 @@ class electron_density_map(object):
       fo_scale.set_selected(centric_flags, max(map_name_manager.k-centrics_pre_scale,0.))
       fc_scale.set_selected(~centric_flags, map_name_manager.n)
       fc_scale.set_selected(centric_flags, max(map_name_manager.n-centrics_pre_scale,0.))
-    else:
+    elif(map_name_manager.k == abs(map_name_manager.n) and
+       abs(map_name_manager.k*map_name_manager.n) > 1.e-6):
       fo_scale.set_selected(~centric_flags, fo_scale*map_name_manager.k*acentrics_scale)
       fo_scale.set_selected( centric_flags, fo_scale*map_name_manager.k)
       fc_scale.set_selected(~centric_flags, fc_scale*map_name_manager.n*acentrics_scale)
       fc_scale.set_selected( centric_flags, fc_scale*map_name_manager.n)
+    else:
+      fo_scale *= map_name_manager.k
+      fc_scale *= map_name_manager.n
     if(not map_name_manager.ml_map):
        return self._map_coeff(
          f_obs         = self.map_helper_obj.f_obs_scaled,

@@ -96,7 +96,7 @@ refinement.
 """
   print >> log, part1 + flags_parameter_scope+""".generate=True""" + part3
 
-data_and_flags = iotbx.phil.parse("""\
+data_and_flags_str = """\
   file_name = None
     .type=path
     .short_caption=Reflections file
@@ -198,7 +198,9 @@ data_and_flags = iotbx.phil.parse("""\
       .short_caption = Use lattice symmetry to generate test set
       .expert_level=0
   }
-""")
+"""
+
+data_and_flags = iotbx.phil.parse(data_and_flags_str)
 
 class determine_data_and_flags(object):
   def __init__(self, reflection_file_server,
