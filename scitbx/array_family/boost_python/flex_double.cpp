@@ -332,12 +332,14 @@ namespace boost_python {
       .def("__rmul__", mul_ar_sc)
       .def("__mul__", f_w::mul_a_s) // re-define so it is found first
       .def("__rmul__", f_w::mul_a_s) // re-define so it is found first
-      .def("add_selected",
-        (object(*)(
-          object const&,
-          const_ref<std::size_t> const&,
-          const_ref<double> const&)) add_selected_unsigned_a, (
-            arg("indices"), arg("values")))
+      .def("add_selected", add_selected_bool_a<double>, (
+        arg("flags"), arg("values")))
+      .def("add_selected", add_selected_bool_s<double>, (
+        arg("flags"), arg("value")))
+      .def("add_selected", add_selected_unsigned_a<double, std::size_t>, (
+        arg("indices"), arg("values")))
+      .def("add_selected", add_selected_unsigned_s<double, std::size_t>, (
+        arg("indices"), arg("value")))
       .def("all_approx_equal",
         all_approx_equal_a_a, (
           arg("other"),

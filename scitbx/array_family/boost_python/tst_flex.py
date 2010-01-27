@@ -594,9 +594,19 @@ def exercise_select():
   #
   a = flex.double([1,-2,3])
   i = flex.size_t([0,2])
+  f = flex.bool([False, True, True])
   v = flex.double([6,-4])
   assert a.add_selected(indices=i, values=v) is a
   assert approx_equal(a, [7,-2,-1])
+  assert a.add_selected(indices=i, value=3) is a
+  assert approx_equal(a, [10,-2,2])
+  assert a.add_selected(flags=f, values=v) is a
+  assert approx_equal(a, [10,4,-2])
+  v.append(3)
+  assert a.add_selected(flags=f, values=v) is a
+  assert approx_equal(a, [10,0,1])
+  assert a.add_selected(flags=f, value=-3) is a
+  assert approx_equal(a, [10,-3,-2])
   #
   a = flex.double((1,2,3,4,5))
   b = flex.size_t((3,1,0,4,2))
