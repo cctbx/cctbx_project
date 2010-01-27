@@ -226,10 +226,10 @@ def grow_density(f_obs,
     #
     if(params.mode == "build_and_refine"):
       map_type_obj = mmtbx.map_names(map_name_string = "2mFo-DFc")
-      map_params = maps.map_master_params().fetch(
+      map_params = maps.map_and_map_coeff_master_params().fetch(
         maps.cast_map_coeff_params(map_type_obj)).extract()
-      maps_obj = maps.compute_maps(fmodel = fmodel, params = map_params)
-      coeffs = maps_obj.coeffs
+      coeffs = maps.map_coefficients_from_fmodel(fmodel = fmodel,
+        params = map_params.map_coefficients[0])
       lbl_mgr = maps.map_coeffs_mtz_label_manager(map_params =
         map_params.map_coefficients[0])
       mtz_dataset = coeffs.as_mtz_dataset(

@@ -16,6 +16,9 @@ map_coeff_params_str = """\
     .short_caption = Map coefficients
     .style = auto_align
   {
+    map_type = None
+      .type = str
+      .style = bold renderer:draw_map_type_widget
     format = *mtz phs
       .type = choice(multi=True)
       .style = noauto
@@ -27,20 +30,23 @@ map_coeff_params_str = """\
       .type = str
       .short_caption = MTZ label for phases
       .style = bold
-    map_type = None
-      .type = str
-      .style = bold renderer:draw_map_type_widget
     kicked = False
       .type = bool
       .short_caption = Kicked map
     fill_missing_f_obs = False
       .type = bool
       .short_caption = Fill missing F(obs) with F(calc)
+    acentrics_scale = 2.0
+      .type = float
+      .help = Scale terms corresponding to acentric reflections (residual maps only: k==n)
+    centrics_pre_scale = 1.0
+      .type = float
+      .help = Centric reflections, k!=n and k*n != 0: \
+              max(k-centrics_pre_scale,0)*Fo-max(n-centrics_pre_scale,0)*Fc
   }
 """
 
 map_params_str ="""\
-%s
   map
     .short_caption = XPLOR map
     .multiple = True
@@ -76,12 +82,45 @@ map_params_str ="""\
     file_name = None
       .type = path
       .style = bold new_file
+    acentrics_scale = 2.0
+      .type = float
+      .help = Scale terms corresponding to acentric reflections (residual maps only: k==n)
+    centrics_pre_scale = 1.0
+      .type = float
+      .help = Centric reflections, k!=n and k*n != 0: \
+              max(k-centrics_pre_scale,0)*Fo-max(n-centrics_pre_scale,0)*Fc
   }
-"""%map_coeff_params_str
-master_params = iotbx.phil.parse(map_params_str, process_includes=False)
+"""
 
-def map_master_params():
-  return iotbx.phil.parse(map_params_str, process_includes=False)
+map_and_map_coeff_params_str = """\
+%s
+%s
+"""%(map_coeff_params_str, map_params_str)
+
+def map_and_map_coeff_master_params():
+  return iotbx.phil.parse(map_and_map_coeff_params_str, process_includes=False)
+
+maps_including_IO_params_str = """\
+maps {
+  input {
+    pdb_file_name = None
+      .type = str
+    reflection_data {
+      %s
+    }
+  }
+  output {
+    prefix = None
+      .type = str
+    fmodel_data_file_type = mtz cns
+  }
+  %s
+  %s
+}
+"""%(mmtbx.utils.data_and_flags_str, map_coeff_params_str, map_params_str)
+
+def maps_including_IO_master_params():
+  return iotbx.phil.parse(maps_including_IO_params_str, process_includes=False)
 
 def cast_map_coeff_params(map_type_obj):
   map_coeff_params_str = """\
@@ -98,14 +137,13 @@ def cast_map_coeff_params(map_type_obj):
      map_type_obj.kicked, map_type_obj.f_obs_filled)
   return iotbx.phil.parse(map_coeff_params_str, process_includes=False)
 
-
 class map_coeffs_mtz_label_manager:
 
   def __init__(self, map_params):
     self._amplitudes = map_params.mtz_label_amplitudes
     self._phases = map_params.mtz_label_phases
-    if (self._amplitudes is None or self._phases is None):
-      raise Sorry("MTZ labels for map type %s undefined." % map_type)
+    if(self._amplitudes is None): self._amplitudes = str(map_params.map_type)
+    if(self._phases is None): self._phases = "PH"+str(map_params.map_type)
 
   def amplitudes(self):
     return self._amplitudes
@@ -116,7 +154,8 @@ class map_coeffs_mtz_label_manager:
 
 class write_xplor_map_file(object):
 
-  def __init__(self, params, coeffs, all_chain_proxies, xray_structure):
+  def __init__(self, params, coeffs, atom_selection_manager=None,
+               xray_structure=None):
     adopt_init_args(self, locals())
     fft_map = coeffs.fft_map(resolution_factor =
       self.params.grid_resolution_factor)
@@ -129,7 +168,8 @@ class write_xplor_map_file(object):
       show_string(os.path.dirname(self.params.file_name)))
     title_lines.append("REMARK %s" % date_and_time())
     assert self.params.region in ["selection", "cell"]
-    if(self.params.region == "selection"):
+    if(self.params.region == "selection" and
+       [atom_selection_manager, xray_structure].count(None)==0):
       map_iselection = self.atom_iselection()
       frac_min, frac_max = self.box_around_selection(
         iselection = map_iselection,
@@ -168,7 +208,7 @@ class write_xplor_map_file(object):
     if(self.params.region != "selection" or self.params.atom_selection is None):
       return None
     try:
-      result = self.all_chain_proxies.selection(string =
+      result = self.atom_selection_manager.selection(string =
         self.params.atom_selection).iselection()
     except KeyboardInterrupt: raise
     except Exception:
@@ -177,62 +217,70 @@ class write_xplor_map_file(object):
       raise Sorry('Empty atom selection: %s' % self.params.atom_selection)
     return result
 
-class compute_maps(object):
+def map_coefficients_from_fmodel(fmodel, params):
+  e_map_obj = fmodel.electron_density_map(
+    fill_missing_f_obs = params.fill_missing_f_obs,
+    fill_mode          = "dfmodel")
+  if(not params.kicked):
+    coeffs = e_map_obj.map_coefficients(
+      map_type           = params.map_type,
+      acentrics_scale    = params.acentrics_scale,
+      centrics_pre_scale = params.centrics_pre_scale)
+  else:
+    coeffs = map_tools.kick_map(
+      fmodel            = e_map_obj.fmodel,
+      map_type          = params.map_type,
+      real_map          = True,
+      real_map_unpadded = False,
+      symmetry_flags    = maptbx.use_space_group_symmetry,
+      average_maps      = False).map_coeffs
+  if(coeffs is not None and coeffs.anomalous_flag() and not
+     mmtbx.map_names(params.map_type).anomalous):
+    coeffs = coeffs.average_bijvoet_mates()
+  return coeffs
+
+def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
+                       file_name_prefix=None, file_name_base=None):
+  for mp in params:
+    if(mp.map_type is not None):
+      coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mp)
+      if(mp.file_name is None):
+        output_file_name = ""
+        if(file_name_prefix is not None): output_file_name = file_name_prefix
+        if(file_name_base is not None):
+          if(len(output_file_name)>0):
+            output_file_name = output_file_name + "_"+file_name_base
+          else: output_file_name = output_file_name + file_name_base
+        output_file_name = output_file_name + "_" + mp.map_type + "_map.xplor"
+        mp.file_name = output_file_name
+      write_xplor_map_file(params = mp, coeffs = coeffs,
+        atom_selection_manager = atom_selection_manager,
+        xray_structure = fmodel.xray_structure)
+
+class compute_map_coefficients(object):
 
   def __init__(self,
                fmodel,
                params,
-               mtz_dataset = None,
-               all_chain_proxies = None):
-    adopt_init_args(self, locals())
-    # map coefficients
-    self.coeffs = None
-    self.all_coeffs = []
-    for mcp in params.map_coefficients:
+               mtz_dataset = None):
+    self.mtz_dataset = mtz_dataset
+    coeffs = None
+    for mcp in params:
       if(mcp.map_type is not None):
-        self.coeffs = self.compute_map_coefficients(map_params = mcp)
-        self.all_coeffs.append(self.coeffs)
-        if("mtz" in mcp.format and self.coeffs is not None):
+        coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mcp)
+        if("mtz" in mcp.format and coeffs is not None):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):
-            self.mtz_dataset = self.coeffs.as_mtz_dataset(
+            self.mtz_dataset = coeffs.as_mtz_dataset(
               column_root_label = lbl_mgr.amplitudes(),
               label_decorator   = lbl_mgr)
           else:
             self.mtz_dataset.add_miller_array(
-              miller_array      = self.coeffs,
+              miller_array      = coeffs,
               column_root_label = lbl_mgr.amplitudes(),
               label_decorator   = lbl_mgr)
         if("phs" in mcp.format):
           raise RuntimeError("Not implemented") # XXX add later
-    # xplor maps
-    for mp in params.map:
-      if(mp.map_type is not None):
-        print "generating %s map" % mp.map_type
-        assert all_chain_proxies is not None
-        self.coeffs = self.compute_map_coefficients(map_params = mp)
-        write_xplor_map_file(params = mp, coeffs = self.coeffs,
-          all_chain_proxies = self.all_chain_proxies,
-          xray_structure = fmodel.xray_structure)
-
-  def compute_map_coefficients(self, map_params):
-    e_map_obj = self.fmodel.electron_density_map(
-      fill_missing_f_obs = map_params.fill_missing_f_obs,
-      fill_mode          = "dfmodel")
-    if(not map_params.kicked):
-      coeffs = e_map_obj.map_coefficients(map_type = map_params.map_type)
-    else:
-      coeffs = map_tools.kick_map(
-        fmodel            = e_map_obj.fmodel,
-        map_type          = map_params.map_type,
-        real_map          = True,
-        real_map_unpadded = False,
-        symmetry_flags    = maptbx.use_space_group_symmetry,
-        average_maps      = False).map_coeffs
-    if(coeffs is not None and coeffs.anomalous_flag() and not
-       mmtbx.map_names(map_params.map_type).anomalous):
-      coeffs = coeffs.average_bijvoet_mates()
-    return coeffs
 
   def write_mtz_file(self, file_name, mtz_history_buffer = None):
     if(self.mtz_dataset is not None):
@@ -243,22 +291,3 @@ class compute_maps(object):
       mtz_object = self.mtz_dataset.mtz_object()
       mtz_object.add_history(mtz_history_buffer)
       mtz_object.write(file_name = file_name)
-
-  def save_map_coeffs_as_xplor_maps (self, file_base) :
-    map_files = []
-    for mcp, coeffs in zip(self.params.map_coefficients, self.all_coeffs) :
-      file_name = "%s_%s.map" % (file_base, mcp.map_type)
-      map_phil = iotbx.phil.parse("""
-map {
-  file_name = "%s"
-  region = *selection cell
-  atom_selection = None
-  scale = *sigma volume
-}""" % file_name)
-      params = master_params.fetch(source=map_phil).extract()
-      write_xplor_map_file(params=params.map[0],
-                           coeffs=coeffs,
-                           all_chain_proxies=self.all_chain_proxies,
-                           xray_structure=self.fmodel.xray_structure)
-      map_files.append(file_name)
-    return map_files

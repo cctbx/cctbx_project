@@ -644,9 +644,10 @@ def run(args,
     mvd_obj.pdb_file = processed_pdb_file
     mvd_obj.fmodel = fmodel
   if(map_type_obj is not None):
-    map_params = maps.map_master_params().fetch(
+    map_params = maps.map_and_map_coeff_master_params().fetch(
       maps.cast_map_coeff_params(map_type_obj)).extract()
-    maps_obj = maps.compute_maps(fmodel = fmodel_cut, params = map_params)
+    maps_obj = maps.compute_map_coefficients(fmodel = fmodel_cut, params =
+      map_params.map_coefficients)
     fn = os.path.basename(processed_args.reflection_file_names[0])
     if(fn.count(".")):
       prefix = fn[:fn.index(".")]
