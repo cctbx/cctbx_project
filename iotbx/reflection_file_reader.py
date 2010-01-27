@@ -78,7 +78,7 @@ def try_all_readers(file_name):
 
 class any_reflection_file(object):
 
-  def __init__(self, file_name, ensure_read_access=True):
+  def __init__(self, file_name, ensure_read_access=True, strict=True):
     if (   file_name.startswith("amplitudes=")
         or file_name.startswith("hklf3=")
         or file_name.startswith("intensities=")
@@ -108,7 +108,8 @@ class any_reflection_file(object):
       return
     if (self._observation_type is not None):
       try: self._file_content = shelx_hklf.reader(
-        smart_open.for_reading(file_name))
+        smart_open.for_reading(file_name),
+        strict=strict)
       except KeyboardInterrupt: raise
       except:
         raise Sorry("Not a SHELX reflection file: %s\n"
