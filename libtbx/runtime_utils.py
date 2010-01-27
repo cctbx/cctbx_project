@@ -21,6 +21,8 @@ prefix = None
   .type = str
 output_dir = None
   .type = path
+tmp_dir = None
+  .type = path
 debug = False
   .type = bool
 timeout = 200
@@ -39,17 +41,15 @@ class simple_target (object) :
     return True
 
 class detached_process_driver (object) :
-  def __init__ (self, output_dir, target) :
+  def __init__ (self, target) :
     adopt_init_args(self, locals())
 
   def __call__ (self) :
-    os.chdir(self.output_dir)
     result = self.target()
     return result
 
 class detached_process_driver_mp (detached_process_driver) :
   def __call__ (self, args, kwds, child_conn) :
-    os.chdir(self.output_dir)
     result = self.target()
     return result
 
@@ -59,7 +59,9 @@ class detached_base (object) :
     self._accumulated_callbacks = []
     if params.prefix is None :
       params.prefix = ""
-    if params.output_dir is not None :
+    if params.tmp_dir is not None :
+      self.set_file_names(params.tmp_dir)
+    elif params.output_dir is not None :
       self.set_file_names(params.output_dir)
 
   def set_file_names (self, tmp_dir) :
@@ -113,12 +115,8 @@ class Abort (Exception) :
 class detached_process_server (detached_base) :
   def __init__ (self, *args, **kwds) :
     detached_base.__init__(self, *args, **kwds)
-    target = easy_pickle.load(self.params.run_file)
-    assert hasattr(target, "__call__")
-    assert hasattr(target, "output_dir")
-    self.params.output_dir = target.output_dir
-    self.set_file_names(self.params.output_dir)
-    self.target = target
+    self.target = easy_pickle.load(self.params.run_file)
+    assert hasattr(self.target, "__call__")
     f = open(self.start_file, "w", 0)
     f.write("1")
     f.close()
@@ -190,8 +188,8 @@ class detached_process_client (detached_base) :
   def __init__ (self, *args, **kwds) :
     detached_base.__init__(self, *args, **kwds)
     self._logfile = None
-    self._info_mtime = time.time()
-    self._state_mtime = time.time()
+    self._info_mtime = 0.0 # time.time()
+    self._state_mtime = 0.0 # time.time()
     self.running = False
     self.finished = False
     self.update_progress = True
@@ -231,6 +229,7 @@ class detached_process_client (detached_base) :
       try :
         result = easy_pickle.load(self.result_file)
       except EOFError :
+        print "nooooo"
         pass
       else :
         time.sleep(1)
@@ -298,6 +297,12 @@ class detached_process_client (detached_base) :
 def touch_file (file_name) :
   f = open(file_name, "w").close()
 
+def write_params (params, file_name) :
+  param_phil = process_master_phil.format(python_object=params)
+  f = open(file_name, "w")
+  param_phil.show(out=f)
+  f.close()
+
 # XXX command-line launcher
 def run (args) :
   user_phil = []
@@ -305,9 +310,7 @@ def run (args) :
     if os.path.isfile(arg) :
       file_name = os.path.abspath(arg)
       base, ext = os.path.splitext(file_name)
-      if ext in [".pkl", ".pickle"] :
-        user_phil.append(libtbx.phil.parse("run_file = \"%s\"" % file_name))
-      elif ext in [".params", ".eff", ".def", ".phil"] :
+      if ext in [".params", ".eff", ".def", ".phil"] :
         user_phil.append(libtbx.phil.parse(file_name=file_name))
     else :
       try :
@@ -317,6 +320,8 @@ def run (args) :
       else :
         user_phil.append(arg_phil)
   params = process_master_phil.fetch(sources=user_phil).extract()
+  if params.run_file is None :
+    raise Sorry("Pickled target function run_file not defined.")
   server = detached_process_server(params)
   server.run()
 
