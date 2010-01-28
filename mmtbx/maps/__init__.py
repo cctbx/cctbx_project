@@ -43,6 +43,9 @@ map_coeff_params_str = """\
       .type = float
       .help = Centric reflections, k!=n and k*n != 0: \
               max(k-centrics_pre_scale,0)*Fo-max(n-centrics_pre_scale,0)*Fc
+    reverse_scale = True
+      .type = bool
+      .help = Apply scales to Fobs and remove them from Fmodel.
   }
 """
 
@@ -89,6 +92,9 @@ map_params_str ="""\
       .type = float
       .help = Centric reflections, k!=n and k*n != 0: \
               max(k-centrics_pre_scale,0)*Fo-max(n-centrics_pre_scale,0)*Fc
+    reverse_scale = True
+      .type = bool
+      .help = Apply scales to Fobs and remove them from Fmodel.
   }
 """
 
@@ -112,7 +118,10 @@ maps {
   output {
     prefix = None
       .type = str
-    fmodel_data_file_type = mtz cns
+    fmodel_data_file_format = mtz cns
+      .optional=True
+      .type=choice
+      .help=Write Fobs, Fmodel, various scales and more to MTZ or CNS file
   }
   %s
   %s
@@ -220,7 +229,8 @@ class write_xplor_map_file(object):
 def map_coefficients_from_fmodel(fmodel, params):
   e_map_obj = fmodel.electron_density_map(
     fill_missing_f_obs = params.fill_missing_f_obs,
-    fill_mode          = "dfmodel")
+    fill_mode          = "dfmodel",
+    reverse_scale      = params.reverse_scale)
   if(not params.kicked):
     coeffs = e_map_obj.map_coefficients(
       map_type           = params.map_type,

@@ -50,6 +50,9 @@ Remarks:
     Adams et al. (2010). Acta Cryst. D66, 213-221.
 
   - Twinning (if detected) will be accounted for automatically.
+
+  - All arrays used in map calculation, for example: Fobs, Fmodel, Fcalc, Fmask,
+    m, D, etc., can be output into a CNS or MTZ formatted reflection file.
 """
 
 def get_atom_selection_manager(pdb_inp):
@@ -156,6 +159,15 @@ def run(args, log = sys.stdout):
   if(params.maps.output.prefix is not None and len(params.maps.output.prefix)>0):
     map_coeff_file_name = params.maps.output.prefix + "_" + map_coeff_file_name
   cmo.write_mtz_file(file_name = map_coeff_file_name)
+  if(params.maps.output.fmodel_data_file_format is not None):
+    fmodel_file_name = file_name_base + "_fmodel." + \
+      params.maps.output.fmodel_data_file_format
+    print >> log, "Writing fmodel arrays (Fobs, Fcalc, m, ...) to %s file."%\
+      fmodel_file_name
+    fmodel_file_object = open(fmodel_file_name,"w")
+    fmodel.export(out = fmodel_file_object, format =
+      params.maps.output.fmodel_data_file_format)
+    fmodel_file_object.close()
   print >> log, "All done."
   print >> log, "-"*79
 
