@@ -38,5 +38,5 @@ class piped_callback (object) :
                  cached=cached))
 
 import libtbx
-if not hasattr(libtbx, "callback") :
+if not hasattr(libtbx, "call_back") :
   libtbx.call_back = manager()

@@ -7,7 +7,7 @@
 #   easy_run.call("libtbx.start_process run.pkl &")
 
 import libtbx.phil
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, multi_out
 from libtbx import easy_pickle
 from libtbx import adopt_init_args, group_args
 import traceback
@@ -22,6 +22,8 @@ prefix = None
 output_dir = None
   .type = path
 tmp_dir = None
+  .type = path
+log_file = None
   .type = path
 debug = False
   .type = bool
@@ -120,7 +122,12 @@ class detached_process_server (detached_base) :
     f = open(self.start_file, "w", 0)
     f.write("1")
     f.close()
-    self._stdout = open(self.stdout_file, "w")
+    self._stdout = multi_out()
+    if self.params.log_file is not None :
+      log = open(self.params.log_file, "w")
+      self._stdout.register("Saved log", log)
+    self._tmp_stdout = open(self.stdout_file, "w")
+    self._stdout.register("Communication log", self._tmp_stdout)
 
   def run (self) :
     old_stdout = sys.stdout
@@ -151,7 +158,7 @@ class detached_process_server (detached_base) :
   def callback_stdout (self, data) :
     self._stdout.write(data)
     self._stdout.flush()
-    os.fsync(self._stdout.fileno())
+    os.fsync(self._tmp_stdout.fileno())
     if os.path.isfile(self.stop_file) :
       raise Abort()
 
