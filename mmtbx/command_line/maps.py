@@ -4,6 +4,7 @@ import mmtbx.maps
 import os, sys
 import iotbx.pdb
 from libtbx.utils import Sorry
+from libtbx import runtime_utils
 import mmtbx.utils
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
@@ -146,7 +147,7 @@ def run(args, log = sys.stdout):
   file_name_base = params.maps.input.pdb_file_name
   if(file_name_base.count(".")>0):
     file_name_base = file_name_base[:file_name_base.index(".")]
-  mmtbx.maps.compute_xplor_maps(
+  xplor_maps = mmtbx.maps.compute_xplor_maps(
     fmodel                 = fmodel,
     params                 = params.maps.map,
     atom_selection_manager = atom_selection_manager,
@@ -170,6 +171,12 @@ def run(args, log = sys.stdout):
     fmodel_file_object.close()
   print >> log, "All done."
   print >> log, "-"*79
+  return (map_coeff_file_name, xplor_maps)
+
+class launcher (runtime_utils.simple_target) :
+  def __call__ (self) :
+    os.chdir(self.output_dir)
+    return run(args=list(self.args))
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

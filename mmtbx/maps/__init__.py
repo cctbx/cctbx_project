@@ -111,11 +111,17 @@ maps {
   input {
     pdb_file_name = None
       .type = str
+      .optional = False
     reflection_data {
       %s
     }
   }
   output {
+    directory = None
+      .type = path
+      .short_caption = Output directory
+      .help = For GUI only.
+      .style = bold directory
     prefix = None
       .type = str
     fmodel_data_file_format = mtz cns
@@ -251,6 +257,7 @@ def map_coefficients_from_fmodel(fmodel, params):
 
 def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
                        file_name_prefix=None, file_name_base=None):
+  output_files = []
   for mp in params:
     if(mp.map_type is not None):
       coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mp)
@@ -266,6 +273,8 @@ def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
       write_xplor_map_file(params = mp, coeffs = coeffs,
         atom_selection_manager = atom_selection_manager,
         xray_structure = fmodel.xray_structure)
+      output_files.append(mp.file_name)
+  return output_files
 
 class compute_map_coefficients(object):
 
@@ -275,6 +284,7 @@ class compute_map_coefficients(object):
                mtz_dataset = None):
     self.mtz_dataset = mtz_dataset
     coeffs = None
+    self.map_coeffs = []
     for mcp in params:
       if(mcp.map_type is not None):
         coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mcp)
@@ -289,6 +299,7 @@ class compute_map_coefficients(object):
               miller_array      = coeffs,
               column_root_label = lbl_mgr.amplitudes(),
               label_decorator   = lbl_mgr)
+          self.map_coeffs.append(coeffs)
         if("phs" in mcp.format):
           raise RuntimeError("Not implemented") # XXX add later
 
