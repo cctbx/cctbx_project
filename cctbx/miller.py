@@ -2721,8 +2721,16 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
   def normalised_amplitudes(self,
                             asu_contents,
                             wilson_plot=None):
-    assert self.is_xray_intensity_array()
-    return normalised_amplitudes(self, asu_contents, wilson_plot)
+    assert self.is_xray_amplitude_array()
+    return amplitude_rescaling(
+      self, asu_contents, amplitude_rescaling_kind.normalised, wilson_plot)
+
+  def denormalised_amplitudes(self,
+                              asu_contents,
+                              wilson_plot=None):
+    assert self.is_xray_amplitude_array()
+    return amplitude_rescaling(
+      self, asu_contents, amplitude_rescaling_kind.denormalised, wilson_plot)
 
   def quick_scale_factor_approximation(self, f_calc, cutoff_factor=0.99):
     """
@@ -2800,12 +2808,15 @@ class crystal_symmetry_is_compatible_with_symmetry_from_file:
         + " from reflection file:"] + msg)
     return None
 
-class normalised_amplitudes(object):
+class amplitude_rescaling(object):
   def __init__(self,
                miller_array,
                asu_contents,
+               rescaling_kind=amplitude_rescaling_kind.normalised,
                wilson_plot=None):
-    assert miller_array.is_xray_intensity_array()
+    assert miller_array.is_xray_amplitude_array()
+    assert rescaling_kind in (
+      amplitude_rescaling_kind.normalised, amplitude_rescaling_kind.denormalised)
 
     import eltbx
     if not wilson_plot:
@@ -2823,7 +2834,8 @@ class normalised_amplitudes(object):
         chemical_type).fetch())
       multiplicities.append(multiplicy)
 
-    normalised = normalised_array(
+    result = ext.amplitude_rescaling(
+      rescaling_kind,
       form_factors=gaussians,
       multiplicities=multiplicities,
       wilson_intensity_scale_factor=wilson_plot.wilson_intensity_scale_factor,
@@ -2838,9 +2850,9 @@ class normalised_amplitudes(object):
       miller_set=set(
         crystal_symmetry=miller_array.crystal_symmetry(),
         indices=miller_array.indices()).auto_anomalous(),
-      data=normalised.data()).set_observation_type_xray_amplitude()
-    self._sum_e_sq_minus_1 = normalised.sum_e_sq_minus_1()
-    self._n_e_greater_than_2 = normalised.n_e_greater_than_2()
+      data=result.data()).set_observation_type_xray_amplitude()
+    self._sum_e_sq_minus_1 = result.sum_e_sq_minus_1()
+    self._n_e_greater_than_2 = result.n_e_greater_than_2()
 
   def array(self):
     return self._array
