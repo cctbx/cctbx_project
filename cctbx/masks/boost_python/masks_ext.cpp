@@ -7,6 +7,7 @@
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/def.hpp>
 #include <cctbx/masks/around_atoms.h>
+#include <cctbx/masks/flood_fill.h>
 
 namespace cctbx { namespace masks {
 namespace {
@@ -58,7 +59,11 @@ namespace {
 
   void init_module()
   {
+    using namespace boost::python;
+
     around_atoms_wrappers<int, double>::wrap();
+    def("flood_fill", (void(*) (
+      af::ref<int, af::c_grid<3> > const &)) flood_fill, (arg("data")));
   }
 
 } // namespace <anonymous>
