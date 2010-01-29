@@ -35,7 +35,7 @@ def as_normalised_array(miller_array,
   tau = space_group.n_ltr()
   for i in xrange(0,miller_array.size()):
     s_sq = stol_sq.data()[i]
-    f_sq = miller_array.data()[i]
+    f_sq = math.pow(miller_array.data()[i], 2)
     epsilon = epsilons.data()[i]
 
     sum_fj_sq = 0
@@ -71,12 +71,11 @@ def exercise_normalised_amplitudes():
   b = 5.672
   u = uctbx.unit_cell((3,4,5,90,81,90))
   sgi = sgtbx.space_group_info("P 21")
-  #i = flex.miller_index(((1,2,3), (1,2,3), (3,0,3), (3,0,3), (3,0,3), (1,1,2)))
-  #d = flex.double((1,2,3,4,5,6))
-  #s = flex.double((2,3,4,5,6,7))
-  i = flex.miller_index(((1,-2,3), (-3,5,0)))
-  d = flex.double((1,2))
-  s = flex.double((2,3))
+  i = flex.miller_index(((1,-2,3), (-3,5,0), (1,0,0)))
+  d = flex.double((1,2,0.1))
+  s = flex.double((2,3,1.1))
+  expected = flex.double(
+    (0.2440551673339596, 10.919433420688351, 0.0052403529424040899))
 
   ma = miller.array(
     miller_set=miller.set(
@@ -86,8 +85,12 @@ def exercise_normalised_amplitudes():
       indices=i),
     data=d,
     sigmas=s)
-  ma.set_observation_type_xray_intensity()
+  ma.set_observation_type_xray_amplitude()
   normalised = ma.normalised_amplitudes(
+    asu_contents=f,
+    wilson_plot=group_args(wilson_intensity_scale_factor=k, wilson_b=b))
+
+  denormalised = normalised.array().denormalised_amplitudes(
     asu_contents=f,
     wilson_plot=group_args(wilson_intensity_scale_factor=k, wilson_b=b))
 
@@ -97,8 +100,9 @@ def exercise_normalised_amplitudes():
     wilson_plot=group_args(wilson_intensity_scale_factor=k, wilson_b=b))
 
   assert normalised._array.size() == ma.size()
-  assert normalised._array.data().all_approx_equal(python_normalised.array.data())
-  assert approx_equal(normalised._array.data(),[0.244055167,7.721205418])
+  assert approx_equal(normalised._array.data(), python_normalised.array.data())
+  assert approx_equal(denormalised.array().data(), d)
+  assert approx_equal(normalised._array.data(), expected)
 
 def run():
   exercise_normalised_amplitudes()
