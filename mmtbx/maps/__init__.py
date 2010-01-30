@@ -110,8 +110,10 @@ maps_including_IO_params_str = """\
 maps {
   input {
     pdb_file_name = None
-      .type = str
+      .type = path
       .optional = False
+      .short_caption = PDB file
+      .style = bold file_type:pdb
     reflection_data {
       %s
     }
