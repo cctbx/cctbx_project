@@ -100,7 +100,6 @@ data_and_flags_str = """\
   file_name = None
     .type=path
     .short_caption=Reflections file
-    .input_size=300
     .style = bold file_type:hkl noauto OnUpdate:update_reflection_data
   labels = None
     .type=strings

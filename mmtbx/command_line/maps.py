@@ -144,7 +144,11 @@ def run(args, log = sys.stdout):
   print >> log, "-"*79
   print >> log, "Compute maps."
   atom_selection_manager = get_atom_selection_manager(pdb_inp = pdb_inp)
-  file_name_base = params.maps.input.pdb_file_name
+  if params.maps.output.prefix is not None :
+    file_name_base = os.path.join(os.getcwd(),
+      os.path.basename(params.maps.output.prefix))
+  else :
+    file_name_base = params.maps.input.pdb_file_name
   if(file_name_base.count(".")>0):
     file_name_base = file_name_base[:file_name_base.index(".")]
   xplor_maps = mmtbx.maps.compute_xplor_maps(
@@ -176,7 +180,7 @@ def run(args, log = sys.stdout):
 class launcher (runtime_utils.simple_target) :
   def __call__ (self) :
     os.chdir(self.output_dir)
-    return run(args=list(self.args))
+    return run(args=list(self.args), log=sys.stdout)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
