@@ -7,7 +7,7 @@ def exercise_flood_fill():
     unit_cell=uc,
     pre_determined_n_real=(5,5,5))
   corner_cube = (0,4,20,24,100,104,120,124) # cube across all 8 corners
-  channel = (14,37,38,39,42,43,62,63,67,68,87,112)
+  channel = (12,37,38,39,42,43,62,63,67,68,87,112)
   data = flex.int(flex.grid(gridding.n_real()))
   for i in (corner_cube + channel): data[i] = 1
   masks.flood_fill(data)
