@@ -97,6 +97,7 @@ def run():
    "$D/regression/tst_amplitude_rescaling.py",
    "$D/regression/tst_statistics_graphs.py",
    "$D/sgtbx/direct_space_asu/proto/tst_asu.py"
+   "$D/masks/tests/tst_flood_fill.py"
   )
 
   build_dir = libtbx.env.under_build("cctbx")
