@@ -4,31 +4,55 @@ from iotbx import reflection_file_utils, reflection_file_reader
 from iotbx import shelx
 from smtbx import masks
 from libtbx.test_utils import approx_equal
+from libtbx.utils import time_log
+from iotbx.option_parser import option_parser
 
 from cStringIO import StringIO
 
 def exercise_masks(xs, fo_sq,
-                   solvent_radius=1.3,
-                   shrink_truncation_radius=1.3,
-                   debug=False):
+                   solvent_radius,
+                   shrink_truncation_radius,
+                   resolution_factor,
+                   debug=False,
+                   timing=False):
+  time_total = time_log("masks total").start()
   fo_sq_merged = fo_sq.merge_equivalents().array()
   mask = masks.mask(xs, fo_sq_merged)
-  print "solvent_radius: %f" %solvent_radius
-  print "shrink_truncation_radius: %f" %shrink_truncation_radius
+  time_compute_mask = time_log("compute mask").start()
   mask.compute(solvent_radius=solvent_radius,
                shrink_truncation_radius=shrink_truncation_radius,
-               resolution_factor=1./4)
+               resolution_factor=1./4,
+               atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52})
+  time_compute_mask.stop()
+  import cctbx.masks
+  time_flood_fill = time_log("flood fill").start()
+  cctbx.masks.flood_fill(mask.mask.data)
+  time_flood_fill.stop()
+  n_voids = flex.max(mask.mask.data) - 1
+  for i in range(2, n_voids + 2):
+    void_vol = (fo_sq.unit_cell().volume() * mask.mask.data.count(i)) \
+             / mask.crystal_gridding.n_grid_points()
+    print "void %i: %.1f" %(i-1, void_vol)
+  time_structure_factors = time_log("structure factors").start()
   f_mask = mask.structure_factors(max_cycles=10)
+  time_structure_factors.stop()
   f_model = mask.f_model()
   # write modified structure factors as shelxl hkl
   out = StringIO()
-  f_mask
   modified_fo_sq = mask.modified_structure_factors()
   modified_fo_sq.export_as_shelx_hklf(out)
   out_file = open('modified.hkl', 'w')
   out_file.write(out.getvalue())
   out_file.close()
-  #
+
+  if timing:
+    print
+    print time_log.legend
+    print time_compute_mask.report()
+    print time_flood_fill.report()
+    print time_structure_factors.report()
+    print time_total.log()
+
   if debug:
     f_obs = fo_sq_merged.as_amplitude_array()
     sf = xray.structure_factors.from_scatterers(
@@ -85,25 +109,52 @@ def exercise_masks(xs, fo_sq,
       unit_cell=f_obs.unit_cell())
   return
 
-def run(ins_name, hkl_name,
-        solvent_radius=1.3,
-        shrink_truncation_radius=1.3,
-        debug=False):
-  xs = xray.structure.from_shelx(filename=ins_name)
+def run(args):
+  command_line = (option_parser().enable_symmetry_comprehensive()
+                  .option(None, "--structure",
+                          action="store")
+                  .option(None, "--solvent_radius",
+                          action="store",
+                          type="float",
+                          default=1.3)
+                  .option(None, "--shrink_truncation_radius",
+                          action="store",
+                          type="float",
+                          default=1.3)
+                  .option(None, "--debug",
+                          action="store_true")
+                  .option(None, "--timing",
+                          action="store_true")
+                  .option(None, "--resolution_factor",
+                          action="store",
+                          type="float",
+                          default=1./4)).process(args=args)
+  xs = xray.structure.from_shelx(filename=command_line.options.structure)
   reflections_server = reflection_file_utils.reflection_file_server(
     crystal_symmetry = xs.crystal_symmetry(),
     reflection_files = [
-      reflection_file_reader.any_reflection_file('hklf4=%s' %hkl_name)
+      reflection_file_reader.any_reflection_file(command_line.args[0])
     ]
   )
   fo_sq = reflections_server.get_miller_arrays(None)[0]
+
+  print "solvent_radius: %.2f" %command_line.options.solvent_radius
+  print "shrink_truncation_radius: %.2f" %command_line.options.shrink_truncation_radius
+  print "resolution_factor: %.2f" %command_line.options.resolution_factor
+  print "structure file: %s" %command_line.options.structure
+  print "reflection file: %s" %command_line.args[0]
+  if command_line.options.debug:
+    print "debug: %s" %command_line.options.debug
+  print
+
   exercise_masks(xs, fo_sq,
-                 solvent_radius=float(solvent_radius),
-                 shrink_truncation_radius=float(shrink_truncation_radius),
-                 debug=debug)
+                 solvent_radius=command_line.options.solvent_radius,
+                 shrink_truncation_radius=command_line.options.shrink_truncation_radius,
+                 resolution_factor=command_line.options.resolution_factor,
+                 debug=command_line.options.debug,
+                 timing=command_line.options.timing)
   print "OK"
 
 if __name__ == '__main__':
   import sys
-  args = sys.argv[1:]
-  run(*args)
+  run(sys.argv[1:])

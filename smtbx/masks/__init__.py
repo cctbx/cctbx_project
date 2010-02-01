@@ -22,7 +22,7 @@ class mask(object):
               ignore_hydrogen_atoms=False,
               crystal_gridding=None,
               resolution_factor=1./4,
-              atom_radii=None):
+              atom_radii_table=None):
     xs = self.xray_structure
     if crystal_gridding is None:
       self.crystal_gridding = maptbx.crystal_gridding(
@@ -33,8 +33,8 @@ class mask(object):
         symmetry_flags=maptbx.use_space_group_symmetry)
     else:
       self.crystal_gridding = crystal_gridding
-    if atom_radii is None:
-      atom_radii = cctbx.masks.vdw_radii_from_xray_structure(xs)
+    atom_radii = cctbx.masks.vdw_radii_from_xray_structure(
+      xs, table=atom_radii_table)
     xs_p1 = self.xray_structure.expand_to_p1()
     self.mask = cctbx.masks.around_atoms(
       unit_cell=xs_p1.unit_cell(),
@@ -44,7 +44,8 @@ class mask(object):
       gridding_n_real=self.crystal_gridding.n_real(),
       solvent_radius=solvent_radius,
       shrink_truncation_radius=shrink_truncation_radius)
-    self.solvent_accessible_volume = float(self.mask.data.count(1)) \
+    self.n_solvent_grid_points = self.crystal_gridding.n_grid_points() - self.mask.data.count(0)
+    self.solvent_accessible_volume = float(self.n_solvent_grid_points) \
         / self.mask.data.size() * self.xray_structure.unit_cell().volume()
     print "Solvent accessible volume = %.1f [%.1f%%]" %(
       self.solvent_accessible_volume, 100.*
@@ -74,11 +75,9 @@ class mask(object):
         self.mask.data.as_double() == 0, 0)
       self.f_000_cell = flex.sum(diff_map.real_map_unpadded()) * self.fft_scale
       self.f_000 = flex.sum(masked_diff_map) * self.fft_scale
-      f_minus_000 = flex.sum(diff_map.real_map_unpadded().set_selected(
-        self.mask.data.as_double() == 1, 0)) * self.fft_scale
       f_000_s = self.f_000 * (
         float(masked_diff_map.size()) /
-        (masked_diff_map.size() - self.mask.data.count(1)))
+        (masked_diff_map.size() - self.n_solvent_grid_points))
       print "F000 void: %.1f" %f_000_s
       if (self.f_000_s is not None and
           approx_equal_relatively(self.f_000_s, f_000_s, 0.0001)):
@@ -86,7 +85,7 @@ class mask(object):
       else:
         self.f_000_s = f_000_s
       masked_diff_map.add_selected(
-        self.mask.data.as_double() == 1,
+        self.mask.data.as_double() > 0,
         self.f_000_s/self.xray_structure.unit_cell().volume())
       if 0:
         from crys3d import wx_map_viewer
@@ -96,7 +95,7 @@ class mask(object):
           unit_cell=f_obs.unit_cell())
       self._f_mask = f_obs.structure_factors_from_map(map=masked_diff_map)
       self._f_mask *= self.fft_scale
-      epsilons = (i/10 for i in range(int(epsilon_for_min_residual*10), 9, -2))
+      epsilons = (i/10. for i in range(int(epsilon_for_min_residual*10), 9, -2))
       scales = []
       residuals = []
       min_residual = 1000
@@ -118,7 +117,6 @@ class mask(object):
       f_model = self.f_model(epsilon=epsilon_for_min_residual)
       f_obs_minus_f_calc = f_obs.phase_transfer(f_model).f_obs_minus_f_calc(
         1./self.scale_factor, self.f_calc)
-    print "F000 void: %.1f" %self.f_000_s
     self.masked_diff_map = masked_diff_map
     return self._f_mask
 
