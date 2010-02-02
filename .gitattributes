@@ -725,6 +725,12 @@ scitbx/sparse/tests/tst_lu_factorization.py -text
 scitbx/sparse/tests/tst_sparse.py -text
 scitbx/sparse/vector.h -text
 scitbx/stl/vector_io.h -text
+scitbx/wigner/__init__.py -text
+scitbx/wigner/boost_python/SConscript -text
+scitbx/wigner/boost_python/wigner3j.h -text
+scitbx/wigner/boost_python/wigner_bpl.cpp -text
+scitbx/wigner/boost_python/wigner_ext.cpp -text
+scitbx/wigner/tst_wigner3j.py -text
 smtbx/SConscript -text
 smtbx/__init__.py -text
 smtbx/ab_initio/SConscript -text
