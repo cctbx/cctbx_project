@@ -235,6 +235,9 @@ disable_tracebacklimit = "LIBTBX_DISABLE_TRACEBACKLIMIT" in os.environ
 class Usage(Sorry):
   __module__ = "exceptions"
 
+class Abort(Sorry) :
+  __module__ = "exceptions"
+
 def if_none(value, default):
   if (value is None): return default
   return value
