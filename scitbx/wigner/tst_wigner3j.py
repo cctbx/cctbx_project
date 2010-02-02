@@ -27,23 +27,7 @@ def tst1():
   value = wigner_fast.compute(5,8,10,2,4,-6)
   assert abs(result-value)<1e-6
   assert abs(w.get_value()-value)<1e-6
-
   
-  
-def tst2():
-  w= wigner.wigner3j_zero(1,1,2)
-  w=wigner.wigner3j_zero(2,2,3)
-  w=wigner.wigner3j_zero(5, 8, 10)
-  w=wigner.wigner3j_zero(5,8,10)
-  
-  #print wigner.wigner3j(9,14,9,0,0,0).get_value()
-  #print wigner.wigner3j_zero(9,14,9).get_value()
-  #print wigner.wigner3j(8,14,9,0,0,0).get_value()
-  #print wigner.wigner3j(8,14,9,1,1,-2).get_value()
-  
-  
-
-
 if __name__=="__main__":
   tst1()
   print "OK"
