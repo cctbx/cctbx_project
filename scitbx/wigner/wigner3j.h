@@ -2,16 +2,7 @@
 #define SCITBX_WIGNER3J_H
 
 #include <scitbx/constants.h>
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-
 #include <scitbx/array_family/shared.h>
-#include <map>
-
-#include <string>
-#include <iomanip>
 
 /*   this module is for INTEGER l,m calculation only, yet   */
 namespace scitbx { namespace wigner {
@@ -62,15 +53,15 @@ namespace scitbx { namespace wigner {
       tmax = min(t3,t4, t5 );
       for(int tt=tmin; tt<=tmax; tt++)
       {
-          value_ += std::pow(-1.0,tt)/(fact_array_[tt]*fact_array_[tt-t1] \
-                    *fact_array_[tt-t2]*fact_array_[t3-tt] \
+          value_ += std::pow(-1.0,tt)/(fact_array_[tt]*fact_array_[tt-t1]
+                    *fact_array_[tt-t2]*fact_array_[t3-tt]
                     *fact_array_[t4-tt]*fact_array_[t5-tt]);
       }
-      triangle_coef = fact_array_[j1+j2-j3]*fact_array_[j1-j2+j3] \
+      triangle_coef = fact_array_[j1+j2-j3]*fact_array_[j1-j2+j3]
                       *fact_array_[-j1+j2+j3]/fact_array_[j1+j2+j3+1];
-      value_ *= std::pow(-1.0,j1-j2-m3) \
-                *sqrt( triangle_coef*fact_array_[j1+m1]*fact_array_[j1-m1] \
-                       *fact_array_[j2+m2] * fact_array_[j2-m2] \
+      value_ *= std::pow(-1.0,j1-j2-m3)
+                *sqrt( triangle_coef*fact_array_[j1+m1]*fact_array_[j1-m1]
+                       *fact_array_[j2+m2] * fact_array_[j2-m2]
                        *fact_array_[j3+m3] * fact_array_[j3-m3]
                      );
       return value_;
@@ -189,15 +180,15 @@ namespace scitbx { namespace wigner {
          tmax = min(t3,t4, t5 );
          for(int tt=tmin; tt<=tmax; tt++)
          {
-           value_ += std::pow(-1.0,tt)/( fact(tt)*fact(tt-t1)*fact(tt-t2) \
-                                   *fact(t3-tt)*fact(t4-tt)*fact(t5-tt) \
+           value_ += std::pow(-1.0,tt)/( fact(tt)*fact(tt-t1)*fact(tt-t2)
+                                   *fact(t3-tt)*fact(t4-tt)*fact(t5-tt)
                                   );
          }
-         triangle_coef = fact(j1+j2-j3)*fact(j1-j2+j3)*fact(-j1+j2+j3) \
+         triangle_coef = fact(j1+j2-j3)*fact(j1-j2+j3)*fact(-j1+j2+j3)
                         /fact(j1+j2+j3+1);
 
-         value_ *= std::pow(-1.0,j1-j2-m3)*sqrt( triangle_coef * fact(j1+m1) \
-                                          * fact(j1-m1)*fact(j2+m2)*fact(j2-m2)\
+         value_ *= std::pow(-1.0,j1-j2-m3)*sqrt( triangle_coef * fact(j1+m1)
+                                          * fact(j1-m1)*fact(j2+m2)*fact(j2-m2)
                                           * fact(j3+m3) * fact(j3-m3)
                                           );
          return;
