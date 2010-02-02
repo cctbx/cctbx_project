@@ -5,7 +5,4 @@ env_etc.enable_more_warnings(env=env)
 env.SharedLibrary(
   target="#lib/scitbx_wigner_ext",
   source=[
-    "wigner_ext.cpp",
-    "wigner_bpl.cpp",
-  ]
-)
+    "ext.cpp"])

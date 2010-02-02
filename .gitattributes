@@ -727,10 +727,9 @@ scitbx/sparse/vector.h -text
 scitbx/stl/vector_io.h -text
 scitbx/wigner/SConscript -text
 scitbx/wigner/__init__.py -text
+scitbx/wigner/ext.cpp -text
 scitbx/wigner/tst_wigner3j.py -text
 scitbx/wigner/wigner3j.h -text
-scitbx/wigner/wigner_bpl.cpp -text
-scitbx/wigner/wigner_ext.cpp -text
 smtbx/SConscript -text
 smtbx/__init__.py -text
 smtbx/ab_initio/SConscript -text
