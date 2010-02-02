@@ -93,17 +93,20 @@ def xplor_maps_from_refine_mtz (pdb_file, mtz_file, file_base=None,
       if map_name is None :
         map_name = f_label
       file_name = "%s_%s.map" % (file_base, map_name)
-      xplor_map_from_coeffs(miller_array=miller_array,
-        output_file=file_name,
-        xray_structure=xray_structure,
-        grid_resolution_factor=grid_resolution_factor)
-      output_files.append(file_name)
+      if (not os.path.exists(file_name) or
+          os.path.getmtime(file_name) < os.path.getmtime(mtz_file)) :
+        xplor_map_from_coeffs(miller_array=miller_array,
+          output_file=file_name,
+          xray_structure=xray_structure,
+          grid_resolution_factor=grid_resolution_factor)
+        output_files.append(file_name)
   return output_files
 
 def xplor_map_from_coeffs (miller_array, output_file, pdb_file=None,
     xray_structure=None, grid_resolution_factor=0.33) :
   map_phil = iotbx.phil.parse("""map.file_name = %s """ % output_file)
-  params = mmtbx.maps.master_params.fetch(source=map_phil).extract().map[0]
+  master_phil = mmtbx.maps.map_and_map_coeff_master_params()
+  params = master_phil.fetch(source=map_phil).extract().map[0]
   params.file_name = output_file
   params.region = "selection"
   params.scale = "sigma"
@@ -117,7 +120,6 @@ def xplor_map_from_coeffs (miller_array, output_file, pdb_file=None,
       xray_structure = pdb_in.file_object.xray_structure_simple()
   mmtbx.maps.write_xplor_map_file(params=params,
     coeffs=miller_array,
-    all_chain_proxies=None,
     xray_structure=xray_structure)
 
 # XXX: sorta gross, but for pre-calculated map coefficients like FWT,PHWT,
@@ -145,12 +147,15 @@ def xplor_map_from_mtz (pdb_file, mtz_file, output_file=None,
     else :
       weighted_f = f_array
     map_coeffs = weighted_f.phase_transfer(phi_array, deg=True)
-  xplor_map_from_coeffs(map_coeffs, output_file, pdb_file)
+  if (not os.path.isfile(output_file) or
+      os.path.getmtime(output_file) < os.path.getmtime(mtz_file)) :
+    xplor_map_from_coeffs(map_coeffs, output_file, pdb_file)
   return output_file
 
 def xplor_map_from_resolve_mtz (pdb_file, mtz_file, force=False) :
   output_file = mtz_file[:-4] + ".map"
-  if force or not os.path.isfile(output_file) :
+  if (force or not os.path.isfile(output_file) or
+      os.path.getmtime(output_file) < os.path.getmtime(mtz_file)) :
     xplor_map_from_mtz(pdb_file=pdb_file,
       mtz_file=mtz_file,
       output_file=output_file,
@@ -161,7 +166,8 @@ def xplor_map_from_resolve_mtz (pdb_file, mtz_file, force=False) :
 
 def xplor_map_from_solve_mtz (pdb_file, mtz_file, force=False) :
   output_file = mtz_file[:-4] + ".map"
-  if force or not os.path.isfile(output_file) :
+  if (force or not os.path.isfile(output_file) or
+      os.path.getmtime(output_file) < os.path.getmtime(mtz_file)) :
     xplor_map_from_mtz(pdb_file=pdb_file,
       mtz_file=mtz_file,
       output_file=output_file,

@@ -185,9 +185,10 @@ class write_xplor_map_file(object):
       show_string(os.path.dirname(self.params.file_name)))
     title_lines.append("REMARK %s" % date_and_time())
     assert self.params.region in ["selection", "cell"]
-    if(self.params.region == "selection" and
-       [atom_selection_manager, xray_structure].count(None)==0):
-      map_iselection = self.atom_iselection()
+    if(self.params.region == "selection" and xray_structure is not None) :
+      map_iselection = None
+      if atom_selection_manager is not None :
+        map_iselection = self.atom_iselection()
       frac_min, frac_max = self.box_around_selection(
         iselection = map_iselection,
         buffer     = self.params.atom_selection_buffer)

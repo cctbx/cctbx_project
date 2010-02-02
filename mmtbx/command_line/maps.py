@@ -144,13 +144,18 @@ def run(args, log = sys.stdout):
   print >> log, "-"*79
   print >> log, "Compute maps."
   atom_selection_manager = get_atom_selection_manager(pdb_inp = pdb_inp)
+  if params.maps.output.directory is not None :
+    assert os.path.isdir(params.maps.output.directory)
+    output_dir = params.maps.output.directory
+  else :
+    output_dir = os.getcwd()
   if params.maps.output.prefix is not None :
-    file_name_base = os.path.join(os.getcwd(),
+    file_name_base = os.path.join(output_dir,
       os.path.basename(params.maps.output.prefix))
   else :
     file_name_base = params.maps.input.pdb_file_name
-  if(file_name_base.count(".")>0):
-    file_name_base = file_name_base[:file_name_base.index(".")]
+    if(file_name_base.count(".")>0):
+      file_name_base = file_name_base[:file_name_base.index(".")]
   xplor_maps = mmtbx.maps.compute_xplor_maps(
     fmodel                 = fmodel,
     params                 = params.maps.map,
@@ -161,8 +166,8 @@ def run(args, log = sys.stdout):
     fmodel = fmodel,
     params = params.maps.map_coefficients)
   map_coeff_file_name = file_name_base+"_map_coeffs.mtz"
-  if(params.maps.output.prefix is not None and len(params.maps.output.prefix)>0):
-    map_coeff_file_name = params.maps.output.prefix + "_" + map_coeff_file_name
+  #if(params.maps.output.prefix is not None and len(params.maps.output.prefix)>0):
+  #  map_coeff_file_name = params.maps.output.prefix + "_" + map_coeff_file_name
   cmo.write_mtz_file(file_name = map_coeff_file_name)
   if(params.maps.output.fmodel_data_file_format is not None):
     fmodel_file_name = file_name_base + "_fmodel." + \
