@@ -4,12 +4,12 @@
 #include <scitbx/constants.h>
 #include <scitbx/array_family/shared.h>
 
-namespace scitbx { 
+namespace scitbx {
 /* the routine will calculate the wigner 3j symbol value for integer parameters
  * See: http://mathworld.wolfram.com/Wigner3j-Symbol.html
  *
  *
- * Due to the range of double value, (j1+j2+j3+1)<150, ie, the max<150, is required 
+ * Due to the range of double value, (j1+j2+j3+1)<150, ie, the max<150, is required
  * to get reliable values
  * ATTEN:  this module is for INTEGER l,m calculation only, yet   */
 
@@ -29,7 +29,7 @@ namespace wigner {
     void check(int j1, int j2, int j3, int m1, int m2, int m3)
     {
       valid_=true;
-   
+
       if (std::abs(m1) > j1)
         valid_= false;
       else if( std::abs(m2) > j2)
