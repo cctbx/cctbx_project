@@ -40,11 +40,14 @@ def manager(simulated_annealing_params,
     print_statistics.make_sub_header(
       "lbfgs minimization: before simulated annealing", out = out)
     model.set_refine_individual_sites()
+    is_neutron_scat_table = False
+    if(all_params.main.scattering_table == "neutron"):
+      is_neutron_scat_table = True
     minimized = mmtbx.refinement.minimization.lbfgs(
       restraints_manager       = model.restraints_manager,
       refine_xyz               = True,
       fmodels                  = fmodels,
-      all_params               = all_params,
+      is_neutron_scat_table    = is_neutron_scat_table,
       model                    = model,
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
         max_iterations = simulated_annealing_params.max_number_of_iterations),

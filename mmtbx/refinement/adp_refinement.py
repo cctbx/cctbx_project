@@ -234,12 +234,15 @@ def refine_adp(model,
         save_scatterers.deep_copy())
       fmodels.update_xray_structure(update_f_calc = True)
       target_weights.adp_weights_result.w = w / scaler
+    is_neutron_scat_table = False
+    if(all_params.main.scattering_table == "neutron"):
+      is_neutron_scat_table = True
     minimized = minimization.lbfgs(
       restraints_manager       = model.restraints_manager,
       fmodels                  = fmodels,
       model                    = model,
       refine_adp               = True,
-      all_params               = all_params,
+      is_neutron_scat_table    = is_neutron_scat_table,
       lbfgs_termination_params = lbfgs_termination_params,
       iso_restraints           = adp_restraints_params.iso,
       verbose                  = 0,

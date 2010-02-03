@@ -1690,7 +1690,8 @@ def model_simple(pdb_file_names,
       self.individual_adp = False
       self.sites_individual = flex.bool(size, True)
       self.sites_torsion_angles = None
-  refinement_flags = rf(size = xray_structure.scatterers().size())
+  if(refinement_flags is None):
+    refinement_flags = rf(size = xray_structure.scatterers().size())
   #
   sctr_keys=xray_structure.scattering_type_registry().type_count_dict().keys()
   has_hd = "H" in sctr_keys or "D" in sctr_keys

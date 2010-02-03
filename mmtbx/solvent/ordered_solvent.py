@@ -164,7 +164,7 @@ class manager(object):
   def __init__(self, fmodel,
                      fmodels,
                      model,
-                     all_params,
+                     is_neutron_scat_table,
                      params = master_params().extract(),
                      find_peaks_params = None,
                      log = None):
@@ -558,7 +558,7 @@ class manager(object):
         restraints_manager       = None,
         fmodels                  = self.fmodels,
         model                    = self.model,
-        all_params               = self.all_params,
+        is_neutron_scat_table    = self.is_neutron_scat_table,
         refine_adp               = True,
         lbfgs_termination_params = lbfgs_termination_params)
       print >> self.log,\
@@ -587,7 +587,7 @@ class manager(object):
         restraints_manager       = None,
         fmodels                  = self.fmodels,
         model                    = self.model,
-        all_params               = self.all_params,
+        is_neutron_scat_table    = self.is_neutron_scat_table,
         lbfgs_termination_params = lbfgs_termination_params)
       self.fmodels.fmodel_xray().xray_structure.adjust_occupancy(
         occ_max   = self.params.occupancy_max,
