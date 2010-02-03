@@ -47,11 +47,8 @@ class mask(object):
     self.n_solvent_grid_points = self.crystal_gridding.n_grid_points() - self.mask.data.count(0)
     self.solvent_accessible_volume = float(self.n_solvent_grid_points) \
         / self.mask.data.size() * self.xray_structure.unit_cell().volume()
-    print "Solvent accessible volume = %.1f [%.1f%%]" %(
-      self.solvent_accessible_volume, 100.*
-      self.solvent_accessible_volume/xs.unit_cell().volume())
 
-  def structure_factors(self, max_cycles, scale_factor=None):
+  def structure_factors(self, max_cycles=10, scale_factor=None):
     """P. van der Sluis and A. L. Spek, Acta Cryst. (1990). A46, 194-201."""
     assert self.mask is not None
     f_obs = self.observations.as_amplitude_array()
@@ -78,7 +75,7 @@ class mask(object):
       f_000_s = self.f_000 * (
         float(masked_diff_map.size()) /
         (masked_diff_map.size() - self.n_solvent_grid_points))
-      print "F000 void: %.1f" %f_000_s
+      #print "F000 void: %.1f" %f_000_s
       if (self.f_000_s is not None and
           approx_equal_relatively(self.f_000_s, f_000_s, 0.0001)):
         break # we have reached convergence
@@ -112,7 +109,7 @@ class mask(object):
         if min_residual == residual:
           scale_for_min_residual = scale
           epsilon_for_min_residual = epsilon
-      print "epsilon: %.1f" %epsilon_for_min_residual
+      #print "epsilon: %.1f" %epsilon_for_min_residual
       self.scale_factor = scale_for_min_residual
       f_model = self.f_model(epsilon=epsilon_for_min_residual)
       f_obs_minus_f_calc = f_obs.phase_transfer(f_model).f_obs_minus_f_calc(
@@ -124,10 +121,11 @@ class mask(object):
     assert self._f_mask is not None
     return self._f_mask
 
-  def f_model(self, epsilon=None):
+  def f_model(self, f_calc=None, epsilon=None):
     assert self._f_mask is not None
-    f_calc = self.f_calc
     f_mask = self.f_mask()
+    if f_calc is None:
+      f_calc = self.f_calc
     if epsilon is None:
       data = f_calc.data() + f_mask.data()
     else:
