@@ -125,14 +125,6 @@ def tardy_model(
     for dof,cluster in zip(joint_dofs,tardy_tree.cluster_manager.clusters):
       msg.append("  %s: %s" % (dof, [input_atom_names[i] for i in cluster]))
     raise RuntimeError("\n".join(msg))
-  print "LOOK"
-  print comp_comp_id.chem_comp.id
-  for dof,cluster in zip(joint_dofs,tardy_tree.cluster_manager.clusters):
-    print "  %s: %s" % (dof, [input_atom_names[i] for i in cluster])
-  print tardy_tree.cluster_manager.clusters
-  print tardy_tree.cluster_manager.cluster_indices
-  print tardy_tree.cluster_manager.hinge_edges
-  print
   return tardy_model
 
 def build_rotamer_tor_atom_ids_by_tor_id(comp_comp_id, rotamer_info):
