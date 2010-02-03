@@ -3,6 +3,7 @@ from cctbx.array_family import flex
 from iotbx import reflection_file_utils, reflection_file_reader
 from iotbx import shelx
 from smtbx import masks
+from cctbx.masks import flood_fill
 from libtbx.test_utils import approx_equal
 from libtbx.utils import time_log
 from iotbx.option_parser import option_parser
@@ -15,6 +16,7 @@ def exercise_masks(xs, fo_sq,
                    resolution_factor,
                    debug=False,
                    timing=False):
+  xs_ref = xs.deep_copy_scatterers()
   time_total = time_log("masks total").start()
   fo_sq_merged = fo_sq.merge_equivalents().array()
   mask = masks.mask(xs, fo_sq_merged)
@@ -24,9 +26,12 @@ def exercise_masks(xs, fo_sq,
                resolution_factor=1./4,
                atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52})
   time_compute_mask.stop()
-  import cctbx.masks
+  print "Solvent accessible volume = %.1f [%.1f%%]" %(
+  mask.solvent_accessible_volume, 100.*
+  mask.solvent_accessible_volume/xs.unit_cell().volume())
+
   time_flood_fill = time_log("flood fill").start()
-  cctbx.masks.flood_fill(mask.mask.data)
+  flood_fill(mask.mask.data)
   time_flood_fill.stop()
   n_voids = flex.max(mask.mask.data) - 1
   for i in range(2, n_voids + 2):
@@ -34,8 +39,9 @@ def exercise_masks(xs, fo_sq,
              / mask.crystal_gridding.n_grid_points()
     print "void %i: %.1f" %(i-1, void_vol)
   time_structure_factors = time_log("structure factors").start()
-  f_mask = mask.structure_factors(max_cycles=10)
+  f_mask = mask.structure_factors()
   time_structure_factors.stop()
+  print "F000 void: %.1f" %mask.f_000_s
   f_model = mask.f_model()
   # write modified structure factors as shelxl hkl
   out = StringIO()
@@ -77,7 +83,7 @@ def exercise_masks(xs, fo_sq,
     f_obs_minus_f_model = f_obs.f_obs_minus_f_calc(1./scale_factor, f_model)
     diff_map_model = miller.fft_map(mask.crystal_gridding, f_obs_minus_f_model)
     diff_map_model.apply_volume_scaling()
-    # f_obs - f_model
+    # modified f_obs
     modified_fo_sq_map = miller.fft_map(
       mask.crystal_gridding, modified_fo_sq.as_amplitude_array().phase_transfer(f_calc))
     modified_fo_sq_map.apply_volume_scaling()
