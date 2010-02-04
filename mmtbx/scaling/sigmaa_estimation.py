@@ -87,7 +87,7 @@ class sigmaa_estimator(object):
     assert [kernel_width_free_reflections, kernel_width_d_star_cubed].count(None) == 1
 
     self.miller_obs = miller_obs
-    self.miller_calc = abs(miller_calc)
+    self.miller_calc = abs(miller_calc.f_model())
     self.r_free_flags = r_free_flags
     self.kernel_width_free_reflections = kernel_width_free_reflections
     self.kernel_width_d_star_cubed = kernel_width_d_star_cubed
