@@ -24,6 +24,27 @@ windows_device_names = """\
 CON PRN AUX NUL COM1 COM2 COM3 COM4 COM5 COM6 COM7 COM8 COM9
 LPT1 LPT2 LPT3 LPT4 LPT5 LPT6 LPT7 LPT8 LPT9""".split()
 
+def xfrange(start, stop=None, step=None):
+  """A float range generator."""
+
+  if stop is None:
+    stop = start + 0.0
+    start = 0.0
+  else:
+    start += 0.0 # force it to be a float
+  if step is None:
+    step = 1.0
+  else:
+    assert step != 0.0
+  count = int(math.ceil((stop - start) / step))
+  v = start
+  for i in xrange(count):
+    yield v
+    v += step
+
+def frange(start, stop=None, step=None):
+  return list(xfrange(start, stop=stop, step=step))
+
 def escape_sh_double_quoted(s):
   "the result is supposed to be double-quoted when passed to sh"
   if (s is None): return None
@@ -898,6 +919,16 @@ def exercise():
   b = easy_run.fully_buffered(
     command="libtbx.raise_exception_for_testing silent")
   b.raise_if_errors_or_output()
+  #
+  assert [i/10. for i in range(-2,2)] == frange(-0.2,0.2,0.1)
+  assert [i/10. for i in range(2,-2,-1)] == frange(0.2,-0.2,-0.1)
+  assert [i/4. for i in range(4,8)] == frange(1, 2, 0.25)
+  assert [0.2+i/3. for i in range(0,4)] == frange(0.2, 1.3, 1./3)
+  assert range(5)  == frange(5)
+  assert range(-5) == frange(-5)
+  assert range(1,3) == frange(1, 3)
+  # floating point errors cause this one to not be exact
+  assert approx_equal([i/10. for i in range(20, 9, -2)], frange(2.0, 0.9, -0.2))
   #
   print "OK"
 
