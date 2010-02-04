@@ -4,6 +4,7 @@ from cctbx import miller
 from cctbx import xray
 from cctbx.array_family import flex
 from scitbx.math import approx_equal_relatively
+from libtbx.utils import xfrange
 
 class mask(object):
   def __init__(self, xray_structure, observations):
@@ -92,11 +93,10 @@ class mask(object):
           unit_cell=f_obs.unit_cell())
       self._f_mask = f_obs.structure_factors_from_map(map=masked_diff_map)
       self._f_mask *= self.fft_scale
-      epsilons = (i/10. for i in range(int(epsilon_for_min_residual*10), 9, -2))
       scales = []
       residuals = []
       min_residual = 1000
-      for epsilon in epsilons:
+      for epsilon in xfrange(epsilon_for_min_residual, 0.9, -0.2):
         f_model_ = self.f_model(epsilon=epsilon)
         scale = f_obs.quick_scale_factor_approximation(
           f_model_, cutoff_factor=0.1)
