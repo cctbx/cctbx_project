@@ -22,6 +22,8 @@ cases = ["ana/myo2_3_00001.cbf",
 "ribosome/images/colD55A_13_2_00085.cbf",
 "ribosome/G817_1_00002.cbf",
 "ribosome/G817_2_00001.cbf",
+"pilatus_2M_graeme/insulin_1_fixed_0043.img",
+"pilatus_2M_graeme/insulin_1_fixed_0289.img",
 ]
 dirpath = "/net/sunbird/raid1/sauter/rawdata/pilatus"
 
@@ -30,22 +32,26 @@ def generate_paths():
     file = os.path.join(dirpath,item)
     yield file
 
-def test_all():
+def test_all(timer=False):
   for file in generate_paths():
     from iotbx.detectors.pilatus_minicbf import PilatusImage
     from cbflib_ext import MiniCBFAdaptor
-    print os.path.basename(file)
+    if timer: print os.path.basename(file)
     P = PilatusImage(file)
-    G = Profiler("cbflib no-opt    read")
+    if timer: G = Profiler("cbflib no-opt    read")
     P.read()
     read1 = P.linearintdata
-    G = Profiler("cbflib optimized read")
+    if timer: G = Profiler("cbflib optimized read")
     adaptor = MiniCBFAdaptor(file)
     read2 = adaptor.optimized_read_data(P.size1,P.size2)
-    del G
-    assert read1.accessor().focus() == read2.accessor().focus() == (2527,2463)
+    if timer: del G
+    expected_image_size = {"Pilatus-6M":(2527,2463),
+                           "Pilatus-2M":(1679,1475)}[P.vendortype]
+    assert read1.accessor().focus() == read2.accessor().focus() == expected_image_size
     from cbflib_ext import assert_equal
-    print "Equality of arrays from two decompress methods", assert_equal(read1,read2), "\n"
+    #print "Equality of arrays from two decompress methods", assert_equal(read1,read2), "\n"
+    assert assert_equal(read1,read2)
 
 if __name__=="__main__":
-  test_all()
+  test_all(False)
+  print "OK"
