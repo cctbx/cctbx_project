@@ -12,6 +12,7 @@ from iotbx.pdb import is_pdb_file
 from iotbx.pdb import input as pdb_input
 from iotbx.reflection_file_reader import any_reflection_file
 from iotbx.reflection_file_utils import reflection_file_server
+from libtbx import smart_open
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
 import cPickle
