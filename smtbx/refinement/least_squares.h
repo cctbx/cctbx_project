@@ -137,6 +137,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
                          af::const_ref<miller::index<> > const &miller_indices,
                          af::const_ref<FloatType> const &data,
                          af::const_ref<FloatType> const &sigmas,
+                         af::const_ref<std::complex<FloatType> > const &f_mask,
                          WeightingScheme<FloatType> const &weighting_scheme,
                          FloatType scale_factor,
                          OneMillerIndexLinearisation &one_h_linearisation,
@@ -146,9 +147,17 @@ namespace smtbx { namespace refinement { namespace least_squares {
     SMTBX_ASSERT(miller_indices.size() == data.size())
                 (miller_indices.size())(data.size());
     SMTBX_ASSERT(data.size() == sigmas.size())(data.size())(sigmas.size());
+    if (f_mask.size()){
+      SMTBX_ASSERT(f_mask.size() == f_mask.size())(data.size())(data.size());
+    }
     for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
       miller::index<> const &h = miller_indices[i_h];
-      one_h_linearisation.compute(h);
+      if (f_mask.size()) {
+        one_h_linearisation.compute(h, f_mask[i_h]);
+      }
+      else {
+        one_h_linearisation.compute(h);
+      }
       constraints.apply_chain_rule(one_h_linearisation.grad_observable);
       FloatType observable = one_h_linearisation.observable;
       FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
