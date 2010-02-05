@@ -39,7 +39,7 @@ def test_all(timer=False):
     if timer: print os.path.basename(file)
     P = PilatusImage(file)
     if timer: G = Profiler("cbflib no-opt    read")
-    P.read()
+    P.read(algorithm="cbflib")
     read1 = P.linearintdata
     if timer: G = Profiler("cbflib optimized read")
     adaptor = MiniCBFAdaptor(file)

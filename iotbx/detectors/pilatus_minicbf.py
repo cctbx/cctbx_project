@@ -23,7 +23,7 @@ class PilatusImage(DetectorImageBase):
   def endian_swap_required(self):
     return False
 
-  def read(self):
+  def read(self,algorithm="cbflib_adaptbx_optimized"):
     self.readHeader()
     if self.linearintdata != None and\
       self.linearintdata.size()==self.size1*self.size2:
@@ -34,7 +34,11 @@ class PilatusImage(DetectorImageBase):
     try:
       from cbflib_ext import MiniCBFAdaptor # optional package
       self.adaptor = MiniCBFAdaptor(self.filename)
-      self.bin_safe_set_data( self.adaptor.read_data(self.size1,self.size2) )
+      assert algorithm in ["cbflib","cbflib_adaptbx_optimized"]
+      if algorithm=="cbflib_adaptbx_optimized":
+        self.bin_safe_set_data( self.adaptor.optimized_read_data(self.size1,self.size2) )
+      else:
+        self.bin_safe_set_data( self.adaptor.read_data(self.size1,self.size2) )
     except:
       raise ImageException("unable to read miniCBF data; contact authors")
 
