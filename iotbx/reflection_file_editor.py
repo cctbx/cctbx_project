@@ -351,11 +351,11 @@ class process_arrays (object) :
         new_array = new_array.customized_copy(crystal_symmetry=output_symm)
       if not new_array.is_unique_set_under_symmetry() :
         if new_array.is_integer_array() and not is_rfree_array(new_array,info):
-          raise Sorry("The data in %s cannot be merged because it is in "+
+          raise Sorry(("The data in %s cannot be merged because it is in "+
             "integer format.  If you wish to change symmetry (or the input "+
             "data is unmerged), you must omit this array.  (Note also that "+
             "merging will fail for R-free flags if the flags for symmetry-"+
-            "related reflections are not identical.)" % array_name)
+            "related reflections are not identical.)") % array_name)
         new_array = new_array.merge_equivalents().array()
 
       #-----------------------------------------------------------------
