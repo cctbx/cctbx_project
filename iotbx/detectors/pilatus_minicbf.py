@@ -113,6 +113,8 @@ class PilatusImage(DetectorImageBase):
               break
       if self.size1==2527 and self.size2==2463:
         self.vendortype="Pilatus-6M"
+      elif self.size1==1679 and self.size2==1475:
+        self.vendortype="Pilatus-2M"
 
 if __name__=='__main__':
   import sys
