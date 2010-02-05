@@ -14,6 +14,7 @@ class normal_equations(object):
   weighting_scheme = "default"
   floating_origin_restraint_relative_weight = 1e3
   scale_factor = None
+  f_mask = None
 
   def __init__(self, xray_structure, fo_sq, **kwds):
     self.xray_structure = xray_structure
@@ -48,11 +49,16 @@ class normal_equations(object):
       self.compute_quick_scale_factor_approximation()
     if self.reduced is not None:
       self._core_normal_eqns.reset()
+    if self.f_mask is not None:
+      f_mask = self.f_mask.data()
+    else:
+      f_mask = flex.complex_double()
     ext.build_normal_equations(
       self._core_normal_eqns,
       self.fo_sq.indices(),
       self.fo_sq.data(),
       self.fo_sq.sigmas(),
+      f_mask,
       self.weighting_scheme,
       self.scale_factor,
       self.one_h_linearisation,

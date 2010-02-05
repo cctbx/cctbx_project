@@ -66,6 +66,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
                     af::const_ref<miller::index<> > const &, //miller_indices
                     af::const_ref<FloatType> const &, //data
                     af::const_ref<FloatType> const &, //sigmas
+                    af::const_ref<std::complex<FloatType> > const &, //f_mask
                     WeightingScheme<FloatType> const &, //weighting_scheme
                     FloatType,  //scale_factor
                     OneMillerIndexLinearisation &, //one_h_linearisation
@@ -76,6 +77,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
            arg("miller_indices"),
            arg("data"),
            arg("sigmas"),
+           arg("f_mask"),
            arg("weighting_scheme"),
            arg("scale_factor"),
            arg("one_h_linearisation"),

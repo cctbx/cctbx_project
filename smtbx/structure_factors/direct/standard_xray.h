@@ -500,7 +500,9 @@ namespace smtbx { namespace structure_factors { namespace direct {
       {}
 
       /// Compute the linearisation
-      void compute(miller::index<> const &h)
+      void compute(
+        miller::index<> const &h,
+        boost::optional<complex_type> const &f_mask=boost::optional<complex_type>())
       {
         float_type d_star_sq = unit_cell.d_star_sq(h);
         af::shared<float_type> elastic_form_factors
@@ -519,19 +521,20 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (!origin_centric_case) {
            generic_linearisation_t lin_for_h(space_group, h, d_star_sq,
                                              heir.exp_i_2pi);
-          compute(elastic_form_factors.ref(), lin_for_h);
+          compute(elastic_form_factors.ref(), lin_for_h, f_mask);
         }
         else {
           origin_centric_linearisation_t lin_for_h(space_group, h, d_star_sq,
                                                    heir.exp_i_2pi);
-          compute(elastic_form_factors.ref(), lin_for_h);
+          compute(elastic_form_factors.ref(), lin_for_h, f_mask);
         }
       }
 
     private:
       template <class LinearisationForMillerIndex>
       void compute(af::const_ref<float_type> const &elastic_form_factors,
-                   LinearisationForMillerIndex &l)
+                   LinearisationForMillerIndex &l,
+                   boost::optional<complex_type> const &f_mask)
       {
         f_calc = 0;
         grad_f_calc_cursor = grad_f_calc.begin();
@@ -562,6 +565,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
             *grad_f_calc_cursor++ = l.grad_occ;
           }
         }
+        if (f_mask) f_calc += *f_mask;
         observable_type::compute(origin_centric_case,
                                  f_calc, grad_f_calc,
                                  observable, grad_observable);

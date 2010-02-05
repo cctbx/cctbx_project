@@ -1,9 +1,13 @@
+from __future__ import division
+
 from cctbx import miller
+from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
 from cctbx.masks import flood_fill
-from libtbx.test_utils import approx_equal
-from smtbx import masks
 from cctbx.xray import structure
+from libtbx.test_utils import approx_equal
+import libtbx.utils
+from smtbx import masks
 
 import cStringIO
 
@@ -17,17 +21,18 @@ def exercise_masks():
   fo2 = fo.f_as_f_sq()
   acetonitrile_sel = xs_ref.label_selection(
     'N4', 'C20', 'C21', 'H211', 'H212', 'H213')
-
-  xs = xs_ref.deep_copy_scatterers().select(acetonitrile_sel, negate=True)
-  mask = masks.mask(xs, fo2)
+  xs_no_sol = xs_ref.deep_copy_scatterers().select(
+    acetonitrile_sel, negate=True)
+  mask = masks.mask(xs_no_sol, fo2)
   mask.compute(solvent_radius=1.2,
                shrink_truncation_radius=1.2,
-               resolution_factor=1./4,
+               resolution_factor=1/3,
                atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52})
   flood_fill(mask.mask.data)
   n_voids = flex.max(mask.mask.data) - 1
   f_mask = mask.structure_factors()
   f_model = mask.f_model()
+  modified_fo = mask.modified_structure_factors().as_amplitude_array()
   f_obs_minus_f_model = fo.f_obs_minus_f_calc(f_obs_factor=1, f_calc=f_model)
   diff_map = miller.fft_map(mask.crystal_gridding, f_obs_minus_f_model)
   diff_map.apply_volume_scaling()
@@ -36,6 +41,64 @@ def exercise_masks():
   # check the difference map has no large peaks/holes
   assert max(stats.max(), abs(stats.min())) < 0.1
   assert approx_equal(mask.f_000_s, 40, eps=1e-1)
+
+  assert modified_fo.r1_factor(mask.f_calc) < 0.011
+  assert fo.r1_factor(f_model) < 0.011
+
+  # this bit is necessary until we have constraints, as
+  # otherwise the hydrogens just disappear into the ether.
+  xs = xs_no_sol.deep_copy_scatterers()
+  h_selection = xs.element_selection('H')
+  orig_flags = xs.scatterer_flags()
+  flags = orig_flags.deep_copy()
+  for flag, is_h in zip(flags, h_selection):
+    if is_h:
+      flag.set_grads(False)
+  xs.set_scatterer_flags(flags)
+
+  # first refine with no mask
+  xs = exercise_least_squares(xs, fo2, mask=None)
+  xs.set_scatterer_flags(orig_flags)
+  for i in range(2):
+    # compute improved mask/f_mask
+    mask = masks.mask(xs, fo2)
+    mask.compute(solvent_radius=1.2,
+                 shrink_truncation_radius=1.2,
+                 atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52},
+                 resolution_factor=1/3)
+    mask.structure_factors()
+    xs = exercise_least_squares(xs, fo2, mask)
+  # again exclude hydrogens from tests because of lack of constraints
+  emma_ref = xs_no_sol.select(h_selection, negate=True).as_emma_model()
+  match = emma.model_matches(emma_ref, xs.select(
+    h_selection, negate=True).as_emma_model()).refined_matches[0]
+  assert approx_equal(match.rms, 0, eps=1e-4)
+
+def exercise_least_squares(xray_structure, fo_sq, mask=None):
+  from smtbx.refinement import least_squares
+  import math
+  from cctbx import xray
+  fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(),1.))
+  xs = xray_structure.deep_copy_scatterers()
+  if mask is not None:
+    f_mask = mask.f_mask()
+  else:
+    f_mask = None
+  normal_eqns = least_squares.normal_equations(
+    xs, fo_sq,
+    f_mask=f_mask,
+    weighting_scheme="default")
+  objectives = []
+  scales = []
+  fo_sq_max = flex.max(fo_sq.data())
+  for i in xrange(2):
+    normal_eqns.build_up()
+    objectives.append(normal_eqns.objective)
+    scales.append(normal_eqns.scale_factor)
+    gradient_relative_norm = normal_eqns.gradient.norm()/fo_sq_max
+    normal_eqns.solve_and_apply_shifts()
+    shifts = normal_eqns.shifts
+  return xs
 
 YAKRUY_ins = """
 CELL 0.71073   7.086  10.791  12.850 104.16 105.87  95.86
@@ -122,8 +185,8 @@ END
 """
 
 def run():
+  libtbx.utils.show_times_at_exit()
   exercise_masks()
-  print "OK"
 
 if __name__ == '__main__':
   run()
