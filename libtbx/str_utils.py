@@ -190,6 +190,26 @@ class StringIO (object) :
     else :
       self.__init__(buffer_value)
 
+def expandtabs_track_columns(s, tabsize=8):
+  result_e = []
+  result_j = []
+  j = 0
+  for i,c in enumerate(s):
+    if (c == "\t"):
+      if (tabsize > 0):
+        n = tabsize - (j % tabsize)
+        result_e.extend([" "]*n)
+        result_j.append(j)
+        j += n
+    else:
+      result_e.append(c)
+      result_j.append(j)
+      if (c == "\n" or c == "\r"):
+        j = 0
+      else:
+        j += 1
+  return "".join(result_e), result_j
+
 def exercise():
   from libtbx.test_utils import show_diff, Exception_expected
   import cPickle
@@ -300,6 +320,23 @@ to be reset.
   assert (rstrip_lines(txt2) ==
     "\n  This is more\n  terminal-formatted\n  text which needs\n  to be reset."
   )
+  #
+  def check(s):
+    es,js = expandtabs_track_columns(s=s)
+    assert len(js) == len(s)
+    assert es == s.expandtabs()
+    sr = "".join([es[j] for j in js])
+    assert sr == s.replace("\t", " ")
+  check("")
+  check("\t")
+  check("\t\t")
+  check("\ty")
+  check("x\ty")
+  check("x\ty\tz")
+  check("\txy\t\tz")
+  check("abcdefg\txy\t\tz")
+  check("ab defgh\txyz\t\tu")
+  #
   print "OK"
 
 if (__name__ == "__main__"):
