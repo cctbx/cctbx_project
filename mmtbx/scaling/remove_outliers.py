@@ -429,7 +429,7 @@ def run(args, command_name="phenix.remove_outliers"):
       f_model_object.update_solvent_and_scale(out=log)
       plot_out = StringIO()
       model_based_array = outlier_manager.model_based_outliers(
-        f_model_object,
+        f_model_object.f_model(),
         level=params.outlier_utils.outlier_detection.parameters.model_based.level,
         return_data=True,
         plot_out=plot_out)
