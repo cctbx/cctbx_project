@@ -114,7 +114,8 @@ class _any_file (object) :
   def try_as_pdb (self) :
     if is_pdb_file(self.file_name) :
       raw_records = flex.std_string()
-      raw_records.extend(flex.split_lines(open(self.file_name).read()))
+      pdb_file = smart_open.for_reading(file_name=self.file_name)
+      raw_records.extend(flex.split_lines(pdb_file.read()))
       structure = pdb_input(source_info=None, lines=raw_records)
       self.file_type = "pdb"
       self.file_object = structure
