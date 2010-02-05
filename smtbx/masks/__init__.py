@@ -1,3 +1,5 @@
+from __future__ import division
+
 import cctbx.masks
 from cctbx import maptbx
 from cctbx import miller
@@ -22,7 +24,7 @@ class mask(object):
               shrink_truncation_radius,
               ignore_hydrogen_atoms=False,
               crystal_gridding=None,
-              resolution_factor=1./4,
+              resolution_factor=1/3,
               atom_radii_table=None):
     xs = self.xray_structure
     if crystal_gridding is None:
@@ -46,7 +48,7 @@ class mask(object):
       solvent_radius=solvent_radius,
       shrink_truncation_radius=shrink_truncation_radius)
     self.n_solvent_grid_points = self.crystal_gridding.n_grid_points() - self.mask.data.count(0)
-    self.solvent_accessible_volume = float(self.n_solvent_grid_points) \
+    self.solvent_accessible_volume = self.n_solvent_grid_points \
         / self.mask.data.size() * self.xray_structure.unit_cell().volume()
 
   def structure_factors(self, max_cycles=10, scale_factor=None):
@@ -61,7 +63,7 @@ class mask(object):
       self.scale_factor = f_obs.quick_scale_factor_approximation(
         self.f_calc, cutoff_factor=0.8)
     f_obs_minus_f_calc = f_obs.f_obs_minus_f_calc(
-      1./self.scale_factor, self.f_calc)
+      1/self.scale_factor, self.f_calc)
     self.fft_scale = self.xray_structure.unit_cell().volume()\
               / self.crystal_gridding.n_grid_points()
     epsilon_for_min_residual = 2
@@ -73,8 +75,7 @@ class mask(object):
         self.mask.data.as_double() == 0, 0)
       self.f_000_cell = flex.sum(diff_map.real_map_unpadded()) * self.fft_scale
       self.f_000 = flex.sum(masked_diff_map) * self.fft_scale
-      f_000_s = self.f_000 * (
-        float(masked_diff_map.size()) /
+      f_000_s = self.f_000 * (masked_diff_map.size() /
         (masked_diff_map.size() - self.n_solvent_grid_points))
       #print "F000 void: %.1f" %f_000_s
       if (self.f_000_s is not None and
@@ -101,8 +102,8 @@ class mask(object):
         scale = f_obs.quick_scale_factor_approximation(
           f_model_, cutoff_factor=0.1)
         residual = flex.sum(flex.abs(
-          1./scale * flex.abs(f_obs.data())- flex.abs(f_model_.data()))) \
-                 / flex.sum(1./scale * flex.abs(f_obs.data()))
+          1/scale * flex.abs(f_obs.data())- flex.abs(f_model_.data()))) \
+                 / flex.sum(1/scale * flex.abs(f_obs.data()))
         scales.append(scale)
         residuals.append(residual)
         min_residual = min(min_residual, residual)
@@ -113,7 +114,7 @@ class mask(object):
       self.scale_factor = scale_for_min_residual
       f_model = self.f_model(epsilon=epsilon_for_min_residual)
       f_obs_minus_f_calc = f_obs.phase_transfer(f_model).f_obs_minus_f_calc(
-        1./self.scale_factor, self.f_calc)
+        1/self.scale_factor, self.f_calc)
     self.masked_diff_map = masked_diff_map
     return self._f_mask
 

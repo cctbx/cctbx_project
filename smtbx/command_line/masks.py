@@ -1,3 +1,5 @@
+from __future__ import division
+
 from cctbx import crystal, miller, uctbx, xray
 from cctbx.array_family import flex
 from iotbx import reflection_file_utils, reflection_file_reader
@@ -23,11 +25,11 @@ def exercise_masks(xs, fo_sq,
   time_compute_mask = time_log("compute mask").start()
   mask.compute(solvent_radius=solvent_radius,
                shrink_truncation_radius=shrink_truncation_radius,
-               resolution_factor=1./4,
+               resolution_factor=1/4,
                atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52})
   time_compute_mask.stop()
   print "Solvent accessible volume = %.1f [%.1f%%]" %(
-  mask.solvent_accessible_volume, 100.*
+  mask.solvent_accessible_volume, 100*
   mask.solvent_accessible_volume/xs.unit_cell().volume())
 
   time_flood_fill = time_log("flood fill").start()
@@ -70,7 +72,7 @@ def exercise_masks(xs, fo_sq,
       f_model, cutoff_factor=0.1)
     # f_obs - f_calc
     k = f_obs.quick_scale_factor_approximation(f_calc, cutoff_factor=0.8)
-    f_obs_minus_f_calc = f_obs.f_obs_minus_f_calc(1./k, f_calc)
+    f_obs_minus_f_calc = f_obs.f_obs_minus_f_calc(1/k, f_calc)
     diff_map_calc = miller.fft_map(mask.crystal_gridding, f_obs_minus_f_calc)
     diff_map_calc.apply_volume_scaling()
     # f_mask
@@ -80,7 +82,7 @@ def exercise_masks(xs, fo_sq,
     model_map = miller.fft_map(mask.crystal_gridding, f_model)
     model_map.apply_volume_scaling()
     # f_obs - f_model
-    f_obs_minus_f_model = f_obs.f_obs_minus_f_calc(1./scale_factor, f_model)
+    f_obs_minus_f_model = f_obs.f_obs_minus_f_calc(1/scale_factor, f_model)
     diff_map_model = miller.fft_map(mask.crystal_gridding, f_obs_minus_f_model)
     diff_map_model.apply_volume_scaling()
     # modified f_obs
@@ -134,7 +136,7 @@ def run(args):
                   .option(None, "--resolution_factor",
                           action="store",
                           type="float",
-                          default=1./4)).process(args=args)
+                          default=1/4)).process(args=args)
   xs = xray.structure.from_shelx(filename=command_line.options.structure)
   reflections_server = reflection_file_utils.reflection_file_server(
     crystal_symmetry = xs.crystal_symmetry(),
