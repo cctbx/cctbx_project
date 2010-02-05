@@ -103,14 +103,19 @@ class metric_subgroups(base_subgroups):
         else:
           if (best_subsym_corr.space_group() == best_subsym.space_group()):
             cb_op_inp_best = cb_op_corr * cb_op_inp_best
+      """Note:  The following call does not work if n_ltr >1 for the space group"""
+      if acentric_subgroup.n_ltr() == 1:
+        m_a_d = find_max_delta(
+                                  reduced_cell=self.minimum_symmetry.unit_cell(),
+                                  space_group=acentric_subgroup)
+      else:
+        m_a_d = 0.0
       self.result_groups.append({'subsym':subsym,
                                  'supersym':supersym,
                                  'ref_subsym':ref_subsym,
                                  'best_subsym':best_subsym,
                                  'cb_op_inp_best':cb_op_inp_best,
-                                 'max_angular_difference':find_max_delta(
-                                  reduced_cell=self.minimum_symmetry.unit_cell(),
-                                  space_group=acentric_subgroup)
+                                 'max_angular_difference':m_a_d
                                 })
 
   def change_of_basis_op_to_best_cell(self,ref_subsym):
