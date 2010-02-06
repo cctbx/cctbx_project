@@ -2704,7 +2704,8 @@ class info(object):
                    "Phase error vs. resolution",
                    "Scale factor vs. resolution"],
       graph_columns = [[0,1,2], [0,3], [0,4], [0,5], [0,6]],
-      data = data)
+      data = data,
+      x_is_inverse_d_min=True)
     return t
 
 def show_histogram(data, n_slots, log):
