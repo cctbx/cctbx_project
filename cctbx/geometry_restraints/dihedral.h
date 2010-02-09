@@ -378,50 +378,6 @@ namespace cctbx { namespace geometry_restraints {
             }
           }
         }
-        /*else {
-          using scitbx::fn::absolute;
-          int abs_periodicity = absolute(periodicity);
-          static const unsigned max_reasonable_periodicity = 36;
-          ASSERTBX(abs_periodicity <= max_reasonable_periodicity);
-          bool alt_angle_flags[max_reasonable_periodicity];
-          std::fill_n(alt_angle_flags, abs_periodicity, false);
-          alt_angle_ideals_type::value_type& ep = *alt_angle_ideals;
-          for(unsigned i_ep=0;i_ep<ep.size();i_ep++) {
-            double e = ep[i_ep];
-            if (absolute(e) >= abs_periodicity) {
-              throw std::runtime_error((
-                boost::format(
-                  "dihedral geometry restraint: invalid exclude_period:"
-                  " periodicity=%d, exclude=%d") % abs_periodicity % e).str());
-            }
-            double pos_e = e;
-            if (pos_e < 0) pos_e += abs_periodicity;
-            if (alt_angle_flags[int(pos_e)]) {
-              throw std::runtime_error((
-                boost::format(
-                  " dihedral geometry restraint: duplicate exclude_period:"
-                  " periodicity=%d, exclude=%d") % abs_periodicity % e).str());
-            }
-            alt_angle_flags[int(pos_e)] = true; 
-          }
-          delta = 999;
-          double width = 360. / abs_periodicity;
-          for(unsigned i=0;i<abs_periodicity;i++) {
-            if (!alt_angle_flags[i]) {
-              double delta_i = angle_delta_deg(
-                angle_model, angle_ideal+i*width);
-              if (absolute(delta) > absolute(delta_i)) {
-                delta = delta_i;
-              }
-            }
-          }
-          if (delta == 999) {
-            throw std::runtime_error((
-              boost::format(
-                "dihedral geometry restraint: invalid exclude_period:"
-                " periodicity=%d, all excluded") % abs_periodicity).str());
-          }
-        }*/
       }
   };
 
