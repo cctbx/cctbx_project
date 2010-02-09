@@ -5,6 +5,7 @@ import mmtbx.utils
 import iotbx.phil
 import iotbx.pdb
 from scitbx.array_family import flex
+from libtbx import runtime_utils
 from libtbx.utils import Sorry
 import cctbx.xray
 
@@ -74,36 +75,36 @@ See below for complete list of available parameters.
 
 fmodel_from_xray_structure_params_str = """\
 fmodel
+  .short_caption = F(model) options
+  .expert_level = 1
+  .style = auto_align box
 {
   k_sol = 0.0
     .type = float
     .help = Bulk solvent k_sol values
     .short_caption=Bulk solvent K_sol value
-    .expert_level=1
   b_sol = 0.0
     .type = float
     .help = Bulk solvent b_sol values
     .short_caption=Bulk solvent B_sol value
-    .expert_level=1
   b_cart = 0 0 0 0 0 0
     .type = floats(6)
     .help = Anisotropic scale matrix
+    .input_size = 200
     .short_caption = Anisotropic scale matrix
-    .expert_level=1
   scale = 1.0
     .type = float
     .help = Overall scale factor
-    .expert_level=1
 }
 structure_factors_accuracy
   .short_caption = Structure factors accuracy
-  .style = menu_item auto_align noauto parent_submenu:advanced
+  .style = auto_align box
 {
   include scope mmtbx.f_model.sf_and_grads_accuracy_master_params
 }
 mask
   .short_caption = Bulk solvent mask
-  .style = menu_item auto_align noauto parent_submenu:advanced
+  .style = auto_align box
 {
   include scope mmtbx.masks.mask_master_params
 }
@@ -115,25 +116,47 @@ fmodel_from_xray_structure_master_params_str = """\
 high_resolution = None
   .type = float
   .expert_level=1
+  .style = noauto bold
 low_resolution = None
   .type = float
   .expert_level=1
+  .style = noauto
 r_free_flags_fraction = None
   .type = float
   .expert_level=1
+  .style = noauto
 add_sigmas = False
   .type = bool
   .expert_level=1
+  .help = Adds calculated Sigma(F) column to output file.
+  .style = noauto
 scattering_table = wk1995  it1992  *n_gaussian  neutron
   .type = choice
-  .help = Choices of scattering table for structure factors calculations
+  .help = Choices of scattering table for structure factors calculations.  \
+    n_gaussian is the standard set of X-ray scattering factors.
   .expert_level=1
+  .style = noauto
+pdb_file = None
+  .type = path
+  .multiple = True
+  .optional = True
+  .short_caption = PDB file
+  .style = bold noauto file_type:pdb
+reference_file = None
+  .type = path
+  .short_caption = Reference set
+  .help = Reflections file containing Miller indices (h,k,l) to use in output \
+    file.
+  .style = noauto file_type:mtz OnUpdate:update_reference_column_labels
 data_column_label = None
   .type = str
+  .short_caption = Reference file label
+  .style = noauto renderer:draw_any_label_widget
 %s
 output
   .short_caption = Reflection output
   .expert_level=0
+  .style = noauto
 {
   format = *mtz cns
     .type = choice
@@ -142,19 +165,23 @@ output
     .type = str
     .short_caption = Data label
     .expert_level=1
+    .input_size = 100
   type = real *complex
     .type = choice
-    .short_caption = Data type
+    .short_caption = Output data type
+    .help = Numeric type of output data.  'real' is amplitudes only, \
+      'complex' is complete structure factors as complex numbers.
     .expert_level=1
+    .style = bold
   file_name = None
     .type = path
     .expert_level=1
-    .short_caption = Output reflections file
+    .short_caption = Output file
     .style = bold noauto new_file
 }
 anomalous_scatterers
   .short_caption = Anomalous sites
-  .style = menu_item scrolled parent_submenu:Atom_selections
+  .style = menu_item noauto
 {
   group
     .optional = True
@@ -196,6 +223,28 @@ def set_fp_fdp_for_anomalous_scatterers(pdb_hierarchy, xray_structure,
 
 def run(args, log = sys.stdout):
   print >> log, legend
+  # XXX: pre-processing for GUI; duplicates some of mmtbx.utils
+  sources = []
+  for arg in args :
+    if os.path.isfile(arg) :
+      try :
+        file_phil = iotbx.phil.parse(file_name=arg)
+      except KeyboardInterrupt :
+        raise
+      except RuntimeError :
+        pass
+      else :
+        if len(file_phil.objects) != 0 :
+          sources.append(file_phil)
+  if len(sources) > 0 :
+    cmdline_phil = fmodel_from_xray_structure_master_params.fetch(
+      sources=sources)
+    params = cmdline_phil.extract()
+    if len(params.pdb_file) > 0 :
+      args.extend(params.pdb_file)
+    if params.reference_file is not None :
+      args.append(params.reference_file)
+  # end of preprocessing
   processed_args = mmtbx.utils.process_command_line_args(args = args, log = log,
     master_params = fmodel_from_xray_structure_master_params)
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(
@@ -205,6 +254,11 @@ def run(args, log = sys.stdout):
   print >> log, "\nParameters to compute Fmodel::\n"
   processed_args.params.show(out = log, prefix=" ")
   params = processed_args.params.extract()
+  pdb_file_names = processed_args.pdb_file_names
+  if len(pdb_file_names) == 0 :
+    pdb_file_names = params.pdb_file # for GUI
+  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
+  pdb_combined.report_non_unique(out = log)
   if(len(pdb_combined.unique_file_names) == 0): return
   print >> log, "-"*79
   print >> log, "\nInput PDB file(s):", " ".join(processed_args.pdb_file_names)
@@ -271,7 +325,11 @@ def run(args, log = sys.stdout):
   print >> log, "Output file name:", ofn
   print >> log, "All done."
   print >> log, "-"*79
+  return ofn
 
+class launcher (runtime_utils.simple_target) :
+  def __call__ (self) :
+    return run(args=list(self.args), log=sys.stdout)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
