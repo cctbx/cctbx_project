@@ -8,7 +8,16 @@
 
 namespace scitbx{ namespace math{ namespace quadrature{
 
-  /*  This file deal with approximation the following integral:
+   /***********************************************************************
+   *     2D integration, in the plane, with Gaussian weight
+   *     - nine_twentyone_1012
+   *     - five_nine_1110
+   *     - five_nine_1001
+   *     - seven_twelve_0120
+   *
+   *
+
+   *  This file deal with approximation the following integral:
    *  Q = \int_{-\infty}^{\infty} exp(-x^2) f(x)
    *  The approximation is carried out using a quadrature (1D)
    *  or cubature (2D).
@@ -24,8 +33,6 @@ namespace scitbx{ namespace math{ namespace quadrature{
    *  J = dx/dz; ( in this case, J = Sqrt[2] s)
    *
    */
-
-
 
   // This class generates cubature point sets
   // see http://www.cs.kuleuven.be/~nines/research/ecf/
@@ -364,7 +371,6 @@ namespace scitbx{ namespace math{ namespace quadrature{
 
 
 
-
   template <typename FloatType>
   class seven_twelve_0120{
     public:
@@ -472,6 +478,31 @@ namespace scitbx{ namespace math{ namespace quadrature{
   };
 
 
+
+  /**********************************************************
+   *    INtegration over a sphere
+   *    implemented:
+   *     - des.3.17.4 :   17 point spherical 3-design
+   *     - des.3.24.7 :   24 point spherical 7-design
+   *     - des.3.40.8 :   40 point spherical 8-design
+   *     - des.3.60.10:   60 point spherical 10-design
+   *     - des.3.240.21: 240 point spherical 21-design
+   *
+   *********************************************************/
+
+
+
+
+
+
+
+  /********************************************************
+   *
+   *          1 Dimensional integration
+   *    - Gauss legendre [-1,1] unit weights
+   *    - Gauss hermite [-infty, infty], exp(-x*x) weights
+   *
+   ********************************************************/
 
   // here we determine roots of legendre polynomes needed for 1d
   // integration over the interval [-1,1]

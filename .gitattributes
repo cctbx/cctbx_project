@@ -640,6 +640,7 @@ scitbx/math/tests/tst_exp_functions.py svneol=native#text/x-python
 scitbx/math/tests/tst_fit_peak.py -text
 scitbx/math/tests/tst_gcd.py svneol=native#text/x-python
 scitbx/math/traits.h -text
+scitbx/math/tst_zernike.py -text
 scitbx/math/zernike.h -text
 scitbx/matrix/bidiagonalisation_flops.nb -text
 scitbx/matrix/delta_tensors.h -text

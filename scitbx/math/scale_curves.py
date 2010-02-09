@@ -4,9 +4,13 @@ import math, sys
 from libtbx.test_utils import approx_equal
 
 class curve_interpolator(object):
-  def __init__(self, custom_x_array):
-    self.target_x = custom_x_array
-
+  def __init__(self, start, stop, n_points=100):
+    self.start    = start
+    self.stop     = stop
+    self.n_points = n_points
+    self.target_x = flex.double( range(n_points) )/float(n_points-1)
+    self.target_x = self.target_x*(self.stop-self.start)+self.start
+    self.delta    = self.target_x[1]-self.target_x[0]
 
   def interpolate(self, x_array, y_array):
     index_array = []
@@ -18,18 +22,24 @@ class curve_interpolator(object):
     start_index_target = None
     end_index_target = None
 
+    user_min = flex.min( x_array )
+    user_max = flex.max( x_array )
+
     for jj,x in enumerate(self.target_x):
       this_index = None
+      break_again = False
       for index,this_x in enumerate(x_array):
         if this_x - x >= 0:
-          this_index = index
-          if start_index_user is None:
-             start_index_user = this_index
-          if start_index_target is None:
-            start_index_target = jj
-          end_index_user = this_index
-          end_index_target = jj
-          break
+          if x >= user_min:
+            if x <= user_max:
+              this_index = index
+              if start_index_user is None:
+                 start_index_user = this_index
+              if start_index_target is None:
+                start_index_target = jj
+              end_index_user = this_index
+              end_index_target = jj
+              break
       index_array.append( this_index )
       y = None
       if this_index is not None:
@@ -49,9 +59,10 @@ class curve_interpolator(object):
                                           x_array[this_index+1], y_array[this_index+1] )
 
         result_array.append( y )
+      
 
     n = len(result_array)
-    x = flex.double(self.target_x[0:n])
+    x = flex.double(self.target_x[start_index_target:end_index_target+1])
     y = flex.double(result_array)
     return x,y,(start_index_user,end_index_user),(start_index_target,end_index_target)
 
@@ -219,9 +230,9 @@ def test_curve_scaler():
 def tst_curve_interpolator():
   x = flex.double( range(25) )/24.0
   y = x*x
-  x_target = flex.double( range(200) )/100.0
+  ip = curve_interpolator(0,2.0,200)
+  x_target = ip.target_x
   y_ref = x_target*x_target
-  ip = curve_interpolator(x_target)
   nx,ny,a,b = ip.interpolate(x,y)
   count = 0
   for xx in x_target:
@@ -238,10 +249,18 @@ def tst_curve_interpolator():
   assert b[1]==100
 
 
-
+  x = flex.double( range(5,23) )/24.0
+  y = x*x
+  ip = curve_interpolator(0,2.0,200)
+  nx,ny,a,b = ip.interpolate(x,y)
+  assert nx[0] >= flex.min(x)
+  assert nx[-1] <= flex.max(x)
+  y_ref= nx*nx
+  for yy,yyy in zip(ny,y_ref):
+    assert approx_equal(yy,yyy,eps=1e-3)
 
 
 if __name__ == "__main__":
-  #test_curve_scaler()
+  test_curve_scaler()
   tst_curve_interpolator()
   print "OK"
