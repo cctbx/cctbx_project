@@ -28,5 +28,6 @@ env.SharedLibrary(
     "numeric_limits.cpp",
     "distributions.cpp",
     "exp_functions.cpp",
+    "zernike.cpp",
     ]
 )

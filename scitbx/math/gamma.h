@@ -46,13 +46,8 @@ namespace gamma {
    */
   template <typename FloatType>
   FloatType
-  complete_minimax(FloatType const& x)
-  {
-    if (x>=171.624) {
-      char buf[128];
-      std::sprintf(buf, "gamma::complete_minimax(%.6g): domain error", x);
-      throw error(buf);
-    }
+  log_complete_minimax(FloatType const& x)
+  {   
     SCITBX_ASSERT(x > 12);
     typedef FloatType f_t;
     f_t sqrtpi = 0.9189385332046727417803297;
@@ -67,8 +62,21 @@ namespace gamma {
     }
     sum = sum/x -x + sqrtpi;
     sum = sum + (x-0.5)*std::log(x);
-    return std::exp(sum);
+    return (sum);
   }
+
+  template <typename FloatType>
+  FloatType
+  complete_minimax(FloatType const& x)
+  {
+    if (x>=171.624) {
+      char buf[128];
+      std::sprintf(buf, "gamma::complete_minimax(%.6g): domain error", x);
+      throw error(buf);
+    }    
+    return std::exp( log_complete_minimax(x) );
+  }
+
 
   //! Gamma function with automatic choice of the best approximation.
   template <typename FloatType>
@@ -77,6 +85,15 @@ namespace gamma {
   {
     if (minimax && x > 12) return complete_minimax(x);
     return complete_lanczos(x);
+  }
+
+
+  template <typename FloatType>
+  FloatType
+  log_complete(FloatType const& x, bool minimax=true)
+  {
+    if (minimax && x > 12) return log_complete_minimax(x);
+    return std::log(complete_lanczos(x));
   }
 
   //! Incomplete gamma function using series expansion.
