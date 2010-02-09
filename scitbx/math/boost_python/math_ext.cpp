@@ -16,6 +16,7 @@
 #include <scitbx/math/utils.h>
 #include <boost/rational.hpp> // for boost::gcd
 #include <scitbx/math/approx_equal.h>
+#include <scitbx/math/zernike.h>
 
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
@@ -49,6 +50,7 @@ namespace boost_python {
   void wrap_numeric_limits();
   void wrap_distributions();
   void wrap_exp_functions();
+  void wrap_zernike();
 
 namespace {
 
@@ -340,6 +342,7 @@ namespace {
     wrap_numeric_limits();
     wrap_distributions();
     wrap_exp_functions();
+    wrap_zernike();
 
     def("superpose_kearsley_rotation", superpose_kearsley_rotation, (
       arg("reference_sites"), arg("other_sites")));
