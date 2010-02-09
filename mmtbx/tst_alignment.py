@@ -80,9 +80,9 @@ class test_blosum62(unittest.TestCase):
         self.assertEqual( blosum62( left, right ), value )
 
 
-  def testError(self):
+  def testUnknown(self):
 
-    self.assertRaises( ValueError, blosum62, "Q", "B" )
+    self.assertEqual( blosum62( "Q", "B" ), 0 )
 
 suite_blosum62 = unittest.TestLoader().loadTestsFromTestCase(
   test_blosum62

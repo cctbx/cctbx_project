@@ -289,6 +289,22 @@ class test_alignment(unittest.TestCase):
     self.assertAlmostEqual( self.alignment4.identity_fraction(), 1.000, 3 )
 
 
+  def test_multiplicity(self):
+
+    self.assertEqual( self.alignment1.multiplicity(), 2 )
+    self.assertEqual( self.alignment2.multiplicity(), 4 )
+    self.assertEqual( self.alignment3.multiplicity(), 0 )
+    self.assertEqual( self.alignment4.multiplicity(), 3 )
+
+
+  def test_length(self):
+
+    self.assertEqual( self.alignment1.length(), 75 )
+    self.assertEqual( self.alignment2.length(), 75 )
+    self.assertEqual( self.alignment3.length(), 0 )
+    self.assertEqual( self.alignment4.length(), 75 )
+
+
 class test_fasta_alignment(unittest.TestCase):
 
   def setUp(self):
