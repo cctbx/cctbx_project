@@ -1360,11 +1360,18 @@ class add_dihedral_proxies(object):
             raise RuntimeError(
               "Unknown dihedral_function_type: %s"
                 % str(dihedral_function_type))
+          try:
+            if len(tor.alt_value_angle) == 0:
+              alt_value_angle = None
+            else:
+              alt_value_angle = map(float,tor.alt_value_angle.split(","))
+          except:
+            alt_value_angle = None
           proxy = geometry_restraints.dihedral_proxy(
             i_seqs=i_seqs,
             angle_ideal=tor.value_angle,
             weight=1/tor.value_angle_esd**2,
-            periodicity=periodicity)
+            periodicity=periodicity, alt_angle_ideals=alt_value_angle)
           if (sites_cart is not None and tor.id == "omega"):
             assert abs(tor.value_angle - 180) < 1.e-6
             if (peptide_link_params.omega_esd_override_value is not None):

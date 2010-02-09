@@ -124,6 +124,7 @@ class RotamerID:
     wrap_chis = self.wrap_chis(aa_name, chis)
     rotList = self.names[aa_name]
     for rot in rotList:
+      #print rot
       if(rot.contains(wrap_chis)): return rot.rotamer_name
     return ""
 
@@ -148,13 +149,26 @@ Can't seem to find mmtbx/rotamer/ directory.
     f.close()
     return rotaList
 
-  def wrap_chis(self, aa_name, chis):
+  def wrap_chis(self, aa_name, chis, symmetry=True):
     aa_name = aa_name.lower()
     wrap_chis = []
     for i in range(0, len(chis)):
       wrap_chis.append(chis[i] % 360)
       if wrap_chis[i] < 0:
         wrap_chis[i] += 360
+    if (symmetry==True):
+      wrap_chis = self.wrap_sym(aa_name, wrap_chis)
+    #MOVED TO SEPARATE FUNCTION 'wrap_sym' for accurate angle reporting
+    #if (aa_name == "asp" or aa_name == "glu" or aa_name == "phe" or aa_name == "tyr"):
+    #  i = len(wrap_chis) - 1
+    #  print wrap_chis[i]
+    #  wrap_chis[i] = wrap_chis[i] % 180
+    #  if wrap_chis[i] < 0:
+    #    wrap_chis[i] += 180
+    return wrap_chis
+  
+  def wrap_sym(self, aa_name, wrap_chis):
+    aa_name = aa_name.lower()
     if (aa_name == "asp" or aa_name == "glu" or aa_name == "phe" or aa_name == "tyr"):
       i = len(wrap_chis) - 1
       wrap_chis[i] = wrap_chis[i] % 180
