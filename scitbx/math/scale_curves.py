@@ -246,7 +246,7 @@ def tst_curve_interpolator():
   assert a[0]==0
   assert a[1]==24
   assert b[0]==0
-  assert b[1]==100
+  assert b[1] in (99,100)
 
 
   x = flex.double( range(5,23) )/24.0
