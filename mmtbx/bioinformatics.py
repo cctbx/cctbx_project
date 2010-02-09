@@ -188,6 +188,16 @@ class alignment(object):
         for seq in self.alignments ]
 
 
+  def length(self):
+
+    return ( len( self.alignments[0] ) if self.alignments else 0 )
+
+
+  def multiplicity(self):
+
+    return len( self.alignments )
+
+
 class fasta_alignment(alignment):
   """
   Fasta alignment

@@ -475,8 +475,12 @@ def blosum50(a,b):
 
 def blosum62(left, right):
 
-  index_left = amino_acid_codes.index( left )
-  index_right = amino_acid_codes.index( right )
+  try:
+    index_left = amino_acid_codes.index( left )
+    index_right = amino_acid_codes.index( right )
+
+  except ValueError:
+    return 0
 
   return blosum62_similarity_scores[index_left][index_right]
 
