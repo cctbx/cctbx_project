@@ -617,6 +617,7 @@ scitbx/math/boost_python/continued_fraction.cpp -text
 scitbx/math/boost_python/exp_functions.cpp svneol=native#text/plain
 scitbx/math/boost_python/least_squares_plane.cpp -text
 scitbx/math/boost_python/numeric_limits.cpp -text
+scitbx/math/boost_python/zernike.cpp -text
 scitbx/math/continued_fraction.h -text
 scitbx/math/copysign.h -text
 scitbx/math/dihedral.h svneol=native#text/plain
