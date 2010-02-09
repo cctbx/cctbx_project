@@ -16,7 +16,6 @@
 #include <scitbx/math/utils.h>
 #include <boost/rational.hpp> // for boost::gcd
 #include <scitbx/math/approx_equal.h>
-#include <scitbx/math/zernike.h>
 
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
