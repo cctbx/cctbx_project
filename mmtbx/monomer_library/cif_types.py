@@ -627,6 +627,7 @@ _chem_comp_tor.atom_id_2
 _chem_comp_tor.atom_id_3
 _chem_comp_tor.atom_id_4
 _chem_comp_tor.value_angle:float
+_chem_comp_tor.alt_value_angle
 _chem_comp_tor.value_angle_esd:float
 _chem_comp_tor.period:int
   """
