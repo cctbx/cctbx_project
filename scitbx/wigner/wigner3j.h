@@ -64,16 +64,16 @@ namespace wigner {
       tmax = min(t3,t4, t5 );
       for(int tt=tmin; tt<=tmax; tt++)
       {
-          value_ += std::pow(-1.0,tt)/(fact_array_[tt]*fact_array_[tt-t1]
-                    *fact_array_[tt-t2]*fact_array_[t3-tt]
-                    *fact_array_[t4-tt]*fact_array_[t5-tt]);
+          value_ += std::pow(-1.0,tt)/std::exp(fact_array_[tt]+fact_array_[tt-t1]
+                    +fact_array_[tt-t2]+fact_array_[t3-tt]
+                    +fact_array_[t4-tt]+fact_array_[t5-tt]);
       }
-      triangle_coef = fact_array_[j1+j2-j3]*fact_array_[j1-j2+j3]
-                      *fact_array_[-j1+j2+j3]/fact_array_[j1+j2+j3+1];
+      triangle_coef = fact_array_[j1+j2-j3]+fact_array_[j1-j2+j3]
+                      +fact_array_[-j1+j2+j3]-fact_array_[j1+j2+j3+1];
       value_ *= std::pow(-1.0,j1-j2-m3)
-                *sqrt( triangle_coef*fact_array_[j1+m1]*fact_array_[j1-m1]
-                       *fact_array_[j2+m2] * fact_array_[j2-m2]
-                       *fact_array_[j3+m3] * fact_array_[j3-m3]
+                *std::sqrt( std::exp( triangle_coef+fact_array_[j1+m1]+fact_array_[j1-m1]
+                       +fact_array_[j2+m2] + fact_array_[j2-m2]
+                       +fact_array_[j3+m3] + fact_array_[j3-m3])
                      );
       return value_;
     }
@@ -85,11 +85,11 @@ namespace wigner {
 
      void build_factorial()
      {
-       FloatType fac = 1;
+       FloatType fac = 0.0;
        fact_array_.push_back( fac );
        for(int i=1; i<=max_; i++)
        {
-         fac *= i;
+         fac += std::log(i);
          fact_array_.push_back( fac );
        }
        return;
@@ -100,7 +100,7 @@ namespace wigner {
        FloatType fac = fact_array_[max_-1];
        for(int i = max_; i<= new_max; i++)
        {
-         fac *= i;
+         fac += log(i);
          fact_array_.push_back( fac );
        }
        max_ = new_max;
