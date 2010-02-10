@@ -1,4 +1,9 @@
 
+# Implemented based on PDB v3.2 specification at:
+#   http://www.wwpdb.org/documentation/format32/sect5.html
+
+# NOTE: all hydrogen bond information is returned as atom pairs, donor first.
+
 from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import group_args
@@ -159,10 +164,10 @@ class helix (structure_base, group_args) :
       else :
         raise RuntimeError("Don't know how to deal with helix class %d." %
           self.helix_class)
-    acceptor = "O"
-    donor = "N"
+    acceptor_name = "O"
+    donor_name = "N"
     if params.use_hydrogens :
-      donor = "H"
+      donor_name = "H"
     while j <= self.length :
       resseq1 = self.init_resseq + i
       resseq2 = self.init_resseq + j
@@ -171,17 +176,17 @@ class helix (structure_base, group_args) :
       #print resseq1, resseq2, self.end_resseq, self.helix_class
       if not resseq2 <= self.end_resseq :
         break
-      atom1 = group_args(
+      acceptor = group_args(
         chain_id=self.init_chain_id,
         resseq=resseq1,
-        name=acceptor,
+        name=acceptor_name,
         icode=self.init_icode)
-      atom2 = group_args(
+      donor = group_args(
         chain_id=self.init_chain_id,
         resseq=resseq2,
-        name=donor,
+        name=donor_name,
         icode=self.init_icode)
-      bonded_atoms.append((atom1, atom2))
+      bonded_atoms.append((donor, acceptor))
     return bonded_atoms
 
 def parse_helix_records (records) :
@@ -237,10 +242,10 @@ class sheet (structure_base, group_args) :
     assert len(self.strands) == len(self.registrations)
     bonded_atoms = []
     errors = 0
-    donor = "N"
-    acceptor = "O"
+    donor_name = "N"
+    acceptor_name = "O"
     if params.use_hydrogens :
-      donor = "H"
+      donor_name = "H"
     for i, strand in enumerate(self.strands) :
       registration = self.registrations[i]
       prev_strand = self.strands[i - 1]
@@ -256,60 +261,60 @@ class sheet (structure_base, group_args) :
         while ((prev_resseq <= prev_strand.end_resseq) and
                (cur_resseq >= strand.init_resseq)) :
           # O (current) --> H/N (previous)
-          atom1 = group_args(
+          acceptor1 = group_args(
             chain_id=strand.init_chain_id,
             resseq=cur_resseq,
-            name=acceptor,
+            name=acceptor_name,
             icode=strand.init_icode)
-          atom2 = group_args(
+          donor1 = group_args(
             chain_id=prev_strand.init_chain_id,
             resseq=prev_resseq,
-            name=donor,
+            name=donor_name,
             icode=prev_strand.init_icode)
-          bonded_atoms.append((atom1, atom2))
+          bonded_atoms.append((donor1, acceptor1))
           # H/N (current) --> O (previous)
-          atom3 = group_args(
+          donor2 = group_args(
             chain_id=strand.init_chain_id,
             resseq=cur_resseq,
-            name=donor,
+            name=donor_name,
             icode=strand.init_icode)
-          atom4 = group_args(
+          acceptor2 = group_args(
             chain_id=prev_strand.init_chain_id,
             resseq=prev_resseq,
-            name=acceptor,
+            name=acceptor_name,
             icode=prev_strand.init_icode)
-          bonded_atoms.append((atom3, atom4))
+          bonded_atoms.append((donor2, acceptor2))
           prev_resseq += 2
           cur_resseq -= 2
       elif strand.sense == 1 :
         while ((prev_resseq <= prev_strand.end_resseq) and
                (cur_resseq <= strand.end_resseq)) :
           # O (current) --> H/N (previous)
-          atom1 = group_args(
+          acceptor1 = group_args(
             chain_id=strand.init_chain_id,
             resseq=cur_resseq,
-            name=acceptor,
+            name=acceptor_name,
             icode=strand.init_icode)
-          atom2 = group_args(
+          donor1 = group_args(
             chain_id=prev_strand.init_chain_id,
             resseq=prev_resseq,
-            name=donor,
+            name=donor_name,
             icode=prev_strand.init_icode)
-          bonded_atoms.append((atom1, atom2))
+          bonded_atoms.append((donor1, acceptor1))
           if (cur_resseq + 2) > strand.end_resseq :
             break
           # H/N (current + 2) --> O (previous)
-          atom3 = group_args(
+          donor2 = group_args(
             chain_id=strand.init_chain_id,
             resseq=cur_resseq + 2,
-            name=donor,
+            name=donor_name,
             icode=strand.init_icode)
-          atom4 = group_args(
+          acceptor2 = group_args(
             chain_id=prev_strand.init_chain_id,
             resseq=prev_resseq,
-            name=acceptor,
+            name=acceptor_name,
             icode=prev_strand.init_icode)
-          bonded_atoms.append((atom3, atom4))
+          bonded_atoms.append((donor2, acceptor2))
           cur_resseq += 2
           prev_resseq += 2
       else :
@@ -447,7 +452,7 @@ SHEET    5   A 5 ASP A  74  LEU A  77  1  O  HIS A  74   N  VAL A  52"""
   pml_out = ss.as_pymol_dashes(params=params)
   assert len(pml_out.splitlines()) == 98
   assert (pml_out.splitlines()[0] ==
-    """dist (chain 'A' and resi 37 and name O), (chain 'A' and resi 41 and name H)""")
+    """dist (chain 'A' and resi 41 and name H), (chain 'A' and resi 37 and name O)""")
   params.include_sheets = True
   assert len(ss.as_atom_selections(params=params)) == 20
   assert (ss.as_atom_selections(params=params)[0] ==
