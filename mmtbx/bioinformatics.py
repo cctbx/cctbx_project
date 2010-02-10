@@ -190,7 +190,9 @@ class alignment(object):
 
   def length(self):
 
-    return ( len( self.alignments[0] ) if self.alignments else 0 )
+    if self.alignments:
+      return len( self.alignments[0] )
+    return 0
 
 
   def multiplicity(self):
