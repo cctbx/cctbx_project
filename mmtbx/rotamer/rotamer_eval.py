@@ -166,7 +166,7 @@ Can't seem to find mmtbx/rotamer/ directory.
     #  if wrap_chis[i] < 0:
     #    wrap_chis[i] += 180
     return wrap_chis
-  
+
   def wrap_sym(self, aa_name, wrap_chis):
     aa_name = aa_name.lower()
     if (aa_name == "asp" or aa_name == "glu" or aa_name == "phe" or aa_name == "tyr"):

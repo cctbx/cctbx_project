@@ -47,7 +47,7 @@ namespace gamma {
   template <typename FloatType>
   FloatType
   log_complete_minimax(FloatType const& x)
-  {   
+  {
     SCITBX_ASSERT(x > 12);
     typedef FloatType f_t;
     f_t sqrtpi = 0.9189385332046727417803297;
@@ -73,7 +73,7 @@ namespace gamma {
       char buf[128];
       std::sprintf(buf, "gamma::complete_minimax(%.6g): domain error", x);
       throw error(buf);
-    }    
+    }
     return std::exp( log_complete_minimax(x) );
   }
 

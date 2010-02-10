@@ -59,7 +59,7 @@ class curve_interpolator(object):
                                           x_array[this_index+1], y_array[this_index+1] )
 
         result_array.append( y )
-      
+
 
     n = len(result_array)
     x = flex.double(self.target_x[start_index_target:end_index_target+1])
