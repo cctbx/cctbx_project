@@ -273,6 +273,7 @@ iotbx/pdb/records.py svneol=native#text/x-python
 iotbx/pdb/rna_dna_atom_names.h -text
 iotbx/pdb/rna_dna_atom_names_bpl.cpp -text
 iotbx/pdb/rna_dna_detection.py svneol=native#text/x-python
+iotbx/pdb/secondary_structure.py -text
 iotbx/pdb/tst_atom_selection.py svneol=native#text/x-python
 iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py -text
 iotbx/pdb/tst_hierarchy.py svneol=native#text/x-python
