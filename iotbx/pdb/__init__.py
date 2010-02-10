@@ -604,6 +604,11 @@ class _input(boost.python.injector, ext.input):
         result.append(line)
     return result
 
+  def extract_secondary_structure (self) :
+    from iotbx.pdb import secondary_structure
+    records = self.secondary_structure_section()
+    return secondary_structure.annotation(records)
+
   def crystal_symmetry_from_cryst1(self):
     from iotbx.pdb import cryst1_interpretation
     for line in self.crystallographic_section():
