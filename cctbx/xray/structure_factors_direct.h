@@ -143,7 +143,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
          Since a std::runtime_error may be thrown during Debye-Waller
          computations (c.f. adptbx.h, function debye_waller_factor_exp)
          one must make sure it cannot escape the body of the parallelised
-         loop. So we catch it inside the loop and then throw it when
+         loop. So we catch it inside the loop and then re-throw it
          immediately after the loop finished.
         */
         boost::optional<std::runtime_error> error;
