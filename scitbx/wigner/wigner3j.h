@@ -9,8 +9,8 @@ namespace scitbx {
  * See: http://mathworld.wolfram.com/Wigner3j-Symbol.html
  *
  *
- * Due to the range of double value, (j1+j2+j3+1)<150, ie, the max<150, is required
- * to get reliable values
+ * Due to the range of double value, (j1+j2+j3+1)<150, ie, the max<150,
+ * is required to get reliable values
  * ATTEN:  this module is for INTEGER l,m calculation only, yet   */
 
 namespace wigner {
@@ -64,17 +64,17 @@ namespace wigner {
       tmax = min(t3,t4, t5 );
       for(int tt=tmin; tt<=tmax; tt++)
       {
-          value_ += std::pow(-1.0,tt)/std::exp(fact_array_[tt]+fact_array_[tt-t1]
-                    +fact_array_[tt-t2]+fact_array_[t3-tt]
-                    +fact_array_[t4-tt]+fact_array_[t5-tt]);
+          value_ += std::pow(-1.0,tt)/std::exp(
+             fact_array_[tt]+fact_array_[tt-t1]
+            +fact_array_[tt-t2]+fact_array_[t3-tt]
+            +fact_array_[t4-tt]+fact_array_[t5-tt]);
       }
       triangle_coef = fact_array_[j1+j2-j3]+fact_array_[j1-j2+j3]
                       +fact_array_[-j1+j2+j3]-fact_array_[j1+j2+j3+1];
-      value_ *= std::pow(-1.0,j1-j2-m3)
-                *std::sqrt( std::exp( triangle_coef+fact_array_[j1+m1]+fact_array_[j1-m1]
-                       +fact_array_[j2+m2] + fact_array_[j2-m2]
-                       +fact_array_[j3+m3] + fact_array_[j3-m3])
-                     );
+      value_ *= std::pow(-1.0,j1-j2-m3) *std::sqrt( std::exp( triangle_coef
+        +fact_array_[j1+m1]+fact_array_[j1-m1]
+        +fact_array_[j2+m2] + fact_array_[j2-m2]
+        +fact_array_[j3+m3] + fact_array_[j3-m3]));
       return value_;
     }
 
@@ -89,7 +89,7 @@ namespace wigner {
        fact_array_.push_back( fac );
        for(int i=1; i<=max_; i++)
        {
-         fac += std::log((FloatType)i);
+         fac += std::log(static_cast<FloatType>(i));
          fact_array_.push_back( fac );
        }
        return;
@@ -100,7 +100,7 @@ namespace wigner {
        FloatType fac = fact_array_[max_-1];
        for(int i = max_; i<= new_max; i++)
        {
-         fac += log((FloatType)i);
+         fac += std::log(static_cast<FloatType>(i));
          fact_array_.push_back( fac );
        }
        max_ = new_max;
