@@ -5,7 +5,7 @@ from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
 from cctbx.masks import flood_fill
 from cctbx.xray import structure
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 import libtbx.utils
 from smtbx import masks
 
@@ -23,27 +23,41 @@ def exercise_masks():
     'N4', 'C20', 'C21', 'H211', 'H212', 'H213')
   xs_no_sol = xs_ref.deep_copy_scatterers().select(
     acetonitrile_sel, negate=True)
-  mask = masks.mask(xs_no_sol, fo2)
-  mask.compute(solvent_radius=1.2,
-               shrink_truncation_radius=1.2,
-               resolution_factor=1/3,
-               atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52})
-  flood_fill(mask.mask.data)
-  n_voids = flex.max(mask.mask.data) - 1
-  f_mask = mask.structure_factors()
-  f_model = mask.f_model()
-  modified_fo = mask.modified_structure_factors().as_amplitude_array()
-  f_obs_minus_f_model = fo.f_obs_minus_f_calc(f_obs_factor=1, f_calc=f_model)
-  diff_map = miller.fft_map(mask.crystal_gridding, f_obs_minus_f_model)
-  diff_map.apply_volume_scaling()
-  stats = diff_map.statistics()
-  assert n_voids == 2
-  # check the difference map has no large peaks/holes
-  assert max(stats.max(), abs(stats.min())) < 0.1
-  assert approx_equal(mask.f_000_s, 40, eps=1e-1)
+  for use_space_group_symmetry in (True, False):
+    mask = masks.mask(xs_no_sol, fo2)
+    mask.compute(solvent_radius=1.2,
+                 shrink_truncation_radius=1.2,
+                 resolution_factor=1/3,
+                 atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52},
+                 use_space_group_symmetry=use_space_group_symmetry)
+    n_voids = flex.max(mask.mask.data) - 1
+    f_mask = mask.structure_factors()
+    f_model = mask.f_model()
+    modified_fo = mask.modified_structure_factors().as_amplitude_array()
+    f_obs_minus_f_model = fo.f_obs_minus_f_calc(f_obs_factor=1, f_calc=f_model)
+    diff_map = miller.fft_map(mask.crystal_gridding, f_obs_minus_f_model)
+    diff_map.apply_volume_scaling()
+    stats = diff_map.statistics()
+    assert n_voids == 2
+    # check the difference map has no large peaks/holes
+    assert max(stats.max(), abs(stats.min())) < 0.1
+    assert approx_equal(mask.f_000_s, 40, eps=1e-1)
+    assert modified_fo.r1_factor(mask.f_calc) < 0.011
+    assert fo.r1_factor(f_model) < 0.011
 
-  assert modified_fo.r1_factor(mask.f_calc) < 0.011
-  assert fo.r1_factor(f_model) < 0.011
+  s = cStringIO.StringIO()
+  mask.show_summary(log=s)
+  assert not show_diff(s.getvalue(), """\
+solvent_radius: 1.20
+shrink_truncation_radius: 1.20
+gridding: (45,72,80)
+Total solvent accessible volume / cell = 146.5 Ang^3 [16.3%]
+Total electron count / cell = 40.1
+
+Void  Average coordinates    Volume/Ang^3  n electrons
+   1  ( 0.267, 0.461, 0.672)         73.3         20.0
+   2  (-0.267, 0.539, 0.328)         73.3         20.0
+""")
 
   # this bit is necessary until we have constraints, as
   # otherwise the hydrogens just disappear into the ether.

@@ -1,9 +1,9 @@
 from __future__ import division
 
+import sys
+
 import cctbx.masks
-from cctbx import maptbx
-from cctbx import miller
-from cctbx import xray
+from cctbx import crystal, maptbx, miller, xray
 from cctbx.array_family import flex
 from scitbx.math import approx_equal_relatively
 from libtbx.utils import xfrange
@@ -25,11 +25,12 @@ class mask(object):
               ignore_hydrogen_atoms=False,
               crystal_gridding=None,
               resolution_factor=1/3,
-              atom_radii_table=None):
-    xs = self.xray_structure
+              atom_radii_table=None,
+              use_space_group_symmetry=False):
+    self.xray_structure
     if crystal_gridding is None:
       self.crystal_gridding = maptbx.crystal_gridding(
-        unit_cell=xs.unit_cell(),
+        unit_cell=self.xray_structure.unit_cell(),
         space_group_info=self.xray_structure.space_group_info(),
         d_min=self.observations.d_min(),
         resolution_factor=resolution_factor,
@@ -37,16 +38,33 @@ class mask(object):
     else:
       self.crystal_gridding = crystal_gridding
     atom_radii = cctbx.masks.vdw_radii_from_xray_structure(
-      xs, table=atom_radii_table)
-    xs_p1 = self.xray_structure.expand_to_p1()
+      self.xray_structure, table=atom_radii_table)
+    if use_space_group_symmetry:
+      asu_mappings = self.xray_structure.asu_mappings(
+        buffer_thickness=flex.max(atom_radii))
+      scatterers_asu_plus_buffer = flex.xray_scatterer()
+      frac = self.xray_structure.unit_cell().fractionalize
+      for sc, mappings in zip(
+        self.xray_structure.scatterers(), asu_mappings.mappings()):
+        for mapping in mappings:
+          scatterers_asu_plus_buffer.append(
+            sc.customized_copy(site=frac(mapping.mapped_site())))
+      xs = xray.structure(crystal_symmetry=self.xray_structure,
+                          scatterers=scatterers_asu_plus_buffer)
+    else:
+      xs = self.xray_structure.expand_to_p1()
     self.mask = cctbx.masks.around_atoms(
-      unit_cell=xs_p1.unit_cell(),
-      space_group_order_z=xs_p1.space_group().order_z(),
-      sites_frac=xs_p1.sites_frac(),
-      atom_radii=cctbx.masks.vdw_radii_from_xray_structure(xs_p1),
+      unit_cell=xs.unit_cell(),
+      space_group_order_z=xs.space_group().order_z(),
+      sites_frac=xs.sites_frac(),
+      atom_radii=cctbx.masks.vdw_radii_from_xray_structure(xs),
       gridding_n_real=self.crystal_gridding.n_real(),
       solvent_radius=solvent_radius,
       shrink_truncation_radius=shrink_truncation_radius)
+    if use_space_group_symmetry:
+      tags = self.crystal_gridding.tags()
+      tags.tags().apply_symmetry_to_mask(self.mask.data)
+    self.flood_fill = cctbx.masks.flood_fill(self.mask.data)
     self.n_solvent_grid_points = self.crystal_gridding.n_grid_points() - self.mask.data.count(0)
     self.solvent_accessible_volume = self.n_solvent_grid_points \
         / self.mask.data.size() * self.xray_structure.unit_cell().volume()
@@ -65,7 +83,7 @@ class mask(object):
     f_obs_minus_f_calc = f_obs.f_obs_minus_f_calc(
       1/self.scale_factor, self.f_calc)
     self.fft_scale = self.xray_structure.unit_cell().volume()\
-              / self.crystal_gridding.n_grid_points()
+        / self.crystal_gridding.n_grid_points()
     epsilon_for_min_residual = 2
     for i in range(max_cycles):
       diff_map = miller.fft_map(self.crystal_gridding, f_obs_minus_f_calc)
@@ -148,3 +166,37 @@ class mask(object):
       data=(f_obs.data() - f_mask.data()*scale_factor),
       sigmas=f_obs.sigmas())
     return modified_f_obs.as_intensity_array()
+
+  def show_summary(self, log=None):
+    if log is None: log = sys.stdout
+    print >> log, "solvent_radius: %.2f" %(self.mask.solvent_radius)
+    print >> log, "shrink_truncation_radius: %.2f" %(
+      self.mask.shrink_truncation_radius)
+    print >> log, "gridding: (%i,%i,%i)" %self.crystal_gridding.n_real()
+    print >> log, "Total solvent accessible volume / cell = %.1f Ang^3 [%.1f%%]" %(
+      self.solvent_accessible_volume,
+      100 * self.solvent_accessible_volume /
+      self.xray_structure.unit_cell().volume())
+    print >> log, "Total electron count / cell = %.1f" %(self.f_000_s)
+    print >> log
+
+    n_voids = self.flood_fill.n_voids()
+    grid_points_per_void = self.flood_fill.grid_points_per_void()
+    averaged_frac_coords = self.flood_fill.averaged_frac_coords()
+    print >> log, "Void  Average coordinates    Volume/Ang^3  n electrons"
+    for i in range(n_voids):
+      diff_map = self.masked_diff_map.deep_copy().set_selected(
+        self.mask.data != i+2, 0)
+      f_000 = flex.sum(diff_map) * self.fft_scale
+      f_000_s = f_000 * (
+        self.crystal_gridding.n_grid_points() /
+        (self.crystal_gridding.n_grid_points() - self.n_solvent_grid_points))
+      void_vol = (
+        self.xray_structure.unit_cell().volume() * grid_points_per_void[i]) \
+               / self.crystal_gridding.n_grid_points()
+      formatted_site = ["%6.3f" % x for x in averaged_frac_coords[i]]
+      print >> log, "%4i" %(i+1),
+      print >> log, " (%s)" %(','.join(formatted_site)),
+      print >> log, "%12.1f     " %(void_vol),
+      print >> log, "%7.1f" %f_000_s
+
