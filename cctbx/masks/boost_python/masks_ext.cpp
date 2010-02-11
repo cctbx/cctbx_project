@@ -57,13 +57,34 @@ namespace {
     }
   };
 
+  template <typename DataType, typename FloatType>
+  struct flood_fill_wrappers
+  {
+    typedef flood_fill<DataType, FloatType> w_t;
+
+    static
+    void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("flood_fill", no_init)
+        .def(init<
+          af::ref<DataType, af::c_grid_periodic<3> > const & >((arg("data"))))
+        .def("n_voids", &w_t::n_voids)
+        .def("averaged_indices", &w_t::averaged_indices)
+        .def("averaged_frac_coords", &w_t::averaged_frac_coords)
+        .def("grid_points_per_void", make_getter(&w_t::grid_points_per_void, rbv()))
+      ;
+    }
+  };
+
   void init_module()
   {
     using namespace boost::python;
 
     around_atoms_wrappers<int, double>::wrap();
-    def("flood_fill", (void(*) (
-      af::ref<int, af::c_grid<3> > const &)) flood_fill, (arg("data")));
+    flood_fill_wrappers<int, double>::wrap();
   }
 
 } // namespace <anonymous>
