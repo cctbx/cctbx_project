@@ -57,7 +57,8 @@ def simulation_zigzag(NB=5):
     mersenne_twister=mersenne_twister)
   body.parent = -1
   bodies = [body]
-  vu = matrix.col((0,1,0)).rotate(axis=matrix.col((1,0,0)), angle=75, deg=True)
+  vu = matrix.col((0,1,0)).rotate_around_origin(
+    axis=matrix.col((1,0,0)), angle=75, deg=True)
   vr = matrix.col((0,1,0))
   v = vu
   pivot = matrix.col((0,0,0))
