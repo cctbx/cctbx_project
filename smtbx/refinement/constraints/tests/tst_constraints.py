@@ -366,7 +366,8 @@ class staggered_ch3_test_case(stretching_only_hydrogen_test_case,
   def init_other_atoms(self):
     x_X = mat.col(self.pivot.site)
     v_XY = 1.54*(mat.col((1, 2, -1.5)).normalize())
-    v_YZ = (-v_XY).rotate(axis=v_XY.ortho(), angle=109.4, deg=True)
+    v_YZ = (-v_XY).rotate_around_origin(
+      axis=v_XY.ortho(), angle=109.4, deg=True)
     v_XY = mat.col(self.xs.unit_cell().fractionalize(v_XY))
     v_YZ = mat.col(self.xs.unit_cell().fractionalize(v_YZ))
     x_Y = x_X + v_XY
@@ -513,7 +514,7 @@ class secondary_ch2_test_case(stretching_only_hydrogen_test_case):
     # and bond lengths CX = 1.35 and CY = 1.65
     v_CX = 1.35*(mat.col((-1, 2, 1.5)).normalize())
     n = v_CX.ortho()
-    v_CY = v_CX.rotate(axis=n, angle=115, deg=True)
+    v_CY = v_CX.rotate_around_origin(axis=n, angle=115, deg=True)
     v_CY = 1.65*v_CY.normalize()
     v_CX = self.xs.unit_cell().fractionalize(v_CX)
     v_CY = self.xs.unit_cell().fractionalize(v_CY)
@@ -562,10 +563,10 @@ class tertiary_ch_test_case(stretching_only_hydrogen_test_case):
   def init_other_atoms(self):
     v_CX = 1.35*(mat.col((-1, 2, 1.5)).normalize())
     n = v_CX.ortho()
-    v_CY = v_CX.rotate(axis=n, angle=115, deg=True)
+    v_CY = v_CX.rotate_around_origin(axis=n, angle=115, deg=True)
     v_CY = 1.65*v_CY.normalize()
     n = n.ortho()
-    v_CZ = v_CY.rotate(axis=n, angle=105, deg=True)
+    v_CZ = v_CY.rotate_around_origin(axis=n, angle=105, deg=True)
     v_CZ = 1.5*v_CZ.normalize()
     v_CX, v_CY, v_CZ = [ self.xs.unit_cell().fractionalize(v)
                          for v in (v_CX, v_CY, v_CZ) ]
@@ -607,7 +608,7 @@ class aromatic_ch_test_case(stretching_only_hydrogen_test_case):
     # and bond lengths CX = 1.4 and CY = 1.6
     v_CX = 1.4*(mat.col((-1, 2, 1.5)).normalize())
     n = v_CX.ortho()
-    v_CY = v_CX.rotate(axis=n, angle=115, deg=True)
+    v_CY = v_CX.rotate_around_origin(axis=n, angle=115, deg=True)
     v_CY = 1.6*v_CY.normalize()
     v_CX = self.xs.unit_cell().fractionalize(v_CX)
     v_CY = self.xs.unit_cell().fractionalize(v_CY)
@@ -646,7 +647,7 @@ class terminal_trihedral_XH2(stretching_only_hydrogen_test_case):
   def init_other_atoms(self):
     v_CY = 1.35*(mat.col((1, -2, 3)).normalize())
     n = v_CY.ortho()
-    v_CZ = v_CY.rotate(axis=n, angle=112, deg=True)
+    v_CZ = v_CY.rotate_around_origin(axis=n, angle=112, deg=True)
     v_CZ = 1.4*v_CZ.normalize()
     site_Y = self.xs.unit_cell().fractionalize(v_CY)
     site_Z = self.xs.unit_cell().fractionalize(v_CZ)

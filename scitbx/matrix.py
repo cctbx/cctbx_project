@@ -1,3 +1,8 @@
+"""
+Note: this module can be used in isolation (without the rest of scitbx).
+All external dependencies (other than plain Python) are optional.
+"""
+
 from __future__ import division
 
 flex = None
@@ -348,7 +353,7 @@ class rec(object):
       return col((-z, 0, x))
     return col((0, -z, y))
 
-  def rotate(self, axis, angle, deg=False):
+  def rotate_around_origin(self, axis, angle, deg=False):
     assert self.n in ((3,1), (1,3))
     assert axis.n == self.n
     if deg: angle *= math.pi/180
@@ -356,6 +361,16 @@ class rec(object):
     x = self
     c, s = math.cos(angle), math.sin(angle)
     return x*c + n*n.dot(x)*(1-c) + n.cross(x)*s
+
+  def rotate(self, axis, angle, deg=False):
+    import warnings
+    warnings.warn(
+      message=
+        "The .rotate() method has been renamed to .rotate_around_origin()"
+        " for clarity. Please update the code calling this method.",
+      category=DeprecationWarning,
+      stacklevel=2)
+    return self.rotate_around_origin(axis=axis, angle=angle, deg=deg)
 
   def vector_to_001_rotation(self,
         sin_angle_is_zero_threshold=1.e-10,
@@ -1245,18 +1260,18 @@ def exercise():
   x = col((1, -2, 3))
   n = col((-2, 4, 5))
   alpha = 2*math.pi/3
-  y = x.rotate(n, alpha)
+  y = x.rotate_around_origin(n, alpha)
   n = n.normalize()
   x_perp = x - n.dot(x)*n
   y_perp = y - n.dot(y)*n
   assert approx_equal(x_perp.angle(y_perp), alpha)
   x = col((0,1,0))
-  y = x.rotate(axis=col((1,0,0)), angle=75, deg=True)
+  y = x.rotate_around_origin(axis=col((1,0,0)), angle=75, deg=True)
   assert approx_equal(y, (0.0, 0.25881904510252074, 0.96592582628906831))
   assert approx_equal(x.angle(y, deg=True), 75)
   a = col((0.33985998937421624, 0.097042540321188753, -0.60916214763712317))
   x = col((0.61837962293383231, -0.46724958233858915, -0.48367879178081852))
-  y = x.rotate(axis=a, angle=37, deg=True)
+  y = x.rotate_around_origin(axis=a, angle=37, deg=True)
   assert approx_equal(abs(x), 0.913597670681)
   assert approx_equal(abs(y), 0.913597670681)
   assert approx_equal(x.angle(y, deg=True), 25.6685689758)
