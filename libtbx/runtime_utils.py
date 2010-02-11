@@ -7,7 +7,7 @@
 #   easy_run.call("libtbx.start_process run.pkl &")
 
 import libtbx.phil
-from libtbx.utils import Sorry, multi_out
+from libtbx.utils import Sorry, Abort, multi_out
 from libtbx import easy_pickle
 from libtbx import adopt_init_args, group_args
 import traceback
@@ -110,9 +110,6 @@ class stdout_redirect (object) :
 
   def close (self) :
     pass
-
-class Abort (Exception) :
-  pass
 
 class detached_process_server (detached_base) :
   def __init__ (self, *args, **kwds) :
