@@ -16,6 +16,7 @@ def exercise_masks(xs, fo_sq,
                    solvent_radius,
                    shrink_truncation_radius,
                    resolution_factor,
+                   use_space_group_symmetry,
                    debug=False,
                    timing=False):
   xs_ref = xs.deep_copy_scatterers()
@@ -25,24 +26,14 @@ def exercise_masks(xs, fo_sq,
   time_compute_mask = time_log("compute mask").start()
   mask.compute(solvent_radius=solvent_radius,
                shrink_truncation_radius=shrink_truncation_radius,
-               resolution_factor=1/4,
-               atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52})
+               resolution_factor=resolution_factor,
+               atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52},
+               use_space_group_symmetry=use_space_group_symmetry)
   time_compute_mask.stop()
-  print "Solvent accessible volume = %.1f [%.1f%%]" %(
-  mask.solvent_accessible_volume, 100*
-  mask.solvent_accessible_volume/xs.unit_cell().volume())
-
-  time_flood_fill = time_log("flood fill").start()
-  flood_fill(mask.mask.data)
-  time_flood_fill.stop()
-  n_voids = flex.max(mask.mask.data) - 1
-  for i in range(2, n_voids + 2):
-    void_vol = (fo_sq.unit_cell().volume() * mask.mask.data.count(i)) \
-             / mask.crystal_gridding.n_grid_points()
-    print "void %i: %.1f" %(i-1, void_vol)
   time_structure_factors = time_log("structure factors").start()
   f_mask = mask.structure_factors()
   time_structure_factors.stop()
+  mask.show_summary()
   print "F000 void: %.1f" %mask.f_000_s
   f_model = mask.f_model()
   # write modified structure factors as shelxl hkl
@@ -57,7 +48,6 @@ def exercise_masks(xs, fo_sq,
     print
     print time_log.legend
     print time_compute_mask.report()
-    print time_flood_fill.report()
     print time_structure_factors.report()
     print time_total.log()
 
@@ -136,7 +126,9 @@ def run(args):
                   .option(None, "--resolution_factor",
                           action="store",
                           type="float",
-                          default=1/4)).process(args=args)
+                          default=1/3)
+                  .option(None, "--use_space_group_symmetry",
+                          action="store_true")).process(args=args)
   xs = xray.structure.from_shelx(filename=command_line.options.structure)
   reflections_server = reflection_file_utils.reflection_file_server(
     crystal_symmetry = xs.crystal_symmetry(),
@@ -146,21 +138,20 @@ def run(args):
   )
   fo_sq = reflections_server.get_miller_arrays(None)[0]
 
-  print "solvent_radius: %.2f" %command_line.options.solvent_radius
-  print "shrink_truncation_radius: %.2f" %command_line.options.shrink_truncation_radius
-  print "resolution_factor: %.2f" %command_line.options.resolution_factor
   print "structure file: %s" %command_line.options.structure
   print "reflection file: %s" %command_line.args[0]
   if command_line.options.debug:
     print "debug: %s" %command_line.options.debug
   print
 
-  exercise_masks(xs, fo_sq,
-                 solvent_radius=command_line.options.solvent_radius,
-                 shrink_truncation_radius=command_line.options.shrink_truncation_radius,
-                 resolution_factor=command_line.options.resolution_factor,
-                 debug=command_line.options.debug,
-                 timing=command_line.options.timing)
+  exercise_masks(
+    xs, fo_sq,
+    solvent_radius=command_line.options.solvent_radius,
+    shrink_truncation_radius=command_line.options.shrink_truncation_radius,
+    resolution_factor=command_line.options.resolution_factor,
+    use_space_group_symmetry=command_line.options.use_space_group_symmetry,
+    debug=command_line.options.debug,
+    timing=command_line.options.timing)
   print "OK"
 
 if __name__ == '__main__':
