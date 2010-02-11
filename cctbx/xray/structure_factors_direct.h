@@ -135,25 +135,47 @@ namespace cctbx { namespace xray { namespace structure_factors {
         c_t *f_calc_beg = f_calc_.begin();
         af::shared<std::size_t> scattering_type_indices
           = scattering_type_registry.unique_indices(scatterers);
+
+        /* The OpenMP standard specifies that
+         A throw executed inside a parallel region must cause execution
+         to resume within the same parallel region, and it must be caught
+         by the same thread that threw the exception.
+         Since a std::runtime_error may be thrown during Debye-Waller
+         computations (c.f. adptbx.h, function debye_waller_factor_exp)
+         one must make sure it cannot escape the body of the parallelised
+         loop. So we catch it inside the loop and then throw it when
+         immediately after the loop finished.
+        */
+        boost::optional<std::runtime_error> error;
 #if !defined(CCTBX_XRAY_STRUCTURE_FACTORS_DIRECT_NO_PRAGMA_OMP)
 #if !defined(__DECCXX_VER) || (defined(_OPENMP) && _OPENMP > 199819)
         #pragma omp parallel for schedule(static)
 #endif
 #endif
         for(int i=0;i<n;i++) {
-          miller::index<> h = miller_indices[i];
-          f_t d_star_sq = unit_cell.d_star_sq(h);
-          af::shared<double> form_factors
-            = scattering_type_registry.unique_form_factors_at_d_star_sq(
-                d_star_sq);
-          direct_sum_over_equivalent_h<CosSinType, ScattererType>
-            sum(cos_sin, space_group, h, d_star_sq);
-          for(std::size_t j=0; j<scatterers.size(); ++j) {
-            sum.add_contribution_of(scatterers[j],
-                                    form_factors[scattering_type_indices[j]]);
+          try {
+            miller::index<> h = miller_indices[i];
+            f_t d_star_sq = unit_cell.d_star_sq(h);
+            af::shared<double> form_factors
+              = scattering_type_registry.unique_form_factors_at_d_star_sq(
+                  d_star_sq);
+            direct_sum_over_equivalent_h<CosSinType, ScattererType>
+              sum(cos_sin, space_group, h, d_star_sq);
+            for(std::size_t j=0; j<scatterers.size(); ++j) {
+              sum.add_contribution_of(scatterers[j],
+                                      form_factors[scattering_type_indices[j]]);
+            }
+            f_calc_beg[i] = sum.f_calc();
           }
-          f_calc_beg[i] = sum.f_calc();
+          catch (std::runtime_error e) {
+            #pragma omp critical
+            {
+              // The first error will be recorded only.
+              if (!error) error = e;
+            }
+          }
         }
+        if (error) throw *error;
       }
   };
 

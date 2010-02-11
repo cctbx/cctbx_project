@@ -1,4 +1,4 @@
-from cctbx import sgtbx
+from cctbx import sgtbx, xray, crystal
 from cctbx.development import random_structure
 try:
   from cctbx.xray.ext import structure_factors_raw_multithreaded_direct
@@ -6,10 +6,11 @@ except ImportError:
   structure_factors_raw_multithreaded_direct = None
 from cctbx import math_module
 import omptbx
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import wall_clock_time, show_times_at_exit
 from libtbx.introspection import number_of_processors
 from libtbx import group_args
+import sys, os
 
 def show_times_vs_cpu(times, header):
   cols = [ "# CPU" + " "*3,
@@ -63,6 +64,40 @@ def exercise_openmp(space_group_info,
   if verbose:
     show_times_vs_cpu(times, header="OpenMP")
 
+def exercise_openmp_resilience_to_adptbx_exception(space_group_info,
+                                                   verbose=0):
+  if not omptbx.have_omp_h:
+    print ('OpenMP not available:'
+           ' test of resilience to adptbx exception skipped.')
+    return
+  import signal
+  def handler(signum, frame):
+    print ('Error: '
+           ' exception thrown in OpenMP parallel region was not caught.\n'
+           'The program aborted as a result.')
+    signal.signal(signal.SIGABRT, signal.SIG_DFL)
+    os.abort()
+
+  signal.signal(signal.SIGABRT, handler)
+  isinstance(space_group_info, sgtbx.space_group_info)
+  cs = space_group_info.any_compatible_crystal_symmetry(volume=1000)
+  xs = xray.structure(crystal.special_position_settings(cs))
+  xs.add_scatterer(xray.scatterer('C*', site=(0,0,0), u=-100))
+  xs.add_scatterer(xray.scatterer('C1', site=(0.1, 0.2, 0.3), u=2))
+  xs.add_scatterer(xray.scatterer('C2', site=(0, 0, 0.5), u=1.5))
+  if verbose:
+    print 'OpenMP using %s processors' % omptbx.env.num_procs
+  try:
+    xs.structure_factors(d_min=2,
+                         algorithm='direct',
+                         cos_sin_table=False)
+  except RuntimeError, e:
+    assert str(e).find('cctbx::adptbx::debye_waller_factor_exp:'
+                       ' max_arg exceeded') != -1
+  else:
+    raise Exception_expected
+
+
 def exercise_raw(space_group_info,
                  elements,
                  anomalous_flag=False,
@@ -115,6 +150,7 @@ def run(args):
   show_times_at_exit()
   verbose = '--verbose' in args
   sgi = sgtbx.space_group_info("P21/n")
+  exercise_openmp_resilience_to_adptbx_exception(sgi, verbose=verbose)
   elements = ['O']*15 + ['N']*9 + ['C']*100
   exercise_openmp(sgi, elements, verbose=verbose)
   exercise_raw(sgi, elements, verbose=verbose)
