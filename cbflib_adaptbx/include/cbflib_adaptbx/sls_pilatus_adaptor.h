@@ -170,7 +170,7 @@ class MiniCBFAdaptor: public CBFAdaptor {
     SCITBX_ASSERT(elsigned==1);
 
     //C++ weirdness
-    scitbx::af::flex_int z((scitbx::af::flex_grid<>(slow,fast)));
+    scitbx::af::flex_int z((scitbx::af::flex_grid<>(slow,fast)),scitbx::af::init_functor_null<int>());
     int* begin = z.begin();
     std::size_t sz = z.size();
 
@@ -212,7 +212,7 @@ class MiniCBFAdaptor: public CBFAdaptor {
     SCITBX_ASSERT(elsigned==1);
 
     //C++ weirdness
-    scitbx::af::flex_int z((scitbx::af::flex_grid<>(slow,fast)));
+    scitbx::af::flex_int z((scitbx::af::flex_grid<>(slow,fast)),scitbx::af::init_functor_null<int>());
     int* begin = z.begin();
     std::size_t sz = z.size();
 
