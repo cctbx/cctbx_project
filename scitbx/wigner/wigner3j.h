@@ -89,7 +89,7 @@ namespace wigner {
        fact_array_.push_back( fac );
        for(int i=1; i<=max_; i++)
        {
-         fac += std::log(i);
+         fac += std::log((FloatType)i);
          fact_array_.push_back( fac );
        }
        return;
@@ -100,7 +100,7 @@ namespace wigner {
        FloatType fac = fact_array_[max_-1];
        for(int i = max_; i<= new_max; i++)
        {
-         fac += log(i);
+         fac += log((FloatType)i);
          fact_array_.push_back( fac );
        }
        max_ = new_max;
