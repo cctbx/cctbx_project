@@ -4,7 +4,8 @@
 
 # NOTE: all hydrogen bond information is returned as atom pairs, donor first.
 
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Usage
+from libtbx import smart_open
 import libtbx.phil
 from libtbx import group_args
 import string, sys, os
@@ -18,21 +19,64 @@ ss_input_params_str = """
     .type = bool
   include_helices = True
     .type = bool
-  alpha_only = False
-    .type = bool
   include_sheets = True
     .type = bool
-  backbone_only = True
-    .type = bool
-    .help = When using atom selections to specify rigid bodies, this excludes \
-            sidechains from the selections.
-  join_strand_selections = False
-    .type = bool
-    .help = When using atom selections to specify rigid bodies, this treats \
-            an entire sheet as a rigid group, rather than individual strands.
 """
-
 ss_input_params = libtbx.phil.parse(ss_input_params_str)
+
+ss_group_params_str = """
+helix
+  .multiple = True
+  .optional = True
+{
+  selection = None
+    .type = str
+    .style = bold selection
+  helix_class = *1 2 3 4 5 6 7 8 9 10
+    .type = choice
+    .caption = alpha other pi other 3_10 other other other other other
+    .help = Type of helix, defaults to alpha (1).  Only alpha, pi, and 3_10 \
+      helices are used for hydrogen-bond restraints.
+    .style = bold
+  restraint_sigma = None
+    .type = float
+  backbone_only = False
+    .type = bool
+    .help = Only applies to rigid-body groupings, and not H-bond restraints \
+      which are already backbone-only.
+}
+sheet
+  .multiple = True
+  .optional = True
+{
+  first_strand = None
+    .type = str
+    .style = bold selection
+  strand
+    .multiple = True
+    .optional = False
+  {
+    selection = None
+      .type = str
+      .style = bold selection
+    sense = parallel antiparallel *unknown
+      .type = choice
+      .style = bold
+    bond_start_current = None
+      .type = str
+      .style = bold selection
+    bond_start_previous = None
+      .type = str
+      .style = bold selection
+  }
+  restraint_sigma = None
+    .type = float
+  backbone_only = False
+    .type = bool
+    .help = Only applies to rigid-body groupings, and not H-bond restraints \
+      which are already backbone-only.
+}
+"""
 
 class structure_base (object) :
   def extract_h_bonds (self, params) :
@@ -122,31 +166,59 @@ class annotation (structure_base) :
       selections.append((selection_1, selection_2))
     return selections
 
+  def as_restraint_groups (self, log=sys.stderr, prefix_scope="") :
+    phil_strs = []
+    for helix in self.helices :
+      helix_phil = helix.as_restraint_group(log, prefix_scope)
+      if helix_phil is not None :
+        phil_strs.append(helix_phil)
+    for sheet in self.sheets :
+      sheet_phil = sheet.as_restraint_group(log, prefix_scope)
+      if sheet_phil is not None :
+        phil_strs.append(sheet_phil)
+    return "\n".join(phil_strs)
+
 #-----------------------------------------------------------------------
-class helix (structure_base, group_args) :
+class pdb_helix (structure_base, group_args) :
   def as_pdb_str (self) :
     format = "HELIX  %3d %3s %3s %1s %4d%1s %3s %1s %4d%1s%2d%30s %5d"
-    out = format % (self.serial, self.helix_id, self.init_resname,
-      self.init_chain_id, self.init_resseq, self.init_icode, self.end_resname,
-      self.end_chain_id, self.end_resseq, self.end_icode, self.helix_class,
-      self.comment, self.length)
+    out = format % (self.serial, self.helix_id, self.start_resname,
+      self.start_chain_id, self.start_resseq, self.start_icode,
+      self.end_resname, self.end_chain_id, self.end_resseq, self.end_icode,
+      self.helix_class, self.comment, self.length)
     return out.strip()
 
   def continuity_check (self) :
-    if self.init_icode != self.end_icode :
+    if self.start_icode != self.end_icode :
       raise RuntimeError("Don't know how to deal with helices with multiple "+
-        "insertion codes ('%s' vs. '%s')." % (self.init_icode, self.end_icode))
-    if self.init_chain_id != self.end_chain_id :
+        "insertion codes ('%s' vs. '%s')." % (self.start_icode, self.end_icode))
+    if self.start_chain_id != self.end_chain_id :
       raise RuntimeError("Don't know how to deal with helices with multiple "+
-        "chain IDs ('%s' vs. '%s')." % (self.init_chain_id, self.end_chain_id))
+        "chain IDs ('%s' vs. '%s')." % (self.start_chain_id, self.end_chain_id))
 
   def as_atom_selections (self, params) :
     self.continuity_check()
-    sele = "chain '%s' and resseq %d:%d and icode '%s'" % (self.init_chain_id,
-      self.init_resseq, self.end_resseq, self.end_icode)
-    if params.backbone_only :
-      sele += " and (name CA or name N or name O or name C or name CB)"
+    sele = "chain '%s' and resseq %d:%d and icode '%s'" % (self.start_chain_id,
+      self.start_resseq, self.end_resseq, self.end_icode)
     return [sele]
+
+  def as_restraint_group (self, log=sys.stderr, prefix_scope="") :
+    if self.start_chain_id != self.end_chain_id :
+      print >> log, "Helix chain ID mismatch: starts in %s, ends in %s" % (
+        self.start_chain_id, self.end_chain_id)
+      return None
+    resid_start = "%d%s" % (self.start_resseq, self.start_icode)
+    resid_end = "%d%s" % (self.end_resseq, self.end_icode)
+    sele = "chain '%s' and resid %s through %s" % (self.start_chain_id,
+      resid_start, resid_end)
+    if prefix_scope != "" and not prefix_scope.endswith(".") :
+      prefix_scope += "."
+    rg = """\
+%shelix {
+  selection = %s
+  helix_class = %d
+}""" % (prefix_scope, sele, self.helix_class)
+    return rg
 
   def extract_h_bonds (self, params) :
     self.continuity_check()
@@ -155,11 +227,9 @@ class helix (structure_base, group_args) :
     if self.helix_class == 1 : # alpha
       j = 4
     else :
-      if params.alpha_only :
-        return []
-      elif self.helix_class == 5 : # pi
+      if self.helix_class == 5 : # 3_10
         j = 3
-      elif self.helix_class == 3 : # 3_10
+      elif self.helix_class == 3 : # pi
         j = 5
       else :
         raise RuntimeError("Don't know how to deal with helix class %d." %
@@ -169,23 +239,23 @@ class helix (structure_base, group_args) :
     if params.use_hydrogens :
       donor_name = "H"
     while j <= self.length :
-      resseq1 = self.init_resseq + i
-      resseq2 = self.init_resseq + j
+      resseq1 = self.start_resseq + i
+      resseq2 = self.start_resseq + j
       i += 1
       j += 1
       #print resseq1, resseq2, self.end_resseq, self.helix_class
       if not resseq2 <= self.end_resseq :
         break
       acceptor = group_args(
-        chain_id=self.init_chain_id,
+        chain_id=self.start_chain_id,
         resseq=resseq1,
         name=acceptor_name,
-        icode=self.init_icode)
+        icode=self.start_icode)
       donor = group_args(
-        chain_id=self.init_chain_id,
+        chain_id=self.start_chain_id,
         resseq=resseq2,
         name=donor_name,
-        icode=self.init_icode)
+        icode=self.start_icode)
       bonded_atoms.append((donor, acceptor))
     return bonded_atoms
 
@@ -194,13 +264,13 @@ def parse_helix_records (records) :
   for line in records :
     if not line.startswith("HELIX") :
       continue
-    current_helix = helix(
+    current_helix = pdb_helix(
       serial=string.atoi(line[7:10]),
       helix_id=line[11:14].strip(),
-      init_resname=line[15:18],
-      init_chain_id=line[19],
-      init_resseq=string.atoi(line[21:25]),
-      init_icode=line[25],
+      start_resname=line[15:18],
+      start_chain_id=line[19],
+      start_resseq=string.atoi(line[21:25]),
+      start_icode=line[25],
       end_resname=line[27:30],
       end_chain_id=line[31],
       end_resseq=string.atoi(line[33:37]),
@@ -211,8 +281,38 @@ def parse_helix_records (records) :
     helices.append(current_helix)
   return helices
 
+def restraint_groups_as_pdb_helices (pdb_hierarchy, helices, log=sys.stderr) :
+  isel = pdb_hierarchy.atom_selection_cache().iselection
+  atoms = [ a for a in pdb_hierarchy.atoms_with_labels() ]
+  pdb_helices = []
+  for i, helix_params in enumerate(helices) :
+    if helix_params.selection is None :
+      print >> log, "Empty helix at serial %d." % (i+1)
+      continue
+    sele_str = ("(%s) and name N and (altloc 'A' or altloc ' ')" %
+                helix_params.selection)
+    amide_isel = isel(sele_str)
+    start_atom = atoms[amide_isel[0]]
+    end_atom = atoms[amide_isel[-1]]
+    current_helix = pdb_helix(
+      serial=i+1,
+      helix_id=i+1,
+      start_resname=start_atom.resname,
+      start_chain_id=start_atom.chain_id,
+      start_resseq=start_atom.resseq,
+      start_icode=start_atom.icode,
+      end_resname=end_atom.resname,
+      end_chain_id=end_atom.chain_id,
+      end_resseq=end_atom.resseq,
+      end_icode=end_atom.icode,
+      helix_class=int(helix_params.helix_class),
+      comment="",
+      length=amide_isel.size())
+    pdb_helices.append(current_helix)
+  return pdb_helices
+
 #-----------------------------------------------------------------------
-class sheet (structure_base, group_args) :
+class pdb_sheet (structure_base, group_args) :
   def add_strand (self, strand) :
     self.strands.append(strand)
 
@@ -221,22 +321,69 @@ class sheet (structure_base, group_args) :
 
   def as_atom_selections (self, params) :
     strand_selections = []
-    backbone_sele = " and (name CA or name N or name O or name C or name CB)"
     for strand in self.strands :
-      if strand.init_icode != strand.end_icode :
+      if strand.start_icode != strand.end_icode :
         continue
       sele = "chain '%s' and resseq %d:%d and icode '%s'" % (
-        strand.init_chain_id, strand.init_resseq, strand.end_resseq,
-        strand.init_icode)
+        strand.start_chain_id, strand.start_resseq, strand.end_resseq,
+        strand.start_icode)
       strand_selections.append(sele)
-    if params.join_strand_selections :
-      sele = "(" + ") or (".join(strand_selections) + ")"
-      if params.backbone_only :
-        sele += backbone_sele
-      return [sele]
-    else :
-      if params.backbone_only :
-        return [ sele + backbone_sele for sele in strand_selections ]
+    return strand_selections
+
+  def as_restraint_group (self, log=sys.stderr, prefix_scope="") :
+    if len(self.strands) == 0 :
+      return None
+    selections = []
+    senses = []
+    reg_curr = []
+    reg_prev = []
+    for (strand,registration) in zip(self.strands, self.registrations) :
+      resid_start = "%d%s" % (strand.start_resseq, strand.start_icode)
+      resid_end = "%d%s" % (strand.end_resseq, strand.end_icode)
+      sele = "chain '%s' and resid %s through %s" % (strand.start_chain_id,
+        resid_start, resid_end)
+      selections.append(sele)
+      if strand.sense == 0 :
+        senses.append("unknown")
+      elif strand.sense == -1 :
+        senses.append("antiparallel")
+      elif strand.sense == 1 :
+        senses.append("parallel")
+      else :
+        raise Sorry("Sense must be 0, 1, or -1.")
+      if registration is not None :
+        sele_base = "chain '%s' and resid %s and name %s"
+        resid_curr = "%d%s" % (registration.cur_resseq,registration.cur_icode)
+        resid_prev = "%d%s" % (registration.prev_resseq,registration.prev_icode)
+        reg_curr.append(sele_base % (registration.cur_chain_id,resid_curr,"N"))
+        reg_prev.append(sele_base % (registration.prev_chain_id,resid_prev,"O"))
+      else :
+        reg_curr.append(None)
+        reg_prev.append(None)
+    n = 0
+    first_strand = None
+    strands = []
+    for (sele, sense, curr, prev) in zip(selections,senses,reg_curr,reg_prev) :
+      if n == 0 :
+        first_strand = sele
+      else :
+        strands.append("""\
+  strand {
+    selection = %s
+    sense = %s
+    bond_start_current = %s
+    bond_start_previous = %s
+  }""" % (sele, sense, curr, prev))
+      n += 1
+    assert first_strand is not None
+    if prefix_scope != "" and not prefix_scope.endswith(".") :
+      prefix_scope += "."
+    phil_str = """
+%ssheet {
+  first_strand = %s
+%s
+}""" % (prefix_scope, first_strand, "\n".join(strands))
+    return phil_str
 
   def extract_h_bonds (self, params) :
     assert len(self.strands) == len(self.registrations)
@@ -251,38 +398,38 @@ class sheet (structure_base, group_args) :
       prev_strand = self.strands[i - 1]
       if registration is None : # usually the first strand, but not always!
         continue
-      if ((strand.init_icode != strand.end_icode) or
-          (prev_strand.init_icode != prev_strand.end_icode)) :
+      if ((strand.start_icode != strand.end_icode) or
+          (prev_strand.start_icode != prev_strand.end_icode)) :
         errors += 1
         continue # don't raise exception - other strands may be okay
       cur_resseq = registration.cur_resseq
       prev_resseq = registration.prev_resseq
       if strand.sense == -1 :
         while ((prev_resseq <= prev_strand.end_resseq) and
-               (cur_resseq >= strand.init_resseq)) :
+               (cur_resseq >= strand.start_resseq)) :
           # O (current) --> H/N (previous)
           acceptor1 = group_args(
-            chain_id=strand.init_chain_id,
+            chain_id=strand.start_chain_id,
             resseq=cur_resseq,
             name=acceptor_name,
-            icode=strand.init_icode)
+            icode=strand.start_icode)
           donor1 = group_args(
-            chain_id=prev_strand.init_chain_id,
+            chain_id=prev_strand.start_chain_id,
             resseq=prev_resseq,
             name=donor_name,
-            icode=prev_strand.init_icode)
+            icode=prev_strand.start_icode)
           bonded_atoms.append((donor1, acceptor1))
           # H/N (current) --> O (previous)
           donor2 = group_args(
-            chain_id=strand.init_chain_id,
+            chain_id=strand.start_chain_id,
             resseq=cur_resseq,
             name=donor_name,
-            icode=strand.init_icode)
+            icode=strand.start_icode)
           acceptor2 = group_args(
-            chain_id=prev_strand.init_chain_id,
+            chain_id=prev_strand.start_chain_id,
             resseq=prev_resseq,
             name=acceptor_name,
-            icode=prev_strand.init_icode)
+            icode=prev_strand.start_icode)
           bonded_atoms.append((donor2, acceptor2))
           prev_resseq += 2
           cur_resseq -= 2
@@ -291,29 +438,29 @@ class sheet (structure_base, group_args) :
                (cur_resseq <= strand.end_resseq)) :
           # O (current) --> H/N (previous)
           acceptor1 = group_args(
-            chain_id=strand.init_chain_id,
+            chain_id=strand.start_chain_id,
             resseq=cur_resseq,
             name=acceptor_name,
-            icode=strand.init_icode)
+            icode=strand.start_icode)
           donor1 = group_args(
-            chain_id=prev_strand.init_chain_id,
+            chain_id=prev_strand.start_chain_id,
             resseq=prev_resseq,
             name=donor_name,
-            icode=prev_strand.init_icode)
+            icode=prev_strand.start_icode)
           bonded_atoms.append((donor1, acceptor1))
           if (cur_resseq + 2) > strand.end_resseq :
             break
           # H/N (current + 2) --> O (previous)
           donor2 = group_args(
-            chain_id=strand.init_chain_id,
+            chain_id=strand.start_chain_id,
             resseq=cur_resseq + 2,
             name=donor_name,
-            icode=strand.init_icode)
+            icode=strand.start_icode)
           acceptor2 = group_args(
-            chain_id=prev_strand.init_chain_id,
+            chain_id=prev_strand.start_chain_id,
             resseq=prev_resseq,
             name=acceptor_name,
-            icode=prev_strand.init_icode)
+            icode=prev_strand.start_icode)
           bonded_atoms.append((donor2, acceptor2))
           cur_resseq += 2
           prev_resseq += 2
@@ -329,8 +476,8 @@ class sheet (structure_base, group_args) :
       format1 = "SHEET  %3d %3s%2d %3s %1s%4d%1s %3s %1s%4d%1s%2d"
       format2 = "%4s%3s %1s%4d%1s %4s%3s %1s%4d%1s"
       line = format1 % (strand.strand_id, self.sheet_id, self.n_strands,
-        strand.init_resname, strand.init_chain_id, strand.init_resseq,
-        strand.init_icode, strand.end_resname, strand.end_chain_id,
+        strand.start_resname, strand.start_chain_id, strand.start_resseq,
+        strand.start_icode, strand.end_resname, strand.end_chain_id,
         strand.end_resseq, strand.end_icode, strand.sense)
       if reg is not None :
         line += " "
@@ -358,7 +505,7 @@ def parse_sheet_records (records) :
         # XXX: n_strands is frequently incorrect!
         assert (len(current_sheet.strands) == len(current_sheet.registrations))
         sheets.append(current_sheet)
-      current_sheet = sheet(
+      current_sheet = pdb_sheet(
         sheet_id=sheet_id,
         n_strands=n_strands,
         strands=[],
@@ -368,10 +515,10 @@ def parse_sheet_records (records) :
     current_strand = group_args(
       sheet_id=sheet_id,
       strand_id=string.atoi(line[7:10]),
-      init_resname=line[17:20],
-      init_chain_id=line[21],
-      init_resseq=string.atoi(line[22:26]),
-      init_icode=line[26],
+      start_resname=line[17:20],
+      start_chain_id=line[21],
+      start_resseq=string.atoi(line[22:26]),
+      start_icode=line[26],
       end_resname=line[28:31],
       end_chain_id=line[32],
       end_resseq=string.atoi(line[33:37]),
@@ -403,6 +550,138 @@ def parse_sheet_records (records) :
     sheets.append(current_sheet)
   return sheets
 
+def restraint_groups_as_pdb_sheets (pdb_hierarchy, sheets, log=sys.stderr) :
+  isel = pdb_hierarchy.atom_selection_cache().iselection
+  atoms = [ a for a in pdb_hierarchy.atoms_with_labels() ]
+  pdb_sheets = []
+  for i, sheet in enumerate(sheets) :
+    sheet_id = string.uppercase[i]
+    if sheet.first_strand is None :
+      print >> log, "Missing first strand in sheet %s" % sheet_id
+    current_sheet = pdb_sheet(
+      sheet_id=sheet_id,
+      n_strands=1+len(sheet.strand),
+      strands=[],
+      registrations=[])
+    first_strand = __strand_group_as_pdb_strand(isel=isel,
+      selection=sheet.first_strand,
+      atoms=atoms,
+      log=log,
+      sense=None)
+    current_sheet.add_strand(first_strand)
+    current_sheet.add_registration(None)
+    base_sele = "(%s) and name N and (altloc 'A' or altloc ' ')"
+    for strand in sheet.strand :
+      pdb_strand = __strand_group_as_pdb_strand(isel=isel,
+        selection=strand.selection,
+        atoms=atoms,
+        log=log,
+        sense=strand.sense)
+      current_sheet.add_strand(pdb_strand)
+      s1 = base_sele % strand.bond_start_current
+      s2 = base_sele % strand.bond_start_previous
+      reg_curr_isel = isel(s1)
+      reg_prev_isel = isel(s2)
+      if reg_curr_isel.size() == 0 or reg_prev_isel.size() == 0 :
+        current_sheet.add_registration(None)
+        continue
+      reg_curr_atom = atoms[reg_curr_isel[0]]
+      reg_prev_atom = atoms[reg_prev_isel[0]]
+      registration = group_args(
+        cur_atom="N", #reg_curr_atom.name,
+        cur_resname=reg_curr_atom.resname,
+        cur_chain_id=reg_curr_atom.chain_id,
+        cur_resseq=reg_curr_atom.resseq,
+        cur_icode=reg_curr_atom.icode,
+        prev_atom=reg_prev_atom.name,
+        prev_resname="O", #reg_prev_atom.resname,
+        prev_chain_id=reg_prev_atom.chain_id,
+        prev_resseq=reg_prev_atom.resseq,
+        prev_icode=reg_prev_atom.icode)
+      current_sheet.add_registration(registration)
+    pdb_sheets.append(current_sheet)
+  return pdb_sheets
+
+def __strand_group_as_pdb_strand (isel, selection, atoms, log, sense) :
+  if sense is None or sense == "unknown" :
+    int_sense = 0
+  elif sense == "parallel" :
+    int_sense = 1
+  elif sense == "antiparallel" :
+    int_sense = -1
+  strand_isel = isel("(%s) and name N and (altloc 'A' or altloc ' ')" % (
+    selection))
+  start_atom = atoms[strand_isel[0]]
+  end_atom = atoms[strand_isel[-1]]
+  pdb_strand = group_args(
+    sheet_id=sheet_id,
+    strand_id=i+1,
+    start_resname=start_atom.resname,
+    start_chain_id=start_atom.chain_id,
+    start_resseq=start_atom.resseq,
+    start_icode=start_atom.icode,
+    end_resname=end_atom.resname,
+    end_chain_id=end_atom.chain_id,
+    end_resseq=end_atom.resseq,
+    end_icode=end_atom.icode,
+    sense=int_sense)
+  return pdb_strand
+
+#-----------------------------------------------------------------------
+def process_files (params, records=None) :
+  assert len(params.file_name) > 0 or records is not None
+  if records is None :
+    records = []
+    for file_name in params.file_name :
+      lines = smart_open.for_reading(file_name).readlines()
+      for line in lines :
+        if line.startswith("HELIX") or line.startswith("SHEET") :
+          records.append(line)
+  secondary_structure = annotation(records=records)
+  return secondary_structure
+
+def run (args, out=sys.stdout, log=sys.stderr) :
+  import iotbx.pdb
+  master_phil = libtbx.phil.parse("""
+  show_restraints = True
+    .type = bool
+  echo_pdb_records = False
+    .type = bool
+  echo_pymol_cmds = False
+    .type = bool
+  %s
+""" % ss_input_params_str)
+  user_phil = []
+  for arg in args :
+    if os.path.isfile(arg) :
+      file_name = os.path.abspath(arg)
+      base, ext = os.path.splitext(file_name)
+      if ext in [".pdb", ".ent", ".gz"] :
+        user_phil.append(libtbx.phil.parse("file_name=\"%s\"" % file_name))
+      else :
+        user_phil.append(libtbx.phil.parse(file_name=file_name))
+    else :
+      if arg.startswith("--") :
+        arg = arg[2:] + "=True"
+      try :
+        cmdline_phil = libtbx.phil.parse(arg)
+      except RuntimeError, e :
+        print >> log, str(e)
+      else :
+        user_phil.append(cmdline_phil)
+  working_phil = master_phil.fetch(sources=user_phil)
+  params = working_phil.extract()
+  if len(params.file_name) == 0 :
+    raise Usage("Please supply at least one PDB file.")
+  secondary_structure = process_files(params)
+  if params.echo_pdb_records :
+    print >> out, secondary_structure.as_pdb_str()
+  elif params.echo_pymol_cmds :
+    print >> out, secondary_structure.as_pymol_dashes(params)
+  elif params.show_restraints :
+    print >> out, secondary_structure.as_restraint_groups(log=log)
+
+#-----------------------------------------------------------------------
 def exercise_single () :
   from iotbx import file_reader
   from scitbx.array_family import flex
@@ -456,12 +735,11 @@ SHEET    5   A 5 ASP A  74  LEU A  77  1  O  HIS A  74   N  VAL A  52"""
   params.include_sheets = True
   assert len(ss.as_atom_selections(params=params)) == 20
   assert (ss.as_atom_selections(params=params)[0] ==
-    """chain 'A' and resseq 16:18 and icode ' ' and (name CA or name N or name O or name C or name CB)""")
-  params.join_strand_selections = True
-  assert len(ss.as_atom_selections(params=params)) == 16
+    """chain 'A' and resseq 16:18 and icode ' '""")
   print "OK"
 
 def tst_pdb_file () :
+  from iotbx import file_reader
   pdb_in = file_reader.any_file(file_name, force_type="pdb")
   old_ss = pdb_in.file_object.secondary_structure_section()
   structure = pdb_in.file_object.extract_secondary_structure()
