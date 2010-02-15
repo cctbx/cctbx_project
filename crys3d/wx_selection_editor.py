@@ -45,7 +45,8 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
       atom_colors=self.atom_colors,
       atom_labels=self.atom_labels,
       atom_radii=self.atom_radii,
-      visibility=self.visibility)
+      visibility=self.visibility,
+      noncovalent_bonds=self.noncovalent_bonds)
     self.update_scene_data(scene)
     return scene
 

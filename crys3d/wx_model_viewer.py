@@ -80,6 +80,7 @@ class model_data (object) :
     self.base_color = base_color
     self.draw_mode = None
     self.current_bonds = None
+    self.noncovalent_bonds = None
     self.color_mode = None #"rainbow"
     self.flag_object_visible = True
     self._color_cache = {}
@@ -89,6 +90,7 @@ class model_data (object) :
     self.flag_show_points = True
     self.flag_show_spheres = False
     self.flag_show_ellipsoids = False
+    self.flag_show_noncovalent_bonds = False
     self.update_structure(pdb_hierarchy, atomic_bonds)
     self.use_u_aniso = flex.bool(self.atoms.size())
     #self.recalculate_visibility()
@@ -107,7 +109,11 @@ class model_data (object) :
       atom_colors=self.atom_colors,
       atom_labels=self.atom_labels,
       atom_radii=self.atom_radii,
-      visibility=self.visibility)
+      visibility=self.visibility,
+      noncovalent_bonds=self.noncovalent_bonds)
+
+  def set_noncovalent_bonds (self, bonded_atoms) :
+    self.noncovalent_bonds = bonded_atoms
 
   def update_scene_data (self, scene) :
     scene.update_bonds(self.current_bonds)
@@ -357,7 +363,7 @@ class model_data (object) :
 # which are also implemented as methods here.
 class model_scene (object) :
   def __init__ (self, bonds, points, b_iso, b_aniso, atom_colors, atom_labels,
-      atom_radii, visibility) :
+      atom_radii, visibility, noncovalent_bonds) :
     adopt_init_args(self, locals())
     self.clear_lists()
     self.clear_labels()
@@ -371,6 +377,7 @@ class model_scene (object) :
     self.ellipsoid_display_list = None
     self.selection_display_list = None
     self.labels_display_list = None
+    self.nc_display_list = None
 
   @debug
   def clear_labels (self) :
@@ -479,6 +486,22 @@ class model_scene (object) :
       self.labels_display_list.end()
     self.labels_display_list.call()
 
+  def draw_noncovalent_bonds (self) :
+    if self.noncovalent_bonds is None :
+      return
+    if self.nc_display_list is None :
+      self.nc_display_list = gltbx.gl_managed.display_list()
+      self.nc_display_list.compile()
+      points = self.points
+      bonded_atoms = self.noncovalent_bonds
+      for i_seq, j_seq in bonded_atoms :
+        glBegin(GL_LINES)
+        glVertex3f(*points[i_seq])
+        glVertex3f(*points[j_seq])
+        glEnd()
+      self.nc_display_list.end()
+    self.nc_display_list.call()
+
 ########################################################################
 # VIEWER CLASS
 #
@@ -527,6 +550,7 @@ class model_viewer_mixin (wxGLWindow) :
     self.flag_use_lights                   = True
     self.flag_show_labels                  = True
     self.flag_show_trace                   = False
+    self.flag_show_noncovalent_bonds            = False
     self.flag_show_hydrogens               = False
     self.flag_show_ellipsoids              = True
     self.flag_smooth_lines                 = True
@@ -605,6 +629,8 @@ class model_viewer_mixin (wxGLWindow) :
       self.draw_ellipsoids()
     if self.flag_show_labels :
       self.draw_labels()
+    if self.flag_show_noncovalent_bonds :
+      self.draw_noncovalent_bonds()
 
   def draw_points (self) :
     glDisable(GL_LIGHTING)
@@ -666,6 +692,16 @@ class model_viewer_mixin (wxGLWindow) :
     for model_id, model in self.iter_models() :
       if self.show_object[model_id] and model.flag_show_labels :
         self.scene_objects[model_id].draw_labels(font, use_atom_color)
+
+  def draw_noncovalent_bonds (self) :
+    glDisable(GL_LIGHTING)
+    glColor3f(0.0, 1.0, 0.0)
+    glLineStipple(4, 0xAAAA)
+    glEnable(GL_LINE_STIPPLE)
+    for model_id, model in self.iter_models() :
+      if self.show_object[model_id] and model.flag_show_noncovalent_bonds :
+        self.scene_objects[model_id].draw_noncovalent_bonds()
+    glDisable(GL_LINE_STIPPLE)
 
   @debug
   def refresh_bg_color (self) :
@@ -799,6 +835,12 @@ class model_viewer_mixin (wxGLWindow) :
     if model is not None :
       model.update_from_xray_structure(xray_structure)
       self.update_scene = True
+
+  def set_noncovalent_bonds (self, model_id, bonded_atoms) :
+    model = self.get_model(model_id)
+    if model is not None :
+      model.set_noncovalent_bonds(bonded_atoms)
+      model.flag_show_noncovalent_bonds = True
 
   def update_mcs (self, points, recenter_and_zoom=True, buffer=0) :
     mcs = minimum_covering_sphere(points=points,
@@ -1007,6 +1049,18 @@ class model_viewer_mixin (wxGLWindow) :
     if self.closest_point_i_seq is not None :
       self.recenter_on_atom(self.closest_point_object_id,
         self.closest_point_i_seq)
+
+  def OnMouseWheel (self, event) :
+    scale = event.GetWheelRotation()
+    if event.ShiftDown() :
+      self.fog_end_offset -= scale
+    else :
+      self.slab_scale += 0.01 * scale
+      if self.slab_scale > 1.0 :
+        self.slab_scale = 1.0
+      elif self.slab_scale < 0.01 :
+        self.slab_scale = 0.01
+    self.OnRedrawGL()
 
   def OnModelMenu (self, event) :
     menu = event.GetEventObject()

@@ -2,7 +2,7 @@
 import sys, os
 import cStringIO
 from crys3d.wx_selection_editor import selection_editor_mixin
-from mmtbx.monomer_library import pdb_interpretation
+from mmtbx.monomer_library import pdb_interpretation, secondary_structure
 import iotbx.pdb
 import wx
 
@@ -30,12 +30,15 @@ def run (args) :
   import cStringIO
   pdb_files = []
   cif_files = []
+  show_ss_restraints = False
   for arg in args :
     if os.path.isfile(arg) :
       if iotbx.pdb.is_pdb_file(arg) :
         pdb_files.append(os.path.abspath(arg))
       elif arg.endswith(".cif") :
         cif_files.append(os.path.abspath(arg))
+    elif arg == "--ss" :
+      show_ss_restraints = True
   if len(pdb_files) == 0 :
     print "Please specify a PDB file (and optional CIFs) on the command line."
     return
@@ -57,6 +60,12 @@ def run (args) :
     atomic_bonds = grm.shell_sym_tables[0].full_simple_connectivity()
     a.view_objects.add_model(file_name, pdb_hierarchy, atomic_bonds,
       mmtbx_selection_function=acp_selection)
+    if show_ss_restraints :
+      bonds_table = secondary_structure.get_bonds(file_name)
+      a.view_objects.set_noncovalent_bonds(file_name, bonds_table.bonds)
+      a.view_objects.flag_show_noncovalent_bonds = True
+      a.view_objects.set_model_base_color([1.0,1.0,1.0], file_name)
+      a.view_objects.set_color_mode("element")
   a.frame.Show()
   a.view_objects.force_update(recenter=True)
   a.MainLoop()
