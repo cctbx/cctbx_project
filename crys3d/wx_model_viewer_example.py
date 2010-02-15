@@ -61,7 +61,7 @@ def run (args) :
     a.view_objects.add_model(file_name, pdb_hierarchy, atomic_bonds,
       mmtbx_selection_function=acp_selection)
     if show_ss_restraints :
-      bonds_table = secondary_structure.get_bonds(file_name)
+      pdb_hierarchy2, bonds_table = secondary_structure.get_bonds(file_name)
       a.view_objects.set_noncovalent_bonds(file_name, bonds_table.bonds)
       a.view_objects.flag_show_noncovalent_bonds = True
       a.view_objects.set_model_base_color([1.0,1.0,1.0], file_name)
