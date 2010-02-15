@@ -68,7 +68,7 @@ sheet
     .style = bold selection
   strand
     .multiple = True
-    .optional = False
+    .optional = True
   {
     selection = None
       .type = str
@@ -122,7 +122,7 @@ tardy
 
 sec_str_master_phil = libtbx.phil.parse(sec_str_master_phil_str)
 
-use_resid_range = False # XXX: for debugging purposes only
+use_resids = False # XXX: for debugging purposes only
 
 class _annotation (oop.injector, iotbx.pdb.secondary_structure.annotation) :
   def as_restraint_groups (self, log=sys.stderr, prefix_scope="") :
@@ -143,7 +143,7 @@ class _pdb_helix (oop.injector, iotbx.pdb.secondary_structure.pdb_helix) :
       print >> log, "Helix chain ID mismatch: starts in %s, ends in %s" % (
         self.start_chain_id, self.end_chain_id)
       return None
-    if use_resid_range :
+    if use_resids :
       resid_start = "%d%s" % (self.start_resseq, self.start_icode)
       resid_end = "%d%s" % (self.end_resseq, self.end_icode)
       sele = "chain '%s' and resid %s through %s" % (self.start_chain_id,
@@ -169,7 +169,7 @@ class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
     reg_curr = []
     reg_prev = []
     for (strand,registration) in zip(self.strands, self.registrations) :
-      if use_resid_range :
+      if use_resids :
         resid_start = "%d%s" % (strand.start_resseq, strand.start_icode)
         resid_end = "%d%s" % (strand.end_resseq, strand.end_icode)
         sele = "chain '%s' and resid %s through %s" % (strand.start_chain_id,
@@ -187,11 +187,17 @@ class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
       else :
         raise Sorry("Sense must be 0, 1, or -1.")
       if registration is not None :
-        sele_base = "chain '%s' and resid %s"
-        resid_curr = "%d%s" % (registration.cur_resseq,registration.cur_icode)
-        resid_prev = "%d%s" % (registration.prev_resseq,registration.prev_icode)
-        reg_curr.append(sele_base % (registration.cur_chain_id,resid_curr))
-        reg_prev.append(sele_base % (registration.prev_chain_id,resid_prev))
+        if use_resids :
+          sele_base = "chain '%s' and resid %s"
+          resid_curr = "%d%s" % (registration.cur_resseq,registration.cur_icode)
+          resid_prev = "%d%s" % (registration.prev_resseq,registration.prev_icode)
+          reg_curr.append(sele_base % (registration.cur_chain_id,resid_curr))
+          reg_prev.append(sele_base % (registration.prev_chain_id,resid_prev))
+        else :
+          reg_curr.append("chain '%s' and resseq %d" % (
+            registration.cur_chain_id, registration.cur_resseq))
+          reg_prev.append("chain '%s' and resseq %d" % (
+            registration.prev_chain_id, registration.prev_resseq))
       else :
         reg_curr.append(None)
         reg_prev.append(None)
@@ -311,12 +317,16 @@ def hydrogen_bonds_from_selections (
             break
   if params.h_bond_restraints.restrain_sheets :
     for i_sheet, sheet in enumerate(params.sheet) :
+      if sheet.first_strand is None :
+        raise Sorry("First strand must be a valid atom selection.")
       sheet_bonds = []
       prev_strand_sele = sheet.first_strand
       for curr_strand in sheet.strand :
+        if curr_strand.selection is None :
+          raise Sorry("All strands must have a valid atom selection.")
         try :
           if curr_strand.sense == "unknown" :
-            raise RuntimeError(("Skipping sheet of unknown sense:\n" +
+            raise RuntimeError(("Skipping strand of unknown sense:\n" +
               "%s") % curr_strand.selection)
           curr_donors, curr_acceptors = _donors_and_acceptors(
             base_sele=curr_strand.selection,
@@ -346,7 +356,11 @@ def hydrogen_bonds_from_selections (
             curr_strand_acceptors=curr_acceptors,
             curr_strand_start=curr_acceptor_start[0],
             sense=curr_strand.sense)
-          if len(new_bonds) == 0 :
+          if new_bonds is None :
+            raise RuntimeError(
+              ("Can't determine start of bonding for strand pair:\n" +
+              "  %s\n  %s\n") % (prev_strand_sele, curr_strand.selection))
+          elif len(new_bonds) == 0 :
             raise RuntimeError(("No bonds found for strand pair:\n"+
               "  %s\n  %s\n") % (prev_strand_sele, curr_strand.selection))
           sheet_bonds.extend(new_bonds)
@@ -375,8 +389,8 @@ def hydrogen_bonds_from_selections (
         has_bond[i_seq] = True
         has_bond[j_seq] = True
         bond_i_seqs.append((i_seq, j_seq))
-        sigmas.append(sheet.sigma)
-        slacks.append(sheet.slack)
+        sigmas.append(sigma)
+        slacks.append(slack)
   distances = _get_distances(bond_i_seqs, sites)
   return hydrogen_bond_table(bonds=bond_i_seqs,
     distance=distances,
@@ -423,34 +437,37 @@ def _hydrogen_bonds_from_strand_pair (atoms,
   n_prev_strand = prev_strand_donors.size()
   n_curr_strand = curr_strand_donors.size()
   i = j = None
-  for k in prev_strand_donors :
-    if k == prev_strand_start :
+  for k, donor_i_seq in enumerate(prev_strand_donors) :
+    if donor_i_seq == prev_strand_start :
       i = k
-  for k in curr_strand_acceptors :
-    if k == curr_strand_start :
+      break
+  #print curr_strand_start, curr_strand_acceptors
+  for k, acceptor_i_seq in enumerate(curr_strand_acceptors) :
+    if acceptor_i_seq == curr_strand_start :
       j = k
+      break
   if None in [i, j] :
-    raise RuntimeError("Can't find start of bonding.")
-  if sense == "parallel" :
+    return None
+  if sense == "antiparallel" :
     while i < n_prev_strand and j > 0 :
       donor1_i_seq = prev_strand_donors[i]
       acceptor1_i_seq = curr_strand_acceptors[j]
-      bonds.append(donor1_i_seq, acceptor1_i_seq)
-      donor2_i_seq = curr_strand_donors[i]
+      bonds.append((donor1_i_seq, acceptor1_i_seq))
+      donor2_i_seq = curr_strand_donors[j]
       acceptor2_i_seq = prev_strand_acceptors[i]
-      bonds.append(donor2_i_seq, acceptor2_i_seq)
+      bonds.append((donor2_i_seq, acceptor2_i_seq))
       i += 2
       j -= 2
   else :
     while i < n_prev_strand and j < n_curr_strand :
-      donor1_i_seq = curr_strand_donors[i]
+      donor1_i_seq = prev_strand_donors[i]
       acceptor1_i_seq = curr_strand_acceptors[j]
-      bonds.append(donor1_i_seq, acceptor1_i_seq)
-      if (j + 2) < n_curr_strand :
+      bonds.append((donor1_i_seq, acceptor1_i_seq))
+      if (j + 2) >= n_curr_strand :
         break
       donor2_i_seq = curr_strand_donors[j+2]
       acceptor2_i_seq = prev_strand_acceptors[i]
-      bonds.append(donor2_i_seq, acceptor2_i_seq)
+      bonds.append((donor2_i_seq, acceptor2_i_seq))
       i += 2
       j += 2
   return bonds
@@ -615,7 +632,6 @@ def get_bonds (file_name, out=sys.stdout, log=sys.stderr) :
   assert secondary_structure is not None
   ss_params_str = secondary_structure.as_restraint_groups(log=sys.stderr)
   pdb_hierarchy = get_pdb_hierarchy([file_name])
-  atoms = pdb_hierarchy.atoms()
   sources = [libtbx.phil.parse(ss_params_str)]
   working_phil = sec_str_master_phil.fetch(sources=sources)
   params = working_phil.extract()
@@ -624,7 +640,7 @@ def get_bonds (file_name, out=sys.stdout, log=sys.stderr) :
     pdb_hierarchy,
     params=params,
     log=sys.stderr)
-  return bonds_table
+  return pdb_hierarchy, bonds_table
 
 def exercise () :
   pdb_file = libtbx.env.find_in_repositories(
@@ -633,7 +649,8 @@ def exercise () :
   if pdb_file is None :
     print "Skipping"
     return False
-  bonds_table = get_bonds(pdb_file)
+  pdb_hierarchy, bonds_table = get_bonds(pdb_file)
+  atoms = pdb_hierarchy.atoms()
   for bond in bonds_table.get_final_bonds() :
     donor = atoms[bond.donor_i_seq].fetch_labels()
     acceptor = atoms[bond.acceptor_i_seq].fetch_labels()
@@ -647,4 +664,4 @@ if __name__ == "__main__" :
   if "--test" in sys.argv :
     exercise()
   else :
-    (sys.argv[1:])
+    run(sys.argv[1:])
