@@ -392,7 +392,6 @@ mmtbx/command_line/xmanip.py -text
 mmtbx/dynamics/constants.py svneol=native#text/x-python
 mmtbx/find_peaks.py -text
 mmtbx/grow_density.py -text
-mmtbx/hydrogen_bonding.py -text
 mmtbx/hydrogens/find.py -text
 mmtbx/ias/__init__.py -text
 mmtbx/ias/tst_ias.py -text
@@ -414,6 +413,7 @@ mmtbx/monomer_library/conformation_dependent_restraints.py svneol=native#text/x-
 mmtbx/monomer_library/conv_v2_v3.py svneol=native#text/x-python
 mmtbx/monomer_library/rna_sugar_pucker_analysis.py svneol=native#text/x-python
 mmtbx/monomer_library/rotamer_utils.py svneol=native#text/x-python
+mmtbx/monomer_library/secondary_structure.py -text
 mmtbx/monomer_library/tst_cif_triage.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_conformation_dependent_restraints.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_geo_reduce_for_tardy.py svneol=native#text/x-python
