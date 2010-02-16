@@ -36,7 +36,7 @@ class ad_hoc_single_atom_residue(object):
       return
     atom_name = atom_name.strip().upper()
     if (    len(atom_element) == 0
-        and atom_name == residue_name
+        and atom_name == residue_name.strip()
         and atom_name in ad_hoc_single_atom_residue_element_types):
       self.scattering_type = atom_name
       self.energy_type = atom_name
