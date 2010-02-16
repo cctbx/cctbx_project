@@ -1,4 +1,3 @@
-from __future__ import division
 from iotbx import pdb
 import iotbx.phil
 from mmtbx.monomer_library import server
@@ -2413,6 +2412,9 @@ class build_all_chain_proxies(object):
       "  for creating restraint definitions (CIF files)."])
     return "\n  ".join(result)
 
+  def extract_secondary_structure (self) :
+    return self.pdb_inp.extract_secondary_structure()
+
   def site_symmetry_table(self):
     if (self._site_symmetry_table is None):
       assert self.special_position_settings is not None
@@ -2954,12 +2956,70 @@ class build_all_chain_proxies(object):
         sel_cache=sel_cache, params=params, log=log)
     return result
 
+  def process_hydrogen_bonds (self, bonds_table, log, verbose=False) :
+    atoms = self.pdb_atoms
+    def show_atoms (i_seqs, log) :
+      for i_seq in i_seqs :
+        print >> log, "     %s" % atoms[i_seq].fetch_labels().quote()
+    unit_cell = self.special_position_settings.unit_cell()
+    space_group = self.special_position_settings.space_group()
+    bond_sym_proxies = []
+    for bond in bonds_table.get_final_bonds() :
+      i_seqs = [bond.donor_i_seq, bond.acceptor_i_seq]
+      slack = bond.slack
+      if (slack is None or slack < 0):
+        slack = 0
+      if (bond.distance_ideal is None):
+        print >> log, "    Warning: Ignoring bond with distance_ideal = None:"
+        show_atoms(i_seqs, log)
+      elif (bond.distance_ideal <= 0):
+        print >> log, "    Warning: Ignoring bond with distance_ideal <= 0:"
+        show_atoms(i_seqs, log)
+        print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
+      elif (bond.sigma is None):
+        print >> log, "    Warning: Ignoring bond with sigma = None:"
+        show_atoms(i_seqs, log)
+        print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
+      elif (bond.sigma <= 0):
+        print >> log, "    Warning: Ignoring bond with sigma <= 0:"
+        show_atoms(i_seqs, log)
+        print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
+        print >> log, "      sigma = %.6g" % bond.sigma
+        print >> log, "      slack = %.6g" % slack
+      else:
+        rt_mx_ji = sgtbx.rt_mx(symbol="x,y,z", t_den=space_group.t_den())
+        p = geometry_restraints.bond_sym_proxy(
+          i_seqs=i_seqs,
+          distance_ideal=bond.distance_ideal,
+          weight=geometry_restraints.sigma_as_weight(sigma=bond.sigma),
+          slack=slack,
+          rt_mx_ji=rt_mx_ji)
+        bond_sym_proxies.append(p)
+        b = geometry_restraints.bond(
+          unit_cell=unit_cell,
+          sites_cart=self.sites_cart,
+          proxy=p)
+        if verbose :
+          print >> log, "    hydrogen bond:"
+          for i in [0,1]:
+            print >> log, "      atom %d:" % (i+1), atoms[p.i_seqs[i]].quote()
+          print >> log, "      distance_model: %7.3f" % b.distance_model
+          print >> log, "      distance_ideal: %7.3f" % b.distance_ideal
+          print >> log, "      ideal - model:  %7.3f" % b.delta
+          print >> log, "      slack:          %7.3f" % b.slack
+          print >> log, "      delta_slack:    %7.3f" % b.delta_slack
+          print >> log, "      sigma:          %8.4f" % \
+            geometry_restraints.weight_as_sigma(weight=b.weight)
+    print >> log, "  Total number of hydrogen bonds:", len(bond_sym_proxies)
+    return bond_sym_proxies
+
   def construct_geometry_restraints_manager(self,
         ener_lib,
         disulfide_link,
         plain_pairs_radius=None,
         params_edits=None,
         params_remove=None,
+        h_bond_table=None,
         assume_hydrogens_all_missing=True,
         log=None):
     assert self.special_position_settings is not None
@@ -3004,6 +3064,11 @@ class build_all_chain_proxies(object):
         params=params_edits, log=log)
       max_bond_distance = max(max_bond_distance,
         processed_edits.bond_distance_model_max)
+    if (h_bond_table is None) :
+      hydrogen_bonds = None
+    else :
+      hydrogen_bonds = self.process_hydrogen_bonds(h_bond_table,
+        log=log)
     asu_mappings = self.special_position_settings.asu_mappings(
       buffer_thickness=max_bond_distance*3)
         # factor 3 is to reach 1-4 interactions
@@ -3045,6 +3110,16 @@ class build_all_chain_proxies(object):
           rt_mx_ji=proxy.rt_mx_ji)
       for proxy in processed_edits.angle_proxies:
         self.geometry_proxy_registries.angle.append_custom_proxy(proxy=proxy)
+    #
+    if (hydrogen_bonds is not None) :
+      for proxy in hydrogen_bonds :
+        if (proxy.weight <= 0): continue
+        i_seq, j_seq = proxy.i_seqs
+        bond_params_table.update(i_seq=i_seq, j_seq=j_seq, params=proxy)
+        bond_asu_table.add_pair(
+          i_seq=i_seq,
+          j_seq=j_seq,
+          rt_mx_ji=proxy.rt_mx_ji)
     #
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=bond_asu_table,
@@ -3205,6 +3280,7 @@ class process(object):
         plain_pairs_radius=None,
         params_edits=None,
         params_remove=None,
+        h_bond_table=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
         hard_minimum_bond_distance_model=0.001):
@@ -3218,6 +3294,7 @@ class process(object):
             plain_pairs_radius=plain_pairs_radius,
             params_edits=params_edits,
             params_remove=params_remove,
+            h_bond_table=h_bond_table,
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             log=self.log)
       if (self.log is not None):

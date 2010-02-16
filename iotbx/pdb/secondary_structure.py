@@ -392,8 +392,8 @@ def parse_sheet_records (records) :
   return sheets
 
 #-----------------------------------------------------------------------
-def process_files (pdb_files, records=None, allow_none=True) :
-  assert len(pdb_files) > 0 or records is not None
+def process_records (records=None, pdb_files=None, allow_none=True) :
+  assert records is not None or pdb_files is not None
   if records is None :
     records = []
     for file_name in pdb_files :
@@ -440,7 +440,7 @@ def run (args, out=sys.stdout, log=sys.stderr, cmd_params_str="") :
   params = working_phil.extract()
   if len(params.file_name) == 0 :
     raise Usage("Please supply at least one PDB file.")
-  secondary_structure = process_files(params.file_name)
+  secondary_structure = process_records(pdb_files=params.file_name)
   if secondary_structure is not None :
     if params.echo_pdb_records :
       print >> out, secondary_structure.as_pdb_str()
