@@ -1,10 +1,12 @@
 
-import sys, os
 import cStringIO
 from crys3d.wx_selection_editor import selection_editor_mixin
-from mmtbx.monomer_library import pdb_interpretation, secondary_structure
-import iotbx.pdb
 import wx
+from mmtbx.monomer_library import pdb_interpretation
+from mmtbx import secondary_structure
+import iotbx.pdb
+import libtbx.load_env
+import sys, os
 
 ########################################################################
 # CLASSES AND METHODS FOR STANDALONE VIEWER
@@ -61,7 +63,15 @@ def run (args) :
     a.view_objects.add_model(file_name, pdb_hierarchy, atomic_bonds,
       mmtbx_selection_function=acp_selection)
     if show_ss_restraints :
-      pdb_hierarchy2, bonds_table = secondary_structure.get_bonds(file_name)
+      xray_structure = processed_pdb_file.all_chain_proxies.extract_xray_structure()
+      sctr_keys = \
+             xray_structure.scattering_type_registry().type_count_dict().keys()
+      has_hd = ("H" in sctr_keys or "D" in sctr_keys)
+      bonds_table = secondary_structure.process_structure(params=None,
+        processed_pdb_file=processed_pdb_file,
+        tmp_dir=os.getcwd(),
+        log=sys.stderr,
+        assume_hydrogens_all_missing=(not has_hd))
       a.view_objects.set_noncovalent_bonds(file_name, bonds_table.bonds)
       a.view_objects.flag_show_noncovalent_bonds = True
       a.view_objects.set_model_base_color([1.0,1.0,1.0], file_name)
@@ -71,5 +81,10 @@ def run (args) :
   a.MainLoop()
 
 if __name__ == "__main__" :
-  import sys
-  run(sys.argv[1:])
+  if "--test" in sys.argv :
+    pdb_file = libtbx.env.find_in_repositories(
+      relative_path="phenix_regression/pdb/1ywf.pdb",
+      test=os.path.isfile)
+    run([pdb_file, "--ss"])
+  else :
+    run(sys.argv[1:])
