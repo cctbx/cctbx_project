@@ -257,6 +257,46 @@ END
     mode="==",
     lines=log.getvalue().splitlines())
   assert len(lines) == 1
+  #
+  raw_records = """\
+HETATM 1253 CD    CD X 200      -0.849  19.743   0.211  1.00 14.82
+END
+""".splitlines()
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    substitute_non_crystallographic_unit_cell_if_necessary=True,
+    log=log)
+  processed_pdb_file.xray_structure()
+  lines = search_for(
+    pattern="""\
+     Cd      1     47.96""",
+    mode="==",
+    lines=log.getvalue().splitlines())
+  assert len(lines) == 1
+  #
+  raw_records = """\
+HETATM 1253 ZN    ZN X 200      -0.849  19.743   0.211  1.00 14.82
+END
+""".splitlines()
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    substitute_non_crystallographic_unit_cell_if_necessary=True,
+    log=log)
+  processed_pdb_file.xray_structure()
+  lines = search_for(
+    pattern="""\
+     Zn      1     29.99""",
+    mode="==",
+    lines=log.getvalue().splitlines())
+  assert len(lines) == 1
 
 def exercise_rna(
       mon_lib_srv,
