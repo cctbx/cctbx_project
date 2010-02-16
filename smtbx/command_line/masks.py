@@ -59,9 +59,9 @@ def exercise_masks(xs, fo_sq,
     f_calc = sf(xs, f_obs).f_calc()
     f_model = mask.f_model()
     scale_factor = f_obs.quick_scale_factor_approximation(
-      f_model, cutoff_factor=0.1)
+      f_model, cutoff_factor=0)
     # f_obs - f_calc
-    k = f_obs.quick_scale_factor_approximation(f_calc, cutoff_factor=0.8)
+    k = f_obs.quick_scale_factor_approximation(f_calc, cutoff_factor=0)
     f_obs_minus_f_calc = f_obs.f_obs_minus_f_calc(1/k, f_calc)
     diff_map_calc = miller.fft_map(mask.crystal_gridding, f_obs_minus_f_calc)
     diff_map_calc.apply_volume_scaling()
@@ -142,6 +142,9 @@ def run(args):
   print "reflection file: %s" %command_line.args[0]
   if command_line.options.debug:
     print "debug: %s" %command_line.options.debug
+  print
+
+  xs.show_summary()
   print
 
   exercise_masks(
