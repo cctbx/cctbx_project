@@ -39,6 +39,7 @@ def exercise_masks():
     diff_map.apply_volume_scaling()
     stats = diff_map.statistics()
     assert n_voids == 2
+    assert mask.n_solvent_grid_points == 42148
     # check the difference map has no large peaks/holes
     assert max(stats.max(), abs(stats.min())) < 0.1
     assert approx_equal(mask.f_000_s, 40, eps=1e-1)

@@ -3,7 +3,7 @@ from __future__ import division
 import sys
 
 import cctbx.masks
-from cctbx import crystal, maptbx, miller, xray
+from cctbx import crystal, maptbx, miller, sgtbx, xray
 from cctbx.array_family import flex
 from scitbx.math import approx_equal_relatively
 from libtbx.utils import xfrange
@@ -34,14 +34,15 @@ class mask(object):
         space_group_info=self.xray_structure.space_group_info(),
         d_min=self.observations.d_min(),
         resolution_factor=resolution_factor,
-        symmetry_flags=maptbx.use_space_group_symmetry)
+        symmetry_flags=sgtbx.search_symmetry_flags(
+          use_space_group_symmetry=use_space_group_symmetry))
     else:
       self.crystal_gridding = crystal_gridding
     atom_radii = cctbx.masks.vdw_radii_from_xray_structure(
       self.xray_structure, table=atom_radii_table)
     if use_space_group_symmetry:
       asu_mappings = self.xray_structure.asu_mappings(
-        buffer_thickness=flex.max(atom_radii))
+        buffer_thickness=flex.max(atom_radii)+solvent_radius)
       scatterers_asu_plus_buffer = flex.xray_scatterer()
       frac = self.xray_structure.unit_cell().fractionalize
       for sc, mappings in zip(
@@ -79,7 +80,7 @@ class mask(object):
     self.f_calc = sf(self.xray_structure, f_obs).f_calc()
     if scale_factor is None:
       self.scale_factor = f_obs.quick_scale_factor_approximation(
-        self.f_calc, cutoff_factor=0.8)
+        self.f_calc, cutoff_factor=0)
     f_obs_minus_f_calc = f_obs.f_obs_minus_f_calc(
       1/self.scale_factor, self.f_calc)
     self.fft_scale = self.xray_structure.unit_cell().volume()\
@@ -199,4 +200,3 @@ class mask(object):
       print >> log, " (%s)" %(','.join(formatted_site)),
       print >> log, "%12.1f     " %(void_vol),
       print >> log, "%7.1f" %f_000_s
-
