@@ -165,7 +165,7 @@ class _pdb_helix (oop.injector, iotbx.pdb.secondary_structure.pdb_helix) :
       prefix_scope += "."
     rg = """\
 %shelix {
-  selection = %s
+  selection = "%s"
   helix_class = %d
 }""" % (prefix_scope, sele, self.helix_class)
     return rg
@@ -220,7 +220,7 @@ class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
       else :
         strands.append("""\
   strand {
-    selection = %s
+    selection = "%s"
     sense = %s
     bond_start_current = %s
     bond_start_previous = %s
@@ -231,7 +231,7 @@ class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
       prefix_scope += "."
     phil_str = """
 %ssheet {
-  first_strand = %s
+  first_strand = "%s"
 %s
 }""" % (prefix_scope, first_strand, "\n".join(strands))
     return phil_str
@@ -767,8 +767,8 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     prefix_scope = ""
   ss_params_str = secondary_structure.as_restraint_groups(log=log,
     prefix_scope=prefix_scope)
+  ss_phil = libtbx.phil.parse(ss_params_str)
   if params.show_histograms :
-    ss_phil = libtbx.phil.parse(ss_params_str)
     working_phil = master_phil.fetch(sources=[ss_phil]+sources)
     working_phil.show()
     print >> out, ""
@@ -784,7 +784,8 @@ def run (args, out=sys.stdout, log=sys.stderr) :
       pdb_hierarchy=pdb_hierarchy,
       log=out)
   else :
-    print >> out, ss_params_str
+    ss_phil.show(out=out)
+    #print >> out, ss_params_str
 
 def get_bonds (file_name, out=sys.stdout, log=sys.stderr,
     force_new_annotation=False, fake_hydrogens=True) :
