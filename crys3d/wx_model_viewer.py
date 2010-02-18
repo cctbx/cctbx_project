@@ -63,7 +63,8 @@ draw_modes = [ ("trace", "Show trace"),
                ("bonded_only", "Show bonded atoms"), ]
 draw_flags = [ ("flag_show_hydrogens", "Show hydrogens"),
                ("flag_show_ellipsoids", "Show B-factor ellipsoids"),
-               ("flag_show_labels", "Show labels"), ]
+               ("flag_show_labels", "Show labels"),
+               ("flag_show_noncovalent_bonds", "Show non-covalent bonds"), ]
 color_modes = [ ("rainbow", "Color rainbow"),
                 ("b", "Color by B-factor"),
                 ("element", "Color by element"),
@@ -351,9 +352,13 @@ class model_data (object) :
                         'Co' : (0.0, 0.5, 0.6) }   # marine
       atom_colors = flex.vec3_double()
       for atom in self.pdb_hierarchy.atoms_with_labels() :
-        color = element_shades.get(atom.element)
+        element = atom.element
+        if element == "  " :
+          first_char = atom.name.strip()[0]
+          element = " " + first_char
+        color = element_shades.get(element)
         if color is None :
-          color = (0.0, 1.0, 1.0)
+          color = (0.5, 0.5, 0.5)
         atom_colors.append(color)
       self.atom_colors = atom_colors
       self._color_cache["element"] = cached
@@ -840,7 +845,7 @@ class model_viewer_mixin (wxGLWindow) :
     model = self.get_model(model_id)
     if model is not None :
       model.set_noncovalent_bonds(bonded_atoms)
-      model.flag_show_noncovalent_bonds = True
+      #model.flag_show_noncovalent_bonds = True
 
   def update_mcs (self, points, recenter_and_zoom=True, buffer=0) :
     mcs = minimum_covering_sphere(points=points,

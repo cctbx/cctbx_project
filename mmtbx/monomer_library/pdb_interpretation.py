@@ -2964,7 +2964,7 @@ class build_all_chain_proxies(object):
     unit_cell = self.special_position_settings.unit_cell()
     space_group = self.special_position_settings.space_group()
     bond_sym_proxies = []
-    for bond in bonds_table.get_final_bonds() :
+    for bond in bonds_table.get_bond_restraint_data() :
       i_seqs = [bond.donor_i_seq, bond.acceptor_i_seq]
       slack = bond.slack
       if (slack is None or slack < 0):
