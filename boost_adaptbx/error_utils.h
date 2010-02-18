@@ -40,4 +40,9 @@ namespace boost_adaptbx { namespace error_utils {
     "Control flow passes through branch that should be unreachable: " \
     + boost_adaptbx::error_utils::file_and_line_as_string(__FILE__, __LINE__))
 
+#define BOOST_ADAPTBX_NOT_IMPLEMENTED() \
+  std::runtime_error( \
+    "Not implemented: " \
+    + boost_adaptbx::error_utils::file_and_line_as_string(__FILE__, __LINE__))
+
 #endif // GUARD
