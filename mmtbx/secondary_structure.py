@@ -26,7 +26,7 @@ ss_restraint_params_str = """
     .type = bool
   restrain_initial_values = False
     .type = bool
-  slack = 0.1
+  slack = 0.0
     .type = float
   sigma = 0.05
     .type = float
@@ -222,8 +222,8 @@ class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
   strand {
     selection = "%s"
     sense = %s
-    bond_start_current = %s
-    bond_start_previous = %s
+    bond_start_current = "%s"
+    bond_start_previous = "%s"
   }""" % (sele, sense, curr, prev))
       n += 1
     assert first_strand is not None
@@ -275,14 +275,33 @@ class hydrogen_bond_table (object) :
     print >> log, ""
     return True
 
-  def get_final_bonds (self) :
+  def get_bond_restraint_data (self, filter=True) :
     for i, (donor_i_seq, acceptor_i_seq) in enumerate(self.bonds) :
-      if self.flag_use_bond[i] :
+      if not filter or self.flag_use_bond[i] :
         yield group_args(donor_i_seq=donor_i_seq,
           acceptor_i_seq=acceptor_i_seq,
           sigma=self.sigma[i],
           slack=self.slack[i],
           distance_ideal=self.distance[i])
+
+  def get_simple_bonds (self, filter=True) :
+    if filter :
+      for i, bond in enumerate(self.bonds) :
+        if self.flag_use_bond[i] :
+          yield bond
+    else :
+      for i, bond in enumerate(self.bonds) :
+        yield bond
+
+  def as_pymol_dashes (self, pdb_hierarchy, filter=True, out=sys.stdout) :
+    atoms = pdb_hierarchy.atoms()
+    for (i_seq, j_seq) in self.get_simple_bonds(filter=filter) :
+      atom1 = atoms[i_seq].fetch_labels()
+      atom2 = atoms[j_seq].fetch_labels()
+      base_sele = """chain "%s" and resi %s and name %s"""
+      sele1 = base_sele % (atom1.chain_id, atom1.resseq, atom1.name)
+      sele2 = base_sele % (atom2.chain_id, atom2.resseq, atom2.name)
+      print >>out, "dist %s, %s" % (sele1, sele2)
 
 def hydrogen_bonds_from_selections (
     pdb_hierarchy,
@@ -680,9 +699,13 @@ def __strand_group_as_pdb_strand (isel, selection, atoms, log, sense) :
   return pdb_strand
 
 def process_structure (params, processed_pdb_file, tmp_dir, log,
-    assume_hydrogens_all_missing=False) :
+    assume_hydrogens_all_missing=None) :
   if params is None :
     params = sec_str_master_phil.fetch().extract()
+  if assume_hydrogens_all_missing is None :
+    xrs = processed_pdb_file.all_chain_proxies.extract_xray_structure()
+    sctr_keys = xrs.scattering_type_registry().type_count_dict().keys()
+    assume_hydrogens_all_missing = not ("H" in sctr_keys or "D" in sctr_keys)
   acp = processed_pdb_file.all_chain_proxies
   sec_str_from_pdb_file = acp.extract_secondary_structure()
   find_automatically = params.input.find_automatically
@@ -729,7 +752,8 @@ def run_ksdssp (file_name, log=sys.stderr) :
   exe_path = libtbx.env.under_build("ksdssp/exe/ksdssp")
   if not os.path.isfile(exe_path) :
     raise Sorry("KSDSSP not available.")
-  print >> log, "  Running KSDSSP to generate HELIX and SHEET records"
+  print >> log, "  Running KSDSSP to generate HELIX and SHEET records for %s"%\
+    os.path.basename(file_name)
   ksdssp_out = easy_run.fully_buffered(command="%s %s" % (exe_path, file_name))
   if len(ksdssp_out.stderr_lines) > 0 :
     print >> log, "\n".join(ksdssp_out.stderr_lines)
@@ -741,6 +765,8 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   force_new_annotation = False
   master_phil = libtbx.phil.parse("""
     show_histograms = False
+      .type = bool
+    show_pymol_dashes = False
       .type = bool
 %s""" % sec_str_master_phil_str)
   for arg in args :
@@ -763,12 +789,24 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     secondary_structure = iotbx.pdb.secondary_structure.process_records(
       records=records, allow_none=False)
   prefix_scope="refinement.secondary_structure"
-  if params.show_histograms :
+  if params.show_histograms or params.show_pymol_dashes :
     prefix_scope = ""
   ss_params_str = secondary_structure.as_restraint_groups(log=log,
     prefix_scope=prefix_scope)
   ss_phil = libtbx.phil.parse(ss_params_str)
-  if params.show_histograms :
+  if params.show_pymol_dashes :
+    working_phil = master_phil.fetch(sources=[ss_phil]+sources)
+    params = working_phil.extract()
+    pdb_hierarchy = get_pdb_hierarchy(pdb_files)
+    bonds_table = hydrogen_bonds_from_selections(
+      pdb_hierarchy,
+      params=params,
+      log=sys.stderr)
+    bonds_table.analyze_distances(params=params.h_bond_restraints,
+      pdb_hierarchy=pdb_hierarchy,
+      log=sys.stderr)
+    bonds_table.as_pymol_dashes(pdb_hierarchy, filter=True, out=out)
+  elif params.show_histograms :
     working_phil = master_phil.fetch(sources=[ss_phil]+sources)
     working_phil.show()
     print >> out, ""
@@ -800,6 +838,7 @@ def get_bonds (file_name, out=sys.stdout, log=sys.stderr,
   pdb_hierarchy = get_pdb_hierarchy([file_name])
   sources = [libtbx.phil.parse(ss_params_str)]
   working_phil = sec_str_master_phil.fetch(sources=sources)
+  #working_phil.show()
   params = working_phil.extract()
   params.h_bond_restraints.substitute_n_for_h = fake_hydrogens
   bonds_table = hydrogen_bonds_from_selections(

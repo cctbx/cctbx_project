@@ -63,15 +63,10 @@ def run (args) :
     a.view_objects.add_model(file_name, pdb_hierarchy, atomic_bonds,
       mmtbx_selection_function=acp_selection)
     if show_ss_restraints :
-      xray_structure = processed_pdb_file.all_chain_proxies.extract_xray_structure()
-      sctr_keys = \
-             xray_structure.scattering_type_registry().type_count_dict().keys()
-      has_hd = ("H" in sctr_keys or "D" in sctr_keys)
       bonds_table = secondary_structure.process_structure(params=None,
         processed_pdb_file=processed_pdb_file,
         tmp_dir=os.getcwd(),
-        log=sys.stderr,
-        assume_hydrogens_all_missing=(not has_hd))
+        log=sys.stderr)
       a.view_objects.set_noncovalent_bonds(file_name, bonds_table.bonds)
       a.view_objects.flag_show_noncovalent_bonds = True
       a.view_objects.set_model_base_color([1.0,1.0,1.0], file_name)

@@ -187,6 +187,10 @@ def parse_helix_records (records) :
   for line in records :
     if not line.startswith("HELIX") :
       continue
+    try :
+      length = string.atoi(line[71:76])
+    except ValueError :
+      length = 0
     current_helix = pdb_helix(
       serial=string.atoi(line[7:10]),
       helix_id=line[11:14].strip(),
@@ -200,7 +204,7 @@ def parse_helix_records (records) :
       end_icode=line[37],
       helix_class=string.atoi(line[38:40]),
       comment=line[40:70],
-      length=string.atoi(line[71:76]))
+      length=length) #string.atoi(line[71:76]))
     helices.append(current_helix)
   return helices
 
