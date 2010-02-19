@@ -9,17 +9,17 @@ def _show_lines(lines, out, prefix):
 
 class fully_buffered_base(object):
 
-  def raise_if_errors(self):
+  def raise_if_errors(self, Error=RuntimeError):
     assert not self.join_stdout_stderr
     if (len(self.stderr_lines) != 0):
       msg = ["child process stderr output:"]
       msg.append("  command: " + repr(self.command))
       for line in self.stderr_lines:
         msg.append("  " + line)
-      raise RuntimeError("\n".join(msg))
+      raise Error("\n".join(msg))
     return self
 
-  def raise_if_output(self, show_output_threshold=10):
+  def raise_if_output(self, show_output_threshold=10, Error=RuntimeError):
     def start_msg():
       result = ["unexpected child process output:"]
       result.append("  command: " + repr(self.command))
@@ -28,7 +28,7 @@ class fully_buffered_base(object):
       if (len(self.stdout_buffer) != 0):
         msg = start_msg()
         msg.append("  length of output: %d bytes" % len(self.stdout_buffer))
-        raise RuntimeError("\n".join(msg))
+        raise Error("\n".join(msg))
     elif (len(self.stdout_lines) != 0):
       msg = start_msg()
       for line in self.stdout_lines[:show_output_threshold]:
@@ -42,12 +42,12 @@ class fully_buffered_base(object):
           msg.append("  ...")
           msg.append("  remaining %d lines omitted."
             % (n-show_output_threshold))
-      raise RuntimeError("\n".join(msg))
+      raise Error("\n".join(msg))
     return self
 
-  def raise_if_errors_or_output(self):
-    self.raise_if_errors()
-    self.raise_if_output()
+  def raise_if_errors_or_output(self, Error=RuntimeError):
+    self.raise_if_errors(Error=Error)
+    self.raise_if_output(Error=Error)
     return self
 
   def show_stderr(self, out=None, prefix=""):
