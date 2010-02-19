@@ -10,6 +10,9 @@ from math import sqrt
 import cStringIO
 import sys, os
 
+default_sigma = 0.05
+default_slack = 0.00
+
 ss_restraint_params_str = """
   verbose = False
     .type = bool
@@ -26,9 +29,9 @@ ss_restraint_params_str = """
     .type = bool
   restrain_initial_values = False
     .type = bool
-  slack = 0.0
+  sigma = %.3f
     .type = float
-  sigma = 0.05
+  slack = %.3f
     .type = float
   n_o_distance_ideal = 3.0
     .type = float
@@ -38,7 +41,7 @@ ss_restraint_params_str = """
     .type = float
   h_o_outlier_cutoff = 2.5
     .type = float
-"""
+""" % (default_sigma, default_slack)
 
 ss_tardy_params_str = """\
 tardy
