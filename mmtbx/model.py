@@ -895,36 +895,37 @@ class manager(object):
     self.pdb_atoms = self.pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
     #
-    geometry = self.restraints_manager.geometry
-    number_of_new_solvent = solvent_xray_structure.scatterers().size()
-    if (geometry.model_indices is None):
-      model_indices = None
-    else:
-      model_indices = flex.size_t(number_of_new_solvent, 0)
-    if (geometry.conformer_indices is None):
-      conformer_indices = None
-    else:
-      conformer_indices = flex.size_t(number_of_new_solvent, 0)
-    if (geometry.sym_excl_indices is None):
-      sym_excl_indices = None
-    else:
-      sym_excl_indices = flex.size_t(number_of_new_solvent, 0)
-    geometry = geometry.new_including_isolated_sites(
-      n_additional_sites =number_of_new_solvent,
-      model_indices=model_indices,
-      conformer_indices=conformer_indices,
-      sym_excl_indices=sym_excl_indices,
-      site_symmetry_table=solvent_xray_structure.site_symmetry_table(),
-      nonbonded_types=flex.std_string(number_of_new_solvent, "OH2"))
-    self.restraints_manager = mmtbx.restraints.manager(
-                         geometry      = geometry,
-                         ncs_groups    = self.restraints_manager.ncs_groups,
-                         normalization = self.restraints_manager.normalization)
-    if (self.restraints_manager.ncs_groups is not None):
-      self.restraints_manager.ncs_groups.register_additional_isolated_sites(
-        number=number_of_new_solvent)
-    self.restraints_manager.geometry.update_plain_pair_sym_table(
-                                 sites_frac = self.xray_structure.sites_frac())
+    if(self.restraints_manager is not None):
+      geometry = self.restraints_manager.geometry
+      number_of_new_solvent = solvent_xray_structure.scatterers().size()
+      if (geometry.model_indices is None):
+        model_indices = None
+      else:
+        model_indices = flex.size_t(number_of_new_solvent, 0)
+      if (geometry.conformer_indices is None):
+        conformer_indices = None
+      else:
+        conformer_indices = flex.size_t(number_of_new_solvent, 0)
+      if (geometry.sym_excl_indices is None):
+        sym_excl_indices = None
+      else:
+        sym_excl_indices = flex.size_t(number_of_new_solvent, 0)
+      geometry = geometry.new_including_isolated_sites(
+        n_additional_sites =number_of_new_solvent,
+        model_indices=model_indices,
+        conformer_indices=conformer_indices,
+        sym_excl_indices=sym_excl_indices,
+        site_symmetry_table=solvent_xray_structure.site_symmetry_table(),
+        nonbonded_types=flex.std_string(number_of_new_solvent, "OH2"))
+      self.restraints_manager = mmtbx.restraints.manager(
+                           geometry      = geometry,
+                           ncs_groups    = self.restraints_manager.ncs_groups,
+                           normalization = self.restraints_manager.normalization)
+      if (self.restraints_manager.ncs_groups is not None):
+        self.restraints_manager.ncs_groups.register_additional_isolated_sites(
+          number=number_of_new_solvent)
+      self.restraints_manager.geometry.update_plain_pair_sym_table(
+                                   sites_frac = self.xray_structure.sites_frac())
     assert self.pdb_atoms.size() == self.xray_structure.scatterers().size()
 
   def scale_adp(self, scale_max, scale_min):

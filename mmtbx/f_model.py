@@ -1036,6 +1036,33 @@ class manager(manager_mixin):
   def k_sol_b_sol(self):
     return self.k_sol(), self.b_sol()
 
+  def r_work_per_reflection(self, log=None):
+    if(log is None): log = sys.stdout
+    fo_ma = self.f_obs#_w
+    fm_ma = self.f_model_scaled_with_k1()#_w()
+    fo = flex.abs(fo_ma.data())
+    fm = flex.abs(fm_ma.data())
+    r = flex.abs(fo-fm) / fo * 100.
+    r_overall = flex.sum(flex.abs(fo-fm)) / flex.sum(fo) * 100.
+    sel = flex.sort_permutation(r)
+    fo_ma = fo_ma.select(sel)
+    fm_ma = fm_ma.select(sel)
+    r = r.select(sel)
+    d = fo_ma.d_spacings().data()
+    for i, di, foi, fmi, ri in zip(fo_ma.indices(), d, fo_ma.data(),
+                                flex.abs(fm_ma.data()), r):
+      print >> log, \
+        "%5d%5d%5d RESOL.= %5.2f FOBS= %10.3f FMODEL= %10.3f R(percent)= %7.2f" % \
+        (i[0], i[1], i[2], di, foi, fmi, ri)
+    print >> log, "Rwork = %7.2f"%r_overall
+    sel100 = r < 100.
+    print sel100.count(False), sel100.size(), sel100.count(False)*100/sel100.size()
+    self = self.select(selection = sel100)
+    self.update_solvent_and_scale()
+    print self.r_work()
+    print self.r_free()
+    return self
+
   def alpha_beta(self, f_obs = None, f_model = None):
     global time_alpha_beta
     timer = user_plus_sys_time()
