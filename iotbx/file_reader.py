@@ -47,31 +47,45 @@ standard_file_descriptions = {
   'mtz'  : "Reflections (MTZ)",
 }
 
-def guess_file_type (file_name) :
+supported_file_types = ["pdb","hkl","cif","pkl","seq","phil", "txt"]
+
+class FormatError (Sorry) :
+  pass
+
+def guess_file_type (file_name, extensions=standard_file_extensions) :
   base, ext = os.path.splitext(file_name)
-  for known_type, known_extensions in standard_file_extensions.iteritems() :
+  for known_type, known_extensions in extensions.iteritems() :
     if ext[1:] in known_extensions :
       return known_type
   return None
 
 def any_file (file_name,
               get_processed_file=False,
-              valid_types=["pdb","hkl","cif","pkl","seq","phil", "txt"],
+              valid_types=supported_file_types,
               allow_directories=False,
-              force_type=None) :
+              force_type=None,
+              input_class=None) :
   if not os.path.exists(file_name) :
     raise Sorry("Couldn't find the file %s" % file_name)
   elif os.path.isdir(file_name) :
     if not allow_directories :
       raise Sorry("This application does not support folders as input.")
     else :
-      return _dir_input(file_name)
+      return directory_input(file_name)
   elif not os.path.isfile(file_name) :
     raise Sorry("%s is not a valid file.")
   else :
-    return _any_file(file_name, get_processed_file, valid_types, force_type)
+    if input_class is None :
+      input_class = any_file_input
+    return input_class(file_name=file_name,
+      get_processed_file=get_processed_file,
+      valid_types=valid_types,
+      force_type=force_type)
 
-class _any_file (object) :
+class any_file_input (object) :
+  __extensions = standard_file_extensions
+  __descriptions = standard_file_descriptions
+
   def __init__ (self, file_name, get_processed_file, valid_types, force_type) :
     self.valid_types = valid_types
     self.file_name = file_name
@@ -79,6 +93,7 @@ class _any_file (object) :
     self.file_type = None
     self.file_server = None
     self.file_description = None
+    self._cached_file = None # XXX: used in phenix.file_reader
     self.file_size = os.path.getsize(file_name)
     self.get_processed_file = get_processed_file
 
@@ -96,12 +111,14 @@ class _any_file (object) :
         read_method()
     else :
       for file_type in valid_types :
-        if file_ext[1:] in standard_file_extensions[file_type] :
+        if file_ext[1:] in self.__extensions[file_type] :
           read_method = getattr(self, "try_as_%s" % file_type)
           try :
             read_method()
           except KeyboardInterrupt :
             raise
+          except FormatError, e :
+            raise e
           except Exception, e :
             self.file_type = None
             self.file_object = None
@@ -110,7 +127,7 @@ class _any_file (object) :
       if self.file_type is None :
         self.try_all_types()
     if self.file_type is not None :
-      self.file_description = standard_file_descriptions[self.file_type]
+      self.file_description = self.__descriptions[self.file_type]
 
   def try_as_pdb (self) :
     if is_pdb_file(self.file_name) :
@@ -201,7 +218,7 @@ class _any_file (object) :
     if self.file_type == None :
       return "Unknown file%s" % file_size_str
     else :
-      return "%s%s" % (standard_file_descriptions[self.file_type],
+      return "%s%s" % (self.__descriptions[self.file_type],
         file_size_str)
 
   def assert_file_type (self, expected_type) :
@@ -212,7 +229,7 @@ class _any_file (object) :
         "almost certainly a bug; please contact the developers.") %
         (str(self.file_name), expected_type, str(self.file_type)))
 
-class _dir_input (object) :
+class directory_input (object) :
   def __init__ (self, dir_name) :
     self.file_name = dir_name
     self.file_object = dircache.listdir(dir_name)
