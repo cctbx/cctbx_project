@@ -934,6 +934,80 @@ def determinant_via_lu(m):
     result = -result
   return result
 
+def rotate_point_around_axis(axis_point_1, axis_point_2, point, angle_deg):
+  angle_rad = angle_deg*math.pi/180.
+  xa,ya,za = axis_point_1
+  xb,yb,zb = axis_point_2
+  x,y,z = point
+  xL,yL,zL = xb-xa,yb-ya,zb-za
+  xLsq = xL**2
+  yLsq = yL**2
+  zLsq = zL**2
+  dLsq = xLsq + yLsq + zLsq
+  dL = math.sqrt(dLsq)
+  ca = math.cos(angle_rad)
+  dsa = math.sin(angle_rad)/dL
+  oca = (1-ca)/dLsq
+  xLyLo = xL*yL*oca
+  xLzLo = xL*zL*oca
+  yLzLo = yL*zL*oca
+  xma,yma,zma = x-xa,y-ya,z-za
+  m1 = xLsq*oca+ca
+  m2 = xLyLo-zL*dsa
+  m3 = xLzLo+yL*dsa
+  m4 = xLyLo+zL*dsa
+  m5 = yLsq*oca+ca
+  m6 = yLzLo-xL*dsa
+  m7 = xLzLo-yL*dsa
+  m8 = yLzLo+xL*dsa
+  m9 = zLsq*oca+ca
+  x_new = xma*m1 + yma*m2 + zma*m3 + xa
+  y_new = xma*m4 + yma*m5 + zma*m6 + ya
+  z_new = xma*m7 + yma*m8 + zma*m9 + za
+  return (x_new,y_new,z_new)
+
+def exercise_rotate_point_around_axis():
+  three_points = """\
+CRYST1   12.000   11.000   13.000  80.00  70.00 100.00 P 1
+ATOM      1  CB  PHE A   1       7.767   5.853   7.671  1.00 00.00           C
+ATOM      2  CG  PHE A   1       6.935   5.032   8.622  1.00 00.00           C
+ATOM      3  CA  PHE A   1       7.000   7.000   7.000  1.00 00.00           C
+END
+"""
+  cb = [float(i) for i in three_points.splitlines()[1].split()[6:9]]
+  cg = [float(i) for i in three_points.splitlines()[2].split()[6:9]]
+  ca = [float(i) for i in three_points.splitlines()[3].split()[6:9]]
+  for method in [1,2]:
+    count_unchanged = 0
+    for angle_i in range(-360,361,1):
+      if method == 1:
+        r_new = rotate_point_around_axis(
+          axis_point_1 = ca, axis_point_2 = cb, point = cg, angle_deg = angle_i)
+      if method == 2:
+        r_new = col(ca).rt_for_rotation_around_axis_through(
+          point = col(cb), angle = angle_i, deg=True)*col(cg)
+      # check 1
+      x = (cb[0]-cg[0],   cb[1]-cg[1],   cb[2]-cg[2])
+      y = (cb[0]-r_new[0],cb[1]-r_new[1],cb[2]-r_new[2])
+      dx = math.sqrt((x[0])**2+(x[1])**2+(x[2])**2)
+      dy = math.sqrt((y[0])**2+(y[1])**2+(y[2])**2)
+      assert abs(dx-dy) < 1.e-6
+      # check 2
+      z1 = (ca[0]-r_new[0],ca[1]-r_new[1],ca[2]-r_new[2])
+      z2 = (ca[0]-cg[0],ca[1]-cg[1],ca[2]-cg[2])
+      dz1 = math.sqrt((z1[0])**2+(z1[1])**2+(z1[2])**2)
+      dz2 = math.sqrt((z2[0])**2+(z2[1])**2+(z2[2])**2)
+      assert abs(dz1-dz2) < 1.e-6
+      # check 3
+      if(angle_i in [-360,0,360]):
+        count_unchanged += 1
+        assert abs(abs(r_new[0])-abs(cg[0])) < 1.e-3
+        assert abs(abs(r_new[1])-abs(cg[1])) < 1.e-3
+        assert abs(abs(r_new[2])-abs(cg[2])) < 1.e-3
+    assert count_unchanged == 3
+  print "OK"
+
+
 def exercise():
   try:
     from libtbx import test_utils
@@ -1464,3 +1538,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
+  exercise_rotate_point_around_axis()
