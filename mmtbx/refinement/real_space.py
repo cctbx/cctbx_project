@@ -46,11 +46,6 @@ real_space_refinement
     verbose = 1
       .type = int
       .help = All output is supressed if it is negative
-
-    fr_overall_rsr = True
-      .type = bool
-    fr_validate = True
-      .type = bool
   }
 """
 

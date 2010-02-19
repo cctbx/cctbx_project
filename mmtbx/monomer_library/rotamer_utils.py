@@ -65,7 +65,9 @@ def tardy_model(
       bonds_to_omit,
       constrain_dihedrals_with_sigma_less_than_or_equal_to,
       tree_root_atom_names=set(["N", "CA", "C", "O"]),
-      terminal_backbone_atom_names=set(["OXT", "HXT", "H1", "H2", "H3"])):
+      terminal_backbone_atom_names=set(["OXT", "HXT", "H1", "H2", "H3"]),
+      skip_if_unexpected_degrees_of_freedom = False,
+      external_edge_list = []):
   assert len(mon_lib_atom_names) == len(input_atom_names)
   assert len(sites_cart) == len(input_atom_names)
   atom_indices = sequence_index_dict(seq=mon_lib_atom_names)
@@ -87,6 +89,9 @@ def tardy_model(
       ai = [atom_indices.get(atom_id) for atom_id in bond_atom_ids]
       if (ai.count(None) == 0):
         edge_list.append(tuple(sorted(ai)))
+  if(len(external_edge_list)>0):
+    for eed in external_edge_list:
+      edge_list.append(tuple(sorted(eed)))
   unused = bonds_to_omit.difference(bonds_omitted)
   if (len(unused) != 0):
     raise RuntimeError(
@@ -121,6 +126,7 @@ def tardy_model(
     potential_obj=None)
   joint_dofs = tardy_model.degrees_of_freedom_each_joint()
   if (joint_dofs[0] != 0 or not joint_dofs[1:].all_eq(1)):
+    if(skip_if_unexpected_degrees_of_freedom): return None
     msg = ["Unexpected degrees of freedom:"]
     for dof,cluster in zip(joint_dofs,tardy_tree.cluster_manager.clusters):
       msg.append("  %s: %s" % (dof, [input_atom_names[i] for i in cluster]))

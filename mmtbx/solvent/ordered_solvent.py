@@ -213,6 +213,10 @@ class manager(object):
           self.show(message = "Filtered:")
     assert self.fmodel.xray_structure is self.model.xray_structure
     #
+    if(self.filter_only):
+      self.correct_drifted_waters(map_cutoff =
+          self.params.secondary_map_and_map_cc_filter.poor_map_value_threshold)
+    #
     if([self.sites, self.heights].count(None)==0):
       if(not self.filter_only and self.params.correct_drifted_waters):
         self.correct_drifted_waters(map_cutoff =
@@ -409,18 +413,19 @@ class manager(object):
                                map_cutoff = map_cutoff,
                                params     = find_peaks_params_drifted,
                                log        = self.log).peaks_mapped()
-    sites_frac, heights = peaks.sites, peaks.heights
-    model_sites_frac = self.model.xray_structure.sites_frac()
-    solvent_selection = self.model.solvent_selection()
-    mmtbx.utils.correct_drifted_waters(
-      sites_frac_all   = model_sites_frac,
-      sites_frac_peaks = sites_frac,
-      water_selection  = solvent_selection,
-      unit_cell        = self.model.xray_structure.unit_cell())
-    self.model.xray_structure.set_sites_frac(sites_frac = model_sites_frac)
-    self.fmodel.update_xray_structure(
-      xray_structure = self.model.xray_structure,
-      update_f_calc  = True)
+    if(peaks is not None and self.fmodel.r_work() > 0.01):
+      sites_frac, heights = peaks.sites, peaks.heights
+      model_sites_frac = self.model.xray_structure.sites_frac()
+      solvent_selection = self.model.solvent_selection()
+      mmtbx.utils.correct_drifted_waters(
+        sites_frac_all   = model_sites_frac,
+        sites_frac_peaks = sites_frac,
+        water_selection  = solvent_selection,
+        unit_cell        = self.model.xray_structure.unit_cell())
+      self.model.xray_structure.set_sites_frac(sites_frac = model_sites_frac)
+      self.fmodel.update_xray_structure(
+        xray_structure = self.model.xray_structure,
+        update_f_calc  = True)
 
   def find_peaks_2fofc(self):
     if(self.fmodel.twin): # XXX Make it possible when someone consolidates fmodels.

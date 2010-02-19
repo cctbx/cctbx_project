@@ -435,6 +435,11 @@ def run(args,
       default=True,
       type="bool",
       help="Show detailed statistics per residue (map CC, etc).")
+    .option(None, "--r_factor_per_reflection",
+      action="store",
+      default=False,
+      type="bool",
+      help="Output R-factor for each reflection individually.")
     .option(None, "--map",
       action="store",
       default="None",
@@ -671,6 +676,9 @@ def run(args,
       set_cc_to_zero_if_n_grid_points_less_than = 50,
       poor_cc_threshold                         = 0.7,
       poor_map_value_threshold                  = 1.0)
+  #
+  if(command_line.options.r_factor_per_reflection):
+    fmodel_cut.r_work_per_reflection()
   return mvd_obj
 
 def read_mvd_output(file_lines, name):
