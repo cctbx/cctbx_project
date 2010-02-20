@@ -35,11 +35,11 @@ ss_restraint_params_str = """
     .type = float
   n_o_distance_ideal = 3.0
     .type = float
-  n_o_outlier_cutoff = 3.5
+  n_o_outlier_max_delta = 0.5
     .type = float
   h_o_distance_ideal = 2.0
     .type = float
-  h_o_outlier_cutoff = 2.5
+  h_o_outlier_max_delta = 0.5
     .type = float
 """ % (default_sigma, default_slack)
 
@@ -252,9 +252,11 @@ class hydrogen_bond_table (object) :
       assert pdb_hierarchy is not None
       atoms = pdb_hierarchy.atoms()
     remove_outliers = params.remove_outliers
-    distance_max = params.h_o_outlier_cutoff
+    delta_max = params.h_o_outlier_max_delta
+    distance_ideal = params.h_o_distance_ideal
     if params.substitute_n_for_h :
-      distance_max = params.n_o_outlier_cutoff
+      delta_max = params.n_o_outlier_max_delta
+      distance_ideal = params.n_o_distance_ideal
     atoms = pdb_hierarchy.atoms()
     hist =  flex.histogram(self.bond_lengths, 10)
     print >> log, "  Distribution of hydrogen bond lengths without filtering:"
@@ -263,7 +265,7 @@ class hydrogen_bond_table (object) :
     if not remove_outliers :
       return False
     for i, distance in enumerate(self.bond_lengths) :
-      if distance > distance_max :
+      if abs(distance - distance_ideal) > delta_max :
         self.flag_use_bond[i] = False
         if params.verbose :
           print >> log, "Excluding H-bond with length %.3fA" % distance
@@ -272,7 +274,7 @@ class hydrogen_bond_table (object) :
           print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
     print >> log, "  After filtering: %d bonds remaining." % \
       self.flag_use_bond.count(True)
-    print >> log, "  Distribution of hydrogen bond lengths after applying %.3fA cutoff:" % distance_max
+    print >> log, "  Distribution of hydrogen bond lengths after applying cutoff:"
     hist = flex.histogram(self.bond_lengths.select(self.flag_use_bond), 10)
     hist.show(f=log, prefix="    ", format_cutoffs="%.4f")
     print >> log, ""
@@ -880,6 +882,7 @@ def exercise () :
   bonds_table.analyze_distances(params=params.h_bond_restraints,
     pdb_hierarchy=pdb_hierarchy,
     log=log)
+  print bonds_table.flag_use_bond.count(True)
   assert bonds_table.flag_use_bond.count(True) == 103
   print "OK"
 
