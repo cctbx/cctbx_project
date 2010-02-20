@@ -58,8 +58,8 @@ def run(args):
         ("gly_gly_box.pdb", (8,0), (2, 1)),
         ("lys_pro_trp_box.pdb", (33,0), (12, 7)),
         ("pro_lys_trp_box.pdb", (33,0), (12, 7)),
-        ("1yjp_box.pdb", (59,0), (21, 15)),
-        ("disulfides_box.pdb", (198,3), (43, 25))]:
+        ("1yjp_box.pdb", (59,0), (22, 15)),
+        ("disulfides_box.pdb", (198,3), (56, 25))]:
     exercise_geo_reduce_for_tardy(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
