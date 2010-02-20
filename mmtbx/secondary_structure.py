@@ -4,7 +4,7 @@ from scitbx.array_family import shared, flex
 import libtbx.phil
 import libtbx.object_oriented_patterns as oop
 from libtbx import smart_open, easy_run
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Usage
 from libtbx import adopt_init_args, group_args
 from math import sqrt
 import cStringIO
@@ -786,7 +786,9 @@ def run (args, out=sys.stdout, log=sys.stderr) :
       sources.append(libtbx.phil.parse(arg))
   params = master_phil.fetch(sources=sources).extract()
   secondary_structure = None
-  if not force_new_annotation :
+  if len(pdb_files) == 0 :
+    raise Usage("phenix.secondary_structure_restraints model.pdb")
+  elif not force_new_annotation :
     secondary_structure = iotbx.pdb.secondary_structure.process_records(
       pdb_files=pdb_files)
   if force_new_annotation or secondary_structure is None :
