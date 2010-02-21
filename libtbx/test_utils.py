@@ -369,6 +369,15 @@ def block_show_diff(lines, expected, last_startswith=False):
   expected = "\n".join(expected)+"\n"
   assert not show_diff(lines, expected)
 
+def blocks_show_diff(lines, expected, block_sperator="\n...\n"):
+  assert isinstance(expected, str)
+  result = False
+  expected_blocks = expected.split(block_sperator)
+  for expected in expected_blocks:
+    if (block_show_diff(lines=lines, expected=expected)):
+      result = True
+  return result
+
 def contains_lines(lines, expected):
   assert isinstance(lines, str)
   assert isinstance(expected, str)
