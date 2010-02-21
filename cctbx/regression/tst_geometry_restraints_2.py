@@ -6,7 +6,7 @@ from cctbx import crystal
 from cctbx.array_family import flex
 from cStringIO import StringIO
 import libtbx.utils
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import approx_equal, show_diff, blocks_show_diff
 import libtbx.load_env
 import sys, os
 
@@ -407,7 +407,7 @@ def exercise_with_pdb(verbose):
   geo.show_interactions(f=out)
   if (verbose):
     sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
+  assert not blocks_show_diff(out.getvalue(), """\
 bond simple: (0, 1)
   distance_model: 1.53051
   distance_ideal: 1.53
@@ -442,15 +442,13 @@ nonbonded asu: (36, 46) -x+1,y+1/2,-z+1/2
 nonbonded simple: (0, 23)
   distance_model: 4.89852
   vdw_distance: 3.77
-""",
-    selections=[range(4), range(184,188), range(404,409), range(459,464),
-      range(488,493), range(-6,0)])
+""")
   #
   out = StringIO()
   geo.show_interactions(site_labels=site_labels, f=out)
   if (verbose):
     sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
+  assert not blocks_show_diff(out.getvalue(), """\
 bond simple: (0, 1)
   pdb=" CA  TYR A   1 "
   pdb=" CB  TYR A   1 "
@@ -492,20 +490,7 @@ planarity: (0, 8, 10, 15)
   pdb=" C   TYR A   1 " delta:  0.00042, weight: 2500
   pdb=" O   TYR A   1 " delta: -0.00016, weight: 2500
   pdb=" N   GLY A   2 " delta: -0.00014, weight: 2500
-...
-nonbonded asu: (36, 46)
-  pdb=" C   LEU A   5 "
-  pdb=" H1  HOH B   3 " -x+1,y+1/2,-z+1/2
-  distance_model: 4.89425
-  vdw_distance: 2.95
-nonbonded simple: (0, 23)
-  pdb=" CA  TYR A   1 "
-  pdb=" CD1 PHE A   4 "
-  distance_model: 4.89852
-  vdw_distance: 3.77
-""",
-    selections=[range(7), range(276,283), range(661,670), range(760,769),
-      range(805,810), range(-10,0)])
+""")
   #
   assert approx_equal(flex.min(geo.nonbonded_model_distances()), 0.4777342)
   #
@@ -514,7 +499,7 @@ nonbonded simple: (0, 23)
   geo.show_interactions(f=out)
   if (verbose):
     sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
+  assert not blocks_show_diff(out.getvalue(), """\
 bond simple: (0, 1)
   distance_ideal: 1.53
   weight: 2500
@@ -535,24 +520,19 @@ chirality: (0, 1, 8, 11)
 ...
 planarity: (0, 8, 10, 15)
   weight: 2500
-  weight: 2500
-  weight: 2500
-  weight: 2500
 ...
 nonbonded simple: (5, 39)
   vdw_distance: 3.26
 ...
 nonbonded asu: (7, 29) x+1,y,z
   vdw_distance: 3.42
-""",
-    selections=[range(3), range(138,141), range(303,307), range(347,351),
-      range(372,377), range(434,436), range(-2,0)])
+""")
   #
   out = StringIO()
   geo.show_interactions(site_labels=site_labels, f=out)
   if (verbose):
     sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
+  assert not blocks_show_diff(out.getvalue(), """\
 bond simple: (0, 1)
   pdb=" CA  TYR A   1 "
   pdb=" CB  TYR A   1 "
@@ -599,9 +579,7 @@ nonbonded asu: (7, 29)
   pdb=" CD1 TYR A   1 "
   pdb=" N   PHE A   4 " x+1,y,z
   vdw_distance: 3.42
-""",
-    selections=[range(5), range(230,236), range(560,568), range(648,656),
-      range(689,694), range(785,789), range(-4,0)])
+""")
   #
   sel0 = geo.simple_edge_list()
   assert len(sel0) == 46
@@ -617,9 +595,10 @@ nonbonded asu: (7, 29)
   clusters = geo.rigid_clusters_due_to_dihedrals_and_planes(
     constrain_dihedrals_with_sigma_less_than=10)
   assert sorted([tuple(sorted(c)) for c in clusters]) == [
-    (0, 8, 10, 15), (0, 8, 12, 15), (1, 2, 3, 4, 5, 6, 7, 9), (12, 13, 14, 19),
-    (12, 13, 16, 19), (16, 17, 18, 29), (16, 17, 20, 29), (20, 28, 30, 37),
-    (20, 28, 31, 37), (21, 22, 23, 24, 25, 26, 27)]
+    (0, 8, 10, 15), (0, 8, 12, 15), (1, 2, 3, 4, 5, 6, 7, 9),
+    (5, 6, 7, 9), (12, 13, 14, 19), (12, 13, 16, 19), (16, 17, 18, 29),
+    (16, 17, 20, 29), (20, 28, 30, 37), (20, 28, 31, 37),
+    (21, 22, 23, 24, 25, 26, 27)]
 
 def exercise_non_crystallographic_conserving_bonds_and_angles():
   sites_cart, geo = geometry_restraints.manager \
