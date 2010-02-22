@@ -62,7 +62,7 @@ def get_helix_class (helix_class) :
   class_id = int(helix_class) - 1
   return helix_classes[class_id]
 
-ss_group_params_str = """
+helix_group_params_str = """
 helix
   .multiple = True
   .optional = True
@@ -84,7 +84,9 @@ helix
     .type = bool
     .help = Only applies to rigid-body groupings, and not H-bond restraints \
       which are already backbone-only.
-}
+}"""
+
+sheet_group_params_str = """
 sheet
   .multiple = True
   .optional = True
@@ -120,6 +122,8 @@ sheet
 }
 """
 
+ss_group_params_str = """%s\n%s""" % (helix_group_params_str,
+  sheet_group_params_str)
 ss_tardy_params_str = "" # XXX: remove this later
 
 sec_str_master_phil_str = """
@@ -144,6 +148,10 @@ h_bond_restraints
 
 sec_str_master_phil = libtbx.phil.parse(sec_str_master_phil_str)
 default_params = sec_str_master_phil.extract()
+
+def sec_str_from_phil (phil_str) :
+  ss_phil = libtbx.phil.parse(phil_str)
+  return sec_str_master_phil.fetch(source=ss_phil).extract()
 
 use_resids = False # XXX: for debugging purposes only
 
@@ -750,16 +758,16 @@ class manager (object) :
       elif find_automatically != True :
         self.sec_str_from_pdb_file = None # disable this
     if find_automatically :
-      self.sec_str_from_pdb_file = self.find_sec_str()
+      self.sec_str_from_pdb_file = self.find_sec_str(log=log)
     if self.sec_str_from_pdb_file is not None :
       print >> log, "  Interpreting HELIX and SHEET records from PDB file"
       ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(log=log,
         prefix_scope="")
       self.apply_phil_str(ss_params_str, log=log)
 
-  def find_sec_str (self) :
+  def find_sec_str (self, log=sys.stderr) :
     tmp_file = ".dssp.%d.pdb" % os.getpid()
-    open(tmp_file, "w").write(acp.pdb_hierarchy.as_pdb_string())
+    open(tmp_file, "w").write(self.pdb_hierarchy.as_pdb_string())
     records = run_ksdssp(tmp_file, log=log)
     sec_str_from_pdb_file = iotbx.pdb.secondary_structure.process_records(
       records=records)
@@ -843,7 +851,10 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     else :
       if arg.startswith("--") :
         arg = arg[2:] + "=True"
-      sources.append(libtbx.phil.parse(arg))
+      try :
+        sources.append(libtbx.phil.parse(arg))
+      except RuntimeError :
+        pass
   params = master_phil.fetch(sources=sources).extract()
   secondary_structure = None
   if len(pdb_files) == 0 :
@@ -852,7 +863,9 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     secondary_structure = iotbx.pdb.secondary_structure.process_records(
       pdb_files=pdb_files)
   if force_new_annotation or secondary_structure is None :
-    records = run_ksdssp(pdb_files[0], log=log)
+    records = []
+    for file_name in pdb_files :
+      record.extend(run_ksdssp(file_name, log=log))
     secondary_structure = iotbx.pdb.secondary_structure.process_records(
       records=records, allow_none=False)
   prefix_scope="refinement.secondary_structure"
@@ -861,10 +874,12 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   ss_params_str = secondary_structure.as_restraint_groups(log=log,
     prefix_scope=prefix_scope)
   ss_phil = libtbx.phil.parse(ss_params_str)
+  pdb_hierarchy = get_pdb_hierarchy(pdb_files)
+  if len(pdb_hierarchy.models()) != 1 :
+    raise Sorry("Multiple models not supported.")
   if params.show_pymol_dashes :
     working_phil = master_phil.fetch(sources=[ss_phil]+sources)
     params = working_phil.extract()
-    pdb_hierarchy = get_pdb_hierarchy(pdb_files)
     bonds_table = hydrogen_bonds_from_selections(
       pdb_hierarchy,
       params=params,
@@ -891,6 +906,7 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   else :
     ss_phil.show(out=out)
     #print >> out, ss_params_str
+  return ss_phil.as_str()
 
 def get_bonds (file_name, out=sys.stdout, log=sys.stderr,
     force_new_annotation=False, fake_hydrogens=True) :
@@ -948,7 +964,4 @@ def exercise () :
   print "OK"
 
 if __name__ == "__main__" :
-  if "--test" in sys.argv :
-    exercise()
-  else :
-    run(sys.argv[1:])
+  exercise()
