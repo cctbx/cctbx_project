@@ -109,9 +109,13 @@ class mouse_selection_manager (object) :
   def __init__ (self) :
     self.saved_selection = "none"
     self.selection_string = "none"
+    self.flag_overwrite_mode = False
     self._selection_callback = None
     self.start_i_seq = None
     self.end_i_seq = None
+
+  def set_overwrite_mode (self, overwrite=True) :
+    self.flag_overwrite_mode = overwrite
 
   def selection_callback (self, selection_string, atom_selection) :
     if self._selection_callback is not None :
@@ -204,6 +208,9 @@ class mouse_selection_manager (object) :
       if (start_atom.chain_id == end_atom.chain_id and
           (ignore_altloc or start_atom.altloc == end_atom.altloc)) :
         chain_id = start_atom.chain_id
+        if self.flag_overwrite_mode and not deselect :
+          if chain_id in self.selected_chains :
+            del self.selected_chains[chain_id]
         altloc = None
         if not ignore_altloc :
           altloc = start_atom.altloc
@@ -287,12 +294,15 @@ class mouse_selection_manager (object) :
       resi_info = residue_selection_info(atom.chain_id, atom.resid(),
         atom.altloc)
     resi_sel = self.selection_cache.selection(str(resi_info))
-    if self.atom_selection.is_super_set(resi_sel) :
-      self.deselected_residues.append(resi_info)
-      self.remove_redundant_residues(resi_sel, self.selected_residues)
-    else :
-      self.selected_residues.append(resi_info)
-      self.remove_redundant_residues(resi_sel, self.deselected_residues)
+    if self.flag_overwrite_mode :
+      pass
+    if True : #else :
+      if self.atom_selection.is_super_set(resi_sel) :
+        self.deselected_residues.append(resi_info)
+        self.remove_redundant_residues(resi_sel, self.selected_residues)
+      else :
+        self.selected_residues.append(resi_info)
+        self.remove_redundant_residues(resi_sel, self.deselected_residues)
     self.remove_redundant_atoms(resi_sel, self.selected_atoms)
     self.remove_redundant_atoms(resi_sel, self.deselected_atoms)
     self.construct_selection()
@@ -308,6 +318,16 @@ class mouse_selection_manager (object) :
       if i_seq in self.deselected_atoms :
         self.deselected_atoms.remove(i_seq)
     self.construct_selection()
+
+  def select_single_residue (self, i_seq) :
+    atom = self.atom_index[i_seq]
+    resi_info = residue_selection_info(atom.chain_id, atom.resid())
+    resi_sel = self.selection_cache.selection(str(resi_info))
+    is_current_selection = ((resi_sel==self.atom_selection).count(False) == 0)
+    self.clear_selection()
+    if is_current_selection :
+      return False
+    self.toggle_residue_selection(i_seq)
 
   def construct_selection (self) :
     final_selection = ""
