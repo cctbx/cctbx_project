@@ -85,6 +85,27 @@ namespace gltbx { namespace viewer_utils {
   }
 
   af::shared< scitbx::vec3<double> >
+  scale_selected_colors (
+    af::const_ref< scitbx::vec3<double> > const& input_colors,
+    af::const_ref< bool > const& selection,
+    double scale=0.5)
+  {
+    GLTBX_ASSERT(input_colors.size() == selection.size());
+    GLTBX_ASSERT(scale >= 0);
+    af::shared< scitbx::vec3<double> > atom_colors(input_colors.size());
+    for (unsigned i_seq = 0; i_seq < input_colors.size(); i_seq++) {
+      scitbx::vec3<double> c = input_colors[i_seq];
+      if (selection[i_seq]) {
+        c[0] *= scale;
+        c[1] *= scale;
+        c[2] *= scale;
+      }
+      atom_colors[i_seq] = c;
+    }
+    return atom_colors;
+  }
+
+  af::shared< scitbx::vec3<double> >
   color_by_property (
     af::const_ref< double > const& atom_properties,
     af::const_ref< bool > const& atoms_visible,
@@ -313,6 +334,10 @@ namespace gltbx { namespace viewer_utils {
       arg("atoms_visible"),
       arg("color_invisible_atoms")=true,
       arg("use_rb_color_gradient")=false));
+    def("scale_selected_colors", scale_selected_colors, (
+      arg("input_colors"),
+      arg("selection"),
+      arg("scale")=0.5));
     def("draw_points", draw_points, (
       arg("points"),
       arg("atom_colors"),
