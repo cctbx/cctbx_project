@@ -53,6 +53,15 @@ tardy
 }
 """
 
+helix_classes = ["unknown"] * 10
+helix_classes[0] = "alpha"
+helix_classes[2] = "pi"
+helix_classes[4] = "3_10"
+
+def get_helix_class (helix_class) :
+  class_id = int(helix_class) - 1
+  return helix_classes[class_id]
+
 ss_group_params_str = """
 helix
   .multiple = True
@@ -134,6 +143,7 @@ h_bond_restraints
        ss_restraint_params_str, ss_tardy_params_str, ss_group_params_str)
 
 sec_str_master_phil = libtbx.phil.parse(sec_str_master_phil_str)
+default_params = sec_str_master_phil.extract()
 
 use_resids = False # XXX: for debugging purposes only
 
@@ -396,6 +406,12 @@ def hydrogen_bonds_from_selections (
       for curr_strand in sheet.strand :
         if curr_strand.selection is None :
           raise Sorry("All strands must have a valid atom selection.")
+        elif curr_strand.bond_start_current is None :
+          raise Sorry("Missing start of bonding for strand '%s'." %
+            curr_strand.selection)
+        elif curr_strand.bond_start_previous is None :
+          raise Sorry("Missing start of bonding for strand previous to '%s'." %
+            curr_strand.selection)
         try :
           if curr_strand.sense == "unknown" :
             raise RuntimeError(("Skipping strand of unknown sense:\n" +
@@ -703,53 +719,97 @@ def __strand_group_as_pdb_strand (isel, selection, atoms, log, sense) :
     sense=int_sense)
   return pdb_strand
 
-def process_structure (params, processed_pdb_file, tmp_dir, log,
-    assume_hydrogens_all_missing=None) :
-  if params is None :
-    params = sec_str_master_phil.fetch().extract()
-  if assume_hydrogens_all_missing is None :
-    xrs = processed_pdb_file.all_chain_proxies.extract_xray_structure()
-    sctr_keys = xrs.scattering_type_registry().type_count_dict().keys()
-    assume_hydrogens_all_missing = not ("H" in sctr_keys or "D" in sctr_keys)
-  acp = processed_pdb_file.all_chain_proxies
-  sec_str_from_pdb_file = acp.extract_secondary_structure()
-  find_automatically = params.input.find_automatically
-  if len(params.helix) == 0 and len(params.sheet) == 0 :
-    if sec_str_from_pdb_file is None and find_automatically != False :
-      find_automatically = True
-  elif find_automatically != True :
-    sec_str_from_pdb_file = None # disable this
-  if find_automatically :
+class manager (object) :
+  def __init__ (self,
+                pdb_hierarchy,
+                xray_structure,
+                sec_str_from_pdb_file=None,
+                params=None,
+                assume_hydrogens_all_missing=None,
+                tmp_dir=None) :
+    adopt_init_args(self, locals())
+    if self.params is None :
+      self.params = default_params
+    if self.tmp_dir is None :
+      self.tmp_dir = os.getcwd()
+    if self.assume_hydrogens_all_missing is None :
+      xrs = self.xray_structure
+      sctr_keys = xrs.scattering_type_registry().type_count_dict().keys()
+      self.assume_hydrogens_all_missing = not ("H" in sctr_keys or
+        "D" in sctr_keys)
+    if self.params.h_bond_restraints.substitute_n_for_h is None :
+      self.params.h_bond_restraints.substitute_n_for_h = \
+        self.assume_hydrogens_all_missing
+
+  def find_automatically (self, log=sys.stderr) :
+    params = self.params
+    find_automatically = params.input.find_automatically
+    if len(params.helix) == 0 and len(params.sheet) == 0 :
+      if self.sec_str_from_pdb_file is None and find_automatically != False :
+        find_automatically = True
+      elif find_automatically != True :
+        self.sec_str_from_pdb_file = None # disable this
+    if find_automatically :
+      self.sec_str_from_pdb_file = self.find_sec_str()
+    if self.sec_str_from_pdb_file is not None :
+      print >> log, "  Interpreting HELIX and SHEET records from PDB file"
+      ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(log=log,
+        prefix_scope="")
+      self.apply_phil_str(ss_params_str, log=log)
+
+  def find_sec_str (self) :
     tmp_file = ".dssp.%d.pdb" % os.getpid()
     open(tmp_file, "w").write(acp.pdb_hierarchy.as_pdb_string())
     records = run_ksdssp(tmp_file, log=log)
     sec_str_from_pdb_file = iotbx.pdb.secondary_structure.process_records(
       records=records)
     os.remove(tmp_file)
-  if sec_str_from_pdb_file is not None :
-    print "  Interpreting HELIX and SHEET records from PDB file"
-    ss_params_str = sec_str_from_pdb_file.as_restraint_groups(log=log,
-      prefix_scope="")
-    ss_phil = libtbx.phil.parse(ss_params_str)
-    ss_phil.show(out=log, prefix="    ")
+    return sec_str_from_pdb_file
+
+  def apply_phil_str (self, phil_string, log=sys.stderr, verbose=True) :
+    ss_phil = libtbx.phil.parse(phil_string)
+    if verbose :
+      ss_phil.show(out=log, prefix="    ")
     new_ss_params = sec_str_master_phil.fetch(source=ss_phil).extract()
-    params.helix = new_ss_params.helix
-    params.sheet = new_ss_params.sheet
-  if params.h_bond_restraints.substitute_n_for_h is None :
-    params.h_bond_restraints.substitute_n_for_h = assume_hydrogens_all_missing
-  bonds_table = hydrogen_bonds_from_selections(
-      pdb_hierarchy=acp.pdb_hierarchy,
+    self.params = new_ss_params
+
+  def get_bonds_table (self, log=sys.stderr, verbose=True) :
+    params = self.params
+    bonds_table = hydrogen_bonds_from_selections(
+      pdb_hierarchy=self.pdb_hierarchy,
       params=params,
       log=log)
-  print >> log, ""
-  print >> log, "  Found %d helices and %d sheets." % (len(params.helix),
-    len(params.sheet))
-  print >> log, "  %d hydrogen bonds defined." % bonds_table.bonds.size()
-  bonds_table.analyze_distances(params=params.h_bond_restraints,
-    pdb_hierarchy=acp.pdb_hierarchy,
-    log=log)
-  print >> log, ""
-  return bonds_table
+    if verbose :
+      print >> log, ""
+      print >> log, "  Found %d helices and %d sheets." % (len(params.helix),
+        len(params.sheet))
+      print >> log, "  %d hydrogen bonds defined." % bonds_table.bonds.size()
+    bonds_table.analyze_distances(params=params.h_bond_restraints,
+      pdb_hierarchy=self.pdb_hierarchy,
+      log=log)
+    if verbose :
+      print >> log, ""
+    return bonds_table
+
+def process_structure (params, processed_pdb_file, tmp_dir, log,
+    assume_hydrogens_all_missing=None, return_bonds=True) :
+  acp = processed_pdb_file.all_chain_proxies
+  sec_str_from_pdb_file = acp.extract_secondary_structure()
+  pdb_hierarchy = acp.pdb_hierarchy
+  xray_structure = acp.extract_xray_structure()
+  structure_manager = manager(
+    pdb_hierarchy=pdb_hierarchy,
+    xray_structure=xray_structure,
+    sec_str_from_pdb_file=sec_str_from_pdb_file,
+    params=params,
+    assume_hydrogens_all_missing=assume_hydrogens_all_missing,
+    tmp_dir=tmp_dir)
+  structure_manager.find_automatically(log=log)
+  if return_bonds :
+    bonds_table = structure_manager.get_bonds_table(log=log)
+    return bonds_table
+  else :
+    return structure_manager
 
 def run_ksdssp (file_name, log=sys.stderr) :
   if not os.path.isfile(file_name) :
@@ -884,7 +944,6 @@ def exercise () :
   bonds_table.analyze_distances(params=params.h_bond_restraints,
     pdb_hierarchy=pdb_hierarchy,
     log=log)
-  print bonds_table.flag_use_bond.count(True)
   assert bonds_table.flag_use_bond.count(True) == 103
   print "OK"
 
