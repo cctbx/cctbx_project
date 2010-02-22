@@ -111,7 +111,8 @@ class model_data (object) :
       atom_labels=self.atom_labels,
       atom_radii=self.atom_radii,
       visibility=self.visibility,
-      noncovalent_bonds=self.noncovalent_bonds)
+      noncovalent_bonds=self.noncovalent_bonds,
+      atomic_bonds=self.atomic_bonds)
 
   def set_noncovalent_bonds (self, bonded_atoms) :
     self.noncovalent_bonds = bonded_atoms
@@ -368,7 +369,7 @@ class model_data (object) :
 # which are also implemented as methods here.
 class model_scene (object) :
   def __init__ (self, bonds, points, b_iso, b_aniso, atom_colors, atom_labels,
-      atom_radii, visibility, noncovalent_bonds) :
+      atom_radii, visibility, noncovalent_bonds, atomic_bonds) :
     adopt_init_args(self, locals())
     self.clear_lists()
     self.clear_labels()
@@ -555,11 +556,12 @@ class model_viewer_mixin (wxGLWindow) :
     self.flag_use_lights                   = True
     self.flag_show_labels                  = True
     self.flag_show_trace                   = False
-    self.flag_show_noncovalent_bonds            = False
+    self.flag_show_noncovalent_bonds       = False
     self.flag_show_hydrogens               = False
     self.flag_show_ellipsoids              = True
     self.flag_smooth_lines                 = True
     self.flag_recenter_on_click            = False
+    self.flag_show_context_menu            = True #False
 
   @debug
   def InitGL(self):
@@ -961,10 +963,7 @@ class model_viewer_mixin (wxGLWindow) :
       app = wx.GetApp()
       app.Exit()
     else :
-      pass
-      #print key
-    if self.update_scene :
-      self.OnRedrawGL()
+      return False
 
   def toggle_visibility (self, show_object, object_id=None) :
     for model_id, model in self.iter_models() :
@@ -1047,6 +1046,11 @@ class model_viewer_mixin (wxGLWindow) :
     (model_id, pdb_hierarchy, atomic_bonds) = event.data
     self.add_model(model_id, pdb_hierarchy, atomic_bonds)
     self.OnRedrawGL()
+
+  def OnChar (self, *args, **kwds) :
+    super(model_viewer_mixin, self).OnChar(*args, **kwds)
+    if self.update_scene :
+      self.OnRedrawGL()
 
   def OnDoubleClick (self, event) :
     self.get_pick_points((event.GetX(), event.GetY()))

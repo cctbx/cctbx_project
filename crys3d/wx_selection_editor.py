@@ -31,6 +31,7 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
   def __init__ (self, *args, **kwds) :
     self.flag_show_selection = True
     self.flag_allow_selection = True
+    self._cached_colors = None
     mouse_selection_manager.__init__(self)
     model_data.__init__(self, *args, **kwds)
 
@@ -38,6 +39,9 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
     if self.atoms.size() != self.visibility.atoms_visible.size() :
       self.recalculate_visibility()
       print 123456789
+    atomic_bonds = self.atomic_bonds
+    #if not self.flag_show_hydrogens :
+    #  atomic_bonds = atomic_bonds & ~self.hydrogen_flag
     scene = model_scene_with_selection(bonds=self.current_bonds,
       points=self.atoms.extract_xyz(),
       b_iso=self.atoms.extract_b(),
@@ -46,12 +50,16 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
       atom_labels=self.atom_labels,
       atom_radii=self.atom_radii,
       visibility=self.visibility,
-      noncovalent_bonds=self.noncovalent_bonds)
+      noncovalent_bonds=self.noncovalent_bonds,
+      atomic_bonds=atomic_bonds)
     self.update_scene_data(scene)
     return scene
 
   def update_scene_data (self, scene) :
-    scene.update_selection(self.atom_selection)
+    if self.flag_show_hydrogens :
+      scene.update_selection(self.atom_selection)
+    else :
+      scene.update_selection(self.atom_selection & ~self.hydrogen_flag)
     model_data.update_scene_data(self, scene)
 
   def update_structure (self, pdb_hierarchy, atomic_bonds,
@@ -70,9 +78,28 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
     self.recalculate_visibility()
     mouse_selection_manager.selection_callback(self, *args, **kwds)
 
+  def highlight_atoms (self, selection_string) :
+    if selection_string is None :
+      self.is_changed = True
+      if self._cached_colors is not None :
+        self.atom_colors = self._cached_colors
+      else :
+        self.set_color_mode(self.color_mode)
+    else :
+      atom_selection = self.get_atom_selection(selection_string)
+      if atom_selection is not None and atom_selection.count(True) != 0 :
+        self._cached_colors = self.atom_colors
+        #self.set_color_mode(self.color_mode)
+        self.is_changed = True
+        self.atom_colors = viewer_utils.scale_selected_colors(
+          input_colors=self.atom_colors,
+          selection=~atom_selection,
+          scale=0.5)
+
 #-----------------------------------------------------------------------
 class model_scene_with_selection (model_scene) :
   def __init__ (self, *args, **kwds) :
+    self.flag_show_all_selected_atoms = False
     model_scene.__init__(self, *args, **kwds)
     self.selection_draw_mode = "bonds_and_atoms"
     self.update_selection(flex.bool(self.points.size(), False))
@@ -89,8 +116,12 @@ class model_scene_with_selection (model_scene) :
 
   def update_visibility (self, visibility) :
     model_scene.update_visibility(self, visibility)
-    self.selected_points_visible = visibility.selected_points_visible
-    self.selected_bonds_visible = visibility.selected_bonds_visible
+    if self.flag_show_all_selected_atoms :
+      self.selected_points_visible = visibility.selected_points_visible
+      self.selected_bonds_visible = self.atom_selection
+    else :
+      self.selected_points_visible = visibility.selected_points_visible
+      self.selected_bonds_visible = visibility.selected_bonds_visible
 
   def get_selected_xyz (self) :
     points = self.points
@@ -117,9 +148,13 @@ class model_scene_with_selection (model_scene) :
           atom_colors    = selection_colors,
           points_visible = self.selected_points_visible,
           cross_radius   = 0.4)
+        if self.flag_show_all_selected_atoms :
+          bonds = self.atomic_bonds
+        else :
+          bonds = self.bonds
         viewer_utils.draw_bonds(
           points        = self.points,
-          bonds         = self.bonds,
+          bonds         = bonds,
           atom_colors   = selection_colors,
           bonds_visible = self.selected_bonds_visible)
       elif draw_mode == "points" :
@@ -147,7 +182,7 @@ class model_scene_with_selection (model_scene) :
 # VIEWER CLASS
 class selection_editor_mixin (model_viewer_mixin) :
   mouse_modes = ["Rotate view", "Toggle chain", "Toggle residue",
-    "Toggle atom", "Select range", "Deselect range"] #, "Show selection menu"]
+    "Toggle atom", "Select range", "Deselect range", "Select single residue"] #, "Show selection menu"]
   def __init__ (self, *args, **kwds) :
     self.left_button_mode = 0
     self.flag_select_all_conformers = True
@@ -222,16 +257,37 @@ class selection_editor_mixin (model_viewer_mixin) :
     elif key == 27 : # escape
       self.clear_selections()
       self.update_scene = True
-    model_viewer_mixin.process_key_stroke(self,key)
+    else :
+      return model_viewer_mixin.process_key_stroke(self,key)
+    return True
 
   def set_left_button_mode (self, mode) :
     self.left_button_mode = mode
     self._in_range_selection = False
 
+  def show_all_selected_atoms (self, show=True) :
+    for object_id, scene in self.scene_objects.iteritems() :
+      scene.flag_show_all_selected_atoms = show
+
+  def highlight_selection (self, object_id, selection_string) :
+    for model_id, model in self.iter_models() :
+      if object_id is None or model_id == object_id :
+        model.highlight_atoms(selection_string)
+        self.update_scene = True
+
+  def clear_highlights (self) :
+    for model_id, model in self.iter_models() :
+      model.highlight_atoms(None)
+    self.update_scene = True
+
   #---------------------------------------------------------------------
   def set_selection_callback (self, callback) :
     assert hasattr(callback, "__call__")
     self._callback = callback
+
+  def set_overwrite_mode (self, overwrite=True) :
+    for model_id, model in self.iter_models() :
+      model.set_overwrite_mode(overwrite)
 
   def pick_selection_object (self, object_id) :
     for model_id in self.pick_object :
@@ -249,20 +305,20 @@ class selection_editor_mixin (model_viewer_mixin) :
     model = self.get_model(self.current_object_id)
     if model is not None :
       model.toggle_chain_selection(self.current_atom_i_seq)
-      self.update_scene = True
+      return True
 
   def toggle_residue_selection (self) :
     model = self.get_model(self.current_object_id)
     if model is not None :
       model.toggle_residue_selection(self.current_atom_i_seq,
         ignore_altloc=self.flag_select_all_conformers)
-      self.update_scene = True
+      return True
 
   def toggle_atom_selection (self) :
     model = self.get_model(self.current_object_id)
     if model is not None :
       model.toggle_atom_selection(self.current_atom_i_seq)
-      self.update_scene = True
+      return True
 
   def process_range_selection (self, deselect=False) :
     model = self.get_model(self.current_object_id)
@@ -276,7 +332,16 @@ class selection_editor_mixin (model_viewer_mixin) :
       else :
         model.start_range_selection(self.current_atom_i_seq)
         self._in_range_selection = True
-      self.update_scene = True
+      return True
+
+  def processes_range_deselection (self) :
+    self.process_range_selection(deselect=True)
+
+  def select_single_residue (self) :
+    model = self.get_model(self.current_object_id)
+    if model is not None :
+      model.select_single_residue(self.current_atom_i_seq)
+      return True
 
   # TODO: finish this?
   def context_selection_menu (self) :
@@ -294,18 +359,19 @@ class selection_editor_mixin (model_viewer_mixin) :
       if (self.closest_point_i_seq is not None and
           self.flag_enable_mouse_selection) :
         self.save_selected_atom()
-        if self.left_button_mode == 1 :   # (de)select chain
-          self.toggle_chain_selection()
-        elif self.left_button_mode == 2 : # (de)select residue
-          self.toggle_residue_selection()
-        elif self.left_button_mode == 3 : # (de)select atom
-          self.toggle_atom_selection()
-        elif self.left_button_mode == 4 : # select range
-          self.process_range_selection()
-        elif self.left_button_mode == 5 : # deselect range
-          self.process_range_selection(deselect=True)
-        else:                             # Selection menu
-          self.context_selection_menu()
+        methods = ["toggle_chain_selection",
+                   "toggle_residue_selection",
+                    "toggle_atom_selection",
+                    "process_range_selection",
+                    "process_range_deselection",
+                    "select_single_residue",
+                    "context_selection_menu",]
+        for i, method in enumerate(methods) :
+          if self.left_button_mode == (i + 1) :
+            print "%s()" % method
+            self.update_scene = getattr(self, method).__call__()
+            self.show_all_selected_atoms(method == "select_single_residue")
+            break
 
   def OnDoubleClick (self, event) :
     if self.left_button_mode == 0 :
