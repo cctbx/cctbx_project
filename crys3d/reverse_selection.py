@@ -143,14 +143,15 @@ class mouse_selection_manager (object) :
     #---
     self.clear_selection()
 
-  def clear_selection (self) :
+  def clear_selection (self, apply_empty=True) :
     self.selected_chains = {}
     self.deselected_chains = {}
     self.selected_atoms = []
     self.deselected_atoms = []
     self.selected_residues = []
     self.deselected_residues = []
-    self.apply_selection("none") #self.saved_selection)
+    if apply_empty :
+      self.apply_selection("none") #self.saved_selection)
 
   def selection_size (self) :
     return self.selection_i_seqs.size()
@@ -198,6 +199,8 @@ class mouse_selection_manager (object) :
     self.start_i_seq = None
 
   def start_range_selection (self, i_seq) :
+    if self.flag_overwrite_mode :
+      self.clear_selection(apply_empty=False)
     self.start_i_seq = i_seq
 
   def end_range_selection (self, i_seq, deselect, ignore_altloc) :
@@ -295,8 +298,10 @@ class mouse_selection_manager (object) :
         atom.altloc)
     resi_sel = self.selection_cache.selection(str(resi_info))
     if self.flag_overwrite_mode :
-      pass
-    if True : #else :
+      self.clear_selection(apply_empty=False)
+      if not self.atom_selection.all_eq(resi_sel) :
+        self.selected_residues.append(resi_info)
+    else :
       if self.atom_selection.is_super_set(resi_sel) :
         self.deselected_residues.append(resi_info)
         self.remove_redundant_residues(resi_sel, self.selected_residues)

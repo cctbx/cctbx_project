@@ -31,6 +31,7 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
   def __init__ (self, *args, **kwds) :
     self.flag_show_selection = True
     self.flag_allow_selection = True
+    self.flag_show_all_selected_atoms = False
     self._cached_colors = None
     mouse_selection_manager.__init__(self)
     model_data.__init__(self, *args, **kwds)
@@ -52,6 +53,7 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
       visibility=self.visibility,
       noncovalent_bonds=self.noncovalent_bonds,
       atomic_bonds=atomic_bonds)
+    scene.flag_show_all_selected_atoms = self.flag_show_all_selected_atoms
     self.update_scene_data(scene)
     return scene
 
@@ -266,8 +268,12 @@ class selection_editor_mixin (model_viewer_mixin) :
     self._in_range_selection = False
 
   def show_all_selected_atoms (self, show=True) :
+    #self.flag_show_all_selected_atoms = show
+    for model_id, model in self.iter_models() :
+      model.flag_show_all_selected_atoms = show
     for object_id, scene in self.scene_objects.iteritems() :
       scene.flag_show_all_selected_atoms = show
+    self.update_scene = True
 
   def highlight_selection (self, object_id, selection_string) :
     for model_id, model in self.iter_models() :
@@ -368,9 +374,9 @@ class selection_editor_mixin (model_viewer_mixin) :
                     "context_selection_menu",]
         for i, method in enumerate(methods) :
           if self.left_button_mode == (i + 1) :
-            print "%s()" % method
             self.update_scene = getattr(self, method).__call__()
-            self.show_all_selected_atoms(method == "select_single_residue")
+            if method == "select_single_residue" :
+              self.show_all_selected_atoms()
             break
 
   def OnDoubleClick (self, event) :
