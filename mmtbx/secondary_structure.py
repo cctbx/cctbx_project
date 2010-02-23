@@ -18,29 +18,41 @@ ss_restraint_params_str = """
     .type = bool
   substitute_n_for_h = None
     .type = bool
+    .short_caption = Substitute N for H
     .style = tribool
   restrain_helices = True
     .type = bool
   alpha_only = False
     .type = bool
+    .short_caption = Use alpha helices only
   restrain_sheets = True
     .type = bool
   remove_outliers = True
     .type = bool
+    .short_caption = Filter bond outliers
   restrain_initial_values = False
     .type = bool
+    .style = hidden
   sigma = %.3f
     .type = float
+    .short_caption = Restraint sigma
+    .style = bold
   slack = %.3f
     .type = float
-  n_o_distance_ideal = 3.0
+    .short_caption = Restraint slack
+    .style = bold
+  h_o_distance_ideal = 1.975
     .type = float
-  n_o_outlier_max_delta = 0.5
-    .type = float
-  h_o_distance_ideal = 2.0
-    .type = float
+    .short_caption = Ideal H-O distance
   h_o_outlier_max_delta = 0.5
     .type = float
+    .short_caption = Outlier deviation cutoff (H-O)
+  n_o_distance_ideal = 3.0
+    .type = float
+    .short_caption = Ideal N-O distance
+  n_o_outlier_max_delta = 0.5
+    .type = float
+    .short_caption = Outlier deviation cutoff (N-O)
 """ % (default_sigma, default_slack)
 
 ss_tardy_params_str = """\
@@ -66,6 +78,7 @@ helix_group_params_str = """
 helix
   .multiple = True
   .optional = True
+  .style = noauto
 {
   selection = None
     .type = str
@@ -90,6 +103,7 @@ sheet_group_params_str = """
 sheet
   .multiple = True
   .optional = True
+  .style = noauto
 {
   first_strand = None
     .type = str
@@ -147,7 +161,7 @@ h_bond_restraints
        ss_restraint_params_str, ss_tardy_params_str, ss_group_params_str)
 
 sec_str_master_phil = libtbx.phil.parse(sec_str_master_phil_str)
-default_params = sec_str_master_phil.extract()
+default_params = sec_str_master_phil.fetch().extract()
 
 def sec_str_from_phil (phil_str) :
   ss_phil = libtbx.phil.parse(phil_str)
@@ -763,6 +777,7 @@ class manager (object) :
       print >> log, "  Interpreting HELIX and SHEET records from PDB file"
       ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(log=log,
         prefix_scope="")
+      #print ss_params_str
       self.apply_phil_str(ss_params_str, log=log)
 
   def find_sec_str (self, log=sys.stderr) :
@@ -775,14 +790,20 @@ class manager (object) :
     return sec_str_from_pdb_file
 
   def apply_phil_str (self, phil_string, log=sys.stderr, verbose=True) :
-    ss_phil = libtbx.phil.parse(phil_string)
+    ss_phil = sec_str_master_phil.fetch(source=libtbx.phil.parse(phil_string))
     if verbose :
       ss_phil.show(out=log, prefix="    ")
-    new_ss_params = sec_str_master_phil.fetch(source=ss_phil).extract()
-    self.params = new_ss_params
+    new_ss_params = ss_phil.extract()
+    self.params.helix = new_ss_params.helix
+    self.params.sheet = new_ss_params.sheet
+
+  def apply_params (self, params) :
+    self.params.helix = params.helix
+    self.params.sheet = params.sheet
 
   def get_bonds_table (self, log=sys.stderr, verbose=True) :
     params = self.params
+    print params.h_bond_restraints.substitute_n_for_h
     bonds_table = hydrogen_bonds_from_selections(
       pdb_hierarchy=self.pdb_hierarchy,
       params=params,
@@ -960,7 +981,7 @@ def exercise () :
   bonds_table.analyze_distances(params=params.h_bond_restraints,
     pdb_hierarchy=pdb_hierarchy,
     log=log)
-  assert bonds_table.flag_use_bond.count(True) == 103
+  assert bonds_table.flag_use_bond.count(True) == 102
   print "OK"
 
 if __name__ == "__main__" :
