@@ -865,7 +865,7 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   if force_new_annotation or secondary_structure is None :
     records = []
     for file_name in pdb_files :
-      record.extend(run_ksdssp(file_name, log=log))
+      records.extend(run_ksdssp(file_name, log=log))
     secondary_structure = iotbx.pdb.secondary_structure.process_records(
       records=records, allow_none=False)
   prefix_scope="refinement.secondary_structure"
