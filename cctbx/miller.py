@@ -711,7 +711,9 @@ class set(crystal.symmetry):
     # make sure the data is unique
     self.is_unique_set_under_symmetry()
     if fraction is not None:
-      assert fraction > 0 and fraction < 0.5
+      if not (fraction > 0 and fraction < 0.5) :
+        raise Sorry("R-free flags fraction must be greater than 0 and less "+
+          "than 0.5.")
       assert n_partitions is None
       assert return_integer_array is False
     if max_free is not None:
@@ -795,9 +797,13 @@ class set(crystal.symmetry):
                                    max_free=2000,
                                    use_dataman_shells=False,
                                    n_shells=20) :
-    assert fraction > 0 and fraction < 0.5
+    if not (fraction > 0 and fraction < 0.5) :
+      raise Sorry("R-free flags fraction must be greater than 0 and less "+
+          "than 0.5.")
+    if (use_dataman_shells and n_shells < 5) :
+      raise Sorry("You must use at least 5 resolution shells when assigning "+
+        "R-free flags this way.")
     assert max_free is None or max_free > 0
-    assert not use_dataman_shells or n_shells > 5
     if (self.anomalous_flag()):
       matches = self.match_bijvoet_mates()[1]
       sel_pp = matches.pairs_hemisphere_selection("+")
