@@ -1,4 +1,5 @@
 
+from __future__ import division
 import iotbx.pdb.secondary_structure
 from scitbx.array_family import shared, flex
 import libtbx.phil
@@ -275,7 +276,11 @@ class hydrogen_bond_table (object) :
   def __init__ (self, bonds, distance, sigma, slack, bond_lengths) :
     assert (bonds.size() == distance.size() == sigma.size() == slack.size() ==
       bond_lengths.size())
-    adopt_init_args(self, locals())
+    self.bonds = bonds
+    self.distance = distance
+    self.sigma = sigma
+    self.slack = slack
+    self.bond_lengths = bond_lengths
     self.flag_use_bond = flex.bool(bonds.size(), True)
 
   def analyze_distances (self, params, pdb_hierarchy=None, log=sys.stderr) :
@@ -820,6 +825,26 @@ class manager (object) :
       print >> log, ""
     return bonds_table
 
+  def calculate_structure_content (self) :
+    isel = selection_cache.iselection
+    calpha = isel("name N and (altloc ' ' or altloc 'A')")
+    n_alpha = 0
+    n_beta = 0
+    for helix in params.helix :
+      if helix.selection is not None :
+        helix_sel = isel("(%s) and name N and (altloc ' ' or altloc 'A')" %
+          helix.selection)
+        n_alpha += helix_sel.size()
+    for sheet in params.sheet :
+      strand_sel = isel("(%s) and name N and (altloc ' ' or altloc 'A')" %
+        sheet.first_strand)
+      n_beta += strand_sel.size()
+      for strand in sheet.strand :
+        strand_sel = isel("(%s) and name N and (altloc ' ' or altloc 'A')" %
+          strand.selection)
+        n_beta += strand_sel.size()
+    return (n_alpha / calpha.size(), n_beta / calpha.size())
+
 def process_structure (params, processed_pdb_file, tmp_dir, log,
     assume_hydrogens_all_missing=None, return_bonds=True) :
   acp = processed_pdb_file.all_chain_proxies
@@ -852,6 +877,16 @@ def run_ksdssp (file_name, log=sys.stderr) :
   if len(ksdssp_out.stderr_lines) > 0 :
     print >> log, "\n".join(ksdssp_out.stderr_lines)
   return ksdssp_out.stdout_lines
+
+def calculate_structure_content (pdb_file, assume_hydrogens_all_missing=None) :
+  assert os.path.isfile(pdb_file)
+  pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
+  pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
+  xray_structure = pdb_in.file_object.xray_structure_simple()
+  ss_manager  = manager(pdb_hierarchy=pdb_hierarchy,
+    xray_structure=xray_structure,
+    assume_hydrogens_all_missing=assume_hydrogens_all_missing)
+  return ss_manager.calculate_structure_content()
 
 def run (args, out=sys.stdout, log=sys.stderr) :
   pdb_files = []
@@ -929,6 +964,7 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     #print >> out, ss_params_str
   return ss_phil.as_str()
 
+########################################################################
 def get_bonds (file_name, out=sys.stdout, log=sys.stderr,
     force_new_annotation=False, fake_hydrogens=True) :
   records = None
