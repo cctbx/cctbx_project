@@ -1,13 +1,16 @@
 import cStringIO
 import sys
 
-def format_none(format, null_value=0):
-  return " " * max(0, len(format % null_value) - 4) + "None"
+def format_none(format, null_value=0, replace_with="None"):
+  assert isinstance(replace_with, str)
+  value_width = len(replace_with)
+  return " " * max(0, len(format % null_value) - value_width) + replace_with
 
-def format_value(format, value, null_value=0):
+def format_value(format, value, null_value=0, replace_none_with="None"):
   if (format is None): return str(value)
   if (value is None):
-    return format_none(format=format, null_value=null_value)
+    return format_none(format=format, null_value=null_value,
+      replace_with=replace_none_with)
   return format % value
 
 def split_keeping_spaces(s):
@@ -336,6 +339,9 @@ to be reset.
   check("\txy\t\tz")
   check("abcdefg\txy\t\tz")
   check("ab defgh\txyz\t\tu")
+  assert format_value("%.4f", 1.2345678) == "1.2346"
+  assert format_value("%.4f", None) == "  None"
+  assert format_value("%.4f", None, replace_none_with="---") == "   ---"
   #
   print "OK"
 
