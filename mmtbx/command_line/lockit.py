@@ -463,7 +463,10 @@ class geometry_restraints_manager_plus(object):
     "home_sites_cart",
     "home_restraints_list",
     "crystal_symmetry",
-    "pair_proxies"]
+    "pair_proxies",
+    "site_symmetry_table",
+    "plain_pair_sym_table",
+    "plain_pairs_radius"]
 
   def __init__(O, manager, home_sites_cart, home_restraints_list):
     O.manager = manager
@@ -471,6 +474,9 @@ class geometry_restraints_manager_plus(object):
     O.home_restraints_list = home_restraints_list
     O.crystal_symmetry = manager.crystal_symmetry
     O.pair_proxies = manager.pair_proxies
+    O.site_symmetry_table = manager.site_symmetry_table
+    O.plain_pair_sym_table = manager.plain_pair_sym_table
+    O.plain_pairs_radius = manager.plain_pairs_radius
 
   def energies_add(O, energies_obj):
     if (O.manager.site_symmetry_table is not None):
@@ -519,6 +525,20 @@ class geometry_restraints_manager_plus(object):
       disable_asu_cache=disable_asu_cache,
       normalization=normalization,
       extension_objects=[O])
+
+  def show_sorted(O,
+        flags=None,
+        sites_cart=None,
+        site_labels=None,
+        f=None):
+    return O.manager.show_sorted(
+      flags=flags,
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      f=f)
+
+  def select(O, selection=None, iselection=None):
+    return O.manager.select(selection=selection, iselection=iselection)
 
 def run(args):
   show_times = libtbx.utils.show_times(time_start="now")
