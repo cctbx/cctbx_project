@@ -167,6 +167,10 @@ refinement.ncs.restraint_group {
   names = i.search_phil_text("selection group", match_all=True,
     labels_only=False)
   assert len(names) == 3
+
+  assert (libtbx.phil.interface.get_adjoining_phil_path(
+    "refinement.input.xray_data.file_name", "labels") ==
+    "refinement.input.xray_data.labels")
   print "OK"
 
 if __name__ == "__main__" :
