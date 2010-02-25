@@ -1481,7 +1481,7 @@ def fmodel_simple(f_obs,
 
 class process_command_line_args(object):
   def __init__(self, args, cmd_cs=None, master_params=None, log=None,
-               home_scope=None):
+               home_scope=None, suppress_symmetry_related_errors=False):
     self.log = log
     self.pdb_file_names   = []
     self.cif_objects      = []
@@ -1501,11 +1501,14 @@ class process_command_line_args(object):
     for arg in args:
       arg_is_processed = False
       arg_file = arg
+      is_parameter = False
       if(arg.count("=")==1):
         arg_file = arg[arg.index("=")+1:]
+        is_parameter = True
       try:
-        crystal_symmetries.append(
-          [arg_file, crystal_symmetry_from_any.extract_from(arg_file)])
+        if(not suppress_symmetry_related_errors):
+          crystal_symmetries.append(
+            [arg_file, crystal_symmetry_from_any.extract_from(arg_file)])
       except KeyboardInterrupt: raise
       except RuntimeError: pass
       if(os.path.isfile(arg_file)):
@@ -1538,7 +1541,7 @@ class process_command_line_args(object):
           self.reflection_files.append(reflection_file)
           self.reflection_file_names.append(arg)
           arg_is_processed = True
-      if(not arg_is_processed and master_params is not None):
+      if(master_params is not None and is_parameter):
         try:
           params = parameter_interpreter.process(arg = arg)
         except Sorry, e:
