@@ -55,6 +55,7 @@ import itertools
 import sys
 import math
 
+import gc
 
 class _array_extension(oop.injector, miller.array):
 
@@ -321,7 +322,6 @@ class solving_iterator(object):
 
   def __init__(self, flipping_iterator, **kwds):
     self.flipping_iterator = flipping_iterator
-    self.flipping_iterator_class_for_solving = flipping_iterator.__class__
     adopt_optional_init_args(self, kwds)
     self.attempts = []
     self.f_calc_solutions = []
@@ -341,6 +341,30 @@ class solving_iterator(object):
       except StopIteration: break
       yield self.flipping_iterator
       self.state = state
+    self.clean_up()
+
+  def clean_up(self):
+    """ The generator-based state machine pattern used to implement this
+    class creates cycles for each generator:
+       self.polishing.gi_frame.f_locals['self'] is self == True
+    for example.
+    Thus reference counting does not have it collected,
+    and self.flipping_iterator is not collected either.
+    The latter holds large objects (a fft_map and a miller.array), which
+    results in the memory being used to creep up each time a charge
+    flipping run is done.
+    Note: using a weak reference for solving.flipping_iterator would not work
+    because that object is also owned by several of the generators' frame
+    mentionned above.
+
+    Thus we delete the generators after the run has finished, therefore
+    breaking the cycle.
+    """
+    import gc
+    del self.guessing_delta
+    del self.solving
+    del self.polishing
+    del self.evaluating
 
   def had_phase_transition(self):
     return self.state == self.finished and not self.max_attempts_exceeded
@@ -422,15 +446,16 @@ class solving_iterator(object):
       yield self.finished
 
   def _polishing(self):
+    low_density_elimination = low_density_elimination_iterator(
+      f_obs=self.flipping_iterator.f_obs,
+      f_calc=self.flipping_iterator.f_calc,
+      f_000=0)
     while 1:
-      self.flipping_iterator.__class__ = low_density_elimination_iterator
-      self.flipping_iterator.constant_rho_c = self.flipping_iterator.delta
-      self.flipping_iterator.restart(
-        f_000=0,
-        f_calc=self.flipping_iterator.f_calc)
       for i in xrange(self.polishing_iterations):
-        self.flipping_iterator.next()
+        low_density_elimination.next()
       yield self.evaluating
+      low_density_elimination.restart(f_calc=self.flipping_iterator.f_calc,
+                                      f_000=0)
 
   def _evaluating(self):
     while 1:
@@ -442,17 +467,12 @@ class solving_iterator(object):
                            in self.flipping_iterator.f_calc_symmetrisations():
           if (not self.f_calc_solutions
               and cc_peak_height < self.min_cc_peak_height):
-            # we got here from polishing, so the flipping iterator is of
-            # the low density elimination type and we need to reset to
-            # the type passed to the __init__ before restarting
-            self.flipping_iterator.__class__ = \
-                self.flipping_iterator_class_for_solving
             yield self.guessing_delta
             break
           self.f_calc_solutions.append((f_calc, shift, cc_peak_height))
         else:
           yield self.finished
-      selt.max_attempts_exceeded = True
+      self.max_attempts_exceeded = True
 
 def loop(solving, verbose=True, stdout=sys.stdout):
   previous_state = None
@@ -503,7 +523,6 @@ def loop(solving, verbose=True, stdout=sys.stdout):
       if solving.max_attempts_exceeded:
         print
         print "** Maximum number of attempts exceeded: it won't solve!"
-      break
 
     previous_state = solving.state
 
