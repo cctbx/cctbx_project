@@ -518,7 +518,7 @@ def loop(solving, verbose=True, stdout=sys.stdout):
     elif solving.state is solving.polishing:
       if verbose == 'highly':
         print
-        print "Polishing with rho_c=%.4f" % flipping.rho_c()
+        print "Polishing"
     elif solving.state is solving.finished:
       if solving.max_attempts_exceeded:
         print
