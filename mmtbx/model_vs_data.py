@@ -660,7 +660,8 @@ def run(args,
     file_name = prefix+"_%s_map_coeffs.mtz"%map_type_obj.format()
     maps_obj.write_mtz_file(file_name = file_name)
   # report map cc
-  if(command_line.options.comprehensive and not fmodel_cut.twin):
+  if(command_line.options.comprehensive and not fmodel_cut.twin and
+     fmodel_cut.xray_structure is not None):
     real_space_correlation.simple(
       fmodel                = fmodel_cut,
       pdb_hierarchy         = hierarchy,

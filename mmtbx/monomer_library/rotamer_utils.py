@@ -64,6 +64,7 @@ def tardy_model(
       sites_cart,
       bonds_to_omit,
       constrain_dihedrals_with_sigma_less_than_or_equal_to,
+      external_clusters,
       tree_root_atom_names=set(["N", "CA", "C", "O"]),
       terminal_backbone_atom_names=set(["OXT", "HXT", "H1", "H2", "H3"]),
       skip_if_unexpected_degrees_of_freedom = False,
@@ -75,7 +76,7 @@ def tardy_model(
   for i,atom_name in enumerate(mon_lib_atom_names):
     if (atom_name in tree_root_atom_names):
       fixed_vertices.append(i)
-  assert len(fixed_vertices) == len(tree_root_atom_names)
+  if(not (len(fixed_vertices) == len(tree_root_atom_names))): return None
   for i,atom_name in enumerate(mon_lib_atom_names):
     if (atom_name in terminal_backbone_atom_names):
       fixed_vertices.append(i)
@@ -97,7 +98,6 @@ def tardy_model(
     raise RuntimeError(
       "tree_generation_without_bond does not match any bonds: %s"
         % str(unused))
-  external_clusters = []
   if (constrain_dihedrals_with_sigma_less_than_or_equal_to is not None):
     for tor in comp_comp_id.tor_list:
       if (   tor.value_angle_esd
@@ -247,6 +247,7 @@ class rotamer_iterator(object):
       mon_lib_atom_names=O.mon_lib_atom_names,
       sites_cart=sites_cart,
       bonds_to_omit=O.bonds_to_omit,
+      external_clusters = [],
       constrain_dihedrals_with_sigma_less_than_or_equal_to
         =O.rotamer_info.constrain_dihedrals_with_sigma_less_than_or_equal_to)
     O.rotamer_tor_atom_ids_by_tor_id = build_rotamer_tor_atom_ids_by_tor_id(

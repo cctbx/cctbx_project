@@ -808,6 +808,7 @@ def simple(fmodel,
         symmetry_flags    = maptbx.use_space_group_symmetry)
     fft_map_1.apply_sigma_scaling()
     map_1 = fft_map_1.real_map_unpadded()
+    assert fmodel.xray_structure is not None
     map_cc_obj = map_cc_funct(
       map_1          = map_1,
       map_1_name     = map_1_name,

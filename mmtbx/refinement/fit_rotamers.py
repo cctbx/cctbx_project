@@ -25,6 +25,19 @@ import iotbx.phil
 import mmtbx.monomer_library
 import mmtbx.monomer_library.rotamer_utils
 
+torsion_search_params_str = """\
+torsion_search {
+  min_angle_between_solutions = 5
+    .type = float
+  range_start = -40
+    .type = float
+  range_stop = 40
+    .type = float
+  step = 2
+    .type = float
+}
+"""
+
 master_params_str = """\
 fit_side_chains
 {
@@ -65,30 +78,40 @@ fit_side_chains
       .type = bool
     ignore_alt_conformers = True
       .type = bool
-    torsion_search {
-      min_angle_between_solutions = 5
-        .type = float
-      range_start = -40
-        .type = float
-      range_stop = 40
-        .type = float
-      step = 2
-        .type = float
-    }
+    %s
   }
 }
-"""
+"""%torsion_search_params_str
 
 def master_params():
   return iotbx.phil.parse(input_string = master_params_str)
 
+def torsion_search_params():
+  return iotbx.phil.parse(input_string = torsion_search_params_str)
+
 def tardy_model_one_residue(residue, mon_lib_srv, log = None):
   if(log is None): log = sys.stdout
   comp_comp_id = mon_lib_srv.get_comp_comp_id_direct(comp_id=residue.resname)
+  # create external clusters to address planes with missing atoms
+  external_clusters = []
+  for plane in comp_comp_id.get_planes():
+    plane_atom_names = []
+    for plane_atom in plane.plane_atoms:
+      plane_atom_names.append(plane_atom.atom_id)
+    plane_atom_i_seqs = []
+    if 0: print plane_atom_names
+    for i_atom, atom in enumerate(residue.atoms()):
+      if(atom.name.strip() in plane_atom_names):
+        plane_atom_i_seqs.append(i_atom)
+    if(len(plane_atom_i_seqs)>0):
+      external_clusters.append(plane_atom_i_seqs)
+  #
+  if 0: print "external_clusters1:",external_clusters
   residue_atoms = residue.atoms()
   atom_names = residue_atoms.extract_name()
-  mon_lib_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
-    residue.resname].match_atom_names(atom_names=atom_names).mon_lib_names()
+  matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
+    residue.resname].match_atom_names(atom_names=atom_names)
+  mon_lib_atom_names = matched_atom_names.mon_lib_names()
   #
   rotamer_info = comp_comp_id.rotamer_info()
   bonds_to_omit = mmtbx.monomer_library.rotamer_utils.extract_bonds_to_omit(
@@ -120,30 +143,35 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
     sites_cart         = residue_atoms.extract_xyz(),
     bonds_to_omit      = bonds_to_omit,
     external_edge_list = external_edge_list,
+    external_clusters  = external_clusters,
     constrain_dihedrals_with_sigma_less_than_or_equal_to = None,
     skip_if_unexpected_degrees_of_freedom = True)
   if(tardy_model is None):
-    mes = "TARDY error: connot creae tardy model for: %s. Skipping it..."
+    mes = "TARDY: cannot create tardy model for: %s (corrupted residue). Skipping it."
     print >> log, mes%residue.id_str(suppress_segid=1)[-12:]
     return None
   joint_dofs = tardy_model.degrees_of_freedom_each_joint()
   if(joint_dofs[0] != 0 or not joint_dofs[1:].all_eq(1)):
-    mes = "TARDY error: unexpected degrees of freedom for %s. Skipping it..."
+    mes = "TARDY error: unexpected degrees of freedom for %s. Skipping it."
     print >> log, mes%residue.id_str(suppress_segid=1)[-12:]
     return None
   return tardy_model
 
 def axes_and_atoms_aa_specific(residue, mon_lib_srv,
                                remove_clusters_with_all_h=False, log=None):
+  get_class = iotbx.pdb.common_residue_names_get_class
+  if 0: print residue.id_str(suppress_segid=1)[-12:]
+  if(not (get_class(residue.resname) == "common_amino_acid")): return None
   tardy_model = tardy_model_one_residue(residue = residue,
     mon_lib_srv = mon_lib_srv, log = log)
+  if(tardy_model is None): return None
   clusters = tardy_model.tardy_tree.cluster_manager.clusters[1:]
   axes = tardy_model.tardy_tree.cluster_manager.hinge_edges[1:]
   assert len(clusters) == len(axes)
   if(len(axes)==0): return None
   if 0:
     print "clusters:", clusters
-    print "axes:", axes
+    print "    axes:", axes
     print
   #
   ic = 0
@@ -151,42 +179,35 @@ def axes_and_atoms_aa_specific(residue, mon_lib_srv,
   while ic < len(axes):
     axis = axes[ic]
     cluster = clusters[ic]
-    next_axis = None
-    if(ic+1<len(axes)):
-      next_axis = axes[ic+1]
-      if(ic+2<len(axes)): # XXX assumes two-way branches only: example ILE with H
-        assert not (axis[0] == axes[ic+2][0])
-    if(next_axis is None or (next_axis is not None and axis[0] != next_axis[0])):
+    n_branches = 0
+    for i_axis_, axis_ in enumerate(axes):
+      if(i_axis_ > ic and axis[0] == axis_[0]): n_branches += 1
+    if(n_branches == 0):
       atoms_to_rotate = []
       for ci in clusters[ic:]:
         atoms_to_rotate.extend(ci)
-      ic += 1
       axes_and_atoms_to_rotate.append([axis, atoms_to_rotate])
-    else: # branch
-      atoms_to_rotate = []
-      atoms_to_rotate.extend(clusters[ic])
-      i_p = axis[1]
-      ic_ = 0
-      for axis_, cluster_ in zip(axes, clusters):
-        if(ic_ != ic and axis_[0] == i_p):
-          atoms_to_rotate.extend(clusters[ic_])
-          i_p = axis_[1]
-        ic_ += 1
       ic += 1
+    else:
+      assert n_branches <= 2, n_branches
+      # branch 1
+      icb = ic+1
+      atoms_to_rotate = cluster
+      while icb < len(axes):
+        if(axis[1]==axes[icb][0]): atoms_to_rotate.extend(clusters[icb])
+        icb += 1
       axes_and_atoms_to_rotate.append([axis, atoms_to_rotate])
-      # next
-      atoms_to_rotate = []
-      atoms_to_rotate.extend(clusters[ic])
-      i_p = next_axis[1]
-      ic_ = 0
-      for axis_, cluster_ in zip(axes, clusters):
-        if(ic_ != ic and axis_[0] == i_p):
-          atoms_to_rotate.extend(clusters[ic_])
-          i_p = axis_[1]
-        ic_ += 1
       ic += 1
-      axes_and_atoms_to_rotate.append([next_axis, atoms_to_rotate])
-    if 0: print axis, cluster, atoms_to_rotate,next_axis
+      # branch 2
+      axis = axes[ic]
+      cluster = clusters[ic]
+      icb = ic+1
+      atoms_to_rotate = cluster
+      while icb < len(axes):
+        if(axis[0]==axes[icb][0]): atoms_to_rotate.extend(clusters[icb])
+        icb += 1
+      axes_and_atoms_to_rotate.append([axis, atoms_to_rotate])
+      ic += 1
   #
   if 0:
     print axes_and_atoms_to_rotate
@@ -368,9 +389,15 @@ def torsion_search(residue_evaluator,
                    rotamer_sites_cart,
                    rotamer_id_best,
                    residue_sites_best,
-                   params,
+                   params = None,
                    rotamer_id = None):
+  if(params is None):
+    params = torsion_search_params().extract().torsion_search
+    params.range_start = 0
+    params.range_stop = 360
+    params.step = 1.0
   rotamer_sites_cart_ = rotamer_sites_cart.deep_copy()
+  zz = rotamer_sites_cart.deep_copy()
   n_clusters = len(axes_and_atoms_to_rotate)
   c_counter = 0
   for cluster_evaluator, aa in zip(cluster_evaluators,axes_and_atoms_to_rotate):
@@ -421,6 +448,7 @@ def torsion_search(residue_evaluator,
     if(residue_evaluator.is_better(sites_cart = rsc)):
       rotamer_id_best = rotamer_id
       residue_sites_best = rsc.deep_copy()
+  #XXXprint flex.max(flex.sqrt((zz - residue_sites_best).dot()))
   return residue_sites_best, rotamer_id_best
 
 
@@ -523,7 +551,18 @@ def residue_itaration(pdb_hierarchy,
                   atom_selection_bool = None)
                 if(rotamer_iterator is None):
                   n_amino_acids_ignored += 1
-                  print >> log, "No rotamers for: ", residue_id_str
+                  n_rotamers = 0
+                  print >> log, "No rotamers for: %s. Use torsion grid search."%\
+                    residue_id_str
+                  residue_sites_best, rotamer_id_best = torsion_search(
+                    residue_evaluator        = rev,
+                    cluster_evaluators       = rev_first_atoms,
+                    axes_and_atoms_to_rotate = axes_and_atoms_to_rotate,
+                    rotamer_sites_cart       = sites_cart_residue,
+                    rotamer_id_best          = rotamer_id_best,
+                    residue_sites_best       = residue_sites_best,
+                    rotamer_id               = None,
+                    params                   = None)
                 else:
                   n_amino_acids_scored += 1
                   n_rotamers = 0
@@ -556,20 +595,20 @@ def residue_itaration(pdb_hierarchy,
                           rotamer_id_best = rotamer.id
                           residue_sites_best = rotamer_sites_cart.deep_copy()
                   residue.atoms().set_xyz(new_xyz=residue_sites_best)
-                  if(not params.real_space_refine_rotamer):
+                if(not params.real_space_refine_rotamer):
+                  sites_cart_start = sites_cart_start.set_selected(
+                    residue_iselection, residue_sites_best)
+                else:
+                  tmp = sites_cart_start.set_selected(
+                    residue_iselection, residue_sites_best)
+                  sites_cart_refined = rsr_manager.refine_restrained(
+                    tmp.select(rsel), rsel, rs)
+                  if(rev.is_better(sites_cart = sites_cart_refined)):
+                    rotamer_sites_cart_refined = \
+                      sites_cart_refined.deep_copy()
                     sites_cart_start = sites_cart_start.set_selected(
-                      residue_iselection, residue_sites_best)
-                  else:
-                    tmp = sites_cart_start.set_selected(
-                      residue_iselection, residue_sites_best)
-                    sites_cart_refined = rsr_manager.refine_restrained(
-                      tmp.select(rsel), rsel, rs)
-                    if(rev.is_better(sites_cart = sites_cart_refined)):
-                      rotamer_sites_cart_refined = \
-                        sites_cart_refined.deep_copy()
-                      sites_cart_start = sites_cart_start.set_selected(
-                        residue_iselection, rotamer_sites_cart_refined)
-                      residue.atoms().set_xyz(new_xyz=rotamer_sites_cart_refined)
+                      residue_iselection, rotamer_sites_cart_refined)
+                    residue.atoms().set_xyz(new_xyz=rotamer_sites_cart_refined)
               if(abs(rev.t1_best-rev.t1_start) > 0.01 and
                  abs(rev.t2_best-rev.t2_start) > 0.01):
                 print >> log, fmt3 % (
