@@ -325,6 +325,7 @@ class solving_iterator(object):
     adopt_optional_init_args(self, kwds)
     self.attempts = []
     self.f_calc_solutions = []
+    self.had_phase_transition = False
     self.max_attempts_exceeded = False
     self.state = self.guessing_delta = {
       "sigma": self._guessing_delta_with_map_sigma,
@@ -336,10 +337,15 @@ class solving_iterator(object):
     self.finished = self._finished()
 
   def __iter__(self):
+    """ Note: a loop for flipping in solving_iterator_obj: that is
+    interrupted by break will reliably result in a call
+    solving_iterator_obj.clean_up() in Python 2.5+ while the code should
+    still run on earlier versions of Python but without the clean-up. """
     while 1:
       try: state = self.state.next()
       except StopIteration: break
-      yield self.flipping_iterator
+      try: yield self.flipping_iterator
+      except GeneratorExit: break
       self.state = state
     self.clean_up()
 
@@ -360,16 +366,16 @@ class solving_iterator(object):
     Thus we delete the generators after the run has finished, therefore
     breaking the cycle.
     """
-    import gc
+    del self.state
     del self.guessing_delta
     del self.solving
     del self.polishing
     del self.evaluating
-
-  def had_phase_transition(self):
-    return self.state == self.finished and not self.max_attempts_exceeded
+    del self.finished
 
   def _finished(self):
+    if not self.max_attempts_exceeded:
+      self.had_phase_transition = True
     yield self.finished
 
   def _guessing_delta_with_c_tot_over_c_flip(self):
@@ -523,7 +529,7 @@ def loop(solving, verbose=True, stdout=sys.stdout):
       if solving.max_attempts_exceeded:
         print
         print "** Maximum number of attempts exceeded: it won't solve!"
-
+      break
     previous_state = solving.state
 
 

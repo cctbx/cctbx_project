@@ -74,7 +74,7 @@ def randomly_exercise(flipping_type,
   charge_flipping.loop(solving, verbose=verbose)
 
   # check whether a phase transition has occured
-  result.had_phase_transition = solving.had_phase_transition()
+  result.had_phase_transition = solving.had_phase_transition
   if not result.had_phase_transition:
     result.succeeded = False
     if verbose:
