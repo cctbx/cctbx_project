@@ -175,3 +175,61 @@ def xplor_map_from_solve_mtz (pdb_file, mtz_file, force=False) :
       phi_label="PHIB",
       fom_label="FOM")
   return output_file
+
+def get_map_coeff_labels (server, build_only=False) :
+  all_labels = []
+  phi_labels = []
+  fom_labels = []
+  for miller_array in server.miller_arrays :
+    label = miller_array.info().label_string()
+    if label.startswith("FOM") :
+      fom_labels.append(label)
+  phase_arrays = server.get_phases_deg(None, None, False, None, None, None,
+                                       True, 3)
+  for miller_array in phase_arrays :
+    if miller_array.is_hendrickson_lattman_array() :
+      continue
+    elif miller_array.is_complex_array() :
+      labels = miller_array.info().label_string()
+      # note: Phaser outputs FWT/DELFWT for *anomalous difference* map!
+      if build_only :
+        if not labels.startswith("FOFC") and labels != "FWT,DELFWT" :
+          all_labels.append(miller_array.info().label_string())
+      else :
+        all_labels.append(miller_array.info().label_string())
+    elif miller_array.info().labels[0].startswith("PHI") :
+      phi_labels.append(miller_array.info().label_string())
+  amp_arrays = server.get_amplitudes(None, None, False, None, None, True, 4)
+  for miller_array in amp_arrays :
+    f_label = miller_array.info().labels[0]
+    if f_label[0] == "F" and f_label != "FC" :
+      for phase_label in phi_labels :
+        hybrid_label = "%s,%s" % (f_label, phase_label)
+        if len(fom_labels) > 0 :
+          for fom in fom_labels :
+            final_label = hybrid_label + ",%s" % fom
+            all_labels.append(final_label)
+        else :
+          all_labels.append(hybrid_label)
+  return all_labels
+
+def get_map_coeffs_for_build (server) :
+  return get_map_coeff_labels(server, build_only=True)
+
+def format_map_coeffs_for_resolve (f_label, phi_label, fom_label) :
+  return "FP=%s PHIB=%s FOM=%s" % (f_label, phi_label, fom_label)
+
+def decode_resolve_map_coeffs (labels) :
+  fields = labels.strip().split()
+  f_label = None
+  phi_label = None
+  fom_label = None
+  for field in fields :
+    resolve_label, array_label = field.split("=")
+    if resolve_label == "FP" :
+      f_label = array_label
+    elif resolve_label == "PHIB" :
+      phi_label = array_label
+    elif resolve_label == "FOM" :
+      fom_label = array_label
+  return (f_label, phi_label, fom_label)

@@ -100,13 +100,16 @@ data_and_flags_str = """\
   file_name = None
     .type=path
     .short_caption=Reflections file
-    .style = bold file_type:hkl noauto OnUpdate:update_reflection_data
+    .style = bold file_type:hkl noauto process_hkl \
+      child:fobs:labels child:d_min:high_resolution \
+      child:d_max:low_resolution
   labels = None
     .type=strings
     .input_size = 160
     .short_caption = Data labels
     .style = bold renderer:draw_fobs_label_widget noauto \
-      OnChange:update_resolution_limits
+      OnChange:auto_update_label_choice child:d_min:high_resolution \
+      child:d_max:low_resolution parent:file_name:file_name
   high_resolution = None
     .type=float
     .input_size = 80
