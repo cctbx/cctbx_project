@@ -56,14 +56,18 @@ input {
       .type=path
       .help="File name with data"
       .short_caption = Reflections
-      .style = bold noauto file_type:hkl OnUpdate:extract_xtriage_xray_params
+      .style = bold noauto file_type:hkl process_hkl update_d_max_min \
+        child:fobs:obs_labels child:fcalc:calc_labels \
+        child:space_group:space_group child:unit_cell:unit_cell \
+        child:d_min:high_resolution child:d_max:low_resolution
     obs_labels=None
       .type=strings
       .help="Labels for observed data"
       .short_caption = Fobs labels
       .input_size = 160
       .style = bold renderer:draw_xtriage_hkl_label_widget \
-        OnChange:update_resolution_limits
+        OnChange:auto_update_label_choice parent:file_name:file_name \
+        child:d_min:high_resolution child:d_max:low_resolution
     calc_labels=None
       .type=strings
       .help="Lables for calculated data"
