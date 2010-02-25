@@ -1,6 +1,6 @@
 """ A library of object-oriented patterns """
 
-import new
+import new, weakref
 
 class injector:
   """ Injection of new methods into an existing class
@@ -78,7 +78,12 @@ class memoize_method(object):
     try:
       return getattr(obj, self.cache)
     except AttributeError:
-      func = new.instancemethod(self.meth, obj, type)
+      # We use weakref.proxy to break the following cycle
+      # obj._memoized_xxx.func.im_self is obj
+      # It's always better to enable reference counting to collect
+      # unreachable object as soon as they become so instead of relying
+      # on a later gc collection.
+      func = new.instancemethod(self.meth, weakref.proxy(obj), type)
       memoized = memoize(func)
       setattr(obj, self.cache, memoized)
       return memoized
