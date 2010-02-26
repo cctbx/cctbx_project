@@ -676,9 +676,13 @@ def validate_changes(fmodel, residue_rsr_monitor, log):
       ###
       dmif1 = rm.mfodfc < 0 and t2 < 0 and t2 < rm.mfodfc
       dmif2 = rm.mfodfc > 0 and t2 < 0 and abs(t2) > abs(rm.mfodfc)
-      dmif3 = rm.mfodfc > 0 and t2 < 0 and abs(t2) < abs(rm.twomfodfc) # XXX
+      dmif3 = rm.mfodfc >= 0 and t2 < 0 and abs(t2) < abs(rm.twomfodfc)
+      dmif4 = rm.mfodfc<0 and t2<0 and (abs(rm.mfodfc)>5 and 2*abs(rm.mfodfc)<abs(t2))
+      dmif41 = rm.mfodfc<0 and t2<0 and (abs(rm.mfodfc)>2 and 3*abs(rm.mfodfc)<abs(t2))
+      dmif5 = abs(rm.mfodfc)<0.5 and t2<-5.
+      dmif6 = rm.cc > cc and abs(rm.mfodfc)<0.5 and t2 < -5.
       dmif = dmif1 or dmif2
-      if((cc < rm.cc or t1 < rm.twomfodfc) and dmif or dmif3): flag = " <<<"
+      if((cc < rm.cc or t1 < rm.twomfodfc) and dmif or dmif3 or dmif4 or dmif5 or dmif6 or dmif41): flag = " <<<"
       print >> log, fmt3 % (
         rm.residue_id_str, rm.cc, rm.twomfodfc, rm.mfodfc, cc,t1,t2), flag
       if(len(flag)>0):

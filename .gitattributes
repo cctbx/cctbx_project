@@ -385,6 +385,7 @@ mmtbx/command_line/model_vs_data.py -text
 mmtbx/command_line/mon_lib_cif_triage.py svneol=native#text/x-python
 mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
 mmtbx/command_line/pdbtools.py -text
+mmtbx/command_line/r_factor_statistics.py -text
 mmtbx/command_line/real_space_correlation.py -text
 mmtbx/command_line/secondary_structure_restraints.py -text
 mmtbx/command_line/tls.py -text
