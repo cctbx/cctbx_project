@@ -460,6 +460,8 @@ class solving_iterator(object):
         constant_rho_c=self.flipping_iterator.delta)
       for i in xrange(self.polishing_iterations):
         low_density_elimination.next()
+      self.flipping_iterator.f_calc = low_density_elimination.f_calc
+      self.flipping_iterator.f_000 = low_density_elimination.f_000
       yield self.evaluating
 
   def _evaluating(self):
