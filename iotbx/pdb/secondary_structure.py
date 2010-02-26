@@ -122,7 +122,7 @@ class annotation (structure_base) :
 #-----------------------------------------------------------------------
 class pdb_helix (structure_base, group_args) :
   def as_pdb_str (self) :
-    format = "HELIX  %3d %3s %3s %1s %4d%1s %3s %1s %4d%1s%2d%30s %5d"
+    format = "HELIX  %3d %3s %3s%2s %4d%1s %3s%2s %4d%1s%2d%30s %5d"
     out = format % (self.serial, self.helix_id, self.start_resname,
       self.start_chain_id, self.start_resseq, self.start_icode,
       self.end_resname, self.end_chain_id, self.end_resseq, self.end_icode,
@@ -195,11 +195,11 @@ def parse_helix_records (records) :
       serial=string.atoi(line[7:10]),
       helix_id=line[11:14].strip(),
       start_resname=line[15:18],
-      start_chain_id=line[19],
+      start_chain_id=line[18:20].strip(),
       start_resseq=string.atoi(line[21:25]),
       start_icode=line[25],
       end_resname=line[27:30],
-      end_chain_id=line[31],
+      end_chain_id=line[30:32].strip(),
       end_resseq=string.atoi(line[33:37]),
       end_icode=line[37],
       helix_class=string.atoi(line[38:40]),
@@ -318,8 +318,8 @@ class pdb_sheet (structure_base, group_args) :
     assert len(self.strands) == len(self.registrations)
     lines = []
     for strand, reg in zip(self.strands, self.registrations) :
-      format1 = "SHEET  %3d %3s%2d %3s %1s%4d%1s %3s %1s%4d%1s%2d"
-      format2 = "%4s%3s %1s%4d%1s %4s%3s %1s%4d%1s"
+      format1 = "SHEET  %3d %3s%2d %3s%2s%4d%1s %3s%2s%4d%1s%2d"
+      format2 = "%4s%3s%2s%4d%1s %4s%3s%2s%4d%1s"
       line = format1 % (strand.strand_id, self.sheet_id, self.n_strands,
         strand.start_resname, strand.start_chain_id, strand.start_resseq,
         strand.start_icode, strand.end_resname, strand.end_chain_id,
@@ -361,11 +361,11 @@ def parse_sheet_records (records) :
       sheet_id=sheet_id,
       strand_id=string.atoi(line[7:10]),
       start_resname=line[17:20],
-      start_chain_id=line[21],
+      start_chain_id=line[20:22].strip(),
       start_resseq=string.atoi(line[22:26]),
       start_icode=line[26],
       end_resname=line[28:31],
-      end_chain_id=line[32],
+      end_chain_id=line[31:33].strip(),
       end_resseq=string.atoi(line[33:37]),
       end_icode=line[37],
       sense=sense)
@@ -380,12 +380,12 @@ def parse_sheet_records (records) :
           registration = group_args(
             cur_atom=line[41:45],
             cur_resname=line[45:48],
-            cur_chain_id=line[49],
+            cur_chain_id=line[48:50].strip(),
             cur_resseq=string.atoi(line[50:54]),
             cur_icode=line[54],
             prev_atom=line[56:60],
             prev_resname=line[60:63],
-            prev_chain_id=line[64],
+            prev_chain_id=line[63:65].strip(),
             prev_resseq=string.atoi(line[65:69]),
             prev_icode=line[69])
         except ValueError :
@@ -507,6 +507,21 @@ SHEET    5   A 5 ASP A  74  LEU A  77  1  O  HIS A  74   N  VAL A  52"""
   assert len(ss.as_atom_selections(params=params)) == 20
   assert (ss.as_atom_selections(params=params)[0] ==
     """chain 'A' and resseq 16:18 and icode ' '""")
+  two_char_chain_records = """\
+HELIX    1   1 THRA1   11  ASPA1   39  1                                  29
+HELIX    2   2 GLUA1   46  ARGA1   73  1                                  28
+HELIX    3   3 THRA1   93  ALAA1  120  1                                  28
+HELIX    4   4 PROA1  124  HISA1  133  1                                  10
+HELIX    5   5 LEUA1  135  ARGA1  154  1                                  20
+HELIX    6   6 THRa1   11  TYRa1   37  1                                  27
+HELIX    7   7 GLUa1   46  GLNa1   72  1                                  27
+HELIX    8   8 THRa1   93  ALAa1  120  1                                  28
+HELIX    9   9 PROa1  124  HISa1  133  1                                  10"""
+  lines = flex.std_string()
+  lines.extend(flex.split_lines(two_char_chain_records))
+  ss = annotation(records=lines)
+  ss_out = ss.as_pdb_str()
+  assert not test_utils.show_diff(ss_out, two_char_chain_records)
   print "OK"
 
 def tst_pdb_file () :
