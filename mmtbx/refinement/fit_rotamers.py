@@ -142,10 +142,10 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
     mon_lib_atom_names = mon_lib_atom_names,
     sites_cart         = residue_atoms.extract_xyz(),
     bonds_to_omit      = bonds_to_omit,
+    constrain_dihedrals_with_sigma_less_than_or_equal_to = None,
     external_edge_list = external_edge_list,
     external_clusters  = external_clusters,
-    constrain_dihedrals_with_sigma_less_than_or_equal_to = None,
-    skip_if_unexpected_degrees_of_freedom = True)
+    return_none_if_unexpected_degrees_of_freedom = True)
   if(tardy_model is None):
     mes = "TARDY: cannot create tardy model for: %s (corrupted residue). Skipping it."
     print >> log, mes%residue.id_str(suppress_segid=1)[-12:]
