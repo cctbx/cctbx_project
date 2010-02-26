@@ -452,17 +452,15 @@ class solving_iterator(object):
       yield self.finished
 
   def _polishing(self):
-    low_density_elimination = low_density_elimination_iterator(
-      f_obs=self.flipping_iterator.f_obs,
-      f_calc=self.flipping_iterator.f_calc,
-      f_000=0,
-      constant_rho_c=self.flipping_iterator.delta)
     while 1:
+      low_density_elimination = low_density_elimination_iterator(
+        f_obs=self.flipping_iterator.f_obs,
+        f_calc=self.flipping_iterator.f_calc,
+        f_000=0,
+        constant_rho_c=self.flipping_iterator.delta)
       for i in xrange(self.polishing_iterations):
         low_density_elimination.next()
       yield self.evaluating
-      low_density_elimination.restart(f_calc=self.flipping_iterator.f_calc,
-                                      f_000=0)
 
   def _evaluating(self):
     while 1:
