@@ -22,6 +22,7 @@ if (self.env.is_ready_for_build()):
       "2d7402043017425df22f5a4f250917fb", # SVN revision 51413
       "add90ef9b25c154abf5caed7aa82b084", # SVN revision 53699
       "4b13e9e0dbe5fd52c82c0a66e74073fe", # SVN revision 53871 release branch
+      "fe860537c2d41d295809760bbf40ccc3", # SVN revision 59910
     ],
     hints=[
       "  Files to review:",
