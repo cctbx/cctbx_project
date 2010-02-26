@@ -455,7 +455,8 @@ class solving_iterator(object):
     low_density_elimination = low_density_elimination_iterator(
       f_obs=self.flipping_iterator.f_obs,
       f_calc=self.flipping_iterator.f_calc,
-      f_000=0)
+      f_000=0,
+      constant_rho_c=self.flipping_iterator.delta)
     while 1:
       for i in xrange(self.polishing_iterations):
         low_density_elimination.next()
