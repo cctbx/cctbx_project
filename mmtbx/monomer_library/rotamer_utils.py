@@ -64,7 +64,7 @@ def tardy_model(
       sites_cart,
       bonds_to_omit,
       constrain_dihedrals_with_sigma_less_than_or_equal_to,
-      external_clusters,
+      external_clusters=[],
       tree_root_atom_names=set(["N", "CA", "C", "O"]),
       terminal_backbone_atom_names=set(["OXT", "HXT", "H1", "H2", "H3"]),
       skip_if_unexpected_degrees_of_freedom = False,
