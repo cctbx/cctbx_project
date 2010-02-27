@@ -152,6 +152,7 @@ compcomm/newsletter09/sf_times_digest.py svneol=native#text/x-python
 compcomm/newsletter09/time_tables -text
 compcomm/smtbx_news_09/news.tex -text
 crys3d/__init__.py -text
+crys3d/command_line/model_viewer.py -text
 crys3d/images.py -text
 crys3d/reverse_selection.py -text
 crys3d/wx_combined_viewer.py -text
@@ -159,7 +160,6 @@ crys3d/wx_extra.py -text
 crys3d/wx_map_viewer.py -text
 crys3d/wx_map_viewer_example.py -text
 crys3d/wx_model_viewer.py -text
-crys3d/wx_model_viewer_example.py -text
 crys3d/wx_selection_editor.py -text
 dox/cctbx_notations.sty -text
 dox/cctbx_preamble.sty -text

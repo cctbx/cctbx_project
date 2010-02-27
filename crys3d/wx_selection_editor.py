@@ -8,7 +8,6 @@ import gltbx.gl_managed
 from gltbx.gl import *
 from gltbx.glu import *
 from gltbx import viewer_utils
-from scitbx.array_family import flex
 import iotbx.phil
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
@@ -101,6 +100,7 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
 #-----------------------------------------------------------------------
 class model_scene_with_selection (model_scene) :
   def __init__ (self, *args, **kwds) :
+    from scitbx.array_family import flex
     self.flag_show_all_selected_atoms = False
     model_scene.__init__(self, *args, **kwds)
     self.selection_draw_mode = "bonds_and_atoms"
@@ -132,6 +132,7 @@ class model_scene_with_selection (model_scene) :
 
   # XXX: this is still gross.
   def draw_selection (self, color, use_global_color=False) :
+    from scitbx.array_family import flex
     if self.selected_atom_count == 0 :
       return
     if self.selection_display_list is None :
@@ -216,6 +217,7 @@ class selection_editor_mixin (model_viewer_mixin) :
 
   #---------------------------------------------------------------------
   def zoom_selections (self) :
+    from scitbx.array_family import flex
     points = flex.vec3_double()
     for object_id, scene in self.scene_objects.iteritems() :
       if self.show_object[object_id] :

@@ -1,12 +1,11 @@
+# LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
+# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
 import cStringIO
 from crys3d.wx_selection_editor import selection_editor_mixin
 import wx
-from mmtbx.monomer_library import pdb_interpretation
-from mmtbx import secondary_structure
-import iotbx.pdb
 import libtbx.load_env
-import sys, os
+import sys, os, time
 
 ########################################################################
 # CLASSES AND METHODS FOR STANDALONE VIEWER
@@ -33,36 +32,61 @@ def run (args) :
   pdb_files = []
   cif_files = []
   show_ss_restraints = False
+  fast_connectivity = True
   for arg in args :
     if os.path.isfile(arg) :
+      import iotbx.pdb
       if iotbx.pdb.is_pdb_file(arg) :
         pdb_files.append(os.path.abspath(arg))
       elif arg.endswith(".cif") :
         cif_files.append(os.path.abspath(arg))
     elif arg == "--ss" :
       show_ss_restraints = True
+    elif arg in ["--thorough", "--slow", "--use_monomer_library"] :
+      fast_connectivity = False
   if len(pdb_files) == 0 :
     print "Please specify a PDB file (and optional CIFs) on the command line."
     return
   a = App()
+  a.frame.Show()
   out = sys.stdout
   if not "--debug" in args :
     out = cStringIO.StringIO()
   for file_name in pdb_files :
     print "Reading PDB file %s" % file_name
-    processed_pdb_file = pdb_interpretation.run(args=[file_name]+cif_files,
-      log=out)
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-    pdb_hierarchy.atoms().reset_i_seq()
-    grm = processed_pdb_file.geometry_restraints_manager()
-    acp_selection = processed_pdb_file.all_chain_proxies.selection
-    if grm is None or grm.shell_sym_tables is None :
-      raise Sorry("Atomic bonds could not be calculated for this model. "+
-        "This is probably due to a missing CRYST1 record in the PDB file.")
-    atomic_bonds = grm.shell_sym_tables[0].full_simple_connectivity()
+    from iotbx import file_reader
+    from cctbx.crystal import distance_based_connectivity
+    from mmtbx.monomer_library import pdb_interpretation
+    t1 = time.time()
+    if fast_connectivity :
+      pdb_in = file_reader.any_file(file_name, force_type="pdb")
+      pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
+      atoms = pdb_hierarchy.atoms()
+      sites_cart = atoms.extract_xyz()
+      elements = atoms.extract_element()
+      atomic_bonds = distance_based_connectivity.build_bond_list(
+        sites_cart=sites_cart,
+        elements=elements,
+        fallback_expected_bond_length=1.4,
+        fallback_search_max_distance=2.5)
+      acp_selection = None
+    else :
+      processed_pdb_file = pdb_interpretation.run(args=[file_name]+cif_files,
+        log=out)
+      pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+      pdb_hierarchy.atoms().reset_i_seq()
+      grm = processed_pdb_file.geometry_restraints_manager()
+      acp_selection = processed_pdb_file.all_chain_proxies.selection
+      if grm is None or grm.shell_sym_tables is None :
+        raise Sorry("Atomic bonds could not be calculated for this model. "+
+          "This is probably due to a missing CRYST1 record in the PDB file.")
+      atomic_bonds = grm.shell_sym_tables[0].full_simple_connectivity()
+    t2 = time.time()
+    print "%.2fs" % (t2-t1)
     a.view_objects.add_model(file_name, pdb_hierarchy, atomic_bonds,
       mmtbx_selection_function=acp_selection)
-    if show_ss_restraints :
+    if show_ss_restraints and acp_selection is not None :
+      from mmtbx import secondary_structure
       bonds_table = secondary_structure.process_structure(params=None,
         processed_pdb_file=processed_pdb_file,
         tmp_dir=os.getcwd(),
@@ -71,7 +95,6 @@ def run (args) :
       a.view_objects.flag_show_noncovalent_bonds = True
       a.view_objects.set_model_base_color([1.0,1.0,1.0], file_name)
       a.view_objects.set_color_mode("element")
-  a.frame.Show()
   a.view_objects.force_update(recenter=True)
   a.MainLoop()
 
