@@ -1,6 +1,5 @@
 # XXX: internal data for mouse selections in wx_selection_editor.py
 
-from scitbx.array_family import flex
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 
@@ -130,6 +129,7 @@ class mouse_selection_manager (object) :
 
   def update_selection_handlers (self, pdb_hierarchy,
       mmtbx_selection_function) :
+    from scitbx.array_family import flex
     self.mmtbx_selection_function = mmtbx_selection_function
     self.selection_cache = pdb_hierarchy.atom_selection_cache()
     self.atom_selection = flex.bool()
@@ -493,6 +493,7 @@ END""")
   assert m.selection_size() == 28
 
   from iotbx import pdb
+  from scitbx.array_family import flex
   pdb_hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
 HETATM 4049  O   HOH W   1       2.954  13.042  11.632  1.00 37.53           O
 HETATM 4050  O   HOH W   2       5.539  14.595  10.951  1.00 31.25           O
