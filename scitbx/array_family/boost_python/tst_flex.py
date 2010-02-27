@@ -936,6 +936,10 @@ def exercise_functions():
   assert a.count("a") == 3
   assert a.count("b") == 4
   assert a.count("c") == 0
+  a = flex.std_string([" Abc", "dEF", "ghi ", "   JKL ", "1 23 "])
+  assert list(a.strip()) == ['Abc', 'dEF', 'ghi', 'JKL', '1 23']
+  assert list(a.strip().upper()) == ["ABC","DEF","GHI","JKL", "1 23"]
+  assert list(a.strip().lower()) == ["abc","def","ghi","jkl", "1 23"]
   list(flex.split_lines(multi_line_string="")) == []
   for multi_line_string in [
     "",
