@@ -1,6 +1,9 @@
 from cctbx.eltbx.distance_based_connectivity import expected_bond_lengths_by_element_pair
 from cctbx.eltbx.van_der_waals_radii import vdw
 from scitbx.stl import map
+import cctbx.crystal
+import cctbx.uctbx
+from scitbx.array_family import flex, shared
 
 expected_bond_lengths = map.stl_string_double()
 vdw_radii = map.stl_string_double()
@@ -17,9 +20,10 @@ def build_bond_list (
       fallback_expected_bond_length=2,
       fallback_search_max_distance=3) :
   assert sites_cart.size() == elements.size()
-  import cctbx.crystal
-  import cctbx.uctbx
-  from scitbx.array_family import flex, shared
+  assert isinstance(tolerance_factor_expected_bond_length, float)
+  assert isinstance(fallback_expected_bond_length, float)
+  assert isinstance(fallback_search_max_distance, float)
+  # TODO: move the element reformatting to C++
   stripped_elements = flex.std_string()
   for elem in elements :
     stripped_elements.append(elem.strip().upper())
@@ -29,6 +33,8 @@ def build_bond_list (
       search_max_distance = fallback_search_max_distance
     else:
       search_max_distance *= tolerance_factor_expected_bond_length
+  else :
+    assert isinstance(search_max_distance, float)
   box_symmetry = cctbx.crystal.symmetry(
     unit_cell=cctbx.uctbx.non_crystallographic_unit_cell(
       sites_cart=sites_cart,
@@ -42,28 +48,35 @@ def build_bond_list (
     distance_cutoff=search_max_distance,
     minimal=True)
   result = shared.stl_set_unsigned(sites_cart.size())
-  for pair in pair_generator :
-    pair_elems = tuple(sorted(
-      [stripped_elements[i] for i in [pair.i_seq, pair.j_seq]]))
-    elem_key = "%s%s" % (pair_elems[0], pair_elems[1])
-    ebl = expected_bond_lengths.get(elem_key, None)
-    if (ebl == 0.0):
-      continue
-    if (ebl is None):
-      ebl = max([vdw_table.get(e, 0.0) for e in pair_elems])
-      if (ebl == 0.0):
-        ebl = fallback_expected_bond_length
-        if (ebl is None):
-          continue
-    cutoff_sq = (ebl * tolerance_factor_expected_bond_length)**2
-    if (pair.dist_sq > cutoff_sq):
-      continue
-    result[pair.i_seq].append(pair.j_seq)
-    result[pair.j_seq].append(pair.i_seq)
-  return result
+  bonds = pair_generator.distance_based_connectivity(
+    elements=stripped_elements,
+    expected_bond_lengths=expected_bond_lengths,
+    vdw_radii=vdw_radii,
+    fallback_expected_bond_length=fallback_expected_bond_length,
+    tolerance_factor_expected_bond_length=tolerance_factor_expected_bond_length)
+  return bonds
+#  pair_generator.restart()
+#  for pair in pair_generator :
+#    pair_elems = tuple(sorted(
+#      [stripped_elements[i] for i in [pair.i_seq, pair.j_seq]]))
+#    elem_key = "%s%s" % (pair_elems[0], pair_elems[1])
+#    ebl = expected_bond_lengths.get(elem_key, None)
+#    if (ebl == 0.0):
+#      continue
+#    if (ebl is None):
+#      ebl = max([vdw_table.get(e, 0.0) for e in pair_elems])
+#      if (ebl == 0.0):
+#        ebl = fallback_expected_bond_length
+#        if (ebl is None):
+#          continue
+#    cutoff_sq = (ebl * tolerance_factor_expected_bond_length)**2
+#    if (pair.dist_sq > cutoff_sq):
+#      continue
+#    result[pair.i_seq].append(pair.j_seq)
+#    result[pair.j_seq].append(pair.i_seq)
+#  return result
 
 def exercise () :
-  from scitbx.array_family import flex
   # caffeine
   sites_cart = flex.vec3_double([
     (-2.986, 0.015, 1.643),
@@ -98,6 +111,7 @@ def exercise () :
     sites_cart=sites_cart,
     elements=elements)
   assert bonds.size() == sites_cart.size()
+  #print list(bonds[0])
   assert list(bonds[0]) == [1, 14, 15, 16]
   print "OK"
 
