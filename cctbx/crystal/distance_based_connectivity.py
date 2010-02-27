@@ -17,16 +17,16 @@ def build_bond_list (
       elements,
       search_max_distance=None,
       tolerance_factor_expected_bond_length=1.3,
-      fallback_expected_bond_length=2,
-      fallback_search_max_distance=3) :
+      fallback_expected_bond_length=2.0,
+      fallback_search_max_distance=3.0) :
   assert sites_cart.size() == elements.size()
-  assert isinstance(tolerance_factor_expected_bond_length, float)
-  assert isinstance(fallback_expected_bond_length, float)
-  assert isinstance(fallback_search_max_distance, float)
-  # TODO: move the element reformatting to C++
-  stripped_elements = flex.std_string()
-  for elem in elements :
-    stripped_elements.append(elem.strip().upper())
+  assert (isinstance(tolerance_factor_expected_bond_length, float) or
+          isinstance(tolerance_factor_expected_bond_length, int))
+  assert (isinstance(fallback_expected_bond_length, float) or
+          isinstance(fallback_expected_bond_length, int))
+  assert (isinstance(fallback_search_max_distance, float) or
+          isinstance(fallback_search_max_distance, int))
+  stripped_elements = elements.strip().upper()
   if (search_max_distance is None):
     search_max_distance = max([vdw_radii.get(e, 0.0) for e in elements])
     if (search_max_distance == 0.0):
