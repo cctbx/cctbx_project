@@ -457,6 +457,22 @@ def exercise_xray_structure(use_u_aniso, verbose=0):
       assert approx_equal(
         regression.y_intercept(), 0, eps=flex.max(f_abs.data())*0.01)
 
+def exercise_other () :
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/1ywf.pdb",
+    test=os.path.isfile)
+  pdb_file2 = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/1ywf_h.pdb",
+    test=os.path.isfile)
+  if pdb_file is not None and pdb_file2 is not None :
+    log = StringIO()
+    pdb_out = "%d.pdb" % os.getpid()
+    n_clashes = iotbx.pdb.merge_files_and_check_for_overlap(
+      file_names=[pdb_file,pdb_file2],
+      output_file=pdb_out,
+      log=log)
+    assert n_clashes == 2127
+
 def dump_pdb(file_name, sites_cart, crystal_symmetry=None):
   f = open(file_name, "w")
   if (crystal_symmetry is not None):
@@ -493,6 +509,7 @@ def run():
   exercise_remark_290_interpretation()
   exercise_residue_name_plus_atom_names_interpreter()
   exercise_format_fasta()
+  exercise_other()
   for use_u_aniso in (False, True):
     exercise_xray_structure(use_u_aniso, verbose=verbose)
   write_icosahedron()

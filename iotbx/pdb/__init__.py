@@ -996,6 +996,36 @@ def join_fragment_files(file_names):
   result.info.extend(info)
   return result
 
+def merge_files_and_check_for_overlap (file_names, output_file,
+    site_clash_cutoff=0.5, log=sys.stdout) :
+  assert len(file_names) > 0
+  merged_records = combine_unique_pdb_files(file_names)
+  warnings = StringIO()
+  merged_records.report_non_unique(out=warnings)
+  merged_hierarchy = join_fragment_files(file_names)
+  f = open(output_file, "w")
+  f.write(merged_hierarchy.as_pdb_string())
+  f.close()
+  n_clashes = quick_clash_check(output_file,
+    site_clash_cutoff=site_clash_cutoff,
+    out=log)
+  return n_clashes
+
+def quick_clash_check (file_name, site_clash_cutoff=0.5, out=sys.stdout,
+    show_outliers=5) :
+  pdb_inp = input(file_name=file_name)
+  pdb_atoms = pdb_inp.atoms_with_labels()
+  xray_structure = pdb_inp.xray_structure_simple(
+    cryst1_substitution_buffer_layer=10,
+    enable_scattering_type_unknown=True)
+  sites_frac = xray_structure.sites_frac()
+  unit_cell = xray_structure.unit_cell()
+  pair_asu_table = xray_structure.pair_asu_table(
+    distance_cutoff=site_clash_cutoff)
+  pair_sym_table = pair_asu_table.extract_pair_sym_table()
+  atom_pairs = pair_sym_table.simple_edge_list()
+  return len(atom_pairs)
+
 standard_rhombohedral_space_group_symbols = [
 "R 3 :H",
 "R 3 :R",
