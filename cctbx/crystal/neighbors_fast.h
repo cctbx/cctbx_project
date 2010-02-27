@@ -3,6 +3,8 @@
 
 #include <cctbx/crystal/neighbors_simple.h>
 #include <scitbx/cubicles.h>
+#include <map>
+#include <set>
 
 namespace cctbx { namespace crystal { namespace neighbors {
 
@@ -160,6 +162,64 @@ namespace cctbx { namespace crystal { namespace neighbors {
         }
         return result;
       }
+
+      af::shared< std::set< unsigned > >
+      distance_based_connectivity(
+        af::const_ref< std::string > const& elements,
+        std::map<std::string, double> expected_bond_lengths,
+        std::map<std::string, double> vdw_radii,
+        double fallback_expected_bond_length,
+        double tolerance_factor_expected_bond_length)
+      {
+        std::size_t n_pairs = count_pairs();
+        std::size_t n_sites = elements.size();
+        af::shared< std::set< unsigned > > bonds(n_sites);
+        restart();
+        while (!this->at_end_) {
+          direct_space_asu::asu_mapping_index_pair_and_diff<FloatType>
+            pair = next();
+          //CCTBX_ASSERT(pair.i_seq < n_sites);
+          std::string elem1 = elements[pair.i_seq];
+          std::string elem2 = elements[pair.j_seq];
+          std::string elem_key;
+          if (elem1 < elem2) {
+            elem_key = elem1 + elem2;
+          } else {
+            elem_key = elem2 + elem1;
+          }
+          double ebl;
+          if (expected_bond_lengths.find(elem_key) !=
+              expected_bond_lengths.end()) {
+            ebl = expected_bond_lengths[elem_key];
+            if (ebl == 0.0) continue;
+          } else {
+            double radius1 = 0.0;
+            double radius2 = 0.0;
+            if (vdw_radii.find(elem1) != vdw_radii.end()) {
+              radius1 = vdw_radii[elem1];
+            }
+            if (vdw_radii.find(elem2) != vdw_radii.end()) {
+              radius2 = vdw_radii[elem2];
+            }
+            if (radius1 > radius2) {
+              ebl = radius1;
+            } else {
+              ebl = radius2;
+            }
+            if (ebl == 0.0) {
+              ebl = fallback_expected_bond_length;
+            }
+            if (ebl < 0.0) continue;
+          }
+          double cutoff = ebl * tolerance_factor_expected_bond_length;
+          double cutoff_sq = cutoff * cutoff;
+          if (pair.dist_sq > cutoff_sq) continue;
+          bonds[pair.i_seq].insert(pair.j_seq);
+          bonds[pair.j_seq].insert(pair.i_seq);
+        }
+        return bonds;
+      }
+
 
     protected:
       FloatType epsilon_;
