@@ -572,6 +572,42 @@ def exercise_20(verbose):
     as_flex_arrays    = False)
   assert approx_equal(result, answer)
 
+def exercise_21(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/gocr_3.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  #
+  base = [[[2], [3]],
+         [[6, 7, 8, 9, 10], [11, 12, 13, 14, 15]],
+         [[16], [17]],
+         [[21]],
+         [[23]],
+         [[24, 25, 26, 27], [28, 29, 30, 31]],
+         [[36]],
+         [[47]],
+         [[48]],
+         [[49]],
+         [[50]],
+         [[51]],
+         [[53]],
+         [[56, 57, 58, 59]],
+         [[60, 61, 62, 63]],
+         [[64, 65, 66, 67, 68]],
+         [[37], [40]],
+         [[38], [41]],
+         [[39], [42]],
+         [[43, 44, 45, 46]]]
+  res = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = processed_pdb_file.xray_structure(),
+    as_flex_arrays    = False)
+  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  assert approx_equal(res, base)
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
@@ -595,6 +631,7 @@ def run():
   exercise_18(verbose=verbose)
   exercise_19(verbose=verbose)
   exercise_20(verbose=verbose)
+  exercise_21(verbose=verbose)
   print format_cpu_times()
 
 if (__name__ == "__main__"):

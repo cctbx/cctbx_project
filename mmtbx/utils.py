@@ -1054,6 +1054,22 @@ def combine_hd_exchangable(hierarchy):
                     result.append([[int(atom1.i_seq)], [int(atom2.i_seq)]])
   return result
 
+def extract_partial_occupancy_selections(hierarchy):
+  result = []
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        if(not residue_group.have_conformers()):
+          assert len(residue_group.atom_groups()) == 1
+          occs = flex.double()
+          i_seqs = []
+          for atom in residue_group.atoms():
+            occs.append(atom.occ)
+            i_seqs.append(atom.i_seq)
+          if(occs[0]<1 and occs[0]!=0 and occs.all_eq(occs[0]) and occs.size()>1):
+            result.append([i_seqs])
+  return result
+
 def occupancy_selections(
       all_chain_proxies,
       xray_structure,
@@ -1080,6 +1096,16 @@ def occupancy_selections(
   result = remove_selections(selection = result, other = exchangable_hd_pairs,
     size = xray_structure.scatterers().size())
   result.extend(exchangable_hd_pairs)
+  # extract group-[0,1]-constrained atoms withing a residue
+  pogl = extract_partial_occupancy_selections(hierarchy = all_chain_proxies.pdb_hierarchy)
+  rm_duplicate_with_pogl = []
+  for t_ in pogl:
+    for t__ in t_:
+      for t___ in t__:
+        rm_duplicate_with_pogl.append(t___)
+  result = remove_selections(selection = result, other = pogl,
+    size = xray_structure.scatterers().size())
+  result.extend(pogl)
   # add partial occupancies
   occupancies = xray_structure.scatterers().extract_occupancies()
   sel = (occupancies != 1.) & (occupancies != 0.)
