@@ -114,6 +114,7 @@ class model_data (object) :
 
   def set_noncovalent_bonds (self, bonded_atoms) :
     self.noncovalent_bonds = bonded_atoms
+    self.is_changed = True
 
   def update_scene_data (self, scene) :
     scene.update_bonds(self.current_bonds)
@@ -847,11 +848,13 @@ class model_viewer_mixin (wxGLWindow) :
       model.update_from_xray_structure(xray_structure)
       self.update_scene = True
 
-  def set_noncovalent_bonds (self, model_id, bonded_atoms) :
+  def set_noncovalent_bonds (self, model_id, bonded_atoms, auto_show=False) :
     model = self.get_model(model_id)
     if model is not None :
       model.set_noncovalent_bonds(bonded_atoms)
-      #model.flag_show_noncovalent_bonds = True
+      if auto_show :
+        model.flag_show_noncovalent_bonds = True
+      self.update_scene = True
 
   def update_mcs (self, points, recenter_and_zoom=True, buffer=0) :
     from scitbx.math import minimum_covering_sphere, sphere_3d

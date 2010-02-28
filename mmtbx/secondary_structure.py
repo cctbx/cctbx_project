@@ -808,7 +808,6 @@ class manager (object) :
 
   def get_bonds_table (self, log=sys.stderr, verbose=True) :
     params = self.params
-    print params.h_bond_restraints.substitute_n_for_h
     bonds_table = hydrogen_bonds_from_selections(
       pdb_hierarchy=self.pdb_hierarchy,
       params=params,
