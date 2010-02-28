@@ -5,16 +5,13 @@ from __future__ import division
 # TODO: hide nonbonded point for any atom that has an ellipsoid drawn
 # TODO: clean up handling of changes in atom count
 
-import iotbx.phil
-from cctbx import uctbx
 from gltbx.wx_viewer import wxGLWindow
 import gltbx.util
 from gltbx import viewer_utils, quadrics
 from gltbx.gl import *
 from gltbx.glu import *
 import gltbx
-from scitbx.array_family import flex, shared
-from scitbx.math import minimum_covering_sphere, sphere_3d
+import libtbx.phil
 from libtbx.introspection import method_debug_log
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
@@ -23,7 +20,7 @@ import sys, os
 
 debug = method_debug_log()
 
-opengl_phil = iotbx.phil.parse("""
+opengl_phil = libtbx.phil.parse("""
 opengl {
   line_width = 2
     .type = int
@@ -93,6 +90,7 @@ class model_data (object) :
     self.flag_show_ellipsoids = False
     self.flag_show_noncovalent_bonds = False
     self.update_structure(pdb_hierarchy, atomic_bonds)
+    from scitbx.array_family import flex
     self.use_u_aniso = flex.bool(self.atoms.size())
     #self.recalculate_visibility()
 
@@ -162,6 +160,7 @@ class model_data (object) :
 
   @debug
   def update_structure (self, pdb_hierarchy, atomic_bonds) :
+    from scitbx.array_family import flex
     self.pdb_hierarchy = pdb_hierarchy
     self.atoms = pdb_hierarchy.atoms()
     self.atom_count = self.atoms.size()
@@ -195,6 +194,7 @@ class model_data (object) :
 
   @debug
   def recalculate_visibility (self) :
+    from scitbx.array_family import flex
     c = 0
     if self.draw_mode == "spheres" :
       show_points = True
@@ -275,6 +275,7 @@ class model_data (object) :
     if cached is not None :
       self.atom_colors = cached
     else :
+      from scitbx.array_family import flex
       self.atom_colors = flex.vec3_double(
         [ self.base_color for i in xrange(0, self.atoms.size()) ]
       )
@@ -312,6 +313,7 @@ class model_data (object) :
     if cached is not None :
       self.atom_colors = cached
     else :
+      from scitbx.array_family import flex
       c = 0
       for chain in self.pdb_hierarchy.chains() :
         c += 1
@@ -351,6 +353,7 @@ class model_data (object) :
                         'Ni' : (0.0, 0.8, 0.4),    # teal
                         'Cu' : (0.0, 0.8, 0.7),    # blue-green
                         'Co' : (0.0, 0.5, 0.6) }   # marine
+      from scitbx.array_family import flex
       atom_colors = flex.vec3_double()
       for atom in self.pdb_hierarchy.atoms_with_labels() :
         element = atom.element
@@ -387,6 +390,7 @@ class model_scene (object) :
 
   @debug
   def clear_labels (self) :
+    from scitbx.array_family import flex
     self.show_labels = flex.bool(self.points.size(), False)
     self.labels_display_list = None
 
@@ -850,6 +854,7 @@ class model_viewer_mixin (wxGLWindow) :
       #model.flag_show_noncovalent_bonds = True
 
   def update_mcs (self, points, recenter_and_zoom=True, buffer=0) :
+    from scitbx.math import minimum_covering_sphere, sphere_3d
     mcs = minimum_covering_sphere(points=points,
                                   epsilon=0.1)
     if buffer > 0 :
@@ -871,6 +876,7 @@ class model_viewer_mixin (wxGLWindow) :
   def unzoom (self, event=None) :
     self.update_scene_objects()
     if len(self.scene_objects) > 0 :
+      from scitbx.array_family import flex
       points = flex.vec3_double()
       for object_id, scene in self.scene_objects.iteritems() :
         points.extend(scene.points)
@@ -914,6 +920,7 @@ class model_viewer_mixin (wxGLWindow) :
 
   @debug
   def update_scene_objects (self) :
+    from scitbx.array_family import flex
     points = flex.vec3_double()
     for object_id, model in self.iter_models() :
       current_scene = self.scene_objects.get(object_id)
@@ -1098,26 +1105,30 @@ class model_viewer_mixin (wxGLWindow) :
 #-----------------------------------------------------------------------
 # Utility functions
 def extract_trace (pdb_hierarchy, selection_cache=None) :
+  from scitbx.array_family import shared
   if selection_cache is None :
     selection_cache = pdb_hierarchy.atom_selection_cache()
   last_atom     = None
-  isel = selection_cache.iselection
-  selection_i_seqs = list(
-    isel("(name ' CA ' or name ' P  ') and (altloc 'A' or altloc ' ')"))
-  last_atom = None
-  bonds = shared.stl_set_unsigned(pdb_hierarchy.atoms().size())
-  for atom in pdb_hierarchy.atoms_with_labels() :
-    if atom.i_seq in selection_i_seqs :
-      if last_atom is not None :
-        if (atom.chain_id        == last_atom.chain_id and
-            atom.model_id        == last_atom.model_id and
-            atom.resseq_as_int() == (last_atom.resseq_as_int() + 1) and
-            ((atom.altloc == last_atom.altloc) or
-             (atom.altloc == "A" and last_atom.altloc == "") or
-             (atom.altloc == ""  and last_atom.altloc == "A"))) :
-          bonds[last_atom.i_seq].append(atom.i_seq)
-          bonds[atom.i_seq].append(last_atom.i_seq)
-      last_atom = atom
+  vertices = selection_cache.selection(
+    "(name ' CA ' or name ' P  ') and (altloc 'A' or altloc ' ')")
+  last_i_seq = None
+  last_labels = None
+  atoms = pdb_hierarchy.atoms()
+  bonds = shared.stl_set_unsigned(atoms.size())
+  for i_seq, atom in enumerate(atoms) :
+    labels = atom.fetch_labels()
+    if vertices[i_seq] :
+      if last_i_seq is not None :
+        if (labels.chain_id        == last_labels.chain_id and
+            labels.model_id        == last_labels.model_id and
+            labels.resseq_as_int() == (last_labels.resseq_as_int() + 1) and
+            ((labels.altloc == last_labels.altloc) or
+             (labels.altloc == "A" and last_labels.altloc == "") or
+             (labels.altloc == ""  and last_labels.altloc == "A"))) :
+          bonds[last_i_seq].append(i_seq)
+          bonds[i_seq].append(last_i_seq)
+      last_i_seq = i_seq
+      last_labels = labels
   return bonds
 
 def format_atom_label (atom_info) :
