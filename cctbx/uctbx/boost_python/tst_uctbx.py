@@ -212,6 +212,16 @@ def exercise_frac_orth():
     assert approx_equal(om*matrix.col(fi), ci)
     assert approx_equal(fm*matrix.col(ci), fi)
 
+def exercise_distance_mod_1():
+  uc = uctbx.unit_cell((9,10,12,85,95,100))
+  dm1 = uc.distance_mod_1(
+    site_frac_1=(0.2, 0.1, -0.3),
+    site_frac_2=(3.21, -6.88, 1.67))
+  assert approx_equal(dm1.diff_raw, (-3.01, 6.98, -1.97))
+  assert approx_equal(dm1.diff_mod, (-0.01, -0.02, 0.03))
+  assert approx_equal(dm1.dist_sq, 0.1645459)
+  assert dm1.unit_shifts() == (3, -7, 2)
+
 def exercise_change_basis():
   u = uctbx.unit_cell(())
   assert approx_equal(
@@ -561,6 +571,7 @@ def run():
   exercise_functions()
   exercise_basic()
   exercise_frac_orth()
+  exercise_distance_mod_1()
   exercise_change_basis()
   exercise_miller_index_methods()
   exercise_compare()

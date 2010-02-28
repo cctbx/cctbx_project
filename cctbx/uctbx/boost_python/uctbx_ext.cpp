@@ -9,6 +9,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/python/return_by_value.hpp>
 #include <boost/python/return_internal_reference.hpp>
 
 namespace cctbx { namespace uctbx { namespace boost_python {
@@ -224,6 +225,31 @@ namespace {
     return fractional<>(site_frac_1-site_frac_2).unit_shifts();
   }
 
+  struct distance_mod_1_wrappers
+  {
+    typedef distance_mod_1 w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("distance_mod_1", no_init)
+        .def(init<
+          unit_cell const&,
+          fractional<> const&,
+          fractional<> const&>((
+            arg("unit_cell"),
+            arg("site_frac_1"),
+            arg("site_frac_2"))))
+        .add_property("diff_raw", make_getter(&w_t::diff_raw, rbv()))
+        .add_property("diff_mod", make_getter(&w_t::diff_mod, rbv()))
+        .def_readonly("dist_sq", &w_t::dist_sq)
+        .def("unit_shifts", &w_t::unit_shifts)
+      ;
+    }
+  };
+
   void init_module()
   {
     using namespace boost::python;
@@ -298,6 +324,8 @@ namespace {
       arg("distance_frac")));
     def("fractional_unit_shifts", fractional_unit_shifts_s_s, (
       arg("site_frac_1"), arg("site_frac_2")));
+
+    distance_mod_1_wrappers::wrap();
   }
 
 } // namespace <anonymous>
