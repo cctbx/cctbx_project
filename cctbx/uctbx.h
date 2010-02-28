@@ -1033,6 +1033,31 @@ namespace cctbx {
       }
   };
 
+  struct distance_mod_1
+  {
+    fractional<> diff_raw;
+    fractional<> diff_mod;
+    double dist_sq;
+
+    distance_mod_1() {}
+
+    distance_mod_1(
+      uctbx::unit_cell const& unit_cell,
+      fractional<> const& site_frac_1,
+      fractional<> const& site_frac_2)
+    :
+      diff_raw(site_frac_1 - site_frac_2),
+      diff_mod(diff_raw.mod_short()),
+      dist_sq(unit_cell.length_sq(diff_mod))
+    {}
+
+    scitbx::vec3<int>
+    unit_shifts() const
+    {
+      return fractional<>(diff_mod - diff_raw).unit_shifts();
+    }
+  };
+
 }} // namespace cctbx::uctbx
 
 #endif // CCTBX_UCTBX_H

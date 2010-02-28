@@ -38,6 +38,10 @@ class _unit_cell(boost.python.injector, ext.unit_cell):
     if (f is None): f = sys.stdout
     print >> f, prefix + str(self)
 
+  def distance_mod_1(self, site_frac_1, site_frac_2):
+    return distance_mod_1(
+      unit_cell=self, site_frac_1=site_frac_1, site_frac_2=site_frac_2)
+
   def minimum_reduction(self, iteration_limit=None,
                               multiplier_significant_change_test=None,
                               min_n_no_significant_change=None):
