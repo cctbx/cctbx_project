@@ -1644,12 +1644,15 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                        w1       = None,
                        w2       = None,
                        ):
-    assert map_type in ("Fo-Fc", "Fobs-Fmodel",
+    supported_types = ("Fo-Fc", "Fobs-Fmodel",
                         "2mFo-DFc", "2mFobs-DFmodel",
                         "mFo-DFc", "mFobs-DFmodel",
                         "gradient",
                         "m_gradient"
                         )
+    if not map_type in supported_types :
+      raise Sorry(("Map type '%s' not supported for twinned structures. "+
+        "Allowed types: %s.") % (map_type, ", ".join(supported_types)))
     # this is to modify default behavoir of phenix.refine
     if (map_type == "mFo-DFc") or (map_type == "mFobs-DFmodel") :
       if self.map_types.fofc == "gradient":
@@ -1755,7 +1758,12 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         self.resolution_factor = resolution_factor
         self.symmetry_flags = symmetry_flags
         self.fmodel = fmodel
-      def map_coefficients(self, map_type=None):
+      # XXX: added extra keywords passed by mmtbx.maps, which will simply be
+      # ignored here. -nat
+      def map_coefficients(self,
+                           map_type=None,
+                           acentrics_scale=None,
+                           centrics_pre_scale=None):
         map_name_manager = mmtbx.map_names(map_name_string = map_type)
         k = map_name_manager.k
         n = map_name_manager.n
