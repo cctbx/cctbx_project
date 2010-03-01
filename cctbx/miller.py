@@ -27,6 +27,32 @@ import types
 import sys
 from scitbx import matrix
 
+generate_r_free_params_str = """\
+    fraction = 0.1
+      .type=float
+      .short_caption = Fraction of reflections in test set
+      .expert_level=0
+    max_free = 2000
+      .type=int
+      .short_caption = Maximum number of reflections in test set
+      .expert_level=2
+    lattice_symmetry_max_delta = 5
+      .type=float
+      .expert_level=2
+    use_lattice_symmetry = True
+      .type=bool
+      .short_caption = Use lattice symmetry to generate test set
+      .expert_level=0
+    use_dataman_shells = False
+      .type = bool
+      .short_caption = Assign test set in thin resolution shells
+      .help = Used to avoid biasing of the test set by certain types of \
+        non-crystallographic symmetry.
+    n_shells = 20
+      .type = int
+      .short_caption = Number of resolution shells
+"""
+
 def _slice_or_none(array, slice_object):
   assert type(slice_object) == types.SliceType
   if (array is None): return None
