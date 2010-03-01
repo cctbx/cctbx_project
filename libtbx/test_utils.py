@@ -308,6 +308,8 @@ def is_above_limit(
   return False
 
 def show_diff(a, b, selections=None, expected_number_of_lines=None):
+  if (not isinstance(a, str)):
+    a = "\n".join(a)+"\n"
   if (selections is None):
     assert expected_number_of_lines is None
   else:
