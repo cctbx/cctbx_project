@@ -367,7 +367,7 @@ def block_show_diff(lines, expected, last_startswith=False):
     raise_not_found()
   lines = "\n".join(lines)+"\n"
   expected = "\n".join(expected)+"\n"
-  assert not show_diff(lines, expected)
+  return show_diff(lines, expected)
 
 def blocks_show_diff(lines, expected, block_sperator="\n...\n"):
   assert isinstance(expected, str)
@@ -377,6 +377,18 @@ def blocks_show_diff(lines, expected, block_sperator="\n...\n"):
     if (block_show_diff(lines=lines, expected=expected)):
       result = True
   return result
+
+def anchored_block_show_diff(lines, anchor_index, expected):
+  if (isinstance(lines, str)):
+    lines = lines.splitlines()
+  if (isinstance(expected, str)):
+    expected = expected.splitlines()
+  assert len(expected) > 0
+  if (anchor_index < 0):
+    anchor_index = len(lines) + anchor_index - len(expected) + 1
+  lines = "\n".join(lines[anchor_index:anchor_index+len(expected)])+"\n"
+  expected = "\n".join(expected)+"\n"
+  return show_diff(lines, expected)
 
 def contains_lines(lines, expected):
   assert isinstance(lines, str)
