@@ -1015,14 +1015,17 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
   maa = ma * ma.data()
   assert approx_equal(maa.data(), [1,4])
   #
-  ma = ms.array(data=flex.complex_double([1+2j, 2-3j]))
+  ma = ms.array(
+    data=flex.complex_double([1+2j, 2-3j]), sigmas=flex.double((2,3)))
   maa = ma.as_amplitude_array()
   assert maa.is_xray_amplitude_array()
   assert approx_equal(maa.data(), [5**0.5, 13**0.5])
+  assert approx_equal(maa.sigmas(), (2,3))
   mai = ma.as_intensity_array()
   assert mai.is_xray_intensity_array()
   assert approx_equal(mai.data(), [5, 13])
   assert approx_equal(maa.as_intensity_array().data(), [5, 13])
+  assert approx_equal(maa.as_intensity_array().sigmas(), mai.sigmas())
   assert approx_equal(mai.as_amplitude_array().data(), [5**0.5, 13**0.5])
 
 def exercise_r1_factor():
