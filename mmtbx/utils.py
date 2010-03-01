@@ -184,23 +184,9 @@ data_and_flags_str = """\
       .short_caption = Generate new test set if none present
       .help = Generate R-free flags (if not available in input files)
       .expert_level=0
-    fraction = 0.1
-      .type=float
-      .short_caption = Fraction of reflections in test set
-      .expert_level=0
-    max_free = 2000
-      .type=int
-      .short_caption = Maximum number of reflections in test set
-      .expert_level=2
-    lattice_symmetry_max_delta = 5
-      .type=float
-      .expert_level=2
-    use_lattice_symmetry = True
-      .type=bool
-      .short_caption = Use lattice symmetry to generate test set
-      .expert_level=0
+    %s
   }
-"""
+""" % miller.generate_r_free_params_str
 
 data_and_flags = iotbx.phil.parse(data_and_flags_str)
 
@@ -352,7 +338,9 @@ class determine_data_and_flags(object):
         fraction                   = params.fraction,
         max_free                   = params.max_free,
         lattice_symmetry_max_delta = params.lattice_symmetry_max_delta,
-        use_lattice_symmetry       = params.use_lattice_symmetry
+        use_lattice_symmetry       = params.use_lattice_symmetry,
+        use_dataman_shells         = params.use_dataman_shells,
+        n_shells                   = params.n_shells
         ).set_info(miller.array_info(labels = ["R-free-flags"]))
       params.label = r_free_flags.info().label_string()
       params.test_flag_value = 1

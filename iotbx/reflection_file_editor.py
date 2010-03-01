@@ -143,33 +143,11 @@ mtz_file
       .type = str
       .short_caption = Output label for new R-free flags
       .style = bold
-    fraction = 0.05
-      .type = float
-      .short_caption = Percent of reflections to flag
-    max_free = 2000
-      .type = int
-      .short_caption = Maximum number of reflections in test set
-      .expert_level = 2
-    use_lattice_symmetry = True
-      .type = bool
-      .short_caption = Use lattice symmetry when generating flags
-      .expert_level = 1
-    lattice_symmetry_max_delta = 5
-      .type = int
-      .expert_level = 2
-      .short_caption = Lattice symmetry max. delta
+    include scope cctbx.miller.generate_r_free_params_str
     random_seed = None
       .type = int
       .short_caption = Seed for random number generator
       .expert_level = 2
-    use_dataman_shells = False
-      .type = bool
-      .short_caption = Assign test set in thin resolution shells
-      .help = Used to avoid biasing of the test set by certain types of \
-        non-crystallographic symmetry.
-    n_shells = 20
-      .type = int
-      .short_caption = Number of resolution shells
     extend = None
       .type = bool
       .short_caption = Extend existing R-free array(s) to full resolution range
@@ -197,7 +175,7 @@ mtz_file
         integers instead of being converted to a boolean array.  This option \
         is not compatible with the 'extend' option.
   }
-}""")
+}""", process_includes=True)
 
 class process_arrays (object) :
   def __init__ (self, params, input_files=None, log=sys.stderr,
