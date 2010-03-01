@@ -18,6 +18,8 @@ def exercise_masks():
     d_min=0.5, anomalous_flag=False)
   fo = mi.structure_factors_from_scatterers(
     xs_ref, algorithm="direct").f_calc().as_amplitude_array()
+  k = flex.random_double()
+  fo = fo.customized_copy(data=fo.data()*k)
   fo2 = fo.f_as_f_sq()
   acetonitrile_sel = xs_ref.label_selection(
     'N4', 'C20', 'C21', 'H211', 'H212', 'H213')
@@ -34,17 +36,18 @@ def exercise_masks():
     f_mask = mask.structure_factors()
     f_model = mask.f_model()
     modified_fo = mask.modified_structure_factors().as_amplitude_array()
-    f_obs_minus_f_model = fo.f_obs_minus_f_calc(f_obs_factor=1, f_calc=f_model)
+    f_obs_minus_f_model = fo.f_obs_minus_f_calc(f_obs_factor=1/k, f_calc=f_model)
     diff_map = miller.fft_map(mask.crystal_gridding, f_obs_minus_f_model)
     diff_map.apply_volume_scaling()
     stats = diff_map.statistics()
     assert n_voids == 2
     assert mask.n_solvent_grid_points == 42148
     # check the difference map has no large peaks/holes
-    assert max(stats.max(), abs(stats.min())) < 0.1
-    assert approx_equal(mask.f_000_s, 40, eps=1e-1)
-    assert modified_fo.r1_factor(mask.f_calc) < 0.011
-    assert fo.r1_factor(f_model) < 0.011
+    assert max(stats.max(), abs(stats.min())) < 0.11
+    # expected electron count: 44
+    assert approx_equal(mask.f_000_s, 44, eps=1)
+    assert modified_fo.r1_factor(mask.f_calc, k) < 0.006
+    assert fo.r1_factor(f_model, k) < 0.006
 
   s = cStringIO.StringIO()
   mask.show_summary(log=s)
@@ -53,11 +56,11 @@ solvent_radius: 1.20
 shrink_truncation_radius: 1.20
 gridding: (45,72,80)
 Total solvent accessible volume / cell = 146.5 Ang^3 [16.3%]
-Total electron count / cell = 40.1
+Total electron count / cell = 43.0
 
 Void  Average coordinates    Volume/Ang^3  n electrons
-   1  ( 0.267, 0.461, 0.672)         73.3         20.0
-   2  (-0.267, 0.539, 0.328)         73.3         20.0
+   1  ( 0.267, 0.461, 0.672)         73.3         21.5
+   2  (-0.267, 0.539, 0.328)         73.3         21.5
 """)
 
   # this bit is necessary until we have constraints, as

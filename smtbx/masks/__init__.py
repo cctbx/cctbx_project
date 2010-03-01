@@ -27,7 +27,6 @@ class mask(object):
               resolution_factor=1/3,
               atom_radii_table=None,
               use_space_group_symmetry=False):
-    self.xray_structure
     if crystal_gridding is None:
       self.crystal_gridding = maptbx.crystal_gridding(
         unit_cell=self.xray_structure.unit_cell(),
@@ -73,11 +72,9 @@ class mask(object):
   def structure_factors(self, max_cycles=10, scale_factor=None):
     """P. van der Sluis and A. L. Spek, Acta Cryst. (1990). A46, 194-201."""
     assert self.mask is not None
-    f_obs = self.observations.as_amplitude_array()
-    sf = xray.structure_factors.from_scatterers(
-      miller_set=f_obs,
-      cos_sin_table=True)
-    self.f_calc = sf(self.xray_structure, f_obs).f_calc()
+    f_obs = self.observations.as_amplitude_array().customized_copy(sigmas=None)
+    self.f_calc = f_obs.structure_factors_from_scatterers(
+      self.xray_structure, algorithm="direct").f_calc()
     if scale_factor is None:
       self.scale_factor = f_obs.quick_scale_factor_approximation(
         self.f_calc, cutoff_factor=0)
@@ -119,7 +116,7 @@ class mask(object):
       for epsilon in xfrange(epsilon_for_min_residual, 0.9, -0.2):
         f_model_ = self.f_model(epsilon=epsilon)
         scale = f_obs.quick_scale_factor_approximation(
-          f_model_, cutoff_factor=0.1)
+          f_model_, cutoff_factor=0)
         residual = flex.sum(flex.abs(
           1/scale * flex.abs(f_obs.data())- flex.abs(f_model_.data()))) \
                  / flex.sum(1/scale * flex.abs(f_obs.data()))
@@ -130,6 +127,7 @@ class mask(object):
           scale_for_min_residual = scale
           epsilon_for_min_residual = epsilon
       #print "epsilon: %.1f" %epsilon_for_min_residual
+      #print "scale: %.4f" %scale_for_min_residual
       self.scale_factor = scale_for_min_residual
       f_model = self.f_model(epsilon=epsilon_for_min_residual)
       f_obs_minus_f_calc = f_obs.phase_transfer(f_model).f_obs_minus_f_calc(
@@ -157,10 +155,10 @@ class mask(object):
     factors to obtain modified structure factors, suitable for refinement
     with other refinement programs such as ShelXL"""
     assert self._f_mask is not None
+    f_obs = self.observations.as_amplitude_array()
     f_mask = self.f_mask()
     f_model = self.f_model()
-    f_obs = self.observations.as_amplitude_array()
-    scale_factor = self.scale_factor
+    scale_factor = f_obs.quick_scale_factor_approximation(f_model, cutoff_factor=0)
     f_obs = f_obs.phase_transfer(phase_source=f_model)
     modified_f_obs = miller.array(
       miller_set=f_obs,
