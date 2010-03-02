@@ -35,6 +35,27 @@ namespace {
     }
   };
 
+  struct nl_array_wrapper
+  {
+    typedef zernike::nl_array<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+
+      class_<w_t>("nl_array", no_init)
+        .def(init<int const&>
+                  ((arg("n_max") )))
+        .def("set_coef", &w_t::set_coef )
+        .def("get_coef", &w_t::get_coef )
+        .def("load_coefs", &w_t::load_coefs)
+        .def("nl", &w_t::nl)
+        .def("coefs", &w_t::coefs)
+       ;
+    }
+  };
+
 
   struct log_factorial_generator_wrapper
   {
@@ -138,6 +159,7 @@ namespace boost_python {
   void wrap_zernike()
   {
     nlm_array_wrapper::wrap();
+    nl_array_wrapper::wrap();
     zernike_polynome_wrapper::wrap();
     zernike_radial_wrapper::wrap();
     log_factorial_generator_wrapper::wrap();

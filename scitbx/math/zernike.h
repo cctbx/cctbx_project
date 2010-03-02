@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <boost/math/special_functions/spherical_harmonic.hpp>
-#include <boost/math/special_functions/bessel.hpp>
 #include <boost/math/special_functions/legendre.hpp>
 #include <boost/math/special_functions/bessel.hpp>
 
@@ -20,8 +19,6 @@
 #include <scitbx/vec3.h>
 
 #include <complex>
-#include <boost/math/special_functions/spherical_harmonic.hpp>
-
 
 
 namespace scitbx { namespace math {
@@ -203,6 +200,142 @@ namespace zernike{
   };
 
 
+  //--------------------------------------------------------------
+  //                ZERNIKE INDEX ARRAY of the NORM
+  //--------------------------------------------------------------
+
+
+  template <typename FloatType = double>
+  class nl_array
+  {
+
+     typedef std::map< double_integer_index<int>,
+                      std::size_t,
+                      double_integer_index_fast_less_than<int> > nl_lookup_map_type;
+
+    public:
+    /* Default constructor */
+    nl_array() {}
+    /* Basic constructor, sets all coefs to zero */
+    nl_array(int const& n_max)
+    {
+      SCITBX_ASSERT (n_max>0);
+      n_max_=n_max;
+      int count=0, n_duplicates=0, nl_count=0;
+      for (int nn=0; nn<=n_max_; nn++){
+        for (int ll=0;ll<=nn;ll++){
+          // restriction on even / odd
+          if (is_even( nn-ll )){
+
+
+            scitbx::af::shared<int> tmp2;
+            // make a lookup table for nl
+            double_integer_index<int> this_nl(nn,ll);
+            nl_.push_back( this_nl );
+            nl_lookup_map_type::const_iterator l = nl_lookup_.find( this_nl );
+
+            if ( l == nl_lookup_.end() ) { // not in list
+                nl_lookup_[ this_nl ] = nl_count;
+            }
+            nl_count++;
+
+          }
+          // if odd, leave it be
+        }
+      }
+    }
+
+
+
+    int find_nl(int const& n, int const& l)
+    {
+       double_integer_index<int> this_nl(n,l);
+       return(find_nl(this_nl));
+    }
+
+
+    int find_nl(double_integer_index<int> const& this_nl )
+    {
+       int nl_location;
+       nl_lookup_map_type::const_iterator l = nl_lookup_.find( this_nl );
+       if (l == nl_lookup_.end()) {
+         nl_location = -1; // !!! negative if not found !!!
+       }
+       else {
+         nl_location = l->second;
+       }
+       return (nl_location);
+    }
+
+
+    bool set_coef(int const& n, int const&l, FloatType const&x )
+    {
+       int this_index = find_nl(n,l);
+       if (this_index>-1){
+         coefs_[ this_index ] = x;
+         return(true);
+       }
+       return(false);
+    }
+
+    FloatType get_coef(int const& n, int const& l)
+    {
+       int this_index = find_nl(n,l);
+       if (this_index>-1){
+         return(coefs_[ this_index ]);
+       }
+       return(0.0);
+    }
+
+
+    scitbx::af::shared< double_integer_index<int> > nl()
+    {
+      return( nl_ );
+    }
+
+
+    scitbx::af::shared< FloatType > coefs()
+    {
+      return( coefs_ );
+    }
+
+    bool load_coefs(scitbx::af::shared< scitbx::af::tiny<int,2> > nl,
+                    scitbx::af::const_ref< FloatType > const& coef)
+    {
+
+       SCITBX_ASSERT(nl.size()==coef.size());
+       SCITBX_ASSERT(nl.size()>0 );
+       int this_one;
+       bool found_it, global_find=true;
+       for (int ii=0;ii<nl.size();ii++){
+         found_it = set_coef(nl[ii][0],nl[ii][1],coef[ii]);
+         if (!found_it){
+           global_find=false;
+         }
+       }
+       return(global_find);
+    }
+
+
+    private:
+      bool is_even(std::size_t value)
+      {
+        std::size_t res;
+        res = 2*(value/2);
+        if (res == value){
+          return(true);
+        }
+        return(false);
+      }
+      
+      nl_lookup_map_type nl_lookup_;
+
+      int n_max_;
+      scitbx::af::shared< FloatType > coefs_;
+      scitbx::af::shared< double_integer_index<int> > nl_;
+      scitbx::af::shared< scitbx::af::shared<int> > nl_index_;
+
+  } ;
 
 
   //--------------------------------------------------------------
@@ -319,7 +452,7 @@ namespace zernike{
     }
 
 
-    bool set_coef(int const& n, int const&l, int const&m, FloatType const&x )
+    bool set_coef(int const& n, int const&l, int const&m, std::complex<FloatType> const&x )
     {
        int this_index = find_nlm(n,l,m);
        if (this_index>-1){
@@ -329,7 +462,7 @@ namespace zernike{
        return(false);
     }
 
-    FloatType get_coef(int const& n, int const& l, int const& m)
+    std::complex<FloatType> get_coef(int const& n, int const& l, int const& m)
     {
        int this_index = find_nlm(n,l,m);
        if (this_index>-1){
@@ -364,13 +497,13 @@ namespace zernike{
     }
 
 
-    scitbx::af::shared< FloatType > coefs()
+    scitbx::af::shared< std::complex<FloatType> > coefs()
     {
       return( coefs_ );
     }
 
     bool load_coefs(scitbx::af::shared< scitbx::af::tiny<int,3> > nlm,
-                    scitbx::af::const_ref< FloatType > const& coef)
+                    scitbx::af::const_ref< std::complex<FloatType> > const& coef)
     {
 
        SCITBX_ASSERT(nlm.size()==coef.size());
@@ -402,7 +535,7 @@ namespace zernike{
 
       int n_max_;
       scitbx::af::shared< nlm_index<int> > indices_;
-      scitbx::af::shared< FloatType > coefs_;
+      scitbx::af::shared< std::complex<FloatType> > coefs_;
       scitbx::af::shared< double_integer_index<int> > nl_;
       scitbx::af::shared< scitbx::af::shared<int> > nl_index_;
 
