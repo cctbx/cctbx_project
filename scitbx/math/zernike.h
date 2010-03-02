@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <boost/math/special_functions/spherical_harmonic.hpp>
+#include <boost/math/special_functions/bessel.hpp>
 #include <boost/math/special_functions/legendre.hpp>
 #include <boost/math/special_functions/bessel.hpp>
 
@@ -19,12 +20,21 @@
 #include <scitbx/vec3.h>
 
 #include <complex>
+#include <boost/math/special_functions/spherical_harmonic.hpp>
+
 
 
 namespace scitbx { namespace math {
 namespace zernike{
 
   using boost::math::spherical_harmonic;
+
+
+
+  //--------------------------------------------------------------
+  //           LOG FACTORIAL PRECOMPUTED LOOKUP TABLES
+  //--------------------------------------------------------------
+
 
   template <typename FloatType = double>
   class log_factorial_generator
@@ -232,6 +242,7 @@ namespace zernike{
             // make a lookup table for nl
             double_integer_index<int> this_nl(nn,ll);
             nl_.push_back( this_nl );
+            coefs_.push_back( 0.0 );
             nl_lookup_map_type::const_iterator l = nl_lookup_.find( this_nl );
 
             if ( l == nl_lookup_.end() ) { // not in list
@@ -288,9 +299,14 @@ namespace zernike{
     }
 
 
-    scitbx::af::shared< double_integer_index<int> > nl()
+    scitbx::af::shared< scitbx::af::tiny<int,2> > nl()
     {
-      return( nl_ );
+      scitbx::af::shared< scitbx::af::tiny<int,2> > result;
+      for(int ii=0;ii<nl_.size();ii++){
+        scitbx::af::tiny<int,2> tmp( nl_[ii].n_, nl_[ii].l_);
+        result.push_back( tmp );
+      }
+      return( result );
     }
 
 
@@ -327,7 +343,7 @@ namespace zernike{
         }
         return(false);
       }
-      
+
       nl_lookup_map_type nl_lookup_;
 
       int n_max_;
@@ -368,22 +384,18 @@ namespace zernike{
         for (int ll=0;ll<=nn;ll++){
           // restriction on even / odd
           if (is_even( nn-ll )){
-
-
             scitbx::af::shared<int> tmp2;
             // make a lookup table for nl
             double_integer_index<int> this_nl(nn,ll);
             nl_.push_back( this_nl );
             nl_lookup_map_type::const_iterator l = nl_lookup_.find( this_nl );
-
+            //std::cout << nn << " " << ll << " " << std::endl;
             if ( l == nl_lookup_.end() ) { // not in list
                 nl_lookup_[ this_nl ] = nl_count;
             }
             nl_count++;
 
-
-
-            for (int mm=0;mm<=ll;mm++){
+            for (int mm=-ll;mm<=ll;mm++){
               tmp2.push_back( count ); // this index has a specific n,l pair
 
               nlm_index<int> this_nlm(nn,ll,mm);
@@ -437,7 +449,6 @@ namespace zernike{
        return(find_nl(this_nl));
     }
 
-
     int find_nl(double_integer_index<int> const& this_nl )
     {
        int nl_location;
@@ -450,7 +461,6 @@ namespace zernike{
        }
        return (nl_location);
     }
-
 
     bool set_coef(int const& n, int const&l, int const&m, std::complex<FloatType> const&x )
     {
@@ -468,9 +478,9 @@ namespace zernike{
        if (this_index>-1){
          return(coefs_[ this_index ]);
        }
-       return(0.0);
+       std::complex<FloatType> tmp(0.0);
+       return(tmp);
     }
-
 
     scitbx::af::shared< int > select_on_nl(int const& n, int const& l)
     {
@@ -480,6 +490,10 @@ namespace zernike{
        return ( nl_index_[ this_index ] );
     }
 
+    scitbx::af::shared< scitbx::af::shared<int> > nl_indices()
+    {
+      return(nl_index_);
+    }
 
     scitbx::af::shared< scitbx::af::tiny<int,3> > nlm()
     {
@@ -490,8 +504,7 @@ namespace zernike{
       return( result );
     }
 
-
-    scitbx::af::shared< scitbx::af::tiny<int,2> > nl()
+    scitbx::af::shared< double_integer_index<int> > nl()
     {
       return( nl_ );
     }
@@ -518,7 +531,6 @@ namespace zernike{
        }
        return(global_find);
     }
-
 
     private:
       bool is_even(std::size_t value)
@@ -629,16 +641,12 @@ namespace zernike{
       return (result);
     }
 
-
     scitbx::af::shared< FloatType > Nnlk()
     {
        return( Nnlk_ );
     }
 
     private:
-
-
-
     int n_;
     int l_;
     scitbx::af::shared< FloatType > Nnlk_;
@@ -676,6 +684,17 @@ namespace zernike{
       result = spherical_harmonic(l_, m_, t, p)*tmp;
       return(result);
     }
+
+    std::complex<FloatType> real_f(FloatType const& r, FloatType const& t, FloatType const& p) // the return value is not real, but it allows for faster computation of a real valued function
+    {
+      //std::cout << r << " " << t << " " << p << std::endl;
+      std::complex<FloatType> result;
+      result = f(r,t,p);
+      if (m_!=0){ result = result*2.0; } // double it up so that we do not have to sum over -m
+      return(result);
+    }
+
+
     private:
     int n_, l_, m_;
     zernike_radial<FloatType> rnl_;
@@ -702,11 +721,36 @@ namespace zernike{
     m_(m),
     n_max_(n_max),
     eps_(1e-12),
-    nlm_(n_max_)
+    nlm_(n_max_),
+    lgf_(n_max_*2+5)
     {
       delta_ = 1.0 / (m-1);
       FloatType x,y,z,r,t,p;
       scitbx::vec3<FloatType> xyz, rtp;
+      scitbx::vec3<int> ijk;
+      // get all indices please
+      scitbx::af::shared< scitbx::af::tiny<int,3> > nlm_ind = nlm_.nlm();
+      // make a log factorial lookup table
+      log_factorial_generator<FloatType> lgf;
+      scitbx::af::shared< zernike_radial<FloatType> > zr;
+      scitbx::af::shared< zernike_polynome<FloatType> > zp;
+
+      // build radial functions
+      scitbx::af::shared< double_integer_index<int> > nl = nlm_.nl();
+      for (int ii=0;ii<nl.size();ii++){
+        zr.push_back( zernike_radial<FloatType>( nl[ii].n(), nl[ii].l(), lgf_ ) );
+      }
+
+      // build array of zernike polynomes
+      for (int ii=0;ii<nlm_ind.size();ii++){
+        int n,m,l,nl_index;
+        n=nlm_ind[ii][0]; l=nlm_ind[ii][1]; m=nlm_ind[ii][2];
+        nl_index = nlm_.find_nl(n,l);
+        zernike_polynome<FloatType> this_zp(n,l,m,zr[nl_index]);
+        zp.push_back( this_zp );
+      }
+
+      int count=0;
       for (int ix=-m;ix<=m;ix++){
         for (int iy=-m;iy<=m;iy++){
           for (int iz=-m;iz<=m;iz++){
@@ -731,13 +775,47 @@ namespace zernike{
             rtp[1]=t;
             rtp[2]=p;
 
+            ijk[0]=ix;
+            ijk[1]=iy;
+            ijk[2]=iz;
+
             xyz_.push_back( xyz );
             rtp_.push_back( rtp );
+            ijk_.push_back( ijk );
+
+            // for each point, make a place holder for the zernike basis function
+            std::vector< std::complex<FloatType> > tmp_result;
+            // loop over all indices nlm and precompute all coefficients
+            if (r<=1.0){
+              for (int ii=0;ii<zp.size();ii++){
+                tmp_result.push_back( zp[ii].f(r,t,p) );
+              }
+            } else {
+              std::complex<FloatType> tmp; //tmp[0]=0.0; tmp[1]=0.0;
+              tmp=tmp*0.0;
+              tmp_result.push_back( tmp ); // when radius bigger then 1
+            }
+            partial_data_.push_back( tmp_result );
           }
         }
       }
+    }
+
+
+    int ijk_to_index(int const& i, int const& j, int const& k)
+    {
+       int result, mm, ii,jj,kk;
+       ii=i+m_;
+       jj=j+m_;
+       kk=k+m_;
+       mm = m_*2+1;
+       result = ii*mm + jj*mm + kk;
 
     }
+
+
+    //std::vector< int > construct_neighbours(
+
 
     scitbx::af::shared< scitbx::vec3<FloatType> > xyz()
     {
@@ -745,28 +823,130 @@ namespace zernike{
     }
 
 
-    void compute_basis_functions()
+
+    bool load_coefs(scitbx::af::shared< scitbx::af::tiny<int,3> > these_nlm,
+                    scitbx::af::const_ref< std::complex<FloatType> > const& coef)
+    {
+       return( nlm_.load_coefs(these_nlm,coef) );
+    }
+
+
+    scitbx::af::shared< std::complex<FloatType> > f()
+    {
+       scitbx::af::shared< scitbx::af::tiny<int,3> > nlm_ind = nlm_.nlm();
+       scitbx::af::shared< std::complex<FloatType> > coefs = nlm_.coefs();
+       scitbx::af::shared< std::complex<FloatType> > result;
+       std::complex<FloatType> tmp;
+       for (int gg=0;gg<partial_data_.size();gg++){
+         std::complex<FloatType> tmp_result=0.0;
+
+         for (int ii=0;ii<partial_data_[gg].size();ii++){
+           tmp = partial_data_[gg][ii]*coefs[ii];
+           tmp_result += tmp;//std::real(tmp) - std::imag(tmp);
+         }
+         result.push_back( tmp_result );
+       }
+       return( result );
+    }
+
+    scitbx::af::shared< FloatType > f_real()
+    {
+       scitbx::af::shared< scitbx::af::tiny<int,3> > nlm_ind = nlm_.nlm();
+       scitbx::af::shared< std::complex<FloatType> > coefs = nlm_.coefs();
+       scitbx::af::shared< FloatType > result;
+       std::complex<FloatType> tmp;
+       for (int gg=0;gg<partial_data_.size();gg++){
+         std::complex<FloatType> tmp_result=0.0;
+
+         for (int ii=0;ii<partial_data_[gg].size();ii++){
+           tmp = partial_data_[gg][ii]*coefs[ii];
+           tmp_result += tmp;
+         }
+         result.push_back( std::real(tmp_result) );
+       }
+       return( result );
+    }
+
+
+
+    scitbx::af::shared< std::complex<FloatType> > coefs()
+    {
+      return( nlm_.coefs() );
+    }
+
+    scitbx::af::shared< scitbx::af::tiny<int,3> > nlm()
+    {
+      return( nlm_.nlm() );
+    }
+
+    scitbx::af::shared< std::complex<FloatType> > scale_knl_coefs_cheating(scitbx::af::shared< scitbx::af::tiny<int,3> > const& nlm,
+                                                                           scitbx::af::shared< std::complex<FloatType> > const& cnlm,
+                                                                           scitbx::af::shared< std::complex<FloatType> > const& cpnlm)
     {
 
-      scitbx::af::shared< scitbx::af::tiny<int,3> > nlm;
-      nlm = nlm_.nlm();
+      scitbx::af::shared< std::complex<FloatType> > result;
+      scitbx::af::shared< scitbx::af::tiny<int,3> > new_nlm;
 
-      scitbx::af::shared< scitbx::af::tiny<int,2> > nl;
-      nl = nlm_.nl();
+      //std::cout << "HIER" << std::endl;
+      // first, we need to select on nl
+      scitbx::af::shared< double_integer_index<int> > nl=nlm_.nl();
+      //std::cout << "DAAR:" << std::endl;
+      scitbx::af::shared< scitbx::af::shared<int> > nl_index=nlm_.nl_indices();
+      FloatType knl;
+      std::complex<FloatType> tmp3, tmp4;
 
-      for (int ii=0;ii<nlm.size();ii++){
+      //std::cout << " INTO LOOP " << std::endl;
+      for (int ii=0;ii<nl.size();ii++){
+        FloatType tmp1=0, tmp2=0;
+        int kkk;
+        //std::cout << nl.size() << std::endl;
+        for (int jj=0;jj<nl_index[ii].size();jj++){
+          kkk = nl_index[ii][jj];
+          //std::cout << kkk << std::endl;
+          tmp3 = cnlm[ kkk ];
+          tmp4 = cpnlm[ kkk ];;
+          tmp1 += std::real(tmp3)*std::real(tmp3) + std::imag(tmp3)*std::imag(tmp3); // Fnlsq for M
+          tmp2 += std::real(tmp4)*std::real(tmp4) + std::imag(tmp4)*std::imag(tmp4); // Fnlsq for Mp
+        }
+        //std::cout << tmp1 << " " << tmp2 << std::endl;
+        knl = std::sqrt(tmp1) / sqrt(tmp2); // scale factor : sqrt(Fnlsq_Mp)/sqrt(Fnlsq_M)
+        // now rescale
+        for (int jj=0;jj<nl_index[ii].size();jj++){
+          kkk = nl_index[ii][jj];
+          new_nlm.push_back( nlm[kkk] );
+          result.push_back( cnlm[kkk]*knl );
+        }
 
       }
 
+
+      // now we have to reoder stuff to get things back in the right order
+      int that_index;
+      scitbx::af::shared< std::complex<FloatType> > final_result(result.size(),0.0);
+      for (int ii=0;ii<nlm.size();ii++){
+        that_index = nlm_.find_nlm( new_nlm[ii][0], new_nlm[ii][1], new_nlm[ii][2] );
+        final_result[that_index]=result[ii];
+      }
+      return( final_result );
     }
+
+
+
 
     private:
       int m_, n_max_;
       FloatType delta_, eps_;
       scitbx::af::shared< scitbx::vec3<FloatType> > xyz_;
       scitbx::af::shared< scitbx::vec3<FloatType> > rtp_;
-      scitbx::af::shared< std::vector<FloatType> > partial_data_;
+      scitbx::af::shared< scitbx::vec3<int> >       ijk_;
+      scitbx::af::shared< scitbx::vec3<int> >       neighbours_;
+
+      scitbx::af::shared< std::vector< std::complex<FloatType> > > partial_data_;
       nlm_array<FloatType> nlm_;
+      log_factorial_generator<FloatType> lgf_;
+      scitbx::af::shared< FloatType > model_;
+
+
   };
 
 
