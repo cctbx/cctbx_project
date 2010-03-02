@@ -18,7 +18,7 @@ def exercise_masks():
     d_min=0.5, anomalous_flag=False)
   fo = mi.structure_factors_from_scatterers(
     xs_ref, algorithm="direct").f_calc().as_amplitude_array()
-  k = flex.random_double()
+  k = 0.05 + 10 * flex.random_double()
   fo = fo.customized_copy(data=fo.data()*k)
   fo2 = fo.f_as_f_sq()
   acetonitrile_sel = xs_ref.label_selection(
@@ -77,7 +77,7 @@ Void  Average coordinates    Volume/Ang^3  n electrons
   # first refine with no mask
   xs = exercise_least_squares(xs, fo2, mask=None)
   xs.set_scatterer_flags(orig_flags)
-  for i in range(2):
+  for i in range(3):
     # compute improved mask/f_mask
     mask = masks.mask(xs, fo2)
     mask.compute(solvent_radius=1.2,
@@ -90,7 +90,7 @@ Void  Average coordinates    Volume/Ang^3  n electrons
   emma_ref = xs_no_sol.select(h_selection, negate=True).as_emma_model()
   match = emma.model_matches(emma_ref, xs.select(
     h_selection, negate=True).as_emma_model()).refined_matches[0]
-  assert approx_equal(match.rms, 0, eps=1e-4)
+  assert approx_equal(match.rms, 0, eps=1e-3)
 
 def exercise_least_squares(xray_structure, fo_sq, mask=None):
   from smtbx.refinement import least_squares
@@ -109,7 +109,7 @@ def exercise_least_squares(xray_structure, fo_sq, mask=None):
   objectives = []
   scales = []
   fo_sq_max = flex.max(fo_sq.data())
-  for i in xrange(2):
+  for i in xrange(3):
     normal_eqns.build_up()
     objectives.append(normal_eqns.objective)
     scales.append(normal_eqns.scale_factor)
