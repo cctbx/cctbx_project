@@ -182,6 +182,13 @@ class pdb_helix (structure_base, group_args) :
       bonded_atoms.append((donor, acceptor))
     return bonded_atoms
 
+def parse_chain_id (chars) :
+  assert len(chars) == 2
+  if chars == "  " :
+    return " "
+  else :
+    return chars.strip()
+
 def parse_helix_records (records) :
   helices = []
   for line in records :
@@ -195,11 +202,11 @@ def parse_helix_records (records) :
       serial=string.atoi(line[7:10]),
       helix_id=line[11:14].strip(),
       start_resname=line[15:18],
-      start_chain_id=line[18:20].strip(),
+      start_chain_id=parse_chain_id(line[18:20]),
       start_resseq=string.atoi(line[21:25]),
       start_icode=line[25],
       end_resname=line[27:30],
-      end_chain_id=line[30:32].strip(),
+      end_chain_id=parse_chain_id(line[30:32]),
       end_resseq=string.atoi(line[33:37]),
       end_icode=line[37],
       helix_class=string.atoi(line[38:40]),
@@ -361,11 +368,11 @@ def parse_sheet_records (records) :
       sheet_id=sheet_id,
       strand_id=string.atoi(line[7:10]),
       start_resname=line[17:20],
-      start_chain_id=line[20:22].strip(),
+      start_chain_id=parse_chain_id(line[20:22]),
       start_resseq=string.atoi(line[22:26]),
       start_icode=line[26],
       end_resname=line[28:31],
-      end_chain_id=line[31:33].strip(),
+      end_chain_id=parse_chain_id(line[31:33]),
       end_resseq=string.atoi(line[33:37]),
       end_icode=line[37],
       sense=sense)
@@ -380,12 +387,12 @@ def parse_sheet_records (records) :
           registration = group_args(
             cur_atom=line[41:45],
             cur_resname=line[45:48],
-            cur_chain_id=line[48:50].strip(),
+            cur_chain_id=parse_chain_id(line[48:50]),
             cur_resseq=string.atoi(line[50:54]),
             cur_icode=line[54],
             prev_atom=line[56:60],
             prev_resname=line[60:63],
-            prev_chain_id=line[63:65].strip(),
+            prev_chain_id=parse_chain_id(line[63:65]),
             prev_resseq=string.atoi(line[65:69]),
             prev_icode=line[69])
         except ValueError :
