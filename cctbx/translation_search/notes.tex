@@ -35,7 +35,7 @@ The weights are the multiplicity of the reflections.
 The minimisation of $Q$ is a standard procedure. First, we rewrite it first in terms of means
 
 \begin{equation*}
-Q = \mean{I_o^2} -2\lambda\mean{I_o I_x} -2\mu\mean{I_o} -2\lambda\mu\mean{I_x} + \lambda^2\mean{I_x^2} + \mu^2
+Q = \mean{I_o^2} -2\lambda\mean{I_o I_x} -2\mu\mean{I_o} +2\lambda\mu\mean{I_x} + \lambda^2\mean{I_x^2} + \mu^2
 \end{equation*}
 
 and then in terms of variances and covariances
@@ -43,12 +43,12 @@ and then in terms of variances and covariances
 \begin{split}
 Q = V(I_o) + \mean{I_o}^2 -2\lambda(\cov{I_o}{I_x} + \mean{I_o}\mean{I_x}) -2\mu\mean{I_o}
 \\
--2\lambda\mu \mean{I_x} + \lambda^2(V(I_x) + \mean{I_x}^2) + \mu^2
++2\lambda\mu \mean{I_x} + \lambda^2(V(I_x) + \mean{I_x}^2) + \mu^2
 \end{split}
 \end{equation*}
 and we then factorize
 \begin{equation*}
-Q = [\mu - \lambda \mean{I_x} - \mean{I_o}]^2 + \underbrace{V(I_o) - 2\lambda\cov{I_o}{I_x} + \lambda^2V(I_x)}_{\displaystyle V(I_x)[\lambda - \cov{I_o}{I_x}]^2 + V(I_o) - \frac{\cov{I_o}{I_x}}{V(I_x)}}
+Q = [\mu + \lambda \mean{I_x} - \mean{I_o}]^2 + \underbrace{V(I_o) - 2\lambda\cov{I_o}{I_x} + \lambda^2V(I_x)}_{\displaystyle V(I_x)\left[\lambda - \frac{\cov{I_o}{I_x}}{V(I_x)}\right]^2 + V(I_o) - \frac{\cov{I_o}{I_x}^2}{V(I_x)}}
 \end{equation*}
 Therefore the minimum of Q is
 \begin{align}
@@ -58,8 +58,8 @@ C(x) &= \frac{\cov{I_o}{I_x}}{\sqrt{V(I_o)V(I_x)}}
 \end{align}
 is the correlation between $I_o$ and $I_x$. This is eq.~(10) written with $F^2$ instead of $F$ in~\cite{J.Navaza:1995}, but in a more recognisable form! Note that it is obtained for
 \begin{align}
-\lambda &= \cov{I_o}{I_x}\\
-\mu &= \lambda\mean{I_x} + \mean{I_o}. 
+\lambda &= \frac{\cov{I_o}{I_x}}{V(I_x)}\\
+\mu &= \mean{I_o} - \lambda\mean{I_x}. 
 \end{align}
 
 Let us now show how to write $C(x)$ in terms of Fourier transforms. First we define
