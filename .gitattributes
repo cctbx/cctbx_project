@@ -121,9 +121,14 @@ cctbx/sgtbx/direct_space_asu/proto/tst_asu.py svneol=native#text/x-python
 cctbx/sgtbx/rational_matrices_point_groups.py -text
 cctbx/sgtbx/reticular_pg_tools.py -text
 cctbx/sgtbx/reticular_twin_laws.py -text
+cctbx/sgtbx/rot_mx_hash.h -text
+cctbx/sgtbx/rt_mx_hash.h -text
 cctbx/sgtbx/show_cosets.py -text
+cctbx/sgtbx/space_group_hash.h -text
 cctbx/sgtbx/sys_abs_equiv.h svneol=native#text/plain
 cctbx/sgtbx/sys_abs_equiv.py svneol=native#text/x-python
+cctbx/sgtbx/tr_group_hash.h -text
+cctbx/sgtbx/tr_vec_hash.h -text
 cctbx/source_generators/flex_fwd_h.py -text
 cctbx/translation_search/notes.tex -text
 cctbx/translation_search/timing.py -text

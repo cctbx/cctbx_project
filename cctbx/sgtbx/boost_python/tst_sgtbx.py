@@ -2219,7 +2219,34 @@ def exercise_tensor_rank_2_constraints():
     a = flex.double(xrange(1,22))
     assert approx_equal(c.independent_curvatures(all_curvatures=a),[12,35,116])
 
+def exercise_hashing():
+  # rt_mx
+  sg = sgtbx.space_group('P 4 2 3')
+  op_set = set([ op for op in sg ])
+  assert len(op_set) == len(sg)
+  for g in sg:
+    assert g in op_set
+
+  # space_group
+  symbol_set = set([ symbol.hall()
+                     for symbol in sgtbx.space_group_symbol_iterator() ])
+  assert len(symbol_set) == 527
+  sg_list = [ sgtbx.space_group(symbol).make_tidy() for symbol in symbol_set ]
+  sg_set = set(sg_list)
+  assert len(sg_set) == len(sg_list)
+  for sg in sg_list:
+    assert sg in sg_set
+
+  sg = sgtbx.space_group('P 2z')
+  sg.expand_smx(sgtbx.rt_mx('-x, y, -z'))
+  try:
+    hash(sg)
+    raise Exception_expected
+  except RuntimeError, e:
+    assert str(e).find("tidy") != -1
+
 def run():
+  exercise_hashing()
   exercise_symbols()
   exercise_tr_vec()
   exercise_rot_mx()
