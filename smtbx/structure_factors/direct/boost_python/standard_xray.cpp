@@ -70,8 +70,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                     af::shared< xray::scatterer<float_type> > const &,
                     xray::scattering_type_registry const &,
                     exp_i_2pi_functor const &>
-               ((arg("n_parameters"),
-                 arg("unit_cell"),
+               ((arg("unit_cell"),
                  arg("space_group"),
                  arg("scatterers"),
                  arg("scattering_type_registry"),
@@ -92,8 +91,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                     sgtbx::space_group const &,
                     af::shared< xray::scatterer<float_type> > const &,
                     xray::scattering_type_registry const &>
-               ((arg("n_parameters"),
-                 arg("unit_cell"),
+               ((arg("unit_cell"),
                  arg("space_group"),
                  arg("scatterers"),
                  arg("scattering_type_registry"))))
