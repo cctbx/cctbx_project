@@ -329,6 +329,21 @@ class _rot_mx_info(boost.python.injector, rot_mx_info):
       self._basis_of_invariant = basis
     return self._basis_of_invariant
 
+  def __str__(self):
+    result = "% i" % self.type()
+    if self.sense() == -1: result += "^%i" % self.sense()
+    result += " |(%i, %i, %i)" % self.ev()
+    return result
+
+class _translation_part_info(boost.python.injector, translation_part_info):
+
+  def __str__(self):
+    result = "+(%s) @(%s) t_l=(%s)" % (self.intrinsic_part(),
+                                       self.origin_shift(),
+                                       self.location_part())
+    return result
+
+
 class _rt_mx(boost.python.injector, ext.rt_mx):
 
   def __getinitargs__(self):
@@ -347,6 +362,12 @@ class _rt_mx(boost.python.injector, ext.rt_mx):
       r[3], r[4], r[5], t[1],
       r[6], r[7], r[8], t[2],
       zero, zero, zero,  one), (4, 4))
+
+  def show_geometrical_elements(self, out=None):
+    if out is None: out = sys.stdout
+    r_info = self.r().info()
+    t_info = translation_part_info(self)
+    print >>out, "%s %s" % (r_info, t_info)
 
 class _search_symmetry_flags(boost.python.injector, ext.search_symmetry_flags):
 
