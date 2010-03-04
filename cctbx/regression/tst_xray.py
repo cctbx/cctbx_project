@@ -1097,7 +1097,22 @@ def exercise_select_on_name_or_chemical_element():
   sel = xs.label_regex_selection("^(O|C)(1|2)$")
   assert tuple(sel) == (1, 1, 0, 1, 0, 0)
 
+def exercise_chemical_formula():
+  cs = crystal.symmetry((10,10,10, 90,90,90), 'hall: P 2 2 3')
+  xs = xray.structure(crystal.special_position_settings(cs),
+                      scatterers=flex.xray_scatterer((
+    xray.scatterer('C1', site=(0,0,0)),
+    xray.scatterer("C2", site=(0.5,0,0)),
+    xray.scatterer("C3", site=(0,0.5,0)),
+    xray.scatterer("O1", site=(0,0,0.5)),
+    xray.scatterer("C4", site=(0.2,0,0)),
+    xray.scatterer("N1", site=(0,0.2,0)),
+    )))
+  assert xs.asu_content() == {'C':4, 'O':1, 'N':1}
+  assert xs.asu_content(omit=set('C')) == {'O':1, 'N':1}
+
 def run():
+  exercise_chemical_formula()
   exercise_select_on_name_or_chemical_element()
   exercise_add_scatterer_insert()
   exercise_replace_sites()

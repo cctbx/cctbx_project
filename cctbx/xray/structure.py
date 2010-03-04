@@ -1282,6 +1282,14 @@ class structure(crystal.special_position_settings):
     return builder.structure
   from_shelx = classmethod(from_shelx)
 
+  def asu_content(self, omit=None):
+    result = {}
+    for sc in self.scatterers():
+      elt = sc.element_symbol()
+      if omit and elt in omit: continue
+      result.setdefault(elt, 0)
+      result[elt] += 1
+    return result
 
 class conservative_pair_proxies(object):
 
