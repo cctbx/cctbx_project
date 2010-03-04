@@ -52,6 +52,7 @@ class memoize(object):
   def __init__(self, func):
     self.cached = {}
     self.func = func
+    self.__doc__ = self.func.__doc__
 
   def __call__(self, *args):
     try:
