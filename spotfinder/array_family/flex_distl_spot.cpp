@@ -187,9 +187,4 @@ namespace scitbx { namespace af { namespace boost_python {
     flex_wrapper<Distl::point>::plain("distl_point");
   }
 
-  void wrap_flex_intxy()
-  {
-    flex_wrapper<spotfinder::distltbx::intxy>::plain("distl_intxy");
-  }
-
 }}} // namespace scitbx::af::boost_python
