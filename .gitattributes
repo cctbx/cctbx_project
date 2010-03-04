@@ -133,7 +133,10 @@ cctbx/sgtbx/tr_group_hash.h -text
 cctbx/sgtbx/tr_vec_hash.h -text
 cctbx/source_generators/flex_fwd_h.py -text
 cctbx/symmetry_search.py -text
+cctbx/symmetry_search/boost_python/SConscript -text
+cctbx/symmetry_search/boost_python/symmetry_search_ext.cpp -text
 cctbx/symmetry_search/tests/tst_from_map.py -text
+cctbx/symmetry_search/translation_refinement.h -text
 cctbx/translation_search/notes.tex -text
 cctbx/translation_search/timing.py -text
 cctbx/uctbx/boost_python/tst_crystal_orientation.py -text
