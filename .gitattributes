@@ -634,6 +634,7 @@ scitbx/math/boost_python/continued_fraction.cpp -text
 scitbx/math/boost_python/exp_functions.cpp svneol=native#text/plain
 scitbx/math/boost_python/least_squares_plane.cpp -text
 scitbx/math/boost_python/numeric_limits.cpp -text
+scitbx/math/boost_python/weighted_covariance.cpp -text
 scitbx/math/boost_python/zernike.cpp -text
 scitbx/math/clustering.py -text
 scitbx/math/continued_fraction.h -text
@@ -660,6 +661,7 @@ scitbx/math/tests/tst_fit_peak.py -text
 scitbx/math/tests/tst_gcd.py svneol=native#text/x-python
 scitbx/math/traits.h -text
 scitbx/math/tst_zernike.py -text
+scitbx/math/weighted_covariance.h -text
 scitbx/math/zernike.h -text
 scitbx/matrix/bidiagonalisation_flops.nb -text
 scitbx/matrix/delta_tensors.h -text
