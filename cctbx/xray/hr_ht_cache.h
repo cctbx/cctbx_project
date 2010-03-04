@@ -1,6 +1,7 @@
 #ifndef CCTBX_XRAY_HR_HT_CACHE_H
 #define CCTBX_XRAY_HR_HT_CACHE_H
 
+#include <cctbx/math/cos_sin_table.h>
 #include <cctbx/sgtbx/miller_ops.h>
 
 namespace cctbx { namespace xray { namespace structure_factors {
@@ -40,7 +41,8 @@ namespace cctbx { namespace xray { namespace structure_factors {
     hr_ht_cache(sgtbx::space_group const& space_group,
                 miller::index<> const& h)
     {
-      init(space_group, h);
+      math::cos_sin_exact<f_t> cos_sin;
+      init(cos_sin, space_group, h);
     }
 
     /// Construct the cache using the functor cos_sin
@@ -50,14 +52,13 @@ namespace cctbx { namespace xray { namespace structure_factors {
                 sgtbx::space_group const& space_group,
                 miller::index<> const& h)
     {
-      init(space_group, h);
-      if (is_centric) {
-        f_h_inv_t = !is_origin_centric ? cos_sin.get(h_inv_t) : 1;
-      }
+      init(cos_sin, space_group, h);
     }
 
     /// Implementation of the constructors
-    void init(sgtbx::space_group const& space_group,
+    template <class CosSinType>
+    void init(CosSinType const &cos_sin,
+              sgtbx::space_group const& space_group,
               miller::index<> const& h)
     {
       ltr_factor = space_group.n_ltr();
@@ -76,6 +77,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
         groups.push_back(hr_ht_group<f_t>(
           h * s.r(),
           static_cast<f_t>(h * s.t()) / t_den));
+      }
+      if (is_centric) {
+        f_h_inv_t = !is_origin_centric ? cos_sin(h_inv_t) : 1;
       }
     }
 
