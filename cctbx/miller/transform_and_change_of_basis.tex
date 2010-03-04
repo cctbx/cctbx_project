@@ -1,165 +1,130 @@
 \documentclass[11pt]{article}
 \usepackage{cctbx_preamble}
 \usepackage{amscd}
+\usepackage{latexsym}
+\usepackage{listings}
+\lstset{language=Python,tabsize=2,columns=spaceflexible}
 
-\title{Transform / Change of Basis\\of\\Electron Density / Structure Factors}
+\title{Change of Basis\\of\\Electron Density and Structure Factors}
 \author{\lucjbourhis}
 \date{\today}
 
 \begin{document}
 \maketitle
 
-\section{Transform}
-
-Let us consider an electron density $\rho(x)$ and an affine operator $\sym{R}{t}$ transforming $x$. Then the transform of the former by the latter is $\rho(\sym{R}{t}^{-1}x)$. This is a classic if at first counter-intuitive result. The transform of $\rho$ must indeed take the value $\rho(x)$ at the point $\sym{R}{t}x$ (most easily visualised in 1 dimension on the special case of a translation $x \mapsto x+\tau$ by looking at the graph of $\rho$: that graph is moved along the $x$-axis by a amount $\tau$).
-
-Borrowing the notation from group theory, we will denote the transform of $\rho$ by
-\begin{equation}
-\rho^{\sym{R}{t}}(x) = \rho(\sym{R}{t}^{-1}x)
-\label{eqn:rho:transform}
-\end{equation}
-
-Let us now find the equivalent of \eqnref{rho:transform} for the Fourier transform $F$ of $\rho$. From now on, we will only consider the following case: $\sym{R}{t}$ leaves the unit cell $U$ invariant.
-
-Then\footnote{It is most natural in crystallography to represent any position $x$ by a column vector and any miller index $h$ by a row vector (mathematically speaking $h$ is in the reciprocal space of $x$ and therefore $h$ is really a linear form). Therefore the scalar product $h.x$ reads like the mere matrix product $hx$ and the operator relation $h.Rx = R^Th.x$ is the trivial matrix product $hRx$ interpreted in two ways using associativity.}
-\begin{align}
-F^{\sym{R}{t}}(h) &= \int_U \rho(\sym{R}{t}^{-1}x) e^{i2\pi hx} d^3x ; \nonumber \\
-&= \int_{\sym{R}{t}U} \rho(y) e^{i2\pi (hRx + ht)} d^3x ;\nonumber\\
-\intertext{with the change of variable $y = \sym{R}{t}^{-1}x$ and then}
-F^{\sym{R}{t}}(h) &= F(hR) e^{i2\pi ht}
-\end{align}
-with the invariance of $U$.
-
-The \cctbx\ does not implement such transforms of the structure factors. But it implements the other side of the coin: changes of basis.
-
 \section{Change of basis}
 
-Let us consider the change of basis transforming the old basis\footnote{We should actually be talking about a frame, i.e. an origin $\omega$ and a basis of vectors $(e_1, e_2, e_3)$ but the \cctbx\ calls it a basis.} of real space $(\omega, e_1, e_2, e_3)$ into the new basis $(\omega', e'_1, e'_2, e'_3)$ through the operator $\sym{R}{t}$. A well-known result is that if $x$ is the coordinate vector of a position w.r.t. $(e_1, e_2, e_3)$ and $x'$ the coordinate vector of the same position w.r.t. $(e'_1, e'_2, e'_3)$, then\footnote{Here, by an abuse of notation, we identify the operator on the vectors $e_i$ and the operator on the coordinate vector $x$.}
+\subsection{Transformations}
+
+Let us consider two frames of the real space, $\mathcal{R}=(\omega, e_1, e_2, e_3)$ and $\mathcal{R}'=(\omega', e'_1, e'_2, e'_3)$, where $\omega$ and $\omega'$ are the origins and $\{e_i\}$ and $\{e'_j\}$ are the basis vectors. The 3-vector of coordinates $x$ and $x'$ of a site in respectively $\mathcal{R}$ and $\mathcal{R}'$ are related by
 \begin{equation}
-x = \sym{R}{t}x'.
+x' = \sym{R}{t}x.
 \label{eqn:change::of::basis::position}
 \end{equation}
-Reminder:
-\begin{align}
-\omega' + \sum_j x'_j e'_j = \omega + t + \sum_j x'_j \sum_i R_{ij} e_i = \omega + \sum_i (\underbrace{t_i + \sum_j R_{ij} x'_j}_{x_i \text{ by definition}})e_i. \nonumber
-\end{align}
+where $\sym{R}{t}$ is the change-of-basis operator from $\mathcal{R}$ to $\mathcal{R}'$. We will only consider the case where $\sym{R}{t}$ is orthogonal and the unit cell $U$ is invariant under $R$.
+
 A corollary is the corresponding law for the miller indices,
 \begin{equation}
-h' = h\sym{R}{t}.
+h' = hR^{-1}.
+\label{eqn:change::of::basis::miller::index}
 \end{equation}
-Indeed, since scalar product should be independent of the basis, $h'$ must statisfy $h'\Delta x' = h\Delta x$ for any vector $\Delta x'$ (as opposed to the point $x$\footnote{Let's not forget the positions make an affine space whereas the miller indices are only the reciprocal of the associated vector space and of course \eqnref{change::of::basis::position} results in $\Delta x = R \Delta x'$}). The \cctbx\ implements this formula in C++ by operator overloading.
+and therefore
+\begin{equation}
+h'x' = hx + h't
+\label{eqn:change::of::basis::hx}
+\end{equation}
+Indeed, since scalar product should be independent of the basis, $h'$ must statisfy\footnote{It is most natural in crystallography to represent any position $x$ by a column vector and any miller index $h$ by a row vector (mathematically speaking $h$ is in the reciprocal space of $x$ and therefore $h$ is really a linear form). Therefore the scalar product $h.x$ reads like the mere matrix product $hx$ and the operator relation $h.Rx = R^Th.x$ is the trivial matrix product $hRx$ interpreted in two ways using associativity.} $h'\Delta x' = h\Delta x$ for any vector $\Delta x'$ (as opposed to the point\footnote{Let's not forget the positions make an affine space whereas the miller indices are only the reciprocal of the associated vector space and of course \eqnref{change::of::basis::position} results in $\Delta x' = R \Delta x$} $x$).
 
-In the previous section, we considered transforms where the old $x$ is moved onto the new $x'$ as $x' = \sym{R}{t} x$. Thus a change of basis $\sym{R}{t}$ corresponds to a transform $\sym{R}{t}^{-1}$. As a result, it would seem that the \cctbx\ code handling a change of basis can trivially be used to generate a transform by simply passing as the change-of-basis operator the inverse of the transform we want. There is an implementation subtlety though discussed at the end of this section.
-
-Let us now work out the formula relating the structure factors before and after the change of basis. If $F(h)$ is the structure factor in the old basis, we will denote the structure factor in the new basis as $F'(h)$. With the remark in the previous paragraph,
+The transformation law for the electron density $\rho(x)$ and $\rho'(x')$ in the respective frames 
+$\mathcal{R}$ and $\mathcal{R}'$ reads
+\begin{equation}
+\rho'(x') = \rho(x).
+\label{eqn:change::of::basis::rho}
+\end{equation}
+The transformation for the structure factors can then be deduced from it,
 \begin{align}
-F'(h) &= F^{\sym{R}{t}^{-1}}(h) = F(hR^{-1}) e^{i2\pi h(-R^{-1}t)}\nonumber\\
-\intertext{and therefore}
-F'(hR) &= F(h)e^{-i2\pi ht}. \label{eqn:change::basis::F}
+F'(h') &= \int_U \rho(x') e^{i2\pi h'x'}d^3x', \nonumber\\
+&= e^{i2\pi h' t}  \int_{\sym{R}{t}^{-1}U} \rho(x) e^{i2\pi h x} d^3x, \nonumber\\
+\intertext{by using \eqnref{change::of::basis::rho,change::of::basis::hx} and the Jacobian of $x \mapsto \sym{R}{t}x$ being 1 since $R$ is orthogonal. Thus the invariance of $U$ and the periodicity of $\rho$ results in}
+F'(h') &= e^{i2\pi h't} F(h).
+\label{eqn:change::of::basis::F}\\
+\intertext{or equivalently with \eqnref{change::of::basis::miller::index}}
+F'(h) &= e^{i2\pi ht} F(hR)
+\label{eqn:change::of::basis::F::bis}
 \end{align}
-That is the formula implemented in the \cctbx\ in \code{sym\_equiv.h}, c.f. \code{sym\_equiv\_index\linebreak[0]::phase\_eq} and its use in \code{change\_basis.h}. It is particularly convenient since a \code{miller\linebreak[0].array} stores $h$ and $F(h)$ in two parallel arrays. By looping over the both of them at the same time, one can compute and immediately store the new miller index $hR$ and the value $F'$ for that new miller index. However it means that the ordering of the original and new data are related as follow
+
+\subsection{Implementation}
+
+\Eqnref{change::of::basis::F} is the formula implemented in the \cctbx\ in \code{sym_equiv.h}, c.f. \code{sym_equiv_index::phase_eq} and its use in \code{change_basis.h}. It is particularly convenient since a \code{miller.array} stores $h$ and $F(h)$ in two parallel arrays. By looping over the both of them at the same time, one can compute and immediately store the new miller index $h'$ and the value $F'(h')$ for that new miller index. However it means that the ordering of the original and new data are related as follow
 \begin{equation}
 \begin{CD}
 \ldots @. \ldots\\
-F(h_{i-1}) @= F'(h_{i-1}R)\\
-F(h_i) @= F'(h_iR)\\
-F(h_{i+1}) @= F'(h_{i+1}R)\\
+F(h_{i-1}) @= F'(h'_{i-1})\\
+F(h_i) @= F'(h'_i)\\
+F(h_{i+1}) @= F'(h'_{i+1})\\
 \ldots @. \ldots
 \end{CD}
 \label{eqn:miller::array::change::basis}
 \end{equation}
 
-That leads to a slight subtlety to implement a transform as discussed in section 1 with a change of basis. Indeed, most often we would like the memory layout
+Once the array $\{F'(h')\}$ is computed, one can move back to the more natural memory layout
 \begin{equation}
 \begin{CD}
 \ldots @. \ldots\\
-F(h_{i-1}) @= F^{\sym{R}{t}}(h_{i-1})\\
-F(h_i) @= F^{\sym{R}{t}}(h_i)\\
-F(h_{i+1}) @= F^{\sym{R}{t}}(h_{i+1})\\
+F(h_{i-1}) @= F'(h_{i-1})\\
+F(h_i) @= F'(h_i)\\
+F(h_{i+1}) @= F'(h_{i+1})\\
 \ldots @. \ldots
 \end{CD}
 \label{eqn:miller::array::transform}
 \end{equation}
-One must therefore, after computing the array of $F'(hR^{-1})$, put it back to have the miller indexes $h$ in the same order as the original array of $F(h)$. Fortunately, this is a one-liner in the \cctbx\ and the whole code reduces to:
-\begin{verbatim}
+with the following one-liner
+\begin{lstlisting}
 # op is (R|t) and f is a miller.array
 original, transform = f.common_set(
-  f.change_basis(sgtbx.change_of_basis_op(op.inverse()))
-\end{verbatim}
+	f.change_basis(sgtbx.change_of_basis_op(op))
+\end{lstlisting}
+if need be.
 
+\section{Invariance and symmetry cross-correlation: an application}
 
-\section{Symmetry cross-correlation: an application}
+The following questions are recurrent after any method processing a structure in P1: is the structure invariant under an operator $\sym{R}{t}$ in some ``new'' basis which is not necessarily the ``old'' one we have done that processing in? That is true of the dual space solution method (Phenix.hyss, ShelXD) and also of charge flipping. In practice, the change of basis to consider from the old to the new basis is just a change of origin. The goal is to assess how well this symmetry holds and to find the origin shift.
 
-The following questions is recurrent after any method processing a structure in P1: is the structure invariant under an operator $\sym{R}{t}$ in some ``new'' basis which is not necessarily the ``old'' one we have done that processing in? That is true of the dual space solution method (Phenix.hyss, ShelXD) and also of charge flipping. In practice, the change of basis to consider from the old to the new basis is just a change of origin.
-
-We want to compare $\rho$ to its transform by $\sym{R}{t}$. One method is to work in the old basis. What is that transform in that basis? We need to do in this order
-\begin{enumerate}
-\item a change of origin $\sym{I}{s}$, i.e. shifting the old origin by $s$ to get the new origin,
-\item a transform by the operator $\sym{R}{t}$,
-\item the reverse change of basis to the first step to get back to the old origin.
-\end{enumerate}
-By using the results from the previous sections, the electron density transforms as
-\begin{equation*}
-\begin{CD}
-\rho(x)                                  @>{\text{c.b. } \sym{I}{s}}>>   \rho(x+s)                               \\
-@A{\text{compare to}}AA                                      @VV{\text{transform } \sym{R}{t}}V         \\
-\rho(\sym{R}{t}^{-1}(x-s) + s)   @<<{\text{c.b. } \sym{I}{-s}}< \rho(\sym{R}{t}^{-1}x + s)
-\end{CD}
-\end{equation*}
-whereas the structure factors transform as
-\begin{equation*}
-\begin{CD}
-F(h)                                  @>{\text{c.b. } \sym{I}{s}}>>   F(h)e^{-i2\pi hs}            \\
-@A{\text{compare to}}AA                                      @VV{\text{transform } \sym{R}{t}}V    \\
-F(hR)e^{-i2\pi hRs}e^{i2\pi ht}e^{i2\pi hs}   @<<{\text{c.b. } \sym{I}{-s}}< F(hR)e^{-i2\pi hRs}e^{i2\pi ht}
-\end{CD}
-\end{equation*}
-So the transforms read
-\begin{align}
-\rho^\#(x) &= \rho(\sym{R}{t}^{-1}(x - (I-R)s))\\
-F^\#(h) &= F^{\sym{R}{t}}(h) e^{i2\pi h(I-R)s} \label{eqn:translation::search::F}
-\end{align}
-Let us therefore introduce
+The key change of variable to consider is
 \begin{equation}
-d = (I-R)s. \label{eqn:def::d}
+x' - \omega = \sym{R}{t}(x - \omega),
 \end{equation}
-
-How to compare $\rho$ and $\rho^\#$ ? One possibility is to compute their overlap
-\begin{align}
-C(s) &= \int_U \rho(x) \rho^\#(x) d^3x  \label{eqn:cross::correlation::rho::s}\\
-&= \int_U \rho(x) \rho(\sym{R}{t}^{-1}(x - d))d^3x = CC(d). \label{eqn:cross::correlation::rho::d}
-\end{align}
-$CC$ is therefore the cross-correlation%
-\footnote{The cross-correlation of $\rho_1$ with $\rho_2$ is defined as
-\begin{align}
-CC(d) &= \int \rho_1(x) \rho_2(x+d)d^3x = \int \rho_1(x-d) \rho_2(x) d^3x \\
-\intertext{i.e.}
-CC &= \rho_1(-x) * \rho_2(x)
-\end{align}
-where $*$ denotes the convolution. It should be noted that the cross-correlation of $\rho_2$ with $\rho_1$ is not equal to the cross-correlation of $\rho_1$ with $\rho_2$.} 
-of $\rho^{\sym{R}{t}}$ with $\rho$.
-The goal is now to find the value of $d$ which maximises $CC(d)$, the idea being that the bigger the overlap, the more similar the density and its transform must be. There are two problems here:
-\begin{itemize}
-\item first, we want to compute $s$, not $d$, but in all practical cases $R-I$ is not invertible and therefore \eqnref{def::d} does not have an unique solution; but at least we can determine all of them;
-\item then, in practice we only have a sample of $\rho$ on a grid; thus the computation of the overlap integral scales like the number of point on the grid and then we need to compute it for $d$ spanning the grid; thus this is an $O(n^2)$ algorithm.
-\end{itemize}
-But since $CC$ is a convolution, we can compute it using Fast Fourier Transform,
-\newcommand{\tmp}{F(h)\overline{F^{\sym{R}{t}}(h)}}
+where $\omega$ is the sought origin. So the change-of-basis operator is $\sym{R}{t + (I-R)\omega}$.
+The sought symmetry is realised if the following invariance holds\footnote{i.e. $\rho = \rho'$, as functions.}
 \begin{equation}
-CC = \fourier{\tmp}\label{eqn:CC:as::FFT}
+\rho(x) = \rho(x').
 \end{equation}
-where the bar denotes complex conjugation. Now the computation of all the $\tmp$ is $O(n)$ whereas the FFT is $O(n\log n)$ which results in a dramatic improvement.
-
-Remark: we could have arrived at \eqnref{CC:as::FFT} in a different way,
+How well this is realised can be quantified by considering the overlap of those two functions
 \begin{align}
-C(s) &= \sum_h F(h)\overline{F^\#(h)} \label{eqn:cross::correlation::F}\\
-\intertext{by rewriting \eqnref{cross::correlation::rho::s} using Parseval theorem and then}
-&= \sum_h F(h) \overline{F^{\sym{R}{t}}(h)} e^{-i2\pi hd}
+c(\omega) &= \int_U \rho(x) \rho(x') d^3x.\\
+\intertext{The bigger $c(\omega)$, the better the symmetry and therefore one should find the value of $\omega$ maximising $c(\omega)$. Parseval theorem gives its equivalent in Fourier space,}
+c(\omega) &= \sum_h F(h) \overline{F'(h)}. \nonumber\\
+\intertext{Then, with \eqnref{change::of::basis::F::bis}, }
+c(\omega) = c(d) &= \sum_h F(h) \overline{F(hR)} e^{-i 2\pi h d}, 
 \end{align}
-with \eqnref{translation::search::F}. The \eqnref{cross::correlation::F} cannot be used in practice either because that direct summation for each grid point $d$ is $O(n^2)$ too.
+by denoting $d=t + (I-R)\omega$. This formula is a Fourier transform, which provides an efficient way to compute $c(d)$ on a grid over the entire unit cell to search for a maximum. It also features $F(hR)$ which is the result of applying the change-of-basis operator $\sym{R}{0}$ to $F$. Thus, the \code{cctbx} lets us compute $c(d)$ very easily:
+\begin{lstlisting}
+# The rotation part r is a sgtbx.rot_mx and f is a miller.array
+original, transform = f.common_set(
+	f.change_basis(sgtbx.change_of_basis_op(sgtbx.rt_mx(r)))
+cc = original * transform.conjugate().data() / original.sum_sq()
+cc_map = cc.fft_map(
+	symmetry_flags=maptbx.use_space_group_symmetry,
+	resolution_factor=cc.d_min()) # e.g.
+\end{lstlisting}
 
-$CC$ is the technique used in superflip. A related method used in macro-molecular crystallography and in \code{smtbx.ab\_initio.charge\_flipping} is the fast correlation function~\cite{J.Navaza:1995}: c.f. \code{cctbx.translation\_search} and the associated \href{file://../translation_search/notes.pdf}{notes}.
 
-\bibliography{cctbx_references}
+As a side note, in real space, that Fourier transform of the product $F(h) \overline{F(hR)}$ is the convolution,
+\begin{align}
+c(d) &= \int_U \rho(d-x) \rho(-R^{-1}x) d^3x \nonumber\\
+\intertext{which can be recast as a cross-correlation,}
+&= \int_U \rho(x+d) \rho(R^{-1}x) d^3x. \nonumber
+\end{align}
+
 
 \end{document}  
