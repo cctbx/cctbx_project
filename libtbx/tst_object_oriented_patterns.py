@@ -42,6 +42,7 @@ def exercise_injector():
 def exercise_memoize():
   diagnostic = []
   def f(x):
+    """ Documentation for function f """
     diagnostic.append('+')
     return x+1
 
@@ -62,13 +63,14 @@ def exercise_memoize():
     pass
   else:
     raise Exception_expected
-
+  assert mf.__doc__ == """ Documentation for function f """
 
 
   class foo(object):
     def __init__(self, a):
       self.a = a
     def f(self, x):
+      """ Documentation for method f """
       diagnostic.append('+')
       return self.a + x
     f = oop.memoize_method(f)
@@ -93,6 +95,7 @@ def exercise_memoize():
   assert diagnostic == ['+']*4
   assert o1.f(1) == 2
   assert diagnostic == ['+']*4
+  assert o1.f.__doc__ == " Documentation for method f "
 
   class _foo_extension(oop.injector, foo):
     def g(self, n):
