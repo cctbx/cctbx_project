@@ -324,6 +324,54 @@ a.foo(1) @ test.py(13) main
       return f(O, *args, **kwds)
     return log_wrapper
 
+
+class current_process_status(object):
+  """
+  An interface to the *NIX utility 'ps' to get info on the current process
+  (only tested on MacOS X till further notice, so beware dragons)
+
+  SYNOPSIS:
+    ps = current_process_status() # <1>
+    .....
+    print ps['RSS'] # resident size at the time of <1>
+    .....
+    ps.refresh() # <2>
+    .....
+    print ps['%CPU'] # % CPU at the time of <2>
+  """
+  conversions = {
+    'RSS': int,
+    'VSZ': int,
+    '%CPU': float,
+    }
+
+  def __init__(self):
+    self.id = str(os.getpid())
+    self.refresh()
+
+  def refresh(self):
+    import subprocess
+    ps = subprocess.Popen(
+      args=['/bin/ps', 'cux'],
+      stderr=subprocess.STDOUT,
+      stdout=subprocess.PIPE)
+    cols = dict(
+      [ (field, i) for i, field in enumerate(ps.stdout.readline().split()) ])
+    i_pid = cols['PID']
+    for li in ps.stdout:
+      field = li.split()
+      if field[i_pid] == self.id: break
+    else:
+      return
+    self.field = dict(
+      [ (name, field[i_col]) for name, i_col in cols.iteritems() ])
+    for name, conv in self.conversions.iteritems():
+      self.field[name] = conv(self.field[name])
+
+  def __getitem__(self, field_name):
+    return self.field[field_name]
+
+
 if (__name__ == "__main__"):
   def exercise_varnames(a, b, c):
     d = 0
