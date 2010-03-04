@@ -596,6 +596,12 @@ class rec(object):
     result.reshape(flex.grid(self.n))
     return result
 
+  def as_flex_int_matrix(self):
+    assert flex is not None
+    result = flex.int(self.elems)
+    result.reshape(flex.grid(self.n))
+    return result
+
   def extract_block(self, stop, start=(0,0), step=(1,1)):
     assert 0 <= stop[0] <= self.n[0]
     assert 0 <= stop[1] <= self.n[1]
