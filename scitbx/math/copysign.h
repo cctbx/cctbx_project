@@ -15,9 +15,11 @@ namespace scitbx { namespace math {
 #if defined(__GNUC__) && __GNUC__ == 4
   #include <math.h>
   namespace scitbx { namespace math {
+    inline
     double copysign(double x, double y) {
       return ::copysign(x,y);
     }
+    inline
     float copysign(float x, float y) {
       return ::copysignf(x,y);
     }
@@ -28,9 +30,11 @@ namespace scitbx { namespace math {
   #include <boost/math/special_functions/sign.hpp>
   namespace scitbx { namespace math {
     // VC++ doesn't provide the float version
+    inline
     double copysign(double x, double y) {
       return ::_copysign(x,y);
     }
+    inline
     float copysign(float x, float y) {
       return boost::math::copysign(x,y);
     }
