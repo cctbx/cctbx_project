@@ -6,132 +6,11 @@
 #include <cctbx/sgtbx/space_group.h>
 #include <cctbx/sgtbx/miller_ops.h>
 #include <cctbx/maptbx/utils.h>
+#include <cctbx/miller/f_calc_map.h>
 #include <scitbx/array_family/versa_plain.h>
 #include <boost/scoped_array.hpp>
 
 namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
-
-  class hermitian_accessor
-  {
-    public:
-      typedef miller::index<> index_type;
-      typedef miller::index<>::value_type index_value_type;
-
-      struct index_1d_flag_conj
-      {
-        long index_1d;
-        bool is_conj;
-      };
-
-      hermitian_accessor() {}
-
-      hermitian_accessor(bool anomalous_flag,
-                         miller::index<> const& n,
-                         bool two_n_minus_one_flag)
-      :
-        anomalous_flag_(anomalous_flag),
-        range_(two_n_minus_one_flag ? miller::index<>(2*n-1) : n)
-      {
-        if (!anomalous_flag_) range_[2] = n[2];
-      }
-
-      std::size_t
-      size_1d() const { return range_.product(); }
-
-      index_value_type
-      operator[](std::size_t i) const { return range_[i]; }
-
-      bool
-      anomalous_flag() const { return anomalous_flag_; }
-
-      index_1d_flag_conj
-      operator()(miller::index<> h) const
-      {
-        miller::index<> i3d;
-        index_1d_flag_conj result;
-        result.index_1d = -1;
-        result.is_conj = false;
-        if (!anomalous_flag_) {
-          if (h[2] < 0) {
-            h = -h;
-            result.is_conj = true;
-          }
-          for(std::size_t i=0;i<2;i++) {
-            i3d[i] = maptbx::h_as_ih_exact(h[i], range_[i], false);
-          }
-          i3d[2] = maptbx::h_as_ih_exact(h[2], range_[2], true);
-        }
-        else {
-          for(std::size_t i=0;i<3;i++) {
-            i3d[i] = maptbx::h_as_ih_exact(h[i], range_[i], false);
-          }
-        }
-        if (i3d.min() < 0) return result;
-        // Manually optimized for best performance.
-        result.index_1d = (i3d[0] * range_[1] + i3d[1]) * range_[2] + i3d[2];
-        return result;
-      }
-
-    protected:
-      bool anomalous_flag_;
-      miller::index<> range_;
-  };
-
-  // Class for accessing the 3d array of f_calc.
-  template <typename FloatType>
-  class f_calc_map
-  {
-    public:
-      typedef std::complex<FloatType> complex_type;
-      typedef af::versa_plain<complex_type, hermitian_accessor>
-                data_array_type;
-
-      f_calc_map() {}
-
-      f_calc_map(bool anomalous_flag,
-                 miller::index<> const& abs_range)
-      :
-        data_(hermitian_accessor(anomalous_flag, abs_range, true))
-      {}
-
-      bool
-      anomalous_flag() const { return data_.accessor().anomalous_flag(); }
-
-      void import(af::const_ref<miller::index<> > const& miller_indices,
-                  af::const_ref<complex_type> const& f_calc)
-      {
-        CCTBX_ASSERT(miller_indices.size() == f_calc.size());
-        for(std::size_t i=0;i<f_calc.size();i++) {
-          set(miller_indices[i], f_calc[i]);
-        }
-      }
-
-      complex_type
-      operator()(miller::index<> const& h) const
-      {
-        hermitian_accessor::index_1d_flag_conj ic = data_.accessor()(h);
-        if (ic.index_1d < 0) return complex_type(0);
-        if (ic.is_conj) return std::conj(data_[ic.index_1d]);
-        return data_[ic.index_1d];
-      }
-
-    protected:
-      void
-      set(miller::index<> const& h, complex_type const& val)
-      {
-        hermitian_accessor::index_1d_flag_conj ic = data_.accessor()(h);
-        CCTBX_ASSERT(ic.index_1d >= 0);
-        if (ic.is_conj) data_[ic.index_1d] = std::conj(val);
-        else            data_[ic.index_1d] =           val;
-        if (anomalous_flag() || h[2] != 0) return;
-        ic = data_.accessor()(-h);
-        CCTBX_ASSERT(ic.index_1d >= 0);
-        if (ic.is_conj) data_[ic.index_1d] =           val;
-        else            data_[ic.index_1d] = std::conj(val);
-      }
-
-      data_array_type data_;
-  };
 
   // Class for accumulating the results of the summations.
   template <typename FloatType>
@@ -219,7 +98,7 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
   // ftil = f_calc(hr) * exp(2*pi*i*ht)
   template <typename FloatType>
   void set_ftilde(sgtbx::space_group const& space_group,
-                  f_calc_map<FloatType> const& fc_map,
+                  miller::f_calc_map<FloatType> const& fc_map,
                   miller::index<> const& h,
                   miller::index<>* hs,
                   std::complex<FloatType>* fts)
@@ -227,7 +106,7 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     for(std::size_t i=0;i<space_group.order_p();i++) {
       sgtbx::rt_mx s = space_group(i);
       hs[i] = h * s.r();
-      fts[i] = fc_map(hs[i]) * std::polar(1.,
+      fts[i] = fc_map[hs[i]] * std::polar(1.,
         2 * (h * s.t()) * scitbx::constants::pi / s.t().den());
     }
   }
@@ -253,7 +132,7 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     af::const_ref<miller::index<> > const& miller_indices,
     af::const_ref<FloatType> const& m,
     af::const_ref<std::complex<FloatType> > const& f_part,
-    f_calc_map<FloatType> const& p1_f_calc,
+    miller::f_calc_map<FloatType> const& p1_f_calc,
     summation_accumulator<FloatType>& sum)
   {
     CCTBX_ASSERT(m.size() == miller_indices.size());
@@ -329,7 +208,7 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     af::const_ref<miller::index<> > const& miller_indices,
     af::const_ref<FloatType> const& m,
     af::const_ref<std::complex<FloatType> > const& f_part,
-    f_calc_map<FloatType> const& p1_f_calc,
+    miller::f_calc_map<FloatType> const& p1_f_calc,
     summation_accumulator<FloatType>& sum)
   {
     CCTBX_ASSERT(m.size() == miller_indices.size());

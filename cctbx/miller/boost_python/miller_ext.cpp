@@ -22,6 +22,7 @@ namespace cctbx { namespace miller { namespace boost_python {
   void wrap_phase_transfer();
   void wrap_phase_integrator();
   void wrap_sym_equiv();
+  void wrap_f_calc_map();
   // miller_lookup_utils
   void wrap_lookup_tensor();
   void wrap_local_neighbourhood();
@@ -66,6 +67,7 @@ namespace {
     wrap_merge_equivalents();
     wrap_phase_integrator();
     wrap_phase_transfer();
+    wrap_f_calc_map();
 
     wrap_lookup_tensor();
     wrap_local_neighbourhood();

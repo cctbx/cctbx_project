@@ -88,7 +88,9 @@ cctbx/maptbx/tst_real_space_refinement_simple.py svneol=native#text/x-python
 cctbx/maptbx/tst_real_space_target_and_gradients.py -text
 cctbx/math/SConscript -text
 cctbx/math/time_trigonometry.cpp -text
+cctbx/miller/boost_python/f_calc_map.cpp -text
 cctbx/miller/equivalent_reflection_merging.tex -text
+cctbx/miller/f_calc_map.h -text
 cctbx/miller/transform_and_change_of_basis.tex -text
 cctbx/regression/random_generator_state.pickle -text
 cctbx/regression/structure_ideal.pickle -text

@@ -580,7 +580,24 @@ def exercise_phase_transfer():
   assert approx_equal(tuple(flex.abs(t)), flex.abs(a))
   assert approx_equal(tuple(flex.arg(t, True)), (-170,90))
 
+def exercise_f_calc_map():
+  i = flex.miller_index((   (1,1,0), (-1,-1,0), (1,2,3), (3,2,1) ))
+  f = flex.complex_double((    1+1j,      2+2j,     3+3j,   4+4j ))
+  f_map = miller.f_calc_map(i, f, anomalous_flag=True)
+  assert f_map[(1,1,0)] == 1+1j
+  assert f_map[(-1,-1,0)] == 2+2j
+  assert f_map[(1,2,3)] == 3+3j
+  assert f_map[(3,2,1)] == 4+4j
+  assert f_map[(2,2,2)] == 0
+  f_map = miller.f_calc_map(i, f, anomalous_flag=False)
+  assert f_map[(1,1,0)] == 2-2j
+  assert f_map[(-1,-1,0)] == 2+2j
+  assert f_map[(1,2,3)] == 3+3j
+  assert f_map[(3,2,1)] == 4+4j
+  assert f_map[(-1,-3,-5)] == 0
+
 def run():
+  exercise_f_calc_map()
   exercise_sym_equiv()
   exercise_asu()
   exercise_bins()
