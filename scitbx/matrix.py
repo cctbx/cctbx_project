@@ -213,6 +213,9 @@ class rec(object):
       result += e*e
     return result
 
+  def round(self, digits):
+    return rec([ round(x, digits) for x in self.elems ], self.n)
+
   def __abs__(self):
     assert self.n_rows() == 1 or self.n_columns() == 1
     return math.sqrt(self.norm_sq())
