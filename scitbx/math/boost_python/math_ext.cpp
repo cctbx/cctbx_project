@@ -50,6 +50,7 @@ namespace boost_python {
   void wrap_distributions();
   void wrap_exp_functions();
   void wrap_zernike();
+  void wrap_weighted_covariance();
 
 namespace {
 
@@ -342,6 +343,7 @@ namespace {
     wrap_distributions();
     wrap_exp_functions();
     wrap_zernike();
+    wrap_weighted_covariance();
 
     def("superpose_kearsley_rotation", superpose_kearsley_rotation, (
       arg("reference_sites"), arg("other_sites")));

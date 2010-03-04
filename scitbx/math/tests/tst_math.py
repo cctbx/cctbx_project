@@ -1840,7 +1840,15 @@ def exercise_approx_equal():
   assert approx_equal_relatively(0.9999, 1., 0.0001)
   assert approx_equal_relatively(0.9997 + 0.0004j, 1., 0.0005)
 
+def exercise_weighted_covariance():
+  from scitbx.math import weighted_covariance
+  stats = weighted_covariance(x=flex.double((1, 2, 1e-4, 3, 4, 5)),
+                              y=flex.double((2, 4, 1e-4, 6, 8, 10)),
+                              weights=flex.double((2, 1, 3, 2, 1, 2)))
+  assert approx_equal(stats.correlation, 0.99999999999517919484, 1e-17)
+
 def run():
+  exercise_weighted_covariance()
   exercise_distributions()
   exercise_approx_equal()
   exercise_median()
