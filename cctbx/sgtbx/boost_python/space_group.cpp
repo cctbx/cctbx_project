@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/sgtbx/space_group_type.h>
+#include <cctbx/sgtbx/space_group_hash.h>
 #include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
@@ -33,6 +34,10 @@ namespace {
     getinitargs(w_t const& o)
     {
       return boost::python::make_tuple(o.type().hall_symbol());
+    }
+
+    static std::size_t py_hash(w_t const &self) {
+      return boost::hash<w_t>()(self);
     }
 
     static void
@@ -93,8 +98,10 @@ namespace {
         .def("make_tidy", &w_t::make_tidy, return_self<>())
         .def("is_tidy", &w_t::is_tidy)
         .def("contains", &w_t::contains, (arg("smx")))
+        .def("__contains__", &w_t::contains)
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
+        .def("__hash__", py_hash)
         .def("conventional_centring_type_symbol",
           &w_t::conventional_centring_type_symbol)
         .def("z2p_op", &w_t::z2p_op, (

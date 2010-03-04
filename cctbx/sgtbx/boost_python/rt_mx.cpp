@@ -5,6 +5,7 @@
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/make_constructor.hpp>
 #include <cctbx/sgtbx/rt_mx.h>
+#include <cctbx/sgtbx/rt_mx_hash.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/stl/vector_wrapper.h>
 #include <scitbx/boost_python/container_conversions.h>
@@ -38,6 +39,10 @@ namespace {
 
     static scitbx::vec3<double>
     mul(w_t const& o, scitbx::vec3<double> const& rhs) { return o * rhs; }
+
+    static std::size_t py_hash(w_t const &self) {
+      return boost::hash<w_t>()(self);
+    }
 
     static void
     wrap()
@@ -79,6 +84,7 @@ namespace {
         .def("t", (tr_vec const&(w_t::*)() const) &w_t::t, rir())
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
+        .def("__hash__", py_hash)
         .def("is_valid", &w_t::is_valid)
         .def("unit_mx", &w_t::unit_mx)
         .def("is_unit_mx", &w_t::is_unit_mx)

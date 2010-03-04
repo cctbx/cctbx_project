@@ -3,6 +3,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <cctbx/sgtbx/rot_mx_info.h>
+#include <cctbx/sgtbx/rot_mx_hash.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
@@ -21,6 +22,10 @@ namespace {
       return lhs * rhs;
     }
 
+    static std::size_t py_hash(w_t const &self) {
+      return boost::hash<w_t>()(self);
+    }
+
     static void
     wrap()
     {
@@ -37,6 +42,7 @@ namespace {
         .def("den", (int const&(w_t::*)() const) &w_t::den, ccr())
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
+        .def("__hash__", py_hash)
         .def("is_valid", &w_t::is_valid)
         .def("is_unit_mx", &w_t::is_unit_mx)
         .def("minus_unit_mx", &w_t::minus_unit_mx)
