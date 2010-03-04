@@ -23,10 +23,12 @@ except ImportError:
 
 class rec(object):
 
+  container_type = tuple
+
   def __init__(self, elems, n):
     assert len(n) == 2
-    if (not isinstance(elems, tuple)):
-      elems = tuple(elems)
+    if (not isinstance(elems, self.container_type)):
+      elems = self.container_type(elems)
     assert len(elems) == n[0] * n[1]
     self.elems = elems
     self.n = tuple(n)
@@ -661,20 +663,32 @@ class rec(object):
     assert result_ir == result_nr
     return rec(elems=result_elems, n=(result_nr, result_nc))
 
-class row(rec):
+class mutable_rec(rec):
+  container_type = list
+
+  def __setitem__(self, i, x):
+    self.elems[i] = x
+
+class row_mixin(object):
 
   def __init__(self, elems):
-    rec.__init__(self, elems, (1, len(elems)))
+    super(row_mixin, self).__init__(elems, (1, len(elems)))
 
-class col(rec):
+class row(row_mixin, rec): pass
+class mutable_row(row_mixin, mutable_rec): pass
+
+class col_mixin(object):
 
   def __init__(self, elems):
-    rec.__init__(self, elems, (len(elems), 1))
+    super(col_mixin, self).__init__(elems, (len(elems), 1))
 
   def random(cls, n, a, b):
     uniform = random.uniform
     return cls([ uniform(a,b) for i in xrange(n) ])
   random = classmethod(random)
+
+class col(col_mixin, rec): pass
+class mutable_col(col_mixin, mutable_rec): pass
 
 class sqr(rec):
 
@@ -713,11 +727,18 @@ class sym(rec):
                         m[3], m[1], m[5],
                         m[4], m[5], m[2]), (3,3))
 
-def zeros(n):
+def zeros(n, mutable=False):
+  if mutable:
+    col_t, rec_t = mutable_col, mutable_rec
+  else:
+    col_t, rec_t = col, rec
   if (isinstance(n, int)):
-    return col(elems=(0,)*n)
+    return col_t(elems=(0,)*n)
   nr,nc = n
-  return rec(elems=(0,)*(nr*nc), n=(nr,nc))
+  return rec_t(elems=(0,)*(nr*nc), n=(nr,nc))
+
+def mutable_zeros(n):
+  return zeros(n, mutable=True)
 
 def sum(iterable):
   """ The sum of the given sequence of matrices """
@@ -1042,6 +1063,10 @@ def exercise():
   assert a.elems == ()
   a = zeros(n=(2,3))
   assert a.elems == (0,0,0,0,0,0)
+  #
+  a = mutable_col((0,0,0))
+  a[1] = 1
+  assert tuple(a) == (0,1,0)
   #
   for n in [(0,0), (1,0), (0,1)]:
     a = rec((),n)
