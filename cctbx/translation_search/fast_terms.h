@@ -3,7 +3,6 @@
 
 #include <cctbx/translation_search/fast_nv1995/summations.h>
 #include <cctbx/maptbx/copy.h>
-#include <cctbx/miller/index_span.h>
 #include <scitbx/fftpack/real_to_complex_3d.h>
 
 namespace cctbx { namespace translation_search {
@@ -24,14 +23,9 @@ namespace cctbx { namespace translation_search {
         af::const_ref<miller::index<> > const& miller_indices_p1_f_calc,
         af::const_ref<std::complex<FloatType> > const& p1_f_calc)
       :
-        rfft_(gridding)
-      {
-        af::int3 range = miller::index_span(
-          miller_indices_p1_f_calc).abs_range();
-        fc_map_ = fast_nv1995_detail::f_calc_map<FloatType>(
-          anomalous_flag, range);
-        fc_map_.import(miller_indices_p1_f_calc, p1_f_calc);
-      }
+        rfft_(gridding),
+        fc_map_(miller_indices_p1_f_calc, p1_f_calc, anomalous_flag)
+      {}
 
       //! Summations according to Navaza & Vernoslova (1995).
       /*! squared_flag == false: summation according to equation 14.<br>
@@ -121,7 +115,7 @@ namespace cctbx { namespace translation_search {
       }
 
       scitbx::fftpack::real_to_complex_3d<FloatType> rfft_;
-      fast_nv1995_detail::f_calc_map<FloatType> fc_map_;
+      miller::f_calc_map<FloatType> fc_map_;
       af::versa<std::complex<FloatType>, af::c_grid<3> > accu_mem_;
       fast_nv1995_detail::summation_accumulator<FloatType> accu_;
   };
