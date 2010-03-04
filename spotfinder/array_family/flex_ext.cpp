@@ -6,7 +6,6 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_icering();
   void wrap_flex_w_spot();
   void wrap_flex_point();
-  void wrap_flex_intxy();
 
 namespace {
 
@@ -17,7 +16,6 @@ namespace {
     wrap_flex_icering();
     wrap_flex_w_spot();
     wrap_flex_point();
-    wrap_flex_intxy();
   }
 
 } // namespace <anonymous>
