@@ -5,14 +5,21 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/list.hpp>
+#include <boost/python/return_arg.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
 
 #include <scitbx/mat3.h>
+#include <scitbx/sym_mat3.h>
 #include <scitbx/constants.h>
 #include <scitbx/array_family/ref.h>
+#include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
+#include <scitbx/boost_python/container_conversions.h>
 #include <boost/shared_array.hpp>
 
 #include <gltbx/error.h>
+#include <gltbx/util.h>
 
 namespace gltbx { namespace util {
 
@@ -465,6 +472,65 @@ namespace gltbx { namespace util {
     }
   };
 
+  struct matrix_wrapper
+  {
+    /// OpenGL matrix (column-major as per the standard)
+    af::tiny<GLfloat, 16> m;
+
+    /// Construct an uninitalised matrix
+    /* Use glTranslate, glRotate, etc and then the member function get to
+       initialise it
+     */
+    matrix_wrapper() {}
+
+    /// Construct with the given matrix a
+    /** a is assumed to be stored row-major (the convention through the scitbx)
+     */
+    matrix_wrapper(scitbx::mat3<double> const &a) {
+      m[0] = a[0]; m[4] = a[1]; m[8]  = a[2]; m[12] = 0;
+      m[1] = a[3]; m[5] = a[4]; m[9]  = a[5]; m[13] = 0;
+      m[2] = a[6]; m[6] = a[7]; m[10] = a[8]; m[14] = 0;
+      m[3] =   0 ; m[7] =  0  ; m[11] =  0  ; m[15] = 1;
+    }
+
+    /// Construct with the given symmetric matrix a
+    /** a is assumed to be stored in packed U format
+     */
+    matrix_wrapper(scitbx::sym_mat3<double> const &a) {
+      m[0] = a[0]; m[4] = a[1]; m[8]  = a[2]; m[12] = 0;
+      m[1] = a[1]; m[5] = a[3]; m[9]  = a[4]; m[13] = 0;
+      m[2] = a[2]; m[6] = a[4]; m[10] = a[5]; m[14] = 0;
+      m[3] =   0 ; m[7] =  0  ; m[11] =  0  ; m[15] = 1;
+    }
+
+    matrix_wrapper &get() {
+      GLint matrix_mode;
+      glGetIntegerv(GL_MATRIX_MODE, &matrix_mode);
+      glGetFloatv(matrix_mode, m.begin());
+      return *this;
+    }
+
+    void load() {  glLoadMatrixf(m.begin()); }
+
+    void multiply() { glMultMatrixf(m.begin()); }
+
+    static void wrap() {
+      using namespace boost::python;
+      using namespace scitbx::boost_python::container_conversions;
+      tuple_mapping_fixed_size<af::tiny<float, 16> >();
+      return_value_policy<return_by_value> rbv;
+      class_<matrix_wrapper>("matrix", no_init)
+        .def(init<>())
+        .def(init<scitbx::mat3<double> const &>())
+        .def(init<scitbx::sym_mat3<double> const &>())
+        .add_property("m", make_getter(&matrix_wrapper::m, rbv))
+        .def("get", &matrix_wrapper::get, return_self<>())
+        .def("load", &matrix_wrapper::load)
+        .def("multiply", &matrix_wrapper::multiply)
+        ;
+    }
+  };
+
   void
   init_module()
   {
@@ -547,6 +613,7 @@ namespace gltbx { namespace util {
       typedef af::c_grid_padded_periodic<3>::index_value_type ivt;
       vertex_array_wrapper<ivt, GLdouble>::wrap("vertex_array");
     }
+    matrix_wrapper::wrap();
   }
 
 }} // namespace gltbx::util
