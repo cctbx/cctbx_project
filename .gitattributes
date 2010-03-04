@@ -373,6 +373,7 @@ libtbx/smp_utils.py -text
 libtbx/sourceforge_checkout.py -text
 libtbx/subversion.py -text
 libtbx/thread_utils.py -text
+libtbx/topological_sort.py svneol=native#text/x-python
 libtbx/try_hello_world_c.py svneol=native#text/x-python
 libtbx/tst_binary_search.py svneol=native#text/x-python
 libtbx/tst_easy_pickle.py svneol=native#text/x-python
