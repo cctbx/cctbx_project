@@ -60,6 +60,7 @@ cctbx/examples/find_distances_using_cpp_objects.py svneol=native#text/x-python
 cctbx/examples/find_sys_abs_equiv_space_groups.py svneol=native#text/x-python
 cctbx/examples/hirshfeld_test.py -text
 cctbx/examples/list_non_principal_continuous_shifts.py -text
+cctbx/examples/location_part.py -text
 cctbx/examples/maximum_subgroups.py -text
 cctbx/examples/miller_transform.py -text
 cctbx/examples/quartz_structure.py svneol=native#text/x-python
