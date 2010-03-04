@@ -43,6 +43,7 @@ def loop_space_groups(
       flags,
       call_back,
       symbols_to_stdout=False,
+      symbols_to_stderr=True,
       show_cpu_times=True,
       **kwds):
   call_back_results = []
@@ -72,7 +73,8 @@ def loop_space_groups(
     if (i_loop % chunk_size != chunk_member): continue
     space_group_info = sgtbx.space_group_info(symbol)
     sys.stdout.flush()
-    print >> sys.stderr, space_group_info
+    if symbols_to_stderr:
+      print >> sys.stderr, space_group_info
     sys.stderr.flush()
     if (symbols_to_stdout):
       print space_group_info
@@ -95,6 +97,7 @@ def parse_options_loop_space_groups(
       call_back,
       keywords=(),
       symbols_to_stdout=False,
+      symbols_to_stderr=True,
       show_cpu_times=True,
       **kwds):
   flags = parse_options(
@@ -112,4 +115,5 @@ def parse_options_loop_space_groups(
       "UnusualSettings") + keywords,
     case_sensitive=False)
   return loop_space_groups(
-    argv, flags, call_back, symbols_to_stdout, show_cpu_times, **kwds)
+    argv, flags, call_back, symbols_to_stdout, symbols_to_stderr,
+    show_cpu_times, **kwds)
