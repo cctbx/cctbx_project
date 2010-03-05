@@ -1728,13 +1728,13 @@ class manager(manager_mixin):
       reverse_scale            = reverse_scale)
 
   def f_model_phases_as_hl_coefficients(self):
+    mch = self.map_calculation_helper()
     f_model_phases = self.f_model().phases().data()
     sin_f_model_phases = flex.sin(f_model_phases)
     cos_f_model_phases = flex.cos(f_model_phases)
-    mch = self.map_calculation_helper()
     t = maxlik.fo_fc_alpha_over_eps_beta(
-      f_obs   = self.f_obs,
-      f_model = self.f_model(),
+      f_obs   = mch.f_obs_scaled,
+      f_model = mch.f_model_scaled,
       alpha   = mch.alpha,
       beta    = mch.beta)
     hl_a_model = t * cos_f_model_phases

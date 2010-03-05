@@ -353,16 +353,18 @@ class rotomer_evaluator(object):
   def is_better(self, sites_cart):
     t1 = target(sites_cart, self.unit_cell, self.two_mfo_dfc_map)
     t2 = target(sites_cart, self.unit_cell, self.mfo_dfc_map)
-    t = t1+t2
+    t = t1+t2#*3 # XXX very promising thing to do, but reaaly depends on resolution
     result = False
-    if(t > self.t_best):
-      if((t2 > 0 and self.t2_best > 0 and t2 > self.t2_best) or
-         (t2 < 0 and self.t2_best < 0 and abs(t2)<abs(self.t2_best)) or
-         (t2 > 0 and self.t2_best < 0)):
-        result = True
-        self.t2_best = t2
-        self.t1_best = t1
-        self.t_best = t
+    size = sites_cart.size()
+    if 1:
+      if(t > self.t_best):
+        if((t2 > 0 and self.t2_best > 0 and t2 > self.t2_best) or
+           (t2 < 0 and self.t2_best < 0 and abs(t2)<abs(self.t2_best)) or
+           (t2 > 0 and self.t2_best < 0)):
+          result = True
+          self.t2_best = t2
+          self.t1_best = t1
+          self.t_best = t
     return result
 
 def include_residue_selection(selection, residue_iselection):
@@ -397,7 +399,6 @@ def torsion_search(residue_evaluator,
     params.range_stop = 360
     params.step = 1.0
   rotamer_sites_cart_ = rotamer_sites_cart.deep_copy()
-  zz = rotamer_sites_cart.deep_copy()
   n_clusters = len(axes_and_atoms_to_rotate)
   c_counter = 0
   for cluster_evaluator, aa in zip(cluster_evaluators,axes_and_atoms_to_rotate):
@@ -448,7 +449,6 @@ def torsion_search(residue_evaluator,
     if(residue_evaluator.is_better(sites_cart = rsc)):
       rotamer_id_best = rotamer_id
       residue_sites_best = rsc.deep_copy()
-  #XXXprint flex.max(flex.sqrt((zz - residue_sites_best).dot()))
   return residue_sites_best, rotamer_id_best
 
 
@@ -467,9 +467,9 @@ def residue_itaration(pdb_hierarchy,
   assert target_map_data.focus() == model_map_data.focus()
   assert target_map_data.all() == model_map_data.all()
   fmt1 = "                |--------START--------| |-----FINAL----|"
-  fmt2 = "     residue    map_cc 2mFo-DFc mFo-DFc 2mFo-DFc mFo-DFc" \
-    " rotomer n_rotamers"
-  fmt3 = "  %12s %7.4f %8.2f %7.2f %8.2f %7.2f %7s %10d"
+  fmt2 = "     residue   map_cc 2mFo-DFc mFo-DFc 2mFo-DFc mFo-DFc" \
+    " rotomer n_rot max_moved"
+  fmt3 = "  %12s%7.4f %8.2f %7.2f %8.2f %7.2f %7s %5d  %8.3f"
   print >> log, fmt1
   print >> log, fmt2
   unit_cell = xray_structure.unit_cell()
@@ -494,6 +494,8 @@ def residue_itaration(pdb_hierarchy,
             residue_iselection = residue.atoms().extract_i_seq()
             sites_cart_residue = xray_structure.sites_cart().select(residue_iselection)
             residue.atoms().set_xyz(new_xyz=sites_cart_residue)
+            max_moved_dist = 0
+            sites_cart_residue_start = sites_cart_residue.deep_copy()
             # XXX assume that "atoms" are the same in residue and residue_groups
             if(map_selector.is_refinement_needed(
                residue_group = residue_group,
@@ -595,6 +597,8 @@ def residue_itaration(pdb_hierarchy,
                           rotamer_id_best = rotamer.id
                           residue_sites_best = rotamer_sites_cart.deep_copy()
                   residue.atoms().set_xyz(new_xyz=residue_sites_best)
+                max_moved_dist = flex.max(flex.sqrt(
+                  (sites_cart_residue_start-residue_sites_best).dot()))
                 if(not params.real_space_refine_rotamer):
                   sites_cart_start = sites_cart_start.set_selected(
                     residue_iselection, residue_sites_best)
@@ -604,16 +608,17 @@ def residue_itaration(pdb_hierarchy,
                   sites_cart_refined = rsr_manager.refine_restrained(
                     tmp.select(rsel), rsel, rs)
                   if(rev.is_better(sites_cart = sites_cart_refined)):
-                    rotamer_sites_cart_refined = \
-                      sites_cart_refined.deep_copy()
                     sites_cart_start = sites_cart_start.set_selected(
-                      residue_iselection, rotamer_sites_cart_refined)
-                    residue.atoms().set_xyz(new_xyz=rotamer_sites_cart_refined)
+                      residue_iselection, sites_cart_refined)
+                    residue.atoms().set_xyz(new_xyz=sites_cart_refined)
+                    max_moved_dist = flex.max(flex.sqrt(
+                      (sites_cart_residue_start - sites_cart_refined).dot()))
               if(abs(rev.t1_best-rev.t1_start) > 0.01 and
                  abs(rev.t2_best-rev.t2_start) > 0.01):
                 print >> log, fmt3 % (
                   residue_id_str, cc_start, rev.t1_start, rev.t2_start,
-                  rev.t1_best, rev.t2_best, rotamer_id_best, n_rotamers)
+                  rev.t1_best, rev.t2_best, rotamer_id_best, n_rotamers,
+                  max_moved_dist)
   xray_structure.set_sites_cart(sites_cart_start)
   return result
 
@@ -676,13 +681,12 @@ def validate_changes(fmodel, residue_rsr_monitor, log):
       ###
       dmif1 = rm.mfodfc < 0 and t2 < 0 and t2 < rm.mfodfc
       dmif2 = rm.mfodfc > 0 and t2 < 0 and abs(t2) > abs(rm.mfodfc)
-      dmif3 = rm.mfodfc >= 0 and t2 < 0 and abs(t2) < abs(rm.twomfodfc)
       dmif4 = rm.mfodfc<0 and t2<0 and (abs(rm.mfodfc)>5 and 2*abs(rm.mfodfc)<abs(t2))
       dmif41 = rm.mfodfc<0 and t2<0 and (abs(rm.mfodfc)>2 and 3*abs(rm.mfodfc)<abs(t2))
       dmif5 = abs(rm.mfodfc)<0.5 and t2<-5.
       dmif6 = rm.cc > cc and abs(rm.mfodfc)<0.5 and t2 < -5.
       dmif = dmif1 or dmif2
-      if((cc < rm.cc or t1 < rm.twomfodfc) and dmif or dmif3 or dmif4 or dmif5 or dmif6 or dmif41): flag = " <<<"
+      if((cc < rm.cc or t1 < rm.twomfodfc) and dmif or dmif4 or dmif5 or dmif6 or dmif41): flag = " <<<"
       print >> log, fmt3 % (
         rm.residue_id_str, rm.cc, rm.twomfodfc, rm.mfodfc, cc,t1,t2), flag
       if(len(flag)>0):
@@ -729,7 +733,7 @@ def run(fmodel,
       map_type = params.model_map)
     residual_map_data,fft_map_3 = get_map_data(fmodel = fmodel,
       map_type = params.residual_map, kick=False)
-    if(params.filter_residual_map_value is not None):
+    if(params.filter_residual_map_value is not None): #XXX use filtering....
       map_sel = flex.abs(residual_map_data) < params.filter_residual_map_value
       residual_map_data = residual_map_data.set_selected(map_sel, 0)
     if(params.filter_2fofc_map is not None):
