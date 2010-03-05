@@ -4,6 +4,8 @@
 #include <cmath>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/ref.h>
+#include <boost/math/special_functions/bessel.hpp>
+
 namespace scitbx { namespace math {
 
 //! Family of Bessel functions.
@@ -275,6 +277,27 @@ namespace bessel {
     result = std::sqrt(1-t)*std::exp(t)*(a+t*(b+t*(c+t*(d+t*(e+f*t)))))  ;
     return result;
   }
+
+  template <typename FloatType>
+  FloatType
+  spherical_bessel(int const& l, FloatType const& x)
+  {
+    using boost::math::sph_bessel;
+    return( sph_bessel(l,x) );
+  }
+
+  template <typename FloatType>
+  scitbx::af::shared< FloatType >
+  spherical_bessel_array(int const& l, scitbx::af::shared< FloatType >const& x)
+  {
+    using boost::math::sph_bessel;
+    scitbx::af::shared< FloatType > result;
+    for (int ii=0;ii<x.size();ii++){
+      result.push_back( spherical_bessel( l, x[ii] ) );
+    }
+    return( result );
+  }
+
 
 
 }}} // namespace scitbx::math::bessel

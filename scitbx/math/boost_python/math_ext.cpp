@@ -292,6 +292,8 @@ namespace {
     def("bessel_ln_of_i0", (double(*)(double const&)) bessel::ln_of_i0);
     def("ei1", (double(*)(double const&)) bessel::ei1);
     def("ei0", (double(*)(double const&)) bessel::ei0);
+    def("spherical_bessel", (double(*)(int const&, double const&)) bessel::spherical_bessel);
+    def("spherical_bessel_array", (scitbx::af::shared< double> (*)(int const&, scitbx::af::shared<double> const&)) bessel::spherical_bessel_array);
 
     def("gamma_complete", (double(*)(double const&, bool))
       gamma::complete, (
