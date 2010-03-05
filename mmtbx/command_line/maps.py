@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.maps
 
 import mmtbx.maps
+from scitbx.array_family import flex
 import os, sys
 import iotbx.pdb
 from libtbx.utils import Sorry
