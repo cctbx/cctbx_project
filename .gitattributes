@@ -227,6 +227,7 @@ iotbx/cif/tst_xray_structure.py svneol=native#text/x-python
 iotbx/cif/xray_structure.py svneol=native#text/x-python
 iotbx/cns/crystal_symmetry_utils.py svneol=native#text/x-python
 iotbx/command_line/pdb.b_factor_stats.py svneol=native#text/x-python
+iotbx/command_line/pdb.box_around_molecule.py svneol=native#text/x-python
 iotbx/command_line/pdb.join_fragment_files.py svneol=native#text/x-python
 iotbx/command_line/pdb.print_sequence.py -text
 iotbx/command_line/pdb_as_fasta.py svneol=native#text/x-python
