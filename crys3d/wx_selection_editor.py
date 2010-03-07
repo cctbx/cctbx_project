@@ -38,7 +38,6 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
   def get_scene_data (self) :
     if self.atoms.size() != self.visibility.atoms_visible.size() :
       self.recalculate_visibility()
-      print 123456789
     atomic_bonds = self.atomic_bonds
     #if not self.flag_show_hydrogens :
     #  atomic_bonds = atomic_bonds & ~self.hydrogen_flag
@@ -342,7 +341,7 @@ class selection_editor_mixin (model_viewer_mixin) :
         self._in_range_selection = True
       return True
 
-  def processes_range_deselection (self) :
+  def process_range_deselection (self) :
     self.process_range_selection(deselect=True)
 
   def select_single_residue (self) :
