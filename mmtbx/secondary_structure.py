@@ -13,6 +13,10 @@ import sys, os
 
 default_sigma = 0.05
 default_slack = 0.00
+h_o_distance_ideal = 1.975
+h_o_distance_max = 2.5
+n_o_distance_ideal = 3.0
+n_o_distance_max = 3.5
 
 ss_restraint_params_str = """
   verbose = False
@@ -42,19 +46,20 @@ ss_restraint_params_str = """
     .type = float
     .short_caption = Restraint slack
     .style = bold
-  h_o_distance_ideal = 1.975
+  h_o_distance_ideal = %.3f
     .type = float
     .short_caption = Ideal H-O distance
-  h_o_outlier_max_delta = 0.5
+  h_o_distance_max = %.3f
     .type = float
-    .short_caption = Outlier deviation cutoff (H-O)
-  n_o_distance_ideal = 3.0
+    .short_caption = Max. allowable H-O distance
+  n_o_distance_ideal = %.3f
     .type = float
     .short_caption = Ideal N-O distance
-  n_o_outlier_max_delta = 0.5
+  n_o_distance_max = %.3f
     .type = float
-    .short_caption = Outlier deviation cutoff (N-O)
-""" % (default_sigma, default_slack)
+    .short_caption = Max. allowable N-O distance
+""" % (default_sigma, default_slack, h_o_distance_ideal, h_o_distance_max,
+       n_o_distance_ideal, n_o_distance_max)
 
 ss_tardy_params_str = """\
 tardy
@@ -289,10 +294,10 @@ class hydrogen_bond_table (object) :
       assert pdb_hierarchy is not None
       atoms = pdb_hierarchy.atoms()
     remove_outliers = params.remove_outliers
-    delta_max = params.h_o_outlier_max_delta
+    distance_max = params.h_o_distance_max
     distance_ideal = params.h_o_distance_ideal
     if params.substitute_n_for_h :
-      delta_max = params.n_o_outlier_max_delta
+      distance_max = params.n_o_distance_max
       distance_ideal = params.n_o_distance_ideal
     atoms = pdb_hierarchy.atoms()
     hist =  flex.histogram(self.bond_lengths, 10)
@@ -302,7 +307,7 @@ class hydrogen_bond_table (object) :
     if not remove_outliers :
       return False
     for i, distance in enumerate(self.bond_lengths) :
-      if abs(distance - distance_ideal) > delta_max :
+      if distance > distance_max :
         self.flag_use_bond[i] = False
         if params.verbose :
           print >> log, "Excluding H-bond with length %.3fA" % distance
@@ -344,6 +349,17 @@ class hydrogen_bond_table (object) :
       sele1 = base_sele % (atom1.chain_id, atom1.resseq, atom1.name)
       sele2 = base_sele % (atom2.chain_id, atom2.resseq, atom2.name)
       print >>out, "dist %s, %s" % (sele1, sele2)
+
+  def as_refmac_restraints (self, pdb_hierarchy, filter=True, out=sys.stdout) :
+    atoms = pdb_hierarchy.atoms()
+    for bond in self.get_bond_restraint_data(filter=filter) :
+      donor = atoms[bond.donor_i_seq].fetch_labels()
+      acceptor = atoms[bond.acceptor_i_seq].fetch_labels()
+      cmd = (("exte dist first chain %s residue %s atom %s " +
+              "second chain %s residue %s atom %s value %.3f sigma %.2f") %
+        (donor.chain_id, donor.resseq, donor.name, acceptor.chain_id,
+         acceptor.resseq, acceptor.name, bond.distance_ideal, bond.sigma))
+      print >> out, cmd
 
 def hydrogen_bonds_from_selections (
     pdb_hierarchy,
@@ -894,8 +910,8 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   master_phil = libtbx.phil.parse("""
     show_histograms = False
       .type = bool
-    show_pymol_dashes = False
-      .type = bool
+    format = *phenix phenix_bonds pymol refmac
+      .type = choice
 %s""" % sec_str_master_phil_str)
   for arg in args :
     if os.path.isfile(arg) :
@@ -924,7 +940,7 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     secondary_structure = iotbx.pdb.secondary_structure.process_records(
       records=records, allow_none=False)
   prefix_scope="refinement.secondary_structure"
-  if params.show_histograms or params.show_pymol_dashes :
+  if params.show_histograms or params.format != "phenix" :
     prefix_scope = ""
   ss_params_str = secondary_structure.as_restraint_groups(log=log,
     prefix_scope=prefix_scope)
@@ -932,18 +948,7 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   pdb_hierarchy = get_pdb_hierarchy(pdb_files)
   if len(pdb_hierarchy.models()) != 1 :
     raise Sorry("Multiple models not supported.")
-  if params.show_pymol_dashes :
-    working_phil = master_phil.fetch(sources=[ss_phil]+sources)
-    params = working_phil.extract()
-    bonds_table = hydrogen_bonds_from_selections(
-      pdb_hierarchy,
-      params=params,
-      log=sys.stderr)
-    bonds_table.analyze_distances(params=params.h_bond_restraints,
-      pdb_hierarchy=pdb_hierarchy,
-      log=sys.stderr)
-    bonds_table.as_pymol_dashes(pdb_hierarchy, filter=True, out=out)
-  elif params.show_histograms :
+  if params.show_histograms :
     working_phil = master_phil.fetch(sources=[ss_phil]+sources)
     working_phil.show()
     print >> out, ""
@@ -958,6 +963,22 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     bonds_table.analyze_distances(params=params.h_bond_restraints,
       pdb_hierarchy=pdb_hierarchy,
       log=out)
+  elif params.format == "phenix_bonds" :
+    raise Sorry("Not yet implemented.")
+  elif params.format in ["pymol", "refmac"] :
+    working_phil = master_phil.fetch(sources=[ss_phil]+sources)
+    params = working_phil.extract()
+    bonds_table = hydrogen_bonds_from_selections(
+      pdb_hierarchy,
+      params=params,
+      log=log)
+    bonds_table.analyze_distances(params=params.h_bond_restraints,
+      pdb_hierarchy=pdb_hierarchy,
+      log=log)
+    if params.format == "pymol" :
+      bonds_table.as_pymol_dashes(pdb_hierarchy, filter=True, out=out)
+    else :
+      bonds_table.as_refmac_restraints(pdb_hierarchy, filter=True, out=out)
   else :
     ss_phil.show(out=out)
     #print >> out, ss_params_str
@@ -1016,7 +1037,7 @@ def exercise () :
   bonds_table.analyze_distances(params=params.h_bond_restraints,
     pdb_hierarchy=pdb_hierarchy,
     log=log)
-  assert bonds_table.flag_use_bond.count(True) == 102
+  assert bonds_table.flag_use_bond.count(True) == 103
   print "OK"
 
 if __name__ == "__main__" :
