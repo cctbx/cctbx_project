@@ -1,5 +1,5 @@
 import scitbx.array_family.flex
-from scitbx import matrix
+import scitbx.matrix
 from libtbx import easy_run
 import boost.python
 ext = boost.python.import_ext("gltbx_util_ext")
@@ -79,7 +79,7 @@ class rescale_normals(object):
     return self.has_rescale_normal and gl.glIsEnabled(self.GL_RESCALE_NORMAL)
 
 def modelview_matrix_as_rt():
-  return matrix.rt((
+  return scitbx.matrix.rt((
     extract_rotation_from_gl_modelview_matrix(),
     extract_translation_from_gl_modelview_matrix()))
 
