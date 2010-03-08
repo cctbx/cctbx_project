@@ -22,7 +22,7 @@ standard_file_types = ["hkl", "map", "pdb", "cif", "phil", "seq", "xml", "pkl",
 
 standard_file_extensions = {
   'pdb'  : ["pdb", "ent"],
-  'hkl'  : ["mtz", "hkl", "sca", "cns", "xplor", "cv", "ref"],
+  'hkl'  : ["mtz", "hkl", "sca", "cns", "xplor", "cv", "ref", "fobs"],
   'cif'  : ["cif"],
   'seq'  : ["fa", "faa", "seq", "pir", "dat"],
   'map'  : ["map", "ccp4"],
