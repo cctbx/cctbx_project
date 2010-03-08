@@ -342,7 +342,7 @@ class selection_editor_mixin (model_viewer_mixin) :
       return True
 
   def process_range_deselection (self) :
-    self.process_range_selection(deselect=True)
+    return self.process_range_selection(deselect=True)
 
   def select_single_residue (self) :
     model = self.get_model(self.current_object_id)
