@@ -65,6 +65,8 @@ class detached_base (object) :
       self.set_file_names(params.tmp_dir)
     elif params.output_dir is not None :
       self.set_file_names(params.output_dir)
+    else :
+      self.set_file_names(os.getcwd())
 
   def set_file_names (self, tmp_dir) :
     prefix = os.path.join(tmp_dir, self.params.prefix)
@@ -316,6 +318,9 @@ def run (args) :
       base, ext = os.path.splitext(file_name)
       if ext in [".params", ".eff", ".def", ".phil"] :
         user_phil.append(libtbx.phil.parse(file_name=file_name))
+      elif ext in [".pkl", ".pickle"] :
+        input_string = "run_file = %s" % arg
+        user_phil.append(libtbx.phil.parse(input_string))
     else :
       try :
         arg_phil = libtbx.phil.parse(arg)
