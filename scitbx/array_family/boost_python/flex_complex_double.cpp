@@ -36,6 +36,14 @@ namespace {
     return a1 * a2;
   }
 
+  versa<std::complex<double>, flex_grid<> >
+  imul_ac_ar(
+            versa<std::complex<double>, flex_grid<> > & a1,
+            versa<             double , flex_grid<> > const& a2)
+  {
+    return a1 *= a2;
+  }
+
   versa<std::complex<double>, c_grid<2> >
   matrix_multiply_complex_matrix_complex_matrix(
     const_ref<std::complex<double>, c_grid<2> > const& a,
@@ -114,6 +122,7 @@ namespace {
           arg("other"),
           arg("relative_error")=1e-6))
       .def("__mul__", mul_ac_ar)
+      .def("__imul__", imul_ac_ar)
       .def("__rmul__", mul_ac_ar)
       .def("matrix_multiply", matrix_multiply_complex_matrix_complex_matrix)
       .def("matrix_multiply", matrix_multiply_complex_matrix_real_matrix)
