@@ -66,9 +66,10 @@ def randomly_exercise(flipping_type,
                       first_correct_correlation_peak=None,
                       inverted_solution=False,
                       succeeded=True)
-  flipping = flipping_type(f_obs, delta=None)
+  flipping = flipping_type(delta=None)
   solving = charge_flipping.solving_iterator(
     flipping,
+    f_obs,
     yield_during_delta_guessing=True,
     yield_solving_interval=1)
   charge_flipping.loop(solving, verbose=verbose)

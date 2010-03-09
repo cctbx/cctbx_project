@@ -574,26 +574,46 @@ class observable_evolution(object):
       self.values.append(y1)
       delta = y1 - y0
       if not self.increasing: delta = -delta
-      self.differences.append(delta)
+      if len(self.differences) > 1:
+        eta0 = self.differences[-1]
+        eta1 = eta0 + a*(delta - eta0)
+        self.differences.append(eta1)
+      else:
+        self.differences.append(delta)
     else:
       self.values.append(x)
 
   def had_phase_transition(self):
-    if len(self.differences) < 5: return False
-    i_max = flex.max_index(self.differences)
-    noise_before = (self.differences
-                    < self.noise_level_before*self.differences[i_max])
-    before = flex.last_index(noise_before[:i_max], True)
-    if before is None: before = -1
-    before += 1
-    if i_max - before < 4: return False
-    negative_after = self.differences < 0
-    after = flex.first_index(negative_after[i_max:], True)
-    if after is None: return False
-    after += i_max
-    if after - before < 10: return False
-    if len(self.values) - after < 10: return False
-    tail_stats = scitbx.math.basic_statistics(self.differences[-5:])
-    if (tail_stats.max_absolute
-        > self.noise_level_after*self.differences[i_max]): return False
-    return True
+    try:
+      if len(self.differences) < 5: return False
+      i_max = flex.max_index(self.differences)
+      max_difference = self.differences[i_max]
+      if len(self.differences) - i_max < 10: return False
+      i_after  = flex.first_index(self.differences[i_max:] > 0, False)
+      if i_after is None: return False
+      i_after += i_max
+      if len(self.differences) - i_after < 20:
+        return False
+      i_before = flex.last_index(self.differences[:i_max] > 0, False)
+      if i_before is None:
+        # observable kept increasing from start to candidate transition
+        # find inflexion point
+        i_before = flex.last_index(
+          self.differences[1:i_max] > self.differences[:i_max-1],
+          False)
+        if i_before is None: return False
+      before = self.differences[2:i_before] # skip first iterations
+      min_before = max(flex.min(before), 0)
+      after  = self.differences[(i_after - len(self.differences))//2:]
+      noisy_before = (
+        flex.abs(before - min_before)
+        > self.noise_level_before * (max_difference - min_before))
+      noisy_after  = (
+        flex.abs(after) > self.noise_level_after  * max_difference)
+      if noisy_before.count(True)/len(before) > 0.1:
+        return False
+      if noisy_after.count(True)/len(after) > 0.1:
+        return False
+      return True
+    except ZeroDivisionError:
+      return False
