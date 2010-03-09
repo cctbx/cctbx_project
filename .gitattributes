@@ -13,6 +13,7 @@ boost_adaptbx/command_line/segmentation_fault.py svneol=native#text/x-python
 boost_adaptbx/command_line/show_environ_usage.py svneol=native#text/x-python
 boost_adaptbx/error_utils.h svneol=native#text/plain
 boost_adaptbx/floating_point_exceptions.h -text
+boost_adaptbx/hash.h -text
 boost_adaptbx/optional_copy.h svneol=native#text/plain
 boost_adaptbx/python_streambuf.h -text
 boost_adaptbx/std_pair_conversion.h -text

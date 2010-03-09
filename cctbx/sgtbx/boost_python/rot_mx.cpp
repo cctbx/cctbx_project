@@ -4,12 +4,13 @@
 #include <boost/python/copy_const_reference.hpp>
 #include <cctbx/sgtbx/rot_mx_info.h>
 #include <cctbx/sgtbx/rot_mx_hash.h>
+#include <boost_adaptbx/hash.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
 namespace {
 
-  struct rot_mx_wrappers
+  struct rot_mx_wrappers : boost_adaptbx::py_hashable<rot_mx>
   {
     typedef rot_mx w_t;
 
@@ -20,10 +21,6 @@ namespace {
       scitbx::vec3<double> const& lhs)
     {
       return lhs * rhs;
-    }
-
-    static std::size_t py_hash(w_t const &self) {
-      return boost::hash<w_t>()(self);
     }
 
     static void

@@ -7,12 +7,14 @@
 #include <boost/python/args.hpp>
 #include <boost/python/return_arg.hpp>
 #include <scitbx/boost_python/utils.h>
+#include <boost_adaptbx/hash.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
 namespace {
 
-  struct space_group_wrappers : boost::python::pickle_suite
+  struct space_group_wrappers : boost::python::pickle_suite,
+                                boost_adaptbx::py_hashable<space_group>
   {
     typedef space_group w_t;
 
@@ -34,10 +36,6 @@ namespace {
     getinitargs(w_t const& o)
     {
       return boost::python::make_tuple(o.type().hall_symbol());
-    }
-
-    static std::size_t py_hash(w_t const &self) {
-      return boost::hash<w_t>()(self);
     }
 
     static void
