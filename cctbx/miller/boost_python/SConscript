@@ -17,5 +17,5 @@ env.SharedLibrary(target="#lib/cctbx_miller_ext", source=[
   "sym_equiv.cpp",
   "f_calc_map.cpp",
   "lookup_utils.cpp",
-  "amplitude_rescaling.cpp",
+  "amplitude_normalisation.cpp",
 ])
