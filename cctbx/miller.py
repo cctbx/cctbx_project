@@ -998,6 +998,32 @@ class set(crystal.symmetry):
         miller_set=self,
         algorithm=algorithm)
 
+  def amplitude_normalisations(self, asu_contents, wilson_plot):
+    """ A miller.array whose data N(h) are the normalisations to convert
+    between E's and F's:
+    E(h) = F(h) / N(h)
+    The argument wilson_plot shall feature attributes
+    - wilson_intensity_scale_factor
+    - wilson_b
+    """
+    from cctbx import eltbx
+    multiplicities = flex.double()
+    gaussians = shared_gaussian_form_factors()
+    for chemical_type, multiplicy in asu_contents.items():
+      gaussians.append(eltbx.xray_scattering.wk1995(
+        chemical_type).fetch())
+      multiplicities.append(multiplicy)
+    data = ext.amplitude_normalisation(
+      form_factors=gaussians,
+      multiplicities=multiplicities,
+      wilson_intensity_scale_factor=wilson_plot.wilson_intensity_scale_factor,
+      wilson_b=wilson_plot.wilson_b,
+      indices=self.indices(),
+      unit_cell=self.unit_cell(),
+      space_group=self.space_group(),
+    ).normalisations
+    return array(self, data)
+
   def f_obs_minus_xray_structure_f_calc(self, f_obs_factor, xray_structure,
         structure_factor_algorithm=None,
         cos_sin_table=False,
@@ -2401,7 +2427,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       miller_set=self,
       data=self.data()/flex.sqrt(self.epsilons().data().as_double()))
 
-  def quasi_normalize_structure_factors(self, d_star_power=1):
+  def amplitude_quasi_normalisation(self):
     assert self.binner() is not None
     assert self.binner().n_bin_d_too_large_or_small() == 0
     assert self.data().all_ge(0)
@@ -2420,6 +2446,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     mean_f_sq_over_epsilon_interp = self.binner().interpolate(
       mean_f_sq_over_epsilon, d_star_power)
     assert mean_f_sq_over_epsilon_interp.all_gt(0)
+
     f_sq = flex.pow2(self.data())
     q = flex.sqrt(f_sq / mean_f_sq_over_epsilon_interp)
     assert q.all_ge(0)
@@ -2571,6 +2598,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     return self
 
   def __truediv__(self, other):
+    """ This requires from __future__ import division """
     result = self.deep_copy()
     result /= other
     return result
@@ -2748,19 +2776,20 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       phases_deg=phases_deg,
       figures_of_merit=figures_of_merit)
 
+  def amplitude_normalisations(self, asu_contents, wilson_plot=None):
+    """ Overriden version of set.amplitude_normalisation which computes
+    the Wilson parameters from the array data if wilson_plot is None. """
+    if wilson_plot is None:
+      import statistics
+      f_obs = self.as_amplitude_array()
+      f_obs.setup_binner(n_bins=20)
+      wilson_plot = statistics.wilson_plot(f_obs, asu_contents)
+    return set.amplitude_normalisations(self, asu_contents, wilson_plot)
+
   def normalised_amplitudes(self,
                             asu_contents,
                             wilson_plot=None):
-    assert self.is_xray_amplitude_array()
-    return amplitude_rescaling(
-      self, asu_contents, amplitude_rescaling_kind.normalised, wilson_plot)
-
-  def denormalised_amplitudes(self,
-                              asu_contents,
-                              wilson_plot=None):
-    assert self.is_xray_amplitude_array()
-    return amplitude_rescaling(
-      self, asu_contents, amplitude_rescaling_kind.denormalised, wilson_plot)
+    return normalised_amplitudes(self, asu_contents, wilson_plot)
 
   def quick_scale_factor_approximation(self, f_calc, cutoff_factor=0.99):
     """
@@ -2838,51 +2867,23 @@ class crystal_symmetry_is_compatible_with_symmetry_from_file:
         + " from reflection file:"] + msg)
     return None
 
-class amplitude_rescaling(object):
-  def __init__(self,
-               miller_array,
-               asu_contents,
-               rescaling_kind=amplitude_rescaling_kind.normalised,
-               wilson_plot=None):
+
+class normalised_amplitudes(object):
+  """ E-values and related statistics """
+
+  def __init__(self, miller_array, asu_contents, wilson_plot=None):
     assert miller_array.is_xray_amplitude_array()
-    assert rescaling_kind in (
-      amplitude_rescaling_kind.normalised, amplitude_rescaling_kind.denormalised)
-
-    import eltbx
-    if not wilson_plot:
-      import statistics
-      binner = miller_array.binner
-      f_obs = miller_array.as_amplitude_array()
-      f_obs.setup_binner(n_bins=20)
-      wilson_plot = statistics.wilson_plot(f_obs, asu_contents)
-
-    # cache scattering factor info
-    multiplicities = flex.double()
-    gaussians = shared_gaussian_form_factors()
-    for chemical_type, multiplicy in asu_contents.items():
-      gaussians.append(eltbx.xray_scattering.wk1995(
-        chemical_type).fetch())
-      multiplicities.append(multiplicy)
-
-    result = ext.amplitude_rescaling(
-      rescaling_kind,
-      form_factors=gaussians,
-      multiplicities=multiplicities,
-      wilson_intensity_scale_factor=wilson_plot.wilson_intensity_scale_factor,
-      wilson_b=wilson_plot.wilson_b,
-      indices=miller_array.indices(),
-      data=miller_array.data(),
-      unit_cell=miller_array.unit_cell(),
-      space_group=miller_array.space_group(),
-    )
-
+    normalisations = miller_array.amplitude_normalisations(asu_contents,
+                                                           wilson_plot)
+    e = miller_array.data() / normalisations.data()
     self._array = array(
       miller_set=set(
         crystal_symmetry=miller_array.crystal_symmetry(),
         indices=miller_array.indices()).auto_anomalous(),
-      data=result.data()).set_observation_type_xray_amplitude()
-    self._sum_e_sq_minus_1 = result.sum_e_sq_minus_1()
-    self._n_e_greater_than_2 = result.n_e_greater_than_2()
+      data=e).set_observation_type_xray_amplitude()
+    e_sq = flex.pow2(e);
+    self._sum_e_sq_minus_1 = flex.sum(flex.abs(e_sq - 1))
+    self._n_e_greater_than_2 = (e_sq > 4).count(True)
 
   def array(self):
     return self._array
@@ -2892,6 +2893,7 @@ class amplitude_rescaling(object):
 
   def percent_e_sq_gt_2(self):
     return (100.0 * self._n_e_greater_than_2)/self._array.size()
+
 
 class merge_equivalents(object):
 

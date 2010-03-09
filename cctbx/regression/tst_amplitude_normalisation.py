@@ -77,20 +77,14 @@ def exercise_normalised_amplitudes():
   expected = flex.double(
     (0.2440551673339596, 10.919433420688351, 0.0052403529424040899))
 
-  ma = miller.array(
-    miller_set=miller.set(
+  ms = miller.set(
       crystal_symmetry=crystal.symmetry(
         space_group_info=sgi,
         unit_cell=u),
-      indices=i),
-    data=d,
-    sigmas=s)
+      indices=i)
+  ma = miller.array(miller_set=ms, data=d, sigmas=s)
   ma.set_observation_type_xray_amplitude()
   normalised = ma.normalised_amplitudes(
-    asu_contents=f,
-    wilson_plot=group_args(wilson_intensity_scale_factor=k, wilson_b=b))
-
-  denormalised = normalised.array().denormalised_amplitudes(
     asu_contents=f,
     wilson_plot=group_args(wilson_intensity_scale_factor=k, wilson_b=b))
 
@@ -99,10 +93,15 @@ def exercise_normalised_amplitudes():
     asu_contents=f,
     wilson_plot=group_args(wilson_intensity_scale_factor=k, wilson_b=b))
 
-  assert normalised._array.size() == ma.size()
-  assert approx_equal(normalised._array.data(), python_normalised.array.data())
-  assert approx_equal(denormalised.array().data(), d)
-  assert approx_equal(normalised._array.data(), expected)
+  assert normalised.array().size() == ma.size()
+  assert approx_equal(normalised.array().data(),
+                      python_normalised.array.data())
+  assert approx_equal(normalised.array().data(), expected)
+
+  normalisations = ms.amplitude_normalisations(
+    asu_contents=f,
+    wilson_plot=group_args(wilson_intensity_scale_factor=k, wilson_b=b))
+  assert approx_equal((normalised.array()*normalisations).data(), d)
 
 def run():
   exercise_normalised_amplitudes()
