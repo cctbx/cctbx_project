@@ -19,9 +19,10 @@ namespace boost_adaptbx {
      */
     static long py_hash(WrappedType const &self) {
       std::size_t h = boost::hash<WrappedType>()(self);
+      long result;
       if (sizeof(std::size_t) == sizeof(long)) {
         // LP32 and LP64 platforms (Linux, MacOS)
-        return (long)h;
+        result = (long)h;
       }
       else {
         /* Prime example: 64-bit Windows which is LLP64 (long is 32 bits)
@@ -42,8 +43,11 @@ namespace boost_adaptbx {
            seed ^= (unsigned long) (h >> i) + (seed<<6) + (seed>>2);
         }
         seed ^= (unsigned long) h + (seed<<6) + (seed>>2);
-        return (long)seed;
+        result = (long)seed;
       }
+      /// Python convention:
+      if (result == -1) result = -2;
+      return result;
     }
   };
 
