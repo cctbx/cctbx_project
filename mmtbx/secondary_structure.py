@@ -772,7 +772,7 @@ class manager (object) :
                 tmp_dir=None) :
     adopt_init_args(self, locals())
     if self.params is None :
-      self.params = default_params
+      self.params = sec_str_master_phil.fetch().extract()
     if self.tmp_dir is None :
       self.tmp_dir = os.getcwd()
     if self.assume_hydrogens_all_missing is None :
@@ -780,6 +780,7 @@ class manager (object) :
       sctr_keys = xrs.scattering_type_registry().type_count_dict().keys()
       self.assume_hydrogens_all_missing = not ("H" in sctr_keys or
         "D" in sctr_keys)
+    self.selection_cache = pdb_hierarchy.atom_selection_cache()
     if self.params.h_bond_restraints.substitute_n_for_h is None :
       self.params.h_bond_restraints.substitute_n_for_h = \
         self.assume_hydrogens_all_missing
@@ -790,15 +791,12 @@ class manager (object) :
     if len(params.helix) == 0 and len(params.sheet) == 0 :
       if self.sec_str_from_pdb_file is None and find_automatically != False :
         find_automatically = True
-      elif find_automatically != True :
-        self.sec_str_from_pdb_file = None # disable this
     if find_automatically :
       self.sec_str_from_pdb_file = self.find_sec_str(log=log)
     if self.sec_str_from_pdb_file is not None :
       print >> log, "  Interpreting HELIX and SHEET records from PDB file"
       ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(log=log,
         prefix_scope="")
-      #print ss_params_str
       self.apply_phil_str(ss_params_str, log=log)
 
   def find_sec_str (self, log=sys.stderr) :
@@ -821,6 +819,9 @@ class manager (object) :
   def apply_params (self, params) :
     self.params.helix = params.helix
     self.params.sheet = params.sheet
+    if self.params.h_bond_restraints.substitute_n_for_h is None :
+      self.params.h_bond_restraints.substitute_n_for_h = \
+        self.assume_hydrogens_all_missing
 
   def get_bonds_table (self, log=sys.stderr, verbose=True) :
     params = self.params
@@ -841,24 +842,34 @@ class manager (object) :
     return bonds_table
 
   def calculate_structure_content (self) :
-    isel = selection_cache.iselection
+    isel = self.selection_cache.iselection
     calpha = isel("name N and (altloc ' ' or altloc 'A')")
-    n_alpha = 0
-    n_beta = 0
-    for helix in params.helix :
-      if helix.selection is not None :
-        helix_sel = isel("(%s) and name N and (altloc ' ' or altloc 'A')" %
-          helix.selection)
-        n_alpha += helix_sel.size()
-    for sheet in params.sheet :
-      strand_sel = isel("(%s) and name N and (altloc ' ' or altloc 'A')" %
-        sheet.first_strand)
-      n_beta += strand_sel.size()
-      for strand in sheet.strand :
-        strand_sel = isel("(%s) and name N and (altloc ' ' or altloc 'A')" %
-          strand.selection)
-        n_beta += strand_sel.size()
+    n_alpha = self.alpha_selection().count(True)
+    n_beta = self.beta_selection().count(True)
     return (n_alpha / calpha.size(), n_beta / calpha.size())
+
+  def alpha_selection (self) :
+    sele = self.selection_cache.selection
+    whole_selection = flex.bool(self.xray_structure.sites_cart().size())
+    for helix in self.params.helix :
+      if helix.selection is not None :
+        helix_sel = sele("(%s) and name N and (altloc ' ' or altloc 'A')" %
+          helix.selection)
+        whole_selection |= helix_sel
+    return whole_selection
+
+  def beta_selection (self) :
+    sele = self.selection_cache.selection
+    whole_selection = flex.bool(self.xray_structure.sites_cart().size())
+    for sheet in self.params.sheet :
+      strand_sel = sele("(%s) and name N and (altloc ' ' or altloc 'A')" %
+        sheet.first_strand)
+      whole_selection |= strand_sel
+      for strand in sheet.strand :
+        strand_sel = sele("(%s) and name N and (altloc ' ' or altloc 'A')" %
+          strand.selection)
+        whole_selection |= strand_sel
+    return whole_selection
 
 def process_structure (params, processed_pdb_file, tmp_dir, log,
     assume_hydrogens_all_missing=None, return_bonds=True) :
@@ -893,14 +904,18 @@ def run_ksdssp (file_name, log=sys.stderr) :
     print >> log, "\n".join(ksdssp_out.stderr_lines)
   return ksdssp_out.stdout_lines
 
-def calculate_structure_content (pdb_file, assume_hydrogens_all_missing=None) :
+def manager_from_pdb_file (pdb_file) :
   assert os.path.isfile(pdb_file)
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
   pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
   xray_structure = pdb_in.file_object.xray_structure_simple()
   ss_manager  = manager(pdb_hierarchy=pdb_hierarchy,
-    xray_structure=xray_structure,
-    assume_hydrogens_all_missing=assume_hydrogens_all_missing)
+    xray_structure=xray_structure)
+  return ss_manager
+
+def calculate_structure_content (pdb_file) :
+  ss_manager = manager_from_pdb_file(pdb_file)
+  ss_manager.find_automatically()
   return ss_manager.calculate_structure_content()
 
 def run (args, out=sys.stdout, log=sys.stderr) :
@@ -985,29 +1000,8 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   return ss_phil.as_str()
 
 ########################################################################
-def get_bonds (file_name, out=sys.stdout, log=sys.stderr,
-    force_new_annotation=False, fake_hydrogens=True) :
-  records = None
-  if force_new_annotation :
-    records = run_ksdssp(file_name, log=log)
-  secondary_structure = iotbx.pdb.secondary_structure.process_records(
-    records=records,
-    pdb_files=[file_name])
-  assert secondary_structure is not None
-  ss_params_str = secondary_structure.as_restraint_groups(log=sys.stderr)
-  pdb_hierarchy = get_pdb_hierarchy([file_name])
-  sources = [libtbx.phil.parse(ss_params_str)]
-  working_phil = sec_str_master_phil.fetch(sources=sources)
-  #working_phil.show()
-  params = working_phil.extract()
-  params.h_bond_restraints.substitute_n_for_h = fake_hydrogens
-  bonds_table = hydrogen_bonds_from_selections(
-    pdb_hierarchy,
-    params=params,
-    log=log)
-  return pdb_hierarchy, bonds_table
-
 def exercise () :
+  from iotbx import file_reader
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1ywf.pdb",
     test=os.path.isfile)
@@ -1018,26 +1012,58 @@ def exercise () :
     print "Skipping"
     return False
   log = cStringIO.StringIO()
-  params = sec_str_master_phil.extract()
-  pdb_hierarchy, bonds_table = get_bonds(pdb_file, log=log)
-  atoms = pdb_hierarchy.atoms()
+  pdb_in = file_reader.any_file(pdb_file_h, force_type="pdb").file_object
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  xray_structure = pdb_in.xray_structure_simple()
+  sec_str_from_pdb_file = pdb_in.extract_secondary_structure()
+  m = manager(pdb_hierarchy=pdb_hierarchy,
+    xray_structure=xray_structure,
+    sec_str_from_pdb_file=sec_str_from_pdb_file)
+  m.find_automatically(log=log)
+  bonds_table = m.get_bonds_table(log=log)
   assert bonds_table.bonds.size() == 109
-  params.h_bond_restraints.substitute_n_for_h = True
-  bonds_table.analyze_distances(params=params.h_bond_restraints,
-    pdb_hierarchy=pdb_hierarchy,
-    log=log)
+  m.params.h_bond_restraints.substitute_n_for_h = True
+  bonds_table = m.get_bonds_table(log=log)
   assert bonds_table.flag_use_bond.count(True) == 106
-  pdb_hierarchy, bonds_table_new = get_bonds(pdb_file, log=log,
-    force_new_annotation=True)
-  assert bonds_table_new.bonds.size() == 93
-  pdb_hierarchy, bonds_table = get_bonds(pdb_file_h, log=log,
-    fake_hydrogens=False)
+  (frac_alpha, frac_beta) = m.calculate_structure_content()
+  assert ("%.3f" % frac_alpha) == "0.643"
+  assert ("%.3f" % frac_beta) == "0.075"
+  del m
+  # using KSDSSP
+  m = manager(pdb_hierarchy=pdb_hierarchy,
+    xray_structure=xray_structure,
+    sec_str_from_pdb_file=None)
+  m.find_automatically(log=log)
+  bonds_table = m.get_bonds_table(log=log)
+  assert bonds_table.bonds.size() == 93
+  m.params.h_bond_restraints.substitute_n_for_h = True
+  bonds_table = m.get_bonds_table(log=log)
+  assert bonds_table.flag_use_bond.count(True) == 86
+  (frac_alpha, frac_beta) = m.calculate_structure_content()
+  assert ("%.3f" % frac_alpha) == "0.552"
+  assert ("%.3f" % frac_beta) == "0.066"
+  del m
+  del pdb_hierarchy
+  del xray_structure
+  # without hydrogens
+  pdb_in = file_reader.any_file(pdb_file, force_type="pdb").file_object
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  xray_structure = pdb_in.xray_structure_simple()
+  sec_str_from_pdb_file = pdb_in.extract_secondary_structure()
+  m = manager(pdb_hierarchy=pdb_hierarchy,
+    xray_structure=xray_structure,
+    sec_str_from_pdb_file=sec_str_from_pdb_file)
+  m.find_automatically(log=log)
+  bonds_table = m.get_bonds_table(log=log)
   assert bonds_table.bonds.size() == 109
-  params.h_bond_restraints.substitute_n_for_h = False
-  bonds_table.analyze_distances(params=params.h_bond_restraints,
-    pdb_hierarchy=pdb_hierarchy,
-    log=log)
-  assert bonds_table.flag_use_bond.count(True) == 103
+  del m
+  # using KSDSSP
+  m = manager(pdb_hierarchy=pdb_hierarchy,
+    xray_structure=xray_structure,
+    sec_str_from_pdb_file=None)
+  m.find_automatically(log=log)
+  bonds_table = m.get_bonds_table(log=log)
+  assert bonds_table.bonds.size() == 93
   print "OK"
 
 if __name__ == "__main__" :
