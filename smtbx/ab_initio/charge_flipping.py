@@ -55,7 +55,6 @@ import itertools
 import sys
 import math
 
-import gc
 
 class _array_extension(oop.injector, miller.array):
 
@@ -112,6 +111,14 @@ class _fft_extension(oop.injector, miller.fft_map):
 
 
 class density_modification_iterator(object):
+  """ Skeleton for any method which, like charge flipping, does cycles like
+
+      rho --|1|--> rho' --|Fourier analysis|--> g --|2|--> f
+       ^                                                   |
+       |----------------|Fourier synthesis|----------------|
+
+    where the transformation (1) and (2) are specific to each method.
+  """
 
   min_cc_peak_height = 0.8
 
@@ -120,7 +127,7 @@ class density_modification_iterator(object):
                **kwds):
     assert f_obs.data() is not None
     assert are_equivalent(f_calc is None, f_000 is None)
-    assert f_calc is None or (is_numeric(f_calc) and is_numeric(f_000))
+    assert f_calc is None or f_calc.space_group() == f_obs.space_group()
     adopt_optional_init_args(self, kwds)
 
     self.original_f_obs = f_obs
@@ -144,7 +151,7 @@ class density_modification_iterator(object):
 
   def restart(self, f_calc=None, f_000=None):
     assert are_equivalent(f_calc is None, f_000 is None)
-    assert f_calc is None or (is_numeric(f_calc) and is_numeric(f_000))
+    assert f_calc is None or f_calc.space_group() == self.f_obs.space_group()
     if f_calc is None:
       f_calc = self.starter(self.f_obs)
       f_000 = 0
@@ -156,6 +163,7 @@ class density_modification_iterator(object):
     return self
 
   def next(self):
+    """ perform one cycle and return itself """
     self.modify_electron_density()
     self.compute_structure_factors()
     self.transfer_phase_to_f_obs()
@@ -164,13 +172,15 @@ class density_modification_iterator(object):
     return self # iterator-is-its-own-state trick
 
   def compute_electron_density_map(self):
+    """ Compute the electron density from the structure factors self.f_calc
+    and the 000 component self.f_000, scaling by the unit cell volume """
     self.rho_map = miller.fft_map(self.crystal_gridding,
                                   self.f_calc,
                                   self.f_000)
     self.rho_map.apply_volume_scaling()
 
   def compute_structure_factors(self):
-    """ This shall compute the structure factors self._g of self.rho_map,
+    """ Compute the structure factors self._g of self.rho_map,
     as well as the 000 component self._g_000, scaling them by the number of
     grid points """
     rho = self.rho_map.real_map()
@@ -431,16 +441,16 @@ class solving_iterator(object):
         i_attempt += 1
         if i_attempt > 2:
           self.max_solving_iterations *= 1.5
-        observable = skewness_evolution()
+        self.skewness_evolution = observable_evolution()
         for n, flipping in enumerate(
           itertools.islice(self.flipping_iterator,
                            0, self.max_solving_iterations)):
           self.iteration_index = n
           if n % self.yield_solving_interval == 0:
             yield self.solving
-          observable.append(flipping.rho_map.skewness())
-          if flipping.rho_map.skewness() < 3: continue
-          if observable.had_phase_transition():
+          self.skewness_evolution.append(flipping.rho_map.skewness())
+          #if flipping.rho_map.skewness() < 3: continue
+          if self.skewness_evolution.had_phase_transition():
             self.attempts.append(n)
             yield self.polishing
             break
@@ -534,8 +544,7 @@ def loop(solving, verbose=True, stdout=sys.stdout):
     previous_state = solving.state
 
 
-
-class skewness_evolution(object):
+class observable_evolution(object):
 
   smoothing_coefficient = 0.25
   increasing = True
@@ -545,12 +554,14 @@ class skewness_evolution(object):
   def __init__(self, **kwds):
     adopt_optional_init_args(self, kwds)
     self.values = flex.double()
+    self.raw_values = flex.double()
     self.differences = flex.double()
 
   def append(self, x):
+    self.raw_values.append(x)
     if len(self.values) > 1:
-      y0 = self.values[-1]
       a = self.smoothing_coefficient
+      y0 = self.values[-1]
       y1 = y0 + a*(x - y0)
       self.values.append(y1)
       delta = y1 - y0
