@@ -11,12 +11,13 @@
 #include <scitbx/boost_python/container_conversions.h>
 #include <boost_adaptbx/optional_copy.h>
 #include <boost_adaptbx/optional_conversions.h>
+#include <boost_adaptbx/hash.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
 namespace {
 
-  struct rt_mx_wrappers
+  struct rt_mx_wrappers : boost_adaptbx::py_hashable<rt_mx>
   {
     typedef rt_mx w_t;
 
@@ -39,10 +40,6 @@ namespace {
 
     static scitbx::vec3<double>
     mul(w_t const& o, scitbx::vec3<double> const& rhs) { return o * rhs; }
-
-    static std::size_t py_hash(w_t const &self) {
-      return boost::hash<w_t>()(self);
-    }
 
     static void
     wrap()
