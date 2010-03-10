@@ -194,6 +194,8 @@ def randomly_exercise(flipping_type,
 def exercise(flags, space_group_info):
   print space_group_info.type().hall_symbol()
   if not flags.repeats: flags.repeats = 1
+  if not flags.algo: flags.algo = "weak_reflection_improved"
+  if not flags.on: flags.on = "E"
   results = []
   n = len(space_group_info.group())
   if n > 48: return False
