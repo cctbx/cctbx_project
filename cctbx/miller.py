@@ -2427,7 +2427,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       miller_set=self,
       data=self.data()/flex.sqrt(self.epsilons().data().as_double()))
 
-  def amplitude_quasi_normalisation(self):
+  def quasi_normalize_structure_factors(self, d_star_power=1):
     assert self.binner() is not None
     assert self.binner().n_bin_d_too_large_or_small() == 0
     assert self.data().all_ge(0)
