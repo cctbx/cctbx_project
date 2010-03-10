@@ -29,9 +29,8 @@ different compartment of crystallography. This is also the method used
 in SUPERFLIP circa Sept 2007 to polish the electron density after the charge
 flipping method has converged.
 
-[6] G. Oszl{\'a}nyi and A. S{\"u}t{\H o}.
-The charge flipping algorithm.
-Acta Cryst. A64:123Ð134, 2008
+[6] G. Oszl{\'a}nyi and A. S{\"u}t{\H o}. The charge flipping algorithm. Acta
+Cryst. A64:123-134, 2008
 """
 
 from __future__ import division, generators
