@@ -170,8 +170,10 @@ compcomm/smtbx_news_09/news.tex -text
 crys3d/__init__.py -text
 crys3d/command_line/model_viewer.py -text
 crys3d/images.py -text
+crys3d/libtbx_refresh.py -text
 crys3d/qttbx/__init__.py -text
 crys3d/qttbx/map_viewer.py -text
+crys3d/qttbx/map_viewer_controls.ui -text
 crys3d/reverse_selection.py -text
 crys3d/wx_combined_viewer.py -text
 crys3d/wx_extra.py -text
