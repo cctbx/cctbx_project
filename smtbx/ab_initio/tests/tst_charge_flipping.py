@@ -32,8 +32,11 @@ def randomly_exercise(flipping_type,
                       space_group_info, elements,
                       anomalous_flag,
                       d_min, grid_resolution_factor=1./2,
-                      verbose=False
+                      verbose=False,
+                      amplitude_type="F",
                       ):
+  assert amplitude_type in ('F', 'E', 'quasi-E')
+
   # Generate a random structure in real space, that we will try to recover
   target_structure = random_structure.xray_structure(
     space_group_info=space_group_info,
@@ -67,11 +70,17 @@ def randomly_exercise(flipping_type,
                       inverted_solution=False,
                       succeeded=True)
   flipping = flipping_type(delta=None)
+  extra = group_args()
+  if amplitude_type == 'E':
+    extra.normalisations_for = lambda f: f.amplitude_normalisations(
+      target_structure.unit_cell_content(omit=('H','D')))
   solving = charge_flipping.solving_iterator(
     flipping,
     f_obs,
     yield_during_delta_guessing=True,
-    yield_solving_interval=1)
+    yield_solving_interval=1,
+    **extra.__dict__
+  )
   charge_flipping.loop(solving, verbose=verbose)
 
   # check whether a phase transition has occured
@@ -183,6 +192,7 @@ def randomly_exercise(flipping_type,
 
 
 def exercise(flags, space_group_info):
+  print space_group_info.type().hall_symbol()
   if not flags.repeats: flags.repeats = 1
   results = []
   n = len(space_group_info.group())
@@ -195,6 +205,7 @@ def exercise(flags, space_group_info):
   #n_N = 0
   if flags.Verbose:
     print "C%i O%i N%i" % (n_C*n, n_O*n, n_N*n)
+    print "on %s's with %s" % (flags.on, flags.algo)
   flipping_type = eval("charge_flipping.%s_iterator" % flags.algo)
   for i in xrange(int(flags.repeats)):
     result = randomly_exercise(
@@ -203,7 +214,8 @@ def exercise(flags, space_group_info):
       elements=["C"]*n_C + ["O"]*n_O + ["N"]*n_N,
       anomalous_flag=False,
       d_min=0.8,
-      verbose=flags.Verbose
+      verbose=flags.Verbose,
+      amplitude_type=flags.on
     )
     results.append(result)
   if flags.Verbose: print
@@ -216,7 +228,8 @@ def exercise_charge_flipping():
     debug_utils.parse_options_loop_space_groups(
       sys.argv[1:],
       exercise,
-      keywords=("repeats", 'algo'),
+      keywords=("repeats", 'on', 'algo'),
+      symbols_to_stderr=False,
     ))
   results = flat_list([ x for x in results if x is not None ])
   n_tests = len(results)
