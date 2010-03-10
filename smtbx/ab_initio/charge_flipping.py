@@ -55,7 +55,6 @@ import itertools
 import sys
 import math
 
-
 class _array_extension(oop.injector, miller.array):
 
   def oszlanyi_suto_phase_transfer(self,
@@ -127,8 +126,6 @@ class density_modification_iterator(object):
       ....
   """
 
-  min_cc_peak_height = 0.8
-
   def __init__(self, **kwds):
     adopt_optional_init_args(self, kwds)
 
@@ -146,6 +143,23 @@ class density_modification_iterator(object):
     self.f_calc = self.f_obs.phase_transfer(phases)
     self.f_000 = f_000
     self.compute_electron_density_map()
+
+  def normalise(self, normalisations, divide=True):
+    m = self.f_obs.match_indices(normalisations)
+    assert not m.singles(0) and not m.singles(1)
+    normalisations = normalisations.select(m.permutation())
+    assert self.f_obs.indices() == normalisations.indices()
+    if divide:
+      self.f_obs /= normalisations.data()
+      self.f_calc /= normalisations.data()
+    else:
+      self.f_obs *= normalisations.data()
+      self.f_calc *= normalisations.data()
+    self.f_000 = 0
+    self.compute_electron_density_map()
+
+  def denormalise(self, normalisations):
+    self.normalise(normalisations, divide=False)
 
   def __iter__(self):
     return self
@@ -256,6 +270,12 @@ def f_calc_symmetrisations(f_obs, f_calc_in_p1, min_cc_peak_height):
   # The fast correlation map as per cctbx.translation_search.fast_nv1995
   # is computed and its peaks studied.
   # Inspiration from phenix.substructure.hyss for the parameters tuning.
+  if 0: # Display f_calc_in_p1
+    from crys3d.qttbx import map_viewer
+    map_viewer.display(window_title="f_calc in P1 before fast CC",
+                       fft_map=f_calc_in_p1.fft_map(),
+                       iso_level_positive_range_fraction=0.8)
+
   crystal_gridding = f_obs.crystal_gridding(
     symmetry_flags=translation_search.symmetry_flags(
       is_isotropic_search_model=False,
@@ -272,11 +292,12 @@ def f_calc_symmetrisations(f_obs, f_calc_in_p1, min_cc_peak_height):
     miller_indices_p1_f_calc=f_calc_in_p1.indices(),
     p1_f_calc=f_calc_in_p1.data()).target_map()
 
-  if 0:
-    from crys3d import wx_map_viewer
-    wx_map_viewer.display(title="CC map",
-                          raw_map=correlation_map,
-                          unit_cell=f_calc_in_p1.unit_cell())
+  if 0: # Display correlation_map
+    from crys3d.qttbx import map_viewer
+    map_viewer.display(window_title="Fast CC map",
+                       raw_map=correlation_map,
+                       unit_cell=f_calc_in_p1.unit_cell(),
+                       positive_iso_level=0.8)
 
   search_parameters = maptbx.peak_search_parameters(
     peak_search_level=1,
@@ -308,9 +329,13 @@ def f_calc_symmetrisations(f_obs, f_calc_in_p1, min_cc_peak_height):
 
 class solving_iterator(object):
 
-  initial_phases_type = "random"
+  normalisations_for = None
+  initial_phases_for = staticmethod(
+    lambda f_obs: (2*math.pi)*flex.random_double(f_obs.size()))
+
   delta_guessing_method = "sigma"
   delta_over_sigma = 1.1
+  min_delta_guessing_iterations = 4
   max_delta_guessing_iterations = 10
   map_sigma_stability_threshold = 0.01
   initial_flipped_fraction=0.8
@@ -319,19 +344,28 @@ class solving_iterator(object):
   max_attempts_to_get_phase_transition = 5
   max_attempts_to_get_sharp_correlation_map = 5
   yield_solving_interval = 10
+  extra_iterations_on_f_after_phase_transition = 5
   polishing_iterations = 5
   min_cc_peak_height = 0.9
 
   def __init__(self, flipping_iterator, f_obs, **kwds):
     self.flipping_iterator = flipping_iterator
     adopt_optional_init_args(self, kwds)
+    assert (self.min_delta_guessing_iterations
+            < self.max_delta_guessing_iterations)
     self.attempts = []
+    self.normalisations = None
     self.f_calc_solutions = []
     self.had_phase_transition = False
     self.max_attempts_exceeded = False
-    self.state = self.starting = {
-      "random": self._starting_with_random_phases,
-      }[self.initial_phases_type](f_obs)
+
+    # prepare f_obs
+    f_obs = f_obs.eliminate_sys_absent()\
+                 .as_non_anomalous_array() \
+                 .merge_equivalents().array()
+
+    # setup state machine
+    self.state = self.starting = self._starting(f_obs)
     self.guessing_delta = {
       "sigma": self._guessing_delta_with_map_sigma,
       "c_tot_over_c_flip": self._guessing_delta_with_c_tot_over_c_flip,
@@ -379,15 +413,15 @@ class solving_iterator(object):
     del self.evaluating
     del self.finished
 
-  def _starting_with_random_phases(self, f_obs):
-    f_obs = f_obs.eliminate_sys_absent() \
-                 .expand_to_p1() \
-                 .as_non_anomalous_array() \
+  def _starting(self, f_obs):
+    f_obs = f_obs.expand_to_p1() \
                  .merge_equivalents().array() \
                  .discard_sigmas()
+    if self.normalisations_for is not None:
+      self.normalisations = self.normalisations_for(f_obs)
+      f_obs /= self.normalisations.data()
     while 1:
-      random_phases = (2*math.pi)*flex.random_double(f_obs.size())
-      self.flipping_iterator.start(f_obs, random_phases)
+      self.flipping_iterator.start(f_obs, self.initial_phases_for(f_obs))
       yield self.guessing_delta
 
   def _finished(self):
@@ -430,7 +464,7 @@ class solving_iterator(object):
         sigma = self.flipping_iterator.rho_map.sigma()
         sigmas.append(sigma)
         self.flipping_iterator.delta = self.delta_over_sigma * sigma
-        if len(sigmas) == 1:
+        if len(sigmas) < self.min_delta_guessing_iterations:
           self.flipping_iterator.next()
           continue
         sigma_tail_stats = scitbx.math.basic_statistics(sigmas[-5:])
@@ -469,6 +503,14 @@ class solving_iterator(object):
 
   def _polishing(self):
     while 1:
+      if 0: # Display map
+        from crys3d.qttbx import map_viewer
+        map_viewer.display(fft_map=self.flipping_iterator.f_calc.fft_map(),
+                           iso_level_positive_range_fraction=0.4)
+      if self.normalisations:
+        self.flipping_iterator.denormalise(self.normalisations)
+        for i in xrange(self.extra_iterations_on_f_after_phase_transition):
+          self.flipping_iterator.next()
       low_density_elimination = low_density_elimination_iterator(
         constant_rho_c=self.flipping_iterator.delta)
       low_density_elimination.start(f_obs=self.flipping_iterator.f_obs,
@@ -476,18 +518,16 @@ class solving_iterator(object):
                                     f_000=0)
       for i in xrange(self.polishing_iterations):
         low_density_elimination.next()
-      self.flipping_iterator.f_calc = low_density_elimination.f_calc
-      self.flipping_iterator.f_000 = low_density_elimination.f_000
       yield self.evaluating
 
-  def _evaluating(self, f_obs):
+  def _evaluating(self, original_f_obs):
     while 1:
       attempts = 0
       while attempts < self.max_attempts_to_get_sharp_correlation_map:
         attempts += 1
         self.f_calc_solutions = []
         for f_calc, shift, cc_peak_height\
-            in f_calc_symmetrisations(f_obs,
+            in f_calc_symmetrisations(original_f_obs,
                                       self.flipping_iterator.f_calc,
                                       self.min_cc_peak_height):
           if (not self.f_calc_solutions
