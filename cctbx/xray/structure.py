@@ -1283,12 +1283,21 @@ class structure(crystal.special_position_settings):
   from_shelx = classmethod(from_shelx)
 
   def asu_content(self, omit=None):
+    """ The content of the asymmetric unit as a chemical formula """
     result = {}
     for sc in self.scatterers():
       elt = sc.element_symbol()
       if omit and elt in omit: continue
       result.setdefault(elt, 0)
-      result[elt] += 1
+      result[elt] += sc.occupancy
+    return result
+
+  def unit_cell_content(self, omit=None):
+    """ The content of the unit cell as a chemical formula """
+    n = self.space_group().order_z()
+    result = self.asu_content(omit)
+    for elt in result:
+      result[elt] = int(round(result[elt]*n, 0))
     return result
 
 class conservative_pair_proxies(object):
