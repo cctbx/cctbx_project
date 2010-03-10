@@ -1,6 +1,8 @@
-from PyQt4 import QtGui, QtOpenGL
+from PyQt4 import QtGui, QtCore, QtOpenGL
+from PyQt4.QtCore import Qt
 import gltbx.util
 from crys3d import qttbx
+import crys3d.qttbx.map_viewer_controls
 from gltbx import quadrics, gl_managed
 from gltbx.gl import *
 from gltbx.glu import *
@@ -11,16 +13,40 @@ from cctbx import maptbx, uctbx
 import math
 import sys
 
-class map_viewer(qttbx.widget):
+def display(window_title="Map Viewer", **kwds):
+  app = QtGui.QApplication([])
+  view = map_viewer(**kwds)
+  view.setWindowTitle(window_title)
+  view.resize(800, 800)
+  ctrls = map_viewer_controls(view)
+  ctrls.show()
+  view.show()
+  app.exec_()
 
-  def display(self, window_title="Map Viewer", **kwds):
-    app = QtGui.QApplication([])
-    view = map_viewer(**kwds)
-    view.setWindowTitle(window_title)
-    view.resize(800, 800)
-    view.show()
-    app.exec_()
-  display = classmethod(display)
+
+class map_viewer_controls(QtGui.QWidget, qttbx.map_viewer_controls.Ui_Form):
+
+  def __init__(self, map_viewer):
+    QtGui.QWidget.__init__(self, None, Qt.Tool)
+    self.view = map_viewer
+    self.move(0,50)
+    self.setupUi(self)
+    self.wiresBox.setChecked(self.view.wires)
+    self.perspectiveBox.setChecked(not self.view.orthographic)
+    self.posIsoLevelSlider.setRange(0, 100)
+
+    self.wiresBox.stateChanged[int].connect(self.view.set_wires)
+    self.posIsoLevelSlider.valueChanged[int].connect(
+      self.posIsoLevelLCD.display)
+    self.posIsoLevelSlider.setValue(
+      int(self.view.positive_iso_level/self.view.max_density*100))
+    self.posIsoLevelSlider.valueChanged[int].connect(
+      lambda x: self.view.set_positive_iso_level(self.view.max_density*x/100))
+    self.view.show_inspector.connect(self.show)
+    self.perspectiveBox.stateChanged[int].connect(self.view.set_perspective)
+
+
+class map_viewer(qttbx.widget):
 
   def __init__(self,
                fft_map=None,
@@ -76,6 +102,13 @@ class map_viewer(qttbx.widget):
       self.updateGL()
     return self
 
+  def set_perspective(self, flag):
+    if self.orthographic != (not flag):
+      self.orthographic = not flag
+      self.resizeGL(self.width(), self.height())
+      self.updateGL()
+    return self
+
   def set_wires(self, flag):
     if self.wires != flag:
       self.wires = flag
@@ -121,8 +154,8 @@ if __name__ == '__main__':
     periodic=False,
     lazy_normals=False,
     descending_normals=True)
-  map_viewer.display(unit_cell=uc,
-                     raw_map=case.map,
-                     iso_level_positive_range_fraction=0.3,
-                     wires=False,
-                     orthographic=True)
+  display(unit_cell=uc,
+          raw_map=case.map,
+          iso_level_positive_range_fraction=0.3,
+          wires=False,
+          orthographic=True)

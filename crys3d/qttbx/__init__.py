@@ -160,6 +160,14 @@ class widget(QGLWidget):
     glEnd()
     glLineWidth(lw[0])
 
+  show_inspector = pyqtSignal()
+
+  def keyPressEvent(self, event):
+    if event.key() == Qt.Key_F5:
+      QApplication.instance().quit()
+    elif event.key() == Qt.Key_I and event.modifiers() & Qt.ControlModifier:
+      self.show_inspector.emit()
+
   def mousePressEvent(self, event):
     if event.button() == Qt.LeftButton:
       self.mouse_position = event.pos()
