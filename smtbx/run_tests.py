@@ -3,10 +3,9 @@ import libtbx.load_env
 
 def run():
   tst_list = (
-    "$D/masks/tests/tst_masks.py",
     "$D/ab_initio/tests/tst_ab_initio_ext.py",
-    "$D/ab_initio/tests/tst_charge_flipping.py "
-        "--algo=weak_reflection_improved ",
+    "$D/masks/tests/tst_masks.py",
+    "$D/ab_initio/tests/tst_charge_flipping.py",
     "$D/structure_factors/direct/tests/tst_standard_xray.py",
     "$D/refinement/tests/tst_minimization.py",
     #"$D/refinement/tests/tst_least_squares.py",
