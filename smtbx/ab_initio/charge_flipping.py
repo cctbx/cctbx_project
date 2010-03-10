@@ -28,6 +28,10 @@ Phys. Rev. Lett., 86:236, 2001
 different compartment of crystallography. This is also the method used
 in SUPERFLIP circa Sept 2007 to polish the electron density after the charge
 flipping method has converged.
+
+[6] G. Oszl{\'a}nyi and A. S{\"u}t{\H o}.
+The charge flipping algorithm.
+Acta Cryst. A64:123Ð134, 2008
 """
 
 from __future__ import division, generators
@@ -507,7 +511,13 @@ class solving_iterator(object):
         from crys3d.qttbx import map_viewer
         map_viewer.display(fft_map=self.flipping_iterator.f_calc.fft_map(),
                            iso_level_positive_range_fraction=0.4)
+
       if self.normalisations:
+        # if we have been working on normalised amplitudes
+        # (i.e. in practice E's or quasi-E's, it is essential to go back to
+        # F's first and then to do a few more charge flipping cycles on them.
+        # Then, only then, can we polish with low density elimination.
+        # C.f. [6]
         self.flipping_iterator.denormalise(self.normalisations)
         for i in xrange(self.extra_iterations_on_f_after_phase_transition):
           self.flipping_iterator.next()
