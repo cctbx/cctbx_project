@@ -182,7 +182,7 @@ def randomly_exercise(flipping_type,
   return result
 
 
-def exercise(flags, space_group_info, flipping_type):
+def exercise(flags, space_group_info):
   if not flags.repeats: flags.repeats = 1
   results = []
   n = len(space_group_info.group())
@@ -195,6 +195,7 @@ def exercise(flags, space_group_info, flipping_type):
   #n_N = 0
   if flags.Verbose:
     print "C%i O%i N%i" % (n_C*n, n_O*n, n_N*n)
+  flipping_type = eval("charge_flipping.%s_iterator" % flags.algo)
   for i in xrange(int(flags.repeats)):
     result = randomly_exercise(
       flipping_type=flipping_type,
@@ -215,8 +216,7 @@ def exercise_charge_flipping():
     debug_utils.parse_options_loop_space_groups(
       sys.argv[1:],
       exercise,
-      keywords=("repeats",),
-      flipping_type=charge_flipping.weak_reflection_improved_iterator,
+      keywords=("repeats", 'algo'),
     ))
   results = flat_list([ x for x in results if x is not None ])
   n_tests = len(results)
