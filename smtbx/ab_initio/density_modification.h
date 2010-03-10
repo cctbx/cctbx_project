@@ -12,11 +12,8 @@ namespace smtbx { namespace ab_initio { namespace density_modification {
   void flip_charges_in_place(af::ref<FloatType, AccessorType> const &rho,
                              FloatType delta)
   {
-    typedef typename AccessorType::index_type index_type;
-    for (af::nested_loop<index_type> i(rho.accessor().focus());
-         !i.over(); i.incr())
-    {
-      if (rho(i()) < delta) rho(i()) = -rho(i());
+    for (std::size_t i=0; i<rho.size(); ++i) {
+      if (rho[i] < delta) rho[i] = -rho[i];
     }
   }
 
@@ -25,18 +22,15 @@ namespace smtbx { namespace ab_initio { namespace density_modification {
     af::ref<FloatType, AccessorType> const &rho,
     FloatType rho_s)
   {
-      typedef typename AccessorType::index_type index_type;
-      for (af::nested_loop<index_type> i(rho.accessor().focus());
-           !i.over(); i.incr())
-      {
-        if (rho(i()) <= 0) {
-          rho(i()) = 0;
-        }
-        else {
-          FloatType x = rho(i())/rho_s;
-          rho(i()) *= 1 - std::exp(-0.5*x*x);
-        }
+    for (std::size_t i=0; i<rho.size(); ++i) {
+      if (rho[i] <= 0) {
+        rho[i] = 0;
       }
+      else {
+        FloatType x = rho[i]/rho_s;
+        rho[i] *= 1 - std::exp(-0.5*x*x);
+      }
+    }
   }
 
 }}} // namespace smtbx::ab_initio:: density_modification
