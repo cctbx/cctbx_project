@@ -210,6 +210,11 @@ class basic_iterator(density_modification_iterator):
     super(basic_iterator, self).__init__(**kwds)
     self.delta = delta
 
+  def normalise(self, normalisations, divide=True):
+    old_sigma = self.rho_map.sigma()
+    super(basic_iterator, self).normalise(normalisations, divide)
+    self.delta *= self.rho_map.sigma() / old_sigma
+
   def c_tot_over_c_flip(self):
     return self.rho_map.c_tot()/self.rho_map.c_flip(self.delta)
 
@@ -252,6 +257,9 @@ class low_density_elimination_iterator(density_modification_iterator):
   def __init__(self, constant_rho_c=None, **kwds):
     super(low_density_elimination_iterator, self).__init__(**kwds)
     self.constant_rho_c = constant_rho_c
+
+  def normalise(self, normalisations, divide=True):
+    raise NotImplementedError
 
   def modify_electron_density(self):
     ab_initio.ext.low_density_elimination_in_place_tanaka_et_al_2001(
@@ -347,7 +355,8 @@ class solving_iterator(object):
   max_attempts_to_get_phase_transition = 5
   max_attempts_to_get_sharp_correlation_map = 5
   yield_solving_interval = 10
-  extra_iterations_on_f_after_phase_transition = 5
+  extra_iterations_on_f_after_phase_transition = 10
+  map_skewness_stability_threshold = 0.01
   polishing_iterations = 5
   min_cc_peak_height = 0.9
 
@@ -510,16 +519,21 @@ class solving_iterator(object):
         from crys3d.qttbx import map_viewer
         map_viewer.display(fft_map=self.flipping_iterator.f_calc.fft_map(),
                            iso_level_positive_range_fraction=0.4)
-
       if self.normalisations:
         # if we have been working on normalised amplitudes
-        # (i.e. in practice E's or quasi-E's, it is essential to go back to
-        # F's first and then to do a few more charge flipping cycles on them.
-        # Then, only then, can we polish with low density elimination.
-        # C.f. [6]
+        # (i.e. in practice E's or quasi-E's, it is better to go back to
+        # F's before polishing.
+        # According to [6], a few cycles of charge flipping on those F's
+        # before polishing improves map quality.
         self.flipping_iterator.denormalise(self.normalisations)
+        skewness = flex.double()
         for i in xrange(self.extra_iterations_on_f_after_phase_transition):
           self.flipping_iterator.next()
+          skewness.append(self.flipping_iterator.rho_map.skewness())
+          if i < 3: continue
+          stats = scitbx.math.median_statistics(skewness[-3:])
+          if (stats.median_absolute_deviation
+              < self.map_skewness_stability_threshold): break
       low_density_elimination = low_density_elimination_iterator(
         constant_rho_c=self.flipping_iterator.delta)
       low_density_elimination.start(f_obs=self.flipping_iterator.f_obs,
