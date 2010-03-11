@@ -583,9 +583,8 @@ def exercise_principal_axes_of_inertia():
       center_of_mass = [0,0,0]
     else:
       center_of_mass = [rnd(),rnd(),rnd()]
-    points = flex.vec3_double()
-    for point in flex.nested_loop([-1,-1,-1], [2,2,2]):
-      points.append((matrix.col(point) + matrix.col(center_of_mass)).elems)
+    points = flex.vec3_double(flex.nested_loop([-1,-1,-1], [2,2,2]))
+    points += center_of_mass
     pai = principal_axes_of_inertia(points=points)
     assert approx_equal(pai.center_of_mass(), center_of_mass)
     assert approx_equal(pai.inertia_tensor(), [36,36,36,0,0,0])
@@ -593,16 +592,61 @@ def exercise_principal_axes_of_inertia():
     assert approx_equal(es.values(), [36,36,36])
     cp = pai.change_of_basis_mx_to_principal()
     assert approx_equal(matrix.sqr(cp).determinant(), 1)
-    if (i_trial == 0):
-      assert approx_equal(es.vectors(), [1,0,0,0,1,0,0,0,1])
-      assert approx_equal(cp, [1,0,0,0,1,0,0,0,1])
-    else:
-      paip = principal_axes_of_inertia(points=cp*points)
-      assert approx_equal(paip.inertia_tensor(), [36,36,36,0,0,0])
+    vectors = [matrix.col(es.vectors()[i:i+3]) for i in range(3)]
+    # testing for specific eigenvectors for the case
+    # of degenerate eigenvalues is a bit risky
+    paip = principal_axes_of_inertia(points=cp*points)
+    assert approx_equal(paip.inertia_tensor(), [36,36,36,0,0,0])
     assert approx_equal(pai.distance_to_inertia_ellipsoid_surface(
       unit_direction=(1,0,0)), 36)
     assert pai.distance_to_inertia_ellipsoid_surface(
       unit_direction=(0,0,0)) == 0
+  for i_trial in xrange(10):
+    # test for the case of non-degenerate eigenvalues
+    # check that the inertia tensor and eigenvectors
+    # transform correctly under rotation
+    eps = 1e-12
+    if (i_trial == 0):
+      center_of_mass = [0,0,0]
+      rotation = (1,0,0,0,1,0,0,0,1)
+    else:
+      center_of_mass = [rnd(),rnd(),rnd()]
+      rotation = flex.random_double_r3_rotation_matrix()
+    # a parallelepiped
+    points = flex.vec3_double([
+      (-4,-2,-1), (-3,-2,-1), (-2,-2,-1),
+      (-3,-1,-1), (-2,-1,-1), (-1,-1,-1),
+      (-2, 0,-1), (-1, 0,-1), ( 0, 0,-1),
+      (-2,-1, 0), (-1,-1, 0), ( 0,-1, 0),
+      (-1, 0, 0), ( 0, 0, 0), ( 1, 0, 0),
+      ( 0, 1, 0), ( 1, 1, 0), ( 2, 1, 0),
+      ( 0, 0, 1), ( 1, 0, 1), ( 2, 0, 1),
+      ( 1, 1, 1), ( 2, 1, 1), ( 3, 1, 1),
+      ( 2, 2, 1), ( 3, 2, 1), ( 4, 2, 1),
+      ])
+    points = rotation * points
+    points += center_of_mass
+    pai = principal_axes_of_inertia(points=points)
+    es = pai.eigensystem()
+    assert approx_equal(pai.center_of_mass(), center_of_mass)
+    R = matrix.sqr(rotation)
+    R_t = R.transpose()
+    assert approx_equal(
+      (R_t * matrix.sym(sym_mat3=pai.inertia_tensor()) * R).as_sym_mat3(),
+      (54,126,144,-54,-36,-18), eps=eps)
+    assert approx_equal(es.values(),
+      [156.90386550855695, 154.33160314031173, 12.764531351131396], eps=eps)
+    expected_vectors = [
+      (-0.44909878511104717, 0.29312841385740002, 0.84402962874606857),
+      (-0.29312841385727212, 0.84402962874598531, -0.44909878511128715),
+      (0.84402962874611298, 0.4490987851112036, 0.29312841385703242)]
+    for i in range(3):
+      vec = matrix.col(es.vectors()[3*i:3*(i+1)])
+      try:
+        assert approx_equal(R_t * vec, expected_vectors[i], eps=eps, out=None)
+      except AssertionError:
+        # we don't know the direction of the eigenvector
+        assert approx_equal(- R_t * vec, expected_vectors[i], eps=eps)
   for i_trial in xrange(10):
     if (i_trial == 0):
       center_of_mass = [0,0,0]
