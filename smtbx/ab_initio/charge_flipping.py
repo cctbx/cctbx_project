@@ -553,13 +553,10 @@ class solving_iterator(object):
             in f_calc_symmetrisations(original_f_obs,
                                       self.flipping_iterator.f_calc,
                                       self.min_cc_peak_height):
-          if (not self.f_calc_solutions
-              and cc_peak_height < self.min_cc_peak_height):
-            yield self.starting
-            break
+          if cc_peak_height < self.min_cc_peak_height: break
           self.f_calc_solutions.append((f_calc, shift, cc_peak_height))
-        else:
-          yield self.finished
+        if self.f_calc_solutions: yield self.finished
+        else: yield self.starting
       self.max_attempts_exceeded = True
 
 def loop(solving, verbose=True, stdout=sys.stdout):
