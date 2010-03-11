@@ -24,15 +24,13 @@ def display(window_title="Map Viewer", **kwds):
   app.exec_()
 
 
-class map_viewer_controls(QtGui.QWidget, qttbx.map_viewer_controls.Ui_Form):
+class map_viewer_controls(qttbx.widget_control_mixin,
+                          qttbx.map_viewer_controls.Ui_Form):
 
   def __init__(self, map_viewer):
-    QtGui.QWidget.__init__(self, None, Qt.Tool)
-    self.view = map_viewer
+    qttbx.widget_control_mixin.__init__(self, map_viewer, None, Qt.Tool)
     self.move(0,50)
-    self.setupUi(self)
     self.wiresBox.setChecked(self.view.wires)
-    self.perspectiveBox.setChecked(not self.view.orthographic)
     self.posIsoLevelSlider.setRange(0, 100)
 
     self.wiresBox.stateChanged[int].connect(self.view.set_wires)
@@ -42,8 +40,6 @@ class map_viewer_controls(QtGui.QWidget, qttbx.map_viewer_controls.Ui_Form):
       int(self.view.positive_iso_level/self.view.max_density*100))
     self.posIsoLevelSlider.valueChanged[int].connect(
       lambda x: self.view.set_positive_iso_level(self.view.max_density*x/100))
-    self.view.show_inspector.connect(self.show)
-    self.perspectiveBox.stateChanged[int].connect(self.view.set_perspective)
 
 
 class map_viewer(qttbx.widget):

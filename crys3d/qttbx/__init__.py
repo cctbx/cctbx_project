@@ -25,6 +25,7 @@ class widget(QGLWidget):
                mouse_rotation_scale=0.6, mouse_wheel_scale=0.1,
                mouse_translation_scale=0.01,
                unit_cell_axis_label_font=None,
+               show_unit_cell=True,
                *args, **kwds):
     super(widget, self).__init__(*args, **kwds)
     self.unit_cell = unit_cell
@@ -46,6 +47,7 @@ class widget(QGLWidget):
     if unit_cell_axis_label_font is None:
       unit_cell_axis_label_font = QFont("Helvetica", pointSize=16)
     self.unit_cell_axis_label_font = unit_cell_axis_label_font
+    self.is_unit_cell_shown = show_unit_cell
 
   def set_extent(self, from_here, to_there):
     self.from_here = mat.col(from_here)
@@ -58,6 +60,10 @@ class widget(QGLWidget):
       self.unit_cell.length(u)
       for u in [(dx, dy, dz), (dx, dy, -dz), (dx, -dy, dz), (-dx, dy, dz) ] ])
     self.object_radius = diameter/2
+
+  def show_unit_cell(self, flag):
+    self.is_unit_cell_shown = flag
+    self.updateGL()
 
   def eye_distance(self):
     return self.object_radius / math.tan(self.fovy/2*math.pi/180)
@@ -108,7 +114,7 @@ class widget(QGLWidget):
     self.orbiting.multiply()
     self.orthogonaliser.multiply()
     glTranslatef(*-self.object_centre_wrt_frac)
-    self.draw_unit_cell()
+    if self.is_unit_cell_shown: self.draw_unit_cell()
     self.draw_object()
     gltbx.util.handle_error()
 
@@ -224,3 +230,22 @@ class widget(QGLWidget):
     self.dolly.get()
     glPopMatrix()
     self.updateGL()
+
+
+class widget_control_mixin(QWidget):
+
+  def __init__(self, view, *args, **kwds):
+    QWidget.__init__(self, *args, **kwds)
+    self.view = view
+    self.setupUi(self)
+    try:
+      self.perspectiveBox.setChecked(not self.view.orthographic)
+      self.perspectiveBox.stateChanged[int].connect(self.view.set_perspective)
+    except AttributeError:
+      pass
+    try:
+      self.unitCellBox.setChecked(self.view.is_unit_cell_shown)
+      self.unitCellBox.stateChanged[int].connect(self.view.show_unit_cell)
+    except AttributeError:
+      pass
+    self.view.show_inspector.connect(self.show)

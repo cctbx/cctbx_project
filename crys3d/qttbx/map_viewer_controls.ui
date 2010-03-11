@@ -6,43 +6,44 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>355</width>
-    <height>147</height>
+    <width>310</width>
+    <height>156</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>24</number>
+   </property>
    <item>
-    <widget class="QCheckBox" name="wiresBox">
-     <property name="text">
-      <string>Wires</string>
+    <layout class="QGridLayout" name="gridLayout">
+     <property name="spacing">
+      <number>12</number>
      </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QCheckBox" name="perspectiveBox">
-     <property name="text">
-      <string>Perspective</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Preferred</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>1</height>
-      </size>
-     </property>
-    </spacer>
+     <item row="0" column="0">
+      <widget class="QCheckBox" name="wiresBox">
+       <property name="text">
+        <string>Wires</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QCheckBox" name="unitCellBox">
+       <property name="text">
+        <string>Unit cell</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QCheckBox" name="perspectiveBox">
+       <property name="text">
+        <string>Perspective</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="QGroupBox" name="groupBox">
