@@ -27,19 +27,42 @@ def display(window_title="Map Viewer", **kwds):
 class map_viewer_controls(qttbx.widget_control_mixin,
                           qttbx.map_viewer_controls.Ui_Form):
 
+  positive_iso_level_fmt = "%.3g"
+
   def __init__(self, map_viewer):
     qttbx.widget_control_mixin.__init__(self, map_viewer, None, Qt.Tool)
     self.move(0,50)
     self.wiresBox.setChecked(self.view.wires)
     self.posIsoLevelSlider.setRange(0, 100)
+    iso_level_validator = QtGui.QDoubleValidator(self)
+    iso_level_validator.setRange(0, self.view.max_density, decimals=3)
+    iso_level_validator.setNotation(QtGui.QDoubleValidator.ScientificNotation)
+    self.posIsoLevel.setValidator(iso_level_validator)
+    self.posIsoLevel.setText(self.positive_iso_level_fmt
+                             % self.view.positive_iso_level)
 
     self.wiresBox.stateChanged[int].connect(self.view.set_wires)
     self.posIsoLevelSlider.valueChanged[int].connect(
       self.posIsoLevelLCD.display)
     self.posIsoLevelSlider.setValue(
       int(self.view.positive_iso_level/self.view.max_density*100))
+    self.posIsoLevelSlider.sliderMoved[int].connect(
+      self.on_positive_iso_level_slider_moved)
     self.posIsoLevelSlider.valueChanged[int].connect(
-      lambda x: self.view.set_positive_iso_level(self.view.max_density*x/100))
+      self.posIsoLevelLCD.display)
+    self.posIsoLevel.editingFinished.connect(
+      self.on_iso_level_field_edited)
+
+  def on_positive_iso_level_slider_moved(self, x):
+    iso_level = self.view.max_density*x/100
+    self.view.set_positive_iso_level(iso_level)
+    self.posIsoLevel.setText(self.positive_iso_level_fmt % iso_level)
+
+  def on_iso_level_field_edited(self):
+    iso_level = float(self.posIsoLevel.text())
+    self.view.set_positive_iso_level(iso_level)
+    self.posIsoLevelSlider.setValue(iso_level/self.view.max_density*100)
+
 
 
 class map_viewer(qttbx.widget):
@@ -147,12 +170,13 @@ if __name__ == '__main__':
   uc = uctbx.unit_cell((1,1,1,60,120,90))
   case = tst_iso_surface.triangulation_test_case(
     func=tst_iso_surface.elliptic(),
-    grid_size=(50, 40, 30),
+    grid_size=(5, 3, 2),
     periodic=False,
     lazy_normals=False,
     descending_normals=True)
   display(unit_cell=uc,
           raw_map=case.map,
-          iso_level_positive_range_fraction=0.3,
-          wires=False,
+          iso_level_positive_range_fraction=0.38,
+          wires=True,
+          show_unit_cell=False,
           orthographic=True)
