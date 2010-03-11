@@ -606,6 +606,21 @@ class pairwise_global_wrapper(pairwise_global):
 
     return overall_ranges1,overall_ranges2
 
+  def calculate_sequence_identity (self) :
+    a1 = self.result1
+    a2 = self.result2
+    assert len(a1) == len(a2)
+    n_aligned_residues = 0
+    n_matching = 0
+    for i in range(len(a1)) :
+      if a1[i] != '-' and a2[i] != '-' :
+        n_aligned_residues += 1
+        if a1[i] == a2[i] :
+          n_matching += 1
+    if n_matching == 0 or n_aligned_residues == 0 :
+      return 0
+    return float(n_matching) / float(n_aligned_residues)
+
 def exercise_ext():
   seq1="THEQUICKBOWNFOXJUMPSOVETHELAZY"
   seq2="QUICKBRWNFXJUMPSVERTH3LAZYDOG"
@@ -615,6 +630,7 @@ def exercise_ext():
   pg = pairwise_global_wrapper(seq1,seq2)
   assert pg.range_matches_from_aligned_sequences() == (
   [[3, 13], [14, 20], [21, 23], [23, 30]], [[0, 10], [10, 16], [16, 18], [19, 26]])
+  assert ("%.2f" % pg.calculate_sequence_identity()) == "0.92"
 
 if __name__=="__main__":
   exercise_similarity_scores()
