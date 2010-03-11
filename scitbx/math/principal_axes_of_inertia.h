@@ -1,8 +1,10 @@
 #ifndef SCITBX_MATH_PRINCIPAL_AXES_OF_INERTIA_H
 #define SCITBX_MATH_PRINCIPAL_AXES_OF_INERTIA_H
 
+#include <boost_adaptbx/optional_copy.h>
 #include <scitbx/matrix/eigensystem.h>
 #include <scitbx/math/inertia_tensor.h>
+#include <scitbx/math/accumulators.h>
 #include <cstdio>
 
 namespace scitbx { namespace math {
@@ -40,48 +42,33 @@ namespace scitbx { namespace math {
       //! Default constructor. Some data members are not initialized!
       principal_axes_of_inertia() {}
 
-      //! Intitialization given discrete points with unit weights.
-      principal_axes_of_inertia(
-        af::const_ref<vec3<FloatType> > const& points)
-      :
-        center_of_mass_(0,0,0),
-        inertia_tensor_(0,0,0,0,0,0)
-      {
-        if (points.size() != 0) {
-          for(std::size_t i_p=0;i_p<points.size();i_p++) {
-            center_of_mass_ += points[i_p];
-          }
-          center_of_mass_ /= static_cast<FloatType>(points.size());
-          math::inertia_tensor(
-            points, center_of_mass_, inertia_tensor_);
-        }
-        eigensystem_ = matrix::eigensystem::real_symmetric<FloatType>(
-          inertia_tensor_);
-      }
-
-      //! Intitialization given discrete points and weights.
+      //! Intitialization given discrete points and optional weights.
       principal_axes_of_inertia(
         af::const_ref<vec3<FloatType> > const& points,
-        af::const_ref<FloatType> const& weights)
+        boost::optional<af::shared<FloatType> > const& weights)
       :
         center_of_mass_(0,0,0),
         inertia_tensor_(0,0,0,0,0,0)
       {
-        SCITBX_ASSERT(weights.size() == points.size());
-        FloatType sum_weights = 0;
-        for(std::size_t i_p=0;i_p<points.size();i_p++) {
-          FloatType w = weights[i_p];
-          if (w < 0) {
-            throw std::runtime_error(detail::report_negative_weight(
-              static_cast<double>(w), __FILE__, __LINE__));
-          }
-          center_of_mass_ += w * points[i_p];
-          sum_weights += w;
+        if (weights) {
+          SCITBX_ASSERT(weights.get().size() == points.size());
         }
-        if (sum_weights != 0) {
-          center_of_mass_ /= sum_weights;
-          math::inertia_tensor(
-            points, weights, center_of_mass_, inertia_tensor_);
+        scitbx::math::accumulator::inertia_accumulator<FloatType>
+          accumulate;
+        if (points.size() != 0) {
+          for(std::size_t i_p=0;i_p<points.size();i_p++) {
+            if (weights) {
+              FloatType w = weights.get()[i_p];
+              if (w < 0) {
+                throw std::runtime_error(detail::report_negative_weight(
+                  static_cast<double>(w), __FILE__, __LINE__));
+              }
+              accumulate(points[i_p], w);
+            }
+            else accumulate(points[i_p]);
+          }
+          center_of_mass_ = accumulate.center_of_mass();
+          inertia_tensor_ = accumulate.inertia_tensor();
         }
         eigensystem_ = matrix::eigensystem::real_symmetric<FloatType>(
           inertia_tensor_);

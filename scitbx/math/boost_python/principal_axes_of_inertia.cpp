@@ -20,13 +20,13 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      using boost::optional;
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("principal_axes_of_inertia", no_init)
-        .def(init<af::const_ref<vec3<double> > const&>((arg("points"))))
         .def(init<af::const_ref<vec3<double> > const&,
-                  af::const_ref<double> const&>(
-          (arg("points"), arg("weights"))))
+                  optional<af::shared<double> > const&>(
+          (arg("points"), arg("weights")=optional<af::shared<double> >())))
         .def("center_of_mass", &w_t::center_of_mass, ccr())
         .def("inertia_tensor", &w_t::inertia_tensor, ccr())
         .def("eigensystem", &w_t::eigensystem, rir())
