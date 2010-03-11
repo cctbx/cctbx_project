@@ -135,6 +135,7 @@ class map_viewer(qttbx.widget):
   def draw_triangulation(self):
     self.material.execute(specular=not self.wires)
     if self.wires:
+      self.light_with_only_ambient(1., 1., 1.)
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
       glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
     else:

@@ -112,12 +112,16 @@ class widget(QGLWidget):
     self.draw_object()
     gltbx.util.handle_error()
 
-  def draw_unit_cell(self):
-    glLightfv(GL_LIGHT0, GL_AMBIENT, [0.5, 0.5, 0.5, 1.])
+  def light_with_only_ambient(self, r=None, g=None, b=None, rgba=None):
+    assert bool((r,g,b).count(None)) == 0 ^ bool(rgba is not None)
+    if rgba is None: rgba = [ r, g, b, 1 ]
+    glLightfv(GL_LIGHT0, GL_AMBIENT, rgba)
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, (0., 0., 0., 1.))
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (0, 0, 0, 1))
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 0)
 
+  def draw_unit_cell(self):
+    self.light_with_only_ambient(0.5, 0.5, 0.5)
     (x0, y0, z0), (x1, y1, z1) = self.triangulation.bounds
 
     r,g,b = 0.9, 0.4, 0.3
