@@ -64,7 +64,8 @@ class mask(object):
     if use_space_group_symmetry:
       tags = self.crystal_gridding.tags()
       tags.tags().apply_symmetry_to_mask(self.mask.data)
-    self.flood_fill = cctbx.masks.flood_fill(self.mask.data)
+    self.flood_fill = cctbx.masks.flood_fill(
+      self.mask.data, self.xray_structure.unit_cell())
     self.n_solvent_grid_points = self.crystal_gridding.n_grid_points() - self.mask.data.count(0)
     self.solvent_accessible_volume = self.n_solvent_grid_points \
         / self.mask.data.size() * self.xray_structure.unit_cell().volume()
@@ -162,16 +163,20 @@ class mask(object):
     f_obs = f_obs.phase_transfer(phase_source=f_model)
     modified_f_obs = miller.array(
       miller_set=f_obs,
-      data=(f_obs.data() - f_mask.data()*scale_factor),
-      sigmas=f_obs.sigmas())
-    return modified_f_obs.as_intensity_array()
+      data=(f_obs.data() - f_mask.data()*scale_factor))
+    if self.observations.is_xray_intensity_array():
+      # it is better to use the original sigmas for intensity if possible
+      return modified_f_obs.as_intensity_array().customized_copy(
+        sigmas=self.observations.sigmas())
+    else:
+      return modified_f_obs.customized_copy(
+        sigmas=f_obs.sigmas()).as_intensity_array()
 
   def show_summary(self, log=None):
     if log is None: log = sys.stdout
     print >> log, "solvent_radius: %.2f" %(self.mask.solvent_radius)
     print >> log, "shrink_truncation_radius: %.2f" %(
       self.mask.shrink_truncation_radius)
-    print >> log, "gridding: (%i,%i,%i)" %self.crystal_gridding.n_real()
     print >> log, "Total solvent accessible volume / cell = %.1f Ang^3 [%.1f%%]" %(
       self.solvent_accessible_volume,
       100 * self.solvent_accessible_volume /
@@ -179,10 +184,12 @@ class mask(object):
     print >> log, "Total electron count / cell = %.1f" %(self.f_000_s)
     print >> log
 
+    self.flood_fill.show_summary(log=log)
+    print >> log
     n_voids = self.flood_fill.n_voids()
     grid_points_per_void = self.flood_fill.grid_points_per_void()
-    averaged_frac_coords = self.flood_fill.averaged_frac_coords()
-    print >> log, "Void  Average coordinates    Volume/Ang^3  n electrons"
+    centres_of_mass = self.flood_fill.centres_of_mass_frac()
+    print >> log, "Void  Vol/Ang^3  #Electrons"
     for i in range(n_voids):
       diff_map = self.masked_diff_map.deep_copy().set_selected(
         self.mask.data != i+2, 0)
@@ -193,8 +200,7 @@ class mask(object):
       void_vol = (
         self.xray_structure.unit_cell().volume() * grid_points_per_void[i]) \
                / self.crystal_gridding.n_grid_points()
-      formatted_site = ["%6.3f" % x for x in averaged_frac_coords[i]]
+      formatted_site = ["%6.3f" % x for x in centres_of_mass[i]]
       print >> log, "%4i" %(i+1),
-      print >> log, " (%s)" %(','.join(formatted_site)),
-      print >> log, "%12.1f     " %(void_vol),
+      print >> log, "%10.1f     " %(void_vol),
       print >> log, "%7.1f" %f_000_s

@@ -21,7 +21,8 @@ def exercise_masks(xs, fo_sq,
                    timing=False):
   xs_ref = xs.deep_copy_scatterers()
   time_total = time_log("masks total").start()
-  fo_sq_merged = fo_sq.merge_equivalents().array()
+  # average_bijvoet_mates is essential for non-centric structures
+  fo_sq_merged = fo_sq.merge_equivalents().array().average_bijvoet_mates()
   mask = masks.mask(xs, fo_sq_merged)
   time_compute_mask = time_log("compute mask").start()
   mask.compute(solvent_radius=solvent_radius,
