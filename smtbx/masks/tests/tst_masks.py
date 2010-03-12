@@ -54,13 +54,21 @@ def exercise_masks():
   assert not show_diff(s.getvalue(), """\
 solvent_radius: 1.20
 shrink_truncation_radius: 1.20
-gridding: (45,72,80)
 Total solvent accessible volume / cell = 146.5 Ang^3 [16.3%]
 Total electron count / cell = 43.0
 
-Void  Average coordinates    Volume/Ang^3  n electrons
-   1  ( 0.267, 0.461, 0.672)         73.3         21.5
-   2  (-0.267, 0.539, 0.328)         73.3         21.5
+gridding: (45,72,80)
+Void #Grid points Vol/A^3 Vol/%  Centre of mass (frac)   Eigenvectors (frac)
+   1        21074    73.3   8.1  ( 0.267, 0.461, 0.672)  1  ( 0.982, 0.126, 0.142)
+                                                         2  (-0.166, 0.206, 0.964)
+                                                         3  (-0.092, 0.970,-0.223)
+   2        21074    73.3   8.1  (-0.267, 0.539, 0.328)  1  ( 0.982, 0.126, 0.142)
+                                                         2  (-0.166, 0.206, 0.964)
+                                                         3  (-0.092, 0.970,-0.223)
+
+Void  Vol/Ang^3  #Electrons
+   1       73.3         21.5
+   2       73.3         21.5
 """)
 
   # this bit is necessary until we have constraints, as
