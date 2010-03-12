@@ -5,6 +5,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <boost/python/return_internal_reference.hpp>
 #include <boost/python/def.hpp>
 #include <cctbx/masks/around_atoms.h>
 #include <cctbx/masks/flood_fill.h>
@@ -68,13 +69,24 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
+      typedef return_internal_reference<> rir;
       class_<w_t>("flood_fill", no_init)
         .def(init<
-          af::ref<DataType, af::c_grid_periodic<3> > const & >((arg("data"))))
+          af::ref<DataType, af::c_grid_periodic<3> > const &,
+          cctbx::uctbx::unit_cell const &>((
+            arg("data"),
+            arg("unit_cell"))))
         .def("n_voids", &w_t::n_voids)
-        .def("averaged_indices", &w_t::averaged_indices)
-        .def("averaged_frac_coords", &w_t::averaged_frac_coords)
+        .def("centres_of_mass", &w_t::centres_of_mass)
+        .def("centres_of_mass_frac", &w_t::centres_of_mass_frac)
+        .def("centres_of_mass_cart", &w_t::centres_of_mass_cart)
+        .def("covariance_matrices_frac", &w_t::covariance_matrices_frac)
+        .def("covariance_matrices_cart", &w_t::covariance_matrices_cart)
+        .def("inertia_tensors_frac", &w_t::inertia_tensors_frac)
+        .def("inertia_tensors_cart", &w_t::inertia_tensors_cart)
         .def("grid_points_per_void", make_getter(&w_t::grid_points_per_void, rbv()))
+        .def("gridding_n_real", make_getter(&w_t::gridding_n_real, rbv()))
+        .def("unit_cell", &w_t::unit_cell, rir())
       ;
     }
   };
