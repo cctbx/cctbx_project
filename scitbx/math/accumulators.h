@@ -277,15 +277,15 @@ class inertia_accumulator
 {
   public:
     inertia_accumulator()
-      : center_of_mass_(0.),
-        m2(0.),
-        sum_weights_(0)
+      : sum_weights_(0),
+        center_of_mass_(0.),
+        m2(0.)
     {}
 
-    inertia_accumulator(scitbx::vec3<FloatType> x0)
-      : center_of_mass_(x0),
-        m2(0.),
-        sum_weights_(0)
+    inertia_accumulator(scitbx::vec3<FloatType> x0, FloatType weight=1.0)
+      : sum_weights_(weight),
+        center_of_mass_(x0),
+        m2(0.)
     {}
 
     void operator()(scitbx::vec3<FloatType> x, FloatType weight=1.0) {
