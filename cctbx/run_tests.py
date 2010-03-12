@@ -95,7 +95,7 @@ def run():
    "$D/sgtbx/reticular_pg_tools.py",
    "$D/sgtbx/reticular_twin_laws.py",
    "$D/regression/tst_find_best_cell.py",
-   "$D/regression/tst_amplitude_rescaling.py",
+   "$D/regression/tst_amplitude_normalisation.py",
    "$D/regression/tst_statistics_graphs.py",
    "$D/sgtbx/direct_space_asu/proto/tst_asu.py",
    "$D/masks/tests/tst_flood_fill.py"
