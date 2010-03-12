@@ -937,9 +937,11 @@ class xtriage_summary (object) :
       setattr(self, attr, getattr(basic_results, attr, None))
     # ICE RINGS
     ijsco = getattr(basic_results.basic_data_stats, "ijsco")
-    self.icy_shells = getattr(ijsco, "icy_shells")
+    if hasattr(ijsco,"icy_shells"):
+      self.icy_shells = getattr(ijsco, "icy_shells")
     #self.ice_warnings = getattr(ijsco, "warnings")
-    self.ice_comments = getattr(ijsco, "message")
+    if hasattr(ijsco,"message"):
+      self.ice_comments = getattr(ijsco, "message")
 
     #-------------------------------------------------------------------
     # Part 2: twinning analyses:
