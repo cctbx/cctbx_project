@@ -2,8 +2,10 @@
 #define CCTBX_MASKS_FLOOD_FILL_H
 
 #include <cctbx/import_scitbx_af.h>
+#include <cctbx/uctbx.h>
 #include <scitbx/array_family/accessors/c_grid_periodic.h>
 #include <scitbx/array_family/tiny_algebra.h>
+#include <scitbx/math/accumulators.h>
 
 #include <stack>
 
@@ -23,10 +25,18 @@ namespace cctbx { namespace masks {
   template <typename DataType, typename FloatType>
   class flood_fill
   {
+    //! Convenience typedefs
+    typedef scitbx::sym_mat3<FloatType> sym_mat3;
+    typedef scitbx::vec3<FloatType> vec3;
+
   public:
-    flood_fill(af::ref<DataType, af::c_grid_periodic<3> > const & data)
+    flood_fill(
+      af::ref<DataType, af::c_grid_periodic<3> > const & data,
+      uctbx::unit_cell const & unit_cell)
       :
-    gridding_n_real(data.accessor())
+    n_voids_(0),
+    gridding_n_real(data.accessor()),
+    unit_cell_(unit_cell)
     {
       std::stack<index_t> stack;
       DataType target = 1;
@@ -37,12 +47,13 @@ namespace cctbx { namespace masks {
             if (data(i,j,k) == target) {
               stack.push(index_t(i,j,k));
               data(i,j,k) = replacement;
-              accumulated_indices.push_back(index_t(0,0,0));
+              accumulators.push_back(accumulator_t());
+              n_voids_ += 1;
               grid_points_per_void.push_back(0);
               while (!stack.empty()) {
                 index_t index = stack.top();
                 stack.pop();
-                accumulated_indices[accumulated_indices.size() - 1] += index;
+                accumulators[accumulators.size() -1](vec3(index));
                 grid_points_per_void[grid_points_per_void.size() - 1]++;
                 for (std::size_t i=0; i<3; i++) {
                   index_t index_1 = index;
@@ -65,25 +76,20 @@ namespace cctbx { namespace masks {
       }
     }
 
-    unsigned n_voids()
-    {
-      return grid_points_per_void.size();
-    }
+    unsigned n_voids() { return n_voids_; }
 
-    //! Provides the average indices for each void.
+    //! Provides the centre of mass or average indices for each void.
     /*! Move coordinates (if necessary) so the fractional coordinates will be
         between -1 and 1. Where there is a channel, an index along the
         direction of the channel may drift many unit cells along. In the case
         of a channel this index (along the channel) is not really applicable
         anyway.
      */
-    af::shared<scitbx::vec3<FloatType> > averaged_indices()
+    af::shared<vec3> centres_of_mass()
     {
-      af::shared<scitbx::vec3<FloatType> > result(
-        af::reserve(accumulated_indices.size()));
-      for (std::size_t i=0; i<n_voids(); i++) {
-        result.push_back(scitbx::vec3<FloatType>(accumulated_indices[i]) /
-          ((FloatType)grid_points_per_void[i]));
+      af::shared<vec3> result((af::reserve(n_voids_)));
+      for (std::size_t i=0; i<n_voids_; i++) {
+        result.push_back(accumulators[i].center_of_mass());
         for (std::size_t j=0; j<3; j++) {
           while (result[i][j] > gridding_n_real[j]) {
             result[i][j] -= gridding_n_real[j];
@@ -96,24 +102,98 @@ namespace cctbx { namespace masks {
       return result;
     }
 
-    //! Provides the average fractional coordinates for each void.
-    af::shared<scitbx::vec3<FloatType> > averaged_frac_coords()
+    //! Provides the centre of mass in fractional coordinates for each void.
+    af::shared<vec3> centres_of_mass_frac()
     {
-      af::shared<scitbx::vec3<FloatType> > result = averaged_indices();
-      for (std::size_t i=0; i<result.size(); i++) {
-        for (std::size_t j=0; j<3 ; j++) {
-          result[i][j] /= (FloatType)gridding_n_real[j];
-        }
+      af::shared<vec3> result = centres_of_mass();
+      for (std::size_t i=0; i<n_voids_; i++) {
+        result[i] = result[i] / vec3(gridding_n_real);
       }
       return result;
     }
 
+    //! Provides the centre of mass in Cartesian coordinates for each void.
+    af::shared<vec3> centres_of_mass_cart()
+    {
+      return unit_cell_.orthogonalize(centres_of_mass_frac().const_ref());
+    }
+
+    /*! The covariance matrix has been accumulated for the grid indices,
+        and this must now be converted to fractional coordinates.
+     */
+    af::shared<sym_mat3> covariance_matrices_frac()
+    {
+      af::shared<sym_mat3> result((af::reserve(n_voids_)));
+      for (std::size_t i=0; i<n_voids_; i++) {
+        sym_mat3 cov = accumulators[i].covariance_matrix();
+        cov[0] /= (gridding_n_real[0] * gridding_n_real[0]);
+        cov[1] /= (gridding_n_real[1] * gridding_n_real[1]);
+        cov[2] /= (gridding_n_real[2] * gridding_n_real[2]);
+        cov[3] /= (gridding_n_real[0] * gridding_n_real[1]);
+        cov[4] /= (gridding_n_real[0] * gridding_n_real[2]);
+        cov[5] /= (gridding_n_real[1] * gridding_n_real[2]);
+        sym_mat3 G = unit_cell_.metrical_matrix();
+        cov = sym_mat3(G * cov * G, 1e-6);
+        result.push_back(cov);
+      }
+      return result;
+    }
+
+    af::shared<sym_mat3> covariance_matrices_cart()
+    {
+      af::shared<sym_mat3> result
+        = covariance_matrices_frac();
+      scitbx::mat3<FloatType> F = unit_cell_.fractionalization_matrix();
+      for (std::size_t i=0; i<n_voids_; i++) {
+        result[i] = sym_mat3(F.transpose() * result[i] * F, 1e-6);
+      }
+      return result;
+    }
+
+    //! The inertia tensor in fractional coordinates for each void.
+    af::shared<sym_mat3> inertia_tensors_frac()
+    {
+       return inertia_tensors_impl(covariance_matrices_frac());
+    }
+
+    //! The inertia tensor in Cartesian coordinates for each void.
+    af::shared<sym_mat3> inertia_tensors_cart()
+    {
+       return inertia_tensors_impl(covariance_matrices_cart());
+    }
+
+    uctbx::unit_cell const & unit_cell() const { return unit_cell_; }
+
+    typedef af::c_grid_periodic<3>::index_type index_t;
     af::shared<int> grid_points_per_void;
+    index_t const gridding_n_real;
 
   private:
-    typedef af::c_grid_periodic<3>::index_type index_t;
-    index_t const gridding_n_real;
-    af::shared<index_t> accumulated_indices;
+    /*! We obtain the inertia tensor from the relationship:
+
+          inertia_tensor = sum_weights * (identity * trace(covariance) - covariance)
+
+        see also: http://en.wikipedia.org/wiki/Variance#Moment_of_inertia
+     */
+    af::shared<sym_mat3> inertia_tensors_impl(
+      af::shared<sym_mat3> const & covariance_matrices)
+    {
+      af::shared<sym_mat3> result = covariance_matrices;
+      for (std::size_t i=0; i<n_voids_; i++) {
+        scitbx::sym_mat3<FloatType> cov = result[i];
+        FloatType trace = cov.trace();
+        result[i] = sym_mat3(trace,trace,trace,0,0,0);
+        result[i] -= cov;
+        result[i] *= static_cast<FloatType>(grid_points_per_void[i]);
+      }
+      return result;
+    }
+
+    typedef scitbx::math::accumulator::inertia_accumulator<FloatType>
+      accumulator_t;
+    unsigned n_voids_;
+    af::shared<accumulator_t> accumulators;
+    uctbx::unit_cell const & unit_cell_;
   };
 
 }} // namespace cctbx::masks
