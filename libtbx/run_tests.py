@@ -26,7 +26,7 @@ def run():
   "$D/tst_itertbx.py",
   "$D/find_reference_cycles.py",
   "$D/tst_binary_search.py",
-  "$D/topological_sort.py",
+  "$D/tst_topological_sort.py",
   )
 
   build_dir = None
