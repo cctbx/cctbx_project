@@ -174,7 +174,7 @@ def exercise_3():
   #
   mol.idealize_h()
   assert out.getvalue().splitlines()[0] == \
-  "X-H deviation from ideal before regularization (bond): mean= 0.151 max= 0.496"
+  "X-H deviation from ideal before regularization (bond): mean= 0.154 max= 0.496"
   assert out.getvalue().splitlines()[1] == \
   "X-H deviation from ideal after  regularization (bond): mean= 0.000 max= 0.002"
 
