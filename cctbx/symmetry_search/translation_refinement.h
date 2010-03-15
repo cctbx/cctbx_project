@@ -16,7 +16,7 @@
 #include <complex>
 
 namespace cctbx { namespace symmetry_search {
-  
+
 template <typename FloatType>
 struct goodness_of_symmetry
 {
@@ -25,7 +25,7 @@ struct goodness_of_symmetry
   typedef scitbx::vec3<real_type> vector_type;
   typedef scitbx::vec3<real_type> real_grad_type;
   typedef scitbx::vec3<complex_type> complex_grad_type;
-  
+
   goodness_of_symmetry(sgtbx::space_group const &space_group,
                        af::const_ref<miller::index<> > const &indices,
                        af::const_ref<real_type> const &f_o,
@@ -39,7 +39,7 @@ struct goodness_of_symmetry
     SCITBX_ASSERT(f_o.size() == indices.size());
     scitbx::math::imaginary_unit_t i;
     int n = indices.size();
-    
+
     multiplicities.reserve(n);
     y_x.reserve(n);
     dy_x.reserve(n);
@@ -69,15 +69,15 @@ struct goodness_of_symmetry
       y_x.push_back(abs_f_x);
       dy_x.push_back(d_abs_f_x);
     }
-    
+
     // compute optimal lambda and mu
     scitbx::math::weighted_covariance<real_type> stats(
       y_x.ref(), // = x
-      f_o, // = y 
+      f_o, // = y
       multiplicities.ref());
     lambda = stats.covariance_xy()/stats.variance_x();
     mu = stats.mean_y() - lambda*stats.mean_x();
-    
+
     // compute the linearisation
     real_type c = *stats.correlation();
     q = stats.variance_y()*(1 - c*c);
@@ -86,7 +86,7 @@ struct goodness_of_symmetry
       dq += r*lambda*dy_x[k];
     }
   }
-  
+
   af::shared<real_type> multiplicities;
   af::shared<real_type> y_x;
   af::shared<real_grad_type> dy_x;
