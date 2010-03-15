@@ -1,6 +1,7 @@
 #include <iotbx/pdb/input.h>
 #include <iotbx/error.h>
 #include <scitbx/array_family/sort.h>
+#include <boost/format.hpp>
 #include <boost/scoped_array.hpp>
 
 namespace iotbx { namespace pdb {
@@ -135,15 +136,13 @@ namespace iotbx { namespace pdb {
               open_resname_run_has_blank_altloc = false;
             }
             else if (is_first_after_break) {
-              char buf[64];
-              std::sprintf(buf,
-                "Misplaced BREAK record (%s line %u).",
-                source_info_.size()
-                  ? (source_info_ + ",").c_str()
-                  : "input",
-                break_record_line_numbers[
-                  break_index - break_indices_.begin() - 1]);
-              throw std::runtime_error(buf);
+              throw std::runtime_error(
+                (boost::format("Misplaced BREAK record (%s line %u).") %
+                  (source_info_.size()
+                    ? (source_info_ + ",").c_str()
+                    : "input") %
+                  break_record_line_numbers[
+                    break_index - break_indices_.begin() - 1]).str());
             }
           }
           prev_resid = resid;
