@@ -15,6 +15,7 @@ def run():
   "$D/tst_pdbtools.py",
   "$D/real_space/tst.py",
   "$D/ias/tst_ias.py",
+  "$D/refinement/tst_fit_rotamers.py",
   ["$D/refinement/tst_anomalous_scatterer_groups.py", "P3"],
   "$D/refinement/tst_rigid_body.py",
   "$D/refinement/tst_refinement_flags.py",
