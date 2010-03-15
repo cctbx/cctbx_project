@@ -1591,6 +1591,18 @@ def exercise_dihedral():
       p_sorted = p.sort_i_seqs()
       assert p_sorted.i_seqs == (0,1,2,3)
       assert approx_equal(p_sorted.angle_ideal, r_orig.angle_model)
+    #
+    p = geometry_restraints.dihedral_proxy(
+      i_seqs=list(perm),
+      angle_ideal=12,
+      weight=1,
+      alt_angle_ideals=[30,-40])
+    p_sorted = p.sort_i_seqs()
+    if (p_sorted.angle_ideal > 0):
+      assert approx_equal(p_sorted.alt_angle_ideals, [30,-40])
+    else:
+      assert approx_equal(p_sorted.alt_angle_ideals, [-30,40])
+    #
     n_perms += 1
     if (not perm.next_permutation()):
       break
@@ -1680,73 +1692,6 @@ def exercise_dihedral():
             assert residuals[0] > residuals[1]
           else:
             assert residuals[0] < residuals[1]
-  #
-  #for off in [0,13,-27]:
-  #  d = get_d(angle_ideal=off, angle_model=110+off, periodicity=6)
-  #  print d.delta
-  #  assert d.alt_angle_ideals is None
-    #assert approx_equal(d.delta, 10)
-    #d = get_d(angle_ideal=off, angle_model=110+off, periodicity=6,
-    #  alt_angle_ideals=(45,90))
-   # assert approx_equal(d.delta, 10)
-    #d = get_d(angle_ideal=off, angle_model=110+off, periodicity=6,
-     # alt_angle_ideals=(105,))
-    #print d.delta
-    #assert approx_equal(d.delta, -5.)
-    #d = get_d(angle_ideal=off, angle_model=110+off, periodicity=6,
-    #  alt_angle_ideals=(1,2))
-    #assert approx_equal(d.delta, 70)
-    #d = get_d(angle_ideal=off, angle_model=110+off, periodicity=6,
-    #  alt_angle_ideals=(1,2,3))
-    #assert approx_equal(d.delta, -110)
-    #d = get_d(angle_ideal=off, angle_model=110+off, periodicity=6,
-    #  alt_angle_ideals=(1,2,3,0))
-    #assert approx_equal(d.delta, 130)
-    #d = get_d(angle_ideal=off, angle_model=110+off, periodicity=6,
-    #  alt_angle_ideals=(1,2,3,0,4))
-    #assert approx_equal(d.delta, -170)
-  #
-  #for periodicity in [5,-5]:
-   # for bad_exclude in [6,-7]:
-     # try:
-       # geometry_restraints.dihedral(
-         # sites=[(1,0,-1),(0,0,-1),(0,0,0),(1,0,0)],
-          #angle_ideal=0,
-          #weight=1,
-          #periodicity=periodicity,
-          #exclude_periods=(3,bad_exclude))
-      #except RuntimeError, e:
-       # assert not show_diff(str(e),
-        #  "dihedral geometry restraint: invalid exclude_period:"
-         # " periodicity=5, exclude=%d" % bad_exclude)
-      #else: raise Exception_expected
-  #
-  #for bad_exclude in [3,-2,-1]:
-   # try:
-     # geometry_restraints.dihedral(
-       # sites=[(1,0,-1),(0,0,-1),(0,0,0),(1,0,0)],
-        #angle_ideal=0,
-        #weight=1,
-        #periodicity=5,
-        #exclude_periods=(3,4,2,bad_exclude))
-    #except RuntimeError, e:
-     # assert not show_diff(str(e),
-     #   "dihedral geometry restraint: duplicate exclude_period:"
-       # " periodicity=5, exclude=%d" % bad_exclude)
-    #else: raise Exception_expected
-  #
-  #try:
-   # geometry_restraints.dihedral(
-     # sites=[(1,0,-1),(0,0,-1),(0,0,0),(1,0,0)],
-      #angle_ideal=0,
-      #weight=1,
-      #periodicity=5,
-      #exclude_periods=(-3,1,4,0,-2))
-  #except RuntimeError, e:
-   # assert not show_diff(str(e),
-     # "dihedral geometry restraint: invalid exclude_period:"
-      #" periodicity=5, all excluded")
-  #else: raise Exception_expected
 
 def exercise_chirality():
   p = geometry_restraints.chirality_proxy(

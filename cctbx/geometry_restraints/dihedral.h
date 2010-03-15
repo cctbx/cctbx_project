@@ -92,17 +92,34 @@ namespace cctbx { namespace geometry_restraints {
         if ( sym_ops.get() != 0 ) {
           std::swap(result.sym_ops[0], result.sym_ops[3]);
         }
-        result.angle_ideal *= -1;
+        result.flip_angle_ideal();
       }
       if (result.i_seqs[1] > result.i_seqs[2]) {
         std::swap(result.i_seqs[1], result.i_seqs[2]);
         if ( sym_ops.get() != 0 ) {
           std::swap(result.sym_ops[1], result.sym_ops[2]);
         }
-        result.angle_ideal *= -1;
+        result.flip_angle_ideal();
       }
       return result;
     }
+
+    protected:
+
+      //! Helper for sort_i_seqs().
+      void
+      flip_angle_ideal()
+      {
+        angle_ideal *= -1;
+        if (alt_angle_ideals) {
+          alt_angle_ideals_type::value_type& aai = *alt_angle_ideals;
+          for(unsigned i=0;i<aai.size();i++) {
+            aai[i] *= -1;
+          }
+        }
+      }
+
+      public:
 
     //! Indices into array of sites.
     i_seqs_type i_seqs;
@@ -114,7 +131,7 @@ namespace cctbx { namespace geometry_restraints {
     double weight;
     //! Parameter.
     int periodicity;
-    //! Optional array of periods to exclude.
+    //! Optional array of alternative angle_ideal.
     alt_angle_ideals_type alt_angle_ideals;
   };
 
@@ -334,7 +351,7 @@ namespace cctbx { namespace geometry_restraints {
       double weight;
       //! Parameter (usually as passed to the constructor).
       int periodicity;
-      //! Optional array of periods to exclude.
+      //! Optional array of alternative angle_ideal.
       alt_angle_ideals_type alt_angle_ideals;
       //! false in singular situations.
       bool have_angle_model;
@@ -342,7 +359,7 @@ namespace cctbx { namespace geometry_restraints {
       //! Value of the dihedral %angle formed by the sites.
       double angle_model;
       /*! \brief Smallest difference between angle_model and angle_ideal
-          taking the periodicity and exclude_periods into account.
+          taking the periodicity and alt_angle_ideals into account.
        */
       /*! See also: angle_delta_deg
        */
