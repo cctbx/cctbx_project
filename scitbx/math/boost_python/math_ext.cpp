@@ -241,8 +241,8 @@ namespace {
 
   template <typename T>
   bool approx_equal_relatively(
-                               T const &x, T const &y,
-                               typename math::approx_equal_relatively<T>::amplitude_type relative_error)
+    T const &x, T const &y,
+    typename math::approx_equal_relatively<T>::amplitude_type relative_error)
   {
     math::approx_equal_relatively<T> p(relative_error);
     return p(x, y);
@@ -276,13 +276,16 @@ namespace {
       &floating_point_epsilon<double>::get);
 
     def("erf", (double(*)(double const&)) erf);
-    def("erf", (scitbx::af::shared<double>(*)(scitbx::af::const_ref<double> const&)) erf);
-
+    def("erf",
+      (scitbx::af::shared<double>(*)(
+        scitbx::af::const_ref<double> const&)) erf);
     def("erfc", (double(*)(double const&)) erfc);
     def("erfcx", (double(*)(double const&)) erfcx);
 
     def("bessel_i1_over_i0", (double(*)(double const&)) bessel::i1_over_i0);
-    def("bessel_i1_over_i0", (scitbx::af::shared<double>(*)(scitbx::af::const_ref<double> const&)) bessel::i1_over_i0);
+    def("bessel_i1_over_i0",
+      (scitbx::af::shared<double>(*)(scitbx::af::const_ref<double> const&))
+        bessel::i1_over_i0);
     def("bessel_inverse_i1_over_i0",
       (double(*)(double const&)) bessel::inverse_i1_over_i0);
     def("inverse_bessel_i1_over_i0", (scitbx::af::shared<double>(*)(
@@ -292,8 +295,16 @@ namespace {
     def("bessel_ln_of_i0", (double(*)(double const&)) bessel::ln_of_i0);
     def("ei1", (double(*)(double const&)) bessel::ei1);
     def("ei0", (double(*)(double const&)) bessel::ei0);
-    def("spherical_bessel", (double(*)(int const&, double const&)) bessel::spherical_bessel);
-    def("spherical_bessel_array", (scitbx::af::shared< double> (*)(int const&, scitbx::af::shared<double> const&)) bessel::spherical_bessel_array);
+
+#if defined(SCITBX_MATH_BESSEL_HAS_SPHERICAL)
+    def("spherical_bessel",
+      (double(*)(int const&, double const&))
+        bessel::spherical_bessel);
+    def("spherical_bessel_array",
+      (scitbx::af::shared< double> (*)(
+        int const&, scitbx::af::shared<double> const&))
+          bessel::spherical_bessel_array);
+#endif
 
     def("gamma_complete", (double(*)(double const&, bool))
       gamma::complete, (
