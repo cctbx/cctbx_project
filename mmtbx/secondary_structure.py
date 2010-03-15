@@ -456,51 +456,52 @@ def hydrogen_bonds_from_selections (
           raise Sorry("Missing start of bonding for strand previous to '%s'." %
             curr_strand.selection)
         try :
-          if curr_strand.sense == "unknown" :
-            raise RuntimeError(("Skipping strand of unknown sense:\n" +
-              "%s") % curr_strand.selection)
-          curr_donors, curr_acceptors = _donors_and_acceptors(
-            base_sele=curr_strand.selection,
-            selection_cache=selection_cache,
-            atoms=atoms,
-            donor_name=donor_name,
-            ss_type="sheet")
-          prev_donors, prev_acceptors = _donors_and_acceptors(
-            base_sele=prev_strand_sele,
-            selection_cache=selection_cache,
-            atoms=atoms,
-            donor_name=donor_name,
-            ss_type="sheet")
-          curr_donor_start, curr_acceptor_start = _donors_and_acceptors(
-            base_sele=curr_strand.bond_start_current,
-            selection_cache=selection_cache,
-            atoms=atoms,
-            donor_name=donor_name,
-            ss_type="sheet")
-          prev_donor_start, prev_acceptor_start = _donors_and_acceptors(
-            base_sele=curr_strand.bond_start_previous,
-            selection_cache=selection_cache,
-            atoms=atoms,
-            donor_name=donor_name,
-            ss_type="sheet")
-          new_bonds = _hydrogen_bonds_from_strand_pair(atoms=atoms,
-            prev_strand_donors=prev_donors,
-            prev_strand_acceptors=prev_acceptors,
-            prev_strand_start=prev_donor_start[0],
-            curr_strand_donors=curr_donors,
-            curr_strand_acceptors=curr_acceptors,
-            curr_strand_start=curr_acceptor_start[0],
-            sense=curr_strand.sense)
-          if new_bonds is None :
-            raise RuntimeError(
-              ("Can't determine start of bonding for strand pair:\n" +
-              "  %s\n  %s\n") % (prev_strand_sele, curr_strand.selection))
-          elif len(new_bonds) == 0 :
-            raise RuntimeError(("No bonds found for strand pair:\n"+
-              "  %s\n  %s\n") % (prev_strand_sele, curr_strand.selection))
-          sheet_bonds.extend(new_bonds)
-        except RuntimeError, e :
-          print >> log, str(e)
+          try :
+            if curr_strand.sense == "unknown" :
+              raise RuntimeError(("Skipping strand of unknown sense:\n" +
+                "%s") % curr_strand.selection)
+            curr_donors, curr_acceptors = _donors_and_acceptors(
+              base_sele=curr_strand.selection,
+              selection_cache=selection_cache,
+              atoms=atoms,
+              donor_name=donor_name,
+              ss_type="sheet")
+            prev_donors, prev_acceptors = _donors_and_acceptors(
+              base_sele=prev_strand_sele,
+              selection_cache=selection_cache,
+              atoms=atoms,
+              donor_name=donor_name,
+              ss_type="sheet")
+            curr_donor_start, curr_acceptor_start = _donors_and_acceptors(
+              base_sele=curr_strand.bond_start_current,
+              selection_cache=selection_cache,
+              atoms=atoms,
+              donor_name=donor_name,
+              ss_type="sheet")
+            prev_donor_start, prev_acceptor_start = _donors_and_acceptors(
+              base_sele=curr_strand.bond_start_previous,
+              selection_cache=selection_cache,
+              atoms=atoms,
+              donor_name=donor_name,
+              ss_type="sheet")
+            new_bonds = _hydrogen_bonds_from_strand_pair(atoms=atoms,
+              prev_strand_donors=prev_donors,
+              prev_strand_acceptors=prev_acceptors,
+              prev_strand_start=prev_donor_start[0],
+              curr_strand_donors=curr_donors,
+              curr_strand_acceptors=curr_acceptors,
+              curr_strand_start=curr_acceptor_start[0],
+              sense=curr_strand.sense)
+            if new_bonds is None :
+              raise RuntimeError(
+                ("Can't determine start of bonding for strand pair:\n" +
+                "  %s\n  %s\n") % (prev_strand_sele, curr_strand.selection))
+            elif len(new_bonds) == 0 :
+              raise RuntimeError(("No bonds found for strand pair:\n"+
+                "  %s\n  %s\n") % (prev_strand_sele, curr_strand.selection))
+            sheet_bonds.extend(new_bonds)
+          except RuntimeError, e :
+            print >> log, str(e)
         finally :
           prev_strand_sele = curr_strand.selection
       sigma = params.h_bond_restraints.sigma
@@ -1030,21 +1031,24 @@ def exercise () :
   assert ("%.3f" % frac_beta) == "0.075"
   del m
   # using KSDSSP
-  m = manager(pdb_hierarchy=pdb_hierarchy,
-    xray_structure=xray_structure,
-    sec_str_from_pdb_file=None)
-  m.find_automatically(log=log)
-  bonds_table = m.get_bonds_table(log=log)
-  assert bonds_table.bonds.size() == 93
-  m.params.h_bond_restraints.substitute_n_for_h = True
-  bonds_table = m.get_bonds_table(log=log)
-  assert bonds_table.flag_use_bond.count(True) == 86
-  (frac_alpha, frac_beta) = m.calculate_structure_content()
-  assert ("%.3f" % frac_alpha) == "0.552"
-  assert ("%.3f" % frac_beta) == "0.066"
-  del m
-  del pdb_hierarchy
-  del xray_structure
+  try :
+    m = manager(pdb_hierarchy=pdb_hierarchy,
+      xray_structure=xray_structure,
+      sec_str_from_pdb_file=None)
+    m.find_automatically(log=log)
+    bonds_table = m.get_bonds_table(log=log)
+    assert bonds_table.bonds.size() == 93
+    m.params.h_bond_restraints.substitute_n_for_h = True
+    bonds_table = m.get_bonds_table(log=log)
+    assert bonds_table.flag_use_bond.count(True) == 86
+    (frac_alpha, frac_beta) = m.calculate_structure_content()
+    assert ("%.3f" % frac_alpha) == "0.552"
+    assert ("%.3f" % frac_beta) == "0.066"
+    del m
+    del pdb_hierarchy
+    del xray_structure
+  except Sorry :
+    print "skipping KSDSSP test"
   # without hydrogens
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb").file_object
   pdb_hierarchy = pdb_in.construct_hierarchy()
@@ -1058,12 +1062,15 @@ def exercise () :
   assert bonds_table.bonds.size() == 109
   del m
   # using KSDSSP
-  m = manager(pdb_hierarchy=pdb_hierarchy,
-    xray_structure=xray_structure,
-    sec_str_from_pdb_file=None)
-  m.find_automatically(log=log)
-  bonds_table = m.get_bonds_table(log=log)
-  assert bonds_table.bonds.size() == 93
+  try :
+    m = manager(pdb_hierarchy=pdb_hierarchy,
+      xray_structure=xray_structure,
+      sec_str_from_pdb_file=None)
+    m.find_automatically(log=log)
+    bonds_table = m.get_bonds_table(log=log)
+    assert bonds_table.bonds.size() == 93
+  except Sorry :
+    print "skipping KSDSSP test"
   print "OK"
 
 if __name__ == "__main__" :
