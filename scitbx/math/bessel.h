@@ -1,10 +1,14 @@
 #ifndef SCITBX_MATH_BESSEL_H
 #define SCITBX_MATH_BESSEL_H
 
-#include <cmath>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/ref.h>
-#include <boost/math/special_functions/bessel.hpp>
+#include <cmath>
+
+#if !(defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 2)
+# include <boost/math/special_functions/bessel.hpp>
+# define SCITBX_MATH_BESSEL_HAS_SPHERICAL
+#endif
 
 namespace scitbx { namespace math {
 
@@ -278,6 +282,7 @@ namespace bessel {
     return result;
   }
 
+#if defined(SCITBX_MATH_BESSEL_HAS_SPHERICAL)
   template <typename FloatType>
   FloatType
   spherical_bessel(int const& l, FloatType const& x)
@@ -297,8 +302,7 @@ namespace bessel {
     }
     return( result );
   }
-
-
+#endif
 
 }}} // namespace scitbx::math::bessel
 
