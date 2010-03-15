@@ -1,6 +1,12 @@
 """
 Note: this module can be used in isolation (without the rest of scitbx).
 All external dependencies (other than plain Python) are optional.
+
+The primary purpose of this module is to provide compact
+implementations of essential matrix/vector algorithms with minimal
+external dependencies. Optimizations for execution performance are
+used only if compactness is not affected. The scitbx/math module
+provides faster C++ alternatives to some algorithms included here.
 """
 
 from __future__ import division
@@ -964,56 +970,6 @@ def determinant_via_lu(m):
     result = -result
   return result
 
-def rotate_point_around_axis(axis_point_1, axis_point_2, point, angle_deg):
-  angle_rad = angle_deg*math.pi/180.
-  xa,ya,za = axis_point_1
-  xb,yb,zb = axis_point_2
-  x,y,z = point
-  xL,yL,zL = xb-xa,yb-ya,zb-za
-  xLsq = xL**2
-  yLsq = yL**2
-  zLsq = zL**2
-  dLsq = xLsq + yLsq + zLsq
-  dL = math.sqrt(dLsq)
-  ca = math.cos(angle_rad)
-  dsa = math.sin(angle_rad)/dL
-  oca = (1-ca)/dLsq
-  xLyLo = xL*yL*oca
-  xLzLo = xL*zL*oca
-  yLzLo = yL*zL*oca
-  xma,yma,zma = x-xa,y-ya,z-za
-  m1 = xLsq*oca+ca
-  m2 = xLyLo-zL*dsa
-  m3 = xLzLo+yL*dsa
-  m4 = xLyLo+zL*dsa
-  m5 = yLsq*oca+ca
-  m6 = yLzLo-xL*dsa
-  m7 = xLzLo-yL*dsa
-  m8 = yLzLo+xL*dsa
-  m9 = zLsq*oca+ca
-  x_new = xma*m1 + yma*m2 + zma*m3 + xa
-  y_new = xma*m4 + yma*m5 + zma*m6 + ya
-  z_new = xma*m7 + yma*m8 + zma*m9 + za
-  return (x_new,y_new,z_new)
-
-def exercise_rotate_point_around_axis():
-  cb = col([7.767, 5.853, 7.671])
-  cg = col([6.935, 5.032, 8.622])
-  ca = col([7.000, 7.000, 7.000])
-  count_unchanged = 0
-  for angle_i in range(-360,361,1):
-    cg_r = col(rotate_point_around_axis(
-      axis_point_1=ca, axis_point_2=cb, point=cg, angle_deg=angle_i))
-    assert abs(abs(cb-cg)-abs(cb-cg_r)) < 1.e-6
-    assert abs(abs(ca-cg)-abs(ca-cg_r)) < 1.e-6
-    if (angle_i in [-360,0,360]):
-      assert abs(cg_r-cg) < 1.e-6
-      count_unchanged += 1
-    cg_r_alt = ca.rt_for_rotation_around_axis_through(
-      point=cb, angle=angle_i, deg=True) * cg
-    assert abs(cg_r_alt - cg_r) < 1.e-6
-  assert count_unchanged == 3
-
 def exercise():
   try:
     from libtbx import test_utils
@@ -1548,4 +1504,3 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  exercise_rotate_point_around_axis()
