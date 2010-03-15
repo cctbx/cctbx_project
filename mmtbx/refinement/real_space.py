@@ -8,7 +8,9 @@ from libtbx.str_utils import format_value
 
 master_params_str = """\
 real_space_refinement
-  {
+  .short_caption = Real-space refinement
+  .style = menu_item auto_align
+{
     mode = simple *diff_map
       .type = choice(multi=False)
       .help = Real space refinement method (diff_map is much slower but might \
@@ -36,9 +38,11 @@ real_space_refinement
       .help = Number of minimization cycles
     rmsd_max_bonds = 0.07
       .type = float
+      .short_caption = Max. RMSD(bonds)
       .help = Refinement result is ignored if this max allowable deviation exceeded
     rmsd_max_angles = 5.0
       .type = float
+      .short_caption = Max. RMSD(angles)
       .help = Refinement result is ignored if this max allowable deviation exceeded
     grid_search_scales = 0.25 0.5 0.75 1.0 1.25 1.5 1.75 2.0 2.5 3.0
       .type = floats

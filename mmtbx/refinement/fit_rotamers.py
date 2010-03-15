@@ -26,9 +26,12 @@ import mmtbx.monomer_library
 import mmtbx.monomer_library.rotamer_utils
 
 torsion_search_params_str = """\
-torsion_search {
+torsion_search
+  .style = box auto_align
+{
   min_angle_between_solutions = 5
     .type = float
+    .short_caption = Min. angle between solutions
   range_start = -40
     .type = float
   range_stop = 40
@@ -40,6 +43,8 @@ torsion_search {
 
 master_params_str = """\
 fit_side_chains
+  .short_caption = Sidechain rotamer fitting
+  .style = menu_item auto_align
 {
   number_of_macro_cycles = 1
     .type = int
@@ -53,6 +58,7 @@ fit_side_chains
     .type = bool
   ignore_water_when_move_sidechains = True
     .type = bool
+    .short_caption = Ignore water when moving sidechains
   filter_residual_map_value = 2.0
     .type = float
   filter_2fofc_map = None
@@ -63,9 +69,12 @@ fit_side_chains
     .type = str
   model_map = Fc
     .type = str
-  residue_iteration {
+  residue_iteration
+    .style = box auto_align
+  {
     poor_cc_threshold = 0.9
       .type = float
+      .short_caption = Poor CC threshold
     real_space_refine_rotamer = True
       .type = bool
     real_space_refine_max_iterations = 25
@@ -78,6 +87,7 @@ fit_side_chains
       .type = bool
     ignore_alt_conformers = True
       .type = bool
+      .short_caption = Ignore alternate conformers
     %s
   }
 }
