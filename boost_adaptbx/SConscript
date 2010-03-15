@@ -183,6 +183,7 @@ object/function_doc_signature.cpp
         "f948983d970fd47e83a3a785bb54520a", # svn revision 41550
         "c3d84006331d534840c42ab956fdfa05", # svn revision 50367M
         "cedfd061d767a27413ef4a75ee0e446f", # svn revision 56310
+        "e5507482a1937825e4c9f3ffe555fc59", # svn revision 59331
       ])
     bpl_tests = Split("""
 staticmethod
@@ -252,6 +253,10 @@ voidptr
 crossmod_opaque_a,crossmod_opaque_a,crossmod_opaque
 crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
 """)
+# non-portable tests are not included above:
+#   calling_conventions
+#   calling_conventions_mf
+#
     Import("env_boost_python_ext")
     test_dir = libtbx.env.under_dist("boost", "libs/python/test")
     prefix = "#"+os.path.join(
