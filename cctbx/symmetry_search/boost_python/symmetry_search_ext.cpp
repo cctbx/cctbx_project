@@ -7,7 +7,7 @@
 
 
 namespace cctbx { namespace symmetry_search { namespace boost_python {
-  
+
   template <typename FloatType>
   struct goodness_of_symmetry_wrapper
   {
@@ -39,7 +39,7 @@ namespace cctbx { namespace symmetry_search { namespace boost_python {
     using namespace boost::python;
     goodness_of_symmetry_wrapper<double>::wrap("goodness_of_symmetry");
   }
-  
+
 }}} // boost_python
 
 BOOST_PYTHON_MODULE(cctbx_symmetry_search_ext)
