@@ -59,6 +59,7 @@ def run():
   "$D/alignment.py",
   "$D/invariant_domain.py",
   "$D/tst_bioinformatics.py",
+  "$D/secondary_structure.py",
   )
 
   build_dir = libtbx.env.under_build("mmtbx")

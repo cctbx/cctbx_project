@@ -39,10 +39,12 @@ map_coeff_params_str = """\
     acentrics_scale = 2.0
       .type = float
       .help = Scale terms corresponding to acentric reflections (residual maps only: k==n)
+      .expert_level = 2
     centrics_pre_scale = 1.0
       .type = float
       .help = Centric reflections, k!=n and k*n != 0: \
               max(k-centrics_pre_scale,0)*Fo-max(n-centrics_pre_scale,0)*Fc
+      .expert_level = 2
     reverse_scale = True
       .type = bool
       .help = Apply scales to Fobs and remove them from Fmodel.
