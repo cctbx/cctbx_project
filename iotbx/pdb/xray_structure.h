@@ -122,17 +122,9 @@ namespace iotbx { namespace pdb {
                   + "  columns 77-78 of the PDB file, right justified"
                     + " (e.g. \" C\").");
               }
-              str2 charge = atom->data->charge;
-              if (   (charge.elems[0] == ' ' || charge.elems[0] == '0')
-                  && (charge.elems[1] == ' ' || charge.elems[1] == '0')) {
-                charge.elems[0] = ' ';
-                charge.elems[1] = ' ';
-              }
-              else if (   (charge.elems[0] == '+' || charge.elems[0] == '-')
-                       && isdigit(charge.elems[1])) {
-                std::swap(charge.elems[0], charge.elems[1]);
-              }
-              if (charge.elems[0] == ' ' && charge.elems[1] != ' ') {
+              boost::optional<std::string>
+                charge_tidy = atom->charge_tidy();
+              if (!charge_tidy) {
                 if (!enable_scattering_type_unknown_) {
                   throw std::runtime_error(
                     std::string("Unknown charge:\n")
@@ -144,7 +136,7 @@ namespace iotbx { namespace pdb {
               if (chemical_element) {
                 scattering_type = cctbx::eltbx::xray_scattering::
                   get_standard_label(
-                    /*label*/ *chemical_element + charge.elems,
+                    /*label*/ *chemical_element + *charge_tidy,
                     /*exact*/ scattering_type_exact_,
                     /*optional*/ true);
               }

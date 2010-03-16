@@ -198,6 +198,42 @@ def exercise_atom():
   a.name = ""
   a.element = ""
   #
+  assert a.charge == ""
+  def check(inp, out):
+    a.charge = inp
+    assert a.charge_tidy() == out
+  check("", "  ")
+  check(" ", "  ")
+  check("  ", "  ")
+  check("0", "  ")
+  check(" 0", "  ")
+  check("0 ", "  ")
+  check("00", "  ")
+  check(" +", "1+")
+  check("+ ", "1+")
+  check("++", "2+")
+  check(" -", "1-")
+  check("- ", "1-")
+  check("--", "2-")
+  check("0+", "0+")
+  check("+0", "0+")
+  check("0-", "0-")
+  check("-0", "0-")
+  check("+-", None)
+  check("-+", None)
+  check("3+", "3+")
+  check("+4", "4+")
+  check("5-", "5-")
+  check("-6", "6-")
+  check("7 ", "7+")
+  check(" 8", "8+")
+  check("12", None)
+  check("1a", None)
+  check("a1", None)
+  check("a ", None)
+  check(" a", None)
+  a.charge = ""
+  #
   assert a.distance(other=a) == 0
   b = a.detached_copy()
   b.xyz = (3,5,2)

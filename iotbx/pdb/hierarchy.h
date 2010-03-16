@@ -759,6 +759,9 @@ namespace hierarchy {
       set_chemical_element_simple_if_necessary(
         bool tidy_existing=true);
 
+      boost::optional<std::string>
+      charge_tidy() const;
+
       double
       distance(
         vec3 const& other_xyz)
