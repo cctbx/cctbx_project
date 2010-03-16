@@ -157,8 +157,11 @@ class mask(object):
     f_obs = self.observations.as_amplitude_array()
     f_mask = self.f_mask()
     f_model = self.f_model()
-    scale_factor = f_obs.scale_factor(
-      f_model, weights=1/flex.pow2(f_obs.sigmas()))
+    if f_obs.sigmas() is not None:
+      weights = weights=1/flex.pow2(f_obs.sigmas())
+    else:
+      weights = None
+    scale_factor = f_obs.scale_factor(f_model, weights=weights)
     f_obs = f_obs.phase_transfer(phase_source=f_model)
     modified_f_obs = miller.array(
       miller_set=f_obs,
