@@ -856,7 +856,7 @@ Unknown chemical element type:
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
-ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89           B 5
+ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89           Bx5
 """))
   xray_structure = pdb_inp.xray_structure_simple(
     enable_scattering_type_unknown=True)
@@ -866,7 +866,7 @@ ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89           B 5
   except RuntimeError, e:
     assert not show_diff(str(e), '''\
 Unknown charge:
-  "ATOM      1  N   GLN A   3 .*.     B 5"
+  "ATOM      1  N   GLN A   3 .*.     Bx5"
                                        ^^''')
   else: raise Exception_expected
   pdb_inp = pdb.input(

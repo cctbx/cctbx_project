@@ -1012,6 +1012,46 @@ namespace {
     return true;
   }
 
+  boost::optional<std::string>
+  atom::charge_tidy() const
+  {
+    char charge[2];
+    std::memcpy(charge, data->charge.elems, 2);
+    while (true) {
+      if (charge[0] == '\0') {
+        charge[0] = charge[1] = ' ';
+        break;
+      }
+      if (charge[1] == '\0') charge[1] = ' ';
+      if (   (charge[0] == ' ' || charge[0] == '0')
+          && (charge[1] == ' ' || charge[1] == '0')) {
+        charge[0] = charge[1] = ' ';
+        break;
+      }
+      if (charge[0] == '+' || charge[0] == '-') {
+        if (charge[1] == charge[0]) {
+          charge[0] = '2';
+          break;
+        }
+        std::swap(charge[0], charge[1]);
+      }
+      if (charge[1] == '+' || charge[1] == '-') {
+        if (charge[0] == ' ') {
+          charge[0] = '1';
+          break;
+        }
+      }
+      if (charge[0] == ' ') std::swap(charge[0], charge[1]);
+      if (charge[1] == ' ') charge[1] = '+';
+      if (   !isdigit(charge[0])
+          || (charge[1] != '+' && charge[1] != '-')) {
+        return boost::optional<std::string>();
+      }
+      break;
+    }
+    return boost::optional<std::string>(std::string(charge, 2));
+  }
+
   void
   atom_group::append_atom_with_other_parent(hierarchy::atom const& atom)
   {
