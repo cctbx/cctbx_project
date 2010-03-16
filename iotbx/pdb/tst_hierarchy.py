@@ -199,6 +199,8 @@ def exercise_atom():
   a.element = ""
   #
   assert a.charge == ""
+  assert a.charge_tidy() == "  "
+  assert a.charge_tidy(strip=True) == ""
   def check(inp, out):
     a.charge = inp
     assert a.charge_tidy() == out
@@ -225,8 +227,8 @@ def exercise_atom():
   check("+4", "4+")
   check("5-", "5-")
   check("-6", "6-")
-  check("7 ", "7+")
-  check(" 8", "8+")
+  check("7 ", None)
+  check(" 8", None)
   check("12", None)
   check("1a", None)
   check("a1", None)

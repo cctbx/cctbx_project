@@ -297,6 +297,21 @@ END
     mode="==",
     lines=log.getvalue().splitlines())
   assert len(lines) == 1
+  #
+  raw_records = """\
+CRYST1   32.100   79.470   91.830  90.00  90.00  90.00 I 2 2 2
+HETATM  709 NA    NA A1398     -17.524  -7.858 -16.234  1.00 17.29          NA +
+HETATM  710 NA    NA A1399     -11.813  -6.045 -17.742  1.00 25.01          NA1
+HETATM  711 ZN    ZN A1400      -1.928 -11.394 -27.827  1.00 17.21          ZN+2
+HETATM  712 ZN    ZN A1401      -2.733  -3.868 -16.577  1.00 20.27          ZN2+
+""".splitlines()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    raw_records=raw_records)
+  xray_structure = processed_pdb_file.xray_structure()
+  assert xray_structure.scattering_type_registry().type_count_dict() \
+      == {"Na": 1, "Na1+": 1, "Zn2+": 2}
 
 def exercise_rna(
       mon_lib_srv,
