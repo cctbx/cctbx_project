@@ -1693,6 +1693,36 @@ def exercise_dihedral():
           else:
             assert residuals[0] < residuals[1]
 
+  #test alt_angle_ideals
+  d = get_d(angle_ideal=180, angle_model=170, periodicity=2)
+  assert approx_equal(d.delta, 10.)
+  assert d.alt_angle_ideals is None
+  d = get_d(angle_ideal=180, angle_model=170, periodicity=2,
+    alt_angle_ideals=(25,))
+  assert approx_equal(d.delta, 10.)
+  d = get_d(angle_ideal=180, angle_model=10, periodicity=2,
+    alt_angle_ideals=(25,))
+  assert approx_equal(d.delta, -10.)
+  d = get_d(angle_ideal=180, angle_model=10, periodicity=2,
+    alt_angle_ideals=(15,))
+  assert approx_equal(d.delta, 5.)
+  d = get_d(angle_ideal=180, angle_model=10, periodicity=2,
+    alt_angle_ideals=(15,345))
+  assert approx_equal(d.delta, 5.)
+  d = get_d(angle_ideal=180, angle_model=-10, periodicity=2,
+    alt_angle_ideals=(15,345))
+  assert approx_equal(d.delta, -5.)
+  d = get_d(angle_ideal=30, angle_model=28, periodicity=1)
+  assert approx_equal(d.delta, 2.)
+  d = get_d(angle_ideal=30, angle_model=-30, periodicity=1)
+  assert approx_equal(d.delta, 60.)
+  d = get_d(angle_ideal=30, angle_model=28, periodicity=1,
+    alt_angle_ideals=(-30,))
+  assert approx_equal(d.delta, 2.)
+  d = get_d(angle_ideal=30, angle_model=-28, periodicity=1,
+    alt_angle_ideals=(-30,))
+  assert approx_equal(d.delta, -2.)
+
 def exercise_chirality():
   p = geometry_restraints.chirality_proxy(
     i_seqs=[0,2,3,1],
