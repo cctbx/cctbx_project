@@ -760,7 +760,8 @@ namespace hierarchy {
         bool tidy_existing=true);
 
       boost::optional<std::string>
-      charge_tidy() const;
+      charge_tidy(
+        bool strip=false) const;
 
       double
       distance(

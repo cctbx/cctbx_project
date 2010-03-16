@@ -3183,10 +3183,17 @@ class build_all_chain_proxies(object):
           sites_frac,
           scattering_types):
       assert atom.i_seq == i_seq
-      try:
-        scattering_type = eltbx.xray_scattering.get_standard_label(
-          label=scattering_type, exact=True)
-      except RuntimeError:
+      from cctbx.eltbx.xray_scattering import get_standard_label
+      scattering_type = get_standard_label(
+        label=scattering_type, exact=True, optional=True)
+      if (scattering_type is not None):
+        charge = atom.charge_tidy(strip=True)
+        if (charge is not None and len(charge) != 0):
+          scattering_type_with_charge = get_standard_label(
+            label=scattering_type+charge, exact=False, optional=True)
+          if (scattering_type_with_charge is not None):
+            scattering_type = scattering_type_with_charge
+      if (scattering_type is None):
         if (unknown_scattering_type_substitute is None):
           raise RuntimeError("Unknown scattering type: %s" %
             atom.format_atom_record(cut_after_label_columns=True))
