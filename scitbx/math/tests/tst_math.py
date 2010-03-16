@@ -107,7 +107,11 @@ def exercise_dihedral_angle():
   def dihe(sites):
     t = dihedral_angle(sites=sites, deg=True)
     v = dihedral_angle(sites=flex.vec3_double(sites), deg=True)
-    assert t == v
+    if (t is None):
+      assert v is None
+    else:
+      assert v is not None
+      assert approx_equal(t, v)
     return t
   d = dihe(sites=[(0,0,0)]*4)
   assert d is None
