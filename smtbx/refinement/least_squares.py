@@ -42,7 +42,7 @@ class normal_equations(object):
     self.fo_sq.set_observation_type_xray_intensity()
     f_calc = xray.structure_factors.from_scatterers_direct(
       self.xray_structure, self.fo_sq).f_calc()
-    self.scale_factor = self.fo_sq.quick_scale_factor_approximation(f_calc)
+    self.scale_factor = self.fo_sq.scale_factor(f_calc, cutoff_factor=0.99)
 
   def build_up(self):
     if self.scale_factor is None:
