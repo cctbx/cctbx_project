@@ -89,10 +89,9 @@ helix
   selection = None
     .type = str
     .style = bold selection
-  helix_class = *1 2 3 4 5 6 7 8 9 10
+  helix_class = *alpha pi 3_10 unknown
     .type = choice
-    .caption = alpha other pi other 3_10 other other other other other
-    .help = Type of helix, defaults to alpha (1).  Only alpha, pi, and 3_10 \
+    .help = Type of helix, defaults to alpha.  Only alpha, pi, and 3_10 \
       helices are used for hydrogen-bond restraints.
     .style = bold
   restraint_sigma = None
@@ -207,8 +206,8 @@ class _pdb_helix (oop.injector, iotbx.pdb.secondary_structure.pdb_helix) :
     rg = """\
 %shelix {
   selection = "%s"
-  helix_class = %d
-}""" % (prefix_scope, sele, self.helix_class)
+  helix_class = %s
+}""" % (prefix_scope, sele, helix_classes[self.helix_class - 1])
     return rg
 
 class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
@@ -381,9 +380,9 @@ def hydrogen_bonds_from_selections (
     donor_name = "N"
   if params.h_bond_restraints.restrain_helices :
     for helix in params.helix :
-      helix_class = int(helix.helix_class)
-      if helix_class != 1 and params.h_bond_restraints.alpha_only :
-        print >> log, "Skipping non-alpha helix (class %d):" % helix_class
+      helix_class = helix.helix_class
+      if helix_class != "alpha" and params.h_bond_restraints.alpha_only :
+        print >> log, "Skipping non-alpha helix (class %s):" % helix_class
         print >> log, "  %s" % helix.selection
         continue
       try :
@@ -397,14 +396,14 @@ def hydrogen_bonds_from_selections (
         print >> log, str(e)
         continue
       else :
-        if helix_class == 1 :
+        if helix_class == "alpha" :
           j = 4
-        elif helix_class == 3 :
+        elif helix_class == "pi" :
           j = 5
-        elif helix_class == 5 :
+        elif helix_class == "3_10" :
           j = 3
         else :
-          print >> log, "Don't know bonding for helix class %d." % helix_class
+          print >> log, "Don't know bonding for helix class %s." % helix_class
           continue
         sigma = params.h_bond_restraints.sigma
         if helix.restraint_sigma is not None :
@@ -669,6 +668,10 @@ def restraint_groups_as_pdb_helices (pdb_hierarchy, helices, log=sys.stderr) :
     amide_isel = isel(sele_str)
     start_atom = atoms[amide_isel[0]]
     end_atom = atoms[amide_isel[-1]]
+    if helix_params.helix_class == "unknown" :
+      helix_class = 2
+    else :
+      helix_class = helix_classes.index(helix_params.helix_class)
     current_helix = iotbx.pdb.secondary_structure.pdb_helix(
       serial=i+1,
       helix_id=i+1,
@@ -680,7 +683,7 @@ def restraint_groups_as_pdb_helices (pdb_hierarchy, helices, log=sys.stderr) :
       end_chain_id=end_atom.chain_id,
       end_resseq=end_atom.resseq,
       end_icode=end_atom.icode,
-      helix_class=int(helix_params.helix_class),
+      helix_class=helix_class,
       comment="",
       length=amide_isel.size())
     pdb_helices.append(current_helix)
@@ -809,7 +812,7 @@ class manager (object) :
     os.remove(tmp_file)
     return sec_str_from_pdb_file
 
-  def apply_phil_str (self, phil_string, log=sys.stderr, verbose=True) :
+  def apply_phil_str (self, phil_string, log=sys.stderr, verbose=False) :
     ss_phil = sec_str_master_phil.fetch(source=libtbx.phil.parse(phil_string))
     if verbose :
       ss_phil.show(out=log, prefix="    ")
@@ -832,14 +835,10 @@ class manager (object) :
       log=log)
     if verbose :
       print >> log, ""
-      print >> log, "  Found %d helices and %d sheets." % (len(params.helix),
-        len(params.sheet))
       print >> log, "  %d hydrogen bonds defined." % bonds_table.bonds.size()
     bonds_table.analyze_distances(params=params.h_bond_restraints,
       pdb_hierarchy=self.pdb_hierarchy,
       log=log)
-    if verbose :
-      print >> log, ""
     return bonds_table
 
   def calculate_structure_content (self) :
@@ -849,27 +848,50 @@ class manager (object) :
     n_beta = self.beta_selection().count(True)
     return (n_alpha / calpha.size(), n_beta / calpha.size())
 
-  def alpha_selection (self) :
+  def show_summary (self, out=sys.stdout) :
+    (frac_alpha, frac_beta) = self.calculate_structure_content()
+    n_helices = len(self.params.helix)
+    n_sheets  = len(self.params.sheet)
+    print >> out, ""
+    print >> out, "  %d helices and %d sheets defined" % (n_helices,n_sheets)
+    print >> out, "  %.1f%% alpha, %.1f%% beta" %(frac_alpha*100,frac_beta*100)
+    print >> out, ""
+
+  def alpha_selections (self) :
     sele = self.selection_cache.selection
-    whole_selection = flex.bool(self.xray_structure.sites_cart().size())
+    all_selections = []
     for helix in self.params.helix :
       if helix.selection is not None :
         helix_sel = sele("(%s) and name N and (altloc ' ' or altloc 'A')" %
           helix.selection)
-        whole_selection |= helix_sel
+        all_selections.append(helix_sel)
+    return all_selections
+
+  def alpha_selection (self) :
+    whole_selection = flex.bool(self.xray_structure.sites_cart().size())
+    for helix in self.alpha_selections() :
+      whole_selection |= helix
     return whole_selection
 
-  def beta_selection (self) :
+  def beta_selections (self) :
     sele = self.selection_cache.selection
-    whole_selection = flex.bool(self.xray_structure.sites_cart().size())
+    all_selections = []
     for sheet in self.params.sheet :
+      sheet_selection = flex.bool(self.xray_structure.sites_cart().size())
       strand_sel = sele("(%s) and name N and (altloc ' ' or altloc 'A')" %
         sheet.first_strand)
-      whole_selection |= strand_sel
+      sheet_selection |= strand_sel
       for strand in sheet.strand :
         strand_sel = sele("(%s) and name N and (altloc ' ' or altloc 'A')" %
           strand.selection)
-        whole_selection |= strand_sel
+        sheet_selection |= strand_sel
+      all_selections.append(sheet_selection)
+    return all_selections
+
+  def beta_selection (self) :
+    whole_selection = flex.bool(self.xray_structure.sites_cart().size())
+    for sheet in self.beta_selections() :
+      whole_selection |= sheet
     return whole_selection
 
 def process_structure (params, processed_pdb_file, tmp_dir, log,
@@ -886,6 +908,7 @@ def process_structure (params, processed_pdb_file, tmp_dir, log,
     assume_hydrogens_all_missing=assume_hydrogens_all_missing,
     tmp_dir=tmp_dir)
   structure_manager.find_automatically(log=log)
+  structure_manager.show_summary(out=log)
   if return_bonds :
     bonds_table = structure_manager.get_bonds_table(log=log)
     return bonds_table
@@ -898,11 +921,10 @@ def run_ksdssp (file_name, log=sys.stderr) :
   exe_path = libtbx.env.under_build("ksdssp/exe/ksdssp")
   if not os.path.isfile(exe_path) :
     raise Sorry("KSDSSP not available.")
-  print >> log, "  Running KSDSSP to generate HELIX and SHEET records for %s"%\
-    os.path.basename(file_name)
+  print >> log, "  Running KSDSSP to generate HELIX and SHEET records"
   ksdssp_out = easy_run.fully_buffered(command="%s %s" % (exe_path, file_name))
-  if len(ksdssp_out.stderr_lines) > 0 :
-    print >> log, "\n".join(ksdssp_out.stderr_lines)
+#  if len(ksdssp_out.stderr_lines) > 0 :
+#    print >> log, "\n".join(ksdssp_out.stderr_lines)
   return ksdssp_out.stdout_lines
 
 def manager_from_pdb_file (pdb_file) :
