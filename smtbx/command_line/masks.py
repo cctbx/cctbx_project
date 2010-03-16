@@ -59,10 +59,9 @@ def exercise_masks(xs, fo_sq,
       cos_sin_table=True)
     f_calc = sf(xs, f_obs).f_calc()
     f_model = mask.f_model()
-    scale_factor = f_obs.quick_scale_factor_approximation(
-      f_model, cutoff_factor=0)
+    scale_factor = f_obs.scale_factor(f_model)
     # f_obs - f_calc
-    k = f_obs.quick_scale_factor_approximation(f_calc, cutoff_factor=0)
+    k = f_obs.scale_factor(f_calc)
     f_obs_minus_f_calc = f_obs.f_obs_minus_f_calc(1/k, f_calc)
     diff_map_calc = miller.fft_map(mask.crystal_gridding, f_obs_minus_f_calc)
     diff_map_calc.apply_volume_scaling()

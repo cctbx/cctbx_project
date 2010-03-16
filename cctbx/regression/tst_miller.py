@@ -1071,35 +1071,37 @@ def exercise_scale_factor():
   f_o = f_c.as_amplitude_array()
   f_sq_o = f_c.as_intensity_array()
   # first with no scale factor
-  assert approx_equal(f_o.quick_scale_factor_approximation(f_c), 1.)
-  assert approx_equal(f_sq_o.quick_scale_factor_approximation(f_c), 1.)
+  assert approx_equal(f_o.scale_factor(f_c), 1.)
+  assert approx_equal(f_sq_o.scale_factor(f_c), 1.)
   assert approx_equal(
-    f_o.quick_scale_factor_approximation(f_c, cutoff_factor=0), 1.)
+    f_o.scale_factor(f_c, cutoff_factor=0), 1.)
   # now try with scale factor
   scale_factor = flex.random_double()
   f_o = f_c.customized_copy(data=flex.abs(f_c.data())*scale_factor)
   f_o.set_observation_type_xray_amplitude()
   f_sq_o = f_o.as_intensity_array()
-  assert approx_equal(f_o.quick_scale_factor_approximation(f_c), scale_factor)
-  assert approx_equal(f_sq_o.quick_scale_factor_approximation(
+  assert approx_equal(f_o.scale_factor(f_c), scale_factor)
+  assert approx_equal(f_sq_o.scale_factor(
     f_c, cutoff_factor=0.9), scale_factor*scale_factor)
   # let's make things more random and using weights
   f_o = miller_set.array(data=scale_factor * flex.abs(f_c.data())
                          + (flex.random_double(miller_set.size())*2-1),
-    sigmas=flex.random_double(miller_set.size()))
+                         sigmas=flex.random_double(miller_set.size()))
   f_o.set_observation_type_xray_amplitude()
   f_sq_o = f_o.f_as_f_sq()
-  assert approx_equal(f_o.quick_scale_factor_approximation(f_c),
+  weights = 1./flex.pow2(f_o.sigmas())
+  assert approx_equal(f_o.scale_factor(f_c, weights=weights),
                       scale_factor, eps=0.1)
-  assert approx_equal(f_sq_o.quick_scale_factor_approximation(f_c),
-                      scale_factor*scale_factor, eps=0.1)
-  # using more of the data should give better estimate of true scale factor
-  assert abs(f_o.quick_scale_factor_approximation(f_c, cutoff_factor=0.5)
+  # using all of the data should give better estimate of true scale factor
+  assert abs(f_o.scale_factor(f_c, weights=weights, cutoff_factor=0.5)
              - scale_factor) \
-         < abs(f_o.quick_scale_factor_approximation(f_c) - scale_factor)
-  assert abs(f_sq_o.quick_scale_factor_approximation(f_c, cutoff_factor=0.5)
+         > abs(f_o.scale_factor(f_c, weights=weights) - scale_factor)
+  weights = 1./flex.pow2(f_sq_o.sigmas())
+  assert approx_equal(f_sq_o.scale_factor(f_c, weights=weights),
+                      scale_factor*scale_factor, eps=0.1)
+  assert abs(f_sq_o.scale_factor(f_c, weights=weights, cutoff_factor=0.5)
              - scale_factor*scale_factor) \
-         < abs(f_sq_o.quick_scale_factor_approximation(f_c)
+         > abs(f_sq_o.scale_factor(f_c, weights=weights)
                - scale_factor*scale_factor)
 
 def exercise_array_2(space_group_info):

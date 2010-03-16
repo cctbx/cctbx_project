@@ -68,8 +68,8 @@ class simple_shelx_weighting(object):
     a,b = self._params
     f_c = self.calculated.data()
     if scale_factor is None:
-      scale_factor = self.observed.quick_scale_factor_approximation(
-        self.calculated)
+      scale_factor = self.observed.scale_factor(
+        self.calculated, cutoff_factor=0.99)
     self.scale_factor = scale_factor
     f_c = f_c * math.sqrt(scale_factor) # don't modify f_c in place
     sigmas_square = flex.pow2(self.observed.sigmas())
@@ -151,8 +151,8 @@ class shelx_weighting(object):
     f_c = self.calculated.data()
     p = flex.norm(f_c)
     if scale_factor is None:
-      scale_factor = self.observed.quick_scale_factor_approximation(
-        self.calculated)
+      scale_factor = self.observed.scale_factor(
+        self.calculated, cutoff_factor=0.99)
     self.scale_factor = scale_factor
     p *= scale_factor
     p *= 1 - f

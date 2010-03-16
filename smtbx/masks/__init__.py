@@ -73,12 +73,11 @@ class mask(object):
   def structure_factors(self, max_cycles=10, scale_factor=None):
     """P. van der Sluis and A. L. Spek, Acta Cryst. (1990). A46, 194-201."""
     assert self.mask is not None
-    f_obs = self.observations.as_amplitude_array().customized_copy(sigmas=None)
+    f_obs = self.observations.as_amplitude_array()
     self.f_calc = f_obs.structure_factors_from_scatterers(
       self.xray_structure, algorithm="direct").f_calc()
     if scale_factor is None:
-      self.scale_factor = f_obs.quick_scale_factor_approximation(
-        self.f_calc, cutoff_factor=0)
+      self.scale_factor = f_obs.scale_factor(self.f_calc)
     f_obs_minus_f_calc = f_obs.f_obs_minus_f_calc(
       1/self.scale_factor, self.f_calc)
     self.fft_scale = self.xray_structure.unit_cell().volume()\
@@ -116,8 +115,7 @@ class mask(object):
       min_residual = 1000
       for epsilon in xfrange(epsilon_for_min_residual, 0.9, -0.2):
         f_model_ = self.f_model(epsilon=epsilon)
-        scale = f_obs.quick_scale_factor_approximation(
-          f_model_, cutoff_factor=0)
+        scale = f_obs.scale_factor(f_model_)
         residual = flex.sum(flex.abs(
           1/scale * flex.abs(f_obs.data())- flex.abs(f_model_.data()))) \
                  / flex.sum(1/scale * flex.abs(f_obs.data()))
@@ -159,7 +157,8 @@ class mask(object):
     f_obs = self.observations.as_amplitude_array()
     f_mask = self.f_mask()
     f_model = self.f_model()
-    scale_factor = f_obs.quick_scale_factor_approximation(f_model, cutoff_factor=0)
+    scale_factor = f_obs.scale_factor(
+      f_model, weights=1/flex.pow2(f_obs.sigmas()))
     f_obs = f_obs.phase_transfer(phase_source=f_model)
     modified_f_obs = miller.array(
       miller_set=f_obs,

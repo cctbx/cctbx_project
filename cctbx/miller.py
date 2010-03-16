@@ -2791,27 +2791,38 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
                             wilson_plot=None):
     return normalised_amplitudes(self, asu_contents, wilson_plot)
 
-  def quick_scale_factor_approximation(self, f_calc, cutoff_factor=0.99):
+  def scale_factor(self, f_calc, weights=None, cutoff_factor=None):
     """
-    Quick scale factor approximation using only the fraction of reflections
-    that are above the cutoff_factor (default value is 0.99).
+    The analytical expression for the least squares scale factor.
+
+    K = sum(w * yo * yc) / sum(w * yc^2)
+
+    If the optional cutoff_factor argument is provided, only the reflections
+    whose magnitudes are greater than cutoff_factor * max(yo) will be included
+    in the calculation.
     """
-    assert cutoff_factor < 1
+    if weights is not None:
+      assert weights.size() == self.data().size()
     assert f_calc.is_complex_array()
     assert f_calc.size() == self.data().size()
-    sel = self.data() >= flex.max(self.data()) * cutoff_factor
-    obs = self.data().select(sel)
+    obs = self.data()
     if self.is_xray_intensity_array():
-      calc = f_calc.norm().data().select(sel)
+      calc = f_calc.norm().data()
     else:
-      calc = flex.abs(f_calc.data()).select(sel)
-    if self.sigmas() is None:
-      return flex.mean(obs*calc) / flex.mean(flex.pow2(calc))
+      calc = flex.abs(f_calc.data())
+    if cutoff_factor is not None:
+      assert cutoff_factor < 1
+      sel = obs >= flex.max(self.data()) * cutoff_factor
+      obs = obs.select(sel)
+      calc = calc.select(sel)
+      if weights is not None:
+        weights = weights.select(sel)
+    if weights is None:
+      return flex.sum(obs*calc) / flex.sum(flex.pow2(calc))
     else:
-      assert self.sigmas().size() == self.data().size()
-      sigmas = self.sigmas().select(sel)
-      return flex.mean_weighted(obs*calc, sigmas) \
-             / flex.mean_weighted(flex.pow2(calc), sigmas)
+      return flex.sum(weights * obs * calc) \
+             / flex.sum(weights * flex.pow2(calc))
+
 
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
 
