@@ -846,6 +846,8 @@ class manager (object) :
     calpha = isel("name N and (altloc ' ' or altloc 'A')")
     n_alpha = self.alpha_selection().count(True)
     n_beta = self.beta_selection().count(True)
+    if calpha.size() == 0 :
+      return (0.0, 0.0)
     return (n_alpha / calpha.size(), n_beta / calpha.size())
 
   def show_summary (self, out=sys.stdout) :
