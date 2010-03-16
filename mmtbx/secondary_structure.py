@@ -89,7 +89,7 @@ helix
   selection = None
     .type = str
     .style = bold selection
-  helix_class = *alpha pi 3_10 unknown
+  helix_type = *alpha pi 3_10 unknown
     .type = choice
     .help = Type of helix, defaults to alpha.  Only alpha, pi, and 3_10 \
       helices are used for hydrogen-bond restraints.
@@ -206,7 +206,7 @@ class _pdb_helix (oop.injector, iotbx.pdb.secondary_structure.pdb_helix) :
     rg = """\
 %shelix {
   selection = "%s"
-  helix_class = %s
+  helix_type = %s
 }""" % (prefix_scope, sele, helix_classes[self.helix_class - 1])
     return rg
 
@@ -380,7 +380,7 @@ def hydrogen_bonds_from_selections (
     donor_name = "N"
   if params.h_bond_restraints.restrain_helices :
     for helix in params.helix :
-      helix_class = helix.helix_class
+      helix_class = helix.helix_type
       if helix_class != "alpha" and params.h_bond_restraints.alpha_only :
         print >> log, "Skipping non-alpha helix (class %s):" % helix_class
         print >> log, "  %s" % helix.selection
@@ -668,10 +668,10 @@ def restraint_groups_as_pdb_helices (pdb_hierarchy, helices, log=sys.stderr) :
     amide_isel = isel(sele_str)
     start_atom = atoms[amide_isel[0]]
     end_atom = atoms[amide_isel[-1]]
-    if helix_params.helix_class == "unknown" :
+    if helix_params.helix_type == "unknown" :
       helix_class = 2
     else :
-      helix_class = helix_classes.index(helix_params.helix_class)
+      helix_class = helix_classes.index(helix_params.helix_type)
     current_helix = iotbx.pdb.secondary_structure.pdb_helix(
       serial=i+1,
       helix_id=i+1,
