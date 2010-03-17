@@ -899,7 +899,10 @@ class manager (object) :
 def process_structure (params, processed_pdb_file, tmp_dir, log,
     assume_hydrogens_all_missing=None, return_bonds=True) :
   acp = processed_pdb_file.all_chain_proxies
-  sec_str_from_pdb_file = acp.extract_secondary_structure()
+  try :
+    sec_str_from_pdb_file = acp.extract_secondary_structure()
+  except Exception :
+    sec_str_from_pdb_file = None
   pdb_hierarchy = acp.pdb_hierarchy
   xray_structure = acp.extract_xray_structure()
   structure_manager = manager(
