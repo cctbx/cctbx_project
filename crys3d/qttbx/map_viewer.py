@@ -176,7 +176,7 @@ if __name__ == '__main__':
     descending_normals=True)
   display(unit_cell=uc,
           raw_map=case.map,
-          iso_level_positive_range_fraction=0.38,
+          positive_iso_level=2.26,
           wires=True,
           show_unit_cell=False,
           orthographic=True)
