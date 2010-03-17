@@ -17,6 +17,7 @@ def exercise_ellipsoid(n_trials=100, n_sub_trials=10):
     t = quadrics.ellipsoid_to_sphere_transform(centre, metrics.as_sym_mat3())
     assert approx_equal(t.translation_part(), centre)
     m = matrix.sqr(t.linear_part())
+    assert m.determinant() > 0
     for j in xrange(n_sub_trials):
       y = matrix.col([ rnd.random() for k in xrange(3) ])
       c_y = y.transpose() * y
@@ -52,7 +53,9 @@ def run():
   except ImportError:
     print "Skipping gltbx/tst_ellipsoids.py: gltbx.gl module not available."
     sys.exit(1)
-    import sys
+
+  exercise_ellipsoid()
+
   command_line = (option_parser(
     usage="",
     description="")
@@ -63,8 +66,6 @@ def run():
       time_ellipsoid(int(command_line.args[0]))
     else:
       time_ellipsoid()
-  else:
-    exercise_ellipsoid()
   print "OK"
 
 if __name__ == '__main__':

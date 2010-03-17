@@ -15,6 +15,8 @@
 
 namespace gltbx { namespace quadrics {
 
+namespace af = scitbx::af;
+
 template <class Heir>
 class prototype
 {
@@ -140,58 +142,54 @@ class ellipsoid_to_sphere_transform
   private:
     GLdouble m[16];
 
-    bool ndp;
+    bool npd;
 
   public:
-    typedef scitbx::af::ref<GLdouble, scitbx::af::f_grid<2> >
-            mat_ref_type;
-    typedef scitbx::af::const_ref<GLdouble, scitbx::af::f_grid<2> >
-            mat_const_ref_type;
-    typedef scitbx::af::const_ref<GLdouble> vec_const_ref_type;
+    /// Do-nothing constructor
+    ellipsoid_to_sphere_transform() {}
 
     /// Construct the change of frame from the frame where the ellipsoid
     /// is represented by the given metrics at the given centre
     ellipsoid_to_sphere_transform(scitbx::vec3<GLdouble> const &centre,
                                   scitbx::sym_mat3<GLdouble> const &metrics)
-      : ndp(false)
+      : npd(false)
     {
-      mat_ref_type trs(m, 4, 4);
       scitbx::matrix::eigensystem::real_symmetric<GLdouble> es(metrics);
-      mat_const_ref_type eigenvec(es.vectors().begin(), 3, 3);
-      vec_const_ref_type eigenval(es.values().begin(), 3);
-      for(int j=0; j<3; ++j) {
-        if (eigenval[j] <= 0) {
-          ndp = true;
-          return;
-        }
-        GLdouble sqrt_eigenval = std::sqrt(eigenval[j]);
-        for(int i=0; i<3; ++i) {
-          trs(i,j) = sqrt_eigenval*eigenvec(i,j);
-        }
+      af::const_ref<GLdouble, af::c_grid<2> > e = es.vectors().const_ref();
+      scitbx::vec3<GLdouble> e0(e[0], e[1], e[2]),
+                             e1(e[3], e[4], e[5]),
+                             e2=e0.cross(e1);
+      af::const_ref<GLdouble> eigenval = es.values().const_ref();
+      if (eigenval[0] <= 0 || eigenval[1] <= 0 || eigenval[2] <= 0) {
+        npd = true;
+        return;
       }
-      for (int i=0; i<3; ++i) trs(i, 3) = centre[i];
-      for (int j=0; j<3; ++j) trs(3, j) = 0;
-      trs(3, 3) = 1;
+      e0 *= std::sqrt(eigenval[0]);
+      e1 *= std::sqrt(eigenval[1]);
+      e2 *= std::sqrt(eigenval[2]);
+
+      m[0] = e0[0]; m[4] = e1[0]; m[ 8] = e2[0]; m[12] = centre[0];
+      m[1] = e0[1]; m[5] = e1[1]; m[ 9] = e2[1]; m[13] = centre[1];
+      m[2] = e0[2]; m[6] = e1[2]; m[10] = e2[2]; m[14] = centre[2];
+      m[3] =   0  ; m[7] =   0  ; m[11] =   0  ; m[15] =     1    ;
     };
 
     /// Whether the metric was non-positive definite.
     /** If this is so, then the other members can't be relied upon */
-    bool non_positive_definite() const { return ndp; }
+    bool non_positive_definite() const { return npd; }
 
     /// The rotation-scaling part of the change of basis
     scitbx::mat3<GLdouble> linear_part() const {
       GLTBX_ASSERT(!non_positive_definite());
-      mat_const_ref_type r(m, 4, 4);
-      return scitbx::mat3<GLdouble>(r(0,0), r(0,1), r(0,2),
-                                    r(1,0), r(1,1), r(1,2),
-                                    r(2,0), r(2,1), r(2,2));
+      return scitbx::mat3<GLdouble>(m[0], m[4], m[ 8],
+                                    m[1], m[5], m[ 9],
+                                    m[2], m[6], m[10]);
     }
 
     /// The translation part of the change of basis
     scitbx::vec3<GLdouble> translation_part() const {
       GLTBX_ASSERT(!non_positive_definite());
-      mat_const_ref_type r(m, 4, 4);
-      return scitbx::vec3<GLdouble>(&r(0, 3));
+      return scitbx::vec3<GLdouble>(&m[12]);
     }
 
     GLdouble const *matrix() const {
