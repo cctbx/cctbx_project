@@ -84,7 +84,7 @@ class map_viewer(qttbx.widget):
     super(map_viewer, self).__init__(unit_cell=unit_cell,
                                      from_here=from_here,
                                      to_there=to_there,
-                                     light_position=(1, 1, 1, 0),
+                                     light_position=(-1, 1, 1, 0),
                                      **kwds)
     assert (fft_map is not None
             or (unit_cell is not None and raw_map is not None))
@@ -121,13 +121,6 @@ class map_viewer(qttbx.widget):
       self.updateGL()
     return self
 
-  def set_perspective(self, flag):
-    if self.orthographic != (not flag):
-      self.orthographic = not flag
-      self.resizeGL(self.width(), self.height())
-      self.updateGL()
-    return self
-
   def set_wires(self, flag):
     if self.wires != flag:
       self.wires = flag
@@ -146,23 +139,32 @@ class map_viewer(qttbx.widget):
   def initialise_opengl(self):
     glEnableClientState(GL_VERTEX_ARRAY)
     glEnableClientState(GL_NORMAL_ARRAY)
-    self.material = gl_managed.material_model()
+    self.material = gl_managed.material_model(
+      ambient_front_colour=(0, 0.25, 0, 1),
+      ambient_back_colour=(0., 0.25, 0, 1),
+      diffuse_front_colour=(0, 1, 0, 1),
+      diffuse_back_colour=(0, 0.75, 0, 1),
+      specular_front_colour=(0.5, 0, 0.5, 1),
+      specular_focus=100)
+    self.wire_colour = (0, 1, 0, 1)
 
-  def draw_object(self):
+  def draw_object_in_fractional_coordinates(self):
     self.draw_triangulation()
 
   def draw_triangulation(self):
-    self.material.execute(specular=not self.wires)
     if self.wires:
-      self.light_with_only_ambient(1., 1., 1.)
+      glPushAttrib(GL_LIGHTING_BIT)
+      glDisable(GL_LIGHTING)
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-      glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
+      glColor4fv(self.wire_colour)
     else:
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-      glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+      self.material.execute(specular=not self.wires)
     va = gltbx.util.vertex_array(self.triangulation.vertices,
                                  self.triangulation.normals)
     va.draw_triangles(self.triangulation.triangles)
+    if self.wires:
+      glPopAttrib()
     gltbx.util.handle_error()
 
 if __name__ == '__main__':
