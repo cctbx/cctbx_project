@@ -1,3 +1,4 @@
+#coding: utf-8
 import random
 from scitbx.array_family import flex
 import scitbx.math
@@ -34,11 +35,34 @@ def exercise_ellipsoid(n_trials=100, n_sub_trials=10):
   else:
     raise Exception_expected
 
+def time_ellipsoid(n=1000000):
+  from gltbx.quadrics import time_ellipsoid_to_sphere_transform
+  import timeit
+  u = flex.sym_mat3_double(n, (0.0008, 0.0004, 0.0002,
+                               0.0001, 0.00015, 0.00005))
+  timer = timeit.Timer(lambda: time_ellipsoid_to_sphere_transform(u))
+  print ("%i ellipsoid --> sphere transforms: %.3g μs per transform"
+         % (n, timer.timeit(1)/n*1e6))
+
 def run():
+  import sys
+  from libtbx.option_parser import option_parser
   try:
     import gltbx.gl
   except ImportError:
     print "Skipping gltbx/tst_ellipsoids.py: gltbx.gl module not available."
+    sys.exit(1)
+    import sys
+  command_line = (option_parser(
+    usage="",
+    description="")
+    .option(None, "--time", action="store_true")
+    ).process(args=sys.argv[1:])
+  if command_line.options.time:
+    if command_line.args:
+      time_ellipsoid(int(command_line.args[0]))
+    else:
+      time_ellipsoid()
   else:
     exercise_ellipsoid()
   print "OK"
