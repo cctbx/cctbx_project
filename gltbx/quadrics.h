@@ -4,9 +4,9 @@
 #include <scitbx/constants.h>
 #include <scitbx/vec3.h>
 #include <scitbx/sym_mat3.h>
-#include <scitbx/array_family/accessors/mat_grid.h>
-#include <scitbx/array_family/ref.h>
+#include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/f_grid.h>
+#include <scitbx/array_family/ref.h>
 #include <scitbx/matrix/eigensystem.h>
 
 // these includes last to avoid Visual C++ 7.1, 8.0 failures
@@ -17,7 +17,6 @@ namespace gltbx { namespace quadrics {
 
 namespace af = scitbx::af;
 
-template <class Heir>
 class prototype
 {
   public:
@@ -45,19 +44,19 @@ class prototype
 
 
 /// A prototype of a cylinder stored in a diplay list
-class proto_cylinder : public prototype<proto_cylinder>
+class proto_cylinder : public prototype
 {
   public:
     typedef scitbx::vec3<GLdouble> vec3_t;
 
     proto_cylinder(GLdouble top_to_base_radius_ratio,
-                   GLint slices, GLint stacks,
+                   GLint slices, GLint stacks=1,
                    GLenum draw_style=GLU_FILL,
                    GLenum orientation=GLU_OUTSIDE,
                    GLenum normals=GLU_SMOOTH)
       : top_to_base_radius_ratio_(top_to_base_radius_ratio),
-        slices_(slices), stacks_(stacks),
-        prototype<proto_cylinder>(draw_style, orientation, normals)
+        slices(slices), stacks(stacks),
+        prototype(draw_style, orientation, normals)
     {
       draw_prototype();
     }
@@ -67,8 +66,8 @@ class proto_cylinder : public prototype<proto_cylinder>
                    GLenum orientation=GLU_OUTSIDE,
                    GLenum normals=GLU_SMOOTH)
       : top_to_base_radius_ratio_(1),
-        slices_(slices), stacks_(1),
-        prototype<proto_cylinder>(draw_style, orientation, normals)
+        slices(slices), stacks(1),
+        prototype(draw_style, orientation, normals)
     {
       draw_prototype();
     }
@@ -102,13 +101,13 @@ class proto_cylinder : public prototype<proto_cylinder>
       GLTBX_SCOPE_PUSH_MATRIX;
       glLoadIdentity();
       glNewList(index, GL_COMPILE);
-      gluCylinder(q, 1., top_to_base_radius_ratio_, 1., slices_, stacks_);
+      gluCylinder(q, 1., top_to_base_radius_ratio_, 1., slices, stacks);
       glEndList();
     }
 
   private:
     GLdouble top_to_base_radius_ratio_;
-    GLint slices_, stacks_;
+    GLint slices, stacks;
 };
 
 
@@ -199,8 +198,53 @@ class ellipsoid_to_sphere_transform
 };
 
 
+class ellipsoid_principal_sections_texture
+{
+public:
+
+  ellipsoid_principal_sections_texture(GLdouble darkening, int n_s, int n_t)
+  {
+    GLTBX_ASSERT(0 <= darkening && darkening <= 1)(darkening);
+    GLubyte lumin = darkening*255;
+    typedef af::f_grid<2> grid_t;
+    af::versa<GLubyte, grid_t> texture_image(grid_t(n_s, n_t), 255);
+    af::ref<GLubyte, grid_t> img = texture_image.ref();
+    for (int s=0; s<n_s; ++s) {
+      img(s, n_t/2) = lumin;
+    }
+    for (int t=0; t<n_t; ++t) {
+      img(0, t) = img(n_s/4, t)
+      = img(n_s/2, t) = img(3*n_s/4, t) = lumin;
+    }
+
+    glPushAttrib(GL_CLIENT_PIXEL_STORE_BIT);
+    glGenTextures(1, &texture_name);
+    glBindTexture(GL_TEXTURE_2D, texture_name);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_LUMINANCE, n_s, n_t, 0,
+                 GL_LUMINANCE, GL_UNSIGNED_BYTE, img.begin());
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glPopAttrib();
+  }
+
+  void bind() {
+    glBindTexture(GL_TEXTURE_2D, texture_name);
+  }
+
+  void unbind() {
+    glBindTexture(GL_TEXTURE_2D, 0);
+  }
+
+private:
+  GLuint texture_name;
+};
+
+
+
 /// A prototype of an ellispoid stored in a display list
-class proto_ellipsoid : public prototype<proto_ellipsoid>
+class proto_ellipsoid : public prototype
 {
   public:
     typedef scitbx::vec3<GLdouble> vec3_t;
@@ -210,13 +254,14 @@ class proto_ellipsoid : public prototype<proto_ellipsoid>
                     GLenum draw_style=GLU_FILL,
                     GLenum orientation=GLU_OUTSIDE,
                     GLenum normals=GLU_SMOOTH)
-      : slices_(slices), stacks_(stacks),
-        prototype<proto_ellipsoid>(draw_style, orientation, normals)
+      : slices(slices), stacks(stacks),
+        prototype(draw_style, orientation, normals)
     {
+      gluQuadricTexture(q, GL_TRUE);
       draw_prototype();
     }
 
-    /// Draw an ellipsoid at the given centre with the current metrics
+  /// Draw an ellipsoid at the given centre with the current metrics
     /** We use \c ellipsoid_to_sphere_transform to do the math
 
       We don't use glTranslate, glRotate and glScale to break the change
@@ -246,12 +291,14 @@ class proto_ellipsoid : public prototype<proto_ellipsoid>
       GLTBX_SCOPE_PUSH_MATRIX;
       glLoadIdentity();
       glNewList(index, GL_COMPILE);
-      gluSphere(q, 1., slices_, stacks_);
+      glRotatef(90.f, 0.f, 1.f, 0.f); // bring z along the eigenvector
+                                      // corresponding to the highest eigenvalue
+      gluSphere(q, 1., slices, stacks);
       glEndList();
     }
 
   private:
-    GLint slices_, stacks_;
+    GLint slices, stacks;
 };
 
 

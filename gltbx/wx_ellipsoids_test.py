@@ -64,6 +64,15 @@ class MyGLWindow(wx_viewer.wxGLWindow):
     self.proto_cylinder = quadrics.proto_cylinder(slices=16)
     self.proto_ellipsoid = quadrics.proto_ellipsoid(slices=32, stacks=32)
 
+    # We build the texture to paint the principal ellipses on ellipsoids
+    self.principal_ellipses_tex = \
+      quadrics.ellipsoid_principal_sections_texture(darkening=0.75,
+                                                    n_s=64, n_t=64)
+    
+    # Enable texturing and specify how to lay the texture on the ellipsoids
+    glEnable(GL_TEXTURE_2D)
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
+    
     gltbx.util.handle_error()
 
   def DrawGL(self):
@@ -80,9 +89,13 @@ class MyGLWindow(wx_viewer.wxGLWindow):
     self.proto_cylinder.draw(self.locations[4], self.locations[5],
                              base_radius=radius)
 
+    # Let's draw the following with our texture
+    self.principal_ellipses_tex.bind()
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, (0.2, 0.4, 0.6, 1.))
     for x, m in zip(self.locations, self.tests[self.test_index]):
       self.proto_ellipsoid.draw(x, m)
+    # End of drawing with our texture
+    self.principal_ellipses_tex.unbind()
 
   def OnChar(self, event):
     key = event.GetKeyCode()
