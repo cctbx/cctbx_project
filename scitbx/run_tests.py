@@ -48,6 +48,7 @@ def run():
   "$D/math/tests/tst_line_search.py",
   "$D/math/tests/tst_gaussian.py",
   "$D/math/tests/tst_quadrature.py",
+  "$D/math/tests/tst_bessel.py",
   "$D/math/tests/tst_halton.py",
   "$D/math/tests/tst_euler_angles.py",
   "$D/math/tests/tst_superpose.py",
