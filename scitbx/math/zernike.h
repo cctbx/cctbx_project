@@ -646,6 +646,10 @@ namespace zernike{
        return( Nnlk_ );
     }
 
+    int n(){ return(n_); }
+    int l(){ return(l_); }
+
+
     private:
     int n_;
     int l_;
@@ -674,6 +678,9 @@ namespace zernike{
     m_(m)
     {
       rnl_ = rnl;
+      SCITBX_ASSERT( rnl_.n() == n_ );
+      SCITBX_ASSERT( rnl_.l() == l_ );
+
     }
     std::complex<FloatType> f(FloatType const& r, FloatType const& t, FloatType const& p)
     {
@@ -693,6 +700,10 @@ namespace zernike{
       if (m_!=0){ result = result*2.0; } // double it up so that we do not have to sum over -m
       return(result);
     }
+
+    int n(){ return( n_ ); }
+    int l(){ return( l_ ); }
+    int m(){ return( m_ ); }
 
 
     private:
@@ -718,11 +729,11 @@ namespace zernike{
     /* Basic constructor */
     zernike_grid(int const& m, int const& n_max)
     :
-    m_(m),
-    n_max_(n_max),
-    eps_(1e-12),
-    nlm_(n_max_),
-    lgf_(n_max_*2+5)
+    m_(m),          // length of cube  = m*2+1
+    n_max_(n_max),  // order of expansion
+    eps_(1e-12),    // epsilon
+    nlm_(n_max_),   // nlm index
+    lgf_(n_max_*2+5)// factorial engine
     {
       delta_ = 1.0 / (m-1);
       FloatType x,y,z,r,t,p;
@@ -788,8 +799,10 @@ namespace zernike{
             // loop over all indices nlm and precompute all coefficients
             if (r<=1.0){
               for (int ii=0;ii<zp.size();ii++){
+                //std::cout << "(" << zp[ii].n() << "," << zp[ii].l() << "," << zp[ii].m() << ") ";
                 tmp_result.push_back( zp[ii].f(r,t,p) );
               }
+             // std::cout << std::endl;
             } else {
               std::complex<FloatType> tmp; //tmp[0]=0.0; tmp[1]=0.0;
               tmp=tmp*0.0;
@@ -801,25 +814,44 @@ namespace zernike{
       }
     }
 
-
-    int ijk_to_index(int const& i, int const& j, int const& k)
+    scitbx::af::shared< std::complex<FloatType> > slow_moments(
+                                 scitbx::af::const_ref< FloatType> const& image
+                                 )
     {
-       int result, mm, ii,jj,kk;
-       ii=i+m_;
-       jj=j+m_;
-       kk=k+m_;
-       mm = m_*2+1;
-       result = ii*mm + jj*mm + kk;
+      scitbx::af::shared< std::complex<FloatType> > result;
+      scitbx::af::shared< scitbx::af::tiny<int,3> > nlm_ind = nlm_.nlm();
+      // first init the accumulator array
+      for (int ii=0;ii<nlm_ind.size();ii++){
+        std::complex<FloatType> tmp(0.0,0.0);
+        result.push_back( tmp );
+      }
+      // now loop over all coordinates
+      // and compute whatever we need to compute
+      SCITBX_ASSERT( image.size() == xyz_.size() );
 
+      for (int ii=0;ii<xyz_.size();ii++){
+        for (int jj=0;jj<partial_data_[ii].size();jj++){
+          result[jj] += image[ii]*std::conj(partial_data_[ii][jj]);
+        }
+      }
+      // normalize
+      for (int ii=0;ii<result.size();ii++){
+        std::cout << result[ii]/static_cast<FloatType>(xyz_.size()) << std::endl;
+        result[ii] = result[ii]/static_cast<FloatType>(xyz_.size());
+      }
+      return(result);
     }
 
 
-    //std::vector< int > construct_neighbours(
 
 
     scitbx::af::shared< scitbx::vec3<FloatType> > xyz()
     {
       return( xyz_ );
+    }
+    scitbx::af::shared< scitbx::vec3<FloatType> > rtp()
+    {
+      return(rtp_ );
     }
 
 
@@ -839,11 +871,14 @@ namespace zernike{
        std::complex<FloatType> tmp;
        for (int gg=0;gg<partial_data_.size();gg++){
          std::complex<FloatType> tmp_result=0.0;
-
+         //std::cout << xyz_[gg][0] << " " << xyz_[gg][1] << " " << xyz_[gg][2] << "  --->  ";
          for (int ii=0;ii<partial_data_[gg].size();ii++){
+           //std::cout <<  "(" << nlm_ind[ii][0] << " " << nlm_ind[ii][1] << " " << nlm_ind[ii][2]
+           //          <<  " " << coefs[ii] << " )  ";
            tmp = partial_data_[gg][ii]*coefs[ii];
            tmp_result += tmp;//std::real(tmp) - std::imag(tmp);
          }
+         //std::cout << std::endl;
          result.push_back( tmp_result );
        }
        return( result );
@@ -857,7 +892,6 @@ namespace zernike{
        std::complex<FloatType> tmp;
        for (int gg=0;gg<partial_data_.size();gg++){
          std::complex<FloatType> tmp_result=0.0;
-
          for (int ii=0;ii<partial_data_[gg].size();ii++){
            tmp = partial_data_[gg][ii]*coefs[ii];
            tmp_result += tmp;
@@ -879,59 +913,6 @@ namespace zernike{
       return( nlm_.nlm() );
     }
 
-    scitbx::af::shared< std::complex<FloatType> > scale_knl_coefs_cheating(scitbx::af::shared< scitbx::af::tiny<int,3> > const& nlm,
-                                                                           scitbx::af::shared< std::complex<FloatType> > const& cnlm,
-                                                                           scitbx::af::shared< std::complex<FloatType> > const& cpnlm)
-    {
-
-      scitbx::af::shared< std::complex<FloatType> > result;
-      scitbx::af::shared< scitbx::af::tiny<int,3> > new_nlm;
-
-      //std::cout << "HIER" << std::endl;
-      // first, we need to select on nl
-      scitbx::af::shared< double_integer_index<int> > nl=nlm_.nl();
-      //std::cout << "DAAR:" << std::endl;
-      scitbx::af::shared< scitbx::af::shared<int> > nl_index=nlm_.nl_indices();
-      FloatType knl;
-      std::complex<FloatType> tmp3, tmp4;
-
-      //std::cout << " INTO LOOP " << std::endl;
-      for (int ii=0;ii<nl.size();ii++){
-        FloatType tmp1=0, tmp2=0;
-        int kkk;
-        //std::cout << nl.size() << std::endl;
-        for (int jj=0;jj<nl_index[ii].size();jj++){
-          kkk = nl_index[ii][jj];
-          //std::cout << kkk << std::endl;
-          tmp3 = cnlm[ kkk ];
-          tmp4 = cpnlm[ kkk ];;
-          tmp1 += std::real(tmp3)*std::real(tmp3) + std::imag(tmp3)*std::imag(tmp3); // Fnlsq for M
-          tmp2 += std::real(tmp4)*std::real(tmp4) + std::imag(tmp4)*std::imag(tmp4); // Fnlsq for Mp
-        }
-        //std::cout << tmp1 << " " << tmp2 << std::endl;
-        knl = std::sqrt(tmp1) / sqrt(tmp2); // scale factor : sqrt(Fnlsq_Mp)/sqrt(Fnlsq_M)
-        // now rescale
-        for (int jj=0;jj<nl_index[ii].size();jj++){
-          kkk = nl_index[ii][jj];
-          new_nlm.push_back( nlm[kkk] );
-          result.push_back( cnlm[kkk]*knl );
-        }
-
-      }
-
-
-      // now we have to reoder stuff to get things back in the right order
-      int that_index;
-      scitbx::af::shared< std::complex<FloatType> > final_result(result.size(),0.0);
-      for (int ii=0;ii<nlm.size();ii++){
-        that_index = nlm_.find_nlm( new_nlm[ii][0], new_nlm[ii][1], new_nlm[ii][2] );
-        final_result[that_index]=result[ii];
-      }
-      return( final_result );
-    }
-
-
-
 
     private:
       int m_, n_max_;
@@ -945,7 +926,6 @@ namespace zernike{
       nlm_array<FloatType> nlm_;
       log_factorial_generator<FloatType> lgf_;
       scitbx::af::shared< FloatType > model_;
-
 
   };
 

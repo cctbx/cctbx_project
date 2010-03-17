@@ -143,13 +143,14 @@ namespace {
                       arg("n_max")
                   )))
         .def("xyz", &w_t::xyz )
+        .def("rtp", &w_t::rtp )
         //.def("get_coef", &w_t::get_coef )
         .def("load_coefs", &w_t::load_coefs)
         .def("f", &w_t::f)
         .def("f_real", &w_t::f_real)
         .def("nlm", &w_t::nlm)
         .def("coefs", &w_t::coefs)
-        .def("scale_knl_coefs_cheating", &w_t::scale_knl_coefs_cheating)
+        .def("slow_moments", &w_t::slow_moments)
        ;
     }
   };
