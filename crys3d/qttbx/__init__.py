@@ -9,9 +9,6 @@ from PyQt4.QtGui import *
 from scitbx import matrix as mat
 import math
 
-f = QGLFormat(QGL.SampleBuffers)
-QGLFormat.setDefaultFormat(f)
-del f
 
 class widget(QGLWidget):
 
@@ -27,7 +24,9 @@ class widget(QGLWidget):
                unit_cell_axis_label_font=None,
                show_unit_cell=True,
                *args, **kwds):
-    super(widget, self).__init__(*args, **kwds)
+    super(widget, self).__init__(
+      QGLFormat(QGL.SampleBuffers),
+      *args, **kwds)
     self.unit_cell = unit_cell
     self.fovy = fovy
     if from_here is None: from_here = (0,0,0)
@@ -53,6 +52,8 @@ class widget(QGLWidget):
     self.from_here = mat.col(from_here)
     self.to_there = mat.col(to_there)
     self.object_centre_wrt_frac = (self.from_here + self.to_there)/2
+    self.object_centre_wrt_cart = mat.col(
+      self.unit_cell.orthogonalize(self.object_centre_wrt_frac))
     x0, y0, z0 = self.from_here
     x1, y1, z1 = self.to_there
     dx, dy, dz = x1 - x0, y1 - y0, z1 - z0
@@ -70,9 +71,9 @@ class widget(QGLWidget):
   eye_distance = property(eye_distance)
 
   def initializeGL(self):
+    glEnable(GL_MULTISAMPLE) # does not seem needed with Qt 4.7
+                             # on MacOS 10.6.1
     glEnable(GL_DEPTH_TEST)
-    glEnable(GL_LIGHTING)
-    glEnable(GL_LIGHT0)
     glEnable(GL_NORMALIZE)
     glClearColor(*self.clear_colour)
     glMatrixMode(GL_MODELVIEW)
@@ -80,6 +81,15 @@ class widget(QGLWidget):
     glLoadIdentity()
     self.orbiting = gltbx.util.matrix().get()
     self.dolly = gltbx.util.matrix().get()
+    glPopMatrix()
+
+    glEnable(GL_LIGHTING)
+    glEnable(GL_LIGHT0)
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, (0.7,)*3 + (1,))
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+    glPushMatrix()
+    glLoadIdentity()
+    glLightfv(GL_LIGHT0, GL_POSITION, self.light_position)
     glPopMatrix()
     gltbx.util.handle_error()
     self.initialise_opengl()
@@ -103,7 +113,6 @@ class widget(QGLWidget):
       glOrtho(left, right, bottom, top, 0, 100)
     else:
       gluPerspective(aspect=w/h, fovy=self.fovy, zNear=0.1, zFar=100)
-    gltbx.util.handle_error()
 
   def paintGL(self):
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -112,63 +121,64 @@ class widget(QGLWidget):
     glTranslatef(0, 0, -self.eye_distance)
     self.dolly.multiply()
     self.orbiting.multiply()
+    glPushMatrix()
+    glTranslatef(*-self.object_centre_wrt_cart)
+    self.draw_object_in_cartesian_coordinates()
+    glPopMatrix()
+    glPushMatrix()
     self.orthogonaliser.multiply()
     glTranslatef(*-self.object_centre_wrt_frac)
     if self.is_unit_cell_shown: self.draw_unit_cell()
-    self.draw_object()
-    gltbx.util.handle_error()
+    self.draw_object_in_fractional_coordinates()
+    glPopMatrix()
 
-  def light_with_only_ambient(self, r=None, g=None, b=None, rgba=None):
-    assert bool((r,g,b).count(None)) == 0 ^ bool(rgba is not None)
-    if rgba is None: rgba = [ r, g, b, 1 ]
-    glLightfv(GL_LIGHT0, GL_AMBIENT, rgba)
-    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, (0., 0., 0., 1.))
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (0, 0, 0, 1))
-    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 0)
+  def draw_object_in_cartesian_coordinates(self):
+    pass
+
+  def draw_object_in_fractional_coordinates(self):
+    pass
 
   def draw_unit_cell(self):
-    self.light_with_only_ambient(0.5, 0.5, 0.5)
-    (x0, y0, z0), (x1, y1, z1) = self.triangulation.bounds
+    glPushAttrib(GL_LIGHTING_BIT)
+    glDisable(GL_LIGHTING)
 
-    r,g,b = 0.9, 0.4, 0.3
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, (r, g, b, 1.))
+    glColor3f(0.5, 0.5, 0.5)
+
     e = -0.02
-    for pos, label in zip([((x0 + x1)/2, y0 + e, z0 + e),
-                           (x0 + e, (y0 + y1)/2, z0 + e),
-                           (x0 + e, y0 + e, (z0 + z1)/2)],
+    for pos, label in zip([(1/2, e, e), (e, 1/2, e), (e, e, 1/2)],
                           ['a','b','c']):
       self.renderText(pos[0], pos[1], pos[2], label,
                       self.unit_cell_axis_label_font)
 
-    lw = [0.]
-    glGetFloatv(GL_LINE_WIDTH, lw)
+    glPushAttrib(GL_LINE_BIT)
     glLineWidth(3)
 
-    r,g,b = (0.6,)*3
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, (r, g, b, 1.))
     glBegin(GL_LINE_LOOP)
-    glVertex3f(x0,y0,z0)
-    glVertex3f(x1,y0,z0)
-    glVertex3f(x1,y1,z0)
-    glVertex3f(x0,y1,z0)
+    glVertex3f(0,0,0)
+    glVertex3f(1,0,0)
+    glVertex3f(1,1,0)
+    glVertex3f(0,1,0)
     glEnd()
     glBegin(GL_LINE_LOOP)
-    glVertex3f(x0,y0,z1)
-    glVertex3f(x1,y0,z1)
-    glVertex3f(x1,y1,z1)
-    glVertex3f(x0,y1,z1)
+    glVertex3f(0,0,1)
+    glVertex3f(1,0,1)
+    glVertex3f(1,1,1)
+    glVertex3f(0,1,1)
     glEnd()
     glBegin(GL_LINES)
-    glVertex3f(x0,y0,z0)
-    glVertex3f(x0,y0,z1)
-    glVertex3f(x1,y0,z0)
-    glVertex3f(x1,y0,z1)
-    glVertex3f(x1,y1,z0)
-    glVertex3f(x1,y1,z1)
-    glVertex3f(x0,y1,z0)
-    glVertex3f(x0,y1,z1)
+    glVertex3f(0,0,0)
+    glVertex3f(0,0,1)
+    glVertex3f(1,0,0)
+    glVertex3f(1,0,1)
+    glVertex3f(1,1,0)
+    glVertex3f(1,1,1)
+    glVertex3f(0,1,0)
+    glVertex3f(0,1,1)
     glEnd()
-    glLineWidth(lw[0])
+
+    glPopAttrib() # line
+
+    glPopAttrib() # light
 
   show_inspector = pyqtSignal()
 
@@ -230,6 +240,14 @@ class widget(QGLWidget):
     self.dolly.get()
     glPopMatrix()
     self.updateGL()
+
+  def set_perspective(self, flag):
+    if self.orthographic != (not flag):
+      self.orthographic = not flag
+      self.resizeGL(self.width(), self.height())
+      self.updateGL()
+    return self
+
 
 
 class widget_control_mixin(QWidget):
