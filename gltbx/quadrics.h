@@ -127,7 +127,7 @@ class proto_cylinder : public prototype<proto_cylinder>
    \f$x^T U^{-1} x = cst\f$
    where \f$U\f$ is the metrics passed to the constructor.
    Since \f$U = R \Delta R^T\f$ for some orthogonal matrix \f$R\f$
-   and diagonal matrix \f$\Delta\f$, the coordinates \f$y=\Delta^{-1/2} R^T\f$
+   and diagonal matrix \f$\Delta\f$, the coordinates \f$y=\Delta^{-1/2} R^T x\f$
    satisfy \f$y^T y = cst\f$, i.e. this is a sphere in those coordinates.
    Thus the operator to transform the starting frame to the frame where
    coordinates are \f$y\f$, is \f$M = R \Delta^{1/2}\f$. Moreover, \f$R\f$ is

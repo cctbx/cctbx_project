@@ -1,6 +1,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/tuple.hpp>
+#include <boost/python/def.hpp>
 
 #include <gltbx/quadrics.h>
 
@@ -64,11 +65,28 @@ namespace gltbx { namespace quadrics { namespace boost_python {
     }
   };
 
+  double
+  time_ellipsoid_to_sphere_transform(
+    scitbx::af::const_ref<proto_ellipsoid::metrics_t> const &u)
+  {
+    GLdouble hash = 0;
+    scitbx::vec3<GLdouble> centre(0.1, 0.2, 0.3);
+    for (int i=0; i< u.size(); ++i) {
+      ellipsoid_to_sphere_transform e2s(centre, u[i]);
+      GLdouble const *m = e2s.matrix();
+      hash += m[0] + m[3] + m[6];
+    }
+    return hash;
+  }
+
   namespace {
     void init_module() {
+      using namespace boost::python;
       proto_cylinder_wrapper::wrap();
       proto_ellipsoid_wrapper::wrap();
       ellipsoid_to_sphere_transform_wrapper::wrap();
+      def("time_ellipsoid_to_sphere_transform",
+          time_ellipsoid_to_sphere_transform);
     }
   }
 
