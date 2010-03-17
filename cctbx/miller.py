@@ -2427,7 +2427,14 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       miller_set=self,
       data=self.data()/flex.sqrt(self.epsilons().data().as_double()))
 
-  def quasi_normalize_structure_factors(self, d_star_power=1):
+  def amplitude_quasi_normalisations(self, d_star_power=1):
+    """ A miller.array whose data N(h) are the normalisations to convert
+    between locally normalised E's and F's:
+    E(h) = F(h) / N(h)
+
+    self features the F's, which are then binned with the current binner
+    and N(h) is the average of F's in the bin h belongs to.
+    """
     assert self.binner() is not None
     assert self.binner().n_bin_d_too_large_or_small() == 0
     assert self.data().all_ge(0)
@@ -2446,10 +2453,11 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     mean_f_sq_over_epsilon_interp = self.binner().interpolate(
       mean_f_sq_over_epsilon, d_star_power)
     assert mean_f_sq_over_epsilon_interp.all_gt(0)
+    return array(self, flex.sqrt(mean_f_sq_over_epsilon_interp))
 
-    f_sq = flex.pow2(self.data())
-    q = flex.sqrt(f_sq / mean_f_sq_over_epsilon_interp)
-    assert q.all_ge(0)
+  def quasi_normalize_structure_factors(self, d_star_power=1):
+    normalisations = self.amplitude_quasi_normalisations(d_star_power)
+    q = self.data() / normalisations.data()
     return array(self, q)
 
   def phased_translation_function_coeff(self, phase_source, f_calc, fom=None):
