@@ -74,6 +74,8 @@ def randomly_exercise(flipping_type,
   if amplitude_type == 'E':
     extra.normalisations_for = lambda f: f.amplitude_normalisations(
       target_structure.unit_cell_content(omit=('H','D')))
+  elif amplitude_type == 'quasi-E':
+    extra.normalisations_for = charge_flipping.amplitude_quasi_normalisations
   solving = charge_flipping.solving_iterator(
     flipping,
     f_obs,
