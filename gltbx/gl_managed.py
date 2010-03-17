@@ -51,44 +51,34 @@ class display_lists:
 class material_model(object):
 
   def __init__(self,
-               front_colour=(102/255, 204/255, 1),
-               back_colour=(1, 204/255, 102/255),
-               ambient=0.5,
-               diffuse=1.,
-               specular=0.25,
-               specular_focus=10):
-    self.front_colour = front_colour
-    self.back_colour = back_colour
-    self.ambient = ambient
-    self.diffuse = diffuse
-    self.specular = specular
+               ambient_front_colour,
+               diffuse_front_colour,
+               specular_front_colour=(1,1,1,1),
+               ambient_back_colour=None,
+               diffuse_back_colour=None,
+               specular_back_colour=None,
+               specular_focus=30):
+    self.ambient_front_colour = ambient_front_colour
+    self.diffuse_front_colour = diffuse_front_colour
+    self.specular_front_colour = specular_front_colour
+    if ambient_back_colour is None:
+      ambient_back_colour = ambient_front_colour
+    self.ambient_back_colour = ambient_back_colour
+    if diffuse_back_colour is None:
+      diffuse_back_colour = diffuse_front_colour
+    self.diffuse_back_colour = diffuse_back_colour
+    if specular_back_colour is None:
+      specular_back_colour = specular_front_colour
+    self.specular_back_colour = specular_back_colour
     self.specular_focus = specular_focus
-
-  def ambient_colours(self):
-    x = self.ambient
-    return ([ c*x for c in self.front_colour ]+[1],
-            [ c*x for c in self.back_colour ]+[1])
-  ambient_colours = property(ambient_colours)
-
-  def diffuse_colours(self):
-    x = self.diffuse
-    return ([ c*x for c in self.front_colour ]+[1],
-            [ c*x for c in self.back_colour ]+[1])
-  diffuse_colours = property(diffuse_colours)
-
-  def specular_colour(self):
-    x = self.specular
-    return [x]*3 + [1]
-  specular_colour = property(specular_colour)
 
   def execute(self, specular=True):
     from gl import glMaterialfv, glMaterialf
-    fc, bc = self.ambient_colours
-    glMaterialfv(gl.GL_BACK, gl.GL_AMBIENT, bc)
-    glMaterialfv(gl.GL_FRONT, gl.GL_AMBIENT, fc)
-    fc, bc = self.diffuse_colours
-    glMaterialfv(gl.GL_BACK, gl.GL_DIFFUSE, bc)
-    glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, fc)
+    glMaterialfv(gl.GL_BACK, gl.GL_AMBIENT, self.ambient_back_colour)
+    glMaterialfv(gl.GL_FRONT, gl.GL_AMBIENT, self.ambient_front_colour)
+    glMaterialfv(gl.GL_BACK, gl.GL_DIFFUSE, self.diffuse_back_colour)
+    glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, self.diffuse_front_colour)
     if specular:
-      glMaterialfv(gl.GL_FRONT_AND_BACK, gl.GL_SPECULAR, self.specular_colour)
+      glMaterialfv(gl.GL_BACK, gl.GL_SPECULAR, self.specular_back_colour)
+      glMaterialfv(gl.GL_FRONT, gl.GL_SPECULAR, self.specular_front_colour)
       glMaterialf(gl.GL_FRONT_AND_BACK, gl.GL_SHININESS, self.specular_focus)
