@@ -1,9 +1,11 @@
+#include <gltbx/quadrics.h>
+#include <scitbx/array_family/boost_python/shared_wrapper.h>
+
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python/def.hpp>
-
-#include <gltbx/quadrics.h>
+#include <boost/python/make_constructor.hpp>
 
 namespace gltbx { namespace quadrics { namespace boost_python {
 
@@ -48,6 +50,44 @@ namespace gltbx { namespace quadrics { namespace boost_python {
 
   };
 
+  struct ellipsoid_to_sphere_transform_shared_wrapper
+  {
+    typedef ellipsoid_to_sphere_transform e_t;
+    typedef af::shared<e_t> w_t;
+
+    static w_t *make(af::const_ref<scitbx::vec3<GLdouble> > const &centre,
+                     af::const_ref<scitbx::sym_mat3<GLdouble> > const &metrics)
+    {
+      GLTBX_ASSERT(centre.size() == metrics.size());
+      long n = centre.size();
+      w_t result;
+      result.reserve(n);
+      for (int i=0; i<n; ++i) {
+        result.push_back(ellipsoid_to_sphere_transform(centre[i], metrics[i]));
+      }
+      return new w_t(result);
+    }
+
+    static void draw(w_t const &self, proto_ellipsoid &proto) {
+      for (int i=0; i<self.size(); ++i) {
+        proto.draw(self[i]);
+      }
+    }
+
+    static void wrap() {
+      using namespace boost::python;
+      using namespace scitbx::af::boost_python;
+      class_<w_t>
+      klass = shared_wrapper<e_t>::wrap("shared_ellipsoid_to_sphere_transforms");
+      klass.def("__init__",
+                make_constructor(make,
+                                 default_call_policies(),
+                                 (arg("centres"), arg("metrics"))))
+           .def("draw", draw, arg("proto_ellipsoid"))
+        ;
+    }
+  };
+
   struct proto_ellipsoid_wrapper
   {
     typedef proto_ellipsoid wt;
@@ -87,6 +127,7 @@ namespace gltbx { namespace quadrics { namespace boost_python {
       ellipsoid_to_sphere_transform_wrapper::wrap();
       def("time_ellipsoid_to_sphere_transform",
           time_ellipsoid_to_sphere_transform);
+      ellipsoid_to_sphere_transform_shared_wrapper::wrap();
     }
   }
 
