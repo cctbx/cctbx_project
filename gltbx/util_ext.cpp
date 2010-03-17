@@ -506,7 +506,11 @@ namespace gltbx { namespace util {
     matrix_wrapper &get() {
       GLint matrix_mode;
       glGetIntegerv(GL_MATRIX_MODE, &matrix_mode);
-      glGetFloatv(matrix_mode, m.begin());
+      GLenum matrix_kind =   GL_MODELVIEW  ? GL_MODELVIEW_MATRIX
+                           : GL_PROJECTION ? GL_PROJECTION_MATRIX
+                           :                 GL_NONE;
+      GLTBX_ASSERT(matrix_kind != GL_NONE);
+      glGetFloatv(matrix_kind, m.begin());
       return *this;
     }
 
