@@ -177,8 +177,6 @@ crys3d/qttbx/map_viewer_controls.ui -text
 crys3d/reverse_selection.py -text
 crys3d/wx_combined_viewer.py -text
 crys3d/wx_extra.py -text
-crys3d/wx_map_viewer.py -text
-crys3d/wx_map_viewer_example.py -text
 crys3d/wx_model_viewer.py -text
 crys3d/wx_selection_editor.py -text
 dox/cctbx_notations.sty -text
@@ -217,7 +215,6 @@ gltbx/tst_viewer_utils.py svneol=native#text/x-python
 gltbx/util.h -text
 gltbx/viewer_utils.py svneol=native#text/x-python
 gltbx/viewer_utils_ext.cpp svneol=native#text/plain
-gltbx/wx_controllers.py -text
 gltbx/wx_ellipsoids_test.py -text
 gltbx/wx_motion_on_tab.py svneol=native#text/x-python
 gltbx/wx_viewer_example.py -text
