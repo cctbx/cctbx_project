@@ -174,6 +174,8 @@ crys3d/libtbx_refresh.py -text
 crys3d/qttbx/__init__.py -text
 crys3d/qttbx/map_viewer.py -text
 crys3d/qttbx/map_viewer_controls.ui -text
+crys3d/qttbx/xray_structure_viewer.py -text
+crys3d/qttbx/xray_structure_viewer_controls.ui -text
 crys3d/reverse_selection.py -text
 crys3d/wx_combined_viewer.py -text
 crys3d/wx_extra.py -text
