@@ -932,6 +932,13 @@ def run_ksdssp (file_name, log=sys.stderr) :
 #    print >> log, "\n".join(ksdssp_out.stderr_lines)
   return ksdssp_out.stdout_lines
 
+def run_ksdssp_direct(pdb_str) :
+  exe_path = libtbx.env.under_build("ksdssp/exe/ksdssp")
+  if not os.path.isfile(exe_path) :
+    raise RuntimeError, "KSDSSP not available"
+  ksdssp_out = easy_run.fully_buffered(command=exe_path, stdin_lines=pdb_str)
+  return ( ksdssp_out.stdout_lines, ksdssp_out.stderr_lines )
+
 def manager_from_pdb_file (pdb_file) :
   assert os.path.isfile(pdb_file)
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
