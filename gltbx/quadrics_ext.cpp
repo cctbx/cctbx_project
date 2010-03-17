@@ -22,7 +22,7 @@ namespace gltbx { namespace quadrics { namespace boost_python {
       using namespace boost::python;
       class_<wt>("proto_cylinder", no_init)
         .def(init<GLdouble, GLint, GLint, GLenum, GLenum, GLenum>(
-             (arg("top_to_base_radius_ratio"), arg("slices"), arg("stacks"),
+             (arg("top_to_base_radius_ratio"), arg("slices"), arg("stacks")=1,
               GLTBX_LOC_COMMON_ARGS)))
         .def(init<GLint, GLenum, GLenum, GLenum>(
                   (arg("slices"), GLTBX_LOC_COMMON_ARGS)))
@@ -83,7 +83,7 @@ namespace gltbx { namespace quadrics { namespace boost_python {
                 make_constructor(make,
                                  default_call_policies(),
                                  (arg("centres"), arg("metrics"))))
-           .def("draw", draw, arg("proto_ellipsoid"))
+           .def("draw", draw)
         ;
     }
   };
@@ -104,6 +104,22 @@ namespace gltbx { namespace quadrics { namespace boost_python {
       ;
     }
   };
+
+  struct ellipsoid_principal_sections_texture_wrapper
+  {
+    typedef ellipsoid_principal_sections_texture wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt>("ellipsoid_principal_sections_texture", no_init)
+        .def(init<GLdouble, int, int>(
+            (arg("darkening"), arg("n_s"), arg("n_t"))))
+        .def("bind", &wt::bind)
+        .def("unbind", &wt::unbind)
+        ;
+    }
+  };
+
 
   double
   time_ellipsoid_to_sphere_transform(
@@ -128,6 +144,7 @@ namespace gltbx { namespace quadrics { namespace boost_python {
       def("time_ellipsoid_to_sphere_transform",
           time_ellipsoid_to_sphere_transform);
       ellipsoid_to_sphere_transform_shared_wrapper::wrap();
+      ellipsoid_principal_sections_texture_wrapper::wrap();
     }
   }
 
