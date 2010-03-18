@@ -6,6 +6,7 @@
 #include <boost/python/tuple.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/make_constructor.hpp>
+#include <boost/python/return_internal_reference.hpp>
 
 namespace gltbx { namespace quadrics { namespace boost_python {
 
@@ -77,8 +78,9 @@ namespace gltbx { namespace quadrics { namespace boost_python {
     static void wrap() {
       using namespace boost::python;
       using namespace scitbx::af::boost_python;
-      class_<w_t>
-      klass = shared_wrapper<e_t>::wrap("shared_ellipsoid_to_sphere_transforms");
+      typedef return_internal_reference<> rir;
+      class_<w_t> klass =
+        shared_wrapper<e_t, rir>::wrap("shared_ellipsoid_to_sphere_transforms");
       klass.def("__init__",
                 make_constructor(make,
                                  default_call_policies(),
