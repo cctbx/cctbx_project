@@ -68,11 +68,11 @@ class MyGLWindow(wx_viewer.wxGLWindow):
     self.principal_ellipses_tex = \
       quadrics.ellipsoid_principal_sections_texture(darkening=0.75,
                                                     n_s=64, n_t=64)
-    
+
     # Enable texturing and specify how to lay the texture on the ellipsoids
     glEnable(GL_TEXTURE_2D)
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
-    
+
     gltbx.util.handle_error()
 
   def DrawGL(self):
