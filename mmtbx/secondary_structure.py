@@ -897,7 +897,7 @@ class manager (object) :
     return whole_selection
 
 def process_structure (params, processed_pdb_file, tmp_dir, log,
-    assume_hydrogens_all_missing=None, return_bonds=True) :
+    assume_hydrogens_all_missing=None, return_bonds=False) :
   acp = processed_pdb_file.all_chain_proxies
   try :
     sec_str_from_pdb_file = acp.extract_secondary_structure()
