@@ -3,6 +3,8 @@
 
 #if defined(_MSC_VER)
 # include <windows.h>
+# include "GL/gl.h"
+# include "glext.h"
 #endif
 #if defined(__APPLE_CC__)
 # include <OpenGL/gl.h>
