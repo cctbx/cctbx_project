@@ -25,6 +25,29 @@ def exercise_masks():
     'N4', 'C20', 'C21', 'H211', 'H212', 'H213')
   xs_no_sol = xs_ref.deep_copy_scatterers().select(
     acetonitrile_sel, negate=True)
+  # check what happens when no voids are found
+  mask = masks.mask(xs_ref, fo2)
+  mask.compute(solvent_radius=1.2,
+               shrink_truncation_radius=1.2,
+               resolution_factor=1/2,
+               atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52})
+  assert mask.structure_factors() is None
+  assert mask.n_voids() == 0
+  assert mask.n_solvent_grid_points == 0
+  assert mask.f_mask() is None
+  assert mask.f_model() is None
+  assert mask.modified_intensities() is None
+  assert mask.f_000 is None
+  s = cStringIO.StringIO()
+  mask.show_summary(log=s)
+  assert not show_diff(s.getvalue(), """\
+solvent_radius: 1.20
+shrink_truncation_radius: 1.20
+Total solvent accessible volume / cell = 0.0 Ang^3 [0.0%]
+
+gridding: (30,45,54)
+""")
+  # and now with some voids
   for use_space_group_symmetry in (True, False):
     mask = masks.mask(xs_no_sol, fo2)
     mask.compute(solvent_radius=1.2,
@@ -41,6 +64,7 @@ def exercise_masks():
     diff_map.apply_volume_scaling()
     stats = diff_map.statistics()
     assert n_voids == 2
+    assert approx_equal(n_voids, mask.n_voids())
     assert mask.n_solvent_grid_points == 42148
     # check the difference map has no large peaks/holes
     assert max(stats.max(), abs(stats.min())) < 0.11

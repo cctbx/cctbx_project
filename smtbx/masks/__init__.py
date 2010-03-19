@@ -73,6 +73,7 @@ class mask(object):
   def structure_factors(self, max_cycles=10, scale_factor=None):
     """P. van der Sluis and A. L. Spek, Acta Cryst. (1990). A46, 194-201."""
     assert self.mask is not None
+    if self.n_voids() == 0: return
     f_obs = self.observations.as_amplitude_array()
     self.f_calc = f_obs.structure_factors_from_scatterers(
       self.xray_structure, algorithm="direct").f_calc()
@@ -135,11 +136,10 @@ class mask(object):
     return self._f_mask
 
   def f_mask(self):
-    assert self._f_mask is not None
     return self._f_mask
 
   def f_model(self, f_calc=None, epsilon=None):
-    assert self._f_mask is not None
+    if self._f_mask is None: return None
     f_mask = self.f_mask()
     if f_calc is None:
       f_calc = self.f_calc
@@ -151,9 +151,12 @@ class mask(object):
 
   def modified_intensities(self):
     """Intensities with the solvent contribution removed."""
-    assert self._f_mask is not None
+    if self._f_mask is None: return None
     return modified_intensities(
       self.observations, self.f_model(), self.f_mask())
+
+  def n_voids(self):
+    return self.flood_fill.n_voids()
 
   def show_summary(self, log=None):
     if log is None: log = sys.stdout
@@ -164,12 +167,14 @@ class mask(object):
       self.solvent_accessible_volume,
       100 * self.solvent_accessible_volume /
       self.xray_structure.unit_cell().volume())
-    print >> log, "Total electron count / cell = %.1f" %(self.f_000_s)
+    n_voids = self.n_voids()
+    if n_voids > 0:
+      print >> log, "Total electron count / cell = %.1f" %(self.f_000_s)
     print >> log
 
     self.flood_fill.show_summary(log=log)
+    if n_voids == 0: return
     print >> log
-    n_voids = self.flood_fill.n_voids()
     grid_points_per_void = self.flood_fill.grid_points_per_void()
     centres_of_mass = self.flood_fill.centres_of_mass_frac()
     print >> log, "Void  Vol/Ang^3  #Electrons"

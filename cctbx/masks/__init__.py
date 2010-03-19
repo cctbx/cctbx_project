@@ -49,6 +49,7 @@ class _flood_fill(boost.python.injector, flood_fill):
     grid_points_per_void = self.grid_points_per_void()
     centres_of_mass = self.centres_of_mass_frac()
     eigensystems = self.eigensystems_frac()
+    if self.n_voids() == 0: return
     print >> log, "Void #Grid points Vol/A^3 Vol/%  Centre of mass (frac)",
     print >> log, "  Eigenvectors (frac)"
     for i in range(n_voids):
