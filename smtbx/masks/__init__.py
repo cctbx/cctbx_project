@@ -24,7 +24,7 @@ class mask(object):
               shrink_truncation_radius,
               ignore_hydrogen_atoms=False,
               crystal_gridding=None,
-              resolution_factor=1/3,
+              resolution_factor=1/4,
               atom_radii_table=None,
               use_space_group_symmetry=False):
     if crystal_gridding is None:
@@ -149,30 +149,11 @@ class mask(object):
       data = f_calc.data() + epsilon * f_mask.data()
     return miller.array(miller_set=f_calc, data=data)
 
-  def modified_structure_factors(self):
-    """Subtracts the solvent contribution from the observed structure
-    factors to obtain modified structure factors, suitable for refinement
-    with other refinement programs such as ShelXL"""
+  def modified_intensities(self):
+    """Intensities with the solvent contribution removed."""
     assert self._f_mask is not None
-    f_obs = self.observations.as_amplitude_array()
-    f_mask = self.f_mask()
-    f_model = self.f_model()
-    if f_obs.sigmas() is not None:
-      weights = weights=1/flex.pow2(f_obs.sigmas())
-    else:
-      weights = None
-    scale_factor = f_obs.scale_factor(f_model, weights=weights)
-    f_obs = f_obs.phase_transfer(phase_source=f_model)
-    modified_f_obs = miller.array(
-      miller_set=f_obs,
-      data=(f_obs.data() - f_mask.data()*scale_factor))
-    if self.observations.is_xray_intensity_array():
-      # it is better to use the original sigmas for intensity if possible
-      return modified_f_obs.as_intensity_array().customized_copy(
-        sigmas=self.observations.sigmas())
-    else:
-      return modified_f_obs.customized_copy(
-        sigmas=f_obs.sigmas()).as_intensity_array()
+    return modified_intensities(
+      self.observations, self.f_model(), self.f_mask())
 
   def show_summary(self, log=None):
     if log is None: log = sys.stdout
@@ -206,3 +187,26 @@ class mask(object):
       print >> log, "%4i" %(i+1),
       print >> log, "%10.1f     " %(void_vol),
       print >> log, "%7.1f" %f_000_s
+
+
+def modified_intensities(observations, f_model, f_mask):
+  """Subtracts the solvent contribution from the observed structure
+  factors to obtain modified structure factors, suitable for refinement
+  with other refinement programs such as ShelXL"""
+  f_obs = observations.as_amplitude_array()
+  if f_obs.sigmas() is not None:
+    weights = weights=1/flex.pow2(f_obs.sigmas())
+  else:
+    weights = None
+  scale_factor = f_obs.scale_factor(f_model, weights=weights)
+  f_obs = f_obs.phase_transfer(phase_source=f_model)
+  modified_f_obs = miller.array(
+    miller_set=f_obs,
+    data=(f_obs.data() - f_mask.data()*scale_factor))
+  if observations.is_xray_intensity_array():
+    # it is better to use the original sigmas for intensity if possible
+    return modified_f_obs.as_intensity_array().customized_copy(
+      sigmas=observations.sigmas())
+  else:
+    return modified_f_obs.customized_copy(
+      sigmas=f_obs.sigmas()).as_intensity_array()
