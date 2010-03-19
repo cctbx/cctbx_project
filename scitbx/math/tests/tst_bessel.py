@@ -30,13 +30,16 @@ def exercise_results():
     assert abs(fff-j1(xx))/fff < 1e-5
     assert abs(ffff-j2(xx))/ffff < 1e-5
 
-def run(args):
-  assert len(args) == 0
+def exercise():
   if (not hasattr(math, "spherical_bessel")):
     print "Skipping tst_bessel.py: functions not available."
     return
   exercise_interfaces()
   exercise_results()
+
+def run(args):
+  assert len(args) == 0
+  exercise()
   print "OK"
 
 if (__name__ == "__main__"):
