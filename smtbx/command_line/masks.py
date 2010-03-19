@@ -37,9 +37,9 @@ def exercise_masks(xs, fo_sq,
   mask.show_summary()
   print "F000 void: %.1f" %mask.f_000_s
   f_model = mask.f_model()
-  # write modified structure factors as shelxl hkl
+  # write modified intensities as shelxl hkl
   out = StringIO()
-  modified_fo_sq = mask.modified_structure_factors()
+  modified_fo_sq = mask.modified_intensities()
   modified_fo_sq.export_as_shelx_hklf(out)
   out_file = open('modified.hkl', 'w')
   out_file.write(out.getvalue())
@@ -126,7 +126,7 @@ def run(args):
                   .option(None, "--resolution_factor",
                           action="store",
                           type="float",
-                          default=1/3)
+                          default=1/4)
                   .option(None, "--use_space_group_symmetry",
                           action="store_true")).process(args=args)
   xs = xray.structure.from_shelx(filename=command_line.options.structure)

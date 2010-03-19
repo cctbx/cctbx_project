@@ -35,7 +35,7 @@ def exercise_masks():
     n_voids = flex.max(mask.mask.data) - 1
     f_mask = mask.structure_factors()
     f_model = mask.f_model()
-    modified_fo = mask.modified_structure_factors().as_amplitude_array()
+    modified_fo = mask.modified_intensities().as_amplitude_array()
     f_obs_minus_f_model = fo.f_obs_minus_f_calc(f_obs_factor=1/k, f_calc=f_model)
     diff_map = miller.fft_map(mask.crystal_gridding, f_obs_minus_f_model)
     diff_map.apply_volume_scaling()
