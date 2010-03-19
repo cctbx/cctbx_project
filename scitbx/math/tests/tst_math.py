@@ -355,15 +355,6 @@ def exercise_bessel():
     assert approx_equal(bessel_ln_of_i0(x),math.log(bessel_i0(x)))
     x+=0.01
 
-def exercise_spherical_bessel():
-  if (not hasattr(scitbx.math, "spherical_bessel")):
-    print "Skipping exercise_spherical_bessel(): functions not available."
-    return
-  from scitbx.math import spherical_bessel, spherical_bessel_array
-  assert approx_equal(spherical_bessel(1, 2), 0.43539777498)
-  assert approx_equal(spherical_bessel_array(1, flex.double([2])),
-    [0.43539777498])
-
 def exercise_eix():
   x = flex.double( range(4000) )/20.0
   expx = flex.exp( -x )
@@ -1923,7 +1914,6 @@ def run():
   exercise_gamma_complete()
   exercise_exponential_integral_e1z()
   exercise_bessel()
-  exercise_spherical_bessel()
   exercise_lambertw()
   exercise_golay()
   exercise_inertia_tensor()
