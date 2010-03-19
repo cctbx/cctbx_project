@@ -1,6 +1,12 @@
 from scitbx import math
 from stdlib import math as smath
 from scitbx.array_family import flex
+from libtbx.test_utils import approx_equal
+
+def exercise_interfaces():
+  assert approx_equal(math.spherical_bessel(1, 2), 0.43539777498)
+  assert approx_equal(math.spherical_bessel_array(1, flex.double([2])),
+    [0.43539777498])
 
 def j0(x):
   result = smath.sin(x)/x
@@ -14,7 +20,7 @@ def j2(x):
   result = (3.0/(x*x) -1.0)*(smath.sin(x)/x) - 3.0*smath.cos(x)/(x*x)
   return result
 
-def tst_spherical_bessel():
+def exercise_results():
   x = flex.double( range(1,100) )/99.0
   f0 = math.spherical_bessel_array(0,x)
   f1 = math.spherical_bessel_array(1,x)
@@ -24,8 +30,15 @@ def tst_spherical_bessel():
     assert abs(fff-j1(xx))/fff < 1e-5
     assert abs(ffff-j2(xx))/ffff < 1e-5
 
+def run(args):
+  assert len(args) == 0
+  if (not hasattr(math, "spherical_bessel")):
+    print "Skipping tst_bessel.py: functions not available."
+    return
+  exercise_interfaces()
+  exercise_results()
+  print "OK"
 
-
-if __name__ == "__main__":
-   tst_spherical_bessel()
-   print "OK"
+if (__name__ == "__main__"):
+  import sys
+  run(args=sys.argv[1:])
