@@ -22,7 +22,7 @@
 #include <complex>
 #include <boost/math/special_functions/spherical_harmonic.hpp>
 
-
+using scitbx::constants::two_pi;
 
 namespace scitbx { namespace math {
 namespace zernike{
@@ -773,6 +773,8 @@ namespace zernike{
             if (r>eps_){
               t = std::acos(z/r);
               p = std::atan2(y,x);
+	      p -= scitbx::constants::pi/2.0;
+	    //  if(p<0) p += scitbx::constants::two_pi;
             } else {
               t = 0.0;
               p = 0.0;
