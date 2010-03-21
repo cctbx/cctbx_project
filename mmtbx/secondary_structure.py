@@ -806,13 +806,10 @@ class manager (object) :
       self.apply_phil_str(ss_params_str, log=log)
 
   def find_sec_str (self, log=sys.stderr) :
-    #tmp_file = ".dssp.%d.pdb" % os.getpid()
-    #open(tmp_file, "w").write(self.pdb_hierarchy.as_pdb_string())
     pdb_str = self.pdb_hierarchy.as_pdb_string()
     (records, stderr) = run_ksdssp_direct(pdb_str)
     sec_str_from_pdb_file = iotbx.pdb.secondary_structure.process_records(
       records=records)
-    os.remove(tmp_file)
     return sec_str_from_pdb_file
 
   def apply_phil_str (self, phil_string, log=sys.stderr, verbose=False) :
