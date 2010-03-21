@@ -922,10 +922,10 @@ def process_structure (params, processed_pdb_file, tmp_dir, log,
 
 def run_ksdssp (file_name, log=sys.stderr) :
   if not os.path.isfile(file_name) :
-    raise Sorry("File %s not found.")
+    raise RuntimeError("File %s not found.")
   exe_path = libtbx.env.under_build("ksdssp/exe/ksdssp")
   if not os.path.isfile(exe_path) :
-    raise Sorry("KSDSSP not available.")
+    raise RuntimeError("KSDSSP not available.")
   print >> log, "  Running KSDSSP to generate HELIX and SHEET records"
   ksdssp_out = easy_run.fully_buffered(command="%s %s" % (exe_path, file_name))
 #  if len(ksdssp_out.stderr_lines) > 0 :
@@ -1081,7 +1081,7 @@ def exercise () :
     del m
     del pdb_hierarchy
     del xray_structure
-  except Sorry :
+  except RuntimeError :
     print "skipping KSDSSP test"
   # without hydrogens
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb").file_object
@@ -1103,7 +1103,7 @@ def exercise () :
     m.find_automatically(log=log)
     bonds_table = m.get_bonds_table(log=log)
     assert bonds_table.bonds.size() == 93
-  except Sorry :
+  except RuntimeError :
     print "skipping KSDSSP test"
   print "OK"
 
