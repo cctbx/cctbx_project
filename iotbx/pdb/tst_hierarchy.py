@@ -5448,6 +5448,22 @@ def exercise_hierarchy_input():
   check(h_atoms.select(h_i_perm), i_atoms)
   check(i_atoms.select(i_h_perm), h_atoms)
 
+def exercise_other () :
+  pdb_inp = pdb.input(source_info=None, lines="""\
+CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
+ATOM      0  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
+ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
+ATOM      4  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
+ATOM      5  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
+ATOM      2  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
+ATOM      3  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
+TER
+END
+""")
+  hierarchy = pdb_inp.construct_hierarchy()
+  xray_structure = hierarchy.extract_xray_structure()
+  assert xray_structure.sites_cart().size() == hierarchy.atoms().size()
+
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
   if (pdb_dir is None): return None
@@ -5505,6 +5521,7 @@ def exercise(args):
     exercise_root_pickling()
     exercise_residue_pickling()
     exercise_hierarchy_input()
+    exercise_other()
     if (not forever): break
   print format_cpu_times()
 
