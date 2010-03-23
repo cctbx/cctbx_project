@@ -83,7 +83,7 @@ namespace zernike {
 
       std::string print_status()
       {
-        int tot_point= std::pow(2*NP_+1,3);
+        int tot_point= std::pow((double)2*NP_+1,3);
         int occupied_points = occupied_sites();
         std::string info("");
         char *tmp_info;
@@ -509,7 +509,7 @@ namespace zernike {
           for(int k=0;k<=(n_max_-l)/2;k++){
             scitbx::af::shared<FloatType> q_v(k+1,scitbx::af::init_functor_null<FloatType>());
             for(int v=0;v<=k;v++){
-              q_v[v] = is_even(k+v)/FloatType(pow(2,(2*k)))*sqrt((2*l+4*k+3)/3.0);
+              q_v[v] = is_even(k+v)/FloatType(pow(2.0,(2*k)))*sqrt((2*l+4*k+3)/3.0);
               q_v[v] *= bino_[2*k][k]*bino_[k][v]*bino_[2*(k+l+v)+1][2*k];
               q_v[v] /= bino_[k+l+v][k];
             }
@@ -537,7 +537,7 @@ namespace zernike {
       {
         FloatType temp(0.0);
         for(int mu=0;mu<=(l-m)/2;mu++) {
-          temp += is_even(mu)*pow(2,-2.0*mu)*bino_[l][mu]*bino_[l-mu][m+mu]*sum6(n,l,m,nu,alpha,beta,u,mu);
+          temp += is_even(mu)*pow(2.0,-2.0*mu)*bino_[l][mu]*bino_[l-mu][m+mu]*sum6(n,l,m,nu,alpha,beta,u,mu);
         }
         return temp;
       }
@@ -546,7 +546,7 @@ namespace zernike {
       {
         std::complex<FloatType> temp(0,0);
         for(int u=0;u<=m;u++){
-          temp += is_even(m-u)*bino_[m][u]*std::pow( complex_i_, u)*sum5(n,l,m,nu,alpha,beta,u);
+          temp += is_even(m-u)*bino_[m][u]*std::pow(complex_i_, u)*sum5(n,l,m,nu,alpha,beta,u);
         }
         return temp;
       }
