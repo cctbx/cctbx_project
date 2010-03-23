@@ -2536,7 +2536,7 @@ class twin_analyses(object):
       nz_test_plot  = data_plots.plot_data(
         plot_title = 'NZ test',
         x_label = 'z',
-        y_label = 'P(Z>=z)',
+        y_label = 'P(Z<=z)',
         x_data = self.nz_test.z,
         y_data = self.nz_test.ac_obs,
         y_legend = 'Acentric observed',
@@ -2557,7 +2557,7 @@ class twin_analyses(object):
         column_labels=["z", "Acentric observed", "Acentric untwinned",
           "Centric observed", "Centric untwinned"],
         graph_names=["NZ test"],
-        graph_labels=[("Z", "P(Z>=z)")],
+        graph_labels=[("Z", "P(Z<=z)")],
         graph_columns=[list(range(5))],
         data=[self.nz_test.z, self.nz_test.ac_obs, self.nz_test.ac_untwinned,
               self.nz_test.c_obs, self.nz_test.c_untwinned])
