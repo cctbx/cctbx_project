@@ -36,7 +36,7 @@ namespace zernike {
              scitbx::af::const_ref< scitbx::vec3<FloatType> > xyz
            ):
            NP_(n_point), dx_(1.0/static_cast<FloatType>(NP_) ), uniform_(uniform),fixed_dx_(fixed_dx),
-           splat_range_(splat_range), natom_(xyz.size()), center_(0,0,0), fract_(fraction)
+           splat_range_(splat_range), natom_(xyz.size()), center_(0,0,0), fract_(fraction), NP_MAX_(200)
       {
         FloatType tmp_r2;
         for(int i=0;i<natom_;i++) {
@@ -54,6 +54,7 @@ namespace zernike {
 
         if(fixed_dx_) {
           NP_ = int(rmax_/dx)+1;
+	  if(NP_ > NP_MAX_) NP_=NP_MAX_;
           dx_ = 1.0/static_cast<FloatType>(NP_);
         }
 
@@ -195,7 +196,7 @@ namespace zernike {
     private:
       scitbx::af::shared< scitbx::vec3<FloatType> > xyz_;
       scitbx::af::shared< scitbx::vec3<FloatType> > scaled_xyz_;
-      int natom_, NP_;
+      int natom_, NP_, NP_MAX_;
       bool uniform_, fixed_dx_;
       FloatType dx_, splat_range_, rmax_, scale_, fract_;
       scitbx::vec3<FloatType> center_;
@@ -451,7 +452,7 @@ namespace zernike {
         af::shared<FloatType> norm_array;
         for(int n=0;n<=n_max_;n++) {
           start_l = (n-n/2*2);
-          for(int l=0;l<=n;l+=2) {
+          for(int l=start_l;l<=n;l+=2) {
             norm2 = norm(C_nlm_.get_coef(n,l,0) );
             for(int m=1;m<=l;m++) {
               norm2 += 2* norm(C_nlm_.get_coef(n,l,m) );
