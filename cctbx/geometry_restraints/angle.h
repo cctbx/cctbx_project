@@ -20,11 +20,13 @@ namespace cctbx { namespace geometry_restraints {
     angle_proxy(
       i_seqs_type const& i_seqs_,
       double angle_ideal_,
-      double weight_)
+      double weight_,
+      double slack_=0)
     :
       i_seqs(i_seqs_),
       angle_ideal(angle_ideal_),
-      weight(weight_)
+      weight(weight_),
+      slack(slack_)
     {}
 
     //! Constructor.
@@ -32,12 +34,14 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs_type const& i_seqs_,
       optional_copy<af::shared<sgtbx::rt_mx> > const& sym_ops_,
       double angle_ideal_,
-      double weight_)
+      double weight_,
+      double slack_=0)
     :
       i_seqs(i_seqs_),
       sym_ops(sym_ops_),
       angle_ideal(angle_ideal_),
-      weight(weight_)
+      weight(weight_),
+      slack(slack_)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -52,7 +56,8 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs(i_seqs_),
       sym_ops(proxy.sym_ops),
       angle_ideal(proxy.angle_ideal),
-      weight(proxy.weight)
+      weight(proxy.weight),
+      slack(proxy.slack)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -63,7 +68,7 @@ namespace cctbx { namespace geometry_restraints {
     scale_weight(
       double factor) const
     {
-      return angle_proxy(i_seqs, sym_ops, angle_ideal, weight*factor);
+      return angle_proxy(i_seqs, sym_ops, angle_ideal, weight*factor, slack);
     }
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[2].
@@ -88,6 +93,8 @@ namespace cctbx { namespace geometry_restraints {
     double angle_ideal;
     //! Parameter.
     double weight;
+    //! Parameter.
+    double slack;
   };
 
   //! Residual and gradient calculations for angle restraint.
@@ -101,11 +108,13 @@ namespace cctbx { namespace geometry_restraints {
       angle(
         af::tiny<scitbx::vec3<double>, 3> const& sites_,
         double angle_ideal_,
-        double weight_)
+        double weight_,
+        double slack_=0)
       :
         sites(sites_),
         angle_ideal(angle_ideal_),
-        weight(weight_)
+        weight(weight_),
+        slack(slack_)
       {
         init_angle_model();
       }
@@ -120,7 +129,8 @@ namespace cctbx { namespace geometry_restraints {
         angle_proxy const& proxy)
       :
         angle_ideal(proxy.angle_ideal),
-        weight(proxy.weight)
+        weight(proxy.weight),
+        slack(proxy.slack)
       {
         for(int i=0;i<3;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -140,7 +150,8 @@ namespace cctbx { namespace geometry_restraints {
         angle_proxy const& proxy)
       :
         angle_ideal(proxy.angle_ideal),
-        weight(proxy.weight)
+        weight(proxy.weight),
+        slack(proxy.slack)
       {
         for(int i=0;i<3;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -161,7 +172,7 @@ namespace cctbx { namespace geometry_restraints {
       /*! See also: Hendrickson, W.A. (1985). Meth. Enzym. 115, 252-270.
        */
       double
-      residual() const { return weight * scitbx::fn::pow2(delta); }
+      residual() const { return weight * scitbx::fn::pow2(delta_slack); }
 
       //! Core calculations.
       /*! Not available in Python.
@@ -187,11 +198,11 @@ namespace cctbx { namespace geometry_restraints {
               std::fill_n(curvs, 3U, scitbx::vec3<double>(0,0,0));
             }
           }
-          else {
+          else if (delta < -slack || delta > slack) {
             using scitbx::constants::pi_180;
             scitbx::vec3<double>
                 d_angle_d_site0, d_angle_d_site1, d_angle_d_site2;
-            double grad_factor = -2 * weight * delta / pi_180;
+            double grad_factor = -2 * weight * delta_slack / pi_180;
             d_angle_d_site0 = (d_01_unit * cos_angle_model - d_21_unit) /
                               (sin_angle_model * d_01_abs);
             grads[0] = grad_factor * d_angle_d_site0;
@@ -236,13 +247,19 @@ namespace cctbx { namespace geometry_restraints {
                double curvfac = 2. * weight / pi_180;
                curvs[0] = curvfac *
                  (d_angle_d_site0.each_mul(d_angle_d_site0) / pi_180 -
-                 delta * d2_angle_d_site00);
+                 delta_slack * d2_angle_d_site00);
                curvs[1] = curvfac *
                  (d_angle_d_site1.each_mul(d_angle_d_site1) / pi_180 -
-                 delta * d2_angle_d_site11);
+                 delta_slack * d2_angle_d_site11);
                curvs[2] = curvfac *
                  (d_angle_d_site2.each_mul(d_angle_d_site2) / pi_180 -
-                 delta * d2_angle_d_site22);
+                 delta_slack * d2_angle_d_site22);
+            }
+          }
+          else {
+            std::fill_n(grads, 3U, scitbx::vec3<double>(0,0,0));
+            if (curvs != 0) {
+              std::fill_n(curvs, 3U, scitbx::vec3<double>(0,0,0));
             }
           }
         }
@@ -329,6 +346,8 @@ namespace cctbx { namespace geometry_restraints {
       double angle_ideal;
       //! Parameter (usually as passed to the constructor).
       double weight;
+      //! Parameter (can be passed to the constructor).
+      double slack;
       //! false in singular situations.
       bool have_angle_model;
     protected:
@@ -348,6 +367,7 @@ namespace cctbx { namespace geometry_restraints {
       /*! See also: angle_delta_deg
        */
       double delta;
+      double delta_slack;
 
     protected:
       void
@@ -377,6 +397,15 @@ namespace cctbx { namespace geometry_restraints {
             have_angle_model = true;
             delta = angle_delta_deg(angle_model, angle_ideal);
           }
+        }
+        if (delta > slack) {
+          delta_slack = delta - slack;
+        }
+        else if (delta >= -slack) {
+          delta_slack = 0;
+        }
+        else {
+          delta_slack = delta + slack;
         }
       }
   };

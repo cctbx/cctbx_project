@@ -1051,6 +1051,7 @@ def exercise_angle():
     assert p.sym_ops is None
     assert approx_equal(p.angle_ideal, 95)
     assert approx_equal(p.weight, 1)
+    assert p.slack == 0.0
   check(p)
   p = geometry_restraints.angle_proxy(
     i_seqs=[2,1,0],
@@ -1087,6 +1088,7 @@ def exercise_angle():
     ((0.0, 572.95779513082323, 0.0),
      (-572.95779513082323, -572.95779513082323, 0.0),
      (572.95779513082323, 0.0, 0.0)))
+  assert a.slack == 0.0
   sites_cart = flex.vec3_double([(1,0,0),(0,0,0),(0,1,0)])
   a = geometry_restraints.angle(
     sites_cart=sites_cart,
@@ -1289,6 +1291,51 @@ def exercise_angle():
     proxy=a_proxy)
   for g,e in zip(a_gradient_array, fd_grads):
     assert approx_equal(g, e)
+  #exercise slack parameter
+  a = geometry_restraints.angle(
+    sites=[(1,0,0),(0,0,0),(0,1,0)],
+    angle_ideal=95,
+    weight=1,
+    slack=0)
+  assert approx_equal(a.angle_model, 90)
+  assert approx_equal(a.delta, 5)
+  assert approx_equal(a.delta_slack, 5)
+  assert approx_equal(a.residual(), 25)
+  a = geometry_restraints.angle(
+    sites=[(1,0,0),(0,0,0),(0,1,0)],
+    angle_ideal=95,
+    weight=1,
+    slack=3)
+  assert approx_equal(a.delta, 5)
+  assert approx_equal(a.delta_slack, 2)
+  a = geometry_restraints.angle(
+    sites=[(1,0,0),(0,0,0),(0,1,0)],
+    angle_ideal=95,
+    weight=1,
+    slack=5)
+  assert approx_equal(a.delta, 5)
+  assert approx_equal(a.delta_slack, 0)
+  a = geometry_restraints.angle(
+    sites=[(1,0,0),(0,0,0),(0,1,0)],
+    angle_ideal=95,
+    weight=1,
+    slack=7)
+  assert approx_equal(a.delta, 5)
+  assert approx_equal(a.delta_slack, 0)
+  a = geometry_restraints.angle(
+    sites=[(1,0,0),(0,0,0),(0,1,0)],
+    angle_ideal=85,
+    weight=1,
+    slack=3)
+  assert approx_equal(a.delta, -5)
+  assert approx_equal(a.delta_slack, -2)
+  a = geometry_restraints.angle(
+    sites=[(1,0,0),(0,0,0),(0,1,0)],
+    angle_ideal=85,
+    weight=1,
+    slack=0)
+  assert approx_equal(a.delta, -5)
+  assert approx_equal(a.delta_slack, -5)
 
 def exercise_dihedral():
   u_mx = sgtbx.rt_mx() # unit matrix
