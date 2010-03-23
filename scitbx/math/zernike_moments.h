@@ -83,7 +83,7 @@ namespace zernike {
 
       std::string print_status()
       {
-        int tot_point= std::pow((double)2*NP_+1,3);
+        int tot_point= std::pow(2.0*NP_+1,3);
         int occupied_points = occupied_sites();
         std::string info("");
         char *tmp_info;
@@ -360,7 +360,9 @@ namespace zernike {
              ):
              grid_(grid),
              C_nlm_(n_max),
+             C_nnl_(n_max),
              C_nl_(n_max),
+             C_nn_(n_max),
              n_max_(n_max),
              complex_i_(0,1.0)
       {
@@ -375,11 +377,74 @@ namespace zernike {
         return C_nlm_;
       }
 
+      scitbx::math::zernike::nlm_array<FloatType>
+      Fnnl()
+      { return C_nnl_; }
+
       scitbx::math::zernike::nl_array<FloatType>
-      invariance()
+      Fnl()
       { return C_nl_; }
 
-      void calc_invariance()
+      scitbx::math::zernike::nl_array<FloatType>
+      Fnn()
+      { return C_nn_; }
+
+
+      void calc_invariance() {
+	calc_invariance_nn();
+	calc_invariance_nnl();
+	calc_invariance_nl();
+      }
+
+      void calc_invariance_nn() {
+        FloatType tmp1, tmp2;
+        int start_l, start_n2, coef, tmp_n;
+        for(int n1=0;n1<=n_max_;n1++) {
+          start_n2 = (n1-n1/2*2);
+          for(int n2=start_n2; n2<=n1;n2+=2) {
+            start_l = (n2-n2/2*2);
+	    tmp1 = 0;
+            for(int l=start_l; l<=n2;l+=2) {
+	      tmp_n = l-((n1+n2)/2);
+	      tmp_n = tmp_n-tmp_n/2*2; // tmp_n%2
+	      coef = is_even( tmp_n );
+	      tmp2 = 0;
+              for(int m=-l;m<=l;m++) {
+                tmp2=tmp2+std::real( std::conj(C_nlm_.get_coef(n1,l,m))*C_nlm_.get_coef(n2,l,m) );
+              }
+	      tmp1 += tmp2*coef;
+            }  //end l
+            if( n1 == n2)
+              tmp1 = tmp1 / 2.0;
+            C_nn_.set_coef(n1,n2,tmp1);
+          }  //end n2
+        } //end n1
+        return;
+      }
+
+      void calc_invariance_nnl() {
+	std::complex<FloatType> tmp;
+	std::complex<FloatType> comp_zero(0,0);
+	int start_l, start_n2;
+	for(int n1=0;n1<=n_max_;n1++) {
+	  start_n2 = (n1-n1/2*2);
+	  for(int n2=start_n2; n2<=n1;n2+=2) {
+	    start_l = (n2-n2/2*2);
+	    for(int l=start_l; l<=n2;l+=2) {
+	      tmp=comp_zero;
+	      for(int m=-l;m<=l;m++) {
+	        tmp=tmp+std::conj(C_nlm_.get_coef(n1,l,m))*C_nlm_.get_coef(n2,l,m);
+	      }
+	      if( n1 == n2)
+		tmp = tmp / 2.0;
+	      C_nnl_.set_coef(n1,n2,l,tmp);
+	    }  //end l
+	  }  //end n2
+	} //end n1
+	return;
+      }
+
+      void calc_invariance_nl()
       {
         int start_l;
         FloatType norm2;
@@ -546,7 +611,7 @@ namespace zernike {
       {
         std::complex<FloatType> temp(0,0);
         for(int u=0;u<=m;u++){
-          temp += is_even(m-u)*bino_[m][u]*std::pow(complex_i_, u)*sum5(n,l,m,nu,alpha,beta,u);
+          temp += is_even(m-u)*bino_[m][u]*std::pow( complex_i_, u)*sum5(n,l,m,nu,alpha,beta,u);
         }
         return temp;
       }
@@ -588,7 +653,9 @@ namespace zernike {
 
     private:
       scitbx::math::zernike::nlm_array<FloatType> C_nlm_;
+      scitbx::math::zernike::nlm_array<FloatType> C_nnl_;
       scitbx::math::zernike::nl_array<FloatType> C_nl_;
+      scitbx::math::zernike::nl_array<FloatType> C_nn_;
       scitbx::af::shared<FloatType> fac_;
       scitbx::af::shared< scitbx::af::shared<FloatType> > bino_;
       scitbx::af::shared< scitbx::af::shared<FloatType> > clm_;

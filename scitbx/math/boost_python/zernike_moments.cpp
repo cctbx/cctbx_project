@@ -59,7 +59,9 @@ namespace {
             )
         .def("moments", &w_t::all_moments)
         .def("get_moment",&w_t::get_moment)
-        .def("invariance",&w_t::invariance)
+        .def("fnn",&w_t::Fnn)
+        .def("fnl",&w_t::Fnl)
+        .def("fnnl",&w_t::Fnnl)
       ;
     }
   };
