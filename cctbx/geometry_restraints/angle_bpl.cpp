@@ -27,17 +27,20 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("angle_proxy", no_init)
-        .def(init<af::tiny<unsigned, 3> const&, double, double>((
-          arg("i_seqs"), arg("angle_ideal"), arg("weight"))))
+        .def(init<af::tiny<unsigned, 3> const&, double, double, double>((
+          arg("i_seqs"), arg("angle_ideal"), arg("weight"),
+          arg("slack")=0)))
         .def(init<
           af::tiny<unsigned, 3> const&,
           optional_copy<af::shared<sgtbx::rt_mx> > const&,
+          double,
           double,
           double>((
             arg("i_seqs"),
             arg("sym_ops"),
             arg("angle_ideal"),
-            arg("weight"))))
+            arg("weight"),
+            arg("slack")=0)))
         .def(init<af::tiny<unsigned, 3> const&, w_t const&>((
           arg("i_seqs"), arg("proxy"))))
         .def("scale_weight", &w_t::scale_weight, (arg("factor")))
@@ -46,6 +49,7 @@ namespace {
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
         .def_readonly("angle_ideal", &w_t::angle_ideal)
         .def_readonly("weight", &w_t::weight)
+        .def_readonly("slack", &w_t::slack)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
@@ -78,8 +82,12 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("angle", no_init)
-        .def(init<af::tiny<scitbx::vec3<double>, 3> const&, double, double>(
-          (arg("sites"), arg("angle_ideal"), arg("weight"))))
+        .def(init<af::tiny<scitbx::vec3<double>, 3> const&,
+          double,
+          double,
+          double>(
+          (arg("sites"), arg("angle_ideal"), arg("weight"),
+          arg("slack")=0)))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   angle_proxy const&>(
           (arg("sites_cart"), arg("proxy"))))
@@ -90,9 +98,11 @@ namespace {
         .add_property("sites", make_getter(&w_t::sites, rbv()))
         .def_readonly("angle_ideal", &w_t::angle_ideal)
         .def_readonly("weight", &w_t::weight)
+        .def_readonly("slack", &w_t::slack)
         .def_readonly("have_angle_model", &w_t::have_angle_model)
         .def_readonly("angle_model", &w_t::angle_model)
         .def_readonly("delta", &w_t::delta)
+        .def_readonly("delta_slack", &w_t::delta_slack)
         .def("residual", &w_t::residual)
         .def("grads_and_curvs", &w_t::grads_and_curvs, (
           arg("epsilon")=1e-100))
