@@ -29,6 +29,7 @@ env.SharedLibrary(
     "distributions.cpp",
     "exp_functions.cpp",
     "zernike.cpp",
+    "zernike_moments.cpp",
     "weighted_covariance.cpp",
     ]
 )
