@@ -648,6 +648,7 @@ scitbx/math/boost_python/least_squares_plane.cpp -text
 scitbx/math/boost_python/numeric_limits.cpp -text
 scitbx/math/boost_python/weighted_covariance.cpp -text
 scitbx/math/boost_python/zernike.cpp -text
+scitbx/math/boost_python/zernike_moments.cpp -text
 scitbx/math/clustering.py -text
 scitbx/math/continued_fraction.h -text
 scitbx/math/copysign.h -text
@@ -676,6 +677,7 @@ scitbx/math/traits.h -text
 scitbx/math/tst_zernike.py -text
 scitbx/math/weighted_covariance.h -text
 scitbx/math/zernike.h -text
+scitbx/math/zernike_moments.h -text
 scitbx/matrix/bidiagonalisation_flops.nb -text
 scitbx/matrix/delta_tensors.h -text
 scitbx/matrix/givens.h -text
