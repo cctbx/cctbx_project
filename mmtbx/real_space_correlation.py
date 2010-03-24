@@ -29,6 +29,10 @@ atom_radius = None
   .help = Atomic radius for map CC calculation. Determined automatically if \
           if None is given
   .expert_level = 2
+hydrogen_atom_radius = 1.0
+  .type = float
+  .help = Atomic radius for map CC calculation for H or D.
+  .expert_level = 2
 number_of_grid_points = 50
   .type = int
   .help = Requesteed number of grid points to be used in CC calculation. \
@@ -377,7 +381,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   #
   # get map CC object
   def get_map_cc_obj(map_1, params, pdb_to_xrs_1, pdb_to_xrs_2, fft_map_1,
-                     atom_detail, residue_detail, atom_radius):
+                     atom_detail, residue_detail, atom_radius,
+                     hydrogen_atom_radius):
     pdb_to_xrs_ = None
     if(params.map_1.use): pdb_to_xrs_ = pdb_to_xrs_1
     elif(params.map_2.use): pdb_to_xrs_ = pdb_to_xrs_2
@@ -391,6 +396,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       pdb_hierarchy  = pdb_hierarchy,
       atom_detail    = atom_detail,
       atom_radius    = atom_radius,
+      hydrogen_atom_radius = hydrogen_atom_radius,
       residue_detail = residue_detail)
     del map_1
     return result
@@ -443,7 +449,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     map_cc_obj = get_map_cc_obj(map_1 = map_1, params = params,
       pdb_to_xrs_1 = pdb_to_xrs_1, pdb_to_xrs_2 = pdb_to_xrs_2,
       fft_map_1 = fft_map_1, atom_detail = atom_detail,
-      residue_detail = residue_detail, atom_radius = atom_radius)
+      residue_detail = residue_detail, atom_radius = atom_radius,
+      hydrogen_atom_radius = params.hydrogen_atom_radius)
     #
     ### second
     if(xray_structure_2 is not None): xrs = xray_structure_2
@@ -508,7 +515,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     map_cc_obj = get_map_cc_obj(map_1 = map_1, params = params,
       pdb_to_xrs_1 = pdb_to_xrs_1, pdb_to_xrs_2 = pdb_to_xrs_2,
       fft_map_1 = fft_map_1, atom_detail = atom_detail,
-      residue_detail = residue_detail, atom_radius = atom_radius)
+      residue_detail = residue_detail, atom_radius = atom_radius,
+      hydrogen_atom_radius = params.hydrogen_atom_radius)
     #
     if(xray_structure_2 is not None): xrs = xray_structure_2
     else: xrs = xray_structure_1
@@ -551,6 +559,7 @@ class map_cc_funct(object):
                      xray_structure,
                      fft_map,
                      atom_radius,
+                     hydrogen_atom_radius,
                      atom_detail,
                      residue_detail,
                      map_1_name = None,
@@ -577,6 +586,13 @@ class map_cc_funct(object):
     if(self.atom_detail):
       self.gifes = [None,]*scatterers.size()
       self._result = [None,]*scatterers.size()
+      #
+      atom_radii = flex.double(scatterers.size(), atom_radius)
+      for i_seq, sc in enumerate(scatterers):
+        if(self.selection[i_seq]):
+          if(sc.element_symbol().strip().lower() in ["h","d"]):
+            atom_radii[i_seq] = hydrogen_atom_radius
+      #
       for i_seq, site_cart in enumerate(sites_cart):
         if(self.selection[i_seq]):
           sel = maptbx.grid_indices_around_sites(
@@ -584,7 +600,7 @@ class map_cc_funct(object):
             fft_n_real = real_map_unpadded.focus(),
             fft_m_real = real_map_unpadded.all(),
             sites_cart = flex.vec3_double([site_cart]),
-            site_radii = flex.double([atom_radius]))
+            site_radii = flex.double([atom_radii[i_seq]]))
           self.gifes[i_seq] = sel
           m1 = map_1.select(sel)
           ed1 = map_1.eight_point_interpolation(scatterers[i_seq].site)
@@ -774,6 +790,7 @@ def simple(fmodel,
            map_2_name            = "2mFo-DFc",
            details_level         = "automatic",
            atom_radius           = None,
+           hydrogen_atom_radius  = 1.0,
            number_of_grid_points = 100,
            show                  = True,
            log                   = None,
@@ -818,6 +835,7 @@ def simple(fmodel,
       pdb_hierarchy  = pdb_hierarchy,
       atom_detail    = atom_detail,
       atom_radius    = atom_radius,
+      hydrogen_atom_radius = hydrogen_atom_radius,
       residue_detail = residue_detail)
     del map_1
     fft_map_2 = fmodel.electron_density_map().fft_map(

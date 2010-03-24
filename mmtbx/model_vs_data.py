@@ -569,21 +569,9 @@ def run(args,
         tls_selections = pdb_tls.tls_selections,
         tls_groups     = pdb_inp_tls.tls_params)]
   #
-  bss_params = bss.master_params.extract()
-  bss_params.k_sol_max = 0.8
-  bss_params.k_sol_min = 0.0
-  bss_params.b_sol_max = 500.0
-  bss_params.b_sol_min = 10.0
-  bss_params.k_sol_grid_search_max = 0.6
-  bss_params.k_sol_grid_search_min = 0.0
-  bss_params.b_sol_grid_search_max = 80.0
-  bss_params.b_sol_grid_search_min = 20.0
-  bss_params.k_sol_step = 0.3
-  bss_params.b_sol_step = 30.0
   fmodel = utils.fmodel_simple(xray_structures = xray_structures,
                                f_obs           = f_obs,
-                               r_free_flags    = r_free_flags,
-                               bss_params      = bss_params)
+                               r_free_flags    = r_free_flags)
   n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
   mvd_obj.collect(model_vs_data = show_model_vs_data(fmodel))
   #
@@ -599,11 +587,11 @@ def run(args,
   published_results = extract_rfactors_resolutions_sigma.extract(
     file_name = pdb_file_names[0])
   if(published_results is not None):
-    pub_r_work       = published_results.r_work
-    pub_r_free       = published_results.r_free
-    pub_high         = published_results.high
-    pub_low          = published_results.low
-    pub_sigma        = published_results.sigma
+    pub_r_work = published_results.r_work
+    pub_r_free = published_results.r_free
+    pub_high   = published_results.high
+    pub_low    = published_results.low
+    pub_sigma  = published_results.sigma
   pub_program_name = get_program_name(file_lines = pdb_raw_records)
   pub_solv_cont    = get_solvent_content(file_lines = pdb_raw_records)
   pub_matthews     = get_matthews_coeff(file_lines = pdb_raw_records)
@@ -632,8 +620,7 @@ def run(args,
     fmodel_cut = utils.fmodel_simple(
       xray_structures = xray_structures,
       f_obs           = fmodel.f_obs.select(tmp_sel),
-      r_free_flags    = fmodel.r_free_flags.select(tmp_sel),
-      bss_params      = bss_params)
+      r_free_flags    = fmodel.r_free_flags.select(tmp_sel))
   mvd_obj.collect(misc = group_args(
     r_work_cutoff = fmodel_cut.r_work(),
     r_free_cutoff = fmodel_cut.r_free(),
@@ -662,6 +649,9 @@ def run(args,
   # report map cc
   if(command_line.options.comprehensive and not fmodel_cut.twin and
      fmodel_cut.xray_structure is not None):
+    show_hydrogens = False
+    if(fmodel_cut.f_calc().d_min() <= 1.0 or
+       command_line.options.scattering_table == "neutron"): show_hydrogens=True
     real_space_correlation.simple(
       fmodel                = fmodel_cut,
       pdb_hierarchy         = hierarchy,
@@ -672,7 +662,7 @@ def run(args,
       number_of_grid_points = 100,
       show                  = True,
       log                   = None,
-      show_hydrogens        = False,
+      show_hydrogens        = show_hydrogens,
       selection             = None,
       set_cc_to_zero_if_n_grid_points_less_than = 50,
       poor_cc_threshold                         = 0.7,

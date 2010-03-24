@@ -38,6 +38,21 @@ namespace {
           make_getter(&fit_hoh<>::site_cart_h2_fitted, rbv()))
        .def("dist_best", &fit_hoh<>::dist_best)
     ;
+    //
+    class_<density_distribution_per_atom<> >("density_distribution_per_atom")
+       .def(init<
+            af::ref<vec3<double> > const&,
+            af::const_ref<vec3<double> > const&,
+            af::const_ref<double> const&,
+            cctbx::uctbx::unit_cell const& >((
+                                              arg("sites_frac_atoms"),
+                                              arg("sites_frac_peaks"),
+                                              arg("density_values"),
+                                              arg("unit_cell"))))
+       .def("distances", &density_distribution_per_atom<>::distances)
+       .def("map_values", &density_distribution_per_atom<>::map_values)
+    ;
+    //
 
     def("select_water_by_distance",
          (af::shared<std::size_t>(*)
