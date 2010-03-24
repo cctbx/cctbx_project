@@ -87,7 +87,7 @@ namespace zernike {
         int tot_point= std::pow(2.0*NP_+1,3);
         int occupied_points = occupied_sites();
         std::string info("");
-        char *tmp_info;
+        char tmp_info[128];
 
         info += "number of grid point is: ";
         std::sprintf(tmp_info, "%d\n", tot_point);
@@ -116,7 +116,7 @@ namespace zernike {
 
       scitbx::af::shared< scitbx::vec3< FloatType> > xyz() {return xyz_;}
 
-      bool xyz2voxel() {
+      void xyz2voxel() {
         // build voxel map based on xyz coord
         int xi,yi,zi;
         int two_NP = NP_*2;
