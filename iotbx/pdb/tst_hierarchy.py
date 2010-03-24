@@ -5449,6 +5449,7 @@ def exercise_hierarchy_input():
   check(i_atoms.select(i_h_perm), h_atoms)
 
 def exercise_other () :
+  # XXX Nat's utility functions
   pdb_inp = pdb.input(source_info=None, lines="""\
 CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
 ATOM      0  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
@@ -5463,6 +5464,71 @@ END
   hierarchy = pdb_inp.construct_hierarchy()
   xray_structure = hierarchy.extract_xray_structure()
   assert xray_structure.sites_cart().size() == hierarchy.atoms().size()
+  pdb_inp = pdb.input(source_info=None, lines="""\
+ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
+ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
+ANISOU    2  CA  GLY A   1      788    626    677   -344    621   -232       C
+ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
+ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O
+ATOM      5  N   ASN B   2      -7.656   2.923   3.155  1.00 15.02           N
+ATOM      6  CA  ASN B   2      -6.522   2.038   2.831  1.00 14.10           C
+ATOM      7  C   ASN B   2      -5.241   2.537   3.427  1.00 13.13           C
+ATOM      8  O   ASN B   2      -4.978   3.742   3.426  1.00 11.91           O
+ATOM      9  N   ASN B   3      -4.438   1.590   3.905  1.00 12.26           N
+ATOM     10  CA  ASN B   3      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     11  C   ASN B   3      -1.955   1.332   3.895  1.00 11.10           C
+ATOM     12  O   ASN B   3      -1.872   0.119   3.648  1.00 10.42           O
+ATOM      0  S   SO4 C   4       3.302   8.419   8.560  1.00 10.00           S
+ATOM      1  O1  SO4 C   4       3.497   8.295   7.118  1.00 10.00           O
+ATOM      4  O3  SO4 C   4       4.481   9.037   9.159  1.00 10.00           O
+ATOM      5  O4  SO4 C   4       2.131   9.251   8.823  1.00 10.00           O
+""")
+  hierarchy = pdb_inp.construct_hierarchy()
+  pdb_inp_new = pdb.input(source_info=None, lines="""\
+ATOM      5  N   ASN B   2      -7.656   2.923   3.155  1.00 15.02           N
+ATOM      6  CA  ASN B   2      -6.522   2.038   2.831  1.00 14.10           C
+ATOM      7  C   ASN B   2      -5.241   2.537   3.427  1.00 13.13           C
+ATOM      8  O   ASN B   2      -4.978   3.742   3.426  1.00 11.91           O
+ATOM      9  N  AASN B   3      -4.438   1.590   3.905  1.00 12.26           N
+ATOM     10  CA AASN B   3      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     11  C  AASN B   3      -1.955   1.332   3.895  1.00 11.10           C
+ATOM     12  O  AASN B   3      -1.872   0.119   3.648  1.00 10.42           O
+ATOM      9  N  BASN B   3      -4.438   1.590   3.905  1.00 12.26           N
+ATOM     10  CA BASN B   3      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     11  C  BASN B   3      -1.955   1.332   3.895  1.00 11.10           C
+ATOM     12  O  BASN B   3      -1.872   0.119   3.648  1.00 10.42           O
+""")
+  h2 = pdb_inp_new.construct_hierarchy()
+  chain_b = h2.models()[0].chains()[0]
+  partial_hierarchy = pdb.hierarchy.new_hierarchy_from_chain(chain_b)
+  assert not show_diff(partial_hierarchy.as_pdb_string(), h2.as_pdb_string())
+  pdb.hierarchy.find_and_replace_chains(hierarchy, partial_hierarchy)
+  assert not show_diff(hierarchy.as_pdb_string(), """\
+ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
+ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
+ANISOU    2  CA  GLY A   1      788    626    677   -344    621   -232       C
+ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
+ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O
+TER
+ATOM      5  N   ASN B   2      -7.656   2.923   3.155  1.00 15.02           N
+ATOM      6  CA  ASN B   2      -6.522   2.038   2.831  1.00 14.10           C
+ATOM      7  C   ASN B   2      -5.241   2.537   3.427  1.00 13.13           C
+ATOM      8  O   ASN B   2      -4.978   3.742   3.426  1.00 11.91           O
+ATOM      9  N  AASN B   3      -4.438   1.590   3.905  1.00 12.26           N
+ATOM     10  CA AASN B   3      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     11  C  AASN B   3      -1.955   1.332   3.895  1.00 11.10           C
+ATOM     12  O  AASN B   3      -1.872   0.119   3.648  1.00 10.42           O
+ATOM      9  N  BASN B   3      -4.438   1.590   3.905  1.00 12.26           N
+ATOM     10  CA BASN B   3      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     11  C  BASN B   3      -1.955   1.332   3.895  1.00 11.10           C
+ATOM     12  O  BASN B   3      -1.872   0.119   3.648  1.00 10.42           O
+TER
+ATOM      0  S   SO4 C   4       3.302   8.419   8.560  1.00 10.00           S
+ATOM      1  O1  SO4 C   4       3.497   8.295   7.118  1.00 10.00           O
+ATOM      4  O3  SO4 C   4       4.481   9.037   9.159  1.00 10.00           O
+ATOM      5  O4  SO4 C   4       2.131   9.251   8.823  1.00 10.00           O
+TER
+""")
 
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
