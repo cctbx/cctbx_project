@@ -90,23 +90,23 @@ namespace zernike {
         char tmp_info[128];
 
         info += "number of grid point is: ";
-        std::sprintf(tmp_info, "%d\n", tot_point);
+        std::sprintf(tmp_info, "%8d\n", tot_point);
         info += tmp_info;
 
         info += "rmax is                : ";
-        std::sprintf(tmp_info, "%f\n", rmax_);
+        std::sprintf(tmp_info, "%3.8f\n", rmax_);
         info += tmp_info;
 
         info += "max fraction one 1-d is: ";
-        std::sprintf(tmp_info, "%f\n", fract_);
+        std::sprintf(tmp_info, "%3.8f\n", fract_);
         info += tmp_info;
 
         info += "non-empty grid point is: ";
-        std::sprintf(tmp_info, "%d\n", occupied_points);
+        std::sprintf(tmp_info, "%8d\n", occupied_points);
         info += tmp_info;
 
         info += "non-empty grid fract is: ";
-        std::sprintf(tmp_info,"%f\n", occupied_points/FloatType(tot_point));
+        std::sprintf(tmp_info,"%3.8f\n", occupied_points/FloatType(tot_point));
         info += tmp_info;
 
         return info;
