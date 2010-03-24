@@ -844,8 +844,8 @@ class manager (object) :
   def calculate_structure_content (self) :
     isel = self.selection_cache.iselection
     calpha = isel("name N and (altloc ' ' or altloc 'A')")
-    n_alpha = self.alpha_selection().count(True)
-    n_beta = self.beta_selection().count(True)
+    n_alpha = self.alpha_selection(limit="and name N").count(True)
+    n_beta = self.beta_selection(limit="and name N").count(True)
     if calpha.size() == 0 :
       return (0.0, 0.0)
     return (n_alpha / calpha.size(), n_beta / calpha.size())
@@ -859,40 +859,40 @@ class manager (object) :
     print >> out, "  %.1f%% alpha, %.1f%% beta" %(frac_alpha*100,frac_beta*100)
     print >> out, ""
 
-  def alpha_selections (self) :
+  def alpha_selections (self, limit="") :
     sele = self.selection_cache.selection
     all_selections = []
     for helix in self.params.helix :
       if helix.selection is not None :
-        helix_sel = sele("(%s) and name N and (altloc ' ' or altloc 'A')" %
-          helix.selection)
+        helix_sel = sele("(%s) %s and (altloc ' ' or altloc 'A')" %
+          (helix.selection, limit))
         all_selections.append(helix_sel)
     return all_selections
 
-  def alpha_selection (self) :
+  def alpha_selection (self, limit="") :
     whole_selection = flex.bool(self.xray_structure.sites_cart().size())
-    for helix in self.alpha_selections() :
+    for helix in self.alpha_selections(limit=limit) :
       whole_selection |= helix
     return whole_selection
 
-  def beta_selections (self) :
+  def beta_selections (self, limit="") :
     sele = self.selection_cache.selection
     all_selections = []
     for sheet in self.params.sheet :
       sheet_selection = flex.bool(self.xray_structure.sites_cart().size())
-      strand_sel = sele("(%s) and name N and (altloc ' ' or altloc 'A')" %
-        sheet.first_strand)
+      strand_sel = sele("(%s) %s and (altloc ' ' or altloc 'A')" %
+        (sheet.first_strand, limit))
       sheet_selection |= strand_sel
       for strand in sheet.strand :
-        strand_sel = sele("(%s) and name N and (altloc ' ' or altloc 'A')" %
-          strand.selection)
+        strand_sel = sele("(%s) %s and (altloc ' ' or altloc 'A')" %
+          (strand.selection, limit))
         sheet_selection |= strand_sel
       all_selections.append(sheet_selection)
     return all_selections
 
-  def beta_selection (self) :
+  def beta_selection (self, limit="") :
     whole_selection = flex.bool(self.xray_structure.sites_cart().size())
-    for sheet in self.beta_selections() :
+    for sheet in self.beta_selections(limit=limit) :
       whole_selection |= sheet
     return whole_selection
 
