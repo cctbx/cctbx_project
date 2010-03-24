@@ -2250,9 +2250,19 @@ class build_all_chain_proxies(object):
         for m_i_list in mms[0].values():
           assert len(m_i_list) == 1
           m_i = m_i_list[0]
+          def raise_missing_cif(i_pair):
+            raise Sorry(
+              "Error processing apply_cif_link:\n"
+              + "  data_link: %s\n" % show_string(apply.data_link)
+              + "  Missing CIF file for residue: %s"
+                  % apply.pdbres_pair[i_pair])
+          if (m_i.monomer is None):
+            raise_missing_cif(i_pair=0)
           for m_j_list in mms[1].values():
             assert len(m_j_list) == 1
             m_j = m_j_list[0]
+            if (m_j.monomer is None):
+              raise_missing_cif(i_pair=1)
             if (    m_i.i_conformer != 0
                 and m_j.i_conformer != 0
                 and m_i.i_conformer != m_j.i_conformer):
