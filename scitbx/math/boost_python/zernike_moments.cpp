@@ -95,7 +95,6 @@ namespace {
                 arg("xyz")
              ))
             )
-        .def("xyz2voxel", &w_t::xyz2voxel)
         .def("value", &w_t::get_value)
         .def("rmax", &w_t::rmax)
         .def("map", &w_t::map)

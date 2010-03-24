@@ -27,6 +27,15 @@ def tst_voxel(nmax, np):
   assert voxel_obj.rmax() == 25
   assert voxel_obj.occupied_sites() == 162
 
+  info = voxel_obj.status()
+  expect_info = """number of grid point is:    68921
+rmax is                : 25.00000000
+max fraction one 1-d is: 0.90000000
+non-empty grid point is:      162
+non-empty grid fract is: 0.00235052
+"""
+  assert info == expect_info
+
   new_xyz = voxel_obj.xyz()
   for xxx, yyy in zip(xyz, new_xyz):
     for x1, x2 in zip(xxx, yyy):
