@@ -7,9 +7,6 @@
 #include <scitbx/math/utils.h>
 #include <cctbx/maptbx/eight_point_interpolation.h>
 
-using scitbx::mat3;
-using scitbx::vec3;
-
 namespace cctbx { namespace maptbx {
 
 //! Fortran-like nearest integer.
