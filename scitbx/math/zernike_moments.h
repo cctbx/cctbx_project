@@ -54,7 +54,7 @@ namespace zernike {
 
         if(fixed_dx_) {
           NP_ = int(rmax_/dx)+1;
-	  if(NP_ > NP_MAX_) NP_=NP_MAX_;
+          if(NP_ > NP_MAX_) NP_=NP_MAX_;
           dx_ = 1.0/static_cast<FloatType>(NP_);
         }
 
@@ -392,9 +392,9 @@ namespace zernike {
 
 
       void calc_invariance() {
-	calc_invariance_nn();
-	calc_invariance_nnl();
-	calc_invariance_nl();
+        calc_invariance_nn();
+        calc_invariance_nnl();
+        calc_invariance_nl();
       }
 
       void calc_invariance_nn() {
@@ -404,16 +404,16 @@ namespace zernike {
           start_n2 = (n1-n1/2*2);
           for(int n2=start_n2; n2<=n1;n2+=2) {
             start_l = (n2-n2/2*2);
-	    tmp1 = 0;
+            tmp1 = 0;
             for(int l=start_l; l<=n2;l+=2) {
-	      tmp_n = l-((n1+n2)/2);
-	      tmp_n = tmp_n-tmp_n/2*2; // tmp_n%2
-	      coef = is_even( tmp_n );
-	      tmp2 = 0;
+              tmp_n = l-((n1+n2)/2);
+              tmp_n = tmp_n-tmp_n/2*2; // tmp_n%2
+              coef = is_even( tmp_n );
+              tmp2 = 0;
               for(int m=-l;m<=l;m++) {
                 tmp2=tmp2+std::real( std::conj(C_nlm_.get_coef(n1,l,m))*C_nlm_.get_coef(n2,l,m) );
               }
-	      tmp1 += tmp2*coef;
+              tmp1 += tmp2*coef;
             }  //end l
             if( n1 == n2)
               tmp1 = tmp1 / 2.0;
@@ -424,25 +424,25 @@ namespace zernike {
       }
 
       void calc_invariance_nnl() {
-	std::complex<FloatType> tmp;
-	std::complex<FloatType> comp_zero(0,0);
-	int start_l, start_n2;
-	for(int n1=0;n1<=n_max_;n1++) {
-	  start_n2 = (n1-n1/2*2);
-	  for(int n2=start_n2; n2<=n1;n2+=2) {
-	    start_l = (n2-n2/2*2);
-	    for(int l=start_l; l<=n2;l+=2) {
-	      tmp=comp_zero;
-	      for(int m=-l;m<=l;m++) {
-	        tmp=tmp+std::conj(C_nlm_.get_coef(n1,l,m))*C_nlm_.get_coef(n2,l,m);
-	      }
-	      if( n1 == n2)
-		tmp = tmp / 2.0;
-	      C_nnl_.set_coef(n1,n2,l,tmp);
-	    }  //end l
-	  }  //end n2
-	} //end n1
-	return;
+        std::complex<FloatType> tmp;
+        std::complex<FloatType> comp_zero(0,0);
+        int start_l, start_n2;
+        for(int n1=0;n1<=n_max_;n1++) {
+          start_n2 = (n1-n1/2*2);
+          for(int n2=start_n2; n2<=n1;n2+=2) {
+            start_l = (n2-n2/2*2);
+            for(int l=start_l; l<=n2;l+=2) {
+              tmp=comp_zero;
+              for(int m=-l;m<=l;m++) {
+                tmp=tmp+std::conj(C_nlm_.get_coef(n1,l,m))*C_nlm_.get_coef(n2,l,m);
+              }
+              if( n1 == n2)
+                tmp = tmp / 2.0;
+              C_nnl_.set_coef(n1,n2,l,tmp);
+            }  //end l
+          }  //end n2
+        } //end n1
+        return;
       }
 
       void calc_invariance_nl()
