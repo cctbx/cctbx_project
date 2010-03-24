@@ -1,11 +1,15 @@
 
+# TODO: clean this up!
+
 # XXX: these functions are utilities used by the Phenix GUI for quickly
 # converting data and map formats on the fly.  the main use of this is
 # in phenix.refine and any program that opens maps in PyMOL.
 # tested as part of Phenix regression tests (since it requires files)
 
+from __future__ import division
 import mmtbx.maps
 import iotbx.phil
+import iotbx.xplor.map
 from iotbx import file_reader
 from libtbx.math_utils import ifloor, iceil
 from libtbx.utils import Sorry
@@ -56,11 +60,33 @@ def write_xplor_map_file (coeffs, frac_min, frac_max, file_base) :
   gridding_first=[ifloor(f*n) for f,n in zip(frac_min,n_real)]
   gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
   title_lines=["REMARK map covering model + 3.0A buffer"]
+  file_name = "%s.map" % file_base
   fft_map.as_xplor_map(
-    file_name="%s.map" % file_base,
+    file_name=file_name,
     title_lines=title_lines,
     gridding_first=gridding_first,
     gridding_last=gridding_last)
+  return file_name
+
+def write_xplor_map(sites_cart, unit_cell, map_data, n_real, file_name,
+    buffer=10) :
+  frac_min, frac_max = unit_cell.box_frac_around_sites(
+    sites_cart=sites_cart,
+    buffer=buffer)
+  gridding_first=[ifloor(f*n) for f,n in zip(frac_min,n_real)]
+  gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
+  gridding = iotbx.xplor.map.gridding(n     = map_data.focus(),
+                                      first = gridding_first,
+                                      last  = gridding_last)
+  iotbx.xplor.map.writer(
+    file_name          = file_name,
+    is_p1_cell         = True,
+    title_lines        = [' None',],
+    unit_cell          = unit_cell,
+    gridding           = gridding,
+    data               = map_data,
+    average            = -1,
+    standard_deviation = -1)
 
 def xplor_maps_from_refine_mtz (pdb_file, mtz_file, file_base=None,
     limit_arrays=None, grid_resolution_factor=0.33) :

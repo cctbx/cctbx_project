@@ -33,6 +33,7 @@ group_adp_master_params = iotbx.phil.parse("""\
 tls_master_params = iotbx.phil.parse("""\
   one_residue_one_group       = None
     .type = bool
+    .style = tribool
   refine_T                    = True
     .type = bool
   refine_L                    = True
