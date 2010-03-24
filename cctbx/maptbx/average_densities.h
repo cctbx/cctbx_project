@@ -5,6 +5,10 @@
 #include <cctbx/uctbx.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/math/utils.h>
+#include <cctbx/maptbx/eight_point_interpolation.h>
+
+using scitbx::mat3;
+using scitbx::vec3;
 
 namespace cctbx { namespace maptbx {
 
@@ -14,6 +18,35 @@ int
 nint(double x)
 {
   return int(std::ceil(x+0.5)-(std::fmod(x*0.5+0.25,1.0)!=0));
+}
+
+af::versa<double, af::c_grid<3> > rotate_translate_map(
+                   cctbx::uctbx::unit_cell const& unit_cell,
+                   af::const_ref<double, af::c_grid<3> > const& map_data,
+                   scitbx::mat3<double> const& rotation_matrix,
+                   scitbx::vec3<double> const& translation_vector)
+{
+    int nx = static_cast<int>(map_data.accessor()[0]);
+    int ny = static_cast<int>(map_data.accessor()[1]);
+    int nz = static_cast<int>(map_data.accessor()[2]);
+    af::versa<double, af::c_grid<3> > new_data(af::c_grid<3>(nx,ny,nz),
+      af::init_functor_null<double>());
+    af::ref<double, af::c_grid<3> > new_data_ref = new_data.ref();
+    for (int i = 0; i < nx; i++) {
+      for (int j = 0; j < ny; j++) {
+        for (int k = 0; k < nz; k++) {
+          cctbx::fractional<> grid_node_frac = cctbx::fractional<>(
+            i/static_cast<double>(nx),
+            j/static_cast<double>(ny),
+            k/static_cast<double>(nz));
+          cctbx::cartesian<> grid_node_cart = unit_cell.orthogonalize(
+            grid_node_frac);
+          cctbx::fractional<> grid_node_frac_shifted = unit_cell.fractionalize(
+            rotation_matrix * grid_node_cart + translation_vector);
+          new_data_ref(i,j,k) = eight_point_interpolation(map_data,
+            grid_node_frac_shifted);
+    }}}
+    return new_data;
 }
 
 af::versa<double, af::c_grid<3> > box_map_averaging(

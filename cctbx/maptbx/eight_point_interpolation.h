@@ -118,6 +118,28 @@ namespace cctbx { namespace maptbx {
     return result;
   }
 
+  template <
+    typename MapFloatType,
+    typename SiteFloatType>
+  MapFloatType
+  eight_point_interpolation(
+    af::const_ref<MapFloatType, af::c_grid<3> > const& map,
+    scitbx::vec3<SiteFloatType> const& x_frac)
+  {
+    typedef af::c_grid<3>::index_type index_t;
+    typedef typename index_t::value_type iv_t;
+    index_t const& grid_n = map.accessor();
+    get_corner<index_t, SiteFloatType> corner(grid_n, x_frac);
+    MapFloatType result = 0;
+    for(iv_t s0=0;s0<2;s0++) { iv_t i0 = (corner.i_grid[0] + s0) % grid_n[0];
+    for(iv_t s1=0;s1<2;s1++) { iv_t i1 = (corner.i_grid[1] + s1) % grid_n[1];
+    for(iv_t s2=0;s2<2;s2++) { iv_t i2 = (corner.i_grid[2] + s2) % grid_n[2];
+      result += map(i0,i1,i2) * corner.weight(s0,s1,s2);
+    }}}
+    return result;
+  }
+
+
   template <typename FloatType>
   typename af::c_grid_padded<3>::index_type
   closest_grid_point(
