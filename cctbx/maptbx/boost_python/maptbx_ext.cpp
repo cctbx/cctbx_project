@@ -10,8 +10,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 
-using scitbx::mat3;
-
 namespace cctbx { namespace maptbx { namespace boost_python {
 
   void wrap_grid_indices_around_sites();
