@@ -900,3 +900,26 @@ def join_roots(roots, chain_id_suffixes=Auto):
   for rt in roots:
     result.transfer_chains_from_other(other=rt)
   return result
+
+# XXX: Nat's utility functions
+def new_hierarchy_from_chain (chain) :
+  import iotbx.pdb.hierarchy
+  hierarchy = iotbx.pdb.hierarchy.root()
+  model = iotbx.pdb.hierarchy.model()
+  model.append_chain(chain.detached_copy())
+  hierarchy.append_model(model)
+  return hierarchy
+
+def find_and_replace_chains (original_hierarchy, partial_hierarchy) :
+  for original_model in original_hierarchy.models() :
+    for partial_model in partial_hierarchy.models() :
+      if original_model.id == partial_model.id :
+        i = 0
+        while i < len(original_model.chains()) :
+          original_chain = original_model.chains()[i]
+          for partial_chain in partial_model.chains() :
+            if original_chain.id == partial_chain.id :
+              original_model.remove_chain(i)
+              original_model.insert_chain(i, partial_chain.detached_copy())
+              break
+          i += 1
