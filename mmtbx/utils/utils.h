@@ -94,6 +94,50 @@ class fit_hoh
     double dist_best() { return std::sqrt(dist_best_sq); }
 };
 
+//
+template <typename FloatType=double >
+class density_distribution_per_atom
+{
+  public:
+
+    density_distribution_per_atom() {}
+
+    density_distribution_per_atom(
+      af::ref<vec3<FloatType> > const& sites_frac_atoms,
+      af::const_ref<vec3<FloatType> > const& sites_frac_peaks,
+      af::const_ref<FloatType> const& density_values,
+      cctbx::uctbx::unit_cell const& unit_cell)
+    {
+      MMTBX_ASSERT(sites_frac_peaks.size() == density_values.size());
+      for(std::size_t i=0; i<sites_frac_peaks.size(); i+=1) {
+        FloatType dist_min = 999.;
+        FloatType map_at_closest_site=0.0;
+        for(std::size_t j=0; j<sites_frac_atoms.size(); j+=1) {
+          FloatType dist = unit_cell.distance(
+            cctbx::fractional<>(sites_frac_atoms[j]),
+            cctbx::fractional<>(sites_frac_peaks[i]));
+          if(dist < dist_min) {
+            dist_min = dist;
+            map_at_closest_site = density_values[i];
+          }
+        }
+        if(dist_min <= 10.0) {
+          distances_.push_back(dist_min);
+          map_values_.push_back(map_at_closest_site);
+        }
+      }
+    }
+
+    af::shared<FloatType> distances() { return distances_; }
+    af::shared<FloatType> map_values() { return map_values_; }
+
+  protected:
+    af::shared<FloatType> distances_;
+    af::shared<FloatType> map_values_;
+};
+
+//
+
 template <typename FloatType>
 af::shared<std::size_t>
   select_water_by_distance(af::shared<vec3<FloatType> > const& sites_frac_all,

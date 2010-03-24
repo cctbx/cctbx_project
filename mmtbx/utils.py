@@ -2023,6 +2023,9 @@ class fmodel_from_xray_structure(object):
     self.params = params
     self.fmodel = fmodel
     self.r_free_flags = None
+    if(self.add_sigmas):
+      sigmas = flex.double(self.f_model.data().size(),1)
+      self.f_model._sigmas = sigmas
     if(params.r_free_flags_fraction is not None):
       self.r_free_flags = fmodel.r_free_flags
 
@@ -2077,10 +2080,5 @@ class fmodel_from_xray_structure(object):
         mtz_dataset.add_miller_array(
           miller_array      = self.r_free_flags,
           column_root_label = "R-free-flags")
-      if(self.add_sigmas):
-        sigmas = abs(self.f_model).array(data = flex.double(self.f_model.data().size(),1))
-        mtz_dataset.add_miller_array(
-          miller_array      = sigmas,
-          column_root_label = "SIG%s"%op.label)
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = file_name)
