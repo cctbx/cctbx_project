@@ -10,6 +10,8 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 
+using scitbx::mat3;
+
 namespace cctbx { namespace maptbx { namespace boost_python {
 
   void wrap_grid_indices_around_sites();
@@ -161,6 +163,17 @@ namespace {
       arg("data"),
       arg("sites_frac"),
       arg("radius")));
+
+    def("rotate_translate_map",
+      (af::versa<double, af::c_grid<3> >(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid<3> > const&,
+         scitbx::mat3<double> const&,
+         scitbx::vec3<double> const& )) rotate_translate_map, (
+      arg("unit_cell"),
+      arg("map_data"),
+      arg("rotation_matrix"),
+      arg("translation_vector")));
 
     def("eight_point_interpolation",
       (double(*)
