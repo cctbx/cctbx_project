@@ -4,6 +4,8 @@ from libtbx import easy_pickle
 from libtbx import dlite
 from libtbx.utils import Sorry
 from mmtbx.rotamer.sidechain_angles import PropertyFile
+from mmtbx import monomer_library
+import mmtbx.monomer_library.server
 import weakref
 import sys, os
 
@@ -49,6 +51,48 @@ aminoAcids = {
     'tyr' : 'phetyr',
     'val' : 'val',
 }
+
+def mon_lib_query(residue, mon_lib_srv):
+  # XXX backward compatibility 2007-08-10
+  get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
+  if (get_func is not None): return get_func(comp_id=residue)
+  return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
+
+def eval_sidechain_completeness(pdb_hierarchy, mon_lib_srv=None, ignore_hydrogens=True):
+  missing_atom_list=[]
+  if mon_lib_srv is None:
+    mon_lib_srv = monomer_library.server.server()
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        conformers = residue_group.conformers()
+        for conformer in residue_group.conformers():
+          residue = conformer.only_residue()
+          if conformer.altloc == "":
+            key = chain.id+residue_group.resid()+" "+residue.resname
+          else:
+            key = chain.id+residue_group.resid()+conformer.altloc+residue.resname
+          atom_list = []
+          for atom in residue.atoms():
+            atom_list.append(atom.name.strip().upper())
+          mlq = mon_lib_query(residue.resname.strip().upper(), mon_lib_srv)
+          reference_list = []
+          if(not ignore_hydrogens):
+            for at in mlq.atom_dict():
+              reference_list.append(at.strip().upper())
+          else:
+            for non in mlq.non_hydrogen_atoms():
+              reference_list.append(non.atom_id.strip().upper())
+          missing=[]
+          for atom in reference_list:
+            if atom not in atom_list:
+              missing.append(atom)
+          if len(missing) > 0:
+            missing_atom_list.append([key, missing])
+  return missing_atom_list
+
+
+
 
 class RotamerEval:
 
