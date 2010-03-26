@@ -910,16 +910,27 @@ def new_hierarchy_from_chain (chain) :
   hierarchy.append_model(model)
   return hierarchy
 
-def find_and_replace_chains (original_hierarchy, partial_hierarchy) :
+# XXX: this will only replace the *first* chain it finds with an identical
+# model/ID combination, for situations where water molecules are given the
+# same ID as the nearest macromolecule.
+def find_and_replace_chains (original_hierarchy, partial_hierarchy,
+    log=sys.stdout) :
   for original_model in original_hierarchy.models() :
     for partial_model in partial_hierarchy.models() :
       if original_model.id == partial_model.id :
+        #print >> log, "    found model '%s'" % partial_model.id
         i = 0
         while i < len(original_model.chains()) :
           original_chain = original_model.chains()[i]
-          for partial_chain in partial_model.chains() :
+          j = 0
+          while j < len(partial_model.chains()) :
+            partial_chain = partial_model.chains()[j]
             if original_chain.id == partial_chain.id :
+              #print >> log, "      found chain '%s' at index %d" % (
+              #  partial_chain.id, i)
               original_model.remove_chain(i)
               original_model.insert_chain(i, partial_chain.detached_copy())
+              partial_model.remove_chain(j)
               break
+            j += 1
           i += 1
