@@ -869,6 +869,9 @@ class manager (object) :
         all_selections.append(helix_sel)
     return all_selections
 
+  def get_helix_types (self) :
+    return [ helix.helix_type for helix in self.params.helix ]
+
   def alpha_selection (self, limit="") :
     whole_selection = flex.bool(self.xray_structure.sites_cart().size())
     for helix in self.alpha_selections(limit=limit) :
