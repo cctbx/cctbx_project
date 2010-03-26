@@ -58,7 +58,11 @@ def mon_lib_query(residue, mon_lib_srv):
   if (get_func is not None): return get_func(comp_id=residue)
   return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
 
-def eval_sidechain_completeness(pdb_hierarchy, mon_lib_srv=None, ignore_hydrogens=True):
+def eval_sidechain_completeness(pdb_hierarchy,
+                                mon_lib_srv=None,
+                                ignore_hydrogens=True,
+                                report_whole_res=False,
+                                return_ca_pos=False):
   missing_atom_list=[]
   if mon_lib_srv is None:
     mon_lib_srv = monomer_library.server.server()
@@ -67,14 +71,18 @@ def eval_sidechain_completeness(pdb_hierarchy, mon_lib_srv=None, ignore_hydrogen
       for residue_group in chain.residue_groups():
         conformers = residue_group.conformers()
         for conformer in residue_group.conformers():
+          item = []
           residue = conformer.only_residue()
           if conformer.altloc == "":
             key = chain.id+residue_group.resid()+" "+residue.resname
           else:
             key = chain.id+residue_group.resid()+conformer.altloc+residue.resname
           atom_list = []
+          ca_xyz = []
           for atom in residue.atoms():
             atom_list.append(atom.name.strip().upper())
+            if atom.name == " CA ":
+              ca_xyz = atom.xyz
           mlq = mon_lib_query(residue.resname.strip().upper(), mon_lib_srv)
           reference_list = []
           if(not ignore_hydrogens):
@@ -87,8 +95,19 @@ def eval_sidechain_completeness(pdb_hierarchy, mon_lib_srv=None, ignore_hydrogen
           for atom in reference_list:
             if atom not in atom_list:
               missing.append(atom)
-          if len(missing) > 0:
-            missing_atom_list.append([key, missing])
+          if not report_whole_res:
+            if len(missing) > 0:
+              item.append(key)
+              item.append(missing)
+              if return_ca_pos:
+                item.append(ca_xyz)
+          else:
+            item.append(key)
+            item.append(missing)
+            if return_ca_pos:
+              item.append(ca_xyz)
+          if len(item) > 0:
+            missing_atom_list.append(item)
   return missing_atom_list
 
 
