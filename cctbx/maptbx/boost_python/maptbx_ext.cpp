@@ -173,6 +173,21 @@ namespace {
       arg("rotation_matrix"),
       arg("translation_vector")));
 
+    def("superpose_maps",
+      (af::versa<double, af::c_grid<3> >(*)
+        (uctbx::unit_cell const&,
+         uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid<3> > const&,
+         af::tiny<int, 3> const&,
+         scitbx::mat3<double> const&,
+         scitbx::vec3<double> const& )) superpose_maps, (
+      arg("unit_cell_1"),
+      arg("unit_cell_2"),
+      arg("map_data_1"),
+      arg("n_real_2"),
+      arg("rotation_matrix"),
+      arg("translation_vector")));
+
     def("eight_point_interpolation",
       (double(*)
         (af::const_ref<double, af::c_grid_padded<3> > const&,

@@ -17,6 +17,39 @@ nint(double x)
   return int(std::ceil(x+0.5)-(std::fmod(x*0.5+0.25,1.0)!=0));
 }
 
+af::versa<double, af::c_grid<3> > superpose_maps(
+                   cctbx::uctbx::unit_cell const& unit_cell_1,
+                   cctbx::uctbx::unit_cell const& unit_cell_2,
+                   af::const_ref<double, af::c_grid<3> > const& map_data_1,
+                   af::tiny<int, 3> const& n_real_2,
+                   scitbx::mat3<double> const& rotation_matrix,
+                   scitbx::vec3<double> const& translation_vector)
+{
+  int nx = n_real_2[0];
+  int ny = n_real_2[1];
+  int nz = n_real_2[2];
+  af::versa<double, af::c_grid<3> > result_map(af::c_grid<3>(nx,ny,nz),
+    af::init_functor_null<double>());
+  af::ref<double, af::c_grid<3> > result_map_ref = result_map.ref();
+  for (int i = 0; i < nx; i++) {
+    double gpfx = i/static_cast<double>(nx);
+    for (int j = 0; j < ny; j++) {
+      double gpfy = j/static_cast<double>(ny);
+      for (int k = 0; k < nz; k++) {
+        cctbx::fractional<> grid_frac_in_1 = cctbx::fractional<>(gpfx, gpfy,
+          k/static_cast<double>(nz));
+        cctbx::cartesian<> grid_cart_in_1 = unit_cell_2.orthogonalize(
+          grid_frac_in_1);
+        cctbx::cartesian<> point_cart_in_2 = rotation_matrix * grid_cart_in_1 +
+          translation_vector;
+        cctbx::fractional<> point_frac_in_2 =
+          unit_cell_1.fractionalize(point_cart_in_2);
+        result_map_ref(i,j,k) = eight_point_interpolation(map_data_1,
+          point_frac_in_2);
+  }}}
+  return result_map;
+}
+
 af::versa<double, af::c_grid<3> > rotate_translate_map(
                    cctbx::uctbx::unit_cell const& unit_cell,
                    af::const_ref<double, af::c_grid<3> > const& map_data,
@@ -40,6 +73,12 @@ af::versa<double, af::c_grid<3> > rotate_translate_map(
             grid_node_frac);
           cctbx::fractional<> grid_node_frac_shifted = unit_cell.fractionalize(
             rotation_matrix * grid_node_cart + translation_vector);
+          for (int p = 0; p < 5; p++) {
+            for (int q = 0; q < 3; q++) {
+              if(grid_node_frac_shifted[q] <  0) grid_node_frac_shifted[q] += 1;
+              if(grid_node_frac_shifted[q] >= 1) grid_node_frac_shifted[q] -= 1;
+            }
+          }
           new_data_ref(i,j,k) = eight_point_interpolation(map_data,
             grid_node_frac_shifted);
     }}}
