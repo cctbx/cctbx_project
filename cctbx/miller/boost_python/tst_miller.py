@@ -222,6 +222,8 @@ def exercise_bins():
   h = (3,4,5)
   r = b.bin_d_range(b.get_i_bin(h))
   assert r[1] <= uc.d(h) <= r[0]
+  # a quick test to excercise d-spacings on fractional Miller indices:
+  assert approx_equal( uc.d((3,4,5)), uc.d_frac((3.001,4,5)), eps=0.001)
   binning1 = miller.binning(uc, n_bins, m)
   assert binning1.unit_cell().is_similar_to(uc)
   assert binning1.n_bins_used() == n_bins
