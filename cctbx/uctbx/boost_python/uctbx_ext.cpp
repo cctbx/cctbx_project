@@ -11,6 +11,7 @@
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_internal_reference.hpp>
+#include <scitbx/vec3.h>
 
 namespace cctbx { namespace uctbx { namespace boost_python {
 
@@ -24,6 +25,7 @@ namespace {
     typedef cartesian<> cart_t;
     typedef fractional<> frac_t;
     typedef miller::index<> mix_t;
+    typedef scitbx::vec3<double> frac_mix_t;
     typedef af::const_ref<mix_t> cr_mix_t;
     typedef af::shared<double> sh_dbl_t;
 
@@ -182,6 +184,10 @@ namespace {
         .def("d",
           (double(w_t::*)(mix_t const&) const)
           &w_t::d, (
+            arg("miller_index")))
+        .def("d_frac",
+          (double(w_t::*)(frac_mix_t const&) const)
+          &w_t::d_frac, (
             arg("miller_index")))
         .def("d",
           (sh_dbl_t(w_t::*)(cr_mix_t const&) const)

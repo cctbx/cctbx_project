@@ -10,6 +10,7 @@
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/math/utils.h>
+#include <scitbx/vec3.h>
 #include <cctbx/coordinates.h>
 #include <cctbx/miller.h>
 
@@ -836,6 +837,14 @@ namespace cctbx {
       d(miller::index<NumType> const& miller_index) const
       {
         return d_star_sq_as_d(d_star_sq(miller_index));
+      }
+
+      //! d-spacing measure d = 1/(2*sin(theta)/lambda).
+      template <typename NumType>
+      double
+      d_frac(scitbx::vec3<NumType> const& miller_index) const
+      {
+        return d_star_sq_as_d(d_star_sq(miller::index<NumType>(miller_index)));
       }
 
       //! d-spacing measure d = 1/(2*sin(theta)/lambda).
