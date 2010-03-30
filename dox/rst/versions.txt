@@ -107,7 +107,7 @@ Historical Note
 
 As found in:
 
-- `Thomas W. Judson <http://math.harvard.edu/~judson/>`_,
+- `Thomas W. Judson <http://faculty.sfasu.edu/judsontw/>`_,
   Abstract Algebra: Theory and Applications,
   PWS Publishing Company, Boston, 1994, pp. 282-283.
   (`Now also available as a free download.
