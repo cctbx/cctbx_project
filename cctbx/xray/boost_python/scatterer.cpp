@@ -19,22 +19,6 @@ namespace {
     typedef scatterer<> w_t;
     typedef w_t::float_type flt_t;
 
-    // XXX backward compatibility 2009-12-12
-    static bool
-    get_anisotropic_flag()
-    {
-      throw std::runtime_error(
-        "obsolete attribute. please use use_u_aniso_only().");
-    }
-
-    // XXX backward compatibility 2009-12-12
-    static void
-    set_anisotropic_flag(bool)
-    {
-      throw std::runtime_error(
-        "obsolete attribute. please use set_use_u_aniso_only().");
-    }
-
     static void
     wrap()
     {
@@ -84,8 +68,6 @@ namespace {
                               make_setter(&w_t::site, dcp()))
         .add_property("occupancy", make_getter(&w_t::occupancy, rbv()),
                                    make_setter(&w_t::occupancy, dcp()))
-        .add_static_property("anisotropic_flag",
-          get_anisotropic_flag, set_anisotropic_flag)
         .add_property("u_iso", make_getter(&w_t::u_iso, rbv()),
                                make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
