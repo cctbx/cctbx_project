@@ -40,6 +40,8 @@ def show_stack(
   except ValueError:
     pass
   if (reverse): lines.reverse()
+  if (out == "return_lines"):
+    return lines
   for line in lines:
     print >> out, line
 
