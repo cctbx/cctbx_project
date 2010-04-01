@@ -459,8 +459,7 @@ class test_clustal_alignment(unittest.TestCase):
     self.alignment = bioinformatics.clustal_alignment(
       alignments = [ ali_1hml, ali_1hfy, ali_1ghl, ali_1lz3 ],
       names = [ "1hml", "1hfya", "1ghla", "1lz3" ],
-      program = "X",
-      version = "1.35"
+      program = "CLUSTAL X 1.35"
       )
 
   def testFormat(self):
@@ -860,8 +859,7 @@ class test_alignment_parse(unittest.TestCase):
 
     self.assertEqual( unknowns, "" )
 
-    self.assertEqual( ali.program, "" )
-    self.assertEqual( ali.version, "2.0.10" )
+    self.assertEqual( ali.program, "CLUSTAL 2.0.10" )
     self.assertEqual( ali.names, [ "Horse", "chain_A" ] )
     self.assertEqual(
       ali.alignments,
@@ -879,8 +877,7 @@ class test_alignment_parse(unittest.TestCase):
 
     self.assertEqual( unknowns, "" )
 
-    self.assertEqual( ali.program, "X" )
-    self.assertEqual( ali.version, "1.81" )
+    self.assertEqual( ali.program, "CLUSTAL X (1.81)" )
     self.assertEqual( ali.names, [ "1vkk", "1ahq" ] )
     self.assertEqual(
       ali.alignments,
@@ -906,8 +903,7 @@ class test_alignment_parse(unittest.TestCase):
       )
 
     self.assertEqual( unknowns, "" )
-    self.assertEqual( ali.program, "" )
-    self.assertEqual( ali.version, "2.0.10" )
+    self.assertEqual( ali.program, "CLUSTAL 2.0.10" )
     self.assertEqual( ali.names, [] )
     self.assertEqual( ali.alignments, [] )
 
@@ -1049,7 +1045,7 @@ class test_alignment_parse(unittest.TestCase):
 
     self.assertEqual(
       sorted( bioinformatics.known_alignment_formats() ),
-      [ ".ali", ".aln", ".clustal", ".fasta", ".pir" ]
+      [ ".ali", ".aln", ".clustal", ".fa", ".fasta", ".pir" ]
       )
 
 

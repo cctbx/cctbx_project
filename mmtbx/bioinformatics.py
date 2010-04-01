@@ -269,13 +269,10 @@ class clustal_alignment(alignment):
   Clustal alignment
   """
 
-  def __init__(self, alignments, names, program, version, gap = "-"):
+  def __init__(self, alignments, names, program = "CLUSTAL 2.0.9", gap = "-"):
 
     super( clustal_alignment, self ).__init__( alignments, names, gap )
-    if program: self.program = program
-    else:       self.program = ""
-    self.version = version
-
+    self.program = program
 
   def make_aln_info(self, caption, alignment, aln_width):
 
@@ -307,21 +304,14 @@ class clustal_alignment(alignment):
         for line in wrap( self.midline(), aln_width ) ]
       )
 
-    if (self.program): program = self.program + " "
-    else:              program = ""
-    def fmt_num(num):
-      if num: return " %s" % num
-      return ""
     return (
-      "CLUSTAL %(program)s%(version)s multiple sequence alignment\n\n" % {
-        "program": program,
-        "version": self.version,
-        }
+      "%s multiple sequence alignment\n\n" % self.program
       + "\n\n".join(
         [
           "\n".join(
-            [ "%s %s%s" % ( cap, ali, fmt_num(num) )
-              for ( cap, ali, num ) in zipped_infos ] )
+            [ "%s %s%s" % ( cap, ali, " %s" % num if num else "" )
+              for ( cap, ali, num ) in zipped_infos ]
+            )
           for zipped_infos in zip( *aln_infos )
           ]
         )
@@ -527,23 +517,16 @@ class clustal_alignment_parser(generic_alignment_parser):
     """,
     re.VERBOSE | re.MULTILINE
     )
+  HEADER = re.compile( r"\A(.*) multiple sequence alignment$", re.MULTILINE )
 
   def parse(self, text):
 
-    if (not text.startswith("CLUSTAL")):
+    match = self.HEADER.search( text )
+
+    if not match:
       return self.fail( text )
-    header = text.split("\n", 1)[0]
-    flds = header.split()
-    if (   len(flds) not in [5,6]
-        or flds[-3:] != "multiple sequence alignment".split()):
-      return self.fail( text )
-    if (len(flds) == 5):
-      program = ""
-      version = flds[1]
-    else:
-      program = flds[1]
-      version = flds[2]
-    if (version[0] == "("): version = version[1:-1]
+
+    program = match.group( 1 )
 
     # Get names and data
     data = self.extract( text )
@@ -576,8 +559,7 @@ class clustal_alignment_parser(generic_alignment_parser):
       clustal_alignment(
         names = unique_names,
         alignments = [ alignment_for[ name ] for name in unique_names ],
-        program = program,
-        version = version
+        program = program
         ),
       ""
       )
@@ -631,6 +613,7 @@ _implemented_alignment_parsers = {
   ".clustal": clustal_alignment_parse,
   ".fasta": fasta_alignment_parse,
   ".ali": ali_alignment_parse,
+  ".fa": ali_alignment_parse,
   }
 
 def alignment_parser_for(file_name):
