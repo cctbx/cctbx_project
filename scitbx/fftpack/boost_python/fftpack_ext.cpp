@@ -30,7 +30,7 @@ namespace scitbx { namespace fftpack { namespace {
     af::boost_python::assert_0_based_1d(a.accessor());
     if (a.size() < sz) raise_size_error();
   }
-// added hg
+
   template <typename FlexType>
   void assert_0_based_2d_size(
     FlexType const& a,
@@ -43,7 +43,6 @@ namespace scitbx { namespace fftpack { namespace {
       if (grid.all()[i] != fft_n[i]) raise_size_error();
     }
   }
-// end 
 
   template <typename FlexType>
   void assert_0_based_3d_size(
