@@ -2,6 +2,7 @@
 
 #include <scitbx/error.h>
 #include <scitbx/fftpack/gridding.h>
+#include <scitbx/fftpack/complex_to_complex_2d.h>
 #include <scitbx/fftpack/complex_to_complex_3d.h>
 #include <scitbx/fftpack/real_to_complex_3d.h>
 #include <scitbx/array_family/flex_types.h>
@@ -29,6 +30,20 @@ namespace scitbx { namespace fftpack { namespace {
     af::boost_python::assert_0_based_1d(a.accessor());
     if (a.size() < sz) raise_size_error();
   }
+// added hg
+  template <typename FlexType>
+  void assert_0_based_2d_size(
+    FlexType const& a,
+    af::int2 const& fft_n)
+  {
+    if (!a.check_shared_size()) af::boost_python::raise_shared_size_mismatch();
+    af::flex_grid<> const& grid = a.accessor();
+    af::boost_python::assert_0_based_2d(grid);
+    for(std::size_t i=0;i<2;i++) {
+      if (grid.all()[i] != fft_n[i]) raise_size_error();
+    }
+  }
+// end 
 
   template <typename FlexType>
   void assert_0_based_3d_size(
@@ -91,8 +106,10 @@ namespace scitbx { namespace fftpack { namespace {
   };
 
   typedef af::flex_double flex_real_array;
+  typedef af::ref<double, af::c_grid<2> > ref_2d_real_array;
   typedef af::ref<double, af::c_grid<3> > ref_3d_real_array;
   typedef af::flex_complex_double flex_complex_array;
+  typedef af::ref<std::complex<double>, af::c_grid<2> > ref_2d_complex_array;
   typedef af::ref<std::complex<double>, af::c_grid<3> > ref_3d_complex_array;
 
   struct complex_to_complex_wrappers
@@ -270,6 +287,71 @@ namespace scitbx { namespace fftpack { namespace {
     }
   };
 
+// 2d c2c fft
+
+  struct complex_to_complex_2d_wrappers
+  {
+    typedef complex_to_complex_2d<double> w_t;
+
+    static flex_complex_array
+    forward_complex(w_t& fft, flex_complex_array a)
+    {
+      assert_0_based_2d_size(a, fft.n());
+      ref_2d_complex_array map(a.begin(), af::c_grid<2>(fft.n()));
+      fft.forward(map);
+      return flex_complex_array(a, af::flex_grid<>(af::adapt(fft.n()))
+        .set_focus(af::adapt(fft.n())));
+    }
+
+    static flex_complex_array
+    forward_real(w_t& fft, flex_real_array a)
+    {
+      assert_0_based_2d_size(a, n_real_from_n_complex(fft.n()));
+      ref_2d_real_array map(
+        a.begin(), af::c_grid<2>(n_real_from_n_complex(fft.n())));
+      fft.forward(map);
+      return flex_complex_array(a.handle(), af::flex_grid<>(af::adapt(fft.n()))
+        .set_focus(af::adapt(fft.n())));
+    }
+
+    static flex_complex_array
+    backward_complex(w_t& fft, flex_complex_array a)
+    {
+      assert_0_based_2d_size(a, fft.n());
+      ref_2d_complex_array map(a.begin(), af::c_grid<2>(fft.n()));
+      fft.backward(map);
+      return flex_complex_array(a, af::flex_grid<>(af::adapt(fft.n()))
+        .set_focus(af::adapt(fft.n())));
+    }
+
+    static flex_complex_array
+    backward_real(w_t& fft, flex_real_array a)
+    {
+      assert_0_based_2d_size(a, n_real_from_n_complex(fft.n()));
+      ref_2d_real_array map(
+        a.begin(), af::c_grid<2>(n_real_from_n_complex(fft.n())));
+      fft.backward(map);
+      return flex_complex_array(a.handle(), af::flex_grid<>(af::adapt(fft.n()))
+        .set_focus(af::adapt(fft.n())));
+    }
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("complex_to_complex_2d")
+        .def(init<std::size_t, std::size_t>())
+        .def(init<af::int2>())
+        .def("n", &w_t::n)
+        .def("forward", forward_complex)
+        .def("forward", forward_real)
+        .def("backward", backward_complex)
+        .def("backward", backward_real)
+      ;
+    }
+  };
+
+
   struct real_to_complex_3d_wrappers
   {
     typedef real_to_complex_3d<double> w_t;
@@ -366,6 +448,7 @@ namespace scitbx { namespace fftpack { namespace {
     complex_to_complex_wrappers::wrap();
     real_to_complex_wrappers::wrap();
     complex_to_complex_3d_wrappers::wrap();
+    complex_to_complex_2d_wrappers::wrap();
     real_to_complex_3d_wrappers::wrap();
 
     def("zeros_parallel_double", zeros_parallel_double, (arg("flex_grid")));
