@@ -60,6 +60,33 @@ def test_complex_to_complex(verbose):
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
 
+def test_complex_to_complex_2d(verbose):
+  fft = fftpack.complex_to_complex_2d((6,10))
+  n = fft.n()
+  vc = flex.complex_double(flex.grid(n))
+  vd = flex.double(flex.grid((n[0], 2*n[1])))
+  for i in xrange(vc.size()):
+    vc[i] = complex(2*i, 2*i+1)
+  for i in xrange(vd.size()):
+    vd[i] = i
+  vct = fft.forward(vc)
+  vdt = fft.forward(vd)
+  for t in (vct, vdt):
+    assert t.origin() == (0,0)
+    assert t.all() == fft.n()
+    assert t.focus() == fft.n()
+  if (verbose): show_cseq(vc)
+  assert_complex_eq_real(vc, vd)
+  vct = fft.backward(vc)
+  vdt = fft.backward(vd)
+  for t in (vct, vdt):
+    assert t.origin() == (0,0)
+    assert t.all() == fft.n()
+    assert t.focus() == fft.n()
+  if (verbose): show_cseq(vc)
+  assert_complex_eq_real(vc, vd)
+
+
 def test_complex_to_complex_3d(verbose):
   fft = fftpack.complex_to_complex_3d((3,4,5))
   n = fft.n()
