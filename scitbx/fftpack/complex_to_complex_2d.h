@@ -140,7 +140,7 @@ namespace scitbx { namespace fftpack {
             map(iy, iz) = seq[iy];
           }
       }
-#if !defined(SCITBX_FFTPACK_COMPLEX_TO_COMPLEX_3D_NO_PRAGMA_OMP)
+#if !defined(SCITBX_FFTPACK_COMPLEX_TO_COMPLEX_2D_NO_PRAGMA_OMP)
       #pragma omp for
 #endif
       for (int iy = 0; iy < ny; iy++) {
