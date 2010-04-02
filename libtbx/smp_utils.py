@@ -1,5 +1,6 @@
 import sys, time
 from libtbx.utils import Sorry
+from libtbx import adopt_init_args
 
 #--- backwards-compatability check
 if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
@@ -16,6 +17,47 @@ else :
   cpu_count = lambda: 1
   def smp_map (func, iterable, chunksize=None, callback=None, nproc=None) :
     return map(func, iterable)
+
+class manager (object) :
+  def __init__ (self, enable_multiprocessing=True, nproc=None) :
+    adopt_init_args(self, locals())
+    self.pool = None
+    if enable_multiprocessing and (self.nproc is None or self.nproc > 1) :
+      try :
+        import multiprocessing
+      except ImportError :
+        self.enable_multiprocessing = False
+      else :
+        if self.nproc is None :
+          self.nproc = multiprocessing.cpu_count()
+        if self.nproc > 1 :
+          self.pool = multiprocessing.Pool(processes=self.nproc)
+        else :
+          self.enable_multiprocessing = False
+
+  def show_summary (self, out=sys.stdout) :
+    if self.enable_multiprocessing :
+      print >> out, "Multiprocessing is ENABLED on %d CPUs" % self.nproc
+    else :
+      print >> out, "Multiprocessing is DISABLED"
+
+  def map_async (self, func, iterable, chunksize=None, callback=None) :
+    if self.enable_multiprocessing :
+      self.pool.map_async(func, iterable, chunksize, callback)
+    else :
+      map(func, iterable)
+
+  def map (self, func, iterable, chunksize=None) :
+    if self.enable_multiprocessing :
+      self.pool.map(func, iterable, chunksize)
+    else :
+      map(func, iterable)
+
+  def run_many (self, objects) :
+    self.map(_run_many, objects)
+
+def _run_many (run_object) :
+  return run_object.run()
 
 #--- test functions
 def exercise () :
