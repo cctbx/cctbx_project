@@ -10,6 +10,7 @@ from libtbx.math_utils import ifloor, iceil
 from libtbx.utils import Sorry, null_out
 import libtbx.load_env
 from libtbx import easy_run
+from libtbx import adopt_init_args
 import sys, os
 
 def mask_grid(xrs, buffer, map_data, n_real):
@@ -125,6 +126,39 @@ def transform_map_by_lsq_fit (fft_map,
       file_name=file_name,
       buffer=buffer)
   return xray_structure, map_data_superposed
+
+# XXX: wrapper for multiprocessing
+class transform_maps (object) :
+  def __init__ (self,
+                map_coeffs,
+                map_types,
+                pdb_hierarchy,
+                unit_cell,
+                lsq_fit_obj,
+                output_files,
+                resolution_factor=0.25,
+                auto_run=True) :
+    adopt_init_args(self, locals())
+    if auto_run :
+      self.run()
+
+  def run (self) :
+    for (array, map_type, file_name) in zip(self.map_coeffs, self.map_types,
+        self.output_files) :
+      if array is None :
+        continue
+      (d_max, d_min) = array.d_max_min()
+      fft_map = array.fft_map(resolution_factor=self.resolution_factor)
+      fft_map.apply_sigma_scaling()
+      transform_map_by_lsq_fit(
+        fft_map=fft_map,
+        unit_cell=self.unit_cell,
+        lsq_fit_obj=self.lsq_fit_obj,
+        pdb_hierarchy=self.pdb_hierarchy,
+        d_min=d_min,
+        file_name=file_name,
+        log=null_out())
+      del fft_map
 
 def exercise () :
   pdb_file_name_1 = libtbx.env.find_in_repositories(

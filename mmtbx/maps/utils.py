@@ -8,12 +8,15 @@
 
 from __future__ import division
 import mmtbx.maps
+import mmtbx.utils
 import iotbx.phil
 import iotbx.xplor.map
 from iotbx import file_reader
+from scitbx.array_family import flex
 from libtbx.math_utils import ifloor, iceil
 from libtbx.utils import Sorry
-import os
+from libtbx import adopt_init_args
+import os, sys
 
 def extract_map_coeffs (miller_arrays, f_lab, phi_lab, fom_lab) :
   f_array = None
@@ -29,6 +32,52 @@ def extract_map_coeffs (miller_arrays, f_lab, phi_lab, fom_lab) :
     elif labels == fom_lab :
       fom_array = miller_array
   return (f_array, phi_array, fom_array)
+
+class fast_maps_from_hkl_file (object) :
+  def __init__ (self,
+                file_name,
+                xray_structure,
+                f_label=None,
+                map_out=None,
+                log=sys.stdout,
+                auto_run=True) :
+    adopt_init_args(self, locals())
+    if f_label is None :
+      print >> log, "      no label for %s, will try default labels" % \
+        os.path.basename(file_name)
+    f_obs = None
+    default_labels = ["F,SIGF","FOBS,SIGFOBS","F(+),SIGF(+),F(-),SIGF(-)"]
+    all_labels = []
+    data_file = file_reader.any_file(file_name, force_type="hkl")
+    for miller_array in data_file.file_object.as_miller_arrays() :
+      labels = miller_array.info().label_string()
+      all_labels.append(labels)
+      if labels == f_label :
+        f_obs = miller_array
+        break
+      elif f_label is None and labels in default_labels :
+        f_obs = miller_array
+        break
+    if f_obs is None :
+      raise Sorry(("Couldn't find %s in %s.  Please specify valid "+
+        "column labels (possible choices: %s)") % (f_label, file_name,
+          " ".join(all_labels)))
+    self.f_obs = f_obs
+    self.log = None
+    if auto_run :
+      self.run()
+
+  def run (self) :
+    f_obs = self.f_obs
+    r_free_flags = f_obs.array(data=flex.bool(f_obs.data().size(),False))
+    fmodel = mmtbx.utils.fmodel_simple(
+      xray_structures=[self.xray_structure],
+      f_obs=f_obs,
+      r_free_flags=r_free_flags)
+    (f_map, df_map) = get_maps_from_fmodel(fmodel, use_filled=True)
+    if self.map_out is None :
+      self.map_out = os.path.splitext(self.file_name)[0] + "_map_coeffs.mtz"
+    write_map_coeffs(f_map, df_map, self.map_out)
 
 def get_maps_from_fmodel (fmodel, use_filled=False) :
   map_manager = fmodel.electron_density_map(fill_missing_f_obs=use_filled,
