@@ -48,6 +48,27 @@ namespace scitbx { namespace af { namespace boost_python {
   namespace {
 
     flex<sym_mat3<double> >::type*
+    join(
+      af::const_ref<double> const& a00,
+      af::const_ref<double> const& a11,
+      af::const_ref<double> const& a22,
+      af::const_ref<double> const& a01,
+      af::const_ref<double> const& a02,
+      af::const_ref<double> const& a12)
+    {
+      SCITBX_ASSERT(a00.size() == a11.size());
+      SCITBX_ASSERT(a00.size() == a22.size());
+      SCITBX_ASSERT(a00.size() == a01.size());
+      SCITBX_ASSERT(a00.size() == a02.size());
+      SCITBX_ASSERT(a00.size() == a12.size());
+      af::shared<sym_mat3<double> > result((af::reserve(a00.size())));
+      for(std::size_t i=0;i<a00.size();i++) {
+        result.push_back(sym_mat3<double>(a00[i], a11[i], a22[i], a01[i], a02[i], a12[i]));
+      }
+      return new flex<sym_mat3<double> >::type(result, result.size());
+    }
+
+    flex<sym_mat3<double> >::type*
     from_double(
       af::const_ref<double> const& x)
     {
@@ -103,6 +124,7 @@ namespace scitbx { namespace af { namespace boost_python {
     f_w::plain("sym_mat3_double")
       .def_pickle(flex_pickle_single_buffered<sym_mat3<double>,
         6*pickle_size_per_element<double>::value>())
+      .def("__init__", boost::python::make_constructor(join))
       .def("__init__", boost::python::make_constructor(from_double))
       .def("as_double", as_double)
       .def("norms", norms)

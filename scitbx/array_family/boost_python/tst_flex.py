@@ -1400,6 +1400,15 @@ def exercise_flex_sym_mat3_double():
   assert approx_equal(a-b, [(-6,-2,11,2,1,3), (-4,1,4,2,1,6)])
   b *= 3
   assert approx_equal(b, [(21,12,-24,6,12,9), (18,6,0,9,15,3)])
+  a00, a11, a22, a12, a13, a23 = [flex.double((0,1,2)),
+                                  flex.double((1,2,3)),
+                                  flex.double((2,3,4)),
+                                  flex.double((3,4,5)),
+                                  flex.double((4,5,6)),
+                                  flex.double((5,6,7))]
+  c = flex.sym_mat3_double(a00, a11, a22, a12, a13, a23)
+  assert c.size() == a00.size()
+  assert approx_equal(c, ((0,1,2,3,4,5), (1,2,3,4,5,6), (2,3,4,5,6,7)))
 
 def exercise_flex_tiny_size_t_2():
   a = flex.tiny_size_t_2()
