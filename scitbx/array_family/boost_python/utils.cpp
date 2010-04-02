@@ -10,6 +10,13 @@ namespace scitbx { namespace af { namespace boost_python {
     boost::python::throw_error_already_set();
   }
 
+  void raise_must_be_0_based_2d()
+  {
+    PyErr_SetString(PyExc_RuntimeError,
+      "Array must be 0-based 2-dimensional.");
+    boost::python::throw_error_already_set();
+  }
+
   void raise_must_be_0_based_3d()
   {
     PyErr_SetString(PyExc_RuntimeError,
@@ -20,6 +27,11 @@ namespace scitbx { namespace af { namespace boost_python {
   void assert_0_based_1d(af::flex_grid<> const& grid)
   {
     if (grid.nd() != 1 || !grid.is_0_based()) raise_must_be_0_based_1d();
+  }
+
+  void assert_0_based_2d(af::flex_grid<> const& grid)
+  {
+    if (grid.nd() != 2 || !grid.is_0_based()) raise_must_be_0_based_2d();
   }
 
   void assert_0_based_3d(af::flex_grid<> const& grid)
