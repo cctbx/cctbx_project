@@ -57,6 +57,11 @@ namespace boost {
   };
 
   template<>
+  struct has_trivial_destructor<scitbx::af::double4> {
+    static const bool value = true;
+  };
+
+  template<>
   struct has_trivial_destructor<scitbx::af::double6> {
     static const bool value = true;
   };
@@ -73,6 +78,11 @@ namespace boost {
 
   template<>
   struct has_trivial_destructor<scitbx::af::float3> {
+    static const bool value = true;
+  };
+
+  template<>
+  struct has_trivial_destructor<scitbx::af::float4> {
     static const bool value = true;
   };
 
