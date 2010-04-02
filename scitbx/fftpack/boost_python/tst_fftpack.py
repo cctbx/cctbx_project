@@ -85,7 +85,9 @@ def test_complex_to_complex_2d(verbose):
     assert t.focus() == fft.n()
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
-
+  s = vd.size() // 2
+  for i in xrange(vd.size()):
+    assert approx_equal(vd[i], s*i)
 
 def test_complex_to_complex_3d(verbose):
   fft = fftpack.complex_to_complex_3d((3,4,5))
@@ -284,6 +286,7 @@ def run():
   assert tuple(f.factors()) == (2, 3, 5)
   test_complex_to_complex(flags.Verbose)
   test_real_to_complex(flags.Verbose)
+  test_complex_to_complex_2d(flags.Verbose)
   test_complex_to_complex_3d(flags.Verbose)
   test_real_to_complex_3d(flags.Verbose)
   exercise_real_to_complex_padding_area()
