@@ -3,6 +3,7 @@
 #include <cctbx/miller.h>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/serialization/single_buffered.h>
+#include <boost/python/make_constructor.hpp>
 
 namespace scitbx { namespace serialization { namespace single_buffered {
 
@@ -38,6 +39,21 @@ namespace scitbx { namespace af { namespace boost_python {
 
 namespace {
 
+  flex<cctbx::miller::index<> >::type*
+  join(
+    af::const_ref<int> const& h,
+    af::const_ref<int> const& k,
+    af::const_ref<int> const& l)
+  {
+    SCITBX_ASSERT(k.size() == h.size());
+    SCITBX_ASSERT(l.size() == h.size());
+    af::shared<cctbx::miller::index<> > result((af::reserve(h.size())));
+    for(std::size_t i=0;i<h.size();i++) {
+      result.push_back(cctbx::miller::index<>(h[i],k[i],l[i]));
+    }
+    return new flex<cctbx::miller::index<> >::type(result, result.size());
+  }
+
   af::shared<vec3<double> >
   as_vec3_double(af::const_ref<cctbx::miller::index<> > const& a)
   {
@@ -55,6 +71,7 @@ namespace {
     using namespace cctbx;
 
     flex_wrapper<miller::index<> >::ordered("miller_index", flex_root_scope)
+      .def("__init__", boost::python::make_constructor(join))
       .def("__neg__", flex_wrapper<miller::index<> >::neg_a)
       .def_pickle(flex_pickle_single_buffered<miller::index<>,
         3*pickle_size_per_element<miller::index<>::value_type>::value>())
