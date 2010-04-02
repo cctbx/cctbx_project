@@ -5,6 +5,7 @@
 
 namespace scitbx { namespace af {
 
+  typedef tiny<int, 2> int2;
   typedef tiny<int, 3> int3;
   typedef tiny<int, 9> int9;
   typedef tiny<long, 3> long3;
@@ -24,6 +25,11 @@ namespace scitbx { namespace af {
 #if !defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
 
 namespace boost {
+
+  template<>
+  struct has_trivial_destructor<scitbx::af::int2> {
+    static const bool value = true;
+  };
 
   template<>
   struct has_trivial_destructor<scitbx::af::int3> {

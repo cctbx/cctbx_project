@@ -8,8 +8,10 @@
 namespace scitbx { namespace af { namespace boost_python {
 
   void raise_must_be_0_based_1d();
+  void raise_must_be_0_based_2d();
   void raise_must_be_0_based_3d();
   void assert_0_based_1d(flex_grid<> const& grid);
+  void assert_0_based_2d(flex_grid<> const& grid);
   void assert_0_based_3d(flex_grid<> const& grid);
   void raise_shared_size_mismatch();
   void raise_incompatible_arrays();
