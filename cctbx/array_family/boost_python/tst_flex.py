@@ -8,6 +8,11 @@ def exercise_flex_miller_index():
   exercise_triple(flex_triple=flex.miller_index, flex_order=flex.order)
   a = flex.miller_index([(1,2,3), (2,3,4)])
   assert approx_equal(a.as_vec3_double(), [(1,2,3), (2,3,4)])
+  h, k, l = [flex.int((0,1,2,3)),
+             flex.int((1,2,3,4)),
+             flex.int((2,3,4,5))]
+  b = flex.miller_index(h, k, l)
+  assert approx_equal(b, ((0,1,2),(1,2,3),(2,3,4),(3,4,5)))
 
 def exercise_flex_hendrickson_lattman():
   a = flex.hendrickson_lattman()
