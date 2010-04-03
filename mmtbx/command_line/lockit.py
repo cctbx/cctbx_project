@@ -226,7 +226,8 @@ def rotamer_score_and_choose_best(
       atom_selection_bool,
       real_space_target_weight,
       real_space_gradients_delta,
-      lbfgs_termination_params):
+      lbfgs_termination_params,
+      force_rotamer=False):
   n_other_residues = 0
   n_amino_acids_ignored = 0
   n_amino_acids_scored = 0
@@ -271,17 +272,22 @@ def rotamer_score_and_choose_best(
           if (rotamer_iterator is None):
             n_amino_acids_ignored += 1
           else:
+            best = None
             rotamer_id = "as_given"
-            best = group_args(rotamer_id=rotamer_id, refined=refine())
+            if not force_rotamer:
+              best = group_args(rotamer_id=rotamer_id, refined=refine())
             n_amino_acids_scored += 1
             for rotamer,rotamer_sites_cart in rotamer_iterator:
               residue.atoms().set_xyz(new_xyz=rotamer_sites_cart)
               trial = group_args(rotamer_id=rotamer.id, refined=refine())
+              if best is None:
+                best = trial
               if (trial.refined.rs_f_final > best.refined.rs_f_final):
                 best = trial
             print residue.id_str(), "best rotamer:", best.rotamer_id
             residue.atoms().set_xyz(new_xyz=best.refined.sites_cart_residue)
             print
+
   print "number of amino acid residues scored:", n_amino_acids_scored
   print "number of amino acid residues ignored:", n_amino_acids_ignored
   print "number of other residues:", n_other_residues
@@ -540,6 +546,61 @@ class geometry_restraints_manager_plus(object):
   def select(O, selection=None, iselection=None):
     return O.manager.select(selection=selection, iselection=iselection)
 
+def fit_rotamers_simple(processed_pdb_file,
+                        fft_map,
+                        d_max,
+                        d_min):
+  master_phil = get_master_phil()
+  work_params = master_phil.extract()
+  mon_lib_srv = mmtbx.monomer_library.server.server()
+  #ener_lib = mmtbx.monomer_library.server.ener_lib()
+  grm = processed_pdb_file.geometry_restraints_manager(
+    params_edits=work_params.geometry_restraints.edits,
+    params_remove=work_params.geometry_restraints.remove)
+  density_map = fft_map.real_map()
+  real_space_gradients_delta = \
+    d_min * work_params.real_space_gradients_delta_resolution_factor
+  rotamer_score_and_choose_best(
+      mon_lib_srv=mon_lib_srv,
+      density_map=density_map,
+      pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+      geometry_restraints_manager=grm,
+      atom_selection_bool=get_atom_selection_bool(
+        scope_extract=work_params.rotamer_score_and_choose_best,
+        attr="atom_selection",
+        processed_pdb_file=processed_pdb_file,
+        work_params=work_params),
+      real_space_target_weight=work_params.real_space_target_weight,
+      real_space_gradients_delta=real_space_gradients_delta,
+      lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+        max_iterations=work_params
+          .rotamer_score_and_choose_best.lbfgs_max_iterations),
+      force_rotamer=True)
+
+def get_atom_selection_bool(scope_extract,
+                            attr,
+                            processed_pdb_file,
+                            work_params):
+  common_atom_selection_bool_cache=[]
+  result = processed_pdb_file.all_chain_proxies \
+    .phil_atom_selection(
+      cache=None,
+      scope_extract=scope_extract,
+      attr="atom_selection",
+      allow_none=True,
+      allow_auto=True)
+  if (result is None or result is not Auto):
+    return result
+  if (len(common_atom_selection_bool_cache) == 0):
+    common_atom_selection_bool_cache.append(
+      processed_pdb_file.all_chain_proxies
+        .phil_atom_selection(
+          cache=None,
+          scope_extract=work_params,
+          attr="atom_selection",
+          allow_none=True))
+  return common_atom_selection_bool_cache[0]
+
 def run(args):
   show_times = libtbx.utils.show_times(time_start="now")
   master_phil = get_master_phil()
@@ -634,37 +695,17 @@ def run(args):
   print "real_space_gradients_delta: %.6g" % real_space_gradients_delta
   print
   sys.stdout.flush()
-  #
-  common_atom_selection_bool_cache = []
-  def atom_selection_bool(scope_extract, attr):
-    result = processed_pdb_file.all_chain_proxies \
-      .phil_atom_selection(
-        cache=None,
-        scope_extract=scope_extract,
-        attr="atom_selection",
-        allow_none=True,
-        allow_auto=True)
-    if (result is None or result is not Auto):
-      return result
-    if (len(common_atom_selection_bool_cache) == 0):
-      common_atom_selection_bool_cache.append(
-        processed_pdb_file.all_chain_proxies
-          .phil_atom_selection(
-            cache=None,
-            scope_extract=work_params,
-            attr="atom_selection",
-            allow_none=True))
-    return common_atom_selection_bool_cache[0]
-  #
   if (work_params.rotamer_score_and_choose_best.run):
     rotamer_score_and_choose_best(
       mon_lib_srv=mon_lib_srv,
       density_map=density_map,
       pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
       geometry_restraints_manager=grm,
-      atom_selection_bool=atom_selection_bool(
+      atom_selection_bool=get_atom_selection_bool(
         scope_extract=work_params.rotamer_score_and_choose_best,
-        attr="atom_selection"),
+        attr="atom_selection",
+        processed_pdb_file=processed_pdb_file,
+        work_params=work_params),
       real_space_target_weight=work_params.real_space_target_weight,
       real_space_gradients_delta=real_space_gradients_delta,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
@@ -672,9 +713,11 @@ def run(args):
           .rotamer_score_and_choose_best.lbfgs_max_iterations))
   #
   if (work_params.coordinate_refinement.run != 0):
-    atom_selection_bool = atom_selection_bool(
+    atom_selection_bool = get_atom_selection_bool(
       scope_extract=work_params.coordinate_refinement,
-      attr="atom_selection")
+      attr="atom_selection",
+      processed_pdb_file=processed_pdb_file,
+      work_params=work_params)
     home_restraints_list = process_home_restraints_params(
       work_params=work_params.coordinate_refinement.home_restraints,
       processed_pdb_file=processed_pdb_file)
