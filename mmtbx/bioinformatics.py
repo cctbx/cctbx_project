@@ -304,12 +304,15 @@ class clustal_alignment(alignment):
         for line in wrap( self.midline(), aln_width ) ]
       )
 
+    def fmt_num():
+      if num: return " %s" % num
+      return ""
     return (
       "%s multiple sequence alignment\n\n" % self.program
       + "\n\n".join(
         [
           "\n".join(
-            [ "%s %s%s" % ( cap, ali, " %s" % num if num else "" )
+            [ "%s %s%s" % ( cap, ali, fmt_num() )
               for ( cap, ali, num ) in zipped_infos ]
             )
           for zipped_infos in zip( *aln_infos )
