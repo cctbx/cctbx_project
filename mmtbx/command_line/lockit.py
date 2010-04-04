@@ -202,6 +202,39 @@ class residue_refine_restrained(object):
       g = rs_g + gr_e.gradients.select(indices=O.residue_i_seqs)
     return f, g.as_double()
 
+def compute_functional_lite(pdb_hierarchy,
+                            residue,
+                            density_map,
+                            geometry_restraints_manager,
+                            real_space_target_weight):
+  unit_cell = geometry_restraints_manager.crystal_symmetry.unit_cell()
+  sites_cart_all = pdb_hierarchy.atoms().extract_xyz()
+  residue_i_seqs = residue.atoms().extract_i_seq()
+  x = sites_cart_all.select(indices=residue_i_seqs).as_double()
+  sites_cart_residue = flex.vec3_double(x)
+  rs_f = maptbx.real_space_target_simple(
+    unit_cell=unit_cell,
+    density_map=density_map,
+    sites_cart=sites_cart_residue)
+  #O.real_space_target = rs_f
+  #rs_g = maptbx.real_space_gradients_simple(
+  #  unit_cell=O.unit_cell,
+  #  density_map=O.density_map,
+  #  sites_cart=O.sites_cart_residue,
+  #  delta=O.real_space_gradients_delta)
+  #O.rs_f = rs_f
+  #rs_f *= -real_space_target_weight
+  #rs_g *= -O.real_space_target_weight
+  #if (O.geometry_restraints_manager is None):
+  #  f = rs_f
+  #  g = rs_g
+  #sites_cart_all.set_selected(residue_i_seqs, sites_cart_residue)
+  #gr_e = geometry_restraints_manager.energies_sites(
+  #    sites_cart=sites_cart_all, compute_gradients=True)
+  #f = rs_f + gr_e.target
+  #g = rs_g + gr_e.gradients.select(indices=O.residue_i_seqs)
+  return rs_f
+
 def get_rotamer_iterator(mon_lib_srv, residue, atom_selection_bool):
   atoms = residue.atoms()
   if (atom_selection_bool is not None):
@@ -279,6 +312,7 @@ def rotamer_score_and_choose_best(
             n_amino_acids_scored += 1
             for rotamer,rotamer_sites_cart in rotamer_iterator:
               residue.atoms().set_xyz(new_xyz=rotamer_sites_cart)
+              rotamer_id=rotamer.id
               trial = group_args(rotamer_id=rotamer.id, refined=refine())
               if best is None:
                 best = trial
@@ -293,6 +327,63 @@ def rotamer_score_and_choose_best(
   print "number of other residues:", n_other_residues
   print
   sys.stdout.flush()
+
+def get_best_rotamer(processed_pdb_file,
+                     fft_map,
+                     d_max,
+                     d_min):
+  master_phil = get_master_phil()
+  work_params = master_phil.extract()
+  get_class = iotbx.pdb.common_residue_names_get_class
+  mon_lib_srv = mmtbx.monomer_library.server.server()
+  grm = processed_pdb_file.geometry_restraints_manager(
+    params_edits=work_params.geometry_restraints.edits,
+    params_remove=work_params.geometry_restraints.remove)
+  density_map = fft_map.real_map()
+  atom_selection_bool=get_atom_selection_bool(
+        scope_extract=work_params.rotamer_score_and_choose_best,
+        attr="atom_selection",
+        processed_pdb_file=processed_pdb_file,
+        work_params=work_params)
+  n_other_residues = 0
+  n_amino_acids_ignored = 0
+  n_amino_acids_scored = 0
+  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for residue in chain.only_conformer().residues():
+        if (get_class(residue.resname) != "common_amino_acid"):
+          n_other_residues += 1
+        else:
+          rotamer_iterator = get_rotamer_iterator(
+            mon_lib_srv=mon_lib_srv,
+            residue=residue,
+            atom_selection_bool=atom_selection_bool)
+          if (rotamer_iterator is None):
+            n_amino_acids_ignored += 1
+          else:
+            best = None
+            best_sites_cart = None
+            n_amino_acids_scored += 1
+            for rotamer,rotamer_sites_cart in rotamer_iterator:
+              residue.atoms().set_xyz(new_xyz=rotamer_sites_cart)
+              trial = group_args(rotamer_id=rotamer.id, 
+                                 rs_f=compute_functional_lite(
+                pdb_hierarchy=pdb_hierarchy,
+                residue=residue,
+                density_map=density_map,
+                geometry_restraints_manager=grm,
+                real_space_target_weight=work_params.real_space_target_weight))
+              #print residue.id_str(),trial.rotamer_id, trial.rs_f
+              if best is None:
+                best = trial
+                best_sites_cart = rotamer_sites_cart
+              if (trial.rs_f > best.rs_f):
+                best = trial
+                best_sites_cart = rotamer_sites_cart
+            print residue.id_str(), "best rotamer:", best.rotamer_id
+            residue.atoms().set_xyz(new_xyz=best_sites_cart)
+            #print
 
 def get_master_phil():
   return iotbx.phil.parse(
