@@ -775,6 +775,7 @@ class manager (object) :
                 assume_hydrogens_all_missing=None,
                 tmp_dir=None) :
     adopt_init_args(self, locals())
+    self._was_initialized = False
     if self.params is None :
       self.params = sec_str_master_phil.fetch().extract()
     if self.tmp_dir is None :
@@ -790,6 +791,12 @@ class manager (object) :
     if self.params.h_bond_restraints.substitute_n_for_h is None :
       self.params.h_bond_restraints.substitute_n_for_h = \
         self.assume_hydrogens_all_missing
+
+  def initialize (self, log=sys.stderr) :
+    if not self._was_initialized :
+      self.find_automatically(log=log)
+      self.show_summary(out=log)
+      self._was_initialized = True
 
   def find_automatically (self, log=sys.stderr) :
     params = self.params
@@ -900,7 +907,7 @@ class manager (object) :
     return whole_selection
 
 def process_structure (params, processed_pdb_file, tmp_dir, log,
-    assume_hydrogens_all_missing=None, return_bonds=False) :
+    assume_hydrogens_all_missing=None) :
   acp = processed_pdb_file.all_chain_proxies
   try :
     sec_str_from_pdb_file = acp.extract_secondary_structure()
@@ -915,13 +922,7 @@ def process_structure (params, processed_pdb_file, tmp_dir, log,
     params=params,
     assume_hydrogens_all_missing=assume_hydrogens_all_missing,
     tmp_dir=tmp_dir)
-  structure_manager.find_automatically(log=log)
-  structure_manager.show_summary(out=log)
-  if return_bonds :
-    bonds_table = structure_manager.get_bonds_table(log=log)
-    return bonds_table
-  else :
-    return structure_manager
+  return structure_manager
 
 def run_ksdssp (file_name, log=sys.stderr) :
   if not os.path.isfile(file_name) :
