@@ -288,3 +288,20 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
 class launcher (runtime_utils.simple_target) :
   def __call__ (self) :
     return run(args=list(self.args))
+
+def validate_params (params, callback=None) :
+  if None in [params.f_obs_1_file_name, params.f_obs_2_file_name] :
+    raise Sorry("You must supply two files containing F(obs).")
+  if None in [params.f_obs_1_label, params.f_obs_2_label] :
+    raise Sorry("You must define the labels for both reflection files.")
+  if params.phase_source is None :
+    raise Sorry("You must specify a PDB file for phasing.")
+  if params.output_file is None or params.output_file == "" :
+    raise Sorry("You must specify an output file.")
+  output_dir, output_file = os.path.split(params.output_file)
+  if os.path.isdir(params.output_file) :
+    raise Sorry("Output file is a directory!")
+  elif not output_file.endswith(".mtz") :
+    raise Sorry("Output file must be an MTZ file.")
+  elif not os.path.isdir(output_dir) :
+    raise Sorry("Output directory does not exist.")
