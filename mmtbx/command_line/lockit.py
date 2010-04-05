@@ -367,7 +367,7 @@ def get_best_rotamer(processed_pdb_file,
             n_amino_acids_scored += 1
             for rotamer,rotamer_sites_cart in rotamer_iterator:
               residue.atoms().set_xyz(new_xyz=rotamer_sites_cart)
-              trial = group_args(rotamer_id=rotamer.id, 
+              trial = group_args(rotamer_id=rotamer.id,
                                  rs_f=compute_functional_lite(
                 pdb_hierarchy=pdb_hierarchy,
                 residue=residue,
