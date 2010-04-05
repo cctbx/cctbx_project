@@ -175,26 +175,6 @@ class map_viewer_mixin (wxGLWindow) :
     glColor3f(0, 1.0, 0)
     glRasterPos3f(*self.rotation_center)
     font.render_string("+")
-    return
-    glMatrixMode(GL_MODELVIEW)
-    glPushMatrix()
-    try :
-      rc = self.rotation_center
-      (x,y,z) = (rc[0], rc[1], rc[2])
-      glTranslatef(x,y,z)
-      #glScalef(a, b, c)
-      glBegin(GL_LINES)
-      f = 0.5
-      glColor3f(0, 1.0, 0)
-      glVertex3f(-f, 0, 0)
-      glVertex3f(f, 0 ,0)
-      glVertex3f(0, -f, 0)
-      glVertex3f(0, f, 0)
-      glVertex3f(0, 0, -f)
-      glVertex3f(0, 0, f)
-      glEnd()
-    finally :
-      glPopMatrix()
 
   def process_key_stroke (self, key) :
     pass
@@ -313,6 +293,7 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
     selection_editor_mixin.__init__(self, *args, **kwds)
     map_viewer_mixin.__init__(self, *args, **kwds)
     self.buffer_factor = 1
+    self._debug_mode = ("GLTBX_DEBUG_MODE" in os.environ)
 
   def OnMouseWheel (self, event) :
     scale = event.GetWheelRotation()
@@ -339,6 +320,8 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
     glEnableClientState(GL_NORMAL_ARRAY)
 
   def OnRedrawGL (self, event=None) :
+    if self._debug_mode :
+      self.show_stack_sizes()
     self.check_and_update_map_scenes()
     selection_editor_mixin.OnRedrawGL(self, event)
 

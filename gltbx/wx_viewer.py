@@ -539,6 +539,16 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.SwapBuffers()
     if (event is not None): event.Skip()
 
+  def show_stack_sizes (self) :
+    mv_depth = [0]
+    pr_depth = [0]
+    tx_depth = [0]
+    glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, mv_depth)
+    glGetIntegerv(GL_PROJECTION_STACK_DEPTH, pr_depth)
+    glGetIntegerv(GL_TEXTURE_STACK_DEPTH, tx_depth)
+    print "Modelview: %d  Projection: %d  Texture: %d" % (mv_depth[0],
+      pr_depth[0], tx_depth[0])
+
   def OnUpdate (self, event=None) :
     pass
 
