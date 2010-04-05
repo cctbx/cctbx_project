@@ -331,5 +331,16 @@ class launcher (runtime_utils.simple_target) :
   def __call__ (self) :
     return run(args=list(self.args), log=sys.stdout)
 
+def validate_params (params, callback=None) :
+  if len(params.pdb_file) == 0 :
+    raise Sorry("You must provide at least one PDB file to use for "+
+      "F(model) calculations.")
+  elif params.high_resolution is None :
+    raise Sorry("Please specify a high-resolution cutoff.")
+  elif (params.reference_file is not None and
+        params.data_column_label is None) :
+    raise Sorry("Please select a column label to use in the reference "+
+      "data file.")
+
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

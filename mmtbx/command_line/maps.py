@@ -188,5 +188,15 @@ class launcher (runtime_utils.simple_target) :
     os.chdir(self.output_dir)
     return run(args=list(self.args), log=sys.stdout)
 
+def validate_params (params, callback=None) :
+  if params.maps.input.pdb_file_name is None :
+    raise Sorry("No PDB file defined.")
+  elif params.maps.input.reflection_data.file_name is None :
+    raise Sorry("No reflection file defined.")
+  elif params.maps.input.reflection_data.labels is None :
+    raise Sorry("No labels chosen for reflection data.")
+  elif len(params.maps.map) == 0 and len(params.maps.map_coefficients) == 0 :
+    raise Sorry("You have not requested any maps for output.")
+
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

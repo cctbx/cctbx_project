@@ -991,5 +991,9 @@ class launcher (runtime_utils.simple_target) :
   def __call__ (self) :
     return run(args=list(self.args), return_result=True)
 
+def validate_params (params, callback=None) :
+  if params.scaling.input.xray_data.file_name is None :
+    raise Sorry("You must supply a reflection file first!")
+
 if (__name__ == "__main__") :
   run(sys.argv[1:])
