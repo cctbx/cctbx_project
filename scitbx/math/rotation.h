@@ -19,13 +19,13 @@ namespace scitbx { namespace math
   {
     public:
       dmatrix() {}
-      dmatrix( int max_L,
+      dmatrix( int max_l,
                FloatType beta
              ):
-              max_L_(max_L), beta_(beta),
-              lgf_(max_L), logBIGNUM_( std::log( DBL_MAX/1.0e15 ) )
+              max_l_(max_l), beta_(beta),
+              lgf_(max_l), logbignum_( std::log( DBL_MAX/1.0e15 ) )
       {
-        for(int j=0;j<=max_L_;j++)
+        for(int j=0;j<=max_l_;j++)
           dmatrix_.push_back( dj_table( j ));
       }
 
@@ -55,15 +55,19 @@ namespace scitbx { namespace math
         FloatType powcosbeta(0.0), powsinbeta(0.0);
         for(int m=-j; m<=j; m++ ) {
           djm_np = 0.0;
-          if (std::abs(cosbeta) > 0.001 || std::abs( std::log(cosbeta)*(j+m))<logBIGNUM_)
+          if (std::abs(cos_half_beta) > 0.001 || std::abs( std::log(cos_half_beta)*(j+m))<logbignum_)
              powcosbeta = std::pow( cos_half_beta, j+m );
-          if (std::abs(sinbeta) > 0.001 || std::abs( std::log(sinbeta)*(j+m))<logBIGNUM_)
+          else powcosbeta=0.0;
+          if (std::abs(sin_half_beta) > 0.001 || std::abs( std::log(sin_half_beta)*(j+m))<logbignum_)
              powsinbeta = std::pow( sin_half_beta, j-m );
+          else powsinbeta=0.0;
 
           csb = powsinbeta*powcosbeta;
           tmp = std::exp( 0.5*(lgf_.log_fact(2*j)-lgf_.log_fact(j+m)-lgf_.log_fact(j-m) ) );
 
           djm_n = tmp * csb;  //djnm = (-1)^(m-n) djmn = dj-m-n
+          if( std::abs(csb)<=LDBL_MIN*1.0e15 || std::abs( djm_n) < DBL_MIN ) djm_n = 0;
+
           dj_t[j+m][j+j] = djm_n;
           dj_t[j-m][j-j] = djm_n*pow_1(j-m);
           dj_t[j+j][j+m] = djm_n*pow_1(j-m);
@@ -100,9 +104,9 @@ namespace scitbx { namespace math
       }
 
     private:
-      int max_L_;
+      int max_l_;
       FloatType beta_;
-      FloatType logBIGNUM_;
+      FloatType logbignum_;
       scitbx::math::zernike::log_factorial_generator< FloatType > lgf_;
       af::shared< af::shared < af::shared< FloatType > > > dmatrix_;
 
@@ -113,25 +117,25 @@ namespace scitbx { namespace math
   {
    public:
     correlation(
-      scitbx::math::zernike::nlm_array<FloatType> const& F_nlm, //Source Coefs
-      scitbx::math::zernike::nlm_array<FloatType> const& M_nlm, //Target Coefs
+      scitbx::math::zernike::nlm_array<FloatType> const& f_nlm, //Source Coefs
+      scitbx::math::zernike::nlm_array<FloatType> const& m_nlm, //Target Coefs
       int const& nmax,
       FloatType const& beta
-      ): Fnlm_(F_nlm), Mnlm_(M_nlm), nmax_(nmax), beta_(beta), dM_(nmax, beta),
+      ): f_nlm_(f_nlm), m_nlm_(m_nlm), nmax_(nmax), beta_(beta), dm_(nmax, beta),
          complexI_(0.0,1.0), size_(2*nmax_+1), mm_grid_(size_, size_), mhm_grid_(size_, size_, size_),
          mm_(mm_grid_, 0.0), mhm_(mhm_grid_, 0.0)
     {
-      calc_FMlmm();
+      calc_fm_lmm();
     }
 
-    void calc_FMlmm() {
+    void calc_fm_lmm() {
       for(int l=0;l<=nmax_;l++) {
          af::shared< af::shared<std::complex< FloatType> > > mm;
          for(int m=-l;m<=l;m++) {
            af::shared< std::complex<FloatType> > m_array( 2*l+1, 0.0);
            mm.push_back( m_array );
            }
-         FM_lmm_.push_back( mm );
+         fm_lmm_.push_back( mm );
       }
 
       std::complex<FloatType> s, t;
@@ -140,46 +144,46 @@ namespace scitbx { namespace math
           for(int m2=-l;m2<=l;m2++) {
             std::complex<FloatType> tmp_lmm(0,0);
             for(int n=l;n<=nmax_;n+=2) {
-              s = Fnlm_.get_coef(n,l,m1);
-              t = Mnlm_.get_coef(n,l,m2);
+              s = f_nlm_.get_coef(n,l,m1);
+              t = m_nlm_.get_coef(n,l,m2);
               tmp_lmm += std::conj(s) * t;
             }
-            FM_lmm_[l][l+m1][l+m2] = tmp_lmm;
+            fm_lmm_[l][l+m1][l+m2] = tmp_lmm;
           }
         }
       }
       return;
     }
 
-    void slow_calc_FMlmm() {
+    void slow_calc_fm_lmm() {
       for(int l=0;l<=nmax_;l++) {
          af::shared< af::shared<std::complex< FloatType> > > mm;
          for(int m=-l;m<=l;m++) {
            af::shared< std::complex<FloatType> > m_array( 2*l+1, 0.0);
            mm.push_back( m_array );
            }
-         FM_lmm2_.push_back( mm );
+         fm_lmm2_.push_back( mm );
       }
       std::complex<FloatType> s, t;
       for(int n=0;n<=nmax_;n++)
       for(int l=(n-n/2*2);l<=n;l+=2) {
         for(int m1=-l;m1<=l;m1++) {
           for(int m2=-l;m2<=l;m2++) {
-              s = Fnlm_.get_coef(n,l,m1);
-              t = Mnlm_.get_coef(n,l,m2);
-              FM_lmm2_[l][l+m1][l+m2] += std::conj(s) * t;
+              s = f_nlm_.get_coef(n,l,m1);
+              t = m_nlm_.get_coef(n,l,m2);
+              fm_lmm2_[l][l+m1][l+m2] += std::conj(s) * t;
           }
         }
       }
       return;
     }
 
-    bool compare_FM() {
-      slow_calc_FMlmm();
+    bool compare_fm() {
+      slow_calc_fm_lmm();
       for(int l=0;l<=nmax_;l++)
         for(int m1=-l;m1<=l;m1++)
           for(int m2=-l;m2<=l;m2++) {
-            if(FM_lmm_[l][m1+l][m2+l] != FM_lmm2_[l][m1+l][m2+l] )
+            if(fm_lmm_[l][m1+l][m2+l] != fm_lmm2_[l][m1+l][m2+l] )
               return false;
             }
 
@@ -205,7 +209,7 @@ namespace scitbx { namespace math
        for(int m1=-l; m1<=l; m1++ ) {
          for(int h=-l; h<=l; h++ ) {
            for(int m2=-l; m2<=l; m2++)
-             mhm_( m1+nmax_, h+nmax_, m2+nmax_ ) += FM_lmm_[l][m1+l][m2+l]*dM_.djmn(l,m1,h)*dM_.djmn(l,h,m2);
+             mhm_( m1+nmax_, h+nmax_, m2+nmax_ ) += fm_lmm_[l][m1+l][m2+l]*dm_.djmn(l,m1,h)*dm_.djmn(l,h,m2);
          }
        }
       }
@@ -228,7 +232,7 @@ namespace scitbx { namespace math
       for(int l=0;l<=nmax_;l++){
        for(int m1=-l; m1<=l; m1++ ) {
         for(int m2=-l; m2<=l; m2++)
-          mm_( m1+nmax_, m2+nmax_) += FM_lmm_[l][m1+l][m2+l]*dM_.djmn(l,m1,m2);
+          mm_( m1+nmax_, m2+nmax_) += fm_lmm_[l][m1+l][m2+l]*dm_.djmn(l,m1,m2);
        }
       }
 
@@ -240,7 +244,7 @@ namespace scitbx { namespace math
     rotate_moving_obj( FloatType alpha, FloatType beta, FloatType gama) {
       scitbx::math::zernike::nlm_array<FloatType> result( nmax_ );
       dmatrix<FloatType> small_d( nmax_, beta );
-      std::complex<FloatType>  Dlmn, exp_alpha, exp_gama, tmp_coef;
+      std::complex<FloatType>  dlmn, exp_alpha, exp_gama, tmp_coef;
       af::shared<std::complex<FloatType> > a_array;
       af::shared<std::complex<FloatType> > g_array;
 
@@ -256,8 +260,8 @@ namespace scitbx { namespace math
             exp_alpha = a_array[m1+nmax_];
             for(int m2=-l;m2<=l;m2++) {
               exp_gama  = g_array[m2+nmax_];
-              Dlmn = exp_alpha * small_d.djmn(l,m1,m2) * exp_gama;
-              tmp_coef += Mnlm_.get_coef(n,l,m2) * Dlmn;
+              dlmn = exp_alpha * small_d.djmn(l,m1,m2) * exp_gama;
+              tmp_coef += m_nlm_.get_coef(n,l,m2) * dlmn;
             }
             result.set_coef(n,l,m1, tmp_coef);
           }
@@ -273,7 +277,7 @@ namespace scitbx { namespace math
       }
 
       int l, m1, m2;
-      std::complex<FloatType>  Dlmn, exp_alpha, exp_gama;
+      std::complex<FloatType>  dlmn, exp_alpha, exp_gama;
       cc_ = 0.0;
       af::shared<std::complex<FloatType> > a_array;
       af::shared<std::complex<FloatType> > g_array;
@@ -287,8 +291,8 @@ namespace scitbx { namespace math
           for(m2=-l; m2<=l; m2++) {
            exp_alpha = a_array[m1+nmax_];
            exp_gama  = g_array[m2+nmax_];
-           Dlmn = exp_alpha * dM_.djmn(l,m1,m2) * exp_gama;
-           cc_ += (FM_lmm_[l][m1+l][m2+l]*Dlmn );
+           dlmn = exp_alpha * dm_.djmn(l,m1,m2) * exp_gama;
+           cc_ += (fm_lmm_[l][m1+l][m2+l]*dlmn );
           }
         }
       }
@@ -297,7 +301,7 @@ namespace scitbx { namespace math
 
     void set_beta( FloatType beta) {
       beta_ = beta;
-      dM_ = dmatrix<FloatType>( nmax_, beta_ );
+      dm_ = dmatrix<FloatType>( nmax_, beta_ );
       return;
     }
 
@@ -305,13 +309,13 @@ namespace scitbx { namespace math
 
    private:
     int nmax_, size_;
-    scitbx::math::zernike::nlm_array<FloatType> Fnlm_;
-    scitbx::math::zernike::nlm_array<FloatType> Mnlm_;
+    scitbx::math::zernike::nlm_array<FloatType> f_nlm_;
+    scitbx::math::zernike::nlm_array<FloatType> m_nlm_;
     std::complex< FloatType> cc_;
     FloatType beta_;
-    dmatrix<FloatType> dM_;
-    af::shared< af::shared< af::shared< std::complex< FloatType > > > > FM_lmm_;
-    af::shared< af::shared< af::shared< std::complex< FloatType > > > > FM_lmm2_;
+    dmatrix<FloatType> dm_;
+    af::shared< af::shared< af::shared< std::complex< FloatType > > > > fm_lmm_;
+    af::shared< af::shared< af::shared< std::complex< FloatType > > > > fm_lmm2_;
     std::complex<FloatType> complexI_;
     af::c_grid<2> mm_grid_;
     af::c_grid<3> mhm_grid_;
