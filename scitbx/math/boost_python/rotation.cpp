@@ -21,7 +21,7 @@ namespace boost_python{
                    double const&
                   >
              ((
-                arg("L_max"),
+                arg("l_max"),
                 arg("beta")
              ))
             )
@@ -52,9 +52,9 @@ namespace boost_python{
                    double const&
                   >
              ((
-                arg("S_nlm"),
-                arg("T_nlm"),
-                arg("L_max"),
+                arg("f_nlm"),
+                arg("m_nlm"),
+                arg("l_max"),
                 arg("beta")
              ))
             )
@@ -62,7 +62,7 @@ namespace boost_python{
         .def("mm_coef", &w_t::mm_coef)
         .def("mhm_coef", &w_t::mhm_coef)
         .def("rotate_moving_obj", &w_t::rotate_moving_obj)
-        .def("compare_FM", &w_t::compare_FM)
+        .def("compare_FM", &w_t::compare_fm)
         .def("set_beta", &w_t::set_beta)
       ;
     }
