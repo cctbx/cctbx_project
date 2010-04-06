@@ -5529,6 +5529,37 @@ ATOM      4  O3  SO4 C   4       4.481   9.037   9.159  1.00 10.00           O
 ATOM      5  O4  SO4 C   4       2.131   9.251   8.823  1.00 10.00           O
 TER
 """)
+  # distance-based connectivity
+  pdb_hierarchy = pdb.input(source_info=None, lines="""\
+ATOM      1  C01 LIG A   1      -2.986   0.015   1.643  1.00 20.00      A    C
+ATOM      2  N02 LIG A   1      -1.545   0.015   1.643  1.00 20.00      A    N
+ATOM      3  C03 LIG A   1      -0.733   0.015   2.801  1.00 20.00      A    C
+ATOM      4  N04 LIG A   1       0.593   0.015   2.395  1.00 20.00      A    N
+ATOM      5  C05 LIG A   1       0.618   0.015   1.034  1.00 20.00      A    C
+ATOM      6  N06 LIG A   1       1.758   0.015   0.102  1.00 20.00      A    N
+ATOM      7  C07 LIG A   1       3.092  -0.060   0.694  1.00 20.00      A    C
+ATOM      8  C08 LIG A   1       1.525   0.015  -1.360  1.00 20.00      A    C
+ATOM      9  O09 LIG A   1       2.489  -0.024  -2.139  1.00 20.00      A    O
+ATOM     10  N10 LIG A   1       0.158   0.015  -1.888  1.00 20.00      A    N
+ATOM     11  C11 LIG A   1      -0.025   0.024  -3.330  1.00 20.00      A    C
+ATOM     12  C12 LIG A   1      -0.986   0.015  -0.959  1.00 20.00      A    C
+ATOM     13  O13 LIG A   1      -2.155   0.008  -1.408  1.00 20.00      A    O
+ATOM     14  C14 LIG A   1      -0.733   0.015   0.565  1.00 20.00      A    C
+ATOM     15 H011 LIG A   1      -3.346   0.016   2.662  1.00 20.00      A    H
+ATOM     16 H012 LIG A   1      -3.347   0.896   1.133  1.00 20.00      A    H
+ATOM     17 H013 LIG A   1      -3.347  -0.868   1.136  1.00 20.00      A    H
+ATOM     18 H031 LIG A   1      -1.083   0.020   3.822  1.00 20.00      A    H
+ATOM     19 H071 LIG A   1       3.184  -0.975   1.260  1.00 20.00      A    H
+ATOM     20 H072 LIG A   1       3.245   0.785   1.348  1.00 20.00      A    H
+ATOM     21 H073 LIG A   1       3.835  -0.047  -0.090  1.00 20.00      A    H
+ATOM     22 H111 LIG A   1       0.508   0.861  -3.756  1.00 20.00      A    H
+ATOM     23 H112 LIG A   1      -1.076   0.113  -3.560  1.00 20.00      A    H
+ATOM     24 H113 LIG A   1       0.358  -0.896  -3.748  1.00 20.00      A    H
+""").construct_hierarchy()
+  bonds = pdb_hierarchy.distance_based_connectivity()
+  assert bonds.size() == pdb_hierarchy.atoms().size()
+  #print list(bonds[0])
+  assert list(bonds[0]) == [1, 14, 15, 16]
 
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")

@@ -606,6 +606,21 @@ class _root(boost.python.injector, ext.root):
     del sentinel
     return result
 
+  def distance_based_connectivity (self,
+      fallback_expected_bond_length=1.4,
+      fallback_search_max_distance=2.5) :
+    from cctbx.crystal import distance_based_connectivity
+    atoms = self.atoms()
+    atoms.set_chemical_element_simple_if_necessary()
+    sites_cart = atoms.extract_xyz()
+    elements = atoms.extract_element()
+    atomic_bonds = distance_based_connectivity.build_bond_list(
+      sites_cart=sites_cart,
+      elements=elements,
+      fallback_expected_bond_length=fallback_expected_bond_length,
+      fallback_search_max_distance=fallback_search_max_distance)
+    return atomic_bonds
+
 class _model(boost.python.injector, ext.model):
 
   def residue_groups(self):
