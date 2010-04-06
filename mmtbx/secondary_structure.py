@@ -1,4 +1,3 @@
-
 from __future__ import division
 import iotbx.pdb.secondary_structure
 from scitbx.array_family import shared, flex
@@ -7,6 +6,7 @@ import libtbx.object_oriented_patterns as oop
 from libtbx import smart_open, easy_run
 from libtbx.utils import Sorry, Usage
 from libtbx import adopt_init_args, group_args
+import libtbx.load_env
 from math import sqrt
 import cStringIO
 import sys, os
@@ -924,12 +924,20 @@ def process_structure (params, processed_pdb_file, tmp_dir, log,
     tmp_dir=tmp_dir)
   return structure_manager
 
+def get_ksdssp_exe_path():
+  if (not libtbx.env.has_module(name="ksdssp")):
+    raise RuntimeError("ksdssp module is not configured")
+  exe_path = libtbx.env.under_build("ksdssp/exe/ksdssp")
+  if (os.name == "nt"):
+    exe_path += ".exe"
+  if (not os.path.isfile(exe_path)):
+    raise RuntimeError("ksdssp executable is not available")
+  return exe_path
+
 def run_ksdssp (file_name, log=sys.stderr) :
   if not os.path.isfile(file_name) :
     raise RuntimeError("File %s not found.")
-  exe_path = libtbx.env.under_build("ksdssp/exe/ksdssp")
-  if not os.path.isfile(exe_path) :
-    raise RuntimeError("KSDSSP not available.")
+  exe_path = get_ksdssp_exe_path()
   print >> log, "  Running KSDSSP to generate HELIX and SHEET records"
   ksdssp_out = easy_run.fully_buffered(command="%s %s" % (exe_path, file_name))
 #  if len(ksdssp_out.stderr_lines) > 0 :
@@ -937,11 +945,7 @@ def run_ksdssp (file_name, log=sys.stderr) :
   return ksdssp_out.stdout_lines
 
 def run_ksdssp_direct(pdb_str) :
-  exe_path = libtbx.env.under_build("ksdssp/exe/ksdssp")
-  if (os.name == "nt"):
-    exe_path += ".exe"
-  if not os.path.isfile(exe_path) :
-    raise RuntimeError, "KSDSSP not available"
+  exe_path = get_ksdssp_exe_path()
   ksdssp_out = easy_run.fully_buffered(command=exe_path, stdin_lines=pdb_str)
   return ( ksdssp_out.stdout_lines, ksdssp_out.stderr_lines )
 
@@ -1050,7 +1054,7 @@ def exercise () :
     relative_path="phenix_regression/pdb/1ywf_h.pdb",
     test=os.path.isfile)
   if pdb_file is None :
-    print "Skipping"
+    print "Skipping exercise(): input file not available."
     return False
   log = cStringIO.StringIO()
   pdb_in = file_reader.any_file(pdb_file_h, force_type="pdb").file_object
@@ -1071,7 +1075,9 @@ def exercise () :
   assert ("%.3f" % frac_beta) == "0.075"
   del m
   # using KSDSSP
-  try :
+  if (not libtbx.env.has_module(name="ksdssp")):
+    print "Skipping KSDSSP tests: ksdssp module not available."
+  else:
     m = manager(pdb_hierarchy=pdb_hierarchy,
       xray_structure=xray_structure,
       sec_str_from_pdb_file=None)
@@ -1087,8 +1093,6 @@ def exercise () :
     del m
     del pdb_hierarchy
     del xray_structure
-  except RuntimeError :
-    print "skipping KSDSSP test"
   # without hydrogens
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb").file_object
   pdb_hierarchy = pdb_in.construct_hierarchy()
@@ -1102,15 +1106,13 @@ def exercise () :
   assert bonds_table.bonds.size() == 109
   del m
   # using KSDSSP
-  try :
+  if (libtbx.env.has_module(name="ksdssp")):
     m = manager(pdb_hierarchy=pdb_hierarchy,
       xray_structure=xray_structure,
       sec_str_from_pdb_file=None)
     m.find_automatically(log=log)
     bonds_table = m.get_bonds_table(log=log)
     assert bonds_table.bonds.size() == 93
-  except RuntimeError :
-    print "skipping KSDSSP test"
   print "OK"
 
 if __name__ == "__main__" :
