@@ -1,4 +1,4 @@
-from mmtbx import bioinformatics
+from iotbx import bioinformatics
 
 import unittest
 

@@ -221,6 +221,7 @@ gltbx/wx_ellipsoids_test.py -text
 gltbx/wx_motion_on_tab.py svneol=native#text/x-python
 gltbx/wx_viewer_example.py -text
 gltbx/wx_viewers_images.py -text
+iotbx/bioinformatics.py -text
 iotbx/ccp4_map/SConscript -text
 iotbx/ccp4_map/__init__.py svneol=native#text/x-python
 iotbx/ccp4_map/ext.cpp svneol=native#text/plain
@@ -315,6 +316,7 @@ iotbx/shelx/lexer.py -text
 iotbx/shelx/parsers.py -text
 iotbx/shelx/tst_lex_parse_build.py -text
 iotbx/shelx/util.py -text
+iotbx/tst_bioinformatics.py -text
 iotbx/tst_data_plots.py -text
 iotbx/tst_file_reader.py -text
 iotbx/utils.py svneol=native#text/x-python
@@ -395,7 +397,6 @@ libtbx/xmlrpc_server_example.py -text
 libtbx/xmlrpc_utils.py -text
 mmtbx/alignment.h svneol=native#text/plain
 mmtbx/alignment_ext.cpp svneol=native#text/plain
-mmtbx/bioinformatics.py -text
 mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling.py -text
 mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
@@ -482,7 +483,6 @@ mmtbx/scaling/absences.py -text
 mmtbx/secondary_structure.py -text
 mmtbx/tls/command_line.py -text
 mmtbx/tst_alignment.py -text
-mmtbx/tst_bioinformatics.py -text
 mmtbx/tst_fmodel_cmdlinetool.py -text
 mmtbx/tst_map_type_parser.py -text
 mmtbx/tst_pdbtools.py -text
