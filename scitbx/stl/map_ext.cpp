@@ -1,6 +1,7 @@
 #include <boost/python/module.hpp>
 #include <scitbx/stl/map_fwd.h>
 #include <scitbx/stl/map_wrapper.h>
+#include <scitbx/vec3.h>
 #include <map>
 #include <vector>
 
@@ -17,6 +18,10 @@ namespace {
     map_wrapper<std::map<std::string,
                          double> >::wrap(
       "stl_string_double");
+
+    map_wrapper<std::map<std::string,
+                        vec3<double> > >::wrap(
+      "stl_string_vec3_double");
 
     map_wrapper<std::map<std::string,
                          std::map<std::string,
