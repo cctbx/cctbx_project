@@ -939,7 +939,7 @@ def run_ksdssp (file_name, log=sys.stderr) :
 def run_ksdssp_direct(pdb_str) :
   exe_path = libtbx.env.under_build("ksdssp/exe/ksdssp")
   if (os.name == "nt"):
-    exe += ".exe"
+    exe_path += ".exe"
   if not os.path.isfile(exe_path) :
     raise RuntimeError, "KSDSSP not available"
   ksdssp_out = easy_run.fully_buffered(command=exe_path, stdin_lines=pdb_str)
