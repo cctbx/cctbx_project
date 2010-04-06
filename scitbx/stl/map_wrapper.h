@@ -1,10 +1,6 @@
 #ifndef SCITBX_BOOST_PYTHON_STL_MAP_WRAPPER_H
 #define SCITBX_BOOST_PYTHON_STL_MAP_WRAPPER_H
 
-#ifndef SCITBX_MAP_WRAPPER_STR_VEC3_DOUBLE
-#define SCITBX_MAP_WRAPPER_STR_VEC3_DOUBLE
-#endif
-
 #include <boost/python/class.hpp>
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/list.hpp>

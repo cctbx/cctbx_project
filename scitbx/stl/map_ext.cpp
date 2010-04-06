@@ -20,10 +20,6 @@ namespace {
       "stl_string_double");
 
     map_wrapper<std::map<std::string,
-                        vec3<double> > >::wrap(
-      "stl_string_vec3_double");
-
-    map_wrapper<std::map<std::string,
                          std::map<std::string,
                                   double> >, rir>::wrap(
       "stl_string_stl_map_stl_string_double");
