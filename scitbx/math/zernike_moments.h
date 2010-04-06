@@ -53,6 +53,7 @@ namespace zernike {
         rmax_ = std::sqrt( rmax_ );
 
         if(fixed_dx_) {
+          dx_=dx;
           NP_ = int(rmax_/dx)+1;
           if(NP_ > NP_MAX_) NP_=NP_MAX_;
           dx_ = 1.0/static_cast<FloatType>(NP_);
