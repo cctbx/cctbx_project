@@ -61,14 +61,7 @@ def run (args) :
     if fast_connectivity :
       pdb_in = file_reader.any_file(file_name, force_type="pdb")
       pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
-      atoms = pdb_hierarchy.atoms()
-      sites_cart = atoms.extract_xyz()
-      elements = atoms.extract_element()
-      atomic_bonds = distance_based_connectivity.build_bond_list(
-        sites_cart=sites_cart,
-        elements=elements,
-        fallback_expected_bond_length=1.4,
-        fallback_search_max_distance=2.5)
+      atomic_bonds = pdb_hierarchy.distance_based_connectivity()
       acp_selection = None
     else :
       processed_pdb_file = pdb_interpretation.run(args=[file_name]+cif_files,
