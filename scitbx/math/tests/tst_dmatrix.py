@@ -23,10 +23,10 @@ def tst_dmatrix():
     assert abs( dmatrix(2,ii).djmn(2,2,1) - expt ) < eps
   # check beta= multiple of pi/2
 
-  assert abs( dmatrix( 2, smath.pi ).djmn(2,2,0) )< eps
+  assert abs( dmatrix( 20, smath.pi ).djmn(2,2,0) )< eps
   assert abs( dmatrix( 2, smath.pi*2 ).djmn(2,2,0) )< eps
-  assert abs( dmatrix( 2, smath.pi*0.5 ).djmn(2,2,0)-smath.sqrt(6.0)/4.0 )< eps
- 
+  assert abs( dmatrix( 20, smath.pi*0.5 ).djmn(2,2,0)-smath.sqrt(6.0)/4.0 )< eps
+
 
 if __name__ == "__main__":
   tst_dmatrix()
