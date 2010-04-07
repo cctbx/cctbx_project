@@ -182,6 +182,7 @@ crys3d/wx_combined_viewer.py -text
 crys3d/wx_extra.py -text
 crys3d/wx_model_viewer.py -text
 crys3d/wx_selection_editor.py -text
+crys3d/wx_sequence_display.py -text
 dox/cctbx_notations.sty -text
 dox/cctbx_preamble.sty -text
 dox/cctbx_references.bib -text
