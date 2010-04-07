@@ -2,7 +2,8 @@ from __future__ import division
 
 # TODO: move selection logic to separate module
 
-from crys3d.wx_model_viewer import model_data, model_scene, model_viewer_mixin
+from crys3d.model import model_data
+from crys3d.wx_model_viewer import model_scene, model_viewer_mixin
 from crys3d.reverse_selection import mouse_selection_manager
 import gltbx.gl_managed
 from gltbx.gl import *
