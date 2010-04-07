@@ -55,12 +55,10 @@ namespace scitbx { namespace math
         FloatType powcosbeta(0.0), powsinbeta(0.0);
         for(int m=-j; m<=j; m++ ) {
           djm_np = 0.0;
-          if (std::abs(cos_half_beta) > 0.001 || std::abs( std::log(cos_half_beta)*(j+m))<logbignum_)
-             powcosbeta = std::pow( cos_half_beta, j+m );
-          else powcosbeta=0.0;
-          if (std::abs(sin_half_beta) > 0.001 || std::abs( std::log(sin_half_beta)*(j+m))<logbignum_)
-             powsinbeta = std::pow( sin_half_beta, j-m );
-          else powsinbeta=0.0;
+//          if (std::abs(cos_half_beta) > 0.01 || std::abs( std::log(cos_half_beta)*(j+m))<logbignum_)
+//          else powcosbeta=0.0;
+          powcosbeta = std::pow( cos_half_beta, j+m );
+          powsinbeta = std::pow( sin_half_beta, j-m );
 
           csb = powsinbeta*powcosbeta;
           tmp = std::exp( 0.5*(lgf_.log_fact(2*j)-lgf_.log_fact(j+m)-lgf_.log_fact(j-m) ) );
