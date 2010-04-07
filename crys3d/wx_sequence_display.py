@@ -8,14 +8,19 @@ import math, sys, os
 class SequencePanel (wx.PyPanel) :
   tooltip = "Double-click a residue to select it; hold down Shift to select \
 multiple residues."
+  __bg_color = (255,255,255)
   def __init__ (self, *args, **kwds) :
     wx.PyPanel.__init__(self, *args, **kwds)
+    if self.__bg_color is not None :
+      self.SetBackgroundColour(self.__bg_color)
     self.sequence = ""
     self.line_width = 50
     self.line_sep = 28
     self.start_offset = 0
+    self.char_boxes = shared.stl_set_unsigned()
     self.flag_show_line_numbers = True
     self.flag_enable_selections = True
+    self.flag_overwrite_selections = True
     self.flag_show_selections = True
     self.flag_show_tooltip = False
     self.highlights = []
@@ -89,16 +94,13 @@ multiple residues."
     ranges = self.get_contiguous_ranges(i_start, i_end)
     char_w, char_h = self.get_char_size(gc)
     for (seg_start, seg_end) in ranges :
-      (x, y) = self.get_char_position(seg_start)
-      x1 = x - 1
-      y1 = y - 1
-      x2 = x + (char_w * (seg_end - seg_start + 1))
-      y2 = int(y + char_h + 1)
+      (x1, y1, nx, ny) = self.get_char_position(seg_start)
+      (nx, ny, x2, y2) = self.get_char_position(seg_end)
       line = gc.CreatePath()
-      line.MoveToPoint(x1, y1)
-      line.AddLineToPoint(x2, y1)
-      line.AddLineToPoint(x2, y2)
-      line.AddLineToPoint(x1, y2)
+      line.MoveToPoint(x1 - 1, y1 - 1)
+      line.AddLineToPoint(x2 - 1, y1 - 1)
+      line.AddLineToPoint(x2 - 1, y2 - 1)
+      line.AddLineToPoint(x1 - 1, y2 - 1)
       line.CloseSubpath()
       gc.PushState()
       gc.FillPath(line)
@@ -122,6 +124,7 @@ multiple residues."
 
   def set_sequence (self, seq) :
     self.sequence = "".join(seq.splitlines())
+    self.build_boxes()
     self.clear_highlights()
     self.clear_selection()
 
@@ -134,19 +137,24 @@ multiple residues."
     char_h = max(16, char_h)
     return (char_w, char_h)
 
-  def get_char_position (self, i_seq) :
+  def build_boxes (self) :
     dc = wx.ClientDC(self)
     dc.SetFont(self.txt_font)
     char_w, char_h = self.get_char_size(dc)
-    xpos = 16
-    ypos = self.line_sep
+    x_start = 16
+    y_start = self.line_sep
     if self.flag_show_line_numbers :
-      xpos += dc.GetTextExtent("X" * 8)[0]
-    n_prev_lines = int(math.floor((i_seq-self.start_offset) / self.line_width))
-    ypos += n_prev_lines * self.line_sep
-    n_prev_chars = (i_seq - self.start_offset) % self.line_width
-    xpos += char_w * n_prev_chars
-    return (xpos, ypos) #, xpos + char_w, ypos + char_h)
+      x_start += dc.GetTextExtent("X" * 8)[0]
+    self.char_boxes = []
+    for i_seq in range(len(self.sequence)) :
+      lines = int(math.floor((i_seq-self.start_offset) / self.line_width))
+      y = y_start + (lines * self.line_sep)
+      n_prev_chars = (i_seq - self.start_offset) % self.line_width
+      x = x_start + (char_w * n_prev_chars)
+      self.char_boxes.append((x, y, x + char_w - 1, y + char_h - 1))
+
+  def get_char_position (self, i_seq) :
+    return tuple(self.char_boxes[i_seq])
 
   def get_contiguous_ranges (self, i_start, i_end) :
     assert i_start < i_end or i_start == i_end
@@ -199,14 +207,50 @@ multiple residues."
 
   def clear_selection (self) :
     self.selected_residues = flex.bool(len(self.sequence), False)
+    frame.statusbar.SetStatusText("")
 
   def select_chars (self, i_start, i_end, box=True) :
     assert i_end < len(self.sequence) and i_start != i_end
     for i_seq in range(i_start, i_end + 1) :
       self.selected_residues[i_seq] = box
+    self.update_frame()
+
+  def update_frame (self) :
+    frame = self.GetParent()
+    ranges = self.get_selected_ranges()
+    if len(ranges) == 0 :
+      txt = ""
+    elif len(ranges) == 1 and ranges[0][0] == ranges[0][1] :
+      txt = "SELECTED: residue %d" %  ranges[0][0]
+    else :
+      txt_ranges = []
+      for (x, y) in ranges :
+        if x == y : txt_ranges.append(str(x))
+        else : txt_ranges.append("%d-%d" % (x, y))
+      txt = "SELECTED: residues %s" % ", ".join(txt_ranges)
+    frame.statusbar.SetStatusText(txt)
 
   def deselect_chars (self, i_start, i_end) :
     self.select_chars(i_start, i_end, False)
+
+  def select_residue (self, x, y) :
+    for i_seq, box in enumerate(self.char_boxes) :
+      (x1, y1, x2, y2) = box
+      if (x > x1 and x < x2) and (y > y1 and y < y2) :
+        if self.selected_residues[i_seq] :
+          self.selected_residues[i_seq] = False
+        else :
+          self.selected_residues[i_seq] = True
+        self.update_frame()
+        return True
+    return False
+
+  def OnClear (self, event) :
+    self.clear_selection()
+    self.Refresh()
+
+  def OnSetMode (self, event) :
+    self.flag_overwrite_selections = event.GetEventObject().GetValue()
 
   #---------------------------------------------------------------------
   # MOUSE EVENTS
@@ -347,15 +391,21 @@ residue(s).  Holding down shift enables multiple selections."""
     assert self.sequence == "" or len(self.sequence) == len(self.structure)
     self.clear_highlights()
 
+  def apply_missing_residue_highlights (self) :
+    ranges = self.get_missing()
+    for i_start, i_end in ranges :
+      for i_seq in range(i_start, i_end + 1) :
+        self.highlights.append(i_seq)
+        self.highlight_colors.append((150,150,150))
+
   def get_region_bounds (self, i_start, i_end) :
     (char_w, char_h) = self.get_char_size()
     ranges = self.get_contiguous_ranges(i_start, i_end)
     boxes = []
     for (seg_start, seg_end) in ranges :
-      (x1, y1) = self.get_char_position(seg_start)
+      (x1, y1, nx, ny) = self.get_char_position(seg_start)
       y1 -= 24
-      (x2, y2) = self.get_char_position(seg_end)
-      x2 += char_w
+      (nx, y2, x2, ny) = self.get_char_position(seg_end)
       y2 -= 8
       boxes.append((x1, y1, x2, y2))
     return boxes
@@ -461,13 +511,12 @@ residue(s).  Holding down shift enables multiple selections."""
 
   def OnDoubleClick (self, event) :
     (x, y) = (event.GetX(), event.GetY())
-    idx = self.is_on_char(x, y)
-    if idx is not None :
-      self.highlight_char(idx)
+    if self.flag_overwrite_selections and not event.ShiftDown() :
+      self.clear_structure_selections()
+      self.clear_selection()
+    if self.select_residue(x, y) :
+      pass
     elif self.flag_allow_select_structure :
-      if not event.ShiftDown() :
-        self.clear_structure_selections()
-        self.clear_selection()
       if self.select_helix(x, y) :
         pass
       elif self.select_strand(x, y) :
@@ -477,6 +526,10 @@ residue(s).  Holding down shift enables multiple selections."""
       else :
         pass
     self.Refresh()
+
+  def OnClear (self, event) :
+    self.clear_structure_selections()
+    SequencePanel.OnClear(self, event)
 
 def strand_as_arrow (x1, y1, x2, y2) :
   segments = []
@@ -498,40 +551,64 @@ def strand_as_box (x1, y1, x2, y2) :
   return segments
 
 ########################################################################
-class TestFrame (wx.Frame) :
+class ControlPanel (wx.Panel) :
+  def __init__ (self, *args, **kwds) :
+    wx.Panel.__init__(self, *args, **kwds)
+    szr = wx.BoxSizer(wx.HORIZONTAL)
+    self.SetSizer(szr)
+    self.multi_select_box = wx.CheckBox(self, -1,
+      "Clicking overwrites selections")
+    self.multi_select_box.SetValue(True)
+    szr.Add(self.multi_select_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.clear_btn = wx.Button(self, -1, "Clear selection")
+    szr.Add(self.clear_btn, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    szr.Fit(self)
+
+  def bind_events (self, view) :
+    self.Bind(wx.EVT_BUTTON, view.OnClear, self.clear_btn)
+    self.Bind(wx.EVT_CHECKBOX, view.OnSetMode, self.multi_select_box)
+
+class SequenceFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     wx.Frame.__init__(self, *args, **kwds)
     panel = SequenceWithStructurePanel(self, -1)
-    seq = """\
+    szr = wx.BoxSizer(wx.VERTICAL)
+    szr.Add(panel, 1, wx.EXPAND)
+    self.SetSizer(szr)
+    panel.enable_tooltip()
+    panel2 = ControlPanel(self, -1, style=wx.SIMPLE_BORDER)
+    panel2.bind_events(panel)
+    szr.Add(panel2, 0, wx.EXPAND)
+    self.statusbar = self.CreateStatusBar()
+    self.Fit()
+    self.panel = panel
+
+  def set_sequence (self, seq) :
+    self.panel.set_sequence(seq)
+
+  def set_structure (self, sec_str) :
+    self.panel.set_structure(sec_str)
+    self.panel.apply_missing_residue_highlights()
+
+if __name__ == "__main__" :
+  app = wx.App(0)
+  frame = SequenceFrame(None, -1, "Test sequence display")
+  seq = """\
 MFQAFPGDYDSGSRCSSSPSAESQYLSSVDSFGSPPTAAASQECAGLGEMPGSFVPTVTA
 ITTSQDLQWLVQPTLISSMAQSQGQPLASQPPAVDPYDMPGTSYSTPGLSAYSTGGASGS
 GGPSTSTTTSGPVSARPARARPRRPREETLTPEEEEKRRVRRERNKLAAAKCRNRRRELT
 DRLQAETDQLEEEKAELESEIAELQKEKERLEFVLVAHKPGCKIPYEEGPGPGPLAEVRD
 LPGSTSAKEDGFGWLLPPPPPPPLPFQSSRDAPPNLTASLFTHSEVQVLGDPFPVVSPSY
 TSSFVLTCPEVSAFAGAQRTSGSEQPSDPLNSPSLLAL"""
-    sec_str = """\
+  sec_str = """\
 XXXXXXXXXXXLLLLLLLLLLLLLLLLSSSSSSSSSSSSSSSLLLLLLLHHHHHHHHLLS
 SSSSSSSSLLLLLLLLLLLLSSSSSSSSSSLLLLLLLLSSSSSSSSSSLLLLLLLLHHHH
 HHHHHHHHHHHHHHHHLLLLLHHHHHHHHHHHHHHHHHHHHLLLLLLLLLLLLLLLLLLL
 LHHHHHHHHLLLLLLLLHHHHHHHHHHHHHHHHHLLLLLLLLLLLLHHHHHHHHHHHHHH
 HHHHLLLLLLSSSSSSSSSSSSSSSSLLLLLLLLLLLLLSSSSSSSSSSSSSSSSSLLLL
 LLLLLLLHHHHHHHHHHHHHHHHHHHHHHHHHLLLXXX"""
-    panel.set_sequence(seq)
-    panel.set_structure(sec_str)
-    panel.highlight_char(40, (255,0,0))
-    panel.highlight_char(0, (0,255,0))
-    panel.highlight_char(50, (255,255,0))
-    panel.highlight_char(99, (0,0,255))
-    panel.highlight_char(120, (255,0,255))
-    panel.SetBackgroundColour((255,255,255))
-    szr = wx.BoxSizer(wx.VERTICAL)
-    szr.Add(panel)
-    self.SetSizer(szr)
-    panel.enable_tooltip()
-    self.Fit()
-
-if __name__ == "__main__" :
-  app = wx.App(0)
-  frame = TestFrame(None, -1, "Sequence display")
+  frame.set_sequence(seq)
+  frame.set_structure(sec_str)
+  frame.Fit()
   frame.Show()
   app.MainLoop()
