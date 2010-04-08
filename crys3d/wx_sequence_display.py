@@ -1,8 +1,11 @@
 
+# TODO: mixin for contiguous range selection
+
 from __future__ import division
 import wx
 import wx.lib.wordwrap
-from scitbx.array_family import flex, shared
+import wx.lib.scrolledpanel
+import cStringIO
 import math, sys, os
 
 class SequencePanel (wx.PyPanel) :
@@ -13,6 +16,7 @@ multiple residues."
     wx.PyPanel.__init__(self, *args, **kwds)
     if self.__bg_color is not None :
       self.SetBackgroundColour(self.__bg_color)
+    from scitbx.array_family import flex, shared
     self.sequence = ""
     self.line_width = 50
     self.line_sep = 28
@@ -20,6 +24,7 @@ multiple residues."
     self.char_boxes = shared.stl_set_unsigned()
     self.flag_show_line_numbers = True
     self.flag_enable_selections = True
+    self.flag_enable_shift_for_multiple = True
     self.flag_overwrite_selections = True
     self.flag_show_selections = True
     self.flag_show_tooltip = False
@@ -42,6 +47,7 @@ multiple residues."
 
   def enable_tooltip (self, enable=True) :
     self.tip.Enable(enable)
+    self.flag_show_tooltip = enable
 
   def OnPaint (self, event) :
     dc = wx.AutoBufferedPaintDCFactory(self)
@@ -138,6 +144,8 @@ multiple residues."
     return (char_w, char_h)
 
   def build_boxes (self) :
+    from scitbx.array_family import flex, shared
+    self.char_boxes = shared.stl_set_unsigned()
     dc = wx.ClientDC(self)
     dc.SetFont(self.txt_font)
     char_w, char_h = self.get_char_size(dc)
@@ -206,7 +214,9 @@ multiple residues."
     self.highlight_colors.append(color)
 
   def clear_selection (self) :
+    from scitbx.array_family import flex, shared
     self.selected_residues = flex.bool(len(self.sequence), False)
+    frame = self.GetParent().GetParent()
     frame.statusbar.SetStatusText("")
 
   def select_chars (self, i_start, i_end, box=True) :
@@ -216,7 +226,7 @@ multiple residues."
     self.update_frame()
 
   def update_frame (self) :
-    frame = self.GetParent()
+    frame = self.GetParent().GetParent()
     ranges = self.get_selected_ranges()
     if len(ranges) == 0 :
       txt = ""
@@ -225,8 +235,8 @@ multiple residues."
     else :
       txt_ranges = []
       for (x, y) in ranges :
-        if x == y : txt_ranges.append(str(x))
-        else : txt_ranges.append("%d-%d" % (x, y))
+        if x == y : txt_ranges.append(str(x+1))
+        else : txt_ranges.append("%d-%d" % (x+1, y+1))
       txt = "SELECTED: residues %s" % ", ".join(txt_ranges)
     frame.statusbar.SetStatusText(txt)
 
@@ -251,6 +261,9 @@ multiple residues."
 
   def OnSetMode (self, event) :
     self.flag_overwrite_selections = event.GetEventObject().GetValue()
+
+  def OnHelp (self, event) :
+    self.enable_tooltip(not self.flag_show_tooltip)
 
   #---------------------------------------------------------------------
   # MOUSE EVENTS
@@ -291,7 +304,9 @@ residue(s).  Holding down shift enables multiple selections."""
     self.selected_helices = []
     self.selected_strands = []
     self.selected_linkers = []
+    self.selected_missing = []
     self.flag_allow_select_structure = True
+    self.flag_allow_select_missing = True
 
   def paint (self, gc) :
     self.paint_sequence(gc)
@@ -353,6 +368,7 @@ residue(s).  Holding down shift enables multiple selections."""
       gc.SetPen(strand_pen)
     missing = self.get_missing()
     missing_pen = wx.Pen((150, 150, 150), 4, style=wx.SHORT_DASH)
+    h_missing_pen = wx.Pen((255, 255, 0), 12)
     for k, (i_start, i_end) in enumerate(missing) :
       bounds = self.get_region_bounds(i_start, i_end)
       for j, box in enumerate(bounds) :
@@ -361,6 +377,11 @@ residue(s).  Holding down shift enables multiple selections."""
         line.MoveToPoint(x1, y1 + 8)
         line.AddLineToPoint(x2, y1 + 8)
         line.CloseSubpath()
+        if k in self.selected_missing :
+          gc.PushState()
+          gc.SetPen(h_missing_pen)
+          gc.StrokePath(line)
+          gc.PopState()
         gc.PushState()
         gc.SetPen(missing_pen)
         gc.StrokePath(line)
@@ -443,23 +464,19 @@ residue(s).  Holding down shift enables multiple selections."""
       return sections[idx]
 
   def is_on_helix (self, x, y) :
-    for k, (i_start, i_end) in enumerate(self.get_helices()) :
-      bounds = self.get_region_bounds(i_start, i_end)
-      for (x1, y1, x2, y2) in bounds :
-        if (x > x1 and x < x2) and (y > y1 and y < y2) :
-          return k
-    return None
+    return self.is_on_region(x, y, self.get_helices())
 
   def is_on_strand (self, x, y) :
-    for k, (i_start, i_end) in enumerate(self.get_strands()) :
-      bounds = self.get_region_bounds(i_start, i_end)
-      for (x1, y1, x2, y2) in bounds :
-        if (x > x1 and x < x2) and (y > (y1 + 2) and y < (y2 - 2)) :
-          return k
-    return None
+    return self.is_on_region(x, y, self.get_strands())
 
   def is_on_linker (self, x, y) :
-    for  k, (i_start, i_end) in enumerate(self.get_linkers()) :
+    return self.is_on_region(x, y, self.get_linkers())
+
+  def is_on_missing (self, x, y) :
+    return self.is_on_region(x, y, self.get_missing())
+
+  def is_on_region (self, x, y, regions) :
+    for k, (i_start, i_end) in enumerate(regions) :
       bounds = self.get_region_bounds(i_start, i_end)
       for (x1, y1, x2, y2) in bounds :
         if (x > x1 and x < x2) and (y > (y1 + 4) and y < (y2 - 4)) :
@@ -470,6 +487,7 @@ residue(s).  Holding down shift enables multiple selections."""
     self.selected_helices = []
     self.selected_strands = []
     self.selected_linkers = []
+    self.selected_missing = []
 
   def select_helix (self, x, y) :
     idx = self.is_on_helix(x, y)
@@ -496,6 +514,8 @@ residue(s).  Holding down shift enables multiple selections."""
       else :
         self.selected_strands.remove(idx)
         self.deselect_chars(strand_start, strand_end)
+      return True
+    return False
 
   def select_linker (self, x, y) :
     idx = self.is_on_linker(x, y)
@@ -508,12 +528,33 @@ residue(s).  Holding down shift enables multiple selections."""
       else :
         self.selected_linkers.remove(idx)
         self.deselect_chars(linker_start, linker_end)
+      return True
+    return False
+
+  def select_missing (self, x, y) :
+    if not self.flag_allow_select_missing :
+      return False
+    idx = self.is_on_missing(x, y)
+    if idx is not None :
+      (region_start, region_end) = self.get_region_by_id('X', idx)
+      if not idx in self.selected_missing :
+        print "missing segment %d" % idx
+        self.selected_missing.append(idx)
+        self.select_chars(region_start, region_end)
+      else :
+        self.selected_missing.remove(idx)
+        self.deselect_chars(linker_start, linker_end)
+      return True
+    return False
 
   def OnDoubleClick (self, event) :
     (x, y) = (event.GetX(), event.GetY())
-    if self.flag_overwrite_selections and not event.ShiftDown() :
-      self.clear_structure_selections()
-      self.clear_selection()
+    if self.flag_overwrite_selections :
+      if self.flag_enable_shift_for_multiple and event.ShiftDown() :
+        pass
+      else :
+        self.clear_structure_selections()
+        self.clear_selection()
     if self.select_residue(x, y) :
       pass
     elif self.flag_allow_select_structure :
@@ -522,6 +563,8 @@ residue(s).  Holding down shift enables multiple selections."""
       elif self.select_strand(x, y) :
         pass
       elif self.select_linker(x, y) :
+        pass
+      elif self.select_missing(x, y) :
         pass
       else :
         pass
@@ -554,61 +597,102 @@ def strand_as_box (x1, y1, x2, y2) :
 class ControlPanel (wx.Panel) :
   def __init__ (self, *args, **kwds) :
     wx.Panel.__init__(self, *args, **kwds)
-    szr = wx.BoxSizer(wx.HORIZONTAL)
+    szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
+    #txt = wx.StaticText(self, -1, "Click a residue or secondary structure "
+    box = wx.BoxSizer(wx.HORIZONTAL)
     self.multi_select_box = wx.CheckBox(self, -1,
       "Clicking overwrites selections")
     self.multi_select_box.SetValue(True)
-    szr.Add(self.multi_select_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(self.multi_select_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.clear_btn = wx.Button(self, -1, "Clear selection")
-    szr.Add(self.clear_btn, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(self.clear_btn, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.help_btn = wx.Button(self, wx.ID_HELP)
+    box.Add(self.help_btn, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    szr.Add(box)
     szr.Fit(self)
 
   def bind_events (self, view) :
     self.Bind(wx.EVT_BUTTON, view.OnClear, self.clear_btn)
     self.Bind(wx.EVT_CHECKBOX, view.OnSetMode, self.multi_select_box)
+    self.Bind(wx.EVT_BUTTON, view.OnHelp, self.help_btn)
 
 class SequenceFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     wx.Frame.__init__(self, *args, **kwds)
-    panel = SequenceWithStructurePanel(self, -1)
     szr = wx.BoxSizer(wx.VERTICAL)
-    szr.Add(panel, 1, wx.EXPAND)
     self.SetSizer(szr)
-    panel.enable_tooltip()
-    panel2 = ControlPanel(self, -1, style=wx.SIMPLE_BORDER)
-    panel2.bind_events(panel)
-    szr.Add(panel2, 0, wx.EXPAND)
+    self.sizer = szr
+    self.create_main_panel()
+    self.create_control_panel()
     self.statusbar = self.CreateStatusBar()
-    self.Fit()
+
+  def create_main_panel (self) :
+    outer_panel = wx.lib.scrolledpanel.ScrolledPanel(self, -1)
+    szr2 = wx.BoxSizer(wx.VERTICAL)
+    outer_panel.SetSizer(szr2)
+    panel = SequenceWithStructurePanel(outer_panel, -1)
+    szr2.Add(panel, 1, wx.EXPAND)
+    szr2.Layout()
+    szr2.Fit(outer_panel)
+    self.sizer.Add(outer_panel, 1, wx.EXPAND)
+    outer_panel.SetupScrolling()
     self.panel = panel
+    self.outer_panel = outer_panel
+
+  def create_control_panel (self) :
+    panel2 = ControlPanel(self, -1, style=wx.SIMPLE_BORDER)
+    panel2.bind_events(self.panel)
+    self.sizer.Add(panel2, 0, wx.EXPAND)
+    self.control_panel = panel2
 
   def set_sequence (self, seq) :
     self.panel.set_sequence(seq)
+    self.panel.Layout()
+    self.outer_panel.Layout()
+    (w, h) = self.panel.DoGetBestSize()
+    if w <= 750 and h <= 550 :
+      self.outer_panel.SetMinSize((w,h))
+      self.SetSize((w+50, h+50))
+    else :
+      self.SetSize((800,600))
 
   def set_structure (self, sec_str) :
     self.panel.set_structure(sec_str)
     self.panel.apply_missing_residue_highlights()
 
-if __name__ == "__main__" :
+def run (args) :
+  from iotbx import file_reader
+  from mmtbx import secondary_structure
+  pdb_file = args[0]
+  pdb_in = file_reader.any_file(pdb_file, force_type="pdb").file_object
+  hierarchy = pdb_in.construct_hierarchy()
+  hierarchy.atoms().reset_i_seq()
+  xray_structure = pdb_in.xray_structure_simple()
+  sec_str = secondary_structure.manager(hierarchy, xray_structure)
+  out = cStringIO.StringIO()
+  sec_str.find_automatically(log=out)
+  sec_str.show_summary()
+  chain_conf = hierarchy.models()[0].chains()[0].conformers()[0]
+  helix_sele = sec_str.alpha_selection()
+  sheet_sele = sec_str.beta_selection()
+  seq = chain_conf.as_padded_sequence()
+  ss = chain_conf.as_sec_str_sequence(helix_sele, sheet_sele)
   app = wx.App(0)
-  frame = SequenceFrame(None, -1, "Test sequence display")
-  seq = """\
-MFQAFPGDYDSGSRCSSSPSAESQYLSSVDSFGSPPTAAASQECAGLGEMPGSFVPTVTA
-ITTSQDLQWLVQPTLISSMAQSQGQPLASQPPAVDPYDMPGTSYSTPGLSAYSTGGASGS
-GGPSTSTTTSGPVSARPARARPRRPREETLTPEEEEKRRVRRERNKLAAAKCRNRRRELT
-DRLQAETDQLEEEKAELESEIAELQKEKERLEFVLVAHKPGCKIPYEEGPGPGPLAEVRD
-LPGSTSAKEDGFGWLLPPPPPPPLPFQSSRDAPPNLTASLFTHSEVQVLGDPFPVVSPSY
-TSSFVLTCPEVSAFAGAQRTSGSEQPSDPLNSPSLLAL"""
-  sec_str = """\
-XXXXXXXXXXXLLLLLLLLLLLLLLLLSSSSSSSSSSSSSSSLLLLLLLHHHHHHHHLLS
-SSSSSSSSLLLLLLLLLLLLSSSSSSSSSSLLLLLLLLSSSSSSSSSSLLLLLLLLHHHH
-HHHHHHHHHHHHHHHHLLLLLHHHHHHHHHHHHHHHHHHHHLLLLLLLLLLLLLLLLLLL
-LHHHHHHHHLLLLLLLLHHHHHHHHHHHHHHHHHLLLLLLLLLLLLHHHHHHHHHHHHHH
-HHHHLLLLLLSSSSSSSSSSSSSSSSLLLLLLLLLLLLLSSSSSSSSSSSSSSSSSLLLL
-LLLLLLLHHHHHHHHHHHHHHHHHHHHHHHHHLLLXXX"""
+  frame = SequenceFrame(None, -1, "Sequence display for %s" %
+    os.path.basename(pdb_file))
   frame.set_sequence(seq)
-  frame.set_structure(sec_str)
+  frame.set_structure(ss)
   frame.Fit()
   frame.Show()
   app.MainLoop()
+
+if __name__ == "__main__" :
+  if "--test" in sys.argv :
+    import libtbx.load_env
+    pdb_file = libtbx.env.find_in_repositories(
+      relative_path="phenix_regression/pdb/1ywf.pdb",
+      test=os.path.isfile)
+    run([pdb_file])
+  else :
+    run(sys.argv[1:])
