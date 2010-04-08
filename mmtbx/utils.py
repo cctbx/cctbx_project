@@ -96,13 +96,14 @@ refinement.
 """
   print >> log, part1 + flags_parameter_scope+""".generate=True""" + part3
 
-data_and_flags_str = """\
+data_and_flags_str_part1 = """\
   file_name = None
     .type=path
     .short_caption=Reflections file
     .style = bold file_type:hkl noauto process_hkl \
       child:fobs:labels child:d_min:high_resolution \
       child:d_max:low_resolution
+    .expert_level = 0
   labels = None
     .type=strings
     .input_size = 160
@@ -110,26 +111,62 @@ data_and_flags_str = """\
     .style = bold renderer:draw_fobs_label_widget noauto \
       OnChange:auto_update_label_choice child:d_min:high_resolution \
       child:d_max:low_resolution parent:file_name:file_name
+    .expert_level = 0
   high_resolution = None
     .type=float
     .input_size = 80
     .style = bold renderer:draw_resolution_widget noauto
+    .expert_level = 0
   low_resolution = None
     .type=float
     .input_size = 80
     .style = bold renderer:draw_resolution_widget noauto
+    .expert_level = 0
   outliers_rejection = True
     .type=bool
     .short_caption = Reject outliers
-    .expert_level = 1
+    .expert_level = 0
   sigma_fobs_rejection_criterion = 0.0
     .type=float
     .short_caption = Sigma(Fobs) rejection criterion
-    .expert_level = 1
+    .expert_level = 0
   sigma_iobs_rejection_criterion = 0.0
     .type=float
     .short_caption = Sigma(Iobs) rejection criterion
-    .expert_level = 1
+    .expert_level = 0
+"""
+
+data_and_flags_str_part2 = """\
+  file_name = None
+    .type=path
+    .short_caption=File with R(free) flags
+    .help = This is normally the same as the file containing Fobs and is \
+      usually selected automatically.
+    .input_size = 200
+    .style = noauto file_type:hkl,any
+    .expert_level = 0
+  label = None
+    .type=str
+    .short_caption = R-free label
+    .input_size = 160
+    .style = bold renderer:draw_rfree_label_widget noauto \
+             OnChange:update_rfree_flag_value
+    .expert_level = 0
+  test_flag_value = None
+    .type=int
+    .help = This value is usually selected automatically - do not change \
+      unless you really know what you're doing!
+    .style = bold noauto
+    .expert_level = 0
+  ignore_r_free_flags = False
+    .type=bool
+    .short_caption = Ignore R-free flags
+    .help = Use all reflections in refinement (work and test)
+    .expert_level=0
+"""
+
+data_and_flags_str = """\
+  %s
   ignore_all_zeros = True
     .type=bool
     .short_caption = Ignore all-zero arrays
@@ -147,24 +184,7 @@ data_and_flags_str = """\
       automatically, or you can use the reflection file editor to combine an \
       existing set with your X-ray or neutron data.
   {
-    file_name = None
-      .type=path
-      .short_caption=File with R(free) flags
-      .help = This is normally the same as the file containing Fobs and is \
-        usually selected automatically.
-      .input_size = 200
-      .style = noauto file_type:hkl,any
-    label = None
-      .type=str
-      .short_caption = R-free label
-      .input_size = 160
-      .style = bold renderer:draw_rfree_label_widget noauto \
-               OnChange:update_rfree_flag_value
-    test_flag_value = None
-      .type=int
-      .help = This value is usually selected automatically - do not change \
-        unless you really know what you're doing!
-      .style = bold noauto
+    %s
     disable_suitability_test = False
       .type=bool
       .expert_level = 2
@@ -174,21 +194,51 @@ data_and_flags_str = """\
       .help=If True, disables safety check based on MD5 hexdigests stored in \
             PDB files produced by previous runs.
       .expert_level=2
-    ignore_r_free_flags = False
-      .type=bool
-      .short_caption = Ignore R-free flags
-      .help = Use all reflections in refinement (work and test)
-      .expert_level=2
     generate = False
       .type=bool
       .short_caption = Generate new test set if none present
       .help = Generate R-free flags (if not available in input files)
-      .expert_level=0
+      .expert_level=2
     %s
   }
-""" % miller.generate_r_free_params_str
+""" % (data_and_flags_str_part1,
+       data_and_flags_str_part2,
+       miller.generate_r_free_params_str)
 
-data_and_flags = iotbx.phil.parse(data_and_flags_str)
+xray_data_str = """\
+xray_data
+  .help=Scope of X-ray data and free-R flags
+  .style = scrolled auto_align
+{
+  %s
+}
+"""%data_and_flags_str
+
+neutron_data_str = """\
+neutron_data
+  .help=Scope of neutron data and neutron free-R flags
+  .style = scrolled auto_align
+{
+  ignore_xn_free_r_mismatch = False
+    .type = bool
+    .expert_level=2
+    .short_caption = Ignore Xray/neutron R-free flags set mismatch
+  %s
+}
+
+"""%data_and_flags_str
+
+def data_and_flags_master_params(master_scope_name=None):
+  if(master_scope_name is not None):
+    p = """\
+%s
+{
+%s
+}
+"""
+    return iotbx.phil.parse(p%(master_scope_name, data_and_flags_str))
+  else:
+    return iotbx.phil.parse(data_and_flags_str)
 
 class determine_data_and_flags(object):
   def __init__(self, reflection_file_server,
@@ -204,7 +254,7 @@ class determine_data_and_flags(object):
                      log = None):
     adopt_init_args(self, locals())
     if(self.parameters is None):
-      self.parameters = data_and_flags.extract()
+      self.parameters = data_and_flags_master_params().extract()
     self.intensity_flag = False
     self.f_obs = None
     self.r_free_flags = None
@@ -1352,7 +1402,9 @@ def fmodel_manager(
       sf_and_grads_accuracy_params  = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract(),
       mask_params                   = None,
       max_number_of_resolution_bins = None,
-      log                           = None):
+      k_sol                         =0,
+      b_sol                         =0,
+      b_cart                        =[0,0,0,0,0,0]):
   if(r_free_flags is None or ignore_r_free_flags):
     r_free_flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
   if(twin_law is None):
@@ -1369,6 +1421,9 @@ def fmodel_manager(
       f_mask                       = f_mask,
       f_calc                       = f_calc,
       abcd                         = hl_coeff,
+      k_sol                        = k_sol,
+      b_sol                        = b_sol,
+      b_cart                       = b_cart,
       max_number_of_bins           = max_number_of_resolution_bins)
   else:
     from cctbx import sgtbx
@@ -1383,8 +1438,10 @@ def fmodel_manager(
       twin_law                     = twin_law_xyz,
       twin_law_str                 = twin_law,
       mask_params                  = mask_params,
-      out                          = log,
       detwin_mode                  = detwin_mode,
+      #k_sol                        = k_sol, #XXX not supported by twin_f_model
+      #b_sol                        = b_sol, #XXX not supported by twin_f_model
+      #b_cart                       = b_cart,#XXX not supported by twin_f_model
       map_types                    = detwin_map_types)
     fmodel.twin = twin_law
   return fmodel
@@ -1416,8 +1473,16 @@ def fmodel_simple(f_obs,
                   mask_params              = None,
                   twin_laws                = None,
                   skip_twin_detection      = False,
-                  twin_switch_tolerance    = 2.0):
-  def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp):
+                  twin_switch_tolerance    = 2.0,
+                  outliers_rejection       = True,
+                  bulk_solvent_correction  = True,
+                  anisotropic_scaling      = True,
+                  log                      = None):
+  if(bss_params is None):
+    bss_params = bss.master_params.extract()
+  bss_params.bulk_solvent = bulk_solvent_correction
+  bss_params.anisotropic_scaling = anisotropic_scaling
+  def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp, ro):
     fmodel = fmodel_manager(
       xray_structure = xrs.deep_copy_scatterers(),
       f_obs          = f_obs.deep_copy(),
@@ -1425,10 +1490,10 @@ def fmodel_simple(f_obs,
       mask_params    = mp,
       twin_law       = tl)
     if(bssf):
-      if(tl is None):
+      if(tl is None and ro):
         sel = fmodel.outlier_selection()
         fmodel = fmodel.select(selection = sel)
-      fmodel.update_solvent_and_scale(params = bssp, verbose = -1)
+      fmodel.update_solvent_and_scale(params = bssp, verbose = -1, out = log)
     return fmodel
   if((twin_laws is None or twin_laws==[None]) and not skip_twin_detection):
     twin_laws = xtriage(f_obs = f_obs.deep_copy())
@@ -1437,13 +1502,14 @@ def fmodel_simple(f_obs,
     if(twin_laws is None): twin_laws = [None]
     if(twin_laws.count(None)==0): twin_laws.append(None)
     fmodel = get_fmodel(f_obs=f_obs, xrs=xray_structures[0], flags=r_free_flags,
-      mp=mask_params, tl=None, bssf=bulk_solvent_and_scaling, bssp=bss_params)
+      mp=mask_params, tl=None, bssf=bulk_solvent_and_scaling, bssp=bss_params,
+      ro = outliers_rejection)
     r_work = fmodel.r_work()
     for twin_law in twin_laws:
       if(twin_law is not None):
         fmodel_ = get_fmodel(f_obs=f_obs, xrs=xray_structures[0],
           flags=r_free_flags, mp=mask_params, tl=twin_law,
-          bssf=bulk_solvent_and_scaling, bssp=bss_params)
+          bssf=bulk_solvent_and_scaling, bssp=bss_params, ro = outliers_rejection)
         r_work_ = fmodel_.r_work()
         if(abs(r_work-r_work_)*100 > twin_switch_tolerance and r_work_<r_work):
           r_work = r_work_

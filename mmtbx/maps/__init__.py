@@ -118,6 +118,9 @@ maps {
       .style = bold file_type:pdb
     reflection_data {
       %s
+      r_free_flags {
+        %s
+      }
     }
   }
   output {
@@ -133,10 +136,21 @@ maps {
       .type=choice
       .help=Write Fobs, Fmodel, various scales and more to MTZ or CNS file
   }
+  bulk_solvent_correction = True
+    .type = bool
+  anisotropic_scaling = True
+    .type = bool
+  skip_twin_detection = False
+    .type = bool
+    .short_caption = Skip automatic twinning detection
+    .help = Skip automatic twinning detection
   %s
   %s
 }
-"""%(mmtbx.utils.data_and_flags_str, map_coeff_params_str, map_params_str)
+"""%(mmtbx.utils.data_and_flags_str_part1,
+     mmtbx.utils.data_and_flags_str_part2,
+     map_coeff_params_str,
+     map_params_str)
 
 def maps_including_IO_master_params():
   return iotbx.phil.parse(maps_including_IO_params_str, process_includes=False)

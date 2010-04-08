@@ -295,6 +295,26 @@ scale(af::const_ref<FloatType> const& fo,
     return (denum == 0 ? 0 : num/denum);
 };
 
+template <typename FloatType, typename ComplexType>
+FloatType
+scale(
+  af::const_ref<FloatType> const& fo,
+  af::const_ref< std::complex<ComplexType> > const& fc1,
+  af::const_ref< std::complex<ComplexType> > const& fc2,
+  FloatType const& twin_fraction)
+{
+  MMTBX_ASSERT(fo.size()==fc1.size());
+  MMTBX_ASSERT(fo.size()==fc2.size());
+  af::shared<FloatType> fc_abs(fo.size());
+  for(std::size_t i=0; i < fo.size(); i++) {
+    FloatType fc_abs1 = std::abs(fc1[i]);
+    FloatType fc_abs2 = std::abs(fc2[i]);
+    fc_abs[i]=std::sqrt((1-twin_fraction)*fc_abs1*fc_abs1+
+                           twin_fraction *fc_abs2*fc_abs2);
+  }
+  return scale(fo,fc_abs.const_ref());
+};
+
 template <typename FloatType>
 FloatType
 r_factor(
@@ -331,6 +351,17 @@ r_factor(
   return num/denum;
 };
 
+template <typename FloatType>
+FloatType
+r_factor(
+  af::const_ref<FloatType> const& fo,
+  af::const_ref<FloatType> const& fc)
+{
+  MMTBX_ASSERT(fo.size()==fc.size());
+  FloatType sc = scale(fo,fc);
+  return r_factor(fo,fc,sc);
+};
+
 template <typename FloatType, typename ComplexType>
 FloatType
 r_factor(
@@ -361,6 +392,27 @@ r_factor(
   }
   FloatType sc = scale(fo,fc_abs.const_ref());
   return r_factor(fo,fc_abs.const_ref(),sc);
+};
+
+template <typename FloatType, typename ComplexType>
+FloatType
+r_factor(
+  af::const_ref<FloatType> const& fo,
+  af::const_ref< std::complex<ComplexType> > const& fc1,
+  af::const_ref< std::complex<ComplexType> > const& fc2,
+  FloatType const& twin_fraction,
+  FloatType const& scale)
+{
+  MMTBX_ASSERT(fo.size()==fc1.size());
+  MMTBX_ASSERT(fo.size()==fc2.size());
+  af::shared<FloatType> fc_abs(fo.size());
+  for(std::size_t i=0; i < fo.size(); i++) {
+    FloatType fc_abs1 = std::abs(fc1[i]);
+    FloatType fc_abs2 = std::abs(fc2[i]);
+    fc_abs[i]=std::sqrt((1-twin_fraction)*fc_abs1*fc_abs1+
+                           twin_fraction *fc_abs2*fc_abs2);
+  }
+  return r_factor(fo,fc_abs.const_ref(),scale);
 };
 //------------------------------------------------------------------------------
 template <typename FloatType, typename ComplexType>

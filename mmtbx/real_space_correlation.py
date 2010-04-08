@@ -277,7 +277,7 @@ def extract_data_and_flags(params, crystal_symmetry):
       crystal_symmetry = crystal_symmetry,
       force_symmetry   = True,
       reflection_files = [reflection_file])
-    parameters = mmtbx.utils.data_and_flags.extract()
+    parameters = mmtbx.utils.data_and_flags_master_params().extract()
     parameters.force_anomalous_flag_to_be_equal_to = False
     if(params.data_labels is not None):
       parameters.labels = [params.data_labels]

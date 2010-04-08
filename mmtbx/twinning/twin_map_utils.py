@@ -222,7 +222,7 @@ def run(args, command_name="phenix.twin_map_utils"):
     miller_array = None
     free_flags = None
 
-    tmp_params = utils.data_and_flags.extract()
+    tmp_params = utils.data_and_flags_master_params().extract()
     # insert proper values please
     tmp_params.file_name = params.twin_utils.input.xray_data.file_name
     tmp_params.labels = params.twin_utils.input.xray_data.obs_labels

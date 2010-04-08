@@ -487,7 +487,7 @@ def run(processed_args, params):
   rfs = reflection_file_server(
     crystal_symmetry = crystal_symmetry,
     reflection_files = [reflection_file])
-  parameters = utils.data_and_flags.extract()
+  parameters = utils.data_and_flags_master_params().extract()
   if(params.data_labels is not None):
     parameters.labels = [processed_args.data_labels]
   determine_data_and_flags_result = utils.determine_data_and_flags(

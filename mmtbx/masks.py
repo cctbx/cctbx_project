@@ -40,7 +40,7 @@ mask_master_params = iotbx.phil.parse("""\
   ignore_zero_occupancy_atoms = True
     .type = bool
     .help = Include atoms with zero occupancy into mask calculation
-  ignore_hydrogens = True
+  ignore_hydrogens = False
     .type = bool
     .help = Ignore H or D atoms in mask calculation
 """)
