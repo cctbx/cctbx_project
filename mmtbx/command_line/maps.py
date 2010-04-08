@@ -118,11 +118,19 @@ def run(args, log = sys.stdout):
   reflection_file_server = reflection_file_utils.reflection_file_server(
     crystal_symmetry = crystal_symmetries[0],
     force_symmetry   = True,
-    reflection_files = reflection_files,
+    reflection_files = [],
     err              = log)
+  #
+  reflection_data_master_params = mmtbx.utils.data_and_flags_master_params(
+    master_scope_name="reflection_data")
+  reflection_data_input_params = processed_args.params.get(
+    "maps.input.reflection_data")
+  reflection_data_params = reflection_data_master_params.fetch(
+    reflection_data_input_params).extract().reflection_data
+  #
   determine_data_and_flags_result = mmtbx.utils.determine_data_and_flags(
     reflection_file_server  = reflection_file_server,
-    parameters              = params.maps.input.reflection_data,
+    parameters              = reflection_data_params,
     data_parameter_scope    = "maps.input.reflection_data",
     flags_parameter_scope   = "maps.input.reflection_data.r_free_flags",
     data_description        = "Reflection data",
@@ -137,9 +145,13 @@ def run(args, log = sys.stdout):
   print >> log, "-"*79
   print >> log, "Bulk solvent correction and anisotropic scaling:"
   fmodel = mmtbx.utils.fmodel_simple(
-    xray_structures = [xray_structure],
-    f_obs           = f_obs,
-    r_free_flags    = r_free_flags)
+    xray_structures         = [xray_structure],
+    f_obs                   = f_obs,
+    r_free_flags            = r_free_flags,
+    outliers_rejection      = params.maps.input.reflection_data.outliers_rejection,
+    skip_twin_detection     = params.maps.skip_twin_detection,
+    bulk_solvent_correction = params.maps.bulk_solvent_correction,
+    anisotropic_scaling     = params.maps.anisotropic_scaling)
   fmodel_info = fmodel.info()
   fmodel_info.show_rfactors_targets_scales_overall(out = log)
   print >> log, "-"*79

@@ -474,7 +474,7 @@ def run(args,
   rfs = reflection_file_server(
     crystal_symmetry = crystal_symmetry,
     reflection_files = reflection_files)
-  parameters = utils.data_and_flags.extract()
+  parameters = utils.data_and_flags_master_params().extract()
   if(command_line.options.f_obs_label is not None):
     parameters.labels = command_line.options.f_obs_label
   if(command_line.options.r_free_flags_label is not None):

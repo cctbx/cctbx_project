@@ -6,6 +6,7 @@ from cctbx import sgtbx
 from cctbx import xray
 from cctbx import eltbx
 from cctbx import adptbx
+from copy import deepcopy
 from scitbx import lbfgs
 from mmtbx import masks
 import cctbx.xray.structure_factors
@@ -607,10 +608,10 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     new_object = twin_model_manager(
       f_obs              = self.f_obs.deep_copy(),
       f_mask             = self.f_mask_array.deep_copy(),
-      r_free_flags         = self.r_free_flags.deep_copy(),
+      r_free_flags       = self.r_free_flags.deep_copy(),
       xray_structure     = self.xray_structure.deep_copy_scatterers(),
       scaling_parameters = self.scaling_parameters.deep_copy(),
-      mask_params        = self.mask_params,
+      mask_params        = deepcopy(self.mask_params),
       out                = self.out,
       twin_law           = self.twin_law,
       start_fraction     = self.twin_fraction,
@@ -710,6 +711,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     return self._target_attributes
 
   def update_solvent_and_scale(self,
+                               optimize_mask=True,
                                params=None,
                                out=None,
                                verbose=-1,
@@ -719,6 +721,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       r_free_flags   = self.r_free_flags,
       xray_structure = self.xray_structure,
       twin_law       = self.twin_law_str,
+      mask_params    = self.mask_params,
       k_sol          = self.k_sol(),
       b_sol          = self.b_sol(),
       b_cart         = self.b_cart())
@@ -727,7 +730,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     params.k_sol_b_sol_grid_search = False # XXX too slow otherwise
     params.number_of_macro_cycles=1 # XXX too slow otherwise, let's see may be ok
     if(not initialise):
-      self.fmodel_ts1.update_solvent_and_scale(params = params, out=out, verbose=verbose)
+      self.fmodel_ts1.update_solvent_and_scale(params = params, out=out,
+        verbose=verbose, optimize_mask=optimize_mask)
       self.fmodel_ts1.apply_back_b_iso()
     else:
       self.fmodel_ts1.update_twin_fraction()
@@ -737,6 +741,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       twin_fraction = self.fmodel_ts1.twin_fraction,
       b_cart = self.fmodel_ts1.b_cart(),
       k_overall = self.fmodel_ts1.scale_k1_w())
+    self.mask_params = self.fmodel_ts1.mask_params
 
   def update_core(self,
                   f_calc        = None,

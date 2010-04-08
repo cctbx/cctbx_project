@@ -47,6 +47,7 @@ from mmtbx import map_tools
 from iotbx import data_plots
 import random
 from copy import deepcopy
+from libtbx import group_args
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -103,8 +104,7 @@ class core(object):
       self.k_sol  = fmodel.k_sol()
       self.b_sol  = fmodel.b_sol()
       self.ss     = fmodel.ss
-    else:
-      adopt_init_args(self, locals())
+    else: adopt_init_args(self, locals())
     self.data = ext.core(
       f_calc = self.f_calc.data(),
       f_mask = self.f_mask.data(),
@@ -289,6 +289,8 @@ class manager(manager_mixin):
          max_number_of_bins           = 30,
          filled_f_obs_selection       = None,
          _target_memory               = None):
+    if(twin_law is not None):
+      target_name = "twin_lsq_f"
     self.core = None
     self.core_twin_mate = None
     self.twin_law = twin_law
@@ -435,8 +437,10 @@ class manager(manager_mixin):
           twin_fraction = 0.0
           tf_best = tfb
           while twin_fraction <= 1.0:
-            r_work_= abs(bulk_solvent.r_factor(self.f_obs_w.data(),
-              self.f_model_work().data(), self.f_model_work_twin_mate().data(),
+            r_work_= abs(bulk_solvent.r_factor(
+              self.f_obs_w.data(),
+              self.core.f_model.select(self.work).data(),
+              self.core_twin_mate.f_model.select(self.work).data(),
               twin_fraction))
             if(r_work_ < r_work):
               r_work = r_work_
@@ -462,8 +466,10 @@ class manager(manager_mixin):
     twin_fraction = 0.0
     tf_best = self.twin_fraction
     while twin_fraction <= 1.0:
-      r_work_= abs(bulk_solvent.r_factor(self.f_obs_w.data(),
-        self.f_model_work().data(), self.f_model_work_twin_mate().data(),
+      r_work_= abs(bulk_solvent.r_factor(
+        self.f_obs_w.data(),
+        self.core.f_model.select(self.work).data(),
+        self.core_twin_mate.f_model.select(self.work).data(),
         twin_fraction))
       if(r_work_ < r_work):
         r_work = r_work_
@@ -498,6 +504,7 @@ class manager(manager_mixin):
         u_star = u_star,
         k_sol  = k_sol,
         b_sol  = b_sol)
+    self._f_model      = self.core.f_model
     self._f_model_work = self.core.f_model.select(self.work)
     self._f_model_free = self.core.f_model.select(self.test)
     self._fb_cart_work = self.core.data.f_aniso.select(self.work)
@@ -521,6 +528,21 @@ class manager(manager_mixin):
           b_sol  = b_sol)
       self._f_model_work_twin_mate = self.core_twin_mate.f_model.select(self.work)
       self._f_model_free_twin_mate = self.core_twin_mate.f_model.select(self.test)
+      self._f_model = self.f_obs.array(data =
+        mmtbx.utils.apply_twin_fraction(
+          amplitude_data_part_one = flex.abs(self._f_model.data()),
+          amplitude_data_part_two = flex.abs(self.core_twin_mate.f_model.data()),
+          twin_fraction           = self.twin_fraction))
+      self._f_model_work = self.f_obs_w.array(data =
+        mmtbx.utils.apply_twin_fraction(
+          amplitude_data_part_one = flex.abs(self._f_model_work.data()),
+          amplitude_data_part_two = flex.abs(self._f_model_work_twin_mate.data()),
+          twin_fraction           = self.twin_fraction))
+      self._f_model_free = self.f_obs_t.array(data =
+        mmtbx.utils.apply_twin_fraction(
+          amplitude_data_part_one = flex.abs(self._f_model_free.data()),
+          amplitude_data_part_two = flex.abs(self._f_model_free_twin_mate.data()),
+          twin_fraction           = self.twin_fraction))
 
   def core_data_work(self):
     return core(fmodel = self.select(self.work))
@@ -710,39 +732,62 @@ class manager(manager_mixin):
 
   def optimize_mask_and_update_solvent_and_scale(
                                 self, params = None, out = None, verbose=-1):
-    rw = self.r_work()
+    if(self.k_sol() == 0):
+      self.update_solvent_and_scale(params=params, out=None, verbose=-1)
+    rw_ = self.r_work()
+    rf_ = self.r_free()
     r_solv_   = self.mask_params.solvent_radius
     r_shrink_ = self.mask_params.shrink_truncation_radius
+    gsf_      = self.mask_params.grid_step_factor
+    k_sol     = self.k_sol()
+    b_sol     = self.b_sol()
+    b_cart    = self.b_cart()
     if(verbose > 0):
        self.show_mask_optimization_statistics(prefix="Mask optimization start",
                                               out   = out)
-    for r_solv in [0.8, 1.0, 1.2, 1.4]:
-        for r_shrink in [0.8, 0.9, 1.0, 1.2, 1.4]:
+    r_solvs   = [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
+    r_shrinks = [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
+    gsfs      = [4.,]
+    for gsf in gsfs:
+      for r_solv in r_solvs:
+        for r_shrink in r_shrinks:
           self.mask_params.solvent_radius = r_solv
           self.mask_params.shrink_truncation_radius = r_shrink
+          self.mask_params.grid_step_factor = gsf
           self.mask_manager = masks.manager(
-            miller_array   = self.f_obs,
-            xray_structure = self.xray_structure,
-            mask_params    = self.mask_params)
+            miller_array      = self.f_obs,
+            miller_array_twin = self.twin_set,
+            xray_structure    = self.xray_structure,
+            mask_params       = self.mask_params)
           self.update_xray_structure(
             xray_structure      = self.xray_structure,
             update_f_calc       = False,
             update_f_mask       = True,
             force_update_f_mask = True,
             out                 = None)
-          self.update_solvent_and_scale(params=params, out=None, verbose=-1)
-          rw_ = self.r_work()
-          print "r_solv=%6.2f r_shrink=%6.2f r_work=%6.4f" % (r_solv, r_shrink, rw_)
-          if(rw_ is not None and (rw is None or rw_ < rw)):
-             rw = rw_
-             r_solv_ = r_solv
+          self.update_solvent_and_scale(params=params, out=None, verbose=-1,
+            optimize_mask=False)
+          rw = self.r_work()
+          rf = self.r_free()
+          print >> out, "r_solv=%6.2f r_shrink=%6.2f gsf=%6.2f r_work=%6.4f r_free=%6.4f"%(
+            r_solv, r_shrink, gsf, rw, rf)
+          if(rw < rw_):
+             rw_       = rw
+             rf_       = rf
+             r_solv_   = r_solv
              r_shrink_ = r_shrink
+             gsf_      = gsf
+          self.update(k_sol = k_sol, b_sol = b_sol, b_cart = b_cart)
+    print "BEST: r_solv=%6.2f r_shrink=%6.2f gsf=%6.2f r_work=%6.4f r_free=%6.4f"%(
+      r_solv_, r_shrink_, gsf_, rw_, rf_)
     self.mask_params.solvent_radius = r_solv_
     self.mask_params.shrink_truncation_radius = r_shrink_
+    self.mask_params.grid_step_factor = gsf_
     self.mask_manager = masks.manager(
-      miller_array   = self.f_obs,
-      xray_structure = self.xray_structure,
-      mask_params    = self.mask_params)
+      miller_array      = self.f_obs,
+      miller_array_twin = self.twin_set,
+      xray_structure    = self.xray_structure,
+      mask_params       = self.mask_params)
     self.update_xray_structure(xray_structure      = self.xray_structure,
                                update_f_calc       = False,
                                update_f_mask       = True,
@@ -754,19 +799,91 @@ class manager(manager_mixin):
                                               out   = out)
 
   def show_mask_optimization_statistics(self, prefix="", out=None):
-    if(out is None): out = sys.stdout
+    if(out is None): return
     line_len = len("|-"+"|"+prefix)
     fill_len = 80-line_len-1
     print >> out, "|-"+prefix+"-"*(fill_len)+"|"
-    print >> out, "| r_work= %s     r_free= %s     Rad_solv= %4.2f     Rad_shrink= %4.2f   |"%\
-     (format_value(format="%6.4f", value=self.r_work()),
-      format_value(format="%6.4f", value=self.r_free()),
+    print >> out, \
+      "| Solvent (probe) radius= %4.2f Shrink truncation radius= %4.2f%s|"%(
       self.mask_params.solvent_radius,
-      self.mask_params.shrink_truncation_radius)
+      self.mask_params.shrink_truncation_radius," "*17)
+    print >> out, \
+      "| all data:                         500 lowest resolution reflections:        |"
+    rwl = self.r_work_low()
+    fmtl = "| r_work= %s r_free= %s     r_work= %s (resolution: %s-%s A)"%(
+      format_value(format="%6.4f", value=self.r_work()).strip(),
+      format_value(format="%6.4f", value=self.r_free()).strip(),
+      format_value(format="%6.4f", value=rwl.r_work).strip(),
+      format_value(format="%6.2f", value=rwl.d_min).strip(),
+      format_value(format="%7.2f", value=rwl.d_max).strip())
+    pad = " "*(78-len(fmtl))
+    print >> out, fmtl + pad + "|"
     print >> out, "|"+"-"*77+"|"
     print >> out
 
-  def update_solvent_and_scale(self, params = None, out = None, verbose=None):
+  def optimize_mask(self, params = None, out = None):
+    if(self.k_sol() == 0): return False
+    rw_ = self.r_work()
+    rf_ = self.r_free()
+    r_solv_   = self.mask_params.solvent_radius
+    r_shrink_ = self.mask_params.shrink_truncation_radius
+    k_sol     = self.k_sol()
+    b_sol     = self.b_sol()
+    b_cart    = self.b_cart()
+    self.show_mask_optimization_statistics(prefix="Mask optimization: start",
+      out = out)
+    hydrogens_present = False
+    if(self.xray_structure is not None):
+      if(self.xray_structure.hd_selection().count(True) > 0):
+        hydrogens_present = True
+    for r_solv in xrange(15):
+      r_solv /= 10.
+      if(hydrogens_present): r_shrink = max(1.2036*r_solv - 0.3151, 0)
+      else:                  r_shrink = max(1.1279*r_solv - 0.4082, 0)
+      self.mask_params.solvent_radius = r_solv
+      self.mask_params.shrink_truncation_radius = r_shrink
+      self.mask_manager = masks.manager(
+        miller_array      = self.f_obs,
+        miller_array_twin = self.twin_set,
+        xray_structure    = self.xray_structure,
+        mask_params       = self.mask_params)
+      self.update_xray_structure(
+        xray_structure      = self.xray_structure,
+        update_f_calc       = False,
+        update_f_mask       = True,
+        force_update_f_mask = True,
+        out                 = None)
+      rw = self.r_work()
+      rf = self.r_free()
+      rw_low = self.r_work_low().r_work
+      if(out is not None):
+        print >> out, "r_solv=%6.2f r_shrink=%6.2f r_work=%6.4f r_free=%6.4f r_work_low=%6.4f"%(
+          r_solv, r_shrink, rw, rf, rw_low)
+      if(rw < rw_):
+         rw_       = rw
+         rf_       = rf
+         r_solv_   = r_solv
+         r_shrink_ = r_shrink
+      self.update(k_sol = k_sol, b_sol = b_sol, b_cart = b_cart)
+    if(out is not None): print >> out
+    self.mask_params.solvent_radius = r_solv_
+    self.mask_params.shrink_truncation_radius = r_shrink_
+    self.mask_manager = masks.manager(
+      miller_array      = self.f_obs,
+      miller_array_twin = self.twin_set,
+      xray_structure    = self.xray_structure,
+      mask_params       = self.mask_params)
+    self.update_xray_structure(xray_structure      = self.xray_structure,
+                               update_f_calc       = False,
+                               update_f_mask       = True,
+                               force_update_f_mask = True,
+                               out                 = None)
+    self.show_mask_optimization_statistics(prefix="Mask optimization: final",
+      out = out)
+    return True
+
+  def update_solvent_and_scale(self, params = None, out = None, verbose=None,
+                                     optimize_mask = True):
     global time_bulk_solvent_and_scale
     timer = user_plus_sys_time()
     if(self.core_twin_mate is not None):
@@ -777,8 +894,14 @@ class manager(manager_mixin):
     save_params_bulk_solvent = params.bulk_solvent
     if(abs(flex.max(flex.abs(self.f_mask().data()))) < 0.001):
       params.bulk_solvent = False
-    if(out is None): out = sys.stdout
+    is_mask_optimized = False
+    self.update_core()
+    if(optimize_mask):
+      is_mask_optimized = self.optimize_mask(params = params, out = out)
     bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
+    self.update_core()
+    if(not is_mask_optimized and optimize_mask):
+      self.optimize_mask(params = params, out = out)
     self.update_core()
     if(abs(flex.max(flex.abs(self.f_mask().data()))) < 0.001):
       params.bulk_solvent = save_params_bulk_solvent
@@ -911,7 +1034,7 @@ class manager(manager_mixin):
     return f_obs.array(data=d, sigmas=s)
 
   def f_model(self):
-    return self.core.f_model
+    return self._f_model
 
   def f_model_work(self):
     return self._f_model_work
@@ -1205,30 +1328,26 @@ class manager(manager_mixin):
     omega_mean = flex.mean_default(omega, 0)
     return omega_mean
 
-  def _r_factor(self, type="work", d_min=None, d_max=None, d_spacings=None,
-                                                               selection=None):
+  def _r_factor(self,
+                type="work",
+                d_min=None,
+                d_max=None,
+                d_spacings=None,
+                selection=None):
     global time_r_factors
     if(type == "work"):
       f_obs = self.f_obs_w.data()
-      f_model = self.f_model_work().data()
+      f_model = self.f_model_scaled_with_k1_w().data()
     elif(type == "free"):
       f_obs = self.f_obs_t.data()
-      f_model = self.f_model_free().data()
+      f_model = self.f_model_scaled_with_k1_t().data()
     elif(type == "all"):
       f_obs = self.f_obs.data()
-      f_model = self.f_model().data()
+      f_model = self.f_model_scaled_with_k1().data()
     else: raise RuntimeError
-    f_model_twin = None
-    if(self.twin_law is not None):
-      assert self.core_twin_mate is not None
-      if(type == "work"):   f_model_twin_mate = self.f_model_work_twin_mate().data()
-      elif(type == "free"): f_model_twin_mate = self.f_model_free_twin_mate().data()
-      elif(type == "all"):  f_model_twin_mate = self.f_model_twin_mate().data()
-      else: raise RuntimeError
-    if(selection is not None):
-       assert [d_min, d_max].count(None) == 2
+    if(selection is not None): assert [d_min, d_max].count(None) == 2
     if([d_min, d_max].count(None) < 2):
-       assert selection is None and d_spacings is not None
+      assert selection is None and d_spacings is not None
     timer = user_plus_sys_time()
     if([d_min, d_max].count(None) == 0):
       keep = flex.bool(d_spacings.size(), True)
@@ -1239,12 +1358,7 @@ class manager(manager_mixin):
     if(selection is not None):
       f_obs   = f_obs.select(selection)
       f_model = f_model.select(selection)
-    if(self.twin_law is not None):
-      assert self.core_twin_mate is not None
-      result = abs(bulk_solvent.r_factor(f_obs, f_model, f_model_twin_mate,
-        self.twin_fraction))
-    else:
-      result = abs(bulk_solvent.r_factor(f_obs, f_model))
+    result = abs(bulk_solvent.r_factor(f_obs, f_model, 1.0))
     time_r_factors += timer.elapsed()
     if(result >= 1.e+9): result = None
     return result
@@ -1271,23 +1385,14 @@ class manager(manager_mixin):
   def scale_k1(self, selection = None):
     return _scale_helper(
       num=self.f_obs.data(),
-      den=flex.abs(self.core.f_model.data()),
+      den=flex.abs(self.f_model().data()),
       selection=selection)
 
   def scale_k1_w(self, selection = None):
-    if(self.twin_fraction == 0):
-      return _scale_helper(
-        num=self.f_obs_w.data(),
-        den=flex.abs(self.f_model_work().data()),
-        selection=selection)
-    else: # XXX
-      fc1 = flex.abs(self.f_model_work().data())
-      fc2 = flex.abs(self.f_model_work_twin_mate().data())
-      fc1 = fc1*fc1
-      fc2 = fc2*fc2
-      fc = flex.sqrt((1.-self.twin_fraction)*fc1+self.twin_fraction*fc2)
-      fo = self.f_obs_w.data()
-      return flex.sum(fo*fc)/flex.sum(fc*fc)
+    return _scale_helper(
+      num=self.f_obs_w.data(),
+      den=flex.abs(self.f_model_work().data()),
+      selection=selection)
 
   def scale_k1_t(self, selection = None):
     return _scale_helper(
@@ -1336,6 +1441,20 @@ class manager(manager_mixin):
       num_num=True)
     if (result is None): return None
     return result**0.5
+
+  def r_work_low(self, size=500):
+    sel = self.f_obs_w.sort_permutation()
+    fo = self.f_obs_w.select(sel)
+    fm = self.f_model_scaled_with_k1_w().select(sel)
+    ds = fo.d_spacings().data()[:size]
+    d_min = flex.max(ds)
+    d_max = flex.min(ds)
+    fo = fo.data()[:size]
+    fm = fm.data()[:size]
+    return group_args(
+      r_work = abs(bulk_solvent.r_factor(fo, fm, 1)),
+      d_min  = d_min,
+      d_max  = d_max)
 
   def r_overall_low_high(self, d = 6.0):
     r_work = self.r_work()
@@ -2341,7 +2460,7 @@ class info(object):
     mp = fmodel.mask_params
     self.target_name = fmodel.target_name
     if(self.target_name == "twin_lsq_f"):
-      self.twin_fraction = fmodel.twin_fraction_object.twin_fraction
+      self.twin_fraction = fmodel.twin_fraction
       self.twin_law = fmodel.twin_law
     else:
       self.twin_fraction = None
@@ -2400,9 +2519,9 @@ class info(object):
       tpr_w = tpr.select(fmodel.work)
       tpr_t = tpr.select(fmodel.test)
     fo_t = fmodel.f_obs_t
-    fc_t = fmodel.f_model_free()
+    fc_t = fmodel.f_model_scaled_with_k1_t()
     fo_w = fmodel.f_obs_w
-    fc_w = fmodel.f_model_work()
+    fc_w = fmodel.f_model_scaled_with_k1_w()
     alpha_w, beta_w = fmodel.alpha_beta_w()
     alpha_t, beta_t = fmodel.alpha_beta_t()
     pher_w = fmodel.phase_errors_work()
@@ -2457,8 +2576,8 @@ class info(object):
           completeness = completeness,
           alpha_work   = flex.mean_default(alpha_w.select(sel_w).data(),None),
           beta_work    = flex.mean_default(beta_w.select(sel_w).data(),None),
-          r_work       = bulk_solvent.r_factor(s_fo_w_d, s_fc_w_d),
-          r_free       = bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data()),
+          r_work       = bulk_solvent.r_factor(s_fo_w_d, s_fc_w_d, 1),
+          r_free       = bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data(), 1),
           target_work  = sel_tpr_w,
           target_free  = sel_tpr_t,
           n_work       = sel_fo_w.data().size(),

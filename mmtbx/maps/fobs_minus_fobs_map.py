@@ -238,7 +238,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
         force_symmetry   = True,
         reflection_files = [reflection_file],
         err              = StringIO())
-      parameters = utils.data_and_flags.extract()
+      parameters = utils.data_and_flags_master_params().extract()
       if(label is not None):
         parameters.labels = [label]
       determine_data_and_flags_result = utils.determine_data_and_flags(
