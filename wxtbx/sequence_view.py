@@ -1,4 +1,8 @@
 
+# Sequence view and selection window, with optional secondary structure
+# annotation.  Only the run() method depends on modules in CCTBX - the
+# GUI elements can be adapted to any framework.
+
 # TODO: mixin for contiguous range selection
 
 from __future__ import division
@@ -8,7 +12,7 @@ import wx.lib.scrolledpanel
 import cStringIO
 import math, sys, os
 
-class SequencePanel (wx.PyPanel) :
+class sequence_panel (wx.PyPanel) :
   tooltip = "Double-click a residue to select it; hold down Shift to select \
 multiple residues."
   __bg_color = (255,255,255)
@@ -16,12 +20,12 @@ multiple residues."
     wx.PyPanel.__init__(self, *args, **kwds)
     if self.__bg_color is not None :
       self.SetBackgroundColour(self.__bg_color)
-    from scitbx.array_family import flex, shared
+    #from scitbx.array_family import flex, shared
     self.sequence = ""
     self.line_width = 50
     self.line_sep = 28
     self.start_offset = 0
-    self.char_boxes = shared.stl_set_unsigned()
+    self.char_boxes = [] #shared.stl_set_unsigned()
     self.flag_show_line_numbers = True
     self.flag_enable_selections = True
     self.flag_enable_shift_for_multiple = True
@@ -30,7 +34,7 @@ multiple residues."
     self.flag_show_tooltip = False
     self.highlights = []
     self.highlight_colors = []
-    self.selected_residues = flex.bool()
+    self.selected_residues = [] #flex.bool()
     self.selection_color = (255, 255, 0)
     self._last_x = None
     self._last_y = None
@@ -144,8 +148,8 @@ multiple residues."
     return (char_w, char_h)
 
   def build_boxes (self) :
-    from scitbx.array_family import flex, shared
-    self.char_boxes = shared.stl_set_unsigned()
+    #from scitbx.array_family import flex, shared
+    self.char_boxes = [] #shared.stl_set_unsigned()
     dc = wx.ClientDC(self)
     dc.SetFont(self.txt_font)
     char_w, char_h = self.get_char_size(dc)
@@ -183,7 +187,7 @@ multiple residues."
     ranges = []
     last_start = None
     last_end = None
-    for i_seq in range(self.selected_residues.size()) :
+    for i_seq, selected in enumerate(self.selected_residues) :
       if self.selected_residues[i_seq] :
         if last_end is not None :
           if last_end < (i_seq - 1) :
@@ -214,8 +218,9 @@ multiple residues."
     self.highlight_colors.append(color)
 
   def clear_selection (self) :
-    from scitbx.array_family import flex, shared
-    self.selected_residues = flex.bool(len(self.sequence), False)
+    #from scitbx.array_family import flex, shared
+    self.selected_residues = [False] * len(self.sequence)
+    # was: = flex.bool(len(self.sequence), False)
     frame = self.GetParent().GetParent()
     frame.statusbar.SetStatusText("")
 
@@ -293,12 +298,12 @@ multiple residues."
     (x, y) = (event.GetX(), event.GetY())
 
 #-----------------------------------------------------------------------
-class SequenceWithStructurePanel (SequencePanel) :
+class sequence_with_structure_panel (sequence_panel) :
   tooltip = """\
 Double-click on any residue or secondary-structure element to select the \
 residue(s).  Holding down shift enables multiple selections."""
   def __init__ (self, *args, **kwds) :
-    SequencePanel.__init__(self, *args, **kwds)
+    sequence_panel.__init__(self, *args, **kwds)
     self.line_sep = 64
     self.structure = ""
     self.selected_helices = []
@@ -572,7 +577,7 @@ residue(s).  Holding down shift enables multiple selections."""
 
   def OnClear (self, event) :
     self.clear_structure_selections()
-    SequencePanel.OnClear(self, event)
+    sequence_panel.OnClear(self, event)
 
 def strand_as_arrow (x1, y1, x2, y2) :
   segments = []
@@ -594,7 +599,7 @@ def strand_as_box (x1, y1, x2, y2) :
   return segments
 
 ########################################################################
-class ControlPanel (wx.Panel) :
+class control_panel (wx.Panel) :
   def __init__ (self, *args, **kwds) :
     wx.Panel.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -617,7 +622,7 @@ class ControlPanel (wx.Panel) :
     self.Bind(wx.EVT_CHECKBOX, view.OnSetMode, self.multi_select_box)
     self.Bind(wx.EVT_BUTTON, view.OnHelp, self.help_btn)
 
-class SequenceFrame (wx.Frame) :
+class sequence_frame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     wx.Frame.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -631,7 +636,7 @@ class SequenceFrame (wx.Frame) :
     outer_panel = wx.lib.scrolledpanel.ScrolledPanel(self, -1)
     szr2 = wx.BoxSizer(wx.VERTICAL)
     outer_panel.SetSizer(szr2)
-    panel = SequenceWithStructurePanel(outer_panel, -1)
+    panel = sequence_with_structure_panel(outer_panel, -1)
     szr2.Add(panel, 1, wx.EXPAND)
     szr2.Layout()
     szr2.Fit(outer_panel)
@@ -641,10 +646,10 @@ class SequenceFrame (wx.Frame) :
     self.outer_panel = outer_panel
 
   def create_control_panel (self) :
-    panel2 = ControlPanel(self, -1, style=wx.SIMPLE_BORDER)
-    panel2.bind_events(self.panel)
-    self.sizer.Add(panel2, 0, wx.EXPAND)
-    self.control_panel = panel2
+    cp = control_panel(self, -1, style=wx.SIMPLE_BORDER)
+    cp.bind_events(self.panel)
+    self.sizer.Add(cp, 0, wx.EXPAND)
+    self.control_panel = cp
 
   def set_sequence (self, seq) :
     self.panel.set_sequence(seq)
@@ -661,6 +666,7 @@ class SequenceFrame (wx.Frame) :
     self.panel.set_structure(sec_str)
     self.panel.apply_missing_residue_highlights()
 
+#-----------------------------------------------------------------------
 def run (args) :
   from iotbx import file_reader
   from mmtbx import secondary_structure
@@ -679,7 +685,7 @@ def run (args) :
   seq = chain_conf.as_padded_sequence()
   ss = chain_conf.as_sec_str_sequence(helix_sele, sheet_sele)
   app = wx.App(0)
-  frame = SequenceFrame(None, -1, "Sequence display for %s" %
+  frame = sequence_frame(None, -1, "Sequence display for %s" %
     os.path.basename(pdb_file))
   frame.set_sequence(seq)
   frame.set_structure(ss)
