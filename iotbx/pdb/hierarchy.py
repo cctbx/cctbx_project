@@ -749,7 +749,7 @@ class _conformer(boost.python.injector, ext.conformer):
   def only_atom(self):
     return self.only_residue().only_atom()
 
-  def format_fasta(self, max_line_length=79):
+  def as_sequence (self) :
     from iotbx.pdb import common_residue_names_get_class
     rn_seq = []
     residue_classes = dict_with_default_0()
@@ -781,6 +781,10 @@ class _conformer(boost.python.injector, ext.conformer):
           "DC": "C",
           "DG": "G",
           "DT": "T"}.get(rn, "N"))
+    return seq
+
+  def format_fasta(self, max_line_length=79):
+    seq = self.as_sequence()
     n = len(seq)
     if (n == 0): return None
     comment = [">"]
@@ -796,6 +800,47 @@ class _conformer(boost.python.injector, ext.conformer):
       result.append("".join(seq[i:j]))
       i = j
     return result
+
+  def as_padded_sequence (self, missing_char='X') :
+    seq = self.as_sequence()
+    padded_seq = []
+    last_resseq = 0
+    i = 0
+    for i, residue in enumerate(self.residues()) :
+      resseq = residue.resseq_as_int()
+      if resseq < 1 :
+        continue
+      if resseq > (last_resseq + 1) :
+        for x in range(resseq - last_resseq - 1) :
+          padded_seq.append(missing_char)
+      last_resseq = resseq
+      padded_seq.append(seq[i])
+    return "".join(padded_seq)
+
+  def as_sec_str_sequence (self, helix_sele, sheet_sele, missing_char='X') :
+    ss_seq = []
+    last_resseq = 0
+    for i, residue in enumerate(self.residues()) :
+      resseq = residue.resseq_as_int()
+      if resseq < 1 :
+        continue
+      if resseq > (last_resseq + 1) :
+        for x in range(resseq - last_resseq - 1) :
+          ss_seq.append(missing_char)
+      found = False
+      for atom in residue.atoms() :
+        if helix_sele[atom.i_seq] :
+          ss_seq.append('H')
+          found = True
+          break
+        elif sheet_sele[atom.i_seq] :
+          ss_seq.append('S')
+          found = True
+          break
+      if not found :
+        ss_seq.append('L')
+      last_resseq = resseq
+    return "".join(ss_seq)
 
 class _residue(boost.python.injector, ext.residue):
 
