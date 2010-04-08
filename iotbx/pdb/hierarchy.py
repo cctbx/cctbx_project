@@ -610,7 +610,7 @@ class _root(boost.python.injector, ext.root):
       fallback_expected_bond_length=1.4,
       fallback_search_max_distance=2.5) :
     from cctbx.crystal import distance_based_connectivity
-    atoms = self.atoms()
+    atoms = self.atoms().deep_copy() # XXX potential bottleneck
     atoms.set_chemical_element_simple_if_necessary()
     sites_cart = atoms.extract_xyz()
     elements = atoms.extract_element()
