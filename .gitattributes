@@ -659,7 +659,6 @@ scitbx/math/continued_fraction.h -text
 scitbx/math/copysign.h -text
 scitbx/math/dihedral.h svneol=native#text/plain
 scitbx/math/euler_angles.h -text
-scitbx/math/fft_align.py -text
 scitbx/math/fit_peak.py -text
 scitbx/math/gcd.h svneol=native#text/plain
 scitbx/math/imaginary.h -text
