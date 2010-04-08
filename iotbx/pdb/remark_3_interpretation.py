@@ -1,4 +1,5 @@
 import os
+from libtbx import group_args
 
 example_of_tls_parameters_in_remark_3 = """\
 REMARK   3
@@ -545,3 +546,49 @@ def extract_program_name(remark_3_records):
      return format_name(program_names)
   else:
      return None
+
+def extract_f_model_core_constants(remark_3_records):
+  # XXX phenix.refine specific
+  k_sol            = None
+  b_sol            = None
+  b_cart           = [None]*6
+  twin_fraction    = None
+  twin_law         = None
+  r_solv           = None
+  r_shrink         = None
+  grid_step_factor = None
+  b11,b22,b33,b12,b13,b23 = [None,None,None,None,None,None]
+  r_work           = None
+  r_free           = None
+  for l in remark_3_records:
+    l = l.strip()
+    ls= l.split()
+    try:
+      if(l.count("REMARK   3   K_SOL              :")): k_sol = float(ls[4])
+      if(l.count("REMARK   3   B_SOL              :")): b_sol = float(ls[4])
+      if(l.count("REMARK   3    B11 :")): b11 = float(ls[4])
+      if(l.count("REMARK   3    B22 :")): b22 = float(ls[4])
+      if(l.count("REMARK   3    B33 :")): b33 = float(ls[4])
+      if(l.count("REMARK   3    B12 :")): b12 = float(ls[4])
+      if(l.count("REMARK   3    B13 :")): b13 = float(ls[4])
+      if(l.count("REMARK   3    B23 :")): b23 = float(ls[4])
+      if(l.count("REMARK   3   FRACTION:")): twin_fraction = float(ls[3])
+      if(l.count("REMARK   3   OPERATOR:")): twin_law      = ls[3]
+      if(l.count("REMARK   3   SOLVENT RADIUS     :")): r_solv = float(ls[5])
+      if(l.count("REMARK   3   SHRINKAGE RADIUS   :")): r_shrink = float(ls[5])
+      if(l.count("REMARK   3   GRID STEP FACTOR   :")): grid_step_factor = float(ls[6])
+      if(l.count("REMARK   3   R VALUE            (WORKING SET) :")): r_work = float(ls[7])
+      if(l.count("REMARK   3   FREE R VALUE                     :")): r_free = float(ls[6])
+    except: pass
+  if([b11,b22,b33,b12,b13,b23].count(None)==0): b_cart=[b11,b22,b33,b12,b13,b23]
+  return group_args(
+    k_sol            = k_sol,
+    b_sol            = b_sol,
+    b_cart           = b_cart,
+    twin_fraction    = twin_fraction,
+    twin_law         = twin_law,
+    r_solv           = r_solv,
+    r_shrink         = r_shrink,
+    grid_step_factor = grid_step_factor,
+    r_work           = r_work,
+    r_free           = r_free)

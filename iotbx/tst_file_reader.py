@@ -100,12 +100,8 @@ END
   phil_data = """\
 refinement {
   input {
-    xray_data {
-      include scope mmtbx.utils.data_and_flags
-    }
-    neutron_data {
-      include scope mmtbx.utils.data_and_flags
-    }
+    include scope mmtbx.utils.neutron_data_str
+    include scope mmtbx.utils.xray_data_str
   }
   refine {
     strategy = *individual_adp *individual_sites *tls occupancies group_adp
