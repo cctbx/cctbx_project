@@ -303,10 +303,10 @@ class bulk_solvent_and_scales(object):
           fmodel.alpha_beta_params.interpolation = False
        m = "macro_cycle= "
        if(params.bulk_solvent):
-         assert abs(flex.max(flex.abs(fmodel.f_mask().data()))) > 1.e-3
+         assert not fmodel.check_f_mask_all_zero()
        macro_cycles = range(1, params.number_of_macro_cycles+1)
        self.show(fmodel = fmodel, message = m+str(0)+" (start)")
-       mask_ok = abs(flex.max(flex.abs(fmodel.f_mask().data()))) > 0.001
+       mask_ok = not fmodel.check_f_mask_all_zero()
        if(params.fix_k_sol is not None and mask_ok):
          print params.bulk_solvent
          assert params.bulk_solvent

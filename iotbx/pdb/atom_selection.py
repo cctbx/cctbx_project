@@ -7,6 +7,7 @@ from libtbx.phil import tokenizer
 from libtbx.utils import Sorry, format_exception
 from libtbx import slots_getstate_setstate
 from cStringIO import StringIO
+import iotbx.pdb
 
 def _character_case_id(strings):
   have_upper = False
@@ -223,6 +224,7 @@ class cache(slots_getstate_setstate):
 
   def get_pepnames(self):
     if (self.pepnames is None):
+      get_class = iotbx.pdb.common_residue_names_get_class
       n_ca_c_o = set([" N  ", " CA ", " C  ", " O  "])
       atoms = self.root.atoms()
       sentinel = atoms.reset_tmp(first_value=0, increment=0)
@@ -230,16 +232,20 @@ class cache(slots_getstate_setstate):
         for chain in model.chains():
           for conformer in chain.conformers():
             for residue in conformer.residues():
-              ca = residue.find_atom_by(name=" CA ")
-              if (ca is not None):
-                if (residue.atoms_size() == 1):
-                  ca.tmp = 1
-                else:
-                  residue_atoms = residue.atoms()
-                  if (n_ca_c_o.issubset(set([atom.name
-                        for atom in residue_atoms]))):
-                    for atom in residue_atoms:
-                      atom.tmp = 1
+              if(get_class(name = residue.resname) == "common_amino_acid"):
+                for atom in residue.atoms():
+                  atom.tmp = 1
+              elif(residue.resname.strip() != "CA"):
+                ca = residue.find_atom_by(name=" CA ")
+                if (ca is not None):
+                  if (residue.atoms_size() == 1):
+                    ca.tmp = 1
+                  else:
+                    residue_atoms = residue.atoms()
+                    if (n_ca_c_o.issubset(set([atom.name
+                          for atom in residue_atoms]))):
+                      for atom in residue_atoms:
+                        atom.tmp = 1
       self.pepnames = (atoms.extract_tmp_as_size_t() == 1).iselection()
     return [self.pepnames]
 

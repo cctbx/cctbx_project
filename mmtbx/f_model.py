@@ -882,28 +882,34 @@ class manager(manager_mixin):
       out = out)
     return True
 
+  def check_f_mask_all_zero(self):
+    result = False
+    if(flex.abs(self.f_mask().data()).all_eq(0)):
+      result = True
+      self.update(k_sol = 0, b_sol = 0)
+    return result
+
   def update_solvent_and_scale(self, params = None, out = None, verbose=None,
                                      optimize_mask = True):
     global time_bulk_solvent_and_scale
     timer = user_plus_sys_time()
-    if(self.core_twin_mate is not None):
-      self.update_twin_fraction()
-    if(params is None):
-      params = bss.master_params.extract()
+    if(self.core_twin_mate is not None): self.update_twin_fraction()
+    if(params is None): params = bss.master_params.extract()
     if(verbose is not None): params.verbose=verbose
     save_params_bulk_solvent = params.bulk_solvent
-    if(abs(flex.max(flex.abs(self.f_mask().data()))) < 0.001):
-      params.bulk_solvent = False
+    if(self.check_f_mask_all_zero()): params.bulk_solvent = False
     is_mask_optimized = False
     self.update_core()
+    if(self.check_f_mask_all_zero()): params.bulk_solvent = False
     if(optimize_mask):
       is_mask_optimized = self.optimize_mask(params = params, out = out)
+    if(self.check_f_mask_all_zero()): params.bulk_solvent = False
     bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
     self.update_core()
     if(not is_mask_optimized and optimize_mask):
       self.optimize_mask(params = params, out = out)
     self.update_core()
-    if(abs(flex.max(flex.abs(self.f_mask().data()))) < 0.001):
+    if(self.check_f_mask_all_zero()):
       params.bulk_solvent = save_params_bulk_solvent
     time_bulk_solvent_and_scale += timer.elapsed()
 
