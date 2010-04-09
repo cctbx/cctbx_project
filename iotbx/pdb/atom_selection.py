@@ -7,7 +7,6 @@ from libtbx.phil import tokenizer
 from libtbx.utils import Sorry, format_exception
 from libtbx import slots_getstate_setstate
 from cStringIO import StringIO
-import iotbx.pdb
 
 def _character_case_id(strings):
   have_upper = False
@@ -224,6 +223,7 @@ class cache(slots_getstate_setstate):
 
   def get_pepnames(self):
     if (self.pepnames is None):
+      import iotbx.pdb
       get_class = iotbx.pdb.common_residue_names_get_class
       n_ca_c_o = set([" N  ", " CA ", " C  ", " O  "])
       atoms = self.root.atoms()
