@@ -20,8 +20,12 @@ How to run:
      line and hit Enter. This will creare a parameter file called maps.params,
      which can be renamed if desired.
 
-  2. Edit maps.params file to specify input/output files and the desired maps.
-     It is possible to request as many maps as desired.
+  2. Edit maps.params file to specify input/output file names, data labesl and
+     the desired maps. It is possible to request as many maps as desired. By
+     default, the file maps.params specifies 5 maps to be created: 2mFo-DFc,
+     2mFo-DFc with missing Fobs filled with DFcalc, mFo-DFc and anomalous
+     difference maps will be output in MTZ format, and one 2mFo-DFc map will be
+     output in X-plor formatted file.
 
   3. Run this command to compute requested maps: phenix.maps maps.params
 
@@ -51,10 +55,51 @@ Remarks:
   - Kick maps and missing Fobs filling is done (if requested) as described in
     Adams et al. (2010). Acta Cryst. D66, 213-221.
 
-  - Twinning (if detected) will be accounted for automatically.
+  - Twinning (if detected) will be accounted for automatically. This can be
+    disabled by using "skip_twin_detection=True" keyword.
 
   - All arrays used in map calculation, for example: Fobs, Fmodel, Fcalc, Fmask,
     m, D, etc., can be output into a CNS or MTZ formatted reflection file.
+
+  - For those who likes to experiment: bulk solvent correction and anisotropic
+    scaling can be turned off, the data can be filtered by sigma and resolution.
+"""
+
+default_params = """\
+maps {
+  map_coefficients {
+    map_type = 2mFo-DFc
+    format = *mtz phs
+    mtz_label_amplitudes = 2mFoDFc
+    mtz_label_phases = P2mFoDFc
+    fill_missing_f_obs = False
+  }
+  map_coefficients {
+    map_type = 2mFo-DFc
+    format = *mtz phs
+    mtz_label_amplitudes = 2mFoDFc_fill
+    mtz_label_phases = P2mFoDFc_fill
+    fill_missing_f_obs = True
+  }
+  map_coefficients {
+    map_type = mFo-DFc
+    format = *mtz phs
+    mtz_label_amplitudes = mFoDFc
+    mtz_label_phases = PmFoDFc
+    fill_missing_f_obs = False
+  }
+  map_coefficients {
+    map_type = anomalous
+    format = *mtz phs
+    mtz_label_amplitudes = ANOM
+    mtz_label_phases = PANOM
+  }
+  map {
+    map_type = 2mFo-DFc
+    fill_missing_f_obs = False
+    grid_resolution_factor = 1/4.
+  }
+}
 """
 
 def get_atom_selection_manager(pdb_inp):
@@ -68,10 +113,15 @@ def run(args, log = sys.stdout):
   print >> log, "-"*79
   if(len(args) == 0):
     parameter_file_name = "maps.params"
-    print >> log, "Creating parameter file %s in the following directory:\n%s"%(
+    print >> log, "Creating parameter file '%s' in the following directory:\n%s"%(
       parameter_file_name, os.path.abspath('.'))
+    if(os.path.isfile(parameter_file_name)):
+      msg="File '%s' exists already. Re-name it or move and run the command again."
+      raise Sorry(msg%parameter_file_name)
     pfo = open(parameter_file_name, "w")
-    mmtbx.maps.maps_including_IO_master_params().show(out = pfo)
+    master_params = mmtbx.maps.maps_including_IO_master_params()
+    master_params = master_params.fetch(iotbx.phil.parse(default_params))
+    master_params.show(out = pfo)
     pfo.close()
     print >> log, "-"*79
     return
