@@ -140,6 +140,100 @@ namespace zernike{
       }
   };
 
+  template <typename IntType = int>
+  class lm_array
+  {
+
+    typedef std::map< double_integer_index<int>,
+                      std::size_t,
+                      double_integer_index_fast_less_than<int> > lm_lookup_map_type;
+
+    public:
+    /* Default constructor */
+    lm_array() {}
+    /* Basic constructor, sets all coefs to zero */
+    lm_array(int const& l_max)
+    {
+      SCITBX_ASSERT (l_max>0);
+      l_max_=l_max;
+      int count=0, n_duplicates=0, lm_count=0;
+      for (int ll=0; ll<=l_max_; ll++){
+        for (int mm=-ll;mm<=ll;mm++){
+            scitbx::af::shared<int> tmp2;
+            // make a lookup table for lm
+            double_integer_index<int> this_lm(ll,mm);
+            lm_.push_back( this_lm );
+            lm_lookup_map_type::const_iterator l = lm_lookup_.find( this_lm );
+
+            if ( l == lm_lookup_.end() ) { // not in list
+                lm_lookup_[ this_lm ] = lm_count;
+            }
+            lm_count++;
+        }
+      }
+    }
+
+    int find_lm(int const& l, int const& m)
+    {
+       double_integer_index<int> this_lm(l,m);
+       return(find_lm(this_lm));
+    }
+
+
+    int find_lm(double_integer_index<int> const& this_lm )
+    {
+       int lm_location;
+       lm_lookup_map_type::const_iterator l = lm_lookup_.find( this_lm );
+       if (l == lm_lookup_.end()) {
+         lm_location = -1; // !!! negative if not found !!!
+       }
+       else {
+         lm_location = l->second;
+       }
+       return (lm_location);
+    }
+
+    scitbx::af::shared< scitbx::af::tiny<int,2> > lm()
+    {
+      scitbx::af::shared< scitbx::af::tiny<int,2> > result;
+      for(int ii=0;ii<lm_.size();ii++){
+        scitbx::af::tiny<int,2> tmp( lm_[ii].n_, lm_[ii].l_);
+        result.push_back( tmp );
+      }
+      return( result );
+    }
+
+    scitbx::af::shared< double_integer_index<int> > some_indices_in_legendre_recursion_order(int const& this_m)
+    {
+      scitbx::af::shared< double_integer_index<int> > result;
+      for (int ii=this_m;ii<l_max_;ii++){
+        double_integer_index<int> this_lm(ii,this_m);
+        result.push_back( this_lm );
+      }
+      return ( result );
+    }
+
+    scitbx::af::shared< int > lut_of_some_indices_in_legendre_recursion_order(int const& this_m)
+    {
+      scitbx::af::shared< int > result;
+      for (int ii=this_m;ii<l_max_;ii++){
+        double_integer_index<int> this_lm(ii,this_m);
+        int l = find_lm(this_lm);
+        result.push_back( l );
+      }
+      return ( result );
+    }
+
+    private:
+
+      lm_lookup_map_type lm_lookup_;
+
+      int l_max_;
+      scitbx::af::shared< double_integer_index<int> > lm_;
+      scitbx::af::shared< scitbx::af::shared<int> > lm_index_;
+
+  } ;
+
 
 
 
@@ -236,8 +330,6 @@ namespace zernike{
         for (int ll=0;ll<=nn;ll++){
           // restriction on even / odd
           if (is_even( nn-ll )){
-
-
             scitbx::af::shared<int> tmp2;
             // make a lookup table for nl
             double_integer_index<int> this_nl(nn,ll);
@@ -515,6 +607,7 @@ namespace zernike{
       return( coefs_ );
     }
 
+
     bool load_coefs(scitbx::af::shared< scitbx::af::tiny<int,3> > nlm,
                     scitbx::af::const_ref< std::complex<FloatType> > const& coef)
     {
@@ -556,6 +649,217 @@ namespace zernike{
 
 
 
+
+  //--------------------------------------------------------------
+  //                NOT-SO-SLOW SPHERICAL HARMONICS
+  //--------------------------------------------------------------
+
+  template <typename FloatType = double>
+  class nss_spherical_harmonics
+  {
+    public:
+    nss_spherical_harmonics();
+    nss_spherical_harmonics(int const& max_l, int const& mangle, log_factorial_generator<FloatType> const& lgf)
+    :
+    max_l_(max_l),
+    lm_engine_(max_l),
+    mangle_(mangle),
+    eps_(1e-18)
+    {
+      lgf_ = lgf;
+      lm_indices_ = lm_engine_.lm();
+      dtor_=3.14159265358979323846264338327950288/180.0;
+      dangle_ = dtor_*360.0/mangle_;
+      // first build precomputed sin and cos lookup tables
+      // linear interpolation doesn't seem to slow things down much but does increase accurarcy of results.
+      // it is however good to make sure that we use enough points to populate the table
+      SCITBX_ASSERT( mangle> 3999 );
+      dleg_ = 2.0/(mangle_-1.0);
+      for(int ii=0;ii<mangle_;ii++){
+        angles_.push_back( dangle_*ii );
+        cos_.push_back( std::cos(dangle_*ii) );
+        sin_.push_back( std::sin(dangle_*ii) );
+        legendre_argument_.push_back( -1.0+ii*dleg_ );
+      }
+
+      // Now we need to build Legendre polynome lookup tables
+      // again, we will not interpolate, but rely on nearest neighbour being okai for things up to order 30 or so
+      //
+      // We will build the lookuptables as using the recursion given by this relation
+      //
+      // P_{l+1,m} = [ (2*l+1)*x*P_{l,m} - (l-m+1)*P_{l-1,m} ] / [ l - m + 1]
+      //
+      //
+      // we therefor have to compute
+      // (m,m), (m+1,m) for each value of l
+      // i.e, we do this
+      // l,m = (0,0), (1,0) to get (2,0), (3,0), (4,0) etc etc
+      // l,m = (1,1), (2,1) to get (3,1), (4,1), (5,1) etc etc
+      // l,m = (2,2), (3,2) to get (4,2), (5,2), (6,2) etc etc
+      // l,m = (3,3), (4,3) to get (5,3), (6,3), (7,3) etc etc
+      // l,m = (4,4), (5,4) to get (6,4), (7,4), (8,4) etc etc
+      // etc etc etc etc etc etc
+      //
+      //
+      //
+      for (int ii=0;ii<mangle_;ii++){
+        std::vector< FloatType > plm( lm_indices_.size(), 0 ); // here we store the legendre functions
+        FloatType x = legendre_argument_[ ii ];
+        scitbx::af::shared<int> indices;
+        for (int this_m=0; this_m < max_l_; this_m++){
+          // get the indices please for this set of indices
+          indices = lm_engine_.lut_of_some_indices_in_legendre_recursion_order( this_m );
+          FloatType a,b,c;
+          int this_l, this_m;
+          this_l = lm_indices_[ indices[0] ][0] ; // the n/l l/m correspondence is annoying but a consequence of naming decisions made earlier
+          this_m = lm_indices_[ indices[0] ][1] ;
+          a = boost::math::legendre_p(this_l, this_m, x);
+          plm[ indices[0] ] = a;
+          if (this_m>0){
+                int neg_lm = lm_engine_.find_lm( this_l , -this_m );
+                plm[ neg_lm ] = neg_legendre(this_l, this_m, b);
+          }
+          // make sure we can go further!
+          if (indices.size() > 1){
+            this_l = lm_indices_[ indices[1] ][0];
+            this_m = lm_indices_[ indices[1] ][1] ;
+            b = boost::math::legendre_p(this_l, this_m, x);
+            plm[ indices[1] ] = b;
+            if (this_m>0){
+                int neg_lm = lm_engine_.find_lm( this_l , -this_m );
+                plm[ neg_lm ] = neg_legendre(this_l, this_m, b);
+              }
+            for (int uu=2;uu<indices.size();uu++){
+              this_l = lm_indices_[ indices[uu] ][0] ;
+              c = boost::math::legendre_next( this_l-1, this_m, x, b, a);
+              plm[ indices[uu] ] = c;
+
+              //---------------------------
+              // now do (l,-m)
+              if (this_m>0){
+                int neg_lm = lm_engine_.find_lm( this_l , -this_m );
+                plm[ neg_lm ] = neg_legendre(this_l, this_m, c);
+              }
+              //---------------------------
+              //
+              // swap vars
+              a = b;
+              b = c;
+            }
+          }
+        }
+        legendre_.push_back( plm );
+      }
+
+      // please compute the normalisation coefficients
+      for (int ii=0;ii<lm_indices_.size();ii++){
+        int l,m;
+        l=lm_indices_[ii][0];
+        m=lm_indices_[ii][1];
+        FloatType tmp;
+        tmp = std::sqrt( ( (2.0*l+1.0)/(4.0*3.14159265358979323846264338327950288) )*std::exp( lgf_.log_fact(l-m) - lgf_.log_fact(l+m) ) );
+        norma_lm_.push_back( tmp );
+      }
+
+
+    }
+
+    FloatType neg_legendre(int l, int m, FloatType plm)
+    {
+      FloatType tmp;
+      tmp = std::pow(-1.0,m)*std::exp( lgf_.log_fact(l-m) - lgf_.log_fact(l+m) );
+      return( plm*tmp );
+    }
+
+    scitbx::af::shared< FloatType > legendre_lm_pc(int const& l, int const& m)
+    {
+       // please find the index where to find this polynome
+       int index = lm_engine_.find_lm(l,m);
+       scitbx::af::shared< FloatType > result;
+       for (int ii=0;ii<mangle_;ii++){
+         result.push_back( legendre_[ii][index] );
+       }
+       return( result );
+    }
+
+    scitbx::af::shared< FloatType > legendre_lm(int const& l, int const& m)
+    {
+       // please find the index where to find this polynome
+       int index = lm_engine_.find_lm(l,m);
+       scitbx::af::shared< FloatType > result;
+       for (int ii=0;ii<mangle_;ii++){
+         result.push_back( boost::math::legendre_p(l,m,legendre_argument_[ii]) );
+       }
+       return( result );
+    }
+
+    std::complex<FloatType> spherical_harmonic_pc(int const& l, int const& m, FloatType const& theta, FloatType const& phi)
+    {
+       FloatType frac_theta, frac_phi, mphi, om_frac_phi, om_frac_theta, frac_cos, om_frac_cos;
+       mphi = m*phi;
+       int theta_index_l= static_cast<int>(theta/dangle_)%mangle_;
+       int phi_index_l  = static_cast<int>(mphi/dangle_)%mangle_;
+       int phi_index    = static_cast<int>(mphi/dangle_);
+       int theta_index_h= (theta_index_l+1)%mangle_;
+       int phi_index_h  = (phi_index_l+1)%mangle_;
+
+       frac_theta    = (theta-theta_index_l*dangle_)/dangle_;
+       om_frac_theta = 1.0-frac_theta;
+       frac_phi      = (mphi-phi_index*dangle_)/dangle_;
+       om_frac_phi   = 1.0-frac_phi;
+
+       FloatType cos_phi, sin_phi, cos_theta;
+       cos_phi   = cos_[phi_index_l  ]+(cos_[phi_index_h  ]-cos_[phi_index_l  ])*frac_phi   ;
+       sin_phi   = sin_[phi_index_l  ]+(sin_[phi_index_h  ]-sin_[phi_index_l  ])*frac_phi   ;
+
+       cos_theta = cos_[theta_index_l]+ (cos_[theta_index_h]-cos_[theta_index_l])*frac_theta;
+
+
+       int i_cos_theta_l = static_cast<int>( (cos_theta+1.0)/dleg_ );
+       int i_cos_theta_h;
+
+       i_cos_theta_h = i_cos_theta_l + 1;
+       frac_cos      = ( (cos_theta+1.0)-(i_cos_theta_l*dleg_) )/dleg_;
+       om_frac_cos = 1.0-frac_cos;
+       if (i_cos_theta_h > mangle_-1){
+        i_cos_theta_h = mangle_-1;
+       }
+
+
+       FloatType part1, part2, part3;
+       int lm_index = lm_engine_.find_lm(l,m);
+       part1 = legendre_[i_cos_theta_l][lm_index]+(legendre_[i_cos_theta_h][lm_index]-legendre_[i_cos_theta_l][lm_index])*frac_cos;
+       part1 = part1*norma_lm_[lm_index];
+       part2 = cos_phi*part1;
+       part3 = sin_phi*part1;
+
+       std::complex<FloatType> result(part2,part3);
+       return (result);
+    }
+
+    std::complex<FloatType> spherical_harmonic_direct(int const& l, int const& m, FloatType const& theta, FloatType const& phi)
+    {
+       std::complex<FloatType> result;
+       result = spherical_harmonic(l, m, theta, phi);
+       return (result);
+    }
+
+
+    private:
+
+    std::vector< FloatType > cos_;
+    std::vector< FloatType > sin_;
+    std::vector< FloatType > angles_;
+    std::vector< FloatType > legendre_argument_;
+    std::vector< std::vector< FloatType> > legendre_;
+    lm_array<int> lm_engine_;
+    scitbx::af::shared< scitbx::af::tiny<int,2> > lm_indices_;
+    scitbx::af::shared< FloatType > norma_lm_;
+    int max_l_, mangle_;
+    FloatType dangle_, dleg_, dtor_, eps_;
+    log_factorial_generator<FloatType> lgf_;
+
+  };
 
 
 
@@ -712,7 +1016,49 @@ namespace zernike{
   };
 
 
+/*
 
+  template <typename FloatType = double>
+  class nss_zernike_polynome_engine
+  {
+    public:
+    // Default constructor
+    nss_zernike_polynome_engine(){}
+    // Basic constructor
+    nss_zernike_polynome_engine(int const& max_n, log_factorial_generator<FloatType> const& lgf)
+    :
+    n_max_(n_max),
+    {
+      rnl_ = rnl;
+      SCITBX_ASSERT( rnl_.n() == n_ );
+      SCITBX_ASSERT( rnl_.l() == l_ );
+
+    }
+    std::complex<FloatType> f(FloatType const& r, FloatType const& t, FloatType const& p)
+    {
+      //std::cout << r << " " << t << " " << p << std::endl;
+      std::complex<FloatType> result;
+      FloatType tmp;
+      tmp = rnl_.f(r);
+      result = spherical_harmonic(l_, m_, t, p)*tmp;
+      return(result);
+    }
+
+    std::complex<FloatType> real_f(FloatType const& r, FloatType const& t, FloatType const& p) // the return value is not real, but it allows for faster computation of a real valued function
+    {
+      //std::cout << r << " " << t << " " << p << std::endl;
+      std::complex<FloatType> result;
+      result = f(r,t,p);
+      if (m_!=0){ result = result*2.0; } // double it up so that we do not have to sum over -m
+      return(result);
+    }
+    private:
+    int n_max_;
+
+    zernike_radial<FloatType> rnl_;
+  };
+
+*/
 
 
 
@@ -761,6 +1107,7 @@ namespace zernike{
         zp.push_back( this_zp );
       }
 
+      FloatType pidivtwo=scitbx::constants::pi/2.0;
       int count=0;
       for (int ix=-m;ix<=m;ix++){
         for (int iy=-m;iy<=m;iy++){
@@ -773,8 +1120,7 @@ namespace zernike{
             if (r>eps_){
               t = std::acos(z/r);
               p = std::atan2(y,x);
-              p -= scitbx::constants::pi/2.0;
-            //  if(p<0) p += scitbx::constants::two_pi;
+              p -= pidivtwo;
             } else {
               t = 0.0;
               p = 0.0;
@@ -801,13 +1147,10 @@ namespace zernike{
             // loop over all indices nlm and precompute all coefficients
             if (r<=1.0){
               for (int ii=0;ii<zp.size();ii++){
-                //std::cout << "(" << zp[ii].n() << "," << zp[ii].l() << "," << zp[ii].m() << ") ";
                 tmp_result.push_back( zp[ii].f(r,t,p) );
               }
-             // std::cout << std::endl;
             } else {
-              std::complex<FloatType> tmp; //tmp[0]=0.0; tmp[1]=0.0;
-              tmp=tmp*0.0;
+              std::complex<FloatType> tmp(0,0);
               tmp_result.push_back( tmp ); // when radius bigger then 1
             }
             partial_data_.push_back( tmp_result );
@@ -921,8 +1264,7 @@ namespace zernike{
       FloatType delta_, eps_;
       scitbx::af::shared< scitbx::vec3<FloatType> > xyz_;
       scitbx::af::shared< scitbx::vec3<FloatType> > rtp_;
-      scitbx::af::shared< scitbx::vec3<int> >       ijk_;
-      scitbx::af::shared< scitbx::vec3<int> >       neighbours_;
+      scitbx::af::shared< scitbx::vec3<int> > ijk_;
 
       scitbx::af::shared< std::vector< std::complex<FloatType> > > partial_data_;
       nlm_array<FloatType> nlm_;
