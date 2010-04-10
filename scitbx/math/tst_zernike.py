@@ -63,7 +63,7 @@ def tst_zernike_radial():
         r = flex.double( flex.double(range(100000))/99999.0)
         a = rzfa.f( r )
         tmp = a*a*r*r
-        tmp = flex.sum( tmp )/100000.0
+        tmp = flex.sum( tmp )/5000.0
         assert abs(tmp-1)<2e-2
         for nn in range(M):
           for ll in range(nn):
@@ -160,11 +160,49 @@ def tst_nl():
     assert abs(thc-300)<1e-5
 
 
+def tst_nss_spherical_harmonics():
+  N=50
+  M=20
+  lfg =  math.log_factorial_generator(N)
+  nsssphe = math.nss_spherical_harmonics(M+5,50000,lfg)
+
+  a = nsssphe.legendre_lm(8,2)
+  b = nsssphe.legendre_lm_pc(8,2)
+  for aa,bb in zip(a,b):
+    assert abs(aa-bb)<1e-7
+
+  a = nsssphe.legendre_lm(14,3)
+  b = nsssphe.legendre_lm_pc(14,3)
+  for aa,bb in zip(a,b):
+    assert abs(aa-bb)<1e-7
+
+  lm=[ (0,0), (3,3), (4,1) ]
+
+  theta = flex.double(range(100))*3.14/100.0
+  phi = flex.double(range(100))*6.28/100.0
+  import time
+  a = time.time()
+  for ii in range(1e5):
+    nsssphe.spherical_harmonic(1,0,1.2,1.3)
+  b=time.time()
+  for ii in range(1e5):
+    nsssphe.spherical_harmonic_pc(1,0,1.2,1.3)
+  c = time.time()
+  print b-a, c-b, (b-a)/(c-b)
+  for tt in theta:
+    for pp in phi:
+      r  = nsssphe.spherical_harmonic(20,10,tt,pp)
+      rr = nsssphe.spherical_harmonic_pc(20,10,tt,pp)
+      #print tt,pp, r.real, r.imag, 100.0*abs(r.real-rr.real)/(max(abs(r.real),1e-12)) , 100.0*abs(rr.imag-r.imag)/(max(abs(r.imag),1e-12))
+      assert 100.0*abs(r.real-rr.real)/(max(abs(r.real),1e-12))<2.0
+      assert 100.0*abs(rr.imag-r.imag)/(max(abs(r.imag),1e-12))<2.0
+
 
 
 
 
 if __name__ == "__main__":
+  tst_nss_spherical_harmonics()
   tst_nl()
   tst_nlm()
   tst_log_factorial()

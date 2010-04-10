@@ -76,6 +76,29 @@ namespace {
   };
 
 
+
+  struct nss_spherical_harmonics_wrapper
+  {
+    typedef zernike::nss_spherical_harmonics<> w_t;
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      // int const& max_l, int const& mangle, log_factorial_generator<FloatType> const& lgf
+      class_<w_t>("nss_spherical_harmonics", no_init)
+        .def(init<int const&, int const&, zernike::log_factorial_generator<double> const&>
+                  ((arg("l_max"), arg("mangle"), arg("lgf") )))
+        .def("legendre_lm", &w_t::legendre_lm)
+        .def("legendre_lm_pc", &w_t::legendre_lm_pc)
+        .def("spherical_harmonic_pc", &w_t::spherical_harmonic_pc)
+        .def("spherical_harmonic", &w_t::spherical_harmonic_direct)
+       ;
+    }
+  };
+
+
+
+
   struct zernike_radial_wrapper
   {
     typedef zernike::zernike_radial<> w_t;
@@ -103,6 +126,8 @@ namespace {
        ;
     }
   };
+
+
 
 
 
@@ -170,6 +195,7 @@ namespace boost_python {
     zernike_radial_wrapper::wrap();
     log_factorial_generator_wrapper::wrap();
     zernike_grid_wrapper::wrap();
+    nss_spherical_harmonics_wrapper::wrap();
   }
 
 
