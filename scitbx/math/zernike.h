@@ -710,9 +710,9 @@ namespace zernike{
           // get the indices please for this set of indices
           indices = lm_engine_.lut_of_some_indices_in_legendre_recursion_order( this_m );
           FloatType a,b,c;
-          int this_l, this_m;
+          int this_l;
           this_l = lm_indices_[ indices[0] ][0] ; // the n/l l/m correspondence is annoying but a consequence of naming decisions made earlier
-          this_m = lm_indices_[ indices[0] ][1] ;
+          //this_m = lm_indices_[ indices[0] ][1] ;
           a = boost::math::legendre_p(this_l, this_m, x);
           plm[ indices[0] ] = a;
           if (this_m>0){
@@ -722,7 +722,6 @@ namespace zernike{
           // make sure we can go further!
           if (indices.size() > 1){
             this_l = lm_indices_[ indices[1] ][0];
-            this_m = lm_indices_[ indices[1] ][1] ;
             b = boost::math::legendre_p(this_l, this_m, x);
             plm[ indices[1] ] = b;
             if (this_m>0){
