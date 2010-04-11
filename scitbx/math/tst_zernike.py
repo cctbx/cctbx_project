@@ -63,7 +63,7 @@ def tst_zernike_radial():
         r = flex.double( flex.double(range(100000))/99999.0)
         a = rzfa.f( r )
         tmp = a*a*r*r
-        tmp = flex.sum( tmp )/5000.0
+        tmp = flex.sum( tmp )/100000.0
         assert abs(tmp-1)<2e-2
         for nn in range(M):
           for ll in range(nn):
@@ -180,15 +180,6 @@ def tst_nss_spherical_harmonics():
 
   theta = flex.double(range(100))*3.14/100.0
   phi = flex.double(range(100))*6.28/100.0
-  import time
-  a = time.time()
-  for ii in range(1e5):
-    nsssphe.spherical_harmonic(1,0,1.2,1.3)
-  b=time.time()
-  for ii in range(1e5):
-    nsssphe.spherical_harmonic_pc(1,0,1.2,1.3)
-  c = time.time()
-  print b-a, c-b, (b-a)/(c-b)
   for tt in theta:
     for pp in phi:
       r  = nsssphe.spherical_harmonic(20,10,tt,pp)
