@@ -26,13 +26,15 @@ namespace cctbx { namespace geometry_restraints {
       double angle_ideal_,
       double weight_,
       int periodicity_=0,
-      alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type())
+      alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type(),
+      double limit_=-1.0)
     :
       i_seqs(i_seqs_),
       angle_ideal(angle_ideal_),
       weight(weight_),
       periodicity(periodicity_),
-      alt_angle_ideals(alt_angle_ideals_)
+      alt_angle_ideals(alt_angle_ideals_),
+      limit(limit_)
     {}
 
     //! Constructor.
@@ -42,14 +44,16 @@ namespace cctbx { namespace geometry_restraints {
       double angle_ideal_,
       double weight_,
       int periodicity_=0,
-      alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type())
+      alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type(),
+      double limit_=-1.0)
     :
       i_seqs(i_seqs_),
       sym_ops(sym_ops_),
       angle_ideal(angle_ideal_),
       weight(weight_),
       periodicity(periodicity_),
-      alt_angle_ideals(alt_angle_ideals_)
+      alt_angle_ideals(alt_angle_ideals_),
+      limit(limit_)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -66,7 +70,8 @@ namespace cctbx { namespace geometry_restraints {
       angle_ideal(proxy.angle_ideal),
       weight(proxy.weight),
       periodicity(proxy.periodicity),
-      alt_angle_ideals(proxy.alt_angle_ideals)
+      alt_angle_ideals(proxy.alt_angle_ideals),
+      limit(proxy.limit)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -79,7 +84,7 @@ namespace cctbx { namespace geometry_restraints {
     {
       return dihedral_proxy(
         i_seqs, sym_ops, angle_ideal, weight*factor,
-        periodicity, alt_angle_ideals);
+        periodicity, alt_angle_ideals, limit);
     }
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[3] and i_seq[1] < i_seq[2].
@@ -133,6 +138,9 @@ namespace cctbx { namespace geometry_restraints {
     int periodicity;
     //! Optional array of alternative angle_ideal.
     alt_angle_ideals_type alt_angle_ideals;
+    //! Optional value to set a range for which the angle should be
+    //! restrained
+    double limit;
   };
 
   //! Residual and gradient calculations for dihedral %angle restraint.
@@ -161,13 +169,15 @@ namespace cctbx { namespace geometry_restraints {
         double angle_ideal_,
         double weight_,
         int periodicity_=0,
-        alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type())
+        alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type(),
+        double limit_=-1.0)
       :
         sites(sites_),
         angle_ideal(angle_ideal_),
         weight(weight_),
         periodicity(periodicity_),
-        alt_angle_ideals(alt_angle_ideals_)
+        alt_angle_ideals(alt_angle_ideals_),
+        limit(limit_)
       {
         init_angle_model();
       }
@@ -182,7 +192,8 @@ namespace cctbx { namespace geometry_restraints {
         angle_ideal(proxy.angle_ideal),
         weight(proxy.weight),
         periodicity(proxy.periodicity),
-        alt_angle_ideals(proxy.alt_angle_ideals)
+        alt_angle_ideals(proxy.alt_angle_ideals),
+        limit(proxy.limit)
       {
         for(int i=0;i<4;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -204,7 +215,8 @@ namespace cctbx { namespace geometry_restraints {
         angle_ideal(proxy.angle_ideal),
         weight(proxy.weight),
         periodicity(proxy.periodicity),
-        alt_angle_ideals(proxy.alt_angle_ideals)
+        alt_angle_ideals(proxy.alt_angle_ideals),
+        limit(proxy.limit)
       {
         for(int i=0;i<4;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -247,13 +259,24 @@ namespace cctbx { namespace geometry_restraints {
       residual() const
       {
         using scitbx::constants::pi_180;
-        double term;
+        double term, delta_local;
+        if (limit >= 0){
+          if(std::fabs(delta) > limit){
+            delta_local = limit;
+          }
+          else{
+            delta_local = delta;
+          }
+        }
+        else{
+          delta_local = delta;
+        }
         if (periodicity > 0) {
           term = 9600. / (periodicity * periodicity)
-               * (1 - std::cos(periodicity * delta * pi_180));
+               * (1 - std::cos(periodicity * delta_local * pi_180));
         }
         else {
-          term = delta * delta;
+          term = delta_local * delta_local;
         }
         return weight * term;
       }
@@ -273,6 +296,12 @@ namespace cctbx { namespace geometry_restraints {
       gradients(double epsilon=1e-100) const
       {
         af::tiny<scitbx::vec3<double>, 4> result;
+        if(limit >= 0){
+          if (std::fabs(delta) > limit){
+            result.fill(scitbx::vec3<double>(0,0,0));
+            return result;
+          }
+        }
         double d_21_norm = d_21.length_sq();
         if (   !have_angle_model
             || d_21_norm < epsilon
@@ -353,6 +382,8 @@ namespace cctbx { namespace geometry_restraints {
       int periodicity;
       //! Optional array of alternative angle_ideal.
       alt_angle_ideals_type alt_angle_ideals;
+      //! Optional limit on deviation for restraint calculation
+      double limit;
       //! false in singular situations.
       bool have_angle_model;
     public:

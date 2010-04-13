@@ -8,6 +8,7 @@ class flags(object):
         nonbonded=None,
         angle=None,
         dihedral=None,
+        reference_dihedral=None,
         chirality=None,
         planarity=None,
         bond_similarity=None,
@@ -16,6 +17,7 @@ class flags(object):
     if (nonbonded is None): nonbonded = default
     if (angle is None): angle = default
     if (dihedral is None): dihedral = default
+    if (reference_dihedral is None): reference_dihedral = default
     if (chirality is None): chirality = default
     if (planarity is None): planarity = default
     if (bond_similarity is None): bond_similarity = default
@@ -28,6 +30,7 @@ class flags(object):
     print >> f, "  nonbonded:", self.nonbonded
     print >> f, "  angle:", self.angle
     print >> f, "  dihedral:", self.dihedral
+    print >> f, "  reference dihedral:", self.reference_dihedral
     print >> f, "  chirality:", self.chirality
     print >> f, "  planarity:", self.planarity
     print >> f, "  bond similarity:", self.bond_similarity

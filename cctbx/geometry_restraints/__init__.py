@@ -674,10 +674,15 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
         unit_cell=None,
         f=None,
         prefix="",
-        max_items=None):
+        max_items=None,
+        is_reference=False):
+    if is_reference:
+      proxy_label = "Reference dihedral angle"
+    else:
+      proxy_label = "Dihedral angle"
     _show_sorted_impl(O=self,
         proxy_type=dihedral,
-        proxy_label="Dihedral angle",
+        proxy_label=proxy_label,
         item_label="dihedral",
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
