@@ -216,23 +216,6 @@ def compute_functional_lite(pdb_hierarchy,
     unit_cell=unit_cell,
     density_map=density_map,
     sites_cart=sites_cart_residue)
-  #O.real_space_target = rs_f
-  #rs_g = maptbx.real_space_gradients_simple(
-  #  unit_cell=O.unit_cell,
-  #  density_map=O.density_map,
-  #  sites_cart=O.sites_cart_residue,
-  #  delta=O.real_space_gradients_delta)
-  #O.rs_f = rs_f
-  #rs_f *= -real_space_target_weight
-  #rs_g *= -O.real_space_target_weight
-  #if (O.geometry_restraints_manager is None):
-  #  f = rs_f
-  #  g = rs_g
-  #sites_cart_all.set_selected(residue_i_seqs, sites_cart_residue)
-  #gr_e = geometry_restraints_manager.energies_sites(
-  #    sites_cart=sites_cart_all, compute_gradients=True)
-  #f = rs_f + gr_e.target
-  #g = rs_g + gr_e.gradients.select(indices=O.residue_i_seqs)
   return rs_f
 
 def get_rotamer_iterator(mon_lib_srv, residue, atom_selection_bool):
@@ -533,6 +516,34 @@ class home_restraints(object):
     O.weight = weight
     O.slack = slack
 
+class home_dihedrals(object):
+
+  __slots__ = ["dihedral_set", "weight"]
+
+  def __init__(O, dihedral_set, weight):
+    O.dihedral_set = dihedral_set
+    O.weight = weight
+
+def get_home_dihedral_proxies(work_params, geometry, sites_cart_home):
+  home_dihedral_proxies = cctbx.geometry_restraints.shared_dihedral_proxy()
+  sigma = work_params.sigma
+  for dp in geometry.dihedral_proxies:
+    dp_home = cctbx.geometry_restraints.dihedral_proxy(
+      i_seqs=dp.i_seqs,
+      angle_ideal=0,
+      weight=1/sigma**2)
+    di_home = cctbx.geometry_restraints.dihedral(sites_cart=sites_cart_home, proxy=dp_home)
+    dp_add = cctbx.geometry_restraints.dihedral_proxy(
+      i_seqs=dp.i_seqs,
+      angle_ideal=di_home.angle_model,
+      weight=1/sigma**2,
+      limit=1000.0)
+    home_dihedral_proxies.append(dp_add)
+  return home_dihedral_proxies
+
+def add_reference_dihedral_proxies(geometry, reference_dihedral_proxies):
+  geometry.reference_dihedral_proxies=reference_dihedral_proxies
+
 def process_home_restraints_params(work_params, processed_pdb_file):
   result = []
   for params in work_params:
@@ -559,18 +570,29 @@ class geometry_restraints_manager_plus(object):
     "manager",
     "home_sites_cart",
     "home_restraints_list",
+    "home_dihedral_proxies",
     "crystal_symmetry",
     "pair_proxies",
+    "angle_proxies",
+    "dihedral_proxies",
     "site_symmetry_table",
     "plain_pair_sym_table",
     "plain_pairs_radius"]
 
-  def __init__(O, manager, home_sites_cart, home_restraints_list):
+  def __init__(O,
+               manager,
+               home_sites_cart=None,
+               home_restraints_list=None,
+               home_dihedral_proxies=None):
     O.manager = manager
+    #O.sites_cart = sites_cart
     O.home_sites_cart = home_sites_cart
     O.home_restraints_list = home_restraints_list
+    O.home_dihedral_proxies = home_dihedral_proxies
     O.crystal_symmetry = manager.crystal_symmetry
     O.pair_proxies = manager.pair_proxies
+    O.angle_proxies = manager.angle_proxies
+    O.dihedral_proxies = manager.dihedral_proxies
     O.site_symmetry_table = manager.site_symmetry_table
     O.plain_pair_sym_table = manager.plain_pair_sym_table
     O.plain_pairs_radius = manager.plain_pairs_radius
@@ -599,11 +621,28 @@ class geometry_restraints_manager_plus(object):
     energies_obj.home_restraints_residual_sum = r_sum
     energies_obj.number_of_restraints += n_restraints
     energies_obj.residual_sum += r_sum
+    r_sum=cctbx.geometry_restraints.dihedral_residual_sum(
+      sites_cart=energies_obj.sites_cart,
+      proxies=O.home_dihedral_proxies,
+      gradient_array=energies_obj.gradients)
+    if O.home_dihedral_proxies is not None:
+      n_restraints = len(O.home_dihedral_proxies)
+    else:
+      n_restraints = 0
+    energies_obj.n_dihedral_restraints = n_restraints
+    energies_obj.dihedral_restraints_residual_sum = r_sum
+    energies_obj.residual_sum += r_sum
+    energies_obj.number_of_restraints += n_restraints
 
   def energies_show(O, energies_obj, f, prefix):
     print >> f, prefix+"  home_restraints_residual_sum (n=%d): %.6g" % (
       energies_obj.n_home_restraints,
       energies_obj.home_restraints_residual_sum)
+
+  def dihedral_energies_show(O, energies_obj, f, prefix):
+    print >> f, prefix+"  dihedral_restraints_residual_sum (n=%d): %.6g" % (
+      energies_obj.n_dihedral_restraints,
+      energies_obj.dihedral_restraints_residual_sum)
 
   def energies_sites(O,
         sites_cart,

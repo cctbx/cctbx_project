@@ -28,18 +28,20 @@ namespace {
       class_<w_t>("dihedral_proxy", no_init)
         .def(init<
           af::tiny<unsigned, 4> const&, double, double,
-          int, alt_angle_ideals_type>((
+          int, alt_angle_ideals_type, double>((
             arg("i_seqs"), arg("angle_ideal"), arg("weight"),
-            arg("periodicity")=0, arg("alt_angle_ideals")=none)))
+            arg("periodicity")=0, arg("alt_angle_ideals")=none,
+            arg("limit")=-1.0)))
         .def(init<
           af::tiny<unsigned, 4> const&,
           optional_copy<af::shared<sgtbx::rt_mx> > const&,
           double,
           double,
           int,
-          alt_angle_ideals_type>((
+          alt_angle_ideals_type,double>((
             arg("i_seqs"), arg("sym_ops"), arg("angle_ideal"), arg("weight"),
-            arg("periodicity")=0, arg("alt_angle_ideals")=none)))
+            arg("periodicity")=0, arg("alt_angle_ideals")=none,
+            arg("limit")=-1.0)))
         .def(init<af::tiny<unsigned, 4> const&, w_t const&>((
           arg("i_seqs"), arg("proxy"))))
         .def("scale_weight", &w_t::scale_weight, (arg("factor")))
@@ -48,6 +50,7 @@ namespace {
         .def_readwrite("angle_ideal", &w_t::angle_ideal)
         .def_readwrite("weight", &w_t::weight)
         .def_readwrite("periodicity", &w_t::periodicity)
+        .def_readwrite("limit", &w_t::limit)
         .add_property("alt_angle_ideals",
           make_getter(&w_t::alt_angle_ideals, rbv()),
           make_setter(&w_t::alt_angle_ideals, dcp()))
@@ -90,9 +93,10 @@ namespace {
       class_<w_t>("dihedral", no_init)
         .def(init<
           af::tiny<scitbx::vec3<double>, 4> const&, double, double,
-          int, alt_angle_ideals_type const&>((
+          int, alt_angle_ideals_type const&, double>((
             arg("sites"), arg("angle_ideal"), arg("weight"),
-            arg("periodicity")=0, arg("alt_angle_ideals")=none)))
+            arg("periodicity")=0, arg("alt_angle_ideals")=none,
+            arg("limit")=-1.0)))
         .def(init<
           af::const_ref<scitbx::vec3<double> > const&,
           dihedral_proxy const&>((
@@ -105,6 +109,7 @@ namespace {
         .def_readonly("angle_ideal", &w_t::angle_ideal)
         .def_readonly("weight", &w_t::weight)
         .def_readonly("periodicity", &w_t::periodicity)
+        .def_readonly("limit", &w_t::limit)
         .add_property("alt_angle_ideals",
           make_getter(&w_t::alt_angle_ideals, rbv()),
           make_setter(&w_t::alt_angle_ideals, dcp()))

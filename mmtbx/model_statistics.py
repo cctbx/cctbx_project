@@ -24,6 +24,7 @@ class geometry(object):
     self.d_target, self.d_mean, self.d_max, self.d_min, self.d_number = zero
     self.p_target, self.p_mean, self.p_max, self.p_min, self.p_number = zero
     self.n_target, self.n_mean, self.n_max, self.n_min, self.n_number = zero
+    self.dr_target, self.dr_number = 0, 0
     self.target = 0.0
     self.number_of_restraints = 0.0
     if(ignore_hd and hd_selection.count(True) > 0):
@@ -51,9 +52,11 @@ class geometry(object):
     self.d_target,self.d_number=esg.dihedral_residual_sum, esg.n_dihedral_proxies
     self.p_target,self.p_number=esg.planarity_residual_sum,esg.n_planarity_proxies
     self.n_target,self.n_number=esg.nonbonded_residual_sum,esg.n_bond_proxies
+    self.rd_target, self.rd_number= \
+      esg.reference_dihedral_residual_sum, esg.n_reference_dihedral_proxies
     self.target = esg.target # XXX normalization ?
     assert approx_equal(self.target, self.a_target+self.b_target+self.c_target+
-      self.d_target+self.p_target+self.n_target)
+      self.d_target+self.p_target+self.n_target+self.rd_target)
     self.norm_of_gradients = esg.gradients.norm()
     self.number_of_restraints = esg.number_of_restraints # XXX normalization ?
     #
