@@ -24,15 +24,19 @@ master_params_str = """\
 pdb_file_name = None
   .type = str
   .multiple = False
-  .help = PDB file name.
+  .help = PDB file name (model only).
+external_da_pdb_file_name = None
+  .type = str
+  .multiple = False
+  .help = PDB file name (dummy atoms only).
 reflection_file_name = None
   .type = str
   .help = File with experimental data (most of formats: CNS, SHELX, MTZ, etc).
 data_labels = None
   .type = str
   .help = Labels for experimental data.
-refine = occupancies adp *occupancies_and_adp
-  .type = choice(multi=False)
+refine = *occupancies *adp *sites
+  .type = choice(multi=True)
   .help = Parameters of DA to refine.
 stop_reset_occupancies_at_macro_cycle = 5
   .type = int
@@ -108,6 +112,13 @@ filter
     occupancy_max = 10.0
       .type = float
       .help = Max occupancy value to remove DA.
+    inside_sphere_scale = 1.2
+      .type = float
+      .help = DA with distance larger than sphere.radius*inside_sphere_scale \
+              from sphere.center will be removed.
+    da_model_min_dist = 1.
+      .type = float
+      .help = Max allowable distance between DA and any model atom.
   }
 """
 
@@ -178,14 +189,19 @@ def create_da_xray_structures(xray_structure, params):
 def grow_density(f_obs,
                  r_free_flags,
                  xray_structure,
+                 xray_structure_da,
                  params):
-    print "Start creating DAs..."
-    da_xray_structures = create_da_xray_structures(xray_structure =
-      xray_structure, params = params)
+    if(xray_structure_da is not None):
+      print "Using external DA..."
+      da_xray_structures = [xray_structure_da]
+    else:
+      print "Start creating DAs..."
+      da_xray_structures = create_da_xray_structures(xray_structure =
+        xray_structure, params = params)
     n_da = 0
     for daxrs in da_xray_structures:
       n_da += daxrs.scatterers().size()
-    print "Total number of dummy atoms to be added:", n_da
+    print "Total number of dummy atoms:", n_da
     #
     number_of_grids = len(da_xray_structures)
     #print "Creating %s grids with atom spacing %s, each grid is %s apart" %(
@@ -208,18 +224,15 @@ def grow_density(f_obs,
     for i_model, da_xray_structure in enumerate(da_xray_structures):
       print "Model %d, adding %d dummy atoms" % (i_model,
         da_xray_structure.scatterers().size())
-      try:
-        xray_structure_current = xray_structure_current.concatenate(da_xray_structure)
-        da_sel.extend(flex.bool(da_xray_structure.scatterers().size(), True))
-        if(params.mode == "build_and_refine"):
-          fmodel.update_xray_structure(update_f_calc=True, update_f_mask=False,
-            xray_structure = xray_structure_current)
-          #XXX print fmodel.r_work()
-          #XXX assert 0 # update_f_mask=True would not work
-          refine_da(fmodel = fmodel, selection = da_sel, params = params)
-          xray_structure_current = fmodel.xray_structure
-      except Exception, e:
-        print "ERROR:", str(e)
+      xray_structure_current = xray_structure_current.concatenate(da_xray_structure)
+      da_sel.extend(flex.bool(da_xray_structure.scatterers().size(), True))
+      if(params.mode == "build_and_refine"):
+        fmodel.update_xray_structure(update_f_calc=True, update_f_mask=False,
+          xray_structure = xray_structure_current)
+        #XXX print fmodel.r_work()
+        #XXX assert 0 # update_f_mask=True would not work
+        refine_da(fmodel = fmodel, selection = da_sel, params = params)
+        xray_structure_current = fmodel.xray_structure
     da_sel = flex.bool(xray_structure_start.scatterers().size(), False)
     da_sel.extend(flex.bool(xray_structure_current.scatterers().size()-
                             xray_structure_start.scatterers().size(), True))
@@ -265,54 +278,62 @@ def refinery(fmodels, number_of_iterations, iselection, parameter):
   if(parameter == "occupancies"):
     fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grad_occupancy(
       iselection = iselection)
-  elif(parameter == "adps"):
+  if(parameter == "adp"):
     fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grad_u_iso(
       iselection = iselection)
-  else: raise RuntimeError
-  minimized = mmtbx.refinement.minimization.lbfgs(
-    fmodels                  = fmodels,
-    lbfgs_termination_params = lbfgs_termination_params,
-    collect_monitor          = False)
+  if(parameter == "sites"):
+    fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grad_site(
+      iselection = iselection)
+  try:
+    minimized = mmtbx.refinement.minimization.lbfgs(
+      fmodels                  = fmodels,
+      lbfgs_termination_params = lbfgs_termination_params,
+      collect_monitor          = False)
+  except Exception, e:
+    print "Refinement failed... "
+    print str(e)
+    print "... carry on"
   xrs = fmodels.fmodel_xray().xray_structure
   fmodels.update_xray_structure(xray_structure = xrs, update_f_calc=True,
     update_f_mask=False)
   assert minimized.xray_structure is fmodels.fmodel_xray().xray_structure
   fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grads(state=False)
 
-def reset_occupancies(fmodels, selection, occ_min, occ_max, set_min, set_max):
+def reset_occupancies(fmodels, selection, params):
   xrs = fmodels.fmodel_xray().xray_structure
   occ = xrs.scatterers().extract_occupancies()
-  sel = occ < occ_min
+  sel = occ < params.filter.occupancy_min
   sel &= selection
-  occ = occ.set_selected(sel, set_min)
-  sel = occ > occ_max
+  occ = occ.set_selected(sel, params.filter.occupancy_min)
+  sel = occ > params.filter.occupancy_max
   sel &= selection
-  occ = occ.set_selected(sel, set_max)
+  occ = occ.set_selected(sel, params.filter.occupancy_max)
   xrs.set_occupancies(occ)
   fmodels.update_xray_structure(xray_structure = xrs, update_f_calc=True,
     update_f_mask=False)
 
-def reset_adps(fmodels, selection, b_min, b_max, set_min, set_max):
+def reset_adps(fmodels, selection, params):
   xrs = fmodels.fmodel_xray().xray_structure
   b = xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
-  sel = b > b_max
+  sel = b > params.filter.b_iso_max
   sel &= selection
-  b = b.set_selected(sel, set_max)
-  sel = b < b_min
+  b = b.set_selected(sel, params.filter.b_iso_max)
+  sel = b < params.filter.b_iso_min
   sel &= selection
-  b = b.set_selected(sel, set_min)
+  b = b.set_selected(sel, params.filter.b_iso_min)
   xrs = xrs.set_b_iso(values=b)
   fmodels.update_xray_structure(xray_structure = xrs, update_f_calc=True,
     update_f_mask=False)
 
-def refine_da(fmodel, selection, params):
-  def show(fmodels, selection, prefix):
-    fmt1 = "%s Rwork= %8.6f Rfree= %8.6f Number of: non-DA= %d DA= %d all= %d"
-    print fmt1%(prefix, fmodel.r_work(), fmodel.r_free(),
-      selection.count(False),selection.count(True),
-      fmodels.fmodel_xray().xray_structure.scatterers().size())
-    occ = fmodels.fmodel_xray().xray_structure.scatterers().extract_occupancies()
-    occ_da = occ.select(selection)
+def show_refinement_update(fmodels, selection, prefix):
+  fmt1 = "%s Rwork= %8.6f Rfree= %8.6f Number of: non-DA= %d DA= %d all= %d"
+  print fmt1%(prefix, fmodels.fmodel_xray().r_work(),
+    fmodels.fmodel_xray().r_free(),
+    selection.count(False),selection.count(True),
+    fmodels.fmodel_xray().xray_structure.scatterers().size())
+  occ = fmodels.fmodel_xray().xray_structure.scatterers().extract_occupancies()
+  occ_da = occ.select(selection)
+  if(occ_da.size()>0):
     occ_ma = occ.select(~selection)
     print "         non-da: occ(min,max,mean)= %6.3f %6.3f %6.3f"%(
       flex.min(occ_ma),flex.max(occ_ma),flex.mean(occ_ma))
@@ -326,36 +347,101 @@ def refine_da(fmodel, selection, params):
       flex.min(b_ma),flex.max(b_ma),flex.mean(b_ma))
     print "             da: ADP(min,max,mean)= %7.2f %7.2f %7.2f"%(
       flex.min(b_da),flex.max(b_da),flex.mean(b_da))
+
+def refine_occupancies(fmodels, selection, params, macro_cycle):
+  refinery(
+    fmodels              = fmodels,
+    number_of_iterations = params.number_of_minimization_iterations,
+    iselection           = selection.iselection(),
+    parameter            = "occupancies")
+  if(params.stop_reset_occupancies_at_macro_cycle > macro_cycle):
+    reset_occupancies(fmodels = fmodels, selection = selection, params = params)
+  if(params.start_filtering_at_macro_cycle <= macro_cycle):
+    fmodels, selection = filter_da(fmodels, selection, params)
+  show_refinement_update(fmodels, selection, "occ(%2d):"%macro_cycle)
+  return fmodels, selection
+
+def refine_adp(fmodels, selection, params, macro_cycle):
+  refinery(
+    fmodels              = fmodels,
+    number_of_iterations = params.number_of_minimization_iterations,
+    iselection           = selection.iselection(),
+    parameter            = "adp")
+  if(params.stop_reset_adp_at_macro_cycle > macro_cycle):
+    reset_adps(fmodels = fmodels, selection = selection, params = params)
+  if(params.start_filtering_at_macro_cycle <= macro_cycle):
+    fmodels, selection = filter_da(fmodels, selection, params)
+  show_refinement_update(fmodels, selection, "adp(%2d):"%macro_cycle)
+  return fmodels, selection
+
+def refine_sites(fmodels, selection, params, macro_cycle):
+  refinery(
+    fmodels              = fmodels,
+    number_of_iterations = params.number_of_minimization_iterations,
+    iselection           = selection.iselection(),
+    parameter            = "sites")
+  if(params.start_filtering_at_macro_cycle <= macro_cycle):
+    fmodels, selection = filter_da(fmodels, selection, params)
+  show_refinement_update(fmodels, selection, "xyz(%2d):"%macro_cycle)
+  return fmodels, selection
+
+def filter_da(fmodels, selection, params):
+  xrs = fmodels.fmodel_xray().xray_structure
+  xrs_d = xrs.select(selection)
+  xrs_m = xrs.select(~selection)
+  #
+  occ = xrs_d.scatterers().extract_occupancies()
+  adp = xrs_d.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+  sel  = occ < params.filter.occupancy_max
+  sel &= occ > params.filter.occupancy_min
+  sel &= adp < params.filter.b_iso_max
+  sel &= adp > params.filter.b_iso_min
+  uc = xrs_d.unit_cell()
+  sphere_defined = True
+  if(len(params.sphere)==0): sphere_defined = False
+  for sphere in params.sphere:
+    if([sphere.center, sphere.radius].count(None) != 0): sphere_defined = False
+  for i_seq, site_frac_d in enumerate(xrs_d.sites_frac()):
+    if(sphere_defined):
+      inside = False
+      for sphere in params.sphere:
+        if([sphere.center, sphere.radius].count(None)==0):
+          dist = uc.distance(site_frac_d, uc.fractionalize(sphere.center))
+          if(dist <= sphere.radius*params.filter.inside_sphere_scale):
+            inside = True
+            break
+      if(not inside): sel[i_seq] = False
+    for site_frac_m in xrs_m.sites_frac():
+      dist = uc.distance(site_frac_d, site_frac_m)
+      if(dist < params.filter.da_model_min_dist):
+        sel[i_seq] = False
+        break
+  #
+  xrs_d = xrs_d.select(sel)
+  xrs = xrs_m.concatenate(xrs_d)
+  selection = flex.bool(xrs_m.scatterers().size(), False)
+  selection.extend(flex.bool(xrs_d.scatterers().size(), True))
+  fmodels.update_xray_structure(xray_structure = xrs, update_f_calc=True,
+    update_f_mask=False)
+  return fmodels, selection
+
+def refine_da(fmodel, selection, params):
   fmodels = mmtbx.fmodels(fmodel_xray = fmodel)
-  show(fmodels, selection, "  START:")
-  assert params.number_of_refinement_cycles > params.stop_reset_occupancies_at_macro_cycle
-  assert params.number_of_refinement_cycles > params.stop_reset_adp_at_macro_cycle
-  assert params.number_of_refinement_cycles > params.start_filtering_at_macro_cycle
-  for i in xrange(params.number_of_refinement_cycles):
-    if(params.refine in ["occupancies", "occupancies_and_adp"]):
-      refinery(
-        fmodels              = fmodels,
-        number_of_iterations = params.number_of_minimization_iterations,
-        iselection           = selection.iselection(),
-        parameter            = "occupancies")
-      if(params.stop_reset_occupancies_at_macro_cycle >= i):
-        reset_occupancies(fmodels=fmodels, selection=selection, occ_min=0,
-          occ_max=10, set_min=0, set_max=10)
-      if(params.start_filtering_at_macro_cycle < i):
-        fmodels, selection = filter_da(fmodels, selection, params)
-      show(fmodels, selection, "occ(%2d):"%i)
-    if(params.refine in ["adp", "occupancies_and_adp"]):
-      refinery(
-        fmodels              = fmodels,
-        number_of_iterations = params.number_of_minimization_iterations,
-        iselection           = selection.iselection(),
-        parameter            = "adps")
-      if(params.stop_reset_adp_at_macro_cycle >= i):
-        reset_adps(fmodels = fmodels, selection = selection, b_min=5, b_max=100,
-          set_min=5, set_max=100)
-    if(params.start_filtering_at_macro_cycle < i):
-      fmodels, selection = filter_da(fmodels, selection, params)
-    show(fmodels, selection, "adp(%2d):"%i)
+  show_refinement_update(fmodels, selection, "  START:")
+  nrm = params.number_of_refinement_cycles
+  assert nrm >= params.stop_reset_occupancies_at_macro_cycle
+  assert nrm >= params.stop_reset_adp_at_macro_cycle
+  assert nrm >= params.start_filtering_at_macro_cycle
+  for macro_cycle in xrange(nrm):
+    if("occupancies" in params.refine):
+      fmodels, selection = refine_occupancies(fmodels = fmodels,
+        selection = selection, params = params, macro_cycle = macro_cycle)
+    if("adp" in params.refine):
+      fmodels, selection = refine_adp(fmodels = fmodels,
+        selection = selection, params = params, macro_cycle = macro_cycle)
+    if("sites" in params.refine):
+      fmodels, selection = refine_sites(fmodels = fmodels,
+        selection = selection, params = params, macro_cycle = macro_cycle)
     assert fmodel.xray_structure is fmodels.fmodel_xray().xray_structure
 
 def pdb_atoms_as_xray_structure(pdb_atoms, crystal_symmetry):
@@ -453,26 +539,6 @@ How to use:
       params.pdb_file_name = processed_args.pdb_file_names[0]
     run(processed_args = processed_args, params = params)
 
-def filter_da(fmodels, selection, params):
-  xrs = fmodels.fmodel_xray().xray_structure
-  xrs_d = xrs.select(selection)
-  xrs_m = xrs.select(~selection)
-  #
-  occ = xrs_d.scatterers().extract_occupancies()
-  adp = xrs_d.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
-  sel  = occ < params.filter.occupancy_max
-  sel &= occ > params.filter.occupancy_min
-  sel &= adp < params.filter.b_iso_max
-  sel &= adp > params.filter.b_iso_min
-  #
-  xrs_d = xrs_d.select(sel)
-  xrs = xrs_m.concatenate(xrs_d)
-  selection = flex.bool(xrs_m.scatterers().size(), False)
-  selection.extend(flex.bool(xrs_d.scatterers().size(), True))
-  fmodels.update_xray_structure(xray_structure = xrs, update_f_calc=True,
-    update_f_mask=False)
-  return fmodels, selection
-
 def run(processed_args, params):
   if(params.scattering_table not in ["n_gaussian","wk1995",
      "it1992","neutron"]):
@@ -507,30 +573,20 @@ def run(processed_args, params):
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=None
-  #
-  mmtbx_pdb_file = mmtbx.utils.pdb_file(
-    pdb_file_names   = [params.pdb_file_name],
-    crystal_symmetry = crystal_symmetry,
-    log              = sys.stdout)
-  mmtbx_pdb_file.set_ppf()
-  processed_pdb_file = mmtbx_pdb_file.processed_pdb_file
-  pdb_raw_records = mmtbx_pdb_file.pdb_raw_records
-  pdb_inp = mmtbx_pdb_file.pdb_inp
-  #
-  xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
-    processed_pdb_file = processed_pdb_file,
-    scattering_table   = params.scattering_table,
-    d_min              = f_obs.d_min())
-  xray_structure = xsfppf.xray_structures[0]
-  if(len(xsfppf.xray_structures) > 1):
-    raise Sorry("Multiple models are not supported.")
+  xray_structure = iotbx.pdb.input(file_name =
+    params.pdb_file_name).xray_structure_simple()
+  xray_structure_da = None
+  if(params.external_da_pdb_file_name is not None):
+    xray_structure_da = iotbx.pdb.input(file_name =
+      params.external_da_pdb_file_name).xray_structure_simple()
   f_obs = f_obs.resolution_filter(d_min = params.high_resolution,
     d_max = params.low_resolution)
   r_free_flags = r_free_flags.resolution_filter(d_min = params.high_resolution,
     d_max = params.low_resolution)
   #
   assert params.mode in ["build", "build_and_refine"]
-  grow_density(f_obs          = f_obs,
-               r_free_flags   = r_free_flags,
-               xray_structure = xray_structure,
-               params         = params)
+  grow_density(f_obs             = f_obs,
+               r_free_flags      = r_free_flags,
+               xray_structure    = xray_structure,
+               xray_structure_da = xray_structure_da,
+               params            = params)
