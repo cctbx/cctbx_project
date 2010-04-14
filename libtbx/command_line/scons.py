@@ -23,13 +23,23 @@ def dummy_fetch_win32_parallel_msg():
   pass
 
 def run():
+  debug_import = "--debug=import" in sys.argv[1:]
+  def show_traceback():
+    if (debug_import):
+      import traceback
+      print >> sys.stderr
+      traceback.print_exc()
+      print >> sys.stderr
   engine_path = find_scons_engine_path()
   if (engine_path is not None):
     sys.path.insert(0, engine_path)
     try: import SCons
-    except ImportError: del sys.path[0]
+    except ImportError:
+      show_traceback()
+      del sys.path[0]
   try: import SCons.Script
   except ImportError:
+    show_traceback()
     msg = ["SCons is not available.",
       "  A possible solution is to unpack a SCons distribution in",
       "  one of these directories:"]
