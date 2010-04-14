@@ -8,8 +8,11 @@
 #include <iomanip>
 
 #include <scitbx/array_family/shared.h>
+#include<scitbx/array_family/versa.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 
 #include <scitbx/vec3.h>
+#include <scitbx/mat3.h>
 #include <scitbx/math/zernike.h>
 #include <complex>
 #include <string>
@@ -72,6 +75,32 @@ namespace zernike {
       FloatType rmax() { return rmax_; }
       FloatType fraction() { return fract_; }
 
+      af::shared< scitbx::vec3< FloatType > > 
+      rotate( scitbx::vec3< FloatType > angle, bool t) {
+
+      scitbx::mat3< FloatType > rotation_matrix = euler_zyz_matrix( angle );
+      if(t) { rotation_matrix=rotation_matrix.transpose(); }
+      for(int i=0; i<natom_;i++)
+        xyz_[i] = xyz_[i]*rotation_matrix;
+      return xyz_;
+      }
+
+      scitbx::mat3<FloatType> euler_zyz_matrix( scitbx::vec3<FloatType> ea ) {
+
+                FloatType cx,sx,cy,sy,cz,sz;
+                cx = cos(ea[0]);
+                sx = sin(ea[0]);
+                cy = cos(ea[1]);
+                sy = sin(ea[1]);
+                cz = cos(ea[2]);
+                sz = sin(ea[2]);
+
+          return scitbx::mat3< FloatType> (
+            cx*cy*cz-sx*sz,   -cx*cy*sz-sx*cz,    cx*sy,
+            sx*cy*cz+cx*sz,   -sx*cy*sz+cx*cz,    sx*sy,
+            -sy*cz,           sy*sz,              cy );
+
+      }
       int occupied_sites() {
 
         int count=0, n_tot_=2*NP_+1;
@@ -215,11 +244,18 @@ namespace zernike {
              int const& n_max
              ):
              N_point_(N_point),
-             n_max_(n_max)
+             n_max_(n_max),
+	     grid_(n_max+1, n_max+1, n_max+1),
+	     ss_(grid_, 0.0)
       {
         delta_ = 1.0/static_cast<FloatType>(N_point_);
         build_grid();
         compute_gm();
+      }
+
+      
+      af::versa< FloatType, af::c_grid<3> > ss() {
+	return ss_;
       }
 
       bool build_grid()
@@ -243,6 +279,7 @@ namespace zernike {
 
      af::shared< scitbx::vec3<FloatType> > unit_sphere() {return xyz_;}
      af::shared< scitbx::vec3<int> > unit_sphere_index() {return xyz_indx_;}
+     af::versa< FloatType, af::c_grid<3> > get_all_ss() { return ss_; }
 
 // Clean the grid point based on voxel value:
 // i.e. if (voxel(x,y,z) == 0), there is no need to keep the grid point
@@ -316,25 +353,19 @@ namespace zernike {
       bool construct_space_sum() {
 
         for(int r=0;r<=n_max_;r++) {
-          af::shared< af::shared<FloatType> > ss_r;
           for(int s=0;s<=n_max_;s++) {
-            af::shared<FloatType> ss_rs;
             for(int t=0;t<=n_max_;t++) {
               if( r+s+t <= n_max_)
-                ss_rs.push_back( space_sum(r,s,t) );
-              else
-                ss_rs.push_back( 0.0 );
+                ss_(r, s, t) =  space_sum(r,s,t);
             }  //end of t
-          ss_r.push_back( ss_rs );
           } //end of s
-        ss_.push_back( ss_r );
         } //end of r
 
         return true;
       }
 
       FloatType get_ss(int r, int s, int t) {
-        return ss_[r][s][t];
+        return ss_(r,s,t);
       }
 
     private:
@@ -344,7 +375,8 @@ namespace zernike {
       scitbx::af::shared<FloatType>one_d_;
       scitbx::af::shared< scitbx::af::shared<FloatType> >gm_;
         //Geometric moments up to order n_max_
-      af::shared< af::shared< af::shared< FloatType > > > ss_;
+      af::c_grid<3> grid_;
+      af::versa< FloatType, af::c_grid<3> > ss_;
       af::shared< FloatType > voxel_value_;
       scitbx::af::shared< scitbx::vec3<int> > voxel_indx_;
       int n_max_, N_point_;
@@ -373,6 +405,11 @@ namespace zernike {
         calc_invariance();
       }
 
+      void update_ss( af::versa< FloatType, af::c_grid<3> > new_ss ) {
+	ss_=new_ss.deep_copy();
+	return;
+      }
+
       scitbx::math::zernike::nlm_array<FloatType>
       all_moments()
       {
@@ -380,15 +417,15 @@ namespace zernike {
       }
 
       scitbx::math::zernike::nlm_array<FloatType>
-      Fnnl()
+      fnnl()
       { return C_nnl_; }
 
       scitbx::math::zernike::nl_array<FloatType>
-      Fnl()
+      fnl()
       { return C_nl_; }
 
       scitbx::math::zernike::nl_array<FloatType>
-      Fnn()
+      fnn()
       { return C_nn_; }
 
 
@@ -516,6 +553,7 @@ namespace zernike {
 
       void initialize()
       {
+        ss_ = grid_.ss().deep_copy();
         build_fac();
         build_bino();
         build_Clm_array();
@@ -595,7 +633,7 @@ namespace zernike {
           r = 2*(v+alpha)+u;
           s = 2*(mu-v+beta)+m-u;
           t = 2*(nu-alpha-beta-mu)+l-m;
-          temp += bino_[mu][v] * grid_.get_ss(r,s,t);
+          temp += bino_[mu][v] * ss_(r,s,t);
         }
         return temp;
       }
@@ -664,6 +702,7 @@ namespace zernike {
       scitbx::af::shared< scitbx::af::shared< scitbx::af::shared<FloatType> > > Q_lkv_;
       int n_max_;
       std::complex<FloatType> complex_i_;
+      af::versa< FloatType, af::c_grid<3> > ss_;
       grid<FloatType> grid_;
   };
 
