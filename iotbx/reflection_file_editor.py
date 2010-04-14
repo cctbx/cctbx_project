@@ -544,12 +544,14 @@ class process_arrays (object) :
         "console.")
     i = 0
     used = dict([ (label, 0) for label in labels ])
+    invalid_chars = re.compile("[^A-Za-z0-9_\-+\(\)]")
     for column in self.mtz_object.columns() :
       if column.label() != labels[i] :
         label = labels[i]
-        if re.search("[^A-Za-z0-9_\-]", label) :
+        if invalid_chars.search(label) is not None :
           raise Sorry(("Invalid label '%s'.  Output labels may only contain "+
-            "alphanumeric characters (including underscore) or hyphens.")
+            "alphanumeric characters, underscore, plus and minus signs, or "+
+            "parentheses.")
             % label)
         if used[labels[i]] > 0 :
           if params.mtz_file.resolve_label_conflicts :
