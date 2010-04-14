@@ -28,6 +28,7 @@ namespace {
              ))
             )
         .def("get_ss", &w_t::get_ss)
+        .def("get_ss", &w_t::get_all_ss)
         .def("clean_space", &w_t::clean_space)
         .def("construct_space_sum",&w_t::construct_space_sum)
         .def("unit_sphere", &w_t::unit_sphere)
@@ -59,9 +60,10 @@ namespace {
             )
         .def("moments", &w_t::all_moments)
         .def("get_moment",&w_t::get_moment)
-        .def("fnn",&w_t::Fnn)
-        .def("fnl",&w_t::Fnl)
-        .def("fnnl",&w_t::Fnnl)
+        .def("update_ss",&w_t::update_ss)
+        .def("fnn",&w_t::fnn)
+        .def("fnl",&w_t::fnl)
+        .def("fnnl",&w_t::fnnl)
       ;
     }
   };
@@ -99,6 +101,7 @@ namespace {
         .def("rmax", &w_t::rmax)
         .def("map", &w_t::map)
         .def("xyz", &w_t::xyz)
+        .def("rotate", &w_t::rotate)
         .def("np",&w_t::np)
         .def("occupied_sites", &w_t::occupied_sites)
         .def("status", &w_t::print_status)
