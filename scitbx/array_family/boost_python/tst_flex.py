@@ -206,6 +206,20 @@ def exercise_flex_constructors():
   assert f.size() == 3
   assert tuple(f) == (10,11,12)
   assert flex.to_list(f) == [10,11,12]
+  f = flex.double(flex.std_string(['1.2','+2e-3','3']))
+  assert tuple(f) == (1.2,.002,3.0)
+  f = flex.double(flex.std_string(['1.2(3)','+2e-3(1)','3(16)']))
+  assert tuple(f) == (1.2,.002,3.0)
+  assert tuple(f.as_string()) == ('1.2', '0.002', '3')
+  try:
+    f = flex.double(flex.std_string(['1.2','+2e-3(x)']))
+  except RuntimeError, e:
+    pass
+  else:
+    raise Exception_expected
+  f = flex.int(flex.std_string(['1','+2','-3']))
+  assert tuple(f.as_string()) == ('1', '2', '-3')
+  assert tuple(f) == (1,2,-3)
   #
   for row_type in [list, tuple]:
     for column_type in [list, tuple]:
