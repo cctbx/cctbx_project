@@ -524,22 +524,77 @@ class home_dihedrals(object):
     O.dihedral_set = dihedral_set
     O.weight = weight
 
-def get_home_dihedral_proxies(work_params, geometry, sites_cart_home):
-  home_dihedral_proxies = cctbx.geometry_restraints.shared_dihedral_proxy()
-  sigma = work_params.sigma
+def build_name_hash(pdb_hierarchy):
+  i_seq_name_hash = dict()
+  for atom in pdb_hierarchy.atoms():
+    i_seq_name_hash[atom.i_seq]=atom.pdb_label_columns()
+  return i_seq_name_hash
+
+def build_element_hash(pdb_hierarchy):
+  i_seq_element_hash = dict()
+  for atom in pdb_hierarchy.atoms():
+    i_seq_element_hash[atom.i_seq]=atom.element
+  return i_seq_element_hash
+
+def build_dihedral_hash(geometry=None,
+                        sites_cart=None,
+                        pdb_hierarchy=None,
+                        include_hydrogens=False):
+  if not include_hydrogens:
+    i_seq_element_hash = build_element_hash(pdb_hierarchy=pdb_hierarchy)
+  i_seq_name_hash = build_name_hash(pdb_hierarchy=pdb_hierarchy)
+  dihedral_hash = dict()
+
   for dp in geometry.dihedral_proxies:
+    try:
+      #check for H atoms if required
+      if not include_hydrogens:
+        for i_seq in dp.i_seqs:
+          if i_seq_element_hash[i_seq] == " H":
+            raise StopIteration()
+      key = ""
+      for i_seq in dp.i_seqs:
+        key = key+i_seq_name_hash[i_seq]
+      di = cctbx.geometry_restraints.dihedral(sites_cart=sites_cart, proxy=dp)
+      dihedral_hash[key] = di.angle_model
+    except StopIteration:
+      pass
+  return dihedral_hash
+
+def get_home_dihedral_proxies(work_params,
+                              geometry,
+                              pdb_hierarchy,
+                              geometry_ref,
+                              sites_cart_ref,
+                              pdb_hierarchy_ref):
+  reference_dihedral_proxies = cctbx.geometry_restraints.shared_dihedral_proxy()
+  sigma = work_params.sigma
+  limit = work_params.limit
+  i_seq_name_hash = build_name_hash(pdb_hierarchy=pdb_hierarchy)
+  reference_dihedral_hash = build_dihedral_hash(
+                         geometry=geometry_ref,
+                         sites_cart=sites_cart_ref,
+                         pdb_hierarchy=pdb_hierarchy_ref,
+                         include_hydrogens=work_params.include_hydrogens)
+  for dp in geometry.dihedral_proxies:
+    key = ""
+    for i_seq in dp.i_seqs:
+      key = key+i_seq_name_hash[i_seq]
+    try:
+      reference_angle = reference_dihedral_hash[key]
+    except:
+      continue
     dp_home = cctbx.geometry_restraints.dihedral_proxy(
       i_seqs=dp.i_seqs,
       angle_ideal=0,
       weight=1/sigma**2)
-    di_home = cctbx.geometry_restraints.dihedral(sites_cart=sites_cart_home, proxy=dp_home)
     dp_add = cctbx.geometry_restraints.dihedral_proxy(
       i_seqs=dp.i_seqs,
-      angle_ideal=di_home.angle_model,
+      angle_ideal=reference_angle,
       weight=1/sigma**2,
-      limit=1000.0)
-    home_dihedral_proxies.append(dp_add)
-  return home_dihedral_proxies
+      limit=limit)
+    reference_dihedral_proxies.append(dp_add)
+  return reference_dihedral_proxies
 
 def add_reference_dihedral_proxies(geometry, reference_dihedral_proxies):
   geometry.reference_dihedral_proxies=reference_dihedral_proxies
