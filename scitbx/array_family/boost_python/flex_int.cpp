@@ -8,9 +8,21 @@
 #include <scitbx/stl/map_fwd.h>
 #include <boost/python/args.hpp>
 #include <boost/format.hpp>
+#include <boost/python/make_constructor.hpp>
+#include <boost/lexical_cast.hpp>
 #include <map>
 
 namespace scitbx { namespace af { namespace boost_python {
+
+  flex<int>::type*
+  from_std_string(const_ref<std::string> const& s)
+  {
+    shared<int> result(reserve(s.size()));
+    for(std::size_t i=0;i<s.size();i++) {
+      result.push_back(boost::lexical_cast<int>(s[i]));
+    }
+    return new flex<int>::type(result, result.size());
+  }
 
   shared<bool>
   as_bool(const_ref<int> const& self, bool strict=true)
@@ -35,16 +47,31 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
+  af::shared<std::string>
+  as_string(
+    af::const_ref<int, af::flex_grid<> > const& O)
+  {
+    af::shared<std::string> result((reserve(O.size())));
+    std::size_t n = O.accessor().size_1d();
+    for(std::size_t i=0;i<n;i++) {
+      result.push_back(boost::lexical_cast<std::string>(O[i]));
+    }
+    return result;
+  }
+
   void wrap_flex_int()
   {
     using namespace boost::python;
     using boost::python::arg;
     flex_wrapper<int>::signed_integer("int", scope())
       .def_pickle(flex_pickle_single_buffered<int>())
+      .def("__init__", make_constructor(
+        from_std_string, default_call_policies()))
       .def("copy_to_byte_str", copy_to_byte_str<versa<int, flex_grid<> > >)
       .def("slice_to_byte_str",
         slice_to_byte_str<versa<int, flex_grid<> > >)
       .def("as_bool", as_bool, (arg("strict")=true))
+      .def("as_string", as_string)
       .def("counts", counts<int, std::map<long, long> >::unlimited)
       .def("counts", counts<int, std::map<long, long> >::limited, (
         arg("max_keys")))

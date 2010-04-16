@@ -6,6 +6,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/make_constructor.hpp>
 #include <boost/numeric/conversion/cast.hpp>
+#include <boost/lexical_cast.hpp>
 #include <vector>
 #include <set>
 #include "flex_helpers.h"
@@ -13,6 +14,40 @@
 namespace scitbx { namespace af {
 
 namespace {
+
+  /* This will also allow construction from cif-style numeric strings
+     where the esd associated with the value is also given in brackets.
+     For now the value in the brackets (if present) is ignored
+     (although this is checked to be a valid integer).  E.g.
+       the string "1.3(2)" will be interpreted as the double 1.3
+   */
+
+  flex<double>::type*
+  from_std_string(const_ref<std::string> const& strings)
+  {
+    shared<double> result(reserve(strings.size()));
+    for(std::size_t i=0;i<strings.size();i++) {
+      std::string s = strings[i];
+      std::string::iterator iter = s.begin();
+      std::size_t open_bracket_i = s.find_first_of('(');
+      std::size_t close_bracket_i = s.find_last_of(')');
+      double value;
+      if (open_bracket_i == std::string::npos) {
+        value = boost::lexical_cast<double>(s);
+      }
+      else {
+        if (close_bracket_i != s.size()-1) {
+          throw std::runtime_error("Unexpected trailing characters after ')'");
+        }
+        value = boost::lexical_cast<double>(s.substr(0, open_bracket_i));
+        // check that value between brackets is a valid integer
+        boost::lexical_cast<int>(
+          s.substr(open_bracket_i+1, close_bracket_i-open_bracket_i-1));
+      }
+      result.push_back(value);
+    }
+    return new flex<double>::type(result, result.size());
+  }
 
   flex<double>::type*
   from_stl_vector_double(std::vector<double> const& v)
@@ -270,6 +305,18 @@ namespace {
     return result;
   }
 
+  af::shared<std::string>
+  as_string(
+    af::const_ref<double, af::flex_grid<> > const& O)
+  {
+    af::shared<std::string> result((reserve(O.size())));
+    std::size_t n = O.accessor().size_1d();
+    for(std::size_t i=0;i<n;i++) {
+      result.push_back(boost::lexical_cast<std::string>(O[i]));
+    }
+    return result;
+  }
+
   shared<double>
   round(
     const_ref<double> const& self,
@@ -323,6 +370,8 @@ namespace boost_python {
       .def("slice_to_byte_str",
         slice_to_byte_str<versa<double,flex_grid<> > >)
       .def("__init__", make_constructor(
+        from_std_string, default_call_policies()))
+      .def("__init__", make_constructor(
         from_stl_vector_double, default_call_policies()))
       .def("__init__", make_constructor(
         from_list_of_lists_or_tuples, default_call_policies()))
@@ -357,6 +406,7 @@ namespace boost_python {
           arg("other"),
           arg("relative_error")=1e-6))
       .def("as_float", as_float)
+      .def("as_string", as_string)
       .def("round", round, (arg("n_digits")=0))
       .def("select", select_stl_iterable<std::vector<unsigned> >, (
         arg("selection")))
