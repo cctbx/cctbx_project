@@ -469,7 +469,7 @@ class local_scaling_driver(object):
     print >> out, "Target neighbours    : %8i"%(self.target_neighbours)
     print >> out, "neighbourhood sphere : %8i"%(self.sphere)
     print >> out
-    self.local_scaler = scaling.local_scaling_moment_based(
+    self.local_scaler = scaling.local_scaling_ls_based(
       hkl_master=self.master_set.indices(),
       hkl_sets=self.nat_primset.indices(),
       data_set_a=self.nat_primset.data(),
