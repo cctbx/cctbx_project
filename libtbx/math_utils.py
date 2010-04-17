@@ -82,6 +82,13 @@ def next_permutation(seq):
       seq.reverse()
       return False
 
+def random_permutation_in_place(list):
+  import random
+  n = len(list)
+  for i in xrange(n):
+    j = random.randrange(n)
+    list[i], list[j] = list[j], list[i]
+
 def prime_factors_of(n):
   "http://butunclebob.com/ArticleS.UncleBob.ThePrimeFactorsKata"
   result = []
