@@ -89,6 +89,19 @@ def exercise_next_permutation():
     assert seq == range(m)
     assert n == expected_n
 
+def exercise_random_permutation_in_place():
+  from libtbx.math_utils import random_permutation_in_place
+  import random
+  random.seed(0)
+  l = range(8)
+  for i_trial in xrange(10):
+    random_permutation_in_place(list=l)
+    if (l != range(8)):
+      break
+  else:
+    raise AssertionError
+  assert sorted(l) == range(8)
+
 def exercise_prime_factors_of():
   from libtbx.math_utils import prime_factors_of
   assert prime_factors_of(n=1) == []
@@ -125,6 +138,7 @@ def exercise():
   exercise_logical()
   exercise_nested_loop()
   exercise_next_permutation()
+  exercise_random_permutation_in_place()
   exercise_prime_factors_of()
   exercise_normalize_angle()
   print "OK"
