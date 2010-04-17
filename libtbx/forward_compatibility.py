@@ -12,11 +12,20 @@ if ("sorted" not in __builtins__):
   def sorted(iterable, cmp=None, key=None, reverse=False):
     """\
 sorted(iterable, cmp=None, key=None, reverse=False) --> new sorted list"""
-    assert key is None, "Not implemented."
-    result = list(iterable)
-    if (cmp is None): result.sort()
-    else:             result.sort(cmp)
-    if (reverse): result.reverse()
+    # copied from scons svn rev. 4787
+    if key is not None:
+      result = [(key(x), x) for x in iterable]
+    else:
+      result = iterable[:]
+    if cmp is None:
+      # Pre-2.3 Python does not support list.sort(None).
+      result.sort()
+    else:
+      result.sort(cmp)
+    if key is not None:
+      result = [t1 for t0,t1 in result]
+    if reverse:
+      result.reverse()
     return result
   __builtins__["sorted"] = sorted
 
