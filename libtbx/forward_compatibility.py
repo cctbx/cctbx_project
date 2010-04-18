@@ -12,11 +12,11 @@ if ("sorted" not in __builtins__):
   def sorted(iterable, cmp=None, key=None, reverse=False):
     """\
 sorted(iterable, cmp=None, key=None, reverse=False) --> new sorted list"""
-    # copied from scons svn rev. 4787
+    # copied from scons svn rev. 4787, fixed to use list(iterable)
     if key is not None:
       result = [(key(x), x) for x in iterable]
     else:
-      result = iterable[:]
+      result = list(iterable)
     if cmp is None:
       # Pre-2.3 Python does not support list.sort(None).
       result.sort()
