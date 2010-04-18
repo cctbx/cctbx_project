@@ -28,7 +28,6 @@ namespace {
     shared<double> result(reserve(strings.size()));
     for(std::size_t i=0;i<strings.size();i++) {
       std::string s = strings[i];
-      std::string::iterator iter = s.begin();
       std::size_t open_bracket_i = s.find_first_of('(');
       std::size_t close_bracket_i = s.find_last_of(')');
       double value;
