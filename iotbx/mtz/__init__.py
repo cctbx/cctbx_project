@@ -22,6 +22,10 @@ import sys, os
 expected_cmtz_struct_sizes = (
   (56, 84, 176, 500, 12336, 12488), # Linux 32-bit
   (64, 88, 184, 504, 12336, 12528), # Tru64
+  #
+  # 2010/04/19, addition of spg_confidence to struct SYMGRP in mtzdata.h
+  (56, 84, 176, 500, 12340, 12492), # 32-bit
+  (64, 88, 184, 504, 12340, 12536), # 64-bit
 )
 if (tuple(ext.cmtz_struct_sizes()) not in expected_cmtz_struct_sizes):
   warnings.warn("""Unexpected iotbx.mtz.cmtz_struct_sizes(): %s
