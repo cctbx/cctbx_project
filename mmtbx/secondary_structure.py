@@ -1,4 +1,5 @@
 from __future__ import division
+from mmtbx.base_pairing import dna_rna_params_str
 import iotbx.pdb.secondary_structure
 from scitbx.array_family import shared, flex
 import libtbx.phil
@@ -15,7 +16,7 @@ default_sigma = 0.05
 default_slack = 0.00
 h_o_distance_ideal = 1.975
 h_o_distance_max = 2.5
-n_o_distance_ideal = 3.0
+n_o_distance_ideal = 2.9
 n_o_distance_max = 3.5
 
 ss_restraint_params_str = """
@@ -162,8 +163,12 @@ h_bond_restraints
 }
 %s
 %s
+nucleic_acids {
+  %s
+}
 """ % (iotbx.pdb.secondary_structure.ss_input_params_str,
-       ss_restraint_params_str, ss_tardy_params_str, ss_group_params_str)
+       ss_restraint_params_str, ss_tardy_params_str, ss_group_params_str,
+       dna_rna_params_str)
 
 sec_str_master_phil = libtbx.phil.parse(sec_str_master_phil_str)
 default_params = sec_str_master_phil.fetch().extract()
