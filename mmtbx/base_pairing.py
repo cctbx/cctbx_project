@@ -1,4 +1,6 @@
 
+import os
+
 dna_rna_params_str = """
 base_pair
   .multiple = True
@@ -17,17 +19,50 @@ base_pair
 #    .type = bool
 }
 """
-def get_h_bond_dict():
-  h_bond_dict = {}
-  h_bond_dict['CGWWT'] = [('H42','O6'),('N3','H1'),('O2','H22')]
-  h_bond_dict['AUWWT'] = [('H61','O4'),('N1','H3')]
-  return h_bond_dict
 
-def get_h_bond_heavy_dict():
-  h_bond_dict = {}
-  h_bond_dict['CGWWT'] = [('N4','O6'),('N3','N1'),('O2','N2')]
-  h_bond_dict['AUWWT'] = [('N6','O4'),('N1','N3')]
-  return h_bond_dict
+class pair_database (object) :
+  def __init__ (self) :
+    self._h_bond_pairs = {}
+    self._pseudo_bond_pairs = {}
+    base, ext = os.path.splitext(__file__)
+    dblines = open("%s.data" % base).readlines()
+    for i, line in enumerate(dblines) :
+      if line.startswith("#") :
+        continue
+      fields = line.strip().split()
+      assert len(fields) >= 4
+      pair_type = fields[0]
+      paired_bases = fields[1]
+      hydrogen_flag = fields[2]
+      atom_pairs = [ (p.split(",")[0], p.split(",")[1]) for p in fields[3:] ]
+      if hydrogen_flag == '+' :
+        db = self._h_bond_pairs
+      else :
+        db = self._pseudo_bond_pairs
+      if pair_type in db :
+        if paired_bases in db[pair_type] :
+          raise RuntimeError("Duplicate entry in base pair dictionary, line %d"
+            % i)
+      else :
+        db[pair_type] = {}
+      db[pair_type][paired_bases] = atom_pairs
+
+  def get_atoms (self, base_pair, pair_type, use_hydrogens=False) :
+    if use_hydrogens :
+      db = self._h_bond_pairs
+    else :
+      db = self._pseudo_bond_pairs
+    pair_rules = db[pair_type]
+    if base_pair in pair_rules :
+      return pair_rules[base_pair]
+    elif base_pair[::-1] in pair_rules :
+      return invert_pairs(pair_rules[base_pair[::-1]])
+    else :
+      raise RuntimeError("No entry for base pair %s with type %s (H=%s)." %
+        (base_pair, pair_type, str(use_hydrogens)))
+
+  def get_pair_type (self, base_pair, atom_pairs) :
+    return None # TODO
 
 def invert_pairs(h_bond_atoms):
   inverted_h_bond_atoms = []
@@ -35,19 +70,17 @@ def invert_pairs(h_bond_atoms):
     inverted_h_bond_atoms.append((pair[1],pair[0]))
   return inverted_h_bond_atoms
 
+db = pair_database()
+
 def get_h_bond_atoms(residues, pair_type, use_hydrogens=False):
-  if use_hydrogens:
-    h_bond_dict = get_h_bond_dict()
-  else:
-    h_bond_dict = get_h_bond_heavy_dict()
-  key = residues[0].strip()+residues[1].strip()+pair_type
-  try:
-    h_bond_atoms = h_bond_dict[key]
-  except:
-    try:
-      key = residues[1].strip()+residues[0].strip()+pair_type
-      h_bond_atoms = invert_pairs(h_bond_dict[key])
-    except:
-      print "Unknown key!"
-      return None
-  return h_bond_atoms
+  base_pair = residues[0].strip()[0] + residues[1].strip()[0]
+  return db.get_atoms(base_pair, pair_type, use_hydrogens)
+
+def exercise () :
+  assert (db.get_atoms("AU", "WWT", True) == [('H61', 'O4'), ('N1', 'H3')])
+  assert (db.get_atoms("GC", "WWT", False) == [('O6', 'N4'), ('N1', 'N3'),
+    ('N2', 'O2')])
+  print "OK"
+
+if __name__ == "__main__" :
+  exercise()

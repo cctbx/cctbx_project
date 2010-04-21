@@ -562,11 +562,11 @@ def hydrogen_bonds_from_selections (
           resi_sele=base_pair.base2,
           selection_cache=selection_cache,
           atoms=atoms)
-        #(atom_names1, atom_names2) = mmtbx.base_pairing.get_hydrogen_bonds(
-        #  resname1=resname1,
-        #  resname2=resname2,
-        #  pair_type=base_pair.pair_type,
-        #  hydrogen_flag=not params.h_bond_restraints.substitute_n_for_h)
+        atom_pairs = mmtbx.base_pairing.get_h_bond_atoms(
+          residuse=(resname1,resname2),
+          pair_type=base_pair.pair_type.upper(),
+          use_hydrogens=(not params.h_bond_restraints.substitute_n_for_h))
+        # TODO
       except RuntimeError, e :
         print >> log, str(e)
   return hydrogen_bond_table(bonds=bond_i_seqs,
