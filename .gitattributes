@@ -398,6 +398,7 @@ libtbx/xmlrpc_server_example.py -text
 libtbx/xmlrpc_utils.py -text
 mmtbx/alignment.h svneol=native#text/plain
 mmtbx/alignment_ext.cpp svneol=native#text/plain
+mmtbx/base_pairing.data -text
 mmtbx/base_pairing.py -text
 mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling.py -text
 mmtbx/chemical_components/__init__.py -text
