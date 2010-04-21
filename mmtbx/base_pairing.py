@@ -1,5 +1,6 @@
 
 import os
+from libtbx import easy_run
 
 dna_rna_params_str = """
 base_pair
@@ -97,6 +98,79 @@ db = pair_database()
 def get_h_bond_atoms(residues, pair_type, use_hydrogens=False):
   base_pair = residues[0].strip()[0] + residues[1].strip()[0]
   return db.get_atoms(base_pair, pair_type, use_hydrogens)
+
+def run_probe(pdb_hierarchy, flags=None, add_hydrogens=True):
+  reduce_output = run_reduce(pdb_hierarchy, remove_hydrogens=False).stdout_lines
+  cmd = "phenix.probe " + flags + " -"
+  probe_output = easy_run.fully_buffered(cmd,
+           stdin_lines=reduce_output)
+  return probe_output
+
+def run_reduce(hierarchy, remove_hydrogens=True):
+  trim = "phenix.reduce -quiet -trim -"
+  build = "phenix.reduce -quiet -build -allalt -"
+  input_str = ""
+  if(remove_hydrogens):
+    clean = easy_run.fully_buffered(trim,
+                                    stdin_lines=hierarchy.as_pdb_string())
+    input_str = clean.stdout_lines
+  else:
+    input_str = hierarchy.as_pdb_string()
+  output = easy_run.fully_buffered(build,
+                                   stdin_lines=input_str)
+  return output
+
+def get_base_pairs(pdb_hierarchy, probe_flags=None):
+  #db = mmtbx.base_pairing.pair_database()
+  if probe_flags is None:
+    probe_flags = "-Both -Unformated -NOCLASHOUT -NOVDWOUT \"BASE\" \"BASE\""
+  probe_out = run_probe(pdb_hierarchy=pdb_hierarchy,
+                                  flags=probe_flags)
+  hbond_hash={}
+  pair_hash={}
+  reduced_pair_hash={}
+  probe_iter = iter(probe_out.stdout_lines)
+  for line in probe_iter:
+    temp = line.split(":")
+    bases = [temp[3], temp[4]]
+    #sort so C before G, A before U
+    bases.sort(key=get_resname)
+    base1 = bases[0][1:10]
+    base2 = bases[1][1:10]
+    atom1 = bases[0][11:15]
+    atom2 = bases[1][11:15]
+    base_key = base1+base2
+    bond_key = atom1.strip()+','+atom2.strip()
+    if (not base_key in hbond_hash):
+      hbond_hash[base_key]={}
+    try:
+      hbond_hash[base_key][bond_key]+=1
+    except:
+      hbond_hash[base_key][bond_key]=1
+
+  for key in hbond_hash:
+    counter = 0
+    pair_hash[key]=[]
+    for bond in hbond_hash[key]:
+      if hbond_hash[key][bond] > 0:
+        pair_hash[key].append(tuple(bond.split(',')))
+    if len(pair_hash[key]) >= 2:
+      pair_hash[key].sort(key=sort_tuple)
+      reduced_pair_hash[key]=pair_hash[key]
+  
+  base_pair_list = []
+  for pair in reduced_pair_hash:
+    bases = (pair[:9], pair[9:])
+    base_pair = pair[8]+pair[17]
+    #print base_pair
+    pair_type = db.get_pair_type(base_pair, reduced_pair_hash[pair], use_hydrogens=True)
+    if pair_type is not None:
+      base_pair_list.append([bases, pair_type])
+  return base_pair_list
+
+def get_resname(probe_field):
+  resname = probe_field[6:10]
+  return resname
 
 def exercise () :
   assert (db.get_atoms("AU", "WWT", True) == [('H61', 'O4'), ('N1', 'H3')])
