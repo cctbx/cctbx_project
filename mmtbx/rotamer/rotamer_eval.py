@@ -110,27 +110,6 @@ def eval_sidechain_completeness(pdb_hierarchy,
             missing_atom_list.append(item)
   return missing_atom_list
 
-def get_atoms_attached(residue, atom_name, mon_lib_srv):
-  if residue is None: return []
-  if residue is False: return []
-  bonds = []
-  local_atom_name = atom_name.replace('\'','*')
-  #if residue in never_do_residues: return []
-  #monomer_lib_entry = mon_lib_query(residue, mon_lib_srv)
-  ml = mon_lib_query(residue, mon_lib_srv)
-  if ml is None: return []
-  bonds = []
-  for bond in ml.bond_list:
-    #bonds.append([bond.atom_id_1, bond.atom_id_2])
-    #print bond.atom_id_1, bond.atom_id_2
-    if bond.atom_id_1 == local_atom_name.strip():
-      bonds.append(bond.atom_id_2)
-    elif bond.atom_id_2 == local_atom_name.strip():
-      bonds.append(bond.atom_id_1)
-  return bonds
-
-
-
 class RotamerEval:
 
     # This is shared among all instances of RotamerEval -- a class variable.
