@@ -892,6 +892,19 @@ class manager (object) :
       ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(log=log,
         prefix_scope="")
       self.apply_phil_str(ss_params_str, log=log)
+    # Step 2: nucleic acids
+    find_automatically = params.input.find_automatically
+    if len(params.nucleic_acids.base_pair) == 0 :
+      if find_automatically != False :
+        find_automatically = True
+    if find_automatically :
+      base_pairs = mmtbx.base_pairing.get_phil_base_pairs(
+        pdb_hierarchy=self.pdb_hierarchy,
+        prefix=None) #"refinement.secondary_structure")
+      if base_pairs is not None :
+        bp_phil = libtbx.phil.parse(base_pairs)
+        bp_params = sec_str_master_phil.fetch(source=bp_phil).extract()
+        self.params.nucleic_acids.base_pair = bp_params.nucleic_acids.base_pair
 
   def find_sec_str (self, log=sys.stderr) :
     pdb_str = self.pdb_hierarchy.as_pdb_string()
@@ -900,9 +913,6 @@ class manager (object) :
       records=records,
       allow_none=True)
     return sec_str_from_pdb_file
-
-  def find_base_pairs (self, log=sys.stderr) :
-    pass
 
   def apply_phil_str (self, phil_string, log=sys.stderr, verbose=False) :
     ss_phil = sec_str_master_phil.fetch(source=libtbx.phil.parse(phil_string))
@@ -1079,40 +1089,50 @@ def run (args, out=sys.stdout, log=sys.stderr) :
       except RuntimeError :
         pass
   params = master_phil.fetch(sources=sources).extract()
+  pdb_hierarchy = get_pdb_hierarchy(pdb_files)
+  if len(pdb_hierarchy.models()) != 1 :
+    raise Sorry("Multiple models not supported.")
   secondary_structure = None
-  allow_none = (len(params.helix) > 0 or len(params.sheet) > 0 or
-                len(params.nucleic_acids.base_pair) > 0)
+  base_pairs = None
+  ss_defined = (len(params.helix) > 0 or len(params.sheet) > 0)
+  bp_defined = (len(params.nucleic_acids.base_pair) > 0)
   if len(pdb_files) == 0 :
     raise Usage("phenix.secondary_structure_restraints model.pdb")
-  elif not force_new_annotation :
+  elif not force_new_annotation and not ss_defined :
     secondary_structure = iotbx.pdb.secondary_structure.process_records(
       pdb_files=pdb_files,
-      allow_none=allow_none)
-  if force_new_annotation or secondary_structure is None :
+      allow_none=True)
+    #base_pairs = mmtbx.base_pairing.get_phil_base_pairs(pdb_hierarchy)
+  if force_new_annotation or (secondary_structure is None and not ss_defined) :
     records = []
     for file_name in pdb_files :
       records.extend(run_ksdssp(file_name, log=log))
     secondary_structure = iotbx.pdb.secondary_structure.process_records(
-      records=records, allow_none=allow_none)
+      records=records,
+      allow_none=True)
+  if force_new_annotation or (base_pairs is None and not bp_defined) :
+    base_pairs = mmtbx.base_pairing.get_phil_base_pairs(pdb_hierarchy)
   prefix_scope="refinement.secondary_structure"
   if params.show_histograms or params.format != "phenix" :
     prefix_scope = ""
   ss_phil = None
   if secondary_structure is not None :
-    ss_params_str = secondary_structure.as_restraint_groups(log=log,
-      prefix_scope=prefix_scope)
+    ss_params_str = secondary_structure.as_restraint_groups(log=log) #,
+    #  prefix_scope=prefix_scope)
     ss_phil = libtbx.phil.parse(ss_params_str)
     sources.append(ss_phil)
-  pdb_hierarchy = get_pdb_hierarchy(pdb_files)
-  if len(pdb_hierarchy.models()) != 1 :
-    raise Sorry("Multiple models not supported.")
+  if base_pairs is not None :
+    bp_phil = libtbx.phil.parse(base_pairs)
+    sources.append(bp_phil)
   working_phil = master_phil.fetch(sources=sources)
+  phil_diff = sec_str_master_phil.fetch_diff(source=working_phil)
+  params = working_phil.extract()
   if params.show_histograms :
-    working_phil.show()
+    #working_phil.show()
+    phil_diff.show()
     print >> out, ""
     print >> out, "========== Analyzing hydrogen bonding distances =========="
     print >> out, ""
-    params = working_phil.extract()
     pdb_hierarchy = get_pdb_hierarchy(pdb_files)
     bonds_table = hydrogen_bonds_from_selections(
       pdb_hierarchy,
@@ -1124,7 +1144,6 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   elif params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
   elif params.format in ["pymol", "refmac"] :
-    params = working_phil.extract()
     bonds_table = hydrogen_bonds_from_selections(
       pdb_hierarchy,
       params=params,
@@ -1137,7 +1156,11 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     else :
       bonds_table.as_refmac_restraints(pdb_hierarchy, filter=True, out=out)
   else :
-    working_phil.show(out=out)
+    #working_phil.show(out=out)
+    print "# These parameters are suitable for use in phenix.refine."
+    print "refinement.secondary_structure {"
+    phil_diff.show(prefix="  ")
+    print "}"
     #print >> out, ss_params_str
     return working_phil.as_str()
 
@@ -1210,6 +1233,10 @@ def exercise () :
     m.find_automatically(log=log)
     bonds_table = m.get_bonds_table(log=log)
     assert bonds_table.bonds.size() == 93
+  # Nucleic acids (requires REDUCE and PROBE)
+  if (libtbx.env.has_module(name="reduce") and
+      libtbx.env.has_module(name="probe")):
+    pass # TODO
   print "OK"
 
 if __name__ == "__main__" :

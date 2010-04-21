@@ -1,6 +1,6 @@
 
-import os
 from libtbx import easy_run
+import os, sys
 
 dna_rna_params_str = """
 base_pair
@@ -157,12 +157,11 @@ def get_base_pairs(pdb_hierarchy, probe_flags=None):
     if len(pair_hash[key]) >= 2:
       pair_hash[key].sort(key=sort_tuple)
       reduced_pair_hash[key]=pair_hash[key]
-  
+
   base_pair_list = []
   for pair in reduced_pair_hash:
     bases = (pair[:9], pair[9:])
     base_pair = pair[8]+pair[17]
-    #print base_pair
     pair_type = db.get_pair_type(base_pair, reduced_pair_hash[pair], use_hydrogens=True)
     if pair_type is not None:
       base_pair_list.append([bases, pair_type])
@@ -171,6 +170,24 @@ def get_base_pairs(pdb_hierarchy, probe_flags=None):
 def get_resname(probe_field):
   resname = probe_field[6:10]
   return resname
+
+def get_phil_base_pairs (pdb_hierarchy, probe_flags=None, prefix=None,
+    log=sys.stderr) :
+  print >> log, "  Running PROBE to identify base pairs"
+  base_pair_list = get_base_pairs(pdb_hierarchy, probe_flags)
+  if len(base_pair_list) == 0 :
+    return None
+  phil_strings = []
+  for (bases, pair_type) in base_pair_list :
+    phil_strings.append("""base_pair {
+  base1 = chain '%s' and resseq %s
+  base2 = chain '%s' and resseq %s
+  pair_type = %s
+}""" % (bases[0][0], bases[0][1:5], bases[1][0], bases[1][1:5], pair_type))
+  phil_str = "nucleic_acids {\n%s\n}" % ("\n".join(phil_strings))
+  if prefix is not None :
+    return "%s {\n%s\n}" % (prefix, phil_str)
+  return phil_str
 
 def exercise () :
   assert (db.get_atoms("AU", "WWT", True) == [('H61', 'O4'), ('N1', 'H3')])
