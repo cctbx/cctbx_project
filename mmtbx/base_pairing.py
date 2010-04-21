@@ -9,7 +9,7 @@ base_pair
     .type = str
   base2 = None
     .type = str
-  pair_type = *wc
+  pair_type = *wwt
     .type = choice
     .caption = Watson-Crick
 # TODO
