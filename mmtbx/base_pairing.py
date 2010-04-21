@@ -161,7 +161,7 @@ def get_base_pairs(pdb_hierarchy, probe_flags=None):
   base_pair_list = []
   for pair in reduced_pair_hash:
     bases = (pair[:9], pair[9:])
-    base_pair = pair[8]+pair[17]
+    base_pair = pair[6:9].strip()+pair[15:18].strip()
     pair_type = db.get_pair_type(base_pair, reduced_pair_hash[pair], use_hydrogens=True)
     if pair_type is not None:
       base_pair_list.append([bases, pair_type])
