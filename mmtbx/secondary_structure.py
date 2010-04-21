@@ -1,5 +1,6 @@
+
 from __future__ import division
-from mmtbx.base_pairing import dna_rna_params_str
+import mmtbx.base_pairing
 import iotbx.pdb.secondary_structure
 from scitbx.array_family import shared, flex
 import libtbx.phil
@@ -33,6 +34,8 @@ ss_restraint_params_str = """
     .short_caption = Use alpha helices only
   restrain_sheets = True
     .type = bool
+  restrain_base_pairs = True
+    .type = bool
   remove_outliers = True
     .type = bool
     .short_caption = Filter bond outliers
@@ -63,13 +66,8 @@ ss_restraint_params_str = """
        n_o_distance_ideal, n_o_distance_max)
 
 ss_tardy_params_str = """\
-tardy
-  .help = UNUSED
-  .style = box auto_align noauto
-{
   group_helix_backbone = False
     .style = bool
-}
 """
 
 helix_classes = ["unknown"] * 10
@@ -161,14 +159,36 @@ h_bond_restraints
 {
 %s
 }
+tardy
+  .help = UNUSED
+  .style = box auto_align noauto
+{
 %s
+}
 %s
-nucleic_acids {
+nucleic_acids
+  .caption = If sigma and slack are not defined for nucleic acids, the \
+    overall default settings for protein hydrogen bonds will be used \
+    instead.
+  .style = box auto_align noauto
+{
+  sigma = None
+    .type = float
+    .short_caption = Sigma for nucleic acid H-bonds
+    .help = Defaults to global setting
+  slack = None
+    .type = float
+    .short_caption = Slack for nucleic acid H-bonds
+    .help = Defaults to global setting
+#  planar = False
+#    .type = bool
+#    .short_caption = Use planar restraints by default
+#    .style = noauto
   %s
 }
 """ % (iotbx.pdb.secondary_structure.ss_input_params_str,
        ss_restraint_params_str, ss_tardy_params_str, ss_group_params_str,
-       dna_rna_params_str)
+       mmtbx.base_pairing.dna_rna_params_str)
 
 sec_str_master_phil = libtbx.phil.parse(sec_str_master_phil_str)
 default_params = sec_str_master_phil.fetch().extract()
@@ -531,6 +551,24 @@ def hydrogen_bonds_from_selections (
         bond_i_seqs.append((i_seq, j_seq))
         sigmas.append(sigma)
         slacks.append(slack)
+  if params.h_bond_restraints.restrain_base_pairs :
+    for i, base_pair in params.nucleic_acids.base_pair :
+      try :
+        resname1 = _get_residue_name_from_selection(
+          resi_sele=base_pair.base1,
+          selection_cache=selection_cache,
+          atoms=atoms)
+        resname2 = _get_residue_name_from_selection(
+          resi_sele=base_pair.base2,
+          selection_cache=selection_cache,
+          atoms=atoms)
+        #(atom_names1, atom_names2) = mmtbx.base_pairing.get_hydrogen_bonds(
+        #  resname1=resname1,
+        #  resname2=resname2,
+        #  pair_type=base_pair.pair_type,
+        #  hydrogen_flag=not params.h_bond_restraints.substitute_n_for_h)
+      except RuntimeError, e :
+        print >> log, str(e)
   return hydrogen_bond_table(bonds=bond_i_seqs,
     distance=flex.double(bond_i_seqs.size(), distance_ideal),
     sigma=sigmas,
@@ -573,6 +611,21 @@ hydrogen_bonds_from_selections: incomplete non-PRO residues in %s.
   \"%s\" => %d acceptors""" % (ss_type, donor_sele, donor_isel.size(),
       acceptor_sele, acceptor_isel.size()))
   return donor_isel, acceptor_isel
+
+def _get_residue_name_from_selection (resi_sele, selection_cache, atoms) :
+  i_seqs = selection_cache.iselection(resi_sel)
+  if len(i_seqs) == 0 :
+    raise RuntimeError("Empty selection '%s'" % resi_sele)
+  resnames = []
+  for i_seq in i_seqs :
+    resnames.append(atoms[i_seq].fetch_labels().resname)
+  unique_resnames = set(resnames)
+  assert len(unique_resnames) != 0
+  if len(unique_resnames) > 1 :
+    raise RuntimeError("More than one residue name in selection '%s' (%s)" %
+      (resi_sele, ", ".join(unique_resnames)))
+  else :
+    return resnames[0]
 
 def _hydrogen_bonds_from_strand_pair (atoms,
     prev_strand_donors,
@@ -654,7 +707,6 @@ analyze_h_bonds: multiple atoms matching a selection
 
 def get_pdb_hierarchy (file_names) :
   import iotbx.pdb
-  from scitbx.array_family import flex
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=file_names)
   pdb_structure = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
@@ -771,6 +823,7 @@ def __strand_group_as_pdb_strand (isel, selection, atoms, log, sense) :
     sense=int_sense)
   return pdb_strand
 
+########################################################################
 class manager (object) :
   def __init__ (self,
                 pdb_hierarchy,
@@ -823,6 +876,9 @@ class manager (object) :
     sec_str_from_pdb_file = iotbx.pdb.secondary_structure.process_records(
       records=records)
     return sec_str_from_pdb_file
+
+  def find_base_pairs (self, log=sys.stderr) :
+    pass
 
   def apply_phil_str (self, phil_string, log=sys.stderr, verbose=False) :
     ss_phil = sec_str_master_phil.fetch(source=libtbx.phil.parse(phil_string))
