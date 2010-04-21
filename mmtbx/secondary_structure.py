@@ -552,7 +552,13 @@ def hydrogen_bonds_from_selections (
         sigmas.append(sigma)
         slacks.append(slack)
   if params.h_bond_restraints.restrain_base_pairs :
-    for i, base_pair in params.nucleic_acids.base_pair :
+    sigma = params.nucleic_acids.sigma
+    if sigma is None :
+      sigma = params.h_bond_restraints.sigma
+    slack = params.nucleic_acids.slack
+    if slack is None :
+      slack = params.h_bond_restraints.slack
+    for i, base_pair in enumerate(params.nucleic_acids.base_pair) :
       try :
         resname1 = _get_residue_name_from_selection(
           resi_sele=base_pair.base1,
@@ -563,10 +569,26 @@ def hydrogen_bonds_from_selections (
           selection_cache=selection_cache,
           atoms=atoms)
         atom_pairs = mmtbx.base_pairing.get_h_bond_atoms(
-          residuse=(resname1,resname2),
+          residues=(resname1,resname2),
           pair_type=base_pair.pair_type.upper(),
           use_hydrogens=(not params.h_bond_restraints.substitute_n_for_h))
-        # TODO
+        for (name1, name2) in atom_pairs :
+          sele1 = """name %s and %s""" % (name1, base_pair.base1)
+          sele2 = """name %s and %s""" % (name2, base_pair.base2)
+          # XXX these aren't necessarily in donor/acceptor order, but it
+          # doesn't really matter here.
+          (i_seq,j_seq) = _hydrogen_bond_from_selection_pair(sele1, sele2,
+            selection_cache)
+          if has_bond[i_seq] or has_bond[j_seq] :
+            print >> log, "One or more atoms already bonded:"
+            print >> log, "  %s" % atoms[i_seq].fetch_labels().id_str()
+            print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
+            continue
+          has_bond[i_seq] = True
+          has_bond[j_seq] = True
+          bond_i_seqs.append((i_seq, j_seq))
+          sigmas.append(sigma)
+          slacks.append(slack)
       except RuntimeError, e :
         print >> log, str(e)
   return hydrogen_bond_table(bonds=bond_i_seqs,
@@ -613,7 +635,7 @@ hydrogen_bonds_from_selections: incomplete non-PRO residues in %s.
   return donor_isel, acceptor_isel
 
 def _get_residue_name_from_selection (resi_sele, selection_cache, atoms) :
-  i_seqs = selection_cache.iselection(resi_sel)
+  i_seqs = selection_cache.iselection(resi_sele)
   if len(i_seqs) == 0 :
     raise RuntimeError("Empty selection '%s'" % resi_sele)
   resnames = []
@@ -689,6 +711,7 @@ def _hydrogen_bonds_from_strand_pair (atoms,
 
 def _hydrogen_bond_from_selection_pair (donor_sele, acceptor_sele,
     selection_cache) :
+  isel = selection_cache.iselection
   donor_i_seqs = isel(donor_sele)
   acceptor_i_seqs = isel(acceptor_sele)
   n_donor_sel = donor_i_seqs.size()
@@ -874,7 +897,8 @@ class manager (object) :
     pdb_str = self.pdb_hierarchy.as_pdb_string()
     (records, stderr) = run_ksdssp_direct(pdb_str)
     sec_str_from_pdb_file = iotbx.pdb.secondary_structure.process_records(
-      records=records)
+      records=records,
+      allow_none=True)
     return sec_str_from_pdb_file
 
   def find_base_pairs (self, log=sys.stderr) :
@@ -1038,6 +1062,13 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     if os.path.isfile(arg) :
       if iotbx.pdb.is_pdb_file(arg) :
         pdb_files.append(os.path.abspath(arg))
+      else :
+        try :
+          user_phil = libtbx.phil.parse(file_name=arg)
+        except RuntimeError :
+          print "Unrecognizable file format for %s" % arg
+        else :
+          sources.append(user_phil)
     elif arg == "--run_ksdssp" :
       force_new_annotation = True
     else :
@@ -1049,28 +1080,34 @@ def run (args, out=sys.stdout, log=sys.stderr) :
         pass
   params = master_phil.fetch(sources=sources).extract()
   secondary_structure = None
+  allow_none = (len(params.helix) > 0 or len(params.sheet) > 0 or
+                len(params.nucleic_acids.base_pair) > 0)
   if len(pdb_files) == 0 :
     raise Usage("phenix.secondary_structure_restraints model.pdb")
   elif not force_new_annotation :
     secondary_structure = iotbx.pdb.secondary_structure.process_records(
-      pdb_files=pdb_files)
+      pdb_files=pdb_files,
+      allow_none=allow_none)
   if force_new_annotation or secondary_structure is None :
     records = []
     for file_name in pdb_files :
       records.extend(run_ksdssp(file_name, log=log))
     secondary_structure = iotbx.pdb.secondary_structure.process_records(
-      records=records, allow_none=False)
+      records=records, allow_none=allow_none)
   prefix_scope="refinement.secondary_structure"
   if params.show_histograms or params.format != "phenix" :
     prefix_scope = ""
-  ss_params_str = secondary_structure.as_restraint_groups(log=log,
-    prefix_scope=prefix_scope)
-  ss_phil = libtbx.phil.parse(ss_params_str)
+  ss_phil = None
+  if secondary_structure is not None :
+    ss_params_str = secondary_structure.as_restraint_groups(log=log,
+      prefix_scope=prefix_scope)
+    ss_phil = libtbx.phil.parse(ss_params_str)
+    sources.append(ss_phil)
   pdb_hierarchy = get_pdb_hierarchy(pdb_files)
   if len(pdb_hierarchy.models()) != 1 :
     raise Sorry("Multiple models not supported.")
+  working_phil = master_phil.fetch(sources=sources)
   if params.show_histograms :
-    working_phil = master_phil.fetch(sources=[ss_phil]+sources)
     working_phil.show()
     print >> out, ""
     print >> out, "========== Analyzing hydrogen bonding distances =========="
@@ -1087,7 +1124,6 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   elif params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
   elif params.format in ["pymol", "refmac"] :
-    working_phil = master_phil.fetch(sources=[ss_phil]+sources)
     params = working_phil.extract()
     bonds_table = hydrogen_bonds_from_selections(
       pdb_hierarchy,
@@ -1101,9 +1137,9 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     else :
       bonds_table.as_refmac_restraints(pdb_hierarchy, filter=True, out=out)
   else :
-    ss_phil.show(out=out)
+    working_phil.show(out=out)
     #print >> out, ss_params_str
-  return ss_phil.as_str()
+    return working_phil.as_str()
 
 ########################################################################
 def exercise () :
