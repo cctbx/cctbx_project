@@ -6,6 +6,7 @@ from __future__ import division
 from iotbx import reflection_file_reader, reflection_file_utils, file_reader
 from iotbx.reflection_file_utils import get_r_free_flags_scores
 import iotbx.phil
+import iotbx.mtz
 from cctbx import crystal, miller, sgtbx
 from scitbx.array_family import flex
 from libtbx.phil.command_line import argument_interpreter
@@ -197,8 +198,10 @@ class process_arrays (object) :
     # COLLECT ARRAYS
     miller_arrays = []
     file_names = []
+    array_types = []
     for array_params in params.mtz_file.miller_array :
       input_file = input_files.get(array_params.file_name)
+      is_mtz = (input_file.file_object.file_type() == "ccp4_mtz")
       if input_file is None :
         input_file = file_reader.any_file(array_params.file_name)
         input_file.assert_file_type("hkl")
@@ -211,6 +214,12 @@ class process_arrays (object) :
           miller_arrays.append(miller_array)
           file_names.append(input_file.file_name)
           found = True
+          if is_mtz :
+            array_type = get_original_array_types(input_file,
+              original_labels=array_info.labels)
+            array_types.append(array_type)
+          else :
+            array_types.append(None)
       if not found :
         raise Sorry("Couldn't fine the Miller array %s in file %s!" %
                     (array_params.labels, array_params.file_name))
@@ -492,13 +501,21 @@ class process_arrays (object) :
       #-----------------------------------------------------------------
       # OUTPUT
       fake_label = 2 * string.uppercase[i]
+      column_types = None
+      if array_types[i] is not None :
+        default_types = iotbx.mtz.default_column_types(output_array)
+        if len(default_types) == len(array_types[i]) :
+          print >> log, "Recovering original column types %s" % array_types[i]
+          column_types = array_types[i]
       if self.mtz_dataset is None :
         self.mtz_dataset = output_array.as_mtz_dataset(
-                             column_root_label=fake_label)
+          column_root_label=fake_label,
+          column_types=column_types)
       else :
         self.mtz_dataset.add_miller_array(
           miller_array=output_array,
-          column_root_label=fake_label)
+          column_root_label=fake_label,
+          column_types=column_types)
       for label in output_labels :
         labels.append(label)
         label_files.append(file_name)
@@ -666,6 +683,16 @@ def export_r_free_flags (miller_array, test_flag_value) :
     else :
       new_flags[i] = iceil(random.random() * 19)
   return miller_array.customized_copy(data=new_flags)
+
+def get_original_array_types (input_file, original_labels) :
+  array_types = ""
+  mtz_file = input_file.file_object.file_content()
+  mtz_columns = mtz_file.column_labels()
+  mtz_types = mtz_file.column_types()
+  mtz_crossref = dict(zip(mtz_columns, mtz_types))
+  for label in original_labels :
+    array_types += mtz_crossref[label]
+  return array_types
 
 def guess_array_output_labels (miller_array) :
   info = miller_array.info()
