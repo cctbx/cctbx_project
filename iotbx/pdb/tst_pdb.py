@@ -378,13 +378,18 @@ def exercise_format_fasta():
     pdb_inp = pdb.input(file_name=file_name)
     hierarchy = pdb_inp.construct_hierarchy()
     fasta = []
+    is_protein = []
+    is_na = []
     for model in hierarchy.models():
       for chain in model.chains():
         for conformer in chain.conformers():
           fasta.append(conformer.format_fasta())
+          is_protein.append(conformer.is_protein())
+          is_na.append(conformer.is_na())
     if (node == "pdb1zff.ent"):
       assert fasta == [
         ['> chain " A" conformer ""', "CCGAATTCGG"]]
+      assert is_protein == [False] and is_na == [True]
       looking_for.remove(node)
     elif (node == "1ee3_stripped.pdb"):
       assert fasta == [
@@ -392,6 +397,8 @@ def exercise_format_fasta():
         ['> chain " P" conformer "B"', 'IMEHTV'],
         None,
         None]
+      assert is_protein == [True, True, False, False]
+      assert is_na == [False, False, False, False]
       looking_for.remove(node)
     elif (node == "jcm.pdb"):
       assert fasta == [
@@ -418,6 +425,8 @@ def exercise_format_fasta():
         ['> chain " C" conformer ""',
          'TGTAAATTTCCTACGTTTCATCTGAAAATCTAGAGATTTTCAGATGAAACGTAGGAAATTTACATC'],
          None]
+      assert is_protein == [True, True, False, False]
+      assert is_na == [False, False, True, False]
       looking_for.remove(node)
   if (len(looking_for) != 0):
     print "WARNING: exercise_format_fasta(): some input files missing:", \

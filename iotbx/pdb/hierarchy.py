@@ -749,7 +749,7 @@ class _conformer(boost.python.injector, ext.conformer):
   def only_atom(self):
     return self.only_residue().only_atom()
 
-  def as_sequence (self) :
+  def get_residue_names_and_classes (self) :
     from iotbx.pdb import common_residue_names_get_class
     rn_seq = []
     residue_classes = dict_with_default_0()
@@ -762,9 +762,29 @@ class _conformer(boost.python.injector, ext.conformer):
       else:
         c = common_residue_names_get_class(name=rn)
       residue_classes[c] += 1
-    seq = []
+    return (rn_seq, residue_classes)
+
+  def is_protein (self, min_content=0.95) :
+    rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
+    if ((n_aa > n_na) and ((n_aa / len(rn_seq)) >= min_content)) :
+      return True
+    return False
+
+  def is_na (self, min_content=0.95) :
+    rn_seq, residue_classes = self.get_residue_names_and_classes()
+    n_aa = residue_classes["common_amino_acid"]
+    n_na = residue_classes["common_rna_dna"]
+    if ((n_na > n_aa) and ((n_na / len(rn_seq)) >= min_content)) :
+      return True
+    return False
+
+  def as_sequence (self) :
+    rn_seq, residue_classes = self.get_residue_names_and_classes()
+    n_aa = residue_classes["common_amino_acid"]
+    n_na = residue_classes["common_rna_dna"]
+    seq = []
     if (n_aa > n_na):
       from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
       aa_3_as_1 = one_letter_given_three_letter.get
