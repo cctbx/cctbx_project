@@ -31,7 +31,9 @@ namespace {
         .def("get_ss", &w_t::get_all_ss)
         .def("clean_space", &w_t::clean_space)
         .def("construct_space_sum",&w_t::construct_space_sum)
-        .def("unit_sphere", &w_t::unit_sphere)
+        .def("construct_space_sum_via_list",&w_t::construct_space_sum_via_list)
+        .def("construct_space_sum_via_list",&w_t::construct_space_sum_via_list_only)
+        .def("unit_sphere_index", &w_t::unit_sphere_index)
         .def("occupied_sites", &w_t::occupied_sites)
       ;
     }
@@ -60,6 +62,7 @@ namespace {
             )
         .def("moments", &w_t::all_moments)
         .def("get_moment",&w_t::get_moment)
+        .def("calc_moments",&w_t::calc_moments)
         .def("update_ss",&w_t::update_ss)
         .def("fnn",&w_t::fnn)
         .def("fnl",&w_t::fnl)
