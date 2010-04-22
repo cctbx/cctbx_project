@@ -88,12 +88,12 @@ namespace zernike {
       scitbx::mat3<FloatType> euler_zyz_matrix( scitbx::vec3<FloatType> ea ) {
 
                 FloatType cx,sx,cy,sy,cz,sz;
-                cx = cos(ea[0]);
-                sx = sin(ea[0]);
-                cy = cos(ea[1]);
-                sy = sin(ea[1]);
-                cz = cos(ea[2]);
-                sz = sin(ea[2]);
+                cx = std::cos(ea[0]);
+                sx = std::sin(ea[0]);
+                cy = std::cos(ea[1]);
+                sy = std::sin(ea[1]);
+                cz = std::cos(ea[2]);
+                sz = std::sin(ea[2]);
 
           return scitbx::mat3< FloatType> (
             cx*cy*cz-sx*sz,   -cx*cy*sz-sx*cz,    cx*sy,
@@ -245,6 +245,9 @@ namespace zernike {
              ):
              N_point_(N_point),
              n_max_(n_max),
+	     ss_r_(n_max, 0.0),
+	     ss_s_(n_max, 0.0),
+	     ss_t_(n_max, 0.0),
 	     grid_(n_max+1, n_max+1, n_max+1),
 	     ss_(grid_, 0.0)
       {
@@ -267,9 +270,12 @@ namespace zernike {
           for(int j=0;j<=2*N_point_;j++) {
             for(int k=0;k<=2*N_point_;k++) {
                scitbx::vec3<FloatType>point( one_d_[i],one_d_[j],one_d_[k] );
+	       scitbx::vec3< int > p_indx( i, j, k );
+	       all_indx_.push_back( p_indx );
                if(point.length_sq() <=1.0){  //in/on the unit sphere
-                 xyz_indx_.push_back( scitbx::vec3<int>(i,j,k) );
-                 xyz_.push_back( point );
+ //              if(std::abs( (p_indx-N_point_).sum() ) <=N_point_){  //in/on the unit sphere
+                 xyz_indx_.push_back( p_indx  );
+      //           xyz_.push_back( point );
                }  //end if
             }  //end k
           }  //end j
@@ -277,7 +283,7 @@ namespace zernike {
         return true;
       }
 
-     af::shared< scitbx::vec3<FloatType> > unit_sphere() {return xyz_;}
+//     af::shared< scitbx::vec3<FloatType> > unit_sphere() {return xyz_;}
      af::shared< scitbx::vec3<int> > unit_sphere_index() {return xyz_indx_;}
      af::versa< FloatType, af::c_grid<3> > get_all_ss() { return ss_; }
 
@@ -288,6 +294,8 @@ namespace zernike {
         int total_point=xyz_indx_.size();
         FloatType value;
         FloatType scale_factor = v.rmax()/v.fraction();
+	voxel_value_.clear();
+	voxel_indx_.clear();
         for(int i=0;i<total_point;i++) {
           value=v.value( xyz_indx_[i] );
           if(value > 0 ) {
@@ -303,6 +311,51 @@ namespace zernike {
         }
         return true;
       }
+
+// clean space via a given list of indices and value??
+      void clean_space_with_list( af::const_ref< int > list ) {
+        voxel_value_.clear();
+        voxel_indx_.clear();
+        int total_point=list.size();
+        int indx;
+        for(int i=0;i<total_point;i++) {
+          indx = list[i];
+          voxel_indx_.push_back( all_indx_[ indx ] );
+          voxel_value_.push_back( 1  );
+        }
+        return;
+      }
+
+      af::versa< FloatType, af::c_grid<3> >
+      construct_space_sum_via_list_only( af::const_ref<int> list) {
+        clean_space_with_list( list );
+        construct_space_sum(); 
+        return ss_;
+      }
+
+
+      void clean_space_with_list( af::const_ref< int > list, af::const_ref< FloatType> values ) {
+	voxel_value_.clear();
+	voxel_indx_.clear();
+        int total_point=list.size();
+	int indx;
+        for(int i=0;i<total_point;i++) {
+	  indx = list[i];
+	  if( values[indx] > 0 ) {
+            voxel_indx_.push_back( all_indx_[ indx ] );
+	    voxel_value_.push_back( values[indx]  );
+	  }
+        }
+	return;
+      }
+
+      af::versa< FloatType, af::c_grid<3> > 
+      construct_space_sum_via_list( af::const_ref<int> list, af::const_ref< FloatType > values) {
+	clean_space_with_list( list, values );
+	construct_space_sum();	
+	return ss_;
+      }
+     
 
       int occupied_sites() { return voxel_indx_.size(); }
 
@@ -349,9 +402,34 @@ namespace zernike {
         }
         return tot;
       }
+ 
 
+/*      FloatType space_sum(int r, int s, int t) {
+	return ss_r_[r]*ss_s_[s]*ss_t_[t];
+      }
+
+      void ss_one_d() {
+        int total_point=voxel_indx_.size(), x,y,z;
+        for(int i=0;i<=n_max_;i++) {
+	  ss_r_[i] = 0.0;
+	  ss_s_[i] = 0.0;
+	  ss_t_[i] = 0.0;
+	  for(int j=0; j<total_point; j++)
+	  {
+            x=voxel_indx_[j][0];
+            y=voxel_indx_[j][1];
+            z=voxel_indx_[j][2];
+
+	    ss_r_[i] += (gm_[i][x+1]-gm_[i][x]);
+	    ss_s_[i] += (gm_[i][y+1]-gm_[i][y]);
+	    ss_t_[i] += (gm_[i][z+1]-gm_[i][z]);
+	  }
+	}
+	return;
+      }
+*/
       bool construct_space_sum() {
-
+//	ss_one_d();
         for(int r=0;r<=n_max_;r++) {
           for(int s=0;s<=n_max_;s++) {
             for(int t=0;t<=n_max_;t++) {
@@ -369,10 +447,13 @@ namespace zernike {
       }
 
     private:
-      scitbx::math::zernike::nlm_array<FloatType> C_nlm_;
+      scitbx::af::shared< scitbx::vec3<int> > all_indx_;
       scitbx::af::shared< scitbx::vec3<int> > xyz_indx_;
-      scitbx::af::shared< scitbx::vec3<FloatType> > xyz_;
+//      scitbx::af::shared< scitbx::vec3<FloatType> > xyz_;
       scitbx::af::shared<FloatType>one_d_;
+      scitbx::af::shared<FloatType>ss_r_;
+      scitbx::af::shared<FloatType>ss_s_;
+      scitbx::af::shared<FloatType>ss_t_;
       scitbx::af::shared< scitbx::af::shared<FloatType> >gm_;
         //Geometric moments up to order n_max_
       af::c_grid<3> grid_;
@@ -405,8 +486,18 @@ namespace zernike {
         calc_invariance();
       }
 
-      void update_ss( af::versa< FloatType, af::c_grid<3> > new_ss ) {
-	ss_=new_ss.deep_copy();
+
+      void calc_moments( af::const_ref< FloatType> new_ss ) {
+	update_ss( new_ss );
+	calc_Chi();
+	calc_invariance();
+	return;
+      }
+
+      void update_ss( af::const_ref< FloatType> new_ss ) {
+        int size = new_ss.size();
+	for(int i=0;i<size;i++)
+	  ss_[i] = new_ss[i];
 	return;
       }
 
@@ -427,6 +518,8 @@ namespace zernike {
       scitbx::math::zernike::nl_array<FloatType>
       fnn()
       { return C_nn_; }
+
+      
 
 
       void calc_invariance() {

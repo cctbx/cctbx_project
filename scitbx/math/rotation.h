@@ -96,10 +96,10 @@ namespace scitbx { namespace math
           }
       }
 
-      int pow_1( int n) {
-        if( n == n/2*2 ) return 1;
-        else return -1;
-      }
+    int pow_1( int n) {
+      if( n == n/2*2 ) return 1;
+      else return -1;
+    }
 
     private:
       int max_l_;
@@ -109,6 +109,7 @@ namespace scitbx { namespace math
       af::shared< af::shared < af::shared< FloatType > > > dmatrix_;
 
   }; //end dmatrix
+
 
   template <typename FloatType>
   class correlation
@@ -129,15 +130,21 @@ namespace scitbx { namespace math
     void calc_fm_lmm() {
       for(int l=0;l<=nmax_;l++) {
          af::shared< af::shared<std::complex< FloatType> > > mm;
+         af::shared< af::shared<std::complex< FloatType> > > imm;
          for(int m=-l;m<=l;m++) {
            af::shared< std::complex<FloatType> > m_array( 2*l+1, 0.0);
+           af::shared< std::complex<FloatType> > im_array( 2*l+1, 0.0);
            mm.push_back( m_array );
+           imm.push_back( im_array );
            }
          fm_lmm_.push_back( mm );
+         ifm_lmm_.push_back( imm );
       }
 
       std::complex<FloatType> s, t;
+      FloatType coef;
       for(int l=0;l<=nmax_;l++) {
+	coef = pow_1(l);
         for(int m1=-l;m1<=l;m1++) {
           for(int m2=-l;m2<=l;m2++) {
             std::complex<FloatType> tmp_lmm(0,0);
@@ -147,6 +154,7 @@ namespace scitbx { namespace math
               tmp_lmm += std::conj(s) * t;
             }
             fm_lmm_[l][l+m1][l+m2] = tmp_lmm;
+            ifm_lmm_[l][l+m1][l+m2] = tmp_lmm*coef;
           }
         }
       }
@@ -214,8 +222,12 @@ namespace scitbx { namespace math
      return mhm_;
    }
 
-    af::versa< std::complex< FloatType> , af::c_grid<2> > mm_coef( int border ) {
-      if(border == 0) return mm();
+    af::versa< std::complex< FloatType> , af::c_grid<2> > mm_coef( int border, bool inv ) {
+      if(border == 0) {
+	if(inv) return imm();
+        else return mm();
+      }
+
       int new_size = 2*(nmax_+ border ) + 1;
       af::c_grid< 2 >mm_grid(new_size, new_size);
       af::versa< std::complex< FloatType >, af::c_grid<2>  >  mm( mm_grid, 0.0 );
@@ -224,6 +236,18 @@ namespace scitbx { namespace math
           mm( m1 + border, m2+ border ) = mm_( m1, m2 );
       return mm;
     }
+
+    af::versa<  std::complex<FloatType>, af::c_grid<2>  > imm() {   // Inversion of spherical Harmonics
+      for(int i=0;i<mm_.size();i++) mm_[i] = 0;
+      for(int l=0;l<=nmax_;l++){
+       for(int m1=-l; m1<=l; m1++ ) {
+        for(int m2=-l; m2<=l; m2++)
+          mm_( m1+nmax_, m2+nmax_) += ifm_lmm_[l][m1+l][m2+l]*dm_.djmn(l,m1,m2);
+       }
+      }
+
+      return mm_;
+   }
 
     af::versa<  std::complex<FloatType>, af::c_grid<2>  > mm() {
       for(int i=0;i<mm_.size();i++) mm_[i] = 0;
@@ -268,7 +292,7 @@ namespace scitbx { namespace math
       return result;
     }
 
-    std::complex<FloatType> calc_correlation( FloatType alpha, FloatType beta, FloatType gama)
+    std::complex<FloatType> calc_correlation( FloatType alpha, FloatType beta, FloatType gama, bool inv=false)
     {
       if(beta != beta_) {
         set_beta( beta );
@@ -290,6 +314,9 @@ namespace scitbx { namespace math
            exp_alpha = a_array[m1+nmax_];
            exp_gama  = g_array[m2+nmax_];
            dlmn = exp_alpha * dm_.djmn(l,m1,m2) * exp_gama;
+           if( inv )
+           cc_ += (ifm_lmm_[l][m1+l][m2+l]*dlmn );
+           else
            cc_ += (fm_lmm_[l][m1+l][m2+l]*dlmn );
           }
         }
@@ -304,6 +331,10 @@ namespace scitbx { namespace math
     }
 
 
+    int pow_1( int n) {
+      if( n == n/2*2 ) return 1;
+      else return -1;
+    }
 
    private:
     int nmax_, size_;
@@ -313,6 +344,7 @@ namespace scitbx { namespace math
     FloatType beta_;
     dmatrix<FloatType> dm_;
     af::shared< af::shared< af::shared< std::complex< FloatType > > > > fm_lmm_;
+    af::shared< af::shared< af::shared< std::complex< FloatType > > > > ifm_lmm_;
     af::shared< af::shared< af::shared< std::complex< FloatType > > > > fm_lmm2_;
     std::complex<FloatType> complexI_;
     af::c_grid<2> mm_grid_;
