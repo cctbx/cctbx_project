@@ -190,12 +190,16 @@ def get_phil_base_pairs (pdb_hierarchy, probe_flags=None, prefix=None,
   return phil_str
 
 def exercise () :
-  assert (db.get_atoms("AU", "WWT", True) == [('H61', 'O4'), ('N1', 'H3')])
-  assert (db.get_atoms("GC", "WWT", False) == [('O6', 'N4'), ('N1', 'N3'),
-    ('N2', 'O2')])
-  assert db.get_pair_type("AU", [('H61', 'O4'), ('N1', 'H3')], True) == "WWT"
-  assert db.get_pair_type("AU", [('N1', 'H3'), ('H61', 'O4')], True) == "WWT"
-  assert db.get_pair_type("CG", [('N4', 'O6'), ('N3', 'N1'), ('O2', 'N2')], False) == "WWT"
+  import libtbx.load_env
+  if libtbx.env.has_module("probe") and libtbx.env.has_module("reduce"):
+    assert (db.get_atoms("AU", "WWT", True) == [('H61', 'O4'), ('N1', 'H3')])
+    assert (db.get_atoms("GC", "WWT", False) == [('O6', 'N4'), ('N1', 'N3'),
+      ('N2', 'O2')])
+    assert db.get_pair_type("AU", [('H61', 'O4'), ('N1', 'H3')], True) == "WWT"
+    assert db.get_pair_type("AU", [('N1', 'H3'), ('H61', 'O4')], True) == "WWT"
+    assert db.get_pair_type("CG", [('N4', 'O6'), ('N3', 'N1'), ('O2', 'N2')], False) == "WWT"
+  else:
+    print "Skipping: probe and/or reduce not available"
   print "OK"
 
 if __name__ == "__main__" :
