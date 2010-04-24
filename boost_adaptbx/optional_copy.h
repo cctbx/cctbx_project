@@ -21,13 +21,15 @@ namespace boost_adaptbx {
         delete ptr_;
       }
 
-      optional_copy(optional_copy const& other)
+      optional_copy(
+        optional_copy const& other)
       :
         ptr_(other.ptr_ == 0 ? 0 : new ValueType(*(other.ptr_)))
       {}
 
       optional_copy&
-      operator=(optional_copy const& other)
+      operator=(
+        optional_copy const& other)
       {
         delete ptr_;
         ptr_ = (other.ptr_ == 0 ? 0 : new ValueType(*(other.ptr_)));
@@ -35,13 +37,15 @@ namespace boost_adaptbx {
       }
 
       explicit
-      optional_copy(ValueType const& value)
+      optional_copy(
+        ValueType const& value)
       :
         ptr_(new ValueType(value))
       {}
 
       optional_copy&
-      operator=(ValueType const& value)
+      operator=(
+        ValueType const& value)
       {
         delete ptr_;
         ptr_ = new ValueType(value);
@@ -74,17 +78,58 @@ namespace boost_adaptbx {
 
       ValueType const&
       operator*() const { return *ptr_; }
+  };
 
-      typename ValueType::value_type&
-      operator[](typename ValueType::size_type const& i)
+  /*! \brief Same behavior as optional_copy, but with operator[] as
+      shortcut for (*get())[]
+   */
+  template <typename ContainerType>
+  class optional_container : public optional_copy<ContainerType>
+  {
+    public:
+      optional_container() {}
+
+      optional_container(
+        optional_container const& other)
+      :
+        optional_copy<ContainerType>(other)
+      {}
+
+      optional_container&
+      operator=(
+        optional_container const& other)
       {
-        return (*ptr_)[i];
+        delete this->ptr_;
+        this->ptr_ = (other.ptr_ == 0 ? 0 : new ContainerType(*(other.ptr_)));
+        return *this;
       }
 
-      typename ValueType::value_type const&
-      operator[](typename ValueType::size_type const& i) const
+      explicit
+      optional_container(
+        ContainerType const& container)
+      :
+        optional_copy<ContainerType>(container)
+      {}
+
+      optional_container&
+      operator=(
+        ContainerType const& container)
       {
-        return (*ptr_)[i];
+        delete this->ptr_;
+        this->ptr_ = new ContainerType(container);
+        return *this;
+      }
+
+      typename ContainerType::value_type&
+      operator[](typename ContainerType::size_type const& i)
+      {
+        return (*this->ptr_)[i];
+      }
+
+      typename ContainerType::value_type const&
+      operator[](typename ContainerType::size_type const& i) const
+      {
+        return (*this->ptr_)[i];
       }
   };
 

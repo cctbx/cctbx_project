@@ -32,7 +32,7 @@ namespace {
           arg("slack")=0)))
         .def(init<
           af::tiny<unsigned, 3> const&,
-          optional_copy<af::shared<sgtbx::rt_mx> > const&,
+          optional_container<af::shared<sgtbx::rt_mx> > const&,
           double,
           double,
           double>((

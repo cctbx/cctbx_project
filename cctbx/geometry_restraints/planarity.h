@@ -33,7 +33,7 @@ namespace cctbx { namespace geometry_restraints {
     //! Constructor.
     planarity_proxy(
       i_seqs_type const& i_seqs_,
-      optional_copy<af::shared<sgtbx::rt_mx> > const& sym_ops_,
+      optional_container<af::shared<sgtbx::rt_mx> > const& sym_ops_,
       af::shared<double> const& weights_)
     :
       i_seqs(i_seqs_),
@@ -95,7 +95,7 @@ namespace cctbx { namespace geometry_restraints {
         }
         return planarity_proxy(
           i_seqs_result,
-          optional_copy<af::shared<sgtbx::rt_mx> >(sym_ops_result),
+          optional_container<af::shared<sgtbx::rt_mx> >(sym_ops_result),
           weights_result);
       }
       else {
@@ -106,7 +106,7 @@ namespace cctbx { namespace geometry_restraints {
     //! Indices into array of sites.
     i_seqs_type i_seqs;
     //! Array of symmetry operations.
-    optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
+    optional_container<af::shared<sgtbx::rt_mx> > sym_ops;
     //! Array of weights.
     af::shared<double> weights;
   };
@@ -259,7 +259,7 @@ namespace cctbx { namespace geometry_restraints {
         planarity_proxy const& proxy) const
       {
         af::const_ref<std::size_t> i_seqs_ref = proxy.i_seqs.const_ref();
-        optional_copy<af::shared<sgtbx::rt_mx> > const&
+        optional_container<af::shared<sgtbx::rt_mx> > const&
           sym_ops = proxy.sym_ops;
         af::shared<scitbx::vec3<double> > grads = gradients();
         af::const_ref<scitbx::vec3<double> > grads_ref = grads.const_ref();

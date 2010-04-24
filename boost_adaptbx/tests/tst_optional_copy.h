@@ -3,21 +3,21 @@
 
 namespace boost_adaptbx { namespace tst_optional_copy {
 
-  template <typename ValueType>
-  optional_copy<ValueType> const&
-  oc_const_ref(optional_copy<ValueType> const& o)
+  template <typename ContainerType>
+  optional_container<ContainerType> const&
+  oc_const_ref(optional_container<ContainerType> const& o)
   {
     return o;
   }
 
-  template <typename ValueType>
+  template <typename ContainerType>
   void
   exercise(
-    ValueType const& v1,
-    ValueType const& v4,
+    ContainerType const& v1,
+    ContainerType const& v4,
     bool value_is_shared)
   {
-    typedef optional_copy<ValueType> o;
+    typedef optional_container<ContainerType> o;
     {
       o o1;
       ASSERTBX(!o1);
