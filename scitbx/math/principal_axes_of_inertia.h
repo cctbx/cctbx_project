@@ -1,7 +1,6 @@
 #ifndef SCITBX_MATH_PRINCIPAL_AXES_OF_INERTIA_H
 #define SCITBX_MATH_PRINCIPAL_AXES_OF_INERTIA_H
 
-#include <boost_adaptbx/optional_copy.h>
 #include <scitbx/matrix/eigensystem.h>
 #include <scitbx/math/inertia_tensor.h>
 #include <scitbx/math/accumulators.h>

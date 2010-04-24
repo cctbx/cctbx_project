@@ -265,8 +265,9 @@ namespace featherstone {
       vec3<ft> sum_v(0,0,0);
       unsigned sum_n = 0;
 #define SCITBX_LOC \
-      boost_adaptbx::optional_copy<af::shared<af::tiny<std::size_t, 2> > > \
-        nosiet; \
+      boost_adaptbx::optional_container< \
+        af::shared<af::tiny<std::size_t, 2> > > \
+          nosiet; \
       if (number_of_sites_in_each_tree.begin() == 0) { \
         nosiet = this->number_of_sites_in_each_tree(); \
         number_of_sites_in_each_tree = nosiet->const_ref(); \

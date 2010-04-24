@@ -3,6 +3,8 @@
 #include <iostream>
 #include <cstdio>
 
+struct empty {};
+
 int main(int argc, char* argv[])
 {
   unsigned long n_iter = 1;
@@ -11,11 +13,26 @@ int main(int argc, char* argv[])
   }
   for(unsigned long i_iter=0;i_iter==0||i_iter<n_iter;)
   {
-    using boost_adaptbx::tst_optional_copy::exercise;
+    {
+      using boost_adaptbx::optional_copy;
+      optional_copy<int> oc_int;
+      ASSERTBX(!oc_int);
+      oc_int = 1;
+      ASSERTBX(oc_int);
+      ASSERTBX(*oc_int == 1);
+    }
+    {
+      using boost_adaptbx::optional_copy;
+      optional_copy<empty> oc_empty;
+      ASSERTBX(!oc_empty);
+      oc_empty = empty();
+      ASSERTBX(oc_empty);
+    }
     {
       std::size_t n = 1;
       std::vector<int> v1(n, 1);
       std::vector<int> v4(n, 4);
+      using boost_adaptbx::tst_optional_copy::exercise;
       exercise(v1, v4, /*value_is_shared*/ false);
     }
     if (n_iter != 0) i_iter++;

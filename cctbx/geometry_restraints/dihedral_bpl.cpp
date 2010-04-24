@@ -34,7 +34,7 @@ namespace {
             arg("limit")=-1.0)))
         .def(init<
           af::tiny<unsigned, 4> const&,
-          optional_copy<af::shared<sgtbx::rt_mx> > const&,
+          optional_container<af::shared<sgtbx::rt_mx> > const&,
           double,
           double,
           int,

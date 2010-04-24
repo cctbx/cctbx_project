@@ -462,9 +462,9 @@ namespace {
       oc::to_and_from_python<boost::optional<vec3<double> > >();
       oc::to_and_from_python<boost::optional<af::shared<double> > >();
       oc::to_and_from_python<
-       boost_adaptbx::optional_copy<af::small<int, 10> > >();
+       boost_adaptbx::optional_container<af::small<int, 10> > >();
       oc::to_and_from_python<
-       boost_adaptbx::optional_copy<af::small<double, 6> > >();
+       boost_adaptbx::optional_container<af::small<double, 6> > >();
     }
 
     wrap_flex_random();

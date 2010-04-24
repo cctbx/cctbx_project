@@ -30,7 +30,7 @@ namespace {
             arg("i_seqs"), arg("weights"))))
         .def(init<
           af::shared<std::size_t> const&,
-          optional_copy<af::shared<sgtbx::rt_mx> > const&,
+          optional_container<af::shared<sgtbx::rt_mx> > const&,
           af::shared<double> const&>((
             arg("i_seqs"), arg("sym_ops"), arg("weights"))))
         .def(init<

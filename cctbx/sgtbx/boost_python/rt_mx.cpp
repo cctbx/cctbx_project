@@ -133,10 +133,10 @@ namespace {
       }
       {
         using boost_adaptbx::optional_conversions::to_and_from_python;
-        using boost_adaptbx::optional_copy;
+        using boost_adaptbx::optional_container;
         // used in cctbx/geometry_restraints
         to_and_from_python<
-          optional_copy<
+          optional_container<
             af::shared<cctbx::sgtbx::rt_mx> > >();
       }
     }

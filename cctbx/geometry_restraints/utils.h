@@ -11,7 +11,7 @@
 
 namespace cctbx { namespace geometry_restraints {
 
-  using boost_adaptbx::optional_copy;
+  using boost_adaptbx::optional_container;
 
   /*! \brief Rotation part of rt_mx.inverse() in the cartesian system.
    */

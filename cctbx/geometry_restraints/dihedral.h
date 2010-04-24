@@ -9,7 +9,7 @@
 
 namespace cctbx { namespace geometry_restraints {
 
-  typedef optional_copy<af::small<double, 6> > alt_angle_ideals_type;
+  typedef optional_container<af::small<double, 6> > alt_angle_ideals_type;
 
   //! Grouping of indices into array of sites (i_seqs) and dihedral_params.
   struct dihedral_proxy
@@ -40,7 +40,7 @@ namespace cctbx { namespace geometry_restraints {
     //! Constructor.
     dihedral_proxy(
       i_seqs_type const& i_seqs_,
-      optional_copy<af::shared<sgtbx::rt_mx> > const& sym_ops_,
+      optional_container<af::shared<sgtbx::rt_mx> > const& sym_ops_,
       double angle_ideal_,
       double weight_,
       int periodicity_=0,
@@ -129,7 +129,7 @@ namespace cctbx { namespace geometry_restraints {
     //! Indices into array of sites.
     i_seqs_type i_seqs;
     //! Optional array of symmetry operations.
-    optional_copy<af::shared<sgtbx::rt_mx> > sym_ops;
+    optional_container<af::shared<sgtbx::rt_mx> > sym_ops;
     //! Parameter.
     double angle_ideal;
     //! Parameter.
@@ -359,7 +359,7 @@ namespace cctbx { namespace geometry_restraints {
         dihedral_proxy const& proxy) const
       {
         dihedral_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
-        optional_copy<af::shared<sgtbx::rt_mx> > const&
+        optional_container<af::shared<sgtbx::rt_mx> > const&
           sym_ops = proxy.sym_ops;
         af::tiny<scitbx::vec3<double>, 4> grads = gradients();
         for(int i=0;i<4;i++) {
