@@ -55,10 +55,8 @@ sg_t_den = 12
 class structure_factor_symmetry(object):
   """ Crystallographic symmetry of complex structure factors.
 
-  For attributes featuring crystallographic elements (origin, spacegroup,
-  etc), those are in a primitive unit cell. C.f. attribute
-  self.xxx_in_input_cell for those in the unit cell of the structure
-  factors passed to __init__"""
+  All attributes featuring crystallographic elements (origin, spacegroup,
+  etc) are in a primitive unit cell. """
 
   grid_resolution_factor = 0.4
   cross_correlation_cutoff_for_centring = 0.75
@@ -99,10 +97,6 @@ class structure_factor_symmetry(object):
     self.space_group = sgtbx.space_group(self.space_group.type().hall_symbol(),
                                          t_den=sgtbx.sg_t_den)
     self.space_group_info = sgtbx.space_group_info(group=self.space_group)
-    self.origin_in_input_cell = mat.col(self.cb_op_to_primitive.inverse()(
-      self.origin))
-    self.space_group_info_in_input_cell = self.space_group_info.change_basis(
-      self.cb_op_to_primitive.inverse())
 
   def centring_translation_peak_sites(self):
     f = self.f_in_p1
@@ -144,8 +138,6 @@ class structure_factor_symmetry(object):
     lattice_group = lattice_symmetry.group(self.f_in_p1.unit_cell(),
                                            max_delta=1)
     lattice_group.expand_inv(sgtbx.tr_vec((0,0,0)))
-    lattice_group.make_tidy() # make sure operators come in the same order
-                              # on all platforms
     rot_parts = set()
     decorated_rot_parts = []
     for op in lattice_group:
@@ -218,7 +210,7 @@ class structure_factor_symmetry(object):
   def __str__(self):
     return '\n'.join([ str(e) for e in self.symmetry_pool ])
 
-  def symmetrised_structure_factors_in_input_cell(self, x=None, delta=None):
+  def symmetrised_structure_factors(self, x=None, delta=None):
     assert x is None or delta is None
     if delta is not None: x = -self.origin - delta
     elif x is None: x = -self.origin
@@ -228,7 +220,7 @@ class structure_factor_symmetry(object):
         .merge_equivalents().array()
     ssf = symmetrised_shifted_structure_factors(f_o, self.f_in_p1, x)
     gos = ssf.misfit(f_o)
-    return gos, ssf.f_x.change_basis(self.cb_op_to_primitive.inverse())
+    return gos, ssf.f_x
 
 
 class possible_symmetry(object):

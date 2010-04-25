@@ -66,25 +66,21 @@ def exercise(space_group_info,
 
   # Recover space group?
   sf_symm = symmetry_search.structure_factor_symmetry(target_f_in_p1)
-  assert (
-    sf_symm.space_group_info_in_input_cell.group()\
-    .conventional_centring_type_symbol()
-    == target_structure.space_group().conventional_centring_type_symbol())
   if verbose:
     print sf_symm
 
   solution_hall, target_hall = [
     sgi.as_reference_setting().type().hall_symbol()
-    for sgi in (sf_symm.space_group_info_in_input_cell,
+    for sgi in (sf_symm.space_group_info,
                 target_structure.space_group_info()) ]
   assert solution_hall == target_hall, (solution_hall, target_hall)
 
   # Shift maximises goodness of symmetry?
-  gos, solution_f = sf_symm.symmetrised_structure_factors_in_input_cell()
+  gos, solution_f = sf_symm.symmetrised_structure_factors()
   if space_group_info.type().hall_symbol() != ' P 1':
     assert gos.correlation > 0.99
     assert gos.gradient == (0, 0, 0)
-    assert sf_symm.symmetrised_structure_factors_in_input_cell(
+    assert sf_symm.symmetrised_structure_factors(
       delta=mat.col((0.1, 0.1, 0.1)))[0].correlation < 0.9
 
   # Recovered origin
@@ -103,40 +99,39 @@ def exercise(space_group_info,
   ^           V
   ^      solution in primitive cell
   ^           V
-  ^           V (sf_symm.cb_op_to_primitive.inverse()) = (P^{-1}, 0)
-  ^           V
-  ^      solution in input cell
-  ^           V
   ^           V solution_to_target_cb_op = (Q, q)
   ^           V
   ^------------
 
   The total transfrom from the target structure back to it reads
-  (Q, q') with q' = (Q,q)(-P^{-1}s + sigma) = (Q,q)delta_o
+  (QP, q') with q' = (Q,q)(-s + P sigma) = (Q,q)delta_o
   with
-  delta_o = shifted_origin - sf_symm.origin_in_input_cell
+  delta_o = sf_symm.cb_op_to_primitive(shifted_origin) - sf_symm.origin
 
   (Q, q') must leave the target structure space group invariant.
   Most of the time Q is the unit matrix and the test boils down to check
-  whether delta is an allowed origin shift but it does not hurt to
-  do the more general test all the time.
+  whether delta is an allowed origin shift after changing to the input cell
+  but it does not hurt to do the more general test all the time.
   """
 
   solution_to_target_cb_op = (
     target_structure.space_group_info()
     .change_of_basis_op_to_reference_setting().inverse()
     *
-    sf_symm.space_group_info_in_input_cell
+    sf_symm.space_group_info
     .change_of_basis_op_to_reference_setting())
 
   if verbose:
     print
     print "solution -> target: %s" % solution_to_target_cb_op.as_xyz()
-  delta_o = shifted_origin - sf_symm.origin_in_input_cell
+  delta_o = (mat.col(sf_symm.cb_op_to_primitive(shifted_origin))
+             - sf_symm.origin)
   delta = mat.col(solution_to_target_cb_op(delta_o))
   stabilising_cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx(
-    solution_to_target_cb_op.c().r(),
-    sgtbx.tr_vec((delta*144).as_int(), tr_den=144)))
+    (solution_to_target_cb_op*sf_symm.cb_op_to_primitive).c().r(),
+    sgtbx.tr_vec((delta*72).as_int()*2, tr_den=144)))
+    # guarding against rounding errors on some platforms (e.g. FC8)
+    # meaning that (delta*144).as_int() would not work.
   target_sg = target_structure.space_group()
   assert target_sg == target_sg.change_basis(stabilising_cb_op)
 
