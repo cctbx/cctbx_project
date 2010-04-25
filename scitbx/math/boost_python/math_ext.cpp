@@ -243,13 +243,31 @@ namespace {
   }
 
   template <typename T>
-  bool approx_equal_relatively(
-    T const &x, T const &y,
-    typename math::approx_equal_relatively<T>::amplitude_type relative_error)
+  struct approx_equal_relatively_wrapper
   {
-    math::approx_equal_relatively<T> p(relative_error);
-    return p(x, y);
-  }
+    typedef math::approx_equal_relatively<T> wt;
+    typedef T arg_t;
+    typedef typename wt::amplitude_type amplitude_t;
+    static bool form_1(arg_t x, arg_t y, amplitude_t relative_error) {
+      wt p(relative_error);
+      return p(x, y);
+    }
+    static bool form_2(arg_t x, arg_t y, amplitude_t relative_error,
+                       amplitude_t near_zero_threshold)
+    {
+      wt p(relative_error, near_zero_threshold);
+      return p(x, y);
+    }
+
+    static void wrap() {
+      using namespace boost::python;
+      def("approx_equal_relatively", form_1,
+          (arg("x"), arg("y"), arg("relative_error")));
+      def("approx_equal_relatively", form_2,
+          (arg("x"), arg("y"), arg("relative_error"),
+           arg("near_zero_threshold")));
+    }
+  };
 
   void init_module()
   {
@@ -420,12 +438,8 @@ namespace {
           math::nearest_phase, (
             arg("reference"), arg("other"), arg("deg")=false));
     def("divmod", math::divmod);
-    def("approx_equal_relatively",
-        approx_equal_relatively<double>,
-        args("x", "y", "relative_error"));
-    def("approx_equal_relatively",
-        approx_equal_relatively<std::complex<double> >,
-        args("x", "y", "relative_error"));
+    approx_equal_relatively_wrapper<double>::wrap();
+    approx_equal_relatively_wrapper<std::complex<double> >::wrap();
   }
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>
