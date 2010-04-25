@@ -16,8 +16,10 @@ import sys
 
 class _space_group(boost.python.injector, ext.space_group):
 
-  def smx(self):
-    for i_smx in xrange(self.n_smx()):
+  def smx(self, with_inversion=False):
+    if with_inversion: n = 2*self.n_smx()
+    else: n = self.n_smx()
+    for i_smx in xrange(n):
       yield self(i_smx)
 
   def ltr(self):
