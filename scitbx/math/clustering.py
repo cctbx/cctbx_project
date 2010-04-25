@@ -10,8 +10,14 @@ class two_stats(object):
 
   def __init__(self, data):
     self.n_data = n = len(data)
-    if n == 0: return 0
-    if n == 1: return 1
+    if n == 0:
+      self.cut = self.highest_stat = self.lowest_stat = None
+      return
+    if n == 1:
+      self.cut = 1
+      self.highest_stat = data[0]
+      self.lowest_stat = None
+      return
     cut = None
     new_cut = n//2
     while new_cut != cut:
@@ -19,15 +25,16 @@ class two_stats(object):
       hi, lo = self.statistics(data[:cut]), self.statistics(data[cut:])
       for i, x in enumerate(data):
         if x >= hi: continue
-        if abs(x - lo) <= abs(x - hi):
+        if abs(x - lo) < abs(x - hi):
           new_cut = i
           break
-    self.cut = cut
-    self.highest_mean = hi
-    self.lowest_mean = lo
+    if hi > lo: self.cut = cut
+    else: self.cut = n
+    self.highest_stat = hi
+    self.lowest_stat = lo
 
   def __str__(self):
-    h, l = [ "%.3g" % x for x in (self.highest_mean, self.lowest_mean) ]
+    h, l = [ "%.3g" % x for x in (self.highest_stat, self.lowest_stat) ]
     dash_h, dash_l = [ "-"*len(x) for x in (h, l) ]
     c = "%i" % self.cut
     buf_c = " "*len(c)
