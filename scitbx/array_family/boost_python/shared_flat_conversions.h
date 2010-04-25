@@ -55,7 +55,9 @@ namespace scitbx { namespace af { namespace boost_python {
 
     static void *convertible(PyObject *obj) {
       using namespace boost::python;
-      extract<source_t const &> proxy(object(borrowed(obj)));
+      handle<> hdl(borrowed(obj));
+      object py_obj(hdl);
+      extract<source_t const &> proxy(py_obj);
       if (!proxy.check()) return 0;
       source_t const &a = proxy();
       if (a.size() % ElementType::size()) return 0;
@@ -68,7 +70,9 @@ namespace scitbx { namespace af { namespace boost_python {
               boost::python::converter::rvalue_from_python_stage1_data *data)
     {
       using namespace boost::python;
-      source_t &a = extract<source_t &>(object(borrowed(obj)))();
+      handle<> hdl(borrowed(obj));
+      object py_obj(hdl);
+      source_t &a = extract<source_t &>(py_obj)();
       void
       *storage = ((converter::rvalue_from_python_storage<target_t> *)data
                   )->storage.bytes;
