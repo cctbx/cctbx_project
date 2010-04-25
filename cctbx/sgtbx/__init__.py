@@ -340,9 +340,9 @@ class _rot_mx_info(boost.python.injector, rot_mx_info):
 class _translation_part_info(boost.python.injector, translation_part_info):
 
   def __str__(self):
-    result = "+(%s) @(%s) t_l=(%s)" % (self.intrinsic_part(),
-                                       self.origin_shift(),
-                                       self.location_part())
+    result = "+(%s) @(%s) t_l=(%s)" % (self.intrinsic_part().mod_positive(),
+                                       self.origin_shift().mod_positive(),
+                                       self.location_part().mod_positive())
     return result
 
 
