@@ -144,7 +144,7 @@ namespace scitbx { namespace math
       std::complex<FloatType> s, t;
       FloatType coef;
       for(int l=0;l<=nmax_;l++) {
-	coef = pow_1(l);
+        coef = pow_1(l);
         for(int m1=-l;m1<=l;m1++) {
           for(int m2=-l;m2<=l;m2++) {
             std::complex<FloatType> tmp_lmm(0,0);
@@ -224,7 +224,7 @@ namespace scitbx { namespace math
 
     af::versa< std::complex< FloatType> , af::c_grid<2> > mm_coef( int border, bool inv ) {
       if(border == 0) {
-	if(inv) return imm();
+        if(inv) return imm();
         else return mm();
       }
 
