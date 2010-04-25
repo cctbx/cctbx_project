@@ -39,18 +39,38 @@ class xray_structure_viewer_controls(
 
 class xray_structure_viewer(qttbx.widget):
 
-  material_for = {
-    'C': gl_managed.material_model(ambient_front_colour=(0.32,)*3 + (1,),
-                                   diffuse_front_colour=(0.75,)*3 + (1,)),
-    'N': gl_managed.material_model(ambient_front_colour=(0, 0, 1, 1),
-                                   diffuse_front_colour=(0.37, 0.37, 0.63, 1)),
-    'O': gl_managed.material_model(ambient_front_colour=(0.91, 0, 0, 1),
-                                   diffuse_front_colour=(0.63, 0.37, 0.37, 1)),
-    }
+  material_for = ([
+    ('Br', (0.97, 0.86, 0.03), (1   , 0.5 , 0   ) ),
+    ( 'C', (0.32,)*3         , (0.75,)*3          ),
+    ( 'N', (0   , 0   , 1   ), (0.37, 0.37, 0.63) ),
+    ( 'O', (0.91, 0   , 0   ), (0.63, 0.37, 0.37) ),
+    ( 'F', (0   , 1   , 0   ), (0.07, 0.35, 0.07) ),
+    ('Al', (0   , 0.5 , 0.5 ), (0.37, 0.87, 0.87) ),
+    ('Si', (0.98, 0.42, 0.01), (0.62, 0.62, 0.37) ),
+    ( 'P', (0.5 , 0   , 0.5 ), (0.5,)*3           ),
+    ( 'S', (0.97, 0.85, 0.03), (0.5,)*3           ),
+    ('Cl', (0   , 0.25, 0   ), (0.13, 0.65, 0.13) ),
+    ('Br', (0.51, 0   , 0   ), (0.72, 0.53, 0.53) ),
+    ( 'I', (0.27, 0   , 0.27), (0.87, 0.37, 0.87) ),
+    ]
+
+    # Metals (1st row)
+    + [
+    ( elt, (0   , 0   , 0.49), (0.37, 0.37, 0.62) )
+    for elt in ('Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn')
+    ]
+    )
 
   default_material = gl_managed.material_model(
-    ambient_front_colour=(0.8,)*3 + (1,),
-    diffuse_front_colour=(0.2,)*3 + (1,))
+    ambient_front_colour=(0.2,)*3,
+    diffuse_front_colour=(0.1,)*3)
+
+  material_for = dict([
+    (elt, gl_managed.material_model(ambient_front_colour=a,
+                                    diffuse_front_colour=b))
+    for (elt, a, b) in material_for
+    ])
+
 
   def __init__(self, xray_structure, name='??', **kwds):
     self.xray_structure = xs = xray_structure
