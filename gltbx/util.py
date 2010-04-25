@@ -48,6 +48,12 @@ class version(object):
          "vendor_info"], m.groups())))
       self.principal = float(self.principal)
 
+class extensions(set):
+
+  def __init__(self):
+    from gltbx import gl
+    ext = gl.glGetString(gl.GL_EXTENSIONS)
+    super(extensions, self).__init__(ext.split())
 
 class rescale_normals(object):
 
