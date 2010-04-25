@@ -4,6 +4,8 @@ import sys
 
 def run():
   tst_list = (
+  "$D/symmetry_search/tests/tst_goodness_of_symmetry.py",
+  "$D/symmetry_search/tests/tst_from_map.py",
   "$D/regression/tst_adp_aniso_restraints.py",
   "$D/math/boost_python/tst_math.py",
   "$D/xray/boost_python/tst_targets_ls_with_scale.py",
@@ -98,7 +100,7 @@ def run():
    "$D/regression/tst_amplitude_normalisation.py",
    "$D/regression/tst_statistics_graphs.py",
    "$D/sgtbx/direct_space_asu/proto/tst_asu.py",
-   "$D/masks/tests/tst_flood_fill.py"
+   "$D/masks/tests/tst_flood_fill.py",
   )
 
   build_dir = libtbx.env.under_build("cctbx")
