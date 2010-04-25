@@ -70,8 +70,6 @@ class map_viewer(qttbx.widget):
   def __init__(self,
                fft_map=None,
                unit_cell=None, raw_map=None,
-               from_here=None,
-               to_there=None,
                periodic=False,
                positive_iso_level=None,
                iso_level_positive_range_fraction=None,
@@ -82,8 +80,6 @@ class map_viewer(qttbx.widget):
     if fft_map is not None:
       unit_cell = fft_map.unit_cell()
     super(map_viewer, self).__init__(unit_cell=unit_cell,
-                                     from_here=from_here,
-                                     to_there=to_there,
                                      light_position=(-1, 1, 1, 0),
                                      **kwds)
     assert (fft_map is not None
@@ -180,5 +176,5 @@ if __name__ == '__main__':
           raw_map=case.map,
           positive_iso_level=2.26,
           wires=True,
-          show_unit_cell=False,
+          is_unit_cell_shown=False,
           orthographic=True)
