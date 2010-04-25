@@ -833,6 +833,40 @@ def search_for(
         a(l)
   return result
 
+
+class progress_displayed_as_fraction(object):
+
+  def __init__(self, n):
+    self.n = n
+    self.i = 0
+    if self.n == 1: self.advance = lambda: None
+    self.advance()
+
+  def advance(self):
+    sys.stdout.write("%i / %i\r" % (self.i, self.n))
+    sys.stdout.flush()
+    self.i += 1
+
+  def done(self):
+    if self.n == 1: return
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+
+class progress_bar(progress_displayed_as_fraction):
+
+  def advance(self):
+    characters = ['|']
+    if self.i > 0:
+      characters.extend(['=']*(self.i-1))
+      characters.append('>')
+    characters.extend(' '*(self.n - self.i))
+    characters.append('|\r')
+    sys.stdout.write(''.join(characters))
+    sys.stdout.flush()
+    self.i += 1
+
+
 def exercise():
   from libtbx.test_utils import approx_equal, Exception_expected
   host_and_user().show(prefix="### ")
