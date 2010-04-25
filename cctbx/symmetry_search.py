@@ -1,5 +1,28 @@
 from __future__ import division
 
+import boost.python
+ext = boost.python.import_ext("cctbx_symmetry_search_ext")
+
+
+class goodness_of_symmetry(ext.goodness_of_symmetry):
+
+  def __init__(self, f_o_or_f_o_sq, f_c_in_p1, x, compute_gradient=False):
+    assert (f_o_or_f_o_sq.is_xray_amplitude_array()
+            or f_o_or_f_o_sq.is_xray_intensity_array())
+    if f_o_or_f_o_sq.is_xray_amplitude_array():
+      f_o_sq = f_o_or_f_o_sq.f_as_f_sq()
+    else:
+      f_o_sq = f_o_or_f_o_sq
+    super(goodness_of_symmetry, self).__init__(
+      f_o_sq.space_group(),
+      f_o_sq.indices(),
+      f_o_sq.data(),
+      miller.f_calc_map(f_c_in_p1.indices(), f_c_in_p1.data(),
+                        f_o_sq.anomalous_flag()),
+      x,
+      compute_gradient)
+
+
 from cctbx import miller
 from cctbx import sgtbx
 import sgtbx.cosets
@@ -119,7 +142,7 @@ class structure_factor_symmetry(object):
         symmetry_flags=maptbx.use_space_group_symmetry,
         resolution_factor=self.grid_resolution_factor)
       if 0: # display 3D map
-        from crys3d.qttbx.map_viewer import map_viewer
+        from crys3d.qttbx import map_viewer
         map_viewer.display(window_title=op.as_xyz(),
                            fft_map = cc_map,
                            iso_level_positive_range_fraction=0.8,
