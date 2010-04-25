@@ -144,6 +144,8 @@ class structure_factor_symmetry(object):
     lattice_group = lattice_symmetry.group(self.f_in_p1.unit_cell(),
                                            max_delta=1)
     lattice_group.expand_inv(sgtbx.tr_vec((0,0,0)))
+    lattice_group.make_tidy() # make sure operators come in the same order
+                              # on all platforms
     rot_parts = set()
     decorated_rot_parts = []
     for op in lattice_group:
