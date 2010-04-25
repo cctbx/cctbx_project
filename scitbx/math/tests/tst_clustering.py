@@ -2,6 +2,15 @@ from scitbx.math import clustering
 from scitbx.array_family import flex
 
 def exercise_two_means_clustering():
+  data = flex.double((0.21947204867684716, 0.21947204867684716,
+                      0.21947204867684716, 0.21947204867684714))
+  c = clustering.two_means(data)
+  assert c.cut == 4 # precision limit
+
+  data = flex.double((1, 1, 1, 1))
+  c = clustering.two_means(data)
+  assert c.cut == 4
+
   data = flex.double((10, 4, 3, 2, 2, 1))
   c = clustering.two_means(data)
   assert c.cut == 1
@@ -29,7 +38,7 @@ def exercise_two_means_clustering():
 def exercise_two_medians_clustering():
   data = flex.double((0.998, 0.449, 0.152, 0.152, 0.151))
   clusters = clustering.two_medians(data)
-  assert clusters.cut
+  assert clusters.cut == 2
 
 def run():
   exercise_two_means_clustering()
