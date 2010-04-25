@@ -460,3 +460,11 @@ class _wyckoff_table(boost.python.injector, wyckoff_table):
       if (site_symmetry.distance_moved() < tolerance):
         assert site_symmetry.multiplicity() == position.multiplicity()
         return site_symmetry
+
+class _structure_seminvariants(boost.python.injector, structure_seminvariants):
+
+  def __str__(self):
+    result = []
+    for vm in self.vectors_and_moduli():
+      result.append((vm.m,) + vm.v)
+    return '\n'.join([ "%i: (%i, %i, %i)" % item for item in result ])
