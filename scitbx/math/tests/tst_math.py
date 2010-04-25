@@ -1891,7 +1891,22 @@ def exercise_weighted_covariance():
   stats = weighted_covariance(x=flex.double((1, 2, 1e-4, 3, 4, 5)),
                               y=flex.double((2, 4, 1e-4, 6, 8, 10)),
                               weights=flex.double((2, 1, 3, 2, 1, 2)))
-  assert approx_equal(stats.correlation, 0.99999999999517919484, 1e-17)
+  eps = 1e-18
+  # tests generated with Mathematica
+  assert approx_equal(stats.mean_x, 2.18184545454545455, eps)
+  assert approx_equal(stats.mean_y, 4.36366363636363636, eps)
+  assert approx_equal(stats.variance_x, 3.42136859702479339, eps)
+  assert approx_equal(stats.variance_y, 13.6857123986776860, eps)
+  assert approx_equal(stats.covariance_xy, 6.84279669619834711, eps)
+  assert approx_equal(stats.correlation, 0.99999999996534161, eps)
+  stats.accumulate(x=-1, y=2, weight=2)
+  stats.accumulate(x=2, y=-3, weight=1)
+  assert approx_equal(stats.mean_x, 1.71430714285714286, eps)
+  assert approx_equal(stats.mean_y, 3.50002142857142857, eps)
+  assert approx_equal(stats.variance_x, 3.91829387923469388, eps)
+  assert approx_equal(stats.variance_y, 14.6784214302551020, eps)
+  assert approx_equal(stats.covariance_xy, 6.14274540984693878, eps)
+  assert approx_equal(stats.correlation, 0.809980077408506317, eps)
 
 def run():
   exercise_weighted_covariance()

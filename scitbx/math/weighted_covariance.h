@@ -28,10 +28,13 @@ namespace scitbx { namespace math {
       SCITBX_ASSERT(x.size() == w.size());
       SCITBX_ASSERT(y.size() == w.size());
       int n = w.size();
-      for (int i=0; i<n; ++i) sum_w += w[i];
-      for (int i=0; i<n; ++i) mean_x_ += w[i]*x[i];
+      for (int i=0; i<n; ++i) {
+        sum_w += w[i];
+        mean_x_ += w[i]*x[i];
+        mean_y_ += w[i]*y[i];
+      }
+      SCITBX_ASSERT(sum_w);
       mean_x_ /= sum_w;
-      for (int i=0; i<n; ++i) mean_y_ += w[i]*y[i];
       mean_y_ /= sum_w;
       float_type sum_w_delta_x = 0, sum_w_delta_y = 0;
       for (int i=0; i<n; ++i) {
@@ -59,7 +62,7 @@ namespace scitbx { namespace math {
       mean_x_ += w_over_sum_w*delta_x;
       mean_y_ += w_over_sum_w*delta_y;
       float_type new_delta_x = x - mean_x_,
-      new_delta_y = y - mean_y_;
+                 new_delta_y = y - mean_y_;
       m_xx += w*delta_x*new_delta_x;
       m_xy += w*delta_x*new_delta_y;
       m_yy += w*delta_y*new_delta_y;
