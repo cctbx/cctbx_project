@@ -1,4 +1,5 @@
 from __future__ import division
+from libtbx import adopt_optional_init_args
 import gltbx
 import gltbx.util
 from gltbx.gl import *
@@ -12,41 +13,29 @@ import math
 
 class widget(QGLWidget):
 
-  def __init__(self,
-               unit_cell,
-               light_position,
-               from_here=None,
-               to_there=None,
-               clear_colour=(0, 0, 0, 1),
-               fovy=30, orthographic=False,
-               mouse_rotation_scale=0.6, mouse_wheel_scale=0.1,
-               mouse_translation_scale=0.01,
-               unit_cell_axis_label_font=None,
-               show_unit_cell=True,
-               *args, **kwds):
-    super(widget, self).__init__(
-      QGLFormat(QGL.SampleBuffers),
-      *args, **kwds)
+  from_here = (0,0,0)
+  to_there =  (1,1,1)
+  clear_colour = (0, 0, 0, 1)
+  fovy = 30
+  orthographic = False
+  zoom = 1.
+  mouse_rotation_scale = 0.6
+  mouse_wheel_scale = 0.002
+  mouse_translation_scale = 0.01
+  unit_cell_axis_label_font = QFont("Helvetica", pointSize=16)
+  is_unit_cell_shown = True
+
+  def __init__(self, unit_cell, light_position, **kwds):
+    super(widget, self).__init__(QGLFormat(QGL.SampleBuffers),)
+    adopt_optional_init_args(self, kwds)
     self.unit_cell = unit_cell
-    self.fovy = fovy
-    if from_here is None: from_here = (0,0,0)
-    if to_there is None: to_there = (1,1,1)
-    self.set_extent(from_here, to_there)
+    self.light_position = light_position
+    self.set_extent(self.from_here, self.to_there)
     self.orthogonaliser = gltbx.util.matrix(
       unit_cell.orthogonalization_matrix())
-    self.orthographic = orthographic
-    self.light_position = light_position
-    self.clear_colour = clear_colour
-    self.mouse_rotation_scale = mouse_rotation_scale
-    self.mouse_wheel_scale = mouse_wheel_scale
-    self.mouse_translation_scale = mouse_translation_scale
     self.orbiting = None
     self.dolly = None
     self.mouse_position = None
-    if unit_cell_axis_label_font is None:
-      unit_cell_axis_label_font = QFont("Helvetica", pointSize=16)
-    self.unit_cell_axis_label_font = unit_cell_axis_label_font
-    self.is_unit_cell_shown = show_unit_cell
 
   def set_extent(self, from_here, to_there):
     self.from_here = mat.col(from_here)
@@ -94,7 +83,9 @@ class widget(QGLWidget):
     gltbx.util.handle_error()
     self.initialise_opengl()
 
-  def resizeGL(self, w, h):
+  def resizeGL(self, w=None, h=None):
+    if w is None: w = self.width()
+    if h is None: h = self.height()
     w = max(w, 1)
     h = max(h, 1)
     aspect = w/h
@@ -102,17 +93,18 @@ class widget(QGLWidget):
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     if self.orthographic:
-      left = bottom = -self.object_radius
-      right = top = self.object_radius
+      left = bottom = -self.object_radius * self.zoom
+      right = top = self.object_radius * self.zoom
       if aspect < 1:
         bottom /= aspect
         top /= aspect
       else:
         left *= aspect
         right *= aspect
-      glOrtho(left, right, bottom, top, 0, 100)
+      glOrtho(left, right, bottom, top, 0.1, 100)
     else:
-      gluPerspective(aspect=w/h, fovy=self.fovy, zNear=0.1, zFar=100)
+      gluPerspective(aspect=w/h, fovy=self.fovy*self.zoom,
+                     zNear=0.1, zFar=100)
 
   def paintGL(self):
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -226,19 +218,9 @@ class widget(QGLWidget):
 
   def wheelEvent(self, event):
     if not self.dolly: return
-    wheel_rotation = event.delta()/8 #degrees
-    wheel_rotation *= self.mouse_wheel_scale
-    glMatrixMode(GL_MODELVIEW)
-    glPushMatrix()
-    glLoadIdentity()
-    if self.orthographic:
-      s = 1 + math.tanh(wheel_rotation)
-      glScalef(s, s, s)
-    else:
-      glTranslatef(0, 0, wheel_rotation)
-    self.dolly.multiply()
-    self.dolly.get()
-    glPopMatrix()
+    s = event.delta()*self.mouse_wheel_scale
+    self.zoom -= s
+    self.resizeGL()
     self.updateGL()
 
   def set_perspective(self, flag):
