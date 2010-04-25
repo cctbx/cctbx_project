@@ -24,10 +24,6 @@ import scitbx.matrix as mat
 
 from smtbx.ab_initio import charge_flipping
 
-if (1): # fixed random seed to avoid rare failures
-  random.seed(0)
-  flex.set_random_seed(0)
-
 def randomly_exercise(flipping_type,
                       space_group_info, elements,
                       anomalous_flag,
@@ -63,12 +59,6 @@ def randomly_exercise(flipping_type,
   f_obs = abs(f_target)
 
   # Unleash charge flipping on the amplitudes
-  result = group_args(had_phase_transition=False,
-                      emma_match_in_p1=False,
-                      emma_match=False,
-                      first_correct_correlation_peak=None,
-                      inverted_solution=False,
-                      succeeded=True)
   flipping = flipping_type(delta=None)
   extra = group_args()
   if amplitude_type == 'E':
@@ -86,12 +76,7 @@ def randomly_exercise(flipping_type,
   charge_flipping.loop(solving, verbose=verbose)
 
   # check whether a phase transition has occured
-  result.had_phase_transition = solving.had_phase_transition
-  if not result.had_phase_transition:
-    result.succeeded = False
-    if verbose:
-      print "@@ No phase transition @@"
-    return result
+  assert solving.had_phase_transition
 
   flipping = solving.flipping_iterator
   f_result_in_p1 = solving.flipping_iterator.f_calc
@@ -113,47 +98,31 @@ def randomly_exercise(flipping_type,
     peak_structure,
     break_if_match_with_no_singles=False
     ).refined_matches
-  result.emma_match_in_p1 = (
-        refined_matches[0].rms < 0.15 # no farther than that
-    and refined_matches[0].rt.r in (mat.identity(3), mat.inversion(3))
-  )
-  if not result.emma_match_in_p1:
-    if 0:
-      from crys3d import wx_map_viewer
-      wx_map_viewer.display(title="Target",
-                            fft_map=flipping.rho_map)
-    result.succeeded = False
-    if verbose:
-      print "@@ no Euclidean matching in P1 @@"
-    if verbose == "debug":
-      print refined_matches[0].show()
-    return result
-  result.inverted_solution = refined_matches[0].rt.r == mat.inversion(3)
+  assert refined_matches[0].rms < 0.15 # no farther than that
+  assert refined_matches[0].rt.r in (mat.identity(3), mat.inversion(3))
+
   reference_shift = -refined_matches[0].rt.t
 
   # Find the translation to bring back the structure to the same space-group
   # setting as the starting f_obs from correlation map analysis
   is_allowed= lambda x: f_target.space_group_info().is_allowed_origin_shift(
     x, tolerance=0.1)
+  first_correct_correlation_peak = None
   for i, (f_calc, shift, cc_peak_height) in enumerate(
                                                     solving.f_calc_solutions):
     if (   is_allowed(shift - reference_shift)
         or is_allowed(shift + reference_shift)):
-      result.first_correct_correlation_peak = i
+      first_correct_correlation_peak = i
       break
     else:
       if verbose == "more":
         print "++ Incorrect peak: shift=(%.3f, %.3f, %.3f), height=%.2f"\
               % (tuple(shift)+(cc_peak_height,))
         print "   Reference shift=(%.3f, %.3f, %.3f)" % tuple(reference_shift)
-  if result.first_correct_correlation_peak is None:
-    result.succeeded = False
-    if verbose:
-      print "@@ No correct correlation peak @@"
-    return result
-  if verbose and result.first_correct_correlation_peak != 0:
+  assert first_correct_correlation_peak is not None
+  if verbose and first_correct_correlation_peak != 0:
       print "** First correct correlation peak: #%i (%.3f) **"\
-            % (result.first_correct_correlation_peak, cc_peak_height)
+            % (first_correct_correlation_peak, cc_peak_height)
 
   # check Euclidean matching in the original space-group
   search_parameters = maptbx.peak_search_parameters(
@@ -173,34 +142,32 @@ def randomly_exercise(flipping_type,
     solution_peak_structure,
     break_if_match_with_no_singles=False
     ).refined_matches
-  if refined_matches:
-    result.emma_match = (
-          not refined_matches[0].singles1 # all sites match a peak
-      and refined_matches[0].rms < 0.1 # no farther than that
-      and refined_matches[0].rt.r in (mat.identity(3), mat.inversion(3))
-    )
-  else:
-    result.emma_match = False
-  if not result.emma_match:
-    result.succeeded = False
-    if verbose:
-      print "@@ no Euclidean matching in original spacegroup @@"
-    return result
+  assert refined_matches
+  assert not refined_matches[0].singles1 # all sites match a peak
+  assert refined_matches[0].rms < 0.1 # no farther than that
+  assert refined_matches[0].rt.r in (mat.identity(3), mat.inversion(3))
 
   # success!
   if verbose:
     print "@@ Success @@"
-  return result
 
 
 def exercise(flags, space_group_info):
-  print space_group_info.type().hall_symbol()
   if not flags.repeats: flags.repeats = 1
   if not flags.algo: flags.algo = "weak_reflection_improved"
   if not flags.on: flags.on = "E"
-  results = []
+  if flags.fix_seed:
+    random.seed(1)
+    flex.set_random_seed(1)
+
   n = len(space_group_info.group())
-  if n > 48: return False
+  print space_group_info.type().hall_symbol(),
+  if n > 24:
+    print '  [ skipped ]'
+    if flags.Verbose: print
+    return
+  else:
+    print
   n_C = 12//n or 1
   n_O = 6//n
   n_N = 3//n
@@ -212,7 +179,7 @@ def exercise(flags, space_group_info):
     print "on %s's with %s" % (flags.on, flags.algo)
   flipping_type = eval("charge_flipping.%s_iterator" % flags.algo)
   for i in xrange(int(flags.repeats)):
-    result = randomly_exercise(
+    randomly_exercise(
       flipping_type=flipping_type,
       space_group_info=space_group_info,
       elements=["C"]*n_C + ["O"]*n_O + ["N"]*n_N,
@@ -221,41 +188,16 @@ def exercise(flags, space_group_info):
       verbose=flags.Verbose,
       amplitude_type=flags.on
     )
-    results.append(result)
   if flags.Verbose: print
-  return True, results
 
 def exercise_charge_flipping():
   import sys
-  results = []
-  results.extend(
-    debug_utils.parse_options_loop_space_groups(
-      sys.argv[1:],
-      exercise,
-      keywords=("repeats", 'on', 'algo'),
-      symbols_to_stderr=False,
-    ))
-  results = flat_list([ x for x in results if x is not None ])
-  n_tests = len(results)
-
-  n_phase_transitions = [
-    r.had_phase_transition for r in results ].count(True)
-  n_emma_matches_in_p1 = [
-    r.emma_match_in_p1 for r in results ].count(True)
-  n_emma_matches = [
-    r.emma_match for r in results ].count(True)
-  n_found_shift = [
-    r.first_correct_correlation_peak is not None for r in results ].count(True)
-  n_success = [ r.succeeded for r in results ].count(True)
-  print "%i test cases:" % n_tests
-  print "\t%i successes" % n_success
-  print "\t%i phase transitions" % n_phase_transitions
-  print ("\t%i Euclidean matches with correct structure "
-         "in P1" % n_emma_matches_in_p1)
-  print "\t%i found shifts" % n_found_shift
-  print ("\t%i Euclidean matches with correct structure "
-         "in original spacegroup" % n_emma_matches)
-  assert is_above_limit(value=n_success/n_tests, limit=0.875)
+  debug_utils.parse_options_loop_space_groups(
+    sys.argv[1:],
+    exercise,
+    keywords=("repeats", 'on', 'algo', 'fix_seed'),
+    symbols_to_stderr=False,
+  )
 
 def run():
   exercise_charge_flipping()
