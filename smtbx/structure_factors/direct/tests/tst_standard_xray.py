@@ -4,6 +4,8 @@ from cctbx.array_family import flex
 from cctbx import sgtbx, uctbx, xray, crystal, miller, eltbx
 import cctbx.eltbx.wavelengths
 import smtbx.development
+from cctbx.development.space_group_option_parser\
+     import space_group_option_parser
 import smtbx.structure_factors.direct as structure_factors
 from libtbx.test_utils import approx_equal
 from scitbx.math import approx_equal_relatively
@@ -236,7 +238,7 @@ def exercise_trigonometric_ff():
 
 def run(args):
   libtbx.utils.show_times_at_exit()
-  parser = smtbx.development.space_group_option_parser()
+  parser = space_group_option_parser()
   parser.option('-x', '--xray_structure_pickle', default=None)
   commands = parser.process(args)
 
