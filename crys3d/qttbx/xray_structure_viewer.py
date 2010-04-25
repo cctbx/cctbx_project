@@ -142,12 +142,14 @@ class xray_structure_viewer(qttbx.widget):
 
 
 if __name__ == '__main__':
-  import sys, os
+  import sys, os, datetime
+  import libtbx.load_env
   name = sys.argv[1]
   if os.path.exists(name):
     path = name
   else:
-    path = os.path.join(os.environ['DURHAM_CRYST_DATABASE'],
-                        "%s-original.res" % name)
+    root = libtbx.env.find_in_repositories('durham_structures')
+    year = datetime.datetime.strptime(name[:2], '%y').strftime('%Y')
+    path = os.path.join(root, year, name, "%s-original.res" % name)
   xs = xray.structure.from_shelx(filename=path)
   display(xray_structure=xs, name=name)
