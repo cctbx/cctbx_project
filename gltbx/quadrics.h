@@ -148,7 +148,12 @@ class ellipsoid_to_sphere_transform
     ellipsoid_to_sphere_transform() {}
 
     /// Construct the change of frame from the frame where the ellipsoid
-    /// is represented by the given metrics at the given centre
+    /// is represented by the given metrics at the given centre.
+    /** If the metrics is non-positive-definite, each non-positive eigenvalue
+        is changed to a tiny positive value. As a result, the displayed
+        shape will be an ellipsoid flattened in the direction of the
+        eigenvectors corresponding to those non-positive eigenvalues.
+     */
     ellipsoid_to_sphere_transform(scitbx::vec3<GLdouble> const &centre,
                                   scitbx::sym_mat3<GLdouble> const &metrics)
       : npd(false)
@@ -158,10 +163,13 @@ class ellipsoid_to_sphere_transform
       scitbx::vec3<GLdouble> e0(e[0], e[1], e[2]),
                              e1(e[3], e[4], e[5]),
                              e2=e0.cross(e1);
-      af::const_ref<GLdouble> eigenval = es.values().const_ref();
-      if (eigenval[0] <= 0 || eigenval[1] <= 0 || eigenval[2] <= 0) {
-        npd = true;
-        return;
+      af::ref<GLdouble> eigenval = es.values().ref();
+      GLdouble const tiny = +0.0005;
+      for (int i=0; i<3; ++i) {
+        if (eigenval[i] <= 0) {
+          eigenval[i] = tiny;
+          npd = true;
+        }
       }
       e0 *= std::sqrt(eigenval[0]);
       e1 *= std::sqrt(eigenval[1]);
@@ -174,12 +182,10 @@ class ellipsoid_to_sphere_transform
     };
 
     /// Whether the metric was non-positive definite.
-    /** If this is so, then the other members can't be relied upon */
     bool non_positive_definite() const { return npd; }
 
     /// The rotation-scaling part of the change of basis
     scitbx::mat3<GLdouble> linear_part() const {
-      GLTBX_ASSERT(!non_positive_definite());
       return scitbx::mat3<GLdouble>(m[0], m[4], m[ 8],
                                     m[1], m[5], m[ 9],
                                     m[2], m[6], m[10]);
@@ -187,12 +193,10 @@ class ellipsoid_to_sphere_transform
 
     /// The translation part of the change of basis
     scitbx::vec3<GLdouble> translation_part() const {
-      GLTBX_ASSERT(!non_positive_definite());
       return scitbx::vec3<GLdouble>(&m[12]);
     }
 
     GLdouble const *matrix() const {
-      GLTBX_ASSERT(!non_positive_definite());
       return m;
     }
 };

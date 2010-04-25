@@ -69,9 +69,21 @@ namespace gltbx { namespace quadrics { namespace boost_python {
       return new w_t(result);
     }
 
-    static void draw(w_t const &self, proto_ellipsoid &proto) {
+    static void draw(w_t const &self, proto_ellipsoid &proto)
+    {
+      GLfloat black[4] = { 0.f, 0.f, 0.f, 1.f };
       for (int i=0; i<self.size(); ++i) {
-        proto.draw(self[i]);
+        if (self[i].non_positive_definite()) {
+          glPushAttrib(GL_LIGHTING_BIT);
+          GLfloat c[4];
+          glGetMaterialfv(GL_FRONT, GL_AMBIENT, c);
+          glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, black);
+          glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, c);
+          glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, black);
+          proto.draw(self[i]);
+          glPopAttrib();
+        }
+        else proto.draw(self[i]);
       }
     }
 
