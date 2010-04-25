@@ -1,4 +1,6 @@
 from cctbx.development import debug_utils, random_structure
+from cctbx.development.space_group_option_parser \
+     import space_group_option_parser
 from cctbx import miller
 from cctbx import symmetry_search
 from cctbx import sgtbx, maptbx
@@ -11,17 +13,20 @@ import scitbx.random
 import random
 import math
 
-def exercise_one(flags, space_group_info,
-                 shifted_origin=(0.1, 0.2, 0.6),
-                 elements=None,
-                 d_min=0.8,
-                 grid_resolution_factor=1/3):
+def exercise(space_group_info,
+             fixed_random_seed=True,
+             shifted_origin=None,
+             elements=None,
+             d_min=0.8,
+             grid_resolution_factor=1/3,
+             verbose=False,
+             **kwds):
   if elements is None:
     n_C = 5
     n_O = 1
     n_N = 1
     elements = ["C"]*n_C + ["O"]*n_O + ["N"]*n_N
-  if flags.Verbose:
+  if verbose:
     print elements
 
   target_space_group_type = space_group_info.type()
@@ -40,13 +45,13 @@ def exercise_one(flags, space_group_info,
     random_u_iso_scale=0.04,
     use_u_aniso=False,
   )
-  if flags.non_random_shift:
+  if fixed_random_seed:
     random.seed(1)
     flex.set_random_seed(1)
-  else:
+  if shifted_origin is None:
     shifted_origin = flex.random_double(3)
   shifted_origin = mat.col(shifted_origin)
-  if flags.Verbose:
+  if verbose:
     print "new origin = (%.3f, %.3f, %.3f)" % shifted_origin.elems
     print
   target_structure_in_p1 = target_structure\
@@ -65,7 +70,7 @@ def exercise_one(flags, space_group_info,
     sf_symm.space_group_info_in_input_cell.group()\
     .conventional_centring_type_symbol()
     == target_structure.space_group().conventional_centring_type_symbol())
-  if flags.Verbose:
+  if verbose:
     print sf_symm
 
   solution_hall, target_hall = [
@@ -124,7 +129,7 @@ def exercise_one(flags, space_group_info,
     sf_symm.space_group_info_in_input_cell
     .change_of_basis_op_to_reference_setting())
 
-  if flags.Verbose:
+  if verbose:
     print
     print "solution -> target: %s" % solution_to_target_cb_op.as_xyz()
   delta_o = shifted_origin - sf_symm.origin_in_input_cell
@@ -135,52 +140,41 @@ def exercise_one(flags, space_group_info,
   target_sg = target_structure.space_group()
   assert target_sg == target_sg.change_basis(stabilising_cb_op)
 
-def exercise(argv):
-  debug_utils.parse_options_loop_space_groups(
-    argv,
-    keywords=('non_random_shift',),
-    call_back=exercise_one,
-    symbols_to_stderr=False,
-    d_min=0.8,
-    grid_resolution_factor=1/3,
-  )
-
 def run():
   import sys, os
-  if 0 and 'WINGDB_ACTIVE' in os.environ:
-    sys.argv[1:] = [
-      #'--non_random_shift',
-      '--Verbose',
-      #'hall: -I 4 2c (1/2*x+1/2*y+1/12,-1/2*x+1/2*y-1/12,z-1/4)',
-      'hall: C 2c 2 (x+y, x-y, -z)'
-      ]
-    for i in xrange(100):
-      exercise(sys.argv[1:])
-    return
+  libtbx.utils.show_times_at_exit()
+  parser = space_group_option_parser()
+  parser.option(None, '--skip_extra_tests',
+                action='store_true',
+                default=False)
+  parser.option(None, '--fixed_random_seed',
+                default=True)
+  command_line = parser.process(sys.argv[1:])
 
-  if not sys.argv[1:]:
-    flags = libtbx.group_args(Verbose='--Verbose' in sys.argv[1:],
-                              non_random_shift=True)
-
+  if not command_line.options.skip_extra_tests:
     # the solution-to-target change-of-basis computed as
     # reference-to-target x solution-to-reference
     # is not a mere translation
-    exercise_one(
-      flags,
+    exercise(
       sgtbx.space_group_info(
         'hall: -I 4 2c (1/2*x+1/2*y+1/12,-1/2*x+1/2*y-1/12,z-1/4)'),
-      shifted_origin=(0, 0.4, 0.9))
-    exercise_one(flags, sgtbx.space_group_info('hall: C 2c 2 (x-y,x+y,z)'),
-                 shifted_origin=(0.4, 0.9, 0.6))
+      shifted_origin=(0, 0.4, 0.9),
+      verbose=command_line.options.verbose)
+    exercise(sgtbx.space_group_info('hall: C 2c 2 (x-y,x+y,z)'),
+             shifted_origin=(0.4, 0.9, 0.6),
+             verbose=command_line.options.verbose)
 
     # the centring translation search peaks (1/2, 0, 0) which is
     # a structure seminvariant: test whether this is rejected
-    exercise_one(flags, sgtbx.space_group_info('hall: -P 2a 2a'))
+    exercise(sgtbx.space_group_info('hall: -P 2a 2a'),
+             shifted_origin=(0.1, 0.2, 0.6),
+             verbose=command_line.options.verbose)
 
   # the traditional loop over a selection of space-groups
   # the last one, -I 4 2c (1/2*x+1/2*y+1/12,-1/2*x+1/2*y-1/12,z-1/4),
   # results in solution_to_target_cb_op being non-trivial.
-  exercise(sys.argv[1:])
+  command_line.loop_over_space_groups(exercise,
+                                      shifted_origin=(0.1, 0.2, 0.6))
 
 
 if __name__ == '__main__':
