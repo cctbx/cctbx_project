@@ -144,7 +144,7 @@ def randomly_exercise(flipping_type,
     ).refined_matches
   assert refined_matches
   assert not refined_matches[0].singles1 # all sites match a peak
-  assert refined_matches[0].rms < 0.1 # no farther than that
+  assert refined_matches[0].rms < 0.11 # no farther than that
   assert refined_matches[0].rt.r in (mat.identity(3), mat.inversion(3))
 
   # success!
