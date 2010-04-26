@@ -246,6 +246,22 @@ angle
   sigma = None
     .type = float
 }
+planarity
+  .optional = True
+  .multiple = True
+  .short_caption = Planarity
+  .style = auto_align
+{
+  action = *add delete change
+    .type = choice
+  atom_selection_1 = None
+    .type = str
+  atom_selection_2 = None
+    .type = str
+  sigma = None
+    .type = float
+}
+
 """
 
 geometry_restraints_remove_str = """\
@@ -2466,7 +2482,8 @@ class build_all_chain_proxies(object):
           # XXX hydrogens not included
           if (atom.name.strip()
                 in ["P", "O1P", "O2P", "O3'", "O5'",
-                                       "O3*", "O5*",
+                         "OP1", "OP2", "O3*", "O5*",
+                                       "O2*", "O2'",
                     "O4'", "C1'", "C2'", "C3'", "C4'", "C5'",
                     "O4*", "C1*", "C2*", "C3*", "C4*", "C5*"]):
             result[atom.i_seq] = backbone_flag
@@ -2487,7 +2504,7 @@ class build_all_chain_proxies(object):
         for atom in summary.expected_atoms:
           if (atom.name.strip()
                 in ["P", "O1P", "O2P", "O3'", "O5'",
-                                       "O3*", "O5*"]):
+                         "OP1", "OP2", "O3*", "O5*"]):
             result[atom.i_seq] = True
     return result
 
@@ -2497,8 +2514,8 @@ class build_all_chain_proxies(object):
       if (summary.classification in ["RNA", "DNA"]):
         for atom in summary.expected_atoms:
           if (atom.name.strip()
-                in ["O4'", "C1'", "C2'", "C3'", "C4'", "C5'",
-                    "O4*", "C1*", "C2*", "C3*", "C4*", "C5*"]):
+                in ["O4'", "C1'", "C2'", "C3'", "C4'", "C5'", "O2'",
+                    "O4*", "C1*", "C2*", "C3*", "C4*", "C5*", "O2*"]):
             result[atom.i_seq] = True
     return result
 
@@ -2753,7 +2770,7 @@ class build_all_chain_proxies(object):
         parameter_name(), show_string(string)))
     return result
 
-  def phil_atom_selections_as_i_seqs(self, cache, scope_extract, sel_attrs):
+  def phil_atom_selections_as_i_seqs(self, cache, scope_extract, sel_attrs, is_planarity=False):
     result = []
     for attr in sel_attrs:
       iselection = self.phil_atom_selection(
@@ -2765,11 +2782,16 @@ class build_all_chain_proxies(object):
         atom_sel = getattr(scope_extract, attr)
         if (iselection.size() == 0):
           raise Sorry("No atom selected: %s" % show_string(atom_sel))
-        raise Sorry(
-          "More than one atom selected: %s\n"
-          "  Number of selected atoms: %d" % (
-            show_string(atom_sel), iselection.size()))
-      result.append(iselection[0])
+        if not is_planarity:
+          raise Sorry(
+            "More than one atom selected: %s\n"
+            "  Number of selected atoms: %d" % (
+              show_string(atom_sel), iselection.size()))
+      if not is_planarity:
+        result.append(iselection[0])
+      else:
+        for i in iselection:
+          result.append(i)
     return result
 
   def process_geometry_restraints_remove(self,
@@ -2959,11 +2981,41 @@ class build_all_chain_proxies(object):
     print >> log, "    Total number of custom angles:", len(result)
     return result
 
+  def process_geometry_restraints_edits_planarity(self,
+                                                  sel_cache,
+                                                  params,
+                                                  log):
+    result = []
+    if (len(params.planarity) == 0): return result
+    if (self.special_position_indices is None):
+      special_position_indices = []
+    else:
+      special_position_indices = self.special_position_indices
+    sel_attrs = ["atom_selection_"+n for n in ["1", "2"]]
+    print >> log, "  Custom planarities:"
+    for planarity in params.planarity:
+       i_seqs = self.phil_atom_selections_as_i_seqs(
+         cache=sel_cache, scope_extract=planarity, sel_attrs=sel_attrs, is_planarity=True)
+       weights = []
+       for i_seq in i_seqs:
+         weights.append(geometry_restraints.sigma_as_weight(sigma=planarity.sigma))
+       proxy = geometry_restraints.planarity_proxy(
+         i_seqs=i_seqs,
+         weights=flex.double(weights))
+       plane = geometry_restraints.planarity(
+         sites_cart=self.sites_cart,
+         proxy=proxy)
+       result.append(proxy)
+    print >> log, "    Total number of custom planarities:", len(result)
+    return result
+
   def process_geometry_restraints_edits(self, params, log):
     sel_cache = self.pdb_hierarchy.atom_selection_cache()
     result = self.process_geometry_restraints_edits_bond(
         sel_cache=sel_cache, params=params, log=log)
     result.angle_proxies=self.process_geometry_restraints_edits_angle(
+        sel_cache=sel_cache, params=params, log=log)
+    result.planarity_proxies=self.process_geometry_restraints_edits_planarity(
         sel_cache=sel_cache, params=params, log=log)
     return result
 
@@ -3121,6 +3173,8 @@ class build_all_chain_proxies(object):
           rt_mx_ji=proxy.rt_mx_ji)
       for proxy in processed_edits.angle_proxies:
         self.geometry_proxy_registries.angle.append_custom_proxy(proxy=proxy)
+      for proxy in processed_edits.planarity_proxies:
+        self.geometry_proxy_registries.planarity.append_custom_proxy(proxy=proxy)
     #
     if (hydrogen_bonds is not None) :
       for proxy in hydrogen_bonds :
