@@ -454,7 +454,7 @@ mmtbx/monomer_library/tst_protein_interpretation.py -text
 mmtbx/monomer_library/tst_rna_dna_interpretation.py -text
 mmtbx/monomer_library/tst_rna_sugar_pucker_analysis.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_rotamer_utils.py svneol=native#text/x-python
-mmtbx/pdb_distances_042110.py -text
+mmtbx/pdb_distances.py -text
 mmtbx/pdbtools.py -text
 mmtbx/polygon/__init__.py -text
 mmtbx/polygon/gui.py -text
