@@ -208,7 +208,7 @@ class structure(crystal.special_position_settings):
     else:
       selection = flex.bool(self._scatterers.size(), True)
     for sc,sel in zip(self._scatterers, selection):
-      if(sc.flags.use()):
+      if(sel and sc.flags.use()):
         if(sc.flags.use_u_iso()):
           sc.u_iso = sc.u_iso * factor
         if(sc.flags.use_u_aniso()):

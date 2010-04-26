@@ -2083,6 +2083,17 @@ class fmodel_from_xray_structure(object):
       if(params.output.type == "real"):
         f_model = abs(f_model)
         f_model.set_observation_type_xray_amplitude()
+        if(params.add_random_error_to_amplitudes_percent is not None):
+          if(params.add_random_error_to_amplitudes_percent > 0):
+            data = f_model.data()
+            fr = f_model.data()*params.add_random_error_to_amplitudes_percent/100.
+            ri = flex.double()
+            for trial in xrange(data.size()):
+              r = random.randint(0,1)
+              if(r == 0): r = -1
+              ri.append(r)
+            data = data + ri*fr
+            f_model = f_model.array(data=data)
     except AttributeError: pass
     except: raise RuntimeError
     self.f_model = f_model
