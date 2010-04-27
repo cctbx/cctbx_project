@@ -254,10 +254,9 @@ planarity
 {
   action = *add delete change
     .type = choice
-  atom_selection_1 = None
+  atom_selection = None
     .type = str
-  atom_selection_2 = None
-    .type = str
+    .multiple = True
   sigma = None
     .type = float
 }
@@ -2770,7 +2769,39 @@ class build_all_chain_proxies(object):
         parameter_name(), show_string(string)))
     return result
 
-  def phil_atom_selections_as_i_seqs(self, cache, scope_extract, sel_attrs, is_planarity=False):
+  def phil_atom_selection_multiple(self,
+        cache,
+        scope_extract,
+        attr,
+        allow_none=False,
+        allow_auto=False,
+        raise_if_empty_selection=True):
+    result = []
+    def parameter_name():
+      return scope_extract.__phil_path__(object_name=attr)
+    string_list = getattr(scope_extract, attr)
+    for string in string_list:
+      if (string is None):
+        if (allow_none): return None
+        raise Sorry('Atom selection cannot be None:\n  %s=None' % (
+          parameter_name()))
+      elif (string is Auto):
+        if (allow_auto): return Auto
+        raise Sorry('Atom selection cannot be Auto:\n  %s=Auto' % (
+          parameter_name()))
+      try:
+          result.append(self.selection(string=string, cache=cache).iselection())
+      except KeyboardInterrupt: raise
+      except Exception, e: # keep e alive to avoid traceback
+        fe = format_exception()
+        raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
+          parameter_name(), show_string(string), fe))
+      if (raise_if_empty_selection and result.count(True) == 0):
+        raise Sorry('Empty atom selection:\n  %s=%s' % (
+          parameter_name(), show_string(string)))
+    return result
+
+  def phil_atom_selections_as_i_seqs(self, cache, scope_extract, sel_attrs):
     result = []
     for attr in sel_attrs:
       iselection = self.phil_atom_selection(
@@ -2782,16 +2813,31 @@ class build_all_chain_proxies(object):
         atom_sel = getattr(scope_extract, attr)
         if (iselection.size() == 0):
           raise Sorry("No atom selected: %s" % show_string(atom_sel))
-        if not is_planarity:
+        else:
           raise Sorry(
             "More than one atom selected: %s\n"
             "  Number of selected atoms: %d" % (
               show_string(atom_sel), iselection.size()))
-      if not is_planarity:
-        result.append(iselection[0])
-      else:
+      result.append(iselection[0])
+    return result
+
+  def phil_atom_selections_as_i_seqs_multiple(self,
+                                              cache,
+                                              scope_extract,
+                                              sel_attrs):
+    result = []
+    for attr in sel_attrs:
+        iselection = self.phil_atom_selection_multiple(
+          cache=cache,
+          scope_extract=scope_extract,
+          attr=attr,
+          raise_if_empty_selection=False)
+        atom_sel = getattr(scope_extract, attr)
         for i in iselection:
-          result.append(i)
+          if (i.size() == 0):
+            raise Sorry("No atom selected: %s" % show_string(atom_sel))
+          for atom in i:
+            result.append(atom)
     return result
 
   def process_geometry_restraints_remove(self,
@@ -2991,11 +3037,11 @@ class build_all_chain_proxies(object):
       special_position_indices = []
     else:
       special_position_indices = self.special_position_indices
-    sel_attrs = ["atom_selection_"+n for n in ["1", "2"]]
+    sel_attrs = ["atom_selection"]
     print >> log, "  Custom planarities:"
     for planarity in params.planarity:
-       i_seqs = self.phil_atom_selections_as_i_seqs(
-         cache=sel_cache, scope_extract=planarity, sel_attrs=sel_attrs, is_planarity=True)
+       i_seqs = self.phil_atom_selections_as_i_seqs_multiple(
+         cache=sel_cache, scope_extract=planarity, sel_attrs=sel_attrs)
        weights = []
        for i_seq in i_seqs:
          weights.append(geometry_restraints.sigma_as_weight(sigma=planarity.sigma))
