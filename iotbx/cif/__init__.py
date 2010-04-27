@@ -1,5 +1,5 @@
-import boost.python
-ext = boost.python.import_ext("iotbx_cif_ext")
+#import boost.python
+#ext = boost.python.import_ext("iotbx_cif_ext")
 
 from cctbx import adptbx, crystal
 from cctbx.xray import structure
