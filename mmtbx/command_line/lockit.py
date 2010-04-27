@@ -539,7 +539,9 @@ def build_element_hash(pdb_hierarchy):
 def build_dihedral_hash(geometry=None,
                         sites_cart=None,
                         pdb_hierarchy=None,
-                        include_hydrogens=False):
+                        include_hydrogens=False,
+                        include_main_chain=True,
+                        include_side_chain=True):
   if not include_hydrogens:
     i_seq_element_hash = build_element_hash(pdb_hierarchy=pdb_hierarchy)
   i_seq_name_hash = build_name_hash(pdb_hierarchy=pdb_hierarchy)
@@ -552,6 +554,23 @@ def build_dihedral_hash(geometry=None,
         for i_seq in dp.i_seqs:
           if i_seq_element_hash[i_seq] == " H":
             raise StopIteration()
+      #ignore backbone dihedrals
+      if not include_main_chain:
+        sc_atoms = False
+        for i_seq in dp.i_seqs:
+          if i_seq_name_hash[i_seq][0:4] not in [' CA ', ' N  ', ' C  ', ' O  ']:
+            sc_atoms = True
+            break
+        if not sc_atoms:
+          raise StopIteration()
+      if not include_side_chain:
+        sc_atoms = False
+        for i_seq in dp.i_seqs:
+          if i_seq_name_hash[i_seq][0:4] not in [' CA ', ' N  ', ' C  ', ' O  ']:
+            sc_atoms = True
+            break
+        if sc_atoms:
+          raise StopIteration()
       key = ""
       for i_seq in dp.i_seqs:
         key = key+i_seq_name_hash[i_seq]
@@ -575,7 +594,9 @@ def get_home_dihedral_proxies(work_params,
                          geometry=geometry_ref,
                          sites_cart=sites_cart_ref,
                          pdb_hierarchy=pdb_hierarchy_ref,
-                         include_hydrogens=work_params.include_hydrogens)
+                         include_hydrogens=work_params.hydrogens,
+                         include_main_chain=work_params.main_chain,
+                         include_side_chain=work_params.side_chain)
   for dp in geometry.dihedral_proxies:
     key = ""
     for i_seq in dp.i_seqs:
