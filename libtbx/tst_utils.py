@@ -2,6 +2,14 @@ from libtbx import utils
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from cStringIO import StringIO
 
+def exercise_OrderedDict():
+  d = utils.OrderedDict([('banana',3), ('apple',4), ('pear',1)])
+  d.setdefault('orange', 2)
+  assert d.has_key('orange')
+  assert d['orange'] == 2
+  assert d.keys() == ['banana', 'apple', 'pear', 'orange']
+  assert d.values() == [3, 4, 1, 2]
+
 def exercise_user_plus_sys_time():
   s = StringIO()
   utils.user_plus_sys_time().show_elapsed(out=s, prefix="e: ")
@@ -66,6 +74,7 @@ def exercise_approx_equal():
                       [ 2.4+0.1j, 3.5+5.9j, 7.90], eps=0.2)
 
 def exercise():
+  exercise_OrderedDict()
   assert utils.sequence_index_dict(["a", "b"]) == {"a": 0, "b": 1}
   assert utils.flat_list(0) == [0]
   assert utils.flat_list([1,2,3]) == [1,2,3]
