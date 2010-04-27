@@ -9,6 +9,8 @@ def exercise_OrderedDict():
   assert d['orange'] == 2
   assert d.keys() == ['banana', 'apple', 'pear', 'orange']
   assert d.values() == [3, 4, 1, 2]
+  d = utils.OrderedDict.fromkeys(('b','c','a'))
+  assert d.keys() == ['b', 'c', 'a']
 
 def exercise_user_plus_sys_time():
   s = StringIO()
