@@ -28,6 +28,7 @@ LPT1 LPT2 LPT3 LPT4 LPT5 LPT6 LPT7 LPT8 LPT9""".split()
 # An equivalent recipe for the OrderedDict class introduced in Python 2.7
 # from ActiveState:
 # http://code.activestate.com/recipes/576693/
+# with minor modifications for Python 2.3 compatibility
 
 class OrderedDict(dict, DictMixin):
 
@@ -106,27 +107,27 @@ class OrderedDict(dict, DictMixin):
   iteritems = DictMixin.iteritems
 
   def __repr__(self):
-      if not self:
-          return '%s()' % (self.__class__.__name__,)
-      return '%s(%r)' % (self.__class__.__name__, self.items())
+    if not self:
+      return '%s()' % (self.__class__.__name__,)
+    return '%s(%r)' % (self.__class__.__name__, self.items())
 
   def copy(self):
       return self.__class__(self)
 
-  @classmethod
   def fromkeys(cls, iterable, value=None):
-      d = cls()
-      for key in iterable:
-          d[key] = value
-      return d
+    d = cls()
+    for key in iterable:
+      d[key] = value
+    return d
+  fromkeys = classmethod(fromkeys)
 
   def __eq__(self, other):
-      if isinstance(other, OrderedDict):
-          return len(self)==len(other) and self.items() == other.items()
-      return dict.__eq__(self, other)
+    if isinstance(other, OrderedDict):
+      return len(self)==len(other) and self.items() == other.items()
+    return dict.__eq__(self, other)
 
   def __ne__(self, other):
-      return not self == other
+    return not self == other
 
 
 def xfrange(start, stop=None, step=None):
