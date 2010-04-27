@@ -6,6 +6,9 @@ from libtbx.utils import time_log
 from cStringIO import StringIO
 
 def exercise():
+  if not libtbx.env.has_module('antlr3'):
+    print "Skipping tst_lex_parse_build.py (antlr3 is not available)"
+    return
   readers = [cif.python_reader]
   #if libtbx.env.has_module('antlr'):
     #readers.append(cif.fast_reader)

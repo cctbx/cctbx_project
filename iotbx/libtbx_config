@@ -1,4 +1,4 @@
 {
   "modules_required_for_use": ["cctbx"],
-  "optional_modules": ["ccp4io", "cbflib", "PyCifRW"],
+  "optional_modules": ["ccp4io", "cbflib", "PyCifRW", "antlr3"],
 }
