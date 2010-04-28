@@ -12,6 +12,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from cctbx import euclidean_model_matching as emma
+from cctbx import symmetry_search
 
 from iotbx import mtz
 
@@ -56,7 +57,7 @@ def randomly_exercise(flipping_type,
   f_target_in_p1 = f_target.expand_to_p1()\
                            .as_non_anomalous_array()\
                            .merge_equivalents().array()
-  f_obs = abs(f_target)
+  f_obs = f_target.as_amplitude_array()
 
   # Unleash charge flipping on the amplitudes
   flipping = flipping_type(delta=None)
@@ -143,9 +144,10 @@ def randomly_exercise(flipping_type,
     break_if_match_with_no_singles=False
     ).refined_matches
   assert refined_matches
-  assert not refined_matches[0].singles1 # all sites match a peak
-  assert refined_matches[0].rms < 0.11 # no farther than that
-  assert refined_matches[0].rt.r in (mat.identity(3), mat.inversion(3))
+  m = refined_matches[0]
+  assert not m.singles1 # all sites match a peak
+  assert m.rms < 0.1, m.rms  # no farther than that
+  assert m.rt.r in (mat.identity(3), mat.inversion(3))
 
   # success!
   if verbose:
