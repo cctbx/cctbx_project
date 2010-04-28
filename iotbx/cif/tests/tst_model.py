@@ -3,9 +3,6 @@ from libtbx.test_utils import Exception_expected
 
 def exercise_cif_model():
   import iotbx.cif
-  if (not iotbx.cif.has_antlr3):
-    print "Skipping tst_model.py (antlr3 is not available)"
-    return
   from iotbx.cif import model
   cif_model = model.cif()
   #
