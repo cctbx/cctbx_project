@@ -1,4 +1,3 @@
-import iotbx.cif.xray_structure
 from cctbx import xray
 from cctbx import crystal
 from cctbx import adptbx
@@ -8,6 +7,7 @@ from cStringIO import StringIO
 import sys
 
 def exercise_format_float():
+  import iotbx.cif.xray_structure
   ff = iotbx.cif.xray_structure.format_float
   assert ff(value=None) == "."
   assert ff(value=0) == "0"
@@ -112,9 +112,13 @@ loop_
 
 def run(args):
   assert len(args) == 0
+  import iotbx.cif
+  if (not iotbx.cif.has_antlr3):
+    print "Skipping tst_xray_structure.py (antlr3 is not available)"
+    return
   exercise_format_float()
   exercise_as_cif_simple()
-  print "OK"
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
+  print "OK"

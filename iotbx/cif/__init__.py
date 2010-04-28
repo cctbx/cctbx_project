@@ -1,13 +1,18 @@
 #import boost.python
 #ext = boost.python.import_ext("iotbx_cif_ext")
 
+import libtbx.load_env
+has_antlr3 = libtbx.env.has_module('antlr3')
+
 from cctbx import adptbx, crystal
 from cctbx.xray import structure
-from iotbx.cif import model, builders, cifLexer, cifParser
+from iotbx.cif import model, builders
 
 def python_reader(file_path=None, file_object=None, input_string=None,
                   builder=builders.cif_model_builder()):
   assert [file_path, file_object, input_string].count(None) == 2
+  assert has_antlr3
+  from iotbx.cif import cifLexer, cifParser
   import antlr3
   if file_object is not None:
     char_stream = antlr3.ANTLRInputStream(file_object)

@@ -1,12 +1,12 @@
 from cctbx.array_family import flex
-from iotbx import cif
 import libtbx.load_env
 from libtbx.test_utils import show_diff
 from libtbx.utils import time_log
 from cStringIO import StringIO
 
 def exercise():
-  if not libtbx.env.has_module('antlr3'):
+  from iotbx import cif
+  if not cif.has_antlr3:
     print "Skipping tst_lex_parse_build.py (antlr3 is not available)"
     return
   readers = [cif.python_reader]
