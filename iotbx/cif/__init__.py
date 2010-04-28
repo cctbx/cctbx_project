@@ -89,14 +89,3 @@ class miller_array_as_cif_block(crystal_symmetry_as_cif_block):
 
   def __init__(self, array):
     crystal_symmetry_as_cif_block.__init__(self, array.crystal_symmetry())
-
-
-def crystal_symmetry_export_as_cif_block(self):
-  return crystal_symmetry_as_cif_block(self).cif_block
-
-crystal.symmetry.as_cif_block = crystal_symmetry_export_as_cif_block
-
-def structure_export_as_cif_block(self):
-  return xray_structure_as_cif_block(self).cif_block
-
-structure.as_cif_block = structure_export_as_cif_block

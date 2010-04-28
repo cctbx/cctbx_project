@@ -273,6 +273,10 @@ class symmetry(object):
       d_min=d_min,
       d_max=d_max)
 
+  def as_cif_block(self):
+    import iotbx.cif
+    return iotbx.cif.crystal_symmetry_as_cif_block(self).cif_block
+
 def select_crystal_symmetry(
       from_command_line     = None,
       from_parameter_file   = None,

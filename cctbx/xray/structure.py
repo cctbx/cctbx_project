@@ -1248,6 +1248,10 @@ class structure(crystal.special_position_settings):
     import iotbx.cif.xray_structure
     iotbx.cif.xray_structure.as_cif_simple(self, out=out)
 
+  def as_cif_block(self):
+    import iotbx.cif
+    return iotbx.cif.xray_structure_as_cif_block(self).cif_block
+
   def as_pdb_file(self,
         remark=None,
         remarks=[],
