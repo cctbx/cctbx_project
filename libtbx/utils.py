@@ -98,13 +98,31 @@ class OrderedDict(dict, DictMixin):
     return list(self)
 
   setdefault = DictMixin.setdefault
-  update = DictMixin.update
+  #update = DictMixin.update
   pop = DictMixin.pop
   values = DictMixin.values
   items = DictMixin.items
   iterkeys = DictMixin.iterkeys
   itervalues = DictMixin.itervalues
   iteritems = DictMixin.iteritems
+
+  # this method copied from Python26 DictMixin source
+  # needed for compatibility with Python 2.3
+  def update(self, other=None, **kwargs):
+    # Make progressively weaker assumptions about "other"
+    if other is None:
+      pass
+    elif hasattr(other, 'iteritems'):  # iteritems saves memory and lookups
+      for k, v in other.iteritems():
+        self[k] = v
+    elif hasattr(other, 'keys'):
+      for k in other.keys():
+        self[k] = other[k]
+    else:
+      for k, v in other:
+        self[k] = v
+    if kwargs:
+      self.update(kwargs)
 
   def __repr__(self):
     if not self:
