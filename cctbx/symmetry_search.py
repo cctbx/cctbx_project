@@ -4,6 +4,21 @@ import boost.python
 ext = boost.python.import_ext("cctbx_symmetry_search_ext")
 from cctbx_symmetry_search_ext import ls_with_scale_and_bias
 
+from cctbx import miller
+from cctbx import sgtbx
+import sgtbx.cosets
+from cctbx.sgtbx import lattice_symmetry
+from cctbx import maptbx
+from libtbx import adopt_optional_init_args
+from libtbx import itertbx
+from scitbx import matrix as mat
+import scitbx.math
+from scitbx.math import clustering
+from cctbx.array_family import flex
+from libtbx import containers
+from copy import copy
+import cStringIO
+
 
 class symmetrised_shifted_structure_factors(object):
 
@@ -34,20 +49,27 @@ class symmetrised_shifted_structure_factors(object):
                                   self.f_x.multiplicities().data().as_double())
 
 
-from cctbx import miller
-from cctbx import sgtbx
-import sgtbx.cosets
-from cctbx.sgtbx import lattice_symmetry
-from cctbx import maptbx
-from libtbx import adopt_optional_init_args
-from libtbx import itertbx
-from scitbx import matrix as mat
-import scitbx.math
-from scitbx.math import clustering
-from cctbx.array_family import flex
-from libtbx import containers
-from copy import copy
-import cStringIO
+class shift_refinement(object):
+
+  def __init__(self, f_obs, fc_in_p1, initial_shift):
+    self.f_obs = f_obs
+    self.fc_in_p1 = fc_in_p1
+    self.initial_shift = initial_shift
+    self.x = flex.double(self.initial_shift)
+    scitbx.lbfgs.run(self,
+                     scitbx.lbfgs.termination_parameters(
+                       traditional_convergence_test_eps=0.01))
+    self.shift = mat.col(self.x)
+    del self.x
+
+  def compute_functional_and_gradients(self):
+    self.sssf = symmetrised_shifted_structure_factors(self.f_obs,
+                                                      self.fc_in_p1,
+                                                      tuple(self.x),
+                                                      compute_gradient=True)
+    self.goos = self.sssf.misfit(self.f_obs)
+    return self.goos.value, flex.double(self.goos.gradient)
+
 
 # the denominator used throughout for space-group symmetries
 sg_t_den = 12
