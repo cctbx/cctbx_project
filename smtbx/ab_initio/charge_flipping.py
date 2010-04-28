@@ -49,6 +49,7 @@ from cctbx import sgtbx
 from cctbx import miller
 from cctbx import maptbx
 from cctbx import translation_search
+from cctbx import symmetry_search
 
 from smtbx import ab_initio
 
@@ -324,18 +325,9 @@ def f_calc_symmetrisations(f_obs, f_calc_in_p1, min_cc_peak_height):
   # iterate over the strong peak; for each, shift and symmetrised f_calc
   for peak in correlation_map_peaks:
     if peak.height < min_cc_peak_height: break
-    shift = mat.col(peak.site)
-    multiplier = int(1e4)
-    shift_1 = shift*multiplier
-    cb_op = sgtbx.change_of_basis_op(
-      sgtbx.rt_mx(sgtbx.tr_vec(shift_1.as_int(), multiplier)))
-    symm_f_calc = (f_calc_in_p1
-      .change_basis(cb_op)
-      .customized_copy(
-        space_group_info=f_obs.space_group_info()))
-    merging = symm_f_calc.merge_equivalents()
-    symm_f_calc = merging.array()
-    yield symm_f_calc, shift, peak.height
+    sssf = symmetry_search.symmetrised_shifted_structure_factors(
+      f_obs, f_calc_in_p1, peak.site)
+    yield sssf.f_x, mat.col(peak.site), peak.height
 
 
 def amplitude_quasi_normalisations(f_obs):
