@@ -1625,23 +1625,22 @@ def exercise_multiscale():
     flex.sum(f1.data()*f2.data())/flex.sum(f2.data()*f2.data()), 1)
 
 def exercise_symmetry_agreement_factor():
+  from cmath import phase as arg
   uc = uctbx.unit_cell((1, 2, 3, 90, 101, 90))
   cs = crystal.symmetry(uc, 'P 1')
-  mi = miller.build_set(cs,
-                        anomalous_flag=True,
-                        d_min=0.2)
+  mi = miller.set(
+    cs,
+    flex.miller_index(((1,1,1), (-1,1,-1), (-1,1,1), (1,1,-1))),
+    anomalous_flag=True)
   cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx('-x,y,-z+1/2'))
-
   ma = miller.array(
-    mi, flex.double_range(1, mi.size()+1)
-    ).phase_transfer(2*math.pi/mi.size()*flex.double_range(0, mi.size()))
-  assert approx_equal(ma.symmetry_agreement_factor(cb_op), 1.163,
+    mi, flex.complex_double((1+1j, -1+1j, 1-1j, -1-1j)))
+  cc = [ (1+1j)*(1+1j), (-1+1j)*(-1+1j), (1-1j)*(1-1j), (-1-1j)*(-1-1j) ]
+  expected = (3/math.pi**2 * sum([ abs(z)*arg(z)**2 for z in cc ])
+                           / sum([ abs(z) for z in cc ]))
+  assert approx_equal(ma.symmetry_agreement_factor(cb_op),
+                      expected,
                       eps=1e-3)
-
-  ma = ma.customized_copy(
-    space_group_info=sgtbx.space_group_info('hall: -P 2yc')
-    ).merge_equivalents().array()
-  assert approx_equal(ma.symmetry_agreement_factor(cb_op), 0)
 
 def run(args):
   exercise_symmetry_agreement_factor()
