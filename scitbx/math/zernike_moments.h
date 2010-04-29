@@ -64,7 +64,7 @@ namespace zernike {
 
         scale_ = 1.0/rmax_*fract_;
         for(int i=0;i<natom_;i++)
-          scaled_xyz_.push_back( scale_*xyz_[i] );
+          scaled_xyz_.push_back(xyz_[i]*scale_);
 
         initialize_voxel();
         xyz2voxel();
@@ -81,7 +81,7 @@ namespace zernike {
       scitbx::mat3< FloatType > rotation_matrix = euler_zyz_matrix( angle );
       if(t) { rotation_matrix=rotation_matrix.transpose(); }
       for(int i=0; i<natom_;i++)
-        xyz_[i] = xyz_[i]*rotation_matrix;
+        xyz_[i] = rotation_matrix*xyz_[i];
       return xyz_;
       }
 
@@ -273,7 +273,6 @@ namespace zernike {
                scitbx::vec3< int > p_indx( i, j, k );
                all_indx_.push_back( p_indx );
                if(point.length_sq() <=1.0){  //in/on the unit sphere
- //              if(std::abs( (p_indx-N_point_).sum() ) <=N_point_){  //in/on the unit sphere
                  xyz_indx_.push_back( p_indx  );
       //           xyz_.push_back( point );
                }  //end if
@@ -404,32 +403,7 @@ namespace zernike {
       }
 
 
-/*      FloatType space_sum(int r, int s, int t) {
-        return ss_r_[r]*ss_s_[s]*ss_t_[t];
-      }
-
-      void ss_one_d() {
-        int total_point=voxel_indx_.size(), x,y,z;
-        for(int i=0;i<=n_max_;i++) {
-          ss_r_[i] = 0.0;
-          ss_s_[i] = 0.0;
-          ss_t_[i] = 0.0;
-          for(int j=0; j<total_point; j++)
-          {
-            x=voxel_indx_[j][0];
-            y=voxel_indx_[j][1];
-            z=voxel_indx_[j][2];
-
-            ss_r_[i] += (gm_[i][x+1]-gm_[i][x]);
-            ss_s_[i] += (gm_[i][y+1]-gm_[i][y]);
-            ss_t_[i] += (gm_[i][z+1]-gm_[i][z]);
-          }
-        }
-        return;
-      }
-*/
       bool construct_space_sum() {
-//      ss_one_d();
         for(int r=0;r<=n_max_;r++) {
           for(int s=0;s<=n_max_;s++) {
             for(int t=0;t<=n_max_;t++) {
@@ -478,8 +452,7 @@ namespace zernike {
              C_nnl_(n_max),
              C_nl_(n_max),
              C_nn_(n_max),
-             n_max_(n_max),
-             complex_i_(0,1.0)
+             n_max_(n_max)
       {
         initialize();
         calc_Chi();
@@ -617,7 +590,6 @@ namespace zernike {
           for(int l=start_l;l<=n;l+=2){
             for(int m=0;m<=l;m++)
             {
-            // std::cout<<value<<std::endl;
              value=calc_Chi_nlm(n,l,m);
              set_moment(n,l,m,value);
              if(m>0) {
@@ -651,6 +623,10 @@ namespace zernike {
         build_bino();
         build_Clm_array();
         build_Qlkv();
+
+        std::complex<FloatType>complex_i(0,-1.0);
+        for(int i=0;i<=n_max_;i++)
+          i_pow_n_.push_back( ( std::pow(complex_i, i)) );
 //      test();
       }
 
@@ -707,7 +683,7 @@ namespace zernike {
           for(int k=0;k<=(n_max_-l)/2;k++){
             scitbx::af::shared<FloatType> q_v(k+1,scitbx::af::init_functor_null<FloatType>());
             for(int v=0;v<=k;v++){
-              q_v[v] = is_even(k+v)/FloatType(pow(2.0,(2*k)))*sqrt((2*l+4*k+3)/3.0);
+              q_v[v] = is_even(k+v)/FloatType(pow(2.0,(2.0*k)))*sqrt((2*l+4*k+3)/3.0);
               q_v[v] *= bino_[2*k][k]*bino_[k][v]*bino_[2*(k+l+v)+1][2*k];
               q_v[v] /= bino_[k+l+v][k];
             }
@@ -723,8 +699,10 @@ namespace zernike {
         int r, s, t;
         FloatType temp(0.0);
         for(int v=0;v<=mu;v++) {
-          r = 2*(v+alpha)+u;
-          s = 2*(mu-v+beta)+m-u;
+//          r = 2*(v+alpha)+u;
+ //         s = 2*(mu-v+beta)+m-u;
+          s = 2*(v+alpha)+u;
+          r = 2*(mu-v+beta)+m-u;
           t = 2*(nu-alpha-beta-mu)+l-m;
           temp += bino_[mu][v] * ss_(r,s,t);
         }
@@ -744,7 +722,8 @@ namespace zernike {
       {
         std::complex<FloatType> temp(0,0);
         for(int u=0;u<=m;u++){
-          temp += is_even(m-u)*bino_[m][u]*std::pow( complex_i_, u)*sum5(n,l,m,nu,alpha,beta,u);
+          temp += is_even(m-u)*bino_[m][u]*i_pow_n_[u]*sum5(n,l,m,nu,alpha,beta,u);
+          //temp += bino_[m][u]*i_pow_n_[m-u]*sum5(n,l,m,nu,alpha,beta,u);
         }
         return temp;
       }
@@ -794,7 +773,7 @@ namespace zernike {
       scitbx::af::shared< scitbx::af::shared<FloatType> > clm_;
       scitbx::af::shared< scitbx::af::shared< scitbx::af::shared<FloatType> > > Q_lkv_;
       int n_max_;
-      std::complex<FloatType> complex_i_;
+      scitbx::af::shared< std::complex<FloatType> > i_pow_n_;
       af::versa< FloatType, af::c_grid<3> > ss_;
       grid<FloatType> grid_;
   };

@@ -1119,7 +1119,7 @@ namespace zernike{
             if (r>eps_){
               t = std::acos(z/r);
               p = std::atan2(y,x);
-              p -= pidivtwo;
+              //p -= pidivtwo;
             } else {
               t = 0.0;
               p = 0.0;
