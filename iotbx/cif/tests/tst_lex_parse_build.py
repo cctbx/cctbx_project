@@ -1,6 +1,6 @@
 from cctbx.array_family import flex
 import libtbx.load_env
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import time_log
 from cStringIO import StringIO
 
@@ -29,22 +29,17 @@ def exercise():
       xs_cif_block = xs1.as_cif_block()
       xs2 = cif.builders.crystal_structure_builder(xs_cif_block).structure
       for xs in (xs1, xs2):
-        sio = StringIO()
-        xs.show_scatterers(sio)
-        assert not show_diff(sio.getvalue(), """\
-Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso
-o    O      2 ( 0.5000  0.0000  0.0000) 0.80 0.1000 [ - ]
-c    C      2 ( 0.0000  0.0000  0.0000) 1.00 [ - ] 0.2000
-     u_cart =  0.100  0.200  0.300  0.000  0.000  0.000
-""")
-        sio = StringIO()
-        xs.show_summary(sio)
-        assert not show_diff(sio.getvalue(), """\
-Number of scatterers: 2
-At special positions: 2
-Unit cell: (10, 20, 30, 90, 90, 90)
-Space group: C 1 2/m 1 (No. 12)
-""")
+        sc = xs.scatterers()
+        assert list(sc.extract_labels()) == ['o','c']
+        assert list(sc.extract_scattering_types()) == ['O','C']
+        assert approx_equal(sc.extract_occupancies(), (0.8, 1))
+        assert approx_equal(sc.extract_sites(), ((0.5,0,0),(0,0,0)))
+        assert approx_equal(sc.extract_u_star(),
+          [(-1, -1, -1, -1, -1, -1), (1e-3, 5e-4, (1e-3)/3, 0, 0, 0)])
+        assert approx_equal(sc.extract_u_iso(), (0.1, -1))
+        assert approx_equal(xs.unit_cell().parameters(),
+                            (10,20,30,90,90,90))
+        assert str(xs.space_group_info()) == 'C 1 2/m 1'
       #
       cif_model = reader(
         input_string=cif_miller_array, builder=builder()).model()
