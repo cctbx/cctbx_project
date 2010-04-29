@@ -3372,6 +3372,7 @@ class process(object):
     self.mon_lib_srv = mon_lib_srv
     self.ener_lib = ener_lib
     self.log = log
+    self.for_dihedral_reference=for_dihedral_reference
     self.all_chain_proxies = build_all_chain_proxies(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
@@ -3544,7 +3545,8 @@ class process(object):
                              " (mainly nonbonded setup): %.2f" % (
             timer.elapsed())
           flush_log(self.log)
-        self.clash_guard()
+        if not self.for_dihedral_reference:
+          self.clash_guard()
     return self._geometry_restraints_manager
 
   def clash_guard(self, hard_minimum_nonbonded_distance=0.001):
