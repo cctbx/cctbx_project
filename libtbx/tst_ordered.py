@@ -22,9 +22,21 @@ def exercise_oset():
   assert o == set([5, 2, 4, 1])
   assert o == set([5, 4, 2, 1])
 
+def exercise_odict():
+  from libtbx.ordered import OrderedDict as odict
+  d = odict([('banana',3), ('apple',4), ('pear',1)])
+  d.setdefault('orange', 2)
+  assert d.has_key('orange')
+  assert d['orange'] == 2
+  assert d.keys() == ['banana', 'apple', 'pear', 'orange']
+  assert d.values() == [3, 4, 1, 2]
+  d = odict.fromkeys(('b','c','a'))
+  assert d.keys() == ['b', 'c', 'a']
+
 def run(args):
   assert len(args) == 0
   exercise_oset()
+  exercise_odict()
   print "OK"
 
 if (__name__ == "__main__"):
