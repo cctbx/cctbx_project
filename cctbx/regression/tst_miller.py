@@ -1625,7 +1625,7 @@ def exercise_multiscale():
     flex.sum(f1.data()*f2.data())/flex.sum(f2.data()*f2.data()), 1)
 
 def exercise_symmetry_agreement_factor():
-  from cmath import phase as arg
+  from libtbx.complex_math import arg
   uc = uctbx.unit_cell((1, 2, 3, 90, 101, 90))
   cs = crystal.symmetry(uc, 'P 1')
   mi = miller.set(
