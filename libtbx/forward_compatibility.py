@@ -35,6 +35,8 @@ if ("reversed" not in __builtins__):
     """ Return a reverse iterator. seq must be an object which supports
     the sequence protocol (the __len__() method and the __getitem__() method
     with integer arguments starting at 0). New in version 2.4. """
+    if (not hasattr(seq, "__getitem__")):
+      seq = list(seq)
     i = len(seq)
     while i > 0:
       i -= 1

@@ -371,6 +371,7 @@ libtbx/find_reference_cycles.py -text
 libtbx/libtbx_refresh.py -text
 libtbx/metric_prefixes.py svneol=native#text/x-python
 libtbx/object_oriented_patterns.py -text
+libtbx/ordered.py svneol=native#text/x-python
 libtbx/pbs_utils.py svneol=native#text/x-python
 libtbx/phil/doc.txt svneol=native#text/plain
 libtbx/phil/example.params -text
@@ -393,6 +394,7 @@ libtbx/tst_easy_pickle.py svneol=native#text/x-python
 libtbx/tst_itertbx.py -text
 libtbx/tst_math_utils.py svneol=native#text/x-python
 libtbx/tst_object_oriented_patterns.py -text
+libtbx/tst_ordered.py svneol=native#text/x-python
 libtbx/tst_path.py svneol=native#text/x-python
 libtbx/tst_runtime_utils.py -text
 libtbx/tst_topological_sort.py svneol=native#text/x-python

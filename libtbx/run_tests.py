@@ -13,6 +13,7 @@ def run():
   "$D/easy_pickle.py",
   "$D/easy_run.py",
   "$D/tst_utils.py",
+  "$D/tst_ordered.py",
   "$D/tst_path.py",
   "$D/tst_math_utils.py",
   "$D/assert_utils.py",
