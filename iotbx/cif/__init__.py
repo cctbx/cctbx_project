@@ -89,3 +89,21 @@ class miller_array_as_cif_block(crystal_symmetry_as_cif_block):
 
   def __init__(self, array):
     crystal_symmetry_as_cif_block.__init__(self, array.crystal_symmetry())
+
+
+def cctbx_data_structure_from_cif(
+  file_object=None, file_path=None, data_structure_builder=None,
+  reader=None, block_heading=None, **kwds):
+  assert data_structure_builder is not None
+  if reader is None:
+    reader = python_reader
+  cif_model = reader(file_path=file_path, file_object=file_object).model()
+  if block_heading is not None:
+    return data_structure_builder(cif_model[block_heading], **kwds)
+  else:
+    xs = None
+    for block in cif_model.values():
+      try:
+        return data_structure_builder(block)
+      except:
+        continue
