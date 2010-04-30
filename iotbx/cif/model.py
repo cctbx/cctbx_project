@@ -4,6 +4,8 @@ if 0 and sys.version_info[0] >= 2 and sys.version_info[1] >= 6:
   from collections import MutableMapping as DictMixin
 else:
   from UserDict import DictMixin
+import copy
+from cStringIO import StringIO
 
 from cctbx.array_family import flex
 
@@ -29,6 +31,26 @@ class cif(DictMixin):
 
   def __repr__(self):
     return repr(OrderedDict(self.iteritems()))
+
+  def copy(self):
+    return cif(self.blocks.copy())
+
+  def deepcopy(self):
+    return cif(copy.deepcopy(self.blocks))
+
+  def show(self, out=None, indent="  ", data_name_field_width=34):
+    if out is None:
+      out = sys.stdout
+    for name, block in self.items():
+      print >> out, "data_%s" %name
+      block.show(
+        out=out, indent=indent, data_name_field_width=data_name_field_width)
+
+  def __str__(self):
+    s = StringIO()
+    self.show(out=s)
+    return s.getvalue()
+
 
 class block(DictMixin):
   def __init__(self):
@@ -67,19 +89,49 @@ class block(DictMixin):
   def __repr__(self):
     return repr(OrderedDict(self.iteritems()))
 
+  def update(self, other=None, **kwargs):
+    if other is None:
+      pass
+    self._items.update(other._items)
+    self.loops.update(other.loops)
+
   def add_data_item(self, tag, value):
     self[tag] = value
 
   def add_loop(self, loop):
     self.loops.setdefault(loop.name(), loop)
 
+  def copy(self):
+    new = block()
+    new._items = self._items.copy()
+    new.loops = self.loops.copy()
+    return new
+
+  def deepcopy(self):
+    new = block()
+    new._items = copy.deepcopy(self._items)
+    new.loops = copy.deepcopy(self.loops)
+    return new
+
+  def show(self, out=None, indent="  ", data_name_field_width=34):
+    if out is None:
+      out = sys.stdout
+    format_str = "%%-%is" %(data_name_field_width-1)
+    for k, v in self._items.items():
+      print >> out, format_str %k, format_value(v)
+    for loop in self.loops.values():
+      print >> out
+      loop.show(out=out, indent=indent)
+
+  def __str__(self):
+    s = StringIO()
+    self.show(out=s)
+    return s.getvalue()
+
+
 class loop(DictMixin):
   def __init__(self, header=None, data=None):
     self._columns = OrderedDict()
-    #if header is not None and data is not None:
-      #assert len(data) % len(header) == 0
-      #for key, value in zip(header, data):
-        #self.add_column(key, value)
     if header is not None:
       for key in header:
         self.setdefault(key, flex.std_string())
@@ -108,9 +160,6 @@ class loop(DictMixin):
             break
       if not isinstance(value, flex.std_string):
         value = flex.std_string(value)
-    #if isinstance(value, tuple):
-      ## need mutable object
-      #value = list(value)
     # value must be a mutable type
     assert hasattr(value, '__setitem__')
     self._columns[key] = value
@@ -151,14 +200,54 @@ class loop(DictMixin):
     for key, value in columns.iteritems():
       self.add_column(key, value)
 
+  def copy(self):
+    new = loop()
+    new._columns = self._columns.copy()
+    return new
+
+  def deepcopy(self):
+    new = loop()
+    new._columns = copy.deepcopy(self._columns)
+    return new
+
+  def show(self, out=None, indent="  "):
+    if out is None:
+      out = sys.stdout
+    print >> out, "loop_"
+    for k in self.keys():
+      print >> out, indent + k
+    values = self._columns.values()
+    for i in range(self.size()):
+      values_to_print = [format_value(values[j][i]) for j in range(len(values))]
+      print >> out, ' '.join([indent] + values_to_print)
+
+  def __str__(self):
+    s = StringIO()
+    self.show(out=s)
+    return s.getvalue()
+
+
 def common_prefix(seq):
-    if not seq:return ""
-    seq.sort()
-    s1, s2 = seq[0], seq[-1]
-    l = min(len(s1), len(s2))
-    if l == 0 :
-        return ""
-    for i in xrange(l) :
-        if s1[i] != s2[i] :
-            return s1[0:i]
-    return s1[0:l]
+  if not seq:return ""
+  seq.sort()
+  s1, s2 = seq[0], seq[-1]
+  l = min(len(s1), len(s2))
+  if l == 0 :
+    return ""
+  for i in xrange(l) :
+    if s1[i] != s2[i] :
+      return s1[0:i]
+  return s1[0:l]
+
+def format_value(value_string):
+  import re
+  m = re.match(r"(?!'|\").*?(?!'|\")", value_string)
+  string_is_quoted = m is None
+  if not string_is_quoted:
+    if re.match(r"(\s*)(;).*?(;)(\s*)", value_string, re.DOTALL) is not None:
+      # a semicolon text field
+      return "\n%s\n" %value_string.strip()
+    elif re.search(r"\s", value_string) is not None:
+      # string needs quoting
+      return "'%s'" %value_string
+  return value_string
