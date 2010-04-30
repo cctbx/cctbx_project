@@ -328,6 +328,8 @@ libtbx/assert_utils.py -text
 libtbx/binary_search.py svneol=native#text/x-python
 libtbx/callbacks.py -text
 libtbx/clear_paths.py svneol=native#text/x-python
+libtbx/cluster.py -text
+libtbx/clusterTests.py -text
 libtbx/code_analysis.py -text
 libtbx/command_line/analyse_code_comments.py -text
 libtbx/command_line/assert_line_count.py svneol=native#text/x-python
