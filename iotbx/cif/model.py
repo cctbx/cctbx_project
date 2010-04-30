@@ -1,4 +1,4 @@
-from libtbx.utils import OrderedDict
+from libtbx.ordered import OrderedDict
 import sys
 if 0 and sys.version_info[0] >= 2 and sys.version_info[1] >= 6:
   from collections import MutableMapping as DictMixin
