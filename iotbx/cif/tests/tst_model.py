@@ -1,5 +1,6 @@
 from cctbx.array_family import flex
-from libtbx.test_utils import Exception_expected
+from libtbx.test_utils import Exception_expected, show_diff
+from cStringIO import StringIO
 
 def exercise_cif_model():
   import iotbx.cif
@@ -42,16 +43,94 @@ def exercise_cif_model():
     ('_loop_c', flex.std_string(['4', '5', '6', '7'])),
     ('_loop_b', flex.std_string(['7', '8', '9', '0']))]
   #
+  block1 = model.block()
+  block1["_tag"] = 2
+  block1["_tag2"] = 1.2
+  loop3 = model.loop(header=("_loop_a", "_loop_b"), data=(6,5,4,3,2,1))
+  block1.add_loop(loop2)
+  block1.add_loop(loop3)
+  block.update(block1)
+  assert block._items.keys() == ['_tag', '_tag1', '_another_tag', '_tag2']
+  assert block._items.values() == ['2', 'a string', '3.142', '1.2']
+  assert block.loops.keys() == ['_loop_', '_loop2_']
+  assert list(block['_loop_a']) == ['6', '4', '2']
+  assert list(block['_loop_b']) == ['5', '3', '1']
+  assert list(block['_loop2_a']) == ['1', '3', '5']
+  assert list(block['_loop2_b']) == ['2', '4', '6']
+  try: block['_loop_c']
+  except KeyError: pass
+  else: raise Exception_expected
+  #
   cif_model["fred"] = block
   assert "fred" in cif_model
   assert cif_model["fred"] is block
-  assert cif_model["fred"]["_tag"] == '3'
+  assert cif_model["fred"]["_tag"] == '2'
   cif_model["fred"]["_tag"] = 4
   assert cif_model["fred"]["_tag"] == '4'
   del cif_model["fred"]["_tag"]
   try: cif_model["fred"]["_tag"]
   except KeyError: pass
   else: raise Exception_expected
+  #
+  cm2 = cif_model.copy()
+  cm3 = cif_model.deepcopy()
+  assert cm2['fred']['_loop_a'] is cif_model ['fred']['_loop_a']
+  assert cm3['fred']['_loop_a'] is not cif_model ['fred']['_loop_a']
+  b2 = block.copy()
+  b3 = block.deepcopy()
+  assert b2['_loop_b'] is block['_loop_b']
+  assert b3['_loop_b'] is not block['_loop_b']
+  l2 = loop.copy()
+  l3 = loop.deepcopy()
+  assert l2['_loop_b'] is loop['_loop_b']
+  assert l3['_loop_b'] is not loop['_loop_b']
+  #
+  s = StringIO()
+  cif_model.show(out=s)
+  assert not show_diff(s.getvalue(),
+"""\
+data_fred
+_tag1                             'a string'
+_another_tag                      3.142
+_tag2                             1.2
+
+loop_
+  _loop_a
+  _loop_b
+   6 5
+   4 3
+   2 1
+
+loop_
+  _loop2_a
+  _loop2_b
+   1 2
+   3 4
+   5 6
+""")
+  s = StringIO()
+  cif_model.show(out=s, indent="    ", data_name_field_width=0)
+  assert not show_diff(s.getvalue(),
+"""\
+data_fred
+_tag1 'a string'
+_another_tag 3.142
+_tag2 1.2
+
+loop_
+    _loop_a
+    _loop_b
+     6 5
+     4 3
+     2 1
+
+loop_
+    _loop2_a
+    _loop2_b
+     1 2
+     3 4
+     5 6
+""")
 
 if __name__ == '__main__':
   exercise_cif_model()
