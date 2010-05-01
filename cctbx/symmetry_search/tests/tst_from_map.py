@@ -80,8 +80,9 @@ def exercise(space_group_info,
   if space_group_info.type().hall_symbol() != ' P 1':
     assert gos.correlation > 0.99
     assert gos.gradient == (0, 0, 0)
-    assert sf_symm.symmetrised_structure_factors(
-      delta=mat.col((0.1, 0.1, 0.1)))[0].correlation < 0.9
+    gos_away_from_max = sf_symm.symmetrised_structure_factors(
+      delta=mat.col((0.1, 0.1, 0.1)))[0]
+    assert gos_away_from_max.correlation < 0.9, gos_away_from_max.correlation
 
   # Recovered origin
   """The sequence of transform read:
