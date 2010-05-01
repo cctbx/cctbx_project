@@ -45,7 +45,7 @@ if ("reversed" not in __builtins__):
 
 if sys.version_info[:2] < (2,6):
   import cmath
-  import math
+  from stdlib import math
   cmath.phase = lambda z: math.atan2(z.imag, z.real)
   cmath.polar = lambda z: (abs(z), cmath.phase(z))
   cmath.rect = lambda r, phi: (r*math.cos(phi), r*math.sin(phi))
