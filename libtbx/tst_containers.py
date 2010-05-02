@@ -1,5 +1,5 @@
 def exercise_oset():
-  from libtbx.ordered import OrderedSet as oset
+  from libtbx.containers import OrderedSet as oset
   o = oset()
   assert repr(o) == "OrderedSet()"
   assert len(o) == 0
@@ -23,7 +23,7 @@ def exercise_oset():
   assert o == set([5, 4, 2, 1])
 
 def exercise_odict():
-  from libtbx.ordered import OrderedDict as odict
+  from libtbx.containers import OrderedDict as odict
   d = odict([('banana',3), ('apple',4), ('pear',1)])
   d.setdefault('orange', 2)
   assert d.has_key('orange')
