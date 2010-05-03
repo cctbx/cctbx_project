@@ -56,6 +56,7 @@ class shift_refinement(object):
     self.fc_in_p1 = fc_in_p1
     self.initial_shift = initial_shift
     self.x = flex.double(self.initial_shift)
+    self.initial_goos = None
     scitbx.lbfgs.run(self,
                      scitbx.lbfgs.termination_parameters(
                        traditional_convergence_test_eps=0.01))
@@ -63,12 +64,16 @@ class shift_refinement(object):
     del self.x
 
   def compute_functional_and_gradients(self):
-    self.sssf = symmetrised_shifted_structure_factors(self.f_obs,
-                                                      self.fc_in_p1,
-                                                      tuple(self.x),
-                                                      compute_gradient=True)
-    self.goos = self.sssf.misfit(self.f_obs)
-    return self.goos.value, flex.double(self.goos.gradient)
+    sssf = symmetrised_shifted_structure_factors(self.f_obs,
+                                                 self.fc_in_p1,
+                                                 tuple(self.x),
+                                                 compute_gradient=True)
+    self.symmetrised_shifted_sf = sssf
+    goos = sssf.misfit(self.f_obs)
+    if self.initial_goos is None:
+      self.initial_goos = goos
+    self.goos = goos
+    return goos.value, flex.double(goos.gradient)
 
 
 # the denominator used throughout for space-group symmetries
