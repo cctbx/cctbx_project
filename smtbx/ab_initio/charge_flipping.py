@@ -325,9 +325,9 @@ def f_calc_symmetrisations(f_obs, f_calc_in_p1, min_cc_peak_height):
   # iterate over the strong peak; for each, shift and symmetrised f_calc
   for peak in correlation_map_peaks:
     if peak.height < min_cc_peak_height: break
-    sssf = symmetry_search.symmetrised_shifted_structure_factors(
+    sr = symmetry_search.shift_refinement(
       f_obs, f_calc_in_p1, peak.site)
-    yield sssf.f_x, mat.col(peak.site), peak.height
+    yield sr.symmetrised_shifted_sf.f_x, sr.shift, sr.goos.correlation
 
 
 def amplitude_quasi_normalisations(f_obs):
