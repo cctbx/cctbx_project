@@ -1,4 +1,5 @@
 from cctbx.array_family import flex
+from cctbx import miller
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import time_log
@@ -44,7 +45,7 @@ def exercise():
       cif_model = reader(
         input_string=cif_miller_array, builder=builder()).model()
       ma_builder = cif.builders.miller_array_builder(cif_model['global'])
-      ma1 = ma_builder.array
+      ma1 = ma_builder.arrays()['_refln_F_squared_meas']
       # also test construction of cif model from miller array
       #ma_cif_block = cif.miller_array_as_cif_block(ma1).cif_block
       #ma2 = cif.builders.miller_array_builder(ma_cif_block).array
@@ -76,6 +77,31 @@ Anomalous flag: None
 Unit cell: (7.9999, 9.3718, 14.7362, 82.625, 81.527, 81.726)
 Space group: P -1 (No. 2)
 """)
+      arrays = miller.array.from_cif(file_object=StringIO(
+        cif_miller_array_template %(
+          '_refln_F_calc', '_refln_F_meas', '_refln_F_sigma')))
+      assert sorted(arrays.keys()) == ['_refln_F_calc', '_refln_F_meas']
+      arrays = miller.array.from_cif(file_object=StringIO(
+        cif_miller_array_template %(
+          '_refln_A_calc', '_refln_B_calc', '_refln_F_meas')))
+      assert sorted(arrays.keys()) == ['_refln_A_calc', '_refln_F_meas']
+      assert arrays['_refln_A_calc'].is_complex_array()
+      arrays = miller.array.from_cif(file_object=StringIO(
+        cif_miller_array_template %(
+          '_refln_A_meas', '_refln_B_meas', '_refln_F_meas')))
+      assert sorted(arrays.keys()) == ['_refln_A_meas', '_refln_F_meas']
+      assert arrays['_refln_A_meas'].is_complex_array()
+      arrays = miller.array.from_cif(file_object=StringIO(
+        cif_miller_array_template %(
+          '_refln_intensity_calc', '_refln_intensity_meas',
+          '_refln_intensity_sigma')))
+      assert sorted(arrays.keys()) == [
+        '_refln_intensity_calc', '_refln_intensity_meas']
+      arrays = miller.array.from_cif(file_object=StringIO(
+        cif_miller_array_template %(
+          '_refln_F_calc', '_refln_phase_calc', '_refln_F_sigma')))
+      assert sorted(arrays.keys()) == ['_refln_F_calc']
+      assert arrays['_refln_F_calc'].is_complex_array()
 
 
 cif_xray_structure = """\
@@ -118,13 +144,7 @@ loop_
 """
 
 cif_miller_array = """\
-#
-# h,k,l, Fc-squared, Fo-squared, sigma(Fo-squared) and status flag
-#
 data_global
-_exptl_crystal_F_000       570.00
-_reflns_d_resolution_high  0.7701
-
 loop_
  _symmetry_equiv_pos_as_xyz
  'x, y, z'
@@ -136,8 +156,6 @@ _cell_length_c    14.7362
 _cell_angle_alpha  82.625
 _cell_angle_beta   81.527
 _cell_angle_gamma  81.726
-
-_shelx_F_squared_multiplier     1.000
 
 loop_
  _refln_index_h
@@ -158,6 +176,35 @@ loop_
    9   0   0      194.74      189.09     20.30 o
   10   0   0      581.30      564.68     35.61 o
  -10   1   0      148.83      170.23     22.26 o
+"""
+
+
+cif_miller_array_template = """\
+data_global
+
+loop_
+ _symmetry_equiv_pos_as_xyz
+ 'x, y, z'
+ '-x, -y, -z'
+
+_cell_length_a     7.9999
+_cell_length_b     9.3718
+_cell_length_c    14.7362
+_cell_angle_alpha  82.625
+_cell_angle_beta   81.527
+_cell_angle_gamma  81.726
+
+loop_
+ _refln_index_h
+ _refln_index_k
+ _refln_index_l
+ %s
+ %s
+ %s
+   1 0 0 1.2 1.3 0.1
+   2 0 0 2.3 2.4 0.2
+   3 0 0 3.4 3.5 0.3
+   4 0 0 4.5 6.7 0.4
 """
 
 if __name__ == '__main__':
