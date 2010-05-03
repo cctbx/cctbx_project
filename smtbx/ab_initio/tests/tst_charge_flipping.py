@@ -85,7 +85,7 @@ def randomly_exercise(flipping_type,
   search_parameters = maptbx.peak_search_parameters(
     interpolate=True,
     min_distance_sym_equiv=1.,
-    max_clusters=int(target_structure_in_p1.scatterers().size()*1.05))
+    max_clusters=int(target_structure_in_p1.scatterers().size()*1.2))
   peak_search_outcome = flipping.rho_map.peak_search(search_parameters)
   peak_structure = emma.model(
     target_structure_in_p1.crystal_symmetry().special_position_settings(),
@@ -94,6 +94,7 @@ def randomly_exercise(flipping_type,
   refined_matches = emma.model_matches(
     target_structure_in_p1.as_emma_model(),
     peak_structure,
+    tolerance=0.5,
     break_if_match_with_no_singles=False
     ).refined_matches
   m = refined_matches[0]
@@ -127,7 +128,7 @@ def randomly_exercise(flipping_type,
   search_parameters = maptbx.peak_search_parameters(
     interpolate=True,
     min_distance_sym_equiv=1.,
-    max_clusters=target_structure.scatterers().size()+1)
+    max_clusters=int(1.5*target_structure.scatterers().size()))
   solution_fft_map = f_calc.fft_map(
     symmetry_flags=maptbx.use_space_group_symmetry)
   solution_peaks = solution_fft_map.peak_search(search_parameters,
