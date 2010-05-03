@@ -97,7 +97,7 @@ def randomly_exercise(flipping_type,
     break_if_match_with_no_singles=False
     ).refined_matches
   m = refined_matches[0]
-  assert m.rms < 0.15, m.rms # no farther than that
+  assert m.rms < 0.2, m.rms # no farther than that
   assert m.rt.r in (mat.identity(3), mat.inversion(3))
 
   reference_shift = -refined_matches[0].rt.t
@@ -127,7 +127,7 @@ def randomly_exercise(flipping_type,
   search_parameters = maptbx.peak_search_parameters(
     interpolate=True,
     min_distance_sym_equiv=1.,
-    max_clusters=int(target_structure.scatterers().size()*1.05))
+    max_clusters=target_structure.scatterers().size()+1)
   solution_fft_map = f_calc.fft_map(
     symmetry_flags=maptbx.use_space_group_symmetry)
   solution_peaks = solution_fft_map.peak_search(search_parameters,
@@ -144,7 +144,7 @@ def randomly_exercise(flipping_type,
   assert refined_matches
   m = refined_matches[0]
   assert not m.singles1, m.show() # all sites match a peak
-  assert m.rms < 0.1, m.rms  # no farther than that
+  assert m.rms < 0.15, m.rms  # no farther than that
   assert m.rt.r in (mat.identity(3), mat.inversion(3))
 
   # success!
@@ -162,7 +162,7 @@ def exercise(flags, space_group_info):
 
   n = len(space_group_info.group())
   print space_group_info.type().hall_symbol(),
-  if n > 24:
+  if not flags.high_symmetry and n > 24:
     print '  [ skipped ]'
     if flags.Verbose: print
     return
@@ -171,11 +171,9 @@ def exercise(flags, space_group_info):
   n_C = 12//n or 1
   n_O = 6//n
   n_N = 3//n
-  #n_C = 3
-  #n_O = 0
-  #n_N = 0
   if flags.Verbose:
-    print "C%i O%i N%i" % (n_C*n, n_O*n, n_N*n)
+    print "unit cell content: C%i O%i N%i" % (n_C*n, n_O*n, n_N*n)
+    print "asu content: C%i O%i N%i" % (n_C, n_O, n_N)
     print "on %s's with %s" % (flags.on, flags.algo)
   flipping_type = eval("charge_flipping.%s_iterator" % flags.algo)
   for i in xrange(int(flags.repeats)):
@@ -195,7 +193,7 @@ def exercise_charge_flipping():
   debug_utils.parse_options_loop_space_groups(
     sys.argv[1:],
     exercise,
-    keywords=("repeats", 'on', 'algo', 'fix_seed'),
+    keywords=("repeats", 'on', 'algo', 'fix_seed', 'high_symmetry'),
     symbols_to_stderr=False,
   )
 
