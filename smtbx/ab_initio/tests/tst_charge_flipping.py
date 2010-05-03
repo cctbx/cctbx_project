@@ -14,8 +14,6 @@ from cctbx.array_family import flex
 from cctbx import euclidean_model_matching as emma
 from cctbx import symmetry_search
 
-from iotbx import mtz
-
 from libtbx.test_utils import approx_equal, is_above_limit
 from libtbx.utils import flat_list
 from libtbx import group_args
