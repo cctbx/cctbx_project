@@ -526,6 +526,38 @@ MASTER_Basepairs_summary = [[], [], [], [], [], [], [], [], [], [],  [], [], [],
 ##########################################################################
 ##########################################################################
 
+def pair_sym_table_as_antons_master(
+      master,
+      unit_cell,
+      pdb_atoms,
+      sites_frac,
+      pair_sym_table,
+      reindexing_array):
+  for table_i_seq,pair_sym_dict in enumerate(pair_sym_table):
+    i_seq = reindexing_array[table_i_seq]
+    site_i = sites_frac[i_seq]
+    atom_i = pdb_atoms[i_seq]
+    resname_i = atom_i.resname
+    atmname_i = atom_i.name
+    for table_j_seq,sym_ops in pair_sym_dict.items():
+      j_seq = reindexing_array[table_j_seq]
+      site_j = sites_frac[j_seq]
+      atom_j = pdb_atoms[j_seq]
+      resname_j = atom_j.resname
+      atmname_j = atom_j.name
+      for sym_op in sym_ops:
+        site_ji = sym_op * site_j
+        distance = unit_cell.distance(site_i, site_ji)
+        if atom_i.resid() != atom_j.resid():
+           master.append([
+             atom_i.resid(),
+             resname_i,
+             atmname_i,
+             atom_j.resid(),
+             resname_j,
+             atmname_j,
+             distance])
+
 ################################################
 ################################################
 #FUNCTION "run(args)"                BEGINNING
@@ -537,37 +569,45 @@ def run(args):
   assert len(args) == 1
   import iotbx.pdb
   pdb_inp = iotbx.pdb.input(file_name=args[0])
-  master = []
+  crystal_symmetry = pdb_inp.crystal_symmetry()
+  sites_cart = pdb_inp.atoms().extract_xyz()
+  if (crystal_symmetry is not None):
+    unit_cell = crystal_symmetry.unit_cell()
+  else:
+    from cctbx import crystal, uctbx
+    unit_cell = uctbx.non_crystallographic_unit_cell(sites_cart=sites_cart)
+    crystal_symmetry = crystal.symmetry(
+      unit_cell=unit_cell, space_group_symbol="P1")
+  sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+  #
+  from cctbx.array_family import flex
+  pair_sym_table = crystal_symmetry.special_position_settings() \
+    .pair_asu_table(
+      distance_cutoff=5.0,
+      sites_frac=sites_frac).extract_pair_sym_table()
   pdb_atoms = pdb_inp.atoms_with_labels()
-  xray_structure = pdb_inp.xray_structure_simple(
-    enable_scattering_type_unknown=True)
-  sites_frac = xray_structure.sites_frac()
-  unit_cell = xray_structure.unit_cell()
-  pair_asu_table = xray_structure.pair_asu_table(
-    distance_cutoff=22.0)
-#  pair_asu_table_P = xray_structure.pair_asu_table(
- #   resname = '  P')
- # print "pair_asu_table_P", pair_asu_table_P
-  pair_sym_table = pair_asu_table.extract_pair_sym_table()
-  count = 0
-  for i_seq,pair_sym_dict in enumerate(pair_sym_table):
-    site_i = sites_frac[i_seq]
-    atom_i = pdb_atoms[i_seq]
-    resname_i = atom_i.resname
-    atmname_i = atom_i.name
-    for j_seq,sym_ops in pair_sym_dict.items():
-      site_j = sites_frac[j_seq]
-      atom_j = pdb_atoms[j_seq]
-      resname_j = atom_j.resname
-      atmname_j = atom_j.name
-      for sym_op in sym_ops:
-        site_ji = sym_op * site_j
-        distance = unit_cell.distance(site_i, site_ji)
-        if atom_i.resid() != atom_j.resid():
-           master.append([[]])
-           master[count] = [atom_i.resid(), resname_i, atmname_i, atom_j.resid(), resname_j, atmname_j, distance]
-           count = count + 1
-  master[0:0] = [args[0]]
+  master = [args[0]]
+  pair_sym_table_as_antons_master(
+    master=master,
+    unit_cell=unit_cell,
+    pdb_atoms=pdb_atoms,
+    sites_frac=sites_frac,
+    pair_sym_table=pair_sym_table,
+    reindexing_array=flex.size_t_range(sites_frac.size()))
+  #
+  p_selection = pdb_inp.atoms().extract_name() == " P  "
+  p_pair_sym_table = crystal_symmetry.special_position_settings() \
+    .pair_asu_table(
+      distance_cutoff=22.0,
+      sites_frac=sites_frac.select(p_selection)).extract_pair_sym_table()
+  pair_sym_table_as_antons_master(
+    master=master,
+    unit_cell=unit_cell,
+    pdb_atoms=pdb_atoms,
+    sites_frac=sites_frac,
+    pair_sym_table=p_pair_sym_table,
+    reindexing_array=p_selection.iselection())
+  #
   return master
 ################################################
 ################################################
@@ -1690,7 +1730,6 @@ First_List[0] = []
 #Sub SECTION file name
 ##########################################################################
 import os
-dir =  os.getcwd()
 
 import re
 mm=re.search(r'\.', pdb_file)
@@ -2386,11 +2425,11 @@ LEGITIMATE_tagged = [] #Will collect basepairs with a 'LEGITIMATE' tag from MAST
 falsely_assigned = [] #Will collect FALSE basepairs from MASTER_Basepairs_summary, from largest first residue to smallest
 undetermined = [] #Will collect 'UNDETERMINED' basepairs from MASTER_Basepairs_summary, from largest first residue to smallest
 file = [[], []]
-pymol0 = dir + "/" + pdb_file_main + "_all-basepairs_REVERSED" + "_PYMOL" + "_script.pml"
+pymol0 = os.path.basename(pdb_file_main) + "_all-basepairs_REVERSED" + "_PYMOL" + "_script.pml"
 file[0] = open(pymol0, 'w')
 line0 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n' + "show sticks" + '\n'
 file[0].write(line0)
-pymol1 = dir + "/" + pdb_file_main + "_all-basepairs" + "_PYMOL" + "_script.pml"
+pymol1 = os.path.basename(pdb_file_main) + "_all-basepairs" + "_PYMOL" + "_script.pml"
 file[1] = open(pymol1, 'w')
 line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
 file[1].write(line1)
@@ -2435,7 +2474,7 @@ for h in range (len(run_cutoff)/2):
    print           "==============================================================================="
 
    #For PYMOL output
-   pymol1 = dir + "/" + pdb_file_main + "_basepairs-at-cutoff_" + run_cutoff[h*2 + 1] + "_PYMOL" + "_script.pml"
+   pymol1 = os.path.basename(pdb_file_main) + "_basepairs-at-cutoff_" + run_cutoff[h*2 + 1] + "_PYMOL" + "_script.pml"
    file[1] = open(pymol1, 'w')
    line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
    file[1].write(line1)
@@ -2457,7 +2496,7 @@ CLOSE(file)
 ##### 2) LIST OF LEGITIMATE BASEPAIRS
 if LEGITIMATE_tagged != []:
     file = [[], []]
-    pymol1 = dir + "/" + pdb_file_main + "_LEGITIMATED-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = os.path.basename(pdb_file_main) + "_LEGITIMATED-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2482,7 +2521,7 @@ if LEGITIMATE_tagged != []:
 ##### 3) LIST OF FALSE BASEPAIRS
 if falsely_assigned != []:
     file = [[], []]
-    pymol1 = dir + "/" + pdb_file_main + "_FALSE-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = os.path.basename(pdb_file_main) + "_FALSE-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2507,7 +2546,7 @@ if falsely_assigned != []:
 ##### 4) LIST OF UNDETERMINED BASEPAIRS BEGINNING
 if undetermined != []:
     file = [[], []]
-    pymol1 = dir + "/" + pdb_file_main + "_UNDETERMINED-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = os.path.basename(pdb_file_main) + "_UNDETERMINED-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2654,7 +2693,7 @@ print "\n\n#######################################################\n############
 #OUTPUT REGARDING BASES WITH POSSIBLE MULTIPLE CONTACTS
 #print "\n\nThe following group of bases have been identified as possible basepairs but cannot be assigned to a single basepair interaction\nPlease visually check the assignment in Pymol.\n##### These bases will be displayed in RED #####."
 file = [[], []]
-pymol1 = dir + "/" + pdb_file_main + "_UNASSIGNABLE-basepairs" + "_PYMOL" + "_script.pml"
+pymol1 = os.path.basename(pdb_file_main) + "_UNASSIGNABLE-basepairs" + "_PYMOL" + "_script.pml"
 file[1] = open(pymol1, 'w')
 line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
 file[1].write(line1)
