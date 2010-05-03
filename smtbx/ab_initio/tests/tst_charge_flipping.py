@@ -97,8 +97,9 @@ def randomly_exercise(flipping_type,
     peak_structure,
     break_if_match_with_no_singles=False
     ).refined_matches
-  assert refined_matches[0].rms < 0.15 # no farther than that
-  assert refined_matches[0].rt.r in (mat.identity(3), mat.inversion(3))
+  m = refined_matches[0]
+  assert m.rms < 0.15 # no farther than that
+  assert m.rt.r in (mat.identity(3), mat.inversion(3))
 
   reference_shift = -refined_matches[0].rt.t
 
