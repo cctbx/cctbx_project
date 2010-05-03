@@ -36,12 +36,11 @@ def randomly_exercise(flipping_type,
   target_structure = random_structure.xray_structure(
     space_group_info=space_group_info,
     elements=elements,
-    use_u_iso=False,
+    use_u_iso=True,
+    random_u_iso=True,
+    random_u_iso_scale=0.04,
     use_u_aniso=False,
   )
-  for s in target_structure.scatterers():
-    assert s.flags.use_u_iso() and s.u_iso == 0
-    assert not s.flags.use_u_aniso()
 
   # Generate its structure factors
   f_target = miller.build_set(
@@ -98,7 +97,7 @@ def randomly_exercise(flipping_type,
     break_if_match_with_no_singles=False
     ).refined_matches
   m = refined_matches[0]
-  assert m.rms < 0.15 # no farther than that
+  assert m.rms < 0.15, m.rms # no farther than that
   assert m.rt.r in (mat.identity(3), mat.inversion(3))
 
   reference_shift = -refined_matches[0].rt.t
@@ -144,7 +143,7 @@ def randomly_exercise(flipping_type,
     ).refined_matches
   assert refined_matches
   m = refined_matches[0]
-  assert not m.singles1 # all sites match a peak
+  assert not m.singles1, m.show() # all sites match a peak
   assert m.rms < 0.1, m.rms  # no farther than that
   assert m.rt.r in (mat.identity(3), mat.inversion(3))
 
