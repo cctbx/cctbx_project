@@ -179,63 +179,59 @@ class crystal_structure_builder(crystal_symmetry_builder):
 
 class miller_array_builder(crystal_symmetry_builder):
 
+  observation_types = {
+    '_refln_F_squared': xray.intensity(),
+    '_refln_intensity': xray.intensity(),
+    '_refln_F': xray.amplitude(),
+    '_refln_A': None,
+  }
+
   def __init__(self, cif_block):
     crystal_symmetry_builder.__init__(self, cif_block)
+    self._arrays = {}
+
     hkl = [flex.int(flex.std_string(cif_block.get('_refln_index_%s' %i)))
            for i in ('h','k','l')]
     indices = flex.miller_index(*hkl)
-    fo2 = cif_block.get('_refln_F_squared_meas')
-    fc2 = cif_block.get('_refln_F_squared_calc')
-    f2_s = cif_block.get('_refln_F_squared_sigma')
-    #
-    fo = cif_block.get('_refln_F_meas')
-    fc = cif_block.get('_refln_F_calc')
-    f_s = cif_block.get('_refln_F_sigma')
-    #
-    fc_a = cif_block.get('_refln_A_calc')
-    fc_b = cif_block.get('_refln_B_calc')
-    fo_a = cif_block.get('_refln_A_meas')
-    fo_b = cif_block.get('_refln_B_meas')
-    #
+
     phase_calc = cif_block.get('_refln_phase_calc')
     phase_meas = cif_block.get('_refln_phase_meas')
+    for prefix in self.observation_types.keys():
+      sigmas = cif_block.get('%s_sigma' %prefix)
+      obs_type = self.observation_types[prefix]
+      if sigmas is not None:
+        sigmas = flex.double(flex.std_string(sigmas))
+      for array_type in ('meas', 'calc'):
+        if prefix == '_refln_A':
+          data = [cif_block.get('_'.join((prefix, array_type))),
+                  cif_block.get('_'.join((prefix.replace('A', 'B'), array_type)))]
+          if data.count(None) == 0:
+            data = flex.complex_double(
+              flex.double(flex.std_string(data[0])),
+              flex.double(flex.std_string(data[1])))
+          else: continue
+        else:
+          data = cif_block.get('_'.join((prefix, array_type)))
+          if data is not None:
+            data = flex.double(flex.std_string(data))
+          else: continue
+        array = miller.array(
+          miller.set(self.crystal_symmetry, indices), data, sigmas)
+        if obs_type is not xray.intensity():
+          if array_type == 'calc' and phase_calc is not None:
+            array = array.phase_transfer(
+              flex.double(flex.std_string(phase_calc)), deg=True)
+          elif array_type == 'meas' and phase_meas is not None:
+            array = array.phase_transfer(
+              flex.double(flex.std_string(phase_meas)), deg=True)
+        array.set_observation_type(obs_type)
+        self._arrays.setdefault('_'.join((prefix, array_type)), array)
 
-    sigmas = None
-    data = None
-    observation_type = None
-    if fo2 is not None or fc2 is not None:
-      observation_type = xray.intensity()
-      if fo2 is not None:
-        data = flex.double(flex.std_string(fo2))
-      else:
-        data = flex.double(flex.std_string(fc2))
-      if f2_s is not None:
-        sigmas = flex.double(flex.std_string(f2_s))
-    elif fo is not None or fc is not None:
-      observation_type = xray.amplitude()
-      if fo is not None:
-        data = flex.double(flex.std_string(fo))
-      else:
-        data = flex.double(flex.std_string(fc))
-      if f_s is not None:
-        sigmas = flex.double(flex.std_string(f_s))
-    elif fo_a is not None and fo_b is not None:
-      data = flex.complex_double(flex.double(flex.std_string(fo_a)),
-                                 flex.double(flex.std_string(fo_b)))
-    elif fc_a is not None and fc_b is not None:
-      data = flex.complex_double(flex.double(flex.std_string(fc_a)),
-                                 flex.double(flex.std_string(fc_b)))
+    if len(self._arrays) == 0:
+      raise RuntimeError("No reflection data present in cif block")
 
-    self.array = miller.array(
-      miller.set(self.crystal_symmetry, indices), data, sigmas)
-    self.array.set_observation_type(observation_type)
-    if phase_meas is not None and self.array.observation_type is xray.amplitude():
-      self.array.phase_transfer(flex.double(flex.std_string(phase_meas)),
-                                deg=True)
-    elif phase_calc is not None and self.array.observation_type is xray.amplitude():
-      self.array.phase_transfer(flex.double(flex.std_string(phase_calc)),
-                                deg=True)
-
+  def arrays(self):
+    return self._arrays
 
 def float_from_string(string):
   """a cif string may be quoted,

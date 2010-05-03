@@ -2855,7 +2855,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       file_object=file_object, file_path=file_path,
       block_heading=block_heading,
       data_structure_builder=builders.miller_array_builder,
-      reader=reader).array
+      reader=reader).arrays()
   from_cif = classmethod(from_cif)
 
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
