@@ -22,7 +22,7 @@ class sequence(object):
       [ char for char in sequence if not char.isspace() ]
       )
 
-  
+
   def format(self, width):
 
     return "\n".join(
@@ -211,8 +211,8 @@ class alignment(object):
   def multiplicity(self):
 
     return len( self.alignments )
-  
-  
+
+
   def format(self, width):
 
     return "\n\n".join( [ sequence( seq, name ).format( width )
