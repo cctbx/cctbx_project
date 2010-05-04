@@ -3,8 +3,10 @@ import sys
 def run(args):
   import os.path as op
   dn = op.dirname
-  d = dn(dn(__file__))
-  d,b = op.split(d)
+  try: __file__
+  except NameError: d = sys.path[0]
+  else: d = dn(__file__)
+  d,b = op.split(dn(d))
   if (b == "libtbx" and op.isdir(d)):
     sys.path.insert(0, d)
   import libtbx.introspection
