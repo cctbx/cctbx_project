@@ -155,7 +155,7 @@ class KCluster2DTestCase(unittest.TestCase):
       clusters = cl.getclusters(2)
       expected = [[(18,13), (15, 12), (17,12), (18,12), (19,12), (16,11), (18, 11), (19,10)],
              [(0,0), (1, 4), (1,2), (2,3), (4,1), (5,2), (6,1), (4,3)]]
-      self.assertTrue( compare_list(
+      self.assertEqual( True, compare_list(
             clusters,
             expected ),
             "Elements differ!\n%s\n%s" % (clusters, expected))
@@ -177,7 +177,7 @@ class KClusterSFBugs(unittest.TestCase):
       cl = KMeansClustering([(1,1), (20,40), (20,41)], lambda x,y:x+y)
       clusters = cl.getclusters(3)
       expected = [(1,1), (20,40), (20,41)]
-      self.assertTrue( compare_list(
+      self.assertEqual( True, compare_list(
             clusters,
             expected ),
             "Elements differ!\n%s\n%s" % (clusters, expected))
