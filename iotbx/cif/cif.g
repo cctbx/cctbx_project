@@ -39,21 +39,21 @@ loop_body
 @init { self.curr_loop_values = flex.std_string()}
 	:	v1=value
 { self.curr_loop_values.append(str($v1.text)) }
-	      ( WHITESPACE
+	      ( WHITESPACE+
 	        v2=value
 { self.curr_loop_values.append(str($v2.text)) }
 	       )*
 	;
 
 save_frame
-	:	SAVE_FRAME_HEADING ( WHITESPACE data_items )+ WHITESPACE SAVE_ ;
+	:	SAVE_FRAME_HEADING ( WHITESPACE+ data_items )+ WHITESPACE+ SAVE ;
 
 data_items
 	:	TAG WHITESPACE value
 { self.builder.add_data_item($TAG.text, $value.text) }
-	      | LOOP_HEADER loop_body
+	      | loop_header WHITESPACE* loop_body
 {
-self.builder.add_loop($LOOP_HEADER.text, data=self.curr_loop_values)
+self.builder.add_loop($loop_header.text, data=self.curr_loop_values)
 }
 	;
 
@@ -62,6 +62,10 @@ data_block
 { self.builder.add_data_block($DATA_BLOCK_HEADING.text) }
 	      ( WHITESPACE+ ( data_items | save_frame ) )*
 	;
+
+loop_header
+	:	LOOP_ ( WHITESPACE+ TAG )+ WHITESPACE
+		;
 
 /*------------------------------------------------------------------
  * TAGS AND VALUES
@@ -148,13 +152,15 @@ SEMI_COLON_TEXT_FIELD
  * RESERVED WORDS - define these after semicolon text field
  *------------------------------------------------------------------*/
 
+fragment
 DATA_	:	( 'D' | 'd' ) ( 'A' | 'a' ) ( 'T' | 't' ) ( 'A' | 'a' ) '_' ;
+
+fragment
+SAVE_	:	( 'S' | 's' ) ( 'A' | 'a' ) ( 'V' | 'v' ) ( 'E' | 'e' ) '_' ;
 
 LOOP_ 	:	( 'L' | 'l' ) ( 'O' | 'o' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_' ;
 
 GLOBAL_ :	( 'G' | 'g' ) ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'B' | 'b' ) ( 'A' | 'a' ) ( 'L' | 'l' ) '_' ;
-
-SAVE_	:	( 'S' | 's' ) ( 'A' | 'a' ) ( 'V' | 'v' ) ( 'E' | 'e' ) '_' ;
 
 STOP_	:	( 'S' | 's' ) ( 'T' | 't' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_' ;
 
@@ -167,13 +173,10 @@ VERSION	:	'#\\#CIF_' (DIGIT)+ '.' (DIGIT)+ ;
 DATA_BLOCK_HEADING
 	:	DATA_ (NON_BLANK_CHAR)+ ;
 
-LOOP_HEADER
-	:	LOOP_ ( WHITESPACE TAG )+ WHITESPACE
-		//{print "tag: "+$TAG.text}
-		;
-
 SAVE_FRAME_HEADING
-	:	SAVE_ (NON_BLANK_CHAR)* ;
+	:	SAVE_ (NON_BLANK_CHAR)+ ;
+
+SAVE	:	SAVE_ ;
 
 // apparently a single quoted string such as 'a dog's life' is legal...
 fragment SINGLE_QUOTED_STRING
@@ -227,6 +230,6 @@ NON_BLANK_CHAR
 	:	NON_BLANK_CHAR_ ;
 
 WHITESPACE
-	: 	('\t' | ' ' | EOL | '\u000C' )+
+	: 	( '\t' | ' ' | EOL | '\u000C' )+
 		//{ $channel = HIDDEN; }
 	;
