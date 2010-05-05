@@ -7,6 +7,8 @@
 #include <boost/lambda/bind.hpp>
 #include <scitbx/error.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/accessors/packed_matrix.h>
 #include <scitbx/sparse/vector.h>
 
 namespace scitbx { namespace sparse {
@@ -208,10 +210,10 @@ class matrix
       return result;
     }
 
-    /// Dense row vector times matrix
     typedef typename vector<T>::dense_vector_const_ref dense_vector_const_ref;
     typedef af::shared<T> dense_vector;
 
+    /// Dense row vector times matrix
     friend
     dense_vector operator*(dense_vector_const_ref const &u, matrix const &a) {
       dense_vector result(a.n_cols(), af::init_functor_null<value_type>());
@@ -228,6 +230,67 @@ class matrix
       matrix_x_vector<matrix, vector<T> > multiply(a.n_rows());
       for (column_index j=0; j < b.n_cols(); j++) {
         multiply(a, b.col(j), result.col(j));
+      }
+      return result;
+    }
+
+    typedef af::versa<value_type, af::packed_u_accessor>
+            symmetric_matrix_t;
+    typedef af::const_ref<value_type, af::packed_u_accessor>
+            symmetric_matrix_const_ref_t;
+    typedef af::ref<value_type, af::packed_u_accessor>
+            symmetric_matrix_ref_t;
+
+    /// B^T A B where B is this matrix and A is a symmetric dense matrix
+        /** This is useful for the interplay between change of variable and
+        least-squares covariance matrix. If x and y are parameter vectors
+        related by of respective size p < n:
+        \f[
+            \nabla_x = B \nabla_y,
+        \f]
+        where B is a p x n matrix, or equivalently
+        \f[
+            \delta y = B^T \delta x,
+        \f]
+         then the covariance matrices \f$V_y\f$ and \f$V_x\f$ for respectively
+         x and y are related by
+        \f[
+            V_y = B^T V_x B. (1)
+        \f]
+        In practice,
+        \f[
+            B = \left[ \frac{\partial y_j}{\partial x_i} \right]_{ij}
+        \f]
+        has sparse columns because \f$y_j\f$ depends only on a few \f$x_i\f$,
+        which makes the storage scheme adopted here a perfect match memory-wise.
+        Furthermore, the computation of (1) turns out to be well adapted
+        to that storage scheme too.
+     */
+    symmetric_matrix_t
+    this_transpose_times_symmetric_times_this(
+      symmetric_matrix_const_ref_t const &a) const
+    {
+        // This verbosity seems necessary to please gcc 3.2
+      af::packed_u_accessor sym_n_x_n(n_cols());
+      af::init_functor_null<value_type> dont_init;
+      symmetric_matrix_t result(sym_n_x_n, dont_init);
+      symmetric_matrix_ref_t c = result.ref();
+
+      int n = c.accessor().n;
+      for (int i=0; i<n; ++i) for (int j=i; j<n; ++j) {
+        c(i,j) = 0;
+        for (const_row_iterator p = col(i).begin(); p != col(i).end(); ++p) {
+          row_index k = p.index();
+          value_type b_ki = *p;
+          value_type s = 0;
+          for (const_row_iterator q = col(j).begin(); q != col(j).end(); ++q) {
+                row_index l = q.index();
+            value_type b_lj = *q;
+            if (k <= l) s += a(k,l)*b_lj;
+            else        s += a(l,k)*b_lj;
+          }
+          c(i,j) += b_ki*s;
+        }
       }
       return result;
     }

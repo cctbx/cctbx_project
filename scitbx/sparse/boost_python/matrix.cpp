@@ -64,6 +64,8 @@ struct matrix_wrapper
       .def("permute_rows", permute_rows, arg("permutation"), rir)
       .def(self*vector<T>())
       .def(self*self)
+        .def("self_transpose_times_symmetric_times_self",
+           &wt::this_transpose_times_symmetric_times_this)
       .def(typename wt::dense_vector_const_ref() * self)
       .def("as_mathematica", as_mathematica)
     ;

@@ -150,6 +150,19 @@ def exercise_matrix_x_matrix():
   cc1 = aa.matrix_multiply(bb)
   assert approx_equal(cc, cc1)
 
+def exercise_a_tr_b_a():
+  for m,n in [(5,5), (3,5), (5,3)]:
+    for n_test in xrange(50):
+      b = flex.random_double(m*(m+1)/2)
+      a = random_sparse_matrix(m,n)
+      c = a.self_transpose_times_symmetric_times_self(b)
+      aa = a.as_dense_matrix()
+      bb = b.matrix_packed_u_as_symmetric()
+      cc = c.matrix_packed_u_as_symmetric()
+      assert approx_equal(
+        cc,
+        aa.matrix_transpose().matrix_multiply(bb.matrix_multiply(aa)))
+
 def exercise_row_vector_x_matrix():
   u = flex.double((1,2,3))
   a = sparse.matrix(3,5)
@@ -166,6 +179,7 @@ def run():
   exercise_matrix()
   exercise_matrix_x_vector()
   exercise_matrix_x_matrix()
+  exercise_a_tr_b_a()
   print 'OK'
 
 if __name__ == '__main__':
