@@ -85,6 +85,10 @@ struct test_case
     double e = equality_ratio(u_trans_u.ref(), a1.ref());
     SCITBX_ASSERT(e < thresh);
 
+    symmetric_matrix_packed_u_t inv_a = cholesky::inverse_of_u_transpose_u(u_);
+    double f = residual_of_symmetric(a0_u.ref(), inv_a.const_ref());
+    SCITBX_ASSERT( f < thresh )(f);
+
     scitbx::random::mersenne_twister gen;
     for (int k=0; k<5; ++k) {
       vec_t x = gen.random_double(n);
