@@ -9,6 +9,13 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
+  struct packed_u_size_functor
+  {
+    static std::size_t get(std::size_t sz) {
+      return dimension_from_packed_size(sz);
+    }
+  };
+
   template <typename ElementType, typename PackedAccessorType>
   struct versa_packed_to_flex
   {
