@@ -9,9 +9,11 @@ from cctbx.xray import structure
 from iotbx.cif import model, builders
 
 def python_reader(file_path=None, file_object=None, input_string=None,
-                  builder=builders.cif_model_builder()):
+                  builder=None):
   assert [file_path, file_object, input_string].count(None) == 2
   assert has_antlr3
+  if builder is None:
+    builder = builders.cif_model_builder()
   from iotbx.cif import cifLexer, cifParser
   import antlr3
   if file_object is not None:
