@@ -65,6 +65,37 @@ namespace scitbx { namespace matrix { namespace cholesky {
   };
 
 
+  /// Inverse of U^T U
+  /** This uses the alternative method presented at the end of section 2.8.3
+      in Ake Bjorck's classic book.
+   */
+  template <typename FloatType>
+  af::versa<FloatType, af::packed_u_accessor>
+  inverse_of_u_transpose_u(af::ref<FloatType, af::packed_u_accessor> const &u) {
+    typedef FloatType f_t;
+    af::versa<f_t, af::packed_u_accessor> result(u.accessor(),
+                                                 af::init_functor_null<f_t>());
+    af::ref<f_t, af::packed_u_accessor> c = result.ref();
+
+    int n = u.accessor().n;
+    for (int k=n-1; k>=0; --k) {
+      // formula (2.8.13)
+      c(k,k) = 1/u(k,k);
+      for (int j=k+1; j<n; ++j) c(k,k) -= u(k,j)*c(k,j);
+      c(k,k) *= 1/u(k,k);
+
+      // formula (2.8.14)
+      for (int i=k-1; i>=0; --i) {
+        c(i,k) = 0;
+        for (int j=i+1; j<=k; ++j) c(i,k) += u(i,j)*c(j,k);
+        for (int j=k+1; j<n; ++j) c(i,k) += u(i,j)*c(k,j);
+        c(i,k) *= -1/u(i,i);
+      }
+    }
+    return result;
+  }
+
+
   /// Cholesky decomposition A = L L^T in place
   template <typename FloatType>
   struct l_l_transpose_decomposition_in_place
