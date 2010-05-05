@@ -57,8 +57,7 @@ namespace scitbx { namespace matrix { namespace boost_python {
 
     cholesky_decomposition_for_python(af::shared<scalar_t> const &a)
       : DecompositionType(packed_ref_t(const_cast<scalar_t *>(a.begin()),
-                                       scitbx::matrix::
-                                       symmetric_n_from_packed_size(a.size()))),
+                                       af::dimension_from_packed_size(a.size()))),
         a_(a) // so as to make a lives longer than this
     {}
   };

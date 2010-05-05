@@ -218,7 +218,7 @@ namespace scitbx { namespace matrix {
     unsigned i,
     unsigned j)
   {
-    unsigned n = symmetric_n_from_packed_size(u.size());
+    unsigned n = af::dimension_from_packed_size(u.size());
     SCITBX_ASSERT(i < n);
     SCITBX_ASSERT(j < n);
     if (i == j) return;

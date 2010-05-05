@@ -110,7 +110,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     void add_to(scitbx::lstbx::normal_equations<scalar_t> &normal_eqns) {
       if (!floating_origin_restraint_relative_weight) return;
       typedef scitbx::lstbx::normal_equations<scalar_t> normal_eqns_t;
-      af::ref<scalar_t, scitbx::matrix::packed_u_accessor>
+      af::ref<scalar_t, af::packed_u_accessor>
       a = normal_eqns.normal_matrix().ref();
       scitbx::math::accumulator::min_max_accumulator<scalar_t> acc(a(0,0));
       for (int i=1; i<a.n_rows(); ++i) acc(a(i,i));

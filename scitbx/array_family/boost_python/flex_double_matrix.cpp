@@ -14,13 +14,12 @@ namespace scitbx { namespace af {
 
 namespace {
 
-  // test here in lack of a better place
   void
   exercise_packed_u_accessor()
   {
-    versa<double, matrix::packed_u_accessor>
-      a(matrix::packed_u_accessor(5));
-    ref<double, matrix::packed_u_accessor> r = a.ref();
+    versa<double, packed_u_accessor>
+      a(packed_u_accessor(5));
+    ref<double, packed_u_accessor> r = a.ref();
     SCITBX_ASSERT(a.size() == 5*(5+1)/2);
     SCITBX_ASSERT(r.size() == 5*(5+1)/2);
     SCITBX_ASSERT(a.accessor().n == 5);
@@ -35,8 +34,8 @@ namespace {
     }
   }
 
-  versa<double, matrix::packed_u_accessor> exercise_versa_packed_u_to_flex() {
-    versa<double, matrix::packed_u_accessor> result(3);
+  versa<double, packed_u_accessor> exercise_versa_packed_u_to_flex() {
+    versa<double, packed_u_accessor> result(3);
     for (int i=0; i<3; ++i) for (int j=i; j<3; ++j) result(i,j) = 10*(i+1) + j+1;
     return result;
   }
@@ -120,7 +119,7 @@ namespace boost_python {
   double (*matrix_norm_1)(const_ref<double, mat_grid> const &) = matrix::norm_1;
 
   double matrix_symmetric_upper_triangle_quadratic_form(
-    const_ref<double, matrix::packed_u_accessor> const &q,
+    const_ref<double, packed_u_accessor> const &q,
     const_ref<double> const &x)
   {
     SCITBX_ASSERT(q.n_columns() == x.size());

@@ -1,7 +1,7 @@
 /// Conversion of versa<T, scitbx::matrix::packed_[ul]_accessor> to flex array.
 
 #include <scitbx/array_family/accessors/flex_grid.h>
-#include <scitbx/matrix/packed.h>
+#include <scitbx/array_family/accessors/packed_matrix.h>
 #include <scitbx/array_family/boost_python/ref_flex_conversions.h>
 
 #include <boost/python/object.hpp>
@@ -38,17 +38,17 @@ namespace scitbx { namespace af { namespace boost_python {
   {
     default_packed_flex_conversions() {
       // Upper diagonal packed
-      versa_packed_to_flex<ElementType, scitbx::matrix::packed_u_accessor>();
-      ref_from_flex<const_ref<ElementType, matrix::packed_u_accessor>,
+      versa_packed_to_flex<ElementType, packed_u_accessor>();
+      ref_from_flex<const_ref<ElementType, packed_u_accessor>,
                     packed_u_size_functor>();
-      ref_from_flex<ref<ElementType, matrix::packed_u_accessor>,
+      ref_from_flex<ref<ElementType, packed_u_accessor>,
                     packed_u_size_functor>();
 
       // Lower diagonal packed
-      versa_packed_to_flex<ElementType, scitbx::matrix::packed_l_accessor>();
-      ref_from_flex<const_ref<ElementType, matrix::packed_l_accessor>,
+      versa_packed_to_flex<ElementType, packed_l_accessor>();
+      ref_from_flex<const_ref<ElementType, packed_l_accessor>,
                     packed_u_size_functor>();
-      ref_from_flex<ref<ElementType, matrix::packed_l_accessor>,
+      ref_from_flex<ref<ElementType, packed_l_accessor>,
                     packed_u_size_functor>();
     }
 

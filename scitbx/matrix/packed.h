@@ -4,82 +4,18 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/array_family/accessors/packed_matrix.h>
 
 namespace scitbx { namespace matrix {
 
-  /// Accessor for the upper diagonal of a square matrix packed by row
-  class packed_u_accessor
-  {
-    public:
-      typedef unsigned index_value_type;
-      typedef af::tiny_plain<unsigned, 2> index_type;
-
-      /// Construct an accessor to a n x n matrix
-      explicit
-      packed_u_accessor(unsigned n_=0) : n(n_) {}
-
-      unsigned n_columns() const { return n; }
-      unsigned n_rows() const { return n; }
-      bool is_square() const { return true; }
-
-      /// The size of the storage for the whole upper diagonal
-      std::size_t
-      size_1d() const { return n*(n+1)/2; }
-
-      /// The index in the storage array for element (i,j) of the matrix
-      /** Precondition: i <= j
-          Not enforced for efficiency
-      */
-      unsigned
-      operator()(unsigned i, unsigned j) const
-      {
-        return i*(n-1) - i*(i-1)/2 + j;
-      }
-
-      unsigned n;
-  };
-
-
-  /// Accessor for the lower diagonal of a square matrix packed by row
-  class packed_l_accessor
-  {
-  public:
-    typedef unsigned index_value_type;
-    typedef af::tiny_plain<unsigned, 2> index_type;
-
-    /// Construct an accessor to a n x n matrix
-    explicit
-    packed_l_accessor(unsigned n_=0) : n(n_) {}
-
-    unsigned n_columns() const { return n; }
-    unsigned n_rows() const { return n; }
-    bool is_square() const { return true; }
-
-    /// The size of the storage for the whole lower diagonal
-    std::size_t
-    size_1d() const { return n*(n+1)/2; }
-
-    /// The index in the storage array for element (i,j) of the matrix
-    /** Precondition: i >= j
-     Not enforced for efficiency
-     */
-    unsigned
-    operator()(unsigned i, unsigned j) const
-    {
-      return i*(i+1)/2 + j;
-    }
-
-    unsigned n;
-  };
+  using af::packed_u_accessor;
+  using af::packed_l_accessor;
 
   inline
   unsigned
   symmetric_n_from_packed_size(std::size_t packed_size)
   {
-    unsigned n = static_cast<unsigned>(
-      (std::sqrt(1.0+8.0*static_cast<double>(packed_size))-1.0)/2.0 + 0.5);
-    SCITBX_ASSERT(n*(n+1)/2 == packed_size);
-    return n;
+    return af::dimension_from_packed_size(packed_size);
   }
 
   template <typename FloatType>
@@ -107,7 +43,7 @@ namespace scitbx { namespace matrix {
   packed_u_as_upper_triangle(
     af::const_ref<FloatType> const& a)
   {
-    unsigned n = symmetric_n_from_packed_size(a.size());
+    unsigned n = af::dimension_from_packed_size(a.size());
     af::versa<FloatType, af::c_grid<2> > result(
       af::c_grid<2>(n,n), af::init_functor_null<FloatType>());
     FloatType *r = result.begin();
@@ -147,7 +83,7 @@ namespace scitbx { namespace matrix {
   packed_l_as_lower_triangle(
     af::const_ref<FloatType> const& a)
   {
-    unsigned n = symmetric_n_from_packed_size(a.size());
+    unsigned n = af::dimension_from_packed_size(a.size());
     af::versa<FloatType, af::c_grid<2> > result(
       af::c_grid<2>(n,n), af::init_functor_null<FloatType>());
     FloatType *r = result.begin();
@@ -302,7 +238,7 @@ namespace scitbx { namespace matrix {
   packed_u_as_symmetric(
     af::const_ref<FloatType> const& a)
   {
-    unsigned n = symmetric_n_from_packed_size(a.size());
+    unsigned n = af::dimension_from_packed_size(a.size());
     af::versa<FloatType, af::c_grid<2> > result(
       af::c_grid<2>(n,n), af::init_functor_null<FloatType>());
     FloatType *r = result.begin();
@@ -324,7 +260,7 @@ namespace scitbx { namespace matrix {
   packed_l_as_symmetric(
     af::const_ref<FloatType> const& a)
   {
-    unsigned n = symmetric_n_from_packed_size(a.size());
+    unsigned n = af::dimension_from_packed_size(a.size());
     af::versa<FloatType, af::c_grid<2> > result(
       af::c_grid<2>(n,n), af::init_functor_null<FloatType>());
     FloatType *r = result.begin();
@@ -360,7 +296,7 @@ namespace scitbx { namespace matrix {
   packed_u_diagonal(
     af::const_ref<FloatType> const& a)
   {
-    unsigned n = symmetric_n_from_packed_size(a.size());
+    unsigned n = af::dimension_from_packed_size(a.size());
     af::shared<FloatType> result(
       static_cast<std::size_t>(n), af::init_functor_null<FloatType>());
     packed_u_diagonal(result.begin(), a.begin(), n);

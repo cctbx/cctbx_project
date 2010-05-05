@@ -6,10 +6,10 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/mat_grid.h>
+#include <scitbx/array_family/accessors/packed_matrix.h>
 #include <scitbx/array_family/accessors/row_and_column.h>
 #include <boost/random/variate_generator.hpp>
 #include <boost/random/normal_distribution.hpp>
-#include <scitbx/matrix/packed.h>
 #include <scitbx/matrix/matrix_vector_operations.h>
 #include <scitbx/math/utils.h>
 #include <scitbx/math/accumulators.h>
@@ -38,8 +38,8 @@ struct reflection
   typedef af::versa<scalar_t, dim> matrix_t;
   typedef af::ref<scalar_t, af::mat_grid> matrix_ref_t;
   typedef af::const_ref<scalar_t, af::mat_grid> matrix_const_ref_t;
-  typedef af::versa<double, packed_u_accessor> symmetric_matrix_packed_u_t;
-  typedef af::ref<double, packed_u_accessor> symmetric_matrix_packed_u_ref_t;
+  typedef af::versa<double, af::packed_u_accessor> symmetric_matrix_packed_u_t;
+  typedef af::ref<double, af::packed_u_accessor> symmetric_matrix_packed_u_ref_t;
 
   /// Normalisation of the Householder vector
   scalar_t beta;
@@ -682,8 +682,8 @@ struct random_normal_matrix_generator
   typedef af::c_grid<2> dim;
   typedef af::versa<scalar_t, dim> matrix_t;
   typedef af::ref<scalar_t, af::mat_grid> matrix_ref_t;
-  typedef af::versa<double, packed_u_accessor> symmetric_matrix_packed_u_t;
-  typedef af::ref<double, packed_u_accessor> symmetric_matrix_packed_u_ref_t;
+  typedef af::versa<double, af::packed_u_accessor> symmetric_matrix_packed_u_t;
+  typedef af::ref<double, af::packed_u_accessor> symmetric_matrix_packed_u_ref_t;
 
   UniformRandomNumberGenerator uniform_gen;
   boost::normal_distribution<scalar_t> normal_dist;

@@ -4,7 +4,7 @@
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/boost_python/utils.h>
-#include <scitbx/matrix/packed.h>
+#include <scitbx/array_family/accessors/packed_matrix.h>
 #include <boost/python/object.hpp>
 #include <boost/python/extract.hpp>
 
@@ -20,7 +20,7 @@ namespace scitbx { namespace af { namespace boost_python {
   struct packed_u_size_functor
   {
     static std::size_t get(std::size_t sz) {
-      return matrix::symmetric_n_from_packed_size(sz);
+      return dimension_from_packed_size(sz);
     }
   };
 
