@@ -5,6 +5,7 @@
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/array_family/ref_algebra.h>
 #include <scitbx/matrix/norms.h>
+#include <scitbx/matrix/packed.h>
 #include <limits>
 #include <cmath>
 
@@ -67,6 +68,23 @@ namespace scitbx { namespace matrix {
     af::shared<T> y = matrix_multiply(a, x);
     af::shared<T> delta = y.ref() - b;
     return norm_1(delta.ref())/(norm_1(a) * norm_1(x) * eps);
+  }
+
+  /// Test the quality of the inverse of a obtained from A Cholesky decomposition
+  /** Terribly inefficient implementation */
+  template <typename T>
+  T residual_of_symmetric(af::const_ref<T, af::packed_u_accessor> const &a,
+                          af::const_ref<T, af::packed_u_accessor> const &a_inv,
+                          T eps=std::numeric_limits<T>::epsilon())
+  {
+    SCITBX_ASSERT(a.accessor().n == a_inv.accessor().n);
+    std::size_t n = a.accessor().n;
+    af::versa<T, af::mat_grid> a_ = packed_u_as_symmetric(a.as_1d()),
+                               a_inv_ = packed_u_as_symmetric(a_inv.as_1d());
+    af::versa<T, af::mat_grid> delta = af::matrix_multiply(a_.ref(),
+                                                           a_inv_.ref());
+    af::matrix_diagonal_add_in_place(delta.ref(), T(-1));
+    return norm_1(delta.ref())/(n*norm_1(a_.ref())*norm_1(a_inv_.ref())*eps);
   }
 
 
