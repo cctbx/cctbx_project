@@ -6,6 +6,7 @@
 #include <scitbx/matrix/matrix_vector_operations.h>
 #include <scitbx/math/floating_point_epsilon.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/accessors/packed_matrix.h>
 #include <vector>
 
 namespace scitbx { namespace matrix { namespace cholesky {
@@ -40,7 +41,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
     template <typename FloatType>
     static
     void using_l_l_transpose(af::const_ref<FloatType,
-                                           matrix::packed_l_accessor> const &l,
+                                           af::packed_l_accessor> const &l,
                              af::ref<FloatType> const &b)
     {
       SCITBX_ASSERT(l.n_columns() == b.size());
@@ -53,7 +54,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
     template <typename FloatType>
     static
     void using_u_transpose_u(af::const_ref<FloatType,
-                                           matrix::packed_u_accessor> const &u,
+                                           af::packed_u_accessor> const &u,
                              af::ref<FloatType> const &b)
     {
       SCITBX_ASSERT(u.n_columns() == b.size());
@@ -69,7 +70,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
   struct l_l_transpose_decomposition_in_place
   {
     typedef FloatType scalar_t;
-    typedef matrix::packed_l_accessor accessor_type;
+    typedef af::packed_l_accessor accessor_type;
     typedef af::ref<scalar_t, accessor_type> matrix_l_ref;
 
     /// Information on failure
@@ -129,7 +130,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
   struct u_transpose_u_decomposition_in_place
   {
     typedef FloatType scalar_t;
-    typedef matrix::packed_u_accessor accessor_type;
+    typedef af::packed_u_accessor accessor_type;
     typedef af::ref<scalar_t, accessor_type> matrix_u_ref;
 
     /// Information on failure
@@ -226,7 +227,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
         floating_point_epsilon = math::floating_point_epsilon<f_t>::get();
       if (epsilon <= 0) epsilon = floating_point_epsilon;
       af::ref<f_t> u = packed_u.ref();
-      unsigned n = symmetric_n_from_packed_size(u.size());
+      unsigned n = af::dimension_from_packed_size(u.size());
       e.resize(n);
       pivots.resize(n);
       f_t gamma = 0;
@@ -329,7 +330,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
     solve(af::const_ref<FloatType> const& b) const
     {
       int n = pivots.size();
-      af::const_ref<FloatType, matrix::packed_u_accessor> u(packed_u.begin(), n);
+      af::const_ref<FloatType, af::packed_u_accessor> u(packed_u.begin(), n);
       // x = P^T (U^T U)^{-1} P b
       af::shared<FloatType> result(b.begin(), b.end());
       permutation_vector(n, result.begin(), pivots.begin());

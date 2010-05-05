@@ -250,7 +250,7 @@ namespace scitbx { namespace af {
   {
     unsigned a_n_rows = a.accessor()[0];
     unsigned a_n_columns = a.accessor()[1];
-    SCITBX_ASSERT(matrix::symmetric_n_from_packed_size(b.size())
+    SCITBX_ASSERT(dimension_from_packed_size(b.size())
                == a_n_columns);
     typedef typename
       binary_operator_traits<NumTypeA, NumTypeB>::arithmetic
@@ -271,7 +271,7 @@ namespace scitbx { namespace af {
   {
     unsigned a_n_rows = a.accessor()[0];
     unsigned a_n_columns = a.accessor()[1];
-    SCITBX_ASSERT(matrix::symmetric_n_from_packed_size(b.size())
+    SCITBX_ASSERT(dimension_from_packed_size(b.size())
                == a_n_columns);
     typedef typename
       binary_operator_traits<NumTypeA, NumTypeB>::arithmetic
@@ -368,7 +368,7 @@ namespace scitbx { namespace af {
                               ref<FloatType> const &b,
                               bool unit_diag=false)
   {
-    SCITBX_ASSERT(matrix::symmetric_n_from_packed_size(l.size()) == b.size());
+    SCITBX_ASSERT(dimension_from_packed_size(l.size()) == b.size());
     af::shared<FloatType> x(b.begin(), b.end());
     matrix::forward_substitution(b.size(), l.begin(), x.begin(), unit_diag);
     return x;
@@ -380,7 +380,7 @@ namespace scitbx { namespace af {
                            ref<FloatType> const &b,
                            bool unit_diag=false)
   {
-    SCITBX_ASSERT(matrix::symmetric_n_from_packed_size(u.size()) == b.size());
+    SCITBX_ASSERT(dimension_from_packed_size(u.size()) == b.size());
     af::shared<FloatType> x(b.begin(), b.end());
     matrix::back_substitution(b.size(), u.begin(), x.begin(), unit_diag);
     return x;
@@ -392,7 +392,7 @@ namespace scitbx { namespace af {
                                               ref<FloatType> const &b,
                                               bool unit_diag=false)
   {
-    SCITBX_ASSERT(matrix::symmetric_n_from_packed_size(u.size()) == b.size());
+    SCITBX_ASSERT(dimension_from_packed_size(u.size()) == b.size());
     af::shared<FloatType> x(b.begin(), b.end());
     matrix::forward_substitution_given_transpose(b.size(), u.begin(), x.begin(),
                                                  unit_diag);
@@ -405,7 +405,7 @@ namespace scitbx { namespace af {
                                            ref<FloatType> const &b,
                                            bool unit_diag=false)
   {
-    SCITBX_ASSERT(matrix::symmetric_n_from_packed_size(l.size()) == b.size());
+    SCITBX_ASSERT(dimension_from_packed_size(l.size()) == b.size());
     af::shared<FloatType> x(b.begin(), b.end());
     matrix::back_substitution_given_transpose(b.size(), l.begin(), x.begin(),
                                               unit_diag);

@@ -3,7 +3,7 @@
 
 #include <scitbx/array_family/versa_algebra.h>
 #include <scitbx/array_family/versa_matrix.h>
-#include <scitbx/matrix/packed.h>
+#include <scitbx/array_family/accessors/packed_matrix.h>
 
 namespace scitbx { namespace matrix {
 
@@ -11,10 +11,10 @@ typedef af::c_grid<2> dim;
 typedef af::versa<double, dim> matrix_t;
 typedef af::ref<double, dim> matrix_ref_t;
 typedef af::const_ref<double, dim> matrix_const_ref_t;
-typedef af::versa<double, packed_u_accessor> symmetric_matrix_packed_u_t;
-typedef af::ref<double, packed_u_accessor> symmetric_matrix_packed_u_ref_t;
-typedef af::versa<double, packed_l_accessor> symmetric_matrix_packed_l_t;
-typedef af::ref<double, packed_l_accessor> symmetric_matrix_packed_l_ref_t;
+typedef af::versa<double, af::packed_u_accessor> symmetric_matrix_packed_u_t;
+typedef af::ref<double, af::packed_u_accessor> symmetric_matrix_packed_u_ref_t;
+typedef af::versa<double, af::packed_l_accessor> symmetric_matrix_packed_l_t;
+typedef af::ref<double, af::packed_l_accessor> symmetric_matrix_packed_l_ref_t;
 typedef af::shared<double> vec_t;
 typedef af::ref<double> vec_ref_t;
 

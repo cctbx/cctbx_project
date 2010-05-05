@@ -14,19 +14,19 @@ namespace scitbx { namespace lstbx {
 #define SCITBX_LSTBX_DECLARE_ARRAY_TYPE(FloatType)                            \
     typedef FloatType scalar_t;                                               \
     typedef af::ref_owning_versa<scalar_t,                                    \
-                                 matrix::packed_u_accessor>                   \
+                                 af::packed_u_accessor>                       \
             symmetric_matrix_owning_ref_t;                                    \
     typedef af::ref_owning_versa<scalar_t,                                    \
-                                 matrix::packed_u_accessor>                   \
+                                 af::packed_u_accessor>                       \
             upper_diagonal_matrix_owning_ref_t;                               \
     typedef af::ref<scalar_t,                                                 \
-                    matrix::packed_u_accessor>                                \
+                    af::packed_u_accessor>                                    \
             symmetric_matrix_ref_t;                                           \
     typedef af::versa<scalar_t,                                               \
-                      matrix::packed_u_accessor>                              \
+                      af::packed_u_accessor>                                  \
             symmetric_matrix_t;                                               \
     typedef af::versa<scalar_t,                                               \
-                      matrix::packed_u_accessor>                              \
+                      af::packed_u_accessor>                                  \
             upper_diagonal_matrix_t;                                          \
     typedef af::ref_owning_versa<FloatType, af::mat_grid> matrix_owning_ref_t;\
     typedef af::ref<FloatType, af::mat_grid> matrix_ref_t;                    \
