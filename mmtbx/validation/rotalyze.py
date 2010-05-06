@@ -39,7 +39,7 @@ def get_master_phil():
 }
 """)
 
-class rotalyze():
+class rotalyze(object):
 
   #{{{ flag routines
   #flag routines-----------------------------------------------------------------------------------

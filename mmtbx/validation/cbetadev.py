@@ -39,7 +39,7 @@ def get_master_phil():
 
     """)
 
-class cbetadev():
+class cbetadev(object):
   #{{{ local_help
   #flag routines-----------------------------------------------------------------------------------
   def local_help(self):
@@ -67,7 +67,7 @@ class cbetadev():
     return summary,header
   #------------------------------------------------------------------------------------------------
   #}}}
-
+  
   #{{{ run
   def run(self, args, out=sys.stdout, quiet=False):
     master_phil = get_master_phil()

@@ -37,7 +37,7 @@ def get_master_phil():
 
     """)
 
-class clashscore():
+class clashscore(object):
   #flag routines-----------------------------------------------------------------------------------
   def usage(self):
     print "\nUSAGE:  python clashscore.py file.pdb\n"
@@ -80,7 +80,7 @@ class clashscore():
     #  pass
       #print "Values of all params:"
       #master_params.format(python_object=params).show(out=out)
-
+    
     self.params=work_params # makes params available to whole class
 
     if self.params.clashscore.changes:
