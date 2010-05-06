@@ -5,7 +5,7 @@ def run(args):
   forever = "--forever" in args
   while True:
     boost.python.ext.libtbx_introspection_show_stack()
-    boost.python.ext.boost_adptbx_libc_backtrace(0)
+    boost.python.ext.boost_adaptbx_libc_backtrace(0)
     if (not forever): break
   print "OK"
 

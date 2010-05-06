@@ -14,6 +14,7 @@
 
 #include <boost_adaptbx/type_id_eq.h>
 #include <boost_adaptbx/python_streambuf.h>
+#include <boost_adaptbx/libc_backtrace.hpp>
 
 #include <boost/cstdint.hpp>
 #include <sstream>
@@ -34,20 +35,6 @@
  || defined(_MSC_VER)
 #include <signal.h>
 #define BOOST_ADAPTBX_META_EXT_HAVE_SIGNAL_H
-#endif
-
-#if defined(__GNUC__)
-#if defined(__linux) \
- || (defined(__APPLE_CC__) && __APPLE_CC__ >= 5465)
-#include <execinfo.h>
-#define BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H
-#if defined(__GNUC__) \
- && ((__GNUC__ > 3) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 1))) \
- && !defined(__EDG_VERSION__)
-#include <cxxabi.h>
-#define BOOST_ADAPTBX_META_EXT_HAVE_CXXABI_H
-#endif
-#endif
 #endif
 
 #if defined(__linux)
@@ -118,83 +105,17 @@ namespace {
   }
 
   bool
-  boost_adptbx_libc_backtrace(int n_frames_skip=0)
+  boost_adaptbx_libc_backtrace(int n_frames_skip=0)
   {
-    static bool active = false;
-    if (active) return false;
-    active = true;
-    bool result = false;
-#if defined(BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H)
-    static const int max_frames = 1024;
-    void *array[max_frames];
-    int size = backtrace(array, max_frames);
-    fprintf(stderr, "libc backtrace (%d frames, most recent call last):\n",
-      size - n_frames_skip);
-    fflush(stderr);
-    char **strings = backtrace_symbols(array, size);
-    for(int i=size-1;i>=n_frames_skip;i--) {
-      char* s = strings[i];
-#if defined(BOOST_ADAPTBX_META_EXT_HAVE_CXXABI_H)
-      const char* m_bgn = 0;
-#if defined(__APPLE_CC__)
-      if (strlen(s) >= 52 && strncmp(s+40, "0x", 2) == 0) {
-        m_bgn = strchr(s+40, ' ');
-      }
-#else // __linux
-      m_bgn = strchr(s, '(');
-#endif
-      if (m_bgn != 0) {
-        m_bgn++;
-        const char* m_end = strchr(m_bgn,
-#if defined(__APPLE_CC__)
-        ' '
-#else // __linux
-        '+'
-#endif
-        );
-        long n = m_end - m_bgn;
-        if (n > 0) {
-          char* mangled = static_cast<char*>(malloc(n+1));
-          if (mangled != 0) {
-            strncpy(mangled, m_bgn, n);
-            mangled[n] = '\0';
-            char* demangled = abi::__cxa_demangle(mangled, 0, 0, 0);
-            free(mangled);
-            if (demangled != 0) {
-              long n1 = m_bgn - s;
-              long n2 = strlen(demangled);
-              long n3 = strlen(m_end);
-              char* b = static_cast<char*>(
-                malloc(static_cast<size_t>(n1+n2+n3+1)));
-              if (b != 0) {
-                strncpy(b, s, n1);
-                strncpy(b+n1, demangled, n2);
-                strncpy(b+n1+n2, m_end, n3);
-                b[n1+n2+n3] = '\0';
-                s = b;
-              }
-              free(demangled);
-            }
-          }
-        }
-      }
-#endif // BOOST_ADAPTBX_META_EXT_HAVE_CXXABI_H
-      fprintf(stderr, "  %s\n", s);
-      fflush(stderr);
-      if (s != strings[i]) free(s);
-      result = true;
-    }
-    free(strings);
-#endif // defined(BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H)
-    active = false;
-    return result;
+    std::cout << std::flush;
+    boost_adaptbx::libc_backtrace::show_if_possible(std::cerr, n_frames_skip);
   }
 
   void
   show_call_stacks_and_exit(const char* what)
   {
     bool have_py_trace = libtbx_introspection_show_stack();
-    bool have_libc_trace = boost_adptbx_libc_backtrace(2);
+    bool have_libc_trace = boost_adaptbx_libc_backtrace(2);
     const char* hint = "sorry, call stacks not available";
     if (have_py_trace && have_libc_trace) {
       hint = "Python and libc call stacks above";
@@ -557,7 +478,7 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
 {
   using namespace boost::python;
   def("number_of_processors", number_of_processors);
-  def("boost_adptbx_libc_backtrace", boost_adptbx_libc_backtrace);
+  def("boost_adaptbx_libc_backtrace", boost_adaptbx_libc_backtrace);
   def("libtbx_introspection_show_stack", libtbx_introspection_show_stack);
   def("platform_info", platform_info);
 #if defined(Py_USING_UNICODE)

@@ -1,6 +1,8 @@
 #ifndef BOOST_ADAPTBX_ERROR_UTILS_H
 #define BOOST_ADAPTBX_ERROR_UTILS_H
 
+#include <boost_adaptbx/libc_backtrace.hpp>
+
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -26,12 +28,25 @@ namespace boost_adaptbx { namespace error_utils {
     return o.str();
   }
 
+  inline
+  std::string
+  file_and_line_as_string_with_backtrace(
+    const char* file,
+    long line)
+  {
+    std::ostringstream o;
+    boost_adaptbx::libc_backtrace::show_if_possible(o, 1);
+    o << file << "(" << line << ")";
+    return o.str();
+  }
+
 }} // boost_adaptbx::error_utils
 
 #define ASSERTBX(condition) \
   if (!(condition)) { \
     throw std::runtime_error( \
-      boost_adaptbx::error_utils::file_and_line_as_string(__FILE__, __LINE__) \
+      boost_adaptbx::error_utils::file_and_line_as_string_with_backtrace( \
+        __FILE__, __LINE__) \
       + ": ASSERT(" #condition ") failure."); \
   }
 
