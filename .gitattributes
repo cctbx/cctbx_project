@@ -502,6 +502,11 @@ mmtbx/utils/LICENSE.txt -text
 mmtbx/utils/SConscript -text
 mmtbx/utils/utils.h -text
 mmtbx/utils/utils_ext.cpp -text
+mmtbx/validation/__init__.py svneol=native#text/x-python
+mmtbx/validation/cbetadev.py svneol=native#text/x-python
+mmtbx/validation/clashscore.py svneol=native#text/x-python
+mmtbx/validation/ramalyze.py svneol=native#text/x-python
+mmtbx/validation/rotalyze.py svneol=native#text/x-python
 mmtbx/wwpdb/__init__.py -text
 mmtbx/wwpdb/standard_geometry_cif.py -text
 mmtbx/wwpdb/tst_standard_geometry_cif.py -text
