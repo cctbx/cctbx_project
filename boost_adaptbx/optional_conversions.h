@@ -94,6 +94,6 @@ namespace boost_adaptbx { namespace optional_conversions {
     }
   };
 
-}} // namespace boost_adptbx::optional_conversions
+}} // namespace boost_adaptbx::optional_conversions
 
 #endif // BOOST_ADAPTBX_OPTIONAL_CONVERSIONS_H
