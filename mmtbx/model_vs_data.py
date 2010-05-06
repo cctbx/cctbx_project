@@ -285,10 +285,10 @@ def show_geometry(processed_pdb_file, scattering_table, hierarchy,
         ignore_hd          = False,
         restraints_manager = restraints_manager)
       #
-      from phenix.validation.ramalyze import ramalyze
-      from phenix.validation.rotalyze import rotalyze
-      from phenix.validation.cbetadev import cbetadev
-      from phenix.validation.clashscore import clashscore
+      from mmtbx.validation.ramalyze import ramalyze
+      from mmtbx.validation.rotalyze import rotalyze
+      from mmtbx.validation.cbetadev import cbetadev
+      from mmtbx.validation.clashscore import clashscore
       need_ramachandran = False
       ramalyze_obj = None
       rotalyze_obj = None
