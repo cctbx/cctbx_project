@@ -1,7 +1,7 @@
 import sys, traceback, time, os
 import Queue
 import threading
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Abort
 from libtbx import object_oriented_patterns as oop
 from libtbx import group_args, adopt_init_args
 
@@ -137,6 +137,8 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
             return_value = self._target(self._args, self._kwargs, self._c)
             message = child_process_message(message_type="return",
                                             data=return_value)
+        except Abort :
+          message = child_process_message(message_type="abort", data=None)
         except Exception, e :
           Sorry.reset_module()
           traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
@@ -203,6 +205,8 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
           child_process.terminate()
           self._cb_abort()
           break
+        if not parent_conn.poll(1) :
+          continue
         pipe_output = parent_conn.recv()
         if isinstance(pipe_output, child_process_message) :
           message = pipe_output
@@ -233,8 +237,9 @@ else :
     def __init__ (self, *args, **kwds) :
       raise ImportError("This feature requires at least Python 2.6")
 
-#--- tests!
-
+########################################################################
+# tests
+#
 def exercise_threading() :
 
   def first_callback(i):
@@ -458,6 +463,21 @@ def tst_06 () :
     pass
   assert ch._abort == True
 
+def _target_function07 (args, kwds, connection) :
+  time.sleep(2)
+  raise Abort()
+
+def tst_07 () :
+  ch = _callback_handler()
+  p = process_with_callbacks(
+    target=_target_function07,
+    callback_abort=ch.cb_abort)
+  p.start()
+  p.abort()
+  while p.isAlive() :
+    pass
+  assert ch._abort == True
+
 def exercise_process () :
   #--- run all tests
   try :
@@ -467,6 +487,7 @@ def exercise_process () :
     tst_04()
     tst_05()
     tst_06()
+    tst_07()
   except ImportError :
     print "multiprocessing requires Python >= 2.6 - skipping these tests."
 
