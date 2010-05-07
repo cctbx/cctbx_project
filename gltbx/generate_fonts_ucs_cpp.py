@@ -2,6 +2,7 @@ from __future__ import division
 import libtbx.load_env
 from libtbx.str_utils import show_string
 import sys, os
+op = os.path
 
 class font_info:
 
@@ -178,7 +179,7 @@ bitmap_font_record bitmap_%(width)dx%(height)d = {
 
 def convert(target_dir, font_info):
   bdf_file = iter(open(libtbx.env.find_in_repositories(
-    relative_path=font_info.file_name, test=os.path.isfile, optional=False)))
+    relative_path=font_info.file_name, test=op.isfile, optional=False)))
   full_name = None
   number_of_chars = None
   for line in bdf_file:
@@ -203,8 +204,7 @@ def convert(target_dir, font_info):
     bitmaps.append(bitmap)
   assert len(bitmaps) == number_of_chars
   char_records = [bitmap.format_cpp() for bitmap in bitmaps]
-  cpp_file_name = os.path.join(
-    target_dir, "font_ucs_%s.cpp" % font_info.short_name)
+  cpp_file_name = op.join(target_dir, "font_ucs_%s.cpp" % font_info.short_name)
   open(cpp_file_name, "w").write(
     format_font_ucs_cpp(
       short_name=font_info.short_name,
@@ -217,13 +217,21 @@ def convert(target_dir, font_info):
       encoding_ranges=encoding_ranges(bitmaps=bitmaps).format_cpp()))
 
 def run(target_dir):
-  if (not os.path.isdir(target_dir)):
+  if (not op.isdir(target_dir)):
     os.makedirs(target_dir)
+  done_flag_file = op.join(target_dir, "FONTS_UCS_DONE_FLAG_FILE")
+  if (op.isfile(done_flag_file)):
+    print "      Info: Re-using existing font cpp files."
+    print "      Hint: Remove %s" % op.join(
+      op.basename(target_dir), op.basename(done_flag_file))
+    print "            to force generation of new font files."
+    return
   print "      fonts:",
   for font_info in font_infos:
     print font_info.short_name,
     sys.stdout.flush()
     convert(target_dir, font_info)
+  open(done_flag_file, "w")
   print
 
 if (__name__ == "__main__"):
