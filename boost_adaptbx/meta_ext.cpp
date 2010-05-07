@@ -108,7 +108,8 @@ namespace {
   boost_adaptbx_libc_backtrace(int n_frames_skip=0)
   {
     std::cout << std::flush;
-    boost_adaptbx::libc_backtrace::show_if_possible(std::cerr, n_frames_skip);
+    return boost_adaptbx::libc_backtrace::show_if_possible(
+      std::cerr, n_frames_skip);
   }
 
   void
