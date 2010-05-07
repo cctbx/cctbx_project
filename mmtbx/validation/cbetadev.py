@@ -67,7 +67,7 @@ class cbetadev(object):
     return summary,header
   #------------------------------------------------------------------------------------------------
   #}}}
-  
+
   #{{{ run
   def run(self, args, out=sys.stdout, quiet=False):
     master_phil = get_master_phil()

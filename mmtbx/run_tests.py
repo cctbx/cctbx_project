@@ -28,6 +28,7 @@ def run():
   "$D/ncs/tst_restraints.py",
   ["$D/ncs/ncs.py", "exercise"],
   "$D/regression/tst_adp_restraints.py",
+  "$D/regression/tst_validate_utils.py",
   "$D/scaling/tst_scaling.py",
   "$D/scaling/tst_outlier.py",
   "$D/scaling/absence_likelihood.py",

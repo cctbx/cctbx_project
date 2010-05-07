@@ -229,10 +229,10 @@ class ramalyze(object):
         residues = list(chain.residue_groups())
         #help(residues)
         for i, residue_group in enumerate(residues):
-            #The reason I pass lists of atom_groups to get_phi and get_psi is to deal with the 
-            #particular issue where some residues have an A alt conf that needs some atoms from 
+            #The reason I pass lists of atom_groups to get_phi and get_psi is to deal with the
+            #particular issue where some residues have an A alt conf that needs some atoms from
             #a "" alt conf to get calculated correctly.
-            #See 1jxt.pdb for examples.  This way I can search both the alt conf atoms and 
+            #See 1jxt.pdb for examples.  This way I can search both the alt conf atoms and
             #the "" atoms if necessary.
             prev_rezes, next_rezes, prev_atom_list, next_atom_list, atom_list = \
               None, None, None, None, None
@@ -395,9 +395,9 @@ class ramalyze(object):
           if (atom.name == " CA "): ca = atom
           if (atom.name == " C  "): co = atom
           if (atom.name == " O  "): oxy = atom
-          if (atom.name == " N  " or 
-              atom.name == " CA " or 
-              atom.name == " C  " or 
+          if (atom.name == " N  " or
+              atom.name == " CA " or
+              atom.name == " C  " or
               atom.name == " O  "):
             changed = True
         if (nit is not None and ca is not None and co is not None and oxy is not None and changed):
