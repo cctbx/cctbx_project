@@ -17,6 +17,19 @@
 
 namespace boost_adaptbx { namespace error_utils {
 
+  //! Debugging aid: add call to code, recompile, run in gdb, use "where"
+  inline
+  int
+  segfault_if(
+    bool condition)
+  {
+    if (condition) {
+      int* ptr = 0;
+      return *ptr;
+    }
+    return 0;
+  }
+
   inline
   std::string
   file_and_line_as_string(
