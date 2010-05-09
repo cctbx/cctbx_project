@@ -854,4 +854,5 @@ spotfinder/servers/adsc_client.py -text
 spotfinder/servers/multipart_encoder.py -text
 spotfinder/servers/pilatus_client.py -text
 spotfinder/servers/spotfinder_server_client_push.py -text
+wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text

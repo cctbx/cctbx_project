@@ -333,11 +333,11 @@ residue(s).  Holding down shift enables multiple selections."""
         gc.SetPen(helix_pen)
       for box in bounds :
         (x1, y1, x2, y2) = box
-        #gc.DrawRoundedRectangle(x1, y1, x2-x1, 16, 4)
         helix_brush = gc.CreateLinearGradientBrush(x1, y1, x1, y2, color_start,
           color_end)
         gc.SetBrush(helix_brush)
-        gc.DrawRectangle(x1, y1, x2-x1, 16)
+        gc.DrawRoundedRectangle(x1, y1, x2-x1, 16, 4)
+        #gc.DrawRectangle(x1, y1, x2-x1, 16)
       gc.SetPen(helix_pen)
     strands = self.get_strands()
     strand_pen = wx.Pen((0, 100, 255), 2)
