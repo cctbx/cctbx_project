@@ -217,8 +217,13 @@ def exercise_flex_constructors():
     pass
   else:
     raise Exception_expected
+  f = flex.double(flex.std_string(['0.7', '0.1']))
+  assert tuple(f.as_string()) == ('0.7', '0.1')
+  f = flex.double([0.1, -0.0000234])
+  assert tuple(f.as_string("%+.3e")) == ('+1.000e-001', '-2.340e-005')
   f = flex.int(flex.std_string(['1','+2','-3']))
   assert tuple(f.as_string()) == ('1', '2', '-3')
+  assert tuple(f.as_string("%+3d")) == (' +1', ' +2', ' -3')
   assert tuple(f) == (1,2,-3)
   #
   for row_type in [list, tuple]:
