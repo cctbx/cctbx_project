@@ -128,6 +128,21 @@ MASTER_Basepairs_bonds = []
 
 
 ########################### Basepair Lists SECTION #################################
+##### bonds[0] = # of bonds for current geometry
+##### bonds[1] = Resid name for base 1
+##### bonds[2] = Resid name for base 2
+##### bonds[3] = atom name in bond #1 for base #1
+##### bonds[4] = atom name in bond #1 for base #2
+##### bonds[5] = atom name in bond #2 for base #1
+##### bonds[6] = atom name in bond #2 for base #2
+##### bonds[7] = atom name in bond #3 for base #1, NA if only 2 bonds for current geometry
+##### bonds[8] = atom name in bond #3 for base #2, NA if only 2 bonds for current geometry
+##### bonds[9] = average P-P distance for current geometry, NA if not determined
+##### bonds[10] = standard deviation P-P distance for current geometry, NA if not determined
+##### bonds[11] = average C1-C1 distance for current geometry, NA if not determined
+##### bonds[12] = standard deviation C1-C1 distance for current geometry, NA if not determined
+
+
 ##### Homo purine
 ###i = 0 in MASTER_Basepairs (I_AA)
 I_AA = []
@@ -135,7 +150,7 @@ I_AA = []
 #Bond   A       A       Length Ave      Length Std      Attribute
 #1      N1      N6      2.92    0.14    T
 #2      N6      N1      3.06    0.14    T
-bonds = [2, "A", "A", "N1", "N6", "N6", "N1"]
+bonds = [2, "A", "A", "N1", "N6", "N6", "N1", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 1 in MASTER_Basepairs (II_AA)
 II_AA = []
@@ -143,7 +158,7 @@ II_AA = []
 #Bond   A       A       Length Ave      Length Std      Attribute
 #1      N6      N7      3.01    0.20    T
 #2      N7      N6      2.89    0.21    T
-bonds = [2, "A", "A", "N6", "N7", "N7", "N6"]
+bonds = [2, "A", "A", "N6", "N7", "N7", "N6", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 2 in MASTER_Basepairs (III_GG)
 III_GG = []
@@ -151,7 +166,7 @@ III_GG = []
 #Bond   G       G       Length Ave      Length Std      Attribute
 #1      N1      O6      2.85    0.12    T
 #2      O6      N1      2.88    0.12    T
-bonds = [2, "G", "G", "N1", "O6", "O6", "N1"]
+bonds = [2, "G", "G", "N1", "O6", "O6", "N1", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 3 in MASTER_Basepairs (IV_GG)
 IV_GG = []
@@ -159,28 +174,28 @@ IV_GG = []
 #Bond   G       G       Length Ave      Length Std      Attribute
 #1      N2      N3      2.96    0.29    T
 #2      N3      N2      3.23    0.15    T
-bonds = [2, "G", "G", "N2", "N3", "N3", "N2"]
+bonds = [2, "G", "G", "N2", "N3", "N3", "N2", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 4 MASTER_Basepairs (V_AA)
 V_AA = [] #V Base-pairing pattern AA: AA_4
 #Bond   A       A       Length Ave      Length Std      Attribute
 #1      N1      N6      2.93    0.18    T
 #2      N6      N7      3.07    0.17    T
-bonds = [2, "A", "A", "N1", "N6", "N6", "N7"]
+bonds = [2, "A", "A", "N1", "N6", "N6", "N7", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 5 in MASTER_Basepairs (VI_GG)
 VI_GG = [] #VI Base-pairing pattern GG: GG_16
 #Bond   G       G       Length Ave      Length Std      Attribute
 #1      N1      O6      2.88    0.16    T
 #2      N2      N7      2.91    0.15    T
-bonds = [2, "G", "G", "N1", "O6", "N2", "N7"]
+bonds = [2, "G", "G", "N1", "O6", "N2", "N7", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 6 in MASTER_Basepairs (VII_GG)
 VII_GG = [] #VII Base-pairing pattern GG: GG_21
 #Bond   G       G       Length Ave      Length Std      Attribute
 #1      N1      N7      2.93    0.17    T
 #2      N2      O6      2.76    0.24    T
-bonds = [2, "G", "G", "N1", "N7", "N2", "O6"]
+bonds = [2, "G", "G", "N1", "N7", "N2", "O6", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 
 #####Hetero Purine
@@ -189,56 +204,56 @@ VIII_AG = [] #VIII (AG Imino). Base-pairing pattern AG: AG_3
 #Bond   A       G       Length Ave      Length Std      Attribute
 #1      N1      N1      2.88    0.15    T
 #2      N6      O6      2.95    0.21    T
-bonds = [2, "A", "G", "N1", "N1", "N6", "O6"]
+bonds = [2, "A", "G", "N1", "N1", "N6", "O6", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 8 in MASTER_Basepairs (VIII_GA)
 VIII_GA = [] #VIII (GA Imino). Base-pairing pattern GA: GA_3
 #Bond   G       A       Length Ave      Length Std      Attribute
 #1      N1      N1      2.88    0.15    T
 #2      O6      N6      2.95    0.21    T
-bonds = [2, "G", "A", "N1", "N1", "O6", "N6"]
+bonds = [2, "G", "A", "N1", "N1", "O6", "N6", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 9 in MASTER_Basepairs (IX_AG)
 IX_AG = [] #IX Base-pairing pattern AG: AG_81
 #Bond   A       G       Length Ave      Length Std      Attribute
 #1      N7      N1      3.08    0.08    T
 #2      N6      O6      2.70    0.09    T
-bonds = [2, "A", "G", "N7", "N1", "N6", "O6"]
+bonds = [2, "A", "G", "N7", "N1", "N6", "O6", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 10 in MASTER_Basepairs (IX_GA)
 IX_GA = [] #IX Base-pairing pattern GA: GA_81
 #Bond   G       A       Length Ave      Length Std      Attribute
 #1      N1      N7      3.08    0.08    T
 #2      O6      N6      2.70    0.09    T
-bonds = [2, "G", "A", "N1", "N7", "O6", "N6"]
+bonds = [2, "G", "A", "N1", "N7", "O6", "N6", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 11 in MASTER_Basepairs (X_AG)
 X_AG = [] #X Base-pairing pattern AG: AG_38
 #Bond   A       G       Length Ave      Length Std      Attribute
 #1      N1      N2      3.02    0.19    T
 #2      N6      N3      3.15    0.11    T
-bonds = [2, "A", "G", "N1", "N2", "N6", "N3"]
+bonds = [2, "A", "G", "N1", "N2", "N6", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 12 in MASTER_Basepairs (X_GA)
 X_GA = [] #X Base-pairing pattern GA: GA_38
 #Bond   G       A       Length Ave      Length Std      Attribute
 #1      N2      N1      3.02    0.19    T
 #2      N3      N6      3.15    0.11    T
-bonds = [2, "G", "A", "N2", "N1", "N3", "N6"]
+bonds = [2, "G", "A", "N2", "N1", "N3", "N6", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 13 in MASTER_Basepairs (XI_AG)
 XI_AG = [] #XI (AG Sheared). Base-pairing pattern AG: AG_24
 #Bond   A       G       Length Ave      Length Std      Attribute
 #1      N7      N2      3.00    0.16    T
 #2      N6      N3      3.23    0.15    T
-bonds = [2, "A", "G", "N7", "N2", "N6", "N3"]
+bonds = [2, "A", "G", "N7", "N2", "N6", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 14 in MASTER_Basepairs (XI_GA)
 XI_GA = [] #XI (GA Sheared). Base-pairing pattern GA: GA_24
 #Bond   G       A       Length Ave      Length Std      Attribute
 #1      N2      N7      3.00    0.16    T
 #2      N3      N6      3.23    0.15    T
-bonds = [2, "G", "A", "N2", "N7", "N3", "N6"]
+bonds = [2, "G", "A", "N2", "N7", "N3", "N6", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 
 #####Homo pyrimidine
@@ -247,21 +262,21 @@ XII_UU = [] #XII Base-pairing pattern UU: UU_20
 #Bond   U       U       Length Ave      Length Std      Attribute
 #1      N3      O4      2.98    0.06    T
 #2      O4      N3      2.74    0.05    T
-bonds = [2, "U", "U", "N3", "O4", "O4", "N3"]
+bonds = [2, "U", "U", "N3", "O4", "O4", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 16 in MASTER_Basepairs (XIII_UU)
 XIII_UU = [] #XIII Base-pairing pattern UU: UU_11
 #Bond   U       U       Length Ave      Length Std      Attribute
 #1      N3      O2      2.70    0.08    T
 #2      O2      N3      2.77    0.15    T
-bonds = [2, "U", "U", "N3", "O2", "O2", "N3"]
+bonds = [2, "U", "U", "N3", "O2", "O2", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 17 in MASTER_Basepairs (XIV_CC)
 XIV_CC = [] #XIV Base-pairing pattern CC: CC_29
 #Bond   C       C       Length Ave      Length Std      Attribute
 #1      N3      N4      3.34    0.00    T
 #2      N4      N3      2.09    0.00    T
-bonds = [2, "C", "C", "N3", "N4", "N4", "N3"]
+bonds = [2, "C", "C", "N3", "N4", "N4", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 18 in MASTER_Basepairs (XV_CC)
 XV_CC = [] #Base-pairing pattern CC: CC_6
@@ -269,7 +284,7 @@ XV_CC = [] #Base-pairing pattern CC: CC_6
 #1      N3      N3      2.92    0.04    P
 #2      N4      O2      2.83    0.01    T
 #3      O2      N4      3.12    0.07    T
-bonds = [3, "C", "C", "N3", "N3", "N4", "O2", "O2", "N4"]
+bonds = [3, "C", "C", "N3", "N3", "N4", "O2", "O2", "N4", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 
 #####Hetero pyrimidine
@@ -279,7 +294,7 @@ XVII_CU = [] #Base-pairing pattern CU: CU_35
 #1      N3      N3      2.98    0.05    T
 #2      N4      O2      2.91    0.07    T
 #3      O2      O4      3.18    0.06    P
-bonds = [3, "C", "U", "N3", "N3", "N4", "O2", "O2", "O4"]
+bonds = [3, "C", "U", "N3", "N3", "N4", "O2", "O2", "O4", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 20 in MASTER_Basepairs (XVII_UC)
 XVII_UC = [] #Base-pairing pattern UC: UC_35
@@ -287,21 +302,21 @@ XVII_UC = [] #Base-pairing pattern UC: UC_35
 #1      N3      N3      2.98    0.05    T
 #2      O2      N4      2.91    0.07    T
 #3      O4      O2      3.18    0.06    P
-bonds = [3, "U", "C", "N3", "N3", "O2", "N4", "O4", "O2"]
+bonds = [3, "U", "C", "N3", "N3", "O2", "N4", "O4", "O2", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 21 in MASTER_Basepairs (XVIII_CU)
 XVIII_CU = [] #Base-pairing pattern CU: CU_36
 #Bond   C       U       Length Ave      Length Std      Attribute
 #1      N3      N3      3.16    0.06    T
 #2      N4      O4      3.19    0.07    T
-bonds = [2, "C", "U", "N3", "N3", "N4", "O4"]
+bonds = [2, "C", "U", "N3", "N3", "N4", "O4", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 22 in MASTER_Basepairs (XVIII_UC)
 XVIII_UC = [] #Base-pairing pattern UC: UC_36
 #Bond   U       C       Length Ave      Length Std      Attribute
 #1      N3      N3      3.16    0.06    T
 #2      O4      N4      3.19    0.07    T
-bonds = [2, "U", "C", "N3", "N3", "O4", "N4"]
+bonds = [2, "U", "C", "N3", "N3", "O4", "N4", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 
 #####Purine pyrimidine
@@ -311,7 +326,7 @@ XIX_CG_WC = [] #XIX (Watson-Crick CG)
 #1       N3      N1      2.89    0.11    T
 #2       O2      N2      2.77    0.15    T
 #3       N4      O6      2.96    0.17    T
-bonds = [3, "C", "G", "N3", "N1", "O2", "N2", "N4", "O6"]
+bonds = [3, "C", "G", "N3", "N1", "O2", "N2", "N4", "O6", 18.76, 1.092, 10.87, 0.436]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 24 in MASTER_Basepairs (XIX_GC_WC)
 XIX_GC_WC = [] #XIX (Watson-Crick GC)
@@ -319,133 +334,133 @@ XIX_GC_WC = [] #XIX (Watson-Crick GC)
 #1       N1      N3      2.89    0.11    T
 #2       N2      O2      2.77    0.15    T
 #3       O6      N4      2.96    0.17    T
-bonds = [3, "G", "C", "N1", "N3", "N2", "O2", "O6", "N4"]
+bonds = [3, "G", "C", "N1", "N3", "N2", "O2", "O6", "N4", 18.20, 1.214, 10.69, 0.390]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 25 in MASTER_Basepairs (XX_AU_WC)
 XX_AU_WC = [] #XX (Watson-Crick AU). Base-pairing pattern AU: AU_2
 #Bond   A       U       Length Ave      Length Std      Attribute
 #1      N1      N3      2.84    0.12    T
 #2      N6      O4      3.00    0.17    T
-bonds = [2, "A", "U", "N1", "N3", "N6", "O4"]
+bonds = [2, "A", "U", "N1", "N3", "N6", "O4", "NA", "NA", 18.68, 0.269, 10.84, 0.120]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 26 in MASTER_Basepairs (XX_UA_WC)
 XX_UA_WC = [] #XX (Watson-Crick UA). Base-pairing pattern UA: UA_2
 #Bond   U       A       Length Ave      Length Std      Attribute
 #1      N3      N1      2.84    0.12    T
 #2      O4      N6      3.00    0.17    T
-bonds = [2, "U", "A", "N3", "N1", "O4", "N6"]
+bonds = [2, "U", "A", "N3", "N1", "O4", "N6", "NA", "NA", 18.36, 0.152, 10.67, 0.270]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 27 in MASTER_Basepairs (XXI_AU)
 XXI_AU = [] #XXI (AU Reversed Watson-Crick). Base-pairing pattern AU: AU_30
 #Bond   A       U       Length Ave      Length Std      Attribute
 #1      N1      N3      2.84    0.13    T
 #2      N6      O2      2.94    0.17    T
-bonds = [2, "A", "U", "N1", "N3", "N6", "O2"]
+bonds = [2, "A", "U", "N1", "N3", "N6", "O2", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 28 in MASTER_Basepairs (XXI_UA)
 XXI_UA = [] #XXI (UA Reversed Watson-Crick). Base-pairing pattern UA: UA_30
 #Bond   U       A       Length Ave      Length Std      Attribute
 #1      N3      N1      2.84    0.13    T
 #2      O2      N6      2.94    0.17    T
-bonds = [2, "U", "A", "N3", "N1", "O2", "N6"]
+bonds = [2, "U", "A", "N3", "N1", "O2", "N6", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 29 in MASTER_Basepairs (XXII_CG)
 XXII_CG = [] #XXII (CG Reversed Watson-Crick). Base-pairing pattern CG: CG_31
 #Bond   C       G       Length Ave      Length Std      Attribute
 #1      O2      N1      2.80    0.17    T
 #2      N3      N2      2.86    0.18    T
-bonds = [2, "C", "G", "O2", "N1", "N3", "N2"]
+bonds = [2, "C", "G", "O2", "N1", "N3", "N2", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 30 in MASTER_Basepairs (XXII_GC)
 XXII_GC = [] #XXII (GC Reversed Watson-Crick). Base-pairing pattern GC: GC_31
 #Bond   G       C       Length Ave      Length Std      Attribute
 #1      N1      O2      2.80    0.17    T
 #2      N2      N3      2.86    0.18    T
-bonds = [2, "G", "C", "N1", "O2", "N2", "N3"]
+bonds = [2, "G", "C", "N1", "O2", "N2", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 31 in MASTER_Basepairs (XXIII_AU)
 XXIII_AU = [] #XXIII (AU Hoogsteen). Base-pairing pattern AU: AU_29
 #Bond   A       U       Length Ave      Length Std      Attribute
 #1      N6      O4      3.05    0.15    T
 #2      N7      N3      2.96    0.15    T
-bonds = [2, "A", "U", "N6", "O4", "N7", "N3"]
+bonds = [2, "A", "U", "N6", "O4", "N7", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 32 in MASTER_Basepairs (XXIII_UA)
 XXIII_UA = [] #XXIII (UA Hoogsteen). Base-pairing pattern UA: UA_29
 #Bond   U       A       Length Ave      Length Std      Attribute
 #1      O4      N6      3.05    0.15    T
 #2      N3      N7      2.96    0.15    T
-bonds = [2, "U", "A", "O4", "N6", "N3", "N7"]
+bonds = [2, "U", "A", "O4", "N6", "N3", "N7", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 33 in MASTER_Basepairs (XXIV_AU)
 XXIV_AU = [] #XXIV (AU Reversed Hoogsteen). Base-pairing pattern AU: AU_14
 #Bond   A       U       Length Ave      Length Std      Attribute
 #1      N6      O2      2.91    0.19    T
 #2      N7      N3      2.87    0.13    T
-bonds = [2, "A", "U", "N6", "O2", "N7", "N3"]
+bonds = [2, "A", "U", "N6", "O2", "N7", "N3", "NA", "NA", 10.97, 0.706, 9.519, 0.016]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 34 in MASTER_Basepairs (XXIV_UA)
-XXIV_UA = [] #XXIV (UA Reversed Hoogsteen). Base-pairing pattern UA: UA_14
+XXIV_UA = [] #XXIV (UA Reversed Hoogsteen). Base-pairing patterMASTER_Basepairs_bonds.append(bonds)
 #Bond   U       A       Length Ave      Length Std      Attribute
 #1      O2      N6      2.91    0.19    T
 #2      N3      N7      2.87    0.13    T
-bonds = [2, "U", "A", "O2", "N6", "N3", "N7"]
+bonds = [2, "U", "A", "O2", "N6", "N3", "N7", "NA", "NA", 10.97, 0.706, 9.519, 0.016]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 35 in MASTER_Basepairs (XXV_AC)
 XXV_AC = [] #XXV (AC Reversed Hoogsteen). Base-pairing pattern AC: AC_7
 #Bond   A       C       Length Ave      Length Std      Attribute
 #1      N6      N3      3.13    0.15    T
 #2      N7      N4      3.08    0.18    T
-bonds = [2, "A", "C", "N6", "N3", "N7", "N4"]
+bonds = [2, "A", "C", "N6", "N3", "N7", "N4", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 36 in MASTER_Basepairs (XXV_CA)
 XXV_CA = [] #XXV (CA Reversed Hoogsteen). Base-pairing pattern CA: CA_7
 #Bond   C       A       Length Ave      Length Std      Attribute
 #1      N3      N6      3.13    0.15    T
 #2      N4      N7      3.08    0.18    T
-bonds = [2, "C", "A", "N3", "N6", "N4", "N7"]
+bonds = [2, "C", "A", "N3", "N6", "N4", "N7", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 37 in MASTER_Basepairs (XXVI_AC)
 XXVI_AC = [] #XXVI (AC Reversed Wobble). Base-pairing pattern AC: AC_42
 #Bond   A       C       Length Ave      Length Std      Attribute
 #1      N1      N4      3.01    0.08    T
 #2      N6      N3      3.09    0.14    T
-bonds = [2, "A", "C", "N1", "N4", "N6", "N3"]
+bonds = [2, "A", "C", "N1", "N4", "N6", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 38 in MASTER_Basepairs (XXVI_CA)
 XXVI_CA = [] #XXVI (CA Reversed Wobble). Base-pairing pattern CA: CA_42
 #Bond   C       A       Length Ave      Length Std      Attribute
 #1      N4      N1      3.01    0.08    T
 #2      N3      N6      3.09    0.14    T
-bonds = [2, "C", "A", "N4", "N1", "N3", "N6"]
+bonds = [2, "C", "A", "N4", "N1", "N3", "N6", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 39 in MASTER_Basepairs (XXVII_GU)
 XXVII_GU = [] #XXVII (Reversed GU Wobble). Base-pairing pattern GU: GU_29
 #Bond   G       U       Length Ave      Length Std      Attribute
 #1      N1      O4      2.99    0.07    T
 #2      O6      N3      2.99    0.15    T
-bonds = [2, "G", "U", "N1", "O4", "O6", "N3"]
+bonds = [2, "G", "U", "N1", "O4", "O6", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 40 in MASTER_Basepairs (XXVII_UG)
 XXVII_UG = [] #XXVII (Reversed UG Wobble). Base-pairing pattern UG: UG_29
 #Bond   U       G       Length Ave      Length Std      Attribute
 #1      O4      N1      2.99    0.07    T
 #2      N3      O6      2.99    0.15    T
-bonds = [2, "U", "G", "O4", "N1", "N3", "O6"]
+bonds = [2, "U", "G", "O4", "N1", "N3", "O6", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 41 in MASTER_Basepairs (XXVIII_GU)
 XXVIII_GU = [] #XXVIII (GU Wobble). Base-pairing pattern GU: GU_1
 #Bond   G       U       Length Ave      Length Std      Attribute
 #1      N1      O2      2.79    0.13    T
 #2      O6      N3      2.83    0.13    T
-bonds = [2, "G", "U", "N1", "O2", "O6", "N3"]
+bonds = [2, "G", "U", "N1", "O2", "O6", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 42 in MASTER_Basepairs (XXVIII_UG)
 XXVIII_UG = [] #XXVIII (UG Wobble). Base-pairing pattern UG: UG_1
 #Bond   U       G       Length Ave      Length Std      Attribute
 #1      O2      N1      2.79    0.13    T
 #2      N3      O6      2.83    0.13    T
-bonds = [2, "U", "G", "O2", "N1", "N3", "O6"]
+bonds = [2, "U", "G", "O2", "N1", "N3", "O6", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 
 ####ADDITIONAL BASEPAIRS, NOT IN SAENGER'S COMPILATION
@@ -454,35 +469,35 @@ XXIX_AC = [] #XXIX (AC Wobble). Base-pairing pattern AC
 #Bond   A       C       Length Ave      Length Std      Attribute
 #1      N6      N3      unk             unk
 #2      N1      O2      unk             unk
-bonds = [2, "A", "C", "N6", "N3", "N1", "O2"]
+bonds = [2, "A", "C", "N6", "N3", "N1", "O2", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 44 in MASTER_Basepairs (XXX_CA)
-XXX_CA = [] #XXX (CA Wobble). Base-pairing pattern CA
+XXIX_CA = [] #XXX (CA Wobble). Base-pairing pattern CA
 #Bond   C       A       Length Ave      Length Std      Attribute
 #1      N3      N6      unk             unk
 #2      O2      N1      unk             unk
-bonds = [2, "A", "C", "N6", "N3", "N1", "O2"]
+bonds = [2, "A", "C", "N6", "N3", "N1", "O2", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 45 in MASTER_Basepairs (XXXI_GC)
-XXXI_GC = [] #XXXI Base-pair between positions G1034 and C1028 of T. thermophilus 16S rRNA (E. coli numbering)
+XXX_GC = [] #XXXI Base-pair between positions G1034 and C1028 of T. thermophilus 16S rRNA (E. coli numbering)
 #Bond   G       C       Length Ave      Length Std      Attribute
 #1      N2      N4      3.1             unk
 #2      N3      N3      3.2             unk
-bonds = [2, "G", "C", "N2", "N4", "N3", "N3"]
+bonds = [2, "G", "C", "N2", "N4", "N3", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 46 in MASTER_Basepairs (XXXII_CG)
-XXXII_CG = [] #XXXII Base-pair between positions G1034 and C1028 of T. thermophilus 16S rRNA (E. coli numbering)
+XXX_CG = [] #XXXII Base-pair between positions G1034 and C1028 of T. thermophilus 16S rRNA (E. coli numbering)
 #Bond   C       G       Length Ave      Length Std      Attribute
 #1      N4      N2      3.1             unk
 #2      N3      N3      3.2             unk
-bonds = [2, "C", "G", "N4", "N2", "N3", "N3"]
+bonds = [2, "C", "G", "N4", "N2", "N3", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 47 in MASTER_Basepairs (XXXIII_GG)
-XXXIII_GG = [] #XXXIII Base-pair between positions G1030A and C1031 of T. thermophilus 16S rRNA (E. coli numbering)
+XXXI_GG = [] #XXXIII Base-pair between positions G1030A and C1031 of T. thermophilus 16S rRNA (E. coli numbering)
 #Bond   G       G       Length Ave      Length Std      Attribute
 #1      N2      N1      2.9             unk
 #2      N3      N2      3.4             unk
-bonds = [2, "G", "G", "N2", "N1", "N3", "N2"]
+bonds = [2, "G", "G", "N2", "N1", "N3", "N2", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 
 
@@ -502,13 +517,15 @@ MASTER_Basepairs_bonds.append(bonds)
 
 #MASTER_Basepairs = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
 
-MASTER_Basepairs_excluded = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+MASTER_Basepairs_excluded = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
 
 #MASTER_Basepairs_schemes only carries strings with the names of the basepairing Schemes
-MASTER_Basepairs_schemes = ["I_AA", "II_AA", "III_GG", "IV_GG", "V_AA", "VI_GG", "VII_GG", "VIII_AG", "VIII_GA", "IX_AG",  "IX_GA", "X_AG", "X_GA", "XI_AG", "XI_GA", "XII_UU", "XIII_UU", "XIV_CC", "XV_CC", "XVII_CU", "XVII_UC", "XVIII_CU", "XVIII_UC", "XIX_CG_WC", "XIX_GC_WC", "XX_AU_WC", "XX_UA_WC", "XXI_AU", "XXI_UA", "XXII_CG", "XXII_GC", "XXIII_AU", "XXIII_UA", "XXIV_AU", "XXIV_UA", "XXV_AC",  "XXV_CA", "XXVI_AC", "XXVI_CA", "XXVII_GU", "XXVII_UG", "XXVIII_GU", "XXVIII_UG"]
+MASTER_Basepairs_schemes = ["I_AA", "II_AA", "III_GG", "IV_GG", "V_AA", "VI_GG", "VII_GG", "VIII_AG", "VIII_GA", "IX_AG",  "IX_GA", "X_AG", "X_GA", "XI_AG", "XI_GA", "XII_UU", "XIII_UU", "XIV_CC", "XV_CC", "XVII_CU", "XVII_UC", "XVIII_CU", "XVIII_UC", "XIX_CG_WC", "XIX_GC_WC", "XX_AU_WC", "XX_UA_WC", "XXI_AU", "XXI_UA", "XXII_CG", "XXII_GC", "XXIII_AU", "XXIII_UA", "XXIV_AU", "XXIV_UA", "XXV_AC",  "XXV_CA", "XXVI_AC", "XXVI_CA", "XXVII_GU", "XXVII_UG", "XXVIII_GU", "XXVIII_UG", "XXIX_AC", "XXIX_CA", "XXX_GC", "XXX_CG", "XXXI_GG"]
 
 #MASTER_Basepairs_summary: The lines in MASTER_Basepairs, carrying possible basepairing bonds, will be sorted into this list, once they have been confirmed as possible basepairs. Same format as MASTER_Basepairs
-MASTER_Basepairs_summary = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+MASTER_Basepairs_summary = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+
+
 ##########################################################################
 ##########################################################################
 ##########################################################################
@@ -526,38 +543,6 @@ MASTER_Basepairs_summary = [[], [], [], [], [], [], [], [], [], [],  [], [], [],
 ##########################################################################
 ##########################################################################
 
-def pair_sym_table_as_antons_master(
-      master,
-      unit_cell,
-      pdb_atoms,
-      sites_frac,
-      pair_sym_table,
-      reindexing_array):
-  for table_i_seq,pair_sym_dict in enumerate(pair_sym_table):
-    i_seq = reindexing_array[table_i_seq]
-    site_i = sites_frac[i_seq]
-    atom_i = pdb_atoms[i_seq]
-    resname_i = atom_i.resname
-    atmname_i = atom_i.name
-    for table_j_seq,sym_ops in pair_sym_dict.items():
-      j_seq = reindexing_array[table_j_seq]
-      site_j = sites_frac[j_seq]
-      atom_j = pdb_atoms[j_seq]
-      resname_j = atom_j.resname
-      atmname_j = atom_j.name
-      for sym_op in sym_ops:
-        site_ji = sym_op * site_j
-        distance = unit_cell.distance(site_i, site_ji)
-        if atom_i.resid() != atom_j.resid():
-           master.append([
-             atom_i.resid(),
-             resname_i,
-             atmname_i,
-             atom_j.resid(),
-             resname_j,
-             atmname_j,
-             distance])
-
 ################################################
 ################################################
 #FUNCTION "run(args)"                BEGINNING
@@ -565,10 +550,45 @@ def pair_sym_table_as_antons_master(
 ################################################
 #FUNCTION run(args) was created by Ralf W. Grosse-Kunstle and provides a list of ATOM-to-ATOM distances calculated from a .pdb file.
 
+#def run(args):
+#  assert len(args) == 1
+#  import iotbx.pdb
+#  pdb_inp = iotbx.pdb.input(file_name=args[0])
+#  master = []
+#  pdb_atoms = pdb_inp.atoms_with_labels()
+#  xray_structure = pdb_inp.xray_structure_simple(
+#    enable_scattering_type_unknown=True)
+#  sites_frac = xray_structure.sites_frac()
+#  unit_cell = xray_structure.unit_cell()
+#  pair_asu_table = xray_structure.pair_asu_table(
+#    distance_cutoff=22.0)
+#  pair_sym_table = pair_asu_table.extract_pair_sym_table()
+#  count = 0
+#  for i_seq,pair_sym_dict in enumerate(pair_sym_table):
+#    site_i = sites_frac[i_seq]
+#    atom_i = pdb_atoms[i_seq]
+#    resname_i = atom_i.resname
+#    atmname_i = atom_i.name
+#    for j_seq,sym_ops in pair_sym_dict.items():
+#      site_j = sites_frac[j_seq]
+#      atom_j = pdb_atoms[j_seq]
+#      resname_j = atom_j.resname
+#      atmname_j = atom_j.name
+#      for sym_op in sym_ops:
+#        site_ji = sym_op * site_j
+#        distance = unit_cell.distance(site_i, site_ji)
+#        if atom_i.resid() != atom_j.resid():
+#           master.append([[]])
+#           master[count] = [atom_i.resid(), resname_i, atmname_i, atom_j.resid(), resname_j, atmname_j, distance]
+#           count = count + 1
+#  master[0:0] = [args[0]]
+#  return master
+
 def run(args):
   assert len(args) == 1
   import iotbx.pdb
   pdb_inp = iotbx.pdb.input(file_name=args[0])
+  pair_sym_table_as_antons_master = []
   crystal_symmetry = pdb_inp.crystal_symmetry()
   sites_cart = pdb_inp.atoms().extract_xyz()
   if (crystal_symmetry is not None):
@@ -608,6 +628,20 @@ def run(args):
     pair_sym_table=p_pair_sym_table,
     reindexing_array=p_selection.iselection())
   #
+  c1_selection = pdb_inp.atoms().extract_name() ==  " C1*"
+  c1_selection = c1_selection + pdb_inp.atoms().extract_name() ==  " C1'"
+  c1_pair_sym_table = crystal_symmetry.special_position_settings() \
+    .pair_asu_table(
+      distance_cutoff=22.0,
+      sites_frac=sites_frac.select(c1_selection)).extract_pair_sym_table()
+  pair_sym_table_as_antons_master(
+    master=master,
+    unit_cell=unit_cell,
+    pdb_atoms=pdb_atoms,
+    sites_frac=sites_frac,
+    pair_sym_table=c1_pair_sym_table,
+    reindexing_array=c1_selection.iselection())
+
   return master
 ################################################
 ################################################
@@ -994,26 +1028,14 @@ def BOND_PLACING(LIST1, LIST2, LIST3):
                                        LIST2[7] = LIST3[2]
                                        LIST2[8] = LIST3[5]
                                        LIST2[9] = LIST3[6]
-#                                   elif LIST1[4] in LIST3[2]:
-#                                       LIST2[8] = LIST3[2]
-#                                       LIST2[7] = LIST3[5]
-#                                       LIST2[9] = LIST3[6]
                                    elif LIST1[5] in LIST3[2] and LIST1[6] in LIST3[5]:
                                        LIST2[10] = LIST3[2]
                                        LIST2[11] = LIST3[5]
                                        LIST2[12] = LIST3[6]
-#                                   elif LIST1[6] in LIST3[2]:
-#                                       LIST2[11] = LIST3[2]
-#                                       LIST2[10] = LIST3[5]
-#                                       LIST2[12] = LIST3[6]
                                    elif LIST1[7] in LIST3[2] and LIST1[8] in LIST3[5]:
                                        LIST2[13] = LIST3[2]
                                        LIST2[14] = LIST3[5]
                                        LIST2[15] = LIST3[6]
-#                                   elif LIST1[8] in LIST3[2]:
-#                                       LIST2[14] = LIST3[2]
-#                                       LIST2[13] = LIST3[5]
-#                                       LIST2[15] = LIST3[6]
 
                                    return LIST2
 ################################################
@@ -1189,7 +1211,6 @@ def REMOVAL(LIST1, LIST2, base_a, base_b, CUTOFF, mode_removal):
                            a = a_b[0]
                            b = a_b[1]
                            ACTUAL = ACTUAL_REMOVAL(LIST1, LIST2, a, b)
-#                           print "checking if bases", a, "and", b, "are involved in multiple interactions. Bulk removal mode"
                            LIST2 = ACTUAL
                        elif (mode_removal == 1) and ("yes" in LIST1[i][j]) and ('MH' in LIST1[i][j]) and (LIST1[i][j][len(LIST1[i][j]) - 2] == CUTOFF):
                            print "#### Performing 'Semi-Bulk' removal mode", "LIST1[i][j]", LIST1[i][j]
@@ -1200,7 +1221,6 @@ def REMOVAL(LIST1, LIST2, base_a, base_b, CUTOFF, mode_removal):
                            print "checking if bases", a, "and", b, "are involved in multiple interactions. Semi-Bulk removal mode"
 #Once all basepairs have been removed, the modified LIST2 ('control'), will be searched for lines with removed residues. The remaining residues will be transferred to 'control_removed' to search for 'lone pairs'.
 
-#            print "new control", LIST2, "\nlen(LIST2)", len(LIST2)
             for l in range (len(LIST2)):
                  list = []
                  if LIST2 != []:
@@ -1300,15 +1320,18 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
 
     First_List_smaller = []
     First_List_P = []
+    First_List_C1 = []
     for a in range (len(First_List)):
        if First_List[a] != []:
           if (First_List[a][len(First_List[a]) - 1] < 5):
               First_List_smaller.append(First_List[a])
           if ' P  ' in First_List[a][2] and ' P  ' in First_List[a][5]:
               First_List_P.append(First_List[a])
+          C1 = [' C1\'', ' C1*']
+          if First_List[a][2] in C1 and First_List[a][5] in C1:
+              First_List_C1.append(First_List[a])
     First_List = First_List_smaller
-
-    MASTER_Basepairs = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+    MASTER_Basepairs = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
 
 #####################################
 #FUNCTION "Program". Section: First sorting of basepair candidates          BEGINNING
@@ -1318,7 +1341,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
     collect = []
     for i in range (1, len(First_List)):
 #FOLLOW A LINE
-#        if ('436' in First_List[i][0] and '437' in First_List[i][3]):
+#        if ('   1 ' in First_List[i][0] and '  72 ' in First_List[i][3]):
 #            print "First_List[i] ", First_List[i]
 #FOLLOW A LINE
         if First_List[i][0] != First_List[i][3]:
@@ -1326,20 +1349,31 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                #Matching the bases to those of MASTER_Basepairs_bonds
                if (MASTER_Basepairs_bonds[j][1] in First_List[i][1]) and (MASTER_Basepairs_bonds[j][2] in First_List[i][4]):
                    count = 0
-                   transient = MASTER_Basepairs_bonds[j][3:]
+                   transient = MASTER_Basepairs_bonds[j][3:9]
+#FOLLOW A LINE
+#                   if ('   1 ' in First_List[i][0] and '  72 ' in First_List[i][3]):
+#                         print "transient", transient, "MASTER_Basepairs_bonds[j]", MASTER_Basepairs_bonds[j]
+#FOLLOW A LINE
                    #Matching the ATOMS to those of MASTER_Basepairs_bonds
                    for k in range ((len(transient)/2)):
+#                       print "transient", transient
                        if (transient[2*k] in First_List[i][2]) and (transient[2*k + 1] in First_List[i][5]) and (First_List[i][6] > PREV_CUTOFF) and (First_List[i][6] <= CUTOFF):
                            collect = [First_List[i][0], First_List[i][1], First_List[i][2], First_List[i][3], First_List[i][4], First_List[i][5], First_List[i][6]]
                            MASTER_Basepairs[j].append(collect)
 #FOLLOW A LINE
-#                           if ('436' in First_List[i][0] and '437' in First_List[i][3]):
+#                           if ('   1 ' in First_List[i][0] and '  72 ' in First_List[i][3]):
 #                               print "MASTER_Basepairs[j][len(MASTER_Basepairs[j])-1]", MASTER_Basepairs[j][len(MASTER_Basepairs[j])-1]
 #FOLLOW A LINE
 
                        elif (transient[2*k] in First_List[i][2]) and (transient[2*k + 1] in First_List[i][5]) and (First_List[i][6] > CUTOFF) and (MAX_CUTOFF_str[0:3] in CUTOFF_str[0:3]):
-                           collect = [First_List[i][0], First_List[i][1], First_List[i][2], First_List[i][3], First_List[i][4], First_List[i][5], First_List[i][6]]
+                           collect = [First_List[i][0], First_List[i][1], First_List[i][2], First_List[i][3], First_List[i][4], First_List[i][5], First_List[i][6], MASTER_Basepairs_schemes[j]]
                            MASTER_Basepairs_excluded[j].append(collect)
+#FOLLOW A LINE
+#                           if ('   1 ' in First_List[i][0] and '  72 ' in First_List[i][3]):
+#                               for q in range (len(MASTER_Basepairs_excluded[j])):
+#                                  print "MASTER_Basepairs_excluded[j][q]", MASTER_Basepairs_excluded[j][q]
+#                              print "MASTER_Basepairs_excluded[j][len(MASTER_Basepairs_excluded[j])-1]", MASTER_Basepairs_excluded[j][len(MASTER_Basepairs_excluded[j])-1]
+#FOLLOW A LINE
                        count = count + 1
                        collect = []
 
@@ -1373,6 +1407,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                 #position 15: "Distance for H-bond 3 between atoms 1 and 2" MASTER_Basepairs[i+x][0][6],
                         #NOTE: The latter three strings will only be present in three-bond basepairing schemes
                 #position 16: "Phosphate-to-phosphate 'P-to-P' distance". Carried in 'First_List_P' and collected in 'FUNCTION Program. Section: LOOKING FOR BASES WITH POSSIBLE MULTIPLE CONTACTS'
+                #position 17: "C1'-to-C1'" distance". Carried in 'First_List_C1' and collected in 'FUNCTION Program. Section: LOOKING FOR BASES WITH POSSIBLE MULTIPLE CONTACTS'
     line1 = "####################################\nSecond sorting of basepair candidates: Run # " + run_number_str + " Distance Cutoff = " + CUTOFF_str[0:3] + "\n#####################################"
     print line1
     for i in range(len(MASTER_Basepairs)): #'i' will correspond to the same level in both MASTER_Basepairs and MASTER_Basepairs_summary, the level of basepair scheme
@@ -1411,7 +1446,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
 
 #New basepair detected for a basepairing Scheme for which other basepairs have been identified
                            elif (found == 0) and (k == len(MASTER_Basepairs_summary[i]) - 1):
-                               collect = [MASTER_Basepairs_schemes[i], MASTER_Basepairs_bonds[i][0], MASTER_Basepairs[i][j][0], MASTER_Basepairs[i][j][1], MASTER_Basepairs[i][j][3], MASTER_Basepairs[i][j][4], 1, [], [], [], [], [], [], [], [], [], []]
+                               collect = [MASTER_Basepairs_schemes[i], MASTER_Basepairs_bonds[i][0], MASTER_Basepairs[i][j][0], MASTER_Basepairs[i][j][1], MASTER_Basepairs[i][j][3], MASTER_Basepairs[i][j][4], 1, [], [], [], [], [], [], [], [], [], [], []]
                                MASTER_Basepairs_summary[i].append(collect)
                        #Bond ATOMS and distances will be placed at their proper position in "FUNCTION BOND_PLACING"
                                MASTER_Basepairs_summary[i][len(MASTER_Basepairs_summary[i])-1] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][len(MASTER_Basepairs_summary[i])-1], MASTER_Basepairs[i][j])
@@ -1422,7 +1457,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
 
 #First basepair for this basepairing Scheme
                     else: ######
-                        collect = [MASTER_Basepairs_schemes[i], MASTER_Basepairs_bonds[i][0], MASTER_Basepairs[i][j][0], MASTER_Basepairs[i][j][1], MASTER_Basepairs[i][j][3], MASTER_Basepairs[i][j][4], 1, [], [], [], [], [], [], [], [], [], []]
+                        collect = [MASTER_Basepairs_schemes[i], MASTER_Basepairs_bonds[i][0], MASTER_Basepairs[i][j][0], MASTER_Basepairs[i][j][1], MASTER_Basepairs[i][j][3], MASTER_Basepairs[i][j][4], 1, [], [], [], [], [], [], [], [], [], [], []]
                         MASTER_Basepairs_summary[i].append(collect)
                         #Bond ATOMS and distances will be placed at their proper position in "FUNCTION BOND_PLACING"
                         MASTER_Basepairs_summary[i][0] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][0], MASTER_Basepairs[i][j])
@@ -1455,6 +1490,12 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                     for r in range (len(First_List_P)):
                         if First_List_P[r][0] in MASTER_Basepairs_summary[i][j] and First_List_P[r][3] in MASTER_Basepairs_summary[i][j][4]:
                            MASTER_Basepairs_summary[i][j][16] = First_List_P[r][6]
+                    for s in range (len(First_List_C1)):
+                        if First_List_C1[s][0] in MASTER_Basepairs_summary[i][j] and First_List_C1[s][3] in MASTER_Basepairs_summary[i][j][4]:
+#                           print "First_List_C1[s]", First_List_C1[s]
+#                           print "MASTER_Basepairs_summary[i][j]", MASTER_Basepairs_summary[i][j]
+                           if First_List_u1[s][6] < 13:
+                               MASTER_Basepairs_summary[i][j][17] = First_List_C1[s][6]
                 if (MASTER_Basepairs_summary[i][j][6] >= 2):
 
 #Calling FUNCTION "CONTROL" to perform an initial assessment of whether the identified bases might be involved in MULTIPLE CONTACTS
@@ -1730,6 +1771,7 @@ First_List[0] = []
 #Sub SECTION file name
 ##########################################################################
 import os
+dir =  os.getcwd()
 
 import re
 mm=re.search(r'\.', pdb_file)
@@ -1807,11 +1849,54 @@ while CUTOFF < MAX_CUTOFF:
 
 
 ####FUNCTIONING
-#In the MAIN part of the section MASTER_Basepairs_summary_bak will be compared to MASTER_Basepairs_summary to detect false basepairs as described above.
-         #The debated basepairs are sent to SECTION FUNCTION "CONTINUITY_HELICITY_CRITERION" to check whether they could form part of a helical element. The debated basepairs will be given a number from "0" to "2", based on the number of helical elements that are continuous with the proposed basepair.
-         #After SECTION FUNCTION "CONTINUITY_HELICITY_CRITERION":
-             #The basepair with the highest number associated to it, will be assigned as the legitimate basepair. An 'MH' tag will be appended to this basepair and a 'FALSE' tag to the other
-             #If both basepairs have equal numbers associated to them, the 'yes' tag of both will be replaced with a 'no' and an 'UNDETERMINED' tag will be appended to both
+#In the MAIN part of the section MASTER_Basepairs_summary_bak will be compared to MASTER_Basepairs_summary to detect false basepairs as described above. Several criteria will be cyclically used at different levels of discrimination stringency to decide which one of the debated basepairs is LEGITIMATE and which one is FALSE. Initially a list of base-sharing basepairs is defined. There are 2 categories:
+        #Basepairs which share a single base. These are the most abundant. They are removed from the list first.
+        #Basepairs which share both bases. In this case the 2 bases clearly form a basepair, only the right geometry has to be inferred. These are removed from the list once the basepairs which share a single base have been processed.
+
+
+        #"C1-C1 and P-P DISTANCE CRITERION": Performed only at HIGH STRINGENCY and before any of the other criteria is used. Will allow initial assignement of FALSE basepairs independently of the rest of the loop.
+                #Performed in SECTION FUNCTION "C1_C1 DISTANCE CRITERION". As of 050310 version, I have added statistical information regarding the C1-C1 and P-P distance. The information was empirically generated by the program and then fed back into into it by means of the list "MASTER_Basepairs_bonds". Historically, while this information was not necessary for the prediction of basepairs in tRNA (4TNA.pdb), 16S rRNA was more of a challenge, in particular regions in which the structure is a little bit disordered, the program has problems telling real basepairs from false ones due to the noise brought about by stacking interactions. The quality of this information should be improved as more structures are processed by the program, specially large ones. IMPORTANT: only really well refined structures should be used to get statistical data, as this information is highly sensitive to the quality of the structure!!!!!
+        #"CONTINUITY_HELICITY_CRITERION CRITERION": Initially this criterion was the only one used to identify FALSE basepairs and worked well enough with tRNA. However, tests with 16S rRNA made it clear that this criterion by itself was not enough.
+                #The debated basepairs are sent to SECTION FUNCTION "CONTINUITY_HELICITY_CRITERION" to check whether they could form part of a helical element. The debated basepairs will be given a number from "0" to "2", based on the number of helical elements that are continuous with the proposed basepair.
+                        #Score
+        #"CUTOFF_CRITERION": Performed in SECTION FUNCTION "CUTOFF_CRITERION". Not very valuable and possibly targeted for removal after implementing the "C1-C1 DISTANCE CRITERION".
+        #"BOND_CRITERION": Perofrmed in SECTION FUNCTION "BOND_CRITERION". Not very valuable and possibly targeted for removal after implementing the "C1-C1 DISTANCE CRITERION".
+
+#At HIGH STRINGENCY, basepairs with this distance falling beyond the C1-C1 distance average +/- standard deviation are not considered further. Other criteria not considered at this stringency
+#At LOW STRINGENCY, the C1-C1 distance average +/- standard deviation values could be used to weigh the rest of the scores, coming from the other discrimination criteria
+
+
+#The recorded score after submitting the debated basepairs to all the above criteria determines which one of the them is defined as LEGITIMATE and which one as FALSE. A 'LEGITIMATE' tag will be appended to this basepair and a 'FALSE' tag to the other
+             #If both basepairs have equal scores associated to them, the 'yes' tag of both will be replaced with a 'no' and an 'UNDETERMINED' tag will be appended to both
+
+#################################
+#####SECTION FUNCTION "C1_C1 DISTANCE CRITERION"          BEGINNING
+#IMPORTANT NOTE 050310: the C1* to C1* may be a much better criterion, as it seems to be more stable than P-P distance
+def C1_C1_DISTANCE(LIST1, LIST2, A0, A1, A2, A3):
+#LIST1 = MASTER_Basepairs_summary[i][j]
+#LIST2 = MASTER_Basepairs_bonds[i]
+#A0 = convert[0]
+#A1 = convert[1]
+#A2 = convert[2]
+#A3 = convert[3]
+    print "\n...using the C1\'-C1\' distance criterion"
+    print "LIST1", LIST1
+    print "LIST1[17]", LIST1[17], "LIST2[11]", LIST2[11]
+    diffP_P = LIST1[16] - LIST2[9]
+    diffC1_C1 = LIST1[17] - LIST2[11]
+    line = "The basepair formed by residues " + A0 + A1 + ":" + A2 + A3 + "displays a" + LIST1[0] + "geometry.\n     Empirically determined average C1\'-C1\ distance for this geometry = " + str(LIST2[11]) + " + SD = " + str(LIST2[12]) + "\n     Empirically determined average P-P distance for this geometry = " + str(LIST2[9]) + " + SD = " + str(LIST2[10])
+    print line
+    if abs(diffC1_C1) > 3 * LIST2[12]:
+        LIST1.append('FALSE')
+        print "The C1\'-C1\' distance for this basepair is more than 3 times the recorded standard deviation for this geometry. The basepair will be apended as 'FALSE'"
+    LIST1[18:18] = [abs(diffC1_C1)]
+    print "new  LIST1",  LIST1
+    return LIST1
+
+#####SECTION FUNCTION "C1-C1 DISTANCE CRITERION"          END
+#################################
+
+
 
 #################################
 #####SECTION FUNCTION "CONTINUITY_HELICITY_CRITERION"          BEGINNING
@@ -1876,7 +1961,6 @@ def CUTOFF_CRITERION(LIST1, LIST2, A0, A1, A2, A3, A4, A5, A6, A7):
 #A7 = convert[7]
     score = [0, 0]
     print "\n...using the CUTOFF criterion"
-    print "LIST1", LIST1, "\nLIST2", LIST2
     #The CUTOFF string has to be converted back into an 'float' number
     float_1 = float(LIST1[len(LIST1) - 1][0]) + float(LIST1[len(LIST1) - 1][2])/10
     float_2 = float(LIST2[len(LIST2) - 1][0]) + float(LIST2[len(LIST2) - 1][2])/10
@@ -1956,7 +2040,7 @@ def DECISSION(LIST1, LIST2, A0, A1, A2, A3, A4, A5, A6, A7, removed, undetermine
         line = "The basepair formed by residues " + A0 + A1 + ":" + A2 + A3 + " and with geometry " + LIST1[0] + " will be assigned as 'LEGITIMATE'"
         print line
         print "################"
-        LIST1[17:17] = ['LEGITIMATE']
+        LIST1[19:19] = ['LEGITIMATE']
     else:
         line = "\nBasepairs, " + convert[0] + convert[1] + ":" + convert[2] + convert[3] + " with geometry " + MASTER_Basepairs_summary[i][j][0] + " and " + convert[4] + convert[5] + ":" + convert[6] + convert[7] +  " with geometry " + MASTER_Basepairs_summary[l][m][0] + " cannot be deconvoluted. Their assignment as legitimate basepairs remains 'UNDETERMINED'"
         print line
@@ -1971,9 +2055,17 @@ def DECISSION(LIST1, LIST2, A0, A1, A2, A3, A4, A5, A6, A7, removed, undetermine
 
 ######################################################
 #####MAIN part of SECTION DETECTION OF FALSE BASEPAIRS
-
 #MASTER_Basepairs_summary_bak = MASTER_Basepairs_summary
 print "SEARCHING FOR ERRONEOUSLY ASSIGNED BASEPAIRS"
+
+for i in range (len(MASTER_Basepairs_summary)):
+   if (len(MASTER_Basepairs_summary[i]) > 0):
+      for j in range (len(MASTER_Basepairs_summary[i])):
+         if (MASTER_Basepairs_bonds[i][9] != 'NA') and (('FALSE' not in MASTER_Basepairs_summary[i][j]) and ('UNDETERMINED' not in MASTER_Basepairs_summary[i][j])) and (('D' in MASTER_Basepairs_summary[i][j]) or ('MH' in MASTER_Basepairs_summary[i][j]) or ('ELI' in MASTER_Basepairs_summary[i][j])):
+             list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
+             convert = CONVERT(list)
+             MASTER_Basepairs_summary[i][j] = C1_C1_DISTANCE(MASTER_Basepairs_summary[i][j], MASTER_Basepairs_bonds[i], convert[0], convert[1], convert[2], convert[3])
+
 CONTINUITY_HELICITY_CRITERION_output = [] #Will collect the output of 'FUNCTION CONTINUITY_HELICITY_CRITERION'
 while_control = 'y' #Will end the next 'while' loop when == 'n'
 run_while = 1
@@ -1997,6 +2089,14 @@ while while_control == 'y':
     for i in range (len(MASTER_Basepairs_summary)):
         if (len(MASTER_Basepairs_summary[i]) > 0):
             for j in range (len(MASTER_Basepairs_summary[i])):
+
+                #CRITERION #0: C1-C1 DISTANCE CRITERION: Should be given highest priority if there is previously recorded statistical data to compare to. For this reason, an initial assessment of the C1-C1 distance is made with all basepairs to determine whether they can be legitimally qualified as such. This initial check could result in the assignment of some basepairs as FALSE, should their C1-C1 DISTANCE be off the previously determined average by more than 3 times the SD. This difference will be appended at position [19] of MASTER_Basepairs_summary[i][j]
+
+#                if (MASTER_Basepairs_bonds[i][9] != 'NA') and (stringency == 'HIGH') and (('FALSE' not in MASTER_Basepairs_summary[i][j]) and ('UNDETERMINED' not in MASTER_Basepairs_summary[i][j])) and (('D' in MASTER_Basepairs_summary[i][j]) or ('MH' in MASTER_Basepairs_summary[i][j]) or ('ELI' in MASTER_Basepairs_summary[i][j])):
+#                    list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
+#                    convert = CONVERT(list)
+#                    MASTER_Basepairs_summary[i][j] = C1_C1_DISTANCE(MASTER_Basepairs_summary[i][j], MASTER_Basepairs_bonds[i], convert[0], convert[1], convert[2], convert[3])
+
                 if (('FALSE' not in MASTER_Basepairs_summary[i][j]) and ('UNDETERMINED' not in MASTER_Basepairs_summary[i][j])) and (('D' in MASTER_Basepairs_summary[i][j]) or ('MH' in MASTER_Basepairs_summary[i][j]) or ('ELI' in MASTER_Basepairs_summary[i][j])):
                     for l in range (len(MASTER_Basepairs_summary)):
                         if (len(MASTER_Basepairs_summary[l]) > 0):
@@ -2195,23 +2295,40 @@ def ADD_SPACES(STRING, NUM):
 
 ###################################
 #####SECTION FUNCTION "DIFF_CALC"
-def DIFF_CALC(ARR1, ARR2, LIST1):
+def DIFF_CALC(ARR1, ARR2, LIST1, LIST2):
 #ARR1 = new_list_end_floats[b,:]
 #ARR2 = STATS[c,:]
 #LIST1 = can be 'new_list_end[b]',falsely_assigned[b]
-
+#LIST2 = MASTER_Basepairs_bonds[c]
+#    print "ARR1", ARR1, "ARR2", ARR2, "\LIST1", LIST1
     diff_1 = str(ARR1[0] - ARR2[0])
     diff_2 = str(ARR1[1] - ARR2[2])
     diff_3 = str(ARR1[2] - ARR2[4])
-    diff_P_dist = str(ARR1[3] - ARR2[6])
-    list = [diff_1[:5], diff_2[:5], diff_3[:5], diff_P_dist[:5]]
-    key = 4
+#    diff_P_dist = str(ARR1[3] - ARR2[6])
+#    diff_C1_dist = str(ARR1[4] - ARR2[8])
+    if LIST2[9] != "NA":
+        diff_P_dist = str(ARR1[3] - LIST2[9])
+        diff_C1_dist = str(ARR1[4] - LIST2[11])
+    else:
+        diff_P_dist = str(ARR1[3] - ARR2[6])
+        diff_C1_dist = str(ARR1[4] - ARR2[8])
+    list = [diff_1[:6], diff_2[:6], diff_3[:6], diff_P_dist[:6], diff_C1_dist[:6]]
+    key = 5
     for l in range (len(list)):
         if list[l] == '0.0':
-           list[l] = ' 0.00'
+           list[l] = '0.000'
+        if list[l][0] != "-":
+           list[l] = ' ' + list[l][0:5]
         if len(list[l]) < key:
            list[l] = ADD_SPACES(list[l], key)
-    print LIST1[0], "  ", LIST1[2], " ", LIST1[3], " ", LIST1[4], " ", LIST1[5], "    ", LIST1[1], "    ", LIST1[6], "  ", LIST1[7], " ", LIST1[8], LIST1[9], list[0], LIST1[16], list[3]
+#To format the distances so that the ones carrying a '*' do not jutt out
+    if len(LIST1[9]) == 5:
+        LIST1[9] = LIST1[9] + ' '
+    if len(LIST1[12]) == 5:
+        LIST1[12] = LIST1[12] + ' '
+    if len(LIST1[15]) == 5:
+        LIST1[15] = LIST1[15] + ' '
+    print LIST1[0], "  ", LIST1[2], " ", LIST1[3], " ", LIST1[4], " ", LIST1[5], "    ", LIST1[1], "    ", LIST1[6], "  ", LIST1[7], " ", LIST1[8], LIST1[9], list[0], LIST1[16], list[3], LIST1[17], list[4]
     print "                                                     ", LIST1[10], " ", LIST1[11], LIST1[12], list[1]
     print "                                                     ", LIST1[13], " ", LIST1[14], LIST1[15], list[2]
 
@@ -2268,7 +2385,7 @@ print "######################################\n##########ORDERED RAW OUTPUT#####
 print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
 list = []
 count_for = len(new_list_end) - 1 #Controld the next 'while'
-new_list_end_floats = numpy.zeros(4 * len(new_list_end)).reshape(len(new_list_end), 4) #Will have as many lines as 'new_list_end', so it can be accessed just like 'new_list_end, but will carry only the bond- and P-distances as float, so they can be used in statistical operations
+new_list_end_floats = numpy.zeros(5 * len(new_list_end)).reshape(len(new_list_end), 5) #Will have as many lines as 'new_list_end', so it can be accessed just like 'new_list_end, but will carry only the bond- and P-distances as float, so they can be used in statistical operations
 while count_for > -1:
            line1 = ''
 
@@ -2278,36 +2395,46 @@ while count_for > -1:
            if (new_list_end[count_for][1] == 3) and (new_list_end[count_for][6] == 2):
 # and ('FALSE' not in new_list_end[count_for]) and ('UNDETERMINED' not in new_list_end[count_for]):
                print "Basepair formed by residues", new_list_end[count_for][2], " and", new_list_end[count_for][4], "is missing one bond. Searching for missing bond"
+#               print "new_list_end[count_for]", new_list_end[count_for]
           #Let's first find the basepair scheme
                for i in range (len(MASTER_Basepairs_schemes)):
                    if MASTER_Basepairs_schemes[i] == new_list_end[count_for][0]:
-#                       print "MASTER_Basepairs_schemes[i] ", MASTER_Basepairs_schemes[i], "MASTER_Basepairs_bonds[i] ", MASTER_Basepairs_bonds[i]
+#                       print "MASTER_Basepairs_schemes[i] ", MASTER_Basepairs_schemes[i], "len(MASTER_Basepairs_schemes)", len(MASTER_Basepairs_schemes), "MASTER_Basepairs_bonds[i] ", MASTER_Basepairs_bonds[i], "len(MASTER_Basepairs_bonds)", len(MASTER_Basepairs_bonds), "len(MASTER_Basepairs_excluded)", len(MASTER_Basepairs_excluded)
+#                       for q in range (len(MASTER_Basepairs_excluded[i])):
+#                           print MASTER_Basepairs_excluded[i][q]
           #Let's now find the location of the missing bonds in new_list_end[count_for] and in MASTER_Basepairs_bonds[i]. Append the location and the identity of the participating ATOMS to the list 'missing'
                        for j in range (len(new_list_end[count_for])):
                            if new_list_end[count_for][j] == []:
+                               print "new_list_end[count_for]", new_list_end[count_for]
                                if j == 7:
+                                  print "j == 7"
                                   missing.append(j)
                                   missing.append(MASTER_Basepairs_bonds[i][3])
                                   missing.append(j+1)
                                   missing.append(MASTER_Basepairs_bonds[i][4])
                                   break
                                elif j == 10:
+                                  print "j == 10"
                                   missing.append(j)
                                   missing.append(MASTER_Basepairs_bonds[i][5])
                                   missing.append(j+1)
                                   missing.append(MASTER_Basepairs_bonds[i][6])
                                   break
                                elif j == 13:
+                                  print "j == 13"
                                   missing.append(j)
                                   missing.append(MASTER_Basepairs_bonds[i][7])
                                   missing.append(j+1)
                                   missing.append(MASTER_Basepairs_bonds[i][8])
                                   break
           #Let's now find the line in MASTER_Basepairs that carries the missing bond
+#                       print "missing", missing
                        for k in range (len(MASTER_Basepairs_excluded[i])):
+#                           print "MASTER_Basepairs_excluded[i][k]", MASTER_Basepairs_excluded[i][k]
                            if (new_list_end[count_for][2] == MASTER_Basepairs_excluded[i][k][0]) and (new_list_end[count_for][4] == MASTER_Basepairs_excluded[i][k][3]):
-#                               print "\nmissing ", missing
-#                               print "i", i, "j", j, "k", k, "MASTER_Basepairs_schemes[i]", MASTER_Basepairs_schemes[i], "\n    MASTER_Basepairs_excluded[i][k]", MASTER_Basepairs_excluded[i][k], "\n   new_list_end[count_for]", new_list_end[count_for]
+                               print "\nmissing ", missing
+                               print "i", i, "j", j, "k", k, "MASTER_Basepairs_schemes[i]", MASTER_Basepairs_schemes[i], "\n    MASTER_Basepairs_excluded[i][k]", MASTER_Basepairs_excluded[i][k], "\n   new_list_end[count_for]", new_list_end[count_for]
+                               print "MASTER_Basepairs_bonds[i]", MASTER_Basepairs_bonds[i]
                                if (missing[1] in MASTER_Basepairs_excluded[i][k][2]) and (missing[3] in MASTER_Basepairs_excluded[i][k][5]):
                                   new_list_end[count_for][missing[0]] = MASTER_Basepairs_excluded[i][k][2]
                                   new_list_end[count_for][missing[2]] = MASTER_Basepairs_excluded[i][k][5]
@@ -2323,24 +2450,32 @@ while count_for > -1:
 #           print "\nnew_list_end[count_for]", new_list_end[count_for]
 #           print "count_for", count_for, "new_list_end_floats[count_for]", new_list_end_floats[count_for]
            if new_list_end[count_for][13] == []:
-#               print "-----------------if----------------------------"
+#               print "\n-----------------if----------------------------"
+#               print "new_list_end[count_for]", new_list_end[count_for]
                new_list_end[count_for][13] = '0'
                new_list_end[count_for][14] = '0'
                new_list_end[count_for][15] = '00'
-               new_list_end_floats[count_for,:] = new_list_end_floats[count_for,:] + [new_list_end[count_for][9], new_list_end[count_for][12], 0, new_list_end[count_for][16]]
+               print "new_list_end[count_for]", new_list_end[count_for]
+               new_list_end_floats[count_for,:] = new_list_end_floats[count_for,:] + [new_list_end[count_for][9], new_list_end[count_for][12], 0, new_list_end[count_for][16], new_list_end[count_for][17]]
            else:
-#               print "-----------------else----------------------------"
-               new_list_end_floats[count_for,:] = new_list_end_floats[count_for,:] + [new_list_end[count_for][9], new_list_end[count_for][12], new_list_end[count_for][15], new_list_end[count_for][16]]
+#               print "\n-----------------else----------------------------"
+#               print "new_list_end[count_for]", new_list_end[count_for]
+               new_list_end_floats[count_for,:] = new_list_end_floats[count_for,:] + [new_list_end[count_for][9], new_list_end[count_for][12], new_list_end[count_for][15], new_list_end[count_for][16], new_list_end[count_for][17]]
                a3 = str(new_list_end[count_for][15])
                new_list_end[count_for][15] = a3[:5]
-#           print "new_list_end[count_for][9]", new_list_end[count_for][9], "new_list_end[count_for][12]", new_list_end[count_for][12], "new_list_end[count_for][15]", new_list_end[count_for][15], "new_list_end[count_for][16]]", new_list_end[count_for][16]
+#           print "new_list_end[count_for][9]", new_list_end[count_for][9], "new_list_end[count_for][12]", new_list_end[count_for][12], "new_list_end[count_for][15]", new_list_end[count_for][15], "new_list_end[count_for][16]]", new_list_end[count_for][16], "new_list_end[count_for][17]", new_list_end[count_for][17]
 #           print "new_list_end_floats[count_for,:]", new_list_end_floats[count_for,:]
            a1 = str(new_list_end[count_for][9])
            new_list_end[count_for][9] = a1[:5]
            a2 = str(new_list_end[count_for][12])
            new_list_end[count_for][12] = a2[:5]
            a3 = str(new_list_end[count_for][16])
-           new_list_end[count_for][16] = a3[:5]
+           if new_list_end[count_for][16] < 10:
+               new_list_end[count_for][16] = ' ' + a3[:5]
+           if new_list_end[count_for][16] >= 10:
+               new_list_end[count_for][16] = a3[:6]
+           a4 = str(new_list_end[count_for][17])
+           new_list_end[count_for][17] = a4[:6]
         #positions 2, 4, 7 and 8, 10 and 11, 13 and 14,  have lefthand spaces. They need to be removed. Strings "new_list_end[count_for][7]" and above are introduced twice to make 'FUNCTION CONVERT' work properly. First time through "FUNCTION CONVERT" the 'number' part of the string is extracted and the second time the 'word' part of the string is extracted
 
            list = [new_list_end[count_for][2], new_list_end[count_for][3], new_list_end[count_for][4], new_list_end[count_for][5], new_list_end[count_for][7], new_list_end[count_for][7], new_list_end[count_for][8], new_list_end[count_for][8], new_list_end[count_for][10], new_list_end[count_for][10], new_list_end[count_for][11], new_list_end[count_for][11], new_list_end[count_for][13], new_list_end[count_for][13], new_list_end[count_for][14], new_list_end[count_for][14]]
@@ -2372,7 +2507,7 @@ while count_for > -1:
               else:
                  new_list_end[count_for][l] = a
               if missing != [] and l == missing[2]+1:
-                 print "[missing[2]+1] ", [missing[2]+1], "and l", l
+#                 print "[missing[2]+1] ", [missing[2]+1], "and l", l
                  new_list_end[count_for][missing[2]+1] = new_list_end[count_for][missing[2]+1] + '*'
 #                 print "AFTER append new_list_end[count_for][missing[2]+1]", new_list_end[count_for][missing[2]+1]
               line1 = line1 + new_list_end[count_for][l] + ' '
@@ -2412,12 +2547,13 @@ while count_for > -1:
                new_list_end[count_for].append(ADD_SPACES(a, key[16]))
            line1 = line1 + new_list_end[count_for][len(new_list_end[count_for])-1] + ending
            print line1
+           print new_list_end[count_for]
            count_for = count_for - 1
 print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
 print "######################################\n##########ORDERED RAW OUTPUT##########       END\n######################################"
 #ADDING DESIRED SPACES
 
-print "AFTER loading new_list_end_floats \nlen(new_list_end)", len(new_list_end), "new_list_end_floats.ndim", new_list_end_floats.ndim, "new_list_end_floats.shape", new_list_end_floats.shape, "count_for", count_for
+#print "AFTER loading new_list_end_floats \nlen(new_list_end)", len(new_list_end), "new_list_end_floats.ndim", new_list_end_floats.ndim, "new_list_end_floats.shape", new_list_end_floats.shape, "count_for", count_for
 ###########################FORMATTING 'new_list_end'############################################
 
 #################Transferring the list of ORDERED and FORMATTED basepairs to run_cutoff_LISTS, in which they will be further order by CUTOFF. Also 'FALSE', 'LEGITIMATE', and 'UNDETERMINED' basepairs get transferred to corresponding lists
@@ -2425,11 +2561,11 @@ LEGITIMATE_tagged = [] #Will collect basepairs with a 'LEGITIMATE' tag from MAST
 falsely_assigned = [] #Will collect FALSE basepairs from MASTER_Basepairs_summary, from largest first residue to smallest
 undetermined = [] #Will collect 'UNDETERMINED' basepairs from MASTER_Basepairs_summary, from largest first residue to smallest
 file = [[], []]
-pymol0 = os.path.basename(pdb_file_main) + "_all-basepairs_REVERSED" + "_PYMOL" + "_script.pml"
+pymol0 = dir + "/" + pdb_file_main + "_all-basepairs_REVERSED" + "_PYMOL" + "_script.pml"
 file[0] = open(pymol0, 'w')
 line0 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n' + "show sticks" + '\n'
 file[0].write(line0)
-pymol1 = os.path.basename(pdb_file_main) + "_all-basepairs" + "_PYMOL" + "_script.pml"
+pymol1 = dir + "/" + pdb_file_main + "_all-basepairs" + "_PYMOL" + "_script.pml"
 file[1] = open(pymol1, 'w')
 line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
 file[1].write(line1)
@@ -2443,7 +2579,7 @@ for b in range (len(new_list_end)):
        PYMOL_OUTPUT(new_list_end[b], b, pdb_file_main, From, file)
    if ('LEGITIMATE' in new_list_end[b]):
        LEGITIMATE_tagged.append(new_list_end[b])
-       LEGITIMATE_tagged[len(LEGITIMATE_tagged)-1].append(b) #For easy future access to the corresponding line in 'new_list_end'
+#      LEGITIMATE_tagged[len(LEGITIMATE_tagged)-1].append(b) #For easy future access to the corresponding line in 'new_list_end'
    elif ('FALSE' in new_list_end[b]):
       falsely_assigned.append(new_list_end[b])
       falsely_assigned[len(falsely_assigned)-1].append(b) #For easy future access to the corresponding line in 'new_list_end'
@@ -2474,7 +2610,7 @@ for h in range (len(run_cutoff)/2):
    print           "==============================================================================="
 
    #For PYMOL output
-   pymol1 = os.path.basename(pdb_file_main) + "_basepairs-at-cutoff_" + run_cutoff[h*2 + 1] + "_PYMOL" + "_script.pml"
+   pymol1 = dir + "/" + pdb_file_main + "_basepairs-at-cutoff_" + run_cutoff[h*2 + 1] + "_PYMOL" + "_script.pml"
    file[1] = open(pymol1, 'w')
    line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
    file[1].write(line1)
@@ -2496,7 +2632,7 @@ CLOSE(file)
 ##### 2) LIST OF LEGITIMATE BASEPAIRS
 if LEGITIMATE_tagged != []:
     file = [[], []]
-    pymol1 = os.path.basename(pdb_file_main) + "_LEGITIMATED-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = dir + "/" + pdb_file_main + "_LEGITIMATED-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2521,7 +2657,7 @@ if LEGITIMATE_tagged != []:
 ##### 3) LIST OF FALSE BASEPAIRS
 if falsely_assigned != []:
     file = [[], []]
-    pymol1 = os.path.basename(pdb_file_main) + "_FALSE-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = dir + "/" + pdb_file_main + "_FALSE-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2546,7 +2682,7 @@ if falsely_assigned != []:
 ##### 4) LIST OF UNDETERMINED BASEPAIRS BEGINNING
 if undetermined != []:
     file = [[], []]
-    pymol1 = os.path.basename(pdb_file_main) + "_UNDETERMINED-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = dir + "/" + pdb_file_main + "_UNDETERMINED-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2576,7 +2712,7 @@ if undetermined != []:
 
 
 list = []
-STATS = numpy.zeros(9 * len(MASTER_Basepairs_schemes)).reshape(len(MASTER_Basepairs_schemes), 9) #can be accessed with MASTER_Basepairs_schemes indexes. Will store:
+STATS = numpy.zeros(11 * len(MASTER_Basepairs_schemes)).reshape(len(MASTER_Basepairs_schemes), 11) #can be accessed with MASTER_Basepairs_schemes indexes. Will store:
                 #STATS[a,0] = AVERAGE for bond-1's length for the GEOMETRY specified by the 'MASTER_Basepairs_schemes[a]'
                 #STATS[a,1] = STANDARD DEVIATION for bond-1's length for the GEOMETRY specified by the 'MASTER_Basepairs_schemes[a]'
                 #STATS[a,2] = AVERAGE for bond-2's length for the GEOMETRY specified by the 'MASTER_Basepairs_schemes[a]'
@@ -2585,6 +2721,8 @@ STATS = numpy.zeros(9 * len(MASTER_Basepairs_schemes)).reshape(len(MASTER_Basepa
                 #STATS[a,5] = STANDARD DEVIATION for bond-3's length for the GEOMETRY specified by the 'MASTER_Basepairs_schemes[a]'
                 #STATS[a,6] = AVERAGE for P-P distance for the GEOMETRY specified by the 'MASTER_Basepairs_schemes[a]'
                 #STATS[a,7] = STANDARD DEVIATION for P-P distance for the GEOMETRY specified by the 'MASTER_Basepairs_schemes[a]'
+                #STATS[a,8] = AVERAGE for C1'-C1' distance for the GEOMETRY specified by the 'MASTER_Basepairs_schemes[a]'
+                #STATS[a,9] = STANDARD DEVIATION for C1'-C1' distance for the GEOMETRY specified by the 'MASTER_Basepairs_schemes[a]'
                 #STATS[a,] = N, nuber of basepairs found of the GEOMETRY specified by the 'MASTER_Basepairs_schemes[a]'
 for a in range (len(MASTER_Basepairs_schemes)):
     SUM = []
@@ -2600,20 +2738,21 @@ for a in range (len(MASTER_Basepairs_schemes)):
     if SUM != []:
         SUM = numpy.array(SUM)
 #        print "SUM", SUM, "SUM.ndim", SUM.ndim, "SUM.shape", SUM.shape, "counter", counter, "SUM.shape[0]",SUM.shape[0]
-        SUM.reshape(counter, 4)
+        SUM.reshape(counter, 5)
 #        print "STATS[a,]", STATS[a,], "\nSUM[0,]", SUM[0,]
 #        print "numpy.mean(SUM[:,0])", numpy.mean(SUM[:,0])
-        STATS[a,] = [numpy.mean(SUM[:,0]), numpy.std(SUM[:,0]), numpy.mean(SUM[:,1]), numpy.std(SUM[:,1]), numpy.mean(SUM[:,2]), numpy.std(SUM[:,2]), numpy.mean(SUM[:,3]), numpy.std(SUM[:,3]), SUM.shape[0]]
+        STATS[a,] = [numpy.mean(SUM[:,0]), numpy.std(SUM[:,0]), numpy.mean(SUM[:,1]), numpy.std(SUM[:,1]), numpy.mean(SUM[:,2]), numpy.std(SUM[:,2]), numpy.mean(SUM[:,3]), numpy.std(SUM[:,3]), numpy.mean(SUM[:,4]), numpy.std(SUM[:,4]), SUM.shape[0]]
 #        print "STATS[a,]", STATS[a,], "STATS[a,0]", STATS[a,0]
 #        list = [str(STATS[a,0]), str(STATS[a,1]), str(STATS[a,2]), str(STATS[a,3]), str(STATS[a,4]), str(STATS[a,5]), str(STATS[a,6]), str(STATS[a,7]), str(STATS[a,8])]
 #        print "Bond1: MEAN =", list[0][:5], "SD =", list[1][:5], "Bond2: MEAN = ", list[2][:5], "SD =", list[3][:5], "Bond3: MEAN =", list[4][:5], "SD =", list[5][:5], "P-to-P distance =", list[6][:5], "SD =", list[7][:5], "Number of basepairs with this geometry =", list[8][:1]
 
 #SUMMARY STATISTICS BY BASEPAIR
 for a in range (len(MASTER_Basepairs_schemes)):
-    print "MASTER_Basepairs_schemes:", MASTER_Basepairs_schemes[a],
-    list = [str(STATS[a,0]), str(STATS[a,1]), str(STATS[a,2]), str(STATS[a,3]), str(STATS[a,4]), str(STATS[a,5]), str(STATS[a,6]), str(STATS[a,7]), str(STATS[a,8])]
+#    print "MASTER_Basepairs_schemes:", MASTER_Basepairs_schemes[a],
+    list = [str(STATS[a,0]), str(STATS[a,1]), str(STATS[a,2]), str(STATS[a,3]), str(STATS[a,4]), str(STATS[a,5]), str(STATS[a,6]), str(STATS[a,7]), str(STATS[a,8]), str(STATS[a,9]), str(STATS[a,10])]
     if list[0] != '0.0':
-        print "Bond1: MEAN =", list[0][:5], "SD =", list[1][:5], "Bond2: MEAN = ", list[2][:5], "SD =", list[3][:5], "Bond3: MEAN =", list[4][:5], "SD =", list[5][:5], "P-to-P distance =", list[6][:5], "SD =", list[7][:5], "No Basepairs =", list[7][:1]
+        print "STATISTICAL VALUES CALCULATED WITHIN STRUCTURE"
+        print "Bond1: MEAN =", list[0][:5], "SD =", list[1][:5], "Bond2: MEAN = ", list[2][:5], "SD =", list[3][:5], "Bond3: MEAN =", list[4][:5], "SD =", list[5][:5], "P-to-P distance =", list[6][:5], "SD =", list[7][:5], "C1\'-to-C1\' distance =", list[8][:5], "SD =", list[9][:5], "No Basepairs =", list[7][:1]
     else:
         print "No basepairs of this geometry were found"
 
@@ -2628,17 +2767,18 @@ for c in range (len(MASTER_Basepairs_schemes)):
         if MASTER_Basepairs_schemes[c] in new_list_end[b][0]:
            geometry_counter = geometry_counter + 1
            if geometry_counter == 1:
-              print           "======================================================================================"
-              print "   Scheme   Resid  Base  Resid  Base Expect. Found  ATOM ATOM  DIST. DIFF. DIST  DIFF."
-              print           "             #1     #1    #2     #2   Bonds  Bonds   #1   #2   BOND        P-P"
-              print           "======================================================================================"
+              print           "======================================================================================================="
+              print "   Scheme   Resid  Base  Resid  Base Expect. Found  ATOM ATOM  DIST.  DIFF.  DIST   DIFF.  DIST   DIFF."
+              print           "             #1     #1    #2     #2   Bonds  Bonds   #1   #2    BOND         P-P          C1'-C1'"
+              print           "======================================================================================================="
            if 'FALSE' not in new_list_end[b] and 'UNDETERMINED' not in new_list_end[b]:
                geometry_counter_real = geometry_counter_real + 1
-               list = DIFF_CALC(new_list_end_floats[b,:], STATS[c,:], new_list_end[b])
+               list = DIFF_CALC(new_list_end_floats[b,:], STATS[c,:], new_list_end[b], MASTER_Basepairs_bonds[c])
 
     if geometry_counter_real > 0 and 'FALSE' not in new_list_end[b] and 'UNDETERMINED' not in new_list_end[b]:
-         list = [str(STATS[c,0]), str(STATS[c,1]), str(STATS[c,2]), str(STATS[c,3]), str(STATS[c,4]), str(STATS[c,5]), str(STATS[c,6]), str(STATS[c,7]), str(STATS[c,8])]
-         print "Bond1: MEAN =", list[0][:5], "SD =", list[1][:5], "\nBond2: MEAN =", list[2][:5], " SD =", list[3][:5], "\nBond3: MEAN =", list[4][:5], " SD =", list[5][:5], "\nP-to-P distance =", list[6][:5], " SD =", list[7][:5]
+         list = [str(STATS[c,0]), str(STATS[c,1]), str(STATS[c,2]), str(STATS[c,3]), str(STATS[c,4]), str(STATS[c,5]), str(STATS[c,6]), str(STATS[c,7]), str(STATS[c,8]), str(STATS[c,9])]
+         print "PRECALCULATED STATISTICAL DATA:", "\nP-to-P distance =", MASTER_Basepairs_bonds[c][9], " SD =", MASTER_Basepairs_bonds[c][10], "\nC1\'-to-C1\' distance =", MASTER_Basepairs_bonds[c][11], " SD =", MASTER_Basepairs_bonds[c][12]
+         print "STATISTICAL DATA FROM CURRENT STRUCTURE:", "\nBond1: MEAN =", list[0][:5], "SD =", list[1][:5], "\nBond2: MEAN =", list[2][:5], " SD =", list[3][:5], "\nBond3: MEAN =", list[4][:5], " SD =", list[5][:5], "\nP-to-P distance =", list[6][:5], " SD =", list[7][:5], "\nC1\'-to-C1\' distance =", list[8][:5], " SD =", list[9][:5]
          print "NUMBER OF BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", geometry_counter_real
 
 #FALSE BASEPAIRS
@@ -2648,7 +2788,7 @@ for c in range (len(MASTER_Basepairs_schemes)):
             if b == 0:
                print "LIST FALSE BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry:"
             false_counter = false_counter + 1
-            list = DIFF_CALC(new_list_end_floats[falsely_assigned[b][len(falsely_assigned[b])-1],:], STATS[c,:], falsely_assigned[b])
+            list = DIFF_CALC(new_list_end_floats[falsely_assigned[b][len(falsely_assigned[b])-1],:], STATS[c,:], falsely_assigned[b], MASTER_Basepairs_bonds[c])
     if false_counter > 0:
         print "NUMBER OF FALSE BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", false_counter
 
@@ -2693,7 +2833,7 @@ print "\n\n#######################################################\n############
 #OUTPUT REGARDING BASES WITH POSSIBLE MULTIPLE CONTACTS
 #print "\n\nThe following group of bases have been identified as possible basepairs but cannot be assigned to a single basepair interaction\nPlease visually check the assignment in Pymol.\n##### These bases will be displayed in RED #####."
 file = [[], []]
-pymol1 = os.path.basename(pdb_file_main) + "_UNASSIGNABLE-basepairs" + "_PYMOL" + "_script.pml"
+pymol1 = dir + "/" + pdb_file_main + "_UNASSIGNABLE-basepairs" + "_PYMOL" + "_script.pml"
 file[1] = open(pymol1, 'w')
 line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
 file[1].write(line1)
@@ -2755,4 +2895,77 @@ sys.exit()
                 #3-bond base pair with  only two bonds identified between C455 and G476
 
 #v.042110
+#From Ralf 050310
+#    Hi Anton,
 
+#    > but how is 'neighboring' defined? in terms of distance? in terms of residue
+#    > number?
+
+#    Simply the relative positions in the list of residues.
+#    Maybe I should have said "consecutive residues".
+#    I was thinking that could tell you if you have a base-pair interaction
+#    or a stacking interaction.
+#    But I'm at the limit of my biochemistry knowledge here.
+
+#    > how would this distinguish between atoms forming a basepair and
+#    > stacking atoms? unless you have some other way to tell them apart
+#    > neighboring bases within 5A can be part of a stacking interaction, or even
+#    > be part of a neighboring helix.
+
+#    From the hierarchical iotbx.pdb objects you can easily tell if
+#    atoms are in different chains.
+
+#    > thanks for the explanation on the objects. however, I am far from
+#    > understanding how you build them. What is the name of the type of
+#    > hierarchical objects that you use? so i can read something more about them.
+
+#    We have thousands of objects of this kind. It is impossible to write
+#    documentation for all of them. The way to work with an object (after
+#    somebody told you they have the information you need) is to insert
+#    "print dir(atom)" or "help(atom)" into the script and run it. It will
+#    show you all the things the object contains. We use long variable
+#    names to make them as self-explanatory as possible.
+
+#    > maybe, I could try to finish the program the way I am writing it and later
+#    > on translate it into objects, like you suggested. i need to learn how they
+#    > work first.
+
+#    Yes, sounds like a good idea.
+#    But what you do here...
+
+#              master.append([
+#                atom_i.resid(),
+#                resname_i,
+#                atmname_i,
+#                atom_j.resid(),
+#                resname_j,
+#                atmname_j,
+#                distance])
+
+#    "throw away everything I don't understand" and "create a list
+#    of anonymous numbers", is causing a lot of problems. I think it will
+#    pay to play with the atom objects a little, and to start right here
+#    making meaningful objects where each number has a name someone else
+#    can understand. A simple start would be
+
+#     class atom_pair:
+
+#       def __init__(self, atom_i, atom_j, distance):
+#         self.atom_i = atom_i
+#         self.atom_j = atom_j
+#         self.distance = distance
+
+#       def atoms_are_in_same_chain(self):
+#         # returns True or False
+
+#       def atoms_are_in_consecutive_residues(self)
+#         # returns True or False
+
+#    and
+
+#     master.append(atom_pair(atom_i, atom_j, distance))
+
+#    Method names like above would tell me what you need and I could help
+#    filling in the details.
+
+#    Ralf
