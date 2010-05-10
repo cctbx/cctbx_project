@@ -7,6 +7,7 @@ has_antlr3 = libtbx.env.has_module('antlr3')
 from cctbx import adptbx, crystal
 from cctbx.xray import structure
 from iotbx.cif import model, builders
+from libtbx.containers import OrderedDict
 
 def python_reader(file_path=None, file_object=None, input_string=None,
                   builder=None):
@@ -87,10 +88,34 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
     self.cif_block.add_loop(atom_site_loop)
     self.cif_block.add_loop(aniso_loop)
 
-class miller_array_as_cif_block(crystal_symmetry_as_cif_block):
+class miller_indices_as_cif_loop:
 
-  def __init__(self, array):
+  def __init__(self, indices, prefix='_refln'):
+    self.refln_loop = model.loop(header=(
+      '%s_index_h' %prefix, '%s_index_k' %prefix, '%s_index_l' %prefix))
+    for hkl in indices:
+      self.refln_loop.add_row(hkl)
+
+class miller_array_as_cif_block(crystal_symmetry_as_cif_block,
+                                miller_indices_as_cif_loop):
+
+  def __init__(self, array, array_type):
+    assert array_type in ('calc', 'meas')
     crystal_symmetry_as_cif_block.__init__(self, array.crystal_symmetry())
+    miller_indices_as_cif_loop.__init__(self, array.indices())
+    if array.is_complex_array():
+      columns = {'_refln_F_%s' %array_type: flex.abs(array.data()),
+                 '_refln_phase_%s' %array_type: array.phases()}
+    else:
+      if array.is_xray_intensity_array():
+        obs_ext = 'squared_'
+      else: obs_ext = ''
+      columns = OrderedDict({'_refln_F_%s%s' %(obs_ext, array_type):
+                 array.data().as_string()})
+      if array.sigmas() is not None:
+        columns['_refln_F_%ssigma' %(obs_ext)] = array.sigmas().as_string()
+      self.refln_loop.add_columns(columns)
+    self.cif_block.add_loop(self.refln_loop)
 
 
 def cctbx_data_structure_from_cif(
