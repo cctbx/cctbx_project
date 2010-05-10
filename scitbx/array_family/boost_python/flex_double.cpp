@@ -7,6 +7,7 @@
 #include <boost/python/make_constructor.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/format.hpp>
 #include <vector>
 #include <set>
 #include "flex_helpers.h"
@@ -304,14 +305,17 @@ namespace {
     return result;
   }
 
+  /* For allowed syntax for the optional format_string argument see:
+       http://www.boost.org/libs/format/doc/format.html#syntax
+   */
   af::shared<std::string>
-  as_string(
-    af::const_ref<double, af::flex_grid<> > const& O)
+  as_string(af::const_ref<double, af::flex_grid<> > const& O,
+            std::string format_string="%d")
   {
     af::shared<std::string> result((reserve(O.size())));
     std::size_t n = O.accessor().size_1d();
     for(std::size_t i=0;i<n;i++) {
-      result.push_back(boost::lexical_cast<std::string>(O[i]));
+      result.push_back((boost::format(format_string) %O[i]).str());
     }
     return result;
   }
@@ -405,7 +409,9 @@ namespace boost_python {
           arg("other"),
           arg("relative_error")=1e-6))
       .def("as_float", as_float)
-      .def("as_string", as_string)
+      .def("as_string", as_string, (
+          arg("other"),
+          arg("format_string")="%d"))
       .def("round", round, (arg("n_digits")=0))
       .def("select", select_stl_iterable<std::vector<unsigned> >, (
         arg("selection")))
