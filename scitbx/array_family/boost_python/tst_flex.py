@@ -220,7 +220,11 @@ def exercise_flex_constructors():
   f = flex.double(flex.std_string(['0.7', '0.1']))
   assert tuple(f.as_string()) == ('0.7', '0.1')
   f = flex.double([0.1, -0.0000234])
-  assert tuple(f.as_string("%+.3e")) == ('+1.000e-001', '-2.340e-005')
+  try:
+    assert tuple(f.as_string("%+.3e")) == ('+1.000e-001', '-2.340e-005')
+  except AssertionError:
+    # Seem to get slightly different output on Windows vs Linux...
+    assert tuple(f.as_string("%+.3e")) == ('+1.000e-01', '-2.340e-05')
   f = flex.int(flex.std_string(['1','+2','-3']))
   assert tuple(f.as_string()) == ('1', '2', '-3')
   assert tuple(f.as_string("%+3d")) == (' +1', ' +2', ' -3')
