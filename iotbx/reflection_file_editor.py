@@ -15,6 +15,8 @@ from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
 import sys, os, string, re, random
 
+DEBUG = False
+
 # XXX: note that extend=True in the Phenix GUI
 master_phil = iotbx.phil.parse("""
 show_arrays = False
@@ -201,6 +203,9 @@ class process_arrays (object) :
     array_types = []
     for array_params in params.mtz_file.miller_array :
       input_file = input_files.get(array_params.file_name)
+      if input_file is None :
+        input_file = file_reader.any_file(array_params.file_name,
+          force_type="hkl")
       is_mtz = (input_file.file_object.file_type() == "ccp4_mtz")
       if input_file is None :
         input_file = file_reader.any_file(array_params.file_name)
@@ -239,6 +244,15 @@ class process_arrays (object) :
     self.final_arrays = []
     self.mtz_dataset = None
     (d_max, d_min) = get_best_resolution(miller_arrays)
+    if d_max is None and params.mtz_file.d_max is None :
+      raise Sorry("No low-resolution cutoff could be found in the "+
+        "parameters or input file(s); you need to explicitly set this value "+
+        "for the program to run.")
+    if d_min is None :
+      if params.mtz_file.d_min is None :
+        raise Sorry("No high-resolution cutoff could be found in the "+
+          "parameters or input file(s); you need to explicitly set this "+
+          "value for the program to run.")
     if params.mtz_file.d_max is not None and params.mtz_file.d_max < d_max :
       d_max = params.mtz_file.d_max
     if params.mtz_file.d_min is not None and params.mtz_file.d_min > d_min :
@@ -279,6 +293,10 @@ class process_arrays (object) :
       array_name = "%s:%s" % (file_name, array_params.labels)
       if params.verbose :
         print "Processing %s" % array_name
+      if array_params.d_max is not None and array_params.d_max <= 0 :
+        array_params.d_max = None
+      if array_params.d_min is not None and array_params.d_min <= 0 :
+        array_params.d_min = None
       output_array = None # this will eventually be the final processed array
       output_labels = array_params.output_label
       info = miller_array.info()
@@ -289,6 +307,10 @@ class process_arrays (object) :
                        array_params.massage_intensities] :
         raise Sorry("The parameters remove_negatives and massage_intensities "+
           "are mutually exclusive.")
+      if DEBUG :
+        print "  Starting size:  %d" % miller_array.data().size()
+        if miller_array.sigmas() is not None :
+          print "         sigmas:  %d" % miller_array.sigmas().size()
 
       #-----------------------------------------------------------------
       # OUTPUT LABELS SANITY CHECK
@@ -345,6 +367,11 @@ class process_arrays (object) :
             "related reflections are not identical.)") % array_name)
         new_array = new_array.merge_equivalents().array()
 
+      if DEBUG :
+        print "  Adjusted size:  %d" % new_array.data().size()
+        if miller_array.sigmas() is not None :
+          print "         sigmas:  %d" % new_array.sigmas().size()
+
       #-----------------------------------------------------------------
       # CHANGE OF BASIS
       # XXX: copied from reflection_file_converter nearly verbatim
@@ -392,11 +419,24 @@ class process_arrays (object) :
 
       #-----------------------------------------------------------------
       # OTHER FILTERING
+      if DEBUG :
+        print "  Resolution before array-specific filter: %.2f - %.2f" % (
+          new_array.d_max_min())
+      # first the array-specific cutoff
       new_array = new_array.resolution_filter(
         d_min=array_params.d_min,
-        d_max=array_params.d_max).resolution_filter(
+        d_max=array_params.d_max)
+      if DEBUG :
+        print "              after array-specific filter: %.2f - %.2f" % (
+          new_array.d_max_min())
+      # now apply the global cutoff
+      new_array = new_array.resolution_filter(
           d_min=params.mtz_file.d_min,
           d_max=params.mtz_file.d_max)
+      if DEBUG :
+        print "  Truncated size: %d" % new_array.data().size()
+        if new_array.sigmas() is not None :
+          print "          sigmas: %d" % new_array.sigmas().size()
       if new_array.anomalous_flag() and array_params.output_non_anomalous :
         print >> log, ("Converting array %s from anomalous to non-anomalous." %
                        array_name)
@@ -477,6 +517,11 @@ class process_arrays (object) :
             test_flag_value=True)
         have_r_free_array = True
 
+      if DEBUG and output_array is not None :
+        print "  Final size:    %d" % miller_array.data().size()
+        if miller_array.sigmas() is not None :
+          print "      sigmas:    %d" % miller_array.sigmas().size()
+
       #-----------------------------------------------------------------
       # MISCELLANEOUS
       elif new_array.is_xray_intensity_array() :
@@ -507,7 +552,15 @@ class process_arrays (object) :
         if len(default_types) == len(array_types[i]) :
           print >> log, "Recovering original column types %s" % array_types[i]
           column_types = array_types[i]
+      if output_array.data().size() == 0 :
+        raise Sorry("The array %s:%s ended up empty.  Please check the "+
+          "resolution cutoffs to make sure they do not exclude all data "+
+          "from the input file.  If you think the parameters were correct, "+
+          "this is probably a bug; please contact bugs@phenix-online.org "+
+          "with a description of the problem.")
       if self.mtz_dataset is None :
+        print output_array.data().size()
+        print output_array.sigmas().size()
         self.mtz_dataset = output_array.as_mtz_dataset(
           column_root_label=fake_label,
           column_types=column_types)
