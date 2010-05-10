@@ -1,20 +1,16 @@
 from cctbx.array_family import flex
 from cctbx import miller
+from iotbx import cif
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import time_log
 from cStringIO import StringIO
 
 def exercise():
-  from iotbx import cif
   if not cif.has_antlr3:
     print "Skipping tst_lex_parse_build.py (antlr3 is not available)"
     return
   readers = [cif.python_reader]
-  #if libtbx.env.has_module('antlr'):
-    #readers.append(cif.fast_reader)
-  #else:
-    #print "Skipping compiled CIF reader tests"
   builders = [cif.builders.cif_model_builder]
   if libtbx.env.has_module('PyCifRW'):
     builders.append(cif.builders.PyCifRW_model_builder)
@@ -22,37 +18,67 @@ def exercise():
     print "Skipping PyCifRW builder tests"
   for reader in readers:
     for builder in builders:
-      cif_model = reader(
-        input_string=cif_xray_structure, builder=builder()).model()
-      xs_builder = cif.builders.crystal_structure_builder(cif_model['global'])
-      xs1 = xs_builder.structure
-      # also test construction of cif model from xray structure
-      xs_cif_block = xs1.as_cif_block()
-      xs2 = cif.builders.crystal_structure_builder(xs_cif_block).structure
-      for xs in (xs1, xs2):
-        sc = xs.scatterers()
-        assert list(sc.extract_labels()) == ['o','c']
-        assert list(sc.extract_scattering_types()) == ['O','C']
-        assert approx_equal(sc.extract_occupancies(), (0.8, 1))
-        assert approx_equal(sc.extract_sites(), ((0.5,0,0),(0,0,0)))
-        assert approx_equal(sc.extract_u_star(),
-          [(-1, -1, -1, -1, -1, -1), (1e-3, 5e-4, (1e-3)/3, 0, 0, 0)])
-        assert approx_equal(sc.extract_u_iso(), (0.1, -1))
-        assert approx_equal(xs.unit_cell().parameters(),
-                            (10,20,30,90,90,90))
-        assert str(xs.space_group_info()) == 'C 1 2/m 1'
-      #
-      cif_model = reader(
-        input_string=cif_miller_array, builder=builder()).model()
-      ma_builder = cif.builders.miller_array_builder(cif_model['global'])
-      ma1 = ma_builder.arrays()['_refln_F_squared_meas']
-      # also test construction of cif model from miller array
-      #ma_cif_block = cif.miller_array_as_cif_block(ma1).cif_block
-      #ma2 = cif.builders.miller_array_builder(ma_cif_block).array
-      for ma in (ma1,):
-        sio = StringIO()
-        ma.show_array(sio)
-        assert not show_diff(sio.getvalue(), """\
+      exercise_parser(reader, builder)
+
+  arrays = miller.array.from_cif(file_object=StringIO(
+    cif_miller_array_template %(
+      '_refln_F_calc', '_refln_F_meas', '_refln_F_sigma')))
+  assert sorted(arrays.keys()) == ['_refln_F_calc', '_refln_F_meas']
+  arrays = miller.array.from_cif(file_object=StringIO(
+    cif_miller_array_template %(
+      '_refln_A_calc', '_refln_B_calc', '_refln_F_meas')))
+  assert sorted(arrays.keys()) == ['_refln_A_calc', '_refln_F_meas']
+  assert arrays['_refln_A_calc'].is_complex_array()
+  arrays = miller.array.from_cif(file_object=StringIO(
+    cif_miller_array_template %(
+      '_refln_A_meas', '_refln_B_meas', '_refln_F_meas')))
+  assert sorted(arrays.keys()) == ['_refln_A_meas', '_refln_F_meas']
+  assert arrays['_refln_A_meas'].is_complex_array()
+  arrays = miller.array.from_cif(file_object=StringIO(
+    cif_miller_array_template %(
+      '_refln_intensity_calc', '_refln_intensity_meas',
+      '_refln_intensity_sigma')))
+  assert sorted(arrays.keys()) == [
+    '_refln_intensity_calc', '_refln_intensity_meas']
+  arrays = miller.array.from_cif(file_object=StringIO(
+    cif_miller_array_template %(
+      '_refln_F_calc', '_refln_phase_calc', '_refln_F_sigma')))
+  assert sorted(arrays.keys()) == ['_refln_F_calc']
+  assert arrays['_refln_F_calc'].is_complex_array()
+
+def exercise_parser(reader, builder):
+  cif_model = reader(
+    input_string=cif_xray_structure, builder=builder()).model()
+  xs_builder = cif.builders.crystal_structure_builder(cif_model['global'])
+  xs1 = xs_builder.structure
+  # also test construction of cif model from xray structure
+  xs_cif_block = xs1.as_cif_block()
+  xs2 = cif.builders.crystal_structure_builder(xs_cif_block).structure
+  for xs in (xs1, xs2):
+    sc = xs.scatterers()
+    assert list(sc.extract_labels()) == ['o','c']
+    assert list(sc.extract_scattering_types()) == ['O','C']
+    assert approx_equal(sc.extract_occupancies(), (0.8, 1))
+    assert approx_equal(sc.extract_sites(), ((0.5,0,0),(0,0,0)))
+    assert approx_equal(sc.extract_u_star(),
+      [(-1, -1, -1, -1, -1, -1), (1e-3, 5e-4, (1e-3)/3, 0, 0, 0)])
+    assert approx_equal(sc.extract_u_iso(), (0.1, -1))
+    assert approx_equal(xs.unit_cell().parameters(),
+                        (10,20,30,90,90,90))
+    assert str(xs.space_group_info()) == 'C 1 2/m 1'
+  #
+  cif_model = reader(
+    input_string=cif_miller_array, builder=builder()).model()
+  ma_builder = cif.builders.miller_array_builder(cif_model['global'])
+  ma1 = ma_builder.arrays()['_refln_F_squared_meas']
+  # also test construction of cif model from miller array
+  ma_cif_block = ma1.as_cif_block(array_type='meas')
+  ma2 = cif.builders.miller_array_builder(
+    ma_cif_block).arrays()['_refln_F_squared_meas']
+  for ma in (ma1, ma2):
+    sio = StringIO()
+    ma.show_array(sio)
+    assert not show_diff(sio.getvalue(), """\
 (1, 0, 0) 748.71 13.87
 (2, 0, 0) 1318.51 24.29
 (3, 0, 0) 1333.51 33.75
@@ -65,9 +91,9 @@ def exercise():
 (10, 0, 0) 564.68 35.61
 (-10, 1, 0) 170.23 22.26
 """)
-        sio = StringIO()
-        ma.show_summary(sio)
-        assert not show_diff(sio.getvalue(), """\
+    sio = StringIO()
+    ma.show_summary(sio)
+    assert not show_diff(sio.getvalue(), """\
 Miller array info: cif:_refln_F_squared_meas,_refln_F_squared_sigma
 Observation type: xray.intensity
 Type of data: double, size=11
@@ -77,31 +103,6 @@ Anomalous flag: False
 Unit cell: (7.9999, 9.3718, 14.7362, 82.625, 81.527, 81.726)
 Space group: P -1 (No. 2)
 """)
-      arrays = miller.array.from_cif(file_object=StringIO(
-        cif_miller_array_template %(
-          '_refln_F_calc', '_refln_F_meas', '_refln_F_sigma')))
-      assert sorted(arrays.keys()) == ['_refln_F_calc', '_refln_F_meas']
-      arrays = miller.array.from_cif(file_object=StringIO(
-        cif_miller_array_template %(
-          '_refln_A_calc', '_refln_B_calc', '_refln_F_meas')))
-      assert sorted(arrays.keys()) == ['_refln_A_calc', '_refln_F_meas']
-      assert arrays['_refln_A_calc'].is_complex_array()
-      arrays = miller.array.from_cif(file_object=StringIO(
-        cif_miller_array_template %(
-          '_refln_A_meas', '_refln_B_meas', '_refln_F_meas')))
-      assert sorted(arrays.keys()) == ['_refln_A_meas', '_refln_F_meas']
-      assert arrays['_refln_A_meas'].is_complex_array()
-      arrays = miller.array.from_cif(file_object=StringIO(
-        cif_miller_array_template %(
-          '_refln_intensity_calc', '_refln_intensity_meas',
-          '_refln_intensity_sigma')))
-      assert sorted(arrays.keys()) == [
-        '_refln_intensity_calc', '_refln_intensity_meas']
-      arrays = miller.array.from_cif(file_object=StringIO(
-        cif_miller_array_template %(
-          '_refln_F_calc', '_refln_phase_calc', '_refln_F_sigma')))
-      assert sorted(arrays.keys()) == ['_refln_F_calc']
-      assert arrays['_refln_F_calc'].is_complex_array()
 
 
 cif_xray_structure = """\
