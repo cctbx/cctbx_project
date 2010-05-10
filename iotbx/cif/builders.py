@@ -186,10 +186,11 @@ class miller_array_builder(crystal_symmetry_builder):
     '_refln_A': None,
   }
 
-  def __init__(self, cif_block):
+  def __init__(self, cif_block, base_array_info=None):
     crystal_symmetry_builder.__init__(self, cif_block)
     self._arrays = {}
-
+    if base_array_info is None:
+      base_array_info = miller.array_info(source_type="cif")
     hkl = [flex.int(flex.std_string(cif_block.get('_refln_index_%s' %i)))
            for i in ('h','k','l')]
     indices = flex.miller_index(*hkl)
@@ -202,8 +203,9 @@ class miller_array_builder(crystal_symmetry_builder):
       if sigmas is not None:
         sigmas = flex.double(flex.std_string(sigmas))
       for array_type in ('meas', 'calc'):
+        label = '_'.join((prefix, array_type))
         if prefix == '_refln_A':
-          data = [cif_block.get('_'.join((prefix, array_type))),
+          data = [cif_block.get(label),
                   cif_block.get('_'.join((prefix.replace('A', 'B'), array_type)))]
           if data.count(None) == 0:
             data = flex.complex_double(
@@ -211,12 +213,13 @@ class miller_array_builder(crystal_symmetry_builder):
               flex.double(flex.std_string(data[1])))
           else: continue
         else:
-          data = cif_block.get('_'.join((prefix, array_type)))
+          data = cif_block.get(label)
           if data is not None:
             data = flex.double(flex.std_string(data))
           else: continue
         array = miller.array(
-          miller.set(self.crystal_symmetry, indices), data, sigmas)
+          miller.set(self.crystal_symmetry, indices).auto_anomalous(),
+          data, sigmas)
         if obs_type is not xray.intensity():
           if array_type == 'calc' and phase_calc is not None:
             array = array.phase_transfer(
@@ -225,7 +228,11 @@ class miller_array_builder(crystal_symmetry_builder):
             array = array.phase_transfer(
               flex.double(flex.std_string(phase_meas)), deg=True)
         array.set_observation_type(obs_type)
-        self._arrays.setdefault('_'.join((prefix, array_type)), array)
+        labels = [label]
+        if sigmas is not None:
+          labels.append('%s_sigma' %prefix)
+        array.set_info(base_array_info.customized_copy(labels=labels))
+        self._arrays.setdefault(label, array)
 
     if len(self._arrays) == 0:
       raise RuntimeError("No reflection data present in cif block")
