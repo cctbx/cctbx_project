@@ -68,12 +68,12 @@ def exercise():
         sio = StringIO()
         ma.show_summary(sio)
         assert not show_diff(sio.getvalue(), """\
-Miller array info: None
+Miller array info: cif:_refln_F_squared_meas,_refln_F_squared_sigma
 Observation type: xray.intensity
 Type of data: double, size=11
 Type of sigmas: double, size=11
 Number of Miller indices: 11
-Anomalous flag: None
+Anomalous flag: False
 Unit cell: (7.9999, 9.3718, 14.7362, 82.625, 81.527, 81.726)
 Space group: P -1 (No. 2)
 """)
