@@ -583,8 +583,8 @@ class set(crystal.symmetry):
   def resolution_filter_selection(self, d_max=0, d_min=0):
     d = self.d_spacings().data()
     result = self.all_selection()
-    if (d_max): result &= d <= d_max
-    if (d_min): result &= d >= d_min
+    if (d_max is not None and d_max > 0): result &= d <= d_max
+    if (d_min is not None and d_min > 0): result &= d >= d_min
     return result
 
   def resolution_filter(self, d_max=0, d_min=0, negate=0):
