@@ -887,6 +887,7 @@ class manager (object) :
     find_automatically = params.input.find_automatically
     # XXX: check for presence of protein first?
     if len(params.helix) == 0 and len(params.sheet) == 0 :
+      print "No existing secondary structure definitions found."
       if self.sec_str_from_pdb_file is None and find_automatically != False :
         find_automatically = True
     if find_automatically :

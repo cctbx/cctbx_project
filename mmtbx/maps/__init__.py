@@ -131,6 +131,9 @@ maps {
       .style = bold directory
     prefix = None
       .type = str
+      .input_size = 100
+      .short_caption = Output prefix
+      .style = bold
     fmodel_data_file_format = mtz cns
       .optional=True
       .type=choice
@@ -262,6 +265,11 @@ def map_coefficients_from_fmodel(fmodel, params):
       acentrics_scale    = params.acentrics_scale,
       centrics_pre_scale = params.centrics_pre_scale)
   else:
+    if fmodel.__class__.__name__ == "twin_model_manager" :
+      raise Sorry("Kicked maps are not supported when twinning is present.  "+
+        "You can disable the automatic twin law detection by setting the "+
+        "parameter maps.skip_twin_detection to True (or check the "+
+        "corresponding box in the Phenix GUI).")
     coeffs = map_tools.kick_map(
       fmodel            = e_map_obj.fmodel,
       map_type          = params.map_type,
