@@ -102,7 +102,7 @@ data_and_flags_str_part1 = """\
     .short_caption=Reflections file
     .style = bold file_type:hkl noauto process_hkl \
       child:fobs:labels child:d_min:high_resolution \
-      child:d_max:low_resolution
+      child:d_max:low_resolution child:rfree_file:r_free_flags.file_name
     .expert_level = 0
   labels = None
     .type=strings
@@ -143,7 +143,7 @@ data_and_flags_str_part2 = """\
     .help = This is normally the same as the file containing Fobs and is \
       usually selected automatically.
     .input_size = 200
-    .style = noauto file_type:hkl,any
+    .style = noauto file_type:hkl,any process_hkl child:rfree:label
     .expert_level = 0
   label = None
     .type=str
