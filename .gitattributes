@@ -470,9 +470,11 @@ mmtbx/refinement/inspect_tardy_trajectory.py svneol=native#text/x-python
 mmtbx/refinement/occupancies.py -text
 mmtbx/refinement/orca.py svneol=native#text/x-python
 mmtbx/refinement/real_space.py -text
+mmtbx/refinement/reference_model.py svneol=native#text/x-python
 mmtbx/refinement/refinement_flags.py -text
 mmtbx/refinement/tardy.py svneol=native#text/x-python
 mmtbx/refinement/tst_fit_rotamers.py svneol=native#text/x-python
+mmtbx/refinement/tst_reference_model.py svneol=native#text/x-python
 mmtbx/refinement/tst_refinement_flags.py -text
 mmtbx/refinement/tst_tardy_comprehensive.py svneol=native#text/x-python
 mmtbx/refinement/tst_tardy_eval.py svneol=native#text/x-python
