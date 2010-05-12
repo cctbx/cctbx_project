@@ -172,21 +172,25 @@ def get_resname(probe_field):
   return resname
 
 def get_phil_base_pairs (pdb_hierarchy, probe_flags=None, prefix=None,
-    log=sys.stderr) :
+    log=sys.stderr, add_segid=None) :
   print >> log, "  Running PROBE to identify base pairs"
   base_pair_list = get_base_pairs(pdb_hierarchy, probe_flags)
   if len(base_pair_list) == 0 :
     return None
   phil_strings = []
+  segid_extra = ""
+  if add_segid is not None :
+    segid_extra = """and segid "%s" """ % add_segid
   for (bases, pair_type) in base_pair_list :
     phil_strings.append("""base_pair {
-  base1 = chain '%s' and resseq %s
-  base2 = chain '%s' and resseq %s
+  base1 = \"\"\"chain "%s" %sand resseq %s\"\"\"
+  base2 = \"\"\"chain "%s" %sand resseq %s\"\"\"
   pair_type = %s
-}""" % (bases[0][0], bases[0][1:5], bases[1][0], bases[1][1:5], pair_type))
-  phil_str = "nucleic_acids {\n%s\n}" % ("\n".join(phil_strings))
+}""" % (bases[0][0], segid_extra, bases[0][1:5], bases[1][0], segid_extra,
+        bases[1][1:5], pair_type))
+  phil_str = """nucleic_acids {\n%s\n}""" % ("\n".join(phil_strings))
   if prefix is not None :
-    return "%s {\n%s\n}" % (prefix, phil_str)
+    return """%s {\n%s\n}""" % (prefix, phil_str)
   return phil_str
 
 def exercise () :

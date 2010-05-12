@@ -153,6 +153,12 @@ input
   find_automatically = None
     .type = bool
     .style = bold tribool
+  preserve_protein_segid = False
+    .type = bool
+    .style = bold
+  preserve_nucleic_acid_segid = False
+    .type = bool
+    .style = bold
 }
 h_bond_restraints
   .short_caption = Hydrogen bonding restraints
@@ -201,32 +207,37 @@ def sec_str_from_phil (phil_str) :
 use_resids = False # XXX: for debugging purposes only
 
 class _annotation (oop.injector, iotbx.pdb.secondary_structure.annotation) :
-  def as_restraint_groups (self, log=sys.stderr, prefix_scope="") :
+  def as_restraint_groups (self, log=sys.stderr, prefix_scope="",
+      add_segid=None) :
     phil_strs = []
     for helix in self.helices :
-      helix_phil = helix.as_restraint_group(log, prefix_scope)
+      helix_phil = helix.as_restraint_group(log, prefix_scope, add_segid)
       if helix_phil is not None :
         phil_strs.append(helix_phil)
     for sheet in self.sheets :
-      sheet_phil = sheet.as_restraint_group(log, prefix_scope)
+      sheet_phil = sheet.as_restraint_group(log, prefix_scope, add_segid)
       if sheet_phil is not None :
         phil_strs.append(sheet_phil)
     return "\n".join(phil_strs)
 
 class _pdb_helix (oop.injector, iotbx.pdb.secondary_structure.pdb_helix) :
-  def as_restraint_group (self, log=sys.stderr, prefix_scope="") :
+  def as_restraint_group (self, log=sys.stderr, prefix_scope="",
+      add_segid=None) :
     if self.start_chain_id != self.end_chain_id :
       print >> log, "Helix chain ID mismatch: starts in %s, ends in %s" % (
         self.start_chain_id, self.end_chain_id)
       return None
+    segid_extra = ""
+    if add_segid is not None :
+      segid_extra = "and segid '%s' " % add_segid
     if use_resids :
       resid_start = "%d%s" % (self.start_resseq, self.start_icode)
       resid_end = "%d%s" % (self.end_resseq, self.end_icode)
-      sele = "chain '%s' and resid %s through %s" % (self.start_chain_id,
-        resid_start, resid_end)
+      sele = "chain '%s' %sand resid %s through %s" % (self.start_chain_id,
+        segid_extra, resid_start, resid_end)
     else :
-      sele = "chain '%s' and resseq %d:%d" % (self.start_chain_id,
-        self.start_resseq, self.end_resseq)
+      sele = "chain '%s' %sand resseq %d:%d" % (self.start_chain_id,
+        segid_extra, self.start_resseq, self.end_resseq)
     if prefix_scope != "" and not prefix_scope.endswith(".") :
       prefix_scope += "."
     rg = """\
@@ -237,22 +248,26 @@ class _pdb_helix (oop.injector, iotbx.pdb.secondary_structure.pdb_helix) :
     return rg
 
 class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
-  def as_restraint_group (self, log=sys.stderr, prefix_scope="") :
+  def as_restraint_group (self, log=sys.stderr, prefix_scope="",
+      add_segid=None) :
     if len(self.strands) == 0 :
       return None
     selections = []
     senses = []
     reg_curr = []
     reg_prev = []
+    segid_extra = ""
+    if add_segid is not None :
+      segid_extra = "and segid '%s' " % add_segid
     for (strand,registration) in zip(self.strands, self.registrations) :
       if use_resids :
         resid_start = "%d%s" % (strand.start_resseq, strand.start_icode)
         resid_end = "%d%s" % (strand.end_resseq, strand.end_icode)
-        sele = "chain '%s' and resid %s through %s" % (strand.start_chain_id,
-          resid_start, resid_end)
+        sele = "chain '%s' %sand resid %s through %s" % (strand.start_chain_id,
+          segid_extra, resid_start, resid_end)
       else :
-        sele = "chain '%s' and resseq %d:%d" % (strand.start_chain_id,
-          strand.start_resseq, strand.end_resseq)
+        sele = "chain '%s' %sand resseq %d:%d" % (strand.start_chain_id,
+          segid_extra, strand.start_resseq, strand.end_resseq)
       selections.append(sele)
       if strand.sense == 0 :
         senses.append("unknown")
@@ -264,16 +279,19 @@ class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
         raise Sorry("Sense must be 0, 1, or -1.")
       if registration is not None :
         if use_resids :
-          sele_base = "chain '%s' and resid %s"
+          sele_base = "chain '%s' %sand resid %s"
           resid_curr = "%d%s" % (registration.cur_resseq,registration.cur_icode)
-          resid_prev = "%d%s" % (registration.prev_resseq,registration.prev_icode)
-          reg_curr.append(sele_base % (registration.cur_chain_id,resid_curr))
-          reg_prev.append(sele_base % (registration.prev_chain_id,resid_prev))
+          resid_prev = "%d%s" % (registration.prev_resseq,
+            registration.prev_icode)
+          reg_curr.append(sele_base % (registration.cur_chain_id,segid_extra,
+            resid_curr))
+          reg_prev.append(sele_base % (registration.prev_chain_id,segid_extra,
+            resid_prev))
         else :
-          reg_curr.append("chain '%s' and resseq %d" % (
-            registration.cur_chain_id, registration.cur_resseq))
-          reg_prev.append("chain '%s' and resseq %d" % (
-            registration.prev_chain_id, registration.prev_resseq))
+          reg_curr.append("chain '%s' %sand resseq %d" % (
+            registration.cur_chain_id, segid_extra, registration.cur_resseq))
+          reg_prev.append("chain '%s' %sand resseq %d" % (
+            registration.prev_chain_id, segid_extra, registration.prev_resseq))
       else :
         reg_curr.append(None)
         reg_prev.append(None)
@@ -887,15 +905,28 @@ class manager (object) :
     find_automatically = params.input.find_automatically
     # XXX: check for presence of protein first?
     if len(params.helix) == 0 and len(params.sheet) == 0 :
-      print "No existing secondary structure definitions found."
+      print >> log, "No existing secondary structure definitions found."
       if self.sec_str_from_pdb_file is None and find_automatically != False :
         find_automatically = True
     if find_automatically :
-      self.sec_str_from_pdb_file = self.find_sec_str(log=log)
+      if params.input.preserve_protein_segid :
+        self.sec_str_from_pdb_file = self.find_sec_str_with_segids(log=log)
+      else :
+        self.sec_str_from_pdb_file = self.find_sec_str(log=log)
     if self.sec_str_from_pdb_file is not None :
-      print >> log, "  Interpreting HELIX and SHEET records from PDB file"
-      ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(log=log,
-        prefix_scope="")
+      if isinstance(self.sec_str_from_pdb_file, list) :
+        print >> log, "  Interpreting HELIX and SHEET records for individual chains"
+        ss_params = []
+        for annotation, segid in self.sec_str_from_pdb_file :
+          ss_phil = annotation.as_restraint_groups(log=log,
+            prefix_scope="",
+            add_segid=segid)
+          ss_params.append(ss_phil)
+        ss_params_str = "\n".join(ss_params)
+      else :
+        print >> log, "  Interpreting HELIX and SHEET records from PDB file"
+        ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(log=log,
+          prefix_scope="")
       self.apply_phil_str(ss_params_str, log=log)
     # Step 2: nucleic acids
     if find_nucleic_acids(self.pdb_hierarchy) :
@@ -904,10 +935,10 @@ class manager (object) :
         if find_automatically != False :
           find_automatically = True
       if find_automatically :
-        base_pairs = mmtbx.base_pairing.get_phil_base_pairs(
-          pdb_hierarchy=self.pdb_hierarchy,
-          prefix=None,
-          log=log)
+        if params.input.preserve_nucleic_acid_segid :
+          base_pairs = self.find_base_pairs_with_segids(log=log)
+        else :
+          base_pairs = self.find_base_pairs(log=log)
         if base_pairs is not None :
           bp_phil = libtbx.phil.parse(base_pairs)
           bp_params = sec_str_master_phil.fetch(source=bp_phil).extract()
@@ -921,6 +952,45 @@ class manager (object) :
       records=records,
       allow_none=True)
     return sec_str_from_pdb_file
+
+  def find_sec_str_with_segids (self, log=sys.stderr) :
+    annotations = []
+    for chain in self.pdb_hierarchy.models()[0].chains() :
+      if not chain.conformers()[0].is_protein() :
+        continue
+      segid = chain.atoms()[0].segid
+      detached_hierarchy = iotbx.pdb.hierarchy.new_hierarchy_from_chain(chain)
+      pdb_str = detached_hierarchy.as_pdb_string()
+      (records, stderr) = run_ksdssp_direct(pdb_str)
+      sec_str_from_pdb_file = iotbx.pdb.secondary_structure.process_records(
+        records=records,
+        allow_none=True)
+      if sec_str_from_pdb_file is not None :
+        annotations.append((sec_str_from_pdb_file, segid))
+    return annotations
+
+  def find_base_pairs (self, log=sys.stderr) :
+    base_pairs = mmtbx.base_pairing.get_phil_base_pairs(
+      pdb_hierarchy=self.pdb_hierarchy,
+      prefix=None,
+      log=log)
+    return base_pairs
+
+  def find_base_pairs_with_segids (self, log=sys.stderr) :
+    annotations = []
+    for chain in self.pdb_hierarchy.models()[0].chains() :
+      if not chain.conformers()[0].is_na() :
+        continue
+      segid = chain.atoms()[0].segid
+      detached_hierarchy = iotbx.pdb.hierarchy.new_hierarchy_from_chain(chain)
+      pdb_str = detached_hierarchy.as_pdb_string()
+      base_pairs = mmtbx.base_pairing.get_phil_base_pairs(
+        pdb_hierarchy=detached_hierarchy,
+        prefix=None,
+        log=log,
+        add_segid=segid)
+      annotations.append(base_pairs)
+    return "\n".join(annotations)
 
   def apply_phil_str (self, phil_string, log=sys.stderr, verbose=False) :
     ss_phil = sec_str_master_phil.fetch(source=libtbx.phil.parse(phil_string))
@@ -1123,7 +1193,8 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     raise Sorry("Multiple models not supported.")
   m = manager(pdb_hierarchy=pdb_hierarchy,
     xray_structure=xray_structure,
-    sec_str_from_pdb_file=None)
+    sec_str_from_pdb_file=None,
+    params=params)
   m.find_automatically(log=log)
   prefix_scope="refinement.secondary_structure"
   if params.show_histograms or params.format != "phenix" :
