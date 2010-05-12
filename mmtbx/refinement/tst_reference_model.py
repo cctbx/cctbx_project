@@ -174,6 +174,10 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
 C 236 ASN:1.2:227.3:80.2:::t30
 C 237 LEU:52.8:179.1:57.3:::tp"""
 
+  cbetadev_hash = reference_model.build_cbetadev_hash(
+                    pdb_hierarchy=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy)
+  assert cbetadev_hash == \
+    {' ASN C 236': '  0.015', ' LEU C 237': '  0.038'}
 def run(args):
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()

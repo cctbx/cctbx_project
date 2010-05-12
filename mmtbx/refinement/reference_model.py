@@ -1,5 +1,6 @@
 import cctbx.geometry_restraints
 from mmtbx.validation.rotalyze import rotalyze
+from mmtbx.validation.cbetadev import cbetadev
 from mmtbx.refinement import fit_rotamers
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 import mmtbx.monomer_library
@@ -17,6 +18,20 @@ def build_element_hash(pdb_hierarchy):
   for atom in pdb_hierarchy.atoms():
     i_seq_element_hash[atom.i_seq]=atom.element
   return i_seq_element_hash
+
+def build_cbetadev_hash(pdb_hierarchy):
+  cb = cbetadev()
+  cbetadev_hash = dict()
+  cbeta_out = cb.analyze_pdb(hierarchy=pdb_hierarchy)
+  for line in cbeta_out[0].splitlines():
+    temp = line.split(':')
+    dev = temp[5]
+    if dev == "dev":
+      continue
+    #key = temp[3].lstrip()+temp[4].rstrip()+temp[1]+temp[2].upper()
+    key = temp[1]+temp[2].upper()+temp[3]+temp[4].rstrip()
+    cbetadev_hash[key] = dev
+  return cbetadev_hash
 
 def build_dihedral_hash(geometry=None,
                         sites_cart=None,
@@ -62,6 +77,7 @@ def build_dihedral_hash(geometry=None,
       pass
 
   #add dihedral for CB
+  cbetadev_hash = build_cbetadev_hash(pdb_hierarchy=pdb_hierarchy)
   for cp in geometry.chirality_proxies:
     c_beta = True
     key = ""
@@ -81,6 +97,9 @@ def build_dihedral_hash(geometry=None,
         Nxyz = sites_cart[i_seq]
       elif i_seq_name_hash[i_seq][0:4] == ' CB ':
         CBxyz = sites_cart[i_seq]
+        if float(cbetadev_hash[i_seq_name_hash[i_seq][4:14]]) >= 0.25:
+          c_beta = False
+          print "skipping C-beta restraint for %s" % i_seq_name_hash[i_seq][4:14]
     if c_beta:
       assert CAxyz is not None
       assert Cxyz is not None
