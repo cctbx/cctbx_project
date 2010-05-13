@@ -17,7 +17,7 @@ import mmtbx.restraints
 import mmtbx.model
 from mmtbx import model_statistics
 import random
-from libtbx import easy_run
+from libtbx import easy_run, easy_pickle
 from iotbx.pdb import combine_unique_pdb_files
 from mmtbx.command_line import lockit
 from libtbx import runtime_utils
@@ -209,13 +209,10 @@ geometry_minimization
 {
   include scope mmtbx.command_line.geometry_minimization.master_params
 }
-action = regularize
-  .type = choice(multi=True)
-  .optional = True
-  .help = GUI-only parameter, equivalent to command-line flags.
-  .short_caption = Extra actions
-  .caption = Regularize_model_geometry
-  .style = bold OnChange:update_pdbtools_actions
+regularize_geometry = False
+  .type = bool
+  .short_caption = Perform geometry minimization
+  .style = bold
 """%modify_params_str, process_includes=True)
 
 class modify(object):
@@ -652,7 +649,12 @@ def run(args, command_name="phenix.pdbtools"):
 
 class launcher (runtime_utils.simple_target) :
   def __call__ (self) :
-    return run(list(self.args))
+    results = run(list(self.args))
+    eff_file = self.args[0]
+    if os.path.isfile(eff_file) :
+      base, ext = os.path.splitext(eff_file)
+      easy_pickle.dump("%s.pkl" % base, results)
+    return results
 
 class interpreter:
   def __init__(self,
