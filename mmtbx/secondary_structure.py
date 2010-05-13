@@ -159,6 +159,12 @@ input
   preserve_nucleic_acid_segid = False
     .type = bool
     .style = bold
+  force_nucleic_acids = False
+    .type = bool
+    .short_caption = Force base pair detection
+    .help = This will ignore the automatic chain type detection and run \
+      the base pair detction using PROBE even if no nucleic acids are found. \
+      Useful for tRNAs which have a large number of modified bases.
 }
 h_bond_restraints
   .short_caption = Hydrogen bonding restraints
@@ -929,14 +935,16 @@ class manager (object) :
           prefix_scope="")
       self.apply_phil_str(ss_params_str, log=log)
     # Step 2: nucleic acids
-    if find_nucleic_acids(self.pdb_hierarchy) :
+    if (find_nucleic_acids(self.pdb_hierarchy) or
+        params.input.force_nucleic_acids) :
       find_automatically = params.input.find_automatically
       if len(params.nucleic_acids.base_pair) == 0 :
         if find_automatically != False :
           find_automatically = True
       if find_automatically :
         if params.input.preserve_nucleic_acid_segid :
-          base_pairs = self.find_base_pairs_with_segids(log=log)
+          base_pairs = self.find_base_pairs_with_segids(log=log,
+            force=params.input.force_nucleic_acids)
         else :
           base_pairs = self.find_base_pairs(log=log)
         if base_pairs is not None :
@@ -976,10 +984,10 @@ class manager (object) :
       log=log)
     return base_pairs
 
-  def find_base_pairs_with_segids (self, log=sys.stderr) :
+  def find_base_pairs_with_segids (self, log=sys.stderr, force=False) :
     annotations = []
     for chain in self.pdb_hierarchy.models()[0].chains() :
-      if not chain.conformers()[0].is_na() :
+      if not force and not chain.conformers()[0].is_na() :
         continue
       segid = chain.atoms()[0].segid
       detached_hierarchy = iotbx.pdb.hierarchy.new_hierarchy_from_chain(chain)
