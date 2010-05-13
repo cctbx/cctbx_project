@@ -29,7 +29,7 @@ def build_cbetadev_hash(pdb_hierarchy):
     if dev == "dev":
       continue
     #key = temp[3].lstrip()+temp[4].rstrip()+temp[1]+temp[2].upper()
-    key = temp[1]+temp[2].upper()+temp[3]+temp[4].rstrip()
+    key = temp[1].upper()+temp[2].upper()+temp[3]+temp[4].rstrip()
     cbetadev_hash[key] = dev
   return cbetadev_hash
 
