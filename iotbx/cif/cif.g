@@ -19,6 +19,16 @@ import iotbx.cif
 from cctbx.array_family import flex
 }
 
+@members {
+paraphrases = []
+def getErrorMessage(self, e, tokenNames):
+  msg = Parser.getErrorMessage(self, e, tokenNames)
+  if len(self.paraphrases) > 0:
+    paraphrase = self.paraphrases[-1]
+    msg += " " + paraphrase
+  return msg
+}
+
 /*------------------------------------------------------------------
  * PARSER RULES
  *------------------------------------------------------------------*/
@@ -26,13 +36,13 @@ from cctbx.array_family import flex
 // The start rule
 parse[builder]
 @init { self.builder = builder }
-	: cif ;
+	: cif EOF ;
 /*------------------------------------------------------------------
  * BASIC STRUCTURE OF A CIF
  *------------------------------------------------------------------*/
 
 cif
-	:	(COMMENTS)? (WHITESPACE)* ( data_block ( WHITESPACE* data_block )* (WHITESPACE)? )? EOF
+	:	(COMMENTS)? (WHITESPACE)* ( data_block ( WHITESPACE* data_block )* (WHITESPACE)? )?
 	;
 
 loop_body
@@ -43,18 +53,26 @@ loop_body
 	        v2=value
 { self.curr_loop_values.append(str($v2.text)) }
 	       )*
+	       { self.paraphrases.pop() } // remove "in loop_" from stack
 	;
 
 save_frame
 	:	SAVE_FRAME_HEADING ( WHITESPACE+ data_items )+ WHITESPACE+ SAVE ;
 
 data_items
-	:	TAG WHITESPACE value
+@init  { self.paraphrases.append("in data items") }
+@after { self.paraphrases.pop() }
+	: 	( TAG WHITESPACE value
 { self.builder.add_data_item($TAG.text, $value.text) }
-	      | loop_header WHITESPACE* loop_body
+		)
+	      | ( loop_header WHITESPACE* loop_body
 {
-self.builder.add_loop($loop_header.text, data=self.curr_loop_values)
+try:
+  self.builder.add_loop($loop_header.text, data=self.curr_loop_values)
+except AssertionError, e:
+  print e
 }
+		)
 	;
 
 data_block
@@ -64,7 +82,8 @@ data_block
 	;
 
 loop_header
-	:	LOOP_ ( WHITESPACE+ TAG )+ WHITESPACE
+	:	LOOP_ { self.paraphrases.append("in loop_") }
+		( WHITESPACE+ TAG )+ WHITESPACE
 		;
 
 /*------------------------------------------------------------------
@@ -76,7 +95,14 @@ inapplicable
 
 unknown	:	'?' ;
 
-value 	:	inapplicable | unknown | '-' | char_string  | numeric| text_field ;
+value
+@init  { self.paraphrases.append("in value") }
+@after { self.paraphrases.pop() }
+ 	:	inapplicable | unknown | '-' | char_string  | numeric| text_field
+ 	;
+ 	catch [RecognitionException, re] {
+	  raise re
+	}
 
 unsigned_integer
 	:	(DIGIT)+ ;

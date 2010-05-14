@@ -1,4 +1,4 @@
-# $ANTLR 3.1.2 cif.g 2010-05-04 17:44:00
+# $ANTLR 3.1.2 cif.g 2010-05-14 12:06:39
 
 import sys
 from antlr3 import *
@@ -248,10 +248,10 @@ class cifLexer(Lexer):
     def mEOL(self, ):
 
         try:
-            # cif.g:110:2: ( ( '\\n' | '\\r' | '\\r\\n' ) )
-            # cif.g:110:4: ( '\\n' | '\\r' | '\\r\\n' )
+            # cif.g:136:2: ( ( '\\n' | '\\r' | '\\r\\n' ) )
+            # cif.g:136:4: ( '\\n' | '\\r' | '\\r\\n' )
             pass
-            # cif.g:110:4: ( '\\n' | '\\r' | '\\r\\n' )
+            # cif.g:136:4: ( '\\n' | '\\r' | '\\r\\n' )
             alt1 = 3
             LA1_0 = self.input.LA(1)
 
@@ -273,19 +273,19 @@ class cifLexer(Lexer):
                 raise nvae
 
             if alt1 == 1:
-                # cif.g:110:6: '\\n'
+                # cif.g:136:6: '\\n'
                 pass
                 self.match(10)
 
 
             elif alt1 == 2:
-                # cif.g:110:13: '\\r'
+                # cif.g:136:13: '\\r'
                 pass
                 self.match(13)
 
 
             elif alt1 == 3:
-                # cif.g:110:20: '\\r\\n'
+                # cif.g:136:20: '\\r\\n'
                 pass
                 self.match("\r\n")
 
@@ -307,8 +307,8 @@ class cifLexer(Lexer):
     def mDOUBLE_QUOTE(self, ):
 
         try:
-            # cif.g:113:2: ( '\"' )
-            # cif.g:113:4: '\"'
+            # cif.g:139:2: ( '\"' )
+            # cif.g:139:4: '\"'
             pass
             self.match(34)
 
@@ -327,8 +327,8 @@ class cifLexer(Lexer):
     def mSINGLE_QUOTE(self, ):
 
         try:
-            # cif.g:116:2: ( '\\'' )
-            # cif.g:116:4: '\\''
+            # cif.g:142:2: ( '\\'' )
+            # cif.g:142:4: '\\''
             pass
             self.match(39)
 
@@ -347,7 +347,7 @@ class cifLexer(Lexer):
     def mORDINARY_CHAR(self, ):
 
         try:
-            # cif.g:119:2: ( '!' | '%' | '&' | '(' | ')' | '*' | '+' | ',' | '-' | '.' | '/' | ( '0' .. '9' ) | ':' | '<' | '=' | '>' | '?' | '@' | ( 'A' .. 'Z' ) | ( 'a' .. 'z' ) | '\\\\' | '^' | '`' | '{' | '|' | '}' | '~' )
+            # cif.g:145:2: ( '!' | '%' | '&' | '(' | ')' | '*' | '+' | ',' | '-' | '.' | '/' | ( '0' .. '9' ) | ':' | '<' | '=' | '>' | '?' | '@' | ( 'A' .. 'Z' ) | ( 'a' .. 'z' ) | '\\\\' | '^' | '`' | '{' | '|' | '}' | '~' )
             alt2 = 27
             LA2 = self.input.LA(1)
             if LA2 == 33:
@@ -413,76 +413,76 @@ class cifLexer(Lexer):
                 raise nvae
 
             if alt2 == 1:
-                # cif.g:119:5: '!'
+                # cif.g:145:5: '!'
                 pass
                 self.match(33)
 
 
             elif alt2 == 2:
-                # cif.g:119:11: '%'
+                # cif.g:145:11: '%'
                 pass
                 self.match(37)
 
 
             elif alt2 == 3:
-                # cif.g:119:17: '&'
+                # cif.g:145:17: '&'
                 pass
                 self.match(38)
 
 
             elif alt2 == 4:
-                # cif.g:119:23: '('
+                # cif.g:145:23: '('
                 pass
                 self.match(40)
 
 
             elif alt2 == 5:
-                # cif.g:119:29: ')'
+                # cif.g:145:29: ')'
                 pass
                 self.match(41)
 
 
             elif alt2 == 6:
-                # cif.g:119:35: '*'
+                # cif.g:145:35: '*'
                 pass
                 self.match(42)
 
 
             elif alt2 == 7:
-                # cif.g:119:41: '+'
+                # cif.g:145:41: '+'
                 pass
                 self.match(43)
 
 
             elif alt2 == 8:
-                # cif.g:119:47: ','
+                # cif.g:145:47: ','
                 pass
                 self.match(44)
 
 
             elif alt2 == 9:
-                # cif.g:119:53: '-'
+                # cif.g:145:53: '-'
                 pass
                 self.match(45)
 
 
             elif alt2 == 10:
-                # cif.g:119:59: '.'
+                # cif.g:145:59: '.'
                 pass
                 self.match(46)
 
 
             elif alt2 == 11:
-                # cif.g:119:65: '/'
+                # cif.g:145:65: '/'
                 pass
                 self.match(47)
 
 
             elif alt2 == 12:
-                # cif.g:120:2: ( '0' .. '9' )
+                # cif.g:146:2: ( '0' .. '9' )
                 pass
-                # cif.g:120:2: ( '0' .. '9' )
-                # cif.g:120:4: '0' .. '9'
+                # cif.g:146:2: ( '0' .. '9' )
+                # cif.g:146:4: '0' .. '9'
                 pass
                 self.matchRange(48, 57)
 
@@ -491,46 +491,46 @@ class cifLexer(Lexer):
 
 
             elif alt2 == 13:
-                # cif.g:120:18: ':'
+                # cif.g:146:18: ':'
                 pass
                 self.match(58)
 
 
             elif alt2 == 14:
-                # cif.g:120:24: '<'
+                # cif.g:146:24: '<'
                 pass
                 self.match(60)
 
 
             elif alt2 == 15:
-                # cif.g:120:30: '='
+                # cif.g:146:30: '='
                 pass
                 self.match(61)
 
 
             elif alt2 == 16:
-                # cif.g:120:36: '>'
+                # cif.g:146:36: '>'
                 pass
                 self.match(62)
 
 
             elif alt2 == 17:
-                # cif.g:120:42: '?'
+                # cif.g:146:42: '?'
                 pass
                 self.match(63)
 
 
             elif alt2 == 18:
-                # cif.g:120:48: '@'
+                # cif.g:146:48: '@'
                 pass
                 self.match(64)
 
 
             elif alt2 == 19:
-                # cif.g:120:54: ( 'A' .. 'Z' )
+                # cif.g:146:54: ( 'A' .. 'Z' )
                 pass
-                # cif.g:120:54: ( 'A' .. 'Z' )
-                # cif.g:120:55: 'A' .. 'Z'
+                # cif.g:146:54: ( 'A' .. 'Z' )
+                # cif.g:146:55: 'A' .. 'Z'
                 pass
                 self.matchRange(65, 90)
 
@@ -539,10 +539,10 @@ class cifLexer(Lexer):
 
 
             elif alt2 == 20:
-                # cif.g:120:67: ( 'a' .. 'z' )
+                # cif.g:146:67: ( 'a' .. 'z' )
                 pass
-                # cif.g:120:67: ( 'a' .. 'z' )
-                # cif.g:120:68: 'a' .. 'z'
+                # cif.g:146:67: ( 'a' .. 'z' )
+                # cif.g:146:68: 'a' .. 'z'
                 pass
                 self.matchRange(97, 122)
 
@@ -551,43 +551,43 @@ class cifLexer(Lexer):
 
 
             elif alt2 == 21:
-                # cif.g:121:2: '\\\\'
+                # cif.g:147:2: '\\\\'
                 pass
                 self.match(92)
 
 
             elif alt2 == 22:
-                # cif.g:121:9: '^'
+                # cif.g:147:9: '^'
                 pass
                 self.match(94)
 
 
             elif alt2 == 23:
-                # cif.g:121:15: '`'
+                # cif.g:147:15: '`'
                 pass
                 self.match(96)
 
 
             elif alt2 == 24:
-                # cif.g:121:21: '{'
+                # cif.g:147:21: '{'
                 pass
                 self.match(123)
 
 
             elif alt2 == 25:
-                # cif.g:121:27: '|'
+                # cif.g:147:27: '|'
                 pass
                 self.match(124)
 
 
             elif alt2 == 26:
-                # cif.g:121:33: '}'
+                # cif.g:147:33: '}'
                 pass
                 self.match(125)
 
 
             elif alt2 == 27:
-                # cif.g:121:39: '~'
+                # cif.g:147:39: '~'
                 pass
                 self.match(126)
 
@@ -605,7 +605,7 @@ class cifLexer(Lexer):
     def mNON_BLANK_CHAR_(self, ):
 
         try:
-            # cif.g:126:2: ( ORDINARY_CHAR | DOUBLE_QUOTE | SINGLE_QUOTE | '#' | '$' | '_' | '[' | ']' | ';' )
+            # cif.g:152:2: ( ORDINARY_CHAR | DOUBLE_QUOTE | SINGLE_QUOTE | '#' | '$' | '_' | '[' | ']' | ';' )
             alt3 = 9
             LA3 = self.input.LA(1)
             if LA3 == 33 or LA3 == 37 or LA3 == 38 or LA3 == 40 or LA3 == 41 or LA3 == 42 or LA3 == 43 or LA3 == 44 or LA3 == 45 or LA3 == 46 or LA3 == 47 or LA3 == 48 or LA3 == 49 or LA3 == 50 or LA3 == 51 or LA3 == 52 or LA3 == 53 or LA3 == 54 or LA3 == 55 or LA3 == 56 or LA3 == 57 or LA3 == 58 or LA3 == 60 or LA3 == 61 or LA3 == 62 or LA3 == 63 or LA3 == 64 or LA3 == 65 or LA3 == 66 or LA3 == 67 or LA3 == 68 or LA3 == 69 or LA3 == 70 or LA3 == 71 or LA3 == 72 or LA3 == 73 or LA3 == 74 or LA3 == 75 or LA3 == 76 or LA3 == 77 or LA3 == 78 or LA3 == 79 or LA3 == 80 or LA3 == 81 or LA3 == 82 or LA3 == 83 or LA3 == 84 or LA3 == 85 or LA3 == 86 or LA3 == 87 or LA3 == 88 or LA3 == 89 or LA3 == 90 or LA3 == 92 or LA3 == 94 or LA3 == 96 or LA3 == 97 or LA3 == 98 or LA3 == 99 or LA3 == 100 or LA3 == 101 or LA3 == 102 or LA3 == 103 or LA3 == 104 or LA3 == 105 or LA3 == 106 or LA3 == 107 or LA3 == 108 or LA3 == 109 or LA3 == 110 or LA3 == 111 or LA3 == 112 or LA3 == 113 or LA3 == 114 or LA3 == 115 or LA3 == 116 or LA3 == 117 or LA3 == 118 or LA3 == 119 or LA3 == 120 or LA3 == 121 or LA3 == 122 or LA3 == 123 or LA3 == 124 or LA3 == 125 or LA3 == 126:
@@ -635,55 +635,55 @@ class cifLexer(Lexer):
                 raise nvae
 
             if alt3 == 1:
-                # cif.g:126:4: ORDINARY_CHAR
+                # cif.g:152:4: ORDINARY_CHAR
                 pass
                 self.mORDINARY_CHAR()
 
 
             elif alt3 == 2:
-                # cif.g:126:20: DOUBLE_QUOTE
+                # cif.g:152:20: DOUBLE_QUOTE
                 pass
                 self.mDOUBLE_QUOTE()
 
 
             elif alt3 == 3:
-                # cif.g:126:35: SINGLE_QUOTE
+                # cif.g:152:35: SINGLE_QUOTE
                 pass
                 self.mSINGLE_QUOTE()
 
 
             elif alt3 == 4:
-                # cif.g:126:50: '#'
+                # cif.g:152:50: '#'
                 pass
                 self.match(35)
 
 
             elif alt3 == 5:
-                # cif.g:126:56: '$'
+                # cif.g:152:56: '$'
                 pass
                 self.match(36)
 
 
             elif alt3 == 6:
-                # cif.g:126:62: '_'
+                # cif.g:152:62: '_'
                 pass
                 self.match(95)
 
 
             elif alt3 == 7:
-                # cif.g:126:68: '['
+                # cif.g:152:68: '['
                 pass
                 self.match(91)
 
 
             elif alt3 == 8:
-                # cif.g:126:74: ']'
+                # cif.g:152:74: ']'
                 pass
                 self.match(93)
 
 
             elif alt3 == 9:
-                # cif.g:126:80: ';'
+                # cif.g:152:80: ';'
                 pass
                 self.match(59)
 
@@ -701,7 +701,7 @@ class cifLexer(Lexer):
     def mTEXT_LEAD_CHAR(self, ):
 
         try:
-            # cif.g:129:2: ( ORDINARY_CHAR | DOUBLE_QUOTE | SINGLE_QUOTE | '#' | '$' | '_' | '[' | ']' | ' ' | '\\t' )
+            # cif.g:155:2: ( ORDINARY_CHAR | DOUBLE_QUOTE | SINGLE_QUOTE | '#' | '$' | '_' | '[' | ']' | ' ' | '\\t' )
             alt4 = 10
             LA4 = self.input.LA(1)
             if LA4 == 33 or LA4 == 37 or LA4 == 38 or LA4 == 40 or LA4 == 41 or LA4 == 42 or LA4 == 43 or LA4 == 44 or LA4 == 45 or LA4 == 46 or LA4 == 47 or LA4 == 48 or LA4 == 49 or LA4 == 50 or LA4 == 51 or LA4 == 52 or LA4 == 53 or LA4 == 54 or LA4 == 55 or LA4 == 56 or LA4 == 57 or LA4 == 58 or LA4 == 60 or LA4 == 61 or LA4 == 62 or LA4 == 63 or LA4 == 64 or LA4 == 65 or LA4 == 66 or LA4 == 67 or LA4 == 68 or LA4 == 69 or LA4 == 70 or LA4 == 71 or LA4 == 72 or LA4 == 73 or LA4 == 74 or LA4 == 75 or LA4 == 76 or LA4 == 77 or LA4 == 78 or LA4 == 79 or LA4 == 80 or LA4 == 81 or LA4 == 82 or LA4 == 83 or LA4 == 84 or LA4 == 85 or LA4 == 86 or LA4 == 87 or LA4 == 88 or LA4 == 89 or LA4 == 90 or LA4 == 92 or LA4 == 94 or LA4 == 96 or LA4 == 97 or LA4 == 98 or LA4 == 99 or LA4 == 100 or LA4 == 101 or LA4 == 102 or LA4 == 103 or LA4 == 104 or LA4 == 105 or LA4 == 106 or LA4 == 107 or LA4 == 108 or LA4 == 109 or LA4 == 110 or LA4 == 111 or LA4 == 112 or LA4 == 113 or LA4 == 114 or LA4 == 115 or LA4 == 116 or LA4 == 117 or LA4 == 118 or LA4 == 119 or LA4 == 120 or LA4 == 121 or LA4 == 122 or LA4 == 123 or LA4 == 124 or LA4 == 125 or LA4 == 126:
@@ -733,61 +733,61 @@ class cifLexer(Lexer):
                 raise nvae
 
             if alt4 == 1:
-                # cif.g:129:4: ORDINARY_CHAR
+                # cif.g:155:4: ORDINARY_CHAR
                 pass
                 self.mORDINARY_CHAR()
 
 
             elif alt4 == 2:
-                # cif.g:129:20: DOUBLE_QUOTE
+                # cif.g:155:20: DOUBLE_QUOTE
                 pass
                 self.mDOUBLE_QUOTE()
 
 
             elif alt4 == 3:
-                # cif.g:129:35: SINGLE_QUOTE
+                # cif.g:155:35: SINGLE_QUOTE
                 pass
                 self.mSINGLE_QUOTE()
 
 
             elif alt4 == 4:
-                # cif.g:129:50: '#'
+                # cif.g:155:50: '#'
                 pass
                 self.match(35)
 
 
             elif alt4 == 5:
-                # cif.g:129:56: '$'
+                # cif.g:155:56: '$'
                 pass
                 self.match(36)
 
 
             elif alt4 == 6:
-                # cif.g:129:62: '_'
+                # cif.g:155:62: '_'
                 pass
                 self.match(95)
 
 
             elif alt4 == 7:
-                # cif.g:129:68: '['
+                # cif.g:155:68: '['
                 pass
                 self.match(91)
 
 
             elif alt4 == 8:
-                # cif.g:129:74: ']'
+                # cif.g:155:74: ']'
                 pass
                 self.match(93)
 
 
             elif alt4 == 9:
-                # cif.g:129:80: ' '
+                # cif.g:155:80: ' '
                 pass
                 self.match(32)
 
 
             elif alt4 == 10:
-                # cif.g:129:86: '\\t'
+                # cif.g:155:86: '\\t'
                 pass
                 self.match(9)
 
@@ -805,7 +805,7 @@ class cifLexer(Lexer):
     def mANY_PRINT_CHAR(self, ):
 
         try:
-            # cif.g:132:2: ( ORDINARY_CHAR | '#' | '$' | '_' | '[' | ']' | ' ' | '\\t' | ';' )
+            # cif.g:158:2: ( ORDINARY_CHAR | '#' | '$' | '_' | '[' | ']' | ' ' | '\\t' | ';' )
             alt5 = 9
             LA5 = self.input.LA(1)
             if LA5 == 33 or LA5 == 37 or LA5 == 38 or LA5 == 40 or LA5 == 41 or LA5 == 42 or LA5 == 43 or LA5 == 44 or LA5 == 45 or LA5 == 46 or LA5 == 47 or LA5 == 48 or LA5 == 49 or LA5 == 50 or LA5 == 51 or LA5 == 52 or LA5 == 53 or LA5 == 54 or LA5 == 55 or LA5 == 56 or LA5 == 57 or LA5 == 58 or LA5 == 60 or LA5 == 61 or LA5 == 62 or LA5 == 63 or LA5 == 64 or LA5 == 65 or LA5 == 66 or LA5 == 67 or LA5 == 68 or LA5 == 69 or LA5 == 70 or LA5 == 71 or LA5 == 72 or LA5 == 73 or LA5 == 74 or LA5 == 75 or LA5 == 76 or LA5 == 77 or LA5 == 78 or LA5 == 79 or LA5 == 80 or LA5 == 81 or LA5 == 82 or LA5 == 83 or LA5 == 84 or LA5 == 85 or LA5 == 86 or LA5 == 87 or LA5 == 88 or LA5 == 89 or LA5 == 90 or LA5 == 92 or LA5 == 94 or LA5 == 96 or LA5 == 97 or LA5 == 98 or LA5 == 99 or LA5 == 100 or LA5 == 101 or LA5 == 102 or LA5 == 103 or LA5 == 104 or LA5 == 105 or LA5 == 106 or LA5 == 107 or LA5 == 108 or LA5 == 109 or LA5 == 110 or LA5 == 111 or LA5 == 112 or LA5 == 113 or LA5 == 114 or LA5 == 115 or LA5 == 116 or LA5 == 117 or LA5 == 118 or LA5 == 119 or LA5 == 120 or LA5 == 121 or LA5 == 122 or LA5 == 123 or LA5 == 124 or LA5 == 125 or LA5 == 126:
@@ -835,55 +835,55 @@ class cifLexer(Lexer):
                 raise nvae
 
             if alt5 == 1:
-                # cif.g:132:4: ORDINARY_CHAR
+                # cif.g:158:4: ORDINARY_CHAR
                 pass
                 self.mORDINARY_CHAR()
 
 
             elif alt5 == 2:
-                # cif.g:132:20: '#'
+                # cif.g:158:20: '#'
                 pass
                 self.match(35)
 
 
             elif alt5 == 3:
-                # cif.g:132:26: '$'
+                # cif.g:158:26: '$'
                 pass
                 self.match(36)
 
 
             elif alt5 == 4:
-                # cif.g:132:32: '_'
+                # cif.g:158:32: '_'
                 pass
                 self.match(95)
 
 
             elif alt5 == 5:
-                # cif.g:132:38: '['
+                # cif.g:158:38: '['
                 pass
                 self.match(91)
 
 
             elif alt5 == 6:
-                # cif.g:132:44: ']'
+                # cif.g:158:44: ']'
                 pass
                 self.match(93)
 
 
             elif alt5 == 7:
-                # cif.g:132:50: ' '
+                # cif.g:158:50: ' '
                 pass
                 self.match(32)
 
 
             elif alt5 == 8:
-                # cif.g:132:56: '\\t'
+                # cif.g:158:56: '\\t'
                 pass
                 self.match(9)
 
 
             elif alt5 == 9:
-                # cif.g:132:63: ';'
+                # cif.g:158:63: ';'
                 pass
                 self.match(59)
 
@@ -904,8 +904,8 @@ class cifLexer(Lexer):
             _type = TAG
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:138:5: ( '_' ( 'A' .. 'Z' | 'a' .. 'z' ) ( NON_BLANK_CHAR_ )* )
-            # cif.g:138:7: '_' ( 'A' .. 'Z' | 'a' .. 'z' ) ( NON_BLANK_CHAR_ )*
+            # cif.g:164:5: ( '_' ( 'A' .. 'Z' | 'a' .. 'z' ) ( NON_BLANK_CHAR_ )* )
+            # cif.g:164:7: '_' ( 'A' .. 'Z' | 'a' .. 'z' ) ( NON_BLANK_CHAR_ )*
             pass
             self.match(95)
             if (65 <= self.input.LA(1) <= 90) or (97 <= self.input.LA(1) <= 122):
@@ -918,7 +918,7 @@ class cifLexer(Lexer):
                 self.recover(mse)
                 raise mse
 
-            # cif.g:138:35: ( NON_BLANK_CHAR_ )*
+            # cif.g:164:35: ( NON_BLANK_CHAR_ )*
             while True: #loop6
                 alt6 = 2
                 LA6_0 = self.input.LA(1)
@@ -928,7 +928,7 @@ class cifLexer(Lexer):
 
 
                 if alt6 == 1:
-                    # cif.g:138:36: NON_BLANK_CHAR_
+                    # cif.g:164:36: NON_BLANK_CHAR_
                     pass
                     self.mNON_BLANK_CHAR_()
 
@@ -958,14 +958,14 @@ class cifLexer(Lexer):
             _type = SEMI_COLON_TEXT_FIELD
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:145:2: ( ';' ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )* ) ';' )
-            # cif.g:145:4: ';' ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )* ) ';'
+            # cif.g:171:2: ( ';' ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )* ) ';' )
+            # cif.g:171:4: ';' ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )* ) ';'
             pass
             self.match(59)
-            # cif.g:146:3: ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )* )
-            # cif.g:146:5: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )*
+            # cif.g:172:3: ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )* )
+            # cif.g:172:5: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )*
             pass
-            # cif.g:146:5: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
+            # cif.g:172:5: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
             while True: #loop7
                 alt7 = 4
                 LA7 = self.input.LA(1)
@@ -977,19 +977,19 @@ class cifLexer(Lexer):
                     alt7 = 3
 
                 if alt7 == 1:
-                    # cif.g:146:7: ANY_PRINT_CHAR
+                    # cif.g:172:7: ANY_PRINT_CHAR
                     pass
                     self.mANY_PRINT_CHAR()
 
 
                 elif alt7 == 2:
-                    # cif.g:146:24: SINGLE_QUOTE
+                    # cif.g:172:24: SINGLE_QUOTE
                     pass
                     self.mSINGLE_QUOTE()
 
 
                 elif alt7 == 3:
-                    # cif.g:146:39: DOUBLE_QUOTE
+                    # cif.g:172:39: DOUBLE_QUOTE
                     pass
                     self.mDOUBLE_QUOTE()
 
@@ -999,7 +999,7 @@ class cifLexer(Lexer):
 
 
             self.mEOL()
-            # cif.g:147:3: ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )*
+            # cif.g:173:3: ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )*
             while True: #loop10
                 alt10 = 2
                 LA10_0 = self.input.LA(1)
@@ -1009,19 +1009,19 @@ class cifLexer(Lexer):
 
 
                 if alt10 == 1:
-                    # cif.g:147:5: ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL
+                    # cif.g:173:5: ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL
                     pass
-                    # cif.g:147:5: ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )?
+                    # cif.g:173:5: ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )?
                     alt9 = 2
                     LA9_0 = self.input.LA(1)
 
                     if (LA9_0 == 9 or (32 <= LA9_0 <= 58) or (60 <= LA9_0 <= 126)) :
                         alt9 = 1
                     if alt9 == 1:
-                        # cif.g:147:6: TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
+                        # cif.g:173:6: TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
                         pass
                         self.mTEXT_LEAD_CHAR()
-                        # cif.g:147:21: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
+                        # cif.g:173:21: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
                         while True: #loop8
                             alt8 = 4
                             LA8 = self.input.LA(1)
@@ -1033,19 +1033,19 @@ class cifLexer(Lexer):
                                 alt8 = 3
 
                             if alt8 == 1:
-                                # cif.g:147:23: ANY_PRINT_CHAR
+                                # cif.g:173:23: ANY_PRINT_CHAR
                                 pass
                                 self.mANY_PRINT_CHAR()
 
 
                             elif alt8 == 2:
-                                # cif.g:147:40: SINGLE_QUOTE
+                                # cif.g:173:40: SINGLE_QUOTE
                                 pass
                                 self.mSINGLE_QUOTE()
 
 
                             elif alt8 == 3:
-                                # cif.g:147:55: DOUBLE_QUOTE
+                                # cif.g:173:55: DOUBLE_QUOTE
                                 pass
                                 self.mDOUBLE_QUOTE()
 
@@ -1086,8 +1086,8 @@ class cifLexer(Lexer):
     def mDATA_(self, ):
 
         try:
-            # cif.g:156:7: ( ( 'D' | 'd' ) ( 'A' | 'a' ) ( 'T' | 't' ) ( 'A' | 'a' ) '_' )
-            # cif.g:156:9: ( 'D' | 'd' ) ( 'A' | 'a' ) ( 'T' | 't' ) ( 'A' | 'a' ) '_'
+            # cif.g:182:7: ( ( 'D' | 'd' ) ( 'A' | 'a' ) ( 'T' | 't' ) ( 'A' | 'a' ) '_' )
+            # cif.g:182:9: ( 'D' | 'd' ) ( 'A' | 'a' ) ( 'T' | 't' ) ( 'A' | 'a' ) '_'
             pass
             if self.input.LA(1) == 68 or self.input.LA(1) == 100:
                 self.input.consume()
@@ -1146,8 +1146,8 @@ class cifLexer(Lexer):
     def mSAVE_(self, ):
 
         try:
-            # cif.g:159:7: ( ( 'S' | 's' ) ( 'A' | 'a' ) ( 'V' | 'v' ) ( 'E' | 'e' ) '_' )
-            # cif.g:159:9: ( 'S' | 's' ) ( 'A' | 'a' ) ( 'V' | 'v' ) ( 'E' | 'e' ) '_'
+            # cif.g:185:7: ( ( 'S' | 's' ) ( 'A' | 'a' ) ( 'V' | 'v' ) ( 'E' | 'e' ) '_' )
+            # cif.g:185:9: ( 'S' | 's' ) ( 'A' | 'a' ) ( 'V' | 'v' ) ( 'E' | 'e' ) '_'
             pass
             if self.input.LA(1) == 83 or self.input.LA(1) == 115:
                 self.input.consume()
@@ -1209,8 +1209,8 @@ class cifLexer(Lexer):
             _type = LOOP_
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:161:8: ( ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_' )
-            # cif.g:161:10: ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_'
+            # cif.g:187:8: ( ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_' )
+            # cif.g:187:10: ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_'
             pass
             if self.input.LA(1) == 76 or self.input.LA(1) == 108:
                 self.input.consume()
@@ -1274,8 +1274,8 @@ class cifLexer(Lexer):
             _type = GLOBAL_
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:163:9: ( ( 'G' | 'g' ) ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'B' | 'b' ) ( 'A' | 'a' ) ( 'L' | 'l' ) '_' )
-            # cif.g:163:11: ( 'G' | 'g' ) ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'B' | 'b' ) ( 'A' | 'a' ) ( 'L' | 'l' ) '_'
+            # cif.g:189:9: ( ( 'G' | 'g' ) ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'B' | 'b' ) ( 'A' | 'a' ) ( 'L' | 'l' ) '_' )
+            # cif.g:189:11: ( 'G' | 'g' ) ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'B' | 'b' ) ( 'A' | 'a' ) ( 'L' | 'l' ) '_'
             pass
             if self.input.LA(1) == 71 or self.input.LA(1) == 103:
                 self.input.consume()
@@ -1359,8 +1359,8 @@ class cifLexer(Lexer):
             _type = STOP_
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:165:7: ( ( 'S' | 's' ) ( 'T' | 't' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_' )
-            # cif.g:165:9: ( 'S' | 's' ) ( 'T' | 't' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_'
+            # cif.g:191:7: ( ( 'S' | 's' ) ( 'T' | 't' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_' )
+            # cif.g:191:9: ( 'S' | 's' ) ( 'T' | 't' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_'
             pass
             if self.input.LA(1) == 83 or self.input.LA(1) == 115:
                 self.input.consume()
@@ -1424,11 +1424,11 @@ class cifLexer(Lexer):
             _type = VERSION
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:171:9: ( '#\\\\#CIF_' ( DIGIT )+ '.' ( DIGIT )+ )
-            # cif.g:171:11: '#\\\\#CIF_' ( DIGIT )+ '.' ( DIGIT )+
+            # cif.g:197:9: ( '#\\\\#CIF_' ( DIGIT )+ '.' ( DIGIT )+ )
+            # cif.g:197:11: '#\\\\#CIF_' ( DIGIT )+ '.' ( DIGIT )+
             pass
             self.match("#\\#CIF_")
-            # cif.g:171:22: ( DIGIT )+
+            # cif.g:197:22: ( DIGIT )+
             cnt11 = 0
             while True: #loop11
                 alt11 = 2
@@ -1439,7 +1439,7 @@ class cifLexer(Lexer):
 
 
                 if alt11 == 1:
-                    # cif.g:171:23: DIGIT
+                    # cif.g:197:23: DIGIT
                     pass
                     self.mDIGIT()
 
@@ -1458,7 +1458,7 @@ class cifLexer(Lexer):
 
 
             self.match(46)
-            # cif.g:171:35: ( DIGIT )+
+            # cif.g:197:35: ( DIGIT )+
             cnt12 = 0
             while True: #loop12
                 alt12 = 2
@@ -1469,7 +1469,7 @@ class cifLexer(Lexer):
 
 
                 if alt12 == 1:
-                    # cif.g:171:36: DIGIT
+                    # cif.g:197:36: DIGIT
                     pass
                     self.mDIGIT()
 
@@ -1508,11 +1508,11 @@ class cifLexer(Lexer):
             _type = DATA_BLOCK_HEADING
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:174:2: ( DATA_ ( NON_BLANK_CHAR )+ )
-            # cif.g:174:4: DATA_ ( NON_BLANK_CHAR )+
+            # cif.g:200:2: ( DATA_ ( NON_BLANK_CHAR )+ )
+            # cif.g:200:4: DATA_ ( NON_BLANK_CHAR )+
             pass
             self.mDATA_()
-            # cif.g:174:10: ( NON_BLANK_CHAR )+
+            # cif.g:200:10: ( NON_BLANK_CHAR )+
             cnt13 = 0
             while True: #loop13
                 alt13 = 2
@@ -1523,7 +1523,7 @@ class cifLexer(Lexer):
 
 
                 if alt13 == 1:
-                    # cif.g:174:11: NON_BLANK_CHAR
+                    # cif.g:200:11: NON_BLANK_CHAR
                     pass
                     self.mNON_BLANK_CHAR()
 
@@ -1562,11 +1562,11 @@ class cifLexer(Lexer):
             _type = SAVE_FRAME_HEADING
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:177:2: ( SAVE_ ( NON_BLANK_CHAR )+ )
-            # cif.g:177:4: SAVE_ ( NON_BLANK_CHAR )+
+            # cif.g:203:2: ( SAVE_ ( NON_BLANK_CHAR )+ )
+            # cif.g:203:4: SAVE_ ( NON_BLANK_CHAR )+
             pass
             self.mSAVE_()
-            # cif.g:177:10: ( NON_BLANK_CHAR )+
+            # cif.g:203:10: ( NON_BLANK_CHAR )+
             cnt14 = 0
             while True: #loop14
                 alt14 = 2
@@ -1577,7 +1577,7 @@ class cifLexer(Lexer):
 
 
                 if alt14 == 1:
-                    # cif.g:177:11: NON_BLANK_CHAR
+                    # cif.g:203:11: NON_BLANK_CHAR
                     pass
                     self.mNON_BLANK_CHAR()
 
@@ -1616,8 +1616,8 @@ class cifLexer(Lexer):
             _type = SAVE
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:179:6: ( SAVE_ )
-            # cif.g:179:8: SAVE_
+            # cif.g:205:6: ( SAVE_ )
+            # cif.g:205:8: SAVE_
             pass
             self.mSAVE_()
 
@@ -1638,19 +1638,19 @@ class cifLexer(Lexer):
     def mSINGLE_QUOTED_STRING(self, ):
 
         try:
-            # cif.g:183:2: ( SINGLE_QUOTE ( ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )* SINGLE_QUOTE )
-            # cif.g:183:4: SINGLE_QUOTE ( ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )* SINGLE_QUOTE
+            # cif.g:209:2: ( SINGLE_QUOTE ( ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )* SINGLE_QUOTE )
+            # cif.g:209:4: SINGLE_QUOTE ( ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )* SINGLE_QUOTE
             pass
             self.mSINGLE_QUOTE()
-            # cif.g:184:3: ( ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )*
+            # cif.g:210:3: ( ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )*
             while True: #loop15
                 alt15 = 4
                 alt15 = self.dfa15.predict(self.input)
                 if alt15 == 1:
-                    # cif.g:184:5: ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE )
+                    # cif.g:210:5: ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE )
                     pass
-                    # cif.g:184:5: ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE )
-                    # cif.g:184:7: ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE
+                    # cif.g:210:5: ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE )
+                    # cif.g:210:7: ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE
                     pass
                     self.mSINGLE_QUOTE()
 
@@ -1659,13 +1659,13 @@ class cifLexer(Lexer):
 
 
                 elif alt15 == 2:
-                    # cif.g:184:56: ANY_PRINT_CHAR
+                    # cif.g:210:56: ANY_PRINT_CHAR
                     pass
                     self.mANY_PRINT_CHAR()
 
 
                 elif alt15 == 3:
-                    # cif.g:184:73: DOUBLE_QUOTE
+                    # cif.g:210:73: DOUBLE_QUOTE
                     pass
                     self.mDOUBLE_QUOTE()
 
@@ -1694,19 +1694,19 @@ class cifLexer(Lexer):
     def mDOUBLE_QUOTED_STRING(self, ):
 
         try:
-            # cif.g:190:2: ( DOUBLE_QUOTE ( ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )* DOUBLE_QUOTE )
-            # cif.g:190:4: DOUBLE_QUOTE ( ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )* DOUBLE_QUOTE
+            # cif.g:216:2: ( DOUBLE_QUOTE ( ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )* DOUBLE_QUOTE )
+            # cif.g:216:4: DOUBLE_QUOTE ( ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )* DOUBLE_QUOTE
             pass
             self.mDOUBLE_QUOTE()
-            # cif.g:191:3: ( ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )*
+            # cif.g:217:3: ( ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )*
             while True: #loop16
                 alt16 = 4
                 alt16 = self.dfa16.predict(self.input)
                 if alt16 == 1:
-                    # cif.g:191:5: ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE )
+                    # cif.g:217:5: ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE )
                     pass
-                    # cif.g:191:5: ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE )
-                    # cif.g:191:7: ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE
+                    # cif.g:217:5: ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE )
+                    # cif.g:217:7: ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE
                     pass
                     self.mDOUBLE_QUOTE()
 
@@ -1715,13 +1715,13 @@ class cifLexer(Lexer):
 
 
                 elif alt16 == 2:
-                    # cif.g:191:56: ANY_PRINT_CHAR
+                    # cif.g:217:56: ANY_PRINT_CHAR
                     pass
                     self.mANY_PRINT_CHAR()
 
 
                 elif alt16 == 3:
-                    # cif.g:191:73: SINGLE_QUOTE
+                    # cif.g:217:73: SINGLE_QUOTE
                     pass
                     self.mSINGLE_QUOTE()
 
@@ -1753,8 +1753,8 @@ class cifLexer(Lexer):
             _type = DIGIT
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:200:7: ( '0' .. '9' )
-            # cif.g:200:9: '0' .. '9'
+            # cif.g:226:7: ( '0' .. '9' )
+            # cif.g:226:9: '0' .. '9'
             pass
             self.matchRange(48, 57)
 
@@ -1778,10 +1778,10 @@ class cifLexer(Lexer):
             _type = EXPONENT
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:202:9: ( ( ( 'e' | 'E' ) | ( 'e' | 'E' ) ( '+' | '-' ) ) ( DIGIT )+ )
-            # cif.g:202:12: ( ( 'e' | 'E' ) | ( 'e' | 'E' ) ( '+' | '-' ) ) ( DIGIT )+
+            # cif.g:228:9: ( ( ( 'e' | 'E' ) | ( 'e' | 'E' ) ( '+' | '-' ) ) ( DIGIT )+ )
+            # cif.g:228:12: ( ( 'e' | 'E' ) | ( 'e' | 'E' ) ( '+' | '-' ) ) ( DIGIT )+
             pass
-            # cif.g:202:12: ( ( 'e' | 'E' ) | ( 'e' | 'E' ) ( '+' | '-' ) )
+            # cif.g:228:12: ( ( 'e' | 'E' ) | ( 'e' | 'E' ) ( '+' | '-' ) )
             alt17 = 2
             LA17_0 = self.input.LA(1)
 
@@ -1809,7 +1809,7 @@ class cifLexer(Lexer):
                 raise nvae
 
             if alt17 == 1:
-                # cif.g:202:14: ( 'e' | 'E' )
+                # cif.g:228:14: ( 'e' | 'E' )
                 pass
                 if self.input.LA(1) == 69 or self.input.LA(1) == 101:
                     self.input.consume()
@@ -1824,7 +1824,7 @@ class cifLexer(Lexer):
 
 
             elif alt17 == 2:
-                # cif.g:202:29: ( 'e' | 'E' ) ( '+' | '-' )
+                # cif.g:228:29: ( 'e' | 'E' ) ( '+' | '-' )
                 pass
                 if self.input.LA(1) == 69 or self.input.LA(1) == 101:
                     self.input.consume()
@@ -1849,7 +1849,7 @@ class cifLexer(Lexer):
 
 
 
-            # cif.g:202:57: ( DIGIT )+
+            # cif.g:228:57: ( DIGIT )+
             cnt18 = 0
             while True: #loop18
                 alt18 = 2
@@ -1860,7 +1860,7 @@ class cifLexer(Lexer):
 
 
                 if alt18 == 1:
-                    # cif.g:202:58: DIGIT
+                    # cif.g:228:58: DIGIT
                     pass
                     self.mDIGIT()
 
@@ -1896,10 +1896,10 @@ class cifLexer(Lexer):
     def mUNQUOTED_STRING(self, ):
 
         try:
-            # cif.g:207:2: ( ( ORDINARY_CHAR | ';' ) ( NON_BLANK_CHAR_ )* )
-            # cif.g:207:4: ( ORDINARY_CHAR | ';' ) ( NON_BLANK_CHAR_ )*
+            # cif.g:233:2: ( ( ORDINARY_CHAR | ';' ) ( NON_BLANK_CHAR_ )* )
+            # cif.g:233:4: ( ORDINARY_CHAR | ';' ) ( NON_BLANK_CHAR_ )*
             pass
-            # cif.g:207:4: ( ORDINARY_CHAR | ';' )
+            # cif.g:233:4: ( ORDINARY_CHAR | ';' )
             alt19 = 2
             LA19_0 = self.input.LA(1)
 
@@ -1916,19 +1916,19 @@ class cifLexer(Lexer):
                 raise nvae
 
             if alt19 == 1:
-                # cif.g:207:6: ORDINARY_CHAR
+                # cif.g:233:6: ORDINARY_CHAR
                 pass
                 self.mORDINARY_CHAR()
 
 
             elif alt19 == 2:
-                # cif.g:207:22: ';'
+                # cif.g:233:22: ';'
                 pass
                 self.match(59)
 
 
 
-            # cif.g:207:28: ( NON_BLANK_CHAR_ )*
+            # cif.g:233:28: ( NON_BLANK_CHAR_ )*
             while True: #loop20
                 alt20 = 2
                 LA20_0 = self.input.LA(1)
@@ -1938,7 +1938,7 @@ class cifLexer(Lexer):
 
 
                 if alt20 == 1:
-                    # cif.g:207:29: NON_BLANK_CHAR_
+                    # cif.g:233:29: NON_BLANK_CHAR_
                     pass
                     self.mNON_BLANK_CHAR_()
 
@@ -1966,7 +1966,7 @@ class cifLexer(Lexer):
             _type = CHAR_STRING
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:210:2: ( SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING | UNQUOTED_STRING )
+            # cif.g:236:2: ( SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING | UNQUOTED_STRING )
             alt21 = 3
             LA21 = self.input.LA(1)
             if LA21 == 39:
@@ -1984,19 +1984,19 @@ class cifLexer(Lexer):
                 raise nvae
 
             if alt21 == 1:
-                # cif.g:210:4: SINGLE_QUOTED_STRING
+                # cif.g:236:4: SINGLE_QUOTED_STRING
                 pass
                 self.mSINGLE_QUOTED_STRING()
 
 
             elif alt21 == 2:
-                # cif.g:210:27: DOUBLE_QUOTED_STRING
+                # cif.g:236:27: DOUBLE_QUOTED_STRING
                 pass
                 self.mDOUBLE_QUOTED_STRING()
 
 
             elif alt21 == 3:
-                # cif.g:210:50: UNQUOTED_STRING
+                # cif.g:236:50: UNQUOTED_STRING
                 pass
                 self.mUNQUOTED_STRING()
 
@@ -2019,13 +2019,13 @@ class cifLexer(Lexer):
             _type = COMMENTS
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:217:2: ( ( ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL )+ ) )
-            # cif.g:217:4: ( ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL )+ )
+            # cif.g:243:2: ( ( ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL )+ ) )
+            # cif.g:243:4: ( ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL )+ )
             pass
-            # cif.g:217:4: ( ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL )+ )
-            # cif.g:217:6: ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL )+
+            # cif.g:243:4: ( ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL )+ )
+            # cif.g:243:6: ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL )+
             pass
-            # cif.g:217:6: ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL )+
+            # cif.g:243:6: ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL )+
             cnt23 = 0
             while True: #loop23
                 alt23 = 2
@@ -2036,10 +2036,10 @@ class cifLexer(Lexer):
 
 
                 if alt23 == 1:
-                    # cif.g:217:8: '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL
+                    # cif.g:243:8: '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL
                     pass
                     self.match(35)
-                    # cif.g:217:12: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
+                    # cif.g:243:12: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
                     while True: #loop22
                         alt22 = 4
                         LA22 = self.input.LA(1)
@@ -2051,19 +2051,19 @@ class cifLexer(Lexer):
                             alt22 = 3
 
                         if alt22 == 1:
-                            # cif.g:217:13: ANY_PRINT_CHAR
+                            # cif.g:243:13: ANY_PRINT_CHAR
                             pass
                             self.mANY_PRINT_CHAR()
 
 
                         elif alt22 == 2:
-                            # cif.g:217:30: SINGLE_QUOTE
+                            # cif.g:243:30: SINGLE_QUOTE
                             pass
                             self.mSINGLE_QUOTE()
 
 
                         elif alt22 == 3:
-                            # cif.g:217:45: DOUBLE_QUOTE
+                            # cif.g:243:45: DOUBLE_QUOTE
                             pass
                             self.mDOUBLE_QUOTE()
 
@@ -2115,8 +2115,8 @@ class cifLexer(Lexer):
             _type = NON_BLANK_CHAR
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:230:2: ( NON_BLANK_CHAR_ )
-            # cif.g:230:4: NON_BLANK_CHAR_
+            # cif.g:256:2: ( NON_BLANK_CHAR_ )
+            # cif.g:256:4: NON_BLANK_CHAR_
             pass
             self.mNON_BLANK_CHAR_()
 
@@ -2140,10 +2140,10 @@ class cifLexer(Lexer):
             _type = WHITESPACE
             _channel = DEFAULT_CHANNEL
 
-            # cif.g:233:2: ( ( '\\t' | ' ' | EOL | '\\u000C' )+ )
-            # cif.g:233:5: ( '\\t' | ' ' | EOL | '\\u000C' )+
+            # cif.g:259:2: ( ( '\\t' | ' ' | EOL | '\\u000C' )+ )
+            # cif.g:259:5: ( '\\t' | ' ' | EOL | '\\u000C' )+
             pass
-            # cif.g:233:5: ( '\\t' | ' ' | EOL | '\\u000C' )+
+            # cif.g:259:5: ( '\\t' | ' ' | EOL | '\\u000C' )+
             cnt24 = 0
             while True: #loop24
                 alt24 = 5
@@ -2158,25 +2158,25 @@ class cifLexer(Lexer):
                     alt24 = 4
 
                 if alt24 == 1:
-                    # cif.g:233:7: '\\t'
+                    # cif.g:259:7: '\\t'
                     pass
                     self.match(9)
 
 
                 elif alt24 == 2:
-                    # cif.g:233:14: ' '
+                    # cif.g:259:14: ' '
                     pass
                     self.match(32)
 
 
                 elif alt24 == 3:
-                    # cif.g:233:20: EOL
+                    # cif.g:259:20: EOL
                     pass
                     self.mEOL()
 
 
                 elif alt24 == 4:
-                    # cif.g:233:26: '\\u000C'
+                    # cif.g:259:26: '\\u000C'
                     pass
                     self.match(12)
 
@@ -2344,8 +2344,8 @@ class cifLexer(Lexer):
 
     # $ANTLR start "synpred1_cif"
     def synpred1_cif_fragment(self, ):
-        # cif.g:184:7: ( SINGLE_QUOTE NON_BLANK_CHAR_ )
-        # cif.g:184:8: SINGLE_QUOTE NON_BLANK_CHAR_
+        # cif.g:210:7: ( SINGLE_QUOTE NON_BLANK_CHAR_ )
+        # cif.g:210:8: SINGLE_QUOTE NON_BLANK_CHAR_
         pass
         self.mSINGLE_QUOTE()
         self.mNON_BLANK_CHAR_()
@@ -2357,8 +2357,8 @@ class cifLexer(Lexer):
 
     # $ANTLR start "synpred2_cif"
     def synpred2_cif_fragment(self, ):
-        # cif.g:191:7: ( DOUBLE_QUOTE NON_BLANK_CHAR_ )
-        # cif.g:191:8: DOUBLE_QUOTE NON_BLANK_CHAR_
+        # cif.g:217:7: ( DOUBLE_QUOTE NON_BLANK_CHAR_ )
+        # cif.g:217:8: DOUBLE_QUOTE NON_BLANK_CHAR_
         pass
         self.mDOUBLE_QUOTE()
         self.mNON_BLANK_CHAR_()
