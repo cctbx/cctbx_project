@@ -239,15 +239,20 @@ def common_prefix(seq):
       return s1[0:i]
   return s1[0:l]
 
+import re
+quoted_string_re = re.compile(r"(?!'|\").*?(?!'|\")")
+semicolon_string_re = re.compile(r"(\s*)(;).*?(;)(\s*)", re.DOTALL)
+
 def format_value(value_string):
-  import re
-  m = re.match(r"(?!'|\").*?(?!'|\")", value_string)
+  m = re.match(quoted_string_re, value_string)
   string_is_quoted = m is None
   if not string_is_quoted:
-    if re.match(r"(\s*)(;).*?(;)(\s*)", value_string, re.DOTALL) is not None:
+    if re.match(semicolon_string_re, value_string) is not None:
       # a semicolon text field
       return "\n%s\n" %value_string.strip()
-    elif re.search(r"\s", value_string) is not None:
+    elif (value_string[0] in ('#','$','[',']','_')
+          #invalid to start unquoted string
+          or re.search(r"\s", value_string) is not None):
       # string needs quoting
       return "'%s'" %value_string
   return value_string
