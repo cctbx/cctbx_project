@@ -1,8 +1,9 @@
-#import boost.python
-#ext = boost.python.import_ext("iotbx_cif_ext")
-
 import libtbx.load_env
 has_antlr3 = libtbx.env.has_module('antlr3')
+
+if has_antlr3:
+  import boost.python
+  ext = boost.python.import_ext("iotbx_cif_ext")
 
 from cctbx import adptbx, crystal
 from cctbx.xray import structure
@@ -29,6 +30,19 @@ def python_reader(file_path=None, file_object=None, input_string=None,
   parser.parse(builder=builder)
   return builder
 
+def fast_reader(file_path=None, file_object=None, input_string=None,
+                builder=None):
+  assert [file_path, file_object, input_string].count(None) == 2
+  assert has_antlr3
+  if builder is None:
+    builder = builders.cif_model_builder()
+  if file_object is not None:
+    input_string = file_object.read()
+  if input_string is not None:
+    ext.fast_reader(input_string, builder)
+  if file_path is not None:
+    ext.fast_reader(file_path, builder)
+  return builder
 
 class crystal_symmetry_as_cif_block:
 

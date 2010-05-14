@@ -10,7 +10,7 @@ def exercise():
   if not cif.has_antlr3:
     print "Skipping tst_lex_parse_build.py (antlr3 is not available)"
     return
-  readers = [cif.python_reader]
+  readers = [cif.python_reader, cif.fast_reader]
   builders = [cif.builders.cif_model_builder]
   if libtbx.env.has_module('PyCifRW'):
     builders.append(cif.builders.PyCifRW_model_builder)

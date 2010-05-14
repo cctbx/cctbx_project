@@ -1,0 +1,24 @@
+The files cifParser.py and cifLexer.py are generated from the file cif.g
+using antlr-3.1.2.jar
+The files cif2Parser.{h,c} and cif2Lexer.{h,c} are generated from the file
+cif2.g using antlr-3.2.jar
+
+cif2Parser.c and cif2Lexer.c should then be renamed to *.cpp
+
+an example batch file for Windows could be:
+
+set CLASSPATH=.;C:\antlr\antlr-3.1.2\lib\antlr-3.1.2.jar
+java org.antlr.Tool cif.g
+
+or for Unix:
+
+/usr/bin/env CLASSPATH=/net/cci/auto_build/repositories/antlr-3.1.2.jar java org.antlr.Tool cif.g
+
+The required anltr jar files can be obtained from:
+  http://www.antlr.org/download/antlr-3.1.2.jar
+  http://www.antlr.org/download/antlr-3.2.jar
+
+The runtime libraries and associated files required to build and run the
+generated parsers are to be obtained from the antlr3 folder included in
+the cctbx source bundles available from
+  http://cci.lbl.gov/cctbx_build/all.html
