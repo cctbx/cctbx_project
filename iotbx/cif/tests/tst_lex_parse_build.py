@@ -19,6 +19,11 @@ def exercise():
   for reader in readers:
     for builder in builders:
       exercise_parser(reader, builder)
+    a = reader(input_string=cif_invalid_loop).model()
+    assert len(a['global']) == 0
+    b = reader(input_string=cif_invalid_missing_value).model()
+    assert b['global'].items() == [('_a', '1')]
+    #c = reader(input_string=cif_invalid_string).model()
 
   arrays = miller.array.from_cif(file_object=StringIO(
     cif_miller_array_template %(
@@ -206,6 +211,27 @@ loop_
    2 0 0 2.3 2.4 0.2
    3 0 0 3.4 3.5 0.3
    4 0 0 4.5 6.7 0.4
+"""
+
+cif_invalid_loop = """\
+data_global
+loop_
+  _a
+  _b
+_c 1
+"""
+
+cif_invalid_missing_value = """\
+data_global
+_a 1
+_b
+_c 3
+"""
+
+cif_invalid_string = """\
+data_global
+_a 'no closing quote
+_b 1
 """
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-# $ANTLR 3.1.2 cif.g 2010-05-04 17:43:59
+# $ANTLR 3.1.2 cif.g 2010-05-14 12:06:38
 
 import sys
 from antlr3 import *
@@ -174,21 +174,31 @@ class cifParser(Parser):
 
 
 
+    paraphrases = []
+    def getErrorMessage(self, e, tokenNames):
+      msg = Parser.getErrorMessage(self, e, tokenNames)
+      if len(self.paraphrases) > 0:
+        paraphrase = self.paraphrases[-1]
+        msg += " " + paraphrase
+      return msg
+
+
 
     # $ANTLR start "parse"
-    # cif.g:27:1: parse[builder] : cif ;
+    # cif.g:37:1: parse[builder] : cif EOF ;
     def parse(self, builder):
 
         self.builder = builder
         try:
             try:
-                # cif.g:29:2: ( cif )
-                # cif.g:29:4: cif
+                # cif.g:39:2: ( cif EOF )
+                # cif.g:39:4: cif EOF
                 pass
-                self._state.following.append(self.FOLLOW_cif_in_parse44)
+                self._state.following.append(self.FOLLOW_cif_in_parse50)
                 self.cif()
 
                 self._state.following.pop()
+                self.match(self.input, EOF, self.FOLLOW_EOF_in_parse52)
 
 
 
@@ -206,28 +216,28 @@ class cifParser(Parser):
 
 
     # $ANTLR start "cif"
-    # cif.g:34:1: cif : ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )? EOF ;
+    # cif.g:44:1: cif : ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )? ;
     def cif(self, ):
 
         try:
             try:
-                # cif.g:35:2: ( ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )? EOF )
-                # cif.g:35:4: ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )? EOF
+                # cif.g:45:2: ( ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )? )
+                # cif.g:45:4: ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )?
                 pass
-                # cif.g:35:4: ( COMMENTS )?
+                # cif.g:45:4: ( COMMENTS )?
                 alt1 = 2
                 LA1_0 = self.input.LA(1)
 
                 if (LA1_0 == COMMENTS) :
                     alt1 = 1
                 if alt1 == 1:
-                    # cif.g:35:5: COMMENTS
+                    # cif.g:45:5: COMMENTS
                     pass
-                    self.match(self.input, COMMENTS, self.FOLLOW_COMMENTS_in_cif57)
+                    self.match(self.input, COMMENTS, self.FOLLOW_COMMENTS_in_cif65)
 
 
 
-                # cif.g:35:16: ( WHITESPACE )*
+                # cif.g:45:16: ( WHITESPACE )*
                 while True: #loop2
                     alt2 = 2
                     LA2_0 = self.input.LA(1)
@@ -237,29 +247,29 @@ class cifParser(Parser):
 
 
                     if alt2 == 1:
-                        # cif.g:35:17: WHITESPACE
+                        # cif.g:45:17: WHITESPACE
                         pass
-                        self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_cif62)
+                        self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_cif70)
 
 
                     else:
                         break #loop2
 
 
-                # cif.g:35:30: ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )?
+                # cif.g:45:30: ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )?
                 alt6 = 2
                 LA6_0 = self.input.LA(1)
 
                 if (LA6_0 == DATA_BLOCK_HEADING) :
                     alt6 = 1
                 if alt6 == 1:
-                    # cif.g:35:32: data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )?
+                    # cif.g:45:32: data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )?
                     pass
-                    self._state.following.append(self.FOLLOW_data_block_in_cif68)
+                    self._state.following.append(self.FOLLOW_data_block_in_cif76)
                     self.data_block()
 
                     self._state.following.pop()
-                    # cif.g:35:43: ( ( WHITESPACE )* data_block )*
+                    # cif.g:45:43: ( ( WHITESPACE )* data_block )*
                     while True: #loop4
                         alt4 = 2
                         LA4_0 = self.input.LA(1)
@@ -276,9 +286,9 @@ class cifParser(Parser):
 
 
                         if alt4 == 1:
-                            # cif.g:35:45: ( WHITESPACE )* data_block
+                            # cif.g:45:45: ( WHITESPACE )* data_block
                             pass
-                            # cif.g:35:45: ( WHITESPACE )*
+                            # cif.g:45:45: ( WHITESPACE )*
                             while True: #loop3
                                 alt3 = 2
                                 LA3_0 = self.input.LA(1)
@@ -288,16 +298,16 @@ class cifParser(Parser):
 
 
                                 if alt3 == 1:
-                                    # cif.g:35:45: WHITESPACE
+                                    # cif.g:45:45: WHITESPACE
                                     pass
-                                    self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_cif72)
+                                    self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_cif80)
 
 
                                 else:
                                     break #loop3
 
 
-                            self._state.following.append(self.FOLLOW_data_block_in_cif75)
+                            self._state.following.append(self.FOLLOW_data_block_in_cif83)
                             self.data_block()
 
                             self._state.following.pop()
@@ -307,23 +317,22 @@ class cifParser(Parser):
                             break #loop4
 
 
-                    # cif.g:35:71: ( WHITESPACE )?
+                    # cif.g:45:71: ( WHITESPACE )?
                     alt5 = 2
                     LA5_0 = self.input.LA(1)
 
                     if (LA5_0 == WHITESPACE) :
                         alt5 = 1
                     if alt5 == 1:
-                        # cif.g:35:72: WHITESPACE
+                        # cif.g:45:72: WHITESPACE
                         pass
-                        self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_cif81)
+                        self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_cif89)
 
 
 
 
 
 
-                self.match(self.input, EOF, self.FOLLOW_EOF_in_cif88)
 
 
 
@@ -341,7 +350,7 @@ class cifParser(Parser):
 
 
     # $ANTLR start "loop_body"
-    # cif.g:38:1: loop_body : v1= value ( ( WHITESPACE )+ v2= value )* ;
+    # cif.g:48:1: loop_body : v1= value ( ( WHITESPACE )+ v2= value )* ;
     def loop_body(self, ):
 
         v1 = None
@@ -352,24 +361,24 @@ class cifParser(Parser):
         self.curr_loop_values = flex.std_string()
         try:
             try:
-                # cif.g:40:2: (v1= value ( ( WHITESPACE )+ v2= value )* )
-                # cif.g:40:4: v1= value ( ( WHITESPACE )+ v2= value )*
+                # cif.g:50:2: (v1= value ( ( WHITESPACE )+ v2= value )* )
+                # cif.g:50:4: v1= value ( ( WHITESPACE )+ v2= value )*
                 pass
-                self._state.following.append(self.FOLLOW_value_in_loop_body106)
+                self._state.following.append(self.FOLLOW_value_in_loop_body112)
                 v1 = self.value()
 
                 self._state.following.pop()
                 #action start
                 self.curr_loop_values.append(str(((v1 is not None) and [self.input.toString(v1.start,v1.stop)] or [None])[0]))
                 #action end
-                # cif.g:42:8: ( ( WHITESPACE )+ v2= value )*
+                # cif.g:52:8: ( ( WHITESPACE )+ v2= value )*
                 while True: #loop8
                     alt8 = 2
                     alt8 = self.dfa8.predict(self.input)
                     if alt8 == 1:
-                        # cif.g:42:10: ( WHITESPACE )+ v2= value
+                        # cif.g:52:10: ( WHITESPACE )+ v2= value
                         pass
-                        # cif.g:42:10: ( WHITESPACE )+
+                        # cif.g:52:10: ( WHITESPACE )+
                         cnt7 = 0
                         while True: #loop7
                             alt7 = 2
@@ -380,9 +389,9 @@ class cifParser(Parser):
 
 
                             if alt7 == 1:
-                                # cif.g:42:10: WHITESPACE
+                                # cif.g:52:10: WHITESPACE
                                 pass
-                                self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_loop_body119)
+                                self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_loop_body125)
 
 
                             else:
@@ -395,7 +404,7 @@ class cifParser(Parser):
                             cnt7 += 1
 
 
-                        self._state.following.append(self.FOLLOW_value_in_loop_body133)
+                        self._state.following.append(self.FOLLOW_value_in_loop_body139)
                         v2 = self.value()
 
                         self._state.following.pop()
@@ -408,6 +417,9 @@ class cifParser(Parser):
                         break #loop8
 
 
+                #action start
+                self.paraphrases.pop()
+                #action end
 
 
 
@@ -425,24 +437,24 @@ class cifParser(Parser):
 
 
     # $ANTLR start "save_frame"
-    # cif.g:48:1: save_frame : SAVE_FRAME_HEADING ( ( WHITESPACE )+ data_items )+ ( WHITESPACE )+ SAVE ;
+    # cif.g:59:1: save_frame : SAVE_FRAME_HEADING ( ( WHITESPACE )+ data_items )+ ( WHITESPACE )+ SAVE ;
     def save_frame(self, ):
 
         try:
             try:
-                # cif.g:49:2: ( SAVE_FRAME_HEADING ( ( WHITESPACE )+ data_items )+ ( WHITESPACE )+ SAVE )
-                # cif.g:49:4: SAVE_FRAME_HEADING ( ( WHITESPACE )+ data_items )+ ( WHITESPACE )+ SAVE
+                # cif.g:60:2: ( SAVE_FRAME_HEADING ( ( WHITESPACE )+ data_items )+ ( WHITESPACE )+ SAVE )
+                # cif.g:60:4: SAVE_FRAME_HEADING ( ( WHITESPACE )+ data_items )+ ( WHITESPACE )+ SAVE
                 pass
-                self.match(self.input, SAVE_FRAME_HEADING, self.FOLLOW_SAVE_FRAME_HEADING_in_save_frame157)
-                # cif.g:49:23: ( ( WHITESPACE )+ data_items )+
+                self.match(self.input, SAVE_FRAME_HEADING, self.FOLLOW_SAVE_FRAME_HEADING_in_save_frame174)
+                # cif.g:60:23: ( ( WHITESPACE )+ data_items )+
                 cnt10 = 0
                 while True: #loop10
                     alt10 = 2
                     alt10 = self.dfa10.predict(self.input)
                     if alt10 == 1:
-                        # cif.g:49:25: ( WHITESPACE )+ data_items
+                        # cif.g:60:25: ( WHITESPACE )+ data_items
                         pass
-                        # cif.g:49:25: ( WHITESPACE )+
+                        # cif.g:60:25: ( WHITESPACE )+
                         cnt9 = 0
                         while True: #loop9
                             alt9 = 2
@@ -453,9 +465,9 @@ class cifParser(Parser):
 
 
                             if alt9 == 1:
-                                # cif.g:49:25: WHITESPACE
+                                # cif.g:60:25: WHITESPACE
                                 pass
-                                self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_save_frame161)
+                                self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_save_frame178)
 
 
                             else:
@@ -468,7 +480,7 @@ class cifParser(Parser):
                             cnt9 += 1
 
 
-                        self._state.following.append(self.FOLLOW_data_items_in_save_frame164)
+                        self._state.following.append(self.FOLLOW_data_items_in_save_frame181)
                         self.data_items()
 
                         self._state.following.pop()
@@ -484,7 +496,7 @@ class cifParser(Parser):
                     cnt10 += 1
 
 
-                # cif.g:49:51: ( WHITESPACE )+
+                # cif.g:60:51: ( WHITESPACE )+
                 cnt11 = 0
                 while True: #loop11
                     alt11 = 2
@@ -495,9 +507,9 @@ class cifParser(Parser):
 
 
                     if alt11 == 1:
-                        # cif.g:49:51: WHITESPACE
+                        # cif.g:60:51: WHITESPACE
                         pass
-                        self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_save_frame169)
+                        self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_save_frame186)
 
 
                     else:
@@ -510,7 +522,7 @@ class cifParser(Parser):
                     cnt11 += 1
 
 
-                self.match(self.input, SAVE, self.FOLLOW_SAVE_in_save_frame172)
+                self.match(self.input, SAVE, self.FOLLOW_SAVE_in_save_frame189)
 
 
 
@@ -528,7 +540,7 @@ class cifParser(Parser):
 
 
     # $ANTLR start "data_items"
-    # cif.g:51:1: data_items : ( TAG WHITESPACE value | loop_header ( WHITESPACE )* loop_body );
+    # cif.g:62:1: data_items : ( ( TAG WHITESPACE value ) | ( loop_header ( WHITESPACE )* loop_body ) );
     def data_items(self, ):
 
         TAG1 = None
@@ -537,9 +549,10 @@ class cifParser(Parser):
         loop_header3 = None
 
 
+        self.paraphrases.append("in data items")
         try:
             try:
-                # cif.g:52:2: ( TAG WHITESPACE value | loop_header ( WHITESPACE )* loop_body )
+                # cif.g:65:2: ( ( TAG WHITESPACE value ) | ( loop_header ( WHITESPACE )* loop_body ) )
                 alt13 = 2
                 LA13_0 = self.input.LA(1)
 
@@ -553,11 +566,14 @@ class cifParser(Parser):
                     raise nvae
 
                 if alt13 == 1:
-                    # cif.g:52:4: TAG WHITESPACE value
+                    # cif.g:65:5: ( TAG WHITESPACE value )
                     pass
-                    TAG1=self.match(self.input, TAG, self.FOLLOW_TAG_in_data_items182)
-                    self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_data_items184)
-                    self._state.following.append(self.FOLLOW_value_in_data_items186)
+                    # cif.g:65:5: ( TAG WHITESPACE value )
+                    # cif.g:65:7: TAG WHITESPACE value
+                    pass
+                    TAG1=self.match(self.input, TAG, self.FOLLOW_TAG_in_data_items213)
+                    self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_data_items215)
+                    self._state.following.append(self.FOLLOW_value_in_data_items217)
                     value2 = self.value()
 
                     self._state.following.pop()
@@ -566,14 +582,20 @@ class cifParser(Parser):
                     #action end
 
 
+
+
+
                 elif alt13 == 2:
-                    # cif.g:54:10: loop_header ( WHITESPACE )* loop_body
+                    # cif.g:68:10: ( loop_header ( WHITESPACE )* loop_body )
                     pass
-                    self._state.following.append(self.FOLLOW_loop_header_in_data_items199)
+                    # cif.g:68:10: ( loop_header ( WHITESPACE )* loop_body )
+                    # cif.g:68:12: loop_header ( WHITESPACE )* loop_body
+                    pass
+                    self._state.following.append(self.FOLLOW_loop_header_in_data_items236)
                     loop_header3 = self.loop_header()
 
                     self._state.following.pop()
-                    # cif.g:54:22: ( WHITESPACE )*
+                    # cif.g:68:24: ( WHITESPACE )*
                     while True: #loop12
                         alt12 = 2
                         LA12_0 = self.input.LA(1)
@@ -583,26 +605,35 @@ class cifParser(Parser):
 
 
                         if alt12 == 1:
-                            # cif.g:54:22: WHITESPACE
+                            # cif.g:68:24: WHITESPACE
                             pass
-                            self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_data_items201)
+                            self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_data_items238)
 
 
                         else:
                             break #loop12
 
 
-                    self._state.following.append(self.FOLLOW_loop_body_in_data_items204)
+                    self._state.following.append(self.FOLLOW_loop_body_in_data_items241)
                     self.loop_body()
 
                     self._state.following.pop()
                     #action start
 
-                    self.builder.add_loop(((loop_header3 is not None) and [self.input.toString(loop_header3.start,loop_header3.stop)] or [None])[0], data=self.curr_loop_values)
+                    try:
+                      self.builder.add_loop(((loop_header3 is not None) and [self.input.toString(loop_header3.start,loop_header3.stop)] or [None])[0], data=self.curr_loop_values)
+                    except AssertionError, e:
+                      print e
 
                     #action end
 
 
+
+
+
+                #action start
+                self.paraphrases.pop()
+                #action end
 
             except RecognitionException, re:
                 self.reportError(re)
@@ -617,28 +648,28 @@ class cifParser(Parser):
 
 
     # $ANTLR start "data_block"
-    # cif.g:60:1: data_block : DATA_BLOCK_HEADING ( ( WHITESPACE )+ ( data_items | save_frame ) )* ;
+    # cif.g:78:1: data_block : DATA_BLOCK_HEADING ( ( WHITESPACE )+ ( data_items | save_frame ) )* ;
     def data_block(self, ):
 
         DATA_BLOCK_HEADING4 = None
 
         try:
             try:
-                # cif.g:61:2: ( DATA_BLOCK_HEADING ( ( WHITESPACE )+ ( data_items | save_frame ) )* )
-                # cif.g:61:4: DATA_BLOCK_HEADING ( ( WHITESPACE )+ ( data_items | save_frame ) )*
+                # cif.g:79:2: ( DATA_BLOCK_HEADING ( ( WHITESPACE )+ ( data_items | save_frame ) )* )
+                # cif.g:79:4: DATA_BLOCK_HEADING ( ( WHITESPACE )+ ( data_items | save_frame ) )*
                 pass
-                DATA_BLOCK_HEADING4=self.match(self.input, DATA_BLOCK_HEADING, self.FOLLOW_DATA_BLOCK_HEADING_in_data_block217)
+                DATA_BLOCK_HEADING4=self.match(self.input, DATA_BLOCK_HEADING, self.FOLLOW_DATA_BLOCK_HEADING_in_data_block258)
                 #action start
                 self.builder.add_data_block(DATA_BLOCK_HEADING4.text)
                 #action end
-                # cif.g:63:8: ( ( WHITESPACE )+ ( data_items | save_frame ) )*
+                # cif.g:81:8: ( ( WHITESPACE )+ ( data_items | save_frame ) )*
                 while True: #loop16
                     alt16 = 2
                     alt16 = self.dfa16.predict(self.input)
                     if alt16 == 1:
-                        # cif.g:63:10: ( WHITESPACE )+ ( data_items | save_frame )
+                        # cif.g:81:10: ( WHITESPACE )+ ( data_items | save_frame )
                         pass
-                        # cif.g:63:10: ( WHITESPACE )+
+                        # cif.g:81:10: ( WHITESPACE )+
                         cnt14 = 0
                         while True: #loop14
                             alt14 = 2
@@ -649,9 +680,9 @@ class cifParser(Parser):
 
 
                             if alt14 == 1:
-                                # cif.g:63:10: WHITESPACE
+                                # cif.g:81:10: WHITESPACE
                                 pass
-                                self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_data_block230)
+                                self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_data_block271)
 
 
                             else:
@@ -664,7 +695,7 @@ class cifParser(Parser):
                             cnt14 += 1
 
 
-                        # cif.g:63:22: ( data_items | save_frame )
+                        # cif.g:81:22: ( data_items | save_frame )
                         alt15 = 2
                         LA15_0 = self.input.LA(1)
 
@@ -678,18 +709,18 @@ class cifParser(Parser):
                             raise nvae
 
                         if alt15 == 1:
-                            # cif.g:63:24: data_items
+                            # cif.g:81:24: data_items
                             pass
-                            self._state.following.append(self.FOLLOW_data_items_in_data_block235)
+                            self._state.following.append(self.FOLLOW_data_items_in_data_block276)
                             self.data_items()
 
                             self._state.following.pop()
 
 
                         elif alt15 == 2:
-                            # cif.g:63:37: save_frame
+                            # cif.g:81:37: save_frame
                             pass
-                            self._state.following.append(self.FOLLOW_save_frame_in_data_block239)
+                            self._state.following.append(self.FOLLOW_save_frame_in_data_block280)
                             self.save_frame()
 
                             self._state.following.pop()
@@ -726,7 +757,7 @@ class cifParser(Parser):
 
 
     # $ANTLR start "loop_header"
-    # cif.g:66:1: loop_header : LOOP_ ( ( WHITESPACE )+ TAG )+ WHITESPACE ;
+    # cif.g:84:1: loop_header : LOOP_ ( ( WHITESPACE )+ TAG )+ WHITESPACE ;
     def loop_header(self, ):
 
         retval = self.loop_header_return()
@@ -734,19 +765,22 @@ class cifParser(Parser):
 
         try:
             try:
-                # cif.g:67:2: ( LOOP_ ( ( WHITESPACE )+ TAG )+ WHITESPACE )
-                # cif.g:67:4: LOOP_ ( ( WHITESPACE )+ TAG )+ WHITESPACE
+                # cif.g:85:2: ( LOOP_ ( ( WHITESPACE )+ TAG )+ WHITESPACE )
+                # cif.g:85:4: LOOP_ ( ( WHITESPACE )+ TAG )+ WHITESPACE
                 pass
-                self.match(self.input, LOOP_, self.FOLLOW_LOOP__in_loop_header255)
-                # cif.g:67:10: ( ( WHITESPACE )+ TAG )+
+                self.match(self.input, LOOP_, self.FOLLOW_LOOP__in_loop_header296)
+                #action start
+                self.paraphrases.append("in loop_")
+                #action end
+                # cif.g:86:3: ( ( WHITESPACE )+ TAG )+
                 cnt18 = 0
                 while True: #loop18
                     alt18 = 2
                     alt18 = self.dfa18.predict(self.input)
                     if alt18 == 1:
-                        # cif.g:67:12: ( WHITESPACE )+ TAG
+                        # cif.g:86:5: ( WHITESPACE )+ TAG
                         pass
-                        # cif.g:67:12: ( WHITESPACE )+
+                        # cif.g:86:5: ( WHITESPACE )+
                         cnt17 = 0
                         while True: #loop17
                             alt17 = 2
@@ -757,9 +791,9 @@ class cifParser(Parser):
 
 
                             if alt17 == 1:
-                                # cif.g:67:12: WHITESPACE
+                                # cif.g:86:5: WHITESPACE
                                 pass
-                                self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_loop_header259)
+                                self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_loop_header304)
 
 
                             else:
@@ -772,7 +806,7 @@ class cifParser(Parser):
                             cnt17 += 1
 
 
-                        self.match(self.input, TAG, self.FOLLOW_TAG_in_loop_header262)
+                        self.match(self.input, TAG, self.FOLLOW_TAG_in_loop_header307)
 
 
                     else:
@@ -785,7 +819,7 @@ class cifParser(Parser):
                     cnt18 += 1
 
 
-                self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_loop_header267)
+                self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_loop_header312)
 
 
 
@@ -805,15 +839,15 @@ class cifParser(Parser):
 
 
     # $ANTLR start "inapplicable"
-    # cif.g:74:1: inapplicable : '.' ;
+    # cif.g:93:1: inapplicable : '.' ;
     def inapplicable(self, ):
 
         try:
             try:
-                # cif.g:75:2: ( '.' )
-                # cif.g:75:4: '.'
+                # cif.g:94:2: ( '.' )
+                # cif.g:94:4: '.'
                 pass
-                self.match(self.input, 31, self.FOLLOW_31_in_inapplicable282)
+                self.match(self.input, 31, self.FOLLOW_31_in_inapplicable327)
 
 
 
@@ -831,15 +865,15 @@ class cifParser(Parser):
 
 
     # $ANTLR start "unknown"
-    # cif.g:77:1: unknown : '?' ;
+    # cif.g:96:1: unknown : '?' ;
     def unknown(self, ):
 
         try:
             try:
-                # cif.g:77:9: ( '?' )
-                # cif.g:77:11: '?'
+                # cif.g:96:9: ( '?' )
+                # cif.g:96:11: '?'
                 pass
-                self.match(self.input, 32, self.FOLLOW_32_in_unknown291)
+                self.match(self.input, 32, self.FOLLOW_32_in_unknown336)
 
 
 
@@ -864,24 +898,25 @@ class cifParser(Parser):
 
 
     # $ANTLR start "value"
-    # cif.g:79:1: value : ( inapplicable | unknown | '-' | char_string | numeric | text_field );
+    # cif.g:98:1: value : ( inapplicable | unknown | '-' | char_string | numeric | text_field );
     def value(self, ):
 
         retval = self.value_return()
         retval.start = self.input.LT(1)
 
+        self.paraphrases.append("in value")
         try:
             try:
-                # cif.g:79:8: ( inapplicable | unknown | '-' | char_string | numeric | text_field )
+                # cif.g:101:3: ( inapplicable | unknown | '-' | char_string | numeric | text_field )
                 alt19 = 6
                 LA19 = self.input.LA(1)
                 if LA19 == 31:
                     LA19_1 = self.input.LA(2)
 
-                    if (LA19_1 == EOF or LA19_1 == WHITESPACE or LA19_1 == DATA_BLOCK_HEADING) :
-                        alt19 = 1
-                    elif (LA19_1 == DIGIT) :
+                    if (LA19_1 == DIGIT) :
                         alt19 = 5
+                    elif (LA19_1 == EOF or LA19_1 == WHITESPACE or LA19_1 == DATA_BLOCK_HEADING) :
+                        alt19 = 1
                     else:
                         nvae = NoViableAltException("", 19, 1, self.input)
 
@@ -913,51 +948,51 @@ class cifParser(Parser):
                     raise nvae
 
                 if alt19 == 1:
-                    # cif.g:79:10: inapplicable
+                    # cif.g:101:5: inapplicable
                     pass
-                    self._state.following.append(self.FOLLOW_inapplicable_in_value301)
+                    self._state.following.append(self.FOLLOW_inapplicable_in_value358)
                     self.inapplicable()
 
                     self._state.following.pop()
 
 
                 elif alt19 == 2:
-                    # cif.g:79:25: unknown
+                    # cif.g:101:20: unknown
                     pass
-                    self._state.following.append(self.FOLLOW_unknown_in_value305)
+                    self._state.following.append(self.FOLLOW_unknown_in_value362)
                     self.unknown()
 
                     self._state.following.pop()
 
 
                 elif alt19 == 3:
-                    # cif.g:79:35: '-'
+                    # cif.g:101:30: '-'
                     pass
-                    self.match(self.input, 33, self.FOLLOW_33_in_value309)
+                    self.match(self.input, 33, self.FOLLOW_33_in_value366)
 
 
                 elif alt19 == 4:
-                    # cif.g:79:41: char_string
+                    # cif.g:101:36: char_string
                     pass
-                    self._state.following.append(self.FOLLOW_char_string_in_value313)
+                    self._state.following.append(self.FOLLOW_char_string_in_value370)
                     self.char_string()
 
                     self._state.following.pop()
 
 
                 elif alt19 == 5:
-                    # cif.g:79:56: numeric
+                    # cif.g:101:51: numeric
                     pass
-                    self._state.following.append(self.FOLLOW_numeric_in_value318)
+                    self._state.following.append(self.FOLLOW_numeric_in_value375)
                     self.numeric()
 
                     self._state.following.pop()
 
 
                 elif alt19 == 6:
-                    # cif.g:79:65: text_field
+                    # cif.g:101:60: text_field
                     pass
-                    self._state.following.append(self.FOLLOW_text_field_in_value321)
+                    self._state.following.append(self.FOLLOW_text_field_in_value378)
                     self.text_field()
 
                     self._state.following.pop()
@@ -965,10 +1000,15 @@ class cifParser(Parser):
 
                 retval.stop = self.input.LT(-1)
 
+                #action start
+                self.paraphrases.pop()
+                #action end
 
             except RecognitionException, re:
-                self.reportError(re)
-                self.recover(self.input, re)
+
+                raise re
+
+
         finally:
 
             pass
@@ -979,15 +1019,15 @@ class cifParser(Parser):
 
 
     # $ANTLR start "unsigned_integer"
-    # cif.g:81:1: unsigned_integer : ( DIGIT )+ ;
+    # cif.g:107:1: unsigned_integer : ( DIGIT )+ ;
     def unsigned_integer(self, ):
 
         try:
             try:
-                # cif.g:82:2: ( ( DIGIT )+ )
-                # cif.g:82:4: ( DIGIT )+
+                # cif.g:108:2: ( ( DIGIT )+ )
+                # cif.g:108:4: ( DIGIT )+
                 pass
-                # cif.g:82:4: ( DIGIT )+
+                # cif.g:108:4: ( DIGIT )+
                 cnt20 = 0
                 while True: #loop20
                     alt20 = 2
@@ -998,9 +1038,9 @@ class cifParser(Parser):
 
 
                     if alt20 == 1:
-                        # cif.g:82:5: DIGIT
+                        # cif.g:108:5: DIGIT
                         pass
-                        self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_unsigned_integer332)
+                        self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_unsigned_integer399)
 
 
                     else:
@@ -1030,15 +1070,15 @@ class cifParser(Parser):
 
 
     # $ANTLR start "integer"
-    # cif.g:84:1: integer : ( '+' | '-' )? unsigned_integer ;
+    # cif.g:110:1: integer : ( '+' | '-' )? unsigned_integer ;
     def integer(self, ):
 
         try:
             try:
-                # cif.g:84:9: ( ( '+' | '-' )? unsigned_integer )
-                # cif.g:84:12: ( '+' | '-' )? unsigned_integer
+                # cif.g:110:9: ( ( '+' | '-' )? unsigned_integer )
+                # cif.g:110:12: ( '+' | '-' )? unsigned_integer
                 pass
-                # cif.g:84:12: ( '+' | '-' )?
+                # cif.g:110:12: ( '+' | '-' )?
                 alt21 = 2
                 LA21_0 = self.input.LA(1)
 
@@ -1059,7 +1099,7 @@ class cifParser(Parser):
 
 
 
-                self._state.following.append(self.FOLLOW_unsigned_integer_in_integer355)
+                self._state.following.append(self.FOLLOW_unsigned_integer_in_integer422)
                 self.unsigned_integer()
 
                 self._state.following.pop()
@@ -1080,34 +1120,34 @@ class cifParser(Parser):
 
 
     # $ANTLR start "float_"
-    # cif.g:86:1: float_ : ( integer EXPONENT | ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )? );
+    # cif.g:112:1: float_ : ( integer EXPONENT | ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )? );
     def float_(self, ):
 
         try:
             try:
-                # cif.g:86:8: ( integer EXPONENT | ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )? )
+                # cif.g:112:8: ( integer EXPONENT | ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )? )
                 alt27 = 2
                 alt27 = self.dfa27.predict(self.input)
                 if alt27 == 1:
-                    # cif.g:86:11: integer EXPONENT
+                    # cif.g:112:11: integer EXPONENT
                     pass
-                    self._state.following.append(self.FOLLOW_integer_in_float_365)
+                    self._state.following.append(self.FOLLOW_integer_in_float_432)
                     self.integer()
 
                     self._state.following.pop()
-                    self.match(self.input, EXPONENT, self.FOLLOW_EXPONENT_in_float_367)
+                    self.match(self.input, EXPONENT, self.FOLLOW_EXPONENT_in_float_434)
 
 
                 elif alt27 == 2:
-                    # cif.g:86:30: ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )?
+                    # cif.g:112:30: ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )?
                     pass
-                    # cif.g:86:30: ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' )
+                    # cif.g:112:30: ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' )
                     alt25 = 2
                     alt25 = self.dfa25.predict(self.input)
                     if alt25 == 1:
-                        # cif.g:86:32: ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer )
+                        # cif.g:112:32: ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer )
                         pass
-                        # cif.g:86:32: ( '+' | '-' )?
+                        # cif.g:112:32: ( '+' | '-' )?
                         alt22 = 2
                         LA22_0 = self.input.LA(1)
 
@@ -1128,10 +1168,10 @@ class cifParser(Parser):
 
 
 
-                        # cif.g:86:47: ( ( DIGIT )* '.' unsigned_integer )
-                        # cif.g:86:49: ( DIGIT )* '.' unsigned_integer
+                        # cif.g:112:47: ( ( DIGIT )* '.' unsigned_integer )
+                        # cif.g:112:49: ( DIGIT )* '.' unsigned_integer
                         pass
-                        # cif.g:86:49: ( DIGIT )*
+                        # cif.g:112:49: ( DIGIT )*
                         while True: #loop23
                             alt23 = 2
                             LA23_0 = self.input.LA(1)
@@ -1141,17 +1181,17 @@ class cifParser(Parser):
 
 
                             if alt23 == 1:
-                                # cif.g:86:50: DIGIT
+                                # cif.g:112:50: DIGIT
                                 pass
-                                self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_float_387)
+                                self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_float_454)
 
 
                             else:
                                 break #loop23
 
 
-                        self.match(self.input, 31, self.FOLLOW_31_in_float_391)
-                        self._state.following.append(self.FOLLOW_unsigned_integer_in_float_393)
+                        self.match(self.input, 31, self.FOLLOW_31_in_float_458)
+                        self._state.following.append(self.FOLLOW_unsigned_integer_in_float_460)
                         self.unsigned_integer()
 
                         self._state.following.pop()
@@ -1161,9 +1201,9 @@ class cifParser(Parser):
 
 
                     elif alt25 == 2:
-                        # cif.g:86:82: ( DIGIT )+ '.'
+                        # cif.g:112:82: ( DIGIT )+ '.'
                         pass
-                        # cif.g:86:82: ( DIGIT )+
+                        # cif.g:112:82: ( DIGIT )+
                         cnt24 = 0
                         while True: #loop24
                             alt24 = 2
@@ -1174,9 +1214,9 @@ class cifParser(Parser):
 
 
                             if alt24 == 1:
-                                # cif.g:86:83: DIGIT
+                                # cif.g:112:83: DIGIT
                                 pass
-                                self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_float_399)
+                                self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_float_466)
 
 
                             else:
@@ -1189,20 +1229,20 @@ class cifParser(Parser):
                             cnt24 += 1
 
 
-                        self.match(self.input, 31, self.FOLLOW_31_in_float_403)
+                        self.match(self.input, 31, self.FOLLOW_31_in_float_470)
 
 
 
-                    # cif.g:86:97: ( EXPONENT )?
+                    # cif.g:112:97: ( EXPONENT )?
                     alt26 = 2
                     LA26_0 = self.input.LA(1)
 
                     if (LA26_0 == EXPONENT) :
                         alt26 = 1
                     if alt26 == 1:
-                        # cif.g:86:98: EXPONENT
+                        # cif.g:112:98: EXPONENT
                         pass
-                        self.match(self.input, EXPONENT, self.FOLLOW_EXPONENT_in_float_408)
+                        self.match(self.input, EXPONENT, self.FOLLOW_EXPONENT_in_float_475)
 
 
 
@@ -1222,27 +1262,27 @@ class cifParser(Parser):
 
 
     # $ANTLR start "number"
-    # cif.g:88:1: number : ( integer | float_ );
+    # cif.g:114:1: number : ( integer | float_ );
     def number(self, ):
 
         try:
             try:
-                # cif.g:88:9: ( integer | float_ )
+                # cif.g:114:9: ( integer | float_ )
                 alt28 = 2
                 alt28 = self.dfa28.predict(self.input)
                 if alt28 == 1:
-                    # cif.g:88:11: integer
+                    # cif.g:114:11: integer
                     pass
-                    self._state.following.append(self.FOLLOW_integer_in_number420)
+                    self._state.following.append(self.FOLLOW_integer_in_number487)
                     self.integer()
 
                     self._state.following.pop()
 
 
                 elif alt28 == 2:
-                    # cif.g:88:21: float_
+                    # cif.g:114:21: float_
                     pass
-                    self._state.following.append(self.FOLLOW_float__in_number424)
+                    self._state.following.append(self.FOLLOW_float__in_number491)
                     self.float_()
 
                     self._state.following.pop()
@@ -1262,35 +1302,35 @@ class cifParser(Parser):
 
 
     # $ANTLR start "numeric"
-    # cif.g:90:1: numeric : ( number | ( number '(' ( DIGIT )+ ')' ) );
+    # cif.g:116:1: numeric : ( number | ( number '(' ( DIGIT )+ ')' ) );
     def numeric(self, ):
 
         try:
             try:
-                # cif.g:90:9: ( number | ( number '(' ( DIGIT )+ ')' ) )
+                # cif.g:116:9: ( number | ( number '(' ( DIGIT )+ ')' ) )
                 alt30 = 2
                 alt30 = self.dfa30.predict(self.input)
                 if alt30 == 1:
-                    # cif.g:90:11: number
+                    # cif.g:116:11: number
                     pass
-                    self._state.following.append(self.FOLLOW_number_in_numeric433)
+                    self._state.following.append(self.FOLLOW_number_in_numeric500)
                     self.number()
 
                     self._state.following.pop()
 
 
                 elif alt30 == 2:
-                    # cif.g:90:20: ( number '(' ( DIGIT )+ ')' )
+                    # cif.g:116:20: ( number '(' ( DIGIT )+ ')' )
                     pass
-                    # cif.g:90:20: ( number '(' ( DIGIT )+ ')' )
-                    # cif.g:90:22: number '(' ( DIGIT )+ ')'
+                    # cif.g:116:20: ( number '(' ( DIGIT )+ ')' )
+                    # cif.g:116:22: number '(' ( DIGIT )+ ')'
                     pass
-                    self._state.following.append(self.FOLLOW_number_in_numeric439)
+                    self._state.following.append(self.FOLLOW_number_in_numeric506)
                     self.number()
 
                     self._state.following.pop()
-                    self.match(self.input, 35, self.FOLLOW_35_in_numeric441)
-                    # cif.g:90:33: ( DIGIT )+
+                    self.match(self.input, 35, self.FOLLOW_35_in_numeric508)
+                    # cif.g:116:33: ( DIGIT )+
                     cnt29 = 0
                     while True: #loop29
                         alt29 = 2
@@ -1301,9 +1341,9 @@ class cifParser(Parser):
 
 
                         if alt29 == 1:
-                            # cif.g:90:34: DIGIT
+                            # cif.g:116:34: DIGIT
                             pass
-                            self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_numeric444)
+                            self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_numeric511)
 
 
                         else:
@@ -1316,7 +1356,7 @@ class cifParser(Parser):
                         cnt29 += 1
 
 
-                    self.match(self.input, 36, self.FOLLOW_36_in_numeric448)
+                    self.match(self.input, 36, self.FOLLOW_36_in_numeric515)
 
 
 
@@ -1336,15 +1376,15 @@ class cifParser(Parser):
 
 
     # $ANTLR start "char_string"
-    # cif.g:92:1: char_string : CHAR_STRING ;
+    # cif.g:118:1: char_string : CHAR_STRING ;
     def char_string(self, ):
 
         try:
             try:
-                # cif.g:93:2: ( CHAR_STRING )
-                # cif.g:93:4: CHAR_STRING
+                # cif.g:119:2: ( CHAR_STRING )
+                # cif.g:119:4: CHAR_STRING
                 pass
-                self.match(self.input, CHAR_STRING, self.FOLLOW_CHAR_STRING_in_char_string460)
+                self.match(self.input, CHAR_STRING, self.FOLLOW_CHAR_STRING_in_char_string527)
 
 
 
@@ -1362,15 +1402,15 @@ class cifParser(Parser):
 
 
     # $ANTLR start "text_field"
-    # cif.g:95:1: text_field : SEMI_COLON_TEXT_FIELD ;
+    # cif.g:121:1: text_field : SEMI_COLON_TEXT_FIELD ;
     def text_field(self, ):
 
         try:
             try:
-                # cif.g:96:2: ( SEMI_COLON_TEXT_FIELD )
-                # cif.g:96:4: SEMI_COLON_TEXT_FIELD
+                # cif.g:122:2: ( SEMI_COLON_TEXT_FIELD )
+                # cif.g:122:4: SEMI_COLON_TEXT_FIELD
                 pass
-                self.match(self.input, SEMI_COLON_TEXT_FIELD, self.FOLLOW_SEMI_COLON_TEXT_FIELD_in_text_field470)
+                self.match(self.input, SEMI_COLON_TEXT_FIELD, self.FOLLOW_SEMI_COLON_TEXT_FIELD_in_text_field537)
 
 
 
@@ -1476,15 +1516,15 @@ class cifParser(Parser):
         )
 
     DFA16_min = DFA.unpack(
-        u"\2\5\2\uffff\1\5"
+        u"\2\5\1\uffff\1\5\1\uffff"
         )
 
     DFA16_max = DFA.unpack(
-        u"\1\11\1\12\2\uffff\1\12"
+        u"\1\11\1\12\1\uffff\1\12\1\uffff"
         )
 
     DFA16_accept = DFA.unpack(
-        u"\2\uffff\1\2\1\1\1\uffff"
+        u"\2\uffff\1\2\1\uffff\1\1"
         )
 
     DFA16_special = DFA.unpack(
@@ -1494,10 +1534,10 @@ class cifParser(Parser):
 
     DFA16_transition = [
         DFA.unpack(u"\1\1\3\uffff\1\2"),
-        DFA.unpack(u"\1\4\1\3\1\uffff\1\3\1\2\1\3"),
+        DFA.unpack(u"\1\3\1\4\1\uffff\1\4\1\2\1\4"),
         DFA.unpack(u""),
-        DFA.unpack(u""),
-        DFA.unpack(u"\1\4\1\3\1\uffff\1\3\1\2\1\3")
+        DFA.unpack(u"\1\3\1\4\1\uffff\1\4\1\2\1\4"),
+        DFA.unpack(u"")
     ]
 
     # class definition for DFA #16
@@ -1514,15 +1554,15 @@ class cifParser(Parser):
         )
 
     DFA18_min = DFA.unpack(
-        u"\3\5\2\uffff"
+        u"\2\5\1\uffff\1\5\1\uffff"
         )
 
     DFA18_max = DFA.unpack(
-        u"\1\5\2\42\2\uffff"
+        u"\1\5\1\42\1\uffff\1\42\1\uffff"
         )
 
     DFA18_accept = DFA.unpack(
-        u"\3\uffff\1\2\1\1"
+        u"\2\uffff\1\1\1\uffff\1\2"
         )
 
     DFA18_special = DFA.unpack(
@@ -1532,11 +1572,11 @@ class cifParser(Parser):
 
     DFA18_transition = [
         DFA.unpack(u"\1\1"),
-        DFA.unpack(u"\1\2\2\uffff\1\4\2\uffff\1\3\1\uffff\2\3\20\uffff"
-        u"\4\3"),
-        DFA.unpack(u"\1\2\2\uffff\1\4\2\uffff\1\3\1\uffff\2\3\20\uffff"
-        u"\4\3"),
+        DFA.unpack(u"\1\3\2\uffff\1\2\2\uffff\1\4\1\uffff\2\4\20\uffff"
+        u"\4\4"),
         DFA.unpack(u""),
+        DFA.unpack(u"\1\3\2\uffff\1\2\2\uffff\1\4\1\uffff\2\4\20\uffff"
+        u"\4\4"),
         DFA.unpack(u"")
     ]
 
@@ -1709,65 +1749,65 @@ class cifParser(Parser):
     DFA30 = DFA
 
 
-    FOLLOW_cif_in_parse44 = frozenset([1])
-    FOLLOW_COMMENTS_in_cif57 = frozenset([5, 9])
-    FOLLOW_WHITESPACE_in_cif62 = frozenset([5, 9])
-    FOLLOW_data_block_in_cif68 = frozenset([5, 9])
-    FOLLOW_WHITESPACE_in_cif72 = frozenset([5, 9])
-    FOLLOW_data_block_in_cif75 = frozenset([5, 9])
-    FOLLOW_WHITESPACE_in_cif81 = frozenset([])
-    FOLLOW_EOF_in_cif88 = frozenset([1])
-    FOLLOW_value_in_loop_body106 = frozenset([1, 5])
-    FOLLOW_WHITESPACE_in_loop_body119 = frozenset([5, 11, 13, 14, 31, 32, 33, 34])
-    FOLLOW_value_in_loop_body133 = frozenset([1, 5])
-    FOLLOW_SAVE_FRAME_HEADING_in_save_frame157 = frozenset([5])
-    FOLLOW_WHITESPACE_in_save_frame161 = frozenset([5, 8, 10])
-    FOLLOW_data_items_in_save_frame164 = frozenset([5])
-    FOLLOW_WHITESPACE_in_save_frame169 = frozenset([5, 7])
-    FOLLOW_SAVE_in_save_frame172 = frozenset([1])
-    FOLLOW_TAG_in_data_items182 = frozenset([5])
-    FOLLOW_WHITESPACE_in_data_items184 = frozenset([11, 13, 14, 31, 32, 33, 34])
-    FOLLOW_value_in_data_items186 = frozenset([1])
-    FOLLOW_loop_header_in_data_items199 = frozenset([5, 11, 13, 14, 31, 32, 33, 34])
-    FOLLOW_WHITESPACE_in_data_items201 = frozenset([5, 11, 13, 14, 31, 32, 33, 34])
-    FOLLOW_loop_body_in_data_items204 = frozenset([1])
-    FOLLOW_DATA_BLOCK_HEADING_in_data_block217 = frozenset([1, 5])
-    FOLLOW_WHITESPACE_in_data_block230 = frozenset([5, 6, 8, 10])
-    FOLLOW_data_items_in_data_block235 = frozenset([1, 5])
-    FOLLOW_save_frame_in_data_block239 = frozenset([1, 5])
-    FOLLOW_LOOP__in_loop_header255 = frozenset([5])
-    FOLLOW_WHITESPACE_in_loop_header259 = frozenset([5, 8])
-    FOLLOW_TAG_in_loop_header262 = frozenset([5])
-    FOLLOW_WHITESPACE_in_loop_header267 = frozenset([1])
-    FOLLOW_31_in_inapplicable282 = frozenset([1])
-    FOLLOW_32_in_unknown291 = frozenset([1])
-    FOLLOW_inapplicable_in_value301 = frozenset([1])
-    FOLLOW_unknown_in_value305 = frozenset([1])
-    FOLLOW_33_in_value309 = frozenset([1])
-    FOLLOW_char_string_in_value313 = frozenset([1])
-    FOLLOW_numeric_in_value318 = frozenset([1])
-    FOLLOW_text_field_in_value321 = frozenset([1])
-    FOLLOW_DIGIT_in_unsigned_integer332 = frozenset([1, 11])
-    FOLLOW_set_in_integer344 = frozenset([11, 33, 34])
-    FOLLOW_unsigned_integer_in_integer355 = frozenset([1])
-    FOLLOW_integer_in_float_365 = frozenset([12])
-    FOLLOW_EXPONENT_in_float_367 = frozenset([1])
-    FOLLOW_set_in_float_373 = frozenset([11, 31])
-    FOLLOW_DIGIT_in_float_387 = frozenset([11, 31])
-    FOLLOW_31_in_float_391 = frozenset([11, 33, 34])
-    FOLLOW_unsigned_integer_in_float_393 = frozenset([1, 12])
-    FOLLOW_DIGIT_in_float_399 = frozenset([11, 31])
-    FOLLOW_31_in_float_403 = frozenset([1, 12])
-    FOLLOW_EXPONENT_in_float_408 = frozenset([1])
-    FOLLOW_integer_in_number420 = frozenset([1])
-    FOLLOW_float__in_number424 = frozenset([1])
-    FOLLOW_number_in_numeric433 = frozenset([1])
-    FOLLOW_number_in_numeric439 = frozenset([35])
-    FOLLOW_35_in_numeric441 = frozenset([11])
-    FOLLOW_DIGIT_in_numeric444 = frozenset([11, 36])
-    FOLLOW_36_in_numeric448 = frozenset([1])
-    FOLLOW_CHAR_STRING_in_char_string460 = frozenset([1])
-    FOLLOW_SEMI_COLON_TEXT_FIELD_in_text_field470 = frozenset([1])
+    FOLLOW_cif_in_parse50 = frozenset([])
+    FOLLOW_EOF_in_parse52 = frozenset([1])
+    FOLLOW_COMMENTS_in_cif65 = frozenset([1, 5, 9])
+    FOLLOW_WHITESPACE_in_cif70 = frozenset([1, 5, 9])
+    FOLLOW_data_block_in_cif76 = frozenset([1, 5, 9])
+    FOLLOW_WHITESPACE_in_cif80 = frozenset([5, 9])
+    FOLLOW_data_block_in_cif83 = frozenset([1, 5, 9])
+    FOLLOW_WHITESPACE_in_cif89 = frozenset([1])
+    FOLLOW_value_in_loop_body112 = frozenset([1, 5])
+    FOLLOW_WHITESPACE_in_loop_body125 = frozenset([5, 11, 13, 14, 31, 32, 33, 34])
+    FOLLOW_value_in_loop_body139 = frozenset([1, 5])
+    FOLLOW_SAVE_FRAME_HEADING_in_save_frame174 = frozenset([5])
+    FOLLOW_WHITESPACE_in_save_frame178 = frozenset([5, 8, 10])
+    FOLLOW_data_items_in_save_frame181 = frozenset([5])
+    FOLLOW_WHITESPACE_in_save_frame186 = frozenset([5, 7])
+    FOLLOW_SAVE_in_save_frame189 = frozenset([1])
+    FOLLOW_TAG_in_data_items213 = frozenset([5])
+    FOLLOW_WHITESPACE_in_data_items215 = frozenset([11, 13, 14, 31, 32, 33, 34])
+    FOLLOW_value_in_data_items217 = frozenset([1])
+    FOLLOW_loop_header_in_data_items236 = frozenset([5, 11, 13, 14, 31, 32, 33, 34])
+    FOLLOW_WHITESPACE_in_data_items238 = frozenset([5, 11, 13, 14, 31, 32, 33, 34])
+    FOLLOW_loop_body_in_data_items241 = frozenset([1])
+    FOLLOW_DATA_BLOCK_HEADING_in_data_block258 = frozenset([1, 5])
+    FOLLOW_WHITESPACE_in_data_block271 = frozenset([5, 6, 8, 10])
+    FOLLOW_data_items_in_data_block276 = frozenset([1, 5])
+    FOLLOW_save_frame_in_data_block280 = frozenset([1, 5])
+    FOLLOW_LOOP__in_loop_header296 = frozenset([5])
+    FOLLOW_WHITESPACE_in_loop_header304 = frozenset([5, 8])
+    FOLLOW_TAG_in_loop_header307 = frozenset([5])
+    FOLLOW_WHITESPACE_in_loop_header312 = frozenset([1])
+    FOLLOW_31_in_inapplicable327 = frozenset([1])
+    FOLLOW_32_in_unknown336 = frozenset([1])
+    FOLLOW_inapplicable_in_value358 = frozenset([1])
+    FOLLOW_unknown_in_value362 = frozenset([1])
+    FOLLOW_33_in_value366 = frozenset([1])
+    FOLLOW_char_string_in_value370 = frozenset([1])
+    FOLLOW_numeric_in_value375 = frozenset([1])
+    FOLLOW_text_field_in_value378 = frozenset([1])
+    FOLLOW_DIGIT_in_unsigned_integer399 = frozenset([1, 11])
+    FOLLOW_set_in_integer411 = frozenset([11, 33, 34])
+    FOLLOW_unsigned_integer_in_integer422 = frozenset([1])
+    FOLLOW_integer_in_float_432 = frozenset([12])
+    FOLLOW_EXPONENT_in_float_434 = frozenset([1])
+    FOLLOW_set_in_float_440 = frozenset([11, 31])
+    FOLLOW_DIGIT_in_float_454 = frozenset([11, 31])
+    FOLLOW_31_in_float_458 = frozenset([11, 33, 34])
+    FOLLOW_unsigned_integer_in_float_460 = frozenset([1, 12])
+    FOLLOW_DIGIT_in_float_466 = frozenset([11, 31])
+    FOLLOW_31_in_float_470 = frozenset([1, 12])
+    FOLLOW_EXPONENT_in_float_475 = frozenset([1])
+    FOLLOW_integer_in_number487 = frozenset([1])
+    FOLLOW_float__in_number491 = frozenset([1])
+    FOLLOW_number_in_numeric500 = frozenset([1])
+    FOLLOW_number_in_numeric506 = frozenset([35])
+    FOLLOW_35_in_numeric508 = frozenset([11])
+    FOLLOW_DIGIT_in_numeric511 = frozenset([11, 36])
+    FOLLOW_36_in_numeric515 = frozenset([1])
+    FOLLOW_CHAR_STRING_in_char_string527 = frozenset([1])
+    FOLLOW_SEMI_COLON_TEXT_FIELD_in_text_field537 = frozenset([1])
 
 
 
