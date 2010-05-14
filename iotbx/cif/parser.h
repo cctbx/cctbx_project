@@ -29,6 +29,15 @@ class parser
       psr->parse(psr, builder);
     }
 
+    ~parser()
+    {
+      // Essential to clean up after ourselves (in reverse order)
+      psr->free(psr);
+      tstream->free(tstream);
+      lxr->free(lxr);
+      input->close(input);
+    }
+
   private:
       pANTLR3_COMMON_TOKEN_STREAM       tstream;
       pANTLR3_INPUT_STREAM input;
