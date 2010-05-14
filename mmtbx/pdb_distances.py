@@ -14,7 +14,6 @@ import numpy
 #Syntax: "phenix.python pdb_distances_######.py pdb-file.pdb > something.log" (where ###### is a date when the program was last edited)
 #########################################
 
-
 ###########################
 #######040610 PROGRAM FLOW:
         #"MASTER_Basepairs_bonds" is a list that carries pre-compiled basepair information regarding a denomination for the type of basepair interaction, residues invoved, number of bonds, and atoms involved in the bonds
@@ -111,7 +110,6 @@ import numpy
 
 MASTER_Basepairs = []
 MASTER_Basepairs_excluded = [] #Will carry all the lines excluded from MASTER_Basepairs because they exceed CUTOFF value. Will be important while attempting to recover missing bonds. Will be important while attempting to recover missing bonds in "SECTION STATISTICS"
-
 #THE BASEPAIR LISTS SECTION: The individual basepair lists in THE BASEPAIR LISTS SECTION start with a roman numeral that defines the basepair according to Saenger.
         #For basepairs formed with bases of different identitiy, two lists are created, depending on what the first base of the pair is (the one with the lower resid # ----> atom_i.resid()).
         #For every basepair in , a short list will also be created that contains:
@@ -326,6 +324,7 @@ XIX_CG_WC = [] #XIX (Watson-Crick CG)
 #1       N3      N1      2.89    0.11    T
 #2       O2      N2      2.77    0.15    T
 #3       N4      O6      2.96    0.17    T
+#Statistical data obtained from 4TNA.pdb.
 bonds = [3, "C", "G", "N3", "N1", "O2", "N2", "N4", "O6", 18.76, 1.092, 10.87, 0.436]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 24 in MASTER_Basepairs (XIX_GC_WC)
@@ -334,6 +333,7 @@ XIX_GC_WC = [] #XIX (Watson-Crick GC)
 #1       N1      N3      2.89    0.11    T
 #2       N2      O2      2.77    0.15    T
 #3       O6      N4      2.96    0.17    T
+#Statistical data obtained from 4TNA.pdb.
 bonds = [3, "G", "C", "N1", "N3", "N2", "O2", "O6", "N4", 18.20, 1.214, 10.69, 0.390]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 25 in MASTER_Basepairs (XX_AU_WC)
@@ -341,13 +341,15 @@ XX_AU_WC = [] #XX (Watson-Crick AU). Base-pairing pattern AU: AU_2
 #Bond   A       U       Length Ave      Length Std      Attribute
 #1      N1      N3      2.84    0.12    T
 #2      N6      O4      3.00    0.17    T
-bonds = [2, "A", "U", "N1", "N3", "N6", "O4", "NA", "NA", 18.68, 0.269, 10.84, 0.120]
+#Statistical data obtained from 4TNA.pdb. Used XX_UA_WC geometry
+bonds = [2, "A", "U", "N1", "N3", "N6", "O4", "NA", "NA", 18.68, 0.269, 10.67, 0.270]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 26 in MASTER_Basepairs (XX_UA_WC)
 XX_UA_WC = [] #XX (Watson-Crick UA). Base-pairing pattern UA: UA_2
 #Bond   U       A       Length Ave      Length Std      Attribute
 #1      N3      N1      2.84    0.12    T
 #2      O4      N6      3.00    0.17    T
+#Statistical data obtained from 4TNA.pdb.
 bonds = [2, "U", "A", "N3", "N1", "O4", "N6", "NA", "NA", 18.36, 0.152, 10.67, 0.270]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 27 in MASTER_Basepairs (XXI_AU)
@@ -397,14 +399,14 @@ XXIV_AU = [] #XXIV (AU Reversed Hoogsteen). Base-pairing pattern AU: AU_14
 #Bond   A       U       Length Ave      Length Std      Attribute
 #1      N6      O2      2.91    0.19    T
 #2      N7      N3      2.87    0.13    T
-bonds = [2, "A", "U", "N6", "O2", "N7", "N3", "NA", "NA", 10.97, 0.706, 9.519, 0.016]
+bonds = [2, "A", "U", "N6", "O2", "N7", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 34 in MASTER_Basepairs (XXIV_UA)
 XXIV_UA = [] #XXIV (UA Reversed Hoogsteen). Base-pairing patterMASTER_Basepairs_bonds.append(bonds)
 #Bond   U       A       Length Ave      Length Std      Attribute
 #1      O2      N6      2.91    0.19    T
 #2      N3      N7      2.87    0.13    T
-bonds = [2, "U", "A", "O2", "N6", "N3", "N7", "NA", "NA", 10.97, 0.706, 9.519, 0.016]
+bonds = [2, "U", "A", "O2", "N6", "N3", "N7", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 35 in MASTER_Basepairs (XXV_AC)
 XXV_AC = [] #XXV (AC Reversed Hoogsteen). Base-pairing pattern AC: AC_7
@@ -550,6 +552,41 @@ MASTER_Basepairs_summary = [[], [], [], [], [], [], [], [], [], [],  [], [], [],
 ################################################
 #FUNCTION run(args) was created by Ralf W. Grosse-Kunstle and provides a list of ATOM-to-ATOM distances calculated from a .pdb file.
 
+
+def pair_sym_table_as_antons_master(
+      master,
+      unit_cell,
+      pdb_atoms,
+      sites_frac,
+      pair_sym_table,
+      reindexing_array):
+  for table_i_seq,pair_sym_dict in enumerate(pair_sym_table):
+    i_seq = reindexing_array[table_i_seq]
+    site_i = sites_frac[i_seq]
+    atom_i = pdb_atoms[i_seq]
+    resname_i = atom_i.resname
+    atmname_i = atom_i.name
+    for table_j_seq,sym_ops in pair_sym_dict.items():
+      j_seq = reindexing_array[table_j_seq]
+      site_j = sites_frac[j_seq]
+      atom_j = pdb_atoms[j_seq]
+      resname_j = atom_j.resname
+      atmname_j = atom_j.name
+      for sym_op in sym_ops:
+        site_ji = sym_op * site_j
+        distance = unit_cell.distance(site_i, site_ji)
+        if atom_i.resid() != atom_j.resid():
+           master.append([
+             atom_i.resid(),
+             resname_i,
+             atmname_i,
+             atom_j.resid(),
+             resname_j,
+             atmname_j,
+             distance])
+
+
+
 #def run(args):
 #  assert len(args) == 1
 #  import iotbx.pdb
@@ -588,7 +625,6 @@ def run(args):
   assert len(args) == 1
   import iotbx.pdb
   pdb_inp = iotbx.pdb.input(file_name=args[0])
-  pair_sym_table_as_antons_master = []
   crystal_symmetry = pdb_inp.crystal_symmetry()
   sites_cart = pdb_inp.atoms().extract_xyz()
   if (crystal_symmetry is not None):
@@ -628,19 +664,31 @@ def run(args):
     pair_sym_table=p_pair_sym_table,
     reindexing_array=p_selection.iselection())
   #
-  c1_selection = pdb_inp.atoms().extract_name() ==  " C1*"
-  c1_selection = c1_selection + pdb_inp.atoms().extract_name() ==  " C1'"
+  c1_selection_1 = pdb_inp.atoms().extract_name() ==  " C1*"
   c1_pair_sym_table = crystal_symmetry.special_position_settings() \
     .pair_asu_table(
       distance_cutoff=22.0,
-      sites_frac=sites_frac.select(c1_selection)).extract_pair_sym_table()
+      sites_frac=sites_frac.select(c1_selection_1)).extract_pair_sym_table()
   pair_sym_table_as_antons_master(
     master=master,
     unit_cell=unit_cell,
     pdb_atoms=pdb_atoms,
     sites_frac=sites_frac,
     pair_sym_table=c1_pair_sym_table,
-    reindexing_array=c1_selection.iselection())
+    reindexing_array=c1_selection_1.iselection())
+
+  c1_selection_2 = pdb_inp.atoms().extract_name() ==  " C1'"
+  c1_pair_sym_table = crystal_symmetry.special_position_settings() \
+    .pair_asu_table(
+      distance_cutoff=22.0,
+      sites_frac=sites_frac.select(c1_selection_2)).extract_pair_sym_table()
+  pair_sym_table_as_antons_master(
+    master=master,
+    unit_cell=unit_cell,
+    pdb_atoms=pdb_atoms,
+    sites_frac=sites_frac,
+    pair_sym_table=c1_pair_sym_table,
+    reindexing_array=c1_selection_2.iselection())
 
   return master
 ################################################
@@ -1329,6 +1377,11 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
               First_List_P.append(First_List[a])
           C1 = [' C1\'', ' C1*']
           if First_List[a][2] in C1 and First_List[a][5] in C1:
+#FOLLOW A LINE
+#              if ('  19 ' in First_List[a][0] and '  56 ' in First_List[a][3]):
+#                 print "First_List[a] ", First_List[a]
+#FOLLOW A LINE
+
               First_List_C1.append(First_List[a])
     First_List = First_List_smaller
     MASTER_Basepairs = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
@@ -1341,7 +1394,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
     collect = []
     for i in range (1, len(First_List)):
 #FOLLOW A LINE
-#        if ('   1 ' in First_List[i][0] and '  72 ' in First_List[i][3]):
+#        if ('  19 ' in First_List[i][0] and '  56 ' in First_List[i][3]):
 #            print "First_List[i] ", First_List[i]
 #FOLLOW A LINE
         if First_List[i][0] != First_List[i][3]:
@@ -1351,7 +1404,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                    count = 0
                    transient = MASTER_Basepairs_bonds[j][3:9]
 #FOLLOW A LINE
-#                   if ('   1 ' in First_List[i][0] and '  72 ' in First_List[i][3]):
+#                   if ('  19 ' in First_List[i][0] and '  56 ' in First_List[i][3]):
 #                         print "transient", transient, "MASTER_Basepairs_bonds[j]", MASTER_Basepairs_bonds[j]
 #FOLLOW A LINE
                    #Matching the ATOMS to those of MASTER_Basepairs_bonds
@@ -1361,7 +1414,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                            collect = [First_List[i][0], First_List[i][1], First_List[i][2], First_List[i][3], First_List[i][4], First_List[i][5], First_List[i][6]]
                            MASTER_Basepairs[j].append(collect)
 #FOLLOW A LINE
-#                           if ('   1 ' in First_List[i][0] and '  72 ' in First_List[i][3]):
+#                           if ('  19 ' in First_List[i][0] and '  56 ' in First_List[i][3]):
 #                               print "MASTER_Basepairs[j][len(MASTER_Basepairs[j])-1]", MASTER_Basepairs[j][len(MASTER_Basepairs[j])-1]
 #FOLLOW A LINE
 
@@ -1369,10 +1422,10 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                            collect = [First_List[i][0], First_List[i][1], First_List[i][2], First_List[i][3], First_List[i][4], First_List[i][5], First_List[i][6], MASTER_Basepairs_schemes[j]]
                            MASTER_Basepairs_excluded[j].append(collect)
 #FOLLOW A LINE
-#                           if ('   1 ' in First_List[i][0] and '  72 ' in First_List[i][3]):
+#                           if ('  19 ' in First_List[i][0] and '  56 ' in First_List[i][3]):
 #                               for q in range (len(MASTER_Basepairs_excluded[j])):
 #                                  print "MASTER_Basepairs_excluded[j][q]", MASTER_Basepairs_excluded[j][q]
-#                              print "MASTER_Basepairs_excluded[j][len(MASTER_Basepairs_excluded[j])-1]", MASTER_Basepairs_excluded[j][len(MASTER_Basepairs_excluded[j])-1]
+#                               print "MASTER_Basepairs_excluded[j][len(MASTER_Basepairs_excluded[j])-1]", MASTER_Basepairs_excluded[j][len(MASTER_Basepairs_excluded[j])-1]
 #FOLLOW A LINE
                        count = count + 1
                        collect = []
@@ -1422,7 +1475,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                 if (resid[1] - resid[0] > 1) or (resid[1] - resid[0] < -1):
 
 #FOLLOW A LINE
-#                    if ('436' in MASTER_Basepairs[i][j][0]) and ('437' in MASTER_Basepairs[i][j][3]):
+#                    if (' 68' in MASTER_Basepairs[i][j][0]) and ('101' in MASTER_Basepairs[i][j][3]):
 #                        print "Second sorting: MASTER_Basepairs[i][j]", MASTER_Basepairs_schemes[i], MASTER_Basepairs[i][j]
 #FOLLOW A LINE
                     if (len(MASTER_Basepairs_summary[i]) > 0):
@@ -1490,12 +1543,16 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                     for r in range (len(First_List_P)):
                         if First_List_P[r][0] in MASTER_Basepairs_summary[i][j] and First_List_P[r][3] in MASTER_Basepairs_summary[i][j][4]:
                            MASTER_Basepairs_summary[i][j][16] = First_List_P[r][6]
+                    C1_compare = 22
                     for s in range (len(First_List_C1)):
                         if First_List_C1[s][0] in MASTER_Basepairs_summary[i][j] and First_List_C1[s][3] in MASTER_Basepairs_summary[i][j][4]:
+                            if First_List_C1[s][6] < C1_compare:
+                                C1_compare = First_List_C1[s][6]
 #                           print "First_List_C1[s]", First_List_C1[s]
 #                           print "MASTER_Basepairs_summary[i][j]", MASTER_Basepairs_summary[i][j]
-                           if First_List_u1[s][6] < 13:
-                               MASTER_Basepairs_summary[i][j][17] = First_List_C1[s][6]
+                    MASTER_Basepairs_summary[i][j][17] = C1_compare
+#                    if C1_control == "0":
+#                            MASTER_Basepairs_summary[i][j][17] = "NA"
                 if (MASTER_Basepairs_summary[i][j][6] >= 2):
 
 #Calling FUNCTION "CONTROL" to perform an initial assessment of whether the identified bases might be involved in MULTIPLE CONTACTS
@@ -1880,17 +1937,14 @@ def C1_C1_DISTANCE(LIST1, LIST2, A0, A1, A2, A3):
 #A2 = convert[2]
 #A3 = convert[3]
     print "\n...using the C1\'-C1\' distance criterion"
-    print "LIST1", LIST1
-    print "LIST1[17]", LIST1[17], "LIST2[11]", LIST2[11]
     diffP_P = LIST1[16] - LIST2[9]
     diffC1_C1 = LIST1[17] - LIST2[11]
-    line = "The basepair formed by residues " + A0 + A1 + ":" + A2 + A3 + "displays a" + LIST1[0] + "geometry.\n     Empirically determined average C1\'-C1\ distance for this geometry = " + str(LIST2[11]) + " + SD = " + str(LIST2[12]) + "\n     Empirically determined average P-P distance for this geometry = " + str(LIST2[9]) + " + SD = " + str(LIST2[10])
+    line = "The basepair formed by residues " + A0 + A1 + ":" + A2 + A3 + " displays a " + LIST1[0] + "geometry.\n     Empirically determined average C1\'-C1\ distance for this geometry = " + str(LIST2[11]) + " + SD = " + str(LIST2[12]) + "\n     Empirically determined average P-P distance for this geometry = " + str(LIST2[9]) + " + SD = " + str(LIST2[10])
     print line
     if abs(diffC1_C1) > 3 * LIST2[12]:
         LIST1.append('FALSE')
         print "The C1\'-C1\' distance for this basepair is more than 3 times the recorded standard deviation for this geometry. The basepair will be apended as 'FALSE'"
     LIST1[18:18] = [abs(diffC1_C1)]
-    print "new  LIST1",  LIST1
     return LIST1
 
 #####SECTION FUNCTION "C1-C1 DISTANCE CRITERION"          END
@@ -2395,6 +2449,7 @@ while count_for > -1:
            if (new_list_end[count_for][1] == 3) and (new_list_end[count_for][6] == 2):
 # and ('FALSE' not in new_list_end[count_for]) and ('UNDETERMINED' not in new_list_end[count_for]):
                print "Basepair formed by residues", new_list_end[count_for][2], " and", new_list_end[count_for][4], "is missing one bond. Searching for missing bond"
+               missing_control = "0"
 #               print "new_list_end[count_for]", new_list_end[count_for]
           #Let's first find the basepair scheme
                for i in range (len(MASTER_Basepairs_schemes)):
@@ -2405,23 +2460,19 @@ while count_for > -1:
           #Let's now find the location of the missing bonds in new_list_end[count_for] and in MASTER_Basepairs_bonds[i]. Append the location and the identity of the participating ATOMS to the list 'missing'
                        for j in range (len(new_list_end[count_for])):
                            if new_list_end[count_for][j] == []:
-                               print "new_list_end[count_for]", new_list_end[count_for]
                                if j == 7:
-                                  print "j == 7"
                                   missing.append(j)
                                   missing.append(MASTER_Basepairs_bonds[i][3])
                                   missing.append(j+1)
                                   missing.append(MASTER_Basepairs_bonds[i][4])
                                   break
                                elif j == 10:
-                                  print "j == 10"
                                   missing.append(j)
                                   missing.append(MASTER_Basepairs_bonds[i][5])
                                   missing.append(j+1)
                                   missing.append(MASTER_Basepairs_bonds[i][6])
                                   break
                                elif j == 13:
-                                  print "j == 13"
                                   missing.append(j)
                                   missing.append(MASTER_Basepairs_bonds[i][7])
                                   missing.append(j+1)
@@ -2432,15 +2483,16 @@ while count_for > -1:
                        for k in range (len(MASTER_Basepairs_excluded[i])):
 #                           print "MASTER_Basepairs_excluded[i][k]", MASTER_Basepairs_excluded[i][k]
                            if (new_list_end[count_for][2] == MASTER_Basepairs_excluded[i][k][0]) and (new_list_end[count_for][4] == MASTER_Basepairs_excluded[i][k][3]):
-                               print "\nmissing ", missing
-                               print "i", i, "j", j, "k", k, "MASTER_Basepairs_schemes[i]", MASTER_Basepairs_schemes[i], "\n    MASTER_Basepairs_excluded[i][k]", MASTER_Basepairs_excluded[i][k], "\n   new_list_end[count_for]", new_list_end[count_for]
-                               print "MASTER_Basepairs_bonds[i]", MASTER_Basepairs_bonds[i]
                                if (missing[1] in MASTER_Basepairs_excluded[i][k][2]) and (missing[3] in MASTER_Basepairs_excluded[i][k][5]):
                                   new_list_end[count_for][missing[0]] = MASTER_Basepairs_excluded[i][k][2]
                                   new_list_end[count_for][missing[2]] = MASTER_Basepairs_excluded[i][k][5]
                                   new_list_end[count_for][missing[2]+1] = MASTER_Basepairs_excluded[i][k][6]
-#                                  print "DESPUES [missing[2]+1]", [missing[2]+1], "new_list_end[count_for]", new_list_end[count_for], '\n'
-                                  #The newly found bond will be marked for output a few lines below
+                                  missing_control = "1"
+                       if missing_control == "0": #This will prevent the program from crashing if a bond remains missing. Following these basepairs can lead to the identification of new basepair geometries
+                             new_list_end[count_for][missing[0]] = "--"
+                             new_list_end[count_for][missing[2]] = "--"
+                             new_list_end[count_for][missing[2]+1] = " miss"
+                             #The newly found bond will be marked for output a few lines below
 ####Finding Missing Bonds
 
 
@@ -2449,52 +2501,44 @@ while count_for > -1:
         #For basepairs with only 2 bonds identified, positions 13, 14, and 15 will have []. Let's replace them with a string carrying '0', or '00' for new_list_end[count_for][15], so 'FUNCTION CONVERT' will work properly (see also next explanation)
 #           print "\nnew_list_end[count_for]", new_list_end[count_for]
 #           print "count_for", count_for, "new_list_end_floats[count_for]", new_list_end_floats[count_for]
-           if new_list_end[count_for][13] == []:
-#               print "\n-----------------if----------------------------"
-#               print "new_list_end[count_for]", new_list_end[count_for]
-               new_list_end[count_for][13] = '0'
-               new_list_end[count_for][14] = '0'
-               new_list_end[count_for][15] = '00'
-               print "new_list_end[count_for]", new_list_end[count_for]
-               new_list_end_floats[count_for,:] = new_list_end_floats[count_for,:] + [new_list_end[count_for][9], new_list_end[count_for][12], 0, new_list_end[count_for][16], new_list_end[count_for][17]]
-           else:
-#               print "\n-----------------else----------------------------"
-#               print "new_list_end[count_for]", new_list_end[count_for]
-               new_list_end_floats[count_for,:] = new_list_end_floats[count_for,:] + [new_list_end[count_for][9], new_list_end[count_for][12], new_list_end[count_for][15], new_list_end[count_for][16], new_list_end[count_for][17]]
-               a3 = str(new_list_end[count_for][15])
-               new_list_end[count_for][15] = a3[:5]
-#           print "new_list_end[count_for][9]", new_list_end[count_for][9], "new_list_end[count_for][12]", new_list_end[count_for][12], "new_list_end[count_for][15]", new_list_end[count_for][15], "new_list_end[count_for][16]]", new_list_end[count_for][16], "new_list_end[count_for][17]", new_list_end[count_for][17]
-#           print "new_list_end_floats[count_for,:]", new_list_end_floats[count_for,:]
-           a1 = str(new_list_end[count_for][9])
-           new_list_end[count_for][9] = a1[:5]
-           a2 = str(new_list_end[count_for][12])
-           new_list_end[count_for][12] = a2[:5]
-           a3 = str(new_list_end[count_for][16])
-           if new_list_end[count_for][16] < 10:
-               new_list_end[count_for][16] = ' ' + a3[:5]
-           if new_list_end[count_for][16] >= 10:
-               new_list_end[count_for][16] = a3[:6]
-           a4 = str(new_list_end[count_for][17])
-           new_list_end[count_for][17] = a4[:6]
+           if " miss" not in new_list_end[count_for]:
+               if new_list_end[count_for][13] == []: #Basepairs with only 2 bonds
+                   new_list_end[count_for][13] = '0'
+                   new_list_end[count_for][14] = '0'
+                   new_list_end[count_for][15] = '00'
+                   new_list_end_floats[count_for,:] = new_list_end_floats[count_for,:] + [new_list_end[count_for][9], new_list_end[count_for][12], 0, new_list_end[count_for][16], new_list_end[count_for][17]]
+               else:
+                   new_list_end_floats[count_for,:] = new_list_end_floats[count_for,:] + [new_list_end[count_for][9], new_list_end[count_for][12], new_list_end[count_for][15], new_list_end[count_for][16], new_list_end[count_for][17]]
+                   a3 = str(new_list_end[count_for][15])
+                   new_list_end[count_for][15] = a3[:5]
+               a1 = str(new_list_end[count_for][9])
+               new_list_end[count_for][9] = a1[:5]
+               a2 = str(new_list_end[count_for][12])
+               new_list_end[count_for][12] = a2[:5]
+               a3 = str(new_list_end[count_for][16])
+               if new_list_end[count_for][16] < 10:
+                   new_list_end[count_for][16] = ' ' + a3[:5]
+               if new_list_end[count_for][16] >= 10:
+                   new_list_end[count_for][16] = a3[:6]
+               a4 = str(new_list_end[count_for][17])
+               new_list_end[count_for][17] = a4[:6]
         #positions 2, 4, 7 and 8, 10 and 11, 13 and 14,  have lefthand spaces. They need to be removed. Strings "new_list_end[count_for][7]" and above are introduced twice to make 'FUNCTION CONVERT' work properly. First time through "FUNCTION CONVERT" the 'number' part of the string is extracted and the second time the 'word' part of the string is extracted
 
-           list = [new_list_end[count_for][2], new_list_end[count_for][3], new_list_end[count_for][4], new_list_end[count_for][5], new_list_end[count_for][7], new_list_end[count_for][7], new_list_end[count_for][8], new_list_end[count_for][8], new_list_end[count_for][10], new_list_end[count_for][10], new_list_end[count_for][11], new_list_end[count_for][11], new_list_end[count_for][13], new_list_end[count_for][13], new_list_end[count_for][14], new_list_end[count_for][14]]
+               list = [new_list_end[count_for][2], new_list_end[count_for][3], new_list_end[count_for][4], new_list_end[count_for][5], new_list_end[count_for][7], new_list_end[count_for][7], new_list_end[count_for][8], new_list_end[count_for][8], new_list_end[count_for][10], new_list_end[count_for][10], new_list_end[count_for][11], new_list_end[count_for][11], new_list_end[count_for][13], new_list_end[count_for][13], new_list_end[count_for][14], new_list_end[count_for][14]]
 
-           convert = CONVERT(list)
-           new_list_end[count_for][2] = convert[0]
-#           new_list_end[count_for][3] = convert[1]
-           new_list_end[count_for][4] = convert[2]
-#           new_list_end[count_for][5] = convert[3]
-           new_list_end[count_for][7] = convert[5] + convert[4]
-           new_list_end[count_for][8] = convert[7] + convert[6]
-           new_list_end[count_for][10] = convert[9] + convert[8]
-           new_list_end[count_for][11] = convert[11] + convert[10]
-           new_list_end[count_for][13] = convert[13] + convert[12]
-           new_list_end[count_for][14] = convert[15] + convert[14]
-           if new_list_end[count_for][13] == '00':
-               new_list_end[count_for][13] = '--'
-               new_list_end[count_for][14] = '--'
-               new_list_end[count_for][15] = '  -- '
+               convert = CONVERT(list)
+               new_list_end[count_for][2] = convert[0]
+               new_list_end[count_for][4] = convert[2]
+               new_list_end[count_for][7] = convert[5] + convert[4]
+               new_list_end[count_for][8] = convert[7] + convert[6]
+               new_list_end[count_for][10] = convert[9] + convert[8]
+               new_list_end[count_for][11] = convert[11] + convert[10]
+               new_list_end[count_for][13] = convert[13] + convert[12]
+               new_list_end[count_for][14] = convert[15] + convert[14]
+               if new_list_end[count_for][13] == '00':
+                   new_list_end[count_for][13] = '--'
+                   new_list_end[count_for][14] = '--'
+                   new_list_end[count_for][15] = '  -- '
 #DELETING UNWANTED SPACES
 
 #ADDING DESIRED SPACES
@@ -2506,7 +2550,7 @@ while count_for > -1:
                  new_list_end[count_for][l] = ADD_SPACES(a, key[l])
               else:
                  new_list_end[count_for][l] = a
-              if missing != [] and l == missing[2]+1:
+              if missing != [] and l == missing[2]+1 and missing_control == "1":
 #                 print "[missing[2]+1] ", [missing[2]+1], "and l", l
                  new_list_end[count_for][missing[2]+1] = new_list_end[count_for][missing[2]+1] + '*'
 #                 print "AFTER append new_list_end[count_for][missing[2]+1]", new_list_end[count_for][missing[2]+1]
@@ -2547,7 +2591,7 @@ while count_for > -1:
                new_list_end[count_for].append(ADD_SPACES(a, key[16]))
            line1 = line1 + new_list_end[count_for][len(new_list_end[count_for])-1] + ending
            print line1
-           print new_list_end[count_for]
+#           print new_list_end[count_for]
            count_for = count_for - 1
 print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
 print "######################################\n##########ORDERED RAW OUTPUT##########       END\n######################################"
@@ -2560,6 +2604,7 @@ print "######################################\n##########ORDERED RAW OUTPUT#####
 LEGITIMATE_tagged = [] #Will collect basepairs with a 'LEGITIMATE' tag from MASTER_Basepairs_summary, from largest first residue to smallest
 falsely_assigned = [] #Will collect FALSE basepairs from MASTER_Basepairs_summary, from largest first residue to smallest
 undetermined = [] #Will collect 'UNDETERMINED' basepairs from MASTER_Basepairs_summary, from largest first residue to smallest
+missing_bond = [] #Will collect basepairs with missing bonds. Tagged as " miss"
 file = [[], []]
 pymol0 = dir + "/" + pdb_file_main + "_all-basepairs_REVERSED" + "_PYMOL" + "_script.pml"
 file[0] = open(pymol0, 'w')
@@ -2575,7 +2620,7 @@ basepair_count = 0
 for h in range (len(run_cutoff)/2):
    run_cutoff_LISTS.append([])
 for b in range (len(new_list_end)):
-   if 'FALSE' not in new_list_end[b] and 'UNDETERMINED' not in new_list_end[b]:
+   if 'FALSE' not in new_list_end[b] and 'UNDETERMINED' not in new_list_end[b] and " miss" not in new_list_end[b]:
        PYMOL_OUTPUT(new_list_end[b], b, pdb_file_main, From, file)
    if ('LEGITIMATE' in new_list_end[b]):
        LEGITIMATE_tagged.append(new_list_end[b])
@@ -2586,8 +2631,11 @@ for b in range (len(new_list_end)):
    elif ('UNDETERMINED' in new_list_end[b]):
       undetermined.append(new_list_end[b])
       undetermined[len(undetermined)-1].append(b) #For easy future access to the corresponding line in 'new_list_end'
+   elif(" miss" in new_list_end[b]):
+      missing_bond.append(new_list_end[b])
+      missing_bond[len(missing_bond)-1].append(b) #For easy future access to the corresponding line in 'new_list_end'
    for h in range (len(run_cutoff_LISTS)):
-      if run_cutoff[h*2 + 1] in new_list_end[b] and ('FALSE' not in new_list_end[b]) and ('UNDETERMINED' not in new_list_end[b]):
+      if run_cutoff[h*2 + 1] in new_list_end[b] and ('FALSE' not in new_list_end[b]) and ('UNDETERMINED' not in new_list_end[b]) and " miss" not in new_list_end[b]:
            run_cutoff_LISTS[h].append(new_list_end[b])
            basepair_count = basepair_count + 1
 
@@ -2699,12 +2747,39 @@ if undetermined != []:
       print "                                                     ", undetermined[h][10], " ", undetermined[h][11], undetermined[h][12]
       print "                                                     ", undetermined[h][13], " ", undetermined[h][14], undetermined[h][15]
     print           "==============================================================================="
-    print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
     print "Number of BASE-SHARING BASEPAIRS THAT CANNOT BE DECONVOLUTED =", len(undetermined)
+    print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
     CLOSE(file)
 ##### 4) LIST OF UNDETERMINED BASEPAIRS END
 
-##### 5) LIST OF BASEPAIRS BY GEOMETRY BEGINNIG
+##### 5) LIST OF MISSING-BOND BASEPAIRS BEGINNING
+if missing_bond != []:
+    file = [[], []]
+    pymol1 = dir + "/" + pdb_file_main + "_MISSING-BOND-basepairs" + "_PYMOL" + "_script.pml"
+    file[1] = open(pymol1, 'w')
+    line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
+    file[1].write(line1)
+    color = 'RED'
+    From = ''
+    print "\n\nLIST OF MISSING-BOND BASEPAIRS"
+    print           "==============================================================================="
+    print "   Scheme   Resid  Base  Resid  Base Expect. Found ATOM ATOM  DIST. Method M.I."
+    print           "             #1     #1    #2     #2   Bonds  Bonds  #1   #2"
+    print           "==============================================================================="
+    for h in range (len(missing_bond)):
+      PYMOL_OUTPUT(missing_bond[h], h, pdb_file_main, From, file)
+      print missing_bond[h][0], "  ", missing_bond[h][2], " ", missing_bond[h][3], " ", missing_bond[h][4], " ", missing_bond[h][5], "    ", missing_bond[h][1], "    ", missing_bond[h][6], "  ", missing_bond[h][7], " ", missing_bond[h][8], missing_bond[h][9], "  ", missing_bond[h][len(missing_bond[h])-4], missing_bond[h][len(missing_bond[h])-1]
+      print "                                                     ", missing_bond[h][10], " ", missing_bond[h][11], missing_bond[h][12]
+      print "                                                     ", missing_bond[h][13], " ", missing_bond[h][14], missing_bond[h][15]
+    print           "==============================================================================="
+    print "Number of MISSING-BOND BASEPAIRS =", len(missing_bond)
+    print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
+    CLOSE(file)
+##### 5) LIST OF MISSING-BOND BASEPAIRS END
+
+
+
+##### 6) LIST OF BASEPAIRS BY GEOMETRY BEGINNIG
 ###BOND STATISTICS. Important arrays:
         # new_list_end_floats = numpy.zeros(4 * len(new_list_end)).reshape(len(new_list_end), 4) #Will have as many lines as 'new_list_end', so it can be accessed just like 'new_list_end, but will carry only the bond- and P-distances as float, so they can be used in statistical operations
                 #Defined in Subsection "DELETING UNWANTED SPACES and SAVING THE DISTANCE AS FLOATS" above
@@ -2748,7 +2823,7 @@ for a in range (len(MASTER_Basepairs_schemes)):
 
 #SUMMARY STATISTICS BY BASEPAIR
 for a in range (len(MASTER_Basepairs_schemes)):
-#    print "MASTER_Basepairs_schemes:", MASTER_Basepairs_schemes[a],
+    print MASTER_Basepairs_schemes[a],
     list = [str(STATS[a,0]), str(STATS[a,1]), str(STATS[a,2]), str(STATS[a,3]), str(STATS[a,4]), str(STATS[a,5]), str(STATS[a,6]), str(STATS[a,7]), str(STATS[a,8]), str(STATS[a,9]), str(STATS[a,10])]
     if list[0] != '0.0':
         print "STATISTICAL VALUES CALCULATED WITHIN STRUCTURE"
@@ -2779,7 +2854,7 @@ for c in range (len(MASTER_Basepairs_schemes)):
          list = [str(STATS[c,0]), str(STATS[c,1]), str(STATS[c,2]), str(STATS[c,3]), str(STATS[c,4]), str(STATS[c,5]), str(STATS[c,6]), str(STATS[c,7]), str(STATS[c,8]), str(STATS[c,9])]
          print "PRECALCULATED STATISTICAL DATA:", "\nP-to-P distance =", MASTER_Basepairs_bonds[c][9], " SD =", MASTER_Basepairs_bonds[c][10], "\nC1\'-to-C1\' distance =", MASTER_Basepairs_bonds[c][11], " SD =", MASTER_Basepairs_bonds[c][12]
          print "STATISTICAL DATA FROM CURRENT STRUCTURE:", "\nBond1: MEAN =", list[0][:5], "SD =", list[1][:5], "\nBond2: MEAN =", list[2][:5], " SD =", list[3][:5], "\nBond3: MEAN =", list[4][:5], " SD =", list[5][:5], "\nP-to-P distance =", list[6][:5], " SD =", list[7][:5], "\nC1\'-to-C1\' distance =", list[8][:5], " SD =", list[9][:5]
-         print "NUMBER OF BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", geometry_counter_real
+         print "NUMBER OF BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", geometry_counter_real, "\n"
 
 #FALSE BASEPAIRS
     false_counter = 0
@@ -2790,7 +2865,7 @@ for c in range (len(MASTER_Basepairs_schemes)):
             false_counter = false_counter + 1
             list = DIFF_CALC(new_list_end_floats[falsely_assigned[b][len(falsely_assigned[b])-1],:], STATS[c,:], falsely_assigned[b], MASTER_Basepairs_bonds[c])
     if false_counter > 0:
-        print "NUMBER OF FALSE BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", false_counter
+        print "NUMBER OF FALSE BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", false_counter, "\n"
 
 #UNDETERMINED BASEPAIRS
     undetermined_counter = 0
@@ -2801,7 +2876,7 @@ for c in range (len(MASTER_Basepairs_schemes)):
             undetermined_counter = undetermined_counter + 1
             list = DIFF_CALC(new_list_end_floats[undetermined[b][len(undetermined[b])-1],:], STATS[c,:], undetermined[b])
     if undetermined_counter > 0:
-        print "NUMBER OF UNDETERMINED BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", undetermined_counter
+        print "NUMBER OF UNDETERMINED BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", undetermined_counter, "\n"
 
 
 
