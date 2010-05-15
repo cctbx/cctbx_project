@@ -259,6 +259,11 @@ def validate_params (params, callback=None) :
     raise Sorry("No labels chosen for reflection data.")
   elif len(params.maps.map) == 0 and len(params.maps.map_coefficients) == 0 :
     raise Sorry("You have not requested any maps for output.")
+  elif ((params.maps.output.directory is not None) and
+        (not os.path.isdir(params.maps.output.directory))) :
+    raise Sorry(("The output directory %s does not exist; please choose a "+
+      "valid directory, or leave this parameter blank.") %
+      params.maps.output.directory)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
