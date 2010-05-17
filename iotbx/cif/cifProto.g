@@ -4,11 +4,14 @@ Translated from the grammar defined at
 
 http://www.iucr.org/resources/cif/spec/version1.1/cifsyntax#bnf
 
+This is a prototype version of the parser using a Python target,
+and is hence much slower than the compiled C++ target version.
+
 Richard Gildea
 April 2010
 */
 
-grammar cif;
+grammar cifProto;
 
 options {
     language=Python;

@@ -12,11 +12,12 @@ from libtbx.containers import OrderedDict
 
 def python_reader(file_path=None, file_object=None, input_string=None,
                   builder=None):
+  """Uses a prototype Python parser."""
   assert [file_path, file_object, input_string].count(None) == 2
   assert has_antlr3
   if builder is None:
     builder = builders.cif_model_builder()
-  from iotbx.cif import cifLexer, cifParser
+  from iotbx.cif import cifProtoLexer, cifProtoParser
   import antlr3
   if file_object is not None:
     char_stream = antlr3.ANTLRInputStream(file_object)
@@ -24,9 +25,9 @@ def python_reader(file_path=None, file_object=None, input_string=None,
     char_stream = antlr3.ANTLRFileStream(file_path)
   else:
     char_stream = antlr3.ANTLRStringStream(input_string)
-  lexer = cifLexer.cifLexer(char_stream)
+  lexer = cifProtoLexer.cifProtoLexer(char_stream)
   tokens = antlr3.CommonTokenStream(lexer)
-  parser = cifParser.cifParser(tokens)
+  parser = cifProtoParser.cifProtoParser(tokens)
   parser.parse(builder=builder)
   return builder
 
