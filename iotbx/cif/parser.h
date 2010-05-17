@@ -7,24 +7,28 @@
 #include <iotbx/cif/cif2Lexer.h>
 #include <iotbx/cif/cif2Parser.h>
 #include <boost/python/object.hpp>
+#include <boost/noncopyable.hpp>
 
 namespace iotbx { namespace cif {
 
-class parser
+class parser : private boost::noncopyable
 {
 
-
   public:
+
+    parser() {}
 
     parser(std::string filename, boost::python::object& builder)
     {
       input = antlr3AsciiFileStreamNew(pANTLR3_UINT8(filename.c_str()));
       if (input == NULL)
       {
-        input = antlr3NewAsciiStringInPlaceStream(pANTLR3_UINT8(filename.c_str()), filename.size(), pANTLR3_UINT8("memory"));
+        input = antlr3NewAsciiStringInPlaceStream(pANTLR3_UINT8(
+          filename.c_str()), filename.size(), pANTLR3_UINT8("memory"));
       }
       lxr = cif2LexerNew(input);
-      tstream = antlr3CommonTokenStreamSourceNew(ANTLR3_SIZE_HINT, TOKENSOURCE(lxr));
+      tstream = antlr3CommonTokenStreamSourceNew(
+        ANTLR3_SIZE_HINT, TOKENSOURCE(lxr));
       psr = cif2ParserNew(tstream);
       psr->parse(psr, builder);
     }
