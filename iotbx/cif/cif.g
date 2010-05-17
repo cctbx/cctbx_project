@@ -4,11 +4,14 @@ Translated from the grammar defined at
 
 http://www.iucr.org/resources/cif/spec/version1.1/cifsyntax#bnf
 
+A compiled version of the parser, with C language target, but contains
+C++ code in the actions, therefore the output files must be renamed to *.cpp
+
 Richard Gildea
 April 2010
 */
 
-grammar cif2;
+grammar cif;
 
 options {
     language=C;
