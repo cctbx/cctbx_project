@@ -1,18 +1,21 @@
-The files cifParser.py and cifLexer.py are generated from the file cif.g
-using antlr-3.1.2.jar
-The files cif2Parser.{h,c} and cif2Lexer.{h,c} are generated from the file
-cif2.g using antlr-3.2.jar
+The files cifProtoParser.py and cifProtoLexer.py are generated from the file
+cifProto.g using antlr-3.1.2.jar.
+It is a prototype Python version of the parser, and speed is not its forte.
 
-cif2Parser.c and cif2Lexer.c should then be renamed to *.cpp
+The files cifParser.{h,c} and cifLexer.{h,c} are generated from the file
+cif.g using antlr-3.2.jar
+
+Since ANTLR can only generate a C-target for the parser, but we specify our own
+C++ code in the grammar actions, cifParser.c and cifLexer.c must be renamed to *.cpp
 
 an example batch file for Windows could be:
 
-set CLASSPATH=.;C:\antlr\antlr-3.1.2\lib\antlr-3.1.2.jar
+set CLASSPATH=.;C:\antlr\antlr-3.2\lib\antlr-3.2.jar
 java org.antlr.Tool cif.g
 
 or for Unix:
 
-/usr/bin/env CLASSPATH=/net/cci/auto_build/repositories/antlr-3.1.2.jar java org.antlr.Tool cif.g
+/usr/bin/env CLASSPATH=/net/cci/auto_build/repositories/antlr-3.2.jar java org.antlr.Tool cif.g
 
 The required anltr jar files can be obtained from:
   http://www.antlr.org/download/antlr-3.1.2.jar

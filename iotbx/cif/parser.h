@@ -4,8 +4,8 @@
 #include <istream>
 #include <string>
 
-#include <iotbx/cif/cif2Lexer.h>
-#include <iotbx/cif/cif2Parser.h>
+#include <iotbx/cif/cifLexer.h>
+#include <iotbx/cif/cifParser.h>
 #include <boost/python/object.hpp>
 #include <boost/noncopyable.hpp>
 
@@ -26,10 +26,10 @@ class parser : private boost::noncopyable
         input = antlr3NewAsciiStringInPlaceStream(pANTLR3_UINT8(
           filename.c_str()), filename.size(), pANTLR3_UINT8("memory"));
       }
-      lxr = cif2LexerNew(input);
+      lxr = cifLexerNew(input);
       tstream = antlr3CommonTokenStreamSourceNew(
         ANTLR3_SIZE_HINT, TOKENSOURCE(lxr));
-      psr = cif2ParserNew(tstream);
+      psr = cifParserNew(tstream);
       psr->parse(psr, builder);
     }
 
@@ -45,8 +45,8 @@ class parser : private boost::noncopyable
   private:
       pANTLR3_COMMON_TOKEN_STREAM       tstream;
       pANTLR3_INPUT_STREAM input;
-      pcif2Lexer lxr;
-      pcif2Parser psr;
+      pcifLexer lxr;
+      pcifParser psr;
 
 };
 
