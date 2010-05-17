@@ -1,4 +1,4 @@
-# $ANTLR 3.1.2 cif.g 2010-05-14 12:06:38
+# $ANTLR 3.1.2 cifProto.g 2010-05-17 16:13:59
 
 import sys
 from antlr3 import *
@@ -62,8 +62,8 @@ tokenNames = [
 
 
 
-class cifParser(Parser):
-    grammarFileName = "cif.g"
+class cifProtoParser(Parser):
+    grammarFileName = "cifProto.g"
     antlr_version = version_str_to_tuple("3.1.2")
     antlr_version_str = "3.1.2"
     tokenNames = tokenNames
@@ -185,14 +185,14 @@ class cifParser(Parser):
 
 
     # $ANTLR start "parse"
-    # cif.g:37:1: parse[builder] : cif EOF ;
+    # cifProto.g:40:1: parse[builder] : cif EOF ;
     def parse(self, builder):
 
         self.builder = builder
         try:
             try:
-                # cif.g:39:2: ( cif EOF )
-                # cif.g:39:4: cif EOF
+                # cifProto.g:42:2: ( cif EOF )
+                # cifProto.g:42:4: cif EOF
                 pass
                 self._state.following.append(self.FOLLOW_cif_in_parse50)
                 self.cif()
@@ -216,28 +216,28 @@ class cifParser(Parser):
 
 
     # $ANTLR start "cif"
-    # cif.g:44:1: cif : ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )? ;
+    # cifProto.g:47:1: cif : ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )? ;
     def cif(self, ):
 
         try:
             try:
-                # cif.g:45:2: ( ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )? )
-                # cif.g:45:4: ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )?
+                # cifProto.g:48:2: ( ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )? )
+                # cifProto.g:48:4: ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )?
                 pass
-                # cif.g:45:4: ( COMMENTS )?
+                # cifProto.g:48:4: ( COMMENTS )?
                 alt1 = 2
                 LA1_0 = self.input.LA(1)
 
                 if (LA1_0 == COMMENTS) :
                     alt1 = 1
                 if alt1 == 1:
-                    # cif.g:45:5: COMMENTS
+                    # cifProto.g:48:5: COMMENTS
                     pass
                     self.match(self.input, COMMENTS, self.FOLLOW_COMMENTS_in_cif65)
 
 
 
-                # cif.g:45:16: ( WHITESPACE )*
+                # cifProto.g:48:16: ( WHITESPACE )*
                 while True: #loop2
                     alt2 = 2
                     LA2_0 = self.input.LA(1)
@@ -247,7 +247,7 @@ class cifParser(Parser):
 
 
                     if alt2 == 1:
-                        # cif.g:45:17: WHITESPACE
+                        # cifProto.g:48:17: WHITESPACE
                         pass
                         self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_cif70)
 
@@ -256,20 +256,20 @@ class cifParser(Parser):
                         break #loop2
 
 
-                # cif.g:45:30: ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )?
+                # cifProto.g:48:30: ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )?
                 alt6 = 2
                 LA6_0 = self.input.LA(1)
 
                 if (LA6_0 == DATA_BLOCK_HEADING) :
                     alt6 = 1
                 if alt6 == 1:
-                    # cif.g:45:32: data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )?
+                    # cifProto.g:48:32: data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )?
                     pass
                     self._state.following.append(self.FOLLOW_data_block_in_cif76)
                     self.data_block()
 
                     self._state.following.pop()
-                    # cif.g:45:43: ( ( WHITESPACE )* data_block )*
+                    # cifProto.g:48:43: ( ( WHITESPACE )* data_block )*
                     while True: #loop4
                         alt4 = 2
                         LA4_0 = self.input.LA(1)
@@ -286,9 +286,9 @@ class cifParser(Parser):
 
 
                         if alt4 == 1:
-                            # cif.g:45:45: ( WHITESPACE )* data_block
+                            # cifProto.g:48:45: ( WHITESPACE )* data_block
                             pass
-                            # cif.g:45:45: ( WHITESPACE )*
+                            # cifProto.g:48:45: ( WHITESPACE )*
                             while True: #loop3
                                 alt3 = 2
                                 LA3_0 = self.input.LA(1)
@@ -298,7 +298,7 @@ class cifParser(Parser):
 
 
                                 if alt3 == 1:
-                                    # cif.g:45:45: WHITESPACE
+                                    # cifProto.g:48:45: WHITESPACE
                                     pass
                                     self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_cif80)
 
@@ -317,14 +317,14 @@ class cifParser(Parser):
                             break #loop4
 
 
-                    # cif.g:45:71: ( WHITESPACE )?
+                    # cifProto.g:48:71: ( WHITESPACE )?
                     alt5 = 2
                     LA5_0 = self.input.LA(1)
 
                     if (LA5_0 == WHITESPACE) :
                         alt5 = 1
                     if alt5 == 1:
-                        # cif.g:45:72: WHITESPACE
+                        # cifProto.g:48:72: WHITESPACE
                         pass
                         self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_cif89)
 
@@ -350,7 +350,7 @@ class cifParser(Parser):
 
 
     # $ANTLR start "loop_body"
-    # cif.g:48:1: loop_body : v1= value ( ( WHITESPACE )+ v2= value )* ;
+    # cifProto.g:51:1: loop_body : v1= value ( ( WHITESPACE )+ v2= value )* ;
     def loop_body(self, ):
 
         v1 = None
@@ -361,8 +361,8 @@ class cifParser(Parser):
         self.curr_loop_values = flex.std_string()
         try:
             try:
-                # cif.g:50:2: (v1= value ( ( WHITESPACE )+ v2= value )* )
-                # cif.g:50:4: v1= value ( ( WHITESPACE )+ v2= value )*
+                # cifProto.g:53:2: (v1= value ( ( WHITESPACE )+ v2= value )* )
+                # cifProto.g:53:4: v1= value ( ( WHITESPACE )+ v2= value )*
                 pass
                 self._state.following.append(self.FOLLOW_value_in_loop_body112)
                 v1 = self.value()
@@ -371,14 +371,14 @@ class cifParser(Parser):
                 #action start
                 self.curr_loop_values.append(str(((v1 is not None) and [self.input.toString(v1.start,v1.stop)] or [None])[0]))
                 #action end
-                # cif.g:52:8: ( ( WHITESPACE )+ v2= value )*
+                # cifProto.g:55:8: ( ( WHITESPACE )+ v2= value )*
                 while True: #loop8
                     alt8 = 2
                     alt8 = self.dfa8.predict(self.input)
                     if alt8 == 1:
-                        # cif.g:52:10: ( WHITESPACE )+ v2= value
+                        # cifProto.g:55:10: ( WHITESPACE )+ v2= value
                         pass
-                        # cif.g:52:10: ( WHITESPACE )+
+                        # cifProto.g:55:10: ( WHITESPACE )+
                         cnt7 = 0
                         while True: #loop7
                             alt7 = 2
@@ -389,7 +389,7 @@ class cifParser(Parser):
 
 
                             if alt7 == 1:
-                                # cif.g:52:10: WHITESPACE
+                                # cifProto.g:55:10: WHITESPACE
                                 pass
                                 self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_loop_body125)
 
@@ -437,24 +437,24 @@ class cifParser(Parser):
 
 
     # $ANTLR start "save_frame"
-    # cif.g:59:1: save_frame : SAVE_FRAME_HEADING ( ( WHITESPACE )+ data_items )+ ( WHITESPACE )+ SAVE ;
+    # cifProto.g:62:1: save_frame : SAVE_FRAME_HEADING ( ( WHITESPACE )+ data_items )+ ( WHITESPACE )+ SAVE ;
     def save_frame(self, ):
 
         try:
             try:
-                # cif.g:60:2: ( SAVE_FRAME_HEADING ( ( WHITESPACE )+ data_items )+ ( WHITESPACE )+ SAVE )
-                # cif.g:60:4: SAVE_FRAME_HEADING ( ( WHITESPACE )+ data_items )+ ( WHITESPACE )+ SAVE
+                # cifProto.g:63:2: ( SAVE_FRAME_HEADING ( ( WHITESPACE )+ data_items )+ ( WHITESPACE )+ SAVE )
+                # cifProto.g:63:4: SAVE_FRAME_HEADING ( ( WHITESPACE )+ data_items )+ ( WHITESPACE )+ SAVE
                 pass
                 self.match(self.input, SAVE_FRAME_HEADING, self.FOLLOW_SAVE_FRAME_HEADING_in_save_frame174)
-                # cif.g:60:23: ( ( WHITESPACE )+ data_items )+
+                # cifProto.g:63:23: ( ( WHITESPACE )+ data_items )+
                 cnt10 = 0
                 while True: #loop10
                     alt10 = 2
                     alt10 = self.dfa10.predict(self.input)
                     if alt10 == 1:
-                        # cif.g:60:25: ( WHITESPACE )+ data_items
+                        # cifProto.g:63:25: ( WHITESPACE )+ data_items
                         pass
-                        # cif.g:60:25: ( WHITESPACE )+
+                        # cifProto.g:63:25: ( WHITESPACE )+
                         cnt9 = 0
                         while True: #loop9
                             alt9 = 2
@@ -465,7 +465,7 @@ class cifParser(Parser):
 
 
                             if alt9 == 1:
-                                # cif.g:60:25: WHITESPACE
+                                # cifProto.g:63:25: WHITESPACE
                                 pass
                                 self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_save_frame178)
 
@@ -496,7 +496,7 @@ class cifParser(Parser):
                     cnt10 += 1
 
 
-                # cif.g:60:51: ( WHITESPACE )+
+                # cifProto.g:63:51: ( WHITESPACE )+
                 cnt11 = 0
                 while True: #loop11
                     alt11 = 2
@@ -507,7 +507,7 @@ class cifParser(Parser):
 
 
                     if alt11 == 1:
-                        # cif.g:60:51: WHITESPACE
+                        # cifProto.g:63:51: WHITESPACE
                         pass
                         self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_save_frame186)
 
@@ -540,7 +540,7 @@ class cifParser(Parser):
 
 
     # $ANTLR start "data_items"
-    # cif.g:62:1: data_items : ( ( TAG WHITESPACE value ) | ( loop_header ( WHITESPACE )* loop_body ) );
+    # cifProto.g:65:1: data_items : ( ( TAG WHITESPACE value ) | ( loop_header ( WHITESPACE )* loop_body ) );
     def data_items(self, ):
 
         TAG1 = None
@@ -552,7 +552,7 @@ class cifParser(Parser):
         self.paraphrases.append("in data items")
         try:
             try:
-                # cif.g:65:2: ( ( TAG WHITESPACE value ) | ( loop_header ( WHITESPACE )* loop_body ) )
+                # cifProto.g:68:2: ( ( TAG WHITESPACE value ) | ( loop_header ( WHITESPACE )* loop_body ) )
                 alt13 = 2
                 LA13_0 = self.input.LA(1)
 
@@ -566,10 +566,10 @@ class cifParser(Parser):
                     raise nvae
 
                 if alt13 == 1:
-                    # cif.g:65:5: ( TAG WHITESPACE value )
+                    # cifProto.g:68:5: ( TAG WHITESPACE value )
                     pass
-                    # cif.g:65:5: ( TAG WHITESPACE value )
-                    # cif.g:65:7: TAG WHITESPACE value
+                    # cifProto.g:68:5: ( TAG WHITESPACE value )
+                    # cifProto.g:68:7: TAG WHITESPACE value
                     pass
                     TAG1=self.match(self.input, TAG, self.FOLLOW_TAG_in_data_items213)
                     self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_data_items215)
@@ -586,16 +586,16 @@ class cifParser(Parser):
 
 
                 elif alt13 == 2:
-                    # cif.g:68:10: ( loop_header ( WHITESPACE )* loop_body )
+                    # cifProto.g:71:10: ( loop_header ( WHITESPACE )* loop_body )
                     pass
-                    # cif.g:68:10: ( loop_header ( WHITESPACE )* loop_body )
-                    # cif.g:68:12: loop_header ( WHITESPACE )* loop_body
+                    # cifProto.g:71:10: ( loop_header ( WHITESPACE )* loop_body )
+                    # cifProto.g:71:12: loop_header ( WHITESPACE )* loop_body
                     pass
                     self._state.following.append(self.FOLLOW_loop_header_in_data_items236)
                     loop_header3 = self.loop_header()
 
                     self._state.following.pop()
-                    # cif.g:68:24: ( WHITESPACE )*
+                    # cifProto.g:71:24: ( WHITESPACE )*
                     while True: #loop12
                         alt12 = 2
                         LA12_0 = self.input.LA(1)
@@ -605,7 +605,7 @@ class cifParser(Parser):
 
 
                         if alt12 == 1:
-                            # cif.g:68:24: WHITESPACE
+                            # cifProto.g:71:24: WHITESPACE
                             pass
                             self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_data_items238)
 
@@ -648,28 +648,28 @@ class cifParser(Parser):
 
 
     # $ANTLR start "data_block"
-    # cif.g:78:1: data_block : DATA_BLOCK_HEADING ( ( WHITESPACE )+ ( data_items | save_frame ) )* ;
+    # cifProto.g:81:1: data_block : DATA_BLOCK_HEADING ( ( WHITESPACE )+ ( data_items | save_frame ) )* ;
     def data_block(self, ):
 
         DATA_BLOCK_HEADING4 = None
 
         try:
             try:
-                # cif.g:79:2: ( DATA_BLOCK_HEADING ( ( WHITESPACE )+ ( data_items | save_frame ) )* )
-                # cif.g:79:4: DATA_BLOCK_HEADING ( ( WHITESPACE )+ ( data_items | save_frame ) )*
+                # cifProto.g:82:2: ( DATA_BLOCK_HEADING ( ( WHITESPACE )+ ( data_items | save_frame ) )* )
+                # cifProto.g:82:4: DATA_BLOCK_HEADING ( ( WHITESPACE )+ ( data_items | save_frame ) )*
                 pass
                 DATA_BLOCK_HEADING4=self.match(self.input, DATA_BLOCK_HEADING, self.FOLLOW_DATA_BLOCK_HEADING_in_data_block258)
                 #action start
                 self.builder.add_data_block(DATA_BLOCK_HEADING4.text)
                 #action end
-                # cif.g:81:8: ( ( WHITESPACE )+ ( data_items | save_frame ) )*
+                # cifProto.g:84:8: ( ( WHITESPACE )+ ( data_items | save_frame ) )*
                 while True: #loop16
                     alt16 = 2
                     alt16 = self.dfa16.predict(self.input)
                     if alt16 == 1:
-                        # cif.g:81:10: ( WHITESPACE )+ ( data_items | save_frame )
+                        # cifProto.g:84:10: ( WHITESPACE )+ ( data_items | save_frame )
                         pass
-                        # cif.g:81:10: ( WHITESPACE )+
+                        # cifProto.g:84:10: ( WHITESPACE )+
                         cnt14 = 0
                         while True: #loop14
                             alt14 = 2
@@ -680,7 +680,7 @@ class cifParser(Parser):
 
 
                             if alt14 == 1:
-                                # cif.g:81:10: WHITESPACE
+                                # cifProto.g:84:10: WHITESPACE
                                 pass
                                 self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_data_block271)
 
@@ -695,7 +695,7 @@ class cifParser(Parser):
                             cnt14 += 1
 
 
-                        # cif.g:81:22: ( data_items | save_frame )
+                        # cifProto.g:84:22: ( data_items | save_frame )
                         alt15 = 2
                         LA15_0 = self.input.LA(1)
 
@@ -709,7 +709,7 @@ class cifParser(Parser):
                             raise nvae
 
                         if alt15 == 1:
-                            # cif.g:81:24: data_items
+                            # cifProto.g:84:24: data_items
                             pass
                             self._state.following.append(self.FOLLOW_data_items_in_data_block276)
                             self.data_items()
@@ -718,7 +718,7 @@ class cifParser(Parser):
 
 
                         elif alt15 == 2:
-                            # cif.g:81:37: save_frame
+                            # cifProto.g:84:37: save_frame
                             pass
                             self._state.following.append(self.FOLLOW_save_frame_in_data_block280)
                             self.save_frame()
@@ -757,7 +757,7 @@ class cifParser(Parser):
 
 
     # $ANTLR start "loop_header"
-    # cif.g:84:1: loop_header : LOOP_ ( ( WHITESPACE )+ TAG )+ WHITESPACE ;
+    # cifProto.g:87:1: loop_header : LOOP_ ( ( WHITESPACE )+ TAG )+ WHITESPACE ;
     def loop_header(self, ):
 
         retval = self.loop_header_return()
@@ -765,22 +765,22 @@ class cifParser(Parser):
 
         try:
             try:
-                # cif.g:85:2: ( LOOP_ ( ( WHITESPACE )+ TAG )+ WHITESPACE )
-                # cif.g:85:4: LOOP_ ( ( WHITESPACE )+ TAG )+ WHITESPACE
+                # cifProto.g:88:2: ( LOOP_ ( ( WHITESPACE )+ TAG )+ WHITESPACE )
+                # cifProto.g:88:4: LOOP_ ( ( WHITESPACE )+ TAG )+ WHITESPACE
                 pass
                 self.match(self.input, LOOP_, self.FOLLOW_LOOP__in_loop_header296)
                 #action start
                 self.paraphrases.append("in loop_")
                 #action end
-                # cif.g:86:3: ( ( WHITESPACE )+ TAG )+
+                # cifProto.g:89:3: ( ( WHITESPACE )+ TAG )+
                 cnt18 = 0
                 while True: #loop18
                     alt18 = 2
                     alt18 = self.dfa18.predict(self.input)
                     if alt18 == 1:
-                        # cif.g:86:5: ( WHITESPACE )+ TAG
+                        # cifProto.g:89:5: ( WHITESPACE )+ TAG
                         pass
-                        # cif.g:86:5: ( WHITESPACE )+
+                        # cifProto.g:89:5: ( WHITESPACE )+
                         cnt17 = 0
                         while True: #loop17
                             alt17 = 2
@@ -791,7 +791,7 @@ class cifParser(Parser):
 
 
                             if alt17 == 1:
-                                # cif.g:86:5: WHITESPACE
+                                # cifProto.g:89:5: WHITESPACE
                                 pass
                                 self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_loop_header304)
 
@@ -839,13 +839,13 @@ class cifParser(Parser):
 
 
     # $ANTLR start "inapplicable"
-    # cif.g:93:1: inapplicable : '.' ;
+    # cifProto.g:96:1: inapplicable : '.' ;
     def inapplicable(self, ):
 
         try:
             try:
-                # cif.g:94:2: ( '.' )
-                # cif.g:94:4: '.'
+                # cifProto.g:97:2: ( '.' )
+                # cifProto.g:97:4: '.'
                 pass
                 self.match(self.input, 31, self.FOLLOW_31_in_inapplicable327)
 
@@ -865,13 +865,13 @@ class cifParser(Parser):
 
 
     # $ANTLR start "unknown"
-    # cif.g:96:1: unknown : '?' ;
+    # cifProto.g:99:1: unknown : '?' ;
     def unknown(self, ):
 
         try:
             try:
-                # cif.g:96:9: ( '?' )
-                # cif.g:96:11: '?'
+                # cifProto.g:99:9: ( '?' )
+                # cifProto.g:99:11: '?'
                 pass
                 self.match(self.input, 32, self.FOLLOW_32_in_unknown336)
 
@@ -898,7 +898,7 @@ class cifParser(Parser):
 
 
     # $ANTLR start "value"
-    # cif.g:98:1: value : ( inapplicable | unknown | '-' | char_string | numeric | text_field );
+    # cifProto.g:101:1: value : ( inapplicable | unknown | '-' | char_string | numeric | text_field );
     def value(self, ):
 
         retval = self.value_return()
@@ -907,7 +907,7 @@ class cifParser(Parser):
         self.paraphrases.append("in value")
         try:
             try:
-                # cif.g:101:3: ( inapplicable | unknown | '-' | char_string | numeric | text_field )
+                # cifProto.g:104:3: ( inapplicable | unknown | '-' | char_string | numeric | text_field )
                 alt19 = 6
                 LA19 = self.input.LA(1)
                 if LA19 == 31:
@@ -948,7 +948,7 @@ class cifParser(Parser):
                     raise nvae
 
                 if alt19 == 1:
-                    # cif.g:101:5: inapplicable
+                    # cifProto.g:104:5: inapplicable
                     pass
                     self._state.following.append(self.FOLLOW_inapplicable_in_value358)
                     self.inapplicable()
@@ -957,7 +957,7 @@ class cifParser(Parser):
 
 
                 elif alt19 == 2:
-                    # cif.g:101:20: unknown
+                    # cifProto.g:104:20: unknown
                     pass
                     self._state.following.append(self.FOLLOW_unknown_in_value362)
                     self.unknown()
@@ -966,13 +966,13 @@ class cifParser(Parser):
 
 
                 elif alt19 == 3:
-                    # cif.g:101:30: '-'
+                    # cifProto.g:104:30: '-'
                     pass
                     self.match(self.input, 33, self.FOLLOW_33_in_value366)
 
 
                 elif alt19 == 4:
-                    # cif.g:101:36: char_string
+                    # cifProto.g:104:36: char_string
                     pass
                     self._state.following.append(self.FOLLOW_char_string_in_value370)
                     self.char_string()
@@ -981,7 +981,7 @@ class cifParser(Parser):
 
 
                 elif alt19 == 5:
-                    # cif.g:101:51: numeric
+                    # cifProto.g:104:51: numeric
                     pass
                     self._state.following.append(self.FOLLOW_numeric_in_value375)
                     self.numeric()
@@ -990,7 +990,7 @@ class cifParser(Parser):
 
 
                 elif alt19 == 6:
-                    # cif.g:101:60: text_field
+                    # cifProto.g:104:60: text_field
                     pass
                     self._state.following.append(self.FOLLOW_text_field_in_value378)
                     self.text_field()
@@ -1019,15 +1019,15 @@ class cifParser(Parser):
 
 
     # $ANTLR start "unsigned_integer"
-    # cif.g:107:1: unsigned_integer : ( DIGIT )+ ;
+    # cifProto.g:110:1: unsigned_integer : ( DIGIT )+ ;
     def unsigned_integer(self, ):
 
         try:
             try:
-                # cif.g:108:2: ( ( DIGIT )+ )
-                # cif.g:108:4: ( DIGIT )+
+                # cifProto.g:111:2: ( ( DIGIT )+ )
+                # cifProto.g:111:4: ( DIGIT )+
                 pass
-                # cif.g:108:4: ( DIGIT )+
+                # cifProto.g:111:4: ( DIGIT )+
                 cnt20 = 0
                 while True: #loop20
                     alt20 = 2
@@ -1038,7 +1038,7 @@ class cifParser(Parser):
 
 
                     if alt20 == 1:
-                        # cif.g:108:5: DIGIT
+                        # cifProto.g:111:5: DIGIT
                         pass
                         self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_unsigned_integer399)
 
@@ -1070,22 +1070,22 @@ class cifParser(Parser):
 
 
     # $ANTLR start "integer"
-    # cif.g:110:1: integer : ( '+' | '-' )? unsigned_integer ;
+    # cifProto.g:113:1: integer : ( '+' | '-' )? unsigned_integer ;
     def integer(self, ):
 
         try:
             try:
-                # cif.g:110:9: ( ( '+' | '-' )? unsigned_integer )
-                # cif.g:110:12: ( '+' | '-' )? unsigned_integer
+                # cifProto.g:113:9: ( ( '+' | '-' )? unsigned_integer )
+                # cifProto.g:113:12: ( '+' | '-' )? unsigned_integer
                 pass
-                # cif.g:110:12: ( '+' | '-' )?
+                # cifProto.g:113:12: ( '+' | '-' )?
                 alt21 = 2
                 LA21_0 = self.input.LA(1)
 
                 if ((33 <= LA21_0 <= 34)) :
                     alt21 = 1
                 if alt21 == 1:
-                    # cif.g:
+                    # cifProto.g:
                     pass
                     if (33 <= self.input.LA(1) <= 34):
                         self.input.consume()
@@ -1120,16 +1120,16 @@ class cifParser(Parser):
 
 
     # $ANTLR start "float_"
-    # cif.g:112:1: float_ : ( integer EXPONENT | ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )? );
+    # cifProto.g:115:1: float_ : ( integer EXPONENT | ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )? );
     def float_(self, ):
 
         try:
             try:
-                # cif.g:112:8: ( integer EXPONENT | ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )? )
+                # cifProto.g:115:8: ( integer EXPONENT | ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )? )
                 alt27 = 2
                 alt27 = self.dfa27.predict(self.input)
                 if alt27 == 1:
-                    # cif.g:112:11: integer EXPONENT
+                    # cifProto.g:115:11: integer EXPONENT
                     pass
                     self._state.following.append(self.FOLLOW_integer_in_float_432)
                     self.integer()
@@ -1139,22 +1139,22 @@ class cifParser(Parser):
 
 
                 elif alt27 == 2:
-                    # cif.g:112:30: ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )?
+                    # cifProto.g:115:30: ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )?
                     pass
-                    # cif.g:112:30: ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' )
+                    # cifProto.g:115:30: ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' )
                     alt25 = 2
                     alt25 = self.dfa25.predict(self.input)
                     if alt25 == 1:
-                        # cif.g:112:32: ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer )
+                        # cifProto.g:115:32: ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer )
                         pass
-                        # cif.g:112:32: ( '+' | '-' )?
+                        # cifProto.g:115:32: ( '+' | '-' )?
                         alt22 = 2
                         LA22_0 = self.input.LA(1)
 
                         if ((33 <= LA22_0 <= 34)) :
                             alt22 = 1
                         if alt22 == 1:
-                            # cif.g:
+                            # cifProto.g:
                             pass
                             if (33 <= self.input.LA(1) <= 34):
                                 self.input.consume()
@@ -1168,10 +1168,10 @@ class cifParser(Parser):
 
 
 
-                        # cif.g:112:47: ( ( DIGIT )* '.' unsigned_integer )
-                        # cif.g:112:49: ( DIGIT )* '.' unsigned_integer
+                        # cifProto.g:115:47: ( ( DIGIT )* '.' unsigned_integer )
+                        # cifProto.g:115:49: ( DIGIT )* '.' unsigned_integer
                         pass
-                        # cif.g:112:49: ( DIGIT )*
+                        # cifProto.g:115:49: ( DIGIT )*
                         while True: #loop23
                             alt23 = 2
                             LA23_0 = self.input.LA(1)
@@ -1181,7 +1181,7 @@ class cifParser(Parser):
 
 
                             if alt23 == 1:
-                                # cif.g:112:50: DIGIT
+                                # cifProto.g:115:50: DIGIT
                                 pass
                                 self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_float_454)
 
@@ -1201,9 +1201,9 @@ class cifParser(Parser):
 
 
                     elif alt25 == 2:
-                        # cif.g:112:82: ( DIGIT )+ '.'
+                        # cifProto.g:115:82: ( DIGIT )+ '.'
                         pass
-                        # cif.g:112:82: ( DIGIT )+
+                        # cifProto.g:115:82: ( DIGIT )+
                         cnt24 = 0
                         while True: #loop24
                             alt24 = 2
@@ -1214,7 +1214,7 @@ class cifParser(Parser):
 
 
                             if alt24 == 1:
-                                # cif.g:112:83: DIGIT
+                                # cifProto.g:115:83: DIGIT
                                 pass
                                 self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_float_466)
 
@@ -1233,14 +1233,14 @@ class cifParser(Parser):
 
 
 
-                    # cif.g:112:97: ( EXPONENT )?
+                    # cifProto.g:115:97: ( EXPONENT )?
                     alt26 = 2
                     LA26_0 = self.input.LA(1)
 
                     if (LA26_0 == EXPONENT) :
                         alt26 = 1
                     if alt26 == 1:
-                        # cif.g:112:98: EXPONENT
+                        # cifProto.g:115:98: EXPONENT
                         pass
                         self.match(self.input, EXPONENT, self.FOLLOW_EXPONENT_in_float_475)
 
@@ -1262,16 +1262,16 @@ class cifParser(Parser):
 
 
     # $ANTLR start "number"
-    # cif.g:114:1: number : ( integer | float_ );
+    # cifProto.g:117:1: number : ( integer | float_ );
     def number(self, ):
 
         try:
             try:
-                # cif.g:114:9: ( integer | float_ )
+                # cifProto.g:117:9: ( integer | float_ )
                 alt28 = 2
                 alt28 = self.dfa28.predict(self.input)
                 if alt28 == 1:
-                    # cif.g:114:11: integer
+                    # cifProto.g:117:11: integer
                     pass
                     self._state.following.append(self.FOLLOW_integer_in_number487)
                     self.integer()
@@ -1280,7 +1280,7 @@ class cifParser(Parser):
 
 
                 elif alt28 == 2:
-                    # cif.g:114:21: float_
+                    # cifProto.g:117:21: float_
                     pass
                     self._state.following.append(self.FOLLOW_float__in_number491)
                     self.float_()
@@ -1302,16 +1302,16 @@ class cifParser(Parser):
 
 
     # $ANTLR start "numeric"
-    # cif.g:116:1: numeric : ( number | ( number '(' ( DIGIT )+ ')' ) );
+    # cifProto.g:119:1: numeric : ( number | ( number '(' ( DIGIT )+ ')' ) );
     def numeric(self, ):
 
         try:
             try:
-                # cif.g:116:9: ( number | ( number '(' ( DIGIT )+ ')' ) )
+                # cifProto.g:119:9: ( number | ( number '(' ( DIGIT )+ ')' ) )
                 alt30 = 2
                 alt30 = self.dfa30.predict(self.input)
                 if alt30 == 1:
-                    # cif.g:116:11: number
+                    # cifProto.g:119:11: number
                     pass
                     self._state.following.append(self.FOLLOW_number_in_numeric500)
                     self.number()
@@ -1320,17 +1320,17 @@ class cifParser(Parser):
 
 
                 elif alt30 == 2:
-                    # cif.g:116:20: ( number '(' ( DIGIT )+ ')' )
+                    # cifProto.g:119:20: ( number '(' ( DIGIT )+ ')' )
                     pass
-                    # cif.g:116:20: ( number '(' ( DIGIT )+ ')' )
-                    # cif.g:116:22: number '(' ( DIGIT )+ ')'
+                    # cifProto.g:119:20: ( number '(' ( DIGIT )+ ')' )
+                    # cifProto.g:119:22: number '(' ( DIGIT )+ ')'
                     pass
                     self._state.following.append(self.FOLLOW_number_in_numeric506)
                     self.number()
 
                     self._state.following.pop()
                     self.match(self.input, 35, self.FOLLOW_35_in_numeric508)
-                    # cif.g:116:33: ( DIGIT )+
+                    # cifProto.g:119:33: ( DIGIT )+
                     cnt29 = 0
                     while True: #loop29
                         alt29 = 2
@@ -1341,7 +1341,7 @@ class cifParser(Parser):
 
 
                         if alt29 == 1:
-                            # cif.g:116:34: DIGIT
+                            # cifProto.g:119:34: DIGIT
                             pass
                             self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_numeric511)
 
@@ -1376,13 +1376,13 @@ class cifParser(Parser):
 
 
     # $ANTLR start "char_string"
-    # cif.g:118:1: char_string : CHAR_STRING ;
+    # cifProto.g:121:1: char_string : CHAR_STRING ;
     def char_string(self, ):
 
         try:
             try:
-                # cif.g:119:2: ( CHAR_STRING )
-                # cif.g:119:4: CHAR_STRING
+                # cifProto.g:122:2: ( CHAR_STRING )
+                # cifProto.g:122:4: CHAR_STRING
                 pass
                 self.match(self.input, CHAR_STRING, self.FOLLOW_CHAR_STRING_in_char_string527)
 
@@ -1402,13 +1402,13 @@ class cifParser(Parser):
 
 
     # $ANTLR start "text_field"
-    # cif.g:121:1: text_field : SEMI_COLON_TEXT_FIELD ;
+    # cifProto.g:124:1: text_field : SEMI_COLON_TEXT_FIELD ;
     def text_field(self, ):
 
         try:
             try:
-                # cif.g:122:2: ( SEMI_COLON_TEXT_FIELD )
-                # cif.g:122:4: SEMI_COLON_TEXT_FIELD
+                # cifProto.g:125:2: ( SEMI_COLON_TEXT_FIELD )
+                # cifProto.g:125:4: SEMI_COLON_TEXT_FIELD
                 pass
                 self.match(self.input, SEMI_COLON_TEXT_FIELD, self.FOLLOW_SEMI_COLON_TEXT_FIELD_in_text_field537)
 
@@ -1813,7 +1813,7 @@ class cifParser(Parser):
 
 def main(argv, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr):
     from antlr3.main import ParserMain
-    main = ParserMain("cifLexer", cifParser)
+    main = ParserMain("cifProtoLexer", cifProtoParser)
     main.stdin = stdin
     main.stdout = stdout
     main.stderr = stderr
