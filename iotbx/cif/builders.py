@@ -1,5 +1,6 @@
 from cctbx import adptbx, crystal, miller, sgtbx, uctbx, xray
 from cctbx.array_family import flex
+import iotbx.cif
 from iotbx.cif import model
 
 try:
@@ -20,8 +21,17 @@ class cif_model_builder:
     self._model[block_name] = self._current_block
 
   def add_loop(self, header, data):
-    self._current_block.add_loop(
-      model.loop(header=header.split()[1:], data=data))
+    loop = model.loop()
+    header = header.split()[1:]
+    n_columns = len(header)
+    assert len(data) % n_columns == 0, "Wrong number of data items for loop"
+    if n_columns == 1:
+      columns = [data]
+    else:
+      columns = iotbx.cif.ext.looped_data_as_columns(data, n_columns)
+    for i in range(n_columns):
+      loop[header[i]] = columns[i]
+    self._current_block.add_loop(loop)
 
   def add_data_item(self, key, value):
     self._current_block[key] = value
