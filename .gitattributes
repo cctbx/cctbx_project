@@ -233,6 +233,7 @@ iotbx/cif/__init__.py svneol=native#text/x-python
 iotbx/cif/tests/tst_xray_structure.py svneol=native#text/x-python
 iotbx/cif/xray_structure.py svneol=native#text/x-python
 iotbx/cns/crystal_symmetry_utils.py svneol=native#text/x-python
+iotbx/command_line/fetch_pdb.py -text
 iotbx/command_line/pdb.b_factor_stats.py svneol=native#text/x-python
 iotbx/command_line/pdb.box_around_molecule.py svneol=native#text/x-python
 iotbx/command_line/pdb.join_fragment_files.py svneol=native#text/x-python
@@ -276,6 +277,7 @@ iotbx/pdb/atom_selection.cpp svneol=native#text/plain
 iotbx/pdb/atom_selection.py svneol=native#text/x-python
 iotbx/pdb/construct_hierarchy.cpp svneol=native#text/plain
 iotbx/pdb/extract_rfactors_resolutions_sigma.py -text
+iotbx/pdb/fetch.py -text
 iotbx/pdb/hierarchy.cpp svneol=native#text/plain
 iotbx/pdb/hierarchy.h svneol=native#text/plain
 iotbx/pdb/hierarchy.py svneol=native#text/x-python
