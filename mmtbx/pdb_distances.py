@@ -559,7 +559,8 @@ def pair_sym_table_as_antons_master(
       pdb_atoms,
       sites_frac,
       pair_sym_table,
-      reindexing_array):
+      reindexing_array,
+      omit_symmetry_interactions=True):
   for table_i_seq,pair_sym_dict in enumerate(pair_sym_table):
     i_seq = reindexing_array[table_i_seq]
     site_i = sites_frac[i_seq]
@@ -573,6 +574,8 @@ def pair_sym_table_as_antons_master(
       resname_j = atom_j.resname
       atmname_j = atom_j.name
       for sym_op in sym_ops:
+        if (omit_symmetry_interactions and not sym_op.is_unit_mx()):
+          continue
         site_ji = sym_op * site_j
         distance = unit_cell.distance(site_i, site_ji)
         if atom_i.resid() != atom_j.resid():
