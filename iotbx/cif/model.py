@@ -226,6 +226,10 @@ class loop(DictMixin):
     self.show(out=s)
     return s.getvalue()
 
+  def iterrows(self):
+    return iter([[self.values()[i][j] for i in range(len(self))]
+                 for j in range(self.size())])
+
 
 def common_prefix(seq):
   if not seq:return ""
