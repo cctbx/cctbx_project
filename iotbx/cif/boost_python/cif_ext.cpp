@@ -13,8 +13,9 @@ namespace iotbx { namespace cif { namespace boost_python {
 
     static void wrap(char const *name) {
       using namespace boost::python;
-      class_<wt>(name, no_init)
-        .def(init<std::string, boost::python::object&>((arg("input"), arg("builder"))))
+      class_<wt, boost::noncopyable>(name, no_init)
+        .def(init<std::string, boost::python::object&>(
+          (arg("input"), arg("builder"))))
         ;
     }
   };
