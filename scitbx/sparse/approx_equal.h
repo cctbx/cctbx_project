@@ -20,8 +20,8 @@ struct approx_equal
   bool operator()(vector<T> const &a, vector<T> const &b) const
   {
     if (a.size() != b.size()) return false;
-    a.sort_indices();
-    b.sort_indices();
+    a.compact();
+    b.compact();
     typename vector<T>::const_iterator p = a.begin(), q = b.begin();
     while (p != a.end() && q != b.end()) {
       if (p.index() < q.index()) {

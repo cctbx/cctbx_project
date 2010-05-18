@@ -32,7 +32,7 @@ std::ostream& operator<<(std::ostream& o,
   typedef typename sparse::vector<T>::const_iterator const_iterator;
   std::streamsize width = o.width();
   sparse::vector<T> const& v = disp.content;
-  v.sort_indices();
+  v.compact();
   o << std::setw(0) << "{ ";
   index_difference_type last_non_zero = -1;
   bool first = true;

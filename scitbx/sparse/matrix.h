@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <functional>
 #include <vector>
+#include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
 #include <scitbx/error.h>
 #include <scitbx/array_family/shared.h>
@@ -134,7 +135,7 @@ public:
 
   /// Number of rows
   row_index n_rows() const {
-    SCITBX_ASSERT(n_rows_);
+    if (!n_rows_) compact();
     return *n_rows_;
   }
 
@@ -181,9 +182,9 @@ public:
 
   /// Sort and remove duplicate indices in all column
   /** C.f. the member function of same name in class scitbx::sparse::vector */
-  void sort_indices() {
+  void compact() const {
     using namespace boost::lambda;
-    for (column_index j=0; j < n_cols(); j++) col(j).sort_indices();
+    for (column_index j=0; j < n_cols(); j++) col(j).compact();
     if (!n_rows_) {
       n_rows_ = std::max_element(
         column.begin(), column.end(),
