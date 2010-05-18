@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <functional>
 #include <vector>
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
 #include <scitbx/error.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/versa.h>
@@ -53,22 +51,15 @@ struct matrix_x_vector
 
 /// A sparse matrix, represented by a sequence of sparse columns
 /** All linear operations are therefore performed using column version of the
-relevant algorithms, taking great care of never touching structurally zero
-elements.
+ relevant algorithms, taking great care of never touching structurally zero
+ elements.
 
-Also, those columns are kept unsorted (c.f. class sparse::vector) and the
-precondition about duplicate applies here too.
-
-When constructed with a definite number of rows, this number is retained and
-immutable. However it is up to the user to make sure that no element is assigned
-with an 1st index greater or equal to that number. Calling sort_indices will
-however prune those illegal elements.
-
-When constructed with an undefinite number of rows, that number stays so until
-the first time the member function sort_indices is called, after which it is set
-to the greatest size of all columns and it is immutable from then on.
-This is to make it easy to fill a sparse matrix in a context
-where std::vector::push_back or the like would normally be used to fill columns.
+ Assignments a(i, j) = ..., a(i,j) += ..., and a(i,j) -= ... are delegated
+ to the corresponding assignments c[i] = ..., c[i] += ... and c[i] -= ...
+ where c[i] is the j-th column col(j), an instance of sparse::vector, to
+ the documentation of which the reader is referred to.
+ It should be noticed that no range checking on i is performed for those
+ assignments, but that fetching a(i,j) with i >= n_rows() will always return 0.
 */
 template<class T>
 class matrix
@@ -89,10 +80,10 @@ public:
 
 public:
   /// Construct a zero matrix with the given number of rows and columns
-  matrix(boost::optional<row_index> rows, column_index cols)
-    : n_rows_(rows), column(cols)
+  matrix(row_index rows, column_index cols)
+    : n_rows_(rows), column(af::reserve(rows))
   {
-    for (column_index j=0; j < cols; j++) column[j] = column_type(rows);
+    for (column_index j=0; j < cols; j++) column.push_back(column_type(rows));
   }
 
   /// The i-th column
@@ -118,7 +109,7 @@ public:
   /** This pulls out the column j and then delegates subscripting of row
     index i to class vector, which the readers is referred to.
     */
-  const typename vector<T>::element_reference
+  const typename vector<T>::element_const_reference
   operator()(row_index i, column_index j) const {
     return column[j][i];
   }
@@ -135,8 +126,7 @@ public:
 
   /// Number of rows
   row_index n_rows() const {
-    if (!n_rows_) compact();
-    return *n_rows_;
+    return n_rows_;
   }
 
   /// Whether all elements below the diagonal are zero
@@ -181,15 +171,12 @@ public:
   }
 
   /// Sort and remove duplicate indices in all column
-  /** C.f. the member function of same name in class scitbx::sparse::vector */
+  /** C.f. the member function of same name in class scitbx::sparse::vector
+   In particular, any element which may have been introduced into the matrix
+   that has a row index i >= n_rows() is pruned.
+   */
   void compact() const {
-    using namespace boost::lambda;
     for (column_index j=0; j < n_cols(); j++) col(j).compact();
-    if (!n_rows_) {
-      n_rows_ = std::max_element(
-        column.begin(), column.end(),
-        bind(&vector<T>::size, _1) < bind(&vector<T>::size, _2))->size();
-    }
   }
 
   /// Permute the rows, in place
@@ -271,7 +258,9 @@ public:
   this_transpose_times_symmetric_times_this(
     symmetric_matrix_const_ref_t const &a) const
   {
-      // This verbosity seems necessary to please gcc 3.2
+    compact();
+
+    // This verbosity seems necessary to please gcc 3.2
     af::packed_u_accessor sym_n_x_n(n_cols());
     af::init_functor_null<value_type> dont_init;
     symmetric_matrix_t result(sym_n_x_n, dont_init);
@@ -285,7 +274,7 @@ public:
         value_type b_ki = *p;
         value_type s = 0;
         for (const_row_iterator q = col(j).begin(); q != col(j).end(); ++q) {
-              row_index l = q.index();
+          row_index l = q.index();
           value_type b_lj = *q;
           if (k <= l) s += a(k,l)*b_lj;
           else        s += a(l,k)*b_lj;
@@ -299,7 +288,7 @@ public:
 private:
   typedef typename std::vector<row_index>::const_iterator const_row_idx_iter;
   container_type column;
-  mutable boost::optional<row_index> n_rows_;
+  row_index n_rows_;
 };
 
 }} // namespace scitbx::sparse

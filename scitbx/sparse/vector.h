@@ -4,7 +4,6 @@
 #include <memory>
 #include <algorithm>
 #include <boost/operators.hpp>
-#include <boost/optional.hpp>
 #include <scitbx/error.h>
 #include <scitbx/array_family/shared.h>
 
@@ -55,15 +54,9 @@ namespace scitbx { namespace sparse {
 
  @code double x = v[i] @endcode
 
- (4) When constructed with a definite size, this size is retained and immutable.
- However the pre-condition that v[i] = ... is only possible if i is less than
- that size is not enforced for efficiency reasons. Calling compact() will
- however prune those illegal elements.
-
- When constructed with an undefinite size, the size stays so until the first
- time compact() is called, which sets it to the greatest index in the vector
- plus one. This is to make it easy to fill a sparse vector in a context where
- std::vector::push_back or the like would normally be used.
+ (4) The pre-condition that v[i] = ... is only possible if i is less than size()
+ is not enforced for efficiency reasons. Calling compact() will however prune
+ those illegal elements.
 
  Implementation note:
  The C++ standard rules that the private types and members of a class are not
@@ -136,7 +129,7 @@ private:
   typedef af::shared<element> container_type;
 
   container_type elements;
-  boost::optional<index_type> size_;
+  index_type size_;
   bool sorted;
 
   value_type get(index_type i) const {
@@ -168,7 +161,7 @@ private:
       {
         iter_t p;
         index_type current_index = q->index();
-        if (size_ && current_index >= size_) {
+        if (current_index >= size_) {
           --q;
           continue;
         }
@@ -184,10 +177,6 @@ private:
         }
       }
       elements.erase(elements.begin(), overwrite + 1);
-      if (!size_) size_ = elements.end()[-1].index() + 1;
-    }
-    else {
-      if (!size_) size_ = 0;
     }
     sorted = true;
   }
@@ -337,12 +326,8 @@ public:
     }
   };
 
-
-   /// Construct a vector of size 0
-  vector() : sorted(false) {}
-
   /// Construct a zero vector of size n
-  vector(boost::optional<index_type> n) : sorted(false), size_(n) {}
+  vector(index_type n) : sorted(false), size_(n) {}
 
   /// An iterator pointing to the first record
   const_iterator begin() const {
@@ -366,8 +351,7 @@ public:
 
   /// Dimension of the vector, i.e. number of zero or non-zero elements
   index_type size() const {
-    compact();
-    return *size_;
+    return size_;
   }
 
   /// Whether there is no potential non-zero elements

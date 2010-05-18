@@ -78,7 +78,7 @@ struct vector_wrapper
     element_iterator_wrapper::wrap();
 
     class_<wt>("vector", no_init)
-      .def(init<boost::optional<index_type> >())
+      .def(init<index_type>(arg("dimension")))
       .add_property("size", &wt::size)
       .def("__setitem__", setitem)
       .def("__getitem__", getitem)

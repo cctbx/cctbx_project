@@ -46,8 +46,9 @@ struct matrix_wrapper
     using namespace boost::python;
     return_internal_reference<> rir;
     class_<wt>("matrix", no_init)
-      .def(init<boost::optional<typename wt::row_index>,
-                typename wt::column_index>())
+      .def(init<typename wt::row_index,
+                typename wt::column_index>
+           ((arg("rows"), arg("columns"))))
       .add_property("n_cols", &wt::n_cols)
       .add_property("n_rows", &wt::n_rows)
       .def("col",
@@ -62,9 +63,9 @@ struct matrix_wrapper
       .def("deep_copy", &wt::deep_copy)
       .def("transpose", &wt::transpose)
       .def("permute_rows", permute_rows, arg("permutation"), rir)
-      .def(self*vector<T>())
+      .def(self*vector<T>(0))
       .def(self*self)
-        .def("self_transpose_times_symmetric_times_self",
+      .def("self_transpose_times_symmetric_times_self",
            &wt::this_transpose_times_symmetric_times_this)
       .def(typename wt::dense_vector_const_ref() * self)
       .def("as_mathematica", as_mathematica)
