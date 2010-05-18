@@ -5,7 +5,9 @@
 #include <boost/python/return_arg.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python/str.hpp>
+#include <boost/python/dict.hpp>
 #include <boost/python/operators.hpp>
+#include <boost/python/make_constructor.hpp>
 
 #include <scitbx/sparse/vector.h>
 #include <scitbx/sparse/io.h>
@@ -19,6 +21,21 @@ struct vector_wrapper
   typedef typename wt::index_type index_type;
   typedef typename wt::value_type value_type;
   typedef typename wt::iterator iterator;
+
+  static wt *from_dict(index_type n, boost::python::dict d) {
+    using namespace boost::python;
+    wt *result = new wt(n);
+    list key = d.keys();
+    int nz = len(key);
+    for (int l=0; l<nz; ++l) {
+      object k = key[l];
+      index_type i = extract<index_type>(k);
+      T x = extract<T>(d[k]);
+      (*result)[i] = x;
+    }
+    result->compact();
+    return result;
+  }
 
   static void setitem(wt &self, index_type i, T x) {
     self[i] = x;
@@ -79,6 +96,10 @@ struct vector_wrapper
 
     class_<wt>("vector", no_init)
       .def(init<index_type>(arg("dimension")))
+        .def("__init__",
+           make_constructor(from_dict,
+                            default_call_policies(),
+                            (arg("dimension"), arg("elements"))))
       .add_property("size", &wt::size)
       .def("__setitem__", setitem)
       .def("__getitem__", getitem)

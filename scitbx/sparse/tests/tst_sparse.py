@@ -67,6 +67,16 @@ def exercise_vector():
   v[3] = 0.001
   assert approx_equal(u,v)
 
+  u = sparse.vector(5, {3: 0.3, 1: 0.1})
+  assert list(u.as_dense_vector()) == [ 0, 0.1, 0, 0.3, 0 ]
+
+  try:
+    sparse.vector(4, [1, 2, 3, 4])
+    raise Exception_expected
+  except Exception, e:
+    assert e.__class__.__module__ == 'Boost.Python'
+    assert e.__class__.__name__ == 'ArgumentError'
+
 def exercise_matrix():
   a = sparse.matrix(10,7)
   assert a.n_rows == 10 and a.n_cols == 7
