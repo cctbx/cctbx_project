@@ -55,7 +55,7 @@ struct approx_equal
   bool operator()(matrix<T> const &a, matrix<T> const &b) const
   {
     if(a.n_cols() != b.n_cols() || a.n_rows() != b.n_rows()) return false;
-    for (typename matrix<T>::column_index j=0; j < a.n_cols(); j++) {
+    for (typename matrix<T>::index_type j=0; j < a.n_cols(); j++) {
       if (!(*this)(a.col(j), b.col(j))) return false;
     }
     return true;

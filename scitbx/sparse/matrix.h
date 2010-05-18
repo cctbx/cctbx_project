@@ -37,29 +37,28 @@ private:
 public:
   typedef T value_type;
   typedef vector<T> column_type;
-  typedef typename vector<T>::index_type row_index;
-  typedef typename container_type::size_type column_index;
+  typedef typename vector<T>::index_type index_type;
   typedef typename vector<T>::iterator row_iterator;
   typedef typename vector<T>::const_iterator const_row_iterator;
 
 public:
   /// Construct a zero matrix with the given number of rows and columns
-  matrix(row_index rows, column_index cols)
+  matrix(index_type rows, index_type cols)
     : n_rows_(rows), columns(af::reserve(rows))
   {
-    for (column_index j=0; j < cols; j++) {
+    for (index_type j=0; j < cols; j++) {
       columns.push_back(column_type(rows));
     }
     column = columns.ref();
   }
 
   /// The i-th column
-  vector<T>& col(column_index i) {
+  vector<T>& col(index_type i) {
     return column[i];
   }
 
   /// The i-th column
-  vector<T> const& col(column_index i) const {
+  vector<T> const& col(index_type i) const {
     return column[i];
   }
 
@@ -68,7 +67,7 @@ public:
   index i to class vector, which the readers is referred to.
   */
   typename vector<T>::element_reference
-  operator()(row_index i, column_index j) {
+  operator()(index_type i, index_type j) {
     return column[j][i];
   }
 
@@ -77,28 +76,28 @@ public:
     index i to class vector, which the readers is referred to.
     */
   const typename vector<T>::element_const_reference
-  operator()(row_index i, column_index j) const {
+  operator()(index_type i, index_type j) const {
     return column[j][i];
   }
 
   /// Whether the element (i,j) is a structural zero
-  bool is_structural_zero(row_index i, column_index j) {
+  bool is_structural_zero(index_type i, index_type j) {
     return column[j].is_structural_zero(i);
   }
 
   /// Number of columns
-  column_index n_cols() const {
+  index_type n_cols() const {
     return column.size();
   }
 
   /// Number of rows
-  row_index n_rows() const {
+  index_type n_rows() const {
     return n_rows_;
   }
 
   /// Whether all elements below the diagonal are zero
   bool is_upper_triangular() const {
-    for (column_index j=0; j < n_cols(); j++) {
+    for (index_type j=0; j < n_cols(); j++) {
       for (const_row_iterator p = col(j).begin(); p != col(j).end(); p++) {
         if (p.index() > j && *p != 0) return false;
       }
@@ -108,7 +107,7 @@ public:
 
   /// Whether all elements above the diagonal are zero and the diagonal is 1
   bool is_unit_lower_triangular() const {
-    for (column_index j=0; j < n_cols(); j++) {
+    for (index_type j=0; j < n_cols(); j++) {
       for (const_row_iterator p = col(j).begin(); p != col(j).end(); p++) {
         if (p.index() < j && *p != 0) return false;
         else if (p.index() == j && *p != 1) return false;
@@ -127,7 +126,7 @@ public:
   /// A copy of this matrix, copying elements
   matrix deep_copy() const {
     matrix result(n_rows(), n_cols());
-    for (column_index j=0; j < n_cols(); j++) {
+    for (index_type j=0; j < n_cols(); j++) {
       result.column[j] = column[j].deep_copy();
     }
     return result;
@@ -136,7 +135,7 @@ public:
   /// Transpose of this
   matrix transpose() const {
     matrix result(n_cols(), n_rows());
-    for (column_index j=0; j < n_cols(); j++) {
+    for (index_type j=0; j < n_cols(); j++) {
       for(const_row_iterator p = col(j).begin(); p != col(j).end(); p++) {
         result(j, p.index()) = *p;
       }
@@ -150,7 +149,7 @@ public:
    that has a row index i >= n_rows() is pruned.
    */
   void compact() const {
-    for (column_index j=0; j < n_cols(); j++) col(j).compact();
+    for (index_type j=0; j < n_cols(); j++) col(j).compact();
   }
 
   /// Permute the rows, in place
@@ -158,7 +157,7 @@ public:
   matrix& permute_rows(PermutationType const& permutation) {
     SCITBX_ASSERT(n_rows() == permutation.size())
                  ( n_rows() )( permutation.size() );
-    for (column_index j=0; j < n_cols(); j++) col(j).permute(permutation);
+    for (index_type j=0; j < n_cols(); j++) col(j).permute(permutation);
     return *this;
   }
 
@@ -168,10 +167,10 @@ public:
                  ( n_cols() )( v.size() );
     vector<T> w(n_rows());
     for (const_row_iterator q=v.begin(); q!=v.end(); ++q) {
-      column_index j = q.index();
+      index_type j = q.index();
       value_type v_j = *q;
       for (const_row_iterator p=col(j).begin(); p != col(j).end(); ++p) {
-        row_index i = p.index();
+        index_type i = p.index();
         value_type a_ij = *p;
         w[i] += a_ij * v_j;
       }
@@ -193,7 +192,7 @@ public:
     dense_vector w(n_rows());
     for (int j=0; j < n_cols(); ++j) {
       for (const_row_iterator p=col(j).begin(); p != col(j).end(); ++p) {
-        row_index i = p.index();
+        index_type i = p.index();
         value_type a_ij = *p;
         w[i] += a_ij * v[j];
       }
@@ -208,7 +207,7 @@ public:
   friend
   dense_vector operator*(dense_vector_const_ref const &u, matrix const &a) {
     dense_vector result(a.n_cols(), af::init_functor_null<value_type>());
-    for(column_index j=0; j < a.n_cols(); ++j) result[j] = u*a.col(j);
+    for(index_type j=0; j < a.n_cols(); ++j) result[j] = u*a.col(j);
     return result;
   }
 
@@ -218,7 +217,7 @@ public:
     SCITBX_ASSERT(a.n_cols() == b.n_rows())
                  ( a.n_cols() )( b.n_rows() );
     matrix c(a.n_rows(), b.n_cols());
-    for (column_index j=0; j < c.n_cols(); j++) c.col(j) = a * b.col(j);
+    for (index_type j=0; j < c.n_cols(); j++) c.col(j) = a * b.col(j);
     return c;
   }
 
@@ -270,11 +269,11 @@ public:
     for (int i=0; i<n; ++i) for (int j=i; j<n; ++j) {
       c(i,j) = 0;
       for (const_row_iterator p = col(i).begin(); p != col(i).end(); ++p) {
-        row_index k = p.index();
+        index_type k = p.index();
         value_type b_ki = *p;
         value_type s = 0;
         for (const_row_iterator q = col(j).begin(); q != col(j).end(); ++q) {
-          row_index l = q.index();
+          index_type l = q.index();
           value_type b_lj = *q;
           if (k <= l) s += a(k,l)*b_lj;
           else        s += a(l,k)*b_lj;
@@ -286,10 +285,10 @@ public:
   }
 
 private:
-  typedef typename std::vector<row_index>::const_iterator const_row_idx_iter;
+  typedef typename std::vector<index_type>::const_iterator const_row_idx_iter;
   container_type columns;
   ref_type column;
-  row_index n_rows_;
+  index_type n_rows_;
 };
 
 }} // namespace scitbx::sparse
