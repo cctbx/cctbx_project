@@ -6,6 +6,6 @@ env.SharedLibrary(
   target="#lib/scitbx_random_ext",
   source=[
     "random_ext.cpp",
-    "random.cpp",
+    "basic_distributions.cpp",
   ]
 )
