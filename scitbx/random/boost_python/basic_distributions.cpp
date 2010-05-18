@@ -1,8 +1,9 @@
+#include <scitbx/random/boost_python/random.h>
+
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/normal_distribution.hpp>
 #include <boost/random/bernoulli_distribution.hpp>
 
-#include <scitbx/random/boost_python/random.h>
 
 namespace scitbx { namespace random { namespace boost_python {
 
