@@ -5,6 +5,7 @@
 #include <boost/python/operators.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python/str.hpp>
+#include <boost/python/slice.hpp>
 #include <boost/python/extract.hpp>
 
 #include <scitbx/sparse/matrix.h>
@@ -20,16 +21,57 @@ struct matrix_wrapper
   typedef typename wt::column_index column_index;
   typedef typename wt::value_type value_type;
 
-  static void setitem(wt& self, boost::python::tuple ij, T x) {
-    row_index i = boost::python::extract<row_index>(ij[0]);
-    column_index j = boost::python::extract<column_index>(ij[1]);
-    self(i,j) = x;
+  static boost::python::object setitem(wt& self,
+                                       boost::python::tuple ij,
+                                       boost::python::object x)
+  {
+    using namespace boost::python;
+    object none;
+    extract<row_index> p_i(ij[0]);
+    extract<column_index> p_j(ij[1]);
+    if (p_j.check()) {
+      if (p_i.check()) {
+        self(p_i(), p_j()) = extract<T>(x);
+        return x;
+      }
+      else {
+        extract<slice> p_i(ij[0]);
+        if (p_i.check()) {
+          slice i = p_i();
+          if (i.start() == none && i.stop() == none) {
+            self.col(p_j()) = extract< vector<T> >(x);
+            return x;
+          }
+        }
+      }
+    }
+                PyErr_SetString(PyExc_RuntimeError,
+                    "Only self[i,j] = float() and self[:,j] = sparse.vector()"
+                    " are supported.");
   }
 
-  static value_type getitem(wt& self, boost::python::tuple ij) {
-    row_index i = boost::python::extract<row_index>(ij[0]);
-    column_index j = boost::python::extract<column_index>(ij[1]);
-    return self(i,j);
+  static boost::python::object getitem(wt& self, boost::python::tuple ij) {
+    using namespace boost::python;
+    object none;
+    extract<row_index> p_i(ij[0]);
+    extract<column_index> p_j(ij[1]);
+    if (p_j.check()) {
+      if (p_i.check()) {
+        T x = self(p_i(), p_j());
+        return object(x);
+      }
+      else {
+        extract<slice> p_i(ij[0]);
+        if (p_i.check()) {
+          slice i = p_i();
+          if (i.start() == none && i.stop() == none) {
+            return object(self.col(p_j()));
+          }
+        }
+      }
+    }
+                PyErr_SetString(PyExc_RuntimeError,
+                    "Only self[i,j] and self[:,j] are supported.");
   }
 
   static boost::python::str as_mathematica(wt const &m) {
