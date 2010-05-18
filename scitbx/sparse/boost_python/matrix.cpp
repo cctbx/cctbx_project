@@ -94,6 +94,21 @@ struct matrix_wrapper
     o << dense_display(m);
     return boost::python::str(o.str().c_str());
   }
+  
+  static boost::python::str repr(wt const &m) {
+    std::stringstream o(std::ios_base::out);
+    std::string start("sparse.matrix(");
+    o << start << "rows=" << m.n_rows() << ", columns=" << m.n_cols() << ",\n";
+    std::string elts("elements_by_columns=[ ");
+    o << std::setw(start.size()) << "" << elts;
+    for (column_index j=0; j<m.n_cols(); ++j) {
+      if (j > 0) o << std::setw(start.size() + elts.size()) << "";
+      o << compressed_display(m.col(j)) << ",";
+      if (j+1 < m.n_cols()) o << "\n";
+    }
+    o << " ])";
+    return boost::python::str(o.str().c_str());
+  }
 
   static wt & permute_rows(wt &m, af::const_ref<row_index> const &p) {
     return m.permute_rows(p);
@@ -131,6 +146,7 @@ struct matrix_wrapper
            &wt::this_transpose_times_symmetric_times_this)
       .def(typename wt::dense_vector_const_ref() * self)
       .def("__str__", str_)
+    	.def("__repr__", repr)
     ;
   }
 

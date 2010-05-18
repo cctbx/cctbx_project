@@ -40,6 +40,12 @@ struct vector_wrapper
     o << dense_display(v);
     return boost::python::str(o.str().c_str());
   }
+  
+  static boost::python::str repr(wt const &v) {
+    std::stringstream o(std::ios_base::out);
+    o << "sparse.vector(" << v.size() << ", " << compressed_display(v) << ")";
+    return boost::python::str(o.str().c_str());
+  }
 
   struct element_iterator
   {
@@ -104,6 +110,7 @@ struct vector_wrapper
       .def("is_structurally_zero", &wt::is_structurally_zero)
       .def("is_structural_zero", &wt::is_structural_zero)
       .def("__str__", str_)
+      .def("__repr__", repr)
       .def(typename wt::dense_vector_const_ref() * self)
     ;
   }
