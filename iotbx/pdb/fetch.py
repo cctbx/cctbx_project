@@ -52,7 +52,7 @@ def fetch (id, data_type="pdb", format="pdb") :
         raise
   return data
 
-def run (args) :
+def run (args, log=sys.stdout) :
   if len(args) < 1 :
     raise Usage("phenix.fetch_pdb [-x|-f] [-q] ID")
   quiet = False
@@ -68,18 +68,20 @@ def run (args) :
     data = fetch(id, data_type)
   except RuntimeError, e :
     raise Sorry(str(e))
+  file_name = None
   if data_type == "xray" :
     file_name = os.path.join(os.getcwd(), "%s-sf.cif" % id)
     open(file_name, "w").write(data.read())
     if not quiet :
-      print "Structure factors saved to %s" % file_name
+      print >> log, "Structure factors saved to %s" % file_name
   elif data_type == "fasta" :
     file_name = os.path.join(os.getcwd(), "%s.fa" % id)
     open(file_name, "w").write(data.read())
     if not quiet :
-      print "Sequence saved to %s" % file_name
+      print >> log, "Sequence saved to %s" % file_name
   else :
     file_name = os.path.join(os.getcwd(), "%s.pdb" % id)
     open(file_name, "w").write(data.read())
     if not quiet :
-      print "Model saved to %s" % file_name
+      print >> log, "Model saved to %s" % file_name
+  return file_name

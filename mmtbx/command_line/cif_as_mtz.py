@@ -20,6 +20,8 @@ from libtbx import smart_open
 from libtbx.str_utils import show_string
 import mmtbx.utils
 import iotbx.pdb
+import iotbx.phil
+import libtbx.phil
 
 """
 Notes on CIF (source: http://www.ccp4.ac.uk/html/mtz2various.html)
@@ -669,17 +671,27 @@ def run(args, command_name = "phenix.cif_as_mtz"):
   file_name = command_line.args[0]
   if(not os.path.isfile(file_name)):
     raise Sorry("File is not found: %s"%file_name)
+  process_files(
+    file_name=file_name,
+    crystal_symmetry=crystal_symmetry,
+    pdb_file_name=command_line.options.use_model,
+    output_file_name=command_line.options.output_file_name,
+    wavelength_id=command_line.options.wavelength_id,
+    crystal_id=command_line.options.crystal_id,
+    show_details_if_error=command_line.options.show_details_if_error)
+
+def process_files (file_name, crystal_symmetry, pdb_file_name,
+    output_file_name,wavelength_id, crystal_id, show_details_if_error) :
   file_lines = smart_open.for_reading(file_name=file_name).read().splitlines()
   mtz_object = extract(
     file_name             = file_name,
     file_lines            = file_lines,
     crystal_symmetry      = crystal_symmetry,
-    wavelength_id         = command_line.options.wavelength_id,
-    crystal_id            = command_line.options.crystal_id,
-    show_details_if_error = command_line.options.show_details_if_error)
+    wavelength_id         = wavelength_id,
+    crystal_id            = crystal_id,
+    show_details_if_error = show_details_if_error)
   if(mtz_object is not None):
-    pdb_file_name = command_line.options.use_model
-    if(pdb_file_name):
+    if (pdb_file_name):
       pdb_raw_records = smart_open.for_reading(
         file_name=pdb_file_name).read().splitlines()
       xray_structure = None
@@ -711,9 +723,7 @@ def run(args, command_name = "phenix.cif_as_mtz"):
           label          = data_label,
           xray_structure = xray_structure,
           r_free_flags   = r_free_flags).mtz_object()
-    if(command_line.options.output_file_name):
-      output_file_name = command_line.options.output_file_name
-    else:
+    if not output_file_name :
       basename = os.path.basename(file_name)
       if(basename[-4:-3] == "."): output_file_name = basename[:-4]+".mtz"
       elif(basename[-5:-4] == "."): output_file_name = basename[:-5]+".mtz"
@@ -748,6 +758,143 @@ def extract(file_name, file_lines, crystal_symmetry, wavelength_id, crystal_id,
     file_name         = file_name,
     show_details_if_error = show_details_if_error)
   return mtz_object
+
+########################################################################
+# PHENIX GUI ROUTINES
+#
+master_phil = iotbx.phil.parse("""
+input
+  .caption = This program will convert CIF-formatted structure factors (used \
+    by the PDB) to an MTZ file.  Other CIF types (restraints, etc.) will be \
+    ignored.  Because the data in the PDB often contains mistakes or lacks \
+    symmetry, an optional PDB file is strongly recommended.  If you want the \
+    program to generate an MTZ file for a specific PDB ID, you may specify \
+    that instead of input files, and the CIF and PDB will be fetched from \
+    www.rcsb.org.
+  .style = caption_img:images/icons/phenix/phenix.reflection_file_editor.png
+{
+  cif_file = None
+    .type = path
+    .short_caption = CIF data file
+  wavelength_id = None
+    .type = str
+    .short_caption = Wavelength ID
+    .help = Not required when only one wavelength is present
+    .style = bold
+  crystal_id = None
+    .type = str
+    .short_caption = Crystal ID
+    .help = Not required when only one crystal is present
+    .style = bold
+  pdb_file = None
+    .type = path
+    .short_caption = PDB file
+    .style = bold
+  pdb_id = None
+    .type = str
+    .short_caption = PDB ID to retrieve
+}
+crystal_symmetry {
+  space_group = None
+    .type = space_group
+  unit_cell = None
+    .type = unit_cell
+}
+output_file_name = None
+  .type = path
+  .style = new_file bold
+options {
+  use_model = False
+    .type = bool
+    .short_caption = Use model to help guess data type
+    .help = If false, the model will only be used to extract crystal symmetry.
+  show_details_if_error = True
+    .type = bool
+    .short_caption = Show data details for some errors
+  show_log = True
+    .type = bool
+}
+""")
+
+# TODO replace the old 'run' method
+#
+# XXX this is still a little unsophisticated with respect to extracting
+# crystal symmetry, but it's meant to be run from the Phenix GUI right now.
+def run2 (args, log=sys.stdout, check_params=True) :
+  import iotbx.pdb.fetch
+  parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
+    master_phil=master_phil,
+    home_scope="")
+  pdb_file = None
+  cif_file = None
+  sources = []
+  for arg in args :
+    if os.path.isfile(arg) :
+      if iotbx.pdb.is_pdb_file(arg) :
+        pdb_files = os.path.abspath(arg)
+      elif arg.endswith(".cif") or arg.endswith(".cif.txt") :
+        cif_file = os.path.abspath(arg)
+      else :
+        try :
+          user_phil = iotbx.phil.parse(file_name=arg)
+        except RuntimeError :
+          print "Unrecognizable file format for %s" % arg
+        else :
+          sources.append(user_phil)
+    else :
+      if arg.startswith("--") :
+        arg = arg[2:] + "=True"
+      try :
+        user_phil = parameter_interpreter.process(arg=arg)
+        sources.append(user_phil)
+      except RuntimeError :
+        print "Unrecognizable parameter %s" % arg
+  params = master_phil.fetch(sources=sources).extract()
+  crystal_symmetry = None
+  if params.input.pdb_id is not None :
+    params.input.pdb_file = iotbx.pdb.fetch.run(args=[params.input.pdb_id],
+      log=log)
+    params.input.cif_file = iotbx.pdb.fetch.run(
+      args=["-x", params.input.pdb_id],
+      log=log)
+    symm = crystal_symmetry_from_any.extract_from(params.input.pdb_file)
+    params.crystal_symmetry.space_group = symm.space_group()
+    params.crystal_symmetry.unit_cell = symm.unit_cell()
+  if check_params :
+    validate_params(params)
+  if params.output_file_name is None :
+    base, ext = os.path.splitext(params.input.cif_file)
+    params.output_file_name = os.path.join(os.getcwd(), base + ".mtz")
+  if not params.options.use_model :
+    params.input.pdb_file = None
+  if symm is None :
+    symm = crystal.symmetry(
+      space_group=params.crystal_symmetry.space_group,
+      unit_cell=params.crystal_symmetry.unit_cell)
+  process_files(
+    file_name=params.input.cif_file,
+    crystal_symmetry=symm,
+    pdb_file_name=params.input.pdb_file,
+    output_file_name=params.output_file_name,
+    wavelength_id=params.input.wavelength_id,
+    crystal_id=params.input.crystal_id,
+    show_details_if_error=params.options.show_details_if_error)
+
+def validate_params (params) :
+  if ((params.crystal_symmetry.space_group is None) or
+      (params.crystal_symmetry.unit_cell is None)) :
+    raise Sorry("Crystal symmetry missing or incomplete.")
+  if (params.input.cif_file is None) and (params.input.pdb_id is None) :
+    raise Sorry("No CIF file provided!")
+  if (params.input.pdb_id is not None) :
+    if (params.input.cif_file is not None) :
+      raise Sorry("Please specify either a PDB ID or a CIF file, not both.")
+    if ((len(params.input.pdb_id) != 4) or
+        (not re.match("[1-9]{1}[a-zA-Z0-9]{3}", params.input.pdb_id))) :
+      raise RuntimeError(("Invalid PDB ID '%s'.  IDs must be exactly four "+
+        "alphanumeric characters, starting with a number from 1-9.") %
+        params.input.pdb_id)
+  return True
 
 if(__name__ == "__main__"):
    run(sys.argv[1:])
