@@ -15,6 +15,7 @@ def exercise_vector():
   assert [ v[i] for i in xrange(5) ] == [0, 2, 0, 6, 0]
   p = flex.size_t([1,2,3,4,0])
   assert list(v.permute(p)) == [(2,2.), (3,0.), (4,6.)]
+  assert v.non_zeroes == 3
 
   v = sparse.vector(10)
   v[7] = -5
@@ -36,6 +37,7 @@ def exercise_vector():
   v[3] = 2
   v[5] += 3
   assert list(v.compact()) == [ (3,2.), (4,3.), (5,4.) ]
+  assert v.non_zeroes == 3
 
   v = sparse.vector(6)
   v[3] = 1
@@ -84,6 +86,7 @@ def exercise_matrix():
     assert c.is_structurally_zero()
   a[0,1] = 1.
   a[9,5] = 2.
+  assert a.non_zeroes == 2
   for i in xrange(10):
     for j in xrange(7):
       if (i,j) == (0,1): assert a[i,j] == 1.
@@ -96,6 +99,7 @@ def exercise_matrix():
   a[3,2] = 2.
   a[5,1] = 2.
   a[4,0] = 1.
+  assert a.non_zeroes == 4
   assert a.n_rows == 6
   a[7,0] = 1.
   assert a[7,0] == 0

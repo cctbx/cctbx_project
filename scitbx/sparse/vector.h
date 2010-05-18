@@ -365,6 +365,12 @@ public:
     return std::binary_search(elements.begin(), elements.end(), element(i));
   }
 
+  /// Number of non-zero elements
+  index_type non_zeroes() const {
+    compact();
+    return elements.size();
+  }
+
   /// Subscripting
   element_const_reference operator[](index_type i) const {
     return element_const_reference(*this, i);

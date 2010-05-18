@@ -154,6 +154,13 @@ public:
     return true;
   }
 
+  /// Number of non-zero elements
+  index_type non_zeroes() const {
+    index_type result = 0;
+    for (int j=0; j<n_cols(); ++j) result += col(j).non_zeroes();
+    return result;
+  }
+
   /// A copy of this matrix, copying elements
   matrix deep_copy() const {
     matrix result(n_rows(), n_cols());
