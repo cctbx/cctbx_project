@@ -182,6 +182,15 @@ def exercise_matrix_x_vector():
       yy2 = aa.matrix_multiply(xx)
       assert approx_equal(yy1,yy2)
 
+  for m,n in [(5,5), (3,5), (5,3)]:
+    for n_test in xrange(50):
+      a = sparse.random_matrix(m,n)
+      x = flex.random_double(n)
+      y = a*x
+      aa = a.as_dense_matrix()
+      yy = aa.matrix_multiply(x)
+      assert approx_equal(y, yy)
+
 def exercise_matrix_x_matrix():
   a,b = random_sparse_matrix(3,4), random_sparse_matrix(4,2)
   c = a*b

@@ -142,12 +142,13 @@ struct matrix_wrapper
       .def("transpose", &wt::transpose)
       .def("permute_rows", permute_rows, arg("permutation"), rir)
       .def(self*vector<T>(0))
+      .def(self * typename wt::dense_vector_const_ref())
+      .def(typename wt::dense_vector_const_ref() * self)
       .def(self*self)
       .def("self_transpose_times_symmetric_times_self",
            &wt::this_transpose_times_symmetric_times_this)
-      .def(typename wt::dense_vector_const_ref() * self)
       .def("__str__", str_)
-    	.def("__repr__", repr)
+      .def("__repr__", repr)
     ;
   }
 

@@ -12,43 +12,6 @@
 
 namespace scitbx { namespace sparse {
 
-template<class MatrixType, class VectorType>
-struct matrix_x_vector
-{
-  typedef typename MatrixType::value_type value_type;
-  typedef typename MatrixType::const_row_iterator const_row_iterator;
-  typedef typename MatrixType::row_index row_index;
-  typedef typename MatrixType::column_index column_index;
-
-  std::vector<value_type> w;
-
-  matrix_x_vector(row_index n_rows) : w(n_rows, 0) {}
-
-  void operator()(MatrixType const &m,
-                  VectorType const &v,
-                  VectorType &u)
-  {
-    std::vector<row_index> nz;
-    typedef typename std::vector<row_index>::const_iterator
-            const_row_idx_iter;
-    for (const_row_iterator pv=v.begin(); pv != v.end(); pv++) {
-      column_index j = pv.index();
-      value_type v_j = *pv;
-      for (const_row_iterator pm=m.col(j).begin(); pm != m.col(j).end(); pm++) {
-        row_index i = pm.index();
-        value_type m_ij = *pm;
-        if (w[i] == 0) nz.push_back(i);
-        w[i] += m_ij * v_j;
-      }
-    }
-    for (const_row_idx_iter p = nz.begin(); p != nz.end(); p++) {
-      u[*p] = w[*p];
-      w[*p] = 0; // ready to perform another product
-    }
-  }
-};
-
-
 /// A sparse matrix, represented by a sequence of sparse columns
 /** All linear operations are therefore performed using column version of the
  relevant algorithms, taking great care of never touching structurally zero
@@ -99,7 +62,7 @@ public:
   vector<T> const& col(column_index i) const {
     return column[i];
   }
-
+  
   /// Subscripting
   /** This pulls out the column j and then delegates subscripting of row
   index i to class vector, which the readers is referred to.
@@ -199,20 +162,49 @@ public:
     return *this;
   }
 
-  /// Matrix times vector
+  /// This times sparse column vector
   vector<T> operator*(vector<T> const& v) const {
     SCITBX_ASSERT(n_cols() == v.size())
                  ( n_cols() )( v.size() );
-    vector<T> result(n_rows());
-    matrix_x_vector<matrix, vector<T> > multiply(n_rows());
-    multiply(*this, v, result);
-    return result;
+    vector<T> w(n_rows());
+    for (const_row_iterator q=v.begin(); q!=v.end(); ++q) {
+      column_index j = q.index();
+      value_type v_j = *q;
+      for (const_row_iterator p=col(j).begin(); p != col(j).end(); ++p) {
+        row_index i = p.index();
+        value_type a_ij = *p;
+        w[i] += a_ij * v_j;
+      }
+    }
+    w.compact();
+    return w;
   }
-
+  
   typedef typename vector<T>::dense_vector_const_ref dense_vector_const_ref;
   typedef af::shared<T> dense_vector;
 
+  /// This times dense column vector
+  /** Our returning a dense vector here is most appropriate when
+   there are few zero rows.
+   */
+  dense_vector operator*(dense_vector_const_ref const &v) const {
+    SCITBX_ASSERT(n_cols() == v.size())
+    ( n_cols() )( v.size() );
+    dense_vector w(n_rows());
+    for (int j=0; j < n_cols(); ++j) {
+      for (const_row_iterator p=col(j).begin(); p != col(j).end(); ++p) {
+        row_index i = p.index();
+        value_type a_ij = *p;
+        w[i] += a_ij * v[j];
+      }
+    }
+    return w;
+  }
+  
   /// Dense row vector times matrix
+  /** Our returning a dense vector here is most appropriate when
+   there are few zero columns.
+   */
   friend
   dense_vector operator*(dense_vector_const_ref const &u, matrix const &a) {
     dense_vector result(a.n_cols(), af::init_functor_null<value_type>());
@@ -225,12 +217,9 @@ public:
   matrix operator*(matrix const& a, matrix const& b) {
     SCITBX_ASSERT(a.n_cols() == b.n_rows())
                  ( a.n_cols() )( b.n_rows() );
-    matrix result(a.n_rows(), b.n_cols());
-    matrix_x_vector<matrix, vector<T> > multiply(a.n_rows());
-    for (column_index j=0; j < b.n_cols(); j++) {
-      multiply(a, b.col(j), result.col(j));
-    }
-    return result;
+    matrix c(a.n_rows(), b.n_cols());
+    for (column_index j=0; j < c.n_cols(); j++) c.col(j) = a * b.col(j);
+    return c;
   }
 
   typedef af::versa<value_type, af::packed_u_accessor>
