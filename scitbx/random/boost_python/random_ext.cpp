@@ -1,8 +1,8 @@
-#include <scitbx/random/mersenne_twister.h>
-
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+
+#include <scitbx/random/mersenne_twister.h>
 
 namespace scitbx { namespace random { namespace boost_python {
 
