@@ -19,17 +19,16 @@ template<typename T>
 struct matrix_wrapper
 {
   typedef matrix<T> wt;
-  typedef typename wt::row_index row_index;
-  typedef typename wt::column_index column_index;
+  typedef typename wt::index_type index_type;
   typedef typename wt::value_type value_type;
 
-  static wt *from_list_of_dict(row_index m, column_index n,
+  static wt *from_list_of_dict(index_type m, index_type n,
                                boost::python::list cols)
   {
     using namespace boost::python;
     SCITBX_ASSERT(len(cols) == n);
     wt *result = new wt(m, n);
-    for (column_index j=0; j<n; ++j) {
+    for (index_type j=0; j<n; ++j) {
       dict col = extract<dict>(cols[j]);
       result->col(j) = vector_from_dict<T>(m, col);
     }
@@ -42,8 +41,8 @@ struct matrix_wrapper
   {
     using namespace boost::python;
     object none;
-    extract<row_index> p_i(ij[0]);
-    extract<column_index> p_j(ij[1]);
+    extract<index_type> p_i(ij[0]);
+    extract<index_type> p_j(ij[1]);
     if (p_j.check()) {
       if (p_i.check()) {
         self(p_i(), p_j()) = extract<T>(x);
@@ -68,8 +67,8 @@ struct matrix_wrapper
   static boost::python::object getitem(wt& self, boost::python::tuple ij) {
     using namespace boost::python;
     object none;
-    extract<row_index> p_i(ij[0]);
-    extract<column_index> p_j(ij[1]);
+    extract<index_type> p_i(ij[0]);
+    extract<index_type> p_j(ij[1]);
     if (p_j.check()) {
       if (p_i.check()) {
         T x = self(p_i(), p_j());
@@ -101,7 +100,7 @@ struct matrix_wrapper
     o << start << "rows=" << m.n_rows() << ", columns=" << m.n_cols() << ",\n";
     std::string elts("elements_by_columns=[ ");
     o << std::setw(start.size()) << "" << elts;
-    for (column_index j=0; j<m.n_cols(); ++j) {
+    for (index_type j=0; j<m.n_cols(); ++j) {
       if (j > 0) o << std::setw(start.size() + elts.size()) << "";
       o << compressed_display(m.col(j)) << ",";
       if (j+1 < m.n_cols()) o << "\n";
@@ -110,7 +109,7 @@ struct matrix_wrapper
     return boost::python::str(o.str().c_str());
   }
 
-  static wt & permute_rows(wt &m, af::const_ref<row_index> const &p) {
+  static wt & permute_rows(wt &m, af::const_ref<index_type> const &p) {
     return m.permute_rows(p);
   }
 
@@ -118,8 +117,8 @@ struct matrix_wrapper
     using namespace boost::python;
     return_internal_reference<> rir;
     class_<wt>("matrix", no_init)
-      .def(init<typename wt::row_index,
-                typename wt::column_index>
+      .def(init<typename wt::index_type,
+                typename wt::index_type>
            ((arg("rows"), arg("columns"))))
       .def("__init__",
            make_constructor(from_list_of_dict,
@@ -129,7 +128,7 @@ struct matrix_wrapper
       .add_property("n_cols", &wt::n_cols)
       .add_property("n_rows", &wt::n_rows)
       .def("col",
-           static_cast<vector<T>& (wt::*)(column_index)>(&wt::col),
+           static_cast<vector<T>& (wt::*)(index_type)>(&wt::col),
            return_internal_reference<1>())
       .def("__getitem__", getitem)
       .def("__setitem__", setitem)

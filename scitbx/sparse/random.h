@@ -15,15 +15,14 @@ class random_matrix_generator
     std::size_t non_zeroes_;
 
   public:
-    typedef typename matrix<T>::row_index row_index;
-    typedef typename matrix<T>::column_index column_index;
+    typedef typename matrix<T>::index_type index_type;
     typedef typename matrix<T>::value_type value_type;
 
     /// A matrix with the given number of rows and columns
     /// and random elements within the given bounds and the given ratio
     /// of non-zero elements wrt the total number of elements.
-    matrix<T> operator()(row_index rows,
-                         column_index cols,
+    matrix<T> operator()(index_type rows,
+                         index_type cols,
                          value_type lower_bound,
                          value_type upper_bound,
                          value_type sparsity)
@@ -32,8 +31,8 @@ class random_matrix_generator
       non_zeroes_ = static_cast<std::size_t>(rows*cols*sparsity);
       std::size_t nz = non_zeroes_;
       while (nz) {
-        typename matrix<T>::row_index i = gen.random_size_t() % rows;
-        typename matrix<T>::column_index j = gen.random_size_t() % cols;
+        typename matrix<T>::index_type i = gen.random_size_t() % rows;
+        typename matrix<T>::index_type j = gen.random_size_t() % cols;
         if (result.is_structural_zero(i,j)) {
           result(i,j) = lower_bound
                         + gen.random_double()*(upper_bound - lower_bound);

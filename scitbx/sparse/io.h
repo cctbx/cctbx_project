@@ -102,13 +102,13 @@ template<class T>
 std::ostream& operator<<(std::ostream& o,
                          const sparse::matrix_dense_display_t<T>& disp)
 {
-  typedef typename sparse::matrix<T>::column_index column_index;
+  typedef typename sparse::matrix<T>::index_type index_type;
   typedef typename sparse::matrix<T>::const_row_iterator const_row_iterator;
   const sparse::matrix<T>& m = disp.content;
   sparse::matrix<T> mt = m.transpose();
   std::streamsize width = o.width();
   o << std::setw(0) << "{\n";
-  for (column_index j=0; j < mt.n_cols(); j++) {
+  for (index_type j=0; j < mt.n_cols(); j++) {
     o << std::setw(width) << dense_display(mt.col(j));
     if (j != mt.n_cols()-1) o << ",";
     o << "\n";

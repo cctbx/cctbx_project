@@ -15,19 +15,18 @@ class depth_first_search
 public:
   typedef typename Matrix::value_type value_type;
   typedef typename Matrix::column_type column_type;
-  typedef typename Matrix::row_index row_index;
-  typedef typename Matrix::column_index column_index;
+  typedef typename Matrix::index_type index_type;
   typedef typename Matrix::const_row_iterator const_row_iterator;
 
 private:
   enum colour_type {white, gray, black};
   std::vector<colour_type> colour;
 
-  typedef typename std::vector<row_index>::iterator row_idx_iter;
+  typedef typename std::vector<index_type>::iterator row_idx_iter;
 
 public:
     // Construct a DFS to visit the elements of a m x n matrix
-    depth_first_search(row_index m, column_index n)
+    depth_first_search(index_type m, index_type n)
     : colour(std::max(m,n), white)
   {}
 
@@ -42,16 +41,16 @@ void depth_first_search<Matrix>::operator()(const Matrix& M,
                                             const column_type &d,
                                             Visitor& vis)
 {
-  std::vector<row_index> marked; // grayed and blackened vertices
+  std::vector<index_type> marked; // grayed and blackened vertices
 
   vis.dfs_started();
 
   for (const_row_iterator i_d=d.begin(); i_d != d.end(); i_d++) {
     /* DFS from nonzero of d */
-    std::stack<boost::tuple<row_index,
+    std::stack<boost::tuple<index_type,
                             const_row_iterator,
                             const_row_iterator> > stack;
-    row_index k = vis.permute_rhs( i_d.index() );
+    index_type k = vis.permute_rhs( i_d.index() );
     if (colour[k] != white) continue;
     vis.dfs_started_from_vertex(k);
     if (vis.dfs_shall_cut_tree_rooted_at(k)) continue;
@@ -59,11 +58,11 @@ void depth_first_search<Matrix>::operator()(const Matrix& M,
                        col_end  = M.col(k).end();
     stack.push(boost::make_tuple(k, col_iter, col_end));
     while (!stack.empty()) {
-      column_index l;
+      index_type l;
       tie(l, col_iter, col_end) = stack.top();
       stack.pop();
       while (col_iter != col_end) {
-        row_index k = vis.permute( col_iter.index() );
+        index_type k = vis.permute( col_iter.index() );
         if (colour[k] == white) {
           colour[k] = gray; marked.push_back(k);
           vis.dfs_found_tree_edge(l, k);
