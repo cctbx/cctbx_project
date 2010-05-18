@@ -1,6 +1,9 @@
 import os
 import time
-from scitbx.random import ext
+import boost.optional
+import boost.python
+boost.python.import_ext("scitbx_random_ext")
+import scitbx_random_ext
 
 builtin_int = __builtins__["int"]
 builtin_long = __builtins__["long"]
@@ -17,17 +20,50 @@ def get_random_seed():
 def set_random_seed(value):
   mt19937.seed(value)
 
-mt19937 = ext.mt19937(value=get_random_seed())
+from scitbx_random_ext import *
+mt19937 = mersenne_twister_19937(value=get_random_seed())
 
 
-class normal_variate_generator(object):
-  def __init__(self, mean=0, sigma=1):
-    from scitbx.array_family import flex
-    self._distribution = ext.normal_distribution(mean=mean, sigma=sigma)
-    self._generator = ext.normal_variate_generator(mt19937, self._distribution)
+class variate_factory(object):
+  """
+  The corner stone of this package.
 
-  def __call__(self, size_t=None):
-    if size_t is None:
-      return self._generator()
+  Synopsis
+
+    g = scitbx.random.variate(scitbx.random.normal_distribution(mean, sigma))
+
+  How to use it from other modules?
+
+    scitbx.random.variate.register(xxxx_ext)
+
+  where xxxx_ext is a Boost.Python module featuring overloaded 'variate'
+  functions, variate(engine, distribution), where engine is the like
+  of mt19937 and distribution is the like of scitbx.random.normal_distribution.
+  """
+
+  def __init__(self):
+    self.modules = []
+
+  def register_module(self, module):
+    self.modules.append(module)
+
+  def variate_functions(self):
+    yield scitbx_random_ext.variate
+    for module in self.modules: yield module.variate
+
+  def __call__(self, distribution, engine=mt19937):
+    exceptions = []
+    for variate in self.variate_functions():
+      try:
+        return variate(engine, distribution)
+      except Exception, e:
+        if str(e.__class__) == "<class 'Boost.Python.ArgumentError'>":
+          exceptions.append(e)
+          continue
+        else:
+          raise
     else:
-      return self._generator(size_t)
+      raise RuntimeError('\n'.join([ str(e) for e in exceptions ]))
+
+# Instantiate the one single variate factory doing it all
+variate = variate_factory()
