@@ -103,7 +103,7 @@ struct vector_wrapper
       .def("deep_copy", &wt::deep_copy)
       .def("compact", &wt::compact, return_self<>())
       .def("permute",
-           static_cast<wt& (wt::*)(af::const_ref<index_type> const&)>(
+	       static_cast<wt& (wt::*)(af::const_ref<std::size_t> const&)>(
                                                                   &wt::permute),
            return_self<>())
       .def("as_dense_vector", &wt::as_dense_vector)
