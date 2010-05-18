@@ -675,6 +675,14 @@ struct bidiagonalisation
 };
 
 
+/// Random sequences of normal matrices,
+/// or of matrices with given eigen or singular values.
+/** Reference: G.W. Stewart, SIAM J. Numer. Anal., 17:403--409, 1980.
+                The method relies on a multinormal random vector whose dimension is the
+    number of rows of the matrices to generate.
+
+    This class is modelled on the Boost random framework.
+ */
 template <typename FloatType, class UniformRandomNumberGenerator>
 struct random_normal_matrix_generator
 {
@@ -694,6 +702,10 @@ struct random_normal_matrix_generator
   int m, n;
   reflection<scalar_t> p;
 
+  /// Construct a generator for matrices with the given dimensions.
+  /** The given generator of uniformly distributed numbers on [0,1) is used
+      as the source of the multinormal random generator.
+   */
   random_normal_matrix_generator(UniformRandomNumberGenerator &uniform,
                                  int rows, int columns)
     : uniform_gen(uniform), normal_dist(0, 1),
@@ -702,6 +714,11 @@ struct random_normal_matrix_generator
       p(m, n, applied_on_left_and_right_tag())
   {}
 
+  /// Construct a generator for matrices with the given dimensions.
+  /** An internal generator of uniformly distributed unbers on [0,1) is used
+      as the source of the multinormal random generator. All objects made by
+      this constructor produce the same random sequences.
+   */
   random_normal_matrix_generator(int rows, int columns)
     : normal_dist(0, 1),
       normal_gen(uniform_gen, normal_dist),
@@ -709,6 +726,7 @@ struct random_normal_matrix_generator
       p(m, n, applied_on_left_and_right_tag())
   {}
 
+  /// Generate a random normal matrix.
   matrix_t normal_matrix() {
     matrix_t result(dim(m, n), af::init_functor_null<scalar_t>());
     matrix_ref_t q = result.ref();
@@ -716,6 +734,7 @@ struct random_normal_matrix_generator
     return result;
   }
 
+  /// Generate a random matrix with the given singular values.
   matrix_t matrix_with_singular_values(af::const_ref<scalar_t> const &sigma) {
     matrix_t result(dim(m, n), af::init_functor_null<scalar_t>());
     matrix_ref_t a = result.ref();
@@ -723,6 +742,7 @@ struct random_normal_matrix_generator
     return result;
   }
 
+  /// Generate a random symmetric matrix with the given eigenvalues.
   symmetric_matrix_packed_u_t
   symmetric_matrix_with_eigenvalues(af::const_ref<scalar_t> const& lambda) {
     SCITBX_ASSERT(m == n)(m)(n);
