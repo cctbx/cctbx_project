@@ -134,6 +134,11 @@ def exercise_matrix():
 { 0, 0, 9 }
 }
 """
+  assert "\n%r" % a == """
+sparse.matrix(rows=10, columns=3,
+              elements_by_columns=[ { 1: 1, 4: 4 },
+                                    { 0: -1, 8: 8 },
+                                    { 6: 6, 9: 9 }, ])"""
 
 
 def random_sparse_vector(n):
