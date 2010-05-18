@@ -11,6 +11,7 @@
 
 #include <scitbx/sparse/vector.h>
 #include <scitbx/sparse/io.h>
+#include <scitbx/sparse/boost_python/vector.h>
 
 namespace scitbx { namespace sparse { namespace boost_python {
 
@@ -23,18 +24,7 @@ struct vector_wrapper
   typedef typename wt::iterator iterator;
 
   static wt *from_dict(index_type n, boost::python::dict d) {
-    using namespace boost::python;
-    wt *result = new wt(n);
-    list key = d.keys();
-    int nz = len(key);
-    for (int l=0; l<nz; ++l) {
-      object k = key[l];
-      index_type i = extract<index_type>(k);
-      T x = extract<T>(d[k]);
-      (*result)[i] = x;
-    }
-    result->compact();
-    return result;
+    return new wt(vector_from_dict<T>(n, d));
   }
 
   static void setitem(wt &self, index_type i, T x) {

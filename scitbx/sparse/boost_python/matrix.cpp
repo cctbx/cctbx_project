@@ -7,9 +7,11 @@
 #include <boost/python/str.hpp>
 #include <boost/python/slice.hpp>
 #include <boost/python/extract.hpp>
+#include <boost/python/make_constructor.hpp>
 
 #include <scitbx/sparse/matrix.h>
 #include <scitbx/sparse/io.h>
+#include <scitbx/sparse/boost_python/vector.h>
 
 namespace scitbx { namespace sparse { namespace boost_python {
 
@@ -20,6 +22,19 @@ struct matrix_wrapper
   typedef typename wt::row_index row_index;
   typedef typename wt::column_index column_index;
   typedef typename wt::value_type value_type;
+
+  static wt *from_list_of_dict(row_index m, column_index n,
+                               boost::python::list cols)
+  {
+    using namespace boost::python;
+    SCITBX_ASSERT(len(cols) == n);
+    wt *result = new wt(m, n);
+    for (column_index j=0; j<n; ++j) {
+      dict col = extract<dict>(cols[j]);
+      result->col(j) = vector_from_dict<T>(m, col);
+    }
+    return result;
+  }
 
   static boost::python::object setitem(wt& self,
                                        boost::python::tuple ij,
@@ -91,6 +106,11 @@ struct matrix_wrapper
       .def(init<typename wt::row_index,
                 typename wt::column_index>
            ((arg("rows"), arg("columns"))))
+      .def("__init__",
+           make_constructor(from_list_of_dict,
+                            default_call_policies(),
+                            (arg("rows"), arg("columns"), 
+                             arg("elements_by_columns"))))
       .add_property("n_cols", &wt::n_cols)
       .add_property("n_rows", &wt::n_rows)
       .def("col",
