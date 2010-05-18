@@ -109,6 +109,7 @@ struct vector_wrapper
       .def("as_dense_vector", &wt::as_dense_vector)
       .def("is_structurally_zero", &wt::is_structurally_zero)
       .def("is_structural_zero", &wt::is_structural_zero)
+      .add_property("non_zeroes", &wt::non_zeroes)
       .def("__str__", str_)
       .def("__repr__", repr)
       .def(typename wt::dense_vector_const_ref() * self)
