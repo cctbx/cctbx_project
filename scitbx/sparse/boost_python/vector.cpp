@@ -40,7 +40,7 @@ struct vector_wrapper
     o << dense_display(v);
     return boost::python::str(o.str().c_str());
   }
-  
+
   static boost::python::str repr(wt const &v) {
     std::stringstream o(std::ios_base::out);
     o << "sparse.vector(" << v.size() << ", " << compressed_display(v) << ")";
