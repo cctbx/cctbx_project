@@ -69,6 +69,7 @@ private:
   C.f., for example, member function "transpose"
   */
   typedef af::shared< vector<T> > container_type;
+  typedef af::ref< vector<T> > ref_type;
 
 public:
   typedef T value_type;
@@ -81,9 +82,12 @@ public:
 public:
   /// Construct a zero matrix with the given number of rows and columns
   matrix(row_index rows, column_index cols)
-    : n_rows_(rows), column(af::reserve(rows))
+    : n_rows_(rows), columns(af::reserve(rows))
   {
-    for (column_index j=0; j < cols; j++) column.push_back(column_type(rows));
+    for (column_index j=0; j < cols; j++) {
+      columns.push_back(column_type(rows));
+    }
+    column = columns.ref();
   }
 
   /// The i-th column
@@ -287,7 +291,8 @@ public:
 
 private:
   typedef typename std::vector<row_index>::const_iterator const_row_idx_iter;
-  container_type column;
+  container_type columns;
+  ref_type column;
   row_index n_rows_;
 };
 
