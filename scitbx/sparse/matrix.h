@@ -62,7 +62,7 @@ public:
   vector<T> const& col(column_index i) const {
     return column[i];
   }
-  
+
   /// Subscripting
   /** This pulls out the column j and then delegates subscripting of row
   index i to class vector, which the readers is referred to.
@@ -179,7 +179,7 @@ public:
     w.compact();
     return w;
   }
-  
+
   typedef typename vector<T>::dense_vector_const_ref dense_vector_const_ref;
   typedef af::shared<T> dense_vector;
 
@@ -200,7 +200,7 @@ public:
     }
     return w;
   }
-  
+
   /// Dense row vector times matrix
   /** Our returning a dense vector here is most appropriate when
    there are few zero columns.

@@ -94,7 +94,7 @@ struct matrix_wrapper
     o << dense_display(m);
     return boost::python::str(o.str().c_str());
   }
-  
+
   static boost::python::str repr(wt const &m) {
     std::stringstream o(std::ios_base::out);
     std::string start("sparse.matrix(");
@@ -124,7 +124,7 @@ struct matrix_wrapper
       .def("__init__",
            make_constructor(from_list_of_dict,
                             default_call_policies(),
-                            (arg("rows"), arg("columns"), 
+                            (arg("rows"), arg("columns"),
                              arg("elements_by_columns"))))
       .add_property("n_cols", &wt::n_cols)
       .add_property("n_rows", &wt::n_rows)
