@@ -89,7 +89,7 @@ struct matrix_wrapper
                     "Only self[i,j] and self[:,j] are supported.");
   }
 
-  static boost::python::str as_mathematica(wt const &m) {
+  static boost::python::str str_(wt const &m) {
     std::stringstream o(std::ios_base::out);
     o << dense_display(m);
     return boost::python::str(o.str().c_str());
@@ -130,7 +130,7 @@ struct matrix_wrapper
       .def("self_transpose_times_symmetric_times_self",
            &wt::this_transpose_times_symmetric_times_this)
       .def(typename wt::dense_vector_const_ref() * self)
-      .def("as_mathematica", as_mathematica)
+      .def("__str__", str_)
     ;
   }
 

@@ -35,7 +35,7 @@ struct vector_wrapper
     return self[i];
   }
 
-  static boost::python::str as_mathematica(wt const &v) {
+  static boost::python::str str_(wt const &v) {
     std::stringstream o(std::ios_base::out);
     o << dense_display(v);
     return boost::python::str(o.str().c_str());
@@ -103,7 +103,7 @@ struct vector_wrapper
       .def("as_dense_vector", &wt::as_dense_vector)
       .def("is_structurally_zero", &wt::is_structurally_zero)
       .def("is_structural_zero", &wt::is_structural_zero)
-      .def("as_mathematica", as_mathematica)
+      .def("__str__", str_)
       .def(typename wt::dense_vector_const_ref() * self)
     ;
   }
