@@ -116,6 +116,25 @@ def exercise_matrix():
   a[:,0], a[:, 1] = columns
   assert a[:,0], a[:,1] == columns
 
+  a = sparse.matrix(10, 3,
+                    elements_by_columns=[ { 1: 1, 4: 4, },
+                                          { 0: -1, 8:8, },
+                                          { 6: 6, 9: 9, } ])
+  assert "\n%s" % a == """
+{
+{ 0, -1, 0 },
+{ 1, 0, 0 },
+{ 0, 0, 0 },
+{ 0, 0, 0 },
+{ 4, 0, 0 },
+{ 0, 0, 0 },
+{ 0, 0, 6 },
+{ 0, 0, 0 },
+{ 0, 8, 0 },
+{ 0, 0, 9 }
+}
+"""
+
 
 def random_sparse_vector(n):
   x = sparse.vector(n)
