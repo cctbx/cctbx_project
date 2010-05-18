@@ -109,6 +109,13 @@ def exercise_matrix():
   approx_equal = sparse.approx_equal(tolerance=0.1)
   assert approx_equal(a,b)
 
+  m = 10
+  a = sparse.matrix(m, 2)
+  columns = ( sparse.vector(m, {1:0.1, 2:0.2}),
+              sparse.vector(m, {4:0.4, 8:0.8}) )
+  a[:,0], a[:, 1] = columns
+  assert a[:,0], a[:,1] == columns
+
 
 def random_sparse_vector(n):
   x = sparse.vector(n)
