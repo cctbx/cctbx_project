@@ -1,0 +1,7 @@
+Import("env_base", "env_etc")
+env = env_base.Clone()
+env_etc.include_registry.append(
+  env=env,
+  paths=["."] + env_etc.scitbx_common_includes)
+env.Program(target="tst_sparse",
+            source="tst_sparse.cpp")

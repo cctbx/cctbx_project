@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <boost/operators.hpp>
 #include <boost/optional.hpp>
-#include <boost/lambda/lambda.hpp>
 #include <scitbx/error.h>
 #include <scitbx/array_family/shared.h>
 
@@ -13,49 +12,68 @@ namespace scitbx { namespace sparse {
 
 
 /** A sparse vector represented as a sequence of records,
-each containing the value and the index of a non-zero element.
+ each containing the value and the index of a non-zero element.
 
-The semantic is as follow for a vector v.
+ The semantic is as follow for a vector v.
 
-(1) If no value has been assigned to v[i], then v[i] == 0 and no data is stored
-corresponding to that index i.
+ (1) If no value has been assigned to v[i], then v[i] == 0 and no data is stored
+ corresponding to that index i.
 
-(2) After an assignment v[i] = x, even if x is zero, a pair (i,x) is stored and
-v[i] == x
+ (2) After an assignment v[i] = x, even if x is zero, a pair (i,x) is stored and
+ v[i] == x
 
-In sparse algorithm, v[i] == 0 in case (1) corresponds to structural zeroes:
-those elements are never touched by the algorithm; whereas v[i] == 0 in case (2)
-results from the assignement to v[i] of an expression which happens to be zero:
-that's a coincidential cancellation.
+ In sparse algorithm, v[i] == 0 in case (1) corresponds to structural zeroes:
+ those elements are never touched by the algorithm; whereas v[i] == 0 in case (2)
+ results from the assignement to v[i] of an expression which happens to be zero:
+ that's a coincidential cancellation.
 
-(3) This sequence of index-value pairs is not kept sorted.
-Most operations do however require that there is no duplicate index but since
-this is too expensive to enforce in general, we leave it to user code
-- either to  enforce it by construction,
-- or to call the member function "sort_indices" when appropriate.
-Any method requiring the abscence of duplicate will be annotated with:
-precondition: no duplicate.
+ Successive assignments and augmented assignments work as expected, i.e.
 
-(4) When constructed with a definite size, this size is retained and immutable.
-However the pre-condition that v[i] = ... is only possible if i is less than
-that size is not enforced for efficiency reasons. Calling sort_indices will
-however prune those illegal elements.
+ @code
+ sparse::vector v(3);
+ v[i] += 1 // v[i] == 1
+ ...
+ v[i] += 2 // v[i] == 3
+ ...
+ v[i] = 4  // v[i] == 4
+ ...
+ v[i] -= 1 // v[i] == 3
+ ...
+ v[i] = 6  // v[i] == 6
+ @endcode
 
-When constructed with an undefinite size, the size stays so until the first time
-the member function sort_indices is called, which sets it to the greatest
-index in the vector plus one. This is to make it easy to fill a sparse vector
-in a context where std::vector::push_back or the like would normally be used.
+ Such a sequence of assignments never fetches the value v[i]:
+ v records the values to assign, add or substract as pairs (index, value)
+ in the order they come. This efficiency is only available in C++:
+ in Python, v[i] += ... will fetch the value v[i].
 
-Implementation note:
-The C++ standard rules that the private types and members of a class are not
-accessible to its nested classes. A defect report (issue 45, [1]) has however
-overturned that decision. It does not have the status "TC1" and is therefore not
-part of the C++ standard yet. However, among the compilers supported
-by the cctbx, VS 7.1 and 8.1, as well as all the GNU's have implemented the
-recommendation of issue 45, i.e. that nested classes have access to all members
-of the outer class. However cxx on Tru64 is true to the standard and does not
-implement it. Therefore all inner classes have been made friends of the outer
-class vector.
+ (3) Many operations require that elements are sorted by increasing
+ index without duplicate indices, a layout we will referred to as "compact" in
+ the following. This layout can be achieved by calling compact() beforehand
+ and it is automatically called by default when needed:
+ one of the most important example being
+
+ @code double x = v[i] @endcode
+
+ (4) When constructed with a definite size, this size is retained and immutable.
+ However the pre-condition that v[i] = ... is only possible if i is less than
+ that size is not enforced for efficiency reasons. Calling compact() will
+ however prune those illegal elements.
+
+ When constructed with an undefinite size, the size stays so until the first
+ time compact() is called, which sets it to the greatest index in the vector
+ plus one. This is to make it easy to fill a sparse vector in a context where
+ std::vector::push_back or the like would normally be used.
+
+ Implementation note:
+ The C++ standard rules that the private types and members of a class are not
+ accessible to its nested classes. A defect report (issue 45, [1]) has however
+ overturned that decision. It does not have the status "TC1" and is therefore
+ not part of the C++ standard yet. However, all compilers tested with the cctbx
+ at the time of writing have implemented the recommendation of issue 45,
+ i.e. that nested classes have access to all members of the outer class.
+ It should be noted that cxx on Tru64 is true to the standard and does not
+ implement it but this platform is not longer tested against.
 
 [1] http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html
 */
@@ -64,37 +82,114 @@ class vector
 {
 public:
   typedef T value_type;
-  typedef std::size_t index_type;
-  typedef std::ptrdiff_t index_difference_type;
+  typedef unsigned long index_type;
+  typedef long index_difference_type;
   typedef af::const_ref<value_type> dense_vector_const_ref;
 
 private:
-  struct element : boost::totally_ordered<element>
+  /// An element (index, value) of the sparse vector
+  /** The highest bit of index is used to record whether the value is
+   to be assigned or added.
+   */
+  class element : boost::totally_ordered<element>
   {
-    index_type index;
-    value_type value;
-    element(index_type i, value_type x) : index(i), value(x) {}
+  private:
+    index_type index_;
+    value_type value_;
+
+    static
+    index_type sum_flag() { return 1ul << (8*sizeof(index_type) - 1); }
+
+  public:
+    /// Construct an element to assign
+    element(index_type i, value_type x=0)
+        : index_(i & ~sum_flag()), value_(x)
+    {}
+
+    /// Construct an element to add to a sum
+    element(index_type i, bool sum, value_type x=0)
+        : index_(i | sum_flag()), value_(x)
+    {}
+
+    index_type index() const {
+      return index_ & ~sum_flag();
+    }
+
+    value_type value() const { return value_; }
+
+    value_type &value() { return value_; }
+
+    bool summed() { return index_ & sum_flag(); }
+
+    template <class PermutationType>
+    void apply(PermutationType const &p) {
+      index_ = p[index()] | (index_ & sum_flag());
+    }
 
     bool
-    operator == (element const &other) const { return index == other.index; }
+    operator==(element const &other) const { return index() == other.index(); }
 
     bool
-    operator < (element const &other) const { return index < other.index; }
+    operator<(element const &other) const { return index() < other.index(); }
   };
 
   typedef af::shared<element> container_type;
 
   container_type elements;
-  mutable boost::optional<index_type> size_;
+  boost::optional<index_type> size_;
+  bool sorted;
 
   value_type get(index_type i) const {
-    typename container_type::const_reverse_iterator p = std::find(
-      elements.rbegin(), elements.rend(), element(i,0));
-    return p != elements.rend() ? p->value : 0;
+    compact();
+    if (is_structurally_zero()) return 0;
+    typename container_type::const_iterator
+    p = std::lower_bound(elements.begin(), elements.end(), element(i));
+    if (p != elements.end() && p->index() == i) return p->value();
+    else return 0;
   }
 
-   void set(index_type i, value_type x) {
+  void set(index_type i, value_type x) {
     elements.push_back(element(i, x));
+    sorted = false;
+  }
+
+  void add(index_type i, value_type x) {
+    elements.push_back(element(i, true, x));
+    sorted = false;
+  }
+
+  void do_compact() {
+    if (elements.size()) {
+      std::stable_sort(elements.begin(), elements.end());
+
+      typedef typename container_type::iterator iter_t;
+      iter_t q = elements.end()-1, overwrite = q;
+      while (q >= elements.begin())
+      {
+        iter_t p;
+        index_type current_index = q->index();
+        if (size_ && current_index >= size_) {
+          --q;
+          continue;
+        }
+        for (p=q; p >= elements.begin() + 1; --p) {
+          if (p[-1].index() != current_index) break;
+          if (!p->summed()) break;
+        }
+        value_type x = p->value();
+        for (iter_t r=p+1; r <= q; ++r) x += r->value();
+        *overwrite-- = element(current_index, x);
+        for (q=p-1; q >= elements.begin(); --q) {
+          if (q->index() != current_index) break;
+        }
+      }
+      elements.erase(elements.begin(), overwrite + 1);
+      if (!size_) size_ = elements.end()[-1].index() + 1;
+    }
+    else {
+      if (!size_) size_ = 0;
+    }
+    sorted = true;
   }
 
 public:
@@ -113,7 +208,7 @@ public:
     {}
 
     value_type operator*() const {
-      return p->value;
+      return p->value();
     }
 
     bool operator==(const_iterator const& i) const {
@@ -126,10 +221,9 @@ public:
     }
 
     index_type index() const {
-      return p->index;
+      return p->index();
     }
   };
-  friend class const_iterator;
 
   /// Iterator over the records
   class iterator
@@ -145,8 +239,8 @@ public:
       : p(q)
     {}
 
-    value_type& operator*() {
-      return p->value;
+    value_type& operator*() const {
+      return p->value();
     }
 
     bool operator==(iterator const& i) const {
@@ -159,10 +253,9 @@ public:
     }
 
     index_type index() const {
-      return p->index;
+      return p->index();
     }
   };
-  friend class iterator;
 
   /// A const reference to an element of given index
   /** This the type of object returned by v[i] for a const vector v
@@ -185,11 +278,10 @@ public:
     {}
 
     /// Triggered by using v[i] in an expression
-    operator value_type() {
+    operator value_type() const {
       return v.get(i);
     }
   };
-  friend class element_const_reference;
 
 
   /// A reference to an element of given index
@@ -212,24 +304,45 @@ public:
     {}
 
     /// Triggered by using v[i] in an expression
-    operator value_type() {
+    /** Runtime scales as O(n) where n is the number of non-zero elements,
+        if the vector is compacted. Otherwise, O(n) plus the cost of
+                compacting it.
+     */
+    operator value_type() const {
       return v.get(i);
     }
 
     /// Triggered by an assignment v[i] = ...
-    value_type operator=(value_type x) {
+    /** Runtime scales as O(1)
+     */
+    element_reference &operator=(value_type x) {
       v.set(i, x);
-      return x;
+      return *this;
+    }
+
+    /// Triggered by an assignment v[i] += ...
+    /** Runtime scales as O(1)
+     */
+    element_reference &operator+=(value_type x) {
+      v.add(i, x);
+      return *this;
+    }
+
+    /// Triggered by an assignment v[i] -= ...
+    /** Runtime scales as O(1)
+     */
+    element_reference &operator-=(value_type x) {
+      v.add(i, -x);
+      return *this;
     }
   };
-  friend class element_reference;
 
 
    /// Construct a vector of size 0
-  vector() {}
+  vector() : sorted(false) {}
 
   /// Construct a zero vector of size n
-  vector(boost::optional<index_type> n) : size_(n) {}
+  vector(boost::optional<index_type> n) : sorted(false), size_(n) {}
 
   /// An iterator pointing to the first record
   const_iterator begin() const {
@@ -253,7 +366,7 @@ public:
 
   /// Dimension of the vector, i.e. number of zero or non-zero elements
   index_type size() const {
-    SCITBX_ASSERT(size_);
+    compact();
     return *size_;
   }
 
@@ -264,20 +377,20 @@ public:
 
   /// Whether the element of index i is a structural zero
   bool is_structural_zero(index_type i) const {
-    typename container_type::const_reverse_iterator p = std::find(
-      elements.rbegin(), elements.rend(), element(i,0));
-    return p == elements.rend();
+    compact();
+    return std::binary_search(elements.begin(), elements.end(), element(i));
   }
 
   /// Subscripting
-  /** Assignment v[i] = ... may introduce a duplicate index, a problem
-  solved for the getter v[i] by returning the last record with the
-  desired index.
-  */
   element_const_reference operator[](index_type i) const {
     return element_const_reference(*this, i);
   }
 
+  /// Subscripting
+  /** Assignment v[i] = ... may introduce a duplicate index, a problem
+  solved for the getter v[i] by calling compact() before searching
+  that index.
+  */
   element_reference operator[](index_type i) {
     return element_reference(*this, i);
   }
@@ -286,6 +399,7 @@ public:
   friend value_type operator*(dense_vector_const_ref const &u,
                               vector const &v)
   {
+    v.compact();
     value_type result = 0;
     for (const_iterator pv=v.begin(); pv != v.end(); ++pv) {
       index_type i = pv.index();
@@ -297,7 +411,6 @@ public:
   }
 
   /// Fill the given dense vector.
-  /** precondition: no duplicate */
   void fill_dense_vector(af::shared<T>& w) const {
     SCITBX_ASSERT(w.size() == size())
                  ( w.size() )( size() );
@@ -307,7 +420,6 @@ public:
   }
 
   /// The dense vector corresponding to this
-  /** precondition: no duplicate */
   af::shared<T> as_dense_vector() const {
     af::shared<T> result(size(), 0.);
     fill_dense_vector(result);
@@ -321,11 +433,11 @@ public:
   vector deep_copy() const {
     vector result(size());
     result.elements = elements.deep_copy();
+    result.sorted = sorted;
     return result;
   }
 
   /// Fill the given dense vector with a permutation of this
-  /** precondition: no duplicate */
   template<class PermutationType>
   void fill_dense_vector_with_permutation(af::shared<T>& w,
                                           PermutationType const& perm) const
@@ -337,26 +449,14 @@ public:
     }
   }
 
-  /// Remove duplicate indices and sort records by increasing indices.
-  /** The record which was input last is kept in case of duplicates.
+  /// Whether this has been compacted
+  bool is_compact() const { return sorted; }
+
+  /// Perform summation and removal of duplicate indices, and sort indices.
+  /** The record which was input last is kept in case of duplicate assignment.
   Return this object, for convenient chaining of operations. */
-  vector const& sort_indices() const {
-    using namespace boost::lambda;
-    container_type &elts = const_cast<container_type&>(elements);
-    std::stable_sort(elts.begin(), elts.end(), _1 > _2);
-    container_type new_elements(af::reserve(elts.size()));
-    std::unique_copy(elts.rbegin(), elts.rend(),
-                     std::back_inserter(new_elements));
-    vector<T> &self = const_cast<vector &>(*this);
-    if (size_) {
-      typename container_type::iterator end = std::upper_bound(
-        new_elements.begin(), new_elements.end(), element(*size_ - 1, 0));
-      new_elements.erase(end, new_elements.end());
-    }
-    else {
-      self.size_ = new_elements[new_elements.size()-1].index + 1;
-    }
-    self.elements = new_elements;
+  vector const& compact() const {
+    if (!sorted) const_cast<vector *>(this)->do_compact();
     return *this;
   }
 
@@ -369,7 +469,7 @@ public:
     for (typename container_type::iterator p=elements.begin();
          p != elements.end(); p++)
     {
-      p->index = permutation[p->index];
+      p->apply(permutation);
     }
     return *this;
   }

@@ -74,6 +74,9 @@ struct vector_wrapper
 
   static void wrap() {
     using namespace boost::python;
+
+    element_iterator_wrapper::wrap();
+
     class_<wt>("vector", no_init)
       .def(init<boost::optional<index_type> >())
       .add_property("size", &wt::size)
@@ -81,7 +84,7 @@ struct vector_wrapper
       .def("__getitem__", getitem)
       .def("__iter__", iter)
       .def("deep_copy", &wt::deep_copy)
-      .def("sort_indices", &wt::sort_indices, return_self<>())
+      .def("compact", &wt::compact, return_self<>())
       .def("permute",
            static_cast<wt& (wt::*)(af::const_ref<index_type> const&)>(
                                                                   &wt::permute),
@@ -96,7 +99,7 @@ struct vector_wrapper
 };
 
 void wrap_vector() {
-  vector_wrapper<double>::element_iterator_wrapper::wrap();
+  using namespace boost::python;
   vector_wrapper<double>::wrap();
 }
 

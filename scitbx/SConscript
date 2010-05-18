@@ -21,6 +21,7 @@ SConscript("lbfgsb/dev/SConscript")
 SConscript("fortran_io/tests/SConscript")
 SConscript("matrix/tests/SConscript")
 SConscript("math/tests/SConscript")
+SConscript("sparse/tests/SConscript")
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")

@@ -10,9 +10,9 @@ def exercise_vector():
   v[1] = 2
   v[2] = 0
   v[3] = 6
-  assert [ v[i] for i in xrange(5) ] == [0, 2, 0, 6, 0]
   assert list(v) == [(1,2.), (2,0.), (3,6.)]
-  assert list(v.sort_indices()) == [(1,2.), (2,0.), (3,6.)]
+  assert list(v.compact()) == [(1,2.), (2,0.), (3,6.)]
+  assert [ v[i] for i in xrange(5) ] == [0, 2, 0, 6, 0]
   p = flex.size_t([1,2,3,4,0])
   assert list(v.permute(p)) == [(2,2.), (3,0.), (4,6.)]
 
@@ -26,23 +26,24 @@ def exercise_vector():
   v[4] = 1
   v[1] = 3
   v[4] = 0
-  assert list(v.sort_indices()) == [(1,3.), (4,0.), (7,6.), (9,9.)]
+  assert list(v.compact()) == [(1,3.), (4,0.), (7,6.), (9,9.)]
+
+  v = sparse.vector(10)
+  v[4] += 1
+  v[5] += 2
+  v[4] += 2
+  v[5] = 1
+  v[3] = 2
+  v[5] += 3
+  assert list(v.compact()) == [ (3,2.), (4,3.), (5,4.) ]
 
   v = sparse.vector(None)
   v[3] = 1
   v[2] = 1
   v[5] = 1
-  try: v.size
-  except RuntimeError, e:
-    assert str(e).find("SCITBX_ASSERT(size_) failure") != -1
-  else:
-    raise Exception_expected
-  v.sort_indices()
   assert v.size == 6
   v[7] = 1
   assert v.size == 6
-  assert v[7] == 1
-  v.sort_indices()
   assert v[7] == 0
 
   u = flex.double((1, -1, 2, 0, -2))
@@ -84,17 +85,9 @@ def exercise_matrix():
   a[3,2] = 2.
   a[5,1] = 2.
   a[4,0] = 1.
-  try: a.n_rows
-  except RuntimeError, e:
-    assert str(e).find("SCITBX_ASSERT(n_rows_) failure") != -1
-  else:
-    raise Exception_expected
-  a.sort_indices()
   assert a.n_rows == 6
   a[7,0] = 1.
   assert a.n_rows == 6
-  assert a[7,0] == 1
-  a.sort_indices()
   assert a[7,0] == 0
 
   a = sparse.matrix(4,3)
