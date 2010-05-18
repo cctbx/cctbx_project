@@ -37,14 +37,14 @@ def exercise_vector():
   v[5] += 3
   assert list(v.compact()) == [ (3,2.), (4,3.), (5,4.) ]
 
-  v = sparse.vector(None)
+  v = sparse.vector(6)
   v[3] = 1
   v[2] = 1
   v[5] = 1
   assert v.size == 6
   v[7] = 1
-  assert v.size == 6
   assert v[7] == 0
+  assert v.size == 6
 
   u = flex.double((1, -1, 2, 0, -2))
   v = sparse.vector(5)
@@ -80,15 +80,16 @@ def exercise_matrix():
       elif (i,j) == (9,5): assert a[i,j] == 2.
       else: assert a[i,j] == 0
 
-  a = sparse.matrix(None, 3)
+  a = sparse.matrix(6, 3)
+  assert a.n_rows == 6
   a[1,1] = 1.
   a[3,2] = 2.
   a[5,1] = 2.
   a[4,0] = 1.
   assert a.n_rows == 6
   a[7,0] = 1.
-  assert a.n_rows == 6
   assert a[7,0] == 0
+  assert a.n_rows == 6
 
   a = sparse.matrix(4,3)
   a[0,1] = 1.01
