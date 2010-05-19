@@ -37,7 +37,6 @@ class mask(object):
           use_space_group_symmetry=use_space_group_symmetry))
     else:
       self.crystal_gridding = crystal_gridding
-    atom_radii = cctbx.masks.vdw_radii_from_xray_structure(
     if use_space_group_symmetry:
       atom_radii = cctbx.masks.vdw_radii(
         self.xray_structure, table=atom_radii_table).atom_radii
