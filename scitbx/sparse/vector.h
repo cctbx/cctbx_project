@@ -75,8 +75,8 @@ class vector
 {
 public:
   typedef T value_type;
-  typedef unsigned long index_type;
-  typedef long index_difference_type;
+  typedef std::size_t index_type;
+  typedef std::ptrdiff_t index_difference_type;
   typedef af::const_ref<value_type> dense_vector_const_ref;
 
 private:
