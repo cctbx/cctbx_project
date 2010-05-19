@@ -8,26 +8,43 @@ from cctbx.array_family import flex
 from cctbx.eltbx import van_der_waals_radii
 from scitbx import linalg
 
+# This function is still used in mmtbx/masks.py
 def vdw_radii_from_xray_structure(xray_structure, table=None):
-  # XXX use scattering dictionary and set_selected
-  # XXX use monomer library definitions for radii
-  unknown = []
-  atom_radii = flex.double()
-  for i_seq, scatterer in enumerate(xray_structure.scatterers()):
-    try:
-      if table is not None:
-        radius = table.get(scatterer.element_symbol())
+  return vdw_radii(xray_structure, table).atom_radii
+
+class vdw_radii:
+
+  def __init__(self, xray_structure, table=None):
+    # XXX use scattering dictionary and set_selected
+    # XXX use monomer library definitions for radii
+    unknown = []
+    if table is None:
+      self.table = {}
+    else:
+      self.table = table.copy()
+    self.atom_radii = flex.double()
+    for i_seq, scatterer in enumerate(xray_structure.scatterers()):
+      try:
+        radius = self.table.get(scatterer.element_symbol())
         if radius is None:
           radius = van_der_waals_radii.vdw.table[scatterer.element_symbol()]
+          self.table[scatterer.element_symbol()] = radius
+      except KeyError:
+        unknown.append(scatterer.element_symbol())
       else:
-        radius = van_der_waals_radii.vdw.table[scatterer.element_symbol()]
-    except KeyError:
-      unknown.append(scatterer.element_symbol())
-    else:
-      atom_radii.append(radius)
-  if(len(unknown) > 0):
-    raise RuntimeError("Atoms with unknown van der Waals radius: ",unknown)
-  return atom_radii
+        self.atom_radii.append(radius)
+    if(len(unknown) > 0):
+      raise RuntimeError("Atoms with unknown van der Waals radius: ",unknown)
+
+  def show(self, log=None):
+    if log is None: log = sys.stdout
+    for symbol in self.table:
+      print >> log, "%5s" %symbol,
+    print >> log
+    for radius in self.table.values():
+      print >> log, "%5.2f" %radius,
+    print >> log
+
 
 class _flood_fill(boost.python.injector, flood_fill):
 
