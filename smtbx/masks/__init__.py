@@ -38,8 +38,9 @@ class mask(object):
     else:
       self.crystal_gridding = crystal_gridding
     atom_radii = cctbx.masks.vdw_radii_from_xray_structure(
-      self.xray_structure, table=atom_radii_table)
     if use_space_group_symmetry:
+      atom_radii = cctbx.masks.vdw_radii(
+        self.xray_structure, table=atom_radii_table).atom_radii
       asu_mappings = self.xray_structure.asu_mappings(
         buffer_thickness=flex.max(atom_radii)+solvent_radius)
       scatterers_asu_plus_buffer = flex.xray_scatterer()
@@ -53,11 +54,12 @@ class mask(object):
                           scatterers=scatterers_asu_plus_buffer)
     else:
       xs = self.xray_structure.expand_to_p1()
+    self.vdw_radii = cctbx.masks.vdw_radii(xs, table=atom_radii_table)
     self.mask = cctbx.masks.around_atoms(
       unit_cell=xs.unit_cell(),
       space_group_order_z=xs.space_group().order_z(),
       sites_frac=xs.sites_frac(),
-      atom_radii=cctbx.masks.vdw_radii_from_xray_structure(xs),
+      atom_radii=self.vdw_radii.atom_radii,
       gridding_n_real=self.crystal_gridding.n_real(),
       solvent_radius=solvent_radius,
       shrink_truncation_radius=shrink_truncation_radius)
@@ -183,6 +185,9 @@ class mask(object):
     print >> log, "solvent_radius: %.2f" %(self.mask.solvent_radius)
     print >> log, "shrink_truncation_radius: %.2f" %(
       self.mask.shrink_truncation_radius)
+    print >> log, "van der Waals radii:"
+    self.vdw_radii.show(log=log)
+    print >> log
     print >> log, "Total solvent accessible volume / cell = %.1f Ang^3 [%.1f%%]" %(
       self.solvent_accessible_volume,
       100 * self.solvent_accessible_volume /

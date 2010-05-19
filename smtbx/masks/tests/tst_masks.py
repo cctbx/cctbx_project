@@ -43,6 +43,10 @@ def exercise_masks():
   assert not show_diff(s.getvalue(), """\
 solvent_radius: 1.20
 shrink_truncation_radius: 1.20
+van der Waals radii:
+    H     C     B     O     N
+ 1.20  1.70  1.63  1.52  1.55
+
 Total solvent accessible volume / cell = 0.0 Ang^3 [0.0%]
 
 gridding: (30,45,54)
@@ -53,7 +57,7 @@ gridding: (30,45,54)
     mask.compute(solvent_radius=1.2,
                  shrink_truncation_radius=1.2,
                  resolution_factor=1/3,
-                 atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52},
+                 #atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52},
                  use_space_group_symmetry=use_space_group_symmetry)
     n_voids = flex.max(mask.mask.data) - 1
     f_mask = mask.structure_factors()
@@ -78,6 +82,10 @@ gridding: (30,45,54)
   assert not show_diff(s.getvalue(), """\
 solvent_radius: 1.20
 shrink_truncation_radius: 1.20
+van der Waals radii:
+    H     C     O     N
+ 1.20  1.77  1.45  1.50
+
 Total solvent accessible volume / cell = 146.5 Ang^3 [16.3%]
 Total electron count / cell = 43.0
 
