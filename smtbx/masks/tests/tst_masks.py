@@ -33,7 +33,7 @@ def exercise_masks():
                atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52})
   assert mask.structure_factors() is None
   assert mask.n_voids() == 0
-  assert mask.n_solvent_grid_points == 0
+  assert mask.n_solvent_grid_points() == 0
   assert mask.f_mask() is None
   assert mask.f_model() is None
   assert mask.modified_intensities() is None
@@ -65,7 +65,7 @@ gridding: (30,45,54)
     stats = diff_map.statistics()
     assert n_voids == 2
     assert approx_equal(n_voids, mask.n_voids())
-    assert mask.n_solvent_grid_points == 42148
+    assert mask.n_solvent_grid_points() == 42148
     # check the difference map has no large peaks/holes
     assert max(stats.max(), abs(stats.min())) < 0.11
     # expected electron count: 44
