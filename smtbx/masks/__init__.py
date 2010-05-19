@@ -66,8 +66,8 @@ class mask(object):
       tags.tags().apply_symmetry_to_mask(self.mask.data)
     self.flood_fill = cctbx.masks.flood_fill(
       self.mask.data, self.xray_structure.unit_cell())
-    self.n_solvent_grid_points = self.crystal_gridding.n_grid_points() - self.mask.data.count(0)
-    self.solvent_accessible_volume = self.n_solvent_grid_points \
+    self.exclude_void_flags = [False] * self.flood_fill.n_voids()
+    self.solvent_accessible_volume = self.n_solvent_grid_points() \
         / self.mask.data.size() * self.xray_structure.unit_cell().volume()
 
   def structure_factors(self, max_cycles=10, scale_factor=None):
@@ -90,10 +90,26 @@ class mask(object):
       stats = diff_map.statistics()
       masked_diff_map = diff_map.real_map_unpadded().set_selected(
         self.mask.data.as_double() == 0, 0)
-      self.f_000_cell = flex.sum(diff_map.real_map_unpadded()) * self.fft_scale
+      n_solvent_grid_points = self.n_solvent_grid_points()
+      for i in range(self.n_voids()):
+        # exclude voids with negative electron counts from the masked map
+        # set the electron density in those areas to be zero
+        selection = self.mask.data == i+2
+        if self.exclude_void_flags[i]:
+          masked_diff_map.set_selected(selection, 0)
+          continue
+        diff_map_ = masked_diff_map.deep_copy().set_selected(~selection, 0)
+        f_000 = flex.sum(diff_map_) * self.fft_scale
+        f_000_s = f_000 * (
+          self.crystal_gridding.n_grid_points() /
+          (self.crystal_gridding.n_grid_points() - n_solvent_grid_points))
+        if f_000_s < 0:
+          masked_diff_map.set_selected(selection, 0)
+          f_000_s = 0
+          self.exclude_void_flags[i] = True
       self.f_000 = flex.sum(masked_diff_map) * self.fft_scale
       f_000_s = self.f_000 * (masked_diff_map.size() /
-        (masked_diff_map.size() - self.n_solvent_grid_points))
+        (masked_diff_map.size() - self.n_solvent_grid_points()))
       #print "F000 void: %.1f" %f_000_s
       if (self.f_000_s is not None and
           approx_equal_relatively(self.f_000_s, f_000_s, 0.0001)):
@@ -158,6 +174,10 @@ class mask(object):
   def n_voids(self):
     return self.flood_fill.n_voids()
 
+  def n_solvent_grid_points(self):
+    return sum([self.mask.data.count(i+2) for i in range(self.n_voids())
+                if not self.exclude_void_flags[i]])
+
   def show_summary(self, log=None):
     if log is None: log = sys.stdout
     print >> log, "solvent_radius: %.2f" %(self.mask.solvent_radius)
@@ -171,27 +191,52 @@ class mask(object):
     if n_voids > 0:
       print >> log, "Total electron count / cell = %.1f" %(self.f_000_s)
     print >> log
-
     self.flood_fill.show_summary(log=log)
     if n_voids == 0: return
     print >> log
-    grid_points_per_void = self.flood_fill.grid_points_per_void()
-    centres_of_mass = self.flood_fill.centres_of_mass_frac()
     print >> log, "Void  Vol/Ang^3  #Electrons"
-    for i in range(n_voids):
-      diff_map = self.masked_diff_map.deep_copy().set_selected(
-        self.mask.data != i+2, 0)
-      f_000 = flex.sum(diff_map) * self.fft_scale
-      f_000_s = f_000 * (
-        self.crystal_gridding.n_grid_points() /
-        (self.crystal_gridding.n_grid_points() - self.n_solvent_grid_points))
+    cif_block = self.as_cif_block()
+    loop = cif_block.loops['_smtbx_masks_void_']
+    for row in loop.iterrows():
+      formatted_site = ["%6.3f" % float(x) for x in row[1:4]]
+      print >> log, "%4i" %(int(row[0])),
+      print >> log, "%10.1f     " %(float(row[4])),
+      print >> log, "%7.1f" %(float(row[5]))
+
+  def as_cif_block(self):
+    from iotbx import cif
+    cif_block = cif.model.block()
+    mask_loop = cif.model.loop(header=(
+      "_smtbx_masks_void_nr",
+      "_smtbx_masks_void_average_x",
+      "_smtbx_masks_void_average_y",
+      "_smtbx_masks_void_average_z",
+      "_smtbx_masks_void_volume",
+      "_smtbx_masks_void_count_electrons",
+      "_smtbx_masks_void_content",
+    ))
+    n_voids = self.n_voids()
+    if n_voids == 0: return cif_block
+    grid_points_per_void = self.flood_fill.grid_points_per_void()
+    com = self.flood_fill.centres_of_mass_frac()
+    for i in range(self.n_voids()):
+      if self.exclude_void_flags[i]:
+        f_000_s = 0
+      else:
+        diff_map = self.masked_diff_map.deep_copy().set_selected(
+          self.mask.data != i+2, 0)
+        f_000 = flex.sum(diff_map) * self.fft_scale
+        f_000_s = f_000 * (
+          self.crystal_gridding.n_grid_points() /
+          (self.crystal_gridding.n_grid_points() - self.n_solvent_grid_points()))
       void_vol = (
         self.xray_structure.unit_cell().volume() * grid_points_per_void[i]) \
                / self.crystal_gridding.n_grid_points()
-      formatted_site = ["%6.3f" % x for x in centres_of_mass[i]]
-      print >> log, "%4i" %(i+1),
-      print >> log, "%10.1f     " %(void_vol),
-      print >> log, "%7.1f" %f_000_s
+      mask_loop.add_row(
+        [i+1, com[i][0], com[i][1], com[i][2], void_vol, f_000_s, '?'])
+    cif_block.add_loop(mask_loop)
+    cif_block['_smtbx_masks_special_details'] = '?'
+    return cif_block
 
 
 def modified_intensities(observations, f_model, f_mask):
