@@ -1,13 +1,13 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.cif_as_mtz
 
-import sys, os, time
+import sys, os, time, re
 from cctbx.array_family import flex
 from cctbx import miller
-from libtbx import easy_run
+from libtbx import easy_run, runtime_utils
 from cctbx import crystal
 from iotbx.option_parser import iotbx_option_parser
 from libtbx.utils import Sorry
-from iotbx import reflection_file_utils
+from iotbx import reflection_file_utils, crystal_symmetry_from_any
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
@@ -771,34 +771,41 @@ input
     program to generate an MTZ file for a specific PDB ID, you may specify \
     that instead of input files, and the CIF and PDB will be fetched from \
     www.rcsb.org.
-  .style = caption_img:images/icons/phenix/phenix.reflection_file_editor.png
+  .style = caption_img:icons/phenix/phenix.reflection_file_editor.png
 {
+  pdb_id = None
+    .type = str
+    .short_caption = PDB ID to retrieve
+    .input_size = 80
+    .style = bold noauto
   cif_file = None
     .type = path
     .short_caption = CIF data file
+    .style = bold noauto OnUpdate:extract_symm_for_cif
+  pdb_file = None
+    .type = path
+    .short_caption = PDB file
+    .style = bold noauto file_type:pdb OnUpdate:extract_symm_for_cif
   wavelength_id = None
     .type = str
     .short_caption = Wavelength ID
     .help = Not required when only one wavelength is present
-    .style = bold
+    .input_size = 120
+    .style = noauto
   crystal_id = None
     .type = str
     .short_caption = Crystal ID
     .help = Not required when only one crystal is present
-    .style = bold
-  pdb_file = None
-    .type = path
-    .short_caption = PDB file
-    .style = bold
-  pdb_id = None
-    .type = str
-    .short_caption = PDB ID to retrieve
+    .input_size = 120
+    .style = noauto
 }
 crystal_symmetry {
   space_group = None
     .type = space_group
+    .style = bold
   unit_cell = None
     .type = unit_cell
+    .style = bold
 }
 output_file_name = None
   .type = path
@@ -850,7 +857,7 @@ def run2 (args, log=sys.stdout, check_params=True) :
       except RuntimeError :
         print "Unrecognizable parameter %s" % arg
   params = master_phil.fetch(sources=sources).extract()
-  crystal_symmetry = None
+  symm = None
   if params.input.pdb_id is not None :
     params.input.pdb_file = iotbx.pdb.fetch.run(args=[params.input.pdb_id],
       log=log)
@@ -860,6 +867,7 @@ def run2 (args, log=sys.stdout, check_params=True) :
     symm = crystal_symmetry_from_any.extract_from(params.input.pdb_file)
     params.crystal_symmetry.space_group = symm.space_group()
     params.crystal_symmetry.unit_cell = symm.unit_cell()
+    params.input.pdb_id = None
   if check_params :
     validate_params(params)
   if params.output_file_name is None :
@@ -879,11 +887,9 @@ def run2 (args, log=sys.stdout, check_params=True) :
     wavelength_id=params.input.wavelength_id,
     crystal_id=params.input.crystal_id,
     show_details_if_error=params.options.show_details_if_error)
+  return params.output_file_name
 
 def validate_params (params) :
-  if ((params.crystal_symmetry.space_group is None) or
-      (params.crystal_symmetry.unit_cell is None)) :
-    raise Sorry("Crystal symmetry missing or incomplete.")
   if (params.input.cif_file is None) and (params.input.pdb_id is None) :
     raise Sorry("No CIF file provided!")
   if (params.input.pdb_id is not None) :
@@ -894,7 +900,16 @@ def validate_params (params) :
       raise RuntimeError(("Invalid PDB ID '%s'.  IDs must be exactly four "+
         "alphanumeric characters, starting with a number from 1-9.") %
         params.input.pdb_id)
+  else :
+    if ((params.crystal_symmetry.space_group is None) or
+        (params.crystal_symmetry.unit_cell is None)) :
+      raise Sorry("Crystal symmetry missing or incomplete.")
   return True
+
+class launcher (runtime_utils.simple_target) :
+  def __call__ (self) :
+    os.chdir(self.output_dir)
+    return run2(args=list(self.args), log=sys.stdout)
 
 if(__name__ == "__main__"):
    run(sys.argv[1:])
