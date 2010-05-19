@@ -120,8 +120,15 @@ def exercise_matrix():
   a = sparse.matrix(m, 2)
   columns = ( sparse.vector(m, {1:0.1, 2:0.2}),
               sparse.vector(m, {4:0.4, 8:0.8}) )
-  a[:,0], a[:, 1] = columns
+  a[:,0] = columns[0]
+  a[:,1] = columns[1]
   assert a[:,0], a[:,1] == columns
+
+  try:
+    a[1,:] = sparse.vector(2, {1:1})
+    raise Exception_expected
+  except RuntimeError, e:
+    assert str(e)
 
   a = sparse.matrix(10, 3,
                     elements_by_columns=[ { 1: 1, 4: 4, },

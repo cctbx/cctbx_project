@@ -59,9 +59,10 @@ struct matrix_wrapper
         }
       }
     }
-                PyErr_SetString(PyExc_RuntimeError,
-                    "Only self[i,j] = float() and self[:,j] = sparse.vector()"
-                    " are supported.");
+    else {
+      throw scitbx::error("Only self[i,j] = float() "
+                          "and self[:,j] = sparse.vector() are supported.");
+    }
   }
 
   static boost::python::object getitem(wt& self, boost::python::tuple ij) {
@@ -84,8 +85,9 @@ struct matrix_wrapper
         }
       }
     }
-                PyErr_SetString(PyExc_RuntimeError,
-                    "Only self[i,j] and self[:,j] are supported.");
+    else {
+      throw scitbx::error("Only self[i,j] and self[:,j] are supported.");
+    }
   }
 
   static boost::python::str str_(wt const &m) {
