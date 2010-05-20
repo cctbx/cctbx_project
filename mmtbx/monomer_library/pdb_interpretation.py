@@ -2891,8 +2891,8 @@ class build_all_chain_proxies(object):
       if (bond.distance_ideal is None):
         print >> log, "    Warning: Ignoring bond with distance_ideal = None:"
         show_atom_selections()
-      elif (bond.distance_ideal <= 0):
-        print >> log, "    Warning: Ignoring bond with distance_ideal <= 0:"
+      elif (bond.distance_ideal < 0):
+        print >> log, "    Warning: Ignoring bond with distance_ideal < 0:"
         show_atom_selections()
         print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
       elif (bond.sigma is None):
