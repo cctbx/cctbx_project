@@ -68,22 +68,21 @@ class block(DictMixin):
   def __getitem__(self, key):
     if self._items.has_key(key):
       return self._items[key]
-    elif self.loops.has_key(key):
-      return self.loops[key]
     else:
+      # give precedence to returning the actual data items in the event of a
+      # single looped item when the loop name and data name coincide
       for loop in self.loops.values():
         if loop.has_key(key):
           return loop[key]
-      raise KeyError
+      if self.loops.has_key(key):
+        return self.loops[key]
+    raise KeyError
 
   def __delitem__(self, key):
     if self._items.has_key(key):
       del self._items[key]
       self._set.discard(key)
-    elif self.loops.has_key(key):
-      del self.loops[key]
-      self._set.discard(key)
-    elif key in self:
+    elif key in self.keys():
       # must be a looped item
       for k, loop in self.loops.iteritems():
         if loop.has_key(key):
@@ -94,6 +93,9 @@ class block(DictMixin):
             del loop[key]
           return
       raise KeyError
+    elif self.loops.has_key(key):
+      del self.loops[key]
+      self._set.discard(key)
     else:
       raise KeyError
 
@@ -202,7 +204,7 @@ class loop(DictMixin):
     return repr(OrderedDict(self.iteritems()))
 
   def name(self):
-    return common_prefix(self.keys())
+    return common_prefix(self.keys()).rstrip('_').rstrip('.')
 
   def size(self):
     size = 0
