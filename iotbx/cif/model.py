@@ -1,4 +1,4 @@
-from libtbx.containers import OrderedDict
+from libtbx.containers import OrderedDict, OrderedSet
 import sys
 if 0 and sys.version_info[0] >= 2 and sys.version_info[1] >= 6:
   from collections import MutableMapping as DictMixin
@@ -54,18 +54,22 @@ class cif(DictMixin):
 
 class block(DictMixin):
   def __init__(self):
-    self._items = OrderedDict()
-    self.loops = OrderedDict()
+    self._items = {}
+    self.loops = {}
+    self._set = OrderedSet()
 
   def __setitem__(self, key, value):
     if isinstance(value, loop):
       self.loops[key] = value
     else:
       self._items[key] = str(value)
+    self._set.add(key)
 
   def __getitem__(self, key):
     if self._items.has_key(key):
       return self._items[key]
+    elif self.loops.has_key(key):
+      return self.loops[key]
     else:
       for loop in self.loops.values():
         if loop.has_key(key):
@@ -75,15 +79,31 @@ class block(DictMixin):
   def __delitem__(self, key):
     if self._items.has_key(key):
       del self._items[key]
+      self._set.discard(key)
     elif self.loops.has_key(key):
       del self.loops[key]
+      self._set.discard(key)
+    elif key in self:
+      # must be a looped item
+      for k, loop in self.loops.iteritems():
+        if loop.has_key(key):
+          if len(loop) == 1:
+            # remove the now empty loop
+            del self[k]
+          else:
+            del loop[key]
+          return
+      raise KeyError
     else:
       raise KeyError
 
   def keys(self):
-    keys = self._items.keys()
-    for loop in self.loops.values():
-      keys.extend(loop.keys())
+    keys = []
+    for key in self._set:
+      if key in self._items:
+        keys.append(key)
+      else:
+        keys.extend(self.loops[key].keys())
     return keys
 
   def __repr__(self):
@@ -94,34 +114,39 @@ class block(DictMixin):
       pass
     self._items.update(other._items)
     self.loops.update(other.loops)
+    self._set |= other._set
 
   def add_data_item(self, tag, value):
     self[tag] = value
 
   def add_loop(self, loop):
-    self.loops.setdefault(loop.name(), loop)
+    self.setdefault(loop.name(), loop)
 
   def copy(self):
     new = block()
     new._items = self._items.copy()
     new.loops = self.loops.copy()
+    new._set = copy.deepcopy(self._set)
     return new
 
   def deepcopy(self):
     new = block()
     new._items = copy.deepcopy(self._items)
     new.loops = copy.deepcopy(self.loops)
+    new._set = copy.deepcopy(self._set)
     return new
 
   def show(self, out=None, indent="  ", data_name_field_width=34):
     if out is None:
       out = sys.stdout
     format_str = "%%-%is" %(data_name_field_width-1)
-    for k, v in self._items.items():
-      print >> out, format_str %k, format_value(v)
-    for loop in self.loops.values():
-      print >> out
-      loop.show(out=out, indent=indent)
+    for k in self._set:
+      v = self._items.get(k)
+      if v is not None:
+        print >> out, format_str %k, format_value(v)
+      else:
+        self.loops[k].show(out=out, indent=indent)
+        print >> out
 
   def __str__(self):
     s = StringIO()

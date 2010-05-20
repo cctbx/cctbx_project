@@ -51,9 +51,11 @@ def exercise_cif_model():
   block1.add_loop(loop2)
   block1.add_loop(loop3)
   block.update(block1)
-  assert block._items.keys() == ['_tag', '_tag1', '_another_tag', '_tag2']
-  assert block._items.values() == ['2', 'a string', '3.142', '1.2']
+  assert block._items.keys() == ['_another_tag', '_tag2', '_tag', '_tag1']
+  assert block._items.values() == ['3.142', '1.2', '2', 'a string']
   assert block.loops.keys() == ['_loop_', '_loop2_']
+  assert block.keys() == ['_tag', '_tag1', '_another_tag', '_loop_a',
+                          '_loop_b','_tag2', '_loop2_a', '_loop2_b']
   assert list(block['_loop_a']) == ['6', '4', '2']
   assert list(block['_loop_b']) == ['5', '3', '1']
   assert list(block['_loop2_a']) == ['1', '3', '5']
@@ -72,6 +74,27 @@ def exercise_cif_model():
   try: cif_model["fred"]["_tag"]
   except KeyError: pass
   else: raise Exception_expected
+  cm = cif_model.deepcopy()
+  l = cm["fred"]["_loop_"]
+  del cm["fred"]["_loop_b"]
+  assert not cm["fred"].has_key("_loop_b")
+  assert not l.has_key("_loop_b")
+  assert cm["fred"].loops.has_key("_loop_")
+  del cm["fred"]["_loop_a"]
+  assert not cm["fred"].loops.has_key("_loop_")
+  print cm
+  del cm["fred"]["_loop2_"]
+  assert not cm["fred"].loops.has_key("_loop2_")
+  s = StringIO()
+  print >> s, cm
+  assert not show_diff(s.getvalue(),
+"""\
+data_fred
+_tag1                             'a string'
+_another_tag                      3.142
+_tag2                             1.2
+
+""")
   #
   cm2 = cif_model.copy()
   cm3 = cif_model.deepcopy()
@@ -93,8 +116,6 @@ def exercise_cif_model():
 data_fred
 _tag1                             'a string'
 _another_tag                      3.142
-_tag2                             1.2
-
 loop_
   _loop_a
   _loop_b
@@ -102,12 +123,14 @@ loop_
    4 3
    2 1
 
+_tag2                             1.2
 loop_
   _loop2_a
   _loop2_b
    1 2
    3 4
    5 6
+
 """)
   s = StringIO()
   cif_model.show(out=s, indent="    ", data_name_field_width=0)
@@ -116,8 +139,6 @@ loop_
 data_fred
 _tag1 'a string'
 _another_tag 3.142
-_tag2 1.2
-
 loop_
     _loop_a
     _loop_b
@@ -125,12 +146,14 @@ loop_
      4 3
      2 1
 
+_tag2 1.2
 loop_
     _loop2_a
     _loop2_b
      1 2
      3 4
      5 6
+
 """)
 
 if __name__ == '__main__':
