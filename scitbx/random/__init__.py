@@ -57,7 +57,7 @@ class variate_factory(object):
       try:
         return variate(engine, distribution)
       except Exception, e:
-        if str(e.__class__) == "<class 'Boost.Python.ArgumentError'>":
+        if str(e.__class__).find('Boost.Python.ArgumentError') >= 0:
           exceptions.append(e)
           continue
         else:
