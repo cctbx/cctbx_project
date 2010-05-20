@@ -53,7 +53,7 @@ def exercise_cif_model():
   block.update(block1)
   assert block._items.keys() == ['_another_tag', '_tag2', '_tag', '_tag1']
   assert block._items.values() == ['3.142', '1.2', '2', 'a string']
-  assert block.loops.keys() == ['_loop_', '_loop2_']
+  assert block.loops.keys() == ['_loop', '_loop2']
   assert block.keys() == ['_tag', '_tag1', '_another_tag', '_loop_a',
                           '_loop_b','_tag2', '_loop2_a', '_loop2_b']
   assert list(block['_loop_a']) == ['6', '4', '2']
@@ -75,16 +75,15 @@ def exercise_cif_model():
   except KeyError: pass
   else: raise Exception_expected
   cm = cif_model.deepcopy()
-  l = cm["fred"]["_loop_"]
+  l = cm["fred"]["_loop"]
   del cm["fred"]["_loop_b"]
   assert not cm["fred"].has_key("_loop_b")
   assert not l.has_key("_loop_b")
-  assert cm["fred"].loops.has_key("_loop_")
+  assert cm["fred"].loops.has_key("_loop")
   del cm["fred"]["_loop_a"]
-  assert not cm["fred"].loops.has_key("_loop_")
-  print cm
-  del cm["fred"]["_loop2_"]
-  assert not cm["fred"].loops.has_key("_loop2_")
+  assert not cm["fred"].loops.has_key("_loop")
+  del cm["fred"]["_loop2"]
+  assert not cm["fred"].loops.has_key("_loop2")
   s = StringIO()
   print >> s, cm
   assert not show_diff(s.getvalue(),
