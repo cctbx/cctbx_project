@@ -200,7 +200,7 @@ class mask(object):
     print >> log
     print >> log, "Void  Vol/Ang^3  #Electrons"
     cif_block = self.as_cif_block()
-    loop = cif_block.loops['_smtbx_masks_void_']
+    loop = cif_block.loops['_smtbx_masks_void']
     for row in loop.iterrows():
       formatted_site = ["%6.3f" % float(x) for x in row[1:4]]
       print >> log, "%4i" %(int(row[0])),
