@@ -263,7 +263,7 @@ namespace scitbx { namespace math
 
 
     scitbx::math::zernike::nlm_array<FloatType>
-    rotate_moving_obj( FloatType alpha, FloatType beta, FloatType gama) {
+    rotate_moving_obj( FloatType alpha, FloatType beta, FloatType gama, bool inv=false) {
       scitbx::math::zernike::nlm_array<FloatType> result( nmax_ );
       dmatrix<FloatType> small_d( nmax_, beta );
       std::complex<FloatType>  dlmn, exp_alpha, exp_gama, tmp_coef;
@@ -275,8 +275,10 @@ namespace scitbx { namespace math
         g_array.push_back( std::exp(complexI_ * (FloatType)m * gama) );
       }
 
+      FloatType coef;
       for(int n=0; n<=nmax_; n++) {
         for(int l=(n-n/2*2); l<=n; l+=2 ) {
+          coef = pow_1(l);
           for(int m1=-l;m1<=l;m1++) {
             tmp_coef = 0.0;
             exp_alpha = a_array[m1+nmax_];
@@ -285,7 +287,10 @@ namespace scitbx { namespace math
               dlmn = exp_alpha * small_d.djmn(l,m1,m2) * exp_gama;
               tmp_coef += m_nlm_.get_coef(n,l,m2) * dlmn;
             }
-            result.set_coef(n,l,m1, tmp_coef);
+            if(inv)
+              result.set_coef(n,l,m1, tmp_coef*coef);
+	    else
+              result.set_coef(n,l,m1, tmp_coef);
           }
         }
       }
