@@ -242,6 +242,24 @@ def exercise_a_tr_b_a():
         cc,
         aa.matrix_transpose().matrix_multiply(bb.matrix_multiply(aa)))
 
+def exercise_a_b_a_tr():
+  from scitbx.random import variate, uniform_distribution
+  for m,n in [(5,5), (3,5), (5,3)]:
+    random_matrices = variate(
+      sparse.matrix_distribution(
+        m, n, density=0.6,
+        elements=uniform_distribution(min=-3, max=10)))
+    for n_test in xrange(50):
+      b = flex.random_double(n*(n+1)/2)
+      a = random_matrices.next()
+      c = a.self_times_symmetric_times_self_transpose(b)
+      aa = a.as_dense_matrix()
+      bb = b.matrix_packed_u_as_symmetric()
+      cc = c.matrix_packed_u_as_symmetric()
+      assert approx_equal(
+        cc,
+        aa.matrix_multiply(bb.matrix_multiply(aa.matrix_transpose())))
+
 def exercise_row_vector_x_matrix():
   u = flex.double((1,2,3))
   a = sparse.matrix(3,5)
@@ -261,6 +279,7 @@ def run():
   exercise_matrix_x_vector()
   exercise_matrix_x_matrix()
   exercise_a_tr_b_a()
+  exercise_a_b_a_tr()
 
 if __name__ == '__main__':
   run()
