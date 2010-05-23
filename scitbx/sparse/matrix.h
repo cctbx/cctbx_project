@@ -229,7 +229,7 @@ public:
           symmetric_matrix_ref_t;
 
   /// B^T A B where B is this matrix and A is a symmetric dense matrix
-      /** This is useful for the interplay between change of variable and
+  /** This is useful for the interplay between change of variable and
       least-squares covariance matrix. If x and y are parameter vectors
       related by of respective size p < n:
       \f[
@@ -244,41 +244,38 @@ public:
       \f[
           V_y = B^T V_x B. (1)
       \f]
-      In practice,
+      This member function is well-adpated to the case where
       \f[
           B = \left[ \frac{\partial y_j}{\partial x_i} \right]_{ij}
       \f]
-      has sparse columns because \f$y_j\f$ depends only on a few \f$x_i\f$,
-      which makes the storage scheme adopted here a perfect match memory-wise.
-      Furthermore, the computation of (1) turns out to be well adapted
-      to that storage scheme too.
+      has sparse columns, i.e. when each \f$y_j\f$ depends only
+      on a few \f$x_i\f$.
    */
   symmetric_matrix_t
   this_transpose_times_symmetric_times_this(
     symmetric_matrix_const_ref_t const &a) const
   {
+    SCITBX_ASSERT(a.accessor().n == n_rows());
+
     compact();
 
-    // This verbosity seems necessary to please gcc 3.2
     af::packed_u_accessor sym_n_x_n(n_cols());
-    af::init_functor_null<value_type> dont_init;
-    symmetric_matrix_t result(sym_n_x_n, dont_init);
-    symmetric_matrix_ref_t c = result.ref();
-
-    int n = c.accessor().n;
+    symmetric_matrix_t result(sym_n_x_n);
+    value_type *c = result.begin();
+    int n = result.accessor().n;
     for (int i=0; i<n; ++i) for (int j=i; j<n; ++j) {
-      c(i,j) = 0;
+      value_type &c_ij = *c++;
       for (const_row_iterator p = col(i).begin(); p != col(i).end(); ++p) {
         index_type k = p.index();
         value_type b_ki = *p;
         value_type s = 0;
         for (const_row_iterator q = col(j).begin(); q != col(j).end(); ++q) {
           index_type l = q.index();
-          value_type b_lj = *q;
-          if (k <= l) s += a(k,l)*b_lj;
-          else        s += a(l,k)*b_lj;
+          value_type b_lj = *q,
+                     a_kl = k <= l ? a(k,l) : a(l,k);
+          s += a_kl*b_lj;
         }
-        c(i,j) += b_ki*s;
+        c_ij += b_ki*s;
       }
     }
     return result;
