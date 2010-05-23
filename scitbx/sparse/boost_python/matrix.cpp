@@ -148,6 +148,8 @@ struct matrix_wrapper
       .def(self*self)
       .def("self_transpose_times_symmetric_times_self",
            &wt::this_transpose_times_symmetric_times_this)
+      .def("self_times_symmetric_times_self_transpose",
+           &wt::this_times_symmetric_times_this_transpose)
       .def("__str__", str_)
       .def("__repr__", repr)
     ;

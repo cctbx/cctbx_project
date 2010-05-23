@@ -281,6 +281,59 @@ public:
     return result;
   }
 
+  /// B A B^T where B is this matrix and A is a dense symmetric matrix
+  /** This has the same use as this_transpose_times_symmetric_times_this()
+   except that this time
+   \f[
+      B = \left[ \frac{\partial y_i}{\partial x_j} \right]_{ij}
+   \f]
+   and therefore that this scheme is adpated to the case where for each
+   variable \f$x_j\f$, there are only a few variable \f$y_i\f$ depending on it.
+   */
+  symmetric_matrix_t
+  this_times_symmetric_times_this_transpose(
+    symmetric_matrix_const_ref_t const &a) const
+  {
+    SCITBX_ASSERT(a.accessor().n == n_cols());
+
+    compact();
+
+    af::packed_u_accessor sym_m_x_m(n_rows());
+    symmetric_matrix_t result(sym_m_x_m);
+    symmetric_matrix_ref_t c = result.ref();
+    int n = a.accessor().n;
+    value_type const *a_ = a.begin();
+    for (int k=0; k<n; ++k) {
+      value_type a_kk = *a_++;
+      for (const_row_iterator p = col(k).begin(); p != col(k).end(); ++p) {
+        index_type i = p.index();
+        value_type b_ik = *p;
+        for (const_row_iterator q = p; q != col(k).end(); ++q) {
+          index_type j = q.index(); // j >= i thanks to compact()
+          value_type b_jk = *q;
+          c(i,j) += b_ik*a_kk*b_jk;
+        }
+      }
+
+      for (int l=k+1; l<n; ++l) {
+        value_type a_kl = *a_++;
+        for (const_row_iterator p = col(k).begin(); p != col(k).end(); ++p) {
+          index_type i = p.index();
+          value_type b_ik = *p;
+          for (const_row_iterator q = col(l).begin(); q != col(l).end(); ++q) {
+            index_type j = q.index();
+            value_type b_jl = *q;
+            value_type s = b_ik*a_kl*b_jl;
+            if      (i < j) c(i,j) += s;
+            else if (i > j) c(j,i) += s;
+            else            c(i,j) += 2*s;
+          }
+        }
+      }
+    }
+    return result;
+  }
+
 private:
   typedef typename std::vector<index_type>::const_iterator const_row_idx_iter;
   container_type columns;
