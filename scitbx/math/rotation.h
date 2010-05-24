@@ -289,7 +289,7 @@ namespace scitbx { namespace math
             }
             if(inv)
               result.set_coef(n,l,m1, tmp_coef*coef);
-	    else
+            else
               result.set_coef(n,l,m1, tmp_coef);
           }
         }
