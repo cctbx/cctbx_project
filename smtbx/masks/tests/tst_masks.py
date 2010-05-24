@@ -44,8 +44,8 @@ def exercise_masks():
 solvent_radius: 1.20
 shrink_truncation_radius: 1.20
 van der Waals radii:
-    H     C     B     O     N
- 1.20  1.70  1.63  1.52  1.55
+    B     C     H     N     O
+ 1.63  1.70  1.20  1.55  1.52
 
 Total solvent accessible volume / cell = 0.0 Ang^3 [0.0%]
 
@@ -83,8 +83,8 @@ gridding: (30,45,54)
 solvent_radius: 1.20
 shrink_truncation_radius: 1.20
 van der Waals radii:
-    H     C     O     N
- 1.20  1.77  1.45  1.50
+    C     H     N     O
+ 1.77  1.20  1.50  1.45
 
 Total solvent accessible volume / cell = 146.5 Ang^3 [16.3%]
 Total electron count / cell = 43.0
