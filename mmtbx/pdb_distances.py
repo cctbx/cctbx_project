@@ -179,7 +179,8 @@ V_AA = [] #V Base-pairing pattern AA: AA_4
 #Bond   A       A       Length Ave      Length Std      Attribute
 #1      N1      N6      2.93    0.18    T
 #2      N6      N7      3.07    0.17    T
-bonds = [2, "A", "A", "N1", "N6", "N6", "N7", "NA", "NA", "NA", "NA", "NA", "NA"]
+#STATISTICAL DATA obtained from 2J02.pdb, 5 basepairs
+bonds = [2, "A", "A", "N1", "N6", "N6", "N7", "NA", "NA", 12.63, 0.964, 12.20, 0.220]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 5 in MASTER_Basepairs (VI_GG)
 VI_GG = [] #VI Base-pairing pattern GG: GG_16
@@ -201,15 +202,17 @@ MASTER_Basepairs_bonds.append(bonds)
 VIII_AG = [] #VIII (AG Imino). Base-pairing pattern AG: AG_3
 #Bond   A       G       Length Ave      Length Std      Attribute
 #1      N1      N1      2.88    0.15    T
-#2      N6      O6      2.95    0.21    T
-bonds = [2, "A", "G", "N1", "N1", "N6", "O6", "NA", "NA", "NA", "NA", "NA", "NA"]
+#2      N6      O6      2.95    0.21    TI
+#STATISTICAL DATA obtained from 2J02.pdb, 11 basepairs. Combined VIII_AG and VIII_GA. Needs to be revised
+bonds = [2, "A", "G", "N1", "N1", "N6", "O6", "NA", "NA", 19.598, 1.085, 12.795, 0.222]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 8 in MASTER_Basepairs (VIII_GA)
 VIII_GA = [] #VIII (GA Imino). Base-pairing pattern GA: GA_3
 #Bond   G       A       Length Ave      Length Std      Attribute
 #1      N1      N1      2.88    0.15    T
 #2      O6      N6      2.95    0.21    T
-bonds = [2, "G", "A", "N1", "N1", "O6", "N6", "NA", "NA", "NA", "NA", "NA", "NA"]
+#STATISTICAL DATA obtained from 2J02.pdb, 11 basepairs. Combined VIII_AG and VIII_GA. Needs to be revised
+bonds = [2, "A", "G", "N1", "N1", "N6", "O6", "NA", "NA", 19.598, 1.085, 12.795, 0.222]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 9 in MASTER_Basepairs (IX_AG)
 IX_AG = [] #IX Base-pairing pattern AG: AG_81
@@ -242,16 +245,18 @@ MASTER_Basepairs_bonds.append(bonds)
 ###i = 13 in MASTER_Basepairs (XI_AG)
 XI_AG = [] #XI (AG Sheared). Base-pairing pattern AG: AG_24
 #Bond   A       G       Length Ave      Length Std      Attribute
-#1      N7      N2      3.00    0.16    T
-#2      N6      N3      3.23    0.15    T
-bonds = [2, "A", "G", "N7", "N2", "N6", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
+#1      N7      N2      3.075           0.236           T
+#2      N6      N3      3.132           0.227           T
+#STATISTICAL DATA obtained from 2J02.pdb, 10 basepairs
+bonds = [2, "A", "G", "N7", "N2", "N6", "N3", "NA", "NA", 16.04, 1.262, 9.512, 0.399]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 14 in MASTER_Basepairs (XI_GA)
 XI_GA = [] #XI (GA Sheared). Base-pairing pattern GA: GA_24
 #Bond   G       A       Length Ave      Length Std      Attribute
-#1      N2      N7      3.00    0.16    T
-#2      N3      N6      3.23    0.15    T
-bonds = [2, "G", "A", "N2", "N7", "N3", "N6", "NA", "NA", "NA", "NA", "NA", "NA"]
+#1      N2      N7      2.966           0.248           T
+#2      N3      N6      3.201           0.225           T
+#STATISTICAL DATA obtained from 2J02.pdb, 9 basepairs
+bonds = [2, "G", "A", "N2", "N7", "N3", "N6", "NA", "NA", 15.45, 1.321, 9.523, 0.367]
 MASTER_Basepairs_bonds.append(bonds)
 
 #####Homo pyrimidine
@@ -321,50 +326,52 @@ MASTER_Basepairs_bonds.append(bonds)
 ###i = 23 in MASTER_Basepairs (XIX_CG_WC)
 XIX_CG_WC = [] #XIX (Watson-Crick CG)
 #Bond    C       G       Length Ave      Length Std      Attribute
-#1       N3      N1      2.89    0.11    T
-#2       O2      N2      2.77    0.15    T
-#3       N4      O6      2.96    0.17    T
-#Statistical data obtained from 4TNA.pdb.
-bonds = [3, "C", "G", "N3", "N1", "O2", "N2", "N4", "O6", 18.76, 1.092, 10.87, 0.436]
+#1       N3      N1      3.039           0.195           T
+#2       O2      N2      2.931           0.300           T
+#3       N4      O6      3.075           0.310           T
+#STATISTICAL DATA obtained from 2J02.pdb, 143 basepairs
+bonds = [3, "C", "G", "N3", "N1", "O2", "N2", "N4", "O6", 18.58, 0.900, 10.69, 0.241]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 24 in MASTER_Basepairs (XIX_GC_WC)
 XIX_GC_WC = [] #XIX (Watson-Crick GC)
 #Bond    G       C       Length Ave      Length Std      Attribute
-#1       N1      N3      2.89    0.11    T
-#2       N2      O2      2.77    0.15    T
-#3       O6      N4      2.96    0.17    T
-#Statistical data obtained from 4TNA.pdb.
-bonds = [3, "G", "C", "N1", "N3", "N2", "O2", "O6", "N4", 18.20, 1.214, 10.69, 0.390]
+#1       N1      N3      3.005           0.206           T
+#2       N2      O2      2.922           0.267           T
+#3       O6      N4      3.029           0.326           T
+#STATISTICAL DATA obtained from 2J02.pdb, 157 basepairs
+bonds = [3, "G", "C", "N1", "N3", "N2", "O2", "O6", "N4", 18.49, 0.742, 10.64, 0.257]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 25 in MASTER_Basepairs (XX_AU_WC)
 XX_AU_WC = [] #XX (Watson-Crick AU). Base-pairing pattern AU: AU_2
 #Bond   A       U       Length Ave      Length Std      Attribute
-#1      N1      N3      2.84    0.12    T
-#2      N6      O4      3.00    0.17    T
-#Statistical data obtained from 4TNA.pdb. Used XX_UA_WC geometry
-bonds = [2, "A", "U", "N1", "N3", "N6", "O4", "NA", "NA", 18.68, 0.269, 10.67, 0.270]
+#1      N1      N3      2.927           0.216           T
+#2      N6      O4      3.032           0.241           T
+#STATISTICAL DATA obtained from 2J02.pdb, 21 basepairs
+bonds = [2, "A", "U", "N1", "N3", "N6", "O4", "NA", "NA", 18.68, 0.269, 10.67, 0.27]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 26 in MASTER_Basepairs (XX_UA_WC)
 XX_UA_WC = [] #XX (Watson-Crick UA). Base-pairing pattern UA: UA_2
 #Bond   U       A       Length Ave      Length Std      Attribute
-#1      N3      N1      2.84    0.12    T
-#2      O4      N6      3.00    0.17    T
-#Statistical data obtained from 4TNA.pdb.
-bonds = [2, "U", "A", "N3", "N1", "O4", "N6", "NA", "NA", 18.36, 0.152, 10.67, 0.270]
+#1      N3      N1      2.974           0.188           T
+#2      O4      N6      3.140           0.269           T
+#STATISTICAL DATA obtained from 2J02.pdb, 30 basepairs
+bonds = [2, "U", "A", "N3", "N1", "O4", "N6", "NA", "NA", 18.60, 0.816, 10.55, 0.298]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 27 in MASTER_Basepairs (XXI_AU)
 XXI_AU = [] #XXI (AU Reversed Watson-Crick). Base-pairing pattern AU: AU_30
 #Bond   A       U       Length Ave      Length Std      Attribute
 #1      N1      N3      2.84    0.13    T
 #2      N6      O2      2.94    0.17    T
-bonds = [2, "A", "U", "N1", "N3", "N6", "O2", "NA", "NA", "NA", "NA", "NA", "NA"]
+#STATISTICAL DATA obtained from 2J02.pdb, 5 combined basepairs of the types XXI_AU and XXI_UA. Should be rechecked
+bonds = [2, "A", "U", "N1", "N3", "N6", "O2", "NA", "NA", 16.73, 2.117, 10.97, 0.109]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 28 in MASTER_Basepairs (XXI_UA)
 XXI_UA = [] #XXI (UA Reversed Watson-Crick). Base-pairing pattern UA: UA_30
 #Bond   U       A       Length Ave      Length Std      Attribute
 #1      N3      N1      2.84    0.13    T
 #2      O2      N6      2.94    0.17    T
-bonds = [2, "U", "A", "N3", "N1", "O2", "N6", "NA", "NA", "NA", "NA", "NA", "NA"]
+#STATISTICAL DATA obtained from 2J02.pdb, 5 combined basepairs of the types XXI_AU and XXI_UA. Should be rechecked
+bonds = [2, "U", "A", "N3", "N1", "O2", "N6", "NA", "NA", 16.73, 2.117, 10.97, 0.109]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 29 in MASTER_Basepairs (XXII_CG)
 XXII_CG = [] #XXII (CG Reversed Watson-Crick). Base-pairing pattern CG: CG_31
@@ -385,42 +392,48 @@ XXIII_AU = [] #XXIII (AU Hoogsteen). Base-pairing pattern AU: AU_29
 #Bond   A       U       Length Ave      Length Std      Attribute
 #1      N6      O4      3.05    0.15    T
 #2      N7      N3      2.96    0.15    T
-bonds = [2, "A", "U", "N6", "O4", "N7", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
+#STATISTICAL DATA obtained from 2J02.pdb, 4 basepairs of the type XXIII_UA. Should be rechecked
+bonds = [2, "A", "U", "N6", "O4", "N7", "N3", "NA", "NA", 10.89, 0.436, 8.208, 0.260]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 32 in MASTER_Basepairs (XXIII_UA)
 XXIII_UA = [] #XXIII (UA Hoogsteen). Base-pairing pattern UA: UA_29
 #Bond   U       A       Length Ave      Length Std      Attribute
 #1      O4      N6      3.05    0.15    T
 #2      N3      N7      2.96    0.15    T
-bonds = [2, "U", "A", "O4", "N6", "N3", "N7", "NA", "NA", "NA", "NA", "NA", "NA"]
+#STATISTICAL DATA obtained from 2J02.pdb, 4 basepairs.
+bonds = [2, "U", "A", "O4", "N6", "N3", "N7", "NA", "NA", 10.89, 0.436, 8.208, 0.260]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 33 in MASTER_Basepairs (XXIV_AU)
 XXIV_AU = [] #XXIV (AU Reversed Hoogsteen). Base-pairing pattern AU: AU_14
 #Bond   A       U       Length Ave      Length Std      Attribute
-#1      N6      O2      2.91    0.19    T
-#2      N7      N3      2.87    0.13    T
-bonds = [2, "A", "U", "N6", "O2", "N7", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
+#1      N6      O2      2.838           0.191           T
+#2      N7      N3      2.943           0.048           T
+#STATISTICAL DATA obtained from 2J02.pdb,7 basepairs
+bonds = [2, "A", "U", "N6", "O2", "N7", "N3", "NA", "NA", 12.24, 1.077, 9.766, 0.205]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 34 in MASTER_Basepairs (XXIV_UA)
 XXIV_UA = [] #XXIV (UA Reversed Hoogsteen). Base-pairing patterMASTER_Basepairs_bonds.append(bonds)
 #Bond   U       A       Length Ave      Length Std      Attribute
-#1      O2      N6      2.91    0.19    T
-#2      N3      N7      2.87    0.13    T
-bonds = [2, "U", "A", "O2", "N6", "N3", "N7", "NA", "NA", "NA", "NA", "NA", "NA"]
+#1      O2      N6      3.002 SD        0.260           T
+#2      N3      N7      2.935           0.249           T
+#STATISTICAL DATA obtained from 2J02.pdb,11 basepairs
+bonds = [2, "U", "A", "O2", "N6", "N3", "N7", "NA", "NA", 12.20, 1.556, 9.689, 0.334]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 35 in MASTER_Basepairs (XXV_AC)
 XXV_AC = [] #XXV (AC Reversed Hoogsteen). Base-pairing pattern AC: AC_7
 #Bond   A       C       Length Ave      Length Std      Attribute
-#1      N6      N3      3.13    0.15    T
-#2      N7      N4      3.08    0.18    T
-bonds = [2, "A", "C", "N6", "N3", "N7", "N4", "NA", "NA", "NA", "NA", "NA", "NA"]
+#1      N6      N3      3.355           0.198           T
+#2      N7      N4      3.263           0.213           T
+#STATISTICAL DATA obtained from 2J02.pdb, 3 basepairs(but compare to XXV_CA)
+bonds = [2, "A", "C", "N6", "N3", "N7", "N4", "NA", "NA", 13.02, 0.814, 11.26, 0.228]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 36 in MASTER_Basepairs (XXV_CA)
 XXV_CA = [] #XXV (CA Reversed Hoogsteen). Base-pairing pattern CA: CA_7
 #Bond   C       A       Length Ave      Length Std      Attribute
-#1      N3      N6      3.13    0.15    T
-#2      N4      N7      3.08    0.18    T
-bonds = [2, "C", "A", "N3", "N6", "N4", "N7", "NA", "NA", "NA", "NA", "NA", "NA"]
+#1      N3      N6      3.067           0.202           T
+#2      N4      N7      2.980           0.213           T
+#STATISTICAL DATA obtained from 2J02.pdb, 5 basepairs
+bonds = [2, "C", "A", "N3", "N6", "N4", "N7", "NA", "NA", 13.10, 1.713, 11.24, 0.149]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 37 in MASTER_Basepairs (XXVI_AC)
 XXVI_AC = [] #XXVI (AC Reversed Wobble). Base-pairing pattern AC: AC_42
@@ -453,16 +466,18 @@ MASTER_Basepairs_bonds.append(bonds)
 ###i = 41 in MASTER_Basepairs (XXVIII_GU)
 XXVIII_GU = [] #XXVIII (GU Wobble). Base-pairing pattern GU: GU_1
 #Bond   G       U       Length Ave      Length Std      Attribute
-#1      N1      O2      2.79    0.13    T
-#2      O6      N3      2.83    0.13    T
-bonds = [2, "G", "U", "N1", "O2", "O6", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
+#1      N1      O2      2.885           0.238           T
+#2      O6      N3      2.846           0.213           T
+#STATISTICAL DATA obtained from 2J02.pdb, 21 basepairs
+bonds = [2, "G", "U", "N1", "O2", "O6", "N3", "NA", "NA", 18.45, 0.896, 10.44, 0.245]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 42 in MASTER_Basepairs (XXVIII_UG)
 XXVIII_UG = [] #XXVIII (UG Wobble). Base-pairing pattern UG: UG_1
 #Bond   U       G       Length Ave      Length Std      Attribute
-#1      O2      N1      2.79    0.13    T
-#2      N3      O6      2.83    0.13    T
-bonds = [2, "U", "G", "O2", "N1", "N3", "O6", "NA", "NA", "NA", "NA", "NA", "NA"]
+#1      O2      N1      2.932           0.214           T
+#2      N3      O6      2.846           0.201           T
+#STATISTICAL DATA obtained from 2J02.pdb, 22 basepairs
+bonds = [2, "U", "G", "O2", "N1", "N3", "O6", "NA", "NA", 18.38, 0.807, 10.49, 0.213]
 MASTER_Basepairs_bonds.append(bonds)
 
 ####ADDITIONAL BASEPAIRS, NOT IN SAENGER'S COMPILATION
@@ -485,6 +500,7 @@ XXX_GC = [] #XXXI Base-pair between positions G1034 and C1028 of T. thermophilus
 #Bond   G       C       Length Ave      Length Std      Attribute
 #1      N2      N4      3.1             unk
 #2      N3      N3      3.2             unk
+#Not totally sure it is a real basepair
 bonds = [2, "G", "C", "N2", "N4", "N3", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 46 in MASTER_Basepairs (XXXII_CG)
@@ -492,6 +508,7 @@ XXX_CG = [] #XXXII Base-pair between positions G1034 and C1028 of T. thermophilu
 #Bond   C       G       Length Ave      Length Std      Attribute
 #1      N4      N2      3.1             unk
 #2      N3      N3      3.2             unk
+#Not totally sure it is a real basepair
 bonds = [2, "C", "G", "N4", "N2", "N3", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 47 in MASTER_Basepairs (XXXIII_GG)
@@ -559,8 +576,7 @@ def pair_sym_table_as_antons_master(
       pdb_atoms,
       sites_frac,
       pair_sym_table,
-      reindexing_array,
-      omit_symmetry_interactions=True):
+      reindexing_array):
   for table_i_seq,pair_sym_dict in enumerate(pair_sym_table):
     i_seq = reindexing_array[table_i_seq]
     site_i = sites_frac[i_seq]
@@ -574,8 +590,6 @@ def pair_sym_table_as_antons_master(
       resname_j = atom_j.resname
       atmname_j = atom_j.name
       for sym_op in sym_ops:
-        if (omit_symmetry_interactions and not sym_op.is_unit_mx()):
-          continue
         site_ji = sym_op * site_j
         distance = unit_cell.distance(site_i, site_ji)
         if atom_i.resid() != atom_j.resid():
@@ -589,40 +603,6 @@ def pair_sym_table_as_antons_master(
              distance])
 
 
-
-#def run(args):
-#  assert len(args) == 1
-#  import iotbx.pdb
-#  pdb_inp = iotbx.pdb.input(file_name=args[0])
-#  master = []
-#  pdb_atoms = pdb_inp.atoms_with_labels()
-#  xray_structure = pdb_inp.xray_structure_simple(
-#    enable_scattering_type_unknown=True)
-#  sites_frac = xray_structure.sites_frac()
-#  unit_cell = xray_structure.unit_cell()
-#  pair_asu_table = xray_structure.pair_asu_table(
-#    distance_cutoff=22.0)
-#  pair_sym_table = pair_asu_table.extract_pair_sym_table()
-#  count = 0
-#  for i_seq,pair_sym_dict in enumerate(pair_sym_table):
-#    site_i = sites_frac[i_seq]
-#    atom_i = pdb_atoms[i_seq]
-#    resname_i = atom_i.resname
-#    atmname_i = atom_i.name
-#    for j_seq,sym_ops in pair_sym_dict.items():
-#      site_j = sites_frac[j_seq]
-#      atom_j = pdb_atoms[j_seq]
-#      resname_j = atom_j.resname
-#      atmname_j = atom_j.name
-#      for sym_op in sym_ops:
-#        site_ji = sym_op * site_j
-#        distance = unit_cell.distance(site_i, site_ji)
-#        if atom_i.resid() != atom_j.resid():
-#           master.append([[]])
-#           master[count] = [atom_i.resid(), resname_i, atmname_i, atom_j.resid(), resname_j, atmname_j, distance]
-#           count = count + 1
-#  master[0:0] = [args[0]]
-#  return master
 
 def run(args):
   assert len(args) == 1
@@ -657,7 +637,7 @@ def run(args):
   p_selection = pdb_inp.atoms().extract_name() == " P  "
   p_pair_sym_table = crystal_symmetry.special_position_settings() \
     .pair_asu_table(
-      distance_cutoff=22.0,
+      distance_cutoff=25.0,
       sites_frac=sites_frac.select(p_selection)).extract_pair_sym_table()
   pair_sym_table_as_antons_master(
     master=master,
@@ -963,12 +943,12 @@ def SEQUENTIAL_READOUT(LIST1, LIST2, LIST3, print_control, line2):
     print "#################################################"
     print "####LIST OF BASES WITH MULTIPLE POSSIBLE CONTACTS",
     print line2
+    count1 = 0
     if LIST3 != []:
         line3 = ''
         list1 = []
         list = []
         count = 0
-        count1 = 0
         a = ""
         for i in range (len(LIST3)):
             for j in range (len(LIST3[i])/2):
@@ -1073,21 +1053,32 @@ def FIRST_APPEND(LIST1, LIST2, max_cutoff, cutoff):
 def BOND_PLACING(LIST1, LIST2, LIST3):
 #LIST1 = MASTER_Basepairs_bonds[i]
 #LIST2 = MASTER_Basepairs_summary[i][k]
-#LIST3 = MASTER_Basepairs[i][j]
+#LIST3 = atom
     #place the atoms involved in the new bond just detected (currently in MASTER_Basepairs[i][j][2] and MASTER_Basepairs[i][j][5]. Distance is in MASTER_Basepairs[i][j][6]) into the proper location within MASTER_Basepairs_summary[i][k] (See MASTER_Basepairs_summary SCHEME)  by first checking the location of these atoms in MASTER_Basepairs_bonds. There are several possibilities
-                                   if LIST1[3] in LIST3[2] and LIST1[4] in LIST3[5]:
-                                       LIST2[7] = LIST3[2]
-                                       LIST2[8] = LIST3[5]
-                                       LIST2[9] = LIST3[6]
-                                   elif LIST1[5] in LIST3[2] and LIST1[6] in LIST3[5]:
-                                       LIST2[10] = LIST3[2]
-                                       LIST2[11] = LIST3[5]
-                                       LIST2[12] = LIST3[6]
-                                   elif LIST1[7] in LIST3[2] and LIST1[8] in LIST3[5]:
-                                       LIST2[13] = LIST3[2]
-                                       LIST2[14] = LIST3[5]
-                                       LIST2[15] = LIST3[6]
+#FOLLOW A LINE
+#                                   if (' 827 ' in LIST2) and (' 859 ' in LIST2):
+#                                      print "entering BOND_PLACING", "LIST1", LIST1, "LIST2", LIST2, "LIST3", LIST3
+#FOLLOW A LINE
 
+                                   if LIST1[3] == LIST3[0] and LIST1[4] == LIST3[1]:
+                                       LIST2[7] = LIST3[0]
+                                       LIST2[8] = LIST3[1]
+                                       LIST2[9] = LIST3[2]
+                                       LIST2[6] = LIST2[6] + 1
+                                   elif LIST1[5] == LIST3[0] and LIST1[6] == LIST3[1]:
+                                       LIST2[10] = LIST3[0]
+                                       LIST2[11] = LIST3[1]
+                                       LIST2[12] = LIST3[2]
+                                       LIST2[6] = LIST2[6] + 1
+                                   elif LIST1[7] == LIST3[0] and LIST1[8] == LIST3[1]:
+                                       LIST2[13] = LIST3[0]
+                                       LIST2[14] = LIST3[1]
+                                       LIST2[15] = LIST3[2]
+                                       LIST2[6] = LIST2[6] + 1
+#FOLLOW A LINE
+#                                   if (' 827 ' in LIST2) and (' 859 ' in LIST2):
+#                                      print "exiting BOND_PLACING", "LIST1", LIST1, "LIST2", LIST2, "LIST3", LIST3
+#FOLLOW A LINE
                                    return LIST2
 ################################################
 ################################################
@@ -1095,6 +1086,34 @@ def BOND_PLACING(LIST1, LIST2, LIST3):
 ################################################
 ################################################
 
+################################################
+################################################
+#FUNCTION "C1-C1 DISTANCE CRITERION"    END
+################################################
+################################################
+#IMPORTANT NOTE 050310: the C1* to C1* may be a much better criterion, as it seems to be more stable than P-P distance
+def C1_C1_DISTANCE(LIST1, LIST2, A0, A1, A2, A3):
+#LIST1 = MASTER_Basepairs_summary[i][j]
+#LIST2 = MASTER_Basepairs_bonds[i]
+#A0 = convert[0]
+#A1 = convert[1]
+#A2 = convert[2]
+#A3 = convert[3]
+    print "\n...using the C1\'-C1\' distance criterion"
+    diffP_P = LIST1[16] - LIST2[9]
+    diffC1_C1 = LIST1[17] - LIST2[11]
+    line = "The basepair formed by residues " + A0 + A1 + ":" + A2 + A3 + " displays a " + LIST1[0] + " geometry.\n     Empirically determined average C1\'-C1\' distance for this geometry = " + str(LIST2[11]) + " + SD = " + str(LIST2[12]) + "\n     Empirically determined average P-P distance for this geometry = " + str(LIST2[9]) + " + SD = " + str(LIST2[10])
+    print line
+    if abs(diffC1_C1) > 3 * LIST2[12]:
+        LIST1.append('REMOVED')
+        print "The C1\'-C1\' distance for this candidate basepair is more than 3 times the recorded standard deviation for this geometry. The basepair will be prevented from further processing by apending it as 'REMOVED'"
+    LIST1[18:18] = [abs(diffC1_C1)]
+    return LIST1
+################################################
+################################################
+#FUNCTION "C1-C1 DISTANCE CRITERION"    END
+################################################
+################################################
 
 
 ################################################
@@ -1103,7 +1122,7 @@ def BOND_PLACING(LIST1, LIST2, LIST3):
 ################################################
 ################################################
 
-def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF):
+def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF, positions):
 
 #The first part of the loop will attempt to expand the initial assignment of legitimate basepairs by using the CONTINUITY OF HELICITY CRITERION. Basepairs for which only two bonds have been identified and tagged as 'no' in "SECTION: LOOKING FOR BASES INVOLVED IN MULTIPLE CONTACTS" will be included in this search. More info in FUNCTION Section: Final assignment of Basepairs.
 
@@ -1114,6 +1133,9 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF):
    run = 0 #This variable will count the number of runs of the loop
    count_found = 1 #This variable will ensure that the loop runs until no more additional 'no'-tagged basepairs can be identified as legitimate. Will be reinitialized to 0 within the loop. In addition this variable will keep track of how many additional basepairs are found in each run of the loop
    total_count = 0 #will keep track of the total amount of basepairs identified in the loop
+
+
+
 #First part of LOOP:
    while count_found > 0:
         run = run + 1
@@ -1122,16 +1144,15 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF):
         run_str = to_string(run)
         line1 = "##################################\n\"Attempting to find additional basepairs by the CONTINUITY OF HELICITY CRITERION\"       Attempt # " + run_str + "\n##################################"
         print line1
-
+        transient = []
         #First the positions of adjacent basepairs to those involved in MULTIPLE CONTACTS, are calculated and outputed
         for i in range (len(MASTER_Basepairs_summary)):
             for j in range (len(MASTER_Basepairs_summary[i])):
                 MH_yes = 'y'
-                if (MASTER_Basepairs_summary[i][j][1] == 3) and (MASTER_Basepairs_summary[i][j][6] == 2) and (MAX_CUTOFF_str[0:3] not in CUTOFF_str[0:3]):
-                    MH_yes = 'n'
+                if ((MASTER_Basepairs_summary[i][j][1] == 3) and (MASTER_Basepairs_summary[i][j][6] == 2) and (MAX_CUTOFF_str[0:3] not in CUTOFF_str[0:3])) or ('REMOVED' in MASTER_Basepairs_summary[i][j]):
+                    MH_yes = 'n' #Three-bond-basepairs for which only two bonds have been identified are prevented from entering the rest of the loop lines until MAX_CUTOFF_str[0:3]  == CUTOFF_str[0:3]
                 if len(MASTER_Basepairs_summary[i]) > 0:
                     if ('no' in MASTER_Basepairs_summary[i][j]) and ('yes' not in MASTER_Basepairs_summary[i][j]) and MH_yes == 'y':
-#                       if (MASTER_Basepairs_summary[i][j][1] != 3) and (MASTER_Basepairs_summary[i][j][6] == 2):
                         m=re.search('\d+', MASTER_Basepairs_summary[i][j][2])
                         search1 = m.group()
                         SEARCH1 = to_int(search1) #convert string to integers
@@ -1145,7 +1166,7 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF):
                         print line1
 
 #Second, the whole MASTER_Basepairs_summary is searched for the existence of either one of the adjacent basepairs calculated above. Done in FUNCTION HELICITY
-                        where_from = 'Loop' #Used in SECTION HELICITY to determine what to do whether the program is coming from 'Loop' or 'CONTINUITY_HELICITY_CRITERION', or from 'REMOVAL'
+                        where_from = 'Loop' #Used in SECTION HELICITY to determine what to do whether the program is coming from 'Loop' or 'CONTINUITY_HELICITY_CRITERION', or from '    print "AFTER LIST1", LIST1REMOVAL'
                         helicity = HELICITY(MASTER_Basepairs_summary, add[0], add[1], add[2], add[3], where_from)
                         count_helicity = 0 #Control output in this region
                         for t in range (0,2):
@@ -1161,6 +1182,8 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF):
                                     print line1
                                     MASTER_Basepairs_summary[i][j].append('yes')
                                     MASTER_Basepairs_summary[i][j].append('MH')  #'MH'Maximization of Helicity TAG
+                                    transient = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][4]]
+                                    positions.append(transient)
                                     CUTOFF_str = repr(CUTOFF) #Converts 'float' to 'str'
                                     MASTER_Basepairs_summary[i][j].append(CUTOFF_str[0:3])
                                 if count_helicity == 2: #The second adjacent basepair has been found. The basepair whose assignemnt is in question has already bee assigned when 'count_helicity == 1'. The program will only output the new finding
@@ -1186,7 +1209,7 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF):
             mode_removal = 1 #"Run FUNCTION REMOVAL" in 'semi-bulk' mode
             CUTOFF_str = str(CUTOFF)
             print "\n##############################\n REMOVING the newly identified basepairs from the list of bases with possible mutliple contacts.", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "\n##############################\n "
-            removal = REMOVAL(MASTER_Basepairs_summary, control, convert[0], convert[2], CUTOFF, mode_removal)
+            removal = REMOVAL(MASTER_Basepairs_summary, control, convert[0], convert[2], CUTOFF, mode_removal, positions)
             MASTER_Basepairs_summary = removal[0]
             control = removal[1]
             new_basepairs = removal[2]
@@ -1232,8 +1255,8 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF):
 
 #'base_a' and 'base_b' = residues 1 and 2 of the current basepair (only if run in 'semi-bulk' mode)
 #Two ways of executing this FUNCTION.
-    #In 'semi-bulk mode'. When called from "FUNCTION "Loop". It should only remove basepairs tagged as 'MH'
-    #In 'bulk' mode. For the whole LIST1 = MASTER_Basepairs_summary. When called from "FUNCTION Section: Final assignment of Basepairs"
+    #In 'semi-bulk mode' ('mode_removal' = 1). When called from "FUNCTION "Loop". It should only remove basepairs tagged as 'MH'
+    #In 'bulk' mode ('mode_removal' = 0). For the whole LIST1 = MASTER_Basepairs_summary. When called from "FUNCTION Section: Final assignment of Basepairs"
        #Controlled by the argument 'mode_removal', which may be '1' ('semi-bulk' mode) or '0' ('bulk' mode). Peformed in SUBFUNCTION "DEFINING_A_B" above
        #Bases from legitimate basepairs that had been included in 'control' (LIST2), will be removed from this list. Removed 'control' sublists will be loaded into 'control_removed'.
        #In a second step, the remaining bases, loaded into 'control_removed', will be searched for the presence of 'lone pairs' that may be indicative of additional basepairs in "Searching for 'lone pairs' left over in 'control'"
@@ -1244,8 +1267,7 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF):
 
 #LIST1 = MASTER_Basepairs_summary
 #LIST2 = control
-
-def REMOVAL(LIST1, LIST2, base_a, base_b, CUTOFF, mode_removal):
+def REMOVAL(LIST1, LIST2, base_a, base_b, CUTOFF, mode_removal, positions):
             CUTOFF_str = repr(CUTOFF) #Converts 'float' to 'str'
             new_basepairs = 0
             ACTUAL = []
@@ -1253,23 +1275,21 @@ def REMOVAL(LIST1, LIST2, base_a, base_b, CUTOFF, mode_removal):
             list = [] #Will carry the reminder of LIST2 sublists, once after "removal". Thenthe contents of "list" will be appendedto "control_removed". Has to be defined here and at the beginning of SUBFUNCTION "ACTUAL_REMOVAL"
             control_removed = [] #Will carry the control sublists, now in LIST2 within FUNCTION REMOVAL, after basepairs, identified as legitimate, have been removed
 
-#First legitimally identified basepairs are removed from LIST2 (control)
+            for t in range (len(LIST2)):
+               if len(LIST2[t]) > 4:
 
-            for i in range (len(LIST1)):
-                    for j in range (len(LIST1[i])):
-                       if (mode_removal == 0) and ("yes" in LIST1[i][j]):
-                           a_b = DEFINING_A_B(LIST1[i][j])
-                           a = a_b[0]
-                           b = a_b[1]
-                           ACTUAL = ACTUAL_REMOVAL(LIST1, LIST2, a, b)
-                           LIST2 = ACTUAL
-                       elif (mode_removal == 1) and ("yes" in LIST1[i][j]) and ('MH' in LIST1[i][j]) and (LIST1[i][j][len(LIST1[i][j]) - 2] == CUTOFF):
-                           print "#### Performing 'Semi-Bulk' removal mode", "LIST1[i][j]", LIST1[i][j]
-                           a_b = DEFINING_A_B(LIST1[i][j])
-                           a = a_b[0]
-                           b = a_b[1]
-                           ACTUAL = ACTUAL_REMOVAL(LIST1, LIST2, a, b)
-                           print "checking if bases", a, "and", b, "are involved in multiple interactions. Semi-Bulk removal mode"
+                   for u in range (len(LIST2[t])/2):
+                      if LIST2[t][u*2] != []:
+#                          print "LIST2[t][u*2]", LIST2[t][u*2]
+                          for a in range (len(positions)):
+#                              print "positions[a]", positions[a]
+                              if LIST2[t][u*2] in positions[a]:
+                                  line1 = "Residue" + LIST2[t][u*2] + "has been removed from the list of residues involved in MULTIPLE CONTACTS"
+#                                  print line1
+                                  LIST2[t][u*2] = []
+                                  LIST2[t][(u*2)+1] = []
+
+
 #Once all basepairs have been removed, the modified LIST2 ('control'), will be searched for lines with removed residues. The remaining residues will be transferred to 'control_removed' to search for 'lone pairs'.
 
             for l in range (len(LIST2)):
@@ -1318,38 +1338,6 @@ def REMOVAL(LIST1, LIST2, base_a, base_b, CUTOFF, mode_removal):
                    print line
             return [LIST1, LIST2, new_basepairs]
 
-
-# SUBFUNCTION "DEFINING_A_B"
-#Determines what 'a' and 'b' values are used in REMOVAL, see below
-
-def DEFINING_A_B(LIST1):
-#LIST1 = LIST1[i][j] (or MASTER_Basepairs_summary[i][j]) from "FUNCTION REMOVAL"
-               convert_list = [LIST1[2], LIST1[3], LIST1[4], LIST1[5]]
-               convert = CONVERT(convert_list)
-               a = convert[0]
-               b = convert[2]
-               return(a, b)
-# SUBFUNCTION "DEFINING_A_B"
-
-# SUBFUNCTION "ACTUAL_REMOVAL"
-
-#LIST1 and LIST2 will be compared in this SUBFUNCTION and will load the removed 'LIST2' ('control') sublists into 'control_removed'. It was not originally designed as a separate FUNCTION but it became necessary in order to run "FUNCTION REMOVAL" in 'bulk mode'
-
-def ACTUAL_REMOVAL(LIST1, LIST2, a, b):
-            list = [] #Will carry the reminder of LIST2 sublists, once after "removal". Thenthe contents of "list" will be appendedto "control_removed". Has to be defined here and at the beginning of FUNCTION "REMOVAL"
-            more_found = 0
-            for t in range (len(LIST2)):
-               if len(LIST2[t]) > 4:
-
-                   for u in range (len(LIST2[t])/2):
-                      LIST = [LIST2[t][u*2], LIST2[t][(u*2)+1]]
-                      convert = CONVERT(LIST)
-                      if (a == convert[0]) or (b == convert[0]):
-                          line1 = "Residue" + convert[0] + "has been removed from the list of residues involved in MULTIPLE CONTACTS"
-                          LIST2[t][u*2] = []
-                          LIST2[t][(u*2)+1] = []
-            return LIST2
-# SUBFUNCTION "ACTUAL_REMOVAL"
 ################################################
 ################################################
 #FUNCTION "REMOVAL"                    END
@@ -1367,7 +1355,7 @@ def ACTUAL_REMOVAL(LIST1, LIST2, a, b):
         #Called from 'MAIN'
 
 #First_List = Contains the filtered output from FUNCTION "run(args)". List of ATOM to ATOM distances below a rough cutoff of 5A
-def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control, run_number_str, CUTOFF_str, run_number):
+def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control, run_number_str, CUTOFF_str, run_number, positions):
 
     First_List_smaller = []
     First_List_P = []
@@ -1471,15 +1459,23 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
             for j in range (len(MASTER_Basepairs[i])):
 #Detection of lines carrying consecutive bases. These should be not allowed to enter the assignment section, as they can give rise to FALSE basepairs
                 resid = [[],[]]
+                atom = [[],[],[]]
                 m=re.search('\d+', MASTER_Basepairs[i][j][0])
                 resid[0] = int(m.group())
                 m=re.search('\d+', MASTER_Basepairs[i][j][3])
                 resid[1] = int(m.group())
+                m=re.search('\S+', MASTER_Basepairs[i][j][2])
+                atom[0] = str(m.group())
+                m=re.search('\S+', MASTER_Basepairs[i][j][5])
+                atom[1] = str(m.group())
+                atom[2] = MASTER_Basepairs[i][j][6]
                 if (resid[1] - resid[0] > 1) or (resid[1] - resid[0] < -1):
 
 #FOLLOW A LINE
-#                    if (' 68' in MASTER_Basepairs[i][j][0]) and ('101' in MASTER_Basepairs[i][j][3]):
-#                        print "Second sorting: MASTER_Basepairs[i][j]", MASTER_Basepairs_schemes[i], MASTER_Basepairs[i][j]
+#                    if (' 827 ' in MASTER_Basepairs[i][j][0]) and (' 859 ' in MASTER_Basepairs[i][j][3]):
+#                        print "\nBefore Second sorting: MASTER_Basepairs[i][j]", MASTER_Basepairs_schemes[i], MASTER_Basepairs[i][j], "atom", atom
+#                        print "i", i, "j", j, "MASTER_Basepairs_schemes[i]", MASTER_Basepairs_schemes[i], "MASTER_Basepairs_bonds[i]", MASTER_Basepairs_bonds[i]
+
 #FOLLOW A LINE
                     if (len(MASTER_Basepairs_summary[i]) > 0):
                         found = 0 #Will control that the program does not execute the next 'elif' if it has executed this 'if'
@@ -1488,38 +1484,38 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
 #This basepair has already been detected, new bond for the basepair. Here we should distinguish between RUN 1 and later RUNs, as during the latter the program will run into pre-loaded MASTER_Basepairs_summary[i][k] lines
                            if (MASTER_Basepairs[i][j][0] in MASTER_Basepairs_summary[i][k][2]) and (MASTER_Basepairs[i][j][3] in MASTER_Basepairs_summary[i][k][4]):
                               found = 1 #Will control that the program does not execute the next 'elif' if it has executed this 'if'
-                              if (MASTER_Basepairs[i][j][2] not in MASTER_Basepairs_summary[i][k][7]) and (MASTER_Basepairs[i][j][2] not in MASTER_Basepairs_summary[i][k][10]) and (MASTER_Basepairs[i][j][2] not in MASTER_Basepairs_summary[i][k][13]):
-#(MASTER_Basepairs[i][j][5] not in MASTER_Basepairs_summary[i][k]):
+                             # if (MASTER_Basepairs[i][j][2] not in MASTER_Basepairs_summary[i][k][7]) and (MASTER_Basepairs[i][j][2] not in MASTER_Basepairs_summary[i][k][10]) and (MASTER_Basepairs[i][j][2] not in MASTER_Basepairs_summary[i][k][13]):
+                              if (atom[0] != MASTER_Basepairs_summary[i][k][7]) and (atom[0] != MASTER_Basepairs_summary[i][k][10]) and (atom[0] !=  MASTER_Basepairs_summary[i][k][13]):
 ########Checking that MASTER_Basepairs[i][j] and MASTER_Basepairs_summary[i][k] contain the same residues but that the former brings new ATOMS
-                                  MASTER_Basepairs_summary[i][k][6] = MASTER_Basepairs_summary[i][k][6] + 1  #One new bond added
+#                                  MASTER_Basepairs_summary[i][k][6] = MASTER_Basepairs_summary[i][k][6] + 1  #One new bond added
                               #Bond ATOMS and distances will be placed at their proper position in "FUNCTION BOND_PLACING"
-                                  MASTER_Basepairs_summary[i][k] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][k], MASTER_Basepairs[i][j])
+                                  MASTER_Basepairs_summary[i][k] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][k], atom)
 #FOLLOW A LINE
-#                                  if ('436' in MASTER_Basepairs[i][j][0]) and ('437' in MASTER_Basepairs[i][j][3]):
-#                                      print "new bond for the basepair: MASTER_Basepairs_summary[i][k]", MASTER_Basepairs_summary[i][k]
+                                  if (' 827 ' in MASTER_Basepairs[i][j][0]) and (' 859 ' in MASTER_Basepairs[i][j][3]):
+                                      print "new bond for the basepair: MASTER_Basepairs_summary[i][k]", MASTER_Basepairs_summary[i][k]
 #FOLLOW A LINE
 
 
 #New basepair detected for a basepairing Scheme for which other basepairs have been identified
                            elif (found == 0) and (k == len(MASTER_Basepairs_summary[i]) - 1):
-                               collect = [MASTER_Basepairs_schemes[i], MASTER_Basepairs_bonds[i][0], MASTER_Basepairs[i][j][0], MASTER_Basepairs[i][j][1], MASTER_Basepairs[i][j][3], MASTER_Basepairs[i][j][4], 1, [], [], [], [], [], [], [], [], [], [], []]
+                               collect = [MASTER_Basepairs_schemes[i], MASTER_Basepairs_bonds[i][0], MASTER_Basepairs[i][j][0], MASTER_Basepairs[i][j][1], MASTER_Basepairs[i][j][3], MASTER_Basepairs[i][j][4], 0, [], [], [], [], [], [], [], [], [], [], []]
                                MASTER_Basepairs_summary[i].append(collect)
                        #Bond ATOMS and distances will be placed at their proper position in "FUNCTION BOND_PLACING"
-                               MASTER_Basepairs_summary[i][len(MASTER_Basepairs_summary[i])-1] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][len(MASTER_Basepairs_summary[i])-1], MASTER_Basepairs[i][j])
+                               MASTER_Basepairs_summary[i][len(MASTER_Basepairs_summary[i])-1] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][len(MASTER_Basepairs_summary[i])-1], atom)
 #FOLLOW A LINE
-#                               if ('436' in MASTER_Basepairs[i][j][0]) and ('437' in MASTER_Basepairs[i][j][3]):
-#                                  print "New basepair detected for a basepairing Scheme: MASTER_Basepairs_summary[i][k]", MASTER_Basepairs_summary[i][k]
+                               if (' 827 ' in MASTER_Basepairs[i][j][0]) and (' 859 ' in MASTER_Basepairs[i][j][3]):
+                                  print "New basepair detected for a basepairing Scheme: MASTER_Basepairs_summary[i][k]", MASTER_Basepairs_summary[i][k]
 #FOLLOW A LINE
 
 #First basepair for this basepairing Scheme
                     else: ######
-                        collect = [MASTER_Basepairs_schemes[i], MASTER_Basepairs_bonds[i][0], MASTER_Basepairs[i][j][0], MASTER_Basepairs[i][j][1], MASTER_Basepairs[i][j][3], MASTER_Basepairs[i][j][4], 1, [], [], [], [], [], [], [], [], [], [], []]
+                        collect = [MASTER_Basepairs_schemes[i], MASTER_Basepairs_bonds[i][0], MASTER_Basepairs[i][j][0], MASTER_Basepairs[i][j][1], MASTER_Basepairs[i][j][3], MASTER_Basepairs[i][j][4], 0, [], [], [], [], [], [], [], [], [], [], []]
                         MASTER_Basepairs_summary[i].append(collect)
                         #Bond ATOMS and distances will be placed at their proper position in "FUNCTION BOND_PLACING"
-                        MASTER_Basepairs_summary[i][0] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][0], MASTER_Basepairs[i][j])
+                        MASTER_Basepairs_summary[i][0] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][0], atom)
 #FOLLOW A LINE
-#                        if ('436' in MASTER_Basepairs[i][j][0]) and ('437' in MASTER_Basepairs[i][j][3]):
-#                            print "First basepair for this basepairing Scheme: MASTER_Basepairs_summary[i][0]", MASTER_Basepairs_summary[i][0]
+                        if (' 827 ' in MASTER_Basepairs[i][j][0]) and (' 859 ' in MASTER_Basepairs[i][j][3]):
+                            print "First basepair for this basepairing Scheme: MASTER_Basepairs_summary[i][0]", MASTER_Basepairs_summary[i][0]
 #FOLLOW A LINE
 #####################################
 #       FUNCTION "Program". Section: Second sorting of basepair candidates                END
@@ -1551,12 +1547,18 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                         if First_List_C1[s][0] in MASTER_Basepairs_summary[i][j] and First_List_C1[s][3] in MASTER_Basepairs_summary[i][j][4]:
                             if First_List_C1[s][6] < C1_compare:
                                 C1_compare = First_List_C1[s][6]
-#                           print "First_List_C1[s]", First_List_C1[s]
-#                           print "MASTER_Basepairs_summary[i][j]", MASTER_Basepairs_summary[i][j]
                     MASTER_Basepairs_summary[i][j][17] = C1_compare
-#                    if C1_control == "0":
-#                            MASTER_Basepairs_summary[i][j][17] = "NA"
-                if (MASTER_Basepairs_summary[i][j][6] >= 2):
+
+#Now that the C1-C1 distances have been added to the basepair candidates, this distance can be used to perform a first discrimination by weeding out basepairs with C1-C1 distances that are more than 3X the precalculated average C1-Ca. This will be done in FUNCTION C1_C1_DISTANCE. Candidate basepairs with 'bad' C1-C1 distances will be appended as 'REMOVED'
+#                    for i in range (len(MASTER_Basepairs_summary)):
+#                        for j in range (len(MASTER_Basepairs_summary[i])):
+                    if (MASTER_Basepairs_bonds[i][9] != 'NA'):
+                        list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
+                        convert = CONVERT(list)
+                        MASTER_Basepairs_summary[i][j] = C1_C1_DISTANCE(MASTER_Basepairs_summary[i][j], MASTER_Basepairs_bonds[i], convert[0], convert[1], convert[2], convert[3])
+
+
+                if (MASTER_Basepairs_summary[i][j][6] >= 2) and ('REMOVED' not in MASTER_Basepairs_summary[i][j]):
 
 #Calling FUNCTION "CONTROL" to perform an initial assessment of whether the identified bases might be involved in MULTIPLE CONTACTS
                     control = CONTROL(control, MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][5])
@@ -1636,6 +1638,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
     convert = []
     new_basepairs = 0
     print   "##############################\n##### Initial Basepair Assignment. Run #", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "PREV_CUTOFF", PREV_CUTOFF, "\n##############################"
+    transient = []
     if (MAX_CUTOFF_str[0:3] in CUTOFF_str[0:3]):
         print "MAX_CUTOFF_str[0:3] ", MAX_CUTOFF_str[0:3], "CUTOFF_str[0:3] ", CUTOFF_str[0:3]
     if CUTOFF_str[0:3] in MAX_CUTOFF_str[0:3]:
@@ -1643,17 +1646,19 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
     for i in range (len(MASTER_Basepairs_summary)):
         print "Basepairing scheme:", MASTER_Basepairs_schemes[i]
         for j in range (len(MASTER_Basepairs_summary[i])):
-                if (len(MASTER_Basepairs_summary[i]) > 0):
+                if (len(MASTER_Basepairs_summary[i]) > 0) and ('D' not in MASTER_Basepairs_summary[i][j]) and ('MH' not in MASTER_Basepairs_summary[i][j]) and ('ELI' not in MASTER_Basepairs_summary[i][j]) and ('REMOVED' not in MASTER_Basepairs_summary[i][j]):
 
 #basepairs with 3 bonds, all identified
                     if (MASTER_Basepairs_summary[i][j][1] == 3) and (MASTER_Basepairs_summary[i][j][6] == 3):
-                        if (('D' not in MASTER_Basepairs_summary[i][j]) and ('MH' not in MASTER_Basepairs_summary[i][j]) and ('ELI' not in MASTER_Basepairs_summary[i][j])):
+                        #if (('D' not in MASTER_Basepairs_summary[i][j]) and ('MH' not in MASTER_Basepairs_summary[i][j]) and ('ELI' not in MASTER_Basepairs_summary[i][j]) and ('REMOVED' not in MASTER_Basepairs_summary[i][j])):
                             list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
                             convert = CONVERT(list)
                             print  "----->High confidence 3-bond basepair formed by residues " + convert[1] + convert[0] + " and " + convert[3] + convert[2]
                             length_1 = len(MASTER_Basepairs_summary[i][j]) - 1
                             MASTER_Basepairs_summary[i][j].append('D') #Distance 'D' TAG
                             MASTER_Basepairs_summary[i][j].append(CUTOFF_str[0:3])
+                            transient = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][4]]
+                            positions.append(transient)
                             new_basepairs = new_basepairs + 1
 
                             if ('no' in MASTER_Basepairs_summary[i][j]):
@@ -1668,17 +1673,21 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                             print "----->At least 2 bonds identified out of 3 expected for the base pair formed by residues " + convert[1] + convert[0] + " and " + convert[3] + convert[2]
                             MASTER_Basepairs_summary[i][j].append('D') #Distance 'D' TAG
                             MASTER_Basepairs_summary[i][j].append(CUTOFF_str[0:3])
+                            transient = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][4]]
+                            positions.append(transient)
                             new_basepairs = new_basepairs + 1
 
 #basepairs with 2 bonds
                     elif (MASTER_Basepairs_summary[i][j][1] == 2) and (MASTER_Basepairs_summary[i][j][6] == 2):
-                        if (('D' not in MASTER_Basepairs_summary[i][j]) and ('MH' not in MASTER_Basepairs_summary[i][j]) and ('ELI' not in MASTER_Basepairs_summary[i][j])):
+                        #if (('D' not in MASTER_Basepairs_summary[i][j]) and ('MH' not in MASTER_Basepairs_summary[i][j]) and ('ELI' not in MASTER_Basepairs_summary[i][j]) and ('REMOVED' not in MASTER_Basepairs_summary[i][j])):
                             if ('yes' in  MASTER_Basepairs_summary[i][j]):
                                 list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
                                 convert = CONVERT(list)
                                 print "----->2-bond basepair identified formed by residues " + convert[1] + convert[0] + " and " + convert[3] + convert[2]
                                 MASTER_Basepairs_summary[i][j].append('D') #Distance 'D' TAG
                                 MASTER_Basepairs_summary[i][j].append(CUTOFF_str[0:3])
+                                transient = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][4]]
+                                positions.append(transient)
                                 new_basepairs = new_basepairs + 1
     print   "##### END of Initial Basepair Assignment. Run #", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3], "\n##############################"
 
@@ -1686,7 +1695,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
     if new_basepairs > 0 and control_control == 1:
         print "\n##############################\n##### Searching for additional basepairs by the ELIMINATION criterion. Run # ", run_number_str, " Distance Cutoff = ", CUTOFF_str[0:3]
         mode_removal = 0
-        removal = REMOVAL(MASTER_Basepairs_summary, control, convert[0], convert[2], CUTOFF, mode_removal)
+        removal = REMOVAL(MASTER_Basepairs_summary, control, convert[0], convert[2], CUTOFF, mode_removal, positions)
         MASTER_Basepairs_summary = removal[0]
         control = removal[1]
         new_basepairs = removal[2]
@@ -1721,7 +1730,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
         loop_control = 1 #Allow multiple runs of the loop
 
 #calling FUNCTION "Loop"
-        loop_output = loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF)
+        loop_output = loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF, positions)
         MASTER_Basepairs_summary = loop_output[0]
         control = loop_output[1]
 #Calling FUNCTION "SEQUENTIAL_READOUT"
@@ -1782,15 +1791,15 @@ def HELICITY(LIST, a0, a1, a2, a3, where_from):
                                 m=re.search('\d+', LIST[r][s][4])
                                 match2 = m.group()
 #                                print "LIST[r][s]", LIST[r][s], "\n    match1", match1, "match2", match2, "a0", a0, "a1", a1, "a2", a2, "a3", a3
-                                if (('Loop' in where_from) and ('yes' in LIST[r][s]) and ((match1 in a0) and (match2 in a1) or (match2 in a0) and (match1 in a1))):
+                                if (('Loop' in where_from) and ('REMOVED' not in LIST[r][s]) and ('yes' in LIST[r][s]) and ((match1 in a0) and (match2 in a1) or (match2 in a0) and (match1 in a1))):
                                    match_found1 = [a0, a1]
                                    match_position = [r, s]
 #                                   print "match found: a0", a0, "a1", a1
-                                elif (('Loop' in where_from) and ('yes' in LIST[r][s]) and ((match1 in a2) and (match2 in a3) or (match1 in a3) and (match2 in a2))):
+                                elif (('Loop' in where_from) and ('REMOVED' not in LIST[r][s]) and ('yes' in LIST[r][s]) and ((match1 in a2) and (match2 in a3) or (match1 in a3) and (match2 in a2))):
                                    match_found2 = [a2, a3]
                                    match_position = [r, s]
 #                                   print "match found: a2", a2, "a3", a3
-                                elif ('REMOVAL' in where_from) and ('no' in LIST[r][s]) and ((match1 in a0) and (match2 in a1) or (match2 in a0) and (match1 in a1)):
+                                elif ('REMOVAL' in where_from) and ('REMOVED' not in LIST[r][s]) and ('no' in LIST[r][s]) and ((match1 in a0) and (match2 in a1) or (match2 in a0) and (match1 in a1)):
                                    match_found1 = [a0, a1]
                                    match_position = [r, s]
 #                                   print "where_from ", where_from, "LIST[r][s] ", LIST[r][s],  "\na0", a0, "a1", a1, "match1 ", match1, "match2 ", match2
@@ -1861,6 +1870,7 @@ increment = 0.2
                 #pdb_file_main = main part of the input .pdb file withou the extension
                 #file = name of the .pml file for PYMOL
                 #file1 = name of the output file for the run
+positions = [] #Will store the base #s of the basepairs identified for their easy removal in FUNCTION REMOVAL
 while CUTOFF < MAX_CUTOFF:
     if run_number > 1:
         CUTOFF = CUTOFF + increment
@@ -1876,7 +1886,7 @@ while CUTOFF < MAX_CUTOFF:
 
 #Executing FUNCTION "program", main part of the program:
     #It started as the program itself but had to be converted to a function to allow its repetitive iteration
-    program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control, run_number_str, CUTOFF_str, run_number)
+    program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control, run_number_str, CUTOFF_str, run_number, positions)
 
     run_number = run_number + 1
     PREV_CUTOFF = CUTOFF
@@ -1928,32 +1938,6 @@ while CUTOFF < MAX_CUTOFF:
 
 #The recorded score after submitting the debated basepairs to all the above criteria determines which one of the them is defined as LEGITIMATE and which one as FALSE. A 'LEGITIMATE' tag will be appended to this basepair and a 'FALSE' tag to the other
              #If both basepairs have equal scores associated to them, the 'yes' tag of both will be replaced with a 'no' and an 'UNDETERMINED' tag will be appended to both
-
-#################################
-#####SECTION FUNCTION "C1_C1 DISTANCE CRITERION"          BEGINNING
-#IMPORTANT NOTE 050310: the C1* to C1* may be a much better criterion, as it seems to be more stable than P-P distance
-def C1_C1_DISTANCE(LIST1, LIST2, A0, A1, A2, A3):
-#LIST1 = MASTER_Basepairs_summary[i][j]
-#LIST2 = MASTER_Basepairs_bonds[i]
-#A0 = convert[0]
-#A1 = convert[1]
-#A2 = convert[2]
-#A3 = convert[3]
-    print "\n...using the C1\'-C1\' distance criterion"
-    diffP_P = LIST1[16] - LIST2[9]
-    diffC1_C1 = LIST1[17] - LIST2[11]
-    line = "The basepair formed by residues " + A0 + A1 + ":" + A2 + A3 + " displays a " + LIST1[0] + "geometry.\n     Empirically determined average C1\'-C1\ distance for this geometry = " + str(LIST2[11]) + " + SD = " + str(LIST2[12]) + "\n     Empirically determined average P-P distance for this geometry = " + str(LIST2[9]) + " + SD = " + str(LIST2[10])
-    print line
-    if abs(diffC1_C1) > 3 * LIST2[12]:
-        LIST1.append('FALSE')
-        print "The C1\'-C1\' distance for this basepair is more than 3 times the recorded standard deviation for this geometry. The basepair will be apended as 'FALSE'"
-    LIST1[18:18] = [abs(diffC1_C1)]
-    return LIST1
-
-#####SECTION FUNCTION "C1-C1 DISTANCE CRITERION"          END
-#################################
-
-
 
 #################################
 #####SECTION FUNCTION "CONTINUITY_HELICITY_CRITERION"          BEGINNING
@@ -2114,14 +2098,14 @@ def DECISSION(LIST1, LIST2, A0, A1, A2, A3, A4, A5, A6, A7, removed, undetermine
 #####MAIN part of SECTION DETECTION OF FALSE BASEPAIRS
 #MASTER_Basepairs_summary_bak = MASTER_Basepairs_summary
 print "SEARCHING FOR ERRONEOUSLY ASSIGNED BASEPAIRS"
-
-for i in range (len(MASTER_Basepairs_summary)):
-   if (len(MASTER_Basepairs_summary[i]) > 0):
-      for j in range (len(MASTER_Basepairs_summary[i])):
-         if (MASTER_Basepairs_bonds[i][9] != 'NA') and (('FALSE' not in MASTER_Basepairs_summary[i][j]) and ('UNDETERMINED' not in MASTER_Basepairs_summary[i][j])) and (('D' in MASTER_Basepairs_summary[i][j]) or ('MH' in MASTER_Basepairs_summary[i][j]) or ('ELI' in MASTER_Basepairs_summary[i][j])):
-             list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
-             convert = CONVERT(list)
-             MASTER_Basepairs_summary[i][j] = C1_C1_DISTANCE(MASTER_Basepairs_summary[i][j], MASTER_Basepairs_bonds[i], convert[0], convert[1], convert[2], convert[3])
+#where_from = "postcontrol"
+#for i in range (len(MASTER_Basepairs_summary)):
+#   if (len(MASTER_Basepairs_summary[i]) > 0):
+#      for j in range (len(MASTER_Basepairs_summary[i])):
+#        if (MASTER_Basepairs_bonds[i][9] != 'NA') and (('FALSE' not in MASTER_Basepairs_summary[i][j]) and ('UNDETERMINED' not in MASTER_Basepairs_summary[i][j]) and ('REMOVED' not in MASTER_Basepairs_summary[i][j])) and (('D' in MASTER_Basepairs_summary[i][j]) or ('MH' in MASTER_Basepairs_summary[i][j]) or ('ELI' in MASTER_Basepairs_summary[i][j])):
+#             list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
+#             convert = CONVERT(list)
+#             MASTER_Basepairs_summary[i][j] = C1_C1_DISTANCE(MASTER_Basepairs_summary[i][j], MASTER_Basepairs_bonds[i], convert[0], convert[1], convert[2], convert[3], where_from)
 
 CONTINUITY_HELICITY_CRITERION_output = [] #Will collect the output of 'FUNCTION CONTINUITY_HELICITY_CRITERION'
 while_control = 'y' #Will end the next 'while' loop when == 'n'
@@ -2147,18 +2131,12 @@ while while_control == 'y':
         if (len(MASTER_Basepairs_summary[i]) > 0):
             for j in range (len(MASTER_Basepairs_summary[i])):
 
-                #CRITERION #0: C1-C1 DISTANCE CRITERION: Should be given highest priority if there is previously recorded statistical data to compare to. For this reason, an initial assessment of the C1-C1 distance is made with all basepairs to determine whether they can be legitimally qualified as such. This initial check could result in the assignment of some basepairs as FALSE, should their C1-C1 DISTANCE be off the previously determined average by more than 3 times the SD. This difference will be appended at position [19] of MASTER_Basepairs_summary[i][j]
 
-#                if (MASTER_Basepairs_bonds[i][9] != 'NA') and (stringency == 'HIGH') and (('FALSE' not in MASTER_Basepairs_summary[i][j]) and ('UNDETERMINED' not in MASTER_Basepairs_summary[i][j])) and (('D' in MASTER_Basepairs_summary[i][j]) or ('MH' in MASTER_Basepairs_summary[i][j]) or ('ELI' in MASTER_Basepairs_summary[i][j])):
-#                    list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
-#                    convert = CONVERT(list)
-#                    MASTER_Basepairs_summary[i][j] = C1_C1_DISTANCE(MASTER_Basepairs_summary[i][j], MASTER_Basepairs_bonds[i], convert[0], convert[1], convert[2], convert[3])
-
-                if (('FALSE' not in MASTER_Basepairs_summary[i][j]) and ('UNDETERMINED' not in MASTER_Basepairs_summary[i][j])) and (('D' in MASTER_Basepairs_summary[i][j]) or ('MH' in MASTER_Basepairs_summary[i][j]) or ('ELI' in MASTER_Basepairs_summary[i][j])):
+                if (('REMOVED' not in MASTER_Basepairs_summary[i][j]) and ('FALSE' not in MASTER_Basepairs_summary[i][j]) and ('UNDETERMINED' not in MASTER_Basepairs_summary[i][j])) and (('D' in MASTER_Basepairs_summary[i][j]) or ('MH' in MASTER_Basepairs_summary[i][j]) or ('ELI' in MASTER_Basepairs_summary[i][j])):
                     for l in range (len(MASTER_Basepairs_summary)):
                         if (len(MASTER_Basepairs_summary[l]) > 0):
                             for m in range (len(MASTER_Basepairs_summary[l])):
-                                 if (('FALSE' not in MASTER_Basepairs_summary[l][m]) and ('UNDETERMINED' not in MASTER_Basepairs_summary[l][m])) and (('D' in MASTER_Basepairs_summary[l][m]) or ('MH' in MASTER_Basepairs_summary[l][m]) or ('ELI' in MASTER_Basepairs_summary[l][m])):
+                                 if (('REMOVED' not in MASTER_Basepairs_summary[i][j]) and ('FALSE' not in MASTER_Basepairs_summary[l][m]) and ('UNDETERMINED' not in MASTER_Basepairs_summary[l][m])) and (('D' in MASTER_Basepairs_summary[l][m]) or ('MH' in MASTER_Basepairs_summary[l][m]) or ('ELI' in MASTER_Basepairs_summary[l][m])):
                                      list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5], MASTER_Basepairs_summary[l][m][2], MASTER_Basepairs_summary[l][m][3], MASTER_Basepairs_summary[l][m][4], MASTER_Basepairs_summary[l][m][5]]
                                      convert = CONVERT(list)
                                      SCORE = [[],[],[]] #To keep track of the performance of the debated basepairs in each of the three CRITERIA that will be used to sort out their legitimacy. FORMAT: 'SCORE[0] will be used for CONTINUITY_HELICITY_CRITERION', 'SCORE[1] will be used for CUTOFF_CRITERION', and 'SCORE[2] will be used for BOND_CRITERION'
@@ -2492,9 +2470,9 @@ while count_for > -1:
                                   new_list_end[count_for][missing[2]+1] = MASTER_Basepairs_excluded[i][k][6]
                                   missing_control = "1"
                        if missing_control == "0": #This will prevent the program from crashing if a bond remains missing. Following these basepairs can lead to the identification of new basepair geometries
-                             new_list_end[count_for][missing[0]] = "--"
-                             new_list_end[count_for][missing[2]] = "--"
-                             new_list_end[count_for][missing[2]+1] = " miss"
+                             new_list_end[count_for][missing[0]] = "1"
+                             new_list_end[count_for][missing[2]] = "1"
+                             new_list_end[count_for][missing[2]+1] = "11"
                              #The newly found bond will be marked for output a few lines below
 ####Finding Missing Bonds
 
@@ -2504,13 +2482,15 @@ while count_for > -1:
         #For basepairs with only 2 bonds identified, positions 13, 14, and 15 will have []. Let's replace them with a string carrying '0', or '00' for new_list_end[count_for][15], so 'FUNCTION CONVERT' will work properly (see also next explanation)
 #           print "\nnew_list_end[count_for]", new_list_end[count_for]
 #           print "count_for", count_for, "new_list_end_floats[count_for]", new_list_end_floats[count_for]
-           if " miss" not in new_list_end[count_for]:
+           if "11" != new_list_end[count_for][15] and "11" != new_list_end[count_for][12] and "11" != new_list_end[count_for][9]:
                if new_list_end[count_for][13] == []: #Basepairs with only 2 bonds
+                   print "new_list_end[count_for]", new_list_end[count_for]
                    new_list_end[count_for][13] = '0'
                    new_list_end[count_for][14] = '0'
                    new_list_end[count_for][15] = '00'
                    new_list_end_floats[count_for,:] = new_list_end_floats[count_for,:] + [new_list_end[count_for][9], new_list_end[count_for][12], 0, new_list_end[count_for][16], new_list_end[count_for][17]]
                else:
+                   print "new_list_end[count_for]", new_list_end[count_for]
                    new_list_end_floats[count_for,:] = new_list_end_floats[count_for,:] + [new_list_end[count_for][9], new_list_end[count_for][12], new_list_end[count_for][15], new_list_end[count_for][16], new_list_end[count_for][17]]
                    a3 = str(new_list_end[count_for][15])
                    new_list_end[count_for][15] = a3[:5]
@@ -2542,6 +2522,11 @@ while count_for > -1:
                    new_list_end[count_for][13] = '--'
                    new_list_end[count_for][14] = '--'
                    new_list_end[count_for][15] = '  -- '
+               if new_list_end[count_for][7] == '11' or new_list_end[count_for][10] == '11' or new_list_end[count_for][13] == '11':
+                   new_list_end[count_for][13] = 'NF'
+                   new_list_end[count_for][14] = 'NF'
+                   new_list_end[count_for][15] = '  NF '
+
 #DELETING UNWANTED SPACES
 
 #ADDING DESIRED SPACES
@@ -2623,7 +2608,7 @@ basepair_count = 0
 for h in range (len(run_cutoff)/2):
    run_cutoff_LISTS.append([])
 for b in range (len(new_list_end)):
-   if 'FALSE' not in new_list_end[b] and 'UNDETERMINED' not in new_list_end[b] and " miss" not in new_list_end[b]:
+   if 'REMOVED' not in new_list_end[b] and'FALSE' not in new_list_end[b] and 'UNDETERMINED' not in new_list_end[b] and " miss" not in new_list_end[b]:
        PYMOL_OUTPUT(new_list_end[b], b, pdb_file_main, From, file)
    if ('LEGITIMATE' in new_list_end[b]):
        LEGITIMATE_tagged.append(new_list_end[b])
@@ -2638,7 +2623,7 @@ for b in range (len(new_list_end)):
       missing_bond.append(new_list_end[b])
       missing_bond[len(missing_bond)-1].append(b) #For easy future access to the corresponding line in 'new_list_end'
    for h in range (len(run_cutoff_LISTS)):
-      if run_cutoff[h*2 + 1] in new_list_end[b] and ('FALSE' not in new_list_end[b]) and ('UNDETERMINED' not in new_list_end[b]) and " miss" not in new_list_end[b]:
+      if run_cutoff[h*2 + 1] in new_list_end[b] and ('REMOVED' not in new_list_end[b]) and ('FALSE' not in new_list_end[b]) and ('UNDETERMINED' not in new_list_end[b]) and " miss" not in new_list_end[b]:
            run_cutoff_LISTS[h].append(new_list_end[b])
            basepair_count = basepair_count + 1
 
@@ -2776,7 +2761,7 @@ if missing_bond != []:
       print "                                                     ", missing_bond[h][13], " ", missing_bond[h][14], missing_bond[h][15]
     print           "==============================================================================="
     print "Number of MISSING-BOND BASEPAIRS =", len(missing_bond)
-    print "############### '*' notes bonds with length larger tan maximum distance cutoff ###############"
+    print "############### 'NF' notes Not-found bond ###############"
     CLOSE(file)
 ##### 5) LIST OF MISSING-BOND BASEPAIRS END
 
@@ -2806,21 +2791,24 @@ for a in range (len(MASTER_Basepairs_schemes)):
     SUM = []
     counter = 0
 #Calculating mean and standard deviation
-#    print "MASTER_Basepairs_schemes[a]", MASTER_Basepairs_schemes[a]
+#    if "XXVIII_GU" in MASTER_Basepairs_schemes[a]:
+#        print "MASTER_Basepairs_schemes[a]", MASTER_Basepairs_schemes[a]
     for e in range (len(new_list_end)):
 #        print "OUTSIDE \"for e\" new_list_end[e]", new_list_end[e]
-        if  MASTER_Basepairs_schemes[a] in new_list_end[e][0]:
+        if  MASTER_Basepairs_schemes[a] in new_list_end[e][0] and 'REMOVED' not in new_list_end[e] and 'FALSE' not in new_list_end[e] and 'UNDETERMINED' not in new_list_end[e] and 'miss' not in new_list_end[e]:
 #            print "IN \"for e\" new_list_end[e]", new_list_end[e]
             SUM.append(new_list_end_floats[e,:])
             counter = counter + 1
     if SUM != []:
         SUM = numpy.array(SUM)
-#        print "SUM", SUM, "SUM.ndim", SUM.ndim, "SUM.shape", SUM.shape, "counter", counter, "SUM.shape[0]",SUM.shape[0]
+#        if "XXVIII_GU" in MASTER_Basepairs_schemes[a]:
+#            print "SUM", SUM, "\nSUM.ndim", SUM.ndim, "SUM.shape", SUM.shape, "counter", counter, "SUM.shape[0]",SUM.shape[0]
         SUM.reshape(counter, 5)
 #        print "STATS[a,]", STATS[a,], "\nSUM[0,]", SUM[0,]
 #        print "numpy.mean(SUM[:,0])", numpy.mean(SUM[:,0])
         STATS[a,] = [numpy.mean(SUM[:,0]), numpy.std(SUM[:,0]), numpy.mean(SUM[:,1]), numpy.std(SUM[:,1]), numpy.mean(SUM[:,2]), numpy.std(SUM[:,2]), numpy.mean(SUM[:,3]), numpy.std(SUM[:,3]), numpy.mean(SUM[:,4]), numpy.std(SUM[:,4]), SUM.shape[0]]
-#        print "STATS[a,]", STATS[a,], "STATS[a,0]", STATS[a,0]
+#        if "XXVIII_GU" in MASTER_Basepairs_schemes[a]:
+#            print "STATS[a,]", STATS[a,], "STATS[a,0]", STATS[a,0]
 #        list = [str(STATS[a,0]), str(STATS[a,1]), str(STATS[a,2]), str(STATS[a,3]), str(STATS[a,4]), str(STATS[a,5]), str(STATS[a,6]), str(STATS[a,7]), str(STATS[a,8])]
 #        print "Bond1: MEAN =", list[0][:5], "SD =", list[1][:5], "Bond2: MEAN = ", list[2][:5], "SD =", list[3][:5], "Bond3: MEAN =", list[4][:5], "SD =", list[5][:5], "P-to-P distance =", list[6][:5], "SD =", list[7][:5], "Number of basepairs with this geometry =", list[8][:1]
 
@@ -2842,18 +2830,20 @@ for c in range (len(MASTER_Basepairs_schemes)):
     geometry_counter_real = 0 #Will count only non-FALSE, non-UNDETERMINED basepairs within 'new_list_end[b]' with 'MASTER_Basepairs_schemes[c]' geometry
 #TRUE BASEPAIRS
     for b in range (len(new_list_end)):
-        if MASTER_Basepairs_schemes[c] in new_list_end[b][0]:
+        m=re.search('\S+', new_list_end[b][0])
+        scheme = str(m.group())
+        if MASTER_Basepairs_schemes[c] == scheme:
            geometry_counter = geometry_counter + 1
            if geometry_counter == 1:
               print           "======================================================================================================="
               print "   Scheme   Resid  Base  Resid  Base Expect. Found  ATOM ATOM  DIST.  DIFF.  DIST   DIFF.  DIST   DIFF."
               print           "             #1     #1    #2     #2   Bonds  Bonds   #1   #2    BOND         P-P          C1'-C1'"
               print           "======================================================================================================="
-           if 'FALSE' not in new_list_end[b] and 'UNDETERMINED' not in new_list_end[b]:
+           if 'REMOVED' not in new_list_end[b] and 'FALSE' not in new_list_end[b] and 'UNDETERMINED' not in new_list_end[b]:
                geometry_counter_real = geometry_counter_real + 1
                list = DIFF_CALC(new_list_end_floats[b,:], STATS[c,:], new_list_end[b], MASTER_Basepairs_bonds[c])
 
-    if geometry_counter_real > 0 and 'FALSE' not in new_list_end[b] and 'UNDETERMINED' not in new_list_end[b]:
+    if geometry_counter_real > 0 and 'REMOVED' not in new_list_end[b] and 'FALSE' not in new_list_end[b] and 'UNDETERMINED' not in new_list_end[b]:
          list = [str(STATS[c,0]), str(STATS[c,1]), str(STATS[c,2]), str(STATS[c,3]), str(STATS[c,4]), str(STATS[c,5]), str(STATS[c,6]), str(STATS[c,7]), str(STATS[c,8]), str(STATS[c,9])]
          print "PRECALCULATED STATISTICAL DATA:", "\nP-to-P distance =", MASTER_Basepairs_bonds[c][9], " SD =", MASTER_Basepairs_bonds[c][10], "\nC1\'-to-C1\' distance =", MASTER_Basepairs_bonds[c][11], " SD =", MASTER_Basepairs_bonds[c][12]
          print "STATISTICAL DATA FROM CURRENT STRUCTURE:", "\nBond1: MEAN =", list[0][:5], "SD =", list[1][:5], "\nBond2: MEAN =", list[2][:5], " SD =", list[3][:5], "\nBond3: MEAN =", list[4][:5], " SD =", list[5][:5], "\nP-to-P distance =", list[6][:5], " SD =", list[7][:5], "\nC1\'-to-C1\' distance =", list[8][:5], " SD =", list[9][:5]
@@ -2875,9 +2865,9 @@ for c in range (len(MASTER_Basepairs_schemes)):
     for b in range (len(undetermined)):
         if MASTER_Basepairs_schemes[c] in undetermined[b][0]:
             if b == 0:
-                print "LIST UNDETERMINED BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry:"
+                print "LIST OF UNDETERMINED BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry:"
             undetermined_counter = undetermined_counter + 1
-            list = DIFF_CALC(new_list_end_floats[undetermined[b][len(undetermined[b])-1],:], STATS[c,:], undetermined[b])
+            list = DIFF_CALC(new_list_end_floats[undetermined[b][len(undetermined[b])-1],:], STATS[c,:], undetermined[b], MASTER_Basepairs_bonds[c])
     if undetermined_counter > 0:
         print "NUMBER OF UNDETERMINED BASEPAIRS WITH", MASTER_Basepairs_schemes[c], "geometry =", undetermined_counter, "\n"
 
@@ -2968,10 +2958,29 @@ sys.exit()
 
         #note that G447 and A487 form a sheared basepair in which the G's N3 and the A's N6 are more than 3.7A apart. The distance from A's N6 to 447's O2* is 3.0A, though. Is this a common theme in sheared basepairs?
                 #Sheared between A441 and G493, from A's N6 to G's O2* 2.8A, whereas from A's N6 to G's N3 3.7A
-        #Wrong helical element running from C456 to C458 and from G474 to G476. At maximum CUTOFF of 3.6 only two basepairs should have been identified
+        #SOLVED 051210: Wrong helical element running from C456 to C458 and from G474 to G476. At maximum CUTOFF of 3.6 only two basepairs should have been identified
                 #3-bond base pair with all bonds identified between C456 and G475
                 #3-bond base pair with  only two bonds identified between C455 and G476
 
+        #051510:Possible new basepair between A441 and G493 (involving A`441/N6 and G`493/O2*, and A`441/N7 and G`493/N2)
+        #051610 (BUILD pdb_distances_051210.py): Basepair between 978 and 1316 of the X_AG geometry cannot be deconvoluted due to a stacking noise from A 1318, which is detected as II_AA. C1-C1 distance should be able to take care of this.
+                # You clicked /2J02_16SrRNA//A/G`1316/N2 -> (pk1)
+                # You clicked /2J02_16SrRNA//A/A`978/N1 -> (pk1)
+                # You clicked /2J02_16SrRNA//A/G`1316/N3 -> (pk1)
+                # You clicked /2J02_16SrRNA//A/A`978/N6 -> (pk1)
+        #051610 (SOLVED) (BUILD pdb_distances_051210.py): Basepair between G1022 and C1007 (C1-C1 = 11.2) cannot be deconvoluted from stacking noise between C1008 and G1022 (C1-C1 = 8.3). C1-C1 distances to sort out this noise before attempting deconvolution by MH??????
+        #Basepairs C444:G490 and G445:C489 are not identified. Instead a basepair between C444 and C489 appears to be identified
+
+        # Base-pair between positions G1030A and C1031 of T. thermophilus 16S rRNA not recognized, probably because of consecutive bases involved
+###i = 47 in MASTER_Basepairs (XXXIII_GG)
+#XXXI_GG = [] #XXXIII Base-pair between positions G1030A and C1031 of T. thermophilus 16S rRNA (E. coli numbering)
+#Bond   G       G       Length Ave      Length Std      Attribute
+#1      N2      N1      2.9             unk
+#2      N3      N2      3.4             unk
+#bonds = [2, "G", "G", "N2", "N1", "N3", "N2", "NA", "NA", "NA", "NA", "NA", "NA"]
+#1GMASTER_Basepairs_bonds.append(bonds)
+
+        #TRIPLE involving bases 64, 68, and 101. the program detects the a basepair between 69 and 101 and appends that between 68 and 64 as FALSE
 #v.042110
 #From Ralf 050310
 #    Hi Anton,
