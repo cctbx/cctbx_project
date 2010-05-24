@@ -38,11 +38,13 @@ class vdw_radii:
 
   def show(self, log=None):
     if log is None: log = sys.stdout
-    for symbol in self.table:
+    symbols = self.table.keys()
+    symbols.sort()
+    for symbol in symbols:
       print >> log, "%5s" %symbol,
     print >> log
-    for radius in self.table.values():
-      print >> log, "%5.2f" %radius,
+    for symbol in symbols:
+      print >> log, "%5.2f" %self.table[symbol],
     print >> log
 
 
