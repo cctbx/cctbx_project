@@ -1,6 +1,7 @@
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
 from cStringIO import StringIO
+import copy
 
 def exercise_cif_model():
   import iotbx.cif
@@ -99,8 +100,8 @@ _tag2                             1.2
   cm3 = cif_model.deepcopy()
   assert cm2['fred']['_loop_a'] is cif_model ['fred']['_loop_a']
   assert cm3['fred']['_loop_a'] is not cif_model ['fred']['_loop_a']
-  b2 = block.copy()
-  b3 = block.deepcopy()
+  b2 = copy.copy(block)
+  b3 = copy.deepcopy(block)
   assert b2['_loop_b'] is block['_loop_b']
   assert b3['_loop_b'] is not block['_loop_b']
   l2 = loop.copy()

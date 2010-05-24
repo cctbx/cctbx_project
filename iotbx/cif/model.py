@@ -32,11 +32,17 @@ class cif(DictMixin):
   def __repr__(self):
     return repr(OrderedDict(self.iteritems()))
 
-  def copy(self):
+  def __copy__(self):
     return cif(self.blocks.copy())
 
+  def __deepcopy__(self, memo):
+    return cif(copy.deepcopy(self.blocks, memo))
+
+  def copy(self):
+    return copy.copy(self)
+
   def deepcopy(self):
-    return cif(copy.deepcopy(self.blocks))
+    return copy.deepcopy(self)
 
   def show(self, out=None, indent="  ", data_name_field_width=34):
     if out is None:
@@ -124,19 +130,25 @@ class block(DictMixin):
   def add_loop(self, loop):
     self.setdefault(loop.name(), loop)
 
-  def copy(self):
+  def __copy__(self):
     new = block()
     new._items = self._items.copy()
     new.loops = self.loops.copy()
-    new._set = copy.deepcopy(self._set)
+    new._set = copy.copy(self._set)
     return new
 
-  def deepcopy(self):
+  def __deepcopy__(self, memo):
     new = block()
-    new._items = copy.deepcopy(self._items)
-    new.loops = copy.deepcopy(self.loops)
-    new._set = copy.deepcopy(self._set)
+    new._items = copy.deepcopy(self._items, memo)
+    new.loops = copy.deepcopy(self.loops, memo)
+    new._set = copy.deepcopy(self._set, memo)
     return new
+
+  def copy(self):
+    return copy.copy(self)
+
+  def deepcopy(self):
+    return copy.deepcopy(self)
 
   def show(self, out=None, indent="  ", data_name_field_width=34):
     if out is None:
@@ -227,15 +239,21 @@ class loop(DictMixin):
     for key, value in columns.iteritems():
       self.add_column(key, value)
 
-  def copy(self):
+  def __copy__(self):
     new = loop()
     new._columns = self._columns.copy()
     return new
 
-  def deepcopy(self):
+  def __deepcopy__(self, memo):
     new = loop()
     new._columns = copy.deepcopy(self._columns)
     return new
+
+  def copy(self):
+    return copy.copy(self)
+
+  def deepcopy(self):
+    return copy.deepcopy(self)
 
   def show(self, out=None, indent="  "):
     if out is None:
