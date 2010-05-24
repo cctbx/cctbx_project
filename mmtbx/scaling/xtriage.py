@@ -994,6 +994,13 @@ class launcher (runtime_utils.simple_target) :
 def validate_params (params, callback=None) :
   if params.scaling.input.xray_data.file_name is None :
     raise Sorry("You must supply a reflection file first!")
+  d_min = params.scaling.input.xray_data.high_resolution
+  d_max = params.scaling.input.xray_data.low_resolution
+  if (d_min is not None) and (d_max is not None) :
+    if d_min > d_max :
+      raise Sorry(("The specified high-resolution cutoff (%.3f) is greater "+
+        "than the low-resolution cutoff (%.3f)!") % (d_min, d_max))
+  return True
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
