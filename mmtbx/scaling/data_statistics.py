@@ -102,7 +102,7 @@ class i_sigi_completeness_stats(object):
       graph_names=["I/sigI by shell"],
       graph_labels=[("High resolution of shell", "% of total")],
       graph_columns=[list(range(7))],
-      x_is_inverse_d_min=False)
+      x_is_inverse_d_min=True)
     for ii in xrange(1,len(self.resolution_bins)-1):
       row = []
       raw_row = []
@@ -113,7 +113,7 @@ class i_sigi_completeness_stats(object):
 
       lims = limsa+" -"+limsb
       row.append( lims )
-      raw_row.append(b**-0.5)
+      raw_row.append(b)
       for jj in  self.completeness_bins:
         raw_row.append(100.0*jj[ii])
         tmp="%3.1f%s"%(100.0*jj[ii],"%")
