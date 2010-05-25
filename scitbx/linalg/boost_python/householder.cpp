@@ -17,7 +17,6 @@ namespace scitbx { namespace matrix { namespace boost_python {
 
     static void wrap(char const *name) {
       using namespace boost::python;
-      return_value_policy<return_by_value> rbv;
       class_<wt>(name, no_init)
       .def(init<af::ref<scalar_t, af::mat_grid> const &, optional<bool> >(
            (arg("matrix"), arg("may_accumulate_q"))))
@@ -35,7 +34,6 @@ namespace scitbx { namespace matrix { namespace boost_python {
 
     static void wrap(char const *name) {
       using namespace boost::python;
-      return_value_policy<return_by_value> rbv;
       class_<wt>(name, no_init)
       .def(init<af::ref<scalar_t, af::mat_grid> const &>())
       .def("u", &wt::u, arg("thin")=true)

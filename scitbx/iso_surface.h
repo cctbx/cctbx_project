@@ -470,9 +470,6 @@ protected:
 
   typedef std::map<index_value_type, point_3d_id> id_to_point_3d_id;
 
-  bool lazy_normals_;
-  bool ascending_normal_direction_;
-
   // The map of the scalar field
   map_const_ref_type map_;
 
@@ -496,6 +493,8 @@ protected:
 
   // The normals_.
   af::shared<vector_3d> normals_;
+  bool lazy_normals_;
+  bool ascending_normal_direction_;
 
   // List of point_3d's which form the isosurface.
   id_to_point_3d_id id_to_vertex;
