@@ -818,9 +818,9 @@ def read_mvd_output(file_lines, name):
       if(x.startswith("outliers :")): rama_outliers = float(xs[3].replace("(",""))
       if(x.startswith("allowed  :")): rama_allowed  = float(xs[3].replace("(",""))
       if(x.startswith("favored  :")): rama_favored  = float(xs[3].replace("(",""))
-      if(x.startswith("Rotamer outliers :")):        rota_outl = float(xs[3].replace("(",""))
-      if(x.startswith("Cbeta deviations >0.25A :")): cbeta_dev = float(xs[4].replace("(",""))
-      if(x.startswith("All-atom clashscore     :")): cbeta_dev = float(xs[3].replace("(",""))
+      if(x.startswith("Rotamer outliers :")):        rota_outl  = float(xs[3].replace("(",""))
+      if(x.startswith("Cbeta deviations >0.25A :")): cbeta_dev  = float(xs[4].replace("(",""))
+      if(x.startswith("All-atom clashscore     :")): clashscore = float(xs[3].replace("(",""))
       if(x.startswith("data_label              :")): data_label      = xs[2]
       if(x.startswith("high_resolution         :")): d_min           = float(xs[2])
       if(x.startswith("low_resolution          :")): d_max           = float(xs[2])

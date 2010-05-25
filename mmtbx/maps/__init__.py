@@ -48,6 +48,12 @@ map_coeff_params_str = """\
     reverse_scale = True
       .type = bool
       .help = Apply scales to Fobs and remove them from Fmodel.
+    sharpening = False
+      .type = bool
+      .help = Apply B-factor sharpening
+    sharpening_b_factor = None
+      .type = float
+      .help = Optional sharpening B-factor value
   }
 """
 
@@ -97,6 +103,12 @@ map_params_str ="""\
     reverse_scale = True
       .type = bool
       .help = Apply scales to Fobs and remove them from Fmodel.
+    sharpening = False
+      .type = bool
+      .help = Apply B-factor sharpening
+    sharpening_b_factor = None
+      .type = float
+      .help = Optional sharpening B-factor value
   }
 """
 
@@ -270,13 +282,13 @@ def map_coefficients_from_fmodel(fmodel, params):
         "You can disable the automatic twin law detection by setting the "+
         "parameter maps.skip_twin_detection to True (or check the "+
         "corresponding box in the Phenix GUI).")
+
     coeffs = map_tools.kick_map(
-      fmodel            = e_map_obj.fmodel,
-      map_type          = params.map_type,
-      real_map          = True,
-      real_map_unpadded = False,
-      symmetry_flags    = maptbx.use_space_group_symmetry,
-      average_maps      = False).map_coeffs
+      fmodel   = e_map_obj.fmodel,
+      map_type = params.map_type).map_coeffs
+  if(coeffs is not None and params.sharpening):
+    coeffs = map_tools.b_sharp_map(map_coefficients = coeffs, b_sharp =
+      params.sharpening_b_factor)
   if(coeffs is not None and coeffs.anomalous_flag() and not
      mmtbx.map_names(params.map_type).anomalous):
     coeffs = coeffs.average_bijvoet_mates()

@@ -354,9 +354,9 @@ class modify(object):
             selection_strings=[sites.atom_selection],
             xray_structure=self.xray_structure)[0])
       self._shake_sites(selection=selection, rms_difference=sites.shake)
-      if(sites.max_rotomer_distortion is not None):
+      if(sites.max_rotomer_distortion):
         self._max_distant_rotomer(selection=selection)
-      if(sites.min_rotomer_distortion is not None):
+      if(sites.min_rotomer_distortion):
         self._max_distant_rotomer(selection=selection, min_dist_flag=True)
       self._rb_shift(
         selection=selection,
