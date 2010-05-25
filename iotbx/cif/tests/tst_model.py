@@ -67,17 +67,17 @@ def exercise_cif_model():
   #
   cif_model["fred"] = block
   assert "fred" in cif_model
-  assert cif_model["fred"] is block
-  assert cif_model["fred"]["_tag"] == '2'
+  assert cif_model["frEd"] is block
+  assert cif_model["fred"]["_Tag"] == '2'
   cif_model["fred"]["_tag"] = 4
   assert cif_model["fred"]["_tag"] == '4'
-  del cif_model["fred"]["_tag"]
+  del cif_model["fred"]["_tAg"]
   try: cif_model["fred"]["_tag"]
   except KeyError: pass
   else: raise Exception_expected
   cm = cif_model.deepcopy()
   l = cm["fred"]["_loop"]
-  del cm["fred"]["_loop_b"]
+  del cm["Fred"]["_loop_B"]
   assert not cm["fred"].has_key("_loop_b")
   assert not l.has_key("_loop_b")
   assert cm["fred"].loops.has_key("_loop")
