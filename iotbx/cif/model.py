@@ -9,22 +9,26 @@ from cStringIO import StringIO
 
 from cctbx.array_family import flex
 
+
 class cif(DictMixin):
   def __init__(self, blocks=None):
     if blocks is not None:
       self.blocks = blocks
     else:
       self.blocks = OrderedDict()
+    self.keys_lower = dict([(key.lower(), key) for key in self.blocks.keys()])
 
   def __setitem__(self, key, value):
     assert isinstance(value, block)
     self.blocks[key] = value
+    self.keys_lower[key.lower()] = key
 
   def __getitem__(self, key):
-    return self.blocks[key]
+    return self.blocks[self.keys_lower[key.lower()]]
 
   def __delitem__(self, key):
-    del self.blocks[key]
+    del self.blocks[self.keys_lower[key.lower()]]
+    del self.keys_lower[key.lower()]
 
   def keys(self):
     return self.blocks.keys()
@@ -63,15 +67,20 @@ class block(DictMixin):
     self._items = {}
     self.loops = {}
     self._set = OrderedSet()
+    self.keys_lower = {}
 
   def __setitem__(self, key, value):
     if isinstance(value, loop):
       self.loops[key] = value
+      for k in value.keys():
+        self.keys_lower[k.lower()] = k
     else:
       self._items[key] = str(value)
+      self.keys_lower[key.lower()] = key
     self._set.add(key)
 
   def __getitem__(self, key):
+    key = self.keys_lower.get(key.lower(), key)
     if self._items.has_key(key):
       return self._items[key]
     else:
@@ -85,6 +94,7 @@ class block(DictMixin):
     raise KeyError
 
   def __delitem__(self, key):
+    key = self.keys_lower.get(key.lower(), key)
     if self._items.has_key(key):
       del self._items[key]
       self._set.discard(key)
@@ -123,6 +133,7 @@ class block(DictMixin):
     self._items.update(other._items)
     self.loops.update(other.loops)
     self._set |= other._set
+    self.keys_lower.update(other.keys_lower)
 
   def add_data_item(self, tag, value):
     self[tag] = value
@@ -135,6 +146,7 @@ class block(DictMixin):
     new._items = self._items.copy()
     new.loops = self.loops.copy()
     new._set = copy.copy(self._set)
+    new.keys_lower = self.keys_lower.copy()
     return new
 
   def __deepcopy__(self, memo):
@@ -142,6 +154,7 @@ class block(DictMixin):
     new._items = copy.deepcopy(self._items, memo)
     new.loops = copy.deepcopy(self.loops, memo)
     new._set = copy.deepcopy(self._set, memo)
+    new.keys_lower = copy.deepcopy(self.keys_lower, memo)
     return new
 
   def copy(self):
@@ -171,6 +184,7 @@ class block(DictMixin):
 class loop(DictMixin):
   def __init__(self, header=None, data=None):
     self._columns = OrderedDict()
+    self.keys_lower = {}
     if header is not None:
       for key in header:
         self.setdefault(key, flex.std_string())
@@ -184,6 +198,8 @@ class loop(DictMixin):
     elif header is None and data is not None:
       assert isinstance(data, dict) or isinstance(data, OrderedDict)
       self.add_columns(data)
+      self.keys_lower = dict(
+        [(key.lower(), key) for key in self._columns.keys()])
 
   def __setitem__(self, key, value):
     if len(self) > 0:
@@ -202,12 +218,14 @@ class loop(DictMixin):
     # value must be a mutable type
     assert hasattr(value, '__setitem__')
     self._columns[key] = value
+    self.keys_lower[key.lower()] = key
 
   def __getitem__(self, key):
-    return self._columns[key]
+    return self._columns[self.keys_lower[key.lower()]]
 
   def __delitem__(self, key):
-    del self._columns[key]
+    del self._columns[self.keys_lower[key.lower()]]
+    del self.keys_lower[key.lower()]
 
   def keys(self):
     return self._columns.keys()
@@ -233,6 +251,7 @@ class loop(DictMixin):
     if self.size() != 0:
       assert len(values) == self.size()
     self[key] = values
+    self.keys_lower[key.lower()] = key
 
   def add_columns(self, columns):
     assert isinstance(columns, dict) or isinstance(columns, OrderedDict)
@@ -242,11 +261,13 @@ class loop(DictMixin):
   def __copy__(self):
     new = loop()
     new._columns = self._columns.copy()
+    new.keys_lower = self.keys_lower.copy()
     return new
 
   def __deepcopy__(self, memo):
     new = loop()
-    new._columns = copy.deepcopy(self._columns)
+    new._columns = copy.deepcopy(self._columns, memo)
+    new.keys_lower = copy.deepcopy(self.keys_lower, memo)
     return new
 
   def copy(self):
