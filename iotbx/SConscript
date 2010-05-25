@@ -39,7 +39,7 @@ if (not env_etc.no_boost_python):
       env=env_antlr3_iotbx_boost_python_ext,
       paths=[os.path.join(libtbx.env.build_path, "antlr3"),
 	    env_etc.antlr3_include, env_etc.antlr3_dist])
-    env_antlr3_iotbx_boost_python_ext.Append(LIBS=env_etc.antlr3_lib)
+    env_antlr3_iotbx_boost_python_ext.Prepend(LIBS=env_etc.antlr3_lib)
     Export("env_antlr3_iotbx_boost_python_ext")
   #
   env = env_no_includes_boost_python_ext.Clone()
