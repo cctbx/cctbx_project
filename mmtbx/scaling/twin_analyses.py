@@ -1711,7 +1711,7 @@ class twin_results_interpretation(object):
             print >> self.twinning_verdict,\
               "Note that the symmetry of the intensities suggest that the assumed space group"
             print >> self.twinning_verdict, \
-              "is too low. As twinning is however suspected, it is not immediuatly clear if this"
+              "is too low. As twinning is however suspected, it is not immediately clear if this"
             print >> self.twinning_verdict, \
               "is the case. Carefull reprocessing and (twin)refinement for all cases might resolve"
             print >> self.twinning_verdict, \
