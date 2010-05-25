@@ -251,13 +251,13 @@ def xplor_map_from_solve_mtz (pdb_file, mtz_file, force=False) :
       fom_label="FOM")
   return output_file
 
-def get_map_coeff_labels (server, build_only=False) :
+def get_map_coeff_labels (server, build_only=False, include_fom=True) :
   all_labels = []
   phi_labels = []
   fom_labels = []
   for miller_array in server.miller_arrays :
     label = miller_array.info().label_string()
-    if label.startswith("FOM") :
+    if label.startswith("FOM") and include_fom :
       fom_labels.append(label)
   phase_arrays = server.get_phases_deg(None, None, False, None, None, None,
                                        True, 3)
@@ -280,7 +280,7 @@ def get_map_coeff_labels (server, build_only=False) :
     if f_label[0] == "F" and f_label != "FC" :
       for phase_label in phi_labels :
         hybrid_label = "%s,%s" % (f_label, phase_label)
-        if len(fom_labels) > 0 :
+        if len(fom_labels) > 0 and include_fom :
           for fom in fom_labels :
             final_label = hybrid_label + ",%s" % fom
             all_labels.append(final_label)
