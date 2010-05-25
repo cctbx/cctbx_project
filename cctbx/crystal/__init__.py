@@ -524,7 +524,7 @@ def correct_special_position(
       special_op,
       site_frac=None,
       site_cart=None,
-      tolerance=1.e-1,
+      tolerance=1,
       error_message="Corrupt gradient calculations."):
   """
   During refinement it is essential to reset special positions
