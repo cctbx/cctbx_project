@@ -25,6 +25,7 @@ class lbfgs(object):
                      lbfgs_termination_params = None,
                      use_fortran              = False,
                      verbose                  = 0,
+                     correct_special_position_tolerance = 1.0,
                      iso_restraints           = None,
                      h_params                 = None,
                      u_min                    = adptbx.b_as_u(-30.0),
@@ -38,6 +39,7 @@ class lbfgs(object):
     self.hd_flag = self.hd_selection.count(True) > 0
     self.regularize_h_and_update_xray_structure()
     self.weights = None
+    self.correct_special_position_tolerance = correct_special_position_tolerance
     if(refine_xyz and target_weights is not None):
       self.weights = target_weights.xyz_weights_result
     elif(refine_adp and target_weights is not None):
@@ -125,9 +127,10 @@ class lbfgs(object):
       site_symmetry_table = self.xray_structure.site_symmetry_table()
       for i_seq in site_symmetry_table.special_position_indices():
         scatterers_shifted[i_seq].site = crystal.correct_special_position(
-               crystal_symmetry = self.xray_structure,
-               special_op       = site_symmetry_table.get(i_seq).special_op(),
-               site_frac        = scatterers_shifted[i_seq].site)
+          crystal_symmetry = self.xray_structure,
+          special_op       = site_symmetry_table.get(i_seq).special_op(),
+          site_frac        = scatterers_shifted[i_seq].site,
+          tolerance        = self.correct_special_position_tolerance)
     self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
     if(self.refine_adp):
       return apply_shifts_result.u_iso_refinable_params

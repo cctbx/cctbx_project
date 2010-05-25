@@ -427,14 +427,18 @@ class determine_data_and_flags(object):
       selection &= f_obs.d_spacings().data() <= self.parameters.low_resolution
     if(self.parameters.high_resolution is not None):
       selection &= f_obs.d_spacings().data() >= self.parameters.high_resolution
-    selection_strictly_positive = f_obs.data() > 0
+    selection_positive = f_obs.data() >= 0
     print >> self.log, \
       "Number of F-obs in resolution range:                  ", \
       selection.count(True)
     print >> self.log, \
-      "Number of F-obs <= 0:                                 ", \
-      selection_strictly_positive.count(False)
-    selection &= selection_strictly_positive
+      "Number of F-obs<0 (these reflections will be rejected):", \
+      selection_positive.count(False)
+    selection_zero = f_obs.data() == 0
+    print >> self.log, \
+      "Number of F-obs=0 (these reflections will be used in refinement):", \
+      selection_zero.count(False)
+    selection &= selection_positive
     selection_by_fsigma = self._apply_sigma_cutoff(
       f_obs   = f_obs,
       n       = self.parameters.sigma_fobs_rejection_criterion,
