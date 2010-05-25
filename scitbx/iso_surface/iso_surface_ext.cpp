@@ -15,7 +15,6 @@ namespace scitbx { namespace iso_surface { namespace boost_python {
 
     static void wrap(const char *name) {
       using namespace boost::python;
-      return_value_policy<return_by_value> rbv;
 
       class_<wt>(name, no_init)
         .def(init<typename wt::map_const_ref_type,
