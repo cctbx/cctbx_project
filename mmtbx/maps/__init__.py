@@ -51,9 +51,12 @@ map_coeff_params_str = """\
     sharpening = False
       .type = bool
       .help = Apply B-factor sharpening
+      .short_caption = Apply B-factor sharpening
+      .style = bold
     sharpening_b_factor = None
       .type = float
       .help = Optional sharpening B-factor value
+      .short_caption = Sharpening B-factor value (optional)
   }
 """
 
@@ -106,9 +109,12 @@ map_params_str ="""\
     sharpening = False
       .type = bool
       .help = Apply B-factor sharpening
+      .short_caption = Apply B-factor sharpening
+      .style = bold
     sharpening_b_factor = None
       .type = float
       .help = Optional sharpening B-factor value
+      .short_caption = Sharpening B-factor value (optional)
   }
 """
 
