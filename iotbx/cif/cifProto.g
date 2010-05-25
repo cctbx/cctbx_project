@@ -243,7 +243,8 @@ CHAR_STRING
  *------------------------------------------------------------------*/
 
 COMMENTS
-	:	( ( '#' (ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL )+ )
+	:	( ( '#' (ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
+	          ( EOL | { self.input.LA(1) == EOF }? ) )+ )
 	        { $channel = HIDDEN; }
 	;
 

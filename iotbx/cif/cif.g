@@ -261,7 +261,8 @@ CHAR_STRING
  *------------------------------------------------------------------*/
 
 COMMENTS
-	:	( ( '#' (ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL )+ )
+	:	( ( '#' (ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
+  		  ( EOL | { LA(1) == EOF }? ) )+ )
 	        { $channel = HIDDEN; }
 	;
 

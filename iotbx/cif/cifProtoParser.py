@@ -1,4 +1,4 @@
-# $ANTLR 3.1.2 cifProto.g 2010-05-17 16:13:59
+# $ANTLR 3.1.2 cifProto.g 2010-05-25 11:26:38
 
 import sys
 from antlr3 import *
@@ -907,7 +907,7 @@ class cifProtoParser(Parser):
         self.paraphrases.append("in value")
         try:
             try:
-                # cifProto.g:104:3: ( inapplicable | unknown | '-' | char_string | numeric | text_field )
+                # cifProto.g:105:3: ( inapplicable | unknown | '-' | char_string | numeric | text_field )
                 alt19 = 6
                 LA19 = self.input.LA(1)
                 if LA19 == 31:
@@ -948,51 +948,51 @@ class cifProtoParser(Parser):
                     raise nvae
 
                 if alt19 == 1:
-                    # cifProto.g:104:5: inapplicable
+                    # cifProto.g:105:5: inapplicable
                     pass
-                    self._state.following.append(self.FOLLOW_inapplicable_in_value358)
+                    self._state.following.append(self.FOLLOW_inapplicable_in_value359)
                     self.inapplicable()
 
                     self._state.following.pop()
 
 
                 elif alt19 == 2:
-                    # cifProto.g:104:20: unknown
+                    # cifProto.g:105:20: unknown
                     pass
-                    self._state.following.append(self.FOLLOW_unknown_in_value362)
+                    self._state.following.append(self.FOLLOW_unknown_in_value363)
                     self.unknown()
 
                     self._state.following.pop()
 
 
                 elif alt19 == 3:
-                    # cifProto.g:104:30: '-'
+                    # cifProto.g:105:30: '-'
                     pass
-                    self.match(self.input, 33, self.FOLLOW_33_in_value366)
+                    self.match(self.input, 33, self.FOLLOW_33_in_value367)
 
 
                 elif alt19 == 4:
-                    # cifProto.g:104:36: char_string
+                    # cifProto.g:105:36: char_string
                     pass
-                    self._state.following.append(self.FOLLOW_char_string_in_value370)
+                    self._state.following.append(self.FOLLOW_char_string_in_value371)
                     self.char_string()
 
                     self._state.following.pop()
 
 
                 elif alt19 == 5:
-                    # cifProto.g:104:51: numeric
+                    # cifProto.g:105:51: numeric
                     pass
-                    self._state.following.append(self.FOLLOW_numeric_in_value375)
+                    self._state.following.append(self.FOLLOW_numeric_in_value376)
                     self.numeric()
 
                     self._state.following.pop()
 
 
                 elif alt19 == 6:
-                    # cifProto.g:104:60: text_field
+                    # cifProto.g:105:60: text_field
                     pass
-                    self._state.following.append(self.FOLLOW_text_field_in_value378)
+                    self._state.following.append(self.FOLLOW_text_field_in_value379)
                     self.text_field()
 
                     self._state.following.pop()
@@ -1019,15 +1019,15 @@ class cifProtoParser(Parser):
 
 
     # $ANTLR start "unsigned_integer"
-    # cifProto.g:110:1: unsigned_integer : ( DIGIT )+ ;
+    # cifProto.g:111:1: unsigned_integer : ( DIGIT )+ ;
     def unsigned_integer(self, ):
 
         try:
             try:
-                # cifProto.g:111:2: ( ( DIGIT )+ )
-                # cifProto.g:111:4: ( DIGIT )+
+                # cifProto.g:112:2: ( ( DIGIT )+ )
+                # cifProto.g:112:4: ( DIGIT )+
                 pass
-                # cifProto.g:111:4: ( DIGIT )+
+                # cifProto.g:112:4: ( DIGIT )+
                 cnt20 = 0
                 while True: #loop20
                     alt20 = 2
@@ -1038,9 +1038,9 @@ class cifProtoParser(Parser):
 
 
                     if alt20 == 1:
-                        # cifProto.g:111:5: DIGIT
+                        # cifProto.g:112:5: DIGIT
                         pass
-                        self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_unsigned_integer399)
+                        self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_unsigned_integer400)
 
 
                     else:
@@ -1070,15 +1070,15 @@ class cifProtoParser(Parser):
 
 
     # $ANTLR start "integer"
-    # cifProto.g:113:1: integer : ( '+' | '-' )? unsigned_integer ;
+    # cifProto.g:114:1: integer : ( '+' | '-' )? unsigned_integer ;
     def integer(self, ):
 
         try:
             try:
-                # cifProto.g:113:9: ( ( '+' | '-' )? unsigned_integer )
-                # cifProto.g:113:12: ( '+' | '-' )? unsigned_integer
+                # cifProto.g:114:9: ( ( '+' | '-' )? unsigned_integer )
+                # cifProto.g:114:12: ( '+' | '-' )? unsigned_integer
                 pass
-                # cifProto.g:113:12: ( '+' | '-' )?
+                # cifProto.g:114:12: ( '+' | '-' )?
                 alt21 = 2
                 LA21_0 = self.input.LA(1)
 
@@ -1099,7 +1099,7 @@ class cifProtoParser(Parser):
 
 
 
-                self._state.following.append(self.FOLLOW_unsigned_integer_in_integer422)
+                self._state.following.append(self.FOLLOW_unsigned_integer_in_integer423)
                 self.unsigned_integer()
 
                 self._state.following.pop()
@@ -1120,34 +1120,34 @@ class cifProtoParser(Parser):
 
 
     # $ANTLR start "float_"
-    # cifProto.g:115:1: float_ : ( integer EXPONENT | ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )? );
+    # cifProto.g:116:1: float_ : ( integer EXPONENT | ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )? );
     def float_(self, ):
 
         try:
             try:
-                # cifProto.g:115:8: ( integer EXPONENT | ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )? )
+                # cifProto.g:116:8: ( integer EXPONENT | ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )? )
                 alt27 = 2
                 alt27 = self.dfa27.predict(self.input)
                 if alt27 == 1:
-                    # cifProto.g:115:11: integer EXPONENT
+                    # cifProto.g:116:11: integer EXPONENT
                     pass
-                    self._state.following.append(self.FOLLOW_integer_in_float_432)
+                    self._state.following.append(self.FOLLOW_integer_in_float_433)
                     self.integer()
 
                     self._state.following.pop()
-                    self.match(self.input, EXPONENT, self.FOLLOW_EXPONENT_in_float_434)
+                    self.match(self.input, EXPONENT, self.FOLLOW_EXPONENT_in_float_435)
 
 
                 elif alt27 == 2:
-                    # cifProto.g:115:30: ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )?
+                    # cifProto.g:116:30: ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' ) ( EXPONENT )?
                     pass
-                    # cifProto.g:115:30: ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' )
+                    # cifProto.g:116:30: ( ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer ) | ( DIGIT )+ '.' )
                     alt25 = 2
                     alt25 = self.dfa25.predict(self.input)
                     if alt25 == 1:
-                        # cifProto.g:115:32: ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer )
+                        # cifProto.g:116:32: ( '+' | '-' )? ( ( DIGIT )* '.' unsigned_integer )
                         pass
-                        # cifProto.g:115:32: ( '+' | '-' )?
+                        # cifProto.g:116:32: ( '+' | '-' )?
                         alt22 = 2
                         LA22_0 = self.input.LA(1)
 
@@ -1168,10 +1168,10 @@ class cifProtoParser(Parser):
 
 
 
-                        # cifProto.g:115:47: ( ( DIGIT )* '.' unsigned_integer )
-                        # cifProto.g:115:49: ( DIGIT )* '.' unsigned_integer
+                        # cifProto.g:116:47: ( ( DIGIT )* '.' unsigned_integer )
+                        # cifProto.g:116:49: ( DIGIT )* '.' unsigned_integer
                         pass
-                        # cifProto.g:115:49: ( DIGIT )*
+                        # cifProto.g:116:49: ( DIGIT )*
                         while True: #loop23
                             alt23 = 2
                             LA23_0 = self.input.LA(1)
@@ -1181,17 +1181,17 @@ class cifProtoParser(Parser):
 
 
                             if alt23 == 1:
-                                # cifProto.g:115:50: DIGIT
+                                # cifProto.g:116:50: DIGIT
                                 pass
-                                self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_float_454)
+                                self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_float_455)
 
 
                             else:
                                 break #loop23
 
 
-                        self.match(self.input, 31, self.FOLLOW_31_in_float_458)
-                        self._state.following.append(self.FOLLOW_unsigned_integer_in_float_460)
+                        self.match(self.input, 31, self.FOLLOW_31_in_float_459)
+                        self._state.following.append(self.FOLLOW_unsigned_integer_in_float_461)
                         self.unsigned_integer()
 
                         self._state.following.pop()
@@ -1201,9 +1201,9 @@ class cifProtoParser(Parser):
 
 
                     elif alt25 == 2:
-                        # cifProto.g:115:82: ( DIGIT )+ '.'
+                        # cifProto.g:116:82: ( DIGIT )+ '.'
                         pass
-                        # cifProto.g:115:82: ( DIGIT )+
+                        # cifProto.g:116:82: ( DIGIT )+
                         cnt24 = 0
                         while True: #loop24
                             alt24 = 2
@@ -1214,9 +1214,9 @@ class cifProtoParser(Parser):
 
 
                             if alt24 == 1:
-                                # cifProto.g:115:83: DIGIT
+                                # cifProto.g:116:83: DIGIT
                                 pass
-                                self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_float_466)
+                                self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_float_467)
 
 
                             else:
@@ -1229,20 +1229,20 @@ class cifProtoParser(Parser):
                             cnt24 += 1
 
 
-                        self.match(self.input, 31, self.FOLLOW_31_in_float_470)
+                        self.match(self.input, 31, self.FOLLOW_31_in_float_471)
 
 
 
-                    # cifProto.g:115:97: ( EXPONENT )?
+                    # cifProto.g:116:97: ( EXPONENT )?
                     alt26 = 2
                     LA26_0 = self.input.LA(1)
 
                     if (LA26_0 == EXPONENT) :
                         alt26 = 1
                     if alt26 == 1:
-                        # cifProto.g:115:98: EXPONENT
+                        # cifProto.g:116:98: EXPONENT
                         pass
-                        self.match(self.input, EXPONENT, self.FOLLOW_EXPONENT_in_float_475)
+                        self.match(self.input, EXPONENT, self.FOLLOW_EXPONENT_in_float_476)
 
 
 
@@ -1262,27 +1262,27 @@ class cifProtoParser(Parser):
 
 
     # $ANTLR start "number"
-    # cifProto.g:117:1: number : ( integer | float_ );
+    # cifProto.g:118:1: number : ( integer | float_ );
     def number(self, ):
 
         try:
             try:
-                # cifProto.g:117:9: ( integer | float_ )
+                # cifProto.g:118:9: ( integer | float_ )
                 alt28 = 2
                 alt28 = self.dfa28.predict(self.input)
                 if alt28 == 1:
-                    # cifProto.g:117:11: integer
+                    # cifProto.g:118:11: integer
                     pass
-                    self._state.following.append(self.FOLLOW_integer_in_number487)
+                    self._state.following.append(self.FOLLOW_integer_in_number488)
                     self.integer()
 
                     self._state.following.pop()
 
 
                 elif alt28 == 2:
-                    # cifProto.g:117:21: float_
+                    # cifProto.g:118:21: float_
                     pass
-                    self._state.following.append(self.FOLLOW_float__in_number491)
+                    self._state.following.append(self.FOLLOW_float__in_number492)
                     self.float_()
 
                     self._state.following.pop()
@@ -1302,35 +1302,35 @@ class cifProtoParser(Parser):
 
 
     # $ANTLR start "numeric"
-    # cifProto.g:119:1: numeric : ( number | ( number '(' ( DIGIT )+ ')' ) );
+    # cifProto.g:120:1: numeric : ( number | ( number '(' ( DIGIT )+ ')' ) );
     def numeric(self, ):
 
         try:
             try:
-                # cifProto.g:119:9: ( number | ( number '(' ( DIGIT )+ ')' ) )
+                # cifProto.g:120:9: ( number | ( number '(' ( DIGIT )+ ')' ) )
                 alt30 = 2
                 alt30 = self.dfa30.predict(self.input)
                 if alt30 == 1:
-                    # cifProto.g:119:11: number
+                    # cifProto.g:120:11: number
                     pass
-                    self._state.following.append(self.FOLLOW_number_in_numeric500)
+                    self._state.following.append(self.FOLLOW_number_in_numeric501)
                     self.number()
 
                     self._state.following.pop()
 
 
                 elif alt30 == 2:
-                    # cifProto.g:119:20: ( number '(' ( DIGIT )+ ')' )
+                    # cifProto.g:120:20: ( number '(' ( DIGIT )+ ')' )
                     pass
-                    # cifProto.g:119:20: ( number '(' ( DIGIT )+ ')' )
-                    # cifProto.g:119:22: number '(' ( DIGIT )+ ')'
+                    # cifProto.g:120:20: ( number '(' ( DIGIT )+ ')' )
+                    # cifProto.g:120:22: number '(' ( DIGIT )+ ')'
                     pass
-                    self._state.following.append(self.FOLLOW_number_in_numeric506)
+                    self._state.following.append(self.FOLLOW_number_in_numeric507)
                     self.number()
 
                     self._state.following.pop()
-                    self.match(self.input, 35, self.FOLLOW_35_in_numeric508)
-                    # cifProto.g:119:33: ( DIGIT )+
+                    self.match(self.input, 35, self.FOLLOW_35_in_numeric509)
+                    # cifProto.g:120:33: ( DIGIT )+
                     cnt29 = 0
                     while True: #loop29
                         alt29 = 2
@@ -1341,9 +1341,9 @@ class cifProtoParser(Parser):
 
 
                         if alt29 == 1:
-                            # cifProto.g:119:34: DIGIT
+                            # cifProto.g:120:34: DIGIT
                             pass
-                            self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_numeric511)
+                            self.match(self.input, DIGIT, self.FOLLOW_DIGIT_in_numeric512)
 
 
                         else:
@@ -1356,7 +1356,7 @@ class cifProtoParser(Parser):
                         cnt29 += 1
 
 
-                    self.match(self.input, 36, self.FOLLOW_36_in_numeric515)
+                    self.match(self.input, 36, self.FOLLOW_36_in_numeric516)
 
 
 
@@ -1376,15 +1376,15 @@ class cifProtoParser(Parser):
 
 
     # $ANTLR start "char_string"
-    # cifProto.g:121:1: char_string : CHAR_STRING ;
+    # cifProto.g:122:1: char_string : CHAR_STRING ;
     def char_string(self, ):
 
         try:
             try:
-                # cifProto.g:122:2: ( CHAR_STRING )
-                # cifProto.g:122:4: CHAR_STRING
+                # cifProto.g:123:2: ( CHAR_STRING )
+                # cifProto.g:123:4: CHAR_STRING
                 pass
-                self.match(self.input, CHAR_STRING, self.FOLLOW_CHAR_STRING_in_char_string527)
+                self.match(self.input, CHAR_STRING, self.FOLLOW_CHAR_STRING_in_char_string528)
 
 
 
@@ -1402,15 +1402,15 @@ class cifProtoParser(Parser):
 
 
     # $ANTLR start "text_field"
-    # cifProto.g:124:1: text_field : SEMI_COLON_TEXT_FIELD ;
+    # cifProto.g:125:1: text_field : SEMI_COLON_TEXT_FIELD ;
     def text_field(self, ):
 
         try:
             try:
-                # cifProto.g:125:2: ( SEMI_COLON_TEXT_FIELD )
-                # cifProto.g:125:4: SEMI_COLON_TEXT_FIELD
+                # cifProto.g:126:2: ( SEMI_COLON_TEXT_FIELD )
+                # cifProto.g:126:4: SEMI_COLON_TEXT_FIELD
                 pass
-                self.match(self.input, SEMI_COLON_TEXT_FIELD, self.FOLLOW_SEMI_COLON_TEXT_FIELD_in_text_field537)
+                self.match(self.input, SEMI_COLON_TEXT_FIELD, self.FOLLOW_SEMI_COLON_TEXT_FIELD_in_text_field538)
 
 
 
@@ -1781,33 +1781,33 @@ class cifProtoParser(Parser):
     FOLLOW_WHITESPACE_in_loop_header312 = frozenset([1])
     FOLLOW_31_in_inapplicable327 = frozenset([1])
     FOLLOW_32_in_unknown336 = frozenset([1])
-    FOLLOW_inapplicable_in_value358 = frozenset([1])
-    FOLLOW_unknown_in_value362 = frozenset([1])
-    FOLLOW_33_in_value366 = frozenset([1])
-    FOLLOW_char_string_in_value370 = frozenset([1])
-    FOLLOW_numeric_in_value375 = frozenset([1])
-    FOLLOW_text_field_in_value378 = frozenset([1])
-    FOLLOW_DIGIT_in_unsigned_integer399 = frozenset([1, 11])
-    FOLLOW_set_in_integer411 = frozenset([11, 33, 34])
-    FOLLOW_unsigned_integer_in_integer422 = frozenset([1])
-    FOLLOW_integer_in_float_432 = frozenset([12])
-    FOLLOW_EXPONENT_in_float_434 = frozenset([1])
-    FOLLOW_set_in_float_440 = frozenset([11, 31])
-    FOLLOW_DIGIT_in_float_454 = frozenset([11, 31])
-    FOLLOW_31_in_float_458 = frozenset([11, 33, 34])
-    FOLLOW_unsigned_integer_in_float_460 = frozenset([1, 12])
-    FOLLOW_DIGIT_in_float_466 = frozenset([11, 31])
-    FOLLOW_31_in_float_470 = frozenset([1, 12])
-    FOLLOW_EXPONENT_in_float_475 = frozenset([1])
-    FOLLOW_integer_in_number487 = frozenset([1])
-    FOLLOW_float__in_number491 = frozenset([1])
-    FOLLOW_number_in_numeric500 = frozenset([1])
-    FOLLOW_number_in_numeric506 = frozenset([35])
-    FOLLOW_35_in_numeric508 = frozenset([11])
-    FOLLOW_DIGIT_in_numeric511 = frozenset([11, 36])
-    FOLLOW_36_in_numeric515 = frozenset([1])
-    FOLLOW_CHAR_STRING_in_char_string527 = frozenset([1])
-    FOLLOW_SEMI_COLON_TEXT_FIELD_in_text_field537 = frozenset([1])
+    FOLLOW_inapplicable_in_value359 = frozenset([1])
+    FOLLOW_unknown_in_value363 = frozenset([1])
+    FOLLOW_33_in_value367 = frozenset([1])
+    FOLLOW_char_string_in_value371 = frozenset([1])
+    FOLLOW_numeric_in_value376 = frozenset([1])
+    FOLLOW_text_field_in_value379 = frozenset([1])
+    FOLLOW_DIGIT_in_unsigned_integer400 = frozenset([1, 11])
+    FOLLOW_set_in_integer412 = frozenset([11, 33, 34])
+    FOLLOW_unsigned_integer_in_integer423 = frozenset([1])
+    FOLLOW_integer_in_float_433 = frozenset([12])
+    FOLLOW_EXPONENT_in_float_435 = frozenset([1])
+    FOLLOW_set_in_float_441 = frozenset([11, 31])
+    FOLLOW_DIGIT_in_float_455 = frozenset([11, 31])
+    FOLLOW_31_in_float_459 = frozenset([11, 33, 34])
+    FOLLOW_unsigned_integer_in_float_461 = frozenset([1, 12])
+    FOLLOW_DIGIT_in_float_467 = frozenset([11, 31])
+    FOLLOW_31_in_float_471 = frozenset([1, 12])
+    FOLLOW_EXPONENT_in_float_476 = frozenset([1])
+    FOLLOW_integer_in_number488 = frozenset([1])
+    FOLLOW_float__in_number492 = frozenset([1])
+    FOLLOW_number_in_numeric501 = frozenset([1])
+    FOLLOW_number_in_numeric507 = frozenset([35])
+    FOLLOW_35_in_numeric509 = frozenset([11])
+    FOLLOW_DIGIT_in_numeric512 = frozenset([11, 36])
+    FOLLOW_36_in_numeric516 = frozenset([1])
+    FOLLOW_CHAR_STRING_in_char_string528 = frozenset([1])
+    FOLLOW_SEMI_COLON_TEXT_FIELD_in_text_field538 = frozenset([1])
 
 
 
