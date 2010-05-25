@@ -860,20 +860,24 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       output_file.write(string_buffer.getvalue())
 
     if return_result :
-      return xtriage_summary(params=params,
-                             xtriage_results=xtriage_results)
-
+      summary_out = StringIO()
+      miller_array.show_comprehensive_summary(f=summary_out)
+      return xtriage_summary(
+        params=params,
+        xtriage_results=xtriage_results,
+        data_summary=summary_out.getvalue())
 
 #--- Pickle-able results object for the GUI
 # TODO: regression tests
 # This is *exactly* as gross as it looks.
 class xtriage_summary (object) :
-  def __init__ (self, params, xtriage_results) :
+  def __init__ (self, params, xtriage_results, data_summary) :
     self.file_name = params.scaling.input.xray_data.file_name
     self.log_file = params.scaling.input.parameters.reporting.log
     self.file_labels = params.scaling.input.xray_data.obs_labels
     self.nresidues = params.scaling.input.asu_contents.n_residues
     self.nbases = params.scaling.input.asu_contents.n_bases
+    self.data_summary = data_summary
 
     #-------------------------------------------------------------------
     # Part 1: basic analyses:
