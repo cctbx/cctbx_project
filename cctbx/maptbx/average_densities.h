@@ -17,6 +17,28 @@ nint(double x)
   return int(std::ceil(x+0.5)-(std::fmod(x*0.5+0.25,1.0)!=0));
 }
 
+af::versa<double, af::c_grid<3> > combine_and_maximize_maps(
+                   af::const_ref<double, af::c_grid<3> > const& map_data_1,
+                   af::const_ref<double, af::c_grid<3> > const& map_data_2,
+                   af::tiny<int, 3> const& n_real)
+{
+  int nx = n_real[0];
+  int ny = n_real[1];
+  int nz = n_real[2];
+  af::versa<double, af::c_grid<3> > result_map(af::c_grid<3>(nx,ny,nz),
+    af::init_functor_null<double>());
+  af::ref<double, af::c_grid<3> > result_map_ref = result_map.ref();
+  for (int i = 0; i < nx; i++) {
+    for (int j = 0; j < ny; j++) {
+      for (int k = 0; k < nz; k++) {
+        double m1 = map_data_1(i,j,k);
+        double m2 = map_data_2(i,j,k);
+        if(std::abs(m1) >= std::abs(m2)) result_map_ref(i,j,k) = m1;
+        else result_map_ref(i,j,k) = m2;
+  }}}
+  return result_map;
+}
+
 af::versa<double, af::c_grid<3> > superpose_maps(
                    cctbx::uctbx::unit_cell const& unit_cell_1,
                    cctbx::uctbx::unit_cell const& unit_cell_2,

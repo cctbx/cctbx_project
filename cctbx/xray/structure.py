@@ -467,7 +467,8 @@ class structure(crystal.special_position_settings):
     return flex.bool([ label_regex.search(sc.label) is not None
                        for sc in self.scatterers() ])
 
-  def apply_rigid_body_shift(self, rot, trans, selection = None):
+  def apply_rigid_body_shift(self, rot, trans, selection = None, 
+        recompute_site_symmetries=True):
     if(selection is None):
       selection = flex.bool(self._scatterers.size(), True).iselection()
     rbs_obj = self.apply_rigid_body_shift_obj(
@@ -479,6 +480,10 @@ class structure(crystal.special_position_settings):
                                         unit_cell      = self.unit_cell(),
                                         atomic_weights = self.atomic_weights())
     self.set_sites_frac(sites_frac = rbs_obj.sites_frac)
+    if(recompute_site_symmetries):
+      scatterers = self.scatterers()
+      self.erase_scatterers()
+      self.add_scatterers(scatterers = scatterers)
 
   def apply_rigid_body_shift_obj(self,
                                  sites_cart,
