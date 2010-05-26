@@ -140,6 +140,9 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
         except Abort :
           message = child_process_message(message_type="abort", data=None)
         except Exception, e :
+          if e.__class__.__module__ == "Boost.Python" :
+            e = RuntimeError("Boost.Python.%s: %s" % (e.__class__.__name__,
+              str(e)))
           Sorry.reset_module()
           traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
           message = child_process_message(message_type="exception",
