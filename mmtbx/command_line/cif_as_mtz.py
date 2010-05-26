@@ -865,7 +865,7 @@ def run2 (args, log=sys.stdout, check_params=True) :
       args=["-x", params.input.pdb_id],
       log=log)
     symm = crystal_symmetry_from_any.extract_from(params.input.pdb_file)
-    params.crystal_symmetry.space_group = symm.space_group()
+    params.crystal_symmetry.space_group = symm.space_group_info()
     params.crystal_symmetry.unit_cell = symm.unit_cell()
     params.input.pdb_id = None
   if check_params :
@@ -876,8 +876,10 @@ def run2 (args, log=sys.stdout, check_params=True) :
   if not params.options.use_model :
     params.input.pdb_file = None
   if symm is None :
+    assert (type(params.crystal_symmetry.space_group).__name__ ==
+            "space_group_info")
     symm = crystal.symmetry(
-      space_group=params.crystal_symmetry.space_group,
+      space_group_info=params.crystal_symmetry.space_group,
       unit_cell=params.crystal_symmetry.unit_cell)
   process_files(
     file_name=params.input.cif_file,
