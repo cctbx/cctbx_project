@@ -437,7 +437,7 @@ class determine_data_and_flags(object):
     selection_zero = f_obs.data() == 0
     print >> self.log, \
       "Number of F-obs=0 (these reflections will be used in refinement):", \
-      selection_zero.count(False)
+      selection_zero.count(True)
     selection &= selection_positive
     selection_by_fsigma = self._apply_sigma_cutoff(
       f_obs   = f_obs,
@@ -1486,7 +1486,7 @@ def fmodel_simple(f_obs,
     bss_params = bss.master_params.extract()
   bss_params.bulk_solvent = bulk_solvent_correction
   bss_params.anisotropic_scaling = anisotropic_scaling
-  def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp, ro):
+  def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp, ro, om):
     fmodel = fmodel_manager(
       xray_structure = xrs.deep_copy_scatterers(),
       f_obs          = f_obs.deep_copy(),
@@ -1497,23 +1497,27 @@ def fmodel_simple(f_obs,
       if(tl is None and ro):
         sel = fmodel.outlier_selection()
         fmodel = fmodel.select(selection = sel)
-      fmodel.update_solvent_and_scale(params = bssp, verbose = -1, out = log)
+      fmodel.update_solvent_and_scale(params = bssp, verbose = -1, out = log,
+        optimize_mask=om)
     return fmodel
   if((twin_laws is None or twin_laws==[None]) and not skip_twin_detection):
     twin_laws = xtriage(f_obs = f_obs.deep_copy())
+  optimize_mask = True
+  if(twin_laws is not None and len(twin_laws)>1): optimize_mask=False
   # DEBUG twin_laws=None
   if(len(xray_structures) == 1):
     if(twin_laws is None): twin_laws = [None]
     if(twin_laws.count(None)==0): twin_laws.append(None)
     fmodel = get_fmodel(f_obs=f_obs, xrs=xray_structures[0], flags=r_free_flags,
       mp=mask_params, tl=None, bssf=bulk_solvent_and_scaling, bssp=bss_params,
-      ro = outliers_rejection)
+      ro = outliers_rejection,om=optimize_mask)
     r_work = fmodel.r_work()
     for twin_law in twin_laws:
       if(twin_law is not None):
         fmodel_ = get_fmodel(f_obs=f_obs, xrs=xray_structures[0],
           flags=r_free_flags, mp=mask_params, tl=twin_law,
-          bssf=bulk_solvent_and_scaling, bssp=bss_params, ro = outliers_rejection)
+          bssf=bulk_solvent_and_scaling, bssp=bss_params, ro = outliers_rejection,
+          om=optimize_mask)
         r_work_ = fmodel_.r_work()
         if(abs(r_work-r_work_)*100 > twin_switch_tolerance and r_work_<r_work):
           r_work = r_work_
@@ -1829,7 +1833,8 @@ def extract_tls_and_u_total_from_pdb(
                                    f_obs          = f_obs,
                                    r_free_flags   = r_free_flags,
                                    target_name    = "ls_wunit_k1")
-    fmodel.update_solvent_and_scale(params = bss_params, verbose = -1)
+    fmodel.update_solvent_and_scale(params = bss_params, verbose = -1,
+      optimize_mask = False)
     r_work_ = fmodel.r_work()
     if(r_work_ < r_work):
       r_work = r_work_

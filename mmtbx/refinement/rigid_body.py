@@ -503,9 +503,8 @@ class manager(object):
             if(bss is not None and params.bulk_solvent_and_scale):
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   bss.anisotropic_scaling=False
-               fmodel_copy.update_solvent_and_scale(params  = bss,
-                                                    out     = log,
-                                                    verbose = -1)
+               fmodel_copy.update_solvent_and_scale(
+                 params = bss, out = log, verbose = -1, optimize_mask=False)
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   assert save_bss_anisotropic_scaling is not None
                   bss.anisotropic_scaling = save_bss_anisotropic_scaling
@@ -549,7 +548,8 @@ class manager(object):
           update_f_mask  = True,
           out            = log)
         if(bss is not None and params.bulk_solvent_and_scale):
-          fmodel.update_solvent_and_scale(params = bss, out = log, verbose= -1)
+          fmodel.update_solvent_and_scale(params = bss, out = log, verbose= -1,
+            optimize_mask=False)
         self.show(fmodel = fmodel,
                   r_mat  = self.total_rotation,
                   t_vec  = self.total_translation,
@@ -559,7 +559,7 @@ class manager(object):
           monitors_call_back_handler(
             monitor=None, model=None, fmodel=fmodel, method="rigid_body")
     if(bss is not None and params.bulk_solvent_and_scale):
-      fmodel.update_solvent_and_scale(out = log, verbose = -1)
+      fmodel.update_solvent_and_scale(out=log, verbose=-1, optimize_mask=False)
     print >> log
     self.show(fmodel = fmodel,
               r_mat  = self.total_rotation,
