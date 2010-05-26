@@ -1568,7 +1568,7 @@ class manager(manager_mixin):
       k_sol          = self.k_sol(),
       b_sol          = self.b_sol(),
       b_cart         = self.b_cart())
-    fmodel.update_solvent_and_scale(params = bss_params)
+    fmodel.update_solvent_and_scale(params = bss_params, optimize_mask=False)
     # replace 'F_obs' -> alpha * 'F_obs' for filled F_obs
     alpha, beta = maxlik.alpha_beta_est_manager(
       f_obs                    = fmodel.f_obs,
@@ -1718,7 +1718,8 @@ class manager(manager_mixin):
       b_cart                 = self.b_cart(),
       mask_params            = self.mask_params,
       filled_f_obs_selection = filled_f_obs_selection)
-    fmodel_result.update_solvent_and_scale(params = bss_params)
+    fmodel_result.update_solvent_and_scale(params = bss_params,
+      optimize_mask=False)
     return fmodel_result
 
   def remove_filled_f_obs(self):
