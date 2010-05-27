@@ -39,11 +39,10 @@ class cif(DictMixin):
   def __copy__(self):
     return cif(self.blocks.copy())
 
+  copy = __copy__
+
   def __deepcopy__(self, memo):
     return cif(copy.deepcopy(self.blocks, memo))
-
-  def copy(self):
-    return copy.copy(self)
 
   def deepcopy(self):
     return copy.deepcopy(self)
@@ -70,6 +69,7 @@ class block(DictMixin):
     self.keys_lower = {}
 
   def __setitem__(self, key, value):
+    assert key.startswith('_')
     if isinstance(value, loop):
       self.loops[key] = value
       for k in value.keys():
@@ -149,6 +149,8 @@ class block(DictMixin):
     new.keys_lower = self.keys_lower.copy()
     return new
 
+  copy = __copy__
+
   def __deepcopy__(self, memo):
     new = block()
     new._items = copy.deepcopy(self._items, memo)
@@ -156,9 +158,6 @@ class block(DictMixin):
     new._set = copy.deepcopy(self._set, memo)
     new.keys_lower = copy.deepcopy(self.keys_lower, memo)
     return new
-
-  def copy(self):
-    return copy.copy(self)
 
   def deepcopy(self):
     return copy.deepcopy(self)
@@ -202,6 +201,7 @@ class loop(DictMixin):
         [(key.lower(), key) for key in self._columns.keys()])
 
   def __setitem__(self, key, value):
+    assert key.startswith('_')
     if len(self) > 0:
       assert len(value) == self.size()
     if not isinstance(value, flex.std_string):
@@ -234,7 +234,7 @@ class loop(DictMixin):
     return repr(OrderedDict(self.iteritems()))
 
   def name(self):
-    return common_prefix(self.keys()).rstrip('_').rstrip('.')
+    return common_substring(self.keys()).rstrip('_').rstrip('.')
 
   def size(self):
     size = 0
@@ -264,14 +264,13 @@ class loop(DictMixin):
     new.keys_lower = self.keys_lower.copy()
     return new
 
+  copy = __copy__
+
   def __deepcopy__(self, memo):
     new = loop()
     new._columns = copy.deepcopy(self._columns, memo)
     new.keys_lower = copy.deepcopy(self.keys_lower, memo)
     return new
-
-  def copy(self):
-    return copy.copy(self)
 
   def deepcopy(self):
     return copy.deepcopy(self)
@@ -297,17 +296,37 @@ class loop(DictMixin):
                  for j in range(self.size())])
 
 
-def common_prefix(seq):
-  if not seq:return ""
-  seq.sort()
-  s1, s2 = seq[0], seq[-1]
-  l = min(len(s1), len(s2))
-  if l == 0 :
-    return ""
-  for i in xrange(l) :
-    if s1[i] != s2[i] :
-      return s1[0:i]
-  return s1[0:l]
+def common_substring(seq):
+  # DDL1 dictionaries permit a cif loop to contain a local prefix as the
+  # first element of any data name:
+  #
+  #   http://www.iucr.org/resources/cif/spec/ancillary/reserved-prefixes
+
+  substr = seq[0]
+  for s in seq:
+    substr = LCSubstr_set(substr, s).pop()
+  return substr
+
+def LCSubstr_set(S, T):
+  """Longest common substring function taken from:
+  http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Longest_common_substring#Python"""
+
+  m = len(S); n = len(T)
+  L = [[0] * (n+1) for i in xrange(m+1)]
+  LCS = set()
+  longest = 0
+  for i in xrange(m):
+    for j in xrange(n):
+      if S[i] == T[j]:
+        v = L[i][j] + 1
+        L[i+1][j+1] = v
+        if v > longest:
+          longest = v
+          LCS = set()
+        if v == longest:
+          LCS.add(S[i-v+1:i+1])
+  return LCS
+
 
 import re
 quoted_string_re = re.compile(r"(?!'|\").*?(?!'|\")")

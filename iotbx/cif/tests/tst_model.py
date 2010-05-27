@@ -6,8 +6,7 @@ import copy
 def exercise_cif_model():
   import iotbx.cif
   from iotbx.cif import model
-  cif_model = model.cif()
-  #
+
   loop = model.loop()
   loop["_loop_a"] = (1,2,3)
   loop.add_columns({'_loop_c': [4,5,6],
@@ -19,6 +18,9 @@ def exercise_cif_model():
   assert len(loop) == 3 # the number of columns (keys)
   assert loop.size() == 4 # the number of rows (loop iterations)
   assert loop.keys() == ['_loop_a', '_loop_c', '_loop_b']
+  try: loop["no_leading_underscore"] = 3
+  except AssertionError: pass
+  else: raise Exception_expected
   loop2 = model.loop(header=("_loop2_a", "_loop2_b"), data=(1,2,3,4,5,6))
   assert loop2.keys() == ["_loop2_a", "_loop2_b"]
   assert loop2.values() == [flex.std_string(['1', '3', '5']),
@@ -37,6 +39,9 @@ def exercise_cif_model():
   assert block["_another_tag"] == "3.142"
   assert block.keys() == ['_tag', '_tag1', '_another_tag']
   assert block.values() == ["3", 'a string', "3.142"]
+  try: block["no_leading_underscore"] = 3
+  except AssertionError: pass
+  else: raise Exception_expected
   block.add_loop(loop)
   assert len(block) == 6
   assert block.items() == [
@@ -65,6 +70,7 @@ def exercise_cif_model():
   except KeyError: pass
   else: raise Exception_expected
   #
+  cif_model = model.cif()
   cif_model["fred"] = block
   assert "fred" in cif_model
   assert cif_model["frEd"] is block
