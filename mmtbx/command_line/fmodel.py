@@ -343,6 +343,11 @@ def validate_params (params, callback=None) :
         params.data_column_label is None) :
     raise Sorry("Please select a column label to use in the reference "+
       "data file.")
+  if params.low_resolution is not None :
+    if params.low_resolution < params.high_resolution :
+      raise Sorry("Low-resolution cutoff must be larger than the high-"+
+        "resolution cutoff.")
+  return True
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
