@@ -35,6 +35,7 @@ def exercise_basic():
   assert mtz_object.space_group_name() == ""
   assert mtz_object.space_group_number() == 0
   assert mtz_object.n_symmetry_matrices() == 0
+  assert mtz_object.space_group_confidence() == "\x00"
   assert mtz_object.space_group().order_z() == 1
   assert mtz_object.point_group_name() == ""
   assert mtz_object.lattice_centring_type() == "\0"

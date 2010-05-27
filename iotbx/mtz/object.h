@@ -275,6 +275,17 @@ namespace mtz {
       n_symmetry_matrices() const { return ptr()->mtzsymm.nsym; }
 
       //! Read-only access.
+      char
+      space_group_confidence() const
+      {
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA > 20100418
+        return ptr()->mtzsymm.spg_confidence;
+#else
+        return '\0';
+#endif
+      }
+
+      //! Read-only access.
       cctbx::sgtbx::space_group
       space_group() const;
 

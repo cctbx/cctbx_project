@@ -104,6 +104,7 @@ namespace {
           &w_t::set_lattice_centring_type, (
             arg("symbol")), return_self<>())
         .def("n_symmetry_matrices", &w_t::n_symmetry_matrices)
+        .def("space_group_confidence", &w_t::space_group_confidence)
         .def("space_group", &w_t::space_group)
         .def("set_space_group", &w_t::set_space_group, (
           arg("space_group")), return_self<>())
