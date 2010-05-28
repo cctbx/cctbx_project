@@ -80,3 +80,59 @@ class normal_equations(object):
   def solve_and_apply_shifts(self):
     self.solve()
     self.apply_shifts()
+
+  def covariance_matrix(self):
+    """ Covariance matrix for crystallographic parameters
+    They are ordered scatterer by scatterer, in the order
+    they are stored in self.xray_structure, as follow:
+       x, y, z, u_iso, u_11, u_22, u_33, u_12, u_13, u_23, occupancy
+    If a parameter is not refined, it is taken out from the list.
+    The upper diagonal of the covariance matrix is returned packed by rows
+    (packed-u format).
+    """
+    from scitbx import sparse
+
+    # compute jacobian matrix (sparse)
+    jac = sparse.matrix(
+      self.special_position_constraints.n_crystallographic_params,
+      self.special_position_constraints.n_independent_params)
+    site_symmetry_table = self.xray_structure.site_symmetry_table()
+    i = 0 # crystallographic param index
+    j = 0 # independent param index
+    for i_sc, sc in enumerate(self.xray_structure.scatterers()):
+      site_symm = site_symmetry_table.get(i_sc)
+      if sc.flags.grad_site():
+        if site_symm.is_point_group_1():
+          jac[i, j] = jac[i+1, j+1] = jac[i+2, j+2] = 1
+          i += 3; j += 3
+        else:
+          site_constraints = site_symm.site_constraints()
+          site_jac_tr = site_constraints.gradient_sum_matrix()
+          for k in xrange(3):
+            for l in xrange(site_constraints.n_independent_params()):
+              jac[i+k, j+l] = site_jac_tr[l, k]
+          i += 3; j += site_constraints.n_independent_params()
+      if sc.flags.use_u_iso() and sc.flags.grad_u_iso():
+        jac[i,j] = 1
+        i += 1; j += 1
+      if sc.flags.use_u_aniso() and sc.flags.grad_u_aniso():
+        if site_symm.is_point_group_1():
+          for l in xrange(6): jac[i+l, j+l] = 1
+          i += 6; j += 6
+        else:
+          adp_constraints = site_symm.cartesian_adp_constraints(
+            self.xray_structure.unit_cell())
+          adp_jac = adp_constraints.jacobian()
+          for k in xrange(6):
+            for l in xrange(adp_constraints.n_independent_params()):
+              jac[i+k, j+l] = adp_jac[k, l]
+          i += 6; j += adp_constraints.n_independent_params()
+      if sc.flags.grad_occupancy():
+        jac[i,j] = 1
+        i += 1; j += 1
+
+    # compute covariance matrix for crystallographic parameters
+    cov_ind_params = linalg.inverse_of_u_transpose_u(
+      self.reduced.cholesky_factor_packed_u)
+    cov = jac.self_times_symmetric_times_self_transpose(cov_ind_params)
+    return cov
