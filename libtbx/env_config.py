@@ -643,6 +643,7 @@ class environment:
         enable_boost_threads=command_line.options.enable_boost_threads,
         enable_openmp_if_possible
           =command_line.options.enable_openmp_if_possible,
+        precompile_headers=command_line.options.precompile_headers,
         use_environment_flags=command_line.options.use_environment_flags,
         force_32bit=command_line.options.force_32bit,
         msvc_arch_flag=command_line.options.msvc_arch_flag)
@@ -1584,6 +1585,7 @@ class build_options:
         boost_python_bool_int_strict=True,
         enable_boost_threads=default_enable_boost_threads,
         enable_openmp_if_possible=default_enable_openmp_if_possible,
+        precompile_headers=False,
         use_environment_flags=False,
         force_32bit=False,
         msvc_arch_flag=default_msvc_arch_flag):
@@ -1804,6 +1806,10 @@ class pre_process_args:
       help="use OpenMP if available and known to work (default: %s)"
         % bool_literal(default_enable_openmp_if_possible),
       metavar="True|False")
+    parser.option(None, "--precompile_headers",
+      action="store_true",
+      default=False,
+      help="Precompile headers, especially Boost Python ones (default: don't)")
     if (not self.warm_start):
       parser.option(None, "--boost_python_no_py_signatures",
         action="store_true",
@@ -1929,6 +1935,9 @@ def unpickle():
   # XXX backward compatibility 2009-10-13
   if (not hasattr(env.build_options, "msvc_arch_flag")) :
     env.build_options.msvc_arch_flag = default_msvc_arch_flag
+  # XXX backward compatibility 2010-5-28
+  if not hasattr(env.build_options, 'precompile_headers'):
+    env.build_options.precompile_headers = False
   return env
 
 def warm_start(args):
