@@ -437,6 +437,8 @@ class special_positions_test(object):
       normal_eqns.solve_and_apply_shifts()
       shifts.append(normal_eqns.shifts)
 
+    ## Test whether refinement brought back the shaked structure to its
+    ## original state
     match = emma.model_matches(xs0.as_emma_model(),
                                xs.as_emma_model()).refined_matches[0]
     assert match.rt.r == matrix.identity(3)
@@ -448,6 +450,26 @@ class special_positions_test(object):
     assert flex.abs(delta_u_carts) < 1e-6
 
     assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-4)
+
+    ## Test covariance matrix
+    cov = normal_eqns.covariance_matrix().matrix_packed_u_as_symmetric()
+    m, n = cov.accessor().focus()
+    # x,y for point group 3 sites are fixed: no variance or correlation
+    for i in (0, 9, 18, 27,):
+      assert cov.matrix_copy_block(i, 0, 2, n) == 0
+
+    # off-diagonal coefficients of U_cart for point group 3 sites are fixed
+    # to 0: again no variance or correlation with any other param
+    for i in (6, 15, 24, 33,):
+      assert cov.matrix_copy_block(i, 0, 3, n).as_1d()\
+             .all_approx_equal(0., 1e-20)
+
+    # diagonal coefficients of U_cart for point group 3 sites are such that
+    # U_11 and U_22 are totally correlated, with the same variance
+    for i in (3, 12, 21, 30,):
+      assert approx_equal(cov[i, i], cov[i+1, i+1], eps=1e-15)
+      assert approx_equal(cov[i, i+1]/cov[i, i], 1, eps=1e-12)
+
 
 def run():
   libtbx.utils.show_times_at_exit()
