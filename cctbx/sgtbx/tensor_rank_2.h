@@ -5,6 +5,7 @@
 #include <scitbx/matrix/delta_tensors.h>
 #include <scitbx/matrix/row_echelon.h>
 #include <scitbx/matrix/row_echelon_full_pivoting_small.h>
+#include <scitbx/array_family/owning_ref.h>
 #include <boost/shared_array.hpp>
 
 namespace cctbx { namespace sgtbx {
@@ -261,15 +262,14 @@ namespace tensor_rank_2 {
   template <typename T=double>
   class cartesian_constraints
   {
-      /* This is the cartesian_constraints_n_all_params x n_independent_params
+      /* This is the n_all_params x n_independent_params
          matrix Z whose columns make a basis of the null space of A:
          A u = 0   =>   u = Z u'
          where u' is the vector of independent parameters and therefore
          grad_u' = Z^T grad_u
       */
 
-      boost::shared_array<T> z_;
-      af::ref<T, af::mat_grid> z;
+      af::ref_owning_versa<T, af::mat_grid> z;
       unsigned n_independent_params;
 
       // the min absolute value for a pivot value to be considered null
@@ -318,8 +318,8 @@ namespace tensor_rank_2 {
           r_e(a_, pivot_zero_attractor);
         n_independent_params = r_e.nullity;
         af::small<T, n_all_params> x_N(n_independent_params, 0);
-        z_ = boost::shared_array<T>(new T[n_all_params * n_independent_params]);
-        z = af::ref<T, af::mat_grid>(z_.get(), n_all_params, n_independent_params);
+       af::mat_grid dim(n_all_params, n_independent_params);
+        z = af::ref_owning_versa<T, af::mat_grid>(dim);
         for (unsigned j=0; j< n_independent_params; j++) {
           x_N[j] = 1;
           af::tiny<T, n_all_params>
@@ -408,6 +408,18 @@ namespace tensor_rank_2 {
       unsigned n_independent_parameters() const {
         return n_independent_params;
       }
+
+      /// The Jacobian of the transformation from independent params to all params
+      /** It reads
+       \f[
+            \left[ \frac{\partial u_i}{\partial v_j} \right]
+       \f]
+       where $u = (U_11, U_22, U_33, U_12, U_13, U_23)$, and
+       where $v$ are the independent parameters $u$ is function of after
+       solving for the special position constraints.
+
+       */
+      af::versa<T, af::mat_grid> jacobian() const { return z.array(); }
   };
 
 }}} // namespace cctbx::sgtbx::tensor_rank_2

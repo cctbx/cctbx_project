@@ -74,6 +74,7 @@ namespace {
           arg("independent_params"))
         .def("independent_gradients", &wt::independent_gradients,
           arg("all_gradients"))
+        .def("jacobian", &wt::jacobian)
       ;
     }
   };
