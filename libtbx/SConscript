@@ -85,6 +85,17 @@ env_etc.include_registry = libtbx.env_config.include_registry() \
 def disable_strict_aliasing(env): pass
 env_etc.disable_strict_aliasing = disable_strict_aliasing
 
+def patch_scons_env_for_ad_hoc_debug(env):
+  assert not env_etc.compiler.startswith("win")
+  dbg_ccflags = []
+  for f in env["CCFLAGS"]:
+    if   (f in ["-O1", "-O2", "-O3"]):
+      dbg_ccflags.extend(["-O0", "-g"])
+    elif (f != "-ffast-math"):
+      dbg_ccflags.append(f)
+  env.Replace(CCFLAGS=dbg_ccflags)
+env_etc.patch_scons_env_for_ad_hoc_debug = patch_scons_env_for_ad_hoc_debug
+
 compiler = libtbx.env.build_options.compiler
 if (sys.platform == "win32"):
   if (compiler == "default"):
