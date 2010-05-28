@@ -81,7 +81,13 @@ class normal_equations(object):
     self.solve()
     self.apply_shifts()
 
-  def covariance_matrix(self):
+  def goof(self):
+    from stdlib import math
+    return math.sqrt(self.objective/(
+      self.fo_sq.size()
+      - self.special_position_constraints.n_independent_params))
+
+  def covariance_matrix(self, normalised_by_goof=True):
     """ Covariance matrix for crystallographic parameters
     They are ordered scatterer by scatterer, in the order
     they are stored in self.xray_structure, as follow:
@@ -89,6 +95,8 @@ class normal_equations(object):
     If a parameter is not refined, it is taken out from the list.
     The upper diagonal of the covariance matrix is returned packed by rows
     (packed-u format).
+    If normalised_by_goof is False, the mere inverse of the normal
+    matrix is returned (mostly for debugging purposes).
     """
     from scitbx import sparse
 
@@ -135,4 +143,5 @@ class normal_equations(object):
     cov_ind_params = linalg.inverse_of_u_transpose_u(
       self.reduced.cholesky_factor_packed_u)
     cov = jac.self_times_symmetric_times_self_transpose(cov_ind_params)
+    if normalised_by_goof: cov *= self.goof()**2
     return cov

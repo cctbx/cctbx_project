@@ -452,7 +452,8 @@ class special_positions_test(object):
     assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-4)
 
     ## Test covariance matrix
-    cov = normal_eqns.covariance_matrix().matrix_packed_u_as_symmetric()
+    cov = normal_eqns.covariance_matrix(normalised_by_goof=False)\
+        .matrix_packed_u_as_symmetric()
     m, n = cov.accessor().focus()
     # x,y for point group 3 sites are fixed: no variance or correlation
     for i in (0, 9, 18, 27,):
@@ -467,6 +468,7 @@ class special_positions_test(object):
     # diagonal coefficients of U_cart for point group 3 sites are such that
     # U_11 and U_22 are totally correlated, with the same variance
     for i in (3, 12, 21, 30,):
+      assert cov[i, i] != 0
       assert approx_equal(cov[i, i], cov[i+1, i+1], eps=1e-15)
       assert approx_equal(cov[i, i+1]/cov[i, i], 1, eps=1e-12)
 
