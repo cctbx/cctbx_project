@@ -155,11 +155,11 @@ def getenv_bool(variable_name, default=False):
   value = os.environ.get(variable_name, None)
   if (value is None): return default
   value_lower = value.lower()
-  if (value_lower not in ["false", "true"]):
+  if (value_lower not in ["false", "true", "0", "1"]):
     raise Sorry(
-      'Environment variable %s must be "True" or "False"'
+      'Environment variable %s must be "True", "False", "0", or "1"'
       ' (current value: "%s").' % (variable_name, value))
-  return (value_lower == "true")
+  return (value_lower in ["true", "1"])
 
 def file_size(file_name):
   return os.stat(file_name).st_size
