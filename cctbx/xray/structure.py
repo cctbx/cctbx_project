@@ -467,7 +467,7 @@ class structure(crystal.special_position_settings):
     return flex.bool([ label_regex.search(sc.label) is not None
                        for sc in self.scatterers() ])
 
-  def apply_rigid_body_shift(self, rot, trans, selection = None, 
+  def apply_rigid_body_shift(self, rot, trans, selection = None,
         recompute_site_symmetries=True):
     if(selection is None):
       selection = flex.bool(self._scatterers.size(), True).iselection()
