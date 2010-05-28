@@ -187,7 +187,7 @@ namespace {
       arg("n_real_2"),
       arg("rotation_matrix"),
       arg("translation_vector")));
-    
+
     def("combine_and_maximize_maps",
       (af::versa<double, af::c_grid<3> >(*)
         (af::const_ref<double, af::c_grid<3> > const&,

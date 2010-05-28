@@ -42,7 +42,7 @@ class manager(object):
       assert nonbonded_types.size() == site_symmetry_table.indices().size()
     adopt_init_args(self, locals())
     self.reset_internals()
-    
+
   def reset_internals(self):
     self._sites_cart_used_for_pair_proxies = None
     self._flags_bond_used_for_pair_proxies = False
@@ -53,7 +53,7 @@ class manager(object):
     self.adjusted_nonbonded_distance_cutoff = self.nonbonded_distance_cutoff
     self.effective_nonbonded_buffer = self.nonbonded_buffer
     self.n_updates_pair_proxies = 0
-    
+
   def replace_site_symmetry(self, new_site_symmetry_table):
     assert self.site_symmetry_table is not None
     self.site_symmetry_table = new_site_symmetry_table
