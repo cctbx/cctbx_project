@@ -91,5 +91,8 @@ namespace scitbx { namespace matrix { namespace boost_python {
     >::wrap("u_transpose_u_cholesky_decomposition_in_place");
 
     cholesky_failure_info_wrapper::wrap("cholesky_failure_info");
+
+    def("inverse_of_u_transpose_u",
+        cholesky::inverse_of_u_transpose_u<double>);
   }
 }}}
