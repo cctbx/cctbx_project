@@ -76,6 +76,16 @@ if (not env_etc.no_boost_python):
     env=env_boost_python_ext,
     paths=[env_etc.libtbx_include])
   Export("env_boost_python_ext")
+  
+  ## Precompiled headers for Boost Python extensions
+  if libtbx.env.build_options.precompile_headers:
+    precompiled_cpp = '#' + os.path.join('boost_adaptbx', 'precompiled.cpp')
+    precompiled_h = 'boost_adaptbx/precompiled.h'
+    if sys.platform == 'win32':
+      env_no_includes_boost_python_ext['PCH'], _ \
+                = env_boost_python_ext.PCH(precompiled_cpp)
+      env_no_includes_boost_python_ext['PCHSTOP'] = precompiled_h
+      env_no_includes_boost_python_ext.Append(CPPFLAGS=[ '/FI' + precompiled_h ])
 
   env_pure_boost_python_ext.SharedLibrary(
     target="#lib/boost_python_hybrid_times_ext",
