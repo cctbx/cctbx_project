@@ -140,6 +140,23 @@ class OrderedSet(MutableSet):
   def __del__(self):
     self.clear() # remove circular references
 
+  def __copy__(self):
+    from copy import copy
+    result = OrderedSet()
+    for elt in self:
+      result.add(elt)
+    return result
+
+  copy = __copy__
+
+  def __deepcopy__(self, memo):
+    from copy import deepcopy
+    result = OrderedSet()
+    for elt in self:
+      result.add(deepcopy(elt, memo))
+    return result
+
+
 from UserDict import DictMixin
 class OrderedDict(dict, DictMixin):
   """
