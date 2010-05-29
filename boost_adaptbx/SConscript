@@ -54,7 +54,8 @@ if (not env_etc.no_boost_python):
   env_no_includes_boost_python_ext.Append(
     LIBPATH=env_etc.libpath_python)
   env_no_includes_boost_python_ext.Append(
-    SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+    SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base,
+    PCHPDBFLAGS=env_etc.cxxflags_bpl_defines_base)
   env_no_includes_boost_python_ext.Replace(
     SHLIBSUFFIX=env_etc.extension_module_suffix)
   if (env_etc.compiler == "win32_cl" and env_etc.have_manifest_tool):
