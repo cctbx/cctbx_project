@@ -212,7 +212,7 @@ VIII_GA = [] #VIII (GA Imino). Base-pairing pattern GA: GA_3
 #1      N1      N1      2.88    0.15    T
 #2      O6      N6      2.95    0.21    T
 #STATISTICAL DATA obtained from 2J02.pdb, 11 basepairs. Combined VIII_AG and VIII_GA. Needs to be revised
-bonds = [2, "A", "G", "N1", "N1", "N6", "O6", "NA", "NA", 19.598, 1.085, 12.795, 0.222]
+bonds = [2, "G", "A", "N1", "N1", "O6", "N6", "NA", "NA", 19.598, 1.085, 12.795, 0.222]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 9 in MASTER_Basepairs (IX_AG)
 IX_AG = [] #IX Base-pairing pattern AG: AG_81
@@ -489,14 +489,14 @@ XXIX_AC = [] #XXIX (AC Wobble). Base-pairing pattern AC
 bonds = [2, "A", "C", "N6", "N3", "N1", "O2", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 44 in MASTER_Basepairs (XXX_CA)
-XXIX_CA = [] #XXX (CA Wobble). Base-pairing pattern CA
+XXIX_CA = [] #XXIX (CA Wobble). Base-pairing pattern CA
 #Bond   C       A       Length Ave      Length Std      Attribute
 #1      N3      N6      unk             unk
 #2      O2      N1      unk             unk
 bonds = [2, "A", "C", "N6", "N3", "N1", "O2", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 45 in MASTER_Basepairs (XXXI_GC)
-XXX_GC = [] #XXXI Base-pair between positions G1034 and C1028 of T. thermophilus 16S rRNA (E. coli numbering)
+XXX_GC = [] #XXX Base-pair between positions G1034 and C1028 of T. thermophilus 16S rRNA (E. coli numbering)
 #Bond   G       C       Length Ave      Length Std      Attribute
 #1      N2      N4      3.1             unk
 #2      N3      N3      3.2             unk
@@ -504,7 +504,7 @@ XXX_GC = [] #XXXI Base-pair between positions G1034 and C1028 of T. thermophilus
 bonds = [2, "G", "C", "N2", "N4", "N3", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 46 in MASTER_Basepairs (XXXII_CG)
-XXX_CG = [] #XXXII Base-pair between positions G1034 and C1028 of T. thermophilus 16S rRNA (E. coli numbering)
+XXX_CG = [] #XXX Base-pair between positions G1034 and C1028 of T. thermophilus 16S rRNA (E. coli numbering)
 #Bond   C       G       Length Ave      Length Std      Attribute
 #1      N4      N2      3.1             unk
 #2      N3      N3      3.2             unk
@@ -512,11 +512,27 @@ XXX_CG = [] #XXXII Base-pair between positions G1034 and C1028 of T. thermophilu
 bonds = [2, "C", "G", "N4", "N2", "N3", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 47 in MASTER_Basepairs (XXXIII_GG)
-XXXI_GG = [] #XXXIII Base-pair between positions G1030A and C1031 of T. thermophilus 16S rRNA (E. coli numbering)
+XXXI_GG = [] #XXXI Base-pair between positions G1030A and C1031 of T. thermophilus 16S rRNA (E. coli numbering)
 #Bond   G       G       Length Ave      Length Std      Attribute
 #1      N2      N1      2.9             unk
 #2      N3      N2      3.4             unk
 bonds = [2, "G", "G", "N2", "N1", "N3", "N2", "NA", "NA", "NA", "NA", "NA", "NA"]
+MASTER_Basepairs_bonds.append(bonds)
+###i = 48 in MASTER_Basepairs (XXXII_AU)
+XXXII_AU = [] #Base-pair between positions A31 and pseudouridine 39 in tRNAphe(4TNA.pdb)
+#Bond   A       U       Length Ave      Length Std      Attribute
+#1      N6      O2      NA              NA              T
+#2      N1      N3      NA              NA              T
+#STATISTICAL DATA obtained from 2J02.pdb,7 basepairs
+bonds = [2, "A", "U", "N6", "O2", "N1", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
+MASTER_Basepairs_bonds.append(bonds)
+###i = 49 in MASTER_Basepairs (XXXII_UA)
+XXXII_UA = []#Base-pair between positions A31 and pseudouridine 39 in tRNAphe(4TNA.pdb)
+#Bond   U       A       Length Ave      Length Std      Attribute
+#1      O2      N6      NA              NA              T
+#2      N3      N1      NA              NA              T
+#STATISTICAL DATA obtained from 2J02.pdb,7 basepairs
+bonds = [2, "U", "A", "O2", "N6", "N3", "N1", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 
 
@@ -534,15 +550,14 @@ MASTER_Basepairs_bonds.append(bonds)
                 #k=5, atmname_j
                 #k=6, distance
 
-#MASTER_Basepairs = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
 
-MASTER_Basepairs_excluded = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+MASTER_Basepairs_excluded = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
 
 #MASTER_Basepairs_schemes only carries strings with the names of the basepairing Schemes
-MASTER_Basepairs_schemes = ["I_AA", "II_AA", "III_GG", "IV_GG", "V_AA", "VI_GG", "VII_GG", "VIII_AG", "VIII_GA", "IX_AG",  "IX_GA", "X_AG", "X_GA", "XI_AG", "XI_GA", "XII_UU", "XIII_UU", "XIV_CC", "XV_CC", "XVII_CU", "XVII_UC", "XVIII_CU", "XVIII_UC", "XIX_CG_WC", "XIX_GC_WC", "XX_AU_WC", "XX_UA_WC", "XXI_AU", "XXI_UA", "XXII_CG", "XXII_GC", "XXIII_AU", "XXIII_UA", "XXIV_AU", "XXIV_UA", "XXV_AC",  "XXV_CA", "XXVI_AC", "XXVI_CA", "XXVII_GU", "XXVII_UG", "XXVIII_GU", "XXVIII_UG", "XXIX_AC", "XXIX_CA", "XXX_GC", "XXX_CG", "XXXI_GG"]
+MASTER_Basepairs_schemes = ["I_AA", "II_AA", "III_GG", "IV_GG", "V_AA", "VI_GG", "VII_GG", "VIII_AG", "VIII_GA", "IX_AG",  "IX_GA", "X_AG", "X_GA", "XI_AG", "XI_GA", "XII_UU", "XIII_UU", "XIV_CC", "XV_CC", "XVII_CU", "XVII_UC", "XVIII_CU", "XVIII_UC", "XIX_CG_WC", "XIX_GC_WC", "XX_AU_WC", "XX_UA_WC", "XXI_AU", "XXI_UA", "XXII_CG", "XXII_GC", "XXIII_AU", "XXIII_UA", "XXIV_AU", "XXIV_UA", "XXV_AC",  "XXV_CA", "XXVI_AC", "XXVI_CA", "XXVII_GU", "XXVII_UG", "XXVIII_GU", "XXVIII_UG", "XXIX_AC", "XXIX_CA", "XXX_GC", "XXX_CG", "XXXI_GG", "XXXII_AU", "XXXII_UA"]
 
 #MASTER_Basepairs_summary: The lines in MASTER_Basepairs, carrying possible basepairing bonds, will be sorted into this list, once they have been confirmed as possible basepairs. Same format as MASTER_Basepairs
-MASTER_Basepairs_summary = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+MASTER_Basepairs_summary = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
 
 
 ##########################################################################
@@ -1059,8 +1074,9 @@ def BOND_PLACING(LIST1, LIST2, LIST3):
 #LIST3 = atom
     #place the atoms involved in the new bond just detected (currently in MASTER_Basepairs[i][j][2] and MASTER_Basepairs[i][j][5]. Distance is in MASTER_Basepairs[i][j][6]) into the proper location within MASTER_Basepairs_summary[i][k] (See MASTER_Basepairs_summary SCHEME)  by first checking the location of these atoms in MASTER_Basepairs_bonds. There are several possibilities
 #FOLLOW A LINE
-#                                   if (' 827 ' in LIST2) and (' 859 ' in LIST2):
-#                                      print "entering BOND_PLACING", "LIST1", LIST1, "LIST2", LIST2, "LIST3", LIST3
+                                   if ('  31 ' in LIST2) and ('  39 ' in LIST2):
+                                      print "entering BOND_PLACING", "LIST1", LIST1, "\nLIST2", LIST2, "\nLIST3", LIST3
+                                      print "entering BOND_PLACING"
 #FOLLOW A LINE
 
                                    if LIST1[3] == LIST3[0] and LIST1[4] == LIST3[1]:
@@ -1079,8 +1095,9 @@ def BOND_PLACING(LIST1, LIST2, LIST3):
                                        LIST2[15] = LIST3[2]
                                        LIST2[6] = LIST2[6] + 1
 #FOLLOW A LINE
-#                                   if (' 827 ' in LIST2) and (' 859 ' in LIST2):
-#                                      print "exiting BOND_PLACING", "LIST1", LIST1, "LIST2", LIST2, "LIST3", LIST3
+                                   if ('  31 ' in LIST2) and ('  39 ' in LIST2):
+                                      print "exiting BOND_PLACING", "LIST1", LIST1, "\nLIST2", LIST2, "\nLIST3", LIST3
+                                      print "exiting BOND_PLACING" 
 #FOLLOW A LINE
                                    return LIST2
 ################################################
@@ -1105,7 +1122,7 @@ def C1_C1_DISTANCE(LIST1, LIST2, A0, A1, A2, A3):
     print "\n...using the C1\'-C1\' distance criterion"
     diffP_P = LIST1[16] - LIST2[9]
     diffC1_C1 = LIST1[17] - LIST2[11]
-    line = "The basepair formed by residues " + A0 + A1 + ":" + A2 + A3 + " displays a " + LIST1[0] + " geometry.\n     Empirically determined average C1\'-C1\' distance for this geometry = " + str(LIST2[11]) + " + SD = " + str(LIST2[12]) + "\n     Empirically determined average P-P distance for this geometry = " + str(LIST2[9]) + " + SD = " + str(LIST2[10])
+    line = "The basepair formed by residues " + A0 + A1 + ":" + A2 + A3 + " displays a " + LIST1[0] + " geometry with a P-P distance of " + str(LIST1[16]) + " and a C1\'-C1\' distance of " + str(LIST1[17]) + ".\n     Empirically determined average C1\'-C1\' distance for this geometry = " + str(LIST2[11]) + " + SD = " + str(LIST2[12]) + "\n     Empirically determined average P-P distance for this geometry = " + str(LIST2[9]) + " + SD = " + str(LIST2[10])
     print line
     if abs(diffC1_C1) > 3 * LIST2[12]:
         LIST1.append('REMOVED')
@@ -1372,13 +1389,13 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
           C1 = [' C1\'', ' C1*']
           if First_List[a][2] in C1 and First_List[a][5] in C1:
 #FOLLOW A LINE
-#              if ('  19 ' in First_List[a][0] and '  56 ' in First_List[a][3]):
+#              if ('  31 ' in First_List[a][0] and '  39 ' in First_List[a][3]):
 #                 print "First_List[a] ", First_List[a]
 #FOLLOW A LINE
 
               First_List_C1.append(First_List[a])
     First_List = First_List_smaller
-    MASTER_Basepairs = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+    MASTER_Basepairs = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
 
 #####################################
 #FUNCTION "Program". Section: First sorting of basepair candidates          BEGINNING
@@ -1388,8 +1405,8 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
     collect = []
     for i in range (1, len(First_List)):
 #FOLLOW A LINE
-#        if ('  19 ' in First_List[i][0] and '  56 ' in First_List[i][3]):
-#            print "First_List[i] ", First_List[i]
+        if ('  31 ' in First_List[i][0] and '  39 ' in First_List[i][3]):
+            print "First_List[i] ", First_List[i]
 #FOLLOW A LINE
         if First_List[i][0] != First_List[i][3]:
             for j in range(len(MASTER_Basepairs)):
@@ -1398,8 +1415,8 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                    count = 0
                    transient = MASTER_Basepairs_bonds[j][3:9]
 #FOLLOW A LINE
-#                   if ('  19 ' in First_List[i][0] and '  56 ' in First_List[i][3]):
-#                         print "transient", transient, "MASTER_Basepairs_bonds[j]", MASTER_Basepairs_bonds[j]
+                   if ('  31 ' in First_List[i][0] and '  39 ' in First_List[i][3]):
+                         print "transient", transient, "\nMASTER_Basepairs_bonds[j]", MASTER_Basepairs_bonds[j]
 #FOLLOW A LINE
                    #Matching the ATOMS to those of MASTER_Basepairs_bonds
                    for k in range ((len(transient)/2)):
@@ -1408,18 +1425,19 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                            collect = [First_List[i][0], First_List[i][1], First_List[i][2], First_List[i][3], First_List[i][4], First_List[i][5], First_List[i][6]]
                            MASTER_Basepairs[j].append(collect)
 #FOLLOW A LINE
-#                           if ('  19 ' in First_List[i][0] and '  56 ' in First_List[i][3]):
-#                               print "MASTER_Basepairs[j][len(MASTER_Basepairs[j])-1]", MASTER_Basepairs[j][len(MASTER_Basepairs[j])-1]
+                           if ('  31 ' in First_List[i][0] and '  39 ' in First_List[i][3]):
+                               print "\nMASTER_Basepairs_schemes[j]", MASTER_Basepairs_schemes[j]
+                               print "MASTER_Basepairs[j][len(MASTER_Basepairs[j])-1]", MASTER_Basepairs[j][len(MASTER_Basepairs[j])-1]
 #FOLLOW A LINE
 
                        elif (transient[2*k] in First_List[i][2]) and (transient[2*k + 1] in First_List[i][5]) and (First_List[i][6] > CUTOFF) and (MAX_CUTOFF_str[0:3] in CUTOFF_str[0:3]):
                            collect = [First_List[i][0], First_List[i][1], First_List[i][2], First_List[i][3], First_List[i][4], First_List[i][5], First_List[i][6], MASTER_Basepairs_schemes[j]]
                            MASTER_Basepairs_excluded[j].append(collect)
 #FOLLOW A LINE
-#                           if ('  19 ' in First_List[i][0] and '  56 ' in First_List[i][3]):
-#                               for q in range (len(MASTER_Basepairs_excluded[j])):
-#                                  print "MASTER_Basepairs_excluded[j][q]", MASTER_Basepairs_excluded[j][q]
-#                               print "MASTER_Basepairs_excluded[j][len(MASTER_Basepairs_excluded[j])-1]", MASTER_Basepairs_excluded[j][len(MASTER_Basepairs_excluded[j])-1]
+                           if ('  31 ' in First_List[i][0] and '  39 ' in First_List[i][3]):
+                               for q in range (len(MASTER_Basepairs_excluded[j])):
+                                  print "MASTER_Basepairs_excluded[j][q]", MASTER_Basepairs_excluded[j][q]
+                               print "MASTER_Basepairs_excluded[j][len(MASTER_Basepairs_excluded[j])-1]", MASTER_Basepairs_excluded[j][len(MASTER_Basepairs_excluded[j])-1]
 #FOLLOW A LINE
                        count = count + 1
                        collect = []
@@ -1475,9 +1493,9 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                 if (resid[1] - resid[0] > 1) or (resid[1] - resid[0] < -1):
 
 #FOLLOW A LINE
-#                    if (' 827 ' in MASTER_Basepairs[i][j][0]) and (' 859 ' in MASTER_Basepairs[i][j][3]):
-#                        print "\nBefore Second sorting: MASTER_Basepairs[i][j]", MASTER_Basepairs_schemes[i], MASTER_Basepairs[i][j], "atom", atom
-#                        print "i", i, "j", j, "MASTER_Basepairs_schemes[i]", MASTER_Basepairs_schemes[i], "MASTER_Basepairs_bonds[i]", MASTER_Basepairs_bonds[i]
+                    if ('  31 ' in MASTER_Basepairs[i][j][0]) and ('  39 ' in MASTER_Basepairs[i][j][3]):
+                        print "\nBefore Second sorting: MASTER_Basepairs[i][j]", MASTER_Basepairs_schemes[i], MASTER_Basepairs[i][j], "atom", atom
+                        print "i", i, "j", j, "MASTER_Basepairs_schemes[i]", MASTER_Basepairs_schemes[i], "MASTER_Basepairs_bonds[i]", MASTER_Basepairs_bonds[i]
 
 #FOLLOW A LINE
                     if (len(MASTER_Basepairs_summary[i]) > 0):
@@ -1494,7 +1512,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                               #Bond ATOMS and distances will be placed at their proper position in "FUNCTION BOND_PLACING"
                                   MASTER_Basepairs_summary[i][k] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][k], atom)
 #FOLLOW A LINE
-                                  if (' 827 ' in MASTER_Basepairs[i][j][0]) and (' 859 ' in MASTER_Basepairs[i][j][3]):
+                                  if ('  31 ' in MASTER_Basepairs[i][j][0]) and ('  39 ' in MASTER_Basepairs[i][j][3]):
                                       print "new bond for the basepair: MASTER_Basepairs_summary[i][k]", MASTER_Basepairs_summary[i][k]
 #FOLLOW A LINE
 
@@ -1506,7 +1524,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                        #Bond ATOMS and distances will be placed at their proper position in "FUNCTION BOND_PLACING"
                                MASTER_Basepairs_summary[i][len(MASTER_Basepairs_summary[i])-1] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][len(MASTER_Basepairs_summary[i])-1], atom)
 #FOLLOW A LINE
-                               if (' 827 ' in MASTER_Basepairs[i][j][0]) and (' 859 ' in MASTER_Basepairs[i][j][3]):
+                               if ('  31 ' in MASTER_Basepairs[i][j][0]) and ('  39 ' in MASTER_Basepairs[i][j][3]):
                                   print "New basepair detected for a basepairing Scheme: MASTER_Basepairs_summary[i][k]", MASTER_Basepairs_summary[i][k]
 #FOLLOW A LINE
 
@@ -1517,7 +1535,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                         #Bond ATOMS and distances will be placed at their proper position in "FUNCTION BOND_PLACING"
                         MASTER_Basepairs_summary[i][0] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][0], atom)
 #FOLLOW A LINE
-                        if (' 827 ' in MASTER_Basepairs[i][j][0]) and (' 859 ' in MASTER_Basepairs[i][j][3]):
+                        if ('  31 ' in MASTER_Basepairs[i][j][0]) and ('  39 ' in MASTER_Basepairs[i][j][3]):
                             print "First basepair for this basepairing Scheme: MASTER_Basepairs_summary[i][0]", MASTER_Basepairs_summary[i][0]
 #FOLLOW A LINE
 #####################################
@@ -1846,9 +1864,17 @@ import os
 dir =  os.getcwd()
 
 import re
-mm=re.search(r'\.', pdb_file)
+ma=re.compile(r'\/+')
+iterator = ma.finditer(pdb_file)
+aaa=[]
+for match in iterator:
+   aaa.append(match.span())
+directory = pdb_file[0:aaa[len(aaa)-1][1]]
+FILE = pdb_file[aaa[len(aaa)-1][1]:len(pdb_file)]
+mm=re.search(r'\.', FILE)
 START = mm.start()
-pdb_file_main = pdb_file[0:START]
+pdb_file_main = FILE[0:START]
+
 ##########################################################################
 #Sub SECTION file name
 ##########################################################################
@@ -2597,11 +2623,11 @@ falsely_assigned = [] #Will collect FALSE basepairs from MASTER_Basepairs_summar
 undetermined = [] #Will collect 'UNDETERMINED' basepairs from MASTER_Basepairs_summary, from largest first residue to smallest
 missing_bond = [] #Will collect basepairs with missing bonds. Tagged as " miss"
 file = [[], []]
-pymol0 = dir + "/" + pdb_file_main + "_all-basepairs_REVERSED" + "_PYMOL" + "_script.pml"
+pymol0 = directory + "/" + pdb_file_main + "_all-basepairs_REVERSED" + "_PYMOL" + "_script.pml"
 file[0] = open(pymol0, 'w')
 line0 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n' + "show sticks" + '\n'
 file[0].write(line0)
-pymol1 = dir + "/" + pdb_file_main + "_all-basepairs" + "_PYMOL" + "_script.pml"
+pymol1 = directory + "/" + pdb_file_main + "_all-basepairs" + "_PYMOL" + "_script.pml"
 file[1] = open(pymol1, 'w')
 line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
 file[1].write(line1)
@@ -2649,7 +2675,7 @@ for h in range (len(run_cutoff)/2):
    print           "==============================================================================="
 
    #For PYMOL output
-   pymol1 = dir + "/" + pdb_file_main + "_basepairs-at-cutoff_" + run_cutoff[h*2 + 1] + "_PYMOL" + "_script.pml"
+   pymol1 = directory + "/" + pdb_file_main + "_basepairs-at-cutoff_" + run_cutoff[h*2 + 1] + "_PYMOL" + "_script.pml"
    file[1] = open(pymol1, 'w')
    line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
    file[1].write(line1)
@@ -2671,7 +2697,7 @@ CLOSE(file)
 ##### 2) LIST OF LEGITIMATE BASEPAIRS
 if LEGITIMATE_tagged != []:
     file = [[], []]
-    pymol1 = dir + "/" + pdb_file_main + "_LEGITIMATED-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = directory + "/" + pdb_file_main + "_LEGITIMATED-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2696,7 +2722,7 @@ if LEGITIMATE_tagged != []:
 ##### 3) LIST OF FALSE BASEPAIRS
 if falsely_assigned != []:
     file = [[], []]
-    pymol1 = dir + "/" + pdb_file_main + "_FALSE-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = directory + "/" + pdb_file_main + "_FALSE-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2721,7 +2747,7 @@ if falsely_assigned != []:
 ##### 4) LIST OF UNDETERMINED BASEPAIRS BEGINNING
 if undetermined != []:
     file = [[], []]
-    pymol1 = dir + "/" + pdb_file_main + "_UNDETERMINED-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = directory + "/" + pdb_file_main + "_UNDETERMINED-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2746,7 +2772,7 @@ if undetermined != []:
 ##### 5) LIST OF MISSING-BOND BASEPAIRS BEGINNING
 if missing_bond != []:
     file = [[], []]
-    pymol1 = dir + "/" + pdb_file_main + "_MISSING-BOND-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = directory + "/" + pdb_file_main + "_MISSING-BOND-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2904,7 +2930,7 @@ print "\n\n#######################################################\n############
 #OUTPUT REGARDING BASES WITH POSSIBLE MULTIPLE CONTACTS
 #print "\n\nThe following group of bases have been identified as possible basepairs but cannot be assigned to a single basepair interaction\nPlease visually check the assignment in Pymol.\n##### These bases will be displayed in RED #####."
 file = [[], []]
-pymol1 = dir + "/" + pdb_file_main + "_UNASSIGNABLE-basepairs" + "_PYMOL" + "_script.pml"
+pymol1 = directory + "/" + pdb_file_main + "_UNASSIGNABLE-basepairs" + "_PYMOL" + "_script.pml"
 file[1] = open(pymol1, 'w')
 line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
 file[1].write(line1)
