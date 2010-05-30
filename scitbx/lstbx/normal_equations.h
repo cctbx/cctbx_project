@@ -98,7 +98,7 @@ namespace scitbx { namespace lstbx {
 
     /// Reset the state to construction time, i.e. no equations accumulated
     void reset() {
-      solved = false;
+      solved_ = false;
       std::fill(normal_matrix_.begin(), normal_matrix_.end(), scalar_t(0));
       std::fill(right_hand_side_.begin(), right_hand_side_.end(), scalar_t(0));
       r_sq = 0;
