@@ -346,7 +346,7 @@ namespace tardy {
       unsigned nb = this->bodies_size();
       af::shared<af::small<ft, 7> > result((af::reserve(nb)));
       af::shared<af::small<ft, 6> >
-        tau_array = f_ext_as_tau(f_ext_array().const_ref());
+        tau_array = this->f_ext_as_tau(f_ext_array().const_ref());
       for(unsigned ib=0;ib<nb;ib++) {
         result.push_back(
           this->bodies[ib]->joint->tau_as_d_e_pot_d_q(tau_array[ib]));
@@ -379,7 +379,7 @@ namespace tardy {
     qdd_array()
     {
       if (!qdd_array_) {
-        qdd_array_ = forward_dynamics_ab(
+        qdd_array_ = this->forward_dynamics_ab(
           /*tau_array*/ af::const_ref<af::small<ft, 6> >(0, 0),
           f_ext_array().const_ref(),
           /*grav_accn*/ af::const_ref<ft>(0, 0));

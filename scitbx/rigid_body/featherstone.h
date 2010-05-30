@@ -2,7 +2,6 @@
 #define SCITBX_RIGID_BODY_FEATHERSTONE_H
 
 #include <scitbx/rigid_body/spatial_lib.h>
-#include <scitbx/rigid_body/matrix_helpers.h>
 #include <scitbx/rigid_body/array_packing.h>
 #include <scitbx/matrix/eigensystem.h>
 #include <scitbx/array_family/versa_algebra.h>
