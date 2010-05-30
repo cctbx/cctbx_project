@@ -3,6 +3,7 @@
 
 #include <scitbx/rotr3.h>
 #include <scitbx/array_family/versa_matrix.h>
+#include <scitbx/rigid_body/matrix_helpers.h>
 
 namespace scitbx { namespace rigid_body {
 
