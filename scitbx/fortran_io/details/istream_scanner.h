@@ -16,12 +16,12 @@ class istream_scanner
 
     value_t operator*() const { return current; }
 
-    istream_scanner const &operator++() const {
+    istream_scanner const &operator++() {
       current = input.get();
       return *this;
     }
 
-    istream_scanner const &operator--() const {
+    istream_scanner const &operator--() {
       input.putback(current);
       return *this;
     }
@@ -32,8 +32,8 @@ class istream_scanner
     }
 
   private:
-    mutable std::basic_istream<CharType> &input;
-    mutable value_t current;
+    std::basic_istream<CharType> &input;
+    value_t current;
 };
 
 }}} // scitbx::fortran_io::details
