@@ -25,7 +25,7 @@ namespace scitbx { namespace fortran_io { namespace details {
     }
 
     template <typename ScannerType>
-    bool operator()(ScannerType const &scan) {
+    bool operator()(ScannerType &scan) {
       Heir &heir = static_cast<Heir &>(*this);
       for (; n < field_width; ++n, ++scan) {
         if (scan.at_end()) {
@@ -140,7 +140,7 @@ namespace scitbx { namespace fortran_io { namespace details {
     {}
 
     template <typename ScannerType>
-    bool operator()(ScannerType const &scan) {
+    bool operator()(ScannerType &scan) {
       fortran_decimal_extractor<FloatType> extract(
         strict_width, field_width, frac_digits);
       int exponent;
