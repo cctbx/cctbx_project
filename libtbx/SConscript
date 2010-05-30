@@ -130,7 +130,12 @@ supported_compilers = (
   "darwin_gcc-4.2", # tested with the "GCC 4.2 Developer Preview 1"
                     # distributed by Apple
                     # and the GCC 4.2 shipping with XCode 3.1
-  #"darwin_llvm-gcc-4.2" ## under investigation ##
+  "darwin_clang", # as of June 2010, it can't compile it all:
+                  # - problem with exception specifications in scitbx/error.h
+                  #   (bug reported: number 7258)
+                  # - the code produced for matrix/eigensystem.h overflows
+                  #   (bug reported: number 7260)
+                  # bug reports at http://llvm.org/bugs/
 )
 if (not env_etc.compiler in supported_compilers):
   sys.tracebacklimit = 0
@@ -465,15 +470,18 @@ else:
       cxx = "c++"
     else:
       cc  = env_etc.compiler.replace('darwin_','')
-      cxx = cc.replace('gcc', 'g++')
-      if env_etc.compiler.endswith("4.2"):
-        if libtbx.env.build_options.enable_boost_threads:
-          build_nb = libtbx.env_config.get_darwin_gcc_build_number(gcc=cxx)
-          min_build_nb = 5564 # XCode 3.1 beta distributed as part of
-                              # the iPhone SDK and XCode 3.1
-          if build_nb < min_build_nb:
-            raise RuntimeError("Apple GCC 4.2 (build %i) incompatible with "
-                               "--enable_boost_threads" % build_nb)
+      if cc == 'clang':
+        cxx = 'clang++'
+      else:
+        cxx = cc.replace('gcc', 'g++')
+        if env_etc.compiler.endswith("4.2"):
+          if libtbx.env.build_options.enable_boost_threads:
+            build_nb = libtbx.env_config.get_darwin_gcc_build_number(gcc=cxx)
+            min_build_nb = 5564 # XCode 3.1 beta distributed as part of
+                                # the iPhone SDK and XCode 3.1
+            if build_nb < min_build_nb:
+              raise RuntimeError("Apple GCC 4.2 (build %i) incompatible with "
+                                 "--enable_boost_threads" % build_nb)
     link_flags = ["-w"] # suppress "source/lib does not exist" warning
     if (env_etc.gcc_version >= 40201 and libtbx.env.build_options.force_32bit) :
       link_flags.extend(["-arch", "i386"])
@@ -491,7 +499,7 @@ else:
     env_etc.ccflags_base = [
       "-fPIC",
       "-fno-strict-aliasing"]
-    if (env_etc.gcc_version >= 40102):
+    if (cxx != 'clang++' and env_etc.gcc_version >= 40102):
       env_etc.ccflags_base.append("-ftrapv")
     if (libtbx.env.build_options.warning_level == 0):
       warn_options = ["-w"]
@@ -512,10 +520,11 @@ else:
     if not libtbx.env.build_options.enable_boost_threads:
       env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
     if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      opts = ["-DNDEBUG", "-O3"]
+      if cxx != 'clang++': opts.append("-ffast-math")
       if env_etc.gcc_version >= 40300:
         opts.append("-fno-associative-math")
-      opts.append("-ftrapping-math")
+      if cxx != 'clang++': opts.append("-ftrapping-math")
       if (cxx == "c++"
             and env_etc.gcc_version == 40000):
         opts[1] = "-O2" # Apple's optimizer is broken
@@ -645,6 +654,9 @@ int main() {
   env_etc.have_openmp = False
   if (env_etc.compiler == "win32_cl" and env_base["MSVC_VERSION"] == "7.1"):
     print "libtbx.scons: OpenMP is not available."
+    return
+  if env_etc.compiler == "darwin_clang":
+    print "libtbx.scons: OpenMP is not supported by clang yet."
     return
   if (libtbx.env.build_options.enable_boost_threads):
     if (libtbx.env.build_options.enable_openmp_if_possible):
