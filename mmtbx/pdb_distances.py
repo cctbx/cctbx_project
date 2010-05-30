@@ -501,7 +501,7 @@ XXIX_CA = [] #XXIX (CA Wobble). Base-pairing pattern CA
 #Bond   C       A       Length Ave      Length Std      Attribute
 #1      N3      N6      unk             unk
 #2      O2      N1      unk             unk
-bonds = [2, "A", "C", "N6", "N3", "N1", "O2", "NA", "NA", "NA", "NA", "NA", "NA"]
+bonds = [2, "A", "C", "N3", "N6", "O2", "N1", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 45 in MASTER_Basepairs (XXXI_GC)
 XXX_GC = [] #XXX Base-pair between positions G1034 and C1028 of T. thermophilus 16S rRNA (E. coli numbering)
