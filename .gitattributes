@@ -9,6 +9,7 @@ boost_adaptbx/command_line/gcd.py svneol=native#text/x-python
 boost_adaptbx/command_line/inexact.py -text
 boost_adaptbx/command_line/int_overflow.py svneol=native#text/x-python
 boost_adaptbx/command_line/lcm.py svneol=native#text/x-python
+boost_adaptbx/command_line/nested_cpp_loops_with_check_signals.py svneol=native#text/x-python
 boost_adaptbx/command_line/segmentation_fault.py svneol=native#text/x-python
 boost_adaptbx/command_line/show_environ_usage.py svneol=native#text/x-python
 boost_adaptbx/error_utils.h svneol=native#text/plain

@@ -434,6 +434,24 @@ namespace {
   long
   add_longs(long i, long j) { return i + j; }
 
+  std::size_t
+  nested_cpp_loops_with_check_signals(
+    std::size_t iterations_outer,
+    std::size_t iterations_inner)
+  {
+    std::size_t result = 0;
+    for(std::size_t i=0;i<iterations_outer;i++) {
+      for(std::size_t j=0;j<iterations_inner;j++) {
+        if (std::log(static_cast<double>(i+j+1)) < -1) break;
+      }
+      result += 1;
+      if (PyErr_CheckSignals() != 0) {
+        break;
+      }
+    }
+    return result;
+  }
+
   struct python_streambuf_wrapper
   {
     typedef boost_adaptbx::python::streambuf wt;
@@ -501,6 +519,9 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
   def("multiply_doubles", multiply_doubles);
   def("add_ints", add_ints);
   def("add_longs", add_longs);
+  def("nested_cpp_loops_with_check_signals",
+    nested_cpp_loops_with_check_signals, (
+      arg("iterations_outer"), arg("iterations_inner")));
   class_<boost_python_meta_ext::holder>("holder").enable_pickling();
   python_streambuf_wrapper::wrap();
   python_ostream_wrapper::wrap();
