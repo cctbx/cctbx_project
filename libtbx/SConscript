@@ -210,6 +210,9 @@ if (sys.platform == "win32"):
     elif (cl_info.find("Version 15.00") >= 0):
       env_base = Environment(ENV=os.environ, MSVC_VERSION="9.0", TARGET_ARCH=target_arch)
       env_etc.have_manifest_tool = True
+    elif (cl_info.find("Version 16.00") >= 0):
+      env_base = Environment(ENV=os.environ, MSVC_VERSION="10.0", TARGET_ARCH=target_arch)
+      env_etc.have_manifest_tool = True
     else:
       raise RuntimeError("""\
 Unknown or unsupported cl.exe version.
@@ -250,7 +253,12 @@ libtbx.scons: Warning: compiling with /MDd:
       "/GR",
       "/EHsc"]
     if (libtbx.env.build_options.optimization):
-      opts = ["/DNDEBUG", "/O2"]
+      if env_base["MSVC_VERSION"] == "10.0":
+        # /O2 causes fatal internal compiler error C1001
+        # see https://connect.microsoft.com/VisualStudio/feedback/details/534697/
+        opts = ["/DNDEBUG", "/O1"]
+      else:
+        opts = ["/DNDEBUG", "/O2"]
       if (    libtbx.env.build_options.msvc_arch_flag is not None
           and not platform_64bit):
         opts.append("/arch:%s" %libtbx.env.build_options.msvc_arch_flag)
@@ -262,7 +270,7 @@ libtbx.scons: Warning: compiling with /MDd:
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('/DBOOST_DISABLE_THREADS')
     env_etc.ccflags_base.extend(opts)
-    env_etc.shlinkflags = ["/nologo", "/incremental:no", "/dll"]
+    env_etc.shlinkflags = ["/nologo", "/incremental:no", "/dll", "/MANIFEST"]
     if (libtbx.env.build_options.debug_symbols):
       env_etc.shlinkflags.append("/DEBUG")
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
