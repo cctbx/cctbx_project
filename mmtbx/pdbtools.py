@@ -867,10 +867,4 @@ class interpreter:
 def validate_params (params, callback=None) :
   if len(params.input.pdb.file_name) == 0 :
     raise Sorry("No PDB file(s) specified.")
-  elif params.action is None :
-    raise Sorry("You must choose an action to perform.")
-  elif params.action in ["modify", "regularize"] :
-    if params.modify.output.file_name is None :
-      raise Sorry("Please specify an output PDB file.")
-  elif params.action == "add_h" :
-    raise Sorry("Please use ReadySet to add hydrogens.")
+  return True
