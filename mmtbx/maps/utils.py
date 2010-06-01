@@ -119,9 +119,12 @@ def write_xplor_map_file (coeffs, frac_min, frac_max, file_base) :
 
 def write_xplor_map(sites_cart, unit_cell, map_data, n_real, file_name,
     buffer=10) :
-  frac_min, frac_max = unit_cell.box_frac_around_sites(
-    sites_cart=sites_cart,
-    buffer=buffer)
+  if sites_cart is not None :
+    frac_min, frac_max = unit_cell.box_frac_around_sites(
+      sites_cart=sites_cart,
+      buffer=buffer)
+  else :
+    frac_min, frac_max = (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)
   gridding_first=[ifloor(f*n) for f,n in zip(frac_min,n_real)]
   gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
   gridding = iotbx.xplor.map.gridding(n     = map_data.focus(),
@@ -251,7 +254,8 @@ def xplor_map_from_solve_mtz (pdb_file, mtz_file, force=False) :
       fom_label="FOM")
   return output_file
 
-def get_map_coeff_labels (server, build_only=False, include_fom=True) :
+def get_map_coeff_labels (server, build_only=False, include_fom=True,
+    keep_array_labels=False) :
   all_labels = []
   phi_labels = []
   fom_labels = []
@@ -262,30 +266,42 @@ def get_map_coeff_labels (server, build_only=False, include_fom=True) :
   phase_arrays = server.get_phases_deg(None, None, False, None, None, None,
                                        True, 3)
   for miller_array in phase_arrays :
+    labels = miller_array.info().label_string()
     if miller_array.is_hendrickson_lattman_array() :
       continue
     elif miller_array.is_complex_array() :
-      labels = miller_array.info().label_string()
       # note: Phaser outputs FWT/DELFWT for *anomalous difference* map!
       if build_only :
         if not labels.startswith("FOFC") and labels != "FWT,DELFWT" :
-          all_labels.append(miller_array.info().label_string())
+          all_labels.append(labels)
       else :
-        all_labels.append(miller_array.info().label_string())
+        all_labels.append(labels)
     elif miller_array.info().labels[0].startswith("PHI") :
-      phi_labels.append(miller_array.info().label_string())
+      phi_labels.append(labels)
   amp_arrays = server.get_amplitudes(None, None, False, None, None, True, 4)
-  for miller_array in amp_arrays :
-    f_label = miller_array.info().labels[0]
-    if f_label[0] == "F" and f_label != "FC" :
+  if keep_array_labels :
+    for miller_array in amp_arrays :
+      data_label = miller_array.info().label_string()
       for phase_label in phi_labels :
-        hybrid_label = "%s,%s" % (f_label, phase_label)
+        hybrid_label = [data_label, phase_label]
         if len(fom_labels) > 0 and include_fom :
           for fom in fom_labels :
-            final_label = hybrid_label + ",%s" % fom
-            all_labels.append(final_label)
+            hybrid_label.append(fom)
+            all_labels.append(hybrid_label)
         else :
           all_labels.append(hybrid_label)
+  else :
+    for miller_array in amp_arrays :
+      f_label = miller_array.info().labels[0]
+      if f_label[0] == "F" and f_label != "FC" :
+        for phase_label in phi_labels :
+          hybrid_label = "%s,%s" % (f_label, phase_label)
+          if len(fom_labels) > 0 and include_fom :
+            for fom in fom_labels :
+              final_label = hybrid_label + ",%s" % fom
+              all_labels.append(final_label)
+          else :
+            all_labels.append(hybrid_label)
   return all_labels
 
 def get_map_coeffs_for_build (server) :
