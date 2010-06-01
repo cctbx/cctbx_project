@@ -58,6 +58,7 @@ HETATM    3 NH3  NH3     3       0.000   0.000   0.000  1.00  0.00
 HETATM    4  X   CH4     4       0.000   0.000   0.000  1.00  0.00           C
 HETATM    5  C   CH4     5       0.000   0.000   0.000  1.00  0.00
 HETATM    6  CH4 CH4     6       0.000   0.000   0.000  1.00  0.00
+HETATM    7 U    U       7       0.000   0.000   0.000  1.00  0.00           U
 END
 """.splitlines()
   log = StringIO()
@@ -72,7 +73,7 @@ END
     line = line.strip()
     if (not line.startswith(looking_for)): continue
     counts = eval(line[len(looking_for):])
-    assert counts == {"CH4": 3, "NH3": 3}
+    assert counts == {"CH4": 3, "NH3": 3, "U  ": 1}
     break
   else:
     raise RuntimeError('Expected string not found in output: "%s"'
