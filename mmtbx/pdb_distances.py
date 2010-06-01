@@ -1087,7 +1087,7 @@ def BOND_PLACING(LIST1, LIST2, LIST3):
 #FOLLOW A LINE
 #                                   if ('  31 ' in LIST2) and ('  39 ' in LIST2):
 #                                      print "exiting BOND_PLACING", "LIST1", LIST1, "\nLIST2", LIST2, "\nLIST3", LIST3
-#                                      print "exiting BOND_PLACING" 
+#                                      print "exiting BOND_PLACING"
 #FOLLOW A LINE
                                    return LIST2
 ################################################
@@ -1113,7 +1113,7 @@ def C1_C1_DISTANCE(LIST1, LIST2, A0, A1, A2, A3):
     if LIST1[16] != []:
        diffP_P = LIST1[16] - LIST2[9]
     else:
-       LIST1[16] = LIST2[9] #To avoid crashes when a phosphate is missing, like at the 5' end of the molecule, an average value is given. This will solve problems as long as there is an average value in MASTER_Basepairs_bonds, so it could create problems for rare basepairs, but one would not expect such basepairs at the beginning of helices.  
+       LIST1[16] = LIST2[9] #To avoid crashes when a phosphate is missing, like at the 5' end of the molecule, an average value is given. This will solve problems as long as there is an average value in MASTER_Basepairs_bonds, so it could create problems for rare basepairs, but one would not expect such basepairs at the beginning of helices.
        diffP_P = "NA"
     diffC1_C1 = LIST1[17] - LIST2[11]
     line = "The basepair formed by residues " + A0 + A1 + ":" + A2 + A3 + " displays a " + LIST1[0] + " geometry with a P-P distance of " + str(LIST1[16]) + " and a C1\'-C1\' distance of " + str(LIST1[17]) + ".\n     Empirically determined average C1\'-C1\' distance for this geometry = " + str(LIST2[11]) + " + SD = " + str(LIST2[12]) + "\n     Empirically determined average P-P distance for this geometry = " + str(LIST2[9]) + " + SD = " + str(LIST2[10])

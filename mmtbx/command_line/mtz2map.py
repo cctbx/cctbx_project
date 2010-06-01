@@ -1,0 +1,201 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.mtz2map
+
+# TODO: remove R-free set from map coefficients?
+
+from mmtbx.maps import utils
+from iotbx import file_reader
+import iotbx.phil
+from libtbx.utils import Sorry, Usage
+import sys, os
+
+master_phil = iotbx.phil.parse("""
+mtz_file = None
+  .type = path
+pdb_file = None
+  .type = path
+labels = None
+  .type = strings
+  .multiple = True
+buffer = 5.0
+  .type = float
+selection = None
+  .type = str
+d_min = None
+  .type = float
+d_max = None
+  .type = float
+grid_resolution_factor = 1.0 / 3
+  .type = float
+apply_sigma_scaling = True
+  .type = bool
+output {
+  directory = None
+    .type = path
+  file_base = None
+    .type = str
+  extension = *xplor map
+    .type = choice
+}
+#r_free_flags {
+#  remove = False
+#    .type = bool
+#  file_name = None
+#    .type = path
+#  label = None
+#    .type = str
+#  test_flag_value = None
+#    .type = int
+#}
+show_maps = False
+  .type = bool
+""")
+
+def find_array (miller_arrays, labels) :
+  for array in miller_arrays :
+    if array.info().label_string() == labels :
+      return array
+  return None
+
+def run (args, log=sys.stdout) :
+  pdb_file = None
+  mtz_file = None
+  input_phil = []
+  if len(args) == 0 :
+    print >> log, "Parameter syntax:"
+    master_phil.show(out=log, prefix="  ")
+    raise Usage("phenix.mtz2map [mtz_file] [pdb_file] [param_file] " +
+      "[--show_maps]")
+  for arg in args :
+    if os.path.isfile(arg) :
+      input_file = file_reader.any_file(arg)
+      if input_file.file_type == "pdb" :
+        if pdb_file is not None :
+          raise Sorry("A PDB file has already been defined.")
+        input_phil.append(iotbx.phil.parse("pdb_file=%s" %
+          os.path.abspath(arg)))
+        pdb_file = input_file
+      elif input_file.file_type == "hkl" :
+        if not arg.endswith(".mtz") :
+          raise Sorry("Only MTZ files are supported for reflections input.")
+        elif mtz_file is not None :
+          raise Sorry("An MTZ file has already been defined.")
+        input_phil.append(iotbx.phil.parse("mtz_file=%s" %
+          os.path.abspath(arg)))
+        mtz_file = input_file
+      else :
+        raise Sorry("File type '%s' not supported." % input_file.file_type)
+    else :
+      if arg.startswith("--") :
+        arg = arg[2:] + "=True"
+      try :
+        arg_phil = iotbx.phil.parse(arg)
+      except RuntimeError :
+        print >> log, "Unknown argument '%s'." % arg
+      else :
+        input_phil.append(arg_phil)
+  working_phil = master_phil.fetch(sources=input_phil)
+  params = working_phil.extract()
+  if mtz_file is None and params.mtz_file is None :
+    raise Sorry("Please specify an MTZ file containing map coefficients.")
+  if params.output.directory is None :
+    params.output.directory = os.getcwd()
+  if params.output.file_base is None :
+    params.output.file_base = os.path.splitext(
+      os.path.basename(params.mtz_file))[0]
+  if mtz_file is None :
+    mtz_file = file_reader.any_file(params.mtz_file, force_type="hkl")
+  if params.show_maps or len(params.labels) == 0 :
+    all_labels = utils.get_map_coeff_labels(mtz_file.file_server,
+      keep_array_labels=True)
+    if len(all_labels) > 0 :
+      print >> log, "Available map coefficients in this MTZ file:"
+      for labels in all_labels :
+        if isinstance(labels, str) :
+          labels = [labels]
+        if labels[0] in ["FC", "Fcalc"] :
+          extra = " (skipping)"
+        else :
+          extra = ""
+          params.labels.append(labels)
+        print >> log, "  %s%s" % (" ".join(labels), extra)
+    else :
+      raise Sorry("No map coefficients found in this MTZ file.")
+    if params.show_maps : return False
+  if pdb_file is None and params.pdb_file is not None :
+    pdb_file = file_reader.any_file(params.pdb_file, force_type="pdb")
+  miller_arrays = mtz_file.file_object.as_miller_arrays()
+  #r_free_array = None
+  #if params.r_free_flags.remove :
+  #  if params.r_free_flags.file_name is not None :
+  #    rfree_file = file_reader.any_file(params.r_free_flags.file_name,
+  #      force_type="hkl")
+  #  else :
+  #    rfree_file = mtz_file
+  #  raw_array, flag_value = rfree_file.file_server.get_r_free_flags(
+  #    file_name=rfree_file.file_name,
+  #    label=params.r_free_flags.label,
+  #    test_flag_value=params.r_free_flags.test_flag_value,
+  #    disable_suitability_test=False,
+  #    parameter_scope="r_free_flags")
+  #  r_free_array = raw_array.array(data=raw_array.data()==flag_value)
+  sites_cart = None
+  if pdb_file is not None :
+    pdb_hierarchy = pdb_file.file_object.construct_hierarchy()
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    if params.selection is not None :
+      selection_cache = pdb_hierarchy.atom_selection_cache()
+      selection = selection_cache.selection(params.selection)
+      sites_cart = sites_cart.select(selection)
+  else :
+    print >> log, "No PDB file - will output map(s) in unit cell."
+  for i, map_labels in enumerate(params.labels) :
+    map_coeffs = None
+    if len(map_labels) == 1 :
+      map_coeffs = find_array(miller_arrays, map_labels[0])
+    else :
+      if len(map_labels) == 2 :
+        map_labels.append(None)
+      (f, phi, fom) = utils.extract_map_coeffs(miller_arrays=miller_arrays,
+        f_lab=map_labels[0],
+        phi_lab=map_labels[1],
+        fom_lab=map_labels[2])
+      assert f.is_xray_amplitude_array()
+      assert phi.is_real_array()
+      assert fom is None or fom.is_real_array()
+      if fom is not None :
+        map_coeffs = (f * fom).phase_transfer(phi, deg=True)
+      else :
+        map_coeffs = f.phase_transfer(phi, deg=True)
+    print >> log, "Processing map: %s" % " ".join(map_labels)
+    assert map_coeffs.is_complex_array()
+    map_coeffs = map_coeffs.resolution_filter(d_min=params.d_min,
+      d_max=params.d_max)
+    map = map_coeffs.fft_map(resolution_factor=params.grid_resolution_factor)
+    if params.apply_sigma_scaling :
+      map.apply_sigma_scaling()
+    suffix = None
+    if map_labels == ["FP,SIGFP", "PHIM", "FOMM"] :
+      suffix = ""
+    elif map_labels[0].startswith("2FOFCWT") :
+      if map_labels[0].endswith("no_fill") :
+        suffix = "_2mFo-DFc_no_fill"
+      else :
+        suffix = "_2mFo-DFc"
+    elif map_labels[0].startswith("FOFCWT") :
+      suffix = "_mFo-DFc"
+    else :
+      suffix = "_%d" % (i+1)
+    map_file_name = os.path.join(params.output.directory,
+      params.output.file_base + suffix + "." + params.output.extension)
+    utils.write_xplor_map(
+      sites_cart=sites_cart,
+      unit_cell=map_coeffs.unit_cell(),
+      map_data=map.real_map(),
+      n_real=map.n_real(),
+      file_name=map_file_name,
+      buffer=params.buffer)
+    print >> log, "  wrote %s" % map_file_name
+  return True
+
+if __name__ == "__main__" :
+  run(sys.argv[1:])
