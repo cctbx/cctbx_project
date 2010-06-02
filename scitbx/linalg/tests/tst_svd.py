@@ -135,7 +135,7 @@ class test_case(object):
     from libtbx.easy_profile import easy_profile
     self.scitbx_report = []
     self.tntbx_report = []
-    prof_scitbx = easy_profile(scitbx.math.svd.real,
+    prof_scitbx = easy_profile(scitbx.linalg.svd.real,
                                 file_name='svd.py', func_name='__init__',
                                 line=None)
     if tntbx is not None:
