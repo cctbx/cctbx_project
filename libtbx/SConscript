@@ -253,12 +253,7 @@ libtbx.scons: Warning: compiling with /MDd:
       "/GR",
       "/EHsc"]
     if (libtbx.env.build_options.optimization):
-      if env_base["MSVC_VERSION"] == "10.0":
-        # /O2 causes fatal internal compiler error C1001
-        # see https://connect.microsoft.com/VisualStudio/feedback/details/534697/
-        opts = ["/DNDEBUG", "/O1"]
-      else:
-        opts = ["/DNDEBUG", "/O2"]
+      opts = ["/DNDEBUG", "/O2"]
       if (    libtbx.env.build_options.msvc_arch_flag is not None
           and not platform_64bit):
         opts.append("/arch:%s" %libtbx.env.build_options.msvc_arch_flag)
