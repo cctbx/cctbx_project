@@ -45,6 +45,27 @@ def exercise(args):
       assert approx_equal(map_stats.sigma(), m.header_rms)
     print
 
+def exercise_writer () :
+  file_name = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/wizards/partial_refine_001_map_coeffs.mtz",
+    test=os.path.isfile)
+  if file_name is None :
+    print "Can't find map coefficients file, skipping."
+    return
+  from iotbx import file_reader
+  mtz_in = file_reader.any_file(file_name, force_type="hkl").file_object
+  miller_arrays = mtz_in.as_miller_arrays()
+  map_coeffs = miller_arrays[0]
+  fft_map = map_coeffs.fft_map(resolution_factor=1/3.0)
+  fft_map.apply_sigma_scaling()
+  real_map = fft_map.real_map_unpadded()
+  #print dir(real_map)
+  iotbx.ccp4_map.write_ccp4_map(
+    file_name="2mFo-DFc.map",
+    map_data=real_map,
+    unit_cell=map_coeffs.unit_cell(),
+    space_group_number=map_coeffs.space_group().type().number())
+
 def run(args):
   def have_ext():
     for node in os.listdir(libtbx.env.under_build(path="lib")):
@@ -56,6 +77,7 @@ def run(args):
   else:
     import iotbx.ccp4_map
     exercise(args=args)
+    exercise_writer()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
