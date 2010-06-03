@@ -49,6 +49,7 @@ class w_Distl {
 public:
   w_Distl(std::string,bool);
   Distl::diffimage finder;
+  void set_resolution_outer(const double&);
   void setspotimg(const double&, const double&, const double&,
                   const double&, const double&, af::flex_int const&,
                   const double&);

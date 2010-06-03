@@ -229,8 +229,19 @@ di::w_Distl::w_Distl(std::string optionstring, bool report_overloads){
         finder.bgupperint[1] = atof((*(++tok_iter)).c_str());
       } else if (*tok_iter == "-bg2") {
         finder.bgupperint[2] = atof((*(++tok_iter)).c_str());
+      } else if (*tok_iter == "-ro") {
+        set_resolution_outer( atof((*(++tok_iter)).c_str()) );
       }
     }
+}
+
+void
+di::w_Distl::set_resolution_outer(const double& newvalue)
+{
+  // only meaningful if the resolution value is a positive number.
+  SCITBX_ASSERT(newvalue>0.0);
+  finder.resolution_outer = newvalue;
+  SCITBX_EXAMINE(finder.resolution_outer);
 }
 
 void

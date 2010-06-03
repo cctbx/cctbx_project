@@ -86,6 +86,7 @@ namespace Distl {
 
 typedef std::vector< std::vector< bool > > flag_array_t;
 typedef std::vector< std::vector< double > > double_array_t;
+typedef std::vector< std::vector< float > > float_array_t;
 
 template <class T>
 class constmat {
@@ -174,7 +175,7 @@ struct spot_base {
   double total_intensity() const {return m_PixelValueSum;}
   virtual
   void find_weighted_center(image_rawdata_t const&, flag_array_t const&,
-                            double_array_t const&);
+                            float_array_t const&);
 };
 
 struct spot: public spot_base, public spot_shapes {
@@ -212,7 +213,7 @@ public:
   void setstate(Distl::point const&);//only used in unpickling
   virtual
   void find_weighted_center(image_rawdata_t const&, flag_array_t const&,
-                            double_array_t const&);
+                            float_array_t const&);
   void show_summary(image_rawdata_t const&,double_array_t const&);
   inline double skewness() const {
     //A general indication of skewness, not a rigorous calculation
@@ -391,11 +392,11 @@ public:
 
         // Processing results and summaries
 
-        vector< vector<double> > pixelintensity;
+        vector< vector<float> > pixelintensity;
         // (PixelValue - LocalBackground) / LocalStandardError
         // Same location arrangement as in pixelvalue.
 
-        vector< vector<double> > pixellocalmean;
+        vector< vector<float> > pixellocalmean;
 
         list<point> maximas;
         list<spot> spots;
@@ -418,6 +419,7 @@ public:
         void set_imagedata(const int* const, const int, const int);
 
         int process();
+        double resolution_outer; //initialize with negative value; >0 means impose a limit
 };
 
 
