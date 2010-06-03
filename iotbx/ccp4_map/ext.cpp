@@ -25,7 +25,7 @@ namespace ccp4_map {
 
   namespace af = scitbx::af;
 
-  static void
+  void
   cmap_close_ptr_deleter(
     CMap_io::CMMFile* ptr)
   {
