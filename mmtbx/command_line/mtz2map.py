@@ -227,12 +227,7 @@ def run (args, log=sys.stdout) :
         file_name=map_file_name,
         buffer=params.buffer)
     else :
-      import iotbx.ccp4_map
-      iotbx.ccp4_map.write_ccp4_map(
-        file_name=map_file_name,
-        map_data=map.real_map_unpadded(),
-        unit_cell=map_coeffs.unit_cell(),
-        space_group_number=map_coeffs.space_group().type().number())
+      map.as_ccp4_map(file_name=map_file_name)
     print >> log, "  wrote %s" % map_file_name
   return True
 

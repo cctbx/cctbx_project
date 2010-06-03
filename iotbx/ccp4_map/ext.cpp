@@ -6,7 +6,7 @@
 #include <boost/python/return_by_value.hpp>
 
 #include <iotbx/error.h>
-#include <cctbx/uctbx.h>
+#include <cctbx/sgtbx/space_group_type.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <boost/shared_ptr.hpp>
@@ -145,9 +145,11 @@ namespace ccp4_map {
   write_ccp4_map(
     std::string const& file_name,
     af::const_ref<double, af::flex_grid<> > const& map_data,
-    cctbx::uctbx::unit_cell unit_cell,
-    int space_group_number)
+    cctbx::uctbx::unit_cell const& unit_cell,
+    cctbx::sgtbx::space_group const& space_group,
+    std::string const& title="")
   {
+    // TODO write symmetry operators
     IOTBX_ASSERT(map_data.accessor().nd() == 3);
     IOTBX_ASSERT(map_data.accessor().is_0_based());
     IOTBX_ASSERT(! map_data.accessor().is_padded());
@@ -161,12 +163,14 @@ namespace ccp4_map {
         + file_name + "\"");
     }
     CMap_io::ccp4_cmap_set_datamode(mfile.get(), FLOAT32);
+    CMap_io::ccp4_cmap_set_title(mfile.get(), title.c_str());
     af::double6 const& unit_cell_parameters = unit_cell.parameters();
     float cell_float[6];
     for(unsigned i=0;i<6;i++) {
       cell_float[i] = static_cast<float>(unit_cell_parameters[i]);
     }
     CMap_io::ccp4_cmap_set_cell(mfile.get(), cell_float);
+    int space_group_number = space_group.type().number();
     CMap_io::ccp4_cmap_set_spacegroup(mfile.get(), space_group_number);
     int grid[3];
     af::tiny<int, 3> n_real(af::adapt(map_data.accessor().focus()));
@@ -202,7 +206,8 @@ namespace ccp4_map {
         arg("file_name"),
         arg("map_data"),
         arg("unit_cell"),
-        arg("space_group_number")));
+        arg("space_group"),
+        arg("title")=""));
     typedef return_value_policy<return_by_value> rbv;
     class_<map_reader>("map_reader", no_init)
       .def(init<std::string const&>((arg("file_name"))))
