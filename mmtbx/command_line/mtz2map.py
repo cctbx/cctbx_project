@@ -3,8 +3,9 @@
 # TODO: remove R-free set from map coefficients?
 
 from mmtbx.maps import utils
-from iotbx import file_reader
 import iotbx.phil
+from iotbx import file_reader
+import libtbx.phil
 from libtbx.utils import Sorry, Usage
 import sys, os
 
@@ -31,9 +32,11 @@ apply_sigma_scaling = True
 output {
   directory = None
     .type = path
-  file_base = None
+  prefix = None
     .type = str
-  extension = *xplor map
+  format = *xplor ccp4
+    .type = choice
+  extension = *Auto ccp4 xplor map
     .type = choice
 }
 #r_free_flags {
@@ -57,6 +60,7 @@ def find_array (miller_arrays, labels) :
   return None
 
 def run (args, log=sys.stdout) :
+  import iotbx.phil # FIXME this should not be necessary!
   pdb_file = None
   mtz_file = None
   input_phil = []
@@ -65,6 +69,9 @@ def run (args, log=sys.stdout) :
     master_phil.show(out=log, prefix="  ")
     raise Usage("phenix.mtz2map [mtz_file] [pdb_file] [param_file] " +
       "[--show_maps]")
+  parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
+    master_phil=master_phil,
+    home_scope="")
   for arg in args :
     if os.path.isfile(arg) :
       input_file = file_reader.any_file(arg)
@@ -83,12 +90,17 @@ def run (args, log=sys.stdout) :
           os.path.abspath(arg)))
         mtz_file = input_file
       else :
-        raise Sorry("File type '%s' not supported." % input_file.file_type)
+        try :
+          file_phil = iotbx.phil.parse(file_name=arg)
+        except RuntimeError :
+          raise Sorry("The file %s was not in a recognizable format." % arg)
+        else :
+          input_phil.append(file_phil)
     else :
       if arg.startswith("--") :
         arg = arg[2:] + "=True"
       try :
-        arg_phil = iotbx.phil.parse(arg)
+        arg_phil = parameter_interpreter.process(arg=arg)
       except RuntimeError :
         print >> log, "Unknown argument '%s'." % arg
       else :
@@ -99,8 +111,8 @@ def run (args, log=sys.stdout) :
     raise Sorry("Please specify an MTZ file containing map coefficients.")
   if params.output.directory is None :
     params.output.directory = os.getcwd()
-  if params.output.file_base is None :
-    params.output.file_base = os.path.splitext(
+  if params.output.prefix is None :
+    params.output.prefix = os.path.splitext(
       os.path.basename(params.mtz_file))[0]
   if mtz_file is None :
     mtz_file = file_reader.any_file(params.mtz_file, force_type="hkl")
@@ -140,12 +152,15 @@ def run (args, log=sys.stdout) :
   #  r_free_array = raw_array.array(data=raw_array.data()==flag_value)
   sites_cart = None
   if pdb_file is not None :
-    pdb_hierarchy = pdb_file.file_object.construct_hierarchy()
-    sites_cart = pdb_hierarchy.atoms().extract_xyz()
-    if params.selection is not None :
-      selection_cache = pdb_hierarchy.atom_selection_cache()
-      selection = selection_cache.selection(params.selection)
-      sites_cart = sites_cart.select(selection)
+    if params.output.format == "ccp4" :
+      print "CCP4 format specified - PDB file unnecessary."
+    else :
+      pdb_hierarchy = pdb_file.file_object.construct_hierarchy()
+      sites_cart = pdb_hierarchy.atoms().extract_xyz()
+      if params.selection is not None :
+        selection_cache = pdb_hierarchy.atom_selection_cache()
+        selection = selection_cache.selection(params.selection)
+        sites_cart = sites_cart.select(selection)
   else :
     print >> log, "No PDB file - will output map(s) in unit cell."
   for i, map_labels in enumerate(params.labels) :
@@ -183,17 +198,41 @@ def run (args, log=sys.stdout) :
         suffix = "_2mFo-DFc"
     elif map_labels[0].startswith("FOFCWT") :
       suffix = "_mFo-DFc"
+    elif map_labels[0].startswith("ANOM") :
+      suffix = "_anom"
     else :
       suffix = "_%d" % (i+1)
+    format = params.output.format
+    if params.output.extension == "Auto" :
+      if format == "ccp4" :
+        extension = "ccp4"
+      else :
+        extension = "xplor"
+    else :
+      extension = params.output.extension
+      if format == "xplor" and not extension in ["xplor", "map"] :
+        raise Sorry("%s is not an appropriate extension for Xplor maps." %
+          extension)
+      elif format == "ccp4" and not extension in ["ccp4", "map"] :
+        raise Sorry("%s is not an appropriate extension for CCP4 maps." %
+          extension)
     map_file_name = os.path.join(params.output.directory,
-      params.output.file_base + suffix + "." + params.output.extension)
-    utils.write_xplor_map(
-      sites_cart=sites_cart,
-      unit_cell=map_coeffs.unit_cell(),
-      map_data=map.real_map(),
-      n_real=map.n_real(),
-      file_name=map_file_name,
-      buffer=params.buffer)
+      params.output.prefix + suffix + "." + extension)
+    if format == "xplor" :
+      utils.write_xplor_map(
+        sites_cart=sites_cart,
+        unit_cell=map_coeffs.unit_cell(),
+        map_data=map.real_map(),
+        n_real=map.n_real(),
+        file_name=map_file_name,
+        buffer=params.buffer)
+    else :
+      import iotbx.ccp4_map
+      iotbx.ccp4_map.write_ccp4_map(
+        file_name=map_file_name,
+        map_data=map.real_map_unpadded(),
+        unit_cell=map_coeffs.unit_cell(),
+        space_group_number=map_coeffs.space_group().type().number())
     print >> log, "  wrote %s" % map_file_name
   return True
 
