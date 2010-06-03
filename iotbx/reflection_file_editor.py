@@ -288,6 +288,7 @@ class process_arrays (object) :
     # MAIN LOOP
     i = 0
     special_labels = ["i_obs,sigma", "Intensity+-,SigmaI+-"]
+    r_free_arrays = []
     for (array_params, file_name, miller_array) in \
         zip(params.mtz_file.miller_array, file_names, miller_arrays) :
       array_name = "%s:%s" % (file_name, array_params.labels)
@@ -475,56 +476,8 @@ class process_arrays (object) :
             "X-ray intensity arrays.")
 
       #-----------------------------------------------------------------
-      # R-FREE HANDLING
-      if is_rfree_array(new_array, info) :
-        flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
-           test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value)
-        test_flag_value = flag_scores.test_flag_values[0]
-        if params.mtz_file.r_free_flags.preserve_input_values :
-          r_free_flags = new_array
-        else :
-          r_free_flags = new_array.array(data=new_array.data()==test_flag_value)
-        fraction_free = (r_free_flags.data().count(True) /
-                         r_free_flags.data().size())
-        print >>log, "%s: fraction_free=%.3f" % (info.labels[0], fraction_free)
-        missing_set = r_free_flags.complete_set(d_min=d_min,
-          d_max=d_max).lone_set(r_free_flags.map_to_asu())
-        n_missing = missing_set.indices().size()
-        print >>log, "%s: missing %d reflections" % (info.labels[0], n_missing)
-        if n_missing != 0 and params.mtz_file.r_free_flags.extend :
-          if n_missing <= 20 :
-            # FIXME: MASSIVE CHEAT necessary for tiny sets
-            missing_flags = missing_set.array(data=flex.bool(n_missing,False))
-          else :
-            if accumulation_callback is not None :
-              if not accumulation_callback(miller_array=new_array,
-                                           test_flag_value=test_flag_value,
-                                           n_missing=n_missing,
-                                           column_label=info.labels[0]) :
-                continue
-            missing_flags = missing_set.generate_r_free_flags(
-              fraction=fraction_free,
-              max_free=None,
-              use_lattice_symmetry=True)
-          output_array = r_free_flags.concatenate(other=missing_flags)
-          if not output_array.is_unique_set_under_symmetry() :
-            output_array = output_array.merge_equivalents().array()
-        else :
-          output_array = r_free_flags
-        if params.mtz_file.r_free_flags.export_for_ccp4 :
-          print >> log, "%s: converting to CCP4 convention" % array_name
-          output_array = export_r_free_flags(miller_array=output_array,
-            test_flag_value=True)
-        have_r_free_array = True
-
-      if DEBUG and output_array is not None :
-        print "  Final size:    %d" % miller_array.data().size()
-        if miller_array.sigmas() is not None :
-          print "      sigmas:    %d" % miller_array.sigmas().size()
-
-      #-----------------------------------------------------------------
       # MISCELLANEOUS
-      elif new_array.is_xray_intensity_array() :
+      if new_array.is_xray_intensity_array() :
         if array_params.output_as == "amplitudes" :
           output_array = new_array.f_sq_as_f()
           if output_labels[0].upper().startswith("I") :
@@ -558,22 +511,84 @@ class process_arrays (object) :
           "from the input file.  If you think the parameters were correct, "+
           "this is probably a bug; please contact bugs@phenix-online.org "+
           "with a description of the problem.")
-      if self.mtz_dataset is None :
-        print output_array.data().size()
-        print output_array.sigmas().size()
-        self.mtz_dataset = output_array.as_mtz_dataset(
-          column_root_label=fake_label,
-          column_types=column_types)
+      if is_rfree_array(new_array, info) :
+        r_free_arrays.append((new_array, info, output_labels, file_name))
       else :
-        self.mtz_dataset.add_miller_array(
-          miller_array=output_array,
-          column_root_label=fake_label,
+        if DEBUG :
+          print "  Final size:    %d" % output_array.data().size()
+          if output_array.sigmas() is not None :
+            print "      sigmas:    %d" % output_array.sigmas().size()
+        self.add_array_to_mtz_dataset(
+          output_array=output_array,
+          fake_label=fake_label,
           column_types=column_types)
-      for label in output_labels :
-        labels.append(label)
-        label_files.append(file_name)
-      self.final_arrays.append(output_array)
+        for label in output_labels :
+          labels.append(label)
+          label_files.append(file_name)
+        self.final_arrays.append(output_array)
       i += 1
+
+    #-------------------------------------------------------------------
+    # EXISTING R-FREE ARRAYS
+    if len(r_free_arrays) > 0 :
+      have_r_free_array = True
+      if len(self.final_arrays) > 0 :
+        complete_set = make_joined_set(self.final_arrays).complete_set()
+      else :
+        complete_set = None
+      i = 0
+      for (new_array, info, output_labels, file_name) in r_free_arrays :
+        flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
+           test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value)
+        test_flag_value = flag_scores.test_flag_values[0]
+        if params.mtz_file.r_free_flags.preserve_input_values :
+          r_free_flags = new_array
+        else :
+          r_free_flags = new_array.array(data=new_array.data()==test_flag_value)
+        fraction_free = (r_free_flags.data().count(True) /
+                         r_free_flags.data().size())
+        print >>log, "%s: fraction_free=%.3f" % (info.labels[0], fraction_free)
+        if complete_set is not None :
+          missing_set = complete_set.lone_set(r_free_flags.map_to_asu())
+        else :
+          missing_set = r_free_flags.complete_set(d_min=d_min,
+            d_max=d_max).lone_set(r_free_flags.map_to_asu())
+        n_missing = missing_set.indices().size()
+        print >>log, "%s: missing %d reflections" % (info.labels[0], n_missing)
+        if n_missing != 0 and params.mtz_file.r_free_flags.extend :
+          if n_missing <= 20 :
+            # FIXME: MASSIVE CHEAT necessary for tiny sets
+            missing_flags = missing_set.array(data=flex.bool(n_missing,False))
+          else :
+            if accumulation_callback is not None :
+              if not accumulation_callback(miller_array=new_array,
+                                           test_flag_value=test_flag_value,
+                                           n_missing=n_missing,
+                                           column_label=info.labels[0]) :
+                continue
+            missing_flags = missing_set.generate_r_free_flags(
+              fraction=fraction_free,
+              max_free=None,
+              use_lattice_symmetry=True)
+          output_array = r_free_flags.concatenate(other=missing_flags)
+          if not output_array.is_unique_set_under_symmetry() :
+            output_array = output_array.merge_equivalents().array()
+        else :
+          output_array = r_free_flags
+        if params.mtz_file.r_free_flags.export_for_ccp4 :
+          print >> log, "%s: converting to CCP4 convention" % array_name
+          output_array = export_r_free_flags(miller_array=output_array,
+            test_flag_value=True)
+        fake_label = "A" + string.uppercase[i+1]
+        self.add_array_to_mtz_dataset(
+          output_array=output_array,
+          fake_label=fake_label,
+          column_types="I")
+        for label in output_labels :
+          labels.append(label)
+          label_files.append(file_name)
+        self.final_arrays.append(output_array)
+        i += 1
 
     #-------------------------------------------------------------------
     # NEW R-FREE ARRAY
@@ -638,6 +653,17 @@ class process_arrays (object) :
         column.set_label(label)
         used[labels[i]] += 1
       i += 1
+
+  def add_array_to_mtz_dataset (self, output_array, fake_label, column_types) :
+    if self.mtz_dataset is None :
+      self.mtz_dataset = output_array.as_mtz_dataset(
+        column_root_label=fake_label,
+        column_types=column_types)
+    else :
+     self.mtz_dataset.add_miller_array(
+        miller_array=output_array,
+        column_root_label=fake_label,
+        column_types=column_types)
 
   def show (self, out=sys.stdout) :
     if self.mtz_object is not None :
