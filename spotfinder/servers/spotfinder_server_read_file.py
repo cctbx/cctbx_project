@@ -135,9 +135,9 @@ class image_request_handler(BaseHTTPRequestHandler):
 
 def common_parameters(outer_resolution):
     from labelit.preferences import procedure_preferences
-
-    procedure_preferences.distl_aggressive["force_outer_resolution"] = 3.6
-    procedure_preferences.distl_highres_limit = 3.6
+    if outer_resolution != None:
+      procedure_preferences.distl_aggressive["force_outer_resolution"] = outer_resolution
+      procedure_preferences.distl_highres_limit = outer_resolution
     procedure_preferences.phil.distl_force_binning = False
     procedure_preferences.phil.distl_permit_binning = False
     procedure_preferences.distl_keep_Zdata = False
