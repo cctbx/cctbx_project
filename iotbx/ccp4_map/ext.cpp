@@ -161,10 +161,11 @@ namespace ccp4_map {
         + file_name + "\"");
     }
     CMap_io::ccp4_cmap_set_datamode(mfile.get(), FLOAT32);
-    af::tiny<double, 6> unit_cell_parameters = unit_cell.parameters();
+    af::double6 const& unit_cell_parameters = unit_cell.parameters();
     float cell_float[6];
-    std::copy(unit_cell_parameters.begin(), unit_cell_parameters.end(),
-      cell_float);
+    for(unsigned i=0;i<6;i++) {
+      cell_float[i] = static_cast<float>(unit_cell_parameters[i]);
+    }
     CMap_io::ccp4_cmap_set_cell(mfile.get(), cell_float);
     CMap_io::ccp4_cmap_set_spacegroup(mfile.get(), space_group_number);
     int grid[3];
