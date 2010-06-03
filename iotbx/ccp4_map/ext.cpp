@@ -167,11 +167,15 @@ namespace ccp4_map {
       cell_float);
     CMap_io::ccp4_cmap_set_cell(mfile.get(), cell_float);
     CMap_io::ccp4_cmap_set_spacegroup(mfile.get(), space_group_number);
-    int dim[3];
+    int grid[3];
     af::tiny<int, 3> n_real(af::adapt(map_data.accessor().focus()));
-    std::copy(n_real.begin(), n_real.end(), dim);
+    std::copy(n_real.begin(), n_real.end(), grid);
+    CMap_io::ccp4_cmap_set_grid(mfile.get(), grid);
+    int dim[3];
+    dim[0] = grid[2];
+    dim[1] = grid[1];
+    dim[2] = grid[0];
     CMap_io::ccp4_cmap_set_dim(mfile.get(), dim);
-    CMap_io::ccp4_cmap_set_grid(mfile.get(), dim);
     int origin[3] = {0, 0, 0};
     CMap_io::ccp4_cmap_set_origin(mfile.get(), origin);
     int order[3] = {3, 2, 1};
