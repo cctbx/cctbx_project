@@ -859,10 +859,15 @@ spotfinder/doc/labelit_svn_history -text
 spotfinder/exception.py -text
 spotfinder/libtbx_config -text
 spotfinder/math_support/__init__.py -text
+spotfinder/servers/README -text
 spotfinder/servers/__init__.py -text
 spotfinder/servers/adsc_client.py -text
+spotfinder/servers/mp_spotfinder_server_read_file.py -text
 spotfinder/servers/multipart_encoder.py -text
 spotfinder/servers/pilatus_client.py -text
 spotfinder/servers/spotfinder_server_client_push.py -text
+spotfinder/servers/spotfinder_server_read_file.py -text
+spotfinder/servers/thin_client.csh -text
+spotfinder/servers/thin_client.py -text
 wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text

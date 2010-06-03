@@ -1,0 +1,17 @@
+Client / Server architecture for spot counting at beamlines.
+
+Server:
+
+libtbx.python mp_spotfinder_server_read_file.py <port number> <number of processes> [<outer resolution limit in Angstroms>]
+
+Client
+
+libtbx.python thin_client.py <filepath> <host> <port>
+
+Caveats(6/2/2010):
+  -- although the server is supposed to queue requests, too many at once can 
+     cause some requests to drop out.  Behavior isn't fully characterized.  
+     Therefore in the example given (thin_client.csh), a /bin/sleep command
+     is used to time the requests at a reasonable pace given the particular
+     server host and number of processes.
+ 
