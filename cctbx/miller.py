@@ -3168,6 +3168,17 @@ class fft_map(maptbx.crystal_gridding):
       map=self.real_map(),
       verify_symmetry=verify_symmetry)
 
+  def as_ccp4_map (self,
+                   file_name,
+                   title="cctbx.miller.fft_map") :
+    from iotbx import ccp4_map
+    map_data = self.real_map_unpadded()
+    ccp4_map.write_ccp4_map(file_name=file_name,
+      map_data=map_data,
+      unit_cell=self.unit_cell(),
+      space_group=self.space_group(),
+      title=title)
+
 def patterson_map(crystal_gridding, f_patt, f_000=None,
                   sharpening=False,
                   origin_peak_removal=False):

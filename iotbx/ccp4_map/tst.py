@@ -46,32 +46,47 @@ def exercise(args):
     print
 
 def exercise_writer () :
+  from iotbx import file_reader
+  from cctbx import uctbx, sgtbx
+  from scitbx.array_family import flex
   file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/wizards/partial_refine_001_map_coeffs.mtz",
     test=os.path.isfile)
   if file_name is None :
     print "Can't find map coefficients file, skipping."
     return
-  from iotbx import file_reader
   mtz_in = file_reader.any_file(file_name, force_type="hkl").file_object
   miller_arrays = mtz_in.as_miller_arrays()
   map_coeffs = miller_arrays[0]
   fft_map = map_coeffs.fft_map(resolution_factor=1/3.0)
   fft_map.apply_sigma_scaling()
-  real_map = fft_map.real_map_unpadded()
-  iotbx.ccp4_map.write_ccp4_map(
-    file_name="2mFo-DFc.map",
-    map_data=real_map,
-    unit_cell=map_coeffs.unit_cell(),
-    space_group_number=map_coeffs.space_group().type().number())
+  fft_map.as_ccp4_map(file_name="2mFo-DFc.map")
   m = iotbx.ccp4_map.map_reader(file_name="2mFo-DFc.map")
-  from scitbx.array_family import flex
+  real_map = fft_map.real_map_unpadded()
   mmm = flex.double(list(real_map)).min_max_mean()
   assert approx_equal(m.unit_cell_parameters,
                       map_coeffs.unit_cell().parameters())
   assert approx_equal(mmm.min, m.header_min)
   assert approx_equal(mmm.max, m.header_max)
   assert approx_equal(mmm.mean, m.header_mean)
+  # random small maps of different sizes
+  for nxyz in flex.nested_loop((1,1,1),(4,4,4)):
+    mt = flex.mersenne_twister(0)
+    grid = flex.grid(nxyz)
+    map = mt.random_double(size=grid.size_1d())
+    map.reshape(grid)
+    real_map = fft_map.real_map_unpadded()
+    iotbx.ccp4_map.write_ccp4_map(
+      file_name="random.map",
+      map_data=real_map,
+      unit_cell=uctbx.unit_cell((1,1,1,90,90,90)),
+      space_group=sgtbx.space_group_info("P1").group())
+    m = iotbx.ccp4_map.map_reader(file_name="random.map")
+    mmm = flex.double(list(real_map)).min_max_mean()
+    assert approx_equal(m.unit_cell_parameters, (1,1,1,90,90,90))
+    assert approx_equal(mmm.min, m.header_min)
+    assert approx_equal(mmm.max, m.header_max)
+    assert approx_equal(mmm.mean, m.header_mean)
 
 def run(args):
   def have_ext():
