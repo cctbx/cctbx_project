@@ -59,12 +59,19 @@ def exercise_writer () :
   fft_map = map_coeffs.fft_map(resolution_factor=1/3.0)
   fft_map.apply_sigma_scaling()
   real_map = fft_map.real_map_unpadded()
-  #print dir(real_map)
   iotbx.ccp4_map.write_ccp4_map(
     file_name="2mFo-DFc.map",
     map_data=real_map,
     unit_cell=map_coeffs.unit_cell(),
     space_group_number=map_coeffs.space_group().type().number())
+  m = iotbx.ccp4_map.map_reader(file_name="2mFo-DFc.map")
+  from scitbx.array_family import flex
+  mmm = flex.double(list(real_map)).min_max_mean()
+  assert approx_equal(m.unit_cell_parameters,
+                      map_coeffs.unit_cell().parameters())
+  assert approx_equal(mmm.min, m.header_min)
+  assert approx_equal(mmm.max, m.header_max)
+  assert approx_equal(mmm.mean, m.header_mean)
 
 def run(args):
   def have_ext():
