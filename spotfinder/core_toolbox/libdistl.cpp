@@ -99,6 +99,7 @@ diffimage::diffimage(): report_overloads(false), npxclassifyscan(3), nicecutoff(
 
     imgresolringsize = 20;
     imgresolringpow = -3.0;
+    resolution_outer = -1.;
 }
 
 diffimage::~diffimage() { cleardata(); }
@@ -336,10 +337,10 @@ void diffimage::pxlclassify()
         //
         // Scan the image box by box.
         // **********************************************************
-        pixelintensity = vector< vector<double> >(
-                           pixelvalue.nx, vector<double>(pixelvalue.ny, 0.0));
-        pixellocalmean = vector< vector<double> >(
-                           pixelvalue.nx, vector<double>(pixelvalue.ny, 0.0));
+        pixelintensity = float_array_t(
+                           pixelvalue.nx, vector<float>(pixelvalue.ny, 0.0));
+        pixellocalmean = float_array_t(
+                           pixelvalue.nx, vector<float>(pixelvalue.ny, 0.0));
         for (int i=0; i<npxclassifyscan; i++) {
                 if (scanboxsize[i] == 0)
                         continue;
@@ -476,6 +477,20 @@ void diffimage::pxlclassify_scanbox(const int xstart, const int xend,
                                                                         const int ystart, const int yend,
                                     const double intensity_bguppercutoff)
 {
+  // ******************************************************************************
+  // Cutoff based on an imposed resolution limit.  This is just an ad-hoc fix.
+  //  Known issues:  1) This does not take two-theta offsets or detector tilt into account.
+  //
+  // ******************************************************************************
+  if (resolution_outer > 0.0) {
+    bool any_point_within_resol_limit = false;
+    for (int x = xstart; x <= xend; x+=xend-xstart){
+      for (int y = ystart; y <= yend; y+=yend-ystart){
+        if ( xy2resol(x,y) > resolution_outer ) { any_point_within_resol_limit = true; }
+      }
+    }
+    if (!any_point_within_resol_limit) { return; }
+  }
   // ******************************************************************************
   // if any corner of the box is outside of the image active area, then do not
   // scan the box
@@ -890,7 +905,7 @@ void diffimage::search_border_spot(const int x, const int y, spot& curspot,
   // Searches for contiguous diffraction pixels to be included
   // in one spot.
   // ************************************************************
-  search_border_generic<vector< vector<double> >, double> (
+  search_border_generic<float_array_t, double> (
     x,y,curspot,pixelvisited,pixelintensity,difflowerint);
   return;
 }

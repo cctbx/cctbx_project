@@ -7,7 +7,7 @@ using namespace Distl;
 void
 spot_base::find_weighted_center(image_rawdata_t const& pixelvalue,
                                 flag_array_t const& pixelismaxima,
-                                double_array_t const& pixellocalmean){
+                                float_array_t const& pixellocalmean){
   std::cout<<
   "spot_base::find_weighted_center DEPRECATION WARNING--contact authors"<<
   std::endl;
@@ -16,7 +16,7 @@ spot_base::find_weighted_center(image_rawdata_t const& pixelvalue,
 void
 spot::find_weighted_center(image_rawdata_t const& pixelvalue,
                            flag_array_t const& pixelismaxima,
-                           double_array_t const& pixellocalmean){
+                           float_array_t const& pixellocalmean){
 
   scitbx::af::shared<scitbx::vec2<double> > pts;
   for (point_list_t::const_iterator q=bodypixels.begin();
