@@ -312,14 +312,16 @@ XVIII_CU = [] #Base-pairing pattern CU: CU_36
 #Bond   C       U       Length Ave      Length Std      Attribute
 #1      N3      N3      3.16    0.06    T
 #2      N4      O4      3.19    0.07    T
-bonds = [2, "C", "U", "N3", "N3", "N4", "O4", "NA", "NA", "NA", "NA", "NA", "NA"]
+#STATISTICAL DATA obtained from 2J02.pdb and 2J01.pdb, 3 basepairs of the XVIII_CU and XVIII_UC types. Needs to be rechecked
+bonds = [2, "C", "U", "N3", "N3", "N4", "O4", "NA", "NA", 17.339, 0.51, 8.967, 0.587]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 22 in MASTER_Basepairs (XVIII_UC)
 XVIII_UC = [] #Base-pairing pattern UC: UC_36
 #Bond   U       C       Length Ave      Length Std      Attribute
 #1      N3      N3      3.16    0.06    T
 #2      O4      N4      3.19    0.07    T
-bonds = [2, "U", "C", "N3", "N3", "O4", "N4", "NA", "NA", "NA", "NA", "NA", "NA"]
+#STATISTICAL DATA obtained from 2J02.pdb and 2J01.pdb, 3 basepairs of the XVIII_CU and XVIII_UC types. Need4 to be rechecked
+bonds = [2, "U", "C", "N3", "N3", "O4", "N4", "NA", "NA", 17.339, 0.51, 8.967, 0.587]
 MASTER_Basepairs_bonds.append(bonds)
 
 #####Purine pyrimidine
@@ -363,7 +365,7 @@ XX_UA_WC = [] #XX (Watson-Crick UA). Base-pairing pattern UA: UA_2
 #STATISTICAL DATA obtained from 2J02.pdb, 30 basepairs
 #bonds = [2, "U", "A", "N3", "N1", "O4", "N6", "NA", "NA", 18.60, 0.816, 10.55, 0.298]
 #STATISTICAL DATA obtained from 4TNA.pdb, 7 basepairs (AU and UA combined)
-bonds = [2, "A", "U", "N3", "N1", "O4", "N6", "NA", "NA", 18.46, 0.258, 10.726, 0.270]
+bonds = [2, "U", "A", "N3", "N1", "O4", "N6", "NA", "NA", 18.46, 0.258, 10.726, 0.270]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 27 in MASTER_Basepairs (XXI_AU)
 XXI_AU = [] #XXI (AU Reversed Watson-Crick). Base-pairing pattern AU: AU_30
@@ -386,14 +388,15 @@ XXII_CG = [] #XXII (CG Reversed Watson-Crick). Base-pairing pattern CG: CG_31
 #Bond   C       G       Length Ave      Length Std      Attribute
 #1      O2      N1      2.80    0.17    T
 #2      N3      N2      2.86    0.18    T
-bonds = [2, "C", "G", "O2", "N1", "N3", "N2", "NA", "NA", "NA", "NA", "NA", "NA"]
+#STATISTICAL DATA obtained from 2J01.pdb, 6 basepairs of the types XXII_CG and XXII_GC combined
+bonds = [2, "C", "G", "O2", "N1", "N3", "N2", "NA", "NA", 17.404, 1.802, 10.35, 0.412]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 30 in MASTER_Basepairs (XXII_GC)
 XXII_GC = [] #XXII (GC Reversed Watson-Crick). Base-pairing pattern GC: GC_31
 #Bond   G       C       Length Ave      Length Std      Attribute
 #1      N1      O2      2.80    0.17    T
 #2      N2      N3      2.86    0.18    T
-bonds = [2, "G", "C", "N1", "O2", "N2", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
+bonds = [2, "G", "C", "N1", "O2", "N2", "N3", "NA", "NA", 17.404, 1.802, 10.35, 0.412]
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 31 in MASTER_Basepairs (XXIII_AU)
 XXIII_AU = [] #XXIII (AU Hoogsteen). Base-pairing pattern AU: AU_29
@@ -1064,7 +1067,7 @@ def BOND_PLACING(LIST1, LIST2, LIST3):
 #LIST3 = atom
     #place the atoms involved in the new bond just detected (currently in MASTER_Basepairs[i][j][2] and MASTER_Basepairs[i][j][5]. Distance is in MASTER_Basepairs[i][j][6]) into the proper location within MASTER_Basepairs_summary[i][k] (See MASTER_Basepairs_summary SCHEME)  by first checking the location of these atoms in MASTER_Basepairs_bonds. There are several possibilities
 #FOLLOW A LINE
-#                                   if ('  31 ' in LIST2) and ('  39 ' in LIST2):
+#                                   if ('  12 ' in LIST2) and ('  23 ' in LIST2):
 #                                      print "entering BOND_PLACING", "LIST1", LIST1, "\nLIST2", LIST2, "\nLIST3", LIST3
 #                                      print "entering BOND_PLACING"
 #FOLLOW A LINE
@@ -1085,7 +1088,7 @@ def BOND_PLACING(LIST1, LIST2, LIST3):
                                        LIST2[15] = LIST3[2]
                                        LIST2[6] = LIST2[6] + 1
 #FOLLOW A LINE
-#                                   if ('  31 ' in LIST2) and ('  39 ' in LIST2):
+#                                   if ('  12 ' in LIST2) and ('  23 ' in LIST2):
 #                                      print "exiting BOND_PLACING", "LIST1", LIST1, "\nLIST2", LIST2, "\nLIST3", LIST3
 #                                      print "exiting BOND_PLACING"
 #FOLLOW A LINE
@@ -1383,7 +1386,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
           C1 = [' C1\'', ' C1*']
           if First_List[a][2] in C1 and First_List[a][5] in C1:
 #FOLLOW A LINE
-#              if ('  31 ' in First_List[a][0] and '  39 ' in First_List[a][3]):
+#              if ('  12 ' in First_List[a][0] and '  23 ' in First_List[a][3]):
 #                 print "First_List[a] ", First_List[a]
 #FOLLOW A LINE
 
@@ -1399,18 +1402,18 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
     collect = []
     for i in range (1, len(First_List)):
 #FOLLOW A LINE
-#        if ('  31 ' in First_List[i][0] and '  39 ' in First_List[i][3]):
-#            print "First_List[i] ", First_List[i]
+#        if ('  12 ' in First_List[i][0] and '  23 ' in First_List[i][3]):
+#            print "/First sorting of basepair candidates:\nFirst_List[i] ", First_List[i]
 #FOLLOW A LINE
         if First_List[i][0] != First_List[i][3]:
             for j in range(len(MASTER_Basepairs)):
                #Matching the bases to those of MASTER_Basepairs_bonds
                if (MASTER_Basepairs_bonds[j][1] in First_List[i][1]) and (MASTER_Basepairs_bonds[j][2] in First_List[i][4]):
                    count = 0
-                   transient = MASTER_Basepairs_bonds[j][3:9]
+                   transient = MASTER_Basepairs_bonds[j][3:9] #Carries all the atoms involved in the basepair scheme
 #FOLLOW A LINE
-#                   if ('  31 ' in First_List[i][0] and '  39 ' in First_List[i][3]):
-#                         print "transient", transient, "\nMASTER_Basepairs_bonds[j]", MASTER_Basepairs_bonds[j]
+#                   if ('  12 ' in First_List[i][0] and '  23 ' in First_List[i][3]):
+#                         print "\nFIRST SORTING: transient", transient, "\nMASTER_Basepairs_bonds[j]", MASTER_Basepairs_bonds[j]
 #FOLLOW A LINE
                    #Matching the ATOMS to those of MASTER_Basepairs_bonds
                    for k in range ((len(transient)/2)):
@@ -1419,8 +1422,8 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                            collect = [First_List[i][0], First_List[i][1], First_List[i][2], First_List[i][3], First_List[i][4], First_List[i][5], First_List[i][6]]
                            MASTER_Basepairs[j].append(collect)
 #FOLLOW A LINE
-#                           if ('  31 ' in First_List[i][0] and '  39 ' in First_List[i][3]):
-#                               print "\nMASTER_Basepairs_schemes[j]", MASTER_Basepairs_schemes[j]
+#                           if ('  12 ' in First_List[i][0] and '  23 ' in First_List[i][3]):
+#                               print "\nSORTED IN: MASTER_Basepairs_schemes[j]", MASTER_Basepairs_schemes[j]
 #                               print "MASTER_Basepairs[j][len(MASTER_Basepairs[j])-1]", MASTER_Basepairs[j][len(MASTER_Basepairs[j])-1]
 #FOLLOW A LINE
 
@@ -1428,9 +1431,9 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                            collect = [First_List[i][0], First_List[i][1], First_List[i][2], First_List[i][3], First_List[i][4], First_List[i][5], First_List[i][6], MASTER_Basepairs_schemes[j]]
                            MASTER_Basepairs_excluded[j].append(collect)
 #FOLLOW A LINE
-#                           if ('  31 ' in First_List[i][0] and '  39 ' in First_List[i][3]):
+#                           if ('  12 ' in First_List[i][0] and '  23 ' in First_List[i][3]):
 #                               for q in range (len(MASTER_Basepairs_excluded[j])):
-#                                  print "MASTER_Basepairs_excluded[j][q]", MASTER_Basepairs_excluded[j][q]
+#                                  print "\nSORTED OUT: MASTER_Basepairs_excluded[j][q]", MASTER_Basepairs_excluded[j][q]
 #                               print "MASTER_Basepairs_excluded[j][len(MASTER_Basepairs_excluded[j])-1]", MASTER_Basepairs_excluded[j][len(MASTER_Basepairs_excluded[j])-1]
 #FOLLOW A LINE
                        count = count + 1
@@ -1487,7 +1490,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                 if (resid[1] - resid[0] > 1) or (resid[1] - resid[0] < -1):
 
 #FOLLOW A LINE
-#                    if ('  31 ' in MASTER_Basepairs[i][j][0]) and ('  39 ' in MASTER_Basepairs[i][j][3]):
+#                    if ('  12 ' in MASTER_Basepairs[i][j][0]) and ('  23 ' in MASTER_Basepairs[i][j][3]):
 #                        print "\nBefore Second sorting: MASTER_Basepairs[i][j]", MASTER_Basepairs_schemes[i], MASTER_Basepairs[i][j], "atom", atom
 #                        print "i", i, "j", j, "MASTER_Basepairs_schemes[i]", MASTER_Basepairs_schemes[i], "MASTER_Basepairs_bonds[i]", MASTER_Basepairs_bonds[i]
 
@@ -1499,14 +1502,13 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
 #This basepair has already been detected, new bond for the basepair. Here we should distinguish between RUN 1 and later RUNs, as during the latter the program will run into pre-loaded MASTER_Basepairs_summary[i][k] lines
                            if (MASTER_Basepairs[i][j][0] in MASTER_Basepairs_summary[i][k][2]) and (MASTER_Basepairs[i][j][3] in MASTER_Basepairs_summary[i][k][4]):
                               found = 1 #Will control that the program does not execute the next 'elif' if it has executed this 'if'
-                             # if (MASTER_Basepairs[i][j][2] not in MASTER_Basepairs_summary[i][k][7]) and (MASTER_Basepairs[i][j][2] not in MASTER_Basepairs_summary[i][k][10]) and (MASTER_Basepairs[i][j][2] not in MASTER_Basepairs_summary[i][k][13]):
                               if (atom[0] != MASTER_Basepairs_summary[i][k][7]) and (atom[0] != MASTER_Basepairs_summary[i][k][10]) and (atom[0] !=  MASTER_Basepairs_summary[i][k][13]):
 ########Checking that MASTER_Basepairs[i][j] and MASTER_Basepairs_summary[i][k] contain the same residues but that the former brings new ATOMS
 #                                  MASTER_Basepairs_summary[i][k][6] = MASTER_Basepairs_summary[i][k][6] + 1  #One new bond added
                               #Bond ATOMS and distances will be placed at their proper position in "FUNCTION BOND_PLACING"
                                   MASTER_Basepairs_summary[i][k] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][k], atom)
 #FOLLOW A LINE
-#                                  if ('  31 ' in MASTER_Basepairs[i][j][0]) and ('  39 ' in MASTER_Basepairs[i][j][3]):
+#                                  if ('  12 ' in MASTER_Basepairs[i][j][0]) and ('  23 ' in MASTER_Basepairs[i][j][3]):
 #                                      print "new bond for the basepair: MASTER_Basepairs_summary[i][k]", MASTER_Basepairs_summary[i][k]
 #FOLLOW A LINE
 
@@ -1518,7 +1520,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                        #Bond ATOMS and distances will be placed at their proper position in "FUNCTION BOND_PLACING"
                                MASTER_Basepairs_summary[i][len(MASTER_Basepairs_summary[i])-1] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][len(MASTER_Basepairs_summary[i])-1], atom)
 #FOLLOW A LINE
-#                               if ('  31 ' in MASTER_Basepairs[i][j][0]) and ('  39 ' in MASTER_Basepairs[i][j][3]):
+#                               if ('  12 ' in MASTER_Basepairs[i][j][0]) and ('  23 ' in MASTER_Basepairs[i][j][3]):
 #                                  print "New basepair detected for a basepairing Scheme: MASTER_Basepairs_summary[i][k]", MASTER_Basepairs_summary[i][k]
 #FOLLOW A LINE
 
@@ -1529,7 +1531,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                         #Bond ATOMS and distances will be placed at their proper position in "FUNCTION BOND_PLACING"
                         MASTER_Basepairs_summary[i][0] = BOND_PLACING(MASTER_Basepairs_bonds[i], MASTER_Basepairs_summary[i][0], atom)
 #FOLLOW A LINE
-#                        if ('  31 ' in MASTER_Basepairs[i][j][0]) and ('  39 ' in MASTER_Basepairs[i][j][3]):
+#                        if ('  12 ' in MASTER_Basepairs[i][j][0]) and ('  23 ' in MASTER_Basepairs[i][j][3]):
 #                            print "First basepair for this basepairing Scheme: MASTER_Basepairs_summary[i][0]", MASTER_Basepairs_summary[i][0]
 #FOLLOW A LINE
 #####################################
@@ -1564,16 +1566,14 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
                                 C1_compare = First_List_C1[s][6]
                     MASTER_Basepairs_summary[i][j][17] = C1_compare
 
+
+                if (MASTER_Basepairs_summary[i][j][6] >= 2) and ('REMOVED' not in MASTER_Basepairs_summary[i][j]):
 #Now that the C1-C1 distances have been added to the basepair candidates, this distance can be used to perform a first discrimination by weeding out basepairs with C1-C1 distances that are more than 3X the precalculated average C1-Ca. This will be done in FUNCTION C1_C1_DISTANCE. Candidate basepairs with 'bad' C1-C1 distances will be appended as 'REMOVED'
-#                    for i in range (len(MASTER_Basepairs_summary)):
-#                        for j in range (len(MASTER_Basepairs_summary[i])):
                     if (MASTER_Basepairs_bonds[i][9] != 'NA'):
                         list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
                         convert = CONVERT(list)
                         MASTER_Basepairs_summary[i][j] = C1_C1_DISTANCE(MASTER_Basepairs_summary[i][j], MASTER_Basepairs_bonds[i], convert[0], convert[1], convert[2], convert[3])
 
-
-                if (MASTER_Basepairs_summary[i][j][6] >= 2) and ('REMOVED' not in MASTER_Basepairs_summary[i][j]):
 
 #Calling FUNCTION "CONTROL" to perform an initial assessment of whether the identified bases might be involved in MULTIPLE CONTACTS
                     control = CONTROL(control, MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][5])
