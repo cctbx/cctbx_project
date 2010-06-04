@@ -677,8 +677,10 @@ class process_arrays (object) :
     if self.params.verbose :
       self.show(out=self.log)
     self.mtz_object.write(file_name=self.params.mtz_file.output_file)
+    n_refl = self.mtz_object.n_reflections()
     del self.mtz_object
     self.mtz_object = None
+    return n_refl
 
 #-----------------------------------------------------------------------
 def get_r_free_stats (miller_array, test_flag_value) :

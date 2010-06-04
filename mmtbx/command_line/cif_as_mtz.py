@@ -730,6 +730,7 @@ def process_files (file_name, crystal_symmetry, pdb_file_name,
       elif(basename.endswith(".ent.gz")): output_file_name=basename[:-7]+".mtz"
       else: output_file_name = basename+".mtz"
     mtz_object.write(file_name = output_file_name)
+    return mtz_object.n_reflections()
 
 def extract(file_name, file_lines, crystal_symmetry, wavelength_id, crystal_id,
             show_details_if_error):
@@ -881,7 +882,7 @@ def run2 (args, log=sys.stdout, check_params=True) :
     symm = crystal.symmetry(
       space_group_info=params.crystal_symmetry.space_group,
       unit_cell=params.crystal_symmetry.unit_cell)
-  process_files(
+  n_refl = process_files(
     file_name=params.input.cif_file,
     crystal_symmetry=symm,
     pdb_file_name=params.input.pdb_file,
@@ -889,7 +890,7 @@ def run2 (args, log=sys.stdout, check_params=True) :
     wavelength_id=params.input.wavelength_id,
     crystal_id=params.input.crystal_id,
     show_details_if_error=params.options.show_details_if_error)
-  return params.output_file_name
+  return (params.output_file_name, n_refl)
 
 def validate_params (params) :
   if (params.input.cif_file is None) and (params.input.pdb_id is None) :
