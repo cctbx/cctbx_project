@@ -16,7 +16,7 @@ default_write_full_flex_fwd_h = sys.platform.startswith("irix")
 default_msvc_arch_flag = ["None", "SSE2"][int(os.name == "nt")]
 default_build_boost_python_extensions = True
 default_enable_boost_threads = False
-default_enable_openmp_if_possible = (sys.platform != "osf1V5")
+default_enable_openmp_if_possible = False
 
 def unique_paths(paths):
   hash = set()
