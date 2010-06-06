@@ -11,6 +11,7 @@ def run():
   "$D/kriber/tst_strudat.py",
   "$D/cif/tests/tst_lex_parse_build.py",
   "$D/cif/tests/tst_model.py",
+  "$D/cif/tests/tst_validation.py",
   "$D/cif/tests/tst_xray_structure.py",
   "$D/shelx/tst_lex_parse_build.py",
   "$D/shelx/tst_hklf.py",
