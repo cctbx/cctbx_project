@@ -1,4 +1,5 @@
 #include <boost/python.hpp>
+#include <boost/python/args.hpp>
 #include <spotfinder/core_toolbox/distl.h>
 #include <spotfinder/core_toolbox/spotfilter.h>
 #include <spotfinder/core_toolbox/boost_python/singlemask.h>
@@ -182,7 +183,9 @@ BOOST_PYTHON_MODULE(spotfinder_distltbx_ext)
       .add_property("icerings",make_getter(&SpotFilterAgent::icerings,rbv()))
    ;
    class_<SingleMask>("SingleMask", init< af::shared<Distl::spot>,
-      af::shared<int> >()
+      af::shared<int>, int >(
+          (arg("master"),arg("selection"),arg("minimum_spot_count")=25)
+        )
       )
       .def_readonly("x",&SingleMask::x)
       .def_readonly("y",&SingleMask::y)
