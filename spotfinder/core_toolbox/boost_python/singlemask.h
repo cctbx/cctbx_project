@@ -34,7 +34,8 @@ struct SingleMask {
 
   int x,y;
 
-  inline SingleMask (spot_list_t master, af::shared<int> selection){
+  inline SingleMask (spot_list_t master, af::shared<int> selection,
+    int minimum_spot_count){
     //SCITBX_CHECK_POINT;
     //SCITBX_EXAMINE(master.size());
     //SCITBX_EXAMINE(selection.size());
@@ -72,8 +73,8 @@ unsigned short ymax = *(std::max_element<c_iterator>(body_y_values.begin(),
     //for (v_it BB= xwidth.begin(); BB!=xwidth.end(); ++BB){
     //  SCITBX_EXAMINE(*BB);
     //}
-    SCITBX_ASSERT(xwidth.size()> 25);
-    int SampleSize = std::max(25, int(xwidth.size()/10));
+    SCITBX_ASSERT(xwidth.size()> minimum_spot_count);
+    int SampleSize = std::max(minimum_spot_count, int(xwidth.size()/10));
     double xmean = 0;
     double ymean = 0;
     v_it A= xwidth.end()-SampleSize;
