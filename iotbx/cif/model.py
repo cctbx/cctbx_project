@@ -13,7 +13,7 @@ from cctbx.array_family import flex
 class cif(DictMixin):
   def __init__(self, blocks=None):
     if blocks is not None:
-      self.blocks = blocks
+      self.blocks = OrderedDict(blocks)
     else:
       self.blocks = OrderedDict()
     self.keys_lower = dict([(key.lower(), key) for key in self.blocks.keys()])
@@ -75,7 +75,7 @@ class cif(DictMixin):
         error_handler.show(out=out)
 
 
-class block(DictMixin):
+class block_base(DictMixin):
   def __init__(self):
     self._items = {}
     self.loops = {}
@@ -134,7 +134,7 @@ class block(DictMixin):
     for key in self._set:
       if key in self._items:
         keys.append(key)
-      else:
+      elif key in self.loops:
         keys.extend(self.loops[key].keys())
     return keys
 
@@ -143,7 +143,7 @@ class block(DictMixin):
 
   def update(self, other=None, **kwargs):
     if other is None:
-      pass
+      return
     self._items.update(other._items)
     self.loops.update(other.loops)
     self._set |= other._set
@@ -156,7 +156,7 @@ class block(DictMixin):
     self.setdefault(loop.name(), loop)
 
   def __copy__(self):
-    new = block()
+    new = self.__class__()
     new._items = self._items.copy()
     new.loops = self.loops.copy()
     new._set = copy.copy(self._set)
@@ -166,7 +166,7 @@ class block(DictMixin):
   copy = __copy__
 
   def __deepcopy__(self, memo):
-    new = block()
+    new = self.__class__()
     new._items = copy.deepcopy(self._items, memo)
     new.loops = copy.deepcopy(self.loops, memo)
     new._set = copy.deepcopy(self._set, memo)
@@ -175,18 +175,6 @@ class block(DictMixin):
 
   def deepcopy(self):
     return copy.deepcopy(self)
-
-  def show(self, out=None, indent="  ", data_name_field_width=34):
-    if out is None:
-      out = sys.stdout
-    format_str = "%%-%is" %(data_name_field_width-1)
-    for k in self._set:
-      v = self._items.get(k)
-      if v is not None:
-        print >> out, format_str %k, format_value(v)
-      else:
-        self.loops[k].show(out=out, indent=indent)
-        print >> out
 
   def __str__(self):
     s = StringIO()
@@ -198,6 +186,81 @@ class block(DictMixin):
       dictionary.validate_single_item(key, value, self)
     for loop in self.loops.values():
       dictionary.validate_loop(loop, self)
+
+class save(block_base):
+
+  def show(self, out=None, indent="  ", data_name_field_width=34):
+    if out is None:
+      out = sys.stdout
+    format_str = "%%-%is" %(data_name_field_width-1)
+    for k in self._set:
+      v = self._items.get(k)
+      if v is not None:
+        print >> out, indent + format_str %k, format_value(v)
+      else:
+        print >> out, indent,
+        self.loops[k].show(out=out, indent=(indent+indent))
+        print >> out
+
+
+class block(block_base):
+
+  def __init__(self):
+    block_base.__init__(self)
+    self.saves = {}
+
+  def __setitem__(self, key, value):
+    if isinstance(value, save):
+      self.saves[key] = value
+      self.keys_lower[key.lower()] = key
+      self._set.add(key)
+    else:
+      block_base.__setitem__(self, key, value)
+
+  def __getitem__(self, key):
+    key = self.keys_lower.get(key.lower(), key)
+    if self.saves.has_key(key):
+      return self.saves[key]
+    else:
+      return block_base.__getitem__(self, key)
+
+  def __delitem__(self, key):
+    key = self.keys_lower.get(key.lower(), key)
+    if self.saves.has_key(key):
+      del self.saves[key]
+      self._set.discard(key)
+    else:
+      block_base.__delitem__(self, key)
+
+  def keys(self):
+    keys = block_base.keys(self)
+    keys.extend(self.saves.keys())
+    return keys
+
+  def update(self, other=None, **kwargs):
+    if other is None:
+      return
+    block_base.update(self, other, **kwargs)
+    self.saves.update(other.saves)
+
+  def show(self, out=None, indent="  ", data_name_field_width=34):
+    if out is None:
+      out = sys.stdout
+    format_str = "%%-%is" %(data_name_field_width-1)
+    for k in self._set:
+      v = self._items.get(k)
+      if v is not None:
+        print >> out, format_str %k, format_value(v)
+      elif self.saves.has_key(k):
+        print >> out
+        print >> out, "save_%s" %k
+        self.saves[k].show(out=out, indent=indent,
+                           data_name_field_width=data_name_field_width)
+        print >> out, indent + "save_"
+        print >> out
+      else:
+        self.loops[k].show(out=out, indent=indent)
+        print >> out
 
 
 class loop(DictMixin):

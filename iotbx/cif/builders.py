@@ -14,6 +14,7 @@ class cif_model_builder:
   def __init__(self):
     self._model = model.cif()
     self._current_block = None
+    self._current_save = None
 
   def add_data_block(self, data_block_heading):
     self._current_block = model.block()
@@ -21,8 +22,11 @@ class cif_model_builder:
     self._model[block_name] = self._current_block
 
   def add_loop(self, header, data):
+    if self._current_save is not None:
+      block = self._current_save
+    else:
+      block = self._current_block
     loop = model.loop()
-    header = header.split()[1:]
     n_columns = len(header)
     assert len(data) % n_columns == 0, "Wrong number of data items for loop"
     if n_columns == 1:
@@ -31,10 +35,22 @@ class cif_model_builder:
       columns = iotbx.cif.ext.looped_data_as_columns(data, n_columns)
     for i in range(n_columns):
       loop[header[i]] = columns[i]
-    self._current_block.add_loop(loop)
+    block.add_loop(loop)
 
   def add_data_item(self, key, value):
-    self._current_block[key] = value
+    if self._current_save is not None:
+      self._current_save[key] = value
+    else:
+      self._current_block[key] = value
+
+  def start_save_frame(self, save_frame_heading):
+    assert self._current_save is None
+    self._current_save = model.save()
+    save_name = save_frame_heading[save_frame_heading.find('_')+1:]
+    self._current_block[save_name] = self._current_save
+
+  def end_save_frame(self):
+    self._current_save = None
 
   def model(self):
     return self._model
@@ -90,6 +106,11 @@ if PyCifRW is not None:
         self._model[self._current_block_name] = self._current_block
       return self._model
 
+  def start_save_frame(self, save_frame_heading):
+    pass
+
+  def end_save_frame(self):
+    pass
 
 
 
