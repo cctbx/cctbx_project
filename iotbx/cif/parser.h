@@ -31,6 +31,7 @@ class parser : private boost::noncopyable
         ANTLR3_SIZE_HINT, TOKENSOURCE(lxr));
       psr = cifParserNew(tstream);
       psr->parse(psr, builder);
+      fflush(stderr);
     }
 
     ~parser()

@@ -60,7 +60,11 @@ loop_body
 	;
 
 save_frame
-	:	SAVE_FRAME_HEADING ( WHITESPACE+ data_items )+ WHITESPACE+ SAVE ;
+	:	SAVE_FRAME_HEADING
+{ self.builder.start_save_frame($SAVE_FRAME_HEADING.text) }
+	 ( WHITESPACE+ data_items )+ WHITESPACE+ SAVE
+{ self.builder.end_save_frame() }
+	;
 
 data_items
 @init  { self.paraphrases.append("in data items") }
@@ -71,7 +75,7 @@ data_items
 	      | ( loop_header WHITESPACE* loop_body
 {
 try:
-  self.builder.add_loop($loop_header.text, data=self.curr_loop_values)
+  self.builder.add_loop(self.curr_loop_headers, data=self.curr_loop_values)
 except AssertionError, e:
   print e
 }
@@ -85,8 +89,11 @@ data_block
 	;
 
 loop_header
+@init { self.curr_loop_headers = flex.std_string()}
 	:	LOOP_ { self.paraphrases.append("in loop_") }
-		( WHITESPACE+ TAG )+ WHITESPACE
+		( WHITESPACE+ TAG
+{ self.curr_loop_headers.append(str($TAG.text)) }
+		 )+ WHITESPACE
 		;
 
 /*------------------------------------------------------------------

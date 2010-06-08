@@ -19,8 +19,9 @@ def exercise():
   for reader in readers:
     for builder in builders:
       exercise_parser(reader, builder)
-    a = reader(input_string=cif_invalid_loop).model()
-    assert len(a['global']) == 0
+      cm = reader(input_string=cif_quoted_string).model()
+      assert cm['global']['_a'] == 'a"b'
+      assert cm['global']['_b'] == "a dog's life"
     #b = reader(input_string=cif_invalid_missing_value).model()
     #assert b['global'].items() == [('_a', '1')]
     #c = reader(input_string=cif_invalid_string).model()
@@ -128,8 +129,8 @@ _cell_length_c 30
 _cell_angle_alpha 90
 _cell_angle_beta 90
 _cell_angle_gamma 90
-loop_
-    _atom_site_label
+loop_ # comment
+    _atom_site_label # another comment
     _atom_site_fract_x
     _atom_site_fract_y
     _atom_site_fract_z
@@ -211,6 +212,13 @@ loop_
    2 0 0 2.3 2.4 0.2
    3 0 0 3.4 3.5 0.3
    4 0 0 4.5 6.7 0.4
+"""
+
+cif_quoted_string = """\
+data_global
+# both of these are legal apparently
+_a "a"b"
+_b 'a dog's life'
 """
 
 cif_invalid_loop = """\
