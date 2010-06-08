@@ -161,6 +161,32 @@ loop_
      5 6
 
 """)
+  save = model.save()
+  save.add_loop(l3)
+  save['_tag1'] = 3
+  block = model.block()
+  block['bob'] = save
+  cm = model.cif({'fred': block})
+  s = StringIO()
+  cm.show(out=s)
+  assert not show_diff(s.getvalue(),
+"""data_fred
+
+save_bob
+   loop_
+    _loop_a
+    _loop_c
+    _loop_b
+     1 4 7
+     2 5 8
+     3 6 9
+     4 7 0
+
+  _tag1                             3
+  save_
+
+""")
+
 
 if __name__ == '__main__':
   exercise_cif_model()
