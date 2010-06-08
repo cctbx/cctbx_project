@@ -72,7 +72,7 @@ if PyCifRW is not None:
 
     def add_loop(self, header, data):
       loop = PyCifRW.CifFile.CifLoopBlock(dimension=1)
-      for key in str(header).split()[1:]:
+      for key in header:
         loop[key] = []
       self._makeloop(loop, [data])
       self._current_block.insert_loop(loop)

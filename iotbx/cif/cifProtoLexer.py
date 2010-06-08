@@ -1,4 +1,4 @@
-# $ANTLR 3.1.2 cifProto.g 2010-05-25 11:26:39
+# $ANTLR 3.1.2 cifProto.g 2010-06-08 11:30:39
 
 import sys
 from antlr3 import *
@@ -248,10 +248,10 @@ class cifProtoLexer(Lexer):
     def mEOL(self, ):
 
         try:
-            # cifProto.g:140:2: ( ( '\\n' | '\\r' | '\\r\\n' ) )
-            # cifProto.g:140:4: ( '\\n' | '\\r' | '\\r\\n' )
+            # cifProto.g:146:2: ( ( '\\n' | '\\r' | '\\r\\n' ) )
+            # cifProto.g:146:4: ( '\\n' | '\\r' | '\\r\\n' )
             pass
-            # cifProto.g:140:4: ( '\\n' | '\\r' | '\\r\\n' )
+            # cifProto.g:146:4: ( '\\n' | '\\r' | '\\r\\n' )
             alt1 = 3
             LA1_0 = self.input.LA(1)
 
@@ -273,19 +273,19 @@ class cifProtoLexer(Lexer):
                 raise nvae
 
             if alt1 == 1:
-                # cifProto.g:140:6: '\\n'
+                # cifProto.g:146:6: '\\n'
                 pass
                 self.match(10)
 
 
             elif alt1 == 2:
-                # cifProto.g:140:13: '\\r'
+                # cifProto.g:146:13: '\\r'
                 pass
                 self.match(13)
 
 
             elif alt1 == 3:
-                # cifProto.g:140:20: '\\r\\n'
+                # cifProto.g:146:20: '\\r\\n'
                 pass
                 self.match("\r\n")
 
@@ -307,8 +307,8 @@ class cifProtoLexer(Lexer):
     def mDOUBLE_QUOTE(self, ):
 
         try:
-            # cifProto.g:143:2: ( '\"' )
-            # cifProto.g:143:4: '\"'
+            # cifProto.g:149:2: ( '\"' )
+            # cifProto.g:149:4: '\"'
             pass
             self.match(34)
 
@@ -327,8 +327,8 @@ class cifProtoLexer(Lexer):
     def mSINGLE_QUOTE(self, ):
 
         try:
-            # cifProto.g:146:2: ( '\\'' )
-            # cifProto.g:146:4: '\\''
+            # cifProto.g:152:2: ( '\\'' )
+            # cifProto.g:152:4: '\\''
             pass
             self.match(39)
 
@@ -347,7 +347,7 @@ class cifProtoLexer(Lexer):
     def mORDINARY_CHAR(self, ):
 
         try:
-            # cifProto.g:149:2: ( '!' | '%' | '&' | '(' | ')' | '*' | '+' | ',' | '-' | '.' | '/' | ( '0' .. '9' ) | ':' | '<' | '=' | '>' | '?' | '@' | ( 'A' .. 'Z' ) | ( 'a' .. 'z' ) | '\\\\' | '^' | '`' | '{' | '|' | '}' | '~' )
+            # cifProto.g:155:2: ( '!' | '%' | '&' | '(' | ')' | '*' | '+' | ',' | '-' | '.' | '/' | ( '0' .. '9' ) | ':' | '<' | '=' | '>' | '?' | '@' | ( 'A' .. 'Z' ) | ( 'a' .. 'z' ) | '\\\\' | '^' | '`' | '{' | '|' | '}' | '~' )
             alt2 = 27
             LA2 = self.input.LA(1)
             if LA2 == 33:
@@ -413,76 +413,76 @@ class cifProtoLexer(Lexer):
                 raise nvae
 
             if alt2 == 1:
-                # cifProto.g:149:5: '!'
+                # cifProto.g:155:5: '!'
                 pass
                 self.match(33)
 
 
             elif alt2 == 2:
-                # cifProto.g:149:11: '%'
+                # cifProto.g:155:11: '%'
                 pass
                 self.match(37)
 
 
             elif alt2 == 3:
-                # cifProto.g:149:17: '&'
+                # cifProto.g:155:17: '&'
                 pass
                 self.match(38)
 
 
             elif alt2 == 4:
-                # cifProto.g:149:23: '('
+                # cifProto.g:155:23: '('
                 pass
                 self.match(40)
 
 
             elif alt2 == 5:
-                # cifProto.g:149:29: ')'
+                # cifProto.g:155:29: ')'
                 pass
                 self.match(41)
 
 
             elif alt2 == 6:
-                # cifProto.g:149:35: '*'
+                # cifProto.g:155:35: '*'
                 pass
                 self.match(42)
 
 
             elif alt2 == 7:
-                # cifProto.g:149:41: '+'
+                # cifProto.g:155:41: '+'
                 pass
                 self.match(43)
 
 
             elif alt2 == 8:
-                # cifProto.g:149:47: ','
+                # cifProto.g:155:47: ','
                 pass
                 self.match(44)
 
 
             elif alt2 == 9:
-                # cifProto.g:149:53: '-'
+                # cifProto.g:155:53: '-'
                 pass
                 self.match(45)
 
 
             elif alt2 == 10:
-                # cifProto.g:149:59: '.'
+                # cifProto.g:155:59: '.'
                 pass
                 self.match(46)
 
 
             elif alt2 == 11:
-                # cifProto.g:149:65: '/'
+                # cifProto.g:155:65: '/'
                 pass
                 self.match(47)
 
 
             elif alt2 == 12:
-                # cifProto.g:150:2: ( '0' .. '9' )
+                # cifProto.g:156:2: ( '0' .. '9' )
                 pass
-                # cifProto.g:150:2: ( '0' .. '9' )
-                # cifProto.g:150:4: '0' .. '9'
+                # cifProto.g:156:2: ( '0' .. '9' )
+                # cifProto.g:156:4: '0' .. '9'
                 pass
                 self.matchRange(48, 57)
 
@@ -491,46 +491,46 @@ class cifProtoLexer(Lexer):
 
 
             elif alt2 == 13:
-                # cifProto.g:150:18: ':'
+                # cifProto.g:156:18: ':'
                 pass
                 self.match(58)
 
 
             elif alt2 == 14:
-                # cifProto.g:150:24: '<'
+                # cifProto.g:156:24: '<'
                 pass
                 self.match(60)
 
 
             elif alt2 == 15:
-                # cifProto.g:150:30: '='
+                # cifProto.g:156:30: '='
                 pass
                 self.match(61)
 
 
             elif alt2 == 16:
-                # cifProto.g:150:36: '>'
+                # cifProto.g:156:36: '>'
                 pass
                 self.match(62)
 
 
             elif alt2 == 17:
-                # cifProto.g:150:42: '?'
+                # cifProto.g:156:42: '?'
                 pass
                 self.match(63)
 
 
             elif alt2 == 18:
-                # cifProto.g:150:48: '@'
+                # cifProto.g:156:48: '@'
                 pass
                 self.match(64)
 
 
             elif alt2 == 19:
-                # cifProto.g:150:54: ( 'A' .. 'Z' )
+                # cifProto.g:156:54: ( 'A' .. 'Z' )
                 pass
-                # cifProto.g:150:54: ( 'A' .. 'Z' )
-                # cifProto.g:150:55: 'A' .. 'Z'
+                # cifProto.g:156:54: ( 'A' .. 'Z' )
+                # cifProto.g:156:55: 'A' .. 'Z'
                 pass
                 self.matchRange(65, 90)
 
@@ -539,10 +539,10 @@ class cifProtoLexer(Lexer):
 
 
             elif alt2 == 20:
-                # cifProto.g:150:67: ( 'a' .. 'z' )
+                # cifProto.g:156:67: ( 'a' .. 'z' )
                 pass
-                # cifProto.g:150:67: ( 'a' .. 'z' )
-                # cifProto.g:150:68: 'a' .. 'z'
+                # cifProto.g:156:67: ( 'a' .. 'z' )
+                # cifProto.g:156:68: 'a' .. 'z'
                 pass
                 self.matchRange(97, 122)
 
@@ -551,43 +551,43 @@ class cifProtoLexer(Lexer):
 
 
             elif alt2 == 21:
-                # cifProto.g:151:2: '\\\\'
+                # cifProto.g:157:2: '\\\\'
                 pass
                 self.match(92)
 
 
             elif alt2 == 22:
-                # cifProto.g:151:9: '^'
+                # cifProto.g:157:9: '^'
                 pass
                 self.match(94)
 
 
             elif alt2 == 23:
-                # cifProto.g:151:15: '`'
+                # cifProto.g:157:15: '`'
                 pass
                 self.match(96)
 
 
             elif alt2 == 24:
-                # cifProto.g:151:21: '{'
+                # cifProto.g:157:21: '{'
                 pass
                 self.match(123)
 
 
             elif alt2 == 25:
-                # cifProto.g:151:27: '|'
+                # cifProto.g:157:27: '|'
                 pass
                 self.match(124)
 
 
             elif alt2 == 26:
-                # cifProto.g:151:33: '}'
+                # cifProto.g:157:33: '}'
                 pass
                 self.match(125)
 
 
             elif alt2 == 27:
-                # cifProto.g:151:39: '~'
+                # cifProto.g:157:39: '~'
                 pass
                 self.match(126)
 
@@ -605,7 +605,7 @@ class cifProtoLexer(Lexer):
     def mNON_BLANK_CHAR_(self, ):
 
         try:
-            # cifProto.g:156:2: ( ORDINARY_CHAR | DOUBLE_QUOTE | SINGLE_QUOTE | '#' | '$' | '_' | '[' | ']' | ';' )
+            # cifProto.g:162:2: ( ORDINARY_CHAR | DOUBLE_QUOTE | SINGLE_QUOTE | '#' | '$' | '_' | '[' | ']' | ';' )
             alt3 = 9
             LA3 = self.input.LA(1)
             if LA3 == 33 or LA3 == 37 or LA3 == 38 or LA3 == 40 or LA3 == 41 or LA3 == 42 or LA3 == 43 or LA3 == 44 or LA3 == 45 or LA3 == 46 or LA3 == 47 or LA3 == 48 or LA3 == 49 or LA3 == 50 or LA3 == 51 or LA3 == 52 or LA3 == 53 or LA3 == 54 or LA3 == 55 or LA3 == 56 or LA3 == 57 or LA3 == 58 or LA3 == 60 or LA3 == 61 or LA3 == 62 or LA3 == 63 or LA3 == 64 or LA3 == 65 or LA3 == 66 or LA3 == 67 or LA3 == 68 or LA3 == 69 or LA3 == 70 or LA3 == 71 or LA3 == 72 or LA3 == 73 or LA3 == 74 or LA3 == 75 or LA3 == 76 or LA3 == 77 or LA3 == 78 or LA3 == 79 or LA3 == 80 or LA3 == 81 or LA3 == 82 or LA3 == 83 or LA3 == 84 or LA3 == 85 or LA3 == 86 or LA3 == 87 or LA3 == 88 or LA3 == 89 or LA3 == 90 or LA3 == 92 or LA3 == 94 or LA3 == 96 or LA3 == 97 or LA3 == 98 or LA3 == 99 or LA3 == 100 or LA3 == 101 or LA3 == 102 or LA3 == 103 or LA3 == 104 or LA3 == 105 or LA3 == 106 or LA3 == 107 or LA3 == 108 or LA3 == 109 or LA3 == 110 or LA3 == 111 or LA3 == 112 or LA3 == 113 or LA3 == 114 or LA3 == 115 or LA3 == 116 or LA3 == 117 or LA3 == 118 or LA3 == 119 or LA3 == 120 or LA3 == 121 or LA3 == 122 or LA3 == 123 or LA3 == 124 or LA3 == 125 or LA3 == 126:
@@ -635,55 +635,55 @@ class cifProtoLexer(Lexer):
                 raise nvae
 
             if alt3 == 1:
-                # cifProto.g:156:4: ORDINARY_CHAR
+                # cifProto.g:162:4: ORDINARY_CHAR
                 pass
                 self.mORDINARY_CHAR()
 
 
             elif alt3 == 2:
-                # cifProto.g:156:20: DOUBLE_QUOTE
+                # cifProto.g:162:20: DOUBLE_QUOTE
                 pass
                 self.mDOUBLE_QUOTE()
 
 
             elif alt3 == 3:
-                # cifProto.g:156:35: SINGLE_QUOTE
+                # cifProto.g:162:35: SINGLE_QUOTE
                 pass
                 self.mSINGLE_QUOTE()
 
 
             elif alt3 == 4:
-                # cifProto.g:156:50: '#'
+                # cifProto.g:162:50: '#'
                 pass
                 self.match(35)
 
 
             elif alt3 == 5:
-                # cifProto.g:156:56: '$'
+                # cifProto.g:162:56: '$'
                 pass
                 self.match(36)
 
 
             elif alt3 == 6:
-                # cifProto.g:156:62: '_'
+                # cifProto.g:162:62: '_'
                 pass
                 self.match(95)
 
 
             elif alt3 == 7:
-                # cifProto.g:156:68: '['
+                # cifProto.g:162:68: '['
                 pass
                 self.match(91)
 
 
             elif alt3 == 8:
-                # cifProto.g:156:74: ']'
+                # cifProto.g:162:74: ']'
                 pass
                 self.match(93)
 
 
             elif alt3 == 9:
-                # cifProto.g:156:80: ';'
+                # cifProto.g:162:80: ';'
                 pass
                 self.match(59)
 
@@ -701,7 +701,7 @@ class cifProtoLexer(Lexer):
     def mTEXT_LEAD_CHAR(self, ):
 
         try:
-            # cifProto.g:159:2: ( ORDINARY_CHAR | DOUBLE_QUOTE | SINGLE_QUOTE | '#' | '$' | '_' | '[' | ']' | ' ' | '\\t' )
+            # cifProto.g:165:2: ( ORDINARY_CHAR | DOUBLE_QUOTE | SINGLE_QUOTE | '#' | '$' | '_' | '[' | ']' | ' ' | '\\t' )
             alt4 = 10
             LA4 = self.input.LA(1)
             if LA4 == 33 or LA4 == 37 or LA4 == 38 or LA4 == 40 or LA4 == 41 or LA4 == 42 or LA4 == 43 or LA4 == 44 or LA4 == 45 or LA4 == 46 or LA4 == 47 or LA4 == 48 or LA4 == 49 or LA4 == 50 or LA4 == 51 or LA4 == 52 or LA4 == 53 or LA4 == 54 or LA4 == 55 or LA4 == 56 or LA4 == 57 or LA4 == 58 or LA4 == 60 or LA4 == 61 or LA4 == 62 or LA4 == 63 or LA4 == 64 or LA4 == 65 or LA4 == 66 or LA4 == 67 or LA4 == 68 or LA4 == 69 or LA4 == 70 or LA4 == 71 or LA4 == 72 or LA4 == 73 or LA4 == 74 or LA4 == 75 or LA4 == 76 or LA4 == 77 or LA4 == 78 or LA4 == 79 or LA4 == 80 or LA4 == 81 or LA4 == 82 or LA4 == 83 or LA4 == 84 or LA4 == 85 or LA4 == 86 or LA4 == 87 or LA4 == 88 or LA4 == 89 or LA4 == 90 or LA4 == 92 or LA4 == 94 or LA4 == 96 or LA4 == 97 or LA4 == 98 or LA4 == 99 or LA4 == 100 or LA4 == 101 or LA4 == 102 or LA4 == 103 or LA4 == 104 or LA4 == 105 or LA4 == 106 or LA4 == 107 or LA4 == 108 or LA4 == 109 or LA4 == 110 or LA4 == 111 or LA4 == 112 or LA4 == 113 or LA4 == 114 or LA4 == 115 or LA4 == 116 or LA4 == 117 or LA4 == 118 or LA4 == 119 or LA4 == 120 or LA4 == 121 or LA4 == 122 or LA4 == 123 or LA4 == 124 or LA4 == 125 or LA4 == 126:
@@ -733,61 +733,61 @@ class cifProtoLexer(Lexer):
                 raise nvae
 
             if alt4 == 1:
-                # cifProto.g:159:4: ORDINARY_CHAR
+                # cifProto.g:165:4: ORDINARY_CHAR
                 pass
                 self.mORDINARY_CHAR()
 
 
             elif alt4 == 2:
-                # cifProto.g:159:20: DOUBLE_QUOTE
+                # cifProto.g:165:20: DOUBLE_QUOTE
                 pass
                 self.mDOUBLE_QUOTE()
 
 
             elif alt4 == 3:
-                # cifProto.g:159:35: SINGLE_QUOTE
+                # cifProto.g:165:35: SINGLE_QUOTE
                 pass
                 self.mSINGLE_QUOTE()
 
 
             elif alt4 == 4:
-                # cifProto.g:159:50: '#'
+                # cifProto.g:165:50: '#'
                 pass
                 self.match(35)
 
 
             elif alt4 == 5:
-                # cifProto.g:159:56: '$'
+                # cifProto.g:165:56: '$'
                 pass
                 self.match(36)
 
 
             elif alt4 == 6:
-                # cifProto.g:159:62: '_'
+                # cifProto.g:165:62: '_'
                 pass
                 self.match(95)
 
 
             elif alt4 == 7:
-                # cifProto.g:159:68: '['
+                # cifProto.g:165:68: '['
                 pass
                 self.match(91)
 
 
             elif alt4 == 8:
-                # cifProto.g:159:74: ']'
+                # cifProto.g:165:74: ']'
                 pass
                 self.match(93)
 
 
             elif alt4 == 9:
-                # cifProto.g:159:80: ' '
+                # cifProto.g:165:80: ' '
                 pass
                 self.match(32)
 
 
             elif alt4 == 10:
-                # cifProto.g:159:86: '\\t'
+                # cifProto.g:165:86: '\\t'
                 pass
                 self.match(9)
 
@@ -805,7 +805,7 @@ class cifProtoLexer(Lexer):
     def mANY_PRINT_CHAR(self, ):
 
         try:
-            # cifProto.g:162:2: ( ORDINARY_CHAR | '#' | '$' | '_' | '[' | ']' | ' ' | '\\t' | ';' )
+            # cifProto.g:168:2: ( ORDINARY_CHAR | '#' | '$' | '_' | '[' | ']' | ' ' | '\\t' | ';' )
             alt5 = 9
             LA5 = self.input.LA(1)
             if LA5 == 33 or LA5 == 37 or LA5 == 38 or LA5 == 40 or LA5 == 41 or LA5 == 42 or LA5 == 43 or LA5 == 44 or LA5 == 45 or LA5 == 46 or LA5 == 47 or LA5 == 48 or LA5 == 49 or LA5 == 50 or LA5 == 51 or LA5 == 52 or LA5 == 53 or LA5 == 54 or LA5 == 55 or LA5 == 56 or LA5 == 57 or LA5 == 58 or LA5 == 60 or LA5 == 61 or LA5 == 62 or LA5 == 63 or LA5 == 64 or LA5 == 65 or LA5 == 66 or LA5 == 67 or LA5 == 68 or LA5 == 69 or LA5 == 70 or LA5 == 71 or LA5 == 72 or LA5 == 73 or LA5 == 74 or LA5 == 75 or LA5 == 76 or LA5 == 77 or LA5 == 78 or LA5 == 79 or LA5 == 80 or LA5 == 81 or LA5 == 82 or LA5 == 83 or LA5 == 84 or LA5 == 85 or LA5 == 86 or LA5 == 87 or LA5 == 88 or LA5 == 89 or LA5 == 90 or LA5 == 92 or LA5 == 94 or LA5 == 96 or LA5 == 97 or LA5 == 98 or LA5 == 99 or LA5 == 100 or LA5 == 101 or LA5 == 102 or LA5 == 103 or LA5 == 104 or LA5 == 105 or LA5 == 106 or LA5 == 107 or LA5 == 108 or LA5 == 109 or LA5 == 110 or LA5 == 111 or LA5 == 112 or LA5 == 113 or LA5 == 114 or LA5 == 115 or LA5 == 116 or LA5 == 117 or LA5 == 118 or LA5 == 119 or LA5 == 120 or LA5 == 121 or LA5 == 122 or LA5 == 123 or LA5 == 124 or LA5 == 125 or LA5 == 126:
@@ -835,55 +835,55 @@ class cifProtoLexer(Lexer):
                 raise nvae
 
             if alt5 == 1:
-                # cifProto.g:162:4: ORDINARY_CHAR
+                # cifProto.g:168:4: ORDINARY_CHAR
                 pass
                 self.mORDINARY_CHAR()
 
 
             elif alt5 == 2:
-                # cifProto.g:162:20: '#'
+                # cifProto.g:168:20: '#'
                 pass
                 self.match(35)
 
 
             elif alt5 == 3:
-                # cifProto.g:162:26: '$'
+                # cifProto.g:168:26: '$'
                 pass
                 self.match(36)
 
 
             elif alt5 == 4:
-                # cifProto.g:162:32: '_'
+                # cifProto.g:168:32: '_'
                 pass
                 self.match(95)
 
 
             elif alt5 == 5:
-                # cifProto.g:162:38: '['
+                # cifProto.g:168:38: '['
                 pass
                 self.match(91)
 
 
             elif alt5 == 6:
-                # cifProto.g:162:44: ']'
+                # cifProto.g:168:44: ']'
                 pass
                 self.match(93)
 
 
             elif alt5 == 7:
-                # cifProto.g:162:50: ' '
+                # cifProto.g:168:50: ' '
                 pass
                 self.match(32)
 
 
             elif alt5 == 8:
-                # cifProto.g:162:56: '\\t'
+                # cifProto.g:168:56: '\\t'
                 pass
                 self.match(9)
 
 
             elif alt5 == 9:
-                # cifProto.g:162:63: ';'
+                # cifProto.g:168:63: ';'
                 pass
                 self.match(59)
 
@@ -904,8 +904,8 @@ class cifProtoLexer(Lexer):
             _type = TAG
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:168:5: ( '_' ( 'A' .. 'Z' | 'a' .. 'z' ) ( NON_BLANK_CHAR_ )* )
-            # cifProto.g:168:7: '_' ( 'A' .. 'Z' | 'a' .. 'z' ) ( NON_BLANK_CHAR_ )*
+            # cifProto.g:174:5: ( '_' ( 'A' .. 'Z' | 'a' .. 'z' ) ( NON_BLANK_CHAR_ )* )
+            # cifProto.g:174:7: '_' ( 'A' .. 'Z' | 'a' .. 'z' ) ( NON_BLANK_CHAR_ )*
             pass
             self.match(95)
             if (65 <= self.input.LA(1) <= 90) or (97 <= self.input.LA(1) <= 122):
@@ -918,7 +918,7 @@ class cifProtoLexer(Lexer):
                 self.recover(mse)
                 raise mse
 
-            # cifProto.g:168:35: ( NON_BLANK_CHAR_ )*
+            # cifProto.g:174:35: ( NON_BLANK_CHAR_ )*
             while True: #loop6
                 alt6 = 2
                 LA6_0 = self.input.LA(1)
@@ -928,7 +928,7 @@ class cifProtoLexer(Lexer):
 
 
                 if alt6 == 1:
-                    # cifProto.g:168:36: NON_BLANK_CHAR_
+                    # cifProto.g:174:36: NON_BLANK_CHAR_
                     pass
                     self.mNON_BLANK_CHAR_()
 
@@ -958,14 +958,14 @@ class cifProtoLexer(Lexer):
             _type = SEMI_COLON_TEXT_FIELD
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:175:2: ( ';' ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )* ) ';' )
-            # cifProto.g:175:4: ';' ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )* ) ';'
+            # cifProto.g:181:2: ( ';' ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )* ) ';' )
+            # cifProto.g:181:4: ';' ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )* ) ';'
             pass
             self.match(59)
-            # cifProto.g:176:3: ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )* )
-            # cifProto.g:176:5: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )*
+            # cifProto.g:182:3: ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )* )
+            # cifProto.g:182:5: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )*
             pass
-            # cifProto.g:176:5: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
+            # cifProto.g:182:5: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
             while True: #loop7
                 alt7 = 4
                 LA7 = self.input.LA(1)
@@ -977,19 +977,19 @@ class cifProtoLexer(Lexer):
                     alt7 = 3
 
                 if alt7 == 1:
-                    # cifProto.g:176:7: ANY_PRINT_CHAR
+                    # cifProto.g:182:7: ANY_PRINT_CHAR
                     pass
                     self.mANY_PRINT_CHAR()
 
 
                 elif alt7 == 2:
-                    # cifProto.g:176:24: SINGLE_QUOTE
+                    # cifProto.g:182:24: SINGLE_QUOTE
                     pass
                     self.mSINGLE_QUOTE()
 
 
                 elif alt7 == 3:
-                    # cifProto.g:176:39: DOUBLE_QUOTE
+                    # cifProto.g:182:39: DOUBLE_QUOTE
                     pass
                     self.mDOUBLE_QUOTE()
 
@@ -999,7 +999,7 @@ class cifProtoLexer(Lexer):
 
 
             self.mEOL()
-            # cifProto.g:177:3: ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )*
+            # cifProto.g:183:3: ( ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL )*
             while True: #loop10
                 alt10 = 2
                 LA10_0 = self.input.LA(1)
@@ -1009,19 +1009,19 @@ class cifProtoLexer(Lexer):
 
 
                 if alt10 == 1:
-                    # cifProto.g:177:5: ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL
+                    # cifProto.g:183:5: ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL
                     pass
-                    # cifProto.g:177:5: ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )?
+                    # cifProto.g:183:5: ( TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )?
                     alt9 = 2
                     LA9_0 = self.input.LA(1)
 
                     if (LA9_0 == 9 or (32 <= LA9_0 <= 58) or (60 <= LA9_0 <= 126)) :
                         alt9 = 1
                     if alt9 == 1:
-                        # cifProto.g:177:6: TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
+                        # cifProto.g:183:6: TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
                         pass
                         self.mTEXT_LEAD_CHAR()
-                        # cifProto.g:177:21: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
+                        # cifProto.g:183:21: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
                         while True: #loop8
                             alt8 = 4
                             LA8 = self.input.LA(1)
@@ -1033,19 +1033,19 @@ class cifProtoLexer(Lexer):
                                 alt8 = 3
 
                             if alt8 == 1:
-                                # cifProto.g:177:23: ANY_PRINT_CHAR
+                                # cifProto.g:183:23: ANY_PRINT_CHAR
                                 pass
                                 self.mANY_PRINT_CHAR()
 
 
                             elif alt8 == 2:
-                                # cifProto.g:177:40: SINGLE_QUOTE
+                                # cifProto.g:183:40: SINGLE_QUOTE
                                 pass
                                 self.mSINGLE_QUOTE()
 
 
                             elif alt8 == 3:
-                                # cifProto.g:177:55: DOUBLE_QUOTE
+                                # cifProto.g:183:55: DOUBLE_QUOTE
                                 pass
                                 self.mDOUBLE_QUOTE()
 
@@ -1086,8 +1086,8 @@ class cifProtoLexer(Lexer):
     def mDATA_(self, ):
 
         try:
-            # cifProto.g:186:7: ( ( 'D' | 'd' ) ( 'A' | 'a' ) ( 'T' | 't' ) ( 'A' | 'a' ) '_' )
-            # cifProto.g:186:9: ( 'D' | 'd' ) ( 'A' | 'a' ) ( 'T' | 't' ) ( 'A' | 'a' ) '_'
+            # cifProto.g:192:7: ( ( 'D' | 'd' ) ( 'A' | 'a' ) ( 'T' | 't' ) ( 'A' | 'a' ) '_' )
+            # cifProto.g:192:9: ( 'D' | 'd' ) ( 'A' | 'a' ) ( 'T' | 't' ) ( 'A' | 'a' ) '_'
             pass
             if self.input.LA(1) == 68 or self.input.LA(1) == 100:
                 self.input.consume()
@@ -1146,8 +1146,8 @@ class cifProtoLexer(Lexer):
     def mSAVE_(self, ):
 
         try:
-            # cifProto.g:189:7: ( ( 'S' | 's' ) ( 'A' | 'a' ) ( 'V' | 'v' ) ( 'E' | 'e' ) '_' )
-            # cifProto.g:189:9: ( 'S' | 's' ) ( 'A' | 'a' ) ( 'V' | 'v' ) ( 'E' | 'e' ) '_'
+            # cifProto.g:195:7: ( ( 'S' | 's' ) ( 'A' | 'a' ) ( 'V' | 'v' ) ( 'E' | 'e' ) '_' )
+            # cifProto.g:195:9: ( 'S' | 's' ) ( 'A' | 'a' ) ( 'V' | 'v' ) ( 'E' | 'e' ) '_'
             pass
             if self.input.LA(1) == 83 or self.input.LA(1) == 115:
                 self.input.consume()
@@ -1209,8 +1209,8 @@ class cifProtoLexer(Lexer):
             _type = LOOP_
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:191:8: ( ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_' )
-            # cifProto.g:191:10: ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_'
+            # cifProto.g:197:8: ( ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_' )
+            # cifProto.g:197:10: ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_'
             pass
             if self.input.LA(1) == 76 or self.input.LA(1) == 108:
                 self.input.consume()
@@ -1274,8 +1274,8 @@ class cifProtoLexer(Lexer):
             _type = GLOBAL_
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:193:9: ( ( 'G' | 'g' ) ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'B' | 'b' ) ( 'A' | 'a' ) ( 'L' | 'l' ) '_' )
-            # cifProto.g:193:11: ( 'G' | 'g' ) ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'B' | 'b' ) ( 'A' | 'a' ) ( 'L' | 'l' ) '_'
+            # cifProto.g:199:9: ( ( 'G' | 'g' ) ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'B' | 'b' ) ( 'A' | 'a' ) ( 'L' | 'l' ) '_' )
+            # cifProto.g:199:11: ( 'G' | 'g' ) ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'B' | 'b' ) ( 'A' | 'a' ) ( 'L' | 'l' ) '_'
             pass
             if self.input.LA(1) == 71 or self.input.LA(1) == 103:
                 self.input.consume()
@@ -1359,8 +1359,8 @@ class cifProtoLexer(Lexer):
             _type = STOP_
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:195:7: ( ( 'S' | 's' ) ( 'T' | 't' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_' )
-            # cifProto.g:195:9: ( 'S' | 's' ) ( 'T' | 't' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_'
+            # cifProto.g:201:7: ( ( 'S' | 's' ) ( 'T' | 't' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_' )
+            # cifProto.g:201:9: ( 'S' | 's' ) ( 'T' | 't' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_'
             pass
             if self.input.LA(1) == 83 or self.input.LA(1) == 115:
                 self.input.consume()
@@ -1424,11 +1424,11 @@ class cifProtoLexer(Lexer):
             _type = VERSION
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:201:9: ( '#\\\\#CIF_' ( DIGIT )+ '.' ( DIGIT )+ )
-            # cifProto.g:201:11: '#\\\\#CIF_' ( DIGIT )+ '.' ( DIGIT )+
+            # cifProto.g:207:9: ( '#\\\\#CIF_' ( DIGIT )+ '.' ( DIGIT )+ )
+            # cifProto.g:207:11: '#\\\\#CIF_' ( DIGIT )+ '.' ( DIGIT )+
             pass
             self.match("#\\#CIF_")
-            # cifProto.g:201:22: ( DIGIT )+
+            # cifProto.g:207:22: ( DIGIT )+
             cnt11 = 0
             while True: #loop11
                 alt11 = 2
@@ -1439,7 +1439,7 @@ class cifProtoLexer(Lexer):
 
 
                 if alt11 == 1:
-                    # cifProto.g:201:23: DIGIT
+                    # cifProto.g:207:23: DIGIT
                     pass
                     self.mDIGIT()
 
@@ -1458,7 +1458,7 @@ class cifProtoLexer(Lexer):
 
 
             self.match(46)
-            # cifProto.g:201:35: ( DIGIT )+
+            # cifProto.g:207:35: ( DIGIT )+
             cnt12 = 0
             while True: #loop12
                 alt12 = 2
@@ -1469,7 +1469,7 @@ class cifProtoLexer(Lexer):
 
 
                 if alt12 == 1:
-                    # cifProto.g:201:36: DIGIT
+                    # cifProto.g:207:36: DIGIT
                     pass
                     self.mDIGIT()
 
@@ -1508,11 +1508,11 @@ class cifProtoLexer(Lexer):
             _type = DATA_BLOCK_HEADING
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:204:2: ( DATA_ ( NON_BLANK_CHAR )+ )
-            # cifProto.g:204:4: DATA_ ( NON_BLANK_CHAR )+
+            # cifProto.g:210:2: ( DATA_ ( NON_BLANK_CHAR )+ )
+            # cifProto.g:210:4: DATA_ ( NON_BLANK_CHAR )+
             pass
             self.mDATA_()
-            # cifProto.g:204:10: ( NON_BLANK_CHAR )+
+            # cifProto.g:210:10: ( NON_BLANK_CHAR )+
             cnt13 = 0
             while True: #loop13
                 alt13 = 2
@@ -1523,7 +1523,7 @@ class cifProtoLexer(Lexer):
 
 
                 if alt13 == 1:
-                    # cifProto.g:204:11: NON_BLANK_CHAR
+                    # cifProto.g:210:11: NON_BLANK_CHAR
                     pass
                     self.mNON_BLANK_CHAR()
 
@@ -1562,11 +1562,11 @@ class cifProtoLexer(Lexer):
             _type = SAVE_FRAME_HEADING
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:207:2: ( SAVE_ ( NON_BLANK_CHAR )+ )
-            # cifProto.g:207:4: SAVE_ ( NON_BLANK_CHAR )+
+            # cifProto.g:213:2: ( SAVE_ ( NON_BLANK_CHAR )+ )
+            # cifProto.g:213:4: SAVE_ ( NON_BLANK_CHAR )+
             pass
             self.mSAVE_()
-            # cifProto.g:207:10: ( NON_BLANK_CHAR )+
+            # cifProto.g:213:10: ( NON_BLANK_CHAR )+
             cnt14 = 0
             while True: #loop14
                 alt14 = 2
@@ -1577,7 +1577,7 @@ class cifProtoLexer(Lexer):
 
 
                 if alt14 == 1:
-                    # cifProto.g:207:11: NON_BLANK_CHAR
+                    # cifProto.g:213:11: NON_BLANK_CHAR
                     pass
                     self.mNON_BLANK_CHAR()
 
@@ -1616,8 +1616,8 @@ class cifProtoLexer(Lexer):
             _type = SAVE
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:209:6: ( SAVE_ )
-            # cifProto.g:209:8: SAVE_
+            # cifProto.g:215:6: ( SAVE_ )
+            # cifProto.g:215:8: SAVE_
             pass
             self.mSAVE_()
 
@@ -1638,19 +1638,19 @@ class cifProtoLexer(Lexer):
     def mSINGLE_QUOTED_STRING(self, ):
 
         try:
-            # cifProto.g:213:2: ( SINGLE_QUOTE ( ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )* SINGLE_QUOTE )
-            # cifProto.g:213:4: SINGLE_QUOTE ( ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )* SINGLE_QUOTE
+            # cifProto.g:219:2: ( SINGLE_QUOTE ( ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )* SINGLE_QUOTE )
+            # cifProto.g:219:4: SINGLE_QUOTE ( ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )* SINGLE_QUOTE
             pass
             self.mSINGLE_QUOTE()
-            # cifProto.g:214:3: ( ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )*
+            # cifProto.g:220:3: ( ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )*
             while True: #loop15
                 alt15 = 4
                 alt15 = self.dfa15.predict(self.input)
                 if alt15 == 1:
-                    # cifProto.g:214:5: ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE )
+                    # cifProto.g:220:5: ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE )
                     pass
-                    # cifProto.g:214:5: ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE )
-                    # cifProto.g:214:7: ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE
+                    # cifProto.g:220:5: ( ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE )
+                    # cifProto.g:220:7: ( SINGLE_QUOTE NON_BLANK_CHAR_ )=> SINGLE_QUOTE
                     pass
                     self.mSINGLE_QUOTE()
 
@@ -1659,13 +1659,13 @@ class cifProtoLexer(Lexer):
 
 
                 elif alt15 == 2:
-                    # cifProto.g:214:56: ANY_PRINT_CHAR
+                    # cifProto.g:220:56: ANY_PRINT_CHAR
                     pass
                     self.mANY_PRINT_CHAR()
 
 
                 elif alt15 == 3:
-                    # cifProto.g:214:73: DOUBLE_QUOTE
+                    # cifProto.g:220:73: DOUBLE_QUOTE
                     pass
                     self.mDOUBLE_QUOTE()
 
@@ -1694,19 +1694,19 @@ class cifProtoLexer(Lexer):
     def mDOUBLE_QUOTED_STRING(self, ):
 
         try:
-            # cifProto.g:220:2: ( DOUBLE_QUOTE ( ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )* DOUBLE_QUOTE )
-            # cifProto.g:220:4: DOUBLE_QUOTE ( ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )* DOUBLE_QUOTE
+            # cifProto.g:226:2: ( DOUBLE_QUOTE ( ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )* DOUBLE_QUOTE )
+            # cifProto.g:226:4: DOUBLE_QUOTE ( ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )* DOUBLE_QUOTE
             pass
             self.mDOUBLE_QUOTE()
-            # cifProto.g:221:3: ( ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )*
+            # cifProto.g:227:3: ( ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )*
             while True: #loop16
                 alt16 = 4
                 alt16 = self.dfa16.predict(self.input)
                 if alt16 == 1:
-                    # cifProto.g:221:5: ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE )
+                    # cifProto.g:227:5: ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE )
                     pass
-                    # cifProto.g:221:5: ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE )
-                    # cifProto.g:221:7: ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE
+                    # cifProto.g:227:5: ( ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE )
+                    # cifProto.g:227:7: ( DOUBLE_QUOTE NON_BLANK_CHAR_ )=> DOUBLE_QUOTE
                     pass
                     self.mDOUBLE_QUOTE()
 
@@ -1715,13 +1715,13 @@ class cifProtoLexer(Lexer):
 
 
                 elif alt16 == 2:
-                    # cifProto.g:221:56: ANY_PRINT_CHAR
+                    # cifProto.g:227:56: ANY_PRINT_CHAR
                     pass
                     self.mANY_PRINT_CHAR()
 
 
                 elif alt16 == 3:
-                    # cifProto.g:221:73: SINGLE_QUOTE
+                    # cifProto.g:227:73: SINGLE_QUOTE
                     pass
                     self.mSINGLE_QUOTE()
 
@@ -1753,8 +1753,8 @@ class cifProtoLexer(Lexer):
             _type = DIGIT
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:230:7: ( '0' .. '9' )
-            # cifProto.g:230:9: '0' .. '9'
+            # cifProto.g:236:7: ( '0' .. '9' )
+            # cifProto.g:236:9: '0' .. '9'
             pass
             self.matchRange(48, 57)
 
@@ -1778,10 +1778,10 @@ class cifProtoLexer(Lexer):
             _type = EXPONENT
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:232:9: ( ( ( 'e' | 'E' ) | ( 'e' | 'E' ) ( '+' | '-' ) ) ( DIGIT )+ )
-            # cifProto.g:232:12: ( ( 'e' | 'E' ) | ( 'e' | 'E' ) ( '+' | '-' ) ) ( DIGIT )+
+            # cifProto.g:238:9: ( ( ( 'e' | 'E' ) | ( 'e' | 'E' ) ( '+' | '-' ) ) ( DIGIT )+ )
+            # cifProto.g:238:12: ( ( 'e' | 'E' ) | ( 'e' | 'E' ) ( '+' | '-' ) ) ( DIGIT )+
             pass
-            # cifProto.g:232:12: ( ( 'e' | 'E' ) | ( 'e' | 'E' ) ( '+' | '-' ) )
+            # cifProto.g:238:12: ( ( 'e' | 'E' ) | ( 'e' | 'E' ) ( '+' | '-' ) )
             alt17 = 2
             LA17_0 = self.input.LA(1)
 
@@ -1809,7 +1809,7 @@ class cifProtoLexer(Lexer):
                 raise nvae
 
             if alt17 == 1:
-                # cifProto.g:232:14: ( 'e' | 'E' )
+                # cifProto.g:238:14: ( 'e' | 'E' )
                 pass
                 if self.input.LA(1) == 69 or self.input.LA(1) == 101:
                     self.input.consume()
@@ -1824,7 +1824,7 @@ class cifProtoLexer(Lexer):
 
 
             elif alt17 == 2:
-                # cifProto.g:232:29: ( 'e' | 'E' ) ( '+' | '-' )
+                # cifProto.g:238:29: ( 'e' | 'E' ) ( '+' | '-' )
                 pass
                 if self.input.LA(1) == 69 or self.input.LA(1) == 101:
                     self.input.consume()
@@ -1849,7 +1849,7 @@ class cifProtoLexer(Lexer):
 
 
 
-            # cifProto.g:232:57: ( DIGIT )+
+            # cifProto.g:238:57: ( DIGIT )+
             cnt18 = 0
             while True: #loop18
                 alt18 = 2
@@ -1860,7 +1860,7 @@ class cifProtoLexer(Lexer):
 
 
                 if alt18 == 1:
-                    # cifProto.g:232:58: DIGIT
+                    # cifProto.g:238:58: DIGIT
                     pass
                     self.mDIGIT()
 
@@ -1896,10 +1896,10 @@ class cifProtoLexer(Lexer):
     def mUNQUOTED_STRING(self, ):
 
         try:
-            # cifProto.g:237:2: ( ( ORDINARY_CHAR | ';' ) ( NON_BLANK_CHAR_ )* )
-            # cifProto.g:237:4: ( ORDINARY_CHAR | ';' ) ( NON_BLANK_CHAR_ )*
+            # cifProto.g:243:2: ( ( ORDINARY_CHAR | ';' ) ( NON_BLANK_CHAR_ )* )
+            # cifProto.g:243:4: ( ORDINARY_CHAR | ';' ) ( NON_BLANK_CHAR_ )*
             pass
-            # cifProto.g:237:4: ( ORDINARY_CHAR | ';' )
+            # cifProto.g:243:4: ( ORDINARY_CHAR | ';' )
             alt19 = 2
             LA19_0 = self.input.LA(1)
 
@@ -1916,19 +1916,19 @@ class cifProtoLexer(Lexer):
                 raise nvae
 
             if alt19 == 1:
-                # cifProto.g:237:6: ORDINARY_CHAR
+                # cifProto.g:243:6: ORDINARY_CHAR
                 pass
                 self.mORDINARY_CHAR()
 
 
             elif alt19 == 2:
-                # cifProto.g:237:22: ';'
+                # cifProto.g:243:22: ';'
                 pass
                 self.match(59)
 
 
 
-            # cifProto.g:237:28: ( NON_BLANK_CHAR_ )*
+            # cifProto.g:243:28: ( NON_BLANK_CHAR_ )*
             while True: #loop20
                 alt20 = 2
                 LA20_0 = self.input.LA(1)
@@ -1938,7 +1938,7 @@ class cifProtoLexer(Lexer):
 
 
                 if alt20 == 1:
-                    # cifProto.g:237:29: NON_BLANK_CHAR_
+                    # cifProto.g:243:29: NON_BLANK_CHAR_
                     pass
                     self.mNON_BLANK_CHAR_()
 
@@ -1966,7 +1966,7 @@ class cifProtoLexer(Lexer):
             _type = CHAR_STRING
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:240:2: ( SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING | UNQUOTED_STRING )
+            # cifProto.g:246:2: ( SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING | UNQUOTED_STRING )
             alt21 = 3
             LA21 = self.input.LA(1)
             if LA21 == 39:
@@ -1984,19 +1984,19 @@ class cifProtoLexer(Lexer):
                 raise nvae
 
             if alt21 == 1:
-                # cifProto.g:240:4: SINGLE_QUOTED_STRING
+                # cifProto.g:246:4: SINGLE_QUOTED_STRING
                 pass
                 self.mSINGLE_QUOTED_STRING()
 
 
             elif alt21 == 2:
-                # cifProto.g:240:27: DOUBLE_QUOTED_STRING
+                # cifProto.g:246:27: DOUBLE_QUOTED_STRING
                 pass
                 self.mDOUBLE_QUOTED_STRING()
 
 
             elif alt21 == 3:
-                # cifProto.g:240:50: UNQUOTED_STRING
+                # cifProto.g:246:50: UNQUOTED_STRING
                 pass
                 self.mUNQUOTED_STRING()
 
@@ -2019,13 +2019,13 @@ class cifProtoLexer(Lexer):
             _type = COMMENTS
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:247:2: ( ( ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* ( EOL | {...}?) )+ ) )
-            # cifProto.g:247:4: ( ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* ( EOL | {...}?) )+ )
+            # cifProto.g:253:2: ( ( ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* ( EOL | {...}?) )+ ) )
+            # cifProto.g:253:4: ( ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* ( EOL | {...}?) )+ )
             pass
-            # cifProto.g:247:4: ( ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* ( EOL | {...}?) )+ )
-            # cifProto.g:247:6: ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* ( EOL | {...}?) )+
+            # cifProto.g:253:4: ( ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* ( EOL | {...}?) )+ )
+            # cifProto.g:253:6: ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* ( EOL | {...}?) )+
             pass
-            # cifProto.g:247:6: ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* ( EOL | {...}?) )+
+            # cifProto.g:253:6: ( '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* ( EOL | {...}?) )+
             cnt24 = 0
             while True: #loop24
                 alt24 = 2
@@ -2036,10 +2036,10 @@ class cifProtoLexer(Lexer):
 
 
                 if alt24 == 1:
-                    # cifProto.g:247:8: '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* ( EOL | {...}?)
+                    # cifProto.g:253:8: '#' ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* ( EOL | {...}?)
                     pass
                     self.match(35)
-                    # cifProto.g:247:12: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
+                    # cifProto.g:253:12: ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
                     while True: #loop22
                         alt22 = 4
                         LA22 = self.input.LA(1)
@@ -2058,19 +2058,19 @@ class cifProtoLexer(Lexer):
                             alt22 = 3
 
                         if alt22 == 1:
-                            # cifProto.g:247:13: ANY_PRINT_CHAR
+                            # cifProto.g:253:13: ANY_PRINT_CHAR
                             pass
                             self.mANY_PRINT_CHAR()
 
 
                         elif alt22 == 2:
-                            # cifProto.g:247:30: SINGLE_QUOTE
+                            # cifProto.g:253:30: SINGLE_QUOTE
                             pass
                             self.mSINGLE_QUOTE()
 
 
                         elif alt22 == 3:
-                            # cifProto.g:247:45: DOUBLE_QUOTE
+                            # cifProto.g:253:45: DOUBLE_QUOTE
                             pass
                             self.mDOUBLE_QUOTE()
 
@@ -2079,7 +2079,7 @@ class cifProtoLexer(Lexer):
                             break #loop22
 
 
-                    # cifProto.g:247:61: ( EOL | {...}?)
+                    # cifProto.g:254:12: ( EOL | {...}?)
                     alt23 = 2
                     LA23_0 = self.input.LA(1)
 
@@ -2088,13 +2088,13 @@ class cifProtoLexer(Lexer):
                     else:
                         alt23 = 2
                     if alt23 == 1:
-                        # cifProto.g:247:62: EOL
+                        # cifProto.g:254:14: EOL
                         pass
                         self.mEOL()
 
 
                     elif alt23 == 2:
-                        # cifProto.g:247:68: {...}?
+                        # cifProto.g:254:20: {...}?
                         pass
                         if not ((self.input.LA(1) == EOF )):
                             if self._state.backtracking > 0:
@@ -2147,8 +2147,8 @@ class cifProtoLexer(Lexer):
             _type = NON_BLANK_CHAR
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:260:2: ( NON_BLANK_CHAR_ )
-            # cifProto.g:260:4: NON_BLANK_CHAR_
+            # cifProto.g:267:2: ( NON_BLANK_CHAR_ )
+            # cifProto.g:267:4: NON_BLANK_CHAR_
             pass
             self.mNON_BLANK_CHAR_()
 
@@ -2172,10 +2172,10 @@ class cifProtoLexer(Lexer):
             _type = WHITESPACE
             _channel = DEFAULT_CHANNEL
 
-            # cifProto.g:263:2: ( ( '\\t' | ' ' | EOL | '\\u000C' )+ )
-            # cifProto.g:263:5: ( '\\t' | ' ' | EOL | '\\u000C' )+
+            # cifProto.g:270:2: ( ( '\\t' | ' ' | EOL | '\\u000C' )+ )
+            # cifProto.g:270:5: ( '\\t' | ' ' | EOL | '\\u000C' )+
             pass
-            # cifProto.g:263:5: ( '\\t' | ' ' | EOL | '\\u000C' )+
+            # cifProto.g:270:5: ( '\\t' | ' ' | EOL | '\\u000C' )+
             cnt25 = 0
             while True: #loop25
                 alt25 = 5
@@ -2190,25 +2190,25 @@ class cifProtoLexer(Lexer):
                     alt25 = 4
 
                 if alt25 == 1:
-                    # cifProto.g:263:7: '\\t'
+                    # cifProto.g:270:7: '\\t'
                     pass
                     self.match(9)
 
 
                 elif alt25 == 2:
-                    # cifProto.g:263:14: ' '
+                    # cifProto.g:270:14: ' '
                     pass
                     self.match(32)
 
 
                 elif alt25 == 3:
-                    # cifProto.g:263:20: EOL
+                    # cifProto.g:270:20: EOL
                     pass
                     self.mEOL()
 
 
                 elif alt25 == 4:
-                    # cifProto.g:263:26: '\\u000C'
+                    # cifProto.g:270:26: '\\u000C'
                     pass
                     self.match(12)
 
@@ -2376,8 +2376,8 @@ class cifProtoLexer(Lexer):
 
     # $ANTLR start "synpred1_cifProto"
     def synpred1_cifProto_fragment(self, ):
-        # cifProto.g:214:7: ( SINGLE_QUOTE NON_BLANK_CHAR_ )
-        # cifProto.g:214:8: SINGLE_QUOTE NON_BLANK_CHAR_
+        # cifProto.g:220:7: ( SINGLE_QUOTE NON_BLANK_CHAR_ )
+        # cifProto.g:220:8: SINGLE_QUOTE NON_BLANK_CHAR_
         pass
         self.mSINGLE_QUOTE()
         self.mNON_BLANK_CHAR_()
@@ -2389,8 +2389,8 @@ class cifProtoLexer(Lexer):
 
     # $ANTLR start "synpred2_cifProto"
     def synpred2_cifProto_fragment(self, ):
-        # cifProto.g:221:7: ( DOUBLE_QUOTE NON_BLANK_CHAR_ )
-        # cifProto.g:221:8: DOUBLE_QUOTE NON_BLANK_CHAR_
+        # cifProto.g:227:7: ( DOUBLE_QUOTE NON_BLANK_CHAR_ )
+        # cifProto.g:227:8: DOUBLE_QUOTE NON_BLANK_CHAR_
         pass
         self.mDOUBLE_QUOTE()
         self.mNON_BLANK_CHAR_()

@@ -70,12 +70,22 @@ loop_body
 	;
 
 save_frame
-	:	SAVE_FRAME_HEADING ( WHITESPACE+ data_items )+ WHITESPACE+ SAVE ;
+	:	SAVE_FRAME_HEADING
+{ ($parse::builder)->attr("start_save_frame")(to_std_string($SAVE_FRAME_HEADING.text)); }
+	      ( WHITESPACE+ data_items )+ WHITESPACE+ SAVE
+{ ($parse::builder)->attr("end_save_frame")(); }
+	;
 
 data_items
-scope { scitbx::af::shared<std::string> *curr_loop_values; }
-@init { $data_items::curr_loop_values = new scitbx::af::shared<std::string>(); }
-@after { delete $data_items::curr_loop_values; }
+scope { scitbx::af::shared<std::string> *curr_loop_values;
+        scitbx::af::shared<std::string> *curr_loop_headers;
+}
+@init { $data_items::curr_loop_values = new scitbx::af::shared<std::string>();
+	$data_items::curr_loop_headers = new scitbx::af::shared<std::string>();
+}
+@after { delete $data_items::curr_loop_values;
+ 	 delete $data_items::curr_loop_headers;
+}
 	:	TAG WHITESPACE value
 {
   ($parse::builder)->attr("add_data_item")(
@@ -86,7 +96,7 @@ scope { scitbx::af::shared<std::string> *curr_loop_values; }
 {
   scitbx::af::shared<std::string> &values = *($data_items::curr_loop_values);
   try {
-    ($parse::builder)->attr("add_loop")(to_std_string($loop_header.text), values);
+    ($parse::builder)->attr("add_loop")($data_items::curr_loop_headers, values);
   }
   catch (boost::python::error_already_set&) {
     PyErr_Clear();
@@ -101,7 +111,9 @@ data_block
 	;
 
 loop_header
-	:	LOOP_ ( WHITESPACE+ TAG )+ WHITESPACE
+	:	LOOP_ ( WHITESPACE+ TAG
+{ ($data_items::curr_loop_headers)->push_back(to_std_string($TAG.text)); }
+		 )+ WHITESPACE
 	;
 
 /*------------------------------------------------------------------
