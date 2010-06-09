@@ -97,7 +97,9 @@ def transform_map_by_lsq_fit (fft_map,
                               resolution_factor=0.25,
                               file_name=None,
                               log=sys.stdout,
-                              mask_map_grid=False) :
+                              mask_map_grid=False,
+                              format="xplor") :
+  assert (format in ["xplor", "ccp4"])
   fake_symm = generate_p1_box(pdb_hierarchy, buffer=10.0)
   xray_structure = pdb_hierarchy.extract_xray_structure(
     crystal_symmetry=fake_symm)
@@ -117,14 +119,24 @@ def transform_map_by_lsq_fit (fft_map,
       map_data = map_data_superposed,
       n_real   = fake_map.n_real())
   if file_name is not None :
-    print >> log, "    saving XPLOR map to %s" % file_name
-    mmtbx.maps.utils.write_xplor_map(
-      sites_cart=xray_structure.sites_cart(),
-      unit_cell=fake_symm.unit_cell(),
-      map_data=map_data_superposed,
-      n_real=fake_map.n_real(),
-      file_name=file_name,
-      buffer=buffer)
+    if format == "xplor" :
+      print >> log, "    saving XPLOR map to %s" % file_name
+      mmtbx.maps.utils.write_xplor_map(
+        sites_cart=xray_structure.sites_cart(),
+        unit_cell=fake_symm.unit_cell(),
+        map_data=map_data_superposed,
+        n_real=fake_map.n_real(),
+        file_name=file_name,
+        buffer=buffer)
+    else :
+      print >> log, "    saving CCP4 map to %s" % file_name
+      mmtbx.maps.utils.write_ccp4_map(
+        sites_cart=xray_structure.sites_cart(),
+        unit_cell=fake_symm.unit_cell(),
+        map_data=map_data_superposed,
+        n_real=fake_map.n_real(),
+        file_name=file_name,
+        buffer=buffer)
   return xray_structure, map_data_superposed
 
 # XXX: wrapper for multiprocessing
@@ -137,7 +149,8 @@ class transform_maps (object) :
                 lsq_fit_obj,
                 output_files,
                 resolution_factor=0.25,
-                auto_run=True) :
+                auto_run=True,
+                format="ccp4") :
     adopt_init_args(self, locals())
     if auto_run :
       self.run()
@@ -157,7 +170,8 @@ class transform_maps (object) :
         pdb_hierarchy=self.pdb_hierarchy,
         d_min=d_min,
         file_name=file_name,
-        log=null_out())
+        log=null_out(),
+        format=self.format)
       del fft_map
 
 def exercise () :

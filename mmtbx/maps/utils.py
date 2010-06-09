@@ -1,6 +1,4 @@
 
-# TODO: clean this up!
-
 # XXX: these functions are utilities used by the Phenix GUI for quickly
 # converting data and map formats on the fly.  the main use of this is
 # in phenix.refine and any program that opens maps in PyMOL.
@@ -11,27 +9,17 @@ import mmtbx.maps
 import mmtbx.utils
 import iotbx.phil
 import iotbx.xplor.map
+import iotbx.ccp4_map
 from iotbx import file_reader
+from cctbx import sgtbx
 from scitbx.array_family import flex
 from libtbx.math_utils import ifloor, iceil
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import os, sys
 
-def extract_map_coeffs (miller_arrays, f_lab, phi_lab, fom_lab) :
-  f_array = None
-  phi_array = None
-  fom_array = None
-  #print f_lab, phi_lab, fom_lab
-  for miller_array in miller_arrays :
-    labels = miller_array.info().label_string()
-    if labels == f_lab :
-      f_array = miller_array
-    elif labels == phi_lab :
-      phi_array = miller_array
-    elif labels == fom_lab :
-      fom_array = miller_array
-  return (f_array, phi_array, fom_array)
+#-----------------------------------------------------------------------
+# MAP COEFFICIENT MANIPULATION
 
 class fast_maps_from_hkl_file (object) :
   def __init__ (self,
@@ -49,7 +37,7 @@ class fast_maps_from_hkl_file (object) :
     default_labels = ["F,SIGF","FOBS,SIGFOBS","F(+),SIGF(+),F(-),SIGF(-)"]
     all_labels = []
     data_file = file_reader.any_file(file_name, force_type="hkl")
-    for miller_array in data_file.file_object.as_miller_arrays() :
+    for miller_array in data_file.file_server.miller_arrays :
       labels = miller_array.info().label_string()
       all_labels.append(labels)
       if labels == f_label :
@@ -101,6 +89,72 @@ def write_map_coeffs (fwt_coeffs, delfwt_coeffs, file_name) :
   mtz_object.write(file_name=file_name)
   del mtz_object
 
+def extract_map_coeffs (miller_arrays, f_lab, phi_lab, fom_lab) :
+  f_array = None
+  phi_array = None
+  fom_array = None
+  #print f_lab, phi_lab, fom_lab
+  for miller_array in miller_arrays :
+    labels = miller_array.info().label_string()
+    if labels == f_lab :
+      f_array = miller_array
+    elif labels == phi_lab :
+      phi_array = miller_array
+    elif labels == fom_lab :
+      fom_array = miller_array
+  return (f_array, phi_array, fom_array)
+
+def map_coeffs_from_mtz_file (mtz_file, f_label="FP", phi_label="PHIM",
+    fom_label="FOMM") :
+  if not os.path.isfile(mtz_file) :
+    raise Sorry(
+      "No map coefficients are available for conversion.")
+  mtz_in = file_reader.any_file(mtz_file)
+  mtz_in.assert_file_type("hkl")
+  miller_arrays = mtz_in.file_server.miller_arrays
+  (f_array, phi_array, fom_array) = extract_map_coeffs(miller_arrays,
+    f_label, phi_label, fom_label)
+  if f_array.is_complex_array() :
+    map_coeffs = f_array
+  else :
+    if f_array is None or phi_array is None :
+      raise Sorry("One or more of the columns %s and %s was not found." %
+        (f_label, phi_label))
+    if fom_array is not None :
+      weighted_f = f_array * fom_array
+    else :
+      weighted_f = f_array
+    map_coeffs = weighted_f.phase_transfer(phi_array, deg=True)
+  return map_coeffs
+
+def extract_phenix_refine_map_coeffs (mtz_file, limit_arrays=None) :
+  assert (limit_arrays is None) or (isinstance(limit_arrays, list))
+  if not os.path.isfile(mtz_file) :
+    raise Sorry("No map coefficients are available for conversion.")
+  mtz_in = file_reader.any_file(mtz_file)
+  mtz_in.assert_file_type("hkl")
+  miller_arrays = mtz_in.file_server.miller_arrays
+  assert len(miller_arrays) > 0
+  map_names = {"2FOFCWT" : "2mFo-DFc",
+               "FOFCWT" : "mFo-DFc",
+               "2FOFCWT_no_fill" : "2mFo-DFc_no_fill",
+               "FOFCWT_no_fill" : "mFo-DFc_no_fill"}
+  output_arrays = []
+  for miller_array in miller_arrays :
+    if miller_array.is_complex_array() :
+      labels = miller_array.info().label_string()
+      if limit_arrays is not None and not labels in limit_arrays :
+        continue
+      f_label = miller_array.info().labels[0]
+      map_name = map_names.get(f_label)
+      if map_name is None :
+        map_name = f_label
+      output_arrays.append((miller_array, map_name))
+  return output_arrays
+
+#-----------------------------------------------------------------------
+# XPLOR MAP OUTPUT
+
 # TODO: make more modular!
 def write_xplor_map_file (coeffs, frac_min, frac_max, file_base) :
   fft_map = coeffs.fft_map(resolution_factor=1/3.0)
@@ -146,38 +200,20 @@ def xplor_maps_from_refine_mtz (pdb_file, mtz_file, file_base=None,
     file_base = os.path.join(os.path.dirname(mtz_file), "refine")
   if not os.path.isfile(pdb_file) :
     raise Sorry("The PDB file '%s' does not exist.")
-  if not os.path.isfile(mtz_file) :
-    raise Sorry(
-      "No map coefficients are available for conversion to XPLOR format.")
-  mtz_in = file_reader.any_file(mtz_file)
+  output_arrays = extract_phenix_refine_map_coeffs(mtz_file, limit_arrays)
   pdb_in = file_reader.any_file(pdb_file)
-  mtz_in.assert_file_type("hkl")
   pdb_in.assert_file_type("pdb")
-  miller_arrays = mtz_in.file_object.as_miller_arrays()
-  assert len(miller_arrays) > 0
   xray_structure = pdb_in.file_object.xray_structure_simple()
-  map_names = {"2FOFCWT" : "2mFo-DFc",
-               "FOFCWT" : "mFo-DFc",
-               "2FOFCWT_no_fill" : "2mFo-DFc_no_fill",
-               "FOFCWT_no_fill" : "mFo-DFc_no_fill"}
   output_files = []
-  for miller_array in miller_arrays :
-    if miller_array.is_complex_array() :
-      labels = miller_array.info().label_string()
-      if limit_arrays is not None and not labels in limit_arrays :
-        continue
-      f_label = miller_array.info().labels[0]
-      map_name = map_names.get(f_label)
-      if map_name is None :
-        map_name = f_label
-      file_name = "%s_%s.map" % (file_base, map_name)
-      if (not os.path.exists(file_name) or
-          os.path.getmtime(file_name) < os.path.getmtime(mtz_file)) :
-        xplor_map_from_coeffs(miller_array=miller_array,
-          output_file=file_name,
-          xray_structure=xray_structure,
-          grid_resolution_factor=grid_resolution_factor)
-        output_files.append(file_name)
+  for (map_coeffs, map_name) in output_arrays :
+    file_name = "%s_%s.map" % (file_base, map_name)
+    if (not os.path.exists(file_name) or
+        os.path.getmtime(file_name) < os.path.getmtime(mtz_file)) :
+      xplor_map_from_coeffs(miller_array=map_coeffs,
+        output_file=file_name,
+        xray_structure=xray_structure,
+        grid_resolution_factor=grid_resolution_factor)
+      output_files.append(file_name)
   return output_files
 
 def xplor_map_from_coeffs (miller_array, output_file, pdb_file=None,
@@ -206,25 +242,7 @@ def xplor_map_from_mtz (pdb_file, mtz_file, output_file=None,
     f_label="FP", phi_label="PHIM", fom_label="FOMM") :
   if output_file is None :
     output_file = "resolve.map"
-  if not os.path.isfile(mtz_file) :
-    raise Sorry(
-      "No map coefficients are available for conversion to XPLOR format.")
-  mtz_in = file_reader.any_file(mtz_file)
-  mtz_in.assert_file_type("hkl")
-  miller_arrays = mtz_in.file_object.as_miller_arrays()
-  (f_array, phi_array, fom_array) = extract_map_coeffs(miller_arrays,
-    f_label, phi_label, fom_label)
-  if f_array.is_complex_array() :
-    map_coeffs = f_array
-  else :
-    if f_array is None or phi_array is None :
-      raise Sorry("One or more of the columns %s and %s was not found." %
-        (f_label, phi_label))
-    if fom_array is not None :
-      weighted_f = f_array * fom_array
-    else :
-      weighted_f = f_array
-    map_coeffs = weighted_f.phase_transfer(phi_array, deg=True)
+  map_coeffs = map_coeffs_from_mtz_file(mtz_file, f_label, phi_label, fom_label)
   if (not os.path.isfile(output_file) or
       os.path.getmtime(output_file) < os.path.getmtime(mtz_file)) :
     xplor_map_from_coeffs(map_coeffs, output_file, pdb_file)
@@ -253,6 +271,79 @@ def xplor_map_from_solve_mtz (pdb_file, mtz_file, force=False) :
       phi_label="PHIB",
       fom_label="FOM")
   return output_file
+
+#-----------------------------------------------------------------------
+# CCP4 MAP OUTPUT
+
+def ccp4_maps_from_refine_mtz (mtz_file, file_base=None,
+    limit_arrays=None, resolution_factor=0.33) :
+  if file_base is None :
+    file_base = os.path.join(os.path.dirname(mtz_file), "refine")
+  output_arrays = extract_phenix_refine_map_coeffs(mtz_file)
+  output_files = []
+  for (map_coeffs, map_name) in output_arrays :
+    file_name = "%s_%s.ccp4" % (file_base, map_name)
+    if (not os.path.exists(file_name) or
+        os.path.getmtime(file_name) < os.path.getmtime(mtz_file)) :
+      fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
+      fft_map.apply_sigma_scaling()
+      fft_map.as_ccp4_map(file_name=file_name)
+      output_files.append(file_name)
+  return output_files
+
+def ccp4_map_from_mtz (mtz_file, output_file=None, f_label="FP",
+    phi_label="PHIM", fom_label="FOMM", resolution_factor=1/3.0,
+    force=True) :
+  if output_file is None :
+    output_file = os.path.splitext(mtz_file)[0] + ".ccp4"
+  if (force or not os.path.isfile(output_file) or
+      os.path.getmtime(output_file) < os.path.getmtime(mtz_file)) :
+    map_coeffs = map_coeffs_from_mtz_file(mtz_file, f_label, phi_label,
+      fom_label)
+    assert map_coeffs.is_complex_array()
+    fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
+    fft_map.apply_sigma_scaling()
+    fft_map.as_ccp4_map(file_name=output_file)
+  return output_file
+
+def ccp4_map_from_resolve_mtz (mtz_file, force=False, resolution_factor=1/3.0) :
+  return ccp4_map_from_mtz(mtz_file=mtz_file,
+    f_label="FP,SIGFP",
+    phi_label="PHIM",
+    fom_label="FOMM",
+    resolution_factor=resolution_factor,
+    force=force)
+
+def ccp4_map_from_solve_mtz (mtz_file, force=False, resolution_factor=1/3.0) :
+  return ccp4_map_from_mtz(mtz_file=mtz_file,
+    f_label="FP,SIGFP",
+    phi_label="PHIB",
+    fom_label="FOM",
+    resolution_factor=resolution_factor,
+    force=force)
+
+def write_ccp4_map (sites_cart, unit_cell, map_data, n_real, file_name,
+    buffer=10) :
+  if sites_cart is not None :
+    frac_min, frac_max = unit_cell.box_frac_around_sites(
+      sites_cart=sites_cart,
+      buffer=buffer)
+  else :
+    frac_min, frac_max = (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)
+  gridding_first = tuple([ifloor(f*n) for f,n in zip(frac_min,n_real)])
+  gridding_last = tuple([iceil(f*n) for f,n in zip(frac_max,n_real)])
+  space_group = sgtbx.space_group_info("P1").group()
+  iotbx.ccp4_map.write_ccp4_map(
+    file_name=file_name,
+    unit_cell=unit_cell,
+    space_group=space_group,
+    gridding_first=gridding_first,
+    gridding_last=gridding_last,
+    map_data=map_data,
+    labels=flex.std_string(["mmtbx.utils.write_ccp4_map_box"]))
+
+#-----------------------------------------------------------------------
+# LABEL HANDLING
 
 def get_map_coeff_labels (server, build_only=False, include_fom=True,
     keep_array_labels=False) :
