@@ -17,15 +17,16 @@ from libtbx.utils import Sorry
 from scitbx.array_family import flex
 import cPickle
 
-standard_file_types = ["hkl", "map", "pdb", "cif", "phil", "seq", "xml", "pkl",
-                       "txt"]
+standard_file_types = ["hkl", "ccp4_map", "xplor_map", "pdb", "cif", "phil",
+  "seq", "xml", "pkl", "txt"]
 
 standard_file_extensions = {
   'pdb'  : ["pdb", "ent"],
   'hkl'  : ["mtz", "hkl", "sca", "cns", "xplor", "cv", "ref", "fobs"],
   'cif'  : ["cif"],
   'seq'  : ["fa", "faa", "seq", "pir", "dat"],
-  'map'  : ["map", "ccp4"],
+  'xplor_map' : ["xplor", "map"],
+  'ccp4_map'  : ["ccp4", "map"],
   'phil' : ["params", "eff", "def", "phil"],
   'xml'  : ["xml"],
   'pkl'  : ["pickle", "pkl"],
@@ -39,7 +40,8 @@ standard_file_descriptions = {
   'hkl'  : "Reflections",
   'cif'  : "Restraints",
   'seq'  : "Sequence",
-  'map'  : "Map",
+  'xplor_map'  : "XPLOR map",
+  'ccp4_map' : "CCP4 map",
   'phil' : "Parameters",
   'xml'  : "XML",
   'pkl'  : "Python pickle",
@@ -47,7 +49,8 @@ standard_file_descriptions = {
   'mtz'  : "Reflections (MTZ)",
 }
 
-supported_file_types = ["pdb","hkl","cif","pkl","seq","phil", "txt"]
+supported_file_types = ["pdb","hkl","cif","pkl","seq","phil", "txt",
+  "xplor_map", "ccp4_map"]
 
 class FormatError (Sorry) :
   pass
@@ -172,8 +175,17 @@ class any_file_input (object) :
               line.isalpha())
     self.file_type = "seq"
 
-  def try_as_map (self) :
-    raise Sorry("Map input not currently supported.")
+  def try_as_xplor_map (self) :
+    import iotbx.xplor.map
+    map_object = iotbx.xplor.map.reader(file_name=self.file_name)
+    self.file_type = "xplor_map"
+    self.file_object = map_object
+
+  def try_as_ccp4_map (self) :
+    import iotbx.ccp4_map
+    map_object = iotbx.ccp4_map.map_reader(file_name=self.file_name)
+    self.file_type = "ccp4_map"
+    self.file_object = map_object
 
   def try_as_pkl (self) :
     pkl_object = cPickle.load(open(self.file_name, "rb"))
