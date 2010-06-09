@@ -140,7 +140,18 @@ refinement {
   assert params.refinement.main.number_of_macro_cycles == 3
   os.remove("tmp1.pkl")
 
-
+def exercise_maps () :
+  xplor_map = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/misc/cns.map",
+    test=os.path.isfile)
+  if xplor_map is not None :
+    f = any_file(xplor_map)
+    assert f.file_type == "xplor_map"
+  ccp4_map = libtbx.env.under_dist(
+    module_name="iotbx",
+    path="ccp4_map/tst_input.map")
+  f = any_file(ccp4_map)
+  assert f.file_type == "ccp4_map"
 
 def exercise_hkl () :
   #--- HKL
@@ -165,6 +176,7 @@ def exercise_hkl () :
 
 def exercise () :
   exercise_others()
+  exercise_maps()
   if mtz is None :
     print "Skipping mtz file tests"
   else :
