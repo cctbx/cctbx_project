@@ -151,6 +151,10 @@ def gcc_common_warn_options():
   result = ["-Wall", "-Wno-sign-compare", "-Wno-unknown-pragmas"]
   if (env_etc.gcc_version >= 40000):
     result.append("-Winit-self")
+    if (    env_etc.gcc_version >= 40300
+        and env_etc.gcc_version < 40501):
+      # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43949
+      result.append("-Wno-array-bounds")
   return result
 
 def enable_more_warnings(env):
