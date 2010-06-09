@@ -152,15 +152,12 @@ def run (args, log=sys.stdout) :
   #  r_free_array = raw_array.array(data=raw_array.data()==flag_value)
   sites_cart = None
   if pdb_file is not None :
-    if params.output.format == "ccp4" :
-      print "CCP4 format specified - PDB file unnecessary."
-    else :
-      pdb_hierarchy = pdb_file.file_object.construct_hierarchy()
-      sites_cart = pdb_hierarchy.atoms().extract_xyz()
-      if params.selection is not None :
-        selection_cache = pdb_hierarchy.atom_selection_cache()
-        selection = selection_cache.selection(params.selection)
-        sites_cart = sites_cart.select(selection)
+    pdb_hierarchy = pdb_file.file_object.construct_hierarchy()
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    if params.selection is not None :
+      selection_cache = pdb_hierarchy.atom_selection_cache()
+      selection = selection_cache.selection(params.selection)
+      sites_cart = sites_cart.select(selection)
   else :
     print >> log, "No PDB file - will output map(s) in unit cell."
   for i, map_labels in enumerate(params.labels) :
@@ -227,7 +224,16 @@ def run (args, log=sys.stdout) :
         file_name=map_file_name,
         buffer=params.buffer)
     else :
-      map.as_ccp4_map(file_name=map_file_name)
+      if sites_cart is not None :
+        utils.write_ccp4_map(
+          sites_cart=sites_cart,
+          unit_cell=map_coeffs.unit_cell(),
+          map_data=map.real_map(),
+          n_real=map.n_real(),
+          file_name=map_file_name,
+          buffer=params.buffer)
+      else :
+        map.as_ccp4_map(file_name=map_file_name)
     print >> log, "  wrote %s" % map_file_name
   return True
 

@@ -3170,14 +3170,27 @@ class fft_map(maptbx.crystal_gridding):
 
   def as_ccp4_map (self,
                    file_name,
-                   title="cctbx.miller.fft_map") :
+                   gridding_first=None,
+                   gridding_last=None,
+                   labels=["cctbx.miller.fft_map"]) :
     from iotbx import ccp4_map
-    map_data = self.real_map_unpadded()
+    map_data = self.real_map()
+    if gridding_first is None :
+      gridding_first = (0,0,0)
+    if gridding_last is None :
+      gridding_last = tuple(self.n_real())
+    # XXX note that the gridding will include all unit cell edges, thus
+    # duplicating some grid points.  this doesn't cause problems for pymol,
+    # but it does have side effects when writing out a map and reading it back
+    # in - most notably, the mean map value is not consistent.
+    assert (len(labels) <= 10)
     ccp4_map.write_ccp4_map(file_name=file_name,
-      map_data=map_data,
       unit_cell=self.unit_cell(),
       space_group=self.space_group(),
-      title=title)
+      gridding_first=gridding_first,
+      gridding_last=gridding_last,
+      map_data=map_data,
+      labels=flex.std_string(labels))
 
 def patterson_map(crystal_gridding, f_patt, f_000=None,
                   sharpening=False,

@@ -70,6 +70,13 @@ map_params_str ="""\
       .type = str
       .expert_level=0
       .style = bold renderer:draw_map_type_widget
+    format = *xplor ccp4
+      .type = choice
+      .short_caption = File format
+      .style = bold
+    file_name = None
+      .type = path
+      .style = bold new_file
     kicked = False
       .type = bool
       .expert_level=0
@@ -79,23 +86,22 @@ map_params_str ="""\
     grid_resolution_factor = 1/4.
       .type = float
       .expert_level=0
-    region = *selection cell
-      .type = choice
-      .expert_level=1
-      .short_caption=Map region
-    atom_selection = None
-      .type = str
-      .expert_level=1
-      .style = selection
     scale = *sigma volume
       .type = choice(multi=False)
       .expert_level = 1
+    region = *selection cell
+      .type = choice
+      .expert_level=1
+      .caption = Atom_selection Unit_cell
+      .short_caption=Map region (XPLOR maps only)
+    atom_selection = None
+      .type = str
+      .expert_level=1
+      .short_caption = Atom selection (XPLOR maps only)
+      .style = selection
     atom_selection_buffer = 3
       .type = float
       .expert_level=2
-    file_name = None
-      .type = path
-      .style = bold new_file
     acentrics_scale = 2.0
       .type = float
       .help = Scale terms corresponding to acentric reflections (residual maps only: k==n)
@@ -246,11 +252,18 @@ class write_xplor_map_file(object):
       gridding_first = None
       gridding_last = None
       title_lines.append("REMARK map covering the unit cell")
-    fft_map.as_xplor_map(
-      file_name      = self.params.file_name,
-      title_lines    = title_lines,
-      gridding_first = gridding_first,
-      gridding_last  = gridding_last)
+    if params.format == "xplor" :
+      fft_map.as_xplor_map(
+        file_name      = self.params.file_name,
+        title_lines    = title_lines,
+        gridding_first = gridding_first,
+        gridding_last  = gridding_last)
+    else :
+      fft_map.as_ccp4_map(
+        file_name      = self.params.file_name,
+        gridding_first = gridding_first,
+        gridding_last  = gridding_last,
+        labels=title_lines)
 
   def box_around_selection(self, iselection, buffer):
     sites_cart = self.xray_structure.sites_cart()
@@ -313,7 +326,11 @@ def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
           if(len(output_file_name)>0):
             output_file_name = output_file_name + "_"+file_name_base
           else: output_file_name = output_file_name + file_name_base
-        output_file_name = output_file_name + "_" + mp.map_type + "_map.xplor"
+        if mp.format == "xplor" :
+          ext = ".xplor"
+        else :
+          ext = ".ccp4"
+        output_file_name = output_file_name + "_" + mp.map_type + "_map" + ext
         mp.file_name = output_file_name
       write_xplor_map_file(params = mp, coeffs = coeffs,
         atom_selection_manager = atom_selection_manager,
