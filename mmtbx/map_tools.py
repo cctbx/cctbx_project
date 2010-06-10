@@ -1,56 +1,11 @@
-from cctbx import miller
-from cctbx import crystal
-from cctbx import uctbx
-from cctbx import sgtbx
-from cctbx import xray
-from cctbx import eltbx
-from cctbx import maptbx
-import cctbx.xray.structure_factors
 from cctbx.array_family import flex
-from libtbx.utils import Sorry, date_and_time, host_and_user, multi_out
-import iotbx.phil
-from iotbx import reflection_file_reader
-from iotbx import reflection_file_utils
-from iotbx import crystal_symmetry_from_any
-from iotbx.pdb import xray_structure
-from iotbx import pdb
-import libtbx.phil.command_line
-from cStringIO import StringIO
-from scitbx.python_utils import easy_pickle
-from scitbx.math import matrix
 from cctbx import adptbx
 import sys, os, math
-from mmtbx import monomer_library
-import mmtbx.monomer_library.pdb_interpretation
-import mmtbx.monomer_library.server
-import iotbx.phil
-import libtbx.phil.command_line
-from iotbx import reflection_file_reader
-from iotbx import reflection_file_utils
-from iotbx.option_parser import iotbx_option_parser
-from iotbx import crystal_symmetry_from_any
-from iotbx import pdb
-from iotbx.pdb import crystal_symmetry_from_pdb
-from iotbx import mtz
 from cctbx import miller
-from cctbx import crystal
-from cctbx.array_family import flex
-from libtbx.utils import user_plus_sys_time, show_total_time
-from libtbx.str_utils import show_string
-from libtbx.utils import Sorry, date_and_time, host_and_user, multi_out
 from libtbx import adopt_init_args
-import random, sys, os
-from libtbx.test_utils import approx_equal
-from mmtbx.refinement import print_statistics
-import libtbx.load_env
-from mmtbx import max_lik
-from mmtbx.max_lik import maxlik
-from scitbx import fftpack
-from scitbx import matrix
 from cctbx import maptbx
-from mmtbx import masks
 import boost.python
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+import mmtbx
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -78,8 +33,8 @@ class kick_map(object):
                                          update_f_mask  = True,
                                          force_update_f_mask = True)
         self.map_coeffs = fmodel_tmp.electron_density_map().map_coefficients(
-          map_type         = map_type,
-          alpha_fom_source = map_helper_obj)
+          map_type = map_type,
+          external_alpha_fom_source = map_helper_obj)
         if(map_coeff_data is None):
           map_coeff_data = self.map_coeffs.data()
         else:
@@ -140,10 +95,11 @@ class electron_density_map(object):
                fill_missing_f_obs = False,
                filled_f_obs_file_name = None,
                fill_mode = None,
-               reverse_scale = True):
+               map_calculation_helper = None):
     self.fmodel = fmodel.deep_copy()
     self.fill_missing_f_obs = fill_missing_f_obs
     self.anom_diff = None
+    self.mch = map_calculation_helper
     if(self.fmodel.f_obs.anomalous_flag()):
       self.anom_diff = self.fmodel.f_obs.anomalous_differences()
       f_model = self.fmodel.f_model().as_non_anomalous_array().\
@@ -157,12 +113,13 @@ class electron_density_map(object):
       self.fmodel = self.fmodel.fill_missing_f_obs(fill_mode = fill_mode)
       if 0: # XXX make it an option
         self.fmodel.export_filled_f_obs(file_name = filled_f_obs_file_name)
-    self.map_helper_obj = self.fmodel.map_calculation_helper(
-      reverse_scale = reverse_scale)
     #del self.fmodel # XXX
 
-  def map_coefficients(self, map_type, alpha_fom_source = None,
-                       acentrics_scale = 2.0, centrics_pre_scale = 1.0):
+  def map_coefficients(self,
+                       map_type,
+                       acentrics_scale = 2.0,
+                       centrics_pre_scale = 1.0,
+                       external_alpha_fom_source = None):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
     if(map_name_manager.anomalous):
       if(self.anom_diff is not None):
@@ -198,29 +155,30 @@ class electron_density_map(object):
       fc_scale *= map_name_manager.n
     if(not map_name_manager.ml_map):
        return self._map_coeff(
-         f_obs         = self.map_helper_obj.f_obs_scaled,
-         f_model       = self.map_helper_obj.f_model_scaled,
+         f_obs         = self.fmodel.f_obs,
+         f_model       = self.fmodel.f_model_scaled_with_k1(),
          f_obs_scale   = fo_scale,
          f_model_scale = fc_scale)
     if(map_name_manager.ml_map):
-      if(alpha_fom_source is not None):
-        alpha = alpha_fom_source.alpha.data()
-        fom = alpha_fom_source.alpha.data()
-      else:
-        alpha = self.map_helper_obj.alpha.data()
-        fom = self.map_helper_obj.alpha.data()
+      if(self.mch is None):
+        self.mch = self.fmodel.map_calculation_helper()
+      alpha = self.mch.alpha
+      fom = self.mch.fom
+      if(external_alpha_fom_source is not None):
+        alpha = external_alpha_fom_source.alpha
+        fom = external_alpha_fom_source.fom
       if(self.fmodel.abcd is None):
         return self._map_coeff(
-          f_obs         = self.map_helper_obj.f_obs_scaled,
-          f_model       = self.map_helper_obj.f_model_scaled,
+          f_obs         = self.mch.f_obs,
+          f_model       = self.mch.f_model,
           f_obs_scale   = fo_scale*fom,
-          f_model_scale = fc_scale*alpha)
+          f_model_scale = fc_scale*alpha.data())
       else:
-        comb_p = self.fmodel.combine_phases()
-        fo_all_scales = self.map_helper_obj.f_obs_scaled.data()*fo_scale*\
+        comb_p = self.fmodel.combine_phases(map_calculation_helper=self.mch)
+        fo_all_scales = self.mch.f_obs.data()*fo_scale*\
           comb_p.f_obs_phase_and_fom_source()
-        fc_all_scales = self.map_helper_obj.f_model_scaled.data()*\
-          fc_scale*alpha
+        fc_all_scales = self.mch.f_model.data()*\
+          fc_scale*alpha.data()
         return miller.array(
           miller_set = self.fmodel.f_calc(),
           data       = fo_all_scales + fc_all_scales)
@@ -249,7 +207,6 @@ class electron_density_map(object):
               map_coefficients = None,
               other_fft_map = None,
               map_type = None,
-              alpha_fom_source = None,
               force_anomalous_flag_false = None,
               acentrics_scale = 2.0,
               centrics_pre_scale = 1.0,
@@ -258,8 +215,7 @@ class electron_density_map(object):
       map_coefficients = self.map_coefficients(
         map_type           = map_type,
         acentrics_scale    = acentrics_scale,
-        centrics_pre_scale = centrics_pre_scale,
-        alpha_fom_source   = alpha_fom_source)
+        centrics_pre_scale = centrics_pre_scale)
       if(force_anomalous_flag_false):
         map_coefficients = map_coefficients.average_bijvoet_mates()
     if(force_anomalous_flag_false):

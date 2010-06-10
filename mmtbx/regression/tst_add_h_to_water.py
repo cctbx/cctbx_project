@@ -216,29 +216,29 @@ expected_result2 = """\
 
 Number of peaks found at mFobs-DFmodel map (map cutoff=6.50 sigma)= 9
 Filter by distance & map next to the model:
-   mapped sites are within: 0.966 - 0.992
-   number of sites selected in [dist_min= 0.70, dist_max= 1.05]: 9 from: 9
-   mapped sites are within: 0.966 - 0.992
+mapped sites are within: 0.980 - 1.009
+number of sites selected in [dist_min= 0.70, dist_max= 1.05]: 9 from: 9
+mapped sites are within: 0.980 - 1.009
 
-peak=   23.062 closest distance to pdb=" O   HOH     1 " =    0.975
-peak=   20.824 closest distance to pdb=" O   HOH     1 " =    0.968
-peak=   22.513 closest distance to pdb=" O   HOH     2 " =    0.982
-peak=   21.113 closest distance to pdb=" O   HOH     2 " =    0.982
-peak=   22.054 closest distance to pdb=" O   HOH     3 " =    0.977
-peak=   21.160 closest distance to pdb=" O   HOH     3 " =    0.966
-peak=   21.209 closest distance to pdb=" O   HOH     4 " =    0.984
-peak=   21.996 closest distance to pdb=" O   HOH     5 " =    0.975
-peak=   20.476 closest distance to pdb=" O   HOH     6 " =    0.992
+peak=   23.135 closest distance to pdb=" O   HOH     1 " =    0.990
+peak=   20.851 closest distance to pdb=" O   HOH     1 " =    0.981
+peak=   22.681 closest distance to pdb=" O   HOH     2 " =    0.999
+peak=   21.340 closest distance to pdb=" O   HOH     2 " =    0.997
+peak=   22.116 closest distance to pdb=" O   HOH     3 " =    0.990
+peak=   21.072 closest distance to pdb=" O   HOH     3 " =    0.980
+peak=   21.269 closest distance to pdb=" O   HOH     4 " =    0.999
+peak=   22.049 closest distance to pdb=" O   HOH     5 " =    0.988
+peak=   20.580 closest distance to pdb=" O   HOH     6 " =    1.009
 
-                  ----------6D rigid body fit of HOH----------
+----------6D rigid body fit of HOH----------
 
 Fit quality:
- 0.029
- 0.032
- 0.024
- 0.006
- 0.005
- 0.011
+0.028
+0.041
+0.022
+0.019
+0.008
+0.028
 """
 
 def exercise_02():

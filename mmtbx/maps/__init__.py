@@ -45,9 +45,6 @@ map_coeff_params_str = """\
       .help = Centric reflections, k!=n and k*n != 0: \
               max(k-centrics_pre_scale,0)*Fo-max(n-centrics_pre_scale,0)*Fc
       .expert_level = 2
-    reverse_scale = True
-      .type = bool
-      .help = Apply scales to Fobs and remove them from Fmodel.
     sharpening = False
       .type = bool
       .help = Apply B-factor sharpening
@@ -109,9 +106,6 @@ map_params_str ="""\
       .type = float
       .help = Centric reflections, k!=n and k*n != 0: \
               max(k-centrics_pre_scale,0)*Fo-max(n-centrics_pre_scale,0)*Fc
-    reverse_scale = True
-      .type = bool
-      .help = Apply scales to Fobs and remove them from Fmodel.
     sharpening = False
       .type = bool
       .help = Apply B-factor sharpening
@@ -288,8 +282,7 @@ class write_xplor_map_file(object):
 def map_coefficients_from_fmodel(fmodel, params):
   e_map_obj = fmodel.electron_density_map(
     fill_missing_f_obs = params.fill_missing_f_obs,
-    fill_mode          = "dfmodel",
-    reverse_scale      = params.reverse_scale)
+    fill_mode          = "dfmodel")
   if(not params.kicked):
     coeffs = e_map_obj.map_coefficients(
       map_type           = params.map_type,
@@ -349,6 +342,11 @@ class compute_map_coefficients(object):
     self.map_coeffs = []
     for mcp in params:
       if(mcp.map_type is not None):
+        # XXX
+        if(fmodel.__class__.__name__ == "twin_model_manager" and
+            mcp.map_type == "anomalous"):
+          continue
+        # XXX
         coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mcp)
         if("mtz" in mcp.format and coeffs is not None):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
@@ -362,8 +360,6 @@ class compute_map_coefficients(object):
               column_root_label = lbl_mgr.amplitudes(),
               label_decorator   = lbl_mgr)
           self.map_coeffs.append(coeffs)
-        if("phs" in mcp.format):
-          raise RuntimeError("Not implemented") # XXX add later
 
   def write_mtz_file(self, file_name, mtz_history_buffer = None):
     if(self.mtz_dataset is not None):
