@@ -59,7 +59,7 @@ map_coeff_params_str = """\
 
 map_params_str ="""\
   map
-    .short_caption = XPLOR map
+    .short_caption = XPLOR or CCP4 map
     .multiple = True
     .style = auto_align
   {
@@ -90,11 +90,11 @@ map_params_str ="""\
       .type = choice
       .expert_level=1
       .caption = Atom_selection Unit_cell
-      .short_caption=Map region (XPLOR maps only)
+      .short_caption=Map region
     atom_selection = None
       .type = str
       .expert_level=1
-      .short_caption = Atom selection (XPLOR maps only)
+      .short_caption = Atom selection
       .style = selection
     atom_selection_buffer = 3
       .type = float
