@@ -1812,75 +1812,89 @@ class manager(manager_mixin):
     else:
       return pher
 
+  def filter_by_fom(self, fom_threshold = 0.2):
+    fom = self.figures_of_merit()
+    sel = fom > fom_threshold
+    self = self.select(sel)
+    return self
+
+  def back_scale_f_obs(self):
+    # XXX EXPERIMENTAL CODE
+    from mmtbx import bulk_solvent
+    m = max(self.b_cart())
+    bc = []
+    for b in self.b_cart(): # XXX need to do using eigen-value filtering
+      if(abs(abs(m)-abs(b))<0.01): bc.append(m)
+      else:bc.append(0)
+    fbc = bulk_solvent.fb_cart(
+       bc,
+       self.f_obs.indices(),
+       self.f_obs.unit_cell())
+    scale = 1./fbc
+    self.f_obs = self.f_obs.customized_copy(data=self.f_obs.data()*scale)
+    self.f_obs_w = self.f_obs.select(self.work)
+    self.f_obs_t = self.f_obs.select(self.test)
+    self.update(b_cart = [0,0,0,0,0,0])
+    self.update_solvent_and_scale(optimize_mask = False)
+
   def map_calculation_helper(self,
                              free_reflections_per_bin = 100,
-                             interpolation = True,
-                             need_alpha_and_fom = True,
-                             reverse_scale = True):
+                             interpolation = True):
     class result(object):
-      def __init__(self, fmodel, free_reflections_per_bin, interpolation,
-                   need_alpha_and_fom, reverse_scale):
-        self.f_obs_scaled = fmodel.f_obs
-        self.f_model_scaled = fmodel.f_model_scaled_with_k1()
-        if(reverse_scale):
-          fb_cart  = fmodel.fb_cart()
-          scale_k1 = fmodel.scale_k1()
-          f_obs_scale   = 1.0 / (fb_cart * scale_k1)
-          f_model_scale = 1.0 / fb_cart # XXX scale_k1 ?
-          f_obs_data_scaled = fmodel.f_obs.data() * f_obs_scale
-          f_model_data_scaled = fmodel.f_model().data() * f_model_scale
-          self.f_obs_scaled = fmodel.f_obs.array(data = f_obs_data_scaled)
-          self.f_model_scaled = fmodel.f_obs.array(data = f_model_data_scaled)
-        self.alpha, self.beta, self.fom = None, None, None
-        if(need_alpha_and_fom):
-          self.alpha, self.beta = maxlik.alpha_beta_est_manager(
-            f_obs                    = self.f_obs_scaled,
-            f_calc                   = self.f_model_scaled,
-            free_reflections_per_bin = free_reflections_per_bin,
-            flags                    = fmodel.r_free_flags.data(),
-            interpolation            = interpolation).alpha_beta()
-          self.fom = max_lik.fom_and_phase_error(
-            f_obs          = self.f_obs_scaled.data(),
-            f_model        = flex.abs(self.f_model_scaled.data()),
-            alpha          = self.alpha.data(),
-            beta           = self.beta.data(),
-            space_group    = fmodel.r_free_flags.space_group(),
-            miller_indices = fmodel.r_free_flags.indices()).fom()
+      def __init__(self, fmodel, free_reflections_per_bin, interpolation):
+        self.f_obs = fmodel.f_obs
+        self.f_model = fmodel.f_model_scaled_with_k1()
+        self.alpha, self.beta = maxlik.alpha_beta_est_manager(
+          f_obs                    = self.f_obs,
+          f_calc                   = self.f_model,
+          free_reflections_per_bin = free_reflections_per_bin,
+          flags                    = fmodel.r_free_flags.data(),
+          interpolation            = interpolation).alpha_beta()
+        self.fom = max_lik.fom_and_phase_error(
+          f_obs          = self.f_obs.data(),
+          f_model        = flex.abs(self.f_model.data()),
+          alpha          = self.alpha.data(),
+          beta           = self.beta.data(),
+          space_group    = fmodel.r_free_flags.space_group(),
+          miller_indices = fmodel.r_free_flags.indices()).fom()
     return result(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
-      interpolation            = interpolation,
-      need_alpha_and_fom       = need_alpha_and_fom,
-      reverse_scale            = reverse_scale)
+      interpolation            = interpolation)
 
-  def f_model_phases_as_hl_coefficients(self):
-    mch = self.map_calculation_helper()
-    f_model_phases = self.f_model().phases().data()
+  def f_model_phases_as_hl_coefficients(self, map_calculation_helper):
+    if(map_calculation_helper is not None):
+      mch = map_calculation_helper
+    else:
+      mch = self.map_calculation_helper()
+    f_model_phases = mch.f_model.phases().data()
     sin_f_model_phases = flex.sin(f_model_phases)
     cos_f_model_phases = flex.cos(f_model_phases)
     t = maxlik.fo_fc_alpha_over_eps_beta(
-      f_obs   = mch.f_obs_scaled,
-      f_model = mch.f_model_scaled,
+      f_obs   = mch.f_obs,
+      f_model = mch.f_model,
       alpha   = mch.alpha,
       beta    = mch.beta)
     hl_a_model = t * cos_f_model_phases
     hl_b_model = t * sin_f_model_phases
     return flex.hendrickson_lattman(a = hl_a_model, b = hl_b_model)
 
-  def combined_hl_coefficients(self):
+  def combined_hl_coefficients(self, map_calculation_helper):
     result = None
     if(self.abcd is not None):
-      result = self.abcd.data() + self.f_model_phases_as_hl_coefficients()
+      result = self.abcd.data() + self.f_model_phases_as_hl_coefficients(
+        map_calculation_helper)
     return result
 
-  def combine_phases(self, n_steps = 360):
+  def combine_phases(self, n_steps = 360, map_calculation_helper=None):
     result = None
     if(self.abcd is not None):
       integrator = miller.phase_integrator(n_steps = n_steps)
       phase_source = integrator(
         space_group= self.f_obs.space_group(),
         miller_indices = self.f_obs.indices(),
-        hendrickson_lattman_coefficients = self.combined_hl_coefficients())
+        hendrickson_lattman_coefficients =
+          self.combined_hl_coefficients(map_calculation_helper))
       class tmp:
         def __init__(self, phase_source):
           self.phase_source = phase_source
@@ -1902,8 +1916,7 @@ class manager(manager_mixin):
       fmodel                 = self,
       fill_missing_f_obs     = fill_missing_f_obs,
       filled_f_obs_file_name = filled_f_obs_file_name,
-      fill_mode              = fill_mode,
-      reverse_scale          = reverse_scale)
+      fill_mode              = fill_mode)
 
   def info(self, free_reflections_per_bin = None, max_number_of_bins = None):
     if(free_reflections_per_bin is None):
