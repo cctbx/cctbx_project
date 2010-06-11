@@ -266,22 +266,6 @@ def run(args, log = sys.stdout):
   print >> log, "\nInput PDB file(s):", " ".join(processed_args.pdb_file_names)
   pdb_inp = iotbx.pdb.input(source_info = None,
     lines = flex.std_string(pdb_combined.raw_records))
-  cryst1 = pdb_inp.crystal_symmetry_from_cryst1()
-  if(cryst1 is None):
-    raise Sorry("CRYST1 record in input PDB file is incomplete or missing.")
-  else:
-    if([cryst1.unit_cell(), cryst1.space_group_info()].count(None) != 0):
-      raise Sorry("CRYST1 record in input PDB file is incomplete or missing.")
-  xray_structure = pdb_inp.xray_structure_simple()
-  xray_structure.show_summary(f = log, prefix="  ")
-  if(len(params.anomalous_scatterers.group) != 0):
-    pdb_hierarchy = pdb_inp.construct_hierarchy()
-    pdb_atoms = pdb_hierarchy.atoms()
-    pdb_atoms.reset_i_seq()
-    set_fp_fdp_for_anomalous_scatterers(
-      pdb_hierarchy              = pdb_hierarchy,
-      xray_structure             = xray_structure,
-      anomalous_scatterer_groups = params.anomalous_scatterers.group)
   #
   miller_array = None
   if(len(processed_args.reflection_files) > 1):
@@ -295,7 +279,7 @@ def run(args, log = sys.stdout):
                   "if reflection data file is given.")
     miller_arrays = processed_args.reflection_files[0].as_miller_arrays()
     data_sizes = flex.int([ma.data().size() for ma in miller_arrays])
-    if(data_sizes.all_eq(data_sizes[0])): ma = miller_arrays[0]
+    if(data_sizes.all_eq(data_sizes[0])): miller_array = miller_arrays[0]
     else:
       all_labels = []
       for ma in miller_arrays:
@@ -309,6 +293,25 @@ def run(args, log = sys.stdout):
         "\n".join(all_labels),"Please select one using 'data_column_label=' keyword."))
     else:
       miller_array.show_comprehensive_summary(f = log, prefix="  ")
+  #
+  cryst1 = pdb_inp.crystal_symmetry_from_cryst1()
+  if(cryst1 is None and miller_array is not None):
+    cryst1 = miller_array.crystal_symmetry()
+  if(cryst1 is None):
+    raise Sorry("CRYST1 record in input PDB file is incomplete or missing.")
+  else:
+    if([cryst1.unit_cell(), cryst1.space_group_info()].count(None) != 0):
+      raise Sorry("CRYST1 record in input PDB file is incomplete or missing.")
+  xray_structure = pdb_inp.xray_structure_simple(crystal_symmetry = cryst1)
+  xray_structure.show_summary(f = log, prefix="  ")
+  if(len(params.anomalous_scatterers.group) != 0):
+    pdb_hierarchy = pdb_inp.construct_hierarchy()
+    pdb_atoms = pdb_hierarchy.atoms()
+    pdb_atoms.reset_i_seq()
+    set_fp_fdp_for_anomalous_scatterers(
+      pdb_hierarchy              = pdb_hierarchy,
+      xray_structure             = xray_structure,
+      anomalous_scatterer_groups = params.anomalous_scatterers.group)
   #
   print >> log, "-"*79
   print >> log, "Computing model structure factors, Fmodel:"
