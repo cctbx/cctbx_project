@@ -60,7 +60,7 @@ class cif(DictMixin):
     self.show(out=s)
     return s.getvalue()
 
-  def validate(self, dictionary, out=None, error_handler=None):
+  def validate(self, dictionary, show_warnings=True, error_handler=None, out=None):
     if out is None: out = sys.stdout
     from iotbx.cif import validation
     errors = {}
@@ -72,7 +72,7 @@ class cif(DictMixin):
       block.validate(dictionary)
       errors.setdefault(key, error_handler)
       if error_handler.error_count or error_handler.warning_count:
-        error_handler.show(out=out)
+        error_handler.show(show_warnings=show_warnings, out=out)
 
 
 class block_base(DictMixin):

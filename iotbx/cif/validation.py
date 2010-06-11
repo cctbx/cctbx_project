@@ -1,4 +1,5 @@
 from iotbx.cif import builders, model, errors
+import re
 import sys
 
 
@@ -35,12 +36,17 @@ class ErrorHandler:
     else:
       self.errors.setdefault(e.code, [e])
 
-  def show(self, out=None):
+  def show(self, show_warnings=True, out=None):
     if out is None:
       out = sys.stdout
-    for code, errors in self.errors.iteritems():
+    codes = self.errors.keys()
+    errors = self.errors.values()
+    if show_warnings:
+      codes.extend(self.warnings.keys())
+      errors.extend(self.warnings.values())
+    for code, errs in zip(codes, errors):
       printed_messages = set()
-      for e in errors:
+      for e in errs:
         if str(e) not in printed_messages: # avoid printing duplicates
           printed_messages.add(str(e))
           print >> out, e
@@ -60,13 +66,33 @@ class dictionary(model.cif):
 
   def __init__(self, other):
     model.cif.__init__(self, other.blocks)
+    self.item_type_list = {}
+    self.child_parent_relations = {}
+    self.look_up_table = {} # cached definitions for each data name
     if self.has_key('on_this_dictionary'):
       self.DDL_version = 1
+      for key, value in self.blocks.iteritems():
+        self[key] = DDL1_definition(value)
       on_this_dict = self['on_this_dictionary']
       self.name = on_this_dict['_dictionary_name']
       self.version = on_this_dict['_dictionary_version']
     else:
-      raise NotImplementedError("Only DDL1 is currently supported")
+      self.DDL_version = 2
+      master_block = self.values()[0]
+      self.name = master_block['_dictionary.title']
+      self.version = master_block['_dictionary.version']
+      type_codes = master_block.get('_item_type_list.code')
+      type_constructs = master_block.get('_item_type_list.construct')
+      for code, construct in zip(type_codes, type_constructs):
+        self.item_type_list.setdefault(code, re.compile(construct))
+      for key, save in master_block.saves.iteritems():
+        master_block[key] = DDL2_definition(save)
+        children = save.get('_item_linked.child_name')
+        parents = save.get('_item_linked.parent_name')
+        if parents is not None and children is not None:
+          if not isinstance(parents, basestring):
+            for child, parent in zip(children, parents):
+              self.child_parent_relations.setdefault(child, parent)
     self.err = ErrorHandler()
     language = "en"
     self.errors = errors.error_dicts[language]
@@ -81,54 +107,72 @@ class dictionary(model.cif):
     elif number < 3000:
       self.err.error(ValidationError(number, message, **kwds))
 
-  def find_data_block(self, key):
+  def find_definition(self, key):
     """Returns the name of the data block containing the definition for the
        given key.  Raises a KeyError if item not found."""
-
-    key_ = key.lstrip("_")
-    data = self.get(key_) # try simplest first
-    # then try shortening key
-    while data is None:
-      new_key = key_[:key_.rfind("_", 0, -1)+1]
-      if new_key == key_: break
-      data = self.get(new_key)
-      if data is not None and key not in data['_name']:
-        data = None
-      key_ = new_key
-    if data is not None:
-      return key_
-    # otherwise we have to check every block in turn
+    if self.DDL_version == 1:
+      if key in self.look_up_table:
+        return self.look_up_table[key]
+      key_ = key.lstrip("_")
+      data = self.get(key_) # try simplest first
+      # then try shortening key
+      while data is None:
+        new_key = key_[:key_.rfind("_", 0, -1)+1]
+        if new_key == key_: break
+        data = self.get(new_key)
+        if data is not None and key not in data['_name']:
+          data = None
+        key_ = new_key
+      if data is not None:
+        self.look_up_table.setdefault(key, key_)
+        return key_
+      # otherwise we have to check every block in turn
+      else:
+        for k, v in self.iteritems():
+          if k == 'on_this_dictionary': continue
+          elif key in v['_name']:
+            self.look_up_table.setdefault(key, key_)
+            return k
+        self.report_error(1001, key=key) # item not in dictionary
+        raise KeyError
     else:
-      for k, v in self.iteritems():
-        if k == 'on_this_dictionary': continue
-        elif key in v['_name']:
-          return k
-      self.report_error(1001, key=key) # item not in dictionary
-      raise KeyError
+      return key
+
+  def get_definition(self, key):
+    if self.DDL_version == 1:
+      return self[self.find_definition(key)]
+    elif self.DDL_version == 2:
+      return self.values()[0][self.find_definition(key)]
 
   def validate_single_item(self, key, value, block):
     try:
-      data = self[self.find_data_block(key)]
+      definition = self.get_definition(key)
     except KeyError: return
-    self.validate_type(key, value, data)
-    self.validate_enumeration(key, value, data)
-    self.validate_related(key, block, data)
-    _list = data.get("_list")
+    self.validate_type(key, value, definition)
+    self.validate_enumeration(key, value, definition)
+    self.validate_related(key, block, definition)
+    self.validate_dependent(key, block, definition)
+    _list = definition.get("_list")
     if _list == 'yes':
       self.report_error(2506, key=key) # must be in looped list
 
-  def validate_type(self, key, value, data):
+  def validate_type(self, key, value, definition):
     if value in ('?', '.'): return
-    data_type = data['_type']
-    if data_type == 'numb':
+    item_type = definition.type
+    if item_type in self.item_type_list:
+      match = re.match(self.item_type_list[item_type], value)
+      if match is None:
+        self.report_error(2001, key=key, value=value, item_type=item_type)
+    elif item_type == 'numb':
+      # only for DDL1
       try:
         builders.float_from_string(value)
       except Exception, e:
         # can't interpret as numb
-        self.report_error(2001, key=key, value=value, data_type=data_type)
+        self.report_error(2001, key=key, value=value, item_type=definition.type)
       else:
         # check any type conditions
-        type_condition = data.get('_type_conditions')
+        type_condition = definition.type_conditions
         if type_condition not in ('esd', 'su'):
           try:
             float(value)
@@ -137,62 +181,93 @@ class dictionary(model.cif):
             # that the value is given with an esd, which causes it to be invalid.
             self.report_error(2002, key=key)
 
-  def validate_enumeration(self, key, value, data):
+  def validate_dependent(self, key, block, definition):
+    dependents = definition.dependent
+    if dependents is None: return
+    elif isinstance(dependents, basestring):
+      dependents = [dependents]
+    for dependent in dependents:
+      if dependent not in block:
+        self.report_error(2301, dependent=dependent, key=key)
+
+  def validate_enumeration(self, key, value, definition):
     if isinstance(value, basestring):
       values = [value]
     else:
       values = value
-    enum_values = data.get("_enumeration")
-    enum_range = data.get("_enumeration_range")
-    if enum_values is None and enum_range is None: return # nothing to check
+    enum_values = definition.enumeration
+    enum_min, enum_max = definition.get_min_max()
+    if enum_values is None and enum_max is None and enum_min is None:
+      return # nothing to check
     for value in values:
       if value in ('.', '?'): continue
-      if enum_values is not None and value not in enum_values:
-        # invalid choice for enumeration
-        self.report_error(2102, key=key, value=value, enum=tuple(enum_values))
-      if enum_range is not None:
-        type_is_numb = data['_type'] == 'numb'
-        enum_min, enum_max = enum_range.split(':')
+      elif enum_values is not None and value not in enum_values:
+        enum_lower = [v.lower() for v in enum_values]
+        if value.lower() in enum_lower:
+          self.report_error(1002, key=key, value=value) # case senstive match failure
+        else:
+          # invalid choice for enumeration
+          self.report_error(2102, key=key, value=value, enum=tuple(enum_values))
+      if definition.type in ('numb', 'float', 'int'):
         try:
-          if enum_min != '': enum_min = builders.float_from_string(enum_min)
-          if enum_max != '': enum_max = builders.float_from_string(enum_max)
-        except ValueError:
-          pass
-        if data['_type'] == 'numb':
-          try:
-            value = builders.float_from_string(value)
-          except: return # this error is handled with elsewhere
-        if ((enum_min != '' and value < enum_min) or
-            (enum_max != '' and value > enum_max)):
-          # value outside range
-          self.report_error(2101, key=key, value=value, enum=enum_range)
+          v = builders.float_from_string(value)
+        except: return # this error is handled with elsewhere
+        # DDL1 range is inclusive, DDL2 is exclusive
+        if self.DDL_version == 1:
+          if not ((enum_min is None or v >= float(enum_min)) and
+                  (enum_max is None or v <= float(enum_max))):
+            self.report_error(
+              2101, key=key, value=value, enum="%s:%s" %(enum_min, enum_max))
+        else:
+          for min, max in zip(enum_min, enum_max):
+            if ((min == '.' or v > float(min)) and
+                (max == '.' or v < float(max))):
+              return # at least one condition was met, so value is inside range
+            elif (min == max and v == float(min)):
+              return # matched boundary value
+          # else value out of range
+          self.report_error(2101, key=key, value=value, enum="%s:%s" %(min, max))
 
-  def validate_related(self, key, block, data=None):
-    related_item = data.get("_related_item")
-    related_function = data.get("_related_function")
-    if related_item is not None and related_function is not None:
-      if related_function == 'replace' and block.get(related_item) is not None:
-        self.report_error(2201, key=key, related_item=related_item)
+  def validate_related(self, key, block, definition):
+    related_items = definition.related
+    related_functions = definition.related_function
+    if related_items is not None and related_functions is not None:
+      if (isinstance(related_items, basestring) and
+          isinstance(related_functions, basestring)):
+        related_items = [related_items]
+        related_functions = [related_functions]
+      for related_item, related_function in zip(related_items, related_functions):
+        if related_function == 'replace' and block.get(related_item) is not None:
+          self.report_error(2201, key=key, related_item=related_item)
+        elif (related_function == 'alternate_exclusive' and
+              related_item in block):
+          self.report_error(2201, key=key, related_item=related_item)
+        elif related_function == 'replacedby': # obsolete definition warning
+          self.report_error(1003, key=key, related_item=related_item)
+        elif (related_function == 'associated_value' and
+              related_item not in block): # missing associated value
+          self.report_error(2202, key=key, related_item=related_item)
 
   def validate_loop(self, loop, block):
     list_category = None
     for key, value in loop.iteritems():
       try:
-        data = self[self.find_data_block(key)]
+        definition = self.get_definition(key)
       except KeyError: continue
-      self.validate_enumeration(key, value, data)
-      _list = data.get("_list")
-      if _list in ('no', None):
+      self.validate_enumeration(key, value, definition)
+      self.validate_dependent(key, block, definition)
+      _list = definition.get("_list")
+      if self.DDL_version == 1 and _list in ('no', None):
         self.report_error(2501, key=key) # not allowed in list
       if list_category is None:
-        list_category = data.get('_category')
-      elif list_category != data.get('_category'):
+        list_category = definition.category
+      elif list_category != definition.category:
         self.report_error(2502) # multiple categories in loop
-      mandatory = data.get('_list_mandatory') == 'yes'
+      mandatory = definition.mandatory == 'yes'
       if mandatory: list_reference = key
-      reference = data.get('_list_reference')
+      reference = definition.get('_list_reference')
       if reference is not None:
-        ref_data = self[self.find_data_block(reference)]
+        ref_data = self.get_definition(reference)
         ref_names = ref_data['_name']
         if isinstance(ref_names, basestring):
           ref_names = [ref_names]
@@ -200,7 +275,8 @@ class dictionary(model.cif):
           if name not in loop:
             self.report_error(2505, key=key, reference=name) # missing _list_reference
       #
-      link_parent = data.get('_list_link_parent')
+      link_parent = definition.get(
+        '_list_link_parent', self.child_parent_relations.get(key))
       if link_parent is not None:
         parent_values = block.get(link_parent)
         if parent_values is not None:
@@ -210,3 +286,99 @@ class dictionary(model.cif):
               self.report_error(2503, value=v, child=key, parent=link_parent)
         else:
           self.report_error(2504, child=key, parent=link_parent) # missing parent
+
+class definition_base:
+
+  def name(self):
+    return self.get(self.aliases['name'])
+
+  def type(self):
+    return self.get(self.aliases['type'])
+
+  def type_conditions(self):
+    return self.get(self.aliases['type_conditions'])
+
+  def category(self):
+    return self.get(self.aliases['category'])
+
+  def mandatory(self):
+    return self.get(self.aliases['mandatory'])
+
+  def enumeration(self):
+    return self.get(self.aliases['enumeration'])
+
+  def dependent(self):
+    return self.get(self.aliases['dependent'])
+
+  def related(self):
+    return self.get(self.aliases['related'])
+
+  def related_function(self):
+    return self.get(self.aliases['related_function'])
+
+  name = property(name)
+  type = property(type)
+  type_conditions = property(type_conditions)
+  category = property(category)
+  mandatory = property(mandatory)
+  enumeration = property(enumeration)
+  dependent = property(dependent)
+  related = property(related)
+  related_function = property(related_function)
+
+class DDL1_definition(model.block, definition_base):
+
+  aliases = {
+  'name': '_name',
+  'type': '_type',
+  'type_conditions': '_type_conditions',
+  'category': '_category',
+  'mandatory': '_list_mandatory',
+  'enumeration': '_enumeration',
+  'related': '_related_item',
+  'related_function': '_related_function',
+  }
+
+  def __init__(self, other):
+    self._items = other._items
+    self.loops = other.loops
+    self.saves = other.saves
+    self._set = other._set
+    self.keys_lower = other.keys_lower
+
+  def dependent(self):
+    return None
+  dependent = property(dependent)
+
+  def get_min_max(self):
+    enum_range = self.get('_enumeration_range')
+    if enum_range is not None:
+      enum_min, enum_max = enum_range.split(':')
+      if enum_min == '': enum_min = None
+      if enum_max == '': enum_max = None
+      return (enum_min, enum_max)
+    else:
+      return (None, None)
+
+class DDL2_definition(model.save, definition_base):
+
+  aliases = {
+  'name': '_item.name',
+  'type': '_item_type.code',
+  'type_conditions': '_item_type_conditions.code',
+  'category': '_category.id',
+  'mandatory': '_item.mandatory_code',
+  'enumeration': '_item_enumeration.value',
+  'dependent': '_item_dependent.dependent_name',
+  'related': '_item_related.related_name',
+  'related_function': '_item_related.function_code',
+  }
+
+  def __init__(self, other):
+    self._items = other._items
+    self.loops = other.loops
+    self._set = other._set
+    self.keys_lower = other.keys_lower
+
+  def get_min_max(self):
+    return (self.get('_item_range.minimum'), self.get('_item_range.maximum'))

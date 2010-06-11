@@ -35,11 +35,8 @@ def exercise_validation():
   cm_valid.validate(cd, out=s)
   assert len(cd.err.errors.keys()) == 0
   assert len(cd.err.warnings.keys()) == 0
-  try:
-    cd2 = dictionary(cif.fast_reader(file_object=urlopen(
-      cif_mm_dic_url)).model())
-  except NotImplementedError: pass
-  else: raise Exception_expected
+  cd2 = dictionary(cif.fast_reader(file_object=urlopen(
+    cif_mm_dic_url)).model())
 
 
 cif_invalid = """data_1
@@ -52,20 +49,17 @@ _diffrn_radiation_probe rubbish            # error 2102
 loop_
 _cell_length_a 10 10                       # error 2501
 
-# error 2504
 loop_
 _atom_site_label
-_atom_site_chemical_conn_number
+_atom_site_chemical_conn_number            # error 2504
 O1 1
 
-# error 2503
-loop_
+loop_                                      # error 2503
 _atom_site_aniso_label
 N1
 N2
 
-# error 2505
-loop_
+loop_                                      # error 2505
 _space_group_symop_operation_xyz
 x,y,z
 -x,-y,-z
