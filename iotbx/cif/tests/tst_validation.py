@@ -28,7 +28,7 @@ def exercise_validation():
   cm_invalid.validate(cd, out=s)
   assert sorted(cd.err.errors.keys()) == [
     2001, 2002, 2101, 2102, 2501, 2503, 2504, 2505, 2506]
-  assert sorted(cd.err.warnings.keys()) == [1001]
+  assert sorted(cd.err.warnings.keys()) == [1001, 1002, 1003]
   cm_valid = cif.fast_reader(input_string=cif_valid).model()
   cd.err.reset()
   s = StringIO()
@@ -37,7 +37,13 @@ def exercise_validation():
   assert len(cd.err.warnings.keys()) == 0
   cd2 = dictionary(cif.fast_reader(file_object=urlopen(
     cif_mm_dic_url)).model())
-
+  cm_invalid_2 = cif.fast_reader(input_string=cif_invalid_2).model()
+  s = StringIO()
+  cm_invalid_2.validate(cd2, out=s)
+  assert sorted(cd2.err.errors.keys()) == [
+    2001, 2101, 2102, 2201, 2202, 2203, 2301, 2503, 2504]
+  assert cd2.err.error_count == 12
+  assert sorted(cd2.err.warnings.keys()) == [1001, 1002]
 
 cif_invalid = """data_1
 _made_up_name a                            # warning 1001
@@ -45,6 +51,7 @@ _space_group_IT_number b                   # error 2001
 _diffrn_reflns_number 2000(1)              # error 2002
 _refine_ls_abs_structure_Flack -0.3        # error 2101
 _diffrn_radiation_probe rubbish            # error 2102
+_symmetry_cell_setting Monoclinic          # warning 1002
 
 loop_
 _cell_length_a 10 10                       # error 2501
@@ -52,7 +59,8 @@ _cell_length_a 10 10                       # error 2501
 loop_
 _atom_site_label
 _atom_site_chemical_conn_number            # error 2504
-O1 1
+_atom_site_refinement_flags                # warning 1003
+O1 1 P
 
 loop_                                      # error 2503
 _atom_site_aniso_label
@@ -73,6 +81,7 @@ _diffrn_reflns_number 2000
 _refine_ls_abs_structure_Flack 0.3
 _diffrn_radiation_probe x-ray
 _cell_length_a 10
+_space_group_crystal_system monoclinic
 
 loop_
 _atom_site_label
@@ -99,6 +108,36 @@ _space_group_symop_id
 _space_group_symop_operation_xyz
 1 x,y,z
 2 -x,-y,-z
+"""
+
+cif_invalid_2 = """data_2
+_made_up.name a                            # warning 1001
+_space_group.IT_number b                   # error 2001
+_diffrn_reflns_number 200.32               # error 2001
+_refine.ls_abs_structure_Flack -0.3        # error 2101
+_diffrn_radiation.probe rubbish            # error 2102
+_symmetry.cell_setting Monoclinic          # warning 1002
+
+loop_
+_cell.length_a 10 10                       # error 2203, 2301
+
+loop_
+_atom_site.id
+_atom_site.chemical_conn_number            # error 2504
+O1 1
+
+loop_                                      # error 2503
+_atom_site_anisotrop.id
+_atom_site_anisotrop.U[1][1]               # error 2301
+_atom_site_anisotrop.B[1][1]               # error 2201
+_atom_site_anisotrop.U[1][2]_esd           # error 2202
+N1 1
+N2 2
+
+loop_                                      # error 2203
+_space_group_symop.operation_xyz
+x,y,z
+-x,-y,-z
 """
 
 if __name__ == "__main__":
