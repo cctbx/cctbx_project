@@ -26,6 +26,7 @@ english = {
   # Related errors
   2201: "Both data item '%(key)s' and exclusive alternate '%(related_item)s' present in data block",
   2202: "Associated value item '%(related_item)s' missing for '%(key)s'",
+  2203: "Mandatory category key item '%(key)s' for category '%(category)s' not present in data block",
 
   # Dependent errors
   2301: "Dependent item '%(dependent)s' not present in data block for '%(key)s'",

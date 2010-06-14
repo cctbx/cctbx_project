@@ -134,9 +134,13 @@ class dictionary(model.cif):
             self.look_up_table.setdefault(key, key_)
             return k
         self.report_error(1001, key=key) # item not in dictionary
-        raise KeyError
+        raise KeyError, key
     else:
-      return key
+      if key not in self.values()[0]:
+        self.report_error(1001, key=key) # item not in dictionary
+        raise KeyError, key
+      else:
+        return key
 
   def get_definition(self, key):
     if self.DDL_version == 1:
@@ -237,8 +241,11 @@ class dictionary(model.cif):
         related_items = [related_items]
         related_functions = [related_functions]
       for related_item, related_function in zip(related_items, related_functions):
-        if related_function == 'replace' and block.get(related_item) is not None:
-          self.report_error(2201, key=key, related_item=related_item)
+        if related_function == 'replace':
+          if block.get(related_item) is not None:
+            self.report_error(2201, key=key, related_item=related_item)
+          else: # obsolete definition warning
+            self.report_error(1003, key=key, related_item=related_item)
         elif (related_function == 'alternate_exclusive' and
               related_item in block):
           self.report_error(2201, key=key, related_item=related_item)
@@ -256,15 +263,16 @@ class dictionary(model.cif):
       except KeyError: continue
       self.validate_enumeration(key, value, definition)
       self.validate_dependent(key, block, definition)
+      self.validate_related(key, block, definition)
       _list = definition.get("_list")
       if self.DDL_version == 1 and _list in ('no', None):
         self.report_error(2501, key=key) # not allowed in list
       if list_category is None:
         list_category = definition.category
-      elif list_category != definition.category:
+      elif (isinstance(list_category, basestring)
+            and list_category != definition.category):
         self.report_error(2502) # multiple categories in loop
       mandatory = definition.mandatory == 'yes'
-      if mandatory: list_reference = key
       reference = definition.get('_list_reference')
       if reference is not None:
         ref_data = self.get_definition(reference)
@@ -274,6 +282,20 @@ class dictionary(model.cif):
         for name in ref_names:
           if name not in loop:
             self.report_error(2505, key=key, reference=name) # missing _list_reference
+      elif (self.DDL_version == 2
+            and isinstance(definition.category, basestring)):
+        category_def = self.get_definition(definition.category)
+        if category_def.category_key is not None:
+          category_keys = category_def.category_key
+          if isinstance(category_keys, basestring):
+            category_keys = [category_keys]
+          for cat_key in category_keys:
+            cat_key_def = self.get_definition(cat_key)
+          if (cat_key_def.mandatory == 'yes'
+              and isinstance(cat_key_def.mandatory, basestring)
+              and cat_key_def.name not in block):
+            self.report_error(
+              2203, key=cat_key_def.name, category=definition.category)
       #
       link_parent = definition.get(
         '_list_link_parent', self.child_parent_relations.get(key))
@@ -301,6 +323,9 @@ class definition_base:
   def category(self):
     return self.get(self.aliases['category'])
 
+  def category_key(self):
+    return self.get(self.aliases['category_key'])
+
   def mandatory(self):
     return self.get(self.aliases['mandatory'])
 
@@ -320,6 +345,7 @@ class definition_base:
   type = property(type)
   type_conditions = property(type_conditions)
   category = property(category)
+  category_key = property(category_key)
   mandatory = property(mandatory)
   enumeration = property(enumeration)
   dependent = property(dependent)
@@ -333,6 +359,7 @@ class DDL1_definition(model.block, definition_base):
   'type': '_type',
   'type_conditions': '_type_conditions',
   'category': '_category',
+  'category_key': 'XXX',
   'mandatory': '_list_mandatory',
   'enumeration': '_enumeration',
   'related': '_related_item',
@@ -366,7 +393,8 @@ class DDL2_definition(model.save, definition_base):
   'name': '_item.name',
   'type': '_item_type.code',
   'type_conditions': '_item_type_conditions.code',
-  'category': '_category.id',
+  'category': '_item.category_id',
+  'category_key': '_category_key.name',
   'mandatory': '_item.mandatory_code',
   'enumeration': '_item_enumeration.value',
   'dependent': '_item_dependent.dependent_name',
