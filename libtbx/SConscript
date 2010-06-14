@@ -404,6 +404,8 @@ else:
     env_etc.ccflags_base.extend(warn_options)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      if (env_etc.gcc_version < 30300):
+        opts.append("-finline-limit=200")
       if (env_etc.gcc_version >= 40300):
         opts.append("-fno-associative-math")
       opts.append("-ftrapping-math")
