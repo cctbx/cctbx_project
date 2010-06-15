@@ -29,6 +29,7 @@ def run():
   "$D/tst_binary_search.py",
   "$D/tst_topological_sort.py",
   "$D/clusterTests.py",
+  "$D/tst_lzw.py",
   )
 
   build_dir = None
