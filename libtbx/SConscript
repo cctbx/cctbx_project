@@ -96,6 +96,18 @@ def patch_scons_env_for_ad_hoc_debug(env, O123_replacement=["-O0", "-g"]):
   env.Replace(CCFLAGS=dbg_ccflags)
 env_etc.patch_scons_env_for_ad_hoc_debug = patch_scons_env_for_ad_hoc_debug
 
+def patch_scons_env(env, key, remove):
+  remaining = []
+  remove_count = 0
+  for v in env[key]:
+    if (v != remove):
+      remaining.append(v)
+    else:
+      remove_count += 1
+  if (remove_count != 0):
+    env.Replace(**{key: remaining})
+env_etc.patch_scons_env = patch_scons_env
+
 compiler = libtbx.env.build_options.compiler
 if (sys.platform == "win32"):
   if (compiler == "default"):
