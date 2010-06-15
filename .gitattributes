@@ -372,6 +372,7 @@ libtbx/dtrace/profile.d -text
 libtbx/easy_profile.py -text
 libtbx/find_reference_cycles.py -text
 libtbx/libtbx_refresh.py -text
+libtbx/lzw.py -text
 libtbx/metric_prefixes.py svneol=native#text/x-python
 libtbx/object_oriented_patterns.py -text
 libtbx/pbs_utils.py svneol=native#text/x-python
@@ -395,6 +396,7 @@ libtbx/tst_binary_search.py svneol=native#text/x-python
 libtbx/tst_containers.py svneol=native#text/x-python
 libtbx/tst_easy_pickle.py svneol=native#text/x-python
 libtbx/tst_itertbx.py -text
+libtbx/tst_lzw.py -text
 libtbx/tst_math_utils.py svneol=native#text/x-python
 libtbx/tst_object_oriented_patterns.py -text
 libtbx/tst_path.py svneol=native#text/x-python
