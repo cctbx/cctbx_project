@@ -1,6 +1,9 @@
 from iotbx.cif import builders, model, errors
+import libtbx.load_env
+import os
 import re
 import sys
+from urllib2 import urlopen
 
 
 class ErrorHandler:
@@ -60,6 +63,52 @@ class ValidationError(Exception):
 
   def __str__(self):
     return self.format_string %self.kwds
+
+
+
+cifdic_register_url = "ftp://ftp.iucr.org/pub/cifdics/cifdic.register"
+
+def smart_load_dictionary(name=None, file_path=None, url=None,
+                          registry_location=cifdic_register_url,
+                          save_local=False, store_dir=None):
+  from iotbx import cif
+  assert [name, file_path, url].count(None) < 3
+  cif_dic = None
+  if store_dir is None:
+    store_dir = libtbx.env.under_dist(module_name='iotbx', path='cif')
+  if name is not None and [file_path, url].count(None) == 2:
+    if file_path is None:
+      file_path = os.path.join(store_dir, name)
+    if url is None:
+      url = locate_dictionary(name, registry_location=registry_location)
+  if file_path is not None and os.path.isfile(file_path):
+    cif_dic = dictionary(cif.fast_reader(file_path=file_path).model())
+  elif url is not None:
+    file_object = urlopen(url)
+    if save_local:
+      if name is None:
+        name = os.path.split(url)[-1]
+      f = open(os.path.join(store_dir, name), 'wb')
+      f.write(file_object.read())
+      f.close()
+      cif_dic = dictionary(cif.fast_reader(
+        file_path=os.path.join(store_dir, name)).model())
+    else:
+      cif_dic = dictionary(cif.fast_reader(
+        file_object=file_object).model())
+  assert cif_dic is not None
+  return cif_dic
+
+def locate_dictionary(name, version=None, registry_location=cifdic_register_url):
+  from iotbx import cif
+  cm = cif.fast_reader(file_object=urlopen(registry_location)).model()
+  if version is None: version = '.'
+  reg = cm["validation_dictionaries"]
+  for n, v, url in zip(reg['_cifdic_dictionary.name'],
+                       reg['_cifdic_dictionary.version'],
+                       reg['_cifdic_dictionary.URL']):
+    if n == name and v == str(version):
+      return url
 
 
 class dictionary(model.cif):
@@ -208,7 +257,7 @@ class dictionary(model.cif):
       elif enum_values is not None and value not in enum_values:
         enum_lower = [v.lower() for v in enum_values]
         if value.lower() in enum_lower:
-          self.report_error(1002, key=key, value=value) # case senstive match failure
+          self.report_error(1002, key=key, value=value) # case sensitive match failure
         else:
           # invalid choice for enumeration
           self.report_error(2102, key=key, value=value, enum=tuple(enum_values))
@@ -270,6 +319,7 @@ class dictionary(model.cif):
       if list_category is None:
         list_category = definition.category
       elif (isinstance(list_category, basestring)
+            and definition.category is not None
             and list_category != definition.category):
         self.report_error(2502) # multiple categories in loop
       mandatory = definition.mandatory == 'yes'
