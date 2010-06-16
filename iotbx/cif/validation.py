@@ -87,7 +87,7 @@ def smart_load_dictionary(name=None, file_path=None, url=None,
     file_object = urlopen(url)
     if save_local:
       if name is None:
-        name = os.path.split(url)[-1]
+        name = os.path.basename(url)
       f = open(os.path.join(store_dir, name), 'wb')
       f.write(file_object.read())
       f.close()
