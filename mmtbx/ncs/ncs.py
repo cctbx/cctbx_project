@@ -441,6 +441,7 @@ class ncs:
        residues_in_common_list=None,
        rmsd_list=None,
        ncs_domain_pdb=None,
+       cc=None,
        source_of_ncs_info=None):
      list_length=None
      for list in [trans_orth,ncs_rota_matr,center_orth]:
@@ -458,6 +459,7 @@ class ncs:
        rmsd_list=rmsd_list,
        source_of_ncs_info=source_of_ncs_info,
        ncs_domain_pdb=ncs_domain_pdb,
+       cc=cc,
        exclude_h=self._exclude_h,exclude_d=self._exclude_d)
      self._ncs_groups.append(ncs_group_object)
 
