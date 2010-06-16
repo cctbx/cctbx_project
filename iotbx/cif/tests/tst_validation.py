@@ -2,23 +2,26 @@ from libtbx.test_utils import Exception_expected
 from iotbx import cif
 from iotbx.cif import validation
 from iotbx.cif.validation import dictionary, ValidationError
+from iotbx.cif.validation import smart_load_dictionary
 
 from urllib2 import urlopen, URLError
 from cStringIO import StringIO
+import sys
 
 cif_core_dic_url = "ftp://ftp.iucr.org/pub/cif_core.dic"
 cif_mm_dic_url = "ftp://ftp.iucr.org/pub/cif_mm.dic"
 
-def exercise():
+def exercise(args):
+  show_timings = "--show_timings" in args
   if not cif.has_antlr3:
     print "Skipping tst_validation.py (antlr3 is not available)"
     return
+  exercise_smart_load(show_timings=show_timings)
   exercise_validation()
 
 def exercise_validation():
   try:
-    cd = dictionary(cif.fast_reader(file_object=urlopen(
-      cif_core_dic_url)).model())
+    cd = validation.smart_load_dictionary(name="cif_core.dic")
   except URLError:
     print "Skipping cif validation tests because of URLError"
     return
@@ -35,8 +38,7 @@ def exercise_validation():
   cm_valid.validate(cd, out=s)
   assert len(cd.err.errors.keys()) == 0
   assert len(cd.err.warnings.keys()) == 0
-  cd2 = dictionary(cif.fast_reader(file_object=urlopen(
-    cif_mm_dic_url)).model())
+  cd2 = validation.smart_load_dictionary(name="cif_mm.dic")
   cm_invalid_2 = cif.fast_reader(input_string=cif_invalid_2).model()
   s = StringIO()
   cm_invalid_2.validate(cd2, out=s)
@@ -44,6 +46,34 @@ def exercise_validation():
     2001, 2101, 2102, 2201, 2202, 2203, 2301, 2503, 2504]
   assert cd2.err.error_count == 12
   assert sorted(cd2.err.warnings.keys()) == [1001, 1002]
+
+def exercise_smart_load(show_timings=False):
+  from libtbx import easy_pickle, load_env
+  from libtbx.utils import time_log
+  import libtbx
+  import os, shutil, tempfile
+  name = ["cif_core.dic", "cif_mm.dic"][0]
+  url = [cif_core_dic_url, cif_mm_dic_url][0]
+  tempdir = tempfile.mkdtemp()
+  # from url
+  url_timer = time_log("from url").start()
+  cd = validation.smart_load_dictionary(name=name, store_dir=tempdir)
+  url_timer.stop()
+  # from url to file
+  to_file_timer = time_log("to file").start()
+  cd = validation.smart_load_dictionary(
+    url=url, save_local=True, store_dir=tempdir)
+  to_file_timer.stop()
+  # read local file
+  file_timer = time_log("from file").start()
+  cd = validation.smart_load_dictionary(file_path=os.path.join(tempdir, name))
+  file_timer.stop()
+  shutil.rmtree(tempdir)
+  if show_timings:
+    print time_log.legend
+    print url_timer.report()
+    print to_file_timer.report()
+    print file_timer.report()
 
 cif_invalid = """data_1
 _made_up_name a                            # warning 1001
@@ -141,5 +171,5 @@ x,y,z
 """
 
 if __name__ == "__main__":
-  exercise()
+  exercise(sys.argv[1:])
   print "OK"
