@@ -413,7 +413,7 @@ class Decoder(object):
         True
         """
 
-        ret = b""
+        ret = ""
 
         if codepoint == CLEAR_CODE:
             self._clear_codes()
@@ -435,7 +435,7 @@ class Decoder(object):
 
 
     def _clear_codes(self):
-        self._codepoints = dict( (pt, struct.pack("B", pt)) for pt in range(256) )
+        self._codepoints = dict([(pt, struct.pack("B", pt)) for pt in range(256)])
         self._codepoints[CLEAR_CODE] = CLEAR_CODE
         self._codepoints[END_OF_INFO_CODE] = END_OF_INFO_CODE
         self._prefix = None
@@ -542,7 +542,7 @@ class Encoder(object):
         # Teensy hack, CLEAR_CODE and END_OF_INFO_CODE aren't
         # equal to any possible string.
 
-        self._prefixes = dict( (struct.pack("B", codept), codept) for codept in range(256) )
+        self._prefixes = dict([(struct.pack("B", codept), codept) for codept in range(256)])
         self._prefixes[ CLEAR_CODE ] = CLEAR_CODE
         self._prefixes[ END_OF_INFO_CODE ] = END_OF_INFO_CODE
 
@@ -711,9 +711,8 @@ def readbytes(filename, buffersize=1024):
     Opens a file named by filename and iterates over the L{filebytes}
     found therein.  Will close the file when the bytes run out.
     """
-    with open(filename, "rb") as infile:
-        for byte in filebytes(infile, buffersize):
-            yield byte
+    for byte in filebytes(open(filename, "rb"), buffersize):
+        yield byte
 
 
 
@@ -724,9 +723,9 @@ def writebytes(filename, bytesource):
     from bytesource into it, and closes it
     """
 
-    with open(filename, "wb") as outfile:
-        for bt in bytesource:
-            outfile.write(bt)
+    outfile = open(filename, "wb")
+    for bt in bytesource:
+        outfile.write(bt)
 
 
 def inttobits(anint, width=None):
