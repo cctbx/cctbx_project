@@ -166,6 +166,8 @@ multiple residues."
       self.char_boxes.append((x, y, x + char_w - 1, y + char_h - 1))
 
   def get_char_position (self, i_seq) :
+    if i_seq >= len(self.char_boxes) :
+      print i_seq, len(self.char_boxes)
     return tuple(self.char_boxes[i_seq])
 
   def get_contiguous_ranges (self, i_start, i_end) :
@@ -200,6 +202,8 @@ multiple residues."
         ranges.append((last_start, last_end))
         last_start = None
         last_end = None
+    if last_end is not None :
+      ranges.append((last_start, last_end))
     return ranges
 
   def is_on_char (self, x, y) :
@@ -225,7 +229,7 @@ multiple residues."
     frame.statusbar.SetStatusText("")
 
   def select_chars (self, i_start, i_end, box=True) :
-    assert i_end < len(self.sequence) and i_start != i_end
+    assert i_end < len(self.sequence) and i_start <= i_end
     for i_seq in range(i_start, i_end + 1) :
       self.selected_residues[i_seq] = box
     self.update_frame()
@@ -319,6 +323,7 @@ residue(s).  Holding down shift enables multiple selections."""
 
   def paint_structure (self, gc) :
     helices = self.get_helices()
+    print helices
     helix_pen = wx.Pen('red', 2)
     h_helix_pen = wx.Pen((255,50,0), 2)
     for k, (i_start, i_end) in enumerate(helices) :
@@ -416,6 +421,7 @@ residue(s).  Holding down shift enables multiple selections."""
     self.structure = "".join(ss.splitlines())
     assert self.sequence == "" or len(self.sequence) == len(self.structure)
     self.clear_highlights()
+    self.clear_structure_selections()
 
   def apply_missing_residue_highlights (self) :
     ranges = self.get_missing()
@@ -484,7 +490,7 @@ residue(s).  Holding down shift enables multiple selections."""
     for k, (i_start, i_end) in enumerate(regions) :
       bounds = self.get_region_bounds(i_start, i_end)
       for (x1, y1, x2, y2) in bounds :
-        if (x > x1 and x < x2) and (y > (y1 + 4) and y < (y2 - 4)) :
+        if (x > x1 and x < x2) and (y > y1 and y < y2) :
           return k
     return None
 
@@ -548,7 +554,7 @@ residue(s).  Holding down shift enables multiple selections."""
         self.select_chars(region_start, region_end)
       else :
         self.selected_missing.remove(idx)
-        self.deselect_chars(linker_start, linker_end)
+        self.deselect_chars(region_start, region_end)
       return True
     return False
 
@@ -615,12 +621,18 @@ class control_panel (wx.Panel) :
     self.help_btn = wx.Button(self, wx.ID_HELP)
     box.Add(self.help_btn, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     szr.Add(box)
+    box2 = wx.BoxSizer(wx.HORIZONTAL)
+    box2.Add(wx.StaticText(self, -1, "Select chain:"), 0, wx.ALL, 5)
+    self.chain_select = wx.Choice(self, -1)
+    box2.Add(self.chain_select, 0, wx.ALL, 5)
+    szr.Add(box2)
     szr.Fit(self)
 
-  def bind_events (self, view) :
+  def bind_events (self, frame, view) :
     self.Bind(wx.EVT_BUTTON, view.OnClear, self.clear_btn)
     self.Bind(wx.EVT_CHECKBOX, view.OnSetMode, self.multi_select_box)
     self.Bind(wx.EVT_BUTTON, view.OnHelp, self.help_btn)
+    self.Bind(wx.EVT_CHOICE, frame.OnSelectChain, self.chain_select)
 
 class sequence_frame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
@@ -631,6 +643,9 @@ class sequence_frame (wx.Frame) :
     self.create_main_panel()
     self.create_control_panel()
     self.statusbar = self.CreateStatusBar()
+    self.Bind(wx.EVT_CLOSE, self.OnClose)
+    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
+    self._chain_cache = []
 
   def create_main_panel (self) :
     outer_panel = wx.lib.scrolledpanel.ScrolledPanel(self, -1)
@@ -647,18 +662,68 @@ class sequence_frame (wx.Frame) :
 
   def create_control_panel (self) :
     cp = control_panel(self, -1, style=wx.SIMPLE_BORDER)
-    cp.bind_events(self.panel)
+    cp.bind_events(self, self.panel)
     self.sizer.Add(cp, 0, wx.EXPAND)
     self.control_panel = cp
 
+  def set_pdb_data (self, pdb_hierarchy, sec_str, auto_select=True) :
+    self.pdb_hierarchy = pdb_hierarchy
+    self.sec_str = sec_str
+    self._chain_cache = {}
+    self._seq_cache = {}
+    self._ss_cache = {}
+    for chain in pdb_hierarchy.models()[0].chains() :
+      conf = chain.conformers()[0]
+      if not conf.is_protein() :
+        #print "Skipping non-protein chain %s" % chain.id
+        continue
+      if chain.id in self._chain_cache :
+        n = 2
+        while True :
+          new_id = "%s (%d)" % (chain.id, n)
+          if not (new_id in self._chain_cache) :
+            self._chain_cache[new_id] = chain
+            break
+          n += 1
+      else :
+        self._chain_cache[chain.id] = chain
+    self.control_panel.chain_select.SetItems(sorted(self._chain_cache.keys()))
+    self.control_panel.Layout()
+    if auto_select :
+      self.control_panel.chain_select.SetSelection(0)
+      chain_id = self.control_panel.chain_select.GetStringSelection()
+      self.set_current_chain(chain_id)
+
+  def set_current_chain (self, chain_id) :
+    chain = self._chain_cache.get(chain_id, None)
+    if chain is not None :
+      chain_conf = chain.conformers()[0]
+      if chain_id in self._seq_cache :
+        seq = self._seq_cache[chain_id]
+        ss = self._ss_cache[chain_id]
+      else :
+        helix_sele = self.sec_str.alpha_selection()
+        sheet_sele = self.sec_str.beta_selection()
+        seq = chain_conf.as_padded_sequence()
+        ss = chain_conf.as_sec_str_sequence(helix_sele, sheet_sele)
+        self._seq_cache[chain_id] = seq
+        self._ss_cache[chain_id] = ss
+      self.set_sequence(seq)
+      self.set_structure(ss)
+      self.reset_layout()
+
   def set_sequence (self, seq) :
     self.panel.set_sequence(seq)
+
+  def reset_layout (self) :
     self.panel.Layout()
     self.outer_panel.Layout()
+    self.sizer.Layout()
     (w, h) = self.panel.DoGetBestSize()
+    (w2, h2) = self.control_panel.GetSize()
     if w <= 750 and h <= 550 :
       self.outer_panel.SetMinSize((w,h))
-      self.SetSize((w+50, h+50))
+      self.SetSize((w+50, h+h2+50))
     else :
       self.SetSize((800,600))
 
@@ -666,11 +731,24 @@ class sequence_frame (wx.Frame) :
     self.panel.set_structure(sec_str)
     self.panel.apply_missing_residue_highlights()
 
+  def OnSelectChain (self, evt) :
+    chain_id = evt.GetEventObject().GetStringSelection()
+    self.set_current_chain(chain_id)
+
+  def OnClose (self, evt) :
+    self.Destroy()
+
+  def OnDestroy (self, evt) :
+    pass
+
 #-----------------------------------------------------------------------
 def run (args) :
   from iotbx import file_reader
   from mmtbx import secondary_structure
   pdb_file = args[0]
+  app = wx.App(0)
+  frame = sequence_frame(None, -1, "Sequence display for %s" %
+    os.path.basename(pdb_file))
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb").file_object
   hierarchy = pdb_in.construct_hierarchy()
   hierarchy.atoms().reset_i_seq()
@@ -679,16 +757,7 @@ def run (args) :
   out = cStringIO.StringIO()
   sec_str.find_automatically(log=out)
   sec_str.show_summary()
-  chain_conf = hierarchy.models()[0].chains()[0].conformers()[0]
-  helix_sele = sec_str.alpha_selection()
-  sheet_sele = sec_str.beta_selection()
-  seq = chain_conf.as_padded_sequence()
-  ss = chain_conf.as_sec_str_sequence(helix_sele, sheet_sele)
-  app = wx.App(0)
-  frame = sequence_frame(None, -1, "Sequence display for %s" %
-    os.path.basename(pdb_file))
-  frame.set_sequence(seq)
-  frame.set_structure(ss)
+  frame.set_pdb_data(hierarchy, sec_str, auto_select=True)
   frame.Fit()
   frame.Show()
   app.MainLoop()
