@@ -34,4 +34,4 @@ Three mandatory arguments:
   host: usually "localhost";
   port: port number of image analyzer http service
 """
-  do_main(filepath, force_binning, host, port)
+  do_main(filepath, host, port)
