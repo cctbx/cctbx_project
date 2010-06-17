@@ -33,12 +33,11 @@ Ice rings are eliminated by at least two different algorithms (rings of high pix
   values and rings of high spot count).
 Resolution filters are applied if given on the command line.
 Total number of candidates at this stage is reported as "In-Resolution Total"
-Other spot-quality filters are applied to give the number of "Good Bragg Candidates",
-  but these filters are NOT used when calculating the signal strength below.
+Other spot-quality filters are applied to give the number of "Good Bragg Candidates".
 Method 1 Resolution is a published legacy algorithm (Zhang et al, 2006) no longer used.
 Method 2 Resolution reflects drop off of spot count as a function of resolution shell,
   but is overridden by command line input of distl.res.outer
-Signal strength of the In-Resolution spots is then presented as integrated area of
+Signal strength of the Good Bragg Candidates is then presented as integrated area of
   the spot above local background, expressed in pixel-analog/digital units.
 Very verbose output is available by setting distl.verbose=True
 """
