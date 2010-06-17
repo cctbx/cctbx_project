@@ -67,6 +67,9 @@ def run_signal_strength(params):
         print "       body pixel x=%4d y=%4d; pixel value=%5d; ADC height above background=%.1f"%(
           pixel.x,pixel.y,image.linearintdata[(pixel.x,pixel.y)],spot.wts[j])
     if signals.size()>0:
+      print "Total integrated signal, pixel-ADC units above local background %d"%(
+            flex.sum(flex.double([flex.sum(spot.wts) for spot in Org.S.images[key]['inlier_spots']]))
+      )
       print "Signals range from %.1f to %.1f with mean integrated signal %.1f"%(
       flex.min(signals), flex.max(signals), flex.mean(signals) )
       print "Saturations range from %.1f%% to %.1f%% with mean saturation %.1f%%"%(
