@@ -1,0 +1,3 @@
+      program prog
+      data
+      end

@@ -1,0 +1,1160 @@
+add_reals.f
+add_real_integer.f
+logical_a_or_b.f
+add_dp_integer.f
+add_strings.f
+|x"zi\'l|
+|i\'l|
+|x"zi|
+|i\'|
+real_array_sum.f
+write_star.f
+| x|
+| i is zero.|
+| F|
+|           0|
+|                     0|
+|  0.0000000E+00|
+|  0.000000000000000E+000|
+|  1.000000000000000E+111|
+| -1.000000000000000E+111|
+| |
+| xxxxxxxxxxxx|
+| i is zero.|
+| F F F F F F F F F F F F|
+|           0           0           0           0           0           0|
+|           0           0           0           0           0           0|
+|                     0                     0                     0|
+|                     0                     0                     0|
+|                     0                     0                     0|
+|                     0                     0                     0|
+|  0.0000000E+00  0.0000000E+00  0.0000000E+00  0.0000000E+00  0.0000000E+00|
+|  0.0000000E+00  0.0000000E+00  0.0000000E+00  0.0000000E+00  0.0000000E+00|
+|  0.0000000E+00  0.0000000E+00|
+|  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000|
+|  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000|
+|  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000|
+|  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000|
+| xx|
+| xyz|
+| yzx|
+| yzyz|
+| x          12|
+| yz          34|
+|          56 x|
+|          78 yz|
+| aBcD           12  eFgHi          345|
+ops.f
+mod_integers.f
+|           3|
+do_enddo.f
+|           1|
+|           2|
+|           3|
+|           5|
+if_endif.f
+| i is zero.|
+if_else_endif.f
+| i is zero.|
+| i is not zero.|
+if_elseif_else_endif.f
+| i is zero.|
+| i is one.|
+| i is not zero or one.|
+if_write.f
+| i is less than four.|
+| i is greater than or equal to four.|
+assign_to_array_elements.f
+|   10.00000       20.00000    |
+parameter_n.f
+|           1|
+|           2|
+do_ix_num.f
+|           1|
+|           2|
+scopes_1.f
+|           3|
+scopes_2.f
+| ix is one.|
+|           0|
+|           2|
+|           5|
+|          13|
+scopes_3.f
+| branch 1.|
+scopes_4.f
+| branch 1.|
+arr_float_2.f
+|   11.00000    |
+|   12.00000    |
+|   21.00000    |
+|   22.00000    |
+|   31.00000    |
+|   32.00000    |
+subroutine_1.f
+| first line in prog.|
+| output from sub1.|
+| output from sub1.|
+| output from sub2.|
+| output from sub2.|
+| last line in prog.|
+subroutine_2.f
+| first line in prog.|
+| sub1           3|
+| prog           7|
+| sub2           7           4|
+| prog           8           5|
+| last line in prog.|
+subroutine_3.f
+| num after sub1:           9|
+| num after sub2          10|
+| nums after sub1:           9           0|
+| nums after sub2:          10          20|
+| nums after sub3:          20          40|
+sf.f
+|  0.088900 -0.393700 -0.497800 60.840000|
+|  0.114100  0.167000 -0.836600 37.830002|
+| -0.201700  0.946700 -0.933900 35.419998|
+|  0.404000  0.790400 -0.362200 81.360001|
+|  0.746200 -0.501900  0.261000 21.400000|
+| -0.210100 -0.980200  0.675700 80.290001|
+|  0.260100 -0.934500 -0.033100  0.780000|
+| -0.370700  0.092700 -0.812900 64.370003|
+| -0.870000  0.916400 -0.668700 51.060001|
+|  0.742200 -0.095900 -0.248000 58.849998|
+|  -1  -2   2    -1.550769    -1.996017|
+|  -4  -5  -1    -0.485665    -0.653334|
+|  -2  -3   1    -1.374891     1.479106|
+|  -5   4   3     0.755665    -0.685220|
+|   2  -4   0    -0.709445     0.221990|
+|   4   3   2     0.904717     1.168775|
+|  -4   0   4     0.918871    -0.620087|
+|  -2   2  -4    -0.336150    -0.424647|
+|  -5  -1  -2    -0.043045    -0.796881|
+|  -3   1  -5    -0.422232     0.301298|
+combine_decl_1.f
+|           0|
+|  0.0000000E+00|
+implied_program.f
+|           0|
+write_format.f
+| 12|
+| 23.45|
+| 12  23.45|
+| 12 13|
+| 12|
+| 12 13|
+| 12|
+| 12 13|
+| 12 13|
+| 12 13 14 15|
+| 12  23.45 13  24.45|
+| 12  23.45  13 24.45  14_ 15  25.45  16 26.45  17_|
+| 1|
+| 2|
+| 1  2|
+| 3|
+| 1  2_|
+| 3|
+| 1  2_|
+| 3  4_|
+| 1  2_ 3  4_|
+| 5|
+| 1  2_ 3  4_|
+| 5  6_|
+|> 1  2_ 3  4_|
+| 5  6_|
+|  -1 1  2_ 3  4_|
+| 5  6_|
+| 1  2   3    4   5    6  7   8    9  10   11|
+| 12|
+| 1  2   3    4   5    6     7  8   9   10  11   12    13|
+| 14|
+| 1 2  3 4  5   6    7   8    9|
+|  10|
+|6453|
+| 1 2 3 4 5 6 7 8|
+| 1 2 3 4 5|
+| 1|
+| 2|
+| 3|
+| 4|
+| 1|
+| 2|
+| 3|
+| 4|
+| 1|
+| 2|
+| 3|
+| 4|
+| 1 2|
+| 3 4|
+| 1 2|
+| 3 4|
+| 1 2|
+| 3 4|
+| 1  2|
+| 3  4|
+| 1  2|
+| 3  4|
+| 5|
+| 1  2|
+| 3  4|
+| 1  2|
+| 3  4|
+| 5|
+| 1  2|
+| 3  4|
+| 1  2|
+| 3  4|
+| 5|
+| 1 2  3|
+| 4 5  6|
+| 1 2  3|
+| 4 5  6|
+| 7|
+| 1  2  3|
+| 4  5  6|
+| 1  2  3|
+| 4  5  6|
+| 7|
+| 1  2|
+| 3  4|
+| 1  2|
+|  3|
+|  4|
+|  5|
+| 1  2   3|
+| 4  5   6|
+| 1  2   3|
+| 4  5   6|
+| 7|
+| 1  2   3|
+| 4  5   6|
+| 7  8|
+| 1  2   3|
+|  4   5|
+|  6|
+| 1  2   3|
+|  4   5|
+|  6   7|
+| 1  2   3|
+|  4   5|
+|  6   7|
+|  8|
+| 1  2   3|
+| 4  5   6|
+| 1  2   3|
+| 4  5   6|
+| 7|
+| 1  2   3|
+| 4  5   6|
+| 7  8|
+| 1  2   3|
+| 4  5   6|
+| 7  8   9|
+| 1  2   3|
+| 4  5   6|
+| 7  8   9|
+|10|
+|11 1221 22|
+|23 24|
+| 1  2   3  4   5    6|
+|  7   8  9  10   11|
+| 12  13|
+| 1  2   3  4   5    6     7|
+|    8     9|
+|   10    11|
+|   12|
+| 1  2   3  4   5    6     7    8     9|
+|   10    11   12|
+| 1  2   3    4     5    6     7|
+|    8     9   10    11|
+|   12|
+| 1 2  3  4  5|
+| 6 7  8  9 10|
+|1112 13 14|
+|F|
+| F|
+|  F|
+|   F|
+|    F|
+|     F|
+|T|
+| T|
+|  T|
+|   T|
+|    T|
+|     T|
+|AbcF|
+|Xyz T|
+|Ab      F|
+|cD      F|
+|EF      F|
+|gh      F|
+|iJ      F|
+|Ab      T|
+|cD      T|
+|EF      T|
+|gh      T|
+|iJ      T|
+|AbcF|
+|pQr|
+|Xyz TtuV|
+|Ab      Fkl|
+|cD      FmN|
+|EF      FOP|
+|gh      FQp|
+|iJ      FrS|
+|Ab      Tkl|
+|cD      TmN|
+|EF      TOP|
+|gh      TQp|
+|iJ      TrS|
+||
+|Ab 4CdEf|
+|Gh|
+||
+|  1Ij 11.0000|
+|KlMn|
+|Op 21.100 21.200 31.100 31.200 41.000 51.000 61.000|
+||
+|  2Ij 12.0000|
+|KlMn|
+|Op 22.100 22.200 32.100 32.200 42.000 52.000 62.000|
+||
+|  3Ij 13.0000|
+|KlMn|
+|Op 23.100 23.200 33.100 33.200 43.000 53.000 63.000|
+||
+||
+|  4Ij 14.0000|
+|KlMn|
+|Op 24.100 24.200 34.100 34.200 44.000 54.000 64.000|
+||
+||
+conv_recipe.f
+|   0   0   0     infinity|
+|   1   2   3     3.346435|
+read_star_integer.f
+<1<
+|           2|
+read_star_integer.f
+<	-24 <
+|         -23|
+read_star_integer.f
+<<
+< +35 <
+|          36|
+read_star.f
+<1 ! txt<
+<2.8 ! rem<
+<345  6789<
+|           2|
+|   3.800000    |
+|         345        6789|
+read_format.f
+<<
+<<
+|  1|
+read_format.f
+<1<
+|  2|
+read_format.f
+< -9<
+| -8|
+read_format.f
+< -89<
+| -7|
+read_format.f
+< +98<
+| 10|
+read_format.f
+<  -9<
+|  1|
+read_format.f
+<  +<
+|  1|
+read_format.f
+<123<
+|124|
+read_format.f
+<1 3<
+| 14|
+open_write_read.f
+|OK|
+write_implied_do_1.f
+|  13 -24|
+|  13  13 -24|
+| -24  13 -24|
+|  13  13 -24  13 -24|
+| -24  13 -24  13 -24|
+|  13  13  13 -24 -24  13 -24|
+| -24  13  13 -24 -24  13 -24|
+write_implied_do_2.f
+| 1 2 3 4|
+| 5 6|
+| 7|
+| 0 1 3 4|
+write_implied_do_3.f
+| 13 23 14 24|
+| 135 235 145 245|
+| 136 236 146 246|
+write_implied_do_4.f
+|  1  3  5|
+write_implied_do_5.f
+| 30 40|
+write_extra_parentheses.f
+|   -9|
+|   -9|
+|   -9  -16|
+|   -9  -16  -35|
+|   -9  -16  -35|
+|   -9  -16  -35|
+|   -9  -16  -35  -48|
+|   -9  -16  -35  -48|
+|   -9  -16  -35  -48|
+|   -9  -16  -35  -48  -63|
+|  -63  -16  -35  -48|
+|  -63  -16  -35  -48|
+|  -63  -16  -35  -48|
+|  -63  -16  -35  -48|
+|  -63  -16  -35  -48|
+|  -63-1207|
+|  -63-1207|
+|  -63-1207|
+function_data_type_in_body.f
+|           7|
+function_two_returns_2.f
+|           8|
+|          -3|
+do_label.f
+|           1|
+|           2|
+|           1           3|
+|           1           4|
+|           2           3|
+|           2           4|
+|           1           3|
+|          10          30|
+|           1           4|
+|          10          40|
+|           2           3|
+|          20          30|
+|           2           4|
+|          20          40|
+label_format.f
+| 102   103  104|
+|_^ 105   106  107|
+|_^|
+write_internal_file.f
+|num = ( -2  )|
+goto_spaghetti.f
+| start|
+| stmt 20|
+| stmt 30           2|
+| stmt 10|
+| stmt 30           3|
+| loop j is           1|
+| end|
+sub_nums_size_capacity.f
+| 12|
+| 34|
+passing_arrays.f
+|3|
+| 3|
+| 5|
+| 8|
+|12|
+|17|
+|23|
+| 3|
+| 8|
+|17|
+| 5|
+|12|
+|23|
+passing_arrays_2.f
+| 23 45 67 20 30 40|
+| 21 31 41 22 32 42|
+array_origin.f
+| 10 11|
+|  -1  99   0 100   1 101   2 102|
+|   29  229   59  259   89  289   30  230|
+|   60  260   90  290   31  231   61  261|
+|   91  291   32  232   62  262   92  292|
+common_4.f
+|           0           0|
+|           8           6|
+power.f
+|1.859|
+|122.6|
+|659.7|
+|2.991|
+|-1.69|
+|1.69|
+passing_strings.f
+|2|
+|Pq|
+|3|
+|rSt|
+|[a ]|
+write_internal_file_2.f
+|nums = ( -2  3  )|
+!=stop_bare.f
+|iteration 1|
+|STOP at stop_bare_fem.cpp(22)|
+!=stop_integer.f
+|iteration 1|
+|STOP at stop_integer_fem.cpp(22): code=2345|
+!=stop_string.f
+|iteration 1|
+|STOP at stop_string_fem.cpp(22): Break|
+write_internal_file_3.f
+|num = (A -2Ef)|
+!@open_write_read_2.f
+|OK|
+read_err.f
+|success exercise_file_fmt|
+|success exercise_internal_star|
+write_err.f
+|OK|
+read_end.f
+|OK|
+read_end_err.f
+|OK|
+write_read_end_err_implied_do.f
+|OK|
+inquire.f
+|[fable_tmp_5d70aa2a]|
+|(T)|
+|(T)|
+|(T)|
+|[TIAL]|
+|[ES]|
+|[NO]|
+|[NULL]|
+|(F)|
+|(F)|
+|(T)|
+using_intrinsics.f
+|85.0 84|
+data_type_star.f
+|OK integers|
+|OK reals|
+integer_star_2_array.f
+|3|
+subroutine_zero.f
+| 12.0 34.0|
+power_2.f
+| 1.20 1.44 2.71 2.69|
+subroutine_5.f
+|str starts with a blank|
+|str does not start with a blank|
+string_compare.f
+|aTF|
+|bFT|
+|cTF|
+|dFT|
+|eFT|
+|fFT|
+|gTF|
+|hTF|
+|iTF|
+|jFT|
+|kTF|
+|lTF|
+|mTF|
+|nFT|
+|oTF|
+|pTF|
+|qTF|
+|rFT|
+|sTF|
+decl_before_if.f
+|39|
+|40|
+|41|
+|41|
+subroutine_6.f
+|!xy@|
+|#aB$|
+|%Bc^|
+|&c *|
+|(ca)|
+|-Ba+|
+|{cD}|
+const_analysis_1.f
+|12|
+const_analysis_2.f
+<34<
+|68|
+read_implied_do_1.f
+<  3  4<
+|    9   16|
+dim_with_parameter.f
+| 12 34 56 78|
+read_fmt_real.f
+<123456789<
+|   12345.00       6.780000    |
+read_fmt_double.f
+|   123.000000000000     |
+|   12.3000000000000     |
+|   1.23000000000000     |
+|  0.230000000000000     |
+|   1.30000000000000     |
+|   12.0000000000000     |
+|   13.0000000000000     |
+|   103.000000000000     |
+|   12.3000000000000     |
+|   1.23000000000000     |
+|   1230.00000000000     |
+|   12300.0000000000     |
+|   1000.00000000000     |
+|   35000000000000.0     |
+|  3.050000000000000E+105|
+|   3500000000000.00     |
+|  3.050000000000000E+104|
+read_fmt_string.f
+<<
+<1<
+<23<
+<345<
+<st<
+|[  ]|
+|[1 ]|
+|[23]|
+|[34]|
+|[st]|
+read_fmt_x.f
+<aBcDeFgHi<
+<z<
+<<
+|[aB][FgH]|
+|[z ][   ]|
+|[  ][   ]|
+!=data_26.f
+|           1           2           3|
+|          11          22          33|
+|         203|
+|          21          42        1203|
+data_01.f
+|           3|
+data_02.f
+|           3|
+data_03.f
+|           7|
+|           8|
+|           9|
+data_04.f
+|           7           0|
+|           8           0|
+|           9           0|
+data_05.f
+|           7           0|
+|           8           0|
+|           9           0|
+!=data_06.f
+|           6|
+|           5|
+|           6|
+!=data_07.f
+|           5|
+|           6|
+data_08.f
+|          12          34|
+data_09.f
+|           3           4           5|
+data_10.f
+|          12          34|
+data_11.f
+|          11          12|
+data_12.f
+|          23          34|
+data_13.f
+|          23          34|
+data_14.f
+|  0.1000000              -2|
+data_15.f
+| xyz|
+| xyz|
+data_16.f
+|   1.200000       1.200000    |
+data_20.f
+|1|
+|4|
+|2|
+|5|
+|3|
+|6|
+data_21.f
+|12 Xy|
+data_22.f
+|12 Xy|
+|34 Za|
+data_23.f
+|12 Xy|
+|56 cD|
+|34 Za|
+|78 eF|
+data_28.f
+|           1           2           3           4|
+data_24.f
+|12 Xy|
+|34 Za|
+|56 cD|
+|78 eF|
+data_25.f
+|xyab|
+data_27.f
+|[AC][db]|
+parameters_recursive.f
+|12|
+|24|
+|36|
+|48|
+|60|
+strings_size_dim.f
+|3 2 AbC dEf|
+strings_size_dim_data.f
+|3 2 aBc DeF|
+data_29.f
+| 12 56 34 78|
+function_write.f
+|           0|
+|           7|
+|          14|
+dimensions.f
+|OK|
+string_array.f
+|Abc|
+|dEF|
+string_sub_array_passing.f
+|A012|
+|B345|
+|C678|
+|D901|
+|E234|
+|F567|
+|AbCd|
+|AbCd|
+|AbCd|
+|AbCd|
+|AbCd|
+|AbCd|
+logical_ops.f
+| T F F T F F T F F|
+| T F F T F F T T F|
+| T F T F T T T F F|
+| T F T F T T T T T|
+| F F T F T F F F T|
+| F F T F T F F T T|
+| F T T T F F T T T|
+| F T T T F F T T T|
+equivalence_01.f
+|          12|
+|          34|
+common_variants.f
+|12 34 65|
+|12 56.78|
+|91 23 65|
+common_equivalence_1.f
+|          12          11          14          13|
+|          11          12          13          14|
+common_equivalence_2.f
+|          21          31|
+|          31          32          33|
+common_equivalence_3.f
+|          43          44          23          24          25|
+|          42          43          44|
+|          41          42          43          44|
+common_equivalence_4.f
+|          21          31          41          42          43          44|
+|          31          41          42|
+|          41          42          43          44          45|
+common_equivalence_5.f
+|          21          22|
+|          21          22          23          24|
+|          21          22          23|
+|          24|
+equivalence_09.f
+|          56          34          12|
+|          34          12          56|
+equivalence_10.f
+|          56         -56          34         -34          12         -12|
+|          34         -34          12         -12          56         -56|
+equivalence_11.f
+|          21          31|
+|          31          32          33|
+|          41          42          43          51|
+|          51          52          53          54          55|
+equivalence_02.f
+|          11          12          13          14          15          16|
+|         101         201         102         202         103         203|
+equivalence_03.f
+|          11          12          13          14          15          16|
+|         101         201         102         202         103         203|
+equivalence_04.f
+|pQ|
+|Abr|
+equivalence_05.f
+|Qr|
+|pAb|
+equivalence_06.f
+|fg|
+|hi|
+|abc|
+|def|
+|ghi|
+|jkl|
+|PQ|
+|RS|
+|abc|
+|deP|
+|QRS|
+|jkl|
+equivalence_07.f
+|abce|
+|efgh|
+|abc|
+|efg|
+|ijkl|
+|lfgh|
+|ijk|
+|lfg|
+|ijkm|
+|mnop|
+|ijk|
+|mno|
+equivalence_08.f
+|          12          34|
+|          56|
+|          78|
+equivalence_mixed.f
+|1.2|
+save_equivalence_1.f
+|           0           0|
+|           0           0           0|
+|           0          21|
+|          21          22          23|
+| |
+|           0          21|
+|          21          22          23|
+|           0          31|
+|          31          32          33|
+| |
+equivalence_repeated.f
+|          21          22|
+|          31          32|
+equivalence_data.f
+|          12          34          56|
+|          56          12          34|
+equivalence_12.f
+|          12|
+|          34          56|
+|          78          90          23|
+|          45          67          89          43|
+|          65          87          89          91          93|
+|          94          95          96          97          27          29|
+common_name_clash.f
+|          12          34|
+|          56          78          90|
+external_arg_simple.f
+|          13|
+|          24|
+external_arg_pass_call.f
+|           4|
+|           3|
+external_arg_subroutine.f
+|           1|
+|           2|
+external_arg_function.f
+|           1|
+|          11|
+|           0|
+|          10|
+|          10|
+|          20|
+|           3|
+|          13|
+external_arg_layers.f
+| exch           3|
+implied_external_arg_sub.f
+| sub2|
+implied_external_arg_sub_2.f
+|           1|
+function_calls_with_its_name_as_arg.f
+|          12          34|
+|          12|
+function_no_arg.f
+|          34|
+|          68|
+|          56|
+if_arithmetic.f
+| smaller than two|
+| equal to two|
+| larger than two|
+if_cond_if_arithmetic.f
+| l10|
+| l20|
+| l30|
+|           2           1|
+|           2           2|
+|           2           3|
+if_spaghetti.f
+| label 11|
+| label 11|
+| i != j|
+| label 12|
+| i != j|
+| label 12|
+| label 13|
+| i != j|
+| label 13|
+| i != j|
+sign.f
+|          -1          -1          -1|
+|          -1           0           1|
+|          -1           1           1|
+|           0          -1           0|
+|           0           0           0|
+|           0           1           0|
+|           1          -1          -1|
+|           1           0           1|
+|           1           1           1|
+common_name_clash_2.f
+|          12          34|
+|           1          56          78          90|
+|           2          56          78          90|
+|           3          56          78          90|
+|           4          56          78          90|
+dependency_cycle.f
+| start|
+| sub1|
+| sub2|
+| sub1|
+| done|
+common_name_clash_3.f
+|          12          34|
+|           1           1          56          78          90|
+|           1           2          56          78          90|
+|           1           3          56          78          90|
+|           1           4          56          78          90|
+external_arg_non_const.f
+|          13          26|
+|          32          45|
+parameter_for_arg_and_cmn_dim.f
+|          17          34|
+|          19          38|
+|          17          34|
+|          38          76|
+character_1_array_passing.f
+| Xy|
+do_variable_passed.f
+|          14|
+|          15|
+|          20|
+intrinsics_extra.f
+blockdata_unnamed.f
+|           3|
+blockdata_named.f
+|           4|
+data_str_arr.f
+| YuidFg|
+!@read_unformatted_str_arr.f
+!@data_byte.f
+read_end_empty.f
+|           0|
+read_end_empty.f
+<<
+|           0|
+read_end_empty.f
+< <
+|           1|
+read_end_empty.f
+<x <
+<<
+< x<
+|           3|
+string_assign_to_slice.f
+| y|
+| rs|
+| ry|
+| yy|
+| yz|
+| nopqrstuvwxyz             |
+| abcdabcdefglmnopqrtsuvwxyz|
+|[aB ]|
+read_fmt_slash.f
+<1234567891<
+<9876543219<
+|          12         345        9876       54321|
+rewind.f
+|          46|
+|         134|
+open_chain.f
+|open err statement|
+|Done.|
+!@read_rec_iostat.f
+goto_computed.f
+| statement 10           1|
+| statement 20           1|
+| statement 10           2|
+| statement 20           2|
+unformatted_experiments.f
+|          12          34|
+|          56|
+|          78          90|
+|          12|
+|          56|
+|          78|
+| [Ab], [cDe]|
+| [fG]|
+| [Jk], [Lmn]|
+| [Ab]|
+| [fG]|
+| [Jk]|
+|        4321        5432|
+|        23330262356193|
+|         5299989648942|
+|        5678        1234|
+write_star_real_star_4.f
+|  1.2345677E-30|
+|  1.2345677E-20|
+|  1.2345677E-10|
+|  1.2345678E-04|
+|  1.2345678E-03|
+|  1.2345677E-02|
+|  0.1234568    |
+|   1.234568    |
+|   12.34568    |
+|   123.4568    |
+|   1234.568    |
+|   12345.68    |
+|   123456.8    |
+|   1234568.    |
+|  1.2345678E+07|
+|  1.2345678E+08|
+|  1.2345678E+09|
+|  1.2345678E+10|
+|  1.2345678E+20|
+|  1.2345678E+30|
+read_fmt_past_end_of_line.f
+|           2|
+| [L1]|
+| [L2]|
+|   2.000000    |
+| [L1]|
+| [L2]|
+write_star_real_star_8.f
+|  1.234567890123457E-030|
+|  1.234567890123457E-020|
+|  1.234567890123457E-010|
+|  1.234567890123457E-004|
+|  1.234567890123457E-003|
+|  1.234567890123457E-002|
+|  0.123456789012346     |
+|   1.23456789012346     |
+|   12.3456789012346     |
+|   123.456789012346     |
+|   1234.56789012346     |
+|   12345.6789012346     |
+|   123456.789012346     |
+|   1234567.89012346     |
+|   12345678.9012346     |
+|   123456789.012346     |
+|   1234567890.12346     |
+|   12345678901.2346     |
+|   123456789012.346     |
+|   1234567890123.46     |
+|   12345678901234.6     |
+|   123456789012346.     |
+|  1.234567890123457E+015|
+|  1.234567890123457E+016|
+|  1.234567890123457E+017|
+|  1.234567890123457E+020|
+|  1.234567890123457E+030|
+write_read_unformatted.f
+| x|
+| Ab|
+| T|
+|           3|
+|   4.100000    |
+|   5.20000000000000     |
+write_internal_file_4.f
+|[abcdefghijklmnopqrstuvwx]|
+|[         123            ]|
+|[     1000000     2000000]|
+dynamic_parameters_1.f
+|          14          15          16          17          18          19|
+dynamic_parameters_2.f
+|          18          23|
+dynamic_parameters_3.f
+|          18          23          28          33          38          43|
+dynamic_parameters_4.f
+|          74          75          76          77          78          79|
+|          87          88          89          90          91          92|
+|         100         101         102         103         104         105|
+dynamic_parameters_5.f
+|          68          75          82          89          96         103|
+common_equivalence_simple_1.f
+|          12          34|
+common_equivalence_simple_2.f
+|          12          34|
+common_equivalence_simple_3.f
+|          84          85          86          87          88          89|
+|          90          91          92          93          94          95|
+|          96          97          98          99         100|
+common_equivalence_simple_4.f
+|          25          93          37|
+|          54|
+|          25          93          37|
+|          93|
+data_31.f
+|OK|
+common_equivalence_simple_5.f
+|          20          21|
+|          22          23          24          25          26          27|
+|          20          21          22          23          24          25|
+|          26          27|
+|          20          21|
+|          20          21|
+|          20          21|
+|          22          23          24          25          26          27|
+|          22          23          24          25          26          27|
+|          22          23          24          25          26          27|
+|          22          23          24          25          26          27|
+common_equivalence_simple_6.f
+|AbCdEf|
+|Pq|
+|rS|
+|tu|
+|gHI|
+|jkL|
+|Abcd|
+|efgH|
+|j|
+|k|
+|L|
+|A|
+|b|
+data_32.f
+|-34|
+|Yu|
+|  12 -34|
+| -56  78|
+|CdeFgH|
+|IjkLMNOp|
+|91|
+| 23 45|
+|HjkloASdfg|
+| -24  35|
+const_expressions.f
+|           2|
+|           8|
+|          50|
+|       74088|
+|      296356|
+|          11          21          31          12          22          32|
+|          11          12          13|
+|          11          21          31          41|
