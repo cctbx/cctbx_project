@@ -1,0 +1,2 @@
+Files in this directory are rejected by ifort and/or gfortran, but
+accepted by fable.read.

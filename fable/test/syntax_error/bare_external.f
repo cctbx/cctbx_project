@@ -1,0 +1,3 @@
+      program prog
+      external
+      end

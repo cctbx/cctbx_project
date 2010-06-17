@@ -1,0 +1,104 @@
+parameter consolidation based on file name, line number of assignment tokens
+line breaks
+var += other;
+comments
+
+str<>::operator char*() possible? (certain constructors will have to be removed)
+cout: raise exception at very end if other exceptions caught
+replace tab in string literals with \t
+read, write: operator, destructors: copy inp, copy back on success
+distinction: write(i, *) with i not a stdout or stderr?
+g-format, e-format
+fable.read conv_hook
+
+declare all static const at top of cpp_function
+exercise common with all members not used (elide completely)
+
+fem/read.hpp .rec(), .iostat(): enforce: cannot be called after operator,
+simple_ostream_to_std_string: faster alternative to loop with s.push_back()?
+not-implemented exceptions for all TODO in fem/*.hpp
+data_type_star.hpp types -> write_star.f
+
+read(iostat=ios) with ios passed as argument (requires proper const analysis)
+
+restore fem::common vs. common in function signature, but with recursive analysis
+needs_cmn: not if write/read internal_file only
+write fmt cleanup if string literal
+exercise recursive function, subroutine calls
+handle "array declared but not used"
+
+
+lvalue cannot be subroutine or function
+lvalue must have a data_type
+rvalue must have data_type unless it is "call"ed or external
+
+context a variable can appear in:
+  assignment target
+  array index
+  string index
+  argument (in subroutine or function call)
+
+The context must be known to decide if the data_type is needed (yet).
+It isn't needed if the context is "arg".
+It can be an argument only if it is a "plain identifier".
+
+defer determination of data_type until it is needed in cout
+
+DATA and implied SAVE in subroutines
+  with DATA
+    implied save, 0-init first call (or before?)
+  without DATA
+    ifort
+      scalar not save, 0-init on re-entry
+      array impl save, 0-init first call (or before?)
+    gfortran
+      -fno-automatic
+        scalar, array implied save, 0-init first call (or before?)
+      -fautomatic
+        scalar, array uninitialized each call
+
+Rationale
+  Writing highly automated systems like Phenix entirely in Fortran
+  is unthinkable.
+  Manually rewriting existing components in Python or C++
+  is very expensive.
+  Grand rewrites are generally very expensive. For example, it would
+  take many years of effort to rewrite a package such as LAPACK.
+  Fable is designed to enable incremental progess even though the
+  language changes.
+
+  Make it possible to run and test the converted code with minimal manual
+  intervention, if any.
+  Handling of data is not very efficient, but unlikely to be a bottleneck.
+  If it is, the C++ code can be changed manually after the testing
+  framework is in place.
+
+  Intentionally no debug mode to keep the fem sources as compact
+  and efficient as possible. Valgrind is usually very reliable
+  for detecting memory access problems.
+
+  0-inits: written by default because it is tedious to manually find
+  the critical places where they need to be inserted. In contrast, in
+  performance critical sections they can easily be removed manually.
+  (Usually only a small fraction of the code is performance critical.
+  If not it means the code is large and complex, and getting it to
+  run at all is likely to be much more valuable than getting it to
+  run as fast as possible.)
+
+  Comprehensive reporting of Fortran errors, but only if important to
+  the conversion process. Some errors that would be found by a regular
+  Fortran compiler are not detected by fable.read or fable.cout.
+  Invalid Fortran code may also lead to raw Python tracebacks (e.g.
+  AssertionError) that are not directly helpful while developing new
+  Fortran code.
+
+Known ifort/fable differences:
+  data_26.f:
+    data are initialized at first execution of a function, not during
+    program initilization
+
+Caveats:
+  Success of fable.cout is not a guarantee that the C++ code will compile.
+
+  common-equivalence-simple silently assumes target starting point is
+  beginning of array
