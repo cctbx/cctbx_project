@@ -54,6 +54,15 @@ def xlen(seq):
   if (seq is None): return seq
   return len(seq)
 
+def product(seq):
+  result = None
+  for val in seq:
+    if (result is None):
+      result = val
+    else:
+      result *= val
+  return result
+
 def sequence_index_dict(seq, must_be_unique=True):
   result = {}
   for i,elem in enumerate(seq):
