@@ -48,6 +48,20 @@ def module_image_stats(S,key):
 
 class image_request_handler(BaseHTTPRequestHandler):
 
+  def shutdown(self):
+      def my_shutdown(arg1):
+        print "IN SHUTDOWN THREAD"
+        arg1.server.shutdown()
+      import thread
+      thread.start_new_thread(my_shutdown,(self,))
+      #must be called in a different thread or deadlock.
+      log = ""
+      self.send_response(200)
+      self.send_header("Content-type", 'text/plain')
+      self.send_header("Content-length",len(log))
+      self.end_headers()
+      self.wfile.write(log)
+
   def do_POST(self):
     T = Timer("do_POST")
     parsed = urlparse(self.path)
@@ -89,6 +103,10 @@ class image_request_handler(BaseHTTPRequestHandler):
       if len(parts[item][0])< 1000:
         print item, parts[item]
     print "*****************************"
+
+    if parts["filename"][0].find("EXIT")>=0:
+      self.shutdown()
+      return
 
     from labelit.command_line.imagefiles import ImageFiles
     #from spotfinder.applications.overall_procedure import spotfinder_no_pickle

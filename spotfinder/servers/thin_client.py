@@ -2,6 +2,9 @@ import os
 from spotfinder.servers.multipart_encoder import post_multipart
 
 def get_spotfinder_url(filename,host,port):
+  if filename.find("EXIT")>=0:
+    kill_server(host,port)
+    return
   testurl = "%s:%d"%(host,port)
   selector = "/spotfinder"
   query_object = [
@@ -13,6 +16,22 @@ def get_spotfinder_url(filename,host,port):
     fields = query_object, files = [])
 
   print Response.read()
+
+def kill_server(host,port):
+  from socket import error as socketerror
+  try:
+    while 1:
+      testurl = "%s:%d"%(host,port)
+      selector = "/spotfinder"
+      query_object = [
+      ("filename","EXIT"),
+      ("bin",1),
+      ]
+
+      Response = post_multipart(host=testurl, selector=selector,
+      fields = query_object, files = [])
+  except socketerror,e:
+    pass
 
 def do_main(filepath, host, port):
   absfile = os.path.abspath(filepath)
