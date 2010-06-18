@@ -33,6 +33,8 @@ def run_signal_strength(params):
     # List of spots between specified high- and low-resolution limits
     if Org.S.images[key].has_key('lo_pass_resolution_spots'):
       spots = Org.S.images[key]['lo_pass_resolution_spots']
+    elif Org.S.images[key].has_key('inlier_spots'):
+      spots = Org.S.images[key]['inlier_spots']
     else:
       spots = []
 
