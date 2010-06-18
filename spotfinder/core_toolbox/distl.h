@@ -62,6 +62,10 @@ public:
     finder.underloadvalue = finder.get_underload();
   }
 
+  inline void set_minimum_spot_area(const int& A){
+    finder.spotarealowcut = A;
+    finder.spotbasesize = A;}
+
   inline void pxlclassify(){ finder.pxlclassify(); }
 
   inline void search_icerings(){ finder.search_icerings(); }
