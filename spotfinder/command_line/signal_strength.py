@@ -49,9 +49,9 @@ Signal strength of the Good Bragg Candidates is then presented as integrated are
 Very verbose output is available by setting distl.verbose=True
 """
 
-  if (len(args) == 0 or args[0] in ["H","h","-H","-h","help","--help"]):
+  if (len(args) == 0 or args[0] in ["H","h","-H","-h","help","--help","-help"]):
     print "usage:   %s image_filename [parameter=value ...]" % command_name
-    print "example: %s lysozyme_001.img distl.res.outer=2.0 distl.res.inner=6.0"%command_name
+    print "example: %s lysozyme_001.img distl.res.outer=2.0 distl.res.inner=6.0 distl.minimum_spot_area=8"%command_name
     master_params.show(attributes_level=1,expert_level=1)
     print help_str
     return
