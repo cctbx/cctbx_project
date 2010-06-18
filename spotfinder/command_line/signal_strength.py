@@ -3,6 +3,13 @@ import libtbx.phil
 import libtbx.phil.command_line
 from libtbx.utils import Sorry
 import sys, os
+additional_spotfinder_phil_defs ="""
+distl {
+  minimum_spot_area = None
+    .type = int
+    .help = "Override default application; set minimum spot area (in pixels) within spotfinder."
+}
+"""
 
 master_params = libtbx.phil.parse("""\
 distl {
@@ -21,7 +28,7 @@ distl {
     .type = bool
     .help="Lengthy spot printout"
 }
-""")
+"""+additional_spotfinder_phil_defs)
 
 def run(args, command_name="distl.signal_strength"):
   help_str="""explanation:

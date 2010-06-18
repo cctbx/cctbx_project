@@ -2,7 +2,7 @@ Client / Server architecture for spot counting at beamlines.
 
 Server:
 
-libtbx.python mp_spotfinder_server_read_file.py <port number> <number of processes> [<outer resolution limit in Angstroms>]
+libtbx.python mp_spotfinder_server_read_file.py <port number> <number of processes> [<outer resolution limit in Angstroms> [<minimum spot area in pixels[]
 
 Client
 

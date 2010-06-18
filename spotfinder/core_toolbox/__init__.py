@@ -7,7 +7,7 @@ from spotfinder_hough_ext import *
 
 class Distl(w_Distl):
 
-  def __init__(self,options,image,pd,report_overloads=False):
+  def __init__(self,options,image,pd,report_overloads=False,params=None):
     w_Distl.__init__(self,options,report_overloads)
     try:    saturation = image.saturation
     except: saturation = 65535
@@ -20,6 +20,9 @@ class Distl(w_Distl):
     #Setup tiling, if any.
     self.set_tiling(image.vendortype)
 
+    if params!=None:
+        if params.distl.minimum_spot_area != None:
+          self.set_minimum_spot_area(params.distl.minimum_spot_area)
     self.get_underload()
     self.pxlclassify()
     self.search_icerings()
