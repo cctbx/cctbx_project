@@ -1291,5 +1291,6 @@ spotfinder/servers/spotfinder_server_client_push.py -text
 spotfinder/servers/spotfinder_server_read_file.py -text
 spotfinder/servers/thin_client.csh -text
 spotfinder/servers/thin_client.py -text
+tbxx/time_accu.hpp svneol=native#text/plain
 wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text
