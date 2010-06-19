@@ -100,5 +100,9 @@ Known ifort/fable differences:
 Caveats:
   Success of fable.cout is not a guarantee that the C++ code will compile.
 
+  FEM_DO assumes that l is not changed inside the loop, otherwise
+  the C++ behavior is different from the Fortran behavior.
+  (But FEM_DO_STEP does not make this assumption.)
+
   common-equivalence-simple silently assumes target starting point is
   beginning of array
