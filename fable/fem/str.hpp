@@ -13,13 +13,13 @@ namespace fem {
 
     str()
     {
-      std::fill_n(elems, StrLen, '\0');
+      std::memset(elems, '\0', StrLen);
     }
 
     str(
       char c)
     {
-      std::fill_n(elems, StrLen, c);
+      std::memset(elems, c, StrLen);
     }
 
     str(

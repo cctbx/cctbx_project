@@ -106,3 +106,5 @@ Caveats:
 
   common-equivalence-simple silently assumes target starting point is
   beginning of array
+
+  arr<T>: T must have trivial destructor (b/o use of memset)
