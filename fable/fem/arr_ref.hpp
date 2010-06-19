@@ -4,6 +4,7 @@
 #include <fem/dimension.hpp>
 #include <fem/zero.hpp>
 #include <algorithm>
+#include <cstring>
 
 namespace fem {
 
@@ -255,7 +256,7 @@ namespace fem {
       arr_cref<T, Ndims>(val)
     {
       (*this)(dims);
-      this->fill(zero<T>());
+      std::memset(this->begin(), 0, this->size_1d() * sizeof(T));
     }
 
     T*
@@ -327,13 +328,6 @@ namespace fem {
       ssize_t i6) const
     {
       return this->begin()[this->index_1d(i1, i2, i3, i4, i5, i6)];
-    }
-
-    void
-    fill(
-      T const& v)
-    {
-      std::fill_n(this->begin(), this->size_1d(), v);
     }
   };
 

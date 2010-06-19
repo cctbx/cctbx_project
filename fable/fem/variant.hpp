@@ -288,7 +288,7 @@ namespace fem {
         char* new_ptr = new char[new_size];
         std::memcpy(new_ptr, ptr, size);
         delete[] ptr;
-        std::fill_n(new_ptr+size, new_size-size, 0);
+        std::memset(new_ptr+size, 0, new_size-size);
         size = new_size;
         ptr = new_ptr;
       }

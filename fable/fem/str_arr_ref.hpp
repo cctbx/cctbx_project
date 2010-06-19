@@ -228,7 +228,7 @@ namespace fem {
       str_arr_cref<Ndims>(other)
     {
       (*this)(dims);
-      std::fill_n(this->begin(), StrLen * this->size_1d(), char0);
+      std::memset(this->begin(), char0, StrLen * this->size_1d());
     }
 
     char*
