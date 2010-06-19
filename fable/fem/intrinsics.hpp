@@ -335,6 +335,24 @@ namespace fem {
     float const& v1,
     int const& v2) { return std::max(v1, static_cast<float>(v2)); }
 
+  template <typename T>
+  inline
+  T
+  pow2(
+    T const& base) { return base * base; }
+
+  template <typename T>
+  inline
+  T
+  pow3(
+    T const& base) { return base * base * base; }
+
+  template <typename T>
+  inline
+  T
+  pow4(
+    T const& base) { T p2 = pow2(base); return p2 * p2; }
+
   inline
   int
   pow(

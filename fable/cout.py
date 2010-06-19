@@ -273,7 +273,16 @@ def cmn_needs_to_be_inserted(conv_info, prev_tok):
   return False
 
 def convert_power(conv_info, tokens):
-  return "fem::pow(" + convert_tokens(
+  fun = "fem::pow"
+  pow_tok = tokens[1]
+  if (pow_tok.is_integer()):
+    if (pow_tok.value == "1"):
+      fun = ""
+      tokens = tokens[:1]
+    elif (pow_tok.value in ["2","3","4"]):
+      fun = "fem::pow%s" % pow_tok.value
+      tokens = tokens[:1]
+  return fun + "(" + convert_tokens(
     conv_info=conv_info, tokens=tokens, commas=True) + ")"
 
 def convert_tokens(conv_info, tokens, commas=False):

@@ -1188,9 +1188,15 @@ sub(
   write(6, "(f5.1)"), x;
   x = fem::pow((1.2f + 3.4f), (5.6f / 7.8f));
   write(6, "(f5.3)"), x;
-  x = -fem::pow(1.3f, 2);
+  x = -fem::pow2(1.3f);
   write(6, "(f5.2)"), x;
-  x = fem::pow((-1.3f), 2);
+  x = fem::pow2((-1.3f));
+  write(6, "(f4.2)"), x;
+  x = ((-1.4f));
+  write(6, "(f5.2)"), x;
+  x = fem::pow3((-1.5f));
+  write(6, "(f5.2)"), x;
+  x = fem::pow4((-1.6f));
   write(6, "(f4.2)"), x;
 """)
   #
@@ -1442,7 +1448,7 @@ sub1(
   lines = get("power_2.f")
   assert not absd(lines, tail_off(8), """\
   vals(1) = 1.2f;
-  vals(2) = fem::pow(vals(1), 2);
+  vals(2) = fem::pow2(vals(1));
   vals(3) = fem::pow(2, vals(2));
   vals(4) = fem::pow(vals(2), vals(3));
 """)
@@ -1842,7 +1848,7 @@ sub2(
   #
   lines = get("write_pow.f")
   assert not absd(lines, tail_off(1), """\
-  write(6, star), fem::pow(2, 3);
+  write(6, star), fem::pow3(2);
 """)
   #
   lines = get("subroutine_8.f")
@@ -2576,7 +2582,7 @@ blockdata_unnamed(
   arr_2d<n2 - 5, n3 - 48, int> nums1(fem::fill0);
 """)
   assert not absd(lines, tail_off(3), """\
-  const int n6 = fem::pow(n1, 2);
+  const int n6 = fem::pow2(n1);
   arr<int> nums3(dimension(n6), fem::fill0);
 """)
   lines = get("const_expressions.f", arr_nd_size_max=-6)
