@@ -2365,6 +2365,7 @@ def process(
       force_not_implemented=set(),
       ignore_missing=set(),
       suppress_functions=set(),
+      suppress_function_definitions=set(),
       common_report_stringio=None,
       data_values_block_size=8,
       data_specializations=True,
@@ -2539,20 +2540,23 @@ def process(
     data_specializations=data_specializations)
   #
   for unit in topological_units.bottom_up_list:
+    if (unit.is_program()):
+      continue
     if (unit.name.value in suppress_functions):
       continue
-    if (   unit.is_function()
-        or unit.is_subroutine()
-        or unit.is_blockdata()):
-      buffers = separate_namespaces_buffers.get(unit.name.value)
-      if (buffers is None):
-        if (not need_function_hpp):
-          hpp_callback = None
+    hpp_callback = None
+    cpp_callback = None
+    suppress_cpp = (unit.name.value in suppress_function_definitions)
+    buffers = separate_namespaces_buffers.get(unit.name.value)
+    if (buffers is None):
+      if (not need_function_hpp):
+        if (not suppress_cpp):
           cpp_callback = callback
-        else:
-          function_hpp_buffer = []
-          function_declarations.append(function_hpp_buffer)
-          hpp_callback = function_hpp_buffer.append
+      else:
+        function_hpp_buffer = []
+        function_declarations.append(function_hpp_buffer)
+        hpp_callback = function_hpp_buffer.append
+        if (not suppress_cpp):
           buffer = separate_function_buffer_by_function_name.get(
             unit.name.value)
           if (buffer is None):
@@ -2564,33 +2568,37 @@ def process(
               cpp_callback = function_cpp_buffer.append
           else:
             cpp_callback = buffer.append
-      else:
-        hpp_callback = buffers.hpp.append
+    else:
+      hpp_callback = buffers.hpp.append
+      if (not suppress_cpp):
         cpp_callback = buffers.cpp.append
-      if (not need_function_hpp):
-        fwds = topological_units.forward_uses_by_identifier.get(
-          unit.name.value)
-        if (fwds is not None):
-          for fwd_identifier in fwds:
-            fwd_unit = all_units.units_by_name()[fwd_identifier]
-            try:
-              convert_to_cpp_function(
-                hpp_callback=None,
-                cpp_callback=cpp_callback,
-                conv_info=global_conv_info.specialized(unit=fwd_unit),
-                declaration_only=True)
-            except Exception:
-              if (not debug): raise
-              show_traceback()
-      try:
-        convert_to_cpp_function(
-          hpp_callback=hpp_callback,
-          cpp_callback=cpp_callback,
-          conv_info=global_conv_info.specialized(unit=unit),
-          force_not_implemented=(unit.name.value in force_not_implemented))
-      except Exception:
-        if (not debug): raise
-        show_traceback()
+    if (cpp_callback is None):
+      cpp_diverted = []
+      cpp_callback = cpp_diverted.append
+    if (not need_function_hpp):
+      fwds = topological_units.forward_uses_by_identifier.get(
+        unit.name.value)
+      if (fwds is not None):
+        for fwd_identifier in fwds:
+          fwd_unit = all_units.units_by_name()[fwd_identifier]
+          try:
+            convert_to_cpp_function(
+              hpp_callback=None,
+              cpp_callback=cpp_callback,
+              conv_info=global_conv_info.specialized(unit=fwd_unit),
+              declaration_only=True)
+          except Exception:
+            if (not debug): raise
+            show_traceback()
+    try:
+      convert_to_cpp_function(
+        hpp_callback=hpp_callback,
+        cpp_callback=cpp_callback,
+        conv_info=global_conv_info.specialized(unit=unit),
+        force_not_implemented=(unit.name.value in force_not_implemented))
+    except Exception:
+      if (not debug): raise
+      show_traceback()
   #
   for name,buffer in separate_function_buffers:
     close_namespace(
