@@ -25,6 +25,7 @@ def exercise_simple(verbose):
       file_names=file_names,
       top_unit_name=top_unit_name,
       data_specializations=data_specializations,
+      fem_do_safe=False,
       arr_nd_size_max=arr_nd_size_max,
       common_report_stringio=common_report_stringio)
     return "\n".join(lines).splitlines()
@@ -2677,7 +2678,7 @@ def exercise_unsupported(verbose):
   #
   assert not absd(get("goto_into_loop.f"), tail_off(1), """\
   int i = fem::int0;
-  FEM_DO(i, 1, 2) {
+  FEM_DO_SAFE(i, 1, 2) {
     statement_10:
     write(6, star), i;
   }

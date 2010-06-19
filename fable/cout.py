@@ -145,6 +145,7 @@ class global_conversion_info(object):
   __slots__ = [
     "topological_units",
     "dynamic_parameters",
+    "fem_do_safe",
     "arr_nd_size_max",
     "units_by_name",
     "intrinsics_extra",
@@ -156,6 +157,7 @@ class global_conversion_info(object):
   def __init__(O,
         topological_units,
         dynamic_parameters,
+        fem_do_safe,
         arr_nd_size_max,
         converted_commons_info,
         separate_namespaces,
@@ -163,6 +165,7 @@ class global_conversion_info(object):
         data_specializations):
     O.topological_units = topological_units
     O.dynamic_parameters = dynamic_parameters
+    O.fem_do_safe = fem_do_safe
     O.arr_nd_size_max = arr_nd_size_max
     O.units_by_name = topological_units.all_units.units_by_name()
     O.intrinsics_extra = topological_units.intrinsics_extra
@@ -623,6 +626,9 @@ def convert_to_fem_do(conv_info, parent_scope, i_tok, fls_tokens):
     s = convert_tokens(conv_info=conv_info, tokens=fls_tokens[2].value)
     return parent_scope.open_nested_scope(
       opening_text=["FEM_DOSTEP(%s, %s, %s, %s) {" % (i, f, l, s)])
+  if (conv_info.fem_do_safe):
+    return parent_scope.open_nested_scope(
+      opening_text=["FEM_DO_SAFE(%s, %s, %s) {" % (i, f, l)])
   if (is_simple_do_last(tokens=fls_tokens[1].value)):
     return parent_scope.open_nested_scope(
       opening_text=["FEM_DO(%s, %s, %s) {" % (i, f, l)])
@@ -2362,6 +2368,7 @@ def process(
       namespace="please_specify",
       top_cpp_file_name=None,
       dynamic_parameters=None,
+      fem_do_safe=True,
       arr_nd_size_max=default_arr_nd_size_max,
       common_equivalence_simple=set(),
       separate_cmn_hpp=False,
@@ -2542,6 +2549,7 @@ def process(
   global_conv_info = global_conversion_info(
     topological_units=topological_units,
     dynamic_parameters=dynamic_parameters,
+    fem_do_safe=fem_do_safe,
     arr_nd_size_max=arr_nd_size_max,
     converted_commons_info=converted_commons_info,
     separate_namespaces=separate_namespaces,

@@ -65,6 +65,7 @@ class process(object):
       file_names=file_names,
       top_unit_name=opts.top_unit_name,
       dynamic_parameters=O.dynamic_parameters,
+      fem_do_safe=not opts.no_fem_do_safe,
       arr_nd_size_max=opts.arr_nd_size_max,
       common_equivalence_simple=set(opts.common_equivalence_simple.split(",")),
       namespace=opts.namespace,
@@ -130,6 +131,9 @@ def run(args):
       type="str",
       metavar="STRING",
       help='example: --dynamic_parameter="int array_size=100"')
+    .option(None, "--no_fem_do_safe",
+      action="store_true",
+      default=False)
     .option(None, "--arr_nd_size_max",
       action="store",
       type="int",
