@@ -26,7 +26,7 @@ namespace fem {
 } // namespace fem
 
 #define FEM_DO(i, f, l) \
-  for(fem::do_ fem_do(&(i), f, l);fem_do;fem_do.incr())
+  for(i=f; i<=l; i++)
 
 #define FEM_DOSTEP(i, f, l, s) \
   for(fem::do_ fem_do(&(i), f, l, s);fem_do;fem_do.incr())

@@ -490,15 +490,17 @@ class scope(object):
   __slots__ = [
     "parent",
     "opening_text",
+    "auto_close_parent",
     "closing_text",
     "data",
     "insert_point",
     "last_is_statement_label",
     "tail"]
 
-  def __init__(O, parent, opening_text=None):
+  def __init__(O, parent, opening_text=None, auto_close_parent=False):
     O.parent = parent
     O.opening_text = opening_text
+    O.auto_close_parent = auto_close_parent
     O.closing_text = None
     O.data = []
     O.insert_point = None
@@ -521,9 +523,10 @@ class scope(object):
     O.data.append("statement_%s:" % label)
     O.last_is_statement_label = True
 
-  def open_nested_scope(O, opening_text):
+  def open_nested_scope(O, opening_text, auto_close_parent=False):
     O.last_is_statement_label = False
-    return scope(parent=O, opening_text=opening_text)
+    return scope(
+      parent=O, opening_text=opening_text, auto_close_parent=auto_close_parent)
 
   def finalize(O):
     if (O.last_is_statement_label):
@@ -539,6 +542,8 @@ class scope(object):
     while (head.parent.tail is head):
       head = head.parent
     head.parent.data.append(head)
+    if (head.auto_close_parent):
+      return head.parent.close_nested_scope()
     return head.parent
 
   def attach_tail(O, opening_text):
@@ -591,15 +596,32 @@ def convert_io_statement_with_err(
     catch_scope.append("goto statement_%s;" % clabel)
     catch_scope.close_nested_scope()
 
-def convert_to_fem_do(conv_info, i_tok, fls_tokens):
+def is_simple_do_last(tokens):
+  i = 0
+  if (len(tokens) == 2 and tokens[0].is_unary_plus_or_minus()):
+    i = 1
+  if (i+1 == len(tokens)):
+    tok = tokens[i]
+    return tok.is_identifier() or tok.is_integer()
+  return False
+
+def convert_to_fem_do(conv_info, parent_scope, i_tok, fls_tokens):
   assert 2 <= len(fls_tokens) <= 3
   i = convert_token(vmap=conv_info.vmap, leading=True, tok=i_tok)
   f = convert_tokens(conv_info=conv_info, tokens=fls_tokens[0].value)
   l = convert_tokens(conv_info=conv_info, tokens=fls_tokens[1].value)
   if (len(fls_tokens) == 3):
     s = convert_tokens(conv_info=conv_info, tokens=fls_tokens[2].value)
-    return ["FEM_DOSTEP(%s, %s, %s, %s) {" % (i, f, l, s)]
-  return ["FEM_DO(%s, %s, %s) {" % (i, f, l)]
+    return parent_scope.open_nested_scope(
+      opening_text=["FEM_DOSTEP(%s, %s, %s, %s) {" % (i, f, l, s)])
+  if (is_simple_do_last(tokens=fls_tokens[1].value)):
+    return parent_scope.open_nested_scope(
+      opening_text=["FEM_DO(%s, %s, %s) {" % (i, f, l)])
+  scope_for_last = parent_scope.open_nested_scope(opening_text=["{"])
+  scope_for_last.append("int fem_do_last = %s;" % l)
+  return scope_for_last.open_nested_scope(
+    opening_text=["FEM_DO(%s, %s, fem_do_last) {" % (i, f)],
+    auto_close_parent=True)
 
 def find_implied_dos(result, tokens):
   assert isinstance(tokens, list)
@@ -666,9 +688,11 @@ def convert_io_loop(io_scope, io_op, conv_info, tokens, cbuf=None):
       cbuf.flush()
       from fable.tokenization import implied_do_info
       idi = implied_do_info(tokens=tok.value)
-      opening_text = convert_to_fem_do(
-        conv_info=conv_info, i_tok=idi.id_tok, fls_tokens=idi.fls_tokens)
-      do_scope = io_scope.open_nested_scope(opening_text=opening_text)
+      do_scope = convert_to_fem_do(
+        conv_info=conv_info,
+        parent_scope=io_scope,
+        i_tok=idi.id_tok,
+        fls_tokens=idi.fls_tokens)
       convert_io_loop(
         io_scope=do_scope,
         io_op=io_op,
@@ -1526,9 +1550,11 @@ def convert_executable(
         for token in ei.tokens:
           declare_identifiers(
             id_tokens=extract_identifiers(tokens=token.value))
-        opening_text = convert_to_fem_do(
-          conv_info=conv_info, i_tok=ei.id_tok, fls_tokens=ei.tokens)
-        curr_scope = curr_scope.open_nested_scope(opening_text=opening_text)
+        curr_scope = convert_to_fem_do(
+          conv_info=conv_info,
+          parent_scope=curr_scope,
+          i_tok=ei.id_tok,
+          fls_tokens=ei.tokens)
         if (ei.label is not None):
           dos_to_close_by_label.setdefault(ei.label, []).append(curr_scope)
       elif (ei.key == "enddo"):

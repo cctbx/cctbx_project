@@ -181,6 +181,12 @@ main(
   FEM_DO(i, 1, 2) {
     write(6, star), i;
   }
+  {
+    int fem_do_last = 2 * 3;
+    FEM_DO(i, 1, fem_do_last) {
+      write(6, star), i;
+    }
+  }
   int j = fem::int0;
   FEM_DOSTEP(j, 3, 5, 2) {
     write(6, star), j;
@@ -1564,8 +1570,11 @@ struct program_prog_save
   const int one = 1;
   if (sve.is_called_first_time()) {
     fem::data_values data((values, 12, 34));
-    FEM_DO(ind, 1, one + one) {
-      data, sve.num(ind);
+    {
+      int fem_do_last = one + one;
+      FEM_DO(ind, 1, fem_do_last) {
+        data, sve.num(ind);
+      }
     }
   }
   write(6, star), sve.num(1), sve.num(2);
