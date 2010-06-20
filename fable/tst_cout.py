@@ -771,7 +771,6 @@ struct common :
 
 struct show_resolution_save
 {
-  fem::one_time_flag is_called_first_time;
   float ass;
   float bss;
   float css;
@@ -794,7 +793,7 @@ show_resolution(
 {
   FEM_CMN_SVE(show_resolution);
   common_write write(cmn);
-  if (sve.is_called_first_time()) {
+  if (is_called_first_time) {
     sve.first = true;
   }
   if (sve.first) {
@@ -1565,7 +1564,6 @@ sub(
   assert not absd(lines, head_off(7), """\
 struct program_prog_save
 {
-  fem::one_time_flag is_called_first_time;
   arr<int> num;
 
   program_prog_save() :
@@ -1575,7 +1573,7 @@ struct program_prog_save
 """)
   assert not absd(lines, tail_off(1), """\
   const int one = 1;
-  if (sve.is_called_first_time()) {
+  if (is_called_first_time) {
     fem::data_values data((values, 12, 34));
     {
       int fem_do_last = one + one;
@@ -1591,8 +1589,6 @@ struct program_prog_save
   assert not absd(lines, head_off(7), """\
 struct program_unnamed_save
 {
-  fem::one_time_flag is_called_first_time;
-
   static const int num = 2;
 
   arr<float> vals;
@@ -1605,7 +1601,7 @@ struct program_unnamed_save
 const int program_unnamed_save::num;
 """)
   assert not absd(lines, tail_off(8), """\
-  if (sve.is_called_first_time()) {
+  if (is_called_first_time) {
     fem::data((values, num*datum(1.2f))), sve.vals;
   }
 """)
@@ -1614,7 +1610,6 @@ const int program_unnamed_save::num;
   assert not absd(lines, head_off(7), """\
 struct program_prog_save
 {
-  fem::one_time_flag is_called_first_time;
   arr<int> nums;
   arr<fem::str<2> > s2s;
 
@@ -1660,14 +1655,14 @@ struct program_prog_save
   assert not absd(lines, tail_off(2), """\
   const fem::str<2> s12 = "xy";
   const fem::str<2> s34 = "ab";
-  if (sve.is_called_first_time()) {
+  if (is_called_first_time) {
     fem::data((values, s12)), sve.s4(1, 2);
     fem::data((values, s34)), sve.s4(3, 4);
   }
 """)
   #
   lines = get("data_26.f", data_specializations=False)
-  assert not absd(lines, head_off(37), """\
+  assert not absd(lines, head_off(36), """\
     fem::data((values, 1, 2, 3)), sve.num1, sve.num2, cmn.num3;
 """)
   #
@@ -1734,8 +1729,6 @@ struct program_prog_save
   assert not absd(lines, head_off(7), """\
 struct program_prog_save
 {
-  fem::one_time_flag is_called_first_time;
-
   static const int base = 4;
   static const int size = base - 1;
   static const int dim = base - 2;
@@ -1812,7 +1805,7 @@ sub(
   #
   lines = get("data_30.f", data_specializations=False)
   assert not absd(lines, tail_off(11), """\
-  if (sve.is_called_first_time()) {
+  if (is_called_first_time) {
     fem::data((values, 12, 34)), sve.nums;
   }
   arr<float> data(dimension(2), fem::fill0);
@@ -1974,7 +1967,6 @@ struct common :
 
 struct sub1a_save
 {
-  fem::one_time_flag is_called_first_time;
   fem::variant_bindings scr_bindings;
 };
 
@@ -1984,7 +1976,7 @@ sub1a(
 {
   FEM_CMN_SVE(sub1a);
   common_variant scr(cmn.common_scr, sve.scr_bindings);
-  if (sve.is_called_first_time()) {
+  if (is_called_first_time) {
     using fem::mbr; // member of variant common or equivalence
     {
       mbr<int> i;
@@ -2006,7 +1998,7 @@ sub1a(
   #
   lines = get("common_equivalence_1.f")
   assert not absd(lines, tail_off(7), """\
-  if (sve.is_called_first_time()) {
+  if (is_called_first_time) {
     using fem::mbr; // member of variant common or equivalence
     {
       mbr<int> nums(dimension(2));
@@ -2067,7 +2059,7 @@ sub1a(
 """)
   #
   lines = get("common_equivalence_5.f")
-  assert not absd(lines, head_off(25), """\
+  assert not absd(lines, head_off(24), """\
       mbr<int> inside(dimension(2));
       mbr<int> data(dimension(4));
       scr.allocate(),
@@ -2076,7 +2068,7 @@ sub1a(
            .with<1>()
       ;
 """)
-  assert not absd(lines, head_off(35), """\
+  assert not absd(lines, head_off(34), """\
   arr_ref<int> data = scr.bind_arr<int, 1>();
 """)
   assert not absd(lines, tail_off(19), """\
@@ -2088,7 +2080,6 @@ sub1a(
   assert not absd(lines, head_off(8), """\
 struct program_prog_save
 {
-  fem::one_time_flag is_called_first_time;
   fem::variant_bindings scr_bindings;
   fem::variant_core_and_bindings save_equivalences;
 };
@@ -2096,7 +2087,7 @@ struct program_prog_save
   assert not absd(lines, tail_off(6), """\
   common_variant scr(cmn.common_scr, sve.scr_bindings);
   save_equivalences sve_equivalences(sve.save_equivalences);
-  if (sve.is_called_first_time()) {
+  if (is_called_first_time) {
     using fem::mbr; // member of variant common or equivalence
     {
       mbr<int> nc;
@@ -2198,13 +2189,11 @@ struct program_prog_save
   assert not absd(lines, head_off(8), """\
 struct program_prog_save
 {
-  fem::one_time_flag is_called_first_time;
-  fem::one_time_flag data_init;
   fem::variant_bindings scr_bindings;
 };
 """)
   assert not absd(lines, tail_off(3), """\
-  if (sve.data_init()) {
+  if (is_called_first_time) {
     fem::data((values, 12, 34, 56)), numse;
   }
 """)
@@ -2406,13 +2395,13 @@ sub(
 """)
   #
   lines = get("blockdata_unnamed.f", data_specializations=False)
-  assert not absd(lines, head_off(22), """\
+  assert not absd(lines, head_off(21), """\
 void
 blockdata_unnamed(
   common& cmn)
 {
   FEM_CMN_SVE(blockdata_unnamed);
-  if (sve.is_called_first_time()) {
+  if (is_called_first_time) {
     fem::data((values, 3)), cmn.i;
   }
 }
@@ -2570,7 +2559,7 @@ blockdata_unnamed(
     sve.numsj(2) = 45;
     sve.strsj(2) = "ASdfg";
 """)
-  assert not absd(lines, head_off(25), """\
+  assert not absd(lines, head_off(24), """\
     static const int values[] = {
       -24, +35
     };
