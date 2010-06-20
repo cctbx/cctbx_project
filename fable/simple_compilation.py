@@ -12,7 +12,7 @@ class environment(object):
     "boost_dist",
     "__have_pch"]
 
-  def __init__(O, ):
+  def __init__(O, compiler=None):
     import os
     if (os.name == "nt"):
       O.compiler = "cl"
@@ -24,6 +24,11 @@ class environment(object):
       O.obj_suffix = ".o"
       O.exe_suffix = ""
       O.pch_suffix = ".gch"
+    if (compiler is not None):
+      O.compiler = compiler
+    compiler_from_os_environ = os.environ.get("FABLE_COMPILER")
+    if (compiler_from_os_environ is not None):
+      O.compiler = compiler_from_os_environ
     from libtbx.path import full_command_path
     O.compiler_path = full_command_path(command=O.compiler+O.exe_suffix)
     import libtbx.load_env
@@ -55,7 +60,8 @@ class environment(object):
     if (O.compiler == "cl"):
       if (not link): part = "/c /Fo%s" % qon
       else:          part = "/Fe%s" % qon
-      result = "cl /nologo /EHsc %s /I%s /I%s /I%s %s" % (
+      result = "%s /nologo /EHsc %s /I%s /I%s /I%s %s" % (
+        O.compiler,
         part,
         quote(O.fable_dist),
         quote(O.boost_adaptbx_root),
@@ -80,8 +86,8 @@ class environment(object):
           quote(O.boost_dist))
       else:
         opt_i = "-I."
-      result = "g++ -o %s %s%s -g -O0 %s %s%s" % (
-        qon, opt_c, opt_w, opt_i, opt_x, quote_list(file_names))
+      result = "%s -o %s %s%s -g -O0 %s %s%s" % (
+        O.compiler, qon, opt_c, opt_w, opt_i, opt_x, quote_list(file_names))
     return result
 
   def file_name_obj(O, file_name_cpp):
