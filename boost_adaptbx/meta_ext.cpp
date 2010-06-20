@@ -266,6 +266,24 @@ namespace {
 #if defined(__GNUC_PATCHLEVEL__)
     result += "__GNUC_PATCHLEVEL__ = " + to_str(__GNUC_PATCHLEVEL__) + nl;
 #endif
+#if defined(__clang__)
+    result += "__clang__\n";
+#endif
+#if defined(__clang_major__)
+    result += "__clang_major__ = " + to_str(__clang_major__) + nl;
+#endif
+#if defined(__clang_minor__)
+    result += "__clang_minor__ = " + to_str(__clang_minor__) + nl;
+#endif
+#if defined(__clang_patchlevel__)
+    result += "__clang_patchlevel__ = " + to_str(__clang_patchlevel__) + nl;
+#endif
+#if defined(__clang_version__)
+    result += "__clang_version__ = " + to_str(__clang_version__) + nl;
+#endif
+#if defined(__llvm__)
+    result += "__llvm__\n";
+#endif
 #if defined(BOOST_PYTHON_HAVE_CXXABI_CXA_DEMANGLE_IS_BROKEN)
     result += "boost::python::cxxabi_cxa_demangle_is_broken(): "
             + to_str(boost::python::cxxabi_cxa_demangle_is_broken()) + nl;
@@ -346,6 +364,9 @@ namespace {
     P(boost::uint32_t)
 #if defined(HAVE_WCHAR_H)
     P(wchar_t)
+#endif
+#if defined(__PTRDIFF_TYPE__)
+    result += "__PTRDIFF_TYPE__\n";
 #endif
 #if defined(Py_USING_UNICODE)
     result += "Py_USING_UNICODE\n";

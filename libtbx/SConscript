@@ -135,6 +135,7 @@ supported_compilers = (
   "win32_icc",
   "unix_gcc",
   "unix_gcc4",
+  "unix_clang",
   "unix_icc",
   "unix_icpc",
   "darwin_c++",
@@ -445,6 +446,51 @@ else:
       env_base.Append(LINKFLAGS=["-rdynamic"])
       env_etc.shlinkflags.append("-rdynamic")
       env_etc.shlinkflags_bpl.append("-rdynamic")
+  elif (env_etc.compiler == "unix_clang"):
+    env_etc.static_libraries = 0
+    env_etc.static_bpl = 0
+    cc = "clang"
+    cxx = "clang++"
+    env_base.Replace(
+      CC=cc,
+      SHCC=cc,
+      CXX=cxx,
+      LINK=cxx,
+      SHCXX=cxx,
+      SHLINK=cxx,
+      SHLIBSUFFIX=env_etc.shlibsuffix)
+    env_etc.c_link = cc
+    env_etc.ccflags_base = [
+      "-fPIC",
+      "-fno-strict-aliasing"]
+    env_etc.cxxflags_base = []
+    if (libtbx.env.build_options.warning_level == 0):
+      warn_options = ["-w"]
+      env_etc._enable_more_warnings = "gcc"
+    elif (libtbx.env.build_options.warning_level == 1):
+      warn_options = gcc_common_warn_options()
+    else:
+      warn_options = gcc_common_warn_options() + ["-Werror"]
+    env_etc.ccflags_base.extend(warn_options)
+    if (libtbx.env.build_options.optimization):
+      opts = [
+        "-DNDEBUG",
+        "-O3",
+        "-ffast-math",
+        "-fno-associative-math",
+        "-ftrapping-math"]
+    else:
+      opts = ["-O0", "-fno-inline"]
+    if (libtbx.env.build_options.debug_symbols):
+      opts.insert(0, "-g")
+    opts.append("-DBOOST_ALL_NO_LIB")
+    opts.append('-DBOOST_DISABLE_THREADS')
+    env_etc.ccflags_base.extend(opts)
+    if (static_exe):
+      env_base.Prepend(LINKFLAGS=["-static"])
+      static_exe = None
+    env_etc.shlinkflags = ["-shared"]
+    env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "unix_icc"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
