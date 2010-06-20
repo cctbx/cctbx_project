@@ -18,20 +18,27 @@ namespace fem {
 
   typedef boost::any cmn_sve;
 
-  using utils::one_time_flag;
+  template <typename T>
+  void
+  no_operation_to_avoid_unused_variable_warning(
+    const T&)
+  {}
 
 } // namespace fem
 
 #define FEM_CMN_SVE(FUNC) \
-  if (cmn.FUNC##_sve.empty()) { \
+  bool is_called_first_time = cmn.FUNC##_sve.empty(); \
+  if (is_called_first_time) { \
     cmn.FUNC##_sve = boost::shared_ptr<FUNC##_save>( \
       new FUNC##_save); \
   } \
   FUNC##_save& sve = *boost::any_cast< \
-    boost::shared_ptr<FUNC##_save> >(cmn.FUNC##_sve).get()
+    boost::shared_ptr<FUNC##_save> >(cmn.FUNC##_sve).get(); \
+  fem::no_operation_to_avoid_unused_variable_warning(sve)
 
 #define FEM_CMN_SVE_DYNAMIC_PARAMETERS(FUNC) \
-  if (cmn.FUNC##_sve.empty()) { \
+  bool is_called_first_time = cmn.FUNC##_sve.empty(); \
+  if (is_called_first_time) { \
     cmn.FUNC##_sve = boost::shared_ptr<FUNC##_save>( \
       new FUNC##_save(cmn.dynamic_parameters)); \
   } \

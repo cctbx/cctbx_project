@@ -1318,7 +1318,7 @@ def convert_executable(
     conv_info=conv_info, top_scope=top_scope)
   if (conv_info.unit.needs_is_called_first_time):
     first_time_scope = top_scope.open_nested_scope(
-      opening_text=["if (sve.is_called_first_time()) {"])
+      opening_text=["if (is_called_first_time) {"])
     if (len(variant_buffers.first_time) != 0):
       first_time_scope.append(
         "using fem::mbr; // member of variant common or equivalence")
@@ -1352,7 +1352,7 @@ def convert_executable(
   top_scope.remember_insert_point()
   if (conv_info.unit.data_init_after_variant_bind):
     data_init_scope = top_scope.open_nested_scope(
-      opening_text=["if (sve.data_init()) {"])
+      opening_text=["if (is_called_first_time) {"])
     convert_data(conv_info=conv_info, data_init_scope=data_init_scope)
     data_init_scope.close_nested_scope()
   top_scope.remember_insert_point()
@@ -1824,20 +1824,18 @@ def convert_to_struct(
   callback("{")
   sve_equivalences = {}
   cmn_equivalences = {}
-  have_is_called_first_time = (
-        struct_type == "save"
-    and conv_info.unit.needs_is_called_first_time)
-  if (have_is_called_first_time):
-    callback("  fem::one_time_flag is_called_first_time;")
-    if (conv_info.unit.data_init_after_variant_bind):
-      callback("  fem::one_time_flag data_init;")
+  have_variant_block = False
+  if (    struct_type == "save"
+      and conv_info.unit.needs_is_called_first_time):
     for common_name in sorted(conv_info.unit.variant_common_names):
       callback("  fem::variant_bindings %s_bindings;" % common_name)
+      have_variant_block = True
     #
     cei = conv_info.unit.classified_equivalence_info()
     sve_equivalences = cei.save.equiv_tok_cluster_by_identifier
     if (len(sve_equivalences) != 0):
       callback("  fem::variant_core_and_bindings save_equivalences;")
+      have_variant_block = True
     cmn_equivalences = cei.common.equiv_tok_cluster_by_identifier
   #
   from fable.tokenization import extract_identifiers
@@ -1876,7 +1874,7 @@ def convert_to_struct(
     #   in the program and the namespace scope definition shall not contain
     #   an initializer."
   if (len(const_id_toks) != 0):
-    if (have_is_called_first_time):
+    if (have_variant_block):
       callback("")
     append_empty_line = False
     for id_tok in const_id_toks:
