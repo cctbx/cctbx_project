@@ -1,7 +1,6 @@
-parameter consolidation based on file name, line number of assignment tokens
-line breaks
 var += other;
 comments
+line breaks
 
 str<>::operator char*() possible? (certain constructors will have to be removed)
 cout: raise exception at very end if other exceptions caught

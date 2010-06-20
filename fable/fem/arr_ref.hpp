@@ -125,9 +125,9 @@ namespace fem {
 
     arr_cref(
       T const& val)
-    {
-      elems_ = &val;
-    }
+    :
+      elems_(&val)
+    {}
 
     template <size_t OtherNdims>
     arr_cref(
