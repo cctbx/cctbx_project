@@ -150,6 +150,7 @@ class mouse_selection_manager (object) :
     self.deselected_atoms = []
     self.selected_residues = []
     self.deselected_residues = []
+    self.selected_pair = []
     if apply_empty :
       self.apply_selection("none") #self.saved_selection)
 
@@ -312,6 +313,27 @@ class mouse_selection_manager (object) :
     self.remove_redundant_atoms(resi_sel, self.deselected_atoms)
     self.construct_selection()
 
+  def select_pair (self, i_seq, selection_type="residue",
+      allow_duplicate=False) :
+    if len(self.selected_pair) == 2 :
+      self.selected_pair = []
+    atom = self.atom_index[i_seq]
+    if selection_type == "residue" :
+      selected_object = residue_selection_info(atom.chain_id, atom.resid())
+    else :
+      selected_object = atom_selection_info(i_seq, atom)
+    n_selected = len(self.selected_pair)
+    if n_selected == 1 and not allow_duplicate :
+      # force items to be unique (no self-pairing)
+      if str(selected_object) == str(self.selected_pair[0]) :
+        print "skipping"
+        return
+    self.selected_pair.append(selected_object)
+    self.construct_selection()
+
+  def get_pair_selections (self) :
+    pass
+
   def toggle_atom_selection (self, i_seq) :
     atom = self.atom_index[i_seq]
     if self.atom_selection[i_seq] : #and not i_seq in self.deselected_atoms :
@@ -365,6 +387,8 @@ class mouse_selection_manager (object) :
     for i_seq in self.deselected_atoms :
       atom_info = atom_selection_info(i_seq, self.atom_index[i_seq])
       clauses.append(str(atom_info))
+    for other_info in self.selected_pair :
+      clauses.append(str(other_info))
     negative_selection = assemble_selection_clauses(clauses)
     # assemble final selection
     if positive_selection != "" :

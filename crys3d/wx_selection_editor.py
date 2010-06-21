@@ -256,7 +256,7 @@ class selection_editor_mixin (model_viewer_mixin) :
       self.update_scene = True
     elif key == ord('z') :
       self.zoom_selections()
-    elif key >= 49 and key <= 55 : # 1-7
+    elif key >= 49 and key <= 57 : # 1-7
       self.set_left_button_mode(key - 49)
     elif key == 27 : # escape
       self.clear_selections()
@@ -351,6 +351,19 @@ class selection_editor_mixin (model_viewer_mixin) :
       model.select_single_residue(self.current_atom_i_seq)
       return True
 
+  def select_residue_pair (self) :
+    model = self.get_model(self.current_object_id)
+    if model is not None :
+      model.select_pair(self.current_atom_i_seq)
+      return True
+
+  def select_atom_pair (self) :
+    model = self.get_model(self.current_object_id)
+    if model is not None :
+      print self.current_atom_i_seq
+      model.select_pair(self.current_atom_i_seq, selection_type="atom")
+      return True
+
   # TODO: finish this?
   def context_selection_menu (self) :
     menu = wx.Menu()
@@ -373,7 +386,9 @@ class selection_editor_mixin (model_viewer_mixin) :
                     "process_range_selection",
                     "process_range_deselection",
                     "select_single_residue",
-                    "context_selection_menu",]
+                    "context_selection_menu",
+                    "select_residue_pair",
+                    "select_atom_pair",]
         for i, method in enumerate(methods) :
           if self.left_button_mode == (i + 1) :
             self.update_scene = getattr(self, method).__call__()
