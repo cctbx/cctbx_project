@@ -594,6 +594,7 @@ fable/test/valid/subroutine_write_iunit.f -text
 fable/test/valid/subroutine_zero.f -text
 fable/test/valid/tab_syndrome.f -text
 fable/test/valid/triple_3d.f -text
+fable/test/valid/triple_3d_common.f -text
 fable/test/valid/unformatted_experiments.f -text
 fable/test/valid/unused_arg_implicit_none.f -text
 fable/test/valid/unused_args.f -text
@@ -624,7 +625,7 @@ fable/tst_equivalence.py svneol=native#text/x-python
 fable/tst_ext.py svneol=native#text/x-python
 fable/tst_read.py svneol=native#text/x-python
 fable/utils.py svneol=native#text/x-python
-fable/work_triple_3d.cpp svneol=native#text/plain
+fable/work_triple_3d_common.cpp svneol=native#text/plain
 fftw3tbx/SConscript -text
 fftw3tbx/__init__.py svneol=native#text/x-python
 fftw3tbx/command_line/install_fftw_from_sources.py svneol=native#text/x-python

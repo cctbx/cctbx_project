@@ -3,6 +3,7 @@
       dimension field1(n1, n2, n3)
       dimension field2(n1, n2, n3)
       dimension field3(n1, n2, n3)
+      common /fields/ field1, field2, field3
       dimension max_indices(3)
       jr = 0
       call set_random(jr, field1, n1*n2*n3)
@@ -16,8 +17,7 @@
         j = mod(j + iter * 17, n2) + 1
         k = mod(k + iter * 19, n3) + 1
         field1(i,j,k) = field2(i,j,k) * -1.3
-        call find_max_sq(max_indices,
-     &    field1, field2, field3, n1, n2, n3)
+        call find_max_sq(max_indices)
       enddo
       write(6, *) max_indices
       end
@@ -30,12 +30,13 @@
       enddo
       end
 
-      subroutine find_max_sq(max_indices,
-     &  field1, field2, field3, n1, n2, n3)
+      subroutine find_max_sq(max_indices)
       dimension max_indices(3)
+      parameter(n1=110, n2=120, n3=130)
       dimension field1(n1, n2, n3)
       dimension field2(n1, n2, n3)
       dimension field3(n1, n2, n3)
+      common /fields/ field1, field2, field3
       max_f = 0
       do k=1,n3
         do j=1,n2
