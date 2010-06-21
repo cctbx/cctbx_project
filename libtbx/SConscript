@@ -96,15 +96,18 @@ def patch_scons_env_for_ad_hoc_debug(env, O123_replacement=["-O0", "-g"]):
   env.Replace(CCFLAGS=dbg_ccflags)
 env_etc.patch_scons_env_for_ad_hoc_debug = patch_scons_env_for_ad_hoc_debug
 
-def patch_scons_env(env, key, remove):
+def patch_scons_env(env, key, remove=set(), replace={}):
   remaining = []
-  remove_count = 0
+  have_changes = False
   for v in env[key]:
-    if (v != remove):
-      remaining.append(v)
+    if (v in remove):
+      have_changes = True
+    elif (v in replace):
+      remaining.append(replace[v])
+      have_changes = True
     else:
-      remove_count += 1
-  if (remove_count != 0):
+      remaining.append(v)
+  if (have_changes):
     env.Replace(**{key: remaining})
 env_etc.patch_scons_env = patch_scons_env
 
