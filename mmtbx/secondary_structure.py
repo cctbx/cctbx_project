@@ -913,6 +913,7 @@ class manager (object) :
     if len(params.helix) == 0 and len(params.sheet) == 0 :
       print >> log, "No existing secondary structure definitions found."
       if self.sec_str_from_pdb_file is None and find_automatically != False :
+        print >> log, "No HELIX or SHEET records found in PDB file."
         find_automatically = True
     if find_automatically :
       if params.input.preserve_protein_segid :
@@ -1201,7 +1202,7 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     raise Sorry("Multiple models not supported.")
   m = manager(pdb_hierarchy=pdb_hierarchy,
     xray_structure=xray_structure,
-    sec_str_from_pdb_file=None,
+    sec_str_from_pdb_file=pdb_structure.extract_secondary_structure(),
     params=params)
   m.find_automatically(log=log)
   prefix_scope="refinement.secondary_structure"
