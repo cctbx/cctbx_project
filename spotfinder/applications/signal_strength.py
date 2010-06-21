@@ -81,38 +81,38 @@ def run_signal_strength(params):
       100.*flex.min(saturations), 100.*flex.max(saturations), 100.*flex.mean(saturations) )
 
   if params.distl.pdf_output != None:
+    #later, put this in a separate module so reportlab is not imported unless requested
+    from labelit.publications.sublattice.sublattice_pdf import SublatticePDF,graphic
+    from labelit.publications.sublattice.sublattice_pdf import PointTransform
+    class genPDF(SublatticePDF):
+      def make_image_plots_detail(self):
+         procedure_preferences.phil.sublattice_pdf_window_fraction=1.0
+         procedure_preferences.phil.sublattice_pdf_window_offset_x=0.0
+         procedure_preferences.phil.sublattice_pdf_window_offset_y=0.0
+         procedure_preferences.phil.sublattice_pdf_markup_inliers=True
+         couple=(procedure_preferences.phil.sublattice_pdf_window_offset_x,
+                 procedure_preferences.phil.sublattice_pdf_window_offset_y)
+         #instead of self.R.setTransform, which requires pickled spotfinder:
+         self.R.T = PointTransform()
+         self.R.S = self.R.spotfinder
+         self.R.T.setImage(self.R.S,couple)
+         self.R.title(self.image_name)
+         #try:
+         pil_image = graphic(self.image_name,couple)
+         self.R.image(pil_image)
+         #except:
+         #  print "failure, file %s"%self.filename
+         if procedure_preferences.phil.sublattice_pdf_markup_inliers:
+           self.R.show_ellipse(
+           image_number=self.R.spotfinder.images.keys()[0],
+           tags = ['goodspots','spots_non-ice','hi_pass_resolution_spots',
+                    'spots_unimodal'],
+           detail=True)
+         self.R.c.showPage()
+         return self
     pdf = genPDF(params.distl.pdf_output)
     pdf.filename = params.distl.pdf_output
     pdf.image_name = params.distl.image
     pdf.set_spotfinder(Org.S)
     pdf.make_image_plots_detail()
   return Org
-
-from labelit.publications.sublattice.sublattice_pdf import SublatticePDF,graphic
-from labelit.publications.sublattice.sublattice_pdf import PointTransform
-class genPDF(SublatticePDF):
-  def make_image_plots_detail(self):
-     procedure_preferences.phil.sublattice_pdf_window_fraction=1.0
-     procedure_preferences.phil.sublattice_pdf_window_offset_x=0.0
-     procedure_preferences.phil.sublattice_pdf_window_offset_y=0.0
-     procedure_preferences.phil.sublattice_pdf_markup_inliers=True
-     couple=(procedure_preferences.phil.sublattice_pdf_window_offset_x,
-             procedure_preferences.phil.sublattice_pdf_window_offset_y)
-     #instead of self.R.setTransform, which requires pickled spotfinder:
-     self.R.T = PointTransform()
-     self.R.S = self.R.spotfinder
-     self.R.T.setImage(self.R.S,couple)
-     self.R.title(self.image_name)
-     #try:
-     pil_image = graphic(self.image_name,couple)
-     self.R.image(pil_image)
-     #except:
-     #  print "failure, file %s"%self.filename
-     if procedure_preferences.phil.sublattice_pdf_markup_inliers:
-       self.R.show_ellipse(
-       image_number=self.R.spotfinder.images.keys()[0],
-       tags = ['goodspots','spots_non-ice','hi_pass_resolution_spots',
-                'spots_unimodal'],
-       detail=True)
-     self.R.c.showPage()
-     return self
