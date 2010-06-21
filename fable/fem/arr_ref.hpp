@@ -40,11 +40,6 @@ namespace fem {
   template <>
   struct arr_ref_dims<3> : dim_data<3>
   {
-    arr_ref_dims() {}
-
-    arr_ref_dims(
-      dim_data<3> const& dims) : dim_data<3>(dims) {}
-
     size_t
     index_1d(
       ssize_t i1,

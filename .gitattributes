@@ -625,7 +625,6 @@ fable/tst_equivalence.py svneol=native#text/x-python
 fable/tst_ext.py svneol=native#text/x-python
 fable/tst_read.py svneol=native#text/x-python
 fable/utils.py svneol=native#text/x-python
-fable/work_triple_3d_common.cpp svneol=native#text/plain
 fftw3tbx/SConscript -text
 fftw3tbx/__init__.py svneol=native#text/x-python
 fftw3tbx/command_line/install_fftw_from_sources.py svneol=native#text/x-python
