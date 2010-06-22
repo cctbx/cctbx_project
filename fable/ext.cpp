@@ -1,6 +1,7 @@
 #include <boost/python.hpp>
 
 #include <fem/format.hpp>
+#include <fem/utils/cos_sin_table.hpp>
 #include <fem/utils/equivalence.hpp>
 #include <fem/utils/string_to_double_fmt.hpp>
 #include <boost_adaptbx/error_utils.h>
@@ -190,6 +191,26 @@ namespace fable { namespace ext {
     }
   };
 
+  struct cos_sin_table_wrappers
+  {
+    typedef fem::utils::cos_sin_table<double> w_t;
+
+    static
+    void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<copy_const_reference> ccr;
+      class_<w_t, boost::noncopyable>("fem_utils_cos_sin_table", no_init)
+        .def(init<size_t>((arg("n_points"))))
+        .def("n_points", &w_t::n_points)
+        .def("max_delta", &w_t::max_delta)
+        .def("cos", &w_t::cos, ccr())
+        .def("sin", &w_t::sin, ccr())
+      ;
+    }
+  };
+
   void init_module()
   {
     using namespace boost::python;
@@ -215,6 +236,8 @@ namespace fable { namespace ext {
         arg("str"), arg("w"), arg("d"), arg("blanks_zero"), arg("exp_scale")));
 
     equivalence_array_alignment_wrappers::wrap();
+
+    cos_sin_table_wrappers::wrap();
   }
 
 }} // namespace fable::ext

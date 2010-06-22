@@ -412,6 +412,24 @@ def exercise_fem_utils_string_to_double_fmt():
   check("3 5 e 1 24", 9, 1, False, 0, 3500000000000.)
   check("3 5 e 1 24", 9, 1, True, 0, 3.05e104)
 
+def exercise_cos_sin_table():
+  import math
+  two_pi = 2 * math.pi
+  n_points = 512 * 1024
+  tab = fable.fem_utils_cos_sin_table(n_points=n_points)
+  max_delta = math.sin(0.5 * two_pi / n_points)
+  assert abs(tab.max_delta() - max_delta) < 1.e-12
+  low_threshold = max_delta * 0.9
+  n_above_low = 0
+  for i in xrange(-300,300):
+    angle_rad = two_pi * i / 100
+    delta = abs(math.cos(angle_rad) - tab.cos(angle_rad))
+    assert delta <= max_delta
+    if (delta > low_threshold): n_above_low += 1
+    assert abs(math.sin(angle_rad) - tab.sin(angle_rad)) <= max_delta
+  assert n_above_low > 20
+  assert n_above_low < 30
+
 def run(args):
   assert len(args) == 0
   exercise_unsigned_integer_scan()
@@ -421,6 +439,7 @@ def run(args):
   exercise_fem_format_tokenizer()
   exercise_fem_utils_string_to_double()
   exercise_fem_utils_string_to_double_fmt()
+  exercise_cos_sin_table()
   print "OK"
 
 if (__name__ == "__main__"):
