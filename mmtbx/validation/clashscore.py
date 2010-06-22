@@ -134,11 +134,11 @@ class clashscore(object):
       mdc = m.detached_copy()
       r.append_model(mdc)
       if keep_hydrogens is False:
-        clean = easy_run.fully_buffered(trim,
+        clean_out = easy_run.fully_buffered(trim,
                                     stdin_lines=r.as_pdb_string())
-        build = easy_run.fully_buffered(build,
-                                    stdin_lines=clean.stdout_lines)
-        input_str = string.join(build.stdout_lines, '\n')
+        build_out = easy_run.fully_buffered(build,
+                                    stdin_lines=clean_out.stdout_lines)
+        input_str = string.join(build_out.stdout_lines, '\n')
       else:
         input_str = r.as_pdb_string()
       self.pdb_hierarchy = pdb.hierarchy.input(pdb_string=input_str).hierarchy
