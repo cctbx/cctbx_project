@@ -61,6 +61,10 @@ mtz_file
       .type = bool
       .short_caption = Expand to P1
       .style = bold
+    disable_unit_cell_check = False
+      .type = bool
+    disable_space_group_check = False
+      .type = bool
   }
   d_max = None
     .type = float
@@ -342,12 +346,14 @@ class process_arrays (object) :
       # APPLY SYMMETRY
       array_sg = miller_array.space_group()
       array_uc = miller_array.unit_cell()
-      if array_sg is not None :
+      ignore_sg = params.mtz_file.crystal_symmetry.disable_space_group_check
+      ignore_uc = params.mtz_file.crystal_symmetry.disable_unit_cell_check
+      if (array_sg is not None) and (not ignore_sg) :
         if array_sg.build_derived_point_group() != derived_sg :
           raise Sorry(("The point group for the Miller array %s (%s) does "+
             "not match the point group of the overall space group (%s).") %
             (array_name, str(array_sg), str(input_symm.space_group())))
-      if array_uc is not None :
+      if (array_uc is not None) and (not ignore_uc) :
         if not array_uc.is_similar_to(input_symm.unit_cell()) :
           raise Sorry(("The unit cell for the Miller array %s (%s) is "+
             "significantly different than the output unit cell (%s).") %
@@ -796,7 +802,7 @@ def usage (out=sys.stdout, attributes_level=0) :
 """
   master_phil.show(out=out, attributes_level=attributes_level)
 
-def generate_params (file_name, miller_array) :
+def generate_params (file_name, miller_array, include_resolution=False) :
   param_str = """mtz_file.miller_array {
   file_name = %s
   labels = %s
@@ -804,11 +810,15 @@ def generate_params (file_name, miller_array) :
   output_labels = guess_array_output_labels(miller_array)
   for label in output_labels :
     param_str += "  output_label = %s\n" % label
-  try :
-    (d_max, d_min) = miller_array.d_max_min()
-    param_str += """  d_max = %.5f\n  d_min = %.5f\n""" % (d_max, d_min)
-  except Exception :
-    pass
+  if include_resolution :
+    try :
+      (d_max, d_min) = miller_array.d_max_min()
+      # FIXME gross gross gross!
+      d_max += 0.001
+      d_min -= 0.001
+      param_str += """  d_max = %.5f\n  d_min = %.5f\n""" % (d_max, d_min)
+    except Exception :
+      pass
   param_str += "}"
   return param_str
 
