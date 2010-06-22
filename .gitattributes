@@ -242,7 +242,6 @@ fable/fem/str.hpp svneol=native#text/plain
 fable/fem/str_arr_ref.hpp svneol=native#text/plain
 fable/fem/str_ref.hpp svneol=native#text/plain
 fable/fem/utils/char.hpp svneol=native#text/plain
-fable/fem/utils/cos_sin_table.hpp svneol=native#text/plain
 fable/fem/utils/equivalence.hpp svneol=native#text/plain
 fable/fem/utils/misc.hpp svneol=native#text/plain
 fable/fem/utils/path.hpp svneol=native#text/plain
