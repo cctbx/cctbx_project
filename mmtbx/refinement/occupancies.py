@@ -172,35 +172,23 @@ def set_refinable_parameters(xray_structure, parameters, selections):
       xray_structure.set_occupancies(parameters[i], sel__b)
       i+=1
 
-def pack_unpack(x, table):
+def pack_unpack(x, table) :
   result = x.deep_copy()
-  #result = flex.double(x.size(), 0)  # why not this ?
-  for indices in table:
-    if(len(indices) == 1):
+  for indices in table :
+    if (len(indices) == 1) :
       i0 = indices[0]
       result[i0] = x[i0]
-    elif(len(indices) == 2):
-      i0,i1 = indices
-      result[i0] = x[i0]
-      result[i1] = 1. - x[i0]
-    elif(len(indices) == 3):
-      i0,i1,i2 = indices
-      result[i0] = x[i0]
-      result[i1] = x[i1]
-      result[i2] = 1 - x[i0] - x[i1]
-    elif(len(indices) == 4):
-      i0,i1,i2,i3 = indices
-      result[i0] = x[i0]
-      result[i1] = x[i1]
-      result[i2] = x[i2]
-      result[i3] = 1. - x[i0] - x[i1] - x[i2]
-    else:
-      raise RuntimeError("Exceed maximum allowable number of conformers (=4).")
+    else :
+      xsum = 0
+      for i in indices[0:-1] :
+        result[i] = x[i]
+        xsum += x[i]
+      result[indices[-1]] = 1. - xsum
   return result
 
-def pack_gradients(x, table):
+def pack_gradients (x, table) :
   result = flex.double(x.size(), 0)
-  for indices in table:
+  for indices in table :
     if(len(indices) == 1):
       i0 = indices[0]
       result[i0] = x[i0]
@@ -208,17 +196,8 @@ def pack_gradients(x, table):
       i0,i1 = indices
       result[i0] = x[i0] - x[i1]
       result[i1] =-x[i1] # ??? zero or this value?
-    elif(len(indices) == 3):
-      i0,i1,i2 = indices
-      result[i0] = x[i0] - x[i2]
-      result[i1] = x[i1] - x[i2]
-      result[i2] = 0
-    elif(len(indices) == 4):
-      i0,i1,i2,i3 = indices
-      result[i0] = x[i0] - x[i3]
-      result[i1] = x[i1] - x[i3]
-      result[i2] = x[i2] - x[i3]
-      result[i3] = 0
-    else:
-      raise RuntimeError("Exceed maximum allowable number of conformers (=4).")
+    else :
+      for i in indices[0:-1] :
+        result[i] = x[i] - x[indices[-1]]
+      result[indices[-1]] = 0
   return result
