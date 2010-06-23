@@ -1,3 +1,12 @@
+/* XXX backward compatibility 2010-06-23
+   Starting with boost svn rev. 63217 (2010-06-21 19:30:09 -0700)
+   the implementation below is no longer in sync with the main
+   boost version.
+   Waiting for the new boost version to trickle through the system.
+   Future: use main boost version and the stream interface
+   to get/set the state.
+ */
+
 #ifndef SCITBX_RANDOM_MERSENNE_TWISTER_H
 #define SCITBX_RANDOM_MERSENNE_TWISTER_H
 
