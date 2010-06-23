@@ -236,18 +236,34 @@ multiple residues."
 
   def update_frame (self) :
     frame = self.GetParent().GetParent()
+    frame.callback_on_select()
+
+  def get_selection_info (self) :
     ranges = self.get_selected_ranges()
     if len(ranges) == 0 :
       txt = ""
     elif len(ranges) == 1 and ranges[0][0] == ranges[0][1] :
-      txt = "SELECTED: residue %d" %  ranges[0][0]
+      txt = "SELECTED: residue %d" % (ranges[0][0] + 1)
     else :
       txt_ranges = []
       for (x, y) in ranges :
         if x == y : txt_ranges.append(str(x+1))
         else : txt_ranges.append("%d-%d" % (x+1, y+1))
       txt = "SELECTED: residues %s" % ", ".join(txt_ranges)
-    frame.statusbar.SetStatusText(txt)
+    return txt
+
+  def get_atom_selection (self) :
+    ranges = self.get_selected_ranges()
+    if len(ranges) == 0 :
+      return None
+    elif len(ranges) == 1 and ranges[0][0] == ranges[0][1] :
+      return "(resseq %d)" % (ranges[0][0] + 1)
+    else :
+      resseqs = []
+      for (x, y) in ranges :
+        if x == y : resseqs.append("resseq %d" % (x + 1))
+        else : resseqs.append("resseq %d:%d" % (x+1, y+1))
+      return "(" + " or ".join(resseqs) + ")"
 
   def deselect_chars (self, i_start, i_end) :
     self.select_chars(i_start, i_end, False)
@@ -323,9 +339,8 @@ residue(s).  Holding down shift enables multiple selections."""
 
   def paint_structure (self, gc) :
     helices = self.get_helices()
-    print helices
     helix_pen = wx.Pen('red', 2)
-    h_helix_pen = wx.Pen((255,50,0), 2)
+    h_helix_pen = wx.Pen((255,50,50), 2)
     for k, (i_start, i_end) in enumerate(helices) :
       color_start = (255, 50, 50)
       color_end = (255, 150, 150)
@@ -646,6 +661,7 @@ class sequence_frame (wx.Frame) :
     self.Bind(wx.EVT_CLOSE, self.OnClose)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
     self._chain_cache = []
+    self._selection_callback = None
 
   def create_main_panel (self) :
     outer_panel = wx.lib.scrolledpanel.ScrolledPanel(self, -1)
@@ -666,7 +682,23 @@ class sequence_frame (wx.Frame) :
     self.sizer.Add(cp, 0, wx.EXPAND)
     self.control_panel = cp
 
-  def set_pdb_data (self, pdb_hierarchy, sec_str, auto_select=True) :
+  def load_pdb_file (self, file_name) :
+    from iotbx import file_reader
+    pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
+    pdb_hierarchy = pdb_in.construct_hierarchy()
+    pdb_hierarchy.atoms().reset_i_seq()
+    xray_structure = pdb_in.xray_structure_simple()
+    self.set_pdb_data(pdb_hierarchy, xray_structure)
+
+  def set_pdb_data (self, pdb_hierarchy, xray_structure) :
+    from mmtbx import secondary_structure
+    sec_str = secondary_structure.manager(pdb_hierarchy, xray_structure)
+    out = cStringIO.StringIO()
+    sec_str.find_automatically(log=out)
+    sec_str.show_summary()
+    self.set_data(pdb_hierarchy, sec_str, auto_select=True)
+
+  def set_data (self, pdb_hierarchy, sec_str, auto_select=True) :
     self.pdb_hierarchy = pdb_hierarchy
     self.sec_str = sec_str
     self._chain_cache = {}
@@ -675,7 +707,7 @@ class sequence_frame (wx.Frame) :
     for chain in pdb_hierarchy.models()[0].chains() :
       conf = chain.conformers()[0]
       if not conf.is_protein() :
-        #print "Skipping non-protein chain %s" % chain.id
+        print "Skipping non-protein chain %s" % chain.id
         continue
       if chain.id in self._chain_cache :
         n = 2
@@ -731,6 +763,14 @@ class sequence_frame (wx.Frame) :
     self.panel.set_structure(sec_str)
     self.panel.apply_missing_residue_highlights()
 
+  def get_selection_base (self) :
+    chain_id = self.control_panel.chain_select.GetStringSelection()
+    return "chain '%s'" % chain_id
+
+  def callback_on_select (self) :
+    txt = self.panel.get_selection_info()
+    self.statusbar.SetStatusText(txt)
+
   def OnSelectChain (self, evt) :
     chain_id = evt.GetEventObject().GetStringSelection()
     self.set_current_chain(chain_id)
@@ -743,21 +783,11 @@ class sequence_frame (wx.Frame) :
 
 #-----------------------------------------------------------------------
 def run (args) :
-  from iotbx import file_reader
-  from mmtbx import secondary_structure
   pdb_file = args[0]
   app = wx.App(0)
   frame = sequence_frame(None, -1, "Sequence display for %s" %
     os.path.basename(pdb_file))
-  pdb_in = file_reader.any_file(pdb_file, force_type="pdb").file_object
-  hierarchy = pdb_in.construct_hierarchy()
-  hierarchy.atoms().reset_i_seq()
-  xray_structure = pdb_in.xray_structure_simple()
-  sec_str = secondary_structure.manager(hierarchy, xray_structure)
-  out = cStringIO.StringIO()
-  sec_str.find_automatically(log=out)
-  sec_str.show_summary()
-  frame.set_pdb_data(hierarchy, sec_str, auto_select=True)
+  frame.load_pdb_file(pdb_file)
   frame.Fit()
   frame.Show()
   app.MainLoop()
