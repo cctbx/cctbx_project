@@ -1,3 +1,5 @@
+# LIBTBX_SET_DISPATCHER_NAME smtbx.masks
+
 from __future__ import division
 
 from cctbx import crystal, miller, uctbx, xray
@@ -11,24 +13,41 @@ from libtbx.utils import time_log
 from iotbx.option_parser import option_parser
 
 from cStringIO import StringIO
+import os
 
 def exercise_masks(xs, fo_sq,
                    solvent_radius,
                    shrink_truncation_radius,
                    resolution_factor,
-                   use_space_group_symmetry,
+                   grid_step=None,
+                   resolution_cutoff=None,
+                   atom_radii_table=None,
+                   use_space_group_symmetry=False,
                    debug=False,
-                   timing=False):
+                   verbose=False):
   xs_ref = xs.deep_copy_scatterers()
   time_total = time_log("masks total").start()
   # average_bijvoet_mates is essential for non-centric structures
-  fo_sq_merged = fo_sq.merge_equivalents().array().average_bijvoet_mates()
+  fo_sq = fo_sq.customized_copy(anomalous_flag=True)
+  fo_sq = fo_sq.eliminate_sys_absent()
+  merging = fo_sq.merge_equivalents()
+  fo_sq_merged = merging.array().average_bijvoet_mates()
+  if resolution_cutoff is not None:
+    fo_sq_merged = fo_sq_merged.resolution_filter(d_min=resolution_cutoff)
+  if verbose:
+    print "Merging summary:"
+    print "R-int, R-sigma: %.4f, %.4f" %(merging.r_int(), merging.r_sigma())
+    merging.show_summary()
+    print
+    fo_sq_merged.show_comprehensive_summary()
+    print
   mask = masks.mask(xs, fo_sq_merged)
   time_compute_mask = time_log("compute mask").start()
   mask.compute(solvent_radius=solvent_radius,
                shrink_truncation_radius=shrink_truncation_radius,
                resolution_factor=resolution_factor,
-               atom_radii_table={'C':1.70, 'B':1.63, 'N':1.55, 'O':1.52},
+               grid_step=grid_step,
+               atom_radii_table=atom_radii_table,
                use_space_group_symmetry=use_space_group_symmetry)
   time_compute_mask.stop()
   time_structure_factors = time_log("structure factors").start()
@@ -45,7 +64,7 @@ def exercise_masks(xs, fo_sq,
   out_file.write(out.getvalue())
   out_file.close()
 
-  if timing:
+  if verbose:
     print
     print time_log.legend
     print time_compute_mask.report()
@@ -108,9 +127,17 @@ def exercise_masks(xs, fo_sq,
   return
 
 def run(args):
-  command_line = (option_parser().enable_symmetry_comprehensive()
-                  .option(None, "--structure",
-                          action="store")
+  def vdw_radii_callback(option, opt_str, value, parser):
+    # create a dict from space separated string of element types and radii
+    radii = {}
+    items = value.split()
+    assert len(items) % 2 == 0
+    for i in range(int(len(items) / 2)):
+      radii.setdefault(items[i*2], float(items[i*2+1]))
+    setattr(parser.values, option.dest, radii)
+  command_line = (option_parser(
+    usage="smtbx.masks structure reflections [options]")
+                  .enable_symmetry_comprehensive()
                   .option(None, "--solvent_radius",
                           action="store",
                           type="float",
@@ -121,25 +148,47 @@ def run(args):
                           default=1.3)
                   .option(None, "--debug",
                           action="store_true")
-                  .option(None, "--timing",
+                  .option(None, "--verbose",
                           action="store_true")
                   .option(None, "--resolution_factor",
                           action="store",
                           type="float",
                           default=1/4)
+                  .option(None, "--grid_step",
+                          action="store",
+                          type="float")
+                  .option(None, "--d_min",
+                          action="store",
+                          type="float")
+                  .option(None, "--two_theta_max",
+                          action="store",
+                          type="float")
+                  .option(None, "--vdw_radii",
+                          action="callback",
+                          callback=vdw_radii_callback,
+                          type="string",
+                          nargs=1)
                   .option(None, "--use_space_group_symmetry",
                           action="store_true")).process(args=args)
-  xs = xray.structure.from_shelx(filename=command_line.options.structure)
+  structure_file = command_line.args[0]
+  ext = os.path.splitext(structure_file)[-1].lower()
+  if ext in ('.res', '.ins'):
+    xs = xray.structure.from_shelx(filename=structure_file)
+  elif ext == '.cif':
+    xs = xray.structure.from_cif(filename=structure_file)
+  else:
+    print "%s: unsupported structure file format {shelx|cif}" %ext
+    return
   reflections_server = reflection_file_utils.reflection_file_server(
     crystal_symmetry = xs.crystal_symmetry(),
     reflection_files = [
-      reflection_file_reader.any_reflection_file(command_line.args[0])
+      reflection_file_reader.any_reflection_file(command_line.args[1])
     ]
   )
   fo_sq = reflections_server.get_miller_arrays(None)[0]
 
-  print "structure file: %s" %command_line.options.structure
-  print "reflection file: %s" %command_line.args[0]
+  print "structure file: %s" %command_line.args[0]
+  print "reflection file: %s" %command_line.args[1]
   if command_line.options.debug:
     print "debug: %s" %command_line.options.debug
   print
@@ -147,14 +196,22 @@ def run(args):
   xs.show_summary()
   print
 
+  d_min = command_line.options.d_min
+  two_theta_max = command_line.options.two_theta_max
+  assert [d_min, two_theta_max].count(None) > 0
+  if two_theta_max is not None:
+    d_min = uctbx.two_theta_as_d(two_theta_max, wavelength=0.71073, deg=True)
   exercise_masks(
     xs, fo_sq,
     solvent_radius=command_line.options.solvent_radius,
     shrink_truncation_radius=command_line.options.shrink_truncation_radius,
     resolution_factor=command_line.options.resolution_factor,
+    grid_step=command_line.options.grid_step,
+    resolution_cutoff=d_min,
+    atom_radii_table=command_line.options.vdw_radii,
     use_space_group_symmetry=command_line.options.use_space_group_symmetry,
     debug=command_line.options.debug,
-    timing=command_line.options.timing)
+    verbose=command_line.options.verbose)
   print "OK"
 
 if __name__ == '__main__':

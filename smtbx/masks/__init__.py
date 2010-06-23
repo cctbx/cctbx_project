@@ -24,14 +24,18 @@ class mask(object):
               shrink_truncation_radius,
               ignore_hydrogen_atoms=False,
               crystal_gridding=None,
+              grid_step=None,
               resolution_factor=1/4,
               atom_radii_table=None,
               use_space_group_symmetry=False):
+    if grid_step is not None: d_min = None
+    else: d_min = self.observations.d_min()
     if crystal_gridding is None:
       self.crystal_gridding = maptbx.crystal_gridding(
         unit_cell=self.xray_structure.unit_cell(),
         space_group_info=self.xray_structure.space_group_info(),
-        d_min=self.observations.d_min(),
+        step=grid_step,
+        d_min=d_min,
         resolution_factor=resolution_factor,
         symmetry_flags=sgtbx.search_symmetry_flags(
           use_space_group_symmetry=use_space_group_symmetry))
