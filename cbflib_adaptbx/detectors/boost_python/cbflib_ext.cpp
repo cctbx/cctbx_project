@@ -3,6 +3,7 @@
 #include <cbflib_adaptbx/mar_adaptor.h>
 #include <cbflib_adaptbx/cbf_adaptor.h>
 #include <cbflib_adaptbx/sls_pilatus_adaptor.h>
+#include <cbflib_adaptbx/general_cbf_write.h>
 
 struct dummy {}; // work around gcc-3.3-darwin bug
 
@@ -67,7 +68,11 @@ BOOST_PYTHON_MODULE(cbflib_ext)
    ;
    class_<MiniCBFAdaptor, bases<CBFAdaptor> >("MiniCBFAdaptor",init<std::string>())
      .def("read_data",&MiniCBFAdaptor::read_data)
-     .def("optimized_read_data",&MiniCBFAdaptor::optimized_read_data)
+     .def("optimized_read_data",(scitbx::af::flex_int (MiniCBFAdaptor::*)(const int&, const int&))&MiniCBFAdaptor::optimized_read_data)
+     .def("optimized_read_data",(scitbx::af::flex_int (MiniCBFAdaptor::*)())&MiniCBFAdaptor::optimized_read_data)
+   ;
+   class_<CBFWriteAdaptor, bases<CBFAdaptor> >("CBFWriteAdaptor",init<std::string>())
+     .def("write_data",&CBFWriteAdaptor::write_data)
    ;
    def("assert_equal",&assert_equal);
 

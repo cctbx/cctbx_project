@@ -223,6 +223,41 @@ class MiniCBFAdaptor: public CBFAdaptor {
     return z;
   }
 
+  inline scitbx::af::flex_int optimized_read_data(){
+    private_file = std::fopen(filename.c_str(),"rb");
+    if (!private_file) throw Error("minicbf file BAD_OPEN");
+    cbf_failnez (cbf_read_widefile (cbf_h, private_file, MSG_DIGEST))
+
+    /* Find the binary data */
+    cbf_failnez (cbf_find_tag (cbf_h, "_array_data.data"))
+    cbf_failnez (cbf_rewind_row (cbf_h))
+
+    unsigned int compression;
+    int binary_id,elsigned,elunsigned,minelement,maxelement;
+    size_t elsize,elements,fast,slow,dim3,padding;
+    char *byteorder ="little_endian";
+
+    cbf_failnez (cbf_get_integerarrayparameters_wdims (
+     cbf_h, &compression, &binary_id, &elsize, &elsigned, &elunsigned,
+     &elements, &minelement, &maxelement,(const char **) &byteorder,
+     &fast, &slow, &dim3, &padding))
+
+    SCITBX_ASSERT(elements == fast*slow);
+    SCITBX_ASSERT(elsize == sizeof(int));
+    SCITBX_ASSERT(elsigned==1);
+
+    //C++ weirdness
+    scitbx::af::flex_int z((scitbx::af::flex_grid<>(slow,fast)),scitbx::af::init_functor_null<int>());
+    int* begin = z.begin();
+    std::size_t sz = z.size();
+
+    wrapper_of_byte_decompression wrap_dee(&cbf_h,sz);
+    wrap_dee.set_file_position();
+    wrap_dee.decompress_byte_offset_optimized((void *)begin);
+
+    return z;
+  }
+
 };
 
   }//namespace detectors
