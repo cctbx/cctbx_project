@@ -1,3 +1,4 @@
+from __future__ import division
 import boost.python
 ext = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
@@ -768,7 +769,7 @@ class _conformer(boost.python.injector, ext.conformer):
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
-    if ((n_aa > n_na) and ((float(n_aa) / len(rn_seq)) >= min_content)) :
+    if ((n_aa > n_na) and ((n_aa / len(rn_seq)) >= min_content)) :
       return True
     return False
 
@@ -776,7 +777,7 @@ class _conformer(boost.python.injector, ext.conformer):
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
-    if ((n_na > n_aa) and ((float(n_na) / len(rn_seq)) >= min_content)) :
+    if ((n_na > n_aa) and ((n_na / len(rn_seq)) >= min_content)) :
       return True
     return False
 
