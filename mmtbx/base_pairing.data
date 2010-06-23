@@ -8,3 +8,7 @@ WWT   GU    +   H1,O2     O6,H3
 WWT   CG    -   N4,O6     N3,N1   O2,N2
 WWT   AU    -   N6,O4     N1,N3
 WWT   GU    -   N1,O2     O6,N3
+WWT   DCDG  +   H42,O6    N3,H1   O2,H22
+WWT   DADT  +   H61,O4    N1,H3
+WWT   DCDG  -   N4,O6     N3,N1   O2,N2
+WWT   DADT  -   N6,O4     N1,N3
