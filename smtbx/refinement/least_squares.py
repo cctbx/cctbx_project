@@ -88,6 +88,10 @@ class normal_equations(object):
       - self.special_position_constraints.n_independent_params))
 
   def covariance_matrix(self, normalised_by_goof=True):
+    return self._covariance_matrix(normalised_by_goof)[0]
+  def covariance_matrix_and_annotations(self):
+    return self._covariance_matrix()
+  def _covariance_matrix(self, normalised_by_goof=True):
     """ Covariance matrix for crystallographic parameters
     They are ordered scatterer by scatterer, in the order
     they are stored in self.xray_structure, as follow:
@@ -99,7 +103,9 @@ class normal_equations(object):
     matrix is returned (mostly for debugging purposes).
     """
     from scitbx import sparse
-
+    annotations = []
+    site_annotations = "xyz"
+    u_annotations=('u11', 'u22', 'u33', 'u12', 'u13', 'u23')
     # compute jacobian matrix (sparse)
     jac = sparse.matrix(
       self.special_position_constraints.n_crystallographic_params,
@@ -120,9 +126,12 @@ class normal_equations(object):
             for l in xrange(site_constraints.n_independent_params()):
               jac[i+k, j+l] = site_jac_tr[l, k]
           i += 3; j += site_constraints.n_independent_params()
+        for k in xrange(3):
+          annotations.append("%s.%s" %(sc.label, site_annotations[k]))
       if sc.flags.use_u_iso() and sc.flags.grad_u_iso():
         jac[i,j] = 1
         i += 1; j += 1
+        annotations.append("%s.uiso" %(sc.label))
       if sc.flags.use_u_aniso() and sc.flags.grad_u_aniso():
         if site_symm.is_point_group_1():
           for l in xrange(6): jac[i+l, j+l] = 1
@@ -135,13 +144,16 @@ class normal_equations(object):
             for l in xrange(adp_constraints.n_independent_params()):
               jac[i+k, j+l] = adp_jac[k, l]
           i += 6; j += adp_constraints.n_independent_params()
+        for k in xrange(6):
+          annotations.append("%s.%s" %(sc.label, u_annotations[k]))
       if sc.flags.grad_occupancy():
         jac[i,j] = 1
         i += 1; j += 1
+        annotations.append("%s.occu" %(sc.label))
 
     # compute covariance matrix for crystallographic parameters
     cov_ind_params = linalg.inverse_of_u_transpose_u(
       self.reduced.cholesky_factor_packed_u)
     cov = jac.self_times_symmetric_times_self_transpose(cov_ind_params)
     if normalised_by_goof: cov *= self.goof()**2
-    return cov
+    return (cov, annotations)
