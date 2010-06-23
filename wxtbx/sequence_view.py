@@ -1,9 +1,9 @@
 
 # Sequence view and selection window, with optional secondary structure
-# annotation.  Only the run() method depends on modules in CCTBX - the
-# GUI elements can be adapted to any framework.
+# annotation.  The outer window and PDB processing methods depend on CCTBX,
+# but the panels can be adapted to any other framework.
 
-# TODO: mixin for contiguous range selection
+# TODO: show existing CCTBX atom selection?
 
 from __future__ import division
 import wx
@@ -11,6 +11,25 @@ import wx.lib.wordwrap
 import wx.lib.scrolledpanel
 import cStringIO
 import math, sys, os
+
+WXTBX_SEQ_SELECT_NONE = 1
+WXTBX_SEQ_SELECT_SINGLE = 2
+WXTBX_SEQ_SELECT_MULTIPLE = 4
+WXTBX_SEQ_SELECT_RANGE = 8
+WXTBX_SEQ_SELECT_ANY = 16
+WXTBX_SEQ_SHOW_LINE_NUMBERS = 32
+WXTBX_SEQ_SHOW_TOOLTIP = 64
+WXTBX_SEQ_SHOW_SELECTIONS = 128
+WXTBX_SEQ_ENABLE_SELECT_STRUCTURE = 256
+WXTBX_SEQ_ENABLE_SELECT_MISSING = 512
+WXTBX_SEQ_FANCY_HELICES = 1024
+WXTBX_SEQ_SINGLE_CLICK_SELECTION = 2048
+
+WXTBX_SEQ_DEFAULT_STYLE = WXTBX_SEQ_SHOW_LINE_NUMBERS | \
+                          WXTBX_SEQ_SHOW_SELECTIONS | \
+                          WXTBX_SEQ_ENABLE_SELECT_STRUCTURE | \
+                          WXTBX_SEQ_ENABLE_SELECT_MISSING | \
+                          WXTBX_SEQ_FANCY_HELICES
 
 class sequence_panel (wx.PyPanel) :
   tooltip = "Double-click a residue to select it; hold down Shift to select \
@@ -26,18 +45,13 @@ multiple residues."
     self.line_sep = 28
     self.start_offset = 0
     self.char_boxes = [] #shared.stl_set_unsigned()
-    self.flag_show_line_numbers = True
-    self.flag_enable_selections = True
-    self.flag_enable_shift_for_multiple = True
-    self.flag_overwrite_selections = True
-    self.flag_show_selections = True
-    self.flag_show_tooltip = False
     self.highlights = []
     self.highlight_colors = []
     self.selected_residues = [] #flex.bool()
     self.selection_color = (255, 255, 0)
     self._last_x = None
     self._last_y = None
+    self._style = WXTBX_SEQ_DEFAULT_STYLE | WXTBX_SEQ_SELECT_ANY
     self.txt_font = wx.Font(14, wx.MODERN, wx.NORMAL, wx.NORMAL)
     self.Bind(wx.EVT_PAINT, self.OnPaint)
     self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
@@ -47,11 +61,14 @@ multiple residues."
     self.Bind(wx.EVT_RIGHT_UP, self.OnRightUp)
     self.tip = wx.ToolTip(self.tooltip)
     self.SetToolTip(self.tip)
-    self.tip.Enable(self.flag_show_tooltip)
+    self.tip.Enable(False)
+
+  def SetStyle (self, style) :
+    self._style = style
+    self.enable_tooltip(style & WXTBX_SEQ_SHOW_TOOLTIP)
 
   def enable_tooltip (self, enable=True) :
     self.tip.Enable(enable)
-    self.flag_show_tooltip = enable
 
   def OnPaint (self, event) :
     dc = wx.AutoBufferedPaintDCFactory(self)
@@ -70,7 +87,7 @@ multiple residues."
     xpos = 16
     black_pen = wx.Pen((0,0,0), 1)
     (char_w, char_h) = self.get_char_size(gc)
-    if self.flag_show_selections :
+    if self._style & WXTBX_SEQ_SHOW_SELECTIONS :
       for j, (i_start, i_end) in enumerate(self.get_selected_ranges()) :
         gc.SetPen(wx.Pen((0,0,0), 1))
         gc.SetBrush(wx.Brush(self.selection_color))
@@ -83,7 +100,7 @@ multiple residues."
       line = self.sequence[i:i+self.line_width]
       line_w = self.line_width * char_w
       label_w = gc.GetTextExtent("X"*8)[0]
-      if self.flag_show_line_numbers :
+      if self._style & WXTBX_SEQ_SHOW_LINE_NUMBERS :
         gc.DrawText("%6d  " % line_start, xpos, ypos)
         gc.DrawText("  %-6d" % line_end, xpos + label_w + line_w, ypos)
         xpos += label_w
@@ -125,7 +142,7 @@ multiple residues."
     (panel_w, panel_h) = (32, 32)
     char_w, char_h = self.get_char_size(dc)
     line_w = char_w * self.line_width
-    if self.flag_show_line_numbers :
+    if self._style & WXTBX_SEQ_SHOW_LINE_NUMBERS :
       line_w += dc.GetTextExtent("X" * 16)[0]
     panel_w += line_w
     n_lines = int(math.ceil(len(self.sequence) / self.line_width))
@@ -155,7 +172,7 @@ multiple residues."
     char_w, char_h = self.get_char_size(dc)
     x_start = 16
     y_start = self.line_sep
-    if self.flag_show_line_numbers :
+    if self._style & WXTBX_SEQ_SHOW_LINE_NUMBERS :
       x_start += dc.GetTextExtent("X" * 8)[0]
     self.char_boxes = []
     for i_seq in range(len(self.sequence)) :
@@ -272,23 +289,36 @@ multiple residues."
     for i_seq, box in enumerate(self.char_boxes) :
       (x1, y1, x2, y2) = box
       if (x > x1 and x < x2) and (y > y1 and y < y2) :
-        if self.selected_residues[i_seq] :
-          self.selected_residues[i_seq] = False
+        if self._style & WXTBX_SEQ_SELECT_RANGE :
+          self.process_range_selection(i_seq)
         else :
-          self.selected_residues[i_seq] = True
+          if self.selected_residues[i_seq] :
+            self.selected_residues[i_seq] = False
+          else :
+            self.selected_residues[i_seq] = True
         self.update_frame()
         return True
     return False
+
+  def process_range_selection (self, i_seq) :
+    n_selected = self.selected_residues.count(True)
+    if n_selected == 0 :
+      self.selected_residues[i_seq] = True
+    elif n_selected == 1 :
+      j_seq = self.selected_residues.index(True)
+      if j_seq != i_seq :
+        for k_seq in range(min(i_seq, j_seq), max(i_seq+1,j_seq)) :
+          self.selected_residues[k_seq] = True
+    else :
+      self.clear_selection()
+      self.selected_residues[i_seq] = True
 
   def OnClear (self, event) :
     self.clear_selection()
     self.Refresh()
 
-  def OnSetMode (self, event) :
-    self.flag_overwrite_selections = event.GetEventObject().GetValue()
-
   def OnHelp (self, event) :
-    self.enable_tooltip(not self.flag_show_tooltip)
+    self.enable_tooltip(True)
 
   #---------------------------------------------------------------------
   # MOUSE EVENTS
@@ -311,8 +341,6 @@ multiple residues."
 
   def OnRightDown (self, event) :
     (x, y) = (event.GetX(), event.GetY())
-    if self.flag_show_tooltip :
-      pass
 
   def OnRightUp (self, event) :
     (x, y) = (event.GetX(), event.GetY())
@@ -330,8 +358,6 @@ residue(s).  Holding down shift enables multiple selections."""
     self.selected_strands = []
     self.selected_linkers = []
     self.selected_missing = []
-    self.flag_allow_select_structure = True
-    self.flag_allow_select_missing = True
 
   def paint (self, gc) :
     self.paint_sequence(gc)
@@ -339,26 +365,68 @@ residue(s).  Holding down shift enables multiple selections."""
 
   def paint_structure (self, gc) :
     helices = self.get_helices()
-    helix_pen = wx.Pen('red', 2)
-    h_helix_pen = wx.Pen((255,50,50), 2)
-    for k, (i_start, i_end) in enumerate(helices) :
-      color_start = (255, 50, 50)
-      color_end = (255, 150, 150)
-      bounds = self.get_region_bounds(i_start, i_end)
-      if k in self.selected_helices :
-        color_start = (200, 100, 100)
-        color_end = (255, 200, 200)
-        gc.SetPen(h_helix_pen)
-      else :
+    if self._style & WXTBX_SEQ_FANCY_HELICES :
+      helix_pen = wx.Pen('red', 1)
+      h_helix_pen = wx.Pen((255,50,50), 2)
+      for k, (i_start, i_end) in enumerate(helices) :
+        if k in self.selected_helices :
+          color_inner_start = (255, 220, 220)
+          color_inner_end = (255, 240, 240)
+          color_outer_start = (255, 170, 170)
+          color_outer_end = (255, 220, 220)
+          gc.SetPen(h_helix_pen)
+        else :
+          color_inner_start = (255, 150, 150)
+          color_inner_end = (255, 200, 200)
+          color_outer_start = (255, 100, 100)
+          color_outer_end = (255, 150, 150)
+          gc.SetPen(helix_pen)
+        bounds = self.get_region_bounds(i_start, i_end)
+        for box in bounds :
+          (x1, y1, x2, y2) = box
+          strips = make_helix(x1 - 1, y1, x2, y2)
+          def draw_strip (strip, brush) :
+            gc.PushState()
+            gc.SetBrush(brush) #wx.Brush(strip_color))
+            path = gc.CreatePath()
+            path.MoveToPoint(strip[0][0], strip[0][1])
+            for x, y in strip[1:] :
+              path.AddLineToPoint(x, y)
+            path.CloseSubpath()
+            gc.FillPath(path)
+            gc.StrokePath(path)
+            gc.PopState()
+          inner_brush = gc.CreateLinearGradientBrush(x1-1, y1-2, x1-1, y2+2,
+            color_inner_start, color_inner_end)
+          for i, strip in enumerate(strips) :
+            if (i % 2) == 0 :
+              draw_strip(strip, inner_brush)
+          outer_brush = gc.CreateLinearGradientBrush(x1-1, y1-2, x1-1, y2+2,
+            color_outer_start, color_outer_end)
+          for i, strip in enumerate(strips) :
+            if (i % 2) == 1 :
+              draw_strip(strip, outer_brush)
         gc.SetPen(helix_pen)
-      for box in bounds :
-        (x1, y1, x2, y2) = box
-        helix_brush = gc.CreateLinearGradientBrush(x1, y1, x1, y2, color_start,
-          color_end)
-        gc.SetBrush(helix_brush)
-        gc.DrawRoundedRectangle(x1, y1, x2-x1, 16, 4)
-        #gc.DrawRectangle(x1, y1, x2-x1, 16)
-      gc.SetPen(helix_pen)
+    else :
+      helix_pen = wx.Pen('red', 1)
+      h_helix_pen = wx.Pen((255,50,50), 2)
+      for k, (i_start, i_end) in enumerate(helices) :
+        bounds = self.get_region_bounds(i_start, i_end)
+        if k in self.selected_helices :
+          color_start = (200, 100, 100)
+          color_end = (255, 200, 200)
+          gc.SetPen(h_helix_pen)
+        else :
+          color_start = (255, 50, 50)
+          color_end = (255, 150, 150)
+          gc.SetPen(helix_pen)
+        for box in bounds :
+          (x1, y1, x2, y2) = box
+          helix_brush = gc.CreateLinearGradientBrush(x1 - 1, y1, x1 - 1, y2,
+            color_start, color_end)
+          gc.SetBrush(helix_brush)
+          gc.DrawRoundedRectangle(x1 - 1, y1, x2 - x1 + 1, 16, 4)
+        gc.SetPen(helix_pen)
     strands = self.get_strands()
     strand_pen = wx.Pen((0, 100, 255), 2)
     h_strand_pen = wx.Pen('blue', 2)
@@ -490,22 +558,23 @@ residue(s).  Holding down shift enables multiple selections."""
       return sections[idx]
 
   def is_on_helix (self, x, y) :
-    return self.is_on_region(x, y, self.get_helices())
+    return self.is_on_region(x, y, self.get_helices(), tolerance=2)
 
   def is_on_strand (self, x, y) :
     return self.is_on_region(x, y, self.get_strands())
 
   def is_on_linker (self, x, y) :
-    return self.is_on_region(x, y, self.get_linkers())
+    return self.is_on_region(x, y, self.get_linkers(), tolerance=-2)
 
   def is_on_missing (self, x, y) :
-    return self.is_on_region(x, y, self.get_missing())
+    return self.is_on_region(x, y, self.get_missing(), tolerance=-2)
 
-  def is_on_region (self, x, y, regions) :
+  def is_on_region (self, x, y, regions, tolerance=0) :
     for k, (i_start, i_end) in enumerate(regions) :
       bounds = self.get_region_bounds(i_start, i_end)
       for (x1, y1, x2, y2) in bounds :
-        if (x > x1 and x < x2) and (y > y1 and y < y2) :
+        if ((x > x1 and x < x2) and
+            (y > (y1-tolerance) and y < (y2+tolerance))) :
           return k
     return None
 
@@ -558,7 +627,7 @@ residue(s).  Holding down shift enables multiple selections."""
     return False
 
   def select_missing (self, x, y) :
-    if not self.flag_allow_select_missing :
+    if not (self._style & WXTBX_SEQ_ENABLE_SELECT_MISSING) :
       return False
     idx = self.is_on_missing(x, y)
     if idx is not None :
@@ -573,17 +642,17 @@ residue(s).  Holding down shift enables multiple selections."""
       return True
     return False
 
-  def OnDoubleClick (self, event) :
-    (x, y) = (event.GetX(), event.GetY())
-    if self.flag_overwrite_selections :
-      if self.flag_enable_shift_for_multiple and event.ShiftDown() :
+  def process_click (self, x, y, shift_down=False) :
+    if not (self._style & WXTBX_SEQ_SELECT_MULTIPLE) :
+      if (self._style & WXTBX_SEQ_SELECT_ANY) and shift_down :
         pass
       else :
         self.clear_structure_selections()
-        self.clear_selection()
+        if not (self._style & WXTBX_SEQ_SELECT_RANGE) :
+          self.clear_selection()
     if self.select_residue(x, y) :
       pass
-    elif self.flag_allow_select_structure :
+    elif (self._style & WXTBX_SEQ_ENABLE_SELECT_STRUCTURE) :
       if self.select_helix(x, y) :
         pass
       elif self.select_strand(x, y) :
@@ -593,8 +662,12 @@ residue(s).  Holding down shift enables multiple selections."""
       elif self.select_missing(x, y) :
         pass
       else :
-        pass
+        self.clear_selection()
     self.Refresh()
+
+  def OnDoubleClick (self, event) :
+    (x, y) = (event.GetX(), event.GetY())
+    self.process_click(x, y, event.ShiftDown())
 
   def OnClear (self, event) :
     self.clear_structure_selections()
@@ -619,50 +692,58 @@ def strand_as_box (x1, y1, x2, y2) :
   segments.append((x1, y2 - 4))
   return segments
 
+def make_helix (x1, y1, x2, y2, strip_width=10, strip_height=20) :
+  y_center = y1 + ((y2 - y1) / 2)
+  x_start = x1
+  strips = []
+  strips.append(((x_start, y_center),
+                 (x_start + strip_width, y_center),
+                 (x_start + (strip_width * 1.5), y_center + (strip_height/2)),
+                 (x_start + (strip_width * 0.5), y_center + (strip_height/2))))
+  x_start += (strip_width * 0.5)
+  y_start = y_center + (strip_height / 2)
+  y_end = y_center - (strip_height / 2)
+  while x_start < (x2 - (strip_width * 1.5)) :
+    strips.append(((x_start, y_start),
+                   (x_start + strip_width, y_start),
+                   (x_start + (strip_width * 2), y_end),
+                   (x_start + strip_width, y_end)))
+    x_start += strip_width
+    y_tmp = y_start
+    y_start = y_end
+    y_end = y_tmp
+  if x_start < (x2 - strip_width) :
+    strips.append(((x_start, y_start),
+                   (x_start + strip_width, y_start),
+                   (x_start + (strip_width * 1.5), y_center),
+                   (x_start + (strip_width * 0.5), y_center)))
+  return strips
+
 ########################################################################
 class control_panel (wx.Panel) :
   def __init__ (self, *args, **kwds) :
     wx.Panel.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
-    #txt = wx.StaticText(self, -1, "Click a residue or secondary structure "
     box = wx.BoxSizer(wx.HORIZONTAL)
-    self.multi_select_box = wx.CheckBox(self, -1,
-      "Clicking overwrites selections")
-    self.multi_select_box.SetValue(True)
-    box.Add(self.multi_select_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(wx.StaticText(self, -1, "Select chain:"), 0, wx.ALL, 5)
+    self.chain_select = wx.Choice(self, -1)
+    box.Add(self.chain_select, 0, wx.ALL, 5)
     self.clear_btn = wx.Button(self, -1, "Clear selection")
     box.Add(self.clear_btn, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.help_btn = wx.Button(self, wx.ID_HELP)
     box.Add(self.help_btn, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     szr.Add(box)
-    box2 = wx.BoxSizer(wx.HORIZONTAL)
-    box2.Add(wx.StaticText(self, -1, "Select chain:"), 0, wx.ALL, 5)
-    self.chain_select = wx.Choice(self, -1)
-    box2.Add(self.chain_select, 0, wx.ALL, 5)
-    szr.Add(box2)
     szr.Fit(self)
 
   def bind_events (self, frame, view) :
     self.Bind(wx.EVT_BUTTON, view.OnClear, self.clear_btn)
-    self.Bind(wx.EVT_CHECKBOX, view.OnSetMode, self.multi_select_box)
     self.Bind(wx.EVT_BUTTON, view.OnHelp, self.help_btn)
     self.Bind(wx.EVT_CHOICE, frame.OnSelectChain, self.chain_select)
+    self.Bind(wx.EVT_BUTTON, frame.OnHelp, self.help_btn)
 
-class sequence_frame (wx.Frame) :
-  def __init__ (self, *args, **kwds) :
-    wx.Frame.__init__(self, *args, **kwds)
-    szr = wx.BoxSizer(wx.VERTICAL)
-    self.SetSizer(szr)
-    self.sizer = szr
-    self.create_main_panel()
-    self.create_control_panel()
-    self.statusbar = self.CreateStatusBar()
-    self.Bind(wx.EVT_CLOSE, self.OnClose)
-    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
-    self._chain_cache = []
-    self._selection_callback = None
-
+# XXX keep this general so it can be embedded in other windows
+class sequence_window (object) :
   def create_main_panel (self) :
     outer_panel = wx.lib.scrolledpanel.ScrolledPanel(self, -1)
     szr2 = wx.BoxSizer(wx.VERTICAL)
@@ -781,15 +862,34 @@ class sequence_frame (wx.Frame) :
   def OnDestroy (self, evt) :
     pass
 
+  def OnHelp (self, evt) :
+    pass
+
+class sequence_frame (wx.Frame, sequence_window) :
+  def __init__ (self, *args, **kwds) :
+    wx.Frame.__init__(self, *args, **kwds)
+    szr = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(szr)
+    self.sizer = szr
+    self.create_main_panel()
+    self.create_control_panel()
+    self.statusbar = self.CreateStatusBar()
+    self.Bind(wx.EVT_CLOSE, self.OnClose)
+    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
+    self._chain_cache = []
+    self._selection_callback = None
+
 #-----------------------------------------------------------------------
 def run (args) :
-  pdb_file = args[0]
+  pdb_file = args[-1]
   app = wx.App(0)
   frame = sequence_frame(None, -1, "Sequence display for %s" %
     os.path.basename(pdb_file))
   frame.load_pdb_file(pdb_file)
   frame.Fit()
   frame.Show()
+  if "--range" in args :
+    frame.panel.SetStyle(WXTBX_SEQ_DEFAULT_STYLE|WXTBX_SEQ_SELECT_RANGE)
   app.MainLoop()
 
 if __name__ == "__main__" :
