@@ -46,7 +46,7 @@ class PilatusImage(DetectorImageBase):
     if not self.parameters:
       rawdata = open(self.filename,"rb").read(maxlength)
       # The tag _array_data.header_convention "SLS_1.0" could be with/without quotes "..."
-      pattern = re.compile(r'''_array_data.header_convention[ "]*SLS_1.0''')
+      pattern = re.compile(r'''_array_data.header_convention[ "]*SLS''')
       match = pattern.findall(rawdata)
       assert len(match)>=1
 
