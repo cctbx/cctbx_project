@@ -239,11 +239,8 @@ multiple residues."
     self.highlight_colors.append(color)
 
   def clear_selection (self) :
-    #from scitbx.array_family import flex, shared
     self.selected_residues = [False] * len(self.sequence)
-    # was: = flex.bool(len(self.sequence), False)
-    frame = self.GetParent().GetParent()
-    frame.statusbar.SetStatusText("")
+    self.update_frame()
 
   def select_chars (self, i_start, i_end, box=True) :
     assert i_end < len(self.sequence) and i_start <= i_end
@@ -653,6 +650,8 @@ residue(s).  Holding down shift enables multiple selections."""
     if self.select_residue(x, y) :
       pass
     elif (self._style & WXTBX_SEQ_ENABLE_SELECT_STRUCTURE) :
+      if (self._style & WXTBX_SEQ_SELECT_RANGE) :
+        self.clear_selection()
       if self.select_helix(x, y) :
         pass
       elif self.select_strand(x, y) :
@@ -744,7 +743,10 @@ class control_panel (wx.Panel) :
 
 # XXX keep this general so it can be embedded in other windows
 class sequence_window (object) :
-  def create_main_panel (self) :
+  cp_style = wx.NO_BORDER
+  def create_main_panel (self, sizer=None) :
+    if sizer is None :
+      sizer = self.sizer
     outer_panel = wx.lib.scrolledpanel.ScrolledPanel(self, -1)
     szr2 = wx.BoxSizer(wx.VERTICAL)
     outer_panel.SetSizer(szr2)
@@ -752,16 +754,21 @@ class sequence_window (object) :
     szr2.Add(panel, 1, wx.EXPAND)
     szr2.Layout()
     szr2.Fit(outer_panel)
-    self.sizer.Add(outer_panel, 1, wx.EXPAND)
+    sizer.Add(outer_panel, 1, wx.EXPAND)
     outer_panel.SetupScrolling()
-    self.panel = panel
+    self.seq_panel = panel
     self.outer_panel = outer_panel
+    if getattr(self, "control_panel", None) is not None :
+      self.control_panel.bind_events(self, self.seq_panel)
 
-  def create_control_panel (self) :
-    cp = control_panel(self, -1, style=wx.SIMPLE_BORDER)
-    cp.bind_events(self, self.panel)
-    self.sizer.Add(cp, 0, wx.EXPAND)
+  def create_control_panel (self, sizer=None) :
+    if sizer is None :
+      sizer = self.sizer
+    cp = control_panel(self, -1, style=self.cp_style)
+    sizer.Add(cp, 0, wx.EXPAND)
     self.control_panel = cp
+    if getattr(self, "seq_panel", None) is not None :
+      self.control_panel.bind_events(self, self.seq_panel)
 
   def load_pdb_file (self, file_name) :
     from iotbx import file_reader
@@ -826,31 +833,21 @@ class sequence_window (object) :
       self.reset_layout()
 
   def set_sequence (self, seq) :
-    self.panel.set_sequence(seq)
+    self.seq_panel.set_sequence(seq)
 
   def reset_layout (self) :
-    self.panel.Layout()
-    self.outer_panel.Layout()
-    self.sizer.Layout()
-    (w, h) = self.panel.DoGetBestSize()
-    (w2, h2) = self.control_panel.GetSize()
-    if w <= 750 and h <= 550 :
-      self.outer_panel.SetMinSize((w,h))
-      self.SetSize((w+50, h+h2+50))
-    else :
-      self.SetSize((800,600))
+    pass
 
   def set_structure (self, sec_str) :
-    self.panel.set_structure(sec_str)
-    self.panel.apply_missing_residue_highlights()
+    self.seq_panel.set_structure(sec_str)
+    self.seq_panel.apply_missing_residue_highlights()
 
   def get_selection_base (self) :
     chain_id = self.control_panel.chain_select.GetStringSelection()
     return "chain '%s'" % chain_id
 
   def callback_on_select (self) :
-    txt = self.panel.get_selection_info()
-    self.statusbar.SetStatusText(txt)
+    pass
 
   def OnSelectChain (self, evt) :
     chain_id = evt.GetEventObject().GetStringSelection()
@@ -865,7 +862,8 @@ class sequence_window (object) :
   def OnHelp (self, evt) :
     pass
 
-class sequence_frame (wx.Frame, sequence_window) :
+class sequence_frame_mixin (wx.Frame) :
+  cp_style = wx.SIMPLE_BORDER
   def __init__ (self, *args, **kwds) :
     wx.Frame.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -879,6 +877,23 @@ class sequence_frame (wx.Frame, sequence_window) :
     self._chain_cache = []
     self._selection_callback = None
 
+  def reset_layout (self) :
+    self.seq_panel.Layout()
+    self.outer_panel.Layout()
+    self.sizer.Layout()
+    (w, h) = self.seq_panel.DoGetBestSize()
+    (w2, h2) = self.control_panel.GetSize()
+    if w <= 750 and h <= 550 :
+      self.outer_panel.SetMinSize((w,h))
+      self.SetSize((w+50, h+h2+50))
+    else :
+      self.SetSize((800,600))
+
+class sequence_frame (sequence_frame_mixin, sequence_window) :
+  def callback_on_select (self) :
+    txt = self.seq_panel.get_selection_info()
+    self.statusbar.SetStatusText(txt)
+
 #-----------------------------------------------------------------------
 def run (args) :
   pdb_file = args[-1]
@@ -889,7 +904,7 @@ def run (args) :
   frame.Fit()
   frame.Show()
   if "--range" in args :
-    frame.panel.SetStyle(WXTBX_SEQ_DEFAULT_STYLE|WXTBX_SEQ_SELECT_RANGE)
+    frame.seq_panel.SetStyle(WXTBX_SEQ_DEFAULT_STYLE|WXTBX_SEQ_SELECT_RANGE)
   app.MainLoop()
 
 if __name__ == "__main__" :
