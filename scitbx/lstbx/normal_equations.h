@@ -186,7 +186,7 @@ namespace scitbx { namespace lstbx {
     /// Construct a least-squares problem with the given number of parameters
     /** That is the length of the vector \f$ x \f$ */
     normal_equations_separating_scale_factor(int n_parameters)
-      : yo_dot_yc(0), yc_sq(0), yo_sq(0), sum_w(0),
+      : yo_dot_yc(0), yc_sq(0), yo_sq(0),
         n_params(n_parameters),
         a(n_parameters),
         yo_dot_grad_yc(n_parameters),
@@ -212,7 +212,6 @@ namespace scitbx { namespace lstbx {
     void add_equation(scalar_t yc, scalar_t const *grad_yc,
                       scalar_t yo, scalar_t w)
     {
-      sum_w += w;
       yo_sq += w * yo * yo;
       yo_dot_yc += w * yo * yc;
       yc_sq += w * yc * yc;
@@ -237,7 +236,7 @@ namespace scitbx { namespace lstbx {
      */
     scalar_t objective() {
       scalar_t k_star_sq = std::pow(optimal_scale_factor(), 2);
-      scalar_t result = (yo_sq/sum_w) * (1 - (k_star_sq * yc_sq)/yo_sq);
+      scalar_t result = yo_sq * (1 - (k_star_sq * yc_sq)/yo_sq);
       return result;
     }
 
@@ -284,12 +283,12 @@ namespace scitbx { namespace lstbx {
      */
     vector_t gradient() {
       SCITBX_ASSERT(finalised());
-      return reduced_equations_->right_hand_side()/sum_w;
+      return reduced_equations_->right_hand_side();
     }
 
     /// Ready this for another computation of the normal equations
     void reset() {
-      yo_dot_yc = 0; yc_sq = 0; yo_sq = 0; sum_w = 0;
+      yo_dot_yc = 0; yc_sq = 0; yo_sq = 0;
       std::fill(a.begin(), a.end(), scalar_t(0));
       std::fill(yo_dot_grad_yc.begin(), yo_dot_grad_yc.end(), scalar_t(0));
       std::fill(yc_dot_grad_yc.begin(), yc_dot_grad_yc.end(), scalar_t(0));
@@ -298,7 +297,7 @@ namespace scitbx { namespace lstbx {
     }
 
   private:
-    scalar_t yo_dot_yc, yo_sq, yc_sq, sum_w;
+    scalar_t yo_dot_yc, yo_sq, yc_sq;
     int n_params;
     symmetric_matrix_owning_ref_t a; // normal matrix stored
                                      // as packed upper diagonal
@@ -347,7 +346,6 @@ namespace scitbx { namespace lstbx {
                       af::const_ref<scalar_t, af::mat_grid> const &grad_yc,
                       scalar_t yo, scalar_t w)
     {
-      sum_w += w;
       linear_part.add_equation(yo, yc, w);
 
       double *q = grad_yc_trans_grad_yc.begin();
@@ -424,7 +422,6 @@ namespace scitbx { namespace lstbx {
 
     normal_equations<scalar_t> linear_part;
 
-    scalar_t sum_w;
     af::ref_owning_shared<scalar_t> grad_yc_trans_grad_yc;
     matrix_owning_ref_t yo_trans_grad_yc;
     af::ref_owning_shared<scalar_t> yc_trans_grad_yc;

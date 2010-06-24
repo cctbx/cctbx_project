@@ -50,7 +50,7 @@ struct linear_polynomial_fit
       linear_polynomial_fit fit(1e-5);
       fit.compute(0.5, 0.3, 0.2);
       SCITBX_ASSERT(
-        approx_equal(fit.ls.objective(), 0.007928541506865207, 5e-14));
+        approx_equal(fit.ls.objective(), 0.07928541506865207, 5e-14));
       SCITBX_ASSERT(
         approx_equal(fit.ls.optimal_scale_factor(),
                      0.6148971786833856, 5e-14));
