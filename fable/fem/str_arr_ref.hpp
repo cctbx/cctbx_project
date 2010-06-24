@@ -60,7 +60,7 @@ namespace fem {
     operator()(
       dim_data<BufferNdims> const& dims)
     {
-      this->copy_origin_all(dims);
+      this->set_dims(dims);
     }
 
     str_cref
@@ -242,7 +242,7 @@ namespace fem {
     operator()(
       dim_data<BufferNdims> const& dims)
     {
-      this->copy_origin_all(dims);
+      this->set_dims(dims);
     }
 
     str_ref

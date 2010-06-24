@@ -8,19 +8,9 @@
 namespace fem {
 
   template <size_t Ndims>
-  struct dim_data
+  struct base_1
   {
     size_t all[Ndims];
-    ssize_t origin[Ndims];
-
-    template <size_t BufferNdims>
-    void
-    copy_origin_all(
-      dim_data<BufferNdims> const& source)
-    {
-      for(size_t i=0;i<Ndims;i++) all[i] = source.all[i];
-      for(size_t i=0;i<Ndims;i++) origin[i] = source.origin[i];
-    }
 
     size_t
     size_1d(
@@ -29,6 +19,29 @@ namespace fem {
       size_t result = 1;
       for(size_t i=0;i<n_dims;i++) result *= all[i];
       return result;
+    }
+
+    template <size_t BufferNdims>
+    void
+    set_dims(
+      base_1<BufferNdims> const& source)
+    {
+      for(size_t i=0;i<Ndims;i++) all[i] = source.all[i];
+    }
+  };
+
+  template <size_t Ndims>
+  struct dim_data : base_1<Ndims>
+  {
+    ssize_t origin[Ndims];
+
+    template <size_t BufferNdims>
+    void
+    set_dims(
+      dim_data<BufferNdims> const& source)
+    {
+      base_1<Ndims>::set_dims(source);
+      for(size_t i=0;i<Ndims;i++) origin[i] = source.origin[i];
     }
   };
 
@@ -53,7 +66,7 @@ namespace fem {
     :
       actual_number_of_dimensions(BufferNdims)
     {
-      this->copy_origin_all(source);
+      this->set_dims(source);
     }
 
     template <unsigned I>
