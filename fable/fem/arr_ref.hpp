@@ -144,7 +144,7 @@ namespace fem {
     operator()(
       dim_data<BufferNdims> const& dims)
     {
-      this->copy_origin_all(dims);
+      this->set_dims(dims);
     }
 
     T const&
