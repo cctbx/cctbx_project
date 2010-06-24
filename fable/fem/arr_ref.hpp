@@ -114,10 +114,11 @@ namespace fem {
   };
 
   template <typename T, size_t Ndims=1>
-  struct arr_cref : arr_ref_dims<Ndims>
+  struct arr_cref
   {
     protected:
       T const* elems_;
+      arr_ref_dims<Ndims> dims_;
 
       arr_cref() {}
 
@@ -144,14 +145,17 @@ namespace fem {
     operator()(
       dim_data<BufferNdims> const& dims)
     {
-      this->set_dims(dims);
+      dims_.set_dims(dims);
     }
+
+    size_t
+    size_1d() const { return dims_.size_1d(); }
 
     T const&
     operator()(
       ssize_t i1) const
     {
-      return elems_[this->index_1d(i1)];
+      return elems_[dims_.index_1d(i1)];
     }
 
     T const&
@@ -159,7 +163,7 @@ namespace fem {
       ssize_t i1,
       ssize_t i2) const
     {
-      return elems_[this->index_1d(i1, i2)];
+      return elems_[dims_.index_1d(i1, i2)];
     }
 
     T const&
@@ -168,7 +172,7 @@ namespace fem {
       ssize_t i2,
       ssize_t i3) const
     {
-      return elems_[this->index_1d(i1, i2, i3)];
+      return elems_[dims_.index_1d(i1, i2, i3)];
     }
 
     T const&
@@ -178,7 +182,7 @@ namespace fem {
       ssize_t i3,
       ssize_t i4) const
     {
-      return elems_[this->index_1d(i1, i2, i3, i4)];
+      return elems_[dims_.index_1d(i1, i2, i3, i4)];
     }
 
     T const&
@@ -189,7 +193,7 @@ namespace fem {
       ssize_t i4,
       ssize_t i5) const
     {
-      return elems_[this->index_1d(i1, i2, i3, i4, i5)];
+      return elems_[dims_.index_1d(i1, i2, i3, i4, i5)];
     }
 
     T const&
@@ -201,7 +205,7 @@ namespace fem {
       ssize_t i5,
       ssize_t i6) const
     {
-      return elems_[this->index_1d(i1, i2, i3, i4, i5, i6)];
+      return elems_[dims_.index_1d(i1, i2, i3, i4, i5, i6)];
     }
   };
 
@@ -256,7 +260,7 @@ namespace fem {
       arr_cref<T, Ndims>(val)
     {
       (*this)(dims);
-      std::memset(this->begin(), 0, this->size_1d() * sizeof(T));
+      std::memset(this->begin(), 0, this->dims_.size_1d() * sizeof(T));
     }
 
     T*
@@ -277,7 +281,7 @@ namespace fem {
     operator()(
       ssize_t i1) const
     {
-      return this->begin()[this->index_1d(i1)];
+      return this->begin()[this->dims_.index_1d(i1)];
     }
 
     T&
@@ -285,7 +289,7 @@ namespace fem {
       ssize_t i1,
       ssize_t i2) const
     {
-      return this->begin()[this->index_1d(i1, i2)];
+      return this->begin()[this->dims_.index_1d(i1, i2)];
     }
 
     T&
@@ -294,7 +298,7 @@ namespace fem {
       ssize_t i2,
       ssize_t i3) const
     {
-      return this->begin()[this->index_1d(i1, i2, i3)];
+      return this->begin()[this->dims_.index_1d(i1, i2, i3)];
     }
 
     T&
@@ -304,7 +308,7 @@ namespace fem {
       ssize_t i3,
       ssize_t i4) const
     {
-      return this->begin()[this->index_1d(i1, i2, i3, i4)];
+      return this->begin()[this->dims_.index_1d(i1, i2, i3, i4)];
     }
 
     T&
@@ -315,7 +319,7 @@ namespace fem {
       ssize_t i4,
       ssize_t i5) const
     {
-      return this->begin()[this->index_1d(i1, i2, i3, i4, i5)];
+      return this->begin()[this->dims_.index_1d(i1, i2, i3, i4, i5)];
     }
 
     T&
@@ -327,7 +331,7 @@ namespace fem {
       ssize_t i5,
       ssize_t i6) const
     {
-      return this->begin()[this->index_1d(i1, i2, i3, i4, i5, i6)];
+      return this->begin()[this->dims_.index_1d(i1, i2, i3, i4, i5, i6)];
     }
   };
 
