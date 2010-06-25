@@ -1265,15 +1265,32 @@ def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
     return conv_info.unit.common_name_by_identifier().get(identifier)
   common_name = get_common_name_if_cast_is_needed()
   if (common_name is not None):
+    cmn_var = "static_cast<common_%s&>(cmn).%s" % (common_name, identifier)
+  if (fdecl.dim_tokens is not None):
+    if (common_name is None):
+      cmn_var = conv_info.vmap[identifier]
     conv_info.vmap[identifier] = identifier
-    ctype = convert_data_type_and_dims(
-      conv_info=conv_info, fdecl=fdecl, crhs=None, force_arr=True)[0]
-    if (   conv_info.converted_commons_info.mode_registry[common_name]
-        == "struct_pod"):
+    if (fdecl.data_type.value == "character"):
+      ctype = "str_arr_ref<%d>" % len(fdecl.dim_tokens)
+    else:
+      ctype = convert_data_type_and_dims(
+        conv_info=conv_info, fdecl=fdecl, crhs=None, force_arr=True)[0]
       ctype = ad_hoc_change_arr_to_arr_ref(ctype=ctype)
+    declare_size_dim_identifiers(
+      conv_info=conv_info,
+      top_scope=top_scope,
+      curr_scope=top_scope,
+      fdecl=fdecl)
+    cdims = convert_dims(conv_info=conv_info, dim_tokens=fdecl.dim_tokens)
+    if (common_name is not None):
+      cmn_var = "static_cast<common_%s&>(cmn).%s" % (common_name, identifier)
     rapp = get_rapp()
-    rapp("%s& %s = static_cast<common_%s&>(cmn).%s;" % (
-      ctype, identifier, common_name, identifier))
+    rapp("%s %s(%s, %s);" % (ctype, identifier, cmn_var, cdims))
+  elif (common_name is not None):
+    conv_info.vmap[identifier] = identifier
+    ctype = convert_data_type(conv_info=conv_info, fdecl=fdecl, crhs=None)[0]
+    rapp = get_rapp()
+    rapp("%s& %s = %s;" % (ctype, identifier, cmn_var))
   if (crhs is not None):
     return True
   return False
