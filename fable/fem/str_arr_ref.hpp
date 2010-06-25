@@ -49,6 +49,28 @@ namespace fem {
       len_(StrLen)
     {}
 
+    template <int StrLen, size_t OtherNdims, size_t BufferNdims>
+    str_arr_cref(
+      arr_cref<str<StrLen>, OtherNdims> const& other,
+      dim_data<BufferNdims> const& dims)
+    :
+      elems_(other.begin()->elems),
+      len_(StrLen)
+    {
+      (*this)(dims);
+    }
+
+    template <size_t OtherNdims, size_t BufferNdims>
+    str_arr_cref(
+      str_arr_cref<OtherNdims> const& other,
+      dim_data<BufferNdims> const& dims)
+    :
+      elems_(other.begin()),
+      len_(other.len())
+    {
+      (*this)(dims);
+    }
+
     char const*
     begin() const { return elems_; }
 
@@ -230,6 +252,22 @@ namespace fem {
       (*this)(dims);
       std::memset(this->begin(), char0, StrLen * this->size_1d());
     }
+
+    template <int StrLen, size_t OtherNdims, size_t BufferNdims>
+    str_arr_ref(
+      arr_ref<str<StrLen>, OtherNdims> const& other,
+      dim_data<BufferNdims> const& dims)
+    :
+      str_arr_cref<Ndims>(other, dims)
+    {}
+
+    template <size_t OtherNdims, size_t BufferNdims>
+    str_arr_ref(
+      str_arr_ref<OtherNdims> const& other,
+      dim_data<BufferNdims> const& dims)
+    :
+      str_arr_cref<Ndims>(other, dims)
+    {}
 
     char*
     begin() const { return const_cast<char*>(this->elems_); }
