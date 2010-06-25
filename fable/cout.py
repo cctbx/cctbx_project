@@ -1980,8 +1980,7 @@ def convert_to_struct(
       callback("#endif")
   #
   return group_args(
-    need_dynamic_parameters=need_dynamic_parameters,
-    is_struct_pod=(len(deferred_arr_initializers) != 0))
+    need_dynamic_parameters=need_dynamic_parameters)
 
 def generate_common_report(
       common_fdecl_list_sizes,
@@ -2124,7 +2123,6 @@ def convert_commons(
   common_equiv_tok_seqs = {}
   common_ccode_registry = {}
   member_registry = {}
-  mode_registry = {}
   variant_common_names = set()
   bottom_up_filtered = []
   for unit in topological_units.bottom_up_list:
@@ -2164,10 +2162,6 @@ def convert_commons(
         id_tok_list=id_tok_list)
       if (info.need_dynamic_parameters):
         struct_commons_need_dynamic_parameters.add(struct_name)
-      if (info.is_struct_pod):
-        mode_registry[common_name] = "struct_pod"
-      else:
-        mode_registry[common_name] = "struct_obj"
       common_ccode_registry.setdefault(common_name, []).append(
         (unit, buffer))
   variant_common_names.update(generate_common_report(
@@ -2177,8 +2171,6 @@ def convert_commons(
     member_registry=member_registry,
     variant_due_to_equivalence_common_names=variant_common_names,
     stringio=common_report_stringio))
-  for common_name in variant_common_names:
-    mode_registry[common_name] = "variant"
   commons_defined_already = set()
   struct_commons = []
   variant_commons = []
@@ -2276,7 +2268,6 @@ def convert_commons(
   #
   return group_args(
     member_registry=member_registry,
-    mode_registry=mode_registry,
     save_struct_buffers=save_struct_buffers)
 
 include_fem_hpp = \
