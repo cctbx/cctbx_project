@@ -2168,12 +2168,15 @@ struct program_prog_save
 """)
   #
   lines = get("equivalence_06.f")
-  assert not absd(lines, head_off(18), """\
+  assert not absd(lines, head_off(20), """\
     loc_equivalences.allocate(),
-      equivalence(s1, s2)
+      equivalence(s1, s2, s3, s4)
         .align<1>(arr_index(1)(1, 1))
          .with<2>(arr_index(2)(3, 3))
-    ;
+""")
+  assert not absd(lines, head_off(32), """\
+  /* str_arr_ref<> s3( */ loc_equivalences.bind_str_arr<1>() /* , dimension(2)) */ ;
+  /* str_ref s4 */ loc_equivalences.bind_str();
 """)
   #
   lines = get("equivalence_repeated.f")

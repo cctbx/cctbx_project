@@ -803,8 +803,8 @@ def convert_to_mbr_bind(
       bind_dim = "%d" % len(fdecl.dim_tokens)
       ref_dim = bind_dim
       if (ref_dim == "1"): ref_dim = ""
-      binding = "%sstr_arr_ref<%s> %s %s %s.bind_str_arr<%s>();" % (
-        pr, ref_dim, vname, eq, variant_bind_chain, bind_dim)
+      binding = "%sstr_arr_ref<%s> %s(%s%s.bind_str_arr<%s>()%s, %s)%s;" % (
+        pr, ref_dim, vname, clm, variant_bind_chain, bind_dim, prm, cdims, clm)
     else:
       bind_dim = ", %d" % len(fdecl.dim_tokens)
       ref_dim = bind_dim

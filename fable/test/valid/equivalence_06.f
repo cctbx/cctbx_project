@@ -1,6 +1,10 @@
       program prog
       character s1*2(2), s2*3(4)
+      character s3*6(2)
+      character s4*12
       equivalence(s1(1)(1:1), s2(2)(3:3))
+      equivalence(s3, s1)
+      equivalence(s4, s1)
       s2(1) = 'abc'
       s2(2) = 'def'
       s2(3) = 'ghi'
