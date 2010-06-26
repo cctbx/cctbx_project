@@ -8,4 +8,6 @@
       write(6, '(a)') t
       call getenv(' PATH ', e)
       write(6, '(a)') e
+      call cpu_time(tm)
+      write(6, '(f6.2)') tm
       end

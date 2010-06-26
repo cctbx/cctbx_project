@@ -43,10 +43,11 @@ def check_intrinsics_extra(text):
   import re
   lines = text.splitlines()
   def check():
-    if (len(lines) != 3): return False
+    if (len(lines) != 4): return False
     if (re.match(r'\d\d-[A-Z][a-z][a-z]-\d\d', lines[0]) is None): return False
     if (re.match(r'\d\d:\d\d:\d\d', lines[1]) is None): return False
     if (len(lines[2]) != 70): return False
+    if (len(lines[3]) != 6): return False
     return True
   if (not check()):
     print "Unexpected output:"

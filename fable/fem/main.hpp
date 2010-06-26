@@ -1,6 +1,7 @@
 #ifndef FEM_MAIN_HPP
 #define FEM_MAIN_HPP
 
+#include <fem/intrinsics_extra.hpp>
 #include <fem/stop.hpp>
 #include <cstdio>
 
@@ -13,6 +14,7 @@ namespace fem {
     char const* argv[],
     void (*callable)(int argc, char const* argv[]))
   {
+    user_plus_system_time();
     try {
       callable(argc, argv);
     }

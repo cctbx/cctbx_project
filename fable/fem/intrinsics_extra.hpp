@@ -52,6 +52,23 @@ namespace fem {
     result = buf;
   }
 
+  inline
+  double
+  user_plus_system_time()
+  {
+    static std::clock_t t_start = std::clock();
+    return static_cast<double>(std::clock() - t_start)
+         / static_cast<double>(CLOCKS_PER_SEC);
+  }
+
+  inline
+  void
+  cpu_time(
+    float& result)
+  {
+    result = user_plus_system_time();
+  }
+
 } // namespace fem
 
 #endif // GUARD

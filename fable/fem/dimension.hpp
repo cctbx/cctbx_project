@@ -2,8 +2,8 @@
 #define FEM_DIMENSION_HPP
 
 #include <fem/arr_and_str_indices.hpp>
+#include <fem/error_utils.hpp>
 #include <fem/star.hpp>
-#include <boost_adaptbx/error_utils.h>
 
 namespace fem {
 
