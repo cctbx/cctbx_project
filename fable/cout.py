@@ -2611,6 +2611,8 @@ def process(
     if (cpp_callback is None):
       cpp_diverted = []
       cpp_callback = cpp_diverted.append
+      if (hpp_callback is None):
+        hpp_callback = callback
     if (not need_function_hpp):
       fwds = topological_units.forward_uses_by_identifier.get(
         unit.name.value)
