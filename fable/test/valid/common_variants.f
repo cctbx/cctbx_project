@@ -26,11 +26,18 @@
       j = 23
       end
 
+      subroutine sub4
+      common /scr/ i(2), j
+      j = 45
+      end
+
       program prog
       call sub1a
       call sub1b
       call sub2a
       call sub2b
       call sub3
+      call sub1b
+      call sub4
       call sub1b
       end

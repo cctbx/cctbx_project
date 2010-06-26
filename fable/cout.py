@@ -765,28 +765,32 @@ def convert_to_mbr_bind(
   fdecl = conv_info.unit.fdecl_by_identifier[identifier]
   ctype = convert_data_type(conv_info=conv_info, fdecl=fdecl, crhs=None)[0]
   if (fdecl.dim_tokens is None):
-    cdims = ""
+    cdims_parens = ""
   else:
     declare_identifiers_parameter_recursion(
       conv_info=conv_info,
       top_scope=top_scope,
       curr_scope=top_scope,
       tokens=fdecl.dim_tokens)
-    cdims = "(" + convert_dims(
-      conv_info=conv_info, dim_tokens=fdecl.dim_tokens) + ")"
+    cdims = convert_dims(conv_info=conv_info, dim_tokens=fdecl.dim_tokens)
+    cdims_parens = "(" + cdims + ")"
   identifier = fdecl.id_tok.value
   ctype_targ = ctype
   if (ctype_targ.endswith(">")):
     ctype_targ += " "
-  mbr_buffer.append("mbr<%s> %s%s;" % (ctype_targ, identifier, cdims))
+  mbr_buffer.append("mbr<%s> %s%s;" % (ctype_targ, identifier, cdims_parens))
   conv_info.set_vmap_force_local(fdecl=fdecl)
   vname = conv_info.vmapped(fdecl=fdecl)
   if (fdecl.var_type is None):
     pr = "/* "
     eq = "*/"
+    clm = " */ "
+    prm = " /* "
   else:
     pr = ""
     eq = "="
+    clm = ""
+    prm = ""
   if (fdecl.dim_tokens is None):
     if (fdecl.data_type.value == "character"):
       binding = "%sstr_ref %s %s %s.bind_str();" % (
@@ -805,15 +809,18 @@ def convert_to_mbr_bind(
       bind_dim = ", %d" % len(fdecl.dim_tokens)
       ref_dim = bind_dim
       if (ref_dim == ", 1"): ref_dim = ""
-      binding = "%sarr_ref<%s%s> %s %s %s.bind_arr<%s%s>();" % (
+      binding = "%sarr_ref<%s%s> %s(%s%s.bind_arr<%s%s>()%s, %s)%s;" % (
         pr,
         ctype,
         ref_dim,
         vname,
-        eq,
+        clm,
         variant_bind_chain,
         ctype,
-        bind_dim)
+        bind_dim,
+        prm,
+        cdims,
+        clm)
   bind_buffer.append(binding)
 
 def assemble_allocate_line_lists(
