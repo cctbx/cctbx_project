@@ -289,11 +289,11 @@ def exercise_adp_similarity():
   assert approx_equal(a.u_iso, u_iso)
   assert approx_equal(a.use_u_aniso, use_u_aniso)
   assert a.weight == weight
-  assert approx_equal(a.residual(), 2)
+  assert approx_equal(a.residual(), 124)
   assert approx_equal(a.gradients(),
-    ((-2.0, 2.0, 0.0, 0.0, 0.0, 0.0), (2.0, -2.0, 0.0, 0.0, 0.0, 0.0)))
-  assert approx_equal(a.deltas(), (-1.0, 1.0, 0.0, 0.0, 0.0, 0.0))
-  assert approx_equal(a.rms_deltas(), 0.47140452079103168)
+    ((-2, 2, 0, 16, 12, 24), (2, -2, 0, -16, -12, -24)))
+  assert approx_equal(a.deltas(), (-1, 1, 0, 4, 3, 6))
+  assert approx_equal(a.rms_deltas(), 3.711842908553348)
   #
   i_seqs_aa = (1,2) # () - ()
   i_seqs_ai = (1,0) # () - o
