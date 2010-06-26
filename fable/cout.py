@@ -470,8 +470,8 @@ def convert_data_type_and_dims(conv_info, fdecl, crhs, force_arr=False):
       cdims = convert_dims(conv_info=conv_info, dim_tokens=dt)
   return ctype, cdims, crhs, cfill0
 
-def ad_hoc_change_arr_to_arr_ref(ctype):
-  return ctype.replace("arr<", "arr_ref<", 1)
+def ad_hoc_change_arr_to_arr_ref(ctype, cconst=""):
+  return ctype.replace("arr<", "arr_%sref<" % cconst, 1)
 
 def zero_shortcut_if_possible(ctype):
   if (ctype.startswith("fem::")):
@@ -1179,25 +1179,29 @@ def simple_equivalence(
       curr_scope=curr_scope,
       id_tok=source_fdecl.id_tok)
   crhs = convert_tokens(conv_info=conv_info, tokens=[source_tok_seq])
+  if (target_fdecl.is_modified): cconst = ""
+  else:                          cconst = "c"
   se = "// SIMPLE EQUIVALENCE"
   if (target_fdecl.data_type.value == "character"):
     clen = convert_tokens(
       conv_info=conv_info, tokens=target_fdecl.size_tokens)
     if (target_fdecl.dim_tokens is None):
-      return "str_ref %s(%s, %s); %s" % (
-        target_fdecl.id_tok.value, crhs, clen, se)
+      return "str_%sref %s(%s, %s); %s" % (
+        cconst, target_fdecl.id_tok.value, crhs, clen, se)
     cdims = convert_dims(
       conv_info=conv_info, dim_tokens=target_fdecl.dim_tokens)
-    return "str_arr_ref<%d> %s(%s, %s, %s); %s" % (
-      len(target_fdecl.dim_tokens),
+    return "str_arr_%sref<%d> %s(%s, %s, %s); %s" % (
+      cconst, len(target_fdecl.dim_tokens),
       target_fdecl.id_tok.value, crhs, clen, cdims, se)
   ctype, cdims = convert_data_type_and_dims(
     conv_info=conv_info, fdecl=target_fdecl, crhs=None, force_arr=True)[:2]
   if (cdims is None):
-    return "%s& %s = %s; %s" % (
-      ctype, target_fdecl.id_tok.value, crhs, se)
+    if (target_fdecl.is_modified): cconst = ""
+    else:                          cconst = " const"
+    return "%s%s& %s = %s; %s" % (
+      ctype, cconst, target_fdecl.id_tok.value, crhs, se)
   return "%s %s(%s, %s); %s" % (
-    ad_hoc_change_arr_to_arr_ref(ctype=ctype),
+    ad_hoc_change_arr_to_arr_ref(ctype=ctype, cconst=cconst),
     target_fdecl.id_tok.value, crhs, cdims, se)
 
 def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
@@ -1270,12 +1274,14 @@ def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
     if (common_name is None):
       cmn_var = conv_info.vmap[identifier]
     conv_info.vmap[identifier] = identifier
+    if (fdecl.is_modified): cconst = ""
+    else:                   cconst = "c"
     if (fdecl.data_type.value == "character"):
-      ctype = "str_arr_ref<%d>" % len(fdecl.dim_tokens)
+      ctype = "str_arr_%sref<%d>" % (cconst, len(fdecl.dim_tokens))
     else:
       ctype = convert_data_type_and_dims(
         conv_info=conv_info, fdecl=fdecl, crhs=None, force_arr=True)[0]
-      ctype = ad_hoc_change_arr_to_arr_ref(ctype=ctype)
+      ctype = ad_hoc_change_arr_to_arr_ref(ctype=ctype, cconst=cconst)
     declare_size_dim_identifiers(
       conv_info=conv_info,
       top_scope=top_scope,

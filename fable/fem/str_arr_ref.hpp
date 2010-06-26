@@ -25,6 +25,18 @@ namespace fem {
       len_(len)
     {}
 
+    template <size_t BufferNdims>
+    str_arr_cref(
+      char const* elems,
+      int len,
+      dim_data<BufferNdims> const& dims)
+    :
+      elems_(elems),
+      len_(len)
+    {
+      (*this)(dims);
+    }
+
     str_arr_cref(
       str_cref const& other,
       int len)
@@ -33,6 +45,18 @@ namespace fem {
       len_(len)
     {}
 
+    template <size_t BufferNdims>
+    str_arr_cref(
+      str_cref const& other,
+      int len,
+      dim_data<BufferNdims> const& dims)
+    :
+      elems_(other.elems()),
+      len_(len)
+    {
+      (*this)(dims);
+    }
+
     template <int StrLen>
     str_arr_cref(
       str<StrLen> const& other)
@@ -40,6 +64,17 @@ namespace fem {
       elems_(other.elems),
       len_(StrLen)
     {}
+
+    template <int StrLen, size_t BufferNdims>
+    str_arr_cref(
+      str<StrLen> const& other,
+      dim_data<BufferNdims> const& dims)
+    :
+      elems_(other.elems),
+      len_(StrLen)
+    {
+      (*this)(dims);
+    }
 
     template <int StrLen, size_t OtherNdims>
     str_arr_cref(
@@ -215,20 +250,16 @@ namespace fem {
       int len,
       dim_data<BufferNdims> const& dims)
     :
-      str_arr_cref<Ndims>(other.elems, len)
-    {
-      (*this)(dims);
-    }
+      str_arr_cref<Ndims>(other.elems, len, dims)
+    {}
 
     template <int StrLen, size_t BufferNdims>
     str_arr_ref(
       str<StrLen> const& other,
       dim_data<BufferNdims> const& dims)
     :
-      str_arr_cref<Ndims>(other)
-    {
-      (*this)(dims);
-    }
+      str_arr_cref<Ndims>(other, dims)
+    {}
 
     template <int StrLen, size_t BufferNdims>
     str_arr_ref(
@@ -236,10 +267,8 @@ namespace fem {
       dim_data<BufferNdims> const& dims,
       no_fill0_type const&)
     :
-      str_arr_cref<Ndims>(other)
-    {
-      (*this)(dims);
-    }
+      str_arr_cref<Ndims>(other, dims)
+    {}
 
     template <int StrLen, size_t BufferNdims>
     str_arr_ref(

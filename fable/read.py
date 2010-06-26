@@ -2188,6 +2188,7 @@ class unit(unit_p_methods):
             tf.var_type = vt_scalar
           if (tf.var_storage is None or tf.var_storage is vs_local):
             tf.var_storage = vs_save
+          tf.is_modified = True
       tokenization.search_for_data_or_read_target_tokens(
         callback=callback, tokens=nlist)
     #
@@ -2354,6 +2355,21 @@ class unit(unit_p_methods):
       tf = O.fdecl_by_identifier.get(id_tok.value)
       assert tf is not None
       O.args_fdecl.append(tf)
+    #
+    equiv_info = O.equivalence_info()
+    for equiv_tok_cluster in equiv_info.equiv_tok_clusters:
+      cluster_is_modified = False
+      tf_cluster = []
+      for equiv_tok in equiv_tok_cluster:
+        for tok_seq in equiv_tok.value:
+          id_tok = tok_seq.value[0]
+          tf = O.fdecl_by_identifier[id_tok.value]
+          tf_cluster.append(tf)
+          if (tf.is_modified):
+            cluster_is_modified = tf.is_modified
+      if (cluster_is_modified):
+        for tf in tf_cluster:
+          tf.is_modified = True
 
   def get_fdecl(O, id_tok):
     return O.fdecl_by_identifier[id_tok.value]

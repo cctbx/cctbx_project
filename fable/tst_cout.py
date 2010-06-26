@@ -682,7 +682,7 @@ sub(
   assert not absd(lines, tail_off(1), """\
   common cmn;
   common_write write(cmn);
-  arr_ref<int> n(cmn.n, dimension(2));
+  arr_cref<int> n(cmn.n, dimension(2));
   write(6, star), n(1), n(2);
   sub(cmn, 5);
   write(6, star), n(2), n(1);
@@ -1712,7 +1712,7 @@ struct program_prog_save
   const int size = 2;
   arr<int> nums_local(dimension(size), fem::fill0);
   write(6, star), nums_local;
-  arr_ref<int> nums_save(sve.nums_save, dimension(size));
+  arr_cref<int> nums_save(sve.nums_save, dimension(size));
   write(6, star), nums_save;
 """)
   #
@@ -2305,7 +2305,7 @@ ifun(
   #
   lines = get("common_name_clash_2.f")
   assert not absd(lines, head_off(63), """\
-  arr_ref<int> num2(static_cast<common_cmn2&>(cmn).num2, dimension(2));
+  arr_cref<int> num2(static_cast<common_cmn2&>(cmn).num2, dimension(2));
   FEM_DO(i, 1, 2) {
     write(6, star), i, num2, cmn.num3;
   }
@@ -2329,7 +2329,7 @@ void sub1(common&, int const&);
   assert not absd(lines, head_off(62), """\
   int j = fem::int0;
   int i = fem::int0;
-  arr_ref<int> num2(static_cast<common_cmn2&>(cmn).num2, dimension(2));
+  arr_cref<int> num2(static_cast<common_cmn2&>(cmn).num2, dimension(2));
   j = 0;
 """)
   #
@@ -2908,13 +2908,13 @@ Name clash: n2 in COMMONs: first, second
   write(6, star), m1b;
   arr_ref<int> m1c(n1(1), dimension(2)); // SIMPLE EQUIVALENCE
   write(6, star), m1c;
-  arr_ref<int> m2(n2, dimension(6)); // SIMPLE EQUIVALENCE
+  arr_cref<int> m2(n2, dimension(6)); // SIMPLE EQUIVALENCE
   write(6, star), m2;
-  arr_ref<int> m2a(n2(1, 1), dimension(6)); // SIMPLE EQUIVALENCE
+  arr_cref<int> m2a(n2(1, 1), dimension(6)); // SIMPLE EQUIVALENCE
   write(6, star), m2a;
-  arr_ref<int> m2b(n2, dimension(6)); // SIMPLE EQUIVALENCE
+  arr_cref<int> m2b(n2, dimension(6)); // SIMPLE EQUIVALENCE
   write(6, star), m2b;
-  arr_ref<int> m2c(n2(1, 1), dimension(6)); // SIMPLE EQUIVALENCE
+  arr_cref<int> m2c(n2(1, 1), dimension(6)); // SIMPLE EQUIVALENCE
 """)
   #
   lines = get("common_equivalence_simple_6.f", "com")
