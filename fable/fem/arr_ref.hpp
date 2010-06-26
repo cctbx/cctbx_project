@@ -133,8 +133,28 @@ namespace fem {
     template <size_t OtherNdims>
     arr_cref(
       arr_cref<T, OtherNdims> const& other)
+    :
+      elems_(other.begin())
+    {}
+
+    template <size_t OtherNdims, size_t BufferNdims>
+    arr_cref(
+      arr_cref<T, OtherNdims> const& other,
+      dim_data<BufferNdims> const& dims)
+    :
+      elems_(other.begin())
     {
-      elems_ = other.begin();
+      (*this)(dims);
+    }
+
+    template <size_t BufferNdims>
+    arr_cref(
+      T const& val,
+      dim_data<BufferNdims> const& dims)
+    :
+      elems_(&val)
+    {
+      (*this)(dims);
     }
 
     T const*
@@ -235,10 +255,8 @@ namespace fem {
       T& val,
       dim_data<BufferNdims> const& dims)
     :
-      arr_cref<T, Ndims>(val)
-    {
-      (*this)(dims);
-    }
+      arr_cref<T, Ndims>(val, dims)
+    {}
 
     template <size_t BufferNdims>
     arr_ref(
@@ -246,10 +264,8 @@ namespace fem {
       dim_data<BufferNdims> const& dims,
       no_fill0_type const&)
     :
-      arr_cref<T, Ndims>(val)
-    {
-      (*this)(dims);
-    }
+      arr_cref<T, Ndims>(val, dims)
+    {}
 
     template <size_t BufferNdims>
     arr_ref(
@@ -257,9 +273,8 @@ namespace fem {
       dim_data<BufferNdims> const& dims,
       fill0_type const&)
     :
-      arr_cref<T, Ndims>(val)
+      arr_cref<T, Ndims>(val, dims)
     {
-      (*this)(dims);
       std::memset(this->begin(), 0, this->dims_.size_1d() * sizeof(T));
     }
 
