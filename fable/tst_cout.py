@@ -1968,6 +1968,7 @@ struct common :
   fem::cmn_sve sub2a_sve;
   fem::cmn_sve sub2b_sve;
   fem::cmn_sve sub3_sve;
+  fem::cmn_sve sub4_sve;
 };
 
 struct sub1a_save
@@ -1990,14 +1991,18 @@ sub1a(
     }
   }
   int& i = scr.bind<int>();
-  arr_ref<int> j = scr.bind_arr<int, 1>();
+  arr_ref<int> j(scr.bind_arr<int, 1>(), dimension(2));
   i = 12;
   j(1) = 34;
   j(2) = 65;
 }
 """)
-  assert not absd(lines, tail_off(19), """\
+  assert not absd(lines, tail_off(45), """\
   /* int& i */ scr.bind<int>();
+  int& j = scr.bind<int>();
+""")
+  assert not absd(lines, tail_off(21), """\
+  /* arr_ref<int> i( */ scr.bind_arr<int, 1>() /* , dimension(2)) */ ;
   int& j = scr.bind<int>();
 """)
   #
@@ -2017,8 +2022,8 @@ sub1a(
       ;
     }
   }
-  arr_ref<int> nums = scr.bind_arr<int, 1>();
-  arr_ref<int> numse = scr.bind_arr<int, 1>();
+  arr_ref<int> nums(scr.bind_arr<int, 1>(), dimension(2));
+  arr_ref<int> numse(scr.bind_arr<int, 1>(), dimension(4));
   int& numx = scr.bind<int>();
 """)
   #
@@ -2044,9 +2049,9 @@ sub1a(
       ;
 """)
   assert not absd(lines, tail_off(14), """\
-  arr_ref<int> nums3 = scr.bind_arr<int, 1>();
-  arr_ref<int> nums1 = scr.bind_arr<int, 1>();
-  arr_ref<int> nums2 = scr.bind_arr<int, 1>();
+  arr_ref<int> nums3(scr.bind_arr<int, 1>(), dimension(4));
+  arr_ref<int> nums1(scr.bind_arr<int, 1>(), dimension(5));
+  arr_ref<int> nums2(scr.bind_arr<int, 1>(), dimension(3));
 """)
   #
   lines = get("common_equivalence_4.f")
@@ -2074,7 +2079,7 @@ sub1a(
       ;
 """)
   assert not absd(lines, head_off(34), """\
-  arr_ref<int> data = scr.bind_arr<int, 1>();
+  arr_ref<int> data(scr.bind_arr<int, 1>(), dimension(4));
 """)
   assert not absd(lines, tail_off(19), """\
       mbr<int> inside(dimension(3));
@@ -2145,12 +2150,12 @@ struct program_prog_save
          .with<2>()
     ;
   }
-  arr_ref<int> nc = scr.bind_arr<int, 1>();
-  arr_ref<int> nce = scr.bind_arr<int, 1>();
-  arr_ref<int> ns = sve_equivalences.bind_arr<int, 1>();
-  arr_ref<int> nse = sve_equivalences.bind_arr<int, 1>();
-  arr_ref<int> nl = loc_equivalences.bind_arr<int, 1>();
-  arr_ref<int> nle = loc_equivalences.bind_arr<int, 1>();
+  arr_ref<int> nc(scr.bind_arr<int, 1>(), dimension(2));
+  arr_ref<int> nce(scr.bind_arr<int, 1>(), dimension(2));
+  arr_ref<int> ns(sve_equivalences.bind_arr<int, 1>(), dimension(2));
+  arr_ref<int> nse(sve_equivalences.bind_arr<int, 1>(), dimension(2));
+  arr_ref<int> nl(loc_equivalences.bind_arr<int, 1>(), dimension(2));
+  arr_ref<int> nle(loc_equivalences.bind_arr<int, 1>(), dimension(2));
 """)
   #
   lines = get("equivalence_05.f")
