@@ -2405,6 +2405,9 @@ sub(
   write(6, "(a)"), t;
   fem::str<70> e = fem::char0;
   fem::getenv(" PATH ", e);
+  write(6, "(a)"), e;
+  float tm = fem::float0;
+  fem::cpu_time(tm);
 """)
   #
   lines = get("blockdata_unnamed.f", data_specializations=False)

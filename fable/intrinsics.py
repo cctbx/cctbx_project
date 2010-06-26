@@ -79,4 +79,5 @@ extra_set_lower = set("""\
 getenv
 date
 time
+cpu_time
 """.splitlines())
