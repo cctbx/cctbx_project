@@ -45,7 +45,7 @@ namespace cctbx { namespace adp_restraints {
       scitbx::sym_mat3<double> const& u_1 = u_cart[0];
       double const& u_2 = u_iso[1];
       scitbx::sym_mat3<double> const& u_2_cart = adptbx::u_iso_as_u_cart(u_2);
-      for (int i=0;i<3;i++) {
+      for (int i=0;i<6;i++) {
         deltas_[i] = u_1[i] - u_2_cart[i];
       }
     }
@@ -54,7 +54,7 @@ namespace cctbx { namespace adp_restraints {
       double const& u_1 = u_iso[0];
       scitbx::sym_mat3<double> const& u_2 = u_cart[1];
       scitbx::sym_mat3<double> const& u_1_cart = adptbx::u_iso_as_u_cart(u_1);
-      for (int i=0;i<3;i++) {
+      for (int i=0;i<6;i++) {
         deltas_[i] = u_1_cart[i] - u_2[i];
       }
     }
