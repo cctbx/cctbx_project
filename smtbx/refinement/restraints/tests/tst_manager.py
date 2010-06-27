@@ -165,8 +165,8 @@ scatterer O3
  U23 -8.44e-03 2.00e-01 2.50e+01
 ... (remaining 21 not shown)
 
-target: 19.7619
-  adp_similarity_residual_sum (n=24): 2.54581
+target: 19.762
+  adp_similarity_residual_sum (n=24): 2.56474
   rigid_bond_residual_sum (n=60): 4463.41
   isotropic_adp_residual_sum (n=22): 0.243628
 target: 2.21912
@@ -180,10 +180,10 @@ target: 2.21912
   assert approx_equal(energies_sites.residual_sum, 15.533823616839785)
   assert approx_equal(energies_sites.target, 2.2191176595485405)
   assert energies_adps.number_of_restraints == 226
-  assert approx_equal(energies_adps.residual_sum, 4466.2004330702503)
-  assert approx_equal(energies_adps.target, 19.761948818894911)
+  assert approx_equal(energies_adps.residual_sum, 4466.2193728738066)
+  assert approx_equal(energies_adps.target, 19.762032623335426)
   assert approx_equal(energies_adps.adp_similarity_deviation(),
-    (0.0011807357231092134, 0.016113630010596708, 0.0061866326445807578))
+    (0.0011807357231092134, 0.016113630010596704, 0.0062318217917095619))
   assert approx_equal(energies_adps.rigid_bond_deviation(),
     (3.3307350961686577e-05, 0.63945903723502284, 0.086249743961269706))
   assert approx_equal(energies_adps.isotropic_adp_deviation(),
@@ -203,7 +203,7 @@ target: 2.21912
     flags=adp_flags)
   assert energies_adps.isotropic_adp_proxies is None
   assert energies_adps.isotropic_adp_residual_sum == 0
-  assert approx_equal(energies_adps.residual_sum, 4465.9568051235601)
+  assert approx_equal(energies_adps.residual_sum, 4465.9757449271165)
   assert approx_equal(energies_adps.target, energies_adps.residual_sum)
   energies_sites = manager.energies_sites(
     sites_cart=xray_structure.sites_cart(),
