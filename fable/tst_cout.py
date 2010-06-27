@@ -1998,11 +1998,11 @@ sub1a(
 }
 """)
   assert not absd(lines, tail_off(45), """\
-  /* int& i */ scr.bind<int>();
+  /* int const& i */ scr.bind<int>();
   int& j = scr.bind<int>();
 """)
   assert not absd(lines, tail_off(21), """\
-  /* arr_ref<int> i( */ scr.bind_arr<int, 1>() /* , dimension(2)) */ ;
+  /* arr_cref<int> i( */ scr.bind_arr<int, 1>() /* , dimension(2)) */ ;
   int& j = scr.bind<int>();
 """)
   #
@@ -2024,7 +2024,7 @@ sub1a(
   }
   arr_ref<int> nums(scr.bind_arr<int, 1>(), dimension(2));
   arr_ref<int> numse(scr.bind_arr<int, 1>(), dimension(4));
-  int& numx = scr.bind<int>();
+  int const& numx = scr.bind<int>();
 """)
   #
   lines = get("common_equivalence_2.f")

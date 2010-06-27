@@ -755,6 +755,11 @@ def equivalence_align_with_arg(conv_info, top_scope, identifier, tok_seq):
     tok_seq.raise_semantic_error()
   return "arr_index(%s)(%s)" % tuple(cindices)
 
+def cconst(fdecl, short):
+  if (fdecl.is_modified): return ""
+  if (short): return "c"
+  return " const"
+
 def convert_to_mbr_bind(
       conv_info,
       top_scope,
@@ -793,34 +798,27 @@ def convert_to_mbr_bind(
     prm = ""
   if (fdecl.dim_tokens is None):
     if (fdecl.data_type.value == "character"):
-      binding = "%sstr_ref %s %s %s.bind_str();" % (
-        pr, vname, eq, variant_bind_chain)
+      binding = "%sstr_%sref %s %s %s.bind_str();" % (
+        pr, cconst(fdecl=fdecl, short=True), vname, eq, variant_bind_chain)
     else:
-      binding = "%s%s& %s %s %s.bind<%s>();" % (
-        pr, ctype, vname, eq, variant_bind_chain, ctype_targ)
+      binding = "%s%s%s& %s %s %s.bind<%s>();" % (
+        pr, ctype, cconst(fdecl=fdecl, short=False), vname,
+        eq, variant_bind_chain, ctype_targ)
   else:
     if (fdecl.data_type.value == "character"):
       bind_dim = "%d" % len(fdecl.dim_tokens)
       ref_dim = bind_dim
       if (ref_dim == "1"): ref_dim = ""
-      binding = "%sstr_arr_ref<%s> %s(%s%s.bind_str_arr<%s>()%s, %s)%s;" % (
-        pr, ref_dim, vname, clm, variant_bind_chain, bind_dim, prm, cdims, clm)
+      binding = "%sstr_arr_%sref<%s> %s(%s%s.bind_str_arr<%s>()%s, %s)%s;" % (
+        pr, cconst(fdecl=fdecl, short=True), ref_dim, vname,
+        clm, variant_bind_chain, bind_dim, prm, cdims, clm)
     else:
       bind_dim = ", %d" % len(fdecl.dim_tokens)
       ref_dim = bind_dim
       if (ref_dim == ", 1"): ref_dim = ""
-      binding = "%sarr_ref<%s%s> %s(%s%s.bind_arr<%s%s>()%s, %s)%s;" % (
-        pr,
-        ctype,
-        ref_dim,
-        vname,
-        clm,
-        variant_bind_chain,
-        ctype,
-        bind_dim,
-        prm,
-        cdims,
-        clm)
+      binding = "%sarr_%sref<%s%s> %s(%s%s.bind_arr<%s%s>()%s, %s)%s;" % (
+        pr, cconst(fdecl=fdecl, short=True), ctype, ref_dim, vname,
+        clm, variant_bind_chain, ctype, bind_dim, prm, cdims, clm)
   bind_buffer.append(binding)
 
 def assemble_allocate_line_lists(
@@ -1186,29 +1184,29 @@ def simple_equivalence(
       curr_scope=curr_scope,
       id_tok=source_fdecl.id_tok)
   crhs = convert_tokens(conv_info=conv_info, tokens=[source_tok_seq])
-  if (target_fdecl.is_modified): cconst = ""
-  else:                          cconst = "c"
   se = "// SIMPLE EQUIVALENCE"
   if (target_fdecl.data_type.value == "character"):
     clen = convert_tokens(
       conv_info=conv_info, tokens=target_fdecl.size_tokens)
     if (target_fdecl.dim_tokens is None):
       return "str_%sref %s(%s, %s); %s" % (
-        cconst, target_fdecl.id_tok.value, crhs, clen, se)
+        cconst(fdecl=target_fdecl, short=True),
+        target_fdecl.id_tok.value, crhs, clen, se)
     cdims = convert_dims(
       conv_info=conv_info, dim_tokens=target_fdecl.dim_tokens)
     return "str_arr_%sref<%d> %s(%s, %s, %s); %s" % (
-      cconst, len(target_fdecl.dim_tokens),
+      cconst(fdecl=target_fdecl, short=True),
+      len(target_fdecl.dim_tokens),
       target_fdecl.id_tok.value, crhs, clen, cdims, se)
   ctype, cdims = convert_data_type_and_dims(
     conv_info=conv_info, fdecl=target_fdecl, crhs=None, force_arr=True)[:2]
   if (cdims is None):
-    if (target_fdecl.is_modified): cconst = ""
-    else:                          cconst = " const"
     return "%s%s& %s = %s; %s" % (
-      ctype, cconst, target_fdecl.id_tok.value, crhs, se)
+      ctype, cconst(fdecl=target_fdecl, short=False),
+      target_fdecl.id_tok.value, crhs, se)
   return "%s %s(%s, %s); %s" % (
-    ad_hoc_change_arr_to_arr_ref(ctype=ctype, cconst=cconst),
+    ad_hoc_change_arr_to_arr_ref(
+      ctype=ctype, cconst=cconst(fdecl=target_fdecl, short=True)),
     target_fdecl.id_tok.value, crhs, cdims, se)
 
 def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
@@ -1281,14 +1279,14 @@ def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
     if (common_name is None):
       cmn_var = conv_info.vmap[identifier]
     conv_info.vmap[identifier] = identifier
-    if (fdecl.is_modified): cconst = ""
-    else:                   cconst = "c"
     if (fdecl.data_type.value == "character"):
-      ctype = "str_arr_%sref<%d>" % (cconst, len(fdecl.dim_tokens))
+      ctype = "str_arr_%sref<%d>" % (
+        cconst(fdecl=fdecl, short=True), len(fdecl.dim_tokens))
     else:
       ctype = convert_data_type_and_dims(
         conv_info=conv_info, fdecl=fdecl, crhs=None, force_arr=True)[0]
-      ctype = ad_hoc_change_arr_to_arr_ref(ctype=ctype, cconst=cconst)
+      ctype = ad_hoc_change_arr_to_arr_ref(
+        ctype=ctype, cconst=cconst(fdecl=fdecl, short=True))
     declare_size_dim_identifiers(
       conv_info=conv_info,
       top_scope=top_scope,
@@ -1756,24 +1754,22 @@ def convert_to_cpp_function(
       arg_name = "/* %s */" % id_tok.value
     else:
       arg_name = id_tok.value
-    if (fdecl.is_modified): cconst = ""
-    else:                   cconst = "c"
     if (    fdecl.data_type is not None
         and fdecl.data_type.value == "character"):
       if (fdecl.dim_tokens is None):
-        cargs_append("str_%sref" % cconst, arg_name)
+        cargs_append("str_%sref" % cconst(fdecl=fdecl, short=True), arg_name)
       else:
         if (len(fdecl.dim_tokens) == 1):
           cdim = ""
         else:
           cdim = "%d" % len(fdecl.dim_tokens)
-        cargs_append("str_arr_%sref<%s>" % (cconst, cdim), arg_name)
+        cargs_append("str_arr_%sref<%s>" % (
+          cconst(fdecl=fdecl, short=True), cdim), arg_name)
     elif (not fdecl.is_user_defined_callable()):
       ctype = convert_data_type(conv_info=conv_info, fdecl=fdecl, crhs=None)[0]
       if (fdecl.dim_tokens is None):
-        if (fdecl.is_modified): cconst = ""
-        else:                   cconst = " const"
-        cargs_append("%s%s&" % (ctype, cconst), arg_name)
+        cargs_append("%s%s&" % (
+          ctype, cconst(fdecl=fdecl, short=False)), arg_name)
       else:
         if (len(fdecl.dim_tokens) == 1):
           t = ctype
@@ -1781,7 +1777,8 @@ def convert_to_cpp_function(
           t = "%s, %d" % (ctype, len(fdecl.dim_tokens))
         if (t.endswith(">")): templs = " "
         else:                 templs = ""
-        cargs_append("arr_%sref<%s%s>" % (cconst, t, templs), arg_name)
+        cargs_append("arr_%sref<%s%s>" % (
+          cconst(fdecl=fdecl, short=True), t, templs), arg_name)
     else:
       passed = conv_info.unit.externals_passed_by_arg_identifier.get(
         fdecl.id_tok.value)
