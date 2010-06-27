@@ -299,7 +299,6 @@ namespace fem {
   {
     size_t offset;
     size_t type_size;
-    optional_copy<dim_buffer> dims;
   };
 
   typedef std::vector<variant_bind_info> variant_bindings;
@@ -343,7 +342,6 @@ namespace fem {
       bindings->resize(bindings->size() + 1);
       variant_bind_info& bi = bindings->back();
       bi.offset = curr_bytes;
-      bi.dims = m.dims;
       bi.type_size = m.type_size;
       size_t nb = m.number_of_bytes();
       curr_bytes += nb;
@@ -380,7 +378,6 @@ namespace fem {
         }
         bi.offset = static_cast<size_t>(
           static_cast<ssize_t>(curr_bytes + origin_bytes) + diff0);
-        bi.dims = m.dims;
         bi.type_size = m.type_size;
         end_bytes = std::max(end_bytes, bi.offset + m.number_of_bytes());
       }
@@ -430,36 +427,14 @@ namespace fem {
     bind()
     {
       variant_bind_info& bi = (*bindings)[bind_index++];
-      T& result = *reinterpret_cast<T*>(core->ptr + bi.offset);
-      return result;
-    }
-
-    template <typename T, size_t Ndims>
-    arr_ref<T, Ndims>
-    bind_arr()
-    {
-      variant_bind_info& bi = (*bindings)[bind_index++];
-      arr_ref<T, Ndims> result(*reinterpret_cast<T*>(core->ptr + bi.offset));
-      result(*bi.dims);
-      return result;
+      return *reinterpret_cast<T*>(core->ptr + bi.offset);
     }
 
     str_ref
     bind_str()
     {
       variant_bind_info& bi = (*bindings)[bind_index++];
-      str_ref result(core->ptr + bi.offset, bi.type_size);
-      return result;
-    }
-
-    template <size_t Ndims>
-    str_arr_ref<Ndims>
-    bind_str_arr()
-    {
-      variant_bind_info& bi = (*bindings)[bind_index++];
-      str_arr_ref<Ndims> result(core->ptr + bi.offset, bi.type_size);
-      result(*bi.dims);
-      return result;
+      return str_ref(core->ptr + bi.offset, bi.type_size);
     }
   };
 
