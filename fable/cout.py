@@ -806,19 +806,17 @@ def convert_to_mbr_bind(
         eq, variant_bind_chain, ctype_targ)
   else:
     if (fdecl.data_type.value == "character"):
-      bind_dim = "%d" % len(fdecl.dim_tokens)
-      ref_dim = bind_dim
+      ref_dim = "%d" % len(fdecl.dim_tokens)
       if (ref_dim == "1"): ref_dim = ""
-      binding = "%sstr_arr_%sref<%s> %s(%s%s.bind_str_arr<%s>()%s, %s)%s;" % (
+      binding = "%sstr_arr_%sref<%s> %s(%s%s.bind_str()%s, %s)%s;" % (
         pr, cconst(fdecl=fdecl, short=True), ref_dim, vname,
-        clm, variant_bind_chain, bind_dim, prm, cdims, clm)
+        clm, variant_bind_chain, prm, cdims, clm)
     else:
-      bind_dim = ", %d" % len(fdecl.dim_tokens)
-      ref_dim = bind_dim
+      ref_dim = ", %d" % len(fdecl.dim_tokens)
       if (ref_dim == ", 1"): ref_dim = ""
-      binding = "%sarr_%sref<%s%s> %s(%s%s.bind_arr<%s%s>()%s, %s)%s;" % (
+      binding = "%sarr_%sref<%s%s> %s(%s%s.bind<%s>()%s, %s)%s;" % (
         pr, cconst(fdecl=fdecl, short=True), ctype, ref_dim, vname,
-        clm, variant_bind_chain, ctype, bind_dim, prm, cdims, clm)
+        clm, variant_bind_chain, ctype, prm, cdims, clm)
   bind_buffer.append(binding)
 
 def assemble_allocate_line_lists(
