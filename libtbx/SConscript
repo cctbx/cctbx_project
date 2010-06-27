@@ -420,9 +420,6 @@ else:
     env_etc.ccflags_base.extend(warn_options)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
-      if (env_etc.gcc_version >= 40300):
-        opts.append("-fno-associative-math")
-      opts.append("-ftrapping-math")
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.mode == "profile"):
@@ -479,9 +476,7 @@ else:
       opts = [
         "-DNDEBUG",
         "-O3",
-        "-ffast-math",
-        "-fno-associative-math",
-        "-ftrapping-math"]
+        "-ffast-math"]
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.debug_symbols):
@@ -582,9 +577,6 @@ else:
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3"]
       if cxx != 'clang++': opts.append("-ffast-math")
-      if env_etc.gcc_version >= 40300:
-        opts.append("-fno-associative-math")
-      if cxx != 'clang++': opts.append("-ftrapping-math")
       if (cxx == "c++"
             and env_etc.gcc_version == 40000):
         opts[1] = "-O2" # Apple's optimizer is broken
