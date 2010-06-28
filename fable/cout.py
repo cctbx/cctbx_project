@@ -519,8 +519,17 @@ class scope(object):
     O.last_is_statement_label = False
     O.tail = None
 
+  def current_point(O):
+    return len(O.data)
+
+  def point_is_current(O, point):
+    return (point == len(O.data))
+
   def remember_insert_point(O):
     O.insert_point = len(O.data)
+
+  def insert_point_is_current(O):
+    return O.point_is_current(point=O.insert_point)
 
   def top_append(O, obj):
     assert O.insert_point is not None
@@ -786,7 +795,7 @@ def convert_to_mbr_bind(
   mbr_buffer.append("mbr<%s> %s%s;" % (ctype_targ, identifier, cdims_parens))
   conv_info.set_vmap_force_local(fdecl=fdecl)
   vname = conv_info.vmapped(fdecl=fdecl)
-  if (fdecl.var_type is None):
+  if (fdecl.use_count == 0):
     pr = "/* "
     eq = "*/"
     clm = " */ "
@@ -1272,10 +1281,10 @@ def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
     return conv_info.unit.common_name_by_identifier().get(identifier)
   common_name = get_common_name_if_cast_is_needed()
   if (common_name is not None):
-    cmn_var = "static_cast<common_%s&>(cmn).%s" % (common_name, identifier)
+    src_var = "static_cast<common_%s&>(cmn).%s" % (common_name, identifier)
+  else:
+    src_var = conv_info.vmap[identifier]
   if (fdecl.dim_tokens is not None):
-    if (common_name is None):
-      cmn_var = conv_info.vmap[identifier]
     conv_info.vmap[identifier] = identifier
     if (fdecl.data_type.value == "character"):
       ctype = "str_arr_%sref<%d>" % (
@@ -1292,14 +1301,15 @@ def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
       fdecl=fdecl)
     cdims = convert_dims(conv_info=conv_info, dim_tokens=fdecl.dim_tokens)
     if (common_name is not None):
-      cmn_var = "static_cast<common_%s&>(cmn).%s" % (common_name, identifier)
+      src_var = "static_cast<common_%s&>(cmn).%s" % (common_name, identifier)
     rapp = get_rapp()
-    rapp("%s %s(%s, %s);" % (ctype, identifier, cmn_var, cdims))
-  elif (common_name is not None):
+    rapp("%s %s(%s, %s);" % (ctype, identifier, src_var, cdims))
+  elif (   common_name is not None
+        or (fdecl.use_count > 1 and (fdecl.is_common() or fdecl.is_save()))):
     conv_info.vmap[identifier] = identifier
     ctype = convert_data_type(conv_info=conv_info, fdecl=fdecl, crhs=None)[0]
     rapp = get_rapp()
-    rapp("%s& %s = %s;" % (ctype, identifier, cmn_var))
+    rapp("%s& %s = %s;" % (ctype, identifier, src_var))
   if (crhs is not None):
     return True
   return False
@@ -1330,6 +1340,24 @@ def convert_executable(
     top_scope.append("common_read read(cmn);")
   if (conv_info.unit.uses_write):
     top_scope.append("common_write write(cmn);")
+  top_scope_point_before_common = top_scope.current_point()
+  for common_name,fdecl_list in conv_info.unit.common.items():
+    if (common_name in conv_info.unit.variant_common_names):
+      continue
+    top_scope.remember_insert_point()
+    for common_fdecl in fdecl_list:
+      fdecl = conv_info.unit.fdecl_by_identifier.get(common_fdecl.id_tok.value)
+      if (    fdecl.id_tok.value not in conv_info.vmap
+          and fdecl.use_count != 0):
+        declare_identifier(
+          conv_info=conv_info,
+          top_scope=top_scope,
+          curr_scope=top_scope,
+          id_tok=fdecl.id_tok)
+    if (not top_scope.insert_point_is_current()):
+      top_scope.top_append("// common %s" % common_name)
+  if (not top_scope.point_is_current(point=top_scope_point_before_common)):
+    top_scope.append("//")
   top_scope.remember_insert_point()
   def declare_identifiers(id_tokens):
     for id_tok in id_tokens:
@@ -1748,7 +1776,7 @@ def convert_to_cpp_function(
     fdecl = conv_info.unit.get_fdecl(id_tok=id_tok)
     conv_info.set_vmap_from_fdecl(fdecl=fdecl)
     assert fdecl.parameter_assignment_tokens is None
-    if (fdecl.var_type is None):
+    if (fdecl.use_count == 0):
       arg_name = "/* %s */" % id_tok.value
     else:
       arg_name = id_tok.value
@@ -1787,7 +1815,7 @@ def convert_to_cpp_function(
       cargs_append(
         ctype=ctype+"_function_pointer",
         name=arg_name)
-    if (fdecl.dim_tokens is not None and fdecl.var_type is not None):
+    if (fdecl.dim_tokens is not None and fdecl.use_count != 0):
       args_fdecl_with_dim.append(fdecl)
   cdecl = "void"
   if (conv_info.unit.name is not None):
