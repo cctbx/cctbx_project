@@ -27,14 +27,15 @@ d_max = None
   .type = float
 grid_resolution_factor = 1.0 / 3
   .type = float
-apply_sigma_scaling = True
-  .type = bool
+scale = *sigma volume
+  .type = choice(multi=False)
+  .expert_level = 1
 output {
   directory = None
     .type = path
   prefix = None
     .type = str
-  format = *xplor ccp4
+  format = xplor *ccp4
     .type = choice
   extension = *Auto ccp4 xplor map
     .type = choice
@@ -183,8 +184,12 @@ def run (args, log=sys.stdout) :
     map_coeffs = map_coeffs.resolution_filter(d_min=params.d_min,
       d_max=params.d_max)
     map = map_coeffs.fft_map(resolution_factor=params.grid_resolution_factor)
-    if params.apply_sigma_scaling :
+    if params.scale == "sigma" :
+      print >> log, "  applying sigma-scaling"
       map.apply_sigma_scaling()
+    elif params.scale == "volume" :
+      print >> log, "  applying volume-scaling"
+      map.apply_volume_scaling()
     suffix = None
     if map_labels == ["FP,SIGFP", "PHIM", "FOMM"] :
       suffix = ""
