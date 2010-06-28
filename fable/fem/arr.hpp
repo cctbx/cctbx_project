@@ -21,14 +21,14 @@ namespace fem {
     template <size_t BufferNdims>
     explicit
     arr(
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       arr_ref<T, Ndims>(*(new T[dims.size_1d(Ndims)]), dims)
     {}
 
     template <size_t BufferNdims>
     arr(
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       no_fill0_type const&)
     :
       arr_ref<T, Ndims>(*(new T[dims.size_1d(Ndims)]), dims, no_fill0)
@@ -36,7 +36,7 @@ namespace fem {
 
     template <size_t BufferNdims>
     arr(
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       fill0_type const&)
     :
       arr_ref<T, Ndims>(*(new T[dims.size_1d(Ndims)]), dims, fill0)

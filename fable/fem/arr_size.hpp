@@ -28,14 +28,14 @@ namespace fem {
     template <size_t BufferNdims>
     explicit
     arr_size(
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       arr_ref<T, Ndims>(*elems_memory, dims)
     {}
 
     template <size_t BufferNdims>
     arr_size(
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       no_fill0_type const&)
     :
       arr_ref<T, Ndims>(*elems_memory, dims, no_fill0)
@@ -43,7 +43,7 @@ namespace fem {
 
     template <size_t BufferNdims>
     arr_size(
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       fill0_type const&)
     :
       arr_ref<T, Ndims>(*elems_memory, dims, fill0)
@@ -80,14 +80,14 @@ namespace fem {
     template <size_t BufferNdims>
     explicit
     arr_1d(
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       base_t(dims)
     {}
 
     template <size_t BufferNdims>
     arr_1d(
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       no_fill0_type const&)
     :
       base_t(dims, no_fill0)
@@ -95,7 +95,7 @@ namespace fem {
 
     template <size_t BufferNdims>
     arr_1d(
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       fill0_type const&)
     :
       base_t(dims, fill0)
@@ -129,14 +129,14 @@ namespace fem {
     template <size_t BufferNdims>
     explicit
     arr_2d(
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       base_t(dims)
     {}
 
     template <size_t BufferNdims>
     arr_2d(
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       no_fill0_type const&)
     :
       base_t(dims, no_fill0)
@@ -144,7 +144,7 @@ namespace fem {
 
     template <size_t BufferNdims>
     arr_2d(
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       fill0_type const&)
     :
       base_t(dims, fill0)
@@ -178,14 +178,14 @@ namespace fem {
     template <size_t BufferNdims>
     explicit
     arr_3d(
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       base_t(dims)
     {}
 
     template <size_t BufferNdims>
     arr_3d(
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       no_fill0_type const&)
     :
       base_t(dims, no_fill0)
@@ -193,7 +193,7 @@ namespace fem {
 
     template <size_t BufferNdims>
     arr_3d(
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       fill0_type const&)
     :
       base_t(dims, fill0)
