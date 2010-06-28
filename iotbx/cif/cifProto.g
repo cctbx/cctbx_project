@@ -45,7 +45,7 @@ parse[builder]
  *------------------------------------------------------------------*/
 
 cif
-	:	(COMMENTS)? (WHITESPACE)* ( data_block ( WHITESPACE* data_block )* (WHITESPACE)? )?
+	:	(COMMENTS)? (WHITESPACE)* ( data_block ( WHITESPACE* data_block )* (WHITESPACE)* )?
 	;
 
 loop_body
