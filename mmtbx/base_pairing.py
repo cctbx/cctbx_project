@@ -1,6 +1,6 @@
 
 from libtbx import easy_run
-import os, sys
+import os, sys, re
 
 dna_rna_params_str = """
 base_pair
@@ -106,16 +106,31 @@ def run_probe(pdb_hierarchy, flags=None, add_hydrogens=True):
            stdin_lines=reduce_output)
   return probe_output
 
+def clean_base_names(pdb_line):
+  clean_line = pdb_line
+  #clean RNA lines
+  clean_line = re.sub(r'^((ATOM  |HETATM).{11}) ([ACGU])([Rr])',r'\1  \3',clean_line)
+  #clean DNA lines
+  clean_line = re.sub(r'^((ATOM  |HETATM).{11}) ([ACGT])([Dd])',r'\1 D\3',clean_line)
+  return clean_line
+
 def run_reduce(hierarchy, remove_hydrogens=True):
   trim = "phenix.reduce -quiet -trim -"
   build = "phenix.reduce -quiet -build -allalt -"
   input_str = ""
+  pdb_string = hierarchy.as_pdb_string()
+  clean_pdb_string = ""
+  for line in pdb_string.splitlines():
+    # *'s in atom names don't impact base, so leaving alone for now
+    #line = re.sub(r'^((ATOM  |HETATM).{9})\*',r'\1'+"\'",line)
+    line = clean_base_names(line)
+    clean_pdb_string = clean_pdb_string+line+'\n'
   if(remove_hydrogens):
     clean = easy_run.fully_buffered(trim,
-                                    stdin_lines=hierarchy.as_pdb_string())
+                                    stdin_lines=clean_pdb_string)
     input_str = clean.stdout_lines
   else:
-    input_str = hierarchy.as_pdb_string()
+    input_str = clean_pdb_string
   output = easy_run.fully_buffered(build,
                                    stdin_lines=input_str)
   return output
