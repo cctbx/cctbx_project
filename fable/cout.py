@@ -1347,15 +1347,15 @@ def convert_executable(
     top_scope.remember_insert_point()
     for common_fdecl in fdecl_list:
       fdecl = conv_info.unit.fdecl_by_identifier.get(common_fdecl.id_tok.value)
-      if (    fdecl.id_tok.value not in conv_info.vmap
-          and fdecl.use_count != 0):
+      if (    fdecl.use_count != 0
+          and fdecl.id_tok.value not in conv_info.vmap):
         declare_identifier(
           conv_info=conv_info,
           top_scope=top_scope,
           curr_scope=top_scope,
           id_tok=fdecl.id_tok)
     if (not top_scope.insert_point_is_current()):
-      top_scope.top_append("// common %s" % common_name)
+      top_scope.top_append("// COMMON %s" % common_name)
   if (not top_scope.point_is_current(point=top_scope_point_before_common)):
     top_scope.append("//")
   top_scope.remember_insert_point()
@@ -1370,6 +1370,23 @@ def convert_executable(
   from fable.tokenization import extract_identifiers
   variant_buffers = convert_variant_allocate_and_bindings(
     conv_info=conv_info, top_scope=top_scope)
+  top_scope.remember_insert_point()
+  cei = conv_info.unit.classified_equivalence_info()
+  sve_equivalences = cei.save.equiv_tok_cluster_by_identifier
+  for identifier in sorted(conv_info.unit.fdecl_by_identifier.keys()):
+    fdecl = conv_info.unit.fdecl_by_identifier[identifier]
+    if (    fdecl.is_save()
+        and fdecl.use_count > 1
+        and not identifier in sve_equivalences
+        and not identifier in conv_info.vmap):
+      declare_identifier(
+        conv_info=conv_info,
+        top_scope=top_scope,
+        curr_scope=top_scope,
+        id_tok=fdecl.id_tok)
+  if (not top_scope.insert_point_is_current()):
+    top_scope.top_append("// SAVE")
+    top_scope.append("//")
   if (conv_info.unit.needs_is_called_first_time):
     first_time_scope = top_scope.open_nested_scope(
       opening_text=["if (is_called_first_time) {"])

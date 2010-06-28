@@ -640,7 +640,7 @@ void
 sub(
   common& cmn)
 {
-  // common com
+  // COMMON com
   arr_ref<int> vals(cmn.vals, dimension(2));
   //
   vals(1) = vals(2) + 1;
@@ -649,7 +649,7 @@ sub(
   assert not absd(lines, tail_off(1), """\
   common cmn;
   common_write write(cmn);
-  // common com
+  // COMMON com
   arr_ref<int> vals(cmn.vals, dimension(2));
   //
   vals(2) = 4;
@@ -678,7 +678,7 @@ sub(
   common& cmn,
   int const& num)
 {
-  // common com
+  // COMMON com
   arr_ref<int> n(cmn.n, dimension(2));
   //
   n(1) = num + 1;
@@ -688,7 +688,7 @@ sub(
   assert not absd(lines, tail_off(1), """\
   common cmn;
   common_write write(cmn);
-  // common com
+  // COMMON com
   arr_cref<int> n(cmn.n, dimension(2));
   //
   write(6, star), n(1), n(2);
@@ -747,7 +747,9 @@ sub(
 {
   FEM_CMN_SVE(sub);
   common_write write(cmn);
+  // SAVE
   int& num = sve.num;
+  //
   write(6, star), num;
   num = num + 1;
 }
@@ -806,18 +808,20 @@ show_resolution(
 {
   FEM_CMN_SVE(show_resolution);
   common_write write(cmn);
-  // common abc
+  // COMMON abc
   float& a = cmn.a;
   float& b = cmn.b;
   float& c = cmn.c;
   //
-  bool& first = sve.first;
-  if (is_called_first_time) {
-    first = true;
-  }
+  // SAVE
   float& ass = sve.ass;
   float& bss = sve.bss;
   float& css = sve.css;
+  bool& first = sve.first;
+  //
+  if (is_called_first_time) {
+    first = true;
+  }
   if (first) {
     first = false;
     if (a <= 0 || b <= 0 || c <= 0) {
@@ -1684,7 +1688,7 @@ struct program_prog_save
 """)
   #
   lines = get("data_26.f", data_specializations=False)
-  assert not absd(lines, head_off(41), """\
+  assert not absd(lines, head_off(43), """\
     fem::data((values, 1, 2, 3)), num1, num2, num3;
 """)
   #
@@ -1889,7 +1893,9 @@ sub(
   FEM_CMN_SVE(sub);
   nums(dimension(sz));
   common_write write(cmn);
+  // SAVE
   int& i = sve.i;
+  //
   FEM_DO(i, 1, sz) {
     write(6, star), nums(i);
   }
@@ -2236,7 +2242,7 @@ void
 sub1init(
   common& cmn)
 {
-  // common cmn1
+  // COMMON cmn1
   int& num2 = static_cast<common_cmn1&>(cmn).num2;
   //
   cmn.num1 = 12;
@@ -2247,7 +2253,7 @@ void
 sub2init(
   common& cmn)
 {
-  // common cmn2
+  // COMMON cmn2
   arr_ref<int> num2(static_cast<common_cmn2&>(cmn).num2, dimension(2));
   //
   num2(1) = 56;
@@ -2289,7 +2295,9 @@ sub1(
 {
   FEM_CMN_SVE(sub1);
   common_write write(cmn);
+  // SAVE
   int& i = sve.i;
+  //
   i = func(cmn, i);
   write(6, star), i;
 }
@@ -2337,7 +2345,7 @@ ifun(
   #
   lines = get("common_name_clash_2.f")
   assert not absd(lines, head_off(68), """\
-  // common cmn2
+  // COMMON cmn2
   arr_cref<int> num2(static_cast<common_cmn2&>(cmn).num2, dimension(2));
   int& num3 = cmn.num3;
   //
@@ -2605,7 +2613,7 @@ blockdata_unnamed(
     numsj(2) = 45;
     strsj(2) = "ASdfg";
 """)
-  assert not absd(lines, head_off(25), """\
+  assert not absd(lines, head_off(27), """\
     static const int values[] = {
       -24, +35
     };
@@ -2628,25 +2636,27 @@ blockdata_unnamed(
   #
   lines = get("common_save_members.f")
   assert not absd(lines, tail_off(9), """\
-  // common globals
+  // COMMON globals
   int& ci = cmn.ci;
   fem::str<8>& cc = cmn.cc;
   arr_ref<int> cai(cmn.cai, dimension(2));
   str_arr_ref<1> cas(cmn.cas, dimension(2));
   //
-  int& si = sve.si;
-  si = 12;
-  ci = 34;
-  fem::str<5>& sc = sve.sc;
-  sc = "WeRtY";
-  cc = "uIoPqWeR";
+  // SAVE
   int& i = sve.i;
   arr_ref<int> sai(sve.sai, dimension(2));
+  str_arr_ref<1> sas(sve.sas, dimension(2));
+  fem::str<5>& sc = sve.sc;
+  int& si = sve.si;
+  //
+  si = 12;
+  ci = 34;
+  sc = "WeRtY";
+  cc = "uIoPqWeR";
   FEM_DO(i, 1, 2) {
     sai(i) = i + 37;
     cai(i) = i + 41;
   }
-  str_arr_ref<1> sas(sve.sas, dimension(2));
   sas(1) = "xYz";
   sas(2) = "EfG";
   cas(1) = "uvWx";
@@ -2904,7 +2914,7 @@ def exercise_common_equivalence_simple(verbose):
     assert not absd(lines, tail_off(2), """\
   common cmn;
   common_write write(cmn);
-  // common info
+  // COMMON info
   arr_ref<int> nums(cmn.nums, dimension(2));
   //
   int& n1 = nums(1); // SIMPLE EQUIVALENCE
