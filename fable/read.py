@@ -538,6 +538,7 @@ class fdecl_info(object):
     "parameter_assignment_tokens",
     "f90_decl",
     "is_modified",
+    "use_count",
     "passed_as_arg",
     "passed_as_arg_plain"]
 
@@ -560,6 +561,7 @@ class fdecl_info(object):
     O.parameter_assignment_tokens = None
     O.f90_decl = f90_decl
     O.is_modified = False
+    O.use_count = 0
     O.passed_as_arg = {}
     O.passed_as_arg_plain = {}
 
@@ -2189,6 +2191,7 @@ class unit(unit_p_methods):
           if (tf.var_storage is None or tf.var_storage is vs_local):
             tf.var_storage = vs_save
           tf.is_modified = True
+          tf.use_count += 1
       tokenization.search_for_data_or_read_target_tokens(
         callback=callback, tokens=nlist)
     #
@@ -2200,6 +2203,7 @@ class unit(unit_p_methods):
           dim_tf = O.fdecl_by_identifier.get(dim_id_tok.value)
           if (dim_tf is not None and dim_tf.var_type is None):
             dim_tf.var_type = vt_used
+            dim_tf.use_count += 1
     #
     for equiv_tok in O.equivalence:
       for tok_seq in equiv_tok.value:
@@ -2224,6 +2228,7 @@ class unit(unit_p_methods):
             if (tf.dim_tokens is not None):
               raise_confl_decl(id_tok=id_tok)
             tf.var_type = vt_subroutine
+            tf.use_count += 1
           elif (vt is not vt_subroutine):
             raise_confl_decl(id_tok=id_tok)
       def search_for_id_tokens_callback(id_tok, next_tok):
@@ -2232,12 +2237,15 @@ class unit(unit_p_methods):
         tf = O.fdecl_by_identifier.get(id_tok.value)
         if (tf is None):
           if (not followed_by_parenthesis):
-            make_fdecl(id_tok=id_tok, var_type=vt_used)
+            tf = make_fdecl(id_tok=id_tok, var_type=vt_used)
           elif (id_tok.value in intrinsics.set_lower):
-            make_fdecl(id_tok=id_tok, var_type=vt_intrinsic)
+            tf = make_fdecl(id_tok=id_tok, var_type=vt_intrinsic)
           else:
-            make_fdecl(id_tok=id_tok, var_type=vt_external)
-        elif (tf.var_type is vt_intrinsic):
+            tf = make_fdecl(id_tok=id_tok, var_type=vt_external)
+          tf.use_count += 1
+          return
+        tf.use_count += 1
+        if (tf.var_type is vt_intrinsic):
           if (id_tok.value not in intrinsics.set_lower):
             id_tok.raise_semantic_error(
               msg="Unknown intrinsic: %s" % id_tok.value)

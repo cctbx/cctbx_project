@@ -640,14 +640,18 @@ void
 sub(
   common& cmn)
 {
+  // common com
   arr_ref<int> vals(cmn.vals, dimension(2));
+  //
   vals(1) = vals(2) + 1;
 }
 """)
   assert not absd(lines, tail_off(1), """\
   common cmn;
   common_write write(cmn);
+  // common com
   arr_ref<int> vals(cmn.vals, dimension(2));
+  //
   vals(2) = 4;
   sub(cmn);
   write(6, star), vals(1);
@@ -674,7 +678,9 @@ sub(
   common& cmn,
   int const& num)
 {
+  // common com
   arr_ref<int> n(cmn.n, dimension(2));
+  //
   n(1) = num + 1;
   n(2) = num + 3;
 }
@@ -682,7 +688,9 @@ sub(
   assert not absd(lines, tail_off(1), """\
   common cmn;
   common_write write(cmn);
+  // common com
   arr_cref<int> n(cmn.n, dimension(2));
+  //
   write(6, star), n(1), n(2);
   sub(cmn, 5);
   write(6, star), n(2), n(1);
@@ -739,8 +747,9 @@ sub(
 {
   FEM_CMN_SVE(sub);
   common_write write(cmn);
-  write(6, star), sve.num;
-  sve.num = sve.num + 1;
+  int& num = sve.num;
+  write(6, star), num;
+  num = num + 1;
 }
 
 """)
@@ -797,20 +806,29 @@ show_resolution(
 {
   FEM_CMN_SVE(show_resolution);
   common_write write(cmn);
+  // common abc
+  float& a = cmn.a;
+  float& b = cmn.b;
+  float& c = cmn.c;
+  //
+  bool& first = sve.first;
   if (is_called_first_time) {
-    sve.first = true;
+    first = true;
   }
-  if (sve.first) {
-    sve.first = false;
-    if (cmn.a <= 0 || cmn.b <= 0 || cmn.c <= 0) {
+  float& ass = sve.ass;
+  float& bss = sve.bss;
+  float& css = sve.css;
+  if (first) {
+    first = false;
+    if (a <= 0 || b <= 0 || c <= 0) {
       write(0, "(1x,a)"), "invalid unit cell constants.";
       FEM_STOP(0);
     }
-    sve.ass = 1 / (cmn.a * cmn.a);
-    sve.bss = 1 / (cmn.b * cmn.b);
-    sve.css = 1 / (cmn.c * cmn.c);
+    ass = 1 / (a * a);
+    bss = 1 / (b * b);
+    css = 1 / (c * c);
   }
-  float dss = h * h * sve.ass + k * k * sve.bss + l * l * sve.css;
+  float dss = h * h * ass + k * k * bss + l * l * css;
   if (dss == 0) {
     write(6, "(3(1x,i3),1x,a)"), h, k, l, "    infinity";
   }
@@ -1660,14 +1678,14 @@ struct program_prog_save
   const fem::str<2> s12 = "xy";
   const fem::str<2> s34 = "ab";
   if (is_called_first_time) {
-    fem::data((values, s12)), sve.s4(1, 2);
-    fem::data((values, s34)), sve.s4(3, 4);
+    fem::data((values, s12)), s4(1, 2);
+    fem::data((values, s34)), s4(3, 4);
   }
 """)
   #
   lines = get("data_26.f", data_specializations=False)
-  assert not absd(lines, head_off(36), """\
-    fem::data((values, 1, 2, 3)), sve.num1, sve.num2, cmn.num3;
+  assert not absd(lines, head_off(41), """\
+    fem::data((values, 1, 2, 3)), num1, num2, num3;
 """)
   #
   lines = get("data_27.f", data_specializations=False)
@@ -1871,8 +1889,9 @@ sub(
   FEM_CMN_SVE(sub);
   nums(dimension(sz));
   common_write write(cmn);
-  FEM_DO(sve.i, 1, sz) {
-    write(6, star), nums(sve.i);
+  int& i = sve.i;
+  FEM_DO(i, 1, sz) {
+    write(6, star), nums(i);
   }
 }
 """)
@@ -2217,8 +2236,10 @@ void
 sub1init(
   common& cmn)
 {
-  cmn.num1 = 12;
+  // common cmn1
   int& num2 = static_cast<common_cmn1&>(cmn).num2;
+  //
+  cmn.num1 = 12;
   num2 = 34;
 }
 
@@ -2226,7 +2247,9 @@ void
 sub2init(
   common& cmn)
 {
+  // common cmn2
   arr_ref<int> num2(static_cast<common_cmn2&>(cmn).num2, dimension(2));
+  //
   num2(1) = 56;
   num2(2) = 78;
   cmn.num3 = 90;
@@ -2266,8 +2289,9 @@ sub1(
 {
   FEM_CMN_SVE(sub1);
   common_write write(cmn);
-  sve.i = func(cmn, sve.i);
-  write(6, star), sve.i;
+  int& i = sve.i;
+  i = func(cmn, i);
+  write(6, star), i;
 }
 """)
   #
@@ -2312,13 +2336,17 @@ ifun(
 """)
   #
   lines = get("common_name_clash_2.f")
-  assert not absd(lines, head_off(63), """\
+  assert not absd(lines, head_off(68), """\
+  // common cmn2
   arr_cref<int> num2(static_cast<common_cmn2&>(cmn).num2, dimension(2));
+  int& num3 = cmn.num3;
+  //
+  int i = fem::int0;
   FEM_DO(i, 1, 2) {
-    write(6, star), i, num2, cmn.num3;
+    write(6, star), i, num2, num3;
   }
   FEM_DO(i, 3, 4) {
-    write(6, star), i, num2, cmn.num3;
+    write(6, star), i, num2, num3;
   }
 """)
   #
@@ -2334,10 +2362,12 @@ void sub1(common&, int const&);
 """)
   #
   lines = get("common_name_clash_3.f")
-  assert not absd(lines, head_off(62), """\
+  assert not absd(lines, head_off(68), """\
+  arr_cref<int> num2(static_cast<common_cmn2&>(cmn).num2, dimension(2));
+  int& num3 = cmn.num3;
+  //
   int j = fem::int0;
   int i = fem::int0;
-  arr_cref<int> num2(static_cast<common_cmn2&>(cmn).num2, dimension(2));
   j = 0;
 """)
   #
@@ -2535,8 +2565,8 @@ blockdata_unnamed(
   #
   lines = get("data_32.f")
   assert not absd(lines, tail_off(12), """\
-    sve.num = -34;
-    sve.str = "YuIo";
+    num = -34;
+    str = "YuIo";
     {
       static const int values[] = {
         +12, -34
@@ -2569,7 +2599,7 @@ blockdata_unnamed(
         data, strsi(i);
       }
     }
-    sve.numj = 91;
+    numj = 91;
     numsj(1) = 23;
     strsj(1) = "Hjklo";
     numsj(2) = 45;
@@ -2598,20 +2628,27 @@ blockdata_unnamed(
   #
   lines = get("common_save_members.f")
   assert not absd(lines, tail_off(9), """\
-  sve.si = 12;
-  cmn.ci = 34;
-  sve.sc = "WeRtY";
-  cmn.cc = "uIoPqWeR";
-  arr_ref<int> sai(sve.sai, dimension(2));
+  // common globals
+  int& ci = cmn.ci;
+  fem::str<8>& cc = cmn.cc;
   arr_ref<int> cai(cmn.cai, dimension(2));
-  FEM_DO(sve.i, 1, 2) {
-    sai(sve.i) = sve.i + 37;
-    cai(sve.i) = sve.i + 41;
+  str_arr_ref<1> cas(cmn.cas, dimension(2));
+  //
+  int& si = sve.si;
+  si = 12;
+  ci = 34;
+  fem::str<5>& sc = sve.sc;
+  sc = "WeRtY";
+  cc = "uIoPqWeR";
+  int& i = sve.i;
+  arr_ref<int> sai(sve.sai, dimension(2));
+  FEM_DO(i, 1, 2) {
+    sai(i) = i + 37;
+    cai(i) = i + 41;
   }
   str_arr_ref<1> sas(sve.sas, dimension(2));
   sas(1) = "xYz";
   sas(2) = "EfG";
-  str_arr_ref<1> cas(cmn.cas, dimension(2));
   cas(1) = "uvWx";
   cas(2) = "PqrS";
 """)
@@ -2867,7 +2904,9 @@ def exercise_common_equivalence_simple(verbose):
     assert not absd(lines, tail_off(2), """\
   common cmn;
   common_write write(cmn);
+  // common info
   arr_ref<int> nums(cmn.nums, dimension(2));
+  //
   int& n1 = nums(1); // SIMPLE EQUIVALENCE
   n1 = 12;
   int& n2 = nums(2); // SIMPLE EQUIVALENCE
@@ -2895,7 +2934,7 @@ struct common_tab
   {}
 };
 """)
-  assert not absd(lines, tail_off(8), """\
+  assert not absd(lines, tail_off(5), """\
   arr_ref<int> nums(cmn.na, dimension(17)); // SIMPLE EQUIVALENCE
 """)
   #
