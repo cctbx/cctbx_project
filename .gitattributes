@@ -656,6 +656,9 @@ iotbx/ccp4_map/ext.cpp svneol=native#text/plain
 iotbx/ccp4_map/tst.py svneol=native#text/x-python
 iotbx/ccp4_map/tst_input.map -text
 iotbx/cif/__init__.py svneol=native#text/x-python
+iotbx/cif/dictionaries/NOTES -text
+iotbx/cif/dictionaries/cif_core.dic.gz -text
+iotbx/cif/dictionaries/cif_mm.dic.gz -text
 iotbx/cif/tests/tst_xray_structure.py svneol=native#text/x-python
 iotbx/cif/xray_structure.py svneol=native#text/x-python
 iotbx/cns/crystal_symmetry_utils.py svneol=native#text/x-python

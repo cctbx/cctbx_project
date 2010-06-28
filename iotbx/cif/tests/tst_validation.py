@@ -12,19 +12,21 @@ cif_core_dic_url = "ftp://ftp.iucr.org/pub/cif_core.dic"
 cif_mm_dic_url = "ftp://ftp.iucr.org/pub/cif_mm.dic"
 
 def exercise(args):
+  import socket
+  if socket.getdefaulttimeout() is None:
+    socket.setdefaulttimeout(5)
   show_timings = "--show_timings" in args
   if not cif.has_antlr3:
     print "Skipping tst_validation.py (antlr3 is not available)"
     return
-  exercise_smart_load(show_timings=show_timings)
+  try:
+    exercise_smart_load(show_timings=show_timings)
+  except URLError:
+    print "Skipping tst_validation.exercise_smart_load() because of URLError."
   exercise_validation()
 
 def exercise_validation():
-  try:
-    cd = validation.smart_load_dictionary(name="cif_core.dic")
-  except URLError:
-    print "Skipping cif validation tests because of URLError"
-    return
+  cd = validation.smart_load_dictionary(name="cif_core.dic")
   #
   cm_invalid = cif.fast_reader(input_string=cif_invalid).model()
   s = StringIO()
@@ -55,15 +57,22 @@ def exercise_smart_load(show_timings=False):
   name = ["cif_core.dic", "cif_mm.dic"][0]
   url = [cif_core_dic_url, cif_mm_dic_url][0]
   tempdir = tempfile.mkdtemp()
+  store_dir = libtbx.env.under_dist(
+    module_name='iotbx', path='cif/dictionaries')
+  shutil.copy(os.path.join(store_dir, name) + '.gz', tempdir)
+  # from gz
+  gz_timer = time_log("from gz").start()
+  cd = validation.smart_load_dictionary(name=name, store_dir=tempdir)
+  gz_timer.stop()
   # from url
   url_timer = time_log("from url").start()
-  cd = validation.smart_load_dictionary(name=name, store_dir=tempdir)
+  cd = validation.smart_load_dictionary(url=url, store_dir=tempdir)
   url_timer.stop()
   # from url to file
-  to_file_timer = time_log("to file").start()
+  url_to_file_timer = time_log("url to file").start()
   cd = validation.smart_load_dictionary(
     url=url, save_local=True, store_dir=tempdir)
-  to_file_timer.stop()
+  url_to_file_timer.stop()
   # read local file
   file_timer = time_log("from file").start()
   cd = validation.smart_load_dictionary(file_path=os.path.join(tempdir, name))
@@ -71,8 +80,9 @@ def exercise_smart_load(show_timings=False):
   shutil.rmtree(tempdir)
   if show_timings:
     print time_log.legend
+    print gz_timer.report()
     print url_timer.report()
-    print to_file_timer.report()
+    print url_to_file_timer.report()
     print file_timer.report()
 
 cif_invalid = """data_1
