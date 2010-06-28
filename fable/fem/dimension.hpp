@@ -4,11 +4,12 @@
 #include <fem/arr_and_str_indices.hpp>
 #include <fem/error_utils.hpp>
 #include <fem/star.hpp>
+#include <algorithm>
 
 namespace fem {
 
   template <size_t Ndims>
-  struct base_1
+  struct dims_base_1
   {
     size_t all[Ndims];
 
@@ -24,14 +25,14 @@ namespace fem {
     template <size_t BufferNdims>
     void
     set_dims(
-      base_1<BufferNdims> const& source)
+      dims_base_1<BufferNdims> const& source)
     {
       for(size_t i=0;i<Ndims;i++) all[i] = source.all[i];
     }
   };
 
   template <size_t Ndims>
-  struct dim_data : base_1<Ndims>
+  struct dim_data : dims_base_1<Ndims>
   {
     ssize_t origin[Ndims];
 
@@ -40,12 +41,117 @@ namespace fem {
     set_dims(
       dim_data<BufferNdims> const& source)
     {
-      base_1<Ndims>::set_dims(source);
+      dims_base_1<Ndims>::set_dims(source);
       for(size_t i=0;i<Ndims;i++) origin[i] = source.origin[i];
     }
   };
 
-  struct dim_buffer : dim_data<arr_dim_max>
+  template <size_t Ndims>
+  struct dims;
+
+  template <>
+  struct dims<1> : dim_data<1>
+  {
+    size_t
+    index_1d(
+      ssize_t i1) const
+    {
+      return i1 - this->origin[0];
+    }
+  };
+
+  template <>
+  struct dims<2> : dim_data<2>
+  {
+    size_t
+    index_1d(
+      ssize_t i1,
+      ssize_t i2) const
+    {
+      return
+          (i2 - this->origin[1]) * this->all[0]
+        + (i1 - this->origin[0]);
+    }
+
+  };
+
+  template <>
+  struct dims<3> : dim_data<3>
+  {
+    size_t
+    index_1d(
+      ssize_t i1,
+      ssize_t i2,
+      ssize_t i3) const
+    {
+      return
+          ((i3 - this->origin[2])  * this->all[1]
+        +  (i2 - this->origin[1])) * this->all[0]
+        +  (i1 - this->origin[0]);
+    }
+  };
+
+  template <>
+  struct dims<4> : dim_data<4>
+  {
+    size_t
+    index_1d(
+      ssize_t i1,
+      ssize_t i2,
+      ssize_t i3,
+      ssize_t i4) const
+    {
+      return
+          (((i4 - this->origin[3])  * this->all[2]
+        +   (i3 - this->origin[2])) * this->all[1]
+        +   (i2 - this->origin[1])) * this->all[0]
+        +   (i1 - this->origin[0]);
+    }
+  };
+
+  template <>
+  struct dims<5> : dim_data<5>
+  {
+    size_t
+    index_1d(
+      ssize_t i1,
+      ssize_t i2,
+      ssize_t i3,
+      ssize_t i4,
+      ssize_t i5) const
+    {
+      return
+          ((((i5 - this->origin[4])  * this->all[3]
+        +    (i4 - this->origin[3])) * this->all[2]
+        +    (i3 - this->origin[2])) * this->all[1]
+        +    (i2 - this->origin[1])) * this->all[0]
+        +    (i1 - this->origin[0]);
+    }
+  };
+
+  template <>
+  struct dims<6> : dim_data<6>
+  {
+    size_t
+    index_1d(
+      ssize_t i1,
+      ssize_t i2,
+      ssize_t i3,
+      ssize_t i4,
+      ssize_t i5,
+      ssize_t i6) const
+    {
+      return
+          (((((i6 - this->origin[5])  * this->all[4]
+        +     (i5 - this->origin[4])) * this->all[3]
+        +     (i4 - this->origin[3])) * this->all[2]
+        +     (i3 - this->origin[2])) * this->all[1]
+        +     (i2 - this->origin[1])) * this->all[0]
+        +     (i1 - this->origin[0]);
+    }
+  };
+
+  struct dim_buffer : dims<arr_dim_max>
   {
     size_t actual_number_of_dimensions;
 
@@ -62,7 +168,7 @@ namespace fem {
 
     template <size_t BufferNdims>
     dim_buffer(
-      dim_data<BufferNdims> const& source)
+      dims<BufferNdims> const& source)
     :
       actual_number_of_dimensions(BufferNdims)
     {
@@ -360,34 +466,34 @@ namespace fem {
   }
 
   inline
-  dim_data<1>
+  dims<1>
   dimension(
     star_type const&)
   {
-    dim_data<1> result;
+    dims<1> result;
     result.all[0] = size_t_max;
     result.origin[0] = 1;
     return result;
   }
 
   inline
-  dim_data<1>
+  dims<1>
   dimension(
     size_t n)
   {
-    dim_data<1> result;
+    dims<1> result;
     result.all[0] = n;
     result.origin[0] = 1;
     return result;
   }
 
   inline
-  dim_data<2>
+  dims<2>
   dimension(
     size_t n1,
     star_type const&)
   {
-    dim_data<2> result;
+    dims<2> result;
     result.all[0] = n1;
     result.all[1] = size_t_max;
     result.origin[0] = 1;
@@ -396,12 +502,12 @@ namespace fem {
   }
 
   inline
-  dim_data<2>
+  dims<2>
   dimension(
     size_t n1,
     size_t n2)
   {
-    dim_data<2> result;
+    dims<2> result;
     result.all[0] = n1;
     result.all[1] = n2;
     result.origin[0] = 1;
@@ -410,13 +516,13 @@ namespace fem {
   }
 
   inline
-  dim_data<3>
+  dims<3>
   dimension(
     size_t n1,
     size_t n2,
     star_type const&)
   {
-    dim_data<3> result;
+    dims<3> result;
     result.all[0] = n1;
     result.all[1] = n2;
     result.all[2] = size_t_max;
@@ -427,13 +533,13 @@ namespace fem {
   }
 
   inline
-  dim_data<3>
+  dims<3>
   dimension(
     size_t n1,
     size_t n2,
     size_t n3)
   {
-    dim_data<3> result;
+    dims<3> result;
     result.all[0] = n1;
     result.all[1] = n2;
     result.all[2] = n3;
@@ -444,14 +550,14 @@ namespace fem {
   }
 
   inline
-  dim_data<4>
+  dims<4>
   dimension(
     size_t n1,
     size_t n2,
     size_t n3,
     star_type const&)
   {
-    dim_data<4> result;
+    dims<4> result;
     result.all[0] = n1;
     result.all[1] = n2;
     result.all[2] = n3;
@@ -464,14 +570,14 @@ namespace fem {
   }
 
   inline
-  dim_data<4>
+  dims<4>
   dimension(
     size_t n1,
     size_t n2,
     size_t n3,
     size_t n4)
   {
-    dim_data<4> result;
+    dims<4> result;
     result.all[0] = n1;
     result.all[1] = n2;
     result.all[2] = n3;
@@ -484,7 +590,7 @@ namespace fem {
   }
 
   inline
-  dim_data<5>
+  dims<5>
   dimension(
     size_t n1,
     size_t n2,
@@ -492,7 +598,7 @@ namespace fem {
     size_t n4,
     star_type const&)
   {
-    dim_data<5> result;
+    dims<5> result;
     result.all[0] = n1;
     result.all[1] = n2;
     result.all[2] = n3;
@@ -507,7 +613,7 @@ namespace fem {
   }
 
   inline
-  dim_data<5>
+  dims<5>
   dimension(
     size_t n1,
     size_t n2,
@@ -515,7 +621,7 @@ namespace fem {
     size_t n4,
     size_t n5)
   {
-    dim_data<5> result;
+    dims<5> result;
     result.all[0] = n1;
     result.all[1] = n2;
     result.all[2] = n3;
@@ -530,7 +636,7 @@ namespace fem {
   }
 
   inline
-  dim_data<6>
+  dims<6>
   dimension(
     size_t n1,
     size_t n2,
@@ -539,7 +645,7 @@ namespace fem {
     size_t n5,
     star_type const&)
   {
-    dim_data<6> result;
+    dims<6> result;
     result.all[0] = n1;
     result.all[1] = n2;
     result.all[2] = n3;
@@ -556,7 +662,7 @@ namespace fem {
   }
 
   inline
-  dim_data<6>
+  dims<6>
   dimension(
     size_t n1,
     size_t n2,
@@ -565,7 +671,7 @@ namespace fem {
     size_t n5,
     size_t n6)
   {
-    dim_data<6> result;
+    dims<6> result;
     result.all[0] = n1;
     result.all[1] = n2;
     result.all[2] = n3;

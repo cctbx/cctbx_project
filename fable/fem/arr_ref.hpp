@@ -3,122 +3,16 @@
 
 #include <fem/dimension.hpp>
 #include <fem/zero.hpp>
-#include <algorithm>
 #include <cstring>
 
 namespace fem {
-
-  template <size_t Ndims>
-  struct arr_ref_dims;
-
-  template <>
-  struct arr_ref_dims<1> : dim_data<1>
-  {
-    size_t
-    index_1d(
-      ssize_t i1) const
-    {
-      return i1 - this->origin[0];
-    }
-  };
-
-  template <>
-  struct arr_ref_dims<2> : dim_data<2>
-  {
-    size_t
-    index_1d(
-      ssize_t i1,
-      ssize_t i2) const
-    {
-      return
-          (i2 - this->origin[1]) * this->all[0]
-        + (i1 - this->origin[0]);
-    }
-
-  };
-
-  template <>
-  struct arr_ref_dims<3> : dim_data<3>
-  {
-    size_t
-    index_1d(
-      ssize_t i1,
-      ssize_t i2,
-      ssize_t i3) const
-    {
-      return
-          ((i3 - this->origin[2])  * this->all[1]
-        +  (i2 - this->origin[1])) * this->all[0]
-        +  (i1 - this->origin[0]);
-    }
-  };
-
-  template <>
-  struct arr_ref_dims<4> : dim_data<4>
-  {
-    size_t
-    index_1d(
-      ssize_t i1,
-      ssize_t i2,
-      ssize_t i3,
-      ssize_t i4) const
-    {
-      return
-          (((i4 - this->origin[3])  * this->all[2]
-        +   (i3 - this->origin[2])) * this->all[1]
-        +   (i2 - this->origin[1])) * this->all[0]
-        +   (i1 - this->origin[0]);
-    }
-  };
-
-  template <>
-  struct arr_ref_dims<5> : dim_data<5>
-  {
-    size_t
-    index_1d(
-      ssize_t i1,
-      ssize_t i2,
-      ssize_t i3,
-      ssize_t i4,
-      ssize_t i5) const
-    {
-      return
-          ((((i5 - this->origin[4])  * this->all[3]
-        +    (i4 - this->origin[3])) * this->all[2]
-        +    (i3 - this->origin[2])) * this->all[1]
-        +    (i2 - this->origin[1])) * this->all[0]
-        +    (i1 - this->origin[0]);
-    }
-  };
-
-  template <>
-  struct arr_ref_dims<6> : dim_data<6>
-  {
-    size_t
-    index_1d(
-      ssize_t i1,
-      ssize_t i2,
-      ssize_t i3,
-      ssize_t i4,
-      ssize_t i5,
-      ssize_t i6) const
-    {
-      return
-          (((((i6 - this->origin[5])  * this->all[4]
-        +     (i5 - this->origin[4])) * this->all[3]
-        +     (i4 - this->origin[3])) * this->all[2]
-        +     (i3 - this->origin[2])) * this->all[1]
-        +     (i2 - this->origin[1])) * this->all[0]
-        +     (i1 - this->origin[0]);
-    }
-  };
 
   template <typename T, size_t Ndims=1>
   struct arr_cref
   {
     protected:
       T const* elems_;
-      arr_ref_dims<Ndims> dims_;
+      dims<Ndims> dims_;
 
       arr_cref() {}
 
@@ -140,7 +34,7 @@ namespace fem {
     template <size_t OtherNdims, size_t BufferNdims>
     arr_cref(
       arr_cref<T, OtherNdims> const& other,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       elems_(other.begin())
     {
@@ -150,7 +44,7 @@ namespace fem {
     template <size_t BufferNdims>
     arr_cref(
       T const& val,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       elems_(&val)
     {
@@ -163,7 +57,7 @@ namespace fem {
     template <size_t BufferNdims>
     void
     operator()(
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     {
       dims_.set_dims(dims);
     }
@@ -253,7 +147,7 @@ namespace fem {
     template <size_t BufferNdims>
     arr_ref(
       T& val,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       arr_cref<T, Ndims>(val, dims)
     {}
@@ -261,7 +155,7 @@ namespace fem {
     template <size_t BufferNdims>
     arr_ref(
       T& val,
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       no_fill0_type const&)
     :
       arr_cref<T, Ndims>(val, dims)
@@ -270,7 +164,7 @@ namespace fem {
     template <size_t BufferNdims>
     arr_ref(
       T& val,
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       fill0_type const&)
     :
       arr_cref<T, Ndims>(val, dims)
@@ -287,7 +181,7 @@ namespace fem {
     template <size_t BufferNdims>
     void
     operator()(
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     {
       arr_cref<T, Ndims>::operator()(dims);
     }

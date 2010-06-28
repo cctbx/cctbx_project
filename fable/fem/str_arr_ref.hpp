@@ -7,11 +7,12 @@
 namespace fem {
 
   template <size_t Ndims=1>
-  struct str_arr_cref : arr_ref_dims<Ndims>
+  struct str_arr_cref
   {
     protected:
       char const* elems_;
       int len_;
+      dims<Ndims> dims_;
 
       str_arr_cref() {}
 
@@ -29,7 +30,7 @@ namespace fem {
     str_arr_cref(
       char const* elems,
       int len,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       elems_(elems),
       len_(len)
@@ -47,7 +48,7 @@ namespace fem {
     template <size_t BufferNdims>
     str_arr_cref(
       str_cref const& other,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       elems_(other.elems()),
       len_(other.len())
@@ -67,7 +68,7 @@ namespace fem {
     str_arr_cref(
       str_cref const& other,
       int len,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       elems_(other.elems()),
       len_(len)
@@ -86,7 +87,7 @@ namespace fem {
     template <int StrLen, size_t BufferNdims>
     str_arr_cref(
       str<StrLen> const& other,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       elems_(other.elems),
       len_(StrLen)
@@ -105,7 +106,7 @@ namespace fem {
     template <int StrLen, size_t OtherNdims, size_t BufferNdims>
     str_arr_cref(
       arr_cref<str<StrLen>, OtherNdims> const& other,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       elems_(other.begin()->elems),
       len_(StrLen)
@@ -116,7 +117,7 @@ namespace fem {
     template <size_t OtherNdims, size_t BufferNdims>
     str_arr_cref(
       str_arr_cref<OtherNdims> const& other,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       elems_(other.begin()),
       len_(other.len())
@@ -133,10 +134,13 @@ namespace fem {
     template <size_t BufferNdims>
     void
     operator()(
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     {
-      this->set_dims(dims);
+      dims_.set_dims(dims);
     }
+
+    size_t
+    size_1d() const { return dims_.size_1d(); }
 
     str_cref
     operator[](
@@ -149,7 +153,7 @@ namespace fem {
     operator()(
       ssize_t i1) const
     {
-      return str_cref(&elems_[len_ * this->index_1d(i1)], len_);
+      return str_cref(&elems_[len_ * dims_.index_1d(i1)], len_);
     }
 
     str_cref
@@ -157,7 +161,7 @@ namespace fem {
       ssize_t i1,
       ssize_t i2) const
     {
-      return str_cref(&elems_[len_ * this->index_1d(i1, i2)], len_);
+      return str_cref(&elems_[len_ * dims_.index_1d(i1, i2)], len_);
     }
 
     str_cref
@@ -166,7 +170,7 @@ namespace fem {
       ssize_t i2,
       ssize_t i3) const
     {
-      return str_cref(&elems_[len_ * this->index_1d(i1, i2, i3)], len_);
+      return str_cref(&elems_[len_ * dims_.index_1d(i1, i2, i3)], len_);
     }
 
     str_cref
@@ -176,7 +180,7 @@ namespace fem {
       ssize_t i3,
       ssize_t i4) const
     {
-      return str_cref(&elems_[len_ * this->index_1d(i1, i2, i3, i4)], len_);
+      return str_cref(&elems_[len_ * dims_.index_1d(i1, i2, i3, i4)], len_);
     }
 
     str_cref
@@ -187,7 +191,8 @@ namespace fem {
       ssize_t i4,
       ssize_t i5) const
     {
-      return str_cref(&elems_[len_ * this->index_1d(i1, i2, i3, i4, i5)], len_);
+      return str_cref(
+        &elems_[len_ * dims_.index_1d(i1, i2, i3, i4, i5)], len_);
     }
 
     str_cref
@@ -200,7 +205,7 @@ namespace fem {
       ssize_t i6) const
     {
       return str_cref(
-        &elems_[len_ * this->index_1d(i1, i2, i3, i4, i5, i6)], len_);
+        &elems_[len_ * dims_.index_1d(i1, i2, i3, i4, i5, i6)], len_);
     }
   };
 
@@ -223,7 +228,7 @@ namespace fem {
     str_arr_ref(
       char const* elems,
       int len,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       str_arr_cref<Ndims>(elems, len)
     {
@@ -239,7 +244,7 @@ namespace fem {
     template <size_t BufferNdims>
     str_arr_ref(
       str_ref const& other,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       str_arr_cref<Ndims>(other, dims)
     {}
@@ -255,7 +260,7 @@ namespace fem {
     str_arr_ref(
       str_ref const& other,
       int len,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       str_arr_cref<Ndims>(other, len, dims)
     {}
@@ -278,7 +283,7 @@ namespace fem {
     str_arr_ref(
       str<StrLen> const& other,
       int len,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       str_arr_cref<Ndims>(other.elems, len, dims)
     {}
@@ -286,7 +291,7 @@ namespace fem {
     template <int StrLen, size_t BufferNdims>
     str_arr_ref(
       str<StrLen> const& other,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       str_arr_cref<Ndims>(other, dims)
     {}
@@ -294,7 +299,7 @@ namespace fem {
     template <int StrLen, size_t BufferNdims>
     str_arr_ref(
       str<StrLen> const& other,
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       no_fill0_type const&)
     :
       str_arr_cref<Ndims>(other, dims)
@@ -303,7 +308,7 @@ namespace fem {
     template <int StrLen, size_t BufferNdims>
     str_arr_ref(
       str<StrLen> const& other,
-      dim_data<BufferNdims> const& dims,
+      dims<BufferNdims> const& dims,
       fill0_type const&)
     :
       str_arr_cref<Ndims>(other, dims)
@@ -314,7 +319,7 @@ namespace fem {
     template <int StrLen, size_t OtherNdims, size_t BufferNdims>
     str_arr_ref(
       arr_ref<str<StrLen>, OtherNdims> const& other,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       str_arr_cref<Ndims>(other, dims)
     {}
@@ -322,7 +327,7 @@ namespace fem {
     template <size_t OtherNdims, size_t BufferNdims>
     str_arr_ref(
       str_arr_ref<OtherNdims> const& other,
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     :
       str_arr_cref<Ndims>(other, dims)
     {}
@@ -336,9 +341,9 @@ namespace fem {
     template <size_t BufferNdims>
     void
     operator()(
-      dim_data<BufferNdims> const& dims)
+      dims<BufferNdims> const& dims)
     {
-      this->set_dims(dims);
+      str_arr_cref<Ndims>::operator()(dims);
     }
 
     str_ref
@@ -355,7 +360,7 @@ namespace fem {
       ssize_t i1) const
     {
       return str_ref(
-        &this->begin()[this->len() * this->index_1d(i1)],
+        &this->begin()[this->len() * this->dims_.index_1d(i1)],
         this->len());
     }
 
@@ -365,7 +370,7 @@ namespace fem {
       ssize_t i2) const
     {
       return str_ref(
-        &this->begin()[this->len() * this->index_1d(i1, i2)],
+        &this->begin()[this->len() * this->dims_.index_1d(i1, i2)],
         this->len());
     }
 
@@ -376,7 +381,7 @@ namespace fem {
       ssize_t i3) const
     {
       return str_ref(
-        &this->begin()[this->len() * this->index_1d(i1, i2, i3)],
+        &this->begin()[this->len() * this->dims_.index_1d(i1, i2, i3)],
         this->len());
     }
 
@@ -388,7 +393,7 @@ namespace fem {
       ssize_t i4) const
     {
       return str_ref(
-        &this->begin()[this->len() * this->index_1d(i1, i2, i3, i4)],
+        &this->begin()[this->len() * this->dims_.index_1d(i1, i2, i3, i4)],
         this->len());
     }
 
@@ -401,7 +406,7 @@ namespace fem {
       ssize_t i5) const
     {
       return str_ref(
-        &this->begin()[this->len() * this->index_1d(i1, i2, i3, i4, i5)],
+        &this->begin()[this->len() * this->dims_.index_1d(i1, i2, i3, i4, i5)],
         this->len());
     }
 
@@ -415,7 +420,7 @@ namespace fem {
       ssize_t i6) const
     {
       return str_ref(
-        &this->begin()[this->len() * this->index_1d(i1, i2, i3, i4, i5, i6)],
+        &this->begin()[this->len() * this->dims_.index_1d(i1,i2,i3,i4,i5,i6)],
         this->len());
     }
   };
