@@ -1,0 +1,7 @@
+This directory is used to store local copies of cif dictionaries.
+
+Included with this distribution are compressed (gzip) copies of the official iucr dictionaries:
+  cif_core.dic and cif_mm.dic
+
+The uncompressed versions can be found at:
+  ftp://ftp.iucr.org/pub/cifdics/

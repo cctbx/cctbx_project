@@ -1,9 +1,11 @@
 from iotbx.cif import builders, model, errors
 import libtbx.load_env
+from libtbx import smart_open
 import os
+import shutil
 import re
 import sys
-from urllib2 import urlopen
+from urllib2 import urlopen, URLError
 
 
 class ErrorHandler:
@@ -75,21 +77,38 @@ def smart_load_dictionary(name=None, file_path=None, url=None,
   assert [name, file_path, url].count(None) < 3
   cif_dic = None
   if store_dir is None:
-    store_dir = libtbx.env.under_dist(module_name='iotbx', path='cif')
+    store_dir = libtbx.env.under_dist(
+      module_name='iotbx', path='cif/dictionaries')
   if name is not None and [file_path, url].count(None) == 2:
     if file_path is None:
       file_path = os.path.join(store_dir, name)
+      if not os.path.isfile(file_path):
+        gzip_path = file_path + '.gz'
+        if os.path.isfile(gzip_path):
+          if save_local:
+            gz = smart_open.for_reading(gzip_path)
+            f = smart_open.for_writing(file_path)
+            shutil.copyfileobj(gz, f)
+            gz.close()
+            f.close()
+          else:
+            file_path = gzip_path
     if url is None:
-      url = locate_dictionary(name, registry_location=registry_location)
+      try:
+        url = locate_dictionary(name, registry_location=registry_location)
+      except URLError:
+        pass
   if file_path is not None and os.path.isfile(file_path):
-    cif_dic = dictionary(cif.fast_reader(file_path=file_path).model())
+    file_object = smart_open.for_reading(file_path)
+    cif_dic = dictionary(cif.fast_reader(file_object=file_object).model())
+    file_object.close()
   elif url is not None:
     file_object = urlopen(url)
     if save_local:
       if name is None:
         name = os.path.basename(url)
       f = open(os.path.join(store_dir, name), 'wb')
-      f.write(file_object.read())
+      shutil.copyfileobj(file_object, f)
       f.close()
       cif_dic = dictionary(cif.fast_reader(
         file_path=os.path.join(store_dir, name)).model())
