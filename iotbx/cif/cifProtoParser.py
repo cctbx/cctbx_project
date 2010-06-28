@@ -1,4 +1,4 @@
-# $ANTLR 3.1.2 cifProto.g 2010-06-08 11:30:38
+# $ANTLR 3.1.2 cifProto.g 2010-06-28 11:32:30
 
 import sys
 from antlr3 import *
@@ -74,6 +74,17 @@ class cifProtoParser(Parser):
 
         Parser.__init__(self, input, state)
 
+
+        self.dfa4 = self.DFA4(
+            self, 4,
+            eot = self.DFA4_eot,
+            eof = self.DFA4_eof,
+            min = self.DFA4_min,
+            max = self.DFA4_max,
+            accept = self.DFA4_accept,
+            special = self.DFA4_special,
+            transition = self.DFA4_transition
+            )
 
         self.dfa8 = self.DFA8(
             self, 8,
@@ -216,13 +227,13 @@ class cifProtoParser(Parser):
 
 
     # $ANTLR start "cif"
-    # cifProto.g:47:1: cif : ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )? ;
+    # cifProto.g:47:1: cif : ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )* )? ;
     def cif(self, ):
 
         try:
             try:
-                # cifProto.g:48:2: ( ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )? )
-                # cifProto.g:48:4: ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )?
+                # cifProto.g:48:2: ( ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )* )? )
+                # cifProto.g:48:4: ( COMMENTS )? ( WHITESPACE )* ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )* )?
                 pass
                 # cifProto.g:48:4: ( COMMENTS )?
                 alt1 = 2
@@ -256,14 +267,14 @@ class cifProtoParser(Parser):
                         break #loop2
 
 
-                # cifProto.g:48:30: ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )? )?
+                # cifProto.g:48:30: ( data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )* )?
                 alt6 = 2
                 LA6_0 = self.input.LA(1)
 
                 if (LA6_0 == DATA_BLOCK_HEADING) :
                     alt6 = 1
                 if alt6 == 1:
-                    # cifProto.g:48:32: data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )?
+                    # cifProto.g:48:32: data_block ( ( WHITESPACE )* data_block )* ( WHITESPACE )*
                     pass
                     self._state.following.append(self.FOLLOW_data_block_in_cif76)
                     self.data_block()
@@ -272,19 +283,7 @@ class cifProtoParser(Parser):
                     # cifProto.g:48:43: ( ( WHITESPACE )* data_block )*
                     while True: #loop4
                         alt4 = 2
-                        LA4_0 = self.input.LA(1)
-
-                        if (LA4_0 == WHITESPACE) :
-                            LA4_1 = self.input.LA(2)
-
-                            if (LA4_1 == WHITESPACE or LA4_1 == DATA_BLOCK_HEADING) :
-                                alt4 = 1
-
-
-                        elif (LA4_0 == DATA_BLOCK_HEADING) :
-                            alt4 = 1
-
-
+                        alt4 = self.dfa4.predict(self.input)
                         if alt4 == 1:
                             # cifProto.g:48:45: ( WHITESPACE )* data_block
                             pass
@@ -317,17 +316,23 @@ class cifProtoParser(Parser):
                             break #loop4
 
 
-                    # cifProto.g:48:71: ( WHITESPACE )?
-                    alt5 = 2
-                    LA5_0 = self.input.LA(1)
+                    # cifProto.g:48:71: ( WHITESPACE )*
+                    while True: #loop5
+                        alt5 = 2
+                        LA5_0 = self.input.LA(1)
 
-                    if (LA5_0 == WHITESPACE) :
-                        alt5 = 1
-                    if alt5 == 1:
-                        # cifProto.g:48:72: WHITESPACE
-                        pass
-                        self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_cif89)
+                        if (LA5_0 == WHITESPACE) :
+                            alt5 = 1
 
+
+                        if alt5 == 1:
+                            # cifProto.g:48:72: WHITESPACE
+                            pass
+                            self.match(self.input, WHITESPACE, self.FOLLOW_WHITESPACE_in_cif89)
+
+
+                        else:
+                            break #loop5
 
 
 
@@ -1430,38 +1435,74 @@ class cifProtoParser(Parser):
     # Delegated rules
 
 
+    # lookup tables for DFA #4
+
+    DFA4_eot = DFA.unpack(
+        u"\4\uffff"
+        )
+
+    DFA4_eof = DFA.unpack(
+        u"\2\2\2\uffff"
+        )
+
+    DFA4_min = DFA.unpack(
+        u"\2\5\2\uffff"
+        )
+
+    DFA4_max = DFA.unpack(
+        u"\2\11\2\uffff"
+        )
+
+    DFA4_accept = DFA.unpack(
+        u"\2\uffff\1\2\1\1"
+        )
+
+    DFA4_special = DFA.unpack(
+        u"\4\uffff"
+        )
+
+
+    DFA4_transition = [
+        DFA.unpack(u"\1\1\3\uffff\1\3"),
+        DFA.unpack(u"\1\1\3\uffff\1\3"),
+        DFA.unpack(u""),
+        DFA.unpack(u"")
+    ]
+
+    # class definition for DFA #4
+
+    DFA4 = DFA
     # lookup tables for DFA #8
 
     DFA8_eot = DFA.unpack(
-        u"\5\uffff"
+        u"\4\uffff"
         )
 
     DFA8_eof = DFA.unpack(
-        u"\2\2\3\uffff"
+        u"\2\2\2\uffff"
         )
 
     DFA8_min = DFA.unpack(
-        u"\2\5\1\uffff\1\5\1\uffff"
+        u"\2\5\2\uffff"
         )
 
     DFA8_max = DFA.unpack(
-        u"\1\11\1\42\1\uffff\1\42\1\uffff"
+        u"\1\11\1\42\2\uffff"
         )
 
     DFA8_accept = DFA.unpack(
-        u"\2\uffff\1\2\1\uffff\1\1"
+        u"\2\uffff\1\2\1\1"
         )
 
     DFA8_special = DFA.unpack(
-        u"\5\uffff"
+        u"\4\uffff"
         )
 
 
     DFA8_transition = [
         DFA.unpack(u"\1\1\3\uffff\1\2"),
-        DFA.unpack(u"\1\3\5\2\1\4\1\uffff\2\4\20\uffff\4\4"),
+        DFA.unpack(u"\1\1\5\2\1\3\1\uffff\2\3\20\uffff\4\3"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\3\5\2\1\4\1\uffff\2\4\20\uffff\4\4"),
         DFA.unpack(u"")
     ]
 
@@ -1508,35 +1549,34 @@ class cifProtoParser(Parser):
     # lookup tables for DFA #16
 
     DFA16_eot = DFA.unpack(
-        u"\5\uffff"
+        u"\4\uffff"
         )
 
     DFA16_eof = DFA.unpack(
-        u"\2\2\3\uffff"
+        u"\2\2\2\uffff"
         )
 
     DFA16_min = DFA.unpack(
-        u"\2\5\1\uffff\1\5\1\uffff"
+        u"\2\5\2\uffff"
         )
 
     DFA16_max = DFA.unpack(
-        u"\1\11\1\12\1\uffff\1\12\1\uffff"
+        u"\1\11\1\12\2\uffff"
         )
 
     DFA16_accept = DFA.unpack(
-        u"\2\uffff\1\2\1\uffff\1\1"
+        u"\2\uffff\1\2\1\1"
         )
 
     DFA16_special = DFA.unpack(
-        u"\5\uffff"
+        u"\4\uffff"
         )
 
 
     DFA16_transition = [
         DFA.unpack(u"\1\1\3\uffff\1\2"),
-        DFA.unpack(u"\1\3\1\4\1\uffff\1\4\1\2\1\4"),
+        DFA.unpack(u"\1\1\1\3\1\uffff\1\3\1\2\1\3"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\3\1\4\1\uffff\1\4\1\2\1\4"),
         DFA.unpack(u"")
     ]
 
@@ -1708,19 +1748,19 @@ class cifProtoParser(Parser):
         )
 
     DFA30_eof = DFA.unpack(
-        u"\2\uffff\1\6\1\uffff\2\6\2\uffff\3\6"
+        u"\2\uffff\1\7\1\uffff\3\7\2\uffff\2\7"
         )
 
     DFA30_min = DFA.unpack(
-        u"\2\13\1\5\1\13\2\5\2\uffff\3\5"
+        u"\2\13\1\5\1\13\3\5\2\uffff\2\5"
         )
 
     DFA30_max = DFA.unpack(
-        u"\1\42\1\37\1\43\1\13\2\43\2\uffff\3\43"
+        u"\1\42\1\37\1\43\1\13\3\43\2\uffff\2\43"
         )
 
     DFA30_accept = DFA.unpack(
-        u"\6\uffff\1\1\1\2\3\uffff"
+        u"\7\uffff\1\1\1\2\2\uffff"
         )
 
     DFA30_special = DFA.unpack(
@@ -1731,17 +1771,17 @@ class cifProtoParser(Parser):
     DFA30_transition = [
         DFA.unpack(u"\1\2\23\uffff\1\3\1\uffff\2\1"),
         DFA.unpack(u"\1\4\23\uffff\1\3"),
-        DFA.unpack(u"\1\6\3\uffff\1\6\1\uffff\1\2\1\10\22\uffff\1\5\3\uffff"
-        u"\1\7"),
+        DFA.unpack(u"\1\7\3\uffff\1\7\1\uffff\1\2\1\6\22\uffff\1\5\3\uffff"
+        u"\1\10"),
         DFA.unpack(u"\1\11"),
-        DFA.unpack(u"\1\6\3\uffff\1\6\1\uffff\1\4\1\10\22\uffff\1\3\3\uffff"
-        u"\1\7"),
-        DFA.unpack(u"\1\6\3\uffff\1\6\1\uffff\1\11\1\12\26\uffff\1\7"),
+        DFA.unpack(u"\1\7\3\uffff\1\7\1\uffff\1\4\1\6\22\uffff\1\3\3\uffff"
+        u"\1\10"),
+        DFA.unpack(u"\1\7\3\uffff\1\7\1\uffff\1\11\1\12\26\uffff\1\10"),
+        DFA.unpack(u"\1\7\3\uffff\1\7\31\uffff\1\10"),
         DFA.unpack(u""),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\6\3\uffff\1\6\31\uffff\1\7"),
-        DFA.unpack(u"\1\6\3\uffff\1\6\1\uffff\1\11\1\12\26\uffff\1\7"),
-        DFA.unpack(u"\1\6\3\uffff\1\6\31\uffff\1\7")
+        DFA.unpack(u"\1\7\3\uffff\1\7\1\uffff\1\11\1\12\26\uffff\1\10"),
+        DFA.unpack(u"\1\7\3\uffff\1\7\31\uffff\1\10")
     ]
 
     # class definition for DFA #30
@@ -1756,7 +1796,7 @@ class cifProtoParser(Parser):
     FOLLOW_data_block_in_cif76 = frozenset([1, 5, 9])
     FOLLOW_WHITESPACE_in_cif80 = frozenset([5, 9])
     FOLLOW_data_block_in_cif83 = frozenset([1, 5, 9])
-    FOLLOW_WHITESPACE_in_cif89 = frozenset([1])
+    FOLLOW_WHITESPACE_in_cif89 = frozenset([1, 5])
     FOLLOW_value_in_loop_body112 = frozenset([1, 5])
     FOLLOW_WHITESPACE_in_loop_body125 = frozenset([5, 11, 13, 14, 31, 32, 33, 34])
     FOLLOW_value_in_loop_body139 = frozenset([1, 5])

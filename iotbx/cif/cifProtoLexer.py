@@ -1,4 +1,4 @@
-# $ANTLR 3.1.2 cifProto.g 2010-06-08 11:30:39
+# $ANTLR 3.1.2 cifProto.g 2010-06-28 11:32:31
 
 import sys
 from antlr3 import *

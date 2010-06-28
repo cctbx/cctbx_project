@@ -212,6 +212,9 @@ loop_
    2 0 0 2.3 2.4 0.2
    3 0 0 3.4 3.5 0.3
    4 0 0 4.5 6.7 0.4
+
+# comment with WS before and after
+
 """
 
 cif_quoted_string = """\
