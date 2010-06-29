@@ -8,7 +8,7 @@
         write(6, *) ix_sum
       enddo
       do ix=2,3
-        ix_sum_sq = ix_sum_sq + ix * ix
+        ix_sum_sq = ix * ix + ix_sum_sq
       enddo
       write(6, *) ix_sum_sq
       end

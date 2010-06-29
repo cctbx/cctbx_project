@@ -283,7 +283,7 @@ main(
   int ix = fem::int0;
   int ix_sum = fem::int0;
   FEM_DO(ix, 1, 2) {
-    ix_sum = ix_sum + ix;
+    ix_sum += ix;
   }
   write(6, star), ix_sum;
 """)
@@ -298,13 +298,13 @@ main(
       write(6, star), "ix is one.";
     }
     else {
-      ix_sum = ix_sum + ix;
+      ix_sum += ix;
     }
     write(6, star), ix_sum;
   }
   int ix_sum_sq = fem::int0;
   FEM_DO(ix, 2, 3) {
-    ix_sum_sq = ix_sum_sq + ix * ix;
+    ix_sum_sq += ix * ix;
   }
   write(6, star), ix_sum_sq;
 """)
@@ -751,7 +751,7 @@ sub(
   int& num = sve.num;
   //
   write(6, star), num;
-  num = num + 1;
+  num++;
 }
 
 """)
@@ -2661,6 +2661,16 @@ blockdata_unnamed(
   sas(2) = "EfG";
   cas(1) = "uvWx";
   cas(2) = "PqrS";
+""")
+  #
+  lines = get("subroutine_4.f")
+  assert not absd(lines, head_off(19), """\
+  if (letter(1, 1) == "x") {
+    num++;
+  }
+  else {
+    num += 2;
+  }
 """)
 
 def exercise_syntax_error(verbose):
