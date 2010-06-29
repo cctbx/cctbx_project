@@ -6,10 +6,16 @@ op = os.path
 
 def exercise_strip_spaces_separate_strings():
   from fable.read import Error, source_line, strip_spaces_separate_strings
+  import itertools
+  global_line_index_generator = itertools.count()
   def slc(cmbnd):
     return [
-      source_line(file_name="str", line_number=i+1, text="      "+line)
-        for i,line in enumerate(cmbnd.splitlines())]
+      source_line(
+        global_line_index_generator=global_line_index_generator,
+        file_name="str",
+        line_number=i+1,
+        text="      "+line)
+          for i,line in enumerate(cmbnd.splitlines())]
   def check(cmbnd, expected_code, expected_strings):
     for cmbnd_work,expected_strings_work in [
           (cmbnd, expected_strings),

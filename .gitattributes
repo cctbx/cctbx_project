@@ -379,6 +379,7 @@ fable/test/valid/character_function.f -text
 fable/test/valid/character_function_2.f -text
 fable/test/valid/character_function_3.f -text
 fable/test/valid/combine_decl_1.f -text
+fable/test/valid/comments.f -text
 fable/test/valid/common_0.f -text
 fable/test/valid/common_1.f -text
 fable/test/valid/common_2.f -text

@@ -144,22 +144,37 @@ class comment_manager(object):
 
   __slots__ = ["sl_list", "index"]
 
-  def __init__(O, body_lines):
+  def __init__(O, unit):
     O.sl_list = []
-    for ssl in body_lines:
-      for sl in ssl.source_line_cluster:
-        if (sl.stmt_offs is None):
+    def add(ssl):
+      if (ssl is not None):
+        for sl in ssl.source_line_cluster:
           O.sl_list.append(sl)
+    add(unit.top_ssl)
+    for ssl in unit.body_lines:
+      add(ssl)
+    add(unit.end_ssl)
+    def cmp_sl(a, b):
+      return cmp(a.global_line_index, b.global_line_index)
+    O.sl_list.sort(cmp_sl)
     O.index = 0
 
   def produce(O, callback):
-    callback("//%s" % O.sl_list[O.index].text.expandtabs().rstrip())
+    sl = O.sl_list[O.index]
+    if (sl.stmt_offs is None):
+      t = sl.text
+    elif (sl.index_of_exclamation_mark is not None):
+      t = sl.stmt[sl.index_of_exclamation_mark+1:]
+    else:
+      t = None
+    if (t is not None):
+      callback("//%s" % t.expandtabs().rstrip())
     O.index += 1
 
   def insert_before(O, executable_info, callback):
-    i = executable_info.ssl.source_line_cluster[-1].line_number
+    i = executable_info.ssl.source_line_cluster[-1].global_line_index
     while (O.index != len(O.sl_list)):
-      j = O.sl_list[O.index].line_number
+      j = O.sl_list[O.index].global_line_index
       if (j > i):
         break
       O.produce(callback=callback)
@@ -225,7 +240,7 @@ class conversion_info(global_conversion_info):
     if (O.unit is None):
       O.comment_manager = None
     else:
-      O.comment_manager = comment_manager(body_lines=O.unit.body_lines)
+      O.comment_manager = comment_manager(unit=O.unit)
     if (vmap is None):
       O.vmap = {}
     else:
@@ -539,7 +554,7 @@ class scope(object):
     "closing_text",
     "data",
     "insert_point",
-    "last_is_statement_label",
+    "trailing_statement_label_index",
     "tail"]
 
   def __init__(O, parent, opening_text=None, auto_close_parent=False):
@@ -549,7 +564,7 @@ class scope(object):
     O.closing_text = None
     O.data = []
     O.insert_point = None
-    O.last_is_statement_label = False
+    O.trailing_statement_label_index = None
     O.tail = None
 
   def current_point(O):
@@ -571,23 +586,23 @@ class scope(object):
 
   def append(O, obj):
     O.data.append(obj)
-    O.last_is_statement_label = False
+    O.trailing_statement_label_index = None
 
   def append_statement_label(O, label):
+    O.trailing_statement_label_index = len(O.data)
     O.data.append("statement_%s:" % label)
-    O.last_is_statement_label = True
 
   def append_comment(O, line):
-    pass # XXX O.data.append(line)
+    O.data.append(line)
 
   def open_nested_scope(O, opening_text, auto_close_parent=False):
-    O.last_is_statement_label = False
+    O.trailing_statement_label_index = None
     return scope(
       parent=O, opening_text=opening_text, auto_close_parent=auto_close_parent)
 
   def finalize(O):
-    if (O.last_is_statement_label):
-      O.data[-1] += ";"
+    if (O.trailing_statement_label_index is not None):
+      O.data[O.trailing_statement_label_index] += ";"
 
   def close_nested_scope(O):
     assert O.opening_text is not None
