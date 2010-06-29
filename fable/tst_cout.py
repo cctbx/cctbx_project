@@ -517,6 +517,7 @@ program_unnamed(
   }
   common cmn;
   common_write write(cmn);
+  //c1
   int num = fem::int0;
   write(6, star), num;
 }
@@ -822,6 +823,8 @@ show_resolution(
   if (is_called_first_time) {
     first = true;
   }
+  //C cctbx_project/compcomm/newsletter09/conv_recipe.py, svn rev. 9983
+  //
   if (first) {
     first = false;
     if (a <= 0 || b <= 0 || c <= 0) {
@@ -1502,6 +1505,7 @@ sub(
   write(6, "(a,2l1)"), "p", str2 == " y", str2 != " y";
   write(6, "(a,2l1)"), "q", str2 == " y ", str2 != " y ";
   write(6, "(a,2l1)"), "r", str2 == " yz", str2 != " yz";
+  //
   write(6, "(a,2l1)"), "s", " y" == str2, " y" != str2;
 """)
   #

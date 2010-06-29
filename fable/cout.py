@@ -140,6 +140,34 @@ class major_types_cache(object):
 
 major_types = major_types_cache()
 
+class comment_manager(object):
+
+  __slots__ = ["sl_list", "index"]
+
+  def __init__(O, body_lines):
+    O.sl_list = []
+    for ssl in body_lines:
+      for sl in ssl.source_line_cluster:
+        if (sl.stmt_offs is None):
+          O.sl_list.append(sl)
+    O.index = 0
+
+  def produce(O, callback):
+    callback("//%s" % O.sl_list[O.index].text.expandtabs().rstrip())
+    O.index += 1
+
+  def insert_before(O, executable_info, callback):
+    i = executable_info.ssl.source_line_cluster[-1].line_number
+    while (O.index != len(O.sl_list)):
+      j = O.sl_list[O.index].line_number
+      if (j > i):
+        break
+      O.produce(callback=callback)
+
+  def flush_remaining(O, callback):
+    while (O.index != len(O.sl_list)):
+      O.produce(callback=callback)
+
 class global_conversion_info(object):
 
   __slots__ = [
@@ -181,6 +209,7 @@ class conversion_info(global_conversion_info):
 
   __slots__ = global_conversion_info.__slots__ + [
     "unit",
+    "comment_manager",
     "vmap"]
 
   def __init__(O,
@@ -193,6 +222,10 @@ class conversion_info(global_conversion_info):
         val = getattr(global_conv_info, slot)
       setattr(O, slot, val)
     O.unit = unit
+    if (O.unit is None):
+      O.comment_manager = None
+    else:
+      O.comment_manager = comment_manager(body_lines=O.unit.body_lines)
     if (vmap is None):
       O.vmap = {}
     else:
@@ -543,6 +576,9 @@ class scope(object):
   def append_statement_label(O, label):
     O.data.append("statement_%s:" % label)
     O.last_is_statement_label = True
+
+  def append_comment(O, line):
+    O.data.append(line)
 
   def open_nested_scope(O, opening_text, auto_close_parent=False):
     O.last_is_statement_label = False
@@ -1435,6 +1471,8 @@ def convert_executable(
   from fable.read import Error
   from fable import SemanticError
   for ei in conv_info.unit.executable:
+    conv_info.comment_manager.insert_before(
+      executable_info=ei, callback=curr_scope.append_comment)
     lbl = ei.ssl.label
     if (    lbl is not None
         and lbl in conv_info.unit.target_statement_labels()
@@ -1797,6 +1835,8 @@ def convert_executable(
       and len(conv_info.unit.executable) != 0
       and conv_info.unit.executable[-1].key != "return"):
     curr_scope_append_return_function()
+  conv_info.comment_manager.flush_remaining(
+    callback=curr_scope.append_comment)
   curr_scope.finalize()
   curr_scope.collect_text(callback=callback)
 
