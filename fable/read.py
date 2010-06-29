@@ -112,6 +112,8 @@ class source_line(raise_errors_mixin):
           O.raise_error(msg="Labelled statement is empty", i=-7)
         O.stmt = s
         O.stmt_offs = soff
+    if (not O.is_cont and len(O.stmt.rstrip()) == 0):
+      O.stmt_offs = None
     O.index_of_exclamation_mark = None
 
 class stripped_source_line(raise_errors_mixin):
@@ -395,8 +397,7 @@ def combine_continuation_lines_and_strip_spaces(source_lines):
     if (source_line_cluster is None):
       source_line_cluster = [source_line]
     elif (   source_line.is_cont
-          or source_line.stmt_offs is None
-          or len(source_line.stmt.rstrip()) == 0):
+          or source_line.stmt_offs is None):
       source_line_cluster.append(source_line)
     else:
       rapp(strip_spaces_separate_strings(
