@@ -1467,7 +1467,46 @@ def convert_executable(
             crhs=crhs)
         clhs = convert_tokens(conv_info=conv_info, tokens=ei.lhs_tokens)
         if (assign_here):
-          curr_scope.append("%s = %s;" % (clhs, crhs))
+          def in_place_op_left():
+            if (not crhs.startswith(clhs)): return False
+            i = len(clhs)
+            if (i == len(crhs)): return False
+            if (crhs[i] != " "): return False
+            i += 1
+            if (i == len(crhs)): return False
+            op = crhs[i]
+            if (op != "+"): return False
+            i += 1
+            if (i == len(crhs)): return False
+            if (crhs[i] != " "): return False
+            i += 1
+            if (i == len(crhs)): return False
+            if (crhs[i:] == "1"):
+              curr_scope.append("%s++;" % clhs)
+            else:
+              curr_scope.append("%s %s= %s;" % (clhs, op, crhs[i:]))
+            return True
+          def in_place_op_right():
+            if (not crhs.endswith(clhs)): return False
+            i = len(crhs) - len(clhs)
+            if (i == 0): return False
+            i -= 1
+            if (crhs[i] != " "): return False
+            if (i == 0): return False
+            i -= 1
+            op = crhs[i]
+            if (op != "+"): return False
+            if (i == 0): return False
+            i -= 1
+            if (crhs[i] != " "): return False
+            if (i == 0): return False
+            if (crhs[:i] == "1"):
+              curr_scope.append("%s++;" % clhs)
+            else:
+              curr_scope.append("%s %s= %s;" % (clhs, op, crhs[:i]))
+            return True
+          if (not in_place_op_left() and not in_place_op_right()):
+            curr_scope.append("%s = %s;" % (clhs, crhs))
       elif (ei.key == "inquire"):
         search_for_id_tokens_and_declare_identifiers()
         iuflist = ei.iuflist

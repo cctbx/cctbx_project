@@ -9,7 +9,7 @@
       character letter
       call sub1(letter, num)
       if (letter(1:1) .eq. 'x') then
-        num = num + 1
+        num = 1 + num
       else
         num = num + 2
       endif
