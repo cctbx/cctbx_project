@@ -1302,5 +1302,6 @@ spotfinder/servers/thin_client.csh -text
 spotfinder/servers/thin_client.py -text
 tbxx/time_accu.hpp svneol=native#text/plain
 wxtbx/__init__.py -text
+wxtbx/qstat_view.py svneol=native#text/x-python
 wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text
