@@ -99,7 +99,7 @@ multiple residues."
       line_end = line_start + self.line_width - 1
       line = self.sequence[i:i+self.line_width]
       line_w = self.line_width * char_w
-      label_w = gc.GetTextExtent("X"*8)[0]
+      label_w = char_w * 8 #gc.GetTextExtent("X"*8)[0]
       if self._style & WXTBX_SEQ_SHOW_LINE_NUMBERS :
         gc.DrawText("%6d  " % line_start, xpos, ypos)
         gc.DrawText("  %-6d" % line_end, xpos + label_w + line_w, ypos)
@@ -159,8 +159,13 @@ multiple residues."
     if dc is None :
       dc = wx.ClientDC(self)
       dc.SetFont(self.txt_font)
-    char_w, char_h = dc.GetTextExtent("X")
-    char_w = max(10, char_w)
+    line_w, char_h = dc.GetTextExtent("X" * 50)
+    if wx.Platform == '__WXGTK__' :
+      char_w = max(12, line_w / 50)
+    elif wx.Platform == '__WXMAC__' :
+      char_w = max(10, line_w / 50)
+    else :
+      raise RuntimeError("Platform not supported!")
     char_h = max(16, char_h)
     return (char_w, char_h)
 
@@ -173,7 +178,7 @@ multiple residues."
     x_start = 16
     y_start = self.line_sep
     if self._style & WXTBX_SEQ_SHOW_LINE_NUMBERS :
-      x_start += dc.GetTextExtent("X" * 8)[0]
+      x_start += (char_w * 8) #dc.GetTextExtent("X" * 8)[0]
     self.char_boxes = []
     for i_seq in range(len(self.sequence)) :
       lines = int(math.floor((i_seq-self.start_offset) / self.line_width))
@@ -457,7 +462,10 @@ residue(s).  Holding down shift enables multiple selections."""
         gc.PopState()
       gc.SetPen(strand_pen)
     missing = self.get_missing()
-    missing_pen = wx.Pen((150, 150, 150), 4, style=wx.SHORT_DASH)
+    if wx.Platform == '__WXGTK__' : # dashed pen freezes on Linux
+      missing_pen = wx.Pen((150, 150, 150), 4)
+    elif wx.Platform == '__WXMAC__' :
+      missing_pen = wx.Pen((150, 150, 150), 4, style=wx.SHORT_DASH)
     h_missing_pen = wx.Pen((255, 255, 0), 12)
     for k, (i_start, i_end) in enumerate(missing) :
       bounds = self.get_region_bounds(i_start, i_end)
@@ -831,6 +839,7 @@ class sequence_window (object) :
       self.set_sequence(seq)
       self.set_structure(ss)
       self.reset_layout()
+      self.seq_panel.Refresh()
 
   def set_sequence (self, seq) :
     self.seq_panel.set_sequence(seq)
@@ -901,7 +910,8 @@ def run (args) :
   frame = sequence_frame(None, -1, "Sequence display for %s" %
     os.path.basename(pdb_file))
   frame.load_pdb_file(pdb_file)
-  frame.Fit()
+  if wx.Platform == '__WXMAC__' :
+    frame.Fit()
   frame.Show()
   if "--range" in args :
     frame.seq_panel.SetStyle(WXTBX_SEQ_DEFAULT_STYLE|WXTBX_SEQ_SELECT_RANGE)
