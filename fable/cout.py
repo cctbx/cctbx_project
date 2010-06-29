@@ -578,7 +578,7 @@ class scope(object):
     O.last_is_statement_label = True
 
   def append_comment(O, line):
-    O.data.append(line)
+    pass # XXX O.data.append(line)
 
   def open_nested_scope(O, opening_text, auto_close_parent=False):
     O.last_is_statement_label = False
