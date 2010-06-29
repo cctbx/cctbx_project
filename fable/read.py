@@ -59,6 +59,7 @@ class raise_errors_mixin(object):
 class source_line(raise_errors_mixin):
 
   __slots__ = [
+    "global_line_index",
     "file_name",
     "line_number",
     "text",
@@ -74,7 +75,8 @@ class source_line(raise_errors_mixin):
   def stmt_location(O, i):
     return O, i
 
-  def __init__(O, file_name, line_number, text):
+  def __init__(O, global_line_index_generator, file_name, line_number, text):
+    O.global_line_index = global_line_index_generator.next()
     O.file_name = file_name
     O.line_number = line_number
     O.text = text
@@ -175,10 +177,7 @@ class stripped_source_line(raise_errors_mixin):
     return O.code0_locations[O.start + i]
 
   def is_comment(O):
-    for sl in O.source_line_cluster:
-      if (sl.stmt_offs is not None):
-        return False
-    return True
+    return (O.source_line_cluster[0].stmt_offs is None)
 
   def __getitem__(O, key):
     if (isinstance(key, slice)):
@@ -392,23 +391,33 @@ class fmt_string_stripped(raise_errors_mixin):
 def combine_continuation_lines_and_strip_spaces(source_lines):
   result = []
   rapp = result.append
-  source_line_cluster = None
-  for source_line in source_lines:
-    if (source_line_cluster is None):
-      source_line_cluster = [source_line]
-    elif (   source_line.is_cont
-          or source_line.stmt_offs is None):
-      source_line_cluster.append(source_line)
+  n_sl = len(source_lines)
+  i_sl = 0
+  while (i_sl < n_sl):
+    sl = source_lines[i_sl]
+    if (sl.stmt_offs is None):
+      rapp(strip_spaces_separate_strings(source_line_cluster=[sl]))
+      i_sl += 1
     else:
-      rapp(strip_spaces_separate_strings(
-        source_line_cluster=source_line_cluster))
-      source_line_cluster = [source_line]
-  if (source_line_cluster is not None):
-    rapp(strip_spaces_separate_strings(
-      source_line_cluster=source_line_cluster))
+      assert not sl.is_cont
+      code_sls = [sl]
+      k_sl = i_sl
+      for j_sl in xrange(i_sl+1, n_sl):
+        sl = source_lines[j_sl]
+        if (sl.is_cont):
+          code_sls.append(sl)
+          k_sl = j_sl
+        elif (sl.stmt_offs is not None):
+          break
+      for j_sl in xrange(i_sl+1, k_sl):
+        sl = source_lines[j_sl]
+        if (not sl.is_cont):
+          rapp(strip_spaces_separate_strings(source_line_cluster=[sl]))
+      rapp(strip_spaces_separate_strings(source_line_cluster=code_sls))
+      i_sl = k_sl + 1
   return result
 
-def load_includes(stripped_source_lines):
+def load_includes(global_line_index_generator, stripped_source_lines):
   import os.path as op
   result = []
   for ssl in stripped_source_lines:
@@ -423,17 +432,23 @@ def load_includes(stripped_source_lines):
       if (not op.isfile(file_path)):
         ssl.raise_semantic_error(msg="Missing include file", i=7)
       # TODO potential performance problem if deeply nested includes
-      result.extend(load(file_name=file_path))
+      result.extend(load(
+        global_line_index_generator=global_line_index_generator,
+        file_name=file_path))
     else:
       result.append(ssl)
   return result
 
-def load(file_name):
+def load(global_line_index_generator, file_name):
   source_lines = []
   for i_line,line in enumerate(open(file_name).read().splitlines()):
     source_lines.append(source_line(
-      file_name=file_name, line_number=i_line+1, text=line))
+      global_line_index_generator=global_line_index_generator,
+      file_name=file_name,
+      line_number=i_line+1,
+      text=line))
   return load_includes(
+    global_line_index_generator=global_line_index_generator,
     stripped_source_lines=combine_continuation_lines_and_strip_spaces(
       source_lines=source_lines))
 
@@ -1621,7 +1636,8 @@ def check_fmt(fmt):
 class unit(unit_p_methods):
 
   __slots__ = [
-    "top_ssl", "unit_type", "data_type", "size_tokens", "body_lines",
+    "top_ssl", "unit_type", "data_type", "size_tokens",
+    "body_lines", "end_ssl",
     "name", "args",
     "body_lines_processed_already",
     "common",
@@ -1659,11 +1675,18 @@ class unit(unit_p_methods):
     "externals_passed_by_arg_identifier"]
 
   def __init__(O,
-        top_ssl, unit_type, i_code, data_type, size_tokens, body_lines):
+        top_ssl,
+        unit_type,
+        i_code,
+        data_type,
+        size_tokens,
+        body_lines,
+        end_ssl):
     assert unit_type in ["program", "function", "subroutine", "blockdata"]
-    O.unit_type = unit_type
     O.top_ssl = top_ssl
+    O.unit_type = unit_type
     O.body_lines = body_lines
+    O.end_ssl = end_ssl
     O.data_type = data_type
     O.size_tokens = size_tokens
     O.set_name_and_args(i_code=i_code)
@@ -2641,7 +2664,8 @@ class split_units(object):
     body_lines = []
     for curr_ssl in ssls:
       if (curr_ssl.is_comment()):
-        body_lines.append(curr_ssl)
+        if (len(curr_ssl.source_line_cluster[0].text.rstrip()) != 0): # XXX
+          body_lines.append(curr_ssl)
         continue
       assert len(curr_ssl.code) != 0
       def collect_until_end(
@@ -2655,7 +2679,8 @@ class split_units(object):
               i_code=i_code,
               data_type=data_type,
               size_tokens=size_tokens,
-              body_lines=body_lines)
+              body_lines=body_lines,
+              end_ssl=ssl)
             O.all_in_input_order.append(result)
             return result
           body_lines.append(ssl)
@@ -2914,8 +2939,12 @@ class build_bottom_up_unit_list_following_calls(object):
 
 def process(file_names, basic_only=False):
   units = split_units()
+  import itertools
+  global_line_index_generator = itertools.count()
   for file_name in file_names:
-    units.process(stripped_source_lines=load(file_name=file_name))
+    units.process(stripped_source_lines=load(
+      global_line_index_generator=global_line_index_generator,
+      file_name=file_name))
   if (not basic_only):
     units.build_fdecl_by_identifier()
     for unit in units.all_in_input_order:
