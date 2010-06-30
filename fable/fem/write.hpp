@@ -181,20 +181,23 @@ namespace fem {
         }
         else {
           std::string const& ed = next_edit_descriptor();
+          int l = std::strlen(val);
           if (ed[0] == 'a') {
             int n = ed.size();
-            ASSERTBX(n+2 < 64);
-            char fmt[64];
-            fmt[0] = '%';
-            std::strncpy(fmt+1, ed.data()+1, n-1);
-            fmt[n] = 's';
-            fmt[n+1] = '\0';
-            char buf[64];
-            n = std::sprintf(buf, fmt, val);
-            to_stream_fmt(buf, n);
+            if (n > 1) {
+              n = utils::unsigned_integer_value(ed.data()+1, n-1);
+              int b = n - l;
+              if (b < 0) {
+                l = n;
+              }
+              else {
+                for(int i=0;i<b;i++) to_stream_fmt(" ", 1);
+              }
+            }
+            to_stream_fmt(val, l);
           }
           else {
-            to_stream_fmt(val, std::strlen(val));
+            to_stream_fmt(val, l);
           }
         }
         return *this;
