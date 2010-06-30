@@ -13,7 +13,7 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
     if (line[i_start] != " "):
       break
   else:
-    raise RuntimeError
+    raise AssertionError
   if (line.startswith("//", i_start)):
     callback(line)
     return
@@ -32,7 +32,7 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
         if (c == q and prev_c != "\\"):
           break
       else:
-        raise RuntimeError
+        raise AssertionError
     elif (c == "("):
       ic += 1
       potential_break_points.append((0, ic))
@@ -49,6 +49,19 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
   l = max(min_len, iround(n / iceil(n / (max_len - i_start - 2))))
   b = 0
   f = 0
+  def break_more_if_necessary(callback, s):
+    while (f+len(s) > max_len and s.startswith('"')):
+      i = max_len-2-f
+      for j in xrange(i-1,-1,-1):
+        if (s[j] != "\\"):
+          if ((i - j ) % 2 == 0):
+            i -= 1
+          break
+      else:
+        raise AssertionError
+      callback(" "*f + s[:i] + '"')
+      s = '"' + s[i:]
+    callback(" "*f + s)
   pprio = 0
   pp = 0
   for ip in xrange(len(potential_break_points)):
@@ -67,12 +80,12 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
         callback(s)
         f = i_start + 2
       else:
-        callback(" "*f + s)
+        break_more_if_necessary(callback=callback, s=s)
       b = pp
     pprio = prio
     pp = p
   if (b < nc):
-    callback(" "*f + line[b:])
+    break_more_if_necessary(callback=callback, s=line[b:])
 
 def break_lines(cpp_text):
   result = []

@@ -27,4 +27,10 @@
      &  numbers(10), numbers(11), numbers(12), numbers(13), numbers(14),
      &  numbers(15), numbers(16), numbers(17), numbers(18), numbers(19),
      &  numbers(20)
+      write(6, '(a)') '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm
+     &nopqrstuvwxyz)!@#$%^&*(`~-_+=[{]}\|;:''",<.>/?'
+      write(6, '(a)') '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm
+     &nopqrstuvwxyz)!@#$%^&*\`~-_+=[{]}(|;:''",<.>/?'
+      write(6, '(a)') '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm
+     &nopqrstuvwxyz)!@#$%^&*(\~-_+=[{]}`|;:''",<.>/?'
       end
