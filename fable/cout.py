@@ -4,6 +4,12 @@ from libtbx import group_args
 from libtbx import Auto
 import os.path as op
 
+def break_lines(cpp_text):
+  result = []
+  for line in "\n".join(cpp_text).splitlines():
+    result.append(line)
+  return result
+
 class dynamic_parameter_props(object):
 
   __slots__ = ["name", "ctype", "default"]
@@ -2682,7 +2688,7 @@ def process(
     common_commons_info = None
   if (separate_cmn_hpp):
     close_namespace(callback=cmn_callback, namespace=namespace, hpp_guard=True)
-    print >> open("cmn.hpp", "w"), "\n".join(cmn_buffer)
+    print >> open("cmn.hpp", "w"), "\n".join(break_lines(cpp_text=cmn_buffer))
   #
   separate_function_buffers = []
   separate_function_buffer_by_function_name = {}
@@ -2811,7 +2817,8 @@ def process(
     close_namespace(
       callback=buffer.append, namespace=namespace, hpp_guard=False)
     if (write_separate_files_main_namespace):
-      print >> open(name+".cpp", "w"), "\n".join(buffer)
+      print >> open(name+".cpp", "w"), "\n".join(
+        break_lines(cpp_text=buffer))
   #
   for name,identifiers in separate_files_separate_namespace.items():
     buffers = separate_namespaces_buffers[identifiers[0]]
@@ -2820,7 +2827,8 @@ def process(
       close_namespace(
         callback=buffer.append, namespace=name, hpp_guard=(ext=="hpp"))
       if (write_separate_files_separate_namespace):
-        print >> open(name+"."+ext, "w"), "\n".join(buffer)
+        print >> open(name+"."+ext, "w"), "\n".join(
+          break_lines(cpp_text=buffer))
   #
   if (function_declarations is not None):
     def write_functions(buffers, serial=None):
@@ -2844,7 +2852,7 @@ def process(
       open_namespace(
         callback=fcb, namespace=namespace, using_namespace_major_types=False)
       for lines in buffers:
-        for line in lines: fcb(line)
+        for line in break_lines(cpp_text=lines): fcb(line)
       close_namespace(
         callback=fcb,
         namespace=namespace,
@@ -2872,6 +2880,7 @@ def process(
     if (not debug): raise
     show_traceback()
   #
+  result = break_lines(cpp_text=result)
   if (top_cpp_file_name is not None):
     print >> open(top_cpp_file_name, "w"), "\n".join(result)
   #
