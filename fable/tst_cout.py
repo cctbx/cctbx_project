@@ -507,6 +507,7 @@ sub3(
 """)
   #
   assert not absd(get("implied_program.f"), tail_off(0), """\
+//C1
 void
 program_unnamed(
   int argc,
@@ -517,11 +518,10 @@ program_unnamed(
   }
   common cmn;
   common_write write(cmn);
-  //c1
   int num = fem::int0;
   write(6, star), num;
-  //c2
 }
+//C2
 """)
   #
   lines = get("implied_trailing_program.f")
@@ -801,6 +801,8 @@ struct show_resolution_save
   {}
 };
 
+//C cctbx_project/compcomm/newsletter09/conv_recipe.py, svn rev. 9983
+//C
 void
 show_resolution(
   common& cmn,
@@ -824,7 +826,6 @@ show_resolution(
   if (is_called_first_time) {
     first = true;
   }
-  //C cctbx_project/compcomm/newsletter09/conv_recipe.py, svn rev. 9983
   if (first) {
     first = false;
     if (a <= 0 || b <= 0 || c <= 0) {
@@ -1506,7 +1507,7 @@ sub(
   write(6, "(a,2l1)"), "q", str2 == " y ", str2 != " y ";
   write(6, "(a,2l1)"), "r", str2 == " yz", str2 != " yz";
   write(6, "(a,2l1)"), "s", " y" == str2, " y" != str2;
-  //
+  //C
 """)
   #
   lines = get("decl_before_if.f")
@@ -1692,7 +1693,7 @@ struct program_prog_save
 """)
   #
   lines = get("data_26.f", data_specializations=False)
-  assert not absd(lines, head_off(43), """\
+  assert not absd(lines, head_off(55), """\
     fem::data((values, 1, 2, 3)), num1, num2, num3;
 """)
   #
@@ -2668,13 +2669,99 @@ blockdata_unnamed(
 """)
   #
   lines = get("subroutine_4.f")
-  assert not absd(lines, head_off(19), """\
+  assert not absd(lines, head_off(3), """\
+//C1
+//C c2
+void
+sub1(
+  str_cref letter,
+  int& num)
+{
+  //C3
+  if (letter(1, 1) == "x") {
+    num += 10;
+  }
+  //C4
+}
+//C c5
+
+//C
+//C6
+void
+sub2(
+  str_cref letter,
+  int& num)
+{
+  //C7
+  sub1(letter, num);
   if (letter(1, 1) == "x") {
     num++;
   }
   else {
     num += 2;
   }
+  //C8
+}
+
+//C
+//C9
+""")
+  #
+  lines = get("comments.f")
+  assert not absd(lines, head_off(3), """\
+//C1
+//Cc2
+void
+program_prog(
+  int argc,
+  char const* argv[])
+{
+  if (argc != 1) {
+    throw std::runtime_error("Unexpected command-line arguments.");
+  }
+  common cmn;
+  common_write write(cmn);
+  int i = fem::int0;
+  arr<int> nums(dimension(2), fem::fill0);
+  //C3
+  //C c4
+  //C5
+  //Cc6
+  //C7
+  //C c8
+  FEM_DO(i, 1, 2) {
+    //C9
+    //Cc10
+    //C
+    //C12
+    //C c13
+    //Cc14
+    //C c15
+    nums(i) = i + 47;
+    //C16
+    //Cc17
+  }
+  //C c18
+  try {
+    write(6, star), nums;
+  }
+  catch (fem::io_err const&) {
+    goto statement_10;
+  }
+  //C19
+  //Cc20
+  goto statement_20;
+  //C21
+  //C c22
+  statement_10:
+  FEM_STOP("write error");
+  //C23
+  //Cc24
+  statement_20:;
+  //C25
+}
+//C  c26
+//C27
 """)
 
 def exercise_syntax_error(verbose):

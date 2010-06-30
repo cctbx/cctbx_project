@@ -1,4 +1,3 @@
-comments
 line breaks
 
 str<>::operator char*() possible? (certain constructors will have to be removed)

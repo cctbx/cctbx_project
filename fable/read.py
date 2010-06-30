@@ -1636,6 +1636,8 @@ def check_fmt(fmt):
 class unit(unit_p_methods):
 
   __slots__ = [
+    "leading_comments",
+    "trailing_comments",
     "top_ssl", "unit_type", "data_type", "size_tokens",
     "body_lines", "end_ssl",
     "name", "args",
@@ -1675,6 +1677,7 @@ class unit(unit_p_methods):
     "externals_passed_by_arg_identifier"]
 
   def __init__(O,
+        leading_comments,
         top_ssl,
         unit_type,
         i_code,
@@ -1683,6 +1686,8 @@ class unit(unit_p_methods):
         body_lines,
         end_ssl):
     assert unit_type in ["program", "function", "subroutine", "blockdata"]
+    O.leading_comments = leading_comments
+    O.trailing_comments = []
     O.top_ssl = top_ssl
     O.unit_type = unit_type
     O.body_lines = body_lines
@@ -2661,19 +2666,23 @@ class split_units(object):
 
   def process(O, stripped_source_lines):
     ssls = iter(stripped_source_lines)
-    body_lines = []
+    leading_comments = []
     for curr_ssl in ssls:
       if (curr_ssl.is_comment()):
-        if (len(curr_ssl.source_line_cluster[0].text.rstrip()) != 0): # XXX
-          body_lines.append(curr_ssl)
+        leading_comments.append(curr_ssl)
         continue
       assert len(curr_ssl.code) != 0
       def collect_until_end(
-            unit_type, top_ssl, i_code, data_type, size_tokens):
+            unit_type, top_ssl, i_code, data_type, size_tokens,
+            first_body_line=None):
+        body_lines = []
+        if (first_body_line is not None):
+          body_lines.append(first_body_line)
         specific_end = "end"+unit_type
         for ssl in ssls:
           if (ssl.code in ["end", specific_end]):
             result = unit(
+              leading_comments=leading_comments,
               top_ssl=top_ssl,
               unit_type=unit_type,
               i_code=i_code,
@@ -2685,7 +2694,7 @@ class split_units(object):
             return result
           body_lines.append(ssl)
         if (top_ssl is None):
-          top_ssl = body_lines[0]
+          top_ssl = first_body_line
         top_ssl.raise_error(msg="Missing END for %s" % (unit_type.upper()))
       for unit_type in ["program", "blockdata", "subroutine", "function"]:
         if (curr_ssl.code.startswith(unit_type)):
@@ -2701,13 +2710,13 @@ class split_units(object):
           ssl=curr_ssl, optional=True)
         if (i_code is None or
               not curr_ssl.code.startswith("function", i_code)):
-          body_lines.append(curr_ssl)
           O.program.append(collect_until_end(
             unit_type="program",
             top_ssl=None,
             i_code=0,
             data_type=None,
-            size_tokens=None))
+            size_tokens=None,
+            first_body_line=curr_ssl))
         else:
           O.function.append(collect_until_end(
             unit_type="function",
@@ -2715,9 +2724,9 @@ class split_units(object):
             i_code=i_code,
             data_type=data_type,
             size_tokens=size_tokens))
-      body_lines = []
-    if (len(body_lines) != 0 and len(O.all_in_input_order) != 0):
-      O.all_in_input_order[-1].body_lines.extend(body_lines)
+      leading_comments = []
+    if (len(leading_comments) != 0 and len(O.all_in_input_order) != 0):
+      O.all_in_input_order[-1].trailing_comments = leading_comments
 
   def show_counts_by_type(O, out=None, prefix=""):
     if (out is None): out = sys.stdout
