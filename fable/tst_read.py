@@ -855,7 +855,7 @@ def exercise_build_units_by_name():
 Fortran unit name conflict:
   1. definition: program_unnamed (implied)
     before """)
-        assert str(e).endswith("implied_program.f(1)")
+        assert str(e).endswith("implied_program.f(2)")
     else: raise Exception_expected
 
 def exercise_eval_const_expression_simple(verbose):

@@ -140,35 +140,64 @@ class major_types_cache(object):
 
 major_types = major_types_cache()
 
+def produce_comment_given_sl(callback, sl):
+  if (sl.stmt_offs is None):
+    t = sl.text[1:]
+  elif (sl.index_of_exclamation_mark is not None):
+    t = sl.stmt[sl.index_of_exclamation_mark+1:]
+  else:
+    t = None
+  if (t is not None):
+    callback("//C%s" % t.expandtabs().rstrip())
+
+def produce_comment_given_ssl(callback, ssl):
+  if (ssl is None): return
+  for sl in ssl.source_line_cluster:
+    produce_comment_given_sl(callback=callback, sl=sl)
+  return
+
+def produce_comments(callback, ssl_list):
+  for ssl in ssl_list:
+    produce_comment_given_ssl(callback=callback, ssl=ssl)
+
+def flush_comments_if_non_trivial(callback, buffer):
+  for line in buffer:
+    if (line != "//C"):
+      for line in buffer:
+        callback(line)
+      return
+
+def produce_leading_comments(callback, unit):
+  buffer = []
+  produce_comments(callback=buffer.append, ssl_list=unit.leading_comments)
+  produce_comment_given_ssl(
+    callback=buffer.append, ssl=unit.top_ssl)
+  flush_comments_if_non_trivial(callback=callback, buffer=buffer)
+
+def produce_trailing_comments(callback, unit):
+  buffer = []
+  produce_comment_given_ssl(callback=buffer.append, ssl=unit.end_ssl)
+  produce_comments(
+    callback=buffer.append, ssl_list=unit.trailing_comments)
+  flush_comments_if_non_trivial(callback=callback, buffer=buffer)
+
 class comment_manager(object):
 
   __slots__ = ["sl_list", "index"]
 
   def __init__(O, unit):
     O.sl_list = []
-    def add(ssl):
+    for ssl in unit.body_lines:
       if (ssl is not None):
         for sl in ssl.source_line_cluster:
           O.sl_list.append(sl)
-    add(unit.top_ssl)
-    for ssl in unit.body_lines:
-      add(ssl)
-    add(unit.end_ssl)
     def cmp_sl(a, b):
       return cmp(a.global_line_index, b.global_line_index)
     O.sl_list.sort(cmp_sl)
     O.index = 0
 
   def produce(O, callback):
-    sl = O.sl_list[O.index]
-    if (sl.stmt_offs is None):
-      t = sl.text
-    elif (sl.index_of_exclamation_mark is not None):
-      t = sl.stmt[sl.index_of_exclamation_mark+1:]
-    else:
-      t = None
-    if (t is not None):
-      callback("//%s" % t.expandtabs().rstrip())
+    produce_comment_given_sl(callback=callback, sl=O.sl_list[O.index])
     O.index += 1
 
   def insert_before(O, executable_info, callback):
@@ -1949,6 +1978,8 @@ def convert_to_cpp_function(
   for callback in [hpp_callback, cpp_callback]:
     if (callback is None): continue
     callback("")
+    if (callback is cpp_callback):
+      produce_leading_comments(callback=callback, unit=conv_info.unit)
     callback(cdecl)
     if (callback is hpp_callback): last = ";"
     else:                          last = ""
@@ -1971,6 +2002,7 @@ def convert_to_cpp_function(
       conv_info=conv_info,
       args_fdecl_with_dim=args_fdecl_with_dim)
   cpp_callback("}")
+  produce_trailing_comments(callback=callback, unit=conv_info.unit)
 
 def convert_to_struct(
       callback,
@@ -2460,7 +2492,9 @@ def convert_program(callback, global_conv_info, namespace, debug):
     export_save_struct(callback=callback, conv_info=conv_info)
     cname = unit.name.value
     main_calls.append(cname)
-    callback("""
+    callback("")
+    produce_leading_comments(callback=callback, unit=unit)
+    callback("""\
 void
 %s(
   int argc,
@@ -2489,6 +2523,7 @@ void
       for line in result_buffer:
         callback(line)
       callback("}")
+    produce_trailing_comments(callback=callback, unit=unit)
   #
   ns = close_namespace(callback=callback, namespace=namespace, hpp_guard=False)
   #
