@@ -1,4 +1,5 @@
 
+import wxtbx.bitmaps
 from libtbx import sge_utils
 import libtbx.load_env
 from libtbx.utils import Sorry
@@ -15,7 +16,6 @@ job_labels = ["Job ID", "Status", "Name", "User", "Start time", "Queue"]
 status_codes = ["d", "E", "h", "r", "R", "s", "S", "t", "T", "w"]
 status_imgs = [3, 4, 0, 1, 0, 0, 0, 0, 0, 2]
 col_sizes = [wx.LIST_AUTOSIZE] * 4 + [200,200]
-icon_lib = os.path.join("phenix","wxGUI2","images","icons","crystal")
 
 class qsub_list_data (object) :
   def __init__ (self) :
@@ -81,16 +81,13 @@ class qsub_list_view (wx.ListCtrl) :
     self.RefreshAllItems()
 
   def SetupImages (self) :
-    icon_dir = libtbx.env.find_in_repositories(relative_path=icon_lib,
-      test=os.path.isdir)
-    if icon_dir is None :
+    if wxtbx.bitmaps.icon_lib is None :
       return
     il = wx.ImageList(16, 16, True)
     #il.Add(wx.EmptyBitmap(16,16)) #EmptyImage(16,16).ConvertToBitmap())
     for icon in ["blank", "run", "recur", "stop", "status_unknown"] :
-      icon_path = os.path.join(icon_dir, "16x16", "actions", icon + ".png")
-      img = wx.Image(icon_path, type=wx.BITMAP_TYPE_ANY, index=-1)
-      il.Add(img.ConvertToBitmap())
+      bmp = wxtbx.bitmaps.fetch_icon_bitmap("actions", icon, 16)
+      il.Add(bmp)
     self.AssignImageList(il, wx.IMAGE_LIST_SMALL)
 
   def OnGetItemImage (self, item) :
@@ -157,19 +154,16 @@ class queue_list_frame (wx.Frame) :
     self._timer.Start(10000)
 
   def SetupToolbar (self) :
-    icon_dir = libtbx.env.find_in_repositories(relative_path=icon_lib,
-      test=os.path.isdir)
-    if icon_dir is None :
+    if wxtbx.bitmaps.icon_lib is None :
       return
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
     commands = [
-      (["32x32","actions","reload.png"], "OnUpdate", "Refresh list"),
-      (["32x32","actions","editdelete.png"], "OnDelete", "Delete selected"),
+      ("actions","reload", "OnUpdate", "Refresh list"),
+      ("actions","editdelete", "OnDelete", "Delete selected"),
     ]
-    for (icon_paths, fname, label) in commands :
-      full_path = os.path.join(icon_dir, *icon_paths)
-      img = wx.Image(full_path, type=wx.BITMAP_TYPE_PNG, index=-1)
-      tool_button = self.toolbar.AddLabelTool(-1, label, img.ConvertToBitmap(),
+    for (icon_class, icon_name, fname, label) in commands :
+      bmp = wxtbx.bitmaps.fetch_icon_bitmap(icon_class, icon_name, 32)
+      tool_button = self.toolbar.AddLabelTool(-1, label, bmp,
         shortHelp=label, kind=wx.ITEM_NORMAL)
       self.Bind(wx.EVT_MENU, getattr(self, fname), tool_button)
     self.toolbar.Realize()

@@ -17,7 +17,8 @@ icon_lib = libtbx.env.find_in_repositories(
 def find_crystal_icon (icon_class, name, size=32) :
   if icon_lib is not None :
     size_dir = "%dx%d" % (size, size)
-    icon_path = os.path.join(icon_lib, size_dir, icon_class, name + ".png")
+    icon_path = os.path.join(icon_lib, "crystal_project", size_dir, icon_class,
+      name + ".png")
     if os.path.isfile(icon_path) :
       return icon_path
   return None
