@@ -16,11 +16,12 @@ def exercise(args):
   if socket.getdefaulttimeout() is None:
     socket.setdefaulttimeout(5)
   show_timings = "--show_timings" in args
+  exercise_url = "--exercise_url" in args
   if not cif.has_antlr3:
     print "Skipping tst_validation.py (antlr3 is not available)"
     return
   try:
-    exercise_smart_load(show_timings=show_timings)
+    exercise_smart_load(show_timings=show_timings, exercise_url=exercise_url)
   except URLError:
     print "Skipping tst_validation.exercise_smart_load() because of URLError."
   exercise_validation()
@@ -49,41 +50,44 @@ def exercise_validation():
   assert cd2.err.error_count == 12
   assert sorted(cd2.err.warnings.keys()) == [1001, 1002]
 
-def exercise_smart_load(show_timings=False):
+def exercise_smart_load(show_timings=False, exercise_url=False):
   from libtbx import easy_pickle, load_env
   from libtbx.utils import time_log
   import libtbx
   import os, shutil, tempfile
   name = ["cif_core.dic", "cif_mm.dic"][0]
   url = [cif_core_dic_url, cif_mm_dic_url][0]
-  tempdir = tempfile.mkdtemp()
-  store_dir = libtbx.env.under_dist(
-    module_name='iotbx', path='cif/dictionaries')
-  shutil.copy(os.path.join(store_dir, name) + '.gz', tempdir)
   # from gz
   gz_timer = time_log("from gz").start()
-  cd = validation.smart_load_dictionary(name=name, store_dir=tempdir)
+  cd = validation.smart_load_dictionary(name=name)
   gz_timer.stop()
-  # from url
-  url_timer = time_log("from url").start()
-  cd = validation.smart_load_dictionary(url=url, store_dir=tempdir)
-  url_timer.stop()
-  # from url to file
-  url_to_file_timer = time_log("url to file").start()
-  cd = validation.smart_load_dictionary(
-    url=url, save_local=True, store_dir=tempdir)
-  url_to_file_timer.stop()
-  # read local file
-  file_timer = time_log("from file").start()
-  cd = validation.smart_load_dictionary(file_path=os.path.join(tempdir, name))
-  file_timer.stop()
-  shutil.rmtree(tempdir)
+  if exercise_url:
+    tempdir = tempfile.mkdtemp()
+    store_dir = libtbx.env.under_dist(
+      module_name='iotbx', path='cif/dictionaries')
+    file_path = os.path.join(store_dir, name) + '.gz'
+    shutil.copy(os.path.join(store_dir, name) + '.gz', tempdir)
+    # from url
+    url_timer = time_log("from url").start()
+    cd = validation.smart_load_dictionary(url=url, store_dir=tempdir)
+    url_timer.stop()
+    # from url to file
+    url_to_file_timer = time_log("url to file").start()
+    cd = validation.smart_load_dictionary(
+      url=url, save_local=True, store_dir=tempdir)
+    url_to_file_timer.stop()
+    # read local file
+    file_timer = time_log("from file").start()
+    cd = validation.smart_load_dictionary(file_path=os.path.join(tempdir, name))
+    file_timer.stop()
+    shutil.rmtree(tempdir)
   if show_timings:
     print time_log.legend
     print gz_timer.report()
-    print url_timer.report()
-    print url_to_file_timer.report()
-    print file_timer.report()
+    if exercise_url:
+      print url_timer.report()
+      print url_to_file_timer.report()
+      print file_timer.report()
 
 cif_invalid = """data_1
 _made_up_name a                            # warning 1001
