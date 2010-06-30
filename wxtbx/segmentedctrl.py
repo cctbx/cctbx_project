@@ -8,6 +8,7 @@
 #   - test on Windows
 #   - additional styles?
 
+import wxtbx.bitmaps
 import wx
 import sys, os
 
@@ -450,16 +451,11 @@ if __name__ == "__main__" :
     frame.Bind(wx.EVT_TOGGLEBUTTON, OnToggle, btn3)
     v_sizer.Add(wx.StaticText(panel, -1, "Toggle buttons"), 0, wx.ALL, 5)
     v_sizer.Add(btn3, 0, wx.ALL, 5)
-    if "CRYSTAL_ICONS" in os.environ :
-      icon_dir = os.environ['CRYSTAL_ICONS']
-      img1 = os.path.join(icon_dir, "16x16", "actions", "1leftarrow.png")
-      bmp1 = wx.Image(img1, type=wx.BITMAP_TYPE_ANY).ConvertToBitmap()
-      img2 = os.path.join(icon_dir, "16x16", "actions", "gohome.png")
-      bmp2 = wx.Image(img2, type=wx.BITMAP_TYPE_ANY).ConvertToBitmap()
-      img3 = os.path.join(icon_dir, "16x16", "actions", "viewmag.png")
-      bmp3 = wx.Image(img3, type=wx.BITMAP_TYPE_ANY).ConvertToBitmap()
-      img4 = os.path.join(icon_dir, "16x16", "actions", "1rightarrow.png")
-      bmp4 = wx.Image(img4, type=wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+    if wxtbx.bitmaps.icon_lib is not None :
+      bmp1 = wxtbx.bitmaps.fetch_icon_bitmap("actions", "1leftarrow", 16)
+      bmp2 = wxtbx.bitmaps.fetch_icon_bitmap("actions", "gohome", 16)
+      bmp3 = wxtbx.bitmaps.fetch_icon_bitmap("actions", "viewmag", 16)
+      bmp4 = wxtbx.bitmaps.fetch_icon_bitmap("actions", "1rightarrow", 16)
       btn4 = SegmentedButtonControl(panel)
       btn4.AddSegment(bitmap=bmp1)
       btn4.AddSegment(bitmap=bmp2)
