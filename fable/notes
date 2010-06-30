@@ -1,8 +1,7 @@
-line breaks
-
+replace tab in string literals with \t
+read/write format re-write
 str<>::operator char*() possible? (certain constructors will have to be removed)
 cout: raise exception at very end if other exceptions caught
-replace tab in string literals with \t
 read, write: operator, destructors: copy inp, copy back on success
 distinction: write(i, *) with i not a stdout or stderr?
 g-format, e-format
