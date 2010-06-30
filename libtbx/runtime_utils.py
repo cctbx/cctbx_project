@@ -85,6 +85,9 @@ class detached_base (object) :
   def isAlive (self) :
     return False
 
+  def callback_start (self, data) :
+    pass
+
   def callback_stdout (self, data) :
     pass
 
@@ -118,9 +121,7 @@ class detached_process_server (detached_base) :
     detached_base.__init__(self, *args, **kwds)
     self.target = easy_pickle.load(self.params.run_file)
     assert hasattr(self.target, "__call__")
-    f = open(self.start_file, "w", 0)
-    f.write("1")
-    f.close()
+    self.callback_start()
     self._stdout = multi_out()
     if self.params.log_file is not None :
       log = open(self.params.log_file, "w")
@@ -153,6 +154,11 @@ class detached_process_server (detached_base) :
         data=data,
         accumulate=accumulate,
         cached=cached))
+
+  def callback_start (self, data=None) :
+    f = open(self.start_file, "w", 0)
+    f.write("%s %d" % (os.uname()[1], os.getpid()))
+    f.close()
 
   def callback_stdout (self, data) :
     self._stdout.write(data)
@@ -219,6 +225,8 @@ class detached_process_client (detached_base) :
   def update (self) :
     if not self.running and os.path.exists(self.start_file) :
       self.running = True
+      data = open(self.start_file, "r").read()
+      self.callback_start(data)
     if self.update_progress :
       self.check_stdout()
       self.check_status()
