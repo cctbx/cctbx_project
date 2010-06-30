@@ -21,14 +21,13 @@ def exercise_simple(verbose):
       print "exercise_simple:", file_name
     file_names = [op.join(t_dir, file_name)]
     common_report_stringio = StringIO()
-    lines = cout.process(
+    return cout.process(
       file_names=file_names,
       top_unit_name=top_unit_name,
       data_specializations=data_specializations,
       fem_do_safe=False,
       arr_nd_size_max=arr_nd_size_max,
       common_report_stringio=common_report_stringio)
-    return "\n".join(lines).splitlines()
   #
   assert not show_diff(get("add_reals.f"), """\
 #include <fem.hpp> // Fortran EMulation library of fable module
@@ -2846,8 +2845,7 @@ def exercise_unsupported(verbose):
   def get(file_name):
     if (verbose):
       print "exercise_unsupported:", file_name
-    return "\n".join(
-      cout.process(file_names=[op.join(t_dir, file_name)])).splitlines()
+    return cout.process(file_names=[op.join(t_dir, file_name)])
   #
   assert not absd(get("goto_into_loop.f"), tail_off(1), """\
   int i = fem::int0;
@@ -2865,11 +2863,10 @@ def exercise_dynamic_parameters(verbose):
     if (verbose):
       print "exercise_dynamic_parameter:", file_name
     file_names = [op.join(t_dir, file_name)]
-    lines = cout.process(
+    return cout.process(
       file_names=file_names,
       top_unit_name="prog",
       dynamic_parameters=dynamic_parameters)
-    return "\n".join(lines).splitlines()
   #
   lines = get("dynamic_parameters_1.f", [
     cout.dynamic_parameter_props(
@@ -3008,7 +3005,7 @@ def exercise_common_equivalence_simple(verbose):
       assert not show_diff(
         common_report_stringio.getvalue(),
         expected_common_report)
-    return "\n".join(lines).splitlines()
+    return lines
   #
   for i in [1,2]:
     lines = get("common_equivalence_simple_%d.f" % i, "info")
