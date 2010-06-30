@@ -86,6 +86,7 @@ class qsub_list_view (wx.ListCtrl) :
     if icon_dir is None :
       return
     il = wx.ImageList(16, 16, True)
+    #il.Add(wx.EmptyBitmap(16,16)) #EmptyImage(16,16).ConvertToBitmap())
     for icon in ["blank", "run", "recur", "stop", "status_unknown"] :
       icon_path = os.path.join(icon_dir, "16x16", "actions", icon + ".png")
       img = wx.Image(icon_path, type=wx.BITMAP_TYPE_ANY, index=-1)
