@@ -93,16 +93,13 @@ def smart_load_dictionary(name=None, file_path=None, url=None,
             f.close()
           else:
             file_path = gzip_path
-    if url is None:
-      try:
-        url = locate_dictionary(name, registry_location=registry_location)
-      except URLError:
-        pass
   if file_path is not None and os.path.isfile(file_path):
     file_object = smart_open.for_reading(file_path)
     cif_dic = dictionary(cif.fast_reader(file_object=file_object).model())
     file_object.close()
-  elif url is not None:
+  else:
+    if url is None:
+      url = locate_dictionary(name, registry_location=registry_location)
     file_object = urlopen(url)
     if save_local:
       if name is None:
