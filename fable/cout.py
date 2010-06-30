@@ -4,10 +4,81 @@ from libtbx import group_args
 from libtbx import Auto
 import os.path as op
 
+def break_line_if_necessary(callback, line, max_len=80, min_len=70):
+  nc = len(line)
+  if (nc <= max_len):
+    callback(line)
+    return
+  for i_start in xrange(nc):
+    if (line[i_start] != " "):
+      break
+  else:
+    raise RuntimeError
+  if (line.startswith("//", i_start)):
+    callback(line)
+    return
+  potential_break_points = []
+  ic = i_start
+  while (ic < nc):
+    c = line[ic]
+    if ("\"'".find(c) >= 0):
+      q = c
+      ic_q = ic
+      ic += 1
+      while (ic < nc):
+        prev_c = c
+        c = line[ic]
+        ic += 1
+        if (c == q and prev_c != "\\"):
+          break
+      else:
+        raise RuntimeError
+    elif (c == "("):
+      ic += 1
+      potential_break_points.append((0, ic))
+    elif (line.startswith(", ", ic)):
+      ic += 2
+      potential_break_points.append((1, ic))
+    elif (line.startswith("//", ic)):
+      break
+    else:
+      ic += 1
+  potential_break_points.append((0, nc))
+  n = nc - i_start
+  from libtbx.math_utils import iround, iceil
+  l = max(min_len, iround(n / iceil(n / (max_len - i_start - 2))))
+  b = 0
+  f = 0
+  pprio = 0
+  pp = 0
+  for ip in xrange(len(potential_break_points)):
+    prio,p = potential_break_points[ip]
+    def following_point_is_better():
+      for jp in xrange(ip,len(potential_break_points)):
+        prio,p = potential_break_points[jp]
+        if (prio == 1 and p-b+f <= max_len):
+          return True
+      return False
+    if (    p-b+f > l
+        and b != pp
+        and (pprio == 1 or not following_point_is_better())):
+      s = line[b:pp].rstrip()
+      if (f == 0):
+        callback(s)
+        f = i_start + 2
+      else:
+        callback(" "*f + s)
+      b = pp
+    pprio = prio
+    pp = p
+  if (b < nc):
+    callback(" "*f + line[b:])
+
 def break_lines(cpp_text):
   result = []
+  callback = result.append
   for line in "\n".join(cpp_text).splitlines():
-    result.append(line)
+    break_line_if_necessary(callback=callback, line=line)
   return result
 
 class dynamic_parameter_props(object):
@@ -2587,12 +2658,11 @@ def process(
   for unit in all_units.all_in_input_order:
     unit.ignore_common_and_save = (unit.name.value in ignore_common_and_save)
   result = []
-  if (debug):
-    def callback(line):
-      print line
-      result.append(line)
-  else:
-    callback = result.append
+  def callback(line):
+    lines = break_lines(cpp_text=[line+"\n"])
+    if (debug):
+      print "\n".join(lines)
+    result.extend(lines)
   #
   need_function_hpp = False
   if (len(separate_files_main_namespace) != 0):
@@ -2880,7 +2950,6 @@ def process(
     if (not debug): raise
     show_traceback()
   #
-  result = break_lines(cpp_text=result)
   if (top_cpp_file_name is not None):
     print >> open(top_cpp_file_name, "w"), "\n".join(result)
   #

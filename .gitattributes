@@ -519,6 +519,7 @@ fable/test/valid/intrinsics_extra.f -text
 fable/test/valid/label_format.f -text
 fable/test/valid/logical_a_or_b.f -text
 fable/test/valid/logical_ops.f -text
+fable/test/valid/long_lines.f -text
 fable/test/valid/main_cmn_indirect.f -text
 fable/test/valid/mod_integers.f -text
 fable/test/valid/open_chain.f -text

@@ -1013,7 +1013,8 @@ fun(
   #
   assert not absd(get("label_format.f"), tail_off(1), """\
   int num = 102;
-  write(6, "(2(i4,1x,2i5,/,'_^'))"), num, num + 1, num + 2, num + 3, num + 4, num + 5;
+  write(6, "(2(i4,1x,2i5,/,'_^'))"), num, num + 1, num + 2, num + 3,
+    num + 4, num + 5;
 """)
   #
   assert not absd(get("write_internal_file.f"), tail_off(1), """\
@@ -2761,6 +2762,34 @@ program_prog(
 }
 //C  c26
 //C27
+""")
+  #
+  lines = get("long_lines.f")
+  assert not absd(lines, tail_off(1), """\
+  write(6, star), numbers(1), numbers(2), numbers(3), numbers(4),
+    numbers(5), numbers(6), numbers(7), numbers(8);
+  write(6, star), numbers(1), numbers(2), numbers(3), numbers(4),
+    numbers(5), numbers(6), numbers(7), numbers(8), numbers(9),
+    numbers(10);
+  write(6, star), numbers(1), numbers(2), numbers(3), numbers(4),
+    numbers(5), numbers(6), numbers(7), numbers(8), numbers(9),
+    numbers(10), numbers(11), numbers(12);
+  write(6, star), numbers(1), numbers(2), numbers(3), numbers(4),
+    numbers(5), numbers(6), numbers(7), numbers(8), numbers(9),
+    numbers(10), numbers(11), numbers(12), numbers(13), numbers(14);
+  write(6, star), numbers(1), numbers(2), numbers(3), numbers(4),
+    numbers(5), numbers(6), numbers(7), numbers(8), numbers(9),
+    numbers(10), numbers(11), numbers(12), numbers(13), numbers(14),
+    numbers(15), numbers(16);
+  write(6, star), numbers(1), numbers(2), numbers(3), numbers(4),
+    numbers(5), numbers(6), numbers(7), numbers(8), numbers(9),
+    numbers(10), numbers(11), numbers(12), numbers(13), numbers(14),
+    numbers(15), numbers(16), numbers(17), numbers(18);
+  write(6, star), numbers(1), numbers(2), numbers(3), numbers(4),
+    numbers(5), numbers(6), numbers(7), numbers(8), numbers(9),
+    numbers(10), numbers(11), numbers(12), numbers(13), numbers(14),
+    numbers(15), numbers(16), numbers(17), numbers(18), numbers(19),
+    numbers(20);
 """)
 
 def exercise_syntax_error(verbose):
