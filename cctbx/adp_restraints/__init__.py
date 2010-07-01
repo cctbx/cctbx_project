@@ -203,18 +203,25 @@ class _adp_similarity(boost.python.injector, adp_similarity):
 
   def _show_sorted_item(self, f, prefix):
     adp_labels = ("U11","U22","U33","U12","U13","U23")
+    deltas = self.deltas()
+    if self.use_u_aniso == (False, False):
+      adp_labels = ["Uiso"]
+      deltas = deltas[:1]
     print >> f, \
-      "%s         delta    sigma   weight rms_deltas residual" % (prefix)
+      "%s          delta    sigma   weight" %(prefix),
+    if len(adp_labels) == 1:
+      print >> f, "residual"
+    else: print >> f, "rms_deltas residual"
     rdr = None
-    for adp_label,delta in zip(adp_labels, self.deltas()):
+    for adp_label,delta in zip(adp_labels, deltas):
       if (rdr is None):
-        rdr = "   %6.2e %6.2e" % (self.rms_deltas(), self.residual())
-        rdr_spacer = ""
-        rdr_spacer = " "*13
-      print >> f, "%s %s %9.2e %6.2e %6.2e%s" % (
+        if len(adp_labels) == 1:
+          rdr = " %6.2e" %self.residual()
+        else:
+          rdr = "   %6.2e %6.2e" % (self.rms_deltas(), self.residual())
+      print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
         prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
       rdr = ""
-      rdr_spacer = " "*13
 
 class _shared_adp_similarity_proxy(
   boost.python.injector, shared_adp_similarity_proxy):
@@ -255,12 +262,9 @@ class _isotropic_adp(boost.python.injector, isotropic_adp):
     for adp_label,delta in zip(adp_labels, self.deltas()):
       if (rdr is None):
         rdr = "   %6.2e %6.2e" % (self.rms_deltas(), self.residual())
-        rdr_spacer = ""
-        rdr_spacer = " "*13
       print >> f, "%s %s %9.2e %6.2e %6.2e%s" % (
         prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
       rdr = ""
-      rdr_spacer = " "*13
 
 class _shared_isotropic_adp_proxy(
   boost.python.injector, shared_isotropic_adp_proxy):
