@@ -136,13 +136,13 @@ ADP similarity restraints: 24
 Sorted by residual:
 scatterers O3
            C3
-         delta    sigma   weight rms_deltas residual
- U11  1.70e-02 8.00e-02 1.56e+02   1.61e-02 3.65e-01
- U22  2.94e-03 8.00e-02 1.56e+02
- U33  4.24e-02 8.00e-02 1.56e+02
- U12 -6.75e-03 8.00e-02 1.56e+02
- U13  6.37e-03 8.00e-02 1.56e+02
- U23 -5.96e-03 8.00e-02 1.56e+02
+          delta    sigma   weight rms_deltas residual
+ U11   1.70e-02 8.00e-02 1.56e+02   1.61e-02 3.65e-01
+ U22   2.94e-03 8.00e-02 1.56e+02
+ U33   4.24e-02 8.00e-02 1.56e+02
+ U12  -6.75e-03 8.00e-02 1.56e+02
+ U13   6.37e-03 8.00e-02 1.56e+02
+ U23  -5.96e-03 8.00e-02 1.56e+02
 ... (remaining 23 not shown)
 
 Rigid bond restraints: 60

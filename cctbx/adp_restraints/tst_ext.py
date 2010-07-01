@@ -467,53 +467,43 @@ ADP similarity restraints: 0
 :Sorted by residual:
 :scatterers 0
 :           1
-:         delta    sigma   weight rms_deltas residual
-: U11 -3.20e-03 2.00e-01 2.50e+01   4.96e-03 5.54e-03
-: U22  9.70e-03 2.00e-01 2.50e+01
-: U33  2.80e-03 2.00e-01 2.50e+01
-: U12  3.00e-03 2.00e-01 2.50e+01
-: U13 -4.20e-03 2.00e-01 2.50e+01
-: U23 -5.30e-03 2.00e-01 2.50e+01
+:          delta    sigma   weight rms_deltas residual
+: U11  -3.20e-03 2.00e-01 2.50e+01   4.96e-03 5.54e-03
+: U22   9.70e-03 2.00e-01 2.50e+01
+: U33   2.80e-03 2.00e-01 2.50e+01
+: U12   3.00e-03 2.00e-01 2.50e+01
+: U13  -4.20e-03 2.00e-01 2.50e+01
+: U23  -5.30e-03 2.00e-01 2.50e+01
 :scatterers 2
 :           3
-:         delta    sigma   weight rms_deltas residual
-: U11  1.36e-02 1.83e+00 3.00e-01   6.15e-03 1.02e-04
-: U22  4.90e-03 1.83e+00 3.00e-01
-: U33  1.20e-03 1.83e+00 3.00e-01
-: U12 -7.00e-04 1.83e+00 3.00e-01
-: U13 -7.00e-04 1.83e+00 3.00e-01
-: U23 -8.00e-03 1.83e+00 3.00e-01
+:          delta    sigma   weight rms_deltas residual
+: U11   1.36e-02 1.83e+00 3.00e-01   6.15e-03 1.02e-04
+: U22   4.90e-03 1.83e+00 3.00e-01
+: U33   1.20e-03 1.83e+00 3.00e-01
+: U12  -7.00e-04 1.83e+00 3.00e-01
+: U13  -7.00e-04 1.83e+00 3.00e-01
+: U23  -8.00e-03 1.83e+00 3.00e-01
 """)
   sio = StringIO()
   proxies.show_sorted(
     by_value="rms_deltas",
     site_labels=site_labels,
     u_cart=u_cart,
-    u_iso=u_iso,
-    use_u_aniso=use_u_aniso,
+    u_iso=flex.double((0.024,0.031,0.021,0.028)),
+    use_u_aniso=flex.bool((False,False,False,False)),
     f=sio,
     prefix="=")
   assert not show_diff(sio.getvalue(), """\
 =ADP similarity restraints: 2
 =Sorted by rms_deltas:
-=scatterers O16
-=           N8
-=         delta    sigma   weight rms_deltas residual
-= U11  1.36e-02 1.83e+00 3.00e-01   6.15e-03 1.02e-04
-= U22  4.90e-03 1.83e+00 3.00e-01
-= U33  1.20e-03 1.83e+00 3.00e-01
-= U12 -7.00e-04 1.83e+00 3.00e-01
-= U13 -7.00e-04 1.83e+00 3.00e-01
-= U23 -8.00e-03 1.83e+00 3.00e-01
 =scatterers C1
 =           C2
-=         delta    sigma   weight rms_deltas residual
-= U11 -3.20e-03 2.00e-01 2.50e+01   4.96e-03 5.54e-03
-= U22  9.70e-03 2.00e-01 2.50e+01
-= U33  2.80e-03 2.00e-01 2.50e+01
-= U12  3.00e-03 2.00e-01 2.50e+01
-= U13 -4.20e-03 2.00e-01 2.50e+01
-= U23 -5.30e-03 2.00e-01 2.50e+01
+=          delta    sigma   weight residual
+= Uiso -7.00e-03 2.00e-01 2.50e+01 1.22e-03
+=scatterers O16
+=           N8
+=          delta    sigma   weight residual
+= Uiso -7.00e-03 1.83e+00 3.00e-01 1.47e-05
 """)
   #
   proxies = adp_restraints.shared_isotropic_adp_proxy()
