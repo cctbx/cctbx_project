@@ -797,6 +797,7 @@ def fmt_tokens_as_string(tokens):
         if (result_ends_with_comma()):
           result.pop()
         result.append(tv)
+        if (tv == ")"): result.append(",")
       else:
         result.append(tv)
         result.append(",")

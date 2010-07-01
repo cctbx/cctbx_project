@@ -945,7 +945,7 @@ class ei_print(executable_info):
     pass # TODO
 
 class ei_read(executable_info):
-  __slots__ = mksl("cilist", "iolist")
+  __slots__ = mksl("cilist", "iolist", "fmt_tokens")
 
   def search_for_id_tokens(O, callback):
     if (O.cilist is not None):
@@ -974,7 +974,7 @@ class ei_stop(executable_info):
     pass
 
 class ei_write(executable_info):
-  __slots__ = mksl("cilist", "iolist")
+  __slots__ = mksl("cilist", "iolist", "fmt_tokens")
 
   def search_for_id_tokens(O, callback):
     O.s4it_slots(callback, O.cilist)
@@ -1446,8 +1446,11 @@ class unit_p_methods(object):
     if (cilist.unit is None):
       ssl.raise_semantic_error(
         msg="Required UNIT information is not defined", i=start)
+    fmt_tokens = None
     if (cilist.fmt is not None):
-      check_fmt(fmt=cilist.fmt)
+      if (len(cilist.fmt) == 1 and cilist.fmt[0].is_string()):
+        fmt_tokens = list(tokenization.fss_iterator(
+          fss=fmt_string_stripped(fmt_tok=cilist.fmt[0])))
     if (ei_type is ei_write and cilist.end is not None):
       cilist.end[0].raise_semantic_error(
         msg="END is invalid for WRITE statements")
@@ -1461,7 +1464,7 @@ class unit_p_methods(object):
         enable_implied_do=1)
       iolist = tokenization.remove_redundant_parentheses(tokens=iolist)
     O.executable.append(ei_type(ssl=ssl, start=start,
-      cilist=cilist, iolist=iolist))
+      cilist=cilist, iolist=iolist, fmt_tokens=fmt_tokens))
     O.uses_io = True
 
   def p_read(O, ssl, start):
@@ -1626,12 +1629,6 @@ class collect_io_alist(object):
       O.unit = unit
       O.iostat = None
       O.err = None
-
-def check_fmt(fmt):
-  if (len(fmt) == 1 and fmt[0].is_string()):
-    fss = fmt_string_stripped(fmt_tok=fmt[0])
-    for tok in tokenization.fss_iterator(fss=fss):
-      pass # XXX
 
 class unit(unit_p_methods):
 
