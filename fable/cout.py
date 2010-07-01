@@ -1752,14 +1752,17 @@ def convert_executable(
         assert cilist.unit is not None
         cunit = convert_tokens(conv_info=conv_info, tokens=cilist.unit)
         def conv_fmt():
+          if (ei.fmt_tokens is not None):
+            return '"(' + escape_string_literal(
+              fmt_tokens_as_string(tokens=ei.fmt_tokens)) + ')"'
           tl = cilist.fmt
-          if (tl is None): return None
-          if (len(tl) != 1): return None
+          if (tl is None):
+            return None
+          if (len(tl) != 1):
+            tl[0].raise_not_supported()
           tok = tl[0]
-          if (tok.is_op() and tok.value == "*"):
+          if (tok.is_op_with(value="*")):
             return "star"
-          if (tok.is_string()):
-            return '"' + escape_string_literal(tok.value) + '"'
           if (tok.is_integer()):
             fmt_tokens = conv_info.unit.format.get(tok.value)
             if (fmt_tokens is None):
@@ -1767,7 +1770,7 @@ def convert_executable(
                 "Unknown FORMAT statement label: %s" % tok.value)
             return '"(' + escape_string_literal(
               fmt_tokens_as_string(tokens=fmt_tokens)) + ')"'
-          return None
+          tok.raise_not_supported()
         cfmt = conv_fmt()
         cchain = []
         for slot in ["rec", "iostat"]:
