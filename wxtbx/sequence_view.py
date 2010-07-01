@@ -594,7 +594,7 @@ residue(s).  Holding down shift enables multiple selections."""
     if idx is not None :
       (helix_start, helix_end) = self.get_region_by_id('H', idx)
       if not idx in self.selected_helices :
-        print "helix %d" % idx
+        #print "helix %d" % idx
         self.selected_helices.append(idx)
         self.select_chars(helix_start, helix_end)
       else :
@@ -608,7 +608,7 @@ residue(s).  Holding down shift enables multiple selections."""
     if idx is not None :
       (strand_start, strand_end) = self.get_region_by_id('S', idx)
       if not idx in self.selected_strands :
-        print "strand %d" % idx
+        #print "strand %d" % idx
         self.selected_strands.append(idx)
         self.select_chars(strand_start, strand_end)
       else :
@@ -622,7 +622,7 @@ residue(s).  Holding down shift enables multiple selections."""
     if idx is not None :
       (linker_start, linker_end) = self.get_region_by_id('L', idx)
       if not idx in self.selected_linkers :
-        print "linker %d" % idx
+        #print "linker %d" % idx
         self.selected_linkers.append(idx)
         self.select_chars(linker_start, linker_end)
       else :
@@ -638,7 +638,7 @@ residue(s).  Holding down shift enables multiple selections."""
     if idx is not None :
       (region_start, region_end) = self.get_region_by_id('X', idx)
       if not idx in self.selected_missing :
-        print "missing segment %d" % idx
+        #print "missing segment %d" % idx
         self.selected_missing.append(idx)
         self.select_chars(region_start, region_end)
       else :
