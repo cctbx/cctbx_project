@@ -19,6 +19,7 @@ def run_signal_strength(params):
   #ad hoc; transfer spot area from one phil object to another.
   #  Later, figure out how to include rather than copy
   procedure_preferences.phil.distl.minimum_spot_area = params.distl.minimum_spot_area
+  procedure_preferences.phil.distl.minimum_signal_height = params.distl.minimum_signal_height
   procedure_preferences.phil.distl_force_binning = False
   procedure_preferences.phil.distl_permit_binning = False
   procedure_preferences.override_pickled_spotfinders = 0

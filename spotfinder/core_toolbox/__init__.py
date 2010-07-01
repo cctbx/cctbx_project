@@ -23,6 +23,8 @@ class Distl(w_Distl):
     if params!=None:
         if params.distl.minimum_spot_area != None:
           self.set_minimum_spot_area(params.distl.minimum_spot_area)
+        if params.distl.minimum_signal_height != None:
+          self.set_minimum_signal_height(params.distl.minimum_signal_height)
     self.get_underload()
     self.pxlclassify()
     self.search_icerings()

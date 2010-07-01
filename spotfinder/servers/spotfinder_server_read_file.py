@@ -151,7 +151,7 @@ class image_request_handler(BaseHTTPRequestHandler):
   def opt_logging(self):
     pass
 
-def common_parameters(outer_resolution,minimum_spot_area):
+def common_parameters(outer_resolution,minimum_spot_area,minimum_signal_height):
     from labelit.preferences import procedure_preferences
     if outer_resolution != None:
       procedure_preferences.distl_aggressive["force_outer_resolution"] = outer_resolution
@@ -161,23 +161,28 @@ def common_parameters(outer_resolution,minimum_spot_area):
     procedure_preferences.distl_keep_Zdata = False
     if minimum_spot_area != None:
       procedure_preferences.phil.distl.minimum_spot_area = minimum_spot_area
+    if minimum_signal_height != None:
+      procedure_preferences.phil.distl.minimum_signal_height = minimum_signal_height
 
 
 if __name__=="__main__":
   import sys
   outer_resolution = None
   minimum_spot_area = None
+  minimum_signal_height = None
   try:
     port = int(sys.argv[1])
     if len(sys.argv)>2:
       outer_resolution = float(sys.argv[2])
     if len(sys.argv)>3:
       minimum_spot_area = int(sys.argv[3])
+    if len(sys.argv)>4:
+      minimum_signal_height = float(sys.argv[4])
   except:
     print """
-Usage:  libtbx.python spotfinder_server_read_file.py <port number> [<outer resolution> [<minimum spot area.]]
+Usage:  libtbx.python spotfinder_server_read_file.py <port number> [<outer resolution> [<minimum spot area [<minimum signal height>]]]
 """
-  common_parameters(outer_resolution,minimum_spot_area)
+  common_parameters(outer_resolution,minimum_spot_area,minimum_signal_height)
 
   server_address = ('', port)
 
