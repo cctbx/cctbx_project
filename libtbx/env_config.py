@@ -1480,22 +1480,27 @@ class module:
           print "*"*len(msg)
         return
     target_file = None
-    if (read_size != 0):
-      pattern = "LIBTBX_SET_DISPATCHER_NAME"
-      i = source_text.find(pattern)
-      if (i >= 0):
-        i += len(pattern)
-        flds = source_text[i:].split(None, 1)
-        if (len(flds) != 0 and len(flds[0]) != 0):
-          target_file = flds[0]
+    pattern = "LIBTBX_SET_DISPATCHER_NAME"
+    if (read_size > len(pattern)):
+      for line in source_text.splitlines():
+        i = line.find(pattern)
+        if (i >= 0):
+          i += len(pattern)
+          flds = line[i:].split(None, 1)
+          if (len(flds) != 0):
+            target_file = flds[0]
+            if (len(target_file) != 0):
+              self.env._write_dispatcher_in_bin(
+                source_file=source_file,
+                target_file=target_file)
     if (target_file is None):
       target_file = self.name + target_file_name_infix
       if (not file_name_lower.startswith("main.")
            or file_name_lower.count(".") != 1):
         target_file += "." + os.path.splitext(file_name)[0]
-    self.env._write_dispatcher_in_bin(
-      source_file=source_file,
-      target_file=target_file)
+      self.env._write_dispatcher_in_bin(
+        source_file=source_file,
+        target_file=target_file)
 
   def command_line_directory_paths(self):
     result = []
