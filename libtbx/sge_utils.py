@@ -153,6 +153,25 @@ def qstat_parse():
       ja_task_id=line[i_ja_task_id:].strip()))
   return result
 
+def qsub (file_name, qsub_args) :
+  from libtbx import easy_run
+  cmd = "qsub -b y %s %s" % (qsub_args, file_name)
+  qsub_out = easy_run.fully_buffered(
+    command=cmd).raise_if_errors().stdout_lines
+  job_id = None
+  for line in qsub_out :
+    if line.startswith("Your job") :
+      job_id = int(line.split()[2])
+      break
+  return job_id
+
+def qdel (job_id) :
+  from libtbx import easy_run
+  qdel_out = easy_run.fully_buffered(
+    command="qdel %d" % job_id).raise_if_errors().stdout_lines
+  print "\n".join(qdel_out)
+  return True
+
 if (__name__ == "__main__"):
   info().show(prefix="*** ", even_if_none=True)
   print "OK"

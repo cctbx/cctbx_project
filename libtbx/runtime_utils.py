@@ -7,11 +7,12 @@
 #   easy_run.call("libtbx.start_process run.pkl &")
 
 import libtbx.phil
+import libtbx.load_env
 from libtbx.utils import Sorry, Abort, multi_out
 from libtbx import easy_pickle
 from libtbx import adopt_init_args, group_args
 import traceback
-import sys, os, time
+import sys, os, stat, time
 import cStringIO
 
 process_master_phil = libtbx.phil.parse("""
@@ -30,6 +31,8 @@ debug = False
 timeout = 200
   .type = int
 buffer_stdout = False
+  .type = bool
+fsync = True
   .type = bool
 """)
 
@@ -156,14 +159,15 @@ class detached_process_server (detached_base) :
         cached=cached))
 
   def callback_start (self, data=None) :
-    f = open(self.start_file, "w", 0)
+    f = open(self.start_file, "w")
     f.write("%s %d" % (os.uname()[1], os.getpid()))
     f.close()
 
   def callback_stdout (self, data) :
     self._stdout.write(data)
     self._stdout.flush()
-    os.fsync(self._tmp_stdout.fileno())
+    if self.params.fsync :
+      os.fsync(self._tmp_stdout.fileno())
     if os.path.isfile(self.stop_file) :
       raise Abort()
 
@@ -243,8 +247,7 @@ class detached_process_client (detached_base) :
       try :
         result = easy_pickle.load(self.result_file)
       except EOFError :
-        print "nooooo"
-        pass
+        print "EOFError trying to load result file!"
       else :
         time.sleep(1)
         self.check_stdout()
@@ -315,6 +318,22 @@ def write_params (params, file_name) :
   param_phil = process_master_phil.format(python_object=params)
   f = open(file_name, "w")
   param_phil.show(out=f)
+  f.close()
+
+def write_run_script (file_name, cmds) :
+  f = open(file_name, "w")
+  os.fchmod(f.fileno(),
+    stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IROTH)
+  f.write("#!/bin/sh\n\n")
+  use_cctbx_setpaths = True
+  if "PHENIX" in os.environ :
+    env_file = os.path.join(os.environ["PHENIX"], "phenix_env.sh")
+    if os.path.isfile(env_file) :
+      f.write("source %s\n" % env_file)
+      use_cctbx_setpaths = False
+  if use_cctbx_setpaths :
+    f.write("source %s\n" % libtbx.env.under_build("setpaths.sh"))
+  f.write("%s" % " ".join(cmds))
   f.close()
 
 # XXX command-line launcher
