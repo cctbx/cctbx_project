@@ -66,6 +66,11 @@ public:
     finder.spotarealowcut = A;
     finder.spotbasesize = A;}
 
+  inline void set_minimum_signal_height(const double& A){
+    finder.bgupperint[0] = A;
+    finder.bgupperint[1] = A;
+    finder.bgupperint[2] = A;}
+
   inline void pxlclassify(){ finder.pxlclassify(); }
 
   inline void search_icerings(){ finder.search_icerings(); }
