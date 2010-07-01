@@ -2,9 +2,12 @@ import sys
 
 if (sys.version_info[:2] == (2,3)):
   MutableSet = None
+  OrderedDict = None
 else:
   import collections
   MutableSet = getattr(collections, "MutableSet", None)
+  OrderedDict = getattr(collections, "OrderedDict", None)
+
 if (MutableSet is None):
   class MutableSet(set):
 
@@ -156,130 +159,130 @@ class OrderedSet(MutableSet):
       result.add(deepcopy(elt, memo))
     return result
 
+if OrderedDict is None:
+  from UserDict import DictMixin
+  class OrderedDict(dict, DictMixin):
+    """
+    An equivalent recipe for the OrderedDict class introduced in Python 2.7
+    from ActiveState:
+    http://code.activestate.com/recipes/576693/
+    With minor modifications for Python 2.3 compatibility.
+    """
 
-from UserDict import DictMixin
-class OrderedDict(dict, DictMixin):
-  """
-  An equivalent recipe for the OrderedDict class introduced in Python 2.7
-  from ActiveState:
-  http://code.activestate.com/recipes/576693/
-  With minor modifications for Python 2.3 compatibility.
-  """
+    def __init__(self, *args, **kwds):
+      if len(args) > 1:
+        raise TypeError('expected at most 1 arguments, got %d' % len(args))
+      try:
+        self.__end
+      except AttributeError:
+        self.clear()
+      self.update(*args, **kwds)
 
-  def __init__(self, *args, **kwds):
-    if len(args) > 1:
-      raise TypeError('expected at most 1 arguments, got %d' % len(args))
-    try:
-      self.__end
-    except AttributeError:
-      self.clear()
-    self.update(*args, **kwds)
+    def clear(self):
+      self.__end = end = []
+      end += [None, end, end]         # sentinel node for doubly linked list
+      self.__map = {}                 # key --> [key, prev, next]
+      dict.clear(self)
 
-  def clear(self):
-    self.__end = end = []
-    end += [None, end, end]         # sentinel node for doubly linked list
-    self.__map = {}                 # key --> [key, prev, next]
-    dict.clear(self)
+    def __setitem__(self, key, value):
+      if key not in self:
+        end = self.__end
+        curr = end[1]
+        curr[2] = end[1] = self.__map[key] = [key, curr, end]
+      dict.__setitem__(self, key, value)
 
-  def __setitem__(self, key, value):
-    if key not in self:
+    def __delitem__(self, key):
+      dict.__delitem__(self, key)
+      key, prev, next = self.__map.pop(key)
+      prev[2] = next
+      next[1] = prev
+
+    def __iter__(self):
+      end = self.__end
+      curr = end[2]
+      while curr is not end:
+        yield curr[0]
+        curr = curr[2]
+
+    def __reversed__(self):
       end = self.__end
       curr = end[1]
-      curr[2] = end[1] = self.__map[key] = [key, curr, end]
-    dict.__setitem__(self, key, value)
+      while curr is not end:
+        yield curr[0]
+        curr = curr[1]
 
-  def __delitem__(self, key):
-    dict.__delitem__(self, key)
-    key, prev, next = self.__map.pop(key)
-    prev[2] = next
-    next[1] = prev
+    def popitem(self, last=True):
+      if not self:
+        raise KeyError('dictionary is empty')
+      if last:
+        key = reversed(self).next()
+      else:
+        key = iter(self).next()
+      value = self.pop(key)
+      return key, value
 
-  def __iter__(self):
-    end = self.__end
-    curr = end[2]
-    while curr is not end:
-      yield curr[0]
-      curr = curr[2]
+    def __reduce__(self):
+      items = [[k, self[k]] for k in self]
+      tmp = self.__map, self.__end
+      del self.__map, self.__end
+      inst_dict = vars(self).copy()
+      self.__map, self.__end = tmp
+      if inst_dict:
+        return (self.__class__, (items,), inst_dict)
+      return self.__class__, (items,)
 
-  def __reversed__(self):
-    end = self.__end
-    curr = end[1]
-    while curr is not end:
-      yield curr[0]
-      curr = curr[1]
+    def keys(self):
+      return list(self)
 
-  def popitem(self, last=True):
-    if not self:
-      raise KeyError('dictionary is empty')
-    if last:
-      key = reversed(self).next()
-    else:
-      key = iter(self).next()
-    value = self.pop(key)
-    return key, value
+    setdefault = DictMixin.setdefault
+    #update = DictMixin.update
+    pop = DictMixin.pop
+    values = DictMixin.values
+    items = DictMixin.items
+    iterkeys = DictMixin.iterkeys
+    itervalues = DictMixin.itervalues
+    iteritems = DictMixin.iteritems
 
-  def __reduce__(self):
-    items = [[k, self[k]] for k in self]
-    tmp = self.__map, self.__end
-    del self.__map, self.__end
-    inst_dict = vars(self).copy()
-    self.__map, self.__end = tmp
-    if inst_dict:
-      return (self.__class__, (items,), inst_dict)
-    return self.__class__, (items,)
+    # this method copied from Python26 DictMixin source
+    # needed for compatibility with Python 2.3
+    def update(self, other=None, **kwargs):
+      # Make progressively weaker assumptions about "other"
+      if other is None:
+        pass
+      elif hasattr(other, 'iteritems'):  # iteritems saves memory and lookups
+        for k, v in other.iteritems():
+          self[k] = v
+      elif hasattr(other, 'keys'):
+        for k in other.keys():
+          self[k] = other[k]
+      else:
+        for k, v in other:
+          self[k] = v
+      if kwargs:
+        self.update(kwargs)
 
-  def keys(self):
-    return list(self)
+    def __repr__(self):
+      if not self:
+        return '%s()' % (self.__class__.__name__,)
+      return '%s(%r)' % (self.__class__.__name__, self.items())
 
-  setdefault = DictMixin.setdefault
-  #update = DictMixin.update
-  pop = DictMixin.pop
-  values = DictMixin.values
-  items = DictMixin.items
-  iterkeys = DictMixin.iterkeys
-  itervalues = DictMixin.itervalues
-  iteritems = DictMixin.iteritems
+    def copy(self):
+        return self.__class__(self)
 
-  # this method copied from Python26 DictMixin source
-  # needed for compatibility with Python 2.3
-  def update(self, other=None, **kwargs):
-    # Make progressively weaker assumptions about "other"
-    if other is None:
-      pass
-    elif hasattr(other, 'iteritems'):  # iteritems saves memory and lookups
-      for k, v in other.iteritems():
-        self[k] = v
-    elif hasattr(other, 'keys'):
-      for k in other.keys():
-        self[k] = other[k]
-    else:
-      for k, v in other:
-        self[k] = v
-    if kwargs:
-      self.update(kwargs)
+    def fromkeys(cls, iterable, value=None):
+      d = cls()
+      for key in iterable:
+        d[key] = value
+      return d
+    fromkeys = classmethod(fromkeys)
 
-  def __repr__(self):
-    if not self:
-      return '%s()' % (self.__class__.__name__,)
-    return '%s(%r)' % (self.__class__.__name__, self.items())
+    def __eq__(self, other):
+      if isinstance(other, OrderedDict):
+        return len(self)==len(other) and self.items() == other.items()
+      return dict.__eq__(self, other)
 
-  def copy(self):
-      return self.__class__(self)
-
-  def fromkeys(cls, iterable, value=None):
-    d = cls()
-    for key in iterable:
-      d[key] = value
-    return d
-  fromkeys = classmethod(fromkeys)
-
-  def __eq__(self, other):
-    if isinstance(other, OrderedDict):
-      return len(self)==len(other) and self.items() == other.items()
-    return dict.__eq__(self, other)
-
-  def __ne__(self, other):
-    return not self == other
+    def __ne__(self, other):
+      return not self == other
 
 class deque_template(object):
 
