@@ -147,6 +147,11 @@ master_params_str = """\
   vdw_1_4_factor = 0.8
     .type=float
     .optional=False
+  custom_nonbonded_symmetry_exclusions = None
+    .optional = True
+    .type = str
+    .multiple = True
+    .style = selection
   translate_cns_dna_rna_residue_names = None
     .type=bool
     .optional=False
@@ -2406,6 +2411,9 @@ class build_all_chain_proxies(object):
             .residues_with_excluded_nonbonded_symmetry_interactions)
       self.geometry_proxy_registries.report(log=log, prefix="  ")
       self.fatal_problems_report(prefix="  ", log=log)
+    self.process_custom_nonbonded_symmetry_exclusions(
+      log=log,
+      curr_sym_excl_index=len(sym_excl_residue_groups))
     self.time_building_chain_proxies = timer.elapsed()
 
   def fatal_problems_report(self, prefix="", log=None):
@@ -2748,12 +2756,14 @@ class build_all_chain_proxies(object):
         cache,
         scope_extract,
         attr,
+        string=None,
         allow_none=False,
         allow_auto=False,
         raise_if_empty_selection=True):
     def parameter_name():
       return scope_extract.__phil_path__(object_name=attr)
-    string = getattr(scope_extract, attr)
+    if (string is None):
+      string = getattr(scope_extract, attr)
     if (string is None):
       if (allow_none): return None
       raise Sorry('Atom selection cannot be None:\n  %s=None' % (
@@ -2794,7 +2804,7 @@ class build_all_chain_proxies(object):
         raise Sorry('Atom selection cannot be Auto:\n  %s=Auto' % (
           parameter_name()))
       try:
-          result.append(self.selection(string=string, cache=cache).iselection())
+        result.append(self.selection(string=string, cache=cache).iselection())
       except KeyboardInterrupt: raise
       except Exception, e: # keep e alive to avoid traceback
         fe = format_exception()
@@ -3048,7 +3058,8 @@ class build_all_chain_proxies(object):
          cache=sel_cache, scope_extract=planarity, sel_attrs=sel_attrs)
        weights = []
        for i_seq in i_seqs:
-         weights.append(geometry_restraints.sigma_as_weight(sigma=planarity.sigma))
+         weights.append(geometry_restraints.sigma_as_weight(
+           sigma=planarity.sigma))
        proxy = geometry_restraints.planarity_proxy(
          i_seqs=i_seqs,
          weights=flex.double(weights))
@@ -3125,6 +3136,43 @@ class build_all_chain_proxies(object):
             geometry_restraints.weight_as_sigma(weight=b.weight)
     print >> log, "  Total number of hydrogen bonds:", len(bond_sym_proxies)
     return bond_sym_proxies
+
+  def process_custom_nonbonded_symmetry_exclusions(self,
+        log, curr_sym_excl_index):
+    have_header = False
+    sel_cache = None
+    for sel_string in self.params.custom_nonbonded_symmetry_exclusions:
+      if (sel_string is None):
+        continue
+      if (sel_cache is None):
+        sel_cache = self.pdb_hierarchy.atom_selection_cache()
+      sel = self.phil_atom_selection(
+        cache=sel_cache,
+        scope_extract=self.params,
+        attr="custom_nonbonded_symmetry_exclusions",
+        string=sel_string)
+      if (sel is not None):
+        isel = sel.iselection()
+        if (not have_header):
+          print >> log
+          print >> log, "  Custom nonbonded symmetry exclusions:"
+          have_header = True
+        print >> log, "    Atom selection:", sel_string
+        print >> log, "      Number of atoms selected:", isel.size()
+        prev_sym_excl_indices = self.sym_excl_indices.select(isel)
+        n_prev = isel.size() - prev_sym_excl_indices.count(0)
+        if (n_prev != 0):
+          if (n_prev == 1): s = ""
+          else:             s = "s"
+          print >> log, \
+            "      WARNING: %d atom%s in previous symmetry exclusion group%s" \
+              % (n_prev, s, s)
+          i_seq = isel.select(prev_sym_excl_indices != 0)[0]
+          print >> log, "        Example:", self.pdb_atoms[i_seq].id_str()
+        curr_sym_excl_index += 1
+        self.sym_excl_indices.set_selected(isel, curr_sym_excl_index)
+    if (have_header):
+      print >> log
 
   def construct_geometry_restraints_manager(self,
         ener_lib,
