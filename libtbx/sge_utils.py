@@ -170,6 +170,9 @@ def qdel (job_id) :
   qdel_out = easy_run.fully_buffered(
     command="qdel %d" % job_id).raise_if_errors().stdout_lines
   print "\n".join(qdel_out)
+  for line in qdel_out :
+    if "denied" in line :
+      return False
   return True
 
 if (__name__ == "__main__"):

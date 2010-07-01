@@ -326,7 +326,7 @@ def write_run_script (file_name, cmds) :
     stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IROTH)
   f.write("#!/bin/sh\n\n")
   use_cctbx_setpaths = True
-  if "PHENIX" in os.environ :
+  if "PHENIX" in os.environ and not "PHENIX_CUSTOM_ENV" in os.environ :
     env_file = os.path.join(os.environ["PHENIX"], "phenix_env.sh")
     if os.path.isfile(env_file) :
       f.write("source %s\n" % env_file)
