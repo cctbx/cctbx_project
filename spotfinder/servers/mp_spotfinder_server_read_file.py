@@ -47,6 +47,7 @@ if __name__=="__main__":
   import sys
   outer_resolution = None
   minimum_spot_area = None
+  minimum_signal_height = None
   try:
     port = int(sys.argv[1])
     NUMBER_OF_PROCESSES = int(sys.argv[2])
@@ -54,11 +55,13 @@ if __name__=="__main__":
       outer_resolution = float(sys.argv[3])
     if len(sys.argv)>4:
       minimum_spot_area = int(sys.argv[4])
+    if len(sys.argv)>5:
+      minimum_signal_height = float(sys.argv[5])
   except:
     print """
-Usage:  libtbx.python mp_spotfinder_server_read_file.py <port number> <number of processes> [<outer resolution> [<minimum spot area.]]
+Usage:  libtbx.python mp_spotfinder_server_read_file.py <port number> <number of processes> [<outer resolution> [<minimum spot area> [<minimum signal height>]]]
 """
-  common_parameters(outer_resolution,minimum_spot_area)
+  common_parameters(outer_resolution,minimum_spot_area,minimum_signal_height)
 
   server_address = ('', port)
 

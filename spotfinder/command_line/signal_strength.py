@@ -8,6 +8,9 @@ distl {
   minimum_spot_area = None
     .type = int
     .help = "Override default application; set minimum spot area (in pixels) within spotfinder."
+  minimum_signal_height = None
+    .type = float
+    .help = "Override default application; set minimum signal height (in units of background noise sigma) within spotfinder."
   pdf_output = None
     .type = str
     .help="File name for optional PDF graphical output for distl.signal_strength (*.pdf)"
