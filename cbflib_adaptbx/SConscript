@@ -55,6 +55,7 @@ env.StaticLibrary(target='#lib/cbf',
     "detectors/mar_adaptor.cpp",
     "detectors/cbf_adaptor.cpp",
     "detectors/cbf_byte_offset_optimized.cpp",
+    "detectors/buffer_based_service.cpp",
   ],
   CPPPATH=env_etc.cbflib_common_includes )
 

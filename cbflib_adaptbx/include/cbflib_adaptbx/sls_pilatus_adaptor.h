@@ -2,13 +2,14 @@
 #define SLS_PILATUS_AD_H
 #include <cbflib_adaptbx/cbf_adaptor.h>
 #include <cbflib_adaptbx/cbf_byte_offset_optimized.h>
+#include <cbflib_adaptbx/buffer_based_service.h>
 #include "cbf_binary.h"
 #include "cbf_compress.h"
 
 namespace iotbx {
   namespace detectors {
 
-class wrapper_of_byte_decompression {
+struct wrapper_of_byte_decompression {
   cbf_handle* cbf_h;
   size_t elsize,nelem;
   int elsign;
@@ -68,6 +69,12 @@ class wrapper_of_byte_decompression {
                                           &minelem_file, &maxelem_file,
                                           compression_text,
                                           file))
+  }
+
+  void copy_raw_compressed_string_to_buffer(char * buffer, std::size_t sz){
+    //buffer is under lifetime control of the caller
+    std::size_t ok_read = std::fread((void*)buffer, 1, sz, file->stream);
+    SCITBX_ASSERT(ok_read==sz);
   }
 
   void get_bintext(cbf_node* & column, unsigned int & row){
@@ -187,6 +194,28 @@ class MiniCBFAdaptor: public CBFAdaptor {
                  &nelem_read                  //elements read
                  ))
     SCITBX_ASSERT(sz==nelem_read);
+
+    return z;
+  }
+
+  inline scitbx::af::flex_int buffer_based_uncompress(){
+    common_file_access();
+
+    //C++ weirdness
+    scitbx::af::flex_int z((scitbx::af::flex_grid<>(dim2,dim1)),scitbx::af::init_functor_null<int>());
+    int* begin = z.begin();
+    std::size_t sz = z.size();
+
+    wrapper_of_byte_decompression wrap_dee(&cbf_h,sz);
+    wrap_dee.set_file_position();
+
+    scitbx::af::shared<char> compressed_buffer(wrap_dee.size_text);
+    char* buffer_begin = compressed_buffer.begin();
+    std::size_t sz_buffer = compressed_buffer.size();
+
+    wrap_dee.copy_raw_compressed_string_to_buffer(buffer_begin, sz_buffer);
+
+    iotbx::detectors::buffer_uncompress(buffer_begin, sz_buffer, begin);
 
     return z;
   }
