@@ -45,7 +45,6 @@ if (not env_etc.no_boost_python):
     fenv.Replace(SHFORTRAN="gfortran")
     fenv.Replace(FORTRANFLAGS=opts + [
       "-fPIC",
-      "-ftrapv",
       "-fautomatic",
       "-fno-second-underscore",
       "-fno-bounds-check"])
