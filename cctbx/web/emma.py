@@ -5,6 +5,7 @@ from cctbx import uctbx
 from cctbx.web import io_utils
 from cctbx.web import cgi_utils
 from itertools import count
+import sys
 
 def interpret_form_data(form):
   inp = cgi_utils.inp_from_form(form,
@@ -170,9 +171,24 @@ class web_to_models(object):
       return m
     raise RuntimeError("Internal error.")
 
-def run(server_info, inp, status):
-  print "<pre>"
+def model_is_too_large(model, max_number_of_positions=200):
+  if (len(model.positions()) <= max_number_of_positions):
+    return False
+  print "*"*79
+  print "ERROR: too many sites in this model (given %d, limit is %d)" % (
+    len(model.positions()), max_number_of_positions)
+  print "Note: EMMA is designed to work with heavy-atom substructures,"
+  print "      NOT complete macromolecular structures."
+  print "Hint: install cctbx on your computer and use the command"
+  print "    phenix.emma"
+  print "which has no limit on the number of sites."
+  print "cctbx downloads:"
+  print "    http://cci.lbl.gov/cctbx_build/"
+  print "*"*79
+  print
+  return True
 
+def run_implementation(server_info, inp, status):
   if (inp.ucparams_2 == ""):
       inp.ucparams_2 = inp.ucparams_1
   if (inp.sgsymbol_2 == ""):
@@ -198,6 +214,8 @@ def run(server_info, inp, status):
   model1 = models1.get_next()
   assert model1, "Problems reading reference model."
   model1.show("Reference model")
+  if (model_is_too_large(model=model1)):
+    return
   assert not models1.get_next()
   if (model1.unit_cell() is None):
     raise RuntimeError("Unit cell parameters unknown (reference model).")
@@ -218,6 +236,9 @@ def run(server_info, inp, status):
     model2.show(model2.label)
     assert model2.unit_cell() is not None
     assert model2.space_group_info() is not None
+    if (model_is_too_large(model=model2)):
+      continue
+    sys.stdout.flush()
     model_matches = emma.model_matches(
       model1=model1,
       model2=model2,
@@ -232,4 +253,7 @@ def run(server_info, inp, status):
         print
         match.show()
 
+def run(server_info, inp, status):
+  print "<pre>"
+  run_implementation(server_info=server_info, inp=inp, status=status)
   print "</pre>"
