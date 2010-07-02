@@ -137,37 +137,40 @@ class wrapper_of_byte_decompression {
 
 class MiniCBFAdaptor: public CBFAdaptor {
  public:
-  inline MiniCBFAdaptor(const std::string& filename):
-    CBFAdaptor(filename){/* Create the cbf */}
+  //data items needed to interface cbflib integer array parameters
+  unsigned int compression;
+  int binary_id,elsigned,elunsigned,minelement,maxelement;
+  size_t elsize,elements,dim1,dim2,dim3,padding;
+  const char *byteorder;//="little_endian";
 
-  inline scitbx::af::flex_int read_data(const int& slow, const int& fast){
+  inline MiniCBFAdaptor(const std::string& filename):
+    CBFAdaptor(filename),
+    byteorder(std::string("little_endian").c_str())
+    {/* Create the cbf */}
+
+  inline void common_file_access() {
     private_file = std::fopen(filename.c_str(),"rb");
     if (!private_file) throw Error("minicbf file BAD_OPEN");
     cbf_failnez (cbf_read_widefile (cbf_h, private_file, MSG_DIGEST))
 
-    /* The Python wrapper takes care of the SLS header read
-    char* header_info = NULL;
-    if ( !cbf_find_tag(cbf_h,"_array_data.header_contents")) {
-      cbf_failnez(cbf_get_value(cbf_h,(const char * *)&header_info))
-      cbf_parse_sls_header(cbf_h, header_info, 0);}  */
-
     /* Find the binary data */
     cbf_failnez (cbf_find_tag (cbf_h, "_array_data.data"))
     cbf_failnez (cbf_rewind_row (cbf_h))
-
-    unsigned int compression;
-    int binary_id,elsigned,elunsigned,minelement,maxelement;
-    size_t elsize,elements,dim1,dim2,dim3,padding;
-    char *byteorder ="little_endian";
 
     cbf_failnez (cbf_get_integerarrayparameters_wdims (
      cbf_h, &compression, &binary_id, &elsize, &elsigned, &elunsigned,
      &elements, &minelement, &maxelement,(const char **) &byteorder,
      &dim1, &dim2, &dim3, &padding))
 
-    SCITBX_ASSERT(elements == slow*fast);
     SCITBX_ASSERT(elsize == sizeof(int));
     SCITBX_ASSERT(elsigned==1);
+    SCITBX_ASSERT(elements == dim1*dim2); //assume two-D data with dim1==fast; dim2==slow
+  }
+
+  inline scitbx::af::flex_int read_data(const int& slow, const int& fast){
+    common_file_access();
+
+    SCITBX_ASSERT(elements == slow*fast);
 
     //C++ weirdness
     scitbx::af::flex_int z((scitbx::af::flex_grid<>(slow,fast)),scitbx::af::init_functor_null<int>());
@@ -188,29 +191,7 @@ class MiniCBFAdaptor: public CBFAdaptor {
     return z;
   }
 
-  inline scitbx::af::flex_int optimized_read_data(const int& slow, const int& fast){
-    private_file = std::fopen(filename.c_str(),"rb");
-    if (!private_file) throw Error("minicbf file BAD_OPEN");
-    cbf_failnez (cbf_read_widefile (cbf_h, private_file, MSG_DIGEST))
-
-    /* Find the binary data */
-    cbf_failnez (cbf_find_tag (cbf_h, "_array_data.data"))
-    cbf_failnez (cbf_rewind_row (cbf_h))
-
-    unsigned int compression;
-    int binary_id,elsigned,elunsigned,minelement,maxelement;
-    size_t elsize,elements,dim1,dim2,dim3,padding;
-    char *byteorder ="little_endian";
-
-    cbf_failnez (cbf_get_integerarrayparameters_wdims (
-     cbf_h, &compression, &binary_id, &elsize, &elsigned, &elunsigned,
-     &elements, &minelement, &maxelement,(const char **) &byteorder,
-     &dim1, &dim2, &dim3, &padding))
-
-    SCITBX_ASSERT(elements == slow*fast);
-    SCITBX_ASSERT(elsize == sizeof(int));
-    SCITBX_ASSERT(elsigned==1);
-
+  inline scitbx::af::flex_int optimized_read_data_detail(const int& slow, const int& fast){
     //C++ weirdness
     scitbx::af::flex_int z((scitbx::af::flex_grid<>(slow,fast)),scitbx::af::init_functor_null<int>());
     int* begin = z.begin();
@@ -223,39 +204,17 @@ class MiniCBFAdaptor: public CBFAdaptor {
     return z;
   }
 
+  inline scitbx::af::flex_int optimized_read_data(const int& slow, const int& fast){
+    common_file_access();
+    SCITBX_ASSERT(elements == slow*fast);
+    return optimized_read_data_detail(slow,fast);
+  }
+
   inline scitbx::af::flex_int optimized_read_data(){
-    private_file = std::fopen(filename.c_str(),"rb");
-    if (!private_file) throw Error("minicbf file BAD_OPEN");
-    cbf_failnez (cbf_read_widefile (cbf_h, private_file, MSG_DIGEST))
-
-    /* Find the binary data */
-    cbf_failnez (cbf_find_tag (cbf_h, "_array_data.data"))
-    cbf_failnez (cbf_rewind_row (cbf_h))
-
-    unsigned int compression;
-    int binary_id,elsigned,elunsigned,minelement,maxelement;
-    size_t elsize,elements,fast,slow,dim3,padding;
-    char *byteorder ="little_endian";
-
-    cbf_failnez (cbf_get_integerarrayparameters_wdims (
-     cbf_h, &compression, &binary_id, &elsize, &elsigned, &elunsigned,
-     &elements, &minelement, &maxelement,(const char **) &byteorder,
-     &fast, &slow, &dim3, &padding))
-
-    SCITBX_ASSERT(elements == fast*slow);
-    SCITBX_ASSERT(elsize == sizeof(int));
-    SCITBX_ASSERT(elsigned==1);
-
-    //C++ weirdness
-    scitbx::af::flex_int z((scitbx::af::flex_grid<>(slow,fast)),scitbx::af::init_functor_null<int>());
-    int* begin = z.begin();
-    std::size_t sz = z.size();
-
-    wrapper_of_byte_decompression wrap_dee(&cbf_h,sz);
-    wrap_dee.set_file_position();
-    wrap_dee.decompress_byte_offset_optimized((void *)begin);
-
-    return z;
+    common_file_access();
+    size_t fast = dim1;
+    size_t slow = dim2;
+    return optimized_read_data_detail(slow,fast);
   }
 
 };
