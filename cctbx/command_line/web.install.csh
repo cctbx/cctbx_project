@@ -17,6 +17,7 @@ $python ../sources/libtbx/configure.py mmtbx
 cd ..
 
 echo '#! /bin/sh -f' > cctbx_web.cgi
+echo "limit vmemoryuse 384m" >> cctbx_web.cgi
 echo "exec ./build/bin/libtbx.env_run CCTBX_DIST web/dispatcher.py" >> cctbx_web.cgi
 chmod 755 cctbx_web.cgi
 
