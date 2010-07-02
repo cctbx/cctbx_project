@@ -68,6 +68,7 @@ BOOST_PYTHON_MODULE(cbflib_ext)
    ;
    class_<MiniCBFAdaptor, bases<CBFAdaptor> >("MiniCBFAdaptor",init<std::string>())
      .def("read_data",&MiniCBFAdaptor::read_data)
+     .def("buffer_based_uncompress",&MiniCBFAdaptor::buffer_based_uncompress)
      .def("optimized_read_data",(scitbx::af::flex_int (MiniCBFAdaptor::*)(const int&, const int&))&MiniCBFAdaptor::optimized_read_data)
      .def("optimized_read_data",(scitbx::af::flex_int (MiniCBFAdaptor::*)())&MiniCBFAdaptor::optimized_read_data)
    ;
