@@ -77,8 +77,8 @@ class manager(object):
         fmodel            = self.fmodel,
         map_type          = map_type,
         resolution_factor = self.params.resolution_factor,
-        symmetry_flags    = maptbx.use_space_group_symmetry,
-        average_maps      = True)
+        symmetry_flags    = maptbx.use_space_group_symmetry)#,
+        #average_maps      = True) # XXX BUG
       fft_map = km.fft_map
       fft_map_data = km.map_data # XXX map is already sigma scaled
       map_units = "sigma"
