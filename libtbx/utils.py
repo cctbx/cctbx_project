@@ -232,19 +232,17 @@ class Keep: pass
 disable_tracebacklimit = False
 
 class Sorry(Exception):
-  # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
   __orig_module__ = __module__
-  __module__ = "exceptions"
+  # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
+  __module__ = Exception.__module__
 
   def __init__(self, *args, **keyword_args):
+    self.need_cleanup = False
     if (not disable_tracebacklimit):
       self.previous_tracebacklimit = getattr(sys, "tracebacklimit", None)
       sys.tracebacklimit = 0
+      self.need_cleanup = True
     Exception.__init__(self, *args, **keyword_args)
-
-  def __str__(self):
-    self.reset_tracebacklimit()
-    return Exception.__str__(self)
 
   def __del__(self):
     self.reset_tracebacklimit()
@@ -254,7 +252,10 @@ class Sorry(Exception):
   reset_module = staticmethod(reset_module)
 
   def reset_tracebacklimit(self):
-    if (not disable_tracebacklimit and hasattr(sys, "tracebacklimit")):
+    if (    self.need_cleanup
+        and not disable_tracebacklimit
+        and hasattr(sys, "tracebacklimit")):
+      self.need_cleanup = False
       if (self.previous_tracebacklimit is None):
         del sys.tracebacklimit
       else:
@@ -263,10 +264,10 @@ class Sorry(Exception):
 disable_tracebacklimit = "LIBTBX_DISABLE_TRACEBACKLIMIT" in os.environ
 
 class Usage(Sorry):
-  __module__ = "exceptions"
+  __module__ = Exception.__module__
 
 class Abort(Sorry) :
-  __module__ = "exceptions"
+  __module__ = Exception.__module__
 
 def if_none(value, default):
   if (value is None): return default

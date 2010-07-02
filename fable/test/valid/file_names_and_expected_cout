@@ -1205,3 +1205,7 @@ long_lines.f
 |0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz)!@#$%^&*(`~-_+=[{]}\|;:'",<.>/?|
 |0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz)!@#$%^&*\`~-_+=[{]}(|;:'",<.>/?|
 |0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz)!@#$%^&*(\~-_+=[{]}`|;:'",<.>/?|
+format_used_twice.f
+|12|
+|345|
+|67|

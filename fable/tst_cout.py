@@ -2800,6 +2800,14 @@ program_prog(
     "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz)!@#$%^&*("
     "\\\\~-_+=[{]}`|;:'\\",<.>/?";
 """)
+  #
+  lines = get("format_used_twice.f")
+  assert not absd(lines, tail_off(1), """\
+  static const char* format_10 = "(i2)";
+  write(6, format_10), 12;
+  write(6, "(i3)"), 345;
+  write(6, format_10), 67;
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(
