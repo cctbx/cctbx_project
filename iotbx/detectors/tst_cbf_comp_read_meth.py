@@ -44,6 +44,8 @@ def test_all(timer=False):
     if timer: G = Profiler("cbflib optimized read")
     adaptor = MiniCBFAdaptor(file)
     read2 = adaptor.optimized_read_data(P.size1,P.size2)
+    if timer: G = Profiler("buffer-based read")
+    read3 = adaptor.buffer_based_uncompress()
     if timer: del G
     expected_image_size = {"Pilatus-6M":(2527,2463),
                            "Pilatus-2M":(1679,1475)}[P.vendortype]
@@ -51,6 +53,7 @@ def test_all(timer=False):
     from cbflib_ext import assert_equal
     #print "Equality of arrays from two decompress methods", assert_equal(read1,read2), "\n"
     assert assert_equal(read1,read2)
+    assert assert_equal(read1,read3)
 
 if __name__=="__main__":
   test_all(False)
