@@ -174,6 +174,14 @@ class MiniCBFAdaptor: public CBFAdaptor {
     SCITBX_ASSERT(elements == dim1*dim2); //assume two-D data with dim1==fast; dim2==slow
   }
 
+  inline int dim_slow() {
+    return dim2;
+  }
+
+  inline int dim_fast() {
+    return dim1;
+  }
+
   inline scitbx::af::flex_int read_data(const int& slow, const int& fast){
     common_file_access();
 

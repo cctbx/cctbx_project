@@ -1,5 +1,5 @@
+#include <vector>
 #include <cbflib_adaptbx/buffer_based_service.h>
-
 namespace ide = iotbx::detectors;
 
 //Code contributed by Graeme Winter, Diamond Light Source:
@@ -52,7 +52,90 @@ bool little_endian()
     }
 }
 
-void ide::buffer_uncompress(char* packed, std::size_t packed_sz, int* values)
+
+//main functions
+
+//In order to return void, calling function would have to allocate extra memory
+// and then resize after the call...Redesign along these lines if it becomes necessary
+
+std::vector<char>
+ide::buffer_compress(const int* values, const std::size_t& sz)
+{
+  std::vector<char> packed(0);
+  int current = 0;
+  int delta, i;
+  unsigned int j;
+  bool le = little_endian();
+  short s;
+  char c;
+  char * b;
+
+  for (j = 0; j < sz; j++)
+    {
+      delta = values[j] - current;
+
+      if ((-127 <= delta) && (delta < 128))
+        {
+          c = (char) delta;
+          packed.push_back(c);
+          current += delta;
+          continue;
+        }
+
+      packed.push_back(-128);
+
+      if ((-32767 <= delta) && (delta < 32768))
+        {
+          s = (short) delta;
+          b = ((u_s *) & s)[0].b;
+
+          if (!le)
+            {
+              byte_swap_short(b);
+            }
+
+          packed.push_back(b[0]);
+          packed.push_back(b[1]);
+          current += delta;
+          continue;
+        }
+      s = -32768;
+      b = ((u_s *) & s)[0].b;
+
+      if (!le)
+        {
+          byte_swap_short(b);
+        }
+
+      packed.push_back(b[0]);
+      packed.push_back(b[1]);
+
+      if ((-2147483647 <= delta) && (delta <= 2147483647))
+        {
+          i = delta;
+          b = ((u_i *) & i)[0].b;
+
+          if (!le)
+            {
+              byte_swap_int(b);
+            }
+
+          packed.push_back(b[0]);
+          packed.push_back(b[1]);
+          packed.push_back(b[2]);
+          packed.push_back(b[3]);
+          current += delta;
+          continue;
+        }
+
+      /* FIXME I should not get here */
+      //fail silently or throw an exception?
+    }
+
+  return packed;
+}
+
+void ide::buffer_uncompress(const char* packed, std::size_t packed_sz, int* values)
 {
   int current = 0;
   unsigned int j = 0;

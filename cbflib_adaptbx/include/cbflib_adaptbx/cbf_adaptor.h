@@ -24,7 +24,6 @@ namespace iotbx {
 class CBFAdaptor {
  protected:
   std::string filename;
-  cbf_handle cbf_h;
   FILE *private_file;
   bool read_header_already;
   const char *array_id;
@@ -37,6 +36,7 @@ class CBFAdaptor {
   double d_osc_start, d_osc_range;
   bool data_transposed;
  public:
+  cbf_handle cbf_h;
   double beam_index1,beam_index2,beam_center1, beam_center2;
 
  public:
