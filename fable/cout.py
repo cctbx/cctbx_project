@@ -1597,11 +1597,24 @@ def convert_executable(
     convert_data(conv_info=conv_info, data_init_scope=data_init_scope)
     data_init_scope.close_nested_scope()
   top_scope.remember_insert_point()
+  from fable.tokenization import fmt_tokens_as_string
+  def get_cfmt_from_format(stmt_label):
+    fmt_tokens = conv_info.unit.format.get(stmt_label)
+    if (fmt_tokens is None):
+      tok.raise_semantic_error(
+        "Unknown FORMAT statement label: %s" % tok.value)
+    return '"(' + escape_string_literal(
+      fmt_tokens_as_string(tokens=fmt_tokens)) + ')"'
+  fmt_counts_by_statement_label = conv_info.unit.fmt_counts_by_statement_label()
+  for stmt_label in sorted(fmt_counts_by_statement_label.keys()):
+    if (fmt_counts_by_statement_label[stmt_label] > 1):
+      cfmt = get_cfmt_from_format(stmt_label=stmt_label)
+      top_scope.append(
+        "static const char* format_%s = %s;" % (stmt_label, cfmt))
   def curr_scope_append_return_function():
     curr_scope.append("return %s;" % conv_info.vmap[conv_info.unit.name.value])
   close_scope_after_next_executable = False
   dos_to_close_by_label = {}
-  from fable.tokenization import fmt_tokens_as_string
   from fable.read import Error
   from fable import SemanticError
   for ei in conv_info.unit.executable:
@@ -1764,12 +1777,10 @@ def convert_executable(
           if (tok.is_op_with(value="*")):
             return "star"
           if (tok.is_integer()):
-            fmt_tokens = conv_info.unit.format.get(tok.value)
-            if (fmt_tokens is None):
-              tok.raise_semantic_error(
-                "Unknown FORMAT statement label: %s" % tok.value)
-            return '"(' + escape_string_literal(
-              fmt_tokens_as_string(tokens=fmt_tokens)) + ')"'
+            stmt_label = tok.value
+            if (fmt_counts_by_statement_label[stmt_label] > 1):
+              return "format_%s" % stmt_label
+            return get_cfmt_from_format(stmt_label=stmt_label)
           tok.raise_not_supported()
         cfmt = conv_fmt()
         cchain = []

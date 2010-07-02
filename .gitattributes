@@ -485,6 +485,7 @@ fable/test/valid/format_escape.f -text
 fable/test/valid/format_nested.f -text
 fable/test/valid/format_quote_syndrome.f -text
 fable/test/valid/format_str_blank_str.f -text
+fable/test/valid/format_used_twice.f -text
 fable/test/valid/formats.f -text
 fable/test/valid/function_calls_with_its_name_as_arg.f -text
 fable/test/valid/function_data_type_in_body.f -text

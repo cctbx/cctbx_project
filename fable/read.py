@@ -1658,6 +1658,7 @@ class unit(unit_p_methods):
     "uses_io",
     "uses_read",
     "uses_write",
+    "_fmt_counts_by_statement_label",
     "_common_name_by_identifier",
     "_equivalence_info",
     "_classified_equivalence_info",
@@ -1712,6 +1713,7 @@ class unit(unit_p_methods):
     O.uses_io = False
     O.uses_read = False
     O.uses_write = False
+    O._fmt_counts_by_statement_label = None
     O._common_name_by_identifier = None
     O._equivalence_info = None
     O._classified_equivalence_info = None
@@ -2407,6 +2409,21 @@ class unit(unit_p_methods):
 
   def get_fdecl(O, id_tok):
     return O.fdecl_by_identifier[id_tok.value]
+
+  def fmt_counts_by_statement_label(O):
+    assert O.body_lines_processed_already
+    result = O._fmt_counts_by_statement_label
+    if (result is None):
+      from libtbx import dict_with_default_0
+      result = dict_with_default_0()
+      for ei in O.executable:
+        if (ei.key in ["read", "write"] and ei.fmt_tokens is None):
+          tl = ei.cilist.fmt
+          if (tl is not None and len(tl) == 1):
+            tok = tl[0]
+            if (tok.is_integer()):
+              result[tok.value] += 1
+    return result
 
   def common_name_by_identifier(O):
     result = O._common_name_by_identifier
