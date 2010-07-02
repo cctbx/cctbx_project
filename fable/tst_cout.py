@@ -2799,6 +2799,10 @@ program_prog(
   write(6, "(a)"),
     "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz)!@#$%^&*("
     "\\\\~-_+=[{]}`|;:'\\",<.>/?";
+  fem::str<127> s =
+    "qwertyuiopasdfghjklzxcvbnmqwertyuiopasdfghjklzxcvbnmqwertyuioasdfghjkzxcv"
+    "bnmqwerjkdfghjkertyjkxcghidfbndtyuiklmbvftyuiknbvdtyuh";
+  write(6, "(a)"), s;
 """)
   #
   lines = get("format_used_twice.f")

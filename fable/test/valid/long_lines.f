@@ -1,4 +1,5 @@
       program prog
+      character s*127
       dimension numbers(20)
       do i=1,20
         numbers(i) = 253 + i
@@ -33,4 +34,8 @@
      &nopqrstuvwxyz)!@#$%^&*\`~-_+=[{]}(|;:''",<.>/?'
       write(6, '(a)') '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm
      &nopqrstuvwxyz)!@#$%^&*(\~-_+=[{]}`|;:''",<.>/?'
+      s = 'qwertyuiopasdfghjklzxcvbnmqwertyuiopasdfghjklzxcvbnmqwertyuio
+     &asdfghjkzxcvbnmqwerjkdfghjkertyjkxcghidfbndtyuiklmbvftyuiknbvdtyuh
+     &'
+      write(6, '(a)') s
       end

@@ -14,7 +14,8 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
       break
   else:
     raise AssertionError
-  if (line.startswith("//", i_start)):
+  lsw = line.startswith
+  if (lsw("//", i_start)):
     callback(line)
     return
   potential_break_points = []
@@ -36,10 +37,20 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
     elif (c == "("):
       ic += 1
       potential_break_points.append((0, ic))
-    elif (line.startswith(", ", ic)):
+    elif (lsw(", ", ic)):
       ic += 2
       potential_break_points.append((1, ic))
-    elif (line.startswith("//", ic)):
+    elif (   lsw(" = ", ic)
+          or lsw("), ", ic)):
+      ic += 3
+      potential_break_points.append((1, ic))
+    elif (   lsw(" + ", ic)
+          or lsw(" - ", ic)
+          or lsw(" * ", ic)
+          or lsw(" / ", ic)):
+      ic += 3
+      potential_break_points.append((0, ic))
+    elif (lsw("//", ic)):
       break
     else:
       ic += 1
