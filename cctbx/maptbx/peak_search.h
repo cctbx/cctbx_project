@@ -235,7 +235,7 @@ namespace cctbx { namespace maptbx {
         std::size_t max_peaks=0,
         bool interpolate=true)
       :
-        gridding_(data.accessor().focus())
+        gridding_(af::adapt_with_static_cast(data.accessor().focus()))
       {
         peak_search_unit_cell(data, tags, peak_search_level);
         ValueType peak_cutoff = 0;
@@ -258,7 +258,7 @@ namespace cctbx { namespace maptbx {
         std::size_t max_peaks,
         bool interpolate=true)
       :
-        gridding_(data.accessor().focus())
+        gridding_(af::adapt_with_static_cast(data.accessor().focus()))
       {
         peak_search_unit_cell(data, tags, peak_search_level);
         if (max_peaks) {
@@ -330,7 +330,7 @@ namespace cctbx { namespace maptbx {
         af::nested_loop<index_type> loop(data.accessor().focus());
         for (index_type const& pivot = loop(); !loop.over(); loop.incr()) {
           if (tags(pivot) == -2 && (!use_cutoff || data(pivot) >= cutoff)) {
-            grid_indices_.push_back(pivot);
+            grid_indices_.push_back(af::adapt_with_static_cast(pivot));
             grid_heights_.push_back(data(pivot));
           }
         }

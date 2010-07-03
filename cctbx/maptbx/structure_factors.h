@@ -75,7 +75,8 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
       {
         CCTBX_ASSERT(complex_map_.accessor().all()
              .all_ge(complex_map_.accessor().focus()));
-        af::int3 map_grid_focus(complex_map_.accessor().focus());
+        af::int3 map_grid_focus(
+          af::adapt_with_static_cast(complex_map_.accessor().focus()));
         std::size_t count_n_real_not_equal_map_grid_focus = 0;
         std::size_t i_focus_short = 3;
         int focus_short = 0;
@@ -274,7 +275,8 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
       :
         n_indices_affected_by_aliasing_(0)
       {
-        af::int3 map_grid_focus = complex_map.accessor().focus();
+        af::int3 map_grid_focus(
+          af::adapt_with_static_cast(complex_map.accessor().focus()));
         data_.reserve(miller_indices.size());
         for(std::size_t i=0;i<miller_indices.size();i++) {
           array_access aa(
@@ -316,7 +318,8 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
             std::cos(ht_angle),
             std::sin(ht_angle)));
         }
-        af::int3 map_grid_focus = complex_map.accessor().focus();
+        af::int3 map_grid_focus(
+          af::adapt_with_static_cast(complex_map.accessor().focus()));
         data_.reserve(miller_indices.size());
         bool sum_bijvoet_pairs = (anomalous_flag && space_group.is_centric());
         const c_t* shift_inv_t = 0;

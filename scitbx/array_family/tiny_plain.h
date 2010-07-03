@@ -29,6 +29,14 @@ namespace scitbx { namespace af {
         for(std::size_t i=0;i<N;i++) elems[i] = a[i];
       }
 
+      template <typename OtherArrayType>
+      tiny_plain(array_adaptor_with_static_cast<OtherArrayType> const& a_a)
+      {
+        OtherArrayType const& a = *(a_a.pointee);
+        if (a.size() != N) throw_range_error();
+        for(std::size_t i=0;i<N;i++) elems[i] = static_cast<ElementType>(a[i]);
+      }
+
       SCITBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(tiny_plain)
       SCITBX_ARRAY_FAMILY_TINY_COPY_AND_ASSIGNMENT(tiny_plain)
 

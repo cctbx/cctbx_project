@@ -18,6 +18,21 @@ namespace scitbx { namespace af {
     return array_adaptor<T>(a);
   }
 
+  template <typename T>
+  struct array_adaptor_with_static_cast
+  {
+    const T* pointee;
+    array_adaptor_with_static_cast(T const& a) : pointee(&a) {}
+  };
+
+  template <typename T>
+  inline
+  array_adaptor_with_static_cast<T>
+  adapt_with_static_cast(T const& a)
+  {
+    return array_adaptor_with_static_cast<T>(a);
+  }
+
 }} // namespace scitbx::af
 
 #endif // SCITBX_ARRAY_FAMILY_ARRAY_ADAPTOR_H
