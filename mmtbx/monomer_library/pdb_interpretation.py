@@ -3141,11 +3141,13 @@ class build_all_chain_proxies(object):
         log, curr_sym_excl_index):
     have_header = False
     sel_cache = None
+    sel_full_occ = None
     for sel_string in self.params.custom_nonbonded_symmetry_exclusions:
       if (sel_string is None):
         continue
       if (sel_cache is None):
         sel_cache = self.pdb_hierarchy.atom_selection_cache()
+        sel_full_occ = (self.pdb_atoms.extract_occ() == 1)
       sel = self.phil_atom_selection(
         cache=sel_cache,
         scope_extract=self.params,
@@ -3168,6 +3170,22 @@ class build_all_chain_proxies(object):
             "      WARNING: %d atom%s in previous symmetry exclusion group%s" \
               % (n_prev, s, s)
           i_seq = isel.select(prev_sym_excl_indices != 0)[0]
+          print >> log, "        Example:", self.pdb_atoms[i_seq].id_str()
+        sel_sel_full_occ = sel_full_occ.select(isel)
+        n_full_occ = sel_sel_full_occ.count(True)
+        if (n_full_occ != 0):
+          print >> log, "      WARNING: %d atom%s with full occupancy" \
+            % plural_s(n_full_occ)
+          i_seq = isel.select(sel_sel_full_occ)[0]
+          print >> log, "        Example:", self.pdb_atoms[i_seq].id_str()
+        sp = sorted(set(self.special_position_indices).intersection(set(isel)))
+        if (len(sp) != 0):
+          if (len(sp) == 1):
+            print >> log, "      WARNING: one atom at a special position"
+          else:
+            print >> log, "      WARNING: %d atoms at special positions" \
+              % len(sp)
+          i_seq = sp[0]
           print >> log, "        Example:", self.pdb_atoms[i_seq].id_str()
         curr_sym_excl_index += 1
         self.sym_excl_indices.set_selected(isel, curr_sym_excl_index)
