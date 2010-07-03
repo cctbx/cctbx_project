@@ -91,7 +91,10 @@ private:
     value_type value_;
 
     static
-    index_type sum_flag() { return 1ul << (8*sizeof(index_type) - 1); }
+    index_type sum_flag()
+    {
+      return index_type(1u) << (8*sizeof(index_type) - 1);
+    }
 
   public:
     /// Construct an element to assign
