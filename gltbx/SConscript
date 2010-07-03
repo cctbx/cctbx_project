@@ -30,7 +30,9 @@ if (not env_etc.no_boost_python):
     paths=env_etc.gltbx_common_includes + [env_etc.python_include])
   #
   env_etc.gltbx_has_opengl_headers = False
-  conf = env.Configure()
+  conf = env.Clone().Configure() # the .Clone() is to work around an unknown
+                                 # problem under Windows 7 (64-bit) with
+                                 # Python 2.7rc2
   if (conf.TryCompile("#include <gltbx/include_opengl.h>", extension=".cpp")):
     env_etc.gltbx_has_opengl_headers = True
   else:
