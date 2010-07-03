@@ -112,9 +112,18 @@ class stdout_pipe_buffered (stdout_pipe) :
     if self._data != "" :
       self._flush()
 
-if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
+_multiprocessing_status = None
+try:
   import multiprocessing
-
+except ImportError:
+  _multiprocessing_status = "not available"
+else:
+  try:
+    multiprocessing.Pipe()
+  except ImportError:
+    del multiprocessing
+    _multiprocessing_status = "not functional"
+if (_multiprocessing_status is None):
   class _process_with_stdout_redirect (multiprocessing.Process) :
     def __init__ (self, group=None, target=None, name=None, args=(), kwargs={},
         connection=None, buffer_stdout=True) :
@@ -238,7 +247,8 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
 else :
   class process_with_callbacks (object) :
     def __init__ (self, *args, **kwds) :
-      raise ImportError("This feature requires at least Python 2.6")
+      raise ImportError(
+        "The multiprocessing module is %s." % _multiprocessing_status)
 
 ########################################################################
 # tests
@@ -491,8 +501,8 @@ def exercise_process () :
     tst_05()
     tst_06()
     tst_07()
-  except ImportError :
-    print "multiprocessing requires Python >= 2.6 - skipping these tests."
+  except ImportError, e:
+    print "Skipping thread_utils tests:", str(e)
 
 if (__name__ == "__main__"):
   from libtbx import thread_utils
