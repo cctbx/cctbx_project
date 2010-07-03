@@ -21,8 +21,7 @@ namespace cctbx { namespace maptbx {
     af::const_ref<std::complex<FloatType> > const& data)
   {
     // determine padding
-    scitbx::fftpack::real_to_complex_3d<FloatType> rfft(
-      (af::c_grid<3>(n_real)));
+    scitbx::fftpack::real_to_complex_3d<FloatType> rfft(n_real);
     // allocate map and copy structure factors
     structure_factors::to_map<FloatType> to_map(
       space_group,

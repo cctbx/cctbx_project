@@ -183,7 +183,7 @@ namespace grid_tags_detail {
       af::const_ref<TagType, c_grid_p1<3> > const& tags,
       double epsilon)
   {
-    CCTBX_ASSERT(tags.accessor().all_eq(data.accessor().focus()));
+    CCTBX_ASSERT(data.accessor().focus().all_eq(tags.accessor()));
     typedef af::c_grid_padded<3>::index_type index_type;
     af::nested_loop<index_type> loop(data.accessor().focus());
     af::c_grid<3> tags_accessor(tags.accessor()); // index_type conversion
@@ -255,7 +255,7 @@ namespace grid_tags_detail {
         double epsilon=1e-15) const
       {
         CCTBX_ASSERT(is_valid_);
-        CCTBX_ASSERT(tag_array_.accessor().all_eq(data.accessor().focus()));
+        CCTBX_ASSERT(data.accessor().focus().all_eq(tag_array_.accessor()));
         return grid_tags_detail::dependent_correlation(
           n_dependent(),
           data,
@@ -325,7 +325,7 @@ namespace grid_tags_detail {
       apply_symmetry_to_mask(
         af::ref<DataType, af::c_grid<3> > const& data) const
       {
-        CCTBX_ASSERT(tag_array_.accessor().all_eq(data.accessor()));
+        CCTBX_ASSERT(data.accessor().all_eq(tag_array_.accessor()));
         std::size_t n_overlap = 0;
         const TagType* tags=tag_array_.begin();
         for(std::size_t i=0;i<data.size();i++) {

@@ -22,6 +22,11 @@ namespace scitbx { namespace af {
       : base_class(a_a)
       {}
 
+      template <typename OtherArrayType>
+      tiny(array_adaptor_with_static_cast<OtherArrayType> const& a_a)
+      : base_class(a_a)
+      {}
+
       SCITBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(tiny)
       SCITBX_ARRAY_FAMILY_TINY_COPY_AND_ASSIGNMENT(tiny)
 
