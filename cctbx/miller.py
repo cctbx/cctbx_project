@@ -1098,7 +1098,7 @@ class set(crystal.symmetry):
         d_tolerance=1.e-10):
     assert d_max >= 0
     assert d_min >= 0
-    assert isinstance(reflections_per_bin, (int, long))
+    assert isinstance(reflections_per_bin, int)
     assert reflections_per_bin > 0
     assert d_tolerance > 0
     assert d_tolerance < 0.5
