@@ -42,6 +42,7 @@ cbflib_adaptbx/detectors/cbf_adaptor.cpp -text
 cbflib_adaptbx/detectors/cbf_byte_offset_optimized.cpp -text
 cbflib_adaptbx/detectors/mar_adaptor.cpp -text
 cbflib_adaptbx/detectors/tst_memory.cpp -text
+cbflib_adaptbx/excercise_compression.py -text
 cbflib_adaptbx/include/cbflib_adaptbx/basic.h -text
 cbflib_adaptbx/include/cbflib_adaptbx/buffer_based_service.h -text
 cbflib_adaptbx/include/cbflib_adaptbx/cbf_adaptor.h -text
