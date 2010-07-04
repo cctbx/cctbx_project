@@ -1241,6 +1241,11 @@ def exercise_random():
   for i_trial in xrange(10):
     assert approx_equal(
       abs(matrix.col(flex.random_double_unit_quaternion())), 1)
+  #
+  assert list(flex.random_int_gaussian_distribution(
+    size=3,
+    mu=-4.56,
+    sigma=3.89)) == [-7, -2, -5]
 
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=True)
