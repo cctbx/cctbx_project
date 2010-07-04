@@ -112,18 +112,13 @@ class stdout_pipe_buffered (stdout_pipe) :
     if self._data != "" :
       self._flush()
 
-_multiprocessing_status = None
 try:
   import multiprocessing
 except ImportError:
-  _multiprocessing_status = "not available"
+  class process_with_callbacks (object) :
+    def __init__ (self, *args, **kwds) :
+      raise ImportError("The multiprocessing module is not available.")
 else:
-  try:
-    multiprocessing.Pipe()
-  except ImportError:
-    del multiprocessing
-    _multiprocessing_status = "not functional"
-if (_multiprocessing_status is None):
   class _process_with_stdout_redirect (multiprocessing.Process) :
     def __init__ (self, group=None, target=None, name=None, args=(), kwargs={},
         connection=None, buffer_stdout=True) :
@@ -243,12 +238,6 @@ if (_multiprocessing_status is None):
           self._cb_other(pipe_output)
       if child_process is not None and child_process.is_alive() :
         child_process.join()
-
-else :
-  class process_with_callbacks (object) :
-    def __init__ (self, *args, **kwds) :
-      raise ImportError(
-        "The multiprocessing module is %s." % _multiprocessing_status)
 
 ########################################################################
 # tests
