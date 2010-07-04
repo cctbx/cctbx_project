@@ -105,15 +105,6 @@ namespace {
 
 namespace boost_python {
 
-#if defined(BOOST_MSVC) && BOOST_MSVC == 1600
-/*
- /Og optimization flag causes fatal internal compiler error C1001
- for Visual C++ 2010
- see https://connect.microsoft.com/VisualStudio/feedback/details/534697/
-*/
-#pragma optimize( "g", off)
-#endif
-
   void wrap_neighbors()
   {
     using namespace boost::python;
