@@ -212,6 +212,25 @@ namespace random {
           axis, angle, /* deg */ false);
       }
 
+      /*! \brief Integer array with gaussian distribution;
+          Algorithm copied from the Python source code
+       */
+      af::shared<int>
+      random_int_gaussian_distribution(std::size_t size,
+        const double & mean, const double & sigma)
+      {
+        af::shared<int> result(size, af::init_functor_null<int>());
+#define NEAREST_INTEGER(x) \
+ ( (x<0.0)? (int)(x-0.5): (int)(x+0.5) )
+        int* r = result.begin();
+        for(std::size_t i=0;i<size;i++) {
+          double x2pi = random_double() * 2.0 * scitbx::constants::pi;
+          double g2rad = std::sqrt(-2.0 * std::log(1.-random_double()));
+          *r++ = NEAREST_INTEGER(mean + std::cos(x2pi) * g2rad * sigma);
+        }
+        return result;
+      }
+
       af::shared<std::size_t>
       getstate() const { return generator_.getstate(); }
 

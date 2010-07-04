@@ -45,6 +45,11 @@ namespace {
           &w_t::random_double_unit_quaternion)
         .def("random_double_r3_rotation_matrix",
           &w_t::random_double_r3_rotation_matrix)
+        .def("random_int_gaussian_distribution",
+          (af::shared<int>(w_t::*)(std::size_t,const double&,const double&))
+          &w_t::random_int_gaussian_distribution,
+          (arg("size"), arg("mu"), arg("sigma"))
+          )
         .def("getstate", &w_t::getstate)
         .def("setstate", &w_t::setstate, (arg("state")))
       ;
