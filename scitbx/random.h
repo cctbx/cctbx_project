@@ -3,6 +3,7 @@
 
 #include <scitbx/random/mersenne_twister.h>
 #include <scitbx/math/r3_rotation.h>
+#include <scitbx/math/utils.h>
 #include <scitbx/array_family/shared.h>
 #include <stdexcept>
 
@@ -212,21 +213,21 @@ namespace random {
           axis, angle, /* deg */ false);
       }
 
-      /*! \brief Integer array with gaussian distribution;
-          Algorithm copied from the Python source code
+      //! Integer array with Gaussian distribution.
+      /*! Algorithm copied from the Python source code.
        */
       af::shared<int>
-      random_int_gaussian_distribution(std::size_t size,
-        const double & mean, const double & sigma)
+      random_int_gaussian_distribution(
+        std::size_t size,
+        double const& mean,
+        double const& sigma)
       {
         af::shared<int> result(size, af::init_functor_null<int>());
-#define NEAREST_INTEGER(x) \
- ( (x<0.0)? (int)(x-0.5): (int)(x+0.5) )
         int* r = result.begin();
         for(std::size_t i=0;i<size;i++) {
           double x2pi = random_double() * 2.0 * scitbx::constants::pi;
           double g2rad = std::sqrt(-2.0 * std::log(1.-random_double()));
-          *r++ = NEAREST_INTEGER(mean + std::cos(x2pi) * g2rad * sigma);
+          *r++ = math::nearest_integer(mean + std::cos(x2pi) * g2rad * sigma);
         }
         return result;
       }
