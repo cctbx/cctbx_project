@@ -195,6 +195,7 @@ object/function_doc_signature.cpp
         "c3d84006331d534840c42ab956fdfa05", # svn revision 50367M
         "cedfd061d767a27413ef4a75ee0e446f", # svn revision 56310
         "e5507482a1937825e4c9f3ffe555fc59", # svn revision 59331
+        "351b57c6a60e484925ca0cb9ed0f8ade", # svn revision 61086
       ])
     bpl_tests = Split("""
 staticmethod
