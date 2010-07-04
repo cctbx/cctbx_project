@@ -72,6 +72,7 @@ def export_to(target_module_name):
     "random_double_point_on_sphere",
     "random_double_unit_quaternion",
     "random_double_r3_rotation_matrix",
+    "random_int_gaussian_distribution",
     "py_object",
     "linear_regression",
     "linear_correlation",
@@ -183,6 +184,8 @@ random_double_point_on_sphere = random_generator.random_double_point_on_sphere
 random_double_unit_quaternion = random_generator.random_double_unit_quaternion
 random_double_r3_rotation_matrix \
   = random_generator.random_double_r3_rotation_matrix
+random_int_gaussian_distribution \
+  = random_generator.random_int_gaussian_distribution
 
 median = ext.median_functor(seed=get_random_seed())
 
