@@ -25,6 +25,10 @@ common_code = """\
 
 #include <boost/python/detail/prefix.hpp>
 
+#if defined(BOOST_MSVC) && BOOST_MSVC == 1600 && defined(_WIN64)
+#pragma optimize("g", off)
+#endif
+
 %s#endif // SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 """
 
