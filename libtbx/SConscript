@@ -275,7 +275,7 @@ libtbx.scons: Warning: compiling with /MDd:
       "/EHsc"]
     if (libtbx.env.build_options.optimization):
       opts = ["/DNDEBUG"]
-      if (env_base["MSVC_VERSION"] == "10.0"):
+      if (env_base["MSVC_VERSION"] == "10.0" and platform_64bit):
         opts.append("/Od") # /O2 and /O1 lead to crashes
       else:
         opts.append("/O2")
