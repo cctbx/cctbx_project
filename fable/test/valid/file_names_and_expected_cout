@@ -1206,6 +1206,26 @@ long_lines.f
 |0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz)!@#$%^&*\`~-_+=[{]}(|;:'",<.>/?|
 |0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz)!@#$%^&*(\~-_+=[{]}`|;:'",<.>/?|
 |qwertyuiopasdfghjklzxcvbnmqwertyuiopasdfghjklzxcvbnmqwertyuioasdfghjkzxcvbnmqwerjkdfghjkertyjkxcghidfbndtyuiklmbvftyuiknbvdtyuh|
+||
+| Sorry, your unit cell, range of hkl, size of map, and resolution will require |
+| redimensioning of the program.|
+||
+| This is quite easy:  You need to edit the source file  for the program|
+| and increase the value of "base_size" from 12 to  a larger value|
+||
+|  Then recompile the program and try again.|
+||
+| If you do not have the source code, then you can obtain|
+| a version with a larger dimension from |
+| our web site.|
+||
+| first =   1.2000|
+||
+| second:               3.40|
+| third:                5.60|
+| fourth:               7.80|
+| fifth:                9.10|
+| sixth:                 2.3|
 format_used_twice.f
 |12|
 |345|

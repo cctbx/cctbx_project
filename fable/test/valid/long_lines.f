@@ -38,4 +38,23 @@
      &asdfghjkzxcvbnmqwerjkdfghjkertyjkxcghidfbndtyuiklmbvftyuiknbvdtyuh
      &'
       write(6, '(a)') s
+ 1    format(/,' Sorry, your unit cell, range of hkl, size of map,',
+     &  ' and resolution will require ',/,
+     &  ' redimensioning of the program.',//,
+     &  ' This is quite easy:  You need to edit the source file ',
+     &  ' for the program',/,
+     &  ' and increase the value of "base_size" from ',i2,' to ',
+     &  ' a larger value',//,
+     &  '  Then recompile the program and try again.',
+     &  //,' If you do not have the source code, then you can obtain',
+     & / ' a version with a larger dimension from ',/,
+     &  ' our web site.',/)
+      write(6, 1) 12
+ 2    format(' first = ',F8.4,//,
+     1  ' second:              ',F5.2,/,
+     1  ' third:               ',F5.2,/,
+     1  ' fourth:              ',F5.2,/,
+     1  ' fifth:               ',F5.2,/,
+     1  ' sixth:               ',F5.1)
+      write(6, 2) 1.2, 3.4, 5.6, 7.8, 9.1, 2.3
       end

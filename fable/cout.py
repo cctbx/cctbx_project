@@ -4,10 +4,14 @@ from libtbx import group_args
 from libtbx import Auto
 import os.path as op
 
+fmt_comma_placeholder = chr(255)
+
 def break_line_if_necessary(callback, line, max_len=80, min_len=70):
+  def cb_finalize(line):
+    callback(line.replace(fmt_comma_placeholder, ","))
   nc = len(line)
   if (nc <= max_len):
-    callback(line)
+    cb_finalize(line)
     return
   for i_start in xrange(nc):
     if (line[i_start] != " "):
@@ -16,7 +20,7 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
     raise AssertionError
   lsw = line.startswith
   if (lsw("//", i_start)):
-    callback(line)
+    cb_finalize(line)
     return
   potential_break_points = []
   ic = i_start
@@ -60,19 +64,23 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
   l = max(min_len, iround(n / iceil(n / (max_len - i_start - 2))))
   b = 0
   f = 0
-  def break_more_if_necessary(callback, s):
+  def break_more_if_necessary(s):
     while (f+len(s) > max_len and s.startswith('"')):
       i = max_len-2-f
-      for j in xrange(i-1,-1,-1):
-        if (s[j] != "\\"):
-          if ((i - j ) % 2 == 0):
-            i -= 1
-          break
+      j = s.rfind(fmt_comma_placeholder, 0, i)
+      if (j > 4): # ad-hoc value
+        i = j+1
       else:
-        raise AssertionError
-      callback(" "*f + s[:i] + '"')
+        for j in xrange(i-1,-1,-1):
+          if (s[j] != "\\"):
+            if ((i - j ) % 2 == 0):
+              i -= 1
+            break
+        else:
+          raise AssertionError
+      cb_finalize(" "*f + s[:i] + '"')
       s = '"' + s[i:]
-    callback(" "*f + s)
+    cb_finalize(" "*f + s)
   pprio = 0
   pp = 0
   for ip in xrange(len(potential_break_points)):
@@ -88,15 +96,15 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
         and (pprio == 1 or not following_point_is_better())):
       s = line[b:pp].rstrip()
       if (f == 0):
-        callback(s)
+        cb_finalize(s)
         f = i_start + 2
       else:
-        break_more_if_necessary(callback=callback, s=s)
+        break_more_if_necessary(s=s)
       b = pp
     pprio = prio
     pp = p
   if (b < nc):
-    break_more_if_necessary(callback=callback, s=line[b:])
+    break_more_if_necessary(s=line[b:])
 
 def break_lines(cpp_text):
   result = []
@@ -1614,8 +1622,8 @@ def convert_executable(
     if (fmt_tokens is None):
       tok.raise_semantic_error(
         "Unknown FORMAT statement label: %s" % tok.value)
-    return '"(' + escape_string_literal(
-      fmt_tokens_as_string(tokens=fmt_tokens)) + ')"'
+    return '"(' + escape_string_literal(fmt_tokens_as_string(
+      tokens=fmt_tokens, comma=fmt_comma_placeholder)) + ')"'
   fmt_counts_by_statement_label = conv_info.unit.fmt_counts_by_statement_label()
   for stmt_label in sorted(fmt_counts_by_statement_label.keys()):
     if (fmt_counts_by_statement_label[stmt_label] > 1):
@@ -1777,8 +1785,8 @@ def convert_executable(
         cunit = convert_tokens(conv_info=conv_info, tokens=cilist.unit)
         def conv_fmt():
           if (ei.fmt_tokens is not None):
-            return '"(' + escape_string_literal(
-              fmt_tokens_as_string(tokens=ei.fmt_tokens)) + ')"'
+            return '"(' + escape_string_literal(fmt_tokens_as_string(
+              tokens=ei.fmt_tokens, comma=fmt_comma_placeholder)) + ')"'
           tl = cilist.fmt
           if (tl is None):
             return None

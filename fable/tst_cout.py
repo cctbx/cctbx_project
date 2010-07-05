@@ -2803,6 +2803,21 @@ program_prog(
     "qwertyuiopasdfghjklzxcvbnmqwertyuiopasdfghjklzxcvbnmqwertyuioasdfghjkzxcv"
     "bnmqwerjkdfghjkertyjkxcghidfbndtyuiklmbvftyuiknbvdtyuh";
   write(6, "(a)"), s;
+  write(6,
+    "(/,' Sorry, your unit cell, range of hkl, size of map,',"
+    "' and resolution will require ',/,' redimensioning of the program.',/,/,"
+    "' This is quite easy:  You need to edit the source file ',"
+    "' for the program',/,' and increase the value of \\"base_size\\" from ',i2,"
+    "' to ',' a larger value',/,/,"
+    "'  Then recompile the program and try again.',/,/,"
+    "' If you do not have the source code, then you can obtain',/,"
+    "' a version with a larger dimension from ',/,' our web site.',/)"),
+    12;
+  write(6,
+    "(' first = ',f8.4,/,/,' second:              ',f5.2,/,"
+    "' third:               ',f5.2,/,' fourth:              ',f5.2,/,"
+    "' fifth:               ',f5.2,/,' sixth:               ',f5.1)"),
+    1.2f, 3.4f, 5.6f, 7.8f, 9.1f, 2.3f;
 """)
   #
   lines = get("format_used_twice.f")
