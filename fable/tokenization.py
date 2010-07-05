@@ -778,29 +778,29 @@ def get_statement_label_token(tokens):
     tok.raise_error(msg="Invalid statement label")
   return tok
 
-def fmt_tokens_as_string(tokens):
+def fmt_tokens_as_string(tokens, comma=","):
   result = []
   def result_ends_with_comma():
-    return (len(result) != 0 and result[-1] == ",")
+    return (len(result) != 0 and result[-1] == comma)
   for tok in tokens:
     if (tok.is_integer()):
       result.append(tok.value)
     elif (tok.is_string()):
       result.append("'" + tok.value.replace("'","''") + "'")
-      result.append(",")
+      result.append(comma)
     elif (tok.is_format()):
       result.append(tok.value)
-      result.append(",")
+      result.append(comma)
     elif (tok.is_op()):
       tv = tok.value
       if (tv == "(" or tv == ")"):
         if (result_ends_with_comma()):
           result.pop()
         result.append(tv)
-        if (tv == ")"): result.append(",")
+        if (tv == ")"): result.append(comma)
       else:
         result.append(tv)
-        result.append(",")
+        result.append(comma)
     else:
       raise AssertionError
   if (result_ends_with_comma()):
