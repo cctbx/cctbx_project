@@ -2,6 +2,7 @@ from __future__ import division
 from libtbx import Auto
 from libtbx import group_args
 import sys, os
+op = os.path
 
 def varnames(frames_back=0):
   f_code = sys._getframe(frames_back+1).f_code
@@ -72,6 +73,13 @@ def start_print_trace():
 def stop_print_trace():
   sys.settrace(None)
 
+kb_exponents = {
+  "KB": 1,
+  "MB": 2,
+  "GB": 3,
+  "TB": 4,
+  "PB": 5}
+
 class proc_file_reader(object):
 
   def get_bytes(self, vm_key):
@@ -82,17 +90,14 @@ class proc_file_reader(object):
     except ValueError:
       return None
     flds = self.proc_status[i:].split(None, 3)
-    unit = flds[2].upper()
-    if (len(flds) < 3 or unit not in ["KB", "MB"]):
+    if (len(flds) < 3):
       return None
+    exponent = kb_exponents.get(flds[2].upper())
     try:
-      result = int(flds[1])
+      num = int(flds[1])
     except ValueError:
       return None
-    result *= 1024
-    if (unit == "MB"):
-      result *= 1024
-    return result
+    return num * 1024**exponent
 
 try:
   _proc_status = "/proc/%d/status" % os.getpid()
@@ -187,24 +192,57 @@ class virtual_memory_info(proc_file_reader):
       resident_set=self.max_resident_set_size,
       stack=self.max_stack_size)
 
-try:
-  _proc_meminfo = "/proc/meminfo"
-except AttributeError:
-  _proc_meminfo = None
+def get_mac_os_x_memory_total():
+  cmd = "/usr/sbin/system_profiler"
+  if (not op.isfile(cmd)):
+    return None
+  from libtbx import easy_run
+  for line in easy_run.fully_buffered(
+                command=cmd+" SPHardwareDataType").stdout_lines:
+    line = line.strip()
+    if (not line.startswith("Memory:")):
+      continue
+    flds = line.split()
+    if (len(flds) != 3):
+      continue
+    try:
+      num = int(flds[1])
+    except ValueError:
+      continue
+    if (num <= 0):
+      continue
+    exponent = kb_exponents.get(flds[2].upper())
+    if (exponent is None):
+      continue
+    return num * 1024**exponent
+  return None
 
 class machine_memory_info(proc_file_reader):
 
   def __init__(self):
-    try:
-      self.proc_status = open(_proc_meminfo).read()
-    except IOError:
-      self.proc_status = None
+    self.proc_status = None
+    self._memory_total = Auto
+    self._memory_free = Auto
+    if (op.isfile("/proc/meminfo")):
+      try:
+        self.proc_status = open("/proc/meminfo").read()
+      except IOError:
+        pass
+    else:
+      self._memory_total = get_mac_os_x_memory_total()
+      self._memory_free = None
 
   def memory_total(self):
-    return self.get_bytes("MemTotal:")
+    result = self._memory_total
+    if (result is Auto):
+      result = self._memory_total = self.get_bytes("MemTotal:")
+    return result
 
   def memory_free(self):
-    return self.get_bytes("MemFree:")
+    result = self._memory_free
+    if (result is Auto):
+      result = self._memory_free = self.get_bytes("MemFree:")
+    return result
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
@@ -229,7 +267,7 @@ def number_of_processors(return_value_if_unknown=None):
         _number_of_processors = n
     if (_number_of_processors is None):
       cpuinfo = "/proc/cpuinfo" # Linux
-      if (os.path.isfile(cpuinfo)):
+      if (op.isfile(cpuinfo)):
         n = 0
         for line in open(cpuinfo).read().splitlines():
           if (not line.startswith("processor")): continue
@@ -240,7 +278,7 @@ def number_of_processors(return_value_if_unknown=None):
           _number_of_processors = n
     if (_number_of_processors is None):
       cmd = "/usr/sbin/system_profiler" # Mac OS X
-      if (os.path.isfile(cmd)):
+      if (op.isfile(cmd)):
         keys = [
           "Total Number Of Cores: ",
           "Number Of CPUs: ",
@@ -268,7 +306,7 @@ def number_of_processors(return_value_if_unknown=None):
         else: _number_of_processors = n
     if (_number_of_processors is None):
       cmd = "/sbin/hinv" # IRIX
-      if (os.path.isfile(cmd)):
+      if (op.isfile(cmd)):
         from libtbx import easy_run
         for line in easy_run.fully_buffered(command=cmd).stdout_lines:
           if (line.endswith(" Processors")):
