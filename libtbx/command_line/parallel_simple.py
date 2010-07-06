@@ -12,10 +12,11 @@ def fmt_time(t0):
   return "JOB wall clock time: %.2f s" % (time.time() - t0)
 
 def run_one_cmd(cmd_info):
-  sys.stdout.flush()
   t0 = time.time()
   from libtbx import easy_run
   if (cmd_info.index == 0):
+    print "command:", cmd_info.cmd
+    sys.stdout.flush()
     try:
       easy_run.call(command=cmd_info.cmd)
     except: # intentional
@@ -23,6 +24,7 @@ def run_one_cmd(cmd_info):
     print fmt_time(t0)
     print
   else:
+    sys.stdout.flush()
     sio = None
     try:
       buffers = easy_run.fully_buffered(
