@@ -2718,9 +2718,10 @@ def process(
     if (len(result) == 0): prev_line = None
     else:                  prev_line = result[-1]
     lines = break_lines(cpp_text=[line+"\n"], prev_line=prev_line)
-    if (debug):
-      print "\n".join(lines)
-    result.extend(lines)
+    if (len(lines) != 0):
+      if (debug):
+        print "\n".join(lines)
+      result.extend(lines)
   #
   need_function_hpp = False
   if (len(separate_files_main_namespace) != 0):
