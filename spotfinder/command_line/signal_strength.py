@@ -14,6 +14,12 @@ distl {
   pdf_output = None
     .type = str
     .help="File name for optional PDF graphical output for distl.signal_strength (*.pdf)"
+  port = 8125
+    .type = int
+    .help="For the server version, port number to listen for requests"
+  processors = 1
+    .type = int
+    .help="For the multithreaded server version, number of server processes to be used"
 }
 """
 
@@ -53,6 +59,7 @@ Method 2 Resolution reflects drop off of spot count as a function of resolution 
 Signal strength of the Good Bragg Candidates is then presented as integrated area of
   the spot above local background, expressed in pixel-analog/digital units.
 Very verbose output is available by setting distl.verbose=True
+Full documentation: http://cci.lbl.gov/publications/download/ccn_jul2010_page18.pdf
 """
 
   if (len(args) == 0 or args[0] in ["H","h","-H","-h","help","--help","-help"]):
