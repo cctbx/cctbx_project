@@ -2679,7 +2679,8 @@ def get_missing_external_return_type(fdecls):
 default_arr_nd_size_max = 256
 
 def process(
-      file_names,
+      file_names=None,
+      all_units=None,
       top_unit_name=None,
       extra_unit_names=None,
       namespace="please_specify",
@@ -2703,10 +2704,12 @@ def process(
       data_values_block_size=8,
       data_specializations=True,
       debug=False):
+  assert [file_names, all_units].count(None) == 1
   if (namespace is None or namespace == "please_specify"):
     namespace = "placeholder_please_replace"
   import fable.read
-  all_units = fable.read.process(file_names=file_names)
+  if (all_units is None):
+    all_units = fable.read.process(file_names=file_names)
   for unit in all_units.all_in_input_order:
     unit.ignore_common_and_save = (unit.name.value in ignore_common_and_save)
   result = []
