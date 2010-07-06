@@ -2709,6 +2709,7 @@ sub2(
   #
   lines = get("comments.f")
   assert not absd(lines, head_off(3), """\
+//C
 //C1
 //Cc2
 void
@@ -2734,13 +2735,16 @@ program_prog(
     //Cc10
     //C
     //C12
+    //C
     //C c13
     //Cc14
+    //C
     //C c15
     nums(i) = i + 47;
     //C16
     //Cc17
   }
+  //C
   //C c18
   try {
     write(6, star), nums;
@@ -2762,6 +2766,7 @@ program_prog(
 }
 //C  c26
 //C27
+//C
 """)
   #
   lines = get("long_lines.f")

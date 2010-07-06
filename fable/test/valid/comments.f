@@ -1,3 +1,5 @@
+c
+c
 c1
       program prog!c2
 c3
@@ -10,11 +12,19 @@ c9
         nums(i)!c10
 
 c12
+c
+c
      &! c13
      &=!c14
+c
+c
+c
      &i+47! c15
 c16
       enddo!c17
+c
+c
+c
       write(6, *, err=10) nums! c18
 c19
       goto 20 !c20
@@ -25,3 +35,6 @@ c23
 c25
       end  !  c26
 c27
+c
+c
+c

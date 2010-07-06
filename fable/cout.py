@@ -106,9 +106,15 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
   if (b < nc):
     break_more_if_necessary(s=line[b:])
 
-def break_lines(cpp_text):
+def break_lines(cpp_text, prev_line=None):
+  prev_line = [prev_line]
   result = []
-  callback = result.append
+  def callback(line):
+    if (   prev_line[0] is None
+        or line != prev_line[0]
+        or not line.lstrip().startswith("//C")):
+      result.append(line)
+      prev_line[0] = line
   for line in "\n".join(cpp_text).splitlines():
     break_line_if_necessary(callback=callback, line=line)
   return result
@@ -2705,7 +2711,9 @@ def process(
     unit.ignore_common_and_save = (unit.name.value in ignore_common_and_save)
   result = []
   def callback(line):
-    lines = break_lines(cpp_text=[line+"\n"])
+    if (len(result) == 0): prev_line = None
+    else:                  prev_line = result[-1]
+    lines = break_lines(cpp_text=[line+"\n"], prev_line=prev_line)
     if (debug):
       print "\n".join(lines)
     result.extend(lines)
