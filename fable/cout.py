@@ -2684,6 +2684,7 @@ def process(
       top_unit_name=None,
       extra_unit_names=None,
       namespace="please_specify",
+      include_prefix=None,
       top_cpp_file_name=None,
       dynamic_parameters=None,
       fem_do_safe=True,
@@ -2741,11 +2742,16 @@ def process(
       callback('#include "%s.hpp"' % name)
     return True
   #
+  def include_with_prefix(name):
+    if (include_prefix is None):
+      return '#include "%s.hpp"' % name
+    return '#include <%s/%s.hpp>' % (include_prefix, name)
+  #
   need_using_major_types = False
   if (need_function_hpp):
-    callback('#include "functions.hpp"')
+    callback(include_with_prefix("functions"))
   elif (separate_cmn_hpp):
-    callback('#include "cmn.hpp"')
+    callback(include_with_prefix("cmn"))
   else:
     callback(include_fem_hpp)
     need_using_major_types = True
@@ -2824,7 +2830,7 @@ def process(
       raise RuntimeError(
         "separate_files_main_namespace: empty list: %s" % name)
     buffer = []
-    buffer.append('#include "functions.hpp"')
+    buffer.append(include_with_prefix("functions"))
     buffer.append("")
     separate_function_buffers.append((name, buffer))
     open_namespace(callback=buffer.append, namespace=namespace)
@@ -2971,10 +2977,10 @@ def process(
       if (buffers is function_declarations):
         include_guard(
           callback=fcb, namespace=namespace, suffix="_FUNCTIONS_HPP")
-        fcb('#include "cmn.hpp"')
+        fcb(include_with_prefix("cmn"))
         include_separate(callback=fcb)
       else:
-        fcb('#include "functions.hpp"')
+        fcb(include_with_prefix("functions"))
       fcb("")
       open_namespace(
         callback=fcb, namespace=namespace, using_namespace_major_types=False)
