@@ -772,7 +772,7 @@ input
     program to generate an MTZ file for a specific PDB ID, you may specify \
     that instead of input files, and the CIF and PDB will be fetched from \
     www.rcsb.org.
-  .style = caption_img:icons/phenix/phenix.reflection_file_editor.png
+  .style = caption_img:icons/custom/phenix.reflection_file_editor.png
 {
   pdb_id = None
     .type = str
