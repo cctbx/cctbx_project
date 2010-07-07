@@ -550,8 +550,8 @@ void diffimage::pxlclassify_scanbox(const int xstart, const int xend,
     xbox += 2*halfincrease;
     if (xbox > 1000) {
     delete bp;
-    std::cout<<"PXLCLASSIFY SCANBOX THROW"<<std::endl;
-    throw;} //do not permit scanbox to increase without limit
+    throw scitbx::error("pxlclassify scanbox function: cannot distinguish signal/background");
+    } //do not permit scanbox to increase without limit
     ybox += 2*halfincrease;
     x0 = min(max(0,x0-halfincrease), static_cast<int>(pixelvalue.nx - xbox));
     y0 = min(max(0,y0-halfincrease), static_cast<int>(pixelvalue.ny - ybox));

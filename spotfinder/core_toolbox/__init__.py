@@ -26,7 +26,11 @@ class Distl(w_Distl):
         if params.distl.minimum_signal_height != None:
           self.set_minimum_signal_height(params.distl.minimum_signal_height)
     self.get_underload()
-    self.pxlclassify()
+    try:
+      self.pxlclassify()
+    except Exception, e:
+      if str(e).find("cannot distinguish signal")>0: print e
+      else: raise e
     self.search_icerings()
     self.search_maximas()
     self.search_spots()
