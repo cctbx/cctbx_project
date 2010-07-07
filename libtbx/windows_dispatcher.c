@@ -133,7 +133,7 @@ int
 main(int argc, char *const argv[])
 {
   char** extended_argv;
-  int n, i;
+  int n, ret, i;
   _putenv("PYTHONHOME=");
   _putenv("PYTHONCASEOK=1");
   _putenv(libtbx_build);
@@ -154,12 +154,12 @@ main(int argc, char *const argv[])
   }
   extended_argv[n] = NULL;
   _flushall();
-  _fileinfo = 1;
-  _spawnv(_P_WAIT, extended_argv[0], extended_argv);
+/*  _fileinfo = 1; */
+  ret = _spawnv(_P_WAIT, extended_argv[0], extended_argv);
   if (errno) {
     fprintf(stderr, "%s: error starting %s: %s\n",
       argv[0], extended_argv[0], strerror(errno));
     exit(3);
   }
-  return 0;
+  return ret;
 }
