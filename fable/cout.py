@@ -2693,9 +2693,9 @@ def process(
       separate_cmn_hpp=False,
       number_of_function_files=None,
       separate_files_main_namespace={},
-      write_separate_files_main_namespace=True,
+      write_separate_files_main_namespace="All",
       separate_files_separate_namespace={},
-      write_separate_files_separate_namespace=True,
+      write_separate_files_separate_namespace="All",
       ignore_common_and_save=set(),
       force_not_implemented=set(),
       ignore_missing=set(),
@@ -2852,8 +2852,7 @@ def process(
     for ext in ["hpp", "cpp"]:
       buffer = getattr(buffers, ext)
       if (ext == "hpp"):
-        include_guard(
-          callback=buffer.append, namespace=name, suffix="_%s_HPP" % name)
+        include_guard(callback=buffer.append, namespace=name, suffix="_HPP")
         buffer.append(include_fem_hpp)
       else:
         buffer.append('#include "%s.hpp"' % name)
@@ -2950,7 +2949,8 @@ def process(
   for name,buffer in separate_function_buffers:
     close_namespace(
       callback=buffer.append, namespace=namespace, hpp_guard=False)
-    if (write_separate_files_main_namespace):
+    if (write_separate_files_main_namespace == "All"
+          or name in write_separate_files_main_namespace):
       print >> open(name+".cpp", "w"), "\n".join(
         break_lines(cpp_text=buffer))
   #
@@ -2960,7 +2960,8 @@ def process(
       buffer = getattr(buffers, ext)
       close_namespace(
         callback=buffer.append, namespace=name, hpp_guard=(ext=="hpp"))
-      if (write_separate_files_separate_namespace):
+      if (write_separate_files_separate_namespace == "All"
+            or name in write_separate_files_separate_namespace):
         print >> open(name+"."+ext, "w"), "\n".join(
           break_lines(cpp_text=buffer))
   #
