@@ -14,7 +14,6 @@ class mask(object):
     self.observations = observations
     self.mask = None
     self._f_mask = None
-    self.masked_diff_map = None
     self.f_000 = None
     self.f_000_s = None
     self.f_000_cell = None
@@ -75,32 +74,31 @@ class mask(object):
     self.solvent_accessible_volume = self.n_solvent_grid_points() \
         / self.mask.data.size() * self.xray_structure.unit_cell().volume()
 
-  def structure_factors(self, max_cycles=10, scale_factor=None):
+  def structure_factors(self, max_cycles=10):
     """P. van der Sluis and A. L. Spek, Acta Cryst. (1990). A46, 194-201."""
     assert self.mask is not None
     if self.n_voids() == 0: return
     f_obs = self.observations.as_amplitude_array()
     self.f_calc = f_obs.structure_factors_from_scatterers(
       self.xray_structure, algorithm="direct").f_calc()
-    if scale_factor is None:
-      self.scale_factor = f_obs.scale_factor(self.f_calc)
+    self.scale_factor = f_obs.scale_factor(self.f_calc)
     f_obs_minus_f_calc = f_obs.f_obs_minus_f_calc(
       1/self.scale_factor, self.f_calc)
     self.fft_scale = self.xray_structure.unit_cell().volume()\
         / self.crystal_gridding.n_grid_points()
     epsilon_for_min_residual = 2
     for i in range(max_cycles):
-      diff_map = miller.fft_map(self.crystal_gridding, f_obs_minus_f_calc)
-      diff_map.apply_volume_scaling()
-      stats = diff_map.statistics()
-      masked_diff_map = diff_map.real_map_unpadded().set_selected(
+      self.diff_map = miller.fft_map(self.crystal_gridding, f_obs_minus_f_calc)
+      self.diff_map.apply_volume_scaling()
+      stats = self.diff_map.statistics()
+      masked_diff_map = self.diff_map.real_map_unpadded().set_selected(
         self.mask.data.as_double() == 0, 0)
       n_solvent_grid_points = self.n_solvent_grid_points()
-      for i in range(self.n_voids()):
+      for j in range(self.n_voids()):
         # exclude voids with negative electron counts from the masked map
         # set the electron density in those areas to be zero
-        selection = self.mask.data == i+2
-        if self.exclude_void_flags[i]:
+        selection = self.mask.data == j+2
+        if self.exclude_void_flags[j]:
           masked_diff_map.set_selected(selection, 0)
           continue
         diff_map_ = masked_diff_map.deep_copy().set_selected(~selection, 0)
@@ -111,7 +109,7 @@ class mask(object):
         if f_000_s < 0:
           masked_diff_map.set_selected(selection, 0)
           f_000_s = 0
-          self.exclude_void_flags[i] = True
+          self.exclude_void_flags[j] = True
       self.f_000 = flex.sum(masked_diff_map) * self.fft_scale
       f_000_s = self.f_000 * (masked_diff_map.size() /
         (masked_diff_map.size() - self.n_solvent_grid_points()))
@@ -153,7 +151,6 @@ class mask(object):
       f_model = self.f_model(epsilon=epsilon_for_min_residual)
       f_obs_minus_f_calc = f_obs.phase_transfer(f_model).f_obs_minus_f_calc(
         1/self.scale_factor, self.f_calc)
-    self.masked_diff_map = masked_diff_map
     return self._f_mask
 
   def f_mask(self):
@@ -227,11 +224,13 @@ class mask(object):
     if n_voids == 0: return cif_block
     grid_points_per_void = self.flood_fill.grid_points_per_void()
     com = self.flood_fill.centres_of_mass_frac()
+    masked_diff_map = self.diff_map.real_map_unpadded().set_selected(
+      self.mask.data.as_double() == 0, 0)
     for i in range(self.n_voids()):
       if self.exclude_void_flags[i]:
         f_000_s = 0
       else:
-        diff_map = self.masked_diff_map.deep_copy().set_selected(
+        diff_map = masked_diff_map.deep_copy().set_selected(
           self.mask.data != i+2, 0)
         f_000 = flex.sum(diff_map) * self.fft_scale
         f_000_s = f_000 * (
