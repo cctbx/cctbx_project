@@ -106,10 +106,16 @@ input {
           .type = path
           .help = "File name"
           .short_caption = Reference x-ray file
-          .style = bold file_type:hkl
+          .style = bold file_type:hkl process_hkl update_d_max_min \
+                   child:fobs:labels child:space_group:space_group \
+                   child:unit_cell:unit_cell
         labels=None
           .type=strings
           .help="Labels"
+          .input_size = 160
+          .short_caption = Data labels
+          .style = bold renderer:draw_xtriage_hkl_label_widget \
+                   parent:file_name:file_name
         unit_cell=None
           .type=unit_cell
           .help=""Unit cell parameters"
@@ -122,6 +128,7 @@ input {
          .type=path
          .help="Filename of reference PDB file"
          .short_caption = Reference PDB file
+         .style = file_type:pdb noauto
        }
      }
    }
@@ -198,17 +205,17 @@ input {
    }
 
    optional
-   .expert_level=1
-   .help="Optional data massage possibilities"
-   .short_caption = Advanced
+    .expert_level=1
+    .help="Optional data massage possibilities"
+    .short_caption = Advanced data massaging options
     .style = menu_item auto_align
    {
      include scope mmtbx.scaling.massage_twin_detwin_data.master_params
    }
    expert_level=1
-   .type=int
-   .expert_level=10
-   .help="Expert level"
+    .type=int
+    .expert_level=10
+    .help="Expert level"
 }
 gui
   .help = GUI-specific parameters, not applicable to command-line version.
