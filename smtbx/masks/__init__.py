@@ -79,9 +79,11 @@ class mask(object):
     assert self.mask is not None
     if self.n_voids() == 0: return
     f_obs = self.observations.as_amplitude_array()
+    f_obs = f_obs.average_bijvoet_mates()
     self.f_calc = f_obs.structure_factors_from_scatterers(
       self.xray_structure, algorithm="direct").f_calc()
-    self.scale_factor = f_obs.scale_factor(self.f_calc)
+    self.scale_factor = flex.sum(f_obs.data())/flex.sum(
+      flex.abs(self.f_calc.data()))
     f_obs_minus_f_calc = f_obs.f_obs_minus_f_calc(
       1/self.scale_factor, self.f_calc)
     self.fft_scale = self.xray_structure.unit_cell().volume()\
@@ -135,7 +137,7 @@ class mask(object):
       min_residual = 1000
       for epsilon in xfrange(epsilon_for_min_residual, 0.9, -0.2):
         f_model_ = self.f_model(epsilon=epsilon)
-        scale = f_obs.scale_factor(f_model_)
+        scale = flex.sum(f_obs.data())/flex.sum(flex.abs(f_model_.data()))
         residual = flex.sum(flex.abs(
           1/scale * flex.abs(f_obs.data())- flex.abs(f_model_.data()))) \
                  / flex.sum(1/scale * flex.abs(f_obs.data()))
