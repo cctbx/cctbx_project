@@ -2,7 +2,7 @@
 
 from __future__ import division
 
-from cctbx import crystal, miller, uctbx, xray
+from cctbx import crystal, miller, sgtbx, uctbx, xray
 from cctbx.array_family import flex
 from iotbx import reflection_file_utils, reflection_file_reader
 from iotbx import shelx
@@ -18,20 +18,20 @@ import os
 def exercise_masks(xs, fo_sq,
                    solvent_radius,
                    shrink_truncation_radius,
-                   resolution_factor,
+                   resolution_factor=None,
                    grid_step=None,
                    resolution_cutoff=None,
                    atom_radii_table=None,
                    use_space_group_symmetry=False,
                    debug=False,
                    verbose=False):
+  assert resolution_factor is None or grid_step is None
   xs_ref = xs.deep_copy_scatterers()
   time_total = time_log("masks total").start()
-  # average_bijvoet_mates is essential for non-centric structures
   fo_sq = fo_sq.customized_copy(anomalous_flag=True)
   fo_sq = fo_sq.eliminate_sys_absent()
   merging = fo_sq.merge_equivalents()
-  fo_sq_merged = merging.array().average_bijvoet_mates()
+  fo_sq_merged = merging.array()
   if resolution_cutoff is not None:
     fo_sq_merged = fo_sq_merged.resolution_filter(d_min=resolution_cutoff)
   if verbose:
@@ -54,7 +54,6 @@ def exercise_masks(xs, fo_sq,
   f_mask = mask.structure_factors()
   time_structure_factors.stop()
   mask.show_summary()
-  print "F000 void: %.1f" %mask.f_000_s
   f_model = mask.f_model()
   # write modified intensities as shelxl hkl
   out = StringIO()
@@ -124,7 +123,7 @@ def exercise_masks(xs, fo_sq,
       title="modified_fo_sq",
       raw_map=modified_fo_sq_map.real_map(),
       unit_cell=f_obs.unit_cell())
-  return
+  return mask
 
 def run(args):
   def vdw_radii_callback(option, opt_str, value, parser):
@@ -163,6 +162,9 @@ def run(args):
                   .option(None, "--two_theta_max",
                           action="store",
                           type="float")
+                  .option(None, "--cb_op",
+                          action="store",
+                          type="string")
                   .option(None, "--vdw_radii",
                           action="callback",
                           callback=vdw_radii_callback,
@@ -186,6 +188,11 @@ def run(args):
     ]
   )
   fo_sq = reflections_server.get_miller_arrays(None)[0]
+
+  if command_line.options.cb_op is not None:
+    cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx(command_line.options.cb_op))
+    fo_sq = fo_sq.change_basis(cb_op).customized_copy(
+      crystal_symmetry=xs)
 
   print "structure file: %s" %command_line.args[0]
   print "reflection file: %s" %command_line.args[1]
