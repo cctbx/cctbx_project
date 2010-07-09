@@ -184,7 +184,7 @@ object/function_doc_signature.cpp
     env.StaticLibrary(target="#lib/boost_python", source=bpl_dll_sources)
   else:
     env.SharedLibrary(target="#lib/boost_python", source=bpl_dll_sources)
-  if (int(ARGUMENTS.get("boost_python_tests", 0))):
+  if (bool(int(ARGUMENTS.get("boost_python_tests", "0")))):
     warn_if_unexpected_md5_hexdigest(
       path=libtbx.env.under_dist("boost", "libs/python/test/Jamfile.v2"),
       expected_md5_hexdigests=[

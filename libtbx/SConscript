@@ -5,6 +5,7 @@ from libtbx.str_utils import show_string
 from libtbx.path import norm_join, full_command_path
 import platform
 import sys, os
+op = os.path
 
 if (hasattr(Environment, "Clone")):
   Environment.Copy = Environment.Clone # XXX backward compatibility 2008_03_30
@@ -71,9 +72,13 @@ int main()
   return int(output)
 
 env_etc = empty()
-env_etc.no_boost_python = ARGUMENTS.get(
-  "no_boost_python",
-  not libtbx.env.build_options.build_boost_python_extensions)
+env_etc.no_boost_python = ARGUMENTS.get("no_boost_python")
+if (env_etc.no_boost_python is not None):
+  env_etc.no_boost_python = bool(int(env_etc.no_boost_python))
+else:
+  env_etc.no_boost_python = \
+    not libtbx.env.build_options.build_boost_python_extensions
+env_etc.no_opt_resources = bool(int(ARGUMENTS.get("no_opt_resources", "0")))
 env_etc.norm_join = norm_join
 env_etc.gcc_version = None
 env_etc.icc_version = None
@@ -195,11 +200,12 @@ boost_dot_svn = libtbx.env.under_dist(
   module_name="boost",
   default=None,
   path=".svn",
-  test=os.path.isdir)
+  test=op.isdir)
+
+is_64bit_architecture = libtbx.env_config.is_64bit_architecture()
 
 if (sys.platform == "win32"):
-  platform_64bit = (platform.architecture()[0] == '64bit')
-  if platform_64bit:
+  if is_64bit_architecture:
     target_arch = 'x86_64'
   else:
     target_arch = 'x86'
@@ -226,13 +232,16 @@ if (sys.platform == "win32"):
       env_base = Environment(ENV=os.environ, MSVC_VERSION="7.1")
       env_etc.have_manifest_tool = False
     elif (cl_info.find("Version 14.00") >= 0):
-      env_base = Environment(ENV=os.environ, MSVC_VERSION="8.0", TARGET_ARCH=target_arch)
+      env_base = Environment(
+        ENV=os.environ, MSVC_VERSION="8.0", TARGET_ARCH=target_arch)
       env_etc.have_manifest_tool = True
     elif (cl_info.find("Version 15.00") >= 0):
-      env_base = Environment(ENV=os.environ, MSVC_VERSION="9.0", TARGET_ARCH=target_arch)
+      env_base = Environment(
+        ENV=os.environ, MSVC_VERSION="9.0", TARGET_ARCH=target_arch)
       env_etc.have_manifest_tool = True
     elif (cl_info.find("Version 16.00") >= 0):
-      env_base = Environment(ENV=os.environ, MSVC_VERSION="10.0", TARGET_ARCH=target_arch)
+      env_base = Environment(
+        ENV=os.environ, MSVC_VERSION="10.0", TARGET_ARCH=target_arch)
       env_etc.have_manifest_tool = True
     else:
       raise RuntimeError("""\
@@ -254,7 +263,8 @@ For newer versions, please adjust this SConscript.
       "/D_CRT_SECURE_NO_DEPRECATE",
       "/wd4996", # warning C4996: ... was declared deprecated
       "/wd4068", # warning C4068: unknown pragma
-      "/Z7",  # produce program database file containing debugging symbols. Harmless for release builds
+      "/Z7", # produce program database file containing debugging symbols.
+             # Harmless for release builds
       "/Zm800"]
     if (libtbx.env.build_options.debug_symbols):
       if (not env_etc.no_boost_python):
@@ -265,7 +275,7 @@ libtbx.scons: Warning: compiling with /MDd:
       env_etc.ccflags_base.extend([
         "/MDd",
         "/D_DEBUG",
-        "/Z7",  # produce program database file containing debugging symbols
+        "/Z7", # see above
         "/D_HAS_ITERATOR_DEBUGGING=0"])
           # speed up memory allocation and deallocation in debug mode
     else:
@@ -276,7 +286,7 @@ libtbx.scons: Warning: compiling with /MDd:
     if (libtbx.env.build_options.optimization):
       opts = ["/DNDEBUG", "/O2"]
       if (    libtbx.env.build_options.msvc_arch_flag is not None
-          and not platform_64bit):
+          and not is_64bit_architecture):
         opts.append("/arch:%s" %libtbx.env.build_options.msvc_arch_flag)
       if (env_base["MSVC_VERSION"] != "7.1"):
         opts.append("/fp:fast")
@@ -306,8 +316,8 @@ libtbx.scons: Warning: compiling with /MDd:
     else:
       env_base = Environment(ENV=os.environ)
     print "MSVC_VERSION:", env_base["MSVC_VERSION"]
-    env_etc.have_manifest_tool = os.path.isfile(
-      os.path.join(os.path.dirname(cl_exe), "mt.exe"))
+    env_etc.have_manifest_tool = op.isfile(
+      op.join(op.dirname(cl_exe), "mt.exe"))
     env_base.Replace(
       CC="icl",
       CXX="icl",
@@ -333,7 +343,7 @@ libtbx.scons: Warning: compiling with /MDd:
         "/DNDEBUG", "/Ob2", "/Ox", "/Oi", "/Ot", "/GT", "/MD", "/EHsc",
         "/fp:fast"]
       if (    libtbx.env.build_options.msvc_arch_flag is not None
-          and not platform_64bit):
+          and not is_64bit_architecture):
         opts.append("/arch:%s" %libtbx.env.build_options.msvc_arch_flag)
     else:
       opts = ["/Od"]
@@ -388,7 +398,29 @@ else:
   else:
     env_etc.shlibsuffix = ".so"
     env_etc.extension_module_suffix = ".so"
-  env_etc.libm = ["m"]
+  env_etc.libm = []
+  if (    not env_etc.no_opt_resources
+      and env_etc.compiler != "unix_icc"
+      and platform.machine() != "Power Macintosh"):
+    def opt_resources_libs_dir():
+      if (sys.platform == "linux2"):
+        if (is_64bit_architecture):
+          return "linux64"
+        return "linux32"
+      elif (sys.platform == "darwin"):
+        if (not is_64bit_architecture):
+          return "darwin32"
+      return None
+    d = opt_resources_libs_dir()
+    if (d is not None):
+      d = libtbx.env.find_in_repositories(
+        relative_path=op.join("opt_resources", d))
+    if (d is not None):
+      for a_name in ["libimf.a", "libirc.a"]:
+        p = op.join(d, a_name)
+        if (op.isfile(p)):
+          env_etc.libm.append(File(p))
+  env_etc.libm.append("m")
   if (env_etc.compiler in ["unix_gcc", "unix_gcc4"]):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0

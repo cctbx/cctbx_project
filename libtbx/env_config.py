@@ -2,6 +2,7 @@ import libtbx.path
 from libtbx.str_utils import show_string
 from libtbx.utils import escape_sh_double_quoted, Sorry, detect_binary_file
 from libtbx import adopt_init_args
+import platform
 import shutil
 import pickle
 from cStringIO import StringIO
@@ -18,6 +19,9 @@ default_msvc_arch_flag = ["None", "SSE2"][int(os.name == "nt")]
 default_build_boost_python_extensions = True
 default_enable_boost_threads = False
 default_enable_openmp_if_possible = False
+
+def is_64bit_architecture():
+  return (platform.architecture()[0] == "64bit")
 
 def unique_paths(paths):
   hash = set()
@@ -1262,11 +1266,13 @@ selfx:
     self.assemble_pythonpath()
     self.show_build_options_and_module_listing()
     self.reset_dispatcher_bookkeeping()
-    print 'Creating files in build directory:\n  "%s"' % self.build_path
+    print "Creating files in build directory:\n  %s" \
+      % show_string(self.build_path)
     self.write_dispatcher_include_template()
     self.write_lib_dispatcher_head()
     self.write_setpath_files()
     self.pickle()
+    os.environ["LIBTBX_BUILD"] = self.build_path # to support libtbx.load_env
     if (self.is_ready_for_build()):
       self.write_SConstruct()
       if (os.name != "nt"):
@@ -1285,7 +1291,6 @@ selfx:
         target_file=file_name)
     for module in self.module_list:
       module.process_command_line_directories()
-    os.environ["LIBTBX_BUILD"] = self.build_path # to support libtbx.load_env
     for path in self.pythonpath:
       sys.path.insert(0, path)
     for module in self.module_list:
