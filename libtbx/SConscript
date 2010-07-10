@@ -402,6 +402,7 @@ else:
   env_etc.libm = []
   if (    not env_etc.no_opt_resources
       and env_etc.compiler != "unix_icc"
+      and not platform.mac_ver()[0].startswith("10.6") # some extensions hang
       and platform.machine() != "Power Macintosh"):
     def opt_resources_libs_dir():
       if (sys.platform == "linux2"):
