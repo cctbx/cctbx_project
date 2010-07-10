@@ -54,10 +54,13 @@ cctbx::crystal_orientation::best_similarity_transformation(
   scitbx::mat3<double> orientation_similarity(1); //initially the identity
   double minimum_orientation_bases_zsc = difference_Z_score(other);
 
-  scitbx::math::unimodular_generator<double>
+  scitbx::math::unimodular_generator<int>
       unimodular_generator(unimodular_generator_range);
   while (!unimodular_generator.at_end()) {
-      oc_mat3 c_inv_r = unimodular_generator.next();
+      scitbx::mat3<int> m = unimodular_generator.next();
+      oc_mat3 c_inv_r(m(0,0), m(0,1), m(0,2),
+                      m(1,0), m(1,1), m(1,2),
+                      m(2,0), m(2,1), m(2,2));
       crystal_orientation mod_copy = other.change_basis(c_inv_r.inverse());
       double R = difference_Z_score(mod_copy);
       if (R < minimum_orientation_bases_zsc){
