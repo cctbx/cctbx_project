@@ -82,6 +82,7 @@ env_etc.no_opt_resources = bool(int(ARGUMENTS.get("no_opt_resources", "0")))
 env_etc.norm_join = norm_join
 env_etc.gcc_version = None
 env_etc.icc_version = None
+env_etc.using_opt_resources = False
 
 env_etc.include_registry = libtbx.env_config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
@@ -420,6 +421,7 @@ else:
         p = op.join(d, a_name)
         if (op.isfile(p)):
           env_etc.libm.append(File(p))
+          env_etc.using_opt_resources = True
   env_etc.libm.append("m")
   if (env_etc.compiler in ["unix_gcc", "unix_gcc4"]):
     env_etc.static_libraries = 0
