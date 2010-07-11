@@ -211,6 +211,34 @@ private:
 };
 
 
+/// Model of acetylenic X-CH
+/**
+    X-C-H is linear
+*/
+class terminal_linear_ch_site : public crystallographic_parameter
+{
+public:
+  terminal_linear_ch_site(site_parameter *pivot,
+                          site_parameter *pivot_neighbour,
+                          independent_scalar_parameter *length,
+                          scatterer_pointer &hydrogen)
+    : crystallographic_parameter(3), h(hydrogen)
+  {
+    set_arguments(pivot, pivot_neighbour, length);
+  }
+
+  virtual std::size_t size() const;
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+private:
+  scatterer_pointer h;
+  cart_t x_h;
+};
+
 }}}
 
 #endif // GUARD

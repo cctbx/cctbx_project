@@ -346,12 +346,59 @@ void exercise_terminal_xh2() {
   SMTBX_ASSERT(sparse_approx_equal(jt, jt0));
 }
 
+void exercise_acetylenic_ch() {
+  using constants::pi;
+  uctbx::unit_cell uc(af::double6(1, 2, 3, 90, 90, 90));
+
+  boost::shared_ptr<sc_t> c(new sc_t()), x(new sc_t()), h(new sc_t());
+  c->site = frac_t( 0.,  0.,  0.);
+  c->flags.set_grad_site(true);
+  x->site = frac_t( 1., 1., 1.);
+
+  independent_site_parameter *is_c = new independent_site_parameter(c),
+                             *is_x = new independent_site_parameter(x);
+  independent_scalar_parameter *length = new independent_scalar_parameter(1.1);
+  terminal_linear_ch_site
+  *term_ch = new terminal_linear_ch_site(is_c, is_x, length, h);
+
+  reparametrisation reparam(uc,
+                            boost::make_iterator_range(&term_ch, &term_ch + 1));
+  reparam.linearise();
+  reparam.store();
+
+  // Check geometry
+  scitbx::math::approx_equal_absolutely<double> scalar_approx_equal(1e-15);
+  cart_t ch = uc.orthogonalize(h->site - c->site),
+         cx = uc.orthogonalize(x->site - c->site);
+  SMTBX_ASSERT(scalar_approx_equal(ch.length(), length->value));
+  SMTBX_ASSERT(scalar_approx_equal(ch*cx, -ch.length()*cx.length()))
+              (ch*cx + ch.length()*cx.length());
+
+  // Jacobian
+  scitbx::sparse::approx_equal<double> sparse_approx_equal(1e-15);
+  sparse_matrix_type jt = reparam.jacobian_transpose.clone();
+  sparse_matrix_type jt0(4, 10);
+  for (int i=0; i<3; ++i) {
+    jt0(is_c->index() + i, is_c->index() + i) = 1.;
+  }
+  jt0(length->index(), length->index()) = 1.;
+  for (int i=0; i<3; ++i) {
+    jt0(is_c->index() + i, term_ch->index() + i) = 1.;
+  }
+  frac_t u_h = uc.fractionalize(ch.normalize());
+  for (int i=0; i<3; ++i) {
+    jt0(length->index(), term_ch->index() + i) = u_h[i];
+  }
+  SMTBX_ASSERT(sparse_approx_equal(jt, jt0));
+}
+
 int main() {
   exercise_ch3();
   exercise_secondary_ch2();
   exercise_tertiary_ch();
   exercise_aromatic_ch();
   exercise_terminal_xh2();
+  exercise_acetylenic_ch();
   std::cout << "OK\n";
   return 0;
 }

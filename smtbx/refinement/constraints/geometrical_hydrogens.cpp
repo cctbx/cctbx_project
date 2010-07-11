@@ -323,4 +323,47 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
 
+  // Acetylenic X-CH
+  std::size_t terminal_linear_ch_site::size() const { return 3; }
+
+  void terminal_linear_ch_site
+  ::linearise(uctbx::unit_cell const &unit_cell,
+              sparse_matrix_type *jacobian_transpose)
+  {
+    using namespace constants;
+    site_parameter *pivot = (site_parameter *)argument(0);
+    site_parameter *pivot_neighbour = (site_parameter *)argument(1);
+    independent_scalar_parameter
+    *length = (independent_scalar_parameter *)argument(2);
+
+    // Local frame
+    cart_t p = unit_cell.orthogonalize(pivot->value);
+    cart_t x = unit_cell.orthogonalize(pivot_neighbour->value);
+    cart_t e0 = (p - x).normalize();
+    double l = length->value;
+
+    // Hydrogen site
+    x_h = p + l*e0;
+
+    // Jacobian
+    if (!jacobian_transpose) return;
+    sparse_matrix_type &jt = *jacobian_transpose;
+    std::size_t j_h = index();
+
+    // Riding
+    for (int i=0; i<3; ++i) jt.col(j_h + i) = jt.col(pivot->index() + i);
+
+    // Bond stretching
+    if (length->is_variable()) {
+      frac_t grad_f = unit_cell.fractionalize(e0);
+      for (int i=0; i<3; ++i) jt(length->index(), j_h + i) = grad_f[i];
+    }
+  }
+
+  void terminal_linear_ch_site::store(uctbx::unit_cell const &unit_cell) const {
+    h->site = unit_cell.fractionalize(x_h);
+  }
+
+
+
 }}}
