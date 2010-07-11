@@ -333,6 +333,24 @@ public:
   /// Construct a zero vector of size n
   vector(index_type n) : sorted(false), size_(n) {}
 
+  /// Specify whether the vector shall be considered compacted or not
+  /** set_compact(true) is very dangerous: it shall only be used
+      along with algorithms provingly building vectors with increasing
+      unique indices.
+   */
+  void set_compact(bool f) const { const_cast<vector &>(*this).sorted = true; }
+
+  /// Whether this has been compacted
+  bool is_compact() const { return sorted; }
+
+  /// Perform summation and removal of duplicate indices, and sort indices.
+  /** The record which was input last is kept in case of duplicate assignment.
+  Return this object, for convenient chaining of operations. */
+  vector const& compact() const {
+    if (!sorted) const_cast<vector *>(this)->do_compact();
+    return *this;
+  }
+
   /// An iterator pointing to the first record
   const_iterator begin() const {
     return const_iterator(elements.begin());
@@ -449,18 +467,6 @@ public:
       w[ perm[q.index()] ] = *q;
     }
   }
-
-  /// Whether this has been compacted
-  bool is_compact() const { return sorted; }
-
-  /// Perform summation and removal of duplicate indices, and sort indices.
-  /** The record which was input last is kept in case of duplicate assignment.
-  Return this object, for convenient chaining of operations. */
-  vector const& compact() const {
-    if (!sorted) const_cast<vector *>(this)->do_compact();
-    return *this;
-  }
-
   /// Permute the elements of this, in place
   /** Return this object, for convenient chaining of operations */
   template<class PermutationType>
