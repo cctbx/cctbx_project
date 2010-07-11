@@ -189,6 +189,10 @@ namespace scitbx { namespace af {
     return true;
   }
 
+
+  template <class E> class expression;
+
+
   template <typename ElementType,
             typename AccessorType = trivial_accessor>
   class ref : public const_ref<ElementType, AccessorType>
@@ -222,6 +226,9 @@ namespace scitbx { namespace af {
                               index_value_type const& n2)
       : base_class(begin, n0, n1, n2)
       {}
+
+      template <class E>
+      ref &operator=(expression<E> const &e);
 
       ElementType*
       begin() const { return const_cast<ElementType*>(this->begin_); }
@@ -401,6 +408,44 @@ namespace scitbx { namespace af {
       accessor_type(a.size()));
   }
 
-}} // namespace scitbx::af
+  /// Wrapper for expression template
+  /** This class is just a wrapper, which shall be inherited using the CRTP:
+
+      class foo : public af::expression<foo>;
+
+      Each member function of expression<E> forward to E's member function
+      with the same name. Thus E shall implement those member functions
+      which makes sense to its concept.
+
+      See scitbx::sparse::matrix_times_dense_vector for a real-life example
+      and scitbx/sparse/tests/tst_sparse for the natural syntax made
+      possible by this mechanism
+   */
+  template <class E>
+  class expression
+  {
+  public:
+    E const &heir() const { return static_cast<E const &>(*this); }
+
+    /// Total number of elements
+    std::size_t size() const { return heir().size(); }
+
+    /// Assign the elements of the expression to the memory referred to by x
+    template <class ElementType, class AccessorType>
+    void assign_to(af::ref<ElementType, AccessorType> const &x) const
+    {
+      heir().assign_to(x);
+    }
+  };
+
+  template <class ElementType, class AccessorType>
+  template <class E>
+  ref<ElementType, AccessorType>
+  &ref<ElementType, AccessorType>::operator=(expression<E> const &e) {
+    e.assign_to(*this);
+    return *this;
+  }
+
+  }} // namespace scitbx::af
 
 #endif // SCITBX_ARRAY_FAMILY_REF_H
