@@ -340,12 +340,16 @@ def validate_params (params, callback=None) :
   if len(params.pdb_file) == 0 :
     raise Sorry("You must provide at least one PDB file to use for "+
       "F(model) calculations.")
-  elif params.high_resolution is None :
-    raise Sorry("Please specify a high-resolution cutoff.")
-  elif (params.reference_file is not None and
-        params.data_column_label is None) :
-    raise Sorry("Please select a column label to use in the reference "+
-      "data file.")
+  elif (params.high_resolution is None) :
+    if (params.reference_file is None) :
+      raise Sorry("Please specify a high-resolution cutoff.")
+  elif (params.reference_file is not None) :
+    if (params.data_column_label is None) :
+      raise Sorry("Please select a column label to use in the reference "+
+        "data file.")
+    elif ([params.high_resolution, params.low_resolution].count(None) != 2):
+      raise Sorry("High resolution and low resolution must be undefined "+
+                  "if reflection data file is given.")
   if params.low_resolution is not None :
     if params.low_resolution < params.high_resolution :
       raise Sorry("Low-resolution cutoff must be larger than the high-"+
