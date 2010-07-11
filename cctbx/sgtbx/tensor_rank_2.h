@@ -259,20 +259,34 @@ namespace tensor_rank_2 {
     static const double pivot_zero_attractor = 1e-9;
   }
 
+  /// Special position constraints on Cartesian ADP's
+  /** The tensor \f$U = \left[ U_{ij} \right]_{1 \leq i,j \leq 6} is treated
+      as a 1-dimensional vector
+      \f[
+          u = \left(U_{11}, U_{22}, U_{33}, U_{12}, U_{13}, U_{23}\right).
+      \f]
+      The constraints \f$R^T U R = U\f$ can then be expressed as
+      \f[
+          A u = 0
+      \f]
+       for some matrix \f$A\f$.
+   */
   template <typename T=double>
   class cartesian_constraints
   {
-    /* This is the n_all_params x n_independent_params
-     matrix Z whose columns make a basis of the null space of A:
-     A u = 0   =>   u = Z u'
-     where u' is the vector of independent parameters and therefore
-     grad_u' = Z^T grad_u
+    /// Matrix whose columns make a basis of the null space of A.
+    /** Z has dimensions n_all_params x n_independent_params
+     and is such that \f$A u = 0 \equiv u = Z u'\f$
+     where \f$u'\f$ is the vector of independent parameters.
+     Therefore, one has also \f$\nabla_u' = Z^T \nabla_u\f$
      */
-
     af::ref_owning_versa<T, af::mat_grid> z;
+
+    /// Number of independent parameters
     unsigned n_independent_params;
 
-    // the min absolute value for a pivot value to be considered null
+    /// Min absolute value for a pivot value to be considered null
+    /** This is used during the reduction of the matrix A */
     double pivot_zero_attractor;
 
   protected:
@@ -414,8 +428,8 @@ namespace tensor_rank_2 {
      \f[
      \left[ \frac{\partial u_i}{\partial v_j} \right]
      \f]
-     where $u = (U_11, U_22, U_33, U_12, U_13, U_23)$, and
-     where $v$ are the independent parameters $u$ is function of after
+     where \f$u = (U_11, U_22, U_33, U_12, U_13, U_23)\f$, and
+     where \f$v\f$ are the independent parameters \f$u\f$ is function of after
      solving for the special position constraints.
 
      */
