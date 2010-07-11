@@ -50,7 +50,7 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_linear_interpolation();
 
   void wrap_loops();
-  void wrap_show_sizes();
+  void wrap_empty_container_sizes();
 
 namespace {
 
@@ -475,7 +475,7 @@ namespace {
     wrap_flex_linear_interpolation();
 
     wrap_loops();
-    wrap_show_sizes();
+    wrap_empty_container_sizes();
 
     def("slice_indices", slice_indices, (
       arg("array_size"), arg("python_slice")));

@@ -342,6 +342,18 @@ class smart_selection(object):
     if (out is None): out = sys.stdout
     print >> out, prefix + label + self.format_summary()
 
+
+def __show_sizes(f):
+  typename_n_size = f()
+  from __builtin__ import max
+  l = max([ len(typename) for typename, size in typename_n_size ])
+  fmt = "%%%is : %%i" % l
+  for typename, size in typename_n_size:
+    print fmt % (typename, size)
+
+show_sizes_int = lambda: __show_sizes(empty_container_sizes_int)
+show_sizes_double = lambda: __show_sizes(empty_container_sizes_double)
+
 def exercise_triple(flex_triple, flex_order=None, as_double=False):
   from libtbx.test_utils import approx_equal
   import pickle

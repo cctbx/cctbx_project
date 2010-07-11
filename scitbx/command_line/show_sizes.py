@@ -3,9 +3,14 @@ import sys
 
 def run(args):
   assert len(args) == 0
-  print "\n".join(flex.show_sizes_int())
+  print "Size of an empty container."
+  print "Some of those containers store a pointer to a raw storage:"
+  print "the 'cumulative' entry refers to the total memory footprint"
+  print "whereas the other entry does not include the raw storage."
   print
-  print "\n".join(flex.show_sizes_double())
+  flex.show_sizes_int()
+  print
+  flex.show_sizes_double()
   print
 
 if (__name__ == "__main__"):
