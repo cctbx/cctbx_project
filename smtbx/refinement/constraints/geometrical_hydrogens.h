@@ -68,6 +68,53 @@ private:
 };
 
 
+/// A parameter representing an angle in radians starting as tetrahedral
+class angle_starting_tetrahedral : public independent_scalar_parameter
+{
+public:
+  angle_starting_tetrahedral(bool variable=true)
+    : independent_scalar_parameter(constants::tetrahedral_angle, variable)
+  {}
+};
+
+
+/// Model of X-CH2-Y
+/**
+  C is referred to as the "pivot" and X and Y as pivot's neighbour 1 and 2.
+
+  All angles Hi-C-X and Hi-C-Y are equal.
+  The angle H-C-H is refinable (flapping).
+*/
+class secondary_ch2_sites : public crystallographic_parameter
+{
+public:
+  secondary_ch2_sites(site_parameter *pivot,
+                      site_parameter *pivot_neighbour_0,
+                      site_parameter *pivot_neighbour_1,
+                      independent_scalar_parameter *length,
+                      angle_starting_tetrahedral *h_c_h,
+                      scatterer_pointer &hydrogen_0,
+                      scatterer_pointer &hydrogen_1)
+    : crystallographic_parameter(5),
+      h(hydrogen_0, hydrogen_1)
+  {
+    set_arguments(pivot, pivot_neighbour_0, pivot_neighbour_1, length, h_c_h);
+  }
+
+  virtual std::size_t size() const;
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+private:
+  af::tiny<scatterer_pointer, 2> h;
+  af::tiny<cart_t, 2> x_h;
+};
+
+
+
 }}}
 
 #endif // GUARD
