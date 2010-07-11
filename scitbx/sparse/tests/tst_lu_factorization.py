@@ -51,6 +51,7 @@ def exercise_gilbert_peierls_lu_factorization():
   b[2,4] = -1.
   b[2,5] = 1.
   b[2,6] = 0.5
+  b[3,4] = 1.
   b[3,5] = 0.5
   b[3,6] = 1.
   b[0,7] = 0.1
