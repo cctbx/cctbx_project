@@ -225,5 +225,52 @@ namespace smtbx { namespace refinement { namespace constraints {
     h->site = unit_cell.fractionalize(x_h);
   }
 
+  /// aromatic or amide Y-XH-Z
+  std::size_t secondary_planar_xh::size() const {
+    return 3;
+  }
+
+  void secondary_planar_xh::linearise(uctbx::unit_cell const &unit_cell,
+                                      sparse_matrix_type *jacobian_transpose)
+  {
+    using namespace constants;
+    site_parameter *pivot = (site_parameter *)argument(0);
+    site_parameter *pivot_neighbour_0 = (site_parameter *)argument(1),
+                   *pivot_neighbour_1 = (site_parameter *)argument(2);
+    independent_scalar_parameter
+    *length = (independent_scalar_parameter *)argument(3);
+
+    // Local frame
+    cart_t x_p = unit_cell.orthogonalize(pivot->value);
+    cart_t
+    u_yx = (x_p - unit_cell.orthogonalize(pivot_neighbour_0->value)).normalize(),
+    u_zx = (x_p - unit_cell.orthogonalize(pivot_neighbour_1->value)).normalize();
+    cart_t e0 = (u_yx + u_zx).normalize();
+    double l = length->value;
+
+    // Hydrogen site
+    x_h = x_p + l*e0;
+
+    // Jacobian
+    if (!jacobian_transpose) return;
+    sparse_matrix_type &jt = *jacobian_transpose;
+    std::size_t j_h = index();
+
+    // Riding
+    for (int i=0; i<3; ++i) jt.col(j_h + i) = jt.col(pivot->index() + i);
+
+    // Bond stretching
+    if (length->is_variable()) {
+      frac_t grad_f = unit_cell.fractionalize(e0);
+      for (int i=0; i<3; ++i) jt(length->index(), j_h + i) = grad_f[i];
+    }
+  }
+
+  void secondary_planar_xh::store(uctbx::unit_cell const &unit_cell) const {
+    h->site = unit_cell.fractionalize(x_h);
+  }
+
+
+
 
 }}}

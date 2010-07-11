@@ -146,6 +146,36 @@ private:
 };
 
 
+/// Model of aromatic C-H or amide N-H
+/** Denoting C or N as X and the two neighbours of X as Y and Z,
+    Z-X-Y is bisected by X-H.
+*/
+class secondary_planar_xh : public crystallographic_parameter
+{
+public:
+  secondary_planar_xh(site_parameter *pivot,
+                      site_parameter *pivot_neighbour_0,
+                      site_parameter *pivot_neighbour_1,
+                      independent_scalar_parameter *length,
+                      scatterer_pointer &hydrogen)
+    : crystallographic_parameter(4), h(hydrogen)
+  {
+    set_arguments(pivot, pivot_neighbour_0, pivot_neighbour_1, length);
+  }
+
+  virtual std::size_t size() const;
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+private:
+  scatterer_pointer h;
+  cart_t x_h;
+};
+
+
 }}}
 
 #endif // GUARD
