@@ -9,6 +9,9 @@
 #include <boost/python/extract.hpp>
 #include <boost/python/make_constructor.hpp>
 
+#include <boost_adaptbx/convertible.h>
+
+#include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/sparse/matrix.h>
 #include <scitbx/sparse/io.h>
 #include <scitbx/sparse/boost_python/vector.h>
@@ -114,6 +117,10 @@ struct matrix_wrapper
   static void wrap() {
     using namespace boost::python;
     return_internal_reference<> rir;
+    boost_adaptbx::convertible_type_to_python<
+      matrix_times_dense_vector<T>,
+      af::shared<T>,
+      af::versa<value_type, af::flex_grid<> > >();
     class_<wt>("matrix", no_init)
       .def(init<typename wt::index_type,
                 typename wt::index_type>
