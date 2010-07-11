@@ -11,27 +11,28 @@
 
 namespace scitbx { namespace sparse {
 
-template<class T>
+template<class T, template<class> class C>
 struct vector_dense_display_t
 {
-  vector_dense_display_t(const sparse::vector<T>& v) : content(v) {}
-  const sparse::vector<T>& content;
+  vector_dense_display_t(const sparse::vector<T, C>& v) : content(v) {}
+  const sparse::vector<T, C>& content;
 };
 
-template<class T>
-vector_dense_display_t<T> dense_display(const sparse::vector<T>& v) {
-  return vector_dense_display_t<T>(v);
+template<class T, template<class> class C>
+vector_dense_display_t<T, C> dense_display(const sparse::vector<T, C>& v) {
+  return vector_dense_display_t<T, C>(v);
 }
 
-template<class T>
+template<class T, template<class> class C>
 std::ostream& operator<<(std::ostream& o,
-                         const sparse::vector_dense_display_t<T>& disp)
+                         const sparse::vector_dense_display_t<T, C>& disp)
 {
-  typedef typename sparse::vector<T>::index_type index_type;
-  typedef typename sparse::vector<T>::index_difference_type index_difference_type;
-  typedef typename sparse::vector<T>::const_iterator const_iterator;
+  typedef typename sparse::vector<T, C>::index_type index_type;
+  typedef typename sparse::vector<T, C>::index_difference_type
+          index_difference_type;
+  typedef typename sparse::vector<T, C>::const_iterator const_iterator;
   std::streamsize width = o.width();
-  sparse::vector<T> const& v = disp.content;
+  sparse::vector<T, C> const& v = disp.content;
   v.compact();
   o << std::setw(0) << "{ ";
   index_difference_type last_non_zero = -1;
@@ -58,24 +59,25 @@ std::ostream& operator<<(std::ostream& o,
   return o;
 }
 
-template<class T>
+template<class T, template<class> class C>
 struct vector_compressed_display_t {
-  vector_compressed_display_t(const sparse::vector<T>& v) : content(v) {}
-  const sparse::vector<T>& content;
+  vector_compressed_display_t(const sparse::vector<T, C>& v) : content(v) {}
+  const sparse::vector<T, C>& content;
 };
 
-template<class T>
-vector_compressed_display_t<T> compressed_display(const sparse::vector<T>& v) {
-  return vector_compressed_display_t<T>(v);
+template<class T, template<class> class C>
+vector_compressed_display_t<T, C>
+compressed_display(const sparse::vector<T, C>& v) {
+  return vector_compressed_display_t<T, C>(v);
 }
 
-template<class T>
+template<class T, template<class> class C>
 std::ostream& operator<<(std::ostream& o,
-                         const sparse::vector_compressed_display_t<T>& disp)
+                         const sparse::vector_compressed_display_t<T, C>& disp)
 {
-  sparse::vector<T> const& v = disp.content;
-  typedef typename sparse::vector<T>::index_type size_type;
-  typedef typename sparse::vector<T>::const_iterator const_iterator;
+  sparse::vector<T, C> const& v = disp.content;
+  typedef typename sparse::vector<T, C>::index_type size_type;
+  typedef typename sparse::vector<T, C>::const_iterator const_iterator;
   o << "{ ";
   bool first = true;
   for (const_iterator p  = v.begin(); p != v.end(); p++) {

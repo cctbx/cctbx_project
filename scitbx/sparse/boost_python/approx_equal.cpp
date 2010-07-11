@@ -11,7 +11,16 @@ struct approx_equal_wrapper
 {
   typedef approx_equal<T> wt;
 
-  static bool vector_cmp(wt const &self, vector<T> const &a, vector<T> const &b)
+  static bool vector_shared_cmp(wt const &self,
+                                vector<T, af::shared> const &a,
+                                vector<T, af::shared> const &b)
+  {
+    return self(a, b);
+  }
+
+  static bool vector_copy_cmp(wt const &self,
+                              vector<T, copy_semantic_vector_container> const &a,
+                              vector<T, copy_semantic_vector_container> const &b)
   {
     return self(a, b);
   }
@@ -27,7 +36,8 @@ struct approx_equal_wrapper
       .def(init<T>(arg("tolerance")))
       .add_property("tolerance", make_getter(&wt::tolerance),
                                  make_setter(&wt::tolerance))
-      .def("__call__", vector_cmp)
+      .def("__call__", vector_shared_cmp)
+      .def("__call__", vector_copy_cmp)
       .def("__call__", matrix_cmp);
   }
 };

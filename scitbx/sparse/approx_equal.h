@@ -17,12 +17,13 @@ struct approx_equal
     : tolerance(tolerance_)
   {}
 
-  bool operator()(vector<T> const &a, vector<T> const &b) const
+  template <template<class> class C>
+  bool operator()(vector<T, C> const &a, vector<T, C> const &b) const
   {
     if (a.size() != b.size()) return false;
     a.compact();
     b.compact();
-    typename vector<T>::const_iterator p = a.begin(), q = b.begin();
+    typename vector<T, C>::const_iterator p = a.begin(), q = b.begin();
     while (p != a.end() && q != b.end()) {
       if (p.index() < q.index()) {
         if (std::abs(*p) > tolerance) return false;
@@ -37,7 +38,7 @@ struct approx_equal
         ++p; ++q;
       }
     }
-    typename vector<T>::const_iterator r, r_end;
+    typename vector<T, C>::const_iterator r, r_end;
     if (p == a.end()) {
       r = q;
       r_end = b.end();

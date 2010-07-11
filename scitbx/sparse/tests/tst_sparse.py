@@ -142,8 +142,8 @@ def exercise_matrix():
 
   m = 10
   a = sparse.matrix(m, 2)
-  columns = ( sparse.vector(m, {1:0.1, 2:0.2}),
-              sparse.vector(m, {4:0.4, 8:0.8}) )
+  columns = ( sparse.matrix_column(m, {1:0.1, 2:0.2}),
+              sparse.matrix_column(m, {4:0.4, 8:0.8}) )
   a[:,0] = columns[0]
   a[:,1] = columns[1]
   assert a[:,0], a[:,1] == columns

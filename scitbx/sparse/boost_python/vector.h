@@ -6,25 +6,25 @@
 
 namespace scitbx { namespace sparse { namespace boost_python {
 
-  template <typename T>
+  template <typename T, template<class> class C>
   struct vector_from_dict
   {
-    typedef vector<T> wt;
+    typedef vector<T, C> wt;
     typedef typename wt::index_type index_type;
 
-    static vector<T> make_on_stack(index_type n, boost::python::dict d) {
-      vector<T> result(n);
+    static wt make_on_stack(index_type n, boost::python::dict d) {
+      wt result(n);
       fill(result, d);
       return result;
     }
 
-    static vector<T> *make_on_heap(index_type n, boost::python::dict d) {
-      vector<T> *result = new vector<T>(n);
+    static wt *make_on_heap(index_type n, boost::python::dict d) {
+      wt *result = new vector<T, C>(n);
       fill(*result, d);
       return result;
     }
 
-    static void fill(vector<T> &result, boost::python::dict d) {
+    static void fill(wt &result, boost::python::dict d) {
       using namespace boost::python;
       list key = d.keys();
       index_type nz = len(key);
