@@ -297,9 +297,9 @@ public:
     {}
 
     /// Triggered by using v[i] in an expression
-    /** Runtime scales as O(n) where n is the number of non-zero elements,
-        if the vector is compacted. Otherwise, O(n) plus the cost of
-                compacting it.
+    /** Runtime scales as O(Log n) where n is the number of non-zero elements,
+        if the vector is compacted. Otherwise, O(Log n) plus the cost of
+        compacting it.
      */
     operator value_type() const {
       return v.get(i);
