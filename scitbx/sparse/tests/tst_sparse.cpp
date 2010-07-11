@@ -1,4 +1,5 @@
 #include <scitbx/sparse/vector.h>
+#include <scitbx/sparse/matrix.h>
 #include <iostream>
 
 namespace scitbx { namespace sparse {
@@ -140,11 +141,32 @@ namespace scitbx { namespace sparse {
       ww4[4] = -6.;
     }
   }
+
+  void exercise_matrix_times_dense_vector() {
+    int const m=5, n=3;
+    double x_[n] = { 1., 2., 3. };
+    double y_[m];
+    af::ref<double> x(x_, n), y(y_, m);
+    matrix<double> a(m, n);
+    a(0, 0) =  1.;
+    a(3, 0) =  -1.;
+    a(1, 1) = -1.;
+    a(2, 1) = -1.;
+    a(0, 2) =  1.;
+    a(4, 2) = -1.;
+    a.set_compact(true);
+    y = a*x;
+    double y0_[m] = { 4, -2, -2, -1, -3 };
+    af::ref<double> y0(y0_, m);
+    SCITBX_ASSERT(y.all_eq(y0));
+  }
+
 }}
 
 int main() {
   scitbx::sparse::exercise_vector_element_assignment();
   scitbx::sparse::exercise_vector_linear_algebra();
+  scitbx::sparse::exercise_matrix_times_dense_vector();
   std::cout << "OK\n" << std::endl;
   return 0;
 }
