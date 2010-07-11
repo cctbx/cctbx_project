@@ -113,6 +113,7 @@ struct vector_wrapper
       .def("__str__", str_)
       .def("__repr__", repr)
       .def(typename wt::dense_vector_const_ref() * self)
+      .def(self * typename wt::dense_vector_const_ref())
     ;
   }
 };
