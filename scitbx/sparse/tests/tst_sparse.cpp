@@ -1,5 +1,6 @@
 #include <scitbx/sparse/vector.h>
 #include <scitbx/sparse/matrix.h>
+#include <scitbx/array_family/initialiser.h>
 #include <iostream>
 
 namespace scitbx { namespace sparse {
@@ -183,10 +184,12 @@ namespace scitbx { namespace sparse {
 }}
 
 int main() {
-  scitbx::sparse::exercise_vector_element_assignment();
-  scitbx::sparse::exercise_vector_linear_algebra();
-  scitbx::sparse::exercise_matrix_times_dense_vector();
-  scitbx::sparse::exercise_matrix_transpose_times_dense_vector();
+  using namespace scitbx::sparse;
+  exercise_vector_element_assignment();
+  exercise_permutation();
+  exercise_vector_linear_algebra();
+  exercise_matrix_times_dense_vector();
+  exercise_matrix_transpose_times_dense_vector();
   std::cout << "OK\n" << std::endl;
   return 0;
 }

@@ -143,7 +143,7 @@ gilbert_peierls_lu_factorization(const Matrix& m)
 
   for (index_type j=0; j < U.n_cols(); j++) {
     // Computing column j of L and U
-    a.col(j).fill_dense_vector_with_permutation(w, p);
+    w.ref() = permute(a.col(j), p);
     compute_z_and_v_sparsity(j);
     compute_z_and_v(j);
     if (j < L.n_rows() - 1) {
