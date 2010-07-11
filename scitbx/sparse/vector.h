@@ -11,6 +11,13 @@
 namespace scitbx { namespace sparse {
 
 
+template <class E>
+struct vector_expression
+{
+  E const &operator()() const {return static_cast<E const &>(*this); }
+};
+
+
 /** A sparse vector represented as a sequence of records,
  each containing the value and the index of a non-zero element.
 
@@ -72,7 +79,7 @@ namespace scitbx { namespace sparse {
 [1] http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html
 */
 template<typename T>
-class vector
+class vector : public vector_expression< vector<T> >
 {
 public:
   typedef T value_type;
@@ -133,8 +140,8 @@ private:
   typedef af::shared<element> container_type;
 
   container_type elements;
-  index_type size_;
   bool sorted;
+  index_type size_;
 
   value_type get(index_type i) const {
     compact();
@@ -332,6 +339,23 @@ public:
 
   /// Construct a zero vector of size n
   vector(index_type n) : sorted(false), size_(n) {}
+
+  /// Construct from a generic expression
+  template <class E>
+  vector(vector_expression<E> const &e)
+    : size_(e().size())
+  {
+    e().assign_to(*this);
+  }
+
+  /// Assignment of a generic expression
+  template <class E>
+  vector<T> &operator=(vector_expression<E> const &e) {
+    size_ = e().size();
+    elements.clear();
+    e().assign_to(*this);
+    return *this;
+  }
 
   /// Specify whether the vector shall be considered compacted or not
   /** set_compact(true) is very dangerous: it shall only be used
