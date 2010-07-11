@@ -6,6 +6,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <boost/python/return_internal_reference.hpp>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
@@ -66,6 +67,7 @@ namespace {
 
     static void wrap() {
       using namespace boost::python;
+      return_internal_reference<> rir;
       class_<wt>("tensor_rank_2_cartesian_constraints", no_init)
         .def(init<uctbx::unit_cell const&, sgtbx::space_group const&>((
           arg("unit_cell"), arg("space_group"))))
@@ -76,7 +78,7 @@ namespace {
              arg("all_params"))
         .def("independent_gradients", &wt::independent_gradients,
           arg("all_gradients"))
-        .def("jacobian", &wt::jacobian)
+        .def("jacobian", &wt::jacobian, rir)
       ;
     }
   };
