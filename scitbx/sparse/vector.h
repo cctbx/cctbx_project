@@ -404,6 +404,13 @@ public:
     return result;
   }
 
+  /// sparse vector times dense column vector
+  friend value_type operator*(vector const &u,
+                              dense_vector_const_ref const &v)
+  {
+    return v*u;
+  }
+
   /// Fill the given dense vector.
   void fill_dense_vector(af::shared<T>& w) const {
     SCITBX_ASSERT(w.size() == size())
