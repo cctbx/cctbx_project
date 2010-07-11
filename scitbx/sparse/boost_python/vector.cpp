@@ -96,7 +96,7 @@ struct vector_wrapper
       .def("__setitem__", setitem)
       .def("__getitem__", getitem)
       .def("__iter__", iter)
-      .def("deep_copy", &wt::deep_copy)
+      .def("clone", &wt::clone)
       .def("compact", &wt::compact, return_self<>())
       .def("permute",
                static_cast<wt& (wt::*)(af::const_ref<index_type> const&)>(

@@ -11,7 +11,7 @@ class test(object):
     assert lu.l().is_unit_lower_triangular()
     assert lu.u().is_upper_triangular()
     a1 = lu.l() * lu.u()
-    a2 = lu.factored().deep_copy().permute_rows(lu.rows_permutation())
+    a2 = lu.factored().clone().permute_rows(lu.rows_permutation())
     assert approx_equal(a1.as_dense_matrix(), a2.as_dense_matrix())
 
 

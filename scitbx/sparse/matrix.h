@@ -124,10 +124,10 @@ public:
   }
 
   /// A copy of this matrix, copying elements
-  matrix deep_copy() const {
+  matrix clone() const {
     matrix result(n_rows(), n_cols());
     for (index_type j=0; j < n_cols(); j++) {
-      result.column[j] = column[j].deep_copy();
+      result.column[j] = column[j].clone();
     }
     return result;
   }
