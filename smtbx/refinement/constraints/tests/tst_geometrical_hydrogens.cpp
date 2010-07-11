@@ -1,5 +1,6 @@
 #include <smtbx/refinement/constraints/geometrical_hydrogens.h>
 
+#include <scitbx/math/r3_rotation.h>
 #include <scitbx/math/approx_equal.h>
 #include <scitbx/sparse/approx_equal.h>
 #include <scitbx/sparse/io.h>
@@ -240,10 +241,65 @@ void exercise_tertiary_ch() {
   SMTBX_ASSERT(sparse_approx_equal(jt, jt0));
 }
 
+void exercise_aromatic_ch() {
+  using constants::pi;
+  uctbx::unit_cell uc(af::double6(1, 2, 3, 90, 90, 90));
+
+  boost::shared_ptr<sc_t> x(new sc_t()), y(new sc_t()), z(new sc_t()),
+                          h(new sc_t());
+  x->site = frac_t( 0.,  0.,  0.);
+  x->flags.set_grad_site(true);
+  cart_t xy = cart_t(-2, -1, 1).normalize();
+  cart_t v = cart_t(1, 1, 1).normalize();
+  cart_t n = xy.cross(v);
+  scitbx::mat3<double>
+  r = scitbx::math::r3_rotation::axis_and_angle_as_matrix(n, 3*pi/4);
+  cart_t xz = r*xy;
+  y->site = uc.fractionalize(xy);
+  z->site = uc.fractionalize(xz);
+
+  independent_site_parameter *is_x = new independent_site_parameter(x),
+                             *is_y = new independent_site_parameter(y),
+                             *is_z = new independent_site_parameter(z);
+  independent_scalar_parameter
+  *length = new independent_scalar_parameter(1.1);
+  secondary_planar_xh
+  *arom_ch = new secondary_planar_xh(is_x, is_y, is_z, length, h);
+  reparametrisation reparam(uc,
+                            boost::make_iterator_range(&arom_ch,
+                                                       &arom_ch + 1));
+  reparam.linearise();
+  reparam.store();
+
+  // Check geometry
+  scitbx::math::approx_equal_absolutely<double> scalar_approx_equal(1e-15);
+  cart_t xh = uc.orthogonalize(h->site - x->site);
+  SMTBX_ASSERT(scalar_approx_equal(xh.angle(xy), xh.angle(xy)));
+  SMTBX_ASSERT(scalar_approx_equal(xh*xy.cross(xz), 0));
+
+  // Check Jacobian
+  scitbx::sparse::approx_equal<double> sparse_approx_equal(1e-15);
+  sparse_matrix_type jt = reparam.jacobian_transpose.clone();
+  sparse_matrix_type jt0(4, 13);
+  for (int i=0; i<3; ++i) {
+    jt0(is_x->index() + i, is_x->index() + i) = 1.;
+  }
+  jt0(length->index(), length->index()) = 1.;
+  for (int i=0; i<3; ++i) {
+    jt0(is_x->index() + i, arom_ch->index() + i) = 1.;
+  }
+  cart_t u_h = uc.fractionalize(xh.normalize());
+  for (int i=0; i<3; ++i) {
+    jt0(length->index(), arom_ch->index() + i) = u_h[i];
+  }
+  SMTBX_ASSERT(sparse_approx_equal(jt, jt0));
+}
+
 int main() {
   exercise_ch3();
   exercise_secondary_ch2();
   exercise_tertiary_ch();
+  exercise_aromatic_ch();
   std::cout << "OK\n";
   return 0;
 }
