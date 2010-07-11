@@ -152,6 +152,15 @@ public:
     for (index_type j=0; j < n_cols(); j++) col(j).compact();
   }
 
+  /// Specify whether the matrix shall be considered compacted or not
+  /** set_compact(true) is very dangerous: it shall only be used
+      along with algorithms provingly building matrices with increasing
+      unique row indices.
+   */
+  void set_compact(bool f) const {
+    for (index_type j=0; j < n_cols(); j++) col(j).set_compact(f);
+  }
+
   /// Permute the rows, in place
   template<class PermutationType>
   matrix& permute_rows(PermutationType const& permutation) {
