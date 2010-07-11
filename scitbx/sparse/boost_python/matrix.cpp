@@ -30,7 +30,7 @@ struct matrix_wrapper
     wt *result = new wt(m, n);
     for (index_type j=0; j<n; ++j) {
       dict col = extract<dict>(cols[j]);
-      result->col(j) = vector_from_dict<T>(m, col);
+      result->col(j) = vector_from_dict<T>::make_on_stack(m, col);
     }
     return result;
   }
