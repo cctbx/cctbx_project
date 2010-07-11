@@ -12,6 +12,7 @@ def run():
     #"$D/refinement/tests/tst_least_squares.py",
     "$B/refinement/constraints/tests/tst_reparametrisation",
     "$B/refinement/constraints/tests/tst_geometrical_hydrogens",
+    "$B/refinement/constraints/tests/tst_special_position",
     "$D/refinement/restraints/tests/tst_adp_restraints.py",
     "$D/refinement/restraints/tests/tst_manager.py",
     #"$D/refinement/tests/tst_minimization_at_random.py",
