@@ -33,6 +33,26 @@ struct matrix_times_dense_vector
   af::const_ref<T> const &v;
 };
 
+template <class T>
+struct matrix_transpose_times_dense_vector
+  : af::expression< matrix_transpose_times_dense_vector<T> >
+{
+  typedef T value_type;
+
+  matrix_transpose_times_dense_vector(matrix<T> const &a,
+                                      af::const_ref<T> const &v)
+  : a(a), v(v)
+  {}
+
+  std::size_t size() const { return a.n_cols(); }
+
+  void assign_to(af::ref<T> const &w) const;
+
+  matrix<T> const &a;
+  af::const_ref<T> const &v;
+};
+
+
 
 /// A sparse matrix, represented by a sequence of sparse columns
 /** All linear operations are therefore performed using column version of the
@@ -223,6 +243,13 @@ public:
     return matrix_times_dense_vector<T>(*this, v);
   }
 
+  /// A^T v where A is this matrix
+  matrix_transpose_times_dense_vector<T>
+  transpose_times(dense_vector_const_ref const &v) const {
+    SCITBX_ASSERT(n_rows() == v.size())( n_rows() )( v.size() );
+    return matrix_transpose_times_dense_vector<T>(*this, v);
+  }
+
   /// Dense row vector times matrix
   /** Our returning a dense vector here is most appropriate when
    there are few zero columns.
@@ -377,6 +404,23 @@ void matrix_times_dense_vector<T>::assign_to(af::ref<T> const &w) const {
       typename matrix<T>::index_type i = p.index();
       typename matrix<T>::value_type a_ij = *p;
       w[i] += a_ij * v[j];
+    }
+  }
+}
+
+template <class T>
+inline
+void matrix_transpose_times_dense_vector<T>::assign_to(af::ref<T> const &w) const
+{
+  for (int j=0; j < a.n_cols(); ++j) {
+    w[j] = 0;
+    for (typename matrix<T>::const_row_iterator p=a.col(j).begin();
+         p != a.col(j).end();
+         ++p)
+    {
+      typename matrix<T>::index_type i = p.index();
+      typename matrix<T>::value_type a_ij = *p;
+      w[j] += a_ij * v[i];
     }
   }
 }

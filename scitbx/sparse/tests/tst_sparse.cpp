@@ -161,12 +161,32 @@ namespace scitbx { namespace sparse {
     SCITBX_ASSERT(y.all_eq(y0));
   }
 
+  void exercise_matrix_transpose_times_dense_vector() {
+    int const m=5, n=3;
+    double x_[m] = { 1., 2., 3., 4., 5. };
+    double y_[n];
+    af::ref<double> x(x_, m), y(y_, n);
+    matrix<double> a(m, n);
+    a(0, 0) = -1.;
+    a(3, 0) =  1.;
+    a(1, 1) = -1.;
+    a(2, 1) =  1.;
+    a(0, 2) = -1.;
+    a(4, 2) =  1.;
+    a.set_compact(true);
+    y = a.transpose_times(x);
+    double y0_[n] = { 3, 1, 4 };
+    af::ref<double> y0(y0_, n);
+    SCITBX_ASSERT(y.all_eq(y0));
+  }
+
 }}
 
 int main() {
   scitbx::sparse::exercise_vector_element_assignment();
   scitbx::sparse::exercise_vector_linear_algebra();
   scitbx::sparse::exercise_matrix_times_dense_vector();
+  scitbx::sparse::exercise_matrix_transpose_times_dense_vector();
   std::cout << "OK\n" << std::endl;
   return 0;
 }
