@@ -69,9 +69,11 @@ namespace {
       class_<wt>("tensor_rank_2_cartesian_constraints", no_init)
         .def(init<uctbx::unit_cell const&, sgtbx::space_group const&>((
           arg("unit_cell"), arg("space_group"))))
-        .def("n_independent_params", &wt::n_independent_parameters)
+        .def("n_independent_params", &wt::n_independent_params)
         .def("all_params", &wt::all_params,
           arg("independent_params"))
+        .def("independent_params", &wt::independent_params,
+             arg("all_params"))
         .def("independent_gradients", &wt::independent_gradients,
           arg("all_gradients"))
         .def("jacobian", &wt::jacobian)

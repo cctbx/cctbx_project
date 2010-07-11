@@ -81,7 +81,7 @@ namespace minimization {
          if(sc.flags.grad_u_aniso() && sc.flags.use_u_aniso()) {
            const sgtbx::tensor_rank_2::cartesian_constraints<FloatType>&
            adp_c = op.cartesian_adp_constraints(unit_cell);
-           int n = adp_c.n_independent_parameters();
+           int n = adp_c.n_independent_params();
            const FloatType *xg = next_shifts(n);
            scitbx::sym_mat3<FloatType> shift(xg);
            if (n < 6) {
