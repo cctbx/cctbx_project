@@ -15,10 +15,10 @@
 
 namespace scitbx { namespace sparse { namespace boost_python {
 
-template<typename T>
+template<typename T, template<class> class C>
 struct vector_wrapper
 {
-  typedef vector<T> wt;
+  typedef vector<T, C> wt;
   typedef typename wt::index_type index_type;
   typedef typename wt::value_type value_type;
   typedef typename wt::iterator iterator;
@@ -81,22 +81,21 @@ struct vector_wrapper
     return element_iterator(self.begin(), self.end());
   }
 
-  static void wrap() {
+  static void wrap(char const *name) {
     using namespace boost::python;
 
     element_iterator_wrapper::wrap();
 
-    class_<wt>("vector", no_init)
+    class_<wt>(name, no_init)
       .def(init<index_type>(arg("dimension")))
         .def("__init__",
-           make_constructor(vector_from_dict<T>::make_on_heap,
+           make_constructor(vector_from_dict<T, C>::make_on_heap,
                             default_call_policies(),
                             (arg("dimension"), arg("elements"))))
       .add_property("size", &wt::size)
       .def("__setitem__", setitem)
       .def("__getitem__", getitem)
       .def("__iter__", iter)
-      .def("clone", &wt::clone)
       .def("compact", &wt::compact, return_self<>())
       .def("permute",
                static_cast<wt& (wt::*)(af::const_ref<index_type> const&)>(
@@ -123,7 +122,9 @@ struct vector_wrapper
 
 void wrap_vector() {
   using namespace boost::python;
-  vector_wrapper<double>::wrap();
+  vector_wrapper<double, af::shared>::wrap("vector");
+  vector_wrapper<double, copy_semantic_vector_container>
+  ::wrap("matrix_column");
 }
 
 }}}

@@ -9,6 +9,7 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/packed_matrix.h>
 #include <scitbx/sparse/vector.h>
+#include <scitbx/sparse/util.h>
 
 namespace scitbx { namespace sparse {
 
@@ -65,25 +66,30 @@ struct matrix_transpose_times_dense_vector
  the documentation of which the reader is referred to.
  It should be noticed that no range checking on i is performed for those
  assignments, but that fetching a(i,j) with i >= n_rows() will always return 0.
+
+ The columns have a copy semantic.
 */
 template<class T>
 class matrix
 {
-private:
-  /* Let's take advantage of scitbx reference counted array semantic...
-  C.f., for example, member function "transpose"
-  */
-  typedef af::shared< vector<T> > container_type;
-  typedef af::ref< vector<T> > ref_type;
-
 public:
   typedef T value_type;
-  typedef vector<T> column_type;
-  typedef typename vector<T>::index_type index_type;
-  typedef typename vector<T>::iterator row_iterator;
-  typedef typename vector<T>::const_iterator const_row_iterator;
+
+  /* Use std::vector as the underlying container for the sparse columns
+     in an effort to reduce the memory overhead.
+     C.f. flex.show_sizes_double for the rationales behind not using af::shared
+   */
+  typedef vector<T, copy_semantic_vector_container> column_type;
+  typedef typename column_type::index_type index_type;
+  typedef typename column_type::iterator row_iterator;
+  typedef typename column_type::const_iterator const_row_iterator;
 
 public:
+  /// Construct uninitialised object
+  /** The only safe operation is to assign a well initialised sparse::matrix
+   */
+  matrix() {}
+
   /// Construct a zero matrix with the given number of rows and columns
   matrix(index_type rows, index_type cols)
     : n_rows_(rows), columns(af::reserve(rows))
@@ -95,12 +101,12 @@ public:
   }
 
   /// The i-th column
-  vector<T>& col(index_type i) {
+  column_type& col(index_type i) {
     return column[i];
   }
 
   /// The i-th column
-  vector<T> const& col(index_type i) const {
+  column_type const& col(index_type i) const {
     return column[i];
   }
 
@@ -108,7 +114,7 @@ public:
   /** This pulls out the column j and then delegates subscripting of row
   index i to class vector, which the readers is referred to.
   */
-  typename vector<T>::element_reference
+  typename column_type::element_reference
   operator()(index_type i, index_type j) {
     return column[j][i];
   }
@@ -117,7 +123,7 @@ public:
   /** This pulls out the column j and then delegates subscripting of row
     index i to class vector, which the readers is referred to.
     */
-  const typename vector<T>::element_const_reference
+  const typename column_type::element_const_reference
   operator()(index_type i, index_type j) const {
     return column[j][i];
   }
@@ -169,7 +175,7 @@ public:
   matrix clone() const {
     matrix result(n_rows(), n_cols());
     for (index_type j=0; j < n_cols(); j++) {
-      result.column[j] = column[j].clone();
+      result.column[j] = column[j];
     }
     return result;
   }
@@ -213,11 +219,12 @@ public:
   }
 
   /// This times sparse column vector
-  vector<T> operator*(vector<T> const& v) const {
+  template <class U, template<class> class C>
+  vector<U,C> operator*(vector<U,C> const& v) const {
     SCITBX_ASSERT(n_cols() == v.size())
                  ( n_cols() )( v.size() );
-    vector<T> w(n_rows());
-    for (const_row_iterator q=v.begin(); q!=v.end(); ++q) {
+    vector<U,C> w(n_rows());
+    for (typename vector<U,C>::const_iterator q=v.begin(); q!=v.end(); ++q) {
       index_type j = q.index();
       value_type v_j = *q;
       for (const_row_iterator p=col(j).begin(); p != col(j).end(); ++p) {
@@ -230,7 +237,7 @@ public:
     return w;
   }
 
-  typedef typename vector<T>::dense_vector_const_ref dense_vector_const_ref;
+  typedef typename column_type::dense_vector_const_ref dense_vector_const_ref;
   typedef af::shared<T> dense_vector;
 
   /// This times dense column vector
@@ -385,10 +392,13 @@ public:
   }
 
 private:
+  typedef af::shared<column_type> container_type;
+  typedef af::ref<column_type> ref_type;
+
   typedef typename std::vector<index_type>::const_iterator const_row_idx_iter;
+  index_type n_rows_;
   container_type columns;
   ref_type column;
-  index_type n_rows_;
 };
 
 

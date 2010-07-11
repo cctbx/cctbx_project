@@ -22,6 +22,7 @@ template<typename T>
 struct matrix_wrapper
 {
   typedef matrix<T> wt;
+  typedef typename wt::column_type column_type;
   typedef typename wt::index_type index_type;
   typedef typename wt::value_type value_type;
 
@@ -30,10 +31,12 @@ struct matrix_wrapper
   {
     using namespace boost::python;
     SCITBX_ASSERT(len(cols) == n);
+    typedef vector_from_dict<T, copy_semantic_vector_container>
+            vector_from_dict_t;
     wt *result = new wt(m, n);
     for (index_type j=0; j<n; ++j) {
       dict col = extract<dict>(cols[j]);
-      result->col(j) = vector_from_dict<T>::make_on_stack(m, col);
+      result->col(j) = vector_from_dict_t::make_on_stack(m, col);
     }
     return result;
   }
@@ -56,7 +59,7 @@ struct matrix_wrapper
         if (p_i.check()) {
           slice i = p_i();
           if (i.start() == none && i.stop() == none) {
-            self.col(p_j()) = extract< vector<T> >(x);
+            self.col(p_j()) = extract<column_type>(x);
             return x;
           }
         }
@@ -110,7 +113,7 @@ struct matrix_wrapper
     return boost::python::str(o.str().c_str());
   }
 
-  static wt & permute_rows(wt &m, af::const_ref<index_type> const &p) {
+  static wt &permute_rows(wt &m, af::const_ref<index_type> const &p) {
     return m.permute_rows(p);
   }
 
@@ -133,7 +136,7 @@ struct matrix_wrapper
       .add_property("n_cols", &wt::n_cols)
       .add_property("n_rows", &wt::n_rows)
       .def("col",
-           static_cast<vector<T>& (wt::*)(index_type)>(&wt::col),
+           static_cast<column_type& (wt::*)(index_type)>(&wt::col),
            return_internal_reference<1>())
       .def("__getitem__", getitem)
       .def("__setitem__", setitem)

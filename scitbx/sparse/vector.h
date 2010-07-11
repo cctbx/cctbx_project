@@ -80,9 +80,9 @@ struct vector_expression
 
 [1] http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html
 */
-template<typename T>
-class vector : public vector_expression< vector<T> >,
-               public boost::equality_comparable< vector<T> >
+template<typename T, template<class> class ContainerType=af::shared>
+class vector : public vector_expression< vector<T, ContainerType> >,
+               public boost::equality_comparable< vector<T, ContainerType> >
 {
 public:
   typedef T value_type;
@@ -140,7 +140,7 @@ private:
     operator<(element const &other) const { return index() < other.index(); }
   };
 
-  typedef af::shared<element> container_type;
+  typedef ContainerType<element> container_type;
 
   container_type elements;
   bool sorted;
@@ -353,7 +353,7 @@ public:
 
   /// Assignment of a generic expression
   template <class E>
-  vector<T> &operator=(vector_expression<E> const &e) {
+  vector &operator=(vector_expression<E> const &e) {
     size_ = e().size();
     elements.clear();
     e().assign_to(*this);
@@ -483,15 +483,14 @@ public:
     return result;
   }
 
-  /// A copy of this, copying the elements.
-  /** Since the copy constructor makes a shallow copy, thanks to
-  the shallow copy semantic of af::shared, this is very necessary a
-  member function. */
+  /// Clone of this, copying the element
+  /** Even if the ContainerType used to store elements has a sharing semantic.
+   */
   vector clone() const {
-    vector result(size());
-    result.elements = elements.deep_copy();
-    result.sorted = sorted;
-    return result;
+    vector v(size());
+    BOOST_FOREACH(element const &e, elements) v.elements.push_back(e);
+    v.sorted = sorted;
+    return v;
   }
 
   /// Fill the given dense vector with a permutation of this
