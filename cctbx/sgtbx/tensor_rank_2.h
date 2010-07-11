@@ -269,21 +269,32 @@ namespace tensor_rank_2 {
       \f[
           A u = 0
       \f]
-       for some matrix \f$A\f$.
+       for some matrix A.
    */
   template <typename T=double>
   class cartesian_constraints
   {
     /// Matrix whose columns make a basis of the null space of A.
-    /** Z has dimensions n_all_params x n_independent_params
+    /** Z has dimensions n_all_params x n_independent_params()
      and is such that \f$A u = 0 \equiv u = Z u'\f$
-     where \f$u'\f$ is the vector of independent parameters.
-     Therefore, one has also \f$\nabla_u' = Z^T \nabla_u\f$
+     where u' is the vector of independent parameters.
+     Therefore, one has also \f$\nabla_u' = Z^T \nabla_u\f$.
+
+     The matrix Z has the form
+     \f[
+        Z = \begin{bmatrix} B^{-1} C \\ I \end{bmatrix}
+     \f]
+     where the blocks B and C are obtained by row echelon reduction of A:
+     \f[
+        P A Q = \begin{bmatrix} B & C \\ 0 & 0 \end{bmatrix}
+     \f]
+     where Q is a column permutation.
      */
     af::ref_owning_versa<T, af::mat_grid> z;
 
     /// Number of independent parameters
-    unsigned n_independent_params;
+    af::small<unsigned, cartesian_constraints_constants::n_all_params>
+    independent_indices;
 
     /// Min absolute value for a pivot value to be considered null
     /** This is used during the reduction of the matrix A */
@@ -330,7 +341,7 @@ namespace tensor_rank_2 {
       scitbx::matrix::row_echelon::
       full_pivoting_small<T, max_n_a_rows, n_all_params>
       r_e(a_, pivot_zero_attractor);
-      n_independent_params = r_e.nullity;
+      unsigned n_independent_params = r_e.nullity;
       af::small<T, n_all_params> x_N(n_independent_params, 0);
       af::mat_grid dim(n_all_params, n_independent_params);
       z = af::ref_owning_versa<T, af::mat_grid>(dim);
@@ -342,6 +353,11 @@ namespace tensor_rank_2 {
           z(i,j) = x_B[i];
         }
         x_N[j] = 0;
+      }
+
+      /* Record index of independent columns */
+      for (unsigned j=r_e.rank; j<n_all_params; ++j) {
+        independent_indices.push_back(r_e.col_perm[j]);
       }
     }
 
@@ -387,9 +403,22 @@ namespace tensor_rank_2 {
       T* p = result.begin();
       for (unsigned i=0; i < n_all_params; i++, p++) {
         *p = 0;
-        for (unsigned j=0; j < n_independent_params; j++) {
+        for (unsigned j=0; j < n_independent_params(); j++) {
           *p += z(i,j)*independent_params[j];
         }
+      }
+      return result;
+    }
+
+    /// Independent parameters given all parameters
+    /** The presence of the identity matrix in the lower block of the matrix Z
+        is taken advantage of
+     */
+    af::small<T, 6>
+    independent_params(scitbx::sym_mat3<T> const &all_params) const {
+      af::small<T, 6> result;
+      for (std::size_t i=0; i<n_independent_params(); ++i) {
+        result.push_back(all_params[independent_indices[i]]);
       }
       return result;
     }
@@ -402,7 +431,7 @@ namespace tensor_rank_2 {
        specialised to store the result into the
        range [p, p+n_independent_params)
        */
-      for (unsigned i=0; i < n_independent_params; i++, p++) {
+      for (unsigned i=0; i < n_independent_params(); i++, p++) {
         *p = 0;
         for (unsigned j=0; j < n_all_params; j++) {
           *p += z(j,i)*all_grads[j];
@@ -414,13 +443,13 @@ namespace tensor_rank_2 {
     independent_gradients(scitbx::sym_mat3<T> const& all_grads) const
     {
       using namespace cartesian_constraints_constants;
-      af::small<T, n_all_params> result(n_independent_params);
+      af::small<T, n_all_params> result(n_independent_params());
       fill_with_independent_gradients(result.begin(), all_grads);
       return result;
     }
 
-    unsigned n_independent_parameters() const {
-      return n_independent_params;
+    unsigned n_independent_params() const {
+      return independent_indices.size();
     }
 
     /// The Jacobian of the transformation from independent params to all params

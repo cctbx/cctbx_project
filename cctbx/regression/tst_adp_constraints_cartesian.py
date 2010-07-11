@@ -3,6 +3,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from scitbx.math import row_echelon_full_pivoting
 from scitbx.array_family import flex
+from libtbx.test_utils import approx_equal
 import random
 import sys
 import math
@@ -81,10 +82,17 @@ def exercise_all_wyckoff(flags, space_group_info):
       u_cart_down[i] -= eps
       der = ( f(u_cart_up) - f(u_cart_down) ) / (2 * eps)
       grad_f_wrt_u_cart.append(der)
-    grad_f_wrt_independent_u_cart_1 = u_cart_constraints.independent_gradients(
-      tuple(grad_f_wrt_u_cart))
+    grad_f_wrt_independent_u_cart_1 = (
+      u_cart_constraints.independent_gradients(tuple(grad_f_wrt_u_cart)))
     assert flex.max( flex.abs( flex.double(grad_f_wrt_independent_u_cart_1)
              - flex.double(grad_f_wrt_independent_u_cart) ) ) < 5*eps**2
+
+    """ Check independent_params """
+    v = tuple([ random.random() for i in xrange(n) ])
+    u_cart = u_cart_constraints.all_params(v)
+    w = u_cart_constraints.independent_params(u_cart)
+    assert approx_equal(v, w, eps=1e-12)
+
   print
 
 def run():

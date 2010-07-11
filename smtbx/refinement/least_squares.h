@@ -310,7 +310,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           else {
             const sgtbx::tensor_rank_2::cartesian_constraints<scalar_t>
             &adp_c = op.cartesian_adp_constraints(unit_cell);
-            int n = adp_c.n_independent_parameters();
+            int n = adp_c.n_independent_params();
             af::small<scalar_t, 6> shift(g, g+n);
             scitbx::sym_mat3<scalar_t> delta_u_cart = adp_c.all_params(shift);
             scitbx::sym_mat3<scalar_t>
