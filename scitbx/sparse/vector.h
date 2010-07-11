@@ -4,6 +4,7 @@
 #include <memory>
 #include <algorithm>
 #include <boost/operators.hpp>
+#include <boost/foreach.hpp>
 #include <scitbx/error.h>
 #include <scitbx/array_family/shared.h>
 
@@ -459,10 +460,8 @@ public:
   vector& permute(PermutationType const& permutation) {
     SCITBX_ASSERT(size() == permutation.size())
                  ( size() )( permutation.size() );
-    for (typename container_type::iterator p=elements.begin();
-         p != elements.end(); p++)
-    {
-      p->apply(permutation);
+    BOOST_FOREACH(element &e, elements) {
+      e.apply(permutation);
     }
     return *this;
   }
