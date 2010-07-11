@@ -23,6 +23,11 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   double *independent_scalar_parameter::components() { return &value; }
 
+  // independent_small_vector_parameter
+  
+  template class independent_small_vector_parameter<3>;
+  template class independent_small_vector_parameter<6>;
+
   // site_parameter
 
   std::size_t site_parameter::size() const { return 3; }
