@@ -58,19 +58,19 @@ def exercise_vector():
   v[4] = 5
   assert u*v == 0
 
-  approx_equal = sparse.approx_equal(tolerance=0.1)
+  sparse_approx_equal = sparse.approx_equal(tolerance=0.1)
 
   u = sparse.vector(4)
   u[0] = 1.01
   v = sparse.vector(4)
   v[0] = 1.02
   v[3] = 0.001
-  assert approx_equal(u,v)
+  assert sparse_approx_equal(u,v)
 
   u = sparse.vector(4)
   v = sparse.vector(4)
   v[3] = 0.001
-  assert approx_equal(u,v)
+  assert sparse_approx_equal(u,v)
 
   u = sparse.vector(5, {3: 0.3, 1: 0.1})
   assert list(u.as_dense_vector()) == [ 0, 0.1, 0, 0.3, 0 ]
@@ -81,6 +81,30 @@ def exercise_vector():
   except Exception, e:
     assert e.__class__.__module__ == 'Boost.Python'
     assert e.__class__.__name__ == 'ArgumentError'
+
+  u = sparse.vector(4, {1: 1, 3: 3})
+  v = flex.double([1, 2, 3, 4])
+  assert u*v == 14
+
+  sparse_approx_equal = sparse.approx_equal(tolerance=1e-15)
+  def linear_combination_trial_vectors():
+    u = sparse.vector(8, {1: 1.1, 3: 1.3})
+    v = sparse.vector(8, {0: 2.0, 2: 2.2, 3: 2.3, 4: 2.4})
+    w = [ 6., 2.2, 6.6, 9.5, 7.2, 0, 0, 0 ]
+    yield u, v, w
+    random_vectors = scitbx.random.variate(
+      sparse.vector_distribution(
+        8, density=0.4,
+        elements=scitbx.random.uniform_distribution(min=-2, max=2)))
+    u = random_vectors.next()
+    v = random_vectors.next()
+    w = list(2*u.as_dense_vector() + 3*v.as_dense_vector())
+    yield u, v, w
+  for u, v, w in itertools.islice(linear_combination_trial_vectors(), 50):
+    w1 = 2*u + 3*v
+    w2 = 3*v + 2*u
+    assert sparse_approx_equal(w1, w2)
+    assert approx_equal(list(w1.as_dense_vector()), w, eps=1e-15)
 
 def exercise_matrix():
   a = sparse.matrix(10,7)
