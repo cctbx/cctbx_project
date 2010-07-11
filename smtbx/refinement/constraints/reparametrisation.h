@@ -224,6 +224,37 @@ public:
 };
 
 
+template <int N>
+class independent_small_vector_parameter : public parameter
+{
+public:
+  independent_small_vector_parameter(af::small<double, N> const &value,
+                                     bool variable=true)
+    : parameter(0), value(value)
+  {
+    set_variable(variable);
+  }
+
+  /// Construct with an intial value equal to the zero vector of dimension n
+  independent_small_vector_parameter(int n, bool variable=true)
+    : parameter(0), value(n)
+  {
+    set_variable(variable);
+  }
+
+  virtual std::size_t size() const { return value.size(); }
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose)
+  {}
+
+  virtual double *components() { return value.begin(); }
+
+  af::small<double, N> value;
+};
+
+
+
 /// Site, isotropic or anisotropic displacement, etc., or combination of those.
 /** They may belong to one or more scatterers
  */
