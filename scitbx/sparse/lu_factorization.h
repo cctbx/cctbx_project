@@ -320,6 +320,7 @@ copy_v_into_L(index_type j)
   /* We need to store L unpermutated since we permute rows at each step.
   Same trick as copy_z_into_U to reset w. */
   double pivot = w[j];
+  SCITBX_ASSERT(pivot);
   w[j] = 0;
   L(p_inv[j], j) = 1.;
   for(row_idx_reverse_iter i_ = v_nz.rbegin(); i_ != v_nz.rend(); i_++) {
