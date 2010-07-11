@@ -5,7 +5,7 @@
 #include <scitbx/matrix/delta_tensors.h>
 #include <scitbx/matrix/row_echelon.h>
 #include <scitbx/matrix/row_echelon_full_pivoting_small.h>
-#include <scitbx/array_family/owning_ref.h>
+#include <scitbx/sparse/matrix.h>
 #include <boost/shared_array.hpp>
 
 namespace cctbx { namespace sgtbx {
@@ -274,6 +274,8 @@ namespace tensor_rank_2 {
   template <typename T=double>
   class cartesian_constraints
   {
+    typedef scitbx::sparse::matrix<T> sparse_matrix_type;
+
     /// Matrix whose columns make a basis of the null space of A.
     /** Z has dimensions n_all_params x n_independent_params()
      and is such that \f$A u = 0 \equiv u = Z u'\f$
@@ -290,7 +292,7 @@ namespace tensor_rank_2 {
      \f]
      where Q is a column permutation.
      */
-    af::ref_owning_versa<T, af::mat_grid> z;
+    sparse_matrix_type z;
 
     /// Number of independent parameters
     af::small<unsigned, cartesian_constraints_constants::n_all_params>
@@ -343,8 +345,7 @@ namespace tensor_rank_2 {
       r_e(a_, pivot_zero_attractor);
       unsigned n_independent_params = r_e.nullity;
       af::small<T, n_all_params> x_N(n_independent_params, 0);
-      af::mat_grid dim(n_all_params, n_independent_params);
-      z = af::ref_owning_versa<T, af::mat_grid>(dim);
+      z = sparse_matrix_type(n_all_params, n_independent_params);
       for (unsigned j=0; j< n_independent_params; j++) {
         x_N[j] = 1;
         af::tiny<T, n_all_params>
@@ -354,6 +355,7 @@ namespace tensor_rank_2 {
         }
         x_N[j] = 0;
       }
+      z.set_compact(true);
 
       /* Record index of independent columns */
       for (unsigned j=r_e.rank; j<n_all_params; ++j) {
@@ -397,16 +399,7 @@ namespace tensor_rank_2 {
     {
       using namespace cartesian_constraints_constants;
       scitbx::sym_mat3<T> result;
-      /* matrix-vector product z * independent_params,
-       specialised for the memory arrangement of a sym_mat3
-       */
-      T* p = result.begin();
-      for (unsigned i=0; i < n_all_params; i++, p++) {
-        *p = 0;
-        for (unsigned j=0; j < n_independent_params(); j++) {
-          *p += z(i,j)*independent_params[j];
-        }
-      }
+      result.ref() = z*independent_params.const_ref();
       return result;
     }
 
@@ -423,28 +416,12 @@ namespace tensor_rank_2 {
       return result;
     }
 
-    void fill_with_independent_gradients(T* p,
-                                         scitbx::sym_mat3<T> const& all_grads) const
-    {
-      using namespace cartesian_constraints_constants;
-      /* matrix-vector product z^T*  all_grads,
-       specialised to store the result into the
-       range [p, p+n_independent_params)
-       */
-      for (unsigned i=0; i < n_independent_params(); i++, p++) {
-        *p = 0;
-        for (unsigned j=0; j < n_all_params; j++) {
-          *p += z(j,i)*all_grads[j];
-        }
-      }
-    }
-
     af::small<T, cartesian_constraints_constants::n_all_params>
     independent_gradients(scitbx::sym_mat3<T> const& all_grads) const
     {
       using namespace cartesian_constraints_constants;
       af::small<T, n_all_params> result(n_independent_params());
-      fill_with_independent_gradients(result.begin(), all_grads);
+      result.ref() = z.transpose_times(all_grads.const_ref());
       return result;
     }
 
@@ -462,7 +439,7 @@ namespace tensor_rank_2 {
      solving for the special position constraints.
 
      */
-    af::versa<T, af::mat_grid> jacobian() const { return z.array(); }
+    sparse_matrix_type const &jacobian() const { return z; }
   };
 
 }}} // namespace cctbx::sgtbx::tensor_rank_2
