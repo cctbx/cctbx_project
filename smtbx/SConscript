@@ -19,6 +19,8 @@ envlm = env.Clone(
 if (env_etc.static_libraries): builder = envlm.StaticLibrary
 else:                          builder = envlm.SharedLibrary
 
+SConscript("refinement/constraints/SConscript")
+
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
 

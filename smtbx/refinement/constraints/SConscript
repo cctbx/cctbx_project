@@ -1,0 +1,13 @@
+Import("env_base", "env_etc")
+env = env_base.Clone()
+env_etc.include_registry.append(env=env,
+                                paths=["."] + env_etc.smtbx_common_includes)
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
+builder(target="#lib/smtbx_refinement_constraints",
+        source=[ "reparametrisation.cpp" ])
+
+env_program = env.Clone()
+env_program.Prepend(LIBS=[ "cctbx", "smtbx_refinement_constraints" ])
+env_program.Program(target="tests/tst_reparametrisation",
+                    source="tests/tst_reparametrisation.cpp")
