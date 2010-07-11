@@ -135,7 +135,7 @@ struct matrix_wrapper
       .def("is_upper_triangular", &wt::is_upper_triangular)
       .def("is_unit_lower_triangular", &wt::is_unit_lower_triangular)
       .add_property("non_zeroes", &wt::non_zeroes)
-      .def("deep_copy", &wt::deep_copy)
+      .def("clone", &wt::clone)
       .def("transpose", &wt::transpose)
       .def("permute_rows", permute_rows, arg("permutation"), rir)
       .def(self*vector<T>(0))

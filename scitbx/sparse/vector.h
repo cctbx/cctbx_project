@@ -449,7 +449,7 @@ public:
   /** Since the copy constructor makes a shallow copy, thanks to
   the shallow copy semantic of af::shared, this is very necessary a
   member function. */
-  vector deep_copy() const {
+  vector clone() const {
     vector result(size());
     result.elements = elements.deep_copy();
     result.sorted = sorted;
