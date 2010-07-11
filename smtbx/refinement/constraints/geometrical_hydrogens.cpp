@@ -270,7 +270,57 @@ namespace smtbx { namespace refinement { namespace constraints {
     h->site = unit_cell.fractionalize(x_h);
   }
 
+  // Terminal Z-Y=XH2
+  std::size_t terminal_planar_xh2_sites::size() const { return 6; }
 
+  void terminal_planar_xh2_sites::
+  linearise(uctbx::unit_cell const &unit_cell,
+            sparse_matrix_type *jacobian_transpose)
+  {
+    using namespace constants;
+    site_parameter *pivot = (site_parameter *)argument(0);
+    site_parameter *pivot_neighbour = (site_parameter *)argument(1);
+    site_parameter *pivot_neighbour_substituent = (site_parameter *)argument(2);
+    independent_scalar_parameter
+    *length = (independent_scalar_parameter *)argument(3);
+
+    // Local frame
+    cart_t p = unit_cell.orthogonalize(pivot->value);
+    cart_t y = unit_cell.orthogonalize(pivot_neighbour->value);
+    cart_t z = unit_cell.orthogonalize(pivot_neighbour_substituent->value);
+    cart_t e0 = (p - y).normalize();
+    cart_t u_yz = z - y;
+    cart_t e1 = (e0 - 1/(e0*u_yz) * u_yz).normalize();
+    double l = length->value;
+
+    // Hydrogen sites
+    af::tiny<cart_t, 2> u_h(0.5*e0 + half_sqrt_3*e1,
+                            0.5*e0 - half_sqrt_3*e1);
+    for (int k=0; k<2; ++k) x_h[k] = p[k] + l*u_h[k];
+
+    // Jacobian
+    if (!jacobian_transpose) return;
+    sparse_matrix_type &jt = *jacobian_transpose;
+    std::size_t j_h = index();
+
+    // Riding
+    for (int k=0; k<2; ++k) for (int i=0; i<3; ++i) {
+      jt.col(j_h + 3*k + i) = jt.col(pivot->index() + i);
+    }
+
+    // Bond stretching
+    if (length->is_variable()) {
+      for (int k=0; k<2; ++k) {
+        frac_t grad_f = unit_cell.fractionalize(u_h[k]);
+        for (int i=0; i<3; ++i) jt(length->index(), j_h + 3*k + i) = grad_f[i];
+      }
+    }
+  }
+
+  void terminal_planar_xh2_sites::store(uctbx::unit_cell const &unit_cell) const
+  {
+    for (int k=0; k<2; ++k) h[k]->site = unit_cell.fractionalize(x_h[k]);
+  }
 
 
 }}}

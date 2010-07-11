@@ -288,9 +288,60 @@ void exercise_aromatic_ch() {
   for (int i=0; i<3; ++i) {
     jt0(is_x->index() + i, arom_ch->index() + i) = 1.;
   }
-  cart_t u_h = uc.fractionalize(xh.normalize());
+  frac_t u_h = uc.fractionalize(xh.normalize());
   for (int i=0; i<3; ++i) {
     jt0(length->index(), arom_ch->index() + i) = u_h[i];
+  }
+  SMTBX_ASSERT(sparse_approx_equal(jt, jt0));
+}
+
+void exercise_terminal_xh2() {
+  using constants::pi;
+  uctbx::unit_cell uc(af::double6(1, 2, 3, 90, 90, 90));
+
+  boost::shared_ptr<sc_t> x(new sc_t()), y(new sc_t()), z(new sc_t()),
+                          h0(new sc_t()), h1(new sc_t());
+  x->site = frac_t( 0.,  0.,  0.);
+  x->flags.set_grad_site(true);
+  y->site = frac_t( 1., 1., 1.);
+  z->site = frac_t( 2., 0., 2.);
+
+  independent_site_parameter *is_x = new independent_site_parameter(x),
+                             *is_y = new independent_site_parameter(y),
+                             *is_z = new independent_site_parameter(z);
+  independent_scalar_parameter
+  *length = new independent_scalar_parameter(1.1, false);
+  terminal_planar_xh2_sites
+  *ch2 = new terminal_planar_xh2_sites(is_x, is_y, is_z, length,
+                                       h0, h1);
+  reparametrisation reparam(uc,
+                            boost::make_iterator_range(&ch2, &ch2 + 1));
+  reparam.linearise();
+  reparam.store();
+
+  // Check geometry
+  scitbx::math::approx_equal_absolutely<double> scalar_approx_equal(5.e-15);
+    // Need that slightly larger tolerance for gcc 4.4.0 on 64-bit Linux
+  cart_t xh0 = uc.orthogonalize(h0->site - x->site),
+         xh1 = uc.orthogonalize(h1->site - x->site),
+         xy  = uc.orthogonalize(y->site - x->site),
+         yz  = uc.orthogonalize(z->site - y->site);
+  SMTBX_ASSERT(scalar_approx_equal(xh0*xy.cross(yz), 0));
+  SMTBX_ASSERT(scalar_approx_equal(xh1*xy.cross(yz), 0));
+  SMTBX_ASSERT(scalar_approx_equal(xh0.angle(xy), 2*pi/3));
+  SMTBX_ASSERT(scalar_approx_equal(xh1.angle(xy), 2*pi/3));
+  SMTBX_ASSERT(scalar_approx_equal(xh0.length(), length->value));
+  SMTBX_ASSERT(scalar_approx_equal(xh1.length(), length->value));
+
+  // Jacobian
+  scitbx::sparse::approx_equal<double> sparse_approx_equal(1e-15);
+  sparse_matrix_type jt = reparam.jacobian_transpose.clone();
+  sparse_matrix_type jt0(3, 16);
+  for (int i=0; i<3; ++i) {
+    jt0(is_x->index() + i, is_x->index() + i) = 1.;
+  }
+  for (int k=0; k<2; ++k) for (int i=0; i<3; ++i) {
+    jt0(is_x->index() + i, ch2->index() + 3*k + i) = 1.;
   }
   SMTBX_ASSERT(sparse_approx_equal(jt, jt0));
 }
@@ -300,6 +351,7 @@ int main() {
   exercise_secondary_ch2();
   exercise_tertiary_ch();
   exercise_aromatic_ch();
+  exercise_terminal_xh2();
   std::cout << "OK\n";
   return 0;
 }

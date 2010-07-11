@@ -176,6 +176,41 @@ private:
 };
 
 
+/// Model of terminal Z-Y=XH2 (ethylenic CH2 or amide NH2)
+/**
+    X is referred to as the "pivot" whereas Y is the pivot's neighbour
+    and Z is the pivot's neighbour's substituent.
+
+    The two hydrogen atoms are in the plane ZYX,
+    and XY bissects the 120-degree angle H1-X-H2.
+*/
+class terminal_planar_xh2_sites : public crystallographic_parameter
+{
+public:
+  terminal_planar_xh2_sites(site_parameter *pivot,
+                            site_parameter *pivot_neighbour,
+                            site_parameter *pivot_neighbour_substituent,
+                            independent_scalar_parameter *length,
+                            scatterer_pointer &hydrogen_0,
+                            scatterer_pointer &hydrogen_1)
+    : crystallographic_parameter(4), h(hydrogen_0, hydrogen_1)
+  {
+    set_arguments(pivot, pivot_neighbour, pivot_neighbour_substituent, length);
+  }
+
+  virtual std::size_t size() const;
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+private:
+  af::tiny<cart_t, 2> x_h;
+  af::tiny<scatterer_pointer, 2> h;
+};
+
+
 }}}
 
 #endif // GUARD
