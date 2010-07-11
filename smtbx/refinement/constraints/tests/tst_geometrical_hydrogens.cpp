@@ -186,9 +186,64 @@ void exercise_secondary_ch2() {
   SMTBX_ASSERT(sparse_approx_equal(jt, jt0));
 }
 
+void exercise_tertiary_ch() {
+  using constants::pi;
+  uctbx::unit_cell uc(af::double6(1, 2, 3, 90, 90, 90));
+
+  boost::shared_ptr<sc_t> c(new sc_t()),
+                          x(new sc_t()), y(new sc_t()), z(new sc_t()),
+                          h(new sc_t());
+  c->site = frac_t( 0.,  0.,  0.);
+  c->flags.set_grad_site(true);
+  cart_t u = cart_t(2, -1, 1).normalize(), v = u.ortho(), w = u.cross(v);
+  // classic embedding of a tetrahedron inside a cube
+  cart_t delta = 0.1*cart_t(1, -2, 3).normalize();
+  x->site = uc.fractionalize(-u -v +w + delta);
+  y->site = uc.fractionalize(-u +v -w + delta);
+  z->site = uc.fractionalize(+u -v -w + delta);
+
+  independent_site_parameter *is_c = new independent_site_parameter(c),
+                             *is_x = new independent_site_parameter(x),
+                             *is_y = new independent_site_parameter(y),
+                             *is_z = new independent_site_parameter(z);
+  independent_scalar_parameter
+  *length = new independent_scalar_parameter(0.9, false);
+  tertiary_ch_site
+  *tert_ch = new tertiary_ch_site(is_c, is_x, is_y, is_z, length, h);
+
+  reparametrisation reparam(uc,
+                            boost::make_iterator_range(&tert_ch, &tert_ch + 1));
+  reparam.linearise();
+  reparam.store();
+
+  // Test geometry
+  scitbx::math::approx_equal_absolutely<double> scalar_approx_equal(1e-15);
+  cart_t ch = uc.orthogonalize(h->site - c->site),
+         cx = uc.orthogonalize(x->site - c->site),
+         cy = uc.orthogonalize(y->site - c->site),
+         cz = uc.orthogonalize(z->site - c->site);
+  SMTBX_ASSERT(scalar_approx_equal(ch.angle(cx), ch.angle(cy)));
+  SMTBX_ASSERT(scalar_approx_equal(ch.angle(cy), ch.angle(cz)));
+  SMTBX_ASSERT(scalar_approx_equal(ch.angle(cz), ch.angle(cx)));
+  SMTBX_ASSERT(scalar_approx_equal(ch.length(), length->value));
+
+  // Jacobian
+  scitbx::sparse::approx_equal<double> sparse_approx_equal(1e-15);
+  sparse_matrix_type jt = reparam.jacobian_transpose.clone();
+  sparse_matrix_type jt0(3, 16);
+  for (int i=0; i<3; ++i) {
+    jt0(is_c->index() + i, is_c->index() + i) = 1.;
+  }
+  for (int i=0; i<3; ++i) {
+    jt0(is_c->index() + i, tert_ch->index() + i) = 1.;
+  }
+  SMTBX_ASSERT(sparse_approx_equal(jt, jt0));
+}
+
 int main() {
   exercise_ch3();
   exercise_secondary_ch2();
+  exercise_tertiary_ch();
   std::cout << "OK\n";
   return 0;
 }

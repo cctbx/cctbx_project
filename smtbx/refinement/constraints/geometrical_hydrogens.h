@@ -114,6 +114,37 @@ private:
 };
 
 
+/// Model of tertiary CH
+/** All angles Hi-C-X are equal.
+ */
+class tertiary_ch_site : public crystallographic_parameter
+{
+public:
+  tertiary_ch_site(site_parameter *pivot,
+                   site_parameter *pivot_neighbour_0,
+                   site_parameter *pivot_neighbour_1,
+                   site_parameter *pivot_neighbour_2,
+                   independent_scalar_parameter *length,
+                   scatterer_pointer &hydrogen)
+    : crystallographic_parameter(5), h(hydrogen)
+  {
+    set_arguments(pivot,
+                  pivot_neighbour_0, pivot_neighbour_1, pivot_neighbour_2,
+                  length);
+  }
+
+  virtual std::size_t size() const;
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+private:
+  scatterer_pointer h;
+  cart_t x_h;
+};
+
 
 }}}
 
