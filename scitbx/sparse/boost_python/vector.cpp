@@ -23,10 +23,6 @@ struct vector_wrapper
   typedef typename wt::value_type value_type;
   typedef typename wt::iterator iterator;
 
-  static wt *from_dict(index_type n, boost::python::dict d) {
-    return new wt(vector_from_dict<T>(n, d));
-  }
-
   static void setitem(wt &self, index_type i, T x) {
     self[i] = x;
   }
@@ -93,7 +89,7 @@ struct vector_wrapper
     class_<wt>("vector", no_init)
       .def(init<index_type>(arg("dimension")))
         .def("__init__",
-           make_constructor(from_dict,
+           make_constructor(vector_from_dict<T>::make_on_heap,
                             default_call_policies(),
                             (arg("dimension"), arg("elements"))))
       .add_property("size", &wt::size)
