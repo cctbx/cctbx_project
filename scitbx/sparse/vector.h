@@ -82,6 +82,7 @@ struct vector_expression
 */
 template<typename T, template<class> class ContainerType=af::shared>
 class vector : public vector_expression< vector<T, ContainerType> >,
+               public af::expression< vector<T, ContainerType> >,
                public boost::equality_comparable< vector<T, ContainerType> >
 {
 public:
@@ -360,6 +361,22 @@ public:
     return *this;
   }
 
+  /// Assign to the given reference to a dense vector.
+  /** Along with member function size() this allows
+   \begincode
+   af::shared<T> u = v;
+   af::ref<T> u = v;
+   \endcode
+   for any sparse::vector<T> v
+   */
+  void assign_to(af::ref<T> const &w) const {
+    SCITBX_ASSERT(w.size() == size())
+    ( w.size() )( size() );
+    for(const_iterator q =  begin(); q != end(); q++) {
+      w[q.index()] = *q;
+    }
+  }
+  
   /// Specify whether the vector shall be considered compacted or not
   /** set_compact(true) is very dangerous: it shall only be used
       along with algorithms provingly building vectors with increasing
@@ -467,19 +484,10 @@ public:
     return v*u;
   }
 
-  /// Fill the given dense vector.
-  void fill_dense_vector(af::shared<T>& w) const {
-    SCITBX_ASSERT(w.size() == size())
-                 ( w.size() )( size() );
-    for(const_iterator q =  begin(); q != end(); q++) {
-      w[q.index()] = *q;
-    }
-  }
-
   /// The dense vector corresponding to this
   af::shared<T> as_dense_vector() const {
     af::shared<T> result(size(), 0.);
-    fill_dense_vector(result);
+    result.ref() = *this;
     return result;
   }
 
