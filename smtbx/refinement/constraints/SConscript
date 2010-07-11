@@ -5,9 +5,13 @@ env_etc.include_registry.append(env=env,
 if (env_etc.static_libraries): builder = env.StaticLibrary
 else:                          builder = env.SharedLibrary
 builder(target="#lib/smtbx_refinement_constraints",
-        source=[ "reparametrisation.cpp" ])
+        source=[ "reparametrisation.cpp",
+                 "geometrical_hydrogens.cpp",
+               ])
 
 env_program = env.Clone()
 env_program.Prepend(LIBS=[ "cctbx", "smtbx_refinement_constraints" ])
 env_program.Program(target="tests/tst_reparametrisation",
                     source="tests/tst_reparametrisation.cpp")
+env_program.Program(target="tests/tst_geometrical_hydrogens",
+                    source="tests/tst_geometrical_hydrogens.cpp")
