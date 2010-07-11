@@ -376,7 +376,7 @@ public:
       w[q.index()] = *q;
     }
   }
-  
+
   /// Specify whether the vector shall be considered compacted or not
   /** set_compact(true) is very dangerous: it shall only be used
       along with algorithms provingly building vectors with increasing
@@ -501,17 +501,6 @@ public:
     return v;
   }
 
-  /// Fill the given dense vector with a permutation of this
-  template<class PermutationType>
-  void fill_dense_vector_with_permutation(af::shared<T>& w,
-                                          PermutationType const& perm) const
-  {
-    SCITBX_ASSERT(w.size() == perm.size() && perm.size() == size())
-                 ( w.size() )( perm.size() )( size() );
-    for(const_iterator q =  begin(); q != end(); q++) {
-      w[ perm[q.index()] ] = *q;
-    }
-  }
   /// Linear algebra
   //@{
   friend
@@ -596,7 +585,50 @@ private:
     w.set_compact(true); // by construction
     return w;
   }
+
+  template <typename VectorType, class PermutationType>
+  friend struct permuted;
 };
+
+
+/// Permuted sparse vector expression
+template <typename VectorType, class PermutationType>
+struct permuted :
+  af::expression< permuted<VectorType, PermutationType> >,
+  vector_expression< permuted<VectorType, PermutationType> >
+{
+  VectorType const &v;
+  PermutationType const &permutation;
+
+  permuted(VectorType const &v, PermutationType const &p)
+  : v(v), permutation(p)
+  {
+    SCITBX_ASSERT(v.size() == p.size())( v.size() )( p.size() );
+  }
+
+  std::size_t size() const { return v.size(); }
+
+  /// Assign to a dense vector
+  void assign_to(af::ref<typename VectorType::value_type> const &w) const {
+    SCITBX_ASSERT(w.size() == v.size())( w.size() )( v.size() );
+    for(typename VectorType::const_iterator q = v.begin(); q != v.end(); q++) {
+      w[ permutation[q.index()] ] = *q;
+    }
+  }
+
+  /// Assign to a sparse vector
+  void assign_to(VectorType &w) const {
+    w = v;
+    w.permute(permutation);
+  }
+};
+
+/// Permutation of this as an expression
+template <typename VectorType, class PermutationType>
+permuted<VectorType, PermutationType>
+permute(VectorType const &v, PermutationType const &p) {
+  return permuted<VectorType, PermutationType>(v, p);
+}
 
 }}
 
