@@ -3,8 +3,10 @@
 
 #include <memory>
 #include <algorithm>
+#include <functional>
 #include <boost/operators.hpp>
 #include <boost/foreach.hpp>
+#include <boost/operators.hpp>
 #include <scitbx/error.h>
 #include <scitbx/array_family/shared.h>
 
@@ -79,7 +81,8 @@ struct vector_expression
 [1] http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html
 */
 template<typename T>
-class vector : public vector_expression< vector<T> >
+class vector : public vector_expression< vector<T> >,
+               public boost::equality_comparable< vector<T> >
 {
 public:
   typedef T value_type;
@@ -411,10 +414,21 @@ public:
     return std::binary_search(elements.begin(), elements.end(), element(i));
   }
 
+  /// Equality
+  bool operator==(vector const &other) {
+    return elements.all_eq(other.elements);
+  }
+
   /// Number of non-zero elements
   index_type non_zeroes() const {
     compact();
     return elements.size();
+  }
+
+  /// Zero vector
+  void zero() {
+    elements.clear();
+    sorted = true;
   }
 
   /// Subscripting
@@ -491,6 +505,53 @@ public:
       w[ perm[q.index()] ] = *q;
     }
   }
+  /// Linear algebra
+  //@{
+  friend
+  vector operator+(vector const &u, vector const &v) {
+    return vector_op_vector(u, std::plus<T>(), v);
+  }
+
+  friend
+  vector operator-(vector const &u, vector const &v) {
+    return vector_op_vector(u, std::minus<T>(), v);
+  }
+
+  vector operator-() const {
+    vector v(size());
+    for (const_iterator p=begin(); p != end(); ++p) {
+      v[p.index()] = -(*p);
+    }
+    return v;
+  }
+
+  vector &operator*=(T a) {
+    BOOST_FOREACH(element &e, elements) e.value() *= a;
+    return *this;
+  }
+
+  vector &operator/=(T a) {
+    return (*this) *= 1./a;
+  }
+
+  friend
+  vector operator*(vector const &u, T a) {
+    vector v = u.clone();
+    v *= a;
+    return v;
+  }
+
+  friend
+  vector operator*(T a, vector const &u) { return u*a; }
+
+  friend
+  vector operator/(vector const &u, T a) {
+    vector v = u.clone();
+    v /= a;
+    return v;
+  }
+  //@}
+
   /// Permute the elements of this, in place
   /** Return this object, for convenient chaining of operations */
   template<class PermutationType>
@@ -501,6 +562,32 @@ public:
       e.apply(permutation);
     }
     return *this;
+  }
+
+private:
+  template <class OperatorType>
+  friend
+  vector vector_op_vector(vector const &u, OperatorType op, vector const &v) {
+    SCITBX_ASSERT(u.size() == v.size())( u.size() )( v.size() );
+    vector w(u.size());
+    u.compact();
+    v.compact();
+    for(const_iterator p=u.begin(), q=v.begin();;) {
+      if (p == u.end()) {
+        for(; q != v.end(); ++q) w[q.index()] = op(0, *q);
+        break;
+      }
+      else if (q == v.end()) {
+        for(; p != u.end(); ++p) w[p.index()] = op(*p, 0);
+        break;
+      }
+      std::size_t i=p.index(), j=q.index();
+      if      (i < j) w[i] = op(*p++, 0);
+      else if (i > j) w[j] = op(0, *q++);
+      else            w[i] = op(*p++, *q++);
+    }
+    w.set_compact(true); // by construction
+    return w;
   }
 };
 

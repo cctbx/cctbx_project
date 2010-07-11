@@ -87,10 +87,64 @@ namespace scitbx { namespace sparse {
       }
     }
   }
+
+  /// Permuted vector expression
+  void exercise_permutation() {
+    unsigned const n = 5;
+    vector<double> u(n);
+    u[1] = 1.;
+    u[4] = 4.;
+    std::vector<int> p(n);
+    af::init(p) = 3, 2, 4, 1, 0;
+    vector<double> v = permute(u, p);
+    vector<double> v0(n);
+    v0[2] = 1.;
+    v0[0] = 4.;
+    SCITBX_ASSERT(v == v0);
+    u.permute(p);
+    SCITBX_ASSERT(u == v);
+  }
+
+
+  /// Test vector linear combinations
+  void exercise_vector_linear_algebra() {
+    {
+      unsigned n = 5;
+      vector<double> u(n), v(n);
+      u[0] = 1.;
+      u[3] = 2.;
+      v[1] = -1.;
+      v[3] = 3.;
+      v[4] = -2.;
+      vector<double> w1 = 2.*u - v;
+      vector<double> ww(n);
+      ww[0] = 2.;
+      ww[1] = 1.;
+      ww[3] = 6.;
+      ww[4] = 2.;
+      SCITBX_ASSERT(w1 == ww);
+      vector<double> w2 = -v + 2.*u;
+      SCITBX_ASSERT(w2 == ww);
+      vector<double> w3 = u+v;
+      vector<double> ww3(n);
+      ww3[0] = 1.;
+      ww3[1] = -1.;
+      ww3[3] = 5.;
+      ww3[4] = -2.;
+      SCITBX_ASSERT(w3 == ww3);
+      vector<double> w4 = -2.*u + 3.*v;
+      vector<double> ww4(n);
+      ww4[0] = -2.;
+      ww4[1] = -3.;
+      ww4[3] = 5.;
+      ww4[4] = -6.;
+    }
+  }
 }}
 
 int main() {
   scitbx::sparse::exercise_vector_element_assignment();
+  scitbx::sparse::exercise_vector_linear_algebra();
   std::cout << "OK\n" << std::endl;
   return 0;
 }
