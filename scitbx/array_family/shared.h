@@ -79,6 +79,14 @@ namespace scitbx { namespace af {
       {}
 
       // non-std
+      template <class E>
+      shared(expression<E> const &e)
+        : base_class(e.size(), init_functor_null<ElementType>())
+      {
+        e.assign_to(this->ref());
+      }
+
+      // non-std
       shared<ElementType>
       deep_copy() const {
         return shared<ElementType>(this->begin(), this->end());
