@@ -57,6 +57,7 @@ def run():
   "$D/math/scale_curves.py",
   "$D/math/tests/tst_fit_peak.py",
   "$D/math/tests/tst_clustering.py",
+  "$D/math/tests/tst_orthonormal_basis.py",
   "$D/minpack/tst.py",
   ["$D/lbfgs/tst_ext.py"],
   "$D/lbfgs/tst_lbfgs_f.py",

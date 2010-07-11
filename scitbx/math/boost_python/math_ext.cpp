@@ -16,6 +16,7 @@
 #include <scitbx/math/utils.h>
 #include <boost/rational.hpp> // for boost::gcd
 #include <scitbx/math/approx_equal.h>
+#include <scitbx/math/orthonormal_basis.h>
 
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
@@ -440,6 +441,18 @@ namespace {
     def("divmod", math::divmod);
     approx_equal_relatively_wrapper<double>::wrap();
     approx_equal_relatively_wrapper<std::complex<double> >::wrap();
+    {
+      af::tiny<vec3<double>, 3> (*f1)(vec3<double> const &, vec3<double> const &,
+                                      bool) = &orthonormal_basis;
+      af::tiny<vec3<double>, 3> (*f2)(vec3<double> const &, int,
+                                      vec3<double> const &, int,
+                                      bool) = &orthonormal_basis;
+      def("orthonormal_basis", f1, (arg("v0"), arg("v1"),
+                                    arg("right_handed")=true));
+      def("orthonormal_basis", f2, (arg("v0"), arg("axis_index_1"),
+                                    arg("v1"), arg("axis_index_2"),
+                                    arg("right_handed")=true));
+    }
   }
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>
