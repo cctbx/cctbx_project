@@ -3,6 +3,10 @@ import sys
 def run(args):
   assert len(args) == 0
   print """
+LIBTBX_OPT_RESOURCES=False|True
+  If True, use fast math libraries from opt_resources directory if
+  available.
+
 LIBTBX_DISABLE_TRACEBACKLIMIT
   If set, Sorry and Usage exceptions are shown with the full traceback.
 
