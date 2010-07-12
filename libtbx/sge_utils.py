@@ -153,9 +153,15 @@ def qstat_parse():
       ja_task_id=line[i_ja_task_id:].strip()))
   return result
 
-def qsub (file_name, qsub_args) :
+def qsub (file_name, qsub_args, use_default_output_names=False) :
   from libtbx import easy_run
-  cmd = "qsub -b y %s %s" % (qsub_args, file_name)
+  if not use_default_output_names :
+    out_file = os.path.splitext(file_name)[0] + "_out.txt"
+    err_file = os.path.splitext(file_name)[0] + "_err.txt"
+    cmd = "qsub -b y -o \"%s\" -e \"%s\" %s %s" % (out_file, err_file,
+      qsub_args, file_name)
+  else :
+    cmd = "qsub -b y %s %s" % (qsub_args, file_name)
   qsub_out = easy_run.fully_buffered(
     command=cmd).raise_if_errors().stdout_lines
   job_id = None
@@ -165,14 +171,20 @@ def qsub (file_name, qsub_args) :
       break
   return job_id
 
-def qdel (job_id) :
+def qdel (job_id=None, job_ids=None) :
+  assert (job_id is None) or (job_ids is None)
+  assert (job_id is not None) or (isinstance(job_ids, list))
   from libtbx import easy_run
+  if job_id is not None :
+    args = str(job_id)
+  else :
+    args = " ".join(job_ids)
   qdel_out = easy_run.fully_buffered(
-    command="qdel %d" % job_id).raise_if_errors().stdout_lines
+    command="qdel %s" % args).raise_if_errors().stdout_lines
   print "\n".join(qdel_out)
   for line in qdel_out :
     if "denied" in line :
-      return False
+      raise RuntimeError("\n".join(qdel_out))
   return True
 
 if (__name__ == "__main__"):

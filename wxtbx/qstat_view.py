@@ -4,6 +4,11 @@ from libtbx import sge_utils
 import libtbx.load_env
 from libtbx.utils import Sorry
 import wx
+try :
+  from wx.lib.agw.genericmessagedialog import GenericMessageDialog
+except ImportError :
+  GenericMessageDialog = wx.MessageBox
+
 import sys, os, time
 
 if sys.platform in ["linux", "linux2", "darwin"] :
@@ -58,12 +63,21 @@ class qsub_list_data (object) :
       self._data.reverse()
     self._sortby = col
 
-  def GetOwners (self, job_ids) :
+  def GetOwners (self, job_ids, as_list=False) :
     names = []
     for job in self._data :
       if job.job_id in job_ids :
         names.append(job.user)
-    return set(names)
+    if as_list :
+      return names
+    return list(set(names))
+
+  def GetNames (self, job_ids) :
+    names = []
+    for job in self._data :
+      if job.job_id in job_ids :
+        names.append(job.name)
+    return names
 
 class qsub_list_view (wx.ListCtrl) :
   def __init__ (self, *args, **kwds) :
@@ -112,8 +126,11 @@ class qsub_list_view (wx.ListCtrl) :
       item = self.GetNextSelected(item)
     return jobs
 
-  def GetOwners (self, job_ids) :
-    return self.dataSource.GetOwners(job_ids)
+  def GetOwners (self, job_ids, as_list=False) :
+    return self.dataSource.GetOwners(job_ids, as_list=as_list)
+
+  def GetNames (self, job_ids) :
+    return self.dataSource.GetNames(job_ids)
 
   def OnSelect (self, event) :
     pass
@@ -181,8 +198,18 @@ class queue_list_frame (wx.Frame) :
     job_ids = self.list_ctrl.GetSelectedJobIDs()
     if len(job_ids) == 0 :
       return
-    print "qdel %s" % " ".join(job_ids)
-    print self.list_ctrl.GetOwners(job_ids)
+    users = self.list_ctrl.GetOwners(job_ids)
+    if (len(users) > 1) or (not user in users) :
+      raise Sorry("At least one job selected for deletion is owned by a "
+        "different user; this interface only allows you to delete your own "+
+        "jobs.")
+    if self.ConfirmDelete(job_ids) :
+      try :
+        success = sge_utils.qdel(job_ids=job_ids)
+      except RuntimeError, e :
+        raise Sorry("Error executing 'qdel' command: %s" % str(e))
+      else :
+        GenericMessageDialog("Job(s) deleted successfuly.", style=wx.OK)
 
   def SetUpdateInterval (self, interval) : # in seconds, not ms
     self._timer.Stop()
@@ -191,6 +218,9 @@ class queue_list_frame (wx.Frame) :
   def Update (self) :
     self.list_ctrl.Update()
     self.statusbar.SetStatusText("Last updated at %s" % get_time())
+
+  def ConfirmDelete (self, job_ids) :
+    pass
 
 def get_time () :
   return time.strftime("%m-%d-%y %H:%M:%S", time.localtime())
