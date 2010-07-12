@@ -213,11 +213,11 @@ public:
     af::shared<double> s(7, 1.);
     is1->evaluate(uc); is2->evaluate(uc); is3->evaluate(uc); is4->evaluate(uc);
     reparam->apply_shifts(s.const_ref());
-    SMTBX_ASSERT(s1->value == sc1->site + frac_t(1., 1., 1.));
-    SMTBX_ASSERT(s2->value == sc2->site + frac_t(1., 1., 1.));
-    SMTBX_ASSERT(s3->value == sc3->site);
-    SMTBX_ASSERT(s4->value == sc4->site);
-    SMTBX_ASSERT(s11->value == s11_old + 1.);
+    SMTBX_ASSERT(site_approx_equal(s1->value, (sc1->site + frac_t(1., 1., 1.))));
+    SMTBX_ASSERT(site_approx_equal(s2->value, (sc2->site + frac_t(1., 1., 1.))));
+    SMTBX_ASSERT(site_approx_equal(s3->value, (sc3->site)));
+    SMTBX_ASSERT(site_approx_equal(s4->value, (sc4->site)));
+    SMTBX_ASSERT(std::abs(s11->value - (s11_old + 1.)) < 1.e-15);
 
     // Clean-up
     delete reparam;
