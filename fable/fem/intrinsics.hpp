@@ -62,6 +62,14 @@ namespace fem {
   }
 
   inline
+  double
+  dsqrt(
+    double const& x)
+  {
+    return std::sqrt(x);
+  }
+
+  inline
   float
   cos(
     float const& angle)
@@ -334,6 +342,13 @@ namespace fem {
   max(
     float const& v1,
     int const& v2) { return std::max(v1, static_cast<float>(v2)); }
+
+  inline
+  double
+  max(
+    double const& v1,
+    double const& v2,
+    double const& v3) { return max(max(v1, v2), v3); }
 
   template <typename T>
   inline
