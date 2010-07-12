@@ -71,6 +71,12 @@ int main()
   if (not flag): return None
   return int(output)
 
+def determine_opt_resources_flag():
+  if (ARGUMENTS.get("opt_resources") is not None):
+    return bool(int(ARGUMENTS.get("opt_resources", "0")))
+  from libtbx.utils import getenv_bool
+  return getenv_bool(variable_name="LIBTBX_OPT_RESOURCES")
+
 env_etc = empty()
 env_etc.no_boost_python = ARGUMENTS.get("no_boost_python")
 if (env_etc.no_boost_python is not None):
@@ -78,7 +84,7 @@ if (env_etc.no_boost_python is not None):
 else:
   env_etc.no_boost_python = \
     not libtbx.env.build_options.build_boost_python_extensions
-env_etc.opt_resources = bool(int(ARGUMENTS.get("opt_resources", "0")))
+env_etc.opt_resources = determine_opt_resources_flag()
 env_etc.norm_join = norm_join
 env_etc.gcc_version = None
 env_etc.icc_version = None
