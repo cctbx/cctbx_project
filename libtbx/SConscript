@@ -78,7 +78,7 @@ if (env_etc.no_boost_python is not None):
 else:
   env_etc.no_boost_python = \
     not libtbx.env.build_options.build_boost_python_extensions
-env_etc.no_opt_resources = bool(int(ARGUMENTS.get("no_opt_resources", "0")))
+env_etc.opt_resources = bool(int(ARGUMENTS.get("opt_resources", "0")))
 env_etc.norm_join = norm_join
 env_etc.gcc_version = None
 env_etc.icc_version = None
@@ -400,7 +400,7 @@ else:
     env_etc.shlibsuffix = ".so"
     env_etc.extension_module_suffix = ".so"
   env_etc.libm = []
-  if (    not env_etc.no_opt_resources
+  if (    env_etc.opt_resources
       and env_etc.compiler != "unix_icc"
       and not platform.mac_ver()[0].startswith("10.6") # some extensions hang
       and platform.machine() != "Power Macintosh"):
