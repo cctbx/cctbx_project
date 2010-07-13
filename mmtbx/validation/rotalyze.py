@@ -157,6 +157,8 @@ class rotalyze(object):
               chis = sa.measureChiAngles(atom_group, atom_dict)
               r = rotamer_eval.RotamerEval()
               if (chis is not None):
+                if None in chis:
+                  continue
                 value = r.evaluate(atom_group.resname.lower().strip(), chis)
                 #print chain.id + str(residue.seq) + residue.name.strip() + str(value)
                 if value != None:
