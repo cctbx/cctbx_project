@@ -173,6 +173,8 @@ class cbetadev(object):
                            (betaNCAB[1]+betaCNAB[1])/2,
                            (betaNCAB[2]+betaCNAB[2])/2]
                 betadist = self.distance(resCA.xyz,betaxyz)
+                if betadist == 0:
+                  continue
                 if(betadist != dist):
                   distTemp = [(betaxyz[0]-resCA.xyz[0]),
                               (betaxyz[1]-resCA.xyz[1]),
