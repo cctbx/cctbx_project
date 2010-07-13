@@ -223,12 +223,22 @@ namespace fem {
       }
       stream.ptr = std::fopen(file_name.c_str(), "ab+");
       if (stream.ptr == 0 || std::fseek(stream.ptr, 0L, SEEK_SET) != 0) {
-        iostat = 1;
-        if (iostat_ptr != 0) {
-          *iostat_ptr = iostat;
-          return;
+        if (status == st_new) {
+          iostat = 1;
         }
-        throw io_err("Error opening file: " + file_name);
+        else {
+          stream.ptr = std::fopen(file_name.c_str(), "rb");
+          if (stream.ptr == 0 || std::fseek(stream.ptr, 0L, SEEK_SET) != 0) {
+            iostat = 1;
+          }
+        }
+        if (iostat == 1) {
+          if (iostat_ptr != 0) {
+            *iostat_ptr = iostat;
+            return;
+          }
+          throw io_err("Error opening file: " + file_name);
+        }
       }
       if (status == st_new) {
         /* f77_std 12.10.1: Successful execution of an OPEN statement with
