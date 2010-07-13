@@ -92,6 +92,7 @@ class selection_tokenizer(tokenizer.word_iterator):
     return word
 
 class AtomSelectionError(Sorry):
+  __orig_module__ = __module__
   __module__ = "exceptions"
 
 class cache(slots_getstate_setstate):
