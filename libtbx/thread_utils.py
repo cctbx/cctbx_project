@@ -147,9 +147,8 @@ else:
           if e.__class__.__module__ == "Boost.Python" :
             e = RuntimeError("Boost.Python.%s: %s" % (e.__class__.__name__,
               str(e)))
-          elif hasattr(e.__class__, "__orig_module__") :
-            e.__class__.__module__ = e.__class__.__orig_module__
-          #Sorry.reset_module()
+          elif hasattr(e, "reset_module") :
+            e.reset_module()
           traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
           message = child_process_message(message_type="exception",
                                           data=(e, traceback_str))
