@@ -247,9 +247,8 @@ class Sorry(Exception):
   def __del__(self):
     self.reset_tracebacklimit()
 
-  def reset_module () :
-    Sorry.__module__ = Sorry.__orig_module__
-  reset_module = staticmethod(reset_module)
+  def reset_module (self) :
+    self.__class__.__module__ = self.__class__.__orig_module__
 
   def reset_tracebacklimit(self):
     if (    self.need_cleanup
