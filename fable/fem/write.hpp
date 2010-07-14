@@ -20,6 +20,7 @@ namespace fem {
       io_modes io_mode;
       format::token_loop fmt_loop;
       int exp_scale;
+      unsigned number_of_x_held;
       bool suppress_new_line_at_end;
 
     public:
@@ -35,6 +36,7 @@ namespace fem {
         prev_was_string(false),
         io_mode(io_unformatted),
         exp_scale(0),
+        number_of_x_held(0),
         suppress_new_line_at_end(false)
       {}
 
@@ -49,6 +51,7 @@ namespace fem {
         prev_was_string(false),
         io_mode(io_list_directed),
         exp_scale(0),
+        number_of_x_held(0),
         suppress_new_line_at_end(false)
       {}
 
@@ -64,6 +67,7 @@ namespace fem {
         io_mode(io_formatted),
         fmt_loop(fmt),
         exp_scale(0),
+        number_of_x_held(0),
         suppress_new_line_at_end(false)
       {}
 
@@ -79,6 +83,7 @@ namespace fem {
         prev_was_string(false),
         io_mode(io_list_directed),
         exp_scale(0),
+        number_of_x_held(0),
         suppress_new_line_at_end(false)
       {}
 
@@ -95,6 +100,7 @@ namespace fem {
         io_mode(io_formatted),
         fmt_loop(fmt),
         exp_scale(0),
+        number_of_x_held(0),
         suppress_new_line_at_end(false)
       {}
 
@@ -131,7 +137,7 @@ namespace fem {
               unsigned n = tv.size();
               if (n != 1) n = utils::unsigned_integer_value(
                 tv.data(), n-1);
-              for(unsigned i=0;i<n;i++) to_stream(" ", 1);
+              number_of_x_held += n;
             }
             else if (std::strchr("adefgilz", tv[0]) != 0) {
               return tv;
@@ -535,6 +541,10 @@ namespace fem {
         char const* buf,
         unsigned n)
       {
+        while (number_of_x_held != 0) {
+          out->put(" ", 1);
+          number_of_x_held--;
+        }
         out->put(buf, n);
       }
 
