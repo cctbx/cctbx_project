@@ -58,6 +58,15 @@
       write(6, '(''q'',1x,2p,d8.1)') -1.d0
       write(6, '(''r'',1x,3p,d8.1)') -1.d0
 c
+      val = -1.d0/2097152.d0
+      write(6, '(0p,d30.24)') val
+      write(6, '(0p,d30.23)') val
+      write(6, '(1p,d30.23)') val
+      write(6, '(10p,d30.23)') val
+      write(6, '(20p,d30.23)') val
+      write(6, '(24p,d30.23)') val
+      write(6, '(25p,d30.23)') val
+c
       write(6, '(0p,e9.2)') 1.234
       write(6, '(1p,e9.2)') 1.234
       write(6, '(2p,e9.2)') 1.234

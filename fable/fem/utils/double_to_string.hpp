@@ -2,6 +2,7 @@
 #define FEM_UTILS_DOUBLE_TO_STRING_HPP
 
 #include <fem/utils/char.hpp>
+#include <boost/cstdint.hpp>
 
 namespace fem { namespace utils {
 
@@ -100,12 +101,25 @@ namespace fem { namespace utils {
           }
         }
       }
-      double multiplier = std::pow(10., nd); // XXX
-      long ival = static_cast<long>(value * multiplier + 0.5);
-      long jval = 1;
-      for(int j=1;j<nd;j++) jval *= 10;
-      if (ival == jval*10) {
-        ival = jval;
+      static const int max_nd_significant = 16;
+      static const double multipliers_dbl[] = {
+        1e0,  1e1,  1e2,  1e3,  1e4,  1e5,  1e6,  1e7,  1e8, 1e9,
+        1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16};
+      typedef boost::int64_t i64;
+      ASSERTBX(sizeof(i64) >= sizeof(double));
+      static i64 multipliers_i64[max_nd_significant+1] = {0};
+      if (multipliers_i64[0] == 0) {
+        multipliers_i64[0] = 1;
+        for(int i=1;i<=max_nd_significant;i++) {
+          multipliers_i64[i] = multipliers_i64[i-1] * 10;
+        }
+      }
+      int nd_significant = std::min(nd, max_nd_significant);
+      int nd_unknown = nd - nd_significant;
+      double multiplier = multipliers_dbl[nd_significant];
+      i64 ival = static_cast<i64>(value * multiplier + 0.5);
+      if (ival == multipliers_i64[nd_significant]) {
+        ival = multipliers_i64[nd_significant-1];
         iexp++;
       }
       iexp -= exp_scale;
@@ -124,8 +138,14 @@ namespace fem { namespace utils {
       if (i_buf != w-4) buffer[--i_buf] = e_or_d;
       //
       for(int i=0;i<na;i++) {
-        buffer[--i_buf] = int_as_digit(ival % 10);
-        ival /= 10;
+        if (nd_unknown != 0) {
+          buffer[--i_buf] = '0';
+          nd_unknown--;
+        }
+        else {
+          buffer[--i_buf] = int_as_digit(ival % 10);
+          ival /= 10;
+        }
       }
       buffer[--i_buf] = '.';
       if (ival == 0) {
@@ -135,8 +155,14 @@ namespace fem { namespace utils {
       }
       else {
         do {
-          buffer[--i_buf] = int_as_digit(ival % 10);
-          ival /= 10;
+          if (nd_unknown != 0) {
+            buffer[--i_buf] = '0';
+            nd_unknown--;
+          }
+          else {
+            buffer[--i_buf] = int_as_digit(ival % 10);
+            ival /= 10;
+          }
         }
         while (ival != 0);
       }
