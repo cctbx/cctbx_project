@@ -5,6 +5,7 @@
 #include <fem/format.hpp>
 #include <fem/star.hpp>
 #include <fem/str_arr_ref.hpp>
+#include <fem/utils/double_to_string.hpp>
 #include <fem/utils/real_as_string.hpp>
 
 namespace fem {
@@ -18,6 +19,7 @@ namespace fem {
       bool prev_was_string;
       io_modes io_mode;
       format::token_loop fmt_loop;
+      int exp_scale;
       bool suppress_new_line_at_end;
 
     public:
@@ -32,6 +34,7 @@ namespace fem {
         pos(0),
         prev_was_string(false),
         io_mode(io_unformatted),
+        exp_scale(0),
         suppress_new_line_at_end(false)
       {}
 
@@ -45,6 +48,7 @@ namespace fem {
         pos(0),
         prev_was_string(false),
         io_mode(io_list_directed),
+        exp_scale(0),
         suppress_new_line_at_end(false)
       {}
 
@@ -59,6 +63,7 @@ namespace fem {
         prev_was_string(false),
         io_mode(io_formatted),
         fmt_loop(fmt),
+        exp_scale(0),
         suppress_new_line_at_end(false)
       {}
 
@@ -73,6 +78,7 @@ namespace fem {
         pos(0),
         prev_was_string(false),
         io_mode(io_list_directed),
+        exp_scale(0),
         suppress_new_line_at_end(false)
       {}
 
@@ -88,6 +94,7 @@ namespace fem {
         prev_was_string(false),
         io_mode(io_formatted),
         fmt_loop(fmt),
+        exp_scale(0),
         suppress_new_line_at_end(false)
       {}
 
@@ -130,7 +137,13 @@ namespace fem {
               return tv;
             }
             else if (utils::ends_with_char(tv, 'p')) {
-              throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+              if (tv.size() == 1) {
+                exp_scale = 1;
+              }
+              else {
+                exp_scale = utils::signed_integer_value(
+                  tv.data(), 0, tv.size()-1);
+              }
             }
             else if (tv[0] == 't') {
               throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
@@ -309,6 +322,47 @@ namespace fem {
         return *this;
       }
 
+      protected: // implementation detail
+        void
+        to_stream_fmt_double(
+          double const& val)
+        {
+          std::string const& ed = next_edit_descriptor();
+          if (ed[0] == 'f') {
+            int n = ed.size();
+            ASSERTBX(n+2 < 64);
+            char fmt[64];
+            fmt[0] = '%';
+            std::strncpy(fmt+1, ed.data()+1, n-1);
+            fmt[n] = 'f';
+            fmt[n+1] = '\0';
+            char buf[64];
+            n = std::sprintf(buf, fmt, val);
+            to_stream_fmt(buf, n);
+          }
+          else if ((ed[0] == 'd' || ed[0] == 'e') && ed.size() > 1) {
+            int es = ed.size();
+            int nw = utils::unsigned_integer_scan(ed.data(), 1, es);
+            ASSERTBX(nw > 0);
+            int w = utils::unsigned_integer_value(ed.data(), 1, nw);
+            int d = 0;
+            if (nw != es) {
+              ASSERTBX(ed[nw] == '.');
+              ASSERTBX(nw+1 != es);
+              d = utils::unsigned_integer_value(ed.data(), nw+1, es);
+            }
+            utils::double_to_string_scientific_notation conv(
+              val, w, d, exp_scale, utils::to_upper(ed[0]));
+            to_stream_fmt(conv.buffer, w);
+          }
+          else {
+            char buf[64];
+            int n = std::sprintf(buf, " %.6g", val);
+            to_stream_fmt(buf, n);
+          }
+        }
+        public:
+
       write_loop&
       operator,(
         float const& val)
@@ -324,24 +378,7 @@ namespace fem {
           prev_was_string = false;
         }
         else {
-          std::string const& ed = next_edit_descriptor();
-          if (ed[0] == 'f') {
-            int n = ed.size();
-            ASSERTBX(n+2 < 64);
-            char fmt[64];
-            fmt[0] = '%';
-            std::strncpy(fmt+1, ed.data()+1, n-1);
-            fmt[n] = 'f';
-            fmt[n+1] = '\0';
-            char buf[64];
-            n = std::sprintf(buf, fmt, val);
-            to_stream_fmt(buf, n);
-          }
-          else {
-            char buf[64];
-            int n = std::sprintf(buf, " %.6g", val);
-            to_stream_fmt(buf, n);
-          }
+          to_stream_fmt_double(static_cast<double>(val));
         }
         return *this;
       }
@@ -361,7 +398,7 @@ namespace fem {
           prev_was_string = false;
         }
         else {
-          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+          to_stream_fmt_double(val);
         }
         return *this;
       }

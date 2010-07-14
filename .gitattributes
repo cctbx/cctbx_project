@@ -246,6 +246,7 @@ fable/fem/str.hpp svneol=native#text/plain
 fable/fem/str_arr_ref.hpp svneol=native#text/plain
 fable/fem/str_ref.hpp svneol=native#text/plain
 fable/fem/utils/char.hpp svneol=native#text/plain
+fable/fem/utils/double_to_string.hpp svneol=native#text/plain
 fable/fem/utils/equivalence.hpp svneol=native#text/plain
 fable/fem/utils/misc.hpp svneol=native#text/plain
 fable/fem/utils/path.hpp svneol=native#text/plain
@@ -610,6 +611,7 @@ fable/test/valid/using_intrinsics.f -text
 fable/test/valid/write_1.f -text
 fable/test/valid/write_err.f -text
 fable/test/valid/write_extra_parentheses.f -text
+fable/test/valid/write_fmt_double.f -text
 fable/test/valid/write_format.f -text
 fable/test/valid/write_implied_do_1.f -text
 fable/test/valid/write_implied_do_2.f -text
