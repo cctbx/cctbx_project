@@ -1637,7 +1637,7 @@ class unit(unit_p_methods):
     "trailing_comments",
     "top_ssl", "unit_type", "data_type", "size_tokens",
     "body_lines", "end_ssl",
-    "name", "args",
+    "name_plain", "name", "args",
     "body_lines_processed_already",
     "common",
     "data",
@@ -1740,6 +1740,7 @@ class unit(unit_p_methods):
     return O.body_lines[0].source_line_cluster[0]
 
   def set_name_and_args(O, i_code):
+    O.name_plain = None
     O.name = None
     O.args = []
     if (O.top_ssl is None):
@@ -1760,6 +1761,7 @@ class unit(unit_p_methods):
     opening_token = tz.get(optional=True)
     if (opening_token is None):
       if (O.is_program() or O.is_blockdata()):
+        O.name_plain = O.name
         O.name = tokenization.tk_identifier(
           ssl=O.name.ssl,
           i_code=O.name.i_code,
@@ -2665,7 +2667,8 @@ class split_units(object):
     "function",
     "blockdata",
     "all_in_input_order",
-    "_units_by_name"]
+    "_units_by_name",
+    "_units_by_name_plain"]
 
   def __init__(O):
     O.program = []
@@ -2674,6 +2677,7 @@ class split_units(object):
     O.blockdata = []
     O.all_in_input_order = []
     O._units_by_name = None
+    O._units_by_name_plain = None
 
   def by_type(O):
     return [O.program, O.blockdata, O.subroutine, O.function]
@@ -2756,9 +2760,10 @@ class split_units(object):
     for unit in O.all_in_input_order:
       unit.build_fdecl_by_identifier()
 
-  def units_by_name(O):
+  def units_by_name(O, plain=False):
     if (O._units_by_name is None):
       O._units_by_name = {}
+      O._units_by_name_plain = {}
       for units in O.by_type():
         for unit in units:
           other = O._units_by_name.get(unit.name.value)
@@ -2779,6 +2784,10 @@ class split_units(object):
             from libtbx.utils import Sorry
             raise Sorry("\n".join(msg))
           O._units_by_name[unit.name.value] = unit
+          if (unit.name_plain is not None):
+            O._units_by_name_plain[unit.name_plain.value] = unit
+    if (plain):
+      return O._units_by_name_plain
     return O._units_by_name
 
   def build_bottom_up_unit_list_following_calls(O,
@@ -2915,7 +2924,7 @@ class build_bottom_up_unit_list_following_calls(object):
             forward_uses_set.add(dep)
       elif (identifier in intrinsics.extra_set_lower):
         O.intrinsics_extra.add(identifier)
-      else:
+      elif (identifier not in all_units.units_by_name(plain=True)):
         O.missing_external_fdecls_by_identifier[identifier] = \
           external_fdecls[identifier]
     O.dependency_cycles = topological_sort.strongly_connected_components(
