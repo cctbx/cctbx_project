@@ -58,7 +58,7 @@ namespace boost_adaptbx { namespace error_utils {
 #define ASSERTBX(condition) \
   if (!(condition)) { \
     throw std::runtime_error( \
-      boost_adaptbx::error_utils::file_and_line_as_string_with_backtrace( \
+      boost_adaptbx::error_utils::file_and_line_as_string( \
         __FILE__, __LINE__) \
       + ": ASSERT(" #condition ") failure."); \
   }

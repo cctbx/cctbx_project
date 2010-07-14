@@ -242,7 +242,6 @@ namespace fem { namespace utils {
     }
     if (throw_info != 0) {
       std::ostringstream o;
-      boost_adaptbx::libc_backtrace::show_if_possible(o, 1);
       o << throw_info << ": invalid keyword: \"" << val << "\"";
       throw std::runtime_error(o.str());
     }

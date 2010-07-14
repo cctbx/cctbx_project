@@ -40,6 +40,14 @@ namespace fem { namespace utils {
     return c - '0';
   }
 
+  inline
+  char
+  int_as_digit(
+    int i)
+  {
+    return "0123456789"[i];
+  }
+
   //! To avoid locale environment surprises (assumes ASCII or similar).
   inline
   int
@@ -49,6 +57,17 @@ namespace fem { namespace utils {
     if (c < 'A') return c;
     if (c > 'Z') return c;
     return c + ('a' - 'A');
+  }
+
+  //! To avoid locale environment surprises (assumes ASCII or similar).
+  inline
+  int
+  to_upper(
+    int c)
+  {
+    if (c < 'a') return c;
+    if (c > 'z') return c;
+    return c - ('a' - 'A');
   }
 
 }} // namespace fem::utils

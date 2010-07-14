@@ -162,7 +162,6 @@ namespace fem {
         if (access == ac_direct) {
           if (recl == 0) {
             std::ostringstream o;
-            boost_adaptbx::libc_backtrace::show_if_possible(o, 1);
             o << "OPEN error: unit=" << number
               << " connected for DIRECT access but recl=0";
             throw io_err(o.str());
@@ -171,7 +170,6 @@ namespace fem {
         else {
           if (recl != 0) {
             std::ostringstream o;
-            boost_adaptbx::libc_backtrace::show_if_possible(o, 1);
             o << "OPEN error: unit=" << number
               << " connected for SEQUENTIAL access but recl=" << recl
               << " (it must be omitted)";
@@ -200,7 +198,6 @@ namespace fem {
           }
           return;
           std::ostringstream o;
-          boost_adaptbx::libc_backtrace::show_if_possible(o, 1);
           o << "OPEN OLD error: file does not exist: " << file_name;
           throw io_err(o.str());
         }
@@ -213,7 +210,6 @@ namespace fem {
             return;
           }
           std::ostringstream o;
-          boost_adaptbx::libc_backtrace::show_if_possible(o, 1);
           o << "OPEN NEW error: file exists already: " << file_name;
           throw io_err(o.str());
         }
