@@ -129,6 +129,7 @@ namespace fem {
               suppress_new_line_at_end = true;
             }
             else {
+              out.reset();
               throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
             }
           }
@@ -152,19 +153,24 @@ namespace fem {
               }
             }
             else if (tv[0] == 't') {
+              out.reset();
               throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
             }
             else if (tv[0] == 's') {
+              out.reset();
               throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
             }
             else if (tv[0] == 'b') {
+              out.reset();
               throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
             }
             else {
+              out.reset();
               throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
             }
           }
           else {
+            out.reset();
             throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
           }
         }
@@ -182,6 +188,7 @@ namespace fem {
           prev_was_string = true;
         }
         else {
+          out.reset();
           throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
         }
         return *this;
@@ -255,12 +262,15 @@ namespace fem {
         integer_star_2 const& val)
       {
         if (io_mode == io_unformatted) {
+          out.reset();
           throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
         }
         else if (io_mode == io_list_directed) {
+          out.reset();
           throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
         }
         else {
+          out.reset();
           throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
         }
         return *this;
@@ -323,6 +333,7 @@ namespace fem {
           prev_was_string = false;
         }
         else {
+          out.reset();
           throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
         }
         return *this;
@@ -487,6 +498,7 @@ namespace fem {
         }
         else {
           if (io_mode == io_unformatted) {
+            out.reset();
             throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
           }
           else {
