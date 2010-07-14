@@ -5,13 +5,132 @@ from mmtbx.refinement import fit_rotamers
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 import mmtbx.monomer_library
 from cctbx.array_family import flex
-import sys, os
+import iotbx.phil
+from libtbx import Auto
+from libtbx.utils import format_exception, Sorry
+from libtbx.str_utils import show_string
+import sys, os, re
+
+reference_group_params = iotbx.phil.parse("""
+ reference_group
+  .multiple=True
+  .optional=True
+  .short_caption=Reference group
+  .style = noauto auto_align
+{
+  reference=None
+    .type=str
+    .short_caption=Reference selection
+    .style = selection
+  selection=None
+    .type=str
+    .short_caption=Restrained selection
+    .style = selection
+}
+""")
+
+def selection(string, cache):
+  return cache.selection(
+    string=string)
+
+def iselection(self, string, cache=None):
+  return selection(string=string, cache=cache).iselection()
+
+def phil_atom_selection_multiple( 
+      cache,
+      string_list,
+      allow_none=False,
+      allow_auto=False,
+      raise_if_empty_selection=True):
+  result = []
+  for string in string_list:
+    if (string is None):
+      if (allow_none): return None
+      raise Sorry('Atom selection cannot be None:\n  %s=None' % (
+        parameter_name()))
+    elif (string is Auto):
+      if (allow_auto): return Auto
+      raise Sorry('Atom selection cannot be Auto:\n  %s=Auto' % (
+        parameter_name()))
+    try:
+        result.append(selection(string=string, cache=cache).iselection())
+    except KeyboardInterrupt: raise
+    except Exception, e: # keep e alive to avoid traceback
+      fe = format_exception()
+      raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
+        'reference_group', string, fe))
+    if (raise_if_empty_selection and result.count(True) == 0):
+      raise Sorry('Empty atom selection:\n  %s=%s' % (
+        'reference_group', string))
+  return result
+
+def phil_atom_selections_as_i_seqs_multiple(cache,
+                                            string_list):
+  result = []
+  iselection = phil_atom_selection_multiple(
+        cache=cache,
+        string_list=string_list,
+        raise_if_empty_selection=False)
+  for i in iselection:
+    if (i.size() == 0):
+      raise Sorry("No atom selected: %s" % string)
+    for atom in i:
+      result.append(atom)
+  return result
+
+def process_reference_groups(pdb_hierarchy,
+                             pdb_hierarchy_ref,
+                             params):
+  model_iseq_hash = build_iseq_hash(pdb_hierarchy=pdb_hierarchy)
+  model_name_hash = build_name_hash(pdb_hierarchy=pdb_hierarchy)
+  ref_iseq_hash = build_iseq_hash(pdb_hierarchy=pdb_hierarchy_ref)
+  sel_cache = pdb_hierarchy.atom_selection_cache()
+  sel_cache_ref = pdb_hierarchy_ref.atom_selection_cache()
+  match_map = {}
+  
+  #simple case with no specified reference groups
+  if len(params.reference_group) == 0:
+    ref_list = ['ALL']
+    selection_list = ['ALL']
+    sel_atoms = phil_atom_selections_as_i_seqs_multiple(
+                  cache=sel_cache,
+                  string_list=selection_list)
+    for i_seq in sel_atoms:
+      key = model_name_hash[i_seq]
+      try:
+        match_map[i_seq] = ref_iseq_hash[key]
+      except:
+        continue
+        
+  #specified reference groups
+  for rg in params.reference_group:
+    assert rg.reference.upper().startswith("CHAIN")
+    ref_chain=rg.reference.split(' ')[-1]
+    if len(ref_chain)==1:
+      ref_chain = ' '+ref_chain
+    sel_atoms = (phil_atom_selections_as_i_seqs_multiple(
+                  cache=sel_cache,
+                  string_list=[rg.selection]))
+    for i_seq in sel_atoms:
+      key = model_name_hash[i_seq]
+      key = re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+r"\3",key)
+      try:
+        match_map[i_seq] = ref_iseq_hash[key]
+      except:
+        continue    
+  return match_map
 
 def build_name_hash(pdb_hierarchy):
   i_seq_name_hash = dict()
   for atom in pdb_hierarchy.atoms():
     i_seq_name_hash[atom.i_seq]=atom.pdb_label_columns()
   return i_seq_name_hash
+
+def build_iseq_hash(pdb_hierarchy):
+  name_i_seq_hash = dict()
+  for atom in pdb_hierarchy.atoms():
+    name_i_seq_hash[atom.pdb_label_columns()]=atom.i_seq
+  return name_i_seq_hash
 
 def build_element_hash(pdb_hierarchy):
   i_seq_element_hash = dict()
@@ -28,7 +147,6 @@ def build_cbetadev_hash(pdb_hierarchy):
     dev = temp[5]
     if dev == "dev":
       continue
-    #key = temp[3].lstrip()+temp[4].rstrip()+temp[1]+temp[2].upper()
     key = temp[1].upper()+temp[2].upper()+temp[3]+temp[4].rstrip()
     cbetadev_hash[key] = dev
   return cbetadev_hash
@@ -97,9 +215,12 @@ def build_dihedral_hash(geometry=None,
         Nxyz = sites_cart[i_seq]
       elif i_seq_name_hash[i_seq][0:4] == ' CB ':
         CBxyz = sites_cart[i_seq]
-        if float(cbetadev_hash[i_seq_name_hash[i_seq][4:14]]) >= 0.25:
-          c_beta = False
-          print "skipping C-beta restraint for %s" % i_seq_name_hash[i_seq][4:14]
+        try:
+          if float(cbetadev_hash[i_seq_name_hash[i_seq][4:14]]) >= 0.25:
+            c_beta = False
+            print "skipping C-beta restraint for %s" % i_seq_name_hash[i_seq][4:14]
+        except:
+            c_beta = False
     if c_beta:
       assert CAxyz is not None
       assert Cxyz is not None
@@ -123,6 +244,7 @@ def get_home_dihedral_proxies(work_params,
   sigma = work_params.sigma
   limit = work_params.limit
   i_seq_name_hash = build_name_hash(pdb_hierarchy=pdb_hierarchy)
+  i_seq_name_hash_ref = build_name_hash(pdb_hierarchy=pdb_hierarchy_ref)
   reference_dihedral_hash = build_dihedral_hash(
                          geometry=geometry_ref,
                          sites_cart=sites_cart_ref,
@@ -130,10 +252,17 @@ def get_home_dihedral_proxies(work_params,
                          include_hydrogens=work_params.hydrogens,
                          include_main_chain=work_params.main_chain,
                          include_side_chain=work_params.side_chain)
+  match_map = process_reference_groups(
+                             pdb_hierarchy=pdb_hierarchy,
+                             pdb_hierarchy_ref=pdb_hierarchy_ref,
+                             params=work_params)
   for dp in geometry.dihedral_proxies:
     key = ""
     for i_seq in dp.i_seqs:
-      key = key+i_seq_name_hash[i_seq]
+      try:
+        key = key+i_seq_name_hash_ref[match_map[i_seq]]
+      except:
+        continue
     try:
       reference_angle = reference_dihedral_hash[key]
     except:
@@ -144,6 +273,7 @@ def get_home_dihedral_proxies(work_params,
       weight=1/sigma**2,
       limit=limit)
     reference_dihedral_proxies.append(dp_add)
+
   for cp in geometry.chirality_proxies:
     key = ""
     CAsite = None
@@ -151,24 +281,26 @@ def get_home_dihedral_proxies(work_params,
     Nsite = None
     CBsite = None
     for i_seq in cp.i_seqs:
-      key = key+i_seq_name_hash[i_seq]
-      if i_seq_name_hash[i_seq][0:4] == ' CA ':
+      try:
+        key = key+i_seq_name_hash_ref[match_map[i_seq]]
+      except:
+        continue
+      print i_seq_name_hash_ref[match_map[i_seq]]
+      if i_seq_name_hash_ref[match_map[i_seq]][0:4] == ' CA ':
         CAsite = i_seq
-      elif i_seq_name_hash[i_seq][0:4] == ' CB ':
+      elif i_seq_name_hash_ref[match_map[i_seq]][0:4] == ' CB ':
         CBsite = i_seq
-      elif i_seq_name_hash[i_seq][0:4] == ' C  ':
+      elif i_seq_name_hash_ref[match_map[i_seq]][0:4] == ' C  ':
         Csite = i_seq
-      elif i_seq_name_hash[i_seq][0:4] == ' N  ':
+      elif i_seq_name_hash_ref[match_map[i_seq]][0:4] == ' N  ':
         Nsite = i_seq
 
     try:
       reference_angle = reference_dihedral_hash[key]
     except:
       continue
-    assert CAsite is not None
-    assert Csite is not None
-    assert CBsite is not None
-    assert Nsite is not None
+    if CAsite is None or Csite is None or CBsite is None or Nsite is None:
+      continue
     i_seqs = [Csite, Nsite, CAsite, CBsite]
     dp_add = cctbx.geometry_restraints.dihedral_proxy(
       i_seqs=i_seqs,
@@ -177,7 +309,7 @@ def get_home_dihedral_proxies(work_params,
       limit=limit)
     reference_dihedral_proxies.append(dp_add)
   return reference_dihedral_proxies
-
+  
 def add_reference_dihedral_proxies(geometry, reference_dihedral_proxies):
   geometry.reference_dihedral_proxies=reference_dihedral_proxies
 
