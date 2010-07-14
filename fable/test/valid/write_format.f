@@ -39,6 +39,10 @@
       write(6, '(i2)') 53
       write(6, '(2(i2,(3i2)))') 1,2,3,4,5,6,7,8
       write(6, '((2i2,(3i2)))') 1,2,3,4,5
+c
+      write(6, '(2(i2,1x))') 12, 34
+      write(6, '(2(i2,'' ''))') 12, 34
+      write(6, '(2(i2,''A''))') 12, 34
       end
 
       subroutine exercise_wrap
