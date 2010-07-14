@@ -2832,6 +2832,12 @@ program_prog(
   write(6, "(i3)"), 345;
   write(6, format_10), 67;
 """)
+  #
+  lines = get("blockdata_named.f")
+  assert "\n".join(lines).find("Missing function implementation") < 0
+  assert not absd(lines, head_off(1), """\
+struct common_com
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(
