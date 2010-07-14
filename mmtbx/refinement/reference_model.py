@@ -16,7 +16,7 @@ reference_group_params = iotbx.phil.parse("""
   .multiple=True
   .optional=True
   .short_caption=Reference group
-  .style = noauto auto_align
+  .style = noauto auto_align menu_item parent_submenu:reference_model
 {
   reference=None
     .type=str
@@ -36,7 +36,7 @@ def selection(string, cache):
 def iselection(self, string, cache=None):
   return selection(string=string, cache=cache).iselection()
 
-def phil_atom_selection_multiple( 
+def phil_atom_selection_multiple(
       cache,
       string_list,
       allow_none=False,
@@ -87,7 +87,7 @@ def process_reference_groups(pdb_hierarchy,
   sel_cache = pdb_hierarchy.atom_selection_cache()
   sel_cache_ref = pdb_hierarchy_ref.atom_selection_cache()
   match_map = {}
-  
+
   #simple case with no specified reference groups
   if len(params.reference_group) == 0:
     ref_list = ['ALL']
@@ -101,7 +101,7 @@ def process_reference_groups(pdb_hierarchy,
         match_map[i_seq] = ref_iseq_hash[key]
       except:
         continue
-        
+
   #specified reference groups
   for rg in params.reference_group:
     assert rg.reference.upper().startswith("CHAIN")
@@ -117,7 +117,7 @@ def process_reference_groups(pdb_hierarchy,
       try:
         match_map[i_seq] = ref_iseq_hash[key]
       except:
-        continue    
+        continue
   return match_map
 
 def build_name_hash(pdb_hierarchy):
@@ -309,7 +309,7 @@ def get_home_dihedral_proxies(work_params,
       limit=limit)
     reference_dihedral_proxies.append(dp_add)
   return reference_dihedral_proxies
-  
+
 def add_reference_dihedral_proxies(geometry, reference_dihedral_proxies):
   geometry.reference_dihedral_proxies=reference_dihedral_proxies
 
