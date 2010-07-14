@@ -144,22 +144,24 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     [group,residue_range_list] = self._chain_residue_id
     count=0
     for id,residue_ranges in zip (group,residue_range_list):
-     count+=1
-     if count==1:
-       text="refinement.ncs.restraint_group { \n"
-       text+="reference = chain '"+str(id)+"'"
-     else:
-       text+="selection = chain '"+str(id)+"'"
-     if residue_ranges:
-       first=True
-       for residue_range in residue_ranges:
-         if first:
-           first=False
-           text+=" and (resseq "
-         else:
-           text+=" or resseq  "
-         text+=str(residue_range[0])+":"+str(residue_range[1])
-       text+=" ) "+exclude+"\n"
+      count+=1
+      if count==1:
+        text="refinement.ncs.restraint_group { \n"
+        text+="reference = chain '"+str(id)+"'"
+      else:
+        text+="selection = chain '"+str(id)+"'"
+      if residue_ranges:
+        first=True
+        for residue_range in residue_ranges:
+          if first:
+            first=False
+            text+=" and (resseq "
+          else:
+            text+=" or resseq  "
+          text+=str(residue_range[0])+":"+str(residue_range[1])
+        text+=" ) "+exclude+"\n"
+      else :
+        text += "\n"
     text+= "} \n"
     return text
 
