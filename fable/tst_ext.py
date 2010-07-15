@@ -6,8 +6,7 @@ def try_code_none(f):
   except TypeError, e: pass
   else: raise Exception_expected
 
-def exercise_unsigned_integer_scan():
-  f = fable.unsigned_integer_scan
+def exercise_unsigned_integer_scan(f):
   try_code_none(f=f)
   assert f(code="") == -1
   assert f(code="0") == 1
@@ -21,8 +20,7 @@ def exercise_unsigned_integer_scan():
   assert f(code="3456", start=1, stop=-1) == 4
   assert f(code="3456", start=1, stop=3) == 3
 
-def exercise_floating_point_scan():
-  f = fable.floating_point_scan_after_exponent_char
+def exercise_floating_point_scan_after_exponent_char(f):
   try_code_none(f=f)
   assert f(code="") == -1
   assert f(code="e") == -1
@@ -36,8 +34,8 @@ def exercise_floating_point_scan():
   assert f(code="-+0", start=1) == 3
   assert f(code="-+34", start=1, stop=-1) == 4
   assert f(code="-+34", start=1, stop=3) == 3
-  #
-  f = fable.floating_point_scan_after_dot
+
+def exercise_floating_point_scan_after_dot(f):
   try_code_none(f=f)
   assert f(code="") == 0
   assert f(code="0") == 1
@@ -54,8 +52,7 @@ def exercise_floating_point_scan():
   assert f(code="xe+56", start=1, stop=-1) == 5
   assert f(code="xe+56", start=1, stop=4) == 4
 
-def exercise_identifier_scan():
-  f = fable.identifier_scan
+def exercise_identifier_scan(f):
   try_code_none(f=f)
   assert f(code="") == -1
   assert f(code=")") == -1
@@ -72,8 +69,7 @@ def exercise_identifier_scan():
   assert f(code="*abc", start=1, stop=-1) == 4
   assert f(code="*abc", start=1, stop=3) == 3
 
-def exercise_find_closing_parenthesis():
-  f = fable.find_closing_parenthesis
+def exercise_find_closing_parenthesis(f):
   try_code_none(f=f)
   assert f(code="") == -1
   assert f(code=")") == 0
@@ -414,13 +410,25 @@ def exercise_fem_utils_string_to_double_fmt():
 
 def run(args):
   assert len(args) == 0
-  exercise_unsigned_integer_scan()
-  exercise_floating_point_scan()
-  exercise_identifier_scan()
-  exercise_find_closing_parenthesis()
-  exercise_fem_format_tokenizer()
-  exercise_fem_utils_string_to_double()
-  exercise_fem_utils_string_to_double_fmt()
+  for f in [fable.py_unsigned_integer_scan,
+               fable.unsigned_integer_scan]:
+    exercise_unsigned_integer_scan(f)
+  for f in [fable.py_floating_point_scan_after_exponent_char,
+               fable.floating_point_scan_after_exponent_char]:
+    exercise_floating_point_scan_after_exponent_char(f)
+  for f in [fable.py_floating_point_scan_after_dot,
+               fable.floating_point_scan_after_dot]:
+    exercise_floating_point_scan_after_dot(f)
+  for f in [fable.py_identifier_scan,
+               fable.identifier_scan]:
+    exercise_identifier_scan(f)
+  for f in [fable.py_find_closing_parenthesis,
+               fable.find_closing_parenthesis]:
+    exercise_find_closing_parenthesis(f)
+  if (fable.ext is not None):
+    exercise_fem_format_tokenizer()
+    exercise_fem_utils_string_to_double()
+    exercise_fem_utils_string_to_double_fmt()
   print "OK"
 
 if (__name__ == "__main__"):
