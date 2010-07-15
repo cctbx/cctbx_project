@@ -35,6 +35,7 @@ namespace fem { namespace utils {
     return (str[i-1] == c);
   }
 
+  // compare with fable/__init__.py
   inline
   int
   unsigned_integer_scan(

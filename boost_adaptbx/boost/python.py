@@ -13,7 +13,7 @@ if (sys.platform.startswith("linux")):
       python_libstdcxx_so = line.split()[0]
       break
 
-def import_ext(name):
+def import_ext(name, optional=False):
   components = name.split(".")
   if (len(components) > 1):
     __import__(".".join(components[:-1]))
@@ -23,6 +23,7 @@ def import_ext(name):
     sys.setdlopenflags(0x100|0x2)
   try: mod = __import__(name)
   except ImportError, e:
+    if (optional): return None
     error_msg = str(e)
     m = symbol_not_found_pat.search(error_msg)
     if m:

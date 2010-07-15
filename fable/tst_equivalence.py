@@ -1,7 +1,8 @@
-from fable import equivalence, fem_utils_equivalence_array_alignment
+import fable.equivalence
 
 def fem_array_alignment(members_size, i_mbr_byte_offset_pairs):
-  fueaa = fem_utils_equivalence_array_alignment(members_size=members_size)
+  fueaa = fable.fem_utils_equivalence_array_alignment(
+    members_size=members_size)
   for p0,p1 in i_mbr_byte_offset_pairs:
     i0, a0 = p0
     i1, a1 = p1
@@ -105,7 +106,7 @@ def exercise_exceptions(array_alignment):
   else: raise Exception_expected
 
 def exercise_cluster_unions():
-  cu = equivalence.cluster_unions()
+  cu = fable.equivalence.cluster_unions()
   cu.add(("a", "b"))
   assert cu.unions == [["a", "b"]]
   cu.add(("a", "b"))
@@ -140,11 +141,13 @@ def run(args):
     n_trials = int(args[0])
     print "n_trials:", n_trials
     assert n_trials >= 0
-  for array_alignment in [equivalence.array_alignment, fem_array_alignment]:
+  def exercise_array_alignment(f):
     for n in xrange(2,6):
-      exercise_given_members_size(
-        array_alignment=array_alignment, n=n, n_trials=n_trials)
-    exercise_exceptions(array_alignment=array_alignment)
+      exercise_given_members_size(array_alignment=f, n=n, n_trials=n_trials)
+    exercise_exceptions(array_alignment=f)
+  exercise_array_alignment(fable.equivalence.array_alignment)
+  if (fable.ext is not None):
+    exercise_array_alignment(fem_array_alignment)
   exercise_cluster_unions()
   print "OK"
 

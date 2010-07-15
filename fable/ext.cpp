@@ -12,6 +12,7 @@ namespace fable { namespace ext {
   namespace bp = boost::python;
 
   // helper, not available in Python
+  // compare with fable/__init__.py
   unsigned
   get_code_stop(
     bp::object const& code,
@@ -23,6 +24,7 @@ namespace fable { namespace ext {
     return static_cast<unsigned>(stop);
   }
 
+  // compare with fable/__init__.py
   int
   unsigned_integer_scan(
     bp::object const& code,
@@ -34,6 +36,7 @@ namespace fable { namespace ext {
     return fem::utils::unsigned_integer_scan(s, start, code_stop);
   }
 
+  // compare with fable/__init__.py
   int
   floating_point_scan_after_exponent_char(
     bp::object const& code,
@@ -53,6 +56,7 @@ namespace fable { namespace ext {
     return -1;
   }
 
+  // compare with fable/__init__.py
   int
   floating_point_scan_after_dot(
     bp::object const& code,
@@ -72,6 +76,7 @@ namespace fable { namespace ext {
     return i;
   }
 
+  // compare with fable/__init__.py
   int
   identifier_scan(
     bp::object const& code,
@@ -94,6 +99,7 @@ namespace fable { namespace ext {
     return -1;
   }
 
+  // compare with fable/__init__.py
   int
   find_closing_parenthesis(
     bp::object const& code,
