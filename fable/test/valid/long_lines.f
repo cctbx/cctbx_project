@@ -57,4 +57,10 @@
      1  ' fifth:               ',F5.2,/,
      1  ' sixth:               ',F5.1)
       write(6, 2) 1.2, 3.4, 5.6, 7.8, 9.1, 2.3
+      if (nnnnn1 .lt. 0 .or. nnnnn2 .lt. 0 .or. nnnnn3 .lt. 0 .or.
+     1    nnnnn4 .lt. 0 .or. nnnnn5 .lt. 0 .or. nnnnn6 .le. 0)
+     1  write(6, '(a)') 'or ok'
+      if (nnnnn1 .eq. 0 .and. nnnnn2 .eq. 0 .and. nnnnn3 .eq. 0 .and.
+     1    nnnnn4 .eq. 0 .and. nnnnn5 .eq. 0 .and. nnnnn6 .le. 0)
+     1  write(6, '(a)') 'and ok'
       end

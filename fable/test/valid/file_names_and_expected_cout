@@ -1229,6 +1229,8 @@ long_lines.f
 | fourth:               7.80|
 | fifth:                9.10|
 | sixth:                 2.3|
+|or ok|
+|and ok|
 format_used_twice.f
 |12|
 |345|
