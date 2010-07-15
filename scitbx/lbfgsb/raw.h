@@ -967,8 +967,8 @@ namespace raw {
       "                  2 rounding error dominate computation.\n";
     if (task.substr(0,5) == "ERROR") goto lbl_999;
     if (iprint >= 0) {
-      printf(fmt_3003);
-      printf(fmt_3004);
+      printf("%s", fmt_3003);
+      printf("%s", fmt_3004);
       printf(fmt_3005, n,iter,nfgv,nintol,nskip,nact,sbgnrm,f);
       if (iprint >= 100) {
         write_ref1(" X =", x);
@@ -979,19 +979,19 @@ namespace raw {
     if (iprint >= 0) {
       printf(fmt_3009, task.c_str());
       if (info != 0) {
-        if (info == -1) printf(fmt_9011);
-        if (info == -2) printf(fmt_9012);
-        if (info == -3) printf(fmt_9013);
-        if (info == -4) printf(fmt_9014);
-        if (info == -5) printf(fmt_9015);
+        if (info == -1) printf("%s", fmt_9011);
+        if (info == -2) printf("%s", fmt_9012);
+        if (info == -3) printf("%s", fmt_9013);
+        if (info == -4) printf("%s", fmt_9014);
+        if (info == -5) printf("%s", fmt_9015);
         if (info == -6) {
           printf("  Input nbd(%12d) is invalid.\n", k);
         }
         if (info == -7) {
           printf("  l(%12d) > u(%12d).  No feasible solution.\n", k, k);
         }
-        if (info == -8) printf(fmt_9018);
-        if (info == -9) printf(fmt_9019);
+        if (info == -8) printf("%s", fmt_9018);
+        if (info == -9) printf("%s", fmt_9019);
       }
       if (iprint >= 1) printf(fmt_3007, cachyt,sbtime,lnscht);
       printf(fmt_3008, time);
@@ -1002,13 +1002,13 @@ namespace raw {
         }
         printf(fmt_3009, task.c_str()); // itfile
         if (info != 0) {
-          if (info == -1) printf(fmt_9011); // itfile
-          if (info == -2) printf(fmt_9012); // itfile
-          if (info == -3) printf(fmt_9013); // itfile
-          if (info == -4) printf(fmt_9014); // itfile
-          if (info == -5) printf(fmt_9015); // itfile
-          if (info == -8) printf(fmt_9018); // itfile
-          if (info == -9) printf(fmt_9019); // itfile
+          if (info == -1) printf("%s", fmt_9011); // itfile
+          if (info == -2) printf("%s", fmt_9012); // itfile
+          if (info == -3) printf("%s", fmt_9013); // itfile
+          if (info == -4) printf("%s", fmt_9014); // itfile
+          if (info == -5) printf("%s", fmt_9015); // itfile
+          if (info == -8) printf("%s", fmt_9018); // itfile
+          if (info == -9) printf("%s", fmt_9019); // itfile
         }
         printf(fmt_3008, time); // itfile
       }
@@ -3902,7 +3902,7 @@ namespace raw {
       "   refresh the lbfgs memory and restart the iteration.\n";
     if (info != 0) {
       // singular triangular system detected; refresh the lbfgs memory.
-      if(iprint >= 1) printf(fmt_1005);
+      if(iprint >= 1) printf("%s", fmt_1005);
       info   = 0;
       col    = 0;
       head   = 1;
@@ -3968,7 +3968,7 @@ namespace raw {
     if (info != 0) {
       // singular triangular system detected;
       // refresh the lbfgs memory and restart the iteration.
-      if(iprint >= 1)  printf(fmt_1005);
+      if(iprint >= 1)  printf("%s", fmt_1005);
       info   = 0;
       col    = 0;
       head   = 1;
