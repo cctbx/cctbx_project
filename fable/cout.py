@@ -2690,6 +2690,8 @@ def process(
       fem_do_safe=True,
       arr_nd_size_max=default_arr_nd_size_max,
       common_equivalence_simple=set(),
+      suppress_program=False,
+      suppress_common=False,
       separate_cmn_hpp=False,
       number_of_function_files=None,
       separate_files_main_namespace={},
@@ -2806,6 +2808,8 @@ def process(
     cmn_callback(include_fem_hpp)
     cmn_callback("")
     open_namespace(callback=cmn_callback, namespace=namespace)
+  elif (suppress_common):
+    def cmn_callback(line): pass
   else:
     cmn_callback = callback
   try:
@@ -3005,15 +3009,18 @@ def process(
           serial += 1
           write_functions(buffers=buffers, serial=serial)
   #
-  try:
-    convert_program(
-      callback=callback,
-      global_conv_info=global_conv_info,
-      namespace=namespace,
-      debug=debug)
-  except Exception:
-    if (not debug): raise
-    show_traceback()
+  if (suppress_program):
+    close_namespace(callback=callback, namespace=namespace, hpp_guard=False)
+  else:
+    try:
+      convert_program(
+        callback=callback,
+        global_conv_info=global_conv_info,
+        namespace=namespace,
+        debug=debug)
+    except Exception:
+      if (not debug): raise
+      show_traceback()
   #
   if (top_cpp_file_name is not None):
     print >> open(top_cpp_file_name, "w"), "\n".join(result)

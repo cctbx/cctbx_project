@@ -1,66 +1,31 @@
-from libtbx.utils import getenv_bool
-from libtbx.path import full_command_path
 import libtbx.load_env
-import os
-
-def run_fortran_trial(env):
-  test_code = """\
-      PROGRAM TRIAL
-      DOUBLE PRECISION TWO
-      TWO = 2.0
-      WRITE(6, '(F6.4)') SQRT(TWO)
-      END
-"""
-  conf = env.Configure()
-  flag, output = conf.TryRun(test_code, extension='.f')
-  conf.Finish()
-  return (flag and output.strip() == "1.4142")
-
 Import("env_base", "env_etc")
+
 env = env_base.Clone()
 env_etc.enable_more_warnings(env=env)
 env_etc.include_registry.append(
   env=env,
   paths=env_etc.scitbx_common_includes)
-envlm = env.Clone(
-  LIBS=env_etc.libm
-)
-envlm.Program(target="tst_lbfgs", source="tst_lbfgs.cpp")
+env = env.Clone(LIBS=env_etc.libm)
+env.Program(target="tst_lbfgs", source="tst_lbfgs.cpp")
+
+def append_fable_include(env):
+  env_etc.include_registry.append(env=env, paths=[env_etc.fable_include])
+
+lbfgs_fem_obj = None
+if (libtbx.env.has_module("fable")):
+  env = env.Clone()
+  append_fable_include(env=env)
+  lbfgs_fem_obj = env.SharedObject(source=["lbfgs_fem.cpp"])
+  env.Program(target="sdrive_fem", source=["sdrive_fem.cpp", lbfgs_fem_obj])
 
 if (not env_etc.no_boost_python):
   Import("env_scitbx_boost_python_ext")
   env = env_scitbx_boost_python_ext
-  source = ["ext.cpp"]
-  if (    libtbx.env.is_development_environment()
-      and getenv_bool("SCITBX_LBFGS_FORTRAN")
-      and full_command_path("gfortran") is not None):
-    if (libtbx.env.build_options.optimization):
-      opts = ["-O"]
-    else:
-      opts = ["-O0"]
-    if (libtbx.env.build_options.debug_symbols):
-      opts.insert(0, "-g")
-    fenv = env.Clone(tools=["f77"])
-    fenv.Replace(FORTRAN="gfortran")
-    fenv.Replace(SHFORTRAN="gfortran")
-    fenv.Replace(FORTRANFLAGS=opts + [
-      "-fPIC",
-      "-fautomatic",
-      "-fno-second-underscore",
-      "-fno-bounds-check"])
-    fenv.Prepend(CPPFLAGS=["-DSCITBX_LBFGS_HAVE_LBFGS_F"])
-    fenv.Prepend(LIBS=["gfortran"])
-    fenv_exe = fenv.Clone(LIBS=["gfortranbegin", "gfortran", "m"])
-    if (not run_fortran_trial(env=fenv_exe)):
-      fenv_exe = None
-    else:
-      env = fenv
-      source.append("lbfgs.f")
-  else:
-    fenv_exe = None
+  source=["ext.cpp"]
+  if (lbfgs_fem_obj is not None):
+    env = env.Clone()
+    env.Prepend(CPPFLAGS=["-DSCITBX_LBFGS_HAVE_LBFGS_FEM"])
+    append_fable_include(env=env)
+    source.append(lbfgs_fem_obj)
   env.SharedLibrary(target="#lib/scitbx_lbfgs_ext", source=source)
-  if (fenv_exe is not None):
-    fenv_exe.Program(target="sdrive_f", source=["sdrive.f", "lbfgs.o"])
-  else:
-    path = libtbx.env.under_build(path="scitbx/lbfgs/sdrive_f")
-    if (os.path.isfile(path)): os.remove(path)

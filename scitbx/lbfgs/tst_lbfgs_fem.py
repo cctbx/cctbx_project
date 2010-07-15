@@ -1,6 +1,6 @@
 from __future__ import division
 from scitbx.array_family import flex
-from scitbx.lbfgs import have_lbfgs_f, fortran, raw_reference, raw
+from scitbx.lbfgs import have_lbfgs_fem, fortran, raw_reference, raw
 from libtbx.utils import show_times
 from libtbx.test_utils import show_diff
 from libtbx import easy_run
@@ -53,12 +53,12 @@ def run_cmd(cmd):
         "stderr output does not appear to be valgrind output")
   return "\n".join(out.stdout_lines)
 
-def run_and_compare_sdrive_f(this_script):
-  sdrive_f = libtbx.env.under_build(path="scitbx/lbfgs/sdrive_f")
-  if (not os.path.isfile(sdrive_f)):
+def run_and_compare_sdrive_fem(this_script):
+  sdrive_fem = libtbx.env.under_build(path="scitbx/lbfgs/sdrive_fem")
+  if (not os.path.isfile(sdrive_fem)):
     return
   outputs = []
-  for cmd in [sdrive_f, 'scitbx.python "%s" fortran 100 5 1 0' % this_script]:
+  for cmd in [sdrive_fem, 'scitbx.python "%s" fortran 100 5 1 0' % this_script]:
     outputs.append(run_cmd(cmd=cmd))
   assert not show_diff(outputs[0], outputs[1])
 
@@ -79,7 +79,7 @@ def truncate_floats(out):
 def run_and_compare_implementations(this_script, n, m, iprint):
   outputs = []
   for impl in ["fortran", "raw_reference", "raw"]:
-    if (impl == "fortran" and not have_lbfgs_f):
+    if (impl == "fortran" and not have_lbfgs_fem):
       continue
     cmd = 'scitbx.python "%s" %s %d %d %d %d' % (
       this_script, impl, n, m, iprint[0], iprint[1])
@@ -96,9 +96,9 @@ def run_and_compare_implementations(this_script, n, m, iprint):
 
 def compare_implementations():
   this_script = libtbx.env.under_dist(
-    module_name="scitbx", path="lbfgs/tst_lbfgs_f.py")
+    module_name="scitbx", path="lbfgs/tst_lbfgs_fem.py")
   assert this_script.find('"') < 0
-  run_and_compare_sdrive_f(this_script=this_script)
+  run_and_compare_sdrive_fem(this_script=this_script)
   rnd = random.Random(x=0)
   for iprint1 in [-1, 0, 1, 2, 3]:
     for iprint2 in [0, 1, 2, 3]:
@@ -117,13 +117,13 @@ def run(args):
       iprint=[int(args[3]), int(args[4])])
     return
   assert args in [[], ["--once"], ["--endless"]]
-  if (not have_lbfgs_f):
-    print "Skipping some tests: lbfgs.f not linked into scitbx_lbfgs_ext."
+  if (not have_lbfgs_fem):
+    print "Skipping some tests: lbfgs_fem.cpp not linked into scitbx_lbfgs_ext."
   once = "--once" in args
   endless = "--endless" in args
   if (once or endless):
     while 1:
-      if (have_lbfgs_f):
+      if (have_lbfgs_fem):
         exercise(lbfgs_impl=fortran)
       exercise(lbfgs_impl=raw_reference)
       exercise(lbfgs_impl=raw)

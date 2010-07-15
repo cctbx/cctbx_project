@@ -1,5 +1,9 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
+#if defined(SCITBX_LBFGS_HAVE_LBFGS_FEM)
+#include <scitbx/lbfgs_fem.hpp>
+#endif
+
 #include <scitbx/error.h>
 #include <scitbx/lbfgs.h>
 #include <scitbx/lbfgs/drop_convergence_test.h>
@@ -13,22 +17,6 @@
 #include <boost/python/args.hpp>
 
 namespace scitbx { namespace lbfgs { namespace ext {
-
-  extern "C"
-  int
-  lbfgs_(
-    const int*,
-    const int*,
-    double*,
-    const double*,
-    const double*,
-    const int*,
-    double*,
-    const int*,
-    const double*,
-    const double*,
-    double*,
-    int*);
 
   int
   fortran(
@@ -54,22 +42,25 @@ namespace scitbx { namespace lbfgs { namespace ext {
     SCITBX_ASSERT(diagco == 0 || diagco == 1);
     SCITBX_ASSERT(diag.size() == n_);
     SCITBX_ASSERT(w.size() == n_*(2*m_+1)+2*m_);
-#if defined(SCITBX_LBFGS_HAVE_LBFGS_F)
-    lbfgs_(
-      &n,
-      &m,
-      x.begin(),
-      &f,
-      g.begin(),
-      &diagco,
-      diag.begin(),
-      iprint.begin(),
-      &eps,
-      &xtol,
-      w.begin(),
-      &iflag);
+#if defined(SCITBX_LBFGS_HAVE_LBFGS_FEM)
+    static lbfgs_fem::common cmn;
+    lbfgs_fem::blockdata_lb2(cmn);
+    lbfgs_fem::lbfgs(
+      cmn,
+      n,
+      m,
+      x[0],
+      f,
+      g[0],
+      diagco,
+      diag[0],
+      iprint[0],
+      eps,
+      xtol,
+      w[0],
+      iflag);
 #else
-    throw std::runtime_error("L-BFGS FORTRAN library is not available.");
+    throw std::runtime_error("lbfgs_fem is not available.");
 #endif
     return iflag;
   }
@@ -342,8 +333,8 @@ struct raw_lbfgs_wrappers
   {
     using namespace boost::python;
 
-    scope().attr("have_lbfgs_f") =
-#if defined(SCITBX_LBFGS_HAVE_LBFGS_F)
+    scope().attr("have_lbfgs_fem") =
+#if defined(SCITBX_LBFGS_HAVE_LBFGS_FEM)
       true;
 #else
       false;

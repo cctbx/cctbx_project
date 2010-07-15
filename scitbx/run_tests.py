@@ -60,7 +60,7 @@ def run():
   "$D/math/tests/tst_orthonormal_basis.py",
   "$D/minpack/tst.py",
   ["$D/lbfgs/tst_ext.py"],
-  "$D/lbfgs/tst_lbfgs_f.py",
+  "$D/lbfgs/tst_lbfgs_fem.py",
   "$B/lbfgs/tst_lbfgs",
   "$D/lbfgsb/boost_python/tst_lbfgsb.py",
   ["$D/fftpack/boost_python/tst_fftpack.py"],
