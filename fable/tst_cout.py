@@ -2770,7 +2770,7 @@ program_prog(
 """)
   #
   lines = get("long_lines.f")
-  assert not absd(lines, tail_off(1), """\
+  assert not absd(lines, tail_off(15), """\
   write(6, star), numbers(1), numbers(2), numbers(3), numbers(4),
     numbers(5), numbers(6), numbers(7), numbers(8);
   write(6, star), numbers(1), numbers(2), numbers(3), numbers(4),
@@ -2823,6 +2823,16 @@ program_prog(
     "' third:               ',f5.2,/,' fourth:              ',f5.2,/,"
     "' fifth:               ',f5.2,/,' sixth:               ',f5.1)"),
     1.2f, 3.4f, 5.6f, 7.8f, 9.1f, 2.3f;
+""")
+  assert not absd(lines, tail_off(1), """\
+  if (nnnnn1 < 0 || nnnnn2 < 0 || nnnnn3 < 0 || nnnnn4 < 0 ||
+      nnnnn5 < 0 || nnnnn6 <= 0) {
+    write(6, "(a)"), "or ok";
+  }
+  if (nnnnn1 == 0 && nnnnn2 == 0 && nnnnn3 == 0 && nnnnn4 == 0 &&
+      nnnnn5 == 0 && nnnnn6 <= 0) {
+    write(6, "(a)"), "and ok";
+  }
 """)
   #
   lines = get("format_used_twice.f")

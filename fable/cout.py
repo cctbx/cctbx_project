@@ -54,6 +54,10 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
           or lsw(" / ", ic)):
       ic += 3
       potential_break_points.append((0, ic))
+    elif (   lsw(" && ", ic)
+          or lsw(" || ", ic)):
+      ic += 4
+      potential_break_points.append((0, ic))
     elif (lsw("//", ic)):
       break
     else:
@@ -81,6 +85,8 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
       cb_finalize(" "*f + s[:i] + '"')
       s = '"' + s[i:]
     cb_finalize(" "*f + s)
+  if (lsw("if (", i_start)): indent_width = 4
+  else:                      indent_width = 2
   pprio = 0
   pp = 0
   for ip in xrange(len(potential_break_points)):
@@ -97,7 +103,7 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
       s = line[b:pp].rstrip()
       if (f == 0):
         cb_finalize(s)
-        f = i_start + 2
+        f = i_start + indent_width
       else:
         break_more_if_necessary(s=s)
       b = pp
