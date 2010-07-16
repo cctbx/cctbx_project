@@ -13,7 +13,7 @@ def append_fable_include(env):
   env_etc.include_registry.append(env=env, paths=[env_etc.fable_include])
 
 lbfgs_fem_obj = None
-if (libtbx.env.has_module("fable") and 0): # XXX
+if (libtbx.env.has_module("fable")):
   env = env.Clone()
   append_fable_include(env=env)
   lbfgs_fem_obj = env.SharedObject(source=["lbfgs_fem.cpp"])
