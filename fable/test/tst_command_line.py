@@ -8,6 +8,7 @@ def run(args):
     module_name="fable", path="test/valid", test=op.isdir)
   n_errors = 0
   for command,expected_output_fragment in [
+        ("fable.split %ssubroutine_1.f", "program_prog.f"),
         ("fable.read --each %swrite_star.f", "Success: 1"),
         ("fable.read --warnings %sequivalence_mixed.f",
           "Warning: EQUIVALENCE cluster with mixed data types: integer, real:"),

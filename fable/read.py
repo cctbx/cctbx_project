@@ -439,7 +439,7 @@ def load_includes(global_line_index_generator, stripped_source_lines):
       result.append(ssl)
   return result
 
-def load(global_line_index_generator, file_name):
+def load(global_line_index_generator, file_name, skip_load_includes=False):
   source_lines = []
   for i_line,line in enumerate(open(file_name).read().splitlines()):
     source_lines.append(source_line(
@@ -447,10 +447,13 @@ def load(global_line_index_generator, file_name):
       file_name=file_name,
       line_number=i_line+1,
       text=line))
+  stripped_source_lines = combine_continuation_lines_and_strip_spaces(
+    source_lines=source_lines)
+  if (skip_load_includes):
+    return stripped_source_lines
   return load_includes(
     global_line_index_generator=global_line_index_generator,
-    stripped_source_lines=combine_continuation_lines_and_strip_spaces(
-      source_lines=source_lines))
+    stripped_source_lines=stripped_source_lines)
 
 def tokenize_expression(
       ssl,
@@ -1794,6 +1797,15 @@ class unit(unit_p_methods):
     if (tok is not None):
       tok.raise_syntax_error()
 
+  def all_ssl(O):
+    result = list(O.leading_comments)
+    if (O.top_ssl is not None):
+      result.append(O.top_ssl)
+    result.extend(O.body_lines)
+    result.append(O.end_ssl)
+    result.extend(O.trailing_comments)
+    return result
+
   def init_implicit(O):
     O.implicit = {}
     data_type = tokenization.tk_identifier(
@@ -2969,18 +2981,20 @@ class build_bottom_up_unit_list_following_calls(object):
             break
     return O
 
-def process(file_names, basic_only=False):
-  units = split_units()
+def process(file_names, basic_only=False, skip_load_includes=False):
+  assert not skip_load_includes or basic_only
+  all_units = split_units()
   import itertools
   global_line_index_generator = itertools.count()
   for file_name in file_names:
-    units.process(stripped_source_lines=load(
+    all_units.process(stripped_source_lines=load(
       global_line_index_generator=global_line_index_generator,
-      file_name=file_name))
+      file_name=file_name,
+      skip_load_includes=skip_load_includes))
   if (not basic_only):
-    units.build_fdecl_by_identifier()
-    for unit in units.all_in_input_order:
+    all_units.build_fdecl_by_identifier()
+    for unit in all_units.all_in_input_order:
       unit.common_name_by_identifier()
       unit.set_uses_save()
       unit.target_statement_labels()
-  return units
+  return all_units
