@@ -16,7 +16,6 @@ if (self.env.is_ready_for_build()):
     os.makedirs(target_dir)
   flex_fwd_h.run(target_dir)
 
-  # XXX
-  #from scitbx.lbfgs.run_fable import run
-  #print "  Using fable to convert scitbx/lbfgs.f"
-  #run()
+  from scitbx.source_generators import lbfgs_fem
+  print "  Using fable to convert", op.join("scitbx", "lbfgs.f")
+  lbfgs_fem.run()
