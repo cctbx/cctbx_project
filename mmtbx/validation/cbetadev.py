@@ -111,8 +111,10 @@ class cbetadev(object):
     else:
       print "Please enter a file name"
       return
-    output_text, summary_line, output_list = self.analyze_pdb(pdb_io, filename,
-      outliers_only=self.params.cbetadev.outliers_only)
+    output_text, summary_line, output_list = self.analyze_pdb(
+                                               filename=filename,
+                                               pdb_io=pdb_io,
+                                               outliers_only=self.params.cbetadev.outliers_only)
     if not quiet :
       print >> out, output_text
       print >> out, summary_line
@@ -131,9 +133,9 @@ class cbetadev(object):
     self.expected_outliers = 0
     self.outliers = ''
     self.summary = ''
-    filename = pdb_io
+    self.beta_ideal = {}
+    assert [pdb_io, hierarchy].count(None) == 1
     if(pdb_io is not None):
-      pdb_io = iotbx.pdb.input(file_name = pdb_io)
       hierarchy = pdb_io.construct_hierarchy()
     for model in hierarchy.models():
       for chain in model.chains():
@@ -216,6 +218,8 @@ class cbetadev(object):
                     if (dev >= 0.25):
                       self.outliers += '%s :%s:%s:%s:%4s%c:%7.3f:%7.2f:%7.2f:%s:\n' % \
                         (PDBfileStr,altchar,res,sub,resnum,resins,dev,dihedralNABB,occ,altchar)
+                    key = altchar+res+sub+resnum+resins
+                    self.beta_ideal[key] = betaxyz
                     output_list.append([PDBfileStr,
                                         altchar,
                                         res,
@@ -416,3 +420,6 @@ class cbetadev(object):
 
   def get_summary(self):
     return self.summary
+
+  def get_beta_ideal(self):
+    return self.beta_ideal
