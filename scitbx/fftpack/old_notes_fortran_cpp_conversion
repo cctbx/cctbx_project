@@ -1,8 +1,8 @@
-The two Python scripts in this directory were used when
-adapting the FFTPACK 4.1 source code for use in the fftbx.
-These scripts could be useful for the conversion of other
-parts of FFTPACK, e.g. the sin or cos transforms, which
-are not currently included in the fftbx.
+Notes from the years 2001/2002.
+
+Note: In 2010 the fable module was added to the cctbx_project, which
+provides a much more efficient method for converting Fortran sources
+to C++.
 
 The adaption of FFTPACK 4.1 involved the following steps:
 
