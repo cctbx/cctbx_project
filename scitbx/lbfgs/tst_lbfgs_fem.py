@@ -86,6 +86,7 @@ def run_and_compare_implementations(this_script, n, m, iprint):
     out = run_cmd(cmd=cmd)
     if (impl == "fortran"):
       out = out.replace("D-", "E-").replace("D+", "E+")
+    out = out.replace("E-00", "E+00")
     out = truncate_floats(out=out)
     outputs.append(out)
   assert len(outputs) >= 2
