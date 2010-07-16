@@ -10,6 +10,9 @@ def abs_real_norm(path):
 def abs_norm(path):
   return op.normpath(op.abspath(path))
 
+def tail_levels(path, number_of_levels):
+  return op.join(*path.split(op.sep)[-number_of_levels:])
+
 def create_target_dir(target_file):
   target_dir = op.split(target_file)[0]
   if (not op.isdir(target_dir)):

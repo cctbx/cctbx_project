@@ -16,6 +16,7 @@ def run():
   "$D/shelx/tst_lex_parse_build.py",
   "$D/shelx/tst_hklf.py",
   ["$D/pdb/hybrid_36.py", "exercise"],
+  "$B/pdb/hybrid_36_fem",
   "$D/pdb/tst_hierarchy.py",
   "$D/pdb/tst_ext.py",
   "$D/pdb/tst_atom_selection.py",
