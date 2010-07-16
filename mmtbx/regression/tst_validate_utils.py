@@ -40,7 +40,9 @@ def exercise_cbetadev():
   pdb_io = pdb.input(file_name=regression_pdb)
 
   r = cbetadev()
-  output, summary, output_list = cbetadev.analyze_pdb(r,pdb_io,regression_pdb,outliers_only=True)
+  output, summary, output_list = cbetadev.analyze_pdb(r,filename=regression_pdb,
+                                                      pdb_io=pdb_io,
+                                                      outliers_only=True)
   assert not show_diff(output, """\
 pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:
 pdb1jxt :a:ile: A:   7  :  0.260: -46.47:   0.45:a:
@@ -50,7 +52,9 @@ pdb1jxt :b:thr: A:  30  :  0.812: -76.98:   0.30:b:
 pdb1jxt :b:thr: A:  39  :  0.924:  56.41:   0.30:b:
 pdb1jxt :b:asp: A:  43  :  0.500:   7.56:   0.25:b:""")
 
-  output, summary, output_list = cbetadev.analyze_pdb(r,pdb_io,regression_pdb,False)
+  output, summary, output_list = cbetadev.analyze_pdb(r,filename=regression_pdb,
+                                                      pdb_io=pdb_io,
+                                                      outliers_only=False)
   assert not show_diff(output, """\
 pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:
 pdb1jxt : :thr: A:   1  :  0.102:  11.27:   1.00: :
