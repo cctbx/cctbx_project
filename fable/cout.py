@@ -1900,7 +1900,8 @@ def convert_executable(
         if (ei.label is not None):
           dos_to_close_by_label.setdefault(ei.label, []).append(curr_scope)
       elif (ei.key == "enddo"):
-        curr_scope = curr_scope.close_nested_scope()
+        if (dos_to_close_by_label.get(ei.ssl.label) is None):
+          curr_scope = curr_scope.close_nested_scope()
       elif (ei.key == "if"):
         cond_id_tokens = extract_identifiers(tokens=ei.cond_tokens)
         declare_identifiers(id_tokens=cond_id_tokens)
