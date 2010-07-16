@@ -1,7 +1,7 @@
 #ifndef FEM_INTRINSICS_HPP
 #define FEM_INTRINSICS_HPP
 
-#include <algorithm>
+#include <fem/str_ref.hpp>
 #include <cmath>
 
 namespace fem {
@@ -396,6 +396,20 @@ namespace fem {
   using std::pow;
   using std::acos;
   using std::atan2;
+
+  inline
+  int
+  ichar(
+    str_cref c)
+  {
+    if (c.len() != 1) {
+      std::ostringstream o;
+      o << "ichar() argument must be a one-character string,"
+        << " but actual string length is " << c.len() << ".";
+      throw std::runtime_error(o.str());
+    }
+    return static_cast<int>(c[0]);
+  }
 
 } // namespace fem
 

@@ -25,6 +25,10 @@ builder(
     "input.cpp",
     "input_write.cpp"])
 
+env = env.Clone()
+env_etc.include_registry.append(env=env, paths=[env_etc.fable_include])
+env.Program(target="hybrid_36_fem", source=["hybrid_36_fem.cpp"])
+
 if (not env_etc.no_boost_python):
   Import("env_iotbx_boost_python_ext")
   env = env_iotbx_boost_python_ext.Clone()
