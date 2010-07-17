@@ -2848,6 +2848,19 @@ program_prog(
   assert not absd(lines, head_off(1), """\
 struct common_com
 """)
+  #
+  lines = get("do_while.f")
+  assert not absd(lines, tail_off(1), """\
+  int i = 123;
+  while (i < 169) {
+    write(6, star), i;
+    i += 45;
+  }
+  while (i < 281) {
+    write(6, star), i;
+    i += 67;
+  }
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(
