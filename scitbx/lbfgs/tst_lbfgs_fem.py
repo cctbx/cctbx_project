@@ -76,6 +76,22 @@ def truncate_floats(out):
   fragments.append(out[k:])
   return "".join(fragments)
 
+def replace_e0dd_with_edd(out):
+  match_objects = re.finditer("E[-+]0[0-9][0-9]", out)
+  fragments = []
+  k = 0
+  for match_obj in match_objects:
+    j = match_obj.start() + 2
+    i = out.rfind(" ", k, j)
+    assert i >= 0
+    if (j - i < 9):
+      fragments.append(out[k:i] + " " + out[i:j])
+    else:
+      fragments.append(out[k:j])
+    k = j + 1
+  fragments.append(out[k:])
+  return "".join(fragments)
+
 def run_and_compare_implementations(this_script, n, m, iprint):
   outputs = []
   for impl in ["fortran", "raw_reference", "raw"]:
@@ -86,6 +102,7 @@ def run_and_compare_implementations(this_script, n, m, iprint):
     out = run_cmd(cmd=cmd)
     if (impl == "fortran"):
       out = out.replace("D-", "E-").replace("D+", "E+")
+    out = replace_e0dd_with_edd(out=out)
     out = out.replace("E-00", "E+00")
     out = truncate_floats(out=out)
     outputs.append(out)
