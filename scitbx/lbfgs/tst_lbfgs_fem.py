@@ -63,16 +63,21 @@ def run_and_compare_sdrive_fem(this_script):
   assert not show_diff(outputs[0], outputs[1])
 
 def truncate_floats(out):
-  match_objects = re.finditer("[ -][0-9]\\.[0-9][0-9][0-9]E[-+]", out)
+  match_objects = re.finditer(
+    "[ -][0-9]\\.[0-9][0-9][0-9]E[-+][0-9][0-9]", out)
   fragments = []
   k = 0
   for match_obj in match_objects:
     i = match_obj.start()
-    j = match_obj.end()-2
+    j = match_obj.end()
     v = float(out[i:j])
-    fmt = "%%%d.1f" % (j-i)
+    if (abs(v) < 1e-14):
+      v = 0
+    else:
+      v = float(out[i:j-4])
+    fmt = "%%%d.1f" % (j-4-i)
     fragments.append(out[k:i] + fmt % v)
-    k = j
+    k = j-4
   fragments.append(out[k:])
   return "".join(fragments)
 
