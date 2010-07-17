@@ -858,10 +858,10 @@ class ei_do(executable_info):
     fdecl.is_modified = True
 
 class ei_dowhile(executable_info):
-  __slots__ = mksl("label", "tokens")
+  __slots__ = mksl("label", "cond_tokens")
 
   def search_for_id_tokens(O, callback):
-    O.s4it(callback, [O.tokens])
+    O.s4it(callback, O.cond_tokens)
 
 class ei_else(executable_info):
   __slots__ = mksl()
@@ -1207,12 +1207,12 @@ class unit_p_methods(object):
     else:
       i = label_end + 5
       label = ssl.code[2:label_end]
-    tokens = tokenize_expression(ssl=ssl, start=i)
-    if (len(tokens) != 1):
+    cond_tokens = tokenize_expression(ssl=ssl, start=i)
+    if (len(cond_tokens) != 1):
       ssl.raise_syntax_error(i=i)
     O.executable.append(ei_dowhile(ssl=ssl, start=start,
       label=label,
-      tokens=tokens[0]))
+      cond_tokens=cond_tokens))
 
   def p_else(O, ssl, start):
     assert start == 0

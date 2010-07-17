@@ -1899,26 +1899,34 @@ def convert_executable(
           fls_tokens=ei.tokens)
         if (ei.label is not None):
           dos_to_close_by_label.setdefault(ei.label, []).append(curr_scope)
+      elif (ei.key == "dowhile"):
+        declare_identifiers(
+          id_tokens=extract_identifiers(tokens=ei.cond_tokens))
+        c = convert_tokens(conv_info=conv_info, tokens=ei.cond_tokens)
+        curr_scope = curr_scope.open_nested_scope(
+          opening_text=["while %s {" % c])
+        if (ei.label is not None):
+          dos_to_close_by_label.setdefault(ei.label, []).append(curr_scope)
       elif (ei.key == "enddo"):
         if (dos_to_close_by_label.get(ei.ssl.label) is None):
           curr_scope = curr_scope.close_nested_scope()
       elif (ei.key == "if"):
-        cond_id_tokens = extract_identifiers(tokens=ei.cond_tokens)
-        declare_identifiers(id_tokens=cond_id_tokens)
+        declare_identifiers(
+          id_tokens=extract_identifiers(tokens=ei.cond_tokens))
         c = convert_tokens(conv_info=conv_info, tokens=ei.cond_tokens)
         curr_scope = curr_scope.open_nested_scope(
           opening_text=["if (%s) {" % c])
         close_scope_after_next_executable = True
         continue
       elif (ei.key == "if_then"):
-        cond_id_tokens = extract_identifiers(tokens=ei.cond_tokens)
-        declare_identifiers(id_tokens=cond_id_tokens)
+        declare_identifiers(
+          id_tokens=extract_identifiers(tokens=ei.cond_tokens))
         c = convert_tokens(conv_info=conv_info, tokens=ei.cond_tokens)
         curr_scope = curr_scope.open_nested_scope(
           opening_text=["if (%s) {" % c])
       elif (ei.key == "elseif_then"):
-        cond_id_tokens = extract_identifiers(tokens=ei.cond_tokens)
-        declare_identifiers(id_tokens=cond_id_tokens)
+        declare_identifiers(
+          id_tokens=extract_identifiers(tokens=ei.cond_tokens))
         c = convert_tokens(conv_info=conv_info, tokens=ei.cond_tokens)
         curr_scope = curr_scope.attach_tail(
           opening_text=["else if (%s) {" % c])
@@ -1927,8 +1935,8 @@ def convert_executable(
       elif (ei.key == "endif"):
         curr_scope = curr_scope.close_nested_scope()
       elif (ei.key == "if_arithmetic"):
-        cond_id_tokens = extract_identifiers(tokens=ei.cond_tokens)
-        declare_identifiers(id_tokens=cond_id_tokens)
+        declare_identifiers(
+          id_tokens=extract_identifiers(tokens=ei.cond_tokens))
         c = convert_tokens(conv_info=conv_info, tokens=ei.cond_tokens)
         curr_scope = curr_scope.open_nested_scope(
           opening_text=["switch (fem::if_arithmetic(%s)) {" % c])
