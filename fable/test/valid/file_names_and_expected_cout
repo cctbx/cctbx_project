@@ -1321,3 +1321,13 @@ do_while.f
 |         168|
 |         213|
 |         280|
+len_trim.f
+|Abc  P|
+|Abc Q|
+|AbcR|
+|AbS|
+|AbcT|
+|AbcU|
+|AbcV|
+|AbW|
+|X|

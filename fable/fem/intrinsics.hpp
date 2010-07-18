@@ -411,6 +411,15 @@ namespace fem {
     return static_cast<int>(c[0]);
   }
 
+  inline
+  int
+  len_trim(
+    str_cref c)
+  {
+    return static_cast<int>(
+      utils::find_trailing_blank_padding(c.elems(), c.len()));
+  }
+
 } // namespace fem
 
 #endif // GUARD

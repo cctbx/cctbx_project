@@ -178,8 +178,8 @@ namespace fem { namespace utils {
   }
 
   inline
-  size_t_2
-  find_leading_and_trailing_blank_padding(
+  size_t
+  find_leading_blank_padding(
     char const* str,
     size_t stop)
   {
@@ -188,15 +188,35 @@ namespace fem { namespace utils {
       if (str[i] != ' ') break;
       i++;
     }
-    size_t j = stop;
-    while (j != 0) {
-      j--;
-      if (str[j] != ' ') {
-        j++;
+    return i;
+  }
+
+  inline
+  size_t
+  find_trailing_blank_padding(
+    char const* str,
+    size_t stop)
+  {
+    size_t i = stop;
+    while (i != 0) {
+      i--;
+      if (str[i] != ' ') {
+        i++;
         break;
       }
     }
-    return size_t_2(i, j);
+    return i;
+  }
+
+  inline
+  size_t_2
+  find_leading_and_trailing_blank_padding(
+    char const* str,
+    size_t stop)
+  {
+    return size_t_2(
+      find_leading_blank_padding(str, stop),
+      find_trailing_blank_padding(str, stop));
   }
 
   inline
