@@ -840,6 +840,12 @@ class ei_continue(executable_info):
   def search_for_id_tokens(O, callback):
     pass
 
+class ei_cycle(executable_info):
+  __slots__ = mksl()
+
+  def search_for_id_tokens(O, callback):
+    pass
+
 class ei_deallocate(executable_info):
   __slots__ = mksl()
 
@@ -894,7 +900,7 @@ class ei_entry(executable_info):
     pass # TODO
 
 class ei_exit(executable_info):
-  __slots__ = mksl("msg")
+  __slots__ = mksl()
 
   def search_for_id_tokens(O, callback):
     pass
@@ -1081,6 +1087,11 @@ class unit_p_methods(object):
   def p_continue(O, ssl, start):
     O.executable.append(ei_continue(ssl=ssl, start=start))
 
+  def p_cycle(O, ssl, start):
+    if (len(ssl.code) != start+5):
+      ssl.raise_syntax_error(i=start+5)
+    O.executable.append(ei_cycle(ssl=ssl, start=start))
+
   def p_data(O, ssl, start):
     assert start == 0
     tz = tokenization.ssl_iterator(ssl=ssl, start=4)
@@ -1265,7 +1276,9 @@ class unit_p_methods(object):
         tok.raise_syntax_error()
 
   def p_exit(O, ssl, start):
-    O.executable.append(ei_exit(ssl=ssl, start=start, msg=ssl[start+4:]))
+    if (len(ssl.code) != start+4):
+      ssl.raise_syntax_error(i=start+4)
+    O.executable.append(ei_exit(ssl=ssl, start=start))
 
   def p_external(O, ssl, start):
     assert start == 0
@@ -1831,6 +1844,7 @@ class unit(unit_p_methods):
             "assign",
             "backspace",
             "call",
+            "cycle",
             "endfile",
             "exit",
             "goto",

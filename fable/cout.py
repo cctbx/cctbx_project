@@ -1908,6 +1908,10 @@ def convert_executable(
           opening_text=["while %s {" % c])
         if (ei.label is not None):
           dos_to_close_by_label.setdefault(ei.label, []).append(curr_scope)
+      elif (ei.key == "cycle"):
+        curr_scope.append("continue;")
+      elif (ei.key == "exit"):
+        curr_scope.append("break;")
       elif (ei.key == "enddo"):
         if (dos_to_close_by_label.get(ei.ssl.label) is None):
           curr_scope = curr_scope.close_nested_scope()

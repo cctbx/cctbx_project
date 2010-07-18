@@ -2866,6 +2866,19 @@ struct common_com
   assert not absd(lines, tail_off(1), """\
   write(6, "(2a)"), s(1, fem::len_trim(s)), "X";
 """)
+  #
+  lines = get("cycle_exit.f")
+  assert not absd(lines, tail_off(1), """\
+  FEM_DO(i, 1, 5) {
+    if (i == 2) {
+      continue;
+    }
+    if (i == 4) {
+      break;
+    }
+    write(6, "(i1)"), i;
+  }
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(
