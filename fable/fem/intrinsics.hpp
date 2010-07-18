@@ -413,6 +413,11 @@ namespace fem {
   }
 
   inline
+  str<1>
+  fchar(
+    int i) { return str<1>(static_cast<char>(i)); }
+
+  inline
   int
   len_trim(
     str_cref c)

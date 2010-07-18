@@ -422,7 +422,7 @@ class conversion_info(global_conversion_info):
     elif (fdecl.is_save()):
       O.vmap[identifier] = "sve." + identifier
     elif (fdecl.is_intrinsic()):
-      if (identifier in ["float", "int"]):
+      if (identifier in ["float", "int", "char"]):
         O.vmap[identifier] = "fem::f" + identifier
       else:
         O.vmap[identifier] = "fem::" + identifier
