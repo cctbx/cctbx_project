@@ -1795,6 +1795,7 @@ def convert_executable(
         cilist = ei.cilist
         assert cilist.unit is not None
         cunit = convert_tokens(conv_info=conv_info, tokens=cilist.unit)
+        if (cunit == "star "): cunit = "6"
         def conv_fmt():
           if (ei.fmt_tokens is not None):
             return '"(' + escape_string_literal(fmt_tokens_as_string(

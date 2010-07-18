@@ -524,6 +524,7 @@ fable/test/valid/integer_star_2_array.f -text
 fable/test/valid/intrinsic_with_data_type.f -text
 fable/test/valid/intrinsics_extra.f -text
 fable/test/valid/label_format.f -text
+fable/test/valid/len_trim.f -text
 fable/test/valid/logical_a_or_b.f -text
 fable/test/valid/logical_ops.f -text
 fable/test/valid/long_lines.f -text

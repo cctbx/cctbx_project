@@ -2861,6 +2861,11 @@ struct common_com
     i += 67;
   }
 """)
+  #
+  lines = get("len_trim.f")
+  assert not absd(lines, tail_off(1), """\
+  write(6, "(2a)"), s(1, fem::len_trim(s)), "X";
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(
