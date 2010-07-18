@@ -1,5 +1,6 @@
       program prog
       call exercise_01
+      call exercise_02
       call exercise_nint
       end
 
@@ -9,6 +10,17 @@
       val = val + 0.99
       num = int(val)
       write(6, '(f4.1,1x,i2)') val, num
+      end
+
+      subroutine exercise_02
+      character c*1
+      c = 'R'
+      i = ichar(c)
+      write(6, '(i3)') i
+      c = 'X'
+      write(6, '(a)') c
+      c = char(i)
+      write(6, '(a)') c
       end
 
       subroutine exercise_nint
