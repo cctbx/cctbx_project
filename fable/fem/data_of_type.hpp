@@ -41,14 +41,18 @@ namespace fem {
     FEM_LOC(double)
 #undef FEM_LOC
 
-    template <size_t Ndims>
+    template <typename OtherT, size_t Ndims>
     data_of_type&
     operator,(
-      arr_ref<T, Ndims>& val)
+      arr_ref<OtherT, Ndims>& val)
     {
       size_t n = val.size_1d();
-      T* val_begin = val.begin();
-      for(size_t i=0;i<n;i++) (*this), val_begin[i];
+      OtherT* val_begin = val.begin();
+      T v;
+      for(size_t i=0;i<n;i++) {
+        (*this), v;
+        val_begin[i] = static_cast<OtherT>(v);
+      }
       return *this;
     }
   };
