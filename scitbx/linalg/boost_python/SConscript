@@ -1,15 +1,35 @@
+import libtbx.load_env
+import os
+op = os.path
+
 Import("env_scitbx_boost_python_ext", "env_etc")
 
+source = [
+  "linalg_ext.cpp",
+  "matrix.cpp",
+  "cholesky.cpp",
+  "householder.cpp",
+  "svd.cpp",
+  "eigensystem.cpp"]
+
 env = env_scitbx_boost_python_ext.Clone()
+
+if (libtbx.env.has_module("fable")):
+  lapack_fem_dir = libtbx.env.find_in_repositories(relative_path="lapack_fem")
+  if (lapack_fem_dir is not None):
+    env_fem = env.Clone()
+    env_etc.enable_more_warnings(env=env_fem)
+    env_etc.include_registry.append(
+      env=env_fem,
+      paths=[
+        op.dirname(lapack_fem_dir),
+        env_etc.fable_include])
+    lapack_fem_obj = env_fem.SharedObject(source="lapack_dsyev_bpl.cpp")
+    env_ext = env.Clone()
+    env_ext.Append(SHCXXFLAGS=["-DSCITBX_LAPACK_FEM"])
+    ext_obj = env_ext.SharedObject(source=source[:1])
+    source[0] = ext_obj
+    source.append(lapack_fem_obj)
+
 # TODO env_etc.enable_more_warnings(env=env)
-env.SharedLibrary(
-  target="#lib/scitbx_linalg_ext",
-  source=[
-    "linalg_ext.cpp",
-    "matrix.cpp",
-    "cholesky.cpp",
-    "householder.cpp",
-    "svd.cpp",
-    "eigensystem.cpp",
-  ]
-)
+env.SharedLibrary(target="#lib/scitbx_linalg_ext", source=source)

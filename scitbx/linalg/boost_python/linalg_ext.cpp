@@ -1,5 +1,11 @@
 #include <boost/python/module.hpp>
 
+#if defined(SCITBX_LAPACK_FEM)
+namespace lapack_fem { namespace boost_python {
+  void wrap();
+}}
+#endif
+
 namespace scitbx { namespace matrix { namespace boost_python {
 
   void wrap_matrix();
@@ -15,6 +21,9 @@ namespace scitbx { namespace matrix { namespace boost_python {
       wrap_svd();
       wrap_eigensystem();
       wrap_cholesky();
+#if defined(SCITBX_LAPACK_FEM)
+      lapack_fem::boost_python::wrap();
+#endif
     }
   }
 }}}

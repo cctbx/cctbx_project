@@ -99,13 +99,14 @@ env_etc.disable_strict_aliasing = disable_strict_aliasing
 
 def patch_scons_env_for_ad_hoc_debug(env, O123_replacement=["-O0", "-g"]):
   assert not env_etc.compiler.startswith("win")
-  dbg_ccflags = []
-  for f in env["CCFLAGS"]:
-    if   (f in ["-O1", "-O2", "-O3"]):
-      dbg_ccflags.extend(O123_replacement)
-    elif (f != "-ffast-math"):
-      dbg_ccflags.append(f)
-  env.Replace(CCFLAGS=dbg_ccflags)
+  for kw in ["CCFLAGS", "SHCCFLAGS"]:
+    dbg_ccflags = []
+    for f in env[kw]:
+      if   (f in ["-O1", "-O2", "-O3"]):
+        dbg_ccflags.extend(O123_replacement)
+      elif (f != "-ffast-math"):
+        dbg_ccflags.append(f)
+    env.Replace(**{kw: dbg_ccflags})
 env_etc.patch_scons_env_for_ad_hoc_debug = patch_scons_env_for_ad_hoc_debug
 
 def patch_scons_env(env, key, remove=set(), replace={}):
@@ -176,7 +177,11 @@ if (env_etc.compiler == "unix_icpc"):
 static_exe = libtbx.env.build_options.static_exe
 
 def gcc_common_warn_options():
-  result = ["-Wall", "-Wno-sign-compare", "-Wno-unknown-pragmas"]
+  result = [
+    "-Wall",
+    "-Wno-sign-compare",
+    "-Wno-unknown-pragmas",
+    "-Wno-parentheses"]
   if (    env_etc.gcc_version is not None
       and env_etc.gcc_version >= 40000):
     result.append("-Winit-self")
