@@ -612,6 +612,7 @@ fable/test/valid/unformatted_experiments.f -text
 fable/test/valid/unused_arg_implicit_none.f -text
 fable/test/valid/unused_args.f -text
 fable/test/valid/using_intrinsics.f -text
+fable/test/valid/variable_prefix.f -text
 fable/test/valid/write_1.f -text
 fable/test/valid/write_err.f -text
 fable/test/valid/write_extra_parentheses.f -text
