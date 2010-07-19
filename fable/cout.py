@@ -2650,7 +2650,7 @@ class hpp_cpp_buffers(object):
     O.hpp = []
     O.cpp = []
 
-def convert_program(callback, global_conv_info, namespace, debug):
+def convert_program(callback, global_conv_info, namespace, hpp_guard, debug):
   main_calls = []
   for unit in global_conv_info.topological_units.bottom_up_list:
     if (not unit.is_program()): continue
@@ -2691,7 +2691,8 @@ void
       callback("}")
     produce_trailing_comments(callback=callback, unit=unit)
   #
-  ns = close_namespace(callback=callback, namespace=namespace, hpp_guard=False)
+  ns = close_namespace(
+    callback=callback, namespace=namespace, hpp_guard=hpp_guard)
   #
   if (len(main_calls) != 0):
     callback("")
@@ -2722,6 +2723,7 @@ def process(
       extra_unit_names=None,
       namespace="please_specify",
       include_prefix=None,
+      include_guard_suffix=None,
       top_cpp_file_name=None,
       dynamic_parameters=None,
       fem_do_safe=True,
@@ -2771,6 +2773,10 @@ def process(
     need_function_hpp = True
   if (need_function_hpp):
     separate_cmn_hpp = True
+  #
+  if (include_guard_suffix is not None):
+    include_guard(
+      callback=callback, namespace=namespace, suffix=include_guard_suffix)
   #
   if (separate_cmn_hpp):
     callback("#define FEM_TRANSLATION_UNIT_WITH_MAIN")
@@ -3048,14 +3054,17 @@ def process(
           serial += 1
           write_functions(buffers=buffers, serial=serial)
   #
+  hpp_guard = (include_guard_suffix is not None)
   if (suppress_program):
-    close_namespace(callback=callback, namespace=namespace, hpp_guard=False)
+    close_namespace(
+      callback=callback, namespace=namespace, hpp_guard=hpp_guard)
   else:
     try:
       convert_program(
         callback=callback,
         global_conv_info=global_conv_info,
         namespace=namespace,
+        hpp_guard=hpp_guard,
         debug=debug)
     except Exception:
       if (not debug): raise

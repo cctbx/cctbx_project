@@ -37,7 +37,7 @@ def write_only_if_safe(file_name, text):
 
 class process(object):
 
-  __slots__ = ["options", "dynamic_parameters"]
+  __slots__ = ["options", "dynamic_parameters", "n_calls"]
 
   def __init__(O, options):
     O.options = options
@@ -57,13 +57,18 @@ class process(object):
           name=flds[1],
           ctype=flds[0],
           default=flds[2]))
+    O.n_calls = 0
 
   def __call__(O, file_names):
     import sys
+    if (O.n_calls != 0):
+      print
+    O.n_calls += 1
     opts = O.options
     lines = fable.cout.process(
       file_names=file_names,
       top_unit_name=opts.top_unit_name,
+      include_guard_suffix=opts.include_guard_suffix,
       dynamic_parameters=O.dynamic_parameters,
       fem_do_safe=not opts.no_fem_do_safe,
       arr_nd_size_max=opts.arr_nd_size_max,
@@ -76,9 +81,8 @@ class process(object):
     text = "\n".join(lines)+"\n"
     if (opts.top_unit_name is None or not opts.debug):
       sys.stdout.write(text)
-    if (len(file_names) != 0):
-      print
     if (len(file_names) != 0 and opts.compile):
+      print
       write_only_if_safe(file_name="fable_cout.cpp", text=text)
       from fable import simple_compilation
       comp_env = simple_compilation.environment()
@@ -94,7 +98,6 @@ class process(object):
           cmd = "valgrind " + cmd
         print cmd
         easy_run.call(command=cmd)
-        print
 
 def run(args):
   import libtbx.load_env
@@ -127,6 +130,10 @@ def run(args):
       action="store",
       type="str",
       metavar="IDENTIFIER")
+    .option(None, "--include_guard_suffix",
+      action="store",
+      type="str",
+      metavar="STRING")
     .option(None, "--dynamic_parameter",
       action="append",
       type="str",
