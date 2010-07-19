@@ -3,7 +3,6 @@
 
 #include <fem/str_ref.hpp>
 #include <cmath>
-#include <math.h> // C99 lround not in std namespace
 
 namespace fem {
 
@@ -492,12 +491,18 @@ namespace fem {
   inline
   int
   nint(
-    float const& value) { return static_cast<int>(lroundf(value)); }
+    float const& value)
+  {
+    return static_cast<int>(std::floor(value+0.5));
+  }
 
   inline
   int
   nint(
-    double const& value) { return static_cast<int>(lround(value)); }
+    double const& value)
+  {
+    return static_cast<int>(std::floor(value+0.5));
+  }
 
 } // namespace fem
 
