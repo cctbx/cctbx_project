@@ -2879,6 +2879,12 @@ struct common_com
     write(6, "(i1)"), i;
   }
 """)
+  #
+  lines = get("variable_prefix.f")
+  assert not absd(lines, tail_off(1), """\
+  int variable_xor_eq = variable_xor + 100;
+  write(6, star), variable_xor_eq;
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(
