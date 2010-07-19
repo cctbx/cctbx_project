@@ -16,7 +16,8 @@ def exercise_simple(verbose):
         file_name,
         top_unit_name=None,
         data_specializations=True,
-        arr_nd_size_max=None):
+        arr_nd_size_max=None,
+        inline_all=False):
     if (verbose):
       print "exercise_simple:", file_name
     file_names = [op.join(t_dir, file_name)]
@@ -27,6 +28,7 @@ def exercise_simple(verbose):
       data_specializations=data_specializations,
       fem_do_safe=False,
       arr_nd_size_max=arr_nd_size_max,
+      inline_all=inline_all,
       common_report_stringio=common_report_stringio)
   #
   assert not show_diff(get("add_reals.f"), """\
@@ -407,8 +409,9 @@ sub2(
   write(6, star), "last line in prog.";
 """)
   #
-  lines = get("subroutine_2.f")
+  lines = get("subroutine_2.f", inline_all=True)
   assert not absd(lines, head_off(3), expected="""\
+inline
 void
 sub1(
   common& cmn,
@@ -420,6 +423,7 @@ sub1(
   i = 7;
 }
 
+inline
 void
 sub2(
   common& cmn,

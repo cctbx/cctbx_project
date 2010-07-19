@@ -350,6 +350,7 @@ class global_conversion_info(object):
     "dynamic_parameters",
     "fem_do_safe",
     "arr_nd_size_max",
+    "inline_all",
     "units_by_name",
     "intrinsics_extra",
     "converted_commons_info",
@@ -362,6 +363,7 @@ class global_conversion_info(object):
         dynamic_parameters,
         fem_do_safe,
         arr_nd_size_max,
+        inline_all,
         converted_commons_info,
         separate_namespaces,
         data_values_block_size,
@@ -370,6 +372,7 @@ class global_conversion_info(object):
     O.dynamic_parameters = dynamic_parameters
     O.fem_do_safe = fem_do_safe
     O.arr_nd_size_max = arr_nd_size_max
+    O.inline_all = inline_all
     O.units_by_name = topological_units.all_units.units_by_name()
     O.intrinsics_extra = topological_units.intrinsics_extra
     O.converted_commons_info = converted_commons_info
@@ -2125,6 +2128,8 @@ def convert_to_cpp_function(
   if (declaration_only):
     cpp_callback("")
     cpp_callback("// forward declaration (dependency cycle)")
+    if (conv_info.inline_all):
+      cpp_callback("inline")
     cpp_callback("%s %s(%s);" % (
       cdecl, conv_info.unit.name.value, ", ".join(fptr)))
     return
@@ -2139,6 +2144,8 @@ def convert_to_cpp_function(
     callback("")
     if (callback is cpp_callback):
       produce_leading_comments(callback=callback, unit=conv_info.unit)
+    if (conv_info.inline_all):
+      callback("inline")
     callback(cdecl)
     if (callback is hpp_callback): last = ";"
     else:                          last = ""
@@ -2719,6 +2726,7 @@ def process(
       dynamic_parameters=None,
       fem_do_safe=True,
       arr_nd_size_max=default_arr_nd_size_max,
+      inline_all=False,
       common_equivalence_simple=set(),
       suppress_program=False,
       suppress_common=False,
@@ -2912,6 +2920,7 @@ def process(
     dynamic_parameters=dynamic_parameters,
     fem_do_safe=fem_do_safe,
     arr_nd_size_max=arr_nd_size_max,
+    inline_all=inline_all,
     converted_commons_info=converted_commons_info,
     separate_namespaces=separate_namespaces,
     data_values_block_size=data_values_block_size,

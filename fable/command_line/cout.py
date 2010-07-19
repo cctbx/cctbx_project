@@ -67,6 +67,7 @@ class process(object):
       dynamic_parameters=O.dynamic_parameters,
       fem_do_safe=not opts.no_fem_do_safe,
       arr_nd_size_max=opts.arr_nd_size_max,
+      inline_all=opts.inline_all,
       common_equivalence_simple=set(opts.common_equivalence_simple.split(",")),
       namespace=opts.namespace,
       separate_cmn_hpp=opts.separate_cmn_hpp,
@@ -139,6 +140,9 @@ def run(args):
       type="int",
       default=fable.cout.default_arr_nd_size_max,
       metavar='INTEGER (default: %d)' % fable.cout.default_arr_nd_size_max)
+    .option(None, "--inline_all",
+      action="store_true",
+      default=False)
     .option(None, "--common_equivalence_simple",
       action="store",
       type="str",
