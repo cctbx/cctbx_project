@@ -466,7 +466,7 @@ namespace fem {
   ichar(
     str_cref c)
   {
-    if (c.len() != 1) {
+    if (c.len() == 0) {
       std::ostringstream o;
       o << "ichar() argument must be a one-character string,"
         << " but actual string length is " << c.len() << ".";
