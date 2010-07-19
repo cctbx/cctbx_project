@@ -271,6 +271,69 @@ namespace fem {
 
   inline
   int
+  min(
+    int const& v1,
+    int const& v2,
+    int const& v3)
+  {
+    return min(v1, min(v2, v3));
+  }
+
+  inline
+  int
+  min(
+    int const& v1,
+    int const& v2,
+    int const& v3,
+    int const& v4)
+  {
+    return min(v1, min(v2, v3, v4));
+  }
+
+  inline
+  float
+  min(
+    float const& v1,
+    float const& v2,
+    float const& v3)
+  {
+    return min(v1, min(v2, v3));
+  }
+
+  inline
+  float
+  min(
+    float const& v1,
+    float const& v2,
+    float const& v3,
+    float const& v4)
+  {
+    return min(v1, min(v2, v3, v4));
+  }
+
+  inline
+  double
+  min(
+    double const& v1,
+    double const& v2,
+    double const& v3)
+  {
+    return min(v1, min(v2, v3));
+  }
+
+  inline
+  double
+  min(
+    double const& v1,
+    double const& v2,
+    double const& v3,
+    double const& v4)
+  {
+    return min(v1, min(v2, v3, v4));
+  }
+
+  inline
+  int
   max0(
     int const& v1,
     int const& v2) { return std::max(v1, v2); }
