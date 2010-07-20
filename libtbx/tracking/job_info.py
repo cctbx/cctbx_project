@@ -1,11 +1,13 @@
 
+import libtbx.tracking
 import libtbx.phil
 from libtbx.utils import Sorry
 import sys, os, time
 
-master_phil = libtbx.phil.read_default(__file__)
 
-def format_job (job_id, app_id, title=None, directory=None, input_files=()) :
+def format_job (job_id=None, app_id=None, title=None, directory=None,
+    input_files=()) :
+  assert ([job_id, app_id].count(None) == 0)
   files_phil = []
   for (file_name, file_type, param_name) in input_files :
     if file_name is None :
@@ -17,7 +19,7 @@ def format_job (job_id, app_id, title=None, directory=None, input_files=()) :
     param_name = %s
   }""" % (file_name, str(file_type), str(param_name)))
   input_files_formatted = "\n".join(files_phil)
-  job_phil = libtbx.phil.parse("""
+  working_phil = libtbx.phil.parse("""
 job {
   job_id = %d
   app_id = %s
@@ -26,73 +28,57 @@ job {
 %s
 }
 """ % (job_id, app_id, str(title), str(directory), input_files_formatted))
-  return master_phil.fetch(source=job_phil)
+  return working_phil
 
-def start_job (file_name, *args, **kwds) :
-  job_phil = format_job(*args, **kwds)
-  f = open(file_name, "w")
-  job_phil.show(out=f)
-  f.close()
-  return True
+class job_info (libtbx.tracking.container) :
+  master_phil = libtbx.phil.read_default(__file__)
 
-def finish_job (file_name, statistics=(), output_files=()) :
-  assert os.path.isfile(file_name)
-  file_phil = libtbx.phil.parse(file_name=file_name)
-  #job_phil = master_phil.fetch(file_phil)
-  info_phil = []
-  for (file_name, file_type) in output_files :
-    if file_name is None :
-      continue
-    info_phil.append("""\
+  def initialize (self, *args, **kwds) :
+    return format_job(*args, **kwds)
+
+  def finish_job (self, statistics=(), output_files=()) :
+    info_phil = []
+    for (file_name, file_type) in output_files :
+      if file_name is None :
+        continue
+      info_phil.append("""\
   output_file {
     file_name = %s
     file_type = %s
   }""" % (file_name, str(file_type)))
-  for (stat_name, stat_value) in statistics :
-    if stat_name is None :
-      continue
-    assert type(stat_value).__name__ in ["str", "int", "float"]
-    info_phil.append("""\
+    for (stat_name, stat_value) in statistics :
+      if stat_name is None :
+        continue
+      assert type(stat_value).__name__ in ["str", "int", "float"]
+      info_phil.append("""\
   statistic {
     stat_name = %s
     stat_value = %s
   }""" % (stat_name, str(stat_value)))
-  output_phil = libtbx.phil.parse("""\
+    output_phil = libtbx.phil.parse("""\
 job {
   %s
 }""" % ("\n".join(info_phil)))
-  job_phil = master_phil.fetch(sources=[file_phil, output_phil])
-  #job_phil.show()
-  f = open(file_name, "w")
-  job_phil.show(out=f)
-  f.close()
-  #job_phil.show()
-  return True
+    self.working_phil = self.master_phil.fetch(
+      sources=[self.working_phil, output_phil])
+    self.save_file()
+    return True
 
-def add_comments (file_name, comments) :
-  assert os.path.isfile(file_name)
-  file_phil = libtbx.phil.parse(file_name=file_name)
-  comments_phil = libtbx.phil.parse("""job.user_comments = "%s"\n""" %
-    comments)
-  job_phil = master_phil.fetch(sources=[file_phil, comments_phil])
-  f = open(file_name, "w")
-  job_phil.show(out=f)
-  f.close()
-  #job_phil.show()
-  return True
-
-def read_job (file_name) :
-  assert os.path.isfile(file_name)
-  file_phil = libtbx.phil.parse(file_name=file_name)
-  job_phil = master_phil.fetch(source=file_phil)
-  return job_phil
+  def add_comments (self, comments) :
+    comments_phil = libtbx.phil.parse("""job.user_comments = "%s"\n""" %
+      comments)
+    self.working_phil = self.master_phil.fetch(
+      sources=[self.working_phil,comments_phil])
+    self.save_file()
+    return True
 
 #-----------------------------------------------------------------------
 def exercise (detailed_timings=False, verbose=False) :
   import time, string
   job_file = "exercise_job.phil"
   t1 = time.time()
-  start_job(file_name=job_file,
+  new_job = job_info(
+    file_name=job_file,
     job_id=15,
     app_id="Test",
     title="exercise of job info I/O",
@@ -103,7 +89,7 @@ def exercise (detailed_timings=False, verbose=False) :
                  ("/home/nat/XX2.cif", "Restraints", "monomer"),
                  ("/home/nat/phases.mtz", "Experimental phases", "phases")])
   t2 = time.time()
-  finish_job(file_name=job_file,
+  new_job.finish_job(
     statistics=[("R-work", 0.2456),
                 ("R-free", "0.2890"),
                 ("RMS(bonds)", 0.016),
@@ -116,19 +102,19 @@ def exercise (detailed_timings=False, verbose=False) :
                   ("model_refine_15.geo", "Summary of geometry restraints"),
                   ("model_refine_15.eff", "Effective final parameters")])
   t3 = time.time()
-  add_comments(job_file, string.uppercase * 10)
-  add_comments(job_file, string.lowercase * 10)
+  new_job.add_comments(string.uppercase * 10)
+  new_job.add_comments(string.lowercase * 10)
   t4 = time.time()
-  job_phil = read_job(job_file)
-  job_info = job_phil.extract()
+  info = job_info(file_name=job_file)
+  job_params = info.extract()
   t5 = time.time()
-  assert (job_info.job.user_comments == (string.lowercase * 10))
+  assert (job_params.job.user_comments == (string.lowercase * 10))
   if detailed_timings :
     print "start_job:        %5.1fms" % ((t2 - t1) * 1000)
     print "finish_job:       %5.1fms" % ((t3 - t2) * 1000)
     print "read and extract: %5.1fms" % ((t5 - t4) * 1000)
   if verbose :
-    job_phil.show()
+    info.working_phil.show()
 
 if __name__ == "__main__" :
   exercise(detailed_timings=True, verbose=("--debug" in sys.argv))

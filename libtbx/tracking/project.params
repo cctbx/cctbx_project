@@ -22,6 +22,8 @@ project {
       .type = path
     program_name = None
       .type = str
+    file_type = None
+      .type = str
   }
   user_comments = None
     .type = str
