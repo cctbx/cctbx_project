@@ -259,6 +259,8 @@ namespace boost_python {
         .def("finalise", &wt::finalise)
         .def("linearise", &wt::linearise)
         .def("store", &wt::store)
+        .add_property("jacobian_transpose",
+                      make_getter(&wt::jacobian_transpose))
         ;
       docstring_options no_signature(true, false);
       klass
