@@ -24,33 +24,23 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   /**** ADP ****/
 
-  std::size_t special_position_cartesian_adp::size() const { return 6; }
-
   void special_position_cartesian_adp
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {
     independent_small_vector_parameter<6> const &p = independent_params();
 
-    u_cart = adp_constraints.all_params(p.value);
+    value = adp_constraints.all_params(p.value);
 
     if (!jacobian_transpose) return;
-    sparse_matrix_type &jt = *jacobian_transpose;
-    sparse_matrix_type const &jt_u_cart = adp_constraints.jacobian();
-    for (int j=0; j<6; ++j) {
-      for (sparse_matrix_type::const_row_iterator i=jt_u_cart.col(j).begin();
-           i != jt_u_cart.col(j).end();
-           ++i)
-      {
-        jt(j, i.index()) = *i;
+    sparse_matrix_type &jac_t = *jacobian_transpose;
+    sparse_matrix_type const &jac = adp_constraints.jacobian();
+    typedef sparse_matrix_type::const_row_iterator iter_t;
+    for (int j=0; j<jac.n_cols(); ++j) {
+      for (iter_t i=jac.col(j).begin(); i != jac.col(j).end(); ++i) {
+        jac_t(j, index() + i.index()) = *i;
       }
     }
-  }
-
-  void special_position_cartesian_adp
-  ::store(uctbx::unit_cell const &unit_cell) const
-  {
-    scatterer->u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
   }
 
 }}}

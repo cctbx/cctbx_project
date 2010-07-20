@@ -40,7 +40,7 @@ private:
 /// Anisotropic displacement constrained by the symmetry of a special position
 /** Parameter components are those of the tensor in Cartesian coordinates
  */
-class special_position_cartesian_adp : public crystallographic_parameter
+class special_position_cartesian_adp : public cartesian_adp
 {
 public:
   typedef sgtbx::tensor_rank_2::cartesian_constraints<double>
@@ -49,32 +49,25 @@ public:
   special_position_cartesian_adp(sgtbx::site_symmetry const &site_symmetry,
                                  uctbx::unit_cell const &unit_cell,
                                  scatterer_type *scatterer)
-    : crystallographic_parameter(1),
-      adp_constraints(site_symmetry.cartesian_adp_constraints(unit_cell)),
-      scatterer(scatterer)
+    : cartesian_adp(scatterer, 1),
+      adp_constraints(site_symmetry.cartesian_adp_constraints(unit_cell))
   {
     tensor_rank_2_t u_star = site_symmetry.average_u_star(scatterer->u_star);
-    u_cart = adptbx::u_star_as_u_cart(unit_cell, u_star);
+    value = adptbx::u_star_as_u_cart(unit_cell, u_star);
     set_arguments(new independent_small_vector_parameter<6>(
-      adp_constraints.independent_params(u_cart),
+      adp_constraints.independent_params(value),
       scatterer->flags.use_u_aniso() && scatterer->flags.grad_u_aniso()));
   }
 
-    independent_small_vector_parameter<6> const &independent_params() {
+  independent_small_vector_parameter<6> const &independent_params() {
     return *(independent_small_vector_parameter<6> *)argument(0);
   }
-
-  virtual std::size_t size() const;
 
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
 
-  virtual void store(uctbx::unit_cell const &unit_cell) const;
-
 private:
-  tensor_rank_2_t u_cart;
   adp_constraints_t adp_constraints;
-  scatterer_type * scatterer;
 };
 
 
