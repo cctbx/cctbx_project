@@ -1,9 +1,35 @@
+import scitbx.linalg
 from scitbx.linalg import eigensystem, time_eigensystem_real_symmetric
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from scitbx.math.tests.tst_math import matrix_mul
 import random
 import time
+
+def compare_times(max_n_power=8):
+  dsyev = scitbx.linalg.lapack_dsyev
+  mt = flex.mersenne_twister(seed=0)
+  show_tab_header = True
+  for n_power in xrange(5,max_n_power+1):
+    n = 2**n_power
+    l = mt.random_double(size=n*(n+1)//2) * 2 - 1
+    a = l.matrix_packed_l_as_symmetric()
+    aes = a.deep_copy()
+    ala = a.deep_copy()
+    wla = flex.double(n, -1e100)
+    t0 = time.time()
+    es = eigensystem.real_symmetric(aes)
+    tes = time.time() - t0
+    t0 = time.time()
+    info = dsyev(jobz="V", uplo="U", a=ala, w=wla)
+    assert info == 0
+    tla = time.time() - t0
+    assert approx_equal(list(reversed(es.values())), wla)
+    if (show_tab_header):
+      print "      time [s]     eigenvalues"
+      print " n    es    la     min    max"
+      show_tab_header = False
+    print "%3d %5.2f %5.2f [%6.2f %6.2f]" % (n, tes, tla, wla[0], wla[-1])
 
 def exercise_eigensystem():
   s = eigensystem.real_symmetric(
@@ -65,14 +91,24 @@ def exercise_eigensystem():
         mx = matrix_mul(m, n, n, x, n, 1)
         lx = [e*l for e in x]
         assert approx_equal(mx, lx)
+  #
   m = (1.4573362052597449, 1.7361052947659894, 2.8065584999742659,
        -0.5387293498219814, -0.018204949672480729, 0.44956507395617257)
-  n_repetitions = 100000
+  n_repetitions = 10000
   t0 = time.time()
   v = time_eigensystem_real_symmetric(m, n_repetitions)
   assert v == (0,0,0)
   print "time_eigensystem_real_symmetric: %.3f micro seconds" % (
     (time.time() - t0)/n_repetitions*1.e6)
+  time_dsyev = getattr(scitbx.linalg, "time_lapack_dsyev", None)
+  if (time_dsyev is not None):
+    v = time_dsyev(m, 2) # to trigger one-time initialization of SAVE variables
+    t0 = time.time()
+    v = time_dsyev(m, n_repetitions)
+    assert v == (0,0,0)
+    print "time_lapack_dsyev: %.3f micro seconds" % (
+      (time.time() - t0)/n_repetitions*1.e6)
+    compare_times()
   #
   s = eigensystem.real_symmetric(m=m)
   assert s.min_abs_pivot() > 0
