@@ -9,13 +9,11 @@ job_summary
   program_name = None
     .type = str
   program_args = None
-    .type = str
+    .type = strings
   config_file = None
     .type = path
   title = None
     .type = str
-  use_template_gui = False
-    .type = bool
   time_started = None
     .type = float
   time_finished = None
