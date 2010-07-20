@@ -1,0 +1,41 @@
+job {
+  job_id = None
+    .type = int
+  app_id = None
+    .type = str
+  title = None
+    .type = str
+  directory = None
+    .type = path
+  input_file
+    .multiple = True
+    .optional = True
+  {
+    file_name = None
+      .type = path
+    file_type = None
+      .type = str
+    param_name = None
+      .type = str
+  }
+  output_file
+    .multiple = True
+    .optional = True
+  {
+    file_name = None
+      .type = path
+    file_type = None
+      .type = str
+  }
+  statistic
+    .multiple = True
+    .optional = True
+  {
+    stat_name = None
+      .type = str
+    stat_value = None
+      .type = str
+  }
+  user_comments = None
+    .type = str
+}

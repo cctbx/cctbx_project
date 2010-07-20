@@ -832,6 +832,8 @@ libtbx/subversion.py -text
 libtbx/thread_utils.py -text
 libtbx/topological_sort.py svneol=native#text/x-python
 libtbx/tracking/job_history.params -text
+libtbx/tracking/job_info.params -text
+libtbx/tracking/job_info.py -text
 libtbx/tracking/project.params -text
 libtbx/try_hello_world_c.py svneol=native#text/x-python
 libtbx/tst_binary_search.py svneol=native#text/x-python

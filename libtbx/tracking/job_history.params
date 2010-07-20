@@ -1,7 +1,6 @@
-job
+job_summary
   .multiple = True
   .optional = True
-  .style = noauto
 {
   job_id = None
     .type = int
@@ -13,7 +12,7 @@ job
     .type = str
   config_file = None
     .type = path
-  job_title = None
+  title = None
     .type = str
   use_template_gui = False
     .type = bool
@@ -23,41 +22,10 @@ job
     .type = float
   result_directory = None
     .type = path
-  status = *started failed aborted complete
+  status = *started failed aborted complete deleted
     .type = choice
-  deleted = False
-    .type = bool
-  input_file
-    .multiple = True
-    .optional = True
-  {
-    file_name = None
-      .type = path
-    file_type = None
-      .type = str
-    param_name = None
-      .type = str
-  }
-  output_file
-    .multiple = True
-    .optional = True
-  {
-    file_name = None
-      .type = path
-    file_type = None
-      .type = str
-  }
-  statistic
-    .multiple = True
-    .optional = True
-  {
-    stat_name = None
-      .type = str
-    stat_value = None
-      .type = str
-  }
   user_flagged = False
     .type = bool
-  user_comments = None
-    .type = str
+  r_free = None
+    .type = float
 }
