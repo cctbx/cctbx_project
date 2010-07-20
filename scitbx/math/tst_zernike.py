@@ -79,7 +79,7 @@ def tst_zernike_radial():
 
 
 
-def tst_zernike_grid():
+def tst_zernike_grid(skip_iteration_probability=0.95):
   #THIS TEST TAKES A BIT OF TIME
   M=20
   N=4
@@ -91,8 +91,12 @@ def tst_zernike_grid():
   coefs = zga.coefs()
   nlm = zga.nlm()
 
+  import random
+  rng = random.Random(x=None)
   for ii in range(nlm.size()):
     for jj in range(ii+1,nlm.size()):
+      if (rng.random() < skip_iteration_probability):
+        continue
       coefsa = coefs*0.0
       coefsb = coefs*0.0
       coefsa[ii]=1.0+1.0j
