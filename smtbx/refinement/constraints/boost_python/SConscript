@@ -1,6 +1,8 @@
 Import("env_smtbx_boost_python_ext")
 env = env_smtbx_boost_python_ext.Clone()
+env.Prepend(LIBS=["smtbx_refinement_constraints"])
 env.SharedLibrary(target="#lib/smtbx_refinement_constraints_ext", source=[
   "constraints_ext.cpp",
-  "geometric_hydrogen.cpp"
+  "reparametrisation.cpp",
+  "geometrical_hydrogens.cpp",
 ])
