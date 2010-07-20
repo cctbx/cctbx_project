@@ -293,7 +293,7 @@ public:
 
 protected:
   /// The scatterer this parameter belongs to
-  scatterer_type * scatterer;
+  scatterer_type *scatterer;
 };
 
 
