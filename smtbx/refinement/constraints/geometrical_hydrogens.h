@@ -150,14 +150,14 @@ private:
 /** Denoting C or N as X and the two neighbours of X as Y and Z,
     Z-X-Y is bisected by X-H.
 */
-class secondary_planar_xh : public crystallographic_parameter
+class secondary_planar_xh_site : public crystallographic_parameter
 {
 public:
-  secondary_planar_xh(site_parameter *pivot,
-                      site_parameter *pivot_neighbour_0,
-                      site_parameter *pivot_neighbour_1,
-                      independent_scalar_parameter *length,
-                      scatterer_type *hydrogen)
+  secondary_planar_xh_site(site_parameter *pivot,
+                           site_parameter *pivot_neighbour_0,
+                           site_parameter *pivot_neighbour_1,
+                           independent_scalar_parameter *length,
+                           scatterer_type *hydrogen)
     : crystallographic_parameter(4), h(hydrogen)
   {
     set_arguments(pivot, pivot_neighbour_0, pivot_neighbour_1, length);

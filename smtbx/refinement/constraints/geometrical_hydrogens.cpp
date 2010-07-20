@@ -226,12 +226,12 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
   /// aromatic or amide Y-XH-Z
-  std::size_t secondary_planar_xh::size() const {
+  std::size_t secondary_planar_xh_site::size() const {
     return 3;
   }
 
-  void secondary_planar_xh::linearise(uctbx::unit_cell const &unit_cell,
-                                      sparse_matrix_type *jacobian_transpose)
+  void secondary_planar_xh_site::linearise(uctbx::unit_cell const &unit_cell,
+                                           sparse_matrix_type *jacobian_transpose)
   {
     using namespace constants;
     site_parameter *pivot = (site_parameter *)argument(0);
@@ -266,7 +266,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
-  void secondary_planar_xh::store(uctbx::unit_cell const &unit_cell) const {
+  void secondary_planar_xh_site::store(uctbx::unit_cell const &unit_cell) const {
     h->site = unit_cell.fractionalize(x_h);
   }
 
