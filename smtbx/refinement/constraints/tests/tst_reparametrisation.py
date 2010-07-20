@@ -1,4 +1,5 @@
-from cctbx import uctbx, xray, sgtbx
+from __future__ import division
+from cctbx import uctbx, xray, sgtbx, crystal
 from smtbx.refinement import constraints
 from scitbx import sparse
 from scitbx import matrix as mat
@@ -79,9 +80,48 @@ class terminal_linear_ch_site_test_case(object):
     assert sparse.approx_equal(self.eps)(jt, jt0)
 
 
+class special_position_adp_test_case(object):
+
+  eps = 1.e-15
+
+  def __init__(self):
+    cs = crystal.symmetry(uctbx.unit_cell((1, 1, 2, 90, 90, 120)), 'R3')
+    sgi = sgtbx.space_group_info('R3(y+z, x+z, x+y+z)')
+    op = sgi.change_of_basis_op_to_reference_setting()
+    self.cs = cs.change_basis(op.inverse())
+    self.sc = xray.scatterer('C',
+                             site=(3/8,)*3,
+                             u=(1/2, 1/4, 3/4, -3/2, -3/4, -1/4))
+    self.sc.flags.set_grad_u_aniso(True)
+    self.site_symm = sgtbx.site_symmetry(self.cs.unit_cell(),
+                                         self.cs.space_group(),
+                                         self.sc.site)
+    self.reparam = constraints.reparametrisation(self.cs.unit_cell())
+    u = self.reparam.add(constraints.special_position_cartesian_adp,
+                         self.site_symm, self.cs.unit_cell(), self.sc)
+    self.reparam.finalise()
+    self.u, self.v = u.index, u.independent_params.index
+
+  def run(self):
+    self.reparam.linearise()
+    self.reparam.store()
+    assert approx_equal(self.sc.u_star, (19/6, 19/6, 17/2,
+                                         11/6, 9/2, 9/2), self.eps)
+    jt0 = sparse.matrix(2, 8)
+    jt0[0, 0] = 1
+    jt0[1, 1] = 1
+    jac_u_cart_trans = self.site_symm.cartesian_adp_constraints(
+      self.cs.unit_cell()).jacobian().transpose()
+    for j in xrange(6):
+      jt0[:, j + 2] = jac_u_cart_trans[:, j]
+    jt = self.reparam.jacobian_transpose
+    assert sparse.approx_equal(self.eps)(jt, jt0)
+
+
 def exercise():
   terminal_linear_ch_site_test_case(with_special_position_pivot=False).run()
   terminal_linear_ch_site_test_case(with_special_position_pivot=True).run()
+  special_position_adp_test_case().run()
 
 def run():
   exercise()

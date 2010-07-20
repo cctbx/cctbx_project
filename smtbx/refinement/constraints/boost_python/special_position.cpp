@@ -32,13 +32,16 @@ namespace boost_python {
 
     static void wrap() {
       using namespace boost::python;
-      class_<wt,
+      return_internal_reference<> rir;
+      class_<wt, bases<cartesian_adp>,
              std::auto_ptr<wt>,
              boost::noncopyable>("special_position_cartesian_adp", no_init)
-      .def(init<sgtbx::site_symmetry const &,
-                uctbx::unit_cell const &,
-                wt::scatterer_type *>
-           ((arg("site_symmetry"), arg("unit_cell"), arg("scatterer"))))
+        .def(init<sgtbx::site_symmetry const &,
+                  uctbx::unit_cell const &,
+                  wt::scatterer_type *>
+             ((arg("site_symmetry"), arg("unit_cell"), arg("scatterer"))))
+        .add_property("independent_params",
+                      make_function(&wt::independent_params, rir))
       ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
