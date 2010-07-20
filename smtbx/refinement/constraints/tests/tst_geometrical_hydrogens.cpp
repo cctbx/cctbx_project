@@ -263,8 +263,8 @@ void exercise_aromatic_ch() {
                              *is_z = new independent_site_parameter(z);
   independent_scalar_parameter
   *length = new independent_scalar_parameter(1.1);
-  secondary_planar_xh
-  *arom_ch = new secondary_planar_xh(is_x, is_y, is_z, length, h);
+  secondary_planar_xh_site
+  *arom_ch = new secondary_planar_xh_site(is_x, is_y, is_z, length, h);
   reparametrisation reparam(uc,
                             boost::make_iterator_range(&arom_ch,
                                                        &arom_ch + 1));
