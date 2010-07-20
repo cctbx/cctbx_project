@@ -9,6 +9,7 @@
 #include <smtbx/import_cctbx.h>
 #include <smtbx/error.h>
 
+#include <boost/utility.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/shared_array.hpp>
 #include <boost/format.hpp>
@@ -64,7 +65,7 @@ typedef scitbx::sym_mat3<double> tensor_rank_2_t;
     to the minimisation engine, or it may be function of other scalar- or
     vector-valued parameters, which we will refer to as its arguments.
  */
-class parameter
+class parameter : public boost::noncopyable
 {
 public:
   template <class>
