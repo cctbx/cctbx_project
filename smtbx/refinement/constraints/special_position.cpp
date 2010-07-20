@@ -4,14 +4,12 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   /**** Sites ****/
 
-  std::size_t special_position_site::size() const { return 3; }
-
   void special_position_site::linearise(uctbx::unit_cell const &unit_cell,
                                         sparse_matrix_type *jacobian_transpose)
   {
     independent_small_vector_parameter<3> const &p = independent_params();
 
-    site = site_constraints.all_params(p.value);
+    value = site_constraints.all_params(p.value);
 
     if (!jacobian_transpose) return;
     sparse_matrix_type &jt = *jacobian_transpose;
@@ -22,10 +20,6 @@ namespace smtbx { namespace refinement { namespace constraints {
         jt(p.index() + i, index() + j) = compact_jt(i, j);
       }
     }
-  }
-
-  void special_position_site::store(uctbx::unit_cell const &unit_cell) const {
-    scatterer->site = site;
   }
 
   /**** ADP ****/

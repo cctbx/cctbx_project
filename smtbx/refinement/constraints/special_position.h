@@ -11,18 +11,17 @@ namespace smtbx { namespace refinement { namespace constraints {
 
 /// Site constrained to be on a special position
 /** Parameter components are the fractional coordinates */
-class special_position_site : public crystallographic_parameter
+class special_position_site : public site_parameter
 {
 public:
   special_position_site(sgtbx::site_symmetry const &site_symmetry,
                         scatterer_type *scatterer)
-    : crystallographic_parameter(1),
-      site_constraints(site_symmetry.site_constraints()),
-      scatterer(scatterer)
+    : site_parameter(scatterer, 1),
+      site_constraints(site_symmetry.site_constraints())
   {
-    site = site_symmetry.special_op()*scatterer->site;
+    value = site_symmetry.special_op()*scatterer->site;
     set_arguments(new independent_small_vector_parameter<3>(
-      site_constraints.independent_params(site),
+      site_constraints.independent_params(value),
       scatterer->flags.grad_site()));
   }
 
@@ -30,17 +29,11 @@ public:
     return *(independent_small_vector_parameter<3> *)argument(0);
   }
 
-  virtual std::size_t size() const;
-
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
 
-  virtual void store(uctbx::unit_cell const &unit_cell) const;
-
 private:
-  frac_t site;
   sgtbx::site_constraints<double> site_constraints;
-  scatterer_type * scatterer;
 };
 
 

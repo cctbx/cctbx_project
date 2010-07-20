@@ -5,4 +5,5 @@ env.SharedLibrary(target="#lib/smtbx_refinement_constraints_ext", source=[
   "constraints_ext.cpp",
   "reparametrisation.cpp",
   "geometrical_hydrogens.cpp",
+  "special_position.cpp",
 ])
