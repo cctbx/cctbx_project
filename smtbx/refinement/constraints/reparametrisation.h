@@ -320,6 +320,53 @@ public:
 };
 
 
+/// Anisotropic displacement parameters of a site
+/** A parameter whose components are the coefficients of the Cartesian tensor
+ */
+class cartesian_adp : public crystallographic_parameter
+{
+public:
+  cartesian_adp(scatterer_type *scatterer, std::size_t n_arguments)
+  : crystallographic_parameter(n_arguments),
+    scatterer(scatterer)
+  {}
+
+  virtual std::size_t size() const;
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+  /// The site value in Cartesian coordinates
+  tensor_rank_2_t value;
+
+protected:
+  /// The scatterer this parameter belongs to
+  scatterer_type *scatterer;
+};
+
+
+class independent_cartesian_adp : public cartesian_adp
+{
+public:
+  independent_cartesian_adp(scatterer_type *scatterer)
+  : cartesian_adp(scatterer, 0)
+  {}
+
+  /// Variability property, directly linked to the scatterer grad_site flag
+  //@{
+  virtual void set_variable(bool f);
+
+  virtual bool is_variable() const;
+  //@}
+
+  /// Read the site value from the referenced scatterer
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+
+  virtual double *components();
+};
+
+
+
 class computing_graph_has_cycle_error : public error
 {
 public:

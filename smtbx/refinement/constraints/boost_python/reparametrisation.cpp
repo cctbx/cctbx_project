@@ -123,6 +123,24 @@ namespace boost_python {
 
   };
 
+  struct py_cartesian_adp : cartesian_adp,
+                            boost::python::wrapper<cartesian_adp>
+  {
+
+    SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
+
+    SMTBX_CONSTRAINTS_BEFRIEND_INIT_PARAM
+
+    py_cartesian_adp(boost::python::tuple const &arguments)
+    : cartesian_adp(boost::python::extract<scatterer_type *>(arguments[0])(),
+                    details::checked(boost::python::len(arguments)))
+    {
+      using namespace boost::python;
+      initialise_parameter(this, arguments, 1);
+    }
+
+  };
+
 
   /*** The usual wrappers
    ***
@@ -237,6 +255,38 @@ namespace boost_python {
     }
   };
 
+  struct cartesian_adp_wrapper
+  {
+    typedef cartesian_adp wt;
+    typedef py_cartesian_adp pywt;
+
+    static void wrap() {
+      using namespace boost::python;
+      return_value_policy<return_by_value> rbv;
+      class_<pywt, bases<crystallographic_parameter>,
+             boost::noncopyable>("cartesian_adp", no_init)
+        .def(init<boost::python::tuple>(arg("scatterer")))
+        .add_property("value",
+                      make_getter(&wt::value, rbv), make_setter(&wt::value))
+        ;
+    }
+  };
+
+  struct independent_cartesian_adp_wrapper
+  {
+    typedef independent_cartesian_adp wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt, bases<cartesian_adp>,
+             std::auto_ptr<wt>,
+             boost::noncopyable>("independent_cartesian_adp", no_init)
+        .def(init<wt::scatterer_type *>(arg("scatterer")))
+        ;
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
 
   struct reparametrisation_wrapper
   {
@@ -314,6 +364,8 @@ namespace boost_python {
     crystallographic_parameter_wrapper::wrap();
     site_parameter_wrapper::wrap();
     independent_site_parameter_wrapper::wrap();
+    cartesian_adp_wrapper::wrap();
+    independent_cartesian_adp_wrapper::wrap();
     reparametrisation_wrapper::wrap();
     def("debug", &debug);
   }
