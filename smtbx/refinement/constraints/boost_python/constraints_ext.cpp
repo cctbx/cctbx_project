@@ -7,11 +7,13 @@ namespace smtbx { namespace refinement { namespace constraints {
 namespace boost_python {
   void wrap_reparametrisation();
   void wrap_geometrical_hydrogens();
+  void wrap_special_position();
 
   namespace {
     void init_module() {
       wrap_reparametrisation();
       wrap_geometrical_hydrogens();
+      wrap_special_position();
     }
   }
 

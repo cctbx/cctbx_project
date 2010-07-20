@@ -96,22 +96,26 @@ namespace boost_python {
     SMTBX_CONSTRAINTS_OVERRIDE_STORE
   };
 
+  namespace details {
+    inline
+    std::size_t checked(std::size_t n_arguments) {
+      SMTBX_ASSERT(n_arguments >= 1)(n_arguments);
+      return n_arguments;
+    }
+  }
+
   struct py_site_parameter : site_parameter,
                              boost::python::wrapper<site_parameter>
   {
 
     SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
 
-    static std::size_t checked(std::size_t n_arguments) {
-      SMTBX_ASSERT(n_arguments >= 1)(n_arguments);
-      return n_arguments;
-    }
 
     SMTBX_CONSTRAINTS_BEFRIEND_INIT_PARAM
 
     py_site_parameter(boost::python::tuple const &arguments)
     : site_parameter(boost::python::extract<scatterer_type *>(arguments[0])(),
-                     checked(boost::python::len(arguments)))
+                     details::checked(boost::python::len(arguments)))
     {
       using namespace boost::python;
       initialise_parameter(this, arguments, 1);
@@ -179,6 +183,25 @@ namespace boost_python {
         .def_readwrite("value", &wt::value)
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
+  template <int N>
+  struct independent_small_vector_parameter_wrapper
+  {
+    typedef independent_small_vector_parameter<N> wt;
+
+    static void wrap(char const *name) {
+      using namespace boost::python;
+      return_value_policy<return_by_value> rbv;
+      class_<wt, bases<parameter>,
+             std::auto_ptr<wt>,
+             boost::noncopyable>(name, no_init)
+      .def(init<int, bool>
+           ((arg("size"), arg("variable")=true)))
+      .add_property("value",
+                    make_getter(&wt::value, rbv), make_setter(&wt::value))
+      ;
     }
   };
 
@@ -284,6 +307,10 @@ namespace boost_python {
     using namespace boost::python;
     parameter_wrapper::wrap();
     independent_scalar_parameter_wrapper::wrap();
+    independent_small_vector_parameter_wrapper<3>
+      ::wrap("independent_small_3_vector_parameter");
+    independent_small_vector_parameter_wrapper<6>
+      ::wrap("independent_small_6_vector_parameter");
     crystallographic_parameter_wrapper::wrap();
     site_parameter_wrapper::wrap();
     independent_site_parameter_wrapper::wrap();
