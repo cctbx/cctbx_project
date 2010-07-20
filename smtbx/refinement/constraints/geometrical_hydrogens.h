@@ -45,7 +45,7 @@ public:
                                  independent_scalar_parameter *azimuth,
                                  independent_scalar_parameter *length,
                                  cart_t const &e_zero_azimuth,
-                                 af::small<scatterer_pointer, 3> const &hydrogen)
+                                 af::small<scatterer_type *, 3> const &hydrogen)
     : crystallographic_parameter(4),
       e_zero_azimuth(e_zero_azimuth),
       hydrogen(hydrogen),
@@ -62,7 +62,7 @@ public:
   virtual void store(uctbx::unit_cell const &unit_cell) const;
 
 private:
-  af::small<scatterer_pointer, 3> hydrogen;
+  af::small<scatterer_type *, 3> hydrogen;
   cart_t e_zero_azimuth;
   af::small<cart_t, 3> x_h;
 };
@@ -93,8 +93,8 @@ public:
                       site_parameter *pivot_neighbour_1,
                       independent_scalar_parameter *length,
                       angle_starting_tetrahedral *h_c_h,
-                      scatterer_pointer &hydrogen_0,
-                      scatterer_pointer &hydrogen_1)
+                      scatterer_type *hydrogen_0,
+                      scatterer_type *hydrogen_1)
     : crystallographic_parameter(5),
       h(hydrogen_0, hydrogen_1)
   {
@@ -109,7 +109,7 @@ public:
   virtual void store(uctbx::unit_cell const &unit_cell) const;
 
 private:
-  af::tiny<scatterer_pointer, 2> h;
+  af::tiny<scatterer_type *, 2> h;
   af::tiny<cart_t, 2> x_h;
 };
 
@@ -125,7 +125,7 @@ public:
                    site_parameter *pivot_neighbour_1,
                    site_parameter *pivot_neighbour_2,
                    independent_scalar_parameter *length,
-                   scatterer_pointer &hydrogen)
+                   scatterer_type *hydrogen)
     : crystallographic_parameter(5), h(hydrogen)
   {
     set_arguments(pivot,
@@ -141,7 +141,7 @@ public:
   virtual void store(uctbx::unit_cell const &unit_cell) const;
 
 private:
-  scatterer_pointer h;
+  scatterer_type * h;
   cart_t x_h;
 };
 
@@ -157,7 +157,7 @@ public:
                       site_parameter *pivot_neighbour_0,
                       site_parameter *pivot_neighbour_1,
                       independent_scalar_parameter *length,
-                      scatterer_pointer &hydrogen)
+                      scatterer_type *hydrogen)
     : crystallographic_parameter(4), h(hydrogen)
   {
     set_arguments(pivot, pivot_neighbour_0, pivot_neighbour_1, length);
@@ -171,7 +171,7 @@ public:
   virtual void store(uctbx::unit_cell const &unit_cell) const;
 
 private:
-  scatterer_pointer h;
+  scatterer_type * h;
   cart_t x_h;
 };
 
@@ -191,8 +191,8 @@ public:
                             site_parameter *pivot_neighbour,
                             site_parameter *pivot_neighbour_substituent,
                             independent_scalar_parameter *length,
-                            scatterer_pointer &hydrogen_0,
-                            scatterer_pointer &hydrogen_1)
+                            scatterer_type *hydrogen_0,
+                            scatterer_type *hydrogen_1)
     : crystallographic_parameter(4), h(hydrogen_0, hydrogen_1)
   {
     set_arguments(pivot, pivot_neighbour, pivot_neighbour_substituent, length);
@@ -207,7 +207,7 @@ public:
 
 private:
   af::tiny<cart_t, 2> x_h;
-  af::tiny<scatterer_pointer, 2> h;
+  af::tiny<scatterer_type *, 2> h;
 };
 
 
@@ -221,7 +221,7 @@ public:
   terminal_linear_ch_site(site_parameter *pivot,
                           site_parameter *pivot_neighbour,
                           independent_scalar_parameter *length,
-                          scatterer_pointer &hydrogen)
+                          scatterer_type *hydrogen)
     : crystallographic_parameter(3), h(hydrogen)
   {
     set_arguments(pivot, pivot_neighbour, length);
@@ -235,7 +235,7 @@ public:
   virtual void store(uctbx::unit_cell const &unit_cell) const;
 
 private:
-  scatterer_pointer h;
+  scatterer_type * h;
   cart_t x_h;
 };
 

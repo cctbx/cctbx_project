@@ -15,7 +15,7 @@ class special_position_site : public crystallographic_parameter
 {
 public:
   special_position_site(sgtbx::site_symmetry const &site_symmetry,
-                        scatterer_pointer &scatterer)
+                        scatterer_type *scatterer)
     : crystallographic_parameter(1),
       site_constraints(site_symmetry.site_constraints()),
       scatterer(scatterer)
@@ -40,7 +40,7 @@ public:
 private:
   frac_t site;
   sgtbx::site_constraints<double> site_constraints;
-  scatterer_pointer scatterer;
+  scatterer_type * scatterer;
 };
 
 
@@ -55,7 +55,7 @@ public:
 
   special_position_cartesian_adp(sgtbx::site_symmetry const &site_symmetry,
                                  uctbx::unit_cell const &unit_cell,
-                                 scatterer_pointer &scatterer)
+                                 scatterer_type *scatterer)
     : crystallographic_parameter(1),
       adp_constraints(site_symmetry.cartesian_adp_constraints(unit_cell)),
       scatterer(scatterer)
@@ -81,7 +81,7 @@ public:
 private:
   tensor_rank_2_t u_cart;
   adp_constraints_t adp_constraints;
-  scatterer_pointer scatterer;
+  scatterer_type * scatterer;
 };
 
 

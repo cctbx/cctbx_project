@@ -13,12 +13,13 @@ typedef crystallographic_parameter::scatterer_type sc_t;
 
 void exercise_ch3() {
   uctbx::unit_cell uc(af::double6(1, 2, 3, 90, 90, 90));
+  af::shared<sc_t> sc(5);
+  sc_t *c0 = &sc[0], *c1 = &sc[1];
 
-  boost::shared_ptr<sc_t> c1(new sc_t()), c0(new sc_t());
-  af::small<boost::shared_ptr<sc_t>, 3> h;
-  h.push_back(boost::shared_ptr<sc_t>( new sc_t()));
-  h.push_back(boost::shared_ptr<sc_t>( new sc_t()));
-  h.push_back(boost::shared_ptr<sc_t>( new sc_t()));
+  af::small<sc_t *, 3> h;
+  h.push_back(&sc[2]);
+  h.push_back(&sc[3]);
+  h.push_back(&sc[4]);
 
   c1->site = frac_t(-1., -1., -1.);
   c0->site = frac_t( 0.,  0.,  0.);
@@ -113,8 +114,8 @@ void exercise_ch3() {
 void exercise_secondary_ch2() {
   uctbx::unit_cell uc(af::double6(1, 2, 3, 90, 90, 90));
 
-  boost::shared_ptr<sc_t> c0(new sc_t()), c1(new sc_t()), c2(new sc_t()),
-                          h0(new sc_t()), h1(new sc_t());
+  af::shared<sc_t> sc(5);
+  sc_t *c0 = &sc[0], *c1 = &sc[1], *c2 = &sc[2], *h0 = &sc[3], *h1 = &sc[4];
   c0->site = frac_t( 0.,  0.,  0.);
   c0->flags.set_grad_site(true);
   double delta = 0.1;
@@ -191,9 +192,9 @@ void exercise_tertiary_ch() {
   using constants::pi;
   uctbx::unit_cell uc(af::double6(1, 2, 3, 90, 90, 90));
 
-  boost::shared_ptr<sc_t> c(new sc_t()),
-                          x(new sc_t()), y(new sc_t()), z(new sc_t()),
-                          h(new sc_t());
+  af::shared<sc_t> sc(5);
+  sc_t *c = &sc[0], *x = &sc[1], *y = &sc[2], *z = &sc[3], *h = &sc[4];
+
   c->site = frac_t( 0.,  0.,  0.);
   c->flags.set_grad_site(true);
   cart_t u = cart_t(2, -1, 1).normalize(), v = u.ortho(), w = u.cross(v);
@@ -244,9 +245,8 @@ void exercise_tertiary_ch() {
 void exercise_aromatic_ch() {
   using constants::pi;
   uctbx::unit_cell uc(af::double6(1, 2, 3, 90, 90, 90));
-
-  boost::shared_ptr<sc_t> x(new sc_t()), y(new sc_t()), z(new sc_t()),
-                          h(new sc_t());
+  af::shared<sc_t> sc(4);
+  sc_t *x = &sc[0], *y = &sc[1], *z = &sc[2], *h = &sc[3];
   x->site = frac_t( 0.,  0.,  0.);
   x->flags.set_grad_site(true);
   cart_t xy = cart_t(-2, -1, 1).normalize();
@@ -298,9 +298,8 @@ void exercise_aromatic_ch() {
 void exercise_terminal_xh2() {
   using constants::pi;
   uctbx::unit_cell uc(af::double6(1, 2, 3, 90, 90, 90));
-
-  boost::shared_ptr<sc_t> x(new sc_t()), y(new sc_t()), z(new sc_t()),
-                          h0(new sc_t()), h1(new sc_t());
+  af::shared<sc_t> sc(5);
+  sc_t *x = &sc[0], *y = &sc[1], *z = &sc[2], *h0 = &sc[3], *h1 = &sc[4];
   x->site = frac_t( 0.,  0.,  0.);
   x->flags.set_grad_site(true);
   y->site = frac_t( 1., 1., 1.);
@@ -350,7 +349,8 @@ void exercise_acetylenic_ch() {
   using constants::pi;
   uctbx::unit_cell uc(af::double6(1, 2, 3, 90, 90, 90));
 
-  boost::shared_ptr<sc_t> c(new sc_t()), x(new sc_t()), h(new sc_t());
+  af::shared<sc_t> sc(3);
+  sc_t *c = &sc[0], *x = &sc[1], *h = &sc[2];
   c->site = frac_t( 0.,  0.,  0.);
   c->flags.set_grad_site(true);
   x->site = frac_t( 1., 1., 1.);

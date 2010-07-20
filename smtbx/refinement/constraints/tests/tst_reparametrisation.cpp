@@ -11,7 +11,7 @@ using namespace smtbx::refinement::constraints;
 class dependent_site_1 : public site_parameter
 {
 public:
-  dependent_site_1(scatterer_pointer &scatterer,
+  dependent_site_1(scatterer_type *scatterer,
                    site_parameter *site_1,
                    site_parameter *site_2)
     : site_parameter(scatterer, 2)
@@ -37,7 +37,7 @@ public:
 class dependent_site_2 : public site_parameter
 {
 public:
-  dependent_site_2(scatterer_pointer &scatterer,
+  dependent_site_2(scatterer_type *scatterer,
                    site_parameter *site_1,
                    site_parameter *site_2)
   : site_parameter(scatterer, 2)
@@ -63,7 +63,7 @@ public:
 class dependent_site_3 : public site_parameter
 {
 public:
-  dependent_site_3(scatterer_pointer &scatterer,
+  dependent_site_3(scatterer_type *scatterer,
                    site_parameter *site,
                    independent_scalar_parameter *x)
     : site_parameter(scatterer, 2)
@@ -95,7 +95,7 @@ public:
   typedef crystallographic_parameter::scatterer_type sc_t;
 
   uctbx::unit_cell uc;
-  boost::shared_ptr<sc_t> sc1, sc2, sc3, sc4, sc5, sc6, sc7, sc8, sc9, sc10;
+  af::shared<sc_t> sc;
   independent_site_parameter *is1, *is2, *is3, *is4;
 
   site_parameter *s1, *s2, *s3, *s4;
@@ -107,38 +107,36 @@ public:
 
   test_case()
     : uc(af::double6(1, 2, 3, 90, 90, 90)),
-      sc1(new sc_t()), sc2(new sc_t()), sc3(new sc_t()), sc4(new sc_t()),
-      sc5(new sc_t()), sc6(new sc_t()), sc7(new sc_t()), sc8(new sc_t()),
-      sc9(new sc_t()), sc10(new sc_t())
+      sc(11)
   {
-    sc1->site = frac_t( 0.1,  0.2,  0.3);
-    sc1->flags.set_grad_site(true);
-    sc2->site = frac_t(-0.1, -0.2, -0.3);
-    sc2->flags.set_grad_site(true);
-    sc3->site = frac_t( 0.4,  0.3,  0.2);
-    sc4->site = frac_t(-0.5, -0.6, -0.7);
+    sc[1].site = frac_t( 0.1,  0.2,  0.3);
+    sc[1].flags.set_grad_site(true);
+    sc[2].site = frac_t(-0.1, -0.2, -0.3);
+    sc[2].flags.set_grad_site(true);
+    sc[3].site = frac_t( 0.4,  0.3,  0.2);
+    sc[4].site = frac_t(-0.5, -0.6, -0.7);
 
-    sc5->site = frac_t(1, 2, 3);
-    sc6->site = frac_t(4, 5, 6);
-    sc7->site = frac_t(-1, -2, -3);
-    sc8->site = frac_t(-4, -5, -6);
-    sc9->site = frac_t(10, 11, 12);
-    sc10->site = frac_t(20, 21, 22);
+    sc[5].site = frac_t(1, 2, 3);
+    sc[6].site = frac_t(4, 5, 6);
+    sc[7].site = frac_t(-1, -2, -3);
+    sc[8].site = frac_t(-4, -5, -6);
+    sc[9].site = frac_t(10, 11, 12);
+    sc[10].site = frac_t(20, 21, 22);
 
-    is1 = new independent_site_parameter(sc1);
-    is2 = new independent_site_parameter(sc2);
-    is3 = new independent_site_parameter(sc3);
-    is4 = new independent_site_parameter(sc4);
+    is1 = new independent_site_parameter(&sc[1]);
+    is2 = new independent_site_parameter(&sc[2]);
+    is3 = new independent_site_parameter(&sc[3]);
+    is4 = new independent_site_parameter(&sc[4]);
     s1 = is1; s2 = is2; s3 = is3; s4 = is4;
 
-    s5 = new dependent_site_1(sc5, is1, is2);
-    s6 = new dependent_site_1(sc6, is3, is4);
-    s7 = new dependent_site_2(sc7, s5, s2);
-    s8 = new dependent_site_2(sc8, s7, s6);
+    s5 = new dependent_site_1(&sc[5], is1, is2);
+    s6 = new dependent_site_1(&sc[6], is3, is4);
+    s7 = new dependent_site_2(&sc[7], s5, s2);
+    s8 = new dependent_site_2(&sc[8], s7, s6);
 
     s11 = new independent_scalar_parameter(2.);
-    s10 = new dependent_site_3(sc10, s6, s11);
-    s9 = new dependent_site_1(sc9, s10, s3);
+    s10 = new dependent_site_3(&sc[10], s6, s11);
+    s9 = new dependent_site_1(&sc[9], s10, s3);
   }
 
   void check_parameter_status() {
@@ -202,21 +200,21 @@ public:
     SMTBX_ASSERT(!s4->is_variable());
 
     is3->set_variable(true);
-    SMTBX_ASSERT(sc3->flags.grad_site());
-    sc4->flags.set_grad_site(true);
+    SMTBX_ASSERT(sc[3].flags.grad_site());
+    sc[4].flags.set_grad_site(true);
     SMTBX_ASSERT(s4->is_variable());
 
     //*** Shifts ***
-    sc3->flags.set_grad_site(false);
-    sc4->flags.set_grad_site(false);
+    sc[3].flags.set_grad_site(false);
+    sc[4].flags.set_grad_site(false);
     double s11_old = s11->value;
     af::shared<double> s(7, 1.);
     is1->evaluate(uc); is2->evaluate(uc); is3->evaluate(uc); is4->evaluate(uc);
     reparam->apply_shifts(s.const_ref());
-    SMTBX_ASSERT(site_approx_equal(s1->value, (sc1->site + frac_t(1., 1., 1.))));
-    SMTBX_ASSERT(site_approx_equal(s2->value, (sc2->site + frac_t(1., 1., 1.))));
-    SMTBX_ASSERT(site_approx_equal(s3->value, (sc3->site)));
-    SMTBX_ASSERT(site_approx_equal(s4->value, (sc4->site)));
+    SMTBX_ASSERT(site_approx_equal(s1->value, (sc[1].site + frac_t(1., 1., 1.))));
+    SMTBX_ASSERT(site_approx_equal(s2->value, (sc[2].site + frac_t(1., 1., 1.))));
+    SMTBX_ASSERT(site_approx_equal(s3->value, (sc[3].site)));
+    SMTBX_ASSERT(site_approx_equal(s4->value, (sc[4].site)));
     SMTBX_ASSERT(std::abs(s11->value - (s11_old + 1.)) < 1.e-15);
 
     // Clean-up
@@ -236,14 +234,14 @@ public:
     SMTBX_ASSERT(site_approx_equal(s9->value, (frac_t(0.2, -0.3, -0.8))));
 
     reparam->store();
-    SMTBX_ASSERT(site_approx_equal(sc1->site, (frac_t(0.1, 0.2, 0.3))));
-    SMTBX_ASSERT(site_approx_equal(sc2->site, (frac_t(-0.1, -0.2, -0.3))));
-    SMTBX_ASSERT(site_approx_equal(sc3->site, (frac_t(0.4,  0.3,  0.2))));
-    SMTBX_ASSERT(site_approx_equal(sc4->site, (frac_t(-0.5, -0.6, -0.7))));
-    SMTBX_ASSERT(site_approx_equal(sc5->site, (frac_t(0, 0, 0))));
-    SMTBX_ASSERT(site_approx_equal(sc6->site, (frac_t(-0.1, -0.3, -0.5))));
-    SMTBX_ASSERT(site_approx_equal(sc7->site, (frac_t(0.1, 0.2, 0.3))));
-    SMTBX_ASSERT(site_approx_equal(sc8->site, (frac_t(0.2, 0.5, 0.8))));
+    SMTBX_ASSERT(site_approx_equal(sc[1].site, (frac_t(0.1, 0.2, 0.3))));
+    SMTBX_ASSERT(site_approx_equal(sc[2].site, (frac_t(-0.1, -0.2, -0.3))));
+    SMTBX_ASSERT(site_approx_equal(sc[3].site, (frac_t(0.4,  0.3,  0.2))));
+    SMTBX_ASSERT(site_approx_equal(sc[4].site, (frac_t(-0.5, -0.6, -0.7))));
+    SMTBX_ASSERT(site_approx_equal(sc[5].site, (frac_t(0, 0, 0))));
+    SMTBX_ASSERT(site_approx_equal(sc[6].site, (frac_t(-0.1, -0.3, -0.5))));
+    SMTBX_ASSERT(site_approx_equal(sc[7].site, (frac_t(0.1, 0.2, 0.3))));
+    SMTBX_ASSERT(site_approx_equal(sc[8].site, (frac_t(0.2, 0.5, 0.8))));
 
     /* [ jt(i,j) ]_ij = [ dx_j / dx_i ]_ij
      where i runs through independent parameters, and
@@ -357,8 +355,8 @@ public:
     // Test
     check_linearisation(/*s3 and s4 are variable:*/ false);
 
-    sc3->flags.set_grad_site(true);
-    sc4->flags.set_grad_site(true);
+    sc[3].flags.set_grad_site(true);
+    sc[4].flags.set_grad_site(true);
     reparam->analyse_variability();
     check_linearisation(/*s3 and s4 are variable:*/ true);
 

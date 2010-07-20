@@ -15,7 +15,8 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   void exercise_special_position(sgtbx::space_group const &sg) {
     uctbx::unit_cell uc(af::double6(10, 10, 10, 90, 90, 90));
-    boost::shared_ptr<sc_t> sc0(new sc_t()), sc1(new sc_t()), sc2(new sc_t());
+    af::shared<sc_t> sc(3);
+    sc_t *sc0 = &sc[0], *sc1 = &sc[1], *sc2 = &sc[2];
     sc0->site = frac_t(0.1 , 0.01, 0.01 );
     sc0->flags.set_grad_site(true);
     sc1->site = frac_t(0.01, 0.1 , 0.01 );
