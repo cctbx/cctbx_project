@@ -486,7 +486,7 @@ public:
   {
     // Classify parameters
     typedef std::back_insert_iterator<std::vector<parameter *> >
-    all_param_inserter_t;
+            all_param_inserter_t;
     topologist<all_param_inserter_t> t(std::back_inserter(all));
     BOOST_FOREACH(parameter *p, params) t.visit(p);
     whiten(); // only time we need to call that explicitely
@@ -635,7 +635,7 @@ public:
   sparse_matrix_type jacobian_transpose;
 
 private:
-  uctbx::unit_cell const &unit_cell;
+  uctbx::unit_cell unit_cell;
   parameter_array_t all;
   std::size_t n_independents_, n_intermediates_, n_non_trivial_roots_;
 };
