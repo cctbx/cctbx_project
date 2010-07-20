@@ -475,8 +475,9 @@ public:
 
   typedef boost::iterator_range<iterator> range;
 
-  /// Construct from parameters from the range [first, last)
-  /** This object becomes the owner of all the parameter in that range and
+  /// Construction in one go from parameters from the range [first, last)
+  /// and all their direct or indirect arguments.
+  /** This object becomes the owner of all those parameters and
       they will therefore be deallocated when this object is deleted.
    */
   template <class ForwardIteratorType>
@@ -493,6 +494,34 @@ public:
 
     analyse_variability();
   }
+
+  /// Incremental construction
+  //@{
+
+  /// Construct an object without any reparametrisation
+  reparametrisation(uctbx::unit_cell const &unit_cell)
+  : unit_cell(unit_cell)
+  {}
+
+  /// Add a new parameter and all its direct or indirect arguments
+  /** One shall call finalise() after the desired parameters have been added.
+
+      This object takes ownership of those parameters, which will therefore
+      be deallocated when this object is destroyed.
+   */
+  void add(parameter *p) {
+    typedef std::back_insert_iterator<std::vector<parameter *> >
+    all_param_inserter_t;
+    topologist<all_param_inserter_t> t(std::back_inserter(all));
+    t.visit(p);
+  }
+
+  /// Ready this for linearise(), etc.
+  void finalise() {
+    whiten(); // only time we need to call that explicitely
+    analyse_variability();
+  }
+  //@}
 
   /// Walks the computational graph to find constant branches
   /** This member function is to be called every time the variability of
