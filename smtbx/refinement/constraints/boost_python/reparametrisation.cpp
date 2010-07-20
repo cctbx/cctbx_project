@@ -177,9 +177,6 @@ namespace boost_python {
              boost::noncopyable>("independent_scalar_parameter", no_init)
         .def(init<double, bool>((arg("value"), arg("variable")=true)))
         .def_readwrite("value", &wt::value)
-        .def("size", &wt::size)
-        .def("linearise", &wt::linearise, (arg("unit_cell"),
-                                           arg("jacobian_transpose")))
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
@@ -198,8 +195,6 @@ namespace boost_python {
         .def(init<boost::python::tuple>(arg("scatterer")))
         .add_property("value",
                       make_getter(&wt::value, rbv), make_setter(&wt::value))
-        .def("size", &wt::size)
-        .def("store", &wt::store, arg("unit_cell"))
         ;
     }
   };
