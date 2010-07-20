@@ -1258,12 +1258,6 @@ scitbx/wigner/wigner3j.h -text
 smtbx/refinement/constraints/__init__.py -text
 smtbx/refinement/constraints/boost_python/SConscript -text
 smtbx/refinement/constraints/boost_python/constraints_ext.cpp -text
-smtbx/refinement/constraints/boost_python/geometric_hydrogen.cpp -text
-smtbx/refinement/constraints/boost_python/wrappers.h -text
-smtbx/refinement/constraints/constraint_array.h -text
-smtbx/refinement/constraints/geometric_hydrogen.h -text
-smtbx/refinement/constraints/interface.h -text
-smtbx/refinement/constraints/special_positions.h -text
 smtbx/refinement/constraints/tests/tst_constraints.py -text
 smtbx/refinement/minimization.h -text
 smtbx/refinement/minimization.py -text
