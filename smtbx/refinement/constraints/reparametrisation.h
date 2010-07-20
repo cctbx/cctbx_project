@@ -262,7 +262,6 @@ class crystallographic_parameter : public parameter
 {
 public:
   typedef xray::scatterer<> scatterer_type;
-  typedef boost::shared_ptr<scatterer_type> scatterer_pointer;
 
   crystallographic_parameter(std::size_t n_arguments)
     : parameter(n_arguments)
@@ -281,7 +280,7 @@ class site_parameter : public crystallographic_parameter
 public:
   virtual std::size_t size() const;
 
-  site_parameter(scatterer_pointer &scatterer, std::size_t n_arguments)
+  site_parameter(scatterer_type *scatterer, std::size_t n_arguments)
     : crystallographic_parameter(n_arguments),
       scatterer(scatterer)
   {}
@@ -293,7 +292,7 @@ public:
 
 protected:
   /// The scatterer this parameter belongs to
-  scatterer_pointer scatterer;
+  scatterer_type * scatterer;
 };
 
 
@@ -301,7 +300,7 @@ protected:
 class independent_site_parameter : public site_parameter
 {
 public:
-  independent_site_parameter(scatterer_pointer &scatterer)
+  independent_site_parameter(scatterer_type *scatterer)
     : site_parameter(scatterer, 0)
   {}
 
