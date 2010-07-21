@@ -38,4 +38,6 @@ job {
   }
   user_comments = None
     .type = str
+  deleted = False
+    .type = bool
 }
