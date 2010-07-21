@@ -19,7 +19,8 @@ def run(args):
         ("fable.cout --each %swrite_star.f", "return fem::main_with_catch"),
         ("fable.cout %scommon_variants.f",
           'Writing file: "fable_cout_common_report"'),
-        ("fable.cout %ssubroutine_3.f --top-unit-name=sub3",
+        ("fable.cout %ssubroutine_3.f --top-unit-name=sub3"
+         " --fortran-file_comments",
           "nums(i) = i * 20;"),
         ("fable.cout --compile %swrite_star.f",
           "placeholder_please_replace::program_prog);"),
