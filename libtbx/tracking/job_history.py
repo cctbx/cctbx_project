@@ -37,6 +37,14 @@ class job_history (libtbx.tracking.container) :
     self.save_file()
     return job_id
 
+  def replace_job_params (self, current_job) :
+    job_id = current_job.job_id
+    params_stub = self.master_phil.fetch().extract()
+    params_stub.job_summary.append(current_job)
+    final_phil = self.master_phil.format(python_object=params_stub)
+    self.working_phil.objects[job_id + 1] = final_phil.objects[1]
+    self.save_file()
+
   def finish_job (self, job_id, status="complete", r_free=None) :
     assert (status in ["failed", "aborted", "complete", "deleted"])
     assert (r_free is None or isinstance(r_free, float))
@@ -45,11 +53,27 @@ class job_history (libtbx.tracking.container) :
     current_job.time_finished = time.time()
     current_job.status = status
     current_job.r_free = r_free
-    params_stub = self.master_phil.fetch().extract()
-    params_stub.job_summary.append(current_job)
-    final_phil = self.master_phil.format(python_object=params_stub)
-    self.working_phil.objects[job_id + 1] = final_phil.objects[1]
-    self.save_file()
+    self.replace_job_params(current_job)
+
+  def set_job_status (self, job_id, status) :
+    current_job = self.params.job_summary[job_id]
+    assert (current_job.job_id == job_id)
+    if current_job.time_finished is None :
+      current_job.time_finished = time.time()
+    current_job.status = status
+    self.replace_job_params(current_job)
+    return current_job
+
+  def abort_job (self, job_id) :
+    self.set_job_status(job_id, "aborted")
+
+  def job_error (self, job_id) :
+    self.set_job_status(job_id, "failed")
+
+  def delete_job (self, job_id, remove_directory=True) :
+    current_job = self.set_job_status(job_id, "deleted")
+    if remove_directory and (current_job.result_directory is not None) :
+      shutil.rmtree(current_job.result_directory)
 
 def exercise (detailed_timings=False) :
   if os.path.isfile("jobs.phil") :

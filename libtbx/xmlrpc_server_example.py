@@ -59,10 +59,14 @@ try :
         self.port = string.atoi(port)
         self.xmlrpc_server = external_xmlrpc_server(("localhost", self.port),
                                                     self)
+        if self.verbose :
+          print "Listening on port %s" % port
       cctbx_port = os.environ.get("CCTBX_XMLRPC_PORT", None)
       if cctbx_port is not None :
-        uri = "http://localhost:%d/RPC2" % cctbx_port
+        uri = "http://localhost:%s/RPC2" % cctbx_port
         self.cctbx_server = xmlrpclib.ServerProxy(uri=uri)
+        if self.verbose :
+          print "Connecting to XML-RPC server on port %s" % cctbx_port
 
     def start_server (self) :
       if self.xmlrpc_server is not None :
@@ -74,6 +78,10 @@ try :
       t = threading.Thread(target=self.start_server)
       t.setDaemon(1)
       t.start()
+
+    def set_socket_timeout (self, timeout) :
+      if self.xmlrpc_server is not None :
+        self.xmlrpc_server.socket.settimeout(timeout)
 
     def timeout_func (self, *args) :
       if self.xmlrpc_server is not None :
@@ -105,7 +113,7 @@ except ImportError :
   def external_cctbx_interface (*args, **kwds) :
     raise Exception("SimpleXMLRPCServer not available on this platform.")
 
-if __name__ == "__main__" :
+def test_server () :
   class test_module (object) :
     def echo_test (self) :
       print "hello, world!"
@@ -118,5 +126,19 @@ if __name__ == "__main__" :
   module_object = test_module()
   test_server.add_module(module_object)
   test_server.start_server()
+
+def coot_server () :
+  server = external_xmlrpc_interface("COOT",
+    auto_start=False,
+    verbose=True)
+  server.set_socket_timeout(0.01)
+  import coot
+  import gobject
+  server.add_module(coot)
+  gobject.timeout_add(200, server.timeout_func)
+
+if __name__ == "__main__" :
+  #test_server()
+  coot_server()
 
 #---end

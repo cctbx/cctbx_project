@@ -72,6 +72,13 @@ job {
     self.save_file()
     return True
 
+  def delete_job (self) :
+    delete_phil = libtbx.phil.parse("""job.deleted = True""")
+    self.working_phil = self.master_phil.fetch(
+      sources=[self.working_phil,delete_phil])
+    self.save_file()
+    return True
+
 #-----------------------------------------------------------------------
 def exercise (detailed_timings=False, verbose=False) :
   import time, string
