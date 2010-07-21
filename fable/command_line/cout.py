@@ -70,6 +70,7 @@ class process(object):
       top_unit_name=opts.top_unit_name,
       include_guard_suffix=opts.include_guard_suffix,
       dynamic_parameters=O.dynamic_parameters,
+      fortran_file_comments=opts.fortran_file_comments,
       fem_do_safe=not opts.no_fem_do_safe,
       arr_nd_size_max=opts.arr_nd_size_max,
       inline_all=opts.inline_all,
@@ -139,6 +140,9 @@ def run(args):
       type="str",
       metavar="STRING",
       help='example: --dynamic_parameter="int array_size=100"')
+    .option(None, "--fortran_file_comments",
+      action="store_true",
+      default=False)
     .option(None, "--no_fem_do_safe",
       action="store_true",
       default=False)

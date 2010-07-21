@@ -348,6 +348,7 @@ class global_conversion_info(object):
   __slots__ = [
     "topological_units",
     "dynamic_parameters",
+    "fortran_file_comments",
     "fem_do_safe",
     "arr_nd_size_max",
     "inline_all",
@@ -361,6 +362,7 @@ class global_conversion_info(object):
   def __init__(O,
         topological_units,
         dynamic_parameters,
+        fortran_file_comments,
         fem_do_safe,
         arr_nd_size_max,
         inline_all,
@@ -370,6 +372,7 @@ class global_conversion_info(object):
         data_specializations):
     O.topological_units = topological_units
     O.dynamic_parameters = dynamic_parameters
+    O.fortran_file_comments = fortran_file_comments
     O.fem_do_safe = fem_do_safe
     O.arr_nd_size_max = arr_nd_size_max
     O.inline_all = inline_all
@@ -2054,6 +2057,11 @@ def export_save_struct(callback, conv_info):
       for line in buffer:
         callback(line)
 
+def produce_fortran_file_comment(conv_info, callback):
+  if (conv_info.fortran_file_comments):
+    callback("// Fortran file: %s"
+      % conv_info.unit.body_lines[0].source_line_cluster[0].file_name)
+
 def convert_to_cpp_function(
       cpp_callback,
       hpp_callback,
@@ -2144,6 +2152,7 @@ def convert_to_cpp_function(
     callback("")
     if (callback is cpp_callback):
       produce_leading_comments(callback=callback, unit=conv_info.unit)
+      produce_fortran_file_comment(conv_info=conv_info, callback=callback)
     if (conv_info.inline_all):
       callback("inline")
     callback(cdecl)
@@ -2660,6 +2669,7 @@ def convert_program(callback, global_conv_info, namespace, hpp_guard, debug):
     main_calls.append(cname)
     callback("")
     produce_leading_comments(callback=callback, unit=unit)
+    produce_fortran_file_comment(conv_info=conv_info, callback=callback)
     callback("""\
 void
 %s(
@@ -2726,6 +2736,7 @@ def process(
       include_guard_suffix=None,
       top_cpp_file_name=None,
       dynamic_parameters=None,
+      fortran_file_comments=False,
       fem_do_safe=True,
       arr_nd_size_max=default_arr_nd_size_max,
       inline_all=False,
@@ -2924,6 +2935,7 @@ def process(
   global_conv_info = global_conversion_info(
     topological_units=topological_units,
     dynamic_parameters=dynamic_parameters,
+    fortran_file_comments=fortran_file_comments,
     fem_do_safe=fem_do_safe,
     arr_nd_size_max=arr_nd_size_max,
     inline_all=inline_all,
