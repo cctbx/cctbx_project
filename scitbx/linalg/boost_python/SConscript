@@ -10,26 +10,29 @@ source = [
   "cholesky.cpp",
   "householder.cpp",
   "svd.cpp",
-  "eigensystem.cpp"]
+  "eigensystem.cpp",
+  "lapack_dsyev_bpl.cpp"]
 
 env = env_scitbx_boost_python_ext.Clone()
+env_fem = env.Clone()
+env_etc.enable_more_warnings(env=env_fem)
 
 if (libtbx.env.has_module("fable")):
   lapack_fem_dir = libtbx.env.find_in_repositories(relative_path="lapack_fem")
   if (lapack_fem_dir is not None):
-    env_fem = env.Clone()
-    env_etc.enable_more_warnings(env=env_fem)
     env_etc.include_registry.append(
       env=env_fem,
       paths=[
         op.dirname(lapack_fem_dir),
         env_etc.fable_include])
-    lapack_fem_obj = env_fem.SharedObject(source="lapack_dsyev_bpl.cpp")
-    env_ext = env.Clone()
-    env_ext.Append(SHCXXFLAGS=["-DSCITBX_LAPACK_FEM"])
-    ext_obj = env_ext.SharedObject(source=source[:1])
-    source[0] = ext_obj
-    source.append(lapack_fem_obj)
+    env_fem.Append(SHCXXFLAGS=["-DSCITBX_LAPACK_FEM"])
+
+lapack_for_a = libtbx.env.under_build(path="lib/lapack_for.a")
+if (op.isfile(lapack_for_a)):
+  env_fem.Append(SHCXXFLAGS=["-DSCITBX_LAPACK_FOR"])
+  env.Prepend(LIBS=[File(lapack_for_a)])
+
+source[-1] = env_fem.SharedObject(source=[source[-1]])
 
 # TODO env_etc.enable_more_warnings(env=env)
 env.SharedLibrary(target="#lib/scitbx_linalg_ext", source=source)

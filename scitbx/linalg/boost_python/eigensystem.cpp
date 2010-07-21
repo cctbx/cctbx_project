@@ -33,6 +33,7 @@ namespace scitbx { namespace matrix { namespace boost_python {
     }
   };
 
+  // simlar to time_dsyev_*()
   vec3<double>
   time_eigensystem_real_symmetric(
     sym_mat3<double> const& m, std::size_t n_repetitions)

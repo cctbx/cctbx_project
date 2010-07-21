@@ -6,31 +6,6 @@ from scitbx.math.tests.tst_math import matrix_mul
 import random
 import time
 
-def compare_times(max_n_power=8):
-  dsyev = scitbx.linalg.lapack_dsyev
-  mt = flex.mersenne_twister(seed=0)
-  show_tab_header = True
-  for n_power in xrange(5,max_n_power+1):
-    n = 2**n_power
-    l = mt.random_double(size=n*(n+1)//2) * 2 - 1
-    a = l.matrix_packed_l_as_symmetric()
-    aes = a.deep_copy()
-    ala = a.deep_copy()
-    wla = flex.double(n, -1e100)
-    t0 = time.time()
-    es = eigensystem.real_symmetric(aes)
-    tes = time.time() - t0
-    t0 = time.time()
-    info = dsyev(jobz="V", uplo="U", a=ala, w=wla)
-    assert info == 0
-    tla = time.time() - t0
-    assert approx_equal(list(reversed(es.values())), wla)
-    if (show_tab_header):
-      print "      time [s]     eigenvalues"
-      print " n    es    la     min    max"
-      show_tab_header = False
-    print "%3d %5.2f %5.2f [%6.2f %6.2f]" % (n, tes, tla, wla[0], wla[-1])
-
 def exercise_eigensystem():
   s = eigensystem.real_symmetric(
     m=flex.double(flex.grid(0,0)),
@@ -100,15 +75,15 @@ def exercise_eigensystem():
   assert v == (0,0,0)
   print "time_eigensystem_real_symmetric: %.3f micro seconds" % (
     (time.time() - t0)/n_repetitions*1.e6)
-  time_dsyev = getattr(scitbx.linalg, "time_lapack_dsyev", None)
-  if (time_dsyev is not None):
-    v = time_dsyev(m, 2) # to trigger one-time initialization of SAVE variables
-    t0 = time.time()
-    v = time_dsyev(m, n_repetitions)
-    assert v == (0,0,0)
-    print "time_lapack_dsyev: %.3f micro seconds" % (
-      (time.time() - t0)/n_repetitions*1.e6)
-    compare_times()
+  for fxx in ["fem", "for"]:
+    time_dsyev = getattr(scitbx.linalg, "time_lapack_dsyev_"+fxx, None)
+    if (time_dsyev is not None):
+      v = time_dsyev(m, 2) # to trigger one-time initialization
+      t0 = time.time()     # of SAVE variables
+      v = time_dsyev(m, n_repetitions)
+      assert v == (0,0,0)
+      print "time_lapack_dsyev_fem: %.3f micro seconds" % (
+        (time.time() - t0)/n_repetitions*1.e6)
   #
   s = eigensystem.real_symmetric(m=m)
   assert s.min_abs_pivot() > 0
@@ -125,8 +100,41 @@ def exercise_eigensystem():
   assert s.min_abs_pivot() == 0
   assert approx_equal(s.values(), [3,2,1])
 
+def compare_times(max_n_power=8):
+  dsyev_impls = [getattr(scitbx.linalg, "lapack_dsyev_"+fxx, None)
+    for fxx in ["fem", "for"]]
+  mt = flex.mersenne_twister(seed=0)
+  show_tab_header = True
+  tfmt = "%5.2f"
+  for n_power in xrange(5,max_n_power+1):
+    n = 2**n_power
+    l = mt.random_double(size=n*(n+1)//2) * 2 - 1
+    a = l.matrix_packed_l_as_symmetric()
+    aes = a.deep_copy()
+    ala = [a.deep_copy(), a.deep_copy()]
+    wla = [flex.double(n, -1e100), flex.double(n, -1e100)]
+    t0 = time.time()
+    es = eigensystem.real_symmetric(aes)
+    tab = [n, tfmt % (time.time() - t0)]
+    for i in xrange(2):
+      if (dsyev_impls[i] is None):
+        tab.append(" --- ")
+      else:
+        t0 = time.time()
+        info = dsyev_impls[i](jobz="V", uplo="U", a=ala[i], w=wla[i])
+        assert info == 0
+        tab.append(tfmt % (time.time() - t0))
+        assert approx_equal(list(reversed(es.values())), wla[i])
+    if (show_tab_header):
+      print "      time [s]           eigenvalues"
+      print " n    es   fem   for     min    max"
+      show_tab_header = False
+    tab.extend([es.values()[-1], es.values()[0]])
+    print "%3d %s %s %s [%6.2f %6.2f]" % tuple(tab)
+
 def run():
   exercise_eigensystem()
+  compare_times()
   print 'OK'
 
 if __name__ == '__main__':
