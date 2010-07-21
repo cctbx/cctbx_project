@@ -1,8 +1,8 @@
 def exercise():
   import scitbx.linalg
-  lapack_dsyev = getattr(scitbx.linalg, "lapack_dsyev", None)
+  lapack_dsyev = getattr(scitbx.linalg, "lapack_dsyev_fem", None)
   if (lapack_dsyev is None):
-    print "Skipping tests: lapack_dsyev not available."
+    print "Skipping tests: lapack_dsyev_fem not available."
     return
   from scitbx.array_family import flex
   from scitbx.math.tests.tst_math import matrix_mul
