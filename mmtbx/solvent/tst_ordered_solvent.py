@@ -62,6 +62,11 @@ def exercise_1(pdb_file):
            rf_tol   = 0.01,
            n_water  = 186,
            n_water_tol = 0)
+  opt5 = "ordered_solvent.use_kick_maps=True output.serial=2"
+  cmd = " ".join(["phenix.refine", new_pdb, hkl, opt1, opt2, opt3, opt4, opt5])
+  print cmd
+  print
+  easy_run.call(cmd)
   easy_run.call("rm -rf %s"%new_pdb)
 
 def run():
