@@ -1119,13 +1119,13 @@ class unit_p_methods(object):
       if (i < 0):
         ssl.raise_syntax_error_or_not_implemented()
       if (i == 7):
-        common_name = None
+        common_name = "commonymous"
         i_code = 8
       else:
         common_name = ssl[7:i].extract_identifier()
         i_code = i + 1
     else:
-      common_name = None
+      common_name = "commonymous"
       i_code = 6
     extract_fdecl(
       result=O.common.get(key=common_name),

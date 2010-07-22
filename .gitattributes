@@ -406,6 +406,7 @@ fable/test/valid/common_name_clash_2.f -text
 fable/test/valid/common_name_clash_3.f -text
 fable/test/valid/common_save_members.f -text
 fable/test/valid/common_variants.f -text
+fable/test/valid/commonymous.f -text
 fable/test/valid/const_analysis_1.f -text
 fable/test/valid/const_analysis_2.f -text
 fable/test/valid/const_expressions.f -text
