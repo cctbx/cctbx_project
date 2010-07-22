@@ -319,6 +319,9 @@ class index (object) :
       self._phil_has_changed = True
       self.params = None
 
+  def erase_scope (self, phil_scope) :
+    delete_phil_objects(self.working_phil, phil_scope)
+
   # Safe wrapper of merge_phil for loading parameter files from GUI
   def merge_param_file (self, file_name) :
     if not os.path.isfile(file_name) :

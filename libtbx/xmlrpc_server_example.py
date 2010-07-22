@@ -6,6 +6,8 @@
 # recent version of Python and support for either persistent Python threads
 # or some sort of timer callback should be able to use it.
 
+DEFAULT_PORT = 40000
+
 import os, sys, time, string, signal
 import xmlrpclib
 
@@ -54,7 +56,7 @@ try :
         self.supported_modules.append(module_object)
 
     def setup_server (self) :
-      port = os.environ.get("CCTBX_%s_PORT" % self.program_id, None)
+      port = os.environ.get("CCTBX_%s_PORT" % self.program_id, DEFAULT_PORT)
       if port is not None :
         self.port = string.atoi(port)
         self.xmlrpc_server = external_xmlrpc_server(("localhost", self.port),
