@@ -505,6 +505,7 @@ fable/test/valid/goto_forms.f -text
 fable/test/valid/goto_last_do.f -text
 fable/test/valid/goto_spaghetti.f -text
 fable/test/valid/goto_target_before_else.f -text
+fable/test/valid/hollerith.f -text
 fable/test/valid/if_arithmetic.f -text
 fable/test/valid/if_cond_if_arithmetic.f -text
 fable/test/valid/if_else_endif.f -text

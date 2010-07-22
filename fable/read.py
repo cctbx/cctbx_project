@@ -233,6 +233,20 @@ class stripped_source_line(raise_errors_mixin):
         i = O.index_of_closing_parenthesis(start=i) + 1
     return -1
 
+def get_hollerith_count_index(code):
+  i = len(code)
+  while (i != 0):
+    i -= 1
+    c = code[i]
+    digit = "0123456789".find(c)
+    if (digit < 0):
+      if (i+1 == len(code)):
+        return None
+      if (",(/$".find(c) >= 0):
+        return i+1
+      return None
+  return None
+
 class stripped_source_line_slice(stripped_source_line):
 
   __slots__ = stripped_source_line.__slots__
@@ -291,9 +305,46 @@ def strip_spaces_separate_strings(source_line_cluster):
         strings.append("".join(string_chars))
         strings_locs.append(string_chars_locs)
       elif (" \t".find(c) < 0):
-        ca(c.lower())
-        la((sl,i))
-        i += 1
+        c = c.lower()
+        if (c == 'h'):
+          j = get_hollerith_count_index(code)
+        else:
+          j = None
+        if (j is None):
+          ca(c.lower())
+          la((sl,i))
+          i += 1
+        else:
+          hollerith_count = int("".join(code[j:]))
+          del code[j:]
+          del locs[j:]
+          string_indices.append(len(code))
+          ca("'")
+          la((sl,i))
+          i += 1
+          string_chars = []
+          string_chars_locs = []
+          while True:
+            if (i < n):
+              string_chars.append(s[i])
+              string_chars_locs.append((sl,i))
+              i += 1
+              if (len(string_chars) == hollerith_count):
+                break
+            else:
+              i_sl += 1
+              if (i_sl == n_sl):
+                break
+              sl = source_line_cluster[i_sl]
+              s = sl.stmt
+              n = len(s)
+              i = 0
+          if (len(string_chars) != hollerith_count):
+            locs[-1][0].raise_error(
+              msg="Missing characters for Hollerith constant",
+              i=locs[-1][1])
+          strings.append("".join(string_chars))
+          strings_locs.append(string_chars_locs)
       else:
         i += 1
     i_sl += 1

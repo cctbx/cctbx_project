@@ -2889,6 +2889,23 @@ struct common_com
   int variable_xor_eq = variable_xor + 100;
   write(6, star), variable_xor_eq;
 """)
+  #
+  lines = get("hollerith.f")
+  assert not absd(lines, tail_off(1), """\
+  if (is_called_first_time) {
+    static const char* values[] = {
+      "X", "Yz", "PqR", "STuv"
+    };
+    fem::data_of_type_str(FEM_VALUES_AND_SIZE),
+      hols;
+  }
+  write(6, "('a','cD','eFg','HijK','LMnOPqRstUvWxyZ@#','   ','$')");
+  write(6, "(4('[',a,']'))"), hols;
+  show(cmn, "x", 1);
+  show(cmn, "Us", 2);
+  show(cmn, "PdW", 3);
+  show(cmn, "rTiTGBrDYtATTSwDkSw", 19);
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(
