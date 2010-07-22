@@ -75,12 +75,12 @@ class manager(object):
       from mmtbx import map_tools
       km = map_tools.kick_map(
         fmodel            = self.fmodel,
-        map_type          = map_type,
-        resolution_factor = self.params.resolution_factor,
-        symmetry_flags    = maptbx.use_space_group_symmetry)#,
-        #average_maps      = True) # XXX BUG
-      fft_map = km.fft_map
-      fft_map_data = km.map_data # XXX map is already sigma scaled
+        map_type          = map_type)
+      fft_map = km.map_coeffs.fft_map(
+        resolution_factor=self.params.resolution_factor,
+        symmetry_flags=maptbx.use_space_group_symmetry)
+      fft_map.apply_sigma_scaling()
+      fft_map_data = fft_map.real_map_unpadded()
       map_units = "sigma"
     else:
       fft_map = self.fmodel.electron_density_map().\
