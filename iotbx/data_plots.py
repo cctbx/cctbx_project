@@ -110,6 +110,7 @@ class table_data (object) :
     self._is_complete = False
     self._graphs = {}
     self._column_width = 10
+    self.plot_type = "GRAPH"
 
   def add_graph (self, name, type, columns) :
     if self.graph_names is None :
@@ -143,8 +144,12 @@ class table_data (object) :
       elif line.startswith("$TABLE") :
         self.title = initial_spaces.sub("", line.split(":")[1])
         #re.sub("\ *:\ *$", "", line[8:]))
-      elif line[0:7] == "$GRAPHS" :
+      elif line.startswith("$GRAPHS") :
         graph_lines = line[8:]
+        self.plot_type = "GRAPH"
+      elif line.startswith("$SCATTER") :
+        graph_lines = line[9:]
+        self.plot_type = "SCATTER"
       elif graph_lines is not None and sections_passed == 0 :
         graph_lines += line
       elif sections_passed == 1 :
