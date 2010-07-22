@@ -2906,6 +2906,11 @@ struct common_com
   show(cmn, "PdW", 3);
   show(cmn, "rTiTGBrDYtATTSwDkSw", 19);
 """)
+  #
+  lines = get("commonymous.f")
+  assert not absd(lines, head_off(1), """\
+struct common_commonymous
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(
