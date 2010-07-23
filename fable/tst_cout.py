@@ -2932,6 +2932,23 @@ struct common_commonymous
     }
   }
 """)
+  #
+  lines = get("hexadecimal.f")
+  assert not absd(lines, tail_off(1), """\
+  if (is_called_first_time) {
+    static const int values[] = {
+      0xfe, 0xdcba
+    };
+    fem::data_of_type<int>(FEM_VALUES_AND_SIZE),
+      nums;
+  }
+  write(6, star), 0xA;
+  write(6, star), 0xAB;
+  write(6, star), 0xABC;
+  write(6, star), 0xABCD;
+  write(6, star), 0x7FFFFFFF;
+  write(6, star), nums;
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(
