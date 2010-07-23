@@ -233,6 +233,8 @@ def convert_token(vmap, leading, tok):
     return "true"
   if (tok.is_integer()):
     return tv
+  if (tok.is_hexadecimal()):
+    return "0x"+tv
   if (tok.is_real()):
     return tv+"f"
   if (tok.is_double_precision()):
@@ -1237,6 +1239,7 @@ def convert_data(conv_info, data_init_scope):
         and len(tok_types) == 1):
       homogeneous_ctype = {
         "integer": "int",
+        "hexadecimal": "int",
         "real": "float",
         "double_precision": "double",
         "logical": "bool",

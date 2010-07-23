@@ -18,6 +18,7 @@ class token(object):
     return [
       "identifier",
       "integer",
+      "hexadecimal",
       "real",
       "double_precision",
       "logical",
@@ -32,32 +33,33 @@ class token(object):
 
   def is_identifier(O): return O.typeid == 0
   def is_integer(O): return O.typeid == 1
-  def is_real(O): return O.typeid == 2
-  def is_double_precision(O): return O.typeid == 3
-  def is_logical(O): return O.typeid == 4
-  def is_string(O): return O.typeid == 5
-  def is_op(O): return O.typeid == 6
-  def is_complex(O): return O.typeid == 7
-  def is_seq(O): return O.typeid == 8
-  def is_parentheses(O): return O.typeid == 9
-  def is_implied_do(O): return O.typeid == 10
-  def is_power(O): return O.typeid == 11
-  def is_format(O): return O.typeid == 12
+  def is_hexadecimal(O): return O.typeid == 2
+  def is_real(O): return O.typeid == 3
+  def is_double_precision(O): return O.typeid == 4
+  def is_logical(O): return O.typeid == 5
+  def is_string(O): return O.typeid == 6
+  def is_op(O): return O.typeid == 7
+  def is_complex(O): return O.typeid == 8
+  def is_seq(O): return O.typeid == 9
+  def is_parentheses(O): return O.typeid == 10
+  def is_implied_do(O): return O.typeid == 11
+  def is_power(O): return O.typeid == 12
+  def is_format(O): return O.typeid == 13
 
   def is_identifier_or_scalar_number(O):
-    return O.typeid <= 3
+    return O.typeid <= 4
 
   def is_op_with(O, value):
-    return O.typeid == 6 and O.value == value
+    return O.typeid == 7 and O.value == value
 
   def is_unary_plus_or_minus(O):
-    return O.typeid == 6 and O.value in ["+", "-"]
+    return O.typeid == 7 and O.value in ["+", "-"]
 
   def is_seq_or_parentheses(O):
-    return 8 <= O.typeid <= 9
+    return 9 <= O.typeid <= 10
 
   def is_seq_or_parentheses_or_implied_do(O):
-    return 8 <= O.typeid <= 10
+    return 9 <= O.typeid <= 11
 
   def stmt_location(O):
     return O.ssl.stmt_location(i=O.i_code)
@@ -98,17 +100,18 @@ class token(object):
 
 def tk_identifier(ssl, i_code, value): return token(0, ssl, i_code, value)
 def tk_integer(ssl, i_code, value): return token(1, ssl, i_code, value)
-def tk_real(ssl, i_code, value): return token(2, ssl, i_code, value)
-def tk_double_precision(ssl, i_code, value): return token(3, ssl, i_code, value)
-def tk_logical(ssl, i_code, value): return token(4, ssl, i_code, value)
-def tk_string(ssl, i_code, value): return token(5, ssl, i_code, value)
-def tk_op(ssl, i_code, value): return token(6, ssl, i_code, value)
-def tk_complex(ssl, i_code, value): return token(7, ssl, i_code, value)
-def tk_seq(ssl, i_code, value): return token(8, ssl, i_code, value)
-def tk_parentheses(ssl, i_code, value): return token(9, ssl, i_code, value)
-def tk_implied_do(ssl, i_code, value): return token(10, ssl, i_code, value)
-def tk_power(ssl, i_code, value): return token(11, ssl, i_code, value)
-def tk_format(ssl, i_code, value): return token(12, ssl, i_code, value)
+def tk_hexadecimal(ssl, i_code, value): return token(2, ssl, i_code, value)
+def tk_real(ssl, i_code, value): return token(3, ssl, i_code, value)
+def tk_double_precision(ssl, i_code, value): return token(4, ssl, i_code, value)
+def tk_logical(ssl, i_code, value): return token(5, ssl, i_code, value)
+def tk_string(ssl, i_code, value): return token(6, ssl, i_code, value)
+def tk_op(ssl, i_code, value): return token(7, ssl, i_code, value)
+def tk_complex(ssl, i_code, value): return token(8, ssl, i_code, value)
+def tk_seq(ssl, i_code, value): return token(9, ssl, i_code, value)
+def tk_parentheses(ssl, i_code, value): return token(10, ssl, i_code, value)
+def tk_implied_do(ssl, i_code, value): return token(11, ssl, i_code, value)
+def tk_power(ssl, i_code, value): return token(12, ssl, i_code, value)
+def tk_format(ssl, i_code, value): return token(13, ssl, i_code, value)
 
 class ssl_iterator(object):
   "stripped source line iterator"
@@ -162,6 +165,12 @@ class ssl_iterator(object):
           ssl=ssl,
           i_code=i_code,
           value=ssl.strings[ssl.string_indices.index(i_code)])
+      if (c == "x" and code.startswith("'", i_code+1)):
+        O.i += 2
+        return tk_hexadecimal(
+          ssl=ssl,
+          i_code=i_code,
+          value=ssl.strings[ssl.string_indices.index(i_code+1)])
       j = identifier_scan(code=code, start=i_code)
       if (j > 0):
         O.i = j
