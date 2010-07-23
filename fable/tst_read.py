@@ -568,6 +568,14 @@ Missing terminating ' within character format specifier "(')":""")
   |      read + name|
 --------------^""")
   else: raise Exception_expected
+  try:
+    fail("bare_print.f")
+  except Error, e:
+    assert str(e).startswith("Syntax error:")
+    assert str(e).endswith("""\
+  |      print|
+-------------^""")
+  else: raise Exception_expected
 
 def exercise_semantic_error(verbose):
   t_dir = libtbx.env.under_dist(

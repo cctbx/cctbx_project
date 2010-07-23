@@ -328,6 +328,7 @@ fable/test/syntax_error/bad_true.f -text
 fable/test/syntax_error/bare_data.f -text
 fable/test/syntax_error/bare_external.f -text
 fable/test/syntax_error/bare_integer_i.f -text
+fable/test/syntax_error/bare_print.f -text
 fable/test/syntax_error/closing_parenthesis_without_matching.f -text
 fable/test/syntax_error/common_with_data_size.f -text
 fable/test/syntax_error/data_plus_repetition.f -text
@@ -549,6 +550,7 @@ fable/test/valid/passing_arrays_2.f -text
 fable/test/valid/passing_strings.f -text
 fable/test/valid/power.f -text
 fable/test/valid/power_2.f -text
+fable/test/valid/print.f -text
 fable/test/valid/read_end.f -text
 fable/test/valid/read_end_empty.f -text
 fable/test/valid/read_end_err.f -text

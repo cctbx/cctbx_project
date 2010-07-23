@@ -56,6 +56,10 @@ class raise_errors_mixin(object):
   def raise_semantic_error(O, msg=None, i=None):
     O.raise_error(msg=msg, i=i, ErrorType=SemanticError)
 
+  def raise_internal_error(O, i=None):
+    O.raise_error(
+      msg="Sorry: fable internal error", i=i, ErrorType=AssertionError)
+
 class source_line(raise_errors_mixin):
 
   __slots__ = [
@@ -999,10 +1003,11 @@ class ei_open(executable_info):
     O.s4it_slots(callback, O.olist)
 
 class ei_print(executable_info):
-  __slots__ = mksl()
+  __slots__ = mksl("cilist", "iolist", "fmt_tokens")
 
   def search_for_id_tokens(O, callback):
-    pass # TODO
+    O.s4it_slots(callback, O.cilist)
+    O.s4it(callback, O.iolist)
 
 class ei_read(executable_info):
   __slots__ = mksl("cilist", "iolist", "fmt_tokens")
@@ -1505,7 +1510,21 @@ class unit_p_methods(object):
       O.parameter.append((key_token, tokens_l.value[2:]))
 
   def p_print(O, ssl, start):
-    O.executable.append(ei_print(ssl=ssl, start=start)) # TODO
+    tz = tokenization.ssl_iterator(ssl=ssl, start=start+5)
+    fmt_buffer = []
+    tz.collect_comma_separated_expressions(
+      callback=fmt_buffer.append,
+      first_get_optional=False,
+      stop_after_given_number_of_commas=1)
+    assert len(fmt_buffer) == 1
+    cilist = collect_io_cilist(tz=None, fmt=fmt_buffer[0].value)
+    fmt_tokens = None
+    if (len(cilist.fmt) == 1 and cilist.fmt[0].is_string()):
+      fmt_tokens = list(tokenization.fss_iterator(
+        fss=fmt_string_stripped(fmt_tok=cilist.fmt[0])))
+    iolist = collect_iolist(tz=tz)
+    O.executable.append(ei_print(ssl=ssl, start=start,
+      cilist=cilist, fmt_tokens=fmt_tokens, iolist=iolist))
 
   def p_read_write(O, ssl, start, ei_type):
     tz = tokenization.ssl_iterator(ssl=ssl, start=start)
@@ -1521,17 +1540,9 @@ class unit_p_methods(object):
     if (ei_type is ei_write and cilist.end is not None):
       cilist.end[0].raise_semantic_error(
         msg="END is invalid for WRITE statements")
-    iolist = []
-    tok = tz.look_ahead(optional=True)
-    if (tok is not None):
-      if (tok.is_op_with(value=",")):
-        tz.get()
-      tz.collect_comma_separated_expressions(
-        callback=iolist.append,
-        enable_implied_do=1)
-      iolist = tokenization.remove_redundant_parentheses(tokens=iolist)
+    iolist = collect_iolist(tz=tz)
     O.executable.append(ei_type(ssl=ssl, start=start,
-      cilist=cilist, iolist=iolist, fmt_tokens=fmt_tokens))
+      cilist=cilist, fmt_tokens=fmt_tokens, iolist=iolist))
     O.uses_io = True
 
   def p_read(O, ssl, start):
@@ -1551,7 +1562,7 @@ class unit_p_methods(object):
       else:
         ssl.raise_syntax_error(i=start+5)
       O.executable.append(ei_read(ssl=ssl, start=start,
-        cilist=None, iolist=iolist))
+        cilist=None, fmt_tokens=None, iolist=iolist))
     elif (code.startswith("(", start+4)):
       O.p_read_write(ssl=ssl, start=start+4, ei_type=ei_read)
     else:
@@ -1645,8 +1656,13 @@ class collect_io_cilist(object):
 
   __slots__ = ["unit", "fmt", "rec", "iostat", "err", "end"]
 
-  def __init__(O, tz):
-    collect_keyword_arguments(O=O, tz=tz, n_implied=2)
+  def __init__(O, tz, fmt=None):
+    if (fmt is None):
+      collect_keyword_arguments(O=O, tz=tz, n_implied=2)
+    else:
+      for known in O.__slots__:
+        setattr(O, known, None)
+      O.fmt = fmt
 
 class collect_io_olist(object):
   "Open List f77_std 12.10.1"
@@ -1696,6 +1712,18 @@ class collect_io_alist(object):
       O.unit = unit
       O.iostat = None
       O.err = None
+
+def collect_iolist(tz):
+  result = []
+  tok = tz.look_ahead(optional=True)
+  if (tok is not None):
+    if (tok.is_op_with(value=",")):
+      tz.get()
+    tz.collect_comma_separated_expressions(
+      callback=result.append,
+      enable_implied_do=1)
+    result = tokenization.remove_redundant_parentheses(tokens=result)
+  return result
 
 class unit(unit_p_methods):
 
@@ -2018,7 +2046,7 @@ class unit(unit_p_methods):
           return
         if (start != 0):
           ssl.raise_syntax_error(i=start)
-        for s in ["common", "data", "dimension"]:
+        for s in ["common", "data", "dimension", "print"]:
           if (code.startswith(s)):
             p = getattr(unit_p_methods, "p_"+s)
             p(O, ssl=ssl, start=start)
@@ -2496,7 +2524,7 @@ class unit(unit_p_methods):
       from libtbx import dict_with_default_0
       result = dict_with_default_0()
       for ei in O.executable:
-        if (ei.key in ["read", "write"] and ei.fmt_tokens is None):
+        if (ei.key in ["read", "write", "print"] and ei.fmt_tokens is None):
           tl = ei.cilist.fmt
           if (tl is not None and len(tl) == 1):
             tok = tl[0]

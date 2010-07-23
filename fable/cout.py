@@ -1806,12 +1806,17 @@ def convert_executable(
           io_function_specialization="",
           io_call_args=cunit,
           iolist=cllist)
-      elif (ei.key in ["read", "write"]):
+      elif (ei.key in ["read", "write", "print"]):
         search_for_id_tokens_and_declare_identifiers()
         cilist = ei.cilist
-        assert cilist.unit is not None
-        cunit = convert_tokens(conv_info=conv_info, tokens=cilist.unit)
-        if (cunit == "star "): cunit = "6"
+        if (ei.key == "print"):
+          work_key = "write"
+          cunit = "6"
+        else:
+          work_key = ei.key
+          assert cilist.unit is not None
+          cunit = convert_tokens(conv_info=conv_info, tokens=cilist.unit)
+          if (cunit == "star "): cunit = "6"
         def conv_fmt():
           if (ei.fmt_tokens is not None):
             return '"(' + escape_string_literal(fmt_tokens_as_string(
@@ -1855,7 +1860,7 @@ def convert_executable(
             io_scope = curr_scope
           else:
             io_scope = curr_scope.open_nested_scope(opening_text=["try {"])
-          io_op = "%s(%s)%s" % (ei.key, cargs, cchain)
+          io_op = "%s(%s)%s" % (work_key, cargs, cchain)
           if (len(ei.iolist) == 0):
             io_scope.append(io_op+";")
           else:
@@ -1881,12 +1886,12 @@ def convert_executable(
           if (is_internal_file): cmn = ""
           else:                  cmn = "cmn, "
           io_scope.append("%s_loop %sloop(%s%s);" % (
-            ei.key, ei.key[0], cmn, cargs))
+            work_key, work_key[0], cmn, cargs))
           if (len(cchain) != 0):
-            io_scope.append("%sloop%s;" % (ei.key[0], cchain))
+            io_scope.append("%sloop%s;" % (work_key[0], cchain))
           convert_io_loop(
             io_scope=io_scope,
-            io_op=ei.key[0]+"loop",
+            io_op=work_key[0]+"loop",
             conv_info=conv_info,
             tokens=ei.iolist)
         if (io_scope is not curr_scope):
