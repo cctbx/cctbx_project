@@ -2911,6 +2911,27 @@ struct common_com
   assert not absd(lines, head_off(1), """\
 struct common_commonymous
 """)
+  #
+  lines = get("print.f")
+  assert not absd(lines, tail_off(1), """\
+  write(6, star), 12, "Zpq";
+  write(6, "(i2,a3)"), 34, "Jel";
+  write(6, "(a3,i2)"), "OwM", 56;
+  fem::str<7> fmt = "(a4,i1)";
+  write(6, fmt), "TvDp", 7;
+  int i = fem::int0;
+  FEM_DO(i, 1, 2) {
+    write(6, dynfmt(i)), i + 8;
+  }
+  write(6, star);
+  write(6, "('XuW')");
+  {
+    write_loop wloop(cmn, 6, "(i2,i3)");
+    FEM_DO(i, 3, 4) {
+      wloop, i * 3;
+    }
+  }
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(
