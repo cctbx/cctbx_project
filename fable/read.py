@@ -1525,6 +1525,8 @@ class unit_p_methods(object):
     iolist = collect_iolist(tz=tz)
     O.executable.append(ei_print(ssl=ssl, start=start,
       cilist=cilist, fmt_tokens=fmt_tokens, iolist=iolist))
+    O.uses_io = True
+    O.uses_write = True
 
   def p_read_write(O, ssl, start, ei_type):
     tz = tokenization.ssl_iterator(ssl=ssl, start=start)
@@ -1543,7 +1545,6 @@ class unit_p_methods(object):
     iolist = collect_iolist(tz=tz)
     O.executable.append(ei_type(ssl=ssl, start=start,
       cilist=cilist, fmt_tokens=fmt_tokens, iolist=iolist))
-    O.uses_io = True
 
   def p_read(O, ssl, start):
     code = ssl.code
@@ -1567,6 +1568,7 @@ class unit_p_methods(object):
       O.p_read_write(ssl=ssl, start=start+4, ei_type=ei_read)
     else:
       ssl.raise_syntax_error(i=start+4)
+    O.uses_io = True
     O.uses_read = True
 
   def p_return(O, ssl, start):
@@ -1597,6 +1599,7 @@ class unit_p_methods(object):
 
   def p_write(O, ssl, start):
     O.p_read_write(ssl=ssl, start=start+5, ei_type=ei_write)
+    O.uses_io = True
     O.uses_write = True
 
 def collect_keyword_arguments(O, tz, n_implied):

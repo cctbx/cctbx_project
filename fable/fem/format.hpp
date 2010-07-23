@@ -244,13 +244,13 @@ namespace fem { namespace format {
     {}
 
     token_loop(
-      char const* fmt)
+      str_cref fmt)
     :
       i_fmt(0),
       i_fmt_wrap(0),
       simple_repeat(0)
     {
-      format::tokenizer tz(fmt, std::strlen(fmt));
+      format::tokenizer tz(fmt.elems(), fmt.len());
       fmt_tokens.swap(tz.tokens);
       repeat_points.reserve(32); // uncritical; avoids reallocation in most
     }                            // cases
