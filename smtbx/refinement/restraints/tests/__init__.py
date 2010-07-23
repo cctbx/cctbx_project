@@ -2,12 +2,11 @@ from iotbx import shelx
 import cStringIO
 
 def trial_structure():
-  builder = shelx.afixed_crystal_structure_builder()
+  builder = shelx.crystal_structure_builder()
   stream = shelx.command_stream(
     file=cStringIO.StringIO(sucrose))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
-  l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
-  l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
+  l_xs = shelx.atom_parser(l_cs.filtered_commands(), builder)
   l_xs.parse()
   return l_xs.builder.structure
 
