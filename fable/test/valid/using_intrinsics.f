@@ -1,10 +1,12 @@
       program prog
-      call exercise_01
-      call exercise_02
+      call exercise_c_keywords
+      call exercise_char_ichar
       call exercise_nint
+      call exercise_double
+      call exercise_string
       end
 
-      subroutine exercise_01
+      subroutine exercise_c_keywords
       num = 84
       val = float(num)
       val = val + 0.99
@@ -12,7 +14,7 @@
       write(6, '(f4.1,1x,i2)') val, num
       end
 
-      subroutine exercise_02
+      subroutine exercise_char_ichar
       character c*1
       c = 'R'
       i = ichar(c)
@@ -30,4 +32,17 @@
       data dv /1.49, 2.51, -3.49, -4.51, 5.49, 6.51, -7.49, -8.51/
       write(6, '(8i3)') (nint(rv(i)), i=1,8)
       write(6, '(8i3)') (nint(dv(i)), i=1,8)
+      end
+
+      subroutine exercise_double
+      write(6, '(f6.2)') dacos(0.5d0)
+      write(6, '(f6.2)') dasin(0.5d0)
+      write(6, '(f6.2)') datan2(0.1d0, 0.2d0)
+      write(6, '(f6.2)') dtan(0.5d0)
+      end
+
+      subroutine exercise_string
+      character s4*4
+      s4 = 'Xy'
+      write(6, '(i1)') lnblnk(s4)
       end

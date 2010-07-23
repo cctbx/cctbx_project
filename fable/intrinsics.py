@@ -22,6 +22,9 @@ conjg
 cos
 cosh
 dabs
+dacos
+dasin
+datan2
 dble
 dcmplx
 dconjg
@@ -34,9 +37,10 @@ dlog10
 dmax1
 dmin1
 dprod
-dsin
 dsign
+dsin
 dsqrt
+dtan
 exp
 float
 iabs
@@ -52,6 +56,7 @@ lge
 lgt
 lle
 llt
+lnblnk
 log
 log10
 max
@@ -70,9 +75,9 @@ sin
 sinh
 sngl
 sqrt
-transfer
 tan
 tanh
+transfer
 """.splitlines())
 
 extra_set_lower = set("""\
