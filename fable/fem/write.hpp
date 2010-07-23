@@ -58,7 +58,7 @@ namespace fem {
       write_loop(
         common& cmn,
         int const& unit,
-        char const* fmt)
+        str_cref fmt)
       :
         out(cmn.io.simple_ostream(unit)),
         internal_file_len(-1),
@@ -89,7 +89,7 @@ namespace fem {
 
       write_loop(
         str_ref const& internal_file,
-        char const* fmt)
+        str_cref fmt)
       :
         out(std::auto_ptr<utils::simple_ostream>(new
           utils::simple_ostream_to_char_ptr_and_size(
@@ -614,7 +614,7 @@ namespace fem {
     write_loop
     operator()(
       int const& unit,
-      char const* fmt)
+      str_cref fmt)
     {
       write_loop result(cmn, unit, fmt);
       return result;
@@ -632,7 +632,7 @@ namespace fem {
     write_loop
     operator()(
       str_ref const& internal_file,
-      char const* fmt)
+      str_cref fmt)
     {
       write_loop result(internal_file, fmt);
       return result;

@@ -1824,17 +1824,16 @@ def convert_executable(
           tl = cilist.fmt
           if (tl is None):
             return None
-          if (len(tl) != 1):
-            tl[0].raise_not_supported()
-          tok = tl[0]
-          if (tok.is_op_with(value="*")):
-            return "star"
-          if (tok.is_integer()):
-            stmt_label = tok.value
-            if (fmt_counts_by_statement_label[stmt_label] > 1):
-              return "format_%s" % stmt_label
-            return get_cfmt_from_format(stmt_label=stmt_label)
-          tok.raise_not_supported()
+          if (len(tl) == 1):
+            tok = tl[0]
+            if (tok.is_op_with(value="*")):
+              return "star"
+            if (tok.is_integer()):
+              stmt_label = tok.value
+              if (fmt_counts_by_statement_label[stmt_label] > 1):
+                return "format_%s" % stmt_label
+              return get_cfmt_from_format(stmt_label=stmt_label)
+          return convert_tokens(conv_info=conv_info, tokens=tl)
         cfmt = conv_fmt()
         cchain = []
         for slot in ["rec", "iostat"]:
@@ -1871,12 +1870,13 @@ def convert_executable(
               tokens=ei.iolist)
         else:
           is_internal_file = False
-          unit_id_tokens = extract_identifiers(tokens=cilist.unit)
-          if (len(unit_id_tokens) == 1):
-            unit_fdecl = conv_info.unit.get_fdecl(id_tok=unit_id_tokens[0])
-            if (    unit_fdecl.data_type is not None
-                and unit_fdecl.data_type.value == "character"):
-              is_internal_file = True
+          if (cilist.unit is not None):
+            unit_id_tokens = extract_identifiers(tokens=cilist.unit)
+            if (len(unit_id_tokens) == 1):
+              unit_fdecl = conv_info.unit.get_fdecl(id_tok=unit_id_tokens[0])
+              if (    unit_fdecl.data_type is not None
+                  and unit_fdecl.data_type.value == "character"):
+                is_internal_file = True
           if (   cilist.end is not None
               or cilist.err is not None):
             opening_line = "try {"

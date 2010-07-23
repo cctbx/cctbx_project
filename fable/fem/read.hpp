@@ -48,7 +48,7 @@ namespace fem {
       read_loop(
         common& cmn,
         int const& unit,
-        char const* fmt)
+        str_cref fmt)
       :
         inp(cmn.io.simple_istream(unit)),
         first_inp_get(true),
@@ -73,7 +73,7 @@ namespace fem {
 
       read_loop(
         str_cref const& internal_file,
-        char const* fmt)
+        str_cref fmt)
       :
         inp(std::auto_ptr<utils::simple_istream>(new
           utils::simple_istream_from_char_ptr_and_size(
@@ -636,7 +636,7 @@ namespace fem {
     read_loop
     operator()(
       int const& unit,
-      char const* fmt)
+      str_cref fmt)
     {
       read_loop result(cmn, unit, fmt);
       return result;
@@ -654,7 +654,7 @@ namespace fem {
     read_loop
     operator()(
       str_cref const& internal_file,
-      char const* fmt)
+      str_cref fmt)
     {
       read_loop result(internal_file, fmt);
       return result;
