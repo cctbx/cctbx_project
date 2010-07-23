@@ -87,6 +87,27 @@ namespace fem {
 
   inline
   float
+  acos(
+    float const& angle)
+  {
+    return std::acos(angle);
+  }
+
+  inline
+  double
+  dacos(
+    double const& angle)
+  {
+    return std::acos(angle);
+  }
+
+  inline
+  double
+  acos(
+    double const& angle) { return dacos(angle); }
+
+  inline
+  float
   sin(
     float const& angle)
   {
@@ -100,6 +121,93 @@ namespace fem {
   {
     return std::sin(angle);
   }
+
+  inline
+  float
+  asin(
+    float const& angle)
+  {
+    return std::asin(angle);
+  }
+
+  inline
+  double
+  dasin(
+    double const& angle)
+  {
+    return std::asin(angle);
+  }
+
+  inline
+  double
+  asin(
+    double const& angle) { return dasin(angle); }
+
+  inline
+  float
+  tan(
+    float const& angle)
+  {
+    return std::tan(angle);
+  }
+
+  inline
+  double
+  dtan(
+    double const& angle)
+  {
+    return std::tan(angle);
+  }
+
+  inline
+  double
+  tan(
+    double const& angle) { return dtan(angle); }
+
+  inline
+  float
+  atan(
+    float const& angle)
+  {
+    return std::atan(angle);
+  }
+
+  inline
+  double
+  datan(
+    double const& angle)
+  {
+    return std::atan(angle);
+  }
+
+  inline
+  double
+  atan(
+    double const& angle) { return datan(angle); }
+
+  inline
+  float
+  atan2(
+    float const& y,
+    float const& x)
+  {
+    return std::atan2(y, x);
+  }
+
+  inline
+  double
+  datan2(
+    double const& y,
+    double const& x)
+  {
+    return std::atan2(y, x);
+  }
+
+  inline
+  double
+  atan2(
+    double const& y,
+    double const& x) { return datan2(y, x); }
 
   inline
   float
@@ -457,8 +565,6 @@ namespace fem {
   using std::abs;
   using std::log;
   using std::pow;
-  using std::acos;
-  using std::atan2;
 
   inline
   int
@@ -487,6 +593,11 @@ namespace fem {
     return static_cast<int>(
       utils::find_trailing_blank_padding(c.elems(), c.len()));
   }
+
+  inline
+  int
+  lnblnk(
+    str_cref c) { return len_trim(c); }
 
   inline
   int
