@@ -2,8 +2,8 @@
 #define FEM_FORMAT_HPP
 
 #include <fem/io_exceptions.hpp>
+#include <fem/str_ref.hpp>
 #include <fem/utils/char.hpp>
-#include <fem/utils/string.hpp>
 #include <fem/utils/token.hpp>
 #include <boost/scoped_array.hpp>
 #include <boost/noncopyable.hpp>
