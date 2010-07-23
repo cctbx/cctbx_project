@@ -80,9 +80,7 @@ class token(object):
       ErrorType=RuntimeError)
 
   def raise_internal_error(O):
-    O.raise_error(
-      msg="Sorry: fable internal error",
-      ErrorType=AssertionError)
+    O.ssl.raise_internal_error(i=O.i_code)
 
   def raise_if_not_identifier(O):
     i = identifier_scan(code=O.value)
@@ -148,7 +146,10 @@ class ssl_iterator(object):
       if (result is None):
         return_none()
       return result
-    assert O.i is not None
+    if (O.i is None):
+      if (optional):
+        return None
+      ssl.raise_internal_error(i=stop-1)
     while (O.i < stop):
       i_code = O.i
       c = code[i_code]
@@ -393,14 +394,18 @@ class ssl_iterator(object):
   def collect_comma_separated_expressions(O,
         callback,
         opening_token=None,
+        first_get_optional=True,
+        stop_after_given_number_of_commas=None,
         enable_implied_do=0):
     tokens = tk_seq(ssl=O.ssl, i_code=O.i, value=[])
     tapp = tokens.value.append
     last_comma = None
     n_callbacks = 0
     i_assignment_op = None
+    get_optional = first_get_optional
     while True:
-      tok = O.get(optional=True)
+      tok = O.get(optional=get_optional)
+      get_optional = True
       if (tok is None):
         if (opening_token is not None):
           opening_token.raise_missing_closing()
@@ -431,6 +436,9 @@ class ssl_iterator(object):
             tok.raise_syntax_error()
           callback(tokens)
           n_callbacks += 1
+          if (stop_after_given_number_of_commas is not None
+                and n_callbacks == stop_after_given_number_of_commas):
+            return
           tokens = tk_seq(ssl=O.ssl, i_code=O.i, value=[])
           tapp = tokens.value.append
           last_comma = tok
