@@ -2644,8 +2644,6 @@ class unit(unit_p_methods):
               if (tokens is not None):
                 tok = tokenization.get_statement_label_token(tokens=tokens)
                 result.setdefault(tok.value, []).append(tok)
-        elif (ei.key == "close"):
-          pass # TODO
       O._target_statement_labels = result
     return result
 
