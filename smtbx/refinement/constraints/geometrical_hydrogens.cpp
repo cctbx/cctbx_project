@@ -5,33 +5,42 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   //*** CH3, NH2, OH ***
 
-  template <int n_hydrogens>
-  std::size_t terminal_tetrahedral_xhn_sites<n_hydrogens>::size() const {
-    return 3*n_hydrogens;
-  }
-
-  template <int n_hydrogens>
+  template <int n_hydrogens, bool staggered>
   void
-  terminal_tetrahedral_xhn_sites<n_hydrogens>
+  terminal_tetrahedral_xhn_sites<n_hydrogens, staggered>
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {
     using namespace constants;
     site_parameter *pivot = (site_parameter *)argument(0),
                    *pivot_neighbour = (site_parameter *)argument(1);
-    independent_scalar_parameter
-      *azimuth = (independent_scalar_parameter *)argument(2),
-      *length  = (independent_scalar_parameter *)argument(3);
+    independent_scalar_parameter *azimuth, *length;
+    site_parameter *stagger;
+    if (staggered) stagger = (site_parameter *)              argument(2);
+    else           azimuth = (independent_scalar_parameter *)argument(2);
+    length  = (independent_scalar_parameter *)argument(3);
 
     // Local frame
     cart_t x_p = unit_cell.orthogonalize(pivot->value),
            x_pn = unit_cell.orthogonalize(pivot_neighbour->value);
+    if (staggered) {
+      cart_t x_s = unit_cell.orthogonalize(stagger->value);
+      e_zero_azimuth = x_s - x_pn;
+    }
     af::tiny<cart_t, 3>
     e = scitbx::math::orthonormal_basis(x_p - x_pn, e_zero_azimuth);
 
     double phi = azimuth->value;
     double l = length->value;
-    double cos_phi = std::cos(phi), sin_phi = std::sin(phi);
+    double cos_phi, sin_phi;
+    if (!staggered) {
+      cos_phi = std::cos(phi);
+      sin_phi = std::sin(phi);
+    }
+    else {
+      cos_phi = 1.;
+      sin_phi = 0.;
+    }
 
     // Loop over the Hydrogen atoms
     for (int k=0; k < n_hydrogens; ++k) {
@@ -81,7 +90,7 @@ namespace smtbx { namespace refinement { namespace constraints {
        */
 
       // Rotation
-      if (azimuth->is_variable()) {
+      if (!staggered && azimuth->is_variable()) {
         cart_t grad_c = l*sin_tetrahedral_angle*(-s*e[1] + c*e[2]);
         frac_t grad_f = unit_cell.fractionalize(grad_c);
         for (int i=0; i<3; ++i) jt(azimuth->index(), j_h + i) = grad_f[i];
@@ -95,18 +104,13 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
-  template <int n_hydrogens>
-  void
-  terminal_tetrahedral_xhn_sites<n_hydrogens>
-  ::store(uctbx::unit_cell const &unit_cell) const
-  {
-    for (int i=0; i<hydrogen.size(); ++i) {
-      hydrogen[i]->site = unit_cell.fractionalize(x_h[i]);
-    }
-  }
-  template class terminal_tetrahedral_xhn_sites<1>;
-  template class terminal_tetrahedral_xhn_sites<2>;
-  template class terminal_tetrahedral_xhn_sites<3>;
+  template class terminal_tetrahedral_xhn_sites<1, /*staggered=*/false>;
+  template class terminal_tetrahedral_xhn_sites<2, /*staggered=*/false>;
+  template class terminal_tetrahedral_xhn_sites<3, /*staggered=*/false>;
+
+  template class terminal_tetrahedral_xhn_sites<1, /*staggered=*/true>;
+  template class terminal_tetrahedral_xhn_sites<2, /*staggered=*/true>;
+  template class terminal_tetrahedral_xhn_sites<3, /*staggered=*/true>;
 
   // X-CH2-Y
 

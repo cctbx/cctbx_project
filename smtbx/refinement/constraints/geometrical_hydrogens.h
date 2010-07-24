@@ -4,7 +4,6 @@
 #include <smtbx/refinement/constraints/reparametrisation.h>
 #include <scitbx/constants.h>
 #include <scitbx/math/orthonormal_basis.h>
-#include <boost/optional.hpp>
 #include <cmath>
 
 
@@ -27,16 +26,13 @@ namespace constants {
   All angles Hi-X-Hj and Hi-X-Y are tetrahedral.
   All distances X-Hi are equal. That unique distance may be a variable
   parameter if stretching is allowed.
-  A free rotation around the bond Y-X is allowed, characterized by an
-  azimuthal angle.
-
   The Hydrogen sites ride on the pivot site.
 */
-template <int n_hydrogens>
+template <int n_hydrogens, bool staggered>
 class terminal_tetrahedral_xhn_sites : public crystallographic_parameter
 {
 public:
-  /// Construct sites depending on the given parameter groups
+  /// Construct Hydrogens freely rotating about the bond X-Y
   /** e_zero_azimuth is the vector defining azimuth = 0. It shall be such that
       it can never become nearly colinear to the bond between the pivot
       and its neighbour.
@@ -52,15 +48,39 @@ public:
       e_zero_azimuth(e_zero_azimuth),
       hydrogen(hydrogen)
   {
+    SMTBX_ASSERT(!staggered);
     set_arguments(pivot, pivot_neighbour, azimuth, length);
   }
 
-  virtual std::size_t size() const;
+  /// Construct Hydrogens staggered on the specified site
+  /** stagger shall be a neighbour of the pivot neighbour onto which to
+      stagger the Hydrogen's.
+   */
+  terminal_tetrahedral_xhn_sites(site_parameter *pivot,
+                                 site_parameter *pivot_neighbour,
+                                 site_parameter *stagger,
+                                 independent_scalar_parameter *length,
+                                 af::tiny<scatterer_type *,
+                                          n_hydrogens> const &hydrogen)
+  : crystallographic_parameter(4),
+    hydrogen(hydrogen)
+  {
+    SMTBX_ASSERT(staggered);
+    set_arguments(pivot, pivot_neighbour, stagger, length);
+  }
+
+  virtual std::size_t size() const {
+    return 3*n_hydrogens;
+  }
 
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
 
-  virtual void store(uctbx::unit_cell const &unit_cell) const;
+  virtual void store(uctbx::unit_cell const &unit_cell) const {
+    for (int i=0; i<hydrogen.size(); ++i) {
+      hydrogen[i]->site = unit_cell.fractionalize(x_h[i]);
+    }
+  }
 
 private:
   af::tiny<scatterer_type *, n_hydrogens> hydrogen;

@@ -3,6 +3,7 @@ from cctbx import uctbx, xray, sgtbx, crystal
 from smtbx.refinement import constraints
 from scitbx import sparse
 from scitbx import matrix as mat
+from scitbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal
 import libtbx.utils
 
@@ -123,20 +124,18 @@ class c_oh_test_case(object):
   eps = 1.e-15
   bond_length = 0.9
 
-  def __init__(self):
+  def __init__(self, staggered, verbose=False):
+    self.staggered = staggered
+    self.verbose = verbose
     self.cs = crystal.symmetry(uctbx.unit_cell((1, 1, 2, 90, 90, 80)),
                                "hall: P 2z")
     self.o = xray.scatterer('O', site=(0,0,0))
     self.o.flags.set_grad_site(True)
-    self.c1 = xray.scatterer('C1', site=(1,0,0))
-    self.c2 = xray.scatterer('C2', site=(2,1,0))
+    self.c1 = xray.scatterer('C1', site=(1.5, 0, 0))
+    self.c2 = xray.scatterer('C2', site=(2.5, 1, 0))
     self.h = xray.scatterer('H')
-    self.site_symm = sgtbx.site_symmetry(self.cs.unit_cell(),
-                                         self.cs.space_group(),
-                                         self.o.site)
     self.reparam = constraints.reparametrisation(self.cs.unit_cell())
-    xo = self.reparam.add(constraints.special_position_site,
-                          self.site_symm, self.o)
+    xo = self.reparam.add(constraints.independent_site_parameter, self.o)
     x1 = self.reparam.add(constraints.independent_site_parameter, self.c1)
     x2 = self.reparam.add(constraints.independent_site_parameter, self.c2)
     l = self.reparam.add(constraints.independent_scalar_parameter,
@@ -144,19 +143,27 @@ class c_oh_test_case(object):
     phi = self.reparam.add(constraints.independent_scalar_parameter,
                            value=0, variable=False)
     uc = self.cs.unit_cell()
-    xh = self.reparam.add(
-      constraints.terminal_tetrahedral_xh_site,
-      pivot=xo,
-      pivot_neighbour=x1,
-      azimuth=phi,
-      length=l,
-      e_zero_azimuth=uc.orthogonalize(
-        mat.col(self.c2.site) - mat.col(self.c1.site)),
-      hydrogen=(self.h,))
+    _ = mat.col
+    if staggered:
+      xh = self.reparam.add(
+        constraints.staggered_terminal_tetrahedral_xh_site,
+        pivot=xo,
+        pivot_neighbour=x1,
+        stagger_on=x2,
+        length=l,
+        hydrogen=(self.h,))
+    else:
+      xh = self.reparam.add(
+        constraints.terminal_tetrahedral_xh_site,
+        pivot=xo,
+        pivot_neighbour=x1,
+        azimuth=phi,
+        length=l,
+        e_zero_azimuth=uc.orthogonalize(_(self.c2.site) - _(self.c1.site)),
+        hydrogen=(self.h,))
     self.reparam.finalise()
     self.xh, self.xo, self.x1, self.x2 = [ x.index for x in (xh, xo, x1, x2) ]
     self.l, self.phi = l.index, phi.index
-    self.yo = xo.independent_params
 
   def run(self):
     self.reparam.linearise()
@@ -165,28 +172,66 @@ class c_oh_test_case(object):
     _ = mat.col
     xh, xo, x1, x2 = [ uc.orthogonalize(sc.site)
                        for sc in (self.h, self.o, self.c1, self.c2) ]
-    u_12, u_o1, u_oh = _(x2) - _(x1), _(x1) - _(xo), _(xh) - _(xo)
-    assert approx_equal(u_12.cross(u_o1).dot(u_oh), self.eps)
+    u_12 = _(x2) - _(x1)
+    u_o1 = _(x1) - _(xo)
+    u_oh = _(xh) - _(xo)
+    assert approx_equal(u_12.cross(u_o1).dot(u_oh), 0, self.eps)
+    assert approx_equal(u_12.cross(u_o1).angle(u_oh, deg=True), 90, self.eps)
     assert approx_equal(abs(u_oh), self.bond_length, self.eps)
     assert approx_equal(u_o1.angle(u_oh, deg=True), 109.47, 0.01)
 
-    jt0 = sparse.matrix(1, 15)
-    jt0[0, self.yo.index] = 1.
-    jt0[0, self.xo + 2 ] = 1.
-    jt0[0, self.xh + 2 ] = 1.
+    jt0 = sparse.matrix(3, 14)
+    for i in xrange(3):
+      jt0[self.xo + i, self.xo + i] = 1.
+      jt0[self.xo + i, self.xh + i] = 1.
     jt = self.reparam.jacobian_transpose
     assert sparse.approx_equal(self.eps)(jt, jt0)
 
+    if self.verbose:
+      # finite difference derivatives to compare with
+      # the crude riding approximation used for analytical ones
+      def differentiate(sc):
+        eta = 1.e-4
+        jac = []
+        for i in xrange(3):
+          x0 = tuple(sc.site)
+          x = list(x0)
+          x[i] += eta
+          sc.site = tuple(x)
+          self.reparam.linearise()
+          self.reparam.store()
+          xp = _(self.h.site)
+          x[i] -= 2*eta
+          sc.site = tuple(x)
+          self.reparam.linearise()
+          self.reparam.store()
+          xm = _(self.h.site)
+          sc.site = tuple(x0)
+          jac.extend( (xp - xm)/(2*eta) )
+        return mat.sqr(jac)
 
-def exercise():
+      jac_o = differentiate(self.o)
+      jac_1 = differentiate(self.c1)
+      jac_2 = differentiate(self.c2)
+      print "staggered: %s" % self.staggered
+      print "J_o:"
+      print jac_o.mathematica_form()
+      print "J_1:"
+      print jac_1.mathematica_form()
+      print "J_2:"
+      print jac_2.mathematica_form()
+
+def exercise(verbose):
   terminal_linear_ch_site_test_case(with_special_position_pivot=False).run()
   terminal_linear_ch_site_test_case(with_special_position_pivot=True).run()
   special_position_adp_test_case().run()
-  c_oh_test_case().run()
+  c_oh_test_case(staggered=False, verbose=verbose).run()
+  c_oh_test_case(staggered=True, verbose=verbose).run()
 
 def run():
   libtbx.utils.show_times_at_exit()
-  exercise()
+  import sys
+  exercise('--verbose' in sys.argv)
 
 if __name__ == '__main__':
   run()
