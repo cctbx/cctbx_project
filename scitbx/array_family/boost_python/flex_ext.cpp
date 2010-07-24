@@ -77,10 +77,6 @@ namespace {
     tuple_mapping_fixed_capacity<small<unsigned, 2> >();
     tuple_mapping_fixed_capacity<small<unsigned, 3> >();
     tuple_mapping_fixed_capacity<small<unsigned, 6> >();
-#if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
-    // smtbx.refinement.constraints.geometric_hydrogen
-    tuple_mapping_fixed_capacity<small<std::size_t, 3> >();
-#endif
     tuple_mapping_fixed_capacity<small<std::size_t, 5> >();
     tuple_mapping_fixed_capacity<small<double, 3> >();
     tuple_mapping_fixed_capacity<small<double, 6> >();
