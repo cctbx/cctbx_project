@@ -157,17 +157,29 @@ main(
   assert not absd(get("ops.f"), tail_off(1), """\
   bool la = fem::bool0;
   bool lb = !la;
-  bool lc = la && lb;
-  lc = la || lb;
+  write(6, star), la && lb;
+  write(6, star), la || lb;
+  float b = 1;
   float a = fem::float0;
-  float b = fem::float0;
-  float c = a + b;
-  c = a - b;
-  c = a * b;
-  c = a / b;
+  write(6, star), a + b;
+  write(6, star), a - b;
+  write(6, star), a * b;
+  write(6, star), a / b;
   fem::str<2> sa = "x";
   fem::str<3> sb = "abc";
-  fem::str<5> sc = sa + sb;
+  write(6, star), sa + sb;
+  write(6, star), a == b;
+  write(6, star), a != b;
+  write(6, star), a < b;
+  write(6, star), a <= b;
+  write(6, star), a > b;
+  write(6, star), a >= b;
+  write(6, star), a == b;
+  write(6, star), a != b;
+  write(6, star), a < b;
+  write(6, star), a <= b;
+  write(6, star), a > b;
+  write(6, star), a >= b;
 """)
   #
   assert not absd(get("mod_integers.f"), tail_off(1), """\

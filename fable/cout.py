@@ -210,20 +210,20 @@ def convert_token(vmap, leading, tok):
       return " "+tv+" "
     if (tv == "//"):
       return " + "
-    if (tv == ".eq."):
-      return " == "
-    if (tv == ".ne."):
-      return " != "
-    if (tv == ".lt."):
-      return " < "
-    if (tv == ".le."):
-      return " <= "
-    if (tv == ".gt."):
-      return " > "
-    if (tv == ".ge."):
-      return " >= "
     if (tv == ":"):
       return ", "
+    if (tv == ".eq." or tv == "=="):
+      return " == "
+    if (tv == ".ne." or tv == "/="):
+      return " != "
+    if (tv == ".lt." or tv == "<"):
+      return " < "
+    if (tv == ".le." or tv == "<="):
+      return " <= "
+    if (tv == ".gt." or tv == ">"):
+      return " > "
+    if (tv == ".ge." or tv == ">="):
+      return " >= "
     raise_unhandled(tok=tok)
   if (tok.is_string()):
     return '"' + escape_string_literal(tv) + '"'
@@ -589,9 +589,16 @@ def convert_data_type(conv_info, fdecl, crhs):
         size_tokens[0].raise_syntax_error()
       ctype = "char"
     elif (data_type_code == "complex"):
-      if (size_tokens is not None):
-        size_tokens[0].raise_not_supported()
-      ctype = "std::complex<float>"
+      if (size_tokens is None):
+        ctype = "std::complex<float>"
+      else:
+        sz = convert_to_int_literal(tokens=size_tokens)
+        if (sz == 8):
+          ctype = "std::complex<float>"
+        elif (sz == 16):
+          ctype = "std::complex<double>"
+        else:
+          size_tokens[0].raise_not_supported()
     else:
       raise RuntimeError(
         "Not implemented: data_type_code = %s" % data_type_code)
@@ -2126,7 +2133,7 @@ def convert_to_cpp_function(
     else:
       passed = conv_info.unit.externals_passed_by_arg_identifier.get(
         fdecl.id_tok.value)
-      if (len(passed) == 0):
+      if (passed is None or len(passed) == 0):
         ctype = "UNHANDLED"
       else:
         ctype = sorted(passed)[0]
