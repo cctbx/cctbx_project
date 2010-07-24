@@ -7,6 +7,7 @@ from cctbx import adp_restraints
 import scitbx.math
 
 from iotbx.shelx import util
+import iotbx.constraints
 
 class crystal_symmetry_builder(object):
 
@@ -61,28 +62,32 @@ class crystal_structure_builder(crystal_symmetry_builder,
     sc.occupancy = round(r_occ.numerator() / r_occ.denominator(), 5)
 
 
-class afixed_crystal_structure_builder(crystal_structure_builder):
+class constrained_crystal_structure_builder(crystal_structure_builder):
 
   def __init__(self, *args, **kwds):
-    super(afixed_crystal_structure_builder, self).__init__(*args, **kwds)
-    self.afixed = []
-    self.afix = None
+    super(constrained_crystal_structure_builder, self).__init__(*args, **kwds)
+    self.geometrical_constraints = []
 
-  def start_afix(self, constraint_type, kwds):
-    self.afix = (constraint_type, kwds,
-                 len(self.structure.scatterers()))
+  def start_geometrical_constraint(self, type,
+                                   bond_length, rotating, use_pivot):
+    self.first = len(self.structure.scatterers())
+    if use_pivot: pivot = self.first - 1
+    else: pivot = None
+    self.current = type(bond_length=bond_length,
+                        rotating=rotating,
+                        pivot=pivot)
 
-  def end_afix(self):
+  def end_geometrical_constraint(self):
     last = len(self.structure.scatterers())
-    constraint_type, kwds, first = self.afix
-    kwds['constrained_scatterer_indices'] = tuple(xrange(first, last))
-    self.afixed.append((constraint_type, kwds))
+    self.current.constrained_site_indices = tuple(
+      xrange(self.first, last))
+    self.geometrical_constraints.append(self.current)
 
   def finish(self):
     pass
 
 
-class restrained_crystal_structure_builder(afixed_crystal_structure_builder):
+class restrained_crystal_structure_builder(crystal_structure_builder):
 
   def __init__(self, *args, **kwds):
     super(restrained_crystal_structure_builder, self).__init__(*args, **kwds)
@@ -185,3 +190,6 @@ class restrained_crystal_structure_builder(afixed_crystal_structure_builder):
       self.add_proxy(cmd, kwds)
     elif cmd in ('DELU', 'ISOR', 'SIMU'):
       self.add_proxy(cmd, shelx_kwds)
+
+  def finish(self):
+    pass
