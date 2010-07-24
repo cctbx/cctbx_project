@@ -259,6 +259,27 @@ namespace fem {
 
       write_loop&
       operator,(
+        integer_star_1 const& val)
+      {
+        if (io_mode == io_unformatted) {
+          out.reset();
+          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        }
+        else if (io_mode == io_list_directed) {
+          char buf[64];
+          int n = std::sprintf(buf, "%4d", static_cast<int>(val));
+          to_stream_star(buf, n);
+          prev_was_string = false;
+        }
+        else {
+          out.reset();
+          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        }
+        return *this;
+      }
+
+      write_loop&
+      operator,(
         integer_star_2 const& val)
       {
         if (io_mode == io_unformatted) {
@@ -266,8 +287,10 @@ namespace fem {
           throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
         }
         else if (io_mode == io_list_directed) {
-          out.reset();
-          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+          char buf[64];
+          int n = std::sprintf(buf, "%6d", static_cast<int>(val));
+          to_stream_star(buf, n);
+          prev_was_string = false;
         }
         else {
           out.reset();
@@ -416,6 +439,58 @@ namespace fem {
         }
         else {
           to_stream_fmt_double(val);
+        }
+        return *this;
+      }
+
+      write_loop&
+      operator,(
+        std::complex<float> const& val)
+      {
+        if (io_mode == io_unformatted) {
+          to_stream_unformatted(
+            reinterpret_cast<char const*>(&val.real()),
+            sizeof(float));
+          to_stream_unformatted(
+            reinterpret_cast<char const*>(&val.imag()),
+            sizeof(float));
+        }
+        else if (io_mode == io_list_directed) {
+          utils::float_as_string_list_directed conv_re(val.real());
+          utils::float_as_string_list_directed conv_im(val.imag());
+          to_stream_star_complex(
+            conv_re.begin, conv_re.n,
+            conv_im.begin, conv_im.n);
+        }
+        else {
+          out.reset();
+          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        }
+        return *this;
+      }
+
+      write_loop&
+      operator,(
+        std::complex<double> const& val)
+      {
+        if (io_mode == io_unformatted) {
+          to_stream_unformatted(
+            reinterpret_cast<char const*>(&val.real()),
+            sizeof(double));
+          to_stream_unformatted(
+            reinterpret_cast<char const*>(&val.imag()),
+            sizeof(double));
+        }
+        else if (io_mode == io_list_directed) {
+          utils::double_as_string_list_directed conv_re(val.real());
+          utils::double_as_string_list_directed conv_im(val.imag());
+          to_stream_star_complex(
+            conv_re.begin, conv_re.n,
+            conv_im.begin, conv_im.n);
+        }
+        else {
+          out.reset();
+          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
         }
         return *this;
       }
@@ -594,6 +669,39 @@ namespace fem {
         }
         out->put(buf, n);
         pos += n;
+      }
+
+      void
+      to_stream_star_strip_leading_and_trailing_blank_padding(
+        char const* buf,
+        unsigned n,
+        bool space=true)
+      {
+        size_t_2 indices = utils::find_leading_and_trailing_blank_padding(
+          buf, n);
+        to_stream_star(
+          buf+indices.elems[0],
+          indices.elems[1]-indices.elems[0],
+          /*space*/ false);
+      }
+
+      void
+      to_stream_star_complex(
+        char const* buf_re, unsigned n_re,
+        char const* buf_im, unsigned n_im)
+      {
+        to_stream_star("(", 1);
+        {
+          to_stream_star_strip_leading_and_trailing_blank_padding(
+            buf_re, n_re, /*space*/ false);
+        }
+        to_stream_star(",", 1, /*space*/ false);
+        {
+          to_stream_star_strip_leading_and_trailing_blank_padding(
+            buf_im, n_im, /*space*/ false);
+        }
+        to_stream_star(")", 1, /*space*/ false);
+        prev_was_string = false;
       }
   };
 

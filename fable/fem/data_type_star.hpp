@@ -7,6 +7,7 @@ namespace fem {
 
   typedef bool logical_star_1;
 
+  typedef boost::int8_t integer_star_1;
   typedef boost::int16_t integer_star_2;
 #if defined(_MSC_VER)
   typedef int            integer_star_4;

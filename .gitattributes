@@ -448,6 +448,7 @@ fable/test/valid/data_32.f -text
 fable/test/valid/data_byte.f -text
 fable/test/valid/data_str_arr.f -text
 fable/test/valid/data_type_star.f -text
+fable/test/valid/data_types.f -text
 fable/test/valid/decl_before_if.f -text
 fable/test/valid/dependency_cycle.f -text
 fable/test/valid/dim_with_parameter.f -text

@@ -104,3 +104,7 @@ Caveats:
   beginning of array
 
   arr<T>: T must have trivial destructor (b/o use of memset)
+
+  logical is implemented as 4-byte integer by ifort and gfortran.
+  fable converts logical to C++ bool, which is usually a 1-byte
+  type.

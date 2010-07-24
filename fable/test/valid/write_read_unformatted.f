@@ -10,6 +10,8 @@
       integer i
       real r
       double precision d
+      complex rc
+      double complex dc
       open(1, file='fable_tmp_06c35b63',
      &  form='unformatted', status='unknown')
       c = 'x'
@@ -24,6 +26,10 @@
       write(1) r
       d = 5.2D0
       write(1) d
+      rc = cmplx(6.3, -7.4)
+      write(1) rc
+      dc = dcmplx(-8.5d0, 9.6d0)
+      write(1) dc
       close(1)
       end
 
@@ -34,6 +40,8 @@
       integer i
       real r
       double precision d
+      complex rc
+      double complex dc
       open(1, file='fable_tmp_06c35b63',
      &  form='unformatted', status='old')
       read(1) c
@@ -48,5 +56,9 @@
       write(6, *) r
       read(1) d
       write(6, *) d
+      read(1) rc
+      write(6, *) rc
+      read(1) dc
+      write(6, *) dc
       close(1)
       end
