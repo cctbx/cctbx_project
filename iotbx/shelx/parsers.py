@@ -17,13 +17,7 @@ import libtbx.load_env
 
 from iotbx.shelx import util
 from iotbx.shelx.errors import error as shelx_error
-
-if (not libtbx.env.has_module(name="smtbx") or 1): # XXX
-  smtbx = None
-else:
-  import smtbx
-  import smtbx.refinement.constraints as smtbx_constraints
-
+import iotbx.constraints
 
 class parser(object):
 
@@ -202,187 +196,189 @@ class atom_parser(parser, variable_decoder):
     return scatterer, behaviours
 
 
-if smtbx is not None:
+class afix_parser(parser):
+  """ It must be before an atom parser """
 
-  class afix_parser(parser):
-    """ It must be before an atom parser """
+  _ = iotbx.constraints
 
-    constraint = {
-      1:  (smtbx_constraints.tertiary_CH, 1),
-      2:  (smtbx_constraints.secondary_CH2, 2),
-      3:  (smtbx_constraints.staggered_terminal_tetrahedral_XHn, 3),
-      4:  (smtbx_constraints.aromatic_CH_or_amide_NH, 1),
-      8:  (smtbx_constraints.staggered_terminal_tetrahedral_XHn, 1),
-      9:  (smtbx_constraints.terminal_trihedral_XH2, 2),
-      13: (smtbx_constraints.terminal_tetrahedral_XHn, 3),
-      14: (smtbx_constraints.terminal_tetrahedral_XHn, 1),
-      15: (smtbx_constraints.polyhedral_BH, 1),
-      16: (smtbx_constraints.acetylenic_CH, 1),
-      }
+  constraints = {
+  # AFIX mn : some of them use the atom just before AFIX as pivot
+  # m:  (  type                                    , #H, pivot?)
+    1:  (_.tertiary_ch_site                        , 1 , True),
+    2:  (_.secondary_ch2_sites                     , 2 , True),
+    3:  (_.staggered_terminal_tetrahedral_xh3_sites, 3 , True),
+    4:  (_.secondary_planar_xh_site                , 1 , True),
+    8:  (_.staggered_terminal_tetrahedral_xh_site  , 1 , True),
+    9:  (_.terminal_planar_xh2_sites               , 2 , True),
+    13: (_.terminal_tetrahedral_xh3_sites          , 3 , True),
+    14: (_.terminal_tetrahedral_xh_site            , 1 , True),
+    15: (_.polyhedral_bh_site                      , 1 , True),
+    16: (_.terminal_linear_ch_site                 , 1 , True),
+  }
 
-    def filtered_commands(self):
-      active_afix = False
-      for command, line in self.command_stream:
-        cmd, args = command[0], command[-1]
-        if cmd in ('AFIX', 'HKLF'):
-          if cmd == 'AFIX' and not args:
-            raise shelx_error("too few arguments", line)
-          if active_afix:
-            if n_afixed != n_expected_afixed:
-              raise shelx_error("wrong number of afixed atoms", line)
-            self.builder.end_afix()
-            active_afix = False
-            n_afixed = 0
-          if cmd == 'HKLF':
-            yield command, line
-            continue
-          mn = args[0]
-          if mn == 0: continue
-          m,n = divmod(mn, 10)
-          d, sof, u = (None,)*3
-          params = args[1:]
-          if not params: pass
-          elif len(params) == 1: d = params[0]
-          elif len(params) == 3: d, sof = params[0:]
-          elif len(params) == 4: d, sof, u = params[0:]
-          else: raise shelx_error("too many arguments", line)
-          info = self.constraint.get(m)
-          if info is not None:
-            constraint_type, n_expected_afixed = info
-            kwds = {}
-            if d is not None: kwds['bond_length'] = d
-            if (n in (7,8)
-                and not constraint_type.__name__.startswith('staggered')):
-              kwds['rotating'] = True
-            self.builder.start_afix(constraint_type, kwds)
-            active_afix = True
-            n_afixed = 0
-        elif cmd == '__ATOM__':
-          if active_afix:
-            if sof is not None: args[4] = sof
-            if u is not None and len(args) == 6: args[-1] = u
-            n_afixed += 1
+  def filtered_commands(self):
+    active_afix = False
+    for command, line in self.command_stream:
+      cmd, args = command[0], command[-1]
+      if cmd in ('AFIX', 'HKLF'):
+        if cmd == 'AFIX' and not args:
+          raise shelx_error("too few arguments", line)
+        if active_afix:
+          if n_afixed != n_expected_afixed:
+            raise shelx_error("wrong number of afixed atoms", line)
+          self.builder.end_geometrical_constraint()
+          active_afix = False
+          n_afixed = 0
+        if cmd == 'HKLF':
           yield command, line
-        else:
-          yield command, line
-      self.builder.finish()
+          continue
+        mn = args[0]
+        if mn == 0: continue
+        m,n = divmod(mn, 10)
+        d, sof, u = (None,)*3
+        params = args[1:]
+        if not params: pass
+        elif len(params) == 1: d = params[0]
+        elif len(params) == 3: d, sof = params[0:]
+        elif len(params) == 4: d, sof, u = params[0:]
+        else: raise shelx_error("too many arguments", line)
+        info = self.constraints.get(m)
+        if info is not None:
+          constraint_type, n_expected_afixed, use_pivot = info
+          self.builder.start_geometrical_constraint(
+            type=constraint_type,
+            bond_length=d,
+            use_pivot=use_pivot,
+            rotating=n in (7, 8))
+          active_afix = True
+          n_afixed = 0
+      elif cmd == '__ATOM__':
+        if active_afix:
+          if sof is not None: args[4] = sof
+          if u is not None and len(args) == 6: args[-1] = u
+          n_afixed += 1
+        yield command, line
+      else:
+        yield command, line
+    self.builder.finish()
 
-  class restraint_parser(atom_parser):
-    """ It must be after an atom parser """
 
-    shelx_restraints = {
-      'DFIX': {'d': None, 's': 0.02, 'i_seqs': None, 'sym ops': None},
-      'DANG': {'d': None, 's': 0.04, 'i_seqs': None, 'sym ops': None},
-      'FLAT': {'s': 0.1, 'atoms': None, 'sym ops': None},
-      'CHIV': {'V': 0, 's': 0.1, 'atoms': None, 'sym ops': None},
-      'SADI': {'s': 0.02, 'i_seqs': None, 'sym ops': None},
-      'SIMU': {'sigma': 0.04, 'sigma_terminal': None, 'i_seqs': None},
-      'DELU': {'sigma_12': 0.01, 'sigma_13': None, 'i_seqs': None},
-      'ISOR': {'sigma': 0.1, 'sigma_terminal': None, 'i_seqs': None},
-    }
+class restraint_parser(atom_parser):
+  """ It must be after an atom parser """
 
-    def filtered_commands(self):
-      self.cached_restraints = {}
-      self.symmetry_operations = {}
-      for command, line in self.command_stream:
-        cmd, args = command[0], command[-1]
-        if cmd in self.shelx_restraints.keys():
-          self.cache_restraint(cmd, line, args)
-        elif cmd == 'EQIV':
-          self.symmetry_operations.setdefault(args[0], args[1])
-        else:
-          yield command, line
-      self.parse_restraints()
+  shelx_restraints = {
+    'DFIX': {'d': None, 's': 0.02, 'i_seqs': None, 'sym ops': None},
+    'DANG': {'d': None, 's': 0.04, 'i_seqs': None, 'sym ops': None},
+    'FLAT': {'s': 0.1, 'atoms': None, 'sym ops': None},
+    'CHIV': {'V': 0, 's': 0.1, 'atoms': None, 'sym ops': None},
+    'SADI': {'s': 0.02, 'i_seqs': None, 'sym ops': None},
+    'SIMU': {'sigma': 0.04, 'sigma_terminal': None, 'i_seqs': None},
+    'DELU': {'sigma_12': 0.01, 'sigma_13': None, 'i_seqs': None},
+    'ISOR': {'sigma': 0.1, 'sigma_terminal': None, 'i_seqs': None},
+  }
 
-    def cache_restraint(self, cmd, line, args):
-      if cmd not in self.cached_restraints.keys():
-        self.cached_restraints.setdefault(cmd, {})
-      self.cached_restraints[cmd].setdefault(line, args)
+  def filtered_commands(self):
+    self.cached_restraints = {}
+    self.symmetry_operations = {}
+    for command, line in self.command_stream:
+      cmd, args = command[0], command[-1]
+      if cmd in self.shelx_restraints.keys():
+        self.cache_restraint(cmd, line, args)
+      elif cmd == 'EQIV':
+        self.symmetry_operations.setdefault(args[0], args[1])
+      else:
+        yield command, line
+    self.parse_restraints()
 
-    def parse_restraints(self):
-      for cmd, restraints in self.cached_restraints.items():
-        for line, args in restraints.iteritems():
-          try:
-            kwds = self.shelx_restraints[cmd].copy()
-            if cmd in ('DFIX','DANG'):
-              div, mod = divmod(len(args), 2)
-              kwds['d'] = float(args[0])
-              if mod == 0:
-                kwds['s'] = float(args[1])
-                atoms = args[2:]
-              else:
-                atoms = args[1:]
-              assert len(atoms) > 1
-              for i in range(div-(1-mod)):
-                atom_pair = atoms[i*2:(i+1)*2]
-                kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atom_pair]
-                kwds['sym ops'] = [self.symmetry_operations.get(atom[2]) for atom in atom_pair]
-              self.builder.process_restraint(cmd, kwds)
-            if cmd == 'SADI':
-              assert len(args) > 3
-              div, mod = divmod(len(args), 2)
-              value = args[0]
-              if mod == 1:
-                kwds['s'] = args[0]
-                atom_pairs = args[1:]
-              else:
-                atom_pairs = args
-              i_seqs = []
-              sym_ops = []
-              weights = []
-              for i in range(div):
-                atom_pair = atom_pairs[i*2:(i+1)*2]
-                i_seqs.append([self.scatterer_label_to_index[atom[1]] for atom in atom_pair])
-                sym_ops.append([self.symmetry_operations.get(atom[2]) for atom in atom_pair])
-              kwds['i_seqs'] = i_seqs
-              kwds['sym ops'] = sym_ops
-              self.builder.process_restraint(cmd, kwds)
-            elif cmd == 'FLAT':
+  def cache_restraint(self, cmd, line, args):
+    if cmd not in self.cached_restraints.keys():
+      self.cached_restraints.setdefault(cmd, {})
+    self.cached_restraints[cmd].setdefault(line, args)
+
+  def parse_restraints(self):
+    for cmd, restraints in self.cached_restraints.items():
+      for line, args in restraints.iteritems():
+        try:
+          kwds = self.shelx_restraints[cmd].copy()
+          if cmd in ('DFIX','DANG'):
+            div, mod = divmod(len(args), 2)
+            kwds['d'] = float(args[0])
+            if mod == 0:
+              kwds['s'] = float(args[1])
+              atoms = args[2:]
+            else:
+              atoms = args[1:]
+            assert len(atoms) > 1
+            for i in range(div-(1-mod)):
+              atom_pair = atoms[i*2:(i+1)*2]
+              kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atom_pair]
+              kwds['sym ops'] = [self.symmetry_operations.get(atom[2]) for atom in atom_pair]
+            self.builder.process_restraint(cmd, kwds)
+          if cmd == 'SADI':
+            assert len(args) > 3
+            div, mod = divmod(len(args), 2)
+            value = args[0]
+            if mod == 1:
+              kwds['s'] = args[0]
+              atom_pairs = args[1:]
+            else:
+              atom_pairs = args
+            i_seqs = []
+            sym_ops = []
+            weights = []
+            for i in range(div):
+              atom_pair = atom_pairs[i*2:(i+1)*2]
+              i_seqs.append([self.scatterer_label_to_index[atom[1]] for atom in atom_pair])
+              sym_ops.append([self.symmetry_operations.get(atom[2]) for atom in atom_pair])
+            kwds['i_seqs'] = i_seqs
+            kwds['sym ops'] = sym_ops
+            self.builder.process_restraint(cmd, kwds)
+          elif cmd == 'FLAT':
+            try:
+              kwds['s'] = float(args[0])
+              atoms = args[1:]
+            except TypeError:
+              atoms = args
+            assert len(atoms) > 3
+            kwds['i_seqs'] = [self.scatterer_label_to_index[i[1]] for i in atoms]
+            self.builder.process_restraint(cmd, kwds)
+          elif cmd == 'CHIV':
+            pass
+          elif cmd in ('DELU', 'ISOR', 'SIMU'):
+            atoms = None
+            s1 = s2 = dmax = None
+            if len(args) > 0:
               try:
-                kwds['s'] = float(args[0])
-                atoms = args[1:]
+                s1 = float(args[0])
               except TypeError:
                 atoms = args
-              assert len(atoms) > 3
-              kwds['i_seqs'] = [self.scatterer_label_to_index[i[1]] for i in atoms]
-              self.builder.process_restraint(cmd, kwds)
-            elif cmd == 'CHIV':
-              pass
-            elif cmd in ('DELU', 'ISOR', 'SIMU'):
-              atoms = None
-              s1 = s2 = dmax = None
-              if len(args) > 0:
+              if not atoms and len(args) > 1:
                 try:
-                  s1 = float(args[0])
+                  s2 = float(args[1])
                 except TypeError:
-                  atoms = args
-                if not atoms and len(args) > 1:
-                  try:
-                    s2 = float(args[1])
-                  except TypeError:
-                    atoms = args[1:]
-                  if not atoms and len(args) > 2:
-                    if cmd != 'SIMU':
-                      atoms = args[2:]
-                    else:
-                      try:
-                        dmax = float(args[2])
-                      except TypeError:
-                        if not atoms:
-                          atoms = args[2:]
-                      if not atoms and len(args) > 3:
-                        atoms = args[3:]
-              if atoms:
-                kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atoms]
-              if s1 is not None:
-                if cmd == 'DELU':
-                  kwds['sigma_12'] = s1
-                  kwds['sigma_13'] = s2
-                else:
-                  kwds['sigma'] = s1
-                  kwds['sigma_terminal'] = s2
-              self.builder.process_restraint(cmd, kwds)
-            else:
-              pass
-          except (TypeError, AssertionError):
-            raise shelx_error("Invalid %s instruction" %cmd, line)
+                  atoms = args[1:]
+                if not atoms and len(args) > 2:
+                  if cmd != 'SIMU':
+                    atoms = args[2:]
+                  else:
+                    try:
+                      dmax = float(args[2])
+                    except TypeError:
+                      if not atoms:
+                        atoms = args[2:]
+                    if not atoms and len(args) > 3:
+                      atoms = args[3:]
+            if atoms:
+              kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atoms]
+            if s1 is not None:
+              if cmd == 'DELU':
+                kwds['sigma_12'] = s1
+                kwds['sigma_13'] = s2
+              else:
+                kwds['sigma'] = s1
+                kwds['sigma_terminal'] = s2
+            self.builder.process_restraint(cmd, kwds)
+          else:
+            pass
+        except (TypeError, AssertionError):
+          raise shelx_error("Invalid %s instruction" %cmd, line)

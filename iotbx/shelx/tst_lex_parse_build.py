@@ -7,6 +7,7 @@ from cctbx import geometry_restraints
 from cctbx import adp_restraints
 from iotbx import shelx
 from iotbx.shelx import crystal_symmetry_from_ins
+from iotbx.constraints import *
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.math_utils import are_equivalent
@@ -251,35 +252,38 @@ def exercise_invalid():
       assert approx_equal(sc.occupancy, 1-occ)
 
 def exercise_afix_parsing():
-  if 'afix_parser' not in shelx.__dict__:
-    print 'Skipped AFIX parsing test'
-  builder = shelx.afixed_crystal_structure_builder()
+  builder = shelx.constrained_crystal_structure_builder()
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
   l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
   l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
   l_xs.parse()
-  from smtbx.refinement import constraints
-  expected_afixed = [
-    (constraints.staggered_terminal_tetrahedral_XHn,
-     {'constrained_scatterer_indices': (1,)}),
-    (constraints.aromatic_CH_or_amide_NH,
-     {'constrained_scatterer_indices': (6,)}),
-    (constraints.aromatic_CH_or_amide_NH,
-     {'constrained_scatterer_indices': (10,)}),
-    (constraints.aromatic_CH_or_amide_NH,
-     {'constrained_scatterer_indices': (13,)}),
-    (constraints.aromatic_CH_or_amide_NH,
-     {'constrained_scatterer_indices': (16,)}),
-    (constraints.terminal_tetrahedral_XHn,
-     {'rotating': True, 'constrained_scatterer_indices': (18,19,20)}),
+  expected_geometrical_constraints = [
+    staggered_terminal_tetrahedral_xh_site(
+      constrained_site_indices=(1,),
+      pivot=0),
+    secondary_planar_xh_site(
+      constrained_site_indices=(6,),
+      pivot=5),
+    secondary_planar_xh_site(
+      constrained_site_indices=(10,),
+      pivot=9),
+    secondary_planar_xh_site(
+      constrained_site_indices=(13,),
+      pivot=12),
+    secondary_planar_xh_site(
+      constrained_site_indices=(16,),
+      pivot=15),
+    terminal_tetrahedral_xh3_sites(
+      constrained_site_indices=(18,19,20),
+      pivot=17,
+      rotating=True)
     ]
-  for result, expected in zip(builder.afixed, expected_afixed):
+  for result, expected in zip(builder.geometrical_constraints,
+                              expected_geometrical_constraints):
     assert (result == expected)
 
 def exercise_restraint_parsing():
-  if 'restraint_parser' not in shelx.__dict__:
-    print 'Skipped restraint parsing test'
   def parse_restraints(ins_name):
     builder = shelx.restrained_crystal_structure_builder()
     stream = shelx.command_stream(file=cStringIO.StringIO(ins_name))
@@ -549,14 +553,11 @@ def shelx_u_cif(unit_cell, u_star):
   return (" "*3).join([ "%.5f" % x for x in  u_cif ])
 
 def run():
-  if (shelx.parsers.smtbx is None):
-    print "Skipping iotbx.shelx.tst_lex_parse_build (smtbx not available)."
-  else:
-    exercise_restraint_parsing()
-    exercise_afix_parsing()
-    exercise_xray_structure_parsing()
-    exercise_crystal_symmetry_parsing()
-    exercise_lexing()
+  exercise_restraint_parsing()
+  exercise_afix_parsing()
+  exercise_xray_structure_parsing()
+  exercise_crystal_symmetry_parsing()
+  exercise_lexing()
   print 'OK'
 
 ins_mundane_tiny = (
