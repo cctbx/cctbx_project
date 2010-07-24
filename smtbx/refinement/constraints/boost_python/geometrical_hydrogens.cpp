@@ -1,32 +1,37 @@
 #include <boost/python/class.hpp>
 #include <boost/python/implicit.hpp>
 
+#include <scitbx/boost_python/container_conversions.h>
+
 #include <smtbx/refinement/constraints/geometrical_hydrogens.h>
 
 namespace smtbx { namespace refinement { namespace constraints {
 namespace boost_python {
 
+  template <int n_hydrogens>
   struct terminal_tetrahedral_xhn_sites_wrapper
   {
-    typedef terminal_tetrahedral_xhn_sites wt;
+    typedef terminal_tetrahedral_xhn_sites<n_hydrogens> wt;
 
-    static void wrap() {
+    static void wrap(char const *name) {
       using namespace boost::python;
       class_<wt, bases<crystallographic_parameter>,
              std::auto_ptr<wt>,
-             boost::noncopyable>("terminal_tetrahedral_xhn_sites", no_init)
+             boost::noncopyable>(name, no_init)
         .def(init<site_parameter *,
                   site_parameter *,
                   independent_scalar_parameter *,
                   independent_scalar_parameter *,
                   cart_t const &,
-                  af::small<wt::scatterer_type *, 3> const &>
+                  af::tiny<typename wt::scatterer_type *, n_hydrogens> const &>
              ((arg("pivot"), arg("pivot_neighbour"),
                arg("azimuth"), arg("length"),
                arg("e_zero_azimuth"),
                arg("hydrogen"))))
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      scitbx::boost_python::container_conversions::tuple_mapping_fixed_size<
+        af::tiny<typename wt::scatterer_type *, n_hydrogens> >();
     }
   };
 
@@ -160,7 +165,12 @@ namespace boost_python {
   };
 
   void wrap_geometrical_hydrogens() {
-    terminal_tetrahedral_xhn_sites_wrapper::wrap();
+    terminal_tetrahedral_xhn_sites_wrapper<1>
+    ::wrap("terminal_tetrahedral_xh_site");
+    terminal_tetrahedral_xhn_sites_wrapper<2>
+    ::wrap("terminal_tetrahedral_xh2_sites");
+    terminal_tetrahedral_xhn_sites_wrapper<3>
+    ::wrap("terminal_tetrahedral_xh3_sites");
     angle_starting_tetrahedral_wrapper::wrap();
     secondary_ch2_sites_wrapper::wrap();
     tertiary_ch_site_wrapper::wrap();

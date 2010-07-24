@@ -4,7 +4,7 @@ from smtbx.refinement import constraints
 from scitbx import sparse
 from scitbx import matrix as mat
 from libtbx.test_utils import Exception_expected, approx_equal
-
+import libtbx.utils
 
 class terminal_linear_ch_site_test_case(object):
 
@@ -118,14 +118,75 @@ class special_position_adp_test_case(object):
     assert sparse.approx_equal(self.eps)(jt, jt0)
 
 
+class c_oh_test_case(object):
+
+  eps = 1.e-15
+  bond_length = 0.9
+
+  def __init__(self):
+    self.cs = crystal.symmetry(uctbx.unit_cell((1, 1, 2, 90, 90, 80)),
+                               "hall: P 2z")
+    self.o = xray.scatterer('O', site=(0,0,0))
+    self.o.flags.set_grad_site(True)
+    self.c1 = xray.scatterer('C1', site=(1,0,0))
+    self.c2 = xray.scatterer('C2', site=(2,1,0))
+    self.h = xray.scatterer('H')
+    self.site_symm = sgtbx.site_symmetry(self.cs.unit_cell(),
+                                         self.cs.space_group(),
+                                         self.o.site)
+    self.reparam = constraints.reparametrisation(self.cs.unit_cell())
+    xo = self.reparam.add(constraints.special_position_site,
+                          self.site_symm, self.o)
+    x1 = self.reparam.add(constraints.independent_site_parameter, self.c1)
+    x2 = self.reparam.add(constraints.independent_site_parameter, self.c2)
+    l = self.reparam.add(constraints.independent_scalar_parameter,
+                         value=self.bond_length, variable=False)
+    phi = self.reparam.add(constraints.independent_scalar_parameter,
+                           value=0, variable=False)
+    uc = self.cs.unit_cell()
+    xh = self.reparam.add(
+      constraints.terminal_tetrahedral_xh_site,
+      pivot=xo,
+      pivot_neighbour=x1,
+      azimuth=phi,
+      length=l,
+      e_zero_azimuth=uc.orthogonalize(
+        mat.col(self.c2.site) - mat.col(self.c1.site)),
+      hydrogen=(self.h,))
+    self.reparam.finalise()
+    self.xh, self.xo, self.x1, self.x2 = [ x.index for x in (xh, xo, x1, x2) ]
+    self.l, self.phi = l.index, phi.index
+    self.yo = xo.independent_params
+
+  def run(self):
+    self.reparam.linearise()
+    self.reparam.store()
+    uc = self.cs.unit_cell()
+    _ = mat.col
+    xh, xo, x1, x2 = [ uc.orthogonalize(sc.site)
+                       for sc in (self.h, self.o, self.c1, self.c2) ]
+    u_12, u_o1, u_oh = _(x2) - _(x1), _(x1) - _(xo), _(xh) - _(xo)
+    assert approx_equal(u_12.cross(u_o1).dot(u_oh), self.eps)
+    assert approx_equal(abs(u_oh), self.bond_length, self.eps)
+    assert approx_equal(u_o1.angle(u_oh, deg=True), 109.47, 0.01)
+
+    jt0 = sparse.matrix(1, 15)
+    jt0[0, self.yo.index] = 1.
+    jt0[0, self.xo + 2 ] = 1.
+    jt0[0, self.xh + 2 ] = 1.
+    jt = self.reparam.jacobian_transpose
+    assert sparse.approx_equal(self.eps)(jt, jt0)
+
+
 def exercise():
   terminal_linear_ch_site_test_case(with_special_position_pivot=False).run()
   terminal_linear_ch_site_test_case(with_special_position_pivot=True).run()
   special_position_adp_test_case().run()
+  c_oh_test_case().run()
 
 def run():
+  libtbx.utils.show_times_at_exit()
   exercise()
-  print 'OK'
 
 if __name__ == '__main__':
   run()
