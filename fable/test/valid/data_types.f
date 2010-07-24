@@ -75,11 +75,11 @@ c
       write(6, *) vinteger4
       vinteger4 = x'7FFFFFFF'
       write(6, *) vinteger4
-      vinteger8 = x'FFFFFFFFFFFFFFFF'
+      vinteger8 = x'FFFFFFFF'
       write(6, *) vinteger8
-      vinteger8 = x'8000000000000000'
+      vinteger8 = x'80000000'
       write(6, *) vinteger8
-      vinteger8 = x'7FFFFFFFFFFFFFFF'
+      vinteger8 = x'7FFFFFFF'
       write(6, *) vinteger8
 c
       vreal = 1.17550e-38
