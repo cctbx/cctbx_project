@@ -32,6 +32,7 @@ namespace constants {
 
   The Hydrogen sites ride on the pivot site.
 */
+template <int n_hydrogens>
 class terminal_tetrahedral_xhn_sites : public crystallographic_parameter
 {
 public:
@@ -45,11 +46,11 @@ public:
                                  independent_scalar_parameter *azimuth,
                                  independent_scalar_parameter *length,
                                  cart_t const &e_zero_azimuth,
-                                 af::small<scatterer_type *, 3> const &hydrogen)
+                                 af::tiny<scatterer_type *,
+                                          n_hydrogens> const &hydrogen)
     : crystallographic_parameter(4),
       e_zero_azimuth(e_zero_azimuth),
-      hydrogen(hydrogen),
-      x_h(hydrogen.size())
+      hydrogen(hydrogen)
   {
     set_arguments(pivot, pivot_neighbour, azimuth, length);
   }
@@ -62,9 +63,9 @@ public:
   virtual void store(uctbx::unit_cell const &unit_cell) const;
 
 private:
-  af::small<scatterer_type *, 3> hydrogen;
+  af::tiny<scatterer_type *, n_hydrogens> hydrogen;
   cart_t e_zero_azimuth;
-  af::small<cart_t, 3> x_h;
+  af::tiny<cart_t, n_hydrogens> x_h;
 };
 
 

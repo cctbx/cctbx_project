@@ -5,12 +5,14 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   //*** CH3, NH2, OH ***
 
-  std::size_t terminal_tetrahedral_xhn_sites::size() const {
-    return 3*x_h.size();
+  template <int n_hydrogens>
+  std::size_t terminal_tetrahedral_xhn_sites<n_hydrogens>::size() const {
+    return 3*n_hydrogens;
   }
 
+  template <int n_hydrogens>
   void
-  terminal_tetrahedral_xhn_sites
+  terminal_tetrahedral_xhn_sites<n_hydrogens>
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {
@@ -32,7 +34,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     double cos_phi = std::cos(phi), sin_phi = std::sin(phi);
 
     // Loop over the Hydrogen atoms
-    for (int k=0; k < x_h.size(); ++k) {
+    for (int k=0; k < n_hydrogens; ++k) {
 
       // Cosine and Sine of the azimutal angle of the k-th Hydrogen
       /* Mathematica:
@@ -93,13 +95,18 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
+  template <int n_hydrogens>
   void
-  terminal_tetrahedral_xhn_sites::store(uctbx::unit_cell const &unit_cell) const
+  terminal_tetrahedral_xhn_sites<n_hydrogens>
+  ::store(uctbx::unit_cell const &unit_cell) const
   {
     for (int i=0; i<hydrogen.size(); ++i) {
       hydrogen[i]->site = unit_cell.fractionalize(x_h[i]);
     }
   }
+  template class terminal_tetrahedral_xhn_sites<1>;
+  template class terminal_tetrahedral_xhn_sites<2>;
+  template class terminal_tetrahedral_xhn_sites<3>;
 
   // X-CH2-Y
 
@@ -167,7 +174,6 @@ namespace smtbx { namespace refinement { namespace constraints {
   void secondary_ch2_sites::store(uctbx::unit_cell const &unit_cell) const {
     for (int i=0; i<2; ++i) h[i]->site = unit_cell.fractionalize(x_h[i]);
   }
-
 
   /***    H
           |
