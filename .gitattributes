@@ -1264,7 +1264,6 @@ scitbx/wigner/wigner3j.h -text
 smtbx/refinement/constraints/__init__.py -text
 smtbx/refinement/constraints/boost_python/SConscript -text
 smtbx/refinement/constraints/boost_python/constraints_ext.cpp -text
-smtbx/refinement/constraints/tests/tst_constraints.py -text
 smtbx/refinement/minimization.h -text
 smtbx/refinement/minimization.py -text
 smtbx/refinement/tests/__init__.py -text
