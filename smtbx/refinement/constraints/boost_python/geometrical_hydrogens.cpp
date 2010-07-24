@@ -11,7 +11,7 @@ namespace boost_python {
   template <int n_hydrogens>
   struct terminal_tetrahedral_xhn_sites_wrapper
   {
-    typedef terminal_tetrahedral_xhn_sites<n_hydrogens> wt;
+    typedef terminal_tetrahedral_xhn_sites<n_hydrogens, /*staggered=*/false> wt;
 
     static void wrap(char const *name) {
       using namespace boost::python;
@@ -30,8 +30,29 @@ namespace boost_python {
                arg("hydrogen"))))
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
-      scitbx::boost_python::container_conversions::tuple_mapping_fixed_size<
-        af::tiny<typename wt::scatterer_type *, n_hydrogens> >();
+    }
+  };
+
+  template <int n_hydrogens>
+  struct staggered_terminal_tetrahedral_xhn_sites_wrapper
+  {
+    typedef terminal_tetrahedral_xhn_sites<n_hydrogens, /*staggered=*/true> wt;
+
+    static void wrap(char const *name) {
+      using namespace boost::python;
+      class_<wt, bases<crystallographic_parameter>,
+             std::auto_ptr<wt>,
+             boost::noncopyable>(name, no_init)
+      .def(init<site_parameter *,
+           site_parameter *,
+           site_parameter *,
+           independent_scalar_parameter *,
+           af::tiny<typename wt::scatterer_type *, n_hydrogens> const &>
+           ((arg("pivot"), arg("pivot_neighbour"), arg("stagger_on"),
+             arg("length"),
+             arg("hydrogen"))))
+      ;
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
   };
 
@@ -165,12 +186,28 @@ namespace boost_python {
   };
 
   void wrap_geometrical_hydrogens() {
+    {
+      using namespace scitbx::boost_python::container_conversions;
+      tuple_mapping_fixed_size<
+        af::tiny<crystallographic_parameter::scatterer_type *, 1> >();
+      tuple_mapping_fixed_size<
+        af::tiny<crystallographic_parameter::scatterer_type *, 2> >();
+      tuple_mapping_fixed_size<
+        af::tiny<crystallographic_parameter::scatterer_type *, 3> >();
+    }
     terminal_tetrahedral_xhn_sites_wrapper<1>
     ::wrap("terminal_tetrahedral_xh_site");
     terminal_tetrahedral_xhn_sites_wrapper<2>
     ::wrap("terminal_tetrahedral_xh2_sites");
     terminal_tetrahedral_xhn_sites_wrapper<3>
     ::wrap("terminal_tetrahedral_xh3_sites");
+    staggered_terminal_tetrahedral_xhn_sites_wrapper<1>
+    ::wrap("staggered_terminal_tetrahedral_xh_site");
+    staggered_terminal_tetrahedral_xhn_sites_wrapper<2>
+    ::wrap("staggered_terminal_tetrahedral_xh2_sites");
+    staggered_terminal_tetrahedral_xhn_sites_wrapper<3>
+    ::wrap("staggered_terminal_tetrahedral_xh3_sites");
+
     angle_starting_tetrahedral_wrapper::wrap();
     secondary_ch2_sites_wrapper::wrap();
     tertiary_ch_site_wrapper::wrap();

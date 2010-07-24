@@ -28,9 +28,8 @@ void exercise_ch3() {
     *length  = new independent_scalar_parameter(0.9);
 
   scitbx::vec3<double> e_zero_azimuth(1., 0., 0.);
-  terminal_tetrahedral_xhn_sites<3>
-  *ch3 = new terminal_tetrahedral_xhn_sites<3>(is_c0, is_c1, azimuth, length,
-                                               e_zero_azimuth, h);
+  typedef terminal_tetrahedral_xhn_sites<3, /*staggered=*/false> ch3_t;
+  ch3_t *ch3 = new ch3_t(is_c0, is_c1, azimuth, length, e_zero_azimuth, h);
 
   reparametrisation reparam(uc, boost::make_iterator_range(&ch3, &ch3 + 1));
   reparam.linearise();
