@@ -1,6 +1,5 @@
 set_lower = set("""\
 abs
-abs
 acos
 aimag
 aint
@@ -15,8 +14,9 @@ anint
 asin
 atan
 atan2
+cabs
+cdabs
 char
-cmplx
 cmplx
 conjg
 cos
@@ -68,7 +68,6 @@ min0
 min1
 mod
 nint
-real
 real
 sign
 sin

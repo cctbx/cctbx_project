@@ -615,6 +615,30 @@ namespace fem {
     return static_cast<int>(std::floor(value+0.5));
   }
 
+  inline
+  std::complex<float>
+  cmplx(
+    float const& re,
+    float const& im)
+  {
+    return std::complex<float>(re, im);
+  }
+
+  inline
+  std::complex<double>
+  dcmplx(
+    double const& re,
+    double const& im)
+  {
+    return std::complex<double>(re, im);
+  }
+
+  inline
+  std::complex<double>
+  cmplx(
+    double const& re,
+    double const& im) { return dcmplx(re, im); }
+
 } // namespace fem
 
 #endif // GUARD

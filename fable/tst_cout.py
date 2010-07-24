@@ -2961,6 +2961,18 @@ struct common_commonymous
   write(6, star), 0x7FFFFFFF;
   write(6, star), nums;
 """)
+  #
+  lines = get("data_types.f")
+  assert not absd(lines, tail_off(4), """\
+  std::complex<float> vcomplex = fem::cmplx(1.f, 2.e10f);
+  write(6, star), vcomplex;
+  std::complex<float> vcomplex8 = fem::cmplx(-3.e10f, -4.f);
+  write(6, star), vcomplex8;
+  std::complex<double> vcomplex16 = fem::dcmplx(5.e0, 6.e10);
+  write(6, star), vcomplex16;
+  std::complex<double> vdc = fem::dcmplx(-7.e10, -8.e0);
+  write(6, star), vdc;
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(

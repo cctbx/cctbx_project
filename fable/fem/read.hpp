@@ -241,6 +241,25 @@ namespace fem {
 
       read_loop&
       operator,(
+        integer_star_1& val)
+      {
+        if (io_mode == io_unformatted) {
+          inp.reset();
+          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        }
+        else if (io_mode == io_list_directed) {
+          inp.reset();
+          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        }
+        else {
+          inp.reset();
+          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        }
+        return *this;
+      }
+
+      read_loop&
+      operator,(
         integer_star_2& val)
       {
         if (io_mode == io_unformatted) {
@@ -335,6 +354,56 @@ namespace fem {
           val = (io_mode == io_formatted
             ? read_fmt_double()
             : read_star_double());
+        }
+        return *this;
+      }
+
+      read_loop&
+      operator,(
+        std::complex<float>& val)
+      {
+        if (io_mode == io_unformatted) {
+          float re, im;
+          from_stream_unformatted(
+            reinterpret_cast<char*>(&re),
+            sizeof(float));
+          from_stream_unformatted(
+            reinterpret_cast<char*>(&im),
+            sizeof(float));
+          val = std::complex<float>(re, im);
+        }
+        else if (io_mode == io_list_directed) {
+          inp.reset();
+          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        }
+        else {
+          inp.reset();
+          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        }
+        return *this;
+      }
+
+      read_loop&
+      operator,(
+        std::complex<double>& val)
+      {
+        if (io_mode == io_unformatted) {
+          double re, im;
+          from_stream_unformatted(
+            reinterpret_cast<char*>(&re),
+            sizeof(double));
+          from_stream_unformatted(
+            reinterpret_cast<char*>(&im),
+            sizeof(double));
+          val = std::complex<double>(re, im);
+        }
+        else if (io_mode == io_list_directed) {
+          inp.reset();
+          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        }
+        else {
+          inp.reset();
+          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
         }
         return *this;
       }
