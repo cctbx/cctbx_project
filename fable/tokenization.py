@@ -156,7 +156,13 @@ class ssl_iterator(object):
     while (O.i < stop):
       i_code = O.i
       c = code[i_code]
-      if ("(),=:+-".find(c) >= 0):
+      if ("=<>".find(c) >= 0):
+        if (code.startswith("=", i_code+1)):
+          O.i += 2
+          return tk_op(ssl=ssl, i_code=i_code, value=code[i_code:i_code+2])
+        O.i += 1
+        return tk_op(ssl=ssl, i_code=i_code, value=c)
+      if ("(),:+-".find(c) >= 0):
         O.i += 1
         return tk_op(ssl=ssl, i_code=i_code, value=c)
       if (c == "'"):

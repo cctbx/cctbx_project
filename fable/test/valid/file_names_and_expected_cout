@@ -45,6 +45,25 @@ write_star.f
 |          78 yz|
 | aBcD           12  eFgHi          345|
 ops.f
+| F|
+| T|
+|   1.000000    |
+|  -1.000000    |
+|  0.0000000E+00|
+|  0.0000000E+00|
+| x abc|
+| F|
+| T|
+| T|
+| T|
+| F|
+| F|
+| F|
+| T|
+| T|
+| T|
+| F|
+| F|
 mod_integers.f
 |           3|
 do_enddo.f

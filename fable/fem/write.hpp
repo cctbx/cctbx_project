@@ -448,6 +448,20 @@ namespace fem {
         return *this;
       }
 
+      write_loop&
+      operator,(
+        str_addends const& val)
+      {
+        int ll = val.lhs.len();
+        int rl = val.rhs.len();
+        boost::scoped_array<char> buffer(new char[ll + rl]);
+        char* b = buffer.get();
+        std::memcpy(b, val.lhs.elems(), ll);
+        std::memcpy(b+ll, val.rhs.elems(), rl);
+        (*this), str_cref(b, ll+rl);
+        return *this;
+      }
+
       template <typename T, size_t Ndims>
       write_loop&
       operator,(
