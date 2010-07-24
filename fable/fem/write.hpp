@@ -448,11 +448,13 @@ namespace fem {
         std::complex<float> const& val)
       {
         if (io_mode == io_unformatted) {
+          float re = val.real();
+          float im = val.imag();
           to_stream_unformatted(
-            reinterpret_cast<char const*>(&val.real()),
+            reinterpret_cast<char const*>(&re),
             sizeof(float));
           to_stream_unformatted(
-            reinterpret_cast<char const*>(&val.imag()),
+            reinterpret_cast<char const*>(&im),
             sizeof(float));
         }
         else if (io_mode == io_list_directed) {
@@ -474,11 +476,13 @@ namespace fem {
         std::complex<double> const& val)
       {
         if (io_mode == io_unformatted) {
+          double re = val.real();
+          double im = val.imag();
           to_stream_unformatted(
-            reinterpret_cast<char const*>(&val.real()),
+            reinterpret_cast<char const*>(&re),
             sizeof(double));
           to_stream_unformatted(
-            reinterpret_cast<char const*>(&val.imag()),
+            reinterpret_cast<char const*>(&im),
             sizeof(double));
         }
         else if (io_mode == io_list_directed) {
