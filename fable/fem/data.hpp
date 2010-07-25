@@ -9,8 +9,9 @@
 
 namespace fem {
 
-  struct datum // similar to boost::any
+  struct datum
   {
+    // similar to boost::any
     struct placeholder
     {
       virtual ~placeholder() {}
@@ -18,7 +19,7 @@ namespace fem {
       virtual placeholder* clone() const = 0;
     };
 
-    template<typename T>
+    template <typename T>
     struct holder : placeholder
     {
       T held;
