@@ -4,7 +4,7 @@
 #include <scitbx/array_family/shared.h>
 #include <smtbx/import_scitbx_af.h>
 
-namespace smtbx { namespace refinement {
+namespace cctbx { namespace xray {
 
 /// Position of the various derivatives or shifts in an array
 struct parameter_indices

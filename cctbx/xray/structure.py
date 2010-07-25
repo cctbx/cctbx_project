@@ -1074,8 +1074,7 @@ class structure(crystal.special_position_settings):
     return self.scatterers().n_grad_u_aniso()
 
   def parameter_map(self):
-    import smtbx.refinement
-    return smtbx.refinement.parameter_map(self.scatterers())
+    return cctbx.xray.parameter_map(self.scatterers())
 
   def grads_and_curvs_target_simple(self, miller_indices, da_db, daa_dbb_dab):
     return ext.structure_factors_curvatures_simple_grads_and_curvs_target(

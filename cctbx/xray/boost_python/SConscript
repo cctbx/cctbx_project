@@ -22,6 +22,7 @@ sources = [
   "f_model_bpl.cpp",
   "twin_targets.cpp",
   "grouped_data.cpp",
+  "parameter_map.cpp",
 ]
 
 raw_multithreaded_sources = [

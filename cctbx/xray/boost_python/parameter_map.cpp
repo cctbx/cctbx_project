@@ -8,9 +8,9 @@
 #include <cctbx/xray/scatterer.h>
 #include <smtbx/import_cctbx.h>
 
-#include <smtbx/refinement/parameter_map.h>
+#include <cctbx/xray/parameter_map.h>
 
-namespace smtbx { namespace refinement { namespace boost_python {
+namespace cctbx { namespace xray { namespace boost_python {
 
 struct parameter_indices_wrapper
 {

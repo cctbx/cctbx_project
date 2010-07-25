@@ -20,6 +20,7 @@ namespace cctbx { namespace xray { namespace boost_python {
   void wrap_f_model_core_data();
   void wrap_twin_targets();
   void wrap_grouped_data();
+  void wrap_parameter_map();
 
 namespace {
 
@@ -45,6 +46,7 @@ namespace {
     wrap_f_model_core_data();
     wrap_twin_targets();
     wrap_grouped_data();
+    wrap_parameter_map();
   }
 
 } // namespace <anonymous>
