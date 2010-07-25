@@ -1,7 +1,7 @@
-#ifndef BOOST_ADAPTBX_OPTIONAL_COPY_H
-#define BOOST_ADAPTBX_OPTIONAL_COPY_H
+#ifndef TBXX_OPTIONAL_COPY_H
+#define TBXX_OPTIONAL_COPY_H
 
-namespace boost_adaptbx {
+namespace tbxx {
 
   //! Optional allocation of value with new, with value-copy semantics.
   template <typename ValueType>
@@ -133,6 +133,6 @@ namespace boost_adaptbx {
       }
   };
 
-} // namespace boost_adaptbx
+} // namespace tbxx
 
 #endif // GUARD

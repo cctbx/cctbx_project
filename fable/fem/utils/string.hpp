@@ -3,7 +3,7 @@
 
 #include <fem/size_t.hpp>
 #include <fem/utils/char.hpp>
-#include <boost_adaptbx/error_utils.h>
+#include <tbxx/error_utils.hpp>
 #include <algorithm>
 #include <cstring>
 

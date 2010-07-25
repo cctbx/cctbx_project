@@ -130,7 +130,7 @@ namespace fem {
             }
             else {
               out.reset();
-              throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
+              throw TBXX_UNREACHABLE_ERROR();
             }
           }
           else if (t->type == "format") {
@@ -154,24 +154,24 @@ namespace fem {
             }
             else if (tv[0] == 't') {
               out.reset();
-              throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+              throw TBXX_NOT_IMPLEMENTED();
             }
             else if (tv[0] == 's') {
               out.reset();
-              throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+              throw TBXX_NOT_IMPLEMENTED();
             }
             else if (tv[0] == 'b') {
               out.reset();
-              throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+              throw TBXX_NOT_IMPLEMENTED();
             }
             else {
               out.reset();
-              throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
+              throw TBXX_UNREACHABLE_ERROR();
             }
           }
           else {
             out.reset();
-            throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
+            throw TBXX_UNREACHABLE_ERROR();
           }
         }
       }
@@ -189,7 +189,7 @@ namespace fem {
         }
         else {
           out.reset();
-          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+          throw TBXX_NOT_IMPLEMENTED();
         }
         return *this;
       }
@@ -263,7 +263,7 @@ namespace fem {
       {
         if (io_mode == io_unformatted) {
           out.reset();
-          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+          throw TBXX_NOT_IMPLEMENTED();
         }
         else if (io_mode == io_list_directed) {
           char buf[64];
@@ -273,7 +273,7 @@ namespace fem {
         }
         else {
           out.reset();
-          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+          throw TBXX_NOT_IMPLEMENTED();
         }
         return *this;
       }
@@ -284,7 +284,7 @@ namespace fem {
       {
         if (io_mode == io_unformatted) {
           out.reset();
-          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+          throw TBXX_NOT_IMPLEMENTED();
         }
         else if (io_mode == io_list_directed) {
           char buf[64];
@@ -294,7 +294,7 @@ namespace fem {
         }
         else {
           out.reset();
-          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+          throw TBXX_NOT_IMPLEMENTED();
         }
         return *this;
       }
@@ -318,7 +318,7 @@ namespace fem {
           std::string const& ed = next_edit_descriptor();
           if (ed[0] == 'i') {
             int n = ed.size();
-            ASSERTBX(n+2 < 64);
+            TBXX_ASSERT(n+2 < 64);
             char fmt[64];
             fmt[0] = '%';
             std::strncpy(fmt+1, ed.data()+1, n-1);
@@ -357,7 +357,7 @@ namespace fem {
         }
         else {
           out.reset();
-          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+          throw TBXX_NOT_IMPLEMENTED();
         }
         return *this;
       }
@@ -370,7 +370,7 @@ namespace fem {
           std::string const& ed = next_edit_descriptor();
           if (ed[0] == 'f') {
             int n = ed.size();
-            ASSERTBX(n+2 < 64);
+            TBXX_ASSERT(n+2 < 64);
             char fmt[64];
             fmt[0] = '%';
             std::strncpy(fmt+1, ed.data()+1, n-1);
@@ -383,12 +383,12 @@ namespace fem {
           else if ((ed[0] == 'd' || ed[0] == 'e') && ed.size() > 1) {
             int es = ed.size();
             int nw = utils::unsigned_integer_scan(ed.data(), 1, es);
-            ASSERTBX(nw > 0);
+            TBXX_ASSERT(nw > 0);
             int w = utils::unsigned_integer_value(ed.data(), 1, nw);
             int d = 0;
             if (nw != es) {
-              ASSERTBX(ed[nw] == '.');
-              ASSERTBX(nw+1 != es);
+              TBXX_ASSERT(ed[nw] == '.');
+              TBXX_ASSERT(nw+1 != es);
               d = utils::unsigned_integer_value(ed.data(), nw+1, es);
             }
             utils::double_to_string_scientific_notation conv(
@@ -466,7 +466,7 @@ namespace fem {
         }
         else {
           out.reset();
-          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+          throw TBXX_NOT_IMPLEMENTED();
         }
         return *this;
       }
@@ -494,7 +494,7 @@ namespace fem {
         }
         else {
           out.reset();
-          throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+          throw TBXX_NOT_IMPLEMENTED();
         }
         return *this;
       }
@@ -592,7 +592,7 @@ namespace fem {
         else {
           if (io_mode == io_unformatted) {
             out.reset();
-            throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+            throw TBXX_NOT_IMPLEMENTED();
           }
           else {
             if (io_mode == io_list_directed) {

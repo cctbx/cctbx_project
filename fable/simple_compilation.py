@@ -8,7 +8,7 @@ class environment(object):
     "compiler_path",
     "gcc_version",
     "fable_dist",
-    "boost_adaptbx_root",
+    "tbxx_root",
     "boost_dist",
     "__have_pch"]
 
@@ -38,8 +38,7 @@ class environment(object):
     else:
       O.gcc_version = None
     O.fable_dist = libtbx.env.dist_path(module_name="fable")
-    O.boost_adaptbx_root = os.path.dirname(
-      libtbx.env.dist_path(module_name="boost_adaptbx"))
+    O.tbxx_root = os.path.dirname(libtbx.env.dist_path(module_name="tbxx"))
     O.boost_dist = libtbx.env.dist_path(module_name="boost")
     O.__have_pch = False
 
@@ -64,7 +63,7 @@ class environment(object):
         O.compiler,
         part,
         quote(O.fable_dist),
-        quote(O.boost_adaptbx_root),
+        quote(O.tbxx_root),
         quote(O.boost_dist),
         quote_list(file_names))
     else:
@@ -82,7 +81,7 @@ class environment(object):
       if (not O.__have_pch):
         opt_i = "-I%s -I%s -I%s" % (
           quote(O.fable_dist),
-          quote(O.boost_adaptbx_root),
+          quote(O.tbxx_root),
           quote(O.boost_dist))
       else:
         opt_i = "-I."

@@ -3,7 +3,7 @@
 
 #include <scitbx/vec3.h>
 #include <scitbx/constants.h>
-#include <boost_adaptbx/error_utils.h>
+#include <tbxx/error_utils.hpp>
 
 namespace scitbx { namespace math {
 
@@ -29,7 +29,7 @@ namespace scitbx { namespace math {
     dihedral(
       af::const_ref<vec3<double> > const& sites)
     {
-      ASSERTBX(sites.size() == 4);
+      TBXX_ASSERT(sites.size() == 4);
       init(sites.begin());
     }
 

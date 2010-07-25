@@ -7,11 +7,11 @@
 #include <cctbx/import_scitbx_af.h>
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/shared.h>
-#include <boost_adaptbx/optional_copy.h>
+#include <tbxx/optional_copy.hpp>
 
 namespace cctbx { namespace geometry_restraints {
 
-  using boost_adaptbx::optional_container;
+  using tbxx::optional_container;
 
   /*! \brief Rotation part of rt_mx.inverse() in the cartesian system.
    */

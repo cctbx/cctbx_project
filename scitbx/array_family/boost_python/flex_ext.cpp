@@ -13,8 +13,8 @@
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/slice.h>
 #include <boost_adaptbx/optional_conversions.h>
-#include <boost_adaptbx/optional_copy.h>
 #include <boost_adaptbx/type_id_eq.h>
+#include <tbxx/optional_copy.hpp>
 #include <boost/optional.hpp>
 #include <boost/rational.hpp>
 #include <boost/python/module.hpp>
@@ -458,9 +458,9 @@ namespace {
       oc::to_and_from_python<boost::optional<vec3<double> > >();
       oc::to_and_from_python<boost::optional<af::shared<double> > >();
       oc::to_and_from_python<
-       boost_adaptbx::optional_container<af::small<int, 10> > >();
+        tbxx::optional_container<af::small<int, 10> > >();
       oc::to_and_from_python<
-       boost_adaptbx::optional_container<af::small<double, 6> > >();
+        tbxx::optional_container<af::small<double, 6> > >();
     }
 
     wrap_flex_random();

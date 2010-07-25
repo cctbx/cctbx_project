@@ -8,7 +8,7 @@
 #include <boost/optional.hpp>
 #include <boost/utility/typed_in_place_factory.hpp>
 
-#include <boost_adaptbx/error_utils.h>
+#include <tbxx/error_utils.hpp>
 
 #include <streambuf>
 #include <iostream>
@@ -133,7 +133,7 @@ class streambuf : public std::basic_streambuf<char>
       pos_of_write_buffer_end_in_py_file(buffer_size),
       farthest_pptr(0)
     {
-      ASSERTBX(buffer_size != 0);
+      TBXX_ASSERT(buffer_size != 0);
       /* Some Python file objects (e.g. sys.stdout and sys.stdin)
          have non-functional seek and tell. If so, assign None to
          py_tell and py_seek.
@@ -381,7 +381,7 @@ class streambuf : public std::basic_streambuf<char>
         upper_bound = reinterpret_cast<std::streamsize>(farthest_pptr) + 1;
       }
       else {
-        throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
+        throw TBXX_UNREACHABLE_ERROR();
       }
 
       // Sought position in "buffer coordinate"
@@ -396,7 +396,7 @@ class streambuf : public std::basic_streambuf<char>
         return failure;
       }
       else {
-        throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
+        throw TBXX_UNREACHABLE_ERROR();
       }
 
       // if the sought position is not in the buffer, give up

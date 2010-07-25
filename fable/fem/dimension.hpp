@@ -217,7 +217,7 @@ namespace fem {
     actual_index_1d(
       arr_index_data<MaxNdims> const& arr_index) const
     {
-      ASSERTBX(
+      TBXX_ASSERT(
         arr_index.actual_number_of_dimensions == actual_number_of_dimensions);
       size_t i = actual_number_of_dimensions;
       if (i == 0) return 0;

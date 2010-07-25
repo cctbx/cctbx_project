@@ -57,7 +57,7 @@ namespace fem {
     iostat(
       int& val)
     {
-      throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+      throw TBXX_NOT_IMPLEMENTED();
     }
 
     inquire_chain&
@@ -92,14 +92,14 @@ namespace fem {
     number(
       int& val)
     {
-      throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+      throw TBXX_NOT_IMPLEMENTED();
     }
 
     inquire_chain&
     named(
       bool&)
     {
-      throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+      throw TBXX_NOT_IMPLEMENTED();
     }
 
     inquire_chain&
@@ -107,7 +107,7 @@ namespace fem {
       str_ref val)
     {
       if (have_file) {
-        throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        throw TBXX_NOT_IMPLEMENTED();
       }
       else {
         io_unit* u_ptr = io_ptr->unit_ptr(unit);
@@ -126,7 +126,7 @@ namespace fem {
       str_ref val)
     {
       if (have_file) {
-        throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        throw TBXX_NOT_IMPLEMENTED();
       }
       else {
         io_unit* u_ptr = io_ptr->unit_ptr(unit);
@@ -151,7 +151,7 @@ namespace fem {
       str_ref val)
     {
       if (have_file) {
-        throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        throw TBXX_NOT_IMPLEMENTED();
       }
       else {
         io_unit* u_ptr = io_ptr->unit_ptr(unit);
@@ -170,7 +170,7 @@ namespace fem {
       str_ref val)
     {
       if (have_file) {
-        throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        throw TBXX_NOT_IMPLEMENTED();
       }
       else {
         io_unit* u_ptr = io_ptr->unit_ptr(unit);
@@ -188,35 +188,35 @@ namespace fem {
     form(
       str_ref)
     {
-      throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+      throw TBXX_NOT_IMPLEMENTED();
     }
 
     inquire_chain&
     formatted(
       str_ref)
     {
-      throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+      throw TBXX_NOT_IMPLEMENTED();
     }
 
     inquire_chain&
     unformatted(
       str_ref)
     {
-      throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+      throw TBXX_NOT_IMPLEMENTED();
     }
 
     inquire_chain&
     recl(
       int&)
     {
-      throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+      throw TBXX_NOT_IMPLEMENTED();
     }
 
     inquire_chain&
     nextrec(
       int&)
     {
-      throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+      throw TBXX_NOT_IMPLEMENTED();
     }
 
     inquire_chain&
@@ -224,7 +224,7 @@ namespace fem {
       str_ref val)
     {
       if (have_file) {
-        throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        throw TBXX_NOT_IMPLEMENTED();
       }
       else {
         io_unit* u_ptr = io_ptr->unit_ptr(unit);

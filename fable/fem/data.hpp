@@ -96,7 +96,7 @@ namespace fem {
     // but not actually used
     datum& operator=(datum const& rhs)
     {
-      throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
+      throw TBXX_UNREACHABLE_ERROR();
     }
 
     void
@@ -182,8 +182,8 @@ namespace fem {
     next_datum()
     {
       datum const& result = (*(values.objects))[value_index];
-      ASSERTBX(result.content != 0);
-      ASSERTBX(result.repeats > 0);
+      TBXX_ASSERT(result.content != 0);
+      TBXX_ASSERT(result.repeats > 0);
       repeat_index++;
       if (repeat_index == result.repeats) {
         value_index++;

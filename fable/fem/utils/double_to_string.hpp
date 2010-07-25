@@ -20,9 +20,9 @@ namespace fem { namespace utils {
       int exp_scale, // Fortran "P" scaling
       char e_or_d)
     {
-      ASSERTBX(w > 0);
-      ASSERTBX(w < buffer_capacity);
-      ASSERTBX(d >= 0);
+      TBXX_ASSERT(w > 0);
+      TBXX_ASSERT(w < buffer_capacity);
+      TBXX_ASSERT(d >= 0);
       int nd = d;
       int na = d;
       if (exp_scale == 0) {
@@ -106,7 +106,7 @@ namespace fem { namespace utils {
         1e0,  1e1,  1e2,  1e3,  1e4,  1e5,  1e6,  1e7,  1e8, 1e9,
         1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16};
       typedef boost::int64_t i64;
-      ASSERTBX(sizeof(i64) >= sizeof(double));
+      TBXX_ASSERT(sizeof(i64) >= sizeof(double));
       static i64 multipliers_i64[max_nd_significant+1] = {0};
       if (multipliers_i64[0] == 0) {
         multipliers_i64[0] = 1;
