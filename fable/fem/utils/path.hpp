@@ -1,6 +1,7 @@
 #ifndef FEM_UTILS_PATH_HPP
 #define FEM_UTILS_PATH_HPP
 
+#include <cstdio>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
