@@ -20,8 +20,8 @@ class constraint(object):
 
   def __repr__(self):
     return "%s(\n%s)" % (self.__class__.__name__,
-                       '\n'.join("  %s=%r" % (a,v)
-                                 for (a,v) in self.__dict__.iteritems()))
+                       '\n'.join(["  %s=%r" % (a,v)
+                                 for (a,v) in self.__dict__.iteritems()]))
 
 class tertiary_ch_site(constraint): pass
 class secondary_ch2_sites(constraint): pass
