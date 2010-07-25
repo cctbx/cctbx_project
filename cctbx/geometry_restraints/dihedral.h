@@ -4,7 +4,6 @@
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
 #include <scitbx/math/dihedral.h>
-#include <boost_adaptbx/error_utils.h>
 #include <boost/format.hpp>
 
 namespace cctbx { namespace geometry_restraints {

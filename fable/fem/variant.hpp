@@ -4,12 +4,12 @@
 #include <fem/str_arr_ref.hpp>
 #include <fem/utils/equivalence.hpp>
 #include <fem/utils/misc.hpp>
-#include <boost_adaptbx/optional_copy.h>
+#include <tbxx/optional_copy.hpp>
 #include <boost/noncopyable.hpp>
 
 namespace fem {
 
-  using boost_adaptbx::optional_copy;
+  using tbxx::optional_copy;
 
   struct variant_member
   {
@@ -44,7 +44,7 @@ namespace fem {
     actual_index_1d(
       arr_index const& arr_ix)
     {
-      ASSERTBX(dims.get() != 0);
+      TBXX_ASSERT(dims.get() != 0);
       return dims->actual_index_1d(arr_ix);
     }
   };
@@ -284,7 +284,7 @@ namespace fem {
       size_t new_size)
     {
       if (size < new_size) {
-        ASSERTBX(use_count == 1);
+        TBXX_ASSERT(use_count == 1);
         char* new_ptr = new char[new_size];
         std::memcpy(new_ptr, ptr, size);
         delete[] ptr;
@@ -338,7 +338,7 @@ namespace fem {
     operator,(
       variant_member const& m)
     {
-      ASSERTBX(is_common_variant);
+      TBXX_ASSERT(is_common_variant);
       bindings->resize(bindings->size() + 1);
       variant_bind_info& bi = bindings->back();
       bi.offset = curr_bytes;

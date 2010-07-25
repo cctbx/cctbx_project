@@ -9,9 +9,9 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/stl/vector_wrapper.h>
 #include <scitbx/boost_python/container_conversions.h>
-#include <boost_adaptbx/optional_copy.h>
 #include <boost_adaptbx/optional_conversions.h>
 #include <boost_adaptbx/hash.h>
+#include <tbxx/optional_copy.hpp>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
@@ -133,10 +133,9 @@ namespace {
       }
       {
         using boost_adaptbx::optional_conversions::to_and_from_python;
-        using boost_adaptbx::optional_container;
         // used in cctbx/geometry_restraints
         to_and_from_python<
-          optional_container<
+          tbxx::optional_container<
             af::shared<cctbx::sgtbx::rt_mx> > >();
       }
     }

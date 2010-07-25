@@ -6,7 +6,7 @@
 #include <scitbx/matrix/eigensystem.h>
 #include <scitbx/array_family/versa_algebra.h>
 #include <scitbx/array_family/shared_algebra.h>
-#include <boost_adaptbx/optional_copy.h>
+#include <tbxx/optional_copy.hpp>
 #include <boost/noncopyable.hpp>
 
 namespace scitbx { namespace rigid_body {
@@ -264,7 +264,7 @@ namespace featherstone {
       vec3<ft> sum_v(0,0,0);
       unsigned sum_n = 0;
 #define SCITBX_LOC \
-      boost_adaptbx::optional_container< \
+      tbxx::optional_container< \
         af::shared<af::tiny<std::size_t, 2> > > \
           nosiet; \
       if (number_of_sites_in_each_tree.begin() == 0) { \

@@ -116,7 +116,7 @@ namespace fem {
         file = map_iter->second.file_name; // f77_std 12.10.1.1
       }
       else if (file == map_iter->second.file_name) {
-        throw BOOST_ADAPTBX_NOT_IMPLEMENTED(); // f77_std 12.10.1.1
+        throw TBXX_NOT_IMPLEMENTED(); // f77_std 12.10.1.1
       }
       map_iter->second.close();
       units.erase(map_iter);

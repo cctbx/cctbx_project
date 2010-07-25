@@ -2201,7 +2201,7 @@ def convert_to_cpp_function(
       conv_info.vmap[conv_info.unit.name.value],
       zero_shortcut_if_possible(ctype=cdecl)))
   if (force_not_implemented):
-    cpp_callback("  throw BOOST_ADAPTBX_NOT_IMPLEMENTED();")
+    cpp_callback("  throw TBXX_NOT_IMPLEMENTED();")
   else:
     convert_executable(
       callback=cpp_callback,

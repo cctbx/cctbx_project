@@ -3,7 +3,7 @@
 
 #include <fem/utils/char.hpp>
 #include <fem/utils/simple_streams.hpp>
-#include <boost_adaptbx/optional_copy.h>
+#include <tbxx/optional_copy.hpp>
 
 namespace fem { namespace utils {
 
@@ -30,7 +30,7 @@ namespace fem { namespace utils {
   struct string_to_double
   {
     double result;
-    boost_adaptbx::optional_copy<std::string> error_message;
+    tbxx::optional_copy<std::string> error_message;
     bool stream_end;
 
     string_to_double() {}

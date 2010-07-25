@@ -1,5 +1,5 @@
-#ifndef BOOST_ADAPTBX_LIBC_BACKTRACE_HPP
-#define BOOST_ADAPTBX_LIBC_BACKTRACE_HPP
+#ifndef TBXX_LIBC_BACKTRACE_HPP
+#define TBXX_LIBC_BACKTRACE_HPP
 
 #include <ostream>
 #include <cstdlib>
@@ -9,16 +9,16 @@
 #if defined(__linux) \
  || (defined(__APPLE_CC__) && __APPLE_CC__ >= 5465)
 #include <execinfo.h>
-#define BOOST_ADAPTBX_LIBC_BACKTRACE_HAVE_EXECINFO_H
+#define TBXX_LIBC_BACKTRACE_HAVE_EXECINFO_H
 #if ((__GNUC__ > 3) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 1))) \
  && !defined(__EDG_VERSION__)
 #include <cxxabi.h>
-#define BOOST_ADAPTBX_LIBC_BACKTRACE_HAVE_CXXABI_H
+#define TBXX_LIBC_BACKTRACE_HAVE_CXXABI_H
 #endif
 #endif
 #endif
 
-namespace boost_adaptbx { namespace libc_backtrace {
+namespace tbxx { namespace libc_backtrace {
 
   inline
   bool
@@ -30,7 +30,7 @@ namespace boost_adaptbx { namespace libc_backtrace {
     if (active) return false;
     active = true;
     bool result = false;
-#if defined(BOOST_ADAPTBX_LIBC_BACKTRACE_HAVE_EXECINFO_H)
+#if defined(TBXX_LIBC_BACKTRACE_HAVE_EXECINFO_H)
     static const int max_frames = 1024;
     void *array[max_frames];
     int size = backtrace(array, max_frames);
@@ -42,7 +42,7 @@ namespace boost_adaptbx { namespace libc_backtrace {
     char **strings = backtrace_symbols(array, size);
     for(int i=size-1;i>=n_frames_skip;i--) {
       char* s = strings[i];
-#if defined(BOOST_ADAPTBX_LIBC_BACKTRACE_HAVE_CXXABI_H)
+#if defined(TBXX_LIBC_BACKTRACE_HAVE_CXXABI_H)
       const char* m_bgn = 0;
 #if defined(__APPLE_CC__)
       if (std::strlen(s) >= 52 && std::strncmp(s+40, "0x", 2) == 0) {
@@ -86,17 +86,17 @@ namespace boost_adaptbx { namespace libc_backtrace {
           }
         }
       }
-#endif // BOOST_ADAPTBX_LIBC_BACKTRACE_HAVE_CXXABI_H
+#endif // TBXX_LIBC_BACKTRACE_HAVE_CXXABI_H
       ostream << "  " << s << std::endl;
       if (s != strings[i]) std::free(s);
       result = true;
     }
     std::free(strings);
-#endif // BOOST_ADAPTBX_LIBC_BACKTRACE_HAVE_EXECINFO_H
+#endif // TBXX_LIBC_BACKTRACE_HAVE_EXECINFO_H
     active = false;
     return result;
   }
 
-}} // boost_adaptbx::error_utils
+}} // tbxx::error_utils
 
 #endif // GUARD

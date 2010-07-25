@@ -133,7 +133,7 @@ namespace fem {
               break;
             }
             run_away_counter++;
-            ASSERTBX(run_away_counter < 1000);
+            TBXX_ASSERT(run_away_counter < 1000);
           }
         }
       }
@@ -215,7 +215,7 @@ namespace fem {
         }
       }
       if (access == ac_direct) {
-        throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        throw TBXX_NOT_IMPLEMENTED();
       }
       stream.ptr = std::fopen(file_name.c_str(), "ab+");
       if (stream.ptr == 0 || std::fseek(stream.ptr, 0L, SEEK_SET) != 0) {
@@ -263,7 +263,7 @@ namespace fem {
     backspace(
       int* iostat_ptr)
     {
-      throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+      throw TBXX_NOT_IMPLEMENTED();
     }
 
     void
@@ -271,7 +271,7 @@ namespace fem {
       int* iostat_ptr)
     {
       if (is_std_io_unit(number)) {
-        throw BOOST_ADAPTBX_NOT_IMPLEMENTED();
+        throw TBXX_NOT_IMPLEMENTED();
       }
       if (!utils::path::truncate_file_at_current_position(stream.ptr)) {
         throw io_err("ENDFILE failure: " + file_name);

@@ -3,7 +3,7 @@
 #include <fem/format.hpp>
 #include <fem/utils/equivalence.hpp>
 #include <fem/utils/string_to_double_fmt.hpp>
-#include <boost_adaptbx/error_utils.h>
+#include <tbxx/error_utils.hpp>
 
 #include <cctype>
 
@@ -20,7 +20,7 @@ namespace fable { namespace ext {
   {
     unsigned len_code = bp::len(code);
     if (stop < 0) return len_code;
-    ASSERTBX(stop <= len_code);
+    TBXX_ASSERT(stop <= len_code);
     return static_cast<unsigned>(stop);
   }
 

@@ -23,14 +23,14 @@ namespace fem {
       value_index(0)
     {}
 
-    ~data_of_type() { ASSERTBX(value_index == values_size); }
+    ~data_of_type() { TBXX_ASSERT(value_index == values_size); }
 
 #define FEM_LOC(V) \
     data_of_type& \
     operator,( \
       V& val) \
     { \
-      ASSERTBX(value_index < values_size); \
+      TBXX_ASSERT(value_index < values_size); \
       val = values[value_index++]; \
       return *this; \
     }
@@ -72,13 +72,13 @@ namespace fem {
       value_index(0)
     {}
 
-    ~data_of_type_str() { ASSERTBX(value_index == values_size); }
+    ~data_of_type_str() { TBXX_ASSERT(value_index == values_size); }
 
     data_of_type_str&
     operator,(
       str_ref val)
     {
-      ASSERTBX(value_index < values_size);
+      TBXX_ASSERT(value_index < values_size);
       val = values[value_index++];
       return *this;
     }

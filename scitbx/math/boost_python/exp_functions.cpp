@@ -5,7 +5,7 @@
 
 #include <scitbx/math/jacks_expf.h>
 #include <scitbx/array_family/shared.h>
-#include <boost_adaptbx/error_utils.h>
+#include <tbxx/error_utils.hpp>
 
 namespace scitbx { namespace math {
 
@@ -48,13 +48,13 @@ namespace {
     unsigned mantissa_step_size,
     unsigned j_sample)
   {
-    ASSERTBX(sizeof(float) == 4);
-    ASSERTBX(sizeof(int) == 4);
-    ASSERTBX(exponent >= float_bits::expo_min);
-    ASSERTBX(exponent <= float_bits::expo_max);
+    TBXX_ASSERT(sizeof(float) == 4);
+    TBXX_ASSERT(sizeof(int) == 4);
+    TBXX_ASSERT(exponent >= float_bits::expo_min);
+    TBXX_ASSERT(exponent <= float_bits::expo_max);
     float_unsigned value;
     value.f = -3.9572185e-13f;
-    ASSERTBX(value.u == 2866726279U);
+    TBXX_ASSERT(value.u == 2866726279U);
       // expected to be true for IEEE 754 binary32
     af::shared<float> result;
     value.u = 0U;

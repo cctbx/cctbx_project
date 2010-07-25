@@ -39,7 +39,7 @@ namespace fem {
     ~file_positioning_chain()
     {
       if (u_ptr == 0) {
-        throw BOOST_ADAPTBX_NOT_IMPLEMENTED(); // should open file file
+        throw TBXX_NOT_IMPLEMENTED(); // should open file file
       }
       if (std::strcmp(io_function, "backspace") == 0) {
         u_ptr->backspace(iostat_ptr);
@@ -51,7 +51,7 @@ namespace fem {
         u_ptr->rewind(iostat_ptr);
       }
       else {
-        throw BOOST_ADAPTBX_UNREACHABLE_ERROR();
+        throw TBXX_UNREACHABLE_ERROR();
       }
     }
 

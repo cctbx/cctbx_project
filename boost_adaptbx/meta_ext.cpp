@@ -14,9 +14,11 @@
 
 #include <boost_adaptbx/type_id_eq.h>
 #include <boost_adaptbx/python_streambuf.h>
-#include <boost_adaptbx/libc_backtrace.hpp>
+
+#include <tbxx/libc_backtrace.hpp>
 
 #include <boost/cstdint.hpp>
+
 #include <sstream>
 #include <stdexcept>
 
@@ -108,7 +110,7 @@ namespace {
   boost_adaptbx_libc_backtrace(int n_frames_skip=0)
   {
     std::cout << std::flush;
-    return boost_adaptbx::libc_backtrace::show_if_possible(
+    return tbxx::libc_backtrace::show_if_possible(
       std::cerr, n_frames_skip);
   }
 
