@@ -5,7 +5,6 @@
 #include <fem/utils/equivalence.hpp>
 #include <fem/utils/misc.hpp>
 #include <tbxx/optional_copy.hpp>
-#include <boost/noncopyable.hpp>
 
 namespace fem {
 
@@ -269,7 +268,7 @@ namespace fem {
     }
   };
 
-  struct variant_core : boost::noncopyable
+  struct variant_core : utils::noncopyable
   {
     size_t use_count;
     size_t size;

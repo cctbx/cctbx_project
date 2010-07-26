@@ -12,7 +12,7 @@ namespace fem {
       arr(
         arr const&);
 
-      arr&
+      arr const&
       operator=(
         arr const&);
 

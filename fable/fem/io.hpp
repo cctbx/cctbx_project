@@ -2,11 +2,11 @@
 #define FEM_IO_HPP
 
 #include <fem/io_exceptions.hpp>
+#include <fem/utils/misc.hpp>
 #include <fem/utils/path.hpp>
 #include <fem/utils/random.hpp>
 #include <fem/utils/simple_streams.hpp>
 #include <fem/utils/string.hpp>
-#include <boost/noncopyable.hpp>
 #include <map>
 #include <memory>
 #include <cstdio>
@@ -302,7 +302,7 @@ namespace fem {
     }
   };
 
-  struct io : boost::noncopyable
+  struct io : utils::noncopyable
   {
     std::map<int, io_unit> units;
 
