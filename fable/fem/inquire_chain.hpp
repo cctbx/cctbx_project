@@ -13,7 +13,7 @@ namespace fem {
     bool have_file;
 
     private:
-      inquire_chain& operator=(inquire_chain const&); // not implemented
+      inquire_chain const& operator=(inquire_chain const&); // not implemented
 
       public:
 

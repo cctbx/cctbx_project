@@ -9,6 +9,16 @@ namespace fem { namespace utils {
     T hidden;
   };
 
+  struct noncopyable // clone of boost::noncopyable
+  {
+    protected:
+      noncopyable() {}
+
+    private:
+      noncopyable(noncopyable const&);
+      noncopyable const& operator=(noncopyable const&);
+  };
+
 }} // namespace fem::utils
 
 #endif // GUARD

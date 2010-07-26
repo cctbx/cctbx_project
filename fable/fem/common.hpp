@@ -33,14 +33,14 @@ namespace fem {
         ~holder() { delete ptr; }
 
         private:
-          holder& operator=(holder const&);
           holder(holder const&);
+          holder const& operator=(holder const&);
       };
 
       placeholder* content;
 
       cmn_sve(cmn_sve const&);
-      cmn_sve& operator=(cmn_sve const&);
+      cmn_sve const& operator=(cmn_sve const&);
 
       public:
 

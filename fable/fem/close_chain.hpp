@@ -13,7 +13,7 @@ namespace fem {
     bool status_delete;
 
     private:
-      close_chain& operator=(close_chain const&); // not implemented
+      close_chain const& operator=(close_chain const&); // not implemented
 
       public:
 

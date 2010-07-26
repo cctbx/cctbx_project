@@ -33,7 +33,7 @@ namespace fem {
       clone() const { return new holder(held); }
 
       private:
-        holder& operator=(holder const&);
+        holder const& operator=(holder const&);
     };
 
     placeholder* content;
@@ -95,7 +95,7 @@ namespace fem {
 
     // required for std::vector<datum> (Apple g++ 4.0.1, Visual C++ 9.0)
     // but not actually used
-    datum& operator=(datum const& rhs)
+    datum const& operator=(datum const& rhs)
     {
       throw TBXX_UNREACHABLE_ERROR();
     }

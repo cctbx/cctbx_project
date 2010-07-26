@@ -11,7 +11,7 @@ namespace fem {
     int* iostat_ptr;
 
     private:
-      open_chain& operator=(open_chain const&); // not implemented
+      open_chain const& operator=(open_chain const&); // not implemented
 
       public:
 

@@ -4,16 +4,16 @@
 #include <fem/io_exceptions.hpp>
 #include <fem/str_ref.hpp>
 #include <fem/utils/char.hpp>
+#include <fem/utils/misc.hpp>
 #include <fem/utils/token.hpp>
 #include <boost/scoped_array.hpp>
-#include <boost/noncopyable.hpp>
 #include <vector>
 #include <stdexcept>
 #include <cstring>
 
 namespace fem { namespace format {
 
-  struct tokenizer : boost::noncopyable
+  struct tokenizer : utils::noncopyable
   {
     protected:
       char* code;

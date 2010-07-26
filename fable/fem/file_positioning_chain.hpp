@@ -12,7 +12,7 @@ namespace fem {
     int* iostat_ptr;
 
     private:
-      file_positioning_chain& operator=(
+      file_positioning_chain const& operator=(
         file_positioning_chain const&); // not implemented
 
       public:

@@ -3,12 +3,12 @@
 
 #include <fem/arr.hpp>
 #include <fem/str_arr_ref.hpp>
-#include <boost/noncopyable.hpp>
+#include <fem/utils/misc.hpp>
 
 namespace fem {
 
   template <typename T>
-  struct data_of_type : boost::noncopyable
+  struct data_of_type : utils::noncopyable
   {
     T const* values;
     size_t values_size;
@@ -57,7 +57,7 @@ namespace fem {
     }
   };
 
-  struct data_of_type_str : boost::noncopyable
+  struct data_of_type_str : utils::noncopyable
   {
     char const** values;
     size_t values_size;

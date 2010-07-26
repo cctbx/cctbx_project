@@ -14,7 +14,7 @@ namespace fem {
       arr_size(
         arr_size const&);
 
-      arr_size&
+      arr_size const&
       operator=(
         arr_size const&);
 
