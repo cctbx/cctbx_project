@@ -104,6 +104,9 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
       adp.isotropic_adp_proxy: adp.shared_isotropic_adp_proxy(),
       adp.rigid_bond_proxy: adp.shared_rigid_bond_proxy(),
     }
+    import libtbx.load_env
+    if (not libtbx.env.has_module(name="smtbx")):
+      raise RuntimeError("smtbx module is not available.")
     from smtbx.refinement.restraints import \
       adp_restraints as smtbx_adp_restraints
     self.adp_proxy_builders = {
