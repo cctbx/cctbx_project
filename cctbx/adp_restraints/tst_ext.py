@@ -187,7 +187,7 @@ def exercise_rigid_bond():
   expected_gradients = ((-4, -4, -4, -8, -8, -8), (4, 4, 4, 8, 8, 8))
   r = adp_restraints.rigid_bond(sites=sites, u_cart=u_cart, weight=weight)
   assert r.weight == weight
-  assert approx_equal(r.delta_z(), 6)
+  assert approx_equal(r.delta_z(), -6)
   assert approx_equal(r.residual(), 36)
   assert approx_equal(r.gradients(), expected_gradients)
   assert approx_equal(r.sites, sites)
@@ -212,7 +212,7 @@ def exercise_rigid_bond():
                                      u_star[1],
                                      u_star[2],
                                      unit_cell)
-  assert approx_equal(pair.delta_z(), r.delta_z())
+  assert approx_equal(pair.delta_z(), abs(r.delta_z()))
   assert approx_equal(pair.z_12(), r.z_12())
   assert approx_equal(pair.z_21(), r.z_21())
   #
@@ -601,7 +601,7 @@ Rigid bond restraints: 0
 *scatterers O16
 *           N8
 *   delta_z    sigma   weight residual
-*  3.96e-03 2.00e-01 2.50e+01 3.92e-04
+* -3.96e-03 2.00e-01 2.50e+01 3.92e-04
 *scatterers C1
 *           C2
 *   delta_z    sigma   weight residual
@@ -613,7 +613,7 @@ Rigid bond restraints: 0
 *scatterers N8
 *           C2
 *   delta_z    sigma   weight residual
-*  1.54e-04 1.83e-01 3.00e+01 7.16e-07
+* -1.54e-04 1.83e-01 3.00e+01 7.16e-07
 """)
   sio = StringIO()
   proxies.show_sorted(
@@ -629,7 +629,7 @@ Rigid bond restraints: 0
 ||scatterers 2
 ||           3
 ||   delta_z    sigma   weight residual
-||  3.96e-03 2.00e-01 2.50e+01 3.92e-04
+|| -3.96e-03 2.00e-01 2.50e+01 3.92e-04
 ||scatterers 0
 ||           1
 ||   delta_z    sigma   weight residual
