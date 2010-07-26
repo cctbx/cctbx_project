@@ -1,8 +1,8 @@
-#ifndef SMTBX_REFINEMENT_PARAMETER_MAP_H
-#define SMTBX_REFINEMENT_PARAMETER_MAP_H
+#ifndef CCTBX_REFINEMENT_PARAMETER_MAP_H
+#define CCTBX_REFINEMENT_PARAMETER_MAP_H
 
 #include <scitbx/array_family/shared.h>
-#include <smtbx/import_scitbx_af.h>
+#include <cctbx/import_scitbx_af.h>
 
 namespace cctbx { namespace xray {
 
@@ -81,6 +81,6 @@ class parameter_map
     int n_parameters() const { return params; }
 };
 
-}} // smtbx::refinement
+}} // cctbx::xray
 
 #endif // GUARD
