@@ -506,7 +506,7 @@ public:
   friend value_type operator*(vector const &u, vector const &v) {
     return dot_product(u, v).result;
   }
-  
+
   friend
   vector operator+(vector const &u, vector const &v) {
     return vector_op_vector< std::plus<T> >(u, v).result;
@@ -590,21 +590,21 @@ private:
       }
     }
   };
-  
+
   template <class OperatorType>
-  struct vector_op_vector 
+  struct vector_op_vector
   : vector_op_vector_core<vector_op_vector< OperatorType> >
   {
     vector result;
     OperatorType op;
-    
-    vector_op_vector(vector const &u, vector const &v) 
+
+    vector_op_vector(vector const &u, vector const &v)
     : result(u.size())
     {
       loop(u, v);
       result.set_compact(true); // by construction
     }
-    
+
     void operator()(index_type i, value_type x, value_type y) {
       result[i] = op(x, y);
     }
@@ -613,13 +613,13 @@ private:
   struct dot_product : vector_op_vector_core<dot_product>
   {
     value_type result;
-    
+
     dot_product(vector const &u, vector const &v)
     : result(0)
     {
       loop(u,v);
     }
-    
+
     void operator()(index_type i, value_type x, value_type y) {
       result += x*y;
     }
