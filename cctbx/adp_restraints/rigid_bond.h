@@ -111,7 +111,7 @@ using scitbx::sym_mat3;
       result[3] = 2 * l_12[0] * l_12[1];
       result[4] = 2 * l_12[0] * l_12[2];
       result[5] = 2 * l_12[1] * l_12[2];
-      result *= -1 / bond_length_sq;
+      result /= bond_length_sq;
       return result;
     }
 
@@ -155,7 +155,6 @@ using scitbx::sym_mat3;
     //! Cartesian anisotropic displacement parameters.
     af::tiny<scitbx::sym_mat3<double>, 2> u_cart;
 
-    double delta;
     double weight;
   protected:
     void init_delta()
@@ -165,7 +164,7 @@ using scitbx::sym_mat3;
       bond_length_sq = scitbx::fn::pow2(l_12.length());
       z_12_ = l_12 * u_cart[0] * l_12 / bond_length_sq;
       z_21_ = l_21 * u_cart[1] * l_21 / bond_length_sq;
-      delta_z_ = std::abs(z_12_ - z_21_);
+      delta_z_ = z_12_ - z_21_;
     }
 
     double z_12_, z_21_, delta_z_;

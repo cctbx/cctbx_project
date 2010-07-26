@@ -367,7 +367,7 @@ def _show_sorted_impl(self,
       raise AssertionError
   elif (by_value == "delta"):
     if proxy_type is rigid_bond:
-      data_to_sort = self.deltas(sites_cart=sites_cart, u_cart=u_cart)
+      data_to_sort = flex.abs(self.deltas(sites_cart=sites_cart, u_cart=u_cart))
     else:
       raise AssertionError
   else:
