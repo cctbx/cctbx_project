@@ -6,6 +6,7 @@
 #include <fem/star.hpp>
 #include <fem/str_arr_ref.hpp>
 #include <fem/utils/double_to_string.hpp>
+#include <fem/utils/misc.hpp>
 #include <fem/utils/real_as_string.hpp>
 
 namespace fem {
@@ -533,8 +534,8 @@ namespace fem {
       {
         int ll = val.lhs.len();
         int rl = val.rhs.len();
-        boost::scoped_array<char> buffer(new char[ll + rl]);
-        char* b = buffer.get();
+        utils::simple_buffer<char> buffer(ll + rl);
+        char* b = buffer.space;
         std::memcpy(b, val.lhs.elems(), ll);
         std::memcpy(b+ll, val.rhs.elems(), rl);
         (*this), str_cref(b, ll+rl);
