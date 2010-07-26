@@ -284,6 +284,11 @@ def exercise_afix_parsing():
     assert (result == expected)
 
 def exercise_restraint_parsing():
+  import libtbx.load_env
+  if (not libtbx.env.has_module(name="smtbx")):
+    print "Skipping exercise_restraint_parsing():" \
+      " smtbx module is not available."
+    return
   def parse_restraints(ins_name):
     builder = shelx.restrained_crystal_structure_builder()
     stream = shelx.command_stream(file=cStringIO.StringIO(ins_name))
