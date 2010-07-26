@@ -391,6 +391,18 @@ public:
     return result;
   }
 
+  /// A^T A where A is this matrix
+  matrix this_transpose_times_this() {
+    index_type m = n_rows(), n = n_cols();
+    matrix result(n, n);
+    for (index_type i=0; i<m; ++i) for (index_type j=i; j<n; ++j) {
+      result(i, j) = col(i)*col(j);
+    }
+    result.set_compact(true); // by construction
+    return result;
+  }
+
+
 private:
   typedef af::shared<column_type> container_type;
   typedef af::ref<column_type> ref_type;

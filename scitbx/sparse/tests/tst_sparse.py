@@ -300,8 +300,19 @@ def exercise_dot_product():
   v = sparse.vector(8, {1:1, 3:2, 5:6})
   assert u*v == 4
 
+def exercise_a_tr_a():
+  a = sparse.matrix(6, 3,
+                    elements_by_columns = [ { 0: 1, 3:2, 5:3 },
+                                            { 1:-1, 3:3, 4:-2 },
+                                            { 2:1 } ])
+  aa = a.as_dense_matrix()
+  b = a.self_transpose_times_self()
+  bb = b.as_dense_matrix()
+  assert bb == aa.matrix_transpose().matrix_multiply(aa)
+
 def run():
   libtbx.utils.show_times_at_exit()
+  exercise_a_tr_a()
   exercise_dot_product()
   exercise_vector()
   exercise_matrix()
