@@ -8,7 +8,6 @@ def run():
      '"hall: P 1"', '"hall: P 3"', '"hall: -P 2ybc"' ],
     "$D/masks/tests/tst_masks.py",
     "$D/structure_factors/direct/tests/tst_standard_xray.py",
-    "$D/refinement/tests/tst_minimization.py",
     #"$D/refinement/tests/tst_least_squares.py",
     "$B/refinement/constraints/tests/tst_reparametrisation",
     "$B/refinement/constraints/tests/tst_geometrical_hydrogens",
