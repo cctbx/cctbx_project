@@ -503,14 +503,18 @@ public:
 
   /// Linear algebra
   //@{
+  friend value_type operator*(vector const &u, vector const &v) {
+    return dot_product(u, v).result;
+  }
+  
   friend
   vector operator+(vector const &u, vector const &v) {
-    return vector_op_vector(u, std::plus<T>(), v);
+    return vector_op_vector< std::plus<T> >(u, v).result;
   }
 
   friend
   vector operator-(vector const &u, vector const &v) {
-    return vector_op_vector(u, std::minus<T>(), v);
+    return vector_op_vector< std::minus<T> >(u, v).result;
   }
 
   vector operator-() const {
@@ -561,30 +565,65 @@ public:
   }
 
 private:
-  template <class OperatorType>
-  friend
-  vector vector_op_vector(vector const &u, OperatorType op, vector const &v) {
-    SCITBX_ASSERT(u.size() == v.size())( u.size() )( v.size() );
-    vector w(u.size());
-    u.compact();
-    v.compact();
-    for(const_iterator p=u.begin(), q=v.begin();;) {
-      if (p == u.end()) {
-        for(; q != v.end(); ++q) w[q.index()] = op(0, *q);
-        break;
+  template <class Heir>
+  struct vector_op_vector_core
+  {
+    void loop(vector const &u, vector const &v)
+    {
+      SCITBX_ASSERT(u.size() == v.size())( u.size() )( v.size() );
+      u.compact();
+      v.compact();
+      Heir &self = static_cast<Heir &>(*this);
+      for(const_iterator p=u.begin(), q=v.begin();;) {
+        if (p == u.end()) {
+          for(; q != v.end(); ++q) self(q.index(), 0, *q);
+          break;
+        }
+        else if (q == v.end()) {
+          for(; p != u.end(); ++p) self(p.index(), *p, 0);
+          break;
+        }
+        std::size_t i=p.index(), j=q.index();
+        if      (i < j) self(i, *p++, 0);
+        else if (i > j) self(j, 0, *q++);
+        else            self(i, *p++, *q++);
       }
-      else if (q == v.end()) {
-        for(; p != u.end(); ++p) w[p.index()] = op(*p, 0);
-        break;
-      }
-      std::size_t i=p.index(), j=q.index();
-      if      (i < j) w[i] = op(*p++, 0);
-      else if (i > j) w[j] = op(0, *q++);
-      else            w[i] = op(*p++, *q++);
     }
-    w.set_compact(true); // by construction
-    return w;
-  }
+  };
+  
+  template <class OperatorType>
+  struct vector_op_vector 
+  : vector_op_vector_core<vector_op_vector< OperatorType> >
+  {
+    vector result;
+    OperatorType op;
+    
+    vector_op_vector(vector const &u, vector const &v) 
+    : result(u.size())
+    {
+      loop(u, v);
+      result.set_compact(true); // by construction
+    }
+    
+    void operator()(index_type i, value_type x, value_type y) {
+      result[i] = op(x, y);
+    }
+  };
+
+  struct dot_product : vector_op_vector_core<dot_product>
+  {
+    value_type result;
+    
+    dot_product(vector const &u, vector const &v)
+    : result(0)
+    {
+      loop(u,v);
+    }
+    
+    void operator()(index_type i, value_type x, value_type y) {
+      result += x*y;
+    }
+  };
 
   template <typename VectorType, class PermutationType>
   friend struct permuted;

@@ -295,8 +295,14 @@ def exercise_row_vector_x_matrix():
   v = u*a
   assert list(v) == [ 2, 3, 1, -2, -6 ]
 
+def exercise_dot_product():
+  u = sparse.vector(8, {0:1, 3:2, 6:3})
+  v = sparse.vector(8, {1:1, 3:2, 5:6})
+  assert u*v == 4
+
 def run():
   libtbx.utils.show_times_at_exit()
+  exercise_dot_product()
   exercise_vector()
   exercise_matrix()
   exercise_random()
