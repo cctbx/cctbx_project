@@ -1,14 +1,12 @@
-#include <smtbx/boost_python/flex_fwd.h>
+#include <cctbx/boost_python/flex_fwd.h>
 
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/iterator.hpp>
 
-#include <cctbx/xray/scatterer.h>
-#include <smtbx/import_cctbx.h>
-
 #include <cctbx/xray/parameter_map.h>
+#include <cctbx/xray/scatterer.h>
 
 namespace cctbx { namespace xray { namespace boost_python {
 
