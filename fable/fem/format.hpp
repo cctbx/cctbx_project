@@ -6,7 +6,6 @@
 #include <fem/utils/char.hpp>
 #include <fem/utils/misc.hpp>
 #include <fem/utils/token.hpp>
-#include <boost/scoped_array.hpp>
 #include <vector>
 #include <stdexcept>
 #include <cstring>
@@ -28,8 +27,8 @@ namespace fem { namespace format {
       char const* fmt,
       unsigned fmt_stop)
     {
-      boost::scoped_array<char> buffer(new char[fmt_stop*2]);
-      code = buffer.get();
+      utils::simple_buffer<char> buffer(fmt_stop*2);
+      code = buffer.space;
       str_buf = code + fmt_stop;
       stop = 0;
       for(i=0;i<fmt_stop;i++) {
