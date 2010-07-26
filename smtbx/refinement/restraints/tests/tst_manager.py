@@ -150,7 +150,7 @@ Sorted by residual:
 scatterers O7
            C12
    delta_z    sigma   weight residual
-  6.39e-01 1.00e-02 1.00e+04 4.09e+03
+ -6.39e-01 1.00e-02 1.00e+04 4.09e+03
 ... (remaining 59 not shown)
 
 Isotropic ADP restraints: 22
