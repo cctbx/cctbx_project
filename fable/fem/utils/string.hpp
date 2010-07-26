@@ -293,6 +293,43 @@ namespace fem { namespace utils {
     return o.str();
   }
 
+  inline
+  void
+  string_reverse_in_place(
+    char* s,
+    size_t s_size)
+  {
+    if (s_size == 0) return;
+    size_t i = 0;
+    size_t j = s_size - 1;
+    while (i < j) {
+      std::swap(s[i], s[j]);
+      i++;
+      j--;
+    }
+  }
+
+  //! Assumes ASCII or similar.
+  inline
+  int
+  int_to_string(
+    char* buffer,
+    int buffer_size,
+    int width,
+    int value,
+    int left_padding_character=' ')
+  {
+    int i = 0;
+    while (value != 0) {
+      if (i == buffer_size) return -1;
+      buffer[i++] = int_as_digit(value % 10);
+      value /= 10;
+    }
+    while (i < width) buffer[i++] = left_padding_character;
+    string_reverse_in_place(buffer, i);
+    return i;
+  }
+
 }} // namespace fem::utils
 
 #endif // GUARD

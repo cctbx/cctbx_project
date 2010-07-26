@@ -7,7 +7,6 @@
 #include <fem/utils/simple_streams.hpp>
 #include <fem/utils/string.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/format.hpp>
 #include <map>
 #include <memory>
 #include <cstdio>
@@ -123,7 +122,15 @@ namespace fem {
     {
       if (file_name.size() == 0 && !is_std_io_unit(number)) {
         if (status != st_scratch) {
-          file_name = (boost::format("fem_io_unit_%03d") % number).str();
+          char buffer[64];
+          int actual_width = utils::int_to_string(
+            buffer,
+            sizeof(buffer),
+            /*width*/ 3,
+            /*value*/ number,
+            /*left_padding_character*/ '0');
+          TBXX_ASSERT(actual_width > 0);
+          file_name = "fem_io_unit_" + std::string(buffer, actual_width);
         }
         else {
           size_t run_away_counter = 0;
