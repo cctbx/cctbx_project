@@ -27,6 +27,7 @@ def run():
   "$D/pdb/secondary_structure.py",
   "$D/examples/pdb_to_map_simple.py",
   "$D/examples/pdb_truncate_to_ala/tst.py",
+  "$D/examples/pdb_tardy_conf_sampling_simple",
   "$D/cns/space_group_symbols.py",
   "$D/cns/tst_cns.py",
   ["$D/scalepack/tst_merge.py", "P31"],
