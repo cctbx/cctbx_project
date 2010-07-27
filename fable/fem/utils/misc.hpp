@@ -27,6 +27,7 @@ namespace fem { namespace utils {
     T small_space[SmallSize];
     T* space;
 
+    explicit
     simple_buffer(
       size_t size)
     :
