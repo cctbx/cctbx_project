@@ -86,6 +86,15 @@ def exercise_find_closing_parenthesis(f):
   assert f(code="x)", start=1, stop=-1) == 1
   assert f(code="x)", start=1, stop=1) == -1
 
+def exercise_fem_utils_int_types():
+  int_sizes = fable.exercise_fem_utils_int_types()
+  expected = [1, 2, 4, 8]
+  if (int_sizes != expected):
+    hpp = "fem/utils/int_sizes.hpp"
+    print "FATAL: %s: sizes are" % hpp, int_sizes, "but should be", expected
+    raise RuntimeError(
+      "fem/utils/int_sizes.hpp needs to be adjusted for this platform.")
+
 def exercise_fem_format_tokenizer():
   f = fable.exercise_fem_format_tokenizer
   try: f("")
@@ -426,6 +435,7 @@ def run(args):
                fable.find_closing_parenthesis]:
     exercise_find_closing_parenthesis(f)
   if (fable.ext is not None):
+    exercise_fem_utils_int_types()
     exercise_fem_format_tokenizer()
     exercise_fem_utils_string_to_double()
     exercise_fem_utils_string_to_double_fmt()

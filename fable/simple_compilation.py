@@ -9,7 +9,6 @@ class environment(object):
     "gcc_version",
     "fable_dist",
     "tbxx_root",
-    "boost_dist",
     "__have_pch"]
 
   def __init__(O, compiler=None):
@@ -39,7 +38,6 @@ class environment(object):
       O.gcc_version = None
     O.fable_dist = libtbx.env.dist_path(module_name="fable")
     O.tbxx_root = os.path.dirname(libtbx.env.dist_path(module_name="tbxx"))
-    O.boost_dist = libtbx.env.dist_path(module_name="boost")
     O.__have_pch = False
 
   def set_have_pch(O):
@@ -59,12 +57,11 @@ class environment(object):
     if (O.compiler == "cl"):
       if (not link): part = "/c /Fo%s" % qon
       else:          part = "/Fe%s" % qon
-      result = "%s /nologo /EHsc %s /I%s /I%s /I%s %s" % (
+      result = "%s /nologo /EHsc %s /I%s /I%s %s" % (
         O.compiler,
         part,
         quote(O.fable_dist),
         quote(O.tbxx_root),
-        quote(O.boost_dist),
         quote_list(file_names))
     else:
       if (not link): opt_c = "-c "
@@ -79,10 +76,9 @@ class environment(object):
       else:
         opt_x = ""
       if (not O.__have_pch):
-        opt_i = "-I%s -I%s -I%s" % (
+        opt_i = "-I%s -I%s" % (
           quote(O.fable_dist),
-          quote(O.tbxx_root),
-          quote(O.boost_dist))
+          quote(O.tbxx_root))
       else:
         opt_i = "-I."
       result = "%s -o %s %s%s -g -O0 %s %s%s" % (
