@@ -2,7 +2,6 @@
 #define FEM_STOP_HPP
 
 #include <fem/size_t.hpp>
-#include <boost/shared_array.hpp>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -17,7 +16,7 @@ namespace fem {
     std::string message;
 
     protected:
-      mutable boost::shared_array<char> what_buffer;
+      mutable std::string what_buffer;
 
       public:
 
@@ -28,8 +27,7 @@ namespace fem {
     :
       source_file(source_file_),
       source_line(source_line_),
-      digits(digits_),
-      what_buffer(0)
+      digits(digits_)
     {}
 
     stop_info(
@@ -40,8 +38,7 @@ namespace fem {
       source_file(source_file_),
       source_line(source_line_),
       digits(-1),
-      message(message_),
-      what_buffer(0)
+      message(message_)
     {}
 
     ~stop_info() throw() {}
@@ -49,7 +46,7 @@ namespace fem {
     const char*
     what() const throw()
     {
-      if (what_buffer.get() == 0) {
+      if (what_buffer.size() == 0) {
         std::ostringstream o;
         o << "STOP at " << source_file << "(" << source_line << ")";
         if (message.size() != 0) {
@@ -58,13 +55,10 @@ namespace fem {
         else if (digits > 0) {
           o << ": code=" << digits;
         }
-        std::string result = o.str();
-        size_t n = result.size();
-        what_buffer.reset(new char[n + 1]);
-        std::memcpy(what_buffer.get(), result.data(), n);
-        what_buffer[n] = '\0';
+        what_buffer = o.str();
+        what_buffer.push_back('\0');
       }
-      return what_buffer.get();
+      return what_buffer.data();
     }
   };
 
