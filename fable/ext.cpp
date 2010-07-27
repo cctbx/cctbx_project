@@ -2,6 +2,7 @@
 
 #include <fem/format.hpp>
 #include <fem/utils/equivalence.hpp>
+#include <fem/utils/int_types.hpp>
 #include <fem/utils/string_to_double_fmt.hpp>
 #include <tbxx/error_utils.hpp>
 
@@ -123,6 +124,17 @@ namespace fable { namespace ext {
   }
 
   bp::list
+  exercise_fem_utils_int_types()
+  {
+    bp::list result;
+    result.append(sizeof(fem::utils::int8_t));
+    result.append(sizeof(fem::utils::int16_t));
+    result.append(sizeof(fem::utils::int32_t));
+    result.append(sizeof(fem::utils::int64_t));
+    return result;
+  }
+
+  bp::list
   exercise_fem_format_tokenizer(
     std::string const& fmt)
   {
@@ -211,6 +223,7 @@ namespace fable { namespace ext {
     def("find_closing_parenthesis", find_closing_parenthesis, (
       arg("code"), arg("start")=0, arg("stop")=-1));
 
+    def("exercise_fem_utils_int_types", exercise_fem_utils_int_types);
     def("exercise_fem_format_tokenizer", exercise_fem_format_tokenizer, (
       arg("fmt")));
     def("exercise_fem_utils_string_to_double",

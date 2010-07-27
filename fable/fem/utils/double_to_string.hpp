@@ -2,7 +2,7 @@
 #define FEM_UTILS_DOUBLE_TO_STRING_HPP
 
 #include <fem/utils/char.hpp>
-#include <boost/cstdint.hpp>
+#include <fem/utils/int_types.hpp>
 
 namespace fem { namespace utils {
 
@@ -105,7 +105,7 @@ namespace fem { namespace utils {
       static const double multipliers_dbl[] = {
         1e0,  1e1,  1e2,  1e3,  1e4,  1e5,  1e6,  1e7,  1e8, 1e9,
         1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16};
-      typedef boost::int64_t i64;
+      typedef utils::int64_t i64;
       TBXX_ASSERT(sizeof(i64) >= sizeof(double));
       static i64 multipliers_i64[max_nd_significant+1] = {0};
       if (multipliers_i64[0] == 0) {

@@ -3,9 +3,38 @@
 
 #include <fem/intrinsics_extra.hpp>
 #include <fem/stop.hpp>
+#include <fem/utils/int_types.hpp>
 #include <cstdio>
 
 namespace fem {
+
+  inline
+  bool
+  check_fem_utils_int_types()
+  {
+    bool result = true;
+#define FABLE_LOC(bits, expected_sz) \
+    { \
+      int sz = static_cast<int>(sizeof(fem::utils::int##bits##_t)); \
+      if (sz != expected_sz) { \
+        std::fprintf(stderr, \
+          "FATAL: sizeof(fem::utils::int%d_t) is %d but should be %d.\n", \
+            bits, sz, expected_sz); \
+        result = false; \
+      } \
+    }
+    FABLE_LOC( 8, 1)
+    FABLE_LOC(16, 2)
+    FABLE_LOC(32, 4)
+    FABLE_LOC(64, 8)
+#undef FABLE_LOC
+    if (!result) {
+      std::fprintf(stderr,
+        "NOTE: fem/utils/int_types.hpp"
+        " needs to be adjusted for this platform.\n");
+    }
+    return result;
+  }
 
   inline
   int
@@ -15,6 +44,9 @@ namespace fem {
     void (*callable)(int argc, char const* argv[]))
   {
     user_plus_system_time();
+    if (!check_fem_utils_int_types()) {
+      return 255;
+    }
     try {
       callable(argc, argv);
     }

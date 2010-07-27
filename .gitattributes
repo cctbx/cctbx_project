@@ -247,6 +247,7 @@ fable/fem/str_ref.hpp svneol=native#text/plain
 fable/fem/utils/char.hpp svneol=native#text/plain
 fable/fem/utils/double_to_string.hpp svneol=native#text/plain
 fable/fem/utils/equivalence.hpp svneol=native#text/plain
+fable/fem/utils/int_types.hpp svneol=native#text/plain
 fable/fem/utils/misc.hpp svneol=native#text/plain
 fable/fem/utils/path.hpp svneol=native#text/plain
 fable/fem/utils/random.hpp svneol=native#text/plain
