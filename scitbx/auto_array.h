@@ -48,7 +48,7 @@ namespace scitbx {
         return *this;
       }
 
-      ~auto_array() { if (ptr) delete[] ptr; }
+      ~auto_array() { delete[] ptr; }
 
       void
       reset(T* p=0) { if (p != ptr) this_type(p).swap(*this); }
