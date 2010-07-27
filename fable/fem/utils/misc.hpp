@@ -40,6 +40,72 @@ namespace fem { namespace utils {
     }
   };
 
+  // simlar to std::auto_ptr, but all member functions const
+  template<typename T>
+  struct slick_ptr
+  {
+    protected:
+      mutable T* ptr;
+
+      public:
+
+    explicit
+    slick_ptr(T* p=0)
+    :
+      ptr(p)
+    {}
+
+    slick_ptr(
+      slick_ptr const& other)
+    :
+      ptr(other.release())
+    {}
+
+    slick_ptr&
+    operator=(
+      slick_ptr const& other)
+    {
+      reset(other.release());
+      return *this;
+    }
+
+    ~slick_ptr() { delete ptr; }
+
+    void
+    reset(T* p=0) const
+    {
+      if (p != ptr) slick_ptr<T>(p).swap(*this);
+    }
+
+    T*
+    release() const
+    {
+      T* result = ptr;
+      ptr = 0;
+      return result;
+    }
+
+    T*
+    get() const { return ptr; }
+
+    T*
+    operator->() const { return ptr; }
+
+    T&
+    operator*() const { return *ptr; }
+
+    operator bool() const { return (ptr != 0); }
+
+    void
+    swap(
+      slick_ptr& other) const
+    {
+      T* tmp = other.ptr;
+      other.ptr = ptr;
+      ptr = tmp;
+    }
+  };
+
 }} // namespace fem::utils
 
 #endif // GUARD
