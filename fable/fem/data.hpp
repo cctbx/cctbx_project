@@ -3,7 +3,7 @@
 
 #include <fem/arr.hpp>
 #include <fem/str_arr_ref.hpp>
-#include <boost/shared_ptr.hpp>
+#include <fem/utils/misc.hpp>
 #include <typeinfo>
 #include <vector>
 
@@ -129,7 +129,7 @@ namespace fem {
 
   struct data_buffer
   {
-    boost::shared_ptr<std::vector<datum> > objects;
+    utils::slick_ptr<std::vector<datum> > objects;
 
     data_buffer()
     :
