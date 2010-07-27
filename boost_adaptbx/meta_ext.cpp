@@ -213,6 +213,9 @@ namespace {
 #if defined(__x86_64__)
     result += "__x86_64__\n";
 #endif
+#if defined(__ppc__)
+    result += "__ppc__\n";
+#endif
 #if defined(__linux)
     result += "__linux\n";
 #endif
