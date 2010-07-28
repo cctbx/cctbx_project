@@ -92,7 +92,7 @@ def cbeta_dev(chain, pdbID, deviations, ideal):
           if len(chainid) == 1:
             chainid = " "+chainid
           ideal_key = altloc+atom_group.resname.lower()+ \
-                      chainid+residue_group.resseq+ "  " 
+                      chainid+residue_group.resseq+ "  "
           ideal_xyz = ideal[ideal_key]
           key = "%s %s %s%s  %.3f %.2f" % (
               atom.name.lower(),
@@ -128,7 +128,7 @@ def rotamer_outliers(chain, pdbID, rot_outliers):
         continue
       key_hash = {}
       xyz_hash = {}
-      for atom in atom_group.atoms():      
+      for atom in atom_group.atoms():
         key = "%s %s %s%s  B%.2f %s" % (
               atom.name.lower(),
               atom_group.resname.lower(),
@@ -151,7 +151,7 @@ def rotamer_outliers(chain, pdbID, rot_outliers):
   if len(rot_out.splitlines()) == 2:
     rot_out = ""
   return rot_out
-          
+
 def get_chain_color(index):
   chain_colors = ['white',
                   'yellowtint',
@@ -167,7 +167,7 @@ def get_chain_color(index):
     else:
       match = True
   return chain_colors[index]
-                  
+
 
 def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
   mc_atoms = ["N", "CA", "C", "O", "OXT"]
@@ -203,7 +203,7 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
     for atom_group in residue_group.atom_groups():
       key_hash = {}
       xyz_hash = {}
-      for atom in atom_group.atoms():      
+      for atom in atom_group.atoms():
         key = "%s %s %s%s  B%.2f %s" % (
               atom.name.lower(),
               atom_group.resname.lower(),
@@ -246,20 +246,20 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
       prev_C_xyz = cur_C_xyz
       prev_C_key = cur_C_key
       prev_resid = cur_resid
-      
+
       for bond in bonds:
         if bond[0] in mc_atoms and bond[1] in mc_atoms:
           try:
             mc_veclist += kin_vec(key_hash[bond[0]],
                                   xyz_hash[bond[0]],
                                   key_hash[bond[1]],
-                                  xyz_hash[bond[1]]) 
+                                  xyz_hash[bond[1]])
           except:
             continue
 
         elif (bond[0].startswith('H') or bond[1].startswith('H')):
           if show_hydrogen:
-            if (bond[0] in mc_atoms or bond[1] in mc_atoms): 
+            if (bond[0] in mc_atoms or bond[1] in mc_atoms):
               try:
                 mc_h_veclist += kin_vec(key_hash[bond[0]],
                                         xyz_hash[bond[0]],
@@ -283,7 +283,7 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
                                   xyz_hash[bond[1]])
           except:
             continue
-  
+
   #clean up empty lists:
   if len(mc_veclist.splitlines()) > 1:
     kin_out += mc_veclist
@@ -298,7 +298,7 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
   if len(water_list.splitlines()) > 1:
     kin_out += water_list
   return kin_out
-              
+
 def get_default_header():
   header = """
 @kinemage 1
@@ -327,7 +327,7 @@ def get_footer():
 """
   return footer
 
-def kingen(f, pdb_io):
+def get_multikin(f, pdb_io):
   pdbID = None
   pdbID = os.path.basename(pdb_io.source_info().split(' ')[1]).split('.')[0]
   assert pdb_io is not None
@@ -351,7 +351,7 @@ def kingen(f, pdb_io):
         initiated_chains.append(chain.id)
       kin_out += get_kin_lots(chain=chain, pdbID=pdbID, index=counter)
       kin_out += rotamer_outliers(chain=chain, pdbID=pdbID, rot_outliers=rot_outliers)
-      kin_out += cbeta_dev(chain=chain, 
+      kin_out += cbeta_dev(chain=chain,
                            pdbID=pdbID,
                            deviations=deviations,
                            ideal=cb.get_beta_ideal())
@@ -370,7 +370,7 @@ def run(args):
       pdb_io = pdb.input(file_name)
   pdbID = os.path.basename(pdb_io.source_info().split(' ')[1]).split('.')[0]
   outfile = pdbID+'.kin'
-  kingen(f=outfile, pdb_io=pdb_io)
+  get_multikin(f=outfile, pdb_io=pdb_io)
 
 if __name__ == "__main__":
   run(args=sys.argv[1:])
