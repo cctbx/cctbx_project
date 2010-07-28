@@ -1,3 +1,4 @@
+import math
 import time
 import os
 op = os.path
@@ -40,15 +41,20 @@ def run(args):
       masses=[1]*sites_cart.size(),
       tardy_tree=tardy_tree,
       potential_obj=None)
-    q = tardy_model.pack_q()
+    q_size_each_joint = tardy_model.q_size_each_joint()
+    q_fixed = tardy_model.pack_q()[:q_size_each_joint[0]]
+    assert q_size_each_joint[1:].all_eq(1) # must all be revolute joints
+    q_size_moving = q_size_each_joint.size() - 1
     print "Time building tardy model: %.2f" % (time.time() - time_start)
-    print "Number of degrees of freedom:", q.size()
+    print "Degrees of freedom:", q_size_moving
     #
     mt = flex.mersenne_twister()
+    two_pi = 2 * math.pi
     time_start = time.time()
     n_conf = 10000
     for i_conf in xrange(n_conf):
-      q = mt.random_double(size=q.size())
+      q = q_fixed.deep_copy()
+      q.extend(mt.random_double(size=q_size_moving)*two_pi)
       tardy_model.unpack_q(q_packed=q)
       conf_sites_cart = tardy_model.sites_moved()
     time_diff = time.time() - time_start
