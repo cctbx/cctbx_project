@@ -1,3 +1,6 @@
+import os
+op = os.path
+
 class environment(object):
 
   __slots__ = [
@@ -12,7 +15,6 @@ class environment(object):
     "__have_pch"]
 
   def __init__(O, compiler=None):
-    import os
     if (os.name == "nt"):
       O.compiler = "cl"
       O.obj_suffix = ".obj"
@@ -37,7 +39,10 @@ class environment(object):
     else:
       O.gcc_version = None
     O.fable_dist = libtbx.env.dist_path(module_name="fable")
-    O.tbxx_root = os.path.dirname(libtbx.env.dist_path(module_name="tbxx"))
+    if (op.isdir(op.join(O.fable_dist, "tbxx"))):
+      O.tbxx_root = None
+    else:
+      O.tbxx_root = op.dirname(libtbx.env.dist_path(module_name="tbxx"))
     O.__have_pch = False
 
   def set_have_pch(O):
@@ -57,11 +62,14 @@ class environment(object):
     if (O.compiler == "cl"):
       if (not link): part = "/c /Fo%s" % qon
       else:          part = "/Fe%s" % qon
-      result = "%s /nologo /EHsc %s /I%s /I%s %s" % (
+      def add_to_include_search_path(path):
+        if (path is None): return ""
+        return " /I%s" % quote(path)
+      result = "%s /nologo /EHsc %s%s%s %s" % (
         O.compiler,
         part,
-        quote(O.fable_dist),
-        quote(O.tbxx_root),
+        add_to_include_search_path(O.fable_dist),
+        add_to_include_search_path(O.tbxx_root),
         quote_list(file_names))
     else:
       if (not link): opt_c = "-c "
@@ -72,16 +80,19 @@ class environment(object):
         opt_w = "-Wall -Wno-sign-compare -Winvalid-pch"
       if (out_name.endswith(O.pch_suffix)):
         assert not O.__have_pch
-        opt_x = "-x c++-header "
+        opt_x = " -x c++-header"
       else:
         opt_x = ""
       if (not O.__have_pch):
-        opt_i = "-I%s -I%s" % (
-          quote(O.fable_dist),
-          quote(O.tbxx_root))
+        def add_to_include_search_path(path):
+          if (path is None): return ""
+          return " -I%s" % quote(path)
+        opt_i = "%s%s" % (
+          add_to_include_search_path(O.fable_dist),
+          add_to_include_search_path(O.tbxx_root))
       else:
-        opt_i = "-I."
-      result = "%s -o %s %s%s -g -O0 %s %s%s" % (
+        opt_i = " -I."
+      result = "%s -o %s %s%s -g -O0%s%s %s" % (
         O.compiler, qon, opt_c, opt_w, opt_i, opt_x, quote_list(file_names))
     return result
 
