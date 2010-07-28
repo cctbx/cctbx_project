@@ -18,7 +18,7 @@ def run(args):
     print "Time reading pdb file: %.2f" % (time.time() - time_start)
     print "Number of atoms:", pdb_atoms.size()
     pdb_atoms.set_chemical_element_simple_if_necessary()
-    sites_cart=pdb_atoms.extract_xyz()
+    sites_cart = pdb_atoms.extract_xyz()
     #
     time_start = time.time()
     edge_list = build_edge_list(

@@ -60,8 +60,10 @@ def build_edge_list(
   import cctbx.crystal
   from cctbx.eltbx.van_der_waals_radii import vdw
   vdw_table = dict([(k.upper(),v) for k,v in vdw.table.items()])
+  elements_strip_upper = [e.strip().upper() for e in elements]
   if (search_max_distance is None):
-    search_max_distance = max([vdw_table.get(e, 0.0) for e in elements])
+    search_max_distance = max([vdw_table.get(e, 0.0)
+      for e in elements_strip_upper])
     if (search_max_distance == 0.0):
       search_max_distance = fallback_search_max_distance
     else:
@@ -79,7 +81,8 @@ def build_edge_list(
     distance_cutoff=search_max_distance,
     minimal=True)
   for pair in pair_generator:
-    pair_elems = tuple(sorted([elements[i] for i in [pair.i_seq, pair.j_seq]]))
+    pair_elems = tuple(sorted([elements_strip_upper[i]
+      for i in [pair.i_seq, pair.j_seq]]))
     ebl = expected_bond_lengths_by_element_pair.get(pair_elems)
     if (ebl == 0.0):
       continue
