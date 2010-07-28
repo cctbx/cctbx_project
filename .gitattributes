@@ -899,6 +899,7 @@ mmtbx/grow_density.py -text
 mmtbx/hydrogens/find.py -text
 mmtbx/ias/__init__.py -text
 mmtbx/ias/tst_ias.py -text
+mmtbx/kinemage/kinemage.py -text
 mmtbx/map_tools.py -text
 mmtbx/maps/__init__.py -text
 mmtbx/maps/fobs_minus_fobs_map.py -text
