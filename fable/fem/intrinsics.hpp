@@ -562,9 +562,71 @@ namespace fem {
     return std::pow(static_cast<float>(base), exponent);
   }
 
+  inline
+  double
+  pow(
+    int const& base,
+    double const& exponent)
+  {
+    return std::pow(static_cast<double>(base), exponent);
+  }
+
+  inline
+  float
+  pow(
+    float const& base,
+    int const& exponent)
+  {
+    return std::pow(base, exponent);
+  }
+
+  inline
+  double
+  pow(
+    double const& base,
+    int const& exponent)
+  {
+    return std::pow(base, exponent);
+  }
+
+  inline
+  float
+  pow(
+    float const& base,
+    float const& exponent)
+  {
+    return std::pow(base, exponent);
+  }
+
+  inline
+  double
+  pow(
+    double const& base,
+    float const& exponent)
+  {
+    return std::pow(base, static_cast<double>(exponent));
+  }
+
+  inline
+  double
+  pow(
+    float const& base,
+    double const& exponent)
+  {
+    return std::pow(static_cast<double>(base), exponent);
+  }
+
+  inline
+  double
+  pow(
+    double const& base,
+    double const& exponent)
+  {
+    return std::pow(base, exponent);
+  }
+
   using std::abs;
   using std::log;
-  using std::pow;
 
   inline
   int

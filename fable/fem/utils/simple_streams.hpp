@@ -5,6 +5,10 @@
 #include <string>
 #include <cstdio>
 
+#if defined(_MSC_VER) || _MSC_VER <= 1310 // Visual C++ 7.1
+#define std__ferror ferror
+#endif
+
 namespace fem { namespace utils {
 
   static const int stream_end = 256;
@@ -131,7 +135,7 @@ namespace fem { namespace utils {
     flush() { std::fflush(f); }
 
     bool
-    err() { return std::ferror(f); }
+    err() { return std__ferror(f); }
   };
 
   struct simple_istream_from_c_str : simple_istream
@@ -209,7 +213,7 @@ namespace fem { namespace utils {
     {
       last_get_result = std::fgetc(f);
       if (last_get_result == EOF) {
-        last_get_result = (std::ferror(f) ? stream_err : stream_end);
+        last_get_result = (std__ferror(f) ? stream_err : stream_end);
       }
       return last_get_result;
     }
