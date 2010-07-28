@@ -1,0 +1,123 @@
+=============================================
+ fable - Automatic Fortran to C++ conversion
+=============================================
+
+- **fable** converts fixed-format Fortran sources to C++.
+  The generated C++ code is designed to be human-readable and
+  suitable for further development. In many cases it can be compiled
+  and run without manual intervention.
+
+- fable comes with the C++ **fem** Fortran EMulation library.
+  The entire fem library is inlined and therefore very easy
+  to use: simply add ``-I/actual/path/fable`` or similar to
+  the compilation command.
+
+- The fem library has no dependencies other than a standard C++ compiler.
+
+- fable is written in Python (version 2.x) which comes pre-installed
+  with most modern Unix systems.
+
+- The name "fable" is short for "Fortran ABLEitung". "Ableitung" is a
+  german word with can mean both "derivative" and "branching off".
+
+- If you use fable in your work please cite:
+
+    Grosse-Kunstleve RW, Terwilliger TC, Adams PD:
+    *Experience converting a large Fortran-77 program to C++*.
+    `Newsletter of the IUCr Commission on Crystallographic Computing 2009, 10, 75-84 <http://www.iucr.org/resources/commissions/crystallographic-computing/newsletters/10>`_.
+    (`Reprint <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2009.pdf>`_)
+
+- fable and fem development was supported by funding from the
+  American Recovery and Reinvestment Act (ARRA),
+  NIH/NIGMS under grant number P01GM063210, and the
+  US Department of Energy under Contract No. DE-AC02-05CH11231.
+
+- fable and fem are a part of the cctbx open source project:
+  [`License <http://cctbx.svn.sourceforge.net/viewvc/cctbx/trunk/cctbx/LICENSE_2_0.txt?view=markup>`_]
+  [`Copyright <http://cctbx.svn.sourceforge.net/viewvc/cctbx/trunk/cctbx/COPYRIGHT_2_0.txt?view=markup>`_]
+
+- The fable Fortran reader could be re-used to generate code for
+  other target languages.
+
+- Send questions and comments to: fable@cci.lbl.gov
+
+----------------------------------------------------------------------
+
+Examples
+========
+
+- Small `Fortran source <sf.f>`_ and corresponding
+  `fable.cout output <sf.cpp>`_
+
+- LAPACK 3.2.1 DSYEV converted to `dsyev.hpp <dsyev.hpp>`_
+
+----------------------------------------------------------------------
+
+Download - Install - Run
+========================
+
+- Unix systems with Python 2.3 through 2.7::
+
+    wget http://cci.lbl.gov/fable_bundles/current/fable_bundle.selfx
+    perl fable_bundle.selfx
+    source fable_build/setpaths.sh
+    fable.cout --example
+
+- Windows systems (XP or higher)::
+
+    Download http://cci.lbl.gov/fable_bundles/current/fable_win_xp.exe
+    fable_win_xp.exe
+    fable_build\setpaths.bat
+    fable.cout --example
+
+The ``fable.cout --example`` command is known to work with gcc 3.2 or
+higher, Visual C++ 7.1 or higher, and with recent versions of clang++.
+
+----------------------------------------------------------------------
+
+Converting your sources
+=======================
+
+Pure-Fortran programs that don't link against external libraries
+can be converted simply with e.g.::
+
+  fable.cout main.f input.f calcs.f output.f --namespace=calcs > calcs.cpp
+
+``fable.cout`` supports ``--run`` to convert and immediately compile,
+link, and run the converted C++ code. If there is no ``PROGRAM`` unit,
+``--compile`` can be used to quickly test compilation.
+
+Some advanced conversion features, such as suppressing conversion of
+certain units (SUBROUTINE, FUNCTION, BLOCKDATA, PROGRAM) or conversion
+to multiple files are available through a Python interface.
+
+Call graph, topological sort, const analysis
+--------------------------------------------
+
+fable builds a call graph of all the input sources, performs
+a topological sort (with handling of dependency cycles) and
+a const analysis tracing even through function pointers.
+The ``--top-unit-name`` option of ``fable.cout`` can be used to
+extract only the specified SUBROUTINE or FUNCTION unit and all its
+dependencies; all unused units are not converted. This feature was
+used to produce the `dsyev.hpp <dsyev.hpp>`_ example.
+
+No global variables in C++
+--------------------------
+
+XXX
+
+Dynamic parameters
+------------------
+
+XXX
+
+Calls into external libraries
+-----------------------------
+
+XXX
+
+EQUIVALENCE and COMMON variants
+-------------------------------
+
+XXX

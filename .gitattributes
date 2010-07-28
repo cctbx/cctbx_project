@@ -212,6 +212,8 @@ fable/command_line/read.py svneol=native#text/x-python
 fable/command_line/show_calls.py svneol=native#text/x-python
 fable/command_line/split.py svneol=native#text/x-python
 fable/cout.py svneol=native#text/x-python
+fable/doc/build_doc.csh -text
+fable/doc/index.txt svneol=native#text/plain
 fable/equivalence.py svneol=native#text/x-python
 fable/ext.cpp svneol=native#text/plain
 fable/fem.hpp svneol=native#text/plain
