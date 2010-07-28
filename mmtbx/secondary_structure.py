@@ -163,7 +163,7 @@ input
     .type = bool
     .short_caption = Force base pair detection
     .help = This will ignore the automatic chain type detection and run \
-      the base pair detction using PROBE even if no nucleic acids are found. \
+      the base pair detection using PROBE even if no nucleic acids are found. \
       Useful for tRNAs which have a large number of modified bases.
 }
 h_bond_restraints
