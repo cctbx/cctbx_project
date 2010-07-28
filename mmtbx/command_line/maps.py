@@ -10,6 +10,7 @@ import mmtbx.utils
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
+from cctbx import crystal
 
 legend = """
 phenix.maps: a command line tool to compute various maps.
@@ -138,35 +139,31 @@ def run(args, log = sys.stdout):
   print >> log, "-"*79
   print >> log, "\nInput PDB file:", params.maps.input.pdb_file_name
   pdb_inp = iotbx.pdb.input(file_name = params.maps.input.pdb_file_name)
-  cryst1 = pdb_inp.crystal_symmetry_from_cryst1()
-  if(cryst1 is None):
-    raise Sorry("CRYST1 record in input PDB file is incomplete or missing.")
-  else:
-    if([cryst1.unit_cell(), cryst1.space_group_info()].count(None) != 0):
-      raise Sorry("CRYST1 record in input PDB file is incomplete or missing.")
-  xray_structure = pdb_inp.xray_structure_simple()
+  # get all crystal symmetries
+  cs_from_coordinate_files = [pdb_inp.crystal_symmetry_from_cryst1()]
+  cs_from_reflection_files = []
+  for rfn in [params.maps.input.reflection_data.file_name,
+             params.maps.input.reflection_data.r_free_flags.file_name]:
+    if(os.path.isfile(str(rfn))):
+      try:
+        cs_from_reflection_files.append(crystal_symmetry_from_any.extract_from(rfn))
+      except KeyboardInterrupt: raise
+      except RuntimeError: pass
+  crystal_symmetry = crystal.select_crystal_symmetry(
+    from_coordinate_files=cs_from_coordinate_files,
+    from_reflection_files=cs_from_reflection_files)
+  #
+  xray_structure = pdb_inp.xray_structure_simple(crystal_symmetry = crystal_symmetry)
   xray_structure.show_summary(f = log, prefix="  ")
   print >> log, "-"*79
-  crystal_symmetries = []
-  crystal_symmetries.append(xray_structure.crystal_symmetry())
   reflection_files = []
   for rfn in [params.maps.input.reflection_data.file_name,
              params.maps.input.reflection_data.r_free_flags.file_name]:
     if(os.path.isfile(str(rfn))):
       reflection_files.append(reflection_file_reader.any_reflection_file(
         file_name = rfn, ensure_read_access = False))
-      try:
-        crystal_symmetries.append(crystal_symmetry_from_any.extract_from(rfn))
-      except KeyboardInterrupt: raise
-      except RuntimeError: pass
-  if(len(crystal_symmetries)>1):
-    cs0 = crystal_symmetries[0]
-    for cs in crystal_symmetries:
-     if(cs.unit_cell() is not None):
-       if(not cs0.is_similar_symmetry(cs)):
-         raise Sorry("Crystal symmetry mismatch between different files.")
   reflection_file_server = reflection_file_utils.reflection_file_server(
-    crystal_symmetry = crystal_symmetries[0],
+    crystal_symmetry = crystal_symmetry,
     force_symmetry   = True,
     reflection_files = [],
     err              = log)
