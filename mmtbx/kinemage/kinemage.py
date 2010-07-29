@@ -111,10 +111,78 @@ def cbeta_dev(chain, pdbID, deviations, ideal):
     cbeta_out = ""
   return cbeta_out
 
+def midpoint(p1, p2):
+  mid = [0.0, 0.0, 0.0]
+  mid[0] = (p1[0]+p2[0])/2
+  mid[1] = (p1[1]+p2[1])/2
+  mid[2] = (p1[2]+p2[2])/2
+  return mid
+
+def rama_outliers(chain, pdbID, ram_outliers):
+  ram_out = "@subgroup {Rama outliers} master= {Rama outliers}\n"
+  ram_out += "@vectorlist {bad Rama Ca} width= 4 color= green\n"
+  outlier_list = []
+  for outlier in ram_outliers.splitlines():
+    outlier_list.append(outlier.split(':')[0])
+  #prev_CA_xyz = None
+  #cur_CA_xyz = None
+  #next_CA_xyz = None
+  CA_xyz_dict = {}
+  CA_key_dict = {}
+  for residue_group in chain.residue_groups():
+    for atom_group in residue_group.atom_groups():
+      for atom in atom_group.atoms():
+        if atom.name == ' CA ':
+          CA_xyz_dict[int(residue_group.resseq)] = atom.xyz
+          key = "%s%4s %s%s" % (
+                     chain.id,
+                     residue_group.resseq,
+                     atom_group.altloc,
+                     atom_group.resname)
+          CA_key_dict[int(residue_group.resseq)] = key
+
+  for residue_group in chain.residue_groups():
+    for atom_group in residue_group.atom_groups():
+      check_key = "%s%4s %s%s" % (
+                     chain.id,
+                     residue_group.resseq,
+                     atom_group.altloc,
+                     atom_group.resname)
+      #print check_key
+      if check_key in outlier_list:
+        try:
+          prev_xyz = CA_xyz_dict[int(residue_group.resseq)-1]
+          next_xyz = CA_xyz_dict[int(residue_group.resseq)+1]
+          prev_key = CA_key_dict[int(residue_group.resseq)-1]
+          next_key = CA_key_dict[int(residue_group.resseq)+1]
+          cur_xyz = CA_xyz_dict[int(residue_group.resseq)]
+          mid1 = midpoint(p1=prev_xyz, p2=cur_xyz)
+          mid2 = midpoint(p1=cur_xyz, p2=next_xyz)
+        except:
+          continue
+        ram_out += "{%s CA}P %.3f %.3f %.3f\n" % (
+                     prev_key,
+                     mid1[0],
+                     mid1[1],
+                     mid1[2])
+        ram_out += "{%s CA} %.3f %.3f %.3f\n" % (
+                     check_key,
+                     cur_xyz[0],
+                     cur_xyz[1],
+                     cur_xyz[2])
+        ram_out += "{%s CA} %.3f %.3f %.3f\n" % (
+                     next_key,
+                     mid2[0],
+                     mid2[1],
+                     mid2[2])
+
+  #print outlier_list
+  return ram_out
+
 def rotamer_outliers(chain, pdbID, rot_outliers):
   mc_atoms = ["N", "C", "O", "OXT"]
-  rot_out = "@subgroup {rotamer outliers} dominant\n"
-  rot_out += "@vectorlist {chain %s} color= gold  master= {rotamer outlie}\n" % chain.id
+  rot_out = "@subgroup {Rota outliers} dominant\n"
+  rot_out += "@vectorlist {chain %s} color= gold  master= {Rota outliers}\n" % chain.id
   outlier_list = []
   for outlier in rot_outliers.splitlines():
     outlier_list.append(outlier.split(':')[0])
@@ -319,6 +387,8 @@ def get_footer():
 @master {sidechain} off
 @master {H's} off
 @master {water} off
+@master {Rota outliers} on
+@master {Rama outliers} on
 @master {Calphas} on
 @master {vdw contact} off
 @master {small overlap} off
@@ -341,6 +411,9 @@ def get_multikin(f, pdb_io):
   cb =cbetadev()
   deviations, summary, output_list = cb.analyze_pdb(hierarchy=hierarchy,
                                                            outliers_only=True)
+  rm = ramalyze()
+  ram_outliers, output_list = rm.analyze_pdb(hierarchy=hierarchy,
+                                             outliers_only=True)
   counter = 0
   for model in hierarchy.models():
     for chain in model.chains():
@@ -351,6 +424,7 @@ def get_multikin(f, pdb_io):
         initiated_chains.append(chain.id)
       kin_out += get_kin_lots(chain=chain, pdbID=pdbID, index=counter)
       kin_out += rotamer_outliers(chain=chain, pdbID=pdbID, rot_outliers=rot_outliers)
+      kin_out += rama_outliers(chain=chain, pdbID=pdbID, ram_outliers=ram_outliers)
       kin_out += cbeta_dev(chain=chain,
                            pdbID=pdbID,
                            deviations=deviations,
@@ -358,6 +432,7 @@ def get_multikin(f, pdb_io):
       counter += 1
   kin_out += make_probe_dots(hierarchy=hierarchy)
   kin_out += get_footer()
+
   outfile = file(f, 'w')
   for line in kin_out:
     outfile.write(line)
