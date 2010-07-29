@@ -773,7 +773,6 @@ iotbx/shelx/lexer.py -text
 iotbx/shelx/parsers.py -text
 iotbx/shelx/tst_lex_parse_build.py -text
 iotbx/shelx/util.py -text
-iotbx/table1.py -text
 iotbx/tst_bioinformatics.py -text
 iotbx/tst_data_plots.py -text
 iotbx/tst_file_reader.py -text

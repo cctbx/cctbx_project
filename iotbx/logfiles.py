@@ -5,13 +5,51 @@ def check_bin_format (bin) :
   except ValueError, e :
     raise RuntimeError("%s\nOffending values: %s, %s"%(str(e),bin[0],bin[1]))
 
-class processing_info (object) :
-  def __init__ (self, bins) :
-    self.bins = bins
-    for bin in bins :
-      check_bin_format(bin)
+def float_or_none (n) :
+  if n is None : return None
+  else :         return float(n)
+
+class experiment_info (object) :
+  pass
+
+class integration_info (object) :
+  def __init__ (self, program_name="NULL") :
+    self.program_name = program_name
+    self.wavelength = None
+    self.distance = None
+
+  def set_wavelength (self, wavelength) :
+    self.wavelength = float(wavelength)
+
+  def set_distance (self, distance) :
+    self.distance = float(distance)
+
+  def extract_all_stats (self) :
+    return self
+
+class scaling_info (object) :
+  def __init__ (self, program_name="NULL") :
+    self.program_name = program_name
     self.stats_overall = {}
     self.binned_stats = {}
+    self.bins = None
+    self.d_max = None
+    self.d_min = None
+    self.n_refl = None
+    self.n_refl_all = None
+
+  def set_bins (self, bins) :
+    for bin in bins :
+      check_bin_format(bin)
+    self.bins = bins
+    if self.d_max is None :
+      d_max = float(self.bins[0][0])
+      d_min = float(self.bins[-1][1])
+      self.set_d_max_min(d_max, d_min)
+
+  def set_n_refl (self, n_refl, n_refl_all) :
+    self.n_refl = n_refl
+    self.n_refl_all = n_refl_all
 
   def add_bin_stat (self, bin, stat_name, value) :
     check_bin_format(bin)
@@ -23,13 +61,96 @@ class processing_info (object) :
   def add_overall_stat (self, stat_name, value) :
     self.stats_overall[stat_name] = value
 
+  def set_d_max_min (self, d_max, d_min) :
+    self.d_max = d_max
+    self.d_min = d_min
+
+  def extract_all_stats (self) :
+    from libtbx import group_args
+    d_min = float(self.bins[-1][1])
+    d_max = float(self.bins[0][0])
+    comp_overall = self.stats_overall.get("completeness", None)
+    redu_overall = self.stats_overall.get("redundancy", None)
+    rmerg_overall = self.stats_overall.get("r_merge", None)
+    s2n_overall = self.stats_overall.get("i/sigma", None)
+    return group_args(d_max_min=(d_max, d_min),
+                      n_refl=self.n_refl,
+                      n_refl_all=self.n_refl_all,
+                      completeness=float_or_none(comp_overall),
+                      multiplicity=float_or_none(redu_overall),
+                      r_sym=float_or_none(rmerg_overall),
+                      i_over_sigma=float_or_none(s2n_overall))
+
+  def extract_outer_shell_stats (self) :
+    from libtbx import group_args
+    d_min = float(self.bins[-1][1])
+    d_max = float(self.bins[-1][0])
+    comp_bin = self.binned_stats.get("completeness", [None])[-1]
+    redu_bin = self.binned_stats.get("redundancy", [None])[-1]
+    rmerg_bin = self.binned_stats.get("r_merge", [None])[-1]
+    s2n_bin = self.binned_stats.get("i/sigma", [None])[-1]
+    return group_args(d_max_min=(d_max, d_min),
+                      n_refl=None,
+                      n_refl_all=None,
+                      completeness=float_or_none(comp_bin),
+                      multiplicity=float_or_none(comp_bin),
+                      r_sym=float_or_none(rmerg_bin),
+                      i_over_sigma=float_or_none(s2n_bin))
+
+class processing_info (object) :
+  def __init__ (self, experiment, integration, scaling) :
+    self.experiment = experiment
+    self.integration = integration
+    self.scaling = scaling
+
   def format_remark_200 (self) :
+    from libtbx.str_utils import format_value
+    def format (obj, attr, fs="%.4f") :
+      value = getattr(obj, attr, None)
+      return format_value(fs, value, replace_none_with="NULL").strip()
+    e = None
+    if self.experiment is not None :
+      e = self.experiment.extract_all_stats()
+    i = None
+    if self.integration is not None :
+      i = self.integration.extract_all_stats()
+    s = None
+    if self.scaling is not None :
+      s = self.scaling.extract_all_stats()
     lines = []
+    lines.append("")
+    lines.append("EXPERIMENTAL DETAILS")
+    lines.append(" EXPERIMENT TYPE                : X-RAY DIFFRACTION")
+    lines.append(" DATE OF DATA COLLECTION        : NULL")
+    lines.append(" TEMPERATURE           (KELVIN) : NULL")
+    lines.append(" PH                             : NULL")
+    lines.append(" NUMBER OF CRYSTALS USED        : NULL")
+    lines.append("")
+    # TODO
+    wavelength = getattr(e, "wavelength", "NULL")
+    if (wavelength == "NULL") :
+      wavelength = getattr(i, "wavelength", "NULL")
+    lines.append(" SYNCHROTRON              (Y/N) : NULL")
+    lines.append(" RADIATION SOURCE               : NULL")
+    lines.append(" BEAMLINE                       : NULL")
+    lines.append(" X-RAY GENERATOR MODEL          : NULL")
+    lines.append(" MONOCHROMATIC OR LAUE    (M/L) : M")
+    lines.append(" WAVELENGTH OR RANGE        (A) : %s" % wavelength)
+    lines.append(" MONOCHROMATOR                  : NULL")
+    lines.append(" OPTICS                         : NULL")
+    lines.append("")
+    int_software = getattr(self.integration, "program_name", "NULL")
+    lines.append(" DETECTOR TYPE                  : NULL")
+    lines.append(" DETECTOR MANUFACTURER          : NULL")
+    lines.append(" INTENSITY-INTEGRATION SOFTWARE : %s" % int_software)
+    scale_software = getattr(self.scaling, "program_name", "NULL")
+    lines.append(" DATA SCALING SOFTWARE          : %s" % scale_software)
+    lines.append("")
     lines.append("OVERALL.")
-    comp_overall = self.stats_overall.get("completeness", "NULL")
-    redu_overall = self.stats_overall.get("redundancy", "NULL")
-    rmerg_overall = self.stats_overall.get("r_merge", "NULL")
-    s2n_overall = self.stats_overall.get("i/sigma", "NULL")
+    comp_overall = format(s, "completeness", "%.1f")
+    redu_overall = format(s, "multiplicity", "%.1f")
+    rmerg_overall = format(s, "r_sym", "%.5f")
+    s2n_overall = format(s, "i_over_sigma", "%.4f")
     lines.append(" COMPLETENESS FOR RANGE     (%%) : %s" % comp_overall)
     lines.append(" DATA REDUNDANCY                : %s" % redu_overall)
     lines.append(" R MERGE                    (I) : %s" % rmerg_overall)
@@ -37,12 +158,16 @@ class processing_info (object) :
     lines.append(" <I/SIGMA(I)> FOR THE DATA SET  : %s" % s2n_overall)
     lines.append("")
     lines.append("IN THE HIGHEST RESOLUTION SHELL.")
-    d_min = self.bins[-1][1]
-    d_max = self.bins[-1][0]
-    comp_lastbin = self.binned_stats.get("completeness", ["NULL"])[-1]
-    redu_lastbin = self.binned_stats.get("redundancy", ["NULL"])[-1]
-    rmerg_lastbin = self.binned_stats.get("r_merge", ["NULL"])[-1]
-    s2n_lastbin = self.binned_stats.get("i/sigma", ["NULL"])[-1]
+    shell = None
+    if self.scaling is not None :
+      shell = self.scaling.extract_outer_shell_stats()
+    (_d_max, _d_min) = getattr(shell, "d_max_min", (None, None))
+    d_max = format_value("%.2f", _d_max, replace_none_with="NULL").strip()
+    d_min = format_value("%.2f", _d_min, replace_none_with="NULL").strip()
+    comp_lastbin = format(shell, "completeness", "%.1f")
+    redu_lastbin = format(shell, "multiplicity", "%.1f")
+    rmerg_lastbin = format(shell, "r_sym", "%.5f")
+    s2n_lastbin = format(shell, "i_over_sigma", "%.4f")
     lines.append(" HIGHEST RESOLUTION SHELL, RANGE HIGH (A) : %s" % d_min)
     lines.append(" HIGHEST RESOLUTION SHELL, RANGE LOW  (A) : %s" % d_max)
     lines.append(" COMPLETENESS FOR SHELL     (%%) : %s" % comp_lastbin)
@@ -50,29 +175,43 @@ class processing_info (object) :
     lines.append(" R MERGE FOR SHELL          (I) : %s" % rmerg_lastbin)
     lines.append(" R SYM FOR SHELL            (I) : NULL")
     lines.append(" <I/SIGMA(I)> FOR SHELL         : %s" % s2n_lastbin)
+    lines.append("")
     remark_lines = [ "REMARK 200 %s" % line for line in lines ]
     return "\n".join(remark_lines)
 
 def parse_scalepack (lines) :
+  n_lines = len(lines)
   mode = 0
-  info = None
+  info = scaling_info("SCALA")
   def is_table_end (fields) :
     return (fields[0] == "All" and fields[1] == "hkl")
+  n_refl_all = None
+  n_refl = None
   for i, line in enumerate(lines) :
-    if "Summary of observation redundancies by shells" in line :
+    if ("intensities and R-factors by batch number" in line) :
+      j = i + 3
+      while j < n_lines :
+        line2 = lines[j].strip()
+        if line2.startswith("All films") :
+          n_refl_all = line2.split()[2]
+          break
+        j+= 1
+    elif "Summary of observation redundancies by shells" in line :
       bins = []
       j = i + 3
       while (j < (i+100)) :
         line2 = lines[j]
         fields = line2.strip().split()
         if is_table_end(fields) :
+          n_refl = int(fields[-1])
+          info.set_n_refl(n_refl, n_refl_all)
           break
         else :
           bin_d_max_min = (fields[0], fields[1])
           bins.append(bin_d_max_min)
         j += 1
       assert (len(bins) > 0)
-      info = processing_info(bins)
+      info.set_bins(bins)
     elif "Average Redundancy Per Shell" in line :
       j = i + 3
       while (j < (i+100)) :
@@ -120,22 +259,61 @@ def parse_scalepack (lines) :
           info.add_bin_stat(bin, "i/sigma", "%.2f" % (i_mean / sig_i_mean))
           info.add_bin_stat(bin, "r_merge", r_merge)
         j += 1
-      break
   return info
 
-def run (args) :
-  from libtbx.utils import Sorry
+def parse_denzo (lines) :
+  info = integration_info("HKL-2000")
+  for i, line in enumerate(lines) :
+    if line.strip().startswith("Wavelength ") :
+      fields = line.strip().split()
+      for field in fields :
+        try :
+          wavelength = float(field)
+        except ValueError :
+          pass
+        else :
+          info.set_wavelength(wavelength)
+          break
+    elif line.strip().startswith("Detector to crystal distance") :
+      fields = line.strip().split()
+      info.set_distance(float(fields[4]))
+  return info
+
+def parse_all_files (args) :
   import os
-  if not os.path.isfile(args[0]) :
-    raise Sorry("First argument must be a valid file name.")
-  lines = open(args[0], "r").readlines()
-  for line in lines :
-    if "reading from a file" in line :
-      info = parse_scalepack(lines)
-      break
-  if info is not None :
-    print info.format_remark_200()
+  experiment = None
+  integration = None
+  scaling = None
+  for arg in args :
+    if os.path.isfile(arg) :
+      lines = open(arg, "r").readlines()
+      for line in lines :
+        if "reading from a file" in line :
+          scaling = parse_scalepack(lines)
+          break
+        elif "Oscillation starts at" in line :
+          integration = parse_denzo(lines)
+          break
+  info = processing_info(experiment=experiment,
+    integration=integration,
+    scaling=scaling)
+  return info
+
+def exercise () :
+  import libtbx.load_env
+  import os
+  denzo_log = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/harvesting/denzo.log",
+    test=os.path.isfile)
+  scalepack_log = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/harvesting/scalepack.log",
+    test=os.path.isfile)
+  if (denzo_log is None) :
+    print "DENZO log not found, skipping test."
+    return False
+  info = parse_all_files([denzo_log, scalepack_log])
+  print info.format_remark_200()
 
 if __name__ == "__main__" :
-  import sys
-  run(sys.argv[1:])
+  exercise()
+  print "OK"
