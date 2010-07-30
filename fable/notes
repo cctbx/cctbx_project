@@ -1,5 +1,4 @@
 replace tab in string literals with \t
-repeatedly used format: static const char* format_1234 = "";
 str<>::operator char*() possible? (certain constructors will have to be removed)
 cout: raise exception at very end if other exceptions caught
 read, write: operator, destructors: copy inp, copy back on success
