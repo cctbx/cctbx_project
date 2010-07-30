@@ -460,6 +460,7 @@ fable/test/valid/do_label.f -text
 fable/test/valid/do_variable_passed.f -text
 fable/test/valid/do_while.f -text
 fable/test/valid/double_literal.f -text
+fable/test/valid/dp_example.f -text
 fable/test/valid/dynamic_parameters_1.f -text
 fable/test/valid/dynamic_parameters_2.f -text
 fable/test/valid/dynamic_parameters_3.f -text
