@@ -439,13 +439,19 @@ def get_multikin(f, pdb_io):
   outfile.close()
 
 def run(args):
-  assert len(args)==1
+  assert (len(args) == 1) or (len(args) == 2)
   file_name = args[0]
   if file_name and os.path.exists(file_name):
-      pdb_io = pdb.input(file_name)
-  pdbID = os.path.basename(pdb_io.source_info().split(' ')[1]).split('.')[0]
-  outfile = pdbID+'.kin'
+    pdb_io = pdb.input(file_name)
+  else :
+    raise Sorry("First argument must be an existing PDB file.")
+  if (len(args) > 1) and (args[1] is not None) :
+    outfile = args[1]
+  else :
+    pdbID = os.path.basename(pdb_io.source_info().split(' ')[1]).split('.')[0]
+    outfile = pdbID+'.kin'
   get_multikin(f=outfile, pdb_io=pdb_io)
+  return outfile
 
 if __name__ == "__main__":
   run(args=sys.argv[1:])
