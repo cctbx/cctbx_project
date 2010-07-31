@@ -53,12 +53,17 @@ class test_case(object):
       max_index=(10, 10, 10)))
 
   def exercise(self, xray_structure=None, space_group_info=None,
-               verbose=False, **kwds):
+               verbose=False, fixed_random_seed=True, **kwds):
     assert [xray_structure, space_group_info].count(None) == 1
     if xray_structure is None:
       self.xs = self.random_structure(space_group_info, set_grads=True)
     else:
       self.xs = xray_structure
+
+    if fixed_random_seed:
+      random.seed(1)
+      flex.set_random_seed(1)
+
     self.do_exercise(verbose)
 
 
@@ -240,6 +245,7 @@ def run(args):
   libtbx.utils.show_times_at_exit()
   parser = space_group_option_parser()
   parser.option('-x', '--xray_structure_pickle', default=None)
+  parser.option(None, '--fixed_random_seed', default=True)
   commands = parser.process(args)
 
   n_directions = 2
