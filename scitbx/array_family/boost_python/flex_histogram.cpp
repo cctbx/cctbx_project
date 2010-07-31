@@ -24,7 +24,8 @@ namespace scitbx { namespace af { namespace boost_python { namespace {
           std::size_t>((
             arg("data"),
             arg("n_slots")=1000)))
-        .def(init<af::const_ref<double> const&,
+        .def(init<
+          af::const_ref<double> const&,
           double const&,
           double const&,
           std::size_t,
@@ -41,6 +42,13 @@ namespace scitbx { namespace af { namespace boost_python { namespace {
             arg("other"),
             arg("data"),
             arg("relative_tolerance")=1e-4)))
+        .enable_pickling()
+        .def(init<
+          double const&,
+          double const&,
+          double const&,
+          af::shared<long> const&,
+          std::size_t>()) // intentionally no arg
         .def("data_min", &w_t::data_min)
         .def("data_max", &w_t::data_max)
         .def("slot_width", &w_t::slot_width)
