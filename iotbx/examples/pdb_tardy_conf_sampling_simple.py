@@ -3,6 +3,26 @@ import time
 import os
 op = os.path
 
+def build_clash_detector(n_sites, bond_list, threshold):
+  import scitbx.r3_utils
+  result = scitbx.r3_utils.clash_detector_simple(
+    n_sites=n_sites, threshold=threshold)
+  from scitbx.graph import utils
+  bond_sets = utils.construct_edge_sets(
+    n_vertices=n_sites, edge_list=bond_list)
+  def add_exclusions(edge_sets):
+    for i,edge_set in enumerate(edge_sets):
+      for j in edge_set:
+        if (i < j):
+          result.add_exclusion(i=i, j=j)
+  add_exclusions(edge_sets=bond_sets)
+  angle_sets = utils.bond_bending_edge_sets(edge_sets=bond_sets)
+  add_exclusions(edge_sets=angle_sets)
+  for i,j in utils.potential_implied_edge_list(
+               edge_sets=bond_sets, bond_bending_edge_sets=angle_sets):
+    result.add_exclusion(i=i, j=j)
+  return result
+
 def run(args):
   time_start = time.time()
   import iotbx.pdb
@@ -12,7 +32,7 @@ def run(args):
   from scitbx.array_family import flex
   print "Time importing extensions: %.2f" % (time.time() - time_start)
   #
-  def process(file_name):
+  def process(file_name, clash_threshold=2.0):
     time_start = time.time()
     pdb_inp = iotbx.pdb.input(file_name=file_name)
     pdb_atoms = pdb_inp.atoms()
@@ -50,18 +70,27 @@ def run(args):
     #
     mt = flex.mersenne_twister()
     two_pi = 2 * math.pi
+    clash_detector = build_clash_detector(
+      n_sites=sites_cart.size(),
+      bond_list=edge_list,
+      threshold=clash_threshold)
     time_start = time.time()
     n_conf = 10000
+    n_clash_conf = 0
     for i_conf in xrange(n_conf):
       q = q_fixed.deep_copy()
       q.extend(mt.random_double(size=q_size_moving)*two_pi)
       tardy_model.unpack_q(q_packed=q)
       conf_sites_cart = tardy_model.sites_moved()
+      if (clash_detector.has_clash(sites_cart=conf_sites_cart)):
+        n_clash_conf += 1
     time_diff = time.time() - time_start
     print "time / %d conf: %.2f seconds" % (n_conf, time_diff)
     print "time / conf: %.3f milli seconds" % (time_diff / n_conf * 1000)
     if (time_diff != 0):
       print "conf / second: %.2f" % (n_conf / time_diff)
+    print "Fraction of conformations with clashes: %d / %d = %.2f %%" % (
+      n_clash_conf, n_conf, 100. * n_clash_conf / n_conf)
   #
   if (len(args) != 0):
     for file_name in args:

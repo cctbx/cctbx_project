@@ -1199,6 +1199,9 @@ scitbx/matrix/tests/utils.h -text
 scitbx/matrix/triangular_systems.h -text
 scitbx/matrix/vector_operations.h -text
 scitbx/misc/positive_getitem_index.h svneol=native#text/plain
+scitbx/r3_utils.hpp svneol=native#text/plain
+scitbx/r3_utils.py svneol=native#text/x-python
+scitbx/r3_utils_ext.cpp svneol=native#text/plain
 scitbx/rigid_body/SConscript -text
 scitbx/rigid_body/__init__.py svneol=native#text/x-python
 scitbx/rigid_body/array_packing.h svneol=native#text/plain
@@ -1263,6 +1266,7 @@ scitbx/sparse/tests/tst_lu_factorization.py -text
 scitbx/sparse/tests/tst_sparse.py -text
 scitbx/sparse/vector.h -text
 scitbx/stl/vector_io.h -text
+scitbx/tst_r3_utils.py svneol=native#text/x-python
 scitbx/wigner/SConscript -text
 scitbx/wigner/__init__.py -text
 scitbx/wigner/ext.cpp -text
