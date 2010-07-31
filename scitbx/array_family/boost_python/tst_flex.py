@@ -1495,6 +1495,13 @@ def exercise_histogram():
 &8 - 10: 3
 """
   assert hy.n_out_of_slot_range() == 17
+  for pickler in [pickle, cPickle]:
+    p = pickler.dumps(hy)
+    l = pickler.loads(p)
+    t = StringIO()
+    l.show(f=t, prefix="&")
+    assert not show_diff(t.getvalue(), s.getvalue())
+    assert l.n_out_of_slot_range() == 17
 
 def simple_linear_regression(x_obs, y_obs, w_obs):
   assert len(x_obs) == len(y_obs)

@@ -242,6 +242,14 @@ class histogram_slot_info(object):
 
 class _histogram(boost.python.injector, ext.histogram):
 
+  def __getinitargs__(self):
+    return (
+      self.data_min(),
+      self.data_max(),
+      self.slot_width(),
+      self.slots(),
+      self.n_out_of_slot_range())
+
   def slot_infos(self):
     low_cutoff = self.data_min()
     for i,n in enumerate(self.slots()):

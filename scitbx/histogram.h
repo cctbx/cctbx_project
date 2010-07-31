@@ -144,6 +144,22 @@ namespace scitbx {
       ValueType slot_width_;
       af::shared<CountType> slots_;
       std::size_t n_out_of_slot_range_;
+
+    public:
+      //! support for Python pickling
+      histogram(
+        ValueType const& data_min,
+        ValueType const& data_max,
+        ValueType const& slot_width,
+        af::shared<CountType> const& slots,
+        std::size_t n_out_of_slot_range)
+      :
+        data_min_(data_min),
+        data_max_(data_max),
+        slot_width_(slot_width),
+        slots_(slots),
+        n_out_of_slot_range_(n_out_of_slot_range)
+      {}
   };
 
 } // namespace scitbx
