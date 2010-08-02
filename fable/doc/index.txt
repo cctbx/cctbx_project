@@ -29,7 +29,7 @@
     (`Reprint <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2009.pdf>`_)
 
 - fable and fem development was supported by supplemental funding from
-  the American Recovery and Reinvestment Act (ARRA) for NIH/NIGMS grant
+  the American Recovery and Reinvestment Act (ARRA) to NIH/NIGMS grant
   number P01GM063210. The work was also supported in part by the US
   Department of Energy under Contract No. DE-AC02- 05CH11231.
 
@@ -105,7 +105,7 @@ Call graph, topological sort, const analysis
 
 fable builds a call graph of all the input sources, performs
 a topological sort (with handling of dependency cycles) and
-a const analysis tracing even through function pointers.
+const analysis tracing even through function pointers.
 The ``--top-unit-name`` option of ``fable.cout`` can be used to
 extract only the specified SUBROUTINE or FUNCTION unit and all its
 dependencies; all unused units are not converted. This feature was
@@ -263,7 +263,7 @@ Development of the fem Fortran emulation library was guided by the
 requirements of the programs we have converted for our needs. The
 emulation of the I/O system may raise "Not implemented" exceptions
 during execution. A major component missing completely is the runtime
-support of direct-access files. Several unusual FORMAT edits are not
+support for direct-access files. Several unusual FORMAT edits are not
 supported. Some floating-point edits are emulated only approximately.
 
 A major reason for releasing fable and fem under an open source license

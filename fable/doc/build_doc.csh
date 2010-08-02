@@ -18,7 +18,6 @@ fable.cout "$fable_dist/test/valid/dp_example.f" --no-fem-do-safe --namespace=dp
 fable.cout "$fable_dist/test/valid/common_variants.f" --no-fem-do-safe --namespace=common_variants > "$target_dir/common_variants.cpp"
 mv fable_cout_common_report "$target_dir"
 #
-mkdir "$target_dir/sources"
 (cd "$fable_dist/.."; tar cf "$target_dir/tmp.tar" --exclude='.svn' --exclude='*.pyc' libtbx tbxx fable)
 (cd "$target_dir" && rm -rf sources; mkdir sources; cd sources; tar xf ../tmp.tar; rm ../tmp.tar; mv tbxx fable; cp -a "`libtbx.find_in_repositories lapack_fem`" .)
 #
