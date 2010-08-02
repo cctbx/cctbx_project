@@ -1168,6 +1168,7 @@ scitbx/math/tst_zernike.py -text
 scitbx/math/tst_zernike_mom.py -text
 scitbx/math/weighted_covariance.h -text
 scitbx/math/zernike.h -text
+scitbx/math/zernike_align_fft.py -text
 scitbx/math/zernike_moments.h -text
 scitbx/matrix/bidiagonalisation_flops.nb -text
 scitbx/matrix/delta_tensors.h -text

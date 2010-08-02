@@ -98,6 +98,16 @@ def tst_moments(nmax,np):
 
 
 
+  # do some alignment please
+  from scitbx.math import zernike_align_fft as zafft
+  fixed = mom_obj.moments()
+  moving = mom_obj.moments()
+  al_obj = zafft.align( fixed, moving)
+  assert abs(al_obj.get_cc()-1) < 1e-3
+
+
+
+
   return True
 
 
