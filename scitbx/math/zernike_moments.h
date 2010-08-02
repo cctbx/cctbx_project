@@ -34,12 +34,13 @@ namespace zernike {
              int const& splat_range, // number of grid points that an atom spans in 1d
              bool const& uniform,
              bool const& fixed_dx,
+             FloatType const& external_rmax,
              FloatType const& dx,
              FloatType const& fraction, // will be optimized later: splat_range*dx< (1-fraction)*rmax
              scitbx::af::const_ref< scitbx::vec3<FloatType> > xyz
            ):
            NP_(n_point), dx_(1.0/static_cast<FloatType>(NP_) ), uniform_(uniform),fixed_dx_(fixed_dx),
-           splat_range_(splat_range), natom_(xyz.size()), center_(0,0,0), fract_(fraction), NP_MAX_(200)
+           splat_range_(splat_range), natom_(xyz.size()), center_(0,0,0), fract_(fraction), NP_MAX_(200), rg_(0.0), rel_rg_(0.0), external_rmax_(external_rmax)
       {
         FloatType tmp_r2;
         for(int i=0;i<natom_;i++) {
@@ -48,12 +49,20 @@ namespace zernike {
         }
         center_ /= static_cast<FloatType> (natom_);
         rmax_=0.0;
+
         for(int i=0;i<natom_;i++) {
           xyz_[i] -= center_;
           tmp_r2 = xyz_[i].length_sq();
+          rg_     += tmp_r2;
           if(rmax_< tmp_r2) rmax_= tmp_r2;
         }
         rmax_ = std::sqrt( rmax_ );
+        rg_ = rg_ / natom_;
+
+        if (external_rmax_ > 0){
+          SCITBX_ASSERT( external_rmax_ >= rmax_ ) ; // if not,  we are no longer on the unit ball!
+          rmax_ = external_rmax_;
+        }
 
         if(fixed_dx_) {
           dx_=dx;
@@ -74,6 +83,8 @@ namespace zernike {
 
       FloatType rmax() { return rmax_; }
       FloatType fraction() { return fract_; }
+
+      FloatType rg() {return rg_;}
 
       af::shared< scitbx::vec3< FloatType > >
       rotate( scitbx::vec3< FloatType > angle, bool t) {
@@ -222,13 +233,12 @@ namespace zernike {
         return map;
       }
 
-
     private:
       scitbx::af::shared< scitbx::vec3<FloatType> > xyz_;
       scitbx::af::shared< scitbx::vec3<FloatType> > scaled_xyz_;
       int natom_, NP_, NP_MAX_;
       bool uniform_, fixed_dx_;
-      FloatType dx_, splat_range_, rmax_, scale_, fract_;
+      FloatType dx_, splat_range_, rmax_, scale_, fract_, rg_, rel_rg_, external_rmax_;
       scitbx::vec3<FloatType> center_;
       af::shared< af::shared< af::shared<FloatType> > > value_;
   };

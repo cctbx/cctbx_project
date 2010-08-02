@@ -88,6 +88,7 @@ namespace {
                    bool const&,
                    double const&,
                    double const&,
+                   double const&,
                    scitbx::af::const_ref< scitbx::vec3<double> >
                   >
              ((
@@ -95,6 +96,7 @@ namespace {
                 arg("splat_range"),
                 arg("uniform"),
                 arg("fixed_dx"),
+                arg("external_rmax"),
                 arg("fraction"),
                 arg("dx"),
                 arg("xyz")
@@ -102,6 +104,7 @@ namespace {
             )
         .def("value", &w_t::get_value)
         .def("rmax", &w_t::rmax)
+        .def("rg", &w_t::rg)
         .def("map", &w_t::map)
         .def("xyz", &w_t::xyz)
         .def("rotate", &w_t::rotate)

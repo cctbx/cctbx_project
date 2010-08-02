@@ -16,15 +16,16 @@ def tst_voxel(nmax, np):
   splat_range = 1
   fraction = 0.9
   default_dx = 0.7
+  external_rmax = -1.0
   uniform = True
   adjust_dx = False
   centering = False
 
   xyz = makexyz()
-  voxel_obj = math.sphere_voxel(np,splat_range,uniform,adjust_dx,default_dx, fraction,xyz)
+  voxel_obj = math.sphere_voxel(np,splat_range,uniform,adjust_dx,external_rmax,default_dx, fraction,xyz)
 
   assert voxel_obj.np() == np
-  assert voxel_obj.rmax() == 25
+  assert abs(voxel_obj.rmax() - 25)<1e-4
   assert voxel_obj.occupied_sites() == 162
 
   info = voxel_obj.status()
@@ -85,6 +86,7 @@ def tst_moments(nmax,np):
   mom_2_2_1 = (-1.26396619825e-05+1.26396619825e-05j)
   mom_4_2_0 = (-0.00371195771764-0j)
   mom_4_4_0 = (0.00317650549416-0j)
+
 
   assert abs( moments.get_coef(0,0,0) - mom_0_0_0 ) < eps
   assert abs( moments.get_coef(1,1,0) - mom_1_1_0 ) < eps
