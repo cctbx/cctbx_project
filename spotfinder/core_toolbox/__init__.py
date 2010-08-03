@@ -30,6 +30,10 @@ class Distl(w_Distl):
           self.set_minimum_spot_area(params.distl.minimum_spot_area)
         if params.distl.minimum_signal_height != None:
           self.set_minimum_signal_height(params.distl.minimum_signal_height)
+        if params.distl.minimum_spot_height != None:
+          self.set_minimum_spot_height(params.distl.minimum_spot_height)
+    self.parameter_guarantees()
+
     self.get_underload()
     try:
       self.pxlclassify()
@@ -69,6 +73,12 @@ class Distl(w_Distl):
       # bgupperint <==> -bg2 <==> minimum_signal_height
       if self.options.find("-bg2") >= 0:
         raise Sorry( (template1%(self.params.distl.minimum_signal_height,2)) )
+
+    # difflowerint <==> -d1 <==> minimum_spot_height
+    if self.params.distl.minimum_spot_height != None:
+      if self.options.find("-d1") >= 0:
+        raise Sorry( (template%("minimum_spot_height (%.2f)","-d1",self.options)%(
+        self.params.distl.minimum_spot_height,)) )
 
 class _SpotFilterAgent(boost.python.injector, SpotFilterAgent):
   def __getinitargs__(self):
