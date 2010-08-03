@@ -1,4 +1,6 @@
 
+import sys, os
+
 def check_bin_format (bin) :
   try :
     d_max, d_min = float(bin[0]), float(bin[1])
@@ -70,7 +72,7 @@ class scaling_info (object) :
     d_min = float(self.bins[-1][1])
     d_max = float(self.bins[0][0])
     comp_overall = self.stats_overall.get("completeness", None)
-    redu_overall = self.stats_overall.get("redundancy", None)
+    redu_overall = self.stats_overall.get("multiplicity", None)
     rmerg_overall = self.stats_overall.get("r_merge", None)
     s2n_overall = self.stats_overall.get("i/sigma", None)
     return group_args(d_max_min=(d_max, d_min),
@@ -86,7 +88,7 @@ class scaling_info (object) :
     d_min = float(self.bins[-1][1])
     d_max = float(self.bins[-1][0])
     comp_bin = self.binned_stats.get("completeness", [None])[-1]
-    redu_bin = self.binned_stats.get("redundancy", [None])[-1]
+    redu_bin = self.binned_stats.get("multiplicity", [None])[-1]
     rmerg_bin = self.binned_stats.get("r_merge", [None])[-1]
     s2n_bin = self.binned_stats.get("i/sigma", [None])[-1]
     return group_args(d_max_min=(d_max, d_min),
@@ -105,6 +107,7 @@ class processing_info (object) :
 
   def format_remark_200 (self) :
     from libtbx.str_utils import format_value
+    from libtbx.test_utils import approx_equal
     def format (obj, attr, fs="%.4f") :
       value = getattr(obj, attr, None)
       return format_value(fs, value, replace_none_with="NULL").strip()
@@ -130,7 +133,19 @@ class processing_info (object) :
     wavelength = getattr(e, "wavelength", "NULL")
     if (wavelength == "NULL") :
       wavelength = getattr(i, "wavelength", "NULL")
-    lines.append(" SYNCHROTRON              (Y/N) : NULL")
+    synchrotron = "NULL"
+    if (wavelength != "NULL") :
+      try :
+        wl = float(wavelength.strip())
+      except ValueError :
+        pass
+      else :
+        if (not approx_equal(wl, 1.5418, 0.01) and
+            not approx_equal(wl, 0.7107, 0.01)) :
+          synchrotron = "Y"
+        else :
+          synchrotron = "N"
+    lines.append(" SYNCHROTRON              (Y/N) : %s" % synchrotron)
     lines.append(" RADIATION SOURCE               : NULL")
     lines.append(" BEAMLINE                       : NULL")
     lines.append(" X-RAY GENERATOR MODEL          : NULL")
@@ -218,11 +233,11 @@ def parse_scalepack (lines) :
         line2 = lines[j]
         fields = line2.strip().split()
         if is_table_end(fields) :
-          info.add_overall_stat("redundancy", fields[-1])
+          info.add_overall_stat("multiplicity", fields[-1])
           break
         else :
           bin = (fields[0], fields[1])
-          info.add_bin_stat(bin, "redundancy", fields[-1])
+          info.add_bin_stat(bin, "multiplicity", fields[-1])
         j += 1
     elif "I/Sigma in resolution shells:" in line :
       j = i + 3
@@ -279,8 +294,61 @@ def parse_denzo (lines) :
       info.set_distance(float(fields[4]))
   return info
 
+def parse_scala (lines) :
+  from iotbx import data_plots
+  info = scaling_info("SCALA")
+  tables = data_plots.import_ccp4i_logfile(log_lines=lines)
+  d_max = None
+  for i, line in enumerate(lines) :
+    if ("Summary data for Project" in line) :
+      j = i
+      n_refl = None
+      n_refl_all = None
+      while (j < len(lines)) :
+        line = lines[j].strip()
+        if line.startswith("Low resolution limit") :
+          d_max = float(line.split()[3])
+        elif line.startswith("Rmerge") :
+          info.add_overall_stat("r_merge", float(line.split()[1]))
+        elif line.startswith("Total number of observations") :
+          n_refl_all = float(line.split()[4])
+        elif line.startswith("Total number unique") :
+          n_refl = float(line.split()[3])
+          info.set_n_refl(n_refl, n_refl_all)
+        elif line.startswith("Mean((I)/sd(I))") :
+          info.add_overall_stat("i/sigma", float(line.split()[1]))
+        elif line.startswith("Completeness") :
+          info.add_overall_stat("completeness", float(line.split()[1]))
+        elif line.startswith("Multiplicity") :
+          info.add_overall_stat("multiplicity", float(line.split()[1]))
+        j += 1
+  assert (d_max is not None)
+  for table in tables :
+    if table.title.startswith("Analysis against resolution") :
+      d_min_by_bin = table.get_column_by_label("Dmin(A)")
+      bin_d_max = d_max
+      bins = []
+      for bin_d_min in d_min_by_bin :
+        bins.append((bin_d_max, bin_d_min))
+        bin_d_max = bin_d_min
+      info.set_bins(bins)
+      rmerge = table.get_column_by_label("Rmrg")
+      for (rmerge_bin, bin) in zip(rmerge, bins) :
+        info.add_bin_stat(bin, "r_merge", rmerge_bin)
+      s2n = table.get_column_by_label("Mn(I/sd)")
+      for (s2n_bin, bin) in zip(s2n, bins) :
+        info.add_bin_stat(bin, "i/sigma", s2n_bin)
+    elif table.title.startswith("Completeness, multiplicity, Rmeas") :
+      completeness = table.get_column_by_label("%poss")
+      for (comp_bin, bin) in zip(completeness, bins) :
+        info.add_bin_stat(bin, "completeness", comp_bin)
+      multiplicity = table.get_column_by_label("Mlplct")
+      for (mult_bin, bin) in zip(multiplicity, bins) :
+        info.add_bin_stat(bin, "multiplicity", mult_bin)
+      break
+  return info
+
 def parse_all_files (args) :
-  import os
   experiment = None
   integration = None
   scaling = None
@@ -294,6 +362,9 @@ def parse_all_files (args) :
         elif "Oscillation starts at" in line :
           integration = parse_denzo(lines)
           break
+        elif "SCALA - continuous scaling program" in line :
+          scaling = parse_scala(lines)
+          break
   info = processing_info(experiment=experiment,
     integration=integration,
     scaling=scaling)
@@ -301,7 +372,6 @@ def parse_all_files (args) :
 
 def exercise () :
   import libtbx.load_env
-  import os
   denzo_log = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/harvesting/denzo.log",
     test=os.path.isfile)
@@ -315,5 +385,7 @@ def exercise () :
   print info.format_remark_200()
 
 if __name__ == "__main__" :
-  exercise()
-  print "OK"
+  info = parse_all_files(sys.argv[1:])
+  print info.format_remark_200()
+  #exercise()
+  #print "OK"
