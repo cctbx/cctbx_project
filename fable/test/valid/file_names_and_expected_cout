@@ -7,6 +7,8 @@ add_strings.f
 |i\'l|
 |x"zi|
 |i\'|
+|i\'i\'l|
+|i\'lx"zi\'l|
 real_array_sum.f
 write_star.f
 | x|

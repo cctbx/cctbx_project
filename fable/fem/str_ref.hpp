@@ -112,6 +112,7 @@ namespace fem {
   struct str_addends
   {
     str_cref lhs, rhs;
+    std::string sum;
 
     str_addends(
       str_cref const& lhs_,
@@ -120,6 +121,16 @@ namespace fem {
       lhs(lhs_),
       rhs(rhs_)
     {}
+
+    operator
+    str_cref()
+    {
+      int sum_len = lhs.len() + rhs.len();
+      if (sum_len != 0 && sum.size() == 0) {
+        sum = std::string(lhs) + std::string(rhs);
+      }
+      return str_cref(sum.data(), sum_len);
+    }
   };
 
   inline

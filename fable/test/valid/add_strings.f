@@ -10,4 +10,11 @@
       write(6, '(a)') d
       a = b // c
       write(6, '(a)') a
+      call show(a // b)
+      call show(b // c)
+      end
+
+      subroutine show(str)
+      character str*(*)
+      write(6, '(a)') str
       end
