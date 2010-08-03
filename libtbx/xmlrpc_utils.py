@@ -198,7 +198,7 @@ class external_program_server (object) :
         proxy_class = ServerProxy
       else :
         proxy_class = xmlrpclib.ServerProxy
-      self._server = proxy_class(uri="http://localhost:%d/RPC2" %
+      self._server = proxy_class(uri="http://127.0.0.1:%d/RPC2" %
                                              self._port)
 
   def flush_requests (self) :

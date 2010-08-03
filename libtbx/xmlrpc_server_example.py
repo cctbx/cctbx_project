@@ -59,7 +59,7 @@ try :
       port = os.environ.get("CCTBX_%s_PORT" % self.program_id, DEFAULT_PORT)
       if port is not None :
         self.port = string.atoi(port)
-        self.xmlrpc_server = external_xmlrpc_server(("localhost", self.port),
+        self.xmlrpc_server = external_xmlrpc_server(("127.0.0.1", self.port),
                                                     self)
         if self.verbose :
           print "Listening on port %s" % port
