@@ -101,7 +101,7 @@ Resolution shell statistics
   assert t2.format_simple(indent=2) == simple_table
   assert str(t2) == simpler_table
   log_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/harvesting/scala.log",
+    relative_path="phenix_regression/tracking/scala.log",
     test=os.path.isfile)
   if log_file is not None :
     tables = data_plots.import_ccp4i_logfile(log_file)

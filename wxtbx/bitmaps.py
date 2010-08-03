@@ -11,7 +11,7 @@ blank16 = PyEmbeddedImage(
     "kgAAAABJRU5ErkJggg==")
 
 icon_lib = libtbx.env.find_in_repositories(
-  relative_path="gui_resources/icons",
+  relative_path=os.path.join("gui_resources", "icons"),
   test=os.path.isdir)
 
 image_cache = {}
