@@ -84,7 +84,7 @@ main(
   double c = a + i;
 """)
   #
-  assert not absd(get("add_strings.f"), tail_off(8), """\
+  assert not absd(get("add_strings.f"), tail_off(10), """\
   fem::str<3> a = "x\\"z";
   fem::str<4> b = "i\\\\'l";
   fem::str<7> c = a + b;
