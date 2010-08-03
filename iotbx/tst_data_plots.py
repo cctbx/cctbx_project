@@ -1,6 +1,7 @@
 
-#from iotbx import data_plots
 from iotbx import data_plots
+import libtbx.load_env
+import os
 
 def exercise () :
   loggraph1 = """\
@@ -99,6 +100,22 @@ Resolution shell statistics
 """
   assert t2.format_simple(indent=2) == simple_table
   assert str(t2) == simpler_table
+  log_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/harvesting/scala.log",
+    test=os.path.isfile)
+  if log_file is not None :
+    tables = data_plots.import_ccp4i_logfile(log_file)
+    assert ([ t.title for t in tables ] ==
+      ['>>> Scales v rotation range, Unspecified ',
+       'Analysis against Batch, Unspecified ',
+       'Analysis against resolution , Unspecified ',
+       'Analysis against intensity, Unspecified ',
+       'Completeness, multiplicity, Rmeas v. resolution, Unspecified ',
+       'Correlations within dataset, Unspecified ',
+       'Axial reflections, axis h, Unspecified ',
+       'Axial reflections, axis k, Unspecified ',
+       'Axial reflections, axis l, Unspecified ',
+       'Run     1, standard deviation v. Intensity, Unspecified '])
   print "OK"
 
 if __name__ == "__main__" :

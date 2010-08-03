@@ -138,7 +138,8 @@ class table_data (object) :
     else :
       lines = loggraph_lines
     for raw_line in lines :
-      line = initial_spaces.sub("", raw_line)
+      line = raw_line.strip()
+      #line = initial_spaces.sub("", raw_line)
       if line == "" :
         pass
       elif line.startswith("$TABLE") :
@@ -363,6 +364,12 @@ class table_data (object) :
         _graphs[column_list] = graph_data(None, gdata, "plot", labels)
       return _graphs[column_list]
 
+  def get_column_by_label (self, column_label) :
+    if not column_label in self.column_labels :
+      raise Sorry("Couldn't find column %s in this table." % column_label)
+    i = self.column_labels.index(column_label)
+    return self.data[i]
+
   def _extract_data_column (self, column_list) :
     assert len(column_list) <= len(self.data)
     data = self.data
@@ -463,17 +470,18 @@ def import_ccp4i_logfile (file_name=None, log_lines=None) :
   tables_raw = []
   sections_read = 0
   for line in log_lines :
-    if line[0:7] == "$TABLE:" :
-      current_lines = [line.strip()]
+    line = line.strip()
+    if re.match("\$TABLE\s*:", line) :
+      current_lines = [ line ]
       sections_read = 0
-    elif re.sub("\s*$", "", line)[-2:] == "$$" and current_lines is not None :
-      current_lines.append(line.strip())
-      sections_read += 1
+    elif line[-2:] == "$$" and current_lines is not None :
+      current_lines.append(line)
+      sections_read += line.count("$$")
       if sections_read == 4 :
         tables_raw.append(current_lines)
         current_lines = None
     elif sections_read < 4 and current_lines is not None :
-      current_lines.append(line.strip())
+      current_lines.append(line)
   tables = []
   for loggraph in tables_raw :
     t = table_data(None)
