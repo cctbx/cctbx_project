@@ -26,6 +26,7 @@ def run():
   "$D/linalg/tests/tst_cholesky.py",
   "$D/linalg/tests/tst_svd.py",
   "$D/linalg/tests/tst_eigensystem.py",
+  "$D/linalg/tests/tst_lapack_dgesvd.py",
   "$D/linalg/tests/tst_lapack_dsyev.py",
   "$D/error/tst_error.py",
   "$D/stl/tst_map.py",

@@ -11,7 +11,7 @@ source = [
   "householder.cpp",
   "svd.cpp",
   "eigensystem.cpp",
-  "lapack_dsyev_bpl.cpp"]
+  "lapack_fem_bpl.cpp"]
 
 env = env_scitbx_boost_python_ext.Clone()
 env_fem = env.Clone()

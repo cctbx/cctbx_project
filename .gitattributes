@@ -1106,7 +1106,7 @@ scitbx/linalg/boost_python/SConscript -text
 scitbx/linalg/boost_python/cholesky.cpp -text
 scitbx/linalg/boost_python/eigensystem.cpp -text
 scitbx/linalg/boost_python/householder.cpp -text
-scitbx/linalg/boost_python/lapack_dsyev_bpl.cpp svneol=native#text/plain
+scitbx/linalg/boost_python/lapack_fem_bpl.cpp svneol=native#text/plain
 scitbx/linalg/boost_python/linalg_ext.cpp -text
 scitbx/linalg/boost_python/matrix.cpp -text
 scitbx/linalg/boost_python/svd.cpp -text
@@ -1116,6 +1116,7 @@ scitbx/linalg/householder.py -text
 scitbx/linalg/svd.py -text
 scitbx/linalg/tests/tst_cholesky.py -text
 scitbx/linalg/tests/tst_eigensystem.py -text
+scitbx/linalg/tests/tst_lapack_dgesvd.py svneol=native#text/x-python
 scitbx/linalg/tests/tst_lapack_dsyev.py svneol=native#text/x-python
 scitbx/linalg/tests/tst_matrix.py -text
 scitbx/linalg/tests/tst_svd.py -text
