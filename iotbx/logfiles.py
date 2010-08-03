@@ -373,10 +373,10 @@ def parse_all_files (args) :
 def exercise () :
   import libtbx.load_env
   denzo_log = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/harvesting/denzo.log",
+    relative_path="phenix_regression/tracking/denzo.log",
     test=os.path.isfile)
   scalepack_log = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/harvesting/scalepack.log",
+    relative_path="phenix_regression/tracking/scalepack.log",
     test=os.path.isfile)
   if (denzo_log is None) :
     print "DENZO log not found, skipping test."
