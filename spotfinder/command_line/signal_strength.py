@@ -11,6 +11,9 @@ distl {
   minimum_signal_height = None
     .type = float
     .help = "Override default application; set minimum signal height (in units of background noise sigma) within spotfinder."
+  minimum_spot_height = None
+    .type = float
+    .help = "Expert use only; after pixels are classified as signals (rather then noise), minimum height to be considered a spot maximum (in units of background noise sigma). Default=3.5"
   pdf_output = None
     .type = str
     .help="File name for optional PDF graphical output for distl.signal_strength (*.pdf)"
@@ -45,7 +48,8 @@ distl {
 def run(args, command_name="distl.signal_strength"):
   help_str="""explanation:
 Local background and background standard deviation are determined.
-Pixel maxima are chosen if > 3 sigmas above background.
+Pixels are classified as signal if > minimum_signal_height sigmas above background.
+Signals are chosen as spot maxima if > minimum_spot_height sigmas above background.
 Spots are grown around the maxima, and retained if they fit minimal area criteria.
 Total number of candidates at this stage is reported as "Spot Total"
 Ice rings are eliminated by at least two different algorithms (rings of high pixel
