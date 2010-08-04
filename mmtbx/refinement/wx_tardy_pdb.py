@@ -125,7 +125,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       first_callback=O.first_action_callback)
     O.child_thread.start_and_wait_for_first_callback()
 
-  def first_action_callback(O, tardy_model):
+  def first_action_callback(O, tardy_model, rmsd_calculator):
     O.tardy_model = tardy_model
     tpo = tardy_model.potential_obj
     O.draw_map.set_unit_cell_and_density_map(
