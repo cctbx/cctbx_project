@@ -15,7 +15,8 @@ source = [
 
 env = env_scitbx_boost_python_ext.Clone()
 env_fem = env.Clone()
-env_etc.enable_more_warnings(env=env_fem)
+if (env_etc.gcc_version >= 30400):
+  env_etc.enable_more_warnings(env=env_fem)
 
 if (libtbx.env.has_module("fable")):
   lapack_fem_dir = libtbx.env.find_in_repositories(relative_path="lapack_fem")
