@@ -814,6 +814,7 @@ def run(args):
         max_iterations=work_params
           .rotamer_score_and_choose_best.lbfgs_max_iterations))
   #
+  best_info = None
   if (work_params.coordinate_refinement.run != 0):
     atom_selection_bool = get_atom_selection_bool(
       scope_extract=work_params.coordinate_refinement,
@@ -849,7 +850,6 @@ def run(args):
     else:
       rstw_list = [rstw_params.first_sample + i * rstw_params.sampling_step
         for i in xrange(rstw_params.number_of_samples)]
-    best_info = None
     bond_rmsd_list = []
     for rstw in rstw_list:
       refined = maptbx.real_space_refinement_simple.lbfgs(
@@ -944,7 +944,9 @@ def run(args):
   #
   show_times()
   sys.stdout.flush()
-  return best_info.refined.f_final # XXX exchange for correlation, or both?
+  if (best_info is not None):
+    return best_info.refined.f_final # XXX exchange for correlation, or both?
+  return None
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
