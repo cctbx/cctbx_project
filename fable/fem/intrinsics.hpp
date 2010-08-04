@@ -515,6 +515,20 @@ namespace fem {
     int const& v2) { return std::max(v1, static_cast<float>(v2)); }
 
   inline
+  int
+  max(
+    int const& v1,
+    int const& v2,
+    int const& v3) { return max(max(v1, v2), v3); }
+
+  inline
+  float
+  max(
+    float const& v1,
+    float const& v2,
+    float const& v3) { return max(max(v1, v2), v3); }
+
+  inline
   double
   max(
     double const& v1,
