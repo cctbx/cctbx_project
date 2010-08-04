@@ -51,9 +51,32 @@ def exercise():
     0.8615633693608673, -0.50765003750177129,
     0.50765003750177129, 0.8615633693608673])
 
+def compare_times():
+  import scitbx.linalg.svd
+  from scitbx.array_family import flex
+  import time
+  mt = flex.mersenne_twister(seed=0)
+  samples = [100,200]
+  print " m   n  real dgesvd"
+  for m in samples:
+    for n in samples:
+      a = mt.random_double(size=m*n)*4-2
+      a.reshape(flex.grid(m,n))
+      ac = a.deep_copy()
+      t0 = time.time()
+      svd_real = scitbx.linalg.svd.real(
+        ac, accumulate_u=True, accumulate_v=True)
+      time_svd_real = time.time() - t0
+      at = a.matrix_transpose()
+      t0 = time.time()
+      dgesvd = scitbx.linalg.lapack_dgesvd_fem(a=at)
+      time_dgesvd = time.time() - t0
+      print "%3d %3d %4.2f %4.2f" % (m, n, time_svd_real, time_dgesvd)
+
 def run(args):
   assert len(args) == 0
   exercise()
+  compare_times()
   print "OK"
 
 if (__name__ == "__main__"):
