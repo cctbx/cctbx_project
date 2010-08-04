@@ -73,7 +73,8 @@ namespace scitbx { namespace lapack { namespace boost_python {
       work[0],
       lwork,
       info);
-    boost::python::object result((boost_python_meta_ext::holder()));
+    boost::python::object result;
+    result = boost::python::object(boost_python_meta_ext::holder());
     result.attr("s") = s;
     result.attr("u") = u;
     result.attr("vt") = vt;
