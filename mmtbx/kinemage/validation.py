@@ -238,19 +238,25 @@ def get_chain_color(index):
 
 
 def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
-  mc_atoms = ["N", "CA", "C", "O", "OXT"]
+  mc_atoms = ["N", "CA", "C", "O", "OXT",
+              "P", "OP1", "OP2", "O5'", "C5'", "C4'", "O4'", "C1'",
+              "C3'", "O3'", "C2'", "O2'"]
   mc_veclist = ""
   sc_veclist = ""
   mc_h_veclist = ""
   sc_h_veclist = ""
   ca_trace = ""
+  virtual_bb = ""
   water_list = ""
   kin_out = ""
   color = get_chain_color(index)
   mc_veclist = "@vectorlist {mc} color= %s  master= {mainchain}\n" % color
   sc_veclist = "@vectorlist {sc} color= cyan  master= {sidechain}\n"
   ca_trace = "@vectorlist {Calphas} color= %s master= {Calphas}\n" % color
+  virtual_bb = "@vectorlist {Virtual BB} color= %s  off   master= {Virtual BB}\n" % color
   water_list = "@balllist {water O} color= peachtint  radius= 0.15  master= {water}\n"
+  hets = "@vectorlist {het} color= pink  master= {hets}\n"
+  het_h = "@vectorlist {ht H} color= gray  nobutton master= {hets} master= {H's}\n"
   if show_hydrogen:
     mc_h_veclist = \
       "@vectorlist {mc H} color= gray nobutton master= {mainchain} master= {H's}\n"
@@ -266,12 +272,29 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
   cur_C_key = None
   cur_CA_xyz = None
   cur_CA_key = None
+  prev_O3_xyz = None
+  prev_O3_key = None
+  cur_O3_xyz = None
+  cur_O3_key = None
+  p_hash_key = {}
+  p_hash_xyz = {}
+  c1_hash_key = {}
+  c1_hash_xyz = {}
+  c4_hash_key = {}
+  c4_hash_xyz = {}
   for residue_group in chain.residue_groups():
     cur_resid = residue_group.resseq
+    #print dir(residue_group)
+    #sys.exit()
     for atom_group in residue_group.atom_groups():
+      #print dir(atom_group)
+      #sys.exit()
       key_hash = {}
       xyz_hash = {}
+      het_hash = {}
       for atom in atom_group.atoms():
+        #print dir(atom)
+        #sys.exit()
         key = "%s %s %s%s  B%.2f %s" % (
               atom.name.lower(),
               atom_group.resname.lower(),
@@ -281,32 +304,94 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
               pdbID)
         key_hash[atom.name.strip()] = key
         xyz_hash[atom.name.strip()] = atom.xyz
-        if atom.name == ' C  ':
-          cur_C_xyz = atom.xyz
-          cur_C_key = key
-        if atom.name == ' CA ':
-          cur_CA_key = key
-          cur_CA_xyz = atom.xyz
-          if prev_CA_key != None and prev_CA_xyz != None:
-            if int(residue_group.resid()) - int(prev_resid) == 1:
-              try:
-                ca_trace += kin_vec(prev_CA_key, prev_CA_xyz, key, atom.xyz)
-              except:
-                continue
-        if atom.name == ' N  ':
-          if prev_C_key != None and prev_C_xyz != None:
-            if int(residue_group.resid()) - int(prev_resid) == 1:
-              try:
-                mc_veclist += kin_vec(prev_C_key, prev_C_xyz, key, atom.xyz)
-              except:
-                continue
-        if atom_group.resname.lower() == 'hoh':
-          if atom.name == ' O  ':
-            water_list += "{%s} P %.3f %.3f %.3f\n" % (
+        if(common_residue_names_get_class(atom_group.resname) == "common_amino_acid"):
+          if atom.name == ' C  ':
+            cur_C_xyz = atom.xyz
+            cur_C_key = key
+          if atom.name == ' CA ':
+            cur_CA_key = key
+            cur_CA_xyz = atom.xyz
+            if prev_CA_key != None and prev_CA_xyz != None:
+              if int(residue_group.resid()) - int(prev_resid) == 1:
+                try:
+                  ca_trace += kin_vec(prev_CA_key, prev_CA_xyz, key, atom.xyz)
+                except:
+                  continue
+          if atom.name == ' N  ':
+            if prev_C_key != None and prev_C_xyz != None:
+              if int(residue_group.resid()) - int(prev_resid) == 1:
+                try:
+                  mc_veclist += kin_vec(prev_C_key, prev_C_xyz, key, atom.xyz)
+                except:
+                  continue
+        elif(common_residue_names_get_class(atom_group.resname) == "common_rna_dna"):
+          if atom.name == " O3'":
+            cur_O3_xyz = atom.xyz
+            cur_O3_key = key
+          elif atom.name == ' P  ':
+            if prev_O3_key != None and prev_O3_xyz != None:
+              if int(residue_group.resid()) - int(prev_resid) == 1:
+                try:
+                  mc_veclist += kin_vec(prev_O3_key, prev_O3_xyz, key, atom.xyz)
+                except:
+                  continue
+            p_hash_key[int(residue_group.resseq)] = key
+            p_hash_xyz[int(residue_group.resseq)] = atom.xyz
+          elif atom.name == " C1'":
+            c1_hash_key[int(residue_group.resseq)] = key
+            c1_hash_xyz[int(residue_group.resseq)] = atom.xyz
+          elif atom.name == " C4'":
+            c4_hash_key[int(residue_group.resseq)] = key
+            c4_hash_xyz[int(residue_group.resseq)] = atom.xyz
+        elif atom_group.resname.lower() == 'hoh':
+            if atom.name == ' O  ':
+              water_list += "{%s} P %.3f %.3f %.3f\n" % (
                        key,
                        atom.xyz[0],
                        atom.xyz[1],
                        atom.xyz[2])
+        elif atom.hetero == True:
+          het_hash[atom.name.strip()] = [key, atom.xyz]
+        #  print common_residue_names_get_class(atom_group.resname)
+
+      if(common_residue_names_get_class(atom_group.resname) == "common_rna_dna"):
+        try:
+          virtual_bb += "{%s} P %.3f %.3f %.3f {%s} L %.3f %.3f %.3f\n" % (
+                        c4_hash_key[int(residue_group.resseq)-1],
+                        c4_hash_xyz[int(residue_group.resseq)-1][0],
+                        c4_hash_xyz[int(residue_group.resseq)-1][1],
+                        c4_hash_xyz[int(residue_group.resseq)-1][2],
+                        p_hash_key[int(residue_group.resseq)],
+                        p_hash_xyz[int(residue_group.resseq)][0],
+                        p_hash_xyz[int(residue_group.resseq)][1],
+                        p_hash_xyz[int(residue_group.resseq)][2])
+        except:
+          continue
+        try:
+          virtual_bb += "{%s} P %.3f %.3f %.3f {%s} L %.3f %.3f %.3f\n" % (
+                        p_hash_key[int(residue_group.resseq)],
+                        p_hash_xyz[int(residue_group.resseq)][0],
+                        p_hash_xyz[int(residue_group.resseq)][1],
+                        p_hash_xyz[int(residue_group.resseq)][2],
+                        c4_hash_key[int(residue_group.resseq)],
+                        c4_hash_xyz[int(residue_group.resseq)][0],
+                        c4_hash_xyz[int(residue_group.resseq)][1],
+                        c4_hash_xyz[int(residue_group.resseq)][2])
+        except:
+          continue
+        try:
+          virtual_bb += "{%s} P %.3f %.3f %.3f {%s} L %.3f %.3f %.3f\n" % (
+                        c4_hash_key[int(residue_group.resseq)],
+                        c4_hash_xyz[int(residue_group.resseq)][0],
+                        c4_hash_xyz[int(residue_group.resseq)][1],
+                        c4_hash_xyz[int(residue_group.resseq)][2],
+                        c1_hash_key[int(residue_group.resseq)],
+                        c1_hash_xyz[int(residue_group.resseq)][0],
+                        c1_hash_xyz[int(residue_group.resseq)][1],
+                        c1_hash_xyz[int(residue_group.resseq)][2])
+        except:
+          continue
+
       bonds = get_bond_pairs(code=atom_group.resname)
 
       prev_CA_xyz = cur_CA_xyz
@@ -314,6 +399,33 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
       prev_C_xyz = cur_C_xyz
       prev_C_key = cur_C_key
       prev_resid = cur_resid
+      prev_O3_key = cur_O3_key
+      prev_O3_xyz = cur_O3_xyz
+
+      if (common_residue_names_get_class(atom_group.resname) == 'other'):
+        for bond in bonds:
+          if (bond[0].startswith('H') or bond[1].startswith('H')):
+            if show_hydrogen:
+              try:
+                het_h += kin_vec(het_hash[bond[0]][0],
+                                 het_hash[bond[0]][1],
+                                 het_hash[bond[1]][0],
+                                 het_hash[bond[1]][1])
+              except:
+                continue
+          else:
+            try:
+              hets += "{%s} P %.3f %.3f %.3f {%s} L %.3f %.3f %.3f\n" % (
+                   het_hash[bond[0]][0],
+                   het_hash[bond[0]][1][0],
+                   het_hash[bond[0]][1][1],
+                   het_hash[bond[0]][1][2],
+                   het_hash[bond[1]][0],
+                   het_hash[bond[1]][1][0],
+                   het_hash[bond[1]][1][1],
+                   het_hash[bond[1]][1][2])
+            except:
+              continue
 
       for bond in bonds:
         if bond[0] in mc_atoms and bond[1] in mc_atoms:
@@ -365,6 +477,12 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
     kin_out += sc_h_veclist
   if len(water_list.splitlines()) > 1:
     kin_out += water_list
+  if len(virtual_bb.splitlines()) > 1:
+    kin_out += virtual_bb
+  if len(hets.splitlines()) > 1:
+    kin_out += hets
+  if len(het_h.splitlines()) > 1:
+    kin_out += het_h
   return kin_out
 
 def get_default_header():
@@ -390,10 +508,12 @@ def get_footer():
 @master {Rota outliers} on
 @master {Rama outliers} on
 @master {Calphas} on
+@master {Virtual BB} on
 @master {vdw contact} off
 @master {small overlap} off
 @master {H-bonds} off
 @master {Cbeta dev} on
+@master {hets} on
 """
   return footer
 
