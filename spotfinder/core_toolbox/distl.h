@@ -74,12 +74,15 @@ public:
   inline void set_minimum_spot_height(const double& A){
     finder.difflowerint = A;}
 
+  inline void set_spot_area_maximum_factor(const double& A){
+    finder.spotareamaxfactor = A;}
+
   inline void parameter_guarantees(){
     // difflowerint (minimum_spot_height) >= bgupperint (minimum_signal_height)
     double* max_bg = std::max_element(finder.bgupperint, finder.bgupperint+2);
-    if (finder.difflowerint < *max_bg){
-      finder.difflowerint = *max_bg;
-    }
+    if (finder.difflowerint < *max_bg) { finder.difflowerint = *max_bg; }
+
+    if (finder.spotareamaxfactor < 1.0) { finder.spotareamaxfactor = 1.0; }
   }
 
   inline void pxlclassify(){ finder.pxlclassify(); }

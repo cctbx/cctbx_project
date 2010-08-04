@@ -14,6 +14,9 @@ distl {
   minimum_spot_height = None
     .type = float
     .help = "Expert use only; after pixels are classified as signals (rather then noise), minimum height to be considered a spot maximum (in units of background noise sigma). Default=3.5"
+  spot_area_maximum_factor = None
+    .type = float
+    .help = "Expert use only; max spot area expressed as a multiple of minimum_spot_area. Default=5.0"
   pdf_output = None
     .type = str
     .help="File name for optional PDF graphical output for distl.signal_strength (*.pdf)"

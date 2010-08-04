@@ -32,6 +32,8 @@ class Distl(w_Distl):
           self.set_minimum_signal_height(params.distl.minimum_signal_height)
         if params.distl.minimum_spot_height != None:
           self.set_minimum_spot_height(params.distl.minimum_spot_height)
+        if params.distl.spot_area_maximum_factor != None:
+          self.set_spot_area_maximum_factor(params.distl.spot_area_maximum_factor)
     self.parameter_guarantees()
 
     self.get_underload()
@@ -79,6 +81,12 @@ class Distl(w_Distl):
       if self.options.find("-d1") >= 0:
         raise Sorry( (template%("minimum_spot_height (%.2f)","-d1",self.options)%(
         self.params.distl.minimum_spot_height,)) )
+
+    # apotareamaxfactor <==> -s7 <==> spot_area_maximum_factor
+    if self.params.distl.spot_area_maximum_factor != None:
+      if self.options.find("-s7") >= 0:
+        raise Sorry( (template%("spot_area_maximum_factor (%.2f)","-s7",self.options)%(
+        self.params.distl.spot_area_maximum_factor,)) )
 
 class _SpotFilterAgent(boost.python.injector, SpotFilterAgent):
   def __getinitargs__(self):
