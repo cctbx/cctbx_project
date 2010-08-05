@@ -55,6 +55,8 @@ class Distl(w_Distl):
 
     template = "%s on the command line and %s parameter (%s) of dataset_preferences.py file specify the same thing."
 
+    if self.params==None: return
+
     # spotarealowcut <==> -s2 <==> minimum_spot_area
     if self.params.distl.minimum_spot_area != None:
       if self.options.find("-s2") >= 0:
