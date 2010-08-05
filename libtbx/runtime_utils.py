@@ -142,7 +142,11 @@ class detached_process_server (detached_base) :
     except Abort :
       self.callback_abort()
     except Exception, e :
-      Sorry.reset_module()
+      if e.__class__.__module__ == "Boost.Python" :
+        e = RuntimeError("Boost.Python.%s: %s" % (e.__class__.__name__,
+          str(e)))
+      elif hasattr(e, "reset_module") :
+        e.reset_module()
       traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
       self.callback_error(e, traceback_str)
     else :
