@@ -83,15 +83,6 @@ def exercise():
     mod = srv.mod_mod_id_dict["B2C"]
     comp.apply_mod(mod).show()
   if (False or default_switch):
-    for base_code in ["A", "C", "G"]:
-      rna_atoms = srv.get_comp_comp_id_direct(base_code+"r").atom_dict()
-      dna_atoms = srv.get_comp_comp_id_direct(base_code+"d").atom_dict()
-      for as,bs,c in [(rna_atoms,dna_atoms,"d"), (dna_atoms,rna_atoms,"r")]:
-        for a in as.keys():
-          b = bs.get(a, None)
-          if (b is None):
-            print "Not in %s: %s" % (base_code+c, a)
-  if (False or default_switch):
     for row in list_cif.cif["comp_list"]["chem_comp"]:
       if (quick and random.random() < 0.95): continue
       comp_comp_id = srv.get_comp_comp_id_direct(row["id"])
