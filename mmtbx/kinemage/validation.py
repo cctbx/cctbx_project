@@ -133,13 +133,13 @@ def rama_outliers(chain, pdbID, ram_outliers):
     for atom_group in residue_group.atom_groups():
       for atom in atom_group.atoms():
         if atom.name == ' CA ':
-          CA_xyz_dict[int(residue_group.resseq)] = atom.xyz
+          CA_xyz_dict[residue_group.resseq_as_int()] = atom.xyz
           key = "%s%4s %s%s" % (
                      chain.id,
                      residue_group.resseq,
                      atom_group.altloc,
                      atom_group.resname)
-          CA_key_dict[int(residue_group.resseq)] = key
+          CA_key_dict[residue_group.resseq_as_int()] = key
 
   for residue_group in chain.residue_groups():
     for atom_group in residue_group.atom_groups():
@@ -151,11 +151,11 @@ def rama_outliers(chain, pdbID, ram_outliers):
       #print check_key
       if check_key in outlier_list:
         try:
-          prev_xyz = CA_xyz_dict[int(residue_group.resseq)-1]
-          next_xyz = CA_xyz_dict[int(residue_group.resseq)+1]
-          prev_key = CA_key_dict[int(residue_group.resseq)-1]
-          next_key = CA_key_dict[int(residue_group.resseq)+1]
-          cur_xyz = CA_xyz_dict[int(residue_group.resseq)]
+          prev_xyz = CA_xyz_dict[residue_group.resseq_as_int()-1]
+          next_xyz = CA_xyz_dict[residue_group.resseq_as_int()+1]
+          prev_key = CA_key_dict[residue_group.resseq_as_int()-1]
+          next_key = CA_key_dict[residue_group.resseq_as_int()+1]
+          cur_xyz = CA_xyz_dict[residue_group.resseq_as_int()]
           mid1 = midpoint(p1=prev_xyz, p2=cur_xyz)
           mid2 = midpoint(p1=cur_xyz, p2=next_xyz)
         except:
@@ -335,14 +335,14 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
                   mc_veclist += kin_vec(prev_O3_key, prev_O3_xyz, key, atom.xyz)
                 except:
                   continue
-            p_hash_key[int(residue_group.resseq)] = key
-            p_hash_xyz[int(residue_group.resseq)] = atom.xyz
+            p_hash_key[residue_group.resseq_as_int()] = key
+            p_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
           elif atom.name == " C1'":
-            c1_hash_key[int(residue_group.resseq)] = key
-            c1_hash_xyz[int(residue_group.resseq)] = atom.xyz
+            c1_hash_key[residue_group.resseq_as_int()] = key
+            c1_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
           elif atom.name == " C4'":
-            c4_hash_key[int(residue_group.resseq)] = key
-            c4_hash_xyz[int(residue_group.resseq)] = atom.xyz
+            c4_hash_key[residue_group.resseq_as_int()] = key
+            c4_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
         elif atom_group.resname.lower() == 'hoh':
             if atom.name == ' O  ':
               water_list += "{%s} P %.3f %.3f %.3f\n" % (
@@ -356,39 +356,24 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
 
       if(common_residue_names_get_class(atom_group.resname) == "common_rna_dna"):
         try:
-          virtual_bb += "{%s} P %.3f %.3f %.3f {%s} L %.3f %.3f %.3f\n" % (
-                        c4_hash_key[int(residue_group.resseq)-1],
-                        c4_hash_xyz[int(residue_group.resseq)-1][0],
-                        c4_hash_xyz[int(residue_group.resseq)-1][1],
-                        c4_hash_xyz[int(residue_group.resseq)-1][2],
-                        p_hash_key[int(residue_group.resseq)],
-                        p_hash_xyz[int(residue_group.resseq)][0],
-                        p_hash_xyz[int(residue_group.resseq)][1],
-                        p_hash_xyz[int(residue_group.resseq)][2])
+          virtual_bb += kin_vec(c4_hash_key[residue_group.resseq_as_int()-1],
+                                c4_hash_xyz[residue_group.resseq_as_int()-1],
+                                p_hash_key[residue_group.resseq_as_int()],
+                                p_hash_xyz[residue_group.resseq_as_int()])
         except:
           continue
         try:
-          virtual_bb += "{%s} P %.3f %.3f %.3f {%s} L %.3f %.3f %.3f\n" % (
-                        p_hash_key[int(residue_group.resseq)],
-                        p_hash_xyz[int(residue_group.resseq)][0],
-                        p_hash_xyz[int(residue_group.resseq)][1],
-                        p_hash_xyz[int(residue_group.resseq)][2],
-                        c4_hash_key[int(residue_group.resseq)],
-                        c4_hash_xyz[int(residue_group.resseq)][0],
-                        c4_hash_xyz[int(residue_group.resseq)][1],
-                        c4_hash_xyz[int(residue_group.resseq)][2])
+          virtual_bb += kin_vec(p_hash_key[residue_group.resseq_as_int()],
+                                p_hash_xyz[residue_group.resseq_as_int()],
+                                c4_hash_key[residue_group.resseq_as_int()],
+                                c4_hash_xyz[residue_group.resseq_as_int()])
         except:
           continue
         try:
-          virtual_bb += "{%s} P %.3f %.3f %.3f {%s} L %.3f %.3f %.3f\n" % (
-                        c4_hash_key[int(residue_group.resseq)],
-                        c4_hash_xyz[int(residue_group.resseq)][0],
-                        c4_hash_xyz[int(residue_group.resseq)][1],
-                        c4_hash_xyz[int(residue_group.resseq)][2],
-                        c1_hash_key[int(residue_group.resseq)],
-                        c1_hash_xyz[int(residue_group.resseq)][0],
-                        c1_hash_xyz[int(residue_group.resseq)][1],
-                        c1_hash_xyz[int(residue_group.resseq)][2])
+          virtual_bb += kin_vec(c4_hash_key[residue_group.resseq_as_int()],
+                                c4_hash_xyz[residue_group.resseq_as_int()],
+                                c1_hash_key[residue_group.resseq_as_int()],
+                                c1_hash_xyz[residue_group.resseq_as_int()])
         except:
           continue
 
@@ -403,67 +388,65 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
       prev_O3_xyz = cur_O3_xyz
 
       if (common_residue_names_get_class(atom_group.resname) == 'other'):
-        for bond in bonds:
-          if (bond[0].startswith('H') or bond[1].startswith('H')):
-            if show_hydrogen:
-              try:
-                het_h += kin_vec(het_hash[bond[0]][0],
+        if bonds is not None:
+          for bond in bonds:
+            if (bond[0].startswith('H') or bond[1].startswith('H')):
+              if show_hydrogen:
+                try:
+                  het_h += kin_vec(het_hash[bond[0]][0],
                                  het_hash[bond[0]][1],
                                  het_hash[bond[1]][0],
                                  het_hash[bond[1]][1])
+                except:
+                  continue
+            else:
+              try:
+                hets += kin_vec(het_hash[bond[0]][0],
+                              het_hash[bond[0]][1],
+                              het_hash[bond[1]][0],
+                              het_hash[bond[1]][1])
               except:
                 continue
-          else:
+
+      if bonds is not None:
+        for bond in bonds:
+          if bond[0] in mc_atoms and bond[1] in mc_atoms:
             try:
-              hets += "{%s} P %.3f %.3f %.3f {%s} L %.3f %.3f %.3f\n" % (
-                   het_hash[bond[0]][0],
-                   het_hash[bond[0]][1][0],
-                   het_hash[bond[0]][1][1],
-                   het_hash[bond[0]][1][2],
-                   het_hash[bond[1]][0],
-                   het_hash[bond[1]][1][0],
-                   het_hash[bond[1]][1][1],
-                   het_hash[bond[1]][1][2])
+              mc_veclist += kin_vec(key_hash[bond[0]],
+                                  xyz_hash[bond[0]],
+                                  key_hash[bond[1]],
+                                  xyz_hash[bond[1]])
             except:
               continue
 
-      for bond in bonds:
-        if bond[0] in mc_atoms and bond[1] in mc_atoms:
-          try:
-            mc_veclist += kin_vec(key_hash[bond[0]],
-                                  xyz_hash[bond[0]],
-                                  key_hash[bond[1]],
-                                  xyz_hash[bond[1]])
-          except:
-            continue
-
-        elif (bond[0].startswith('H') or bond[1].startswith('H')):
-          if show_hydrogen:
-            if (bond[0] in mc_atoms or bond[1] in mc_atoms):
-              try:
-                mc_h_veclist += kin_vec(key_hash[bond[0]],
+          elif (bond[0].startswith('H') or bond[1].startswith('H')):
+            if show_hydrogen:
+              if (bond[0] in mc_atoms or bond[1] in mc_atoms):
+                try:
+                  mc_h_veclist += kin_vec(key_hash[bond[0]],
                                         xyz_hash[bond[0]],
                                         key_hash[bond[1]],
                                         xyz_hash[bond[1]])
-              except:
-                continue
-            else:
-              try:
-                sc_h_veclist += kin_vec(key_hash[bond[0]],
+                except:
+                  continue
+              else:
+                try:
+                  sc_h_veclist += kin_vec(key_hash[bond[0]],
                                         xyz_hash[bond[0]],
                                         key_hash[bond[1]],
                                         xyz_hash[bond[1]])
-              except:
-                continue
-        else:
-          try:
-            sc_veclist += kin_vec(key_hash[bond[0]],
+                except:
+                  continue
+          else:
+            try:
+              sc_veclist += kin_vec(key_hash[bond[0]],
                                   xyz_hash[bond[0]],
                                   key_hash[bond[1]],
                                   xyz_hash[bond[1]])
-          except:
-            continue
+            except:
+              continue
 
+  #print p_hash_key
   #clean up empty lists:
   if len(mc_veclist.splitlines()) > 1:
     kin_out += mc_veclist
