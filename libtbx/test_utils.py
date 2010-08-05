@@ -7,6 +7,7 @@ import libtbx.load_env
 import difflib
 from stdlib import math
 import sys, os
+import time
 
 try:
   import threading
@@ -22,7 +23,10 @@ Exception_not_expected = RuntimeError("Exception not expected.")
 
 class Default: pass
 
-def run_tests(build_dir, dist_dir, tst_list):
+def run_tests(build_dir, dist_dir, tst_list, display_times=False):
+  if display_times:
+    t0=time.time()
+    start = time.asctime()
   libtbx.env.full_testing = True
   args = [arg.lower() for arg in sys.argv[1:]]
   command_line = (option_parser(
@@ -89,6 +93,12 @@ def run_tests(build_dir, dist_dir, tst_list):
         print "********************************************"
         interrupted.set()
         break
+  if display_times:
+    print "TIME (%s) (%s) %7.2f %s" % (start,
+                                       time.asctime(),
+                                       time.time()-t0,
+                                       tst_list,
+                                       )
 
 def make_pick_and_run_tests(working_dir, interrupted,
                             cmd_queue, log_queue):
