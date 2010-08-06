@@ -431,6 +431,24 @@ def human_readable_time_as_seconds(time_units, time_unit):
   if (time_unit == "days"): return time_units*60*60*24
   raise RuntimeError("Unknown time_unit: %s" % time_unit)
 
+def format_timestamp_12_hour (unix_time, short=False) :
+  if unix_time is None :
+    return "unknown"
+  elif short :
+    return time.strftime("%d-%m-%y %I:%M %p", time.localtime(float(unix_time)))
+  else :
+    return time.strftime("%b %d %Y %I:%M %p", time.localtime(float(unix_time)))
+
+def format_timestamp_24_hour (unix_time, short=False) :
+  if unix_time is None :
+    return "unknown"
+  elif short :
+    return time.strftime("%d-%m-%y %H:%M", time.localtime(float(unix_time)))
+  else :
+    return time.strftime("%b %d %Y %H:%M", time.localtime(float(unix_time)))
+
+format_timestamp = format_timestamp_12_hour
+
 def format_cpu_times(show_micro_seconds_per_tick=True):
   t = os.times()
   result = "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
@@ -886,6 +904,11 @@ def exercise():
       time_in_seconds=time_in_seconds)
     assert approx_equal(
       human_readable_time_as_seconds(time_units, time_unit), time_in_seconds)
+  assert (format_timestamp_12_hour(1280007000) == 'Jul 24 2010 02:30 PM')
+  assert (format_timestamp_24_hour(1280007000) == 'Jul 24 2010 14:30')
+  assert (format_timestamp_12_hour(1280007000, True) == '24-07-10 02:30 PM')
+  assert (format_timestamp_24_hour(1280007000, True) == '24-07-10 14:30')
+  assert (format_timestamp(1280007000) == 'Jul 24 2010 02:30 PM')
   #
   for string in ["True", "False"]:
     try: number_from_string(string=string)
