@@ -733,7 +733,7 @@ namespace zernike {
         std::complex<FloatType> temp(0,0);
         for(int u=0;u<=m;u++){
           temp += is_even(m-u)*bino_[m][u]*i_pow_n_[u]*sum5(n,l,m,nu,alpha,beta,u);
-          //temp += bino_[m][u]*i_pow_n_[m-u]*sum5(n,l,m,nu,alpha,beta,u);
+          //temp += is_even(m-u)*bino_[m][u]*i_pow_n_[u-m]*sum5(n,l,m,nu,alpha,beta,u);
         }
         return temp;
       }
