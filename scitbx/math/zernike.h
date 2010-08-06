@@ -1072,10 +1072,11 @@ namespace zernike{
     /* Default constructor */
     zernike_grid(){}
     /* Basic constructor */
-    zernike_grid(int const& m, int const& n_max)
+    zernike_grid(int const& m, int const& n_max, bool hex=false)
     :
     m_(m),          // length of cube  = m*2+1
     n_max_(n_max),  // order of expansion
+    hex_(hex),      // grid type, cubic or hexagonal
     eps_(1e-12),    // epsilon
     nlm_(n_max_),   // nlm index
     lgf_(n_max_*2+5)// factorial engine
@@ -1106,56 +1107,131 @@ namespace zernike{
         zp.push_back( this_zp );
       }
 
-      FloatType pidivtwo=scitbx::constants::pi/2.0;
-      int count=0;
-      for (int ix=-m;ix<=m;ix++){
-        for (int iy=-m;iy<=m;iy++){
-          for (int iz=-m;iz<=m;iz++){
+      build_grid();
+      int np_total = xyz_.size();
+      for(int i=0; i< np_total; i++) {
+        r=rtp_[i][0];
+        t=rtp_[i][1];
+        p=rtp_[i][2];
+
+        // for each point, make a place holder for the zernike basis function
+        std::vector< std::complex<FloatType> > tmp_result;
+        // loop over all indices nlm and precompute all coefficients
+        if (r<=1.0){
+          for (int ii=0;ii<zp.size();ii++){
+            tmp_result.push_back( zp[ii].f(r,t,p) );
+            }
+        } else {
+          std::complex<FloatType> tmp(0,0);
+          tmp_result.push_back( tmp ); // when radius bigger then 1
+        }
+        partial_data_.push_back( tmp_result );
+      }
+    }
+
+    void build_grid()
+    {
+      FloatType x,y,z,r,t,p;
+      scitbx::vec3<FloatType> xyz, rtp;
+      if(hex_) {
+        int yRow = 0;
+        FloatType dr, dx, dy, dz, max_x, max_y, max_z;
+        dr = 1.0/(2.0*m_);
+        dx = 2*dr;
+        dy = std::sqrt(3.0)*dr;
+        dz = std::sqrt(6.0)*2.0/3.0*dr;
+        max_x = 1.0;
+        max_y = 1.0;
+        max_z = 1.0;
+        z = -1.0;
+        bool is_plane_A = true; // A-B-A-B-A... planes
+
+        while( z<=max_z ) {
+          if(is_plane_A) {
+            yRow = 0;
+            x=-1.0;
+            y=-1.0;
+            while( y<=max_y) {
+              while( x<max_x ) {
+                xyz[0]=x;
+                xyz[1]=y;
+                xyz[2]=z;
+                xyz_.push_back(xyz);
+                x=x+dx;
+              }
+              yRow = yRow + 1;
+              y=y+dy;
+              if( yRow % 2 == 1 ) x=dr;
+              else x = 0.0;
+              x=x-1.0;
+            }
+          }
+          else{
+            yRow = 0;
+            x=-1.0 + dr;
+            y=-1.0 + dy/3.0;
+            while( y<=max_y) {
+              while( x<max_x ) {
+                xyz[0]=x;
+                xyz[1]=y;
+                xyz[2]=z;
+                xyz_.push_back(xyz);
+                x=x+dx;
+              }
+              yRow = yRow + 1;
+              y=y+dy;
+              if( yRow % 2 == 0 ) x=dr;
+              else x = 0.0;
+              x=x-1.0;
+            }
+          }
+          is_plane_A = !is_plane_A; // next plane
+          z = z + dz;
+        }
+
+      }
+      else {
+        for (int ix=-m_;ix<=m_;ix++){
+         for (int iy=-m_;iy<=m_;iy++){
+          for (int iz=-m_;iz<=m_;iz++){
+
             x = ix*delta_;
             y = iy*delta_;
             z = iz*delta_;
 
-            r = std::sqrt(x*x+y*y+z*z);
-            if (r>eps_){
-              t = std::acos(z/r);
-              p = std::atan2(y,x);
-              //p -= pidivtwo;
-            } else {
-              t = 0.0;
-              p = 0.0;
-            }
-
             xyz[0]=x;
             xyz[1]=y;
             xyz[2]=z;
-
-            rtp[0]=r;
-            rtp[1]=t;
-            rtp[2]=p;
-
-            ijk[0]=ix;
-            ijk[1]=iy;
-            ijk[2]=iz;
-
             xyz_.push_back( xyz );
-            rtp_.push_back( rtp );
-            ijk_.push_back( ijk );
-
-            // for each point, make a place holder for the zernike basis function
-            std::vector< std::complex<FloatType> > tmp_result;
-            // loop over all indices nlm and precompute all coefficients
-            if (r<=1.0){
-              for (int ii=0;ii<zp.size();ii++){
-                tmp_result.push_back( zp[ii].f(r,t,p) );
-              }
-            } else {
-              std::complex<FloatType> tmp(0,0);
-              tmp_result.push_back( tmp ); // when radius bigger then 1
-            }
-            partial_data_.push_back( tmp_result );
           }
+         }
         }
       }
+
+     int np_total = xyz_.size();
+     for(int i=0;i<np_total;i++)
+     {
+        x=xyz_[i][0];
+        y=xyz_[i][1];
+        z=xyz_[i][2];
+
+        r = std::sqrt(x*x+y*y+z*z);
+        if (r>eps_){
+         t = std::acos(z/r);
+         p = std::atan2(y,x);
+         } else {
+           t = 0.0;
+           p = 0.0;
+         }
+
+        rtp[0]=r;
+        rtp[1]=t;
+        rtp[2]=p;
+
+        rtp_.push_back( rtp );
+     }
+
+      return;
     }
 
     scitbx::af::shared< std::complex<FloatType> > slow_moments(
@@ -1260,6 +1336,7 @@ namespace zernike{
 
     private:
       int m_, n_max_;
+      bool hex_;
       FloatType delta_, eps_;
       scitbx::af::shared< scitbx::vec3<FloatType> > xyz_;
       scitbx::af::shared< scitbx::vec3<FloatType> > rtp_;

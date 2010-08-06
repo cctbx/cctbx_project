@@ -163,9 +163,10 @@ namespace {
       using namespace boost::python;
 
       class_<w_t>("zernike_grid", no_init)
-        .def(init<int const&, int const&>
+        .def(init<int const&, int const&, bool const&>
                   ((  arg("m"),
-                      arg("n_max")
+                      arg("n_max"),
+                      arg("hex")
                   )))
         .def("xyz", &w_t::xyz )
         .def("rtp", &w_t::rtp )
