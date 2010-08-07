@@ -33,6 +33,7 @@ class lbfgs(object):
         unit_cell=None,
         selection_variable=None,
         geometry_restraints_manager=None,
+        energies_sites_flags=None,
         real_space_target_weight=1,
         real_space_gradients_delta=None,
         lbfgs_termination_params=None,
@@ -45,6 +46,7 @@ class lbfgs(object):
     O.unit_cell = unit_cell
     O.sites_cart = sites_cart
     O.geometry_restraints_manager = geometry_restraints_manager
+    O.energies_sites_flags = energies_sites_flags
     O.real_space_gradients_delta = real_space_gradients_delta
     O.real_space_target_weight = real_space_target_weight
     O.selection_variable = selection_variable
@@ -69,17 +71,21 @@ class lbfgs(object):
       return O.f_start, O.g_start
     O.number_of_function_evaluations += 1
     O.sites_cart_variable = flex.vec3_double(O.x)
-    rs_f = maptbx.real_space_target_simple(
-      unit_cell   = O.unit_cell,
-      density_map = O.density_map,
-      sites_cart  = O.sites_cart_variable)
-    rs_g = maptbx.real_space_gradients_simple(
-      unit_cell   = O.unit_cell,
-      density_map = O.density_map,
-      sites_cart  = O.sites_cart_variable,
-      delta       = O.real_space_gradients_delta)
-    rs_f *= -O.real_space_target_weight
-    rs_g *= -O.real_space_target_weight
+    if (O.real_space_target_weight == 0):
+      rs_f = 0.
+      rs_g = flex.vec3_double(O.sites_cart_variable.size(), (0,0,0))
+    else:
+      rs_f = maptbx.real_space_target_simple(
+        unit_cell   = O.unit_cell,
+        density_map = O.density_map,
+        sites_cart  = O.sites_cart_variable)
+      rs_g = maptbx.real_space_gradients_simple(
+        unit_cell   = O.unit_cell,
+        density_map = O.density_map,
+        sites_cart  = O.sites_cart_variable,
+        delta       = O.real_space_gradients_delta)
+      rs_f *= -O.real_space_target_weight
+      rs_g *= -O.real_space_target_weight
     if (O.geometry_restraints_manager is None):
       f = rs_f
       g = rs_g
@@ -89,7 +95,9 @@ class lbfgs(object):
       else:
         O.sites_cart.set_selected(O.selection_variable, O.sites_cart_variable)
       gr_e = O.geometry_restraints_manager.energies_sites(
-        sites_cart=O.sites_cart, compute_gradients=True)
+        sites_cart=O.sites_cart,
+        flags=O.energies_sites_flags,
+        compute_gradients=True)
       gr_e_gradients = gr_e.gradients
       if (O.selection_variable is not None):
         gr_e_gradients = gr_e.gradients.select(O.selection_variable)

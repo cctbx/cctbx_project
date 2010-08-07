@@ -5,11 +5,12 @@ import iotbx.mtz
 import iotbx.phil, libtbx.phil
 from cctbx import maptbx
 import cctbx.maptbx.real_space_refinement_simple
-import cctbx.geometry_restraints
+import cctbx.geometry_restraints.flags
 from cctbx.array_family import flex
 import scitbx.rigid_body
 import scitbx.graph.tardy_tree
 import scitbx.lbfgs
+import scitbx.math.superpose
 from scitbx import matrix
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
@@ -393,7 +394,9 @@ map {
     .type = float
 }
 
-output_file = None
+output_file = Auto
+  .type = str
+final_geo_file = Auto
   .type = str
 
 real_space_target_weight = 10
@@ -408,6 +411,21 @@ coordinate_refinement {
     .type = str
   compute_final_correlation = True
     .type = bool
+  finishing_geometry_minimization
+  {
+    cycles_max = 0
+      .type = int
+    first_weight_scale = 0.1
+      .type = float
+    cycle_weight_multiplier = 1.0
+      .type = float
+    superpose_cycle_end_with_cycle_start = False
+      .type = bool
+    dihedral_restraints = False
+      .type = bool
+    output_file = Auto
+      .type = str
+  }
   home_restraints
     .multiple = True
   {
@@ -445,6 +463,8 @@ rotamer_score_and_choose_best {
     .type = str
   lbfgs_max_iterations = 50
     .type = int
+  output_file = Auto
+    .type = str
 }
 
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
@@ -703,6 +723,33 @@ def get_atom_selection_bool(scope_extract,
           allow_none=True))
   return common_atom_selection_bool_cache[0]
 
+def compose_output_file_name(input_pdb_file_name, new_suffix):
+  result = op.basename(input_pdb_file_name)
+  if (   result.endswith(".pdb")
+      or result.endswith(".ent")):
+    result = result[:-4]
+  result += new_suffix
+  return result
+
+def write_pdb(
+      file_name,
+      input_pdb_file_name,
+      processed_pdb_file,
+      grm,
+      new_suffix):
+  if (file_name is not None):
+    if (file_name is Auto):
+      file_name = compose_output_file_name(
+        input_pdb_file_name=input_pdb_file_name,
+        new_suffix=new_suffix)
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    print "Writing file: %s" % show_string(file_name)
+    sys.stdout.flush()
+    pdb_hierarchy.write_pdb_file(
+      file_name=file_name,
+      crystal_symmetry=grm.crystal_symmetry)
+    print
+
 def run(args):
   show_times = libtbx.utils.show_times(time_start="now")
   master_phil = get_master_phil()
@@ -746,6 +793,7 @@ def run(args):
     msg = processed_pdb_file.all_chain_proxies.fatal_problems_message()
     if (msg is not None):
       raise Sorry(msg)
+  pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
   #
   grm = processed_pdb_file.geometry_restraints_manager(
     params_edits=work_params.geometry_restraints.edits,
@@ -813,6 +861,12 @@ def run(args):
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=work_params
           .rotamer_score_and_choose_best.lbfgs_max_iterations))
+    write_pdb(
+      file_name=work_params.rotamer_score_and_choose_best.output_file,
+      input_pdb_file_name=input_pdb_file_name,
+      processed_pdb_file=processed_pdb_file,
+      grm=grm,
+      new_suffix="_lockit_rotamer_score_and_choose_best.pdb")
   #
   best_info = None
   if (work_params.coordinate_refinement.run != 0):
@@ -824,7 +878,6 @@ def run(args):
     home_restraints_list = process_home_restraints_params(
       work_params=work_params.coordinate_refinement.home_restraints,
       processed_pdb_file=processed_pdb_file)
-    pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
     if (not work_params.coordinate_refinement.compute_final_correlation):
       work_scatterers = None
     else:
@@ -850,6 +903,12 @@ def run(args):
     else:
       rstw_list = [rstw_params.first_sample + i * rstw_params.sampling_step
         for i in xrange(rstw_params.number_of_samples)]
+    lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+      max_iterations=work_params.coordinate_refinement
+        .lbfgs_max_iterations)
+    lbfgs_exception_handling_params = \
+      scitbx.lbfgs.exception_handling_parameters(
+        ignore_line_search_failed_step_at_lower_bound=True)
     bond_rmsd_list = []
     for rstw in rstw_list:
       refined = maptbx.real_space_refinement_simple.lbfgs(
@@ -859,12 +918,8 @@ def run(args):
         geometry_restraints_manager=grmp,
         real_space_target_weight=rstw,
         real_space_gradients_delta=real_space_gradients_delta,
-        lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-          max_iterations=work_params.coordinate_refinement
-            .lbfgs_max_iterations),
-        lbfgs_exception_handling_params=
-          scitbx.lbfgs.exception_handling_parameters(
-            ignore_line_search_failed_step_at_lower_bound=True))
+        lbfgs_termination_params=lbfgs_termination_params,
+        lbfgs_exception_handling_params=lbfgs_exception_handling_params)
       print "After coordinate refinement" \
         " with real-space target weight %.1f:" % rstw
       grmp.energies_sites(sites_cart=refined.sites_cart).show()
@@ -915,7 +970,6 @@ def run(args):
           region_cc=region_cc)
       print
     if (best_info is not None):
-      pdb_atoms.set_xyz(new_xyz=best_info.refined.sites_cart)
       print "Table of real-space target weights vs. bond RMSD:"
       print "  weight   RMSD"
       for w,d in zip(rstw_list, bond_rmsd_list):
@@ -925,28 +979,103 @@ def run(args):
       if (best_info.region_cc is not None):
         print "Associated region correlation: %.4f" % best_info.region_cc
       print
-  #
-  if (work_params.output_file is not None):
-    file_name=work_params.output_file
+      pdb_atoms.set_xyz(new_xyz=refined.sites_cart)
+      write_pdb(
+        file_name=work_params.output_file,
+        input_pdb_file_name=input_pdb_file_name,
+        processed_pdb_file=processed_pdb_file,
+        grm=grm,
+        new_suffix="_lockit_best_weight.pdb")
+      #
+      fgm_params = work_params.coordinate_refinement \
+        .finishing_geometry_minimization
+      if (fgm_params.cycles_max is not None and fgm_params.cycles_max > 0):
+        print "As previously obtained with target weight %.1f:" \
+          % best_info.rstw
+        grmp.energies_sites(sites_cart=refined.sites_cart).show(prefix="  ")
+        print "Finishing refinement with target weight zero:"
+        print "  Number of function evaluations   cycle RMSD"
+        number_of_fgm_cycles = 0
+        rstw = best_info.rstw * fgm_params.first_weight_scale
+        sites_cart_start = best_info.refined.sites_cart.deep_copy()
+        for i_cycle in xrange(fgm_params.cycles_max):
+          fgm_refined = maptbx.real_space_refinement_simple.lbfgs(
+            sites_cart=sites_cart_start,
+            density_map=density_map,
+            selection_variable=atom_selection_bool,
+            geometry_restraints_manager=grmp,
+            energies_sites_flags=cctbx.geometry_restraints.flags.flags(
+              default=True, dihedral=fgm_params.dihedral_restraints),
+            real_space_target_weight=rstw,
+            real_space_gradients_delta=real_space_gradients_delta,
+            lbfgs_termination_params=lbfgs_termination_params,
+            lbfgs_exception_handling_params=lbfgs_exception_handling_params)
+          cycle_rmsd = sites_cart_start.rms_difference(fgm_refined.sites_cart)
+          print "         %10d                  %6.3f" % (
+            fgm_refined.number_of_function_evaluations, cycle_rmsd)
+          number_of_fgm_cycles += 1
+          rstw *= fgm_params.cycle_weight_multiplier
+          if (cycle_rmsd < 1.e-4):
+            break
+          if (fgm_params.superpose_cycle_end_with_cycle_start):
+            fit = scitbx.math.superpose.least_squares_fit(
+              reference_sites=best_info.refined.sites_cart,
+              other_sites=fgm_refined.sites_cart)
+            fgm_refined.sites_cart = fit.other_sites_best_fit()
+          sites_cart_start = fgm_refined.sites_cart.deep_copy()
+        print "After %d refinements with real-space target weight zero:" % (
+          number_of_fgm_cycles)
+        grmp.energies_sites(sites_cart=fgm_refined.sites_cart).show(prefix="  ")
+        if (work_scatterers is None):
+          fgm_region_cc = None
+        else:
+          fgm_region_cc = maptbx.region_density_correlation(
+            large_unit_cell=fft_map.unit_cell(),
+            large_d_min=fft_map.d_min(),
+            large_density_map=density_map,
+            sites_cart=fgm_refined.sites_cart_variable,
+            site_radii=flex.double(fgm_refined.sites_cart_variable.size(), 1),
+            work_scatterers=work_scatterers)
+          print "  Associated region correlation: %.4f" % fgm_region_cc
+        print
+        best_info.fgm_refined = fgm_refined
+        best_info.fgm_region_cc = fgm_region_cc
+        pdb_atoms.set_xyz(new_xyz=fgm_refined.sites_cart)
+        write_pdb(
+          file_name=fgm_params.output_file,
+          input_pdb_file_name=input_pdb_file_name,
+          processed_pdb_file=processed_pdb_file,
+          grm=grm,
+          new_suffix="_lockit_finishing_geo_min.pdb")
+      else:
+        best_info.fgm_refined = None
+        best_info.fgm_region_cc = None
   else:
-    file_name = op.basename(input_pdb_file_name)
-    if (   file_name.endswith(".pdb")
-        or file_name.endswith(".ent")):
-      file_name = file_name[:-4]
-    file_name += "_lockit.pdb"
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  print "Writing file: %s" % show_string(file_name)
-  sys.stdout.flush()
-  pdb_hierarchy.write_pdb_file(
-    file_name=file_name,
-    crystal_symmetry=grm.crystal_symmetry)
-  print
+    write_pdb(
+      file_name=work_params.output_file,
+      input_pdb_file_name=input_pdb_file_name,
+      processed_pdb_file=processed_pdb_file,
+      grm=grm,
+      new_suffix="_lockit_best_weight.pdb")
+  #
+  file_name = work_params.final_geo_file
+  if (file_name is not None):
+    if (file_name is Auto):
+      file_name = compose_output_file_name(
+        input_pdb_file_name=input_pdb_file_name,
+        new_suffix="_lockit_final.geo")
+    sites_cart = pdb_atoms.extract_xyz()
+    site_labels = [atom.id_str() for atom in pdb_atoms]
+    print "Writing file: %s" % show_string(file_name)
+    sys.stdout.flush()
+    f = open(file_name, "w")
+    grm.show_sorted(sites_cart=sites_cart, site_labels=site_labels, f=f)
+    del f
+    print
   #
   show_times()
   sys.stdout.flush()
-  if (best_info is not None):
-    return best_info.refined.f_final # XXX exchange for correlation, or both?
-  return None
+  return best_info
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
