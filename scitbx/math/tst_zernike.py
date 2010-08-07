@@ -84,8 +84,8 @@ def tst_zernike_grid(skip_iteration_probability=0.95):
   M=20
   N=4
   ddd = (M*2+1)
-  zga = math.zernike_grid(M,N)
-  zgb = math.zernike_grid(M,N)
+  zga = math.zernike_grid(M,N,False)
+  zgb = math.zernike_grid(M,N,False)
 
   xyz = zga.xyz()
   coefs = zga.coefs()
