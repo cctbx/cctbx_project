@@ -25,9 +25,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
       : base_t(name, boost::python::no_init)
     {
       using namespace boost::python;
-      def("__call__", &wt::operator(),
+      this->def("__call__", &wt::operator(),
           (arg("fo_sq"), arg("sigma"), arg("fc_sq")));
-      def("__call__", weights,
+      this->def("__call__", weights,
           (arg("fo_sq"), arg("sigmas"), arg("fc_sq")));
     }
   };
