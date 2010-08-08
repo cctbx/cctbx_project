@@ -14,7 +14,7 @@
 namespace scitbx { namespace sparse {
 
 template <class T>
-struct matrix;
+class matrix;
 
 template <class T>
 struct matrix_times_dense_vector

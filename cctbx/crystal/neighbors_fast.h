@@ -171,7 +171,6 @@ namespace cctbx { namespace crystal { namespace neighbors {
         double fallback_expected_bond_length,
         double tolerance_factor_expected_bond_length)
       {
-        std::size_t n_pairs = count_pairs();
         std::size_t n_sites = elements.size();
         af::shared< std::set< unsigned > > bonds(n_sites);
         restart();

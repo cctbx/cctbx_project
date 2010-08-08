@@ -161,7 +161,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         for (int k=0; k < hr_ht.groups.size(); ++k) {
           hr_ht_group<float_type> const &g = hr_ht.groups[k];
           float_type hrx = g.hr * scatterer.site;
-          complex_type f = exp_i_2pi(hrx + g.ht);
+          complex_type f = this->exp_i_2pi(hrx + g.ht);
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
             f *= dw;
@@ -336,7 +336,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         for (int k=0; k < hr_ht.groups.size(); ++k) {
           hr_ht_group<float_type> const &g = hr_ht.groups[k];
           float_type hrx = g.hr * scatterer.site;
-          complex_type f = exp_i_2pi(hrx + g.ht);
+          complex_type f = this->exp_i_2pi(hrx + g.ht);
           float_type fa = f.real(), fb = f.imag();
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);

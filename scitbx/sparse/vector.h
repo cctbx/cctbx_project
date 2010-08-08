@@ -601,7 +601,7 @@ private:
     vector_op_vector(vector const &u, vector const &v)
     : result(u.size())
     {
-      loop(u, v);
+      this->loop(u, v);
       result.set_compact(true); // by construction
     }
 
@@ -617,7 +617,7 @@ private:
     dot_product(vector const &u, vector const &v)
     : result(0)
     {
-      loop(u,v);
+      this->loop(u,v);
     }
 
     void operator()(index_type i, value_type x, value_type y) {
