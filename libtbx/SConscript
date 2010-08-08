@@ -159,12 +159,11 @@ supported_compilers = (
   "darwin_gcc-4.2", # tested with the "GCC 4.2 Developer Preview 1"
                     # distributed by Apple
                     # and the GCC 4.2 shipping with XCode 3.1
-  "darwin_clang", # as of June 2010, it can't compile it all:
-                  # - problem with exception specifications in scitbx/error.h
-                  #   (bug reported: number 7258)
-                  # - the code produced for matrix/eigensystem.h overflows
-                  #   (bug reported: number 7260)
-                  # bug reports at http://llvm.org/bugs/
+  "darwin_clang", # successfull compilation of phenix + smtbx
+                  # with LLVM trunk revision 110511
+                  # but incorrect code generation of Boost.Python
+                  # code throwing error on argument mismatch
+                  # e.g. boost_adaptbx/tests/tst_std_pair.py
 )
 if (not env_etc.compiler in supported_compilers):
   sys.tracebacklimit = 0
