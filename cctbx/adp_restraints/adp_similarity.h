@@ -4,6 +4,7 @@
 #include <cctbx/import_scitbx_af.h>
 #include <cctbx/error.h>
 #include <cctbx/adptbx.h>
+#include <cctbx/restraints.h>
 
 namespace cctbx { namespace adp_restraints {
 
@@ -110,6 +111,53 @@ namespace cctbx { namespace adp_restraints {
       result[0] = gradient_0();
       result[1] = -result[0];
       return result;
+    }
+
+
+    void
+    linearise(
+      cctbx::restraints::linearised_eqns_of_restraint<double> &linearised_eqns,
+      cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
+      af::tiny<unsigned, 2> const& i_seqs) const
+    {
+      if (!use_u_aniso[0] && !use_u_aniso[1]) {
+        // Only one restraint, i.e. one row added to restraint matrix
+        std::size_t row_i = linearised_eqns.next_row();
+        for (std::size_t j=0;j<2;j++) {
+          double grad = 1.0;
+          if (j == 1) grad *= -1;
+          cctbx::xray::parameter_indices const &ids_j
+            = parameter_map[i_seqs[j]];
+          if (ids_j.u_iso == -1) continue;
+          linearised_eqns.design_matrix(row_i, ids_j.u_iso) = grad;
+        }
+        linearised_eqns.weights[row_i] = weight;
+        linearised_eqns.deltas[row_i] = deltas_[0];
+      }
+      else {
+        // One restraint per parameter == six rows in the restraint matrix
+        for (std::size_t i=0;i<6;i++) {
+          std::size_t row_i = linearised_eqns.next_row();
+          double grad;
+          if (i < 3) grad = 1.;
+          else grad = 2.; // symmetric matrix, hence off diagonals count double
+          for (std::size_t j=0;j<2;j++) {
+            if (j == 1) {
+              grad = -grad;
+            }
+            cctbx::xray::parameter_indices const &ids_j
+              = parameter_map[i_seqs[j]];
+            if (use_u_aniso[j] && ids_j.u_aniso != -1) {
+              linearised_eqns.design_matrix(row_i, ids_j.u_aniso+i) = grad;
+            }
+            else if (i < 3 && !use_u_aniso[j] && ids_j.u_iso != -1) {
+              linearised_eqns.design_matrix(row_i, ids_j.u_iso) = grad;
+            }
+          }
+          linearised_eqns.weights[row_i] = weight;
+          linearised_eqns.deltas[row_i] = deltas_[i];
+        }
+      }
     }
 
     //! Support for adp_similarity_residual_sum.

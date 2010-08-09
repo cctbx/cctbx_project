@@ -4,6 +4,7 @@
 #include <cctbx/geometry_restraints/utils.h>
 #include <cctbx/geometry_restraints/asu_cache.h>
 #include <cctbx/geometry_restraints/sorted_asu_proxies.h>
+#include <cctbx/restraints.h>
 
 #include <boost/optional.hpp>
 
@@ -317,7 +318,17 @@ namespace cctbx { namespace geometry_restraints {
       double
       residual() const { return weight * scitbx::fn::pow2(delta_slack); }
 
-      //! Gradient with respect to sites[0].
+      //! Gradient of delta with respect to sites[0].
+      /*! Not available in Python.
+       */
+      scitbx::vec3<double>
+      grad_delta_0(double epsilon=1.e-100) const
+      {
+        if (distance_model < epsilon) return scitbx::vec3<double>(0,0,0);
+        return (sites[1] - sites[0]) / distance_model;
+      }
+
+      //! Gradient of R = w * sum(deltas) with respect to sites[0].
       /*! Not available in Python.
        */
       scitbx::vec3<double>
@@ -325,13 +336,12 @@ namespace cctbx { namespace geometry_restraints {
       {
         if (distance_model < epsilon) return scitbx::vec3<double>(0,0,0);
         if (delta < -slack || delta > slack) {
-          return -weight * 2 * delta_slack
-                         / distance_model * (sites[0] - sites[1]);
+          return weight * 2 * delta_slack * grad_delta_0(epsilon);
         }
         return scitbx::vec3<double>(0,0,0);
       }
 
-      //! Gradients with respect to both sites.
+      //! Gradient of R = w * deltas^2 with respect to each site.
       af::tiny<scitbx::vec3<double>, 2>
       gradients() const
       {
@@ -384,6 +394,41 @@ namespace cctbx { namespace geometry_restraints {
         cache.gradients[pair.i_seq] += grad_asu;
         if (pair.j_sym == 0) {
           cache.gradients[pair.j_seq] -= grad_asu;
+        }
+      }
+
+      void
+      //  The linearised equation of restraint.
+      linearise(
+        uctbx::unit_cell const& unit_cell,
+        cctbx::restraints::linearised_eqns_of_restraint<double> &linearised_eqns,
+        cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
+        bond_simple_proxy const& proxy) const
+      {
+        af::tiny<unsigned, 2> const& i_seqs = proxy.i_seqs;
+        af::tiny<scitbx::vec3<double>, 2> grads;
+        if (delta < -slack || delta > slack) {
+          grads[0] = grad_delta_0();
+        }
+        else { grads[0] = scitbx::vec3<double>(0,0,0); }
+
+        grads[1] = -grads[0];
+        std::size_t row_i = linearised_eqns.next_row();
+        linearised_eqns.weights[row_i] = proxy.weight;
+        linearised_eqns.deltas[row_i] = delta_slack;
+        for(int i=0;i<2;i++) {
+          grads[i] = unit_cell.fractionalize_gradient(grads[i]);
+          if (i == 1 && proxy.rt_mx_ji) {
+            scitbx::mat3<double> r_inv
+              = proxy.rt_mx_ji->r().inverse().as_double();
+            grads[i] = grads[i] * r_inv;
+          }
+          cctbx::xray::parameter_indices const &ids_i
+            = parameter_map[i_seqs[i]];
+          if (ids_i.site == -1) continue;
+          for (int j=0;j<3;j++) {
+            linearised_eqns.design_matrix(row_i, ids_i.site+j) = grads[i][j];
+          }
         }
       }
 

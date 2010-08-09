@@ -3,6 +3,7 @@
 
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
+#include <cctbx/restraints.h>
 
 namespace cctbx { namespace geometry_restraints {
 
@@ -168,6 +169,43 @@ namespace cctbx { namespace geometry_restraints {
           result.push_back(pair_grads);
         }
         return result;
+      }
+
+      void
+      linearise(
+        uctbx::unit_cell const& unit_cell,
+        cctbx::restraints::linearised_eqns_of_restraint<double> &linearised_eqns,
+        cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
+        bond_similarity_proxy const& proxy) const
+      {
+        bond_similarity_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
+        optional_container<af::shared<sgtbx::rt_mx> > const&
+          sym_ops = proxy.sym_ops;
+        for(std::size_t i_pair=0;i_pair<deltas_.size();i_pair++) {
+          std::size_t row_i = linearised_eqns.next_row();
+          linearised_eqns.weights[row_i] = weights[i_pair];
+          linearised_eqns.deltas[row_i] = deltas_[i_pair];
+          vec3 grad_i = (1 - weights[i_pair]/sum_weights_)
+            * (sites_array[i_pair][0] - sites_array[i_pair][1])
+            / bond_distances_[i_pair];
+          grad_i = unit_cell.fractionalize_gradient(grad_i);
+          for(int i=0;i<2;i++) {
+            if (i == 1) {
+              grad_i = -grad_i;
+              if (sym_ops.get() != 0 && !sym_ops[i].is_unit_mx() ) {
+                scitbx::mat3<double> r_inv
+                  = sym_ops[i].r().inverse().as_double();
+                grad_i = grad_i * r_inv;
+              }
+            }
+            cctbx::xray::parameter_indices const &ids_i
+              = parameter_map[i_seqs[i_pair][i]];
+            if (ids_i.site == -1) continue;
+            for (int j=0;j<3;j++) {
+              linearised_eqns.design_matrix(row_i, ids_i.site+j) = grad_i[j];
+            }
+          }
+        }
       }
 
       //! Support for bond_similarity_residual_sum.
