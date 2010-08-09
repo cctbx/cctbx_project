@@ -279,6 +279,20 @@ namespace {
         af::ref<scitbx::vec3<double> > const&))
       bond_residual_sum,
       (arg("sites_cart"), arg("proxies"), arg("gradient_array")));
+    def("bond_deltas",
+      (af::shared<double>(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<bond_simple_proxy> const&))
+      bond_deltas,
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
+    def("bond_residuals",
+      (af::shared<double>(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<bond_simple_proxy> const&))
+      bond_residuals,
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
     def("bond_distances_model",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,

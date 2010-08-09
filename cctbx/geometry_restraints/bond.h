@@ -464,6 +464,18 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies);
   }
 
+  //! Fast computation of bond::delta given an array of bond proxies.
+  inline
+  af::shared<double>
+  bond_deltas(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<bond_simple_proxy> const& proxies)
+  {
+    return detail::generic_deltas<bond_simple_proxy, bond>::get(
+      unit_cell, sites_cart, proxies);
+  }
+
   //! Fast computation of bond::residual() given an array of bond proxies.
   inline
   af::shared<double>
@@ -473,6 +485,18 @@ namespace cctbx { namespace geometry_restraints {
   {
     return detail::generic_residuals<bond_simple_proxy, bond>::get(
       sites_cart, proxies);
+  }
+
+  //! Fast computation of bond::residual() given an array of bond proxies.
+  inline
+  af::shared<double>
+  bond_residuals(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<bond_simple_proxy> const& proxies)
+  {
+    return detail::generic_residuals<bond_simple_proxy, bond>::get(
+      unit_cell, sites_cart, proxies);
   }
 
   /*! Fast computation of sum of bond::residual() and gradients

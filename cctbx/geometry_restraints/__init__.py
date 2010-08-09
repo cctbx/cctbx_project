@@ -306,6 +306,143 @@ class _prolsq_repulsion_function(
     return prolsq_repulsion_function(
       c_rep=c_rep, k_rep=k_rep, irexp=irexp, rexp=rexp)
 
+def _bond_show_sorted_impl(self,
+                           by_value,
+                           sites_cart,
+                           site_labels=None,
+                           unit_cell=None,
+                           f=None,
+                           prefix="",
+                           max_items=None):
+  if unit_cell is None:
+    sorted_table, n_not_shown = self.get_sorted(
+      by_value=by_value,
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      max_items=max_items)
+  else:
+    sorted_table, n_not_shown = self.get_sorted(
+      by_value=by_value,
+      sites_cart=sites_cart,
+      unit_cell=unit_cell,
+      site_labels=site_labels,
+      max_items=max_items)
+  if sorted_table is None :
+    return
+  if (f is None): f = sys.stdout
+  print >> f, "%sSorted by %s:" % (prefix, by_value)
+  for restraint_info in sorted_table :
+    (labels, distance_ideal, distance_model, slack, delta, sigma, weight,
+     residual, sym_op_j, rt_mx) = restraint_info
+    s = "bond"
+    for label in labels :
+      print >> f, "%s%4s %s" % (prefix, s, label)
+      s = ""
+    if (slack == 0):
+      l = ""
+      v = ""
+    else:
+      l = "  slack"
+      v = " %6.3f" % slack
+    print >> f, "%s  ideal  model%s  delta    sigma   weight residual%s" % (
+      prefix, l, sym_op_j)
+    print >> f, "%s  %5.3f %6.3f%s %6.3f %6.2e %6.2e %6.2e" % (
+      prefix, distance_ideal, distance_model, v, delta,
+      sigma, weight, residual),
+    if (rt_mx is not None):
+      print >> f, rt_mx,
+    print >> f
+  if (n_not_shown != 0):
+    print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+
+class _bond_simple_proxy(boost.python.injector, shared_bond_simple_proxy):
+
+  def get_sorted(self,
+        by_value,
+        sites_cart,
+        site_labels=None,
+        unit_cell=None,
+        max_items=None):
+    assert by_value in ["residual", "delta"]
+    assert site_labels is None or len(site_labels) == sites_cart.size()
+    if (self.size() == 0): return None, None
+    if (max_items is not None and max_items <= 0): return None, None
+    if (by_value == "residual"):
+      data_to_sort = self.residuals(sites_cart=sites_cart, unit_cell=unit_cell)
+    elif (by_value == "delta"):
+      data_to_sort = flex.abs(
+        self.deltas(sites_cart=sites_cart, unit_cell=unit_cell))
+    else:
+      raise AssertionError
+    i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
+    if (max_items is not None):
+      i_proxies_sorted = i_proxies_sorted[:max_items]
+    smallest_distance_model = None
+    sorted_table = []
+    for i_proxy in i_proxies_sorted:
+      proxy = self[i_proxy]
+      i_seq,j_seq = proxy.i_seqs
+      rt_mx = proxy.rt_mx_ji
+      if rt_mx is None: sym_op_j = ""
+      else: sym_op_j = " sym.op."
+      if unit_cell is None:
+        restraint = bond(
+          sites_cart=sites_cart,
+          proxy=proxy)
+      else:
+        restraint = bond(
+          unit_cell,
+          sites_cart=sites_cart,
+          proxy=proxy)
+      labels = []
+      for i in [i_seq, j_seq]:
+        if (site_labels is None): l = str(i)
+        else:                     l = site_labels[i]
+        labels.append(l)
+      sorted_table.append(
+        (labels, restraint.distance_ideal, restraint.distance_model,
+         restraint.slack, restraint.delta,
+         weight_as_sigma(weight=restraint.weight), restraint.weight,
+         restraint.residual(), sym_op_j, rt_mx))
+      if (smallest_distance_model is None
+          or smallest_distance_model > restraint.distance_model):
+        smallest_distance_model = restraint.distance_model
+    n_not_shown = data_to_sort.size() - i_proxies_sorted.size()
+    return sorted_table, n_not_shown
+
+  def show_sorted(self,
+                  by_value,
+                  sites_cart,
+                  site_labels=None,
+                  unit_cell=None,
+                  f=None,
+                  prefix="",
+                  max_items=None):
+    if f is None: f = sys.stdout
+    print >> f, "%sBond restraints: %d" % (prefix, self.size())
+    _bond_show_sorted_impl(self, by_value,
+                           sites_cart=sites_cart,
+                           site_labels=site_labels,
+                           unit_cell=unit_cell,
+                           f=f,
+                           prefix=prefix,
+                           max_items=max_items)
+
+  def deltas(self, sites_cart, unit_cell=None):
+    if unit_cell is None:
+      return bond_deltas(sites_cart=sites_cart, proxies=self)
+    else:
+      return bond_deltas(
+        unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
+
+  def residuals(self, sites_cart, unit_cell=None):
+    if unit_cell is None:
+      return bond_residuals(sites_cart=sites_cart, proxies=self)
+    else:
+      return bond_residuals(
+        unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
+
+
 class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
 
   def show_histogram_of_model_distances(self,
@@ -431,40 +568,15 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
         site_labels=None,
         f=None,
         prefix="",
-        max_items=None) :
-    sorted_table, n_not_shown = self.get_sorted(
-      by_value=by_value,
-      sites_cart=sites_cart,
-      site_labels=site_labels,
-      max_items=max_items)
+        max_items=None):
+    if f is None: f = sys.stdout
     print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
-    if sorted_table is None :
-      return
-    if (f is None): f = sys.stdout
-    print >> f, "%sSorted by %s:" % (prefix, by_value)
-    for restraint_info in sorted_table :
-      (labels, distance_ideal, distance_model, slack, delta, sigma, weight,
-       residual, sym_op_j, rt_mx) = restraint_info
-      s = "bond"
-      for label in labels :
-        print >> f, "%s%4s %s" % (prefix, s, label)
-        s = ""
-      if (slack == 0):
-        l = ""
-        v = ""
-      else:
-        l = "  slack"
-        v = " %6.3f" % slack
-      print >> f, "%s  ideal  model%s  delta    sigma   weight residual%s" % (
-        prefix, l, sym_op_j)
-      print >> f, "%s  %5.3f %6.3f%s %6.3f %6.2e %6.2e %6.2e" % (
-        prefix, distance_ideal, distance_model, v, delta,
-        sigma, weight, residual),
-      if (rt_mx is not None):
-        print >> f, rt_mx,
-      print >> f
-    if (n_not_shown != 0):
-      print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+    _bond_show_sorted_impl(self, by_value,
+                           sites_cart=sites_cart,
+                           site_labels=site_labels,
+                           f=f,
+                           prefix=prefix,
+                           max_items=max_items)
 
 class _nonbonded_sorted_asu_proxies(boost.python.injector,
         nonbonded_sorted_asu_proxies):
