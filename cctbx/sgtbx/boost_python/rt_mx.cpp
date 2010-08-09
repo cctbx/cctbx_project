@@ -138,7 +138,8 @@ namespace {
         to_and_from_python<
           tbxx::optional_container<
             af::shared<cctbx::sgtbx::rt_mx> > >();
-        to_and_from_python<boost::optional<cctbx::sgtbx::rt_mx> >();
+        to_and_from_python<
+          tbxx::optional_copy<cctbx::sgtbx::rt_mx> >();
       }
     }
   };

@@ -6,7 +6,7 @@
 #include <cctbx/geometry_restraints/sorted_asu_proxies.h>
 #include <cctbx/restraints.h>
 
-#include <boost/optional.hpp>
+#include <tbxx/optional_copy.hpp>
 
 namespace cctbx { namespace geometry_restraints {
 
@@ -93,7 +93,6 @@ namespace cctbx { namespace geometry_restraints {
      */
     bond_simple_proxy(
       af::tiny<unsigned, 2> const& i_seqs_,
-      //boost::optional<sgtbx::rt_mx> const& rt_mx_ji_,
       sgtbx::rt_mx const& rt_mx_ji_,
       bond_params const& params)
     :
@@ -117,7 +116,7 @@ namespace cctbx { namespace geometry_restraints {
     af::tiny<unsigned, 2> i_seqs;
 
     //! Optional symmetry operation operating on i_seqs[1]
-    boost::optional<sgtbx::rt_mx> rt_mx_ji;
+    tbxx::optional_copy<sgtbx::rt_mx> rt_mx_ji;
   };
 
   //! Grouping of bond_simple_proxy and symmetry operation (rt_mx_ji).
