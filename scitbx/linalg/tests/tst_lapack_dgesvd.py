@@ -1,9 +1,5 @@
 def exercise():
-  import scitbx.linalg
-  lapack_dgesvd = getattr(scitbx.linalg, "lapack_dgesvd_fem", None)
-  if (lapack_dgesvd is None):
-    print "Skipping tests: lapack_dgesvd_fem not available."
-    return
+  from scitbx.linalg import lapack_dgesvd_fem
   from scitbx.array_family import flex
   from scitbx import matrix
   from libtbx.test_utils import approx_equal
@@ -14,7 +10,7 @@ def exercise():
       for i in xrange(n):
         a[(i,i)] = diag
       a_inp = a.deep_copy()
-      svd = lapack_dgesvd(a=a)
+      svd = lapack_dgesvd_fem(a=a)
       assert svd.info == 0
       assert approx_equal(svd.s, [diag]*n)
       assert svd.u.all() == (n,n)
@@ -30,7 +26,7 @@ def exercise():
   for m in xrange(1,11):
     for n in xrange(1,11):
       a = matrix.rec(elems=tuple(mt.random_double(m*n)*4-2), n=(m,n))
-      svd = lapack_dgesvd(a=a.transpose().as_flex_double_matrix())
+      svd = lapack_dgesvd_fem(a=a.transpose().as_flex_double_matrix())
       assert svd.info == 0
       sigma = get_sigma(svd, m, n)
       u = matrix.sqr(svd.u).transpose()
@@ -40,7 +36,7 @@ def exercise():
   a = matrix.rec(elems=[
      0.47,  0.10, -0.21,
     -0.21, -0.03, 0.35], n=(3,2))
-  svd = lapack_dgesvd(a=a.transpose().as_flex_double_matrix())
+  svd = lapack_dgesvd_fem(a=a.transpose().as_flex_double_matrix())
   assert svd.info == 0
   assert approx_equal(svd.s, [0.55981345199567534, 0.35931726783538481])
   assert approx_equal(svd.u, [
@@ -75,8 +71,13 @@ def compare_times():
 
 def run(args):
   assert len(args) == 0
-  exercise()
-  compare_times()
+  import scitbx.linalg
+  lapack_dgesvd_fem = getattr(scitbx.linalg, "lapack_dgesvd_fem", None)
+  if (lapack_dgesvd_fem is None):
+    print "Skipping tests: lapack_dgesvd_fem not available."
+  else:
+    exercise()
+    compare_times()
   print "OK"
 
 if (__name__ == "__main__"):
