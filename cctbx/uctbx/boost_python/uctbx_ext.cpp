@@ -96,6 +96,10 @@ namespace {
             af::const_ref<scitbx::vec3<double> > const&) const)
               &w_t::orthogonalize, (
                 arg("sites_frac")))
+        .def("fractionalize_gradient",
+          (scitbx::vec3<double>(w_t::*)(scitbx::vec3<double> const&) const)
+          &w_t::fractionalize_gradient, (
+            arg("site_cart")))
         .def("length",
           (double(w_t::*)(frac_t const&) const)
           &w_t::length, (
