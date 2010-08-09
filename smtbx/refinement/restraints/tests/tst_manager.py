@@ -29,28 +29,16 @@ def exercise_manager(verbose=0):
     adp_restraints.isotropic_adp_restraints(
       xray_structure=xray_structure,
       pair_sym_table=pair_sym_table).proxies
-  # setup geometry restraint proxies
-  max_bond_distance = 3.5
-  bond_params_table = cctbx.geometry_restraints.bond_params_table(
-    xray_structure.scatterers().size())
-  asu_mappings = xray_structure.asu_mappings(buffer_thickness=max_bond_distance*3)
-  bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-  bond_simple_proxies= cctbx.geometry_restraints.shared_bond_simple_proxy()
-  bond_simple_proxies.append(
+  bond_proxies = cctbx.geometry_restraints.shared_bond_simple_proxy()
+  bond_proxies.append(
     cctbx.geometry_restraints.bond_simple_proxy(
       i_seqs=(3,24), distance_ideal=1.44, weight=2))
-  bond_simple_proxies.append(
+  bond_proxies.append(
     cctbx.geometry_restraints.bond_simple_proxy(
       i_seqs=(5,26), distance_ideal=1.44, weight=2))
-  bond_simple_proxies.append(
+  bond_proxies.append(
     cctbx.geometry_restraints.bond_simple_proxy(
       i_seqs=(1,21), distance_ideal=1.44, weight=2))
-  for proxy in bond_simple_proxies:
-    i_seq, j_seq = proxy.i_seqs
-    bond_params_table.update(
-      i_seq=i_seq,
-      j_seq=j_seq,
-      params=proxy)
   angle_proxies = cctbx.geometry_restraints.shared_angle_proxy()
   angle_proxies.append(
     cctbx.geometry_restraints.angle_proxy(
@@ -69,39 +57,14 @@ def exercise_manager(verbose=0):
       sym_ops=(sgtbx.rt_mx(),sgtbx.rt_mx())))
   # setup restraints manager
   manager = restraints.manager(
-    bond_params_table=bond_params_table,
+    bond_proxies=bond_proxies,
     angle_proxies=angle_proxies,
     bond_similarity_proxies=bond_similarity_proxies,
     adp_similarity_proxies=adp_similarity_proxies,
     rigid_bond_proxies=rigid_bond_proxies,
     isotropic_adp_proxies=isotropic_adp_proxies)
   sio = StringIO()
-  manager.show_sorted(
-    sites_cart=xray_structure.sites_cart(),
-    site_labels=xray_structure.scatterers().extract_labels(),
-    u_cart=xray_structure.scatterers().extract_u_cart(
-      unit_cell=xray_structure.unit_cell()),
-    u_iso=xray_structure.scatterers().extract_u_iso(),
-    use_u_aniso=xray_structure.use_u_aniso(),
-    max_items=1,
-    f=sio)
-  energies_adps = manager.energies_adps(
-    sites_cart=xray_structure.sites_cart(),
-    u_cart=xray_structure.scatterers().extract_u_cart(
-      unit_cell=xray_structure.unit_cell()),
-    u_iso=xray_structure.scatterers().extract_u_iso(),
-    use_u_aniso=xray_structure.use_u_aniso(),
-    flags=None,
-    compute_gradients=True,
-    normalization=True)
-  energies_sites = manager.energies_sites(
-    sites_cart=xray_structure.sites_cart(),
-    unit_cell=xray_structure.unit_cell(),
-    flags=None,
-    compute_gradients=True,
-    normalization=True)
-  energies_adps.show(f=sio)
-  energies_sites.show(f=sio)
+  manager.show_sorted(xray_structure, max_items=1, f=sio)
   if sys.platform.startswith("win") and sys.version_info[:2] < (2,6):
     # This appears to be a windows-specific bug with string formatting
     # for python versions prior to 2.6, where the exponent is printed
@@ -128,7 +91,7 @@ angle C3
 
 Bond similarity restraints: 1
 Sorted by residual:
-               delta    sigma   weight rms_deltas residual
+               delta    sigma   weight rms_deltas residual sym.op.
 bond O9-C9    -0.010 3.16e-01 1.00e+01   1.02e-02 1.04e-04
      O8-C10    0.010 3.16e-01 1.00e+01
 
@@ -165,53 +128,8 @@ scatterer O3
  U23 -8.44e-03 2.00e-01 2.50e+01
 ... (remaining 21 not shown)
 
-target: 19.762
-  adp_similarity_residual_sum (n=24): 2.56474
-  rigid_bond_residual_sum (n=60): 4463.41
-  isotropic_adp_residual_sum (n=22): 0.243628
-target: 2.21912
-  bond_residual_sum (n=3): 0.00152702
-  angle_residual_sum (n=3): 15.5322
-  bond_similarity_residual_sum (n=1): 0.000103781
-  norm of gradients: 160.014
 """)
   if (0 or verbose): print sio.getvalue()
-  assert energies_sites.number_of_restraints == 7
-  assert approx_equal(energies_sites.residual_sum, 15.533823616839785)
-  assert approx_equal(energies_sites.target, 2.2191176595485405)
-  assert energies_adps.number_of_restraints == 226
-  assert approx_equal(energies_adps.residual_sum, 4466.2193728738066)
-  assert approx_equal(energies_adps.target, 19.762032623335426)
-  assert approx_equal(energies_adps.adp_similarity_deviation(),
-    (0.0011807357231092134, 0.016113630010596704, 0.0062318217917095619))
-  assert approx_equal(energies_adps.rigid_bond_deviation(),
-    (3.3307350961686577e-05, 0.63945903723502284, 0.086249743961269706))
-  assert approx_equal(energies_adps.isotropic_adp_deviation(),
-    (0.0015253519360392781, 0.013343889050210288, 0.0052497588362602453))
-  # test flags
-  adp_flags = cctbx.adp_restraints.flags.flags(
-    adp_similarity=True,
-    rigid_bond=True)
-  geometric_flags = cctbx.geometry_restraints.flags.flags(
-    bond=True)
-  energies_adps = manager.energies_adps(
-    sites_cart=xray_structure.sites_cart(),
-    u_cart=xray_structure.scatterers().extract_u_cart(
-      unit_cell=xray_structure.unit_cell()),
-    u_iso=xray_structure.scatterers().extract_u_iso(),
-    use_u_aniso=xray_structure.use_u_aniso(),
-    flags=adp_flags)
-  assert energies_adps.isotropic_adp_proxies is None
-  assert energies_adps.isotropic_adp_residual_sum == 0
-  assert approx_equal(energies_adps.residual_sum, 4465.9757449271165)
-  assert approx_equal(energies_adps.target, energies_adps.residual_sum)
-  energies_sites = manager.energies_sites(
-    sites_cart=xray_structure.sites_cart(),
-    flags=geometric_flags)
-  assert energies_sites.angle_proxies is None
-  assert energies_sites.angle_residual_sum == 0
-  assert approx_equal(energies_sites.residual_sum, 0.0015270208454704576)
-  assert approx_equal(energies_sites.target, energies_sites.residual_sum)
 
 def run(verbose=0):
   exercise_manager(verbose=verbose)
