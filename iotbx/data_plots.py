@@ -1,9 +1,10 @@
 
 from cctbx.array_family import flex
+from libtbx import adopt_init_args
+from libtbx.utils import Sorry
 import sys
 import os
 import string, re, math
-from libtbx import adopt_init_args
 
 class plot_data(object):
   def __init__(self,
@@ -366,7 +367,9 @@ class table_data (object) :
 
   def get_column_by_label (self, column_label) :
     if not column_label in self.column_labels :
-      raise Sorry("Couldn't find column %s in this table." % column_label)
+      raise RuntimeError(
+        "Couldn't find column %s in this table.  (Valid columns: %s)" %
+        (column_label, ",".join(self.column_labels)))
     i = self.column_labels.index(column_label)
     return self.data[i]
 

@@ -335,7 +335,10 @@ def parse_scala (lines) :
       rmerge = table.get_column_by_label("Rmrg")
       for (rmerge_bin, bin) in zip(rmerge, bins) :
         info.add_bin_stat(bin, "r_merge", rmerge_bin)
-      s2n = table.get_column_by_label("Mn(I/sd)")
+      try :
+        s2n = table.get_column_by_label("Mn(I/sd)")
+      except Exception :
+        s2n = table.get_column_by_label("Mn(I)/sd")
       for (s2n_bin, bin) in zip(s2n, bins) :
         info.add_bin_stat(bin, "i/sigma", s2n_bin)
     elif table.title.startswith("Completeness, multiplicity, Rmeas") :
