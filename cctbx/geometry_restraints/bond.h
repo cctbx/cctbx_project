@@ -5,6 +5,8 @@
 #include <cctbx/geometry_restraints/asu_cache.h>
 #include <cctbx/geometry_restraints/sorted_asu_proxies.h>
 
+#include <boost/optional.hpp>
+
 namespace cctbx { namespace geometry_restraints {
 
   //! Grouping of bond parameters distance_ideal and weight.
@@ -62,6 +64,19 @@ namespace cctbx { namespace geometry_restraints {
     {}
 
     //! Constructor.
+    bond_simple_proxy(
+      af::tiny<unsigned, 2> const& i_seqs_,
+      sgtbx::rt_mx const& rt_mx_ji_,
+      double distance_ideal_,
+      double weight_,
+      double slack_=0)
+    :
+      bond_params(distance_ideal_, weight_, slack_),
+      i_seqs(i_seqs_),
+      rt_mx_ji(rt_mx_ji_)
+    {}
+
+    //! Constructor.
     /*! Not available in Python.
      */
     bond_simple_proxy(
@@ -70,6 +85,20 @@ namespace cctbx { namespace geometry_restraints {
     :
       bond_params(params),
       i_seqs(i_seqs_)
+    {}
+
+    //! Constructor.
+    /*! Not available in Python.
+     */
+    bond_simple_proxy(
+      af::tiny<unsigned, 2> const& i_seqs_,
+      //boost::optional<sgtbx::rt_mx> const& rt_mx_ji_,
+      sgtbx::rt_mx const& rt_mx_ji_,
+      bond_params const& params)
+    :
+      bond_params(params),
+      i_seqs(i_seqs_),
+      rt_mx_ji(rt_mx_ji_)
     {}
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[1].
@@ -85,6 +114,9 @@ namespace cctbx { namespace geometry_restraints {
 
     //! Indices into array of sites.
     af::tiny<unsigned, 2> i_seqs;
+
+    //! Optional symmetry operation operating on i_seqs[1]
+    boost::optional<sgtbx::rt_mx> rt_mx_ji;
   };
 
   //! Grouping of bond_simple_proxy and symmetry operation (rt_mx_ji).
@@ -203,6 +235,28 @@ namespace cctbx { namespace geometry_restraints {
           std::size_t i_seq = proxy.i_seqs[i];
           CCTBX_ASSERT(i_seq < sites_cart.size());
           sites[i] = sites_cart[i_seq];
+        }
+        init_distance_model();
+      }
+
+      /*! \brief Coordinates are copied from sites_cart according to
+          proxy.i_seqs, parameters are copied from proxy.
+       */
+      bond(
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        bond_simple_proxy const& proxy)
+      :
+        bond_params(proxy.distance_ideal, proxy.weight, proxy.slack)
+      {
+        for(int i=0;i<2;i++) {
+          std::size_t i_seq = proxy.i_seqs[i];
+          CCTBX_ASSERT(i_seq < sites_cart.size());
+          sites[i] = sites_cart[i_seq];
+        }
+        if ( proxy.rt_mx_ji ) {
+          sites[1] = unit_cell.orthogonalize(
+            *proxy.rt_mx_ji * unit_cell.fractionalize(sites[1]));
         }
         init_distance_model();
       }

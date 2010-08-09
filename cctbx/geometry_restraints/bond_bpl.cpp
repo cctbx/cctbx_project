@@ -120,8 +120,20 @@ namespace {
             arg("distance_ideal"),
             arg("weight"),
             arg("slack")=0)))
+        .def(init<
+          af::tiny<unsigned, 2> const&,
+          sgtbx::rt_mx const&,
+          double,
+          double,
+          optional<double> >((
+            arg("i_seqs"),
+            arg("rt_mx_ji"),
+            arg("distance_ideal"),
+            arg("weight"),
+            arg("slack")=0)))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
+        .add_property("rt_mx_ji", make_getter(&w_t::rt_mx_ji, rbv()))
       ;
       {
         typedef return_internal_reference<> rir;
@@ -208,6 +220,10 @@ namespace {
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   bond_simple_proxy const&>(
           (arg("sites_cart"), arg("proxy"))))
+        .def(init<uctbx::unit_cell const&,
+                  af::const_ref<scitbx::vec3<double> > const&,
+                  bond_simple_proxy const&>(
+          (arg("unit_cell"), arg("sites_cart"), arg("proxy"))))
         .def(init<uctbx::unit_cell const&,
                   af::const_ref<scitbx::vec3<double> > const&,
                   bond_sym_proxy const&>(
