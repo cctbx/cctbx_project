@@ -3,6 +3,7 @@
 
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
+#include <cctbx/restraints.h>
 #include <scitbx/constants.h>
 
 namespace cctbx { namespace geometry_restraints {
@@ -337,6 +338,39 @@ namespace cctbx { namespace geometry_restraints {
             gradient_array[i_seqs[i]] += grads[i] * r_inv_cart_;
           }
           else { gradient_array[i_seqs[i]] += grads[i]; }
+        }
+      }
+
+      void
+      linearise(
+        uctbx::unit_cell const& unit_cell,
+        cctbx::restraints::linearised_eqns_of_restraint<double> &linearised_eqns,
+        cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
+        angle_proxy const& proxy) const
+      {
+        angle_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
+        double correction = 1/(2 * delta * proxy.weight);
+        optional_container<af::shared<sgtbx::rt_mx> > const&
+          sym_ops = proxy.sym_ops;
+        af::tiny<scitbx::vec3<double>, 3> grads;
+        grads_and_curvs_impl(grads.begin(), 0);
+        std::size_t row_i = linearised_eqns.next_row();
+        linearised_eqns.weights[row_i] = proxy.weight;
+        linearised_eqns.deltas[row_i] = delta;
+        for(int i=0;i<3;i++) {
+          grads[i] *= correction;
+          grads[i] = unit_cell.fractionalize_gradient(grads[i]);
+          if ( sym_ops.get() != 0 && !sym_ops[i].is_unit_mx() ) {
+            scitbx::mat3<double> r_inv
+              = sym_ops[i].r().inverse().as_double();
+            grads[i] = grads[i] * r_inv;
+          }
+          cctbx::xray::parameter_indices const &ids_i
+            = parameter_map[i_seqs[i]];
+          if (ids_i.site == -1) continue;
+          for (int j=0;j<3;j++) {
+            linearised_eqns.design_matrix(row_i, ids_i.site+j) = grads[i][j];
+          }
         }
       }
 

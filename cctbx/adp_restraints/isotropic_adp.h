@@ -4,6 +4,7 @@
 #include <cctbx/import_scitbx_af.h>
 #include <cctbx/error.h>
 #include <cctbx/adptbx.h>
+#include <cctbx/restraints.h>
 
 namespace cctbx { namespace adp_restraints {
 
@@ -92,6 +93,35 @@ namespace cctbx { namespace adp_restraints {
         gradients[i] = weight * 4 * deltas_[i];
       }
       return gradients;
+    }
+
+    void
+    linearise(
+      cctbx::restraints::linearised_eqns_of_restraint<double> &linearised_eqns,
+      cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
+      unsigned const& i_seq) const
+    {
+      cctbx::xray::parameter_indices const &ids
+        = parameter_map[i_seq];
+      // One restraint per parameter == six rows in the restraint matrix
+      for (std::size_t i=0;i<6;i++) {
+        std::size_t row_i = linearised_eqns.next_row();
+        if (i < 3) {
+          for (std::size_t j=0;j<3;j++) {
+            if (j==i) {
+              linearised_eqns.design_matrix(row_i, ids.u_aniso+j) = 2./3;
+            }
+            else {
+              linearised_eqns.design_matrix(row_i, ids.u_aniso+j) = -1./3;
+            }
+          }
+        }
+        else {
+          linearised_eqns.design_matrix(row_i, ids.u_aniso+i) = 2.;
+        }
+        linearised_eqns.weights[row_i] = weight;
+        linearised_eqns.deltas[row_i] = deltas_[i];
+      }
     }
 
     //! Support for isotropic_adp_residual_sum.

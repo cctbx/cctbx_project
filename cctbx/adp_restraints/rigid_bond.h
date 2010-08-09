@@ -4,6 +4,7 @@
 #include <cctbx/import_scitbx_af.h>
 #include <cctbx/error.h>
 #include <cctbx/adptbx.h>
+#include <cctbx/restraints.h>
 
 namespace cctbx { namespace adp_restraints {
 
@@ -144,6 +145,27 @@ using scitbx::sym_mat3;
       scitbx::sym_mat3<double> g0 = gradient_0();
       gradients_aniso_cart[i_seqs[0]] += g0;
       gradients_aniso_cart[i_seqs[1]] += -g0;
+    }
+
+    void
+    linearise(
+      cctbx::restraints::linearised_eqns_of_restraint<double> &linearised_eqns,
+      cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
+      af::tiny<unsigned, 2> const& i_seqs) const
+    {
+      scitbx::sym_mat3<double> grad = grad_delta_0();
+      std::size_t row_i = linearised_eqns.next_row();
+      for (std::size_t i=0;i<2;i++) {
+        if (i == 1) grad = -grad;
+        cctbx::xray::parameter_indices const &ids_i
+          = parameter_map[i_seqs[i]];
+        if (ids_i.u_aniso == -1) continue;
+        for (std::size_t j=0;j<6;j++) {
+          linearised_eqns.design_matrix(row_i, ids_i.u_aniso+j) = grad[j];
+        }
+      linearised_eqns.weights[row_i] = weight;
+      linearised_eqns.deltas[row_i] = delta_z_;
+      }
     }
 
     double z_12() { return z_12_; }

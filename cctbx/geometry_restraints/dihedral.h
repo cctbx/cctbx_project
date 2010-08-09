@@ -3,6 +3,7 @@
 
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
+#include <cctbx/restraints.h>
 #include <scitbx/math/dihedral.h>
 #include <boost/format.hpp>
 
@@ -280,7 +281,7 @@ namespace cctbx { namespace geometry_restraints {
         return weight * term;
       }
 
-      //! Gradients with respect to the four sites.
+      //! Gradient of delta with respect to the four sites.
       /*! The formula for the gradients is singular if certain vectors
           are collinear. However, the gradients converge to zero near
           these singularities. To avoid numerical problems, the
@@ -292,7 +293,7 @@ namespace cctbx { namespace geometry_restraints {
             "Features and their derivatives"
        */
       af::tiny<scitbx::vec3<double>, 4>
-      gradients(double epsilon=1e-100) const
+      grad_delta(double epsilon=1e-100) const
       {
         af::tiny<scitbx::vec3<double>, 4> result;
         if(limit >= 0){
@@ -310,15 +311,7 @@ namespace cctbx { namespace geometry_restraints {
         }
         else {
           using scitbx::constants::pi_180;
-          double grad_factor;
-          if (periodicity > 0) {
-            grad_factor = 9600. / periodicity * pi_180
-                        * std::sin(periodicity * delta * pi_180);
-          }
-          else {
-            grad_factor = 2 * delta;
-          }
-          grad_factor *= weight * d_21.length() / pi_180;
+          double grad_factor = d_21.length() / pi_180;
           result[0] = -grad_factor/n_0121_norm * n_0121;
           result[3] = grad_factor/n_2123_norm * n_2123;
           double d_01_dot_d_21 = d_01 * d_21;
@@ -327,6 +320,36 @@ namespace cctbx { namespace geometry_restraints {
                     - d_21_dot_d_23/d_21_norm * result[3];
           result[2] = (d_21_dot_d_23/d_21_norm-1) * result[3]
                     - d_01_dot_d_21/d_21_norm * result[0];
+        }
+        return result;
+      }
+
+      //! Gradient of R = w * delta^2 with respect to the four sites.
+      /*! The formula for the gradients is singular if certain vectors
+          are collinear. However, the gradients converge to zero near
+          these singularities. To avoid numerical problems, the
+          gradients are set to zero exactly if the norms of certain
+          vectors are smaller than epsilon.
+
+          See also:
+            http://salilab.org/modeller/manual/manual.html,
+            "Features and their derivatives"
+       */
+      af::tiny<scitbx::vec3<double>, 4>
+      gradients(double epsilon=1e-100) const
+      {
+        using scitbx::constants::pi_180;
+        double grad_factor;
+        if (periodicity > 0) {
+            grad_factor = 9600. * weight / periodicity * pi_180
+                        * std::sin(periodicity * delta * pi_180);
+          }
+          else {
+            grad_factor = 2 * weight * delta;
+          }
+        af::tiny<scitbx::vec3<double>, 4> result = grad_delta(epsilon);
+        for (std::size_t i=0; i<4; i++) {
+          result[i] *= grad_factor;
         }
         return result;
       }
@@ -368,6 +391,36 @@ namespace cctbx { namespace geometry_restraints {
             gradient_array[i_seqs[i]] += grads[i] * r_inv_cart_;
           }
           else { gradient_array[i_seqs[i]] += grads[i]; }
+        }
+      }
+
+      void
+      linearise(
+        uctbx::unit_cell const& unit_cell,
+        cctbx::restraints::linearised_eqns_of_restraint<double> &linearised_eqns,
+        cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
+        dihedral_proxy const& proxy) const
+      {
+        dihedral_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
+        optional_container<af::shared<sgtbx::rt_mx> > const&
+          sym_ops = proxy.sym_ops;
+        af::tiny<scitbx::vec3<double>, 4> grads = grad_delta();
+        std::size_t row_i = linearised_eqns.next_row();
+        linearised_eqns.weights[row_i] = proxy.weight;
+        linearised_eqns.deltas[row_i] = delta;
+        for(int i=0;i<4;i++) {
+          grads[i] = unit_cell.fractionalize_gradient(grads[i]);
+          if ( sym_ops.get() != 0 && !sym_ops[i].is_unit_mx() ) {
+            scitbx::mat3<double> r_inv
+              = sym_ops[i].r().inverse().as_double();
+            grads[i] = grads[i] * r_inv;
+          }
+          cctbx::xray::parameter_indices const &ids_i
+            = parameter_map[i_seqs[i]];
+          if (ids_i.site == -1) continue;
+          for (int j=0;j<3;j++) {
+            linearised_eqns.design_matrix(row_i, ids_i.site+j) = grads[i][j];
+          }
         }
       }
 
