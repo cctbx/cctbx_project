@@ -410,7 +410,8 @@ def run(args,
         model_size_max_atoms     = 80000,
         data_size_max_reflections= 1000000,
         unit_cell_max_dimension  = 800.,
-        return_fmodel_and_pdb    = False):
+        return_fmodel_and_pdb    = False,
+        out                      = None):
   if(len(args) == 0): args = ["--help"]
   command_line = (iotbx_option_parser(
     usage="%s reflection_file pdb_file [options]" % command_name,
@@ -631,7 +632,7 @@ def run(args,
               test_flag_value = test_flag_value,
               f_obs_labels    = f_obs.info().label_string(),
               fmodel_cut      = fmodel_cut))
-  mvd_obj.show()
+  mvd_obj.show(log=out)
   if return_fmodel_and_pdb :
     mvd_obj.pdb_file = processed_pdb_file
     mvd_obj.fmodel = fmodel
