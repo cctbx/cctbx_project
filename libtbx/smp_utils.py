@@ -34,6 +34,8 @@ class manager (object) :
           self.pool = multiprocessing.Pool(processes=self.nproc)
         else :
           self.enable_multiprocessing = False
+    else :
+      self.enable_multiprocessing = False
 
   def show_summary (self, out=sys.stdout) :
     if self.enable_multiprocessing :
@@ -43,18 +45,22 @@ class manager (object) :
 
   def map_async (self, func, iterable, chunksize=None, callback=None) :
     if self.enable_multiprocessing :
-      self.pool.map_async(func, iterable, chunksize, callback)
+      result = self.pool.map_async(func, iterable, chunksize, callback)
+      return result.get()
     else :
-      map(func, iterable)
+      return map(func, iterable)
 
   def map (self, func, iterable, chunksize=None) :
     if self.enable_multiprocessing :
-      self.pool.map(func, iterable, chunksize)
+      return self.pool.map(func, iterable, chunksize)
     else :
-      map(func, iterable)
+      return map(func, iterable)
 
   def run_many (self, objects) :
-    self.map(_run_many, objects)
+    return self.map(_run_many, objects)
+
+  def run_many_async (self, objects, callback=None) :
+    self.map_async(_run_many, objects, callback=callback)
 
 def _run_many (run_object) :
   return run_object.run()
