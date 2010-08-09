@@ -12,7 +12,8 @@ def float_or_none (n) :
   else :         return float(n)
 
 class experiment_info (object) :
-  pass
+  def extract_all_stats (self) :
+    return self
 
 class integration_info (object) :
   def __init__ (self, program_name="NULL") :
@@ -99,11 +100,36 @@ class scaling_info (object) :
                       r_sym=float_or_none(rmerg_bin),
                       i_over_sigma=float_or_none(s2n_bin))
 
+class all_none (object) :
+  def __getattr__ (self, name) :
+    return None
+
+class empty_info (object) :
+  def extract_all_stats (self) :
+    return all_none()
+  def extract_outer_shell_stats (self) :
+    return all_none()
+
 class processing_info (object) :
   def __init__ (self, experiment, integration, scaling) :
     self.experiment = experiment
     self.integration = integration
     self.scaling = scaling
+
+  def get_experiment_info (self) :
+    if (self.experiment is not None) :
+      return self.experiment
+    return all_none() #empty_info()
+
+  def get_integration_info (self) :
+    if (self.integration is not None) :
+      return self.integration
+    return all_none() #empty_info()
+
+  def get_scaling_info (self) :
+    if (self.scaling is not None) :
+      return self.scaling
+    return empty_info()
 
   def format_remark_200 (self) :
     from libtbx.str_utils import format_value
@@ -208,7 +234,7 @@ def parse_scalepack (lines) :
       while j < n_lines :
         line2 = lines[j].strip()
         if line2.startswith("All films") :
-          n_refl_all = line2.split()[2]
+          n_refl_all = int(line2.split()[2])
           break
         j+= 1
     elif "Summary of observation redundancies by shells" in line :
