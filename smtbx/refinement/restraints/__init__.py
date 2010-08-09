@@ -1,55 +1,43 @@
+import boost.python
+boost.python.import_ext("smtbx_refinement_restraints_ext")
+
+from smtbx_refinement_restraints_ext import *
+from smtbx.refinement import least_squares
+
+from cctbx.xray import parameter_map
+
 from libtbx import adopt_init_args
-import cctbx.adp_restraints.flags
-import cctbx.adp_restraints.energies
-import cctbx.geometry_restraints.energies
-import cctbx.geometry_restraints.flags
-import cctbx.geometry_restraints
+
 import sys
 
 class manager(object):
 
   def __init__(self,
-        bond_params_table=None,
-        angle_proxies=None,
-        dihedral_proxies=None,
-        chirality_proxies=None,
-        planarity_proxies=None,
-        bond_similarity_proxies=None,
-        adp_similarity_proxies=None,
-        rigid_bond_proxies=None,
-        isotropic_adp_proxies=None):
+               bond_proxies=None,
+               angle_proxies=None,
+               dihedral_proxies=None,
+               chirality_proxies=None,
+               planarity_proxies=None,
+               bond_similarity_proxies=None,
+               adp_similarity_proxies=None,
+               rigid_bond_proxies=None,
+               isotropic_adp_proxies=None):
     adopt_init_args(self, locals())
-    self._sites_cart_used_for_pair_proxies = None
-    self._flags_bond_used_for_pair_proxies = False
-    self._pair_proxies = None
-    self.n_updates_pair_proxies = 0
 
-  def pair_proxies(self, flags=None):
-    if (self._pair_proxies is None):
-      self.n_updates_pair_proxies += 1
-      self._pair_proxies = cctbx.geometry_restraints.pair_proxies(
-        flags=flags,
-        bond_params_table=self.bond_params_table)
-    return self._pair_proxies
-
-  def show_sorted(self,
-        flags=None,
-        unit_cell=None,
-        sites_cart=None,
-        site_labels=None,
-        u_cart=None,
-        u_iso=None,
-        use_u_aniso=None,
-        f=None,
-        prefix="",
-        max_items=None):
+  def show_sorted(self, xray_structure,
+                  f=None,
+                  prefix="",
+                  max_items=None):
+    unit_cell = xray_structure.unit_cell()
+    sites_cart = xray_structure.sites_cart()
+    u_cart = xray_structure.scatterers().extract_u_cart(unit_cell)
+    u_iso = xray_structure.scatterers().extract_u_iso()
+    use_u_aniso = xray_structure.use_u_aniso()
+    site_labels = xray_structure.scatterers().extract_labels()
     if (f is None): f = sys.stdout
-    pair_proxies = self.pair_proxies(flags=flags)
-    if (sites_cart is None):
-      sites_cart = self._sites_cart_used_for_pair_proxies
-    if (pair_proxies.bond_proxies is not None):
-      pair_proxies.bond_proxies.show_sorted(
-        by_value="residual",
+    if (self.bond_proxies is not None):
+      self.bond_proxies.show_sorted(
+        by_value="residual", unit_cell=unit_cell,
         sites_cart=sites_cart, site_labels=site_labels,
         f=f, prefix=prefix, max_items=max_items)
       print >> f
@@ -102,73 +90,48 @@ class manager(object):
         f=f, prefix=prefix, max_items=max_items)
       print >> f
 
-  def energies_sites(self,
-        sites_cart,
-        unit_cell=None,
-        flags=None,
-        compute_gradients=False,
-        gradients=None,
-        disable_asu_cache=False,
-        normalization=False):
-    if (flags is None):
-      flags = cctbx.geometry_restraints.flags.flags(default=True)
-    pair_proxies = self.pair_proxies(flags=flags)
-    (bond_proxies,
-     angle_proxies,
-     dihedral_proxies,
-     chirality_proxies,
-     planarity_proxies,
-     bond_similarity_proxies) = [None]*6
-    if (flags.bond):
-      assert pair_proxies.bond_proxies is not None
-      bond_proxies = pair_proxies.bond_proxies
-    if (flags.angle):     angle_proxies = self.angle_proxies
-    if (flags.dihedral):  dihedral_proxies = self.dihedral_proxies
-    if (flags.chirality): chirality_proxies = self.chirality_proxies
-    if (flags.planarity): planarity_proxies = self.planarity_proxies
-    if (flags.bond_similarity):
-      bond_similarity_proxies = self.bond_similarity_proxies
-    return cctbx.geometry_restraints.energies.energies(
-      sites_cart=sites_cart,
-      unit_cell=unit_cell,
-      bond_proxies=bond_proxies,
-      angle_proxies=angle_proxies,
-      dihedral_proxies=dihedral_proxies,
-      chirality_proxies=chirality_proxies,
-      planarity_proxies=planarity_proxies,
-      bond_similarity_proxies=bond_similarity_proxies,
-      compute_gradients=compute_gradients,
-      gradients=gradients,
-      disable_asu_cache=disable_asu_cache,
-      normalization=normalization)
-
-  def energies_adps(self,
-        sites_cart,
-        u_cart,
-        u_iso=None,
-        use_u_aniso=None,
-        flags=None,
-        compute_gradients=False,
-        gradients_aniso_cart=None,
-        gradients_iso=None,
-        normalization=False):
-    if (flags is None):
-      flags = cctbx.adp_restraints.flags.flags(default=True)
-    (adp_similarity_proxies,
-     rigid_bond_proxies,
-     isotropic_adp_proxies) = [None]*3
-    if (flags.adp_similarity): adp_similarity_proxies = self.adp_similarity_proxies
-    if (flags.rigid_bond): rigid_bond_proxies = self.rigid_bond_proxies
-    if (flags.isotropic_adp): isotropic_adp_proxies = self.isotropic_adp_proxies
-    return cctbx.adp_restraints.energies.energies(
-      sites_cart=sites_cart,
-      u_cart=u_cart,
-      u_iso=u_iso,
-      use_u_aniso=use_u_aniso,
-      adp_similarity_proxies=adp_similarity_proxies,
-      rigid_bond_proxies=rigid_bond_proxies,
-      isotropic_adp_proxies=isotropic_adp_proxies,
-      compute_gradients=compute_gradients,
-      gradients_aniso_cart=gradients_aniso_cart,
-      gradients_iso=gradients_iso,
-      normalization=normalization)
+  def build_linearised_eqns(self, xray_structure):
+    n_restraints = 0
+    n_params = xray_structure.n_parameters()
+    param_map = parameter_map(xray_structure.scatterers())
+    geometry_proxies = [proxies for proxies in (
+      self.bond_proxies, self.angle_proxies, self.dihedral_proxies)
+                        if proxies is not None]
+    # count restraints, i.e. number of rows for restraint matrix
+    n_restraints = sum([proxies.size() for proxies in geometry_proxies])
+    if self.bond_similarity_proxies is not None:
+      for proxy in self.bond_similarity_proxies:
+        n_restraints += proxy.i_seqs.size()
+      geometry_proxies.append(self.bond_similarity_proxies)
+    adp_proxies = []
+    if self.adp_similarity_proxies is not None:
+      adp_proxies.append(self.adp_similarity_proxies)
+      n_restraints += 6 * self.adp_similarity_proxies.size()
+    if self.isotropic_adp_proxies is not None:
+      adp_proxies.append(self.isotropic_adp_proxies)
+      n_restraints += 6 * self.isotropic_adp_proxies.size()
+    if self.rigid_bond_proxies is not None:
+      adp_proxies.append(self.rigid_bond_proxies)
+      n_restraints += self.rigid_bond_proxies.size()
+    # construct restraints matrix
+    linearised_eqns = linearised_eqns_of_restraint(
+      n_restraints, n_params)
+    for proxies in geometry_proxies:
+      linearise_restraints(
+        xray_structure.unit_cell(), xray_structure.sites_cart(),
+        param_map, proxies, linearised_eqns)
+    u_cart = xray_structure.scatterers().extract_u_cart(
+      xray_structure.unit_cell())
+    if self.adp_similarity_proxies is not None:
+      linearise_restraints(
+        u_cart, xray_structure.scatterers().extract_u_iso(),
+        xray_structure.use_u_aniso(),
+        param_map, self.adp_similarity_proxies, linearised_eqns)
+    if self.isotropic_adp_proxies is not None:
+      linearise_restraints(
+        u_cart, param_map, self.isotropic_adp_proxies, linearised_eqns)
+    if self.rigid_bond_proxies is not None:
+      linearise_restraints(
+        xray_structure.sites_cart(), u_cart,
+        param_map, self.rigid_bond_proxies, linearised_eqns)
+    return linearised_eqns

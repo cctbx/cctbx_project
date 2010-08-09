@@ -15,6 +15,7 @@ def run():
     "$D/refinement/constraints/tests/tst_reparametrisation.py",
     "$D/refinement/restraints/tests/tst_adp_restraints.py",
     "$D/refinement/restraints/tests/tst_manager.py",
+    "$D/refinement/restraints/tests/tst_restraints.py",
     #"$D/refinement/tests/tst_minimization_at_random.py",
     )
   build_dir = libtbx.env.under_build("smtbx")
