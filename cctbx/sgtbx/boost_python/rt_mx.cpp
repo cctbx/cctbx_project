@@ -4,6 +4,7 @@
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/make_constructor.hpp>
+#include <boost/optional.hpp>
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/sgtbx/rt_mx_hash.h>
 #include <scitbx/array_family/shared.h>
@@ -137,6 +138,7 @@ namespace {
         to_and_from_python<
           tbxx::optional_container<
             af::shared<cctbx::sgtbx::rt_mx> > >();
+        to_and_from_python<boost::optional<cctbx::sgtbx::rt_mx> >();
       }
     }
   };
