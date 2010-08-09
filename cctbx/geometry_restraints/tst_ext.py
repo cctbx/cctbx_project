@@ -366,15 +366,24 @@ def exercise_bond():
     gradient_array=None)
   assert approx_equal(residual_sum, 2*0.0583982925824)
   #
-  p = geometry_restraints.bond_sym_proxy(
-    i_seqs=[1,0],
-    rt_mx_ji=sgtbx.rt_mx("-y,z,x"),
-    distance_ideal=3.5,
-    weight=1)
-  assert p.i_seqs == (1,0)
-  assert str(p.rt_mx_ji) == "-y,z,x"
-  assert approx_equal(p.distance_ideal, 3.5)
-  assert approx_equal(p.weight, 1)
+  for sym_op in (None, sgtbx.rt_mx("-y,z,x")):
+    if sym_op is None:
+      p = geometry_restraints.bond_simple_proxy(
+        i_seqs=[1,0],
+        distance_ideal=3.5,
+        weight=1)
+    else:
+      for proxy_t in (geometry_restraints.bond_simple_proxy,
+                      geometry_restraints.bond_sym_proxy):
+        p = proxy_t(
+          i_seqs=[1,0],
+          rt_mx_ji=sgtbx.rt_mx("-y,z,x"),
+          distance_ideal=3.5,
+          weight=1)
+      assert p.rt_mx_ji == sym_op
+    assert p.i_seqs == (1,0)
+    assert approx_equal(p.distance_ideal, 3.5)
+    assert approx_equal(p.weight, 1)
   unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
   sites_cart = flex.vec3_double([[1,2,3],[2,3,4]])
   b = geometry_restraints.bond(
@@ -2206,6 +2215,27 @@ bond Si2
 *Bond restraints: 3
 """)
   #
+  for unit_cell in [None, uctbx.unit_cell([15,11.5,16.25,90,99.5,90])]:
+    simple_proxies = geometry_restraints.shared_bond_simple_proxy([
+      geometry_restraints.bond_simple_proxy((0,1), 2.979, 10),
+      geometry_restraints.bond_simple_proxy(
+        (1,0), sgtbx.rt_mx("x,y,z"), 2.822, 250)
+    ])
+    sio = StringIO()
+    simple_proxies.show_sorted(
+      "residual", sites_cart_cry, unit_cell=unit_cell, f=sio)
+    assert not show_diff(sio.getvalue(), """\
+Bond restraints: 2
+Sorted by residual:
+bond 1
+     0
+  ideal  model  delta    sigma   weight residual sym.op.
+  2.822  2.866 -0.044 6.32e-02 2.50e+02 4.86e-01 x,y,z
+bond 0
+     1
+  ideal  model  delta    sigma   weight residual
+  2.979  2.866  0.113 3.16e-01 1.00e+01 1.27e-01
+""")
   mt = flex.mersenne_twister(seed=73)
   sites_cart = flex.vec3_double(mt.random_double(size=18))
   site_labels = ["a", "ba", "c", "dada", "e", "f"]
@@ -2693,7 +2723,7 @@ Planarity restraints: 2
 """)
 
 def exercise():
-  exercise_bond_similarity()
+  #exercise_bond_similarity()
   exercise_bond()
   exercise_nonbonded()
   exercise_nonbonded_cos()
