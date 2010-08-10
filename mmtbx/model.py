@@ -489,27 +489,10 @@ class manager(object):
     return minimized
 
   def rms_b_iso_or_b_equiv_bonded(self):
-    result = None
-    if(self.restraints_manager is not None):
-      xrs_sel = self.xray_structure
-      if(self.ias_selection is not None):
-        xrs_sel = self.xray_structure.select(selection = ~self.ias_selection)
-      bond_proxies_simple = self.restraints_manager.geometry.pair_proxies(
-        sites_cart = xrs_sel.sites_cart()).bond_proxies.simple
-      u_isos = xrs_sel.extract_u_iso_or_u_equiv()
-      scatterers = xrs_sel.scatterers()
-      values = flex.double()
-      for proxy in bond_proxies_simple:
-        i_seq, j_seq = proxy.i_seqs
-        if(scatterers[i_seq].element_symbol() not in ["H", "D"] and
-           scatterers[j_seq].element_symbol() not in ["H", "D"]):
-          b_iso_i = adptbx.u_as_b(u_isos[i_seq])
-          b_iso_j = adptbx.u_as_b(u_isos[j_seq])
-          abs_diff_sq = abs(b_iso_i-b_iso_j)**2
-          values.append(abs_diff_sq)
-      if(values.size() == 0): return 0
-      result = math.sqrt(flex.sum(values) / values.size())
-    return result
+    return utils.rms_b_iso_or_b_equiv_bonded(
+      restraints_manager = self.restraints_manager,
+      xray_structure     = self.xray_structure,
+      ias_selection      = self.ias_selection)
 
   def extract_ncs_groups(self):
     result = None

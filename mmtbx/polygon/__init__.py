@@ -5,16 +5,17 @@ import libtbx, os, re
 from libtbx.utils import Sorry
 from libtbx import easy_pickle
 
-keys_to_show = ["r_work_re_computed", "r_free_re_computed", "r_work_pdb",
-  "r_free_pdb", "r_work_cutoff", "r_free_cutoff", "cmpl_in_range",
-  "cmpl_d_min_inf", "cmpl_6A_inf", "adp_mean", "adp_min", "adp_max",
+keys_to_show = ["r_work", "r_free", "pdb_header_r_work",
+  "pdb_header_r_free", "r_work_cutoffs", "r_free_cutoffs", "completeness_in_range",
+  "completeness_d_min_inf", "completeness_6A_inf", "adp_mean_all", "adp_min_all",
+  "adp_max_all",
   "wilson_b", "b_sol", "k_sol", "solvent_cont", "matthews_coeff",
-  "bonds_rmsd", "bonds_max", "angles_rmsd", "angles_max", "dihedrals_rmsd",
-  "dihedrals_max", "planarity_rmsd", "planarity_max", "chirality_rmsd",
+  "bond_rmsd", "bond_max", "angle_rmsd", "angle_max", "dihedral_rmsd",
+  "dihedral_max", "planarity_rmsd", "planarity_max", "chirality_rmsd",
   "chirality_max", "rama_favored", "rama_allowed", "rama_general",
   "rama_outliers"]
-default_keys = ["r_work_re_computed", "r_free_re_computed", "adp_mean",
-  "bonds_rmsd", "angles_rmsd"]
+
+default_keys = ["r_work", "r_free", "adp_mean_all", "bond_rmsd", "angle_rmsd"]
 
 key_captions = ["R-work", "R-free", "R-work (PDB)", "R-free (PDB)",
   "R-work (cutoff)", "R-free (cutoff)", "Completeness in range",
@@ -63,19 +64,31 @@ polygon_params_str = """\
     .short_caption = Filtering options
     .style = noauto
   {
-    key = twinned rama_proline n_fobs_outl rama_favored adp_mean rna_dna \
-          cmpl_in_range cmpl_d_min_inf n_npd unit_cell n_aniso space_group \
-          rama_prepro non_bonded_min number_of_models rama_allowed r_work_pdb \
-          n_refl rama_outliers k_sol occ_min occ_max chirality_rmsd \
-          sigma_cutoff rama_general name angles_rmsd d_max_pdb r_free_cutoff \
-          r_free_re_computed test_flag_value test_set_size dihedrals_rmsd \
-          atom_counts d_max cmpl_6A_inf r_free_pdb year b_sol matthews_coeff \
-          anom_flag n_refl_cutoff small_molecule d_min_pdb solvent_cont \
-          wilson_b r_work_re_computed n_tls_groups angles_max dihedrals_max \
-          adp_min d_min chirality_max planarity_rmsd adp_max n_altloc \
-          data_label rama_glycine bonds_max bonds_rmsd planarity_max water \
-          program_name occ_mean tls unit_cell_volume amino_acid element \
-          n_atoms r_work_cutoff b_cart other
+      key = twinned number_of_atoms atom_types_and_count_str angle_rmsd \
+            pdb_header_year high_resolution planarity_max_deviation \
+            low_resolution number_of_mFo-DFc_peaks-3sigma number_of_reflections \
+            adp_mean_sidechain pdb_header_sigma_cutoff completeness_d_min_inf \
+            dihedral_max_deviation number_of_mFo-DFc_peaks-6sigma \
+            r_work_cutoffs pdb_header_r_free number_of_mFo-DFc_peaks-9sigma \
+            bond_rmsd non_bonded_min_distance adp_min_all b_sol r_free \
+            number_of_residues_with_altlocs pdb_code resname_classes \
+            unit_cell_volume chirality_max_deviation space_group \
+            number_of_mFo-DFc_peaks+3sigma number_of_mFo-DFc_peaks+6sigma \
+            anomalous_flag wilson_b pdb_header_tls unit_cell rama_favored \
+            adp_mean_solvent number_of_mFo-DFc_peaks+9sigma rama_allowed \
+            number_of_npd pdb_header_high_resolution occupancy_mean \
+            overall_scale_b_cart adp_max_all number_of_anisotropic \
+            pdb_header_matthews_coeff pdb_header_solvent_cont \
+            pdb_header_r_work solvent_content_via_mask clashscore \
+            rama_outliers adp_min_solvent k_sol adp_max_backbone \
+            adp_mean_backbone rotamer_outliers chirality_rmsd \
+            c_beta_deviations adp_min_backbone angle_max_deviation \
+            rmsd_adp_iso_or_adp_equiv_bonded completeness_6A_inf \
+            adp_min_sidechain dihedral_rmsd pdb_header_low_resolution \
+            completeness_in_range pdb_header_program_name bond_max_deviation \
+            occupancy_min r_work planarity_rmsd adp_mean_all n_refl_cutoffs \
+            r_free_cutoffs adp_max_solvent number_of_Fobs_outliers \
+            occupancy_max test_set_size adp_max_sidechain
       .type = choice(multi=False)
     value_min = None
       .type = float
@@ -222,7 +235,7 @@ def convert_to_histogram(data, n_slots) :
   return histogram
 
 def apply_default_filter(database_dict, d_min, max_models_for_default_filter,
-                         key = "d_min"):
+                         key = "high_resolution"):
   database_dict = order_by_value(database_dict = database_dict, key = key)
   values = flex.double()
   for v in database_dict[key]: values.append(float(v))
@@ -250,7 +263,7 @@ def polygon(params = master_params.extract(), d_min = None,
             show_histograms = True, extract_gui_data=False):
   if(params.polygon.database_file_name is None):
     file_name = libtbx.env.find_in_repositories(
-      relative_path = "chem_data/polygon_data/phenix_mvd_2009_SEP_8_10h36.pickle",
+      relative_path = "chem_data/polygon_data/all_mvd.pickle",
       test = os.path.isfile)
   else:
     file_name = params.polygon.database_file_name

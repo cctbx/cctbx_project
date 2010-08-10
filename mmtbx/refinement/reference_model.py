@@ -285,7 +285,6 @@ def get_home_dihedral_proxies(work_params,
         key = key+i_seq_name_hash_ref[match_map[i_seq]]
       except:
         continue
-      print i_seq_name_hash_ref[match_map[i_seq]]
       if i_seq_name_hash_ref[match_map[i_seq]][0:4] == ' CA ':
         CAsite = i_seq
       elif i_seq_name_hash_ref[match_map[i_seq]][0:4] == ' CB ':
@@ -316,7 +315,9 @@ def add_reference_dihedral_proxies(geometry, reference_dihedral_proxies):
 def set_rotamer_to_reference(pdb_hierarchy,
                              pdb_hierarchy_ref,
                              xray_structure,
+                             log=None,
                              quiet=False):
+  if(log is None): log = sys.stdout
   r = rotalyze()
   sa = SidechainAngles(False)
   mon_lib_srv = mmtbx.monomer_library.server.server()
@@ -348,7 +349,7 @@ def set_rotamer_to_reference(pdb_hierarchy,
                     atom_group.altloc+atom_group.resname)
                 model_chis[key] = chis
             except:
-              print '%s%4s %s is missing some sidechain atoms, could not measure chis' % (
+              print >> log, '%s%4s %s is missing some sidechain atoms, could not measure chis' % (
                     chain.id, residue_group.resseq,
                     atom_group.altloc+atom_group.resname)
 
@@ -366,7 +367,7 @@ def set_rotamer_to_reference(pdb_hierarchy,
                     atom_group.altloc+atom_group.resname)
                 reference_chis[key] = chis
             except:
-              print '%s%4s %s is missing some sidechain atoms, could not measure chis' % (
+              print >> log, '%s%4s %s is missing some sidechain atoms, could not measure chis' % (
                     chain.id, residue_group.resseq,
                     atom_group.altloc+atom_group.resname)
 
@@ -413,12 +414,3 @@ def set_rotamer_to_reference(pdb_hierarchy,
               xray_structure.set_sites_cart(sites_cart_start)
           except:
             pass
-
-  if not quiet:
-    for key in model_hash:
-      try:
-        if model_hash[key] == 'OUTLIER':
-          if reference_hash[key] != 'OUTLIER':
-            print key, reference_hash[key]
-      except:
-        pass

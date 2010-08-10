@@ -17,7 +17,7 @@ from libtbx.str_utils import format_value
 import iotbx
 from mmtbx import utils
 from iotbx import pdb
-from libtbx import easy_run
+from libtbx import easy_pickle
 from cStringIO import StringIO
 from mmtbx import model_statistics
 from iotbx.pdb import extract_rfactors_resolutions_sigma
@@ -26,8 +26,8 @@ import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from iotbx.pdb import combine_unique_pdb_files
 from libtbx import group_args
 from mmtbx import masks
-from mmtbx import maps
-from mmtbx import real_space_correlation
+import mmtbx.find_peaks
+import mmtbx.maps
 
 if (1):
   random.seed(0)
@@ -44,6 +44,7 @@ class mvd(object):
     self.misc          = None
     self.pdb_file      = None
     self.fmodel        = None
+    self.maps          = None
 
   def collect(self,
               crystal       = None,
@@ -51,13 +52,15 @@ class mvd(object):
               data          = None,
               model_vs_data = None,
               pdb_header    = None,
-              misc          = None):
+              misc          = None,
+              maps          = None):
     if(crystal       is not None): self.crystal       = crystal
     if(models        is not None): self.models        = models
     if(data          is not None): self.data          = data
     if(model_vs_data is not None): self.model_vs_data = model_vs_data
     if(pdb_header    is not None): self.pdb_header    = pdb_header
     if(misc          is not None): self.misc          = misc
+    if(maps          is not None): self.maps          = maps
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
@@ -70,52 +73,85 @@ class mvd(object):
     for i_seq, i_model in enumerate(self.models):
       print >> log, "  Model #%s:"%str("%d"%(i_seq+1)).strip()
       print >> log, "    Number of residues in alternative conformations:", \
-        i_model.overall_counts_i_seq.n_alt_conf_pure + \
-        i_model.overall_counts_i_seq.n_alt_conf_proper + \
-        i_model.overall_counts_i_seq.n_alt_conf_improper
-      rc = i_model.overall_counts_i_seq.resname_classes
+        i_model.n_residues_in_altlocs
       print >> log, "    Residue content:"
       len_max = 0
-      for k in rc.keys():
-        k=k.replace("common_","")
-        if(len(k)>len_max): len_max = len(k)
-      fmt = "      %-"+str(len_max)+"s : %d"
-      for k,v in zip(rc.keys(), rc.values()):
-        print >> log, fmt%(k.replace("common_",""), v)
+      for k in i_model.resname_classes:
+        k = k.split()
+        if(len(k[0])>len_max): len_max = len(k[0])
+      fmt = "      %-"+str(len_max)+"s : %s"
+      for rc in i_model.resname_classes:
+        k,v = rc.split()
+        print >> log, fmt%(k, v)
       x = i_model.xray_structure_stat
       print >> log, "    Atoms:"
-      print >> log, "      atom_number_(type:count:occ_sum) : %s (%s)"%(x.n_atoms,x.atom_counts_str)
-      print >> log, "      ADP_(min,max,mean)               : %s %s %s"%(x.b_min,x.b_max,x.b_mean)
-      print >> log, "      occupancies_(min,max,mean)       : %s %s %s"%(x.o_min,x.o_max,x.o_mean)
-      print >> log, "      number_of_anisotropic            : "+format_value("%-7s",x.n_aniso)
-      print >> log, "      number_of_non_positive_definite  : %s"%x.n_npd
-      g = i_model.model_statistics_geometry
+      print >> log, "      content: %s"%x.all.n_atoms
+      max_field_for_element_count = 1
+      for element_occupancy_sum in x.all.atom_counts_str.split():
+        individual_element_count_len = len(element_occupancy_sum.split(":")[1])
+        if(individual_element_count_len>max_field_for_element_count):
+          max_field_for_element_count = individual_element_count_len
+      for element_occupancy_sum in x.all.atom_counts_str.split():
+        iecl = "%" + str(max_field_for_element_count)+"s"
+        fmt = "        %s "+"count: %s "%iecl+"occupancy sum: %s"
+        print >> log, fmt%tuple(element_occupancy_sum.split(":"))
+      print >> log, "      ADP (min,max,mean):"
+      print >> log, "        all            : %s %s %s"%(x.all.b_min,x.all.b_max,x.all.b_mean)
+      if(x.sidechain     is not None):print >> log, "        side chains    : %s %s %s"%(x.sidechain.b_min,x.sidechain.b_max,x.sidechain.b_mean)
+      if(x.backbone      is not None):print >> log, "        main chains    : %s %s %s"%(x.backbone.b_min,x.backbone.b_max,x.backbone.b_mean)
+      if(x.macromolecule is not None):print >> log, "        macromolecule  : %s %s %s"%(x.macromolecule.b_min,x.macromolecule.b_max,x.macromolecule.b_mean)
+      if(x.solvent       is not None):print >> log, "        solvent        : %s %s %s"%(x.solvent.b_min,x.solvent.b_max,x.solvent.b_mean)
+      if(i_model.rms_b_iso_or_b_equiv_bonded is not None):
+        print >> log, "      mean bonded (Bi-Bj) : %s"%format_value("%8.2f",i_model.rms_b_iso_or_b_equiv_bonded).strip()
+      print >> log, "      occupancies (min,max,mean)       : %s %s %s"%(x.all.o_min,x.all.o_max,x.all.o_mean)
+      print >> log, "      number_of_anisotropic            : "+format_value("%-7s",x.all.n_aniso)
+      print >> log, "      number_of_non_positive_definite  : %s"%x.all.n_npd
+      g = i_model.geometry_all
       if(g is not None):
-        print >> log, "    Stereochemistry statistics (mean, max, count):"
+        print >> log, "    Stereochemistry statistics (mean, max, count) - overall:"
         print >> log, "      bonds            : %8.4f %8.4f %d" % (g.b_mean, g.b_max, g.b_number)
         print >> log, "      angles           : %8.4f %8.4f %d" % (g.a_mean, g.a_max, g.a_number)
         print >> log, "      dihedrals        : %8.4f %8.4f %d" % (g.d_mean, g.d_max, g.d_number)
         print >> log, "      chirality        : %8.4f %8.4f %d" % (g.c_mean, g.c_max, g.c_number)
         print >> log, "      planarity        : %8.4f %8.4f %d" % (g.p_mean, g.p_max, g.p_number)
         print >> log, "      non-bonded (min) : %8.4f" % (g.n_min)
-      if(i_model.ramalyze is not None):
-        outl = i_model.ramalyze.get_outliers_count_and_fraction()
-        allo = i_model.ramalyze.get_allowed_count_and_fraction()
-        favo = i_model.ramalyze.get_favored_count_and_fraction()
+      if(i_model.geometry_solvent is not None):
+        g = i_model.geometry_macromolecule
+        if(g is not None):
+          print >> log, "    Stereochemistry statistics (mean, max, count) - macromolecule:"
+          print >> log, "      bonds            : %8.4f %8.4f %d" % (g.b_mean, g.b_max, g.b_number)
+          print >> log, "      angles           : %8.4f %8.4f %d" % (g.a_mean, g.a_max, g.a_number)
+          print >> log, "      dihedrals        : %8.4f %8.4f %d" % (g.d_mean, g.d_max, g.d_number)
+          print >> log, "      chirality        : %8.4f %8.4f %d" % (g.c_mean, g.c_max, g.c_number)
+          print >> log, "      planarity        : %8.4f %8.4f %d" % (g.p_mean, g.p_max, g.p_number)
+          print >> log, "      non-bonded (min) : %8.4f" % (g.n_min)
+        g = i_model.geometry_solvent
+        if(g is not None):
+          print >> log, "    Stereochemistry statistics (mean, max, count) - solvent:"
+          print >> log, "      bonds            : %8.4f %8.4f %d" % (g.b_mean, g.b_max, g.b_number)
+          print >> log, "      angles           : %8.4f %8.4f %d" % (g.a_mean, g.a_max, g.a_number)
+          print >> log, "      dihedrals        : %8.4f %8.4f %d" % (g.d_mean, g.d_max, g.d_number)
+          print >> log, "      chirality        : %8.4f %8.4f %d" % (g.c_mean, g.c_max, g.c_number)
+          print >> log, "      planarity        : %8.4f %8.4f %d" % (g.p_mean, g.p_max, g.p_number)
+          print >> log, "      non-bonded (min) : %8.4f" % (g.n_min)
+      if(i_model.molprobity is not None):
+        outl = i_model.molprobity.ramalyze_outliers
+        allo = i_model.molprobity.ramalyze_allowed
+        favo = i_model.molprobity.ramalyze_favored
+        print >> log, "    Molprobity statistics:"
         print >> log, "      Ramachandran plot, number of:"
         print >> log, "        outliers : %-5d (%-5.2f %s)"%(outl[0],outl[1]*100.,"%")
         print >> log, "        allowed  : %-5d (%-5.2f %s)"%(allo[0],allo[1]*100.,"%")
         print >> log, "        favored  : %-5d (%-5.2f %s)"%(favo[0],favo[1]*100.,"%")
-      if(i_model.rotalyze is not None):
-        print >> log, "      Rotamer outliers        : %d (%s %s) goal: %s" %(
-          i_model.rotalyze.get_outliers_count_and_fraction()[0],
-          str("%6.2f"%(i_model.rotalyze.get_outliers_count_and_fraction()[1]*100.)).strip(),
-          "%", i_model.rotalyze.get_outliers_goal())
-      if(i_model.cbetadev is not None):
-        print >> log, "      Cbeta deviations >0.25A : %d"%i_model.cbetadev.get_outlier_count()
-      if(i_model.clashscore is not None):
+      if(i_model.molprobity is not None):
+        print >> log, "      Rotamer outliers        : %d (%s %s)" %(
+          i_model.molprobity.rotalyze[0],
+          str("%6.2f"%(i_model.molprobity.rotalyze[1]*100.)).strip(),"%")
+      if(i_model.molprobity is not None):
+        print >> log, "      Cbeta deviations >0.25A : %d"%i_model.molprobity.cbetadev
+      if(i_model.molprobity is not None):
         print >> log, "      All-atom clashscore     : %.2f (steric overlaps >0.4A per 1000 atoms)"% \
-          i_model.clashscore.get_clashscore()
+          i_model.molprobity.clashscore
     #
     print >> log, "  Data:"
     result = " \n    ".join([
@@ -149,6 +185,14 @@ class mvd(object):
       % format_value("%.1f", sc))
     result = " \n    ".join(result)
     print >> log, "   ", result
+    if(self.maps is not None):
+      print >> log, "    mFo-DFc map: positive and negative peak numbers:"
+      print >> log, "      >  3 sigma: ", self.maps.peaks_plus_3
+      print >> log, "      >  6 sigma: ", self.maps.peaks_plus_6
+      print >> log, "      >  9 sigma: ", self.maps.peaks_plus_9
+      print >> log, "      < -3 sigma: ", self.maps.peaks_minus_3
+      print >> log, "      < -6 sigma: ", self.maps.peaks_minus_6
+      print >> log, "      < -9 sigma: ", self.maps.peaks_minus_9
     #
     if(self.pdb_header is not None):
       print >> log, "  Information extracted from PDB file header:"
@@ -229,8 +273,49 @@ def get_matthews_coeff(file_lines):
     except ValueError: pass
   return result
 
+def molprobity_stats(hierarchy, resname_classes):
+  result = None
+  from mmtbx.validation.ramalyze import ramalyze
+  from mmtbx.validation.rotalyze import rotalyze
+  from mmtbx.validation.cbetadev import cbetadev
+  from mmtbx.validation.clashscore import clashscore
+  need_ramachandran = False
+  ramalyze_obj = None
+  rotalyze_obj = None
+  cbetadev_obj = None
+  clashscore_obj = None
+  rc = resname_classes
+  n_residues = 0
+  for k in rc.keys():
+    if(k.count('amino_acid')):
+      need_ramachandran = True
+      n_residues = int(rc[k])
+      break
+  if(need_ramachandran):
+    ramalyze_obj = ramalyze()
+    output, output_list = ramalyze_obj.analyze_pdb(hierarchy = hierarchy,
+      outliers_only = False)
+    rotalyze_obj = rotalyze()
+    output_rotalyze, output_list_rotalyze = rotalyze_obj.analyze_pdb(
+      hierarchy = hierarchy, outliers_only = False)
+    cbetadev_obj = cbetadev()
+    output_cbetadev, sum_cbtadev, output_list_cbetadev = \
+      cbetadev_obj.analyze_pdb(hierarchy = hierarchy, outliers_only = False)
+    clashscore_obj = clashscore()
+    output_clashscore, bad_clashes = clashscore_obj.analyze_clashes(
+      hierarchy = hierarchy)
+    return group_args(
+      ramalyze_outliers = ramalyze_obj.get_outliers_count_and_fraction(),
+      ramalyze_allowed  = ramalyze_obj.get_allowed_count_and_fraction(),
+      ramalyze_favored  = ramalyze_obj.get_favored_count_and_fraction(),
+      rotalyze          = rotalyze_obj.get_outliers_count_and_fraction(),
+      cbetadev          = cbetadev_obj.get_outlier_count(),
+      clashscore        = clashscore_obj.get_clashscore())
+  else: return None
+
 def show_geometry(processed_pdb_file, scattering_table, hierarchy,
-                  model_selections, show_geometry_statistics, mvd_obj):
+                  model_selections, show_geometry_statistics, mvd_obj,
+                  atom_selections):
   xray_structures = processed_pdb_file.xray_structure()
   hd_sel_all = xray_structures.hd_selection()
   if(show_geometry_statistics):
@@ -246,30 +331,57 @@ def show_geometry(processed_pdb_file, scattering_table, hierarchy,
       normalization = True)
   models = hierarchy.models()
   geometry_statistics = []
+  n_residues_in_altlocs = None
   for i_seq, model_selection in enumerate(model_selections):
     hierarchy_i_seq = pdb.hierarchy.root()
     hierarchy_i_seq.append_model(models[i_seq].detached_copy())
+    #
     overall_counts_i_seq = hierarchy_i_seq.overall_counts()
+    n_residues_in_altlocs = \
+      overall_counts_i_seq.n_alt_conf_pure + \
+      overall_counts_i_seq.n_alt_conf_proper + \
+      overall_counts_i_seq.n_alt_conf_improper
+    #
+    resname_classes = []
+    for k,v in zip(overall_counts_i_seq.resname_classes.keys(),
+                   overall_counts_i_seq.resname_classes.values()):
+      resname_classes.append(" ".join([k.replace("common_",""), str(v)]))
+    #
     xray_structure = xray_structures.select(model_selection)
     hd_sel = xray_structure.hd_selection()
+    def select_atom_selections(selection       = model_selection,
+                               atom_selections = atom_selections):
+      result = group_args()
+      result.all           = atom_selections.all          .select(selection)
+      result.macromolecule = atom_selections.macromolecule.select(selection)
+      result.solvent       = atom_selections.solvent      .select(selection)
+      result.backbone      = atom_selections.backbone     .select(selection)
+      result.sidechain     = atom_selections.sidechain    .select(selection)
+      return result
+    atom_selections_i_model = select_atom_selections(selection = model_selection,
+      atom_selections = atom_selections)
     if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
       xray_structure_stat = show_xray_structure_statistics(
-        xray_structure = xray_structure,
-        hd_sel = ~hd_sel)
+        xray_structure  = xray_structure,
+        hd_sel          = hd_sel,
+        atom_selections = atom_selections_i_model)
     else:
       xray_structure_stat = show_xray_structure_statistics(
-        xray_structure = xray_structure)
-    model_statistics_geometry = None
-    ramalyze_obj = None
-    rotalyze_obj = None
-    cbetadev_obj = None
-    clashscore_obj = None
+        xray_structure = xray_structure,
+        atom_selections=atom_selections_i_model)
+    model_statistics_geometry_macromolecule = None
+    model_statistics_geometry_solvent = None
+    model_statistics_geometry_all = None
+    molprobity_stats_i_seq = None
+    rms_b_iso_or_b_equiv_bonded = None
     if(show_geometry_statistics):
       # exclude hydrogens
       if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
         xray_structure = xray_structure.select(~hd_sel)
         model_selection = model_selection.select(~hd_sel)
         geometry = restraints_manager_all.geometry.select(selection = ~hd_sel_all)
+        atom_selections_i_model = select_atom_selections(selection = ~hd_sel_all,
+           atom_selections = atom_selections_i_model)
       model_selection_as_bool = flex.bool(xray_structures.scatterers().size(),
         model_selection)
       geometry = restraints_manager_all.geometry.select(selection =
@@ -279,84 +391,97 @@ def show_geometry(processed_pdb_file, scattering_table, hierarchy,
         normalization = True)
       restraints_manager.geometry.pair_proxies(sites_cart =
         xray_structure.sites_cart())
-      model_statistics_geometry = model_statistics.geometry(
+      ###
+      model_statistics_geometry_all = model_statistics.geometry(
         sites_cart         = xray_structure.sites_cart(),
         hd_selection       = hd_sel,
         ignore_hd          = False,
         restraints_manager = restraints_manager)
       #
-      from mmtbx.validation.ramalyze import ramalyze
-      from mmtbx.validation.rotalyze import rotalyze
-      from mmtbx.validation.cbetadev import cbetadev
-      from mmtbx.validation.clashscore import clashscore
-      need_ramachandran = False
-      ramalyze_obj = None
-      rotalyze_obj = None
-      cbetadev_obj = None
-      clashscore_obj = None
-      rc = overall_counts_i_seq.resname_classes
-      n_residues = 0
-      for k in rc.keys():
-        if(k.count('amino_acid')):
-          need_ramachandran = True
-          n_residues = int(rc[k])
-          break
-      if(need_ramachandran):
-        ramalyze_obj = ramalyze()
-        output, output_list = ramalyze_obj.analyze_pdb(hierarchy =
-          hierarchy_i_seq, outliers_only = False)
-        rotalyze_obj = rotalyze()
-        output_rotalyze, output_list_rotalyze = rotalyze_obj.analyze_pdb(
-          hierarchy = hierarchy_i_seq, outliers_only = False)
-        cbetadev_obj = cbetadev()
-        output_cbetadev, sum_cbtadev, output_list_cbetadev = \
-          cbetadev_obj.analyze_pdb(hierarchy = hierarchy_i_seq,
-          outliers_only = False)
-        clashscore_obj = clashscore()
-        output_clashscore, bad_clashes = clashscore_obj.analyze_clashes(
-          hierarchy = hierarchy_i_seq)
+      if(atom_selections.macromolecule.count(True)>0):
+        mac_sel = atom_selections_i_model.macromolecule#.select(model_selection_as_bool)
+        model_statistics_geometry_macromolecule = model_statistics.geometry(
+          sites_cart         = xray_structure.sites_cart().select(mac_sel),
+          hd_selection       = xray_structure.select(mac_sel).hd_selection(),
+          ignore_hd          = False,
+          restraints_manager = restraints_manager.select(mac_sel))
+      #
+      if(atom_selections.solvent.count(True)>0):
+        sol_sel = atom_selections_i_model.solvent#.select(model_selection_as_bool)
+        model_statistics_geometry_solvent = model_statistics.geometry(
+          sites_cart         = xray_structure.sites_cart().select(sol_sel),
+          hd_selection       = xray_structure.select(sol_sel).hd_selection(),
+          ignore_hd          = False,
+          restraints_manager = restraints_manager.select(sol_sel))
+      ###
+      rms_b_iso_or_b_equiv_bonded = utils.rms_b_iso_or_b_equiv_bonded(
+        restraints_manager = restraints_manager,
+        xray_structure     = xray_structure)
+      #
+      molprobity_stats_i_seq = molprobity_stats(hierarchy = hierarchy_i_seq,
+        resname_classes = overall_counts_i_seq.resname_classes)
     geometry_statistics.append(group_args(
-      overall_counts_i_seq      = overall_counts_i_seq,
-      xray_structure_stat       = xray_structure_stat,
-      model_statistics_geometry = model_statistics_geometry,
-      ramalyze                  = ramalyze_obj,
-      rotalyze                  = rotalyze_obj,
-      cbetadev                  = cbetadev_obj,
-      clashscore                = clashscore_obj))
+      n_residues_in_altlocs       = n_residues_in_altlocs,
+      resname_classes             = resname_classes,
+      xray_structure_stat         = xray_structure_stat,
+      rms_b_iso_or_b_equiv_bonded = rms_b_iso_or_b_equiv_bonded,
+      geometry_all                = model_statistics_geometry_all,
+      geometry_macromolecule      = model_statistics_geometry_macromolecule,
+      geometry_solvent            = model_statistics_geometry_solvent,
+      molprobity                  = molprobity_stats_i_seq))
   mvd_obj.collect(models = geometry_statistics)
   return geometry_statistics
 
-def show_xray_structure_statistics(xray_structure, hd_sel = None):
-  atom_counts = xray_structure.scattering_types_counts_and_occupancy_sums()
-  atom_counts_strs = []
-  for ac in atom_counts:
-    atom_counts_strs.append("%s:%s:%s"%(ac.scattering_type,str(ac.count),
-      str("%10.2f"%ac.occupancy_sum).strip()))
-  atom_counts_str = " ".join(atom_counts_strs)
+def show_xray_structure_statistics(xray_structure, atom_selections, hd_sel = None):
+  result = group_args(
+    all           = None,
+    macromolecule = None,
+    sidechain     = None,
+    solvent       = None,
+    backbone      = None)
   if(hd_sel is not None):
     xray_structure = xray_structure.select(~hd_sel)
-  b_isos = xray_structure.extract_u_iso_or_u_equiv()
-  n_aniso = xray_structure.use_u_aniso().count(True)
-  n_not_positive_definite = xray_structure.is_positive_definite_u().count(False)
-  b_mean = format_value("%-6.1f",adptbx.u_as_b(flex.mean(b_isos))).strip()
-  b_min = format_value("%-6.1f",adptbx.u_as_b(flex.min(b_isos))).strip()
-  b_max = format_value("%-6.1f",adptbx.u_as_b(flex.max(b_isos))).strip()
-  n_atoms = format_value("%-8d",xray_structure.scatterers().size()).strip()
-  n_npd = format_value("%-8s",n_not_positive_definite).strip()
-  occ = xray_structure.scatterers().extract_occupancies()
-  o_mean = format_value("%-6.2f",flex.mean(occ)).strip()
-  o_min = format_value("%-6.2f",flex.min(occ)).strip()
-  o_max = format_value("%-6.2f",flex.max(occ)).strip()
-  return group_args(n_atoms         = n_atoms,
-                    atom_counts_str = atom_counts_str,
-                    b_min           = b_min,
-                    b_max           = b_max,
-                    b_mean          = b_mean,
-                    o_min           = o_min,
-                    o_max           = o_max,
-                    o_mean          = o_mean,
-                    n_aniso         = n_aniso,
-                    n_npd           = n_npd)
+  for key in atom_selections.__dict__.keys():
+    value = atom_selections.__dict__[key]
+    if(value.count(True) > 0):
+      if(hd_sel is not None):
+        value = value.select(~hd_sel)
+      xrs = xray_structure.select(value)
+      atom_counts = xrs.scattering_types_counts_and_occupancy_sums()
+      atom_counts_strs = []
+      for ac in atom_counts:
+        atom_counts_strs.append("%s:%s:%s"%(ac.scattering_type,str(ac.count),
+          str("%10.2f"%ac.occupancy_sum).strip()))
+      atom_counts_str = " ".join(atom_counts_strs)
+      b_isos = xrs.extract_u_iso_or_u_equiv()
+      n_aniso = xrs.use_u_aniso().count(True)
+      n_not_positive_definite = xrs.is_positive_definite_u().count(False)
+      b_mean = format_value("%-6.1f",adptbx.u_as_b(flex.mean(b_isos)))
+      b_min = format_value("%-6.1f",adptbx.u_as_b(flex.min(b_isos)))
+      b_max = format_value("%-6.1f",adptbx.u_as_b(flex.max(b_isos)))
+      n_atoms = format_value("%-8d",xrs.scatterers().size()).strip()
+      n_npd = format_value("%-8s",n_not_positive_definite).strip()
+      occ = xrs.scatterers().extract_occupancies()
+      o_mean = format_value("%-6.2f",flex.mean(occ)).strip()
+      o_min = format_value("%-6.2f",flex.min(occ)).strip()
+      o_max = format_value("%-6.2f",flex.max(occ)).strip()
+      tmp_result = group_args(
+        n_atoms         = n_atoms,
+        atom_counts_str = atom_counts_str,
+        b_min           = b_min,
+        b_max           = b_max,
+        b_mean          = b_mean,
+        o_min           = o_min,
+        o_max           = o_max,
+        o_mean          = o_mean,
+        n_aniso         = n_aniso,
+        n_npd           = n_npd)
+      if(key == "macromolecule"): result.macromolecule = tmp_result
+      if(key == "sidechain"):     result.sidechain = tmp_result
+      if(key == "backbone"):      result.backbone = tmp_result
+      if(key == "solvent"):       result.solvent = tmp_result
+      if(key == "all"):           result.all = tmp_result
+  return result
 
 def reflection_file_server(crystal_symmetry, reflection_files):
   return reflection_file_utils.reflection_file_server(
@@ -404,6 +529,42 @@ def show_model_vs_data(fmodel):
     b_cart = fmodel.b_cart(),
     solvent_content_via_mask=sc)
 
+def maps(fmodel, mvd_obj, map_cutoff = 3.0, map_type = "mFo-DFc"):
+  result = group_args(
+    peaks_plus_3  = 0,
+    peaks_plus_6  = 0,
+    peaks_plus_9  = 0,
+    peaks_minus_3 = 0,
+    peaks_minus_6 = 0,
+    peaks_minus_9 = 0)
+  params = mmtbx.find_peaks.master_params.extract()
+  params.peak_search.min_cross_distance = 1.2
+  if(fmodel.twin and fmodel.r_free_flags.data().count(True)==0): # XXX
+    fmodel.r_free_flags = fmodel.r_free_flags.generate_r_free_flags() # XXX
+  peaks_plus = mmtbx.find_peaks.manager(
+    fmodel     = fmodel,
+    map_type   = map_type,
+    map_cutoff = map_cutoff,
+    params     = params,
+    silent     = True).peaks()
+  if(peaks_plus is not None): peaks_plus = peaks_plus.heights
+  peaks_minus = mmtbx.find_peaks.manager(
+    fmodel     = fmodel,
+    map_type   = map_type,
+    map_cutoff = -1.*map_cutoff,
+    params     = params,
+    silent     = True).peaks()
+  if(peaks_minus is not None): peaks_minus = peaks_minus.heights
+  if([peaks_minus,peaks_plus].count(None) == 0):
+    result = group_args(
+      peaks_plus_3  = (peaks_plus > 3).count(True),
+      peaks_plus_6  = (peaks_plus > 6).count(True),
+      peaks_plus_9  = (peaks_plus > 9).count(True),
+      peaks_minus_3 = (peaks_minus < -3).count(True),
+      peaks_minus_6 = (peaks_minus < -6).count(True),
+      peaks_minus_9 = (peaks_minus < -9).count(True))
+  return result
+
 def run(args,
         command_name             = "mmtbx.model_vs_data",
         show_geometry_statistics = True,
@@ -433,9 +594,14 @@ def run(args,
       help="Choice for scattering table: n_gaussian (default) or wk1995 or it1992 or neutron.")
     .option(None, "--comprehensive",
       action="store",
-      default=True,
+      default=False,
       type="bool",
       help="Show detailed statistics per residue (map CC, etc).")
+    .option(None, "--dump_result_object_as_pickle",
+      action="store",
+      default=False,
+      type="bool",
+      help="Save model_vs_data object as pickle object.")
     .option(None, "--r_factor_per_reflection",
       action="store",
       default=False,
@@ -517,6 +683,17 @@ def run(args,
   pdb_raw_records = mmtbx_pdb_file.pdb_raw_records
   pdb_inp = mmtbx_pdb_file.pdb_inp
   #
+  # just to avoid going any further with bad PDB file....
+  pdb_inp.xray_structures_simple()
+  #
+  acp = processed_pdb_file.all_chain_proxies
+  atom_selections = group_args(
+    all           = acp.selection(string = "all"),
+    macromolecule = acp.selection(string = "protein or dna or rna"),
+    solvent       = acp.selection(string = "not (protein or dna or rna)"),
+    backbone      = acp.selection(string = "backbone"),
+    sidechain     = acp.selection(string = "sidechain"))
+  #
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = processed_pdb_file,
     scattering_table   = command_line.options.scattering_table,
@@ -544,7 +721,8 @@ def run(args,
     hierarchy                = hierarchy,
     model_selections         = model_selections,
     show_geometry_statistics = show_geometry_statistics,
-    mvd_obj                  = mvd_obj)
+    mvd_obj                  = mvd_obj,
+    atom_selections          = atom_selections)
   #
   # Extract TLS
   pdb_tls = None
@@ -632,14 +810,18 @@ def run(args,
               test_flag_value = test_flag_value,
               f_obs_labels    = f_obs.info().label_string(),
               fmodel_cut      = fmodel_cut))
+  # map statistics
+  if(len(xray_structures)==1): # XXX no multi-model support yet
+    mvd_obj.collect(maps = maps(fmodel = fmodel, mvd_obj = mvd_obj))
+  #
   mvd_obj.show(log=out)
   if return_fmodel_and_pdb :
     mvd_obj.pdb_file = processed_pdb_file
     mvd_obj.fmodel = fmodel
   if(map_type_obj is not None):
-    map_params = maps.map_and_map_coeff_master_params().fetch(
-      maps.cast_map_coeff_params(map_type_obj)).extract()
-    maps_obj = maps.compute_map_coefficients(fmodel = fmodel_cut, params =
+    map_params = mmtbx.maps.map_and_map_coeff_master_params().fetch(
+      mmtbx.maps.cast_map_coeff_params(map_type_obj)).extract()
+    maps_obj = mmtbx.maps.compute_map_coefficients(fmodel = fmodel_cut, params =
       map_params.map_coefficients)
     fn = os.path.basename(processed_args.reflection_file_names[0])
     if(fn.count(".")):
@@ -671,264 +853,13 @@ def run(args,
   #
   if(command_line.options.r_factor_per_reflection):
     fmodel_cut.r_work_per_reflection()
+  if(command_line.options.dump_result_object_as_pickle):
+    output_prefixes = []
+    for op in processed_args.pdb_file_names+processed_args.reflection_file_names:
+      op = os.path.basename(op)
+      try: op = op[:op.index(".")]
+      except: pass
+      if(not op in output_prefixes): output_prefixes.append(op)
+    output_prefix = "_".join(output_prefixes)
+    easy_pickle.dump("%s.pickle"%output_prefix, mvd_obj)
   return mvd_obj
-
-def read_mvd_output(file_lines, name):
-  unit_cell        = None
-  space_group      = None
-  unit_cell_volume = None
-  number_of_models = None
-  # XXX multiple models are not supported
-  n_altloc = None
-  amino_acid     = None
-  rna_dna        = None
-  water          = None
-  small_molecule = None
-  element        = None
-  other          = None
-  #
-  n_atoms     = None
-  atom_counts = None
-  adp_min     = None
-  adp_max     = None
-  adp_mean    = None
-  occ_min     = None
-  occ_max     = None
-  occ_mean    = None
-  n_aniso     = None
-  n_npd       = None
-  #
-  bonds_rmsd     = None
-  bonds_max      = None
-  bonds_cnt      = None
-  angles_rmsd    = None
-  angles_max     = None
-  angles_cnt     = None
-  dihedrals_rmsd = None
-  dihedrals_max  = None
-  dihedrals_cnt  = None
-  chirality_rmsd = None
-  chirality_max  = None
-  chirality_cnt  = None
-  planarity_rmsd = None
-  planarity_max  = None
-  planarity_cnt  = None
-  non_bonded_min = None
-  #
-  rama_outliers = None
-  rama_allowed  = None
-  rama_favored  = None
-  #
-  rota_outl  = None
-  cbeta_dev  = None
-  clashscore = None
-  #
-  data_label      = None
-  d_min           = None
-  d_max           = None
-  cmpl_in_range   = None
-  cmpl_d_min_inf  = None
-  cmpl_6A_inf     = None
-  wilson_b        = None
-  n_refl          = None
-  test_set_size   = None
-  test_flag_value = None
-  n_fobs_outl     = None
-  twinned         = None
-  anom_flag       = None
-  #
-  r_work_re_computed = None
-  r_free_re_computed = None
-  k_sol              = None
-  b_sol              = None
-  b_cart             = None
-  #
-  program_name   = None
-  year           = None
-  r_work_pdb     = None
-  r_free_pdb     = None
-  d_min_pdb      = None
-  d_max_pdb      = None
-  sigma_cutoff   = None
-  matthews_coeff = None
-  solvent_cont   = None
-  tls            = None
-  n_tls_groups   = None
-  #
-  n_refl_cutoff = None
-  r_work_cutoff = None
-  r_free_cutoff = None
-  ###
-  def helper(x):
-    if(x.lower()=="none"): return None
-    if(x.isdigit()): return int(x)
-    if(x.lower()=="true"): return True
-    if(x.lower()=="false"): return False
-    return float(x)
-  for line in file_lines:
-    x = line.strip()
-    xs = x.split()
-    if(x.startswith("Unit cell:        ")):
-      vtmp = " ".join(xs[2:]).replace(","," ").replace("("," ").replace(")"," ")
-      unit_cell        = vtmp
-    if(x.startswith("Space group:      ")): space_group      = xs[2:]
-    if(x.startswith("Unit cell volume: ")): unit_cell_volume = float(xs[3])
-    if(x.startswith("Number of models: ")): number_of_models = int(xs[3])
-    if(number_of_models == 1): # XXX multiple models are not supported
-      if(x.startswith("Number of residues in alternative conformations:")): 2
-      if(x.startswith("amino_acid")):     amino_acid     = int(xs[2])
-      if(x.startswith("rna_dna")):        rna_dna        = int(xs[2])
-      if(x.startswith("water")):          water          = int(xs[2])
-      if(x.startswith("small_molecule")): small_molecule = int(xs[2])
-      if(x.startswith("element")):        element        = int(xs[2])
-      if(x.startswith("other")):          other          = int(xs[2])
-      if(x.startswith("atom_number_(type:count:occ_sum) :")):
-        n_atoms     = int(xs[2])
-        atom_counts = xs[3:]
-      if(x.startswith("ADP_(min,max,mean)               :")):
-        adp_min     = float(xs[2])
-        adp_max     = float(xs[3])
-        adp_mean    = float(xs[4])
-      if(x.startswith("occupancies_(min,max,mean)       :")):
-        occ_min     = float(xs[2])
-        occ_max     = float(xs[3])
-        occ_mean    = float(xs[4])
-      if(x.startswith("number_of_anisotropic            :")): n_aniso = int(xs[2])
-      if(x.startswith("number_of_non_positive_definite  :")): n_npd   = int(xs[2])
-      if(x.startswith("bonds            :")):
-        bonds_rmsd     = float(xs[2])
-        bonds_max      = float(xs[3])
-        bonds_cnt      = int(xs[4])
-      if(x.startswith("angles           :")):
-        angles_rmsd    = float(xs[2])
-        angles_max     = float(xs[3])
-        angles_cnt     = int(xs[4])
-      if(x.startswith("dihedrals        :")):
-        dihedrals_rmsd = float(xs[2])
-        dihedrals_max  = float(xs[3])
-        dihedrals_cnt  = int(xs[4])
-      if(x.startswith("chirality        :")):
-        chirality_rmsd = float(xs[2])
-        chirality_max  = float(xs[3])
-        chirality_cnt  = int(xs[4])
-      if(x.startswith("planarity        :")):
-        planarity_rmsd = float(xs[2])
-        planarity_max  = float(xs[3])
-        planarity_cnt  = int(xs[4])
-      if(x.startswith("non-bonded (min) :")): non_bonded_min = float(xs[3])
-      if(x.startswith("outliers :")): rama_outliers = float(xs[3].replace("(",""))
-      if(x.startswith("allowed  :")): rama_allowed  = float(xs[3].replace("(",""))
-      if(x.startswith("favored  :")): rama_favored  = float(xs[3].replace("(",""))
-      if(x.startswith("Rotamer outliers :")):        rota_outl  = float(xs[3].replace("(",""))
-      if(x.startswith("Cbeta deviations >0.25A :")): cbeta_dev  = float(xs[4].replace("(",""))
-      if(x.startswith("All-atom clashscore     :")): clashscore = float(xs[3].replace("(",""))
-      if(x.startswith("data_label              :")): data_label      = xs[2]
-      if(x.startswith("high_resolution         :")): d_min           = float(xs[2])
-      if(x.startswith("low_resolution          :")): d_max           = float(xs[2])
-      if(x.startswith("completeness_in_range   :")): cmpl_in_range   = float(xs[2])
-      if(x.startswith("completeness(d_min-inf) :")): cmpl_d_min_inf  = float(xs[2])
-      if(x.startswith("completeness(6A-inf)    :")): cmpl_6A_inf     = float(xs[2])
-      if(x.startswith("wilson_b                :")): wilson_b        = helper(xs[2])
-      if(x.startswith("number_of_reflections   :")): n_refl          = float(xs[2])
-      if(x.startswith("test_set_size           :")): test_set_size   = float(xs[2])
-      if(x.startswith("test_flag_value         :")): test_flag_value = helper(xs[2])
-      if(x.startswith("number_of_Fobs_outliers :")): n_fobs_outl     = float(xs[2])
-      if(x.startswith("twinned                 :")):
-        if(xs[2].lower()=="false"): twinned = False
-        else:                       twinned = xs[2]
-      if(x.startswith("anomalous_flag          :")):
-        if(xs[2].lower()=="false"): anom_flag = False
-        else:                       anom_flag = True
-      if(x.startswith("r_work(re-computed)                :")): r_work_re_computed = float(xs[2])
-      if(x.startswith("r_free(re-computed)                :")): r_free_re_computed = helper(xs[2])
-      if(x.startswith("bulk_solvent_(k_sol,b_sol)         :")):
-        k_sol, b_sol = float(xs[2]), float(xs[3])
-      if(x.startswith("overall_anisotropic_scale_(b_cart) :")): b_cart = flex.double([float(i) for i in xs[2:]])
-      if(x.startswith("program_name    :")):
-        if(xs[2].lower()=="none"): program_name = None
-        else:                      program_name = "_".join(xs[2:])
-      if(x.startswith("year            :")): year           = helper(xs[2])
-      if(x.startswith("r_work          :")): r_work_pdb     = helper(xs[2])
-      if(x.startswith("r_free          :")): r_free_pdb     = helper(xs[2])
-      if(x.startswith("high_resolution :")): d_min_pdb      = helper(xs[2])
-      if(x.startswith("low_resolution  :")): d_max_pdb      = helper(xs[2])
-      if(x.startswith("sigma_cutoff    :")): sigma_cutoff   = helper(xs[2])
-      if(x.startswith("matthews_coeff  :")): matthews_coeff = helper(xs[2])
-      if(x.startswith("solvent_cont    :")): solvent_cont   = helper(xs[2])
-      if(x.startswith("TLS             :")):
-        tls          = helper(xs[2])
-        n_tls_groups = int(xs[6].replace(")",""))
-      if(x.startswith("n_refl_cutoff :")): n_refl_cutoff = helper(xs[2])
-      if(x.startswith("r_work_cutoff :")): r_work_cutoff = helper(xs[2])
-      if(x.startswith("r_free_cutoff :")): r_free_cutoff = helper(xs[2])
-
-  ###
-  return group_args(
-    name             = name            ,
-    unit_cell        = unit_cell       ,
-    space_group      = space_group     ,
-    unit_cell_volume = unit_cell_volume,
-    number_of_models = number_of_models,
-    n_altloc = n_altloc,
-    amino_acid     = amino_acid    ,
-    rna_dna        = rna_dna       ,
-    water          = water         ,
-    small_molecule = small_molecule,
-    element        = element       ,
-    other          = other         ,
-    n_atoms     = n_atoms    ,
-    atom_counts = atom_counts,
-    adp_min     = adp_min    ,
-    adp_max     = adp_max    ,
-    adp_mean    = adp_mean   ,
-    occ_min     = occ_min    ,
-    occ_max     = occ_max    ,
-    occ_mean    = occ_mean   ,
-    n_aniso     = n_aniso    ,
-    n_npd       = n_npd      ,
-    bonds_rmsd     = bonds_rmsd    ,
-    bonds_max      = bonds_max     ,
-    angles_rmsd    = angles_rmsd   ,
-    angles_max     = angles_max    ,
-    dihedrals_rmsd = dihedrals_rmsd,
-    dihedrals_max  = dihedrals_max ,
-    chirality_rmsd = chirality_rmsd,
-    chirality_max  = chirality_max ,
-    planarity_rmsd = planarity_rmsd,
-    planarity_max  = planarity_max ,
-    non_bonded_min = non_bonded_min,
-    rama_outliers = rama_outliers,
-    rama_allowed  = rama_allowed ,
-    rama_favored  = rama_favored ,
-    data_label      = data_label     ,
-    d_min           = d_min          ,
-    d_max           = d_max          ,
-    cmpl_in_range   = cmpl_in_range  ,
-    cmpl_d_min_inf  = cmpl_d_min_inf ,
-    cmpl_6A_inf     = cmpl_6A_inf    ,
-    wilson_b        = wilson_b       ,
-    n_refl          = n_refl         ,
-    test_set_size   = test_set_size  ,
-    test_flag_value = test_flag_value,
-    n_fobs_outl     = n_fobs_outl    ,
-    twinned         = twinned        ,
-    anom_flag       = anom_flag      ,
-    r_work_re_computed = r_work_re_computed,
-    r_free_re_computed = r_free_re_computed,
-    k_sol              = k_sol             ,
-    b_sol              = b_sol             ,
-    b_cart             = b_cart            ,
-    program_name   = program_name  ,
-    year           = year          ,
-    r_work_pdb     = r_work_pdb    ,
-    r_free_pdb     = r_free_pdb    ,
-    d_min_pdb      = d_min_pdb     ,
-    d_max_pdb      = d_max_pdb     ,
-    sigma_cutoff   = sigma_cutoff  ,
-    matthews_coeff = matthews_coeff,
-    solvent_cont   = solvent_cont  ,
-    tls            = tls           ,
-    n_tls_groups   = n_tls_groups  ,
-    n_refl_cutoff = n_refl_cutoff,
-    r_work_cutoff = r_work_cutoff,
-    r_free_cutoff = r_free_cutoff)

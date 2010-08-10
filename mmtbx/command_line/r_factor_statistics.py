@@ -72,12 +72,12 @@ def run(args, left_offset=0.1, right_offset=0.1, n_bins=10):
     dl = d_min-left_offset
     dr = d_min+right_offset
   file = libtbx.env.find_in_repositories(relative_path=
-    "chem_data/polygon_data/phenix_mvd_2009_SEP_8_10h36.pickle",
+    "chem_data/polygon_data/all_mvd.pickle",
     test=os.path.isfile)
   database_dict = easy_pickle.load(file)
-  r_work_pdb = database_dict["r_work_pdb"]
-  r_free_pdb = database_dict["r_free_pdb"]
-  d_min = database_dict["d_min"]
+  r_work_pdb = database_dict["pdb_header_r_work"]
+  r_free_pdb = database_dict["pdb_header_r_free"]
+  d_min = database_dict["high_resolution"]
   sel = r_work_pdb != "none"
   sel &= r_free_pdb != "none"
   sel &= d_min != "none"
