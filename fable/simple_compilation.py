@@ -1,6 +1,13 @@
 import os
 op = os.path
 
+def quote(s):
+  assert s.find('"') < 0
+  return '"'+s+'"'
+
+def quote_list(l):
+  return " ".join([quote(s) for s in l])
+
 class environment(object):
 
   __slots__ = [
@@ -48,28 +55,33 @@ class environment(object):
   def set_have_pch(O):
     O.__have_pch = True
 
+  def assemble_include_search_paths(O, no_quotes=False):
+    if (O.compiler == "cl"):
+      sw = "/"
+    else:
+      sw = "-"
+    def add_to_include_search_path(path):
+      if (path is None): return ""
+      if (not no_quotes):
+        path = quote(path)
+      return " %sI%s" % (sw, path)
+    return "%s%s" % (
+      add_to_include_search_path(O.fable_dist),
+      add_to_include_search_path(O.tbxx_root))
+
   def assemble_command(O,
         link,
         disable_warnings,
         file_names,
         out_name):
-    def quote(s):
-      assert s.find('"') < 0
-      return '"'+s+'"'
-    def quote_list(l):
-      return " ".join([quote(s) for s in l])
     qon = quote(out_name)
     if (O.compiler == "cl"):
       if (not link): part = "/c /Fo%s" % qon
       else:          part = "/Fe%s" % qon
-      def add_to_include_search_path(path):
-        if (path is None): return ""
-        return " /I%s" % quote(path)
-      result = "%s /nologo /EHsc %s%s%s %s" % (
+      result = "%s /nologo /EHsc %s%s %s" % (
         O.compiler,
         part,
-        add_to_include_search_path(O.fable_dist),
-        add_to_include_search_path(O.tbxx_root),
+        O.assemble_include_search_paths(),
         quote_list(file_names))
     else:
       if (not link): opt_c = "-c "
@@ -84,12 +96,7 @@ class environment(object):
       else:
         opt_x = ""
       if (not O.__have_pch):
-        def add_to_include_search_path(path):
-          if (path is None): return ""
-          return " -I%s" % quote(path)
-        opt_i = "%s%s" % (
-          add_to_include_search_path(O.fable_dist),
-          add_to_include_search_path(O.tbxx_root))
+        opt_i = O.assemble_include_search_paths()
       else:
         opt_i = " -I."
       result = "%s -o %s %s%s -g -O0%s%s %s" % (
