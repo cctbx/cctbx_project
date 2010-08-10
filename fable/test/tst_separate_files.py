@@ -21,7 +21,7 @@ def exercise(
   import fable.cout
   top_cpp = fable.cout.process(
     file_names=[op.join(test_valid, "subroutine_3.f")],
-    top_unit_name="prog",
+    top_unit_names=["prog"],
     namespace="tst_separate_files",
     top_cpp_file_name=file_names_cpp[0],
     number_of_function_files=number_of_function_files,
