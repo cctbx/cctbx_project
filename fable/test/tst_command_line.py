@@ -16,6 +16,7 @@ def run(args):
           " --top-unit-name=sub %sexternal_arg_layers.f",
             "exch->exch_imp"),
         ("fable.show_calls %sdependency_cycle.f", "sub1 sub2"),
+        ("fable.fem_include_search_paths --with-quotes", "fable"),
         ("fable.cout --each %swrite_star.f", "return fem::main_with_catch"),
         ("fable.cout %scommon_variants.f",
           'Writing file: "fable_cout_common_report"'),

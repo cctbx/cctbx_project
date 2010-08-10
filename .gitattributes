@@ -208,6 +208,7 @@ fable/SConscript -text
 fable/__init__.py svneol=native#text/x-python
 fable/command_line/__init__.py svneol=native#text/x-python
 fable/command_line/cout.py svneol=native#text/x-python
+fable/command_line/fem_include_search_paths.py svneol=native#text/x-python
 fable/command_line/read.py svneol=native#text/x-python
 fable/command_line/show_calls.py svneol=native#text/x-python
 fable/command_line/split.py svneol=native#text/x-python
