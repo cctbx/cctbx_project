@@ -47,37 +47,72 @@ def exercise():
     0.8615633693608673, -0.50765003750177129,
     0.50765003750177129, 0.8615633693608673])
 
-def compare_times():
+def compare_times(comprehensive=False):
   import scitbx.linalg.svd
   from scitbx.array_family import flex
   import time
+  from libtbx.utils import progress_displayed_as_fraction
   mt = flex.mersenne_twister(seed=0)
-  samples = [100,200]
-  print " m   n  real dgesvd"
-  for m in samples:
-    for n in samples:
-      a = mt.random_double(size=m*n)*4-2
-      a.reshape(flex.grid(m,n))
-      ac = a.deep_copy()
-      t0 = time.time()
-      svd_real = scitbx.linalg.svd.real(
-        ac, accumulate_u=True, accumulate_v=True)
-      time_svd_real = time.time() - t0
-      at = a.matrix_transpose()
-      t0 = time.time()
-      dgesvd = scitbx.linalg.lapack_dgesvd_fem(a=at)
-      time_dgesvd = time.time() - t0
+  samples = []
+  if not comprehensive:
+    dims = (100, 200)
+    for m in dims:
+      for n in dims:
+        samples.append((m, n))
+  else:
+    if comprehensive == "comprehensive-timing-1":
+      dims = range(100, 600, 100)
+      for m in dims:
+        for n in dims:
+          samples.append((m, n))
+    elif comprehensive == "comprehensive-timing-2":
+      for k in (1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
+                2, 3, 4, 5, 6, 7, 8, 9, 10,
+                20, 30, 40, 50, 60, 70, 80, 90, 100):
+        for n in (10, 20, 30, 40, 50, 60, 70, 80, 90, 100):
+          samples.append((int(k*n), n))
+    else:
+      raise RuntimeError(comprehensive)
+  if not comprehensive:
+    print " m   n  real dgesvd"
+  else:
+    handwritten_wrt_lapack = []
+    progress = progress_displayed_as_fraction(len(samples))
+  for m, n in samples:
+    if comprehensive: progress.advance()
+    a = mt.random_double(size=m*n)*4-2
+    a.reshape(flex.grid(m,n))
+    ac = a.deep_copy()
+    t0 = time.time()
+    svd_real = scitbx.linalg.svd.real(
+      ac, accumulate_u=True, accumulate_v=True)
+    time_svd_real = time.time() - t0
+    at = a.matrix_transpose()
+    t0 = time.time()
+    dgesvd = scitbx.linalg.lapack_dgesvd_fem(a=at)
+    time_dgesvd = time.time() - t0
+    if not comprehensive:
       print "%3d %3d %4.2f %4.2f" % (m, n, time_svd_real, time_dgesvd)
+    else:
+      handwritten_wrt_lapack.append((m, n, time_svd_real/time_dgesvd))
+  if comprehensive:
+    print "handwrittenwrtlapack={"
+    print ",".join([ "{%3d, %3d, %4.2f}" % (m, n, t)
+                     for (m, n, t) in handwritten_wrt_lapack ])
+    print "}"
 
 def run(args):
-  assert len(args) == 0
+  assert len(args) in (0, 1)
   import scitbx.linalg
   lapack_dgesvd_fem = getattr(scitbx.linalg, "lapack_dgesvd_fem", None)
   if (lapack_dgesvd_fem is None):
     print "Skipping tests: lapack_dgesvd_fem not available."
   else:
     exercise()
-    compare_times()
+    if not args:
+      compare_times()
+    else:
+      compare_times(args[0][2:])
   print "OK"
 
 if (__name__ == "__main__"):
