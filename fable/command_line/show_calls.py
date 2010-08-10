@@ -5,7 +5,7 @@ def run(args):
   command_line = (option_parser(
     usage="%s [options] fortran_file ..." % libtbx.env.dispatcher_name)
     .option(None, "--top_unit_name",
-      action="store",
+      action="append",
       type="str")
     .option(None, "--write_graphviz_dot",
       action="store",
@@ -15,7 +15,7 @@ def run(args):
   from fable.read import process
   all_units = process(file_names=command_line.args)
   topological_units = all_units.build_bottom_up_unit_list_following_calls(
-    top_name=co.top_unit_name)
+    top_names=co.top_unit_name)
   dep_cycles = topological_units.dependency_cycles
   if (len(dep_cycles) != 0):
     print "Dependency cycles:", len(dep_cycles)

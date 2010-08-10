@@ -2896,17 +2896,15 @@ class split_units(object):
       return O._units_by_name_plain
     return O._units_by_name
 
-  def build_bottom_up_unit_list_following_calls(O,
-        top_name=None,
-        extra_names=None):
+  def build_bottom_up_unit_list_following_calls(O, top_names=None):
     return build_bottom_up_unit_list_following_calls(
-      all_units=O, top_name=top_name, extra_names=extra_names)
+      all_units=O, top_names=top_names)
 
 class build_bottom_up_unit_list_following_calls(object):
 
   __slots__ = [
     "all_units",
-    "top_name",
+    "top_names",
     "deps_by_unit_identifier",
     "bottom_up_list",
     "forward_uses_by_identifier",
@@ -2914,10 +2912,9 @@ class build_bottom_up_unit_list_following_calls(object):
     "intrinsics_extra",
     "missing_external_fdecls_by_identifier"]
 
-  def __init__(O, all_units, top_name=None, extra_names=None):
-    if (extra_names is not None): assert top_name is not None
+  def __init__(O, all_units, top_names=None):
     O.all_units = all_units
-    O.top_name = top_name
+    O.top_names = top_names
     units_by_name = O.all_units.units_by_name()
     #
     for unit in O.all_units.all_in_input_order:
@@ -2975,33 +2972,31 @@ class build_bottom_up_unit_list_following_calls(object):
       result = sorted(deps)
       O.deps_by_unit_identifier[unit.name.value] = result
       return result
-    if (O.top_name is None):
+    if (O.top_names is None or len(O.top_names) == 0):
       connections_for_topological_sort = []
       for unit in O.all_units.all_in_input_order:
         connections_for_topological_sort.append(
           (unit.name.value, get_dependencies(unit=unit)))
     else:
-      top_unit = units_by_name.get(O.top_name)
-      if (top_unit is None):
-        top_unit = units_by_name.get("program_"+O.top_name)
-      if (top_unit is None):
-        raise RuntimeError(
-          "Unknown Fortran unit name (top unit): %s" % O.top_name)
-      def recurse(unit):
-        for identifier in get_dependencies(unit=unit):
-          if (identifier in O.deps_by_unit_identifier):
-            continue
-          next_unit = units_by_name.get(identifier)
-          if (next_unit is not None):
-            recurse(unit=next_unit)
-      recurse(unit=top_unit)
-      if (extra_names is not None):
-        for name in extra_names:
-          unit = units_by_name.get(name)
-          if (unit is None):
+      top_names_tidy = []
+      for top_name_or_names in O.top_names:
+        for top_name in top_name_or_names.split(","):
+          top_unit = units_by_name.get(top_name)
+          if (top_unit is None):
+            top_unit = units_by_name.get("program_"+top_name)
+          if (top_unit is None):
             raise RuntimeError(
-              "Unknown Fortran unit name (extra name): %s" % name)
-          recurse(unit=unit)
+              "Unknown Fortran unit name: %s" % top_name)
+          top_names_tidy.append(top_name)
+          def recurse(unit):
+            for identifier in get_dependencies(unit=unit):
+              if (identifier in O.deps_by_unit_identifier):
+                continue
+              next_unit = units_by_name.get(identifier)
+              if (next_unit is not None):
+                recurse(unit=next_unit)
+          recurse(unit=top_unit)
+      O.top_names = top_names_tidy
       connections_for_topological_sort = []
       for unit in O.all_units.all_in_input_order:
         if (unit.name.value in O.deps_by_unit_identifier):

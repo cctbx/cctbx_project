@@ -67,7 +67,7 @@ class process(object):
     opts = O.options
     lines = fable.cout.process(
       file_names=file_names,
-      top_unit_name=opts.top_unit_name,
+      top_unit_names=opts.top_unit_name,
       include_guard_suffix=opts.include_guard_suffix,
       dynamic_parameters=O.dynamic_parameters,
       fortran_file_comments=opts.fortran_file_comments,
@@ -128,7 +128,7 @@ def run(args):
       action="store_true",
       default=False)
     .option(None, "--top_unit_name",
-      action="store",
+      action="append",
       type="str",
       metavar="IDENTIFIER")
     .option(None, "--include_guard_suffix",

@@ -52,7 +52,8 @@ Examples
 - Small `Fortran source <sources/fable/test/valid/sf.f>`_ and corresponding
   `fable.cout output <sf.cpp>`_
 
-- LAPACK 3.2.1 DSYEV converted to `dsyev.hpp <sources/lapack_fem/dsyev.hpp>`_
+- Selected LAPACK 3.2.1 functions converted to
+  `lapack_fem/selected.hpp <sources/lapack_fem/selected.hpp>`_
 
 ----------------------------------------------------------------------
 
@@ -109,7 +110,9 @@ const analysis tracing even through function pointers.
 The ``--top-unit-name`` option of ``fable.cout`` can be used to
 extract only the specified SUBROUTINE or FUNCTION unit and all its
 dependencies; all unused units are not converted. This feature was
-used to produce the `dsyev.hpp <dsyev.hpp>`_ example.
+used to produce the
+`lapack_fem/selected.hpp <sources/lapack_fem/selected.hpp>`_
+example.
 
 No global variables in C++
 --------------------------

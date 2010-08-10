@@ -34,13 +34,11 @@ namespace boost_python_meta_ext { struct holder {}; }
 
 #if defined(SCITBX_LAPACK_FEM)
 
-#include <lapack_fem/dgesvd.hpp>
-#include <lapack_fem/dsyev.hpp>
+#include <lapack_fem/selected.hpp>
 
 namespace scitbx { namespace lapack { namespace boost_python {
 
-  lapack_dgesvd_fem::common dgesvd_cmn;
-  lapack_dsyev_fem::common dsyev_cmn;
+  lapack_fem::common cmn;
 
   boost::python::object
   dgesvd_fem_wrapper(
@@ -57,8 +55,8 @@ namespace scitbx { namespace lapack { namespace boost_python {
     int lwork = fem::max(1,3*fem::min(m,n)+fem::max(m,n),5*fem::min(m,n));
     boost::scoped_array<double> work(new double[lwork]);
     int info;
-    lapack_dgesvd_fem::dgesvd(
-      dgesvd_cmn,
+    lapack_fem::dgesvd(
+      cmn,
       /*jobu*/ "A",
       /*jobvt*/ "A",
       m,
@@ -95,8 +93,8 @@ namespace scitbx { namespace lapack { namespace boost_python {
     int lwork = std::max(1, 3*n-1);
     boost::scoped_array<double> work(new double[lwork]);
     int info;
-    lapack_dsyev_fem::dsyev(
-      dsyev_cmn,
+    lapack_fem::dsyev(
+      cmn,
       fem::str_cref(jobz.data(), jobz.size()),
       fem::str_cref(uplo.data(), uplo.size()),
       n,

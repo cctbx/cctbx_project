@@ -2760,8 +2760,7 @@ default_arr_nd_size_max = 256
 def process(
       file_names=None,
       all_units=None,
-      top_unit_name=None,
-      extra_unit_names=None,
+      top_unit_names=None,
       namespace="please_specify",
       include_prefix=None,
       include_guard_suffix=None,
@@ -2854,7 +2853,7 @@ def process(
     using_namespace_major_types=need_using_major_types)
   #
   topological_units = all_units.build_bottom_up_unit_list_following_calls(
-    top_name=top_unit_name, extra_names=extra_unit_names)
+    top_names=top_unit_names)
   missing = topological_units.missing_external_fdecls_by_identifier
   if (len(missing) != 0):
     for identifier in sorted(missing.keys()):
