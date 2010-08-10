@@ -41,6 +41,48 @@ namespace scitbx { namespace lapack { namespace boost_python {
   lapack_fem::common cmn;
 
   boost::python::object
+  dgesdd_fem_wrapper(
+    af::ref<double, af::c_grid<2> > const& a)
+  {
+    int m = a.accessor()[1];
+    int n = a.accessor()[0];
+    SCITBX_ASSERT(m > 0);
+    SCITBX_ASSERT(n > 0);
+    af::shared<double> s(fem::min(m,n), 0.);
+    af::versa<double, af::c_grid<2> > u(af::c_grid<2>(m, m), 0.);
+    af::versa<double, af::c_grid<2> > vt(af::c_grid<2>(n, n), 0.);
+    int lwork = 3*fem::min(m,n) + fem::max(
+      fem::max(m,n),
+      4*fem::min(m,n)*fem::min(m,n)+4*fem::min(m,n));
+    fem::arr<double> work(fem::dimension(lwork));
+    fem::arr<int> iwork(fem::dimension(8*fem::min(m,n)));
+    int info;
+    lapack_fem::dgesdd(
+      cmn,
+      /*jobz*/ "A",
+      m,
+      n,
+      a[0],
+      /*lda*/ m,
+      s[0],
+      u[0],
+      /*ldu*/ m,
+      vt[0],
+      /*ldvt*/ n,
+      work,
+      lwork,
+      iwork,
+      info);
+    boost::python::object result;
+    result = boost::python::object(boost_python_meta_ext::holder());
+    result.attr("s") = s;
+    result.attr("u") = u;
+    result.attr("vt") = vt;
+    result.attr("info") = info;
+    return result;
+  }
+
+  boost::python::object
   dgesvd_fem_wrapper(
     af::ref<double, af::c_grid<2> > const& a)
   {
@@ -48,12 +90,11 @@ namespace scitbx { namespace lapack { namespace boost_python {
     int n = a.accessor()[0];
     SCITBX_ASSERT(m > 0);
     SCITBX_ASSERT(n > 0);
-    int lda = fem::max(1,m);
     af::shared<double> s(fem::min(m,n), 0.);
     af::versa<double, af::c_grid<2> > u(af::c_grid<2>(m, m), 0.);
     af::versa<double, af::c_grid<2> > vt(af::c_grid<2>(n, n), 0.);
     int lwork = fem::max(1,3*fem::min(m,n)+fem::max(m,n),5*fem::min(m,n));
-    boost::scoped_array<double> work(new double[lwork]);
+    fem::arr<double> work(fem::dimension(lwork));
     int info;
     lapack_fem::dgesvd(
       cmn,
@@ -62,13 +103,13 @@ namespace scitbx { namespace lapack { namespace boost_python {
       m,
       n,
       a[0],
-      lda,
+      /*lda*/ m,
       s[0],
       u[0],
       /*ldu*/ m,
       vt[0],
       /*ldvt*/ n,
-      work[0],
+      work,
       lwork,
       info);
     boost::python::object result;
@@ -91,7 +132,7 @@ namespace scitbx { namespace lapack { namespace boost_python {
     int n = a.accessor()[0];
     SCITBX_ASSERT(w.size() == n);
     int lwork = std::max(1, 3*n-1);
-    boost::scoped_array<double> work(new double[lwork]);
+    fem::arr<double> work(fem::dimension(lwork));
     int info;
     lapack_fem::dsyev(
       cmn,
@@ -101,7 +142,7 @@ namespace scitbx { namespace lapack { namespace boost_python {
       a[0],
       /*lda*/ n,
       w[0],
-      work[0],
+      work,
       lwork,
       info);
     return info;
@@ -176,6 +217,8 @@ namespace scitbx { namespace lapack { namespace boost_python {
   {
     using namespace boost::python;
 #if defined(SCITBX_LAPACK_FEM)
+    def("lapack_dgesdd_fem", dgesdd_fem_wrapper, (
+      arg("a")));
     def("lapack_dgesvd_fem", dgesvd_fem_wrapper, (
       arg("a")));
     def("lapack_dsyev_fem", dsyev_fem_wrapper, (

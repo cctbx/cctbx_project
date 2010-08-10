@@ -1,5 +1,4 @@
-def exercise():
-  from scitbx.linalg import lapack_dgesvd_fem
+def exercise_impl(svd_impl):
   from scitbx.array_family import flex
   from scitbx import matrix
   from libtbx.test_utils import approx_equal
@@ -10,7 +9,7 @@ def exercise():
       for i in xrange(n):
         a[(i,i)] = diag
       a_inp = a.deep_copy()
-      svd = lapack_dgesvd_fem(a=a)
+      svd = svd_impl(a=a)
       assert svd.info == 0
       assert approx_equal(svd.s, [diag]*n)
       assert svd.u.all() == (n,n)
@@ -26,7 +25,7 @@ def exercise():
   for m in xrange(1,11):
     for n in xrange(1,11):
       a = matrix.rec(elems=tuple(mt.random_double(m*n)*4-2), n=(m,n))
-      svd = lapack_dgesvd_fem(a=a.transpose().as_flex_double_matrix())
+      svd = svd_impl(a=a.transpose().as_flex_double_matrix())
       assert svd.info == 0
       sigma = get_sigma(svd, m, n)
       u = matrix.sqr(svd.u).transpose()
@@ -36,7 +35,7 @@ def exercise():
   a = matrix.rec(elems=[
      0.47,  0.10, -0.21,
     -0.21, -0.03, 0.35], n=(3,2))
-  svd = lapack_dgesvd_fem(a=a.transpose().as_flex_double_matrix())
+  svd = svd_impl(a=a.transpose().as_flex_double_matrix())
   assert svd.info == 0
   assert approx_equal(svd.s, [0.55981345199567534, 0.35931726783538481])
   assert approx_equal(svd.u, [
@@ -47,7 +46,13 @@ def exercise():
     0.8615633693608673, -0.50765003750177129,
     0.50765003750177129, 0.8615633693608673])
 
-def compare_times(comprehensive=False):
+def exercise():
+  from scitbx.linalg import lapack_dgesvd_fem
+  from scitbx.linalg import lapack_dgesdd_fem
+  exercise_impl(svd_impl=lapack_dgesvd_fem)
+  exercise_impl(svd_impl=lapack_dgesdd_fem)
+
+def compare_times(comprehensive=False, svd_impl_name="dgesdd"):
   import scitbx.linalg.svd
   from scitbx.array_family import flex
   import time
@@ -74,10 +79,11 @@ def compare_times(comprehensive=False):
     else:
       raise RuntimeError(comprehensive)
   if not comprehensive:
-    print " m   n  real dgesvd"
+    print " m   n  real %s" % svd_impl_name
   else:
     handwritten_wrt_lapack = []
     progress = progress_displayed_as_fraction(len(samples))
+  lapack_svd_impl = getattr(scitbx.linalg, "lapack_%s_fem" % svd_impl_name)
   for m, n in samples:
     if comprehensive: progress.advance()
     a = mt.random_double(size=m*n)*4-2
@@ -89,7 +95,7 @@ def compare_times(comprehensive=False):
     time_svd_real = time.time() - t0
     at = a.matrix_transpose()
     t0 = time.time()
-    dgesvd = scitbx.linalg.lapack_dgesvd_fem(a=at)
+    svd_lapack = lapack_svd_impl(a=at)
     time_dgesvd = time.time() - t0
     if not comprehensive:
       print "%3d %3d %4.2f %4.2f" % (m, n, time_svd_real, time_dgesvd)
