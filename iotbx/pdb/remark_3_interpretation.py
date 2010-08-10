@@ -419,6 +419,15 @@ class extract_tls_parameters(object):
        self.format_err(msg="TLS present but cannot be extracted.")
        return []
      #
+     for t in self.tls_params:
+       if(not(len(t.t) == len(t.l))):
+         self.format_err(msg="TLS present but cannot be extracted.")
+         return []
+       if(len(t.t) == len(t.l) and len(t.l)>0 and
+          (len(t.s)!=9 or len(t.origin)!=3)):
+         self.format_err(msg="TLS present but cannot be extracted.")
+         return []
+     #
      return self.tls_params
 
 
