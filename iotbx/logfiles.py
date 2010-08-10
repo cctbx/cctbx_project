@@ -20,12 +20,16 @@ class integration_info (object) :
     self.program_name = program_name
     self.wavelength = None
     self.distance = None
+    self.twotheta = None
 
   def set_wavelength (self, wavelength) :
     self.wavelength = float(wavelength)
 
   def set_distance (self, distance) :
     self.distance = float(distance)
+
+  def set_2theta (self, twotheta) :
+    self.twotheta = twotheta
 
   def extract_all_stats (self) :
     return self
@@ -156,27 +160,25 @@ class processing_info (object) :
     lines.append(" NUMBER OF CRYSTALS USED        : NULL")
     lines.append("")
     # TODO
-    wavelength = getattr(e, "wavelength", "NULL")
-    if (wavelength == "NULL") :
-      wavelength = getattr(i, "wavelength", "NULL")
+    wavelength = getattr(e, "wavelength", None)
+    if (wavelength is None) :
+      wavelength = getattr(i, "wavelength", None)
     synchrotron = "NULL"
-    if (wavelength != "NULL") :
-      try :
-        wl = float(wavelength.strip())
-      except ValueError :
-        pass
+    if (wavelength is not None) :
+      if (not approx_equal(wavelength, 1.5418, 0.01) and
+          not approx_equal(wavelength, 0.7107, 0.01)) :
+        synchrotron = "Y"
       else :
-        if (not approx_equal(wl, 1.5418, 0.01) and
-            not approx_equal(wl, 0.7107, 0.01)) :
-          synchrotron = "Y"
-        else :
-          synchrotron = "N"
+        synchrotron = "N"
+      wl = "%.4f" % wavelength
+    else :
+      wl = "NULL"
     lines.append(" SYNCHROTRON              (Y/N) : %s" % synchrotron)
     lines.append(" RADIATION SOURCE               : NULL")
     lines.append(" BEAMLINE                       : NULL")
     lines.append(" X-RAY GENERATOR MODEL          : NULL")
     lines.append(" MONOCHROMATIC OR LAUE    (M/L) : M")
-    lines.append(" WAVELENGTH OR RANGE        (A) : %s" % wavelength)
+    lines.append(" WAVELENGTH OR RANGE        (A) : %s" % wl)
     lines.append(" MONOCHROMATOR                  : NULL")
     lines.append(" OPTICS                         : NULL")
     lines.append("")
@@ -320,6 +322,35 @@ def parse_denzo (lines) :
       info.set_distance(float(fields[4]))
   return info
 
+def parse_mosflm (lines) :
+  info = integration_info("MOSFLM")
+  for i, line in enumerate(lines) :
+    line = line.strip()
+    if line.startswith("Beam Parameters") :
+      j = i
+      while (j < len(lines)) :
+        line = lines[j].strip()
+        if line.startswith("Wavelength") :
+          wavelength = float(line.split()[1])
+          info.set_wavelength(wavelength)
+          break
+        j += 1
+    elif line.startswith("Detector Parameters") :
+      j = i
+      while (j < (i + 100)) :
+        line = lines[j].strip()
+        if line.startswith("Crystal to detector distance") :
+          fields = line.split()
+          distance = float(fields[-2])
+          info.set_distance(distance)
+        elif line.startswith("Detector swing angle") :
+          fields = line.split()
+          twotheta = float(fields[-2])
+          info.set_twotheta(twotheta)
+        j += 1
+      break
+  return info
+
 def parse_scala (lines) :
   from iotbx import data_plots
   info = scaling_info("SCALA")
@@ -341,7 +372,8 @@ def parse_scala (lines) :
         elif line.startswith("Total number unique") :
           n_refl = float(line.split()[3])
           info.set_n_refl(n_refl, n_refl_all)
-        elif line.startswith("Mean((I)/sd(I))") :
+        elif (line.startswith("Mean((I)/sd(I))") or
+              line.startswith("Mean(I)/sd(I)")) :
           info.add_overall_stat("i/sigma", float(line.split()[1]))
         elif line.startswith("Completeness") :
           info.add_overall_stat("completeness", float(line.split()[1]))
@@ -393,6 +425,9 @@ def parse_all_files (args) :
           break
         elif "SCALA - continuous scaling program" in line :
           scaling = parse_scala(lines)
+          break
+        elif "A.G.W. Leslie" in line :
+          integration = parse_mosflm(lines)
           break
   info = processing_info(experiment=experiment,
     integration=integration,

@@ -297,7 +297,7 @@ class process_arrays (object) :
         zip(params.mtz_file.miller_array, file_names, miller_arrays) :
       array_name = "%s:%s" % (file_name, array_params.labels)
       if params.verbose :
-        print "Processing %s" % array_name
+        print >> log, "Processing %s" % array_name
       if array_params.d_max is not None and array_params.d_max <= 0 :
         array_params.d_max = None
       if array_params.d_min is not None and array_params.d_min <= 0 :
@@ -313,9 +313,9 @@ class process_arrays (object) :
         raise Sorry("The parameters remove_negatives and massage_intensities "+
           "are mutually exclusive.")
       if DEBUG :
-        print "  Starting size:  %d" % miller_array.data().size()
+        print >> log, "  Starting size:  %d" % miller_array.data().size()
         if miller_array.sigmas() is not None :
-          print "         sigmas:  %d" % miller_array.sigmas().size()
+          print >> log, "         sigmas:  %d" % miller_array.sigmas().size()
 
       #-----------------------------------------------------------------
       # OUTPUT LABELS SANITY CHECK
@@ -375,9 +375,9 @@ class process_arrays (object) :
         new_array = new_array.merge_equivalents().array()
 
       if DEBUG :
-        print "  Adjusted size:  %d" % new_array.data().size()
+        print >> log, "  Adjusted size:  %d" % new_array.data().size()
         if miller_array.sigmas() is not None :
-          print "         sigmas:  %d" % new_array.sigmas().size()
+          print >> log, "         sigmas:  %d" % new_array.sigmas().size()
 
       #-----------------------------------------------------------------
       # CHANGE OF BASIS
@@ -406,7 +406,7 @@ class process_arrays (object) :
         print >> log, "    %s [Inverse: %s]" % (cb_op.as_xyz(),
           cb_op.inverse().as_xyz())
         if (d < 0 and co.change_of_basis != "to_inverse_hand"):
-          print >> out, ("WARNING: This change of basis operator changes the "+
+          print >> log, ("WARNING: This change of basis operator changes the "+
                         "hand!")
         if params.mtz_file.crystal_symmetry.eliminate_invalid_indices :
           sel = cb_op.apply_results_in_non_integral_indices(
@@ -415,35 +415,35 @@ class process_arrays (object) :
           keep = ~toss
           keep_array = new_array.select(keep)
           toss_array = new_array.select(toss)
-          print >> out, "  Mean value for kept reflections:", \
+          print >> log, "  Mean value for kept reflections:", \
             flex.mean(keep_array.data())
-          print >> out, "  Mean value for invalid reflections:", \
+          print >> log, "  Mean value for invalid reflections:", \
             flex.mean(toss_array.data())
           new_array = new_array
         new_array = new_array.change_basis(cb_op=cb_op)
-        print >> out, "  Crystal symmetry after change of basis:"
+        print >> log, "  Crystal symmetry after change of basis:"
         crystal.symmetry.show_summary(new_array, out=out, prefix="    ")
 
       #-----------------------------------------------------------------
       # OTHER FILTERING
       if DEBUG :
-        print "  Resolution before array-specific filter: %.2f - %.2f" % (
+        print >> log, "  Resolution before resolution filter: %.2f - %.2f" % (
           new_array.d_max_min())
       # first the array-specific cutoff
       new_array = new_array.resolution_filter(
         d_min=array_params.d_min,
         d_max=array_params.d_max)
       if DEBUG :
-        print "              after array-specific filter: %.2f - %.2f" % (
+        print >> log, "              after resolution filter: %.2f - %.2f" % (
           new_array.d_max_min())
       # now apply the global cutoff
       new_array = new_array.resolution_filter(
           d_min=params.mtz_file.d_min,
           d_max=params.mtz_file.d_max)
       if DEBUG :
-        print "  Truncated size: %d" % new_array.data().size()
+        print >> log, "  Truncated size: %d" % new_array.data().size()
         if new_array.sigmas() is not None :
-          print "          sigmas: %d" % new_array.sigmas().size()
+          print >> log, "          sigmas: %d" % new_array.sigmas().size()
       if new_array.anomalous_flag() and array_params.output_non_anomalous :
         print >> log, ("Converting array %s from anomalous to non-anomalous." %
                        array_name)
@@ -521,9 +521,9 @@ class process_arrays (object) :
         r_free_arrays.append((new_array, info, output_labels, file_name))
       else :
         if DEBUG :
-          print "  Final size:    %d" % output_array.data().size()
+          print >> log, "  Final size:    %d" % output_array.data().size()
           if output_array.sigmas() is not None :
-            print "      sigmas:    %d" % output_array.sigmas().size()
+            print >> log, "      sigmas:    %d" % output_array.sigmas().size()
         self.add_array_to_mtz_dataset(
           output_array=output_array,
           fake_label=fake_label,
