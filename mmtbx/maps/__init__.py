@@ -283,6 +283,7 @@ def map_coefficients_from_fmodel(fmodel, params):
   e_map_obj = fmodel.electron_density_map(
     fill_missing_f_obs = params.fill_missing_f_obs,
     fill_mode          = "dfmodel")
+  coeffs = None
   if(not params.kicked):
     coeffs = e_map_obj.map_coefficients(
       map_type           = params.map_type,
@@ -294,10 +295,10 @@ def map_coefficients_from_fmodel(fmodel, params):
         "You can disable the automatic twin law detection by setting the "+
         "parameter maps.skip_twin_detection to True (or check the "+
         "corresponding box in the Phenix GUI).")
-
-    coeffs = map_tools.kick_map(
-      fmodel   = e_map_obj.fmodel,
-      map_type = params.map_type).map_coeffs
+    if(params.map_type.count("anom")==0):
+      coeffs = map_tools.kick_map(
+        fmodel   = e_map_obj.fmodel,
+        map_type = params.map_type).map_coeffs
   if(coeffs is not None and params.sharpening):
     coeffs = map_tools.b_sharp_map(map_coefficients = coeffs, b_sharp =
       params.sharpening_b_factor)

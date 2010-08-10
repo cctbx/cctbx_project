@@ -5,30 +5,25 @@ import libtbx, os
 
 params1 = iotbx.phil.parse("""\
 polygon {
-  keys_to_show = *r_work_pdb *r_free_pdb *bonds_rmsd *angles_rmsd *adp_mean
+  keys_to_show = *r_work *r_free *bond_rmsd *angle_rmsd *adp_mean_all
   filter
   {
-    key = *d_min
+    key = *high_resolution
     value_min = 2
     value_max = 2.5
   }
   filter
   {
-    key = *n_atoms
+    key = *number_of_atoms
     value_min = 0
     value_max = 50000
   }
-  #filter
-  #{
-  #  key = *data_label
-  #  target_value = fobs_x
-  #}
 }
 """)
 
 params2 = iotbx.phil.parse("""\
 polygon {
-  keys_to_show = *r_work_pdb *r_free_pdb *bonds_rmsd *angles_rmsd *adp_mean
+  keys_to_show = *r_work *r_free *bond_rmsd *angle_rmsd *adp_mean_all
 }
 """)
 
@@ -55,7 +50,7 @@ def example_3():
 
 if (__name__ == "__main__"):
   file_name = libtbx.env.find_in_repositories(
-      relative_path = "chem_data/polygon_data/phenix_mvd_2009_SEP_8_10h36.pickle",
+      relative_path = "chem_data/polygon_data/all_mvd.pickle",
       test = os.path.isfile)
   if(file_name is None):
     print "Skip POLYGON test: database file is not available."

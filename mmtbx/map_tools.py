@@ -17,10 +17,10 @@ class kick_map(object):
                      number_of_kicks    = 30,
                      acentrics_scale    = 2.0,
                      centrics_pre_scale = 1.0):
+    self.map_coeffs = None
     fmodel_tmp = fmodel.deep_copy()
     map_helper_obj = fmodel.map_calculation_helper()
     map_coeff_data = None
-    self.map_coeffs = None
     counter = 0
     for kick_size in kick_sizes:
       for kick in xrange(number_of_kicks):

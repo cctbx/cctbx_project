@@ -65,7 +65,8 @@ class peaks_holder(object):
 
 class manager(object):
   def __init__(self, fmodel, map_type, map_cutoff, params = None, log = None,
-                     use_kick_map = False, kick_map_params = None):
+                     use_kick_map = False, kick_map_params = None,
+                     silent = False):
     adopt_init_args(self, locals())
     self.mapped = False
     self.peaks_ = None
@@ -126,9 +127,10 @@ class manager(object):
         heights *= -1.
       self.peaks_ = peaks_holder(heights = heights,
                                  sites   = cluster_analysis.sites())
-      print >>self.log,"Number of peaks found at %s map (map cutoff=%s %s)= %s"%(
-        self.map_type, format_value("%-5.2f", self.map_cutoff).strip(),
-        map_units, format_value("%-12d", self.peaks_.sites.size()))
+      if(not self.silent):
+        print >>self.log,"Number of peaks found at %s map (map cutoff=%s %s)= %s"%(
+          self.map_type, format_value("%-5.2f", self.map_cutoff).strip(),
+          map_units, format_value("%-12d", self.peaks_.sites.size()))
 
   def peaks(self):
     return self.peaks_
@@ -143,7 +145,8 @@ class manager(object):
     if(not self.params.map_next_to_model.use_hydrogens):
       use_selection = ~xray_structure.hd_selection()
     initial_number_of_sites = self.peaks_.sites.size()
-    print >> self.log, "Filter by distance & map next to the model:"
+    if(not self.silent):
+      print >> self.log, "Filter by distance & map next to the model:"
     result = xray_structure.closest_distances(sites_frac = self.peaks_.sites,
       distance_cutoff = max_dist, use_selection = use_selection)
     smallest_distances_sq = result.smallest_distances_sq
@@ -160,14 +163,16 @@ class manager(object):
     sd = flex.sqrt(smallest_distances_sq.select(in_box))
     d_min = flex.min_default(sd, 0)
     d_max = flex.max_default(sd, 0)
-    print >> self.log,"   mapped sites are within: %5.3f - %5.3f"%(d_min,d_max)
-    print >> self.log, "   number of sites selected in [dist_min=%5.2f, " \
-      "dist_max=%5.2f]: %d from: %d" % (min_dist, max_dist, peaks.sites.size(),
-      initial_number_of_sites)
+    if(not self.silent):
+      print >> self.log,"   mapped sites are within: %5.3f - %5.3f"%(d_min,d_max)
+      print >> self.log, "   number of sites selected in [dist_min=%5.2f, " \
+        "dist_max=%5.2f]: %d from: %d" % (min_dist, max_dist, peaks.sites.size(),
+        initial_number_of_sites)
     smallest_distances = flex.sqrt(smallest_distances_sq.select(selection))
     d_min = flex.min_default(smallest_distances, 0)
     d_max = flex.max_default(smallest_distances, 0)
-    print >> self.log,"   mapped sites are within: %5.3f - %5.3f"%(d_min,d_max)
+    if(not self.silent):
+      print >> self.log,"   mapped sites are within: %5.3f - %5.3f"%(d_min,d_max)
     self.mapped = True
     self.peaks_ = peaks
     return peaks
