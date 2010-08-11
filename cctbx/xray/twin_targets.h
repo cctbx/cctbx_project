@@ -996,7 +996,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
                            scitbx::af::const_ref< std::complex<FloatType> > const& f_model,
                            FloatType const& twin_fraction) const
     {
-       CCTBX_ASSERT( ( i_obs.size() == sig_obs.size() ) || ( sig_obs.size() )  );
+       CCTBX_ASSERT( ( i_obs.size() == sig_obs.size() ) || ( sig_obs.size()==0 )  );
        CCTBX_ASSERT( f_model.size() == calc_size_ );
        CCTBX_ASSERT( i_obs.size() == obs_size_ );
 
