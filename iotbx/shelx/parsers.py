@@ -29,6 +29,74 @@ class parser(object):
     for command, line in self.filtered_commands(): pass
 
 
+class instruction_parser(parser):
+  """ A parser for extracting from the command stream miscellaneous
+      shelxl commands that do not concern other parsers.
+  """
+
+  def __init__(self, command_stream, builder=None):
+    parser.__init__(self, command_stream, builder)
+    self.instructions = {}
+
+  def filtered_commands(self):
+    for command, line in self.command_stream:
+      cmd, args = command[0], command[-1]
+      n_args = len(args)
+      if cmd == 'OMIT':
+        if n_args == 3 and isinstance(args[0], float):
+          self.instructions.setdefault('omit_hkl', [])
+          self.instructions['omit_hkl'].append([int(i) for i in args])
+        elif n_args == 2 and isinstance(args[0], float):
+          self.instructions['omit'] = {
+            's': args[0],
+            'two_theta': args[1]}
+        else:
+          yield command, line
+      elif cmd == 'SHEL':
+        if args:
+          shel = {'lowres': args[0]}
+          if n_args > 1:
+            shel['highres'] = args[1]
+      elif cmd == 'MERG':
+        if args:
+          self.instructions['merg'] = args[0]
+      elif cmd == 'WGHT':
+        if args:
+          names = 'abcdef'
+          assert n_args <= 6
+          self.instructions['wght'] = dict(
+            [(names[i], args[i]) for i in range(n_args)])
+      elif cmd == 'HKLF':
+        assert 'hklf' not in self.instructions # only ONE HKLF instruction allowed
+        hklf = {}
+        hklf['n'] = args[0]
+        if n_args > 1:
+          hklf['s'] = args[1]
+          if n_args > 2:
+            assert n_args > 10
+            hklf['matrix'] = sgtbx.rt_mx(
+              sgtbx.rot_mx([int(i) for i in args[2:11]]))
+            if n_args > 11:
+              hklf['wt'] = args[11]
+              if n_args == 13:
+                hklf['m'] = args[12]
+        self.instructions['hklf'] = hklf
+      elif cmd == 'TWIN':
+        assert 'twin' not in self.instructions # only ONE twin instruction allowed
+        twin = {}
+        if n_args > 0:
+          assert n_args >= 9
+          twin['matrix'] = sgtbx.rt_mx(
+            sgtbx.rot_mx([int(i) for i in args[0:9]]))
+          if n_args > 9:
+            twin['n'] = args[9]
+        self.instructions['twin'] = twin
+      elif cmd == 'BASF':
+        self.instructions['basf'] = args
+      else:
+        yield command, line
+
+
 class crystal_symmetry_parser(parser):
   """ A parser pulling out the crystal symmetry info from a command stream """
 
