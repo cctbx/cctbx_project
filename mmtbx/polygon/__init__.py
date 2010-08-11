@@ -5,26 +5,32 @@ import libtbx, os, re
 from libtbx.utils import Sorry
 from libtbx import easy_pickle
 
-keys_to_show = ["r_work", "r_free", "pdb_header_r_work",
-  "pdb_header_r_free", "r_work_cutoffs", "r_free_cutoffs", "completeness_in_range",
-  "completeness_d_min_inf", "completeness_6A_inf", "adp_mean_all", "adp_min_all",
-  "adp_max_all",
-  "wilson_b", "b_sol", "k_sol", "solvent_cont", "matthews_coeff",
-  "bond_rmsd", "bond_max", "angle_rmsd", "angle_max", "dihedral_rmsd",
-  "dihedral_max", "planarity_rmsd", "planarity_max", "chirality_rmsd",
-  "chirality_max", "rama_favored", "rama_allowed", "rama_general",
-  "rama_outliers"]
+keys_to_show = ["r_work", "r_free",
+  "pdb_header_r_work", "pdb_header_r_free",
+  "r_work_cutoffs", "r_free_cutoffs",
+  "completeness_in_range", "completeness_d_min_inf", "completeness_6A_inf",
+  "adp_mean_all", "adp_min_all", "adp_max_all",
+  "wilson_b", "b_sol", "k_sol", "solvent_content_via_mask",
+  "bond_rmsd", "bond_max_deviation", "angle_rmsd", "angle_max_deviation",
+  "dihedral_rmsd", "dihedral_max_deviation",
+  "planarity_rmsd", "planarity_max_deviation",
+  "chirality_rmsd", "chirality_max_deviation",
+  "rama_favored", "rama_allowed", "rama_outliers",
+  "rotamer_outliers", "clashscore"]
 
-default_keys = ["r_work", "r_free", "adp_mean_all", "bond_rmsd", "angle_rmsd"]
+default_keys = ["r_work", "r_free", "adp_mean_all", "bond_rmsd", "angle_rmsd",
+  "clashscore"]
 
 key_captions = ["R-work", "R-free", "R-work (PDB)", "R-free (PDB)",
-  "R-work (cutoff)", "R-free (cutoff)", "Completeness in range",
-  "Completeness", "Completeness to 6A", "Average B", "Minimum B", "Maximum B",
-  "Wilson B", "B(solvent)", "K(solvent)", "Solvent content", "Matthews coeff.",
+  "R-work (after cutoff)", "R-free (after cutoff)",
+  "Completeness in range", "Completeness", "Completeness to 6A",
+  "Average B", "Minimum B", "Maximum B",
+  "Wilson B", "B(solvent)", "K(solvent)", "Solvent content",
   "RMSD(bonds)", "Bonds max.", "RMSD(angles)", "Angles max.",
   "RMSD(dihedrals)", "Dihedrals max.", "RMSD(planarity)", "Planarity max",
-  "RMSD(chirality)", "Chirality max.", "Ramachandran favored",
-  "Ramachandran allowed", "Ramachandran generous", "Ramachandran outliers",]
+  "RMSD(chirality)", "Chirality max.",
+  "Ramachandran favored", "Ramachandran allowed", "Ramachandran outliers",
+  "Rotamer outliers", "Clashscore"]
 
 assert len(keys_to_show) == len(key_captions)
 _selected = []
@@ -36,6 +42,7 @@ for key_name in keys_to_show :
 key_params_str = " ".join(_selected)
 captions_str = " ".join([ re.sub(" ", "_", txt) for txt in key_captions ])
 
+# XXX phil choices can't have '-' or '+' in the word
 polygon_params_str = """\
   database_file_name = None
     .type = str
@@ -66,16 +73,15 @@ polygon_params_str = """\
   {
       key = twinned number_of_atoms atom_types_and_count_str angle_rmsd \
             pdb_header_year high_resolution planarity_max_deviation \
-            low_resolution number_of_mFo-DFc_peaks-3sigma number_of_reflections \
+            low_resolution number_of_reflections \
             adp_mean_sidechain pdb_header_sigma_cutoff completeness_d_min_inf \
-            dihedral_max_deviation number_of_mFo-DFc_peaks-6sigma \
-            r_work_cutoffs pdb_header_r_free number_of_mFo-DFc_peaks-9sigma \
+            dihedral_max_deviation \
+            r_work_cutoffs pdb_header_r_free \
             bond_rmsd non_bonded_min_distance adp_min_all b_sol r_free \
             number_of_residues_with_altlocs pdb_code resname_classes \
             unit_cell_volume chirality_max_deviation space_group \
-            number_of_mFo-DFc_peaks+3sigma number_of_mFo-DFc_peaks+6sigma \
             anomalous_flag wilson_b pdb_header_tls unit_cell rama_favored \
-            adp_mean_solvent number_of_mFo-DFc_peaks+9sigma rama_allowed \
+            adp_mean_solvent rama_allowed \
             number_of_npd pdb_header_high_resolution occupancy_mean \
             overall_scale_b_cart adp_max_all number_of_anisotropic \
             pdb_header_matthews_coeff pdb_header_solvent_cont \
