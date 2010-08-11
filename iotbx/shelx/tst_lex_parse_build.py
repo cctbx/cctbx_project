@@ -114,6 +114,23 @@ def exercise_crystal_symmetry_parsing():
     file=cStringIO.StringIO(ins_P1))
   assert cs.is_similar_symmetry(l.builder.crystal_symmetry)
 
+def exercise_instruction_parsing():
+  stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
+  l = shelx.instruction_parser(stream)
+  l.parse()
+  ins = l.instructions
+  assert ins['hklf']['s'] == 1
+  assert ins['hklf']['matrix'].as_xyz() == 'x,y,z'
+  assert ins['hklf']['n'] == 4
+  assert ins['omit_hkl'] == [[2, 3, 4], [-1, -3, 2]]
+  assert ins['omit']['s'] == -2
+  assert ins['omit']['two_theta'] == 56
+  assert ins['wght'] == {'a':0.0687,'b':0.4463}
+  assert ins['merg'] == 2
+  assert ins['twin']['matrix'].as_xyz() == '-x,y,-z'
+  assert ins['twin']['n'] == 2
+  assert ins['basf'] == (0.352,)
+
 def exercise_xray_structure_parsing():
   exercise_special_positions()
   exercise_aspirin()
@@ -558,6 +575,7 @@ def shelx_u_cif(unit_cell, u_star):
   return (" "*3).join([ "%.5f" % x for x in  u_cif ])
 
 def run():
+  exercise_instruction_parsing()
   exercise_restraint_parsing()
   exercise_afix_parsing()
   exercise_xray_structure_parsing()
@@ -660,6 +678,13 @@ UNIT 36 28 16
 TEMP 20.000
 L.S. 20
 WGHT    0.068700    0.446300
+MERG 2
+OMIT -2 56
+OMIT 2 3 4
+OMIT -1 -3 2
+BASF 0.352
+REM this twin command is nonsense...
+TWIN -1 0 0 0 1 0 0 0 -1 2
 FVAR       0.91641
 O2    3    0.879181    0.140375    0.051044    11.00000    0.05893    0.05202 =
          0.05656    0.01670    0.01559    0.01156
@@ -704,7 +729,7 @@ AFIX 137
 H9A   2    0.571182    0.263181    0.222267    11.00000   -1.50000
 H9C   2    0.670926    0.103865    0.213827    11.00000   -1.50000
 H9B   2    0.545047    0.061174    0.153241    11.00000   -1.50000
-HKLF 4
+HKLF 4 1 1 0 0 0 1 0 0 0 1
 
 REM  aspirin in P2(1)/c
 REM R1 =  0.0455 for   1038 Fo > 4sig(Fo)  and  0.0990 for all   1806 data
