@@ -315,23 +315,23 @@ def exercise_restraint_parsing():
     l_restraints = shelx.restraint_parser(
       l_xs.filtered_commands(), builder)
     l_restraints.parse()
-    return l_restraints.builder.proxies
+    return l_restraints.builder.proxies()
   # exercise DFIX, DANG
   proxies = parse_restraints(ins_dfix_across_symm)
-  shared_bond_sym_proxy = proxies[geometry_restraints.bond_sym_proxy]
-  assert len(shared_bond_sym_proxy) == 3
-  assert approx_equal(shared_bond_sym_proxy[0].distance_ideal, 1.75)
-  assert approx_equal(shared_bond_sym_proxy[1].distance_ideal, 1.75)
-  assert approx_equal(shared_bond_sym_proxy[2].distance_ideal, 1.75)
-  assert shared_bond_sym_proxy[0].i_seqs == (3,0)
-  assert shared_bond_sym_proxy[1].i_seqs == (3,2)
-  assert shared_bond_sym_proxy[2].i_seqs == (1,3)
-  assert approx_equal(shared_bond_sym_proxy[0].weight, 2500.0)
-  assert approx_equal(shared_bond_sym_proxy[1].weight, 1/(0.03*0.03))
-  assert approx_equal(shared_bond_sym_proxy[2].weight, 2500.0)
-  assert shared_bond_sym_proxy[0].rt_mx_ji == sgtbx.rt_mx('-x+1,y,-z+1/2')
-  assert shared_bond_sym_proxy[1].rt_mx_ji == sgtbx.rt_mx('-x+1,y,-z+1/2')
-  assert shared_bond_sym_proxy[2].rt_mx_ji == sgtbx.rt_mx()
+  shared_bond_proxy = proxies[geometry_restraints.bond_simple_proxy]
+  assert len(shared_bond_proxy) == 3
+  assert approx_equal(shared_bond_proxy[0].distance_ideal, 1.75)
+  assert approx_equal(shared_bond_proxy[1].distance_ideal, 1.75)
+  assert approx_equal(shared_bond_proxy[2].distance_ideal, 1.75)
+  assert shared_bond_proxy[0].i_seqs == (3,0)
+  assert shared_bond_proxy[1].i_seqs == (3,2)
+  assert shared_bond_proxy[2].i_seqs == (1,3)
+  assert approx_equal(shared_bond_proxy[0].weight, 2500.0)
+  assert approx_equal(shared_bond_proxy[1].weight, 1/(0.03*0.03))
+  assert approx_equal(shared_bond_proxy[2].weight, 2500.0)
+  assert shared_bond_proxy[0].rt_mx_ji == sgtbx.rt_mx('-x+1,y,-z+1/2')
+  assert shared_bond_proxy[1].rt_mx_ji == sgtbx.rt_mx('-x+1,y,-z+1/2')
+  assert shared_bond_proxy[2].rt_mx_ji is None
   # invalid DFIX instructions
   try:
     proxies = parse_restraints(ins_invalid_dfix)
