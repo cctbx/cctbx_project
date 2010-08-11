@@ -52,9 +52,13 @@ def get_master_phil():
 reference_model
 {
     file = None
-      .type = str
+      .type = path
+      .short_caption = PDB file
+      .style = bold file_type:pdb
     selection = None
       .type = str
+      .short_caption = Atom selection
+      .input_size = 400
     sigma = 1.0
       .type = float
     limit = 15.0
@@ -67,11 +71,32 @@ reference_model
       .type = bool
     side_chain = True
       .type = bool
+    fix_outliers = True
+      .type = bool
+    reference_group
+      .multiple=True
+      .optional=True
+      .short_caption=Reference group
+      .style = noauto auto_align
+    {
+      reference= None
+        .type=str
+        .optional=True
+        .short_caption=Reference selection
+        .input_size=400
+        .style = selection bold
+      selection= None
+        .type=str
+        .short_caption=Restrained selection
+        .input_size=400
+        .style = selection bold
+    }
 }
 """)
 
 def exercise_reference_model(args, mon_lib_srv, ener_lib):
   master_phil = get_master_phil()
+  #print master_phil.show()
   input_objects = iotbx.utils.process_command_line_inputs(
     args=args,
     master_phil=master_phil,
@@ -87,6 +112,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   geometry = processed_pdb_file.geometry_restraints_manager()
   sites_cart = processed_pdb_file.all_chain_proxies.sites_cart
   xray_structure=processed_pdb_file.xray_structure()
+  pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy
   processed_pdb_file_ref = monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
@@ -95,7 +121,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     for_dihedral_reference=True)
   geometry_ref = processed_pdb_file_ref.geometry_restraints_manager()
   sites_cart_ref = processed_pdb_file_ref.all_chain_proxies.sites_cart
-
+  pdb_hierarchy_ref=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy
   i_seq_name_hash = reference_model.build_name_hash(
     pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   assert i_seq_name_hash == \
@@ -120,16 +146,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     include_hydrogens=False,
     include_main_chain=True,
     include_side_chain=True)
-  assert dihedral_hash == \
-    {' CA  ASN C 236  C   ASN C 236  N   LEU C 237  CA  LEU C 237 ': -171.86697238051445,
-     ' C   ASN C 236  N   LEU C 237  CA  LEU C 237  C   LEU C 237 ': -137.00198604910656,
-     ' CA  LEU C 237  CB  LEU C 237  CG  LEU C 237  CD2 LEU C 237 ': -178.92930350265104,
-     ' CA  ASN C 236  CB  ASN C 236  CG  ASN C 236  OD1 ASN C 236 ': 43.580408297861439,
-     ' N   ASN C 236  CA  ASN C 236  C   ASN C 236  N   LEU C 237 ': 29.747422877599458,
-     ' CA  ASN C 236  N   ASN C 236  C   ASN C 236  CB  ASN C 236 ': -123.34365764907594,
-     ' N   LEU C 237  CA  LEU C 237  CB  LEU C 237  CG  LEU C 237 ': 179.11361522972217,
-     ' CA  LEU C 237  N   LEU C 237  C   LEU C 237  CB  LEU C 237 ': -123.06126402446726,
-     ' N   ASN C 236  CA  ASN C 236  CB  ASN C 236  CG  ASN C 236 ': -156.76768556981202}
+  assert len(dihedral_hash) == 9
 
   reference_dihedral_proxies = reference_model.get_home_dihedral_proxies(
     work_params=work_params.reference_model,
@@ -178,6 +195,9 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
                     pdb_hierarchy=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy)
   assert cbetadev_hash == \
     {' ASN C 236': '  0.015', ' LEU C 237': '  0.038'}
+  reference_model.process_reference_groups(pdb_hierarchy=pdb_hierarchy,
+                                           pdb_hierarchy_ref=pdb_hierarchy_ref,
+                                           params=work_params.reference_model)
 def run(args):
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
