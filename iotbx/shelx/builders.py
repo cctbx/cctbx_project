@@ -93,8 +93,8 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
     super(restrained_crystal_structure_builder, self).__init__(*args, **kwds)
     geom = geometry_restraints
     adp = adp_restraints
-    self.proxies = {
-      geom.bond_sym_proxy: [],
+    self._proxies = {
+      geom.bond_simple_proxy: geom.shared_bond_simple_proxy(),
       geom.angle_proxy: geom.shared_angle_proxy(),
       geom.dihedral_proxy: geom.shared_dihedral_proxy(),
       geom.chirality_proxy: geom.shared_chirality_proxy(),
@@ -115,7 +115,7 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
       adp.isotropic_adp_proxy: smtbx_adp_restraints.isotropic_adp_restraints
     }
     self.shelx_cmd_to_proxy_type_mappings = {
-      'DFIX': geometry_restraints.bond_sym_proxy,
+      'DFIX': geometry_restraints.bond_simple_proxy,
       'DANG': geometry_restraints.bond_sym_proxy,
       'FLAT': geometry_restraints.planarity_proxy,
       'CHIV': geometry_restraints.chirality_proxy,
@@ -128,12 +128,12 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
   def add_proxy(self, cmd, kwds):
     proxy_type = self.shelx_cmd_to_proxy_type_mappings[cmd]
     if proxy_type in self.adp_proxy_builders:
-      kwds['proxies'] = self.proxies[proxy_type]
+      kwds['proxies'] = self._proxies[proxy_type]
       kwds['xray_structure'] = self.structure
       self.adp_proxy_builders[proxy_type](**kwds)
     else:
       proxy=proxy_type(**kwds)
-      self.proxies[proxy_type].append(proxy)
+      self._proxies[proxy_type].append(proxy)
 
   def process_restraint(self, cmd, shelx_kwds):
     def replace_None_with_unit_matrix(sym_ops):
@@ -147,7 +147,7 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
     if cmd in ('DFIX','DANG'):
       sym_ops = shelx_kwds['sym ops']
       if sym_ops.count(None) == 2:
-        rt_mx_ji = sgtbx.rt_mx() # unit matrix
+        rt_mx_ji = None # unit matrix
       elif sym_ops.count(None) == 1:
         sym_op = sym_ops[1]
         if sym_op is None:
@@ -159,7 +159,8 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
         rt_mx_ji_2 = sgtbx.rt_mx(sym_ops[1])
         rt_mx_ji_inv = rt_mx_ji_1.inverse()
         rt_mx_ji = rt_mx_ji_inv.multiply(rt_mx_ji_2)
-      kwds['rt_mx_ji'] = rt_mx_ji
+      if rt_mx_ji is not None:
+        kwds['rt_mx_ji'] = rt_mx_ji
       kwds['distance_ideal'] = shelx_kwds['d']
       esd = shelx_kwds['s']
       kwds['weight'] = 1/(esd**2)
@@ -196,3 +197,7 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
 
   def finish(self):
     pass
+
+  def proxies(self):
+    return dict([(proxy_type, proxies) for proxy_type, proxies in self._proxies.iteritems()
+                 if len(proxies) != 0])
