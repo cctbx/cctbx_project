@@ -77,14 +77,14 @@ class scaling_info (object) :
     d_min = float(self.bins[-1][1])
     d_max = float(self.bins[0][0])
     comp_overall = self.stats_overall.get("completeness", None)
-    redu_overall = self.stats_overall.get("multiplicity", None)
+    mult_overall = self.stats_overall.get("multiplicity", None)
     rmerg_overall = self.stats_overall.get("r_merge", None)
     s2n_overall = self.stats_overall.get("i/sigma", None)
     return group_args(d_max_min=(d_max, d_min),
                       n_refl=self.n_refl,
                       n_refl_all=self.n_refl_all,
                       completeness=float_or_none(comp_overall),
-                      multiplicity=float_or_none(redu_overall),
+                      multiplicity=float_or_none(mult_overall),
                       r_sym=float_or_none(rmerg_overall),
                       i_over_sigma=float_or_none(s2n_overall))
 
@@ -93,14 +93,14 @@ class scaling_info (object) :
     d_min = float(self.bins[-1][1])
     d_max = float(self.bins[-1][0])
     comp_bin = self.binned_stats.get("completeness", [None])[-1]
-    redu_bin = self.binned_stats.get("multiplicity", [None])[-1]
+    mult_bin = self.binned_stats.get("multiplicity", [None])[-1]
     rmerg_bin = self.binned_stats.get("r_merge", [None])[-1]
     s2n_bin = self.binned_stats.get("i/sigma", [None])[-1]
     return group_args(d_max_min=(d_max, d_min),
                       n_refl=None,
                       n_refl_all=None,
                       completeness=float_or_none(comp_bin),
-                      multiplicity=float_or_none(comp_bin),
+                      multiplicity=float_or_none(mult_bin),
                       r_sym=float_or_none(rmerg_bin),
                       i_over_sigma=float_or_none(s2n_bin))
 
@@ -191,11 +191,11 @@ class processing_info (object) :
     lines.append("")
     lines.append("OVERALL.")
     comp_overall = format(s, "completeness", "%.1f")
-    redu_overall = format(s, "multiplicity", "%.1f")
+    mult_overall = format(s, "multiplicity", "%.1f")
     rmerg_overall = format(s, "r_sym", "%.5f")
     s2n_overall = format(s, "i_over_sigma", "%.4f")
     lines.append(" COMPLETENESS FOR RANGE     (%%) : %s" % comp_overall)
-    lines.append(" DATA REDUNDANCY                : %s" % redu_overall)
+    lines.append(" DATA REDUNDANCY                : %s" % mult_overall)
     lines.append(" R MERGE                    (I) : %s" % rmerg_overall)
     lines.append(" R SYM                      (I) : NULL")
     lines.append(" <I/SIGMA(I)> FOR THE DATA SET  : %s" % s2n_overall)
@@ -208,13 +208,13 @@ class processing_info (object) :
     d_max = format_value("%.2f", _d_max, replace_none_with="NULL").strip()
     d_min = format_value("%.2f", _d_min, replace_none_with="NULL").strip()
     comp_lastbin = format(shell, "completeness", "%.1f")
-    redu_lastbin = format(shell, "multiplicity", "%.1f")
+    mult_lastbin = format(shell, "multiplicity", "%.1f")
     rmerg_lastbin = format(shell, "r_sym", "%.5f")
     s2n_lastbin = format(shell, "i_over_sigma", "%.4f")
     lines.append(" HIGHEST RESOLUTION SHELL, RANGE HIGH (A) : %s" % d_min)
     lines.append(" HIGHEST RESOLUTION SHELL, RANGE LOW  (A) : %s" % d_max)
     lines.append(" COMPLETENESS FOR SHELL     (%%) : %s" % comp_lastbin)
-    lines.append(" DATA REDUNDANCY IN SHELL       : %s" % redu_lastbin)
+    lines.append(" DATA REDUNDANCY IN SHELL       : %s" % mult_lastbin)
     lines.append(" R MERGE FOR SHELL          (I) : %s" % rmerg_lastbin)
     lines.append(" R SYM FOR SHELL            (I) : NULL")
     lines.append(" <I/SIGMA(I)> FOR SHELL         : %s" % s2n_lastbin)

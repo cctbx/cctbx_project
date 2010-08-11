@@ -27,6 +27,12 @@ polygon {
 }
 """)
 
+params3 = iotbx.phil.parse("""\
+polygon {
+  keys_to_show = %s
+}
+""" % " ".join([ "*%s" % k for k in polygon.keys_to_show ]))
+
 def example_1():
   # show selected characteristics, apply pre-defined filters
   pr, unused_definitions = polygon.master_params.fetch(sources = [params1],
@@ -47,6 +53,11 @@ def example_3():
   polygon.polygon(params = pr.extract(),
                   d_min  = 2.0)
 
+def test_all () :
+  pr, unused_definitions = polygon.master_params.fetch(sources = [params3],
+    track_unused_definitions = True)
+  polygon.polygon(params = pr.extract())
+  working_phil = polygon.master_params.fetch(source=pr)
 
 if (__name__ == "__main__"):
   file_name = libtbx.env.find_in_repositories(
@@ -61,3 +72,5 @@ if (__name__ == "__main__"):
     example_2()
     print "\nEXAMPLE 3:"
     example_3()
+    print "\nALL STATS:"
+    test_all()

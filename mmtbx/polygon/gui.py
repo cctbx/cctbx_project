@@ -6,11 +6,11 @@ from math import pi, cos, sin, radians, degrees, floor
 import cStringIO
 
 stat_names = dict(zip(polygon.keys_to_show, polygon.key_captions))
-stat_formats = { "r_work_pdb" : "%.4f",
-                 "r_free_pdb" : "%.4f",
-                 "bonds_rmsd" : "%.3f",
-                 "angles_rmsd" : "%.2f",
-                 "adp_mean" : "%.1f" }
+stat_formats = { "r_work" : "%.4f",
+                 "r_free" : "%.4f",
+                 "bond_rmsd" : "%.3f",
+                 "angle_rmsd" : "%.2f",
+                 "adp_mean_all" : "%.1f" }
 
 # XXX: not pickle-able - run this in GUI thread
 def convert_histogram_data (polygon_result) :
@@ -22,12 +22,7 @@ def convert_histogram_data (polygon_result) :
 
 def get_stats_and_histogram_data (mvd_object, params, debug=False) :
   pdb_file = mvd_object.pdb_file
-  mvd_log = cStringIO.StringIO()
-  mvd_object.show(log=mvd_log)
-  mvd_lines = mvd_log.getvalue().splitlines()
-  mvd_results = model_vs_data.read_mvd_output(mvd_lines, None)
-  if debug :
-    print mvd_log.getvalue()
+  mvd_results = model_vs_data.summarize_results(mvd_object)
   fmodel = mvd_object.fmodel
   d_min = fmodel.info().d_min
 
@@ -51,8 +46,8 @@ def get_stats_and_histogram_data (mvd_object, params, debug=False) :
 
 def get_basic_histogram_data (d_min) :
   params = polygon.master_params.fetch().extract()
-  params.polygon.keys_to_show = ["r_work_re_computed", "r_free_re_computed",
-    "bonds_rmsd", "angles_rmsd", "adp_mean"]
+  params.polygon.keys_to_show = ["r_work", "r_free",
+    "bond_rmsd", "angle_rmsd", "adp_mean_all", "clashscore"]
   histograms = polygon.polygon(params=params,
                                d_min=d_min,
                                show_histograms=False,

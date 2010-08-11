@@ -1,7 +1,7 @@
-import sys, os, time, random
+import sys, os, time, random, re
 from cctbx.array_family import flex
 from iotbx import pdb
-from cctbx import adptbx
+from cctbx import adptbx, sgtbx
 from iotbx.option_parser import iotbx_option_parser
 from libtbx.utils import Sorry
 from iotbx import reflection_file_utils
@@ -61,6 +61,9 @@ class mvd(object):
     if(pdb_header    is not None): self.pdb_header    = pdb_header
     if(misc          is not None): self.misc          = misc
     if(maps          is not None): self.maps          = maps
+
+  def get_summary (self) :
+    return summarize_results(self)
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
@@ -863,3 +866,84 @@ def run(args,
     output_prefix = "_".join(output_prefixes)
     easy_pickle.dump("%s.pickle"%output_prefix, mvd_obj)
   return mvd_obj
+
+def summarize_results (mvd_obj) :
+  space_group_str = getattr(mvd_obj.crystal, "sg", None)
+  if (space_group_str is None) :
+    space_group = None
+  else :
+    space_group = sgtbx.space_group_info(re.sub("\ \(.*", "", space_group_str))
+  model_stats = mvd_obj.models[0]
+  geometry_stats = getattr(model_stats, "geometry_all", None)
+  molprobity_stats = getattr(model_stats, "molprobity", None)
+  xs_stats = getattr(getattr(model_stats, "xray_structure_stat", None),
+                     "all", None)
+  if (molprobity_stats is not None) :
+    c_beta_deviations = molprobity_stats.cbetadev
+    clashscore = molprobity_stats.clashscore
+    rama_allowed = molprobity_stats.ramalyze_allowed[1] * 100.0
+    rama_favored = molprobity_stats.ramalyze_favored[1] * 100.0
+    rama_outliers = molprobity_stats.ramalyze_outliers[1] * 100.0
+    rotamer_outliers = molprobity_stats.rotalyze[1] * 100.0
+  else:
+    c_beta_deviations = clashscore = rama_allowed = rama_favored = \
+      rama_outliers = rotamer_outliers =None
+  def convert_float (value) :
+    try :
+      return float(value)
+    except ValueError :
+      return None
+  def convert_float (value) :
+    try :
+      return float(value)
+    except ValueError :
+      return None
+  def convert_float (value) :
+    try :
+      return float(value)
+    except ValueError :
+      return None
+  def convert_float (value) :
+    try :
+      return float(value)
+    except ValueError :
+      return None
+  return group_args(
+    space_group=space_group,
+    unit_cell=getattr(mvd_obj.crystal, "uc", None),
+    r_work=mvd_obj.model_vs_data.r_work,
+    r_free=mvd_obj.model_vs_data.r_free,
+    pdb_header_r_work=getattr(mvd_obj.pdb_header, "r_work", None),
+    pdb_header_r_free=getattr(mvd_obj.pdb_header, "r_free", None),
+    r_work_cutoffs=getattr(mvd_obj.misc, "r_work_cutoff", None),
+    r_free_cutoffs=getattr(mvd_obj.misc, "r_free_cutoff", None),
+    d_max_pdb=getattr(mvd_obj.pdb_header, "low_resolution", None),
+    d_min_pdb=getattr(mvd_obj.pdb_header, "high_resolution", None),
+    d_min=mvd_obj.data.high_resolution,
+    d_max=mvd_obj.data.low_resolution,
+    completeness_6A_inf=mvd_obj.data.completeness_6A_inf,
+    completeness_d_min_inf=mvd_obj.data.completeness_d_min_inf,
+    completeness_in_range=mvd_obj.data.completeness_in_range,
+    adp_max_all=convert_float(getattr(xs_stats, "b_max",None)),
+    adp_mean_all=convert_float(getattr(xs_stats, "b_mean",None)),
+    adp_min_all=convert_float(getattr(xs_stats, "b_min", None)),
+    wilson_b=mvd_obj.data.wilson_b,
+    b_sol=mvd_obj.model_vs_data.b_sol,
+    k_sol=mvd_obj.model_vs_data.k_sol,
+    solvent_content_via_mask=mvd_obj.model_vs_data.solvent_content_via_mask,
+    bond_rmsd=getattr(geometry_stats, "b_mean", None),
+    bond_max_deviation=getattr(geometry_stats, "b_max", None),
+    angle_rmsd=getattr(geometry_stats, "a_mean", None),
+    angle_max_deviation=getattr(geometry_stats, "a_max", None),
+    dihedral_rmsd=getattr(geometry_stats, "d_mean", None),
+    dihedral_max_deviation=getattr(geometry_stats, "d_max", None),
+    chirality_rmsd=getattr(geometry_stats, "c_mean", None),
+    chirality_max_deviation=getattr(geometry_stats, "c_max", None),
+    planarity_rmsd=getattr(geometry_stats, "p_mean", None),
+    planarity_max_deviation=getattr(geometry_stats, "p_max", None),
+    rama_favored=rama_favored,
+    rama_allowed=rama_allowed,
+    rama_outliers=rama_outliers,
+    rotamer_outliers=rotamer_outliers,
+    c_beta_deviations=c_beta_deviations,
+    clashscore=clashscore)
