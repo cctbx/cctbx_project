@@ -1,5 +1,7 @@
 
-import sys, os
+from __future__ import division
+import cStringIO
+import sys, os, re
 
 def check_bin_format (bin) :
   try :
@@ -10,6 +12,10 @@ def check_bin_format (bin) :
 def float_or_none (n) :
   if n is None : return None
   else :         return float(n)
+
+def percent_to_float (value) :
+  assert value.endswith("%")
+  return float(re.sub("\%$", "", value))
 
 class experiment_info (object) :
   def extract_all_stats (self) :
@@ -97,7 +103,7 @@ class scaling_info (object) :
     rmerg_bin = self.binned_stats.get("r_merge", [None])[-1]
     s2n_bin = self.binned_stats.get("i/sigma", [None])[-1]
     return group_args(d_max_min=(d_max, d_min),
-                      n_refl=None,
+                      n_refl=None, # FIXME
                       n_refl_all=None,
                       completeness=float_or_none(comp_bin),
                       multiplicity=float_or_none(mult_bin),
@@ -165,8 +171,9 @@ class processing_info (object) :
       wavelength = getattr(i, "wavelength", None)
     synchrotron = "NULL"
     if (wavelength is not None) :
-      if (not approx_equal(wavelength, 1.5418, 0.01) and
-          not approx_equal(wavelength, 0.7107, 0.01)) :
+      out = cStringIO.StringIO()
+      if (not approx_equal(wavelength, 1.5418, eps=0.01, out=out) and
+          not approx_equal(wavelength, 0.7107, eps=0.01, out=out)) :
         synchrotron = "Y"
       else :
         synchrotron = "N"
@@ -221,6 +228,56 @@ class processing_info (object) :
     lines.append("")
     remark_lines = [ "REMARK 200 %s" % line for line in lines ]
     return "\n".join(remark_lines)
+
+#-----------------------------------------------------------------------
+# PARSERS
+#
+def parse_denzo (lines) :
+  info = integration_info("HKL-2000")
+  for i, line in enumerate(lines) :
+    if line.strip().startswith("Wavelength ") :
+      fields = line.strip().split()
+      for field in fields :
+        try :
+          wavelength = float(field)
+        except ValueError :
+          pass
+        else :
+          info.set_wavelength(wavelength)
+          break
+    elif line.strip().startswith("Detector to crystal distance") :
+      fields = line.strip().split()
+      info.set_distance(float(fields[4]))
+  return info
+
+def parse_mosflm (lines) :
+  info = integration_info("MOSFLM")
+  for i, line in enumerate(lines) :
+    line = line.strip()
+    if line.startswith("Beam Parameters") :
+      j = i
+      while (j < len(lines)) :
+        line = lines[j].strip()
+        if line.startswith("Wavelength") :
+          wavelength = float(line.split()[1])
+          info.set_wavelength(wavelength)
+          break
+        j += 1
+    elif line.startswith("Detector Parameters") :
+      j = i
+      while (j < (i + 100)) :
+        line = lines[j].strip()
+        if line.startswith("Crystal to detector distance") :
+          fields = line.split()
+          distance = float(fields[-2])
+          info.set_distance(distance)
+        elif line.startswith("Detector swing angle") :
+          fields = line.split()
+          twotheta = float(fields[-2])
+          info.set_twotheta(twotheta)
+        j += 1
+      break
+  return info
 
 def parse_scalepack (lines) :
   n_lines = len(lines)
@@ -304,53 +361,6 @@ def parse_scalepack (lines) :
         j += 1
   return info
 
-def parse_denzo (lines) :
-  info = integration_info("HKL-2000")
-  for i, line in enumerate(lines) :
-    if line.strip().startswith("Wavelength ") :
-      fields = line.strip().split()
-      for field in fields :
-        try :
-          wavelength = float(field)
-        except ValueError :
-          pass
-        else :
-          info.set_wavelength(wavelength)
-          break
-    elif line.strip().startswith("Detector to crystal distance") :
-      fields = line.strip().split()
-      info.set_distance(float(fields[4]))
-  return info
-
-def parse_mosflm (lines) :
-  info = integration_info("MOSFLM")
-  for i, line in enumerate(lines) :
-    line = line.strip()
-    if line.startswith("Beam Parameters") :
-      j = i
-      while (j < len(lines)) :
-        line = lines[j].strip()
-        if line.startswith("Wavelength") :
-          wavelength = float(line.split()[1])
-          info.set_wavelength(wavelength)
-          break
-        j += 1
-    elif line.startswith("Detector Parameters") :
-      j = i
-      while (j < (i + 100)) :
-        line = lines[j].strip()
-        if line.startswith("Crystal to detector distance") :
-          fields = line.split()
-          distance = float(fields[-2])
-          info.set_distance(distance)
-        elif line.startswith("Detector swing angle") :
-          fields = line.split()
-          twotheta = float(fields[-2])
-          info.set_twotheta(twotheta)
-        j += 1
-      break
-  return info
-
 def parse_scala (lines) :
   from iotbx import data_plots
   info = scaling_info("SCALA")
@@ -409,6 +419,78 @@ def parse_scala (lines) :
       break
   return info
 
+def parse_xds (lines) :
+  info = integration_info("XDS")
+  for i, line in enumerate(lines) :
+    line = line.strip()
+    if line.startswith("X-RAY_WAVELENGTH") :
+      fields = line.split("=")[1].strip().split()
+      info.set_wavelength(float(fields[0]))
+      break
+  return info
+
+def parse_xscale (lines) :
+  info = scaling_info("XSCALE")
+  d_max = 0.0
+  d_min = 999.99
+  for i, line in enumerate(lines) :
+    line = line.strip()
+    if (line.startswith("INPUT_FILE=")) :
+      fields = line.split()
+      if (len(fields) < 4) :
+        continue
+      try :
+        (d_max_file, d_min_file) = (float(fields[-2]), float(fields[-1]))
+      except ValueError :
+        pass
+      except Exception, e :
+        print line
+        raise
+      else :
+        if (d_max_file > d_max) :
+          d_max = d_max_file
+        if (d_min_file < d_min) :
+          d_min = d_min_file
+        info.set_d_max_min(d_max, d_min)
+    elif line.startswith("SUBSET OF INTENSITY DATA WITH SIGNAL/NOISE >= -3.0") :
+      j = i+3
+      bins = []
+      overall = []
+      while (j < len(lines)) :
+        line = lines[j].strip()
+        fields = line.split()
+        if (len(fields) < 12) :
+          pass
+        elif (fields[0] == "total") :
+          overall = fields
+          break
+        elif re.match("^\d", line) :
+          bins.append(fields)
+        j += 1
+      assert (len(bins) > 0) and (len(overall) == len(bins[0]))
+      n_refl_all = int(overall[1])
+      n_refl = int(overall[2])
+      info.set_n_refl(n_refl, n_refl_all)
+      info.add_overall_stat("completeness", percent_to_float(overall[4]))
+      info.add_overall_stat("multiplicity", n_refl_all / n_refl)
+      info.add_overall_stat("r_merge", percent_to_float(overall[5]) * 0.01)
+      info.add_overall_stat("i/sigma", float(overall[8]))
+      bins_d_max_min = []
+      for bin in bins :
+        d_min = float(bin[0])
+        bins_d_max_min.append((d_max, d_min))
+        d_max = d_min
+      info.set_bins(bins_d_max_min)
+      for fields, bin  in zip(bins, bins_d_max_min) :
+        bin_n_refl_all = int(fields[1])
+        bin_n_refl = int(fields[2])
+        info.add_bin_stat(bin, "completeness", percent_to_float(fields[4]))
+        info.add_bin_stat(bin, "multiplicity", bin_n_refl_all / bin_n_refl)
+        info.add_bin_stat(bin, "r_merge", percent_to_float(fields[5]) * 0.01)
+        info.add_bin_stat(bin, "i/sigma", float(fields[8]))
+      break
+  return info
+
 def parse_all_files (args) :
   experiment = None
   integration = None
@@ -429,6 +511,12 @@ def parse_all_files (args) :
         elif "A.G.W. Leslie" in line :
           integration = parse_mosflm(lines)
           break
+        elif "XSCALE (VERSION" in line :
+          scaling = parse_xscale(lines)
+          break
+        elif "***** INTEGRATE *****" in line :
+          integration = parse_xds(lines)
+          break
   info = processing_info(experiment=experiment,
     integration=integration,
     scaling=scaling)
@@ -436,6 +524,7 @@ def parse_all_files (args) :
 
 def exercise () :
   import libtbx.load_env
+  from libtbx import test_utils
   denzo_log = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/tracking/denzo.log",
     test=os.path.isfile)
@@ -446,10 +535,27 @@ def exercise () :
     print "DENZO log not found, skipping test."
     return False
   info = parse_all_files([denzo_log, scalepack_log])
-  print info.format_remark_200()
+  output = info.format_remark_200().splitlines()
+  assert ("\n".join([ line.strip() for line in output[-16:]]) == """\
+REMARK 200 OVERALL.
+REMARK 200  COMPLETENESS FOR RANGE     (%) : 88.4
+REMARK 200  DATA REDUNDANCY                : 3.5
+REMARK 200  R MERGE                    (I) : 0.06900
+REMARK 200  R SYM                      (I) : NULL
+REMARK 200  <I/SIGMA(I)> FOR THE DATA SET  : 11.5700
+REMARK 200
+REMARK 200 IN THE HIGHEST RESOLUTION SHELL.
+REMARK 200  HIGHEST RESOLUTION SHELL, RANGE HIGH (A) : 1.98
+REMARK 200  HIGHEST RESOLUTION SHELL, RANGE LOW  (A) : 2.05
+REMARK 200  COMPLETENESS FOR SHELL     (%) : 34.1
+REMARK 200  DATA REDUNDANCY IN SHELL       : 1.5
+REMARK 200  R MERGE FOR SHELL          (I) : 0.70400
+REMARK 200  R SYM FOR SHELL            (I) : NULL
+REMARK 200  <I/SIGMA(I)> FOR SHELL         : 0.6000
+REMARK 200""")
 
 if __name__ == "__main__" :
-  info = parse_all_files(sys.argv[1:])
-  print info.format_remark_200()
-  #exercise()
-  #print "OK"
+  #info = parse_all_files(sys.argv[1:])
+  #print info.format_remark_200()
+  exercise()
+  print "OK"
