@@ -120,7 +120,8 @@ def compare_times(
         handwritten_wrt_lapack.append((m, n, time_svd_real/time_dgesvd))
   finally:
     if comprehensive:
-      print "handwrittenwrtlapack={"
+      print "handwrittenwrtlapack%s%s={" % (svd_impl_name,
+                                            ['', 'fortran'][use_fortran])
       print ",".join([ "{%3d, %3d, %4.2f}" % (m, n, t)
                        for (m, n, t) in handwritten_wrt_lapack ])
       print "}"
