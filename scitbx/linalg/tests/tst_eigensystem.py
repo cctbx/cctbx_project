@@ -75,15 +75,21 @@ def exercise_eigensystem():
   assert v == (0,0,0)
   print "time_eigensystem_real_symmetric: %.3f micro seconds" % (
     (time.time() - t0)/n_repetitions*1.e6)
-  for fxx in ["fem", "for"]:
-    time_dsyev = getattr(scitbx.linalg, "time_lapack_dsyev_"+fxx, None)
-    if (time_dsyev is not None):
-      v = time_dsyev(m, 2) # to trigger one-time initialization
-      t0 = time.time()     # of SAVE variables
-      v = time_dsyev(m, n_repetitions)
-      assert v == (0,0,0)
-      print "time_lapack_dsyev_fem: %.3f micro seconds" % (
-        (time.time() - t0)/n_repetitions*1.e6)
+  from scitbx.linalg import time_lapack_dsyev
+  for use_fortran in [False, True]:
+    if (not use_fortran):
+      if (not scitbx.linalg.fem_is_available()): continue
+      impl_id = "fem"
+    else:
+      if (not scitbx.linalg.for_is_available()): continue
+      impl_id = "for"
+    v = time_lapack_dsyev(m, 2, use_fortran)
+      # to trigger one-time initialization of SAVE variables
+    t0 = time.time()
+    v = time_lapack_dsyev(m, n_repetitions, use_fortran)
+    assert v == (0,0,0)
+    print "time_lapack_dsyev %s: %.3f micro seconds" % (
+      impl_id, (time.time() - t0)/n_repetitions*1.e6)
   #
   s = eigensystem.real_symmetric(m=m)
   assert s.min_abs_pivot() > 0
@@ -101,8 +107,7 @@ def exercise_eigensystem():
   assert approx_equal(s.values(), [3,2,1])
 
 def compare_times(max_n_power=8):
-  dsyev_impls = [getattr(scitbx.linalg, "lapack_dsyev_"+fxx, None)
-    for fxx in ["fem", "for"]]
+  from scitbx.linalg import lapack_dsyev
   mt = flex.mersenne_twister(seed=0)
   show_tab_header = True
   tfmt = "%5.2f"
@@ -116,12 +121,13 @@ def compare_times(max_n_power=8):
     t0 = time.time()
     es = eigensystem.real_symmetric(aes)
     tab = [n, tfmt % (time.time() - t0)]
-    for i in xrange(2):
-      if (dsyev_impls[i] is None):
+    for i,use_fortran in enumerate([False, True]):
+      t0 = time.time()
+      info = lapack_dsyev(
+        jobz="V", uplo="U", a=ala[i], w=wla[i], use_fortran=use_fortran)
+      if (info == 99):
         tab.append(" --- ")
       else:
-        t0 = time.time()
-        info = dsyev_impls[i](jobz="V", uplo="U", a=ala[i], w=wla[i])
         assert info == 0
         tab.append(tfmt % (time.time() - t0))
         assert approx_equal(list(reversed(es.values())), wla[i])
