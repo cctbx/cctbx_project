@@ -75,12 +75,12 @@ def compare_times(
       for n in dims:
         samples.append((m, n))
   else:
-    if comprehensive == "comprehensive-timing-1":
+    if comprehensive == "timing-1":
       dims = range(100, 600, 100)
       for m in dims:
         for n in dims:
           samples.append((m, n))
-    elif comprehensive == "comprehensive-timing-2":
+    elif comprehensive == "timing-2":
       for k in (1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
                 2, 3, 4, 5, 6, 7, 8, 9, 10,
                 20, 30, 40, 50, 60, 70, 80, 90, 100):
@@ -127,14 +127,31 @@ def compare_times(
       print "}"
 
 def run(args):
-  assert len(args) in (0, 1)
+  from libtbx.option_parser import option_parser
+  command_line = (option_parser()
+    .option(None, "--comprehensive",
+            action="store",
+            type="string",
+            default='')
+    .option(None, "--languages",
+            action="store",
+            type="string",
+            default='fem,fortran')
+    .option(None, "--implementations",
+            action="store",
+            type="string",
+            default='dgesvd,dgesdd')
+  ).process(args=sys.argv[1:])
   exercise()
-  if (len(args) == 0):
-    for svd_impl_name in ["dgesvd", "dgesdd"]:
-      for use_fortran in [False, True]:
-        compare_times(svd_impl_name=svd_impl_name, use_fortran=use_fortran)
-  else:
-    compare_times(args[0][2:])
+  comprehensive = command_line.options.comprehensive
+  use_fortran_flags = [ {'fem':False, 'fortran':True}[l]
+                        for l in command_line.options.languages.split(',') ]
+  svd_impl_names = command_line.options.implementations.split(',')
+  for svd_impl_name in svd_impl_names:
+    for use_fortran in use_fortran_flags:
+      compare_times(svd_impl_name=svd_impl_name,
+                    use_fortran=use_fortran,
+                    comprehensive=comprehensive)
   print "OK"
 
 if (__name__ == "__main__"):
