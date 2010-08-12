@@ -95,33 +95,35 @@ def compare_times(
     handwritten_wrt_lapack = []
     progress = progress_displayed_as_fraction(len(samples))
   lapack_svd_impl = getattr(scitbx.linalg, "lapack_%s" % svd_impl_name)
-  for m, n in samples:
-    if comprehensive: progress.advance()
-    a = mt.random_double(size=m*n)*4-2
-    a.reshape(flex.grid(m,n))
-    ac = a.deep_copy()
-    t0 = time.time()
-    svd_real = scitbx.linalg.svd.real(
-      ac, accumulate_u=True, accumulate_v=True)
-    time_svd_real = time.time() - t0
-    at = a.matrix_transpose()
-    t0 = time.time()
-    svd_lapack = lapack_svd_impl(a=at, use_fortran=use_fortran)
-    if (svd_lapack is None):
-      return
-    time_dgesvd = time.time() - t0
-    if not comprehensive:
-      if (header is not None):
-        print header
-        header = None
-      print "%3d %3d %4.2f %4.2f" % (m, n, time_svd_real, time_dgesvd)
-    else:
-      handwritten_wrt_lapack.append((m, n, time_svd_real/time_dgesvd))
-  if comprehensive:
-    print "handwrittenwrtlapack={"
-    print ",".join([ "{%3d, %3d, %4.2f}" % (m, n, t)
-                     for (m, n, t) in handwritten_wrt_lapack ])
-    print "}"
+  try:
+    for m, n in samples:
+      if comprehensive: progress.advance()
+      a = mt.random_double(size=m*n)*4-2
+      a.reshape(flex.grid(m,n))
+      ac = a.deep_copy()
+      t0 = time.time()
+      svd_real = scitbx.linalg.svd.real(
+        ac, accumulate_u=True, accumulate_v=True)
+      time_svd_real = time.time() - t0
+      at = a.matrix_transpose()
+      t0 = time.time()
+      svd_lapack = lapack_svd_impl(a=at, use_fortran=use_fortran)
+      if (svd_lapack is None):
+        return
+      time_dgesvd = time.time() - t0
+      if not comprehensive:
+        if (header is not None):
+          print header
+          header = None
+        print "%3d %3d %4.2f %4.2f" % (m, n, time_svd_real, time_dgesvd)
+      else:
+        handwritten_wrt_lapack.append((m, n, time_svd_real/time_dgesvd))
+  finally:
+    if comprehensive:
+      print "handwrittenwrtlapack={"
+      print ",".join([ "{%3d, %3d, %4.2f}" % (m, n, t)
+                       for (m, n, t) in handwritten_wrt_lapack ])
+      print "}"
 
 def run(args):
   assert len(args) in (0, 1)
