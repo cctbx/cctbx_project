@@ -3,10 +3,10 @@
 # frequently break, it will also try every other file type if necessary,
 # stopping when it finds an appropriate format.
 
-# TODO: map files
+# XXX note that there is some cross-importing from mmtbx here, but it is done
+# inline, not globally
 
 import sys, os, re, string
-from mmtbx.monomer_library import server
 from iotbx.phil import parse as parse_phil
 from iotbx.pdb import is_pdb_file
 from iotbx.pdb import input as pdb_input
@@ -153,6 +153,7 @@ class any_file_input (object) :
     self.file_object = hkl_file
 
   def try_as_cif (self) :
+    from mmtbx.monomer_library import server
     cif_object = server.read_cif(file_name=self.file_name)
     assert len(cif_object) != 0
     self.file_type = "cif"
@@ -234,7 +235,9 @@ class any_file_input (object) :
         file_size_str)
 
   def assert_file_type (self, expected_type) :
-    if self.file_type == expected_type :
+    if (expected_type is None) :
+      return None
+    elif self.file_type == expected_type :
       return True
     else :
       raise Sorry(("Expected file type '%s' for %s, got '%s'.  This is " +
