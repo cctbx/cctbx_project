@@ -153,7 +153,3 @@ class align(object):
 
 def tst():
   xyz = flex.vec3_double(  [ (-1,-1,-1) , (1,1,1) ] )
-
-
-
-
