@@ -89,58 +89,61 @@ namespace scitbx { namespace lapack { namespace boost_python {
     af::shared<double> s(std::min(m,n), 0.);
     af::versa<double, af::c_grid<2> > u(af::c_grid<2>(m, m), 0.);
     af::versa<double, af::c_grid<2> > vt(af::c_grid<2>(n, n), 0.);
-    int lwork = 3*std::min(m,n)*std::min(m,n) + std::max(
-      std::max(m,n),
-      4*std::min(m,n)*std::min(m,n)+4*std::min(m,n));
-    boost::scoped_array<double> work(new double[lwork]);
     boost::scoped_array<int> iwork(new int[8*std::min(m,n)]);
+    int lwork = -1;
     int info;
+    for(unsigned i_pass=0;i_pass<2;i_pass++) {
+      boost::scoped_array<double> work(new double[std::max(1,lwork)]);
 #endif
-    if (!use_fortran) {
+      if (!use_fortran) {
 #if defined(SCITBX_LAPACK_FEM)
-      lapack_fem::dgesdd(
-        cmn,
-        /*jobz*/ "A",
-        m,
-        n,
-        a[0],
-        /*lda*/ m,
-        s[0],
-        u[0],
-        /*ldu*/ m,
-        vt[0],
-        /*ldvt*/ n,
-        work[0],
-        lwork,
-        iwork[0],
-        info);
+        lapack_fem::dgesdd(
+          cmn,
+          /*jobz*/ "A",
+          m,
+          n,
+          a[0],
+          /*lda*/ m,
+          s[0],
+          u[0],
+          /*ldu*/ m,
+          vt[0],
+          /*ldvt*/ n,
+          work[0],
+          lwork,
+          iwork[0],
+          info);
 #else
-      return result;
+        return result;
 #endif
-    }
-    else {
+      }
+      else {
 #if defined(SCITBX_LAPACK_FOR)
-      dgesdd_(
-        /*jobz*/ "A",
-        &m,
-        &n,
-        &a[0],
-        /*lda*/ &m,
-        &s[0],
-        &u[0],
-        /*ldu*/ &m,
-        &vt[0],
-        /*ldvt*/ &n,
-        &work[0],
-        &lwork,
-        &iwork[0],
-        &info,
-        /*jobz_len*/ 1);
+        dgesdd_(
+          /*jobz*/ "A",
+          &m,
+          &n,
+          &a[0],
+          /*lda*/ &m,
+          &s[0],
+          &u[0],
+          /*ldu*/ &m,
+          &vt[0],
+          /*ldvt*/ &n,
+          &work[0],
+          &lwork,
+          &iwork[0],
+          &info,
+          /*jobz_len*/ 1);
 #else
-      return result;
+        return result;
 #endif
-    }
+      }
 #if defined(SCITBX_LAPACK_FEM) || defined(SCITBX_LAPACK_FOR)
+      if (i_pass == 0) {
+        lwork = static_cast<int>(work[0]);
+      }
+    }
     result = boost::python::object(boost_python_meta_ext::holder());
     result.attr("s") = s;
     result.attr("u") = u;
@@ -164,56 +167,61 @@ namespace scitbx { namespace lapack { namespace boost_python {
     af::shared<double> s(std::min(m,n), 0.);
     af::versa<double, af::c_grid<2> > u(af::c_grid<2>(m, m), 0.);
     af::versa<double, af::c_grid<2> > vt(af::c_grid<2>(n, n), 0.);
-    int lwork = std::max(3*std::min(m,n)+std::max(m,n), 5*std::min(m,n));
-    boost::scoped_array<double> work(new double[lwork]);
+    int lwork = -1;
     int info;
+    for(unsigned i_pass=0;i_pass<2;i_pass++) {
+      boost::scoped_array<double> work(new double[std::max(1,lwork)]);
 #endif
-    if (!use_fortran) {
+      if (!use_fortran) {
 #if defined(SCITBX_LAPACK_FEM)
-      lapack_fem::dgesvd(
-        cmn,
-        /*jobu*/ "A",
-        /*jobvt*/ "A",
-        m,
-        n,
-        a[0],
-        /*lda*/ m,
-        s[0],
-        u[0],
-        /*ldu*/ m,
-        vt[0],
-        /*ldvt*/ n,
-        work[0],
-        lwork,
-        info);
+        lapack_fem::dgesvd(
+          cmn,
+          /*jobu*/ "A",
+          /*jobvt*/ "A",
+          m,
+          n,
+          a[0],
+          /*lda*/ m,
+          s[0],
+          u[0],
+          /*ldu*/ m,
+          vt[0],
+          /*ldvt*/ n,
+          work[0],
+          lwork,
+          info);
 #else
-      return result;
+        return result;
 #endif
-    }
-    else {
+      }
+      else {
 #if defined(SCITBX_LAPACK_FOR)
-      dgesvd_(
-        /*jobu*/ "A",
-        /*jobvt*/ "A",
-        &m,
-        &n,
-        &a[0],
-        /*lda*/ &m,
-        &s[0],
-        &u[0],
-        /*ldu*/ &m,
-        &vt[0],
-        /*ldvt*/ &n,
-        &work[0],
-        &lwork,
-        &info,
-        /*jobu_len*/ 1,
-        /*jobvt_len*/ 1);
+        dgesvd_(
+          /*jobu*/ "A",
+          /*jobvt*/ "A",
+          &m,
+          &n,
+          &a[0],
+          /*lda*/ &m,
+          &s[0],
+          &u[0],
+          /*ldu*/ &m,
+          &vt[0],
+          /*ldvt*/ &n,
+          &work[0],
+          &lwork,
+          &info,
+          /*jobu_len*/ 1,
+          /*jobvt_len*/ 1);
 #else
-      return result;
+        return result;
 #endif
-    }
+      }
 #if defined(SCITBX_LAPACK_FEM) || defined(SCITBX_LAPACK_FOR)
+      if (i_pass == 0) {
+        lwork = static_cast<int>(work[0]);
+      }
+    }
     result = boost::python::object(boost_python_meta_ext::holder());
     result.attr("s") = s;
     result.attr("u") = u;
@@ -234,42 +242,49 @@ namespace scitbx { namespace lapack { namespace boost_python {
     SCITBX_ASSERT(a.accessor().is_square());
     int n = a.accessor()[0];
     SCITBX_ASSERT(w.size() == n);
-#if defined(SCITBX_LAPACK_FEM) || defined(SCITBX_LAPACK_FOR)
-    int lwork = 3*n-1;
-    boost::scoped_array<double> work(new double[lwork]);
-#endif
     int info = 99;
-    if (!use_fortran) {
+#if defined(SCITBX_LAPACK_FEM) || defined(SCITBX_LAPACK_FOR)
+    int lwork = -1;
+    for(unsigned i_pass=0;i_pass<2;i_pass++) {
+      boost::scoped_array<double> work(new double[std::max(1,lwork)]);
+#endif
+      if (!use_fortran) {
 #if defined(SCITBX_LAPACK_FEM)
-      lapack_fem::dsyev(
-        cmn,
-        fem::str_cref(jobz.data(), jobz.size()),
-        fem::str_cref(uplo.data(), uplo.size()),
-        n,
-        a[0],
-        /*lda*/ n,
-        w[0],
-        work[0],
-        lwork,
-        info);
+        lapack_fem::dsyev(
+          cmn,
+          fem::str_cref(jobz.data(), jobz.size()),
+          fem::str_cref(uplo.data(), uplo.size()),
+          n,
+          a[0],
+          /*lda*/ n,
+          w[0],
+          work[0],
+          lwork,
+          info);
 #endif
-    }
-    else {
+      }
+      else {
 #if defined(SCITBX_LAPACK_FOR)
-      dsyev_(
-        jobz.data(),
-        uplo.data(),
-        &n,
-        &a[0],
-        /*lda*/ &n,
-        &w[0],
-        &work[0],
-        &lwork,
-        &info,
-        jobz.size(),
-        uplo.size());
+        dsyev_(
+          jobz.data(),
+          uplo.data(),
+          &n,
+          &a[0],
+          /*lda*/ &n,
+          &w[0],
+          &work[0],
+          &lwork,
+          &info,
+          jobz.size(),
+          uplo.size());
 #endif
+      }
+#if defined(SCITBX_LAPACK_FEM) || defined(SCITBX_LAPACK_FOR)
+      if (i_pass == 0) {
+        lwork = static_cast<int>(work[0]);
+      }
     }
+#endif
     return info;
   }
 
