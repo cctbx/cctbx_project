@@ -11,12 +11,18 @@ source = [
   "householder.cpp",
   "svd.cpp",
   "eigensystem.cpp",
-  "lapack_fem_bpl.cpp"]
+  ]
+
+fem_source = [ "lapack_fem_bpl.cpp" ]
+
+shared_obj = []
 
 env = env_scitbx_boost_python_ext.Clone()
 env_fem = env.Clone()
 if (env_etc.gcc_version >= 30400):
   env_etc.enable_more_warnings(env=env_fem)
+
+for src in source: shared_obj.extend(env.SharedObject(src))
 
 if (libtbx.env.has_module("fable")):
   lapack_fem_dir = libtbx.env.find_in_repositories(relative_path="lapack_fem")
@@ -33,7 +39,8 @@ if (op.isfile(lapack_for_a)):
   env_fem.Append(SHCXXFLAGS=["-DSCITBX_LAPACK_FOR"])
   env.Prepend(LIBS=[File(lapack_for_a)])
 
-source[-1] = env_fem.SharedObject(source=[source[-1]])
+for src in fem_source:
+  shared_obj.extend(env_fem.SharedObject(source=src))
 
 # TODO env_etc.enable_more_warnings(env=env)
-env.SharedLibrary(target="#lib/scitbx_linalg_ext", source=source)
+env.SharedLibrary(target="#lib/scitbx_linalg_ext", source=shared_obj)
