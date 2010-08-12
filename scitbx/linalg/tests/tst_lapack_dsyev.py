@@ -1,9 +1,5 @@
-def exercise():
-  import scitbx.linalg
-  lapack_dsyev = getattr(scitbx.linalg, "lapack_dsyev_fem", None)
-  if (lapack_dsyev is None):
-    print "Skipping tests: lapack_dsyev_fem not available."
-    return
+def exercise(use_fortran):
+  from scitbx.linalg import lapack_dsyev
   from scitbx.array_family import flex
   from scitbx.math.tests.tst_math import matrix_mul
   from libtbx.test_utils import approx_equal
@@ -18,7 +14,12 @@ def exercise():
           a[(i,i)] = diag
         w = flex.double(n, -1e100)
         a_inp = a.deep_copy()
-        info = lapack_dsyev(jobz="V", uplo=uplo, a=a, w=w)
+        info = lapack_dsyev(
+          jobz="V", uplo=uplo, a=a, w=w, use_fortran=use_fortran)
+        if (info == 99):
+          if (not use_fortran):
+            print "Skipping tests: lapack_dsyev not available."
+          return
         assert info == 0
         assert approx_equal(w, [diag]*n)
         if (diag != 0):
@@ -35,7 +36,8 @@ def exercise():
               a[j*n+i] = a[i*n+j]
         w = flex.double(n, -1e100)
         a_inp = a.deep_copy()
-        info = lapack_dsyev(jobz="V", uplo=uplo, a=a, w=w)
+        info = lapack_dsyev(
+          jobz="V", uplo=uplo, a=a, w=w, use_fortran=use_fortran)
         assert info == 0
         for i in xrange(1,n):
           assert w[i-1] <= w[i]
@@ -52,7 +54,7 @@ def exercise():
     -0.21, -0.03, 0.35])
   a.reshape(flex.grid(3,3))
   w = flex.double(3, -1e100)
-  info = lapack_dsyev(jobz="V", uplo=uplo, a=a, w=w)
+  info = lapack_dsyev(jobz="V", uplo=uplo, a=a, w=w, use_fortran=use_fortran)
   assert info == 0
   assert approx_equal(w, [-0.0114574, 0.1978572, 0.6436002])
   assert approx_equal(a, [
@@ -62,7 +64,8 @@ def exercise():
 
 def run(args):
   assert len(args) == 0
-  exercise()
+  for use_fortran in [False, True]:
+    exercise(use_fortran=use_fortran)
   print "OK"
 
 if (__name__ == "__main__"):
