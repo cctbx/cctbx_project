@@ -89,7 +89,7 @@ namespace scitbx { namespace lapack { namespace boost_python {
     af::shared<double> s(std::min(m,n), 0.);
     af::versa<double, af::c_grid<2> > u(af::c_grid<2>(m, m), 0.);
     af::versa<double, af::c_grid<2> > vt(af::c_grid<2>(n, n), 0.);
-    int lwork = 3*std::min(m,n) + std::max(
+    int lwork = 3*std::min(m,n)*std::min(m,n) + std::max(
       std::max(m,n),
       4*std::min(m,n)*std::min(m,n)+4*std::min(m,n));
     boost::scoped_array<double> work(new double[lwork]);
