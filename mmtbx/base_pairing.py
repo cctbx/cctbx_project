@@ -150,8 +150,8 @@ def get_base_pairs(pdb_hierarchy, probe_flags=None):
     bases = [temp[3], temp[4]]
     #sort so C before G, A before U
     bases.sort(key=get_resname)
-    base1 = bases[0][1:10]
-    base2 = bases[1][1:10]
+    base1 = bases[0][0:10]
+    base2 = bases[1][0:10]
     atom1 = bases[0][11:15]
     atom2 = bases[1][11:15]
     base_key = base1+base2
@@ -175,8 +175,8 @@ def get_base_pairs(pdb_hierarchy, probe_flags=None):
 
   base_pair_list = []
   for pair in reduced_pair_hash:
-    bases = (pair[:9], pair[9:])
-    base_pair = pair[6:9].strip()+pair[15:18].strip()
+    bases = (pair[:10], pair[10:])
+    base_pair = pair[7:10].strip()+pair[17:20].strip()
     pair_type = db.get_pair_type(base_pair, reduced_pair_hash[pair], use_hydrogens=True)
     if pair_type is not None:
       base_pair_list.append([bases, pair_type])
@@ -197,12 +197,18 @@ def get_phil_base_pairs (pdb_hierarchy, probe_flags=None, prefix=None,
   if add_segid is not None :
     segid_extra = """and segid "%s" """ % add_segid
   for (bases, pair_type) in base_pair_list :
+    chains = []
+    for base in bases :
+      chain = base[0:2].strip()
+      if (chain == "") :
+        chain = " "
+      chains.append(chain)
     phil_strings.append("""base_pair {
   base1 = \"\"\"chain "%s" %sand resseq %s\"\"\"
   base2 = \"\"\"chain "%s" %sand resseq %s\"\"\"
   pair_type = %s
-}""" % (bases[0][0], segid_extra, bases[0][1:5], bases[1][0], segid_extra,
-        bases[1][1:5], pair_type))
+}""" % (chains[0], segid_extra, bases[0][2:6], chains[1], segid_extra,
+        bases[1][2:6], pair_type))
   phil_str = """nucleic_acids {\n%s\n}""" % ("\n".join(phil_strings))
   if prefix is not None :
     return """%s {\n%s\n}""" % (prefix, phil_str)
