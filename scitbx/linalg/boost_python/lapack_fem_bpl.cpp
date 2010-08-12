@@ -82,14 +82,15 @@ namespace scitbx { namespace lapack { namespace boost_python {
   {
     int m = a.accessor()[1];
     int n = a.accessor()[0];
+    int p = std::min(m,n);
     SCITBX_ASSERT(m > 0);
     SCITBX_ASSERT(n > 0);
     boost::python::object result;
 #if defined(SCITBX_LAPACK_FEM) || defined(SCITBX_LAPACK_FOR)
-    af::shared<double> s(std::min(m,n), 0.);
-    af::versa<double, af::c_grid<2> > u(af::c_grid<2>(m, m), 0.);
-    af::versa<double, af::c_grid<2> > vt(af::c_grid<2>(n, n), 0.);
-    boost::scoped_array<int> iwork(new int[8*std::min(m,n)]);
+    af::shared<double> s(p, 0.);
+    af::versa<double, af::c_grid<2> > u(af::c_grid<2>(p, m), 0.);
+    af::versa<double, af::c_grid<2> > vt(af::c_grid<2>(n, p), 0.);
+    boost::scoped_array<int> iwork(new int[8*p]);
     int lwork = -1;
     int info;
     for(unsigned i_pass=0;i_pass<2;i_pass++) {
@@ -99,7 +100,7 @@ namespace scitbx { namespace lapack { namespace boost_python {
 #if defined(SCITBX_LAPACK_FEM)
         lapack_fem::dgesdd(
           cmn,
-          /*jobz*/ "A",
+          /*jobz*/ "S",
           m,
           n,
           a[0],
@@ -108,7 +109,7 @@ namespace scitbx { namespace lapack { namespace boost_python {
           u[0],
           /*ldu*/ m,
           vt[0],
-          /*ldvt*/ n,
+          /*ldvt*/ p,
           work[0],
           lwork,
           iwork[0],
@@ -120,7 +121,7 @@ namespace scitbx { namespace lapack { namespace boost_python {
       else {
 #if defined(SCITBX_LAPACK_FOR)
         dgesdd_(
-          /*jobz*/ "A",
+          /*jobz*/ "S",
           &m,
           &n,
           &a[0],
@@ -129,7 +130,7 @@ namespace scitbx { namespace lapack { namespace boost_python {
           &u[0],
           /*ldu*/ &m,
           &vt[0],
-          /*ldvt*/ &n,
+          /*ldvt*/ &p,
           &work[0],
           &lwork,
           &iwork[0],
@@ -160,13 +161,14 @@ namespace scitbx { namespace lapack { namespace boost_python {
   {
     int m = a.accessor()[1];
     int n = a.accessor()[0];
+    int p = std::min(m,n);
     SCITBX_ASSERT(m > 0);
     SCITBX_ASSERT(n > 0);
     boost::python::object result;
 #if defined(SCITBX_LAPACK_FEM) || defined(SCITBX_LAPACK_FOR)
-    af::shared<double> s(std::min(m,n), 0.);
-    af::versa<double, af::c_grid<2> > u(af::c_grid<2>(m, m), 0.);
-    af::versa<double, af::c_grid<2> > vt(af::c_grid<2>(n, n), 0.);
+    af::shared<double> s(p, 0.);
+    af::versa<double, af::c_grid<2> > u(af::c_grid<2>(p, m), 0.);
+    af::versa<double, af::c_grid<2> > vt(af::c_grid<2>(n, p), 0.);
     int lwork = -1;
     int info;
     for(unsigned i_pass=0;i_pass<2;i_pass++) {
@@ -176,8 +178,8 @@ namespace scitbx { namespace lapack { namespace boost_python {
 #if defined(SCITBX_LAPACK_FEM)
         lapack_fem::dgesvd(
           cmn,
-          /*jobu*/ "A",
-          /*jobvt*/ "A",
+          /*jobu*/ "S",
+          /*jobvt*/ "S",
           m,
           n,
           a[0],
@@ -186,7 +188,7 @@ namespace scitbx { namespace lapack { namespace boost_python {
           u[0],
           /*ldu*/ m,
           vt[0],
-          /*ldvt*/ n,
+          /*ldvt*/ p,
           work[0],
           lwork,
           info);
@@ -197,8 +199,8 @@ namespace scitbx { namespace lapack { namespace boost_python {
       else {
 #if defined(SCITBX_LAPACK_FOR)
         dgesvd_(
-          /*jobu*/ "A",
-          /*jobvt*/ "A",
+          /*jobu*/ "S",
+          /*jobvt*/ "S",
           &m,
           &n,
           &a[0],
@@ -207,7 +209,7 @@ namespace scitbx { namespace lapack { namespace boost_python {
           &u[0],
           /*ldu*/ &m,
           &vt[0],
-          /*ldvt*/ &n,
+          /*ldvt*/ &p,
           &work[0],
           &lwork,
           &info,

@@ -20,13 +20,7 @@ def exercise_impl(svd_impl_name, use_fortran):
       assert approx_equal(svd.s, [diag]*n)
       assert svd.u.all() == (n,n)
       assert svd.vt.all() == (n,n)
-  #
-  def get_sigma(svd, m, n):
-    elems = [0.] * (m*n)
-    for i in xrange(min(m,n)):
-      elems[i*n+i] = svd.s[i]
-    return matrix.rec(elems=elems, n=(m,n))
-  #
+
   mt = flex.mersenne_twister(seed=0)
   for m in xrange(1,11):
     for n in xrange(1,11):
@@ -34,10 +28,11 @@ def exercise_impl(svd_impl_name, use_fortran):
       svd = svd_impl(
         a=a.transpose().as_flex_double_matrix(), use_fortran=use_fortran)
       assert svd.info == 0
-      sigma = get_sigma(svd, m, n)
-      u = matrix.sqr(svd.u).transpose()
-      v = matrix.sqr(svd.vt)
-      assert approx_equal(u * sigma * v.transpose(), a)
+      sigma = matrix.diag(svd.s) # min(m,n) x min(m,n)
+      # FORTRAN layout, so transpose
+      u  = matrix.rec(svd.u ,  svd.u.all()).transpose()
+      vt = matrix.rec(svd.vt, svd.vt.all()).transpose()
+      assert approx_equal(u * sigma * vt, a)
   #
   a = matrix.rec(elems=[
      0.47,  0.10, -0.21,
@@ -46,10 +41,10 @@ def exercise_impl(svd_impl_name, use_fortran):
     a=a.transpose().as_flex_double_matrix(), use_fortran=use_fortran)
   assert svd.info == 0
   assert approx_equal(svd.s, [0.55981345199567534, 0.35931726783538481])
+  # again remember column-major storage
   assert approx_equal(svd.u, [
     0.81402078804155853, -0.5136261274467826, 0.27121644094748704,
-    -0.42424674329757839, -0.20684171439391938, 0.88160717215094342,
-    -0.39671760414380258, -0.83270925681813213, -0.38627766719264994])
+    -0.42424674329757839, -0.20684171439391938, 0.88160717215094342])
   assert approx_equal(svd.vt, [
     0.8615633693608673, -0.50765003750177129,
     0.50765003750177129, 0.8615633693608673])
@@ -105,9 +100,11 @@ def compare_times(
       svd_real = scitbx.linalg.svd.real(
         ac, accumulate_u=True, accumulate_v=True)
       time_svd_real = time.time() - t0
-      at = a.matrix_transpose()
       t0 = time.time()
+      at = a.matrix_transpose()
       svd_lapack = lapack_svd_impl(a=at, use_fortran=use_fortran)
+      svd_lapack.u.matrix_transpose()
+      svd_lapack.vt.matrix_transpose()
       if (svd_lapack is None):
         return
       time_dgesvd = time.time() - t0
