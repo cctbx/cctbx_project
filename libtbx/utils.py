@@ -870,7 +870,8 @@ class progress_displayed_as_fraction(object):
     self.advance()
 
   def advance(self):
-    sys.stdout.write("%i / %i\r" % (self.i, self.n))
+    if self.i > 0: sys.stdout.write('\r')
+    sys.stdout.write("%i / %i" % (self.i, self.n))
     sys.stdout.flush()
     self.i += 1
 
