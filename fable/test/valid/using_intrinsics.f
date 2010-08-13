@@ -4,6 +4,7 @@
       call exercise_nint
       call exercise_double
       call exercise_string
+      call exercise_index
       end
 
       subroutine exercise_c_keywords
@@ -45,4 +46,15 @@
       character s4*4
       s4 = 'Xy'
       write(6, '(i1)') lnblnk(s4)
+      end
+
+      subroutine exercise_index
+      character digits*10
+      data digits /'0123456789'/
+      write(6, *) index(digits, 'x')
+      write(6, *) index(digits, '0')
+      write(6, *) index(digits, '5')
+      write(6, *) index(digits, '9')
+      write(6, *) index(digits, '24')
+      write(6, *) index(digits, '34')
       end
