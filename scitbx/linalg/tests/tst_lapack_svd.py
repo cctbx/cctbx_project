@@ -103,10 +103,10 @@ def compare_times(
       t0 = time.time()
       at = a.matrix_transpose()
       svd_lapack = lapack_svd_impl(a=at, use_fortran=use_fortran)
-      svd_lapack.u.matrix_transpose()
-      svd_lapack.vt.matrix_transpose()
       if (svd_lapack is None):
         return
+      svd_lapack.u.matrix_transpose()
+      svd_lapack.vt.matrix_transpose()
       time_dgesvd = time.time() - t0
       if not comprehensive:
         if (header is not None):
