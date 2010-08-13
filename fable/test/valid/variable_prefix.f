@@ -101,4 +101,12 @@
       xor = while + 99
       xor_eq = xor + 100
       write(6, *) xor_eq
+      call exercise_common_member
+      end
+
+      subroutine exercise_common_member
+      integer template
+      common /vars/ template
+      template = 123
+      write(6, *) template
       end
