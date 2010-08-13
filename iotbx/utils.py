@@ -58,7 +58,7 @@ class try_read_file(object):
     O_assign(file_type=None, file_content=None)
 
 def process_command_line_inputs(args, master_phil, input_types):
-  assert set(("directory", "mtz", "pdb", "cif")).issuperset(input_types)
+  assert set(("directory", "mtz", "pdb", "cif")).issuperset(set(input_types))
   input_objects = {}
   for key in input_types:
     input_objects[key] = []
