@@ -1,5 +1,9 @@
 
+# This module is used by the PHENIX GUI to manage file objects and associated
+# phil parameters.
+
 from libtbx.utils import hashlib_md5
+from libtbx import adopt_init_args
 import os
 
 class manager (object) :
@@ -8,6 +12,7 @@ class manager (object) :
                 allowed_param_names=None,
                 allowed_multiple_params=None,
                 debug=False,
+                auto_reload_files=True,
                 use_md5_sum=False) :
     adopt_init_args(self, locals())
     assert ((allowed_param_names is None) or
@@ -31,17 +36,31 @@ class manager (object) :
     assert hasattr(callback_handler, "__call__")
     self._param_callbacks[file_param_name] = callback_handler
 
-  def save_file (self, input_file) :
+  def add_file_callback (self, file_name) :
+    pass
+
+  def remove_file_callback (self, file_name) :
+    pass
+
+  def save_file (self, input_file=None, file_name=None) :
+    if (input_file is None) :
+      from iotbx import file_reader
+      input_file = file_reader.any_file(file_name)
     input_file.assert_file_type(self.file_type)
     file_name = input_file.file_name
     self._cached_input_files[file_name] = input_file
+    self.add_file_callback(file_name)
     return self.save_other_file_data(input_file)
 
   def save_other_file_data (self, input_file) :
     return None
 
   def file_is_modified (self, file_name) :
-    if self.use_md5_sum :
+    if (not self.auto_reload_files) :
+      return False
+    elif (not file_name in self._cached_input_files) :
+      return True
+    elif self.use_md5_sum :
       file_records = open(file_name).read()
       m = hashlib_md5(file_records)
       old_md5sum = self._file_md5sums.get(file_name, None)
@@ -74,9 +93,15 @@ class manager (object) :
             if (param_file == file_name) :
               self._param_files.pop(param_name)
               break
+      self.remove_file_callback(file_name)
 
-  def get_file (self, file_name) :
+  def get_file (self, file_name=None, file_param_name=None) :
     from iotbx import file_reader
+    if (file_name is None) :
+      assert (file_param_name is not None)
+      file_name = self._param_files.get(file_param_name)
+      if (isinstance(file_name, list)) :
+        return file_name
     assert os.path.isfile(file_name)
     if (file_name in self._cached_input_files) :
       if self.file_is_modified(file_name) :
@@ -90,6 +115,11 @@ class manager (object) :
       return (param_name in self.allowed_multiple_params)
     return False
 
+  def get_current_file_names (self) :
+    file_names = self._cached_input_files.keys()
+    file_names.sort()
+    return file_names
+
   def set_param_file (self, file_name, file_param_name, input_file=None,
       run_callback=True) :
     if self.allowed_param_names is not None :
@@ -98,9 +128,12 @@ class manager (object) :
     if (file_name is None) or (file_name == "") or (file_name == "None") :
       self._param_files.pop(file_param_name)
     else :
-      input_file = self.get_file(file_name)
-      if (input_file is None) :
-        self.save_file(file_name)
+      if (input_file is not None) :
+        self.save_file(input_file)
+      elif (self.get_file(file_name) is None) :
+        from iotbx import file_reader
+        input_file = file_reader.any_file(file_name)
+        self.save_file(input_file)
       if (self.allow_multiple(file_param_name) and
           (file_param_name in self._param_files)) :
           self._param_files[file_param_name].append(file_name)
@@ -110,3 +143,20 @@ class manager (object) :
       callback = self._param_callbacks.get(file_param_name, None)
       if (callback is not None) :
         callback(file_name)
+
+  def unset_param_file (self, file_param_name) :
+    self.set_param_file(file_name=None, file_param_name=file_param_name)
+
+  def get_file_params (self, file_name) :
+    params = []
+    for file_param_name in self._param_files :
+      if (self._param_files[file_param_name] == file_name) :
+        params.append(file_param_name)
+    return params
+
+  def get_param_files (self, file_param_name) :
+    file_name = self._param_files.get(file_param_name)
+    if isinstance(file_name, list) :
+      return file_name
+    else :
+      return [ file_name ]
