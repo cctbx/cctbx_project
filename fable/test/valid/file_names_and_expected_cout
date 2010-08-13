@@ -582,6 +582,12 @@ using_intrinsics.f
 |  0.46|
 |  0.55|
 |2|
+|           0|
+|           1|
+|           6|
+|          10|
+|           0|
+|           4|
 data_type_star.f
 |OK integers|
 |OK reals|

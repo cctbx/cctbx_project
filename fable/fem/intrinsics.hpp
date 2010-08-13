@@ -672,6 +672,17 @@ namespace fem {
 
   inline
   int
+  index(
+    str_cref sentence,
+    str_cref word)
+  {
+    size_t i = std::string(sentence).find(std::string(word));
+    if (i == std::string::npos) return 0;
+    return static_cast<int>(i + 1);
+  }
+
+  inline
+  int
   lnblnk(
     str_cref c) { return len_trim(c); }
 
