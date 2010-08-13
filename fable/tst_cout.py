@@ -2897,7 +2897,23 @@ struct common_com
 """)
   #
   lines = get("variable_prefix.f")
-  assert not absd(lines, tail_off(1), """\
+  assert not absd(lines, head_off(1), """\
+struct common_vars
+{
+  int variable_template;
+
+  common_vars() :
+    variable_template(fem::int0)
+  {}
+};
+""")
+  assert not absd(lines, head_off(20), """\
+  // COMMON vars
+  int& variable_template = cmn.variable_template;
+  //
+  variable_template = 123;
+""")
+  assert not absd(lines, tail_off(2), """\
   int variable_xor_eq = variable_xor + 100;
   write(6, star), variable_xor_eq;
 """)
