@@ -905,11 +905,12 @@ def exercise():
       time_in_seconds=time_in_seconds)
     assert approx_equal(
       human_readable_time_as_seconds(time_units, time_unit), time_in_seconds)
-  assert (format_timestamp_12_hour(1280007000) == 'Jul 24 2010 02:30 PM')
-  assert (format_timestamp_24_hour(1280007000) == 'Jul 24 2010 14:30')
-  assert (format_timestamp_12_hour(1280007000, True) == '24-07-10 02:30 PM')
-  assert (format_timestamp_24_hour(1280007000, True) == '24-07-10 14:30')
-  assert (format_timestamp(1280007000) == 'Jul 24 2010 02:30 PM')
+  # XXX this only works in California!
+  #assert (format_timestamp_12_hour(1280007000) == 'Jul 24 2010 02:30 PM')
+  #assert (format_timestamp_24_hour(1280007000) == 'Jul 24 2010 14:30')
+  #assert (format_timestamp_12_hour(1280007000, True) == '24-07-10 02:30 PM')
+  #assert (format_timestamp_24_hour(1280007000, True) == '24-07-10 14:30')
+  #assert (format_timestamp(1280007000) == 'Jul 24 2010 02:30 PM')
   #
   for string in ["True", "False"]:
     try: number_from_string(string=string)
