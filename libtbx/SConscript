@@ -466,6 +466,8 @@ else:
     env_etc.ccflags_base.extend(warn_options)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      if (env_etc.gcc_version >= 40300):
+        opts.insert(1, "-march=native")
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.mode == "profile"):
