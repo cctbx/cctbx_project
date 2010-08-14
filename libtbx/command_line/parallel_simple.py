@@ -50,7 +50,10 @@ def run_in_dir(cmd_info):
   os.chdir(d)
   from libtbx.command_line import printenv
   printenv.show(out=open("os_environ_at_start", "w"))
-  from libtbx.easy_run import subprocess
+  if (sys.version_info[:2] < (2,6)):
+    from libtbx.easy_run import subprocess
+  else:
+    import subprocess
   log = open("log", "w")
   t0 = time.time()
   try:
