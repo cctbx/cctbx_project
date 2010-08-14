@@ -33,6 +33,15 @@ namespace fem {
     return value;
   }
 
+  inline
+  double
+  dsign(
+    double const& value,
+    double const& sign_source)
+  {
+    return sign(value, sign_source);
+  }
+
   template <typename T>
   inline
   float
