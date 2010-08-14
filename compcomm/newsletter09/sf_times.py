@@ -308,9 +308,9 @@ def build_run(a_out, n_scatt, n_refl, build_cmd, check_max_a_b):
     open("a.out", "w").write(a_out)
     os.chmod("a.out", 0755)
   assert op.isfile("a.out")
-  run_cmd = "/usr/bin/time -f '%U' ./a.out"
+  run_cmd = "/usr/bin/time  -p ./a.out"
   buffers = easy_run.fully_buffered(command=run_cmd)
-  assert len(buffers.stderr_lines) == 1
+  assert len(buffers.stderr_lines) == 3
   if (n_scatt <= 10 and n_refl <= 100):
     assert len(buffers.stdout_lines) == n_scatt + n_refl
   else:
@@ -330,7 +330,7 @@ def build_run(a_out, n_scatt, n_refl, build_cmd, check_max_a_b):
         output_lines=buffers.stdout_lines)
     else:
       raise RuntimeError, (max_a, max_b)
-  utime = float(buffers.stderr_lines[0])
+  utime = float(buffers.stderr_lines[1].split()[1])
   return utime
 
 def fortran_write_build_run(
