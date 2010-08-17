@@ -166,6 +166,7 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.add_history(mtz_history_buffer)
   mtz_object.write(file_name=file_name)
+  return file_name
 
 def run(args, command_name = "phenix.fobs_minus_fobs_map"):
   if(len(args) == 0): args = ["--help"]
@@ -281,22 +282,26 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
       if(f_obss[i].sigmas() is not None):
         sel = f_obss[i].data() > f_obss[i].sigmas()*params.sigma_cutoff
         f_obss[i] = f_obss[i].select(sel)
-  compute_fo_minus_fo_map(data_arrays = f_obss, xray_structure = xray_structure,
-    log = log, silent = command_line.options.silent,
-    output_file=params.output_file)
+  output_file = compute_fo_minus_fo_map(
+    data_arrays = f_obss,
+    xray_structure = xray_structure,
+    log = log,
+    silent = command_line.options.silent,
+    output_file = params.output_file)
+  return output_file
 
 class launcher (runtime_utils.simple_target) :
   def __call__ (self) :
     return run(args=list(self.args))
 
 def validate_params (params, callback=None) :
-  if None in [params.f_obs_1_file_name, params.f_obs_2_file_name] :
+  if (None in [params.f_obs_1_file_name, params.f_obs_2_file_name]) :
     raise Sorry("You must supply two files containing F(obs).")
-  if None in [params.f_obs_1_label, params.f_obs_2_label] :
+  if (None in [params.f_obs_1_label, params.f_obs_2_label]) :
     raise Sorry("You must define the labels for both reflection files.")
-  if params.phase_source is None :
+  if (params.phase_source is None) :
     raise Sorry("You must specify a PDB file for phasing.")
-  if params.output_file is None or params.output_file == "" :
+  if (params.output_file is None) or (params.output_file == "") :
     raise Sorry("You must specify an output file.")
   output_dir, output_file = os.path.split(params.output_file)
   if os.path.isdir(params.output_file) :
@@ -305,3 +310,9 @@ def validate_params (params, callback=None) :
     raise Sorry("Output file must be an MTZ file.")
   elif not os.path.isdir(output_dir) :
     raise Sorry("Output directory does not exist.")
+
+def finish_job (result) :
+  output_files = []
+  if (result is not None) and os.path.isfile(result) :
+    output_files.append(("Map coefficients", result))
+  return (output_files, [])
