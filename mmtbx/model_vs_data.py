@@ -893,21 +893,6 @@ def summarize_results (mvd_obj) :
       return float(value)
     except ValueError :
       return None
-  def convert_float (value) :
-    try :
-      return float(value)
-    except ValueError :
-      return None
-  def convert_float (value) :
-    try :
-      return float(value)
-    except ValueError :
-      return None
-  def convert_float (value) :
-    try :
-      return float(value)
-    except ValueError :
-      return None
   return group_args(
     space_group=space_group,
     unit_cell=getattr(mvd_obj.crystal, "uc", None),
