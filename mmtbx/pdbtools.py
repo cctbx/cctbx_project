@@ -868,3 +868,16 @@ def validate_params (params, callback=None) :
   if len(params.input.pdb.file_name) == 0 :
     raise Sorry("No PDB file(s) specified.")
   return True
+
+def finish_job (result) :
+  output_files = []
+  if isinstance(result, list) :
+    for file_name in result :
+      file_desc = None
+      base, ext = os.path.splitext(file_name)
+      if ext == ".pdb" :
+        file_desc = "Modified PDB file"
+      else :
+        file_desc = "Unknown file"
+      output_files.append((file_desc, file_name))
+  return (output_files, [])

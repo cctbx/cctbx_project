@@ -262,5 +262,15 @@ def validate_params (params, callback=None) :
       "valid directory, or leave this parameter blank.") %
       params.maps.output.directory)
 
+def finish_job (results) :
+  (mtz_file, map_files) = results
+  output_files = []
+  if mtz_file is not None and os.path.isfile(mtz_file) :
+    output_files.append(("MTZ file", mtz_file))
+  for map_file in map_files :
+    if os.path.isfile(map_file) :
+      output_files.append(("XPLOR map", map_file))
+  return (output_files, [])
+
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

@@ -914,5 +914,13 @@ class launcher (runtime_utils.simple_target) :
     os.chdir(self.output_dir)
     return run2(args=list(self.args), log=sys.stdout)
 
+def finish_job (results) :
+  (mtz_file, n_refl) = results
+  if n_refl is None :
+    n_refl = 0
+  if (mtz_file is not None) and os.path.isfile(mtz_file) :
+    return ([("MTZ file", mtz_file)], [("Number of reflections", n_refl)])
+  return ([], [])
+
 if(__name__ == "__main__"):
    run(sys.argv[1:])
