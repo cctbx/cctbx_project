@@ -1015,3 +1015,37 @@ def find_and_replace_chains (original_hierarchy, partial_hierarchy,
               break
             j += 1
           i += 1
+
+# used for reporting build results in phenix
+def get_residue_and_fragment_count (pdb_file) :
+  import iotbx.pdb
+  from iotbx.pdb import amino_acid_codes
+  from libtbx import smart_open
+  covalent_residues = amino_acid_codes.one_letter_given_three_letter.keys()
+  covalent_residues.extend(iotbx.pdb.cns_dna_rna_residue_names.keys())
+  raw_records = flex.std_string()
+  f = smart_open.for_reading(file_name=pdb_file)
+  raw_records.extend(flex.split_lines(f.read()))
+  pdb_in = iotbx.pdb.input(source_info=pdb_file, lines=raw_records)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  models = pdb_hierarchy.models()
+  if len(models) == 0 :
+    return (0, 0, 0)
+  chains = models[0].chains()
+  if len(chains) == 0 :
+    return (0, 0, 0)
+  n_res = 0
+  n_frag = 0
+  n_h2o = 0
+  for chain in chains :
+    i = -999
+    for res in chain.conformers()[0].residues() :
+      if res.resname.strip() in covalent_residues :
+        n_res += 1
+        resseq = res.resseq_as_int()
+        if resseq > (i + 1) :
+          n_frag += 1
+        i = resseq
+      elif res.resname.strip() in ['HOH','WAT','H2O'] :
+        n_h2o += 1
+  return (n_res, n_frag, n_h2o)
