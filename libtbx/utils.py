@@ -268,6 +268,9 @@ class Usage(Sorry):
 class Abort(Sorry) :
   __module__ = Exception.__module__
 
+class Failure(Sorry) :
+  __module__ = Exception.__module__
+
 def if_none(value, default):
   if (value is None): return default
   return value
