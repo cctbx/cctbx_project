@@ -8,6 +8,7 @@ import os
 
 class manager (object) :
   file_type = None
+  file_type_label = None
   def __init__ (self,
                 allowed_param_names=None,
                 allowed_multiple_params=None,
@@ -97,11 +98,12 @@ class manager (object) :
 
   def get_file (self, file_name=None, file_param_name=None) :
     from iotbx import file_reader
-    if (file_name is None) :
-      assert (file_param_name is not None)
+    if (file_name is None) and (file_param_name is not None) :
       file_name = self._param_files.get(file_param_name)
       if (isinstance(file_name, list)) :
         return file_name
+    if (file_name is None) :
+      return None
     assert os.path.isfile(file_name)
     if (file_name in self._cached_input_files) :
       if self.file_is_modified(file_name) :
@@ -144,8 +146,21 @@ class manager (object) :
       if (callback is not None) :
         callback(file_name)
 
-  def unset_param_file (self, file_param_name) :
-    self.set_param_file(file_name=None, file_param_name=file_param_name)
+  def unset_param_file (self, file_name, file_param_name, run_callback=True) :
+    if (self.allow_multiple(file_param_name) and
+        (file_param_name in self._param_files)) :
+      param_files = self._param_files.get(file_param_name)
+      if (file_name in param_files) :
+        param_files.remove(file_name)
+      if (len(param_files) == 0) :
+        self._param_files.pop(file_param_name)
+    else :
+      if (self._param_files[file_param_name] == file_name) :
+        self._param_files.pop(file_param_name)
+    if run_callback :
+      callback = self._param_callbacks.get(file_param_name, None)
+      if (callback is not None) :
+        callback(None)
 
   def get_file_params (self, file_name) :
     params = []
@@ -160,3 +175,6 @@ class manager (object) :
       return file_name
     else :
       return [ file_name ]
+
+  def get_file_type_label (self, file_name=None, input_file=None) :
+    return self.file_type_label
