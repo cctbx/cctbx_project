@@ -84,16 +84,16 @@ class manager (object) :
       else :
         self._file_mtimes.pop(file_name)
       if (self.allowed_param_names is not None) :
-        if self.allow_multiple(file_param_name) :
-          for param_name, file_list in self._param_files.iteritems() :
-            if file_list.contains(file_name) :
-              file_list.remove(file_name)
+        for param_name, param_file in self._param_files.iteritems() :
+          if self.allow_multiple(param_name) :
+            if param_file.contains(file_name) :
+              parma_file.remove(file_name)
+              if (len(param_file) == 0 ) :
+                self._param_files.pop(param_name)
               break
-        else :
-          for param_name, param_file in self._param_files.iteritems() :
-            if (param_file == file_name) :
-              self._param_files.pop(param_name)
-              break
+          elif (param_file == file_name) :
+            self._param_files.pop(param_name)
+            break
       self.remove_file_callback(file_name)
 
   def get_file (self, file_name=None, file_param_name=None) :
@@ -136,9 +136,10 @@ class manager (object) :
         from iotbx import file_reader
         input_file = file_reader.any_file(file_name)
         self.save_file(input_file)
-      if (self.allow_multiple(file_param_name) and
-          (file_param_name in self._param_files)) :
-          self._param_files[file_param_name].append(file_name)
+      if self.allow_multiple(file_param_name) :
+        if (not file_param_name in self._param_files) :
+          self._param_files[file_param_name] = []
+        self._param_files[file_param_name].append(file_name)
       else :
           self._param_files[file_param_name] = file_name
     if run_callback :
@@ -165,7 +166,10 @@ class manager (object) :
   def get_file_params (self, file_name) :
     params = []
     for file_param_name in self._param_files :
-      if (self._param_files[file_param_name] == file_name) :
+      param_files = self._param_files[file_param_name]
+      if isinstance(param_files, list) and (file_name in param_files) :
+        params.append(file_param_name)
+      elif (param_files == file_name) :
         params.append(file_param_name)
     return params
 
