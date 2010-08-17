@@ -5560,6 +5560,11 @@ ATOM     24 H113 LIG A   1       0.358  -0.896  -3.748  1.00 20.00      A    H
   assert bonds.size() == pdb_hierarchy.atoms().size()
   #print list(bonds[0])
   assert list(bonds[0]) == [1, 14, 15, 16]
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/2hr0.pdb", test=os.path.isfile)
+  if (pdb_file is not None) :
+    (n_res,n_frag,n_wat)=pdb.hierarchy.get_residue_and_fragment_count(pdb_file)
+    assert (n_res == 1548) and (n_frag == 7) and (n_wat == 708)
 
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
