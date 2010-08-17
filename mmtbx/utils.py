@@ -144,7 +144,7 @@ data_and_flags_str_part2 = """\
     .help = This is normally the same as the file containing Fobs and is \
       usually selected automatically.
     .input_size = 200
-    .style = noauto file_type:hkl,any process_hkl child:rfree:label
+    .style = noauto file_type:hkl process_hkl child:rfree:label
     .expert_level = 0
   label = None
     .type=str
@@ -626,7 +626,7 @@ experimental_phases_params = iotbx.phil.parse("""\
   file_name=None
     .type=path
     .short_caption=Experimental phase file
-    .style = file_type:hkl,any
+    .style = file_type:hkl
   labels=None
     .type=strings
     .input_size = 160
@@ -681,10 +681,10 @@ pdb_params = iotbx.phil.parse("""\
     .optional=True
     .type=path
     .help=Model file(s) name (PDB)
-    .short_caption=PDB file
+    .short_caption=Input model
     .multiple=True
     .input_size=400
-    .style = bold file_type:pdb OnUpdate:extract_pdb_params
+    .style = bold file_type:pdb OnUpdate:extract_pdb_params file_type_default
 """)
 
 def get_atom_selections(all_chain_proxies,
