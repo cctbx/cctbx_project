@@ -164,8 +164,9 @@ class adp_restraints_test_case(restraints_test_case):
 class isotropic_adp_test_case(adp_restraints_test_case):
   proxies = isotropic_adp_restraints(
     xray_structure=trial_structure()).proxies
+  # no need to test all of them every time
   proxies = adp.shared_isotropic_adp_proxy(
-    flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.2)))
+    flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
   manager = restraints.manager(isotropic_adp_proxies=proxies)
 
   def restraint(self, proxy, u_iso=None, u_cart=None):
@@ -177,8 +178,9 @@ class isotropic_adp_test_case(adp_restraints_test_case):
 class adp_similarity_test_case(adp_restraints_test_case):
   proxies = adp_similarity_restraints(
     xray_structure=trial_structure()).proxies
+  # no need to test all of them every time
   proxies = adp.shared_adp_similarity_proxy(
-    flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.2)))
+    flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
   manager = restraints.manager(adp_similarity_proxies=proxies)
 
   def restraint(self, proxy, u_iso=None, u_cart=None):
@@ -193,8 +195,9 @@ class adp_similarity_test_case(adp_restraints_test_case):
 class rigid_bond_test_case(adp_restraints_test_case):
   proxies = rigid_bond_restraints(
     xray_structure=trial_structure()).proxies
+  # no need to test all of them every time
   proxies = adp.shared_rigid_bond_proxy(
-    flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.2)))
+    flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.3)))
   manager = restraints.manager(rigid_bond_proxies=proxies)
 
   def restraint(self, proxy, u_iso=None, u_cart=None):
