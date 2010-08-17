@@ -2255,7 +2255,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     if (self.sigmas() is not None): s = self.sigmas().select(selection)
     return array(set(self, i, anomalous_flag), d, s).set_observation_type(self)
 
-  def select_indices(self, indices=None, map_indices_to_asu=False, negate=False):
+  def select_indices(self, indices, map_indices_to_asu=False, negate=False):
     if map_indices_to_asu:
       indices = indices.deep_copy() # map_to_asu changes indices in place
       map_to_asu(self.space_group().type(), True, indices)
