@@ -482,6 +482,14 @@ namespace fem {
 
   inline
   float
+  max(
+    float const& v1,
+    float const& v2,
+    float const& v3,
+    float const& v4) { return amax1(amax1(v1, v2, v3), v4); }
+
+  inline
+  float
   amax1(
     float const& v1,
     float const& v2,
