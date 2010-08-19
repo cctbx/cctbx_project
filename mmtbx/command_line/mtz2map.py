@@ -200,6 +200,10 @@ def run (args, log=sys.stdout) :
         suffix = "_2mFo-DFc"
     elif map_labels[0].startswith("FOFCWT") :
       suffix = "_mFo-DFc"
+    elif map_labels[0] == "FWT,PHWT" : # refmac
+      suffix = "_2mFo-DFc"
+    elif map_labels[0] == "DELFWT,PHDELWT" : # refmac
+      suffix = "_mFo-DFc"
     elif map_labels[0].startswith("ANOM") :
       suffix = "_anom"
     else :
