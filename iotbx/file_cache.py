@@ -43,6 +43,10 @@ class manager (object) :
   def remove_file_callback (self, file_name) :
     pass
 
+  def input_files (self) :
+    for (file_name, file_object) in self._cached_input_files.iteritems() :
+      yield (file_name, file_object)
+
   def save_file (self, input_file=None, file_name=None) :
     if (input_file is None) :
       from iotbx import file_reader
@@ -52,6 +56,9 @@ class manager (object) :
     self._cached_input_files[file_name] = input_file
     self.add_file_callback(file_name)
     return self.save_other_file_data(input_file)
+
+  def add_file (self, *args, **kwds) :
+    return self.save_file(*args, **kwds)
 
   def save_other_file_data (self, input_file) :
     return None
