@@ -5,4 +5,12 @@
       nums(2) = 3
       write(buf, '(2i3)') (nums(i), i=1,2)
       write(6, '(''nums = ('',a,'')'')') buf
+      call exercise_internal_file_array
+      end
+
+      subroutine exercise_internal_file_array
+      character*3 bufs(1)
+      i = 1
+      write(bufs(i), '(i1,i2)') (j,j=1,2)
+      write(6, *) bufs
       end

@@ -1906,7 +1906,7 @@ def convert_executable(
           is_internal_file = False
           if (cilist.unit is not None):
             unit_id_tokens = extract_identifiers(tokens=cilist.unit)
-            if (len(unit_id_tokens) == 1):
+            if (len(unit_id_tokens) >= 1):
               unit_fdecl = conv_info.unit.get_fdecl(id_tok=unit_id_tokens[0])
               if (    unit_fdecl.data_type is not None
                   and unit_fdecl.data_type.value == "character"):
