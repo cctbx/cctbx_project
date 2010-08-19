@@ -121,6 +121,12 @@ namespace fem {
     {
       return elems_[dims_.index_1d(i1, i2, i3, i4, i5, i6)];
     }
+
+    operator
+    T const&() const
+    {
+      return elems_[0];
+    }
   };
 
   template <typename T, size_t Ndims=1>
