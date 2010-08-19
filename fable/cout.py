@@ -270,7 +270,7 @@ export extern false float for friend goto if inline int long mutable namespace
 new not not_eq operator or or_eq private protected public register
 reinterpret_cast return short signed sizeof static static_cast struct switch
 template this throw true try typedef typeid typename union unsigned using
-virtual void volatile wchar_t while xor xor_eq
+virtual void volatile wchar_t while xor xor_eq argv argc
 """.split())
 
 def prepend_identifier_if_necessary(identifier):
