@@ -173,6 +173,9 @@ maps {
      map_coeff_params_str,
      map_params_str)
 
+# XXX for documentation
+master_params = maps_including_IO_params_str
+
 def maps_including_IO_master_params():
   return iotbx.phil.parse(maps_including_IO_params_str, process_includes=False)
 
