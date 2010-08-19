@@ -4,6 +4,8 @@ from scitbx import matrix
 from stdlib import math
 from scitbx.array_family import flex
 from stdlib import math as smath
+from scitbx import differential_evolution as de
+from scitbx.math import euler_angles as euler
 
 def kearsley_rotation(reference_sites, other_sites):
   """
@@ -109,9 +111,9 @@ class nsd_engine(object):
 
 
   def nsd(self,moving,d_moving=None):
-    if d_moving is None:
+    if self.d_moving is None:
       self.d_moving = self.get_mean_distance(moving)
-    else:
+    if d_moving is not None:
       self.d_moving = d_moving
 
     # loop over all sites in fixed, find the minimum for each site
@@ -132,17 +134,66 @@ class nsd_engine(object):
     return result
 
 
+class nsd_rigid_body_fitter(object):
+  def __init__(self, fixed, moving):
+    self.fixed = fixed
+    self.moving = moving
+
+    self.nsde = nsd_engine(self.fixed)
+
+    self.d_fixed  = smath.sqrt(self.nsde.d_fixed)
+    self.d_moving = smath.sqrt(self.nsde.get_mean_distance( self.moving ) )
+
+    self.m_com = self.moving.mean()
+    self.f_com = self.fixed.mean()
+    self.n_mov = self.moving-self.m_com
+
+    self.d = (self.d_fixed+self.d_moving)/6
+
+    self.n = 6
+    pi = smath.pi
+    self.domain = [ (-pi,pi),(-pi,pi), (-pi,pi), (-self.d,self.d),(-self.d,self.d), (-self.d,self.d) ]
+    self.x = None
+
+    self.optimizer = de.differential_evolution_optimizer(self, population_size=10,f=0.85, n_cross=0, show_progress=False,
+               show_progress_nth_cycle=10)
+
+
+
+
+  def move_points(self,vector):
+    shift = (vector[0], vector[1], vector[2])
+    abg   =  ( vector[3], vector[4], vector[5] )
+    matrix = euler.zyz_matrix( vector[3], vector[4], vector[5] )
+    new_xyz = matrix*self.n_mov+self.f_com+shift
+    return new_xyz
+
+
+  def target(self,vector):
+    nxyz = self.move_points(vector)
+    result = self.nsde.nsd(nxyz)
+    return result
+
+  def print_status(self, min_target, mean_target, best_vector, txt):
+    print min_target,mean_target,list(best_vector), txt
+
+  def best_shifted(self):
+    nxyz = self.move_points(self.x)
+    return nxyz
+
 
 def tst_nsd():
   moving1 = flex.vec3_double()
   moving2 = flex.vec3_double()
   fixed  = flex.vec3_double()
-  for ii in range(20):
+  for ii in range(10):
     noise = flex.random_double(3)*2-1.0
     xyz = flex.random_double(3)*5
     fixed.append( list(xyz) )
     moving1.append(  list(xyz + noise/10) )
     moving2.append(  list(xyz + noise/2) )
+
+
 
   ne = nsd_engine(fixed)
   a = ne.nsd(fixed)
@@ -151,6 +202,14 @@ def tst_nsd():
   assert abs(a)<1e-6
   assert(b<=c)
 
+  matrix = euler.zyz_matrix(0.7,1.3,-2.0)
+  fixed_r = matrix*fixed
+  fitter = nsd_rigid_body_fitter( fixed,fixed_r)
+  nxyz = fitter.best_shifted()
+  dd = nxyz-fixed
+  dd = dd.norms()
+  dd = flex.max(dd)
+  assert (dd<1e-2)
 
 
 if __name__ == "__main__":
