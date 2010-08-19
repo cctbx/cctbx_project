@@ -273,9 +273,9 @@ template this throw true try typedef typeid typename union unsigned using
 virtual void volatile wchar_t while xor xor_eq
 """.split())
 
-def prepend_variable_if_necessary(identifier):
+def prepend_identifier_if_necessary(identifier):
   if (identifier in major_types or identifier in cpp_keywords):
-    return "variable_" + identifier
+    return "identifier_" + identifier
   return identifier
 
 def produce_comment_given_sl(callback, sl):
@@ -421,14 +421,14 @@ class conversion_info(global_conversion_info):
 
   def set_vmap_force_local(O, fdecl):
     identifier = fdecl.id_tok.value
-    O.vmap[identifier] = prepend_variable_if_necessary(identifier)
+    O.vmap[identifier] = prepend_identifier_if_necessary(identifier)
 
   def set_vmap_for_callable(O, identifier):
     if (O.separate_namespaces is not None):
       ns = O.separate_namespaces.get(identifier)
       if (ns is not None):
         O.vmap[identifier] \
-          = ns + "::" + prepend_variable_if_necessary(identifier)
+          = ns + "::" + prepend_identifier_if_necessary(identifier)
         return True
     if (    O.intrinsics_extra is not None
           and identifier in O.intrinsics_extra):
@@ -439,9 +439,9 @@ class conversion_info(global_conversion_info):
   def set_vmap_from_fdecl(O, fdecl):
     identifier = fdecl.id_tok.value
     if (fdecl.is_common()):
-      O.vmap[identifier] = "cmn." + prepend_variable_if_necessary(identifier)
+      O.vmap[identifier] = "cmn." + prepend_identifier_if_necessary(identifier)
     elif (fdecl.is_save()):
-      O.vmap[identifier] = "sve." + prepend_variable_if_necessary(identifier)
+      O.vmap[identifier] = "sve." + prepend_identifier_if_necessary(identifier)
     elif (fdecl.is_intrinsic()):
       if (identifier in ["float", "int", "char"]):
         O.vmap[identifier] = "fem::f" + identifier
@@ -464,7 +464,7 @@ class conversion_info(global_conversion_info):
     result = O.vmap.get(identifier)
     if (result is None):
       if (not O.set_vmap_for_callable(identifier=identifier)):
-        O.vmap[identifier] = prepend_variable_if_necessary(identifier)
+        O.vmap[identifier] = prepend_identifier_if_necessary(identifier)
       result = O.vmap[identifier]
     return result
 
@@ -1495,7 +1495,7 @@ def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
           conv_info=conv_info, top_scope=top_scope, curr_scope=curr_scope,
           tokens=fdecl.parameter_assignment_tokens)
         if (id_tok.value in conv_info.unit.dynamic_parameters):
-          crhs = "cmn.dynamic_parameters." + prepend_variable_if_necessary(
+          crhs = "cmn.dynamic_parameters." + prepend_identifier_if_necessary(
             id_tok.value)
         else:
           crhs = convert_tokens(
@@ -1529,11 +1529,11 @@ def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
   common_name = get_common_name_if_cast_is_needed()
   if (common_name is not None):
     src_var = "static_cast<common_%s&>(cmn).%s" % (
-      common_name, prepend_variable_if_necessary(identifier))
+      common_name, prepend_identifier_if_necessary(identifier))
   else:
     src_var = conv_info.vmap[identifier]
   if (fdecl.dim_tokens is not None):
-    conv_info.vmap[identifier] = prepend_variable_if_necessary(identifier)
+    conv_info.vmap[identifier] = prepend_identifier_if_necessary(identifier)
     if (fdecl.data_type.value == "character"):
       ctype = "str_arr_%sref<%d>" % (
         cconst(fdecl=fdecl, short=True), len(fdecl.dim_tokens))
@@ -1550,17 +1550,17 @@ def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
     cdims = convert_dims(conv_info=conv_info, dim_tokens=fdecl.dim_tokens)
     if (common_name is not None):
       src_var = "static_cast<common_%s&>(cmn).%s" % (
-        common_name, prepend_variable_if_necessary(identifier))
+        common_name, prepend_identifier_if_necessary(identifier))
     rapp = get_rapp()
     rapp("%s %s(%s, %s);" % (
-      ctype, prepend_variable_if_necessary(identifier), src_var, cdims))
+      ctype, prepend_identifier_if_necessary(identifier), src_var, cdims))
   elif (   common_name is not None
         or (fdecl.use_count > 1 and (fdecl.is_common() or fdecl.is_save()))):
-    conv_info.vmap[identifier] = prepend_variable_if_necessary(identifier)
+    conv_info.vmap[identifier] = prepend_identifier_if_necessary(identifier)
     ctype = convert_data_type(conv_info=conv_info, fdecl=fdecl, crhs=None)[0]
     rapp = get_rapp()
     rapp("%s& %s = %s;" % (
-      ctype, prepend_variable_if_necessary(identifier), src_var))
+      ctype, prepend_identifier_if_necessary(identifier), src_var))
   if (crhs is not None):
     return True
   return False
@@ -2126,7 +2126,7 @@ def convert_to_cpp_function(
     conv_info.set_vmap_from_fdecl(fdecl=fdecl)
     assert fdecl.parameter_assignment_tokens is None
     if (fdecl.use_count == 0):
-      arg_name = "/* %s */" % prepend_variable_if_necessary(id_tok.value)
+      arg_name = "/* %s */" % prepend_identifier_if_necessary(id_tok.value)
     else:
       arg_name = id_tok.value
     if (    fdecl.data_type is not None
@@ -2146,7 +2146,7 @@ def convert_to_cpp_function(
         cargs_append("%s%s&" % (
           ctype,
           cconst(fdecl=fdecl, short=False)),
-          prepend_variable_if_necessary(arg_name))
+          prepend_identifier_if_necessary(arg_name))
       else:
         if (len(fdecl.dim_tokens) == 1):
           t = ctype
@@ -2181,7 +2181,7 @@ def convert_to_cpp_function(
       cpp_callback("inline")
     cpp_callback("%s %s(%s);" % (
       cdecl,
-      prepend_variable_if_necessary(conv_info.unit.name.value),
+      prepend_identifier_if_necessary(conv_info.unit.name.value),
       ", ".join(fptr)))
     return
   if (conv_info.unit.is_passed_as_external):
@@ -2190,7 +2190,7 @@ def convert_to_cpp_function(
     cb("")
     cb("typedef %s (*%s_function_pointer)(%s);" % (
       cdecl,
-      prepend_variable_if_necessary(conv_info.unit.name.value),
+      prepend_identifier_if_necessary(conv_info.unit.name.value),
       ", ".join(fptr)))
   for callback in [hpp_callback, cpp_callback]:
     if (callback is None): continue
@@ -2203,11 +2203,11 @@ def convert_to_cpp_function(
     callback(cdecl)
     if (callback is hpp_callback): last = ";"
     else:                          last = ""
+    cname = prepend_identifier_if_necessary(conv_info.unit.name.value)
     if (len(cargs) == 0):
-      callback(conv_info.unit.name.value+"()" + last)
+      callback(cname+"()" + last)
     else:
-      callback(
-        conv_info.unit.name.value + "(\n  " + ",\n  ".join(cargs) + ")" + last)
+      callback(cname + "(\n  " + ",\n  ".join(cargs) + ")" + last)
   cpp_callback("{")
   if (cdecl != "void"):
     cpp_callback("  %s %s = %s;" % (
@@ -2299,9 +2299,9 @@ def convert_to_struct(
       if (const_identifiers[id_tok.value]):
         need_dynamic_parameters = True
         callback("  const %s %s;" % (
-          ctype, prepend_variable_if_necessary(id_tok.value)))
+          ctype, prepend_identifier_if_necessary(id_tok.value)))
         if (id_tok.value in conv_info.unit.dynamic_parameters):
-          crhs = "dynamic_parameters." + prepend_variable_if_necessary(
+          crhs = "dynamic_parameters." + prepend_identifier_if_necessary(
             id_tok.value)
         else:
           crhs = convert_tokens(
@@ -2311,10 +2311,10 @@ def convert_to_struct(
         crhs = convert_tokens(
           conv_info=conv_info, tokens=fdecl.parameter_assignment_tokens)
         callback("  static const %s %s = %s;" % (
-          ctype, prepend_variable_if_necessary(id_tok.value), crhs))
+          ctype, prepend_identifier_if_necessary(id_tok.value), crhs))
         const_definitions.append(
           "const %s %s::%s;" % (
-            ctype, struct_name, prepend_variable_if_necessary(id_tok.value)))
+            ctype, struct_name, prepend_identifier_if_necessary(id_tok.value)))
         append_empty_line = True
     if (append_empty_line):
       callback("")
@@ -2329,13 +2329,13 @@ def convert_to_struct(
       conv_info=conv_info, fdecl=fdecl, crhs=None, force_arr=True)[:3]
     if (cdims is None):
       callback("  %s %s;" % (
-        ctype, prepend_variable_if_necessary(id_tok.value)))
+        ctype, prepend_identifier_if_necessary(id_tok.value)))
       if (crhs is None):
         crhs = zero_shortcut_if_possible(ctype=ctype)
       initializers.append((id_tok.value, crhs))
     elif (not equivalence_simple or need_dynamic_parameters):
       callback("  %s %s;" % (
-        ctype, prepend_variable_if_necessary(id_tok.value)))
+        ctype, prepend_identifier_if_necessary(id_tok.value)))
       initializers.append((id_tok.value, "%s, fem::fill0" % cdims))
     else:
       ctype_core = convert_data_type(
@@ -2343,18 +2343,21 @@ def convert_to_struct(
       cstatic_size = convert_dims_to_static_size(
         conv_info=conv_info, dim_tokens=fdecl.dim_tokens)
       callback("  %s %s_memory[%s];" % (
-        ctype_core, prepend_variable_if_necessary(id_tok.value), cstatic_size))
+        ctype_core,
+        prepend_identifier_if_necessary(id_tok.value),
+        cstatic_size))
       if (fdecl.data_type.value == "character"):
         deferred_arr_members.append("  str_arr_ref<%d> %s;" % (
-          len(fdecl.dim_tokens), prepend_variable_if_necessary(id_tok.value)))
+          len(fdecl.dim_tokens),
+          prepend_identifier_if_necessary(id_tok.value)))
       else:
         deferred_arr_members.append("  %s %s;" % (
           ad_hoc_change_arr_to_arr_ref(ctype=ctype),
-          prepend_variable_if_necessary(id_tok.value)))
+          prepend_identifier_if_necessary(id_tok.value)))
       deferred_arr_initializers.append((
         id_tok.value,
         "*%s_memory, %s, fem::fill0" % (
-          prepend_variable_if_necessary(id_tok.value), cdims)))
+          prepend_identifier_if_necessary(id_tok.value), cdims)))
   if (len(deferred_arr_members) != 0):
     callback("")
     for line in deferred_arr_members:
@@ -2374,7 +2377,7 @@ def convert_to_struct(
       if (i+1 == n): comma = ""
       else:          comma = ","
       callback("    %s(%s)%s" % (
-        prepend_variable_if_necessary(ii[0]), ii[1], comma))
+        prepend_identifier_if_necessary(ii[0]), ii[1], comma))
     callback("  {}")
   callback("};")
   #
@@ -2518,7 +2521,7 @@ def convert_commons(
       if (dp_props is not dynamic_parameters[-1]): c = ","
       else:                                        c = ""
       callback("    %s(%s)%s" % (
-        prepend_variable_if_necessary(dp_props.name),
+        prepend_identifier_if_necessary(dp_props.name),
         str(dp_props.default),
         c))
     callback("""\
@@ -2527,7 +2530,7 @@ def convert_commons(
       % len(dynamic_parameters))
     for dp_props in dynamic_parameters:
       callback("      .reset_if_given(%s)"
-        % prepend_variable_if_necessary(dp_props.name))
+        % prepend_identifier_if_necessary(dp_props.name))
     callback("    ;")
     callback("  }")
     callback("};")

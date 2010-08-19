@@ -107,6 +107,12 @@
       subroutine exercise_common_member
       integer template
       common /vars/ template
+      external switch
       template = 123
       write(6, *) template
+      call switch
+      end
+
+      subroutine switch
+      write(6, '(a)') 'SwItCh'
       end
