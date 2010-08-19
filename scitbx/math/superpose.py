@@ -148,15 +148,14 @@ class nsd_rigid_body_fitter(object):
     self.f_com = self.fixed.mean()
     self.n_mov = self.moving-self.m_com
 
-    self.d = (self.d_fixed+self.d_moving)/6
+    self.d = (self.d_fixed+self.d_moving)/12
 
     self.n = 6
     pi = smath.pi
     self.domain = [ (-pi,pi),(-pi,pi), (-pi,pi), (-self.d,self.d),(-self.d,self.d), (-self.d,self.d) ]
     self.x = None
-
-    self.optimizer = de.differential_evolution_optimizer(self, population_size=10,f=0.85, n_cross=0, show_progress=False,
-               show_progress_nth_cycle=10)
+    self.optimizer = de.differential_evolution_optimizer(self, population_size=12,f=0.85,cr=0.95, n_cross=2,eps=1e-2,
+                         show_progress=False,show_progress_nth_cycle=20)
 
 
 
@@ -186,8 +185,11 @@ def tst_nsd():
   moving1 = flex.vec3_double()
   moving2 = flex.vec3_double()
   fixed  = flex.vec3_double()
+  max_noise = 0
   for ii in range(10):
     noise = flex.random_double(3)*2-1.0
+    if noise.norm() > max_noise:
+      max_noise = noise.norm()
     xyz = flex.random_double(3)*5
     fixed.append( list(xyz) )
     moving1.append(  list(xyz + noise/10) )
@@ -202,16 +204,17 @@ def tst_nsd():
   assert abs(a)<1e-6
   assert(b<=c)
 
-  matrix = euler.zyz_matrix(0.7,1.3,-2.0)
-  fixed_r = matrix*fixed
+  matrix = euler.zyz_matrix(0.7,1.3,2.1)
+  fixed_r = matrix*moving1+(8,18,28)
   fitter = nsd_rigid_body_fitter( fixed,fixed_r)
   nxyz = fitter.best_shifted()
-  dd = nxyz-fixed
+  dd = nxyz[0:fixed.size()]-fixed
   dd = dd.norms()
   dd = flex.max(dd)
-  assert (dd<1e-2)
+  assert (dd<2.00*max_noise/10)
 
 
 if __name__ == "__main__":
-  tst_nsd()
+  for ii in range(10):
+    tst_nsd()
   print "OK"
