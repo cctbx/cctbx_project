@@ -1291,7 +1291,10 @@ sub1(
 """)
   #
   lines = get("write_internal_file_2.f")
-  assert not absd(lines, tail_off(1), """\
+  assert not absd(lines, head_off(12), """\
+    write_loop wloop(bufs(i), "(i1,i2)");
+""")
+  assert not absd(lines, tail_off(2), """\
   arr<int> nums(dimension(2), fem::fill0);
   nums(1) = -2;
   nums(2) = 3;

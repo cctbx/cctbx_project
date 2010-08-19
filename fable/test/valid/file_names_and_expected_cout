@@ -534,6 +534,7 @@ passing_strings.f
 |[a ]|
 write_internal_file_2.f
 |nums = ( -2  3  )|
+| 1 2|
 !=stop_bare.f
 |iteration 1|
 |STOP at stop_bare_fem.cpp(22)|

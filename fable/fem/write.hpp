@@ -89,24 +89,6 @@ namespace fem {
       {}
 
       write_loop(
-        common& cmn,
-        str_ref const& internal_file,
-        str_cref fmt)
-      :
-        out(std::auto_ptr<utils::simple_ostream>(new
-          utils::simple_ostream_to_char_ptr_and_size(
-            internal_file.elems(), internal_file.len()))),
-        internal_file_len(internal_file.len()),
-        pos(0),
-        prev_was_string(false),
-        io_mode(io_list_directed),
-        fmt_loop(fmt),
-        exp_scale(0),
-        number_of_x_held(0),
-        suppress_new_line_at_end(false)
-      {}
-
-      write_loop(
         str_ref const& internal_file,
         str_cref fmt)
       :
