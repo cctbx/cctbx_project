@@ -2128,7 +2128,7 @@ def convert_to_cpp_function(
     if (fdecl.use_count == 0):
       arg_name = "/* %s */" % prepend_identifier_if_necessary(id_tok.value)
     else:
-      arg_name = id_tok.value
+      arg_name = prepend_identifier_if_necessary(id_tok.value)
     if (    fdecl.data_type is not None
         and fdecl.data_type.value == "character"):
       if (fdecl.dim_tokens is None):
