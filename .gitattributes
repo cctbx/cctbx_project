@@ -514,6 +514,7 @@ fable/test/valid/goto_spaghetti.f -text
 fable/test/valid/goto_target_before_else.f -text
 fable/test/valid/hexadecimal.f -text
 fable/test/valid/hollerith.f -text
+fable/test/valid/identifier_prefix.f -text
 fable/test/valid/if_arithmetic.f -text
 fable/test/valid/if_cond_if_arithmetic.f -text
 fable/test/valid/if_else_endif.f -text
@@ -622,7 +623,6 @@ fable/test/valid/unformatted_experiments.f -text
 fable/test/valid/unused_arg_implicit_none.f -text
 fable/test/valid/unused_args.f -text
 fable/test/valid/using_intrinsics.f -text
-fable/test/valid/variable_prefix.f -text
 fable/test/valid/write_1.f -text
 fable/test/valid/write_err.f -text
 fable/test/valid/write_extra_parentheses.f -text

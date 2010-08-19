@@ -2899,26 +2899,31 @@ struct common_com
   }
 """)
   #
-  lines = get("variable_prefix.f")
+  lines = get("identifier_prefix.f")
   assert not absd(lines, head_off(1), """\
 struct common_vars
 {
-  int variable_template;
+  int identifier_template;
 
   common_vars() :
-    variable_template(fem::int0)
+    identifier_template(fem::int0)
   {}
 };
 """)
-  assert not absd(lines, head_off(20), """\
+  assert not absd(lines, head_off(16), """\
+identifier_switch(
+""")
+  assert not absd(lines, head_off(28), """\
   // COMMON vars
-  int& variable_template = cmn.variable_template;
+  int& identifier_template = cmn.identifier_template;
   //
-  variable_template = 123;
+  identifier_template = 123;
+  write(6, star), identifier_template;
+  identifier_switch(cmn);
 """)
   assert not absd(lines, tail_off(2), """\
-  int variable_xor_eq = variable_xor + 100;
-  write(6, star), variable_xor_eq;
+  int identifier_xor_eq = identifier_xor + 100;
+  write(6, star), identifier_xor_eq;
 """)
   #
   lines = get("hollerith.f")
