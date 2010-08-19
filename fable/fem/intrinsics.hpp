@@ -396,6 +396,13 @@ namespace fem {
   }
 
   inline
+  float
+  amin1(
+    float const& v1,
+    float const& v2,
+    float const& v3) { return amin1(amin1(v1, v2), v3); }
+
+  inline
   int
   min(
     int const& v1,
