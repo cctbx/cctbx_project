@@ -26,6 +26,7 @@ namespace fem {
 
   FEM_ZERO_IMPL(char, '\0')
   FEM_ZERO_IMPL(logical_star_1, false)
+  FEM_ZERO_IMPL(integer_star_1, 0)
   FEM_ZERO_IMPL(integer_star_2, 0)
   FEM_ZERO_IMPL(integer_star_4, 0)
   FEM_ZERO_IMPL(integer_star_8, 0)
