@@ -30,6 +30,15 @@ class try_read_file(object):
         if (pdb_inp.atoms().size() != 0):
           O_assign(file_type="pdb", file_content=pdb_inp)
           return
+    if ("phil" in input_types):
+      import iotbx.phil
+      try:
+        phil_obj = iotbx.phil.parse(file_name=file_name)
+      except KeyboardInterrupt: raise
+      except: pass
+      else:
+        O_assign(file_type="phil", file_content=phil_obj)
+        return
     if ("cif" in input_types):
       import mmtbx.monomer_library.server
       try:
@@ -40,15 +49,6 @@ class try_read_file(object):
         if (len(cif_obj) != 0):
           O_assign(file_type="cif", file_content=cif_obj)
           return
-    if ("phil" in input_types):
-      import iotbx.phil
-      try:
-        phil_obj = iotbx.phil.parse(file_name=file_name)
-      except KeyboardInterrupt: raise
-      except: pass
-      else:
-        O_assign(file_type="phil", file_content=phil_obj)
-        return
     if ("pdb" in input_types and pdb_inp is not None):
       if (pdb_inp.unknown_section().size() != 0):
         O_assign(file_type=None, file_content=None)

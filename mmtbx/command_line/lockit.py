@@ -761,6 +761,8 @@ def run(args):
   work_phil = master_phil.fetch(sources=input_objects["phil"])
   work_phil.show()
   print
+  print "#phil __OFF__"
+  print
   work_params = work_phil.extract()
   #
   assert len(input_objects["mtz"]) == 1
