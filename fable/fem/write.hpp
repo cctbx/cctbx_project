@@ -11,18 +11,31 @@
 
 namespace fem {
 
-  class write_loop // TODO copy-constructor potential performance problem
+  struct write_loop_base
+  {
+    unsigned pos;
+    bool prev_was_string;
+    int exp_scale;
+    unsigned number_of_x_held;
+    bool suppress_new_line_at_end;
+
+    write_loop_base() :
+      pos(0),
+      prev_was_string(false),
+      exp_scale(0),
+      number_of_x_held(0),
+      suppress_new_line_at_end(false)
+    {}
+  };
+
+  class write_loop : write_loop_base
+    // TODO copy-constructor potential performance problem
   {
     private:
       std::auto_ptr<utils::simple_ostream> out;
       int internal_file_len;
-      unsigned pos;
-      bool prev_was_string;
       io_modes io_mode;
       format::token_loop fmt_loop;
-      int exp_scale;
-      unsigned number_of_x_held;
-      bool suppress_new_line_at_end;
 
     public:
 
@@ -33,12 +46,7 @@ namespace fem {
       :
         out(cmn.io.simple_ostream(unit)),
         internal_file_len(-1),
-        pos(0),
-        prev_was_string(false),
-        io_mode(io_unformatted),
-        exp_scale(0),
-        number_of_x_held(0),
-        suppress_new_line_at_end(false)
+        io_mode(io_unformatted)
       {}
 
       write_loop(
@@ -48,12 +56,7 @@ namespace fem {
       :
         out(cmn.io.simple_ostream(unit)),
         internal_file_len(-1),
-        pos(0),
-        prev_was_string(false),
-        io_mode(io_list_directed),
-        exp_scale(0),
-        number_of_x_held(0),
-        suppress_new_line_at_end(false)
+        io_mode(io_list_directed)
       {}
 
       write_loop(
@@ -63,13 +66,8 @@ namespace fem {
       :
         out(cmn.io.simple_ostream(unit)),
         internal_file_len(-1),
-        pos(0),
-        prev_was_string(false),
         io_mode(io_formatted),
-        fmt_loop(fmt),
-        exp_scale(0),
-        number_of_x_held(0),
-        suppress_new_line_at_end(false)
+        fmt_loop(fmt)
       {}
 
       write_loop(
@@ -80,12 +78,7 @@ namespace fem {
           utils::simple_ostream_to_char_ptr_and_size(
             internal_file.elems(), internal_file.len()))),
         internal_file_len(internal_file.len()),
-        pos(0),
-        prev_was_string(false),
-        io_mode(io_list_directed),
-        exp_scale(0),
-        number_of_x_held(0),
-        suppress_new_line_at_end(false)
+        io_mode(io_list_directed)
       {}
 
       write_loop(
@@ -96,13 +89,33 @@ namespace fem {
           utils::simple_ostream_to_char_ptr_and_size(
             internal_file.elems(), internal_file.len()))),
         internal_file_len(internal_file.len()),
-        pos(0),
-        prev_was_string(false),
         io_mode(io_formatted),
-        fmt_loop(fmt),
-        exp_scale(0),
-        number_of_x_held(0),
-        suppress_new_line_at_end(false)
+        fmt_loop(fmt)
+      {}
+
+      template <size_t Ndims>
+      write_loop(
+        str_arr_ref<Ndims> const& internal_file,
+        star_type const&)
+      :
+        out(std::auto_ptr<utils::simple_ostream>(new
+          utils::simple_ostream_to_char_ptr_and_size(
+            internal_file.begin(), internal_file.len()))),
+        internal_file_len(internal_file.len()),
+        io_mode(io_list_directed)
+      {}
+
+      template <size_t Ndims>
+      write_loop(
+        str_arr_ref<Ndims> const& internal_file,
+        str_cref fmt)
+      :
+        out(std::auto_ptr<utils::simple_ostream>(new
+          utils::simple_ostream_to_char_ptr_and_size(
+            internal_file.begin(), internal_file.len()))),
+        internal_file_len(internal_file.len()),
+        io_mode(io_formatted),
+        fmt_loop(fmt)
       {}
 
       std::string const&
@@ -759,6 +772,26 @@ namespace fem {
     write_loop
     operator()(
       str_ref const& internal_file,
+      str_cref fmt)
+    {
+      write_loop result(internal_file, fmt);
+      return result;
+    }
+
+    template <size_t Ndims>
+    write_loop
+    operator()(
+      str_arr_ref<Ndims> const& internal_file,
+      star_type const&)
+    {
+      write_loop result(internal_file, star);
+      return result;
+    }
+
+    template <size_t Ndims>
+    write_loop
+    operator()(
+      str_arr_ref<Ndims> const& internal_file,
       str_cref fmt)
     {
       write_loop result(internal_file, fmt);
