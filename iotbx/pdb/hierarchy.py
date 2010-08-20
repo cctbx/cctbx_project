@@ -1017,17 +1017,19 @@ def find_and_replace_chains (original_hierarchy, partial_hierarchy,
           i += 1
 
 # used for reporting build results in phenix
-def get_residue_and_fragment_count (pdb_file) :
-  import iotbx.pdb
+def get_residue_and_fragment_count (pdb_file=None, pdb_hierarchy=None) :
   from iotbx.pdb import amino_acid_codes
+  import iotbx.pdb
   from libtbx import smart_open
   covalent_residues = amino_acid_codes.one_letter_given_three_letter.keys()
   covalent_residues.extend(iotbx.pdb.cns_dna_rna_residue_names.keys())
-  raw_records = flex.std_string()
-  f = smart_open.for_reading(file_name=pdb_file)
-  raw_records.extend(flex.split_lines(f.read()))
-  pdb_in = iotbx.pdb.input(source_info=pdb_file, lines=raw_records)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
+  if (pdb_file is not None) :
+    raw_records = flex.std_string()
+    f = smart_open.for_reading(file_name=pdb_file)
+    raw_records.extend(flex.split_lines(f.read()))
+    pdb_in = iotbx.pdb.input(source_info=pdb_file, lines=raw_records)
+    pdb_hierarchy = pdb_in.construct_hierarchy()
+  assert (pdb_hierarchy is not None)
   models = pdb_hierarchy.models()
   if len(models) == 0 :
     return (0, 0, 0)
