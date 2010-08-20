@@ -45,7 +45,7 @@ class NonSquareRAXISImage(RAXISImage):
     self.rawlinearintdata = ReadRAXIS(self.CharTemp,self.integerdepth(),
          self.head['nSlow']*self.bin,
          self.head['nFast']*self.bin,
-         self.getEndian())
+         bool(self.getEndian()))
 
     self.bin_safe_set_data( MakeSquareRAXIS(self.np,self.extra,
                                          self.head['nSlow'],
