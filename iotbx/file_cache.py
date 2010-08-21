@@ -47,10 +47,14 @@ class manager (object) :
     for (file_name, file_object) in self._cached_input_files.iteritems() :
       yield (file_name, file_object)
 
+  def open_file (self, file_name) :
+    from iotbx import file_reader
+    input_file = file_reader.any_file(file_name)
+    return input_file
+
   def save_file (self, input_file=None, file_name=None) :
     if (input_file is None) :
-      from iotbx import file_reader
-      input_file = file_reader.any_file(file_name)
+      input_file = self.open_file(file_name)
     input_file.assert_file_type(self.file_type)
     file_name = input_file.file_name
     self._cached_input_files[file_name] = input_file
@@ -93,8 +97,8 @@ class manager (object) :
       if (self.allowed_param_names is not None) :
         for param_name, param_file in self._param_files.iteritems() :
           if self.allow_multiple(param_name) :
-            if param_file.contains(file_name) :
-              parma_file.remove(file_name)
+            if (file_name in param_file) :
+              param_file.remove(file_name)
               if (len(param_file) == 0 ) :
                 self._param_files.pop(param_name)
               break
@@ -104,7 +108,6 @@ class manager (object) :
       self.remove_file_callback(file_name)
 
   def get_file (self, file_name=None, file_param_name=None) :
-    from iotbx import file_reader
     if (file_name is None) and (file_param_name is not None) :
       file_name = self._param_files.get(file_param_name)
       if (isinstance(file_name, list)) :
@@ -114,7 +117,7 @@ class manager (object) :
     assert os.path.isfile(file_name)
     if (file_name in self._cached_input_files) :
       if self.file_is_modified(file_name) :
-        input_file = file_reader.any_file(file_name)
+        input_file = self.open_file(file_name)
         self.save_file(input_file)
       return self._cached_input_files[file_name]
     return None
@@ -140,8 +143,7 @@ class manager (object) :
       if (input_file is not None) :
         self.save_file(input_file)
       elif (self.get_file(file_name) is None) :
-        from iotbx import file_reader
-        input_file = file_reader.any_file(file_name)
+        input_file = self.open_file(file_name)
         self.save_file(input_file)
       if self.allow_multiple(file_param_name) :
         if (not file_param_name in self._param_files) :
