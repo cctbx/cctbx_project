@@ -54,6 +54,15 @@ namespace fem {
     T const*
     begin() const { return elems_; }
 
+#if defined(_MSC_VER)
+    // workaround, breaks const-correctness, but only on this platform
+    operator
+    T&() const { return const_cast<T*>(elems_)[0]; }
+#else
+    operator
+    T const&() const { return elems_[0]; }
+#endif
+
     template <size_t BufferNdims>
     void
     operator()(
@@ -121,12 +130,6 @@ namespace fem {
     {
       return elems_[dims_.index_1d(i1, i2, i3, i4, i5, i6)];
     }
-
-    operator
-    T const&() const
-    {
-      return elems_[0];
-    }
   };
 
   template <typename T, size_t Ndims=1>
@@ -181,8 +184,10 @@ namespace fem {
     T*
     begin() const { return const_cast<T*>(this->elems_); }
 
+#if !defined(_MSC_VER)
     operator
     T&() const { return *(this->begin()); }
+#endif
 
     template <size_t BufferNdims>
     void
