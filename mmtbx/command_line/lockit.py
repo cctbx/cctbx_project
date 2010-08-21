@@ -770,7 +770,6 @@ def run(args):
     miller_arrays=input_objects["mtz"][0].file_content.as_miller_arrays(),
     params=work_params.map.coeff_labels)
   #
-
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   for file_obj in input_objects["cif"]:
@@ -779,10 +778,21 @@ def run(args):
       srv.process_cif_object(
         cif_object=file_obj.file_content,
         file_name=file_obj.file_name)
+  if (len(input_objects["cif"]) != 0):
+    print
   #
   assert len(input_objects["pdb"]) == 1 # TODO not implemented
   file_obj = input_objects["pdb"][0]
   input_pdb_file_name = file_obj.file_name
+  print "Crystal symmetry (from map file):"
+  map_coeffs.crystal_symmetry().show_summary(prefix="  ")
+  pdb_crystal_symmetry = file_obj.file_content.crystal_symmetry()
+  if (    pdb_crystal_symmetry is not None
+      and not pdb_crystal_symmetry.is_similar_symmetry(
+            map_coeffs.crystal_symmetry())):
+    print "  NOTE: Crystal symmetry from PDB file is different:"
+    pdb_crystal_symmetry.show_summary(prefix="    Ignored: ")
+  print
   processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
@@ -794,7 +804,6 @@ def run(args):
     crystal_symmetry=map_coeffs.crystal_symmetry(),
     force_symmetry=True,
     log=sys.stdout)
-
   if (work_params.strict_processing):
     msg = processed_pdb_file.all_chain_proxies.fatal_problems_message()
     if (msg is not None):
