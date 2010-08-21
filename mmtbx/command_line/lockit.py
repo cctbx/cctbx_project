@@ -413,7 +413,7 @@ coordinate_refinement {
     .type = bool
   finishing_geometry_minimization
   {
-    cycles_max = 0
+    cycles_max = 100
       .type = int
     first_weight_scale = 0.1
       .type = float
