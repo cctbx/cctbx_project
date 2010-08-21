@@ -770,6 +770,7 @@ def run(args):
     miller_arrays=input_objects["mtz"][0].file_content.as_miller_arrays(),
     params=work_params.map.coeff_labels)
   #
+
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   for file_obj in input_objects["cif"]:
@@ -790,7 +791,10 @@ def run(args):
     pdb_inp=file_obj.file_content,
     strict_conflict_handling=work_params.strict_processing,
     substitute_non_crystallographic_unit_cell_if_necessary=True,
+    crystal_symmetry=map_coeffs.crystal_symmetry(),
+    force_symmetry=True,
     log=sys.stdout)
+
   if (work_params.strict_processing):
     msg = processed_pdb_file.all_chain_proxies.fatal_problems_message()
     if (msg is not None):
@@ -842,11 +846,14 @@ def run(args):
     resolution_factor=work_params.map.grid_resolution_factor)
   fft_map.apply_sigma_scaling()
   density_map = fft_map.real_map()
+
   real_space_gradients_delta = \
     d_min * work_params.real_space_gradients_delta_resolution_factor
   print "real_space_gradients_delta: %.6g" % real_space_gradients_delta
   print
   sys.stdout.flush()
+
+
   if (work_params.rotamer_score_and_choose_best.run):
     rotamer_score_and_choose_best(
       mon_lib_srv=mon_lib_srv,
