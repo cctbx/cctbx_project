@@ -524,6 +524,7 @@ def correct_special_position(
       special_op,
       site_frac=None,
       site_cart=None,
+      site_label=None,
       tolerance=1,
       error_message="Corrupt gradient calculations."):
   """
@@ -540,6 +541,8 @@ def correct_special_position(
     error_message += "\n  unit_cell: %s" % str(unit_cell)
     error_message += "\n  space_group_info: %s" % str(crystal_symmetry.space_group_info())
     error_message += "\n  special_op: %s" % str(special_op)
+    if (site_label is not None):
+      error_message += "\n  site_label: %s" % site_label
     error_message += "\n  site_frac: %s" % str(site_frac)
     error_message += "\n  site_special_frac: %s" % str(site_special_frac)
     error_message += "\n  distance_moved: %g" % distance_moved
