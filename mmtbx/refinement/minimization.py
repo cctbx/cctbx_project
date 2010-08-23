@@ -130,6 +130,7 @@ class lbfgs(object):
           crystal_symmetry = self.xray_structure,
           special_op       = site_symmetry_table.get(i_seq).special_op(),
           site_frac        = scatterers_shifted[i_seq].site,
+          site_label       = scatterers_shifted[i_seq].label,
           tolerance        = self.correct_special_position_tolerance)
     self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
     if(self.refine_adp):
