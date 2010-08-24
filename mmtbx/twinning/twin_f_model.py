@@ -2245,6 +2245,9 @@ class target_functor(object):
   def prepare_for_minimization(self):
     pass
 
+  def target_function_is_invariant_under_allowed_origin_shifts(self):
+    return True
+
   def __call__(self, compute_gradients=False):
     return target_result(manager=self.manager)
 
