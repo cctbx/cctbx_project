@@ -9,13 +9,17 @@ master_phil = libtbx.phil.parse("""\
     .type = float
   bond_max_distance = 1.8
     .type = float
-  epsilon_range_not_2p_min = 155
+  epsilon_range_min = 155.0
     .type = float
-  epsilon_range_not_2p_max = 310
+  epsilon_range_max = 310.0
     .type = float
-  delta_range_2p_min = 115
+  delta_range_2p_min = 129.0
     .type = float
-  delta_range_2p_max = 180
+  delta_range_2p_max = 162.0
+    .type = float
+  delta_range_3p_min = 65.0
+    .type = float
+  delta_range_3p_max = 104.0
     .type = float
   p_distance_c1p_outbound_line_2p_max = 2.9
     .type = float
@@ -32,8 +36,9 @@ class evaluate(slots_getstate_setstate):
     "delta",
     "p_distance_c1p_outbound_line",
     "o3p_distance_c1p_outbound_line",
-    "is_2p_epsilon",
+    "is_epsilon_outlier",
     "is_2p_delta",
+    "is_3p_delta",
     "is_2p_p_distance_c1p_outbound_line",
     "is_2p_o3p_distance_c1p_outbound_line",
     "is_2p"]
@@ -97,12 +102,12 @@ class evaluate(slots_getstate_setstate):
         points=(c1p, c1p_outbound)).distance_sq(point=o3p)**0.5
     n_decisions = 0
     if (   epsilon is None
-        or params.epsilon_range_not_2p_min is None
-        or params.epsilon_range_not_2p_max is None):
-      is_2p_epsilon = None
+        or params.epsilon_range_min is None
+        or params.epsilon_range_max is None):
+      is_epsilon_outlier = None
     else:
-      is_2p_epsilon = (   epsilon < params.epsilon_range_not_2p_min
-                       or epsilon > params.epsilon_range_not_2p_max)
+      is_epsilon_outlier = (   epsilon < params.epsilon_range_min
+                               or epsilon > params.epsilon_range_max)
       n_decisions += 1
     if (   params.delta_range_2p_min is None
         or params.delta_range_2p_max is None):
@@ -110,6 +115,13 @@ class evaluate(slots_getstate_setstate):
     else:
       is_2p_delta = (    delta >= params.delta_range_2p_min
                      and delta <= params.delta_range_2p_max)
+      n_decisions += 1
+    if (   params.delta_range_3p_min is None
+        or params.delta_range_3p_max is None):
+      is_3p_delta = None
+    else:
+      is_3p_delta = (    delta >= params.delta_range_3p_min
+                     and delta <= params.delta_range_3p_max)
       n_decisions += 1
     if (   p_distance_c1p_outbound_line is None
         or params.p_distance_c1p_outbound_line_2p_max is None):
@@ -133,14 +145,20 @@ class evaluate(slots_getstate_setstate):
       perp_distance = is_2p_p_distance_c1p_outbound_line
       if (perp_distance is None):
         perp_distance = is_2p_o3p_distance_c1p_outbound_line
-      is_2p = (is_2p_epsilon or is_2p_delta or perp_distance)
+      if (perp_distance):
+        is_2p = True
+      elif ( not perp_distance):
+        is_2p = False
+      else:
+        is_2p = None
     O.assign(
       epsilon=epsilon,
       delta=delta,
       p_distance_c1p_outbound_line=p_distance_c1p_outbound_line,
       o3p_distance_c1p_outbound_line=o3p_distance_c1p_outbound_line,
-      is_2p_epsilon=is_2p_epsilon,
+      is_epsilon_outlier=is_epsilon_outlier,
       is_2p_delta=is_2p_delta,
+      is_3p_delta=is_3p_delta,
       is_2p_p_distance_c1p_outbound_line=is_2p_p_distance_c1p_outbound_line,
       is_2p_o3p_distance_c1p_outbound_line=is_2p_o3p_distance_c1p_outbound_line,
       is_2p=is_2p)
