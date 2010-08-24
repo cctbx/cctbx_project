@@ -28,7 +28,7 @@ def exercise(args):
     else:
       assert approx_equal(analysis.delta, 69.6819176834)
     assert analysis.p_distance_c1p_outbound_line is None
-    assert analysis.is_2p_epsilon is None
+    assert analysis.is_epsilon_outlier is None
     if (i_pass == 0):
       assert analysis.is_2p_delta is None
       assert analysis.is_2p_p_distance_c1p_outbound_line is None
@@ -50,7 +50,7 @@ def exercise(args):
   assert approx_equal(analysis.delta, 133.811229901)
   assert approx_equal(analysis.p_distance_c1p_outbound_line, 1.52374220064)
   assert approx_equal(analysis.o3p_distance_c1p_outbound_line, 0.860583842822)
-  assert not analysis.is_2p_epsilon
+  assert not analysis.is_epsilon_outlier
   assert analysis.is_2p_delta
   assert analysis.is_2p_p_distance_c1p_outbound_line
   assert analysis.is_2p_o3p_distance_c1p_outbound_line
@@ -63,7 +63,7 @@ def exercise(args):
         (43.132,14.710,33.185), (42.545,15.146,34.511)]),
       residue_1_c1p_outbound_atom=atom((41.433,12.332,31.466)),
       residue_2_p_atom=residue_2_p_atom)
-    assert not analysis.is_2p_epsilon
+    assert not analysis.is_epsilon_outlier
     assert not analysis.is_2p_delta
     if (residue_2_p_atom is not None):
       assert not analysis.is_2p_p_distance_c1p_outbound_line
@@ -72,10 +72,12 @@ def exercise(args):
     assert not analysis.is_2p_o3p_distance_c1p_outbound_line
     assert not analysis.is_2p
   #
-  params.epsilon_range_not_2p_min = None
-  params.epsilon_range_not_2p_max = None
+  params.epsilon_range_min = None
+  params.epsilon_range_max = None
   params.delta_range_2p_min = None
   params.delta_range_2p_max = None
+  params.delta_range_3p_min = None
+  params.delta_range_3p_max = None
   params.p_distance_c1p_outbound_line_2p_max = None
   params.o3p_distance_c1p_outbound_line_2p_max = None
   analysis = rna_sugar_pucker_analysis.evaluate(
@@ -88,7 +90,7 @@ def exercise(args):
   assert approx_equal(analysis.epsilon, 250.715932662)
   assert approx_equal(analysis.delta, 133.811229901)
   assert approx_equal(analysis.p_distance_c1p_outbound_line, 1.52374220064)
-  assert analysis.is_2p_epsilon is None
+  assert analysis.is_epsilon_outlier is None
   assert analysis.is_2p_delta is None
   assert analysis.is_2p_p_distance_c1p_outbound_line is None
   assert analysis.is_2p_o3p_distance_c1p_outbound_line is None
