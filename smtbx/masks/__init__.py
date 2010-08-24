@@ -9,9 +9,14 @@ from scitbx.math import approx_equal_relatively
 from libtbx.utils import xfrange
 
 class mask(object):
-  def __init__(self, xray_structure, observations):
+  def __init__(self, xray_structure, observations, use_complete_set=False):
     self.xray_structure = xray_structure
-    self.observations = observations
+    self.fo2 = observations.as_intensity_array().average_bijvoet_mates()
+    self.use_complete_set = use_complete_set
+    if use_complete_set:
+      self.complete_set = self.fo2.complete_set()
+    else:
+      self.complete_set = None
     self.mask = None
     self._f_mask = None
     self.f_000 = None
@@ -28,7 +33,7 @@ class mask(object):
               atom_radii_table=None,
               use_space_group_symmetry=False):
     if grid_step is not None: d_min = None
-    else: d_min = self.observations.d_min()
+    else: d_min = self.fo2.d_min()
     if crystal_gridding is None:
       self.crystal_gridding = maptbx.crystal_gridding(
         unit_cell=self.xray_structure.unit_cell(),
@@ -78,10 +83,13 @@ class mask(object):
     """P. van der Sluis and A. L. Spek, Acta Cryst. (1990). A46, 194-201."""
     assert self.mask is not None
     if self.n_voids() == 0: return
-    f_obs = self.observations.as_amplitude_array()
-    f_obs = f_obs.average_bijvoet_mates()
-    self.f_calc = f_obs.structure_factors_from_scatterers(
+    if self.use_complete_set:
+      f_calc_set = self.complete_set
+    else:
+      f_calc_set = self.fo2.set()
+    self.f_calc = f_calc_set.structure_factors_from_scatterers(
       self.xray_structure, algorithm="direct").f_calc()
+    f_obs = self.f_obs()
     self.scale_factor = flex.sum(f_obs.data())/flex.sum(
       flex.abs(self.f_calc.data()))
     f_obs_minus_f_calc = f_obs.f_obs_minus_f_calc(
@@ -151,9 +159,27 @@ class mask(object):
       #print "scale: %.4f" %scale_for_min_residual
       self.scale_factor = scale_for_min_residual
       f_model = self.f_model(epsilon=epsilon_for_min_residual)
+      f_obs = self.f_obs()
       f_obs_minus_f_calc = f_obs.phase_transfer(f_model).f_obs_minus_f_calc(
         1/self.scale_factor, self.f_calc)
     return self._f_mask
+
+  def f_obs(self):
+    fo2 = self.fo2.as_intensity_array()
+    f_obs = fo2.as_amplitude_array()
+    if self.use_complete_set:
+      if self._f_mask is not None:
+        f_model = self.f_model()
+      else:
+        f_model = self.f_calc
+      data_substitute = flex.abs(f_model.data())
+      scale_factor = flex.sum(f_obs.data())/flex.sum(
+        f_model.common_set(f_obs).as_amplitude_array().data())
+      f_obs = f_obs.matching_set(
+        other=self.complete_set,
+        data_substitute=scale_factor*flex.abs(f_model.data()),
+        sigmas_substitute=0)
+    return f_obs
 
   def f_mask(self):
     return self._f_mask
@@ -172,8 +198,10 @@ class mask(object):
   def modified_intensities(self):
     """Intensities with the solvent contribution removed."""
     if self._f_mask is None: return None
+    f_mask = self.f_mask().common_set(self.fo2)
+    f_model = self.f_model().common_set(self.fo2)
     return modified_intensities(
-      self.observations, self.f_model(), self.f_mask())
+      self.fo2, f_model, f_mask)
 
   def n_voids(self):
     return self.flood_fill.n_voids()
