@@ -1604,15 +1604,23 @@ class array(set):
     pairs = other.match_indices(
       other=self,
       assert_is_similar_symmetry=assert_is_similar_symmetry).pairs()
-    data = self.data().__class__(
-      other.indices().size(), data_substitute)
+    if isinstance(data_substitute, self.data().__class__):
+      assert data_substitute.size() == other.size()
+      data = data_substitute.deep_copy()
+    else:
+      data = self.data().__class__(
+        other.indices().size(), data_substitute)
     data.set_selected(
       pairs.column(0), self.data().select(pairs.column(1)))
     if (self.sigmas() is None):
       sigmas = None
     else:
-      sigmas = self.sigmas().__class__(
-        other.indices().size(), sigmas_substitute)
+      if isinstance(sigmas_substitute, self.sigmas().__class__):
+        assert sigmas_substitute.size() == other.size()
+        sigmas = sigmas_substitute.deep_copy()
+      else:
+        sigmas = self.sigmas().__class__(
+          other.indices().size(), sigmas_substitute)
       sigmas.set_selected(
         pairs.column(0), self.sigmas().select(pairs.column(1)))
     return other.array(data=data, sigmas=sigmas)

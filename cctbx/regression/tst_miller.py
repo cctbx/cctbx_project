@@ -791,6 +791,10 @@ unused: 1.0000 -        [ 0/0 ]  0 0.0000
     miller.set(xs, flex.miller_index(((0,0,-5), (1,-2,3)))),
     flex.double((3,4)),
     flex.double((5,6)))
+  a3 = miller.array(
+    miller.set(xs, flex.miller_index(((1,0,1), (0,0,-4), (0,0,-5), (1,-2,3)))),
+    flex.double((5,6,7,8)),
+    flex.double((1,2,3,4)))
   m1 = a1.matching_set(other=a2, data_substitute=13)
   assert m1.indices() is a2.indices()
   assert approx_equal(m1.data(), (13, 1))
@@ -798,6 +802,11 @@ unused: 1.0000 -        [ 0/0 ]  0 0.0000
   assert m2.indices() is a1.indices()
   assert approx_equal(m2.data(), (4, 15))
   assert approx_equal(m2.sigmas(), (6, 17))
+  m3 = a2.matching_set(other=a3, data_substitute=a3.data(),
+                       sigmas_substitute=a3.sigmas())
+  assert m3.indices() is a3.indices()
+  assert approx_equal(m3.data(), (5,6,3,4))
+  assert approx_equal(m3.sigmas(), (1,2,5,6))
   c1 = a1.common_set(a2)
   assert tuple(c1.indices()) == ((1,-2,3),)
   assert tuple(c1.data()) == (1,)
