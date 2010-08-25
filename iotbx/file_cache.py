@@ -59,6 +59,13 @@ class manager (object) :
     file_name = input_file.file_name
     self._cached_input_files[file_name] = input_file
     self.add_file_callback(file_name)
+    if self.use_md5_sum :
+      file_records = open(file_name).read()
+      m = hashlib_md5(file_records)
+      self._file_md5sums[file_name] = m
+    else :
+      mtime = os.path.getmtime(file_name)
+      self._file_mtimes[file_name] = mtime
     return self.save_other_file_data(input_file)
 
   def add_file (self, *args, **kwds) :
@@ -191,3 +198,6 @@ class manager (object) :
 
   def get_file_type_label (self, file_name=None, input_file=None) :
     return self.file_type_label
+
+  def get_files_dict (self) :
+    return self._cached_input_files

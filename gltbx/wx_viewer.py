@@ -71,6 +71,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     kw = self.process_keyword_arguments(**kw)
     self.GL_uninitialised = 1
     wx.glcanvas.GLCanvas.__init__(*((self, parent)+args), **kw)
+    self.context = None
+    if (wx.VERSION[1] >= 9) : # wxPython 2.9.*
+      self.context = wx.glcanvas.GLContext(self)
 
     self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)
     self.Bind(wx.EVT_SIZE, self.OnSize)
@@ -127,7 +130,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def OnSize(self, event=None):
     self.w, self.h = self.GetClientSizeTuple()
     if (self.GetContext() and self.GetParent().IsShown()):
-      self.SetCurrent()
+      if (self.context is not None) :
+        self.SetCurrent(self.context)
+      else :
+        self.SetCurrent()
       glViewport(0, 0, self.w, self.h)
 
   def OnIdle(self,event):
@@ -161,8 +167,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       if (callback is None):
         print "Tab callback not available."
       else:
-        kwargs = {"shift_down": event.m_shiftDown}
-        if (event.m_controlDown): kwargs["control_down"] = True
+        kwargs = {"shift_down": event.ShiftDown() }
+        if (event.ControlDown()): kwargs["control_down"] = True
         callback(**kwargs)
     else:
       callback = getattr(self, "process_key_stroke", None)
@@ -190,7 +196,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.OnRedraw()
     else:
       self.was_dragged = False
-      if (not event.m_shiftDown):
+      if (not event.ShiftDown()):
         self.OnAutoSpin(event)
 
   def OnMiddleClick(self, event):
@@ -437,7 +443,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     xp = event.GetX()
     yp = event.GetY()
     rc = self.rotation_center
-    if (not event.m_shiftDown):
+    if (not event.ShiftDown()):
       gltbx.util.rotate_object_about_eye_x_and_y(
         0.5, rc[0], rc[1], rc[2],
         xp, yp, self.xmouse, self.ymouse)
@@ -506,7 +512,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnPaint(self, event=None):
     wx.PaintDC(self)
-    self.SetCurrent()
+    if (self.context is not None) :
+      self.SetCurrent(self.context)
+    else :
+      self.SetCurrent()
     if (self.GL_uninitialised):
       glViewport(0, 0, self.w, self.h)
       self.InitGL()

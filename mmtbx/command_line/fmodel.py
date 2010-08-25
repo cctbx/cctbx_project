@@ -350,6 +350,8 @@ def validate_params (params, callback=None) :
     elif ([params.high_resolution, params.low_resolution].count(None) != 2):
       raise Sorry("High resolution and low resolution must be undefined "+
                   "if reflection data file is given.")
+  elif (params.output.file_name is None) :
+    raise Sorry("Please specify an output file.")
   if params.low_resolution is not None :
     if params.low_resolution < params.high_resolution :
       raise Sorry("Low-resolution cutoff must be larger than the high-"+
