@@ -28,7 +28,6 @@ def run(args, out=sys.stdout):
     command_line.parser.show_help()
     return
   total_timer = time_log("total").start()
-  reader = [cif.python_reader, cif.fast_reader][1]
   filepath = command_line.args[0]
   if not os.path.isabs(filepath):
     abs_path = libtbx.env.find_in_repositories(relative_path=filepath)
@@ -42,11 +41,11 @@ def run(args, out=sys.stdout):
   show_timings = command_line.options.show_timings == True
   if os.path.isdir(filepath):
     file_ext = command_line.options.file_ext
-    crawl(filepath, reader=reader, file_ext=file_ext,
+    crawl(filepath, file_ext=file_ext,
           cif_dic=cif_dic, show_warnings=show_warnings,
           show_timings=show_timings)
   elif os.path.isfile(filepath):
-    cm = reader(file_path=filepath).model()
+    cm = cif.reader(file_path=filepath).model()
     cm.validate(cif_dic, show_warnings=show_warnings)
   else:
     try:
@@ -54,13 +53,13 @@ def run(args, out=sys.stdout):
     except urllib2.URLError, e:
       pass
     else:
-      cm = reader(file_object=file_object).model()
+      cm = cif.reader(file_object=file_object).model()
       cm.validate(cif_dic, show_warnings=show_warnings)
   if show_timings:
     total_timer.stop()
     print total_timer.report()
 
-def crawl(directory, reader, file_ext, cif_dic, show_warnings, show_timings):
+def crawl(directory, file_ext, cif_dic, show_warnings, show_timings):
   timer = time_log("parsing")
   validate_timer = time_log("validate")
   for root, dirs, files in os.walk(directory):
@@ -69,7 +68,7 @@ def crawl(directory, reader, file_ext, cif_dic, show_warnings, show_timings):
     for path in files_to_read:
       timer.start()
       try:
-        cm = reader(file_path=path).model()
+        cm = cif.reader(file_path=path).model()
       except AssertionError:
         continue
       timer.stop()

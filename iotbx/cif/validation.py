@@ -95,7 +95,7 @@ def smart_load_dictionary(name=None, file_path=None, url=None,
             file_path = gzip_path
   if file_path is not None and os.path.isfile(file_path):
     file_object = smart_open.for_reading(file_path)
-    cif_dic = dictionary(cif.fast_reader(file_object=file_object).model())
+    cif_dic = dictionary(cif.reader(file_object=file_object).model())
     file_object.close()
   else:
     if url is None:
@@ -107,17 +107,17 @@ def smart_load_dictionary(name=None, file_path=None, url=None,
       f = open(os.path.join(store_dir, name), 'wb')
       shutil.copyfileobj(file_object, f)
       f.close()
-      cif_dic = dictionary(cif.fast_reader(
+      cif_dic = dictionary(cif.reader(
         file_path=os.path.join(store_dir, name)).model())
     else:
-      cif_dic = dictionary(cif.fast_reader(
+      cif_dic = dictionary(cif.reader(
         file_object=file_object).model())
   assert cif_dic is not None
   return cif_dic
 
 def locate_dictionary(name, version=None, registry_location=cifdic_register_url):
   from iotbx import cif
-  cm = cif.fast_reader(file_object=urlopen(registry_location)).model()
+  cm = cif.reader(file_object=urlopen(registry_location)).model()
   if version is None: version = '.'
   reg = cm["validation_dictionaries"]
   for n, v, url in zip(reg['_cifdic_dictionary.name'],

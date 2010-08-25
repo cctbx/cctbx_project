@@ -5,26 +5,29 @@ import libtbx.load_env
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import time_log
 from cStringIO import StringIO
+import sys
 
 def exercise():
   if not cif.has_antlr3:
     print "Skipping tst_lex_parse_build.py (antlr3 is not available)"
     return
-  readers = [cif.python_reader, cif.fast_reader]
   builders = [cif.builders.cif_model_builder]
   if libtbx.env.has_module('PyCifRW'):
     builders.append(cif.builders.PyCifRW_model_builder)
   else:
     print "Skipping PyCifRW builder tests"
-  for reader in readers:
-    for builder in builders:
-      exercise_parser(reader, builder)
-      cm = reader(input_string=cif_quoted_string).model()
-      assert cm['global']['_a'] == 'a"b'
-      assert cm['global']['_b'] == "a dog's life"
-    #b = reader(input_string=cif_invalid_missing_value).model()
-    #assert b['global'].items() == [('_a', '1')]
-    #c = reader(input_string=cif_invalid_string).model()
+  for builder in builders:
+    exercise_parser(cif.reader, builder)
+  cm = cif.reader(input_string=cif_quoted_string).model()
+  assert cm['global']['_a'] == 'a"b'
+  assert cm['global']['_b'] == "a dog's life"
+  stdout = sys.stdout
+  s = StringIO()
+  sys.stdout = s
+  b = cif.reader(input_string=cif_invalid_missing_value).model()
+  assert b['global'].items() == [('_a', '1')]
+  c = cif.reader(input_string=cif_invalid_string).model()
+  sys.stdout = stdout
 
   arrays = miller.array.from_cif(file_object=StringIO(
     cif_miller_array_template %(

@@ -29,20 +29,20 @@ def exercise(args):
 def exercise_validation():
   cd = validation.smart_load_dictionary(name="cif_core.dic")
   #
-  cm_invalid = cif.fast_reader(input_string=cif_invalid).model()
+  cm_invalid = cif.reader(input_string=cif_invalid).model()
   s = StringIO()
   cm_invalid.validate(cd, out=s)
   assert sorted(cd.err.errors.keys()) == [
     2001, 2002, 2101, 2102, 2501, 2503, 2504, 2505, 2506]
   assert sorted(cd.err.warnings.keys()) == [1001, 1002, 1003]
-  cm_valid = cif.fast_reader(input_string=cif_valid).model()
+  cm_valid = cif.reader(input_string=cif_valid).model()
   cd.err.reset()
   s = StringIO()
   cm_valid.validate(cd, out=s)
   assert len(cd.err.errors.keys()) == 0
   assert len(cd.err.warnings.keys()) == 0
   cd2 = validation.smart_load_dictionary(name="cif_mm.dic")
-  cm_invalid_2 = cif.fast_reader(input_string=cif_invalid_2).model()
+  cm_invalid_2 = cif.reader(input_string=cif_invalid_2).model()
   s = StringIO()
   cm_invalid_2.validate(cd2, out=s)
   assert sorted(cd2.err.errors.keys()) == [
