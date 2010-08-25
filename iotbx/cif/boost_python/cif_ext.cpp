@@ -3,6 +3,8 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/list.hpp>
+#include <boost/python/return_by_value.hpp>
+#include <boost/python/return_value_policy.hpp>
 
 #include <iotbx/cif/parser.h>
 #include <iotbx/error.h>
@@ -35,9 +37,12 @@ namespace boost_python {
 
     static void wrap(char const *name) {
       using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
       class_<wt, boost::noncopyable>(name, no_init)
         .def(init<std::string, boost::python::object&>(
           (arg("input"), arg("builder"))))
+        .def("parser_errors", &wt::parser_errors, rbv())
+        .def("lexer_errors", &wt::lexer_errors, rbv())
         ;
     }
   };

@@ -10,40 +10,66 @@ from cctbx.xray import structure
 from iotbx.cif import model, builders
 from libtbx.containers import OrderedDict
 
-def python_reader(file_path=None, file_object=None, input_string=None,
-                  builder=None):
-  """Uses a prototype Python parser."""
-  assert [file_path, file_object, input_string].count(None) == 2
-  assert has_antlr3
-  if builder is None:
-    builder = builders.cif_model_builder()
-  from iotbx.cif import cifProtoLexer, cifProtoParser
-  import antlr3
-  if file_object is not None:
-    char_stream = antlr3.ANTLRInputStream(file_object)
-  elif file_path is not None:
-    char_stream = antlr3.ANTLRFileStream(file_path)
-  else:
-    char_stream = antlr3.ANTLRStringStream(input_string)
-  lexer = cifProtoLexer.cifProtoLexer(char_stream)
-  tokens = antlr3.CommonTokenStream(lexer)
-  parser = cifProtoParser.cifProtoParser(tokens)
-  parser.parse(builder=builder)
-  return builder
+import sys
 
-def fast_reader(file_path=None, file_object=None, input_string=None,
-                builder=None):
-  assert [file_path, file_object, input_string].count(None) == 2
-  assert has_antlr3
-  if builder is None:
-    builder = builders.cif_model_builder()
-  if file_object is not None:
-    input_string = file_object.read()
-  if input_string is not None:
-    ext.fast_reader(input_string, builder)
-  if file_path is not None:
-    ext.fast_reader(file_path, builder)
-  return builder
+class python_reader:
+
+  def __init__(self, file_path=None, file_object=None, input_string=None,
+               builder=None):
+    """Uses a prototype Python parser."""
+    assert [file_path, file_object, input_string].count(None) == 2
+    assert has_antlr3
+    if builder is None:
+      builder = builders.cif_model_builder()
+    self.builder = builder
+    from iotbx.cif import cifProtoLexer, cifProtoParser
+    import antlr3
+    if file_object is not None:
+      char_stream = antlr3.ANTLRInputStream(file_object)
+    elif file_path is not None:
+      char_stream = antlr3.ANTLRFileStream(file_path)
+    else:
+      char_stream = antlr3.ANTLRStringStream(input_string)
+    lexer = cifProtoLexer.cifProtoLexer(char_stream)
+    tokens = antlr3.CommonTokenStream(lexer)
+    parser = cifProtoParser.cifProtoParser(tokens)
+    parser.parse(builder=builder)
+
+  def model(self):
+    return self.builder.model()
+
+
+class fast_reader:
+
+  def __init__(self, file_path=None, file_object=None, input_string=None,
+               builder=None, max_errors=50):
+    assert [file_path, file_object, input_string].count(None) == 2
+    assert has_antlr3
+    if builder is None:
+      builder = builders.cif_model_builder()
+    self.builder = builder
+    if file_object is not None:
+      input_string = file_object.read()
+    if input_string is not None:
+      self.parser = ext.fast_reader(input_string, builder)
+    if file_path is not None:
+      self.parser = ext.fast_reader(file_path, builder)
+    self.show_errors()
+
+  def model(self):
+    return self.builder.model()
+
+  def error_count(self):
+    return self.parser.lexer_errors().size()\
+           + self.parser.parser_errors().size()
+
+  def show_errors(self, max_errors=50, out=None):
+    if out is None: out = sys.stdout
+    for msg in self.parser.lexer_errors()[:max_errors]:
+      print >> out, msg
+    for msg in self.parser.parser_errors()[:max_errors]:
+      print >> out, msg
+
 
 class crystal_symmetry_as_cif_block:
 
