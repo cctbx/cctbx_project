@@ -17,6 +17,21 @@ options {
     language=C;
 }
 
+@lexer::includes{
+#if defined(min) && defined(max)
+  #define min_redefined min
+  #define max_redefined max
+  #undef min
+  #undef max
+#endif
+#include <scitbx/array_family/shared.h>
+#ifdef min_redefined
+  #define max max_redefined
+  #define min min_redefined
+#endif
+
+}
+
 @includes{
 #include <string>
 #include <vector>
@@ -36,6 +51,25 @@ options {
 #include <boost/python/object.hpp>
 }
 
+@parser::context
+{
+    scitbx::af::shared<std::string> *errors;
+}
+
+@lexer::context
+{
+    scitbx::af::shared<std::string> *errors;
+}
+
+@parser::apifuncs
+{
+  PARSER->super = (void *)ctx;
+}
+
+@lexer::apifuncs
+{
+  LEXER->super = (void *)ctx;
+}
 @members {
 std::string to_std_string(pANTLR3_STRING text) {
 	return std::string((const char*)text->chars);
