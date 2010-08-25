@@ -1282,15 +1282,13 @@ class structure(crystal.special_position_settings):
     return builder.structure
   from_shelx = classmethod(from_shelx)
 
-  def from_cif(cls, file_object=None, file_path=None,
-               block_heading=None, reader=None):
+  def from_cif(cls, file_object=None, file_path=None, block_heading=None):
     import iotbx.cif
     from iotbx.cif import builders
     return iotbx.cif.cctbx_data_structure_from_cif(
       file_object=file_object, file_path=file_path,
       block_heading=block_heading,
-      data_structure_builder=builders.crystal_structure_builder,
-      reader=reader).structure
+      data_structure_builder=builders.crystal_structure_builder).structure
   from_cif = classmethod(from_cif)
 
   def asu_content(self, omit=None):
