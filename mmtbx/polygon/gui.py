@@ -243,6 +243,8 @@ class canvas_layout (object) :
       intersections = []
       on_histogram = []
       for histogram in histogram_layouts :
+        if (not histogram.name in stats) :
+          continue
         stat = stats[histogram.name]
         (x, y), point_on_histogram = histogram.get_polygon_intersection(stat)
         intersections.append((x,y))
