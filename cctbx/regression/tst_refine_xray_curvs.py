@@ -106,6 +106,14 @@ def get_curvs_work(f_obs, weights, xray_structure, lim_eps):
   sys.stdout.flush()
   return result
 
+class refinement_stats(libtbx.slots_getstate_setstate):
+
+  __slots__ = ["iter", "nfun", "f", "gnorm", "crmsd", "armsd", "urmsd"]
+
+  def __init__(O, **kw):
+    for slot in O.__slots__:
+      setattr(O, slot, kw[slot])
+
 class ls_refinement(object):
 
   def __init__(O,
@@ -133,6 +141,7 @@ class ls_refinement(object):
     O.number_of_function_evaluations = -1
     O.number_of_lbfgs_iterations = -1
     O.f_start, O.g_start = O.compute_functional_and_gradients()
+    O.history = []
     O.callback_after_step(minimizer=None)
     if (params.minimizer == "lbfgs"):
       O.minimizer = scitbx.lbfgs.run(
@@ -289,28 +298,42 @@ class ls_refinement(object):
       O.f_last, O.g_last.norm())
     s += O.format_rms_info()
     print s+suffix
+    O.history.append(refinement_stats(
+      iter=O.number_of_lbfgs_iterations,
+      nfun=O.number_of_function_evaluations,
+      f=O.f_last,
+      gnorm=O.g_last.norm(),
+      crmsd=O.crmsd,
+      armsd=O.armsd,
+      urmsd=O.urmsd))
     sys.stdout.flush()
+
+  def get_rms_info(O):
+    if (O.reference_structure is None):
+      return None
+    xs = O.xray_structure
+    rs = O.reference_structure
+    xf = xs.sites_frac()
+    rf = rs.sites_frac()
+    # TODO: use scattering power as weights, move to method of xray.structure
+    ave_csh = matrix.col((xf-rf).mean())
+    ave_csh_perp = matrix.col(xs.space_group_info()
+      .subtract_continuous_allowed_origin_shifts(translation_frac=ave_csh))
+    caosh_corr = ave_csh - ave_csh_perp
+    omx = xs.unit_cell().orthogonalization_matrix()
+    O.crmsd = (omx * (rf - xf)).rms_length()
+    O.armsd = (omx * (rf - xf + caosh_corr)).rms_length()
+    O.urmsd = flex.mean_sq(
+        xs.scatterers().extract_u_iso()
+      - rs.scatterers().extract_u_iso())**0.5
+    return (O.crmsd, O.armsd, O.urmsd)
 
   def format_rms_info(O):
     s = ""
-    if (O.reference_structure is not None):
-      xs = O.xray_structure
-      rs = O.reference_structure
-      xf = xs.sites_frac()
-      rf = rs.sites_frac()
-      # TODO: use scattering power as weights, move to method of xray.structure
-      ave_csh = matrix.col((xf-rf).mean())
-      ave_csh_perp = matrix.col(xs.space_group_info()
-        .subtract_continuous_allowed_origin_shifts(translation_frac=ave_csh))
-      caosh_corr = ave_csh - ave_csh_perp
-      omx = xs.unit_cell().orthogonalization_matrix()
-      r = (omx * (rf - xf)).rms_length()
-      s += " %5.3f" % r
-      r = (omx * (rf - xf + caosh_corr)).rms_length()
-      s += " %5.3f" % r
-      s += " %5.3f" % (flex.mean_sq(
-          xs.scatterers().extract_u_iso()
-        - rs.scatterers().extract_u_iso())**0.5)
+    info = O.get_rms_info()
+    if (info is not None):
+      for r in info:
+        s += " %5.3f" % r
     return s
 
   def show_rms_info(O):
@@ -399,7 +422,7 @@ class ls_refinement(object):
       else:
         O.callback_after_step(minimizer=None)
 
-def run_refinement(structure_ideal, structure_shake, params, pickle_file_name):
+def run_refinement(structure_ideal, structure_shake, params, run_id):
   print "Ideal structure:"
   structure_ideal.show_summary().show_scatterers()
   print
@@ -418,13 +441,13 @@ def run_refinement(structure_ideal, structure_shake, params, pickle_file_name):
     algorithm="direct",
     cos_sin_table=False).f_calc())
   try:
-    ls_refinement(
+    return ls_refinement(
       f_obs=f_obs,
       xray_structure=structure_shake,
       params=params,
       reference_structure=structure_ideal)
   except RuntimeError, e:
-    print "RuntimeError pickle_file_name:", pickle_file_name
+    print "RuntimeError run_id:", run_id
     sys.stdout.flush()
     if (str(e) != "f_calc"):
       raise
@@ -438,13 +461,15 @@ def run_call_back(flags, space_group_info, params):
     general_positions_only=params.general_positions_only,
     random_u_iso=True)
   structure_ideal = structure_shake.deep_copy_scatterers()
-  structure_shake.shake_sites_in_place(rms_difference=0.2)
-  structure_shake.shake_adp()
+  structure_shake.shake_sites_in_place(rms_difference=params.shake_sites_rmsd)
+  structure_shake.shake_adp(spread=params.shake_adp_spread)
   #
-  pickle_file_name = "%s_%s.pickle" % (
-    params.pickle_root_name,
-    str(space_group_info).replace(" ","").replace("/","_"))
+  run_id = ""
   if (params.pickle_root_name is not None):
+    run_id += params.pickle_root_name + "_"
+  run_id += str(space_group_info).replace(" ","").replace("/","_").lower()
+  if (params.pickle_root_name is not None):
+    pickle_file_name = run_id + "_ideal_shake.pickle"
     print "writing file:", pickle_file_name
     easy_pickle.dump(
       file_name=pickle_file_name,
@@ -452,11 +477,19 @@ def run_call_back(flags, space_group_info, params):
     print
     sys.stdout.flush()
   #
-  run_refinement(
+  ls_result = run_refinement(
     structure_ideal=structure_ideal,
     structure_shake=structure_shake,
     params=params,
-    pickle_file_name=pickle_file_name)
+    run_id=run_id)
+  if (ls_result is not None and params.pickle_root_name is not None):
+    pickle_file_name = run_id + "_ls_history.pickle"
+    print "writing file:", pickle_file_name
+    easy_pickle.dump(
+      file_name=pickle_file_name,
+      obj=ls_result.history)
+    print
+    sys.stdout.flush()
 
 def run(args):
   master_phil = libtbx.phil.parse("""
@@ -477,6 +510,10 @@ def run(args):
       .type = float
     use_max_stp = True
       .type = bool
+    shake_sites_rmsd = 0.5
+      .type = float
+    shake_adp_spread = 20
+      .type = float
     pickle_root_name = None
       .type = str
     unpickle = None
@@ -505,7 +542,8 @@ def run(args):
       structure_ideal=structure_ideal,
       structure_shake=structure_shake,
       params=params,
-      pickle_file_name=params.unpickle)
+      run_id=params.unpickle)
 
 if (__name__ == "__main__"):
+  from cctbx.regression.tst_refine_xray_curvs import run # for pickle
   run(args=sys.argv[1:])
