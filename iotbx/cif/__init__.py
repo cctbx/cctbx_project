@@ -12,34 +12,7 @@ from libtbx.containers import OrderedDict
 
 import sys
 
-class python_reader:
-
-  def __init__(self, file_path=None, file_object=None, input_string=None,
-               builder=None):
-    """Uses a prototype Python parser."""
-    assert [file_path, file_object, input_string].count(None) == 2
-    assert has_antlr3
-    if builder is None:
-      builder = builders.cif_model_builder()
-    self.builder = builder
-    from iotbx.cif import cifProtoLexer, cifProtoParser
-    import antlr3
-    if file_object is not None:
-      char_stream = antlr3.ANTLRInputStream(file_object)
-    elif file_path is not None:
-      char_stream = antlr3.ANTLRFileStream(file_path)
-    else:
-      char_stream = antlr3.ANTLRStringStream(input_string)
-    lexer = cifProtoLexer.cifProtoLexer(char_stream)
-    tokens = antlr3.CommonTokenStream(lexer)
-    parser = cifProtoParser.cifProtoParser(tokens)
-    parser.parse(builder=builder)
-
-  def model(self):
-    return self.builder.model()
-
-
-class fast_reader:
+class reader:
 
   def __init__(self, file_path=None, file_object=None, input_string=None,
                builder=None, max_errors=50):
@@ -70,6 +43,7 @@ class fast_reader:
     for msg in self.parser.parser_errors()[:max_errors]:
       print >> out, msg
 
+fast_reader = reader # XXX backward compatibility 2010-08-25
 
 class crystal_symmetry_as_cif_block:
 
@@ -161,10 +135,8 @@ class miller_array_as_cif_block(crystal_symmetry_as_cif_block,
 
 def cctbx_data_structure_from_cif(
   file_object=None, file_path=None, data_structure_builder=None,
-  reader=None, block_heading=None, **kwds):
+  block_heading=None, **kwds):
   assert data_structure_builder is not None
-  if reader is None:
-    reader = python_reader
   cif_model = reader(file_path=file_path, file_object=file_object).model()
   if block_heading is not None:
     return data_structure_builder(cif_model[block_heading], **kwds)
