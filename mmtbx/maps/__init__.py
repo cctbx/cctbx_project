@@ -85,20 +85,16 @@ map_params_str ="""\
       .expert_level=0
     scale = *sigma volume
       .type = choice(multi=False)
-      .expert_level = 1
     region = *selection cell
       .type = choice
-      .expert_level=1
       .caption = Atom_selection Unit_cell
       .short_caption=Map region
     atom_selection = None
       .type = str
-      .expert_level=1
       .short_caption = Atom selection
       .style = selection
     atom_selection_buffer = 3
       .type = float
-      .expert_level=2
     acentrics_scale = 2.0
       .type = float
       .help = Scale terms corresponding to acentric reflections (residual maps only: k==n)

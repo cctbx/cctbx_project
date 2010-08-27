@@ -68,6 +68,7 @@ master_phil_str = """\
     .type = bool
   trajectory_directory = None
     .type = path
+    .expert_level = 3
 """
 
 class potential_object(object):

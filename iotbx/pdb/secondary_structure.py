@@ -19,15 +19,16 @@ ss_input_params_str = """
     .type = path
     .multiple = True
     .optional = True
+    .style = hidden
   use_hydrogens = True
     .type = bool
-    .style = noauto
+    .style = hidden
   include_helices = True
     .type = bool
-    .style = noauto
+    .style = hidden
   include_sheets = True
     .type = bool
-    .style = noauto
+    .style = hidden
 """
 ss_input_params = libtbx.phil.parse(ss_input_params_str)
 
