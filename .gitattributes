@@ -33,6 +33,7 @@ boost_adaptbx/tests/tst_tuple.py -text
 boost_adaptbx/tuple_conversion.h -text
 boost_adaptbx/tuple_ext.cpp -text
 cbflib_adaptbx/SConscript -text
+cbflib_adaptbx/__init__.py -text
 cbflib_adaptbx/detectors/boost_python/SConscript -text
 cbflib_adaptbx/detectors/boost_python/cbflib_ext.cpp -text
 cbflib_adaptbx/detectors/buffer_based_service.cpp -text

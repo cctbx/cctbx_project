@@ -35,7 +35,7 @@ def generate_paths():
 def test_all(timer=False):
   for file in generate_paths():
     from iotbx.detectors.pilatus_minicbf import PilatusImage
-    from cbflib_ext import MiniCBFAdaptor
+    from cbflib_adaptbx import MiniCBFAdaptor
     if timer: print os.path.basename(file)
     P = PilatusImage(file)
     if timer: G = Profiler("cbflib no-opt    read")
@@ -50,7 +50,7 @@ def test_all(timer=False):
     expected_image_size = {"Pilatus-6M":(2527,2463),
                            "Pilatus-2M":(1679,1475)}[P.vendortype]
     assert read1.accessor().focus() == read2.accessor().focus() == expected_image_size
-    from cbflib_ext import assert_equal
+    from cbflib_adaptbx import assert_equal
     #print "Equality of arrays from two decompress methods", assert_equal(read1,read2), "\n"
     assert assert_equal(read1,read2)
     assert assert_equal(read1,read3)

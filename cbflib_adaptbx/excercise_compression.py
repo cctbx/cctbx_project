@@ -1,5 +1,5 @@
-from scitbx.array_family import flex #mandatory import for cbflib_ext
-from cbflib_ext import uncompress,compress,assert_equal
+from scitbx.array_family import flex
+from cbflib_adaptbx import uncompress,compress,assert_equal
 from libtbx.development.timers import Profiler
 
 def create_random_data_with_gaussian_distribution(mu=0.0,sigma=1.0):
