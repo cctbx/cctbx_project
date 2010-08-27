@@ -261,6 +261,20 @@ def validate_params (params, callback=None) :
     raise Sorry(("The output directory %s does not exist; please choose a "+
       "valid directory, or leave this parameter blank.") %
       params.maps.output.directory)
+  labels = []
+  for map_coeffs in params.maps.map_coefficients :
+    if (map_coeffs.map_type is None) :
+      raise Sorry("One or more map coefficients is missing a map type "+
+        "definition.")
+    f = map_coeffs.mtz_label_amplitudes
+    phi = map_coeffs.mtz_label_phases
+    if (f in labels) or (phi in labels) :
+      raise Sorry(("The map coefficients with MTZ labels %s,%s duplicates at "+
+        "least one previously defined label.  You may output multiple sets "+
+        "of coefficients with the same map type, but the column labels must "+
+        "be unique.") % (f, phi))
+    labels.extend([f,phi])
+  return True
 
 def finish_job (results) :
   (mtz_file, map_files) = results

@@ -674,6 +674,28 @@ def _get_residue_name_from_selection (resi_sele, selection_cache, atoms) :
   else :
     return resnames[0]
 
+def _find_strand_bonding_start (atoms,
+    prev_strand_donors,
+    prev_strand_acceptors,
+    curr_strand_donors,
+    curr_strand_acceptors,
+    sense,
+    max_distance_cutoff=4.5) :
+  assert sense != "unknown"
+  assert prev_strand_donors.size() == prev_strand_acceptors.size()
+  assert curr_strand_donors.size() == curr_strand_acceptors.size()
+  sites_cart = atoms.extract_xyz()
+  min_dist = max_distance_cutoff
+  best_pair = (None, None)
+  for donor_i_seq in prev_strand_donors :
+    for acceptor_j_seq in curr_strand_acceptors :
+      (x1, y1, z1) = sites_cart[donor_i_seq]
+      (x2, y2, z2) = sites_cart[acceptor_j_seq]
+      dist = sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+      if (dist < min_dist) :
+        best_pair = (donor_i_seq, acceptor_i_seq)
+  return best_pair
+
 def _hydrogen_bonds_from_strand_pair (atoms,
     prev_strand_donors,
     prev_strand_acceptors,
