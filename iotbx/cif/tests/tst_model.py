@@ -186,6 +186,28 @@ save_bob
   save_
 
 """)
+  b1 = model.block()
+  b1['_a'] = 1
+  b1['_b'] = 2
+  b1['_c'] = 3
+  b2 = model.block()
+  b2['_a'] = 2
+  b2['_c'] = 3
+  b2['_d'] = 4
+  b3 = b1.difference(b2)
+  b4 = b2.difference(b1)
+  assert b3.items() == [('_b', '2'), ('_a', '2')]
+  assert b4.items() == [('_d', '4'), ('_a', '1')]
+  l = model.loop(data=dict(_loop_d=(1,2),_loop_e=(3,4),_loop_f=(5,6)))
+  assert l == l
+  assert l == l.deepcopy()
+  assert l != l2
+  assert l != l3
+  l2 = model.loop(data=dict(_loop_d=(1,2,3),_loop_e=(3,4,5),_loop_f=(5,6,7)))
+  b1.add_loop(l)
+  b2.add_loop(l2)
+  b5 = b1.difference(b2)
+  assert b5['_loop'] == l2
 
 
 if __name__ == '__main__':

@@ -1,11 +1,8 @@
 from libtbx.containers import OrderedDict, OrderedSet
 import sys
-if 0 and sys.version_info[0] >= 2 and sys.version_info[1] >= 6:
-  from collections import MutableMapping as DictMixin
-else:
-  from UserDict import DictMixin
 import copy
 from cStringIO import StringIO
+from UserDict import DictMixin
 
 from cctbx.array_family import flex
 
@@ -73,6 +70,7 @@ class cif(DictMixin):
       errors.setdefault(key, error_handler)
       if error_handler.error_count or error_handler.warning_count:
         error_handler.show(show_warnings=show_warnings, out=out)
+    return error_handler
 
 
 class block_base(DictMixin):
@@ -144,10 +142,14 @@ class block_base(DictMixin):
   def update(self, other=None, **kwargs):
     if other is None:
       return
-    self._items.update(other._items)
-    self.loops.update(other.loops)
-    self._set |= other._set
-    self.keys_lower.update(other.keys_lower)
+    if isinstance(other, OrderedDict) or isinstance(other, dict):
+      for key, value in other.iteritems():
+        self[key] = value
+    else:
+      self._items.update(other._items)
+      self.loops.update(other.loops)
+      self._set |= other._set
+      self.keys_lower.update(other.keys_lower)
 
   def add_data_item(self, tag, value):
     self[tag] = value
@@ -186,6 +188,22 @@ class block_base(DictMixin):
       dictionary.validate_single_item(key, value, self)
     for loop in self.loops.values():
       dictionary.validate_loop(loop, self)
+
+
+  """Items that either appear in both self and other and the value has changed
+     or appear in self but not other."""
+  def difference(self, other):
+    new = self.__class__()
+    for items in (self._items, self.loops):
+      for key, value in items.iteritems():
+        if key in other:
+          other_value = other[key]
+          if other_value == value: continue
+          else:
+            new[key] = other_value
+        else:
+          new[key] = value
+    return new
 
 class save(block_base):
 
@@ -377,6 +395,16 @@ class loop(DictMixin):
   def iterrows(self):
     return iter([[self.values()[i][j] for i in range(len(self))]
                  for j in range(self.size())])
+
+  def __eq__(self, other):
+    if (len(self) != len(other) or
+        self.size() != other.size() or
+        self.keys() != other.keys()):
+      return False
+    for value, other_value in zip(self.values(), other.values()):
+      if (value == other_value).count(True) != len(value):
+        return False
+    return True
 
 
 def common_substring(seq):
