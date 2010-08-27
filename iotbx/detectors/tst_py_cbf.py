@@ -1,6 +1,6 @@
 import iotbx.cif
 import sys, os, email.parser, copy, hashlib, base64
-from cbflib_ext import uncompress,compress,assert_equal
+from cbflib_adaptbx import uncompress,compress,assert_equal
 
 class cif_binary_section:
   endline = "\r\n"

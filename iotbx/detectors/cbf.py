@@ -6,7 +6,7 @@ class CBFImage(MARIPImage):
   def __init__(self,filename):
     DetectorImageBase.__init__(self,filename)
     try:
-      from cbflib_ext import CBFAdaptor # optional package
+      from cbflib_adaptbx import CBFAdaptor # optional package
       self.adaptor = CBFAdaptor(filename)
       # for testing only:
       '''

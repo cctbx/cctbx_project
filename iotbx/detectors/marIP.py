@@ -17,7 +17,7 @@ class MARIPImage(DetectorImageBase):
   def __init__(self,filename):
     DetectorImageBase.__init__(self,filename)
     try:
-      from cbflib_ext import Mar345Adaptor # optional package
+      from cbflib_adaptbx import Mar345Adaptor # optional package
       self.adaptor = Mar345Adaptor(filename)
     except:
       self.adaptor = NullAdaptor()
