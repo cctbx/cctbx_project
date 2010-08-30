@@ -39,6 +39,7 @@ class evaluate(slots_getstate_setstate):
     "is_epsilon_outlier",
     "is_2p_delta",
     "is_3p_delta",
+    "is_delta_outlier",
     "is_2p_p_distance_c1p_outbound_line",
     "is_2p_o3p_distance_c1p_outbound_line",
     "is_2p"]
@@ -147,10 +148,15 @@ class evaluate(slots_getstate_setstate):
         perp_distance = is_2p_o3p_distance_c1p_outbound_line
       if (perp_distance):
         is_2p = True
-      elif ( not perp_distance):
-        is_2p = False
       else:
-        is_2p = None
+        is_2p = False
+    if (is_3p_delta is None or is_2p_delta is None or is_2p is None):
+      is_delta_outlier = None
+    else:
+      if (is_2p and not is_2p_delta) or (not is_2p and not is_3p_delta):
+        is_delta_outlier = True
+      else:
+        is_delta_outlier = False
     O.assign(
       epsilon=epsilon,
       delta=delta,
@@ -159,6 +165,7 @@ class evaluate(slots_getstate_setstate):
       is_epsilon_outlier=is_epsilon_outlier,
       is_2p_delta=is_2p_delta,
       is_3p_delta=is_3p_delta,
+      is_delta_outlier=is_delta_outlier,
       is_2p_p_distance_c1p_outbound_line=is_2p_p_distance_c1p_outbound_line,
       is_2p_o3p_distance_c1p_outbound_line=is_2p_o3p_distance_c1p_outbound_line,
       is_2p=is_2p)
