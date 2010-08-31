@@ -113,13 +113,15 @@ class cache(slots_getstate_setstate):
     "element",
     "charge",
     "anisou",
-    "pepnames"]
+    "pepnames",
+    "single_atom_residue"]
 
   def __init__(self, root, wildcard_escape_char='\\'):
     self.root = root
     self.wildcard_escape_char = wildcard_escape_char
     root.get_atom_selection_cache(self)
     self.pepnames = None
+    self.single_atom_residue = None
 
   def get_name(self, pattern):
     return _get_map_string(
@@ -250,6 +252,20 @@ class cache(slots_getstate_setstate):
       self.pepnames = (atoms.extract_tmp_as_size_t() == 1).iselection()
     return [self.pepnames]
 
+  def get_single_atom_residue(self):
+    if (self.single_atom_residue is None):
+      atoms = self.root.atoms()
+      sentinel = atoms.reset_tmp(first_value=0, increment=0)
+      for model in self.root.models():
+        for chain in model.chains():
+          for rg in chain.residue_groups():
+            for ag in rg.atom_groups():
+              if (ag.atoms_size() == 1):
+                ag.atoms()[0].tmp = 1
+      self.single_atom_residue = (
+        atoms.extract_tmp_as_size_t() == 1).iselection()
+    return [self.single_atom_residue]
+
   def union(self, iselections):
     return flex.union(
       size=self.n_seq,
@@ -308,6 +324,9 @@ class cache(slots_getstate_setstate):
 
   def sel_pepnames(self):
     return self.union(iselections=self.get_pepnames())
+
+  def sel_single_atom_residue(self):
+    return self.union(iselections=self.get_single_atom_residue())
 
   def selection_tokenizer(self, string, contiguous_word_characters=None):
     return selection_tokenizer(string, contiguous_word_characters)
@@ -426,6 +445,8 @@ class cache(slots_getstate_setstate):
           result_stack.append(self.sel_anisou())
         elif (lword == "pepnames"):
           result_stack.append(self.sel_pepnames())
+        elif (lword == "single_atom_residue"):
+          result_stack.append(self.sel_single_atom_residue())
         elif (callback is not None):
           if (not callback(
                     word=word,

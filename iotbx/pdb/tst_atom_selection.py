@@ -195,6 +195,8 @@ END
   assert list(isel(r"charge 4+")) == [64]
   assert list(isel(r"anisou")) == [1, 3]
   assert list(isel(r"pepnames")) == range(40)
+  assert list(isel(r"single_atom_residue")) == [
+    69, 76, 77, 78, 81, 82, 83, 84, 85, 86, 87]
   #
   try: isel(r"resseq")
   except pdb.atom_selection.AtomSelectionError, e:
