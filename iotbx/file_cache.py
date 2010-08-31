@@ -191,7 +191,9 @@ class manager (object) :
 
   def get_param_files (self, file_param_name) :
     file_name = self._param_files.get(file_param_name)
-    if isinstance(file_name, list) :
+    if (file_name is None) :
+      return []
+    elif isinstance(file_name, list) :
       return file_name
     else :
       return [ file_name ]
