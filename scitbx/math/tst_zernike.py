@@ -3,17 +3,9 @@ from scitbx.array_family import flex
 from scitbx.array_family import shared
 from stdlib import math as smath
 
-from iotbx.xplor import map as xplor_map
 from cctbx import uctbx
 
 
-
-def xplor_map_type(xyz,m,N,radius,file_name='map.xplor'):
-  gridding = xplor_map.gridding( [N*2+1]*3, [0]*3, [2*N]*3)
-  grid = flex.grid(N*2+1, N*2+1,N*2+1)
-  m.reshape( grid )
-  uc = uctbx.unit_cell(" %s"%(radius*2.0)*3+"90 90 90")
-  xplor_map.writer( file_name, ['no title lines'],uc, gridding,m)  # True)
 
 
 
@@ -76,6 +68,39 @@ def tst_zernike_radial():
                   tmp = flex.sum( tmp )/100000.0
                   assert (tmp<1e-2)
                   #print n,l, nn,ll, tmp
+
+
+def tst_zernike_radial_2d():
+  N=50
+  M=15
+  lfg =  math.log_factorial_generator(N)
+  NNN = int(1e5)
+  for n in range(M):
+    for l in range(n+1):
+      if (n-l)%2==0:
+        rzfa = math.zernike_2d_radial(n,l, lfg)
+        r = flex.double( flex.double(range(NNN))/float(NNN-1) )
+        a = rzfa.f( r )
+        tmp = a*a*r
+        tmp = flex.sum( tmp )/float(NNN)
+        tmp = tmp*(2*n+2)
+        nnlk = rzfa.Nnlk()
+        assert abs(tmp-1)<2e-2
+        for nn in range(M):
+          for ll in range(nn):
+            if (nn-ll)%2==0:
+              if (nn!=n):
+                if ll==l:
+                  rzfb = math.zernike_radial(nn,ll, lfg)
+                  rzfa = math.zernike_radial(n,l, lfg)
+                  b = rzfb.f( r )
+                  a = rzfa.f( r )
+                  tmp = a*b*r*r
+                  tmp = flex.sum( tmp )/float(NNN)
+                  #print n,nn,l,ll,tmp
+                  assert (tmp<1e-2)
+
+
 
 
 
@@ -197,6 +222,7 @@ def tst_nss_spherical_harmonics():
 
 
 if __name__ == "__main__":
+  tst_zernike_radial_2d()
   tst_nss_spherical_harmonics()
   tst_nl()
   tst_nlm()
