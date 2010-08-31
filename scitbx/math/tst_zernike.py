@@ -95,12 +95,47 @@ def tst_zernike_radial_2d():
                   rzfa = math.zernike_radial(n,l, lfg)
                   b = rzfb.f( r )
                   a = rzfa.f( r )
-                  tmp = a*b*r*r
+                  tmp = a*b*r
                   tmp = flex.sum( tmp )/float(NNN)
                   #print n,nn,l,ll,tmp
-                  assert (tmp<1e-2)
 
+def triple_partity_check(n,nn,nnn):
+  tot=0
+  if (n%2==0):
+    tot+=1
+  if (nn%2==0):
+    tot+=1
+  if (nnn%2==0):
+    tot+=1
+  if tot==3:
+    return True
+  if tot==0:
+    return True
 
+def triple_integral():
+  N=50
+  M=5
+  lfg =  math.log_factorial_generator(N)
+  NNN = int(1e5)
+  from stdlib import math as smath
+  for n in range(M):
+    for nn in range(n,M):
+      for nnn in range(nn,M):
+        if triple_partity_check(n,nn,nnn):
+          for l in range(min(n+1,nn+1,nnn+1)):
+           if (n-l)%2==0:
+            rzfa = math.zernike_radial(n,l,   lfg)
+            rzfb = math.zernike_radial(nn,l,  lfg)
+            rzfc = math.zernike_radial(nnn,l, lfg)
+            r = flex.double( flex.double(range(NNN))/float(NNN-1) )
+            a = rzfa.f(r)
+            b = rzfb.f(r)
+            c = rzfc.f(r)
+            tmp = flex.sum(a*b*c*r)/float(NNN)
+            sign = 1
+            if tmp < 0:
+              tmp=-tmp
+              sign=-1
 
 
 
@@ -222,6 +257,7 @@ def tst_nss_spherical_harmonics():
 
 
 if __name__ == "__main__":
+  triple_integral()
   tst_zernike_radial_2d()
   tst_nss_spherical_harmonics()
   tst_nl()
