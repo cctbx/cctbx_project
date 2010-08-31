@@ -3,6 +3,7 @@ from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.cbetadev import cbetadev
 from mmtbx.validation.clashscore import clashscore
+from mmtbx.validation.rna_validate import rna_validate
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from iotbx import pdb
 from cctbx.array_family import flex
@@ -12,6 +13,21 @@ import cStringIO
 import libtbx.load_env
 
 import sys, os, getopt
+
+#{{{ exercise_rna_validate
+def exercise_rna_validate():
+  regression_pdb = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/pdb2goz_refmac_tls.ent",
+    test=os.path.isfile)
+  if (regression_pdb is None):
+    print "Skipping exercise_regression(): input pdb (pdb2goz_refmac_tls.ent) not available"
+    return
+  pdb_io = pdb.input(file_name=regression_pdb)
+  rv=rna_validate()
+  rv.analyze_pdb(pdb_io=pdb_io)
+  assert len(rv.pucker_outliers) == 2
+  assert len(rv.bond_outliers) == 1
+  assert len(rv.angle_outliers) == 4
 
 #{{{ exercise_clashscore
 def exercise_clashscore():
@@ -333,6 +349,7 @@ A  46 ASN:34.0:301.6:117.9:::m120""")
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
+  exercise_rna_validate()
   exercise_ramalyze()
   exercise_rotalyze()
   exercise_cbetadev()

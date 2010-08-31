@@ -75,9 +75,9 @@ class rna_validate(object):
     #self.bond_dict = p_ref.bond_dict
     #self.angle_dict = p_ref.angle_dict
     self.bond_outliers, self.angle_outliers = self.bond_and_angle_evaluate()
-    print self.pucker_outliers
-    print self.bond_outliers
-    print self.angle_outliers
+    #print self.pucker_outliers
+    #print self.bond_outliers
+    #print self.angle_outliers
 
   def bond_and_angle_evaluate(self):
     bond_hash = {}
