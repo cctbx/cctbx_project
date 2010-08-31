@@ -1351,6 +1351,99 @@ namespace zernike{
 
 
 
+  //------------------------------------------
+  // Here we implement 2D Zernike functions
+  // They are usefull for 2D type problems
+  //------------------------------------------
+
+
+  /*
+   *  Radial Zernike polynome, 2D
+   */
+
+  template <typename FloatType = double>
+  class zernike_2d_radial
+  {
+    /* This class implements the radial part of a 2D zernike polynome for a specified nl value
+     *
+     */
+    public:
+    /* Default constructor */
+    zernike_2d_radial(){}
+    /* Basic constructor */
+    zernike_2d_radial(int const& n, int const& l, log_factorial_generator<FloatType> const& lgf)
+    :
+    n_(n),
+    l_(l),
+    eps_(1e-18)
+    {
+      lgf_ = lgf;
+      SCITBX_ASSERT( (n-l)%2==0 );
+      compute_Nnlk();
+    }
+
+    void compute_Nnlk()
+    {
+       FloatType top1,bottom1,bottom2,bottom3,tmp3;
+       for (int k=0; k<=(n_-l_)/2; k++) {
+         top1    =  lgf_.log_fact(  (n_-k)        )  ;
+         bottom1 =  lgf_.log_fact(  (n_+l_)/2-k   ) ;
+         bottom2 =  lgf_.log_fact(  (n_-l_)/2-k   ) ;
+         bottom3 =  lgf_.log_fact(  k             )  ;
+         tmp3 = top1-bottom1-bottom2-bottom3;
+         if (tmp3>1e45){
+           tmp3 = 1e45;
+         }
+         tmp3 = std::exp( tmp3 );
+         tmp3 = tmp3*std::pow(-1.0,k);
+         Nnlk_.push_back( tmp3 );
+       }
+    }
+
+    FloatType f( FloatType const& r)
+    {
+      FloatType rr;
+      if (r<=eps_){
+        rr = eps_;
+      } else {
+        rr = r;
+      }
+      FloatType result,tmp;
+      result=0.0;
+      for (int kk=0;kk<Nnlk_.size();kk++){
+        result+=std::pow(rr, n_ - 2*kk) * Nnlk_[kk];
+      }
+      return (result);
+    }
+
+    scitbx::af::shared< FloatType> f( scitbx::af::const_ref< FloatType> const& r)
+    {
+      scitbx::af::shared< FloatType> result;
+      for (int ii=0;ii<r.size();ii++){
+        result.push_back( f(r[ii]) );
+      }
+      return (result);
+    }
+
+    scitbx::af::shared< FloatType > Nnlk()
+    {
+       return( Nnlk_ );
+    }
+
+    int n(){ return(n_); }
+    int l(){ return(l_); }
+
+
+    private:
+    int n_;
+    int l_;
+    scitbx::af::shared< FloatType > Nnlk_;
+    log_factorial_generator<FloatType> lgf_;
+    FloatType eps_;
+  };
+
+
+
 
 }}} // namespace scitbx::math::zernike
 

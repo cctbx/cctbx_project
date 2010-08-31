@@ -119,13 +119,38 @@ namespace {
         .def("f", (scitbx::af::shared<double>(w_t::*)
                    (scitbx::af::const_ref<double> const&))
                     &w_t::f )
-
-
-        //.def("get_coef", &w_t::get_coef )
-        //.def("load_coefs", &w_t::load_coefs)
        ;
     }
   };
+
+
+
+  struct zernike_2d_radial_wrapper
+  {
+    typedef zernike::zernike_2d_radial<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+
+      class_<w_t>("zernike_2d_radial", no_init)
+        .def(init<int const& , int const&, zernike::log_factorial_generator<double> const&>
+                  ((arg("n"),
+                    arg("l"),
+                    arg("log_factorial_generator")
+                   )) )
+        .def("Nnlk", &w_t::Nnlk)
+        .def("f", (double(w_t::*)(double const&)) &w_t::f)
+        .def("f", (scitbx::af::shared<double>(w_t::*)
+                   (scitbx::af::const_ref<double> const&))
+                    &w_t::f )
+       ;
+    }
+  };
+
+
+
 
 
 
@@ -194,6 +219,7 @@ namespace boost_python {
     nl_array_wrapper::wrap();
     zernike_polynome_wrapper::wrap();
     zernike_radial_wrapper::wrap();
+    zernike_2d_radial_wrapper::wrap();
     log_factorial_generator_wrapper::wrap();
     zernike_grid_wrapper::wrap();
     nss_spherical_harmonics_wrapper::wrap();
