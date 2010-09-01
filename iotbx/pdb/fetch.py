@@ -13,12 +13,22 @@ import sys, os, re
 import urllib2
 from libtbx.utils import Sorry, Usage
 
-def fetch (id, data_type="pdb", format="pdb") :
-  assert data_type in ["pdb", "xray", "fasta"]
-  assert format in ["cif", "pdb", "xml"]
+def validate_pdb_id (id) :
   if (len(id) != 4) or (not re.match("[1-9]{1}[a-zA-Z0-9]{3}", id)) :
     raise RuntimeError(("Invalid PDB ID '%s'.  IDs must be exactly four "+
       "alphanumeric characters, starting with a number from 1-9.") % id)
+
+def validate_pdb_ids (id_list) :
+  for id in id_list :
+    try :
+      validate_pdb_id(id)
+    except RuntimeError, e :
+      raise Sorry(str(e))
+
+def fetch (id, data_type="pdb", format="pdb") :
+  assert data_type in ["pdb", "xray", "fasta"]
+  assert format in ["cif", "pdb", "xml"]
+  validate_pdb_id(id)
 
   id = id.lower()
   url_base = "http://www.rcsb.org/pdb/files/"
