@@ -114,20 +114,20 @@ def triple_partity_check(n,nn,nnn):
 
 def triple_integral():
   N=50
-  M=5
+  M=1
   lfg =  math.log_factorial_generator(N)
-  NNN = int(1e5)
+  NNN = int(1e6)
   from stdlib import math as smath
+  r = flex.double( flex.double(range(NNN))/float(NNN-1) )
   for n in range(M):
     for nn in range(n,M):
       for nnn in range(nn,M):
         if triple_partity_check(n,nn,nnn):
           for l in range(min(n+1,nn+1,nnn+1)):
            if (n-l)%2==0:
-            rzfa = math.zernike_radial(n,l,   lfg)
-            rzfb = math.zernike_radial(nn,l,  lfg)
-            rzfc = math.zernike_radial(nnn,l, lfg)
-            r = flex.double( flex.double(range(NNN))/float(NNN-1) )
+            rzfa = math.zernike_2d_radial(n,l,   lfg)
+            rzfb = math.zernike_2d_radial(nn,l,  lfg)
+            rzfc = math.zernike_2d_radial(nnn,l, lfg)
             a = rzfa.f(r)
             b = rzfb.f(r)
             c = rzfc.f(r)
@@ -136,8 +136,35 @@ def triple_integral():
             if tmp < 0:
               tmp=-tmp
               sign=-1
+            print n,nn,nnn,l,tmp #smath.log( tmp ), sign
 
+def tst_zernike_2d_polynome(n,l,nn,ll):
+  assert (n,l)!=(nn,ll)
+  N=50
+  lfg =  math.log_factorial_generator(N)
+  NN=85
 
+  rzfa = math.zernike_2d_radial(n,l,lfg)
+  rap = math.zernike_2d_polynome(n,l,rzfa)
+  rzfb = math.zernike_2d_radial(nn,ll,lfg)
+  rbp = math.zernike_2d_polynome(nn,ll,rzfb)
+  tmp1=0; tmp2=0; tmp3=0
+  count=0
+  for x in range(-NN,NN+1):
+    for y in range(-NN,NN+1):
+      rr = smath.sqrt(x*x+y*y)/NN
+      tt = smath.atan2(y,x)
+      if rr<=1:
+        tmp1 += rap.f(rr,tt)*(rap.f(rr,tt)).conjugate()
+        tmp2 += rbp.f(rr,tt)*(rbp.f(rr,tt)).conjugate()
+        tmp3 += rbp.f(rr,tt)*(rap.f(rr,tt)).conjugate()
+        count += 1
+  tmp1 = ( 0.5*(2*n+2)*tmp1/count ).real
+  tmp2 = ( 0.5*(2*nn+2)*tmp2/count ).real
+  tmp3 = ( 0.5*smath.sqrt( (2*n+2)*(2*nn+2) )*tmp3/count ).real
+  assert abs(tmp1-1)<1e-2
+  assert abs(tmp2-1)<1e-2
+  assert abs(tmp3)<1e-2
 
 def tst_zernike_grid(skip_iteration_probability=0.95):
   #THIS TEST TAKES A BIT OF TIME
@@ -257,7 +284,13 @@ def tst_nss_spherical_harmonics():
 
 
 if __name__ == "__main__":
-  triple_integral()
+  #triple_integral()
+  tst_zernike_2d_polynome(0,0,2,0)
+  tst_zernike_2d_polynome(4,4,3,1)
+  tst_zernike_2d_polynome(10,0,2,0)
+  tst_zernike_2d_polynome(11,1,2,0)
+  tst_zernike_2d_polynome(14,4,3,1)
+  tst_zernike_2d_polynome(13,1,3,1)
   tst_zernike_radial_2d()
   tst_nss_spherical_harmonics()
   tst_nl()
