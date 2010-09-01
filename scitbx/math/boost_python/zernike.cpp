@@ -178,6 +178,27 @@ namespace {
     }
   };
 
+  struct zernike_2d_polynome_wrapper
+  {
+    typedef zernike::zernike_2d_polynome<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+
+      class_<w_t>("zernike_2d_polynome", no_init)
+        .def(init<int const&, int const&, zernike::zernike_2d_radial<double> const& >
+                  ((arg("n"),
+                    arg("l"),
+                    arg("Rnl")
+                   )))
+         .def("f", &w_t::f)
+       ;
+    }
+  };
+
+
   struct zernike_grid_wrapper
   {
     typedef zernike::zernike_grid<> w_t;
@@ -220,6 +241,7 @@ namespace boost_python {
     zernike_polynome_wrapper::wrap();
     zernike_radial_wrapper::wrap();
     zernike_2d_radial_wrapper::wrap();
+    zernike_2d_polynome_wrapper::wrap();
     log_factorial_generator_wrapper::wrap();
     zernike_grid_wrapper::wrap();
     nss_spherical_harmonics_wrapper::wrap();

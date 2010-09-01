@@ -1443,6 +1443,49 @@ namespace zernike{
   };
 
 
+  /*
+   * A single Zernike 2d polynome of index n,l
+   */
+  template <typename FloatType = double>
+  class zernike_2d_polynome
+  {
+    public:
+    /* Default constructor */
+    zernike_2d_polynome(){}
+    /* Basic constructor */
+    zernike_2d_polynome(int const& n, int const& l, zernike_2d_radial<FloatType> const& rnl)
+    :
+    n_(n),
+    l_(l)
+    {
+      rnl_ = rnl;
+      SCITBX_ASSERT( rnl_.n() == n_ );
+      SCITBX_ASSERT( rnl_.l() == l_ );
+    }
+    std::complex<FloatType> f(FloatType const& r, FloatType const& t)
+    {
+      //std::cout << r << " " << t << " " << p << std::endl;
+      std::complex<FloatType> result;
+      FloatType tmp;
+      tmp = rnl_.f(r);
+      result = expo_part(l_, t)*tmp;
+      return(result);
+    }
+
+    std::complex<FloatType> expo_part(int l,FloatType t)
+    {
+      return (  std::complex<FloatType>( std::cos(l*t), std::sin(l*t) ) );
+    }
+
+    int n(){ return( n_ ); }
+    int l(){ return( l_ ); }
+
+
+    private:
+    int n_, l_;
+    zernike_2d_radial<FloatType> rnl_;
+  };
+
 
 
 }}} // namespace scitbx::math::zernike
