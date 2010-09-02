@@ -1,5 +1,6 @@
 
 from libtbx import easy_pickle
+from libtbx import group_args
 import os.path
 
 def export_ramachandran_distribution (n_dim_table, scale_factor=0.25) :
@@ -54,6 +55,18 @@ def get_rotarama_data (residue_type=None, pos_type=None, db="rama",
       return export_rotamer_distribution(ndt)
   else :
     return ndt
+
+def decode_atom_str (atom_id) :
+  chain_id = atom_id[8:10].strip()
+  if (chain_id == "") :
+    chain_id = " "
+  return group_args(
+    name = atom_id[0:4],
+    altloc = atom_id[4],
+    resname = atom_id[5:8],
+    chain_id = chain_id,
+    resid = atom_id[10:],
+    resseq = atom_id[10:-1].strip())
 
 def exercise () :
   try :
