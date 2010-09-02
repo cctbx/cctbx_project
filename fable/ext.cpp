@@ -1,8 +1,8 @@
 #include <boost/python.hpp>
 
+#include <fem/data_type_star.hpp>
 #include <fem/format.hpp>
 #include <fem/utils/equivalence.hpp>
-#include <fem/utils/int_types.hpp>
 #include <fem/utils/string_to_double_fmt.hpp>
 #include <tbxx/error_utils.hpp>
 
@@ -135,6 +135,16 @@ namespace fable { namespace ext {
   }
 
   bp::list
+  exercise_fem_real_types()
+  {
+    bp::list result;
+    result.append(sizeof(fem::real_star_4));
+    result.append(sizeof(fem::real_star_8));
+    result.append(sizeof(fem::real_star_16));
+    return result;
+  }
+
+  bp::list
   exercise_fem_format_tokenizer(
     std::string const& fmt)
   {
@@ -224,6 +234,7 @@ namespace fable { namespace ext {
       arg("code"), arg("start")=0, arg("stop")=-1));
 
     def("exercise_fem_utils_int_types", exercise_fem_utils_int_types);
+    def("exercise_fem_real_types", exercise_fem_real_types);
     def("exercise_fem_format_tokenizer", exercise_fem_format_tokenizer, (
       arg("fmt")));
     def("exercise_fem_utils_string_to_double",

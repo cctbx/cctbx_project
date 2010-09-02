@@ -93,7 +93,16 @@ def exercise_fem_utils_int_types():
     hpp = "fem/utils/int_sizes.hpp"
     print "FATAL: %s: sizes are" % hpp, int_sizes, "but should be", expected
     raise RuntimeError(
-      "fem/utils/int_sizes.hpp needs to be adjusted for this platform.")
+      "%s needs to be adjusted for this platform." % hpp)
+
+def exercise_fem_real_types():
+  real_sizes = fable.exercise_fem_real_types()
+  expected = [4, 8, 16]
+  if (real_sizes != expected):
+    hpp = "fem/data_types_star.hpp"
+    print "FATAL: %s: sizes are" % hpp, real_sizes, "but should be", expected
+    raise RuntimeError(
+      "%s needs to be adjusted for this platform." % hpp)
 
 def exercise_fem_format_tokenizer():
   f = fable.exercise_fem_format_tokenizer
@@ -436,6 +445,7 @@ def run(args):
     exercise_find_closing_parenthesis(f)
   if (fable.ext is not None):
     exercise_fem_utils_int_types()
+    exercise_fem_real_types()
     exercise_fem_format_tokenizer()
     exercise_fem_utils_string_to_double()
     exercise_fem_utils_string_to_double_fmt()
