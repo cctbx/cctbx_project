@@ -119,7 +119,7 @@ No global variables in C++
 
 Fortran programs have two types of global variables, COMMON and SAVE
 variables. In addition, the Fortran I/O units are essentially global
-variables. fables converts all global variables to C++ struct members
+variables. fable converts all global variables to C++ struct members
 so that the converted C++ code does not have any global variables. In
 this way an entire Fortran program is turned into a regular C++
 object that is fully encapsulated. Multiple such objects can co-exist
@@ -276,3 +276,32 @@ target languages. fable comes with a large set of unit tests so that
 any changes made can be quickly verified.
 
 [`Browse fable sources <sources/>`_]
+
+----------------------------------------------------------------------
+
+Fortran vs. C++ data types
+==========================
+
+fable assumes that the Fortran INTEGER type is a C++ ``int``, REAL is
+a C++ ``float``, and DOUBLE PRECISION is a C++ ``double``. On most
+current computing platforms, the sizes of the Fortran types should
+be identical to the sizes of the corresponding C++ types. The only
+exception is the mapping of the Fortran LOGICAL type to the C++
+``bool`` type. In this case we found it more important to map the
+concept rather than the implementation detail that a LOGICAL usually
+occupies four bytes while the size of a C++ ``bool`` is usually
+one byte. This small asymmetry has to be kept in mind when calling
+external libraries from FABLE-generated C++. The Fortran complex types
+are mapped to the C++ ``std::complex`` template class in the Standard
+Template Library (STL). Fortran CHARACTER strings are mapped to the
+``fem::str`` template class in the fem library.
+
+A complete list of Fortran data types supported by fable is in the
+example file
+`doc_data_type_star.f <sources/fable/test/valid/doc_data_type_star.f>`_.
+Running ``fable.cout`` with this file will
+`show all mappings to C++ types <doc_data_type_star.cpp>`_.
+Relevant files in the fem library are
+`data_type_star.hpp <sources/fable/fem/data_type_star.hpp>`_,
+`int_types.hpp <sources/fable/fem/utils/int_types.hpp>`_, and
+`zero.hpp <sources/fable/fem/zero.hpp>`_.
