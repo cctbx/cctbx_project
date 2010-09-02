@@ -828,7 +828,10 @@ options {
 #
 # XXX this is still a little unsophisticated with respect to extracting
 # crystal symmetry, but it's meant to be run from the Phenix GUI right now.
-def run2 (args, log=sys.stdout, check_params=True) :
+def run2 (args,
+          log=sys.stdout,
+          check_params=True,
+          params=None) :
   import iotbx.pdb.fetch
   parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
     master_phil=master_phil,
@@ -857,7 +860,8 @@ def run2 (args, log=sys.stdout, check_params=True) :
         sources.append(user_phil)
       except RuntimeError :
         print "Unrecognizable parameter %s" % arg
-  params = master_phil.fetch(sources=sources).extract()
+  if (params is not None) :
+    params = master_phil.fetch(sources=sources).extract()
   symm = None
   if params.input.pdb_id is not None :
     params.input.pdb_file = iotbx.pdb.fetch.run(args=[params.input.pdb_id],
