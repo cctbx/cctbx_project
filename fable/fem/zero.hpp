@@ -32,11 +32,15 @@ namespace fem {
   FEM_ZERO_IMPL(integer_star_8, 0)
   FEM_ZERO_IMPL(real_star_4, 0.f)
   FEM_ZERO_IMPL(real_star_8, 0.)
+  FEM_ZERO_IMPL(real_star_16, 0.L)
 #define FEM_LOC std::complex<float>
   FEM_ZERO_IMPL(FEM_LOC, 0.f)
 #undef FEM_LOC
 #define FEM_LOC std::complex<double>
   FEM_ZERO_IMPL(FEM_LOC, 0.)
+#undef FEM_LOC
+#define FEM_LOC std::complex<long double>
+  FEM_ZERO_IMPL(FEM_LOC, 0.L)
 #undef FEM_LOC
 
   static const char byte0 = zero<char>();
@@ -45,6 +49,7 @@ namespace fem {
   static const int int0 = zero<int>();
   static const float float0 = zero<float>();
   static const double double0 = zero<double>();
+  static const long double long_double0 = zero<long double>();
   static const std::complex<float> cfloat0;
   static const std::complex<double> cdouble0;
 

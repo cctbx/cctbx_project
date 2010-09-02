@@ -462,6 +462,7 @@ fable/test/valid/do_ix_num.f -text
 fable/test/valid/do_label.f -text
 fable/test/valid/do_variable_passed.f -text
 fable/test/valid/do_while.f -text
+fable/test/valid/doc_data_type_star.f -text
 fable/test/valid/double_literal.f -text
 fable/test/valid/dp_example.f -text
 fable/test/valid/dynamic_parameters_1.f -text
