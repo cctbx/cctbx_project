@@ -466,7 +466,7 @@ namespace fem {
         if (io_mode == io_unformatted) {
           to_stream_unformatted(
             reinterpret_cast<char const*>(&val),
-            sizeof(long double));
+            actual_sizeof_long_double);
         }
         else if (io_mode == io_list_directed) {
           out.reset();
@@ -544,10 +544,10 @@ namespace fem {
           long double im = val.imag();
           to_stream_unformatted(
             reinterpret_cast<char const*>(&re),
-            sizeof(long double));
+            actual_sizeof_long_double);
           to_stream_unformatted(
             reinterpret_cast<char const*>(&im),
-            sizeof(long double));
+            actual_sizeof_long_double);
         }
         else if (io_mode == io_list_directed) {
           out.reset();

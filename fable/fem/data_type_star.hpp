@@ -20,6 +20,14 @@ namespace fem {
   typedef double real_star_8;
   typedef long double real_star_16;
 
+  static const unsigned actual_sizeof_long_double =
+#if defined(__i386__) || defined(__x86_64__)
+    10
+#else
+    sizeof(long double)
+#endif
+  ;
+
 } // namespace fem
 
 #endif // GUARD
