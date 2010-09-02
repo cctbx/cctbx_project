@@ -276,8 +276,9 @@ namespace fem {
         integer_star_1 const& val)
       {
         if (io_mode == io_unformatted) {
-          out.reset();
-          throw TBXX_NOT_IMPLEMENTED();
+          to_stream_unformatted(
+            reinterpret_cast<char const*>(&val),
+            sizeof(integer_star_1));
         }
         else if (io_mode == io_list_directed) {
           char buf[64];
@@ -297,8 +298,9 @@ namespace fem {
         integer_star_2 const& val)
       {
         if (io_mode == io_unformatted) {
-          out.reset();
-          throw TBXX_NOT_IMPLEMENTED();
+          to_stream_unformatted(
+            reinterpret_cast<char const*>(&val),
+            sizeof(integer_star_2));
         }
         else if (io_mode == io_list_directed) {
           char buf[64];
@@ -459,6 +461,26 @@ namespace fem {
 
       write_loop&
       operator,(
+        long double const& val)
+      {
+        if (io_mode == io_unformatted) {
+          to_stream_unformatted(
+            reinterpret_cast<char const*>(&val),
+            sizeof(long double));
+        }
+        else if (io_mode == io_list_directed) {
+          out.reset();
+          throw TBXX_NOT_IMPLEMENTED();
+        }
+        else {
+          out.reset();
+          throw TBXX_NOT_IMPLEMENTED();
+        }
+        return *this;
+      }
+
+      write_loop&
+      operator,(
         std::complex<float> const& val)
       {
         if (io_mode == io_unformatted) {
@@ -505,6 +527,31 @@ namespace fem {
           to_stream_star_complex(
             conv_re.begin, conv_re.n,
             conv_im.begin, conv_im.n);
+        }
+        else {
+          out.reset();
+          throw TBXX_NOT_IMPLEMENTED();
+        }
+        return *this;
+      }
+
+      write_loop&
+      operator,(
+        std::complex<long double> const& val)
+      {
+        if (io_mode == io_unformatted) {
+          long double re = val.real();
+          long double im = val.imag();
+          to_stream_unformatted(
+            reinterpret_cast<char const*>(&re),
+            sizeof(long double));
+          to_stream_unformatted(
+            reinterpret_cast<char const*>(&im),
+            sizeof(long double));
+        }
+        else if (io_mode == io_list_directed) {
+          out.reset();
+          throw TBXX_NOT_IMPLEMENTED();
         }
         else {
           out.reset();

@@ -18,6 +18,7 @@ namespace fem {
 
   typedef float  real_star_4;
   typedef double real_star_8;
+  typedef long double real_star_16;
 
 } // namespace fem
 
