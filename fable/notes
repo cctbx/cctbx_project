@@ -23,22 +23,6 @@ exercise recursive function, subroutine calls
 handle "array declared but not used"
 
 
-lvalue cannot be subroutine or function
-lvalue must have a data_type
-rvalue must have data_type unless it is "call"ed or external
-
-context a variable can appear in:
-  assignment target
-  array index
-  string index
-  argument (in subroutine or function call)
-
-The context must be known to decide if the data_type is needed (yet).
-It isn't needed if the context is "arg".
-It can be an argument only if it is a "plain identifier".
-
-defer determination of data_type until it is needed in cout
-
 DATA and implied SAVE in subroutines
   with DATA
     implied save, 0-init first call (or before?)
@@ -53,21 +37,6 @@ DATA and implied SAVE in subroutines
         scalar, array uninitialized each call
 
 Rationale
-  Writing highly automated systems like Phenix entirely in Fortran
-  is unthinkable.
-  Manually rewriting existing components in Python or C++
-  is very expensive.
-  Grand rewrites are generally very expensive. For example, it would
-  take many years of effort to rewrite a package such as LAPACK.
-  Fable is designed to enable incremental progess even though the
-  language changes.
-
-  Make it possible to run and test the converted code with minimal manual
-  intervention, if any.
-  Handling of data is not very efficient, but unlikely to be a bottleneck.
-  If it is, the C++ code can be changed manually after the testing
-  framework is in place.
-
   Intentionally no debug mode to keep the fem sources as compact
   and efficient as possible. Valgrind is usually very reliable
   for detecting memory access problems.
@@ -103,7 +72,3 @@ Caveats:
   beginning of array
 
   arr<T>: T must have trivial destructor (b/o use of memset)
-
-  logical is implemented as 4-byte integer by ifort and gfortran.
-  fable converts logical to C++ bool, which is usually a 1-byte
-  type.
