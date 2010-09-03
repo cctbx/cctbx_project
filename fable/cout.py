@@ -181,7 +181,11 @@ def raise_unhandled(tok):
   raise RuntimeError("Unhandled token %s %s" % (tok.type(), tok.value))
 
 def escape_string_literal(s):
-  return s.replace("\\","\\\\").replace('"','\\"')
+  return (s
+    .replace("\\","\\\\")
+    .replace('"','\\"')
+    .replace("\t", "\\t")
+    .replace("??", "\\?\\?"))
 
 def convert_token(vmap, leading, tok):
   tv = tok.value
