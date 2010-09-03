@@ -28,6 +28,8 @@
     `Newsletter of the IUCr Commission on Crystallographic Computing 2009, 10, 75-84 <http://www.iucr.org/resources/commissions/crystallographic-computing/newsletters/10>`_.
     (`Reprint <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2009.pdf>`_)
 
+- New `paper about fable <fable.pdf>`_ (to be submitted)
+
 - fable and fem development was supported by supplemental funding from
   the American Recovery and Reinvestment Act (ARRA) to NIH/NIGMS grant
   number P01GM063210. The work was also supported in part by the US
@@ -145,7 +147,7 @@ for example::
 
   fable.cout dp_example.f --dynamic_parameter="int array_size=100" > dp_example.cpp
 
-With this, all occurances of ``PARAMETER(array_size=...)`` in the
+With this, all occurrences of ``PARAMETER(array_size=...)`` in the
 Fortran program are converted to use a dynamic size instead. The
 default ``array_size`` in the example is set to 100 (the original
 size in the Fortran code is ignored). The ``array_size`` can be set
