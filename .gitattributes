@@ -903,6 +903,7 @@ mmtbx/ias/__init__.py -text
 mmtbx/ias/tst_ias.py -text
 mmtbx/kinemage/__init__.py -text
 mmtbx/kinemage/validation.py -text
+mmtbx/lattice.py -text
 mmtbx/map_tools.py -text
 mmtbx/maps/__init__.py -text
 mmtbx/maps/fobs_minus_fobs_map.py -text
