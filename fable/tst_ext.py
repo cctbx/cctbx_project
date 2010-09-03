@@ -97,12 +97,14 @@ def exercise_fem_utils_int_types():
 
 def exercise_fem_real_types():
   real_sizes = fable.exercise_fem_real_types()
-  expected = [4, 8, 16]
-  if (real_sizes != expected):
+  expected = [4, 8]
+  if (real_sizes[:2] != expected):
     hpp = "fem/data_types_star.hpp"
-    print "FATAL: %s: sizes are" % hpp, real_sizes, "but should be", expected
+    print "FATAL: %s: sizes are" % hpp, real_sizes[:2], \
+      "but should be", expected
     raise RuntimeError(
       "%s needs to be adjusted for this platform." % hpp)
+  assert real_sizes[2] > real_sizes[1]
 
 def exercise_fem_format_tokenizer():
   f = fable.exercise_fem_format_tokenizer
