@@ -13,10 +13,10 @@ def run(args):
   ).process(args=args)
   co = command_line.options
   from fable.read import process
-  all_prcds = process(file_names=command_line.args)
-  topological_prcds = all_prcds.build_bottom_up_prcd_list_following_calls(
+  all_fprocs = process(file_names=command_line.args)
+  topological_fprocs = all_fprocs.build_bottom_up_fproc_list_following_calls(
     top_procedures=co.top_procedure)
-  dep_cycles = topological_prcds.dependency_cycles
+  dep_cycles = topological_fprocs.dependency_cycles
   if (len(dep_cycles) != 0):
     print "Dependency cycles:", len(dep_cycles)
     for cycle in dep_cycles:
@@ -25,23 +25,23 @@ def run(args):
   print "Top-down procedure list:"
   print
   digraph_lhs_rhs = []
-  for prcd in reversed(topological_prcds.bottom_up_list):
-    if (prcd.name is None):
-      lhs = prcd.prcd_type
+  for fproc in reversed(topological_fprocs.bottom_up_list):
+    if (fproc.name is None):
+      lhs = fproc.fproc_type
       print lhs
     else:
-      lhs = prcd.name.value
-      print prcd.prcd_type, prcd.name.value
+      lhs = fproc.name.value
+      print fproc.fproc_type, fproc.name.value
     fwds = set(
-      topological_prcds.forward_uses_by_identifier.get(
-        prcd.name.value, []))
-    for identifier in sorted(prcd.fdecl_by_identifier.keys()):
-      fdecl = prcd.fdecl_by_identifier[identifier]
-      if (fdecl.is_prcd_name()): continue
+      topological_fprocs.forward_uses_by_identifier.get(
+        fproc.name.value, []))
+    for identifier in sorted(fproc.fdecl_by_identifier.keys()):
+      fdecl = fproc.fdecl_by_identifier[identifier]
+      if (fdecl.is_fproc_name()): continue
       if (not fdecl.is_user_defined_callable()):
         continue
       called_name = fdecl.id_tok.value
-      passed = prcd.externals_passed_by_arg_identifier.get(called_name)
+      passed = fproc.externals_passed_by_arg_identifier.get(called_name)
       if (passed is None):
         digraph_lhs_rhs.append((lhs, called_name))
       else:

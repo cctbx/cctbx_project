@@ -305,27 +305,27 @@ def flush_comments_if_non_trivial(callback, buffer):
         callback(line)
       return
 
-def produce_leading_comments(callback, prcd):
+def produce_leading_comments(callback, fproc):
   buffer = []
-  produce_comments(callback=buffer.append, ssl_list=prcd.leading_comments)
+  produce_comments(callback=buffer.append, ssl_list=fproc.leading_comments)
   produce_comment_given_ssl(
-    callback=buffer.append, ssl=prcd.top_ssl)
+    callback=buffer.append, ssl=fproc.top_ssl)
   flush_comments_if_non_trivial(callback=callback, buffer=buffer)
 
-def produce_trailing_comments(callback, prcd):
+def produce_trailing_comments(callback, fproc):
   buffer = []
-  produce_comment_given_ssl(callback=buffer.append, ssl=prcd.end_ssl)
+  produce_comment_given_ssl(callback=buffer.append, ssl=fproc.end_ssl)
   produce_comments(
-    callback=buffer.append, ssl_list=prcd.trailing_comments)
+    callback=buffer.append, ssl_list=fproc.trailing_comments)
   flush_comments_if_non_trivial(callback=callback, buffer=buffer)
 
 class comment_manager(object):
 
   __slots__ = ["sl_list", "index"]
 
-  def __init__(O, prcd):
+  def __init__(O, fproc):
     O.sl_list = []
-    for ssl in prcd.body_lines:
+    for ssl in fproc.body_lines:
       if (ssl is not None):
         for sl in ssl.source_line_cluster:
           O.sl_list.append(sl)
@@ -353,13 +353,13 @@ class comment_manager(object):
 class global_conversion_info(object):
 
   __slots__ = [
-    "topological_prcds",
+    "topological_fprocs",
     "dynamic_parameters",
     "fortran_file_comments",
     "fem_do_safe",
     "arr_nd_size_max",
     "inline_all",
-    "prcds_by_name",
+    "fprocs_by_name",
     "intrinsics_extra",
     "converted_commons_info",
     "separate_namespaces",
@@ -367,7 +367,7 @@ class global_conversion_info(object):
     "data_specializations"]
 
   def __init__(O,
-        topological_prcds,
+        topological_fprocs,
         dynamic_parameters,
         fortran_file_comments,
         fem_do_safe,
@@ -377,43 +377,43 @@ class global_conversion_info(object):
         separate_namespaces,
         data_values_block_size,
         data_specializations):
-    O.topological_prcds = topological_prcds
+    O.topological_fprocs = topological_fprocs
     O.dynamic_parameters = dynamic_parameters
     O.fortran_file_comments = fortran_file_comments
     O.fem_do_safe = fem_do_safe
     O.arr_nd_size_max = arr_nd_size_max
     O.inline_all = inline_all
-    O.prcds_by_name = topological_prcds.all_prcds.prcds_by_name()
-    O.intrinsics_extra = topological_prcds.intrinsics_extra
+    O.fprocs_by_name = topological_fprocs.all_fprocs.fprocs_by_name()
+    O.intrinsics_extra = topological_fprocs.intrinsics_extra
     O.converted_commons_info = converted_commons_info
     O.separate_namespaces = separate_namespaces
     O.data_values_block_size = data_values_block_size
     O.data_specializations = data_specializations
 
-  def specialized(O, prcd):
-    return conversion_info(global_conv_info=O, prcd=prcd)
+  def specialized(O, fproc):
+    return conversion_info(global_conv_info=O, fproc=fproc)
 
 class conversion_info(global_conversion_info):
 
   __slots__ = global_conversion_info.__slots__ + [
-    "prcd",
+    "fproc",
     "comment_manager",
     "vmap"]
 
   def __init__(O,
         global_conv_info=None,
-        prcd=None,
+        fproc=None,
         vmap=None):
     val = None
     for slot in global_conversion_info.__slots__:
       if (global_conv_info is not None):
         val = getattr(global_conv_info, slot)
       setattr(O, slot, val)
-    O.prcd = prcd
-    if (O.prcd is None):
+    O.fproc = fproc
+    if (O.fproc is None):
       O.comment_manager = None
     else:
-      O.comment_manager = comment_manager(prcd=O.prcd)
+      O.comment_manager = comment_manager(fproc=O.fproc)
     if (vmap is None):
       O.vmap = {}
     else:
@@ -468,27 +468,27 @@ class conversion_info(global_conversion_info):
       result = O.vmap[identifier]
     return result
 
-def called_prcd_needs_cmn(conv_info, called_name):
-  called_names = conv_info.prcd.externals_passed_by_arg_identifier.get(
+def called_fproc_needs_cmn(conv_info, called_name):
+  called_names = conv_info.fproc.externals_passed_by_arg_identifier.get(
     called_name)
   if (called_names is None):
     called_names = [called_name]
   for called_name in called_names:
-    sub_prcd = conv_info.prcds_by_name.get(called_name)
-    if (    sub_prcd is not None
-        and sub_prcd.needs_cmn
-        and not sub_prcd.ignore_common_and_save):
+    sub_fproc = conv_info.fprocs_by_name.get(called_name)
+    if (    sub_fproc is not None
+        and sub_fproc.needs_cmn
+        and not sub_fproc.ignore_common_and_save):
       return True
   return False
 
 def cmn_needs_to_be_inserted(conv_info, prev_tok):
   if (    prev_tok is not None
       and prev_tok.is_identifier()
-      and conv_info.prcds_by_name is not None
-      and conv_info.prcd is not None):
-    fdecl = conv_info.prcd.get_fdecl(id_tok=prev_tok)
+      and conv_info.fprocs_by_name is not None
+      and conv_info.fproc is not None):
+    fdecl = conv_info.fproc.get_fdecl(id_tok=prev_tok)
     if (fdecl.is_user_defined_callable()):
-      if (called_prcd_needs_cmn(
+      if (called_fproc_needs_cmn(
             conv_info=conv_info,
             called_name=prev_tok.value)):
         return True
@@ -553,8 +553,8 @@ def convert_to_int_literal(tokens):
 
 def convert_data_type(conv_info, fdecl, crhs):
   if (fdecl.data_type is None):
-    assert conv_info.prcd is not None
-    fdecl.data_type = conv_info.prcd.implicit.get(fdecl.id_tok.value[0])
+    assert conv_info.fproc is not None
+    fdecl.data_type = conv_info.fproc.implicit.get(fdecl.id_tok.value[0])
     if (fdecl.data_type is None):
       raise fdecl.id_tok.raise_semantic_error(msg="Missing data type")
   if (isinstance(fdecl.data_type, str)):
@@ -682,7 +682,7 @@ def convert_data_type_and_dims(conv_info, fdecl, crhs, force_arr=False):
     if (    not force_arr
         and conv_info.arr_nd_size_max is not None
         and len(dt) <= 3):
-      vals = conv_info.prcd.eval_dimensions_simple(
+      vals = conv_info.fproc.eval_dimensions_simple(
         dim_tokens=dt, allow_power=False)
       if (vals.count(None) == 0):
         sz = product(vals)
@@ -996,7 +996,7 @@ def equivalence_align_with_arg(conv_info, top_scope, identifier, tok_seq):
       tokens=tokens[i].value)
     cindices.append(convert_tokens(
       conv_info=conv_info, tokens=tokens[i].value, commas=True))
-  fdecl = conv_info.prcd.fdecl_by_identifier[identifier]
+  fdecl = conv_info.fproc.fdecl_by_identifier[identifier]
   if (len(cindices) == 1):
     if (fdecl.dim_tokens is not None):
       return "arr_index(%s)" % cindices[0]
@@ -1021,7 +1021,7 @@ def convert_to_mbr_bind(
       mbr_buffer,
       bind_buffer,
       identifier):
-  fdecl = conv_info.prcd.fdecl_by_identifier[identifier]
+  fdecl = conv_info.fproc.fdecl_by_identifier[identifier]
   ctype = convert_data_type(conv_info=conv_info, fdecl=fdecl, crhs=None)[0]
   if (fdecl.dim_tokens is None):
     cdims_parens = ""
@@ -1136,12 +1136,12 @@ def convert_variant_allocate_and_bindings(conv_info, top_scope):
     first_time=[],
     loc_equivalences=[],
     bindings=[])
-  equiv_info = conv_info.prcd.equivalence_info()
+  equiv_info = conv_info.fproc.equivalence_info()
   equiv_tok_clusters = equiv_info.equiv_tok_clusters
-  for common_name,common_fdecl_list in conv_info.prcd.common.items():
-    if (conv_info.prcd.variant_common_names is None):
+  for common_name,common_fdecl_list in conv_info.fproc.common.items():
+    if (conv_info.fproc.variant_common_names is None):
       continue
-    if (common_name not in conv_info.prcd.variant_common_names):
+    if (common_name not in conv_info.fproc.variant_common_names):
       continue
     top_scope.append(
       "common_variant %s(cmn.common_%s, sve.%s_bindings);" % (
@@ -1175,7 +1175,7 @@ def convert_variant_allocate_and_bindings(conv_info, top_scope):
     add_allocate_lines_to_mbr_scope(
       allocate_line_lists=allocate_line_lists, mbr_buffer=mbr_buffer)
   #
-  cei = conv_info.prcd.classified_equivalence_info()
+  cei = conv_info.fproc.classified_equivalence_info()
   if (len(cei.save.equiv_tok_clusters) != 0):
     top_scope.append(
       "save_equivalences sve_equivalences(sve.save_equivalences);")
@@ -1244,7 +1244,7 @@ def convert_variant_allocate_and_bindings(conv_info, top_scope):
   return result_buffers
 
 def convert_data(conv_info, data_init_scope):
-  for nlist,clist in conv_info.prcd.data:
+  for nlist,clist in conv_info.fproc.data:
     ccs = []
     have_repetitions = False
     tok_types = set()
@@ -1288,7 +1288,7 @@ def convert_data(conv_info, data_init_scope):
     def have_no_array_targets():
       for tok_seq in nlist:
         if (len(tok_seq.value) == 1):
-          fdecl = conv_info.prcd.get_fdecl(id_tok=tok_seq.value[0])
+          fdecl = conv_info.fproc.get_fdecl(id_tok=tok_seq.value[0])
           if (fdecl.dim_tokens is not None):
             return False
       return True
@@ -1313,8 +1313,8 @@ def convert_data(conv_info, data_init_scope):
             data_scope.append("data, %s;" % cn)
             data_scope.close_nested_scope()
         elif (len(ccs) != 1):
-          if (    len(conv_info.prcd.data) == 1
-              and len(conv_info.prcd.variant_common_names) == 0):
+          if (    len(conv_info.fproc.data) == 1
+              and len(conv_info.fproc.variant_common_names) == 0):
             data_scope = data_init_scope
           else:
             data_scope = data_init_scope.open_nested_scope(opening_text=["{"])
@@ -1326,8 +1326,8 @@ def convert_data(conv_info, data_init_scope):
         else:
           data_init_scope.append("%s = %s;" % (cn, ccs[0]))
     else:
-      if (    len(conv_info.prcd.data) == 1
-          and len(conv_info.prcd.variant_common_names) == 0
+      if (    len(conv_info.fproc.data) == 1
+          and len(conv_info.fproc.variant_common_names) == 0
           and len(ccs) <= conv_info.data_values_block_size):
         data_scope = data_init_scope
       else:
@@ -1356,7 +1356,7 @@ def declare_identifiers_parameter_recursion(
     if (id_tok.value in conv_info.vmap):
       continue
     conv_info.vmap[id_tok.value] = None
-    fdecl = conv_info.prcd.get_fdecl(id_tok=id_tok)
+    fdecl = conv_info.fproc.get_fdecl(id_tok=id_tok)
     declare_identifiers_parameter_recursion(
       conv_info=conv_info, top_scope=top_scope, curr_scope=curr_scope,
       tokens=fdecl.required_parameter_assignment_tokens())
@@ -1377,20 +1377,20 @@ def declare_size_dim_identifiers(conv_info, top_scope, curr_scope, fdecl):
         sd_id_tok.raise_semantic_error(msg="Recursion in declaration")
       if (sd_id_tok.value in conv_info.vmap):
         continue
-      sd_fdecl = conv_info.prcd.get_fdecl(id_tok=sd_id_tok)
+      sd_fdecl = conv_info.fproc.get_fdecl(id_tok=sd_id_tok)
       if (sd_fdecl.parameter_assignment_tokens is None):
         sd_crhs = None
       else:
         declare_identifiers_parameter_recursion(
           conv_info=conv_info, top_scope=top_scope, curr_scope=curr_scope,
           tokens=sd_fdecl.parameter_assignment_tokens)
-        if (sd_id_tok.value in conv_info.prcd.dynamic_parameters):
+        if (sd_id_tok.value in conv_info.fproc.dynamic_parameters):
           sd_crhs = "cmn.dynamic_parameters." + sd_id_tok.value
         else:
           sd_crhs = convert_tokens(
             conv_info=conv_info, tokens=sd_fdecl.parameter_assignment_tokens)
       if (not conv_info.set_vmap_from_fdecl(fdecl=sd_fdecl)):
-        have_goto = (len(conv_info.prcd.target_statement_labels()) != 0)
+        have_goto = (len(conv_info.fproc.target_statement_labels()) != 0)
         if (have_goto):
           rapp = top_scope.top_append
         else:
@@ -1419,7 +1419,7 @@ def simple_equivalence(
         assert target_tok_seq is None
         target_tok_seq = tok_seq
       else:
-        fdecl = conv_info.prcd.get_fdecl(id_tok=tok_seq.value[0])
+        fdecl = conv_info.fproc.get_fdecl(id_tok=tok_seq.value[0])
         if (fdecl is not None and fdecl.is_common()):
           assert source_tok_seq is None
           source_tok_seq = tok_seq
@@ -1463,15 +1463,15 @@ def simple_equivalence(
     target_fdecl.id_tok.value, crhs, cdims, se)
 
 def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
-  fdecl = conv_info.prcd.get_fdecl(id_tok=id_tok)
+  fdecl = conv_info.fproc.get_fdecl(id_tok=id_tok)
   conv_info.set_vmap_from_fdecl(fdecl=fdecl)
-  have_goto = (len(conv_info.prcd.target_statement_labels()) != 0)
+  have_goto = (len(conv_info.fproc.target_statement_labels()) != 0)
   def get_rapp():
     if (have_goto):
       return top_scope.top_append
     return top_scope.append
   if (not fdecl.is_common()):
-    equiv_tok_cluster = conv_info.prcd.equivalence_info() \
+    equiv_tok_cluster = conv_info.fproc.equivalence_info() \
       .equiv_tok_cluster_by_identifier.get(id_tok.value)
     if (equiv_tok_cluster is not None):
       rapp = get_rapp()
@@ -1494,7 +1494,7 @@ def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
         declare_identifiers_parameter_recursion(
           conv_info=conv_info, top_scope=top_scope, curr_scope=curr_scope,
           tokens=fdecl.parameter_assignment_tokens)
-        if (id_tok.value in conv_info.prcd.dynamic_parameters):
+        if (id_tok.value in conv_info.fproc.dynamic_parameters):
           crhs = "cmn.dynamic_parameters." + prepend_identifier_if_necessary(
             id_tok.value)
         else:
@@ -1525,7 +1525,7 @@ def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
       identifier)
     if (common_names is None): return None
     if (len(common_names) < 2): return None
-    return conv_info.prcd.common_name_by_identifier().get(identifier)
+    return conv_info.fproc.common_name_by_identifier().get(identifier)
   common_name = get_common_name_if_cast_is_needed()
   if (common_name is not None):
     src_var = "static_cast<common_%s&>(cmn).%s" % (
@@ -1568,11 +1568,11 @@ def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
 def convert_executable(
       callback, conv_info, args_fdecl_with_dim=None, blockdata=None):
   top_scope = scope(parent=None)
-  if (conv_info.prcd.uses_save):
+  if (conv_info.fproc.uses_save):
     macro = "FEM_CMN_SVE"
-    if (conv_info.prcd.needs_sve_dynamic_parameters):
+    if (conv_info.fproc.needs_sve_dynamic_parameters):
       macro += "_DYNAMIC_PARAMETERS"
-    top_scope.append("%s(%s);" % (macro, conv_info.prcd.name.value))
+    top_scope.append("%s(%s);" % (macro, conv_info.fproc.name.value))
   top_scope.remember_insert_point()
   curr_scope = top_scope
   if (args_fdecl_with_dim is not None):
@@ -1585,19 +1585,20 @@ def convert_executable(
       cdims = convert_dims(conv_info=conv_info, dim_tokens=fdecl.dim_tokens)
       top_scope.append("%s(%s);" % (fdecl.id_tok.value, cdims))
   if (blockdata is not None):
-    for prcd in blockdata:
-      callback("  %s(cmn);" % prcd.name.value)
-  if (conv_info.prcd.uses_read):
+    for fproc in blockdata:
+      callback("  %s(cmn);" % fproc.name.value)
+  if (conv_info.fproc.uses_read):
     top_scope.append("common_read read(cmn);")
-  if (conv_info.prcd.uses_write):
+  if (conv_info.fproc.uses_write):
     top_scope.append("common_write write(cmn);")
   top_scope_point_before_common = top_scope.current_point()
-  for common_name,fdecl_list in conv_info.prcd.common.items():
-    if (common_name in conv_info.prcd.variant_common_names):
+  for common_name,fdecl_list in conv_info.fproc.common.items():
+    if (common_name in conv_info.fproc.variant_common_names):
       continue
     top_scope.remember_insert_point()
     for common_fdecl in fdecl_list:
-      fdecl = conv_info.prcd.fdecl_by_identifier.get(common_fdecl.id_tok.value)
+      fdecl = conv_info.fproc.fdecl_by_identifier.get(
+        common_fdecl.id_tok.value)
       if (    fdecl.use_count != 0
           and fdecl.id_tok.value not in conv_info.vmap):
         declare_identifier(
@@ -1622,10 +1623,10 @@ def convert_executable(
   variant_buffers = convert_variant_allocate_and_bindings(
     conv_info=conv_info, top_scope=top_scope)
   top_scope.remember_insert_point()
-  cei = conv_info.prcd.classified_equivalence_info()
+  cei = conv_info.fproc.classified_equivalence_info()
   sve_equivalences = cei.save.equiv_tok_cluster_by_identifier
-  for identifier in sorted(conv_info.prcd.fdecl_by_identifier.keys()):
-    fdecl = conv_info.prcd.fdecl_by_identifier[identifier]
+  for identifier in sorted(conv_info.fproc.fdecl_by_identifier.keys()):
+    fdecl = conv_info.fproc.fdecl_by_identifier[identifier]
     if (    fdecl.is_save()
         and fdecl.use_count > 1
         and not identifier in sve_equivalences
@@ -1638,7 +1639,7 @@ def convert_executable(
   if (not top_scope.insert_point_is_current()):
     top_scope.top_append("// SAVE")
     top_scope.append("//")
-  if (conv_info.prcd.needs_is_called_first_time):
+  if (conv_info.fproc.needs_is_called_first_time):
     first_time_scope = top_scope.open_nested_scope(
       opening_text=["if (is_called_first_time) {"])
     if (len(variant_buffers.first_time) != 0):
@@ -1649,7 +1650,7 @@ def convert_executable(
         for line in mbr_buffer:
           mbr_scope.append(line)
         mbr_scope.close_nested_scope()
-    for nlist,clist in conv_info.prcd.data:
+    for nlist,clist in conv_info.fproc.data:
       declare_identifiers(
         id_tokens=extract_identifiers(tokens=nlist))
       for repetition_tok,ctoks in clist:
@@ -1658,7 +1659,7 @@ def convert_executable(
             id_tokens=extract_identifiers(tokens=[repetition_tok]))
         declare_identifiers(
           id_tokens=extract_identifiers(tokens=ctoks))
-    if (not conv_info.prcd.data_init_after_variant_bind):
+    if (not conv_info.fproc.data_init_after_variant_bind):
       convert_data(conv_info=conv_info, data_init_scope=first_time_scope)
     first_time_scope.close_nested_scope()
     top_scope.remember_insert_point()
@@ -1672,7 +1673,7 @@ def convert_executable(
   for line in variant_buffers.bindings:
     top_scope.append(line)
   top_scope.remember_insert_point()
-  if (conv_info.prcd.data_init_after_variant_bind):
+  if (conv_info.fproc.data_init_after_variant_bind):
     data_init_scope = top_scope.open_nested_scope(
       opening_text=["if (is_called_first_time) {"])
     convert_data(conv_info=conv_info, data_init_scope=data_init_scope)
@@ -1680,30 +1681,32 @@ def convert_executable(
   top_scope.remember_insert_point()
   from fable.tokenization import fmt_tokens_as_string
   def get_cfmt_from_format(stmt_label):
-    fmt_tokens = conv_info.prcd.format.get(stmt_label)
+    fmt_tokens = conv_info.fproc.format.get(stmt_label)
     if (fmt_tokens is None):
       tok.raise_semantic_error(
         "Unknown FORMAT statement label: %s" % tok.value)
     return '"(' + escape_string_literal(fmt_tokens_as_string(
       tokens=fmt_tokens, comma=fmt_comma_placeholder)) + ')"'
-  fmt_counts_by_statement_label = conv_info.prcd.fmt_counts_by_statement_label()
+  fmt_counts_by_statement_label = \
+    conv_info.fproc.fmt_counts_by_statement_label()
   for stmt_label in sorted(fmt_counts_by_statement_label.keys()):
     if (fmt_counts_by_statement_label[stmt_label] > 1):
       cfmt = get_cfmt_from_format(stmt_label=stmt_label)
       top_scope.append(
         "static const char* format_%s = %s;" % (stmt_label, cfmt))
   def curr_scope_append_return_function():
-    curr_scope.append("return %s;" % conv_info.vmap[conv_info.prcd.name.value])
+    curr_scope.append(
+      "return %s;" % conv_info.vmap[conv_info.fproc.name.value])
   close_scope_after_next_executable = False
   dos_to_close_by_label = {}
   from fable.read import Error
   from fable import SemanticError
-  for ei in conv_info.prcd.executable:
+  for ei in conv_info.fproc.executable:
     conv_info.comment_manager.insert_before(
       executable_info=ei, callback=curr_scope.append_comment)
     lbl = ei.ssl.label
     if (    lbl is not None
-        and lbl in conv_info.prcd.target_statement_labels()
+        and lbl in conv_info.fproc.target_statement_labels()
         and not close_scope_after_next_executable):
       curr_scope.append_statement_label(label=lbl)
     def search_for_id_tokens_and_declare_identifiers():
@@ -1907,7 +1910,7 @@ def convert_executable(
           if (cilist.unit is not None):
             unit_id_tokens = extract_identifiers(tokens=cilist.unit)
             if (len(unit_id_tokens) >= 1):
-              unit_fdecl = conv_info.prcd.get_fdecl(id_tok=unit_id_tokens[0])
+              unit_fdecl = conv_info.fproc.get_fdecl(id_tok=unit_id_tokens[0])
               if (    unit_fdecl.data_type is not None
                   and unit_fdecl.data_type.value == "character"):
                 is_internal_file = True
@@ -2006,7 +2009,7 @@ def convert_executable(
         curr_scope.append("default: goto %s;" % lbl(2))
         curr_scope = curr_scope.close_nested_scope()
       elif (ei.key == "call"):
-        if (called_prcd_needs_cmn(
+        if (called_fproc_needs_cmn(
               conv_info=conv_info,
               called_name=ei.subroutine_name.value)):
           cmn = "cmn"
@@ -2027,9 +2030,9 @@ def convert_executable(
             return cmn + ", " + a
           curr_scope.append("%s(%s);" % (called, cmn_a()))
       elif (ei.key == "return"):
-        if (conv_info.prcd.prcd_type == "function"):
+        if (conv_info.fproc.fproc_type == "function"):
           curr_scope_append_return_function()
-        elif (ei is not conv_info.prcd.executable[-1]):
+        elif (ei is not conv_info.fproc.executable[-1]):
           curr_scope.append("return;")
       elif (ei.key == "continue"):
         pass
@@ -2079,9 +2082,9 @@ def convert_executable(
       print
       raise
   assert curr_scope.parent is None
-  if (    conv_info.prcd.prcd_type == "function"
-      and len(conv_info.prcd.executable) != 0
-      and conv_info.prcd.executable[-1].key != "return"):
+  if (    conv_info.fproc.fproc_type == "function"
+      and len(conv_info.fproc.executable) != 0
+      and conv_info.fproc.executable[-1].key != "return"):
     curr_scope_append_return_function()
   conv_info.comment_manager.flush_remaining(
     callback=curr_scope.append_comment)
@@ -2091,7 +2094,7 @@ def convert_executable(
 def export_save_struct(callback, conv_info):
   cci = conv_info.converted_commons_info
   if (cci is not None):
-    buffer = cci.save_struct_buffers.get(conv_info.prcd.name.value)
+    buffer = cci.save_struct_buffers.get(conv_info.fproc.name.value)
     if (buffer is not None):
       for line in buffer:
         callback(line)
@@ -2099,7 +2102,7 @@ def export_save_struct(callback, conv_info):
 def produce_fortran_file_comment(conv_info, callback):
   if (conv_info.fortran_file_comments):
     callback("// Fortran file: %s"
-      % conv_info.prcd.body_lines[0].source_line_cluster[0].file_name)
+      % conv_info.fproc.body_lines[0].source_line_cluster[0].file_name)
 
 def convert_to_cpp_function(
       cpp_callback,
@@ -2114,15 +2117,16 @@ def convert_to_cpp_function(
   def cargs_append(ctype, name):
     fptr.append(ctype)
     cargs.append(ctype + " " + name)
-  if (conv_info.prcd.needs_cmn and not conv_info.prcd.ignore_common_and_save):
+  if (    conv_info.fproc.needs_cmn
+      and not conv_info.fproc.ignore_common_and_save):
     cargs_append("common&", "cmn")
   args_fdecl_with_dim = []
-  for id_tok in conv_info.prcd.args:
+  for id_tok in conv_info.fproc.args:
     if (id_tok.value == "*"):
       cargs_append("fem::star_type const&", "/* UNHANDLED: star argument */")
       continue
     assert id_tok.value not in conv_info.vmap
-    fdecl = conv_info.prcd.get_fdecl(id_tok=id_tok)
+    fdecl = conv_info.fproc.get_fdecl(id_tok=id_tok)
     conv_info.set_vmap_from_fdecl(fdecl=fdecl)
     assert fdecl.parameter_assignment_tokens is None
     if (fdecl.use_count == 0):
@@ -2157,7 +2161,7 @@ def convert_to_cpp_function(
         cargs_append("arr_%sref<%s%s>" % (
           cconst(fdecl=fdecl, short=True), t, templs), arg_name)
     else:
-      passed = conv_info.prcd.externals_passed_by_arg_identifier.get(
+      passed = conv_info.fproc.externals_passed_by_arg_identifier.get(
         fdecl.id_tok.value)
       if (passed is None or len(passed) == 0):
         ctype = "UNHANDLED"
@@ -2169,11 +2173,11 @@ def convert_to_cpp_function(
     if (fdecl.dim_tokens is not None and fdecl.use_count != 0):
       args_fdecl_with_dim.append(fdecl)
   cdecl = "void"
-  if (conv_info.prcd.name is not None):
-    fdecl = conv_info.prcd.get_fdecl(id_tok=conv_info.prcd.name)
+  if (conv_info.fproc.name is not None):
+    fdecl = conv_info.fproc.get_fdecl(id_tok=conv_info.fproc.name)
     if (fdecl.data_type is not None):
       cdecl = convert_data_type(conv_info=conv_info, fdecl=fdecl, crhs=None)[0]
-      conv_info.vmap[conv_info.prcd.name.value] = "return_value"
+      conv_info.vmap[conv_info.fproc.name.value] = "return_value"
   if (declaration_only):
     cpp_callback("")
     cpp_callback("// forward declaration (dependency cycle)")
@@ -2181,29 +2185,29 @@ def convert_to_cpp_function(
       cpp_callback("inline")
     cpp_callback("%s %s(%s);" % (
       cdecl,
-      prepend_identifier_if_necessary(conv_info.prcd.name.value),
+      prepend_identifier_if_necessary(conv_info.fproc.name.value),
       ", ".join(fptr)))
     return
-  if (conv_info.prcd.is_passed_as_external):
+  if (conv_info.fproc.is_passed_as_external):
     if (hpp_callback is None): cb = cpp_callback
     else:                      cb = hpp_callback
     cb("")
     cb("typedef %s (*%s_function_pointer)(%s);" % (
       cdecl,
-      prepend_identifier_if_necessary(conv_info.prcd.name.value),
+      prepend_identifier_if_necessary(conv_info.fproc.name.value),
       ", ".join(fptr)))
   for callback in [hpp_callback, cpp_callback]:
     if (callback is None): continue
     callback("")
     if (callback is cpp_callback):
-      produce_leading_comments(callback=callback, prcd=conv_info.prcd)
+      produce_leading_comments(callback=callback, fproc=conv_info.fproc)
       produce_fortran_file_comment(conv_info=conv_info, callback=callback)
     if (conv_info.inline_all):
       callback("inline")
     callback(cdecl)
     if (callback is hpp_callback): last = ";"
     else:                          last = ""
-    cname = prepend_identifier_if_necessary(conv_info.prcd.name.value)
+    cname = prepend_identifier_if_necessary(conv_info.fproc.name.value)
     if (len(cargs) == 0):
       callback(cname+"()" + last)
     else:
@@ -2212,7 +2216,7 @@ def convert_to_cpp_function(
   if (cdecl != "void"):
     cpp_callback("  %s %s = %s;" % (
       cdecl,
-      conv_info.vmap[conv_info.prcd.name.value],
+      conv_info.vmap[conv_info.fproc.name.value],
       zero_shortcut_if_possible(ctype=cdecl)))
   if (force_not_implemented):
     cpp_callback("  throw TBXX_NOT_IMPLEMENTED();")
@@ -2222,19 +2226,19 @@ def convert_to_cpp_function(
       conv_info=conv_info,
       args_fdecl_with_dim=args_fdecl_with_dim)
   cpp_callback("}")
-  produce_trailing_comments(callback=callback, prcd=conv_info.prcd)
+  produce_trailing_comments(callback=callback, fproc=conv_info.fproc)
 
 def convert_to_struct(
       callback,
       separate_cmn_hpp,
-      prcd,
+      fproc,
       struct_type,
       struct_name,
       equivalence_simple,
       id_tok_list):
   assert struct_type in ["common", "save"]
   need_dynamic_parameters = False
-  conv_info = conversion_info(prcd=prcd)
+  conv_info = conversion_info(fproc=fproc)
   callback("")
   callback("struct %s" % struct_name)
   callback("{")
@@ -2242,12 +2246,12 @@ def convert_to_struct(
   cmn_equivalences = {}
   have_variant_block = False
   if (    struct_type == "save"
-      and conv_info.prcd.needs_is_called_first_time):
-    for common_name in sorted(conv_info.prcd.variant_common_names):
+      and conv_info.fproc.needs_is_called_first_time):
+    for common_name in sorted(conv_info.fproc.variant_common_names):
       callback("  fem::variant_bindings %s_bindings;" % common_name)
       have_variant_block = True
     #
-    cei = conv_info.prcd.classified_equivalence_info()
+    cei = conv_info.fproc.classified_equivalence_info()
     sve_equivalences = cei.save.equiv_tok_cluster_by_identifier
     if (len(sve_equivalences) != 0):
       callback("  fem::variant_core_and_bindings save_equivalences;")
@@ -2264,7 +2268,7 @@ def convert_to_struct(
     if (id_tok.value in cmn_equivalences):
       continue
     remaining_id_tok_list.append(id_tok)
-    fdecl = conv_info.prcd.get_fdecl(id_tok=id_tok)
+    fdecl = conv_info.fproc.get_fdecl(id_tok=id_tok)
     for tokens in [fdecl.size_tokens, fdecl.dim_tokens]:
       if (tokens is None):
         continue
@@ -2274,10 +2278,10 @@ def convert_to_struct(
           if (id_tok.value in const_identifiers):
             continue
           const_identifiers[id_tok.value] = None
-          fdecl = conv_info.prcd.get_fdecl(id_tok=id_tok)
+          fdecl = conv_info.fproc.get_fdecl(id_tok=id_tok)
           hdp = parameter_recursion(
             tokens=fdecl.required_parameter_assignment_tokens())
-          if (hdp or id_tok.value in conv_info.prcd.dynamic_parameters):
+          if (hdp or id_tok.value in conv_info.fproc.dynamic_parameters):
             have_dynamic_dependency = True
           const_identifiers[id_tok.value] = have_dynamic_dependency
           const_id_toks.append(id_tok)
@@ -2294,13 +2298,13 @@ def convert_to_struct(
       callback("")
     append_empty_line = False
     for id_tok in const_id_toks:
-      fdecl = conv_info.prcd.get_fdecl(id_tok=id_tok)
+      fdecl = conv_info.fproc.get_fdecl(id_tok=id_tok)
       ctype = convert_data_type(conv_info=conv_info, fdecl=fdecl, crhs=None)[0]
       if (const_identifiers[id_tok.value]):
         need_dynamic_parameters = True
         callback("  const %s %s;" % (
           ctype, prepend_identifier_if_necessary(id_tok.value)))
-        if (id_tok.value in conv_info.prcd.dynamic_parameters):
+        if (id_tok.value in conv_info.fproc.dynamic_parameters):
           crhs = "dynamic_parameters." + prepend_identifier_if_necessary(
             id_tok.value)
         else:
@@ -2322,7 +2326,7 @@ def convert_to_struct(
   deferred_arr_members = []
   deferred_arr_initializers = []
   for id_tok in remaining_id_tok_list:
-    fdecl = conv_info.prcd.get_fdecl(id_tok=id_tok)
+    fdecl = conv_info.fproc.get_fdecl(id_tok=id_tok)
     if (fdecl.id_tok.value in const_identifiers):
       continue
     ctype, cdims, crhs = convert_data_type_and_dims(
@@ -2407,33 +2411,33 @@ def generate_common_report(
     report = StringIO()
   else:
     report = stringio
-  for common_name,prcd_cpp_pairs in ccode_registry.items():
-    prcds_by_cpp = {}
-    for prcd,cpp in prcd_cpp_pairs:
-      prcds_by_cpp.setdefault("\n".join(cpp), []).append(prcd)
-    if (len(prcds_by_cpp) != 1):
+  for common_name,fproc_cpp_pairs in ccode_registry.items():
+    fprocs_by_cpp = {}
+    for fproc,cpp in fproc_cpp_pairs:
+      fprocs_by_cpp.setdefault("\n".join(cpp), []).append(fproc)
+    if (len(fprocs_by_cpp) != 1):
       variant_common_names.add(common_name)
-      prcds_by_cpp_items = prcds_by_cpp.items()
+      fprocs_by_cpp_items = fprocs_by_cpp.items()
       def cmp_size(a, b):
         return cmp(len(b[0]), len(a[0]))
-      prcds_by_cpp_items.sort(cmp_size)
+      fprocs_by_cpp_items.sort(cmp_size)
       import difflib
       diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
-      def show_prcds(label, cpp_prcds):
+      def show_fprocs(label, cpp_fprocs):
         print >> report, \
           "procedures %s:" % label, \
-          " ".join(sorted([prcd.name.value for prcd in cpp_prcds[1]]))
-      main_cpp_prcds = prcds_by_cpp_items[0]
+          " ".join(sorted([fproc.name.value for fproc in cpp_fprocs[1]]))
+      main_cpp_fprocs = fprocs_by_cpp_items[0]
       print >> report, "common name:", common_name
-      print >> report, "number of variants:", len(prcds_by_cpp_items)
+      print >> report, "number of variants:", len(fprocs_by_cpp_items)
       print >> report, "total number of procedures using the common block:", \
-        sum([len(prcds) for cpp,prcds in prcds_by_cpp_items])
-      show_prcds("first", main_cpp_prcds)
-      for other_cpp_prcds in prcds_by_cpp_items[1:]:
-        show_prcds("second", other_cpp_prcds)
+        sum([len(fprocs) for cpp,fprocs in fprocs_by_cpp_items])
+      show_fprocs("first", main_cpp_fprocs)
+      for other_cpp_fprocs in fprocs_by_cpp_items[1:]:
+        show_fprocs("second", other_cpp_fprocs)
         for line in diff_function(
-                      (main_cpp_prcds[0]+"\n").splitlines(1),
-                      (other_cpp_prcds[0]+"\n").splitlines(1)):
+                      (main_cpp_fprocs[0]+"\n").splitlines(1),
+                      (other_cpp_fprocs[0]+"\n").splitlines(1)):
           print >> report, line,
         print >> report
   #
@@ -2502,7 +2506,7 @@ def generate_common_report(
 def convert_commons(
       callback,
       separate_cmn_hpp,
-      topological_prcds,
+      topological_fprocs,
       dynamic_parameters,
       common_equivalence_simple,
       common_report_stringio):
@@ -2541,13 +2545,13 @@ def convert_commons(
   member_registry = {}
   variant_common_names = set()
   bottom_up_filtered = []
-  for prcd in topological_prcds.bottom_up_list:
-    if (not prcd.ignore_common_and_save):
-      bottom_up_filtered.append(prcd)
+  for fproc in topological_fprocs.bottom_up_list:
+    if (not fproc.ignore_common_and_save):
+      bottom_up_filtered.append(fproc)
   struct_commons_need_dynamic_parameters = set()
-  for prcd in bottom_up_filtered:
-    prcd.needs_variant_bind = False
-    for common_name,common_fdecl_list in prcd.common.items():
+  for fproc in bottom_up_filtered:
+    fproc.needs_variant_bind = False
+    for common_name,common_fdecl_list in fproc.common.items():
       common_fdecl_list_sizes.setdefault(common_name, []).append(
         len(common_fdecl_list))
       id_tok_list = []
@@ -2557,10 +2561,10 @@ def convert_commons(
         member_registry.setdefault(
           common_fdecl.id_tok.value, set()).add(common_name)
         if (common_name not in common_equivalence_simple):
-          equiv_tok_cluster = prcd.equivalence_info() \
+          equiv_tok_cluster = fproc.equivalence_info() \
             .equiv_tok_cluster_by_identifier.get(common_fdecl.id_tok.value)
           if (equiv_tok_cluster is not None):
-            prcd.needs_variant_bind = True
+            fproc.needs_variant_bind = True
             variant_common_names.add(common_name)
             for equiv_tok in equiv_tok_cluster:
               for tok_seq in equiv_tok.value:
@@ -2571,7 +2575,7 @@ def convert_commons(
       info = convert_to_struct(
         callback=buffer.append,
         separate_cmn_hpp=separate_cmn_hpp,
-        prcd=prcd,
+        fproc=fproc,
         struct_type="common",
         struct_name=struct_name,
         equivalence_simple=(common_name in common_equivalence_simple),
@@ -2579,7 +2583,7 @@ def convert_commons(
       if (info.need_dynamic_parameters):
         struct_commons_need_dynamic_parameters.add(struct_name)
       common_ccode_registry.setdefault(common_name, []).append(
-        (prcd, buffer))
+        (fproc, buffer))
   variant_common_names.update(generate_common_report(
     common_fdecl_list_sizes=common_fdecl_list_sizes,
     common_equiv_tok_seqs=common_equiv_tok_seqs,
@@ -2590,11 +2594,11 @@ def convert_commons(
   commons_defined_already = set()
   struct_commons = []
   variant_commons = []
-  for prcd in bottom_up_filtered:
-    prcd.variant_common_names = set()
-    for common_name,common_fdecl_list in prcd.common.items():
+  for fproc in bottom_up_filtered:
+    fproc.variant_common_names = set()
+    for common_name,common_fdecl_list in fproc.common.items():
       if (common_name in variant_common_names):
-        prcd.variant_common_names.add(common_name)
+        fproc.variant_common_names.add(common_name)
         if (common_name not in commons_defined_already):
           commons_defined_already.add(common_name)
           variant_commons.append(common_name)
@@ -2605,48 +2609,48 @@ def convert_commons(
           for line in common_ccode_registry[common_name][0][1]:
             callback(line)
   #
-  for prcd in bottom_up_filtered:
-    if (not prcd.needs_variant_bind):
-      prcd.needs_variant_bind = (
-           len(prcd.variant_common_names) != 0
-        or prcd.classified_equivalence_info().has_save())
-    prcd.needs_is_called_first_time = (
-         prcd.needs_variant_bind
-      or len(prcd.data) != 0)
-    prcd.data_init_after_variant_bind = (
-          prcd.needs_variant_bind
-      and len(prcd.data) != 0)
-    if (prcd.needs_is_called_first_time):
-      prcd.uses_save = True
-  topological_prcds.each_prcd_update_is_modified()
-  topological_prcds.each_prcd_update_needs_cmn()
+  for fproc in bottom_up_filtered:
+    if (not fproc.needs_variant_bind):
+      fproc.needs_variant_bind = (
+           len(fproc.variant_common_names) != 0
+        or fproc.classified_equivalence_info().has_save())
+    fproc.needs_is_called_first_time = (
+         fproc.needs_variant_bind
+      or len(fproc.data) != 0)
+    fproc.data_init_after_variant_bind = (
+          fproc.needs_variant_bind
+      and len(fproc.data) != 0)
+    if (fproc.needs_is_called_first_time):
+      fproc.uses_save = True
+  topological_fprocs.each_fproc_update_is_modified()
+  topological_fprocs.each_fproc_update_needs_cmn()
   #
   save_struct_buffers = {}
   save_struct_names = []
-  for prcd in bottom_up_filtered:
+  for fproc in bottom_up_filtered:
     id_tok_list = []
-    for fdecl in prcd.fdecl_by_identifier.values():
+    for fdecl in fproc.fdecl_by_identifier.values():
       if (fdecl.is_save()):
         id_tok_list.append(fdecl.id_tok)
     if (    len(id_tok_list) == 0
-        and not prcd.needs_is_called_first_time):
+        and not fproc.needs_is_called_first_time):
       continue
     def id_tok_cmp(a, b):
       return cmp(a.value, b.value)
     id_tok_list.sort(id_tok_cmp)
-    struct_name = "%s_save" % prcd.name.value
+    struct_name = "%s_save" % fproc.name.value
     buffer = []
     info = convert_to_struct(
       callback=buffer.append,
       separate_cmn_hpp=separate_cmn_hpp,
-      prcd=prcd,
+      fproc=fproc,
       struct_type="save",
       struct_name=struct_name,
       equivalence_simple=False,
       id_tok_list=id_tok_list)
-    save_struct_buffers[prcd.name.value] = buffer
+    save_struct_buffers[fproc.name.value] = buffer
     if (info.need_dynamic_parameters):
-      prcd.needs_sve_dynamic_parameters = True
+      fproc.needs_sve_dynamic_parameters = True
     save_struct_names.append(struct_name)
   if (    len(commons_defined_already) == 0
       and len(save_struct_names) == 0
@@ -2723,14 +2727,14 @@ class hpp_cpp_buffers(object):
 
 def convert_program(callback, global_conv_info, namespace, hpp_guard, debug):
   main_calls = []
-  for prcd in global_conv_info.topological_prcds.bottom_up_list:
-    if (not prcd.is_program()): continue
-    conv_info = global_conv_info.specialized(prcd=prcd)
+  for fproc in global_conv_info.topological_fprocs.bottom_up_list:
+    if (not fproc.is_program()): continue
+    conv_info = global_conv_info.specialized(fproc=fproc)
     export_save_struct(callback=callback, conv_info=conv_info)
-    cname = prcd.name.value
+    cname = fproc.name.value
     main_calls.append(cname)
     callback("")
-    produce_leading_comments(callback=callback, prcd=prcd)
+    produce_leading_comments(callback=callback, fproc=fproc)
     produce_fortran_file_comment(conv_info=conv_info, callback=callback)
     callback("""\
 void
@@ -2748,12 +2752,12 @@ void
       convert_executable(
         callback=result_buffer.append,
         conv_info=conv_info,
-        blockdata=global_conv_info.topological_prcds.all_prcds.blockdata)
+        blockdata=global_conv_info.topological_fprocs.all_fprocs.blockdata)
     except Exception:
       if (not debug): raise
       show_traceback()
     else:
-      if (prcd.needs_cmn and not prcd.ignore_common_and_save):
+      if (fproc.needs_cmn and not fproc.ignore_common_and_save):
         if (global_conv_info.dynamic_parameters is None):
           callback("  common cmn;")
         else:
@@ -2761,7 +2765,7 @@ void
       for line in result_buffer:
         callback(line)
       callback("}")
-    produce_trailing_comments(callback=callback, prcd=prcd)
+    produce_trailing_comments(callback=callback, fproc=fproc)
   #
   ns = close_namespace(
     callback=callback, namespace=namespace, hpp_guard=hpp_guard)
@@ -2790,7 +2794,7 @@ default_arr_nd_size_max = 256
 
 def process(
       file_names=None,
-      all_prcds=None,
+      all_fprocs=None,
       top_procedures=None,
       namespace="please_specify",
       include_prefix=None,
@@ -2819,14 +2823,14 @@ def process(
       data_values_block_size=8,
       data_specializations=True,
       debug=False):
-  assert [file_names, all_prcds].count(None) == 1
+  assert [file_names, all_fprocs].count(None) == 1
   if (namespace is None or namespace == "please_specify"):
     namespace = "placeholder_please_replace"
   import fable.read
-  if (all_prcds is None):
-    all_prcds = fable.read.process(file_names=file_names)
-  for prcd in all_prcds.all_in_input_order:
-    prcd.ignore_common_and_save = (prcd.name.value in ignore_common_and_save)
+  if (all_fprocs is None):
+    all_fprocs = fable.read.process(file_names=file_names)
+  for fproc in all_fprocs.all_in_input_order:
+    fproc.ignore_common_and_save = (fproc.name.value in ignore_common_and_save)
   result = []
   def callback(line):
     if (len(result) == 0): prev_line = None
@@ -2883,9 +2887,9 @@ def process(
     namespace=namespace,
     using_namespace_major_types=need_using_major_types)
   #
-  topological_prcds = all_prcds.build_bottom_up_prcd_list_following_calls(
+  topological_fprocs = all_fprocs.build_bottom_up_fproc_list_following_calls(
     top_procedures=top_procedures)
-  missing = topological_prcds.missing_external_fdecls_by_identifier
+  missing = topological_fprocs.missing_external_fdecls_by_identifier
   if (len(missing) != 0):
     for identifier in sorted(missing.keys()):
       if (identifier in ignore_missing):
@@ -2900,7 +2904,7 @@ def process(
     "Missing function implementation: %s");
 }""" % (return_type, identifier, identifier))
   #
-  dep_cycles = topological_prcds.dependency_cycles
+  dep_cycles = topological_fprocs.dependency_cycles
   if (len(dep_cycles) != 0):
     callback("")
     callback("/* Dependency cycles: %d" % len(dep_cycles))
@@ -2910,11 +2914,11 @@ def process(
   #
   if (dynamic_parameters is not None):
     assert len(dynamic_parameters) != 0
-    for prcd in topological_prcds.bottom_up_list:
+    for fproc in topological_fprocs.bottom_up_list:
       for dp_props in dynamic_parameters:
-        fdecl = prcd.fdecl_by_identifier.get(dp_props.name)
+        fdecl = fproc.fdecl_by_identifier.get(dp_props.name)
         if (fdecl is not None):
-          prcd.dynamic_parameters.add(dp_props.name)
+          fproc.dynamic_parameters.add(dp_props.name)
   #
   if (separate_cmn_hpp):
     cmn_buffer = []
@@ -2932,7 +2936,7 @@ def process(
     converted_commons_info = convert_commons(
       callback=cmn_callback,
       separate_cmn_hpp=separate_cmn_hpp,
-      topological_prcds=topological_prcds,
+      topological_fprocs=topological_fprocs,
       dynamic_parameters=dynamic_parameters,
       common_equivalence_simple=common_equivalence_simple,
       common_report_stringio=common_report_stringio)
@@ -2994,7 +2998,7 @@ def process(
     function_definitions = []
   #
   global_conv_info = global_conversion_info(
-    topological_prcds=topological_prcds,
+    topological_fprocs=topological_fprocs,
     dynamic_parameters=dynamic_parameters,
     fortran_file_comments=fortran_file_comments,
     fem_do_safe=fem_do_safe,
@@ -3005,15 +3009,15 @@ def process(
     data_values_block_size=data_values_block_size,
     data_specializations=data_specializations)
   #
-  for prcd in topological_prcds.bottom_up_list:
-    if (prcd.is_program()):
+  for fproc in topological_fprocs.bottom_up_list:
+    if (fproc.is_program()):
       continue
-    if (prcd.name.value in suppress_functions):
+    if (fproc.name.value in suppress_functions):
       continue
     hpp_callback = None
     cpp_callback = None
-    suppress_cpp = (prcd.name.value in suppress_function_definitions)
-    buffers = separate_namespaces_buffers.get(prcd.name.value)
+    suppress_cpp = (fproc.name.value in suppress_function_definitions)
+    buffers = separate_namespaces_buffers.get(fproc.name.value)
     if (buffers is None):
       if (not need_function_hpp):
         if (not suppress_cpp):
@@ -3024,7 +3028,7 @@ def process(
         hpp_callback = function_hpp_buffer.append
         if (not suppress_cpp):
           buffer = separate_function_buffer_by_function_name.get(
-            prcd.name.value)
+            fproc.name.value)
           if (buffer is None):
             if (number_of_function_files is None):
               cpp_callback = callback
@@ -3044,16 +3048,16 @@ def process(
       if (hpp_callback is None):
         hpp_callback = callback
     if (not need_function_hpp):
-      fwds = topological_prcds.forward_uses_by_identifier.get(
-        prcd.name.value)
+      fwds = topological_fprocs.forward_uses_by_identifier.get(
+        fproc.name.value)
       if (fwds is not None):
         for fwd_identifier in fwds:
-          fwd_prcd = all_prcds.prcds_by_name()[fwd_identifier]
+          fwd_fproc = all_fprocs.fprocs_by_name()[fwd_identifier]
           try:
             convert_to_cpp_function(
               hpp_callback=None,
               cpp_callback=cpp_callback,
-              conv_info=global_conv_info.specialized(prcd=fwd_prcd),
+              conv_info=global_conv_info.specialized(fproc=fwd_fproc),
               declaration_only=True)
           except Exception:
             if (not debug): raise
@@ -3062,8 +3066,8 @@ def process(
       convert_to_cpp_function(
         hpp_callback=hpp_callback,
         cpp_callback=cpp_callback,
-        conv_info=global_conv_info.specialized(prcd=prcd),
-        force_not_implemented=(prcd.name.value in force_not_implemented))
+        conv_info=global_conv_info.specialized(fproc=fproc),
+        force_not_implemented=(fproc.name.value in force_not_implemented))
     except Exception:
       if (not debug): raise
       show_traceback()

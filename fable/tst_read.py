@@ -831,10 +831,10 @@ def exercise_tokens_as_string(verbose):
 def exercise_show():
   t_dir = libtbx.env.under_dist(
     module_name="fable", path="test/valid", test=op.isdir)
-  all_prcds = read.process(file_names=[op.join(t_dir, "subroutine_3.f")])
+  all_fprocs = read.process(file_names=[op.join(t_dir, "subroutine_3.f")])
   from cStringIO import StringIO
   cio = StringIO()
-  all_prcds.show_counts_by_type(out=cio, prefix="$ ")
+  all_fprocs.show_counts_by_type(out=cio, prefix="$ ")
   assert not show_diff(cio.getvalue(), """\
 $ Counts by Fortran procedure type:
 $   program: 1
@@ -843,17 +843,17 @@ $   function: 0
 $   blockdata: 0
 """)
 
-def exercise_build_prcds_by_name():
+def exercise_build_fprocs_by_name():
   t_dir = libtbx.env.under_dist(
     module_name="fable", path="test/valid", test=op.isdir)
   for pair in [
         ("subroutine_3.f", "subroutine_4.f"),
         ("implied_program.f", "implied_program.f")]:
     file_names = [op.join(t_dir, file_name) for file_name in pair]
-    all_prcds = read.process(file_names=file_names)
+    all_fprocs = read.process(file_names=file_names)
     from libtbx.utils import Sorry
     try:
-      all_prcds.prcds_by_name()
+      all_fprocs.fprocs_by_name()
     except Sorry, e:
       if (pair[0] == "subroutine_3.f"):
         assert str(e).startswith("Fortran procedure name conflict:")
@@ -870,9 +870,9 @@ def exercise_eval_const_expression_simple(verbose):
   t_dir = libtbx.env.under_dist(
     module_name="fable", path="test/valid", test=op.isdir)
   file_name = "const_expressions.f"
-  all_prcds = read.process(file_names=[op.join(t_dir, file_name)])
-  assert len(all_prcds.all_in_input_order) == 2
-  unit = all_prcds.all_in_input_order[0]
+  all_fprocs = read.process(file_names=[op.join(t_dir, file_name)])
+  assert len(all_fprocs.all_in_input_order) == 2
+  unit = all_fprocs.all_in_input_order[0]
   val = unit.eval_const_expression_simple(identifier="n5")
   assert val == 296356
   for identifier,expected_vals in [
@@ -886,7 +886,7 @@ def exercise_eval_const_expression_simple(verbose):
     dim_tokens=unit.fdecl_by_identifier["nums3"].dim_tokens,
     allow_power=False)
   assert vals == [None]
-  unit = all_prcds.all_in_input_order[1]
+  unit = all_fprocs.all_in_input_order[1]
   vals = unit.eval_dimensions_simple(
     dim_tokens=unit.fdecl_by_identifier["nums"].dim_tokens)
   assert vals == [None, None]
@@ -902,7 +902,7 @@ def run(args):
   exercise_unsupported(verbose=verbose)
   exercise_tokens_as_string(verbose=verbose)
   exercise_show()
-  exercise_build_prcds_by_name()
+  exercise_build_fprocs_by_name()
   exercise_eval_const_expression_simple(verbose=verbose)
   print "OK"
 

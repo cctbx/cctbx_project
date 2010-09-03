@@ -593,7 +593,7 @@ class vt_function(object): pass
 class vt_subroutine(object): pass
 
 # variable storage
-class vs_prcd_name(object): pass
+class vs_fproc_name(object): pass
 class vs_argument(object): pass
 class vs_common(object): pass
 class vs_save(object): pass
@@ -651,7 +651,7 @@ class fdecl_info(object):
     vt = O.var_type
     return (vt is vt_external or vt is vt_function or vt is vt_subroutine)
 
-  def is_prcd_name(O): return O.var_storage is vs_prcd_name
+  def is_fproc_name(O): return O.var_storage is vs_fproc_name
   def is_argument(O): return O.var_storage is vs_argument
   def is_common(O): return O.var_storage is vs_common
   def is_save(O): return O.var_storage is vs_save
@@ -1058,8 +1058,8 @@ class ei_write(executable_info):
 
 del mksl
 
-class prcd_p_methods(object):
-  "Separated from class prcd for clarity and a minor getattr speed gain."
+class fproc_p_methods(object):
+  "Separated from class fproc for clarity and a minor getattr speed gain."
 
   __slots__ = []
 
@@ -1728,12 +1728,12 @@ def collect_iolist(tz):
     result = tokenization.remove_redundant_parentheses(tokens=result)
   return result
 
-class prcd(prcd_p_methods):
+class fproc(fproc_p_methods):
 
   __slots__ = [
     "leading_comments",
     "trailing_comments",
-    "top_ssl", "prcd_type", "data_type", "size_tokens",
+    "top_ssl", "fproc_type", "data_type", "size_tokens",
     "body_lines", "end_ssl",
     "name_plain", "name", "args",
     "body_lines_processed_already",
@@ -1775,17 +1775,17 @@ class prcd(prcd_p_methods):
   def __init__(O,
         leading_comments,
         top_ssl,
-        prcd_type,
+        fproc_type,
         i_code,
         data_type,
         size_tokens,
         body_lines,
         end_ssl):
-    assert prcd_type in ["program", "function", "subroutine", "blockdata"]
+    assert fproc_type in ["program", "function", "subroutine", "blockdata"]
     O.leading_comments = leading_comments
     O.trailing_comments = []
     O.top_ssl = top_ssl
-    O.prcd_type = prcd_type
+    O.fproc_type = fproc_type
     O.body_lines = body_lines
     O.end_ssl = end_ssl
     O.data_type = data_type
@@ -1827,10 +1827,10 @@ class prcd(prcd_p_methods):
     O.is_passed_as_external = False
     O.externals_passed_by_arg_identifier = {}
 
-  def is_program(O): return (O.prcd_type == "program")
-  def is_function(O): return (O.prcd_type == "function")
-  def is_subroutine(O): return (O.prcd_type == "subroutine")
-  def is_blockdata(O): return (O.prcd_type == "blockdata")
+  def is_program(O): return (O.fproc_type == "program")
+  def is_function(O): return (O.fproc_type == "function")
+  def is_subroutine(O): return (O.fproc_type == "subroutine")
+  def is_blockdata(O): return (O.fproc_type == "blockdata")
 
   def first_body_source_line(O):
     assert len(O.body_lines) != 0
@@ -1845,16 +1845,16 @@ class prcd(prcd_p_methods):
       assert O.is_program()
       assert i_code == 0
       O.name = tokenization.tk_identifier(
-        ssl=None, i_code=None, value=O.prcd_type+"_unnamed")
+        ssl=None, i_code=None, value=O.fproc_type+"_unnamed")
       return
-    j_code = i_code + len(O.prcd_type)
+    j_code = i_code + len(O.fproc_type)
     tz = tokenization.ssl_iterator(ssl=O.top_ssl, start=j_code)
     O.name = tz.get(optional=True)
     if (O.name is None):
       if (not O.is_program() and not O.is_blockdata()):
         O.top_ssl.raise_syntax_error(i=j_code-1)
       O.name = tokenization.tk_identifier(
-        ssl=O.top_ssl, i_code=0, value=O.prcd_type+"_unnamed")
+        ssl=O.top_ssl, i_code=0, value=O.fproc_type+"_unnamed")
       return
     opening_token = tz.get(optional=True)
     if (opening_token is None):
@@ -1863,7 +1863,7 @@ class prcd(prcd_p_methods):
         O.name = tokenization.tk_identifier(
           ssl=O.name.ssl,
           i_code=O.name.i_code,
-          value=O.prcd_type+"_"+O.name.value)
+          value=O.fproc_type+"_"+O.name.value)
       return
     if (not opening_token.is_op_with(value="(") or O.is_blockdata()):
       opening_token.raise_syntax_error()
@@ -1873,7 +1873,7 @@ class prcd(prcd_p_methods):
       if (tok.is_identifier()):
         O.args.append(tok)
       elif (tok.is_op_with(value="*")):
-        if (O.prcd_type != "subroutine"):
+        if (O.fproc_type != "subroutine"):
           tok.raise_syntax_error()
         O.args.append(tok)
       elif (need_arg):
@@ -1935,13 +1935,13 @@ class prcd(prcd_p_methods):
             "rewind",
             "stop"]:
         if (code.startswith(s, start)):
-          p = getattr(prcd_p_methods, "p_"+s)
+          p = getattr(fproc_p_methods, "p_"+s)
           p(O, ssl=ssl, start=start)
           return
       if (start != 0):
         ssl.raise_syntax_error(i=start)
       if (code in ["else", "enddo", "endif"]):
-        p = getattr(prcd_p_methods, "p_"+code)
+        p = getattr(fproc_p_methods, "p_"+code)
         p(O, ssl=ssl, start=start)
         return
       for s in [
@@ -1952,7 +1952,7 @@ class prcd(prcd_p_methods):
             "intrinsic",
             "save"]:
         if (code.startswith(s)):
-          p = getattr(prcd_p_methods, "p_"+s)
+          p = getattr(fproc_p_methods, "p_"+s)
           p(O, ssl=ssl, start=start)
           return
       O.process_declaration(ssl=ssl, start=start, enable_size=False)
@@ -1984,12 +1984,12 @@ class prcd(prcd_p_methods):
               "read",
               "rewind",
               "write"]):
-          p = getattr(prcd_p_methods, "p_"+cid)
+          p = getattr(fproc_p_methods, "p_"+cid)
           p(O, ssl=ssl, start=start)
           return
         for s in ["call", "goto"]:
           if (code.startswith(s, start)):
-            p = getattr(prcd_p_methods, "p_"+s)
+            p = getattr(fproc_p_methods, "p_"+s)
             p(O, ssl=ssl, start=start)
             return
         if (start != 0):
@@ -2009,7 +2009,7 @@ class prcd(prcd_p_methods):
               "implicit",
               "parameter"]:
           if (code.startswith(s)):
-            p = getattr(prcd_p_methods, "p_"+s)
+            p = getattr(fproc_p_methods, "p_"+s)
             p(O, ssl=ssl, start=start)
             return
         O.process_declaration(ssl=ssl, start=start, enable_size=True)
@@ -2025,7 +2025,7 @@ class prcd(prcd_p_methods):
           return
         for s in ["allocate(", "backspace(", "deallocate(", "read(", "write("]:
           if (code.startswith(s, start)):
-            p = getattr(prcd_p_methods, "p_"+s[:-1])
+            p = getattr(fproc_p_methods, "p_"+s[:-1])
             p(O, ssl=ssl, start=start)
             return
         if (code.startswith("data", start)):
@@ -2044,14 +2044,14 @@ class prcd(prcd_p_methods):
               "deallocate",
               "read",
               "write"]):
-          p = getattr(prcd_p_methods, "p_"+cid)
+          p = getattr(fproc_p_methods, "p_"+cid)
           p(O, ssl=ssl, start=start)
           return
         if (start != 0):
           ssl.raise_syntax_error(i=start)
         for s in ["common", "data", "dimension", "print"]:
           if (code.startswith(s)):
-            p = getattr(prcd_p_methods, "p_"+s)
+            p = getattr(fproc_p_methods, "p_"+s)
             p(O, ssl=ssl, start=start)
             return
         O.process_declaration(ssl=ssl, start=start, enable_size=True)
@@ -2065,7 +2065,7 @@ class prcd(prcd_p_methods):
             "read(",
             "write("]:
         if (code.startswith(s, start)):
-          p = getattr(prcd_p_methods, "p_"+s[:-1])
+          p = getattr(fproc_p_methods, "p_"+s[:-1])
           p(O, ssl=ssl, start=start)
           return
       if (start != 0):
@@ -2083,7 +2083,7 @@ class prcd(prcd_p_methods):
         ssl.raise_syntax_error(i=start)
       for s in ["common", "data", "save"]:
         if (code.startswith(s)):
-          p = getattr(prcd_p_methods, "p_"+s)
+          p = getattr(fproc_p_methods, "p_"+s)
           p(O, ssl=ssl, start=start)
           return
       ssl.raise_syntax_error_or_not_implemented()
@@ -2098,7 +2098,7 @@ class prcd(prcd_p_methods):
         ssl.raise_syntax_error(i=start)
       for s in ["common", "data", "external", "intrinsic", "save"]:
         if (code.startswith(s)):
-          p = getattr(prcd_p_methods, "p_"+s)
+          p = getattr(fproc_p_methods, "p_"+s)
           p(O, ssl=ssl, start=start)
           return
       if (    code.startswith("do")
@@ -2112,7 +2112,7 @@ class prcd(prcd_p_methods):
       return
     for s in ["backspace", "print", "read", "rewind"]:
       if (code.startswith(s, start)):
-        p = getattr(prcd_p_methods, "p_"+s)
+        p = getattr(fproc_p_methods, "p_"+s)
         p(O, ssl=ssl, start=start)
         return
     if (start != 0):
@@ -2199,7 +2199,7 @@ class prcd(prcd_p_methods):
       make_fdecl(
         id_tok=O.name,
         var_type=vt,
-        var_storage=vs_prcd_name,
+        var_storage=vs_fproc_name,
         data_type=O.data_type,
         size_tokens=O.size_tokens)
     def raise_confl_decl(id_tok):
@@ -2217,7 +2217,7 @@ class prcd(prcd_p_methods):
           data_type=fdecl.data_type,
           size_tokens=fdecl.size_tokens,
           dim_tokens=fdecl.dim_tokens)
-      elif (tf.var_storage is vs_prcd_name):
+      elif (tf.var_storage is vs_fproc_name):
         if (tf.data_type is not None):
           raise_confl_or_repeated_decl(id_tok=id_tok)
         if (fdecl.dim_tokens is not None):
@@ -2446,7 +2446,7 @@ class prcd(prcd_p_methods):
       if (   vt is vt_external
           or vt is vt_function
           or vt is vt_subroutine):
-        if (not (vs is None or vs is vs_prcd_name or vs is vs_argument)):
+        if (not (vs is None or vs is vs_fproc_name or vs is vs_argument)):
           tf.id_tok.raise_internal_error()
       elif (vt is vt_intrinsic):
         if (vs is not None):
@@ -2485,7 +2485,7 @@ class prcd(prcd_p_methods):
             continue
           tf_arg = O.fdecl_by_identifier.get(first_arg_tok.value)
           assert tf_arg is not None
-          if (tf_arg.is_prcd_name()):
+          if (tf_arg.is_fproc_name()):
             return
           tf_arg.passed_as_arg.setdefault(
             called_identifier, set()).add(i_arg)
@@ -2765,7 +2765,7 @@ class classified_equivalence_info(object):
   def has_save(O):
     return (len(O.save.equiv_tok_clusters) != 0)
 
-class split_prcds(object):
+class split_fprocs(object):
 
   __slots__ = [
     "program",
@@ -2773,8 +2773,8 @@ class split_prcds(object):
     "function",
     "blockdata",
     "all_in_input_order",
-    "_prcds_by_name",
-    "_prcds_by_name_plain"]
+    "_fprocs_by_name",
+    "_fprocs_by_name_plain"]
 
   def __init__(O):
     O.program = []
@@ -2782,8 +2782,8 @@ class split_prcds(object):
     O.function = []
     O.blockdata = []
     O.all_in_input_order = []
-    O._prcds_by_name = None
-    O._prcds_by_name_plain = None
+    O._fprocs_by_name = None
+    O._fprocs_by_name_plain = None
 
   def by_type(O):
     return [O.program, O.blockdata, O.subroutine, O.function]
@@ -2797,18 +2797,18 @@ class split_prcds(object):
         continue
       assert len(curr_ssl.code) != 0
       def collect_until_end(
-            prcd_type, top_ssl, i_code, data_type, size_tokens,
+            fproc_type, top_ssl, i_code, data_type, size_tokens,
             first_body_line=None):
         body_lines = []
         if (first_body_line is not None):
           body_lines.append(first_body_line)
-        specific_end = "end"+prcd_type
+        specific_end = "end"+fproc_type
         for ssl in ssls:
           if (ssl.code in ["end", specific_end]):
-            result = prcd(
+            result = fproc(
               leading_comments=leading_comments,
               top_ssl=top_ssl,
-              prcd_type=prcd_type,
+              fproc_type=fproc_type,
               i_code=i_code,
               data_type=data_type,
               size_tokens=size_tokens,
@@ -2819,11 +2819,11 @@ class split_prcds(object):
           body_lines.append(ssl)
         if (top_ssl is None):
           top_ssl = first_body_line
-        top_ssl.raise_error(msg="Missing END for %s" % (prcd_type.upper()))
-      for prcd_type in ["program", "blockdata", "subroutine", "function"]:
-        if (curr_ssl.code.startswith(prcd_type)):
-          getattr(O, prcd_type).append(collect_until_end(
-            prcd_type=prcd_type,
+        top_ssl.raise_error(msg="Missing END for %s" % (fproc_type.upper()))
+      for fproc_type in ["program", "blockdata", "subroutine", "function"]:
+        if (curr_ssl.code.startswith(fproc_type)):
+          getattr(O, fproc_type).append(collect_until_end(
+            fproc_type=fproc_type,
             top_ssl=curr_ssl,
             i_code=0,
             data_type=None,
@@ -2835,7 +2835,7 @@ class split_prcds(object):
         if (i_code is None or
               not curr_ssl.code.startswith("function", i_code)):
           O.program.append(collect_until_end(
-            prcd_type="program",
+            fproc_type="program",
             top_ssl=None,
             i_code=0,
             data_type=None,
@@ -2843,7 +2843,7 @@ class split_prcds(object):
             first_body_line=curr_ssl))
         else:
           O.function.append(collect_until_end(
-            prcd_type="function",
+            fproc_type="function",
             top_ssl=curr_ssl,
             i_code=i_code,
             data_type=data_type,
@@ -2859,66 +2859,66 @@ class split_prcds(object):
       print >> out, prefix + "  %s: %s" % (attr, len(getattr(O, attr)))
 
   def process_body_lines(O):
-    for prcd in O.all_in_input_order:
-      prcd.process_body_lines()
+    for fproc in O.all_in_input_order:
+      fproc.process_body_lines()
 
   def build_fdecl_by_identifier(O):
-    for prcd in O.all_in_input_order:
-      prcd.build_fdecl_by_identifier()
+    for fproc in O.all_in_input_order:
+      fproc.build_fdecl_by_identifier()
 
-  def prcds_by_name(O, plain=False):
-    if (O._prcds_by_name is None):
-      O._prcds_by_name = {}
-      O._prcds_by_name_plain = {}
-      for prcds in O.by_type():
-        for prcd in prcds:
-          other = O._prcds_by_name.get(prcd.name.value)
+  def fprocs_by_name(O, plain=False):
+    if (O._fprocs_by_name is None):
+      O._fprocs_by_name = {}
+      O._fprocs_by_name_plain = {}
+      for fprocs in O.by_type():
+        for fproc in fprocs:
+          other = O._fprocs_by_name.get(fproc.name.value)
           if (other is not None):
             msg = ["Fortran procedure name conflict:"]
-            for name in [other.name, prcd.name]:
+            for name in [other.name, fproc.name]:
               if (name.ssl is None):
                 msg.append(
                   "  %d. definition: %s (implied)\n"
                   "    before %s" % (
                     len(msg),
-                    prcd.name.value,
-                    prcd.first_body_source_line()
+                    fproc.name.value,
+                    fproc.first_body_source_line()
                       .format_file_name_and_line_number()))
               else:
                 msg.append(name.format_error(
                   msg="%d. definition" % len(msg), prefix="  "))
             from libtbx.utils import Sorry
             raise Sorry("\n".join(msg))
-          O._prcds_by_name[prcd.name.value] = prcd
-          if (prcd.name_plain is not None):
-            O._prcds_by_name_plain[prcd.name_plain.value] = prcd
+          O._fprocs_by_name[fproc.name.value] = fproc
+          if (fproc.name_plain is not None):
+            O._fprocs_by_name_plain[fproc.name_plain.value] = fproc
     if (plain):
-      return O._prcds_by_name_plain
-    return O._prcds_by_name
+      return O._fprocs_by_name_plain
+    return O._fprocs_by_name
 
-  def build_bottom_up_prcd_list_following_calls(O, top_procedures=None):
-    return build_bottom_up_prcd_list_following_calls(
-      all_prcds=O, top_procedures=top_procedures)
+  def build_bottom_up_fproc_list_following_calls(O, top_procedures=None):
+    return build_bottom_up_fproc_list_following_calls(
+      all_fprocs=O, top_procedures=top_procedures)
 
-class build_bottom_up_prcd_list_following_calls(object):
+class build_bottom_up_fproc_list_following_calls(object):
 
   __slots__ = [
-    "all_prcds",
+    "all_fprocs",
     "top_procedures",
-    "deps_by_prcd_identifier",
+    "deps_by_fproc_identifier",
     "bottom_up_list",
     "forward_uses_by_identifier",
     "dependency_cycles",
     "intrinsics_extra",
     "missing_external_fdecls_by_identifier"]
 
-  def __init__(O, all_prcds, top_procedures=None):
-    O.all_prcds = all_prcds
+  def __init__(O, all_fprocs, top_procedures=None):
+    O.all_fprocs = all_fprocs
     O.top_procedures = top_procedures
-    prcds_by_name = O.all_prcds.prcds_by_name()
+    fprocs_by_name = O.all_fprocs.fprocs_by_name()
     #
-    for prcd in O.all_prcds.all_in_input_order:
-      for fdecl in prcd.fdecl_by_identifier.values():
+    for fproc in O.all_fprocs.all_in_input_order:
+      for fdecl in fproc.fdecl_by_identifier.values():
         if (    fdecl.is_user_defined_callable()
             and not fdecl.var_storage is vs_argument
             and len(fdecl.passed_as_arg_plain) != 0):
@@ -2928,12 +2928,12 @@ class build_bottom_up_prcd_list_following_calls(object):
                 caller_fdecl):
             for called_name,i_arg_set in \
                   caller_fdecl.passed_as_arg_plain.items():
-              called_prcd = prcds_by_name.get(called_name)
-              if (called_prcd is None):
+              called_fproc = fprocs_by_name.get(called_name)
+              if (called_fproc is None):
                 continue
               for i_arg in i_arg_set:
-                arg_identifier = called_prcd.args[i_arg].value
-                primaries = called_prcd.externals_passed_by_arg_identifier \
+                arg_identifier = called_fproc.args[i_arg].value
+                primaries = called_fproc.externals_passed_by_arg_identifier \
                   .setdefault(arg_identifier, set())
                 if (not primary_external_identifier in primaries):
                   primaries.add(primary_external_identifier)
@@ -2942,66 +2942,66 @@ class build_bottom_up_prcd_list_following_calls(object):
                     recursively_update_externals_passed(
                       primary_external_identifier=primary_external_identifier,
                       procs_visited_already=procs_visited_already,
-                      caller_fdecl=called_prcd.fdecl_by_identifier[
+                      caller_fdecl=called_fproc.fdecl_by_identifier[
                         arg_identifier])
           primary_external_identifier = fdecl.id_tok.value
-          primary_prcd = prcds_by_name.get(primary_external_identifier)
-          if (primary_prcd is not None):
-            primary_prcd.is_passed_as_external = True
+          primary_fproc = fprocs_by_name.get(primary_external_identifier)
+          if (primary_fproc is not None):
+            primary_fproc.is_passed_as_external = True
           recursively_update_externals_passed(
             primary_external_identifier=primary_external_identifier,
-            procs_visited_already=set([prcd.name.value]),
+            procs_visited_already=set([fproc.name.value]),
             caller_fdecl=fdecl)
     #
-    O.deps_by_prcd_identifier = {}
+    O.deps_by_fproc_identifier = {}
     external_fdecls = {}
-    def get_dependencies(prcd):
+    def get_dependencies(fproc):
       deps = set()
-      for primaries in prcd.externals_passed_by_arg_identifier.values():
+      for primaries in fproc.externals_passed_by_arg_identifier.values():
         deps.update(primaries)
-      for identifier in sorted(prcd.fdecl_by_identifier.keys()):
-        if (identifier == prcd.name.value): continue
-        fdecl = prcd.fdecl_by_identifier[identifier]
+      for identifier in sorted(fproc.fdecl_by_identifier.keys()):
+        if (identifier == fproc.name.value): continue
+        fdecl = fproc.fdecl_by_identifier[identifier]
         if (    fdecl.is_user_defined_callable()
             and fdecl.var_storage is not vs_argument):
           deps.add(fdecl.id_tok.value)
           external_fdecls.setdefault(identifier, []).append(fdecl)
-      if (prcd.is_program()):
-        for b in O.all_prcds.blockdata:
+      if (fproc.is_program()):
+        for b in O.all_fprocs.blockdata:
           deps.add(b.name.value)
       result = sorted(deps)
-      O.deps_by_prcd_identifier[prcd.name.value] = result
+      O.deps_by_fproc_identifier[fproc.name.value] = result
       return result
     if (O.top_procedures is None or len(O.top_procedures) == 0):
       connections_for_topological_sort = []
-      for prcd in O.all_prcds.all_in_input_order:
+      for fproc in O.all_fprocs.all_in_input_order:
         connections_for_topological_sort.append(
-          (prcd.name.value, get_dependencies(prcd=prcd)))
+          (fproc.name.value, get_dependencies(fproc=fproc)))
     else:
       top_procedures_tidy = []
       for top_procedure_or_procedures in O.top_procedures:
         for top_procedure in top_procedure_or_procedures.split(","):
-          top_prcd = prcds_by_name.get(top_procedure)
-          if (top_prcd is None):
-            top_prcd = prcds_by_name.get("program_"+top_procedure)
-          if (top_prcd is None):
+          top_fproc = fprocs_by_name.get(top_procedure)
+          if (top_fproc is None):
+            top_fproc = fprocs_by_name.get("program_"+top_procedure)
+          if (top_fproc is None):
             raise RuntimeError(
               "Unknown Fortran procedure name: %s" % top_procedure)
           top_procedures_tidy.append(top_procedure)
-          def recurse(prcd):
-            for identifier in get_dependencies(prcd=prcd):
-              if (identifier in O.deps_by_prcd_identifier):
+          def recurse(fproc):
+            for identifier in get_dependencies(fproc=fproc):
+              if (identifier in O.deps_by_fproc_identifier):
                 continue
-              next_prcd = prcds_by_name.get(identifier)
-              if (next_prcd is not None):
-                recurse(prcd=next_prcd)
-          recurse(prcd=top_prcd)
+              next_fproc = fprocs_by_name.get(identifier)
+              if (next_fproc is not None):
+                recurse(fproc=next_fproc)
+          recurse(fproc=top_fproc)
       O.top_procedures = top_procedures_tidy
       connections_for_topological_sort = []
-      for prcd in O.all_prcds.all_in_input_order:
-        if (prcd.name.value in O.deps_by_prcd_identifier):
+      for fproc in O.all_fprocs.all_in_input_order:
+        if (fproc.name.value in O.deps_by_fproc_identifier):
           connections_for_topological_sort.append(
-            (prcd.name.value, get_dependencies(prcd=prcd)))
+            (fproc.name.value, get_dependencies(fproc=fproc)))
     #
     from libtbx import topological_sort
     successors_by_node = dict(connections_for_topological_sort)
@@ -3013,9 +3013,9 @@ class build_bottom_up_prcd_list_following_calls(object):
     O.missing_external_fdecls_by_identifier = {}
     for identifier in topological_sort.stable(
                         connections=connections_for_topological_sort):
-      prcd = prcds_by_name.get(identifier)
-      if (prcd is not None):
-        O.bottom_up_list.append(prcd)
+      fproc = fprocs_by_name.get(identifier)
+      if (fproc is not None):
+        O.bottom_up_list.append(fproc)
         bottom_up_set.add(identifier)
         for dep in successors_by_node[identifier]:
           if (    dep in successors_by_node
@@ -3025,65 +3025,65 @@ class build_bottom_up_prcd_list_following_calls(object):
             forward_uses_set.add(dep)
       elif (identifier in intrinsics.extra_set_lower):
         O.intrinsics_extra.add(identifier)
-      elif (identifier not in all_prcds.prcds_by_name(plain=True)):
+      elif (identifier not in all_fprocs.fprocs_by_name(plain=True)):
         O.missing_external_fdecls_by_identifier[identifier] = \
           external_fdecls[identifier]
     O.dependency_cycles = topological_sort.strongly_connected_components(
       successors_by_node=successors_by_node)
 
-  def each_prcd_update_is_modified(O):
-    prcds_by_name = O.all_prcds.prcds_by_name()
-    for caller_prcd in O.bottom_up_list:
-      for caller_fdecl in caller_prcd.fdecl_by_identifier.values():
+  def each_fproc_update_is_modified(O):
+    fprocs_by_name = O.all_fprocs.fprocs_by_name()
+    for caller_fproc in O.bottom_up_list:
+      for caller_fdecl in caller_fproc.fdecl_by_identifier.values():
         for called_identifier, i_args in caller_fdecl.passed_as_arg.items():
-          primaries = caller_prcd.externals_passed_by_arg_identifier.get(
+          primaries = caller_fproc.externals_passed_by_arg_identifier.get(
             called_identifier)
           if (primaries is None):
             primaries = [called_identifier]
           for called_identifier in primaries:
-            called_prcd = prcds_by_name.get(called_identifier)
-            if (called_prcd is not None):
+            called_fproc = fprocs_by_name.get(called_identifier)
+            if (called_fproc is not None):
               for i_arg in sorted(i_args):
-                if (i_arg >= len(called_prcd.args_fdecl)):
+                if (i_arg >= len(called_fproc.args_fdecl)):
                   continue
-                arg_fdecl = called_prcd.args_fdecl[i_arg]
+                arg_fdecl = called_fproc.args_fdecl[i_arg]
                 if (arg_fdecl.is_modified):
                   caller_fdecl.is_modified = True
     return O
 
-  def each_prcd_update_needs_cmn(O):
-    prcds_by_name = O.all_prcds.prcds_by_name()
-    have_blockdata = (len(O.all_prcds.blockdata) != 0)
-    for caller_prcd in O.bottom_up_list:
-      caller_prcd.needs_cmn = \
-           caller_prcd.uses_common \
-        or caller_prcd.uses_save \
-        or caller_prcd.uses_io \
-        or (have_blockdata and caller_prcd.is_program()) \
-        or len(caller_prcd.dynamic_parameters) != 0
-      if (not caller_prcd.needs_cmn):
-        for dependency in O.deps_by_prcd_identifier.get(
-                            caller_prcd.name.value, []):
-          called_prcd = prcds_by_name.get(dependency)
-          if (called_prcd is not None and called_prcd.needs_cmn):
-            caller_prcd.needs_cmn = True
+  def each_fproc_update_needs_cmn(O):
+    fprocs_by_name = O.all_fprocs.fprocs_by_name()
+    have_blockdata = (len(O.all_fprocs.blockdata) != 0)
+    for caller_fproc in O.bottom_up_list:
+      caller_fproc.needs_cmn = \
+           caller_fproc.uses_common \
+        or caller_fproc.uses_save \
+        or caller_fproc.uses_io \
+        or (have_blockdata and caller_fproc.is_program()) \
+        or len(caller_fproc.dynamic_parameters) != 0
+      if (not caller_fproc.needs_cmn):
+        for dependency in O.deps_by_fproc_identifier.get(
+                            caller_fproc.name.value, []):
+          called_fproc = fprocs_by_name.get(dependency)
+          if (called_fproc is not None and called_fproc.needs_cmn):
+            caller_fproc.needs_cmn = True
             break
     return O
 
 def process(file_names, basic_only=False, skip_load_includes=False):
   assert not skip_load_includes or basic_only
-  all_prcds = split_prcds()
+  all_fprocs = split_fprocs()
   import itertools
   global_line_index_generator = itertools.count()
   for file_name in file_names:
-    all_prcds.process(stripped_source_lines=load(
+    all_fprocs.process(stripped_source_lines=load(
       global_line_index_generator=global_line_index_generator,
       file_name=file_name,
       skip_load_includes=skip_load_includes))
   if (not basic_only):
-    all_prcds.build_fdecl_by_identifier()
-    for prcd in all_prcds.all_in_input_order:
-      prcd.common_name_by_identifier()
-      prcd.set_uses_save()
-      prcd.target_statement_labels()
-  return all_prcds
+    all_fprocs.build_fdecl_by_identifier()
+    for fproc in all_fprocs.all_in_input_order:
+      fproc.common_name_by_identifier()
+      fproc.set_uses_save()
+      fproc.target_statement_labels()
+  return all_fprocs
