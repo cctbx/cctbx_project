@@ -1763,14 +1763,9 @@ class fproc(fproc_p_methods):
     "_target_statement_labels",
     "dynamic_parameters",
     "needs_cmn",
-    "needs_sve_dynamic_parameters",
-    "ignore_common_and_save",
-    "variant_common_names",
-    "needs_is_called_first_time",
-    "needs_variant_bind",
-    "data_init_after_variant_bind",
     "is_passed_as_external",
-    "externals_passed_by_arg_identifier"]
+    "externals_passed_by_arg_identifier",
+    "conv_hook"]
 
   def __init__(O,
         leading_comments,
@@ -1818,14 +1813,9 @@ class fproc(fproc_p_methods):
     O._target_statement_labels = None
     O.dynamic_parameters = set()
     O.needs_cmn = None
-    O.needs_sve_dynamic_parameters = False
-    O.ignore_common_and_save = False
-    O.variant_common_names = None
-    O.needs_is_called_first_time = None
-    O.needs_variant_bind = None
-    O.data_init_after_variant_bind = None
     O.is_passed_as_external = False
     O.externals_passed_by_arg_identifier = {}
+    O.conv_hook = None
 
   def is_program(O): return (O.fproc_type == "program")
   def is_function(O): return (O.fproc_type == "function")
