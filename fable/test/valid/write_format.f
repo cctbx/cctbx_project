@@ -3,6 +3,7 @@
       call exercise_wrap
       call exercise_logical
       call exercise_complex
+      call exercise_escape_string_literal
       end
 
       subroutine exercise_misc
@@ -139,4 +140,8 @@ c
  10   format(/, 'Ab', i2, 'Cd', 'Ef', /, 'Gh', /,
      &  3(/, i3, 'Ij', f8.4, /, 'Kl', 'Mn', /,
      &    ('Op', 4f7.3, 3f7.3, /)))
+      end
+
+      subroutine exercise_escape_string_literal
+      write(6, '(a)') '\"	??'
       end
