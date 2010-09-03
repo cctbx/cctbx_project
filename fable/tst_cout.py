@@ -14,7 +14,7 @@ def exercise_simple(verbose):
     module_name="fable", path="test/valid", test=op.isdir)
   def get(
         file_name,
-        top_unit_names=None,
+        top_procedures=None,
         data_specializations=True,
         arr_nd_size_max=None,
         inline_all=False):
@@ -24,7 +24,7 @@ def exercise_simple(verbose):
     common_report_stringio = StringIO()
     return cout.process(
       file_names=file_names,
-      top_unit_names=top_unit_names,
+      top_procedures=top_procedures,
       data_specializations=data_specializations,
       fem_do_safe=False,
       arr_nd_size_max=arr_nd_size_max,
@@ -1540,7 +1540,7 @@ sub(
   }
 """)
   #
-  lines = get("const_analysis_1.f", top_unit_names=["prog"])
+  lines = get("const_analysis_1.f", top_procedures=["prog"])
   assert not absd(lines, head_off(3), """\
 void
 sub1(
@@ -1557,7 +1557,7 @@ sub2(
 }
 """)
   #
-  lines = get("const_analysis_2.f", top_unit_names=["prog"])
+  lines = get("const_analysis_2.f", top_procedures=["prog"])
   assert not absd(lines, head_off(3), """\
 void
 sub1(
@@ -1806,7 +1806,7 @@ const int program_prog_save::dim;
   common cmn;
   sub_main(cmn);
 """)
-  lines = get("main_cmn_indirect.f", top_unit_names=["sub_main"])
+  lines = get("main_cmn_indirect.f", top_procedures=["sub_main"])
   assert not absd(lines, -4, """\
   write(6, "(a)"), "sub_main";
 """)
@@ -3100,7 +3100,7 @@ def exercise_dynamic_parameters(verbose):
     file_names = [op.join(t_dir, file_name)]
     return cout.process(
       file_names=file_names,
-      top_unit_names=["prog"],
+      top_procedures=["prog"],
       dynamic_parameters=dynamic_parameters)
   #
   lines = get("dynamic_parameters_1.f", [
@@ -3231,7 +3231,7 @@ def exercise_common_equivalence_simple(verbose):
     common_report_stringio = StringIO()
     lines = cout.process(
       file_names=file_names,
-      top_unit_names=["prog"],
+      top_procedures=["prog"],
       common_equivalence_simple=set(common_names.split(",")),
       common_report_stringio=common_report_stringio)
     if (expected_common_report is None):

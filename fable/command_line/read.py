@@ -16,14 +16,14 @@ def process_each(process, file_names):
   if (n_succ != 0):
     print "Success:", n_succ
 
-def report_equivalence_clusters_with_mixed_data_types(unit):
-  for equiv_tok_cluster in unit.equivalence_info().equiv_tok_clusters:
+def report_equivalence_clusters_with_mixed_data_types(prcd):
+  for equiv_tok_cluster in prcd.equivalence_info().equiv_tok_clusters:
     data_types_list = []
     data_types_set = set()
     for equiv_tok in equiv_tok_cluster:
       for tok_seq in equiv_tok.value:
         identifier = tok_seq.value[0].value
-        fdecl = unit.fdecl_by_identifier[identifier]
+        fdecl = prcd.fdecl_by_identifier[identifier]
         dt = fdecl.data_type
         if (dt is not None):
           data_types_list.append((identifier,dt.value))
@@ -60,10 +60,10 @@ def run(args):
   if (co.each):
     process_each(process=process, file_names=command_line.args)
   else:
-    all_units = process(file_names=command_line.args)
+    all_prcds = process(file_names=command_line.args)
     if (co.warnings):
-      for unit in all_units.all_in_input_order:
-        report_equivalence_clusters_with_mixed_data_types(unit=unit)
+      for prcd in all_prcds.all_in_input_order:
+        report_equivalence_clusters_with_mixed_data_types(prcd=prcd)
 
 if (__name__ == "__main__"):
   import sys

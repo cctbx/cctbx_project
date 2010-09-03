@@ -13,14 +13,14 @@ def run(args):
         ("fable.read --warnings %sequivalence_mixed.f",
           "Warning: EQUIVALENCE cluster with mixed data types: integer, real:"),
         ("fable.show_calls --write-graphviz-dot=tmp.dot"
-          " --top-unit-name=sub %sexternal_arg_layers.f",
+          " --top-procedure=sub %sexternal_arg_layers.f",
             "exch->exch_imp"),
         ("fable.show_calls %sdependency_cycle.f", "sub1 sub2"),
         ("fable.fem_include_search_paths --with-quotes", "fable"),
         ("fable.cout --each %swrite_star.f", "return fem::main_with_catch"),
         ("fable.cout %scommon_variants.f",
           'Writing file: "fable_cout_common_report"'),
-        ("fable.cout %ssubroutine_3.f --top-unit-name=sub3"
+        ("fable.cout %ssubroutine_3.f --top-procedure=sub3"
          " --fortran-file_comments",
           "nums(i) = i * 20;"),
         ("fable.cout --compile %swrite_star.f",

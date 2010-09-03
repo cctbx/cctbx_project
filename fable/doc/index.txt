@@ -91,11 +91,11 @@ can be converted simply with e.g.::
   fable.cout main.f input.f calcs.f output.f --namespace=calcs > calcs.cpp
 
 ``fable.cout`` supports ``--run`` to convert and immediately compile,
-link, and run the converted C++ code. If there is no ``PROGRAM`` unit,
+link, and run the converted C++ code. If there is no ``PROGRAM``,
 ``--compile`` can be used to quickly test compilation.
 
 Some advanced conversion features, such as suppressing conversion of
-certain units (SUBROUTINE, FUNCTION, BLOCKDATA, PROGRAM) or conversion
+certain procedures (SUBROUTINE, FUNCTION, BLOCKDATA, PROGRAM) or conversion
 to multiple files are available through a Python interface.
 
 ----------------------------------------------------------------------
@@ -109,9 +109,9 @@ Call graph, topological sort, const analysis
 fable builds a call graph of all the input sources, performs
 a topological sort (with handling of dependency cycles) and
 const analysis tracing even through function pointers.
-The ``--top-unit-name`` option of ``fable.cout`` can be used to
-extract only the specified SUBROUTINE or FUNCTION unit and all its
-dependencies; all unused units are not converted. This feature was
+The ``--top-procedure`` option of ``fable.cout`` can be used to
+extract only the specified SUBROUTINE or FUNCTION and all its
+dependencies; unused procedures are not converted. This feature was
 used to produce the
 `lapack_fem/selected.hpp <sources/lapack_fem/selected.hpp>`_
 example.
@@ -178,7 +178,7 @@ information. For example::
       STOP 'FABLE_STUB'
       end
 
-From this stub fable can deduce that ``inunit`` and ``ntimes`` are
+From this stub fable can deduce that ``iunit`` and ``ntimes`` are
 const, while ``buffer`` and ``result`` are non-const.  Currently,
 the converted C++ code needs to be modified manually to replace the
 body of the stub function with a call of the external function.

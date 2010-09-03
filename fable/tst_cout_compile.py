@@ -14,13 +14,13 @@ stop_integer.f
 stop_string.f
 """.splitlines())
 
-top_unit_name_by_file_name = {}
+top_procedures_by_file_name = {}
 for line in """\
 const_analysis_1.f prog
 const_analysis_2.f prog
 """.splitlines():
-  file_name, top_unit_names = line.split()
-  top_unit_name_by_file_name[file_name] = [top_unit_names]
+  file_name, top_procedure = line.split()
+  top_procedures_by_file_name[file_name] = [top_procedure]
 
 dynamic_parameters_by_file_name = {
   "dynamic_parameters_1.f": [fable.cout.dynamic_parameter_props(
@@ -143,7 +143,7 @@ class process_file_info(object):
     if (opts.verbose):
       print file_name
     file_path = op.join(O.test_valid, file_name)
-    top_unit_names = top_unit_name_by_file_name.get(file_name)
+    top_procedures = top_procedures_by_file_name.get(file_name)
     common_equivalence_simple_list = [set(
       common_equivalence_simple_by_file_name.get(file_name, []))]
     if (len(common_equivalence_simple_list[0]) != 0):
@@ -153,7 +153,7 @@ class process_file_info(object):
       try:
         lines = fable.cout.process(
           file_names=[file_path],
-          top_unit_names=top_unit_names,
+          top_procedures=top_procedures,
           dynamic_parameters=dynamic_parameters_by_file_name.get(file_name),
           common_equivalence_simple=common_equivalence_simple,
           common_report_stringio=common_report_stringio)
