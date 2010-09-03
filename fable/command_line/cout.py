@@ -67,7 +67,7 @@ class process(object):
     opts = O.options
     lines = fable.cout.process(
       file_names=file_names,
-      top_unit_names=opts.top_unit_name,
+      top_procedures=opts.top_procedure,
       include_guard_suffix=opts.include_guard_suffix,
       dynamic_parameters=O.dynamic_parameters,
       fortran_file_comments=opts.fortran_file_comments,
@@ -80,7 +80,7 @@ class process(object):
       number_of_function_files=opts.number_of_function_files,
       debug=opts.debug)
     text = "\n".join(lines)+"\n"
-    if (opts.top_unit_name is None or not opts.debug):
+    if (opts.top_procedure is None or not opts.debug):
       sys.stdout.write(text)
     if (len(file_names) != 0 and opts.compile):
       print
@@ -127,7 +127,7 @@ def run(args):
     .option(None, "--each",
       action="store_true",
       default=False)
-    .option(None, "--top_unit_name",
+    .option(None, "--top_procedure",
       action="append",
       type="str",
       metavar="IDENTIFIER")

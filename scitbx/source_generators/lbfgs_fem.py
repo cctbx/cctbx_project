@@ -7,7 +7,7 @@ def run(args=[]):
   src_dir = libtbx.env.under_dist(
     module_name="scitbx", path="lbfgs", test=op.isdir)
   import fable.read
-  all_units = fable.read.process(
+  all_prcds = fable.read.process(
     file_names=[op.join(src_dir, f) for f in ["sdrive.f", "lbfgs.f"]])
   namespace = "scitbx::lbfgs_fem"
   functions_public = set(["lbfgs", "blockdata_lb2"])
@@ -15,7 +15,7 @@ def run(args=[]):
   functions_program = set(["one_pass"])
   import fable.cout
   functions_hpp = fable.cout.process(
-    all_units=all_units,
+    all_prcds=all_prcds,
     namespace=namespace,
     fem_do_safe=False,
     suppress_program=True,
@@ -23,7 +23,7 @@ def run(args=[]):
     suppress_functions=functions_detail.union(functions_program),
     suppress_function_definitions=functions_public)
   functions_cpp = fable.cout.process(
-    all_units=all_units,
+    all_prcds=all_prcds,
     namespace=namespace,
     fem_do_safe=False,
     suppress_program=True,
@@ -31,7 +31,7 @@ def run(args=[]):
     suppress_functions=functions_program)
   functions_cpp[0] = "#include <scitbx/lbfgs_fem.hpp>"
   sdrive_cpp = fable.cout.process(
-    all_units=all_units,
+    all_prcds=all_prcds,
     namespace=namespace,
     fem_do_safe=False,
     suppress_common=True,

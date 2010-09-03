@@ -4,7 +4,7 @@ def run(args):
   import libtbx.load_env
   command_line = (option_parser(
     usage="%s [options] fortran_file ..." % libtbx.env.dispatcher_name)
-    .option(None, "--top_unit_name",
+    .option(None, "--top_procedure",
       action="append",
       type="str")
     .option(None, "--write_graphviz_dot",
@@ -13,35 +13,35 @@ def run(args):
   ).process(args=args)
   co = command_line.options
   from fable.read import process
-  all_units = process(file_names=command_line.args)
-  topological_units = all_units.build_bottom_up_unit_list_following_calls(
-    top_names=co.top_unit_name)
-  dep_cycles = topological_units.dependency_cycles
+  all_prcds = process(file_names=command_line.args)
+  topological_prcds = all_prcds.build_bottom_up_prcd_list_following_calls(
+    top_procedures=co.top_procedure)
+  dep_cycles = topological_prcds.dependency_cycles
   if (len(dep_cycles) != 0):
     print "Dependency cycles:", len(dep_cycles)
     for cycle in dep_cycles:
       print " ", " ".join(cycle)
     print
-  print "Top-down unit list:"
+  print "Top-down procedure list:"
   print
   digraph_lhs_rhs = []
-  for unit in reversed(topological_units.bottom_up_list):
-    if (unit.name is None):
-      lhs = unit.unit_type
+  for prcd in reversed(topological_prcds.bottom_up_list):
+    if (prcd.name is None):
+      lhs = prcd.prcd_type
       print lhs
     else:
-      lhs = unit.name.value
-      print unit.unit_type, unit.name.value
+      lhs = prcd.name.value
+      print prcd.prcd_type, prcd.name.value
     fwds = set(
-      topological_units.forward_uses_by_identifier.get(
-        unit.name.value, []))
-    for identifier in sorted(unit.fdecl_by_identifier.keys()):
-      fdecl = unit.fdecl_by_identifier[identifier]
-      if (fdecl.is_unit_name()): continue
+      topological_prcds.forward_uses_by_identifier.get(
+        prcd.name.value, []))
+    for identifier in sorted(prcd.fdecl_by_identifier.keys()):
+      fdecl = prcd.fdecl_by_identifier[identifier]
+      if (fdecl.is_prcd_name()): continue
       if (not fdecl.is_user_defined_callable()):
         continue
       called_name = fdecl.id_tok.value
-      passed = unit.externals_passed_by_arg_identifier.get(called_name)
+      passed = prcd.externals_passed_by_arg_identifier.get(called_name)
       if (passed is None):
         digraph_lhs_rhs.append((lhs, called_name))
       else:
