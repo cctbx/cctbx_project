@@ -350,6 +350,24 @@ class comment_manager(object):
     while (O.index != len(O.sl_list)):
       O.produce(callback=callback)
 
+class conv_hook_info(object):
+
+  __slots__ = [
+    "ignore_common_and_save",
+    "needs_sve_dynamic_parameters",
+    "variant_common_names",
+    "needs_is_called_first_time",
+    "needs_variant_bind",
+    "data_init_after_variant_bind"]
+
+  def __init__(O):
+    O.ignore_common_and_save = False
+    O.needs_sve_dynamic_parameters = False
+    O.variant_common_names = None
+    O.needs_is_called_first_time = None
+    O.needs_variant_bind = None
+    O.data_init_after_variant_bind = None
+
 class global_conversion_info(object):
 
   __slots__ = [
@@ -477,7 +495,7 @@ def called_fproc_needs_cmn(conv_info, called_name):
     sub_fproc = conv_info.fprocs_by_name.get(called_name)
     if (    sub_fproc is not None
         and sub_fproc.needs_cmn
-        and not sub_fproc.ignore_common_and_save):
+        and not sub_fproc.conv_hook.ignore_common_and_save):
       return True
   return False
 
@@ -1139,9 +1157,8 @@ def convert_variant_allocate_and_bindings(conv_info, top_scope):
   equiv_info = conv_info.fproc.equivalence_info()
   equiv_tok_clusters = equiv_info.equiv_tok_clusters
   for common_name,common_fdecl_list in conv_info.fproc.common.items():
-    if (conv_info.fproc.variant_common_names is None):
-      continue
-    if (common_name not in conv_info.fproc.variant_common_names):
+    vcn = conv_info.fproc.conv_hook.variant_common_names
+    if (vcn is None or common_name not in vcn):
       continue
     top_scope.append(
       "common_variant %s(cmn.common_%s, sve.%s_bindings);" % (
@@ -1314,7 +1331,7 @@ def convert_data(conv_info, data_init_scope):
             data_scope.close_nested_scope()
         elif (len(ccs) != 1):
           if (    len(conv_info.fproc.data) == 1
-              and len(conv_info.fproc.variant_common_names) == 0):
+              and len(conv_info.fproc.conv_hook.variant_common_names) == 0):
             data_scope = data_init_scope
           else:
             data_scope = data_init_scope.open_nested_scope(opening_text=["{"])
@@ -1327,7 +1344,7 @@ def convert_data(conv_info, data_init_scope):
           data_init_scope.append("%s = %s;" % (cn, ccs[0]))
     else:
       if (    len(conv_info.fproc.data) == 1
-          and len(conv_info.fproc.variant_common_names) == 0
+          and len(conv_info.fproc.conv_hook.variant_common_names) == 0
           and len(ccs) <= conv_info.data_values_block_size):
         data_scope = data_init_scope
       else:
@@ -1570,7 +1587,7 @@ def convert_executable(
   top_scope = scope(parent=None)
   if (conv_info.fproc.uses_save):
     macro = "FEM_CMN_SVE"
-    if (conv_info.fproc.needs_sve_dynamic_parameters):
+    if (conv_info.fproc.conv_hook.needs_sve_dynamic_parameters):
       macro += "_DYNAMIC_PARAMETERS"
     top_scope.append("%s(%s);" % (macro, conv_info.fproc.name.value))
   top_scope.remember_insert_point()
@@ -1593,7 +1610,7 @@ def convert_executable(
     top_scope.append("common_write write(cmn);")
   top_scope_point_before_common = top_scope.current_point()
   for common_name,fdecl_list in conv_info.fproc.common.items():
-    if (common_name in conv_info.fproc.variant_common_names):
+    if (common_name in conv_info.fproc.conv_hook.variant_common_names):
       continue
     top_scope.remember_insert_point()
     for common_fdecl in fdecl_list:
@@ -1639,7 +1656,7 @@ def convert_executable(
   if (not top_scope.insert_point_is_current()):
     top_scope.top_append("// SAVE")
     top_scope.append("//")
-  if (conv_info.fproc.needs_is_called_first_time):
+  if (conv_info.fproc.conv_hook.needs_is_called_first_time):
     first_time_scope = top_scope.open_nested_scope(
       opening_text=["if (is_called_first_time) {"])
     if (len(variant_buffers.first_time) != 0):
@@ -1659,7 +1676,7 @@ def convert_executable(
             id_tokens=extract_identifiers(tokens=[repetition_tok]))
         declare_identifiers(
           id_tokens=extract_identifiers(tokens=ctoks))
-    if (not conv_info.fproc.data_init_after_variant_bind):
+    if (not conv_info.fproc.conv_hook.data_init_after_variant_bind):
       convert_data(conv_info=conv_info, data_init_scope=first_time_scope)
     first_time_scope.close_nested_scope()
     top_scope.remember_insert_point()
@@ -1673,7 +1690,7 @@ def convert_executable(
   for line in variant_buffers.bindings:
     top_scope.append(line)
   top_scope.remember_insert_point()
-  if (conv_info.fproc.data_init_after_variant_bind):
+  if (conv_info.fproc.conv_hook.data_init_after_variant_bind):
     data_init_scope = top_scope.open_nested_scope(
       opening_text=["if (is_called_first_time) {"])
     convert_data(conv_info=conv_info, data_init_scope=data_init_scope)
@@ -2118,7 +2135,7 @@ def convert_to_cpp_function(
     fptr.append(ctype)
     cargs.append(ctype + " " + name)
   if (    conv_info.fproc.needs_cmn
-      and not conv_info.fproc.ignore_common_and_save):
+      and not conv_info.fproc.conv_hook.ignore_common_and_save):
     cargs_append("common&", "cmn")
   args_fdecl_with_dim = []
   for id_tok in conv_info.fproc.args:
@@ -2246,8 +2263,8 @@ def convert_to_struct(
   cmn_equivalences = {}
   have_variant_block = False
   if (    struct_type == "save"
-      and conv_info.fproc.needs_is_called_first_time):
-    for common_name in sorted(conv_info.fproc.variant_common_names):
+      and conv_info.fproc.conv_hook.needs_is_called_first_time):
+    for common_name in sorted(conv_info.fproc.conv_hook.variant_common_names):
       callback("  fem::variant_bindings %s_bindings;" % common_name)
       have_variant_block = True
     #
@@ -2546,11 +2563,11 @@ def convert_commons(
   variant_common_names = set()
   bottom_up_filtered = []
   for fproc in topological_fprocs.bottom_up_list:
-    if (not fproc.ignore_common_and_save):
+    if (not fproc.conv_hook.ignore_common_and_save):
       bottom_up_filtered.append(fproc)
   struct_commons_need_dynamic_parameters = set()
   for fproc in bottom_up_filtered:
-    fproc.needs_variant_bind = False
+    fproc.conv_hook.needs_variant_bind = False
     for common_name,common_fdecl_list in fproc.common.items():
       common_fdecl_list_sizes.setdefault(common_name, []).append(
         len(common_fdecl_list))
@@ -2564,7 +2581,7 @@ def convert_commons(
           equiv_tok_cluster = fproc.equivalence_info() \
             .equiv_tok_cluster_by_identifier.get(common_fdecl.id_tok.value)
           if (equiv_tok_cluster is not None):
-            fproc.needs_variant_bind = True
+            fproc.conv_hook.needs_variant_bind = True
             variant_common_names.add(common_name)
             for equiv_tok in equiv_tok_cluster:
               for tok_seq in equiv_tok.value:
@@ -2595,10 +2612,10 @@ def convert_commons(
   struct_commons = []
   variant_commons = []
   for fproc in bottom_up_filtered:
-    fproc.variant_common_names = set()
+    fproc.conv_hook.variant_common_names = set()
     for common_name,common_fdecl_list in fproc.common.items():
       if (common_name in variant_common_names):
-        fproc.variant_common_names.add(common_name)
+        fproc.conv_hook.variant_common_names.add(common_name)
         if (common_name not in commons_defined_already):
           commons_defined_already.add(common_name)
           variant_commons.append(common_name)
@@ -2610,17 +2627,17 @@ def convert_commons(
             callback(line)
   #
   for fproc in bottom_up_filtered:
-    if (not fproc.needs_variant_bind):
-      fproc.needs_variant_bind = (
-           len(fproc.variant_common_names) != 0
+    if (not fproc.conv_hook.needs_variant_bind):
+      fproc.conv_hook.needs_variant_bind = (
+           len(fproc.conv_hook.variant_common_names) != 0
         or fproc.classified_equivalence_info().has_save())
-    fproc.needs_is_called_first_time = (
-         fproc.needs_variant_bind
+    fproc.conv_hook.needs_is_called_first_time = (
+         fproc.conv_hook.needs_variant_bind
       or len(fproc.data) != 0)
-    fproc.data_init_after_variant_bind = (
-          fproc.needs_variant_bind
+    fproc.conv_hook.data_init_after_variant_bind = (
+          fproc.conv_hook.needs_variant_bind
       and len(fproc.data) != 0)
-    if (fproc.needs_is_called_first_time):
+    if (fproc.conv_hook.needs_is_called_first_time):
       fproc.uses_save = True
   topological_fprocs.each_fproc_update_is_modified()
   topological_fprocs.each_fproc_update_needs_cmn()
@@ -2633,7 +2650,7 @@ def convert_commons(
       if (fdecl.is_save()):
         id_tok_list.append(fdecl.id_tok)
     if (    len(id_tok_list) == 0
-        and not fproc.needs_is_called_first_time):
+        and not fproc.conv_hook.needs_is_called_first_time):
       continue
     def id_tok_cmp(a, b):
       return cmp(a.value, b.value)
@@ -2650,7 +2667,7 @@ def convert_commons(
       id_tok_list=id_tok_list)
     save_struct_buffers[fproc.name.value] = buffer
     if (info.need_dynamic_parameters):
-      fproc.needs_sve_dynamic_parameters = True
+      fproc.conv_hook.needs_sve_dynamic_parameters = True
     save_struct_names.append(struct_name)
   if (    len(commons_defined_already) == 0
       and len(save_struct_names) == 0
@@ -2757,7 +2774,7 @@ void
       if (not debug): raise
       show_traceback()
     else:
-      if (fproc.needs_cmn and not fproc.ignore_common_and_save):
+      if (fproc.needs_cmn and not fproc.conv_hook.ignore_common_and_save):
         if (global_conv_info.dynamic_parameters is None):
           callback("  common cmn;")
         else:
@@ -2830,7 +2847,9 @@ def process(
   if (all_fprocs is None):
     all_fprocs = fable.read.process(file_names=file_names)
   for fproc in all_fprocs.all_in_input_order:
-    fproc.ignore_common_and_save = (fproc.name.value in ignore_common_and_save)
+    fproc.conv_hook = conv_hook_info()
+    fproc.conv_hook.ignore_common_and_save = (
+      fproc.name.value in ignore_common_and_save)
   result = []
   def callback(line):
     if (len(result) == 0): prev_line = None

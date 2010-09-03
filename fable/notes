@@ -4,7 +4,6 @@ cout: raise exception at very end if other exceptions caught
 read, write: operator, destructors: copy inp, copy back on success
 distinction: write(i, *) with i not a stdout or stderr?
 g-format, e-format
-fable.read conv_hook
 
 declare all static const at top of cpp_function
 exercise common with all members not used (elide completely)
