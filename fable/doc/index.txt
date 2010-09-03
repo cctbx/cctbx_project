@@ -305,3 +305,92 @@ Relevant files in the fem library are
 `data_type_star.hpp <sources/fable/fem/data_type_star.hpp>`_,
 `int_types.hpp <sources/fable/fem/utils/int_types.hpp>`_, and
 `zero.hpp <sources/fable/fem/zero.hpp>`_.
+
+----------------------------------------------------------------------
+
+fable array and array-reference types
+=====================================
+
+The fem library implements a family of array and array-reference
+types. The main type is the ``arr`` class template::
+
+  arr<int> one_dimensional(dimension(10));
+  arr<int, 2> two_dimensional(dimension(10, 20));
+
+The first template parameter is the data type, the second parameter
+specifies the number of dimensions; the default number of dimensions is
+``1`` and can be omitted. The ``dimension`` statements shown imply
+one-based indexing. An example of a two-dimensional array with a
+different offset is::
+
+  arr<int, 2> two_dimensional(dim1(-2,3).dim2(-4,5));
+
+fable supports up to six dimensions.
+The `arr` class template uses dynamic memory allocation. An alternative
+is used for small arrays with sizes <= 256, for example::
+
+  arr_1d<int, 3> vector;
+  arr_2d<int, 3, 3> matrix;
+
+Here the size of each dimension is fixed at compile time. Small arrays
+are allocated on the stack to avoid dynamic memory allocation overhead.
+
+Arrays are passed to functions via array-reference types, for example::
+
+  void sub1(arr_ref<int, 2> matrix) { ... }
+  void sub2(arr_cref<int, 2> matrix) { ... }
+
+``arr_ref`` indicates that the array is modified in the function;
+``arr_cref`` guarantees that the array is not modified in the function.
+The extra ``c`` in the second type name is short for ``const``.
+To emulate the Fortran behavior, scalars and arrays of non-matching
+dimensionality or sizes can be passed to an array reference in a
+function call. The sizes of the dimensions are set inside the called
+functions, for example::
+
+  matrix(dimension(10, 20));
+
+The syntax for setting the sizes is identical to that used for
+``arr`` types as shown above.
+
+Strings are handled via a dedicated family of types, for example::
+
+  fem::str<4> key = "name";
+
+The template parameter specifies the number of characters.
+Strings are passed in this way::
+
+  void sub1(str_ref line) { ... }
+  void sub2(str_cref line) { ... }
+
+Passing of string arrays also requires special types::
+
+  void sub1(str_arr_ref<1> text) { ... }
+  void sub2(str_arr_cref<2> text) { ... }
+
+These types had to be introduced to emulate the implicit passing
+of string lengths in Fortran. The template parameter specifies the
+number of dimensions.
+
+----------------------------------------------------------------------
+
+Miscellaneous practical remarks
+===============================
+
+- If fable error messages are not clear, use a Fortran compiler
+  to obtain potentially better messages.
+
+- A quick directed way to find out how fable converts certain
+  Fortran features is to write a tiny Fortran program and convert
+  it with ``fable.cout``.
+
+- Do not hesitate the inspect the fem sources. The fem implementations
+  are written in a minimalistic style, avoiding smart but unobvious
+  tricks to increase readability. (The price is a certain amount of
+  redundancy in the code, for example in the implementations of the
+  multi-dimensional array index calculations.)
+
+- Do not hesitate to ask questions about the fem library.
+
+- Be prepared to find that the ``cout.py`` script is the densest and
+  least organized part of the fable package.
