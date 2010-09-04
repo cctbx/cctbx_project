@@ -34,7 +34,7 @@ class lbfgs(object):
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
     self.xray_structure = self.fmodels.fmodel_xray().xray_structure
-    self.xray_structure.tidy_us()
+    if(self.refine_adp): self.xray_structure.tidy_us()
     self.hd_selection = self.xray_structure.hd_selection()
     self.hd_flag = self.hd_selection.count(True) > 0
     self.regularize_h_and_update_xray_structure()
@@ -83,7 +83,7 @@ class lbfgs(object):
     self.apply_shifts()
     del self._scatterers_start
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
-    self.xray_structure.tidy_us()
+    if(self.refine_adp): self.xray_structure.tidy_us()
     #
     if(self.exclude_scattering_of_hydrogens()):
       self.xray_structure.set_occupancies(occupancies_cache)

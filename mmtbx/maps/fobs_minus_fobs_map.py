@@ -13,7 +13,7 @@ from mmtbx import utils
 from iotbx.pdb import combine_unique_pdb_files
 import iotbx.pdb
 from libtbx import runtime_utils
-
+import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 fo_minus_fo_master_params_str = """\
 f_obs_1_file_name = None
@@ -78,7 +78,9 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
       target_name    = "ls_wunit_k1",
       f_obs          = d)
     fmodel.remove_outliers()
-    fmodel.update_solvent_and_scale()
+    params = bss.master_params.extract()
+    params.apply_back_trace_of_b_cart=False
+    fmodel.update_solvent_and_scale(params=params)
     if(not silent):
       fmodel.info().show_rfactors_targets_scales_overall()
       print >> log

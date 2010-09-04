@@ -100,7 +100,7 @@ master_params = iotbx.phil.parse("""\
     b23 = None
       .type = float
   }
-  apply_back_trace_of_b_cart = False
+  apply_back_trace_of_b_cart = True
     .type = bool
     .expert_level=2
   verbose = -1

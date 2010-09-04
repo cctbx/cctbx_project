@@ -131,7 +131,13 @@ class manager(object):
        for ts in tls_selections:
          tls_sel_st.extend(ts)
        tls_sel_bool = flex.bool(scatterers.size(), flex.size_t(tls_sel_st))
-       if(macro_cycle == 1):
+       ### totally ad hoc fix
+       tmp_site_t = flex.size_t()
+       for gs in group_adp_selections:
+         for gs_ in gs:
+           tmp_site_t.append(gs_)
+       ###
+       if(macro_cycle == 1 or tmp_site_t.size() != scatterers.size()):
           gbr_selections = []
           for s in tls_selections:
             gbr_selections.append(s)

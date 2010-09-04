@@ -667,6 +667,7 @@ class manager(manager_mixin):
       update_xray_structure=update_xray_structure)
 
   def apply_back_b_iso(self):
+    if(self.xray_structure is None): return
     b_min = min(self.b_sol(),
       self.xray_structure.min_u_cart_eigenvalue()*adptbx.u_as_b(1.))
     if(b_min < 0):
@@ -769,8 +770,9 @@ class manager(manager_mixin):
             optimize_mask=False)
           rw = self.r_work()
           rf = self.r_free()
-          print >> out, "r_solv=%6.2f r_shrink=%6.2f gsf=%6.2f r_work=%6.4f r_free=%6.4f"%(
-            r_solv, r_shrink, gsf, rw, rf)
+          if(out is not None):
+            print >> out, "r_solv=%6.2f r_shrink=%6.2f gsf=%6.2f r_work=%6.4f r_free=%6.4f"%(
+              r_solv, r_shrink, gsf, rw, rf)
           if(rw < rw_):
              rw_       = rw
              rf_       = rf

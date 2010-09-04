@@ -180,7 +180,7 @@ def create_da_xray_structures(xray_structure, params):
       if(x1 is not x2):
         closest_distances_result = x1.closest_distances(
           sites_frac      = x2.sites_frac(),
-          distance_cutoff = 5)
+          distance_cutoff = 5) # XXX ???
         selection = closest_distances_result.smallest_distances > 0
         selection &= closest_distances_result.smallest_distances < params.atom_gap
         da_xray_structures[j] = x2.select(~selection)
@@ -203,10 +203,8 @@ def grow_density(f_obs,
       n_da += daxrs.scatterers().size()
     print "Total number of dummy atoms:", n_da
     #
-    number_of_grids = len(da_xray_structures)
-    #print "Creating %s grids with atom spacing %s, each grid is %s apart" %(
-    #  str(number_of_grids),str(params.atom_gap), str(params.overlap_interval))
     xray_structure_start = xray_structure.deep_copy_scatterers()
+    #
     if(params.mode == "build_and_refine"):
       mask_params = mmtbx.masks.mask_master_params.extract()
       mask_params.ignore_hydrogens=True
@@ -216,27 +214,33 @@ def grow_density(f_obs,
         target_name    = "ml",
         mask_params    = mask_params,
         f_obs          = f_obs)
-      fmodel.update_solvent_and_scale()
+      fmodel.update_solvent_and_scale(optimize_mask=False)
       print "START R-work and R-free: %6.4f %6.4f"%(fmodel.r_work(),
         fmodel.r_free())
     xray_structure_current = xray_structure_start.deep_copy_scatterers()
-    da_sel = flex.bool(xray_structure_start.scatterers().size(), False)
+    da_sel_all = flex.bool(xray_structure_start.scatterers().size(), False)
     for i_model, da_xray_structure in enumerate(da_xray_structures):
       print "Model %d, adding %d dummy atoms" % (i_model,
         da_xray_structure.scatterers().size())
+      da_sel_refinable = flex.bool(xray_structure_current.scatterers().size(), False)
       xray_structure_current = xray_structure_current.concatenate(da_xray_structure)
-      da_sel.extend(flex.bool(da_xray_structure.scatterers().size(), True))
+      da_sel_all.extend(flex.bool(da_xray_structure.scatterers().size(), True))
+      da_sel_refinable.extend(flex.bool(da_xray_structure.scatterers().size(), True))
       if(params.mode == "build_and_refine"):
         fmodel.update_xray_structure(update_f_calc=True, update_f_mask=False,
           xray_structure = xray_structure_current)
         #XXX print fmodel.r_work()
         #XXX assert 0 # update_f_mask=True would not work
-        refine_da(fmodel = fmodel, selection = da_sel, params = params)
+        da_sel_all = refine_da(
+          fmodel           = fmodel,
+          selection        = da_sel_all,
+          da_sel_refinable = da_sel_all,#XXXda_sel_refinable,
+          params           = params)
         xray_structure_current = fmodel.xray_structure
-    da_sel = flex.bool(xray_structure_start.scatterers().size(), False)
-    da_sel.extend(flex.bool(xray_structure_current.scatterers().size()-
+    da_sel_all = flex.bool(xray_structure_start.scatterers().size(), False)
+    da_sel_all.extend(flex.bool(xray_structure_current.scatterers().size()-
                             xray_structure_start.scatterers().size(), True))
-    all_da_xray_structure = xray_structure_current.select(da_sel)
+    all_da_xray_structure = xray_structure_current.select(da_sel_all)
     ofn = params.output_file_name_prefix
     if(ofn is None):
       ofn = "DA.pdb"
@@ -272,6 +276,7 @@ def grow_density(f_obs,
     print "Finished"
 
 def refinery(fmodels, number_of_iterations, iselection, parameter):
+  if(iselection.size()==0): return
   fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grads(state=False)
   lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
     max_iterations = number_of_iterations)
@@ -325,7 +330,7 @@ def reset_adps(fmodels, selection, params):
   fmodels.update_xray_structure(xray_structure = xrs, update_f_calc=True,
     update_f_mask=False)
 
-def show_refinement_update(fmodels, selection, prefix):
+def show_refinement_update(fmodels, selection, da_sel_refinable, prefix):
   fmt1 = "%s Rwork= %8.6f Rfree= %8.6f Number of: non-DA= %d DA= %d all= %d"
   print fmt1%(prefix, fmodels.fmodel_xray().r_work(),
     fmodels.fmodel_xray().r_free(),
@@ -347,45 +352,46 @@ def show_refinement_update(fmodels, selection, prefix):
       flex.min(b_ma),flex.max(b_ma),flex.mean(b_ma))
     print "             da: ADP(min,max,mean)= %7.2f %7.2f %7.2f"%(
       flex.min(b_da),flex.max(b_da),flex.mean(b_da))
+    print "da_sel_refinable:", da_sel_refinable.size(), da_sel_refinable.count(True)
 
-def refine_occupancies(fmodels, selection, params, macro_cycle):
+def refine_occupancies(fmodels, selection, da_sel_refinable, params, macro_cycle):
   refinery(
     fmodels              = fmodels,
     number_of_iterations = params.number_of_minimization_iterations,
-    iselection           = selection.iselection(),
+    iselection           = da_sel_refinable.iselection(),
     parameter            = "occupancies")
   if(params.stop_reset_occupancies_at_macro_cycle > macro_cycle):
     reset_occupancies(fmodels = fmodels, selection = selection, params = params)
   if(params.start_filtering_at_macro_cycle <= macro_cycle):
-    fmodels, selection = filter_da(fmodels, selection, params)
-  show_refinement_update(fmodels, selection, "occ(%2d):"%macro_cycle)
-  return fmodels, selection
+    fmodels, selection, da_sel_refinable = filter_da(fmodels, selection, da_sel_refinable, params)
+  show_refinement_update(fmodels, selection, da_sel_refinable, "occ(%2d):"%macro_cycle)
+  return fmodels, selection, da_sel_refinable
 
-def refine_adp(fmodels, selection, params, macro_cycle):
+def refine_adp(fmodels, selection, da_sel_refinable, params, macro_cycle):
   refinery(
     fmodels              = fmodels,
     number_of_iterations = params.number_of_minimization_iterations,
-    iselection           = selection.iselection(),
+    iselection           = da_sel_refinable.iselection(),
     parameter            = "adp")
   if(params.stop_reset_adp_at_macro_cycle > macro_cycle):
     reset_adps(fmodels = fmodels, selection = selection, params = params)
   if(params.start_filtering_at_macro_cycle <= macro_cycle):
-    fmodels, selection = filter_da(fmodels, selection, params)
-  show_refinement_update(fmodels, selection, "adp(%2d):"%macro_cycle)
-  return fmodels, selection
+    fmodels, selection, da_sel_refinable = filter_da(fmodels, selection, da_sel_refinable, params)
+  show_refinement_update(fmodels, selection, da_sel_refinable, "adp(%2d):"%macro_cycle)
+  return fmodels, selection, da_sel_refinable
 
-def refine_sites(fmodels, selection, params, macro_cycle):
+def refine_sites(fmodels, selection, da_sel_refinable, params, macro_cycle):
   refinery(
     fmodels              = fmodels,
     number_of_iterations = params.number_of_minimization_iterations,
-    iselection           = selection.iselection(),
+    iselection           = da_sel_refinable.iselection(),
     parameter            = "sites")
   if(params.start_filtering_at_macro_cycle <= macro_cycle):
-    fmodels, selection = filter_da(fmodels, selection, params)
-  show_refinement_update(fmodels, selection, "xyz(%2d):"%macro_cycle)
-  return fmodels, selection
+    fmodels, selection, da_sel_refinable = filter_da(fmodels, selection, da_sel_refinable, params)
+  show_refinement_update(fmodels, selection, da_sel_refinable, "xyz(%2d):"%macro_cycle)
+  return fmodels, selection, da_sel_refinable
 
-def filter_da(fmodels, selection, params):
+def filter_da(fmodels, selection, da_sel_refinable, params):
   xrs = fmodels.fmodel_xray().xray_structure
   xrs_d = xrs.select(selection)
   xrs_m = xrs.select(~selection)
@@ -417,32 +423,53 @@ def filter_da(fmodels, selection, params):
         sel[i_seq] = False
         break
   #
+  sel_all = flex.bool(xrs_m.scatterers().size(),True)
+  sel_all.extend(sel)
+  da_sel_refinable = da_sel_refinable.select(sel_all)
+  #
   xrs_d = xrs_d.select(sel)
   xrs = xrs_m.concatenate(xrs_d)
   selection = flex.bool(xrs_m.scatterers().size(), False)
   selection.extend(flex.bool(xrs_d.scatterers().size(), True))
   fmodels.update_xray_structure(xray_structure = xrs, update_f_calc=True,
     update_f_mask=False)
-  return fmodels, selection
+  assert selection.size() == da_sel_refinable.size()
+  #XXXX
+  da_sel_refinable = selection
+  #XXXX
+  return fmodels, selection, da_sel_refinable
 
-def refine_da(fmodel, selection, params):
+def refine_da(fmodel, selection, params, da_sel_refinable):
   fmodels = mmtbx.fmodels(fmodel_xray = fmodel)
-  show_refinement_update(fmodels, selection, "  START:")
+  show_refinement_update(fmodels, selection, da_sel_refinable, "  START:")
   nrm = params.number_of_refinement_cycles
   assert nrm >= params.stop_reset_occupancies_at_macro_cycle
   assert nrm >= params.stop_reset_adp_at_macro_cycle
   assert nrm >= params.start_filtering_at_macro_cycle
   for macro_cycle in xrange(nrm):
     if("occupancies" in params.refine):
-      fmodels, selection = refine_occupancies(fmodels = fmodels,
-        selection = selection, params = params, macro_cycle = macro_cycle)
+      fmodels, selection, da_sel_refinable = refine_occupancies(
+        fmodels     = fmodels,
+        selection   = selection,
+        da_sel_refinable = da_sel_refinable,
+        params      = params,
+        macro_cycle = macro_cycle)
     if("adp" in params.refine):
-      fmodels, selection = refine_adp(fmodels = fmodels,
-        selection = selection, params = params, macro_cycle = macro_cycle)
+      fmodels, selection, da_sel_refinable = refine_adp(
+        fmodels     = fmodels,
+        selection   = selection,
+        da_sel_refinable = da_sel_refinable,
+        params      = params,
+        macro_cycle = macro_cycle)
     if("sites" in params.refine):
-      fmodels, selection = refine_sites(fmodels = fmodels,
-        selection = selection, params = params, macro_cycle = macro_cycle)
+      fmodels, selection, da_sel_refinable = refine_sites(
+        fmodels     = fmodels,
+        selection   = selection,
+        da_sel_refinable = da_sel_refinable,
+        params      = params,
+        macro_cycle = macro_cycle)
     assert fmodel.xray_structure is fmodels.fmodel_xray().xray_structure
+  return selection
 
 def pdb_atoms_as_xray_structure(pdb_atoms, crystal_symmetry):
   xray_structure = xray.structure(crystal_symmetry = crystal_symmetry)
