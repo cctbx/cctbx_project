@@ -265,28 +265,22 @@ namespace xray {
         uctbx::unit_cell const& unit_cell,
         sgtbx::site_symmetry_ops const& site_symmetry_ops,
         FloatType const& u_min,
-        FloatType const& u_max)
+        FloatType const& u_max,
+        FloatType const& anisotropy_min)
       {
         if(flags.use_u_aniso()) {
            CCTBX_ASSERT(u_star !=
                                scitbx::sym_mat3<FloatType>(-1,-1,-1,-1,-1,-1));
            scitbx::sym_mat3<FloatType> u_iso_star;
-           //if (flags.use_u_iso()) {
-           //  u_iso_star = adptbx::u_iso_as_u_star(unit_cell, u_iso);
-           //  u_star += u_iso_star;
-           //}
            u_star = site_symmetry_ops.average_u_star(u_star);
            scitbx::sym_mat3<FloatType>
              u_cart = adptbx::u_star_as_u_cart(unit_cell, u_star);
            u_cart = adptbx::eigenvalue_filtering(u_cart, u_min, u_max);
+           u_cart = adptbx::isotropize(u_cart, anisotropy_min);
            u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
            u_star = site_symmetry_ops.average_u_star(u_star);
-           //if (flags.use_u_iso()) {
-           //  u_star -= u_iso_star;
-           //}
         }
         if(flags.use_u_iso()) {
-        //else if(flags.use_u_iso()) {
            if(u_iso < u_min) u_iso = u_min;
            if(u_iso > u_max) u_iso = u_max;
         }

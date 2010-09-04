@@ -96,11 +96,13 @@ namespace {
             uctbx::unit_cell const&,
             sgtbx::site_symmetry_ops const&,
             double const&,
+            double const&,
             double const&)) &w_t::tidy_u, (
           arg("unit_cell"),
           arg("site_symmetry_ops"),
           arg("u_min"),
-          arg("u_max")))
+          arg("u_max"),
+          arg("anisotropy_min")))
         .def("shift_u",
           (void(w_t::*)(
             uctbx::unit_cell const&,
@@ -174,12 +176,14 @@ namespace {
         uctbx::unit_cell const&,
         sgtbx::site_symmetry_table const&,
         double u_min,
-        double u_max)) tidy_us, (
+        double u_max,
+        double anisotropy_min)) tidy_us, (
           arg("scatterers"),
           arg("unit_cell"),
           arg("site_symmetry_table"),
           arg("u_min"),
-          arg("u_max")));
+          arg("u_max"),
+          arg("anisotropy_min")));
 
     def("u_star_plus_u_iso",
       (void(*)(
