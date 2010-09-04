@@ -984,7 +984,8 @@ class manager(object):
       energies_adp_aniso = self.restraints_manager.energies_adp_aniso(
         xray_structure    = xrs,
         compute_gradients = compute_gradients,
-        selection         = selection)
+        selection         = selection,
+        use_hd            = use_hd)
       target = energies_adp_aniso.target
     u_iso_gradients = None
     u_aniso_gradients = None

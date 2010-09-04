@@ -99,11 +99,13 @@ class mvd(object):
         fmt = "        %s "+"count: %s "%iecl+"occupancy sum: %s"
         print >> log, fmt%tuple(element_occupancy_sum.split(":"))
       print >> log, "      ADP (min,max,mean):"
-      print >> log, "        all            : %s %s %s"%(x.all.b_min,x.all.b_max,x.all.b_mean)
-      if(x.sidechain     is not None):print >> log, "        side chains    : %s %s %s"%(x.sidechain.b_min,x.sidechain.b_max,x.sidechain.b_mean)
-      if(x.backbone      is not None):print >> log, "        main chains    : %s %s %s"%(x.backbone.b_min,x.backbone.b_max,x.backbone.b_mean)
-      if(x.macromolecule is not None):print >> log, "        macromolecule  : %s %s %s"%(x.macromolecule.b_min,x.macromolecule.b_max,x.macromolecule.b_mean)
-      if(x.solvent       is not None):print >> log, "        solvent        : %s %s %s"%(x.solvent.b_min,x.solvent.b_max,x.solvent.b_mean)
+      print >> log, "        all           (%s atoms): %s %s %s"%(x.all.n_atoms, x.all.b_min,x.all.b_max,x.all.b_mean)
+
+      if(x.sidechain     is not None):print >> log, "        side chains   (%s atoms): %s %s %s"%(x.sidechain.n_atoms, x.sidechain.b_min,x.sidechain.b_max,x.sidechain.b_mean)
+      if(x.backbone      is not None):print >> log, "        main chains   (%s atoms): %s %s %s"%(x.backbone.n_atoms, x.backbone.b_min,x.backbone.b_max,x.backbone.b_mean)
+      if(x.macromolecule is not None):print >> log, "        macromolecule (%s atoms): %s %s %s"%(x.macromolecule.n_atoms, x.macromolecule.b_min,x.macromolecule.b_max,x.macromolecule.b_mean)
+      if(x.ligand        is not None):print >> log, "        ligands       (%s atoms): %s %s %s"%(x.ligand.n_atoms, x.ligand.b_min,x.ligand.b_max,x.ligand.b_mean)
+      if(x.solvent       is not None):print >> log, "        solvent       (%s atoms): %s %s %s"%(x.solvent.n_atoms, x.solvent.b_min,x.solvent.b_max,x.solvent.b_mean)
       if(i_model.rms_b_iso_or_b_equiv_bonded is not None):
         print >> log, "      mean bonded (Bi-Bj) : %s"%format_value("%8.2f",i_model.rms_b_iso_or_b_equiv_bonded).strip()
       print >> log, "      occupancies (min,max,mean)       : %s %s %s"%(x.all.o_min,x.all.o_max,x.all.o_mean)
@@ -118,7 +120,7 @@ class mvd(object):
         print >> log, "      chirality        : %8.4f %8.4f %d" % (g.c_mean, g.c_max, g.c_number)
         print >> log, "      planarity        : %8.4f %8.4f %d" % (g.p_mean, g.p_max, g.p_number)
         print >> log, "      non-bonded (min) : %8.4f" % (g.n_min)
-      if(i_model.geometry_solvent is not None):
+      if([i_model.geometry_solvent,i_model.geometry_ligand].count(None)==0):
         g = i_model.geometry_macromolecule
         if(g is not None):
           print >> log, "    Stereochemistry statistics (mean, max, count) - macromolecule:"
@@ -128,14 +130,18 @@ class mvd(object):
           print >> log, "      chirality        : %8.4f %8.4f %d" % (g.c_mean, g.c_max, g.c_number)
           print >> log, "      planarity        : %8.4f %8.4f %d" % (g.p_mean, g.p_max, g.p_number)
           print >> log, "      non-bonded (min) : %8.4f" % (g.n_min)
-        g = i_model.geometry_solvent
+        g = i_model.geometry_ligand
         if(g is not None):
-          print >> log, "    Stereochemistry statistics (mean, max, count) - solvent:"
+          print >> log, "    Stereochemistry statistics (mean, max, count) - ligands:"
           print >> log, "      bonds            : %8.4f %8.4f %d" % (g.b_mean, g.b_max, g.b_number)
           print >> log, "      angles           : %8.4f %8.4f %d" % (g.a_mean, g.a_max, g.a_number)
           print >> log, "      dihedrals        : %8.4f %8.4f %d" % (g.d_mean, g.d_max, g.d_number)
           print >> log, "      chirality        : %8.4f %8.4f %d" % (g.c_mean, g.c_max, g.c_number)
           print >> log, "      planarity        : %8.4f %8.4f %d" % (g.p_mean, g.p_max, g.p_number)
+          print >> log, "      non-bonded (min) : %8.4f" % (g.n_min)
+        g = i_model.geometry_solvent
+        if(g is not None):
+          print >> log, "    Stereochemistry statistics - solvent:"
           print >> log, "      non-bonded (min) : %8.4f" % (g.n_min)
       if(i_model.molprobity is not None):
         outl = i_model.molprobity.ramalyze_outliers
@@ -316,10 +322,24 @@ def molprobity_stats(hierarchy, resname_classes):
       clashscore        = clashscore_obj.get_clashscore())
   else: return None
 
-def show_geometry(processed_pdb_file, scattering_table, hierarchy,
+def show_geometry(xray_structures, processed_pdb_file, scattering_table, hierarchy,
                   model_selections, show_geometry_statistics, mvd_obj,
                   atom_selections):
-  xray_structures = processed_pdb_file.xray_structure()
+  if(len(xray_structures)>1):
+    tmp = xray_structures[0]
+    for xi in xray_structures[1:]:
+      tmp = tmp.concatenate(xi)
+    xray_structures = tmp
+  else:
+    xray_structures = xray_structures[0]
+  ##
+  utils.assert_xray_structures_equal(
+    x1 = xray_structures,
+    x2 = processed_pdb_file.xray_structure(),
+    sites = True,
+    adp = False,
+    occupancies = True)
+  ##
   hd_sel_all = xray_structures.hd_selection()
   if(show_geometry_statistics):
     sctr_keys = \
@@ -358,6 +378,7 @@ def show_geometry(processed_pdb_file, scattering_table, hierarchy,
       result.all           = atom_selections.all          .select(selection)
       result.macromolecule = atom_selections.macromolecule.select(selection)
       result.solvent       = atom_selections.solvent      .select(selection)
+      result.ligand        = atom_selections.ligand       .select(selection)
       result.backbone      = atom_selections.backbone     .select(selection)
       result.sidechain     = atom_selections.sidechain    .select(selection)
       return result
@@ -374,6 +395,7 @@ def show_geometry(processed_pdb_file, scattering_table, hierarchy,
         atom_selections=atom_selections_i_model)
     model_statistics_geometry_macromolecule = None
     model_statistics_geometry_solvent = None
+    model_statistics_geometry_ligand = None
     model_statistics_geometry_all = None
     molprobity_stats_i_seq = None
     rms_b_iso_or_b_equiv_bonded = None
@@ -402,7 +424,7 @@ def show_geometry(processed_pdb_file, scattering_table, hierarchy,
         restraints_manager = restraints_manager)
       #
       if(atom_selections.macromolecule.count(True)>0):
-        mac_sel = atom_selections_i_model.macromolecule#.select(model_selection_as_bool)
+        mac_sel = atom_selections_i_model.macromolecule
         model_statistics_geometry_macromolecule = model_statistics.geometry(
           sites_cart         = xray_structure.sites_cart().select(mac_sel),
           hd_selection       = xray_structure.select(mac_sel).hd_selection(),
@@ -410,12 +432,20 @@ def show_geometry(processed_pdb_file, scattering_table, hierarchy,
           restraints_manager = restraints_manager.select(mac_sel))
       #
       if(atom_selections.solvent.count(True)>0):
-        sol_sel = atom_selections_i_model.solvent#.select(model_selection_as_bool)
+        sol_sel = atom_selections_i_model.solvent
         model_statistics_geometry_solvent = model_statistics.geometry(
           sites_cart         = xray_structure.sites_cart().select(sol_sel),
           hd_selection       = xray_structure.select(sol_sel).hd_selection(),
           ignore_hd          = False,
           restraints_manager = restraints_manager.select(sol_sel))
+      #
+      if(atom_selections.ligand.count(True)>0):
+        lig_sel = atom_selections_i_model.ligand
+        model_statistics_geometry_ligand = model_statistics.geometry(
+          sites_cart         = xray_structure.sites_cart().select(lig_sel),
+          hd_selection       = xray_structure.select(lig_sel).hd_selection(),
+          ignore_hd          = False,
+          restraints_manager = restraints_manager.select(lig_sel))
       ###
       rms_b_iso_or_b_equiv_bonded = utils.rms_b_iso_or_b_equiv_bonded(
         restraints_manager = restraints_manager,
@@ -431,6 +461,7 @@ def show_geometry(processed_pdb_file, scattering_table, hierarchy,
       geometry_all                = model_statistics_geometry_all,
       geometry_macromolecule      = model_statistics_geometry_macromolecule,
       geometry_solvent            = model_statistics_geometry_solvent,
+      geometry_ligand             = model_statistics_geometry_ligand,
       molprobity                  = molprobity_stats_i_seq))
   mvd_obj.collect(models = geometry_statistics)
   return geometry_statistics
@@ -441,6 +472,7 @@ def show_xray_structure_statistics(xray_structure, atom_selections, hd_sel = Non
     macromolecule = None,
     sidechain     = None,
     solvent       = None,
+    ligand        = None,
     backbone      = None)
   if(hd_sel is not None):
     xray_structure = xray_structure.select(~hd_sel)
@@ -479,11 +511,7 @@ def show_xray_structure_statistics(xray_structure, atom_selections, hd_sel = Non
         o_mean          = o_mean,
         n_aniso         = n_aniso,
         n_npd           = n_npd)
-      if(key == "macromolecule"): result.macromolecule = tmp_result
-      if(key == "sidechain"):     result.sidechain = tmp_result
-      if(key == "backbone"):      result.backbone = tmp_result
-      if(key == "solvent"):       result.solvent = tmp_result
-      if(key == "all"):           result.all = tmp_result
+      setattr(result,key,tmp_result)
   return result
 
 def reflection_file_server(crystal_symmetry, reflection_files):
@@ -693,7 +721,8 @@ def run(args,
   atom_selections = group_args(
     all           = acp.selection(string = "all"),
     macromolecule = acp.selection(string = "protein or dna or rna"),
-    solvent       = acp.selection(string = "not (protein or dna or rna)"),
+    solvent       = acp.selection(string = "water"), # XXX single_atom_residue
+    ligand        = acp.selection(string = "not (protein or dna or rna or water)"),
     backbone      = acp.selection(string = "backbone"),
     sidechain     = acp.selection(string = "sidechain"))
   #
@@ -718,14 +747,6 @@ def run(args,
   hierarchy = pdb_inp.construct_hierarchy()
   pdb_atoms = hierarchy.atoms()
   pdb_atoms.reset_i_seq()
-  geometry_statistics = show_geometry(
-    processed_pdb_file       = processed_pdb_file,
-    scattering_table         = command_line.options.scattering_table,
-    hierarchy                = hierarchy,
-    model_selections         = model_selections,
-    show_geometry_statistics = show_geometry_statistics,
-    mvd_obj                  = mvd_obj,
-    atom_selections          = atom_selections)
   #
   # Extract TLS
   pdb_tls = None
@@ -750,7 +771,17 @@ def run(args,
         xray_structure = xray_structures[0], # XXX no TLS + multiple models
         tls_selections = pdb_tls.tls_selections,
         tls_groups     = pdb_inp_tls.tls_params)]
-  #
+  ###########################
+  geometry_statistics = show_geometry(
+    xray_structures          = xray_structures,
+    processed_pdb_file       = processed_pdb_file,
+    scattering_table         = command_line.options.scattering_table,
+    hierarchy                = hierarchy,
+    model_selections         = model_selections,
+    show_geometry_statistics = show_geometry_statistics,
+    mvd_obj                  = mvd_obj,
+    atom_selections          = atom_selections)
+  ###########################
   fmodel = utils.fmodel_simple(xray_structures = xray_structures,
                                f_obs           = f_obs,
                                r_free_flags    = r_free_flags)

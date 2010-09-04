@@ -29,6 +29,9 @@ ias_master_params = iotbx.phil.parse("""\
     .type = float
   build_ias_types = L R B BH
     .type = strings
+  ring_atoms = None
+    .type = strings
+    .multiple = True
   use_map = True
     .type = bool
   build_only = False
@@ -157,8 +160,10 @@ class extract_ias(object):
                bond_proxies_simple,
                pdb_atoms,
                planarity_proxies,
+               params,
                log = None):
     if(log is None): self.log = sys.stdout
+    self.params = params
     assert xray_structure.scatterers().size() == pdb_atoms.size()
     self.pdb_atoms = pdb_atoms
     self.sites_cart = xray_structure.sites_cart()
@@ -176,13 +181,20 @@ class extract_ias(object):
       self.iass.append( ias(atom_1 = atom_i,
                             atom_2 = atom_j,
                             type   = type) )
-    for proxy in planarity_proxies:
+    for i_proxy, proxy in enumerate(planarity_proxies):
       if(len(proxy.i_seqs) >= 6):
          i, j = self._is_phe_tyr_ring(i_seqs = proxy.i_seqs)
          if([i,j].count(None)==0):
             self.iass.append( ias(atom_1 = self._get_atom(i),
                                   atom_2 = self._get_atom(j),
                                   type   = "R") )
+         elif(len(self.params.ring_atoms)>0):
+           for ring_atoms in self.params.ring_atoms:
+             i, j = self._is_any_ring(i_seqs=proxy.i_seqs, ring_atoms=ring_atoms)
+             if([i,j].count(None)==0):
+               self.iass.append( ias(atom_1 = self._get_atom(i),
+                                     atom_2 = self._get_atom(j),
+                                     type   = "R") )
       if(len(proxy.i_seqs) >= 4):
          i, j, k = self._is_peptide_plane(i_seqs = proxy.i_seqs)
          if([i,j,k].count(None)==0):
@@ -199,6 +211,28 @@ class extract_ias(object):
                 name      = pdb_atom.name.strip(),
                 i_seq     = i_seq,
                 element   = pdb_atom.element.strip())
+
+  def _is_any_ring(self, i_seqs, ring_atoms):
+    counter = 0
+    i_best,j_best = None,None
+    for i_seq in i_seqs:
+      atom_i_name = self.pdb_atoms[i_seq].name.strip()
+      if(atom_i_name in ring_atoms):
+        counter += 1
+    if(counter != len(ring_atoms)): return i_best,j_best
+    dist = 0.0
+    for i in i_seqs:
+      ri = self.pdb_atoms[i].xyz
+      atom_i_name = self.pdb_atoms[i].name.strip()
+      for j in i_seqs:
+        rj = self.pdb_atoms[j].xyz
+        atom_j_name = self.pdb_atoms[j].name.strip()
+        d_ = math.sqrt((ri[0]-rj[0])**2+(ri[1]-rj[1])**2+(ri[2]-rj[2])**2)
+        if(d_ > dist and atom_i_name in ring_atoms and atom_j_name in ring_atoms):
+          dist = d_
+          i_best,j_best = i,j
+    print self.pdb_atoms[i_best].name, self.pdb_atoms[j_best].name
+    return i_best,j_best
 
   def _is_phe_tyr_ring(self, i_seqs):
     ring_atoms = ["CZ","CE1","CE2","CD1","CD2","CG"]
@@ -608,6 +642,7 @@ class manager(object):
                         bond_proxies_simple  = bond_proxies_simple,
                         pdb_atoms            = self.pdb_atoms,
                         planarity_proxies    = self.geometry.planarity_proxies,
+                        params               = self.params,
                         log                  = self.log).iass
      iass = set_ias_name_and_predicted_position(iass)
      if(self.fmodel is not None):

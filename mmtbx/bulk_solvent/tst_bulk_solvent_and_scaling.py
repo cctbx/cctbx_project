@@ -117,6 +117,7 @@ def exercise_02_b_cart_sym_constr(d_min = 2.0, tolerance = 0.000001):
           params.symmetry_constraints_on_b_cart = flag
           params.max_iterations = 50
           params.min_iterations = 50
+          params.apply_back_trace_of_b_cart=False
           fmodel.update_solvent_and_scale(params = params, verbose = -1)
           if(0):
             print
@@ -157,6 +158,7 @@ def exercise_03_do_nothing(d_min = 2.0, target_name = "ls_wunit_k1"):
   params = bss.master_params.extract()
   params.bulk_solvent = False
   params.anisotropic_scaling = False
+  params.apply_back_trace_of_b_cart=False
   fmodel.update_solvent_and_scale(params = params, verbose = -1)
   r_work = fmodel.r_work()*100.
   assert r_work > 0.0
@@ -194,6 +196,7 @@ def exercise_04_fix_k_sol_b_sol_b_cart(d_min = 2.0, target_name = "ls_wunit_k1")
   params.fix_b_cart.b12 = b_cart[3]
   params.fix_b_cart.b13 = b_cart[4]
   params.fix_b_cart.b23 = b_cart[5]
+  params.apply_back_trace_of_b_cart=False
   fmodel.update_solvent_and_scale(params = params, verbose = -1)
   r_work = fmodel.r_work()*100.
   assert r_work_start > 0.0
@@ -222,6 +225,7 @@ def exercise_05_k_sol_b_sol_only(d_min = 2.0, target_name = "ls_wunit_k1"):
   r_work_start = fmodel.r_work()*100.
   params = bss.master_params.extract()
   params.anisotropic_scaling = False
+  params.apply_back_trace_of_b_cart=False
   fmodel.update_solvent_and_scale(params = params, verbose = -1)
   r_work = fmodel.r_work()*100.
   assert r_work_start > 0.0
@@ -251,6 +255,7 @@ def exercise_06_b_cart_only(d_min = 2.0, target_name = "ls_wunit_k1"):
   r_work_start = fmodel.r_work()*100.
   params = bss.master_params.extract()
   params.bulk_solvent = False
+  params.apply_back_trace_of_b_cart=False
   fmodel.update_solvent_and_scale(params = params, verbose = -1)
   r_work = fmodel.r_work()*100.
   assert r_work_start > 0.0

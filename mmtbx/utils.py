@@ -1840,8 +1840,9 @@ def extract_tls_and_u_total_from_pdb(
     if(r_work_ < r_work):
       r_work = r_work_
       i_best = i
-  if(i_best == 0): return xrs_1
-  else: return xrs_2
+  if(i_best == 0): result = xrs_1
+  else: result = xrs_2
+  return result
 
 
 class guess_observation_type(object):
