@@ -670,20 +670,53 @@ class _input(boost.python.injector, ext.input):
       source_info = self.source_info()
       if (len(source_info) > 0): source_info = " (%s)" % source_info
       self._scale_matrix = [[None]*9,[None]*3]
-      done = set()
+      done_set = set()
+      done_list = []
       for line in self.crystallographic_section():
         if (line.startswith("SCALE") and line[5:6] in ["1", "2", "3"]):
           r = read_scale_record(line=line, source_info=source_info)
-          for i_col,v in enumerate([r.sn1, r.sn2, r.sn3]):
-            self._scale_matrix[0][(r.n-1)*3+i_col] = v
-          self._scale_matrix[1][r.n-1] = r.un
-          done.add(r.n)
-      if (len(done) == 0):
+          if (r.n not in done_set):
+            for i_col,v in enumerate(r.r):
+              self._scale_matrix[0][(r.n-1)*3+i_col] = v
+            self._scale_matrix[1][r.n-1] = r.t
+            done_set.add(r.n)
+          done_list.append(r.n)
+      if (len(done_list) == 0):
         self._scale_matrix = None
-      elif (sorted(done) != [1,2,3]):
+      elif (sorted(done_list[:3]) != [1,2,3]):
         raise RuntimeError(
-          "Incomplete set of PDB SCALE records%s" % source_info)
+          "Improper set of PDB SCALE records%s" % source_info)
     return self._scale_matrix
+
+  def process_mtrix_records(self):
+    source_info = self.source_info()
+    if (len(source_info) > 0): source_info = " (%s)" % source_info
+    storage = {}
+    for line in self.crystallographic_section():
+      if (line.startswith("MTRIX") and line[5:6] in ["1", "2", "3"]):
+        r = read_mtrix_record(line=line, source_info=source_info)
+        stored = storage.get(r.serial_number)
+        if (stored is None):
+          values = [[None]*9,[None]*3]
+          done = []
+          present = []
+          stored = storage[r.serial_number] = (values, done, present)
+        else:
+          values, done, present = stored
+        for i_col,v in enumerate(r.r):
+          values[0][(r.n-1)*3+i_col] = v
+        values[1][r.n-1] = r.t
+        done.append(r.n)
+        present.append(r.coordinates_present)
+    from libtbx import group_args
+    result = []
+    for serial_number in sorted(storage.keys()):
+      values, done, present = storage[serial_number]
+      if (sorted(done) != [1,2,3] or len(set(present)) != 1):
+        raise RuntimeError(
+          "Improper set of PDB MTRIX records%s" % source_info)
+      result.append(group_args(values=values, coordinates_present=present[0]))
+    return result
 
   def as_pdb_string(self,
         crystal_symmetry=Auto,
@@ -1139,12 +1172,14 @@ def format_cryst1_and_scale_records(
       u=scale_u)
   return result
 
-class read_scale_record:
+class read_scale_record(object):
 
-  def __init__(self, line, source_info=""):
-    try: self.n = int(line[5:6])
-    except ValueError: self.n = None
-    if (self.n not in [1,2,3]):
+  __slots__ = ["n", "r", "t"]
+
+  def __init__(O, line, source_info=""):
+    try: O.n = int(line[5:6])
+    except ValueError: O.n = None
+    if (O.n not in [1,2,3]):
       raise RuntimeError(
         "Unknown PDB record %s%s" % (show_string(line[:6]), source_info))
     values = []
@@ -1161,7 +1196,17 @@ class read_scale_record:
             + "  " + line + "\n"
             + "  %s%s" % (" "*i, "^"*10))
       values.append(value)
-    self.sn1, self.sn2, self.sn3, self.un = values
+    O.r, O.t = values[:3], values[3]
+
+class read_mtrix_record(read_scale_record):
+
+  __slots__ = read_scale_record.__slots__ + [
+    "serial_number", "coordinates_present"]
+
+  def __init__(O, line, source_info=""):
+    read_scale_record.__init__(O, line=line, source_info=source_info)
+    O.serial_number = line[7:10]
+    O.coordinates_present = (len(line) >= 60 and line[59] != " ")
 
 def resseq_decode(s):
   try: return hy36decode(width=4, s="%4s" % s)

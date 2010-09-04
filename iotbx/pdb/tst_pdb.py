@@ -11,6 +11,7 @@ from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
+op = os.path
 
 def exercise_records():
   r = pdb.records.header(pdb_str="""\
@@ -363,17 +364,14 @@ def exercise_residue_name_plus_atom_names_interpreter():
     assert i.work_residue_name == "DC"
     assert i.atom_name_interpretation.unexpected_atom_names() == []
 
-def exercise_format_fasta():
-  regression_pdb = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb",
-    test=os.path.isdir)
-  if (regression_pdb is None):
-    print "Skipping exercise_format_fasta(): input files not available"
-    return
+def exercise_format_fasta(regression_pdb, coverage=0.1):
+  import random
   looking_for = ["1ee3_stripped.pdb", "jcm.pdb", "pdb1zff.ent"]
   for node in os.listdir(regression_pdb):
     if (not (node.endswith(".pdb") or node.endswith(".ent"))): continue
-    file_name = os.path.join(regression_pdb, node)
+    if (node not in looking_for and random.random() > coverage):
+      continue
+    file_name = op.join(regression_pdb, node)
     assert pdb.is_pdb_file(file_name=file_name)
     pdb_inp = pdb.input(file_name=file_name)
     hierarchy = pdb_inp.construct_hierarchy()
@@ -466,21 +464,27 @@ def exercise_xray_structure(use_u_aniso, verbose=0):
       assert approx_equal(
         regression.y_intercept(), 0, eps=flex.max(f_abs.data())*0.01)
 
-def exercise_other () :
-  pdb_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/1ywf.pdb",
-    test=os.path.isfile)
-  pdb_file2 = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/1ywf_h.pdb",
-    test=os.path.isfile)
-  if pdb_file is not None and pdb_file2 is not None :
-    log = StringIO()
-    pdb_out = "%d.pdb" % os.getpid()
-    n_clashes = iotbx.pdb.merge_files_and_check_for_overlap(
-      file_names=[pdb_file,pdb_file2],
-      output_file=pdb_out,
-      log=log)
-    assert n_clashes == 2127
+def exercise_merge_files_and_check_for_overlap(regression_pdb):
+  pdb_file = op.join(regression_pdb, "1ywf.pdb")
+  pdb_file2 = op.join(regression_pdb, "1ywf_h.pdb")
+  log = StringIO()
+  pdb_out = "%d.pdb" % os.getpid()
+  n_clashes = iotbx.pdb.merge_files_and_check_for_overlap(
+    file_names=[pdb_file,pdb_file2],
+    output_file=pdb_out,
+    log=log)
+  assert n_clashes == 2127
+
+def exercise_mtrix(regression_pdb):
+  pdb_inp = pdb.input(file_name=op.join(regression_pdb, "pdb1a1q.ent"))
+  mtrix_info = pdb_inp.process_mtrix_records()
+  assert len(mtrix_info) == 2
+  assert approx_equal(mtrix_info[0].values, [[
+    -0.952060, 0.305556,-0.014748,
+    -0.305663,-0.952124, 0.005574,
+    -0.012339, 0.009815, 0.999876], [
+      -22.67001, 73.03197, 0.78307]])
+  assert mtrix_info[0].coordinates_present
 
 def dump_pdb(file_name, sites_cart, crystal_symmetry=None):
   f = open(file_name, "w")
@@ -517,8 +521,15 @@ def run():
   exercise_format_and_interpret_cryst1()
   exercise_remark_290_interpretation()
   exercise_residue_name_plus_atom_names_interpreter()
-  exercise_format_fasta()
-  exercise_other()
+  regression_pdb = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb",
+    test=op.isdir)
+  if (regression_pdb is None):
+    print "Skipping some tests: phenix_regression/pdb not available"
+  else:
+    exercise_format_fasta(regression_pdb=regression_pdb)
+    exercise_merge_files_and_check_for_overlap(regression_pdb=regression_pdb)
+    exercise_mtrix(regression_pdb=regression_pdb)
   for use_u_aniso in (False, True):
     exercise_xray_structure(use_u_aniso, verbose=verbose)
   write_icosahedron()
