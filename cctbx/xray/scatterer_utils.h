@@ -49,14 +49,16 @@ namespace cctbx { namespace xray {
     uctbx::unit_cell const& unit_cell,
     sgtbx::site_symmetry_table const& site_symmetry_table,
     double u_min,
-    double u_max)
+    double u_max,
+    double anisotropy_min)
   {
     for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
       scatterers[i_seq].tidy_u(
         unit_cell,
         site_symmetry_table.get(i_seq),
         u_min,
-        u_max);
+        u_max,
+        anisotropy_min);
     }
   }
 

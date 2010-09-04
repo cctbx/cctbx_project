@@ -796,6 +796,37 @@ namespace cctbx {
     return result;
   }
 
+  //! Isotropize u_cart: modify u_cart such that it meets target anisotropy.
+  template <typename FloatType>
+  sym_mat3<FloatType>
+  isotropize(
+    sym_mat3<FloatType> const& u_cart,
+    FloatType const& anisotropy_min=0.25)
+  {
+    scitbx::matrix::eigensystem::real_symmetric<FloatType> es(u_cart);
+    scitbx::vec3<FloatType> es_val(es.values().begin());
+    FloatType u_min = es_val[0];
+    FloatType u_max = u_min;
+    for(std::size_t i=0;i<3;i++) {
+      if(es_val[i] < u_min) u_min = es_val[i];
+      if(es_val[i] > u_max) u_max = es_val[i];
+    }
+    FloatType anisotropy = anisotropy_min;
+    if(u_max != 0) anisotropy = u_min/u_max;
+    FloatType corr = 0;
+    if(anisotropy < anisotropy_min) {
+      corr = (anisotropy_min * u_max - u_min)/(anisotropy_min + 1);
+      for(std::size_t i=0;i<3;i++) {
+        if(es_val[i] == u_min) es_val[i] = u_min + corr;
+        if(es_val[i] == u_max) es_val[i] = u_max - corr;
+      }
+      scitbx::mat3<FloatType> es_vec(es.vectors().begin());
+      scitbx::mat3<FloatType> es_vec_inv = es_vec.inverse();
+      return sym_mat3<FloatType>(es_val).tensor_transform(es_vec_inv);
+    }
+    else return u_cart;
+  }
+
   //! Modifies u_cart such that all eigenvalues are >= u_min and <= u_max.
   /*! u_max is used only if it is greater than zero.
    */

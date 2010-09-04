@@ -221,12 +221,12 @@ class structure(crystal.special_position_settings):
     assert [b_max, b_min].count(None) in [0,2]
     if([b_max, b_min].count(None) == 0): assert spread == 0.0
     if([b_max, b_min].count(None) == 2):
-      u_isos = self._scatterers.extract_u_iso().select(self.use_u_iso())
+      u_isos = self.extract_u_iso_or_u_equiv().select(self.use_u_iso())
       if(u_isos.size() > 0):
         b_mean = adptbx.u_as_b(flex.mean(u_isos))
         b_max = int(b_mean + spread)
         b_min = int(max(0.0, b_mean - spread))
-    assert b_min <= b_max
+    assert b_min <= b_max, [b_min,b_max,spread,b_mean]
     if(selection is not None):
       assert selection.size() == self._scatterers.size()
     else:
@@ -832,14 +832,16 @@ class structure(crystal.special_position_settings):
         unit_cell=self.unit_cell(),
         u_cart_tolerance=u_cart_tolerance)
 
-  def tidy_us(self, u_min = 1.e-6, u_max = adptbx.b_as_u(550.0)):
+  def tidy_us(self, u_min = 1.e-6, u_max = adptbx.b_as_u(550.0),
+                    anisotropy_min=0.25):
     assert u_min < u_max
     ext.tidy_us(
       scatterers=self._scatterers,
       unit_cell=self.unit_cell(),
       site_symmetry_table=self._site_symmetry_table,
       u_min=u_min,
-      u_max=u_max)
+      u_max=u_max,
+      anisotropy_min=anisotropy_min)
 
   def shift_us(self, u_shift=None, b_shift=None, selection=None):
     assert [u_shift, b_shift].count(None) == 1

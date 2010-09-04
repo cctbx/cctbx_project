@@ -96,7 +96,8 @@ class energies_iso(scitbx.restraints.energies):
     self.finalize_target_and_gradients()
 
 class adp_aniso_restraints(object):
-  def __init__(self, xray_structure, restraints_manager, selection = None):
+  def __init__(self, xray_structure, restraints_manager, use_hd,
+               selection = None):
     # Pairwise ADP restraints: 3 mix cases supported:
     #  o - ()
     #  o - o
@@ -122,9 +123,14 @@ class adp_aniso_restraints(object):
       sites_cart).bond_proxies.simple
     if(selection is None):
       selection = flex.bool(scatterers.size(), True)
+    hd_selection = xray_structure.hd_selection()
     for proxy in bond_proxies_simple:
         i,j = proxy.i_seqs
-        if(selection[i] and selection[j]):
+        tmp_flag = True
+        if(not use_hd):
+          if(hd_selection[i] or hd_selection[j]):
+            tmp_flag = False
+        if(selection[i] and selection[j] and tmp_flag):
           fl_i = scatterers[i].flags
           fl_j = scatterers[j].flags
           self.check_flags(fl_i)

@@ -568,11 +568,13 @@ def exercise_xray_scatterer():
   assert not x.is_positive_definite_u(unit_cell=uc)
   assert not x.is_positive_definite_u(unit_cell=uc, u_cart_tolerance=1.e2)
   assert x.is_positive_definite_u(unit_cell=uc, u_cart_tolerance=1.e3)
-  x.tidy_u(unit_cell=uc, site_symmetry_ops=ss, u_min=0, u_max=9999)
+  x.tidy_u(unit_cell=uc, site_symmetry_ops=ss, u_min=0, u_max=9999,
+    anisotropy_min=0)
   assert approx_equal(x.u_star,
     (3.3379643647809192, 4.5640522609325131, 4.4690204772593507,
      3.9031581835726965, 3.8623090371651934, 4.5162864184404032))
-  x.tidy_u(unit_cell=uc, site_symmetry_ops=ss, u_min=1, u_max=9999)
+  x.tidy_u(unit_cell=uc, site_symmetry_ops=ss, u_min=1, u_max=9999,
+    anisotropy_min=0)
   assert approx_equal(x.u_star,
     (3.3458045216665266, 4.5710990727698393, 4.4720459395534728,
      3.9006326295505751, 3.8598099147456764, 4.5133641373560351))
@@ -593,11 +595,13 @@ def exercise_xray_scatterer():
     scatterers=a, unit_cell=uc)) == [False, True]
   assert list(xray.is_positive_definite_u(
     scatterers=a, unit_cell=uc, u_cart_tolerance=2)) == [True, True]
-  y.tidy_u(unit_cell=uc, site_symmetry_ops=ss, u_min=1, u_max=1.0)
+  y.tidy_u(unit_cell=uc, site_symmetry_ops=ss, u_min=1, u_max=1.0,
+    anisotropy_min=0)
   assert approx_equal(y.u_iso, 1.0)
   yy = xray.scatterer("si1", site=(0.01,0.02,0.3), occupancy=0.8, u=158.0)
   assert approx_equal(yy.u_iso, 158.0)
-  yy.tidy_u(unit_cell=uc, site_symmetry_ops=ss, u_min=1, u_max=0.9)
+  yy.tidy_u(unit_cell=uc, site_symmetry_ops=ss, u_min=1, u_max=0.9,
+    anisotropy_min=0)
   assert approx_equal(yy.u_iso, 0.9)
   assert y.is_positive_definite_u(unit_cell=uc)
   x_u_star_orig = x.u_star
@@ -918,7 +922,8 @@ def exercise_structure_factors():
     unit_cell=uc,
     site_symmetry_table=site_symmetry_table,
     u_min=0,
-    u_max = 99999)
+    u_max = 99999,
+    anisotropy_min=0)
   assert approx_equal(scatterers[0].u_iso, 0)
   assert approx_equal(scatterers[1].u_star, (0.4,0.5,0.6,-.05,0.2,-0.02))
   for s in scatterers:
@@ -943,7 +948,8 @@ def exercise_structure_factors():
     unit_cell=uc,
     site_symmetry_table=site_symmetry_table,
     u_min=100,
-    u_max = 99999)
+    u_max = 99999,
+    anisotropy_min=0)
   assert approx_equal(scatterers[0].u_iso, 100)
   assert approx_equal(scatterers[1].u_star,
     (1.0134539945616343, 1.0005190241807682, 0.64980451464405997,

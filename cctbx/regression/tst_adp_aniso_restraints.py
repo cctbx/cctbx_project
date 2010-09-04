@@ -34,7 +34,8 @@ def fd(xray_structure, restraints_manager, eps=1.e-2):
     uc = xray_structure.unit_cell()
     adp_ro = cctbx.adp_restraints.adp_aniso_restraints(
                                        xray_structure     = xray_structure,
-                                       restraints_manager = restraints_manager)
+                                       restraints_manager = restraints_manager,
+                                       use_hd = False)
     g_aniso = adp_ro.gradients_aniso_cart
     g_iso = adp_ro.gradients_iso
     for i_seq, scatterer in enumerate(xray_structure.scatterers()):
@@ -59,10 +60,12 @@ def fd(xray_structure, restraints_manager, eps=1.e-2):
                sc2.set_u_cart(uc, us2)
                adp_ro1 = cctbx.adp_restraints.adp_aniso_restraints(
                                        xray_structure     = xrs1,
-                                       restraints_manager = restraints_manager)
+                                       restraints_manager = restraints_manager,
+                                       use_hd = False)
                adp_ro2 = cctbx.adp_restraints.adp_aniso_restraints(
                                        xray_structure     = xrs2,
-                                       restraints_manager = restraints_manager)
+                                       restraints_manager = restraints_manager,
+                                       use_hd = False)
                g1 = (adp_ro2.target - adp_ro1.target)/(2*eps)
                g2 = g_aniso[i_seq][i_ind]
                #print "   fin.diff.= %10.5f anal.= %10.5f diff.= %10.5f"%(g1, g2, g1-g2)
@@ -81,10 +84,12 @@ def fd(xray_structure, restraints_manager, eps=1.e-2):
            sc2.set_u_iso(us2, sel, uc)
            adp_ro1 = cctbx.adp_restraints.adp_aniso_restraints(
                                       xray_structure     = xrs1,
-                                      restraints_manager = restraints_manager)
+                                      restraints_manager = restraints_manager,
+                                      use_hd = False)
            adp_ro2 = cctbx.adp_restraints.adp_aniso_restraints(
                                       xray_structure     = xrs2,
-                                      restraints_manager = restraints_manager)
+                                      restraints_manager = restraints_manager,
+                                      use_hd = False)
            g1 = (adp_ro2.target - adp_ro1.target)/(2*eps)
            g2 = g_iso[i_seq]
            #print "   fin.diff.= %10.5f anal.= %10.5f diff.= %10.5f"%(g1, g2, g1-g2)
@@ -113,7 +118,8 @@ def run():
     iselection=xray_structure.use_u_aniso().iselection())
   adp_rm = cctbx.adp_restraints.adp_aniso_restraints(
                                            xray_structure     = xray_structure,
-                                           restraints_manager = geo)
+                                           restraints_manager = geo,
+                                           use_hd = False)
   assert approx_equal(flex.mean(adp_rm.gradients_iso), 0.713756592583)
   assert approx_equal(flex.mean(adp_rm.gradients_aniso_cart.as_double()), -0.118959432097)
   assert approx_equal(adp_rm.target, 8.97112989232)
