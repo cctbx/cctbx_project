@@ -386,7 +386,7 @@ Miscellaneous practical remarks
   Fortran features is to write a tiny Fortran program and convert
   it with ``fable.cout``.
 
-- Do not hesitate the inspect the fem sources. The fem implementations
+- Do not hesitate to inspect the fem sources. The fem implementations
   are written in a minimalistic style, avoiding smart but unobvious
   tricks to increase readability. (The price is a certain amount of
   redundancy in the code, for example in the implementations of the
