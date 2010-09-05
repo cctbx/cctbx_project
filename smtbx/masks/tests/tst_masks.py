@@ -12,13 +12,14 @@ from smtbx import masks
 import cStringIO
 
 def exercise_masks():
+  mt = flex.mersenne_twister(seed=0)
   xs_ref = structure.from_shelx(
     file=cStringIO.StringIO(YAKRUY_ins))
   mi = xs_ref.crystal_symmetry().build_miller_set(
     d_min=0.5, anomalous_flag=False)
   fo = mi.structure_factors_from_scatterers(
     xs_ref, algorithm="direct").f_calc().as_amplitude_array()
-  k = 0.05 + 10 * flex.random_double()
+  k = 0.05 + 10 * mt.random_double()
   fo = fo.customized_copy(data=fo.data()*k)
   fo2 = fo.f_as_f_sq()
   acetonitrile_sel = xs_ref.label_selection(
@@ -55,8 +56,8 @@ gridding: (30,45,54)
   fo2_complete = fo2.sort()
   fo2_missing_1 = fo2.select_indices(flex.miller_index([(0,0,1),
                                                         ]), negate=True)
-  flex.set_random_seed(0)
-  fo2_incomplete = fo2.select(flex.random_bool(fo2.size(), 0.95))
+  mt = flex.mersenne_twister(seed=0)
+  fo2_incomplete = fo2.select(mt.random_bool(fo2.size(), 0.95))
 
   for fo2, use_space_group_symmetry in zip(
     (fo2_complete, fo2_complete, fo2_missing_1, fo2_incomplete),
