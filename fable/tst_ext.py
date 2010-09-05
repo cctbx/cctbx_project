@@ -104,7 +104,7 @@ def exercise_fem_real_types():
       "but should be", expected
     raise RuntimeError(
       "%s needs to be adjusted for this platform." % hpp)
-  assert real_sizes[2] > real_sizes[1]
+  assert real_sizes[2] >= real_sizes[1]
 
 def exercise_fem_format_tokenizer():
   f = fable.exercise_fem_format_tokenizer
