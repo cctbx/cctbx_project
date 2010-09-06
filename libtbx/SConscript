@@ -104,7 +104,7 @@ def patch_scons_env_for_ad_hoc_debug(env, O123_replacement=["-O0", "-g"]):
     for f in env[kw]:
       if   (f in ["-O1", "-O2", "-O3"]):
         dbg_ccflags.extend(O123_replacement)
-      elif (f != "-ffast-math"):
+      elif (f not in ["-ffast-math", "-funroll-loops"]):
         dbg_ccflags.append(f)
     env.Replace(**{kw: dbg_ccflags})
 env_etc.patch_scons_env_for_ad_hoc_debug = patch_scons_env_for_ad_hoc_debug
@@ -465,7 +465,7 @@ else:
       warn_options = gcc_common_warn_options() + ["-Werror"]
     env_etc.ccflags_base.extend(warn_options)
     if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      opts = ["-DNDEBUG", "-O3", "-funroll-loops", "-ffast-math"]
       if (env_etc.gcc_version >= 40300):
         opts.insert(1, "-march=native")
     else:
@@ -524,6 +524,7 @@ else:
       opts = [
         "-DNDEBUG",
         "-O3",
+        "-funroll-loops",
         "-ffast-math"]
     else:
       opts = ["-O0", "-fno-inline"]
@@ -623,7 +624,7 @@ else:
     if not libtbx.env.build_options.enable_boost_threads:
       env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
     if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3"]
+      opts = ["-DNDEBUG", "-O3", "-funroll-loops"]
       if cxx != 'clang++': opts.append("-ffast-math")
       if (cxx == "c++"
             and env_etc.gcc_version == 40000):
