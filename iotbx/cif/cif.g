@@ -71,8 +71,14 @@ options {
   LEXER->super = (void *)ctx;
 }
 @members {
-std::string to_std_string(pANTLR3_STRING text) {
-	return std::string((const char*)text->chars);
+std::string to_std_string(pANTLR3_COMMON_TOKEN token) {
+	ANTLR3_MARKER start = token->getStartIndex(token);
+	ANTLR3_MARKER stop = token->getStopIndex(token);
+	std::string str((const char*)start, stop-start+1);
+	if ((str[0] == '\'' && str[str.size()-1] == '\'') ||
+	    (str[0] == '"' && str[str.size()-1] == '"'))
+	  { str = str.substr(1, str.size()-2); }
+	return str;
 }
 }
 /*------------------------------------------------------------------
@@ -96,16 +102,16 @@ cif
 
 loop_body
 	:	v1=value
-{ ($data_items::curr_loop_values)->push_back(to_std_string($v1.text)); }
+{ ($data_items::curr_loop_values)->push_back(to_std_string($v1.start)); }
 	      ( WHITESPACE+
 	        v2=value
-{ ($data_items::curr_loop_values)->push_back(to_std_string($v2.text)); }
+{ ($data_items::curr_loop_values)->push_back(to_std_string($v2.start)); }
 	       )*
 	;
 
 save_frame
 	:	SAVE_FRAME_HEADING
-{ ($parse::builder)->attr("start_save_frame")(to_std_string($SAVE_FRAME_HEADING.text)); }
+{ ($parse::builder)->attr("start_save_frame")(to_std_string($SAVE_FRAME_HEADING)); }
 	      ( WHITESPACE+ data_items )+ WHITESPACE+ SAVE
 { ($parse::builder)->attr("end_save_frame")(); }
 	;
@@ -123,8 +129,8 @@ scope { scitbx::af::shared<std::string> *curr_loop_values;
 	:	TAG WHITESPACE value
 {
   ($parse::builder)->attr("add_data_item")(
-  to_std_string($TAG.text),
-  to_std_string($value.text));
+  to_std_string($TAG),
+  to_std_string($value.start));
 }
 	      | loop_header WHITESPACE* loop_body
 {
@@ -140,13 +146,13 @@ scope { scitbx::af::shared<std::string> *curr_loop_values;
 
 data_block
 	:	DATA_BLOCK_HEADING
-{ ($parse::builder)->attr("add_data_block")(to_std_string($DATA_BLOCK_HEADING.text)); }
+{ ($parse::builder)->attr("add_data_block")(to_std_string($DATA_BLOCK_HEADING)); }
 	      ( WHITESPACE+ ( data_items | save_frame ) )*
 	;
 
 loop_header
 	:	LOOP_ ( WHITESPACE+ TAG
-{ ($data_items::curr_loop_headers)->push_back(to_std_string($TAG.text)); }
+{ ($data_items::curr_loop_headers)->push_back(to_std_string($TAG)); }
 		 )+ WHITESPACE
 	;
 
@@ -270,20 +276,12 @@ fragment SINGLE_QUOTED_STRING
 	:	SINGLE_QUOTE
 		( ( (SINGLE_QUOTE NON_BLANK_CHAR_)=>SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )*
 		SINGLE_QUOTE
-{ 
-pANTLR3_STRING quoted_string = GETTEXT();
-SETTEXT(quoted_string->subString(quoted_string, 1, quoted_string->len - 1));
-}
 	;
 
 fragment DOUBLE_QUOTED_STRING
 	:	DOUBLE_QUOTE
 		( ( (DOUBLE_QUOTE NON_BLANK_CHAR_)=>DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )*
 	        DOUBLE_QUOTE
-{ 
-pANTLR3_STRING quoted_string = GETTEXT();
-SETTEXT(quoted_string->subString(quoted_string, 1, quoted_string->len - 1));
-}
 	;
 
 /*------------------------------------------------------------------
