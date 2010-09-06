@@ -182,16 +182,15 @@ class nsd_rigid_body_fitter(object):
 
 
 def tst_nsd():
-  mt = flex.mersenne_twister(seed=0)
   moving1 = flex.vec3_double()
   moving2 = flex.vec3_double()
   fixed  = flex.vec3_double()
   max_noise = 0
   for ii in range(10):
-    noise = mt.random_double(3)*2-1.0
+    noise = flex.random_double(3)*2-1.0
     if noise.norm() > max_noise:
       max_noise = noise.norm()
-    xyz = mt.random_double(3)*5
+    xyz = flex.random_double(3)*5
     fixed.append( list(xyz) )
     moving1.append(  list(xyz + noise/10) )
     moving2.append(  list(xyz + noise/2) )
@@ -214,6 +213,9 @@ def tst_nsd():
 
 
 if __name__ == "__main__":
+  from stdlib import random
+  random.seed(0)
+  flex.set_random_seed(0)
   for ii in range(10):
     tst_nsd()
   print "OK"
