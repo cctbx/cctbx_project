@@ -53,11 +53,16 @@ class MetallicButton (wx.PyControl) :
       self._bmp['disable'] = img.ConvertToBitmap()
     else :
       self._bmp['disable'] = None
+    self._label2_font = self.GetFont()
+    self._label2_font.SetPointSize(caption_size)
+    self._label2_font.SetStyle(wx.FONTSTYLE_ITALIC)
     if style & MB_STYLE_BOLD_LABEL :
       font_size = label_size
-      self._label_font = wx.Font(font_size, wx.SWISS, wx.NORMAL, wx.BOLD)
+      self._label_font = self.GetFont()
+      self._label_font.SetPointSize(label_size)
+      self._label_font.SetWeight(wx.FONTWEIGHT_BOLD)
       self.SetFont(self._label_font)
-    self._label2_font = wx.Font(caption_size, wx.SWISS, wx.ITALIC, wx.NORMAL)
+    #self._label2_font = wx.Font(caption_size, wx.SWISS, wx.ITALIC, wx.NORMAL)
 
     self._menu = None
     self.SetLabel(label)
@@ -332,8 +337,10 @@ class MetallicButton (wx.PyControl) :
       if min_w == -1 :
         min_w = 120
       txt_w = min_w - width - 10
+      if wx.Platform == '__WXGTK__' :
+        txt_w += 200
       lines = wx.lib.wordwrap.wordwrap(self._label2,
-        width=min_w,
+        width=txt_w,
         dc=dc)
       self._caption_lines = lines
       offset = 0
