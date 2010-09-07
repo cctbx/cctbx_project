@@ -1102,7 +1102,8 @@ class structure(crystal.special_position_settings):
   def pair_asu_table(self,
         distance_cutoff=None,
         asu_mappings_buffer_thickness=None,
-        asu_is_inside_epsilon=None):
+        asu_is_inside_epsilon=None,
+        min_cubicle_edge=5):
     assert (distance_cutoff is not None
             or asu_mappings_buffer_thickness is not None)
     if (asu_mappings_buffer_thickness is None):
@@ -1112,13 +1113,16 @@ class structure(crystal.special_position_settings):
       asu_is_inside_epsilon=asu_is_inside_epsilon)
     pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
     if (distance_cutoff is not None):
-      pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
+      pair_asu_table.add_all_pairs(
+        distance_cutoff=distance_cutoff,
+        min_cubicle_edge=min_cubicle_edge)
     return pair_asu_table
 
   def show_distances(self,
         distance_cutoff=None,
         asu_mappings_buffer_thickness=None,
         asu_is_inside_epsilon=None,
+        min_cubicle_edge=5,
         pair_asu_table=None,
         show_cartesian=False,
         keep_pair_asu_table=False,
@@ -1128,7 +1132,8 @@ class structure(crystal.special_position_settings):
       pair_asu_table = self.pair_asu_table(
         distance_cutoff=distance_cutoff,
         asu_mappings_buffer_thickness=asu_mappings_buffer_thickness,
-        asu_is_inside_epsilon=asu_is_inside_epsilon)
+        asu_is_inside_epsilon=asu_is_inside_epsilon,
+        min_cubicle_edge=min_cubicle_edge)
     return pair_asu_table.show_distances(
       site_labels=self.scatterers().extract_labels(),
       sites_frac=self.sites_frac(),

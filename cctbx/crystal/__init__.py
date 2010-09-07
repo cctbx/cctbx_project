@@ -12,6 +12,7 @@ from scitbx.array_family import shared
 from scitbx import stl
 import scitbx.stl.set
 import scitbx.stl.vector
+import libtbx
 from libtbx.utils import Keep
 import sys
 
@@ -455,6 +456,7 @@ class special_position_settings(symmetry):
         site_symmetry_table=None,
         asu_mappings_buffer_thickness=None,
         asu_is_inside_epsilon=None,
+        min_cubicle_edge=5,
         distance_cutoff_epsilon=None):
     assert sites_frac is not None or sites_cart is not None
     if (asu_mappings_buffer_thickness is None):
@@ -470,6 +472,7 @@ class special_position_settings(symmetry):
         distance_cutoff_epsilon = asu_mappings.asu().is_inside_epsilon()
     result.add_all_pairs(
       distance_cutoff=distance_cutoff,
+      min_cubicle_edge=min_cubicle_edge,
       epsilon=distance_cutoff_epsilon)
     return result
 
@@ -796,7 +799,9 @@ class show_angles(object):
       print >> out, "*%s" %(i+1),
       print >> out, rt_mx
 
-class sym_pair(object):
+class sym_pair(libtbx.slots_getstate_setstate):
+
+  __slots__ = ["i_seq", "j_seq", "rt_mx_ji"]
 
   def __init__(self, i_seq, j_seq, rt_mx_ji):
     self.i_seq = i_seq
