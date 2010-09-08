@@ -356,8 +356,6 @@ class bulk_solvent_and_scales(object):
          self.show(fmodel = fmodel,
            message = m+str(mc)+": apply back trace(b_cart)")
        fmodel.update(target_name = fmodel_target)
-       if(not params.apply_back_trace_of_b_cart):
-         self.ERROR_MESSAGE(status=_approx_le(fmodel.r_work(), start_target))
        if(abs(fmodel.k_sol()) < 0.01):
          fmodel.update(k_sol = 0.0, b_sol = 0.0)
 
