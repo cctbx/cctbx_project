@@ -55,7 +55,8 @@ class MetallicButton (wx.PyControl) :
       self._bmp['disable'] = None
     self._label2_font = self.GetFont()
     self._label2_font.SetPointSize(caption_size)
-    self._label2_font.SetStyle(wx.FONTSTYLE_ITALIC)
+    if not ((wx.VERSION[0] == 2) and (wx.VERSION[1] == 9)) :
+      self._label2_font.SetStyle(wx.FONTSTYLE_ITALIC)
     if style & MB_STYLE_BOLD_LABEL :
       font_size = label_size
       self._label_font = self.GetFont()
