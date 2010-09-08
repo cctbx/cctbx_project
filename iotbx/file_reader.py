@@ -7,14 +7,8 @@
 # inline, not globally
 
 import sys, os, re, string
-from iotbx.phil import parse as parse_phil
-from iotbx.pdb import is_pdb_file
-from iotbx.pdb import input as pdb_input
-from iotbx.reflection_file_reader import any_reflection_file
-from iotbx.reflection_file_utils import reflection_file_server
 from libtbx import smart_open
 from libtbx.utils import Sorry
-from scitbx.array_family import flex
 import cPickle
 
 standard_file_types = ["hkl", "ccp4_map", "xplor_map", "pdb", "cif", "phil",
@@ -133,7 +127,10 @@ class any_file_input (object) :
       self.file_description = self.__descriptions[self.file_type]
 
   def try_as_pdb (self) :
+    from iotbx.pdb import is_pdb_file
     if is_pdb_file(self.file_name) :
+      from iotbx.pdb import input as pdb_input
+      from scitbx.array_family import flex
       raw_records = flex.std_string()
       pdb_file = smart_open.for_reading(file_name=self.file_name)
       raw_records.extend(flex.split_lines(pdb_file.read()))
@@ -142,7 +139,13 @@ class any_file_input (object) :
       self.file_object = structure
 
   def try_as_hkl (self) :
-    hkl_file = any_reflection_file(self.file_name)
+    from iotbx.reflection_file_reader import any_reflection_file
+    from iotbx.reflection_file_utils import reflection_file_server
+    try :
+      hkl_file = any_reflection_file(self.file_name)
+    except Exception, e :
+      print e
+      raise
     assert hkl_file.file_type() is not None
     self.file_server = reflection_file_server(
       crystal_symmetry=None,
@@ -160,6 +163,7 @@ class any_file_input (object) :
     self.file_object = cif_object
 
   def try_as_phil (self) :
+    from iotbx.phil import parse as parse_phil
     phil_object = parse_phil(file_name=self.file_name, process_includes=True)
     self.file_type = "phil"
     self.file_object = phil_object
@@ -237,7 +241,7 @@ class any_file_input (object) :
   def assert_file_type (self, expected_type) :
     if (expected_type is None) :
       return None
-    elif self.file_type == expected_type :
+    elif (self.file_type == expected_type) :
       return True
     else :
       raise Sorry(("Expected file type '%s' for %s, got '%s'.  This is " +
