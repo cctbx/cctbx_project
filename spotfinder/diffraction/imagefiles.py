@@ -160,7 +160,12 @@ class image_files:
         A = ImageFactory(name)
         self.images.append(A)
 
-  def frames(self,wedgelimit): # gives the frame numbers
+  def frames(self,wedgelimit=None): # gives the frame numbers
+    if wedgelimit == None:return [item.number for item in self.filenames.FN]
+    import inspect
+    print "image_files.frames deprecated usage called by %s line %d; contact nksauter@lbl.gov"%(
+      inspect.currentframe().f_back.f_code.co_name,
+      inspect.currentframe().f_back.f_lineno)
     return [item.number for item in self.filenames.FN[0:wedgelimit]]
 
   def imageindex(self,indexnumber): # gives the actual image
