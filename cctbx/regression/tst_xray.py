@@ -658,6 +658,27 @@ Si*4  O     Si     146.93
   assert ([ f.bits for f in grad_flags ]
           ==
           [ sc.flags.bits for sc in xs.scatterers() ])
+  #
+  from cctbx.eltbx import wavelengths
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(3,4,5,90,90,90),
+      space_group_symbol="Pmmm"))
+  xs.add_scatterer(xray.scatterer("C1", site=(0.5, 0.5, 0.5)))
+  xs.add_scatterer(xray.scatterer("C2", site=(0.7, 0.7, 0.7)))
+  xs.add_scatterer(xray.scatterer("S3", site=(0.3, 0.3, 0.3)))
+  xs1 = xs.deep_copy_scatterers()
+  xs1.set_inelastic_form_factors(wavelengths.characteristic("Mo"), "sasaki")
+  for sc in xs1.scatterers():
+    assert sc.flags.use_fp_fdp() == True
+    assert sc.fp != 0
+    assert sc.fdp != 0
+  xs2 = xs.deep_copy_scatterers()
+  xs2.set_inelastic_form_factors(0.71073, "henke") # angstrom
+  for sc in xs2.scatterers():
+    assert sc.flags.use_fp_fdp() == True
+    assert sc.fp != 0
+    assert sc.fdp != 0
 
 
 def exercise_closest_distances():

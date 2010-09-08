@@ -329,11 +329,25 @@ namespace {
     ;
 
     def("set_inelastic_form_factors_from_henke",
-        set_inelastic_form_factors< scatterer<>, eltbx::henke::table >,
+      (void(*)(af::ref<scatterer<> > const &,
+               eltbx::wavelengths::characteristic,
+               bool))
+        inelastic_form_factors<eltbx::henke::table>::set,
         (arg("scatterers"), arg("photon"), arg("set_use_fp_fdp")=true));
     def("set_inelastic_form_factors_from_sasaki",
-        set_inelastic_form_factors< scatterer<>, eltbx::sasaki::table >,
+      (void(*)(af::ref<scatterer<> > const &,
+               eltbx::wavelengths::characteristic,
+               bool))
+        inelastic_form_factors<eltbx::henke::table>::set,
         (arg("scatterers"), arg("photon"), arg("set_use_fp_fdp")=true));
+    def("set_inelastic_form_factors_from_henke",
+      (void(*)(af::ref<scatterer<> > const &, float, bool))
+        inelastic_form_factors<eltbx::henke::table>::set,
+        (arg("scatterers"), arg("wavelength"), arg("set_use_fp_fdp")=true));
+    def("set_inelastic_form_factors_from_sasaki",
+      (void(*)(af::ref<scatterer<> > const &, float, bool))
+        inelastic_form_factors<eltbx::henke::table>::set,
+        (arg("scatterers"), arg("wavelength"), arg("set_use_fp_fdp")=true));
   }
 
 }}} // namespace cctbx::xray::boost_python

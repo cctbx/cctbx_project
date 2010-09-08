@@ -407,22 +407,34 @@ class apply_rigid_body_shift
     }
 };
 
-  template <class ScattererType, class TableType>
-  void set_inelastic_form_factors(af::ref<ScattererType> const &scatterers,
-                                  eltbx::wavelengths::characteristic photon,
-                                  bool set_use_fp_fdp)
+  template <class TableType>
+  struct inelastic_form_factors
   {
-    float ev = photon.as_ev();
-    for (int i=0; i < scatterers.size(); ++i) {
-      ScattererType &sc = scatterers[i];
-      TableType tb(sc.label);
-      CCTBX_ASSERT(tb.is_valid());
-      eltbx::fp_fdp ff_inel = tb.at_ev(ev);
-      sc.fp = ff_inel.fp();
-      sc.fdp = ff_inel.fdp();
-      if (set_use_fp_fdp) sc.flags.set_use_fp_fdp(true);
+    template <class ScattererType>
+    static void set(af::ref<ScattererType> const &scatterers,
+                    eltbx::wavelengths::characteristic photon,
+                    bool set_use_fp_fdp)
+    {
+      set(scatterers, photon.as_angstrom(), set_use_fp_fdp);
     }
-  }
+
+    template <class ScattererType>
+    static void set(af::ref<ScattererType> const &scatterers,
+                    float wavelength, // in angstrom
+                    bool set_use_fp_fdp)
+    {
+      for (int i=0; i < scatterers.size(); ++i) {
+        ScattererType &sc = scatterers[i];
+        if (sc.scattering_type == "H" || sc.scattering_type == "D") continue;
+        TableType tb(sc.scattering_type);
+        CCTBX_ASSERT(tb.is_valid());
+        eltbx::fp_fdp ff_inel = tb.at_angstrom(wavelength);
+        sc.fp = ff_inel.fp();
+        sc.fdp = ff_inel.fdp();
+        if (set_use_fp_fdp) sc.flags.set_use_fp_fdp(true);
+      }
+    }
+  };
 
 }} // namespace cctbx::xray
 
