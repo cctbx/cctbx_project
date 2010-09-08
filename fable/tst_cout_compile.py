@@ -148,7 +148,8 @@ class process_file_info(object):
       common_equivalence_simple_by_file_name.get(file_name, []))]
     if (len(common_equivalence_simple_list[0]) != 0):
       common_equivalence_simple_list.append([])
-    for common_equivalence_simple in common_equivalence_simple_list:
+    for i_ces,common_equivalence_simple in \
+          enumerate(common_equivalence_simple_list):
       common_report_stringio = StringIO()
       try:
         lines = fable.cout.process(
@@ -168,11 +169,14 @@ class process_file_info(object):
       else:
         assert not have_simple_equivalence
       assert file_name.endswith(".f")
-      fem_cpp = file_name[:-2]+"_fem" + ".cpp"
+      base_name = file_name[:-2]
+      if (len(common_equivalence_simple_list) != 1):
+        base_name += "_alt%d" % i_ces
+      fem_cpp = base_name + "_fem.cpp"
       fem_exe_name = fem_cpp[:-4] + O.comp_env.exe_suffix
       print >> open(fem_cpp, "w"), "\n".join(lines)
       if (opts.ifort):
-        ifort_exe_name = file_name[:-2]+"_ifort"
+        ifort_exe_name = base_name + "_ifort"
         ifort_cmd = "ifort -diag-disable 7000 -o %s %s" % (
           ifort_exe_name, show_string(file_path))
       else:
