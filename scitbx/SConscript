@@ -53,6 +53,9 @@ if (not env_etc.no_boost_python):
   env.SharedLibrary(
     target="#lib/scitbx_r3_utils_ext",
     source=["r3_utils_ext.cpp"])
+  env.SharedLibrary(
+    target="#lib/scitbx_cubicle_neighbors_ext",
+    source=["cubicle_neighbors_ext.cpp"])
 
 SConscript("lbfgs/SConscript")
 SConscript("minpack/SConscript")

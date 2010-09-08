@@ -1070,6 +1070,9 @@ scitbx/command_line/generate_error_h.py -text
 scitbx/command_line/show_sizes.py svneol=native#text/x-python
 scitbx/command_line/unicode_examples.py svneol=native#text/x-python
 scitbx/cross_entropy.py -text
+scitbx/cubicle_neighbors.hpp svneol=native#text/plain
+scitbx/cubicle_neighbors.py svneol=native#text/x-python
+scitbx/cubicle_neighbors_ext.cpp svneol=native#text/plain
 scitbx/direct_search_simulated_annealing.py -text
 scitbx/error/SConscript -text
 scitbx/error/tst_error.cpp -text
@@ -1272,6 +1275,7 @@ scitbx/sparse/tests/tst_lu_factorization.py -text
 scitbx/sparse/tests/tst_sparse.py -text
 scitbx/sparse/vector.h -text
 scitbx/stl/vector_io.h -text
+scitbx/tst_cubicle_neighbors.py svneol=native#text/x-python
 scitbx/tst_r3_utils.py svneol=native#text/x-python
 scitbx/wigner/SConscript -text
 scitbx/wigner/__init__.py -text
