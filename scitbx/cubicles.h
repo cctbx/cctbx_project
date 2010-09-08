@@ -2,9 +2,11 @@
 #define SCITBX_CUBICLES_H
 
 #include <scitbx/math/utils.h>
+#include <scitbx/vec3.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/misc_functions.h>
+#include <map>
 #include <cstdio>
 
 namespace scitbx {
@@ -15,7 +17,7 @@ namespace scitbx {
     void
     throw_show_cubicle_dimensions(
       const char* message,
-      scitbx::vec3<FloatType> const& space_span,
+      vec3<FloatType> const& space_span,
       FloatType const& cubicle_edge,
       af::c_grid<3, unsigned> const& n_cubicles,
       unsigned long max_number_of_bytes)
@@ -64,30 +66,65 @@ namespace scitbx {
   template <typename CubicleContentType, typename FloatType=double>
   struct cubicles
   {
-    typedef scitbx::math::float_int_conversions<FloatType, int> fic;
+    typedef math::float_int_conversions<FloatType, int> fic;
 
     //! Default constructor. Some data members are not initialized!
     cubicles() {}
 
     cubicles(
-      scitbx::vec3<FloatType> const& space_min_,
-      scitbx::vec3<FloatType> const& space_span,
+      vec3<FloatType> const& space_min_,
+      vec3<FloatType> const& space_span,
       FloatType const& cubicle_edge_,
       FloatType const& epsilon)
     :
       space_min(space_min_),
       cubicle_edge(cubicle_edge_*(1+epsilon))
     {
-      SCITBX_ASSERT(cubicle_edge > 0);
+      init_finalize(space_span, cubicle_edge_, epsilon);
+    }
+
+    cubicles(
+      af::const_ref<vec3<FloatType> > const& sites_cart,
+      FloatType const& cubicle_edge_,
+      FloatType const& epsilon)
+    :
+      cubicle_edge(cubicle_edge_*(1+epsilon))
+    {
+      vec3<FloatType> space_span;
+      if (sites_cart.size() == 0) {
+        space_min.fill(0);
+        space_span.fill(cubicle_edge_);
+      }
+      else {
+        space_min = sites_cart[0];
+        space_span = sites_cart[0];
+        for(std::size_t i=0;i<sites_cart.size();i++) {
+          for(unsigned j=0;j<3;j++) {
+            math::update_min(space_min[j], sites_cart[i][j]);
+            math::update_max(space_span[j], sites_cart[i][j]);
+          }
+        }
+        space_span -= space_min;
+      }
+      init_finalize(space_span, cubicle_edge_, epsilon);
+    }
+
+    void
+    init_finalize(
+      vec3<FloatType> const& space_span,
+      FloatType const& cubicle_edge_,
+      FloatType const& epsilon)
+    {
       SCITBX_ASSERT(epsilon > 0);
       SCITBX_ASSERT(epsilon < 0.01);
+      SCITBX_ASSERT(cubicle_edge > 0);
       af::c_grid<3, unsigned> n_cubicles;
       for(std::size_t i=0;i<3;i++) {
         n_cubicles[i] = static_cast<unsigned>(
           std::max(1, fic::iceil(space_span[i] / cubicle_edge)));
       }
       unsigned long max_alloc = cubicles_max_memory_allocation_get();
-      if (scitbx::math::unsigned_product_leads_to_overflow(
+      if (math::unsigned_product_leads_to_overflow(
             n_cubicles.begin(), 3)) {
         detail::throw_show_cubicle_dimensions(
           "Excessive number of cubicles:",
@@ -126,17 +163,31 @@ namespace scitbx {
     }
 
     template <typename SiteType>
-    scitbx::vec3<unsigned>
-    i_cubicle(SiteType const& site) const
+    vec3<unsigned>
+    i_cubicle(
+      SiteType const& site) const
     {
-      scitbx::vec3<FloatType> delta = site - space_min;
-      scitbx::vec3<unsigned> result;
-      for(std::size_t i=0;i<3;i++) {
+      vec3<FloatType> delta = site - space_min;
+      vec3<unsigned> result;
+      for(unsigned i=0;i<3;i++) {
         int j = fic::ifloor(delta[i] / cubicle_edge);
         // compensate for rounding errors
         if      (j < 0) j = 0;
         else if (j >= ref.accessor()[i]) j = ref.accessor()[i]-1;
         result[i] = static_cast<unsigned>(j);
+      }
+      return result;
+    }
+
+    template <typename SiteType>
+    vec3<int>
+    j_cubicle(
+      SiteType const& site) const
+    {
+      vec3<FloatType> delta = site - space_min;
+      vec3<int> result;
+      for(unsigned i=0;i<3;i++) {
+        result[i] = fic::ifloor(delta[i] / cubicle_edge);
       }
       return result;
     }
@@ -151,7 +202,7 @@ namespace scitbx {
       return result;
     }
 
-    scitbx::vec3<FloatType> space_min;
+    vec3<FloatType> space_min;
     FloatType cubicle_edge;
     af::versa<CubicleContentType, af::c_grid<3, unsigned> > memory;
     af::ref<CubicleContentType, af::c_grid<3, unsigned> > ref;
