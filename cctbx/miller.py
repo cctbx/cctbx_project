@@ -2230,26 +2230,36 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
         ff.append(c/n)
     return group_args(reflection_counts=rc, free_fractions=ff)
 
-  def r1_factor(self, other, scale_factor=None, assume_index_matching=False):
+  def r1_factor(self, other, scale_factor=None, assume_index_matching=False,
+                use_binning=False):
     """ sum ||F| - k|F'|| / sum |F|
     where F is self.data() and F' is other.data() and
     k is the factor to put F' on the same scale as F """
+    assert not use_binning or self.binner() is not None
     assert (self.observation_type() is None
             or self.is_complex_array() or self.is_xray_amplitude_array())
     assert (self.observation_type() is None
             or other.is_complex_array() or other.is_xray_amplitude_array())
-    if assume_index_matching:
-      data0, data = self.data(), other.data()
-    else:
-      matching = match_indices(self.indices(), other.indices())
-      assert not matching.have_singles()
-      data0 = self.select(matching.pairs().column(0)).data()
-      data = other.select(matching.pairs().column(1)).data()
-    data  = flex.abs(data)
-    data0 = flex.abs(data0)
-    if scale_factor is not None:
-      data *= scale_factor
-    return flex.sum(flex.abs(data - data0)) / flex.sum(data0)
+    if not use_binning:
+      if self.data().size() == 0: return None
+      if assume_index_matching:
+        data0, data = self.data(), other.data()
+      else:
+        matching = match_indices(self.indices(), other.indices())
+        assert not matching.have_singles()
+        data0 = self.select(matching.pairs().column(0)).data()
+        data = other.select(matching.pairs().column(1)).data()
+      data  = flex.abs(data)
+      data0 = flex.abs(data0)
+      if scale_factor is not None:
+        data *= scale_factor
+      return flex.sum(flex.abs(data - data0)) / flex.sum(data0)
+    results = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      results.append(self.select(sel).r1_factor(
+        other.select(sel), scale_factor, assume_index_matching))
+    return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
   def select(self, selection, negate=False, anomalous_flag=None):
     assert self.indices() is not None
@@ -2828,7 +2838,8 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
                             wilson_plot=None):
     return normalised_amplitudes(self, asu_contents, wilson_plot)
 
-  def scale_factor(self, f_calc, weights=None, cutoff_factor=None):
+  def scale_factor(self, f_calc, weights=None, cutoff_factor=None,
+                   use_binning=False):
     """
     The analytical expression for the least squares scale factor.
 
@@ -2838,27 +2849,40 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     whose magnitudes are greater than cutoff_factor * max(yo) will be included
     in the calculation.
     """
+    assert not use_binning or self.binner() is not None
+    if use_binning: assert cutoff_factor is None
     if weights is not None:
       assert weights.size() == self.data().size()
     assert f_calc.is_complex_array()
     assert f_calc.size() == self.data().size()
-    obs = self.data()
-    if self.is_xray_intensity_array():
-      calc = f_calc.norm().data()
-    else:
-      calc = flex.abs(f_calc.data())
-    if cutoff_factor is not None:
-      assert cutoff_factor < 1
-      sel = obs >= flex.max(self.data()) * cutoff_factor
-      obs = obs.select(sel)
-      calc = calc.select(sel)
+    if not use_binning:
+      if self.data().size() == 0: return None
+      obs = self.data()
+      if self.is_xray_intensity_array():
+        calc = f_calc.norm().data()
+      else:
+        calc = flex.abs(f_calc.data())
+      if cutoff_factor is not None:
+        assert cutoff_factor < 1
+        sel = obs >= flex.max(self.data()) * cutoff_factor
+        obs = obs.select(sel)
+        calc = calc.select(sel)
+        if weights is not None:
+          weights = weights.select(sel)
+      if weights is None:
+        return flex.sum(obs*calc) / flex.sum(flex.pow2(calc))
+      else:
+        return flex.sum(weights * obs * calc) \
+               / flex.sum(weights * flex.pow2(calc))
+    results = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      weights_sel = None
       if weights is not None:
-        weights = weights.select(sel)
-    if weights is None:
-      return flex.sum(obs*calc) / flex.sum(flex.pow2(calc))
-    else:
-      return flex.sum(weights * obs * calc) \
-             / flex.sum(weights * flex.pow2(calc))
+        weights_sel = weights.select(sel)
+      results.append(
+        self.select(sel).scale_factor(f_calc.select(sel), weights_sel))
+    return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
   def from_cif(cls, file_object=None, file_path=None, block_heading=None):
     import iotbx.cif

@@ -1112,6 +1112,11 @@ def exercise_scale_factor():
              - scale_factor*scale_factor) \
          > abs(f_sq_o.scale_factor(f_c, weights=weights)
                - scale_factor*scale_factor)
+  f_sq_o.setup_binner(n_bins=10)
+  for w in [weights, None]:
+    binned_data = f_sq_o.scale_factor(f_c, weights=w, use_binning=True)
+    assert isinstance(binned_data, miller.binned_data)
+    assert len(binned_data.data) == binned_data.binner.n_bins_all()
 
 def exercise_array_2(space_group_info):
   xs = space_group_info.any_compatible_crystal_symmetry(volume=60)
