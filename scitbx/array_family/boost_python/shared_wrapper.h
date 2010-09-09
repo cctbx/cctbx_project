@@ -74,6 +74,12 @@ namespace scitbx { namespace af { namespace boost_python {
       self.extend(other.begin(), other.end());
     }
 
+    static void
+    reserve(w_t& self, std::size_t size)
+    {
+      self.reserve(size);
+    }
+
     static
     boost::python::class_<w_t>
     wrap(std::string const& python_name)
@@ -95,6 +101,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("insert", insert)
         .def("append", &w_t::push_back)
         .def("extend", extend)
+        .def("reserve", reserve)
       ;
 
       scitbx::boost_python::container_conversions::from_python_sequence<

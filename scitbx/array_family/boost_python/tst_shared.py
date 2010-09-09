@@ -17,6 +17,7 @@ def exercise_stl_vector_unsigned():
   a.append([1,2])
   assert native(a) == [(), (1,), (1, 2)]
   a.extend(a)
+  a.reserve(len(a) + 100)
   assert native(a) == [(), (1,), (1, 2), (), (1,), (1, 2)]
   a.insert(1, [2,3])
   assert native(a) == [(), (2,3), (1,), (1, 2), (), (1,), (1, 2)]
