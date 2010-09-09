@@ -485,6 +485,7 @@ def exercise_mtrix(regression_pdb):
     -0.012339, 0.009815, 0.999876], [
       -22.67001, 73.03197, 0.78307]])
   assert mtrix_info[0].coordinates_present
+  assert mtrix_info[1].serial_number == "  2"
 
 def dump_pdb(file_name, sites_cart, crystal_symmetry=None):
   f = open(file_name, "w")

@@ -715,7 +715,10 @@ class _input(boost.python.injector, ext.input):
       if (sorted(done) != [1,2,3] or len(set(present)) != 1):
         raise RuntimeError(
           "Improper set of PDB MTRIX records%s" % source_info)
-      result.append(group_args(values=values, coordinates_present=present[0]))
+      result.append(group_args(
+        values=values,
+        coordinates_present=present[0],
+        serial_number=serial_number))
     return result
 
   def as_pdb_string(self,
