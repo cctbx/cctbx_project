@@ -2893,6 +2893,32 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       data_structure_builder=builders.miller_array_builder).arrays()
   from_cif = classmethod(from_cif)
 
+  def shelxl_extinction_correction(self, x, wavelength):
+    """
+    Extinction parameter x, where Fc is multiplied by:
+      k[1 + 0.001 x Fc^2 wavelength^3 / sin(2theta)]^(-1/4)
+
+    See SHELX-97 manual, page 7-7 for more information.
+
+    Note: The scale factor, k, is not applied nor calculated by
+          this function. The scale factor should be calculated
+          and applied ***AFTER*** the application of the extinction
+          corrections.
+    """
+    assert self.is_complex_array()
+    fc2 = self.as_intensity_array().data()
+    sin_2_theta = flex.sin(
+      uctbx.d_star_sq_as_two_theta(self.d_star_sq().data(), wavelength))
+    correction = 0.001 * x * fc2 * math.pow(wavelength, 3) / sin_2_theta
+    correction += 1
+    correction = flex.pow(correction, -1./4)
+    return correction
+
+  def apply_shelxl_extinction_correction(self, x, wavelength):
+    correction = self.shelxl_extinction_correction(x, wavelength)
+    return self.customized_copy(data=self.data() * correction)
+
+
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
 
   def __init__(self, miller_array,

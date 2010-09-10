@@ -1656,7 +1656,17 @@ def exercise_symmetry_agreement_factor():
                       expected,
                       eps=1e-3)
 
+def exercise_shelxl_extinction_correction():
+  cs = crystal.symmetry((3,4,5), "P 2 2 2")
+  mi = flex.miller_index(((1,-2,3), (0,0,-4)))
+  ms = miller.set(cs, mi, anomalous_flag=True)
+  data = flex.complex_double((1+2j, 2+3j))
+  fc = miller.array(miller_set=ms, data=data)
+  corr = fc.shelxl_extinction_correction(x=0.44, wavelength=0.71073)
+  assert approx_equal(corr, [0.99965712792728978, 0.99906041805376866])
+
 def run(args):
+  exercise_shelxl_extinction_correction()
   exercise_symmetry_agreement_factor()
   exercise_multiscale()
   exercise_difference_map()
