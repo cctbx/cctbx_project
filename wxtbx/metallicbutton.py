@@ -472,6 +472,8 @@ class MetallicButton (wx.PyControl) :
     show the popup menu if one has been set.
 
     """
+    if not self.IsEnabled() :
+      return
     pos = evt.GetPositionTuple()
     self.SetState(GRADIENT_PRESSED)
     size = self.GetSizeTuple()
@@ -487,6 +489,8 @@ class MetallicButton (wx.PyControl) :
     @param evt: wx.MouseEvent
 
     """
+    if not self.IsEnabled() :
+      return
     if self._state['cur'] == GRADIENT_PRESSED:
       pos = evt.GetPositionTuple()
       size = self.GetSizeTuple()
@@ -661,3 +665,95 @@ class MetallicButton (wx.PyControl) :
       self.SetState(GRADIENT_PRESSED)
     else:
       self.SetState(GRADIENT_HIGHLIGHT)
+
+if __name__ == "__main__" :
+  from wx.lib.embeddedimage import PyEmbeddedImage
+  folder_home = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAI9UlEQVRYhaWXfXBU1RnGf+fe"
+    "u3t3s9ndbLKEEJKQBBICifIhtGBEqaCFarFWWooIFBVERtBaa9WO7VRL4yhFR5RpC1OGTrX2"
+    "H2esIxacTlFRIiggRSMQBhJCQhKSzWY3d/fu/Tj9I59itULfmTvnuXfOx3Oe85z3nCuklFxu"
+    "XDendi1COfn2O+/+83L7ELNnTkNRBCAQigApYOAdBAiBEAKEgkAgEQgBQogszN6TUqhnHDtT"
+    "K6VEEQIlKwISwKV/bpJ+IAe+979L6RIKBVEuk3i+TMWa71yzrnD+vPlXA4cvVwHtMtpEHaP7"
+    "kx/dsSpvxaq7Aeju6Zp6oL7+I+CqS+3sUhWoUDLxU6vX3R+97/4HaW1to7s7xrNb/si8+TdO"
+    "B45ziZO6FAJVMt19eOU994VWrrqb5uazBLMDqKpKe3sHT9Rt4rpvXV/p9HU1AN6v26laPHZM"
+    "v8kQQyXiCya8xeMm96574FHfsuUrudB5gcLCMei6js+nk50dIJFMsvCmRbR3tOc2fnp4PZrv"
+    "VaD7y4eW6Lr+tQgs0En//dEnfqcuvHkR3V0XiMd72LZtG1n+LNo72nnyySepqKzE7/cz74Zv"
+    "k8pYvmMf7rsTzf8SEP8qAv9rCZYHve4bv376RaX2mlpaW5oZFY1imhme3fwcH+w/xJ4977B1"
+    "61Yc2yYYDNLaco57121g9fqfBTQ70cBXGDOZSHylAssDqr3ziU1/UGpqaujq7CQUCuHz+QgG"
+    "Q+SG85lSO4pRBTrTJ89n4XcWoGoKjuvS1XWB2jnXkpUd9hx8961VaL7XgPaLFRDiyx27IRLQ"
+    "nvtl3YuisnICse4uwuEQ4XAYgNZzrbz6r6f5y97PyM3PpiB7FkZyKV49RE5ODgBt587xve//"
+    "EFXTPL/fXPehqfgXAl/ImP9NgYciAc/mjc9vF2XjyuiN9xAOh4cGBzh95hTxWJrJhYsozbsW"
+    "xcmiZFw5o/NHA+Dz+ZBS0hPrZur0GYweW6bWv/3GHa7Q64FTIxW4mMDj0ZxA3a+f2UpxcRFG"
+    "MkEoFCIUCn2OtZVxiGQXUFU1iXHjyikeM56SkhKCweyhOj6fD4B4T4yqydUUFpWLD99/63Zb"
+    "ag3Ap4MERp4Fz4yJhh+q2/InopEI6bRBKBQkKyvwZR76WmEYBr29vUQiUT44UM/GxzbIlKvf"
+    "JaW7QxmhwOaSwvyf1m3ZwdgxBViWRW5uBF3X/6/BATweD36/H8Poo7KykgnV08WBd3YtMi3O"
+    "C8FHYvbMaa9Mmjh+yV3rH6bzfBu2bRGJ5JIdDCJQcKWDlBLpuDjuwNEtQCCG8cBnKSUSUJX+"
+    "k1UIgaJoICSJRIJYVxfBcATd6+X5p37BhXj6N+rixYuvueW2pTUd7a2iteWMCg65uVGy/H5M"
+    "M42mqgggmUxgmikypoljW2TMNFbGxMqYZDIZMhmTdDqFlTGxbQtNVVFVFcfO4Pf5sS2L8+eb"
+    "aDl7hkgkz50642r7yKGDb2nAA8ADxUVFL0fzwkuLisaye/deXn/9dVasWMHevXtpaGhg586d"
+    "+P1+Ojs7Od3URF4kgmM7OEhUIYjH43h1nSlXXEEqlWLjxo24rsvNN3+XTZs2MXfudaxdu4qm"
+    "pmYcx90O3AMDeaC6ugrAZxg9jBtXQm9vnP3797N69WqOHj3KkSNHKC0tRdM00uk0gawsSktL"
+    "8fp0pONiOw6dHR10x2KMHTsWwzBoaGhA83rRdS8HDx5g2rSplJeXIaXEcaQ66BHtt0/VDWKZ"
+    "ne1F13Ooqb6SpUuWUlNzJeVl5ZSXl+PxeADIy8vjbEsLebm5KJqGdCWO45AxMxipFEIIAoEA"
+    "8+bNIy8vj4KCAqqra5gzZw7gIxqN4rrSAnjpb6+gpdPJQQKp/nwAbefPc/jQv+nqSNLS0oGq"
+    "uUOudhwHAFXTcKSLdCWapiEH8GA0njxJR1uMKdWzON3YTE8sPmxU6VpDCliZIdyfkGSaosIS"
+    "rvrmVGLqPpb8+Hoy3ZGhOrZt40qJZVkgJQ4SBGQyGVw5THRixRS0UAwn52MefHgDlRMm49oG"
+    "VsbGcWx7iIA9jBFC4Dpw4tQxjp57mYYXEpSMz2d86AdIG4TWr4CUEsuy+2esgOu4/OPNN5k+"
+    "Y0a/SjYcObGbhOcA+z6TjCuuxLCmkTFtbNvCcawhppo1TMBVVZXeRB/5o0excPZ6PG4AV81g"
+    "mik6LnSSPzqK4zgogv4b9EAqUBWVq2trMVIpALq6Opk5bQ4eZQFeLYBhxkj0Jkim+rAcB+k6"
+    "Q5PWcMUgthAarg3zr72VdDqJVFxc18FMm6iaQp/Rh2PZSAmu6w6sp8SVkJubR/JsM4ZhoHpU"
+    "lt62hrycQlJ2DwKBip9Mqhs7YwHDS6XV7VgKwLJbfpJ9puMIHb3HWThrPZMr5vdf4W0w0gam"
+    "ZWKmTRzpAmKAgBi48ls4Tj8hM23i07KoqMrlgxN/ZU/9dryaj7lTl1MRuREj1QfCHl6CgbJ4"
+    "13vbb2349BTxmEFjUwNrb90CqgOuwhUlC1A1DwiHjz8+SiKZ4OTJkziuiwAUoWCkDPoMg+Mn"
+    "Gpk1ayZ73t/BxhfXENQLsCyXU00N3DD9LLMmLsGVRt+Q75bceyXAU2bK/nlfTxpFVwjlqkQL"
+    "dVpaWtH8Dnct/hXl4UX0pWLE4t0oqkrFhAlIxMDWc0mnTZqamnEx6XD2cvjY27z3RiOhUBhV"
+    "EwQiGtXfGENe1nhKiyp2nW47dBOAmD2/EGB5KKz/2eixEUDGTqMFXXrbTbzZLng8tH0SQAiV"
+    "ZctuR9d1Ru4eAK/XSyJusLt+G4aZpLg0gE8L0HYqju7RCY32oWUp9PUaTJ5exsSq0tlA/SAB"
+    "rpo0d2fa7VmU7suoBdGy1nA06J5paihXpZeqSTNO+zyjPhNC+nVdzwaEHPFXKwYzGErGMDuj"
+    "7Z2NZarwmaFwJN7V3Ra0TVK6T+85dnxfdbw7oQiNuOZTqoFzI++EK7kotm/dlQPoQBYwiL2A"
+    "CnhGVJWADThAH5AAUgNl8pHH1toAL2x+bcwjj68Z1drWePRiE35Z9IzAykXPyLYuw3srw8h9"
+    "9vloG3iG4j+/GQJ2mLhyHwAAAABJRU5ErkJggg==")
+  getfolder_homeData = folder_home.GetData
+  getfolder_homeImage = folder_home.GetImage
+  getfolder_homeBitmap = folder_home.GetBitmap
+
+  app = wx.App(0)
+  frame = wx.Frame(None, -1, "Test frame", style=wx.DEFAULT_FRAME_STYLE)
+  frame_sizer = wx.BoxSizer(wx.VERTICAL)
+  frame.SetSizer(frame_sizer)
+  panel = wx.Panel(frame, -1)
+  frame_sizer.Add(panel)
+  panel_sizer = wx.BoxSizer(wx.VERTICAL)
+  panel.SetSizer(panel_sizer)
+  btn1 = MetallicButton(
+    parent=panel,
+    label="Simple button",
+    button_margin=4)
+  panel_sizer.Add(btn1, 0, wx.ALL|wx.EXPAND, 10)
+  btn2 = MetallicButton(
+    parent=panel,
+    label="Button with bitmap",
+    bmp=folder_home.GetBitmap(),
+    button_margin=4)
+  panel_sizer.Add(btn2, 0, wx.ALL|wx.EXPAND, 10)
+  btn3 = MetallicButton(
+    parent=panel,
+    label="Disabled button",
+    bmp=folder_home.GetBitmap(),
+    button_margin=4)
+  btn3.Enable(False)
+  panel_sizer.Add(btn3, 0, wx.ALL|wx.EXPAND, 10)
+  btn4 = MetallicButton(
+    parent=panel,
+    label="Button with bitmap and caption",
+    label2="This is the button caption that I can't figure out how to wrap "+
+      "properly on any platform (but especially Linux!).",
+    bmp=folder_home.GetBitmap(),
+    button_margin=4,
+    size=(320,-1))
+  panel_sizer.Add(btn4, 0, wx.ALL|wx.EXPAND, 10)
+  panel_sizer.Fit(panel)
+  #frame_sizer.Fit(frame)
+  frame.Fit()
+  frame.Show()
+  app.MainLoop()
