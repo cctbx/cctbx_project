@@ -67,6 +67,19 @@ def prefix_each_line(prefix, lines_as_one_string, rstrip=True):
     suffix="",
     rstrip=rstrip)
 
+def wordwrap (text, max_chars=80) :
+  words = text.split()
+  lines = []
+  current_line = ""
+  for word in words :
+    if ((len(current_line) + len(word)) >= max_chars) :
+      lines.append(current_line)
+      current_line = word
+    else :
+      current_line += " " + word
+  lines.append(current_line)
+  return "\n".join(lines)
+
 def reformat_terminal_text (text) :
   text.strip()
   lines = text.splitlines()
