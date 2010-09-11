@@ -1,3 +1,15 @@
+def exercise_cubicles_max_memory():
+  import scitbx.cubicle_neighbors as cn
+  assert cn.cubicles_max_memory_allocation_get() != 0
+  mm = cn.cubicles_max_memory_allocation_get()
+  cn.cubicles_max_memory_allocation_set(number_of_bytes=10)
+  assert cn.cubicles_max_memory_allocation_get() == 10
+  cn.cubicles_max_memory_allocation_set(number_of_bytes=0)
+  assert cn.cubicles_max_memory_allocation_get() == 0
+  cn.cubicles_max_memory_allocation_set(number_of_bytes=mm)
+  assert cn.cubicles_max_memory_allocation_get() == mm
+  # more tests in cctbx/crystal/tst_ext.py, exercise_cubicles_max_memory()
+
 def neighbors_simple(main_sites_cart, other_sites_cart, distance_cutoff_sq):
   from scitbx.matrix import col
   result = {}
@@ -11,6 +23,7 @@ def neighbors_simple(main_sites_cart, other_sites_cart, distance_cutoff_sq):
 
 def run(args):
   assert len(args) == 0
+  exercise_cubicles_max_memory()
   from scitbx.cubicle_neighbors import cubicle_neighbors
   from scitbx.array_family import flex
   main_sites_cart = flex.vec3_double()
