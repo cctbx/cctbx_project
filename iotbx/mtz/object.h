@@ -278,7 +278,7 @@ namespace mtz {
       char
       space_group_confidence() const
       {
-#if defined(CCP4_MTZDATA) && CCP4_MTZDATA > 20100418
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA >= 20100419
         return ptr()->mtzsymm.spg_confidence;
 #else
         return '\0';
@@ -511,6 +511,39 @@ namespace mtz {
        */
       const float&
       not_a_number_value() { return not_a_number_value_.f; }
+
+      //! Read-only access.
+      const char*
+      xml() const
+      {
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA >= 20100630
+        return ptr()->xml;
+#else
+        return 0;
+#endif
+      }
+
+      //! Read-only access.
+      const char*
+      unknown_headers() const
+      {
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA >= 20100630
+        return ptr()->unknown_headers;
+#else
+        return 0;
+#endif
+      }
+
+      //! Read-only access.
+      int
+      number_of_unknown_headers() const
+      {
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA >= 20100630
+        return ptr()->n_unknown_headers;
+#else
+        return 0;
+#endif
+      }
 
     protected:
       boost::shared_ptr<CMtz::MTZ> ptr_;

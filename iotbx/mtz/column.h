@@ -69,6 +69,66 @@ namespace iotbx { namespace mtz {
       is_active() const { return (ptr()->active != 0); }
 
       //! Read-only access.
+      const char*
+      source() const
+      {
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA >= 20100630
+        return ptr()->colsource;
+#else
+        return 0;
+#endif
+      }
+
+      //! Write access.
+      column&
+      set_source(const char* new_source);
+
+      //! Read-only access.
+      const char*
+      group_name() const
+      {
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA >= 20100630
+        return ptr()->grpname;
+#else
+        return 0;
+#endif
+      }
+
+      //! Write access.
+      column&
+      set_group_name(const char* new_group_name);
+
+      //! Read-only access.
+      const char*
+      group_type() const
+      {
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA >= 20100630
+        return ptr()->grptype;
+#else
+        return 0;
+#endif
+      }
+
+      //! Write access.
+      column&
+      set_group_type(const char* new_group_type);
+
+      //! Read-only access.
+      int
+      group_position() const
+      {
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA >= 20100630
+        return ptr()->grpposn;
+#else
+        return -1;
+#endif
+      }
+
+      //! Write access.
+      column&
+      set_group_position(int new_group_position);
+
+      //! Read-only access.
       int
       array_size() const { return column_array_size(ptr()); }
 

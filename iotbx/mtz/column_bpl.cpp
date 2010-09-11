@@ -30,6 +30,19 @@ namespace {
         .def("type", &w_t::type)
         .def("set_type", &w_t::set_type, (arg("new_type")), return_self<>())
         .def("is_active", &w_t::is_active)
+        .def("source", &w_t::source)
+        .def("set_source", &w_t::set_source, (arg("new_source")),
+          return_self<>())
+        .def("group_name", &w_t::group_name)
+        .def("set_group_name", &w_t::set_group_name, (arg("new_group_name")),
+          return_self<>())
+        .def("group_type", &w_t::group_type)
+        .def("set_group_type", &w_t::set_group_type, (arg("new_group_type")),
+          return_self<>())
+        .def("group_position", &w_t::group_position)
+        .def("set_group_position", &w_t::set_group_position, (
+          arg("new_group_position")),
+            return_self<>())
         .def("array_size", &w_t::array_size)
         .def("array_capacity", &w_t::array_capacity)
         .def("path", &w_t::path)

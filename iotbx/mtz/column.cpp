@@ -50,6 +50,60 @@ namespace iotbx { namespace mtz {
     return *this;
   }
 
+  column&
+  column::set_source(const char* new_source)
+  {
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA >= 20100630
+    IOTBX_ASSERT(new_source != 0);
+    IOTBX_ASSERT(std::strlen(new_source) < sizeof(ptr()->colsource));
+    std::strcpy(ptr()->colsource, new_source);
+    return *this;
+#else
+    throw std::runtime_error(
+      "Outdated mtzdata.h: MTZCOL colsource not available.");
+#endif
+  }
+
+  column&
+  column::set_group_name(const char* new_group_name)
+  {
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA >= 20100630
+    IOTBX_ASSERT(new_group_name != 0);
+    IOTBX_ASSERT(std::strlen(new_group_name) < sizeof(ptr()->grpname));
+    std::strcpy(ptr()->grpname, new_group_name);
+    return *this;
+#else
+    throw std::runtime_error(
+      "Outdated mtzdata.h: MTZCOL grpname not available.");
+#endif
+  }
+
+  column&
+  column::set_group_type(const char* new_group_type)
+  {
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA >= 20100630
+    IOTBX_ASSERT(new_group_type != 0);
+    IOTBX_ASSERT(std::strlen(new_group_type) < sizeof(ptr()->grptype));
+    std::strcpy(ptr()->grptype, new_group_type);
+    return *this;
+#else
+    throw std::runtime_error(
+      "Outdated mtzdata.h: MTZCOL grptype not available.");
+#endif
+  }
+
+  column&
+  column::set_group_position(int new_group_position)
+  {
+#if defined(CCP4_MTZDATA) && CCP4_MTZDATA >= 20100630
+    ptr()->grpposn = new_group_position;
+    return *this;
+#else
+    throw std::runtime_error(
+      "Outdated mtzdata.h: MTZCOL grpposn not available.");
+#endif
+  }
+
   std::string
   column::path() const
   {
