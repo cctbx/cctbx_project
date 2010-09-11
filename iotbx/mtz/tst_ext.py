@@ -145,6 +145,31 @@ def exercise_basic():
     assert column.set_type("H") is column
     assert column.type() == "H"
     assert column.is_active()
+    if (column.source() is None):
+      assert column.group_name() is None
+      assert column.group_type() is None
+      assert column.group_position() == -1
+    else:
+      assert column.source() == ""
+      assert column.set_source(new_source="NsRc") is column
+      assert column.source() == "NsRc"
+      assert column.set_source(new_source="") is column
+      assert column.source() == ""
+      assert column.group_name() == ""
+      assert column.set_group_name(new_group_name="NgN") is column
+      assert column.group_name() == "NgN"
+      assert column.set_group_name(new_group_name="") is column
+      assert column.group_name() == ""
+      assert column.group_type() == ""
+      assert column.set_group_type(new_group_type="NgT") is column
+      assert column.group_type() == "NgT"
+      assert column.set_group_type(new_group_type="") is column
+      assert column.group_type() == ""
+      assert column.group_position() == -1
+      assert column.set_group_position(new_group_position=23) is column
+      assert column.group_position() == 23
+      assert column.set_group_position(new_group_position=-1) is column
+      assert column.group_position() == -1
     assert column.array_size() == 165
     assert column.array_capacity() == 200
     assert column.path() == "/unknown/unknown230103:23:14:49/H"
@@ -521,6 +546,9 @@ def exercise_modifiers(verbose=0):
     mtz_object.set_space_group(space_group)
     assert mtz_object.space_group() == space_group
     assert mtz_object.n_symmetry_matrices() == space_group.order_z()
+  assert mtz_object.xml() is None
+  assert mtz_object.unknown_headers() is None
+  assert mtz_object.number_of_unknown_headers() == 0
   mtz_object = mtz.object() \
     .set_title(title="exercise") \
     .add_history(lines=flex.std_string(["h2"])) \

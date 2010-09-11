@@ -26,6 +26,11 @@ expected_cmtz_struct_sizes = (
   # 2010/04/19, addition of spg_confidence to struct SYMGRP in mtzdata.h
   (56, 84, 176, 500, 12340, 12492), # 32-bit
   (64, 88, 184, 504, 12340, 12536), # 64-bit
+  #
+  # 2010/06/30, addition of colsource...grpposn to struct MTZCOL
+  # and xml...n_unknown_headers to struct MTZ in mtzdata.h
+  (136, 84, 176, 500, 12340, 12504), # 32-bit
+  (144, 88, 184, 504, 12340, 12560), # 64-bit
 )
 if (tuple(ext.cmtz_struct_sizes()) not in expected_cmtz_struct_sizes):
   warnings.warn("""Unexpected iotbx.mtz.cmtz_struct_sizes(): %s
