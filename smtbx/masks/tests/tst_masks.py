@@ -114,6 +114,7 @@ Void  Vol/Ang^3  #Electrons
    1       73.3         21.5
    2       73.3         21.5
 """)
+  cif_block = mask.as_cif_block()
 
   fo2 = fo.f_as_f_sq()
   # this bit is necessary until we have constraints, as

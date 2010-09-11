@@ -22,6 +22,7 @@ class mask(object):
     self.f_000 = None
     self.f_000_s = None
     self.f_000_cell = None
+    self._electron_counts_per_void = None
 
   def compute(self,
               solvent_radius,
@@ -123,7 +124,6 @@ class mask(object):
       self.f_000 = flex.sum(masked_diff_map) * self.fft_scale
       f_000_s = self.f_000 * (masked_diff_map.size() /
         (masked_diff_map.size() - self.n_solvent_grid_points()))
-      #print "F000 void: %.1f" %f_000_s
       if (self.f_000_s is not None and
           approx_equal_relatively(self.f_000_s, f_000_s, 0.0001)):
         break # we have reached convergence
@@ -155,8 +155,6 @@ class mask(object):
         if min_residual == residual:
           scale_for_min_residual = scale
           epsilon_for_min_residual = epsilon
-      #print "epsilon: %.1f" %epsilon_for_min_residual
-      #print "scale: %.4f" %scale_for_min_residual
       self.scale_factor = scale_for_min_residual
       f_model = self.f_model(epsilon=epsilon_for_min_residual)
       f_obs = self.f_obs()
@@ -210,6 +208,25 @@ class mask(object):
     return sum([self.mask.data.count(i+2) for i in range(self.n_voids())
                 if not self.exclude_void_flags[i]])
 
+  def electron_counts_per_void(self):
+    if self._electron_counts_per_void is not None:
+      return self._electron_counts_per_void
+    self._electron_counts_per_void = []
+    masked_diff_map = self.diff_map.real_map_unpadded().set_selected(
+      self.mask.data.as_double() == 0, 0)
+    for i in range(self.n_voids()):
+      if self.exclude_void_flags[i]:
+        f_000_s = 0
+      else:
+        diff_map = masked_diff_map.deep_copy().set_selected(
+          self.mask.data != i+2, 0)
+        f_000 = flex.sum(diff_map) * self.fft_scale
+        f_000_s = f_000 * (
+          self.crystal_gridding.n_grid_points() /
+          (self.crystal_gridding.n_grid_points() - self.n_solvent_grid_points()))
+      self._electron_counts_per_void.append(f_000_s)
+    return self._electron_counts_per_void
+
   def show_summary(self, log=None):
     if log is None: log = sys.stdout
     print >> log, "solvent_radius: %.2f" %(self.mask.solvent_radius)
@@ -230,13 +247,17 @@ class mask(object):
     if n_voids == 0: return
     print >> log
     print >> log, "Void  Vol/Ang^3  #Electrons"
-    cif_block = self.as_cif_block()
-    loop = cif_block.loops['_smtbx_masks_void']
-    for row in loop.iterrows():
-      formatted_site = ["%6.3f" % float(x) for x in row[1:4]]
-      print >> log, "%4i" %(int(row[0])),
-      print >> log, "%10.1f     " %(float(row[4])),
-      print >> log, "%7.1f" %(float(row[5]))
+    grid_points_per_void = self.flood_fill.grid_points_per_void()
+    com = self.flood_fill.centres_of_mass_frac()
+    electron_counts = self.electron_counts_per_void()
+    for i in range(self.n_voids()):
+      void_vol = (
+        self.xray_structure.unit_cell().volume() * grid_points_per_void[i]) \
+               / self.crystal_gridding.n_grid_points()
+      formatted_site = ["%6.3f" % x for x in com[i]]
+      print >> log, "%4i" %(i+1),
+      print >> log, "%10.1f     " %void_vol,
+      print >> log, "%7.1f" %electron_counts[i]
 
   def as_cif_block(self):
     from iotbx import cif
@@ -254,23 +275,19 @@ class mask(object):
     if n_voids == 0: return cif_block
     grid_points_per_void = self.flood_fill.grid_points_per_void()
     com = self.flood_fill.centres_of_mass_frac()
-    masked_diff_map = self.diff_map.real_map_unpadded().set_selected(
-      self.mask.data.as_double() == 0, 0)
+    electron_counts = self.electron_counts_per_void()
     for i in range(self.n_voids()):
-      if self.exclude_void_flags[i]:
-        f_000_s = 0
-      else:
-        diff_map = masked_diff_map.deep_copy().set_selected(
-          self.mask.data != i+2, 0)
-        f_000 = flex.sum(diff_map) * self.fft_scale
-        f_000_s = f_000 * (
-          self.crystal_gridding.n_grid_points() /
-          (self.crystal_gridding.n_grid_points() - self.n_solvent_grid_points()))
       void_vol = (
         self.xray_structure.unit_cell().volume() * grid_points_per_void[i]) \
                / self.crystal_gridding.n_grid_points()
+      xyz = list(com[i])
+      for j in range(3):
+        if round(xyz[j],6) == 0: xyz[j] = 0
+      site_fmt = "%.3f"
       mask_loop.add_row(
-        [i+1, com[i][0], com[i][1], com[i][2], void_vol, f_000_s, '?'])
+        [i+1, site_fmt % xyz[0], site_fmt % xyz[1],
+         site_fmt % xyz[2], "%.1f" % void_vol,
+         "%.1f" %electron_counts[i], '?'])
     cif_block.add_loop(mask_loop)
     cif_block['_smtbx_masks_special_details'] = '?'
     return cif_block
