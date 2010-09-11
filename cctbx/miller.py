@@ -734,8 +734,7 @@ class set(crystal.symmetry):
     if self.anomalous_flag():
       matches = self.match_bijvoet_mates()[1]
       n_non_ano = matches.pairs().size() + matches.n_singles()
-    # make sure the data is unique
-    self.is_unique_set_under_symmetry()
+    assert self.is_unique_set_under_symmetry()
     if fraction is not None:
       if not (fraction > 0 and fraction < 0.5) :
         raise Sorry("R-free flags fraction must be greater than 0 and less "+
