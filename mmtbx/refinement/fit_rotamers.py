@@ -251,17 +251,16 @@ class select_map(object):
     assert target_map_data.all() == model_map_data.all()
     self.fft_n_real = target_map_data.focus()
     self.fft_m_real = target_map_data.all()
+
+  def initialize_rotamers (self) :
     # XXX initialize classes needed for rotamer check
-    # XXX Jeff/Nat: clean it so it is availabe in mmtbx and not from phenix
     self.sa, self.r, self.rot = [None]*3
-    try:
-      from mmtbx.rotamer.sidechain_angles import SidechainAngles
-      from mmtbx.rotamer import rotamer_eval
-      from phenix.validation.rotalyze import rotalyze
-      self.sa = SidechainAngles(False)
-      self.r = rotamer_eval.RotamerEval()
-      self.rot = rotalyze()
-    except ImportError: pass
+    from mmtbx.rotamer.sidechain_angles import SidechainAngles
+    from mmtbx.rotamer import rotamer_eval
+    from mmtbx.validation.rotalyze import rotalyze
+    self.sa = SidechainAngles(False)
+    self.r = rotamer_eval.RotamerEval()
+    self.rot = rotalyze()
 
   def select(self, sites_cart, atom_radius=2.0):
     return maptbx.grid_indices_around_sites(
@@ -343,7 +342,7 @@ def target(sites_cart_residue, unit_cell, m):
   return result
 
 
-class rotomer_evaluator(object):
+class rotamer_evaluator(object):
   def __init__(self, sites_cart_start,
                      unit_cell,
                      two_mfo_dfc_map,
@@ -494,7 +493,7 @@ def torsion_search(residue_evaluator,
   return residue_sites_best, rotamer_id_best
 
 
-def residue_itaration(pdb_hierarchy,
+def residue_iteration(pdb_hierarchy,
                       xray_structure,
                       selection,
                       target_map_data,
@@ -510,7 +509,7 @@ def residue_itaration(pdb_hierarchy,
   assert target_map_data.all() == model_map_data.all()
   fmt1 = "                |--------START--------| |-----FINAL----|"
   fmt2 = "     residue   map_cc 2mFo-DFc mFo-DFc 2mFo-DFc mFo-DFc" \
-    " rotomer n_rot max_moved"
+    " rotamer n_rot max_moved"
   fmt3 = "  %12s%7.4f %8.2f %7.2f %8.2f %7.2f %7s %5d  %8.3f"
   print >> log, fmt1
   print >> log, fmt2
@@ -519,6 +518,7 @@ def residue_itaration(pdb_hierarchy,
     unit_cell  = xray_structure.unit_cell(),
     target_map_data = target_map_data,
     model_map_data = model_map_data)
+  map_selector.initialize_rotamers()
   get_class = iotbx.pdb.common_residue_names_get_class
   n_other_residues = 0
   n_amino_acids_ignored = 0
@@ -552,7 +552,7 @@ def residue_itaration(pdb_hierarchy,
                 sites_cart         = sites_cart_residue,
                 residue_iselection = residue_iselection)
               rotamer_id_best = None
-              rev = rotomer_evaluator(
+              rev = rotamer_evaluator(
                 sites_cart_start = sites_cart_residue,
                 unit_cell        = unit_cell,
                 two_mfo_dfc_map  = target_map_data,
@@ -582,7 +582,7 @@ def residue_itaration(pdb_hierarchy,
                       sites_aa.append(sites_cart_residue[aa_])
                   else:
                     sites_aa = flex.vec3_double([sites_cart_residue[aa[1][0]]])
-                  rev_i = rotomer_evaluator(
+                  rev_i = rotamer_evaluator(
                     sites_cart_start = sites_aa,
                     unit_cell        = unit_cell,
                     two_mfo_dfc_map  = target_map_data,
@@ -698,6 +698,7 @@ def validate_changes(fmodel, residue_rsr_monitor, log):
     unit_cell  = xray_structure.unit_cell(),
     target_map_data = target_map_data,
     model_map_data = model_map_data)
+  map_selector.initialize_rotamers()
   sites_cart = xray_structure.sites_cart()
   sites_cart_result = sites_cart.deep_copy()
   unit_cell = xray_structure.unit_cell()
@@ -788,7 +789,7 @@ def run(fmodel,
       real_space_target_weight    = params.residue_iteration.real_space_refine_target_weight,
       real_space_gradients_delta  = fmodel.f_obs.d_min()/4,
       max_iterations              = params.residue_iteration.real_space_refine_max_iterations)
-    residue_rsr_monitor = residue_itaration(
+    residue_rsr_monitor = residue_iteration(
       pdb_hierarchy     = pdb_hierarchy,
       xray_structure    = fmodel.xray_structure,
       selection         = selection,
