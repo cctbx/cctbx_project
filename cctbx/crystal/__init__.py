@@ -21,15 +21,6 @@ pair_sym_ops = sgtbx.stl_vector_rt_mx
 pair_asu_j_sym_groups = scitbx.stl.vector.set_unsigned
 pair_asu_j_sym_group = scitbx.stl.set.unsigned
 
-def __neighbors_max_memory_allocation_set():
-  from libtbx.introspection import machine_memory_info
-  m = machine_memory_info().memory_total()
-  if (m is None): m = 1000000000
-  l = 2**(8*boost.python.sizeof_void_ptr-1)-1
-  if (m > l): m = l
-  neighbors_max_memory_allocation_set(number_of_bytes=m//2)
-__neighbors_max_memory_allocation_set()
-
 class symmetry(object):
 
   def __init__(self, unit_cell=None,

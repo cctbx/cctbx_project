@@ -30,7 +30,12 @@ namespace scitbx { namespace cubicle_neighbors_ext {
   void
   init_module()
   {
+    using namespace boost::python;
     cubicle_neighbors_wrappers::wrap();
+    def("cubicles_max_memory_allocation_set",
+      cubicles_max_memory_allocation_set, (arg("number_of_bytes")));
+    def("cubicles_max_memory_allocation_get",
+      cubicles_max_memory_allocation_get);
   }
 
 }} // namespace scitbx::cubicle_neighbors_ext
