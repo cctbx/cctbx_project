@@ -1176,8 +1176,7 @@ def exercise_cubicles_max_memory():
       minimal=False,
       min_cubicle_edge=0)
   fast_pair_generator_init() # just to make sure it works
-  import scitbx.cubicle_neighbors as cn
-  mm = cn.cubicles_max_memory_allocation_get()
+  mm = crystal.cubicles_max_memory_allocation_get()
   if (1 and mm < 333333*666666*999999):
     sites_cart.append((1.e6,2.e6,3.e6))
     try: fast_pair_generator_init()
@@ -1186,7 +1185,7 @@ def exercise_cubicles_max_memory():
     else: raise Exception_expected
     sites_cart.pop_back()
   if (1):
-    cn.cubicles_max_memory_allocation_set(number_of_bytes=3*6*9)
+    crystal.cubicles_max_memory_allocation_set(number_of_bytes=3*6*9)
     sites_cart.append((10,20,30))
     try: fast_pair_generator_init()
     except RuntimeError, e:
@@ -1198,7 +1197,7 @@ Estimated memory allocation for cubicles exceeds max_number_of_bytes:
     n_cubicles=(3,6,9)
     max_number_of_bytes=162""")
     else: raise Exception_expected
-    cn.cubicles_max_memory_allocation_set(number_of_bytes=mm)
+    crystal.cubicles_max_memory_allocation_set(number_of_bytes=mm)
     fast_pair_generator_init()
     sites_cart.pop_back()
 

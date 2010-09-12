@@ -16,6 +16,10 @@ import libtbx
 from libtbx.utils import Keep
 import sys
 
+import scitbx.cubicle_neighbors
+cubicles_max_memory_allocation_set(
+  number_of_bytes=scitbx.cubicle_neighbors.cubicles_max_memory_allocation_get())
+
 pair_sym_ops = sgtbx.stl_vector_rt_mx
 
 pair_asu_j_sym_groups = scitbx.stl.vector.set_unsigned

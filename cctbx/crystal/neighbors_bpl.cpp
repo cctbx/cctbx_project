@@ -117,6 +117,10 @@ namespace boost_python {
   void wrap_neighbors()
   {
     using namespace boost::python;
+    def("cubicles_max_memory_allocation_get",
+      scitbx::cubicles_max_memory_allocation_get);
+    def("cubicles_max_memory_allocation_set",
+      scitbx::cubicles_max_memory_allocation_set, (arg("number_of_bytes")));
     neighbors::simple_pair_generator_wrappers::wrap();
     neighbors::fast_pair_generator_wrappers::wrap();
   }
