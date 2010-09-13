@@ -364,6 +364,7 @@ write_format.f
 ||
 ||
 |\"	??|
+|yTh|
 conv_recipe.f
 |   0   0   0     infinity|
 |   1   2   3     3.346435|

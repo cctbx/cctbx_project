@@ -215,6 +215,8 @@ def convert_token(vmap, leading, tok):
     if (tv == "//"):
       return " + "
     if (tv == ":"):
+      if (leading):
+        return "1, "
       return ", "
     if (tv == ".eq." or tv == "=="):
       return " == "

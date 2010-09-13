@@ -4,6 +4,7 @@
       call exercise_logical
       call exercise_complex
       call exercise_escape_string_literal
+      call exercise_string_slice_one_implied
       end
 
       subroutine exercise_misc
@@ -144,4 +145,10 @@ c
 
       subroutine exercise_escape_string_literal
       write(6, '(a)') '\"	??'
+      end
+
+      subroutine exercise_string_slice_one_implied
+      character msg*4
+      msg = 'yThB'
+      write(6, '(a)') msg(:3)
       end
