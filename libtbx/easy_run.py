@@ -9,14 +9,21 @@ def _show_lines(lines, out, prefix):
 
 class fully_buffered_base(object):
 
-  def raise_if_errors(self, Error=RuntimeError):
+  def format_errors_if_any(self):
     assert not self.join_stdout_stderr
     if (len(self.stderr_lines) != 0):
       msg = ["child process stderr output:"]
       msg.append("  command: " + repr(self.command))
       for line in self.stderr_lines:
         msg.append("  " + line)
-      raise Error("\n".join(msg))
+      return "\n".join(msg)
+    return None
+
+  def raise_if_errors(self, Error=RuntimeError):
+    assert not self.join_stdout_stderr
+    msg = self.format_errors_if_any()
+    if (msg is not None):
+      raise Error(msg)
     return self
 
   def raise_if_output(self, show_output_threshold=10, Error=RuntimeError):
