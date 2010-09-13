@@ -3,6 +3,7 @@
 # be a good idea to consolidate these modules into one framework.
 
 from mmtbx.refinement import fit_rotamers
+import mmtbx.refinement.real_space
 import mmtbx.model
 import mmtbx.restraints
 import iotbx.phil
@@ -31,6 +32,8 @@ ignore_water_when_flipping = True
   .type = bool
 number_of_macro_cycles = 1
   .type = int
+real_space_refine_overall = False
+  .type = bool
 residue_iteration
   .style = box auto_align
 {
@@ -258,6 +261,9 @@ def residue_iteration (pdb_hierarchy,
                   cc_end = map_selector.get_cc(
                     sites_cart=sites_cart_refined,
                     residue_iselection=residues_iselection)
+                else : # undo changes
+                  sites_cart_start = sites_cart_start.set_selected(
+                    peptide_isel, sites_cart_peptide)
               if (cc_end is not None) :
                 result.append(rm)
                 print >> log, fmt3 % (
@@ -327,60 +333,27 @@ def run(fmodel,
     fmodel.update_xray_structure(update_f_calc=True, update_f_mask=True)
     print >> log, "1:", fmt%(macro_cycle, fmodel.r_work(), fmodel.r_free())
     del target_map_data, model_map_data, residual_map_data, fft_map_1, fft_map_2, fft_map_3
+    if(params.real_space_refine_overall):
+      assert model.xray_structure is fmodel.xray_structure
+      rsr_params = mmtbx.refinement.real_space.master_params().extract()
+      rsr_params.real_space_refinement.mode="diff_map"
+      if(params.exclude_hydrogens and optimize_hd):
+        hd_selection = fmodel.xray_structure.hd_selection()
+        occupancies_cache= fmodel.xray_structure.scatterers().extract_occupancies()
+        fmodel.xray_structure.set_occupancies(value=0, selection=hd_selection)
+      mmtbx.refinement.real_space.run(
+        fmodel = fmodel, # XXX neutron ?
+        model  = model,
+        params = rsr_params.real_space_refinement,
+        log    = log)
+      if(params.exclude_hydrogens and optimize_hd):
+        fmodel.xray_structure.set_occupancies(value = occupancies_cache)
+      assert model.xray_structure is fmodel.xray_structure
+      fmodel.update_xray_structure(update_f_calc=True, update_f_mask=True)
+      print >> log, "2:",fmt%(macro_cycle, fmodel.r_work(), fmodel.r_free())
     if params.validate_change :
       fit_rotamers.validate_changes(
         fmodel=fmodel,
         residue_rsr_monitor=residue_rsr_monitor,
         log=log)
-
-#-----------------------------------------------------------------------
-# XXX this isn't really acceptable as a user-space program - it is
-# mostly just here for testing purposes
-def run_cmdline (args) :
-  from mmtbx.monomer_library import pdb_interpretation
-  from mmtbx import utils
-  import libtbx.phil.command_line
-  from iotbx import file_reader
-  from cStringIO import StringIO
-  interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_params,
-    home_scope="")
-  cif_files = []
-  pdb_file = None
-  mtz_in = None
-  for arg in args :
-    if os.path.isfile(arg) :
-      if iotbx.pdb.is_pdb_file(arg) :
-        pdb_file = arg
-      elif arg.endswith(".cif") :
-        cif_files.append(arg)
-      elif arg.endswith(".mtz") :
-        mtz_in = file_reader.any_file(arg)
-        mtz_in.assert_file_type("hkl")
-  if (pdb_file is None) or (mtz_in is None) :
-    raise Usage("flip_peptides.py pdb_file mtz_file [cif_files]")
-  log = StringIO()
-  processed_pdb_file = pdb_interpretation.run([pdb_file]+cif_files, log=log)
-  geometry = processed_pdb_file.geometry_restraints_manager(
-    show_energies=False)
-  xray_structure = processed_pdb_file.xray_structure()
-  chain_proxies = processed_pdb_file.all_chain_proxies
-  pdb_hierarchy = chain_proxies.pdb_hierarchy
-  # FIXME
-  f_obs = mtz_in.file_server.miller_arrays[0]
-  r_free_raw = mtz_in.file_server.miller_arrays[1]
-  r_free_flags = mtz_in = r_free_raw.array(data=r_free_raw.data() == 1)
-  fmodel = utils.fmodel_simple(xray_structures =[xray_structure],
-                                 f_obs           = f_obs,
-                                 r_free_flags    = r_free_flags)
-  run(
-    fmodel=fmodel,
-    geometry_restraints_manager=geometry,
-    pdb_hierarchy=pdb_hierarchy,
-    solvent_selection=None)
-  pdb_out = os.path.splitext(os.path.basename(pdb_file))[0] + "_new.pdb"
-  open(pdb_out, "w").write(pdb_hierarchy.as_pdb_string())
-  print "wrote %s" % pdb_out
-
-if __name__ == "__main__" :
-  run_cmdline(sys.argv[1:])
+    pdb_hierarchy.atoms().set_xyz(fmodel.xray_structure.sites_cart())

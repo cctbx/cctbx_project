@@ -877,6 +877,7 @@ mmtbx/chemical_components/tst.py -text
 mmtbx/command_line/cbetadev.py -text
 mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/clashscore.py -text
+mmtbx/command_line/flip_peptides.py -text
 mmtbx/command_line/fmodel.py -text
 mmtbx/command_line/fobs_minus_fobs_map.py -text
 mmtbx/command_line/grow_density.py -text
