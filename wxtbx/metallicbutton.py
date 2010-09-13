@@ -1,4 +1,5 @@
 
+# Copyright 2010 University of California
 # derived from wx.lib.platebtn (see copyright below).
 
 ###############################################################################
@@ -55,6 +56,7 @@ class MetallicButton (wx.PyControl) :
       self._bmp['disable'] = None
     self._label2_font = self.GetFont()
     self._label2_font.SetPointSize(caption_size)
+    # XXX this crashes on wxOSX_Cocoa!
     if not ((wx.VERSION[0] == 2) and (wx.VERSION[1] == 9)) :
       self._label2_font.SetStyle(wx.FONTSTYLE_ITALIC)
     if style & MB_STYLE_BOLD_LABEL :

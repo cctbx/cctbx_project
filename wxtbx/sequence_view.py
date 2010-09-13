@@ -1,4 +1,6 @@
 
+# Copyright 2010 University of California
+#
 # Sequence view and selection window, with optional secondary structure
 # annotation.  The outer window and PDB processing methods depend on CCTBX,
 # but the panels can be adapted to any other framework.
@@ -917,12 +919,23 @@ def run (args) :
     frame.seq_panel.SetStyle(WXTBX_SEQ_DEFAULT_STYLE|WXTBX_SEQ_SELECT_RANGE)
   app.MainLoop()
 
+def run_test () :
+  app = wx.App(0)
+  frame = sequence_frame(None, -1, "Demo of sequence display")
+  frame.set_sequence('VLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQG')
+  frame.set_structure('LLLHHHHHHHHHHHHHHHHLHHHHHHHHHHHHHHHLHHHHHLLHHHHLLLLHHHHHHLHHHHHHHHHHHHHHHHHHHHLLLLHHHHHHHHHHHHHLLLLLHHHHHHHHHHHHHHHHHHLLLLLLHHHHHHHHHHHHHHHHHHHHHHHHHLLLL')
+#  if wx.Platform == '__WXMAC__' :
+#    frame.Fit()
+  frame.Show()
+  app.MainLoop()
+
 if __name__ == "__main__" :
-  if "--test" in sys.argv :
-    import libtbx.load_env
-    pdb_file = libtbx.env.find_in_repositories(
-      relative_path="phenix_regression/pdb/1ywf.pdb",
-      test=os.path.isfile)
-    run([pdb_file])
-  else :
-    run(sys.argv[1:])
+  run_test()
+#  if "--test" in sys.argv :
+#    import libtbx.load_env
+#    pdb_file = libtbx.env.find_in_repositories(
+#      relative_path="phenix_regression/pdb/1ywf.pdb",
+#      test=os.path.isfile)
+#    run([pdb_file])
+#  else :
+#    run(sys.argv[1:])
