@@ -2997,6 +2997,11 @@ struct common_commonymous
   std::complex<double> vdc = fem::dcmplx(-7.e10, -8.e0);
   write(6, star), vdc;
 """)
+  #
+  lines = get("write_format.f")
+  assert not absd(lines, tail_off(18), """\
+  write(6, "(a)"), msg(1, 3);
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(
