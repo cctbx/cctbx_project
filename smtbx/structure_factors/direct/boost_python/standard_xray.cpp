@@ -3,6 +3,7 @@
 #include <smtbx/structure_factors/direct/standard_xray.h>
 
 #include <boost/python/class.hpp>
+#include <boost/python/with_custodian_and_ward.hpp>
 
 namespace smtbx { namespace structure_factors { namespace direct {
   namespace boost_python {
@@ -74,7 +75,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
                  arg("space_group"),
                  arg("scatterers"),
                  arg("scattering_type_registry"),
-                 arg("exp_i_2pi_functor"))))
+                 arg("exp_i_2pi_functor")))
+                [with_custodian_and_ward<1, 2,
+                 with_custodian_and_ward<1, 3,
+                 with_custodian_and_ward<1, 4,
+                 with_custodian_and_ward<1, 5,
+                 with_custodian_and_ward<1, 6> > > > >()])
           ;
         }
 
@@ -94,7 +100,11 @@ namespace smtbx { namespace structure_factors { namespace direct {
                ((arg("unit_cell"),
                  arg("space_group"),
                  arg("scatterers"),
-                 arg("scattering_type_registry"))))
+                 arg("scattering_type_registry")))
+                [with_custodian_and_ward<1, 2,
+                 with_custodian_and_ward<1, 3,
+                 with_custodian_and_ward<1, 4,
+                 with_custodian_and_ward<1, 5> > > >()])
           ;
       }
 
