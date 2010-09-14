@@ -107,7 +107,7 @@ namespace fem {
       str_ref val)
     {
       if (have_file) {
-        throw TBXX_NOT_IMPLEMENTED();
+        val = utils::path::absolute(file.c_str()).c_str();
       }
       else {
         io_unit* u_ptr = io_ptr->unit_ptr(unit);

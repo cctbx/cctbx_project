@@ -1446,7 +1446,7 @@ sub1(
   cmn.io.inquire_unit(10)
     .name(cvar);
 """)
-  assert not absd(lines, tail_off(3), """\
+  assert not absd(lines, tail_off(13), """\
   try {
     cmn.io.inquire_file("fable_tmp_5d70aa2a")
       .exist(lvar);

@@ -39,7 +39,7 @@
       inquire(unit=10, blank=cvar)
       i = istring_tail(cvar)
       if (i .lt. 4) then
-        write(6, '(3a)') '[', 'FAILURE: ', cvar, ']'
+        write(6, '(4a)') '[', 'FAILURE: ', cvar, ']'
       else
         write(6, '(3a)') '[', cvar(i-3:i), ']'
       endif
@@ -54,6 +54,14 @@
       goto 20
    10 write(6, '(a)') 'FAILURE inquire file'
    20 continue
+      cvar = ' '
+      inquire(file='fable_tmp_d185826b', name=cvar)
+      i = istring_tail(cvar)
+      if (i .lt. 18) then
+        write(6, '(3a)') '[', 'FAILURE: ', cvar, ']'
+      else
+        write(6, '(3a)') '[', cvar(i-17:i), ']'
+      endif
       end
 
       function istring_tail(s)
