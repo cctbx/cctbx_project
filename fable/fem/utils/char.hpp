@@ -70,6 +70,33 @@ namespace fem { namespace utils {
     return c - ('a' - 'A');
   }
 
+  //! To avoid locale environment surprises (assumes ASCII or similar).
+  inline
+  bool
+  is_upper_a_through_z(
+    int c)
+  {
+    return (c >= 'A' and c <= 'Z');
+  }
+
+  //! To avoid locale environment surprises (assumes ASCII or similar).
+  inline
+  bool
+  is_lower_a_through_z(
+    int c)
+  {
+    return (c >= 'a' and c <= 'z');
+  }
+
+  //! To avoid locale environment surprises (assumes ASCII or similar).
+  inline
+  bool
+  is_a_through_z(
+    int c)
+  {
+    return (is_upper_a_through_z(c) || is_lower_a_through_z(c));
+  }
+
 }} // namespace fem::utils
 
 #endif // GUARD
