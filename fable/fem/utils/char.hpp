@@ -76,7 +76,7 @@ namespace fem { namespace utils {
   is_upper_a_through_z(
     int c)
   {
-    return (c >= 'A' and c <= 'Z');
+    return (c >= 'A' && c <= 'Z');
   }
 
   //! To avoid locale environment surprises (assumes ASCII or similar).
@@ -85,7 +85,7 @@ namespace fem { namespace utils {
   is_lower_a_through_z(
     int c)
   {
-    return (c >= 'a' and c <= 'z');
+    return (c >= 'a' && c <= 'z');
   }
 
   //! To avoid locale environment surprises (assumes ASCII or similar).

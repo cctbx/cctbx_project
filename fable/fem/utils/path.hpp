@@ -12,6 +12,7 @@
 
 #if defined(_MSC_VER)
 
+#include <direct.h> // for _getcwd
 #include <io.h> // for _chsize
 
 #define FEM_UTILS_PATH_STRUCT_STAT struct _stat
@@ -48,7 +49,7 @@ namespace fem { namespace utils { namespace path {
     char const* path)
   {
 #if defined(_MSC_VER)
-    if (is_a_through_z(path[0]) && path[1] == ':') return p+2;
+    if (is_a_through_z(path[0]) && path[1] == ':') return path+2;
 #endif
     return path;
   }
