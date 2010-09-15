@@ -57,7 +57,7 @@ class MetallicButton (wx.PyControl) :
     self._label2_font = self.GetFont()
     self._label2_font.SetPointSize(caption_size)
     # XXX this crashes on wxOSX_Cocoa!
-    if not ((wx.VERSION[0] == 2) and (wx.VERSION[1] == 9)) :
+    if (not 'wxOSX-cocoa' in wx.PlatformInfo) :
       self._label2_font.SetStyle(wx.FONTSTYLE_ITALIC)
     if style & MB_STYLE_BOLD_LABEL :
       font_size = label_size
@@ -90,15 +90,13 @@ class MetallicButton (wx.PyControl) :
     # Mouse Events
     self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
     self.Bind(wx.EVT_LEFT_UP, self.OnLeftUp)
-    self.Bind(wx.EVT_LEFT_DCLICK, lambda evt: self.ToggleState())
-    self.Bind(wx.EVT_ENTER_WINDOW,
-              lambda evt: self.SetState(GRADIENT_HIGHLIGHT))
-    self.Bind(wx.EVT_LEAVE_WINDOW,
-              lambda evt: self.SetState(GRADIENT_NORMAL)) #wx.CallLater(10, self.SetState, GRADIENT_NORMAL))
+    self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
+    self.Bind(wx.EVT_ENTER_WINDOW, self.OnEnter)
+    self.Bind(wx.EVT_LEAVE_WINDOW, self.OnLeave)
 
     # Other events
     self.Bind(wx.EVT_KEY_UP, self.OnKeyUp)
-    self.Bind(wx.EVT_CONTEXT_MENU, lambda evt: self.ShowMenu())
+    self.Bind(wx.EVT_CONTEXT_MENU, self.OnContextMenu)
 
   def __DrawBitmap(self, gc):
     """Draw the bitmap if one has been set
@@ -334,7 +332,7 @@ class MetallicButton (wx.PyControl) :
       label_height = lsize[1]
 
     if self._label2 != '' :
-      dc = wx.ClientDC(self)
+      dc = wx.GraphicsContext.CreateMeasuringContext()
       dc.SetFont(self._label2_font)
       min_w, min_h = self._size
       if min_w == -1 :
@@ -442,6 +440,8 @@ class MetallicButton (wx.PyControl) :
 
   def OnFocus(self, evt):
     """Set the visual focus state if need be"""
+    if not self.IsEnabled() :
+      return
     if self._state['cur'] == GRADIENT_NORMAL:
         self.SetState(GRADIENT_HIGHLIGHT)
 
@@ -515,6 +515,26 @@ class MetallicButton (wx.PyControl) :
     else:
       self.SetState(GRADIENT_NORMAL)
     evt.Skip()
+
+  def OnEnter (self, evt) :
+    if not self.IsEnabled() :
+      return
+    self.SetState(GRADIENT_HIGHLIGHT)
+
+  def OnLeave (self, evt) :
+    if not self.IsEnabled() :
+      return
+    self.SetState(GRADIENT_NORMAL)
+
+  def OnDoubleClick (self, evt) :
+    if not self.IsEnabled() :
+      return
+    self.ToggleState()
+
+  def OnContextMenu (self, evt) :
+    if not self.IsEnabled() :
+      return
+    self.ShowMenu()
 
   #---- End Event Handlers ----#
 
