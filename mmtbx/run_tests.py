@@ -60,6 +60,7 @@ def run():
   "$D/alignment.py",
   "$D/invariant_domain.py",
   "$D/secondary_structure.py",
+  "$D/regression/tst_flip_peptides.py",
   )
 
   build_dir = libtbx.env.under_build("mmtbx")
