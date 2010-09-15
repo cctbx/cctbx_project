@@ -49,7 +49,7 @@ class SegmentedControl (wx.PyControl) :
     self._style = style
     self._border_color = (0, 0, 0)
     if wx.Platform == '__WXGTK__' :
-      self.SetFont(wx.Font(12, wx.SWISS, wx.NORMAL, wx.NORMAL))
+      self.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.NORMAL))
 
     # Event Handlers
     self.Bind(wx.EVT_PAINT, lambda evt: self.__DrawButtons())
@@ -470,7 +470,7 @@ if __name__ == "__main__" :
       btn5.AddSegment(label="Home", bitmap=bmp2)
       btn5.AddSegment(label="Search", bitmap=bmp3)
       btn5.AddSegment(label="Next", bitmap=bmp4)
-      btn5.SetFont(wx.Font(9, wx.SWISS, wx.NORMAL, wx.NORMAL))
+      btn5.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.NORMAL))
       v_sizer.Add(wx.StaticText(panel, -1, "Bitmaps and text"), 0, wx.ALL, 5)
       v_sizer.Add(btn5, 0, wx.ALL, 5)
       frame.Bind(wx.EVT_BUTTON, OnButton, btn5)

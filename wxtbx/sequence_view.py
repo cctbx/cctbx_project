@@ -138,7 +138,7 @@ multiple residues."
       #gc.DrawRectangle(x1, y1, x2 - x1, y2 - y1)
 
   def DoGetBestSize (self) :
-    dc = wx.ClientDC(self)
+    dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
     dc.SetFont(self.txt_font)
     i = 0
     (panel_w, panel_h) = (32, 32)
@@ -159,7 +159,7 @@ multiple residues."
 
   def get_char_size (self, dc=None) :
     if dc is None :
-      dc = wx.ClientDC(self)
+      dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
       dc.SetFont(self.txt_font)
     line_w, char_h = dc.GetTextExtent("X" * 50)
     if wx.Platform == '__WXGTK__' :
@@ -174,7 +174,7 @@ multiple residues."
   def build_boxes (self) :
     #from scitbx.array_family import flex, shared
     self.char_boxes = [] #shared.stl_set_unsigned()
-    dc = wx.ClientDC(self)
+    dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
     dc.SetFont(self.txt_font)
     char_w, char_h = self.get_char_size(dc)
     x_start = 16
