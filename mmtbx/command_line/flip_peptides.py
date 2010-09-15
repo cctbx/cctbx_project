@@ -5,6 +5,10 @@ import sys, os
 # XXX this isn't really very useful as a user-space program - it is
 # mostly just here for testing purposes
 def run (args, out=sys.stdout) :
+  from libtbx.utils import Sorry, Usage
+  if (len(args) == 0) :
+    print "Warning: this is not intended for general use."
+    raise Usage("mmtbx.flip_peptides [model.pdb] [data.mtz] [params ...]")
   from mmtbx.refinement import flip_peptides, print_statistics
   from mmtbx.monomer_library import pdb_interpretation
   from mmtbx import utils
