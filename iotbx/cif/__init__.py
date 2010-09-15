@@ -27,7 +27,7 @@ class reader:
       self.parser = ext.fast_reader(input_string, builder)
     if file_path is not None:
       self.parser = ext.fast_reader(file_path, builder)
-    self.show_errors()
+    self.show_errors(max_errors)
 
   def model(self):
     return self.builder.model()
@@ -72,7 +72,12 @@ class crystal_symmetry_as_cif_block:
     self.cif_block['_cell_angle_beta'] = beta
     self.cif_block['_cell_angle_gamma'] = gamma
 
+
 class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
+  sources = {
+    "it1992": "International Tables Volume C Table 6.1.1.4 (pp. 500-502)",
+    "wk1995": "Waasmaier & Kirfel (1995), Acta Cryst. A51, 416-431",
+  }
 
   def __init__(self, xray_structure):
     crystal_symmetry_as_cif_block.__init__(
@@ -83,10 +88,12 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
       '_atom_site_fract_x', '_atom_site_fract_y', '_atom_site_fract_z',
       '_atom_site_U_iso_or_equiv', '_atom_site_occupancy'))
     uc = xray_structure.unit_cell()
+    fp_fdp_table = {}
     for sc in scatterers:
       atom_site_loop.add_row((
         sc.label, sc.scattering_type, sc.site[0], sc.site[1], sc.site[2],
         sc.u_iso_or_equiv(uc), sc.occupancy))
+      fp_fdp_table.setdefault(sc.scattering_type, (sc.fp, sc.fdp))
     aniso_scatterers = scatterers.select(scatterers.extract_use_u_aniso())
     aniso_loop = model.loop(header=('_atom_site_aniso_label',
                                     '_atom_site_aniso_U_11',
@@ -102,6 +109,27 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
 
     self.cif_block.add_loop(atom_site_loop)
     self.cif_block.add_loop(aniso_loop)
+    #
+    atom_type_loop = model.loop(header=('_atom_type_symbol',
+                                        '_atom_type_scat_dispersion_real',
+                                        '_atom_type_scat_dispersion_imag',
+                                        '_atom_type_scat_source'))
+    scattering_type_registry = xray_structure.scattering_type_registry()
+    params = xray_structure.scattering_type_registry_params
+    scat_source = self.sources.get(params.table)
+    scattering_type_registry = xray_structure.scattering_type_registry()
+    for atom_type, gaussian in scattering_type_registry.as_type_gaussian_dict().iteritems():
+      if params.custom_dict and atom_type in params.custom_dict:
+        scat_source = "Custom %i-Gaussian" %gaussian.n_terms()
+      elif scat_source is None:
+        scat_source = """\
+%i-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
+Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."""
+        scat_source = scat_source %gaussian.n_terms()
+      fp, fdp = fp_fdp_table[atom_type]
+      atom_type_loop.add_row((atom_type, "%.5f" %fp, "%.5f" %fdp, scat_source))
+    self.cif_block.add_loop(atom_type_loop)
+
 
 class miller_indices_as_cif_loop:
 
