@@ -93,27 +93,27 @@ class block_base(DictMixin):
 
   def __getitem__(self, key):
     key = self.keys_lower.get(key.lower(), key)
-    if self._items.has_key(key):
+    if key in self._items:
       return self._items[key]
     else:
       # give precedence to returning the actual data items in the event of a
       # single looped item when the loop name and data name coincide
       for loop in self.loops.values():
-        if loop.has_key(key):
+        if key in loop:
           return loop[key]
-      if self.loops.has_key(key):
+      if key in self.loops:
         return self.loops[key]
     raise KeyError
 
   def __delitem__(self, key):
     key = self.keys_lower.get(key.lower(), key)
-    if self._items.has_key(key):
+    if key in self._items:
       del self._items[key]
       self._set.discard(key)
     elif key in self.keys():
       # must be a looped item
       for k, loop in self.loops.iteritems():
-        if loop.has_key(key):
+        if key in loop:
           if len(loop) == 1:
             # remove the now empty loop
             del self[k]
@@ -121,7 +121,7 @@ class block_base(DictMixin):
             del loop[key]
           return
       raise KeyError
-    elif self.loops.has_key(key):
+    elif key in self.loops:
       del self.loops[key]
       self._set.discard(key)
     else:
@@ -237,14 +237,14 @@ class block(block_base):
 
   def __getitem__(self, key):
     key = self.keys_lower.get(key.lower(), key)
-    if self.saves.has_key(key):
+    if key in self.saves:
       return self.saves[key]
     else:
       return block_base.__getitem__(self, key)
 
   def __delitem__(self, key):
     key = self.keys_lower.get(key.lower(), key)
-    if self.saves.has_key(key):
+    if key in self.saves:
       del self.saves[key]
       self._set.discard(key)
     else:
@@ -269,7 +269,7 @@ class block(block_base):
       v = self._items.get(k)
       if v is not None:
         print >> out, format_str %k, format_value(v)
-      elif self.saves.has_key(k):
+      elif k in self.saves:
         print >> out
         print >> out, "save_%s" %k
         self.saves[k].show(out=out, indent=indent,
@@ -450,6 +450,8 @@ def format_value(value_string):
     if re.match(semicolon_string_re, value_string) is not None:
       # a semicolon text field
       return "\n%s\n" %value_string.strip()
+    elif '\n' in value_string:
+      return "\n;\n%s\n;\n" %value_string
     elif (value_string[0] in ('#','$','[',']','_')
           #invalid to start unquoted string
           or re.search(r"\s", value_string) is not None):
