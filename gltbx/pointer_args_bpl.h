@@ -29,8 +29,8 @@ namespace gltbx { namespace boost_python {
         char msg[512];
         std::sprintf(msg,
           "Argument \"%s\" has the wrong number of elements:\n"
-          "  expected size: %d\n"
-          "     given size: %d", arg_name, expected_size, given_size);
+          "  expected size: %zi\n"
+          "     given size: %zi", arg_name, expected_size, given_size);
         throw std::runtime_error(msg);
       }
       if (expected_size == 0) return given_size;
