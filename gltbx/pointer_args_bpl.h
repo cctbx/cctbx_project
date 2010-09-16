@@ -6,9 +6,9 @@
 #include <boost/python/extract.hpp>
 #include <boost/python/str.hpp>
 #include <boost/shared_array.hpp>
-#include <vector>
 #include <stdexcept>
-#include <cstdio>
+#include <sstream>
+#include <vector>
 
 namespace gltbx { namespace boost_python {
 
@@ -26,12 +26,12 @@ namespace gltbx { namespace boost_python {
       if (expected_size != 0
           && given_size != 0
           && given_size != expected_size) {
-        char msg[512];
-        std::sprintf(msg,
-          "Argument \"%s\" has the wrong number of elements:\n"
-          "  expected size: %zi\n"
-          "     given size: %zi", arg_name, expected_size, given_size);
-        throw std::runtime_error(msg);
+        std::ostringstream o;
+        o << "Argument \"" << arg_name
+            << "\" has the wrong number of elements:\n"
+          << "  expected size: " << expected_size << "\n"
+          << "     given size: " << given_size;
+        throw std::runtime_error(o.str());
       }
       if (expected_size == 0) return given_size;
       return expected_size;
@@ -67,11 +67,10 @@ namespace gltbx { namespace boost_python {
       boost::python::object py_elem_obj(py_elem_hdl);
       boost::python::extract<T> elem_proxy(py_elem_obj);
       if (!elem_proxy.check()) {
-        char msg[512];
-        std::sprintf(msg,
-          "Argument \"%s\" has one or more elements of the wrong type.",
-          arg_name_);
-        throw std::runtime_error(msg);
+        std::ostringstream o;
+        o << "Argument \""
+          << arg_name_ << "\" has one or more elements of the wrong type.";
+        throw std::runtime_error(o.str());
       }
       data_.push_back(elem_proxy());
     }
