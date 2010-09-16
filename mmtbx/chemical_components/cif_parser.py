@@ -145,6 +145,7 @@ def run(filename):
   remove_loop_fields = {}
   loop_index = 0
   for line in line_iter:
+    line = line.replace("\t", " "*8)
     if line.find("#")==0: continue
     if line.find("_pdbx")==0: pdbx_reading = True
     line = "%s  " % line
