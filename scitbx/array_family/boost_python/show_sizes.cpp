@@ -9,6 +9,11 @@
 #include <boost/shared_array.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <vector>
+
+/* silence warnings triggered by bad coding of the standard library
+   on MacOS X, at least with XCode 3.2.2
+ */
+#pragma clang diagnostic ignored "-Wmismatched-tags"
 #include <valarray>
 
 namespace scitbx { namespace af { namespace boost_python {
