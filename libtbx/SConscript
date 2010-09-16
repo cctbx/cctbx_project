@@ -24,7 +24,7 @@ if (1):
   SCons.Action.FunctionAction.get_contents = \
   SCons_Action_FunctionAction_get_contents
 
-class empty:
+class empty(object):
 
   def __init__(self):
     open(libtbx.env.under_build("include_paths"), "w")
@@ -40,6 +40,15 @@ class empty:
               os.pathsep, show_string(path)))
       print >> open(libtbx.env.under_build("include_paths"), "a"), \
         key, os.pathsep.join(include_paths)
+
+  def _():
+    def fget(self):
+      return self.__dict__.setdefault("_cflags_base", [])
+    def fset(self, value):
+      self._cflags_base = value
+    return locals()
+  cflags_base = property(**_())
+
 
 def set_python_include_and_libs(env_etc):
   env_etc.python_include = libtbx.env_config.python_include_path()
@@ -63,6 +72,7 @@ int main()
 }
 """
   env = env_base.Clone(
+    CFLAGS=env_etc.cflags_base,
     CCFLAGS=env_etc.ccflags_base,
     CXXFLAGS=env_etc.cxxflags_base)
   conf = env.Configure()
@@ -160,10 +170,10 @@ supported_compilers = (
                     # distributed by Apple
                     # and the GCC 4.2 shipping with XCode 3.1
   "darwin_clang", # successfull compilation of phenix + smtbx
-                  # with LLVM trunk revision 110511
-                  # but incorrect code generation of Boost.Python
-                  # code throwing error on argument mismatch
-                  # e.g. boost_adaptbx/tests/tst_std_pair.py
+                  # with LLVM trunk revision 111316 and all tests pass.
+                  # It will hopefully be so with the soon-to-be-released
+                  # LLVM 2.8 which will most likely ship with the first
+                  # official release of XCode 4 (currently in Preview).
 )
 if (not env_etc.compiler in supported_compilers):
   sys.tracebacklimit = 0
@@ -190,8 +200,13 @@ def gcc_common_warn_options():
       result.append("-Wno-array-bounds")
   return result
 
+def clang_common_warn_options():
+  return [ '-Wmost', '-Wno-unknown-pragmas' ]
+
 def enable_more_warnings(env):
+  """ Enable more warning for debug_level == 0 """
   if (env_etc._enable_more_warnings == "gcc"):
+    # Here we rely on the fact that at debug_level == 0 implies the -w flag
     for flags in ["CCFLAGS", "SHCCFLAGS", "CXXFLAGS", "SHCXXFLAGS"]:
       have_change = False
       patched_flags = []
@@ -203,6 +218,36 @@ def enable_more_warnings(env):
           patched_flags.append(item)
       if (have_change):
         env.Replace(**{flags: patched_flags})
+  elif env_etc._enable_more_warnings == "clang":
+    # For clang, debug_level == 0 has no special flag
+    # So search for -W flags instead
+    for flags in ["CCFLAGS", "SHCCFLAGS", "CXXFLAGS", "SHCXXFLAGS"]:
+      has_warnings_already = False
+      for item in env[flags]:
+        if item.startswith('-W'):
+          has_warnings_already = True
+          break
+      if not has_warnings_already:
+        env.Append(**{flags: clang_common_warn_options()})
+
+def setup_clang_warning(env_etc, warning_level):
+  env_etc.__dict__.setdefault("cflags_base", [])
+
+  if warning_level == 0:
+    # - pure C code is only 3rd party library we don't care cleaning up bad
+    #   programming style: hence no warning
+    #
+    # - for our C++ code, clang defaults are sound, so we do nothing
+    env_etc.cflags_base.extend([ '-w' ])
+    env_etc._enable_more_warnings = "clang"
+  elif warning_level == 1:
+    # not sure about whether -Wmost is the best choice yet
+    # time will tell
+    env_etc.ccflags_base.extend([ '-Wmost' ])
+  else:
+    # idem
+    env_etc.ccflags_base.extend([ '-Wmost', '-Werror' ])
+
 
 env_etc.enable_more_warnings = enable_more_warnings
 env_etc._enable_more_warnings = None
@@ -514,14 +559,7 @@ else:
       "-fPIC",
       "-fno-strict-aliasing"]
     env_etc.cxxflags_base = []
-    if (libtbx.env.build_options.warning_level == 0):
-      warn_options = ["-w"]
-      env_etc._enable_more_warnings = "gcc"
-    elif (libtbx.env.build_options.warning_level == 1):
-      warn_options = gcc_common_warn_options()
-    else:
-      warn_options = gcc_common_warn_options() + ["-Werror"]
-    env_etc.ccflags_base.extend(warn_options)
+    setup_clang_warning(env_etc, libtbx.env.build_options.warning_level)
     if (libtbx.env.build_options.optimization):
       opts = [
         "-DNDEBUG",
@@ -606,14 +644,17 @@ else:
     env_etc.ccflags_base = [
       "-fPIC",
       "-fno-strict-aliasing"]
-    if (libtbx.env.build_options.warning_level == 0):
-      warn_options = ["-w"]
-      env_etc._enable_more_warnings = "gcc"
-    elif (libtbx.env.build_options.warning_level == 1):
-      warn_options = gcc_common_warn_options()
+    if cxx == "clang++":
+      setup_clang_warning(env_etc, libtbx.env.build_options.warning_level)
     else:
-      warn_options = gcc_common_warn_options() + ["-Werror"]
-    env_etc.ccflags_base.extend(warn_options)
+      if (libtbx.env.build_options.warning_level == 0):
+        warn_options = ["-w"]
+        env_etc._enable_more_warnings = "gcc"
+      elif (libtbx.env.build_options.warning_level == 1):
+        warn_options = gcc_common_warn_options()
+      else:
+        warn_options = gcc_common_warn_options() + ["-Werror"]
+      env_etc.ccflags_base.extend(warn_options)
     if (cxx == "c++"):
       env_etc.ccflags_base.extend(["-no-cpp-precomp"])
       if (env_etc.gcc_version < 40201):
@@ -700,8 +741,10 @@ env_base.Replace(SHOBJSUFFIX=env_base["OBJSUFFIX"])
 # future: remove ccflags_base, cxxflags_base from env_etc
 def env_base_sync_with_env_etc():
   env_base.Replace(
+    CFLAGS=env_etc.cflags_base,
     CCFLAGS=env_etc.ccflags_base,
     CXXFLAGS=env_etc.cxxflags_base,
+    SHCFLAGS=env_etc.cflags_base,
     SHCCFLAGS=env_etc.ccflags_base,
     SHCXXFLAGS=env_etc.cxxflags_base)
 env_base_sync_with_env_etc()
