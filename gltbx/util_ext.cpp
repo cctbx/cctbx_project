@@ -461,7 +461,7 @@ namespace gltbx { namespace util {
     typedef vertex_array<IndexType, CoordinatesType> wt;
     typedef typename wt::input_type const& inp_t;
 
-    static void wrap(char* name) {
+    static void wrap(char const *name) {
       using namespace boost::python;
       class_<wt>(name, no_init)
         .def(init<inp_t, inp_t>((
