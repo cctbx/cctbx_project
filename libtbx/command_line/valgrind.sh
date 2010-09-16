@@ -20,9 +20,9 @@ if [ ! -n "$LIBTBX_VALGRIND" ]; then
     echo "### To override, define LIBTBX_VALGRIND"
     echo "### before calling $LIBTBX_DISPATCHER_NAME."
   fi
-  opt=""
+  opt="$VALGRIND_OPTS"
   if [ "`uname`" = Darwin ]; then
-    opt=" --trace-children=yes"
+    opt=" $opt --trace-children=yes"
   fi
   LIBTBX_VALGRIND="valgrind --tool=memcheck$opt --suppressions=`libtbx.show_dist_paths libtbx`/valgrind-python24.supp"
   if [ $? -ne 0 ]; then exit 1; fi
