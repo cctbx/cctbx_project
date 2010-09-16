@@ -2,8 +2,8 @@
 from libtbx import group_args
 import sys, os
 
-def find_lattice_contacts (xray_structure,
-                           pdb_atoms,
+def find_crystal_contacts (xray_structure,
+                           pdb_atoms, # atom_with_labels, not atom!
                            selected_atoms=None,
                            distance_cutoff=3.5,
                            ignore_same_asu=True,
@@ -16,9 +16,9 @@ def find_lattice_contacts (xray_structure,
   pair_sym_table = pair_asu_table.extract_pair_sym_table()
   contacts = []
   if (selected_atoms is None) :
-    selected_atoms = flex.bool(pdb_atoms.size(), True)
+    selected_atoms = flex.bool(len(pdb_atoms), True)
   for i_seq,pair_sym_dict in enumerate(pair_sym_table):
-    if (not selected_atoms[i]) :
+    if (not selected_atoms[i_seq]) :
       continue
     site_i = sites_frac[i_seq]
     atom_i = pdb_atoms[i_seq]
@@ -44,6 +44,68 @@ def find_lattice_contacts (xray_structure,
         contacts.append((i_seq, j_seq, sym_op, distance))
         #print resname_i, atmname_i, resname_j, atmname_j, str(sym_op), distance
   return contacts
+
+def find_crystal_contacts_by_residue (xray_structure,
+                                      pdb_hierarchy,
+                                      **kwds) :
+  contacts_by_residue = {}
+  atoms = list(pdb_hierarchy.atoms_with_labels())
+  contacts = find_crystal_contacts(xray_structure, atoms, **kwds)
+  for (i_seq, j_seq, sym_op, distance) in contacts :
+    atom_rec = atoms[i_seq].fetch_labels()
+    residue_key = (atom_rec.chain_id, atom_rec.resname, atom_rec.resid(),
+      atom_rec.altloc)
+    if (not residue_key in contacts_by_residue) :
+      contacts_by_residue[residue_key] = []
+    contacts_by_residue[residue_key].append((j_seq, sym_op, distance))
+  all_residues = []
+  for chain in pdb_hierarchy.models()[0].chains() :
+    chain_id = chain.id
+    for residue_group in chain.residue_groups() :
+      resid = residue_group.resid()
+      for atom_group in residue_group.atom_groups() :
+        resname = atom_group.resname
+        altloc = atom_group.altloc
+        residue_key = (chain_id, resname, resid, altloc)
+        residue_contacts = contacts_by_residue.get(residue_key, [])
+        all_residues.append((residue_key, residue_contacts))
+  return all_residues
+
+def extract_closest_contacting_residues (residue_contacts,
+                                         pdb_atoms) :
+  reduced_contacts = []
+  for (residue_key, contacts) in residue_contacts :
+    if (len(contacts) == 0) :
+      reduced_contacts.append((residue_key, None, None, None))
+    else :
+      contacts.sort(lambda x,y: cmp(x[2], y[2]))
+      (j_seq, sym_op, distance) = contacts[0]
+      atom_rec = pdb_atoms[j_seq].fetch_labels()
+      contact_key = (atom_rec.chain_id, atom_rec.resname, atom_rec.resid(),
+        atom_rec.altloc)
+      reduced_contacts.append((residue_key, contact_key, sym_op, distance))
+  return reduced_contacts
+
+def summarize_contacts_by_residue (residue_contacts,
+                                   pdb_hierarchy,
+                                   out=sys.stdout) :
+  from mmtbx.refinement.print_statistics import make_header
+  summary = extract_closest_contacting_residues(residue_contacts,
+    pdb_hierarchy.atoms())
+  make_header("Crystal contacts by residue", out=out)
+  print >> out, "  %-16s %-16s %-16s %-16s" % ("residue", "closest contact",
+    "symop", "distance (A)")
+  print >> out, "-"*72
+  for (residue_key, contact_key, sym_op, distance) in summary :
+    (chain_id, resname, resid, altloc) = residue_key
+    id_str = "%s%5s %3s %s" % (chain_id, resid, resname, altloc)
+    if (contact_key is None) :
+      print >> out, "  %-16s %-16s %-16s %-4s" % (id_str, "*","*","*")
+    else :
+      (chain_id, resname, resid, altloc) = contact_key
+      id_str_2 = "%s%5s %3s %s" % (chain_id, resid, resname, altloc)
+      print >> out, "  %-16s %-16s %-16s %-4.2f" % (id_str, id_str_2, sym_op,
+        distance)
 
 def show_contacts (contacts, pdb_atoms) :
   for contact in contacts :
@@ -88,3 +150,12 @@ def apply_biological_unit (pdb_in) :
   if (remark.size() == 0) :
     raise Sorry("No REMARK records in this PDB file.")
   return pdb_out
+
+if __name__ == "__main__" :
+  pdb_file = sys.argv[1]
+  from iotbx import file_reader
+  pdb_in = file_reader.any_file(pdb_file).file_object
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  xrs = pdb_in.xray_structure_simple()
+  residue_contacts = find_crystal_contacts_by_residue(xrs, pdb_hierarchy)
+  summarize_contacts_by_residue(residue_contacts, pdb_hierarchy)
