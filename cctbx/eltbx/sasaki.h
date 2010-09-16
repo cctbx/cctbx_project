@@ -21,7 +21,7 @@ namespace cctbx { namespace eltbx { namespace sasaki {
 
     struct info
     {
-      char* label;
+      char const* label;
       int z;
       raw* wide;
       double first_k;
