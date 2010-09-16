@@ -86,15 +86,43 @@ if (not env_etc.no_boost_python):
     paths=[env_etc.libtbx_include])
   Export("env_boost_python_ext")
 
-  ## Precompiled headers for Boost Python extensions
+  # Precompiled headers for the like of Boost Python, standard library, etc.
   if libtbx.env.build_options.precompile_headers:
-    precompiled_cpp = '#' + os.path.join('boost_adaptbx', 'precompiled.cpp')
-    precompiled_h = 'boost_adaptbx/precompiled.h'
     if sys.platform == 'win32':
+      precompiled_cpp = '#' + os.path.join('boost_adaptbx', 'precompiled.cpp')
+      precompiled_h = 'boost_adaptbx/precompiled.h'
       env_no_includes_boost_python_ext['PCH'], _ \
                 = env_boost_python_ext.PCH(precompiled_cpp)
       env_no_includes_boost_python_ext['PCHSTOP'] = precompiled_h
       env_no_includes_boost_python_ext.Append(CPPFLAGS=[ '/FI' + precompiled_h ])
+    elif env_etc.compiler.endswith('clang'):
+      # 1st trick:
+      # use Command to execute $SHCXXCOM with an extra option to produce
+      # a precompiled header a la clang
+      precompiled_h_gch = "#boost_adaptbx/precompiled.h.gch"
+      env_pch = env_pure_boost_python_ext.Clone()
+      env_pch.Append(SHCXXFLAGS=[ '-x', 'c++-header' ])
+      env_pch.Command(target=precompiled_h_gch,
+                      source="precompiled.h",
+                      action="$SHCXXCOM")
+      # 2nd trick
+      # use an emitter so that the dependency on the precompiled header
+      # is added on-the-fly to the target of SharedLibrary
+      # (got the idea from http://scons.org/wiki/GchBuilder)
+      explicit_include = [ '-include', 'boost_adaptbx/precompiled.h' ]
+      def gcc_style_pch_emitter(target, source, env):
+        import SCons.Defaults
+        # emitters are not chained, so we need to call the default one
+        # otherwise some setup is not done and scons will refuse to link
+        # shared libraries from what it thinks are static objects
+        SCons.Defaults.SharedObjectEmitter(target, source, env)
+        env.Depends(target, precompiled_h_gch)
+        return target, source
+      for env in (env_pure_boost_python_ext, env_no_includes_boost_python_ext):
+        env.Append(SHCXXFLAGS=explicit_include)
+        for suffix in ('.cxx', '.cpp', '.cc'):
+          env['BUILDERS']['SharedObject'].add_emitter(suffix,
+                                                      gcc_style_pch_emitter)
 
   env_pure_boost_python_ext.SharedLibrary(
     target="#lib/boost_python_hybrid_times_ext",
