@@ -258,7 +258,6 @@ namespace zernike{
     IntType operator[](std::size_t const& index)
     {
       SCITBX_ASSERT( index <=2 );
-      SCITBX_ASSERT( index >=0 );
       if (index==0){ return(n_); }
       if (index==1){ return(l_); }
       if (index==2){ return(m_); }
