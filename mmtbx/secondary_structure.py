@@ -789,7 +789,7 @@ def restraint_groups_as_pdb_helices (pdb_hierarchy, helices, log=sys.stderr) :
     if helix_params.selection is None :
       print >> log, "Empty helix at serial %d." % (i+1)
       continue
-    sele_str = ("(%s) and name N and (altloc 'A' or altloc ' ')" %
+    sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
                 helix_params.selection)
     amide_isel = isel(sele_str)
     start_atom = atoms[amide_isel[0]]
@@ -1055,9 +1055,9 @@ class manager (object) :
   def calculate_structure_content (self) :
     isel = self.selection_cache.iselection
     calpha = isel("name N and (altloc ' ' or altloc 'A')")
-    alpha_sele = self.alpha_selection(limit="and name N", main_conf_only=True)
+    alpha_sele = self.alpha_selection(limit="name N", main_conf_only=True)
     n_alpha = alpha_sele.count(True)
-    beta_sele = self.beta_selection(limit="and name N", main_conf_only=True)
+    beta_sele = self.beta_selection(limit="name N", main_conf_only=True)
     n_beta = beta_sele.count(True)
     if calpha.size() == 0 :
       return (0.0, 0.0)
