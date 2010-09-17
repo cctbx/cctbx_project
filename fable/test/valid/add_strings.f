@@ -12,6 +12,13 @@
       write(6, '(a)') a
       call show(a // b)
       call show(b // c)
+      a = 'xyz'
+      c = 'abcdefg'
+      c = a(1:2) // c(2:6)
+      write(6, '(a)') c
+      c = 'hijklmn'
+      c = a(1:2) // c(2:5)
+      write(6, '(a)') c
       end
 
       subroutine show(str)

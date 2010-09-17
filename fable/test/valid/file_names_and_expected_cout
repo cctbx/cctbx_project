@@ -9,6 +9,8 @@ add_strings.f
 |i\'|
 |i\'i\'l|
 |i\'lx"zi\'l|
+|xybcdef|
+|xyijkl |
 real_array_sum.f
 write_star.f
 | x|
