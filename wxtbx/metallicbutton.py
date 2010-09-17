@@ -211,7 +211,7 @@ class MetallicButton (wx.PyControl) :
       txt_y = 4 #th + 4 #height - th - 4
       txt2_y = th + 8
     else :
-      txt_y = max((height - th) / 2, 1)
+      txt_y = max((height - th) / 2 - 2, 1)
       txt2_y = None
     #print height, th, txt_y, txt2_y
 

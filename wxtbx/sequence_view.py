@@ -930,12 +930,12 @@ def run_test () :
   app.MainLoop()
 
 if __name__ == "__main__" :
-  run_test()
-#  if "--test" in sys.argv :
-#    import libtbx.load_env
-#    pdb_file = libtbx.env.find_in_repositories(
-#      relative_path="phenix_regression/pdb/1ywf.pdb",
-#      test=os.path.isfile)
-#    run([pdb_file])
-#  else :
-#    run(sys.argv[1:])
+#  run_test()
+  if "--test" in sys.argv :
+    import libtbx.load_env
+    pdb_file = libtbx.env.find_in_repositories(
+      relative_path="phenix_regression/pdb/1ywf.pdb",
+      test=os.path.isfile)
+    run([pdb_file])
+  else :
+    run(sys.argv[1:])
