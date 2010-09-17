@@ -63,13 +63,11 @@ if (not env_etc.no_boost_python):
       SHLINKCOM=[
         'mt /nologo /outputresource:"${TARGET};#2"'
         ' /manifest ${TARGET}.manifest'])
-  elif (env_etc.compiler.startswith("darwin")
-        and libtbx.env.build_options.debug_symbols):
+  elif (env_etc.mac_os_use_dsymutil):
     # Debugging Boost.Python module C++ code works much more reliably
     # with the DWARF + dSYM format. Hence run dsymutil after building *.so
-    original_shlinkcom = env_no_includes_boost_python_ext['SHLINKCOM']
-    env_no_includes_boost_python_ext['SHLINKCOM'] = [
-      original_shlinkcom, 'dsymutil $TARGET' ]
+    env = env_no_includes_boost_python_ext
+    env['SHLINKCOM'] = [env['SHLINKCOM'], 'dsymutil $TARGET']
 
   Export("env_no_includes_boost_python_ext")
   env_pure_boost_python_ext = env_no_includes_boost_python_ext.Clone()
