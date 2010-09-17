@@ -416,6 +416,7 @@ else:
   env_etc.mac_cpu = None
   env_etc.mac_cpu_is_g4 = None
   env_etc.mac_os_version = None
+  env_etc.mac_os_use_dsymutil = False
   if (sys.platform.startswith("darwin")):
     env_etc.mac_cpu = easy_run.fully_buffered(
       command="/usr/bin/uname -p") \
@@ -443,6 +444,10 @@ else:
       .stdout_lines[0].strip().split(".")[:2])
     if (env_etc.mac_os_version == "10.3"):
       os.environ["MACOSX_DEPLOYMENT_TARGET"] = env_etc.mac_os_version
+    elif (env_etc.mac_os_version == "10.4"):
+      pass
+    elif (libtbx.env.build_options.debug_symbols):
+      env_etc.mac_os_use_dsymutil = True
   env_base = Environment(
     ENV=os.environ,
     tools=['cc','g++','gnulink','ar'])

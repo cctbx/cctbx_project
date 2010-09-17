@@ -39,12 +39,13 @@ def darwin_shlinkcom(env_etc, env, lo, dylib):
       dylib1 = "-ldylib1.o"
     else :
       dylib1 = " ".join(env_etc.shlinkflags)
-    env.Replace(SHLINKCOM=[
+    shlinkcom = [
       "ld -dynamic -m -r -d -bind_at_load -o %s $SOURCES" % lo,
       "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
-      " %s -o %s %s" % (dylib1, dylib, lo),
-      "dsymutil %s" % dylib
-    ])
+        " %s -o %s %s" % (dylib1, dylib, lo)]
+    if (env_etc.mac_os_use_dsymutil):
+      shlinkcom.append('dsymutil "%s"' % dylib)
+    env.Replace(SHLINKCOM=shlinkcom)
 
 def get_darwin_gcc_build_number(gcc='gcc'):
   from libtbx import easy_run
