@@ -259,9 +259,10 @@ class cache(slots_getstate_setstate):
       for model in self.root.models():
         for chain in model.chains():
           for rg in chain.residue_groups():
-            for ag in rg.atom_groups():
-              if (ag.atoms_size() == 1):
-                ag.atoms()[0].tmp = 1
+            for cf in rg.conformers():
+              for res in cf.residues():
+                if (res.atoms_size() == 1):
+                  res.atoms()[0].tmp = 1
       self.single_atom_residue = (
         atoms.extract_tmp_as_size_t() == 1).iselection()
     return [self.single_atom_residue]

@@ -329,6 +329,14 @@ RuntimeError: Atom selection syntax error at word "peptyde".
 Atom selection string leading to error:
   chain A or (peptyde and name ca)""")
   else: raise Exception_expected
+  #
+  hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM    459  CA  SER A  58
+ATOM    463  OG ASER A  58
+ATOM    464  OG BSER A  58
+""")).construct_hierarchy()
+  sel_cache = hierarchy.atom_selection_cache()
+  assert sel_cache.iselection("single_atom_residue").size() == 0
 
 def run():
   exercise_selection()
