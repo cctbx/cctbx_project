@@ -1,6 +1,7 @@
 #ifndef FEM_STR_REF_HPP
 #define FEM_STR_REF_HPP
 
+#include <fem/utils/misc.hpp>
 #include <fem/utils/string.hpp>
 
 namespace fem {
@@ -199,9 +200,11 @@ namespace fem {
         std::memmove(elems(), addends.lhs.elems(), len());
       }
       else {
-        std::memmove(elems(), addends.lhs.elems(), ll);
+        utils::simple_buffer<char> buffer((len()));
+        std::memcpy(buffer.space, addends.lhs.elems(), ll);
         utils::copy_with_blank_padding(
-          addends.rhs.elems(), addends.rhs.len(), elems()+ll, n_from_rhs);
+          addends.rhs.elems(), addends.rhs.len(), buffer.space+ll, n_from_rhs);
+        std::memcpy(elems(), buffer.space, len());
       }
     }
 
