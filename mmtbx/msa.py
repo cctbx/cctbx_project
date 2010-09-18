@@ -12,8 +12,8 @@ class align_pdb_residues (object) :
                 reference_sequence=None,
                 reference_sequence_name="sequence",
                 reference_sequence_offset=0,
-                reference_index=None,
-                group_sequences=True) :
+                reference_index=None) :
+#                group_sequences=True) :
     adopt_init_args(self, locals())
     n_models = len(pdb_sequences)
     assert ((n_models >= 1) and (n_models==len(pdb_names)==len(pdb_offsets)))
@@ -32,7 +32,7 @@ class align_pdb_residues (object) :
     if (not use_pdb_sequence) :
       ref_seq_fasta = ">%s\n%s" % (reference_sequence_name, reference_sequence)
       fasta = ref_seq_fasta + "\n" + fasta
-    self.muscle_aln = get_muscle_alignment(fasta, group_sequences)
+    self.muscle_aln = get_muscle_alignment(fasta)#, group_sequences)
     assert (self.muscle_aln is not None)
     self._lookup_table = {}
     i_ref = self.muscle_aln.names.index(reference_sequence_name)
@@ -70,6 +70,7 @@ class align_pdb_residues (object) :
     return self._lookup_table[pdb_name][i_res]
 
 def run_muscle (fasta_sequences, group_sequences=True) :
+  assert group_sequences # XXX this isn't actually optional!
   if not libtbx.env.has_module(name="muscle") :
     raise RuntimeError("MUSCLE not available or not configured.")
   exe_path = libtbx.env.under_build("muscle/exe/muscle")
@@ -81,8 +82,8 @@ def run_muscle (fasta_sequences, group_sequences=True) :
   cmd = "%s -quiet -clw" % exe_path
   if group_sequences :
     cmd += " -group"
-  else :
-    cmd += " -stable"
+  #else :
+  #  cmd += " -stable"
   muscle_out = easy_run.fully_buffered(cmd,
     stdin_lines=fasta_sequences)
   return muscle_out.stdout_lines
