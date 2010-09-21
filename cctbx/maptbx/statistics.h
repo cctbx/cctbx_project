@@ -3,6 +3,7 @@
 
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/loops.h>
+#include <scitbx/array_family/versa.h>
 #include <scitbx/math/utils.h>
 #include <scitbx/math/accumulators.h>
 #include <cctbx/error.h>
@@ -146,6 +147,82 @@ namespace cctbx { namespace maptbx {
               extra_statistics_t;
       extra_statistics_t extra_stats;
   };
+
+  // maxent stuff
+  inline void normalize_and_combine (
+    af::versa<double,  af::flex_grid<> > priorA_map,
+    af::const_ref<double,  af::flex_grid<> > priorB_map,
+    double norm,
+    double current_lambda)
+  {
+    for (int i = 0; i < priorA_map.size(); i++) {
+      double val = priorA_map[i] * norm;
+      priorA_map[i] = priorB_map[i] * exp(current_lambda * val);
+    }
+  }
+
+  inline double calculate_entropy (
+    af::const_ref<double,  af::flex_grid<> > const& map_data)
+  {
+    af::tiny<int, 3> n_real(af::adapt(map_data.accessor().focus()));
+    double sum = 0.0;
+    double ent = 0.0;
+    for (int u = 0; u < n_real[0]; u++) {
+      for (int v = 0; v < n_real[1]; v++) {
+        for (int w = 0; w < n_real[2]; w++) {
+          sum += map_data(u,v,w);
+    }}}
+    for (int u = 0; u < n_real[0]; u++) {
+      for (int v = 0; v < n_real[1]; v++) {
+        for (int w = 0; w < n_real[2]; w++) {
+          double val = map_data(u,v,w);
+          ent += (-val / sum) * log(val / sum);
+    }}}
+    return ent;
+  }
+
+  class update_prior
+  {
+    public :
+      double sum;
+      double chi2;
+
+      update_prior (
+        af::const_ref<std::complex<double>, af::flex_grid<> > const& fobs,
+        af::const_ref<std::complex<double>, af::flex_grid<> > const& sigf,
+        af::versa<std::complex<double>, af::flex_grid<> > priorA)
+      {
+        sum = 0.0;
+        chi2 = 0.0;
+        for (int i = 0; i < sigf.size(); i++) {
+          double sigma = sigf[i].real();
+          if (sigma != 0.0) {
+            double s = std::pow(sigma, 2);
+            double ac = priorA[i].real();
+            double bc = priorA[i].imag();
+            double ao = fobs[i].real();
+            double bo = fobs[i].imag();
+            double amp1 = sqrt(ac*ac + bc*bc);
+            double amp2 = sqrt(ao*ao + bo*bo);
+            chi2 += ((amp1 - amp2) * (amp1 - amp2)) / s;
+            sum += abs(abs(amp2) - abs(amp1));
+            priorA[i] = std::complex<double>((ao-ac)/s, (bo-bc)/s);
+          } else {
+            priorA[i] = std::complex<double>(0.0,0.0);
+          }
+        }
+        return;
+      }
+  };
+
+  inline void clear_map (
+    af::versa<std::complex<double>, af::flex_grid<> > map_data,
+    double mean_density)
+  {
+    for (int i = 0; i < map_data.size(); i++) {
+      map_data[i] = mean_density;
+    }
+  }
 
 }} // namespace cctbx::maptbx
 
