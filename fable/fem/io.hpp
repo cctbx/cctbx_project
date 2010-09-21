@@ -436,7 +436,11 @@ namespace fem {
     {
       io_unit* u_ptr = unit_ptr(unit);
       if (u_ptr != 0) {
-        std::fflush(u_ptr->stream.ptr);
+        int status = std::fflush(u_ptr->stream.ptr);
+        if (status != 0) {
+          throw io_err(
+            "Error flushing file: " + u_ptr->file_name);
+        }
       }
     }
   };
