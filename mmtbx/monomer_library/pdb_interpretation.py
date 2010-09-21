@@ -2109,6 +2109,11 @@ class build_all_chain_proxies(object):
       self.pdb_inp = pdb.input(source_info=None, lines=raw_records)
     self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
     self.pdb_atoms = self.pdb_hierarchy.atoms()
+    self.counts = self.pdb_hierarchy.overall_counts()
+    self.counts.raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary()
+    self.counts.raise_improper_alt_conf_if_necessary()
+    self.counts.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
+    self.counts.raise_duplicate_atom_labels_if_necessary()
     self.pdb_atoms.reset_i_seq()
     if (log is not None):
       print >> log, "  Monomer Library directory:"
