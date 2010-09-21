@@ -1,3 +1,4 @@
+import re
 import time
 import sys, os
 op = os.path
@@ -10,6 +11,29 @@ def show_traceback(file):
 
 def fmt_time(t0):
   return "JOB wall clock time: %.2f s" % (time.time() - t0)
+
+def process_dollar_multi(line):
+  pat = "$(MULTI:"
+  i = line.find(pat)
+  if (i < 0): return [line]
+  j = line.find(")", i)
+  if (j < i): return [line]
+  flds = line[i+len(pat):j].split(",")
+  j += 1
+  if (len(flds) == 0): return [line]
+  result = []
+  def rapp(a):
+    result.append(line[:i] + str(a) + line[j:])
+  for fld in flds:
+    m = re.match(r"(\d+)-(\d+)$", fld)
+    if (m is None):
+      rapp(fld)
+    else:
+      f = int(m.group(1))
+      l = int(m.group(2))
+      for a in xrange(f,l+1):
+        rapp(a)
+  return result
 
 def run_one_cmd(cmd_info):
   t0 = time.time()
@@ -98,7 +122,9 @@ def run(args):
   #
   cmd_infos = []
   for file_listing_commands in command_line.args:
-    for line in open(op.expandvars(file_listing_commands)).read().splitlines():
+    file_name = op.expandvars(file_listing_commands)
+    file_dir = op.dirname(file_name)
+    for line in open(file_name).read().splitlines():
       ll = line.lstrip()
       if (ll.startswith("#")): continue
       if (ll.startswith("set ")): continue
@@ -107,8 +133,10 @@ def run(args):
         if (len(flds) == 2): flds.append("")
         os.environ[flds[1]] = flds[2]
         continue
-      index = len(cmd_infos)
-      cmd_infos.append(libtbx.group_args(index=index, cmd=line, log=None))
+      line = line.replace("$(DIRNAME)", file_dir)
+      for l in process_dollar_multi(line):
+        index = len(cmd_infos)
+        cmd_infos.append(libtbx.group_args(index=index, cmd=l, log=None))
   n_proc = min(len(cmd_infos), libtbx.introspection.number_of_processors())
   if (co.jobs is not None):
     n_proc = max(1, min(co.jobs, n_proc))
