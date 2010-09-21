@@ -44,6 +44,24 @@ namespace {
     }
   };
 
+  struct even_more_statistics_wrappers
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<update_prior>("update_prior", no_init)
+        .def(init<af::const_ref<std::complex<double>, af::flex_grid<> > const&,
+                  af::const_ref<std::complex<double>, af::flex_grid<> > const&,
+                  af::versa<std::complex<double>, af::flex_grid<> > >((
+          arg("fobs"),
+          arg("sigf"),
+          arg("priorA"))))
+        .def_readonly("chi2", &update_prior::chi2)
+        .def_readonly("sum", &update_prior::sum);
+    }
+  };
+
 } // namespace <anoymous>
 
   void wrap_statistics()
