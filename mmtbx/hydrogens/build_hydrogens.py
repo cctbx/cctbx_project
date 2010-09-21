@@ -561,7 +561,7 @@ def run(file_name):
        "HZ3" :[["NZ","CE","HZ1","HZ2"],]
                    }
       hhh_residues = ["ALA","LEU","ILE","VAL","THR","LYS"]
-      if(h in hhh_like_h.keys() and residue_name in hhh_residues):
+      if(h in hhh_like_h.keys() and residue_name in hhh_residues and h in missing_h):
         targets = hhh_like_h[h]
         for target in targets:
           site_0 = None
