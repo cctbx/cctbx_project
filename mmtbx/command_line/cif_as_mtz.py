@@ -860,10 +860,10 @@ def run2 (args,
         sources.append(user_phil)
       except RuntimeError :
         print "Unrecognizable parameter %s" % arg
-  if (params is not None) :
+  if (params is None) :
     params = master_phil.fetch(sources=sources).extract()
   symm = None
-  if params.input.pdb_id is not None :
+  if (params.input.pdb_id is not None) :
     params.input.pdb_file = iotbx.pdb.fetch.run(args=[params.input.pdb_id],
       log=log)
     params.input.cif_file = iotbx.pdb.fetch.run(
