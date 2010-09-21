@@ -3002,6 +3002,16 @@ struct common_commonymous
   assert not absd(lines, tail_off(18), """\
   write(6, "(a)"), msg(1, 3);
 """)
+  #
+  lines = get("flush_intrinsic.f")
+  assert not absd(lines, tail_off(1), """\
+  cmn.io.flush(2 * 5 - 4);
+""")
+  #
+  lines = get("flush_external.f")
+  assert not absd(lines, tail_off(1), """\
+  flush(cmn, 2 * 5 - 4);
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(

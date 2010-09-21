@@ -429,6 +429,16 @@ namespace fem {
       return std::auto_ptr<utils::simple_istream>(new
         utils::simple_istream_from_c_file(u_ptr->stream.ptr));
     }
+
+    void
+    flush(
+      int unit)
+    {
+      io_unit* u_ptr = unit_ptr(unit);
+      if (u_ptr != 0) {
+        std::fflush(u_ptr->stream.ptr);
+      }
+    }
   };
 
 } // namespace fem
