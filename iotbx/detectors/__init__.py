@@ -14,6 +14,7 @@ from iotbx.detectors.adsc import ADSCImage
 from iotbx.detectors.mar import MARImage
 from iotbx.detectors.marIP import MARIPImage
 from iotbx.detectors.cbf import CBFImage
+from iotbx.detectors.dtrek import DTREKImage
 from iotbx.detectors.raxis import RAXISImage
 from iotbx.detectors.raxis_nonsquare import NonSquareRAXISImage
 from iotbx.detectors.macscience import DIPImage
@@ -40,7 +41,7 @@ class EDFWrapper(EDFImage, DetectorImageBase):
     self.parameters['DISTANCE']=100.0 #Dummy argument
 
 all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,
-                  MARImage,MARIPImage,RAXISImage,
+                  MARImage,MARIPImage,DTREKImage,RAXISImage,
                   NonSquareRAXISImage,PilatusImage,CBFImage,BrukerImage]
 
 all_url_types = [pilatus_slice_from_file_url,pilatus_slice_from_http_url,
@@ -52,6 +53,7 @@ names_and_types = { "ADSC"          : ADSCImage,
                     "DIP"           : DIPImage,
                     "MAR"           : MARImage,
                     "MARIP"         : MARIPImage,
+                    "DTREK"         : DTREKImage,
                     "RAXIS"         : RAXISImage,
                     "NonSquareRAXIS": NonSquareRAXISImage,
                     "Pilatus"       : PilatusImage,
