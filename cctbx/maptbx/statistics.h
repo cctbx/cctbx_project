@@ -157,7 +157,7 @@ namespace cctbx { namespace maptbx {
   {
     for (int i = 0; i < priorA_map.size(); i++) {
       double val = priorA_map[i] * norm;
-      priorA_map[i] = priorB_map[i] * exp(current_lambda * val);
+      priorA_map[i] = priorB_map[i] * std::exp(current_lambda * val);
     }
   }
 
@@ -176,7 +176,7 @@ namespace cctbx { namespace maptbx {
       for (int v = 0; v < n_real[1]; v++) {
         for (int w = 0; w < n_real[2]; w++) {
           double val = map_data(u,v,w);
-          ent += (-val / sum) * log(val / sum);
+          ent += (-val / sum) * std::log(val / sum);
     }}}
     return ent;
   }
