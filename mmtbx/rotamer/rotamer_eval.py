@@ -88,7 +88,7 @@ def eval_sidechain_completeness(pdb_hierarchy,
           if(not ignore_hydrogens):
             for at in mlq.atom_dict():
               reference_list.append(at.strip().upper())
-          else:
+          elif (mlq is not None) :
             for non in mlq.non_hydrogen_atoms():
               reference_list.append(non.atom_id.strip().upper())
           missing=[]
