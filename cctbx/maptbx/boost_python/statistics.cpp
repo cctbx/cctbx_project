@@ -2,6 +2,8 @@
 
 #include <cctbx/maptbx/statistics.h>
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
+#include <boost/python/args.hpp>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
@@ -50,6 +52,16 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      def("clear_map", clear_map, (
+        arg("map_data"),
+        arg("mean_density")));
+      def("normalize_and_combine", normalize_and_combine, (
+        arg("priorA_map"),
+        arg("priorB_map"),
+        arg("norm"),
+        arg("current_lambda")));
+      def("calculate_entropy", calculate_entropy, (
+        arg("map_data")));
       class_<update_prior>("update_prior", no_init)
         .def(init<af::const_ref<std::complex<double>, af::flex_grid<> > const&,
                   af::const_ref<std::complex<double>, af::flex_grid<> > const&,
@@ -68,6 +80,7 @@ namespace {
   {
     statistics_wrappers::wrap();
     more_statistics_wrappers::wrap();
+    even_more_statistics_wrappers::wrap();
   }
 
 }}} // namespace cctbx::maptbx::boost_python

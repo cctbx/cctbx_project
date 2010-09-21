@@ -216,7 +216,7 @@ namespace cctbx { namespace maptbx {
   };
 
   inline void clear_map (
-    af::versa<std::complex<double>, af::flex_grid<> > map_data,
+    af::versa<double, af::flex_grid<> > map_data,
     double mean_density)
   {
     for (int i = 0; i < map_data.size(); i++) {
