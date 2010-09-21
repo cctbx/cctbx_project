@@ -80,10 +80,13 @@ def run(args):
       action="store",
       type="str",
       help="create a sub-directory for each run.")
+    .option(None, "--force_clean_dirs",
+      action="store_true",
+      help="forces removal of existing directories before creation.")
     .option("-j", "--jobs",
       action="store",
       type="int",
-      help="Maximum number of parallel jobs (default: all CPUs).")
+      help="maximum number of parallel jobs (default: all CPUs).")
   ).process(args=args)
   co = command_line.options
   #
@@ -149,17 +152,28 @@ def run(args):
       mp_pool.map(run_one_cmd, cmd_infos)
       show_logs()
   else:
-    is_clean = True
+    old_dirs = []
     for cmd_info in cmd_infos:
       d = "%s%03d" % (co.dirs, cmd_info.index)
       if (op.exists(d)):
-        print >> sys.stderr, "exists already: %s" % show_string(d)
-        is_clean = False
+        if (not co.force_clean_dirs):
+          print >> sys.stderr, "exists already: %s" % show_string(d)
+        old_dirs.append(d)
       cmd_info.log = op.join(d, "log")
-    if (not is_clean):
-      raise Sorry(
-        "Please remove the existing directories or files,"
-        " or use a different --dirs assignment.")
+    if (len(old_dirs) != 0):
+      if (not co.force_clean_dirs):
+        raise Sorry(
+          "Please remove the existing directories or files,"
+          " or use a different --dirs assignment.")
+      from libtbx.clear_paths \
+        import remove_or_rename_files_and_directories_if_possible
+      remaining = remove_or_rename_files_and_directories_if_possible(
+        paths=old_dirs)
+      if (len(remaining) != 0):
+        for d in remaining:
+          print >> sys.stderr, \
+            "unable to remove or rename: %s" % show_string(d)
+        raise Sorry("Failure removing existing directories.")
     mp_pool = multiprocessing.Pool(processes=n_proc)
     mp_pool.map(run_in_dir, cmd_infos)
     show_logs()
