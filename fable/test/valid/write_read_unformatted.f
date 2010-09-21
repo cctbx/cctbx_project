@@ -8,6 +8,7 @@
       character s*2
       logical l
       integer i
+      integer*2 i2
       real r
       double precision d
       complex rc
@@ -22,6 +23,8 @@
       write(1) l
       i = 3
       write(1) i
+      i2 = 32
+      write(1) i2
       r = 4.1
       write(1) r
       d = 5.2D0
@@ -38,6 +41,7 @@
       character s*2
       logical l
       integer i
+      integer*2 i2
       real r
       double precision d
       complex rc
@@ -52,6 +56,8 @@
       write(6, *) l
       read(1) i
       write(6, *) i
+      read(1) i2
+      write(6, *) i2
       read(1) r
       write(6, *) r
       read(1) d

@@ -263,8 +263,9 @@ namespace fem {
         integer_star_2& val)
       {
         if (io_mode == io_unformatted) {
-          inp.reset();
-          throw TBXX_NOT_IMPLEMENTED();
+          from_stream_unformatted(
+            reinterpret_cast<char*>(&val),
+            sizeof(integer_star_2));
         }
         else if (io_mode == io_list_directed) {
           inp.reset();
