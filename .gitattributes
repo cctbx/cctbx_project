@@ -700,6 +700,7 @@ iotbx/command_line/reflection_file_editor.py -text
 iotbx/detectors/adsc_module.py -text
 iotbx/detectors/beam_center_convention.py -text
 iotbx/detectors/cbf.py -text
+iotbx/detectors/dtrek.py -text
 iotbx/detectors/edf.py -text
 iotbx/detectors/image_divider.cpp -text
 iotbx/detectors/image_divider.h -text
