@@ -1456,3 +1456,7 @@ dp_example.f
 | I can store up to          10 numbers|
 doc_data_type_star.f
 |Done.|
+flush_intrinsic.f
+|OK|
+flush_external.f
+|           6|

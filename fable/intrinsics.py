@@ -85,3 +85,7 @@ date
 time
 cpu_time
 """.splitlines())
+
+io_set_lower = set("""\
+flush
+""".splitlines())

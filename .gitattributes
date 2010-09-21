@@ -497,6 +497,8 @@ fable/test/valid/external_arg_simple.f -text
 fable/test/valid/external_arg_subroutine.f -text
 fable/test/valid/f90_ne_token.f -text
 fable/test/valid/file_names_and_expected_cout -text
+fable/test/valid/flush_external.f -text
+fable/test/valid/flush_intrinsic.f -text
 fable/test/valid/format_escape.f -text
 fable/test/valid/format_nested.f -text
 fable/test/valid/format_quote_syndrome.f -text

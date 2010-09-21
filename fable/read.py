@@ -2347,7 +2347,11 @@ class fproc(fproc_p_methods):
         id_tok = ei.subroutine_name
         tf = O.fdecl_by_identifier.get(id_tok.value)
         if (tf is None):
-          make_fdecl(id_tok=id_tok, var_type=vt_subroutine)
+          if (id_tok.value in intrinsics.io_set_lower):
+            make_fdecl(id_tok=id_tok, var_type=vt_intrinsic)
+            O.uses_io = True
+          else:
+            make_fdecl(id_tok=id_tok, var_type=vt_subroutine)
         else:
           vt = tf.var_type
           if (vt is None or vt is vt_external):
@@ -2374,7 +2378,8 @@ class fproc(fproc_p_methods):
           return
         tf.use_count += 1
         if (tf.var_type is vt_intrinsic):
-          if (id_tok.value not in intrinsics.set_lower):
+          if (    id_tok.value not in intrinsics.set_lower
+              and id_tok.value not in intrinsics.io_set_lower):
             id_tok.raise_semantic_error(
               msg="Unknown intrinsic: %s" % id_tok.value)
           if (not followed_by_parenthesis):

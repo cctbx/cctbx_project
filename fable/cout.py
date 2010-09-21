@@ -2032,14 +2032,19 @@ def convert_executable(
         curr_scope.append("default: goto %s;" % lbl(2))
         curr_scope = curr_scope.close_nested_scope()
       elif (ei.key == "call"):
-        if (called_fproc_needs_cmn(
-              conv_info=conv_info,
-              called_name=ei.subroutine_name.value)):
-          cmn = "cmn"
-        else:
+        fdecl = conv_info.fproc.get_fdecl(id_tok=ei.subroutine_name)
+        if (fdecl.is_intrinsic()):
           cmn = ""
-        called = conv_info.vmapped_callable(
-          identifier=ei.subroutine_name.value)
+          called = "cmn.io.%s" % ei.subroutine_name.value
+        else:
+          if (called_fproc_needs_cmn(
+                conv_info=conv_info,
+                called_name=ei.subroutine_name.value)):
+            cmn = "cmn"
+          else:
+            cmn = ""
+          called = conv_info.vmapped_callable(
+            identifier=ei.subroutine_name.value)
         if (ei.arg_token is None):
           curr_scope.append("%s(%s);" % (called, cmn))
         else:
