@@ -32,6 +32,16 @@ ias_master_params = iotbx.phil.parse("""\
   ring_atoms = None
     .type = strings
     .multiple = True
+  lone_pair
+    .multiple = True
+  {
+    atom_x = CA
+      .type = str
+    atom_xo = C
+      .type = str
+    atom_o = O
+      .type = str
+  }
   use_map = True
     .type = bool
   build_only = False
@@ -196,7 +206,8 @@ class extract_ias(object):
                                      atom_2 = self._get_atom(j),
                                      type   = "R") )
       if(len(proxy.i_seqs) >= 4):
-         i, j, k = self._is_peptide_plane(i_seqs = proxy.i_seqs)
+         i, j, k = self._is_peptide_plane(i_seqs = proxy.i_seqs,
+           params = params.lone_pair)
          if([i,j,k].count(None)==0):
             self.iass.append( ias(atom_1 = self._get_atom(i),
                                   atom_2 = self._get_atom(j),
@@ -231,7 +242,7 @@ class extract_ias(object):
         if(d_ > dist and atom_i_name in ring_atoms and atom_j_name in ring_atoms):
           dist = d_
           i_best,j_best = i,j
-    print self.pdb_atoms[i_best].name, self.pdb_atoms[j_best].name
+    #if 0: print self.pdb_atoms[i_best].name, self.pdb_atoms[j_best].name
     return i_best,j_best
 
   def _is_phe_tyr_ring(self, i_seqs):
@@ -249,18 +260,21 @@ class extract_ias(object):
     else:
        return None, None
 
-  def _is_peptide_plane(self, i_seqs):
-    peptide_atoms = ["O","C","CA","N"]
+  def _is_peptide_plane(self, i_seqs, params):
     counter = 0
     ca_i_seq, c_i_seq, o_i_seq = None, None, None
+    i_pg = None
     for i_seq in i_seqs:
-        atom_i_name = self.pdb_atoms[i_seq].name.strip()
-        if(atom_i_name in peptide_atoms):
-           counter += 1
-        if(atom_i_name == "CA"): ca_i_seq = i_seq
-        if(atom_i_name == "C" ): c_i_seq  = i_seq
-        if(atom_i_name == "O" ): o_i_seq  = i_seq
-    if(counter == 4):
+      atom_i_name = self.pdb_atoms[i_seq].name.strip()
+      for i_pg_, pg in enumerate(params):
+        if(atom_i_name in [pg.atom_x,pg.atom_xo,pg.atom_o]):
+          counter += 1
+          #if(i_pg is None): i_pg = i_pg_
+          #else: assert i_pg == i_pg_, [i_pg,i_pg_]
+        if(atom_i_name == pg.atom_x ): ca_i_seq = i_seq
+        if(atom_i_name == pg.atom_xo): c_i_seq  = i_seq
+        if(atom_i_name == pg.atom_o ): o_i_seq  = i_seq
+    if(counter >= 3):
        return ca_i_seq, c_i_seq, o_i_seq
     else:
        return None, None, None
@@ -271,13 +285,14 @@ def ias_site_position(site_i, site_j, alp):
           (site_i[1] + site_j[1]*alp)/alp1,
           (site_i[2] + site_j[2]*alp)/alp1)
 
-def ias_position_at_lone_pairs(ias):
+def ias_position_at_lone_pairs(ias, params):
   site_c, site_ca, site_o = None, None, None
   ias_sites, label = None, None
   for a in [ias.atom_1, ias.atom_2, ias.atom_3]:
-    if(a.name == "CA"): site_ca = a.site_cart
-    if(a.name == "C"):  site_c  = a.site_cart
-    if(a.name == "O"):  site_o  = a.site_cart
+    for pg in params:
+      if(a.name == pg.atom_x ): site_ca = a.site_cart
+      if(a.name == pg.atom_xo): site_c  = a.site_cart
+      if(a.name == pg.atom_o ): site_o  = a.site_cart
   assert [site_c,site_ca,site_o].count(None) == 0
   dist_co = math.sqrt( (site_c[0]-site_o[0])**2 +
                        (site_c[1]-site_o[1])**2 +
@@ -288,8 +303,12 @@ def ias_position_at_lone_pairs(ias):
                                            dist_co = dist_co)
   return ias_sites
 
-def set_ias_name_and_predicted_position(iass):
+def set_ias_name_and_predicted_position(iass, params):
   phe_ring = ["CZ","CE1","CE2","CD1","CD2","CG"]
+  if(params.ring_atoms is not None):
+    for ra in params.ring_atoms:
+      if(ra is not None):
+        phe_ring += ra
   elbow    = ["CA","CB","CG"]
   main_cn  = ["C","N"]
   main_can = ["CA","N","CD"]
@@ -368,7 +387,7 @@ def set_ias_name_and_predicted_position(iass):
           ias_site = ias_site_position(site_i, site_j, 1.0)
     if(ias_.type == "L"):
        label = "D10"
-       ias_sites = ias_position_at_lone_pairs(ias_)
+       ias_sites = ias_position_at_lone_pairs(ias_, params.lone_pair)
     if(ias_.type == "R"):
        label = "D9"
        ias_site = ias_site_position(site_i, site_j, 1.0)
@@ -644,7 +663,7 @@ class manager(object):
                         planarity_proxies    = self.geometry.planarity_proxies,
                         params               = self.params,
                         log                  = self.log).iass
-     iass = set_ias_name_and_predicted_position(iass)
+     iass = set_ias_name_and_predicted_position(iass = iass, params = self.params)
      if(self.fmodel is not None):
        set_peaks(iass      = iass,
                  fmodel    = fmodel,

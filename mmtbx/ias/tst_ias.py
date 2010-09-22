@@ -49,14 +49,15 @@ def exercise():
     if(opt == ["L"]):
       params.build_ias_types = opt
       mol.add_ias(fmodel = None, ias_params = params)
-      assert mol.ias_selection.size() == 45
-      assert mol.ias_selection.count(True) == 4
-      assert mol.ias_selection.count(False) == 41
+      mol.write_pdb_file(out=open("zz.pdb","w"))
+      assert mol.ias_selection.size() == 47, mol.ias_selection.size()
+      assert mol.ias_selection.count(True) == 6, mol.ias_selection.count(True)
+      assert mol.ias_selection.count(False) == 41, mol.ias_selection.count(False)
     if(opt == all):
       params.build_ias_types = opt
       mol.add_ias(fmodel = None, ias_params = params)
-      assert mol.ias_selection.size() == 86
-      assert mol.ias_selection.count(True) == 45
+      assert mol.ias_selection.size() == 88,mol.ias_selection.size()
+      assert mol.ias_selection.count(True) == 47
       assert mol.ias_selection.count(False) == 41
     if(opt == ["R"]):
       params.build_ias_types = opt
