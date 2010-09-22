@@ -67,6 +67,39 @@ def prefix_each_line(prefix, lines_as_one_string, rstrip=True):
     suffix="",
     rstrip=rstrip)
 
+def make_header (line, out=None, header_len=80):
+  if (out is None): out = sys.stdout
+  line_len = len(line)
+  #assert line_len <= header_len
+  fill_len = header_len - line_len
+  fill_rl = fill_len/2
+  fill_r = fill_rl
+  fill_l = fill_rl
+  if (fill_rl*2 != fill_len):
+    fill_r +=1
+  out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-1)+"\n"
+  if(len(out_string) > 80):
+    out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-2)+"\n"
+  print >> out, out_string
+  out.flush()
+
+def make_sub_header(text, out=None, header_len=80):
+  if (out is None): out = sys.stdout
+  line = "----------"+text+"----------"
+  line_len = len(line)
+  #assert line_len <= header_len
+  fill_len = header_len - line_len
+  fill_rl = fill_len/2
+  fill_r = fill_rl
+  fill_l = fill_rl
+  if (fill_rl*2 != fill_len):
+    fill_r +=1
+  out_string = "\n"+" "*(fill_l-1)+" "+line+" "+" "*(fill_r-1)+"\n"
+  if(len(out_string) > 80):
+    out_string = "\n"+" "*(fill_l-1)+" "+line+" "+" "*(fill_r-2)+"\n"
+  print >> out, out_string
+  out.flush()
+
 def wordwrap (text, max_chars=80) :
   words = text.split()
   lines = []
@@ -355,6 +388,18 @@ to be reset.
   assert format_value("%.4f", 1.2345678) == "1.2346"
   assert format_value("%.4f", None) == "  None"
   assert format_value("%.4f", None, replace_none_with="---") == "   ---"
+  out = StringIO()
+  make_header("Header 1", out=out)
+  assert (out.getvalue() == """
+=================================== Header 1 ==================================
+
+""")
+  out = StringIO()
+  make_header("Header 2", out=out)
+  assert (out.getvalue() == """
+=================================== Header 2 ==================================
+
+""")
   #
   print "OK"
 
