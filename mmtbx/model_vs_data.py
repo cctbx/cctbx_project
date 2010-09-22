@@ -962,4 +962,5 @@ def summarize_results (mvd_obj) :
     rama_outliers=rama_outliers,
     rotamer_outliers=rotamer_outliers,
     c_beta_deviations=c_beta_deviations,
-    clashscore=clashscore)
+    clashscore=clashscore,
+    twin_law=mvd_obj.data.twinned)
