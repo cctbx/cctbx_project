@@ -237,9 +237,13 @@ class ramalyze(object):
             prev_rezes, next_rezes, prev_atom_list, next_atom_list, atom_list = \
               None, None, None, None, None
             if (i > 0):
+              if residue_group.resseq_as_int() != (residues[i-1].resseq_as_int())+1:
+                continue
               prev_rezes = self.construct_complete_residues(residues[i-1])
             rezes = self.construct_complete_residues(residues[i])
             if (i < len(residues)-1):
+              if residue_group.resseq_as_int() != (residues[i+1].resseq_as_int())-1:
+                continue
               next_rezes = self.construct_complete_residues(residues[i+1])
             #for alt_conf in sorted(rezes.keys()):
             for atom_group in residue_group.atom_groups():

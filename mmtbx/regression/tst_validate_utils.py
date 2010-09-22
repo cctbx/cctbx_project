@@ -151,9 +151,9 @@ def exercise_ramalyze():
 
   output, output_list = r.analyze_pdb(pdb_io=pdb_io, outliers_only=False)
   assert output.count("OUTLIER") == 75
-  assert output.count("Favored") == 496
+  assert output.count("Favored") == 494
   assert output.count("Allowed") == 154
-  assert output.count("General") == 642
+  assert output.count("General") == 640
   assert output.count("Glycine") == 39
   assert output.count("Proline") == 23
   assert output.count("Prepro") == 21
@@ -168,28 +168,28 @@ def exercise_ramalyze():
   #print 75./numtotal == test2
   assert r.get_outliers_count_and_fraction() == (75, 75./numtotal)
   assert r.get_allowed_count_and_fraction()  == (154, 154./numtotal)
-  assert r.get_favored_count_and_fraction()  == (496, 496./numtotal)
-  assert r.get_general_count_and_fraction()  == (642, 642./numtotal)
+  assert r.get_favored_count_and_fraction()  == (494, 494./numtotal)
+  assert r.get_general_count_and_fraction()  == (640, 640./numtotal)
   assert r.get_gly_count_and_fraction()      == (39, 39./numtotal)
   assert r.get_pro_count_and_fraction()      == (23, 23./numtotal)
   assert r.get_prepro_count_and_fraction()   == (21, 21./numtotal)
-  assert numtotal == 75+154+496
+  assert numtotal == 75+154+494
   output_lines = output.splitlines()
-  assert len(output_lines) == 725
+  assert len(output_lines) == 723
   assert output_lines[0] == "A  15 SER:39.85:-83.26:131.88:Favored:General"
   assert output_lines[1] == "A  16 SER:0.93:-111.53:71.36:Allowed:General"
   assert output_lines[168] == "A 191 ASP:2.90:-42.39:121.87:Favored:Prepro"
   assert output_lines[169] == "A 192 PRO:3.65:-39.12:-31.84:Favored:Proline"
-  assert output_lines[715] == "B 368 LYS:62.62:-62.97:-53.28:Favored:General"
-  assert output_lines[716] == "B 369 GLU:9.58:-44.36:-45.50:Favored:General"
-  assert output_lines[717] == "B 370 LYS:37.37:-50.00:-39.06:Favored:General"
-  assert output_lines[718] == "B 371 VAL:71.48:-60.38:-51.85:Favored:General"
-  assert output_lines[719] == "B 372 LEU:0.04:-61.13:-170.23:OUTLIER:General"
-  assert output_lines[720] == "B 373 ARG:0.03:60.09:-80.26:OUTLIER:General"
-  assert output_lines[721] == "B 374 ALA:0.57:-37.21:-36.12:Allowed:General"
-  assert output_lines[722] == "B 375 LEU:13.45:-89.81:-41.45:Favored:General"
-  assert output_lines[723] == "B 376 ASN:84.52:-58.30:-41.39:Favored:General"
-  assert output_lines[724] == "B 377 GLU:32.22:-56.79:-21.74:Favored:General"
+  assert output_lines[713] == "B 368 LYS:62.62:-62.97:-53.28:Favored:General"
+  assert output_lines[714] == "B 369 GLU:9.58:-44.36:-45.50:Favored:General"
+  assert output_lines[715] == "B 370 LYS:37.37:-50.00:-39.06:Favored:General"
+  assert output_lines[716] == "B 371 VAL:71.48:-60.38:-51.85:Favored:General"
+  assert output_lines[717] == "B 372 LEU:0.04:-61.13:-170.23:OUTLIER:General"
+  assert output_lines[718] == "B 373 ARG:0.03:60.09:-80.26:OUTLIER:General"
+  assert output_lines[719] == "B 374 ALA:0.57:-37.21:-36.12:Allowed:General"
+  assert output_lines[720] == "B 375 LEU:13.45:-89.81:-41.45:Favored:General"
+  assert output_lines[721] == "B 376 ASN:84.52:-58.30:-41.39:Favored:General"
+  assert output_lines[722] == "B 377 GLU:32.22:-56.79:-21.74:Favored:General"
 
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb1jxt.ent",
