@@ -63,9 +63,10 @@ namespace {
       def("calculate_entropy", calculate_entropy, (
         arg("map_data")));
       class_<update_prior>("update_prior", no_init)
-        .def(init<af::const_ref<std::complex<double>, af::flex_grid<> > const&,
-                  af::const_ref<std::complex<double>, af::flex_grid<> > const&,
-                  af::versa<std::complex<double>, af::flex_grid<> > >((
+        .def(init<
+            af::const_ref<std::complex<double>, af::c_grid_padded<3> > const&,
+            af::const_ref<std::complex<double>, af::c_grid_padded<3> > const&,
+            af::ref<std::complex<double>, af::c_grid_padded<3> > >((
           arg("fobs"),
           arg("sigf"),
           arg("priorA"))))

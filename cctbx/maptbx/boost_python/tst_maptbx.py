@@ -159,6 +159,25 @@ def exercise_statistics():
   assert approx_equal(s.sigma(), reference.biased_standard_deviation)
   assert approx_equal(s.skewness(), reference.skew)
   assert approx_equal(s.kurtosis(), reference.kurtosis)
+  m = flex.double(flex.grid((6,4,8)).set_focus((5,3,7)))
+  maptbx.clear_map(m, 0.375)
+  ent = maptbx.calculate_entropy(m)
+  assert approx_equal(ent, 4.65, eps=0.01)
+  m2 = m.deep_copy()
+  maptbx.clear_map(m2, 0.9)
+  maptbx.normalize_and_combine(m, m2, 0.01, 10)
+  assert approx_equal(m[(1,1,1)], 0.9344, eps=0.001)
+  sigf = flex.complex_double(flex.grid((6,4,8)).set_focus((5,3,7)))
+  for i in xrange(5) :
+    for j in xrange(3) :
+      for k in xrange(7) :
+        sigf[(i,j,k)] = complex(1,0)
+  f = flex.complex_double(flex.grid((6,4,8)).set_focus((5,3,7)), complex(3,4))
+  priorA = flex.complex_double(flex.grid((6,4,8)).set_focus((5,3,7)),
+    complex(1,1))
+  maptbx.update_prior(f, sigf, priorA)
+  assert (priorA[(1,2,3)] == complex(2,3))
+  assert (priorA[(5,3,7)] == complex(0,0))
 
 def exercise_grid_tags():
   t = maptbx.grid_tags((8,10,12))

@@ -2,6 +2,7 @@
 #define CCTBX_MAPTBX_STATISTICS_H
 
 #include <scitbx/array_family/accessors/flex_grid.h>
+#include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/loops.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/math/utils.h>
@@ -150,8 +151,8 @@ namespace cctbx { namespace maptbx {
 
   // maxent stuff
   inline void normalize_and_combine (
-    af::versa<double,  af::flex_grid<> > priorA_map,
-    af::const_ref<double,  af::flex_grid<> > priorB_map,
+    af::ref<double,  af::c_grid_padded<3> > priorA_map,
+    af::const_ref<double,  af::c_grid_padded<3> > priorB_map,
     double norm,
     double current_lambda)
   {
@@ -162,7 +163,7 @@ namespace cctbx { namespace maptbx {
   }
 
   inline double calculate_entropy (
-    af::const_ref<double,  af::flex_grid<> > const& map_data)
+    af::const_ref<double,  af::c_grid_padded<3> > const& map_data)
   {
     af::tiny<int, 3> n_real(af::adapt(map_data.accessor().focus()));
     double sum = 0.0;
@@ -170,8 +171,11 @@ namespace cctbx { namespace maptbx {
     for (int u = 0; u < n_real[0]; u++) {
       for (int v = 0; v < n_real[1]; v++) {
         for (int w = 0; w < n_real[2]; w++) {
-          sum += map_data(u,v,w);
+          double val = map_data(u,v,w);
+          CCTBX_ASSERT(val >= 0);
+          sum += val;
     }}}
+    CCTBX_ASSERT(sum > 0.0);
     for (int u = 0; u < n_real[0]; u++) {
       for (int v = 0; v < n_real[1]; v++) {
         for (int w = 0; w < n_real[2]; w++) {
@@ -188,9 +192,9 @@ namespace cctbx { namespace maptbx {
       double chi2;
 
       update_prior (
-        af::const_ref<std::complex<double>, af::flex_grid<> > const& fobs,
-        af::const_ref<std::complex<double>, af::flex_grid<> > const& sigf,
-        af::versa<std::complex<double>, af::flex_grid<> > priorA)
+        af::const_ref<std::complex<double>, af::c_grid_padded<3> > const& fobs,
+        af::const_ref<std::complex<double>, af::c_grid_padded<3> > const& sigf,
+        af::ref<std::complex<double>, af::c_grid_padded<3> > priorA)
       {
         sum = 0.0;
         chi2 = 0.0;
@@ -216,7 +220,7 @@ namespace cctbx { namespace maptbx {
   };
 
   inline void clear_map (
-    af::versa<double, af::flex_grid<> > map_data,
+    af::ref<double, af::c_grid_padded<3> > map_data,
     double mean_density)
   {
     for (int i = 0; i < map_data.size(); i++) {
