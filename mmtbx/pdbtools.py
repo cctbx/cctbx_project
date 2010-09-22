@@ -116,6 +116,10 @@ occupancies
     .help = Set all or selected occupancies to given value
     .short_caption=Set occupancies to
 }
+renumber_residues = None
+  .type = bool
+  .help = Re-number residues
+  .style = noauto
 truncate_to_polyala = None
   .type = bool
   .help = Truncate a model to poly-Ala.
@@ -518,6 +522,14 @@ def truncate_to_poly_ala(hierarchy):
               if (atom.name not in ala_atom_names):
                 ag.remove_atom(atom=atom)
 
+def renumber_residues(pdb_hierarchy):
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      counter = 1
+      for rg in chain.residue_groups():
+        rg.resseq=counter
+        counter += 1
+
 def run(args, command_name="phenix.pdbtools"):
   log = utils.set_log(args)
   utils.print_programs_start_header(
@@ -535,7 +547,18 @@ def run(args, command_name="phenix.pdbtools"):
     truncate_to_poly_ala(hierarchy = pdb_hierarchy)
     pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
     pdb_hierarchy.write_pdb_file(file_name = pdbout+"_modified.pdb",
-      crystal_symmetry = xray_structure.crystal_symmetry())
+      crystal_symmetry = command_line_interpreter.pdb_inp.crystal_symmetry())
+    output_files.append(pdbout+"_modified.pdb")
+    return output_files
+### Renumber residues
+  if(command_line_interpreter.params.modify.renumber_residues):
+    xray_structure = command_line_interpreter.pdb_inp.xray_structure_simple()
+    utils.print_header("Re-numbering residues", out = log)
+    pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
+    renumber_residues(pdb_hierarchy = pdb_hierarchy)
+    pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
+    pdb_hierarchy.write_pdb_file(file_name = pdbout+"_modified.pdb",
+      crystal_symmetry = command_line_interpreter.pdb_inp.crystal_symmetry())
     output_files.append(pdbout+"_modified.pdb")
     return output_files
 ###

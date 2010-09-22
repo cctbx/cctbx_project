@@ -464,6 +464,49 @@ def exercise_truncate_to_polyala(pdb_dir, verbose):
     counter += 1
   assert counter == 23
 
+def exercise_renumber_residues():
+  input_pdb = """
+ATOM      1  O   GLY A   3       1.434   1.460   2.496  1.00  6.04           O
+ATOM      2  O   CYS A   7       2.196   4.467   3.911  1.00  4.51           O
+ATOM      3  O   CYS A   1      -1.433   4.734   5.405  1.00  7.85           O
+TER
+ATOM      4  O   SER B   4       0.297   0.843   7.226  1.00  7.65           O
+ATOM      5  OG ASER B   4      -2.625   1.057   4.064  0.50  5.46           O
+ATOM      6  OG BSER B   4      -0.885   0.189   3.843  0.50 11.74           O
+ATOM      7  O   LEU B   8       3.613   4.307   6.646  1.00  5.39           O
+ATOM      8  O   PRO B  -1       4.398   6.723   8.658  1.00  6.65           O
+ATOM      9  O   TYR B   7       7.294   7.360   6.923  1.00  8.75           O
+ATOM     10  O   CYS B   0       5.256   8.262   4.185  1.00  6.08           O
+ATOM     11  O   ALA B   9       3.028  10.447   5.584  1.00  7.39           O
+TER
+ATOM     12  O   LEU C   0       5.613  12.448   6.864  1.00  7.32           O
+TER
+END
+"""
+  expected_output_pdb = """ATOM      1  O   GLY A   1       1.434   1.460   2.496  1.00  6.04           O
+ATOM      2  O   CYS A   2       2.196   4.467   3.911  1.00  4.51           O
+ATOM      3  O   CYS A   3      -1.433   4.734   5.405  1.00  7.85           O
+TER
+ATOM      4  O   SER B   1       0.297   0.843   7.226  1.00  7.65           O
+ATOM      5  OG ASER B   1      -2.625   1.057   4.064  0.50  5.46           O
+ATOM      6  OG BSER B   1      -0.885   0.189   3.843  0.50 11.74           O
+ATOM      7  O   LEU B   2       3.613   4.307   6.646  1.00  5.39           O
+ATOM      8  O   PRO B   3       4.398   6.723   8.658  1.00  6.65           O
+ATOM      9  O   TYR B   4       7.294   7.360   6.923  1.00  8.75           O
+ATOM     10  O   CYS B   5       5.256   8.262   4.185  1.00  6.08           O
+ATOM     11  O   ALA B   6       3.028  10.447   5.584  1.00  7.39           O
+TER
+ATOM     12  O   LEU C   1       5.613  12.448   6.864  1.00  7.32           O
+TER
+"""
+  ifn = "exercise_renumber_residues.pdb"
+  open(ifn,"w").write(input_pdb)
+  easy_run.call("phenix.pdbtools %s renumber_residues=true"%ifn)
+  for line1, line2 in zip(open(ifn+"_modified.pdb").readlines(), expected_output_pdb.splitlines()):
+    line1 = line1.strip()
+    line2 = line2.strip()
+    assert line1 == line2
+
 def exercise(args):
   if ("--show-everything" in args):
     verbose = 2
@@ -485,6 +528,7 @@ def exercise(args):
   exercise_show_number_of_removed(**eargs)
   exercise_02(**eargs)
   exercise_truncate_to_polyala(**eargs)
+  exercise_renumber_residues()
   print "OK"
 
 if (__name__ == "__main__"):
