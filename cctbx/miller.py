@@ -1916,7 +1916,6 @@ phases are determined on the fly using the given step size.
 
   def anomalous_differences(self):
     assert self.data() is not None
-    assert self.observation_type() is None or self.is_xray_amplitude_array()
     asu, matches = self.match_bijvoet_mates()
     i = matches.miller_indices_in_hemisphere("+")
     d = matches.minus(asu.data())
