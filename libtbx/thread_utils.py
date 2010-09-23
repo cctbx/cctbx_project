@@ -51,6 +51,25 @@ class thread_with_callback_and_wait(threading.Thread):
 
 null_callback = oop.null()
 
+class queue_monitor_thread (threading.Thread) :
+  def __init__ (self, q, callback) :
+    self.q = q
+    self.cb = callback
+    self._exit = False
+    threading.Thread.__init__(self)
+
+  def run (self) :
+    from multiprocessing import Queue
+    while not self._exit :
+      if (self.q.qsize() > 0) :
+        result = self.q.get(timeout=1)
+        self.cb(result)
+      else :
+        time.sleep(1)
+
+  def exit (self) :
+    self._exit = True
+
 class child_process_message (object) :
   def __init__ (self, message_type, data) :
     adopt_init_args(self, locals())

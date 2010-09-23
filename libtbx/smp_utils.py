@@ -1,4 +1,5 @@
 import sys, time
+from libtbx import thread_utils
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 
@@ -37,6 +38,10 @@ class manager (object) :
     else :
       self.enable_multiprocessing = False
 
+  def join (self) :
+    if (self.pool is not None) :
+      self.pool.join()
+
   def show_summary (self, out=sys.stdout) :
     if self.enable_multiprocessing :
       print >> out, "Multiprocessing is ENABLED on %d CPUs" % self.nproc
@@ -45,10 +50,29 @@ class manager (object) :
 
   def map_async (self, func, iterable, chunksize=None, callback=None) :
     if self.enable_multiprocessing :
-      result = self.pool.map_async(func, iterable, chunksize, callback)
-      return result.get()
+      self.pool.map_async(_run_wrapper(func), iterable, chunksize, callback)
     else :
       return map(func, iterable)
+
+  def map_with_async_callback (self, func, iterable, callback_async,
+      chunksize=None, callback=None) :
+    if self.enable_multiprocessing :
+      import multiprocessing
+      manager = multiprocessing.Manager()
+      q = manager.Queue()
+      f = _wrapper_with_queue(func, q)
+      t = thread_utils.queue_monitor_thread(q, callback_async)
+      t.start()
+      result = self.pool.map(f, iterable, chunksize)
+      t.exit()
+      return result
+    else :
+      results = []
+      for item in iterable :
+        item_result = func(item)
+        callback_async(item_result)
+        results.append(item_result)
+      return results
 
   def map (self, func, iterable, chunksize=None) :
     if self.enable_multiprocessing :
@@ -61,6 +85,28 @@ class manager (object) :
 
   def run_many_async (self, objects, callback=None) :
     self.map_async(_run_many, objects, callback=callback)
+
+class _run_wrapper (object) :
+  def __init__ (self, f) :
+    self.f = f
+
+  def __call__ (self, args) :
+    try :
+      return self.f(args)
+    except Exception, e :
+      if hasattr(e, "reset_module") :
+        e.reset_module()
+      raise
+
+class _wrapper_with_queue (_run_wrapper) :
+  def __init__ (self, f, q) :
+    self.f = f
+    self.q = q
+
+  def __call__ (self, args) :
+    result = _run_wrapper.__call__(self, args)
+    self.q.put(result)
+    return result
 
 def _run_many (run_object) :
   return run_object.run()
