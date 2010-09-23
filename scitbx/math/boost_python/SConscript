@@ -30,6 +30,7 @@ env.SharedLibrary(
     "exp_functions.cpp",
     "zernike.cpp",
     "zernike_moments.cpp",
+    "2d_zernike_moments.cpp",
     "weighted_covariance.cpp",
     "rotation.cpp"
     ]

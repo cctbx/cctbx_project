@@ -52,6 +52,7 @@ namespace boost_python {
   void wrap_exp_functions();
   void wrap_zernike();
   void wrap_zernike_mom();
+  void wrap_2d_zernike_mom();
   void wrap_weighted_covariance();
   void wrap_dmatrix();
   void wrap_correlation();
@@ -379,6 +380,7 @@ namespace {
     wrap_exp_functions();
     wrap_zernike();
     wrap_zernike_mom();
+    wrap_2d_zernike_mom();
     wrap_weighted_covariance();
     wrap_dmatrix();
     wrap_correlation();
