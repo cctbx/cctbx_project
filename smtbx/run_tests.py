@@ -3,6 +3,7 @@ import libtbx.load_env
 
 def run():
   tst_list = (
+    "$D/absolute_structure/tests/tst_absolute_structure.py",
     "$D/ab_initio/tests/tst_ab_initio_ext.py",
     ["$D/ab_initio/tests/tst_charge_flipping.py", '--fix_seed', '--on=E',
      '"hall: P 1"', '"hall: P 3"', '"hall: -P 2ybc"' ],
