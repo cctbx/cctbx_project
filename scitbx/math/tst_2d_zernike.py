@@ -69,3 +69,4 @@ def tst_2d_zernike_mom(n,l):
 
 if __name__ == "__main__":
   tst_2d_zernike_mom(3,1)
+  print "OK"
