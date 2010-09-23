@@ -300,6 +300,34 @@ af::flex_int Bin2_by_2(const af::flex_int& olddata) {
   return newdata;
 }
 
+af::flex_int ReadDTrek(std::string const& raw_buffer, std::string const& type_code,
+                      const long& slow, const long& fast, const bool& swap,
+                      const long& uncompress ) {
+
+  unsigned char const* uchardata = (unsigned char const*) raw_buffer.c_str();
+
+  af::flex_int z(af::flex_grid<>(slow,fast));
+
+  int* begin = z.begin();
+  std::size_t sz = z.size();
+  IOTBX_ASSERT(type_code=="H");//only data type presently implemented!
+
+  unsigned short compressed;
+  if (swap) {
+    for (std::size_t i = 0; i < sz; i++) {
+      compressed = (unsigned short)256 * uchardata[2*i] + uchardata[2*i +1];
+      begin[i] = compressed > 0x7fff ? (int)(compressed & 0x7fff)*uncompress : compressed;
+    }
+  } else {
+    for (std::size_t i = 0; i < sz; i++) {
+      compressed = (unsigned short)256 * uchardata[2*i+1] + uchardata[2*i];
+      begin[i] = compressed > 0x7fff ? (int)(compressed & 0x7fff)*uncompress : compressed;
+    }
+  }
+
+  return z;
+}
+
 } // namespace <anonymous>
 
 #include <boost/python.hpp>
@@ -316,6 +344,10 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
    def("unpad_raxis", unpad_raxis);
    def("MakeSquareRAXIS", MakeSquareRAXIS);
    def("Bin2_by_2", Bin2_by_2);
+   def("ReadDTrek", ReadDTrek,
+        (arg("raw"),arg("type_code"),arg("slow"),arg("fast"),arg("swap"),
+         arg("uncompress"))
+   );
 
   class_<Distl::interval>("interval", no_init)
      .def_readonly("first",&Distl::interval::first)
