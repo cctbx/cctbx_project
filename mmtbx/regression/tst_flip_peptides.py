@@ -17,6 +17,7 @@ def exercise () :
   cmd = " ".join([ "mmtbx.flip_peptides", pdb_file, mtz_file ])
   output = easy_run.fully_buffered(cmd).stdout_lines
   output_str = "\n".join(output)
+  print output_str
   assert contains_lines(output_str, "wrote new PDB file to 3ifk_new.pdb")
   residues = set([])
   for line in output :

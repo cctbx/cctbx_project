@@ -28,6 +28,7 @@ from iotbx.pdb import crystal_symmetry_from_pdb
 from iotbx.pdb import combine_unique_pdb_files
 from iotbx import mtz
 from libtbx.utils import user_plus_sys_time, show_total_time
+from libtbx import str_utils
 from libtbx.str_utils import show_string
 from libtbx import adopt_init_args
 import random, sys, os, time
@@ -1582,6 +1583,8 @@ class process_command_line_args(object):
     self.params           = None
     self.crystal_symmetry = None
     self.cmd_cs = cmd_cs
+    self.reflection_file_server = None
+    self.pdb_file_object = None
     crystal_symmetries = []
     if(master_params is not None):
       assert home_scope is None
@@ -1683,6 +1686,16 @@ class process_command_line_args(object):
     if(self.cmd_cs is not None and self.cmd_cs.unit_cell() is not None):
       self.crystal_symmetry = self.cmd_cs
 
+  def get_reflection_file_server (self) :
+    if (self.reflection_file_server is None) :
+      reflection_file_server = reflection_file_utils.reflection_file_server(
+        crystal_symmetry=self.crystal_symmetry,
+        force_symmetry=True,
+        reflection_files=self.reflection_files,
+        err=sys.stderr)
+      self.reflection_file_server = reflection_file_server
+    return self.reflection_file_server
+
 class pdb_file(object):
 
   def __init__(self, pdb_file_names,
@@ -1707,7 +1720,9 @@ class pdb_file(object):
     if(crystal_symmetry is not None and crystal_symmetry.unit_cell() is not None):
       self.pdb_inp.crystal_symmetry(crystal_symmetry = crystal_symmetry)
 
-  def set_ppf(self, stop_if_duplicate_labels=True):
+  def set_ppf(self, stop_if_duplicate_labels=True, log=None):
+    if (log is None) :
+      log = StringIO()
     # XXX do not write a file
     if(len(self.cif_objects) == 0 and self.use_elbow):
       t = time.ctime().split() # to make it safe to remove files
@@ -1747,7 +1762,7 @@ class pdb_file(object):
       cif_objects               = self.cif_objects,
       pdb_interpretation_params = pdb_ip,
       crystal_symmetry          = self.crystal_symmetry,
-      log                       = StringIO())
+      log                       = log)
     self.processed_pdb_file, self.pdb_inp = \
       self.processed_pdb_files_srv.process_pdb_files(raw_records =
         self.pdb_raw_records, stop_if_duplicate_labels = stop_if_duplicate_labels)
@@ -2194,3 +2209,78 @@ def rms_b_iso_or_b_equiv_bonded(restraints_manager, xray_structure,
     if(values.size() == 0): return 0
     result = math.sqrt(flex.sum(values) / values.size())
   return result
+
+cmdline_input_phil_str = """
+input {
+  %s
+  pdb {
+    %s
+  }
+  monomer_library {
+    %s
+  }
+}
+""" % (xray_data_str, pdb_params.as_str(attributes_level=3),
+       cif_params.as_str(attributes_level=3))
+
+class cmdline_load_pdb_and_data (object) :
+  def __init__ (self, args, master_phil, out=sys.stdout,
+      process_pdb_file=True, create_fmodel=True) :
+    self.args = args
+    self.master_phil = master_phil
+    cmdline = process_command_line_args(
+      args=args,
+      master_params=master_phil)
+    params = cmdline.params.extract()
+    if len(params.input.pdb.file_name) == 0 :
+      if (len(cmdline.pdb_file_names) != 1) :
+        raise Sorry("At least one PDB file is required as input.")
+    if (params.input.xray_data.file_name is None) :
+      if (len(cmdline.reflection_file_names) == 0) :
+        raise Sorry("At least one reflections file is required as input.")
+    reflection_file_server = cmdline.get_reflection_file_server()
+    str_utils.make_header("Processing X-ray data", out=out)
+    data_and_flags = determine_data_and_flags(
+      reflection_file_server=reflection_file_server,
+      parameters=params.input.xray_data,
+      data_parameter_scope="input.xray_data",
+      flags_parameter_scope="input.xray_data.r_free_flags")
+    params.input.pdb.file_name.extend(cmdline.pdb_file_names)
+    cif_file_names = params.input.monomer_library.file_name
+    cif_objects = cmdline.cif_objects
+    if len(cif_file_names) > 0 :
+      for file_name in cif_file_names :
+        cif_obj = mmtbx.monomer_library.server.read_cif(file_name=file_name)
+        cif_objects.append((file_name, cif_obj))
+    pdb_file_object = pdb_file(
+      pdb_file_names=params.input.pdb.file_name,
+      cif_objects=cif_objects,
+      log=out)
+    if process_pdb_file :
+      str_utils.make_header("Processing PDB file(s)", out=out)
+      pdb_file_object.set_ppf(log=out)
+      processed_pdb_file = pdb_file_object.processed_pdb_file
+      geometry = processed_pdb_file.geometry_restraints_manager(
+        show_energies=False)
+      xray_structure = processed_pdb_file.xray_structure()
+      chain_proxies = processed_pdb_file.all_chain_proxies
+      pdb_hierarchy = chain_proxies.pdb_hierarchy
+      self.processed_pdb_file = processed_pdb_file
+      self.geometry = geometry
+    else :
+      pdb_hierarchy = pdb_file_object.pdb_inp.construct_hierarchy()
+      xray_structure = pdb_file_object.pdb_inp.xray_structure_simple()
+      self.processed_pdb_file = None
+      self.geometry = None
+    self.fmodel = None
+    if create_fmodel :
+      fmodel = fmodel_simple(
+        xray_structures=[xray_structure],
+        f_obs=data_and_flags.f_obs,
+        r_free_flags=data_and_flags.r_free_flags)
+      self.fmodel = fmodel
+    self.f_obs = data_and_flags.f_obs
+    self.r_free_flags = data_and_flags.r_free_flags
+    self.xray_structure = xray_structure
+    self.pdb_hierarchy = pdb_hierarchy
+    self.params = params
