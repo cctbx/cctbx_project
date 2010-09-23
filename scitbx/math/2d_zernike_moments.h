@@ -362,8 +362,8 @@ namespace zernike {
 
       void build_H_array(int D)
       {
-        FloatType log_D=std::log(D);
-        FloatType log_D_1=std::log(D-1);
+        FloatType log_D=std::log((FloatType)D);
+        FloatType log_D_1=std::log(D-1.0);
 
         for(int alpha=0;alpha<=n_max_;alpha++) {
           af::shared< FloatType > ha;
