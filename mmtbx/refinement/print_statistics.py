@@ -5,6 +5,7 @@ from scitbx import matrix
 from libtbx.utils import format_cpu_times, getenv_bool
 from libtbx import adopt_init_args
 import sys, os, time
+from libtbx import str_utils
 from libtbx.str_utils import prefix_each_line_suffix
 from libtbx import introspection
 from cctbx import adptbx
@@ -40,38 +41,11 @@ def make_header(line, out=None):
   if (out is None): out = sys.stdout
   if (enable_show_process_info):
     show_process_info(out=out)
-  header_len = 80
-  line_len = len(line)
-  #assert line_len <= header_len
-  fill_len = header_len - line_len
-  fill_rl = fill_len/2
-  fill_r = fill_rl
-  fill_l = fill_rl
-  if (fill_rl*2 != fill_len):
-    fill_r +=1
-  out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-1)+"\n"
-  if(len(out_string) > 80):
-    out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-2)+"\n"
-  print >> out, out_string
-  out.flush()
+  str_utils.make_header(line, out=out, header_len=80)
 
 def make_sub_header(text, out=None):
   if (out is None): out = sys.stdout
-  header_len = 80
-  line = "----------"+text+"----------"
-  line_len = len(line)
-  #assert line_len <= header_len
-  fill_len = header_len - line_len
-  fill_rl = fill_len/2
-  fill_r = fill_rl
-  fill_l = fill_rl
-  if (fill_rl*2 != fill_len):
-    fill_r +=1
-  out_string = "\n"+" "*(fill_l-1)+" "+line+" "+" "*(fill_r-1)+"\n"
-  if(len(out_string) > 80):
-    out_string = "\n"+" "*(fill_l-1)+" "+line+" "+" "*(fill_r-2)+"\n"
-  print >> out, out_string
-  out.flush()
+  str_utils.make_sub_header(text, out=out, header_len=80)
 
 def macro_cycle_header(macro_cycle, number_of_macro_cycles, out=None):
   if (out is None): out = sys.stdout
