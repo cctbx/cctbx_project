@@ -35,7 +35,7 @@ class FileName:
   def fullpath(self):
     if self.__dict__.has_key("full_url"):
       return self.full_url
-    return os.path.join(self.cwd,self.base)
+    return os.path.join(os.path.abspath(self.cwd),self.base)
   def isImageFileName(self):
     match1a = pattern1a.match(self.base)
     match1b = pattern1b.match(self.base)
