@@ -1149,6 +1149,7 @@ scitbx/lstbx/tests/tst_normal_equations.py -text
 scitbx/math/2d_zernike_moments.h -text
 scitbx/math/approx_equal.h -text
 scitbx/math/besselk.py -text
+scitbx/math/boost_python/2d_zernike_moments.cpp -text
 scitbx/math/boost_python/__init__.py -text
 scitbx/math/boost_python/continued_fraction.cpp -text
 scitbx/math/boost_python/exp_functions.cpp svneol=native#text/plain
