@@ -360,15 +360,18 @@ namespace zernike {
         return;
       }
 
-      void build_H_array(int D)
+      void build_H_array(int d)
       {
-        FloatType log_D=std::log((FloatType)D);
-        FloatType log_D_1=std::log(D-1.0);
+        SCITBX_ASSERT(d > 1);
+        FloatType log_d = std::log(static_cast<FloatType>(d));
+        FloatType log_d_1 = std::log(static_cast<FloatType>(d-1));
 
         for(int alpha=0;alpha<=n_max_;alpha++) {
           af::shared< FloatType > ha;
           for(int p=0;p<=alpha;p++) {
-            ha.push_back( is_even(alpha-p)*bino_[alpha][p]*std::exp( (alpha-p)*log_D-alpha*log_D_1) );
+            ha.push_back(
+              is_even(alpha-p)*bino_[alpha][p]
+                * std::exp( (alpha-p)*log_d-alpha*log_d_1) );
           }
           H_array_.push_back( ha );
         }
