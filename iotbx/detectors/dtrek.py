@@ -2,6 +2,7 @@ import re,types,struct
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 from iotbx.detectors.detectorbase import DetectorImageBase
+from iotbx.detectors import ReadDTrek
 
 verbose=False
 
@@ -131,6 +132,13 @@ class DTREKImage(DetectorImageBase):
       self.enforce_types()
       self.generic_param_from_vendor_head()
 
+  def getEndian(self):
+    self.readHeader()
+    if self.keys['BYTE_ORDER'].lower().find('big')>=0:
+      return 1 #big_endian
+    else:
+      return 0 #little_endian
+
   def read(self):
     G = open(self.filename, "rb")
     G.seek(self.keys["HEADER_BYTES"])
@@ -148,8 +156,18 @@ class DTREKImage(DetectorImageBase):
     assert not type_code=="I" # for I, a flex.int() will exceed type limits
     array_size = self.parameters['SIZE1'] * self.parameters['SIZE2']
     rawdata = G.read(array_size * type_size)
-
-    #Does not yet handle raxis uncompression:
-    uncoded_data = struct.unpack(endian_code+type_code*array_size,rawdata)
-    self.linearintdata = flex.int(uncoded_data)
-    self.linearintdata.reshape(flex.grid((self.parameters['SIZE2'],self.parameters['SIZE1'])))
+    G.close()
+      #Python prototype--
+      #doesn't handle raxis uncompression & is 10x slower than C++ version
+      #uncoded_data = struct.unpack(endian_code+type_code*array_size,rawdata)
+      #provisional_data = flex.int(uncoded_data)
+      #provisional_data.reshape(flex.grid((self.parameters['SIZE2'],
+      #                                  self.parameters['SIZE1'])))
+      #self.bin_safe_set_data(provisional_data)
+    self.bin_safe_set_data(
+                ReadDTrek(raw=rawdata,type_code=type_code,
+                          slow=self.parameters['SIZE2'],
+                          fast=self.parameters['SIZE1'],
+                          swap=self.endian_swap_required(),
+                          uncompress=self.keys.get("RAXIS_COMPRESSION_RATIO",1)
+                          ))
