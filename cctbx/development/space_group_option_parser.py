@@ -38,7 +38,12 @@ class space_group_option_parser(libtbx.option_parser.option_parser):
                 action="store_true", default=False)
 
   def process(self, args):
-    command_line = libtbx.option_parser.option_parser.process(self, args)
+    adjusted_args = []
+    for arg in args:
+      if (arg == "--Verbose"): arg = "--verbose=1"
+      adjusted_args.append(arg)
+    command_line = libtbx.option_parser.option_parser.process(
+      self, adjusted_args)
     opts = command_line.options
     if opts.n_scatterers is not None:
       opts.n_scatterers = [ int(x) for x in opts.n_scatterers.split(',') ]
