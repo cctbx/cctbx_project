@@ -22,7 +22,7 @@ def tst_2d_zernike_mom(n,l):
       rr = smath.sqrt(x*x+y*y)/N
       tt = smath.atan2(y,x)
       value = rap.f(rr,tt)
-      value = value.real 
+      value = value.real
       if rr>1.0:
         value=0.0
       else:
@@ -48,7 +48,7 @@ def tst_2d_zernike_mom(n,l):
   nl_array = math.nl_array( nmax )
   nls = nl_array.nl()
   nl_array.load_coefs( nls, coefs )
-  
+
   print nl_array.get_coef(n,l)*2
 
   for nl, c in zip( nls, coefs):
