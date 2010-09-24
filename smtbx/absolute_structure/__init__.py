@@ -36,6 +36,7 @@ class hooft_analysis:
     fc2 = fc.as_intensity_array()
     self.delta_fc2 = fc2.anomalous_differences()
     self.delta_fo2 = fo2.anomalous_differences()
+    self.n_bijvoet_pairs = self.delta_fo2.size()
     cutoff_sel = flex.abs(self.delta_fo2.data()) > (
       outlier_cuttoff_factor * scale_factor) * flex.max(
         flex.abs(self.delta_fc2.data()))
@@ -45,20 +46,42 @@ class hooft_analysis:
       data=self.delta_fo2.data()/scale_factor)
     min_gamma = -10
     max_gamma = 10
-    d_gamma = 0.01
-    log_p_obs_given_gammas = flex.double()
-    # quick and dirty to find better min, max gammas
-    for gamma in xfrange(min_gamma, max_gamma, 0.5):
-      log_p_obs_given_gammas.append(self.log_p_obs_given_gamma(gamma))
-    max_index = flex.max_index(log_p_obs_given_gammas)
-    for i, gamma in enumerate(xfrange(min_gamma, max_gamma, 0.5)):
-      if log_p_obs_given_gammas[i] - log_p_obs_given_gammas[max_index] < -10:
-        if i < max_index:
-          min_gamma = gamma
-        elif i > max_index:
-          max_gamma = gamma
-          break
 
+    # quick and dirty to find better min, max gammas
+    max_log_p_obs = -1e100
+    while True:
+      # search for the maximum
+      width = max_gamma - min_gamma
+      if width < 0.0001:
+        break
+      middle = (min_gamma + max_gamma)/2
+      a = middle - width/4
+      b = middle + width/4
+      value_a = self.log_p_obs_given_gamma(a)
+      value_b = self.log_p_obs_given_gamma(b)
+      if value_a > value_b:
+        max_gamma = middle
+      elif value_a == value_b:
+        min_gamma = a
+        max_gamma = b
+      else:
+        min_gamma = middle
+      max_log_p_obs = max([max_log_p_obs, value_a, value_b])
+    while True:
+      # search for where the curve becomes close to zero on the left
+      min_gamma = middle - width/2
+      width *= 2
+      if self.log_p_obs_given_gamma(min_gamma) - max_log_p_obs < -10:
+        break
+    while True:
+      # search for where the curve becomes close to zero on the right
+      max_gamma = middle + width/2
+      width *= 2
+      if self.log_p_obs_given_gamma(max_gamma) - max_log_p_obs < -10:
+        break
+
+    n_steps = 500
+    d_gamma = (max_gamma - min_gamma)/n_steps
     # now do it properly
     log_p_obs_given_gammas = flex.double()
     for gamma in xfrange(min_gamma, max_gamma, d_gamma):
@@ -121,6 +144,11 @@ class hooft_analysis:
 
   def show(self, out=None):
     if out is None: out=sys.stdout
+    print >> out, "Bijvoet pairs (all): %i" %self.n_bijvoet_pairs
+    print >> out, "Bijvoet pairs (used): %i" %self.delta_fo2.size()
+    print >> out, "Bijvoet pairs coverage: %.2f" %(
+      self.n_bijvoet_pairs/self.delta_fo2.customized_copy(
+        anomalous_flag=True).complete_set().n_bijvoet_pairs())
     print >> out, "G: %.3f(%.3f)" %(self.G, self.sigma_G)
     if self.p2 is None:
       print >> out, "P2(true): n/a"
