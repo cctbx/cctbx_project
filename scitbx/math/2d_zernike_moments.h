@@ -37,8 +37,6 @@ namespace zernike {
              ):
              N_point_(N_point),
              n_max_(n_max),
-             ss_r_(n_max, 0.0),
-             ss_s_(n_max, 0.0),
              grid_(n_max+1, n_max+1),
              ss_(grid_, 0.0)
       {
@@ -56,9 +54,9 @@ namespace zernike {
 
       bool build_grid()
       {
-        for(int i=1;i<=2*N_point_+1;i++)
-          one_d_.push_back( i );
-
+        for(int i=-N_point_;i<=N_point_;i++)
+          one_d_.push_back( i*delta_ );
+/*
         for(int i=0;i<=2*N_point_;i++) {
           for(int j=0;j<=2*N_point_;j++) {
                scitbx::vec2<FloatType>point( one_d_[i],one_d_[j]);
@@ -70,13 +68,13 @@ namespace zernike {
                }  //end if
           }  //end j
         } //end i
-        return true;
+ */       return true;
       }
 
      af::versa< FloatType, af::c_grid<2> > get_all_ss() { return ss_; }
 
 // Clean the grid point based on voxel value:
-// i.e. if (voxel(x,y,z) == 0), there is no need to keep the grid point
+// i.e. if (voxel(x,y) == 0), there is no need to keep the grid point
 
       bool clean_space( af::const_ref< scitbx::vec3<FloatType> > image) {
         int total_point=image.size();
@@ -87,8 +85,10 @@ namespace zernike {
           y=image[i][1]-N_point_;
           r2 = x*x+y*y;
           if(image[i][2] != 0  && r2 <= bound) {
-            voxel_.push_back( image[i] );
+            voxel_indx_.push_back( scitbx::vec2<int>(image[i][0],image[i][1]) );
+            voxel_value_.push_back( image[i][2] );
           }
+          total_point_ = voxel_indx_.size();
         }
 //        std::cout<<"occupied pixel "<<voxel_.size()<<std::endl;
         return true;
@@ -106,27 +106,24 @@ namespace zernike {
       af::shared<FloatType> array_product( af::shared<FloatType> a, af::shared<FloatType> b, int n)
       {
         int size = a.size();
-        FloatType d(n);
-        af::shared<FloatType> result;
-        result.reserve( size );
+        af::shared<FloatType> result(size,0);
         for(int i=0;i<size;i++) {
-          result.push_back(a[i]*b[i]);
+          result[i] = a[i]*b[i];
         }
         return result;
       }
 
       FloatType space_sum(int r, int s)
       {
-        int total_point=voxel_.size(), x,y;
+        int x,y;
         FloatType tot(0.0), temp,z;
 
-        for(int i=0;i<total_point;i++) {
-          x=voxel_[i][0];
-          y=voxel_[i][1];
-          z=voxel_[i][2];
+        for(int i=0;i<total_point_;i++) {
+          x=voxel_indx_[i][0];
+          y=voxel_indx_[i][1];
+          z=voxel_value_[i];
 
-          temp=gm_[r][x]*gm_[s][y]*z;
-          tot += temp;
+          tot += gm_[r][x]*gm_[s][y]*z;
         }
         return tot;
       }
@@ -135,7 +132,7 @@ namespace zernike {
       bool construct_space_sum() {
         for(int r=0;r<=n_max_;r++) {
           for(int s=0;s<=n_max_;s++) {
-        //      if( r+s <= n_max_)
+              if( r+s <= n_max_)
                 ss_(r, s) =  space_sum(r,s);
           } //end of s
         } //end of r
@@ -148,17 +145,15 @@ namespace zernike {
       }
 
     private:
-      scitbx::af::shared< scitbx::vec2<int> > all_indx_;
-      scitbx::af::shared< scitbx::vec2<int> > xy_indx_;
-      scitbx::af::shared< scitbx::vec3<FloatType> > voxel_;
+      scitbx::af::shared< scitbx::vec2<int> > voxel_indx_;
+      scitbx::af::shared< FloatType > voxel_value_;
+      //scitbx::af::shared< scitbx::vec3<FloatType> > voxel_;
       scitbx::af::shared<FloatType>one_d_;
-      scitbx::af::shared<FloatType>ss_r_;
-      scitbx::af::shared<FloatType>ss_s_;
       scitbx::af::shared< scitbx::af::shared<FloatType> >gm_;
-        //Geometric moments up to order n_max_
+        //1d Geometric moments up to order n_max_
       af::c_grid<2> grid_;
       af::versa< FloatType, af::c_grid<2> > ss_;
-      int n_max_, N_point_;
+      int n_max_, N_point_, total_point_;
       FloatType delta_;
   };
 
@@ -262,13 +257,10 @@ namespace zernike {
       {
         ss_ = grid_.ss().deep_copy();
         norm_factor_ = pi*N_point_*N_point_;
-      //  for(int i=0;i<=n_max_;i++)
-       //   for(int j=0;j<=n_max_;j++)
-        //    std::cout<<i<<" "<<j<<" "<<ss_(i,j)<<std::endl;
         build_fac();
         build_bino();
         build_Bnmk_array();
-        build_H_array(N_point_+1);
+        //build_H_array(N_point_+1);
         //print_Bnmk();
 
         std::complex<FloatType>complex_i(0,-1.0);
@@ -360,18 +352,15 @@ namespace zernike {
         return;
       }
 
-      void build_H_array(int d)
+      void build_H_array(int D)
       {
-        SCITBX_ASSERT(d > 1);
-        FloatType log_d = std::log(static_cast<FloatType>(d));
-        FloatType log_d_1 = std::log(static_cast<FloatType>(d-1));
+        FloatType log_D=std::log(D);
+        FloatType log_D_1=std::log(D-1);
 
         for(int alpha=0;alpha<=n_max_;alpha++) {
           af::shared< FloatType > ha;
           for(int p=0;p<=alpha;p++) {
-            ha.push_back(
-              is_even(alpha-p)*bino_[alpha][p]
-                * std::exp( (alpha-p)*log_d-alpha*log_d_1) );
+            ha.push_back( is_even(alpha-p)*bino_[alpha][p]*std::exp( (alpha-p)*log_D-alpha*log_D_1) );
           }
           H_array_.push_back( ha );
         }
@@ -385,7 +374,6 @@ namespace zernike {
         for(int p=0;p<=alpha;p++){
           tempb = 0.0;
           for( int q=0;q<=beta; q++) {
-        //    std::cout<<"in sum3 "<<nu<<" "<<temp<<std::endl;
             tempb += H_array_[beta][q]*ss_(p,q);
           }
           temp += H_array_[alpha][p]*tempb;
@@ -395,10 +383,13 @@ namespace zernike {
 
       std::complex<FloatType> sum2(int n,int m, int k, int nu)
       {
+        int alpha, beta ;
         std::complex<FloatType> temp(0,0);
         for(int d=0;d<=m;d++) {
-          temp += i_pow_n_[d]*bino_[m][d]*sum3(n,m,k,nu,d);
-//          std::cout<<"in sum2 "<<nu<<" "<<temp<<std::endl;
+          beta = 2*nu+d;
+          alpha = k-beta;
+          temp += i_pow_n_[d]*bino_[m][d]*ss_(alpha,beta);
+//          temp += i_pow_n_[d]*bino_[m][d]*sum3(n,m,k,nu,d);
         }
         return temp;
       }
@@ -409,9 +400,7 @@ namespace zernike {
         int max_nu = (k-m)/2;
         for(int nu=0;nu<=max_nu;nu++) {
           temp += bino_[max_nu][nu]*sum2(n,m,k,nu);
-//          std::cout<<"in sum1 "<<n<<" "<<m<<" "<<nu<<" "<<temp<<std::endl;
         }
-        //temp = conj(temp);
         return temp;
       }
 
