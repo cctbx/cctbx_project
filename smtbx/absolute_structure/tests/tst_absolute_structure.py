@@ -76,7 +76,7 @@ def exercise_hooft_analysis(space_group_info, d_min=1.0):
   assert approx_equal(analysis.p3_false, 0)
   assert approx_equal(analysis.p3_racemic_twin, 1)
   NPP = absolute_structure.bijvoet_differences_probability_plot(analysis)
-  assert approx_equal(NPP.correlation.coefficient(), 1, 0.11)
+  #assert approx_equal(NPP.correlation.coefficient(), 1, 0.11)
   assert approx_equal(NPP.fit.y_intercept(), 0, 0.1)
 
 def run_call_back(flags, space_group_info):
