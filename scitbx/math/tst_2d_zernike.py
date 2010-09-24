@@ -88,7 +88,6 @@ def tst_2d_zernike_mom(n,l):
 
 
 if __name__ == "__main__":
-<<<<<<< .mine
   t1 = time.time()
   tst_2d_zernike_mom(16,10)
   exit()
@@ -99,7 +98,4 @@ if __name__ == "__main__":
   #tst_2d_random(20)
   t2 = time.time()
   print "time used: ", t2-t1
-=======
-  tst_2d_zernike_mom(3,1)
   print "OK"
->>>>>>> .r11409
