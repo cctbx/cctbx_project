@@ -110,6 +110,9 @@ class stdout_pipe (object) :
     except Exception, e :
       sys.__stderr__.write("Exception in stdout_pipe: %s\n" % str(e))
 
+  def close (self) :
+    pass
+
 wait_before_flush = 1 # minimum time between send() calls
 
 # this slows down the output so it won't stall a GUI
@@ -126,6 +129,9 @@ class stdout_pipe_buffered (stdout_pipe) :
     if t >= (self._last_t + wait_before_flush) :
       self._flush()
       self._last_t = t
+
+  def close (self) :
+    pass
 
   def __del__ (self) :
     if self._data != "" :
