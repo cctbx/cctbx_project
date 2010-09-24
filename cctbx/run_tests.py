@@ -5,7 +5,7 @@ import sys
 def run():
   tst_list = (
   "$D/symmetry_search/tests/tst_goodness_of_symmetry.py",
-  "$D/symmetry_search/tests/tst_from_map.py",
+  ["$D/symmetry_search/tests/tst_from_map.py", "P312"],
   "$D/regression/tst_adp_aniso_restraints.py",
   "$D/math/boost_python/tst_math.py",
   "$D/xray/boost_python/tst_targets_ls_with_scale.py",
