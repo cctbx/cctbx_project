@@ -6,6 +6,7 @@ import iotbx.phil
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx import monomer_library
 from cctbx import geometry_restraints
+from libtbx import easy_run
 
 def get_master_phil():
   return iotbx.phil.parse(
@@ -68,16 +69,121 @@ class rna_validate(object):
         pdb_inp=pdb_io)
     else:
       self.processed_pdb_file=processed_pdb_file
+    self.pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
     self.pucker_outliers = self.pucker_evaluate(
-                           hierarchy=self.processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-    #pucker-specific backbone bond and angle evaluation
-    #p_ref = rna_pucker_ref()
-    #self.bond_dict = p_ref.bond_dict
-    #self.angle_dict = p_ref.angle_dict
+                           hierarchy=self.pdb_hierarchy)
     self.bond_outliers, self.angle_outliers = self.bond_and_angle_evaluate()
-    #print self.pucker_outliers
-    #print self.bond_outliers
-    #print self.angle_outliers
+    self.suite_outliers = self.run_suitename()
+
+  def run_suitename(self):
+    suite_outliers = []
+    suitename = "phenix.suitename -report -"
+    backbone_dihedrals = self.get_rna_backbone_dihedrals()
+    suitename_out = easy_run.fully_buffered(suitename,
+                         stdin_lines=backbone_dihedrals).stdout_lines
+    for line in suitename_out:
+      if '!!' in line:
+        temp = line.split(":")
+        key = ' '+temp[5][0:4]+temp[2]+temp[3]+temp[4]
+        temp2 = temp[5].split(" ")
+        suite_outliers.append([key,temp2[len(temp2)-1]])
+    return suite_outliers
+      
+
+  def match_dihedral_to_name(self, atoms):
+    name = None
+    alpha = ["O3'","P","O5'","C5'"]
+    beta = ["P","O5'","C5'","C4'"]
+    gamma = ["O5'","C5'","C4'","C3'"]
+    delta = ["C5'","C4'","C3'","O3'"]
+    epsilon = ["C4'","C3'","O3'","P"]
+    zeta = ["C3'","O3'","P","O5'"]
+    if atoms == alpha:
+      name = "alpha"
+    elif atoms == beta:
+      name = "beta"
+    elif atoms == gamma:
+      name = "gamma"
+    elif atoms == delta:
+      name = "delta"
+    elif atoms == epsilon:
+      name = "epsilon"
+    elif atoms == zeta:
+      name = "zeta"
+    return name
+
+  def get_rna_backbone_dihedrals(self):
+    bb_dihedrals = {}
+    formatted_out = []
+    sites_cart = self.processed_pdb_file.all_chain_proxies.sites_cart
+    i_seq_name_hash = self.build_name_hash(
+                      pdb_hierarchy=self.pdb_hierarchy)
+    geometry = self.processed_pdb_file.geometry_restraints_manager()
+    dihedral_proxies = geometry.dihedral_proxies
+    for dp in dihedral_proxies:
+      atoms = []
+      for i in dp.i_seqs:
+        atoms.append(i_seq_name_hash[i][0:4].strip())
+      name = self.match_dihedral_to_name(atoms=atoms)
+      if name is not None:
+        restraint = geometry_restraints.dihedral(
+                                                 sites_cart=sites_cart,
+                                                 proxy=dp)
+        key = i_seq_name_hash[dp.i_seqs[1]][5:]
+        try:
+          bb_dihedrals[key][name]=restraint.angle_model
+        except:
+          bb_dihedrals[key] = {}
+          bb_dihedrals[key][name]=restraint.angle_model
+    for key in bb_dihedrals.keys():
+      resname = key[0:3]
+      chainID = key[3:5]
+      resnum = key[5:9]
+      i_code = key[9:]
+      try:
+        alpha = "%.3f" % bb_dihedrals[key]['alpha']
+      except:
+        alpha = '__?__'
+      try:
+        beta = "%.3f" % bb_dihedrals[key]['beta']
+      except:
+        beta = '__?__'
+      try:
+        gamma = "%.3f" % bb_dihedrals[key]['gamma']
+      except:
+        gamma = '__?__'
+      try:
+        delta = "%.3f" % bb_dihedrals[key]['delta']
+      except:
+        delta = '__?__'
+      try:
+        epsilon = "%.3f" % bb_dihedrals[key]['epsilon']
+      except:
+        epsilon = '__?__'
+      try:
+        zeta = "%.3f" % bb_dihedrals[key]['zeta']
+      except:
+        zeta = '__?__'
+      
+      eval = "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s" \
+             % (" ",
+                "1",
+                chainID,
+                resnum,
+                i_code,
+                resname,
+                alpha,
+                beta,
+                gamma,
+                delta,
+                epsilon,
+                zeta)
+      formatted_out.append(eval)
+    formatted_out.sort()
+    backbone_dihedrals = ""
+    for line in formatted_out:
+      backbone_dihedrals += line+'\n'
+    return backbone_dihedrals
 
   def bond_and_angle_evaluate(self):
     bond_hash = {}
