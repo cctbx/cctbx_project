@@ -140,9 +140,9 @@ namespace fem { namespace format {
           return;
         }
         if (c == '+' || c == '-') {
-          i = unsigned_integer_scan(i_code+1);
-          if (i < 0 || code[i] != 'p') raise_invalid();
-          i++;
+          int j = unsigned_integer_scan(i_code+1);
+          if (j < 0 || code[j] != 'p') raise_invalid();
+          i = j + 1;
           add_token("format", i_code);
           return;
         }
