@@ -164,7 +164,6 @@ class rna_validate(object):
         zeta = "%.3f" % bb_dihedrals[key]['zeta']
       except:
         zeta = '__?__'
-
       eval = "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s" \
              % (" ",
                 "1",

@@ -8,6 +8,134 @@ from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.cbetadev import cbetadev
 from iotbx.pdb import common_residue_names_get_class
 from libtbx import easy_run
+from scitbx import matrix
+from cctbx import geometry_restraints
+from mmtbx.monomer_library import pdb_interpretation
+from scitbx.array_family import flex
+
+def build_name_hash(pdb_hierarchy):
+  i_seq_name_hash = dict()
+  for atom in pdb_hierarchy.atoms():
+    i_seq_name_hash[atom.i_seq]=atom.pdb_label_columns()
+  return i_seq_name_hash
+
+def get_angle_outliers(angle_proxies, sites_cart, hierarchy):
+  i_seq_name_hash = build_name_hash(pdb_hierarchy=hierarchy)
+  kin_text = "@subgroup {geom devs} dominant\n"
+  for ap in angle_proxies:
+    restraint = geometry_restraints.angle(sites_cart=sites_cart,
+                                          proxy=ap)
+    res = i_seq_name_hash[ap.i_seqs[0]][5:]
+    atom1 = i_seq_name_hash[ap.i_seqs[0]][0:4].strip()
+    atom2 = i_seq_name_hash[ap.i_seqs[1]][0:4].strip()
+    atom3 = i_seq_name_hash[ap.i_seqs[2]][0:4].strip()
+    sigma = ((1/restraint.weight)**(.5))*2
+    num_sigmas = - (restraint.delta / sigma) #negative to match MolProbity direction
+    if abs(num_sigmas) >= 4.0:
+      angle_key = res+' '+atom1+'-'+atom2+'-'+atom3
+      kin = add_fan(sites=restraint.sites,
+                    delta=restraint.delta,
+                    num_sigmas=num_sigmas,
+                    angle_key=angle_key)
+      kin_text += kin
+  return kin_text
+
+def get_bond_outliers(bond_proxies, sites_cart, hierarchy):
+  i_seq_name_hash = build_name_hash(pdb_hierarchy=hierarchy)
+  kin_text = "@subgroup {length devs} dominant\n"
+  for bp in bond_proxies.simple:
+    restraint = geometry_restraints.bond(sites_cart=sites_cart,
+                                         proxy=bp)
+    res = i_seq_name_hash[bp.i_seqs[0]][5:]
+    atom1 = i_seq_name_hash[bp.i_seqs[0]][0:4].strip()
+    atom2 = i_seq_name_hash[bp.i_seqs[1]][0:4].strip()
+    sigma = ((1/restraint.weight)**(.5))*2
+    num_sigmas = -(restraint.delta / sigma) #negative to match MolProbity direction
+    if abs(num_sigmas) >= 4.0:
+      bond_key = res+' '+atom1+'-'+atom2
+      kin = add_spring(sites=restraint.sites,
+                       num_sigmas=num_sigmas,
+                       bond_key=bond_key)
+      kin_text += kin
+  return kin_text
+
+def add_fan(sites, delta, num_sigmas, angle_key):
+  kin_text = ""
+  angle_key_full = "%s %.3f sigma" % (angle_key, num_sigmas)
+  if num_sigmas < 0:
+    color = "blue"
+  else:
+    color = "red"
+  a = matrix.col(sites[0])
+  b = matrix.col(sites[1])
+  c = matrix.col(sites[2])
+  normal = (a-b).cross(c-b).normalize()
+  r = normal.axis_and_angle_as_r3_rotation_matrix(angle=delta, deg=True)
+  new_c = tuple( (r*(c-b)) +b)
+  kin_text += "@vectorlist {%s} color= %s width= 4 master= {angle dev}\n" \
+               % (angle_key_full, color)
+  kin_text += kin_vec(angle_key_full,sites[0],angle_key_full,sites[1])
+  kin_text += kin_vec(angle_key_full,sites[1],angle_key_full,new_c)
+
+  r = normal.axis_and_angle_as_r3_rotation_matrix(angle=(delta*.75), deg=True)
+  new_c = tuple( (r*(c-b)) +b)
+  kin_text += "@vectorlist {%s} color= %s width= 3 master= {angle dev}\n" \
+               % (angle_key_full, color)
+  kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
+
+  r = normal.axis_and_angle_as_r3_rotation_matrix(angle=(delta*.5), deg=True)
+  new_c = tuple( (r*(c-b)) +b)
+  kin_text += "@vectorlist {%s} color= %s width= 2 master= {angle dev}\n" \
+               % (angle_key_full, color)
+  kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
+
+  r = normal.axis_and_angle_as_r3_rotation_matrix(angle=(delta*.25), deg=True)
+  new_c = tuple( (r*(c-b)) +b)
+  kin_text += "@vectorlist {%s} color= %s width= 1 master= {angle dev}\n" \
+              % (angle_key_full, color)
+  kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
+
+  return kin_text
+
+def add_spring(sites, num_sigmas, bond_key):
+  kin_text = ""
+  if num_sigmas < 0:
+    color = "blue"
+  else:
+    color = "red"
+  a = matrix.col(sites[0])
+  b = matrix.col(sites[1])
+  c = matrix.col( (1,0,0) )
+  normal = ((a-b).cross(c-b).normalize())*0.2
+  current = a+normal
+  new = tuple(current)
+  kin_text += "@vectorlist {%s %.3f sigma} color= %s width= 3 master= {length dev}\n" \
+              % (bond_key, num_sigmas, color)
+  bond_key_long = "%s %.3f sigma" % (bond_key, num_sigmas)
+  kin_text += kin_vec(bond_key_long,sites[0],bond_key_long,new)
+  angle = 36
+  dev = num_sigmas
+  if dev > 10.0:
+    dev = 10.0
+  if dev < -10.0:
+    dev = -10.0
+  if dev <= 0.0:
+    angle += 1.5*abs(dev)
+  elif dev > 0.0:
+    angle -= 1.5*dev
+  i = 0
+  n = 60
+  axis = b-a
+  step = axis*(1.0/n)
+  r = axis.axis_and_angle_as_r3_rotation_matrix(angle=angle, deg=True)
+  while i < n:
+    next = (r*(current-b) +b)
+    next = next + step
+    kin_text += kin_vec(bond_key_long,tuple(current),bond_key_long,tuple(next))
+    current = next
+    i += 1
+  kin_text += kin_vec(bond_key_long,tuple(current),bond_key_long,sites[1])
+  return kin_text
 
 def get_residue_bonds(residue):
   if residue is None: return []
@@ -495,6 +623,9 @@ def get_footer():
 @master {vdw contact} off
 @master {small overlap} off
 @master {H-bonds} off
+@master {length dev} on
+@master {angle dev} on
+@master {length dev} on
 @master {Cbeta dev} on
 @master {hets} on
 """
@@ -504,8 +635,23 @@ def get_multikin(f, pdb_io):
   pdbID = None
   pdbID = os.path.basename(pdb_io.source_info().split(' ')[1]).split('.')[0]
   assert pdb_io is not None
-  if(pdb_io is not None):
-    hierarchy = pdb_io.construct_hierarchy()
+  #if(pdb_io is not None):
+  #  hierarchy = pdb_io.construct_hierarchy()
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
+  processed_pdb_file = pdb_interpretation.process(
+        mon_lib_srv=mon_lib_srv,
+        ener_lib=ener_lib,
+        pdb_inp=pdb_io,
+        for_dihedral_reference=True)
+  hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  sites_cart=processed_pdb_file.all_chain_proxies.sites_cart
+  geometry = processed_pdb_file.geometry_restraints_manager()
+  flags = geometry_restraints.flags.flags(default=True)
+  angle_proxies = geometry.angle_proxies
+  pair_proxies = geometry.pair_proxies(flags=flags,
+                                       sites_cart=sites_cart)
+  bond_proxies = pair_proxies.bond_proxies
   kin_out = get_default_header()
   kin_out += "@group {%s} dominant animate\n" % pdbID
   initiated_chains = []
@@ -528,6 +674,12 @@ def get_multikin(f, pdb_io):
       kin_out += get_kin_lots(chain=chain, pdbID=pdbID, index=counter)
       kin_out += rotamer_outliers(chain=chain, pdbID=pdbID, rot_outliers=rot_outliers)
       kin_out += rama_outliers(chain=chain, pdbID=pdbID, ram_outliers=ram_outliers)
+      kin_out += get_angle_outliers(angle_proxies=angle_proxies,
+                                    sites_cart=sites_cart,
+                                    hierarchy=hierarchy)
+      kin_out += get_bond_outliers(bond_proxies=bond_proxies,
+                                   sites_cart=sites_cart,
+                                   hierarchy=hierarchy)
       kin_out += cbeta_dev(chain=chain,
                            pdbID=pdbID,
                            deviations=deviations,
