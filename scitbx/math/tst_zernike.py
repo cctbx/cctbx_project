@@ -72,9 +72,9 @@ def tst_zernike_radial():
 
 def tst_zernike_radial_2d():
   N=50
-  M=15
+  M=35
   lfg =  math.log_factorial_generator(N)
-  NNN = int(1e5)
+  NNN = int(1e4)
   for n in range(M):
     for l in range(n+1):
       if (n-l)%2==0:
@@ -89,15 +89,15 @@ def tst_zernike_radial_2d():
         for nn in range(M):
           for ll in range(nn):
             if (nn-ll)%2==0:
-              if (nn!=n):
+              if 1: #(nn!=n):
                 if ll==l:
-                  rzfb = math.zernike_radial(nn,ll, lfg)
-                  rzfa = math.zernike_radial(n,l, lfg)
+                  rzfb = math.zernike_2d_radial(nn,ll, lfg)
+                  rzfa = math.zernike_2d_radial(n,l, lfg)
                   b = rzfb.f( r )
                   a = rzfa.f( r )
                   tmp = a*b*r
-                  tmp = flex.sum( tmp )/float(NNN)
-                  #print n,nn,l,ll,tmp
+                  tmp = flex.sum( tmp )/float(NNN)*2*(nn+1)
+                  print n,nn,l,ll,tmp
 
 def triple_partity_check(n,nn,nnn):
   tot=0

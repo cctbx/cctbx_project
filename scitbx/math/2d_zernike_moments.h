@@ -56,19 +56,7 @@ namespace zernike {
       {
         for(int i=-N_point_;i<=N_point_;i++)
           one_d_.push_back( i*delta_ );
-/*
-        for(int i=0;i<=2*N_point_;i++) {
-          for(int j=0;j<=2*N_point_;j++) {
-               scitbx::vec2<FloatType>point( one_d_[i],one_d_[j]);
-               scitbx::vec2< int > p_indx( i, j );
-               all_indx_.push_back( p_indx );
-               if(point.length_sq() <=1.0){  //in/on the unit sphere
-                 xy_indx_.push_back( p_indx  );
-      //           xy_.push_back( point );
-               }  //end if
-          }  //end j
-        } //end i
- */       return true;
+        return true;
       }
 
      af::versa< FloatType, af::c_grid<2> > get_all_ss() { return ss_; }
@@ -90,7 +78,7 @@ namespace zernike {
           }
           total_point_ = voxel_indx_.size();
         }
-//        std::cout<<"occupied pixel "<<voxel_.size()<<std::endl;
+//        std::cout<<"occupied pixel "<<voxel_value_.size()<<std::endl;
         return true;
       }
 
@@ -147,10 +135,8 @@ namespace zernike {
     private:
       scitbx::af::shared< scitbx::vec2<int> > voxel_indx_;
       scitbx::af::shared< FloatType > voxel_value_;
-      //scitbx::af::shared< scitbx::vec3<FloatType> > voxel_;
       scitbx::af::shared<FloatType>one_d_;
       scitbx::af::shared< scitbx::af::shared<FloatType> >gm_;
-        //1d Geometric moments up to order n_max_
       af::c_grid<2> grid_;
       af::versa< FloatType, af::c_grid<2> > ss_;
       int n_max_, N_point_, total_point_;
@@ -260,19 +246,10 @@ namespace zernike {
         build_fac();
         build_bino();
         build_Bnmk_array();
-        //build_H_array(N_point_+1);
-        //print_Bnmk();
 
         std::complex<FloatType>complex_i(0,-1.0);
         for(int i=0;i<=n_max_;i++)
           i_pow_n_.push_back( ( std::pow(complex_i, i)) );
-      //test();
-      }
-
-      bool test()
-      {
-        std::cout<<"factorial(10): "<<fac_[10]<<" compared to "<<3628800<<std::endl;
-        std::cout<<"binomial(10,6): "<<bino_[10][6]<<" compared to "<<210<<std::endl;
       }
 
       void build_fac()
@@ -308,7 +285,7 @@ namespace zernike {
           for( m=n;m>=0;m-=2) {
             af::shared< FloatType > Bk;
             for( k=n;k>=m;k-=2) {
-              Bk.push_back(0);
+              Bk.push_back(0.0);
               }
             Bmk.push_back( Bk );
           }
@@ -354,8 +331,8 @@ namespace zernike {
 
       void build_H_array(int D)
       {
-        FloatType log_D=std::log(D);
-        FloatType log_D_1=std::log(D-1);
+        FloatType log_D=std::log(static_cast<FloatType>(D) );
+        FloatType log_D_1=std::log(static_cast<FloatType>(D-1) );
 
         for(int alpha=0;alpha<=n_max_;alpha++) {
           af::shared< FloatType > ha;
