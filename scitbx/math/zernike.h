@@ -890,6 +890,7 @@ namespace zernike{
       lgf_ = lgf;
       SCITBX_ASSERT( (n-l)%2==0 );
       compute_Nnlk();
+      n_terms_=Nnlk_.size();
     }
 
     void compute_Nnlk()
@@ -928,7 +929,7 @@ namespace zernike{
       FloatType result,tmp;
       result=0.0;
 
-      for (int kk=0;kk<Nnlk_.size();kk++){
+      for (int kk=0;kk<n_terms_;kk++){
         result+=std::pow(rr, n_ - 2*kk) * Nnlk_[kk];
       }
       return (result);
@@ -955,6 +956,7 @@ namespace zernike{
     private:
     int n_;
     int l_;
+    int n_terms_;
     scitbx::af::shared< FloatType > Nnlk_;
     log_factorial_generator<FloatType> lgf_;
     FloatType eps_;
@@ -1379,6 +1381,7 @@ namespace zernike{
       lgf_ = lgf;
       SCITBX_ASSERT( (n-l)%2==0 );
       compute_Nnlk();
+      n_terms_=Nnlk_.size();
     }
 
     void compute_Nnlk()
@@ -1409,7 +1412,7 @@ namespace zernike{
       }
       FloatType result,tmp;
       result=0.0;
-      for (int kk=0;kk<Nnlk_.size();kk++){
+      for (int kk=0;kk<n_terms_;kk++){
         result+=std::pow(rr, n_ - 2*kk) * Nnlk_[kk];
       }
       return (result);
@@ -1436,6 +1439,7 @@ namespace zernike{
     private:
     int n_;
     int l_;
+    int n_terms_;
     scitbx::af::shared< FloatType > Nnlk_;
     log_factorial_generator<FloatType> lgf_;
     FloatType eps_;
