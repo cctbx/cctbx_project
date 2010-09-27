@@ -157,28 +157,27 @@ def get_base_pairs(pdb_hierarchy, probe_flags=None):
     base_key = base1+base2
     bond_key = atom1.strip()+','+atom2.strip()
     if (not base_key in hbond_hash):
-      hbond_hash[base_key]={}
-    try:
-      hbond_hash[base_key][bond_key]+=1
-    except:
-      hbond_hash[base_key][bond_key]=1
+      hbond_hash[base_key] = {}
+    if (not bond_key in hbond_hash[base_key]) :
+      hbond_hash[base_key][bond_key] = 0
+    hbond_hash[base_key][bond_key]+=1
 
   for key in hbond_hash:
     counter = 0
     pair_hash[key]=[]
-    for bond in hbond_hash[key]:
-      if hbond_hash[key][bond] > 0:
+    for bond in hbond_hash[key] :
+      if (hbond_hash[key][bond] > 0) :
         pair_hash[key].append(tuple(bond.split(',')))
-    if len(pair_hash[key]) >= 2:
+    if (len(pair_hash[key]) >= 2) :
       pair_hash[key].sort(key=sort_tuple)
-      reduced_pair_hash[key]=pair_hash[key]
+      reduced_pair_hash[key] = pair_hash[key]
 
   base_pair_list = []
-  for pair in reduced_pair_hash:
+  for pair in reduced_pair_hash :
     bases = (pair[:10], pair[10:])
     base_pair = pair[7:10].strip()+pair[17:20].strip()
     pair_type = db.get_pair_type(base_pair, reduced_pair_hash[pair], use_hydrogens=True)
-    if pair_type is not None:
+    if (pair_type is not None) :
       base_pair_list.append([bases, pair_type])
   return base_pair_list
 
