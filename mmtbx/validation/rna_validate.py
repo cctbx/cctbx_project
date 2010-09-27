@@ -88,7 +88,7 @@ class rna_validate(object):
         temp2 = temp[5].split(" ")
         suite_outliers.append([key,temp2[len(temp2)-1]])
     return suite_outliers
-      
+
 
   def match_dihedral_to_name(self, atoms):
     name = None
@@ -164,7 +164,7 @@ class rna_validate(object):
         zeta = "%.3f" % bb_dihedrals[key]['zeta']
       except:
         zeta = '__?__'
-      
+
       eval = "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s" \
              % (" ",
                 "1",

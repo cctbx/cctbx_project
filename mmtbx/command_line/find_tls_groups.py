@@ -31,7 +31,7 @@ def consequtive_permutations(iterable, r=None):
         for k in indices[:r]:
           x = pool[k]
           ltmp = len(tmp)
-          if(ltmp>0 and tmp[ltmp-1]-x!=-1): 
+          if(ltmp>0 and tmp[ltmp-1]-x!=-1):
             good=False
             break
           tmp.append(x)
@@ -60,7 +60,7 @@ def all_permutations(x):
   unique_set = []
   for r in result:
     for rr in r:
-      if(not rr in unique_set): 
+      if(not rr in unique_set):
         unique_set.append(rr)
   tmp = []
   for r in unique_set:
@@ -80,7 +80,7 @@ def all_permutations(x):
         if(not j in tmp2): tmp2.append(j)
     tmp2.sort()
     if(tmp1==tmp2): return True
-    else: return False    
+    else: return False
   result = []
   for i in unique_set:
     #print
@@ -94,7 +94,7 @@ def all_permutations(x):
           if(jj in i):
             good=False
             break
-        if(good and not j in res): 
+        if(good and not j in res):
           for jjj in j:
             for res_ in res:
               for res__ in res_:
@@ -107,7 +107,7 @@ def all_permutations(x):
             if(reinitialize(res, unique_set)):
               if(not res in result): result.append(res[:])
               #print "---res:", res
-              res = [i[:]]     
+              res = [i[:]]
   print "  All permutations: %s"%str(len(result))
   #for r in result:
   #  print "    ",r
@@ -122,7 +122,7 @@ def group_residues(residues):
   for i, r in enumerate(residues):
     chs1 += r[0].size()
     next = i+1
-    if(next<len(residues)):  
+    if(next<len(residues)):
       if(r[1] == residues[next][1]):
         sel.append(r)
         #print i, r[1], cntr
@@ -151,15 +151,15 @@ def group_residues(residues):
 
 def regroup_groups(sels, residues, fragment_size):
   new_sels = []
-  sel = []  
+  sel = []
   for i in xrange(len(sels)):
     sel.extend(sels[i])
     if(len(sel)>=fragment_size):
       new_sels.append(sel[:])
       sel = []
-  if(len(sel)>0): 
+  if(len(sel)>0):
     if(len(sel)>=fragment_size):
-      new_sels.append(sel[:])  
+      new_sels.append(sel[:])
     else:
       new_sels[len(new_sels)-1].extend(sel[:])
   check_sum_size1 = 0
@@ -176,9 +176,9 @@ def regroup_groups(sels, residues, fragment_size):
   return new_sels
 
 
-def get_model_partitioning(residues, secondary_structure_selection, 
+def get_model_partitioning(residues, secondary_structure_selection,
                            fragment_size=5):
-  print "  Grouping residues by secondary structure..."      
+  print "  Grouping residues by secondary structure..."
   sels = group_residues(residues)
   print "  Re-grouping to achieve minimum requested fragment size (%s residues)..."%\
     str(fragment_size)
@@ -190,7 +190,7 @@ def get_model_partitioning(residues, secondary_structure_selection,
     fragment_size += 1
   perms = all_permutations(x = list(xrange(len(new_sels))))
   return new_sels, perms
-  
+
 def chains_and_atoms(pdb_hierarchy, secondary_structure_selection):
   new_secondary_structure_selection = flex.bool()
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -199,7 +199,7 @@ def chains_and_atoms(pdb_hierarchy, secondary_structure_selection):
     for chain in model.chains():
       result = []
       for rg in chain.residue_groups():
-        result_ = flex.size_t()     
+        result_ = flex.size_t()
         is_secondary_structure = False
         for ag in rg.atom_groups():
           if(get_class(name=ag.resname) == "common_amino_acid" or
@@ -212,7 +212,7 @@ def chains_and_atoms(pdb_hierarchy, secondary_structure_selection):
               new_secondary_structure_selection.append(
                 secondary_structure_selection[atom.i_seq])
         if(result_.size()>0):
-          result.append([result_, is_secondary_structure, rg.resseq, 
+          result.append([result_, is_secondary_structure, rg.resseq,
                          rg.unique_resnames()])
       if(len(result)>0):
         chains_and_residue_selections.append([chain.id, result])
@@ -233,7 +233,7 @@ def tls_group_selections(groups, perm):
     result.append(one_group)
   #print result
   return result
-    
+
 def tls_refinery(u_cart, sites_cart, selection, max_iterations=50):
   sites_cart_ = sites_cart.select(selection)
   cm = sites_cart_.mean_weighted(weights=flex.double(selection.size(),1))
@@ -248,7 +248,7 @@ def tls_refinery(u_cart, sites_cart, selection, max_iterations=50):
     origin         = cm,
     sites          = sites_cart_,
     max_iterations = max_iterations)
-    
+
 def chunks(size, n_groups):
   rp = list(xrange(size))
   chunk_size = size/n_groups
@@ -267,7 +267,7 @@ def chunks(size, n_groups):
     if(ev):
       res.append(r)
       nc+=chunk_size
-      if(len(res)>n_groups-2): break   
+      if(len(res)>n_groups-2): break
   result = []
   for i, r in enumerate(res):
    if i==0: result.append([0,r])
@@ -280,8 +280,8 @@ def chunks(size, n_groups):
     assert r_.size() > 0, [result, res]
     tmp.append(r_)
   return tmp
-    
-def tls_refinery_random_groups(u_cart, sites_cart, n_groups, n_runs=20): 
+
+def tls_refinery_random_groups(u_cart, sites_cart, n_groups, n_runs=20):
   t = 0
   for tr in xrange(n_runs):
     selections = chunks(size=u_cart.size(), n_groups=n_groups)
@@ -289,13 +289,13 @@ def tls_refinery_random_groups(u_cart, sites_cart, n_groups, n_runs=20):
       mo = tls_refinery(u_cart=u_cart, sites_cart=sites_cart, selection=selection)
       t += mo.f
   return t/n_runs
-  
+
 def chain_selection_from_residues(residues):
   chain_selection = flex.size_t()
   for r in residues:
     chain_selection.extend(r[0])
   return chain_selection
-  
+
 def permutations_as_atom_selection_string(groups, perm):
   result = []
   for p in perm:
@@ -305,22 +305,22 @@ def permutations_as_atom_selection_string(groups, perm):
       #print "p_",groups[p_]
       for g in groups[p_]:
         one_group.append(g[2])
-    resseq = "resseq %s:%s"%(one_group[0].strip(), 
+    resseq = "resseq %s:%s"%(one_group[0].strip(),
       one_group[len(one_group)-1].strip())
     result.append(resseq)
     #print one_group
   #print result
   return result
-  
+
 def run(args):
   default_message="""\
-  
+
 phenix.find_tls_groups: Tool for automated partitioning a model into TLS groups.
 
 Usage:
   phenix.find_tls_groups model.pdb
   """
-  if(len(args) != 1): 
+  if(len(args) != 1):
     print default_message
     return
   pdb_file_name = args[0]
@@ -348,7 +348,8 @@ Usage:
     tmp_dir                      = None)
   ssm.find_automatically()
   alpha_h_selection = ssm.alpha_selection()
-  secondary_structure_selection = ssm.alpha_selection() | ssm.beta_selection()
+  secondary_structure_selection = ssm.alpha_selection() | \
+      ssm.beta_selection() | ssm.base_pair_selection()
   assert secondary_structure_selection.size() == u_cart.size()
   ssm.show_summary()
   chains_and_residue_selections, secondary_structure_selection = chains_and_atoms(
@@ -359,7 +360,7 @@ Usage:
   for crs in chains_and_residue_selections:
     print "Processing chain %s:"%crs[0]
     chain_selection = chain_selection_from_residues(crs[1])
-    groups, perms = get_model_partitioning(residues = crs[1], 
+    groups, perms = get_model_partitioning(residues = crs[1],
       secondary_structure_selection = secondary_structure_selection)
     print "  Fitting TLS matrices..."
     dic = {}
@@ -369,8 +370,8 @@ Usage:
       target = 0
       for selection in selections:
         mo = tls_refinery(
-          u_cart     = u_cart, 
-          sites_cart = sites_cart, 
+          u_cart     = u_cart,
+          sites_cart = sites_cart,
           selection  = selection)
         target += mo.f
       dic.setdefault(len(perm), []).append([target,perm])
@@ -389,9 +390,9 @@ Usage:
           t_best = v_[0]
           perm_best = v_[1]
       r = tls_refinery_random_groups(
-        u_cart     = u_cart.select(chain_selection), 
-        sites_cart = sites_cart.select(chain_selection), 
-        n_groups   = k) 
+        u_cart     = u_cart.select(chain_selection),
+        sites_cart = sites_cart.select(chain_selection),
+        n_groups   = k)
       score = (r-t_best)/(r+t_best)*100.
       print "         %3d   %6.1f   %6.1f %6.1f %6.1f"%(
         k,t_best, r, r-t_best, score), perm_best
@@ -399,7 +400,7 @@ Usage:
         score_best = score
         perm_choice = perm_best[:]
     #
-    chains_and_permutations.append([crs[0],perm_choice]) 
+    chains_and_permutations.append([crs[0],perm_choice])
     chains_and_atom_selection_strings.append([crs[0],
       permutations_as_atom_selection_string(groups, perm_choice)])
     #
@@ -417,7 +418,6 @@ Usage:
       for r__ in r_:
         print prefix+"(%s)"%r__
   print
-  
+
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
-  

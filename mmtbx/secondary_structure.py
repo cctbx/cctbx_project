@@ -1123,6 +1123,26 @@ class manager (object) :
       whole_selection |= sheet
     return whole_selection
 
+  def base_pair_selections (self, limit=None, main_conf_only=False) :
+    sele = self.selection_cache.selection
+    all_selections = []
+    for bp in self.params.nucleic_acids.base_pair :
+      if (bp.base1 is not None) and (bp.base2 is not None) :
+        clauses = [ "((%s) or (%s))" % (bp.base1, bp.base2) ]
+        if (limit is not None) :
+          clauses.append("(%s)" % limit)
+        if main_conf_only :
+          clauses.append("(altloc ' ' or altloc 'A')")
+        bp_sele = sele(" and ".join(clauses))
+        all_selections.append(bp_sele)
+    return all_selections
+
+  def base_pair_selection (self, **kwds) :
+    whole_selection = flex.bool(self.xray_structure.sites_cart().size())
+    for sheet in self.base_pair_selections(**kwds) :
+      whole_selection |= sheet
+    return whole_selection
+
 def process_structure (params, processed_pdb_file, tmp_dir, log,
     assume_hydrogens_all_missing=None) :
   acp = processed_pdb_file.all_chain_proxies
@@ -1199,6 +1219,8 @@ def run (args, out=sys.stdout, log=sys.stderr) :
       .type = bool
     format = *phenix phenix_bonds pymol refmac
       .type = choice
+    quiet = False
+      .type = bool
 %s""" % sec_str_master_phil_str)
   parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
     master_phil=master_phil,
@@ -1223,6 +1245,8 @@ def run (args, out=sys.stdout, log=sys.stderr) :
       except RuntimeError :
         print "Unrecognizable parameter %s" % arg
   params = master_phil.fetch(sources=sources).extract()
+  if params.quiet :
+    out = cStringIO.StringIO()
   if len(pdb_files) > 0 :
     params.input.file_name.extend(pdb_files)
   pdb_files = params.input.file_name
@@ -1264,13 +1288,13 @@ def run (args, out=sys.stdout, log=sys.stderr) :
       bonds_table.as_refmac_restraints(pdb_hierarchy, filter=True, out=out)
   else :
     #working_phil.show(out=out)
-    print "# These parameters are suitable for use in phenix.refine."
-    print "refinement.secondary_structure {"
+    print >> out, "# These parameters are suitable for use in phenix.refine."
+    print >> out, "refinement.secondary_structure {"
     if params.show_all_params :
-      working_phil.show(prefix="  ")
+      working_phil.show(prefix="  ", out=out)
     else :
-      phil_diff.show(prefix="  ")
-    print "}"
+      phil_diff.show(prefix="  ", out=out)
+    print >> out, "}"
     #print >> out, ss_params_str
     return working_phil.as_str()
 
