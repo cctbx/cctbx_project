@@ -5,16 +5,19 @@ from smtbx_refinement_constraints_ext import *
 
 import libtbx
 import scitbx.sparse
+from scitbx.array_family import flex
 from cctbx import crystal
 from cctbx.eltbx import covalent_radii
 
 class _parameter(boost.python.injector, ext.parameter):
 
   def arguments(self):
+    """ An iterator over its arguments """
     for i in xrange(self.n_arguments):
       yield self.argument(i)
 
   def __str__(self):
+    """ String representation using the graphviz DOT language """
     try:
       scatt = ', '.join([ sc.label for sc in self.scatterers ])
       scatt = "(%s)" % scatt
@@ -27,6 +30,7 @@ class _parameter(boost.python.injector, ext.parameter):
 
 
 class reparametrisation(ext.reparametrisation):
+  """ Enhance the C++ level reparametrisation class for ease of use """
 
   temperature = 20 # Celsius
   covalent_bond_tolerance = 0.5 # Angstrom
@@ -35,13 +39,25 @@ class reparametrisation(ext.reparametrisation):
                structure,
                geometrical_constraints,
                **kwds):
+    """ Construct for the given instance of xray.structure subject to the
+    given sequence of constraints. Each constraint instance shall understand:
+    constraint.add_to(self). That method shall perform 2 tasks:
+
+      - add to self the parameters relevant to the reparametrisation
+        associated with that constraint;
+
+      - update self.asu_scatterer_parameters.
+
+    The latter is an array containing one instance of scatterer_parameters
+    for each scatterer in the a.s.u.
+    C.f. module geometrical_hydrogens in this package for a typical example
+    """
     super(reparametrisation, self).__init__(structure.unit_cell())
     self.structure = xs = structure
     scatterers = xs.scatterers()
     self.site_symmetry_table_ = self.structure.site_symmetry_table()
     libtbx.adopt_optional_init_args(self, kwds)
-    self.asu_scatterer_parameters = shared_scatterer_parameters(
-      len(xs.scatterers()))
+    self.asu_scatterer_parameters = shared_scatterer_parameters(xs.scatterers())
 
     radii = [
       covalent_radii.table(elt).radius()
@@ -59,17 +75,23 @@ class reparametrisation(ext.reparametrisation):
       constraint.add_to(self)
 
     for i_sc in xrange(len(self.asu_scatterer_parameters)):
-      if self.asu_scatterer_parameters[i_sc].site is None:
-        self.add_new_site_parameter(i_sc)
-      if self.asu_scatterer_parameters[i_sc].u is None:
-        self.add_new_thermal_displacement_parameter(i_sc)
-      if self.asu_scatterer_parameters[i_sc].occupancy is None:
-        sc = scatterers[i_sc]
-        occ = self.add(independent_scalar_parameter,
-                       value=sc.occupancy,
-                       variable=sc.flags.grad_occupancy())
-        self.asu_scatterer_parameters[i_sc].occupancy = occ
+      self.add_new_site_parameter(i_sc)
+      self.add_new_thermal_displacement_parameter(i_sc)
+      self.add_new_occupancy_parameter(i_sc)
     self.finalise()
+
+  def finalise(self):
+    super(reparametrisation, self).finalise()
+    self.mapping_to_grad_fc = \
+        self.asu_scatterer_parameters.mapping_to_grad_fc()
+
+  def add_new_occupancy_parameter(self, i_sc):
+    occ = self.asu_scatterer_parameters[i_sc].occupancy
+    if occ is None:
+      sc = self.structure.scatterers()[i_sc]
+      occ = self.add(independent_occupancy_parameter, sc)
+      self.asu_scatterer_parameters[i_sc].occupancy = occ
+    return occ
 
   def add_new_site_parameter(self, i_scatterer, symm_op=None):
     s = self.asu_scatterer_parameters[i_scatterer].site
@@ -91,9 +113,7 @@ class reparametrisation(ext.reparametrisation):
       sc = self.structure.scatterers()[i_scatterer]
       assert sc.flags.use_u_iso() ^ sc.flags.use_u_aniso()
       if sc.flags.use_u_iso():
-        u = self.add(independent_scalar_parameter,
-                     value=sc.u_iso,
-                     variable=sc.flags.grad_u_iso())
+        u = self.add(independent_u_iso_parameter, sc)
       else:
         site_symm = self.site_symmetry_table_.get(i_scatterer)
         if site_symm.is_point_group_1():
@@ -107,11 +127,15 @@ class reparametrisation(ext.reparametrisation):
     return u
 
   def __str__(self):
+    """ String representation using the graphviz DOT language """
     self.finalise()
     bits = []
     for p in self.parameters():
       for q in p.arguments():
         bits.append("%i -> %i" % (p.index, q.index))
+    dsu_bits = []
     for p in self.parameters():
-      bits.append(str(p))
+      dsu_bits.append((p.index, str(p)))
+    dsu_bits.sort()
+    bits.extend([ p for i,p in dsu_bits ])
     return "digraph dependencies {\n%s\n}" % ';\n'.join(bits)
