@@ -28,6 +28,7 @@ namespace boost_python {
                arg("azimuth"), arg("length"),
                arg("e_zero_azimuth"),
                arg("hydrogen"))))
+        .add_property("scatterers", &wt::scatterers)
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
@@ -51,6 +52,7 @@ namespace boost_python {
            ((arg("pivot"), arg("pivot_neighbour"), arg("stagger_on"),
              arg("length"),
              arg("hydrogen"))))
+      .add_property("scatterers", &wt::scatterers)
       ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
@@ -81,7 +83,7 @@ namespace boost_python {
              bases<crystallographic_parameter>,
              std::auto_ptr<wt>,
              boost::noncopyable>("secondary_ch2_sites", no_init)
-      .def(init<site_parameter *,
+        .def(init<site_parameter *,
                 site_parameter *,
                 site_parameter *,
                 independent_scalar_parameter *,
@@ -91,6 +93,7 @@ namespace boost_python {
            ((arg("pivot"), arg("pivot_neighbour_0"), arg("pivot_neighbour_1"),
              arg("length"), arg("h_c_h_angle"),
              arg("hydrogen_0"), arg("hydrogen_1"))))
+        .add_property("scatterers", &wt::scatterers)
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
@@ -114,7 +117,7 @@ namespace boost_python {
              ((arg("pivot"), arg("pivot_neighbour_0"), arg("pivot_neighbour_1"),
                arg("pivot_neighbour_2"), arg("length"),
                arg("hydrogen"))))
-
+        .add_property("scatterers", &wt::scatterers)
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
@@ -137,6 +140,7 @@ namespace boost_python {
              ((arg("pivot"), arg("pivot_neighbour_0"), arg("pivot_neighbour_1"),
                arg("length"),
                arg("hydrogen"))))
+        .add_property("scatterers", &wt::scatterers)
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
@@ -159,6 +163,7 @@ namespace boost_python {
              ((arg("pivot"), arg("pivot_neighbour_0"),
                arg("pivot_neighbour_substituent"), arg("length"),
                arg("hydrogen_0"), arg("hydrogen_1"))))
+        .add_property("scatterers", &wt::scatterers)
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
@@ -180,6 +185,7 @@ namespace boost_python {
                   wt::scatterer_type *>
              ((arg("pivot"), arg("pivot_neighbour"), arg("length"),
                arg("hydrogen"))))
+        .add_property("scatterers", &wt::scatterers)
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
