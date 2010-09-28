@@ -251,7 +251,7 @@ def exercise():
     if sc.scattering_type != 'H':
       assert isinstance(params.site, core.independent_site_parameter)
       assert params.site.scatterers[0].label == sc.label
-      assert isinstance(params.u, core.independent_cartesian_adp)
+      assert isinstance(params.u, core.independent_u_star_parameter)
       assert params.u.scatterers[0].label == sc.label
       assert isinstance(params.occupancy, core.independent_occupancy_parameter)
       assert params.occupancy.scatterers[0].label == sc.label

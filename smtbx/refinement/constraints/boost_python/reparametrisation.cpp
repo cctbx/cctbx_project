@@ -150,12 +150,12 @@ namespace boost_python {
     SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_CONSTRUCTOR(site_parameter)
   };
 
-  struct py_cartesian_adp : cartesian_adp,
-                            boost::python::wrapper<cartesian_adp>
+  struct py_u_star_parameter : u_star_parameter,
+                               boost::python::wrapper<u_star_parameter>
   {
     SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
 
-    SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_CONSTRUCTOR(cartesian_adp)
+    SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_CONSTRUCTOR(u_star_parameter)
   };
 
   struct py_occupancy_parameter
@@ -331,7 +331,7 @@ namespace boost_python {
 
   SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_WRAPPER(site_parameter)
 
-  SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_WRAPPER(cartesian_adp)
+  SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_WRAPPER(u_star_parameter)
 
   SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_WRAPPER(occupancy_parameter)
 
@@ -422,8 +422,8 @@ namespace boost_python {
     single_scatterer_parameter_wrapper::wrap();
     site_parameter_wrapper::wrap();
     independent_site_parameter_wrapper::wrap();
-    cartesian_adp_wrapper::wrap();
-    independent_cartesian_adp_wrapper::wrap();
+    u_star_parameter_wrapper::wrap();
+    independent_u_star_parameter_wrapper::wrap();
     occupancy_parameter_wrapper::wrap();
     independent_occupancy_parameter_wrapper::wrap();
     u_iso_parameter_wrapper::wrap();

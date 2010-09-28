@@ -122,17 +122,16 @@ class reparametrisation(ext.reparametrisation):
     u = self.asu_scatterer_parameters[i_scatterer].u
     if u is None:
       sc = self.structure.scatterers()[i_scatterer]
-      assert sc.flags.use_u_iso() ^ sc.flags.use_u_aniso()
+      assert not (sc.flags.use_u_iso() and sc.flags.use_u_aniso())
       if sc.flags.use_u_iso():
         u = self.add(independent_u_iso_parameter, sc)
       else:
         site_symm = self.site_symmetry_table_.get(i_scatterer)
         if site_symm.is_point_group_1():
-          u = self.add(independent_cartesian_adp, sc)
+          u = self.add(independent_u_star_parameter, sc)
         else:
-          u = self.add(special_position_cartesian_adp,
+          u = self.add(special_position_u_star_parameter,
                        site_symm,
-                       self.structure.unit_cell(),
                        sc)
       self.asu_scatterer_parameters[i_scatterer].u = u
     return u

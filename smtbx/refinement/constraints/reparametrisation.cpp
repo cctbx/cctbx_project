@@ -74,31 +74,31 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // ADP
 
-  std::size_t cartesian_adp::size() const { return 6; }
+  std::size_t u_star_parameter::size() const { return 6; }
 
-  void cartesian_adp::store(uctbx::unit_cell const &unit_cell) const {
-    scatterer->u_star = adptbx::u_cart_as_u_star(unit_cell, value);
+  void u_star_parameter::store(uctbx::unit_cell const &unit_cell) const {
+    scatterer->u_star = value;
   }
 
   // independent ADP
 
-  void independent_cartesian_adp::set_variable(bool f) {
+  void independent_u_star_parameter::set_variable(bool f) {
     if (f) scatterer->flags.set_use_u_aniso(true);
     scatterer->flags.set_grad_u_aniso(f);
   }
 
-  bool independent_cartesian_adp::is_variable() const {
+  bool independent_u_star_parameter::is_variable() const {
     return scatterer->flags.use_u_aniso() && scatterer->flags.grad_u_aniso();
   }
 
-  void independent_cartesian_adp
+  void independent_u_star_parameter
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {
     value = adptbx::u_star_as_u_cart(unit_cell, scatterer->u_star);
   }
 
-  double *independent_cartesian_adp::components() {
+  double *independent_u_star_parameter::components() {
     return value.begin();
   }
 
