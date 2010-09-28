@@ -3,9 +3,6 @@ from scitbx.array_family import flex
 from scitbx.array_family import shared
 from stdlib import math as smath
 
-from cctbx import uctbx
-
-
 
 def tst_nlm():
   nlm_array = math.nlm_array(10)
