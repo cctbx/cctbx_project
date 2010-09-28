@@ -15,9 +15,9 @@ from libtbx import forward_compatibility
 from libtbx import adopt_init_args
 import libtbx.load_env
 
-from iotbx.shelx import util
 from iotbx.shelx.errors import error as shelx_error
 import iotbx.constraints.geometrical
+import iotbx.constraints.commonplace
 
 class parser(object):
 
@@ -136,9 +136,10 @@ class crystal_symmetry_parser(parser):
       if command[0] == 'SFAC': break
 
 
-class variable_decoder(util.behaviour_of_variable):
+class variable_decoder(object):
 
   def decode_variables(self, coded_variables, u_iso_idx=None):
+    _ = iotbx.constraints.commonplace
     values = []
     behaviours = []
     for i, coded_variable in enumerate(coded_variables):
@@ -151,34 +152,36 @@ class variable_decoder(util.behaviour_of_variable):
         # p*(fv_{-m} - 1)
         m = -m-1 # indexing thanks to (b) above
         values.append( p*(self.free_variable[m] - 1) )
-        behaviours.append((self.p_times_fv_minus_1, p, m))
+        behaviours.append(
+          (_.constant_times_independent_scalar_parameter_minus_1, p, m))
       elif m == 0:
         if i == u_iso_idx and p < -0.5:
           # p * (U_eq of the previous atom not constrained in this way)
-          scatt, scatt_idx = self.builder.scatterer_to_bind_u_eq_to
+          scatt, scatt_idx = self.scatterer_to_bind_u_eq_to
           u_iso = scatt.u_iso_or_equiv(
             self.builder.crystal_symmetry.unit_cell())
           values.append( -p*u_iso )
-          behaviours.append((self.p_times_previous_u_eq, scatt_idx))
+          behaviours.append((_.constant_times_u_eq, scatt_idx))
         else:
           # p (free to refine)
           values.append(p)
-          behaviours.append(self.free)
+          behaviours.append(_.independent_parameter)
       elif m == 1:
         # p (fixed variable)
         values.append(p)
-        behaviours.append(self.fixed)
+        behaviours.append(_.constant_parameter)
       elif m >= 2:
         # p*fv_m
         m = m-1 # indexing thanks to (b) above
         values.append(p*self.free_variable[m])
-        behaviours.append((self.p_times_fv, p, m))
+        behaviours.append(
+          (_.constant_times_independent_scalar_parameter, p, m))
       else:
         # m == -1
         # undocumented, rather pathological case
         # but I carefully checked that ShelXL does indeed behave so!
         values.append(0)
-        behaviours.append(self.fixed)
+        behaviours.append(_.constant_parameter)
     return values, behaviours
 
   def decode_one_variable(self, coded_variable, u_iso_idx=None):
@@ -227,6 +230,7 @@ class atom_parser(parser, variable_decoder):
         yield command, line
 
   def lex_scatterer(self, args, scatterer_index):
+    _ = iotbx.constraints.commonplace
     name = args[0]
     self.scatterer_label_to_index.setdefault(name, scatterer_index)
     n = int(args[1])
@@ -260,8 +264,8 @@ class atom_parser(parser, variable_decoder):
       scattering_type = scattering_type)
     if (not isotropic
         or not isinstance(behaviours[-1], tuple)
-        or behaviours[-1][0] != self.p_times_previous_u_eq):
-      self.builder.scatterer_to_bind_u_eq_to = (scatterer, scatterer_index)
+        or behaviours[-1][0] != _.constant_times_u_eq):
+      self.scatterer_to_bind_u_eq_to = (scatterer, scatterer_index)
     return scatterer, behaviours
 
 
