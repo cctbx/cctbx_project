@@ -83,14 +83,9 @@ class proto_cylinder : public prototype
       u = u/height;
       vec3_t e_z (0,0,1);
       vec3_t v = e_z.cross(u);
-      GLdouble l = v.length();
-      if (l < 1e-8) {
-        if (e_z*u < 0) height = -height;
-      }
-      else {
-        GLdouble theta = scitbx::rad_as_deg(std::asin(v.length()));
-        glRotated(theta, v[0], v[1], v[2]);
-      }
+      GLdouble s = v.length(), c=e_z*u;
+      GLdouble theta = scitbx::rad_as_deg(std::atan2(s,c));
+      glRotated(theta, v[0], v[1], v[2]);
       glScaled(base_radius, base_radius, height);
       glCallList(index);
     }
