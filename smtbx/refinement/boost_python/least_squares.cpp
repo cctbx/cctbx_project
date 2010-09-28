@@ -14,7 +14,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
   struct floating_origin_restraints_wrapper
   {
     typedef floating_origin_restraints<FloatType> wt;
-    typedef typename wt::scatterer_t scatterer_t;
     typedef typename wt::scalar_t scalar_t;
 
     static boost::python::tuple singular_directions(wt const &self) {
@@ -40,12 +39,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
       using namespace boost::python;
       class_<wt>(name, no_init)
         .def(init<sgtbx::space_group const &,
-                  sgtbx::site_symmetry_table const &,
-                  af::shared<scatterer_t> const &,
+                  af::const_ref<constraints::scatterer_parameters> const &,
+                  scitbx::sparse::matrix<FloatType> const &,
                   scalar_t>
              ((arg("space_group"),
-               arg("site_symmetry_table"),
-               arg("scatterers"),
+               arg("all_scatterer_parameters"),
+               arg("jacobian_transpose_matching_grad_fc"),
                arg("floating_origin_restraint_relative_weight"))))
         .def("add_to", &wt::add_to, arg("normal_equations"))
         .add_property("singular_directions", singular_directions)
@@ -56,8 +55,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
   template <typename FloatType,
             template<typename> class NormalEquations,
             template<typename> class WeightingScheme,
-            class OneMillerIndexLinearisation,
-            class ConstraintsType>
+            class OneMillerIndexLinearisation>
   struct normal_equation_building
   {
     static void wrap() {
@@ -70,7 +68,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
                     WeightingScheme<FloatType> const &, //weighting_scheme
                     FloatType,  //scale_factor
                     OneMillerIndexLinearisation &, //one_h_linearisation
-                    ConstraintsType &//constraints
+                    scitbx::sparse::matrix<FloatType> const &//constraints
                     ) =  smtbx::refinement::least_squares::build_normal_equations;
       def("build_normal_equations", build,
           (arg("normal_equations"),
@@ -81,43 +79,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
            arg("weighting_scheme"),
            arg("scale_factor"),
            arg("one_h_linearisation"),
-           arg("constraints")));
+           arg("jacobian_transpose_matching_grad_fc")));
     }
   };
-
-  template <typename FloatType>
-  struct special_position_constraints_wrapper
-  {
-    typedef special_position_constraints<FloatType> wt;
-    typedef typename wt::scatterer_t scatterer_t;
-
-    static void wrap(char const *name) {
-      using namespace boost::python;
-      class_<wt>(name, no_init)
-        .def(init<uctbx::unit_cell const &,
-                  sgtbx::site_symmetry_table const &,
-                  af::shared<scatterer_t> const &>
-             ((arg("unit_cell"),
-               arg("site_symmetry_table"),
-               arg("scatterers")))
-              [with_custodian_and_ward<1, 2,
-               with_custodian_and_ward<1, 3,
-               with_custodian_and_ward<1, 4> > >()])
-        .def_readonly("n_independent_params",
-                      &wt::n_independent_params)
-        .def_readonly("n_crystallographic_params",
-                      &wt::n_crystallographic_params)
-        .add_property("independent_gradients", &wt::independent_gradients)
-        .def("apply_chain_rule", &wt::apply_chain_rule,
-             arg("crystallographic_gradients"))
-        .def("apply_shifts", &wt::apply_shifts,
-             (arg("shifts"),
-              arg("scatterers")))
-        ;
-    }
-  };
-
-
 
   void wrap_least_squares() {
     using namespace boost::python;
@@ -133,8 +97,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         double,
         true,
         structure_factors::direct::one_h_linearisation::modulus_squared
-      >,
-      special_position_constraints<double>
+      >
     >::wrap();
 
     normal_equation_building<
@@ -145,12 +108,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
         double,
         true,
         structure_factors::direct::one_h_linearisation::modulus_squared
-      >,
-      special_position_constraints<double>
+      >
     >::wrap();
-
-    special_position_constraints_wrapper<
-      double>::wrap("special_position_constraints");
   }
 
 
