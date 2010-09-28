@@ -52,6 +52,7 @@ class rna_validate(object):
     else:
       print "Please enter a file name"
     self.analyze_pdb(pdb_io=pdb_io)
+    self.print_results()
 
   def analyze_pdb(self,
                   params=None,
@@ -74,6 +75,43 @@ class rna_validate(object):
                            hierarchy=self.pdb_hierarchy)
     self.bond_outliers, self.angle_outliers = self.bond_and_angle_evaluate()
     self.suite_outliers = self.run_suitename()
+
+  def print_results(self):
+    print "RNA Validation"
+    print "-----------------------------------------------"
+    print "Pucker Outliers:"
+    print "#residue:delta_angle:is_delta_outlier:epsilon_angle:is_epsilon_outler"
+    for outlier in self.pucker_outliers:
+      if outlier[1][1]:
+        is_delta_outlier="yes"
+      else:
+        is_delta_outlier="no"
+      if outlier[1][3]:
+        is_epsilon_outlier="yes"
+      else:
+        is_epsilon_outlier="no"
+      print "%s:%.3f:%s:%.3f:%s" % (outlier[0],
+                                      outlier[1][0],
+                                      is_delta_outlier,
+                                      outlier[1][2],
+                                      is_epsilon_outlier)
+    print "\n-----------------------------------------------"
+    print "Bond Length Outliers:"
+    print "#residue:atom_1:atom_2:num_sigmas"
+    for outlier in self.bond_outliers:
+      for pair in outlier[1]:
+        print "%s:%s:%s:%.3f" % (outlier[0], pair[0], pair[1], pair[2])
+    print "\n-----------------------------------------------"
+    print "Angle Outliers:"
+    print "#residue:atom_1:atom_2:atom_3:num_sigmas"
+    for outlier in self.angle_outliers:
+      for pair in outlier[1]:
+        print "%s:%s:%s:%s:%.3f" % (outlier[0], pair[0], pair[1], pair[2], pair[3])
+    print "\n-----------------------------------------------"
+    print "Suite Outliers:"
+    print "#suiteID:triaged_angle"
+    for outlier in self.suite_outliers:
+      print "%s:%s" % (outlier[0], outlier[1])
 
   def run_suitename(self):
     suite_outliers = []
@@ -422,7 +460,3 @@ ATOM    195  C4    A A  23      17.924   9.737   1.988  1.00 13.37           C
     for atom in pdb_hierarchy.atoms():
       i_seq_name_hash[atom.i_seq]=atom.pdb_label_columns()
     return i_seq_name_hash
-
-if __name__ == "__main__":
-  rv = rna_validate()
-  rv.run(args=sys.argv[1:])
