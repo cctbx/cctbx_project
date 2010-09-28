@@ -28,12 +28,14 @@ namespace smtbx { namespace refinement { namespace constraints {
   template class independent_small_vector_parameter<3>;
   template class independent_small_vector_parameter<6>;
 
-  // site_parameter
+  // single_scatterer_parameter
 
   crystallographic_parameter::scatterer_sequence_type
-  site_parameter::scatterers() const {
+  single_scatterer_parameter::scatterers() const {
     return scatterer_sequence_type(&scatterer, 1);
   }
+
+  // site_parameter
 
   std::size_t site_parameter::size() const { return 3; }
 
@@ -64,11 +66,6 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // ADP
 
-  crystallographic_parameter::scatterer_sequence_type
-  cartesian_adp::scatterers() const {
-    return scatterer_sequence_type(&scatterer, 1);
-  }
-
   std::size_t cartesian_adp::size() const { return 6; }
 
   void cartesian_adp::store(uctbx::unit_cell const &unit_cell) const {
@@ -96,5 +93,60 @@ namespace smtbx { namespace refinement { namespace constraints {
   double *independent_cartesian_adp::components() {
     return value.begin();
   }
+
+  // Occupancy
+
+  std::size_t occupancy_parameter::size() const { return 1; }
+
+  void occupancy_parameter::store(uctbx::unit_cell const &unit_cell) const {
+    scatterer->occupancy = value;
+  }
+
+  // independent Occupancy
+
+  void independent_occupancy_parameter::set_variable(bool f) {
+    scatterer->flags.set_grad_occupancy(f);
+  }
+
+  bool independent_occupancy_parameter::is_variable() const {
+    return scatterer->flags.grad_occupancy();
+  }
+
+  void independent_occupancy_parameter
+  ::linearise(uctbx::unit_cell const &unit_cell,
+              sparse_matrix_type *jacobian_transpose)
+  {
+    value = scatterer->occupancy;
+  }
+
+  double *independent_occupancy_parameter::components() { return &value; }
+
+  // u_iso
+
+  std::size_t u_iso_parameter::size() const { return 1; }
+
+  void u_iso_parameter::store(uctbx::unit_cell const &unit_cell) const {
+    scatterer->u_iso = value;
+  }
+
+  // independent u_iso
+
+  void independent_u_iso_parameter::set_variable(bool f) {
+    if (f) scatterer->flags.set_use_u_iso(true);
+    scatterer->flags.set_grad_u_iso(f);
+  }
+
+  bool independent_u_iso_parameter::is_variable() const {
+    return scatterer->flags.grad_u_iso();
+  }
+
+  void independent_u_iso_parameter
+  ::linearise(uctbx::unit_cell const &unit_cell,
+              sparse_matrix_type *jacobian_transpose)
+  {
+    value = scatterer->u_iso;
+  }
+
+  double *independent_u_iso_parameter::components() { return &value; }
 
 }}}
