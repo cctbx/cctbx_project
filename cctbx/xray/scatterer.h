@@ -370,7 +370,10 @@ namespace xray {
         sgtbx::site_symmetry_ops const& site_symmetry_ops,
         FloatType const& u_star_tolerance=0);
 
-      //! Access to multiplicity computed by apply_symmetry().
+      //! Access to "multiplicity" computed by apply_symmetry().
+      /** multiplicity is the number of symmetry equivalent positions
+          of this scatterer in the unit cell.
+       */
       int
       multiplicity() const { return multiplicity_; }
 
