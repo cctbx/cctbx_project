@@ -5,7 +5,7 @@ from cctbx import sgtbx, crystal, xray, miller, adptbx, uctbx
 from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
 from smtbx.refinement import least_squares
-from smtbx import refinement
+from smtbx.refinement import constraints
 from libtbx.test_utils import approx_equal
 import libtbx.utils
 from stdlib import math
@@ -57,9 +57,13 @@ class site_refinement_test(refinement_test):
   def exercise_floating_origin_restraints(self):
     n = self.n_independent_params
     eps_zero_rhs = 1e-6
+    reparametrisation = constraints.reparametrisation(
+      structure=self.xray_structure,
+      geometrical_constraints=[])
     normal_eqns = least_squares.normal_equations(
       self.xray_structure,
       self.fo_sq,
+      reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
       floating_origin_restraint_relative_weight=0)
     normal_eqns.build_up()
@@ -76,6 +80,7 @@ class site_refinement_test(refinement_test):
     normal_eqns = least_squares.normal_equations(
       self.xray_structure,
       self.fo_sq,
+      reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
     )
     normal_eqns.build_up()
@@ -143,6 +148,7 @@ class site_refinement_test(refinement_test):
     normal_eqns = least_squares.normal_equations(
       xs,
       self.fo_sq,
+      reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
     )
     barycentre_0 = xs.sites_frac().mean()
@@ -179,8 +185,12 @@ class site_refinement_test(refinement_test):
 
   def exercise_ls_cycles(self):
     xs = self.xray_structure.deep_copy_scatterers()
+    reparametrisation = constraints.reparametrisation(
+      structure=xs,
+      geometrical_constraints=[])
     normal_eqns = least_squares.normal_equations(
-      xs, self.fo_sq, weighting_scheme=least_squares.unit_weighting())
+      xs, self.fo_sq, reparametrisation,
+      weighting_scheme=least_squares.unit_weighting())
     emma_ref = xs.as_emma_model()
     xs.shake_sites_in_place(rms_difference=0.1)
 
@@ -233,9 +243,14 @@ class adp_refinement_test(refinement_test):
 
   def exercise_ls_cycles(self):
     xs = self.xray_structure.deep_copy_scatterers()
+    xs.shake_adp() # it must happen before the reparamtrisation is constructed
+                   # because the ADP values are read then and only then.
+    reparametrisation = constraints.reparametrisation(
+      structure=xs,
+      geometrical_constraints=[])
     normal_eqns = least_squares.normal_equations(
-      xs, self.fo_sq, weighting_scheme=least_squares.unit_weighting())
-    xs.shake_adp()
+      xs, self.fo_sq, reparametrisation,
+      weighting_scheme=least_squares.unit_weighting())
 
     objectives = []
     gradient_relative_norms = []
@@ -297,25 +312,11 @@ class pm_test(object):
     yield xray.scatterer("C3", (0.7, 0.1, -0.1))
 
 
-class r3_test(object):
-
-  hall = "R 3 (-y+z, x+z, -x+y+z)"
-  n_independent_params = 7
-  continuous_origin_shift_basis = [(1,1,1, 1, 1,1,1)]
-
-  def scatterers(self):
-    yield xray.scatterer("C1", (0.1, 0.2, 0.3))
-    yield xray.scatterer("C2", (0.4, 0.4, 0.4)) # on 3-axis
-    yield xray.scatterer("C3", (0.3, 0.4, 0.4)) # near 3-axis
-
-
 class site_refinement_in_p1_test(p1_test, site_refinement_test): pass
 
 class site_refinement_in_p2_test(p2_test, site_refinement_test): pass
 
 class site_refinement_in_pm_test(pm_test, site_refinement_test): pass
-
-class site_refinement_in_r3_test(r3_test, site_refinement_test): pass
 
 
 class adp_refinement_in_p1_test(p1_test, adp_refinement_test): pass
@@ -324,19 +325,15 @@ class adp_refinement_in_p2_test(p2_test, adp_refinement_test): pass
 
 class adp_refinement_in_pm_test(pm_test, adp_refinement_test): pass
 
-class adp_refinement_in_r3_test(r3_test, adp_refinement_test): pass
-
 
 def exercise_normal_equations():
   adp_refinement_in_p1_test().run()
   adp_refinement_in_pm_test().run()
   adp_refinement_in_p2_test().run()
-  adp_refinement_in_r3_test().run()
 
   site_refinement_in_p1_test().run()
   site_refinement_in_pm_test().run()
   site_refinement_in_p2_test().run()
-  site_refinement_in_r3_test().run()
 
 class special_positions_test(object):
 
@@ -422,8 +419,12 @@ class special_positions_test(object):
     for sc in xs.scatterers():
       sc.flags.set_use_u_iso(False).set_use_u_aniso(True)
       sc.flags.set_grad_site(True).set_grad_u_aniso(True)
+    reparametrisation = constraints.reparametrisation(
+      structure=xs,
+      geometrical_constraints=[])
     normal_eqns = least_squares.normal_equations(
-      xs, self.fo_sq, weighting_scheme=least_squares.unit_weighting())
+      xs, self.fo_sq, reparametrisation,
+      weighting_scheme=least_squares.unit_weighting())
 
     objectives = []
     scales = []
@@ -460,18 +461,19 @@ class special_positions_test(object):
     for i in (0, 9, 18, 27,):
       assert cov.matrix_copy_block(i, 0, 2, n) == 0
 
-    # off-diagonal coefficients of U_cart for point group 3 sites are fixed
+    # u_star coefficients u13 and u23 for point group 3 sites are fixed
     # to 0: again no variance or correlation with any other param
-    for i in (6, 15, 24, 33,):
-      assert cov.matrix_copy_block(i, 0, 3, n).as_1d()\
+    for i in (7, 16, 25, 34,):
+      assert cov.matrix_copy_block(i, 0, 2, n).as_1d()\
              .all_approx_equal(0., 1e-20)
 
-    # diagonal coefficients of U_cart for point group 3 sites are such that
-    # U_11 and U_22 are totally correlated, with the same variance
+    # u_star coefficients u11, u22 and u12 for point group 3 sites
+    # are totally correlated, with variances in ratios 1:1:1/2
     for i in (3, 12, 21, 30,):
       assert cov[i, i] != 0
       assert approx_equal(cov[i, i], cov[i+1, i+1], eps=1e-15)
       assert approx_equal(cov[i, i+1]/cov[i, i], 1, eps=1e-12)
+      assert approx_equal(cov[i, i+3]/cov[i, i], 0.5, eps=1e-12)
 
 
 def run():

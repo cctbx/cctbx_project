@@ -8,6 +8,7 @@ from cctbx.xray import structure
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.utils
 from smtbx import masks
+from smtbx.refinement import constraints
 
 import cStringIO
 
@@ -154,8 +155,10 @@ def exercise_least_squares(xray_structure, fo_sq, mask=None):
     f_mask = mask.f_mask()
   else:
     f_mask = None
+  reparametrisation = constraints.reparametrisation(
+    xs, geometrical_constraints=[])
   normal_eqns = least_squares.normal_equations(
-    xs, fo_sq,
+    xs, fo_sq, reparametrisation,
     f_mask=f_mask,
     weighting_scheme="default")
   objectives = []
