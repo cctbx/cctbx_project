@@ -1181,7 +1181,37 @@ def exercise_parameter_map():
     assert indices.fdp == m[i].fdp
 
 
+def exercise_xray_structure_repr():
+  import itertools
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry((2, 2, 3, 90, 90, 80), "hall: P 2z"),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer('C1', site=(0.5, 0.5, 0.5), u=0.1),
+      xray.scatterer('O1', site=(0.1, 0.2, 0.3), u=(0.1, 0.2, 0.3,
+                                                    0.4, 0.5, 0.6)),
+      xray.scatterer('Fe', site=(-0.8, 0.2, 0), u=0.2,
+                     scattering_type="Fe3+")
+      )))
+  r = repr(xs)
+  xs1 = eval(r)
+  assert xs.crystal_symmetry().is_similar_symmetry(
+    xs1.crystal_symmetry(),
+    relative_length_tolerance=0,
+    absolute_angle_tolerance=0)
+  for sc, sc1 in itertools.izip(xs.scatterers(), xs1.scatterers()):
+    assert sc.flags.bits == sc1.flags.bits
+    assert sc.site  == sc1.site
+    if sc.flags.use_u_iso():
+      assert sc.u_iso == sc1.u_iso
+    if sc.flags.use_u_aniso():
+      assert sc.u_star == sc1.u_star
+    assert sc.occupancy == sc1.occupancy
+    assert sc.fp  == sc1.fp
+    assert sc.fdp == sc1.fdp
+
+
 def run():
+  exercise_xray_structure_repr()
   exercise_parameter_map()
   exercise_chemical_formula()
   exercise_select_on_name_or_chemical_element()
