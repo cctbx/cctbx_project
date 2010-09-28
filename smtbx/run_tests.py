@@ -9,7 +9,7 @@ def run():
      '"hall: P 1"', '"hall: P 3"', '"hall: -P 2ybc"' ],
     "$D/masks/tests/tst_masks.py",
     "$D/structure_factors/direct/tests/tst_standard_xray.py",
-    #"$D/refinement/tests/tst_least_squares.py",
+    ["$D/refinement/tests/tst_least_squares.py", "--fix_random_seeds"],
     "$B/refinement/constraints/tests/tst_reparametrisation",
     "$B/refinement/constraints/tests/tst_geometrical_hydrogens",
     "$B/refinement/constraints/tests/tst_special_position",
@@ -18,7 +18,6 @@ def run():
     "$D/refinement/restraints/tests/tst_adp_restraints.py",
     "$D/refinement/restraints/tests/tst_manager.py",
     "$D/refinement/restraints/tests/tst_restraints.py",
-    #"$D/refinement/tests/tst_minimization_at_random.py",
     )
   build_dir = libtbx.env.under_build("smtbx")
   dist_dir = libtbx.env.dist_path("smtbx")
