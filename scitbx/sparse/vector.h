@@ -432,8 +432,11 @@ public:
   }
 
   /// Equality
-  bool operator==(vector const &other) {
-    return elements.all_eq(other.elements);
+  bool operator==(vector const &other) const {
+    compact();
+    other.compact();
+    return elements.size() == other.elements.size()
+        && std::equal(elements.begin(), elements.end(), other.elements.begin());
   }
 
   /// Number of non-zero elements
