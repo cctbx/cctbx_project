@@ -53,6 +53,13 @@ namespace boost_python {
     return this->get_override("component_indices_for")(scatterer);             \
   }
 
+  #define SMTBX_CONSTRAINTS_OVERRIDE_WRITE_COMPONENT_ANNOTATIONS_FOR           \
+  void write_component_annotations_for(scatterer_type const *scatterer,        \
+                                       std::ostream &output) const             \
+  {                                                                            \
+    this->get_override("write_component_annotations_for")(scatterer, output);  \
+  }
+
   #define SMTBX_CONSTRAINTS_OVERRIDE_STORE                                     \
   virtual void store(uctbx::unit_cell const &unit_cell) const {                \
     this->get_override("store")(unit_cell);                                    \
@@ -127,6 +134,7 @@ namespace boost_python {
     SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
     SMTBX_CONSTRAINTS_OVERRIDE_SCATTERERS
     SMTBX_CONSTRAINTS_OVERRIDE_COMPONENT_INDICES_FOR
+    SMTBX_CONSTRAINTS_OVERRIDE_WRITE_COMPONENT_ANNOTATIONS_FOR
     SMTBX_CONSTRAINTS_OVERRIDE_STORE
   };
 
@@ -136,6 +144,7 @@ namespace boost_python {
   {
     SMTBX_CONSTRAINTS_OVERRIDE_SIZE
     SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
+    SMTBX_CONSTRAINTS_OVERRIDE_WRITE_COMPONENT_ANNOTATIONS_FOR
     SMTBX_CONSTRAINTS_OVERRIDE_STORE
 
     SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_CONSTRUCTOR(

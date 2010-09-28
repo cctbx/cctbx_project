@@ -9,16 +9,14 @@
 #include <smtbx/import_cctbx.h>
 #include <smtbx/error.h>
 
-#include <boost/utility.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/shared_array.hpp>
-#include <boost/format.hpp>
 #include <boost/foreach.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <boost/functional/hash.hpp>
 #include <vector>
 #include <iterator>
 #include <queue>
+#include <iosfwd>
 
 /// Constraints handled as reparametrisation
 /** Constraints are in the first place restrictions placed on quantities
@@ -328,6 +326,14 @@ public:
   virtual index_range
   component_indices_for(scatterer_type const *scatterer) const = 0;
 
+  /// Write annotations for each component associated with the given scatterer
+  /** It shall be written as a comma separated list which shall be empty
+      if the scatterer is not one of those this parameter refers to.
+   */
+  virtual void
+  write_component_annotations_for(scatterer_type const *scatterer,
+                                  std::ostream &output) const = 0;
+
   /// Store its components into the corresponding scatterers
   virtual void store(uctbx::unit_cell const &unit_cell) const = 0;
 };
@@ -364,6 +370,10 @@ public:
   {}
 
   virtual std::size_t size() const;
+
+  virtual void
+  write_component_annotations_for(scatterer_type const *scatterer,
+                                  std::ostream &output) const;
 
   virtual void store(uctbx::unit_cell const &unit_cell) const;
 
@@ -410,6 +420,10 @@ public:
 
   virtual std::size_t size() const;
 
+  virtual void
+  write_component_annotations_for(scatterer_type const *scatterer,
+                                  std::ostream &output) const;
+
   virtual void store(uctbx::unit_cell const &unit_cell) const;
 
   /// The site value in Cartesian coordinates
@@ -451,6 +465,10 @@ public:
 
   virtual std::size_t size() const;
 
+  virtual void
+  write_component_annotations_for(scatterer_type const *scatterer,
+                                  std::ostream &output) const;
+
   virtual void store(uctbx::unit_cell const &unit_cell) const;
 
   /// The occupancy value
@@ -491,6 +509,10 @@ public:
   {}
 
   virtual std::size_t size() const;
+
+  virtual void
+  write_component_annotations_for(scatterer_type const *scatterer,
+                                  std::ostream &output) const;
 
   virtual void store(uctbx::unit_cell const &unit_cell) const;
 

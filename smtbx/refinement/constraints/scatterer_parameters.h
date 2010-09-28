@@ -95,5 +95,17 @@ mapping_to_grad_fc(af::const_ref<scatterer_parameters> const &params) {
 }
 
 
+/// Write annotations for each components of each scatterers in grad Fc order
+void
+write_component_annotations(af::const_ref<scatterer_parameters> const &params,
+                            std::ostream &output)
+{
+  for (std::size_t i=0; i<params.size(); ++i) {
+    BOOST_FOREACH (crystallographic_parameter const *p, params[i].ordered()) {
+      p->write_component_annotations_for(params[i].scatterer, output);
+    }
+  }
+}
+
 }}}
 #endif // GUARD

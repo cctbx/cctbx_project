@@ -4,8 +4,11 @@
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_internal_reference.hpp>
+#include <boost/python/str.hpp>
 
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <sstream>
+#include <iostream>
 
 namespace smtbx { namespace refinement { namespace constraints {
 namespace boost_python {
@@ -17,7 +20,7 @@ struct scatterer_parameters_wrapper
   static
   af::shared<wt>
   *init_shared_scatterer_parameters(af::const_ref<wt::scatterer_type> const
-                                   &scatterers)
+                                    &scatterers)
   {
     af::shared<wt>
     *result = new af::shared<wt>((af::reserve(scatterers.size())));
@@ -25,6 +28,14 @@ struct scatterer_parameters_wrapper
       result->push_back(wt(&scatterers[i_sc]));
     }
     return result;
+  }
+
+  static
+  boost::python::str component_annotations(af::const_ref<wt> const &self) {
+    std::ostringstream o;
+    o.str().reserve(50*self.size());
+    write_component_annotations(self, o);
+    return boost::python::str(o.str());
   }
 
   static void wrap() {
@@ -51,6 +62,9 @@ struct scatterer_parameters_wrapper
     ::wrap("shared_scatterer_parameters")
       .def("__init__", make_constructor(init_shared_scatterer_parameters))
       .def("mapping_to_grad_fc", mapping_to_grad_fc)
+      .def("component_annotations", component_annotations,
+           "Comma-separated annotations for each component of each parameter,"
+           " in grad Fc order")
       ;
   }
 };

@@ -51,6 +51,10 @@ public:
   virtual index_range
   component_indices_for(scatterer_type const *scatterer) const;
 
+  virtual void
+  write_component_annotations_for(scatterer_type const *scatterer,
+                                  std::ostream &output) const;
+
   virtual void store(uctbx::unit_cell const &unit_cell) const {
     for (int i=0; i<hydrogen.size(); ++i) {
       hydrogen[i]->site = unit_cell.fractionalize(x_h[i]);

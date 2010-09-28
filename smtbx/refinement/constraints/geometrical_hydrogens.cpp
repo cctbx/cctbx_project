@@ -20,6 +20,22 @@ namespace smtbx { namespace refinement { namespace constraints {
                 : index_range();
   }
 
+  template <int n_hydrogens>
+  void geometrical_hydrogen_sites<n_hydrogens>
+  ::write_component_annotations_for(scatterer_type const *scatterer,
+                                    std::ostream &output) const
+  {
+    using boost::lambda::_1;
+    boost::optional<std::size_t>
+    i_sc = af::first_index(hydrogen, _1 == scatterer);
+    if (i_sc) {
+      scatterer_type const *h = hydrogen[*i_sc];
+      output << h->label << ".x,";
+      output << h->label << ".y,";
+      output << h->label << ".z,";
+    }
+  }
+
   //*** CH3, NH2, OH ***
 
   template <int n_hydrogens, bool staggered>
