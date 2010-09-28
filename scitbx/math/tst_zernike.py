@@ -3,17 +3,7 @@ from scitbx.array_family import flex
 from scitbx.array_family import shared
 from stdlib import math as smath
 
-from iotbx.xplor import map as xplor_map
 from cctbx import uctbx
-
-
-
-def xplor_map_type(xyz,m,N,radius,file_name='map.xplor'):
-  gridding = xplor_map.gridding( [N*2+1]*3, [0]*3, [2*N]*3)
-  grid = flex.grid(N*2+1, N*2+1,N*2+1)
-  m.reshape( grid )
-  uc = uctbx.unit_cell(" %s"%(radius*2.0)*3+"90 90 90")
-  xplor_map.writer( file_name, ['no title lines'],uc, gridding,m)  # True)
 
 
 
