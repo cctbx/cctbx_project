@@ -293,29 +293,39 @@ public:
 };
 
 
-/// Scatterer site.
-/** A parameter whose components are the fractional coordinates.
- */
-class site_parameter : public crystallographic_parameter
+/// Parameter of a single scatterer
+class single_scatterer_parameter : public crystallographic_parameter
 {
 public:
   virtual scatterer_sequence_type scatterers() const;
 
-  virtual std::size_t size() const;
-
-  site_parameter(scatterer_type *scatterer, std::size_t n_arguments)
-    : crystallographic_parameter(n_arguments),
-      scatterer(scatterer)
+  single_scatterer_parameter(scatterer_type *scatterer, std::size_t n_arguments)
+  : crystallographic_parameter(n_arguments),
+    scatterer(scatterer)
   {}
+
+protected:
+  /// The scatterer this parameter belongs to
+  scatterer_type *scatterer;
+};
+
+
+/// Scatterer site.
+/** A parameter whose components are the fractional coordinates.
+ */
+class site_parameter : public single_scatterer_parameter
+{
+public:
+  site_parameter(scatterer_type *scatterer, std::size_t n_arguments)
+  : single_scatterer_parameter(scatterer, n_arguments)
+  {}
+
+  virtual std::size_t size() const;
 
   virtual void store(uctbx::unit_cell const &unit_cell) const;
 
   /// The site value in Cartesian coordinates
   fractional<double> value;
-
-protected:
-  /// The scatterer this parameter belongs to
-  scatterer_type *scatterer;
 };
 
 
@@ -345,15 +355,12 @@ public:
 /// Anisotropic displacement parameters of a site
 /** A parameter whose components are the coefficients of the Cartesian tensor
  */
-class cartesian_adp : public crystallographic_parameter
+class cartesian_adp : public single_scatterer_parameter
 {
 public:
   cartesian_adp(scatterer_type *scatterer, std::size_t n_arguments)
-  : crystallographic_parameter(n_arguments),
-    scatterer(scatterer)
+  : single_scatterer_parameter(scatterer, n_arguments)
   {}
-
-  virtual scatterer_sequence_type scatterers() const;
 
   virtual std::size_t size() const;
 
@@ -361,10 +368,6 @@ public:
 
   /// The site value in Cartesian coordinates
   tensor_rank_2_t value;
-
-protected:
-  /// The scatterer this parameter belongs to
-  scatterer_type *scatterer;
 };
 
 
@@ -389,6 +392,83 @@ public:
   virtual double *components();
 };
 
+
+/// Occupancy of a scatterer
+class occupancy_parameter : public single_scatterer_parameter
+{
+public:
+  occupancy_parameter(scatterer_type *scatterer, std::size_t n_arguments)
+  : single_scatterer_parameter(scatterer, n_arguments)
+  {}
+
+  virtual std::size_t size() const;
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+  /// The occupancy value
+  double value;
+};
+
+
+class independent_occupancy_parameter : public occupancy_parameter
+{
+public:
+  independent_occupancy_parameter(scatterer_type *scatterer)
+  : occupancy_parameter(scatterer, 0)
+  {}
+
+  /// Variability property, directly linked to the scatterer grad_occupancy flag
+  //@{
+  virtual void set_variable(bool f);
+
+  virtual bool is_variable() const;
+  //@}
+
+  /// Read the occupancy value from the referenced scatterer
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+
+  virtual double *components();
+};
+
+
+/// Isotropic thermal displacement parameter of a scatterer
+class u_iso_parameter : public single_scatterer_parameter
+{
+public:
+  u_iso_parameter(scatterer_type *scatterer, std::size_t n_arguments)
+  : single_scatterer_parameter(scatterer, n_arguments)
+  {}
+
+  virtual std::size_t size() const;
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+  /// The u_iso value
+  double value;
+};
+
+
+class independent_u_iso_parameter : public u_iso_parameter
+{
+public:
+  independent_u_iso_parameter(scatterer_type *scatterer)
+  : u_iso_parameter(scatterer, 0)
+  {}
+
+  /// Variability property, directly linked to the scatterer grad_u_iso flag
+  //@{
+  virtual void set_variable(bool f);
+
+  virtual bool is_variable() const;
+  //@}
+
+  /// Read the u_iso value from the referenced scatterer
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+
+  virtual double *components();
+};
 
 
 class computing_graph_has_cycle_error : public error
