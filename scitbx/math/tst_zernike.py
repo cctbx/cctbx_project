@@ -3,9 +3,17 @@ from scitbx.array_family import flex
 from scitbx.array_family import shared
 from stdlib import math as smath
 
+from iotbx.xplor import map as xplor_map
 from cctbx import uctbx
 
 
+
+def xplor_map_type(xyz,m,N,radius,file_name='map.xplor'):
+  gridding = xplor_map.gridding( [N*2+1]*3, [0]*3, [2*N]*3)
+  grid = flex.grid(N*2+1, N*2+1,N*2+1)
+  m.reshape( grid )
+  uc = uctbx.unit_cell(" %s"%(radius*2.0)*3+"90 90 90")
+  xplor_map.writer( file_name, ['no title lines'],uc, gridding,m)  # True)
 
 
 
@@ -70,101 +78,6 @@ def tst_zernike_radial():
                   #print n,l, nn,ll, tmp
 
 
-def tst_zernike_radial_2d():
-  N=50
-  M=35
-  lfg =  math.log_factorial_generator(N)
-  NNN = int(1e4)
-  for n in range(M):
-    for l in range(n+1):
-      if (n-l)%2==0:
-        rzfa = math.zernike_2d_radial(n,l, lfg)
-        r = flex.double( flex.double(range(NNN))/float(NNN-1) )
-        a = rzfa.f( r )
-        tmp = a*a*r
-        tmp = flex.sum( tmp )/float(NNN)
-        tmp = tmp*(2*n+2)
-        nnlk = rzfa.Nnlk()
-        assert abs(tmp-1)<2e-2
-        for nn in range(M):
-          for ll in range(nn):
-            if (nn-ll)%2==0:
-              if 1: #(nn!=n):
-                if ll==l:
-                  rzfb = math.zernike_2d_radial(nn,ll, lfg)
-                  rzfa = math.zernike_2d_radial(n,l, lfg)
-                  b = rzfb.f( r )
-                  a = rzfa.f( r )
-                  tmp = a*b*r
-                  tmp = flex.sum( tmp )/float(NNN)*2*(nn+1)
-                  print n,nn,l,ll,tmp
-
-def triple_partity_check(n,nn,nnn):
-  tot=0
-  if (n%2==0):
-    tot+=1
-  if (nn%2==0):
-    tot+=1
-  if (nnn%2==0):
-    tot+=1
-  if tot==3:
-    return True
-  if tot==0:
-    return True
-
-def triple_integral():
-  N=50
-  M=1
-  lfg =  math.log_factorial_generator(N)
-  NNN = int(1e6)
-  from stdlib import math as smath
-  r = flex.double( flex.double(range(NNN))/float(NNN-1) )
-  for n in range(M):
-    for nn in range(n,M):
-      for nnn in range(nn,M):
-        if triple_partity_check(n,nn,nnn):
-          for l in range(min(n+1,nn+1,nnn+1)):
-           if (n-l)%2==0:
-            rzfa = math.zernike_2d_radial(n,l,   lfg)
-            rzfb = math.zernike_2d_radial(nn,l,  lfg)
-            rzfc = math.zernike_2d_radial(nnn,l, lfg)
-            a = rzfa.f(r)
-            b = rzfb.f(r)
-            c = rzfc.f(r)
-            tmp = flex.sum(a*b*c*r)/float(NNN)
-            sign = 1
-            if tmp < 0:
-              tmp=-tmp
-              sign=-1
-            print n,nn,nnn,l,tmp #smath.log( tmp ), sign
-
-def tst_zernike_2d_polynome(n,l,nn,ll):
-  assert (n,l)!=(nn,ll)
-  N=50
-  lfg =  math.log_factorial_generator(N)
-  NN=85
-
-  rzfa = math.zernike_2d_radial(n,l,lfg)
-  rap = math.zernike_2d_polynome(n,l,rzfa)
-  rzfb = math.zernike_2d_radial(nn,ll,lfg)
-  rbp = math.zernike_2d_polynome(nn,ll,rzfb)
-  tmp1=0; tmp2=0; tmp3=0
-  count=0
-  for x in range(-NN,NN+1):
-    for y in range(-NN,NN+1):
-      rr = smath.sqrt(x*x+y*y)/NN
-      tt = smath.atan2(y,x)
-      if rr<=1:
-        tmp1 += rap.f(rr,tt)*(rap.f(rr,tt)).conjugate()
-        tmp2 += rbp.f(rr,tt)*(rbp.f(rr,tt)).conjugate()
-        tmp3 += rbp.f(rr,tt)*(rap.f(rr,tt)).conjugate()
-        count += 1
-  tmp1 = ( 0.5*(2*n+2)*tmp1/count ).real
-  tmp2 = ( 0.5*(2*nn+2)*tmp2/count ).real
-  tmp3 = ( 0.5*smath.sqrt( (2*n+2)*(2*nn+2) )*tmp3/count ).real
-  assert abs(tmp1-1)<1e-2
-  assert abs(tmp2-1)<1e-2
-  assert abs(tmp3)<1e-2
 
 def tst_zernike_grid(skip_iteration_probability=0.95):
   #THIS TEST TAKES A BIT OF TIME
@@ -284,14 +197,6 @@ def tst_nss_spherical_harmonics():
 
 
 if __name__ == "__main__":
-  #triple_integral()
-  tst_zernike_2d_polynome(0,0,2,0)
-  tst_zernike_2d_polynome(4,4,3,1)
-  tst_zernike_2d_polynome(10,0,2,0)
-  tst_zernike_2d_polynome(11,1,2,0)
-  tst_zernike_2d_polynome(14,4,3,1)
-  tst_zernike_2d_polynome(13,1,3,1)
-  tst_zernike_radial_2d()
   tst_nss_spherical_harmonics()
   tst_nl()
   tst_nlm()
