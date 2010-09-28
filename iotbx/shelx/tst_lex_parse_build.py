@@ -7,7 +7,7 @@ from cctbx import geometry_restraints
 from cctbx import adp_restraints
 from iotbx import shelx
 from iotbx.shelx import crystal_symmetry_from_ins
-from iotbx.constraints import *
+import iotbx.constraints.geometrical
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.math_utils import are_equivalent
@@ -275,23 +275,24 @@ def exercise_afix_parsing():
   l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
   l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
   l_xs.parse()
+  _ = iotbx.constraints.geometrical
   expected_geometrical_constraints = [
-    staggered_terminal_tetrahedral_xh_site(
+    _.staggered_terminal_tetrahedral_xh_site(
       constrained_site_indices=(1,),
       pivot=0),
-    secondary_planar_xh_site(
+    _.secondary_planar_xh_site(
       constrained_site_indices=(6,),
       pivot=5),
-    secondary_planar_xh_site(
+    _.secondary_planar_xh_site(
       constrained_site_indices=(10,),
       pivot=9),
-    secondary_planar_xh_site(
+    _.secondary_planar_xh_site(
       constrained_site_indices=(13,),
       pivot=12),
-    secondary_planar_xh_site(
+    _.secondary_planar_xh_site(
       constrained_site_indices=(16,),
       pivot=15),
-    terminal_tetrahedral_xh3_sites(
+    _.terminal_tetrahedral_xh3_sites(
       constrained_site_indices=(18,19,20),
       pivot=17,
       rotating=True)
