@@ -96,3 +96,7 @@ class normal_equations(object):
     cov = jac_tr.self_transpose_times_symmetric_times_self(cov_ind_params)
     if normalised_by_goof: cov *= self.goof()**2
     return cov
+
+  def covariance_matrix_and_annotations(self):
+    return (self.covariance_matrix,
+            self.reparametrisation.component_annotations)
