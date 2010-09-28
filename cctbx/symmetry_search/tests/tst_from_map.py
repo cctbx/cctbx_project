@@ -13,11 +13,8 @@ import scitbx.random
 import random
 import math
 
-if (1): # fixed random seed to avoid rare failures
-  random.seed(1)
-  flex.set_random_seed(1)
-
 def exercise(space_group_info,
+             fixed_random_seed=True,
              shifted_origin=None,
              elements=None,
              d_min=0.8,
@@ -147,6 +144,8 @@ def run():
   parser.option(None, '--skip_extra_tests',
                 action='store_true',
                 default=False)
+  parser.option(None, '--fixed_random_seed',
+                default=True)
   command_line = parser.process(sys.argv[1:])
 
   if not command_line.options.skip_extra_tests:
