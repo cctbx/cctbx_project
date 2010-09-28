@@ -1,6 +1,6 @@
 """ Constraint types supported by the iotbx """
 
-class constraint(object):
+class any(object):
 
   staggered = False
   pivot = None
@@ -28,39 +28,39 @@ class constraint(object):
                        '\n'.join(["  %s=%r" % (a,v)
                                  for (a,v) in self.__dict__.iteritems()]))
 
-class geometrical_hydrogens(constraint):
+class hydrogens(any):
 
   def finalise(self, first, last):
     self.constrained_site_indices = tuple(xrange(first, last))
 
-class tertiary_ch_site(geometrical_hydrogens):
+class tertiary_ch_site(hydrogens):
   n_constrained_sites = 1
 
-class secondary_ch2_sites(geometrical_hydrogens):
+class secondary_ch2_sites(hydrogens):
   n_constrained_sites = 2
 
-class staggered_terminal_tetrahedral_xh3_sites(geometrical_hydrogens):
+class staggered_terminal_tetrahedral_xh3_sites(hydrogens):
   n_constrained_sites = 3
   staggered = True
 
-class secondary_planar_xh_site(geometrical_hydrogens):
+class secondary_planar_xh_site(hydrogens):
   n_constrained_sites = 1
 
-class staggered_terminal_tetrahedral_xh_site(geometrical_hydrogens):
+class staggered_terminal_tetrahedral_xh_site(hydrogens):
   n_constrained_sites = 1
   staggered = True
 
-class terminal_planar_xh2_sites(geometrical_hydrogens):
+class terminal_planar_xh2_sites(hydrogens):
   n_constrained_sites = 2
 
-class terminal_tetrahedral_xh3_sites(geometrical_hydrogens):
+class terminal_tetrahedral_xh3_sites(hydrogens):
   n_constrained_sites = 3
 
-class terminal_tetrahedral_xh_site(geometrical_hydrogens):
+class terminal_tetrahedral_xh_site(hydrogens):
   n_constrained_sites = 1
 
-class polyhedral_bh_site(geometrical_hydrogens):
+class polyhedral_bh_site(hydrogens):
   n_constrained_sites = 1
 
-class terminal_linear_ch_site(geometrical_hydrogens):
+class terminal_linear_ch_site(hydrogens):
   n_constrained_sites = 1

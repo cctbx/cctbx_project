@@ -17,7 +17,7 @@ import libtbx.load_env
 
 from iotbx.shelx import util
 from iotbx.shelx.errors import error as shelx_error
-import iotbx.constraints
+import iotbx.constraints.geometrical
 
 class parser(object):
 
@@ -268,7 +268,7 @@ class atom_parser(parser, variable_decoder):
 class afix_parser(parser):
   """ It must be before an atom parser """
 
-  _ = iotbx.constraints
+  _ = iotbx.constraints.geometrical
 
   constraints = {
   # AFIX mn : some of them use a pivot whose position is given wrt
