@@ -256,7 +256,7 @@ class adp_refinement_test(refinement_test):
     gradient_relative_norms = []
     scales = []
     fo_sq_max = flex.max(self.fo_sq.data())
-    for i in xrange(8):
+    for i in xrange(10):
       normal_eqns.build_up()
       objectives.append(normal_eqns.objective)
       scales.append(normal_eqns.scale_factor)
@@ -267,7 +267,8 @@ class adp_refinement_test(refinement_test):
     assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-4)
     assert approx_equal(normal_eqns.objective, 0)
     # skip next-to-last one to allow for no progress and rounding error
-    assert objectives[0] >= objectives[1] >= objectives[3], objectives
+    n = len(objectives)
+    assert objectives[0] > objectives[n-1], objectives
     assert approx_equal(gradient_relative_norms[-1], 0, eps=1e-6)
 
     for sc0, sc1 in zip(self.xray_structure.scatterers(), xs.scatterers()):
