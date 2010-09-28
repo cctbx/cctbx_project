@@ -114,6 +114,11 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // X-CH2-Y
 
+  crystallographic_parameter::scatterer_sequence_type
+  secondary_ch2_sites::scatterers() const {
+    return h.const_ref();
+  }
+
   std::size_t secondary_ch2_sites::size() const { return 6; }
 
   void secondary_ch2_sites::linearise(uctbx::unit_cell const &unit_cell,
@@ -185,6 +190,11 @@ namespace smtbx { namespace refinement { namespace constraints {
           |
           X2
    */
+  crystallographic_parameter::scatterer_sequence_type
+  tertiary_ch_site::scatterers() const {
+    return scatterer_sequence_type(&h, 1);
+  }
+
   std::size_t tertiary_ch_site::size() const { return 3; }
 
   void tertiary_ch_site::linearise(uctbx::unit_cell const &unit_cell,
@@ -236,6 +246,11 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
   /// aromatic or amide Y-XH-Z
+  crystallographic_parameter::scatterer_sequence_type
+  secondary_planar_xh_site::scatterers() const {
+    return scatterer_sequence_type(&h, 1);
+  }
+
   std::size_t secondary_planar_xh_site::size() const {
     return 3;
   }
@@ -281,6 +296,11 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
   // Terminal Z-Y=XH2
+  crystallographic_parameter::scatterer_sequence_type
+  terminal_planar_xh2_sites::scatterers() const {
+    return h.const_ref();
+  }
+
   std::size_t terminal_planar_xh2_sites::size() const { return 6; }
 
   void terminal_planar_xh2_sites::
@@ -334,6 +354,11 @@ namespace smtbx { namespace refinement { namespace constraints {
 
 
   // Acetylenic X-CH
+  crystallographic_parameter::scatterer_sequence_type
+  terminal_linear_ch_site::scatterers() const {
+    return scatterer_sequence_type(&h, 1);
+  }
+
   std::size_t terminal_linear_ch_site::size() const { return 3; }
 
   void terminal_linear_ch_site

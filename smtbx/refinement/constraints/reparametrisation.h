@@ -280,6 +280,9 @@ class crystallographic_parameter : public parameter
 {
 public:
   typedef xray::scatterer<> scatterer_type;
+  typedef af::const_ref<scatterer_type *> scatterer_sequence_type;
+
+  virtual scatterer_sequence_type scatterers() const = 0;
 
   crystallographic_parameter(std::size_t n_arguments)
     : parameter(n_arguments)
@@ -296,6 +299,8 @@ public:
 class site_parameter : public crystallographic_parameter
 {
 public:
+  virtual scatterer_sequence_type scatterers() const;
+
   virtual std::size_t size() const;
 
   site_parameter(scatterer_type *scatterer, std::size_t n_arguments)
@@ -347,6 +352,8 @@ public:
   : crystallographic_parameter(n_arguments),
     scatterer(scatterer)
   {}
+
+  virtual scatterer_sequence_type scatterers() const;
 
   virtual std::size_t size() const;
 

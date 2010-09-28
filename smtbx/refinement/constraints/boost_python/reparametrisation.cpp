@@ -12,6 +12,8 @@
 #include <boost/python/implicit.hpp>
 #include <boost/python/docstring_options.hpp>
 
+#include <scitbx/boost_python/container_conversions.h>
+
 #include <boost/operators.hpp>
 #include <smtbx/refinement/constraints/reparametrisation.h>
 
@@ -36,6 +38,12 @@ namespace boost_python {
                          sparse_matrix_type *jacobian_transpose)               \
   {                                                                            \
     this->get_override("linearise")(unit_cell, jacobian_transpose);            \
+  }
+
+  #define SMTBX_CONSTRAINTS_OVERRIDE_SCATTERERS                                \
+  crystallographic_parameter::scatterer_sequence_type scatterers() const       \
+  {                                                                            \
+    return this->get_override("scatterers")();                                 \
   }
 
   #define SMTBX_CONSTRAINTS_OVERRIDE_STORE                                     \
@@ -93,6 +101,7 @@ namespace boost_python {
 
     SMTBX_CONSTRAINTS_OVERRIDE_SIZE
     SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
+    SMTBX_CONSTRAINTS_OVERRIDE_SCATTERERS
     SMTBX_CONSTRAINTS_OVERRIDE_STORE
   };
 
@@ -109,7 +118,6 @@ namespace boost_python {
   {
 
     SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
-
 
     SMTBX_CONSTRAINTS_BEFRIEND_INIT_PARAM
 
@@ -184,6 +192,7 @@ namespace boost_python {
              boost::noncopyable>("crystallographic_parameter", no_init)
         .def(init<boost::python::tuple>(arg("arguments")))
         .def("store", pure_virtual(&wt::store), arg("unit_cell"))
+        .def("scatterers", pure_virtual(&wt::scatterers))
         ;
     }
   };
@@ -349,6 +358,7 @@ namespace boost_python {
     }
   };
 
+
   void debug(char const *msg, parameter const *p) {
     std::cout << msg << p << std::endl;
   }
@@ -367,6 +377,8 @@ namespace boost_python {
     cartesian_adp_wrapper::wrap();
     independent_cartesian_adp_wrapper::wrap();
     reparametrisation_wrapper::wrap();
+    scitbx::boost_python::container_conversions::to_tuple_mapping<
+      crystallographic_parameter::scatterer_sequence_type>();
     def("debug", &debug);
   }
 

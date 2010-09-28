@@ -30,6 +30,11 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // site_parameter
 
+  crystallographic_parameter::scatterer_sequence_type
+  site_parameter::scatterers() const {
+    return scatterer_sequence_type(&scatterer, 1);
+  }
+
   std::size_t site_parameter::size() const { return 3; }
 
   void site_parameter::store(uctbx::unit_cell const &unit_cell) const {
@@ -58,6 +63,11 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
   // ADP
+
+  crystallographic_parameter::scatterer_sequence_type
+  cartesian_adp::scatterers() const {
+    return scatterer_sequence_type(&scatterer, 1);
+  }
 
   std::size_t cartesian_adp::size() const { return 6; }
 
