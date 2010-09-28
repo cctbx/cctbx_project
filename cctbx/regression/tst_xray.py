@@ -1123,14 +1123,17 @@ def exercise_chemical_formula():
   xs = xray.structure(crystal.special_position_settings(cs),
                       scatterers=flex.xray_scatterer((
     xray.scatterer('C1', site=(0,0,0)),
-    xray.scatterer("C2", site=(0.5,0,0)),
+    xray.scatterer("C2", site=(0.5,0,0), occupancy=0.2),
+    xray.scatterer("C2'", site=(0.5,0,0), occupancy=0.8),
     xray.scatterer("C3", site=(0,0.5,0)),
     xray.scatterer("O1", site=(0,0,0.5)),
     xray.scatterer("C4", site=(0.2,0,0)),
     xray.scatterer("N1", site=(0,0.2,0)),
     )))
-  assert xs.asu_content() == {'C':4, 'O':1, 'N':1}
-  assert xs.asu_content(omit=set('C')) == {'O':1, 'N':1}
+  unit_cell_content = {'C':13, 'O':3, 'N':6}
+  assert xs.unit_cell_content() == unit_cell_content
+  del unit_cell_content['C']
+  assert xs.unit_cell_content(omit=set('C')) == unit_cell_content
 
 def exercise_parameter_map():
   cs = crystal.symmetry((8,9,10, 85, 95, 105), "P1")
