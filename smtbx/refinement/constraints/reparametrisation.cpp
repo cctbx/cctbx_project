@@ -64,9 +64,7 @@ namespace smtbx { namespace refinement { namespace constraints {
   void independent_site_parameter
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
-  {
-    value = scatterer->site;
-  }
+  {}
 
   double *independent_site_parameter::components() {
     return value.begin();
@@ -94,9 +92,7 @@ namespace smtbx { namespace refinement { namespace constraints {
   void independent_u_star_parameter
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
-  {
-    value = adptbx::u_star_as_u_cart(unit_cell, scatterer->u_star);
-  }
+  {}
 
   double *independent_u_star_parameter::components() {
     return value.begin();
@@ -123,9 +119,7 @@ namespace smtbx { namespace refinement { namespace constraints {
   void independent_occupancy_parameter
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
-  {
-    value = scatterer->occupancy;
-  }
+  {}
 
   double *independent_occupancy_parameter::components() { return &value; }
 
@@ -151,9 +145,7 @@ namespace smtbx { namespace refinement { namespace constraints {
   void independent_u_iso_parameter
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
-  {
-    value = scatterer->u_iso;
-  }
+  {}
 
   double *independent_u_iso_parameter::components() { return &value; }
 
