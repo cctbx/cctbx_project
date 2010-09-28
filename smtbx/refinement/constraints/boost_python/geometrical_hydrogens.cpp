@@ -168,7 +168,7 @@ namespace boost_python {
                   site_parameter *,
                   independent_scalar_parameter *,
                   wt::scatterer_type *, wt::scatterer_type *>
-             ((arg("pivot"), arg("pivot_neighbour_0"),
+             ((arg("pivot"), arg("pivot_neighbour"),
                arg("pivot_neighbour_substituent"), arg("length"),
                arg("hydrogen_0"), arg("hydrogen_1"))));
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
