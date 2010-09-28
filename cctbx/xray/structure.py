@@ -1301,8 +1301,8 @@ class structure(crystal.special_position_settings):
 
   def from_shelx(cls, file=None, filename=None,
                  set_grad_flags=True):
-    from iotbx import shelx
-    builder = shelx.crystal_structure_builder(set_grad_flags=set_grad_flags)
+    from iotbx import shelx, builders
+    builder = builders.crystal_structure_builder(set_grad_flags=set_grad_flags)
     stream = shelx.command_stream(file=file, filename=filename)
     cs_parser = shelx.crystal_symmetry_parser(stream, builder)
     xs_parser = shelx.atom_parser(cs_parser.filtered_commands(), builder)

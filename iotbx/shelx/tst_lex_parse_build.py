@@ -8,6 +8,7 @@ from cctbx import adp_restraints
 from iotbx import shelx
 from iotbx.shelx import crystal_symmetry_from_ins
 import iotbx.constraints.geometrical
+import iotbx.builders
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.math_utils import are_equivalent
@@ -87,8 +88,9 @@ def exercise_lexing():
 
 def exercise_crystal_symmetry_parsing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
-  l = shelx.crystal_symmetry_parser(stream,
-                                    builder=shelx.crystal_symmetry_builder())
+  l = shelx.crystal_symmetry_parser(
+    stream,
+    builder=iotbx.builders.crystal_symmetry_builder())
   l.parse()
   assert l.builder.crystal_symmetry.is_similar_symmetry(
     crystal.symmetry(
@@ -101,8 +103,9 @@ def exercise_crystal_symmetry_parsing():
   assert cs.is_similar_symmetry(l.builder.crystal_symmetry)
 
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_P1))
-  l = shelx.crystal_symmetry_parser(stream,
-                                    builder=shelx.crystal_symmetry_builder())
+  l = shelx.crystal_symmetry_parser(
+    stream,
+    builder=iotbx.builders.crystal_symmetry_builder())
   l.parse()
   assert l.builder.crystal_symmetry.is_similar_symmetry(
     crystal.symmetry(
@@ -269,7 +272,7 @@ def exercise_invalid():
       assert approx_equal(sc.occupancy, 1-occ)
 
 def exercise_afix_parsing():
-  builder = shelx.constrained_crystal_structure_builder()
+  builder = iotbx.builders.constrained_crystal_structure_builder()
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
   l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
