@@ -5,6 +5,7 @@ from cctbx import sgtbx
 import scitbx.math
 
 import iotbx.constraints.commonplace
+import iotbx.constraints.geometrical
 
 class crystal_symmetry_builder(object):
 
@@ -60,19 +61,21 @@ class crystal_structure_builder(crystal_symmetry_builder):
 
 class constrained_crystal_structure_builder(crystal_structure_builder):
 
-  def __init__(self, *args, **kwds):
+  def __init__(self, constraint_factory=iotbx.constraints.geometrical,
+               *args, **kwds):
     super(constrained_crystal_structure_builder, self).__init__(*args, **kwds)
+    self.constraint_factory = constraint_factory
     self.geometrical_constraints = []
 
-  def start_geometrical_constraint(self, type,
+  def start_geometrical_constraint(self, type_,
                                    bond_length, rotating, stretching,
                                    pivot_relative_pos):
     self.first = len(self.structure.scatterers())
 
-    self.current = type(rotating=rotating,
-                        stretching=stretching,
-                        bond_length=bond_length,
-                        pivot=self.first + pivot_relative_pos)
+    self.current = type_(rotating=rotating,
+                         stretching=stretching,
+                         bond_length=bond_length,
+                         pivot=self.first + pivot_relative_pos)
 
   def end_geometrical_constraint(self):
     last = len(self.structure.scatterers())

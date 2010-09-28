@@ -16,7 +16,6 @@ from libtbx import adopt_init_args
 import libtbx.load_env
 
 from iotbx.shelx.errors import error as shelx_error
-import iotbx.constraints.geometrical
 import iotbx.constraints.commonplace
 
 class parser(object):
@@ -272,22 +271,20 @@ class atom_parser(parser, variable_decoder):
 class afix_parser(parser):
   """ It must be before an atom parser """
 
-  _ = iotbx.constraints.geometrical
-
   constraints = {
   # AFIX mn : some of them use a pivot whose position is given wrt
   #           the first constrained scatterer site
   # m:    type                                    , pivot position
-    1:  (_.tertiary_ch_site                        , -1),
-    2:  (_.secondary_ch2_sites                     , -1),
-    3:  (_.staggered_terminal_tetrahedral_xh3_sites, -1),
-    4:  (_.secondary_planar_xh_site                , -1),
-    8:  (_.staggered_terminal_tetrahedral_xh_site  , -1),
-    9:  (_.terminal_planar_xh2_sites               , -1),
-    13: (_.terminal_tetrahedral_xh3_sites          , -1),
-    14: (_.terminal_tetrahedral_xh_site            , -1),
-    15: (_.polyhedral_bh_site                      , -1),
-    16: (_.terminal_linear_ch_site                 , -1),
+    1:  ("tertiary_ch_site"                        , -1),
+    2:  ("secondary_ch2_sites"                     , -1),
+    3:  ("staggered_terminal_tetrahedral_xh3_sites", -1),
+    4:  ("secondary_planar_xh_site"                , -1),
+    8:  ("staggered_terminal_tetrahedral_xh_site"  , -1),
+    9:  ("terminal_planar_xh2_sites"               , -1),
+    13: ("terminal_tetrahedral_xh3_sites"          , -1),
+    14: ("terminal_tetrahedral_xh_site"            , -1),
+    15: ("polyhedral_bh_site"                      , -1),
+    16: ("terminal_linear_ch_site"                 , -1),
   }
 
   def filtered_commands(self):
@@ -318,9 +315,11 @@ class afix_parser(parser):
         else: raise shelx_error("too many arguments", line)
         info = self.constraints.get(m)
         if info is not None:
-          constraint_type, pivot_relative_pos = info
+          constraint_name, pivot_relative_pos = info
+          constraint_type = getattr(self.builder.constraint_factory,
+                                    constraint_name)
           self.builder.start_geometrical_constraint(
-            type=constraint_type,
+            type_=constraint_type,
             bond_length=d,
             rotating=n in (7, 8),
             stretching=n in (4, 8),
