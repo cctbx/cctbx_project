@@ -297,7 +297,16 @@ public:
 
 
 /// Site, isotropic or anisotropic displacement, etc., or combination of those.
-/** They may belong to one or more scatterers
+/** They may belong to one or more scatterers.
+
+    Heirs of this class implementing behaviour for specific scatterer parameters
+    (e.g. site, occupancy, etc) shall read their values from their associated
+    scatterer objects only once, at construction time. They shall hold the
+    values internally and then write those back to the scatterer when
+    member function store() is called but all reparametrisation computation
+    are performed with the internal values. Consequently changing the values
+    of the scatterer parameters directly (e.g. sc.site = ...) in user code
+    will have no effect on the reparametrisation computation.
  */
 class crystallographic_parameter : public parameter
 {
@@ -369,7 +378,9 @@ class independent_site_parameter : public site_parameter
 public:
   independent_site_parameter(scatterer_type *scatterer)
     : site_parameter(scatterer, 0)
-  {}
+  {
+    value = scatterer->site;
+  }
 
   /// Variability property, directly linked to the scatterer grad_site flag
   //@{
@@ -411,7 +422,9 @@ class independent_u_star_parameter : public u_star_parameter
 public:
   independent_u_star_parameter(scatterer_type *scatterer)
   : u_star_parameter(scatterer, 0)
-  {}
+  {
+    value = scatterer->u_star;
+  }
 
   /// Variability property, directly linked to the scatterer grad_site flag
   //@{
@@ -450,7 +463,9 @@ class independent_occupancy_parameter : public occupancy_parameter
 public:
   independent_occupancy_parameter(scatterer_type *scatterer)
   : occupancy_parameter(scatterer, 0)
-  {}
+  {
+    value = scatterer->occupancy;
+  }
 
   /// Variability property, directly linked to the scatterer grad_occupancy flag
   //@{
@@ -489,7 +504,9 @@ class independent_u_iso_parameter : public u_iso_parameter
 public:
   independent_u_iso_parameter(scatterer_type *scatterer)
   : u_iso_parameter(scatterer, 0)
-  {}
+  {
+    value = scatterer->u_iso;
+  }
 
   /// Variability property, directly linked to the scatterer grad_u_iso flag
   //@{
