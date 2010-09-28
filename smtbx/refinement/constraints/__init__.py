@@ -86,6 +86,12 @@ class reparametrisation(ext.reparametrisation):
         self.asu_scatterer_parameters.mapping_to_grad_fc()
 
   def _(self):
+    return self.__dict__.setdefault(
+      "_component_annotations",
+      self.asu_scatterer_parameters.component_annotations().split(','))
+  component_annotations = property(_)
+
+  def _(self):
     return self.jacobian_transpose.n_rows
   n_independent_params = property(_)
 

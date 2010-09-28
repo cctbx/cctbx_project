@@ -386,7 +386,7 @@ def exercise():
   assert tuple(reparametrisation.mapping_to_grad_fc) == target,\
          str(reparametrisation)
 
-
+  assert reparametrisation.component_annotations
 
 def run():
   import libtbx.utils

@@ -1,4 +1,5 @@
 #include <smtbx/refinement/constraints/reparametrisation.h>
+#include <iostream>
 
 namespace smtbx { namespace refinement { namespace constraints {
 
@@ -47,6 +48,17 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   std::size_t site_parameter::size() const { return 3; }
 
+  void site_parameter
+  ::write_component_annotations_for(scatterer_type const *scatterer,
+                                    std::ostream &output) const
+  {
+    if (scatterer == this->scatterer) {
+      output << scatterer->label << ".x,"
+             << scatterer->label << ".y,"
+             << scatterer->label << ".z,";
+    }
+  }
+
   void site_parameter::store(uctbx::unit_cell const &unit_cell) const {
     scatterer->site = value;
   }
@@ -73,6 +85,21 @@ namespace smtbx { namespace refinement { namespace constraints {
   // ADP
 
   std::size_t u_star_parameter::size() const { return 6; }
+
+  void
+  u_star_parameter
+  ::write_component_annotations_for(scatterer_type const *scatterer,
+                                    std::ostream &output) const
+  {
+    if (scatterer == this->scatterer) {
+      output << scatterer->label << ".u11,"
+             << scatterer->label << ".u22,"
+             << scatterer->label << ".u33,"
+             << scatterer->label << ".u12,"
+             << scatterer->label << ".u13,"
+             << scatterer->label << ".u23,";
+    }
+  }
 
   void u_star_parameter::store(uctbx::unit_cell const &unit_cell) const {
     scatterer->u_star = value;
@@ -102,6 +129,12 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   std::size_t occupancy_parameter::size() const { return 1; }
 
+  void occupancy_parameter
+  ::write_component_annotations_for(scatterer_type const *scatterer,
+                                    std::ostream &output) const
+  {
+    if (scatterer == this->scatterer) output << scatterer->label << ".occ,";
+  }
   void occupancy_parameter::store(uctbx::unit_cell const &unit_cell) const {
     scatterer->occupancy = value;
   }
@@ -127,6 +160,12 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   std::size_t u_iso_parameter::size() const { return 1; }
 
+  void u_iso_parameter
+  ::write_component_annotations_for(scatterer_type const *scatterer,
+                                    std::ostream &output) const
+  {
+    if (scatterer == this->scatterer) output << scatterer->label << ".uiso,";
+  }
   void u_iso_parameter::store(uctbx::unit_cell const &unit_cell) const {
     scatterer->u_iso = value;
   }
