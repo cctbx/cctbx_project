@@ -69,6 +69,27 @@ class structure(crystal.special_position_settings):
     self._scattering_type_registry_is_out_of_date \
       = other._scattering_type_registry_is_out_of_date
 
+  scatterer_number_cutoff_for__repr__ = 100
+
+  def __repr__(self):
+    """ eval(repr(self)) is usually equal to self, which may be useful
+    to dump a structure as a chunk of Python code that can then be used
+    in self-contained test units.
+    However, if there are more scatterers than
+    self.scatterer_number_cutoff_for__repr__, the eval will fail.
+    """
+    r0 = ("xray.structure(\n"
+          "  crystal_symmetry=%r,\n"
+          "  scatterers=flex.xray_scatterer((\n" % self.crystal_symmetry())
+    r1 = []
+    for i,sc in enumerate(self.scatterers()):
+      if i > self.scatterer_number_cutoff_for__repr__:
+        r1.append(
+          "<skip: increase self.scatterer_number_cutoff_for__repr__ not to>")
+        break
+      r1.append(repr(sc).replace('\n', ' #%i\n' % i, 1))
+    return r0 + (",\n" + " "*15).join(r1) + "\n  )))"
+
   def crystal_symmetry(self):
     return crystal.symmetry(
       unit_cell = self.unit_cell(),

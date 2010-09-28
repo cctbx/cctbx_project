@@ -65,6 +65,12 @@ class symmetry(object):
     if (space_group_info is Keep): space_group_info = self._space_group_info
     return symmetry(unit_cell=unit_cell, space_group_info=space_group_info)
 
+  def __repr__(self):
+    fmt = ("crystal.symmetry(\n  unit_cell=%s,"
+           "\n  space_group_symbol='hall: %s')")
+    return fmt % (self.unit_cell(),
+                  self.space_group_info().type().hall_symbol())
+
   def unit_cell(self):
     return self._unit_cell
 
