@@ -642,7 +642,7 @@ public:
      Logically, it should be done in independent_xxxx_parameter::linearise,
      but it is more efficient to do it once and for all here.
      */
-    sparse_matrix_type jt(n_independents(), n_parameters());
+    sparse_matrix_type jt(n_independents(), n_components());
     for (std::size_t j=0; j<n_independents(); ++j) jt(j, j) = 1.;
     jacobian_transpose = jt;
   }
@@ -656,7 +656,7 @@ public:
   range parameters() { return boost::make_iterator_range(all); }
 
   /// Total number of parameter components
-  std::size_t n_parameters() {
+  std::size_t n_components() {
     return n_independents() + n_intermediates() + n_non_trivial_roots();
   }
 
@@ -673,7 +673,7 @@ public:
   /** In the right order. */
   void linearise() {
     // Initialise to zero Jacobian columns of intermediate and non trivial roots
-    for (std::size_t j=n_independents(); j<n_parameters(); ++j) {
+    for (std::size_t j=n_independents(); j<n_components(); ++j) {
       jacobian_transpose.col(j).zero();
     }
     evaluator eval(unit_cell, &jacobian_transpose);
