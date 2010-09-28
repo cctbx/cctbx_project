@@ -143,7 +143,7 @@ def exercise_special_positions():
   occupancies = [ sc.occupancy for sc in structure.scatterers() ]
   multiplicities = [ sc.multiplicity() for sc in structure.scatterers() ]
   assert multiplicities == [ 2, 2, 2, 2, 6 ]
-  assert occupancies == [ 1, 0.9999, 1, 1, 1 ]
+  assert approx_equal(occupancies, [ 1, 0.9999, 1, 1, 1 ], eps=1e-15)
 
 def exercise_aspirin():
   for set_grad_flags in (False, True):

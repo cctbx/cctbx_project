@@ -220,7 +220,8 @@ class atom_parser(parser, variable_decoder):
           args, scatterer_index)
         if part_number and part_sof:
           scatterer.occupancy, behaviour_of_variable[3] = part_sof
-        self.builder.add_scatterer(scatterer, behaviour_of_variable)
+        self.builder.add_scatterer(scatterer, behaviour_of_variable,
+                                   occupancy_includes_symmetry_factor=True)
         scatterer_index += 1
       else:
         yield command, line
