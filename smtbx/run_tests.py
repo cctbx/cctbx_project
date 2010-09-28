@@ -14,6 +14,7 @@ def run():
     "$B/refinement/constraints/tests/tst_geometrical_hydrogens",
     "$B/refinement/constraints/tests/tst_special_position",
     "$D/refinement/constraints/tests/tst_reparametrisation.py",
+    "$D/refinement/constraints/tests/tst_constrained_structure.py",
     "$D/refinement/restraints/tests/tst_adp_restraints.py",
     "$D/refinement/restraints/tests/tst_manager.py",
     "$D/refinement/restraints/tests/tst_restraints.py",

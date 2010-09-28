@@ -22,7 +22,7 @@ class terminal_linear_ch_site_test_case(object):
     self.c1 = xray.scatterer("C1", site=(0.09, 0.11, 0.))
     self.c1.flags.set_grad_site(True)
     self.h = xray.scatterer("H")
-    self.reparam = constraints.reparametrisation(self.uc)
+    self.reparam = constraints.ext.reparametrisation(self.uc)
     if with_special_position_pivot:
       x0 = self.reparam.add(constraints.special_position_site,
                             self.site_symm, self.c0)
@@ -97,7 +97,7 @@ class special_position_adp_test_case(object):
     self.site_symm = sgtbx.site_symmetry(self.cs.unit_cell(),
                                          self.cs.space_group(),
                                          self.sc.site)
-    self.reparam = constraints.reparametrisation(self.cs.unit_cell())
+    self.reparam = constraints.ext.reparametrisation(self.cs.unit_cell())
     u = self.reparam.add(constraints.special_position_cartesian_adp,
                          self.site_symm, self.cs.unit_cell(), self.sc)
     self.reparam.finalise()
@@ -134,7 +134,7 @@ class c_oh_test_case(object):
     self.c1 = xray.scatterer('C1', site=(1.5, 0, 0))
     self.c2 = xray.scatterer('C2', site=(2.5, 1, 0))
     self.h = xray.scatterer('H')
-    self.reparam = constraints.reparametrisation(self.cs.unit_cell())
+    self.reparam = constraints.ext.reparametrisation(self.cs.unit_cell())
     xo = self.reparam.add(constraints.independent_site_parameter, self.o)
     x1 = self.reparam.add(constraints.independent_site_parameter, self.c1)
     x2 = self.reparam.add(constraints.independent_site_parameter, self.c2)
