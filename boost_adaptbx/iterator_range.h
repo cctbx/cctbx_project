@@ -32,6 +32,16 @@ namespace boost_adaptbx {
   };
 
 
+  template <class IteratorRangeType>
+  boost::python::tuple iterator_range_as_tuple(IteratorRangeType const &p) {
+    using namespace boost::python;
+    boost::python::tuple result;
+    for (typename IteratorRangeType::iterator i=p.begin(); i!=p.end(); ++i) {
+      typename IteratorRangeType::value_type x = *i;
+      result += boost::python::make_tuple(x);
+    }
+    return result;
+  }
 }
 
 #endif // GUARD
