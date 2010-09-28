@@ -68,18 +68,18 @@ class constrained_crystal_structure_builder(crystal_structure_builder):
     self.geometrical_constraints = []
 
   def start_geometrical_constraint(self, type,
-                                   bond_length, rotating, use_pivot):
+                                   bond_length, rotating, stretching,
+                                   pivot_relative_pos):
     self.first = len(self.structure.scatterers())
-    if use_pivot: pivot = self.first - 1
-    else: pivot = None
-    self.current = type(bond_length=bond_length,
-                        rotating=rotating,
-                        pivot=pivot)
+
+    self.current = type(rotating=rotating,
+                        stretching=stretching,
+                        bond_length=bond_length,
+                        pivot=self.first + pivot_relative_pos)
 
   def end_geometrical_constraint(self):
     last = len(self.structure.scatterers())
-    self.current.constrained_site_indices = tuple(
-      xrange(self.first, last))
+    self.current.finalise(self.first, last)
     self.geometrical_constraints.append(self.current)
 
   def finish(self):

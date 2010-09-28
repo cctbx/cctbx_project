@@ -271,18 +271,19 @@ class afix_parser(parser):
   _ = iotbx.constraints
 
   constraints = {
-  # AFIX mn : some of them use the atom just before AFIX as pivot
-  # m:  (  type                                    , #H, pivot?)
-    1:  (_.tertiary_ch_site                        , 1 , True),
-    2:  (_.secondary_ch2_sites                     , 2 , True),
-    3:  (_.staggered_terminal_tetrahedral_xh3_sites, 3 , True),
-    4:  (_.secondary_planar_xh_site                , 1 , True),
-    8:  (_.staggered_terminal_tetrahedral_xh_site  , 1 , True),
-    9:  (_.terminal_planar_xh2_sites               , 2 , True),
-    13: (_.terminal_tetrahedral_xh3_sites          , 3 , True),
-    14: (_.terminal_tetrahedral_xh_site            , 1 , True),
-    15: (_.polyhedral_bh_site                      , 1 , True),
-    16: (_.terminal_linear_ch_site                 , 1 , True),
+  # AFIX mn : some of them use a pivot whose position is given wrt
+  #           the first constrained scatterer site
+  # m:    type                                    , pivot position
+    1:  (_.tertiary_ch_site                        , -1),
+    2:  (_.secondary_ch2_sites                     , -1),
+    3:  (_.staggered_terminal_tetrahedral_xh3_sites, -1),
+    4:  (_.secondary_planar_xh_site                , -1),
+    8:  (_.staggered_terminal_tetrahedral_xh_site  , -1),
+    9:  (_.terminal_planar_xh2_sites               , -1),
+    13: (_.terminal_tetrahedral_xh3_sites          , -1),
+    14: (_.terminal_tetrahedral_xh_site            , -1),
+    15: (_.polyhedral_bh_site                      , -1),
+    16: (_.terminal_linear_ch_site                 , -1),
   }
 
   def filtered_commands(self):
@@ -313,12 +314,14 @@ class afix_parser(parser):
         else: raise shelx_error("too many arguments", line)
         info = self.constraints.get(m)
         if info is not None:
-          constraint_type, n_expected_afixed, use_pivot = info
+          constraint_type, pivot_relative_pos = info
           self.builder.start_geometrical_constraint(
             type=constraint_type,
             bond_length=d,
-            use_pivot=use_pivot,
-            rotating=n in (7, 8))
+            rotating=n in (7, 8),
+            stretching=n in (4, 8),
+            pivot_relative_pos=pivot_relative_pos)
+          n_expected_afixed = constraint_type.n_constrained_sites
           active_afix = True
           n_afixed = 0
       elif cmd == '__ATOM__':
