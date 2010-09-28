@@ -92,6 +92,9 @@ namespace {
               arg("scatterers")))
         .def("occupancy_sums", &w_t::occupancy_sums<xray::scatterer<> >,
              arg("scatterers"))
+        .def("unit_cell_occupancy_sums",
+             &w_t::unit_cell_occupancy_sums<xray::scatterer<> >,
+             arg("scatterers"))
         .def("gaussian", &w_t::gaussian, (arg("scattering_type")), ccr())
         .def("gaussian_not_optional",
           &w_t::gaussian_not_optional,

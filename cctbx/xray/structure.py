@@ -340,12 +340,14 @@ class structure(crystal.special_position_settings):
     unique_counts = reg.unique_counts
     if (flex.sum(unique_counts) != self._scatterers.size()):
       raise RuntimeError("scattering_type_registry out of date.")
-    occupancy_sums = reg.occupancy_sums(scatterers=self._scatterers)
+    occupancy_sums = reg.occupancy_sums(self._scatterers)
+    unit_cell_occupancy_sums = reg.unit_cell_occupancy_sums(self._scatterers)
     for scattering_type,unique_index in reg.type_index_pairs_as_dict().items():
       result.append(group_args(
         scattering_type=scattering_type,
         count=unique_counts[unique_index],
-        occupancy_sum=occupancy_sums[unique_index]))
+        occupancy_sum=occupancy_sums[unique_index],
+        unit_cell_occupancy_sum=unit_cell_occupancy_sums[unique_index]))
     return result
 
   def shake_sites_in_place(self,
@@ -1319,23 +1321,11 @@ class structure(crystal.special_position_settings):
       data_structure_builder=builders.crystal_structure_builder).structure
   from_cif = classmethod(from_cif)
 
-  def asu_content(self, omit=None):
-    """ The content of the asymmetric unit as a chemical formula """
-    result = {}
-    for sc in self.scatterers():
-      elt = sc.element_symbol()
-      if omit and elt in omit: continue
-      result.setdefault(elt, 0)
-      result[elt] += sc.occupancy
-    return result
-
   def unit_cell_content(self, omit=None):
     """ The content of the unit cell as a chemical formula """
-    n = self.space_group().order_z()
-    result = self.asu_content(omit)
-    for elt in result:
-      result[elt] = int(round(result[elt]*n, 0))
-    return result
+    return dict([ (r.scattering_type, r.unit_cell_occupancy_sum)
+                  for r in self.scattering_types_counts_and_occupancy_sums()
+                  if not omit or r.scattering_type not in omit ])
 
 class conservative_pair_proxies(object):
 

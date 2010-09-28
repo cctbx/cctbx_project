@@ -114,6 +114,20 @@ namespace cctbx { namespace xray {
         return result;
       }
 
+      template <typename XrayScattererType>
+      af::shared<double>
+      unit_cell_occupancy_sums(af::const_ref<XrayScattererType> const&
+                               scatterers) const
+      {
+        af::shared<double> result(unique_counts.size(), 0);
+        for(std::size_t i=0;i<scatterers.size();i++) {
+          XrayScattererType const& sc = scatterers[i];
+          result[unique_index(sc.scattering_type)
+                 ] += sc.occupancy*sc.multiplicity();
+        }
+        return result;
+      }
+
       boost::optional<eltbx::xray_scattering::gaussian> const&
       gaussian(std::string const& scattering_type) const
       {
