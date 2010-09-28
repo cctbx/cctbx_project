@@ -49,7 +49,9 @@ struct scatterer_parameters_wrapper
 
     scitbx::af::boost_python::shared_wrapper<wt, rir_t>
     ::wrap("shared_scatterer_parameters")
-      .def("__init__", make_constructor(init_shared_scatterer_parameters));
+      .def("__init__", make_constructor(init_shared_scatterer_parameters))
+      .def("mapping_to_grad_fc", mapping_to_grad_fc)
+      ;
   }
 };
 
