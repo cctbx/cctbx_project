@@ -1,8 +1,9 @@
+from iotbx import builders
 from iotbx import shelx
 import cStringIO
 
 def trial_structure():
-  builder = shelx.crystal_structure_builder()
+  builder = builders.crystal_structure_builder()
   stream = shelx.command_stream(
     file=cStringIO.StringIO(sucrose))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
