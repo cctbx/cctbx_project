@@ -62,7 +62,7 @@ class reparametrisation(ext.reparametrisation):
     radii = [
       covalent_radii.table(elt).radius()
       for elt in xs.scattering_type_registry().type_index_pairs_as_dict() ]
-    self.buffer_thickness = max(radii) + self.covalent_bond_tolerance
+    self.buffer_thickness = 2*max(radii) + self.covalent_bond_tolerance
 
     asu_mappings = xs.asu_mappings(buffer_thickness=self.buffer_thickness)
     bond_table = crystal.pair_asu_table(asu_mappings)
