@@ -62,7 +62,7 @@ namespace boost_python {
 
     static void wrap() {
       using namespace boost::python;
-      class_<wt, bases<crystallographic_parameter>,
+      class_<wt, bases<independent_scalar_parameter>,
              std::auto_ptr<wt>,
              boost::noncopyable>("angle_starting_tetrahedral", no_init)
         .def(init<bool>(arg("variable")))
