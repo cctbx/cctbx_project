@@ -140,21 +140,38 @@ public:
 protected:
   /// This is to be used by heirs to set the arguments at construction
   //@{
-  void set_argument(std::size_t i, parameter *p) { arg[i] = p; }
+  void set_argument(std::size_t i, parameter *p) {
+    SMTBX_ASSERT(p);
+    arg[i] = p;
+  }
 
-  void set_arguments(parameter *p0) { arg[0] = p0; }
-  void set_arguments(parameter *p0, parameter *p1) { arg[0] = p0; arg[1] = p1; }
+  void set_arguments(parameter *p0) {
+    set_argument(0, p0);
+  }
+  void set_arguments(parameter *p0, parameter *p1) {
+    set_argument(0, p0);
+    set_argument(1, p1);
+  }
   void set_arguments(parameter *p0, parameter *p1, parameter *p2) {
-    arg[0] = p0; arg[1] = p1; arg[2] = p2;
+    set_argument(0, p0);
+    set_argument(1, p1);
+    set_argument(2, p2);
   }
   void set_arguments(parameter *p0, parameter *p1, parameter *p2, parameter *p3)
   {
-    arg[0] = p0; arg[1] = p1; arg[2] = p2; arg[3] = p3;
+    set_argument(0, p0);
+    set_argument(1, p1);
+    set_argument(2, p2);
+    set_argument(3, p3);
   }
   void set_arguments(parameter *p0, parameter *p1, parameter *p2, parameter *p3,
                      parameter *p4)
   {
-    arg[0] = p0; arg[1] = p1; arg[2] = p2; arg[3] = p3; arg[4] = p4;
+    set_argument(0, p0);
+    set_argument(1, p1);
+    set_argument(2, p2);
+    set_argument(3, p3);
+    set_argument(4, p4);
   }
   //@}
 
