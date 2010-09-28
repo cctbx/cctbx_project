@@ -38,8 +38,8 @@ namespace boost_python {
       sname << "terminal_tetrahedral_xh";
       if (n_hydrogens > 1) sname << n_hydrogens;
       sname << "_site";
-      std::string name = sname.str();
       if (n_hydrogens > 1) sname << "s";
+      std::string name = sname.str();
       class_<wt, bases<geometrical_hydrogen_sites<n_hydrogens> >,
              std::auto_ptr<wt>,
              boost::noncopyable> klass(name.c_str(), no_init);
