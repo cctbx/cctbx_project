@@ -37,6 +37,10 @@ def exercise(space_group_info,
     target_space_group_type.lookup_symbol()).hall()
   print hall
 
+  if fixed_random_seed:
+    random.seed(1)
+    flex.set_random_seed(1)
+
   # Generate a random structure in real space,
   # compute its structure factors,
   # that we will try to recover the symmetry of
