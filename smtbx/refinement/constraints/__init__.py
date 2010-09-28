@@ -85,6 +85,17 @@ class reparametrisation(ext.reparametrisation):
     self.mapping_to_grad_fc = \
         self.asu_scatterer_parameters.mapping_to_grad_fc()
 
+  def _(self):
+    return self.jacobian_transpose.n_rows
+  n_independent_params = property(_)
+
+  def jacobian_transpose_matching_grad_fc(self):
+    """ The columns of self.jacobian_transpose corresponding to crystallographic
+    parameters, in the same order as the derivatives in grad Fc. In this class,
+    the latter is assumed to follow the convention of smtbx.structure_factors
+    """
+    return self.jacobian_transpose.select_columns(self.mapping_to_grad_fc)
+
   def add_new_occupancy_parameter(self, i_sc):
     occ = self.asu_scatterer_parameters[i_sc].occupancy
     if occ is None:
