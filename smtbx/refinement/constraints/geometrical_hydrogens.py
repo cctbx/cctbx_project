@@ -53,7 +53,7 @@ class terminal_tetrahedral_xhn_site_mixin(geometrical_hydrogens_mixin):
                       hydrogens):
     assert len(pivot_neighbour_site_params) == 1
     azimuth = reparametrisation.add(_.independent_scalar_parameter,
-                                    value=0, variable=True)
+                                    value=0, variable=self.rotating)
     uc = reparametrisation.structure.unit_cell()
     return reparametrisation.add(
       getattr(_, self.__class__.__name__),

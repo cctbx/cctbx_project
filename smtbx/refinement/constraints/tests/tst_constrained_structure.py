@@ -183,27 +183,35 @@ def exercise():
     structure=xs,
     geometrical_constraints=[
       _.terminal_tetrahedral_xh_site(
+        rotating=True,
         pivot=1,
         constrained_site_indices=(2,)),
       _.terminal_tetrahedral_xh_site(
+        rotating=True,
         pivot=3,
         constrained_site_indices=(4,)),
       _.terminal_tetrahedral_xh_site(
+        rotating=True,
         pivot=5,
         constrained_site_indices=(6,)),
       _.terminal_tetrahedral_xh_site(
+        rotating=True,
         pivot=7,
         constrained_site_indices=(8,)),
       _.terminal_tetrahedral_xh_site(
+        rotating=True,
         pivot=10,
         constrained_site_indices=(11,)),
       _.terminal_tetrahedral_xh_site(
+        rotating=True,
         pivot=12,
         constrained_site_indices=(13,)),
       _.terminal_tetrahedral_xh_site(
+        rotating=True,
         pivot=14,
         constrained_site_indices=(15,)),
       _.terminal_tetrahedral_xh_site(
+        rotating=True,
         pivot=16,
         constrained_site_indices=(17,)),
       _.tertiary_ch_site(
