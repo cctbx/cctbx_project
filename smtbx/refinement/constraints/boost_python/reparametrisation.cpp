@@ -12,6 +12,7 @@
 #include <boost/python/implicit.hpp>
 #include <boost/python/docstring_options.hpp>
 
+#include <boost_adaptbx/iterator_range.h>
 #include <scitbx/boost_python/container_conversions.h>
 
 #include <boost/operators.hpp>
@@ -245,6 +246,7 @@ namespace boost_python {
         .def(init<boost::python::tuple>(arg("scatterer")))
         .add_property("value",
                       make_getter(&wt::value, rbv), make_setter(&wt::value))
+        .add_property("scatterers", &wt::scatterers)
         ;
     }
   };
@@ -277,6 +279,7 @@ namespace boost_python {
         .def(init<boost::python::tuple>(arg("scatterer")))
         .add_property("value",
                       make_getter(&wt::value, rbv), make_setter(&wt::value))
+        .add_property("scatterers", &wt::scatterers)
         ;
     }
   };
@@ -335,12 +338,17 @@ namespace boost_python {
 
     static void wrap() {
       using namespace boost::python;
+
+      boost_adaptbx::iterator_range_wrapper<wt::range>
+      ::wrap("parameter_iterator");
+
       class_<wt> klass("reparametrisation", no_init);
       klass
         .def(init<uctbx::unit_cell const &>(arg("unit_cell")))
         .def("finalise", &wt::finalise)
         .def("linearise", &wt::linearise)
         .def("store", &wt::store)
+        .def("parameters", &wt::parameters)
         .add_property("jacobian_transpose",
                       make_getter(&wt::jacobian_transpose))
         ;
