@@ -69,6 +69,10 @@ public:
     set_arguments(pivot, pivot_neighbour, stagger, length);
   }
 
+  virtual scatterer_sequence_type scatterers() const {
+    return hydrogen.const_ref();
+  }
+
   virtual std::size_t size() const {
     return 3*n_hydrogens;
   }
@@ -122,6 +126,8 @@ public:
     set_arguments(pivot, pivot_neighbour_0, pivot_neighbour_1, length, h_c_h);
   }
 
+  virtual scatterer_sequence_type scatterers() const;
+
   virtual std::size_t size() const;
 
   virtual void linearise(uctbx::unit_cell const &unit_cell,
@@ -154,6 +160,8 @@ public:
                   length);
   }
 
+  virtual scatterer_sequence_type scatterers() const;
+
   virtual std::size_t size() const;
 
   virtual void linearise(uctbx::unit_cell const &unit_cell,
@@ -183,6 +191,8 @@ public:
   {
     set_arguments(pivot, pivot_neighbour_0, pivot_neighbour_1, length);
   }
+
+  virtual scatterer_sequence_type scatterers() const;
 
   virtual std::size_t size() const;
 
@@ -219,6 +229,8 @@ public:
     set_arguments(pivot, pivot_neighbour, pivot_neighbour_substituent, length);
   }
 
+  virtual scatterer_sequence_type scatterers() const;
+
   virtual std::size_t size() const;
 
   virtual void linearise(uctbx::unit_cell const &unit_cell,
@@ -247,6 +259,8 @@ public:
   {
     set_arguments(pivot, pivot_neighbour, length);
   }
+
+  virtual scatterer_sequence_type scatterers() const;
 
   virtual std::size_t size() const;
 
