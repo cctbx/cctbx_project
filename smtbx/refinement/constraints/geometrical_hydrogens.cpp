@@ -1,7 +1,24 @@
 #include <smtbx/refinement/constraints/geometrical_hydrogens.h>
 #include <scitbx/sparse/io.h>
 
+#include <boost/lambda/lambda.hpp>
+#include <scitbx/array_family/tiny_reductions.h>
+
 namespace smtbx { namespace refinement { namespace constraints {
+
+  //*** Base class ***
+
+  template <int n_hydrogens>
+  index_range
+  geometrical_hydrogen_sites<n_hydrogens>
+  ::component_indices_for(scatterer_type const *scatterer) const
+  {
+    using boost::lambda::_1;
+    boost::optional<std::size_t>
+    i_sc = af::first_index(hydrogen, _1 == scatterer);
+    return i_sc ? index_range(index() + 3*(*i_sc), 3)
+                : index_range();
+  }
 
   //*** CH3, NH2, OH ***
 

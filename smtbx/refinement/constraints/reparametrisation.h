@@ -15,7 +15,6 @@
 #include <boost/format.hpp>
 #include <boost/foreach.hpp>
 #include <boost/range/iterator_range.hpp>
-#include <boost/range.hpp>
 #include <boost/functional/hash.hpp>
 #include <vector>
 #include <iterator>
@@ -58,6 +57,33 @@ typedef fractional<double> frac_t;
 
 /// Anisotropic displacement tensor used throughout the module
 typedef scitbx::sym_mat3<double> tensor_rank_2_t;
+
+
+/// A range of index [fist, first+size)
+/** The member valid tells whether the members first and size have any meaning
+    at all. An invalid instance is mapped to an empty tuple in Python,
+    and to a tuple (first, size) otherwise.
+ */
+class index_range
+{
+public:
+  bool is_valid() const { return valid; }
+  std::size_t first() const { return first_; }
+  std::size_t last() const { return first_ + size_; }
+  std::size_t size() const { return size_; }
+
+  index_range()
+  : valid(false)
+  {}
+
+  index_range(std::size_t first, std::size_t size)
+  : valid(true), first_(first), size_(size)
+  {}
+
+private:
+  bool valid;
+  std::size_t first_, size_;
+};
 
 
 /// A parameter which may be vector-valued
@@ -279,11 +305,19 @@ public:
   typedef xray::scatterer<> scatterer_type;
   typedef af::const_ref<scatterer_type *> scatterer_sequence_type;
 
+  /// The scatterers
   virtual scatterer_sequence_type scatterers() const = 0;
 
   crystallographic_parameter(std::size_t n_arguments)
     : parameter(n_arguments)
   {}
+
+  /// Indices of those components associated with the given scatterer.
+  /** The resulting range may be invalid if the scatterer is not one of those
+      this parameter refers to.
+   */
+  virtual index_range
+  component_indices_for(scatterer_type const *scatterer) const = 0;
 
   /// Store its components into the corresponding scatterers
   virtual void store(uctbx::unit_cell const &unit_cell) const = 0;
@@ -300,6 +334,9 @@ public:
   : crystallographic_parameter(n_arguments),
     scatterer(scatterer)
   {}
+
+  virtual index_range
+  component_indices_for(scatterer_type const *scatterer) const;
 
 protected:
   /// The scatterer this parameter belongs to

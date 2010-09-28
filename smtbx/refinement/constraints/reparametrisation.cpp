@@ -35,6 +35,14 @@ namespace smtbx { namespace refinement { namespace constraints {
     return scatterer_sequence_type(&scatterer, 1);
   }
 
+  index_range
+  single_scatterer_parameter
+  ::component_indices_for(scatterer_type const *scatterer) const
+  {
+    return scatterer == this->scatterer ? index_range(index(), size())
+                                        : index_range();
+  }
+
   // site_parameter
 
   std::size_t site_parameter::size() const { return 3; }
