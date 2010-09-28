@@ -12,13 +12,13 @@ namespace smtbx { namespace refinement { namespace constraints {
               sparse_matrix_type *jacobian_transpose)
   {
     using namespace constants;
-    site_parameter *pivot = (site_parameter *)argument(0),
-                   *pivot_neighbour = (site_parameter *)argument(1);
+    site_parameter *pivot = (site_parameter *)this->argument(0),
+                   *pivot_neighbour = (site_parameter *)this->argument(1);
     independent_scalar_parameter *azimuth, *length;
     site_parameter *stagger;
-    if (staggered) stagger = (site_parameter *)              argument(2);
-    else           azimuth = (independent_scalar_parameter *)argument(2);
-    length  = (independent_scalar_parameter *)argument(3);
+    if (staggered) stagger = (site_parameter *)this->argument(2);
+    else           azimuth = (independent_scalar_parameter *)this->argument(2);
+    length  = (independent_scalar_parameter *)this->argument(3);
 
     // Local frame
     cart_t x_p = unit_cell.orthogonalize(pivot->value),
@@ -72,12 +72,12 @@ namespace smtbx { namespace refinement { namespace constraints {
 
       // Site of k-th Hydrogen
       cart_t u = sin_tetrahedral_angle*(c*e[1] + s*e[2]) + e[0]/3.;
-      x_h[k] = x_p + l*u;
+      this->x_h[k] = x_p + l*u;
 
       // Derivatives
       if (!jacobian_transpose) continue;
       sparse_matrix_type &jt = *jacobian_transpose;
-      std::size_t const j_h = index() + 3*k;
+      std::size_t const j_h = this->index() + 3*k;
 
       // Riding
       for (int i=0; i<3; ++i) {
@@ -113,13 +113,6 @@ namespace smtbx { namespace refinement { namespace constraints {
   template class terminal_tetrahedral_xhn_sites<3, /*staggered=*/true>;
 
   // X-CH2-Y
-
-  crystallographic_parameter::scatterer_sequence_type
-  secondary_ch2_sites::scatterers() const {
-    return h.const_ref();
-  }
-
-  std::size_t secondary_ch2_sites::size() const { return 6; }
 
   void secondary_ch2_sites::linearise(uctbx::unit_cell const &unit_cell,
                                       sparse_matrix_type *jacobian_transpose)
@@ -180,23 +173,12 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
-  void secondary_ch2_sites::store(uctbx::unit_cell const &unit_cell) const {
-    for (int i=0; i<2; ++i) h[i]->site = unit_cell.fractionalize(x_h[i]);
-  }
-
   /***    H
           |
        X0-C-X1
           |
           X2
    */
-  crystallographic_parameter::scatterer_sequence_type
-  tertiary_ch_site::scatterers() const {
-    return scatterer_sequence_type(&h, 1);
-  }
-
-  std::size_t tertiary_ch_site::size() const { return 3; }
-
   void tertiary_ch_site::linearise(uctbx::unit_cell const &unit_cell,
                                    sparse_matrix_type *jacobian_transpose)
   {
@@ -222,7 +204,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     double l = length->value;
 
     // Hydrogen site
-    x_h = x_p + l*e0;
+    x_h[0] = x_p + l*e0;
 
     // Derivatives
     if (!jacobian_transpose) return;
@@ -241,20 +223,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
-  void tertiary_ch_site::store(uctbx::unit_cell const &unit_cell) const {
-    h->site = unit_cell.fractionalize(x_h);
-  }
-
   /// aromatic or amide Y-XH-Z
-  crystallographic_parameter::scatterer_sequence_type
-  secondary_planar_xh_site::scatterers() const {
-    return scatterer_sequence_type(&h, 1);
-  }
-
-  std::size_t secondary_planar_xh_site::size() const {
-    return 3;
-  }
-
   void secondary_planar_xh_site::linearise(uctbx::unit_cell const &unit_cell,
                                            sparse_matrix_type *jacobian_transpose)
   {
@@ -274,7 +243,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     double l = length->value;
 
     // Hydrogen site
-    x_h = x_p + l*e0;
+    x_h[0] = x_p + l*e0;
 
     // Jacobian
     if (!jacobian_transpose) return;
@@ -291,18 +260,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
-  void secondary_planar_xh_site::store(uctbx::unit_cell const &unit_cell) const {
-    h->site = unit_cell.fractionalize(x_h);
-  }
-
   // Terminal Z-Y=XH2
-  crystallographic_parameter::scatterer_sequence_type
-  terminal_planar_xh2_sites::scatterers() const {
-    return h.const_ref();
-  }
-
-  std::size_t terminal_planar_xh2_sites::size() const { return 6; }
-
   void terminal_planar_xh2_sites::
   linearise(uctbx::unit_cell const &unit_cell,
             sparse_matrix_type *jacobian_transpose)
@@ -347,20 +305,8 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
-  void terminal_planar_xh2_sites::store(uctbx::unit_cell const &unit_cell) const
-  {
-    for (int k=0; k<2; ++k) h[k]->site = unit_cell.fractionalize(x_h[k]);
-  }
-
 
   // Acetylenic X-CH
-  crystallographic_parameter::scatterer_sequence_type
-  terminal_linear_ch_site::scatterers() const {
-    return scatterer_sequence_type(&h, 1);
-  }
-
-  std::size_t terminal_linear_ch_site::size() const { return 3; }
-
   void terminal_linear_ch_site
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
@@ -378,7 +324,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     double l = length->value;
 
     // Hydrogen site
-    x_h = p + l*e0;
+    x_h[0] = p + l*e0;
 
     // Jacobian
     if (!jacobian_transpose) return;
@@ -394,11 +340,5 @@ namespace smtbx { namespace refinement { namespace constraints {
       for (int i=0; i<3; ++i) jt(length->index(), j_h + i) = grad_f[i];
     }
   }
-
-  void terminal_linear_ch_site::store(uctbx::unit_cell const &unit_cell) const {
-    h->site = unit_cell.fractionalize(x_h);
-  }
-
-
 
 }}}

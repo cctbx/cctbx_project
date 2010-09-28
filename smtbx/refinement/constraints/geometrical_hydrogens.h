@@ -19,6 +19,47 @@ namespace constants {
 }
 
 
+/// Base class for geometrical hydrogen
+template <int n_hydrogens>
+class geometrical_hydrogen_sites
+  : public crystallographic_parameter
+{
+public:
+  geometrical_hydrogen_sites(int n_parameters,
+                             scatterer_type *h)
+  : crystallographic_parameter(n_parameters), hydrogen(h)
+  {}
+
+  geometrical_hydrogen_sites(int n_parameters,
+                             scatterer_type *h0, scatterer_type *h1)
+  : crystallographic_parameter(n_parameters), hydrogen(h0, h1)
+  {}
+
+  geometrical_hydrogen_sites(int n_parameters,
+                             af::tiny<scatterer_type *, n_hydrogens> h)
+  : crystallographic_parameter(n_parameters), hydrogen(h)
+  {}
+
+  virtual scatterer_sequence_type scatterers() const {
+    return hydrogen.const_ref();
+  }
+
+  virtual std::size_t size() const {
+    return 3*n_hydrogens;
+  }
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const {
+    for (int i=0; i<hydrogen.size(); ++i) {
+      hydrogen[i]->site = unit_cell.fractionalize(x_h[i]);
+    }
+  }
+
+protected:
+  af::tiny<scatterer_type *, n_hydrogens> hydrogen;
+  af::tiny<cart_t, n_hydrogens> x_h;
+};
+
+
 /// Model of Y-XHn with tetrahedral angles
 /**
   X is referred to as the "pivot" and Y as the "pivot neighbour".
@@ -29,7 +70,8 @@ namespace constants {
   The Hydrogen sites ride on the pivot site.
 */
 template <int n_hydrogens, bool staggered>
-class terminal_tetrahedral_xhn_sites : public crystallographic_parameter
+class terminal_tetrahedral_xhn_sites
+  : public geometrical_hydrogen_sites<n_hydrogens>
 {
 public:
   /// Construct Hydrogens freely rotating about the bond X-Y
@@ -42,14 +84,13 @@ public:
                                  independent_scalar_parameter *azimuth,
                                  independent_scalar_parameter *length,
                                  cart_t const &e_zero_azimuth,
-                                 af::tiny<scatterer_type *,
+                                 af::tiny<crystallographic_parameter::scatterer_type *,
                                           n_hydrogens> const &hydrogen)
-    : crystallographic_parameter(4),
-      e_zero_azimuth(e_zero_azimuth),
-      hydrogen(hydrogen)
+    : geometrical_hydrogen_sites<n_hydrogens>(4, hydrogen),
+      e_zero_azimuth(e_zero_azimuth)
   {
     SMTBX_ASSERT(!staggered);
-    set_arguments(pivot, pivot_neighbour, azimuth, length);
+    this->set_arguments(pivot, pivot_neighbour, azimuth, length);
   }
 
   /// Construct Hydrogens staggered on the specified site
@@ -60,36 +101,19 @@ public:
                                  site_parameter *pivot_neighbour,
                                  site_parameter *stagger,
                                  independent_scalar_parameter *length,
-                                 af::tiny<scatterer_type *,
+                                 af::tiny<crystallographic_parameter::scatterer_type *,
                                           n_hydrogens> const &hydrogen)
-  : crystallographic_parameter(4),
-    hydrogen(hydrogen)
+  : geometrical_hydrogen_sites<n_hydrogens>(4, hydrogen)
   {
     SMTBX_ASSERT(staggered);
-    set_arguments(pivot, pivot_neighbour, stagger, length);
-  }
-
-  virtual scatterer_sequence_type scatterers() const {
-    return hydrogen.const_ref();
-  }
-
-  virtual std::size_t size() const {
-    return 3*n_hydrogens;
+    this->set_arguments(pivot, pivot_neighbour, stagger, length);
   }
 
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
 
-  virtual void store(uctbx::unit_cell const &unit_cell) const {
-    for (int i=0; i<hydrogen.size(); ++i) {
-      hydrogen[i]->site = unit_cell.fractionalize(x_h[i]);
-    }
-  }
-
 private:
-  af::tiny<scatterer_type *, n_hydrogens> hydrogen;
   cart_t e_zero_azimuth;
-  af::tiny<cart_t, n_hydrogens> x_h;
 };
 
 
@@ -110,7 +134,8 @@ public:
   All angles Hi-C-X and Hi-C-Y are equal.
   The angle H-C-H is refinable (flapping).
 */
-class secondary_ch2_sites : public crystallographic_parameter
+class secondary_ch2_sites
+  : public geometrical_hydrogen_sites<2>
 {
 public:
   secondary_ch2_sites(site_parameter *pivot,
@@ -120,31 +145,21 @@ public:
                       angle_starting_tetrahedral *h_c_h,
                       scatterer_type *hydrogen_0,
                       scatterer_type *hydrogen_1)
-    : crystallographic_parameter(5),
-      h(hydrogen_0, hydrogen_1)
+  : geometrical_hydrogen_sites<2>(5, hydrogen_0, hydrogen_1)
   {
     set_arguments(pivot, pivot_neighbour_0, pivot_neighbour_1, length, h_c_h);
   }
 
-  virtual scatterer_sequence_type scatterers() const;
-
-  virtual std::size_t size() const;
-
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
-
-  virtual void store(uctbx::unit_cell const &unit_cell) const;
-
-private:
-  af::tiny<scatterer_type *, 2> h;
-  af::tiny<cart_t, 2> x_h;
 };
 
 
 /// Model of tertiary CH
 /** All angles Hi-C-X are equal.
  */
-class tertiary_ch_site : public crystallographic_parameter
+class tertiary_ch_site
+  : public geometrical_hydrogen_sites<1>
 {
 public:
   tertiary_ch_site(site_parameter *pivot,
@@ -153,25 +168,15 @@ public:
                    site_parameter *pivot_neighbour_2,
                    independent_scalar_parameter *length,
                    scatterer_type *hydrogen)
-    : crystallographic_parameter(5), h(hydrogen)
+  : geometrical_hydrogen_sites<1>(5, hydrogen)
   {
     set_arguments(pivot,
                   pivot_neighbour_0, pivot_neighbour_1, pivot_neighbour_2,
                   length);
   }
 
-  virtual scatterer_sequence_type scatterers() const;
-
-  virtual std::size_t size() const;
-
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
-
-  virtual void store(uctbx::unit_cell const &unit_cell) const;
-
-private:
-  scatterer_type * h;
-  cart_t x_h;
 };
 
 
@@ -179,7 +184,8 @@ private:
 /** Denoting C or N as X and the two neighbours of X as Y and Z,
     Z-X-Y is bisected by X-H.
 */
-class secondary_planar_xh_site : public crystallographic_parameter
+class secondary_planar_xh_site:
+  public geometrical_hydrogen_sites<1>
 {
 public:
   secondary_planar_xh_site(site_parameter *pivot,
@@ -187,23 +193,13 @@ public:
                            site_parameter *pivot_neighbour_1,
                            independent_scalar_parameter *length,
                            scatterer_type *hydrogen)
-    : crystallographic_parameter(4), h(hydrogen)
+  : geometrical_hydrogen_sites<1>(4, hydrogen)
   {
     set_arguments(pivot, pivot_neighbour_0, pivot_neighbour_1, length);
   }
 
-  virtual scatterer_sequence_type scatterers() const;
-
-  virtual std::size_t size() const;
-
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
-
-  virtual void store(uctbx::unit_cell const &unit_cell) const;
-
-private:
-  scatterer_type * h;
-  cart_t x_h;
 };
 
 
@@ -215,7 +211,8 @@ private:
     The two hydrogen atoms are in the plane ZYX,
     and XY bissects the 120-degree angle H1-X-H2.
 */
-class terminal_planar_xh2_sites : public crystallographic_parameter
+class terminal_planar_xh2_sites
+  : public geometrical_hydrogen_sites<2>
 {
 public:
   terminal_planar_xh2_sites(site_parameter *pivot,
@@ -224,23 +221,13 @@ public:
                             independent_scalar_parameter *length,
                             scatterer_type *hydrogen_0,
                             scatterer_type *hydrogen_1)
-    : crystallographic_parameter(4), h(hydrogen_0, hydrogen_1)
+    : geometrical_hydrogen_sites<2>(4, hydrogen_0, hydrogen_1)
   {
     set_arguments(pivot, pivot_neighbour, pivot_neighbour_substituent, length);
   }
 
-  virtual scatterer_sequence_type scatterers() const;
-
-  virtual std::size_t size() const;
-
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
-
-  virtual void store(uctbx::unit_cell const &unit_cell) const;
-
-private:
-  af::tiny<cart_t, 2> x_h;
-  af::tiny<scatterer_type *, 2> h;
 };
 
 
@@ -248,30 +235,21 @@ private:
 /**
     X-C-H is linear
 */
-class terminal_linear_ch_site : public crystallographic_parameter
+class terminal_linear_ch_site
+  : public geometrical_hydrogen_sites<1>
 {
 public:
   terminal_linear_ch_site(site_parameter *pivot,
                           site_parameter *pivot_neighbour,
                           independent_scalar_parameter *length,
                           scatterer_type *hydrogen)
-    : crystallographic_parameter(3), h(hydrogen)
+    : geometrical_hydrogen_sites<1>(3, hydrogen)
   {
     set_arguments(pivot, pivot_neighbour, length);
   }
 
-  virtual scatterer_sequence_type scatterers() const;
-
-  virtual std::size_t size() const;
-
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
-
-  virtual void store(uctbx::unit_cell const &unit_cell) const;
-
-private:
-  scatterer_type * h;
-  cart_t x_h;
 };
 
 }}}
