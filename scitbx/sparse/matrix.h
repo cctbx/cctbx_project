@@ -185,6 +185,18 @@ public:
     return result;
   }
 
+  /// The matrix whose columns are the given (sub)set of this matrix columns
+  /** If the elements of p are a permutation of the range 0..n-1 where n is
+      the number of columns, then this is a column-permuted variant of this
+      matrix.
+   */
+  matrix select_columns(af::const_ref<index_type> const &p) const {
+    SCITBX_ASSERT(p.size() <= n_cols())(p.size())(n_cols());
+    matrix result(n_rows(), p.size());
+    for (index_type j=0; j<p.size(); ++j) result.col(j) = this->col(p[j]);
+    return result;
+  }
+
   /// Transpose of this
   matrix transpose() const {
     matrix result(n_cols(), n_rows());

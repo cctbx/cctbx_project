@@ -148,6 +148,7 @@ struct matrix_wrapper
       .def("clone", &wt::clone)
       .def("transpose", &wt::transpose)
       .def("permute_rows", permute_rows, arg("permutation"), rir)
+      .def("select_columns", &wt::select_columns, arg("indices"))
       .def(self == self)
       .def(self*vector<T>(0))
       .def(self * typename wt::dense_vector_const_ref())

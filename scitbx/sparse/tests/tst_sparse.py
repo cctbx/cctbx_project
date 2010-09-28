@@ -310,8 +310,24 @@ def exercise_a_tr_a():
   bb = b.as_dense_matrix()
   assert bb == aa.matrix_transpose().matrix_multiply(aa)
 
+def exercise_column_selection():
+  columns = [ { 0:1, 3:3 },
+              { 1:-1, 5:-2 },
+              { 2:3, 4:1 },
+              { 3:4, 5:1 } ]
+  a = sparse.matrix(6, 4, columns)
+  p = flex.size_t((1, 3))
+  b = a.select_columns(p)
+  b1 = sparse.matrix(6, len(p), [ columns[k] for k in p ])
+  assert b == b1
+  q= flex.size_t((3, 0, 2, 1))
+  c = a.select_columns(q)
+  c1 = sparse.matrix(6, len(q), [ columns[k] for k in q ])
+  assert c == c1
+
 def run():
   libtbx.utils.show_times_at_exit()
+  exercise_column_selection()
   exercise_a_tr_a()
   exercise_dot_product()
   exercise_vector()
