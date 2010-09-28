@@ -92,7 +92,7 @@ public:
 
   /// Construct a zero matrix with the given number of rows and columns
   matrix(index_type rows, index_type cols)
-    : n_rows_(rows), columns(af::reserve(rows))
+    : n_rows_(rows), columns(af::reserve(cols))
   {
     for (index_type j=0; j < cols; j++) {
       columns.push_back(column_type(rows));
@@ -288,7 +288,7 @@ public:
   /// B^T A B where B is this matrix and A is a symmetric dense matrix
   /** This is useful for the interplay between change of variable and
       least-squares covariance matrix. If x and y are parameter vectors
-      related by of respective size p < n:
+      of respective size p < n related by :
       \f[
           \nabla_x = B \nabla_y,
       \f]
