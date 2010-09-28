@@ -32,7 +32,8 @@ class crystal_structure_builder(crystal_symmetry_builder,
         crystal_symmetry=self.crystal_symmetry,
         min_distance_sym_equiv=self.min_distance_sym_equiv))
 
-  def add_scatterer(self, scatterer, behaviour_of_variable):
+  def add_scatterer(self, scatterer, behaviour_of_variable,
+                    occupancy_includes_symmetry_factor):
     """ If the parameter set_grad_flags passed to the constructor was True,
         the scatterer.flags.grad_xxx() will be set to True
         if the corresponding variables have been found to be refined
@@ -52,14 +53,12 @@ class crystal_structure_builder(crystal_symmetry_builder,
           f.set_grad_u_aniso(True)
     self.structure.add_scatterer(scatterer)
 
-    ## scatterer.occupancy has been filled with the chemical occupancy times
-    ## the special position occupancy by the parsers, and this  needs to be
-    ## corrected for.
-    sc = self.structure.scatterers()[-1]
-    sc.occupancy /= sc.weight_without_occupancy()
-    occ = scitbx.math.continued_fraction.from_real(sc.occupancy, eps=1e-5)
-    r_occ = occ.as_rational()
-    sc.occupancy = round(r_occ.numerator() / r_occ.denominator(), 5)
+    if occupancy_includes_symmetry_factor:
+      sc = self.structure.scatterers()[-1]
+      sc.occupancy /= sc.weight_without_occupancy()
+      occ = scitbx.math.continued_fraction.from_real(sc.occupancy, eps=1e-5)
+      r_occ = occ.as_rational()
+      sc.occupancy = round(r_occ.numerator() / r_occ.denominator(), 5)
 
 
 class constrained_crystal_structure_builder(crystal_structure_builder):
