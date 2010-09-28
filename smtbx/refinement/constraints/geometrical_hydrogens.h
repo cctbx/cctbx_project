@@ -33,9 +33,9 @@ class terminal_tetrahedral_xhn_sites : public crystallographic_parameter
 {
 public:
   /// Construct Hydrogens freely rotating about the bond X-Y
-  /** e_zero_azimuth is the vector defining azimuth = 0. It shall be such that
-      it can never become nearly colinear to the bond between the pivot
-      and its neighbour.
+  /** e_zero_azimuth is the vector such that the plane (e_zero_azimuth, XY)
+      defines azimuth = 0. Thus it shall be such that it can never become nearly
+      colinear to the bond between the pivot and its neighbour.
    */
   terminal_tetrahedral_xhn_sites(site_parameter *pivot,
                                  site_parameter *pivot_neighbour,
