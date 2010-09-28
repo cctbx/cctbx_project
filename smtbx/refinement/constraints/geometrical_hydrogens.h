@@ -48,6 +48,9 @@ public:
     return 3*n_hydrogens;
   }
 
+  virtual index_range
+  component_indices_for(scatterer_type const *scatterer) const;
+
   virtual void store(uctbx::unit_cell const &unit_cell) const {
     for (int i=0; i<hydrogen.size(); ++i) {
       hydrogen[i]->site = unit_cell.fractionalize(x_h[i]);

@@ -47,6 +47,12 @@ namespace boost_python {
     return this->get_override("scatterers")();                                 \
   }
 
+  #define SMTBX_CONSTRAINTS_OVERRIDE_COMPONENT_INDICES_FOR                     \
+  index_range component_indices_for(scatterer_type const *scatterer) const     \
+  {                                                                            \
+    return this->get_override("component_indices_for")(scatterer);             \
+  }
+
   #define SMTBX_CONSTRAINTS_OVERRIDE_STORE                                     \
   virtual void store(uctbx::unit_cell const &unit_cell) const {                \
     this->get_override("store")(unit_cell);                                    \
@@ -120,6 +126,7 @@ namespace boost_python {
     SMTBX_CONSTRAINTS_OVERRIDE_SIZE
     SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
     SMTBX_CONSTRAINTS_OVERRIDE_SCATTERERS
+    SMTBX_CONSTRAINTS_OVERRIDE_COMPONENT_INDICES_FOR
     SMTBX_CONSTRAINTS_OVERRIDE_STORE
   };
 
@@ -201,10 +208,32 @@ namespace boost_python {
   };
 
 
+  struct index_range_to_tuple
+  {
+    static PyObject *convert(index_range const &ir) {
+      using namespace boost::python;
+      tuple t = ir.is_valid() ? make_tuple(ir.first(), ir.last()) : tuple();
+      return incref(t.ptr());
+    }
+
+    static PyTypeObject const *get_pytype() { return &PyTuple_Type; }
+
+    index_range_to_tuple() {
+      using namespace boost::python;
+      to_python_converter<index_range, index_range_to_tuple, true>();
+    }
+  };
+
+
   struct crystallographic_parameter_wrapper
   {
     typedef crystallographic_parameter wt;
     typedef py_crystallographic_parameter pywt;
+
+    static
+    boost::python::object scatterers(boost::python::object const &self) {
+      return self.attr("_scatterers")();
+    }
 
     static void wrap() {
       using namespace boost::python;
@@ -212,7 +241,10 @@ namespace boost_python {
              boost::noncopyable>("crystallographic_parameter", no_init)
         .def(init<boost::python::tuple>(arg("arguments")))
         .def("store", pure_virtual(&wt::store), arg("unit_cell"))
-        .def("scatterers", pure_virtual(&wt::scatterers))
+        .def("_scatterers", pure_virtual(&wt::scatterers))
+        .add_property("scatterers", scatterers)
+        .def("component_indices_for", pure_virtual(&wt::component_indices_for),
+             arg("scatterer"))
         ;
     }
   };
@@ -261,7 +293,6 @@ namespace boost_python {
       using namespace boost::python;
       class_<pywt, bases<crystallographic_parameter>,
              boost::noncopyable>("single_scatterer_parameter", no_init)
-        .add_property("scatterers", &wt::scatterers)
         ;
     }
   };
@@ -385,6 +416,7 @@ namespace boost_python {
       ::wrap("independent_small_3_vector_parameter");
     independent_small_vector_parameter_wrapper<6>
       ::wrap("independent_small_6_vector_parameter");
+    index_range_to_tuple();
     crystallographic_parameter_wrapper::wrap();
     single_scatterer_parameter_wrapper::wrap();
     site_parameter_wrapper::wrap();
