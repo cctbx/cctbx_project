@@ -5,7 +5,7 @@ import smtbx.refinement.constraints.geometrical_hydrogens as _
 import smtbx.refinement.constraints as core
 import itertools
 
-def exercise():
+def exercise_sucrose():
   # sucrose from Olex 2 samples
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry(
@@ -396,10 +396,162 @@ def exercise():
 
   assert reparametrisation.component_annotations
 
+
+def exercise_saturated():
+  """ Durham database: 03srv020 """
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(3.753, 14.54, 15.868, 90, 92.58, 90),
+      space_group_symbol='hall: -P 2ybc (x-z,y,z)'),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer( #0
+                      label='O1',
+                      site=(0.299677, 0.262687, 0.397070),
+                      u=(0.003620, 0.000123, 0.000110,
+                         0.000150, -0.000303, -0.000018)),
+      xray.scatterer( #1
+                      label='O2',
+                      site=(0.606142, 0.145196, 0.437275),
+                      u=(0.004020, 0.000151, 0.000118,
+                         0.000400, -0.000120, -0.000041)),
+      xray.scatterer( #2
+                      label='N1',
+                      site=(0.481419, 0.221253, 0.451420),
+                      u=(0.001732, 0.000092, 0.000090,
+                         0.000006, -0.000025, -0.000002)),
+      xray.scatterer( #3
+                      label='N2',
+                      site=(0.669973, 0.393852, 0.763956),
+                      u=(0.002924, 0.000120, 0.000072,
+                         0.000163, -0.000065, -0.000000)),
+      xray.scatterer( #4
+                      label='H1N',
+                      u=0.041900),
+      xray.scatterer( #5
+                      label='H2N',
+                      u=0.053820),
+      xray.scatterer( #6
+                      label='C1',
+                      site=(0.542601, 0.263287, 0.532766),
+                      u=(0.001392, 0.000089, 0.000075,
+                         -0.000015, 0.000005, -0.000002)),
+      xray.scatterer( #7
+                      label='C2',
+                      site=(0.718045, 0.216051, 0.600702),
+                      u=(0.001207, 0.000084, 0.000090,
+                         -0.000009, 0.000020, 0.000011)),
+      xray.scatterer( #8
+                      label='C3',
+                      site=(0.754373, 0.260906, 0.677766),
+                      u=(0.001510, 0.000101, 0.000081,
+                         0.000045, -0.000011, 0.000020)),
+      xray.scatterer( #9
+                      label='H3',
+                      u=0.028650),
+      xray.scatterer( #10
+                      label='C4',
+                      site=(0.627625, 0.351163, 0.688996),
+                      u=(0.001552, 0.000095, 0.000076,
+                         0.000009, 0.000023, 0.000006)),
+      xray.scatterer( #11
+                      label='C5',
+                      site=(0.454789, 0.396891, 0.619352),
+                      u=(0.001276, 0.000086, 0.000082,
+                         -0.000001, -0.000010, 0.000008)),
+      xray.scatterer( #12
+                      label='C6',
+                      site=(0.414975, 0.352113, 0.542571),
+                      u=(0.001288, 0.000088, 0.000081,
+                         0.000007, -0.000039, 0.000014)),
+      xray.scatterer( #13
+                      label='H6',
+                      u=0.024780),
+      xray.scatterer( #14
+                      label='C7',
+                      site=(0.870692, 0.125819, 0.594868),
+                      u=(0.001480, 0.000105, 0.000085,
+                         0.000001, 0.000003, 0.000009)),
+      xray.scatterer( #15
+                      label='C8',
+                      site=(1.017561, 0.053527, 0.594158),
+                      u=(0.002094, 0.000098, 0.000111,
+                         0.000075, 0.000029, 0.000012)),
+      xray.scatterer( #16
+                      label='H8',
+                      u=0.051780),
+      xray.scatterer( #17
+                      label='C9',
+                      site=(0.318239, 0.487799, 0.631013),
+                      u=(0.001515, 0.000105, 0.000080,
+                         -0.000003, -0.000029, 0.000009)),
+      xray.scatterer( #18
+                      label='C10',
+                      site=(0.204835, 0.561756, 0.646080),
+                      u=(0.001919, 0.000101, 0.000125,
+                         0.000056, -0.000032, -0.000004)),
+      xray.scatterer( #19
+                      label='H10',
+                      u=0.037420)
+    )))
+  for sc in xs.scatterers():
+    sc.flags.set_grad_site(True)
+
+  reparametrisation = constraints.reparametrisation(
+    structure=xs,
+    geometrical_constraints=[
+      _.terminal_planar_xh2_sites(
+        pivot=3,
+        constrained_site_indices=(4, 5)),
+      _.terminal_linear_ch_site(
+        pivot=15,
+        constrained_site_indices=(16,)),
+      _.terminal_linear_ch_site(
+        pivot=18,
+        constrained_site_indices=(19,)),
+      _.secondary_planar_xh_site(
+        pivot=12,
+        constrained_site_indices=(13,)),
+      _.secondary_planar_xh_site(
+        pivot=8,
+        constrained_site_indices=(9,)),
+      ])
+
+  warned_once = False
+  for sc, params in itertools.izip(reparametrisation.structure.scatterers(),
+                                   reparametrisation.asu_scatterer_parameters):
+    if sc.scattering_type != 'H':
+      assert isinstance(params.site, core.independent_site_parameter)
+      assert params.site.scatterers[0].label == sc.label
+      assert isinstance(params.u, core.independent_u_star_parameter)
+      assert params.u.scatterers[0].label == sc.label
+      assert isinstance(params.occupancy, core.independent_occupancy_parameter)
+      assert params.occupancy.scatterers[0].label == sc.label
+    else:
+      expected = {
+        'H1N': (core.terminal_planar_xh2_sites, 'N2'),
+        'H2N': (core.terminal_planar_xh2_sites, 'N2'),
+        'H10': (core.terminal_linear_ch_site, 'C10'),
+        'H6' : (core.secondary_planar_xh_site, 'C6'),
+        'H3' : (core.secondary_planar_xh_site, 'C3'),
+        'H8': (core.terminal_linear_ch_site, 'C8'),
+        }.get(sc.label)
+      if expected is None:
+        if not warned_once:
+          print "Warning: incomplete test coverage for H constraint types"
+          warned_once = True
+        continue
+      expected_type, expected_pivot = expected
+      assert isinstance(params.site, expected_type), \
+             (sc.label, params.site, expected_type)
+      assert ([ sc1.label for sc1 in params.site.argument(0).scatterers ]
+              == [expected_pivot]), sc.label
+
+
 def run():
   import libtbx.utils
   libtbx.utils.show_times_at_exit()
-  exercise()
+  exercise_saturated()
+  exercise_sucrose()
 
 if __name__ == '__main__':
   run()
