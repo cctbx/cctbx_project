@@ -1294,11 +1294,7 @@ scitbx/wigner/wigner3j.h -text
 smtbx/refinement/constraints/__init__.py -text
 smtbx/refinement/constraints/boost_python/SConscript -text
 smtbx/refinement/constraints/boost_python/constraints_ext.cpp -text
-smtbx/refinement/minimization.h -text
-smtbx/refinement/minimization.py -text
-smtbx/refinement/tests/__init__.py -text
 smtbx/refinement/tests/tst_least_squares.py -text
-smtbx/refinement/tests/tst_minimization_at_random.py -text
 spotfinder/SConscript -text
 spotfinder/__init__.py -text
 spotfinder/applications/__init__.py -text

@@ -1,9 +1,5 @@
 Import("env_smtbx_boost_python_ext")
 env = env_smtbx_boost_python_ext.Clone()
-env.SharedLibrary(target="#lib/smtbx_refinement_ext", source=[
-  "refinement_ext.cpp",
-  "minimization.cpp",
-])
 env.SharedLibrary(target="#lib/smtbx_refinement_least_squares_ext", source=[
   "least_squares_ext.cpp",
   "weighting_schemes.cpp",
