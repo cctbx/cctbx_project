@@ -117,6 +117,7 @@ struct vector_wrapper
       .def(self + self)
       .def(self - self)
       .def(self * self)
+      .def(self == self)
       ;
   }
 };

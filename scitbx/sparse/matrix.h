@@ -70,7 +70,7 @@ struct matrix_transpose_times_dense_vector
  The columns have a copy semantic.
 */
 template<class T>
-class matrix
+class matrix : public boost::equality_comparable< matrix<T> >
 {
 public:
   typedef T value_type;
@@ -162,6 +162,11 @@ public:
       }
     }
     return true;
+  }
+
+  /// Equality
+  bool operator==(matrix const &other) const {
+    return std::equal(columns.begin(), columns.end(), other.columns.begin());
   }
 
   /// Number of non-zero elements
