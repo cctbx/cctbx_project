@@ -17,7 +17,7 @@ namespace boost_python {
       class_<wt, bases<site_parameter>,
              std::auto_ptr<wt>,
              boost::noncopyable>("special_position_site", no_init)
-        .def(init<sgtbx::site_symmetry const &, wt::scatterer_type *>
+        .def(init<sgtbx::site_symmetry_ops const &, wt::scatterer_type *>
              ((arg("site_symmetry"), arg("scatterer"))))
         .add_property("independent_params",
                       make_function(&wt::independent_params, rir))
@@ -36,7 +36,7 @@ namespace boost_python {
       class_<wt, bases<cartesian_adp>,
              std::auto_ptr<wt>,
              boost::noncopyable>("special_position_cartesian_adp", no_init)
-        .def(init<sgtbx::site_symmetry const &,
+        .def(init<sgtbx::site_symmetry_ops const &,
                   uctbx::unit_cell const &,
                   wt::scatterer_type *>
              ((arg("site_symmetry"), arg("unit_cell"), arg("scatterer"))))
