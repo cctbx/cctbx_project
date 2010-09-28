@@ -388,6 +388,7 @@ namespace boost_python {
         .def("parameters", &wt::parameters)
         .add_property("jacobian_transpose",
                       make_getter(&wt::jacobian_transpose))
+        .def("apply_shifts", &wt::apply_shifts)
         ;
       docstring_options no_signature(true, false);
       klass
