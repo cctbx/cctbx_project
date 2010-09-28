@@ -14,6 +14,17 @@ class _parameter(boost.python.injector, ext.parameter):
     for i in xrange(self.n_arguments):
       yield self.argument(i)
 
+  def __str__(self):
+    try:
+      scatt = ', '.join([ sc.label for sc in self.scatterers ])
+      scatt = "(%s)" % scatt
+    except AttributeError:
+      scatt = ""
+    lbl = '%i [label="%s%s%s #%s"]' % (
+      self.index, ('', '*')[self.is_root], self.__class__.__name__,
+      scatt, self.index)
+    return lbl
+
 
 class reparametrisation(ext.reparametrisation):
 
@@ -94,3 +105,13 @@ class reparametrisation(ext.reparametrisation):
                        sc)
       self.asu_scatterer_parameters[i_scatterer].u = u
     return u
+
+  def __str__(self):
+    self.finalise()
+    bits = []
+    for p in self.parameters():
+      for q in p.arguments():
+        bits.append("%i -> %i" % (p.index, q.index))
+    for p in self.parameters():
+      bits.append(str(p))
+    return "digraph dependencies {\n%s\n}" % ';\n'.join(bits)
