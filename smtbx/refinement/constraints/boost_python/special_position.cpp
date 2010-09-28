@@ -26,20 +26,19 @@ namespace boost_python {
     }
   };
 
-  struct special_position_cartesian_adp_wrapper
+  struct special_position_u_star_parameter_wrapper
   {
-    typedef special_position_cartesian_adp wt;
+    typedef special_position_u_star_parameter wt;
 
     static void wrap() {
       using namespace boost::python;
       return_internal_reference<> rir;
-      class_<wt, bases<cartesian_adp>,
+      class_<wt, bases<u_star_parameter>,
              std::auto_ptr<wt>,
-             boost::noncopyable>("special_position_cartesian_adp", no_init)
+             boost::noncopyable>("special_position_u_star_parameter", no_init)
         .def(init<sgtbx::site_symmetry_ops const &,
-                  uctbx::unit_cell const &,
                   wt::scatterer_type *>
-             ((arg("site_symmetry"), arg("unit_cell"), arg("scatterer"))))
+             ((arg("site_symmetry"), arg("scatterer"))))
         .add_property("independent_params",
                       make_function(&wt::independent_params, rir))
       ;
@@ -49,7 +48,7 @@ namespace boost_python {
 
   void wrap_special_position() {
     special_position_site_wrapper::wrap();
-    special_position_cartesian_adp_wrapper::wrap();
+    special_position_u_star_parameter_wrapper::wrap();
   }
 
 }}}}

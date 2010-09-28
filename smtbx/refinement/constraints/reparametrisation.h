@@ -387,12 +387,13 @@ public:
 
 
 /// Anisotropic displacement parameters of a site
-/** A parameter whose components are the coefficients of the Cartesian tensor
+/** A parameter whose components are the coefficients of the tensor
+    in fractional coordinates.
  */
-class cartesian_adp : public single_scatterer_parameter
+class u_star_parameter : public single_scatterer_parameter
 {
 public:
-  cartesian_adp(scatterer_type *scatterer, std::size_t n_arguments)
+  u_star_parameter(scatterer_type *scatterer, std::size_t n_arguments)
   : single_scatterer_parameter(scatterer, n_arguments)
   {}
 
@@ -405,11 +406,11 @@ public:
 };
 
 
-class independent_cartesian_adp : public cartesian_adp
+class independent_u_star_parameter : public u_star_parameter
 {
 public:
-  independent_cartesian_adp(scatterer_type *scatterer)
-  : cartesian_adp(scatterer, 0)
+  independent_u_star_parameter(scatterer_type *scatterer)
+  : u_star_parameter(scatterer, 0)
   {}
 
   /// Variability property, directly linked to the scatterer grad_site flag

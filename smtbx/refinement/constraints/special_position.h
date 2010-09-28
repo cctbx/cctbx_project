@@ -38,22 +38,20 @@ private:
 
 
 /// Anisotropic displacement constrained by the symmetry of a special position
-/** Parameter components are those of the tensor in Cartesian coordinates
+/** Parameter components are those of the tensor in fractional coordinates
  */
-class special_position_cartesian_adp : public cartesian_adp
+class special_position_u_star_parameter : public u_star_parameter
 {
 public:
-  typedef sgtbx::tensor_rank_2::cartesian_constraints<double>
+  typedef sgtbx::tensor_rank_2::constraints<double>
           adp_constraints_t;
 
-  special_position_cartesian_adp(sgtbx::site_symmetry_ops const &site_symmetry,
-                                 uctbx::unit_cell const &unit_cell,
-                                 scatterer_type *scatterer)
-    : cartesian_adp(scatterer, 1),
-      adp_constraints(site_symmetry.cartesian_adp_constraints(unit_cell))
+  special_position_u_star_parameter(sgtbx::site_symmetry_ops const &site_symmetry,
+                                    scatterer_type *scatterer)
+    : u_star_parameter(scatterer, 1),
+      adp_constraints(site_symmetry.adp_constraints())
   {
-    tensor_rank_2_t u_star = site_symmetry.average_u_star(scatterer->u_star);
-    value = adptbx::u_star_as_u_cart(unit_cell, u_star);
+    value = site_symmetry.average_u_star(scatterer->u_star);
     set_arguments(new independent_small_vector_parameter<6>(
       adp_constraints.independent_params(value),
       scatterer->flags.use_u_aniso() && scatterer->flags.grad_u_aniso()));

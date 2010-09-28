@@ -98,8 +98,8 @@ class special_position_adp_test_case(object):
                                          self.cs.space_group(),
                                          self.sc.site)
     self.reparam = constraints.ext.reparametrisation(self.cs.unit_cell())
-    u = self.reparam.add(constraints.special_position_cartesian_adp,
-                         self.site_symm, self.cs.unit_cell(), self.sc)
+    u = self.reparam.add(constraints.special_position_u_star_parameter,
+                         self.site_symm, self.sc)
     self.reparam.finalise()
     self.u, self.v = u.index, u.independent_params.index
 
@@ -111,10 +111,13 @@ class special_position_adp_test_case(object):
     jt0 = sparse.matrix(2, 8)
     jt0[0, 0] = 1
     jt0[1, 1] = 1
-    jac_u_cart_trans = self.site_symm.cartesian_adp_constraints(
-      self.cs.unit_cell()).jacobian().transpose()
-    for j in xrange(6):
-      jt0[:, j + 2] = jac_u_cart_trans[:, j]
+    jac_u_star_trans = self.site_symm.adp_constraints().gradient_sum_matrix()
+    jac_u_star_trans.reshape(flex.grid(
+      self.site_symm.adp_constraints().n_independent_params(), 6))
+    (m,n) = jac_u_star_trans.focus()
+    for i in xrange(m):
+      for j in xrange(n):
+        jt0[i, j + 2] = jac_u_star_trans[i, j]
     jt = self.reparam.jacobian_transpose
     assert sparse.approx_equal(self.eps)(jt, jt0)
 

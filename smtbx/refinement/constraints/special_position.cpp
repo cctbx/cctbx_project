@@ -14,17 +14,17 @@ namespace smtbx { namespace refinement { namespace constraints {
     if (!jacobian_transpose) return;
     sparse_matrix_type &jt = *jacobian_transpose;
     af::const_ref<double, af::mat_grid>
-    compact_jt = site_constraints.gradient_sum_matrix();
+    local_jt = site_constraints.gradient_sum_matrix();
     for (int j=0; j<3; ++j) {
       for (int i=0; i<site_constraints.n_independent_params(); ++i) {
-        jt(p.index() + i, index() + j) = compact_jt(i, j);
+        if (local_jt(i, j)) jt(p.index() + i, index() + j) = local_jt(i, j);
       }
     }
   }
 
   /**** ADP ****/
 
-  void special_position_cartesian_adp
+  void special_position_u_star_parameter
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {
@@ -33,12 +33,12 @@ namespace smtbx { namespace refinement { namespace constraints {
     value = adp_constraints.all_params(p.value);
 
     if (!jacobian_transpose) return;
-    sparse_matrix_type &jac_t = *jacobian_transpose;
-    sparse_matrix_type const &jac = adp_constraints.jacobian();
-    typedef sparse_matrix_type::const_row_iterator iter_t;
-    for (int j=0; j<jac.n_cols(); ++j) {
-      for (iter_t i=jac.col(j).begin(); i != jac.col(j).end(); ++i) {
-        jac_t(j, index() + i.index()) = *i;
+    sparse_matrix_type &jt = *jacobian_transpose;
+    af::const_ref<double, af::mat_grid>
+    local_jt = adp_constraints.gradient_sum_matrix();
+    for (int j=0; j<6; ++j) {
+      for (int i=0; i<adp_constraints.n_independent_params(); ++i) {
+        if (local_jt(i, j)) jt(p.index() + i, index() + j) = local_jt(i, j);
       }
     }
   }
