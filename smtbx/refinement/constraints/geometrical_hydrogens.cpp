@@ -30,10 +30,10 @@ namespace smtbx { namespace refinement { namespace constraints {
     af::tiny<cart_t, 3>
     e = scitbx::math::orthonormal_basis(x_p - x_pn, e_zero_azimuth);
 
-    double phi = azimuth->value;
     double l = length->value;
     double cos_phi, sin_phi;
     if (!staggered) {
+      double phi = azimuth->value;
       cos_phi = std::cos(phi);
       sin_phi = std::sin(phi);
     }
