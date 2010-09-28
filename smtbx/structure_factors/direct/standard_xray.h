@@ -432,6 +432,16 @@ namespace smtbx { namespace structure_factors { namespace direct {
         The observable is modelled by the type ObservableType, two examples
         of which are the class modulus and modulus_squared in this namespace.
 
+        The ordering of the array \f$\nabla F_c(h)\f$ is a very important
+        property since it has to be known by some key client code, e.g.
+        the constraint framework in smtbx::refinement::contraints. This class
+        guarantees that the partial derivatives are stored in the following
+        order for each scatterer:
+          x, y, z, u_iso, u_11, u_22, u_33, u_12, u_13, u_23, occupancy
+        If a scatterer's site is not refined, then x,y,z is taken out, etc.
+        Then that scheme is applied for all scatterers in the order of the
+        array of xray::scatterer passed to the constructor.
+
         This class is a CRTP: class Heir should be a heir of this class
         and provide a member exp_i_2pi of type ExpI2PiFunctor to compute
         \f$\exp i2\pi x\f$.
