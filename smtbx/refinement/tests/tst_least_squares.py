@@ -476,13 +476,22 @@ class special_positions_test(object):
 def run():
   libtbx.utils.show_times_at_exit()
   import sys
-  if sys.argv[1:]:
-    n_runs = int(sys.argv[1])
-    refinement_test.ls_cycle_repeats = n_runs
-  else:
-    n_runs = 1
-  special_positions_test(n_runs).run()
+  from libtbx.option_parser import option_parser
+  command_line = (option_parser()
+    .option(None, "--fix_random_seeds",
+            action="store_true",
+            default=False)
+    .option(None, "--runs",
+            type='int',
+            default=1)
+  ).process(args=sys.argv[1:])
+  if command_line.options.fix_random_seeds:
+    flex.set_random_seed(1)
+    random.seed(2)
+  n_runs = command_line.options.runs
+  if n_runs > 1: refinement_test.ls_cycle_repeats = n_runs
   exercise_normal_equations()
+  special_positions_test(n_runs).run()
 
 if __name__ == '__main__':
   run()
