@@ -185,19 +185,16 @@ protected:
   void set_index(std::size_t idx) { index_ = idx; }
 
 private:
-  /* Use bit fields to reduce memory footprint */
-  #if defined(__GNUC__) && defined(__x86_64__)
-    #define SMTBX_REFINEMENT_CONSTRAINTS_INDEX_FIELD_WIDTH : sizeof(std::size_t)
-  #else
-    // size specs trigger crash on Win32 with VS 2008 and 32-bit RHEL 3.9
-    #define SMTBX_REFINEMENT_CONSTRAINTS_INDEX_FIELD_WIDTH
-  #endif
-  unsigned colour_            : 2                   ;
-  bool               variable : 1                   ;
-  bool               root     : 1                   ;
-  unsigned           n_args   : 4                   ;
-  std::size_t        index_   SMTBX_REFINEMENT_CONSTRAINTS_INDEX_FIELD_WIDTH;
-  parameter        **arg                            ;
+  /* Don't use bit fields to reduce memory footprint any more
+     because it triggered a nasty bug when index_ >= 256 at least
+     on MacOS X with gcc 4.2 and clang.
+   */
+  unsigned char colour_ ;
+  bool          variable;
+  bool          root    ;
+  unsigned char n_args  ;
+  std::size_t   index_  ;
+  parameter     **arg   ;
 };
 
 
@@ -662,7 +659,7 @@ public:
    */
   void add(parameter *p) {
     typedef std::back_insert_iterator<std::vector<parameter *> >
-    all_param_inserter_t;
+            all_param_inserter_t;
     topologist<all_param_inserter_t> t(std::back_inserter(all));
     t.visit(p);
   }
