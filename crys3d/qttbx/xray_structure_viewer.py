@@ -6,8 +6,9 @@ import crys3d.qttbx.xray_structure_viewer_controls
 from gltbx import quadrics, gl_managed
 from gltbx.gl import *
 from gltbx.glu import *
-from cctbx import xray, adptbx
+from cctbx import xray, adptbx, crystal
 from cctbx.array_family import flex
+from cctbx.eltbx import covalent_radii
 from scitbx import matrix as mat
 import itertools
 
@@ -71,6 +72,7 @@ class xray_structure_viewer(qttbx.widget):
     for (elt, a, b) in material_for
     ])
 
+  covalent_bond_tolerance = 0.5 # Angstrom
 
   def __init__(self, xray_structure, name='??', **kwds):
     self.xray_structure = xs = xray_structure
@@ -81,8 +83,8 @@ class xray_structure_viewer(qttbx.widget):
       **kwds)
     self.setWindowTitle("%s in %s" % (name,
                                       xs.space_group().type().hall_symbol()))
-    sites = xs.sites_frac()
-    self.set_extent(sites.min(), sites.max())
+    sites_frac = xs.sites_frac()
+    self.set_extent(sites_frac.min(), sites_frac.max())
 
     sites = self.sites_cart = xs.sites_cart()
     thermal_tensors = xs.extract_u_cart_plus_u_iso()
@@ -101,12 +103,39 @@ class xray_structure_viewer(qttbx.widget):
     self.labels = None
     self.label_font = QtGui.QFont("Princetown LET", pointSize=22)
 
+    radii = [
+      covalent_radii.table(elt).radius()
+      for elt in xs.scattering_type_registry().type_index_pairs_as_dict() ]
+    buffer_thickness = max(radii) + self.covalent_bond_tolerance
+    asu_mappings = xs.asu_mappings(buffer_thickness=buffer_thickness)
+    bond_table = crystal.pair_asu_table(asu_mappings)
+    bond_table.add_covalent_pairs(xs.scattering_types(),
+                                  tolerance=self.covalent_bond_tolerance)
+    pair_sym_table = bond_table.extract_pair_sym_table()
+    self.bonds = flex.vec3_double()
+    self.bonds.reserve(len(xs.scatterers()))
+    uc = self.xray_structure.unit_cell()
+    for i, neighbours in enumerate(pair_sym_table):
+      x0 = self.sites_cart[i]
+      for j, ops in neighbours.items():
+        for op in ops:
+          if op.is_unit_mx():
+            x1 = self.sites_cart[j]
+          else:
+            x1 = uc.orthogonalize(op*sites_frac[j])
+          self.bonds.append(x0)
+          self.bonds.append(x1)
+
   def initialise_opengl(self):
     self.ellipsoid_proto = quadrics.proto_ellipsoid(
       slices=32, stacks=32)
     self.principal_ellipses_tex = \
         quadrics.ellipsoid_principal_sections_texture(darkening=0.75,
                                                       n_s=64, n_t=64)
+    self.cylindre_proto = quadrics.proto_cylinder(slices=16)
+    self.bond_material = gl_managed.material_model(
+      ambient_front_colour=(0.2,)*3,
+      diffuse_front_colour=(0.1,)*3)
     glEnable(GL_TEXTURE_2D)
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
 
@@ -117,6 +146,11 @@ class xray_structure_viewer(qttbx.widget):
       material.execute()
       transforms.draw(self.ellipsoid_proto)
     self.principal_ellipses_tex.unbind()
+
+    self.bond_material.execute()
+    for i in xrange(0, len(self.bonds), 2):
+      start, end = self.bonds[i], self.bonds[i+1]
+      self.cylindre_proto.draw(start, end, base_radius=0.05)
 
     if self.labels is not None:
       glPushAttrib(GL_LIGHTING_BIT)
