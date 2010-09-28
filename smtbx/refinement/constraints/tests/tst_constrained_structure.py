@@ -383,8 +383,8 @@ def exercise():
     367,368,369 , # H12A.site
     239 , # H12A.u
     )
-  assert tuple(reparametrisation.mapping_to_grad_fc) == target
-  with open('debug.dot', 'w') as f: print >>f, reparametrisation
+  assert tuple(reparametrisation.mapping_to_grad_fc) == target,\
+         str(reparametrisation)
 
 
 
