@@ -181,10 +181,34 @@ namespace scitbx { namespace sparse {
     SCITBX_ASSERT(y.all_eq(y0));
   }
 
+  void exercise_operations_with_dense_matrices() {
+    int const m=5, n=3;
+    matrix<double> a(m,n);
+    a(1, 0) = -1;
+    a(2, 1) =  1;
+    a(3, 2) =  2;
+    af::versa<double, af::mat_grid> c0(af::mat_grid(m, n));
+    c0(1, 0) = -1;
+    c0(2, 1) =  1;
+    c0(3, 2) =  2;
+    af::versa<double, af::mat_grid> c1 = c0.deep_copy();
+    c1(4, 1) = 5;
+    af::versa<double, af::mat_grid> b0 = c1.deep_copy();
+    b0 = a;
+    SCITBX_ASSERT(b0.all_eq(c0));
+    af::versa<double, af::mat_grid> d0 = a;
+    SCITBX_ASSERT(d0.all_eq(c0));
+    af::versa<double, af::mat_grid> b1(af::mat_grid(m, n));
+    b1(4, 1) = 5;
+    b1 += a;
+    SCITBX_ASSERT(b1.all_eq(c1));
+  }
+
 }}
 
 int main() {
   using namespace scitbx::sparse;
+  exercise_operations_with_dense_matrices();
   exercise_vector_element_assignment();
   exercise_permutation();
   exercise_vector_linear_algebra();

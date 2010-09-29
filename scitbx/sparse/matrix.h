@@ -8,6 +8,7 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/packed_matrix.h>
+#include <scitbx/array_family/accessors/mat_grid.h>
 #include <scitbx/sparse/vector.h>
 #include <scitbx/sparse/util.h>
 
@@ -70,7 +71,8 @@ struct matrix_transpose_times_dense_vector
  The columns have a copy semantic.
 */
 template<class T>
-class matrix : public boost::equality_comparable< matrix<T> >
+class matrix : public boost::equality_comparable< matrix<T> >,
+               public af::expression< matrix<T> >
 {
 public:
   typedef T value_type;
@@ -283,6 +285,69 @@ public:
     dense_vector result(a.n_cols(), af::init_functor_null<value_type>());
     for(index_type j=0; j < a.n_cols(); ++j) result[j] = u*a.col(j);
     return result;
+  }
+
+  /// Accessor for a dense matrix that would correspond to this
+  af::mat_grid expression_accessor(af::mat_grid const &proto) const {
+    return af::mat_grid(n_rows(), n_cols());
+  }
+
+  /// Assign this to the given reference to a dense matrix
+  /** This enables af::ref<T, af::mat_grid> b = a
+      for any sparse::matrix<T> a
+   */
+  void assign_to(af::ref<T, af::mat_grid> const &b) const {
+    SCITBX_ASSERT(n_cols() == b.n_columns() && n_rows() == b.n_rows())
+                 (n_cols())(b.n_columns())(n_rows())(b.n_rows());
+    std::fill(b.begin(), b.end(), T(0));
+    for (int j=0; j<n_cols(); ++j) {
+      for (typename matrix<T>::const_row_iterator p=col(j).begin();
+           p != col(j).end();
+           ++p)
+      {
+        typename matrix<T>::index_type i = p.index();
+        typename matrix<T>::value_type a_ij = *p;
+        b(i,j) = a_ij;
+      }
+    }
+  }
+
+  /// Add this to the given reference to a dense matrix
+  /** This enables af::ref<T, af::mat_grid> b += a
+      for any sparse::matrix<T> a
+   */
+  void add_to(af::ref<T, af::mat_grid> const &b) const {
+    SCITBX_ASSERT(n_cols() == b.n_columns() && n_rows() == b.n_rows())
+                 (n_cols())(b.n_columns())(n_rows())(b.n_rows());
+    for (int j=0; j<n_cols(); ++j) {
+      for (typename matrix<T>::const_row_iterator p=col(j).begin();
+           p != col(j).end();
+           ++p)
+      {
+        typename matrix<T>::index_type i = p.index();
+        typename matrix<T>::value_type a_ij = *p;
+        b(i,j) += a_ij;
+      }
+    }
+  }
+
+  /// Substract from the given reference to a dense matrix
+  /** This enables af::ref<T, af::mat_grid> b -= a
+      for any sparse::matrix<T> a
+   */
+  void substract_from(af::ref<T, af::mat_grid> const &b) const {
+    SCITBX_ASSERT(n_cols() == b.n_columns() && n_rows() == b.n_rows())
+                 (n_cols())(b.n_columns())(n_rows())(b.n_rows());
+    for (int j=0; j<n_cols(); ++j) {
+      for (typename matrix<T>::const_row_iterator p=col(j).begin();
+           p != col(j).end();
+           ++p)
+      {
+        typename matrix<T>::index_type i = p.index();
+        typename matrix<T>::value_type a_ij = *p;
+        b(i,j) -= a_ij;
+      }
+    }
   }
 
   /// Matrix times matrix
