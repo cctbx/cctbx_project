@@ -73,7 +73,7 @@ def phil_atom_selections_as_i_seqs_multiple(cache,
         raise_if_empty_selection=False)
   for i in iselection:
     if (i.size() == 0):
-      raise Sorry("No atom selected: %s" % string)
+      raise Sorry("No atom selected")
     for atom in i:
       result.append(atom)
   return result
@@ -87,7 +87,6 @@ def process_reference_groups(pdb_hierarchy,
   sel_cache = pdb_hierarchy.atom_selection_cache()
   sel_cache_ref = pdb_hierarchy_ref.atom_selection_cache()
   match_map = {}
-
   #simple case with no specified reference groups
   if len(params.reference_group) == 0:
     ref_list = ['ALL']
@@ -104,17 +103,85 @@ def process_reference_groups(pdb_hierarchy,
 
   #specified reference groups
   for rg in params.reference_group:
-    assert rg.reference.upper().startswith("CHAIN")
-    ref_chain=rg.reference.split(' ')[-1]
-    if len(ref_chain)==1:
-      ref_chain = ' '+ref_chain
+    model_chain = None
+    ref_chain = None
+    model_res_min = None
+    model_res_max = None
+    ref_res_min = None
+    ref_res_max = None
     sel_atoms = (phil_atom_selections_as_i_seqs_multiple(
                   cache=sel_cache,
                   string_list=[rg.selection]))
+    sel_atoms_ref = (phil_atom_selections_as_i_seqs_multiple(
+                  cache=sel_cache_ref,
+                  string_list=[rg.reference]))
+    sel_model = re.split(r"AND|OR|NOT",rg.selection.upper())
+    sel_ref = re.split(r"AND|OR|NOT",rg.reference.upper())
+    for sel in sel_model:
+      if sel.strip().startswith("CHAIN"):
+        if model_chain is None:
+          model_chain = sel.strip().split(' ')[-1]
+        else:
+          raise Sorry("Cannot specify more than one chain per selection")
+      if sel.strip().startswith("RESSEQ") or sel.strip().startswith("RESID"):
+        res = sel.strip().split(' ')[-1].split(':')
+        if len(res) > 1:
+          if model_res_min is None and model_res_max is None:
+            model_res_min = res[0]
+            model_res_max = res[1]
+          else:
+            raise Sorry("Cannot specify more than one residue or residue range per selection")
+        elif len(res) == 1:
+          if model_res_min is None and model_res_max is None:
+            model_res_min = res[0]
+            model_res_max = res[0]
+        else:
+          raise Sorry("Do not understand residue selection")
+    for sel in sel_ref:
+      if sel.strip().startswith("CHAIN"):
+        if ref_chain is None:
+          ref_chain = sel.strip().split(' ')[-1]
+        else:
+          raise Sorry("Cannot specify more than one chain per selection")
+      if sel.strip().startswith("RESSEQ") or sel.strip().startswith("RESID"):
+        res = sel.strip().split(' ')[-1].split(':')
+        if len(res) > 1:
+          if ref_res_min is None and ref_res_max is None:
+            ref_res_min = res[0]
+            ref_res_max = res[1]
+          else:
+            raise Sorry("Cannot specify more than one residue or residue range per selection")
+        elif len(res) == 1:
+          if ref_res_min is None and model_res_max is None:
+            ref_res_min = res[0]
+            ref_res_max = res[0]
+        else:
+          raise Sorry("Do not understand residue selection")
+    #check consistency
+    assert (ref_chain is None and model_chain is None) or \
+           (ref_chain is not None and model_chain is not None)
+    assert (ref_res_min is None and ref_res_max is None \
+            and model_res_min is None and model_res_max is None) or \
+            (ref_res_min is not None and ref_res_max is not None \
+            and model_res_min is not None and model_res_max is not None)
+    #calculate residue offset
+    offset = 0
+    if (ref_res_min is not None and ref_res_max is not None \
+        and model_res_min is not None and model_res_max is not None):
+      offset = int(model_res_min) - int(ref_res_min)
+      assert offset == (int(model_res_max) - int(ref_res_max))
     for i_seq in sel_atoms:
       key = model_name_hash[i_seq]
-      key = re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+r"\3",key)
+      if ref_chain is not None:
+        if len(ref_chain)==1:
+          ref_chain = ' '+ref_chain
+        key = re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+r"\3",key)
+      if offset != 0:
+        resnum = key[10:14]
+        new_num = "%4d" % (int(resnum) - offset)
+        key = re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+new_num,key)
       try:
+        assert ref_iseq_hash[key] in sel_atoms_ref
         match_map[i_seq] = ref_iseq_hash[key]
       except:
         continue
