@@ -157,7 +157,7 @@ class manager (object) :
           self._param_files[file_param_name] = []
         self._param_files[file_param_name].append(file_name)
       else :
-          self._param_files[file_param_name] = file_name
+        self._param_files[file_param_name] = file_name
     if run_callback :
       callback = self._param_callbacks.get(file_param_name, None)
       if (callback is not None) :

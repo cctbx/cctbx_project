@@ -49,12 +49,43 @@ supported_file_types = ["pdb","hkl","cif","pkl","seq","phil", "txt",
 class FormatError (Sorry) :
   pass
 
-def guess_file_type (file_name, extensions=standard_file_extensions) :
+def splitext (file_name) :
   base, ext = os.path.splitext(file_name)
+  if (ext == ".gz") :
+    base, ext = os.path.splitext(base)
+  return base, ext
+
+def guess_file_type (file_name, extensions=standard_file_extensions) :
+  base, ext = splitext(file_name)
+  if (ext == "") :
+    return None
   for known_type, known_extensions in extensions.iteritems() :
     if ext[1:] in known_extensions :
       return known_type
   return None
+
+def sort_by_file_type (file_names, sort_order=None) :
+  if (sort_order is None) :
+    sort_order = standard_file_types
+  def _score_extension (ext) :
+    for n, format in enumerate(sort_order) :
+      extensions = standard_file_extensions.get(format, [])
+      if (ext[1:] in extensions) :
+        return len(sort_order) - n
+    return 0
+  def _sort (f1, f2) :
+    base1, ext1 = splitext(f1)
+    base2, ext2 = splitext(f2)
+    s1 = _score_extension(ext1)
+    s2 = _score_extension(ext2)
+    if (s1 > s2) :
+      return -1
+    elif (s2 > s1) :
+      return 1
+    else :
+      return 0
+  file_names.sort(_sort)
+  return file_names
 
 def any_file (file_name,
               get_processed_file=False,
