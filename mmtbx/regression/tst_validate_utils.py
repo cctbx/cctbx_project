@@ -349,7 +349,12 @@ A  46 ASN:34.0:301.6:117.9:::m120""")
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
-  exercise_rna_validate()
+  if (not libtbx.env.has_module(name="phenix")):
+    print \
+      "Skipping exercise_rna_validate():" \
+      " phenix not available"
+  else:
+    exercise_rna_validate()
   exercise_ramalyze()
   exercise_rotalyze()
   exercise_cbetadev()
