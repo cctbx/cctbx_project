@@ -287,6 +287,8 @@ class rna_validate(object):
       self.params = master_phil.extract()
     params = self.params.rna_validate.rna_sugar_pucker_analysis
     self.pucker_states = []
+    self.pucker_perp_xyz = {}
+    self.pucker_dist = {}
     outliers = []
     from iotbx.pdb.rna_dna_detection import residue_analysis
     for model in hierarchy.models():
@@ -320,6 +322,9 @@ class rna_validate(object):
                                ana.is_delta_outlier,
                                ana.epsilon,
                                ana.is_epsilon_outlier]])
+              self.pucker_perp_xyz[key] = [ana.p_perp_xyz, ana.o3p_perp_xyz]
+              self.pucker_dist[key] = [ana.p_distance_c1p_outbound_line,
+                                       ana.o3p_distance_c1p_outbound_line]
     return outliers
 
   def build_name_hash(self, pdb_hierarchy):
