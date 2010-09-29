@@ -87,11 +87,11 @@ namespace zernike {
 //      Starts with order (0)
         gm_.push_back( af::shared< FloatType > (2*N_point_+1, 1.0)  );
         for(int n=1;n<=n_max_+2;n++)
-          gm_.push_back( array_product(gm_[n-1],one_d_, n+1) );
+          gm_.push_back( array_product(gm_[n-1],one_d_) );
         return true;
       }
 
-      af::shared<FloatType> array_product( af::shared<FloatType> a, af::shared<FloatType> b, int n)
+      af::shared<FloatType> array_product( af::shared<FloatType> a, af::shared<FloatType> b)
       {
         int size = a.size();
         af::shared<FloatType> result(size,0);
@@ -248,8 +248,10 @@ namespace zernike {
         build_Bnmk_array();
 
         std::complex<FloatType>complex_i(0,-1.0);
-        for(int i=0;i<=n_max_;i++)
+        for(int i=0;i<=n_max_;i++) {
           i_pow_n_.push_back( ( std::pow(complex_i, i)) );
+          i_pow_p_.push_back( ( std::pow(-complex_i, i)) );
+        }
       }
 
       void build_fac()
@@ -371,6 +373,7 @@ namespace zernike {
         return temp;
       }
 
+
       std::complex<FloatType> sum1(int n,int m, int k)
       {
         std::complex<FloatType> temp(0,0);
@@ -380,6 +383,100 @@ namespace zernike {
         }
         return temp;
       }
+
+      std::complex<FloatType> zernike_poly(int n, int m, FloatType x, FloatType y)
+      {
+        int in,im,ik,k, max_nu, nu, alpha, beta, d;
+        std::complex< FloatType > value(0,0),temp(0,0), temp1(0,0);
+        af::shared< FloatType > gm_x(n+1,1.0);
+        af::shared< FloatType > gm_y(n+1,1.0);
+        for(int i=1;i<=n;i++) {
+          gm_x[i]=gm_x[i-1]*x;
+          gm_y[i]=gm_y[i-1]*y;
+        }
+
+        in = (n_max_-n);
+        im = (n-m)/2;
+        ik = 0;
+        for(k=n;k>=m;k-=2) {
+          temp=0;
+          max_nu = (k-m)/2;
+          for(nu=0;nu<=max_nu;nu++) {
+            temp1=0;
+            for(d=0;d<=m;d++) {
+              beta=2*nu+d;
+              alpha = k-beta;
+              temp1 += i_pow_p_[d]*bino_[m][d]*gm_x[alpha]*gm_y[beta];
+            }
+            temp += temp1*bino_[max_nu][nu];
+          }
+          value += Bnmk_[in][im][ik]*temp;
+          ik++;
+        }
+        return value;
+      }
+
+      af::shared< std::complex<FloatType> >zernike_map(int nmax, int NP)
+      {
+        FloatType delta(1.0/static_cast<FloatType>(NP) );
+        af::shared< FloatType > one_d(NP*2+1,0.0);
+        for(int i=-NP;i<=NP;i++)
+          one_d[i+NP]=i*delta;
+
+        gm_.push_back( af::shared<FloatType> (NP*2+1,1.0) );
+        for(int n=1;n<=nmax;n++)
+          gm_.push_back( grid_.array_product( gm_[n-1],one_d ) );
+
+        int np_one_d=one_d.size();
+        int count=0;
+        af::shared<std::complex<FloatType> > reconst(np_one_d*np_one_d,0.0);
+        std::complex<FloatType> coef;
+
+        for(int n=nmax;n>=0;n--) {
+          for(int m=n;m>=0;m-=2) {
+            coef = get_moment(n,m);
+            if(m>0)
+              coef = coef*2.0;
+            count=0;
+            for(int ix=0;ix<np_one_d;ix++) {
+              for(int iy=0;iy<np_one_d;iy++) {
+                if( one_d[ix]*one_d[ix]+one_d[iy]*one_d[iy] <=1.0 )
+                  reconst[count]+=calc_zernike_ixy(n,m,ix,iy)*coef;
+                count++;
+              }
+            }
+          }
+        }
+        return reconst;
+      }
+
+
+      std::complex<FloatType> calc_zernike_ixy( int n, int m, int ix, int iy )
+      {
+        int in,im,ik,k, max_nu, nu, alpha, beta, d;
+        std::complex< FloatType > value(0,0),temp(0,0), temp1(0,0);
+
+        in = (n_max_-n);
+        im = (n-m)/2;
+        ik = 0;
+        for(k=n;k>=m;k-=2) {
+          temp=0;
+          max_nu = (k-m)/2;
+          for(nu=0;nu<=max_nu;nu++) {
+            temp1=0;
+            for(d=0;d<=m;d++) {
+              beta=2*nu+d;
+              alpha = k-beta;
+              temp1 += i_pow_p_[d]*bino_[m][d]*gm_[alpha][ix]*gm_[beta][iy];
+            }
+            temp += temp1*bino_[max_nu][nu];
+          }
+          value += Bnmk_[in][im][ik]*temp;
+          ik++;
+        }
+        return value;
+      }
+
 
       int is_even(int n)
       {
@@ -394,9 +491,11 @@ namespace zernike {
       scitbx::af::shared< scitbx::af::shared<FloatType> > bino_;
       scitbx::af::shared< scitbx::af::shared<FloatType> > H_array_;
       scitbx::af::shared< scitbx::af::shared< scitbx::af::shared<FloatType> > > Bnmk_;
+      af::shared< af::shared<FloatType> > gm_;
       int n_max_, N_point_;
       FloatType norm_factor_;
       scitbx::af::shared< std::complex<FloatType> > i_pow_n_;
+      scitbx::af::shared< std::complex<FloatType> > i_pow_p_;
       af::versa< FloatType, af::c_grid<2> > ss_;
       grid_2d<FloatType> grid_;
   };
