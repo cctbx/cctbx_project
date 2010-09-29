@@ -1,13 +1,11 @@
 #ifndef SCITBX_BOOST_PYTHON_ITERATOR_WRAPPERS_H
 #define SCITBX_BOOST_PYTHON_ITERATOR_WRAPPERS_H
 
-#include <boost/python/class.hpp>
+#include <boost_adaptbx/iterator_range.h>
 
 namespace scitbx { namespace boost_python {
 
-  inline
-  boost::python::object
-  pass_through(boost::python::object const& o) { return o; }
+  using boost_adaptbx::pass_through;
 
   template <typename TableElementType,
             typename TableIteratorType>
