@@ -92,6 +92,9 @@ namespace cctbx { namespace sgtbx { namespace asu {
     //! Applies basis change to the plane
     void change_basis(const change_of_basis_op &cb_op);
 
+    // TODO: do not use. Is it the same as change_basis?
+    void apply_symop(const rt_mx &symop);
+
     double get_tolerance(const scitbx::af::double3 &tol3) const
     {
       return std::fabs(n[0]*tol3[0]) + std::fabs(n[1]*tol3[1])

@@ -68,6 +68,13 @@ namespace cctbx { namespace sgtbx { namespace asu {
       faces = faces->new_volume_only();
     }
 
+    // Experimental
+    void volume_only_keep_inclusive_flag()
+    {
+      faces = faces->new_volume_only_keep_inclusive_flag();
+    }
+
+
     //! Return set of planes which contain point
     void in_which_planes(const rvector3_t &point, std::vector<cut> &planes) const;
 
@@ -208,6 +215,25 @@ namespace cctbx { namespace sgtbx { namespace asu {
       CCTBX_ASSERT( faces.get() != NULL );
       if( !op.is_identity_op() )
         faces->change_basis(op); // change to the real space group
+    }
+
+    // DO NOT USE!!!  For debugging purposes only!
+    explicit direct_space_asu(const space_group_type &group_type,
+      facet_collection::pointer &faces_)
+      : hall_symbol(group_type.hall_symbol()),
+        faces(faces_), // build custom asu
+        b_is_optimized(false)
+    {
+      change_of_basis_op  op(  group_type.cb_op().inverse() );
+      CCTBX_ASSERT( faces.get() != NULL );
+      if( !op.is_identity_op() )
+        faces->change_basis(op); // change to the real space group
+    }
+
+    // DO NOT USE!!!
+    void add_face(const cut &face)
+    {
+      faces = faces->add_face(face);
     }
 
     //! Creates asymmetric unit from space group symbol

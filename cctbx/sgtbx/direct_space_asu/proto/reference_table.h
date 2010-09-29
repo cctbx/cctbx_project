@@ -100,6 +100,23 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return facet_collection::pointer( new expression_adaptor< return_type >( strip<T>::execute(obj) ) );
     }
 
+    // DO NOT USE!! Experimental
+    facet_collection::pointer new_volume_only_keep_inclusive_flag() const
+    {
+      typedef typename strip_keep_inclusive_flag<T>::return_type return_type;
+      return facet_collection::pointer( new expression_adaptor< return_type >(
+        strip_keep_inclusive_flag<T>::execute(obj) ) );
+    }
+
+    // DO NOT USE!!!
+    facet_collection::pointer add_face(const cut &) const
+    {
+      /* and_expression<T,cut> r = (this->obj) & face;
+      expression_adaptor< and_expression<T,cut> > rr(r);
+      return rr.new_copy(); */
+      return this->new_copy();
+    }
+
     facet_collection::pointer new_copy() const
     {
       return facet_collection::pointer( new expression_adaptor<T>(*this) );
