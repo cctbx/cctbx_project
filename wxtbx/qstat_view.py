@@ -1,6 +1,6 @@
 
 import wxtbx.bitmaps
-from libtbx import sge_utils
+from libtbx.queuing_system_utils import sge_utils
 import libtbx.load_env
 from libtbx.utils import Sorry
 import wx

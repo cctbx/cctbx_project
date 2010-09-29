@@ -174,12 +174,12 @@ class MetallicButton (wx.PyControl) :
       if min_w == -1 :
         min_w = 120
       txt_w = min_w - xpos - 10
-      if self._caption_lines is not None :
+      if False : #self._caption_lines is not None :
         lines = self._caption_lines
       else :
         lines = wx.lib.wordwrap.wordwrap(self._label2,
-          width=min_w,
-          dc=gc)
+          width=txt_w + 200,
+          dc=wx.MemoryDC())
       offset = 0
       for line in lines.splitlines() :
         line_w, line_h = gc.GetTextExtent(line)
@@ -332,14 +332,17 @@ class MetallicButton (wx.PyControl) :
       label_height = lsize[1]
 
     if self._label2 != '' :
-      dc = wx.GraphicsContext.CreateMeasuringContext()
+      if wx.Platform == '__WXMAC__' :
+        dc = wx.GraphicsContext.CreateMeasuringContext()
+      else :
+        dc = wx.MemoryDC()
       dc.SetFont(self._label2_font)
       min_w, min_h = self._size
       if min_w == -1 :
         min_w = 120
       txt_w = min_w - width - 10
-      if wx.Platform == '__WXGTK__' :
-        txt_w += 200
+      #if wx.Platform == '__WXGTK__' :
+      #  txt_w -= 100
       lines = wx.lib.wordwrap.wordwrap(self._label2,
         width=txt_w,
         dc=dc)
