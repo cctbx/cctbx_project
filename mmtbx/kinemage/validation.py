@@ -35,7 +35,8 @@ def get_angle_outliers(angle_proxies, sites_cart, hierarchy):
     sigma = ((1/restraint.weight)**(.5))*2
     num_sigmas = - (restraint.delta / sigma) #negative to match MolProbity direction
     if abs(num_sigmas) >= 4.0:
-      angle_key = res+' '+atom1+'-'+atom2+'-'+atom3
+      angle_key = res[0:3].lower()+res[3:]+' '+atom1.lower()+ \
+                  '-'+atom2.lower()+'-'+atom3.lower()
       kin = add_fan(sites=restraint.sites,
                     delta=restraint.delta,
                     num_sigmas=num_sigmas,
@@ -55,7 +56,7 @@ def get_bond_outliers(bond_proxies, sites_cart, hierarchy):
     sigma = ((1/restraint.weight)**(.5))*2
     num_sigmas = -(restraint.delta / sigma) #negative to match MolProbity direction
     if abs(num_sigmas) >= 4.0:
-      bond_key = res+' '+atom1+'-'+atom2
+      bond_key = res[0:3].lower()+res[3:]+' '+atom1.lower()+'-'+atom2.lower()
       kin = add_spring(sites=restraint.sites,
                        num_sigmas=num_sigmas,
                        bond_key=bond_key)
@@ -299,6 +300,7 @@ def pperp_outliers(hierarchy):
                 pucker_text = " 2'?"
               else:
                 pucker_text = " 3'?"
+            key = key[0:4].lower()+key[4:]
             key += pucker_text
             kin_out += kin_vec(key, perp_xyz[0], key, perp_xyz[1])
             a = matrix.col(perp_xyz[1])
