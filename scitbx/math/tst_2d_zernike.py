@@ -114,7 +114,82 @@ def tst_2d_zernike_mom(n,l, N=100, filename=None):
   rebuilt.close()
 
 
+def tst_2d_poly(n,l):
+  nmax=max(n,20)
+  np=50
+  x,y=0.1,0.9
+  r,t=smath.sqrt(x*x+y*y),smath.atan2(y,x)
+  lfg =  math.log_factorial_generator(nmax)
+  rzfa = math.zernike_2d_radial(n,l,lfg)
+  rap = math.zernike_2d_polynome(n,l,rzfa)
+  rt_value=rap.f(r,t)
+  grid = math.two_d_grid(np, nmax)
+  zm2d = math.two_d_zernike_moments(grid, nmax)
+  xy_value=zm2d.zernike_poly(n,l,x,y)
+
+  print rt_value, xy_value, abs(rt_value), abs(xy_value)
+
+def tst_2d_zm(n,l):
+  nmax=max(n,20)
+  np=100
+  points=flex.double(range(-np,np+1))/np
+  grid = math.two_d_grid(np, nmax)
+  zm2d = math.two_d_zernike_moments(grid, nmax)
+  image = flex.vec3_double()
+
+  output=file('testmap.dat','w')
+
+  for x in points:
+    for y in points:
+      r=smath.sqrt(x*x+y*y)
+      if(r>1.0):
+        value=0.0
+      else:
+        value=zm2d.zernike_poly(n,l,x,y).real
+      image.append([x*np+np,y*np+np, value])
+
+  grid.clean_space( image )
+  grid.construct_space_sum()
+  zernike_2d_mom = math.two_d_zernike_moments( grid, nmax )
+
+  moments = zernike_2d_mom.moments()
+
+  coefs = flex.real( moments )
+  nl_array = math.nl_array( nmax )
+  nls = nl_array.nl()
+
+  for nl, c in zip( nls, moments):
+    if(abs(c)<1e-3):
+      c=0
+    print nl, c
+
+  NP=np*2+1
+  reconst=zernike_2d_mom.zernike_map(nmax, np)
+  i = 0
+  for x in range(0,NP):
+    for y in range(0,NP):
+      value=reconst[i].real
+      if(value>0):
+        print>>output, x,y,image[i][2],value
+      i=i+1
+
+
+  output.close()
+
+
+
 if __name__ == "__main__":
+  t1=time.time()
+  tst_2d_zm(41,21)
+  t2=time.time()
+  print"xy:  ", t2-t1
+  tst_2d_zernike_mom(41,21)
+  t3=time.time()
+  print"rt:  ", t3-t2
+  exit()
+
+  tst_2d_poly(51,19)
+  exit()
   t1 = time.time()
   args = sys.argv[1:]
   filename=None

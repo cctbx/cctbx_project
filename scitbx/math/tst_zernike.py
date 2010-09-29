@@ -3,7 +3,6 @@ from scitbx.array_family import flex
 from scitbx.array_family import shared
 from stdlib import math as smath
 
-
 def tst_nlm():
   nlm_array = math.nlm_array(10)
   nlm_array.set_coef(10,2,2, 3.0)
