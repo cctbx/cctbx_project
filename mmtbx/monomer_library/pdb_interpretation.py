@@ -764,6 +764,7 @@ class monomer_mapping(slots_getstate_setstate):
     if (    self.monomer.is_peptide()
         and self.atom_name_interpretation is None):
       self._rename_ot1_ot2("OXT" in atom_dict)
+      self._auto_alias_h_h1()
     self._set_missing_atoms()
 
   def _rename_ot1_ot2(self, oxt_in_atom_dict):
@@ -781,6 +782,25 @@ class monomer_mapping(slots_getstate_setstate):
       if (i_seq is not None):
         oxt_dict["OXT"] = i_seq
         del self.unexpected_atoms["OT2"]
+
+  def _auto_alias_h_h1(self):
+    if (self.monomer_atom_dict.get("H1") is None):
+      return
+    e = self.expected_atoms
+    if (e.has_key("H1") or e.has_key("D1")):
+      return
+    u = self.unexpected_atoms
+    h = u.get("H")
+    d = u.get("D")
+    key = "H"
+    if (h is None):
+      key = "D"
+      h = d
+    elif (d is not None):
+      h = None
+    if (h is not None):
+      e["H1"] = h
+      del u[key]
 
   def _set_missing_atoms(self):
     self.missing_non_hydrogen_atoms = {}
