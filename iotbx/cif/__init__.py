@@ -5,6 +5,7 @@ if has_antlr3:
   import boost.python
   ext = boost.python.import_ext("iotbx_cif_ext")
 
+from cctbx.array_family import flex
 from cctbx import adptbx, crystal
 from cctbx.xray import structure
 from iotbx.cif import model, builders
@@ -154,14 +155,15 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
     assert array_type in ('calc', 'meas')
     assert array.size() == self.indices.size()
     if array.is_complex_array():
-      columns = {'_refln_F_%s' %array_type: flex.abs(array.data()),
-                 '_refln_phase_%s' %array_type: array.phases()}
+      columns = {
+        '_refln_F_%s' %array_type: flex.abs(array.data()).as_string(),
+        '_refln_phase_%s' %array_type: array.phases().data().as_string()}
     else:
       if array.is_xray_intensity_array():
         obs_ext = 'squared_'
       else: obs_ext = ''
-      columns = OrderedDict({'_refln_F_%s%s' %(obs_ext, array_type):
-                 array.data().as_string()})
+      columns = {
+        '_refln_F_%s%s' %(obs_ext, array_type): array.data().as_string()}
       if array.sigmas() is not None:
         columns['_refln_F_%ssigma' %(obs_ext)] = array.sigmas().as_string()
     for key in columns:
