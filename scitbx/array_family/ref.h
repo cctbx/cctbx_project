@@ -230,7 +230,16 @@ namespace scitbx { namespace af {
       template <class E>
       ref &operator=(expression<E> const &e);
 
-      ElementType*
+      template <class E>
+      ref &operator+=(expression<E> const &e);
+
+      template <class E>
+      ref &operator-=(expression<E> const &e);
+
+      template <class E>
+      ref &operator*=(expression<E> const &e);
+
+    ElementType*
       begin() const { return const_cast<ElementType*>(this->begin_); }
 
       ElementType*
@@ -430,19 +439,74 @@ namespace scitbx { namespace af {
     /// Total number of elements
     std::size_t size() const { return heir().size(); }
 
+    /// Accessor
+    template <class AccessorType>
+    AccessorType accessor(AccessorType const &proto) const {
+      return heir().expression_accessor(proto);
+    }
+
     /// Assign the elements of the expression to the memory referred to by x
     template <class ElementType, class AccessorType>
     void assign_to(af::ref<ElementType, AccessorType> const &x) const
     {
       heir().assign_to(x);
     }
+
+    /// Add the elements of the expression to the memory referred to by x
+    template <class ElementType, class AccessorType>
+    void add_to(af::ref<ElementType, AccessorType> const &x) const
+    {
+      heir().add_to(x);
+    }
+
+    /// Substract the elements of the expression from the memory referred to by x
+    template <class ElementType, class AccessorType>
+    void substract_from(af::ref<ElementType, AccessorType> const &x) const
+    {
+      heir().substract_from(x);
+    }
+
+    /// Multiply the elements of the expression to the memory referred to by x
+    template <class ElementType, class AccessorType>
+    void multiply_with(af::ref<ElementType, AccessorType> const &x) const
+    {
+      heir().multiply_with(x);
+    }
   };
 
   template <class ElementType, class AccessorType>
   template <class E>
+  inline
   ref<ElementType, AccessorType>
   &ref<ElementType, AccessorType>::operator=(expression<E> const &e) {
     e.assign_to(*this);
+    return *this;
+  }
+
+  template <class ElementType, class AccessorType>
+  template <class E>
+  inline
+  ref<ElementType, AccessorType>
+  &ref<ElementType, AccessorType>::operator+=(expression<E> const &e) {
+    e.add_to(*this);
+    return *this;
+  }
+
+  template <class ElementType, class AccessorType>
+  template <class E>
+  inline
+  ref<ElementType, AccessorType>
+  &ref<ElementType, AccessorType>::operator-=(expression<E> const &e) {
+    e.substract_from(*this);
+    return *this;
+  }
+
+  template <class ElementType, class AccessorType>
+  template <class E>
+  inline
+  ref<ElementType, AccessorType>
+  &ref<ElementType, AccessorType>::operator*=(expression<E> const &e) {
+    e.multiply_with(*this);
     return *this;
   }
 
