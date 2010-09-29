@@ -20,7 +20,7 @@ class chunk_manager(object):
     return (i % O.n != O.i)
 
   def queuing_system_overrides_chunk(O):
-    from libtbx import pbs_utils, sge_utils
+    from libtbx.queuing_system_utils import pbs_utils, sge_utils
     pbs_info = pbs_utils.chunk_info()
     sge_info = sge_utils.info()
     assert [pbs_info, sge_info].count(None) <= 1

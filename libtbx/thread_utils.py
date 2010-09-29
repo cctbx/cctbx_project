@@ -1,9 +1,11 @@
-import sys, traceback, time, os
-import Queue
-import threading
+
+from libtbx import easy_pickle
 from libtbx.utils import Sorry, Abort
 from libtbx import object_oriented_patterns as oop
 from libtbx import group_args, adopt_init_args
+import Queue
+import threading
+import sys, traceback, time, os
 
 class thread_with_callback_and_wait(threading.Thread):
 
@@ -52,20 +54,52 @@ class thread_with_callback_and_wait(threading.Thread):
 null_callback = oop.null()
 
 class queue_monitor_thread (threading.Thread) :
-  def __init__ (self, q, callback) :
+  def __init__ (self, q, callback, sleep_interval=1.0) :
     self.q = q
     self.cb = callback
     self._exit = False
+    self._sleep_interval = sleep_interval
     threading.Thread.__init__(self)
 
   def run (self) :
-    from multiprocessing import Queue
+    t = self._sleep_interval
     while not self._exit :
       if (self.q.qsize() > 0) :
         result = self.q.get(timeout=1)
         self.cb(result)
       else :
-        time.sleep(1)
+        time.sleep(t)
+
+  def exit (self) :
+    self._exit = True
+
+class file_monitor_thread (threading.Thread) :
+  def __init__ (self, dir_name, file_names, callback, sleep_interval=1.0) :
+    assert os.path.isdir(dir_name)
+    self.cb = callback
+    self.dir_name = dir_name
+    self.file_names = file_names
+    self._exit = False
+    self._sleep_interval = sleep_interval
+    threading.Thread.__init__(self)
+
+  def run (self) :
+    t = self._sleep_interval
+    existing_files = []
+    pending_files = []
+    while not self._exit :
+      files = os.listdir(self.dir_name)
+      for file_name in files :
+        if (file_name in existing_files) :
+          continue
+        elif (file_name in pending_files) :
+          data = easy_pickle.load(os.path.join(self.dir_name, file_name))
+          existing_files.append(file_name)
+          #pending_files.remove(file_name)
+          self.cb(data)
+        elif (file_name in self.file_names) :
+          pending_files.append(file_name)
+      time.sleep(t)
 
   def exit (self) :
     self._exit = True
