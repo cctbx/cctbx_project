@@ -2,7 +2,7 @@ import os, sys
 import libtbx.load_env
 from libtbx.utils import Sorry
 from libtbx.test_utils import Exception_expected
-from iotbx.file_reader import any_file
+from iotbx.file_reader import any_file, sort_by_file_type
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
@@ -174,7 +174,13 @@ def exercise_hkl () :
   assert hkl.file_server.miller_arrays[0].info().labels == ["F0"]
   os.remove("tmp1.mtz")
 
+def exercise_misc () :
+  file_names = ["foo.pdb", "foo.mtz", "bar.pdb", "bar.mtz", "seq.dat"]
+  file_names = sort_by_file_type(file_names, sort_order=["pdb","hkl","seq"])
+  assert (file_names == ['foo.pdb','bar.pdb','foo.mtz','bar.mtz','seq.dat'])
+
 def exercise () :
+  exercise_misc()
   exercise_others()
   exercise_maps()
   if mtz is None :
