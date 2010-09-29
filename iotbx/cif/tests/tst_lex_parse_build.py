@@ -89,7 +89,7 @@ def exercise_parser(reader, builder):
   miller_arrays_as_cif_block = cif.miller_arrays_as_cif_block(
     ma1, array_type='meas')
   miller_arrays_as_cif_block.add_miller_array(
-    ma1.customized_copy(sigmas=None), array_type='calc')
+    ma1.array(data=flex.complex_double([1-1j]*ma1.size())), array_type='calc')
   ma_cif_block = miller_arrays_as_cif_block.cif_block
   ma2 = cif.builders.miller_array_builder(
     ma_cif_block).arrays()['_refln_F_squared_meas']
