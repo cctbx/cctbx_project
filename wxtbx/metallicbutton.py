@@ -177,9 +177,14 @@ class MetallicButton (wx.PyControl) :
       if False : #self._caption_lines is not None :
         lines = self._caption_lines
       else :
+        if wx.Platform == '__WXGTK__' :
+          dc = wx.MemoryDC()
+          txt_w += 100
+        else :
+          dc = gc
         lines = wx.lib.wordwrap.wordwrap(self._label2,
-          width=txt_w + 200,
-          dc=wx.MemoryDC())
+          width=txt_w,
+          dc=dc) #wx.MemoryDC())
       offset = 0
       for line in lines.splitlines() :
         line_w, line_h = gc.GetTextExtent(line)
