@@ -23,6 +23,7 @@ namespace mmtbx {
 
   namespace af = scitbx::af;
 
+  // TODO: this needs to be removed
   using cctbx::sgtbx::asu::direct_space_asu;
 
   typedef af::shared< scitbx::double3 > coord_array_t;
@@ -160,6 +161,63 @@ namespace mmtbx {
         // TODO: ? put more computation here, eg.: mask_asu
       }
 
+      // DO NOT USE!!! This For debugging purposes only.
+      atom_mask(
+        const cctbx::uctbx::unit_cell & unit_cell,
+        const cctbx::sgtbx::space_group &group_,
+        const cctbx::sgtbx::asu::direct_space_asu &asu_,
+        double resolution,
+        double grid_step_factor = 4.0,
+        double solvent_radius_ = 1.11,
+        double shrink_truncation_radius_ = 0.9)
+      :
+        solvent_radius(solvent_radius_),
+        shrink_truncation_radius(shrink_truncation_radius_),
+        accessible_surface_fraction(-1.0),
+        contact_surface_fraction(-1.0),
+        asu(asu_),
+        cell(unit_cell),
+        group(group_),
+        asu_atoms(),
+        n_layers(0)
+      {
+        MMTBX_ASSERT( mask_value::is_group_compatible(group.order_z()) );
+        MMTBX_ASSERT(solvent_radius >= 0.0);
+        MMTBX_ASSERT(shrink_truncation_radius >= 0.0);
+        this->determine_gridding(this->full_cell_grid_size, resolution,
+          grid_step_factor);
+        this->determine_boundaries(); // also allocates memory
+        // TODO: ? put more computation here, eg.: mask_asu
+      }
+
+      // TODO: DO NOT USE!!!
+      atom_mask(
+        const cctbx::uctbx::unit_cell & unit_cell,
+        const cctbx::sgtbx::space_group &group_,
+        const cctbx::sgtbx::asu::direct_space_asu &asu_,
+        const grid_t::index_type & gridding_n_real,
+        double solvent_radius_=1.11,
+        double shrink_truncation_radius_=0.9)
+      :
+        solvent_radius(solvent_radius_),
+        shrink_truncation_radius(shrink_truncation_radius_),
+        accessible_surface_fraction(-1.0),
+        contact_surface_fraction(-1.0),
+        asu(asu_),
+        cell(unit_cell),
+        group(group_),
+        n_layers(0)
+      {
+        MMTBX_ASSERT( mask_value::is_group_compatible(group.order_z()) );
+        MMTBX_ASSERT(solvent_radius >= 0.0);
+        MMTBX_ASSERT(shrink_truncation_radius >= 0.0);
+        MMTBX_ASSERT(gridding_n_real.const_ref().all_gt(0));
+        this->full_cell_grid_size = scitbx::int3(gridding_n_real);
+        this->determine_boundaries(); // also allocates memory
+        // TODO: ? put more computation here, eg.: mask_asu
+      }
+
+
       //! Clears current, and calculates new mask based on atomic data.
       /*!
           Number of masks produced is equal to shells.size() + 1.
@@ -197,11 +255,28 @@ namespace mmtbx {
           * static_cast<size_t>(this->grid_size()[2]);
       }
 
+      //! Returns asu boundaries
+      void get_asu_boundaries(scitbx::int3 &low, scitbx::int3 &high) const;
+
+      //! Returns asu boundaries expanded by shrink truncation radius
+      void get_expanded_asu_boundaries(scitbx::int3 &low,
+        scitbx::int3 &high) const;
+
+      //! Returns asu boundaries expanded by shrink truncation radius
+      void get_expanded_asu_boundaries(scitbx::double3 &low,
+        scitbx::double3 &high) const;
+
       //! Returns estimated number of atoms intersecting with the asu
       size_t n_asu_atoms() const
       {
         return asu_atoms.size();
       }
+
+      //! Returns reference to direct space asymmetric unit
+      const cctbx::sgtbx::asu::direct_space_asu &get_asu() const { return asu; }
+
+      //! Returns reference to the space group
+      const cctbx::sgtbx::space_group &space_group() const { return group; }
 
       //! Returns number of solvent layers for which mask has been computed
       unsigned char n_solvent_layers() { return n_layers; }
@@ -239,11 +314,6 @@ namespace mmtbx {
 
       void determine_gridding(cctbx::sg_vec3 &grid, double resolution,
         double factor = 4.0) const;
-      void get_asu_boundaries(scitbx::int3 &low, scitbx::int3 &high) const;
-      void get_expanded_asu_boundaries(scitbx::double3 &low,
-        scitbx::double3 &high) const;
-      void get_expanded_asu_boundaries(scitbx::int3 &low,
-        scitbx::int3 &high) const;
       void determine_boundaries();
 
       // these 3 should be some kind of safe reference

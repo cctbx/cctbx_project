@@ -581,11 +581,13 @@ namespace mmtbx { namespace masks {
       step = 0.15;
     step = std::min(0.8, step);
     const double d_min = 2.0*step, resolution_factor = 0.5;
-    const cctbx::sgtbx::search_symmetry_flags use_all(true,
-        0,
-        true,
-        true,
-        true);
+    const cctbx::sgtbx::search_symmetry_flags use_all(
+        true, // use_space_group_symmetry
+        0,    // use_space_group_ltr, not used if use_space_group_symmetry==true
+        true, // use_seminvariants
+        true, // use_normalizer_k2l
+        true  // use_normalizer_l2n
+    );
     grid = cctbx::maptbx::determine_gridding<int>(cell, d_min,
       resolution_factor, use_all, group.type());
   }
