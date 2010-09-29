@@ -6,7 +6,7 @@ from labelit.command_line.stats_distl import pretty_image_stats,notes
 
 def spotfinder_factory(absrundir,frames):
 
-  local_frames=frames.frames(procedure_preferences.wedgelimit)
+  local_frames=frames.frames()
 
   A = frames.images[0]
   #A.readHeader()--deprecate this because it squashes any overrides
@@ -56,7 +56,7 @@ class DistlOrganizer:
   def setCommandInput(self,argument_module):
     # new way of doing things
     self.Files = ImageFiles(argument_module)
-    self.frames = self.Files.frames(procedure_preferences.wedgelimit)
+    self.frames = self.Files.frames()
 
   def printSpots(self):
     '''spotfinder and pickle implicitly assumes ADSC format'''
