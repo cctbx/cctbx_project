@@ -28,11 +28,15 @@ namespace cctbx { namespace sgtbx { namespace asu {
     virtual void get_optimized_grid_limits(scitbx::af::long3 &max_p) const = 0;
     virtual pointer new_copy() const = 0;
     virtual pointer new_volume_only() const = 0;
+    virtual pointer new_volume_only_keep_inclusive_flag() const = 0;
     virtual size_type size() const = 0;
     virtual void change_basis(const change_of_basis_op &) =0;
     virtual void get_nth_plane(size_type i, cut &plane) const = 0;
     virtual double get_tolerance(const scitbx::af::double3 &tol3d) const = 0;
     virtual void print(std::ostream &os) const = 0;
+
+    // DO NOT USE!!!
+    virtual pointer add_face(const cut &face) const = 0;
 
     virtual ~facet_collection() {};
   }; // class facet_collection

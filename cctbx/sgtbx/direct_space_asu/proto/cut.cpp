@@ -46,5 +46,17 @@ namespace cctbx { namespace sgtbx { namespace asu {
     new(this) cut(int3_t(np.num()), cp*np.den(), inclusive);
   }
 
+  // TODO: is it the same as change_basis ?
+  void cut::apply_symop(const rt_mx &symop)
+  {
+    CCTBX_ASSERT( this->n.length_sq()!= 0 );
+    rot_mx r_trans_inv( symop.r().transpose().inverse() );
+    tr_vec np = r_trans_inv * tr_vec(cctbx::sg_vec3(this->n), 1);
+    tr_vec t = symop.t();
+    rational_t cp = rational_t(this->c) - dot(np,t);
+    CCTBX_ASSERT( np.den()>0 );
+    new(this) cut(int3_t(np.num()), cp*np.den(), inclusive);
+  }
+
 }}}
 

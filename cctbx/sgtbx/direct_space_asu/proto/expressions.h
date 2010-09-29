@@ -398,6 +398,56 @@ namespace cctbx { namespace sgtbx { namespace asu {
   };
 
 
+  // These are experimental
+  template< typename T >
+    struct strip_keep_inclusive_flag
+  {
+    typedef int return_type;
+    static return_type execute(const T &epxr)
+    {
+      return 0;
+    }
+  };
+
+  template< >
+    struct strip_keep_inclusive_flag<cut>
+  {
+    typedef cut return_type;
+    static return_type execute(const cut &expr)
+    {
+      cut cut_inc(expr);
+      return cut_inc;
+    }
+  };
+
+
+  template< typename TR >
+    struct strip_keep_inclusive_flag< cut_expression<TR> >
+  {
+    typedef cut return_type;
+    static return_type execute(const cut_expression<TR> &expr)
+    {
+      return expr.lhs;
+    }
+  };
+
+
+  template< typename TL, typename TR >
+    struct strip_keep_inclusive_flag< and_expression<TL,TR> >
+  {
+    typedef typename strip_keep_inclusive_flag<TL>::return_type left_type;
+    typedef typename strip_keep_inclusive_flag<TR>::return_type right_type;
+
+    typedef and_expression< left_type, right_type > return_type;
+
+    static return_type execute(const and_expression<TL,TR> &expr)
+    {
+      return return_type( strip_keep_inclusive_flag<TL>::execute(expr.lhs),
+        strip_keep_inclusive_flag<TR>::execute(expr.rhs) );
+    }
+  };
+
+
 
 }}}
 // \endcond
