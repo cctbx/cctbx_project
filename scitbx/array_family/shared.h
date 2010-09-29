@@ -98,6 +98,33 @@ namespace scitbx { namespace af {
         return shared<ElementType>(*this, weak_ref_flag());
       }
 
+      /// Expression templates
+      //@{
+      template <class E>
+      shared& operator=(expression<E> const &e) {
+        this->ref() = e;
+        return *this;
+      }
+
+      template <class E>
+      shared& operator+=(expression<E> const &e) {
+        this->ref() += e;
+        return *this;
+      }
+
+      template <class E>
+      shared& operator-=(expression<E> const &e) {
+        this->ref() -= e;
+        return *this;
+      }
+
+      template <class E>
+      shared& operator*=(expression<E> const &e) {
+        this->ref() *= e;
+        return *this;
+      }
+      //@}
+
 #     include <scitbx/array_family/detail/reducing_boolean_mem_fun.h>
   };
 

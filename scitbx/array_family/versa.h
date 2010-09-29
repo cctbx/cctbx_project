@@ -58,6 +58,15 @@ namespace scitbx { namespace af {
       {}
 #endif
 
+      // non-std
+      template <class E>
+      versa(expression<E> const &e)
+        : base_class(e.accessor(base_class::accessor()),
+                     init_functor_null<ElementType>())
+      {
+        e.assign_to(this->ref());
+      }
+
       versa(base_class const& other)
         : base_class(other)
       {}
@@ -125,6 +134,33 @@ namespace scitbx { namespace af {
       weak_ref() const {
         return this_type(*this, weak_ref_flag());
       }
+
+      /// Expression templates
+      //@{
+      template <class E>
+      versa& operator=(expression<E> const &e) {
+        this->ref() = e;
+        return *this;
+      }
+
+      template <class E>
+      versa& operator+=(expression<E> const &e) {
+        this->ref() += e;
+        return *this;
+      }
+
+      template <class E>
+      versa& operator-=(expression<E> const &e) {
+        this->ref() -= e;
+        return *this;
+      }
+
+      template <class E>
+      versa& operator*=(expression<E> const &e) {
+        this->ref() *= e;
+        return *this;
+      }
+      //@}
 
 #     include <scitbx/array_family/detail/reducing_boolean_mem_fun.h>
   };
