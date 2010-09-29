@@ -1,6 +1,5 @@
 from __future__ import division
-from libtbx import sge_utils
-from libtbx import pbs_utils
+from libtbx.queuing_system_utils import sge_utils, pbs_utils
 from libtbx.str_utils import show_string
 try: import gzip
 except ImportError: gzip = None
