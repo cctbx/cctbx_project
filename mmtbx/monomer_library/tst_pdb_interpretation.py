@@ -548,6 +548,23 @@ def exercise_sym_excl_indices(mon_lib_srv, ener_lib):
      2.134 3.040 z+1/4,y-1/4,-x+3/4
 """)
 
+def exercise_auto_alias_h_h1():
+  file_paths = []
+  for file_name in ["dpn.pdb", "dpn.cif"]:
+    file_path = libtbx.env.find_in_repositories(
+      relative_path="phenix_regression/pdb/"+file_name,
+      test=os.path.isfile)
+    if (file_path is None):
+      print "Skipping exercise_auto_alias_h_h1():", \
+        "input file not available:", file_name
+      return
+    file_paths.append(file_path)
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.run(
+    args=file_paths, log=log)
+  assert log.getvalue().find("Modifications used: {'NH3': 1}") >= 0
+  assert processed_pdb_file.all_chain_proxies.fatal_problems_message() is None
+
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
@@ -560,6 +577,7 @@ def run(args):
   exercise_corrupt_cif_link()
   exercise_dna_cns_cy5_th6()
   exercise_sym_excl_indices(mon_lib_srv, ener_lib)
+  exercise_auto_alias_h_h1()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
