@@ -400,7 +400,8 @@ lexer_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8
       {
         message += str(boost::format("near char(%#02X) :\n") %(ANTLR3_UINT8)(ex->c));
       }
-      message += str(boost::format("\t%.*s\n") %(width > 20 ? 20 : width ,((pANTLR3_UINT8)ex->index)) );
+      boost::format fmt(str(boost::format("\t%%%is\n") % std::min(width, 20)));
+      message += str(fmt % (pANTLR3_UINT8)(ex->index));
     }
     else
     {
@@ -413,8 +414,10 @@ lexer_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8
 
       if (width >= 1)
       {
-        message += str(boost::format("looks like this:\n\t\t%.*s\n")
-          %(width > 20 ? 20 : width ,(pANTLR3_UINT8)(lexer->rec->state->tokenStartCharIndex)));
+        boost::format fmt(str(boost::format("looks like this:\n\t\t%%%is\n")
+                              % std::min(width, 20)));
+        message += str(
+          fmt % (pANTLR3_UINT8)(lexer->rec->state->tokenStartCharIndex));
       }
       else
       {
