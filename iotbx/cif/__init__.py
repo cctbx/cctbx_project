@@ -139,13 +139,20 @@ class miller_indices_as_cif_loop:
     for hkl in indices:
       self.refln_loop.add_row(hkl)
 
-class miller_array_as_cif_block(crystal_symmetry_as_cif_block,
-                                miller_indices_as_cif_loop):
+
+class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
+                                 miller_indices_as_cif_loop):
 
   def __init__(self, array, array_type):
-    assert array_type in ('calc', 'meas')
     crystal_symmetry_as_cif_block.__init__(self, array.crystal_symmetry())
     miller_indices_as_cif_loop.__init__(self, array.indices())
+    self.indices = array.indices()
+    self.add_miller_array(array, array_type)
+    self.cif_block.add_loop(self.refln_loop)
+
+  def add_miller_array(self, array, array_type):
+    assert array_type in ('calc', 'meas')
+    assert array.size() == self.indices.size()
     if array.is_complex_array():
       columns = {'_refln_F_%s' %array_type: flex.abs(array.data()),
                  '_refln_phase_%s' %array_type: array.phases()}
@@ -157,8 +164,9 @@ class miller_array_as_cif_block(crystal_symmetry_as_cif_block,
                  array.data().as_string()})
       if array.sigmas() is not None:
         columns['_refln_F_%ssigma' %(obs_ext)] = array.sigmas().as_string()
-      self.refln_loop.add_columns(columns)
-    self.cif_block.add_loop(self.refln_loop)
+    for key in columns:
+      assert key not in self.refln_loop
+    self.refln_loop.add_columns(columns)
 
 
 def cctbx_data_structure_from_cif(

@@ -2804,7 +2804,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
   def as_cif_block(self, array_type):
     # array_type is 'meas' or 'calc'
     import iotbx.cif
-    return iotbx.cif.miller_array_as_cif_block(self, array_type).cif_block
+    return iotbx.cif.miller_arrays_as_cif_block(self, array_type).cif_block
 
   def as_phases_phs(self,
         out,
