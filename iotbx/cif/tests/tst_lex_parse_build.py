@@ -63,7 +63,12 @@ def exercise_parser(reader, builder):
   # also test construction of cif model from xray structure
   xs_cif_block = xs1.as_cif_block()
   xs2 = cif.builders.crystal_structure_builder(xs_cif_block).structure
-  for xs in (xs1, xs2):
+  sio = StringIO()
+  xs1.as_cif_simple(out=sio)
+  xs3 = cif.builders.crystal_structure_builder(reader(
+    input_string=sio.getvalue(), builder=builder()).model()['global']).structure
+
+  for xs in (xs1, xs2, xs3):
     sc = xs.scatterers()
     assert list(sc.extract_labels()) == ['o','c']
     assert list(sc.extract_scattering_types()) == ['O','C']

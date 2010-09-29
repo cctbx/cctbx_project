@@ -12,7 +12,6 @@ def run():
   "$D/cif/tests/tst_lex_parse_build.py",
   "$D/cif/tests/tst_model.py",
   "$D/cif/tests/tst_validation.py",
-  "$D/cif/tests/tst_xray_structure.py",
   "$D/shelx/tst_lex_parse_build.py",
   "$D/shelx/tst_hklf.py",
   ["$D/pdb/hybrid_36.py", "exercise"],
