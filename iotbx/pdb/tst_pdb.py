@@ -13,6 +13,19 @@ from cStringIO import StringIO
 import sys, os
 op = os.path
 
+def exercise_amino_acid_codes():
+  from iotbx.pdb import amino_acid_codes as aac
+  ogt = aac.one_letter_given_three_letter
+  tgo = aac.three_letter_given_one_letter
+  for o,t in tgo.items():
+    assert ogt[t] == o
+  assert ogt["MSE"] == ogt["MET"]
+  lgd = aac.three_letter_l_given_three_letter_d
+  dgl = aac.three_letter_d_given_three_letter_l
+  assert len(lgd) == len(dgl)
+  for d,l in lgd.items():
+    assert dgl[l] == d
+
 def exercise_records():
   r = pdb.records.header(pdb_str="""\
 HEADER    PLANT SEED PROTEIN                      31-JAN-97   1AB1""")
@@ -514,6 +527,7 @@ def write_icosahedron():
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
+  exercise_amino_acid_codes()
   exercise_records()
   exercise_make_atom_with_labels()
   exercise_combine_unique_pdb_files()
