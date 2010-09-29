@@ -36,6 +36,8 @@ class evaluate(slots_getstate_setstate):
     "delta",
     "p_distance_c1p_outbound_line",
     "o3p_distance_c1p_outbound_line",
+    "p_perp_xyz",
+    "o3p_perp_xyz",
     "is_epsilon_outlier",
     "is_2p_delta",
     "is_3p_delta",
@@ -93,14 +95,21 @@ class evaluate(slots_getstate_setstate):
     if (c1p_outbound is None):
       p_distance_c1p_outbound_line = None
       o3p_distance_c1p_outbound_line = None
+      p_perp_xyz = None
+      o3p_perp_xyz = None
     else:
       if (p is None):
         p_distance_c1p_outbound_line = None
+        p_perp_xyz = None
       else:
         p_distance_c1p_outbound_line = scitbx.math.line_given_points(
           points=(c1p, c1p_outbound)).distance_sq(point=p)**0.5
+        p_perp_xyz = (p, scitbx.math.line_given_points(
+          points=(c1p, c1p_outbound)).perp_xyz(point=p))
       o3p_distance_c1p_outbound_line = scitbx.math.line_given_points(
         points=(c1p, c1p_outbound)).distance_sq(point=o3p)**0.5
+      o3p_perp_xyz = (o3p, scitbx.math.line_given_points(
+        points=(c1p, c1p_outbound)).perp_xyz(point=o3p))
     n_decisions = 0
     if (   epsilon is None
         or params.epsilon_range_min is None
@@ -162,6 +171,8 @@ class evaluate(slots_getstate_setstate):
       delta=delta,
       p_distance_c1p_outbound_line=p_distance_c1p_outbound_line,
       o3p_distance_c1p_outbound_line=o3p_distance_c1p_outbound_line,
+      p_perp_xyz=p_perp_xyz,
+      o3p_perp_xyz=o3p_perp_xyz,
       is_epsilon_outlier=is_epsilon_outlier,
       is_2p_delta=is_2p_delta,
       is_3p_delta=is_3p_delta,

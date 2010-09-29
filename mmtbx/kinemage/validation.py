@@ -6,12 +6,15 @@ from mmtbx.refinement import fit_rotamers
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.cbetadev import cbetadev
+from mmtbx.validation.rna_validate import rna_validate
 from iotbx.pdb import common_residue_names_get_class
 from libtbx import easy_run
 from scitbx import matrix
 from cctbx import geometry_restraints
 from mmtbx.monomer_library import pdb_interpretation
 from scitbx.array_family import flex
+from mmtbx.monomer_library import rna_sugar_pucker_analysis
+from iotbx.pdb.rna_dna_detection import residue_analysis
 
 def build_name_hash(pdb_hierarchy):
   i_seq_name_hash = dict()
@@ -149,13 +152,25 @@ def get_residue_bonds(residue):
     bonds.append([bond.atom_id_1, bond.atom_id_2])
   return bonds
 
-def kin_vec(start_key, start_xyz, end_key, end_xyz):
-  return "{%s} P %.3f %.3f %.3f {%s} L %.3f %.3f %.3f\n" % (
+def kin_vec(start_key, start_xyz, end_key, end_xyz, width=None):
+  if width is None:
+    return "{%s} P %.3f %.3f %.3f {%s} L %.3f %.3f %.3f\n" % (
            start_key,
            start_xyz[0],
            start_xyz[1],
            start_xyz[2],
            end_key,
+           end_xyz[0],
+           end_xyz[1],
+           end_xyz[2])
+  else:
+    return "{%s} P %.3f %.3f %.3f {%s} L width%d %.3f %.3f %.3f\n" % (
+           start_key,
+           start_xyz[0],
+           start_xyz[1],
+           start_xyz[2],
+           end_key,
+           width,
            end_xyz[0],
            end_xyz[1],
            end_xyz[2])
@@ -245,6 +260,62 @@ def midpoint(p1, p2):
   mid[1] = (p1[1]+p2[1])/2
   mid[2] = (p1[2]+p2[2])/2
   return mid
+
+def pperp_outliers(hierarchy):
+  kin_out = "@vectorlist {ext} color= magenta master= {base-P perp}\n"
+  rv = rna_validate()
+  outliers = rv.pucker_evaluate(hierarchy=hierarchy)
+  params=rv.params.rna_validate.rna_sugar_pucker_analysis
+  outlier_key_list = []
+  for outlier in outliers:
+    outlier_key_list.append(outlier[0])
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for conformer in chain.conformers():
+        for residue in conformer.residues():
+          ra1 = residue_analysis(
+                                 residue_atoms=residue.atoms(),
+                                 distance_tolerance=params.bond_detection_distance_tolerance)
+          if (ra1.problems is not None): continue
+          if (not ra1.is_rna): continue
+          try:
+            key = residue.find_atom_by(name=" C1'").pdb_label_columns()[4:]
+          except:
+            continue
+          if key in outlier_key_list:
+            if rv.pucker_perp_xyz[key][0] is not None:
+              perp_xyz = rv.pucker_perp_xyz[key][0] #p_perp_xyz
+            else:
+              perp_xyz = rv.pucker_perp_xyz[key][1] #o3p_perp_xyz
+            if rv.pucker_dist[key][0] is not None:
+              perp_dist = rv.pucker_dist[key][0]
+              if perp_dist < 2.9:
+                pucker_text = " 2'?"
+              else:
+                pucker_text = " 3'?"
+            else:
+              perp_dist = rv.pucker_dist[key][1]
+              if perp_dist < 2.4:
+                pucker_text = " 2'?"
+              else:
+                pucker_text = " 3'?"
+            key += pucker_text
+            kin_out += kin_vec(key, perp_xyz[0], key, perp_xyz[1])
+            a = matrix.col(perp_xyz[1])
+            b = matrix.col(residue.find_atom_by(name=" C1'").xyz)
+            c = (a-b).normalize()
+            new = a-(c*.8)
+            kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
+            new = a+(c*.4)
+            kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
+            r_vec = matrix.col(perp_xyz[1]) - matrix.col(perp_xyz[0])
+            r = r_vec.axis_and_angle_as_r3_rotation_matrix(angle=90, deg=True)
+            new = r*(new-a)+a
+            kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
+            r = r_vec.axis_and_angle_as_r3_rotation_matrix(angle=180, deg=True)
+            new = r*(new-a)+a
+            kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
+  return kin_out
 
 def rama_outliers(chain, pdbID, ram_outliers):
   ram_out = "@subgroup {Rama outliers} master= {Rama outliers}\n"
@@ -367,7 +438,7 @@ def get_chain_color(index):
 
 def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
   mc_atoms = ["N", "CA", "C", "O", "OXT",
-              "P", "OP1", "OP2", "O5'", "C5'", "C4'", "O4'", "C1'",
+              "P", "OP1", "OP2", "OP3", "O5'", "C5'", "C4'", "O4'", "C1'",
               "C3'", "O3'", "C2'", "O2'"]
   mc_veclist = ""
   sc_veclist = ""
@@ -444,14 +515,14 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
                 try:
                   ca_trace += kin_vec(prev_CA_key, prev_CA_xyz, key, atom.xyz)
                 except:
-                  continue
+                  pass
           if atom.name == ' N  ':
             if prev_C_key != None and prev_C_xyz != None:
               if int(residue_group.resid()) - int(prev_resid) == 1:
                 try:
                   mc_veclist += kin_vec(prev_C_key, prev_C_xyz, key, atom.xyz)
                 except:
-                  continue
+                  pass
         elif(common_residue_names_get_class(atom_group.resname) == "common_rna_dna"):
           if atom.name == " O3'":
             cur_O3_xyz = atom.xyz
@@ -462,7 +533,7 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
                 try:
                   mc_veclist += kin_vec(prev_O3_key, prev_O3_xyz, key, atom.xyz)
                 except:
-                  continue
+                  pass
             p_hash_key[residue_group.resseq_as_int()] = key
             p_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
           elif atom.name == " C1'":
@@ -489,21 +560,21 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
                                 p_hash_key[residue_group.resseq_as_int()],
                                 p_hash_xyz[residue_group.resseq_as_int()])
         except:
-          continue
+          pass
         try:
           virtual_bb += kin_vec(p_hash_key[residue_group.resseq_as_int()],
                                 p_hash_xyz[residue_group.resseq_as_int()],
                                 c4_hash_key[residue_group.resseq_as_int()],
                                 c4_hash_xyz[residue_group.resseq_as_int()])
         except:
-          continue
+          pass
         try:
           virtual_bb += kin_vec(c4_hash_key[residue_group.resseq_as_int()],
                                 c4_hash_xyz[residue_group.resseq_as_int()],
                                 c1_hash_key[residue_group.resseq_as_int()],
                                 c1_hash_xyz[residue_group.resseq_as_int()])
         except:
-          continue
+          pass
 
       bonds = get_bond_pairs(code=atom_group.resname)
 
@@ -526,7 +597,7 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
                                  het_hash[bond[1]][0],
                                  het_hash[bond[1]][1])
                 except:
-                  continue
+                  pass
             else:
               try:
                 hets += kin_vec(het_hash[bond[0]][0],
@@ -534,10 +605,11 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
                               het_hash[bond[1]][0],
                               het_hash[bond[1]][1])
               except:
-                continue
+                pass
 
       if bonds is not None:
         for bond in bonds:
+          #print key_hash[bond[0]]
           if bond[0] in mc_atoms and bond[1] in mc_atoms:
             try:
               mc_veclist += kin_vec(key_hash[bond[0]],
@@ -545,7 +617,7 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
                                   key_hash[bond[1]],
                                   xyz_hash[bond[1]])
             except:
-              continue
+              pass
 
           elif (bond[0].startswith('H') or bond[1].startswith('H')):
             if show_hydrogen:
@@ -556,7 +628,7 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
                                         key_hash[bond[1]],
                                         xyz_hash[bond[1]])
                 except:
-                  continue
+                  pass
               else:
                 try:
                   sc_h_veclist += kin_vec(key_hash[bond[0]],
@@ -564,7 +636,7 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
                                         key_hash[bond[1]],
                                         xyz_hash[bond[1]])
                 except:
-                  continue
+                  pass
           else:
             try:
               sc_veclist += kin_vec(key_hash[bond[0]],
@@ -572,7 +644,7 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
                                   key_hash[bond[1]],
                                   xyz_hash[bond[1]])
             except:
-              continue
+              pass
 
   #print p_hash_key
   #clean up empty lists:
@@ -627,6 +699,7 @@ def get_footer():
 @master {angle dev} on
 @master {length dev} on
 @master {Cbeta dev} on
+@master {base-P perp} on
 @master {hets} on
 """
   return footer
@@ -684,6 +757,7 @@ def get_multikin(f, pdb_io):
                            pdbID=pdbID,
                            deviations=deviations,
                            ideal=cb.get_beta_ideal())
+      kin_out += pperp_outliers(hierarchy=hierarchy)
       counter += 1
   kin_out += make_probe_dots(hierarchy=hierarchy)
   kin_out += get_footer()
@@ -708,5 +782,5 @@ def run(args):
   get_multikin(f=outfile, pdb_io=pdb_io)
   return outfile
 
-if __name__ == "__main__":
-  run(args=sys.argv[1:])
+#if __name__ == "__main__":
+#  run(args=sys.argv[1:])

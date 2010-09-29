@@ -22,6 +22,10 @@ class line_given_points(object):
     return self.delta.cross(point - self.points[0]).norm_sq() \
          / self.delta_norm_sq
 
+  def perp_xyz(self, point):
+    t = -(self.points[0] - point).dot(self.delta) / self.delta.norm_sq()
+    return self.points[0]+(self.delta*t)
+
 def euler_angles_as_matrix(angles, deg=False):
   if (deg):
     angles = [a*math.pi/180 for a in angles]
