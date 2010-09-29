@@ -261,7 +261,7 @@ STOP_	:	( 'S' | 's' ) ( 'T' | 't' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_' ;
  * SPECIAL KEY WORDS
  *------------------------------------------------------------------*/
 
-VERSION	:	'#\\#CIF_' (DIGIT)+ '.' (DIGIT)+ ;
+//VERSION	:	'#\\#CIF_' (DIGIT)+ '.' (DIGIT)+ ;
 
 DATA_BLOCK_HEADING
 	:	DATA_ (NON_BLANK_CHAR)+ ;
