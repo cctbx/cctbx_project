@@ -680,7 +680,7 @@ else:
                 and libtbx.env.build_options.force_32bit):
         opts[1] = "-O1" # Apple's optimizer is even more broken
       elif (libtbx.env.build_options.max_optimized):
-        opts[1] = "-fast"
+        if cxx != "clang++": opts[1] = "-fast"
         if (env_etc.mac_cpu_is_g4):
           opts.insert(1, "-mcpu=G4")
     else:
