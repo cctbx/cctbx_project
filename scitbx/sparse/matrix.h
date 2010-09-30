@@ -508,12 +508,15 @@ public:
 
   /// A^T A where A is this matrix
   matrix this_transpose_times_this() {
-    index_type m = n_rows(), n = n_cols();
+    index_type n = n_cols();
     matrix result(n, n);
-    for (index_type i=0; i<m; ++i) for (index_type j=i; j<n; ++j) {
-      result(i, j) = col(i)*col(j);
+    for (index_type i=0; i<n; ++i) {
+      result(i, i) = col(i)*col(i);
+      for (index_type j=i+1; j<n; ++j) {
+        result(j, i) = result(i, j) = col(i)*col(j);
+      }
     }
-    result.set_compact(true); // by construction
+    result.compact();
     return result;
   }
 
