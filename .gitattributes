@@ -846,7 +846,6 @@ libtbx/queuing_system_utils/pbs_utils.py svneol=native#text/x-python
 libtbx/queuing_system_utils/sge/__init__.py svneol=native#text/x-python
 libtbx/queuing_system_utils/sge/core.py svneol=native#text/x-python
 libtbx/queuing_system_utils/sge_utils.py svneol=native#text/x-python
-libtbx/queuing_system_utils/sge_utils.pyc -text
 libtbx/runtime_utils.py -text
 libtbx/smart_open.py svneol=native#text/x-python
 libtbx/smp_utils.py -text
