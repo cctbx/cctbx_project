@@ -338,9 +338,51 @@ def exercise_dense_matrix_op_sparse_matrix():
   assert approx_equal(list(a), [ 2, 2, 3,
                                  4, 5, 9 ], eps=1e-15)
 
+def exercise_block_assignment():
+  a = sparse.matrix(4, 6)
+  a[1, 2] = 3
+  a[3, 3] = 6
+  a[0, 5] = 5
+  a[2, 0] = 2
+  b = sparse.matrix(2, 3)
+  b[0, 0] = 1
+  b[0, 1] = 2
+  b[1, 2] = 3
+  a.assign_block(b, 1, 2)
+  assert list(a.as_dense_matrix()) == [ 0, 0, 0, 0, 0, 5,
+                                        0, 0, 1, 2, 0, 0,
+                                        2, 0, 0, 0, 3, 0,
+                                        0, 0, 0, 6, 0, 0 ]
+  assert a.is_structural_zero(1, 4)
+  assert a.is_structural_zero(2, 2)
+  assert a.is_structural_zero(2, 3)
+
+  try:
+    a.assign_block(b, 3, 3)
+    raise Exception_expected
+  except RuntimeError:
+    pass
+  try:
+    a.assign_block(b, 1, 4)
+    raise Exception_expected
+  except RuntimeError:
+    pass
+
+  c = flex.double(( 1,  2,
+                    0, -1,
+                    1,  0 ))
+  c.reshape(flex.grid(3, 2))
+  a.assign_block(c, 1, 1)
+  assert list(a.as_dense_matrix()) == [ 0, 0,  0, 0, 0, 5,
+                                        0, 1,  2, 2, 0, 0,
+                                        2, 0, -1, 0, 3, 0,
+                                        0, 1,  0, 6, 0, 0 ]
+  assert a.is_structural_zero(2, 1)
+  assert a.is_structural_zero(3, 2)
 
 def run():
   libtbx.utils.show_times_at_exit()
+  exercise_block_assignment()
   exercise_dense_matrix_op_sparse_matrix()
   exercise_column_selection()
   exercise_a_tr_a()

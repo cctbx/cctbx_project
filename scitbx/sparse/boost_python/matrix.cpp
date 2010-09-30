@@ -140,6 +140,11 @@ struct matrix_wrapper
            return_internal_reference<1>())
       .def("__getitem__", getitem)
       .def("__setitem__", setitem)
+      .def("assign_block",
+           (void (wt::*)(af::const_ref<double, af::mat_grid> const &,
+                         int, int))&wt::assign_block)
+      .def("assign_block",
+           (void (wt::*)(wt const &, int, int))&wt::assign_block)
       .def("is_structural_zero", &wt::is_structural_zero)
       .def("compact", &wt::compact)
       .def("is_upper_triangular", &wt::is_upper_triangular)
