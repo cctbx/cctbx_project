@@ -307,11 +307,11 @@ def exercise_a_tr_a():
   a = sparse.matrix(6, 3,
                     elements_by_columns = [ { 0: 1, 3:2, 5:3 },
                                             { 1:-1, 3:3, 4:-2 },
-                                            { 2:1 } ])
+                                            { 2:1, } ])
   aa = a.as_dense_matrix()
   b = a.self_transpose_times_self()
   bb = b.as_dense_matrix()
-  assert bb == aa.matrix_transpose().matrix_multiply(aa)
+  assert bb.all_eq(aa.matrix_transpose().matrix_multiply(aa))
 
 def exercise_column_selection():
   columns = [ { 0:1, 3:3 },
