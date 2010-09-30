@@ -292,14 +292,12 @@ public:
     return af::mat_grid(n_rows(), n_cols());
   }
 
-  /// Assign this to the given reference to a dense matrix
-  /** This enables af::ref<T, af::mat_grid> b = a
-      for any sparse::matrix<T> a
-   */
-  void assign_to(af::ref<T, af::mat_grid> const &b) const {
+private:
+  template <class Operator>
+  void operate_on(Operator const &op, af::ref<T, af::mat_grid> const &b) const {
     SCITBX_ASSERT(n_cols() == b.n_columns() && n_rows() == b.n_rows())
                  (n_cols())(b.n_columns())(n_rows())(b.n_rows());
-    std::fill(b.begin(), b.end(), T(0));
+    op.init(b);
     for (int j=0; j<n_cols(); ++j) {
       for (typename matrix<T>::const_row_iterator p=col(j).begin();
            p != col(j).end();
@@ -307,9 +305,39 @@ public:
       {
         typename matrix<T>::index_type i = p.index();
         typename matrix<T>::value_type a_ij = *p;
-        b(i,j) = a_ij;
+        op(b(i,j), a_ij);
       }
     }
+  }
+
+  struct assign
+  {
+    void init(af::ref<T, af::mat_grid> const &b) const {
+      std::fill(b.begin(), b.end(), T(0));
+    }
+
+    void operator()(T &b_ij, T a_ij) const { b_ij = a_ij; }
+  };
+
+  struct plus_equal
+  {
+    void init(af::ref<T, af::mat_grid> const &b) const {};
+    void operator()(T &b_ij, T a_ij) const { b_ij += a_ij; }
+  };
+
+  struct minus_equal
+  {
+    void init(af::ref<T, af::mat_grid> const &b) const {};
+    void operator()(T &b_ij, T a_ij) const { b_ij -= a_ij; }
+  };
+
+public:
+  /// Assign this to the given reference to a dense matrix
+  /** This enables af::ref<T, af::mat_grid> b = a
+      for any sparse::matrix<T> a
+   */
+  void assign_to(af::ref<T, af::mat_grid> const &b) const {
+    operate_on(assign(), b);
   }
 
   /// Add this to the given reference to a dense matrix
@@ -317,18 +345,7 @@ public:
       for any sparse::matrix<T> a
    */
   void add_to(af::ref<T, af::mat_grid> const &b) const {
-    SCITBX_ASSERT(n_cols() == b.n_columns() && n_rows() == b.n_rows())
-                 (n_cols())(b.n_columns())(n_rows())(b.n_rows());
-    for (int j=0; j<n_cols(); ++j) {
-      for (typename matrix<T>::const_row_iterator p=col(j).begin();
-           p != col(j).end();
-           ++p)
-      {
-        typename matrix<T>::index_type i = p.index();
-        typename matrix<T>::value_type a_ij = *p;
-        b(i,j) += a_ij;
-      }
-    }
+    operate_on(plus_equal(), b);
   }
 
   /// Substract from the given reference to a dense matrix
@@ -336,18 +353,7 @@ public:
       for any sparse::matrix<T> a
    */
   void substract_from(af::ref<T, af::mat_grid> const &b) const {
-    SCITBX_ASSERT(n_cols() == b.n_columns() && n_rows() == b.n_rows())
-                 (n_cols())(b.n_columns())(n_rows())(b.n_rows());
-    for (int j=0; j<n_cols(); ++j) {
-      for (typename matrix<T>::const_row_iterator p=col(j).begin();
-           p != col(j).end();
-           ++p)
-      {
-        typename matrix<T>::index_type i = p.index();
-        typename matrix<T>::value_type a_ij = *p;
-        b(i,j) -= a_ij;
-      }
-    }
+    operate_on(minus_equal(), b);
   }
 
   /// Matrix times matrix
