@@ -73,6 +73,7 @@ class hooft_analysis:
       width *= 2
       if self.log_p_obs_given_gamma(min_gamma) - max_log_p_obs < -10:
         break
+    width = max_gamma - min_gamma
     while True:
       # search for where the curve becomes close to zero on the right
       max_gamma = middle + width/2
