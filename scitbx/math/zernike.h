@@ -1447,6 +1447,90 @@ namespace zernike{
 
 
   /*
+   * Implementation of 2d zernike radial function using discrete cosine expansion
+   */
+  template <typename FloatType = double>
+  class zernike_2d_radial_dc
+  {
+    public:
+    /* Default constructor */
+    zernike_2d_radial_dc() {}
+    /* Basic Constructor */
+    zernike_2d_radial_dc(int const& n, int const& l)
+    :
+    n_(n),
+    n_terms_(n*2),
+    n_plus_1_(static_cast<FloatType>(n+1)),
+    l_(l),
+    eps_(1e-18)
+    {
+      SCITBX_ASSERT( (n_-l_)/2*2 ==(n_-l_) );
+      two_pi_ = scitbx::constants::pi*2.0;
+      if(n_>0) {
+        two_pi_over_nterm_ = two_pi_/static_cast<FloatType>(n_terms_);
+        two_pi_over_nterm_l_ = two_pi_over_nterm_*static_cast<FloatType>(l_);
+//        build_array();
+      }
+    }
+
+    void build_array()
+    {
+      FloatType n_terms_float( n_terms_ );
+      step_size_ = 1.0/n_terms_float;
+      r_array_.reserve(n_terms_+1);
+      f_r_array_.reserve(n_terms_+1);
+      for(int i=0;i<=n_terms_;i++)
+      {
+        x_=i/n_terms_float;
+        r_array_.push_back( x_ );
+        f_r_array_.push_back( f_exact(x_) );
+      }
+      return;
+    }
+
+    FloatType f( FloatType r )
+    {
+      if(n_==0) return 1.0;
+      if(r==1.0) return 1.0;
+      return f_exact(r);
+      indx_=int(r*n_terms_);
+      //std::cout<<r_array_[indx_]<<" "<<r_array_[indx_+1]<<" "<<f_r_array_[indx_]<<" "<<f_r_array_[indx_+1]<<r<<std::endl;
+      value_=(r-r_array_[indx_])*f_r_array_[indx_+1]-(r-r_array_[indx_+1])*f_r_array_[indx_];
+      value_/=step_size_;
+      return value_;
+    }
+
+    FloatType f_exact(FloatType r)
+    {
+      if(n_==0) return 1.0;
+      if(r==1.0) return 1.0;
+      value_=0.0;
+      for(int k=0;k<n_terms_;k++)
+      {
+        x_=r*std::cos(two_pi_over_nterm_*k);
+        mu_ = std::acos(x_);
+        temp_ = std::sin(mu_*(n_plus_1_))/std::sin(mu_)*std::cos(two_pi_over_nterm_l_*k);
+        value_+=temp_;
+      }
+      return value_/n_terms_;
+    }
+
+    int n(){ return(n_); }
+    int l(){ return(l_); }
+
+    private:
+    int n_;
+    int l_;
+    int n_terms_;
+    int indx_;
+    FloatType eps_, value_, two_pi_, two_pi_over_nterm_, two_pi_over_nterm_l_;
+    FloatType x_, temp_,mu_, n_plus_1_;
+    FloatType step_size_;
+    scitbx::af::shared< FloatType > f_r_array_;
+    scitbx::af::shared< FloatType > r_array_;
+  };
+
+  /*
    * A single Zernike 2d polynome of index n,l
    */
   template <typename FloatType = double>
@@ -1456,12 +1540,12 @@ namespace zernike{
     /* Default constructor */
     zernike_2d_polynome(){}
     /* Basic constructor */
-    zernike_2d_polynome(int const& n, int const& l, zernike_2d_radial<FloatType> const& rnl)
-    :
+    zernike_2d_polynome(int const& n, int const& l):
+    rnl_(n,l),
     n_(n),
     l_(l)
     {
-      rnl_ = rnl;
+      //rnl_ = rnl;
       SCITBX_ASSERT( rnl_.n() == n_ );
       SCITBX_ASSERT( rnl_.l() == l_ );
     }
@@ -1486,7 +1570,7 @@ namespace zernike{
 
     private:
     int n_, l_;
-    zernike_2d_radial<FloatType> rnl_;
+    zernike_2d_radial_dc<FloatType> rnl_;
   };
 
 
