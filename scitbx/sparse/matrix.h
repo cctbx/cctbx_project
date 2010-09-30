@@ -130,6 +130,33 @@ public:
     return column[j][i];
   }
 
+  /// Assign the given matrix to the block starting at row i and column j
+  void assign_block(matrix const &b, int i, int j) {
+    SCITBX_ASSERT(i + b.n_rows() <= n_rows())(i)(b.n_rows())(n_rows());
+    SCITBX_ASSERT(j + b.n_cols() <= n_cols())(j)(b.n_cols())(n_cols());
+    for (int jj=0; jj<b.n_cols(); ++jj) {
+      for (const_row_iterator p=b.col(jj).begin(); p != b.col(jj).end(); ++p)
+      {
+        index_type ii = p.index();
+        (*this)(i + ii, j + jj) = *p;
+      }
+    }
+    compact();
+  }
+
+  /// Assign the given matrix to the block starting at row i and column j
+  /** Zero elements in b results in structural zeroes in the assign sparse block
+   */
+  void assign_block(af::const_ref<T, af::mat_grid> const &b, int i, int j) {
+    SCITBX_ASSERT(i + b.n_rows() <= n_rows())(i)(b.n_rows())(n_rows());
+    SCITBX_ASSERT(j + b.n_columns() <= n_cols())(j)(b.n_columns())(n_cols());
+    for (int jj=0; jj<b.n_columns(); ++jj) for (int ii=0; ii<b.n_rows(); ++ii)
+    {
+      if (b(ii, jj) != T(0)) (*this)(i + ii, j + jj) = b(ii, jj);
+    }
+    compact();
+  }
+
   /// Whether the element (i,j) is a structural zero
   bool is_structural_zero(index_type i, index_type j) {
     return column[j].is_structural_zero(i);
