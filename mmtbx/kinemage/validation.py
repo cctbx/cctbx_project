@@ -32,7 +32,7 @@ def get_angle_outliers(angle_proxies, sites_cart, hierarchy):
     atom1 = i_seq_name_hash[ap.i_seqs[0]][0:4].strip()
     atom2 = i_seq_name_hash[ap.i_seqs[1]][0:4].strip()
     atom3 = i_seq_name_hash[ap.i_seqs[2]][0:4].strip()
-    sigma = ((1/restraint.weight)**(.5))*2
+    sigma = ((1/restraint.weight)**(.5))
     num_sigmas = - (restraint.delta / sigma) #negative to match MolProbity direction
     if abs(num_sigmas) >= 4.0:
       angle_key = res[0:3].lower()+res[3:]+' '+atom1.lower()+ \
@@ -53,7 +53,7 @@ def get_bond_outliers(bond_proxies, sites_cart, hierarchy):
     res = i_seq_name_hash[bp.i_seqs[0]][5:]
     atom1 = i_seq_name_hash[bp.i_seqs[0]][0:4].strip()
     atom2 = i_seq_name_hash[bp.i_seqs[1]][0:4].strip()
-    sigma = ((1/restraint.weight)**(.5))*2
+    sigma = ((1/restraint.weight)**(.5))
     num_sigmas = -(restraint.delta / sigma) #negative to match MolProbity direction
     if abs(num_sigmas) >= 4.0:
       bond_key = res[0:3].lower()+res[3:]+' '+atom1.lower()+'-'+atom2.lower()
