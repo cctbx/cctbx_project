@@ -118,6 +118,8 @@ struct vector_wrapper
       .def(self - self)
       .def(self * self)
       .def(self == self)
+      .def("weighted_dot", wt::weighted_dot)
+      .staticmethod("weighted_dot")
       ;
   }
 };
