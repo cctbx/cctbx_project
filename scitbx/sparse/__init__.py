@@ -18,3 +18,20 @@ class _matrix(boost.python.injector, matrix):
       for i,val in c:
         result[i,j] = val
     return result
+
+
+class _flex_double(boost.python.injector, flex.double):
+  """ Inject method to flex.double to allow
+  a = flex.double(...)
+  a.reshape(flex.grid(...))
+  a += sparse.matrix(...)
+  a -= sparse.matrix(...)
+  """
+
+  def __iadd__(self, sparse_matrix):
+    sparse_matrix._add_to(self)
+    return self
+
+  def __isub__(self, sparse_matrix):
+    sparse_matrix._substract_from(self)
+    return self
