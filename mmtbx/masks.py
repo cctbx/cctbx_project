@@ -10,6 +10,7 @@ from scitbx import matrix
 import sys
 import iotbx.xplor.map
 import iotbx.phil
+from libtbx.utils import Sorry
 from libtbx import introspection
 from libtbx import adopt_init_args
 from copy import deepcopy
@@ -179,6 +180,9 @@ class manager(object):
     return new_manager
 
   def _get_grid_step(self):
+    if not (self.mask_params.grid_step_factor > 0) :
+      raise Sorry("Inappropriate value for grid_step_factor: must be "+
+        "positive and non-zero.")
     assert self.mask_params.grid_step_factor > 0
     step = self.miller_array.d_min()/self.mask_params.grid_step_factor
     if(step < 0.15): step = 0.15
