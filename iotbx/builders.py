@@ -9,7 +9,7 @@ import libtbx.load_env
 if (libtbx.env.has_module(name="smtbx")):
   from smtbx.refinement.restraints import adp_restraints as smtbx_adp_restraints
 else:
-  smtbx_adp_restraints == None
+  smtbx_adp_restraints = None
 
 import iotbx.constraints.commonplace
 import iotbx.constraints.geometrical
