@@ -122,7 +122,8 @@ class rna_validate(object):
     for line in suitename_out:
       if '!!' in line:
         temp = line.split(":")
-        key = ' '+temp[5][0:4]+temp[2]+temp[3]+temp[4]
+        key = ' '+temp[5][0:3]+temp[2]+temp[3]+temp[4]
+        print key
         temp2 = temp[5].split(" ")
         suite_outliers.append([key,temp2[len(temp2)-1]])
     return suite_outliers
