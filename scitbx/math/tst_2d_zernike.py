@@ -21,8 +21,9 @@ def read_data(filename):
 def generate_image(n,l, N=100):
   nmax = max(20,n)
   lfg =  math.log_factorial_generator(nmax)
-  rzfa = math.zernike_2d_radial(n,l,lfg)
-  rap = math.zernike_2d_polynome(n,l,rzfa)
+  #rzfa = math.zernike_2d_radial(n,l,lfg)
+  #rap = math.zernike_2d_polynome(n,l,rzfa)
+  rap = math.zernike_2d_polynome(n,l)#,rzfa)
 
   image = flex.vec3_double()
 
@@ -31,12 +32,12 @@ def generate_image(n,l, N=100):
   for x in range(-N, N+1):
     for y in range(-N, N+1):
       rr = smath.sqrt(x*x+y*y)/N
-      tt = smath.atan2(y,x)
-      value = rap.f(rr,tt)
-      value = value.real
       if rr>1.0:
         value=0.0
       else:
+        tt = smath.atan2(y,x)
+        value = rap.f(rr,tt)
+        value = value.real
         count = count + 1
       image.append([x+N,y+N,value])
       print>>original, x+N,y+N, value
@@ -86,8 +87,8 @@ def tst_2d_zernike_mom(n,l, N=100, filename=None):
     l=nl[1]
     if(l>0):
       c=c*2
-    rzfa = math.zernike_2d_radial(n,l,lfg)
-    rap = math.zernike_2d_polynome(n,l,rzfa)
+    #rzfa = math.zernike_2d_radial(n,l,lfg)
+    rap = math.zernike_2d_polynome(n,l) #,rzfa)
     i=0
     for x in range(0,NP):
       x=x-N
@@ -120,8 +121,9 @@ def tst_2d_poly(n,l):
   x,y=0.1,0.9
   r,t=smath.sqrt(x*x+y*y),smath.atan2(y,x)
   lfg =  math.log_factorial_generator(nmax)
-  rzfa = math.zernike_2d_radial(n,l,lfg)
-  rap = math.zernike_2d_polynome(n,l,rzfa)
+  #rzfa = math.zernike_2d_radial(n,l,lfg)
+  #rap = math.zernike_2d_polynome(n,l,rzfa)
+  rap = math.zernike_2d_polynome(n,l)#,rzfa)
   rt_value=rap.f(r,t)
   grid = math.two_d_grid(np, nmax)
   zm2d = math.two_d_zernike_moments(grid, nmax)
@@ -180,10 +182,10 @@ def tst_2d_zm(n,l):
 
 if __name__ == "__main__":
   t1=time.time()
-  tst_2d_zm(41,21)
+  tst_2d_zm(41,1)
   t2=time.time()
   print"xy:  ", t2-t1
-  tst_2d_zernike_mom(41,21)
+  tst_2d_zernike_mom(41,1)
   t3=time.time()
   print"rt:  ", t3-t2
   exit()

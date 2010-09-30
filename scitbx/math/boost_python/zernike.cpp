@@ -188,10 +188,10 @@ namespace {
       using namespace boost::python;
 
       class_<w_t>("zernike_2d_polynome", no_init)
-        .def(init<int const&, int const&, zernike::zernike_2d_radial<double> const& >
+        .def(init<int const&, int const&> //, zernike::zernike_2d_radial_dc<double> const& >
                   ((arg("n"),
-                    arg("l"),
-                    arg("Rnl")
+                    arg("l")
+//                    arg("Rnl")
                    )))
          .def("f", &w_t::f)
        ;
