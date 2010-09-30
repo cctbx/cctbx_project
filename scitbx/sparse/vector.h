@@ -514,6 +514,15 @@ public:
     return v;
   }
 
+  /// vector^T * diagonal matrix * vector
+  static
+  value_type weighted_dot(vector const &u,
+                                af::const_ref<value_type> const &w,
+                                vector const &v)
+  {
+    return weighted_dot_op(u, w, v).result;
+  }
+
   /// Linear algebra
   //@{
   friend value_type operator*(vector const &u, vector const &v) {
@@ -635,6 +644,24 @@ private:
 
     void operator()(index_type i, value_type x, value_type y) {
       result += x*y;
+    }
+  };
+
+  struct weighted_dot_op : vector_op_vector_core<weighted_dot_op>
+  {
+    value_type result;
+    af::const_ref<value_type> const &w;
+
+    weighted_dot_op(vector const &u,
+                          af::const_ref<value_type> const &w,
+                          vector const &v)
+    : w(w), result(0)
+    {
+      this->loop(u,v);
+    }
+
+    void operator()(index_type i, value_type x, value_type y) {
+      result += w[i]*x*y;
     }
   };
 
