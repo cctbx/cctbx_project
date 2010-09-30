@@ -318,6 +318,33 @@ def exercise_a_tr_a():
   bb = b.as_dense_matrix()
   assert bb.all_eq(aa.matrix_transpose().matrix_multiply(aa))
 
+def exercise_a_tr_diag_a():
+  a = sparse.matrix(9, 7)
+  for i in xrange(a.n_rows):
+    for j in xrange(a.n_cols):
+      if (2*i + j) % 3 == 1: a[i,j] = 1
+  w = flex.double([ (-1)**i*i for i in xrange(a.n_rows) ])
+  b = a.self_transpose_times_diagonal_times_self(w)
+  b0 = sparse.matrix(7, 7)
+  b0[0, 0] = 5.
+  b0[0, 3] = 5.
+  b0[0, 6] = 5.
+  b0[1, 1] = 3.
+  b0[1, 4] = 3.
+  b0[2, 2] = -4.
+  b0[2, 5] = -4.
+  b0[3, 0] = 5.
+  b0[3, 3] = 5.
+  b0[3, 6] = 5.
+  b0[4, 1] = 3.
+  b0[4, 4] = 3.
+  b0[5, 2] = -4.
+  b0[5, 5] = -4.
+  b0[6, 0] = 5.
+  b0[6, 3] = 5.
+  b0[6, 6] = 5.
+  assert sparse.approx_equal(tolerance=1e-12)(b, b0)
+
 def exercise_column_selection():
   columns = [ { 0:1, 3:3 },
               { 1:-1, 5:-2 },
@@ -391,6 +418,7 @@ def run():
   exercise_dense_matrix_op_sparse_matrix()
   exercise_column_selection()
   exercise_a_tr_a()
+  exercise_a_tr_diag_a()
   exercise_dot_product()
   exercise_vector()
   exercise_matrix()
