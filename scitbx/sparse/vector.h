@@ -428,7 +428,7 @@ public:
   /// Whether the element of index i is a structural zero
   bool is_structural_zero(index_type i) const {
     compact();
-    return std::binary_search(elements.begin(), elements.end(), element(i));
+    return !std::binary_search(elements.begin(), elements.end(), element(i));
   }
 
   /// Equality

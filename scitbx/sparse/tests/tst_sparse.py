@@ -31,6 +31,9 @@ def exercise_vector():
   v[1] = 3
   v[4] = 0
   assert list(v.compact()) == [(1,3.), (4,0.), (7,6.), (9,9.)]
+  assert ([ v.is_structural_zero(i) for i in xrange(10) ]
+          ==
+          [ True, False, True, True, False, True, True, False, True, False ])
 
   v = sparse.vector(10)
   v[4] += 1
