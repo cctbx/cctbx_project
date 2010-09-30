@@ -164,6 +164,8 @@ struct matrix_wrapper
       .def("self_times_symmetric_times_self_transpose",
            &wt::this_times_symmetric_times_this_transpose)
       .def("self_transpose_times_self", &wt::this_transpose_times_this)
+      .def("self_transpose_times_diagonal_times_self",
+           &wt::this_transpose_times_diagonal_times_this)
       .def("__str__", str_)
       .def("__repr__", repr)
       .def("_add_to", &wt::add_to)

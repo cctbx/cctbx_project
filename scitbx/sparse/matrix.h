@@ -520,6 +520,21 @@ public:
     return result;
   }
 
+  /// A^T W A where W is a diagonal matrix
+  matrix
+  this_transpose_times_diagonal_times_this(af::const_ref<value_type> const &w) {
+    SCITBX_ASSERT(w.size() == n_rows())(w.size())(n_rows());
+    index_type n = n_cols();
+    matrix result(n, n);
+    for (index_type i=0; i<n; ++i) {
+      result(i, i) = column_type::weighted_dot(col(i), w, col(i));
+      for (index_type j=i+1; j<n; ++j) {
+        result(j,i) = result(i,j) = column_type::weighted_dot(col(i), w, col(j));
+      }
+    }
+    result.compact();
+    return result;
+  }
 
 private:
   typedef af::shared<column_type> container_type;
