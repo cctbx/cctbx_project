@@ -92,6 +92,12 @@ class instruction_parser(parser):
         self.instructions['twin'] = twin
       elif cmd == 'BASF':
         self.instructions['basf'] = args
+      elif cmd == 'EXTI':
+        if len(args) == 1:
+          self.instructions['exti'] = args[0]
+      elif cmd == 'CELL':
+        self.instructions['cell'] = args
+        yield command, line
       else:
         yield command, line
 
@@ -341,15 +347,15 @@ class afix_parser(parser):
 class restraint_parser(atom_parser):
   """ It must be after an atom parser """
 
-  shelx_restraints = {
-    'DFIX': {'d': None, 's': 0.02, 'i_seqs': None, 'sym ops': None},
-    'DANG': {'d': None, 's': 0.04, 'i_seqs': None, 'sym ops': None},
-    'FLAT': {'s': 0.1, 'atoms': None, 'sym ops': None},
-    'CHIV': {'V': 0, 's': 0.1, 'atoms': None, 'sym ops': None},
-    'SADI': {'s': 0.02, 'i_seqs': None, 'sym ops': None},
-    'SIMU': {'sigma': 0.04, 'sigma_terminal': None, 'i_seqs': None},
-    'DELU': {'sigma_12': 0.01, 'sigma_13': None, 'i_seqs': None},
-    'ISOR': {'sigma': 0.1, 'sigma_terminal': None, 'i_seqs': None},
+  restraint_types = {
+    'DFIX':'bond',
+    'DANG':'bond',
+    'FLAT':'planarity',
+    'CHIV':'chirality',
+    'SADI':'bond_similarity',
+    'SIMU':'adp_similarity',
+    'DELU':'rigid_bond',
+    'ISOR':'isotropic_adp',
   }
 
   def filtered_commands(self):
@@ -357,7 +363,7 @@ class restraint_parser(atom_parser):
     self.symmetry_operations = {}
     for command, line in self.command_stream:
       cmd, args = command[0], command[-1]
-      if cmd in self.shelx_restraints.keys():
+      if cmd in self.restraint_types:
         self.cache_restraint(cmd, line, args)
       elif cmd == 'EQIV':
         self.symmetry_operations.setdefault(args[0], args[1])
@@ -374,49 +380,64 @@ class restraint_parser(atom_parser):
     for cmd, restraints in self.cached_restraints.items():
       for line, args in restraints.iteritems():
         try:
-          kwds = self.shelx_restraints[cmd].copy()
+          restraint_type = self.restraint_types.get(cmd)
           if cmd in ('DFIX','DANG'):
             div, mod = divmod(len(args), 2)
-            kwds['d'] = float(args[0])
+            distance_ideal = float(args[0])
             if mod == 0:
-              kwds['s'] = float(args[1])
+              sigma = float(args[1])
               atoms = args[2:]
             else:
+              if cmd == 'DFIX': sigma = 0.02
+              else: sigma = 0.04
               atoms = args[1:]
             assert len(atoms) > 1
             for i in range(div-(1-mod)):
               atom_pair = atoms[i*2:(i+1)*2]
-              kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atom_pair]
-              kwds['sym ops'] = [self.symmetry_operations.get(atom[2]) for atom in atom_pair]
-            self.builder.process_restraint(cmd, kwds)
+              i_seqs = [self.scatterer_label_to_index[atom[1]] for atom in atom_pair]
+              sym_ops = [self.symmetry_operations.get(atom[2]) for atom in atom_pair]
+            weight = 1/(sigma**2)
+            self.builder.process_restraint(restraint_type,
+                                           distance_ideal=distance_ideal,
+                                           weight=weight,
+                                           i_seqs=i_seqs,
+                                           sym_ops=sym_ops)
           if cmd == 'SADI':
             assert len(args) > 3
             div, mod = divmod(len(args), 2)
             value = args[0]
             if mod == 1:
-              kwds['s'] = args[0]
+              sigma = args[0]
               atom_pairs = args[1:]
             else:
+              sigma = 0.02
               atom_pairs = args
             i_seqs = []
             sym_ops = []
-            weights = []
             for i in range(div):
               atom_pair = atom_pairs[i*2:(i+1)*2]
               i_seqs.append([self.scatterer_label_to_index[atom[1]] for atom in atom_pair])
               sym_ops.append([self.symmetry_operations.get(atom[2]) for atom in atom_pair])
-            kwds['i_seqs'] = i_seqs
-            kwds['sym ops'] = sym_ops
-            self.builder.process_restraint(cmd, kwds)
+            weights = [1/(sigma**2)]*len(i_seqs)
+            self.builder.process_restraint(restraint_type,
+                                           weights=weights,
+                                           i_seqs=i_seqs,
+                                           sym_ops=sym_ops)
           elif cmd == 'FLAT':
             try:
-              kwds['s'] = float(args[0])
+              sigma = float(args[0])
               atoms = args[1:]
             except TypeError:
+              sigma = 0.1
               atoms = args
             assert len(atoms) > 3
-            kwds['i_seqs'] = [self.scatterer_label_to_index[i[1]] for i in atoms]
-            self.builder.process_restraint(cmd, kwds)
+            i_seqs = [self.scatterer_label_to_index[i[1]] for i in atoms]
+            sym_ops = [self.symmetry_operations.get(i) for i in atoms]
+            weights = [1/(sigma**2)]*len(i_seqs)
+            self.builder.process_restraint(restraint_type,
+                                           weights=weights,
+                                           i_seqs=i_seqs,
+                                           sym_ops=sym_ops)
           elif cmd == 'CHIV':
             pass
           elif cmd in ('DELU', 'ISOR', 'SIMU'):
@@ -444,15 +465,23 @@ class restraint_parser(atom_parser):
                     if not atoms and len(args) > 3:
                       atoms = args[3:]
             if atoms:
-              kwds['i_seqs'] = [self.scatterer_label_to_index[atom[1]] for atom in atoms]
-            if s1 is not None:
-              if cmd == 'DELU':
-                kwds['sigma_12'] = s1
-                kwds['sigma_13'] = s2
-              else:
-                kwds['sigma'] = s1
-                kwds['sigma_terminal'] = s2
-            self.builder.process_restraint(cmd, kwds)
+              i_seqs = [self.scatterer_label_to_index[atom[1]] for atom in atoms]
+            else:
+              i_seqs = None
+            if s1 is None:
+              if cmd == 'SIMU': s1 = 0.04
+              elif cmd == 'DELU': s1 = 0.01
+              else: s1 = 0.1
+            if cmd == 'DELU':
+              self.builder.process_restraint(restraint_type,
+                                             sigma_12=s1,
+                                             sigma_13=s2,
+                                             i_seqs=i_seqs)
+            else:
+              self.builder.process_restraint(restraint_type,
+                                             sigma=s1,
+                                             sigma_terminal=s2,
+                                             i_seqs=i_seqs)
           else:
             pass
         except (TypeError, AssertionError):
