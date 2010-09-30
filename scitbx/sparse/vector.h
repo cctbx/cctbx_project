@@ -316,6 +316,16 @@ public:
       return v.get(i);
     }
 
+    /// Assignment of another element
+    element_reference &operator=(element_const_reference const &e) {
+      return *this = value_type(e);
+    }
+
+    /// Assignment of another element
+    element_reference &operator=(element_reference const &e) {
+      return *this = value_type(e);
+    }
+
     /// Triggered by an assignment v[i] = ...
     /** Runtime scales as O(1)
      */
