@@ -1639,6 +1639,7 @@ class build_options:
     print >> f, "Compiler:", self.compiler
     print >> f, "Build mode:", self.mode
     print >> f, "Warning level:", self.warning_level
+    print >> f, "Precompiled Headers:", self.precompile_headers
     print >> f, "Static libraries:", self.static_libraries
     print >> f, "Static exe:", self.static_exe
     print >> f, "Scan Boost headers:", self.scan_boost
