@@ -1312,6 +1312,12 @@ class xray_structures_from_processed_pdb_file(object):
     self.xray_scattering_dict = None
     self.xray_structure_all = \
      processed_pdb_file.xray_structure(show_summary = False)
+    # XXX ad hoc manipulation
+    for sc in self.xray_structure_all.scatterers():
+      lbl=sc.label.split()
+      if("IAS" in lbl and sc.scattering_type=="?" and lbl[1].startswith("IS")):
+        sc.scattering_type = lbl[1]
+    #
     if(self.xray_structure_all is None):
       raise Sorry("Cannot extract xray_structure.")
     if(self.xray_structure_all.scatterers().size()==0):
@@ -1360,6 +1366,9 @@ def setup_scattering_dictionaries(scattering_table,
       table = scattering_table,
       d_min = d_min,
       types_without_a_scattering_contribution=["?"])
+    import mmtbx.ias
+    xray_structure.scattering_type_registry(
+      custom_dict = mmtbx.ias.ias_scattering_dict)
     xray_scattering_dict = \
       xray_structure.scattering_type_registry().as_type_gaussian_dict()
     if(log is not None):

@@ -110,6 +110,24 @@ namespace iotbx { namespace pdb {
                 != atom_names_scattering_type_const_.end()) {
               scatterer.scattering_type = "const";
             }
+            else if (atom->data->element == "IS") {
+              char charge[2];
+              std::memcpy(charge, atom->data->charge.elems, 2);
+              std::string ias_type="";
+              for(std::size_t i=0; i<2; i++) {
+                if(isdigit(charge[i])) {
+                  ias_type += charge[i];
+                }
+              }
+              if(ias_type.size()>0) {
+                 scatterer.scattering_type = std::string("IS")+ias_type;
+              }
+              else {
+                throw std::runtime_error(
+                  std::string("Unknown chemical element type:\n")
+                  + "  " + atom->quote() + "\n");
+              }
+            }
             else {
               boost::optional<std::string>
                 chemical_element = atom->determine_chemical_element_simple();

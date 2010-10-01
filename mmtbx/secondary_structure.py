@@ -900,7 +900,8 @@ class manager (object) :
                 sec_str_from_pdb_file=None,
                 params=None,
                 assume_hydrogens_all_missing=None,
-                tmp_dir=None) :
+                tmp_dir=None,
+                verbose=-1) :
     adopt_init_args(self, locals())
     self._was_initialized = False
     if self.params is None :
@@ -933,9 +934,11 @@ class manager (object) :
     find_automatically = params.input.find_automatically
     # XXX: check for presence of protein first?
     if len(params.helix) == 0 and len(params.sheet) == 0 :
-      print >> log, "No existing secondary structure definitions found."
+      if(self.verbose>0):
+        print >> log, "No existing secondary structure definitions found."
       if self.sec_str_from_pdb_file is None and find_automatically != False :
-        print >> log, "No HELIX or SHEET records found in PDB file."
+        if(self.verbose>0):
+          print >> log, "No HELIX or SHEET records found in PDB file."
         find_automatically = True
     if find_automatically :
       if params.input.preserve_protein_segid :
@@ -944,7 +947,8 @@ class manager (object) :
         self.sec_str_from_pdb_file = self.find_sec_str(log=log)
     if self.sec_str_from_pdb_file is not None :
       if isinstance(self.sec_str_from_pdb_file, list) :
-        print >> log, "  Interpreting HELIX and SHEET records for individual chains"
+        if(self.verbose>0):
+          print >> log, "  Interpreting HELIX and SHEET records for individual chains"
         ss_params = []
         for annotation, segid in self.sec_str_from_pdb_file :
           ss_phil = annotation.as_restraint_groups(log=log,
@@ -953,7 +957,8 @@ class manager (object) :
           ss_params.append(ss_phil)
         ss_params_str = "\n".join(ss_params)
       else :
-        print >> log, "  Interpreting HELIX and SHEET records from PDB file"
+        if(self.verbose>0):
+          print >> log, "  Interpreting HELIX and SHEET records from PDB file"
         ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(log=log,
           prefix_scope="")
       self.apply_phil_str(ss_params_str, log=log)
@@ -1067,10 +1072,9 @@ class manager (object) :
     (frac_alpha, frac_beta) = self.calculate_structure_content()
     n_helices = len(self.params.helix)
     n_sheets  = len(self.params.sheet)
-    print >> out, ""
+    print >> out, "Secondary structure from input PDB file:"
     print >> out, "  %d helices and %d sheets defined" % (n_helices,n_sheets)
     print >> out, "  %.1f%% alpha, %.1f%% beta" %(frac_alpha*100,frac_beta*100)
-    print >> out, ""
 
   def alpha_selections (self, limit=None, main_conf_only=False) :
     sele = self.selection_cache.selection
