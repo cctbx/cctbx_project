@@ -507,7 +507,8 @@ public:
   }
 
   /// A^T A where A is this matrix
-  matrix this_transpose_times_this() {
+  matrix this_transpose_times_this() const
+  {
     index_type n = n_cols();
     matrix result(n, n);
     for (index_type i=0; i<n; ++i) {
@@ -522,7 +523,9 @@ public:
 
   /// A^T W A where W is a diagonal matrix
   matrix
-  this_transpose_times_diagonal_times_this(af::const_ref<value_type> const &w) {
+  this_transpose_times_diagonal_times_this(af::const_ref<value_type> const &w)
+  const
+  {
     SCITBX_ASSERT(w.size() == n_rows())(w.size())(n_rows());
     index_type n = n_cols();
     matrix result(n, n);
