@@ -67,10 +67,11 @@ class index (object) :
                        collect_multiple=collect_multiple,
                        expert_levels=self._expert_levels)
 
-  def rebuild_index (self) :
+  def rebuild_index (self, only_scope=None) :
     self._full_path_index = {}
     reindex_phil_objects(phil_object=self.working_phil,
-                         path_index=self._full_path_index)
+                         path_index=self._full_path_index,
+                         only_scope=only_scope)
 
   def save_param_file (self, file_name, sources=None, extra_phil="",
       diff_only=False, save_state=False) :
@@ -278,42 +279,35 @@ class index (object) :
     delete_phil_objects(old_phil, [phil_scope_name])
     self.working_phil = self.master_phil.fetch(sources=[old_phil])
 
-  def merge_phil (self, phil_object=None, phil_string=None, phil_file=None,
-      overwrite_params=True, rebuild_index=True) :
-    if phil_string :
+  def merge_phil (self,
+                  phil_object=None,
+                  phil_string=None,
+                  phil_file=None,
+                  overwrite_params=True,
+                  rebuild_index=True,
+                  only_scope=None) :
+    if (phil_string is not None) :
       phil_object = self.parse(phil_string)
-    elif phil_file :
+    elif (phil_file is not None) :
       phil_object = self.parse(file_name=phil_file)
-    if phil_object :
-      self.log("-" * 72)
-      self.log("Merging new phil object:")
-      self.log("")
-      self.log(phil_object.as_str())
-      self.log("-" * 72)
+    if (phil_object is not None) :
       old_phil = self.working_phil
       if overwrite_params :
-        self.log2("overwriting parameters")
         new_paths = []
         get_all_path_names(phil_object, new_paths)
-        self.log2("collected paths")
         redundant_paths = []
         for path in new_paths :
           if path in self._multiple_scopes or path in self._multiple_defs :
             redundant_paths.append(path)
         if len(redundant_paths) > 0 :
-          self.log("-" * 72)
-          self.log("deleting redundant objects:")
-          self.log("")
-          self.log("\n".join(redundant_paths))
-          self.log("-" * 72)
-          delete_phil_objects(old_phil, redundant_paths)
+          delete_phil_objects(old_phil, redundant_paths, only_scope=only_scope)
       self.log2("Fetching new working phil")
       new_phil = self.master_phil.fetch(sources=[old_phil, phil_object])
       if new_phil is not None :
         self.working_phil = new_phil
         if rebuild_index :
           self.log2("rebuilding index")
-          self.rebuild_index()
+          self.rebuild_index(only_scope=only_scope)
       else :
         self.log("*** ERROR: new phil object is empty")
       self._phil_has_changed = True
@@ -346,7 +340,7 @@ class index (object) :
     self.merge_phil(phil_object=phil_object)
 
   # Safe wrapper of merge_phil for phil strings
-  def update (self, phil_string) :
+  def update (self, phil_string, only_scope=None) :
     try :
       phil_object = self.parse(phil_string)
       new_phil = self.master_phil.fetch(source=phil_object)
@@ -359,7 +353,7 @@ class index (object) :
                   "This is probably a bug; if the program was launched with "+
                   "the argument --debug, further information will be printed "+
                   "to the console.")
-    self.merge_phil(phil_object=phil_object)
+    self.merge_phil(phil_object=phil_object, only_scope=only_scope)
 
   #---------------------------------------------------------------------
   # DEBUG/TEST METHODS
@@ -379,10 +373,15 @@ class index (object) :
       (f.f_code.co_name, filename, f.f_lineno, str(message).strip()))
 
 #--- STANDALONE FUNCTIONS
-def delete_phil_objects (current_phil, phil_path_list) :
+def delete_phil_objects (current_phil, phil_path_list, only_scope=None) :
   i = 0
   while i < len(current_phil.objects) :
     full_path = current_phil.objects[i].full_path()
+    if (only_scope is not None) :
+      if ((not only_scope.startswith(full_path)) and
+          (not full_path.startswith(only_scope))) :
+        i += 1
+        continue
     if current_phil.objects[i].is_template != 0 :
       i += 1
     elif full_path in phil_path_list :
@@ -392,7 +391,9 @@ def delete_phil_objects (current_phil, phil_path_list) :
       if hasattr(current_phil.objects[i], "objects") :
         for path_name in phil_path_list :
           if path_name.startswith(full_path) :
-            delete_phil_objects(current_phil.objects[i], phil_path_list)
+            delete_phil_objects(current_phil=current_phil.objects[i],
+              phil_path_list=phil_path_list,
+              only_scope=only_scope)
       i += 1
 
 def collect_redundant_paths (master_phil, new_phil, multiple_only=True) :
@@ -469,7 +470,7 @@ def index_phil_objects (phil_object, path_index, text_index, template_index,
                          in_template=in_template,
                          expert_levels=expert_levels)
 
-def reindex_phil_objects (phil_object, path_index) :
+def reindex_phil_objects (phil_object, path_index, only_scope=None) :
   if phil_object.is_template < 0 :
     return
   full_path = phil_object.full_path()
