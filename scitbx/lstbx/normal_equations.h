@@ -5,9 +5,12 @@
 
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/shared_algebra.h>
+#include <scitbx/array_family/ref_algebra.h>
 #include <scitbx/array_family/owning_ref.h>
 #include <scitbx/matrix/cholesky.h>
 #include <scitbx/matrix/matrix_vector_operations.h>
+#include <scitbx/sparse/matrix.h>
+#include <scitbx/sparse/triangular.h>
 
 namespace scitbx { namespace lstbx {
 
@@ -74,16 +77,30 @@ namespace scitbx { namespace lstbx {
       SCITBX_ASSERT(a.accessor().n == b.size());
     }
 
-    /// Add the equation \f$ A_{i.}^T x = b_i \f$
+    /// Add the equation \f$ A_{i.} x = b_i \f$ with the given weight
     void add_equation(scalar_t b_i,
                       af::const_ref<scalar_t> const &a_row,
                       scalar_t w)
     {
-      double *p = normal_matrix_.begin();
+      scalar_t *p = normal_matrix_.begin();
       for (int i=0; i<n_params; ++i)  {
         right_hand_side_[i] += w * a_row[i] * b_i;
         for (int j=i; j<n_params; ++j) *p++ += w * a_row[i] * a_row[j];
       }
+    }
+
+    /// Add the equations \f$ A x = b \f$ with the given weights
+    /** w[i] weights the i-th equation, i.e. the row \f$ A_{i.} \f$.
+     */
+    void add_equations(af::const_ref<scalar_t> const &b,
+                       sparse::matrix<scalar_t> const &a,
+                       af::const_ref<scalar_t> const &w)
+    {
+      sparse::matrix<scalar_t>
+      at_w_a = a.this_transpose_times_diagonal_times_this(w);
+      vector_t a_t_w_b = a.transpose_times((w * b).const_ref());
+      normal_matrix_ += sparse::upper_diagonal_of(at_w_a);
+      right_hand_side_ += a_t_w_b.const_ref();
     }
 
     /// Add the linearisation of the equation \f$r_i(x) = 0\f$

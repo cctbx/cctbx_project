@@ -12,6 +12,7 @@ namespace scitbx { namespace lstbx { namespace boost_python {
   struct normal_equations_wrapper
   {
     typedef normal_equations<FloatType> wt;
+    typedef typename wt::scalar_t scalar_t;
     typedef typename wt::symmetric_matrix_t symmetric_matrix_t;
     typedef typename wt::vector_t vector_t;
 
@@ -25,6 +26,12 @@ namespace scitbx { namespace lstbx { namespace boost_python {
         .def(init<int>(arg("n_parameters")))
         .def(init<symmetric_matrix_t const &, vector_t const &>(
              (arg("normal_matrix"), arg("right_hand_side"))))
+        .def("add_equation",
+             (void (wt::*)(scalar_t b, af::const_ref<scalar_t> const &, scalar_t))
+             &wt::add_equation,
+             (arg("right_hand_side"), arg("design_matrix_row"), arg("weight")))
+        .def("add_equations", &wt::add_equations,
+             (arg("right_hand_side"), arg("design_matrix"), arg("weights")))
         .add_property("normal_matrix_packed_u", &wt::normal_matrix)
         .add_property("right_hand_side", &wt::right_hand_side)
         .def("solve", &wt::solve)
