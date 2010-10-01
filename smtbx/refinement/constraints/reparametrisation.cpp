@@ -29,15 +29,15 @@ namespace smtbx { namespace refinement { namespace constraints {
   template class independent_small_vector_parameter<3>;
   template class independent_small_vector_parameter<6>;
 
-  // single_scatterer_parameter
+  // single_asu_scatterer_parameter
 
   crystallographic_parameter::scatterer_sequence_type
-  single_scatterer_parameter::scatterers() const {
+  single_asu_scatterer_parameter::scatterers() const {
     return scatterer_sequence_type(&scatterer, 1);
   }
 
   index_range
-  single_scatterer_parameter
+  single_asu_scatterer_parameter
   ::component_indices_for(scatterer_type const *scatterer) const
   {
     return scatterer == this->scatterer ? index_range(index(), size())
@@ -135,6 +135,7 @@ namespace smtbx { namespace refinement { namespace constraints {
   {
     if (scatterer == this->scatterer) output << scatterer->label << ".occ,";
   }
+
   void occupancy_parameter::store(uctbx::unit_cell const &unit_cell) const {
     scatterer->occupancy = value;
   }
@@ -166,6 +167,7 @@ namespace smtbx { namespace refinement { namespace constraints {
   {
     if (scatterer == this->scatterer) output << scatterer->label << ".uiso,";
   }
+
   void u_iso_parameter::store(uctbx::unit_cell const &unit_cell) const {
     scatterer->u_iso = value;
   }
