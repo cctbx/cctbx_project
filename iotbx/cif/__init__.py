@@ -10,6 +10,7 @@ from cctbx import adptbx, crystal
 from cctbx.xray import structure
 from iotbx.cif import model, builders
 from libtbx.containers import OrderedDict
+from scitbx.array_family import flex
 
 import sys
 
