@@ -564,7 +564,7 @@ class manager(object):
          #occs = flex.double(self.xray_structure.scatterers().size(), 0.9)
          #self.xray_structure.scatterers().set_occupancies(occs, ~self.ias_selection)
          # D9
-         sel = self.xray_structure.scatterers().extract_scattering_types() == "D9"
+         sel = self.xray_structure.scatterers().extract_scattering_types() == "IS9"
          self.xray_structure.convert_to_anisotropic(selection = sel)
          if(self.refinement_flags.adp_individual_aniso is not None):
            self.refinement_flags.adp_individual_aniso.set_selected(sel, True)

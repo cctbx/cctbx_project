@@ -59,22 +59,22 @@ ias_master_params = iotbx.phil.parse("""\
 """)
 
 ias_scattering_dict = {
-    "D6" : eltbx.xray_scattering.gaussian([0.078250],[1.018360],0),
-    "D8" : eltbx.xray_scattering.gaussian([0.113700],[1.007725],0),
-    "D7" : eltbx.xray_scattering.gaussian([0.066930],[0.927570],0),
-    "D4" : eltbx.xray_scattering.gaussian([0.141092],[1.292696],0),
-    "D1" : eltbx.xray_scattering.gaussian([0.224536],[1.314207],0),
-    "D2" : eltbx.xray_scattering.gaussian([0.156768],[1.105028],0),
-    "D3" : eltbx.xray_scattering.gaussian([0.094033],[0.922350],0),
-    "D5" : eltbx.xray_scattering.gaussian([0.198387],[1.375240],0),
-    "D9" : eltbx.xray_scattering.gaussian([-0.29830],[4.232900],0),
-    "D10": eltbx.xray_scattering.gaussian([0.0465],[0.3407],0) }
+    "IS6" : eltbx.xray_scattering.gaussian([0.078250],[1.018360],0),
+    "IS8" : eltbx.xray_scattering.gaussian([0.113700],[1.007725],0),
+    "IS7" : eltbx.xray_scattering.gaussian([0.066930],[0.927570],0),
+    "IS4" : eltbx.xray_scattering.gaussian([0.141092],[1.292696],0),
+    "IS1" : eltbx.xray_scattering.gaussian([0.224536],[1.314207],0),
+    "IS2" : eltbx.xray_scattering.gaussian([0.156768],[1.105028],0),
+    "IS3" : eltbx.xray_scattering.gaussian([0.094033],[0.922350],0),
+    "IS5" : eltbx.xray_scattering.gaussian([0.198387],[1.375240],0),
+    "IS9" : eltbx.xray_scattering.gaussian([-0.29830],[4.232900],0),
+    "IS10": eltbx.xray_scattering.gaussian([0.0465],[0.3407],0) }
 
 # IAS types: B = bond, R - ring center, L - lone pair
-BH_type = ["D1","D2","D3"]
-B_type  = ["D4","D5","D6","D7","D8"]
-R_type  = ["D9"]
-L_type  = ["D10"]
+BH_type = ["IS1","IS2","IS3"]
+B_type  = ["IS4","IS5","IS6","IS7","IS8"]
+R_type  = ["IS9"]
+L_type  = ["IS10"]
 
 class ias_counters(object):
   def __init__(self, iass):
@@ -325,16 +325,16 @@ def set_ias_name_and_predicted_position(iass, params):
     site_i, site_j = ias_.atom_1.site_cart, ias_.atom_2.site_cart
     if(ias_.type == "B" or ias_.type == "BH"):
        if(name_i in phe_ring and name_j in phe_ring):
-          label = "D5"
+          label = "IS5"
           ias_site = ias_site_position(site_i, site_j, 1.0)
        elif(name_i in elbow and name_j in elbow):
-          label = "D4"
+          label = "IS4"
           ias_site = ias_site_position(site_i, site_j, 1.0)
        elif(name_i in main_cn and name_j in main_cn):
-          label = "D6"
+          label = "IS6"
           ias_site = ias_site_position(site_i, site_j, 1.0)
        elif(name_i in main_can and name_j in main_can):
-          label = "D6"
+          label = "IS6"
           alp = 0.773960 / 0.660850
           if(name_j[0] == "N"):
              ias_site = ias_site_position(site_i, site_j, alp)
@@ -342,7 +342,7 @@ def set_ias_name_and_predicted_position(iass, params):
              assert name_j[0] == "C"
              ias_site = ias_site_position(site_j, site_i, alp)
        elif(name_i in main_cod and name_j in main_cod):
-          label = "D8"
+          label = "IS8"
           alp = 0.703388 / 0.520963
           if(name_j[0] == "O"):
              ias_site = ias_site_position(site_j, site_i, alp)
@@ -350,7 +350,7 @@ def set_ias_name_and_predicted_position(iass, params):
              assert name_j[0] == "C"
              ias_site = ias_site_position(site_i, site_j, alp)
        elif(name_i in main_cos and name_j in main_cos):
-          label = "D7"
+          label = "IS7"
           alp = 0.657100 / 0.681920
           if(name_j[0] == "O"):
              ias_site = ias_site_position(site_j, site_i, alp)
@@ -358,38 +358,38 @@ def set_ias_name_and_predicted_position(iass, params):
              assert name_j[0] == "C"
              ias_site = ias_site_position(site_i, site_j, alp)
        elif(name_i in main_cac and name_j in main_cac):
-          label = "D4"
+          label = "IS4"
           ias_site = ias_site_position(site_i, site_j, 1.0)
        elif(name_i[0] in any_ch and name_j[0] in any_ch and
           [name_i[0],name_j[0]].count("H")==1 ):
-          label = "D1"
+          label = "IS1"
           alp = 0.856968 / 0.244483
           if(name_j[0] == "H"):
              ias_site = ias_site_position(site_i, site_j, alp)
           else:
              ias_site = ias_site_position(site_j, site_i, alp)
        elif(name_i[0] in any_nh and name_j[0] in any_nh):
-          label = "D2"
+          label = "IS2"
           alp = 0.760400 / 0.267816
           if(name_j[0] == "H"):
              ias_site = ias_site_position(site_i, site_j, alp)
           else:
              ias_site = ias_site_position(site_j, site_i, alp)
        elif(name_i[0] in any_oh and name_j[0] in any_oh):
-          label = "D3"
+          label = "IS3"
           alp = 0.716517 / 0.288733
           if(name_j[0] == "H"):
              ias_site = ias_site_position(site_i, site_j, alp)
           else:
              ias_site = ias_site_position(site_j, site_i, alp)
        else:
-          label = "D4"
+          label = "IS4"
           ias_site = ias_site_position(site_i, site_j, 1.0)
     if(ias_.type == "L"):
-       label = "D10"
+       label = "IS10"
        ias_sites = ias_position_at_lone_pairs(ias_, params.lone_pair)
     if(ias_.type == "R"):
-       label = "D9"
+       label = "IS9"
        ias_site = ias_site_position(site_i, site_j, 1.0)
     if([label, ias_site].count(None)==0):
       assert ias_sites is None
@@ -681,7 +681,7 @@ class manager(object):
      print >> log, "IAS scattering dictionary:"
      self.ias_xray_structure.scattering_type_registry().show(out = self.log)
      if(1):
-        self.write_pdb_file()
+        self.write_pdb_file(out=self.log)
 
   def iass_as_xray_structure(self, iass):
      ias_xray_structure = xray.structure(
