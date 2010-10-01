@@ -399,7 +399,9 @@ public:
   virtual bool is_variable() const;
   //@}
 
-  /// Read the site value from the referenced scatterer
+  /// Does nothing in this class
+  /** This optimisation relies on class reparametrisation implementation
+   */
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
 
@@ -447,7 +449,9 @@ public:
   virtual bool is_variable() const;
   //@}
 
-  /// Read the site value from the referenced scatterer
+  /// Does nothing in this class
+  /** This optimisation relies on class reparametrisation implementation
+   */
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
 
@@ -492,7 +496,9 @@ public:
   virtual bool is_variable() const;
   //@}
 
-  /// Read the occupancy value from the referenced scatterer
+  /// Does nothing in this class
+  /** This optimisation relies on class reparametrisation implementation
+   */
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
 
@@ -537,7 +543,9 @@ public:
   virtual bool is_variable() const;
   //@}
 
-  /// Read the u_iso value from the referenced scatterer
+  /// Does nothing in this class
+  /** This optimisation relies on class reparametrisation implementation
+   */
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
 
