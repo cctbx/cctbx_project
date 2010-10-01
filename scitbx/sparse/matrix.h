@@ -11,6 +11,7 @@
 #include <scitbx/array_family/accessors/mat_grid.h>
 #include <scitbx/sparse/vector.h>
 #include <scitbx/sparse/util.h>
+#include <scitbx/sparse/operators.h>
 
 namespace scitbx { namespace sparse {
 
@@ -71,8 +72,11 @@ struct matrix_transpose_times_dense_vector
  The columns have a copy semantic.
 */
 template<class T>
-class matrix : public boost::equality_comparable< matrix<T> >,
-               public af::expression< matrix<T> >
+class matrix
+  : public boost::equality_comparable< matrix<T> >,
+    public af::expression< matrix<T> >,
+    public operators::matrix_operating_on_dense_matrix<T, operators::whole,
+                                                       matrix<T> >
 {
 public:
   typedef T value_type;
@@ -319,52 +323,12 @@ public:
     return af::mat_grid(n_rows(), n_cols());
   }
 
-private:
-  template <class Operator>
-  void operate_on(Operator const &op, af::ref<T, af::mat_grid> const &b) const {
-    SCITBX_ASSERT(n_cols() == b.n_columns() && n_rows() == b.n_rows())
-                 (n_cols())(b.n_columns())(n_rows())(b.n_rows());
-    op.init(b);
-    for (int j=0; j<n_cols(); ++j) {
-      for (typename matrix<T>::const_row_iterator p=col(j).begin();
-           p != col(j).end();
-           ++p)
-      {
-        typename matrix<T>::index_type i = p.index();
-        typename matrix<T>::value_type a_ij = *p;
-        op(b(i,j), a_ij);
-      }
-    }
-  }
-
-  struct assign
-  {
-    void init(af::ref<T, af::mat_grid> const &b) const {
-      std::fill(b.begin(), b.end(), T(0));
-    }
-
-    void operator()(T &b_ij, T a_ij) const { b_ij = a_ij; }
-  };
-
-  struct plus_equal
-  {
-    void init(af::ref<T, af::mat_grid> const &b) const {};
-    void operator()(T &b_ij, T a_ij) const { b_ij += a_ij; }
-  };
-
-  struct minus_equal
-  {
-    void init(af::ref<T, af::mat_grid> const &b) const {};
-    void operator()(T &b_ij, T a_ij) const { b_ij -= a_ij; }
-  };
-
-public:
   /// Assign this to the given reference to a dense matrix
   /** This enables af::ref<T, af::mat_grid> b = a
       for any sparse::matrix<T> a
    */
   void assign_to(af::ref<T, af::mat_grid> const &b) const {
-    operate_on(assign(), b);
+    this->operate_on(operators::assign<T>(), b);
   }
 
   /// Add this to the given reference to a dense matrix
@@ -372,7 +336,7 @@ public:
       for any sparse::matrix<T> a
    */
   void add_to(af::ref<T, af::mat_grid> const &b) const {
-    operate_on(plus_equal(), b);
+    this->operate_on(operators::plus_equal<T>(), b);
   }
 
   /// Substract from the given reference to a dense matrix
@@ -380,7 +344,7 @@ public:
       for any sparse::matrix<T> a
    */
   void substract_from(af::ref<T, af::mat_grid> const &b) const {
-    operate_on(minus_equal(), b);
+    this->operate_on(operators::minus_equal<T>(), b);
   }
 
   /// Matrix times matrix
