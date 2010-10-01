@@ -22,13 +22,16 @@ def build_name_hash(pdb_hierarchy):
     i_seq_name_hash[atom.i_seq]=atom.pdb_label_columns()
   return i_seq_name_hash
 
-def get_angle_outliers(angle_proxies, sites_cart, hierarchy):
+def get_angle_outliers(angle_proxies, chain, sites_cart, hierarchy):
   i_seq_name_hash = build_name_hash(pdb_hierarchy=hierarchy)
   kin_text = "@subgroup {geom devs} dominant\n"
   for ap in angle_proxies:
     restraint = geometry_restraints.angle(sites_cart=sites_cart,
                                           proxy=ap)
     res = i_seq_name_hash[ap.i_seqs[0]][5:]
+    cur_chain = i_seq_name_hash[ap.i_seqs[0]][8:10]
+    if chain.id.strip() is not cur_chain.strip():
+      continue
     atom1 = i_seq_name_hash[ap.i_seqs[0]][0:4].strip()
     atom2 = i_seq_name_hash[ap.i_seqs[1]][0:4].strip()
     atom3 = i_seq_name_hash[ap.i_seqs[2]][0:4].strip()
@@ -44,13 +47,16 @@ def get_angle_outliers(angle_proxies, sites_cart, hierarchy):
       kin_text += kin
   return kin_text
 
-def get_bond_outliers(bond_proxies, sites_cart, hierarchy):
+def get_bond_outliers(bond_proxies, chain, sites_cart, hierarchy):
   i_seq_name_hash = build_name_hash(pdb_hierarchy=hierarchy)
   kin_text = "@subgroup {length devs} dominant\n"
   for bp in bond_proxies.simple:
     restraint = geometry_restraints.bond(sites_cart=sites_cart,
                                          proxy=bp)
     res = i_seq_name_hash[bp.i_seqs[0]][5:]
+    cur_chain = i_seq_name_hash[bp.i_seqs[0]][8:10]
+    if chain.id.strip() is not cur_chain.strip():
+      continue
     atom1 = i_seq_name_hash[bp.i_seqs[0]][0:4].strip()
     atom2 = i_seq_name_hash[bp.i_seqs[1]][0:4].strip()
     sigma = ((1/restraint.weight)**(.5))
@@ -262,7 +268,7 @@ def midpoint(p1, p2):
   mid[2] = (p1[2]+p2[2])/2
   return mid
 
-def pperp_outliers(hierarchy):
+def pperp_outliers(hierarchy, chain):
   kin_out = "@vectorlist {ext} color= magenta master= {base-P perp}\n"
   rv = rna_validate()
   outliers = rv.pucker_evaluate(hierarchy=hierarchy)
@@ -270,53 +276,53 @@ def pperp_outliers(hierarchy):
   outlier_key_list = []
   for outlier in outliers:
     outlier_key_list.append(outlier[0])
-  for model in hierarchy.models():
-    for chain in model.chains():
-      for conformer in chain.conformers():
-        for residue in conformer.residues():
-          ra1 = residue_analysis(
-                                 residue_atoms=residue.atoms(),
-                                 distance_tolerance=params.bond_detection_distance_tolerance)
-          if (ra1.problems is not None): continue
-          if (not ra1.is_rna): continue
-          try:
-            key = residue.find_atom_by(name=" C1'").pdb_label_columns()[4:]
-          except:
-            continue
-          if key in outlier_key_list:
-            if rv.pucker_perp_xyz[key][0] is not None:
-              perp_xyz = rv.pucker_perp_xyz[key][0] #p_perp_xyz
-            else:
-              perp_xyz = rv.pucker_perp_xyz[key][1] #o3p_perp_xyz
-            if rv.pucker_dist[key][0] is not None:
-              perp_dist = rv.pucker_dist[key][0]
-              if perp_dist < 2.9:
-                pucker_text = " 2'?"
-              else:
-                pucker_text = " 3'?"
-            else:
-              perp_dist = rv.pucker_dist[key][1]
-              if perp_dist < 2.4:
-                pucker_text = " 2'?"
-              else:
-                pucker_text = " 3'?"
-            key = key[0:4].lower()+key[4:]
-            key += pucker_text
-            kin_out += kin_vec(key, perp_xyz[0], key, perp_xyz[1])
-            a = matrix.col(perp_xyz[1])
-            b = matrix.col(residue.find_atom_by(name=" C1'").xyz)
-            c = (a-b).normalize()
-            new = a-(c*.8)
-            kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
-            new = a+(c*.4)
-            kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
-            r_vec = matrix.col(perp_xyz[1]) - matrix.col(perp_xyz[0])
-            r = r_vec.axis_and_angle_as_r3_rotation_matrix(angle=90, deg=True)
-            new = r*(new-a)+a
-            kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
-            r = r_vec.axis_and_angle_as_r3_rotation_matrix(angle=180, deg=True)
-            new = r*(new-a)+a
-            kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
+  for conformer in chain.conformers():
+    for residue in conformer.residues():
+      if common_residue_names_get_class(residue.resname) != "common_rna_dna":
+        continue
+      ra1 = residue_analysis(
+                             residue_atoms=residue.atoms(),
+                             distance_tolerance=params.bond_detection_distance_tolerance)
+      if (ra1.problems is not None): continue
+      if (not ra1.is_rna): continue
+      try:
+        key = residue.find_atom_by(name=" C1'").pdb_label_columns()[4:]
+      except:
+        continue
+      if key in outlier_key_list:
+        if rv.pucker_perp_xyz[key][0] is not None:
+          perp_xyz = rv.pucker_perp_xyz[key][0] #p_perp_xyz
+        else:
+          perp_xyz = rv.pucker_perp_xyz[key][1] #o3p_perp_xyz
+        if rv.pucker_dist[key][0] is not None:
+          perp_dist = rv.pucker_dist[key][0]
+          if perp_dist < 2.9:
+            pucker_text = " 2'?"
+          else:
+            pucker_text = " 3'?"
+        else:
+          perp_dist = rv.pucker_dist[key][1]
+          if perp_dist < 2.4:
+            pucker_text = " 2'?"
+          else:
+            pucker_text = " 3'?"
+        key = key[0:4].lower()+key[4:]
+        key += pucker_text
+        kin_out += kin_vec(key, perp_xyz[0], key, perp_xyz[1])
+        a = matrix.col(perp_xyz[1])
+        b = matrix.col(residue.find_atom_by(name=" C1'").xyz)
+        c = (a-b).normalize()
+        new = a-(c*.8)
+        kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
+        new = a+(c*.4)
+        kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
+        r_vec = matrix.col(perp_xyz[1]) - matrix.col(perp_xyz[0])
+        r = r_vec.axis_and_angle_as_r3_rotation_matrix(angle=90, deg=True)
+        new = r*(new-a)+a
+        kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
+        r = r_vec.axis_and_angle_as_r3_rotation_matrix(angle=180, deg=True)
+        new = r*(new-a)+a
+        kin_out += kin_vec(key, perp_xyz[1], key, tuple(new), 4)
   return kin_out
 
 def rama_outliers(chain, pdbID, ram_outliers):
@@ -388,32 +394,33 @@ def rotamer_outliers(chain, pdbID, rot_outliers):
   for outlier in rot_outliers.splitlines():
     outlier_list.append(outlier.split(':')[0])
   for residue_group in chain.residue_groups():
-    for atom_group in residue_group.atom_groups():
-      check_key = '%s%4s %s' % \
+    for conformer in residue_group.conformers():
+      for residue in conformer.residues():
+        check_key = '%s%4s %s' % \
                     (chain.id,
                      residue_group.resseq,
-                     atom_group.altloc+atom_group.resname.strip())
-      if check_key not in outlier_list:
-        continue
-      key_hash = {}
-      xyz_hash = {}
-      for atom in atom_group.atoms():
-        key = "%s %s %s%s  B%.2f %s" % (
+                     conformer.altloc+residue.resname.strip())
+        if check_key not in outlier_list:
+          continue
+        key_hash = {}
+        xyz_hash = {}
+        for atom in residue.atoms():
+          key = "%s %s %s%s  B%.2f %s" % (
               atom.name.lower(),
-              atom_group.resname.lower(),
+              residue.resname.lower(),
               chain.id,
-              residue_group.resseq,
+              residue.resseq,
               atom.b,
               pdbID)
-        key_hash[atom.name.strip()] = key
-        xyz_hash[atom.name.strip()] = atom.xyz
-      bonds = get_bond_pairs(code=atom_group.resname)
-      for bond in bonds:
-        if bond[0] in mc_atoms or bond[1] in mc_atoms:
-          continue
-        elif bond[0].startswith('H') or bond[1].startswith('H'):
-          continue
-        rot_out += kin_vec(key_hash[bond[0]],
+          key_hash[atom.name.strip()] = key
+          xyz_hash[atom.name.strip()] = atom.xyz
+        bonds = get_bond_pairs(code=residue.resname)
+        for bond in bonds:
+          if bond[0] in mc_atoms or bond[1] in mc_atoms:
+            continue
+          elif bond[0].startswith('H') or bond[1].startswith('H'):
+            continue
+          rot_out += kin_vec(key_hash[bond[0]],
                            xyz_hash[bond[0]],
                            key_hash[bond[1]],
                            xyz_hash[bond[1]])
@@ -750,16 +757,19 @@ def get_multikin(f, pdb_io):
       kin_out += rotamer_outliers(chain=chain, pdbID=pdbID, rot_outliers=rot_outliers)
       kin_out += rama_outliers(chain=chain, pdbID=pdbID, ram_outliers=ram_outliers)
       kin_out += get_angle_outliers(angle_proxies=angle_proxies,
+                                    chain=chain,
                                     sites_cart=sites_cart,
                                     hierarchy=hierarchy)
       kin_out += get_bond_outliers(bond_proxies=bond_proxies,
+                                   chain=chain,
                                    sites_cart=sites_cart,
                                    hierarchy=hierarchy)
       kin_out += cbeta_dev(chain=chain,
                            pdbID=pdbID,
                            deviations=deviations,
                            ideal=cb.get_beta_ideal())
-      kin_out += pperp_outliers(hierarchy=hierarchy)
+      kin_out += pperp_outliers(hierarchy=hierarchy,
+                                chain=chain)
       counter += 1
   kin_out += make_probe_dots(hierarchy=hierarchy)
   kin_out += get_footer()
