@@ -98,5 +98,5 @@ class normal_equations(object):
     return cov
 
   def covariance_matrix_and_annotations(self):
-    return (self.covariance_matrix,
+    return (self.covariance_matrix(),
             self.reparametrisation.component_annotations)
