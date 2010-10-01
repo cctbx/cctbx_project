@@ -11,7 +11,7 @@ namespace scitbx { namespace af {
   /** This array shall never be resized after its creation. Otherwise the
       ref would get stale.
    */
-  template <typename T, class AccessorType>
+  template <typename T, class AccessorType=typename af::versa<T>::accessor_type>
   class ref_owning_versa : public af::ref<T, AccessorType>
   {
   public:
