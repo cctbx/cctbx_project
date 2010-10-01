@@ -646,6 +646,207 @@ namespace zernike{
   } ;
 
 
+  //--------------------------------------------------------------
+  //                2D ZERNIKE Coefficient ARRAY B_nmk
+  //--------------------------------------------------------------
+
+
+  template <typename FloatType = double>
+  class nmk_array
+  {
+
+    typedef std::map< nlm_index<int>,
+                      std::size_t,
+                      nlm_fast_less_than<int> > lookup_map_type;
+
+    typedef std::map< double_integer_index<int>,
+                      std::size_t,
+                      double_integer_index_fast_less_than<int> > nl_lookup_map_type;
+
+    public:
+    /* Default constructor */
+    nmk_array() {}
+    /* Basic constructor, sets all coefs to zero */
+    nmk_array(int const& n_max)
+    {
+      SCITBX_ASSERT (n_max>0);
+      n_max_=n_max;
+      int count=0, n_duplicates=0, nl_count=0;
+      for (int nn=0; nn<=n_max_; nn++){
+        for (int ll=0;ll<=nn;ll++){
+          // restriction on even / odd
+          if (is_even( nn-ll )){
+            scitbx::af::shared<int> tmp2;
+            // make a lookup table for nl
+            double_integer_index<int> this_nl(nn,ll);
+            nl_.push_back( this_nl );
+            nl_lookup_map_type::const_iterator l = nl_lookup_.find( this_nl );
+            //std::cout << nn << " " << ll << " " << std::endl;
+            if ( l == nl_lookup_.end() ) { // not in list
+                nl_lookup_[ this_nl ] = nl_count;
+            }
+            nl_count++;
+
+            for (int kk=ll;kk<=nn;kk++){
+              if(is_even(nn-kk)) {
+                tmp2.push_back( count ); // this index has a specific n,l pair
+
+                nlm_index<int> this_nlm(nn,ll,kk);
+
+                indices_.push_back( this_nlm );
+                coefs_.push_back( 0.0 );
+                //
+                lookup_map_type::const_iterator l = nlm_lookup_.find( this_nlm );
+                if ( l == nlm_lookup_.end() ) { // not in list
+                  nlm_lookup_[ this_nlm ] = count;
+                } else {
+                n_duplicates++;
+                }
+                SCITBX_ASSERT( find_nlm(nn,ll,kk)==count );
+                count++;
+              //std::cout << nn << " " << ll << " " << kk << std::endl;
+              }
+            }
+            nl_index_.push_back( tmp2 );
+
+          }
+          // if odd, leave it be
+        }
+      }
+    }
+
+
+
+
+    int find_nlm(int const& n, int const& l, int const& m)
+    {
+       nlm_index<> this_nlm(n,l,m);
+       return(find_nlm(this_nlm));
+    }
+
+    int find_nlm(nlm_index<> const& this_nlm )
+    {
+       long nlm_location;
+       lookup_map_type::const_iterator l = nlm_lookup_.find( this_nlm );
+       if (l == nlm_lookup_.end()) {
+         nlm_location = -1; // !!! negative if not found !!!
+       }
+       else {
+         nlm_location = l->second;
+       }
+       return (nlm_location);
+    }
+
+    int find_nl(int const& n, int const& l)
+    {
+       double_integer_index<int> this_nl(n,l);
+       return(find_nl(this_nl));
+    }
+
+    int find_nl(double_integer_index<int> const& this_nl )
+    {
+       int nl_location;
+       nl_lookup_map_type::const_iterator l = nl_lookup_.find( this_nl );
+       if (l == nl_lookup_.end()) {
+         nl_location = -1; // !!! negative if not found !!!
+       }
+       else {
+         nl_location = l->second;
+       }
+       return (nl_location);
+    }
+
+    bool set_coef(int const& n, int const&l, int const&m, std::complex<FloatType> const&x )
+    {
+       int this_index = find_nlm(n,l,m);
+       if (this_index>-1){
+         coefs_[ this_index ] = x;
+         return(true);
+       }
+       return(false);
+    }
+
+    std::complex<FloatType> get_coef(int const& n, int const& l, int const& m)
+    {
+       int this_index = find_nlm(n,l,m);
+       if (this_index>-1){
+         return(coefs_[ this_index ]);
+       }
+       std::complex<FloatType> tmp(0.0);
+       return(tmp);
+    }
+
+    scitbx::af::shared< int > select_on_nl(int const& n, int const& l)
+    {
+       scitbx::af::shared< int > selection;
+       int this_index;
+       this_index = find_nl( double_integer_index<int>(n,l) );
+       return ( nl_index_[ this_index ] );
+    }
+
+    scitbx::af::shared< scitbx::af::shared<int> > nl_indices()
+    {
+      return(nl_index_);
+    }
+
+    scitbx::af::shared< scitbx::af::tiny<int,3> > nlm()
+    {
+      scitbx::af::shared< scitbx::af::tiny<int,3> > result;
+      for (int ii=0; ii<indices_.size();ii++){
+        result.push_back( indices_[ii].triple() );
+      }
+      return( result );
+    }
+
+    scitbx::af::shared< double_integer_index<int> > nl()
+    {
+      return( nl_ );
+    }
+
+
+    scitbx::af::shared< std::complex<FloatType> > coefs()
+    {
+      return( coefs_ );
+    }
+
+
+    bool load_coefs(scitbx::af::shared< scitbx::af::tiny<int,3> > nlm,
+                    scitbx::af::const_ref< std::complex<FloatType> > const& coef)
+    {
+
+       SCITBX_ASSERT(nlm.size()==coef.size());
+       SCITBX_ASSERT(nlm.size()>0 );
+       int this_one;
+       bool found_it, global_find=true;
+       for (int ii=0;ii<nlm.size();ii++){
+         found_it = set_coef(nlm[ii][0],nlm[ii][1],nlm[ii][2],coef[ii]);
+         if (!found_it){
+           global_find=false;
+         }
+       }
+       return(global_find);
+    }
+
+    private:
+      bool is_even(std::size_t value)
+      {
+        std::size_t res;
+        res = 2*(value/2);
+        if (res == value){
+          return(true);
+        }
+        return(false);
+      }
+      lookup_map_type nlm_lookup_;
+      nl_lookup_map_type nl_lookup_;
+
+      int n_max_;
+      scitbx::af::shared< nlm_index<int> > indices_;
+      scitbx::af::shared< std::complex<FloatType> > coefs_;
+      scitbx::af::shared< double_integer_index<int> > nl_;
+      scitbx::af::shared< scitbx::af::shared<int> > nl_index_;
+
+  } ;
 
 
 

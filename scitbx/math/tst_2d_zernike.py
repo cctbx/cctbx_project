@@ -179,8 +179,63 @@ def tst_2d_zm(n,l):
   output.close()
 
 
+def integrate_triple_zernike2d(n1,n2,n3,m, Bnmk_obj):
+  value=0
+  for k1 in range(m,n1+1,2):
+    for k2 in range(m,n2+1,2):
+      for k3 in range(m,n3+1,2):
+        value=value+Bnmk_obj.get_coef(n1,m,k1)*Bnmk_obj.get_coef(n2,m,k2)*Bnmk_obj.get_coef(n3,m,k3)/(k1+k2+k3+2.0)
+  return value
+
+class Bnmk (object):
+  "Bnmk coefficient object hold 2d zernike expansion coefs"
+  def __init__(self, nmax):
+    self.nmax=nmax
+    self.Bnmk=math.nmk_array(nmax)
+    self.initialize_bnmk()
+
+  def initialize_bnmk(self):
+    for n in range(self.nmax, -1,-1):
+      self.Bnmk.set_coef(n,n,n,1.0)
+      for m in range(n-2,-1,-1):
+        value = self.Bnmk.get_coef(n,m+2,n)*(n+m+2.0)/(n-m)
+        self.Bnmk.set_coef(n,m,n,value)
+        for k in range(n-2,m-1,-2):
+          value = -self.Bnmk.get_coef(n,m,k+2)*(k+m+2.0)*(k+2.0-m)/(k+2.0+n)/(n-k)
+          print n,m,k,value.real, "Bnmk"
+          self.Bnmk.set_coef(n,m,k,value)
+
+  def get_coef(self,n,m,k):
+    return self.Bnmk.get_coef(n,m,k).real
+
+
+def tst_integral_triple_zernike2d(nmax):
+  Bnmk_obj = Bnmk(nmax)
+  coef_table = []
+
+  for m in range(nmax+1):
+    C_m_3n = math.nmk_array(nmax)
+    for n1 in range(m,nmax+1,2):
+      for n2 in range(m,n1+1,2):
+        for n3 in range(m,n2+1,2):
+          value = integrate_triple_zernike2d(n1,n2,n3,m,Bnmk_obj)
+          C_m_3n.set_coef(n1,n2,n3,value)
+          print m,n1,n2,n3,value.real
+    coef_table.append( C_m_3n )
+
+
+
 
 if __name__ == "__main__":
+  args = sys.argv[1:]
+  if(len(args) == 1):
+    nmax=int(args[0])
+  else:
+    nmax=5
+  tst_integral_triple_zernike2d(nmax)
+  exit()
+
+
   t1=time.time()
   tst_2d_zm(41,1)
   t2=time.time()
