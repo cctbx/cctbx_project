@@ -89,18 +89,22 @@ namespace scitbx { namespace lstbx {
       }
     }
 
-    /// Add the equations \f$ A x = b \f$ with the given weights
+    /// Add the equations A x = b with the given weights
     /** w[i] weights the i-th equation, i.e. the row \f$ A_{i.} \f$.
+        If negate_right_hand_side, then the equation is A x + b = 0 instead
      */
     void add_equations(af::const_ref<scalar_t> const &b,
                        sparse::matrix<scalar_t> const &a,
-                       af::const_ref<scalar_t> const &w)
+                       af::const_ref<scalar_t> const &w,
+                       bool negate_right_hand_side=false)
     {
       sparse::matrix<scalar_t>
       at_w_a = a.this_transpose_times_diagonal_times_this(w);
       vector_t a_t_w_b = a.transpose_times((w * b).const_ref());
       normal_matrix_ += sparse::upper_diagonal_of(at_w_a);
-      right_hand_side_ += a_t_w_b.const_ref();
+      if (negate_right_hand_side) right_hand_side_ -= a_t_w_b.const_ref();
+      else                        right_hand_side_ += a_t_w_b.const_ref();
+
     }
 
     /// Add the linearisation of the equation \f$r_i(x) = 0\f$
