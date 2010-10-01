@@ -4,6 +4,7 @@ from scitbx.array_family import shared
 from stdlib import math as smath
 import random
 import time, os, sys
+from fractions import Fraction
 
 def read_data(filename):
   file=open(filename, 'r')
@@ -180,12 +181,20 @@ def tst_2d_zm(n,l):
 
 
 def integrate_triple_zernike2d(n1,n2,n3,m, Bnmk_obj):
-  value=0
+  value=Fraction(0)
+  temp = long(0)
+  ck = [long(0)]*(n1+n2+n3+1)
   for k1 in range(m,n1+1,2):
     for k2 in range(m,n2+1,2):
       for k3 in range(m,n3+1,2):
-        value=value+Bnmk_obj.get_coef(n1,m,k1)*Bnmk_obj.get_coef(n2,m,k2)*Bnmk_obj.get_coef(n3,m,k3)/(k1+k2+k3+2.0)
-  return value
+       # value = value+Bnmk_obj.get_coef(n1,m,k1)*Bnmk_obj.get_coef(n2,m,k2)*Bnmk_obj.get_coef(n3,m,k3)/(k1+k2+k3+2.0)
+        temp = Bnmk_obj.get_coef(n1,m,k1)*Bnmk_obj.get_coef(n2,m,k2)*Bnmk_obj.get_coef(n3,m,k3)
+        ck[k1+k2+k3] = ck[k1+k2+k3]+temp
+
+  for kk in range(3*m,n1+n2+n3+1,2):
+  #  print "%4d, %30d"%(kk,ck[kk])
+    value = value + Fraction( ck[kk],(kk+2))
+  return float(value)
 
 class Bnmk (object):
   "Bnmk coefficient object hold 2d zernike expansion coefs"
@@ -197,20 +206,26 @@ class Bnmk (object):
   def initialize_bnmk(self):
     for n in range(self.nmax, -1,-1):
       self.Bnmk.set_coef(n,n,n,1.0)
-      for m in range(n-2,-1,-1):
+      for m in range(n-2,-1,-2):
         value = self.Bnmk.get_coef(n,m+2,n)*(n+m+2.0)/(n-m)
         self.Bnmk.set_coef(n,m,n,value)
         for k in range(n-2,m-1,-2):
           value = -self.Bnmk.get_coef(n,m,k+2)*(k+m+2.0)*(k+2.0-m)/(k+2.0+n)/(n-k)
-          print n,m,k,value.real, "Bnmk"
           self.Bnmk.set_coef(n,m,k,value)
 
   def get_coef(self,n,m,k):
-    return self.Bnmk.get_coef(n,m,k).real
+    return int(self.Bnmk.get_coef(n,m,k).real)
+
+  def print_bnmk(self):
+    for n in range(self.nmax+1):
+      for m in range(n,-1,-2):
+        for k in range(m,n+1,2):
+          print n,m,k,self.get_coef(n,m,k)
 
 
 def tst_integral_triple_zernike2d(nmax):
   Bnmk_obj = Bnmk(nmax)
+  #Bnmk_obj.print_bnmk()
   coef_table = []
 
   for m in range(nmax+1):
@@ -228,11 +243,22 @@ def tst_integral_triple_zernike2d(nmax):
 
 if __name__ == "__main__":
   args = sys.argv[1:]
+  if(len(args) == 4):
+    m=int(args[0])
+    n1=int(args[1])
+    n2=int(args[2])
+    n3=int(args[3])
+    Bnmk_obj = Bnmk(max(n1,n2,n3))
+    print integrate_triple_zernike2d(n1,n2,n3,m,Bnmk_obj)
+    exit()
+
   if(len(args) == 1):
     nmax=int(args[0])
-  else:
+  elif(len(args)==0):
     nmax=5
   tst_integral_triple_zernike2d(nmax)
+
+
   exit()
 
 
