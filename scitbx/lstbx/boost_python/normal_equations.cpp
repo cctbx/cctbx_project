@@ -31,7 +31,8 @@ namespace scitbx { namespace lstbx { namespace boost_python {
              &wt::add_equation,
              (arg("right_hand_side"), arg("design_matrix_row"), arg("weight")))
         .def("add_equations", &wt::add_equations,
-             (arg("right_hand_side"), arg("design_matrix"), arg("weights")))
+             (arg("right_hand_side"), arg("design_matrix"), arg("weights"),
+              arg("negate_right_hand_side")=false))
         .add_property("normal_matrix_packed_u", &wt::normal_matrix)
         .add_property("right_hand_side", &wt::right_hand_side)
         .def("solve", &wt::solve)
