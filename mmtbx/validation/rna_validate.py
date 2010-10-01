@@ -2,6 +2,7 @@ import os, sys, string
 from iotbx import pdb
 from mmtbx.chemical_components import get_bond_pairs
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
+from iotbx.pdb import common_residue_names_get_class
 import iotbx.phil
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx import monomer_library
@@ -123,7 +124,6 @@ class rna_validate(object):
       if '!!' in line:
         temp = line.split(":")
         key = ' '+temp[5][0:3]+temp[2]+temp[3]+temp[4]
-        print key
         temp2 = temp[5].split(" ")
         suite_outliers.append([key,temp2[len(temp2)-1]])
     return suite_outliers
@@ -310,6 +310,8 @@ class rna_validate(object):
             next_pdb_residue = _get_next_residue()
             if (next_pdb_residue is not None):
               residue_2_p_atom = next_pdb_residue.find_atom_by(name=" P  ")
+            if common_residue_names_get_class(residue.resname) != "common_rna_dna":
+              continue
             ana = rna_sugar_pucker_analysis.evaluate(
               params=params,
               residue_1_deoxy_ribo_atom_dict=ra1.deoxy_ribo_atom_dict,
