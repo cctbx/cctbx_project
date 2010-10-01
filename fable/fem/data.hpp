@@ -227,6 +227,21 @@ namespace fem {
 
     data_values&
     operator,(
+      short& val)
+    {
+      datum const& tab_val = next_datum();
+      if (tab_val.content->type() == typeid(int)) {
+        val = static_cast<short>(
+              static_cast<datum::holder<int>*>(tab_val.content)->held);
+      }
+      else {
+        tab_val.throw_type_mismatch("short");
+      }
+      return *this;
+    }
+
+    data_values&
+    operator,(
       int& val)
     {
       datum const& tab_val = next_datum();
