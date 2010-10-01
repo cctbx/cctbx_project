@@ -224,24 +224,24 @@ namespace cctbx { namespace sgtbx { namespace asu {
     return std::max(get_tolerance(expr.lhs, tol), get_tolerance(expr.rhs, tol));
   }
 
-  void optimize_for_grid(cut &c, const scitbx::af::int3 &grid_size)
+  inline void optimize_for_grid(cut &c, const scitbx::af::int3 &grid_size)
   {
     c.optimize_for_grid(grid_size);
   }
 
   template<typename Expr>
-    void optimize_for_grid(Expr &expr, const scitbx::af::int3 &grid_size)
+    inline void optimize_for_grid(Expr &expr, const scitbx::af::int3 &grid_size)
   {
     optimize_for_grid(expr.lhs, grid_size);
     optimize_for_grid(expr.rhs, grid_size);
   }
 
-  void get_optimized_grid_limits(const cut &c, scitbx::af::long3 &max_p)
+  inline void get_optimized_grid_limits(const cut &c, scitbx::af::long3 &max_p)
   {
     c.get_optimized_grid_limits(max_p);
   }
 
-  template<typename Expr>
+  template<typename Expr> inline
     void get_optimized_grid_limits(const Expr &expr, scitbx::af::long3 &max_p)
   {
     scitbx::af::long3 m1, m2;
