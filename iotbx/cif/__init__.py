@@ -135,9 +135,9 @@ Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."
 
 class miller_indices_as_cif_loop:
 
-  def __init__(self, indices, prefix='_refln'):
+  def __init__(self, indices, prefix='_refln_'):
     self.refln_loop = model.loop(header=(
-      '%s_index_h' %prefix, '%s_index_k' %prefix, '%s_index_l' %prefix))
+      '%sindex_h' %prefix, '%sindex_k' %prefix, '%sindex_l' %prefix))
     for hkl in indices:
       self.refln_loop.add_row(hkl)
 
@@ -145,28 +145,53 @@ class miller_indices_as_cif_loop:
 class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
                                  miller_indices_as_cif_loop):
 
-  def __init__(self, array, array_type):
+  def __init__(self, array, array_type=None,
+               column_name=None, column_names=None,
+               miller_index_prefix='_refln_'):
     crystal_symmetry_as_cif_block.__init__(self, array.crystal_symmetry())
-    miller_indices_as_cif_loop.__init__(self, array.indices())
+    miller_indices_as_cif_loop.__init__(
+      self, array.indices(), prefix=miller_index_prefix)
     self.indices = array.indices()
-    self.add_miller_array(array, array_type)
+    self.add_miller_array(array, array_type, column_name, column_names)
     self.cif_block.add_loop(self.refln_loop)
 
-  def add_miller_array(self, array, array_type):
-    assert array_type in ('calc', 'meas')
+  def add_miller_array(self, array, array_type=None,
+                       column_name=None, column_names=None):
+    """
+    Accepts a miller array, and one of array_type, column_name or column_names.
+    """
+
+    assert [array_type, column_name, column_names].count(None) == 2
+    if array_type is not None:
+      assert array_type in ('calc', 'meas')
+    elif column_name is not None:
+      column_names = [column_name]
     assert array.size() == self.indices.size()
     if array.is_complex_array():
-      columns = {
-        '_refln_F_%s' %array_type: flex.abs(array.data()).as_string(),
-        '_refln_phase_%s' %array_type: array.phases().data().as_string()}
+      if column_names is None:
+        column_names = ['_refln_F_%s' %array_type, '_refln_phase_%s' %array_type]
+      else: assert len(column_names) == 2
+      if '_A_' in column_names[0] and '_B_' in column_names[1]:
+        data = [flex.real(array.data()).as_string(),
+                 flex.imag(array.data()).as_string()]
+      else:
+        data = [flex.abs(array.data()).as_string(),
+                 array.phases().data().as_string()]
     else:
-      if array.is_xray_intensity_array():
-        obs_ext = 'squared_'
-      else: obs_ext = ''
-      columns = {
-        '_refln_F_%s%s' %(obs_ext, array_type): array.data().as_string()}
-      if array.sigmas() is not None:
-        columns['_refln_F_%ssigma' %(obs_ext)] = array.sigmas().as_string()
+      if array_type is not None:
+        if array.is_xray_intensity_array():
+          obs_ext = 'squared_'
+        else: obs_ext = ''
+        column_names = ['_refln_F_%s%s' %(obs_ext, array_type)]
+        if array.sigmas() is not None:
+          column_names.append('_refln_F_%ssigma' %obs_ext)
+      if isinstance(array.data(), flex.std_string):
+        data = [array.data()]
+      else:
+        data = [array.data().as_string()]
+      if array.sigmas() is not None and len(column_names) == 2:
+        data.append(array.sigmas().as_string())
+    columns = OrderedDict(zip(column_names, data))
     for key in columns:
       assert key not in self.refln_loop
     self.refln_loop.add_columns(columns)

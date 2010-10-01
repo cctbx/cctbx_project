@@ -7,10 +7,44 @@ from libtbx.utils import time_log
 from cStringIO import StringIO
 import sys
 
+
+def exercise_miller_arrays_as_cif_block():
+  from iotbx.cif import reader
+  cif_model = reader(input_string=cif_miller_array,
+                     builder=cif.builders.cif_model_builder()).model()
+  ma_builder = cif.builders.miller_array_builder(cif_model['global'])
+  ma1 = ma_builder.arrays()['_refln_F_squared_meas']
+  mas_as_cif_block = cif.miller_arrays_as_cif_block(
+    ma1, array_type='meas')
+  mas_as_cif_block.add_miller_array(
+    ma1.array(data=flex.complex_double([1-1j]*ma1.size())), array_type='calc')
+  mas_as_cif_block.add_miller_array(
+    ma1.array(data=flex.complex_double([1-2j]*ma1.size())), column_names=[
+      '_refln_A_calc', '_refln_B_calc'])
+  for key in ('_refln_F_squared_meas', '_refln_F_squared_sigma',
+              '_refln_F_calc', '_refln_phase_calc',
+              '_refln_A_calc', '_refln_A_calc'):
+    assert key in mas_as_cif_block.cif_block.keys()
+  #
+  mas_as_cif_block = cif.miller_arrays_as_cif_block(
+    ma1, column_names=['_diffrn_refln_intensity_net',
+                       '_diffrn_refln_intensity_sigma'],
+         miller_index_prefix='_diffrn_refln_')
+  mas_as_cif_block.add_miller_array(
+    ma1.array(data=flex.std_string(ma1.size(), 'om')),
+    column_name='_diffrn_refln_intensity_u')
+  for key in ('_diffrn_refln_intensity_net', '_diffrn_refln_intensity_sigma',
+              '_diffrn_refln_intensity_u'):
+    assert key in mas_as_cif_block.cif_block.keys()
+
 def exercise():
   if not cif.has_antlr3:
     print "Skipping tst_lex_parse_build.py (antlr3 is not available)"
     return
+  exercise_miller_arrays_as_cif_block()
+  exercise_lex_parse_build()
+
+def exercise_lex_parse_build():
   builders = [cif.builders.cif_model_builder]
   if libtbx.env.has_module('PyCifRW'):
     builders.append(cif.builders.PyCifRW_model_builder)
@@ -86,13 +120,8 @@ def exercise_parser(reader, builder):
   ma_builder = cif.builders.miller_array_builder(cif_model['global'])
   ma1 = ma_builder.arrays()['_refln_F_squared_meas']
   # also test construction of cif model from miller array
-  miller_arrays_as_cif_block = cif.miller_arrays_as_cif_block(
-    ma1, array_type='meas')
-  miller_arrays_as_cif_block.add_miller_array(
-    ma1.array(data=flex.complex_double([1-1j]*ma1.size())), array_type='calc')
-  ma_cif_block = miller_arrays_as_cif_block.cif_block
   ma2 = cif.builders.miller_array_builder(
-    ma_cif_block).arrays()['_refln_F_squared_meas']
+    ma1.as_cif_block(array_type='meas')).arrays()['_refln_F_squared_meas']
   for ma in (ma1, ma2):
     sio = StringIO()
     ma.show_array(sio)
