@@ -168,8 +168,6 @@ struct matrix_wrapper
            &wt::this_transpose_times_diagonal_times_this)
       .def("__str__", str_)
       .def("__repr__", repr)
-      .def("_add_to", &wt::add_to)
-      .def("_substract_from", &wt::substract_from)
     ;
   }
 

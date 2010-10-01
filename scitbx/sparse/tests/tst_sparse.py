@@ -360,16 +360,6 @@ def exercise_column_selection():
   c1 = sparse.matrix(6, len(q), [ columns[k] for k in q ])
   assert c == c1
 
-def exercise_dense_matrix_op_sparse_matrix():
-  a = flex.double_range(1, 7)
-  a.reshape(flex.grid(2, 3))
-  b = sparse.matrix(2, 3)
-  b[0, 0] = 1
-  b[1, 2] = 3
-  a += b
-  assert approx_equal(list(a), [ 2, 2, 3,
-                                 4, 5, 9 ], eps=1e-15)
-
 def exercise_block_assignment():
   a = sparse.matrix(4, 6)
   a[1, 2] = 3
@@ -415,7 +405,6 @@ def exercise_block_assignment():
 def run():
   libtbx.utils.show_times_at_exit()
   exercise_block_assignment()
-  exercise_dense_matrix_op_sparse_matrix()
   exercise_column_selection()
   exercise_a_tr_a()
   exercise_a_tr_diag_a()
