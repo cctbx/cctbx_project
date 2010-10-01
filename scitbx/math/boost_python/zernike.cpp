@@ -35,6 +35,30 @@ namespace {
     }
   };
 
+
+  struct nmk_array_wrapper
+  {
+    typedef zernike::nmk_array<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+
+      class_<w_t>("nmk_array", no_init)
+        .def(init<int const&>
+                  ((arg("n_max") )))
+        .def("set_coef", &w_t::set_coef )
+        .def("get_coef", &w_t::get_coef )
+        .def("load_coefs", &w_t::load_coefs)
+        .def("select_on_nl", &w_t::select_on_nl)
+        .def("nlm", &w_t::nlm)
+        .def("coefs", &w_t::coefs)
+       ;
+    }
+  };
+
+
   struct nl_array_wrapper
   {
     typedef zernike::nl_array<> w_t;
@@ -237,6 +261,7 @@ namespace boost_python {
   void wrap_zernike()
   {
     nlm_array_wrapper::wrap();
+    nmk_array_wrapper::wrap();
     nl_array_wrapper::wrap();
     zernike_polynome_wrapper::wrap();
     zernike_radial_wrapper::wrap();
