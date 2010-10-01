@@ -1,5 +1,6 @@
 #include <scitbx/sparse/vector.h>
 #include <scitbx/sparse/matrix.h>
+#include <scitbx/sparse/triangular.h>
 #include <scitbx/array_family/initialiser.h>
 #include <iostream>
 
@@ -204,10 +205,34 @@ namespace scitbx { namespace sparse {
     SCITBX_ASSERT(b1.all_eq(c1));
   }
 
+  void exercise_triangular_proxy() {
+    int const n=5;
+    matrix<double> a(n, n);
+    a(0, 0) = 1;
+    a(0, 2) = 2;
+    a(1, 0) = 3;
+    a(1, 3) = 4;
+    a(2, 2) = 5;
+    a(3, 2) = 6;
+    a(3, 4) = 7;
+    a(4, 1) = 8;
+    a(4, 3) = 9;
+    a(4, 4) = 10;
+    af::versa<double, af::packed_u_accessor> b = upper_diagonal_of(a);
+    af::versa<double, af::packed_u_accessor> b0(n);
+    af::init(b0) = 1, 0, 2, 0,  0,
+                      0, 0, 4,  0,
+                         5, 0,  0,
+                            0,  7,
+                               10;
+    SCITBX_ASSERT(b.all_eq(b0));
+  }
+
 }}
 
 int main() {
   using namespace scitbx::sparse;
+  exercise_triangular_proxy();
   exercise_operations_with_dense_matrices();
   exercise_vector_element_assignment();
   exercise_permutation();
