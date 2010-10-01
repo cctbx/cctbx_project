@@ -13,13 +13,7 @@ namespace smtbx { namespace refinement { namespace constraints {
 
     if (!jacobian_transpose) return;
     sparse_matrix_type &jt = *jacobian_transpose;
-    af::const_ref<double, af::mat_grid>
-    local_jt = site_constraints.gradient_sum_matrix();
-    for (int j=0; j<3; ++j) {
-      for (int i=0; i<site_constraints.n_independent_params(); ++i) {
-        if (local_jt(i, j)) jt(p.index() + i, index() + j) = local_jt(i, j);
-      }
-    }
+    jt.assign_block(site_constraints.gradient_sum_matrix(), p.index(), index());
   }
 
   /**** ADP ****/
@@ -34,13 +28,7 @@ namespace smtbx { namespace refinement { namespace constraints {
 
     if (!jacobian_transpose) return;
     sparse_matrix_type &jt = *jacobian_transpose;
-    af::const_ref<double, af::mat_grid>
-    local_jt = adp_constraints.gradient_sum_matrix();
-    for (int j=0; j<6; ++j) {
-      for (int i=0; i<adp_constraints.n_independent_params(); ++i) {
-        if (local_jt(i, j)) jt(p.index() + i, index() + j) = local_jt(i, j);
-      }
-    }
+    jt.assign_block(adp_constraints.gradient_sum_matrix(), p.index(), index());
   }
 
 }}}
