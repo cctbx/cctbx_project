@@ -227,15 +227,15 @@ namespace fem {
 
     data_values&
     operator,(
-      short& val)
+      integer_star_2& val)
     {
       datum const& tab_val = next_datum();
       if (tab_val.content->type() == typeid(int)) {
-        val = static_cast<short>(
-              static_cast<datum::holder<int>*>(tab_val.content)->held);
+        val = static_cast<integer_star_2>(
+          static_cast<datum::holder<int>*>(tab_val.content)->held);
       }
       else {
-        tab_val.throw_type_mismatch("short");
+        tab_val.throw_type_mismatch("integer_star_2");
       }
       return *this;
     }
