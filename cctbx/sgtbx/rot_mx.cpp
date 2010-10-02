@@ -1,4 +1,3 @@
-#include <boost/rational.hpp>
 #include <cctbx/sgtbx/rot_mx.h>
 #include <cctbx/sgtbx/utils.h>
 #include <scitbx/math/gcd.h>
@@ -52,7 +51,7 @@ namespace cctbx { namespace sgtbx {
   {
     int det_den3 = num_.determinant();
     if (det_den3 == 0) throw error("Rotation matrix is not invertible.");
-    boost::rational<int> d(det_den3, den_);
+    rat d(det_den3, den_);
     return rot_mx(num_.co_factor_matrix_transposed() * d.denominator(), 1)
       .divide(d.numerator());
   }

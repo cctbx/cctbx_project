@@ -74,6 +74,9 @@ namespace {
           (scitbx::vec3<double>(*)(
             rot_mx const&, scitbx::vec3<double> const&)) operator*)
         .def("__rmul__", rmul_vec3_double)
+        .def("__mul__",
+          (vec3_rat(*)(
+            rot_mx const&, vec3_rat const&)) operator*)
       ;
     }
   };

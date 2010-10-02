@@ -14,6 +14,20 @@ from boost import rational
 import random
 import sys
 
+def vec3_rat_from_str(s):
+  flds = s.split(",")
+  assert len(flds) == 3
+  result = []
+  for fld in flds:
+    slash_count = fld.count("/")
+    assert slash_count < 2
+    if (slash_count == 0):
+      n, d = int(fld), 1
+    else:
+      n, d = [int(t) for t in fld.split("/")]
+    result.append(rational.int(n, d))
+  return result
+
 class _space_group(boost.python.injector, ext.space_group):
 
   def smx(self, with_inversion=False):

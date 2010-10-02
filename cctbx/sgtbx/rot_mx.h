@@ -121,11 +121,11 @@ namespace cctbx { namespace sgtbx {
       //! Determinant as rational number.
       /*! An exception is thrown if den() <= 0.
        */
-      boost::rational<int>
+      rat
       determinant() const
       {
         CCTBX_ASSERT(den_ > 0);
-        return boost::rational<int>(num_.determinant(), den_*den_*den_);
+        return rat(num_.determinant(), den_*den_*den_);
       }
 
       //! Inverse of this matrix.
@@ -343,14 +343,24 @@ namespace cctbx { namespace sgtbx {
       int den_;
   };
 
-  //! Multiplication of rot_mx with a vector of floating-point values.
+  /*! \brief Multiplication of rot_mx with a vector of rational or
+      floating-point values.
+   */
   /*! Python: __mul__
    */
-  template <typename FloatType>
-  scitbx::vec3<FloatType>
-  operator*(rot_mx const& lhs, scitbx::vec3<FloatType> const& rhs)
+  template <typename RatFltType>
+  scitbx::vec3<RatFltType>
+  operator*(
+    rot_mx const& lhs,
+    scitbx::vec3<RatFltType> const& rhs)
   {
-    return lhs.num() * rhs / lhs.den();
+    scitbx::vec3<RatFltType> result;
+    sg_mat3 const& l = lhs.num();
+    int d = lhs.den();
+    for(unsigned i=0;i<3;i++) {
+      result[i] = (l(i,0)*rhs[0] + l(i,1)*rhs[1] + l(i,2)*rhs[2]) / d;
+    }
+    return result;
   }
 
   //! Multiplication of rot_mx with a vector of floating-point values.

@@ -10,7 +10,9 @@ namespace scitbx {
   //! Formatting of rational numbers.
   template <typename IntType>
   std::string
-  format(boost::rational<IntType> const& v, bool decimal=false)
+  format(
+    boost::rational<IntType> const& v,
+    bool decimal=false)
   {
     if (v.numerator() == 0) return std::string("0");
     char buf[128];
@@ -30,6 +32,26 @@ namespace scitbx {
                                    static_cast<long>(v.denominator()));
     }
     return std::string(buf);
+  }
+
+  template <typename IntType>
+  std::string
+  format(
+    boost::rational<IntType> const* values,
+    std::size_t values_size,
+    char const* seperator=",",
+    bool decimal=false)
+  {
+    std::string result;
+    if (values_size != 0) {
+      result.reserve(8*values_size);
+      for(std::size_t i=0;;) {
+        result += format(values[i++], decimal);
+        if (i == values_size) break;
+        result += seperator;
+      }
+    }
+    return result;
   }
 
   template <typename ArrayType>

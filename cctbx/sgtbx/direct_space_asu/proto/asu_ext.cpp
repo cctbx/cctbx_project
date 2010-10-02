@@ -131,8 +131,6 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
   {
     wrap_cut();
     wrap_direct_space_asu();
-    scitbx::boost_python::container_conversions::
-      tuple_mapping_fixed_size< rvector3_t >();
     scitbx::af::boost_python::shared_wrapper< cut >::wrap("cut_shared_array");
     scitbx::af::boost_python::shared_wrapper< rvector3_t >::wrap(
         "rational3_shared_array");

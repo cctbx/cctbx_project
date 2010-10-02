@@ -76,6 +76,7 @@ def run():
   ["$D/regression/tst_xray_minimization.py", "--F_sq", "P31"],
   "$D/maptbx/tst_real_space_refinement.py",
   ["$D/regression/tst_maptbx_structure_factors.py", "P31"],
+  ["$D/regression/tst_map_weights_for_symmetry_summation.py", "Pmmm"],
   "$D/maptbx/tst_real_space_refinement_simple.py",
   "$D/maptbx/tst_real_space_target_and_gradients.py",
   ["$D/regression/tst_miller_merge_equivalents.py", "P31"],

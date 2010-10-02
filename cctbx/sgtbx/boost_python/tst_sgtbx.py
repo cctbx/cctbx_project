@@ -3,6 +3,7 @@ from cctbx.array_family import flex
 from cctbx import sgtbx
 import cctbx.sgtbx.direct_space_asu
 from cctbx import uctbx
+import boost.rational
 from libtbx import complex_math
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import Exception_expected, approx_equal, \
@@ -472,6 +473,8 @@ def exercise_rot_mx():
   r = rot_mx([-2,3,5,1,4,-2,-3,2,-1],6)
   assert approx_equal(r * [0.2,0.1,-0.5], [-0.4333333, 0.2666667, 0.01666667])
   assert approx_equal([0.2,0.1,-0.5] * r, [0.2, 0, 0.21666667])
+  assert str(r * sgtbx.vec3_rat_from_str("1/5,1/10,-1/2")) \
+      == "(-13/30, 4/15, 1/60)"
 
 def exercise_rt_mx():
   tr_vec = sgtbx.tr_vec
@@ -587,6 +590,8 @@ def exercise_rt_mx():
   assert i.location_part().as_double() == (0,-1./4,0)
   assert i.origin_shift().as_double() == (1./12,1./6,0)
   assert approx_equal(rt_mx("z,x,y") * (2,3,4), (4,2,3))
+  assert str(rt_mx("z,x,y") * sgtbx.vec3_rat_from_str("2,-1/7,10/-4")) \
+      == "(-5/2, 2, -1/7)"
   r = (-1,1,0,0,1,0,0,0,-1)
   t = (1/12.,2/12.,3/12.)
   assert str(rt_mx(r, t)) == "-x+y+1/12,y+1/6,-z+1/4"
@@ -921,6 +926,17 @@ def exercise_space_group():
   assert tuple(g.multiplicity(m, True)) == (1,1,4)
   assert g.epsilon((1,2,3)) == 1
   assert tuple(g.epsilon(m)) == (4,4,1)
+  gm = space_group("F 2 2 -1d")
+  def check(s, m):
+    assert gm.multiplicity(sgtbx.vec3_rat_from_str(s)) == m
+  check("1/4,1/4,1/4", 8)
+  check("1/4,1/4,-1/4", 8)
+  check("1/8,1/8,1/8", 16)
+  check("5/8,5/8,5/8", 16)
+  check("1/9,1/4,1/4", 16)
+  check("1/4,1/9,1/4", 16)
+  check("1/4,1/4,1/9", 16)
+  check("1/7,1/5,1/9", 32)
   u = uctbx.unit_cell((3, 3, 4, 90, 90, 120))
   assert u.is_similar_to(space_group("P 6").average_unit_cell(u))
   assert space_group("P 6").is_compatible_unit_cell(u)
@@ -2245,8 +2261,15 @@ def exercise_hashing():
   except RuntimeError, e:
     assert str(e).find("tidy") != -1
 
+def exercise_fractional_mod():
+  assert approx_equal(
+    sgtbx.fractional_mod_positive((-0.1, 0.2, -0.3)),
+    (0.9, 0.2, 0.7))
+  assert approx_equal(
+    sgtbx.fractional_mod_short((0.4, 0.9, 0.7)),
+    (0.4, -0.1, -0.3))
+
 def run():
-  exercise_hashing()
   exercise_symbols()
   exercise_tr_vec()
   exercise_rot_mx()
@@ -2266,6 +2289,8 @@ def run():
   exercise_find_affine()
   exercise_search_symmetry()
   exercise_tensor_rank_2_constraints()
+  exercise_hashing()
+  exercise_fractional_mod()
   print format_cpu_times()
 
 if (__name__ == "__main__"):

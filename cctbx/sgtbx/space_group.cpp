@@ -649,4 +649,28 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
+  int
+  space_group::multiplicity(
+    vec3_rat const& site) const
+  {
+    int result = 0;
+    vec3_rat pivot = site;
+    ltr_.find_best_equiv_in_place(pivot);
+    for(unsigned i=0;i<n_smx();i++) {
+      vec3_rat sym_site = smx_[i] * site;
+      ltr_.find_best_equiv_in_place(sym_site);
+      if (sym_site == pivot) result++;
+      if (is_centric()) {
+        for(unsigned j=0;j<3;j++) {
+          sym_site[j] *= -1;
+          sym_site[j] += rat(inv_t_.num()[j], inv_t_.den());
+        }
+        ltr_.find_best_equiv_in_place(sym_site);
+        if (sym_site == pivot) result++;
+      }
+    }
+    CCTBX_ASSERT(order_z() % result == 0);
+    return order_z() / result;
+  }
+
 }} // namespace cctbx::sgtbx
