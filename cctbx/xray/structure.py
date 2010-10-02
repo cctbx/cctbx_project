@@ -820,7 +820,6 @@ class structure(crystal.special_position_settings):
     print >> f, prefix + "At special positions:", \
       self.special_position_indices().size()
     crystal.symmetry.show_summary(self, f=f, prefix=prefix)
-    return self
 
   def show_scatterers(self, f=None):
     if (f is None): f = sys.stdout
@@ -828,7 +827,6 @@ class structure(crystal.special_position_settings):
                  "Uiso, Ustar as Uiso")
     for scatterer in self.scatterers():
       scatterer.show(f=f, unit_cell=self.unit_cell())
-    return self
 
   def show_special_position_shifts(self,
         sites_frac_original=None,
