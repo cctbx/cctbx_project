@@ -24,10 +24,17 @@
       write(6, '(2i3)') numsj
       write(6, '(2a)') strsj
       call sub
+      call sub2
       end
 
       subroutine sub
       dimension nums(2)
       data nums /-24,+35/
       write(6, '(2i4)') nums
+      end
+
+      subroutine sub2
+      integer*2 nums(3)
+      data nums /-56,2*78/
+      write(6, '(3i4)') (nums(i)*2, i=1,3)
       end

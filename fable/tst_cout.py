@@ -2596,7 +2596,7 @@ blockdata_unnamed(
 """)
   #
   lines = get("data_32.f")
-  assert not absd(lines, tail_off(12), """\
+  assert not absd(lines, tail_off(13), """\
     num = -34;
     str = "YuIo";
     {
@@ -2637,7 +2637,7 @@ blockdata_unnamed(
     numsj(2) = 45;
     strsj(2) = "ASdfg";
 """)
-  assert not absd(lines, head_off(27), """\
+  assert not absd(lines, head_off(28), """\
     static const int values[] = {
       -24, +35
     };
