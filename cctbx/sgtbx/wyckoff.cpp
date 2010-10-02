@@ -43,10 +43,8 @@ namespace cctbx { namespace sgtbx { namespace wyckoff {
     int sg_number = space_group_type_.number();
     CCTBX_ASSERT(1 <= sg_number && sg_number <= 230);
     rot_mx const& cb_r = space_group_type_.cb_op().c().r();
-    boost::rational<int> factor_mult(cb_r.num().determinant(),
-                                     scitbx::fn::pow3(cb_r.den()));
-    boost::rational<int> mult =
-      general_position_multiplicities(sg_number) * factor_mult;
+    rat factor_mult(cb_r.num().determinant(), scitbx::fn::pow3(cb_r.den()));
+    rat mult = general_position_multiplicities(sg_number) * factor_mult;
     CCTBX_ASSERT(mult.denominator() == 1);
     raw_table const& raw_tab = raw_tables(sg_number);
     CCTBX_ASSERT(raw_tab.n < 27);

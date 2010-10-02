@@ -5,7 +5,6 @@
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/math/loop_n_from_m.h>
 #include <scitbx/array_family/loops.h>
-#include <boost/rational.hpp>
 
 namespace cctbx { namespace sgtbx {
 

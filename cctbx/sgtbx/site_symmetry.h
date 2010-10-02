@@ -144,8 +144,7 @@ namespace cctbx { namespace sgtbx {
       change_basis(change_of_basis_op const& cb_op) const
       {
         site_symmetry_ops result;
-        boost::rational<int>
-          new_multiplicity = cb_op.c_inv().r().determinant() * multiplicity_;
+        rat new_multiplicity = cb_op.c_inv().r().determinant() * multiplicity_;
         CCTBX_ASSERT(new_multiplicity.denominator() == 1);
         result.multiplicity_ = scitbx::fn::absolute(
           new_multiplicity.numerator());

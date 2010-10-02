@@ -13,7 +13,7 @@ namespace cctbx { namespace sgtbx {
       brick_point() {};
 
       //! The point as a rational number.
-      boost::rational<int>
+      rat
       value() const { return value_; }
 
       //! Flag to indicate if the point is inside the brick or just outside.
@@ -31,7 +31,7 @@ namespace cctbx { namespace sgtbx {
     protected:
       friend class brick;
       explicit brick_point(int raw_point);
-      boost::rational<int> value_;
+      rat value_;
       bool off_;
   };
 
@@ -105,7 +105,7 @@ namespace cctbx { namespace sgtbx {
       /*! Not available in Python.
        */
       bool
-      is_inside(scitbx::vec3<boost::rational<int> > const& point) const;
+      is_inside(vec3_rat const& point) const;
 
       //! Tests if a given point is inside the brick.
       bool

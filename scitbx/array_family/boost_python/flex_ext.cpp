@@ -112,6 +112,7 @@ namespace {
     tuple_mapping_fixed_size<mat2<double> >();
     tuple_mapping_fixed_size<sym_mat2<double> >();
 
+    tuple_mapping_fixed_size<vec3<boost::rational<int> > >();
     tuple_mapping_fixed_size<mat3<boost::rational<int> > >();
 
     tuple_mapping_fixed_size<tiny<vec3<double>, 2> >();

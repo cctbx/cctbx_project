@@ -509,20 +509,23 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
-  //! Multiplication of rt_mx with a vector of double.
+  /*! \brief Multiplication of rt_mx with a vector of rational or
+      floating-point values.
+   */
   /*! Python: __mul__
    */
-  template <typename FloatType>
-  scitbx::vec3<FloatType>
-  rt_mx::operator*(af::tiny_plain<FloatType, 3> const& rhs) const
+  template <typename RatFltType>
+  scitbx::vec3<RatFltType>
+  rt_mx::operator*(
+    af::tiny_plain<RatFltType, 3> const& rhs) const
   {
-    scitbx::vec3<FloatType> result;
-    FloatType rd = r_.den();
-    FloatType td = t_.den();
-    for(std::size_t i=0;i<3;i++) {
+    scitbx::vec3<RatFltType> result;
+    int rd = r_.den();
+    int td = t_.den();
+    for(unsigned i=0;i<3;i++) {
       result[i] = (  r_(i,0) * rhs[0]
                    + r_(i,1) * rhs[1]
-                   + r_(i,2) * rhs[2]) / rd + t_[i] / td;
+                   + r_(i,2) * rhs[2]) / rd + RatFltType(t_[i]) / td;
     }
     return result;
   }

@@ -111,4 +111,38 @@ namespace cctbx { namespace sgtbx {
     return t_best.new_denominator(t.den()).mod_positive();
   }
 
+  void
+  tr_group::find_best_equiv_in_place(
+    vec3_rat& t) const
+  {
+    vec3_rat best;
+    vec3_rat curr;
+    for(std::size_t i=0;i<size();i++) {
+      tr_vec const& lt = elems_[i];
+      bool update_best = false;
+      for(unsigned j=0;j<3;j++) {
+        rat tt(lt.num()[j], lt.den());
+        tt += t[j];
+        int d = tt.denominator();
+        tt = rat(scitbx::math::mod_positive(tt.numerator(), d), d);
+        if (i == 0) {
+          best[j] = tt;
+        }
+        else {
+          if (!update_best) {
+            if (best[j] < tt) {
+              break;
+            }
+            update_best = (tt < best[j]);
+          }
+          curr[j] = tt;
+        }
+      }
+      if (update_best) {
+        best = curr;
+      }
+    }
+    t = best;
+  }
+
 }} // namespace cctbx::sgtbx

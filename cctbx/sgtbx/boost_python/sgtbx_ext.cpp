@@ -69,6 +69,20 @@ namespace {
     }
   };
 
+  fractional<>
+  fractional_mod_positive(
+    fractional<> const& site)
+  {
+    return site.mod_positive();
+  }
+
+  fractional<>
+  fractional_mod_short(
+    fractional<> const& site)
+  {
+    return site.mod_short();
+  }
+
   void register_tuple_mappings()
   {
     using namespace scitbx::boost_python::container_conversions;
@@ -94,6 +108,9 @@ namespace {
 
     to_python_converter<crystal_system::code, crystal_system_code_to_string>();
     to_python_converter<matrix_group::code, matrix_group_code_to_string>();
+
+    def("fractional_mod_positive", fractional_mod_positive, (arg("site")));
+    def("fractional_mod_short", fractional_mod_short, (arg("site")));
 
     wrap_brick();
     wrap_change_of_basis_op();

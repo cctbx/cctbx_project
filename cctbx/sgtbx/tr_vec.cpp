@@ -1,6 +1,5 @@
 #include <cctbx/sgtbx/tr_vec.h>
 #include <cctbx/sgtbx/utils.h>
-#include <scitbx/rational.h>
 #include <scitbx/math/gcd.h>
 
 namespace cctbx { namespace sgtbx {
@@ -64,7 +63,7 @@ namespace cctbx { namespace sgtbx {
     std::string result;
     for(int i=0;i<3;i++) {
       if (i != 0) result += separator;
-      boost::rational<int> t_frac((*this)[i], den());
+      rat t_frac((*this)[i], den());
       result += scitbx::format(t_frac, decimal);
     }
     return result;

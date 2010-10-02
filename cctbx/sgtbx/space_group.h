@@ -515,6 +515,11 @@ namespace cctbx { namespace sgtbx {
       af::shared<int>
       epsilon(af::const_ref<miller::index<> > const& miller_indices) const;
 
+      //! Determines multiplicity of site given rational coordinates.
+      int
+      multiplicity(
+        vec3_rat const& site) const;
+
       //! Computes a metrical matrix compatible with the space group symmetry.
       /*! A metrical matrix g is compatible with a given space group
           representation if the following relation holds for all

@@ -1,5 +1,4 @@
 #include <cctbx/sgtbx/brick.h>
-#include <scitbx/rational.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -777,7 +776,7 @@ namespace cctbx { namespace sgtbx {
 
   brick_point::brick_point(int raw_point)
   {
-    value_ = boost::rational<int>(raw_point / 2, 24);
+    value_ = rat(raw_point / 2, 24);
     off_ = raw_point % 2;
   }
 
@@ -840,7 +839,7 @@ namespace cctbx { namespace sgtbx {
   }
 
   bool
-  brick::is_inside(scitbx::vec3<boost::rational<int> > const& point) const
+  brick::is_inside(vec3_rat const& point) const
   {
     for(std::size_t i=0;i<3;i++) {
       if (!points_[i][0].off()) {
@@ -862,12 +861,11 @@ namespace cctbx { namespace sgtbx {
   bool
   brick::is_inside(tr_vec const& point) const
   {
-    typedef boost::rational<int> rational;
     int den = point.den();
-    return is_inside(scitbx::vec3<rational>(
-      rational(point[0], den),
-      rational(point[1], den),
-      rational(point[2], den)));
+    return is_inside(vec3_rat(
+      rat(point[0], den),
+      rat(point[1], den),
+      rat(point[2], den)));
   }
 
 }} // namespace cctbx::sgtbx

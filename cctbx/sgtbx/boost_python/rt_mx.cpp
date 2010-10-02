@@ -40,7 +40,12 @@ namespace {
     str(w_t const& o) { return o.as_xyz(); }
 
     static scitbx::vec3<double>
-    mul(w_t const& o, scitbx::vec3<double> const& rhs) { return o * rhs; }
+    mul_double(
+      w_t const& o, scitbx::vec3<double> const& rhs) { return o * rhs; }
+
+    static vec3_rat
+    mul_rat(
+      w_t const& o, vec3_rat const& rhs) { return o * rhs; }
 
     static void
     wrap()
@@ -109,7 +114,8 @@ namespace {
         .def("cancel", &w_t::cancel)
         .def("inverse_cancel", &w_t::inverse_cancel)
         .def("multiply", &w_t::multiply, (arg("rhs")))
-        .def("__mul__", mul)
+        .def("__mul__", mul_double)
+        .def("__mul__", mul_rat)
         .def("__add__", (rt_mx(w_t::*)(sg_vec3 const&) const)&w_t::operator+)
         .def("__add__", (rt_mx(w_t::*)(tr_vec const&) const)&w_t::operator+)
         .def("unit_shifts_minimum_distance", (

@@ -59,6 +59,10 @@ namespace cctbx { namespace sgtbx {
 
       tr_vec tidy(tr_vec const& t) const;
 
+      void
+      find_best_equiv_in_place(
+        vec3_rat& t) const;
+
     private:
       std::vector<tr_vec> elems_;
       bool add(tr_vec const& new_t);

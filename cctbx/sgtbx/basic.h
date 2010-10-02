@@ -2,6 +2,7 @@
 #define CCTBX_SGTBX_BASIC_H
 
 #include <scitbx/mat3.h>
+#include <scitbx/rational.h>
 #include <cctbx/error.h>
 
 namespace cctbx {
@@ -48,6 +49,9 @@ namespace cctbx {
     CCTBX_ASSERT(cb_t_den >= 2 * sg_t_den);
     CCTBX_ASSERT(cb_t_den % sg_t_den == 0);
   }
+
+  typedef boost::rational<int> rat;
+  typedef scitbx::vec3<rat> vec3_rat;
 
 }} // namespace cctbx::sgtbx
 

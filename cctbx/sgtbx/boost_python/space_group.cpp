@@ -148,6 +148,10 @@ namespace {
           (af::shared<int>(w_t::*)
             (af::const_ref<miller::index<> > const&) const)
           &w_t::epsilon, (arg("miller_indices")))
+        .def("multiplicity",
+          (int(w_t::*)(vec3_rat const&) const)
+            &w_t::multiplicity,
+              (arg("site")))
         .def("average_unit_cell", &w_t::average_unit_cell, (
           arg("unit_cell")))
         .def("is_compatible_unit_cell", &w_t::is_compatible_unit_cell, (
