@@ -1,4 +1,5 @@
 from cctbx.web.asu_gallery import web_links
+from cctbx.web.asu_gallery import html_head_title
 from cctbx import sgtbx
 import sys
 
@@ -72,11 +73,8 @@ class crystal_system_table(object):
     if (f is None): f = sys.stdout
     title = "Gallery of direct-space asymmetric units"
     iucrcompcomm_jul2003 = web_links.iucrcompcomm_jul2003
+    print >> f, html_head_title(title=title)
     print >> f, """\
-<html>
-<head>
-<title>%(title)s</title>
-</head>
 <body>
 <hr>
 <h2>%(title)s</h2>

@@ -1,18 +1,17 @@
 from cctbx.web.asu_gallery import web_links
+from cctbx.web.asu_gallery import html_head_title
 import sys
 
 def write_html(f=None):
   if (f is None): f = sys.stdout
   iucrcompcomm_jul2003 = web_links.iucrcompcomm_jul2003
+  title = "ASU Gallery - Facet notation"
+  print >> f, html_head_title(title=title)
   print >> f, """\
-<html>
-<head>
-<title>ASU Gallery - Facet notation</title>
-</head>
-<body bgcolor=#ffffff>
+<body>
 
 <hr>
-<h1>ASU Gallery - Facet notation</h1>
+<h1>%(title)s</h1>
 <hr>
 Reference:
 <a href="%(iucrcompcomm_jul2003)s"
