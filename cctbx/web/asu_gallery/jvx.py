@@ -169,16 +169,11 @@ def html_loader(jvx_file_name,
                 f=None,
                 jars_url=None):
   if (f is None): f = sys.stdout
+  from cctbx.web.asu_gallery import html_head_title
+  print >> f, html_head_title(title=title)
   print >> f, '''\
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-
-<head>
-<title>%s</title>
-</head>
-
 <body>
-''' % title
+'''
   if (header is not None):
     print >> f, '<h2>%s</h2>' % header
   print >> f, '''\
@@ -187,10 +182,8 @@ def html_loader(jvx_file_name,
         name="javaview"
         code="javaview.class"
         width="400"
-        height="400"
-        id="Applet1">
+        height="400">
   <PARAM NAME="Model" VALUE="%(jvx_file_name)s">
-  <PARAM NAME="cabbase" VALUE="%(jars_url)s/javaview.cab,%(jars_url)s/jvx.cab">
 </APPLET>
 <p>
 ''' % vars()

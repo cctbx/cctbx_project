@@ -146,10 +146,10 @@ def vertex_geometry(ortho, all_vertices):
 def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
                http_server_name=None,
                html_subdir="asu_gallery",
-               jars_url="http://%s/jars",
+               jars_url="http://%s/jv395/jars",
                explore_symmetry_url=
                  "http://%s/cctbx/cctbx_web.cgi" \
-                +"?target_module=explore_symmetry&sgsymbol="):
+                +"?target_module=explore_symmetry&amp;sgsymbol="):
   if (http_server_name is None):
     http_server_name = web_links.default_http_server_name
   space_group_info = sgtbx.space_group_info("Hall: "+asu.hall_symbol)
