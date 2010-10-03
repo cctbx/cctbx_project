@@ -188,7 +188,7 @@ void diffimage::set_imagedata(const int* const data, const int ncol, const int n
 
 int diffimage::get_underload() const
 {
-//printf("INSTRUMENT 3 spotarealowcut(-s2) %3d, spotbasesize(-s3) %3d bgupperint[2] %4.2f\n",spotarealowcut, spotbasesize, bgupperint[2]);
+//printf("spotarealowcut(-s2) %3d, spotbasesize(-s3) %3d bgupperint[2] %4.2f difflowerint %4.2f spotareamaxfactor %4.2f\n",spotarealowcut, spotbasesize, bgupperint[2], difflowerint, spotareamaxfactor);
   scanbox_tiling_pilatus6M* possible_pilatus =
     dynamic_cast<scanbox_tiling_pilatus6M*>(&(*tiling));
 
