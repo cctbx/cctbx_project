@@ -307,6 +307,13 @@ CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
 SCALE1      1.000000  0.000000  0.000000        1.00000
 SCALE2      0.000000  1.000000  0.000000        2.00000
 SCALE3      0.000000  0.000000  1.000000        3.00000""")
+  #
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=(11,12,13,90,100,90),
+    space_group_symbol="C 1 2 1 (a-1/4,b-1/4,c)")
+  s = iotbx.pdb.format_cryst1_record(crystal_symmetry=crystal_symmetry)
+  assert not show_diff(s, """\
+CRYST1   11.000   12.000   13.000  90.00 100.00  90.00 C21""")
 
 def exercise_format_and_interpret_cryst1():
   for symbols in sgtbx.space_group_symbol_iterator():
