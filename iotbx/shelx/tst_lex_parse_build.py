@@ -336,6 +336,9 @@ def exercise_restraint_parsing():
   assert shared_bond_proxy[0].rt_mx_ji == sgtbx.rt_mx('-x+1,y,-z+1/2')
   assert shared_bond_proxy[1].rt_mx_ji == sgtbx.rt_mx('-x+1,y,-z+1/2')
   assert shared_bond_proxy[2].rt_mx_ji is None
+  proxies = parse_restraints(ins_dfix_multiple)
+  shared_bond_proxy = proxies['bond']
+  assert shared_bond_proxy.size() == 2
   # invalid DFIX instructions
   try:
     proxies = parse_restraints(ins_invalid_dfix)
@@ -976,6 +979,7 @@ ins_isor_s_atoms = template_ins("ISOR 0.2 C1 C2 C3")
 ins_isor_s_st_atoms = template_ins(
   "ISOR 0.2 0.3 C1 C2 C3")
 
+ins_dfix_multiple = template_ins("DFIX 1.7 C1 C2 C3 C4")
 ins_invalid_dfix = template_ins("DFIX C1 C2")
 ins_invalid_dfix_2 = template_ins("DFIX 1.7 C1 C2 C3")
 ins_invalid_flat = template_ins("FLAT C1 C2 C3")

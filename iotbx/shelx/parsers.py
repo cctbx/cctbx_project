@@ -392,16 +392,16 @@ class restraint_parser(atom_parser):
               else: sigma = 0.04
               atoms = args[1:]
             assert len(atoms) > 1
+            weight = 1/(sigma**2)
             for i in range(div-(1-mod)):
               atom_pair = atoms[i*2:(i+1)*2]
               i_seqs = [self.scatterer_label_to_index[atom[1]] for atom in atom_pair]
               sym_ops = [self.symmetry_operations.get(atom[2]) for atom in atom_pair]
-            weight = 1/(sigma**2)
-            self.builder.process_restraint(restraint_type,
-                                           distance_ideal=distance_ideal,
-                                           weight=weight,
-                                           i_seqs=i_seqs,
-                                           sym_ops=sym_ops)
+              self.builder.process_restraint(restraint_type,
+                                             distance_ideal=distance_ideal,
+                                             weight=weight,
+                                             i_seqs=i_seqs,
+                                             sym_ops=sym_ops)
           if cmd == 'SADI':
             assert len(args) > 3
             div, mod = divmod(len(args), 2)

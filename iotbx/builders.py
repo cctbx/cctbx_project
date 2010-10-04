@@ -147,6 +147,18 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
       return sym_ops
     if 'sym_ops' in kwds:
       sym_ops = kwds['sym_ops']
+      if restraint_type == 'bond_similarity':
+        sym_ops = [
+          [(sgtbx.rt_mx(sym_op)
+            if (sym_op is not None and not isinstance(sym_op, sgtbx.rt_mx))
+            else sym_op)
+           for sym_op in sym_op_pair]
+          for sym_op_pair in sym_ops]
+      else:
+        sym_ops = [(sgtbx.rt_mx(sym_op)
+                    if (sym_op is not None and not isinstance(sym_op, sgtbx.rt_mx))
+                    else sym_op)
+                   for sym_op in sym_ops]
       if sym_ops.count(None) == len(sym_ops):
         del kwds['sym_ops']
       elif restraint_type == 'bond':
@@ -154,14 +166,13 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
         if sym_ops.count(None) == 2:
           rt_mx_ji = None
         elif sym_ops.count(None) == 1:
-          sym_op = sym_ops[1]
-          if sym_op is None:
-            sym_op = sym_ops[0]
+          rt_mx_ji = sym_ops[1]
+          if rt_mx_ji is None:
+            rt_mx_ji = sym_ops[0]
             kwds['i_seqs'].reverse()
-          rt_mx_ji = sgtbx.rt_mx(sym_op)
         else:
-          rt_mx_ji_1 = sgtbx.rt_mx(sym_ops[0])
-          rt_mx_ji_2 = sgtbx.rt_mx(sym_ops[1])
+          rt_mx_ji_1 = sym_ops[0]
+          rt_mx_ji_2 = sym_ops[1]
           rt_mx_ji_inv = rt_mx_ji_1.inverse()
           rt_mx_ji = rt_mx_ji_inv.multiply(rt_mx_ji_2)
         kwds['rt_mx_ji'] = rt_mx_ji
@@ -173,14 +184,13 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
           if sym_ops_.count(None) == 2:
             rt_mx_ji = None
           elif sym_ops_.count(None) == 1:
-            sym_op = sym_ops_[1]
-            if sym_op is None:
-              sym_op = sym_ops_[0]
+            rt_mx_ji = sym_ops_[1]
+            if rt_mx_ji is None:
+              rt_mx_ji = sym_ops_[0]
               kwds['i_seqs'][i].reverse()
-            rt_mx_ji = sgtbx.rt_mx(sym_op)
           else:
-            rt_mx_ji_1 = sgtbx.rt_mx(sym_ops_[0])
-            rt_mx_ji_2 = sgtbx.rt_mx(sym_ops_[1])
+            rt_mx_ji_1 = sym_ops_[0]
+            rt_mx_ji_2 = sym_ops_[1]
             rt_mx_ji_inv = rt_mx_ji_1.inverse()
             rt_mx_ji = rt_mx_ji_inv.multiply(rt_mx_ji_2)
           kwds['sym_ops'].append(rt_mx_ji)
