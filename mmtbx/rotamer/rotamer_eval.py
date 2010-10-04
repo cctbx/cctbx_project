@@ -4,6 +4,7 @@ from libtbx import easy_pickle
 from libtbx import dlite
 from libtbx.utils import Sorry
 from mmtbx.rotamer.sidechain_angles import PropertyFile
+from iotbx.pdb import common_residue_names_get_class
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import weakref
@@ -87,10 +88,20 @@ def eval_sidechain_completeness(pdb_hierarchy,
           reference_list = []
           if(not ignore_hydrogens):
             for at in mlq.atom_dict():
-              reference_list.append(at.strip().upper())
+              atom = at.replace("*", "'")
+              if atom.upper() == "O1P":
+                atom = "OP1"
+              elif atom.upper() == "O2P":
+                atom = "OP2"
+              reference_list.append(atom.strip().upper())
           elif (mlq is not None) :
             for non in mlq.non_hydrogen_atoms():
-              reference_list.append(non.atom_id.strip().upper())
+              atom = non.atom_id.replace("*", "'")
+              if atom.upper() == "O1P":
+                atom = "OP1"
+              elif atom.upper() == "O2P":
+                atom = "OP2"
+              reference_list.append(atom.strip().upper())
           missing=[]
           for atom in reference_list:
             if atom not in atom_list:
