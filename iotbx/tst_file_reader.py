@@ -2,7 +2,7 @@ import os, sys
 import libtbx.load_env
 from libtbx.utils import Sorry
 from libtbx.test_utils import Exception_expected
-from iotbx.file_reader import any_file, sort_by_file_type
+from iotbx.file_reader import any_file, sort_by_file_type, group_files
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
@@ -179,7 +179,68 @@ def exercise_misc () :
   file_names = sort_by_file_type(file_names, sort_order=["pdb","hkl","seq"])
   assert (file_names == ['foo.pdb','bar.pdb','foo.mtz','bar.mtz','seq.dat'])
 
+def exercise_groups () :
+  files = [
+    "/data/user/project1/p1.sca",
+    "/data/user/project2/p2.pdb",
+    "/data/user/project1/p1.pdb",
+    "/data/user/project1/process/mosflm.log",
+    "/data/user/project4/refine/current.pdb",
+    "/data/user/project3/data.sca",
+    "/data/user/project3/model.pdb",
+    "/data/user/project2/native.mtz",
+    "/data/user/project3/ligands.cif",
+    "/data/user/project4/data.mtz",
+    "/data/user/project4/refine/ligands.cif",
+    #"/data/user/project2/p2_reindex.pdb",
+    #"/data/user/project2/p2_reindex.mtz",
+    "/data/user/new_data.hkl",
+    "/data/user/project5/model.pdb",
+    "/data/user/project5/model2.pdb",
+    "/data/user/project5/anom.mtz",
+  ]
+  g = group_files(files)
+  assert (g.ambiguous_files == ['/data/user/new_data.hkl',
+                                '/data/user/project5/anom.mtz'])
+  assert (g.ungrouped_files == [])
+  assert (g.grouped_files == [
+    ['/data/user/project2/p2.pdb',
+      '/data/user/project2/native.mtz'],
+    ['/data/user/project1/p1.pdb',
+      '/data/user/project1/p1.sca',
+      '/data/user/project1/process/mosflm.log'],
+    ['/data/user/project4/refine/current.pdb',
+      '/data/user/project4/data.mtz',
+      '/data/user/project4/refine/ligands.cif'],
+    ['/data/user/project3/model.pdb',
+      '/data/user/project3/data.sca',
+      '/data/user/project3/ligands.cif'],
+    ['/data/user/project5/model.pdb'],
+    ['/data/user/project5/model2.pdb'],
+  ])
+  g = group_files(files, template_format="hkl")
+  assert (g.ambiguous_files == [])
+  assert (g.ungrouped_files == [])
+  assert (g.grouped_files == [
+    ['/data/user/project1/p1.sca',
+      '/data/user/project1/p1.pdb',
+      '/data/user/project1/process/mosflm.log'],
+    ['/data/user/project3/data.sca',
+      '/data/user/project3/model.pdb',
+      '/data/user/project3/ligands.cif'],
+    ['/data/user/project2/native.mtz',
+      '/data/user/project2/p2.pdb'],
+    ['/data/user/project4/data.mtz',
+      '/data/user/project4/refine/current.pdb',
+      '/data/user/project4/refine/ligands.cif'],
+    ['/data/user/new_data.hkl'],
+    ['/data/user/project5/anom.mtz',
+      '/data/user/project5/model.pdb',
+      '/data/user/project5/model2.pdb']
+  ])
+
 def exercise () :
+  exercise_groups()
   exercise_misc()
   exercise_others()
   exercise_maps()

@@ -2,7 +2,11 @@
 # this will try to guess file type based on extensions.  since this will
 # frequently break, it will also try every other file type if necessary,
 # stopping when it finds an appropriate format.
-
+#
+# MTZ file handling is kludgy, but unfortunately there are circumstances
+# where only an MTZ file will do, so it requires some extra code to work
+# around the automatic behavior
+#
 # XXX note that there is some cross-importing from mmtbx here, but it is done
 # inline, not globally
 
@@ -59,6 +63,8 @@ def guess_file_type (file_name, extensions=standard_file_extensions) :
   base, ext = splitext(file_name)
   if (ext == "") :
     return None
+  if (ext == ".mtz") : # XXX gross
+    return "hkl"
   for known_type, known_extensions in extensions.iteritems() :
     if ext[1:] in known_extensions :
       return known_type
@@ -289,5 +295,77 @@ class directory_input (object) :
 
   def file_info (self, show_file_size=False) :
     return "Folder"
+
+class group_files (object) :
+  def __init__ (self,
+                file_names,
+                template_format="pdb",
+                group_by_directory=True) :
+    import iotbx.pdb
+    self.file_names = file_names
+    self.grouped_files = []
+    self.ungrouped_files = []
+    self.ambiguous_files = []
+    templates = []
+    other_files = []
+    template_dirs = []
+    for file_name in file_names :
+      file_type = guess_file_type(file_name)
+      if (file_type == template_format) :
+        base, ext = splitext(file_name)
+        templates.append(base)
+        template_dirs.append(os.path.dirname(file_name))
+        self.grouped_files.append([file_name])
+      else :
+        other_files.append(file_name)
+    if (len(templates) == 0) :
+      raise Sorry("Can't find any files of the expected format ('%s')." %
+        template_format)
+    if (len(set(templates)) != len(templates)) :
+      raise Sorry("Multiple files with identical root names.")
+    for file_name in other_files :
+      group_name = find_closest_base_name(
+        file_name=file_name,
+        base_name=splitext(file_name),
+        templates=templates)
+      if (group_name == "") :
+        self.ambiguous_files.append(file_name)
+      elif (group_name is not None) :
+        i = templates.index(group_name)
+        self.grouped_files[i].append(file_name)
+      else :
+        if group_by_directory :
+          dir_name = os.path.dirname(file_name)
+          group_name = find_closest_base_name(
+            file_name=dir_name,
+            base_name=dir_name,
+            templates=template_dirs)
+          if (group_name == "") :
+            self.ambiguous_files.append(file_name)
+          elif (group_name is not None) :
+            i = template_dirs.index(group_name)
+            self.grouped_files[i].append(file_name)
+          else :
+            self.ungrouped_files.append(file_name)
+        else :
+          self.ungrouped_files.append(file_name)
+
+def find_closest_base_name (file_name, base_name, templates) :
+  groups = []
+  for base in templates :
+    if file_name.startswith(base) or base.startswith(base_name) :
+      groups.append(base)
+  if (len(groups) == 1) :
+#    print file_name, groups[0]
+    return groups[0]
+  elif (len(groups) > 1) :
+#    print file_name, groups
+    prefix_len = [ os.path.commonprefix([g, file_name]) for g in groups ]
+    max_common_prefix = max(prefix_len)
+    if (prefix_len.count(max_common_prefix) > 1) :
+      return ""
+    else :
+      return groups[ prefix_len.index(max_common_prefix) ]
+  return None
 
 #---end
