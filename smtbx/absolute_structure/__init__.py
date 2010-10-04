@@ -6,6 +6,8 @@ import sys
 from cctbx.array_family import flex
 
 from libtbx.utils import xfrange
+from libtbx.utils\
+     import format_float_with_standard_uncertainty as format_float_with_su
 
 
 class hooft_analysis:
@@ -150,7 +152,7 @@ class hooft_analysis:
     print >> out, "Bijvoet pairs coverage: %.2f" %(
       self.n_bijvoet_pairs/self.delta_fo2.customized_copy(
         anomalous_flag=True).complete_set().n_bijvoet_pairs())
-    print >> out, "G: %.3f(%.3f)" %(self.G, self.sigma_G)
+    print >> out, "G: %s" %format_float_with_su(self.G, self.sigma_G)
     if self.p2 is None:
       print >> out, "P2(true): n/a"
     else:
@@ -158,7 +160,7 @@ class hooft_analysis:
     print >> out,  "P3(true): %.3f" %self.p3_true
     print >> out,  "P3(false): %.3f" %self.p3_false
     print >> out,  "P3(racemic twin): %.3f" %self.p3_racemic_twin
-    print >> out, "Hooft y: %.3f(%.3f)" %(self.hooft_y, self.sigma_y)
+    print >> out, "Hooft y: %s" %format_float_with_su(self.hooft_y, self.sigma_y)
 
 
 class bijvoet_differences_probability_plot:
