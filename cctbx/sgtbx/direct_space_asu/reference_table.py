@@ -1400,7 +1400,16 @@ def asu_142(): # I 41/a c d :2
     & z8(m1/4)
   )
 
-def asu_143(): # P 3
+def asu_143(balanced=False): # P 3
+  if (balanced):
+    return (direct_space_asu('P 3')
+      & h0
+      & h1(-m1)
+      & m0(-h0)
+      & m1
+      & z0
+      & +z1
+    )
   return (direct_space_asu('P 3')
     & x0(-y0)
     & y0
