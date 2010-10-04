@@ -68,6 +68,7 @@ def extract_symmetry_operators(remark_290_records):
   return symmetry_operators
 
 def get_link_symmetry_operator(symmetry_operators, link_sym):
+  if (symmetry_operators is None): return None
   link_sym = link_sym.strip()
   if (len(link_sym) < 4): return None
   if (link_sym[-4] == "_"):
