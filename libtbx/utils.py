@@ -896,6 +896,21 @@ class progress_bar(progress_displayed_as_fraction):
     sys.stdout.flush()
     self.i += 1
 
+def format_float_with_standard_uncertainty(value, standard_uncertainty):
+  precision = -int(round(math.log10(standard_uncertainty)))
+  if precision > 0:
+    su = standard_uncertainty * math.pow(10, precision)
+    if su < 2:
+      su *= 10
+      precision += 1
+    fmt_str = "%%.%if(%%i)" %precision
+    return fmt_str %(value, su)
+  else:
+    precision += 1
+    su = int(round(standard_uncertainty, precision))
+    fmt_str = "%.0f(%i)"
+    return fmt_str %(round(value, precision), su)
+
 
 def exercise():
   from libtbx.test_utils import approx_equal, Exception_expected
@@ -1000,6 +1015,10 @@ def exercise():
   # floating point errors cause this one to not be exact
   assert approx_equal([i/10. for i in range(20, 9, -2)], frange(2.0, 0.9, -0.2))
   #
+  assert format_float_with_standard_uncertainty(21.234567, 0.0013) == "21.2346(13)"
+  assert format_float_with_standard_uncertainty(21.234567, 0.0023) == "21.235(2)"
+  assert format_float_with_standard_uncertainty(12345, 45) == "12350(50)"
+  assert format_float_with_standard_uncertainty(12.3,1.2) == "12(1)"
   print "OK"
 
 if (__name__ == "__main__"):
