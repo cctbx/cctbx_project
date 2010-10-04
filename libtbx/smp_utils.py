@@ -7,22 +7,6 @@ import time
 import sys
 import os
 
-#--- backwards-compatability check
-if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
-  import multiprocessing
-  cpu_count = multiprocessing.cpu_count
-
-  def smp_map (func, iterable, chunksize=None, callback=None, nproc=None) :
-    pool = multiprocessing.Pool(processes=nproc)
-    result = pool.map_async(func, iterable, chunksize, callback)
-    return result.get()
-
-#--- pre-2.6 equivalents
-else :
-  cpu_count = lambda: 1
-  def smp_map (func, iterable, chunksize=None, callback=None, nproc=None) :
-    return map(func, iterable)
-
 multiprocessing_params = libtbx.phil.parse("""
 enable_multiprocessing = True
   .type = bool
@@ -195,43 +179,88 @@ class _wrapper_with_result_file (_run_wrapper) :
 def _run_many (run_object) :
   return run_object.run()
 
-#--- test functions
-def exercise () :
-  print "Running smp_utils tests on %d processors" % cpu_count()
-  i = [ (0.1 * x, 100000) for x in xrange(0, 16) ]
-  (m_single, t_single) = benchmark_function(map, (t, i), "map")
-  (m_smp, t_smp) = benchmark_function(smp_map, (t, i), "smp_map")
-  assert m_single == m_smp
-  print "Speedup on %d cpus: %.1fx" % (cpu_count(), t_single / t_smp)
-
-def benchmark_function (func, args, func_name) :
+########################################################################
+# tests
+#
+def exercise (timeout=0.1, verbose=False) :
+  import random
+  data = [ random.random() for n in range(20) ]
+  params = multiprocessing_params.fetch().extract()
+  params.enable_multiprocessing = False
+  p = Pool(params)
+  r1 = p.map(_test_f, data)
+  data_objects = [ _exercise_run(x) for x in data ]
+  r2 = p.run_many(data_objects)
   t1 = time.time()
-  r = func(*args)
+  r3 = p.map(_test_function(timeout), data)
   t2 = time.time()
-  print "%s(): %.3f seconds" % (func_name, (t2 - t1))
-  return (r, t2-t1)
+  cb = _exercise_callback()
+  r4 = p.map_with_async_callback(_test_f, data, cb)
+  assert (cb.c == len(data) == len(r4))
+  cb.reset()
+  assert (r1 == r2 == r3 == r4)
+  params.enable_multiprocessing = True
+  params.method = "mp"
+  p = Pool(params)
+  r5 = p.map(_test_f, data)
+  r6 = p.run_many(data_objects)
+  t3 = time.time()
+  r7 = p.map(_test_function(timeout), data)
+  t4 = time.time()
+  r8 = p.map_with_async_callback(_test_f, data, cb)
+  # XXX this does not work!
+  #assert (cb.c == len(data) == len(r8))
+  assert (r8 == r7 == r6 == r5 == r4)
+  if verbose :
+    print "CPU count: %d  Speedup: %.1fx" % (p.nproc, (t2 - t1) / (t4 - t3))
+  from libtbx.queuing_system_utils import sge_utils
+  try :
+    q = sge_utils.qstat_parse()
+  except RuntimeError :
+    print "Skipping SGE-specific tests in smp_utils"
+    return
+  params.method = "sge"
+  p = Pool(params)
+  r9 = p.map(_test_f, data)
+  r10 = p.run_many(data_objects)
+  t5 = time.time()
+  r11 = p.map(_test_function(timeout), data)
+  t6 = time.time()
+  r12 = p.map_with_async_callback(_test_f, data, cb)
+  assert (r12 == r11 == r10 == r9 == r8)
 
-# see http://dan.corlan.net/bench.html#PYTHON
-# "The program we benchmarked computes the same 100-term polynomial 500,000
-# times, using exactly the same algorithm. In all programs the indices of the
-# polynomial are kept in a local float vector. In this, the program only tests
-# the quality of code which accesses local vectors and performs simple
-# arithmetics in loops, and is free from differences in the standard library,
-# operating system calls and, indeed, the presence of any advanced language
-# features."
-# TODO: benchmark using a suitable cctbx function instead
-def t (args) :
-  (x, n) = args
-  mu = 10.0
-  pu = 0.0
-  pol =[0] * 100
-  r = range(0,100)
+class _exercise_callback (object) :
+  def __init__ (self) :
+    self.c = 0
 
-  for i in range(0,n):
-    for j in r:
-      pol[j] = mu = (mu + 2.0) / 2.0
-    su = 0.0
-    for j in r:
-      su = x * su + pol[j]
-    pu = pu + su
-  return pu
+  def __call__ (self, result) :
+    self.c += 1
+
+  def reset (self) :
+    self.c = 0
+
+class _test_function (object) :
+  def __init__ (self, timeout=1) :
+    self.timeout = timeout
+
+  def __call__ (self, n) :
+    return _test_f(n, timeout=self.timeout)
+
+def _test_f (n, timeout=0.1) :
+  time.sleep(timeout)
+  #print "%.5f" % n
+  return n**2
+
+class _exercise_run (object) :
+  def __init__ (self, n) :
+    self.n = n
+
+  def run (self) :
+    return _test_f(self.n)
+
+if __name__ == "__main__" :
+  if (len(sys.argv) > 1) :
+    exercise(timeout=float(sys.argv[1]))
+  else :
+    exercise()
+  print "OK"
