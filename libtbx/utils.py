@@ -898,7 +898,7 @@ class progress_bar(progress_displayed_as_fraction):
 
 def format_float_with_standard_uncertainty(value, standard_uncertainty):
   precision = -int(round(math.log10(standard_uncertainty)))
-  if precision > 0:
+  if precision > -1:
     su = standard_uncertainty * math.pow(10, precision)
     if su < 2:
       su *= 10
@@ -1018,7 +1018,8 @@ def exercise():
   assert format_float_with_standard_uncertainty(21.234567, 0.0013) == "21.2346(13)"
   assert format_float_with_standard_uncertainty(21.234567, 0.0023) == "21.235(2)"
   assert format_float_with_standard_uncertainty(12345, 45) == "12350(50)"
-  assert format_float_with_standard_uncertainty(12.3,1.2) == "12(1)"
+  assert format_float_with_standard_uncertainty(12.3,1.2) == "12.3(12)"
+  assert format_float_with_standard_uncertainty(-0.2451, 0.8135) == "-0.2(8)"
   print "OK"
 
 if (__name__ == "__main__"):
