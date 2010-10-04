@@ -9,7 +9,14 @@ if (libtbx.env.has_module("ccp4io")):
 else:
   ccp4io_dist = None
 
-def ccp4_symbol(space_group_info):
+_ccp4_symbol_cache = {}
+
+def ccp4_symbol(space_group_info, require_at_least_one_symop_lib=True):
+  lookup_symbol = space_group_info.type().lookup_symbol()
+  result = _ccp4_symbol_cache.get(lookup_symbol, "..unknown..")
+  if (result != "..unknown.."):
+    return result
+  result = None
   symop_lib_paths = []
   if (ccp4io_dist is not None):
     symop_lib_paths.append(ccp4io_symop_lib_path)
@@ -19,11 +26,14 @@ def ccp4_symbol(space_group_info):
     if (op.isfile(symop_lib_path)):
       found_at_least_one_symop_lib = True
       file_iter = open(symop_lib_path)
-      symbol = search_for_ccp4_symbol(space_group_info, file_iter)
-      if (symbol is not None):
-        return symbol
-  assert found_at_least_one_symop_lib
-  return None
+      result = search_for_ccp4_symbol(space_group_info, file_iter)
+      if (result is not None):
+        break
+  else:
+    if (require_at_least_one_symop_lib):
+      assert found_at_least_one_symop_lib
+  _ccp4_symbol_cache[lookup_symbol] = result
+  return result
 
 def search_for_ccp4_symbol(space_group_info, file_iter):
   given_space_group_number = space_group_info.type().number()
