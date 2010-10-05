@@ -451,7 +451,7 @@ class process_arrays (object) :
           new_array = new_array.average_bijvoet_mates()
         else :
           new_array = new_array.f_sq_as_f()
-          new_array = new_array.average_bijvoet_mateS()
+          new_array = new_array.average_bijvoet_mates()
           new_array = new_array.f_as_f_sq()
           new_array.set_observation_type_xray_intensity()
       if array_params.scale_max is not None :
