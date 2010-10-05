@@ -47,6 +47,12 @@ class direct_space_asu(object):
         result.append(facet)
     return result
 
+  def extract_all_facets(self):
+    result = []
+    for facet in self.facets:
+      facet.extract_all_facets(result)
+    return result
+
   def volume_only(self):
     result = direct_space_asu(self.hall_symbol)
     for facet in self.facets:

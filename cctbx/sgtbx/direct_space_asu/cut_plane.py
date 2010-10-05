@@ -1,12 +1,18 @@
+from libtbx import slots_getstate_setstate
 from scitbx import matrix
 from boost import rational
 import string
 
-class cut_expr_ops(object):
+class cut_expr_ops(slots_getstate_setstate):
+
+  __slots__ = []
+
   def __and__(self, other): return cut_expression("&", self, other)
   def __or__(self, other): return cut_expression("|", self, other)
 
 class cut_expression(cut_expr_ops):
+
+  __slots__ = ["op", "lhs", "rhs"]
 
   def __init__(self, op, lhs, rhs):
     self.op = op
@@ -46,6 +52,10 @@ class cut_expression(cut_expr_ops):
       return self.lhs.is_inside(point) or self.rhs.is_inside(point)
     raise RuntimeError
 
+  def extract_all_facets(self, result):
+    self.lhs.extract_all_facets(result)
+    self.rhs.extract_all_facets(result)
+
   def change_basis(self, cb_op):
     return cut_expression(
       self.op,
@@ -53,6 +63,8 @@ class cut_expression(cut_expr_ops):
       self.rhs.change_basis(cb_op))
 
 class cut(cut_expr_ops):
+
+  __slots__ = ["n", "c", "inclusive", "cut_expr"]
 
   def __init__(self, n, c, inclusive=True, cut_expr=None):
     assert inclusive in (True, False)
@@ -211,6 +223,11 @@ class cut(cut_expr_ops):
     if (i > 0): return True
     if (not self.has_cuts()): return self.inclusive
     return self.cut_expr.is_inside(point)
+
+  def extract_all_facets(self, result):
+    result.append(self)
+    if (self.has_cuts()):
+      self.cut_expr.extract_all_facets(result)
 
   def strip(self):
     return cut(self.n, self.c)
