@@ -28,11 +28,11 @@ def sample_asu(asu, n=(12,12,12), volume=False, is_stripped_asu=False):
      u_grid.append(b)
   r_grid = []
   colored_grid_points = []
-  for i in xrange(-n[0]/2, n[0]+1):
+  for i in xrange(-n[0]//2, n[0]+1):
     b = []
-    for j in xrange(-n[1]/2, n[1]+1):
+    for j in xrange(-n[1]//2, n[1]+1):
       c = []
-      for k in xrange(-n[2]/2, n[2]+1):
+      for k in xrange(-n[2]//2, n[2]+1):
         frac = rational.vector((i,j,k), n)
         f = asu.is_inside(frac)
         fv = asu.is_inside(frac, volume_only=True)
@@ -173,16 +173,16 @@ def u_index_as_r_index(n, u_index, r_grid, allow_ambiguity):
   r_index = None
   for ui in (0,-1,1):
     ri = u_index[0] + ui * n[0]
-    qi = ri + n[0]/2
-    if (qi < 0 or qi >= n[0]/2+n[0]+1): continue
+    qi = ri + n[0]//2
+    if (qi < 0 or qi >= n[0]//2+n[0]+1): continue
     for uj in (0,-1,1):
       rj = u_index[1] + uj * n[1]
-      qj = rj + n[1]/2
-      if (qj < 0 or qj >= n[1]/2+n[1]+1): continue
+      qj = rj + n[1]//2
+      if (qj < 0 or qj >= n[1]//2+n[1]+1): continue
       for uk in (0,-1,1):
         rk = u_index[2] + uk * n[2]
-        qk = rk + n[2]/2
-        if (qk < 0 or qk >= n[2]/2+n[2]+1): continue
+        qk = rk + n[2]//2
+        if (qk < 0 or qk >= n[2]//2+n[2]+1): continue
         if (r_grid[qi][qj][qk] != 0):
           if (r_index is None):
             r_index, unit_shifts = (ri,rj,rk), (ui,uj,uk)
@@ -309,6 +309,43 @@ def analyze_redundancies(asu, n, redundancies, verbose=1):
       raise AssertionError, "Some redundant points not in any facets."
     print
 
+def check_multiplicities(asu, n):
+  space_group = sgtbx.space_group(asu.hall_symbol)
+  all_facets = asu.extract_all_facets()
+  print "Total number of facets:", len(all_facets)
+  def get_code(point):
+    result = 0
+    bit = 1
+    for facet in all_facets:
+      if (facet.evaluate(point) == 0):
+        result += bit
+      bit *= 2
+    return result
+  mults_by_code = {}
+  for i in xrange(-n[0]//2, n[0]+1):
+    for j in xrange(-n[1]//2, n[1]+1):
+      for k in xrange(-n[2]//2, n[2]+1):
+        point = rational.vector((i,j,k), n)
+        if (asu.is_inside(point)):
+          code = get_code(point)
+          if (code != 0):
+            m = space_group.multiplicity(site=point)
+            mults_by_code.setdefault(code, set()).add(m)
+  for code,mults in mults_by_code.items():
+    if (len(mults) != 1):
+      print "PROBLEM:", space_group.type().number(), mults_by_code
+      break
+  else:
+    print "facet intersection multiplicities unique:"
+    order_z = space_group.order_z()
+    tab_codes = []
+    for code in sorted(mults_by_code.keys()):
+      m = list(mults_by_code[code])[0]
+      if (m != order_z):
+        print code, m
+        tab_codes.append((code, m))
+    print "Number of facet intersection codes:", len(tab_codes)
+
 def test_all(n):
   for space_group_number in xrange(1, 231):
     cmd = "cctbx.python %s" % sys.argv[0] \
@@ -328,6 +365,7 @@ if (__name__=="__main__"):
     "enantiomorphic",
     "soft",
     "balanced",
+    "multiplicities",
   ])
   assert len(flags.regular_args) > 0
   gridding = flags.regular_args[0].split(",")
@@ -370,3 +408,7 @@ if (__name__=="__main__"):
           n=gridding,
           is_stripped_asu=(flags.strip or flags.strip_grid),
           soft_mode=flags.soft)
+        if (flags.multiplicities):
+          check_multiplicities(
+            asu=asu_original,
+            n=gridding)
