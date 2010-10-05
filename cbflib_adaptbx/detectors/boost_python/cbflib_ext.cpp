@@ -2,7 +2,7 @@
 #include <cbflib_adaptbx/detectors/basic.h>
 #include <cbflib_adaptbx/detectors/mar_adaptor.h>
 #include <cbflib_adaptbx/detectors/cbf_adaptor.h>
-#include <cbflib_adaptbx/detectors/boost_python/sls_pilatus_adaptor.h>
+#include <cbflib_adaptbx/detectors/boost_python/cbf_binary_adaptor.h>
 #include <cbflib_adaptbx/detectors/boost_python/general_cbf_write.h>
 
 struct dummy {}; // work around gcc-3.3-darwin bug
