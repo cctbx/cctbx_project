@@ -35,14 +35,14 @@ def generate_paths():
 def test_all(timer=False):
   for file in generate_paths():
     from iotbx.detectors.pilatus_minicbf import PilatusImage
-    from cbflib_adaptbx import MiniCBFAdaptor
+    from cbflib_adaptbx import cbf_binary_adaptor
     if timer: print os.path.basename(file)
     P = PilatusImage(file)
     if timer: G = Profiler("cbflib no-opt    read")
     P.read(algorithm="cbflib")
     read1 = P.linearintdata
     if timer: G = Profiler("cbflib optimized read")
-    adaptor = MiniCBFAdaptor(file)
+    adaptor = cbf_binary_adaptor(file)
     read2 = adaptor.optimized_read_data(P.size1,P.size2)
     if timer: G = Profiler("buffer-based read")
     read3 = adaptor.buffer_based_uncompress()
