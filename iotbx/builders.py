@@ -148,17 +148,20 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
     if 'sym_ops' in kwds:
       sym_ops = kwds['sym_ops']
       if restraint_type == 'bond_similarity':
-        sym_ops = [
-          [(sgtbx.rt_mx(sym_op)
-            if (sym_op is not None and not isinstance(sym_op, sgtbx.rt_mx))
-            else sym_op)
-           for sym_op in sym_op_pair]
-          for sym_op_pair in sym_ops]
+        for i, sym_op in enumerate(sym_ops):
+          if sym_op is not None and not isinstance(sym_op, sgtbx.rt_mx):
+            if len(sym_op) == 2:
+              sym_op_pair = sym_op
+              for j, sym_op in enumerate(sym_op_pair):
+                if sym_op is not None and not isinstance(sym_op, sgtbx.rt_mx):
+                  sym_op_pair[j] = sgtbx.rt_mx(sym_op)
+              sym_ops[i] = sym_op_pair
+            else:
+              sym_ops[i] = sgtbx.rt_mx(sym_op)
       else:
-        sym_ops = [(sgtbx.rt_mx(sym_op)
-                    if (sym_op is not None and not isinstance(sym_op, sgtbx.rt_mx))
-                    else sym_op)
-                   for sym_op in sym_ops]
+        for i, sym_op in enumerate(sym_ops):
+          if sym_op is not None and not isinstance(sym_op, sgtbx.rt_mx):
+            sym_ops[i] = sgtbx.rt_mx(sym_op)
       if sym_ops.count(None) == len(sym_ops):
         del kwds['sym_ops']
       elif restraint_type == 'bond':
@@ -180,7 +183,7 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
       elif restraint_type == 'bond_similarity':
         kwds['sym_ops'] = []
         for i, sym_ops_ in enumerate(sym_ops):
-          if isinstance(sym_ops_, sgtbx.rt_mx): continue
+          if sym_ops_ is None or isinstance(sym_ops_, sgtbx.rt_mx): continue
           if sym_ops_.count(None) == 2:
             rt_mx_ji = None
           elif sym_ops_.count(None) == 1:
