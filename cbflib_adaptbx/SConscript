@@ -7,8 +7,6 @@ env_etc.cbflib_include = [env_etc.norm_join(env_etc.cbflib_dist,"examples"),
                           env_etc.norm_join(env_etc.cbflib_dist,"include"),
                           ]
 env_etc.cbflib_adaptbx_dist = libtbx.env.dist_path("cbflib_adaptbx")
-env_etc.cbflib_adaptbx_include = env_etc.norm_join(
-                  env_etc.cbflib_adaptbx_dist,"include")
 
 env_etc.cbflib_common_includes = [
   env_etc.libtbx_include,
@@ -18,7 +16,6 @@ env_etc.cbflib_common_includes = [
   env_etc.cbflib_dist,    # for the adaptor cpp files
   env_etc.cbflib_include[0], # for the cbflib c-files
   env_etc.cbflib_include[1], # for the cbflib c-files
-  env_etc.cbflib_adaptbx_include,
 ]
 
 env = env_base.Clone(

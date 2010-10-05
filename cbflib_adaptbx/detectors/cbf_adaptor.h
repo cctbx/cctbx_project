@@ -10,7 +10,7 @@
 #include <scitbx/array_family/versa_matrix.h>
 #include <include/cbf.h>
 #include <include/cbf_simple.h>
-#include <cbflib_adaptbx/basic.h>
+#include <cbflib_adaptbx/detectors/basic.h>
 
 #undef cbf_failnez
 #define cbf_failnez(x) { int err; err = (x); if (err) { \

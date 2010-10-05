@@ -8,7 +8,7 @@
 #include <exception>
 #include <scitbx/array_family/flex_types.h>
 #include <examples/img.h>
-#include <cbflib_adaptbx/basic.h>
+#include <cbflib_adaptbx/detectors/basic.h>
 
 extern "C" {
 int img_set_tags (img_handle img, int tags);

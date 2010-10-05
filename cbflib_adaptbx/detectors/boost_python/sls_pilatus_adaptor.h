@@ -1,8 +1,8 @@
 #ifndef SLS_PILATUS_AD_H
 #define SLS_PILATUS_AD_H
-#include <cbflib_adaptbx/cbf_adaptor.h>
-#include <cbflib_adaptbx/cbf_byte_offset_optimized.h>
-#include <cbflib_adaptbx/buffer_based_service.h>
+#include <cbflib_adaptbx/detectors/cbf_adaptor.h>
+#include <cbflib_adaptbx/detectors/cbf_byte_offset_optimized.h>
+#include <cbflib_adaptbx/detectors/buffer_based_service.h>
 #include "cbf_binary.h"
 #include "cbf_compress.h"
 
