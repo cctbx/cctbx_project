@@ -4820,7 +4820,7 @@ ATOM      5  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
     input_file_name="tmp.pdb",
     output_file_name="tmp_norm.pdb")
   assert not show_diff(open("tmp_norm.pdb").read(), """\
-CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 1 2 1
+CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P2
 SCALE1      0.500000  0.000000 -0.088163        0.00000
 SCALE2      0.000000  0.333333  0.000000        0.00000
 SCALE3      0.000000  0.000000  0.253857        0.00000
