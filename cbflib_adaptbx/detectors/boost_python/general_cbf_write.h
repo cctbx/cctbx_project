@@ -1,6 +1,6 @@
 #ifndef GENERAL_CBF_WRITE_H
 #define GENERAL_CBF_WRITE_H
-#include <cbflib_adaptbx/cbf_adaptor.h>
+#include <cbflib_adaptbx/detectors/cbf_adaptor.h>
 #include "cbf_binary.h"
 #include "cbf_compress.h"
 

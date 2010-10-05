@@ -9,8 +9,8 @@
 #include <exception>
 #include <scitbx/array_family/flex_types.h>
 #include <examples/img.h>
-#include <cbflib_adaptbx/basic.h>
-#include <cbflib_adaptbx/mar_adaptor.h>
+#include <cbflib_adaptbx/detectors/basic.h>
+#include <cbflib_adaptbx/detectors/mar_adaptor.h>
 
 namespace af = scitbx::af;
 

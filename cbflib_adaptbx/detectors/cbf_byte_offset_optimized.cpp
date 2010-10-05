@@ -247,7 +247,7 @@ extern "C" {
 #include "cbf.h"
 #include "cbf_file.h"
 #include "cbf_byte_offset.h"
-#include <cbflib_adaptbx/cbf_byte_offset_optimized.h>
+#include <cbflib_adaptbx/detectors/cbf_byte_offset_optimized.h>
 
 /* Changes made in the byte-offset algorithm
 

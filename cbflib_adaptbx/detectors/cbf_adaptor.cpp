@@ -9,7 +9,7 @@
 #include <exception>
 #include <scitbx/array_family/flex_types.h>
 #include <examples/img.h>
-#include <cbflib_adaptbx/cbf_adaptor.h>
+#include <cbflib_adaptbx/detectors/cbf_adaptor.h>
 
 namespace af = scitbx::af;
 namespace ide = iotbx::detectors;

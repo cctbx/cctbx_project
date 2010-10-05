@@ -1,5 +1,5 @@
 #include <vector>
-#include <cbflib_adaptbx/buffer_based_service.h>
+#include <cbflib_adaptbx/detectors/buffer_based_service.h>
 namespace ide = iotbx::detectors;
 
 //Code contributed by Graeme Winter, Diamond Light Source:
