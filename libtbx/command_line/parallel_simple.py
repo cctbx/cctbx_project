@@ -31,8 +31,12 @@ def process_dollar_multi(line):
     else:
       f = int(m.group(1))
       l = int(m.group(2))
-      for a in xrange(f,l+1):
-        rapp(a)
+      if (f <= l):
+        for a in xrange(f,l+1):
+          rapp(a)
+      else:
+        for a in xrange(f,l-1,-1):
+          rapp(a)
   return result
 
 def run_one_cmd(cmd_info):
@@ -69,29 +73,34 @@ def run_one_cmd(cmd_info):
   sys.stdout.flush()
 
 def run_in_dir(cmd_info):
-  d = op.dirname(cmd_info.log)
-  os.mkdir(d)
-  os.chdir(d)
-  from libtbx.command_line import printenv
-  printenv.show(out=open("os_environ_at_start", "w"))
-  if (sys.version_info[:2] < (2,6)):
-    from libtbx.easy_run import subprocess
-  else:
-    import subprocess
-  log = open("log", "w")
-  t0 = time.time()
+  cwd_on_entry = os.getcwd()
   try:
-    subprocess.Popen(
-      args=cmd_info.cmd,
-      shell=True,
-      bufsize=-1,
-      stdout=log,
-      stderr=log,
-      universal_newlines=True).wait()
-  except: # intentional
-    show_traceback(file=log)
-  print >> log, fmt_time(t0)
-  sys.stdout.flush()
+    d = op.dirname(cmd_info.log)
+    os.mkdir(d)
+    os.chdir(d)
+    from libtbx.command_line import printenv
+    printenv.show(out=open("os_environ_at_start", "w"))
+    if (sys.version_info[:2] < (2,6)):
+      from libtbx.easy_run import subprocess
+    else:
+      import subprocess
+    log = open("log", "w")
+    t0 = time.time()
+    try:
+      subprocess.Popen(
+        args=cmd_info.cmd,
+        shell=True,
+        bufsize=-1,
+        stdout=log,
+        stderr=log,
+        universal_newlines=True).wait()
+    except: # intentional
+      show_traceback(file=log)
+    print >> log, fmt_time(t0)
+    sys.stdout.flush()
+  finally:
+    if (op.isdir(cwd_on_entry)):
+      os.chdir(cwd_on_entry)
 
 def run(args):
   if (len(args) == 0): args = ["--help"]
@@ -141,6 +150,7 @@ def run(args):
   if (co.jobs is not None):
     n_proc = max(1, min(co.jobs, n_proc))
   print "Number of processors:", n_proc
+  print "Number of jobs:", len(cmd_infos)
   print
   sys.stdout.flush()
   show_times = libtbx.utils.show_times(time_start="now")
@@ -177,7 +187,7 @@ def run(args):
         show_log(cmd_info=cmd_info)
     else:
       mp_pool = multiprocessing.Pool(processes=n_proc)
-      mp_pool.map(run_one_cmd, cmd_infos)
+      mp_pool.map(run_one_cmd, cmd_infos, chunksize=1)
       show_logs()
   else:
     old_dirs = []
@@ -203,7 +213,7 @@ def run(args):
             "unable to remove or rename: %s" % show_string(d)
         raise Sorry("Failure removing existing directories.")
     mp_pool = multiprocessing.Pool(processes=n_proc)
-    mp_pool.map(run_in_dir, cmd_infos)
+    mp_pool.map(run_in_dir, cmd_infos, chunksize=1)
     show_logs()
   print
   show_times()
