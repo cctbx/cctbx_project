@@ -32,8 +32,8 @@ class PilatusImage(DetectorImageBase):
     if self.bin==2:
       raise ImageException("2-by-2 binning not supported for miniCBF")
     try:
-      from cbflib_adaptbx import MiniCBFAdaptor # optional package
-      self.adaptor = MiniCBFAdaptor(self.filename)
+      from cbflib_adaptbx import cbf_binary_adaptor # optional package
+      self.adaptor = cbf_binary_adaptor(self.filename)
       assert algorithm in ["cbflib","cbflib_adaptbx_optimized"]
       if algorithm=="cbflib_adaptbx_optimized":
         self.bin_safe_set_data( self.adaptor.optimized_read_data(self.size1,self.size2) )

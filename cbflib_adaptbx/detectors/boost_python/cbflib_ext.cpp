@@ -24,8 +24,8 @@ bool assert_equal(scitbx::af::flex_int read1, scitbx::af::flex_int read2){
   return true;
 }
 
-boost::python::str compressed_string(MiniCBFAdaptor& ada){
-  //later, reorganize MiniCBFAdaptor so some of this code is in the class proper.
+boost::python::str compressed_string(cbf_binary_adaptor& ada){
+  //later, reorganize cbf_binary_adaptor so some of this code is in the class proper.
   ada.common_file_access();
 
   //had to make ada.cbf_h public for this
@@ -108,16 +108,16 @@ BOOST_PYTHON_MODULE(cbflib_ext)
      .def("raster_description",&CBFAdaptor::raster_description)
      //.def("test",&CBFAdaptor::test)
    ;
-   class_<MiniCBFAdaptor, bases<CBFAdaptor> >("MiniCBFAdaptor",init<std::string>())
-     .def("read_data",&MiniCBFAdaptor::read_data)
-     .def("buffer_based_uncompress",&MiniCBFAdaptor::buffer_based_uncompress)
+   class_<cbf_binary_adaptor, bases<CBFAdaptor> >("cbf_binary_adaptor",init<std::string>())
+     .def("read_data",&cbf_binary_adaptor::read_data)
+     .def("buffer_based_uncompress",&cbf_binary_adaptor::buffer_based_uncompress)
      .def("optimized_read_data",
-     (scitbx::af::flex_int (MiniCBFAdaptor::*)(const int&, const int&))&MiniCBFAdaptor::optimized_read_data)
+     (scitbx::af::flex_int (cbf_binary_adaptor::*)(const int&, const int&))&cbf_binary_adaptor::optimized_read_data)
      .def("optimized_read_data",
-     (scitbx::af::flex_int (MiniCBFAdaptor::*)())&MiniCBFAdaptor::optimized_read_data)
+     (scitbx::af::flex_int (cbf_binary_adaptor::*)())&cbf_binary_adaptor::optimized_read_data)
      .def("compressed_string",&compressed_string)
-     .def("dim_slow",&MiniCBFAdaptor::dim_slow)
-     .def("dim_fast",&MiniCBFAdaptor::dim_fast)
+     .def("dim_slow",&cbf_binary_adaptor::dim_slow)
+     .def("dim_fast",&cbf_binary_adaptor::dim_fast)
    ;
    class_<CBFWriteAdaptor, bases<CBFAdaptor> >("CBFWriteAdaptor",init<std::string>())
      .def("write_data",&CBFWriteAdaptor::write_data)

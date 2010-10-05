@@ -142,7 +142,7 @@ struct wrapper_of_byte_decompression {
 
 };
 
-class MiniCBFAdaptor: public CBFAdaptor {
+class cbf_binary_adaptor: public CBFAdaptor {
  public:
   //data items needed to interface cbflib integer array parameters
   unsigned int compression;
@@ -150,7 +150,7 @@ class MiniCBFAdaptor: public CBFAdaptor {
   size_t elsize,elements,dim1,dim2,dim3,padding;
   const char *byteorder;//="little_endian";
 
-  inline MiniCBFAdaptor(const std::string& filename):
+  inline cbf_binary_adaptor(const std::string& filename):
     CBFAdaptor(filename),
     byteorder(std::string("little_endian").c_str())
     {/* Create the cbf */}
