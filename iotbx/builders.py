@@ -147,20 +147,16 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
       return sym_ops
     if 'sym_ops' in kwds:
       sym_ops = kwds['sym_ops']
-      if restraint_type == 'bond_similarity':
-        for i, sym_op in enumerate(sym_ops):
-          if sym_op is not None and not isinstance(sym_op, sgtbx.rt_mx):
-            if len(sym_op) == 2:
-              sym_op_pair = sym_op
-              for j, sym_op in enumerate(sym_op_pair):
-                if sym_op is not None and not isinstance(sym_op, sgtbx.rt_mx):
-                  sym_op_pair[j] = sgtbx.rt_mx(sym_op)
-              sym_ops[i] = sym_op_pair
-            else:
-              sym_ops[i] = sgtbx.rt_mx(sym_op)
-      else:
-        for i, sym_op in enumerate(sym_ops):
-          if sym_op is not None and not isinstance(sym_op, sgtbx.rt_mx):
+      for i, sym_op in enumerate(sym_ops):
+        if sym_op is not None and not isinstance(sym_op, sgtbx.rt_mx):
+          if len(sym_op) == 2:
+            assert restraint_type == 'bond_similarity'
+            sym_op_pair = sym_op
+            for j, sym_op in enumerate(sym_op_pair):
+              if sym_op is not None and not isinstance(sym_op, sgtbx.rt_mx):
+                sym_op_pair[j] = sgtbx.rt_mx(sym_op)
+            sym_ops[i] = sym_op_pair
+          else:
             sym_ops[i] = sgtbx.rt_mx(sym_op)
       if sym_ops.count(None) == len(sym_ops):
         del kwds['sym_ops']
@@ -211,5 +207,6 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
     pass
 
   def proxies(self):
-    return dict([(proxy_type, proxies) for proxy_type, proxies in self._proxies.iteritems()
-                 if len(proxies) != 0])
+    return dict([
+      (proxy_type, proxies) for proxy_type, proxies in self._proxies.iteritems()
+      if len(proxies) != 0])
