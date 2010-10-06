@@ -364,7 +364,6 @@ if (__name__=="__main__"):
     "strip_polygons",
     "enantiomorphic",
     "soft",
-    "balanced",
     "multiplicities",
   ])
   assert len(flags.regular_args) > 0
@@ -389,8 +388,7 @@ if (__name__=="__main__"):
       assert len(numbers) in (1,2)
       if (len(numbers) == 1): numbers *= 2
       for space_group_number in xrange(numbers[0], numbers[1]+1):
-        asu_original = reference_table.get_asu(
-          space_group_number, balanced=flags.balanced)
+        asu_original = reference_table.get_asu(space_group_number)
         assert sgtbx.space_group(asu_original.hall_symbol) \
             == sgtbx.space_group_info(number=space_group_number).group()
         asu = asu_original

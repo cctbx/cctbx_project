@@ -917,15 +917,7 @@ def asu_092(): # P 41 21 2 (enantiomorph of 96)
     & z8(-y2)
   )
 
-def asu_093(balanced=False): # P 42 2 2
-  if (balanced):
-    return (direct_space_asu('P 4c 2')
-      & -p0(z4)
-      & y2(x0)
-      & z2(x0)
-      & z0(x0)
-      & m0(z4)
-    )
+def asu_093(): # P 42 2 2
   return (direct_space_asu('P 4c 2')
     & x0(y2)
     & x2(y2)
@@ -1400,16 +1392,7 @@ def asu_142(): # I 41/a c d :2
     & z8(m1/4)
   )
 
-def asu_143(balanced=False): # P 3
-  if (balanced):
-    return (direct_space_asu('P 3')
-      & h0
-      & h1(-m1)
-      & m0(-h0)
-      & m1
-      & z0
-      & +z1
-    )
+def asu_143(): # P 3
   return (direct_space_asu('P 3')
     & x0(-y0)
     & y0
@@ -2221,11 +2204,8 @@ def asu_230(): # I a -3 d
     & cut((0,1,1),0)
   )
 
-def get_asu(space_group_number, balanced=False):
-  function = eval("asu_%03d" % space_group_number)
-  if (not balanced):
-    return function()
-  return function(balanced=True)
+def get_asu(space_group_number):
+  return eval("asu_%03d" % space_group_number)()
 
 if (__name__ == "__main__"):
   for i in xrange(1,231):
