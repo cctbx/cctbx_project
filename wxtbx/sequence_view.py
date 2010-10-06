@@ -1023,19 +1023,27 @@ def exercise_simple_frame () :
   frame.reset_layout()
   frame.Show()
 
-def exercise_msa_frame () :
-  frame = msa_frame(None, -1, "Demo of multiple sequence alignment")
-  seqs = [
-"---VLSEGEW---QLVLHVWAKVEADVAGHGQDILIRLFKSHPESTLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKK------GHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQGANQ",
-"------EGEWMRTQLVLHVWAKVEADVAGHGQDILIKLFKSHPE-TLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKMQVEHNGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQG---",
-"MAVVLSEGEWM--QLVLHVWAKVEADVAGHGQDILIRLFKSHPESTLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKK--VEH-GHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKEL-------"]
-  labels = [
+__test_seqs = [
+  "---VLSEGEW---QLVLHVWAKVEADVAGHGQDILIRLFKSHPESTLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKK------GHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQGANQ",
+  "------EGEWMRTQLVLHVWAKVEADVAGHGQDILIKLFKSHPE-TLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKMQVEHNGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQG---",
+  "MAVVLSEGEWM--QLVLHVWAKVEADVAGHGQDILIRLFKSHPESTLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKK--VEH-GHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKEL-------"]
+__test_labels = [
     "Protein A (H. sapiens)",
     "Protein B (M. musculus)",
-    "Protein C (B. taurus)",
-  ]
-  frame.set_sequences(seqs, labels=labels)
+    "Protein C (B. taurus)",]
+
+def exercise_msa_frame () :
+  frame = msa_frame(None, -1, "Demo of multiple sequence alignment")
+  frame.set_sequences(__test_seqs, labels=__test_labels)
   frame.set_structure('------LLLHHHHHHHHHHHHHHHHLHHHHHHHHHHHHHHHLHH-HHHLLHHHHLLLLHHHHHHLHHHHHHHHHHHHHHHHHHHHLLLLLLLLLLHHHHHHHHHHHHHLLLLLHHHHHHHHHHHHHHHHHHLLLLLLHHHHHHHHHHHHHHHHHHHHHHHHHLLLL---')
+  frame.reset_layout()
+  frame.Show()
+
+def exercise_msa_frame_large () :
+  frame = msa_frame(None, -1, "Really big sequence alignment")
+  seqs = [ s*10 for s in __test_seqs ]
+  labels = __test_labels
+  frame.set_sequences(seqs, labels=labels)
   frame.reset_layout()
   frame.Show()
 
@@ -1043,6 +1051,7 @@ def exercise () :
   app = wx.App(0)
   exercise_simple_frame()
   exercise_msa_frame()
+  exercise_msa_frame_large()
   app.MainLoop()
 
 if __name__ == "__main__" :
