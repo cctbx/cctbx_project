@@ -11,7 +11,7 @@ import numpy
 ##########################################################################
 
 #########################################
-#Syntax: "phenix.python pdb_distances_######.py pdb-file.pdb > something.log" (where ###### is a date when the program was last edited)
+#Syntax: "phenix.python pdb_distances.py pdb-file.pdb > something.log"
 #########################################
 
 ###########################
@@ -233,14 +233,16 @@ X_AG = [] #X Base-pairing pattern AG: AG_38
 #Bond   A       G       Length Ave      Length Std      Attribute
 #1      N1      N2      3.02    0.19    T
 #2      N6      N3      3.15    0.11    T
-bonds = [2, "A", "G", "N1", "N2", "N6", "N3", "NA", "NA", "NA", "NA", "NA", "NA"]
+bonds = [2, "A", "G", "N1", "N2", "N6", "N3", "NA", "NA", 15.214, 0.258, 9.792, 0.410]
+#STATISTICAL DATA obtained from 2J02.pdb, 2 basepairs. Combined X_AG and X_GA. Needs to be revised
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 12 in MASTER_Basepairs (X_GA)
 X_GA = [] #X Base-pairing pattern GA: GA_38
 #Bond   G       A       Length Ave      Length Std      Attribute
 #1      N2      N1      3.02    0.19    T
 #2      N3      N6      3.15    0.11    T
-bonds = [2, "G", "A", "N2", "N1", "N3", "N6", "NA", "NA", "NA", "NA", "NA", "NA"]
+bonds = [2, "G", "A", "N2", "N1", "N3", "N6", "NA", "NA", 15.214, 0.258, 9.792, 0.410]
+#STATISTICAL DATA obtained from 2J02.pdb, 2 basepairs. Combined X_AG and X_GA. Needs to be revised
 MASTER_Basepairs_bonds.append(bonds)
 ###i = 13 in MASTER_Basepairs (XI_AG)
 XI_AG = [] #XI (AG Sheared). Base-pairing pattern AG: AG_24
@@ -529,6 +531,20 @@ XXXI_GG = [] #XXXI Base-pair between positions G1030A and C1031 of T. thermophil
 #2      N3      N2      3.4             unk
 bonds = [2, "G", "G", "N2", "N1", "N3", "N2", "NA", "NA", "NA", "NA", "NA", "NA"]
 MASTER_Basepairs_bonds.append(bonds)
+###i = 48 in MASTER_Basepairs (XXXIV_A_PSU)
+XXXIV_A_PSU = [] #present in 4TNA (1 base pair) and 2KYE (1 base pair 20 different NMR structures)
+#Bond   A       U       Length Ave      Length Std      Attribute
+#1      N1      N3      3.1             unk
+#2      N6      O2      3.2             unk
+bonds = [2, "A", "U", "N1", "N3", "N6", "O2", "NA", "NA", 16.942, 0.520, 11.109, 0.220]
+MASTER_Basepairs_bonds.append(bonds)
+###i = 49 in MASTER_Basepairs (XXXIV_PSU_A)
+XXXIV_PSU_A = [] #present in 4TNA (1 base pair) and 2KYE (1 base pair 20 different NMR structures)
+#Bond   U       A       Length Ave      Length Std      Attribute
+#1      N3      N1      3.1             unk
+#2      O2      N6      3.2             unk
+bonds = [2, "U", "A", "N3", "N1", "O2", "N62", "NA", "NA", 16.942, 0.520, 11.109, 0.220]
+MASTER_Basepairs_bonds.append(bonds)
 
 
 ########################### Basepair Lists SECTION #################################
@@ -544,13 +560,13 @@ MASTER_Basepairs_bonds.append(bonds)
                 #k=6, distance
 
 
-MASTER_Basepairs_excluded = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+MASTER_Basepairs_excluded = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
 
 #MASTER_Basepairs_schemes only carries strings with the names of the basepairing Schemes
-MASTER_Basepairs_schemes = ["I_AA", "II_AA", "III_GG", "IV_GG", "V_AA", "VI_GG", "VII_GG", "VIII_AG", "VIII_GA", "IX_AG",  "IX_GA", "X_AG", "X_GA", "XI_AG", "XI_GA", "XII_UU", "XIII_UU", "XIV_CC", "XV_CC", "XVII_CU", "XVII_UC", "XVIII_CU", "XVIII_UC", "XIX_CG_WC", "XIX_GC_WC", "XX_AU_WC", "XX_UA_WC", "XXI_AU", "XXI_UA", "XXII_CG", "XXII_GC", "XXIII_AU", "XXIII_UA", "XXIV_AU", "XXIV_UA", "XXV_AC",  "XXV_CA", "XXVI_AC", "XXVI_CA", "XXVII_GU", "XXVII_UG", "XXVIII_GU", "XXVIII_UG", "XXIX_AC", "XXIX_CA", "XXX_GC", "XXX_CG", "XXXI_GG"]
+MASTER_Basepairs_schemes = ["I_AA", "II_AA", "III_GG", "IV_GG", "V_AA", "VI_GG", "VII_GG", "VIII_AG", "VIII_GA", "IX_AG",  "IX_GA", "X_AG", "X_GA", "XI_AG", "XI_GA", "XII_UU", "XIII_UU", "XIV_CC", "XV_CC", "XVII_CU", "XVII_UC", "XVIII_CU", "XVIII_UC", "XIX_CG_WC", "XIX_GC_WC", "XX_AU_WC", "XX_UA_WC", "XXI_AU", "XXI_UA", "XXII_CG", "XXII_GC", "XXIII_AU", "XXIII_UA", "XXIV_AU", "XXIV_UA", "XXV_AC",  "XXV_CA", "XXVI_AC", "XXVI_CA", "XXVII_GU", "XXVII_UG", "XXVIII_GU", "XXVIII_UG", "XXIX_AC", "XXIX_CA", "XXX_GC", "XXX_CG", "XXXI_GG", "XXXIV_A_PSU", "XXXIV_PSU_A"]
 
 #MASTER_Basepairs_summary: The lines in MASTER_Basepairs, carrying possible basepairing bonds, will be sorted into this list, once they have been confirmed as possible basepairs. Same format as MASTER_Basepairs
-MASTER_Basepairs_summary = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+MASTER_Basepairs_summary = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
 
 
 ##########################################################################
@@ -935,7 +951,7 @@ def ADD(SEARCH1, SEARCH2):
 def SEQUENTIAL_READOUT(LIST1, LIST2, LIST3, print_control, line2):
     control_control = 1 #Initializing. This variable signals the presence of bases with possible multiple contacts
     print "\n##################################################\n##### SEQUENTIAL OUTPUT READOUT        BEGINNING"
-    if print_control == 0:
+    if print_control == 0: #Controls how much SEQUENTIAL READOUT is outputed
         print "##### LINES CARRYING POSSIBLE BASEPAIR INFORMATION",
         print line2
         for i in range (len(LIST1)):
@@ -1392,7 +1408,7 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
 
               First_List_C1.append(First_List[a])
     First_List = First_List_smaller
-    MASTER_Basepairs = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+    MASTER_Basepairs = [[], [], [], [], [], [], [], [], [], [],  [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
 
 #####################################
 #FUNCTION "Program". Section: First sorting of basepair candidates          BEGINNING
@@ -1594,7 +1610,8 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
 
 #Printing output.
     line1 = "AFTER SEARCHING FOR BASES WITH POSSIBLE MULTIPLE CONTACTS: Run # " + run_number_str + " Distance Cutoff = " + CUTOFF_str[0:3]
-    print_control = 1
+#    print_control = 1
+    print_control = 0
     control_control = SEQUENTIAL_READOUT(MASTER_Basepairs_summary, MASTER_Basepairs_schemes, control, print_control, line1) #control_control = 0 signals that no bases with possible multiple contacts have been found. Will avoid unnecesary runs of some parts of the program
 ########################################################
 #       FUNCTION "Program". Section: LOOKING FOR BASES WITH POSSIBLE MULTIPLE CONTACTS                 END
@@ -1856,19 +1873,17 @@ First_List[0] = []
 ##########################################################################
 import os
 dir =  os.getcwd()
-
 import re
-ma=re.compile(r'\/+')
-iterator = ma.finditer(pdb_file)
+ma=re.compile('\/+')
+iterator = ma.finditer(dir)
 aaa=[]
 for match in iterator:
    aaa.append(match.span())
-directory = pdb_file[0:aaa[len(aaa)-1][1]]
-FILE = pdb_file[aaa[len(aaa)-1][1]:len(pdb_file)]
-mm=re.search(r'\.', FILE)
+directory = dir[0:aaa[len(aaa)-1][1]]
+FILE = dir[aaa[len(aaa)-1][1]:len(dir)]
+mm=re.search(r'\.', pdb_file)
 START = mm.start()
-pdb_file_main = FILE[0:START]
-
+pdb_file_main = pdb_file[0:START]
 ##########################################################################
 #Sub SECTION file name
 ##########################################################################
@@ -2382,7 +2397,7 @@ def DIFF_CALC(ARR1, ARR2, LIST1, LIST2):
         LIST1[12] = LIST1[12] + ' '
     if len(LIST1[15]) == 5:
         LIST1[15] = LIST1[15] + ' '
-    print LIST1[0], "  ", LIST1[2], " ", LIST1[3], " ", LIST1[4], " ", LIST1[5], "    ", LIST1[1], "    ", LIST1[6], "  ", LIST1[7], " ", LIST1[8], LIST1[9], list[0], LIST1[16], list[3], LIST1[17], list[4]
+    print LIST1[0], "", LIST1[2], " ", LIST1[3], " ", LIST1[4], " ", LIST1[5], "    ", LIST1[1], "    ", LIST1[6], "  ", LIST1[7], " ", LIST1[8], LIST1[9], list[0], LIST1[16], list[3], LIST1[17], list[4]
     print "                                                     ", LIST1[10], " ", LIST1[11], LIST1[12], list[1]
     print "                                                     ", LIST1[13], " ", LIST1[14], LIST1[15], list[2]
 
@@ -2394,7 +2409,7 @@ def DIFF_CALC(ARR1, ARR2, LIST1, LIST2):
 key = [] #Will carry information to format the output
         #OUTPUT FIELDS
                 #position 0: "Basepairing Scheme"                                     STRING of 9 characters
-key.append(9)
+key.append(11)
                 #position 1: "number of bonds expected"                               STRING of 1 character
 key.append(1)
                 #position 2: "Base # for base 1"                                      STRING of 4 characters
@@ -2616,11 +2631,13 @@ wrongly_assigned = [] #Will collect basepairs with 'WRONG' geometry from MASTER_
 undetermined = [] #Will collect 'UNDETERMINED' basepairs from MASTER_Basepairs_summary, from largest first residue to smallest
 missing_bond = [] #Will collect basepairs with missing bonds. Tagged as " miss"
 file = [[], []]
-pymol0 = directory + "/" + pdb_file_main + "_all-basepairs_REVERSED" + "_PYMOL" + "_script.pml"
+#pymol0 = directory + "/" + pdb_file_main + "_all-basepairs_REVERSED" + "_PYMOL" + "_script.pml"
+pymol0 = dir + "/" + pdb_file_main + "_all-basepairs_REVERSED" + "_PYMOL" + "_script.pml"
 file[0] = open(pymol0, 'w')
 line0 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n' + "show sticks" + '\n'
 file[0].write(line0)
-pymol1 = directory + "/" + pdb_file_main + "_all-basepairs" + "_PYMOL" + "_script.pml"
+#pymol1 = directory + "/" + pdb_file_main + "_all-basepairs" + "_PYMOL" + "_script.pml"
+pymol1 = dir + "/" + pdb_file_main + "_all-basepairs" + "_PYMOL" + "_script.pml"
 file[1] = open(pymol1, 'w')
 line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
 file[1].write(line1)
@@ -2671,7 +2688,7 @@ for h in range (len(run_cutoff)/2):
    print           "==============================================================================="
 
    #For PYMOL output
-   pymol1 = directory + "/" + pdb_file_main + "_basepairs-at-cutoff_" + run_cutoff[h*2 + 1] + "_PYMOL" + "_script.pml"
+   pymol1 = dir + "/" + pdb_file_main + "_basepairs-at-cutoff_" + run_cutoff[h*2 + 1] + "_PYMOL" + "_script.pml"
    file[1] = open(pymol1, 'w')
    line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
    file[1].write(line1)
@@ -2681,7 +2698,7 @@ for h in range (len(run_cutoff)/2):
 
       PYMOL_OUTPUT(run_cutoff_LISTS[h][a], a, pdb_file_main, From, file)
 
-      print run_cutoff_LISTS[h][a][0], "  ", run_cutoff_LISTS[h][a][2], " ", run_cutoff_LISTS[h][a][3], " ", run_cutoff_LISTS[h][a][4], " ", run_cutoff_LISTS[h][a][5], "    ", run_cutoff_LISTS[h][a][1], "    ", run_cutoff_LISTS[h][a][6], "  ", run_cutoff_LISTS[h][a][7], " ", run_cutoff_LISTS[h][a][8], run_cutoff_LISTS[h][a][9], "  ", run_cutoff_LISTS[h][a][len(run_cutoff_LISTS[h][a])-3], run_cutoff_LISTS[h][a][len(run_cutoff_LISTS[h][a])-1]
+      print run_cutoff_LISTS[h][a][0], "", run_cutoff_LISTS[h][a][2], " ", run_cutoff_LISTS[h][a][3], " ", run_cutoff_LISTS[h][a][4], " ", run_cutoff_LISTS[h][a][5], "    ", run_cutoff_LISTS[h][a][1], "    ", run_cutoff_LISTS[h][a][6], "  ", run_cutoff_LISTS[h][a][7], " ", run_cutoff_LISTS[h][a][8], run_cutoff_LISTS[h][a][9], "  ", run_cutoff_LISTS[h][a][len(run_cutoff_LISTS[h][a])-3], run_cutoff_LISTS[h][a][len(run_cutoff_LISTS[h][a])-1]
       print "                                                     ", run_cutoff_LISTS[h][a][10], " ", run_cutoff_LISTS[h][a][11], run_cutoff_LISTS[h][a][12]
       print "                                                     ", run_cutoff_LISTS[h][a][13], " ", run_cutoff_LISTS[h][a][14], run_cutoff_LISTS[h][a][15]
    print           "==============================================================================="
@@ -2693,7 +2710,7 @@ CLOSE(file)
 ##### 2) LIST OF LEGITIMATE BASEPAIRS
 if LEGITIMATE_tagged != []:
     file = [[], []]
-    pymol1 = directory + "/" + pdb_file_main + "_LEGITIMATED-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = dir + "/" + pdb_file_main + "_LEGITIMATED-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2707,7 +2724,7 @@ if LEGITIMATE_tagged != []:
     print           "==============================================================================="
     for h in range (len(LEGITIMATE_tagged)):
        PYMOL_OUTPUT(LEGITIMATE_tagged[h], h, pdb_file_main, From, file)
-       print LEGITIMATE_tagged[h][0], "  ", LEGITIMATE_tagged[h][2], " ", LEGITIMATE_tagged[h][3], " ", LEGITIMATE_tagged[h][4], " ", LEGITIMATE_tagged[h][5], "    ", LEGITIMATE_tagged[h][1], "    ", LEGITIMATE_tagged[h][6], "  ", LEGITIMATE_tagged[h][7], " ", LEGITIMATE_tagged[h][8], LEGITIMATE_tagged[h][9], "  ", LEGITIMATE_tagged[h][len(LEGITIMATE_tagged[h])-4], LEGITIMATE_tagged[h][len(LEGITIMATE_tagged[h])-2]
+       print LEGITIMATE_tagged[h][0], "", LEGITIMATE_tagged[h][2], " ", LEGITIMATE_tagged[h][3], " ", LEGITIMATE_tagged[h][4], " ", LEGITIMATE_tagged[h][5], "    ", LEGITIMATE_tagged[h][1], "    ", LEGITIMATE_tagged[h][6], "  ", LEGITIMATE_tagged[h][7], " ", LEGITIMATE_tagged[h][8], LEGITIMATE_tagged[h][9], "  ", LEGITIMATE_tagged[h][len(LEGITIMATE_tagged[h])-4], LEGITIMATE_tagged[h][len(LEGITIMATE_tagged[h])-2]
        print "                                                     ", LEGITIMATE_tagged[h][10], " ", LEGITIMATE_tagged[h][11], LEGITIMATE_tagged[h][12]
        print "                                                     ", LEGITIMATE_tagged[h][13], " ", LEGITIMATE_tagged[h][14], LEGITIMATE_tagged[h][15]
     print           "==============================================================================="
@@ -2718,7 +2735,7 @@ if LEGITIMATE_tagged != []:
 ##### 3) LIST OF FALSE BASEPAIRS
 if falsely_assigned != []:
     file = [[], []]
-    pymol1 = directory + "/" + pdb_file_main + "_FALSE-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = dir + "/" + pdb_file_main + "_FALSE-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2732,7 +2749,7 @@ if falsely_assigned != []:
     print           "==============================================================================="
     for h in range (len(falsely_assigned)):
        PYMOL_OUTPUT(falsely_assigned[h], h, pdb_file_main, From, file)
-       print falsely_assigned[h][0], "  ", falsely_assigned[h][2], " ", falsely_assigned[h][3], " ", falsely_assigned[h][4], " ", falsely_assigned[h][5], "    ", falsely_assigned[h][1], "    ", falsely_assigned[h][6], "  ", falsely_assigned[h][7], " ", falsely_assigned[h][8], falsely_assigned[h][9], "  ", falsely_assigned[h][len(falsely_assigned[h])-5], falsely_assigned[h][len(falsely_assigned[h])-2]
+       print falsely_assigned[h][0], "", falsely_assigned[h][2], " ", falsely_assigned[h][3], " ", falsely_assigned[h][4], " ", falsely_assigned[h][5], "    ", falsely_assigned[h][1], "    ", falsely_assigned[h][6], "  ", falsely_assigned[h][7], " ", falsely_assigned[h][8], falsely_assigned[h][9], "  ", falsely_assigned[h][len(falsely_assigned[h])-5], falsely_assigned[h][len(falsely_assigned[h])-2]
        print "                                                     ", falsely_assigned[h][10], " ", falsely_assigned[h][11], falsely_assigned[h][12]
        print "                                                     ", falsely_assigned[h][13], " ", falsely_assigned[h][14], falsely_assigned[h][15]
     print           "==============================================================================="
@@ -2743,7 +2760,7 @@ if falsely_assigned != []:
 ##### 4) LIST OF BASEPAIRS WITH WRONG GEOMETRY
 if wrongly_assigned != []:
     file = [[], []]
-    pymol1 = directory + "/" + pdb_file_main + "_WRONG-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = dir + "/" + pdb_file_main + "_WRONG-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2757,7 +2774,7 @@ if wrongly_assigned != []:
     print           "==============================================================================="
     for h in range (len(wrongly_assigned)):
        PYMOL_OUTPUT(wrongly_assigned[h], h, pdb_file_main, From, file)
-       print wrongly_assigned[h][0], "  ", wrongly_assigned[h][2], " ", wrongly_assigned[h][3], " ", wrongly_assigned[h][4], " ", wrongly_assigned[h][5], "    ", wrongly_assigned[h][1], "    ", wrongly_assigned[h][6], "  ", wrongly_assigned[h][7], " ", wrongly_assigned[h][8], wrongly_assigned[h][9], "  ", wrongly_assigned[h][len(wrongly_assigned[h])-5], wrongly_assigned[h][len(wrongly_assigned[h])-2]
+       print wrongly_assigned[h][0], "", wrongly_assigned[h][2], " ", wrongly_assigned[h][3], " ", wrongly_assigned[h][4], " ", wrongly_assigned[h][5], "    ", wrongly_assigned[h][1], "    ", wrongly_assigned[h][6], "  ", wrongly_assigned[h][7], " ", wrongly_assigned[h][8], wrongly_assigned[h][9], "  ", wrongly_assigned[h][len(wrongly_assigned[h])-5], wrongly_assigned[h][len(wrongly_assigned[h])-2]
        print "                                                     ", wrongly_assigned[h][10], " ", wrongly_assigned[h][11], wrongly_assigned[h][12]
        print "                                                     ", wrongly_assigned[h][13], " ", wrongly_assigned[h][14], wrongly_assigned[h][15]
     print           "==============================================================================="
@@ -2769,7 +2786,7 @@ if wrongly_assigned != []:
 ##### 5) LIST OF UNDETERMINED BASEPAIRS BEGINNING
 if undetermined != []:
     file = [[], []]
-    pymol1 = directory + "/" + pdb_file_main + "_UNDETERMINED-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = dir + "/" + pdb_file_main + "_UNDETERMINED-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2782,7 +2799,7 @@ if undetermined != []:
     print           "==============================================================================="
     for h in range (len(undetermined)):
       PYMOL_OUTPUT(undetermined[h], h, pdb_file_main, From, file)
-      print undetermined[h][0], "  ", undetermined[h][2], " ", undetermined[h][3], " ", undetermined[h][4], " ", undetermined[h][5], "    ", undetermined[h][1], "    ", undetermined[h][6], "  ", undetermined[h][7], " ", undetermined[h][8], undetermined[h][9], "  ", undetermined[h][len(undetermined[h])-4], undetermined[h][len(undetermined[h])-1]
+      print undetermined[h][0], "", undetermined[h][2], " ", undetermined[h][3], " ", undetermined[h][4], " ", undetermined[h][5], "    ", undetermined[h][1], "    ", undetermined[h][6], "  ", undetermined[h][7], " ", undetermined[h][8], undetermined[h][9], "  ", undetermined[h][len(undetermined[h])-4], undetermined[h][len(undetermined[h])-1]
       print "                                                     ", undetermined[h][10], " ", undetermined[h][11], undetermined[h][12]
       print "                                                     ", undetermined[h][13], " ", undetermined[h][14], undetermined[h][15]
     print           "==============================================================================="
@@ -2794,7 +2811,7 @@ if undetermined != []:
 ##### 6) LIST OF MISSING-BOND BASEPAIRS BEGINNING
 if missing_bond != []:
     file = [[], []]
-    pymol1 = directory + "/" + pdb_file_main + "_MISSING-BOND-basepairs" + "_PYMOL" + "_script.pml"
+    pymol1 = dir + "/" + pdb_file_main + "_MISSING-BOND-basepairs" + "_PYMOL" + "_script.pml"
     file[1] = open(pymol1, 'w')
     line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
     file[1].write(line1)
@@ -2807,7 +2824,7 @@ if missing_bond != []:
     print           "==============================================================================="
     for h in range (len(missing_bond)):
       PYMOL_OUTPUT(missing_bond[h], h, pdb_file_main, From, file)
-      print missing_bond[h][0], "  ", missing_bond[h][2], " ", missing_bond[h][3], " ", missing_bond[h][4], " ", missing_bond[h][5], "    ", missing_bond[h][1], "    ", missing_bond[h][6], "  ", missing_bond[h][7], " ", missing_bond[h][8], missing_bond[h][9], "  ", missing_bond[h][len(missing_bond[h])-4], missing_bond[h][len(missing_bond[h])-1]
+      print missing_bond[h][0], "", missing_bond[h][2], " ", missing_bond[h][3], " ", missing_bond[h][4], " ", missing_bond[h][5], "    ", missing_bond[h][1], "    ", missing_bond[h][6], "  ", missing_bond[h][7], " ", missing_bond[h][8], missing_bond[h][9], "  ", missing_bond[h][len(missing_bond[h])-4], missing_bond[h][len(missing_bond[h])-1]
       print "                                                     ", missing_bond[h][10], " ", missing_bond[h][11], missing_bond[h][12]
       print "                                                     ", missing_bond[h][13], " ", missing_bond[h][14], missing_bond[h][15]
     print           "==============================================================================="
@@ -2842,30 +2859,19 @@ for a in range (len(MASTER_Basepairs_schemes)):
     SUM = []
     counter = 0
 #Calculating mean and standard deviation
-#    if "XXVIII_GU" in MASTER_Basepairs_schemes[a]:
-#        print "MASTER_Basepairs_schemes[a]", MASTER_Basepairs_schemes[a]
     for e in range (len(new_list_end)):
-#        print "OUTSIDE \"for e\" new_list_end[e]", new_list_end[e]
         if  MASTER_Basepairs_schemes[a] in new_list_end[e][0] and 'REMOVED' not in new_list_end[e] and 'FALSE' not in new_list_end[e] and 'WRONG' not in new_list_end[e] and 'UNDETERMINED' not in new_list_end[e] and 'miss' not in new_list_end[e]:
-#            print "IN \"for e\" new_list_end[e]", new_list_end[e]
             SUM.append(new_list_end_floats[e,:])
             counter = counter + 1
     if SUM != []:
         SUM = numpy.array(SUM)
-#        if "XXVIII_GU" in MASTER_Basepairs_schemes[a]:
-#            print "SUM", SUM, "\nSUM.ndim", SUM.ndim, "SUM.shape", SUM.shape, "counter", counter, "SUM.shape[0]",SUM.shape[0]
         SUM.reshape(counter, 5)
-#        print "STATS[a,]", STATS[a,], "\nSUM[0,]", SUM[0,]
-#        print "numpy.mean(SUM[:,0])", numpy.mean(SUM[:,0])
         STATS[a,] = [numpy.mean(SUM[:,0]), numpy.std(SUM[:,0]), numpy.mean(SUM[:,1]), numpy.std(SUM[:,1]), numpy.mean(SUM[:,2]), numpy.std(SUM[:,2]), numpy.mean(SUM[:,3]), numpy.std(SUM[:,3]), numpy.mean(SUM[:,4]), numpy.std(SUM[:,4]), SUM.shape[0]]
-#        if "XXVIII_GU" in MASTER_Basepairs_schemes[a]:
-#            print "STATS[a,]", STATS[a,], "STATS[a,0]", STATS[a,0]
-#        list = [str(STATS[a,0]), str(STATS[a,1]), str(STATS[a,2]), str(STATS[a,3]), str(STATS[a,4]), str(STATS[a,5]), str(STATS[a,6]), str(STATS[a,7]), str(STATS[a,8])]
-#        print "Bond1: MEAN =", list[0][:5], "SD =", list[1][:5], "Bond2: MEAN = ", list[2][:5], "SD =", list[3][:5], "Bond3: MEAN =", list[4][:5], "SD =", list[5][:5], "P-to-P distance =", list[6][:5], "SD =", list[7][:5], "Number of basepairs with this geometry =", list[8][:1]
 
 #SUMMARY STATISTICS BY BASEPAIR
+print "n\n"
 for a in range (len(MASTER_Basepairs_schemes)):
-    print MASTER_Basepairs_schemes[a],
+    print MASTER_Basepairs_schemes[a], 
     list = [str(STATS[a,0]), str(STATS[a,1]), str(STATS[a,2]), str(STATS[a,3]), str(STATS[a,4]), str(STATS[a,5]), str(STATS[a,6]), str(STATS[a,7]), str(STATS[a,8]), str(STATS[a,9]), str(STATS[a,10])]
     if list[0] != '0.0':
         print "STATISTICAL VALUES CALCULATED WITHIN STRUCTURE"
@@ -2952,7 +2958,8 @@ print "\n\n#######################################################\n############
 #OUTPUT REGARDING BASES WITH POSSIBLE MULTIPLE CONTACTS
 #print "\n\nThe following group of bases have been identified as possible basepairs but cannot be assigned to a single basepair interaction\nPlease visually check the assignment in Pymol.\n##### These bases will be displayed in RED #####."
 file = [[], []]
-pymol1 = directory + "/" + pdb_file_main + "_UNASSIGNABLE-basepairs" + "_PYMOL" + "_script.pml"
+#pymol1 = directory + "/" + pdb_file_main + "_UNASSIGNABLE-basepairs" + "_PYMOL" + "_script.pml"
+pymol1 = dir + "/" + pdb_file_main + "_UNASSIGNABLE-basepairs" + "_PYMOL" + "_script.pml"
 file[1] = open(pymol1, 'w')
 line1 = "load " + pdb_file + '\n' + "color white, /" + pdb_file_main + "/*" + '\n' + "set stick_ball, on" + '\n' + "set stick_ball_ratio, 2.00000" + '\n'
 file[1].write(line1)
