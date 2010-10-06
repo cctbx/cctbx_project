@@ -22,6 +22,9 @@ class CBFImage(MARIPImage):
       print " osc_start:", self.adaptor.osc_start()
       print " osc_range:", self.adaptor.osc_range()
       self.adaptor.read_data()
+      print self.adaptor.raster_description()
+      flags = self.adaptor.transform_flags()
+      print flags.transpose, flags.reverse_slow, flags.reverse_fast
       '''
     except:
       from iotbx.detectors.marIP import NullAdaptor

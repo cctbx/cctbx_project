@@ -21,6 +21,19 @@
 namespace iotbx {
   namespace detectors {
 
+struct transform_flags {
+  /* Operations necessary to put the data in the order
+     ELEMENT_X increasing precedence=1
+     ELEMENT_Y increasing precedence=2
+
+     Order of operations:
+       reverse_slow and reverse_fast (if true) applied first to assure
+         each direction==increasing.
+       then transpose (if true) to assure ELEMENT_X precedence==1
+  */
+  bool transpose, reverse_slow, reverse_fast;
+};
+
 class CBFAdaptor {
  protected:
   std::string filename;
@@ -226,10 +239,13 @@ class CBFAdaptor {
   inline double twotheta(){ // 2-theta will be supported in the future; not yet
     return 0.0;}
 
-  //! True when ELEMENT_X is slow, true when slow.
-  bool file_is_transposed();
+  //! True when ELEMENT_X is slow.
+  bool file_is_transposed() const;
 
   std::string raster_description();
+
+  iotbx::detectors::transform_flags
+  transform_flags() const;
 
 };
 
