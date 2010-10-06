@@ -5,6 +5,7 @@ import scitbx.random
 from scitbx.math import basic_statistics
 from scitbx.array_family import flex
 import itertools
+import math
 
 def exercise_distributions():
   from scitbx.random import normal_distribution
@@ -15,7 +16,8 @@ def exercise_distributions():
 
 def exercise_variate_generators():
   from scitbx.random \
-       import variate, normal_distribution, bernoulli_distribution
+       import variate, normal_distribution, bernoulli_distribution, \
+              gamma_distribution
   for i in xrange(10):
     scitbx.random.set_random_seed(0)
     g = variate(normal_distribution())
@@ -41,6 +43,23 @@ def exercise_variate_generators():
     bernoulli_sample.count(True)/len(bernoulli_sample),
     0.1,
     eps = 0.01)
+
+  scitbx.random.set_random_seed(0)
+  g = variate(gamma_distribution())
+  assert approx_equal(g(), 0.79587450456577546)
+  assert approx_equal(g(2), (0.89856038848394115, 1.2559307580473893))
+  stat = basic_statistics(flex.double(itertools.islice(g, 1000000)))
+  assert approx_equal(stat.mean,            1, eps=0.005)
+  assert approx_equal(stat.skew,            2, eps=0.005)
+  assert approx_equal(stat.biased_variance, 1, eps=0.005)
+  scitbx.random.set_random_seed(0)
+  g = variate(gamma_distribution(alpha=2, beta=3))
+  assert approx_equal(g(), 16.670850592722729)
+  assert approx_equal(g(2), (10.03662877519449, 3.9357158398972873))
+  stat = basic_statistics(flex.double(itertools.islice(g, 1000000)))
+  assert approx_equal(stat.mean,            6, eps=0.005)
+  assert approx_equal(stat.skew,            2/math.sqrt(2), eps=0.05)
+  assert approx_equal(stat.biased_variance, 18, eps=0.05)
 
 def run():
   libtbx.utils.show_times_at_exit()
