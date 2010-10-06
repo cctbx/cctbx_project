@@ -725,16 +725,16 @@ def _hydrogen_bonds_from_strand_pair (atoms,
   if None in [i, j] :
     return None
   if sense == "antiparallel" :
-    while i < n_prev_strand and j > 0 :
+    while (i < n_prev_strand) and (j > 0) :
       donor1_i_seq = prev_strand_donors[i]
       acceptor1_i_seq = curr_strand_acceptors[j]
-      if (donor1_i_seq != n_atoms and
-          atoms[donor1_i_seq].fetch_labels().resname.strip() != "PRO") :
+      labels1 = atoms[donor1_i_seq].fetch_labels()
+      if ((donor1_i_seq != n_atoms) and (labels1.resname.strip() != "PRO")) :
         bonds.append((donor1_i_seq, acceptor1_i_seq))
       donor2_i_seq = curr_strand_donors[j]
       acceptor2_i_seq = prev_strand_acceptors[i]
-      if (donor2_i_seq != n_atoms and
-          atoms[donor2_i_seq].fetch_labels().resname.strip() != "PRO") :
+      labels2 = atoms[donor2_i_seq].fetch_labels()
+      if ((donor2_i_seq != n_atoms) and (labels2.resname.strip() != "PRO")) :
         bonds.append((donor2_i_seq, acceptor2_i_seq))
       i += 2
       j -= 2
@@ -742,15 +742,15 @@ def _hydrogen_bonds_from_strand_pair (atoms,
     while i < n_prev_strand and j < n_curr_strand :
       donor1_i_seq = prev_strand_donors[i]
       acceptor1_i_seq = curr_strand_acceptors[j]
-      if (donor1_i_seq != n_atoms and
-          atoms[donor1_i_seq].fetch_labels().resname.strip() != "PRO") :
+      labels1 = atoms[donor1_i_seq].fetch_labels()
+      if ((donor1_i_seq != n_atoms) and (labels1.resname.strip() != "PRO")) :
         bonds.append((donor1_i_seq, acceptor1_i_seq))
       if (j + 2) >= n_curr_strand :
         break
       donor2_i_seq = curr_strand_donors[j+2]
       acceptor2_i_seq = prev_strand_acceptors[i]
-      if (donor2_i_seq != n_atoms and
-          atoms[donor2_i_seq].fetch_labels().resname.strip() != "PRO") :
+      labels2 = atoms[donor2_i_seq].fetch_labels()
+      if ((donor2_i_seq != n_atoms) and (labels2.resname.strip() != "PRO")) :
         bonds.append((donor2_i_seq, acceptor2_i_seq))
       i += 2
       j += 2

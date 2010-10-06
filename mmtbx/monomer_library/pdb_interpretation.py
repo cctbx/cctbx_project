@@ -3112,6 +3112,10 @@ class build_all_chain_proxies(object):
         print >> log, "     %s" % atoms[i_seq].fetch_labels().quote()
     unit_cell = self.special_position_settings.unit_cell()
     space_group = self.special_position_settings.space_group()
+    uc_shortest_vector = unit_cell.shortest_vector_sq()**0.5
+    max_bond_length = uc_shortest_vector
+    n_excessive = 0
+    bond_distance_model_max = 0
     bond_sym_proxies = []
     for bond in bonds_table.get_bond_restraint_data() :
       i_seqs = [bond.donor_i_seq, bond.acceptor_i_seq]
@@ -3148,6 +3152,9 @@ class build_all_chain_proxies(object):
           unit_cell=unit_cell,
           sites_cart=self.sites_cart,
           proxy=p)
+        if (b.distance_model > max_bond_length):
+          print >> log, "      *** WARNING: EXCESSIVE BOND LENGTH. ***"
+          n_excessive += 1
         if verbose :
           print >> log, "    hydrogen bond:"
           for i in [0,1]:
@@ -3159,8 +3166,19 @@ class build_all_chain_proxies(object):
           print >> log, "      delta_slack:    %7.3f" % b.delta_slack
           print >> log, "      sigma:          %8.4f" % \
             geometry_restraints.weight_as_sigma(weight=b.weight)
+        if (bond_distance_model_max < b.distance_model):
+          bond_distance_model_max = b.distance_model
+    if (n_excessive != 0):
+      print >> log, "  Excessive bond length limit at hard upper bound:" \
+        " length of shortest vector between unit cell lattice points: %.6g" \
+          % uc_shortest_vector
+      raise Sorry(
+        "Hydrogen bonds with excessive length: %d\n"
+        "  Please check the log file for details." % n_excessive)
     print >> log, "  Total number of hydrogen bonds:", len(bond_sym_proxies)
-    return bond_sym_proxies
+    return group_args(
+      bond_sym_proxies=bond_sym_proxies,
+      bond_distance_model_max=bond_distance_model_max)
 
   def process_custom_nonbonded_symmetry_exclusions(self,
         log, curr_sym_excl_index):
@@ -3273,6 +3291,8 @@ class build_all_chain_proxies(object):
     else :
       hydrogen_bonds = self.process_hydrogen_bonds(h_bond_table,
         log=log)
+      max_bond_distance = max(max_bond_distance,
+        hydrogen_bonds.bond_distance_model_max)
     asu_mappings = self.special_position_settings.asu_mappings(
       buffer_thickness=max_bond_distance*3)
         # factor 3 is to reach 1-4 interactions
@@ -3318,7 +3338,7 @@ class build_all_chain_proxies(object):
         self.geometry_proxy_registries.planarity.append_custom_proxy(proxy=proxy)
     #
     if (hydrogen_bonds is not None) :
-      for proxy in hydrogen_bonds :
+      for proxy in hydrogen_bonds.bond_sym_proxies :
         if (proxy.weight <= 0): continue
         i_seq, j_seq = proxy.i_seqs
         bond_params_table.update(i_seq=i_seq, j_seq=j_seq, params=proxy)
