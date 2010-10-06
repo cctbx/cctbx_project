@@ -3,6 +3,7 @@
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/normal_distribution.hpp>
 #include <boost/random/bernoulli_distribution.hpp>
+#include <boost/random/gamma_distribution.hpp>
 
 
 namespace scitbx { namespace random { namespace boost_python {
@@ -57,6 +58,23 @@ namespace {
     }
   };
 
+  struct gamma
+  {
+    typedef boost::gamma_distribution<double> wt;
+
+    static std::string name() { return "gamma"; }
+
+    static void wrap_specific(boost::python::class_<wt> &klass) {
+      using namespace boost::python;
+      klass
+        .def(init<double, double>((arg("alpha")=1.0,
+                                   arg("beta")=1.0)))
+        .add_property("alpha", &wt::alpha)
+        .add_property("beta", &wt::beta)
+        ;
+    }
+  };
+
 
 } // namespace <anonymous>
 
@@ -65,6 +83,7 @@ namespace {
     wrap_distribution_and_variate<uniform>();
     wrap_distribution_and_variate<normal>();
     wrap_distribution_and_variate<bernoulli>();
+    wrap_distribution_and_variate<gamma>();
   }
 
 }}} // namespace scitbx::random::boost_python
