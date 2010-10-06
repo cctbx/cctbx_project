@@ -162,7 +162,8 @@ class hooft_analysis:
     print >> out,  "P3(true): %.3f" %self.p3_true
     print >> out,  "P3(false): %.3f" %self.p3_false
     print >> out,  "P3(racemic twin): %.3f" %self.p3_racemic_twin
-    print >> out, "Hooft y: %s" %format_float_with_su(self.hooft_y, self.sigma_y)
+    print >> out, "Hooft y: %s" %format_float_with_su(
+      self.hooft_y, self.sigma_y)
 
 
 class bijvoet_differences_probability_plot:
@@ -170,7 +171,10 @@ class bijvoet_differences_probability_plot:
   Hooft, R.W.W., Straver, L.H., Spek, A.L. (2010). J. Appl. Cryst., 43, 665-668.
   """
 
-  def __init__(self, hooft_analysis, distribution=None):
+  def __init__(self,
+               hooft_analysis,
+               use_students_t_distribution=False,
+               students_t_nu=None):
     self.delta_fo2, minus_fo2 =\
         hooft_analysis.delta_fo2.generate_bijvoet_mates().hemispheres_acentrics()
     self.delta_fc2, minus_fc2 =\
@@ -185,10 +189,16 @@ class bijvoet_differences_probability_plot:
     observed_deviations = (hooft_analysis.G * self.delta_fc2.data()
                            - self.delta_fo2.data())/self.delta_fo2.sigmas()
     selection = flex.sort_permutation(observed_deviations)
-    if distribution is None:
-      distribution = distributions.normal_distribution()
-    self.x = distribution.quantiles(observed_deviations.size())
-    self.y = observed_deviations.select(selection)
+    observed_deviations = observed_deviations.select(selection)
+    if use_students_t_distribution:
+      if students_t_nu is None:
+        students_t_nu = maximise_students_t_correlation_coefficient(
+          observed_deviations, 1, 200)
+      self.distribution = distributions.students_t_distribution(students_t_nu)
+    else:
+      self.distribution = distributions.normal_distribution()
+    self.x = self.distribution.quantiles(observed_deviations.size())
+    self.y = observed_deviations
     self.fit = flex.linear_regression(self.x[5:-5], self.y[5:-5])
     self.correlation = flex.linear_correlation(self.x[5:-5], self.y[5:-5])
     assert self.fit.is_well_defined()
@@ -197,3 +207,30 @@ class bijvoet_differences_probability_plot:
     if out is None: out=sys.stdout
     print >> out, self.fit.show_summary()
     print >> out, "coefficient: %f" %self.correlation.coefficient()
+
+
+def maximise_students_t_correlation_coefficient(observed_deviations,
+                                                min_nu, max_nu):
+  def compute_corr_coeff(i):
+    distribution = distributions.students_t_distribution(i)
+    expected_deviations = distribution.quantiles(observed_deviations.size())
+    return flex.linear_correlation(
+      observed_deviations[5:-5], expected_deviations[5:-5])
+  assert max_nu > min_nu
+  assert min_nu > 0
+  while True:
+    width = max_nu - min_nu
+    if width < 0.01: break
+    middle = (min_nu + max_nu)/2
+    a = middle - width/4
+    b = middle + width/4
+    value_a = compute_corr_coeff(a).coefficient()
+    value_b = compute_corr_coeff(b).coefficient()
+    if value_a > value_b:
+      max_nu = middle
+    elif value_a == value_b:
+      min_nu = a
+      max_nu = b
+    else:
+      min_nu = middle
+  return middle
