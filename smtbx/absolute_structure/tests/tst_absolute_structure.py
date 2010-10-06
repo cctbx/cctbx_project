@@ -32,18 +32,18 @@ def exercise_hooft_analysis(space_group_info, d_min=1.0):
   fc = xs.structure_factors(
         anomalous_flag=True, d_min=d_min, algorithm="direct").f_calc()
   fo = fc.as_amplitude_array()
-  # use normally distributed errors
+  fo.set_observation_type_xray_amplitude()
+  # use gaussian errors
   g = variate(normal_distribution())
-  errors = g(fc.size()) * 0.01 + fo.data()
-  fo = fo.customized_copy(
-    data=errors*k
-    ).set_observation_type_xray_amplitude()
+  errors = g(fc.size())
   fo2 = fo.as_intensity_array()
   fo2 = fo2.customized_copy(
-    sigmas=errors)
+    data=(fo2.data()+errors)*k,
+    sigmas=flex.double(fc.size(), 1),
+  )
   # first with the correct absolute structure
   analysis = absolute_structure.hooft_analysis(fo2, fc)
-  assert abs(analysis.hooft_y) < 3 * analysis.sigma_y
+  assert approx_equal(analysis.hooft_y, 0, 1e-2)
   assert approx_equal(analysis.p2, 1)
   assert approx_equal(analysis.p3_true, 1)
   assert approx_equal(analysis.p3_false, 0)
@@ -51,12 +51,14 @@ def exercise_hooft_analysis(space_group_info, d_min=1.0):
   NPP = absolute_structure.bijvoet_differences_probability_plot(analysis)
   assert approx_equal(NPP.correlation.coefficient(), 1, 0.04)
   assert approx_equal(NPP.fit.y_intercept(), 0, 0.1)
+  assert approx_equal(NPP.correlation.coefficient(), 1, 0.002)
+  assert approx_equal(NPP.fit.y_intercept(), 0)
   # and now with the wrong absolute structure
   xs_i = xs.inverse_hand()
   fc_i = xs_i.structure_factors(
     anomalous_flag=True, d_min=d_min, algorithm="direct").f_calc()
   analysis = absolute_structure.hooft_analysis(fo2, fc_i)
-  assert abs(1 - analysis.hooft_y) < 3 * analysis.sigma_y
+  assert approx_equal(analysis.hooft_y, 1, 1e-2)
   assert approx_equal(analysis.p2, 0)
   assert approx_equal(analysis.p3_true, 0)
   assert approx_equal(analysis.p3_false, 1)
@@ -64,20 +66,24 @@ def exercise_hooft_analysis(space_group_info, d_min=1.0):
   NPP = absolute_structure.bijvoet_differences_probability_plot(analysis)
   assert approx_equal(NPP.correlation.coefficient(), 1, 0.04)
   assert approx_equal(NPP.fit.y_intercept(), 0, 0.1)
+  assert approx_equal(NPP.correlation.coefficient(), 1, 0.002)
+  assert approx_equal(NPP.fit.y_intercept(), 0)
   # test for the case of a racemic twin
   fo2_twin = fc.customized_copy(
     data=fc.data()+fc_i.data()).as_intensity_array()
   fo2_twin = fo2_twin.customized_copy(
-    data=(g(fo2_twin.size()) * 0.01 + fo2_twin.data()) * k,
+    data=(errors + fo2_twin.data()) * k,
     sigmas=fo2.sigmas())
   analysis = absolute_structure.hooft_analysis(fo2_twin, fc)
-  assert abs(0.5 - analysis.hooft_y) < 3 * analysis.sigma_y
+  assert approx_equal(analysis.hooft_y, 0.5, 1e-2)
   assert approx_equal(analysis.p3_true, 0)
   assert approx_equal(analysis.p3_false, 0)
   assert approx_equal(analysis.p3_racemic_twin, 1)
   NPP = absolute_structure.bijvoet_differences_probability_plot(analysis)
   #assert approx_equal(NPP.correlation.coefficient(), 1, 0.11)
   assert approx_equal(NPP.fit.y_intercept(), 0, 0.1)
+  assert approx_equal(NPP.correlation.coefficient(), 1, 0.002)
+  assert approx_equal(NPP.fit.y_intercept(), 0)
 
 def run_call_back(flags, space_group_info):
   if not space_group_info.group().is_centric():
