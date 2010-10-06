@@ -2871,7 +2871,7 @@ for a in range (len(MASTER_Basepairs_schemes)):
 #SUMMARY STATISTICS BY BASEPAIR
 print "n\n"
 for a in range (len(MASTER_Basepairs_schemes)):
-    print MASTER_Basepairs_schemes[a], 
+    print MASTER_Basepairs_schemes[a],
     list = [str(STATS[a,0]), str(STATS[a,1]), str(STATS[a,2]), str(STATS[a,3]), str(STATS[a,4]), str(STATS[a,5]), str(STATS[a,6]), str(STATS[a,7]), str(STATS[a,8]), str(STATS[a,9]), str(STATS[a,10])]
     if list[0] != '0.0':
         print "STATISTICAL VALUES CALCULATED WITHIN STRUCTURE"
