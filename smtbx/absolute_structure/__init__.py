@@ -9,6 +9,8 @@ from libtbx.utils import xfrange
 from libtbx.utils\
      import format_float_with_standard_uncertainty as format_float_with_su
 
+from scitbx.math import distributions
+
 
 class hooft_analysis:
   """
@@ -169,7 +171,6 @@ class bijvoet_differences_probability_plot:
   """
 
   def __init__(self, hooft_analysis, distribution=None):
-    from scitbx.math import distributions
     self.delta_fo2, minus_fo2 =\
         hooft_analysis.delta_fo2.generate_bijvoet_mates().hemispheres_acentrics()
     self.delta_fc2, minus_fc2 =\
@@ -185,8 +186,7 @@ class bijvoet_differences_probability_plot:
                            - self.delta_fo2.data())/self.delta_fo2.sigmas()
     selection = flex.sort_permutation(observed_deviations)
     if distribution is None:
-      distribution = distributions.normal_distribution(
-      hooft_analysis.G, 1/hooft_analysis.sigma_G)
+      distribution = distributions.normal_distribution()
     self.x = distribution.quantiles(observed_deviations.size())
     self.y = observed_deviations.select(selection)
     self.fit = flex.linear_regression(self.x[5:-5], self.y[5:-5])
