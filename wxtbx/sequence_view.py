@@ -20,12 +20,14 @@ WXTBX_SEQ_SELECT_MULTIPLE = 4
 WXTBX_SEQ_SELECT_RANGE = 8
 WXTBX_SEQ_SELECT_ANY = 16
 WXTBX_SEQ_SHOW_LINE_NUMBERS = 32
-WXTBX_SEQ_SHOW_TOOLTIP = 64
-WXTBX_SEQ_SHOW_SELECTIONS = 128
-WXTBX_SEQ_ENABLE_SELECT_STRUCTURE = 256
-WXTBX_SEQ_ENABLE_SELECT_MISSING = 512
-WXTBX_SEQ_FANCY_HELICES = 1024
-WXTBX_SEQ_SINGLE_CLICK_SELECTION = 2048
+WXTBX_SEQ_SHOW_LABELS = 64
+WXTBX_SEQ_SHOW_TOOLTIP = 128
+WXTBX_SEQ_SHOW_SELECTIONS = 256
+WXTBX_SEQ_ENABLE_SELECT_STRUCTURE = 512
+WXTBX_SEQ_ENABLE_SELECT_MISSING = 1024
+WXTBX_SEQ_FANCY_HELICES = 2048
+WXTBX_SEQ_SINGLE_CLICK_SELECTION = 4096
+WXTBX_SEQ_MSA_SELECT_ALL = 8192
 
 WXTBX_SEQ_DEFAULT_STYLE = WXTBX_SEQ_SHOW_LINE_NUMBERS | \
                           WXTBX_SEQ_SHOW_SELECTIONS | \
@@ -37,15 +39,19 @@ class sequence_panel (wx.PyPanel) :
   tooltip = "Double-click a residue to select it; hold down Shift to select \
 multiple residues."
   __bg_color = (255,255,255)
+  line_sep = 28
+  line_width = 50
+  line_height = 16
+  line_indent = 16
+  start_offset = 0
+
   def __init__ (self, *args, **kwds) :
     wx.PyPanel.__init__(self, *args, **kwds)
     if self.__bg_color is not None :
       self.SetBackgroundColour(self.__bg_color)
     #from scitbx.array_family import flex, shared
-    self.sequence = ""
-    self.line_width = 50
-    self.line_sep = 28
-    self.start_offset = 0
+    self.sequences = []
+    self.sequence_labels = []
     self.char_boxes = [] #shared.stl_set_unsigned()
     self.highlights = []
     self.highlight_colors = []
@@ -84,47 +90,55 @@ multiple residues."
     gc.SetBrush(wx.TRANSPARENT_BRUSH)
     gc_txt_font = gc.CreateFont(self.txt_font, (0,0,0))
     gc.SetFont(gc_txt_font)
-    i = 0
-    ypos = self.line_sep
-    xpos = 16
     black_pen = wx.Pen((0,0,0), 1)
     (char_w, char_h) = self.get_char_size(gc)
-    if self._style & WXTBX_SEQ_SHOW_SELECTIONS :
-      for j, (i_start, i_end) in enumerate(self.get_selected_ranges()) :
-        gc.SetPen(wx.Pen((0,0,0), 1))
-        gc.SetBrush(wx.Brush(self.selection_color))
-        self.draw_box_around_residues(i_start, i_end, gc)
+    if (self._style & WXTBX_SEQ_SHOW_SELECTIONS) :
+      if (self._style & WXTBX_SEQ_MSA_SELECT_ALL) :
+        pass
+      else :
+        for k_seq in range(self.n_seqs()) :
+          for j, (i_start, i_end) in enumerate(self.get_selected_ranges()) :
+            gc.SetPen(wx.Pen((0,0,0), 1))
+            gc.SetBrush(wx.Brush(self.selection_color))
+            self.draw_box_around_residues(k_seq, i_start, i_end, gc)
     gc.SetBrush(wx.TRANSPARENT_BRUSH)
-    while i < len(self.sequence) :
-      j = i
-      line_start = self.start_offset + i + 1
-      line_end = line_start + self.line_width - 1
-      line = self.sequence[i:i+self.line_width]
-      line_w = self.line_width * char_w
-      label_w = char_w * 8 #gc.GetTextExtent("X"*8)[0]
-      if self._style & WXTBX_SEQ_SHOW_LINE_NUMBERS :
-        gc.DrawText("%6d  " % line_start, xpos, ypos)
-        gc.DrawText("  %-6d" % line_end, xpos + label_w + line_w, ypos)
-        xpos += label_w
-      for j, char in enumerate(line) :
-        i_seq = i+j
-        if i_seq in self.highlights :
-          color = self.highlight_colors[self.highlights.index(i_seq)]
-          gc.SetFont(gc.CreateFont(self.txt_font, color))
-        gc.DrawText(char, xpos, ypos)
-        gc.SetFont(gc_txt_font)
-        xpos += char_w
-      i += self.line_width
-      ypos += self.line_sep
-      xpos = 16
+    for k_seq in range(self.n_seqs()) :
+      xpos = self.line_indent
+      ypos = self.get_line_sep()
+      v_offset = k_seq * self.line_height
+      i = 0
+      while i < len(self.sequences[k_seq]) :
+        j = i
+        line_start = self.start_offset + i + 1
+        line_end = line_start + self.line_width - 1
+        line = self.sequences[k_seq][i:i+self.line_width]
+        line_w = self.line_width * char_w
+        label_start, label_end = self.get_line_labels(k_seq, i)
+        label_w = self.get_label_width(gc)
+        if (label_start is not None) :
+          gc.DrawText(label_start, xpos, ypos + v_offset)
+          xpos += label_w
+        if (label_end is not None) :
+          gc.DrawText(label_end, xpos + label_w + line_w, ypos + v_offset)
+        for j, char in enumerate(line) :
+          i_seq = i+j
+          if i_seq in self.highlights :
+            color = self.highlight_colors[self.highlights.index(i_seq)]
+            gc.SetFont(gc.CreateFont(self.txt_font, color))
+          gc.DrawText(char, xpos, ypos + v_offset)
+          gc.SetFont(gc_txt_font)
+          xpos += char_w
+        i += self.line_width
+        ypos += self.get_line_spacing()
+        xpos = self.line_indent
     return gc
 
-  def draw_box_around_residues (self, i_start, i_end, gc) :
+  def draw_box_around_residues (self, k_seq, i_start, i_end, gc) :
     ranges = self.get_contiguous_ranges(i_start, i_end)
     char_w, char_h = self.get_char_size(gc)
     for (seg_start, seg_end) in ranges :
-      (x1, y1, nx, ny) = self.get_char_position(seg_start)
-      (nx, ny, x2, y2) = self.get_char_position(seg_end)
+      (x1, y1, nx, ny) = self.get_char_position(k_seq, seg_start)
+      (nx, ny, x2, y2) = self.get_char_position(k_seq, seg_end)
       line = gc.CreatePath()
       line.MoveToPoint(x1 - 1, y1 - 1)
       line.AddLineToPoint(x2 - 1, y1 - 1)
@@ -144,18 +158,71 @@ multiple residues."
     (panel_w, panel_h) = (32, 32)
     char_w, char_h = self.get_char_size(dc)
     line_w = char_w * self.line_width
-    if self._style & WXTBX_SEQ_SHOW_LINE_NUMBERS :
+    if (self._style & WXTBX_SEQ_SHOW_LABELS) :
+      line_w += self.get_label_width(dc)
+    elif (self._style & WXTBX_SEQ_SHOW_LINE_NUMBERS) :
       line_w += dc.GetTextExtent("X" * 16)[0]
     panel_w += line_w
-    n_lines = int(math.ceil(len(self.sequence) / self.line_width))
-    panel_h += n_lines * self.line_sep
+    n_lines = int(math.ceil(self.sequence_length() / self.line_width))
+    panel_h += n_lines * self.get_line_spacing()
     return (max(480, panel_w), max(240, panel_h))
 
   def set_sequence (self, seq) :
-    self.sequence = "".join(seq.splitlines())
+    self.set_sequences([seq])
+
+  def set_sequences (self, seqs, labels=()) :
+    self.sequences = [ "".join(seq.splitlines()) for seq in seqs ]
+    assert (len(set([ len(s) for s in self.sequences ])) == 1)
+    assert (len(labels) == 0) or (len(labels) == len(seqs))
+    if (len(self.sequence_labels) != 0) :
+      assert (len(self.sequence_labels) == len(seqs))
+    else :
+      self.sequence_labels = labels
     self.build_boxes()
     self.clear_highlights()
     self.clear_selection()
+
+  def set_sequence_labels (self, labels) :
+    assert (len(labels) == len(self.sequences))
+    self.sequence_labels = labels
+    self.build_boxes()
+
+  def n_seqs (self) :
+    return len(self.sequences)
+
+  def sequence_length (self) :
+    if (self.n_seqs() > 0) :
+      return len(self.sequences[0])
+    return 0
+
+  def get_line_sep (self) :
+    return self.line_sep
+
+  def get_line_spacing (self) :
+    return ((self.n_seqs() - 1) * self.line_height) + self.get_line_sep()
+
+  def get_line_labels (self, k_seq, i_seq) :
+    line_start = self.start_offset + i_seq + 1
+    line_end = line_start + self.line_width - 1
+    if (self._style & WXTBX_SEQ_SHOW_LABELS) :
+      label_start = self.sequence_labels[k_seq]
+      label_end = None
+    elif (self._style & WXTBX_SEQ_SHOW_LINE_NUMBERS) :
+      label_start = "%6d  " % line_start
+      label_end = "  %-6d" % line_end
+    return (label_start, label_end)
+
+  def get_label_width (self, dc) :
+    if (self._style & WXTBX_SEQ_SHOW_LABELS) :
+      if (len(self.sequence_labels) > 0) :
+        n_chars = max([ len(l) for l in self.sequence_labels ])
+      else :
+        n_chars = 0
+    elif (self._style & WXTBX_SEQ_SHOW_LINE_NUMBERS) :
+      n_chars = 6
+    else :
+      n_chars = 0
+    return dc.GetTextExtent("X" * (n_chars + 2))[0]
 
   def get_char_size (self, dc=None) :
     if dc is None :
@@ -172,30 +239,29 @@ multiple residues."
     return (char_w, char_h)
 
   def build_boxes (self) :
-    #from scitbx.array_family import flex, shared
-    self.char_boxes = [] #shared.stl_set_unsigned()
     dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
     dc.SetFont(self.txt_font)
     char_w, char_h = self.get_char_size(dc)
     x_start = 16
-    y_start = self.line_sep
-    if self._style & WXTBX_SEQ_SHOW_LINE_NUMBERS :
-      x_start += (char_w * 8) #dc.GetTextExtent("X" * 8)[0]
-    self.char_boxes = []
-    for i_seq in range(len(self.sequence)) :
-      lines = int(math.floor((i_seq-self.start_offset) / self.line_width))
-      y = y_start + (lines * self.line_sep)
+    x_start += self.get_label_width(dc)
+    self.char_boxes = [ [] for k_seq in range(self.n_seqs()) ]
+    for i_seq in range(self.sequence_length()) :
+      n_lines = int(math.floor((i_seq-self.start_offset) / self.line_width))
       n_prev_chars = (i_seq - self.start_offset) % self.line_width
       x = x_start + (char_w * n_prev_chars)
-      self.char_boxes.append((x, y, x + char_w - 1, y + char_h - 1))
+      y_start = self.get_line_sep() + (n_lines * self.get_line_spacing())
+      for k_seq in range(self.n_seqs()) :
+        v_offset = k_seq * self.line_height
+        y = y_start + v_offset
+        self.char_boxes[k_seq].append((x, y, x + char_w - 1, y + char_h - 1))
 
-  def get_char_position (self, i_seq) :
-    if i_seq >= len(self.char_boxes) :
-      print i_seq, len(self.char_boxes)
-    return tuple(self.char_boxes[i_seq])
+  def get_char_position (self, k_seq, i_seq) :
+    if i_seq >= len(self.char_boxes[k_seq]) :
+      print i_seq, len(self.char_boxes[k_seq])
+    return tuple(self.char_boxes[k_seq][i_seq])
 
   def get_contiguous_ranges (self, i_start, i_end) :
-    assert i_start < i_end or i_start == i_end
+    assert (i_start < i_end) or (i_start == i_end)
     (char_w, char_h) = self.get_char_size()
     line_start = int(math.floor((i_start-self.start_offset) / self.line_width))
     line_end = int(math.floor((i_end - self.start_offset) / self.line_width))
@@ -246,11 +312,11 @@ multiple residues."
     self.highlight_colors.append(color)
 
   def clear_selection (self) :
-    self.selected_residues = [False] * len(self.sequence)
+    self.selected_residues = [False] * self.sequence_length()
     self.update_frame()
 
   def select_chars (self, i_start, i_end, box=True) :
-    assert i_end < len(self.sequence) and i_start <= i_end
+    assert (i_end < self.sequence_length()) and (i_start <= i_end)
     for i_seq in range(i_start, i_end + 1) :
       self.selected_residues[i_seq] = box
     self.update_frame()
@@ -290,18 +356,21 @@ multiple residues."
     self.select_chars(i_start, i_end, False)
 
   def select_residue (self, x, y) :
-    for i_seq, box in enumerate(self.char_boxes) :
-      (x1, y1, x2, y2) = box
-      if (x > x1 and x < x2) and (y > y1 and y < y2) :
-        if self._style & WXTBX_SEQ_SELECT_RANGE :
-          self.process_range_selection(i_seq)
-        else :
-          if self.selected_residues[i_seq] :
-            self.selected_residues[i_seq] = False
+    for k_seq in range(self.n_seqs()) :
+      for i_seq, box in enumerate(self.char_boxes[k_seq]) :
+        if (self.sequences[k_seq][i_seq] == '-') :
+          continue
+        (x1, y1, x2, y2) = box
+        if (x > x1 and x < x2) and (y > y1 and y < y2) :
+          if self._style & WXTBX_SEQ_SELECT_RANGE :
+            self.process_range_selection(i_seq)
           else :
-            self.selected_residues[i_seq] = True
-        self.update_frame()
-        return True
+            if self.selected_residues[i_seq] :
+              self.selected_residues[i_seq] = False
+            else :
+              self.selected_residues[i_seq] = True
+          self.update_frame()
+          return True
     return False
 
   def process_range_selection (self, i_seq) :
@@ -354,9 +423,10 @@ class sequence_with_structure_panel (sequence_panel) :
   tooltip = """\
 Double-click on any residue or secondary-structure element to select the \
 residue(s).  Holding down shift enables multiple selections."""
+  line_sep = 64
+
   def __init__ (self, *args, **kwds) :
     sequence_panel.__init__(self, *args, **kwds)
-    self.line_sep = 64
     self.structure = ""
     self.selected_helices = []
     self.selected_strands = []
@@ -507,9 +577,15 @@ residue(s).  Holding down shift enables multiple selections."""
         gc.StrokePath(line)
         gc.PopState()
 
+  def get_line_sep (self) :
+    #if (self.structure == "") :
+    #  return sequence_panel.line_sep
+    return self.line_sep
+
   def set_structure (self, ss) :
     self.structure = "".join(ss.splitlines())
-    assert self.sequence == "" or len(self.sequence) == len(self.structure)
+    assert ((self.sequence_length() == 0) or
+            (len(self.structure) == self.sequence_length()))
     self.clear_highlights()
     self.clear_structure_selections()
 
@@ -525,9 +601,9 @@ residue(s).  Holding down shift enables multiple selections."""
     ranges = self.get_contiguous_ranges(i_start, i_end)
     boxes = []
     for (seg_start, seg_end) in ranges :
-      (x1, y1, nx, ny) = self.get_char_position(seg_start)
+      (x1, y1, nx, ny) = self.get_char_position(0, seg_start)
       y1 -= 24
-      (nx, y2, x2, ny) = self.get_char_position(seg_end)
+      (nx, y2, x2, ny) = self.get_char_position(0, seg_end)
       y2 -= 8
       boxes.append((x1, y1, x2, y2))
     return boxes
@@ -754,6 +830,7 @@ class control_panel (wx.Panel) :
 # XXX keep this general so it can be embedded in other windows
 class sequence_window (object) :
   cp_style = wx.NO_BORDER
+  seq_panel_style = WXTBX_SEQ_DEFAULT_STYLE
   def create_main_panel (self, sizer=None) :
     if sizer is None :
       sizer = self.sizer
@@ -761,6 +838,7 @@ class sequence_window (object) :
     szr2 = wx.BoxSizer(wx.VERTICAL)
     outer_panel.SetSizer(szr2)
     panel = sequence_with_structure_panel(outer_panel, -1)
+    panel.SetStyle(self.seq_panel_style)
     szr2.Add(panel, 1, wx.EXPAND)
     szr2.Layout()
     szr2.Fit(outer_panel)
@@ -843,8 +921,14 @@ class sequence_window (object) :
       self.reset_layout()
       self.seq_panel.Refresh()
 
-  def set_sequence (self, seq) :
-    self.seq_panel.set_sequence(seq)
+  def set_sequence (self, *args, **kwds) :
+    self.seq_panel.set_sequence(*args, **kwds)
+
+  def set_sequences (self, *args, **kwds) :
+    self.seq_panel.set_sequences(*args, **kwds)
+
+  def set_sequence_labels (self, *args, **kwds) :
+    self.seq_panel.set_sequence_labels(*args, **kwds)
 
   def reset_layout (self) :
     pass
@@ -905,6 +989,14 @@ class sequence_frame (sequence_frame_mixin, sequence_window) :
     txt = self.seq_panel.get_selection_info()
     self.statusbar.SetStatusText(txt)
 
+class msa_frame (sequence_frame_mixin, sequence_window) :
+  seq_panel_style = WXTBX_SEQ_SHOW_SELECTIONS | \
+                    WXTBX_SEQ_SHOW_LABELS | \
+                    WXTBX_SEQ_ENABLE_SELECT_STRUCTURE | \
+                    WXTBX_SEQ_ENABLE_SELECT_MISSING | \
+                    WXTBX_SEQ_FANCY_HELICES | \
+                    WXTBX_SEQ_SELECT_SINGLE
+
 #-----------------------------------------------------------------------
 def run (args) :
   pdb_file = args[-1]
@@ -921,12 +1013,36 @@ def run (args) :
 
 def run_test () :
   app = wx.App(0)
+  exercise_simple_frame()
+  app.MainLoop()
+
+def exercise_simple_frame () :
   frame = sequence_frame(None, -1, "Demo of sequence display")
   frame.set_sequence('VLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQG')
   frame.set_structure('LLLHHHHHHHHHHHHHHHHLHHHHHHHHHHHHHHHLHHHHHLLHHHHLLLLHHHHHHLHHHHHHHHHHHHHHHHHHHHLLLLHHHHHHHHHHHHHLLLLLHHHHHHHHHHHHHHHHHHLLLLLLHHHHHHHHHHHHHHHHHHHHHHHHHLLLL')
-#  if wx.Platform == '__WXMAC__' :
-#    frame.Fit()
+  frame.reset_layout()
   frame.Show()
+
+def exercise_msa_frame () :
+  frame = msa_frame(None, -1, "Demo of multiple sequence alignment")
+  seqs = [
+"---VLSEGEW---QLVLHVWAKVEADVAGHGQDILIRLFKSHPESTLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKK------GHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQGANQ",
+"------EGEWMRTQLVLHVWAKVEADVAGHGQDILIKLFKSHPE-TLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKMQVEHNGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQG---",
+"MAVVLSEGEWM--QLVLHVWAKVEADVAGHGQDILIRLFKSHPESTLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKK--VEH-GHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKEL-------"]
+  labels = [
+    "Protein A (H. sapiens)",
+    "Protein B (M. musculus)",
+    "Protein C (B. taurus)",
+  ]
+  frame.set_sequences(seqs, labels=labels)
+  frame.set_structure('------LLLHHHHHHHHHHHHHHHHLHHHHHHHHHHHHHHHLHH-HHHLLHHHHLLLLHHHHHHLHHHHHHHHHHHHHHHHHHHHLLLLLLLLLLHHHHHHHHHHHHHLLLLLHHHHHHHHHHHHHHHHHHLLLLLLHHHHHHHHHHHHHHHHHHHHHHHHHLLLL---')
+  frame.reset_layout()
+  frame.Show()
+
+def exercise () :
+  app = wx.App(0)
+  exercise_simple_frame()
+  exercise_msa_frame()
   app.MainLoop()
 
 if __name__ == "__main__" :
@@ -938,4 +1054,4 @@ if __name__ == "__main__" :
       test=os.path.isfile)
     run([pdb_file])
   else :
-    run(sys.argv[1:])
+    exercise()
