@@ -326,7 +326,7 @@ class group_files (object) :
     for file_name in other_files :
       group_name = find_closest_base_name(
         file_name=file_name,
-        base_name=splitext(file_name),
+        base_name=splitext(file_name)[0],
         templates=templates)
       if (group_name == "") :
         self.ambiguous_files.append(file_name)
