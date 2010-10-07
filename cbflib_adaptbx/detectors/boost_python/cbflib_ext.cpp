@@ -115,6 +115,10 @@ BOOST_PYTHON_MODULE(cbflib_ext)
      //.def("test",&CBFAdaptor::test)
    ;
    class_<cbf_binary_adaptor, bases<CBFAdaptor> >("cbf_binary_adaptor",init<std::string>())
+     .def("uncompress_implementation",&cbf_binary_adaptor::uncompress_implementation, return_self<>())
+     .def("uncompress_data",(scitbx::af::flex_int (cbf_binary_adaptor::*)())&cbf_binary_adaptor::uncompress_data)
+     .def("uncompress_data",
+     (scitbx::af::flex_int (cbf_binary_adaptor::*)(const int&, const int&))&cbf_binary_adaptor::uncompress_data)
      .def("read_data",&cbf_binary_adaptor::read_data)
      .def("buffer_based_uncompress",&cbf_binary_adaptor::buffer_based_uncompress)
      .def("optimized_read_data",

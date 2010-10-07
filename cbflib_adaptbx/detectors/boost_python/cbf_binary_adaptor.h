@@ -149,11 +149,19 @@ class cbf_binary_adaptor: public CBFAdaptor {
   int binary_id,elsigned,elunsigned,minelement,maxelement;
   size_t elsize,elements,dim1,dim2,dim3,padding;
   const char *byteorder;//="little_endian";
+  std::string u_implementation;
 
   inline cbf_binary_adaptor(const std::string& filename):
     CBFAdaptor(filename),
     byteorder(std::string("little_endian").c_str())
     {/* Create the cbf */}
+
+  inline cbf_binary_adaptor&
+  uncompress_implementation(std::string const& u){
+    SCITBX_ASSERT (u=="cbflib" || u=="cbflib_optimized" || u=="buffer_based");
+    u_implementation = u;
+    return *this;
+  }
 
   inline void common_file_access() {
     private_file = std::fopen(filename.c_str(),"rb");
@@ -180,6 +188,61 @@ class cbf_binary_adaptor: public CBFAdaptor {
 
   inline int dim_fast() {
     return dim1;
+  }
+
+  inline scitbx::af::flex_int uncompress_data(){
+    common_file_access();
+    size_t fast = dim1;
+    size_t slow = dim2;
+    return uncompress_data_detail(slow,fast);
+  }
+
+  inline scitbx::af::flex_int uncompress_data(const int& slow, const int& fast){
+    common_file_access();
+    SCITBX_ASSERT(elements == slow*fast);
+    return uncompress_data_detail(slow,fast);
+  }
+
+  inline scitbx::af::flex_int uncompress_data_detail(const int& slow, const int& fast){
+    //C++ weirdness
+    scitbx::af::flex_int z((scitbx::af::flex_grid<>(slow,fast)),scitbx::af::init_functor_null<int>());
+    int* begin = z.begin();
+    std::size_t sz = z.size();
+
+    if (u_implementation=="buffer_based") {
+
+      wrapper_of_byte_decompression wrap_dee(&cbf_h,sz);
+      wrap_dee.set_file_position();
+
+      scitbx::af::shared<char> compressed_buffer(wrap_dee.size_text);
+      char* buffer_begin = compressed_buffer.begin();
+      std::size_t sz_buffer = compressed_buffer.size();
+
+      wrap_dee.copy_raw_compressed_string_to_buffer(buffer_begin, sz_buffer);
+
+      iotbx::detectors::buffer_uncompress(buffer_begin, sz_buffer, begin);
+
+    } else if (u_implementation=="cbflib_optimized") {
+
+      wrapper_of_byte_decompression wrap_dee(&cbf_h,sz);
+      wrap_dee.set_file_position();
+      wrap_dee.decompress_byte_offset_optimized((void *)begin);
+
+    } else {
+
+      /* Read the binary data */
+      cbf_failnez (cbf_get_integerarray (cbf_h, //cbf handle
+                   &id,                         //ptr to binary section identifier
+                   begin,                       //array ptr
+                   sizeof (int),                //element size
+                   1,                           //flag of signed data type
+                   sz,                          //elements requested
+                   &nelem_read                  //elements read
+                   ))
+      SCITBX_ASSERT(sz==nelem_read);
+
+    }
+    return z;
   }
 
   inline scitbx::af::flex_int read_data(const int& slow, const int& fast){
