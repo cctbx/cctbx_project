@@ -107,7 +107,7 @@ def run(args):
   import libtbx.load_env
   from libtbx.option_parser import option_parser
   command_line = (option_parser(
-    usage="%s [options] file_listing_commands [...]"
+    usage="%s [options] [file_listing_commands] [...]"
       % libtbx.env.dispatcher_name)
     .option(None, "--dirs",
       action="store",
@@ -116,6 +116,10 @@ def run(args):
     .option(None, "--force_clean_dirs",
       action="store_true",
       help="forces removal of existing directories before creation.")
+    .option(None, "--command",
+      action="append",
+      type="str",
+      help="command to be executed, e.g. 'echo $(MULTI:1-4)'")
     .option("-j", "--jobs",
       action="store",
       type="int",
@@ -130,6 +134,13 @@ def run(args):
   import multiprocessing
   #
   cmd_infos = []
+  def cmd_infos_append(line):
+    for l in process_dollar_multi(line):
+      index = len(cmd_infos)
+      cmd_infos.append(libtbx.group_args(index=index, cmd=l, log=None))
+  if (co.command is not None):
+    for line in co.command:
+      cmd_infos_append(line=line)
   for file_listing_commands in command_line.args:
     file_name = op.expandvars(file_listing_commands)
     file_dir = op.dirname(file_name)
@@ -142,10 +153,7 @@ def run(args):
         if (len(flds) == 2): flds.append("")
         os.environ[flds[1]] = flds[2]
         continue
-      line = line.replace("$(DIRNAME)", file_dir)
-      for l in process_dollar_multi(line):
-        index = len(cmd_infos)
-        cmd_infos.append(libtbx.group_args(index=index, cmd=l, log=None))
+      cmd_infos_append(line=line.replace("$(DIRNAME)", file_dir))
   n_proc = min(len(cmd_infos), libtbx.introspection.number_of_processors())
   if (co.jobs is not None):
     n_proc = max(1, min(co.jobs, n_proc))
